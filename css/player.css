@@ -1,0 +1,131 @@
+/* player.css — estilo da tela de exibição (TV) */
+:root {
+  --brand: #0d6efd;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%;
+  background: #000; color: #fff;
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+  overflow: hidden;
+  cursor: none; /* esconde o mouse na TV */
+}
+
+/* ---------- Palco / grade de zonas ---------- */
+.mt-stage {
+  display: grid;
+  width: 100vw; height: 100vh;
+  gap: 4px;
+  background: #000;
+}
+.mt-zone {
+  position: relative;
+  overflow: hidden;
+  background: #0b1220;
+}
+
+/* ---------- Slides (conteúdos) ---------- */
+.mt-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+}
+.mt-slide.mt-active { opacity: 1; }
+
+/* Transições */
+.mt-trans-fade { transition: opacity .8s ease; }
+.mt-trans-slide { transition: opacity .8s ease, transform .8s ease; transform: translateX(4%); }
+.mt-trans-slide.mt-active { transform: translateX(0); }
+.mt-trans-none { transition: none; }
+.mt-leave { opacity: 0 !important; }
+
+.mt-empty, .mt-broken {
+  color: #64748b; font-size: 1.4vw; letter-spacing: .04em;
+}
+
+/* Imagem / vídeo / web */
+.mt-image img, .mt-video video {
+  width: 100%; height: 100%; display: block;
+}
+.mt-video iframe, .mt-web iframe {
+  width: 100%; height: 100%; border: 0;
+}
+
+/* Texto / aviso */
+.mt-text { padding: 4%; }
+.mt-text-inner { max-width: 90%; }
+.mt-text-title {
+  font-size: clamp(28px, 5vw, 90px);
+  font-weight: 800; line-height: 1.05; margin-bottom: .4em;
+}
+.mt-text-body {
+  font-size: clamp(18px, 2.6vw, 44px);
+  font-weight: 400; line-height: 1.3; opacity: .95;
+}
+
+/* Relógio */
+.mt-clock { flex-direction: column; color: #fff; }
+.mt-clock-time { font-size: clamp(40px, 9vw, 160px); font-weight: 800; letter-spacing: .02em; }
+.mt-clock-date { font-size: clamp(16px, 2.4vw, 40px); text-transform: capitalize; opacity: .8; margin-top: .2em; }
+
+/* Clima */
+.mt-weather { color: #fff; }
+.mt-weather-inner { text-align: center; }
+.mt-weather-icon { font-size: clamp(48px, 10vw, 160px); }
+.mt-weather-temp { font-size: clamp(36px, 7vw, 120px); font-weight: 800; }
+.mt-weather-city { font-size: clamp(16px, 2.4vw, 40px); opacity: .85; }
+
+/* QR Code */
+.mt-qr-inner { text-align: center; }
+.mt-qr-inner img { width: clamp(180px, 22vw, 420px); height: auto; background:#fff; padding:10px; border-radius:12px; }
+.mt-qr-caption { margin-top: 1em; font-size: clamp(16px, 2vw, 34px); color:#0b1220; font-weight:600; }
+
+/* ---------- Cabeçalho ---------- */
+.mt-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 3vw;
+  background: linear-gradient(90deg, var(--brand), #0b1220);
+}
+.mt-header-left { display: flex; align-items: center; gap: 1.4vw; }
+.mt-header-logo { height: 7vh; width: auto; }
+.mt-header-title { font-size: clamp(20px, 3vw, 46px); font-weight: 700; }
+.mt-header-right { display: flex; align-items: center; gap: 2vw; }
+.mt-header-weather { font-size: clamp(16px, 2vw, 32px); opacity: .9; }
+.mt-header-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1; }
+.mt-hc-time { font-size: clamp(22px, 3.4vw, 52px); font-weight: 800; }
+.mt-hc-date { font-size: clamp(12px, 1.4vw, 22px); opacity: .8; text-transform: capitalize; }
+
+/* ---------- Rodapé / ticker ---------- */
+.mt-ticker {
+  background: var(--brand);
+  display: flex; align-items: center;
+  overflow: hidden; white-space: nowrap;
+}
+.mt-ticker-track {
+  display: inline-flex;
+  will-change: transform;
+  animation: mt-scroll linear infinite;
+}
+.mt-ticker-item {
+  font-size: clamp(16px, 2.4vw, 36px);
+  font-weight: 600; padding: 0 1vw; color: #fff;
+}
+@keyframes mt-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* ---------- Overlay de carregamento ---------- */
+.mt-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: #05070d;
+  transition: opacity .6s ease;
+}
+.mt-overlay.hidden { opacity: 0; pointer-events: none; }
+.mt-overlay-box { text-align: center; }
+.mt-logo { font-size: 3vw; font-weight: 800; color: var(--brand); letter-spacing: .05em; }
+.mt-overlay-hint { margin-top: .6em; color: #94a3b8; font-size: 1.2vw; }

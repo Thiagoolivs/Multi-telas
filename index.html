@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-telas · Painel de Administração</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230d6efd'/%3E%3Cg fill='%23fff'%3E%3Crect x='4' y='4' width='9' height='7' rx='1'/%3E%3Crect x='15' y='4' width='5' height='7' rx='1'/%3E%3Crect x='4' y='13' width='16' height='7' rx='1'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">▦ <span>Multi-telas</span></div>
+    <div class="topbar-actions">
+      <button id="btn-preview" class="btn btn-ghost" title="Atualizar prévia">↻ Prévia</button>
+      <a id="btn-open-player" class="btn btn-ghost" href="player.html" target="_blank">▶ Abrir Player</a>
+      <button id="btn-import" class="btn btn-ghost">Importar</button>
+      <button id="btn-export" class="btn btn-ghost">Exportar</button>
+      <button id="btn-save" class="btn btn-primary">Salvar</button>
+      <span id="save-status" class="save-status"></span>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- Coluna de edição -->
+    <section class="editor">
+      <!-- Passo 1: Template -->
+      <div class="card">
+        <div class="card-head">
+          <h2>1 · Escolha um template</h2>
+          <p>Modelos prontos de multi-telas. Clique para aplicar.</p>
+        </div>
+        <div id="template-gallery" class="template-gallery"></div>
+      </div>
+
+      <!-- Passo 2: Configurações gerais -->
+      <div class="card">
+        <div class="card-head">
+          <h2>2 · Configurações gerais</h2>
+          <p>Identidade e comportamento do painel.</p>
+        </div>
+        <div class="grid-2">
+          <label class="field">
+            <span>Nome do painel</span>
+            <input id="cfg-nome" type="text" placeholder="Ex.: Recepção" />
+          </label>
+          <label class="field">
+            <span>Título no cabeçalho</span>
+            <input id="cfg-titulo" type="text" placeholder="Ex.: Bem-vindo" />
+          </label>
+          <label class="field">
+            <span>Cor de destaque</span>
+            <input id="cfg-cor" type="color" />
+          </label>
+          <label class="field">
+            <span>Cidade (clima)</span>
+            <input id="cfg-cidade" type="text" placeholder="Ex.: São Paulo" />
+          </label>
+          <label class="field">
+            <span>Logo (URL da imagem)</span>
+            <input id="cfg-logo" type="text" placeholder="https://…/logo.png" />
+          </label>
+          <label class="field">
+            <span>Transição entre slides</span>
+            <select id="cfg-transicao">
+              <option value="fade">Suave (fade)</option>
+              <option value="slide">Deslizar</option>
+              <option value="none">Nenhuma</option>
+            </select>
+          </label>
+        </div>
+        <details class="advanced">
+          <summary>Atualização automática (avançado)</summary>
+          <div class="grid-2">
+            <label class="field">
+              <span>URL de config remota (opcional)</span>
+              <input id="cfg-remote" type="text" placeholder="https://…/config.json" />
+            </label>
+            <label class="field">
+              <span>Recarregar a cada (segundos)</span>
+              <input id="cfg-refresh" type="number" min="10" step="5" />
+            </label>
+          </div>
+          <p class="hint">
+            Deixe a URL vazia para funcionar só nesta máquina. Preenchendo, você
+            hospeda o <code>config.json</code> (GitHub, Dropbox etc.) e todas as
+            TVs pegam as atualizações sozinhas.
+          </p>
+        </details>
+      </div>
+
+      <!-- Passo 3: Zonas -->
+      <div class="card">
+        <div class="card-head">
+          <h2>3 · Conteúdo das zonas</h2>
+          <p>Cada zona gira sua própria lista de conteúdos.</p>
+        </div>
+        <div id="zones-editor" class="zones-editor"></div>
+      </div>
+    </section>
+
+    <!-- Coluna de prévia -->
+    <aside class="preview">
+      <div class="preview-head">
+        <h2>Prévia ao vivo</h2>
+        <span class="badge">atualiza ao salvar</span>
+      </div>
+      <div class="preview-frame-wrap">
+        <iframe id="preview-frame" src="player.html" title="Prévia"></iframe>
+      </div>
+      <p class="hint">A prévia mostra exatamente o que a TV exibirá.</p>
+    </aside>
+  </div>
+
+  <!-- Modal de edição de item -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3 id="modal-title">Conteúdo</h3>
+        <button id="modal-close" class="icon-btn">✕</button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+      <div class="modal-foot">
+        <button id="modal-cancel" class="btn btn-ghost">Cancelar</button>
+        <button id="modal-ok" class="btn btn-primary">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <input id="import-file" type="file" accept="application/json" hidden />
+
+  <script src="js/templates.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
