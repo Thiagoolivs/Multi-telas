@@ -3,19 +3,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Multi-telas · Painel de Administração</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230d6efd'/%3E%3Cg fill='%23fff'%3E%3Crect x='4' y='4' width='9' height='7' rx='1'/%3E%3Crect x='15' y='4' width='5' height='7' rx='1'/%3E%3Crect x='4' y='13' width='16' height='7' rx='1'/%3E%3C/g%3E%3C/svg%3E" />
+  <title>Raft Mídia · Painel de Gestão de Telas</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%234B5320'/%3E%3Cg fill='%23fff'%3E%3Crect x='4' y='4' width='9' height='7' rx='1'/%3E%3Crect x='15' y='4' width='5' height='7' rx='1'/%3E%3Crect x='4' y='13' width='16' height='7' rx='1'/%3E%3C/g%3E%3C/svg%3E" />
   <link rel="stylesheet" href="css/admin.css" />
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">▦ <span>Multi-telas</span></div>
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+        <rect width="24" height="24" rx="5" fill="#4B5320"/>
+        <g fill="#fff">
+          <rect x="4" y="4" width="9" height="7" rx="1"/>
+          <rect x="15" y="4" width="5" height="7" rx="1"/>
+          <rect x="4" y="13" width="16" height="7" rx="1"/>
+        </g>
+      </svg>
+      <div class="brand-text">
+        <strong>Raft Mídia</strong>
+        <span>Gestão de telas corporativas</span>
+      </div>
+    </div>
     <div class="topbar-actions">
-      <button id="btn-preview" class="btn btn-ghost" title="Atualizar prévia">↻ Prévia</button>
-      <a id="btn-open-player" class="btn btn-ghost" href="player.html" target="_blank">▶ Abrir Player</a>
+      <button id="btn-preview" class="btn btn-ghost">Atualizar prévia</button>
+      <a id="btn-open-player" class="btn btn-ghost" href="player.html" target="_blank">Abrir na TV</a>
       <button id="btn-import" class="btn btn-ghost">Importar</button>
       <button id="btn-export" class="btn btn-ghost">Exportar</button>
-      <button id="btn-save" class="btn btn-primary">Salvar</button>
+      <button id="btn-save" class="btn btn-primary">Salvar alterações</button>
       <span id="save-status" class="save-status"></span>
     </div>
   </header>
@@ -26,41 +39,68 @@
       <!-- Passo 1: Template -->
       <div class="card">
         <div class="card-head">
-          <h2>1 · Escolha um template</h2>
-          <p>Modelos prontos de multi-telas. Clique para aplicar.</p>
+          <div class="step-chip">1</div>
+          <div>
+            <h2>Modelo de exibição</h2>
+            <p>Escolha como a TV será dividida. Modelos prontos, é só clicar.</p>
+          </div>
         </div>
         <div id="template-gallery" class="template-gallery"></div>
       </div>
 
-      <!-- Passo 2: Configurações gerais -->
+      <!-- Passo 2: Conteúdo (zonas clicáveis) -->
       <div class="card">
         <div class="card-head">
-          <h2>2 · Configurações gerais</h2>
-          <p>Identidade e comportamento do painel.</p>
+          <div class="step-chip">2</div>
+          <div>
+            <h2>Conteúdo das telas</h2>
+            <p>Clique em uma área do desenho para editar o que aparece nela.</p>
+          </div>
+        </div>
+        <div class="content-editor">
+          <div class="layout-map-wrap">
+            <div id="layout-map" class="layout-map"></div>
+          </div>
+          <div id="zone-panel" class="zone-panel"></div>
+        </div>
+      </div>
+
+      <!-- Passo 3: Identidade -->
+      <div class="card">
+        <div class="card-head">
+          <div class="step-chip">3</div>
+          <div>
+            <h2>Identidade e exibição</h2>
+            <p>Marca, cores e comportamento do painel.</p>
+          </div>
         </div>
         <div class="grid-2">
           <label class="field">
-            <span>Nome do painel</span>
-            <input id="cfg-nome" type="text" placeholder="Ex.: Recepção" />
+            <span>Nome da empresa / painel</span>
+            <input id="cfg-nome" type="text" placeholder="Ex.: Raft Embalagens" />
           </label>
           <label class="field">
-            <span>Título no cabeçalho</span>
+            <span>Título no cabeçalho da TV</span>
             <input id="cfg-titulo" type="text" placeholder="Ex.: Bem-vindo" />
           </label>
           <label class="field">
-            <span>Cor de destaque</span>
+            <span>Cor da marca <em class="field-note">padrão: verde Raft</em></span>
             <input id="cfg-cor" type="color" />
           </label>
           <label class="field">
-            <span>Cidade (clima)</span>
+            <span>Cidade (previsão do tempo)</span>
             <input id="cfg-cidade" type="text" placeholder="Ex.: São Paulo" />
           </label>
           <label class="field">
-            <span>Logo (URL da imagem)</span>
-            <input id="cfg-logo" type="text" placeholder="https://…/logo.png" />
+            <span>Logotipo</span>
+            <div class="upload-row">
+              <input id="cfg-logo" type="text" placeholder="https://…/logo.png" />
+              <button id="btn-logo-upload" class="btn btn-ghost btn-sm" type="button">Enviar arquivo</button>
+              <input id="cfg-logo-file" type="file" accept="image/*" hidden />
+            </div>
           </label>
           <label class="field">
-            <span>Transição entre slides</span>
+            <span>Transição entre conteúdos</span>
             <select id="cfg-transicao">
               <option value="fade">Suave (fade)</option>
               <option value="slide">Deslizar</option>
@@ -69,45 +109,36 @@
           </label>
         </div>
         <details class="advanced">
-          <summary>Atualização automática (avançado)</summary>
+          <summary>Atualização centralizada de várias TVs (avançado)</summary>
           <div class="grid-2">
             <label class="field">
-              <span>URL de config remota (opcional)</span>
+              <span>URL de configuração remota (opcional)</span>
               <input id="cfg-remote" type="text" placeholder="https://…/config.json" />
             </label>
             <label class="field">
-              <span>Recarregar a cada (segundos)</span>
+              <span>Verificar atualizações a cada (segundos)</span>
               <input id="cfg-refresh" type="number" min="10" step="5" />
             </label>
           </div>
           <p class="hint">
-            Deixe a URL vazia para funcionar só nesta máquina. Preenchendo, você
-            hospeda o <code>config.json</code> (GitHub, Dropbox etc.) e todas as
-            TVs pegam as atualizações sozinhas.
+            Deixe a URL vazia para usar apenas nesta máquina. Preenchendo, você hospeda o
+            <code>config.json</code> (GitHub, Dropbox, servidor próprio) e todas as TVs
+            recebem as atualizações automaticamente.
           </p>
         </details>
-      </div>
-
-      <!-- Passo 3: Zonas -->
-      <div class="card">
-        <div class="card-head">
-          <h2>3 · Conteúdo das zonas</h2>
-          <p>Cada zona gira sua própria lista de conteúdos.</p>
-        </div>
-        <div id="zones-editor" class="zones-editor"></div>
       </div>
     </section>
 
     <!-- Coluna de prévia -->
     <aside class="preview">
       <div class="preview-head">
-        <h2>Prévia ao vivo</h2>
+        <h2>Prévia da TV</h2>
         <span class="badge">atualiza ao salvar</span>
       </div>
       <div class="preview-frame-wrap">
         <iframe id="preview-frame" src="player.html" title="Prévia"></iframe>
       </div>
-      <p class="hint">A prévia mostra exatamente o que a TV exibirá.</p>
+      <p class="hint">Reprodução fiel do que será exibido na TV.</p>
     </aside>
   </div>
 
@@ -116,7 +147,7 @@
     <div class="modal-box">
       <div class="modal-head">
         <h3 id="modal-title">Conteúdo</h3>
-        <button id="modal-close" class="icon-btn">✕</button>
+        <button id="modal-close" class="icon-btn" aria-label="Fechar">✕</button>
       </div>
       <div id="modal-body" class="modal-body"></div>
       <div class="modal-foot">

@@ -60,6 +60,7 @@
     image: renderImage,
     video: renderVideo,
     youtube: renderYouTube,
+    birthday: renderBirthday,
     clock: renderClock,
     weather: renderWeather,
     web: renderWeb,
@@ -123,16 +124,61 @@
 
   function renderYouTube(item) {
     const el = div('mt-slide mt-video');
-    const id = extractYouTubeId(item.videoId || item.src || '');
     const iframe = document.createElement('iframe');
     iframe.allow = 'autoplay; encrypted-media';
     iframe.setAttribute('frameborder', '0');
-    iframe.src =
-      'https://www.youtube.com/embed/' + id +
-      '?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1' +
-      (item.loop ? '&loop=1&playlist=' + id : '');
+
+    if (item.channelId && String(item.channelId).trim()) {
+      // Transmissão ao vivo do canal: pega automaticamente a live ativa.
+      iframe.src =
+        'https://www.youtube.com/embed/live_stream?channel=' +
+        encodeURIComponent(String(item.channelId).trim()) +
+        '&autoplay=1&mute=1&controls=0&playsinline=1';
+    } else {
+      const id = extractYouTubeId(item.videoId || item.src || '');
+      iframe.src =
+        'https://www.youtube.com/embed/' + id +
+        '?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&playsinline=1' +
+        (item.loop ? '&loop=1&playlist=' + id : '');
+    }
     el.appendChild(iframe);
-    return { el, duration: item.duracao || 20 };
+
+    // duracao 0 = fica fixo na tela (ideal para lives em tempo real).
+    const dur = item.duracao == null ? 20 : Number(item.duracao);
+    const result = { el, duration: dur };
+    if (dur === 0) result.onEnter = function () { /* permanente */ };
+    return result;
+  }
+
+  function renderBirthday(item) {
+    const el = div('mt-slide mt-birthday');
+    el.style.background = item.bg || '#3a4419';
+    el.style.color = item.cor || '#ffffff';
+    const title = div('mt-birthday-title');
+    title.textContent = item.titulo || 'Aniversariantes do Mês';
+    const list = div('mt-birthday-list');
+    String(item.nomes || '')
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .forEach((line) => {
+        const row = div('mt-birthday-row');
+        // Formato sugerido: "Nome — 12/07" (separador com espaços).
+        const parts = line.split(/\s+[—–-]\s+/);
+        const name = document.createElement('span');
+        name.textContent = parts[0];
+        row.appendChild(name);
+        if (parts[1]) {
+          const d = document.createElement('span');
+          d.className = 'mt-birthday-date';
+          d.textContent = parts[1];
+          row.appendChild(d);
+        }
+        list.appendChild(row);
+      });
+    el.appendChild(title);
+    el.appendChild(list);
+    return { el, duration: item.duracao || 15 };
   }
 
   function extractYouTubeId(s) {
@@ -229,16 +275,18 @@
   }
 
   // Metadados dos tipos, usados pelo Admin para montar formulários.
+  // "icon" referencia um ícone SVG definido no painel (js/admin.js).
   const ITEM_TYPES = [
-    { type: 'text', label: 'Texto / Comunicado', icon: '📝' },
-    { type: 'notice', label: 'Aviso', icon: '📢' },
-    { type: 'image', label: 'Imagem', icon: '🖼️' },
-    { type: 'video', label: 'Vídeo (MP4)', icon: '🎬' },
-    { type: 'youtube', label: 'YouTube', icon: '▶️' },
-    { type: 'clock', label: 'Relógio', icon: '🕐' },
-    { type: 'weather', label: 'Clima', icon: '🌦️' },
-    { type: 'web', label: 'Página Web', icon: '🌐' },
-    { type: 'qrcode', label: 'QR Code', icon: '🔳' },
+    { type: 'text', label: 'Texto / Comunicado', icon: 'text' },
+    { type: 'notice', label: 'Aviso', icon: 'bell' },
+    { type: 'image', label: 'Imagem', icon: 'image' },
+    { type: 'video', label: 'Vídeo (MP4)', icon: 'film' },
+    { type: 'youtube', label: 'YouTube / Ao vivo', icon: 'play' },
+    { type: 'birthday', label: 'Aniversariantes', icon: 'cake' },
+    { type: 'clock', label: 'Relógio', icon: 'clock' },
+    { type: 'weather', label: 'Clima', icon: 'cloud' },
+    { type: 'web', label: 'Página Web', icon: 'globe' },
+    { type: 'qrcode', label: 'QR Code', icon: 'qr' },
   ];
 
   global.MTRender = { renderItem, ITEM_TYPES, extractYouTubeId };

@@ -15,15 +15,15 @@
     return {
       version: SCHEMA_VERSION,
       settings: {
-        nome: 'Painel Recepção',
+        nome: 'Raft Embalagens',
         layoutId: 'corporate',
         // URL opcional de config remota. Se preenchida, o player prioriza ela.
         remoteConfigUrl: '',
         // De quanto em quanto tempo o player recarrega a config (segundos).
         refreshSeconds: 60,
-        cor: '#0d6efd',
+        cor: '#4B5320', // verde militar (padrão Raft Embalagens)
         logoUrl: '',
-        titulo: 'Bem-vindo',
+        titulo: 'Raft Embalagens',
         cidadeClima: 'São Paulo',
         transicao: 'fade', // fade | slide | none
       },
@@ -32,9 +32,9 @@
           items: [
             {
               type: 'text',
-              titulo: 'Bem-vindo(a)!',
-              corpo: 'Edite este conteúdo no Painel Admin. É rápido e fácil.',
-              bg: '#0d6efd',
+              titulo: 'Bem-vindo à Raft Embalagens',
+              corpo: 'Para editar, clique em uma tela no painel e escolha um conteúdo pronto.',
+              bg: '#4B5320',
               cor: '#ffffff',
               duracao: 10,
             },
@@ -49,12 +49,12 @@
         lateral: {
           items: [
             {
-              type: 'notice',
-              titulo: 'Aviso',
-              corpo: 'Reunião geral às 15h no auditório.',
-              bg: '#111827',
+              type: 'birthday',
+              titulo: 'Aniversariantes do Mês',
+              nomes: 'Ana Souza — 05/07\nCarlos Lima — 12/07\nMarina Alves — 23/07',
+              bg: '#3a4419',
               cor: '#ffffff',
-              duracao: 10,
+              duracao: 12,
             },
             {
               type: 'clock',
@@ -64,9 +64,9 @@
         },
         rodape: {
           messages: [
-            'Bem-vindo à nossa empresa 🚀',
+            'Bem-vindo à Raft Embalagens',
             'Segurança em primeiro lugar — use seu EPI.',
-            'Confira o mural de avisos na intranet.',
+            'Acompanhe os comunicados no mural interno.',
           ],
           velocidade: 60, // pixels por segundo
         },
@@ -83,6 +83,11 @@
       settings: Object.assign({}, base.settings, cfg.settings || {}),
       zonas: {},
     };
+
+    // Preserva zonas de outros templates (trocar de layout não apaga conteúdo).
+    Object.keys(cfg.zonas || {}).forEach((k) => {
+      out.zonas[k] = cfg.zonas[k];
+    });
 
     const layout = global.MT_getLayout(out.settings.layoutId);
     // Garante que exista uma entrada para cada zona do layout escolhido.

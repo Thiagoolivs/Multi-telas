@@ -1,6 +1,6 @@
 /* player.css — estilo da tela de exibição (TV) */
 :root {
-  --brand: #0d6efd;
+  --brand: #4B5320;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body {
@@ -22,6 +22,8 @@ html, body {
   position: relative;
   overflow: hidden;
   background: #0b1220;
+  /* Permite dimensionar fontes pela largura da própria zona (cqw). */
+  container-type: size;
 }
 
 /* ---------- Slides (conteúdos) ---------- */
@@ -56,7 +58,13 @@ html, body {
 
 /* Texto / aviso */
 .mt-text { padding: 4%; }
-.mt-text-inner { max-width: 90%; }
+.mt-text::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(165deg, rgba(255,255,255,.08), rgba(0,0,0,.25));
+  pointer-events: none;
+}
+.mt-text-inner { max-width: 90%; position: relative; z-index: 1; }
 .mt-text-title {
   font-size: clamp(28px, 5vw, 90px);
   font-weight: 800; line-height: 1.05; margin-bottom: .4em;
@@ -77,6 +85,34 @@ html, body {
 .mt-weather-icon { font-size: clamp(48px, 10vw, 160px); }
 .mt-weather-temp { font-size: clamp(36px, 7vw, 120px); font-weight: 800; }
 .mt-weather-city { font-size: clamp(16px, 2.4vw, 40px); opacity: .85; }
+
+/* Aniversariantes */
+.mt-birthday { flex-direction: column; padding: 5%; }
+.mt-birthday::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(165deg, rgba(255,255,255,.07), rgba(0,0,0,.28));
+  pointer-events: none;
+}
+.mt-birthday-title {
+  position: relative; z-index: 1;
+  font-size: clamp(22px, 3vw, 52px);
+  font-weight: 800; margin-bottom: .9em;
+  letter-spacing: .01em;
+}
+.mt-birthday-list {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; gap: .5em;
+  width: 100%; max-width: 86%;
+}
+.mt-birthday-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 1em;
+  font-size: clamp(15px, 1.9vw, 32px);
+  background: rgba(255,255,255,.1);
+  border-left: .22em solid rgba(255,255,255,.55);
+  padding: .45em .9em; border-radius: .35em;
+}
+.mt-birthday-date { font-weight: 700; opacity: .9; white-space: nowrap; }
 
 /* QR Code */
 .mt-qr-inner { text-align: center; }
@@ -116,6 +152,20 @@ html, body {
 @keyframes mt-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
+}
+
+/* Tipografia proporcional à zona (não à tela inteira).
+   Em navegadores antigos sem suporte a cqw, valem os clamps em vw acima. */
+@supports (width: 1cqw) {
+  .mt-text-title { font-size: clamp(22px, 6.5cqw, 88px); }
+  .mt-text-body { font-size: clamp(15px, 3.4cqw, 44px); }
+  .mt-clock-time { font-size: clamp(36px, 14cqw, 150px); }
+  .mt-clock-date { font-size: clamp(14px, 3.6cqw, 38px); }
+  .mt-weather-icon { font-size: clamp(40px, 13cqw, 150px); }
+  .mt-weather-temp { font-size: clamp(32px, 10cqw, 110px); }
+  .mt-weather-city { font-size: clamp(14px, 3.6cqw, 38px); }
+  .mt-birthday-title { font-size: clamp(18px, 7cqw, 54px); }
+  .mt-birthday-row { font-size: clamp(13px, 4.6cqw, 32px); }
 }
 
 /* ---------- Overlay de carregamento ---------- */

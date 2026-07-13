@@ -26,6 +26,8 @@
     } catch (e) {
       cfg = MTStorage.load();
     }
+    const logoEl = document.querySelector('.mt-logo');
+    if (logoEl) logoEl.textContent = (cfg.settings && cfg.settings.nome) || 'Mídia Indoor';
     applyConfig(cfg);
     startWatchers(cfg.settings.refreshSeconds || 60);
     hideOverlayAfter();
@@ -122,6 +124,9 @@
     let timer = null;
     let currentSlide = null;
     let stopped = false;
+    // Zona com um único item fica estática (essencial para lives do YouTube:
+    // re-renderizar recarregaria a transmissão).
+    const single = items.length === 1;
 
     if (!items.length) {
       const empty = document.createElement('div');
@@ -167,6 +172,7 @@
       try { rendered.onEnter && rendered.onEnter(goNext); } catch (e) {}
 
       const dur = rendered.duration;
+      if (single) return; // estática — só o próprio item avança (ex.: vídeo ao terminar)
       if (dur && dur > 0) schedule(dur);
       else if (!rendered.onEnter) schedule(10); // fallback de segurança
     }

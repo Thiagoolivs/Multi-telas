@@ -1,36 +1,47 @@
-# ▦ Multi-telas — Mídia Indoor para TVs Corporativas
+# Raft Mídia — Mídia Indoor para TVs Corporativas
 
 Sistema de **multi-telas na mesma exibição** (digital signage) no estilo Pix Mídia,
 feito para rodar em TVs corporativas com **atualização fácil** e **templates prontos**.
+Identidade visual padrão da **Raft Embalagens** (verde militar), totalmente personalizável.
 
 Funciona **100% no navegador**, sem servidor obrigatório — nada de backend para cair.
 Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
 
 ---
 
-## ✨ O que ele faz
+## O que ele faz
 
 - **Multi-telas numa só exibição:** várias zonas independentes (principal, lateral,
   cabeçalho, rodapé) rodando conteúdos diferentes ao mesmo tempo.
-- **6 templates prontos:** Tela Cheia, Tela Cheia + Rodapé, Destaque + Barra Lateral,
-  Cabeçalho + Principal + Rodapé, Mosaico 2x2 e Corporativo Completo.
-- **9 tipos de conteúdo:** Texto/Comunicado, Aviso, Imagem, Vídeo (MP4), YouTube,
-  Relógio, Clima, Página Web e QR Code.
-- **Painel de administração visual:** qualquer pessoa atualiza sem saber programar.
+- **6 templates prontos** com **zonas clicáveis**: clique na área do desenho da TV
+  e edite o que aparece nela.
+- **Conteúdos prontos (1 clique):** YouTube ao vivo, Aniversariantes do mês,
+  Aviso importante, Clima e tempo, Boas-vindas, Comunicado interno, Segurança,
+  Foto/campanha e Relógio.
+- **YouTube ao vivo:** cole o link da live (ou o ID do canal, que pega a live ativa
+  automaticamente) e deixe **fixa na tela** (duração 0) — ideal para transmissões
+  em tempo real.
+- **Upload de imagem direto do computador:** a foto é comprimida no navegador e
+  salva junto com a configuração (sem precisar hospedar em lugar nenhum).
+- **10 tipos de conteúdo:** Texto/Comunicado, Aviso, Imagem, Vídeo (MP4),
+  YouTube/Ao vivo, Aniversariantes, Relógio, Clima, Página Web e QR Code.
+- **Painel de gestão visual:** qualquer pessoa atualiza sem saber programar.
   Prévia ao vivo do que a TV vai exibir.
 - **Rodapé de avisos rolando** (ticker) e **cabeçalho com relógio + clima**.
 - **Atualização automática:** o player recarrega sozinho a cada X segundos.
 - **Robusto:** cada conteúdo é isolado — se um falhar, o player pula para o próximo
-  sem travar a tela.
+  sem travar a tela; zonas com um único conteúdo (ex.: live) ficam estáticas e nunca
+  recarregam a transmissão.
 
 ---
 
-## 🚀 Como usar (rápido)
+## Como usar (rápido)
 
-1. Abra **`index.html`** no navegador → é o **Painel de Administração**.
-2. Escolha um **template**, ajuste as **configurações** e o **conteúdo das zonas**.
-3. Clique em **Salvar**.
-4. Abra **`player.html`** na TV (botão **▶ Abrir Player**). Pronto.
+1. Abra **`index.html`** no navegador → é o **Painel de Gestão**.
+2. Escolha um **modelo**, clique em uma **área do desenho da TV** e adicione um
+   **conteúdo pronto** (ou monte do zero).
+3. Clique em **Salvar alterações**.
+4. Abra **`player.html`** na TV (botão **Abrir na TV**). Pronto.
 
 > Dica: na TV, dê **duplo clique** (ou tecle **F**) no player para entrar em tela cheia.
 
@@ -48,7 +59,7 @@ python3 -m http.server 8080
 
 ---
 
-## 🔄 Atualização de várias TVs (centralizada)
+## Atualização de várias TVs (centralizada)
 
 Você tem duas formas de trabalhar:
 
@@ -67,7 +78,7 @@ Assim uma pessoa atualiza num lugar só e a rede inteira acompanha.
 
 ---
 
-## 🧱 Estrutura do projeto
+## Estrutura do projeto
 
 ```
 Multi-telas/
@@ -90,10 +101,10 @@ Multi-telas/
 ```jsonc
 {
   "settings": {
-    "nome": "Painel Recepção",
+    "nome": "Raft Embalagens",
     "layoutId": "corporate",     // template escolhido
-    "titulo": "Bem-vindo",
-    "cor": "#0d6efd",            // cor de destaque
+    "titulo": "Raft Embalagens",
+    "cor": "#4B5320",            // cor da marca (verde militar Raft)
     "cidadeClima": "São Paulo",
     "logoUrl": "",
     "transicao": "fade",         // fade | slide | none
@@ -110,23 +121,24 @@ Multi-telas/
 
 ---
 
-## 🎛️ Tipos de conteúdo
+## Tipos de conteúdo
 
 | Tipo | Descrição |
 |------|-----------|
-| 📝 Texto / Comunicado | Título + texto com cores personalizáveis |
-| 📢 Aviso | Igual ao texto, com estilo de destaque |
-| 🖼️ Imagem | URL da imagem (preencher ou conter) |
-| 🎬 Vídeo (MP4) | URL do vídeo, com loop e duração opcional |
-| ▶️ YouTube | Cole o link ou o ID do vídeo |
-| 🕐 Relógio | Relógio digital com data |
-| 🌦️ Clima | Temperatura por cidade (Open-Meteo, sem chave de API) |
-| 🌐 Página Web | Incorpora um site via iframe |
-| 🔳 QR Code | Gera um QR a partir de um link/texto |
+| Texto / Comunicado | Título + texto com cores personalizáveis |
+| Aviso | Igual ao texto, com estilo de destaque |
+| Imagem | URL ou **upload direto do computador** (comprimida no navegador) |
+| Vídeo (MP4) | URL do vídeo, com loop e duração opcional |
+| YouTube / Ao vivo | Link/ID do vídeo ou da live; ID do canal pega a live ativa; duração 0 = fixo na tela |
+| Aniversariantes | Lista "Nome — data", um por linha |
+| Relógio | Relógio digital com data |
+| Clima | Temperatura por cidade (Open-Meteo, sem chave de API) |
+| Página Web | Incorpora um site via iframe |
+| QR Code | Gera um QR a partir de um link/texto |
 
 ---
 
-## 🖥️ Dicas para a TV
+## Dicas para a TV
 
 - Configure a TV/mini-PC para **abrir o navegador em tela cheia** com a URL do player
   ao ligar (modo quiosque). No Chrome: `chrome --kiosk http://.../player.html`.
@@ -135,7 +147,7 @@ Multi-telas/
 
 ---
 
-## ❓ Perguntas comuns
+## Perguntas comuns
 
 **Preciso de internet?** Só para conteúdos externos (imagens/vídeos por URL, YouTube,
 clima, config remota). O sistema em si roda offline.
