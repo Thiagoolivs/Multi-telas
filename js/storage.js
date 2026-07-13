@@ -16,12 +16,13 @@
       version: SCHEMA_VERSION,
       settings: {
         nome: 'Raft Embalagens',
-        layoutId: 'corporate',
+        layoutId: 'dashboard',
         // URL opcional de config remota. Se preenchida, o player prioriza ela.
         remoteConfigUrl: '',
         // De quanto em quanto tempo o player recarrega a config (segundos).
         refreshSeconds: 60,
-        cor: '#4B5320', // verde militar (padrão Raft Embalagens)
+        cor: '#4B5320',   // cor de destaque (verde militar Raft)
+        fundo: '#0a1128', // fundo das telas (azul noite)
         logoUrl: '',
         titulo: 'Raft Embalagens',
         cidadeClima: 'São Paulo',
@@ -31,6 +32,14 @@
         principal: {
           items: [
             {
+              type: 'birthdaycard',
+              nome: 'João',
+              mensagem: 'Que hoje o seu dia seja o mais feliz de todos!',
+              foto: '',
+              bg: '#0c1c4d',
+              duracao: 15,
+            },
+            {
               type: 'text',
               titulo: 'Bem-vindo à Raft Embalagens',
               corpo: 'Para editar, clique em uma tela no painel e escolha um conteúdo pronto.',
@@ -38,37 +47,27 @@
               cor: '#ffffff',
               duracao: 10,
             },
-            {
-              type: 'image',
-              src: 'https://picsum.photos/1280/720?random=1',
-              fit: 'cover',
-              duracao: 8,
-            },
           ],
         },
         lateral: {
           items: [
             {
-              type: 'birthday',
-              titulo: 'Aniversariantes do Mês',
-              nomes: 'Ana Souza — 05/07\nCarlos Lima — 12/07\nMarina Alves — 23/07',
-              bg: '#3a4419',
-              cor: '#ffffff',
-              duracao: 12,
-            },
-            {
-              type: 'clock',
-              duracao: 10,
+              type: 'weatherpro',
+              cidade: 'São Paulo',
+              duracao: 0,
             },
           ],
         },
         rodape: {
+          titulo: 'ÚLTIMAS NOTÍCIAS',
+          modo: 'noticias',
+          intervalo: 8,
+          velocidade: 60,
           messages: [
-            'Bem-vindo à Raft Embalagens',
-            'Segurança em primeiro lugar — use seu EPI.',
-            'Acompanhe os comunicados no mural interno.',
+            'Bem-vindo à Raft Embalagens :: Painel de comunicação interna — edite as notícias no painel de gestão.',
+            'Segurança em primeiro lugar :: O uso de EPI é obrigatório em todas as áreas de produção.',
+            'Aniversariantes do mês :: Confira no mural quem faz aniversário e deixe seu parabéns.',
           ],
-          velocidade: 60, // pixels por segundo
         },
       },
     };
@@ -97,6 +96,9 @@
         out.zonas[zone.id] = {
           messages: Array.isArray(existing.messages) ? existing.messages : [],
           velocidade: existing.velocidade || 60,
+          titulo: existing.titulo != null ? existing.titulo : 'ÚLTIMAS NOTÍCIAS',
+          modo: existing.modo || 'noticias', // noticias | rolagem
+          intervalo: existing.intervalo || 8,
         };
       } else if (zone.type === 'header') {
         out.zonas[zone.id] = { header: true };

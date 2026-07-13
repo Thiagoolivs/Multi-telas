@@ -13,7 +13,20 @@
     return d;
   }
 
-  /* ---------- Utilidades de clima (Open-Meteo, sem chave/API key) ---------- */
+  /* ---------- Geocodificação + clima (Open-Meteo, sem chave/API key) ---------- */
+  const geoCache = {};
+  async function geocode(nome) {
+    const key = (nome || '').trim().toLowerCase();
+    if (geoCache[key]) return geoCache[key];
+    const url =
+      'https://geocoding-api.open-meteo.com/v1/search?count=1&language=pt&name=' +
+      encodeURIComponent(nome);
+    const geo = await (await fetch(url)).json();
+    if (!geo.results || !geo.results.length) throw new Error('local não encontrado');
+    geoCache[key] = geo.results[0];
+    return geoCache[key];
+  }
+
   const weatherCache = {};
   async function fetchWeather(cidade) {
     const key = (cidade || '').toLowerCase();
@@ -21,36 +34,71 @@
     if (weatherCache[key] && now - weatherCache[key].t < 15 * 60 * 1000) {
       return weatherCache[key].data;
     }
-    const geoUrl =
-      'https://geocoding-api.open-meteo.com/v1/search?count=1&language=pt&name=' +
-      encodeURIComponent(cidade);
-    const geo = await (await fetch(geoUrl)).json();
-    if (!geo.results || !geo.results.length) throw new Error('cidade não encontrada');
-    const { latitude, longitude, name } = geo.results[0];
+    const g = await geocode(cidade);
     const wUrl =
       'https://api.open-meteo.com/v1/forecast?current=temperature_2m,weather_code' +
-      '&timezone=auto&latitude=' + latitude + '&longitude=' + longitude;
+      '&daily=weather_code,temperature_2m_max,temperature_2m_min&forecast_days=7' +
+      '&timezone=auto&latitude=' + g.latitude + '&longitude=' + g.longitude;
     const w = await (await fetch(wUrl)).json();
     const data = {
-      nome: name,
+      nome: g.name,
+      regiao: g.admin1 || '',
       temp: Math.round(w.current.temperature_2m),
       code: w.current.weather_code,
+      daily: w.daily || null,
     };
     weatherCache[key] = { t: now, data };
     return data;
   }
 
-  const WEATHER_ICON = {
-    0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
-    45: '🌫️', 48: '🌫️',
-    51: '🌦️', 53: '🌦️', 55: '🌧️',
-    61: '🌧️', 63: '🌧️', 65: '🌧️',
-    71: '🌨️', 73: '🌨️', 75: '❄️',
-    80: '🌦️', 81: '🌧️', 82: '⛈️',
-    95: '⛈️', 96: '⛈️', 99: '⛈️',
+  /* Ícones de clima em SVG (traço fino, estética profissional) */
+  const WEATHER_SVG = {
+    sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5 5l1.7 1.7M17.3 17.3L19 19M19 5l-1.7 1.7M6.7 17.3L5 19"/>',
+    partly: '<circle cx="9" cy="9" r="3.4"/><path d="M9 2.8v1.8M2.8 9h1.8M4.6 4.6L5.9 5.9M13.4 4.6l-1.3 1.3M17.2 20a3.8 3.8 0 0 0 0-7.6 5.4 5.4 0 0 0-10.4 1.5A3.2 3.2 0 0 0 8 20z"/>',
+    cloud: '<path d="M17.2 19a4 4 0 0 0 0-8 6 6 0 0 0-11.6 1.7A3.5 3.5 0 0 0 6.5 19z"/>',
+    fog: '<path d="M17.2 13a4 4 0 0 0 0-8 6 6 0 0 0-11.6 1.7A3.5 3.5 0 0 0 6.5 13z"/><path d="M5 17h14M7 20.5h10"/>',
+    rain: '<path d="M17.2 15a4 4 0 0 0 0-8 6 6 0 0 0-11.6 1.7A3.5 3.5 0 0 0 6.5 15z"/><path d="M8 17.5l-1 3M12.5 17.5l-1 3M17 17.5l-1 3"/>',
+    storm: '<path d="M17.2 14a4 4 0 0 0 0-8 6 6 0 0 0-11.6 1.7A3.5 3.5 0 0 0 6.5 14z"/><path d="M12.5 13.5l-2.5 4h3l-2.5 4"/>',
+    snow: '<path d="M17.2 14a4 4 0 0 0 0-8 6 6 0 0 0-11.6 1.7A3.5 3.5 0 0 0 6.5 14z"/><path d="M8 17.5v.01M12 19.5v.01M16 17.5v.01M10 21v.01M14 21v.01"/>',
   };
+  function weatherGroup(code) {
+    if (code === 0) return 'sun';
+    if (code <= 2) return 'partly';
+    if (code === 3) return 'cloud';
+    if (code <= 48) return 'fog';
+    if (code <= 67) return 'rain';
+    if (code <= 77) return 'snow';
+    if (code <= 82) return 'rain';
+    return 'storm';
+  }
+  function weatherSvg(code, cls) {
+    return '<svg class="' + (cls || '') + '" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.4" stroke-linecap="round" ' +
+      'stroke-linejoin="round">' + WEATHER_SVG[weatherGroup(code)] + '</svg>';
+  }
+  const WEATHER_LABEL = {
+    0: 'Céu limpo', 1: 'Predomínio de sol', 2: 'Parcialmente nublado', 3: 'Nublado',
+    45: 'Nevoeiro', 48: 'Nevoeiro', 51: 'Garoa', 53: 'Garoa', 55: 'Garoa intensa',
+    56: 'Garoa gelada', 57: 'Garoa gelada', 61: 'Chuva fraca', 63: 'Chuva',
+    65: 'Chuva forte', 66: 'Chuva gelada', 67: 'Chuva gelada', 71: 'Neve fraca',
+    73: 'Neve', 75: 'Neve intensa', 77: 'Granizo', 80: 'Pancadas de chuva',
+    81: 'Chuva', 82: 'Chuva forte', 85: 'Neve', 86: 'Neve intensa',
+    95: 'Tempestade', 96: 'Tempestade com granizo', 99: 'Tempestade com granizo',
+  };
+  function weatherLabel(code) {
+    return WEATHER_LABEL[code] || 'Tempo';
+  }
   function weatherIcon(code) {
-    return WEATHER_ICON[code] || '🌡️';
+    // Compatibilidade com o widget simples (emoji).
+    const map = { sun: '☀️', partly: '⛅', cloud: '☁️', fog: '🌫️', rain: '🌧️', snow: '🌨️', storm: '⛈️' };
+    return map[weatherGroup(code)] || '🌡️';
+  }
+
+  const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+  const DIAS_ABREV = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  function fmtDataLonga(d) {
+    return DIAS_SEMANA[d.getDay()] + ' | ' + d.getDate() + ' ' + MESES_ABREV[d.getMonth()] + '.';
   }
 
   /* ---------- Renderizadores por tipo ---------- */
@@ -61,8 +109,12 @@
     video: renderVideo,
     youtube: renderYouTube,
     birthday: renderBirthday,
+    birthdaycard: renderBirthdayCard,
     clock: renderClock,
     weather: renderWeather,
+    weatherpro: renderWeatherPro,
+    traffic: renderTraffic,
+    map: renderMap,
     web: renderWeb,
     qrcode: renderQr,
   };
@@ -235,6 +287,218 @@
     };
   }
 
+  /* ---------- Painel do clima (estilo dashboard, com previsão) ---------- */
+  function renderWeatherPro(item) {
+    const el = div('mt-slide mt-wpro');
+    if (item.bg) el.style.background = item.bg;
+    const inner = div('mt-wpro-inner');
+    inner.innerHTML = '<div class="mt-wpro-loading">Carregando clima…</div>';
+    el.appendChild(inner);
+    let timer = null;
+
+    async function load() {
+      try {
+        const w = await fetchWeather(item.cidade || 'São Paulo');
+        const now = new Date();
+        let html =
+          '<div class="wp-date">' + fmtDataLonga(now) + '</div>' +
+          '<div class="wp-city">' + escapeHtml(w.nome) +
+          (w.regiao && w.regiao !== w.nome
+            ? ' <span>| ' + escapeHtml(w.regiao) + '</span>' : '') + '</div>' +
+          '<div class="wp-now">' + weatherSvg(w.code, 'wp-icon') +
+          '<div class="wp-temp">' + w.temp + '°</div></div>' +
+          '<div class="wp-cond">' + weatherLabel(w.code) + '</div>';
+
+        if (w.daily && w.daily.time && w.daily.time.length > 1) {
+          html += '<div class="wp-days">';
+          for (let i = 1; i < Math.min(7, w.daily.time.length); i++) {
+            const d = new Date(w.daily.time[i] + 'T12:00:00');
+            html +=
+              '<div class="wp-day">' +
+              '<span class="wp-day-name">' + DIAS_ABREV[d.getDay()] + '</span>' +
+              weatherSvg(w.daily.weather_code[i], 'wp-day-icon') +
+              '<span class="wp-day-max">' + Math.round(w.daily.temperature_2m_max[i]) + '°</span>' +
+              '<span class="wp-day-min">' + Math.round(w.daily.temperature_2m_min[i]) + '°</span>' +
+              '</div>';
+          }
+          html += '</div>';
+        }
+        inner.innerHTML = html;
+      } catch (e) {
+        inner.innerHTML = '<div class="mt-wpro-loading">Clima indisponível</div>';
+      }
+    }
+
+    return {
+      el,
+      duration: item.duracao || 0,
+      onEnter: () => { load(); timer = setInterval(load, 15 * 60 * 1000); },
+      onLeave: () => timer && clearInterval(timer),
+    };
+  }
+
+  /* ---------- Cartão de aniversário (decorado) ---------- */
+  const BC_COLORS = ['#ff5da2', '#ffb454', '#4f8cff', '#39d0c4', '#ffd76e'];
+  function bcConfetti() {
+    // Confetes determinísticos espalhados pelo cartão.
+    let s = '';
+    const seeds = [
+      [6, 12, 1.1, 0], [14, 30, 0.8, 1], [9, 55, 1.3, 2], [18, 78, 0.9, 3],
+      [30, 8, 0.9, 4], [42, 18, 1.2, 0], [55, 6, 0.8, 1], [68, 14, 1.2, 2],
+      [80, 9, 0.9, 3], [90, 20, 1.1, 4], [94, 45, 0.8, 0], [88, 70, 1.2, 1],
+      [76, 86, 0.9, 2], [50, 90, 1.1, 3], [28, 88, 0.8, 4], [4, 82, 1.0, 1],
+      [60, 82, 0.7, 4], [96, 84, 1.0, 2], [38, 4, 0.7, 3], [24, 60, 0.7, 0],
+    ];
+    seeds.forEach(([x, y, r, c], i) => {
+      if (i % 3 === 0) {
+        s += '<rect x="' + x + '" y="' + y + '" width="' + r * 1.6 + '" height="' + r * 2.6 +
+          '" rx="0.5" fill="' + BC_COLORS[c] + '" transform="rotate(' + (i * 37 % 90 - 45) +
+          ' ' + x + ' ' + y + ')"/>';
+      } else {
+        s += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + BC_COLORS[c] + '"/>';
+      }
+    });
+    return '<svg class="bc-confetti" viewBox="0 0 100 100" preserveAspectRatio="none">' + s + '</svg>';
+  }
+  function bcBalloon(color, cls) {
+    return '<svg class="bc-balloon ' + cls + '" viewBox="0 0 40 64">' +
+      '<ellipse cx="20" cy="17" rx="13.5" ry="16.5" fill="' + color + '"/>' +
+      '<ellipse cx="15" cy="11" rx="4" ry="6" fill="rgba(255,255,255,.35)"/>' +
+      '<path d="M20 33.5l-3.4 4.5h6.8z" fill="' + color + '"/>' +
+      '<path d="M20 38q-5 9 1.5 18" stroke="rgba(255,255,255,.45)" stroke-width="1.2" fill="none"/>' +
+      '</svg>';
+  }
+  const BC_HAT =
+    '<svg class="bc-hat" viewBox="0 0 40 40">' +
+    '<path d="M20 3L33 35H7z" fill="#fff"/>' +
+    '<path d="M14.8 15.6L33 35H7l5-12.3z" fill="#4f8cff"/>' +
+    '<path d="M9.9 27.9L33 35H7z" fill="#ffb454"/>' +
+    '<circle cx="20" cy="4" r="3.4" fill="#ff5da2"/>' +
+    '</svg>';
+
+  function renderBirthdayCard(item) {
+    const el = div('mt-slide mt-bcard');
+    el.style.background = item.bg || '#0c1c4d';
+
+    el.innerHTML = bcConfetti() +
+      bcBalloon('#ff5da2', 'bc-b1') + bcBalloon('#4f8cff', 'bc-b2') +
+      bcBalloon('#ffb454', 'bc-b3') + bcBalloon('#39d0c4', 'bc-b4');
+
+    const inner = div('bc-inner');
+
+    // Foto (ou iniciais) com chapéu e fita.
+    const photoWrap = div('bc-photo-wrap');
+    if (item.foto) {
+      const img = document.createElement('img');
+      img.className = 'bc-photo';
+      img.src = item.foto;
+      img.alt = '';
+      photoWrap.appendChild(img);
+    } else {
+      const initials = div('bc-photo bc-initials');
+      initials.textContent = (item.nome || '?')
+        .split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+      photoWrap.appendChild(initials);
+    }
+    const hat = div('bc-hat-wrap');
+    hat.innerHTML = BC_HAT;
+    photoWrap.appendChild(hat);
+    const ribbon = div('bc-ribbon');
+    ribbon.textContent = 'Feliz aniversário!';
+    photoWrap.appendChild(ribbon);
+
+    // Texto principal.
+    const txt = div('bc-text');
+    const title = div('bc-title');
+    const t1 = document.createElement('strong');
+    t1.textContent = 'Parabéns';
+    title.appendChild(t1);
+    title.appendChild(document.createTextNode(', ' + (item.nome || '') + '!'));
+    const msg = div('bc-msg');
+    msg.textContent = item.mensagem || 'Que hoje o seu dia seja o mais feliz de todos!';
+    const sign = div('bc-sign');
+    sign.textContent = 'feliz aniversário';
+    txt.appendChild(title);
+    txt.appendChild(msg);
+    txt.appendChild(sign);
+
+    inner.appendChild(photoWrap);
+    inner.appendChild(txt);
+    el.appendChild(inner);
+    return { el, duration: item.duracao || 15 };
+  }
+
+  /* ---------- Trânsito ao vivo (Waze, sem chave) ---------- */
+  function renderTraffic(item) {
+    const el = div('mt-slide mt-map');
+    const badge = div('mt-map-badge');
+    badge.textContent = 'Trânsito ao vivo · ' + (item.local || '');
+    el.appendChild(badge);
+    return {
+      el,
+      duration: item.duracao || 0,
+      onEnter: async () => {
+        try {
+          let lat = parseFloat(item.lat), lon = parseFloat(item.lon);
+          if (isNaN(lat) || isNaN(lon)) {
+            const g = await geocode(item.local || 'São Paulo');
+            lat = g.latitude; lon = g.longitude;
+          }
+          const iframe = document.createElement('iframe');
+          iframe.setAttribute('frameborder', '0');
+          iframe.src = 'https://embed.waze.com/iframe?zoom=' + (item.zoom || 13) +
+            '&lat=' + lat + '&lon=' + lon + '&ct=livemap';
+          el.insertBefore(iframe, badge);
+        } catch (e) {
+          el.appendChild(divText('mt-map-error', 'Trânsito indisponível'));
+        }
+      },
+    };
+  }
+
+  /* ---------- Mapa da região (OpenStreetMap, sem chave) ---------- */
+  function renderMap(item) {
+    const el = div('mt-slide mt-map');
+    const badge = div('mt-map-badge');
+    badge.textContent = (item.local || 'Mapa');
+    el.appendChild(badge);
+    return {
+      el,
+      duration: item.duracao || 20,
+      onEnter: async () => {
+        try {
+          let lat = parseFloat(item.lat), lon = parseFloat(item.lon);
+          if (isNaN(lat) || isNaN(lon)) {
+            const g = await geocode(item.local || 'São Paulo');
+            lat = g.latitude; lon = g.longitude;
+          }
+          const zoom = Number(item.zoom) || 14;
+          const d = 0.02 * Math.pow(2, 14 - zoom);
+          const bbox = [lon - d, lat - d * 0.6, lon + d, lat + d * 0.6].join('%2C');
+          const iframe = document.createElement('iframe');
+          iframe.setAttribute('frameborder', '0');
+          iframe.src = 'https://www.openstreetmap.org/export/embed.html?bbox=' + bbox +
+            '&layer=mapnik&marker=' + lat + '%2C' + lon;
+          el.insertBefore(iframe, badge);
+        } catch (e) {
+          el.appendChild(divText('mt-map-error', 'Mapa indisponível'));
+        }
+      },
+    };
+  }
+
+  function divText(cls, text) {
+    const d = div(cls);
+    d.textContent = text;
+    return d;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+
   function renderWeb(item) {
     const el = div('mt-slide mt-web');
     const iframe = document.createElement('iframe');
@@ -282,9 +546,13 @@
     { type: 'image', label: 'Imagem', icon: 'image' },
     { type: 'video', label: 'Vídeo (MP4)', icon: 'film' },
     { type: 'youtube', label: 'YouTube / Ao vivo', icon: 'play' },
-    { type: 'birthday', label: 'Aniversariantes', icon: 'cake' },
+    { type: 'birthdaycard', label: 'Cartão de Aniversário', icon: 'gift' },
+    { type: 'birthday', label: 'Lista de Aniversariantes', icon: 'cake' },
+    { type: 'weatherpro', label: 'Painel do Clima', icon: 'cloud' },
+    { type: 'traffic', label: 'Trânsito (Waze)', icon: 'car' },
+    { type: 'map', label: 'Mapa da Região', icon: 'pin' },
     { type: 'clock', label: 'Relógio', icon: 'clock' },
-    { type: 'weather', label: 'Clima', icon: 'cloud' },
+    { type: 'weather', label: 'Clima (simples)', icon: 'cloud' },
     { type: 'web', label: 'Página Web', icon: 'globe' },
     { type: 'qrcode', label: 'QR Code', icon: 'qr' },
   ];

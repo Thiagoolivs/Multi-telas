@@ -31,6 +31,9 @@
     trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
     up: '<path d="M6 14l6-6 6 6"/>',
     down: '<path d="M6 10l6 6 6-6"/>',
+    gift: '<rect x="4" y="10" width="16" height="10" rx="1"/><path d="M3 6.5h18V10H3zM12 6.5V20M12 6.5s-4.2 0-4.2-2.7A1.9 1.9 0 0 1 12 3.2M12 6.5s4.2 0 4.2-2.7A1.9 1.9 0 0 0 12 3.2"/>',
+    car: '<path d="M5.5 15.5L7 10a2 2 0 0 1 1.9-1.5h6.2A2 2 0 0 1 17 10l1.5 5.5M4.5 15.5h15a1 1 0 0 1 1 1V19h-2.5v-1.5h-12V19H3.5v-2.5a1 1 0 0 1 1-1zM7.5 13h.01M16.5 13h.01"/>',
+    pin: '<path d="M12 21.5S5 15.7 5 10a7 7 0 0 1 14 0c0 5.7-7 11.5-7 11.5z"/><circle cx="12" cy="10" r="2.6"/>',
   };
   function icon(name) {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
@@ -71,6 +74,27 @@
       { key: 'loop', label: 'Repetir em loop', kind: 'checkbox' },
       { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela (ao vivo)', kind: 'number', def: 20 },
     ],
+    birthdaycard: [
+      { key: 'nome', label: 'Nome do aniversariante', kind: 'text', ph: 'Ex.: João' },
+      { key: 'mensagem', label: 'Mensagem', kind: 'textarea', def: 'Que hoje o seu dia seja o mais feliz de todos!' },
+      { key: 'foto', label: 'Foto (opcional)', kind: 'imagesrc' },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#0c1c4d' },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 15 },
+    ],
+    weatherpro: [
+      { key: 'cidade', label: 'Cidade', kind: 'text', ph: 'São Paulo', def: 'São Paulo' },
+      { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela', kind: 'number', def: 0 },
+    ],
+    traffic: [
+      { key: 'local', label: 'Cidade ou região', kind: 'text', ph: 'São Paulo', def: 'São Paulo' },
+      { key: 'zoom', label: 'Zoom do mapa (10 a 17)', kind: 'number', def: 13 },
+      { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela', kind: 'number', def: 0 },
+    ],
+    map: [
+      { key: 'local', label: 'Cidade ou endereço', kind: 'text', ph: 'São Paulo', def: 'São Paulo' },
+      { key: 'zoom', label: 'Zoom do mapa (10 a 17)', kind: 'number', def: 14 },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 20 },
+    ],
     birthday: [
       { key: 'titulo', label: 'Título', kind: 'text', def: 'Aniversariantes do Mês' },
       { key: 'nomes', label: 'Nomes (um por linha, ex.: "Ana Souza — 05/07")', kind: 'textarea', ph: 'Ana Souza — 05/07\nCarlos Lima — 12/07' },
@@ -104,6 +128,22 @@
     {
       label: 'YouTube ao vivo', desc: 'Live em tempo real, fixa na tela', icon: 'live',
       item: { type: 'youtube', videoId: '', channelId: '', duracao: 0 },
+    },
+    {
+      label: 'Cartão de aniversário', desc: 'Foto, balões e mensagem', icon: 'gift',
+      item: { type: 'birthdaycard', nome: '', mensagem: 'Que hoje o seu dia seja o mais feliz de todos!', foto: '', bg: '#0c1c4d', duracao: 15 },
+    },
+    {
+      label: 'Painel do clima', desc: 'Tempo agora + previsão de 6 dias', icon: 'cloud',
+      item: { type: 'weatherpro', cidade: 'São Paulo', duracao: 0 },
+    },
+    {
+      label: 'Trânsito ao vivo', desc: 'Mapa do Waze em tempo real', icon: 'car',
+      item: { type: 'traffic', local: 'São Paulo', zoom: 13, duracao: 0 },
+    },
+    {
+      label: 'Mapa da região', desc: 'Localização com marcador', icon: 'pin',
+      item: { type: 'map', local: 'São Paulo', zoom: 14, duracao: 20 },
     },
     {
       label: 'Vídeo do YouTube', desc: 'Vídeo com duração definida', icon: 'play',
@@ -217,7 +257,7 @@
   /* ================= Configurações gerais ================= */
   const SETTINGS_MAP = {
     '#cfg-nome': 'nome', '#cfg-titulo': 'titulo', '#cfg-cor': 'cor',
-    '#cfg-cidade': 'cidadeClima', '#cfg-logo': 'logoUrl',
+    '#cfg-fundo': 'fundo', '#cfg-cidade': 'cidadeClima', '#cfg-logo': 'logoUrl',
     '#cfg-transicao': 'transicao', '#cfg-remote': 'remoteConfigUrl',
     '#cfg-refresh': 'refreshSeconds',
   };
@@ -400,8 +440,9 @@
   function itemTitle(item) {
     if (item.type === 'image' && item.src && item.src.startsWith('data:')) return 'Imagem enviada';
     if (item.type === 'youtube' && item.channelId) return 'Live do canal';
-    return item.titulo || item.caption || item.cidade || item.url || item.videoId
-      || item.src || item.data || typeMeta(item.type).label;
+    if (item.type === 'birthdaycard') return item.nome ? 'Parabéns, ' + item.nome + '!' : 'Cartão de aniversário';
+    return item.titulo || item.caption || item.cidade || item.local || item.url
+      || item.videoId || item.src || item.data || typeMeta(item.type).label;
   }
 
   function iconBtn(name, title, fn) {
@@ -434,14 +475,57 @@
     const zone = config.zonas[zoneId];
     const editor = el('div', 'messages-editor');
 
+    function fieldRow(labelTxt, input) {
+      const label = el('label', 'field');
+      label.appendChild(el('span', null, labelTxt));
+      label.appendChild(input);
+      return label;
+    }
+
     function redraw() {
       editor.innerHTML = '';
+
+      // Opções da faixa.
+      const opts = el('div', 'grid-2');
+      const tagInput = el('input');
+      tagInput.type = 'text';
+      tagInput.value = zone.titulo != null ? zone.titulo : 'ÚLTIMAS NOTÍCIAS';
+      tagInput.addEventListener('input', () => { zone.titulo = tagInput.value; markDirty(); });
+      opts.appendChild(fieldRow('Título da faixa', tagInput));
+
+      const modeSel = el('select');
+      [['noticias', 'Notícias rotativas (com relógio)'], ['rolagem', 'Rolagem contínua']].forEach(([v, t]) => {
+        const o = el('option', null, t); o.value = v; modeSel.appendChild(o);
+      });
+      modeSel.value = zone.modo || 'noticias';
+      modeSel.addEventListener('change', () => { zone.modo = modeSel.value; markDirty(); redraw(); });
+      opts.appendChild(fieldRow('Modo de exibição', modeSel));
+
+      if ((zone.modo || 'noticias') === 'noticias') {
+        const iv = el('input'); iv.type = 'number'; iv.min = '3';
+        iv.value = zone.intervalo || 8;
+        iv.addEventListener('input', () => { zone.intervalo = Number(iv.value); markDirty(); });
+        opts.appendChild(fieldRow('Troca de notícia a cada (s)', iv));
+      } else {
+        const si = el('input'); si.type = 'number'; si.min = '20';
+        si.value = zone.velocidade || 60;
+        si.addEventListener('input', () => { zone.velocidade = Number(si.value); markDirty(); });
+        opts.appendChild(fieldRow('Velocidade da rolagem (px/s)', si));
+      }
+      editor.appendChild(opts);
+
+      editor.appendChild(el('div', 'add-section-label', 'Notícias / mensagens'));
+      const hint = el('p', 'hint');
+      hint.textContent = 'Dica: use "Título :: descrição" para exibir manchete com texto de apoio.';
+      hint.style.margin = '0 0 10px';
+      editor.appendChild(hint);
+
       zone.messages.forEach((msg, idx) => {
         const row = el('div', 'msg-row');
         const input = el('input');
         input.type = 'text';
         input.value = msg;
-        input.placeholder = 'Mensagem…';
+        input.placeholder = 'Título :: descrição';
         input.addEventListener('input', () => { zone.messages[idx] = input.value; markDirty(); });
         row.appendChild(input);
         row.appendChild(iconBtn('trash', 'Remover', () => {
@@ -449,18 +533,10 @@
         }));
         editor.appendChild(row);
       });
-      const add = el('button', 'btn btn-ghost btn-sm', '+ Nova mensagem');
+      const add = el('button', 'btn btn-ghost btn-sm', '+ Nova notícia');
       add.type = 'button';
       add.addEventListener('click', () => { zone.messages.push(''); markDirty(); redraw(); });
       editor.appendChild(add);
-
-      const speed = el('label', 'field');
-      speed.style.marginTop = '12px';
-      speed.appendChild(el('span', null, 'Velocidade da rolagem (px/s)'));
-      const si = el('input'); si.type = 'number'; si.min = '20'; si.value = zone.velocidade || 60;
-      si.addEventListener('input', () => { zone.velocidade = Number(si.value); markDirty(); });
-      speed.appendChild(si);
-      editor.appendChild(speed);
     }
     redraw();
     panel.appendChild(editor);

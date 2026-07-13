@@ -51,6 +51,17 @@
     try { return JSON.stringify(cfg); } catch (e) { return String(Math.random()); }
   }
 
+  // Clareia uma cor hex (#rrggbb) somando "amt" a cada canal.
+  function lighten(hex, amt) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    const r = Math.min(255, (n >> 16) + amt);
+    const g = Math.min(255, ((n >> 8) & 255) + amt);
+    const b = Math.min(255, (n & 255) + amt);
+    return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+  }
+
   function applyConfig(cfg) {
     const fp = fingerprint(cfg);
     if (fp === configFingerprint) return; // nada mudou
@@ -97,8 +108,15 @@
       .map((row) => '"' + row + '"')
       .join(' ');
 
-    // Cor de destaque do tema.
-    document.documentElement.style.setProperty('--brand', cfg.settings.cor || '#0d6efd');
+    // Cores do tema: destaque + fundo (com tom de zona derivado do fundo).
+    const root = document.documentElement;
+    root.style.setProperty('--brand', cfg.settings.cor || '#4B5320');
+    const fundo = cfg.settings.fundo || '#0a1128';
+    root.style.setProperty('--stage-bg', fundo);
+    root.style.setProperty('--zone-bg', lighten(fundo, 14));
+    root.style.setProperty('--zone-bg-2', lighten(fundo, 26));
+    stage.style.background =
+      'radial-gradient(130% 130% at 15% 0%, ' + lighten(fundo, 18) + ' 0%, ' + fundo + ' 55%)';
 
     layout.zones.forEach((zone) => {
       const zoneEl = document.createElement('div');
@@ -188,10 +206,84 @@
     };
   }
 
-  /* ---------------- Zona: Rodapé de avisos (ticker) ---------------- */
+  /* ---------------- Zona: Faixa de notícias / avisos ---------------- */
 
   function startTicker(zoneEl, data, cfg) {
     const messages = (data.messages || []).filter((m) => m && m.trim());
+    const modo = data.modo || 'noticias';
+    if (modo === 'rolagem') return startScrollTicker(zoneEl, messages, data);
+    return startNewsTicker(zoneEl, messages, data);
+  }
+
+  // Estilo "jornal": selo com data/hora ao vivo + manchetes rotativas.
+  // Formato da mensagem: "Título :: descrição" (descrição opcional).
+  function startNewsTicker(zoneEl, messages, data) {
+    zoneEl.classList.add('mt-news');
+
+    const badge = document.createElement('div');
+    badge.className = 'mt-news-badge';
+    badge.innerHTML =
+      '<span class="nb-day"></span><span class="nb-mon"></span><span class="nb-time"></span>';
+    zoneEl.appendChild(badge);
+
+    const content = document.createElement('div');
+    content.className = 'mt-news-content';
+    const tag = document.createElement('div');
+    tag.className = 'mt-news-tag';
+    tag.textContent = data.titulo || 'ÚLTIMAS NOTÍCIAS';
+    const headline = document.createElement('div');
+    headline.className = 'mt-news-headline';
+    const title = document.createElement('div');
+    title.className = 'mt-news-title';
+    const desc = document.createElement('div');
+    desc.className = 'mt-news-desc';
+    headline.appendChild(title);
+    headline.appendChild(desc);
+    content.appendChild(tag);
+    content.appendChild(headline);
+    zoneEl.appendChild(content);
+
+    // Relógio ao vivo (com segundos), como numa emissora.
+    const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    function tick() {
+      const now = new Date();
+      badge.querySelector('.nb-day').textContent = String(now.getDate()).padStart(2, '0');
+      badge.querySelector('.nb-mon').textContent = MESES[now.getMonth()] + '.';
+      badge.querySelector('.nb-time').textContent = now.toLocaleTimeString('pt-BR');
+    }
+    tick();
+    const clockTimer = setInterval(tick, 1000);
+
+    // Rotação das manchetes.
+    let idx = 0;
+    let rotateTimer = null;
+    function show() {
+      if (!messages.length) {
+        title.textContent = 'Adicione notícias no painel de gestão';
+        desc.textContent = '';
+        return;
+      }
+      const raw = messages[idx % messages.length];
+      idx++;
+      const parts = raw.split('::');
+      headline.classList.remove('mt-news-in');
+      void headline.offsetWidth; // reinicia a animação
+      headline.classList.add('mt-news-in');
+      title.textContent = parts[0].trim();
+      desc.textContent = (parts[1] || '').trim();
+    }
+    show();
+    if (messages.length > 1) {
+      rotateTimer = setInterval(show, Math.max(3, data.intervalo || 8) * 1000);
+    }
+
+    return {
+      stop: () => { clearInterval(clockTimer); rotateTimer && clearInterval(rotateTimer); },
+    };
+  }
+
+  // Estilo clássico: texto rolando continuamente.
+  function startScrollTicker(zoneEl, messages, data) {
     zoneEl.classList.add('mt-ticker');
     if (!messages.length) {
       return { stop: () => {} };
@@ -250,10 +342,12 @@
 
     function tickClock() {
       const now = new Date();
+      const dia = now.toLocaleDateString('pt-BR', { weekday: 'long' });
       clock.innerHTML =
         '<span class="mt-hc-time">' +
         now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) +
         '</span><span class="mt-hc-date">' +
+        dia.charAt(0).toUpperCase() + dia.slice(1) + ' | ' +
         now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) +
         '</span>';
     }

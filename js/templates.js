@@ -13,6 +13,24 @@
   // As "areas" seguem a sintaxe de grid-template-areas.
   const LAYOUTS = [
     {
+      id: 'dashboard',
+      name: 'Painel Notícias',
+      description: 'Barra lateral com clima e informações, destaque grande e faixa de notícias com hora ao vivo.',
+      grid: {
+        columns: '1.05fr 2.95fr',
+        rows: '1fr 13vh',
+        areas: [
+          'lateral principal',
+          'lateral rodape',
+        ],
+      },
+      zones: [
+        { id: 'lateral', area: 'lateral', name: 'Lateral', type: 'playlist' },
+        { id: 'principal', area: 'principal', name: 'Principal', type: 'playlist' },
+        { id: 'rodape', area: 'rodape', name: 'Notícias', type: 'ticker' },
+      ],
+    },
+    {
       id: 'full',
       name: 'Tela Cheia',
       description: 'Uma única zona ocupando toda a tela. Ideal para vídeos e campanhas.',

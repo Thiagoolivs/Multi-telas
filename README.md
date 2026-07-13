@@ -13,8 +13,16 @@ Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
 
 - **Multi-telas numa só exibição:** várias zonas independentes (principal, lateral,
   cabeçalho, rodapé) rodando conteúdos diferentes ao mesmo tempo.
-- **6 templates prontos** com **zonas clicáveis**: clique na área do desenho da TV
-  e edite o que aparece nela.
+- **Visual de dashboard profissional:** tema azul noite com zonas arredondadas,
+  fundo e cores 100% personalizáveis.
+- **7 templates prontos** com **zonas clicáveis** — incluindo o "Painel Notícias"
+  (clima na lateral, destaque grande e faixa de notícias com relógio ao vivo).
+- **Dados em tempo real, sem chave de API:** data/hora com segundos, clima atual +
+  previsão de 6 dias (Open-Meteo), **trânsito ao vivo (Waze)** e mapas (OpenStreetMap).
+- **Faixa de notícias estilo emissora:** selo com dia/mês e relógio ao vivo,
+  manchetes rotativas com título + descrição ("Título :: descrição").
+- **Cartão de aniversário decorado:** foto (com upload), balões, confetes e
+  mensagem personalizada — pronto em segundos.
 - **Conteúdos prontos (1 clique):** YouTube ao vivo, Aniversariantes do mês,
   Aviso importante, Clima e tempo, Boas-vindas, Comunicado interno, Segurança,
   Foto/campanha e Relógio.
@@ -130,9 +138,13 @@ Multi-telas/
 | Imagem | URL ou **upload direto do computador** (comprimida no navegador) |
 | Vídeo (MP4) | URL do vídeo, com loop e duração opcional |
 | YouTube / Ao vivo | Link/ID do vídeo ou da live; ID do canal pega a live ativa; duração 0 = fixo na tela |
-| Aniversariantes | Lista "Nome — data", um por linha |
+| Cartão de Aniversário | Foto, balões, confetes e mensagem — estilo cartão comemorativo |
+| Lista de Aniversariantes | Lista "Nome — data", um por linha |
+| Painel do Clima | Tempo agora + previsão de 6 dias, com data e cidade (Open-Meteo) |
+| Trânsito (Waze) | Mapa de trânsito ao vivo da cidade/região (sem chave de API) |
+| Mapa da Região | OpenStreetMap com marcador (sem chave de API) |
 | Relógio | Relógio digital com data |
-| Clima | Temperatura por cidade (Open-Meteo, sem chave de API) |
+| Clima (simples) | Temperatura por cidade (Open-Meteo, sem chave de API) |
 | Página Web | Incorpora um site via iframe |
 | QR Code | Gera um QR a partir de um link/texto |
 
