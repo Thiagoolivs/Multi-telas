@@ -21,7 +21,7 @@
         remoteConfigUrl: '',
         // De quanto em quanto tempo o player recarrega a config (segundos).
         refreshSeconds: 60,
-        cor: '#4B5320',   // cor de destaque (verde militar Raft)
+        cor: '#2F6FEB',   // cor de destaque (azul Raft — combina com o azul noite)
         fundo: '#0a1128', // fundo das telas (azul noite)
         logoUrl: '',
         titulo: 'Raft Embalagens',
@@ -43,7 +43,7 @@
               type: 'text',
               titulo: 'Bem-vindo à Raft Embalagens',
               corpo: 'Para editar, clique em uma tela no painel e escolha um conteúdo pronto.',
-              bg: '#4B5320',
+              bg: '#2F6FEB',
               cor: '#ffffff',
               duracao: 10,
             },

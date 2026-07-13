@@ -49,7 +49,7 @@
       description: 'Conteúdo em tela cheia com uma faixa de avisos rolando no rodapé.',
       grid: {
         columns: '1fr',
-        rows: '1fr 8vh',
+        rows: '1fr 11vh',
         areas: ['principal', 'rodape'],
       },
       zones: [
@@ -63,7 +63,7 @@
       description: 'Zona principal grande, barra lateral com avisos/agenda e rodapé de notícias.',
       grid: {
         columns: '3fr 1.1fr',
-        rows: '1fr 8vh',
+        rows: '1fr 11vh',
         areas: [
           'principal lateral',
           'rodape rodape',
@@ -81,7 +81,7 @@
       description: 'Faixa superior com logo/relógio/clima, conteúdo no meio e avisos no rodapé.',
       grid: {
         columns: '1fr',
-        rows: '12vh 1fr 8vh',
+        rows: '12vh 1fr 11vh',
         areas: ['cabecalho', 'principal', 'rodape'],
       },
       zones: [
@@ -115,7 +115,7 @@
       description: 'Cabeçalho com relógio/clima, destaque, lateral de avisos e rodapé de notícias. O mais completo.',
       grid: {
         columns: '3fr 1.1fr',
-        rows: '12vh 1fr 8vh',
+        rows: '12vh 1fr 11vh',
         areas: [
           'cabecalho cabecalho',
           'principal lateral',

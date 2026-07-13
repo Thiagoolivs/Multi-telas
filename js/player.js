@@ -110,7 +110,7 @@
 
     // Cores do tema: destaque + fundo (com tom de zona derivado do fundo).
     const root = document.documentElement;
-    root.style.setProperty('--brand', cfg.settings.cor || '#4B5320');
+    root.style.setProperty('--brand', cfg.settings.cor || '#2F6FEB');
     const fundo = cfg.settings.fundo || '#0a1128';
     root.style.setProperty('--stage-bg', fundo);
     root.style.setProperty('--zone-bg', lighten(fundo, 14));
@@ -148,7 +148,7 @@
 
     if (!items.length) {
       const empty = document.createElement('div');
-      empty.className = 'mt-slide mt-empty';
+      empty.className = 'mt-slide mt-empty mt-active';
       empty.textContent = 'Sem conteúdo';
       zoneEl.appendChild(empty);
       return { stop: () => {} };

@@ -205,7 +205,7 @@
 
   function renderBirthday(item) {
     const el = div('mt-slide mt-birthday');
-    el.style.background = item.bg || '#3a4419';
+    el.style.background = item.bg || '#1f2a52';
     el.style.color = item.cor || '#ffffff';
     const title = div('mt-birthday-title');
     title.textContent = item.titulo || 'Aniversariantes do Mês';

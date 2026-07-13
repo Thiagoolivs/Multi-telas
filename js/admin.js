@@ -68,7 +68,7 @@
     text: [
       { key: 'titulo', label: 'Título', kind: 'text' },
       { key: 'corpo', label: 'Texto', kind: 'textarea' },
-      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#4B5320' },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#2F6FEB' },
       { key: 'cor', label: 'Cor do texto', kind: 'color', def: '#ffffff' },
       { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 10 },
     ],
@@ -120,7 +120,7 @@
     birthday: [
       { key: 'titulo', label: 'Título', kind: 'text', def: 'Aniversariantes do Mês' },
       { key: 'nomes', label: 'Nomes (um por linha, ex.: "Ana Souza — 05/07")', kind: 'textarea', ph: 'Ana Souza — 05/07\nCarlos Lima — 12/07' },
-      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#3a4419' },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#1f2a52' },
       { key: 'cor', label: 'Cor do texto', kind: 'color', def: '#ffffff' },
       { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 15 },
     ],
@@ -130,7 +130,7 @@
     ],
     weather: [
       { key: 'cidade', label: 'Cidade', kind: 'text', ph: 'São Paulo', def: 'São Paulo' },
-      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#1c2b1a' },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#10213f' },
       { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 12 },
     ],
     web: [
@@ -218,11 +218,11 @@
         },
         {
           label: 'Aniversariantes do mês', desc: 'Lista com nomes e datas', icon: 'cake',
-          item: { type: 'birthday', titulo: 'Aniversariantes do Mês', nomes: 'Nome — 01/01', bg: '#3a4419', cor: '#ffffff', duracao: 15 },
+          item: { type: 'birthday', titulo: 'Aniversariantes do Mês', nomes: 'Nome — 01/01', bg: '#1f2a52', cor: '#ffffff', duracao: 15 },
         },
         {
           label: 'Boas-vindas', desc: 'Mensagem de recepção', icon: 'text',
-          item: { type: 'text', titulo: 'Seja bem-vindo(a)!', corpo: 'É um prazer receber você na Raft Embalagens.', bg: '#4B5320', cor: '#ffffff', duracao: 10 },
+          item: { type: 'text', titulo: 'Seja bem-vindo(a)!', corpo: 'É um prazer receber você na Raft Embalagens.', bg: '#2F6FEB', cor: '#ffffff', duracao: 10 },
         },
         {
           label: 'Foto / campanha', desc: 'Imagem enviada do computador', icon: 'image',
