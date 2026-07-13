@@ -254,31 +254,59 @@
     tick();
     const clockTimer = setInterval(tick, 1000);
 
-    // Rotação das manchetes.
+    // Manchetes: manuais ("Título :: descrição") e/ou automáticas via RSS.
+    let items = messages.map((m) => {
+      const parts = m.split('::');
+      return { titulo: parts[0].trim(), desc: (parts[1] || '').trim() };
+    });
+    const usingFeed = data.fonte && data.fonte !== 'manual';
+
     let idx = 0;
-    let rotateTimer = null;
     function show() {
-      if (!messages.length) {
-        title.textContent = 'Adicione notícias no painel de gestão';
+      if (!items.length) {
+        title.textContent = usingFeed
+          ? 'Carregando notícias…' : 'Adicione notícias no painel de gestão';
         desc.textContent = '';
         return;
       }
-      const raw = messages[idx % messages.length];
+      const item = items[idx % items.length];
       idx++;
-      const parts = raw.split('::');
       headline.classList.remove('mt-news-in');
       void headline.offsetWidth; // reinicia a animação
       headline.classList.add('mt-news-in');
-      title.textContent = parts[0].trim();
-      desc.textContent = (parts[1] || '').trim();
-    }
-    show();
-    if (messages.length > 1) {
-      rotateTimer = setInterval(show, Math.max(3, data.intervalo || 8) * 1000);
+      title.textContent = item.titulo;
+      desc.textContent = item.desc;
     }
 
+    // Busca automática de manchetes (G1, UOL, CNN…). Em caso de falha,
+    // mantém as mensagens manuais como reserva.
+    async function loadFeed() {
+      if (!usingFeed || !global.MTNews) return;
+      try {
+        const src = data.fonte === 'custom' ? (data.rssUrl || '').trim() : data.fonte;
+        const feed = await MTNews.fetchFeed(src, data.quantidade || 10);
+        if (feed && feed.length) {
+          items = feed;
+          if (idx >= items.length) idx = 0;
+        }
+      } catch (e) { /* segue com as mensagens manuais */ }
+    }
+
+    show();
+    if (usingFeed) {
+      loadFeed().then(() => { idx = 0; show(); });
+    }
+    const rotateTimer = setInterval(() => {
+      if (items.length > 1) show();
+    }, Math.max(3, data.intervalo || 8) * 1000);
+    const feedTimer = usingFeed ? setInterval(loadFeed, 10 * 60 * 1000) : null;
+
     return {
-      stop: () => { clearInterval(clockTimer); rotateTimer && clearInterval(rotateTimer); },
+      stop: () => {
+        clearInterval(clockTimer);
+        clearInterval(rotateTimer);
+        feedTimer && clearInterval(feedTimer);
+      },
     };
   }
 

@@ -61,6 +61,8 @@
         rodape: {
           titulo: 'ÚLTIMAS NOTÍCIAS',
           modo: 'noticias',
+          fonte: 'g1', // manchetes automáticas do G1 (fallback: mensagens abaixo)
+          quantidade: 10,
           intervalo: 8,
           velocidade: 60,
           messages: [
@@ -99,6 +101,9 @@
           titulo: existing.titulo != null ? existing.titulo : 'ÚLTIMAS NOTÍCIAS',
           modo: existing.modo || 'noticias', // noticias | rolagem
           intervalo: existing.intervalo || 8,
+          fonte: existing.fonte || 'manual', // manual | g1 | uol | … | custom
+          rssUrl: existing.rssUrl || '',
+          quantidade: existing.quantidade || 10,
         };
       } else if (zone.type === 'header') {
         out.zonas[zone.id] = { header: true };

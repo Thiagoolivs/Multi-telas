@@ -19,8 +19,15 @@ Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
   (clima na lateral, destaque grande e faixa de notícias com relógio ao vivo).
 - **Dados em tempo real, sem chave de API:** data/hora com segundos, clima atual +
   previsão de 6 dias (Open-Meteo), **trânsito ao vivo (Waze)** e mapas (OpenStreetMap).
+- **Notícias automáticas de portais famosos (RSS):** G1, UOL, Folha, CNN Brasil,
+  BBC News Brasil, Agência Brasil, Exame ou qualquer RSS personalizado — as
+  manchetes chegam sozinhas e se renovam a cada 10 minutos, com mensagens de
+  reserva caso o portal esteja fora do ar.
 - **Faixa de notícias estilo emissora:** selo com dia/mês e relógio ao vivo,
   manchetes rotativas com título + descrição ("Título :: descrição").
+- **Avisos Premium prontos para cada situação:** 9 variantes desenhadas
+  (Comunicado, Urgente, Evento, RH, Segurança, Manutenção, Conquista,
+  Treinamento, Saúde) com ícone, etiqueta e cores próprias — 1 clique e edita.
 - **Cartão de aniversário decorado:** foto (com upload), balões, confetes e
   mensagem personalizada — pronto em segundos.
 - **Conteúdos prontos (1 clique):** YouTube ao vivo, Aniversariantes do mês,
@@ -133,8 +140,9 @@ Multi-telas/
 
 | Tipo | Descrição |
 |------|-----------|
+| Aviso Premium | 9 variantes com ícone, etiqueta e cores (urgente, evento, RH, segurança…) |
 | Texto / Comunicado | Título + texto com cores personalizáveis |
-| Aviso | Igual ao texto, com estilo de destaque |
+| Aviso simples | Igual ao texto, com estilo de destaque |
 | Imagem | URL ou **upload direto do computador** (comprimida no navegador) |
 | Vídeo (MP4) | URL do vídeo, com loop e duração opcional |
 | YouTube / Ao vivo | Link/ID do vídeo ou da live; ID do canal pega a live ativa; duração 0 = fixo na tela |

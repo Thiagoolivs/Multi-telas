@@ -105,6 +105,7 @@
   const RENDERERS = {
     text: renderText,
     notice: renderText,
+    announce: renderAnnounce,
     image: renderImage,
     video: renderVideo,
     youtube: renderYouTube,
@@ -493,6 +494,86 @@
     return d;
   }
 
+  /* ---------- Aviso Premium (variantes por tipo de comunicado) ---------- */
+  const ANN_VARIANTS = [
+    { id: 'comunicado', label: 'Comunicado', cor: '#3b82f6', kicker: 'COMUNICADO INTERNO', icon: 'megaphone' },
+    { id: 'urgente', label: 'Urgente', cor: '#ef4444', kicker: 'ATENÇÃO', icon: 'alert' },
+    { id: 'evento', label: 'Evento', cor: '#8b5cf6', kicker: 'AGENDA', icon: 'calendar' },
+    { id: 'rh', label: 'Recursos Humanos', cor: '#14b8a6', kicker: 'RECURSOS HUMANOS', icon: 'users' },
+    { id: 'seguranca', label: 'Segurança', cor: '#f59e0b', kicker: 'SEGURANÇA DO TRABALHO', icon: 'shield' },
+    { id: 'manutencao', label: 'Manutenção', cor: '#64748b', kicker: 'MANUTENÇÃO PROGRAMADA', icon: 'wrench' },
+    { id: 'conquista', label: 'Conquista', cor: '#22c55e', kicker: 'PARABÉNS, EQUIPE', icon: 'trophy' },
+    { id: 'treinamento', label: 'Treinamento', cor: '#6366f1', kicker: 'DESENVOLVIMENTO', icon: 'book' },
+    { id: 'saude', label: 'Saúde & Bem-estar', cor: '#ec4899', kicker: 'SAÚDE E BEM-ESTAR', icon: 'heart' },
+  ];
+  const ANN_ICONS = {
+    megaphone: '<path d="M4 10v4a1 1 0 0 0 1 1h2l1.2 5h2.2L9.2 15H10l9 3.5v-13L10 9H5a1 1 0 0 0-1 1z"/>',
+    alert: '<path d="M12 3.5L2.8 19.5h18.4z"/><path d="M12 9.8v4.4M12 17.4v.01"/>',
+    calendar: '<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 2.5V6.5M16 2.5V6.5"/>',
+    users: '<circle cx="9" cy="8" r="3.4"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.8a3.4 3.4 0 0 1 0 6.5M21.5 20a6.5 6.5 0 0 0-5-6.3"/>',
+    shield: '<path d="M12 2.5l8 3v6c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10v-6z"/><path d="M8.5 11.5l2.5 2.5 4.5-4.5"/>',
+    wrench: '<path d="M14.7 6.3a4.5 4.5 0 0 0-6 5.6L3 17.6a2 2 0 1 0 2.8 2.8l5.7-5.7a4.5 4.5 0 0 0 5.6-6l-3 3-2.8-.7-.7-2.8z"/>',
+    trophy: '<path d="M8 4h8v6a4 4 0 0 1-8 0zM8 5H4.5a3.2 3.2 0 0 0 3.7 3.6M16 5h3.5a3.2 3.2 0 0 1-3.7 3.6M12 14v4M8.5 21h7M10 18h4"/>',
+    book: '<path d="M4 5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h14M8 7h8"/>',
+    heart: '<path d="M12 20.5S3.5 15 3.5 9.2A4.7 4.7 0 0 1 12 6.4a4.7 4.7 0 0 1 8.5 2.8C20.5 15 12 20.5 12 20.5z"/>',
+  };
+  function annVariant(id) {
+    return ANN_VARIANTS.find((v) => v.id === id) || ANN_VARIANTS[0];
+  }
+  function hexToRgba(hex, a) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return 'rgba(59,130,246,' + a + ')';
+    const n = parseInt(m[1], 16);
+    return 'rgba(' + (n >> 16) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+  // Mistura duas cores hex (t = peso da segunda).
+  function blendHex(h1, h2, t) {
+    const p = (h) => { const m = /^#?([0-9a-f]{6})$/i.exec(h); return m ? parseInt(m[1], 16) : 0; };
+    const a = p(h1), b = p(h2);
+    const mix = (x, y) => Math.round(x + (y - x) * t);
+    const r = mix(a >> 16, b >> 16), g = mix((a >> 8) & 255, (b >> 8) & 255), bl = mix(a & 255, b & 255);
+    return '#' + ((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0');
+  }
+
+  function renderAnnounce(item) {
+    const v = annVariant(item.tipo);
+    const cor = v.cor;
+    const el = div('mt-slide mt-ann');
+    el.style.background =
+      'radial-gradient(85% 85% at 82% 8%, ' + hexToRgba(cor, .28) + ' 0%, rgba(0,0,0,0) 55%),' +
+      'radial-gradient(70% 70% at 8% 95%, ' + hexToRgba(cor, .16) + ' 0%, rgba(0,0,0,0) 55%),' +
+      'linear-gradient(165deg, ' + blendHex('#0a1128', cor, .22) + ', #0a1128 70%)';
+
+    const inner = div('ann-inner');
+
+    const iconBox = div('ann-icon');
+    iconBox.style.background = hexToRgba(cor, .16);
+    iconBox.style.borderColor = hexToRgba(cor, .55);
+    iconBox.style.boxShadow = '0 0 0 1.5cqh ' + hexToRgba(cor, .07);
+    iconBox.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="' + blendHex(cor, '#ffffff', .55) +
+      '" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+      (ANN_ICONS[v.icon] || ANN_ICONS.megaphone) + '</svg>';
+    inner.appendChild(iconBox);
+
+    const kicker = div('ann-kicker');
+    kicker.textContent = item.etiqueta || v.kicker;
+    kicker.style.color = blendHex(cor, '#ffffff', .55);
+    kicker.style.borderColor = hexToRgba(cor, .55);
+    inner.appendChild(kicker);
+
+    if (item.titulo) inner.appendChild(divText('ann-title', item.titulo));
+    if (item.corpo) inner.appendChild(divText('ann-body', item.corpo));
+    if (item.info) {
+      const meta = div('ann-meta');
+      meta.textContent = item.info;
+      inner.appendChild(meta);
+    }
+
+    el.appendChild(inner);
+    return { el, duration: item.duracao || 12 };
+  }
+
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -541,8 +622,9 @@
   // Metadados dos tipos, usados pelo Admin para montar formulários.
   // "icon" referencia um ícone SVG definido no painel (js/admin.js).
   const ITEM_TYPES = [
+    { type: 'announce', label: 'Aviso Premium', icon: 'bell' },
     { type: 'text', label: 'Texto / Comunicado', icon: 'text' },
-    { type: 'notice', label: 'Aviso', icon: 'bell' },
+    { type: 'notice', label: 'Aviso simples', icon: 'bell' },
     { type: 'image', label: 'Imagem', icon: 'image' },
     { type: 'video', label: 'Vídeo (MP4)', icon: 'film' },
     { type: 'youtube', label: 'YouTube / Ao vivo', icon: 'play' },
@@ -557,5 +639,5 @@
     { type: 'qrcode', label: 'QR Code', icon: 'qr' },
   ];
 
-  global.MTRender = { renderItem, ITEM_TYPES, extractYouTubeId };
+  global.MTRender = { renderItem, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId };
 })(window);

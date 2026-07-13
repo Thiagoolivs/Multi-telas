@@ -32,6 +32,16 @@
     up: '<path d="M6 14l6-6 6 6"/>',
     down: '<path d="M6 10l6 6 6-6"/>',
     gift: '<rect x="4" y="10" width="16" height="10" rx="1"/><path d="M3 6.5h18V10H3zM12 6.5V20M12 6.5s-4.2 0-4.2-2.7A1.9 1.9 0 0 1 12 3.2M12 6.5s4.2 0 4.2-2.7A1.9 1.9 0 0 0 12 3.2"/>',
+    megaphone: '<path d="M4 10v4a1 1 0 0 0 1 1h2l1.2 5h2.2L9.2 15H10l9 3.5v-13L10 9H5a1 1 0 0 0-1 1z"/>',
+    alert: '<path d="M12 3.5L2.8 19.5h18.4z"/><path d="M12 9.8v4.4M12 17.4v.01"/>',
+    calendar: '<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 2.5V6.5M16 2.5V6.5"/>',
+    users: '<circle cx="9" cy="8" r="3.4"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.8a3.4 3.4 0 0 1 0 6.5M21.5 20a6.5 6.5 0 0 0-5-6.3"/>',
+    shield: '<path d="M12 2.5l8 3v6c0 5-3.4 8.3-8 10-4.6-1.7-8-5-8-10v-6z"/><path d="M8.5 11.5l2.5 2.5 4.5-4.5"/>',
+    wrench: '<path d="M14.7 6.3a4.5 4.5 0 0 0-6 5.6L3 17.6a2 2 0 1 0 2.8 2.8l5.7-5.7a4.5 4.5 0 0 0 5.6-6l-3 3-2.8-.7-.7-2.8z"/>',
+    trophy: '<path d="M8 4h8v6a4 4 0 0 1-8 0zM8 5H4.5a3.2 3.2 0 0 0 3.7 3.6M16 5h3.5a3.2 3.2 0 0 1-3.7 3.6M12 14v4M8.5 21h7M10 18h4"/>',
+    book: '<path d="M4 5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 1 2-2h14M8 7h8"/>',
+    heart: '<path d="M12 20.5S3.5 15 3.5 9.2A4.7 4.7 0 0 1 12 6.4a4.7 4.7 0 0 1 8.5 2.8C20.5 15 12 20.5 12 20.5z"/>',
+    news: '<rect x="3" y="4" width="15" height="16" rx="2"/><path d="M18 8h2a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H5M7 8h7M7 12h7M7 16h4"/>',
     car: '<path d="M5.5 15.5L7 10a2 2 0 0 1 1.9-1.5h6.2A2 2 0 0 1 17 10l1.5 5.5M4.5 15.5h15a1 1 0 0 1 1 1V19h-2.5v-1.5h-12V19H3.5v-2.5a1 1 0 0 1 1-1zM7.5 13h.01M16.5 13h.01"/>',
     pin: '<path d="M12 21.5S5 15.7 5 10a7 7 0 0 1 14 0c0 5.7-7 11.5-7 11.5z"/><circle cx="12" cy="10" r="2.6"/>',
   };
@@ -43,6 +53,18 @@
 
   /* ================= Formulários por tipo de conteúdo ================= */
   const FORMS = {
+    announce: [
+      {
+        key: 'tipo', label: 'Tipo de aviso', kind: 'select',
+        options: MTRender.ANN_VARIANTS.map((v) => [v.id, v.label]),
+        def: 'comunicado',
+      },
+      { key: 'titulo', label: 'Título', kind: 'text' },
+      { key: 'corpo', label: 'Texto', kind: 'textarea' },
+      { key: 'info', label: 'Detalhes (ex.: Sexta · 15h · Auditório)', kind: 'text' },
+      { key: 'etiqueta', label: 'Etiqueta (vazio = automática pelo tipo)', kind: 'text' },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 12 },
+    ],
     text: [
       { key: 'titulo', label: 'Título', kind: 'text' },
       { key: 'corpo', label: 'Texto', kind: 'textarea' },
@@ -123,63 +145,98 @@
     ],
   };
 
-  /* ================= Conteúdos prontos (presets) ================= */
-  const PRESETS = [
+  /* ================= Conteúdos prontos (presets em grupos) ================= */
+  const PRESET_GROUPS = [
     {
-      label: 'YouTube ao vivo', desc: 'Live em tempo real, fixa na tela', icon: 'live',
-      item: { type: 'youtube', videoId: '', channelId: '', duracao: 0 },
+      label: 'Avisos e comunicados',
+      presets: [
+        {
+          label: 'Comunicado interno', desc: 'Informativo geral para a equipe', icon: 'megaphone',
+          item: { type: 'announce', tipo: 'comunicado', titulo: 'Comunicado', corpo: 'Digite aqui o comunicado para a equipe.', info: '', duracao: 12 },
+        },
+        {
+          label: 'Aviso urgente', desc: 'Destaque máximo em vermelho', icon: 'alert',
+          item: { type: 'announce', tipo: 'urgente', titulo: 'Atenção', corpo: 'Digite aqui o aviso urgente.', info: '', duracao: 12 },
+        },
+        {
+          label: 'Reunião / evento', desc: 'Convocação com data e local', icon: 'calendar',
+          item: { type: 'announce', tipo: 'evento', titulo: 'Reunião Geral', corpo: 'Participação de todas as equipes.', info: 'Sexta-feira · 15h · Auditório', duracao: 12 },
+        },
+        {
+          label: 'Recursos Humanos', desc: 'Vagas internas, benefícios, RH', icon: 'users',
+          item: { type: 'announce', tipo: 'rh', titulo: 'Vaga Interna Aberta', corpo: 'Inscrições abertas para a nova oportunidade. Fale com o RH.', info: '', duracao: 12 },
+        },
+        {
+          label: 'Segurança do trabalho', desc: 'EPI, procedimentos, alertas', icon: 'shield',
+          item: { type: 'announce', tipo: 'seguranca', titulo: 'Segurança em Primeiro Lugar', corpo: 'O uso de EPI é obrigatório nas áreas de produção.', info: '', duracao: 12 },
+        },
+        {
+          label: 'Manutenção programada', desc: 'Paradas e indisponibilidades', icon: 'wrench',
+          item: { type: 'announce', tipo: 'manutencao', titulo: 'Manutenção Programada', corpo: 'O sistema ficará indisponível durante a janela de manutenção.', info: 'Sábado · 8h às 12h', duracao: 12 },
+        },
+        {
+          label: 'Conquista / meta', desc: 'Resultados e celebrações', icon: 'trophy',
+          item: { type: 'announce', tipo: 'conquista', titulo: 'Meta Batida!', corpo: 'Parabéns a todos! Superamos a meta do mês.', info: '', duracao: 12 },
+        },
+        {
+          label: 'Treinamento', desc: 'Capacitações e workshops', icon: 'book',
+          item: { type: 'announce', tipo: 'treinamento', titulo: 'Novo Treinamento', corpo: 'Inscreva-se no treinamento pela intranet.', info: '', duracao: 12 },
+        },
+        {
+          label: 'Saúde e bem-estar', desc: 'Campanhas e vacinação', icon: 'heart',
+          item: { type: 'announce', tipo: 'saude', titulo: 'Campanha de Vacinação', corpo: 'Vacinação gratuita para todos os colaboradores.', info: 'Quarta-feira · Ambulatório', duracao: 12 },
+        },
+      ],
     },
     {
-      label: 'Cartão de aniversário', desc: 'Foto, balões e mensagem', icon: 'gift',
-      item: { type: 'birthdaycard', nome: '', mensagem: 'Que hoje o seu dia seja o mais feliz de todos!', foto: '', bg: '#0c1c4d', duracao: 15 },
+      label: 'Tempo real',
+      presets: [
+        {
+          label: 'YouTube ao vivo', desc: 'Live em tempo real, fixa na tela', icon: 'live',
+          item: { type: 'youtube', videoId: '', channelId: '', duracao: 0 },
+        },
+        {
+          label: 'Painel do clima', desc: 'Tempo agora + previsão de 6 dias', icon: 'cloud',
+          item: { type: 'weatherpro', cidade: 'São Paulo', duracao: 0 },
+        },
+        {
+          label: 'Trânsito ao vivo', desc: 'Mapa do Waze em tempo real', icon: 'car',
+          item: { type: 'traffic', local: 'São Paulo', zoom: 13, duracao: 0 },
+        },
+        {
+          label: 'Mapa da região', desc: 'Localização com marcador', icon: 'pin',
+          item: { type: 'map', local: 'São Paulo', zoom: 14, duracao: 20 },
+        },
+      ],
     },
     {
-      label: 'Painel do clima', desc: 'Tempo agora + previsão de 6 dias', icon: 'cloud',
-      item: { type: 'weatherpro', cidade: 'São Paulo', duracao: 0 },
-    },
-    {
-      label: 'Trânsito ao vivo', desc: 'Mapa do Waze em tempo real', icon: 'car',
-      item: { type: 'traffic', local: 'São Paulo', zoom: 13, duracao: 0 },
-    },
-    {
-      label: 'Mapa da região', desc: 'Localização com marcador', icon: 'pin',
-      item: { type: 'map', local: 'São Paulo', zoom: 14, duracao: 20 },
-    },
-    {
-      label: 'Vídeo do YouTube', desc: 'Vídeo com duração definida', icon: 'play',
-      item: { type: 'youtube', videoId: '', duracao: 30 },
-    },
-    {
-      label: 'Aniversariantes', desc: 'Lista dos aniversariantes do mês', icon: 'cake',
-      item: { type: 'birthday', titulo: 'Aniversariantes do Mês', nomes: 'Nome — 01/01', bg: '#3a4419', cor: '#ffffff', duracao: 15 },
-    },
-    {
-      label: 'Aviso importante', desc: 'Comunicado em destaque', icon: 'bell',
-      item: { type: 'notice', titulo: 'Aviso Importante', corpo: 'Digite aqui o aviso.', bg: '#7f1d1d', cor: '#ffffff', duracao: 12 },
-    },
-    {
-      label: 'Clima e tempo', desc: 'Temperatura atual da cidade', icon: 'cloud',
-      item: { type: 'weather', cidade: 'São Paulo', bg: '#1c2b1a', duracao: 12 },
-    },
-    {
-      label: 'Boas-vindas', desc: 'Mensagem de recepção', icon: 'text',
-      item: { type: 'text', titulo: 'Seja bem-vindo(a)!', corpo: 'É um prazer receber você na Raft Embalagens.', bg: '#4B5320', cor: '#ffffff', duracao: 10 },
-    },
-    {
-      label: 'Comunicado interno', desc: 'Informativo para a equipe', icon: 'text',
-      item: { type: 'text', titulo: 'Comunicado', corpo: 'Digite aqui o comunicado.', bg: '#1f2937', cor: '#ffffff', duracao: 12 },
-    },
-    {
-      label: 'Segurança', desc: 'Lembrete de segurança do trabalho', icon: 'bell',
-      item: { type: 'notice', titulo: 'Segurança em Primeiro Lugar', corpo: 'O uso de EPI é obrigatório nas áreas de produção.', bg: '#92400e', cor: '#ffffff', duracao: 12 },
-    },
-    {
-      label: 'Foto / campanha', desc: 'Imagem enviada do computador', icon: 'image',
-      item: { type: 'image', src: '', fit: 'cover', duracao: 8 },
-    },
-    {
-      label: 'Relógio', desc: 'Hora e data atuais', icon: 'clock',
-      item: { type: 'clock', bg: '#101828', duracao: 10 },
+      label: 'Comemorativos e mídia',
+      presets: [
+        {
+          label: 'Cartão de aniversário', desc: 'Foto, balões e mensagem', icon: 'gift',
+          item: { type: 'birthdaycard', nome: '', mensagem: 'Que hoje o seu dia seja o mais feliz de todos!', foto: '', bg: '#0c1c4d', duracao: 15 },
+        },
+        {
+          label: 'Aniversariantes do mês', desc: 'Lista com nomes e datas', icon: 'cake',
+          item: { type: 'birthday', titulo: 'Aniversariantes do Mês', nomes: 'Nome — 01/01', bg: '#3a4419', cor: '#ffffff', duracao: 15 },
+        },
+        {
+          label: 'Boas-vindas', desc: 'Mensagem de recepção', icon: 'text',
+          item: { type: 'text', titulo: 'Seja bem-vindo(a)!', corpo: 'É um prazer receber você na Raft Embalagens.', bg: '#4B5320', cor: '#ffffff', duracao: 10 },
+        },
+        {
+          label: 'Foto / campanha', desc: 'Imagem enviada do computador', icon: 'image',
+          item: { type: 'image', src: '', fit: 'cover', duracao: 8 },
+        },
+        {
+          label: 'Vídeo do YouTube', desc: 'Vídeo com duração definida', icon: 'play',
+          item: { type: 'youtube', videoId: '', duracao: 30 },
+        },
+        {
+          label: 'Relógio', desc: 'Hora e data atuais', icon: 'clock',
+          item: { type: 'clock', bg: '#101828', duracao: 10 },
+        },
+      ],
     },
   ];
 
@@ -386,21 +443,23 @@
       panel.appendChild(list);
     }
 
-    panel.appendChild(el('div', 'add-section-label', 'Conteúdos prontos'));
-    const presets = el('div', 'presets-grid');
-    PRESETS.forEach((p) => {
-      const b = el('button', 'preset-btn');
-      b.type = 'button';
-      b.innerHTML = icon(p.icon) +
-        '<span><span class="p-label"></span><span class="p-desc"></span></span>';
-      b.querySelector('.p-label').textContent = p.label;
-      b.querySelector('.p-desc').textContent = p.desc;
-      b.addEventListener('click', () => {
-        openItemModal(zoneId, null, p.item.type, Object.assign({}, p.item));
+    PRESET_GROUPS.forEach((group) => {
+      panel.appendChild(el('div', 'add-section-label', group.label));
+      const presets = el('div', 'presets-grid');
+      group.presets.forEach((p) => {
+        const b = el('button', 'preset-btn');
+        b.type = 'button';
+        b.innerHTML = icon(p.icon) +
+          '<span><span class="p-label"></span><span class="p-desc"></span></span>';
+        b.querySelector('.p-label').textContent = p.label;
+        b.querySelector('.p-desc').textContent = p.desc;
+        b.addEventListener('click', () => {
+          openItemModal(zoneId, null, p.item.type, Object.assign({}, p.item));
+        });
+        presets.appendChild(b);
       });
-      presets.appendChild(b);
+      panel.appendChild(presets);
     });
-    panel.appendChild(presets);
 
     panel.appendChild(el('div', 'add-section-label', 'Ou monte do zero'));
     const types = el('div', 'types-row');
@@ -506,6 +565,32 @@
         iv.value = zone.intervalo || 8;
         iv.addEventListener('input', () => { zone.intervalo = Number(iv.value); markDirty(); });
         opts.appendChild(fieldRow('Troca de notícia a cada (s)', iv));
+
+        // Fonte automática de manchetes (RSS de portais famosos).
+        const srcSel = el('select');
+        const srcOptions = [['manual', 'Manual (digitar abaixo)']]
+          .concat(MTNews.FEEDS.map((f) => [f.id, f.label]))
+          .concat([['custom', 'RSS personalizado (URL)']]);
+        srcOptions.forEach(([v, t]) => {
+          const o = el('option', null, t); o.value = v; srcSel.appendChild(o);
+        });
+        srcSel.value = zone.fonte || 'manual';
+        srcSel.addEventListener('change', () => { zone.fonte = srcSel.value; markDirty(); redraw(); });
+        opts.appendChild(fieldRow('Fonte das notícias', srcSel));
+
+        if (zone.fonte === 'custom') {
+          const ru = el('input'); ru.type = 'text';
+          ru.placeholder = 'https://…/feed.xml';
+          ru.value = zone.rssUrl || '';
+          ru.addEventListener('input', () => { zone.rssUrl = ru.value; markDirty(); });
+          opts.appendChild(fieldRow('URL do RSS', ru));
+        }
+        if ((zone.fonte || 'manual') !== 'manual') {
+          const qt = el('input'); qt.type = 'number'; qt.min = '1'; qt.max = '30';
+          qt.value = zone.quantidade || 10;
+          qt.addEventListener('input', () => { zone.quantidade = Number(qt.value); markDirty(); });
+          opts.appendChild(fieldRow('Máximo de manchetes', qt));
+        }
       } else {
         const si = el('input'); si.type = 'number'; si.min = '20';
         si.value = zone.velocidade || 60;
@@ -514,9 +599,13 @@
       }
       editor.appendChild(opts);
 
-      editor.appendChild(el('div', 'add-section-label', 'Notícias / mensagens'));
+      const auto = (zone.modo || 'noticias') === 'noticias' && (zone.fonte || 'manual') !== 'manual';
+      editor.appendChild(el('div', 'add-section-label',
+        auto ? 'Mensagens de reserva (se a fonte falhar)' : 'Notícias / mensagens'));
       const hint = el('p', 'hint');
-      hint.textContent = 'Dica: use "Título :: descrição" para exibir manchete com texto de apoio.';
+      hint.textContent = auto
+        ? 'As manchetes chegam sozinhas do portal escolhido e se renovam a cada 10 minutos. As mensagens abaixo só aparecem se o portal estiver fora do ar.'
+        : 'Dica: use "Título :: descrição" para exibir manchete com texto de apoio.';
       hint.style.margin = '0 0 10px';
       editor.appendChild(hint);
 
