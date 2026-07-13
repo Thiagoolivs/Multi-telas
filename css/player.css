@@ -22,6 +22,11 @@ html, body {
   padding: 1.1vh;
   background: var(--stage-bg);
 }
+/* Layouts "dinâmicos": as zonas mudam de proporção suavemente ao longo
+   do tempo, sem recriar nenhum conteúdo (vídeos e lives não reiniciam). */
+.mt-stage-breathing {
+  transition: grid-template-columns 1.8s cubic-bezier(.4, 0, .2, 1);
+}
 .mt-zone {
   position: relative;
   overflow: hidden;

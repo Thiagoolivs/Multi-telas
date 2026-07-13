@@ -108,6 +108,20 @@
       .map((row) => '"' + row + '"')
       .join(' ');
 
+    // Layouts "dinâmicos": o grid respira entre proporções ao longo do
+    // tempo. Só o tamanho das zonas muda — o DOM de cada zona (vídeo,
+    // iframe da live etc.) nunca é recriado, então nada reinicia.
+    stage.classList.toggle('mt-stage-breathing', !!layout.dynamic);
+    if (layout.dynamic) {
+      const states = layout.dynamic.columns;
+      let step = 0;
+      const breatheTimer = setInterval(() => {
+        step = (step + 1) % states.length;
+        stage.style.gridTemplateColumns = states[step];
+      }, Math.max(6, layout.dynamic.intervalSeconds || 18) * 1000);
+      zoneControllers.push({ stop: () => clearInterval(breatheTimer) });
+    }
+
     // Cores do tema: destaque + fundo (com tom de zona derivado do fundo).
     const root = document.documentElement;
     root.style.setProperty('--brand', cfg.settings.cor || '#2F6FEB');
@@ -192,7 +206,12 @@
       const dur = rendered.duration;
       if (single) return; // estática — só o próprio item avança (ex.: vídeo ao terminar)
       if (dur && dur > 0) schedule(dur);
-      else if (!rendered.onEnter) schedule(10); // fallback de segurança
+      else if (rendered.onEnter) {
+        // Item controla o próprio avanço (ex.: vídeo até o fim, live "fixa"
+        // com duração 0). Como a zona tem outros itens, garantimos um teto
+        // de segurança para a rotação nunca travar nele indefinidamente.
+        schedule(600);
+      } else schedule(10); // fallback de segurança
     }
 
     function schedule(seconds) {

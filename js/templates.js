@@ -110,6 +110,30 @@
       ],
     },
     {
+      id: 'video-dynamic',
+      name: 'Vídeo + Painel Dinâmico',
+      description: 'Vídeo ou live contínuos (nunca reinicia) enquanto um painel ao lado respira de tamanho e roda avisos, clima e novidades.',
+      grid: {
+        columns: '3.2fr 1fr',
+        rows: '1fr 11vh',
+        areas: [
+          'video info',
+          'rodape rodape',
+        ],
+      },
+      zones: [
+        { id: 'video', area: 'video', name: 'Vídeo / Live', type: 'playlist' },
+        { id: 'info', area: 'info', name: 'Painel Dinâmico', type: 'playlist' },
+        { id: 'rodape', area: 'rodape', name: 'Notícias', type: 'ticker' },
+      ],
+      // Faz o grid "respirar": alterna suavemente entre estas proporções
+      // sem nunca recriar as zonas — o vídeo/live continua tocando.
+      dynamic: {
+        columns: ['3.2fr 1fr', '1.7fr 1.4fr'],
+        intervalSeconds: 18,
+      },
+    },
+    {
       id: 'corporate',
       name: 'Corporativo Completo',
       description: 'Cabeçalho com relógio/clima, destaque, lateral de avisos e rodapé de notícias. O mais completo.',
