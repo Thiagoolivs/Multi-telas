@@ -62,15 +62,41 @@ Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
 
 ### Rodando localmente
 
-É só abrir os arquivos, mas o ideal é servir por HTTP (evita bloqueios do navegador):
-
 ```bash
 # na pasta do projeto
-python3 -m http.server 8080
+node server.js
 # depois acesse:
 #   Admin  -> http://localhost:8080/index.html
 #   Player -> http://localhost:8080/player.html
 ```
+
+(Alternativa sem Node: `python3 -m http.server 8080`.)
+
+---
+
+## Hospedando no Railway (ou qualquer provedor)
+
+O projeto já vem pronto para deploy — é só HTML/CSS/JS servidos por um
+`server.js` mínimo, sem banco de dados e sem dependências externas.
+
+1. Suba este repositório para o GitHub (se ainda não estiver lá).
+2. No [Railway](https://railway.app), clique em **New Project → Deploy from
+   GitHub repo** e selecione este repositório.
+3. O Railway detecta o `package.json`, roda `npm install` (instantâneo, sem
+   dependências) e inicia com `node server.js` — não precisa configurar nada.
+4. Em **Settings → Networking**, gere um domínio público (**Generate Domain**).
+5. Acesse `https://SEU-APP.up.railway.app/index.html` para o **Painel de
+   Gestão** e `https://SEU-APP.up.railway.app/player.html` para o **Player**
+   (essa é a URL que você abre na TV).
+
+> Como os dados ficam salvos no navegador (localStorage) de quem edita, use
+> a **Atualização centralizada** (exportar o `config.json` e apontar a URL
+> remota) se quiser editar de um computador e exibir em TVs numa rede
+> diferente — veja a seção acima.
+
+Funciona da mesma forma em qualquer outro provedor que rode Node.js
+(Render, Fly.io, um VPS próprio etc.) — basta `node server.js` respeitando
+a variável de ambiente `PORT`.
 
 ---
 
