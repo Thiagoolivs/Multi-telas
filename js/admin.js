@@ -51,6 +51,10 @@
     share: '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/>',
     calendar2: '<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 2.5V6.5M16 2.5V6.5"/>',
     sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>',
+    grip: '<circle cx="9" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.3" fill="currentColor" stroke="none"/>',
+    copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+    bookmark: '<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>',
+    clock2: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
   };
   function icon(name) {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
@@ -534,8 +538,11 @@
     } else {
       const list = el('div', 'item-list');
       zone.items.forEach((item, idx) => list.appendChild(itemRow(zoneId, item, idx)));
+      enableDragReorder(list, zoneId);
       panel.appendChild(list);
     }
+
+    renderFavorites(panel, zoneId);
 
     PRESET_GROUPS.forEach((group) => {
       panel.appendChild(el('div', 'add-section-label', group.label));
@@ -570,24 +577,116 @@
 
   function itemRow(zoneId, item, idx) {
     const row = el('div', 'item-row');
+    row.dataset.idx = idx;
+
+    const handle = el('div', 'item-drag');
+    handle.title = 'Arraste para reordenar';
+    handle.innerHTML = icon('grip');
+    row.appendChild(handle);
+
     const meta = typeMeta(item.type);
     const ic = el('div', 'item-icon');
     ic.innerHTML = icon(meta.icon);
     row.appendChild(ic);
 
     const info = el('div', 'item-info');
-    info.appendChild(el('div', 'item-title', itemTitle(item)));
+    const titleRow = el('div', 'item-title');
+    titleRow.appendChild(el('span', null, itemTitle(item)));
+    if (item.prioridade && item.prioridade !== 'normal') {
+      titleRow.appendChild(el('span', 'item-badge badge-' + item.prioridade,
+        item.prioridade === 'urgente' ? 'urgente' : 'destaque'));
+    }
+    if (item.agendamento && item.agendamento.ativo) {
+      const b = el('span', 'item-badge badge-sched');
+      b.innerHTML = icon('clock2');
+      b.title = 'Agendado';
+      titleRow.appendChild(b);
+    }
+    info.appendChild(titleRow);
     const durTxt = item.duracao === 0 ? 'fixo na tela' : (item.duracao || '—') + 's';
     info.appendChild(el('div', 'item-sub', meta.label + ' · ' + durTxt));
     row.appendChild(info);
 
     const actions = el('div', 'item-actions');
-    actions.appendChild(iconBtn('up', 'Subir', () => moveItem(zoneId, idx, -1)));
-    actions.appendChild(iconBtn('down', 'Descer', () => moveItem(zoneId, idx, +1)));
     actions.appendChild(iconBtn('pencil', 'Editar', () => openItemModal(zoneId, idx)));
+    actions.appendChild(iconBtn('copy', 'Duplicar', () => duplicateItem(zoneId, idx)));
+    actions.appendChild(iconBtn('bookmark', 'Salvar nos favoritos', () => saveFavorite(item)));
     actions.appendChild(iconBtn('trash', 'Remover', () => removeItem(zoneId, idx)));
     row.appendChild(actions);
     return row;
+  }
+
+  /* ---------- Arrastar-e-soltar para reordenar ---------- */
+  function enableDragReorder(list, zoneId) {
+    let dragIdx = null;
+    list.querySelectorAll('.item-row').forEach((row) => {
+      row.setAttribute('draggable', 'true');
+      row.addEventListener('dragstart', (e) => {
+        dragIdx = Number(row.dataset.idx);
+        row.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      row.addEventListener('dragend', () => row.classList.remove('dragging'));
+      row.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const over = Number(row.dataset.idx);
+        list.querySelectorAll('.item-row').forEach((r) => r.classList.remove('drop-target'));
+        if (over !== dragIdx) row.classList.add('drop-target');
+      });
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const to = Number(row.dataset.idx);
+        if (dragIdx == null || dragIdx === to) return;
+        const arr = config.zonas[zoneId].items;
+        const [it] = arr.splice(dragIdx, 1);
+        arr.splice(to, 0, it);
+        markDirty();
+        renderContent();
+      });
+    });
+  }
+
+  function duplicateItem(zoneId, idx) {
+    const arr = config.zonas[zoneId].items;
+    arr.splice(idx + 1, 0, deepCopy(arr[idx]));
+    markDirty();
+    renderContent();
+  }
+  function deepCopy(o) { return JSON.parse(JSON.stringify(o)); }
+
+  /* ---------- Favoritos (biblioteca reutilizável) ---------- */
+  const FAV_KEY = 'multitelas.favoritos.v1';
+  function getFavorites() {
+    try { return JSON.parse(localStorage.getItem(FAV_KEY)) || []; } catch (e) { return []; }
+  }
+  function setFavorites(list) { localStorage.setItem(FAV_KEY, JSON.stringify(list)); }
+  function saveFavorite(item) {
+    const favs = getFavorites();
+    favs.unshift({ label: itemTitle(item), item: deepCopy(item) });
+    setFavorites(favs.slice(0, 40));
+    renderContent();
+    $('#save-status').textContent = 'Salvo nos favoritos';
+    $('#save-status').style.color = 'var(--ok)';
+  }
+  function removeFavorite(i) { const f = getFavorites(); f.splice(i, 1); setFavorites(f); renderContent(); }
+
+  function renderFavorites(panel, zoneId) {
+    const favs = getFavorites();
+    if (!favs.length) return;
+    panel.appendChild(el('div', 'add-section-label', 'Favoritos'));
+    const wrap = el('div', 'fav-list');
+    favs.forEach((f, i) => {
+      const chip = el('div', 'fav-chip');
+      const b = el('button', 'fav-insert');
+      b.type = 'button';
+      b.innerHTML = icon(typeMeta(f.item.type).icon) + '<span></span>';
+      b.querySelector('span').textContent = f.label || typeMeta(f.item.type).label;
+      b.addEventListener('click', () => openItemModal(zoneId, null, f.item.type, deepCopy(f.item)));
+      chip.appendChild(b);
+      chip.appendChild(iconBtn('trash', 'Remover dos favoritos', () => removeFavorite(i)));
+      wrap.appendChild(chip);
+    });
+    panel.appendChild(wrap);
   }
 
   function itemTitle(item) {
@@ -605,16 +704,6 @@
     b.innerHTML = icon(name);
     b.addEventListener('click', fn);
     return b;
-  }
-
-  function moveItem(zoneId, idx, dir) {
-    const arr = config.zonas[zoneId].items;
-    const to = idx + dir;
-    if (to < 0 || to >= arr.length) return;
-    const [it] = arr.splice(idx, 1);
-    arr.splice(to, 0, it);
-    markDirty();
-    renderContent();
   }
 
   function removeItem(zoneId, idx) {
@@ -756,7 +845,62 @@
         options: [['normal', 'Normal'], ['destaque', 'Destaque (amplia sobre a tela)'], ['urgente', 'Urgente (tela cheia + alerta)']],
       }, draft));
     }
+
+    // Bloco de agendamento (mostrar só em certas datas/horários/dias).
+    bodyEl.appendChild(buildScheduleField(draft));
+
     $('#modal').classList.remove('hidden');
+  }
+
+  const WEEKDAYS = [['0', 'Dom'], ['1', 'Seg'], ['2', 'Ter'], ['3', 'Qua'], ['4', 'Qui'], ['5', 'Sex'], ['6', 'Sáb']];
+  function buildScheduleField(draft) {
+    const a = draft.agendamento || (draft.agendamento = { ativo: false, dias: [] });
+    if (!Array.isArray(a.dias)) a.dias = [];
+    const box = el('details', 'sched');
+    if (a.ativo) box.open = true;
+    const sum = el('summary');
+    sum.textContent = 'Agendar exibição (opcional)';
+    box.appendChild(sum);
+
+    const toggle = el('label', 'sched-toggle');
+    const tI = el('input'); tI.type = 'checkbox'; tI.checked = !!a.ativo;
+    tI.addEventListener('change', () => { a.ativo = tI.checked; });
+    toggle.appendChild(tI);
+    toggle.appendChild(el('span', null, 'Exibir apenas no período/horário abaixo'));
+    box.appendChild(toggle);
+
+    const grid = el('div', 'grid-2');
+    [['dataInicio', 'De (data)', 'date'], ['dataFim', 'Até (data)', 'date'],
+     ['horaInicio', 'De (hora)', 'time'], ['horaFim', 'Até (hora)', 'time']].forEach(([k, lbl, tp]) => {
+      const f = el('label', 'field');
+      f.appendChild(el('span', null, lbl));
+      const inp = el('input'); inp.type = tp; inp.value = a[k] || '';
+      inp.addEventListener('input', () => { a[k] = inp.value; });
+      f.appendChild(inp);
+      grid.appendChild(f);
+    });
+    box.appendChild(grid);
+
+    const daysWrap = el('div', 'field');
+    daysWrap.style.marginTop = '10px';
+    daysWrap.appendChild(el('span', null, 'Dias da semana (vazio = todos)'));
+    const days = el('div', 'sched-days');
+    WEEKDAYS.forEach(([val, lbl]) => {
+      const d = Number(val);
+      const b = el('button', 'sched-day');
+      b.type = 'button';
+      b.textContent = lbl;
+      if (a.dias.indexOf(d) >= 0) b.classList.add('on');
+      b.addEventListener('click', () => {
+        const i = a.dias.indexOf(d);
+        if (i >= 0) { a.dias.splice(i, 1); b.classList.remove('on'); }
+        else { a.dias.push(d); b.classList.add('on'); }
+      });
+      days.appendChild(b);
+    });
+    daysWrap.appendChild(days);
+    box.appendChild(daysWrap);
+    return box;
   }
   // Tipos que podem "tomar a tela" quando marcados como prioritários.
   const TAKEOVER_TYPES = {

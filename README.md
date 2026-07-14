@@ -60,6 +60,9 @@ Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
   YouTube/Ao vivo, Aniversariantes, Relógio, Clima, Página Web e QR Code.
 - **Painel de gestão visual:** qualquer pessoa atualiza sem saber programar.
   Prévia ao vivo do que a TV vai exibir.
+- **Gestão premium de conteúdo:** arraste para reordenar, **duplicar** com um clique,
+  **favoritos** reutilizáveis e **agendamento** (exibir um conteúdo só em certas
+  datas, horários e dias da semana — o player filtra em tempo real).
 - **Rodapé de avisos rolando** (ticker) e **cabeçalho com relógio + clima**.
 - **Atualização automática:** o player recarrega sozinho a cada X segundos.
 - **Robusto:** cada conteúdo é isolado — se um falhar, o player pula para o próximo

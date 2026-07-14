@@ -295,9 +295,10 @@
     let timer = null;
     let currentSlide = null;
     let stopped = false;
-    // Zona com um único item fica estática (essencial para lives do YouTube:
-    // re-renderizar recarregaria a transmissão).
-    const single = items.length === 1;
+    // Zona com um único item, sem agendamento, fica estática (essencial para
+    // lives do YouTube: re-renderizar recarregaria a transmissão).
+    const single = items.length === 1 && !hasAgenda(items[0]);
+    const agendado = items.some(hasAgenda);
 
     if (!items.length) {
       const empty = document.createElement('div');
@@ -309,7 +310,14 @@
 
     function advance() {
       if (stopped) return;
-      const item = items[index % items.length];
+
+      // Filtra pelos conteúdos agendados para agora.
+      const ativos = agendado ? items.filter(agendadoAgora) : items;
+      if (!ativos.length) {
+        showPlaceholder('Nenhum conteúdo agendado agora');
+        return schedule(30); // reavalia periodicamente
+      }
+      const item = ativos[index % ativos.length];
       index++;
 
       let rendered;
@@ -361,10 +369,51 @@
       timer = setTimeout(advance, Math.max(0, seconds) * 1000);
     }
 
+    function showPlaceholder(text) {
+      if (currentSlide && currentSlide.el.classList.contains('mt-empty')) return;
+      const el = document.createElement('div');
+      el.className = 'mt-slide mt-empty mt-active';
+      el.textContent = text;
+      zoneEl.appendChild(el);
+      const prev = currentSlide;
+      currentSlide = { el, onLeave: null };
+      if (prev) {
+        prev.el.classList.remove('mt-active');
+        prev.el.classList.add('mt-leave');
+        try { prev.onLeave && prev.onLeave(); } catch (e) {}
+        setTimeout(() => prev.el.remove(), 800);
+      }
+    }
+
     advance();
     return {
       stop: () => { stopped = true; clearTimeout(timer); },
     };
+  }
+
+  /* ---------------- Agendamento de conteúdos ---------------- */
+  function hasAgenda(item) {
+    return !!(item && item.agendamento && item.agendamento.ativo);
+  }
+  // Verifica se um item está dentro da sua janela agendada (data/dias/hora).
+  function agendadoAgora(item) {
+    const a = item && item.agendamento;
+    if (!a || !a.ativo) return true;
+    const now = new Date();
+    const y = now.getFullYear();
+    const today = y + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
+    if (a.dataInicio && today < a.dataInicio) return false;
+    if (a.dataFim && today > a.dataFim) return false;
+    if (Array.isArray(a.dias) && a.dias.length && a.dias.indexOf(now.getDay()) === -1) return false;
+    if (a.horaInicio || a.horaFim) {
+      const hm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      const ini = a.horaInicio || '00:00';
+      const fim = a.horaFim || '23:59';
+      if (ini <= fim) { if (hm < ini || hm > fim) return false; }
+      else { if (hm < ini && hm > fim) return false; } // janela que cruza a meia-noite
+    }
+    return true;
   }
 
   /* ---------------- Zona: Faixa de notícias / avisos ---------------- */
