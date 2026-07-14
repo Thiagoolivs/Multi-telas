@@ -30,6 +30,9 @@
         // Decoração animada sobre a tela: none | auto | snow | lights |
         // hearts | petals | flags | confetti | fireworks ('auto' = pela data).
         decoracao: 'none',
+        // Recursos inteligentes (Fase 3).
+        coresAdaptativas: true,   // tema se adapta às cores da imagem exibida
+        layoutInteligente: true,  // conteúdo prioritário toma a tela (takeover)
         // Tema premium: preset + ajustes manuais (ver js/theme.js).
         theme: {
           preset: 'dark-premium',

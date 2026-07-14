@@ -18,6 +18,11 @@ Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
 - **9 temas premium prontos:** Dark Premium, Corporate Blue, Luxury Gold, Neon Cyber,
   Glassmorphism, Minimal White, Elegant Black, Energy Green e Modern Purple — trocar
   o tema reestiliza a interface inteira num clique.
+- **Layout inteligente:** conteúdos marcados como **Destaque** ou **Urgente** tomam a
+  tela (os demais desfocam/escurecem), com animação cinematográfica, e depois voltam
+  ao normal — vídeos e lives por baixo nunca são interrompidos.
+- **Cores adaptativas:** ao exibir uma imagem, o tema desloca suavemente o destaque
+  para combinar com as cores dela — o player parece "entender" o conteúdo.
 - **Editor visual de tema:** cores (primária/secundária/destaque/fundo), fontes
   (Inter, Poppins, Montserrat, Roboto, Space Grotesk) e sliders de vidro, desfoque,
   cantos e intensidade dos efeitos — com prévia ao vivo. Identidade visual própria.
@@ -145,6 +150,7 @@ Multi-telas/
 │   ├── templates.js     # Catálogo de layouts (templates prontos)
 │   ├── theme.js         # Motor de temas (9 presets + tokens + fontes)
 │   ├── seasons.js       # Datas comemorativas BR + decorações
+│   ├── adaptive.js      # Cores adaptativas (analisa a imagem exibida)
 │   ├── storage.js       # Dados: salvar/carregar/exportar/importar/remoto
 │   ├── news.js          # Notícias automáticas via RSS
 │   ├── render.js        # Renderiza cada tipo de conteúdo

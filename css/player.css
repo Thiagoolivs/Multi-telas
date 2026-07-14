@@ -688,6 +688,49 @@ html, body {
 @keyframes mt-sway { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
 @keyframes mt-twinkle { from { opacity: .3; } to { opacity: 1; } }
 
+/* ---------- Layout inteligente: takeover de prioridade ---------- */
+.mt-takeover {
+  position: fixed; inset: 0; z-index: 45;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 4vh 4vw; opacity: 0;
+  background: rgba(4, 7, 16, .55);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+  backdrop-filter: blur(16px) saturate(1.1);
+  transition: opacity .6s ease;
+}
+.mt-takeover.mt-in { opacity: 1; }
+.mt-takeover.mt-out { opacity: 0; }
+.mt-takeover-card {
+  position: relative; overflow: hidden;
+  width: 78vw; height: 74vh; max-width: 1400px;
+  border-radius: 2.4vh; border: 1px solid var(--border);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, .6);
+  container-type: size; background: var(--surface-solid);
+  transform: scale(.92); opacity: 0;
+  transition: transform .7s cubic-bezier(.16, .84, .3, 1), opacity .6s ease;
+}
+.mt-takeover.mt-in .mt-takeover-card { transform: scale(1); opacity: 1; }
+.mt-takeover-card .mt-slide { position: absolute; inset: 0; opacity: 1; }
+/* Urgente: quase tela cheia + moldura de alerta vermelha. */
+.mt-takeover-urgente { background: rgba(30, 4, 8, .6); }
+.mt-takeover-urgente .mt-takeover-card {
+  width: 92vw; height: 82vh; border-color: rgba(239, 68, 68, .5);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .35), 0 40px 120px rgba(0, 0, 0, .65);
+}
+.mt-takeover-alert {
+  display: flex; align-items: center; gap: 1.2vw;
+  font-size: 2.4vh; font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+  color: #fff; background: linear-gradient(90deg, #ef4444, #b91c1c);
+  padding: 1.2vh 3vw; border-radius: 100px; margin-bottom: 2.4vh;
+  box-shadow: 0 10px 30px rgba(239, 68, 68, .5);
+  animation: mt-alert-pulse 1.4s ease-in-out infinite;
+}
+.mt-takeover-alert::before {
+  content: ""; width: 1.4vh; height: 1.4vh; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 10px #fff;
+}
+@keyframes mt-alert-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+
 /* Tipografia proporcional à zona (não à tela inteira).
    Em navegadores antigos sem suporte a cqw, valem os clamps em vw acima. */
 @supports (width: 1cqw) {

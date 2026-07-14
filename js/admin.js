@@ -747,8 +747,22 @@
     const bodyEl = $('#modal-body');
     bodyEl.innerHTML = '';
     FORMS[type].forEach((f) => bodyEl.appendChild(buildField(f, draft)));
+
+    // Campo de prioridade (layout inteligente) para tipos que podem tomar a tela.
+    if (TAKEOVER_TYPES[type]) {
+      bodyEl.appendChild(buildField({
+        key: 'prioridade', label: 'Prioridade na tela',
+        kind: 'select', def: 'normal',
+        options: [['normal', 'Normal'], ['destaque', 'Destaque (amplia sobre a tela)'], ['urgente', 'Urgente (tela cheia + alerta)']],
+      }, draft));
+    }
     $('#modal').classList.remove('hidden');
   }
+  // Tipos que podem "tomar a tela" quando marcados como prioritários.
+  const TAKEOVER_TYPES = {
+    announce: 1, text: 1, notice: 1, birthdaycard: 1, spotlight: 1,
+    kpi: 1, promo: 1, quote: 1, image: 1, agenda: 1, social: 1,
+  };
 
   function buildField(f, draft) {
     if (f.kind === 'checkbox') {
@@ -1100,6 +1114,27 @@
       grid.appendChild(card);
     });
     host.appendChild(grid);
+
+    // Recursos inteligentes (Fase 3).
+    host.appendChild(el('div', 'add-section-label', 'Recursos inteligentes'));
+    host.appendChild(toggleRow('coresAdaptativas',
+      'Cores adaptativas', 'O tema se ajusta às cores da imagem em exibição.'));
+    host.appendChild(toggleRow('layoutInteligente',
+      'Layout inteligente', 'Conteúdos marcados como prioritários tomam a tela e depois voltam.'));
+  }
+
+  // Linha de toggle (checkbox) ligada a uma configuração booleana.
+  function toggleRow(key, label, desc) {
+    const row = el('label', 'toggle-row');
+    const input = el('input'); input.type = 'checkbox';
+    input.checked = config.settings[key] !== false;
+    input.addEventListener('change', () => { config.settings[key] = input.checked; markDirty(); });
+    const txt = el('div', 'toggle-text');
+    txt.appendChild(el('span', 'toggle-label', label));
+    txt.appendChild(el('span', 'toggle-desc', desc));
+    row.appendChild(input);
+    row.appendChild(txt);
+    return row;
   }
 
   function applySeasonPack(season) {

@@ -87,6 +87,7 @@
   function teardownZones() {
     zoneControllers.forEach((c) => c.stop && c.stop());
     zoneControllers.length = 0;
+    clearTakeover();
     stage.innerHTML = '';
   }
 
@@ -119,6 +120,14 @@
     const fx = resolved ? resolved.fx : 0.9;
     document.documentElement.classList.toggle('mt-perf', fx <= 0.25);
 
+    // Inteligência de cor: registra as cores base e liga/desliga a adaptação.
+    if (global.MTAdaptive) {
+      MTAdaptive.enabled = cfg.settings.coresAdaptativas !== false;
+      if (resolved) MTAdaptive.setBase({ accent: resolved.accent, glow: resolved.glow });
+    }
+    // Layout inteligente (takeover de prioridade) ligado por padrão.
+    smartLayout = cfg.settings.layoutInteligente !== false;
+
     // Decoração sazonal (neve, corações, bandeirinhas…) sobre o palco.
     buildDecoration(cfg);
 
@@ -140,6 +149,71 @@
         zoneControllers.push(startPlaylist(zoneEl, data.items || [], cfg));
       }
     });
+  }
+
+  /* ---------------- Layout inteligente: takeover de prioridade ----------------
+   * Quando uma zona exibe um conteúdo marcado como "destaque" ou "urgente",
+   * o director o promove para o centro da tela, desfocando/escurecendo o
+   * resto — e depois libera, voltando ao layout normal. As zonas por baixo
+   * (inclusive vídeo/live) nunca são interrompidas. */
+
+  let smartLayout = true;
+  const takeover = { el: null, level: null, timer: null, onLeave: null };
+  // Tipos que podem "tomar a tela" (evita duplicar vídeos/lives/iframes).
+  const TAKEOVER_TYPES = {
+    announce: 1, text: 1, notice: 1, birthdaycard: 1, spotlight: 1,
+    kpi: 1, promo: 1, quote: 1, image: 1, agenda: 1, social: 1,
+  };
+  const LEVEL_RANK = { destaque: 1, urgente: 2 };
+
+  function maybeTakeover(item) {
+    if (!smartLayout) return;
+    const level = item && item.prioridade;
+    if (level !== 'destaque' && level !== 'urgente') return;
+    if (!TAKEOVER_TYPES[item.type]) return;
+    // Já há um takeover: só um mais forte (urgente) preempta.
+    if (takeover.el) {
+      if (LEVEL_RANK[level] > LEVEL_RANK[takeover.level]) clearTakeover();
+      else return;
+    }
+    showTakeover(item, level);
+  }
+
+  function showTakeover(item, level) {
+    let rendered;
+    try { rendered = MTRender.renderItem(item); } catch (e) { return; }
+    const layer = document.createElement('div');
+    layer.className = 'mt-takeover mt-takeover-' + level;
+    if (level === 'urgente') {
+      const bar = document.createElement('div');
+      bar.className = 'mt-takeover-alert';
+      bar.textContent = (item.etiqueta || 'AVISO IMPORTANTE');
+      layer.appendChild(bar);
+    }
+    const card = document.createElement('div');
+    card.className = 'mt-takeover-card';
+    rendered.el.classList.add('mt-active');
+    card.appendChild(rendered.el);
+    layer.appendChild(card);
+    document.body.appendChild(layer);
+    void layer.offsetWidth;
+    layer.classList.add('mt-in');
+    try { rendered.onEnter && rendered.onEnter(function () {}); } catch (e) {}
+
+    takeover.el = layer; takeover.level = level; takeover.onLeave = rendered.onLeave;
+    const dur = (item.duracao && item.duracao > 0) ? item.duracao : 10;
+    takeover.timer = setTimeout(clearTakeover, dur * 1000);
+  }
+
+  function clearTakeover() {
+    if (!takeover.el) return;
+    clearTimeout(takeover.timer);
+    const layer = takeover.el;
+    try { takeover.onLeave && takeover.onLeave(); } catch (e) {}
+    layer.classList.remove('mt-in');
+    layer.classList.add('mt-out');
+    setTimeout(() => layer.remove(), 700);
+    takeover.el = null; takeover.level = null; takeover.onLeave = null;
   }
 
   /* ---------------- Decoração sazonal ---------------- */
@@ -267,6 +341,9 @@
       let advanced = false;
       const goNext = () => { if (!advanced) { advanced = true; schedule(0); } };
       try { rendered.onEnter && rendered.onEnter(goNext); } catch (e) {}
+
+      // Conteúdo prioritário toma a tela (layout inteligente).
+      try { maybeTakeover(item); } catch (e) {}
 
       const dur = rendered.duration;
       if (single) return; // estática — só o próprio item avança (ex.: vídeo ao terminar)

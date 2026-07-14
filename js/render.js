@@ -157,7 +157,21 @@
       el.textContent = 'Imagem indisponível';
     };
     el.appendChild(img);
-    return { el, duration: item.duracao || 8 };
+
+    // Cores adaptativas: ao exibir, o tema desloca o destaque para combinar
+    // com a imagem; ao sair, restaura. Só atua se ligado nas configurações.
+    let adapted = false;
+    function tryAdapt() {
+      if (!adapted && global.MTAdaptive && MTAdaptive.enabled && img.naturalWidth) {
+        adapted = MTAdaptive.adaptTo(img);
+      }
+    }
+    return {
+      el,
+      duration: item.duracao || 8,
+      onEnter: function () { img.complete ? tryAdapt() : (img.onload = tryAdapt); },
+      onLeave: function () { if (adapted && global.MTAdaptive) MTAdaptive.restore(); },
+    };
   }
 
   function renderVideo(item) {
