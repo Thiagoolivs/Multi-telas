@@ -13,10 +13,28 @@ Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
 
 - **Multi-telas numa só exibição:** várias zonas independentes (principal, lateral,
   cabeçalho, rodapé) rodando conteúdos diferentes ao mesmo tempo.
-- **Visual de dashboard profissional:** tema azul noite com zonas arredondadas,
-  fundo e cores 100% personalizáveis.
-- **7 templates prontos** com **zonas clicáveis** — incluindo o "Painel Notícias"
+- **Visual premium com glassmorphism:** zonas em vidro fosco com profundidade,
+  fundo vivo (aurora + granulado sutil) e transições cinematográficas.
+- **9 temas premium prontos:** Dark Premium, Corporate Blue, Luxury Gold, Neon Cyber,
+  Glassmorphism, Minimal White, Elegant Black, Energy Green e Modern Purple — trocar
+  o tema reestiliza a interface inteira num clique.
+- **Layout inteligente:** conteúdos marcados como **Destaque** ou **Urgente** tomam a
+  tela (os demais desfocam/escurecem), com animação cinematográfica, e depois voltam
+  ao normal — vídeos e lives por baixo nunca são interrompidos.
+- **Cores adaptativas:** ao exibir uma imagem, o tema desloca suavemente o destaque
+  para combinar com as cores dela — o player parece "entender" o conteúdo.
+- **Editor visual de tema:** cores (primária/secundária/destaque/fundo), fontes
+  (Inter, Poppins, Montserrat, Roboto, Space Grotesk) e sliders de vidro, desfoque,
+  cantos e intensidade dos efeitos — com prévia ao vivo. Identidade visual própria.
+- **8 templates prontos** com **zonas clicáveis** — incluindo o "Painel Notícias"
   (clima na lateral, destaque grande e faixa de notícias com relógio ao vivo).
+- **Biblioteca de conteúdos por categoria:** Comunicação interna, Eventos, Pessoas,
+  Marketing e Tempo real — o cliente escolhe um modelo pronto e só edita os textos.
+- **Datas comemorativas brasileiras:** 13 pacotes (Natal, Ano Novo, Carnaval, Páscoa,
+  Dia do Trabalho, Dia das Mães, Festa Junina, Dia dos Pais, Independência, Dia das
+  Crianças, Outubro Rosa, Novembro Azul, Black Friday) — aplicar define tema, decoração
+  e mensagem pronta. **Decorações animadas** (neve, corações, bandeirinhas, confete,
+  fogos, pétalas, luzes) com opção automática pela data.
 - **Dados em tempo real, sem chave de API:** data/hora com segundos, clima atual +
   previsão de 6 dias (Open-Meteo), **trânsito ao vivo (Waze)** e mapas (OpenStreetMap).
 - **Notícias automáticas de portais famosos (RSS):** G1, UOL, Folha, CNN Brasil,
@@ -130,10 +148,15 @@ Multi-telas/
 │   └── player.css       # Estilo do player
 ├── js/
 │   ├── templates.js     # Catálogo de layouts (templates prontos)
+│   ├── theme.js         # Motor de temas (9 presets + tokens + fontes)
+│   ├── seasons.js       # Datas comemorativas BR + decorações
+│   ├── adaptive.js      # Cores adaptativas (analisa a imagem exibida)
 │   ├── storage.js       # Dados: salvar/carregar/exportar/importar/remoto
+│   ├── news.js          # Notícias automáticas via RSS
 │   ├── render.js        # Renderiza cada tipo de conteúdo
-│   ├── player.js        # Motor de exibição (zonas, rotação, ticker)
+│   ├── player.js        # Motor de exibição (zonas, rotação, decorações)
 │   └── admin.js         # Lógica do painel de administração
+├── server.js            # Servidor estático (deploy Railway/Node)
 └── README.md
 ```
 

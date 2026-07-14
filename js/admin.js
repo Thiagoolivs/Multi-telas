@@ -44,6 +44,13 @@
     news: '<rect x="3" y="4" width="15" height="16" rx="2"/><path d="M18 8h2a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2H5M7 8h7M7 12h7M7 16h4"/>',
     car: '<path d="M5.5 15.5L7 10a2 2 0 0 1 1.9-1.5h6.2A2 2 0 0 1 17 10l1.5 5.5M4.5 15.5h15a1 1 0 0 1 1 1V19h-2.5v-1.5h-12V19H3.5v-2.5a1 1 0 0 1 1-1zM7.5 13h.01M16.5 13h.01"/>',
     pin: '<path d="M12 21.5S5 15.7 5 10a7 7 0 0 1 14 0c0 5.7-7 11.5-7 11.5z"/><circle cx="12" cy="10" r="2.6"/>',
+    star: '<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L3.3 9.3l6.1-.7z"/>',
+    quote: '<path d="M9 7H5a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3v1a2 2 0 0 1-2 2M20 7h-4a1 1 0 0 0-1 1v4a1 1 0 0 0 1 1h3v1a2 2 0 0 1-2 2"/>',
+    chart: '<path d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-7"/>',
+    tag: '<path d="M3 11.5V5a2 2 0 0 1 2-2h6.5a2 2 0 0 1 1.4.6l7 7a2 2 0 0 1 0 2.8l-6.5 6.5a2 2 0 0 1-2.8 0l-7-7A2 2 0 0 1 3 11.5z"/><circle cx="7.5" cy="7.5" r="1.3" fill="currentColor" stroke="none"/>',
+    share: '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 10.8l7.6-3.6M8.2 13.2l7.6 3.6"/>',
+    calendar2: '<rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 2.5V6.5M16 2.5V6.5"/>',
+    sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18"/>',
   };
   function icon(name) {
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
@@ -124,6 +131,55 @@
       { key: 'cor', label: 'Cor do texto', kind: 'color', def: '#ffffff' },
       { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 15 },
     ],
+    spotlight: [
+      { key: 'etiqueta', label: 'Etiqueta', kind: 'text', def: 'DESTAQUE DO MÊS' },
+      { key: 'nome', label: 'Nome', kind: 'text', ph: 'Ex.: Mariana Alves' },
+      { key: 'cargo', label: 'Cargo / função', kind: 'text', ph: 'Ex.: Analista de Produção' },
+      { key: 'mensagem', label: 'Mensagem', kind: 'textarea' },
+      { key: 'foto', label: 'Foto (opcional)', kind: 'imagesrc' },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#0c1830' },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 14 },
+    ],
+    agenda: [
+      { key: 'titulo', label: 'Título', kind: 'text', def: 'Programação' },
+      { key: 'itens', label: 'Itens (um por linha, ex.: "08:00 | Abertura")', kind: 'textarea', ph: '08:00 | Abertura\n09:30 | Palestra' },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#0b1a2e' },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 15 },
+    ],
+    quote: [
+      { key: 'texto', label: 'Frase', kind: 'textarea' },
+      { key: 'autor', label: 'Autor', kind: 'text' },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#0c1830' },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 12 },
+    ],
+    kpi: [
+      { key: 'rotulo', label: 'Rótulo (ex.: Produção do mês)', kind: 'text' },
+      { key: 'valor', label: 'Valor (ex.: 12.480)', kind: 'text' },
+      { key: 'tendencia', label: 'Tendência', kind: 'select', options: [['subiu', 'Subiu ▲'], ['desceu', 'Desceu ▼'], ['estavel', 'Estável ▬']], def: 'subiu' },
+      { key: 'variacao', label: 'Variação (ex.: 8,2%)', kind: 'text' },
+      { key: 'detalhe', label: 'Detalhe (ex.: unidades produzidas)', kind: 'text' },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#0b1a2e' },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 12 },
+    ],
+    promo: [
+      { key: 'selo', label: 'Selo (ex.: OFERTA)', kind: 'text', def: 'Oferta' },
+      { key: 'titulo', label: 'Título do produto', kind: 'text' },
+      { key: 'imagem', label: 'Imagem', kind: 'imagesrc' },
+      { key: 'precoDe', label: 'Preço "de" (ex.: R$ 4,90)', kind: 'text' },
+      { key: 'precoPor', label: 'Preço "por" (ex.: R$ 3,49)', kind: 'text' },
+      { key: 'cta', label: 'Chamada (ex.: Fale com o comercial)', kind: 'text' },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#12060f' },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 12 },
+    ],
+    social: [
+      { key: 'titulo', label: 'Título', kind: 'text', def: 'Siga-nos nas redes' },
+      { key: 'rede', label: 'Rede', kind: 'select', options: [['instagram', 'Instagram'], ['facebook', 'Facebook'], ['youtube', 'YouTube'], ['linkedin', 'LinkedIn'], ['tiktok', 'TikTok'], ['site', 'Site']], def: 'instagram' },
+      { key: 'handle', label: 'Perfil / @usuário', kind: 'text', ph: '@raftembalagens' },
+      { key: 'url', label: 'Link (para o QR)', kind: 'text', ph: 'https://instagram.com/…' },
+      { key: 'qr', label: 'Mostrar QR Code', kind: 'checkbox', def: true },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#0b1020' },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 12 },
+    ],
     clock: [
       { key: 'bg', label: 'Cor de fundo', kind: 'color', def: '#101828' },
       { key: 'duracao', label: 'Duração (s)', kind: 'number', def: 10 },
@@ -148,7 +204,7 @@
   /* ================= Conteúdos prontos (presets em grupos) ================= */
   const PRESET_GROUPS = [
     {
-      label: 'Avisos e comunicados',
+      label: 'Comunicação interna',
       presets: [
         {
           label: 'Comunicado interno', desc: 'Informativo geral para a equipe', icon: 'megaphone',
@@ -210,7 +266,28 @@
       ],
     },
     {
-      label: 'Comemorativos e mídia',
+      label: 'Eventos',
+      presets: [
+        {
+          label: 'Reunião / evento', desc: 'Convocação com data e local', icon: 'calendar',
+          item: { type: 'announce', tipo: 'evento', titulo: 'Reunião Geral', corpo: 'Participação de todas as equipes.', info: 'Sexta-feira · 15h · Auditório', duracao: 12 },
+        },
+        {
+          label: 'Agenda / programação', desc: 'Lista de horários e atividades', icon: 'calendar2',
+          item: { type: 'agenda', titulo: 'Programação do Dia', itens: '08:00 | Abertura e café\n09:30 | Palestra de Segurança\n11:00 | Reunião de Equipes', bg: '#0b1a2e', duracao: 15 },
+        },
+        {
+          label: 'Convite', desc: 'Divulgação de evento', icon: 'sparkle',
+          item: { type: 'announce', tipo: 'evento', titulo: 'Você está convidado!', corpo: 'Confraternização de fim de ano da Raft Embalagens.', info: '20/12 · 19h · Salão de Eventos', duracao: 12 },
+        },
+        {
+          label: 'Treinamento', desc: 'Capacitações e workshops', icon: 'book',
+          item: { type: 'announce', tipo: 'treinamento', titulo: 'Novo Treinamento', corpo: 'Inscreva-se no treinamento pela intranet.', info: '', duracao: 12 },
+        },
+      ],
+    },
+    {
+      label: 'Pessoas',
       presets: [
         {
           label: 'Cartão de aniversário', desc: 'Foto, balões e mensagem', icon: 'gift',
@@ -221,20 +298,37 @@
           item: { type: 'birthday', titulo: 'Aniversariantes do Mês', nomes: 'Nome — 01/01', bg: '#1f2a52', cor: '#ffffff', duracao: 15 },
         },
         {
+          label: 'Destaque de funcionário', desc: 'Funcionário do mês, reconhecimento', icon: 'star',
+          item: { type: 'spotlight', etiqueta: 'FUNCIONÁRIO DO MÊS', nome: '', cargo: '', mensagem: 'Reconhecimento pelo comprometimento e excelência.', foto: '', bg: '#0c1830', duracao: 14 },
+        },
+        {
           label: 'Boas-vindas', desc: 'Mensagem de recepção', icon: 'text',
           item: { type: 'text', titulo: 'Seja bem-vindo(a)!', corpo: 'É um prazer receber você na Raft Embalagens.', bg: '#2F6FEB', cor: '#ffffff', duracao: 10 },
         },
+      ],
+    },
+    {
+      label: 'Marketing',
+      presets: [
         {
-          label: 'Foto / campanha', desc: 'Imagem enviada do computador', icon: 'image',
+          label: 'Promoção / produto', desc: 'Imagem, preço e chamada', icon: 'tag',
+          item: { type: 'promo', selo: 'Oferta', titulo: 'Produto em destaque', imagem: '', precoDe: '', precoPor: 'R$ 0,00', cta: 'Fale com o comercial', bg: '#12060f', duracao: 12 },
+        },
+        {
+          label: 'Indicador (KPI)', desc: 'Número de destaque com tendência', icon: 'chart',
+          item: { type: 'kpi', rotulo: 'Produção do mês', valor: '12.480', tendencia: 'subiu', variacao: '8,2%', detalhe: 'unidades produzidas', bg: '#0b1a2e', duracao: 12 },
+        },
+        {
+          label: 'Redes sociais', desc: 'Perfil + QR para seguir', icon: 'share',
+          item: { type: 'social', titulo: 'Siga-nos nas redes', rede: 'instagram', handle: '@raftembalagens', url: 'https://instagram.com/raftembalagens', qr: true, bg: '#0b1020', duracao: 12 },
+        },
+        {
+          label: 'Campanha (imagem)', desc: 'Foto/arte em tela cheia', icon: 'image',
           item: { type: 'image', src: '', fit: 'cover', duracao: 8 },
         },
         {
-          label: 'Vídeo do YouTube', desc: 'Vídeo com duração definida', icon: 'play',
-          item: { type: 'youtube', videoId: '', duracao: 30 },
-        },
-        {
-          label: 'Relógio', desc: 'Hora e data atuais', icon: 'clock',
-          item: { type: 'clock', bg: '#101828', duracao: 10 },
+          label: 'Frase do dia', desc: 'Citação motivacional', icon: 'quote',
+          item: { type: 'quote', texto: 'A qualidade nunca é acidente; é sempre resultado de um esforço inteligente.', autor: 'John Ruskin', bg: '#0c1830', duracao: 12 },
         },
       ],
     },
@@ -313,8 +407,8 @@
 
   /* ================= Configurações gerais ================= */
   const SETTINGS_MAP = {
-    '#cfg-nome': 'nome', '#cfg-titulo': 'titulo', '#cfg-cor': 'cor',
-    '#cfg-fundo': 'fundo', '#cfg-cidade': 'cidadeClima', '#cfg-logo': 'logoUrl',
+    '#cfg-nome': 'nome', '#cfg-titulo': 'titulo',
+    '#cfg-cidade': 'cidadeClima', '#cfg-logo': 'logoUrl',
     '#cfg-transicao': 'transicao', '#cfg-remote': 'remoteConfigUrl',
     '#cfg-refresh': 'refreshSeconds',
   };
@@ -653,8 +747,22 @@
     const bodyEl = $('#modal-body');
     bodyEl.innerHTML = '';
     FORMS[type].forEach((f) => bodyEl.appendChild(buildField(f, draft)));
+
+    // Campo de prioridade (layout inteligente) para tipos que podem tomar a tela.
+    if (TAKEOVER_TYPES[type]) {
+      bodyEl.appendChild(buildField({
+        key: 'prioridade', label: 'Prioridade na tela',
+        kind: 'select', def: 'normal',
+        options: [['normal', 'Normal'], ['destaque', 'Destaque (amplia sobre a tela)'], ['urgente', 'Urgente (tela cheia + alerta)']],
+      }, draft));
+    }
     $('#modal').classList.remove('hidden');
   }
+  // Tipos que podem "tomar a tela" quando marcados como prioritários.
+  const TAKEOVER_TYPES = {
+    announce: 1, text: 1, notice: 1, birthdaycard: 1, spotlight: 1,
+    kpi: 1, promo: 1, quote: 1, image: 1, agenda: 1, social: 1,
+  };
 
   function buildField(f, draft) {
     if (f.kind === 'checkbox') {
@@ -843,10 +951,221 @@
     $('#preview-frame').contentWindow.location.reload();
   }
 
+  /* ================= Editor de temas ================= */
+  function ensureTheme() {
+    const s = config.settings;
+    if (!s.theme || typeof s.theme !== 'object') s.theme = { preset: 'dark-premium', font: 'system', overrides: {} };
+    if (!s.theme.overrides || typeof s.theme.overrides !== 'object') s.theme.overrides = {};
+    return s.theme;
+  }
+
+  function renderThemeEditor() {
+    const host = $('#theme-editor');
+    if (!host || !window.MTTheme) return;
+    const theme = ensureTheme();
+    host.innerHTML = '';
+
+    // ---- Galeria de presets ----
+    const gallery = el('div', 'theme-presets');
+    MTTheme.listPresets().forEach(({ id, label, preset }) => {
+      const card = el('button', 'theme-preset');
+      card.type = 'button';
+      if (theme.preset === id) card.classList.add('active');
+      const sw = el('div', 'theme-swatch');
+      sw.style.background = 'linear-gradient(135deg, ' + preset.bg + ', ' + preset.bg2 + ')';
+      const dotB = el('span', 'theme-dot'); dotB.style.background = preset.brand;
+      const dotA = el('span', 'theme-dot'); dotA.style.background = preset.accent;
+      const chip = el('span', 'theme-chip');
+      chip.style.background = 'rgba(' + preset.surface + ',' + Math.max(preset.glass, 0.3) + ')';
+      chip.style.borderColor = preset.border;
+      sw.appendChild(chip); sw.appendChild(dotB); sw.appendChild(dotA);
+      card.appendChild(sw);
+      card.appendChild(el('span', 'theme-preset-name', label));
+      card.addEventListener('click', () => {
+        theme.preset = id;
+        theme.overrides = {}; // aplica o preset puro; ajustes ficam por conta do usuário
+        markDirty();
+        renderThemeEditor();
+      });
+      gallery.appendChild(card);
+    });
+    host.appendChild(gallery);
+
+    // ---- Personalização manual ----
+    const eff = MTTheme.resolve(theme); // valores efetivos atuais
+    const ov = theme.overrides;
+
+    const details = el('details', 'theme-custom');
+    const sum = el('summary');
+    sum.textContent = 'Personalizar cores, fonte e efeitos';
+    details.appendChild(sum);
+
+    // Cores
+    const colors = el('div', 'theme-grid');
+    [['brand', 'Cor primária'], ['brand2', 'Cor secundária'],
+     ['accent', 'Cor de destaque'], ['bg', 'Fundo']].forEach(([key, lbl]) => {
+      const f = el('label', 'field');
+      f.appendChild(el('span', null, lbl));
+      const inp = el('input'); inp.type = 'color';
+      inp.value = toHex(eff[key]);
+      inp.addEventListener('input', () => { ov[key] = inp.value; markDirty(); scheduleLivePreview(); });
+      f.appendChild(inp);
+      colors.appendChild(f);
+    });
+    details.appendChild(colors);
+
+    // Fonte
+    const fontField = el('label', 'field');
+    fontField.style.marginTop = '12px';
+    fontField.appendChild(el('span', null, 'Fonte'));
+    const fontSel = el('select');
+    MTTheme.listFonts().forEach(({ id, label }) => {
+      const o = el('option', null, label); o.value = id; fontSel.appendChild(o);
+    });
+    fontSel.value = theme.font || 'system';
+    fontSel.addEventListener('change', () => { theme.font = fontSel.value; markDirty(); scheduleLivePreview(); });
+    fontField.appendChild(fontSel);
+    details.appendChild(fontField);
+
+    // Sliders de efeito
+    const sliders = el('div', 'theme-sliders');
+    [['glass', 'Transparência (vidro)', 0, 1, 0.02],
+     ['blur', 'Desfoque', 0, 44, 1],
+     ['radius', 'Cantos arredondados', 0, 36, 1],
+     ['fx', 'Intensidade dos efeitos', 0, 1, 0.05]].forEach(([key, lbl, min, max, step]) => {
+      const wrap = el('label', 'field theme-slider');
+      const head = el('span', null, lbl);
+      wrap.appendChild(head);
+      const inp = el('input'); inp.type = 'range';
+      inp.min = min; inp.max = max; inp.step = step;
+      inp.value = eff[key];
+      inp.addEventListener('input', () => { ov[key] = Number(inp.value); markDirty(); scheduleLivePreview(); });
+      wrap.appendChild(inp);
+      sliders.appendChild(wrap);
+    });
+    details.appendChild(sliders);
+
+    const reset = el('button', 'btn btn-ghost btn-sm', 'Restaurar tema original');
+    reset.type = 'button';
+    reset.style.marginTop = '12px';
+    reset.addEventListener('click', () => { theme.overrides = {}; markDirty(); renderThemeEditor(); scheduleLivePreview(); });
+    details.appendChild(reset);
+
+    const hint = el('p', 'hint');
+    hint.textContent = 'As alterações aparecem na prévia ao lado. Clique em Salvar para publicar nas TVs.';
+    details.appendChild(hint);
+
+    host.appendChild(details);
+  }
+
+  // Normaliza para #rrggbb (input color exige hex).
+  function toHex(c) {
+    if (typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c)) return c;
+    return '#000000';
+  }
+
+  // Prévia ao vivo do tema: aplica no iframe sem exigir salvar.
+  let livePreviewTimer = null;
+  function scheduleLivePreview() {
+    clearTimeout(livePreviewTimer);
+    livePreviewTimer = setTimeout(() => {
+      try {
+        const win = $('#preview-frame').contentWindow;
+        if (win && win.MTTheme) win.MTTheme.apply(ensureTheme(), win.document.documentElement);
+      } catch (e) { /* silencioso */ }
+    }, 120);
+  }
+
+  /* ================= Datas comemorativas ================= */
+  function renderSeasonsEditor() {
+    const host = $('#seasons-editor');
+    if (!host || !window.MTSeasons) return;
+    host.innerHTML = '';
+
+    // Seletor de decoração animada (manual ou automática pela data).
+    const decorField = el('label', 'field');
+    decorField.appendChild(el('span', null, 'Decoração animada sobre a tela'));
+    const sel = el('select');
+    [['none', 'Nenhuma'], ['auto', 'Automática (pela data de hoje)']]
+      .concat(MTSeasons.DECORATIONS.filter((d) => d.id !== 'none').map((d) => [d.id, d.label]))
+      .forEach(([v, t]) => { const o = el('option', null, t); o.value = v; sel.appendChild(o); });
+    sel.value = config.settings.decoracao || 'none';
+    sel.addEventListener('change', () => { config.settings.decoracao = sel.value; markDirty(); });
+    decorField.appendChild(sel);
+    host.appendChild(decorField);
+
+    // Galeria de pacotes de datas comemorativas.
+    host.appendChild(el('div', 'add-section-label', 'Pacotes de datas comemorativas'));
+    const hint = el('p', 'hint');
+    hint.textContent = 'Aplicar um pacote define o tema, a decoração e adiciona uma mensagem pronta na tela principal.';
+    hint.style.margin = '0 0 10px';
+    host.appendChild(hint);
+
+    const today = MTSeasons.todaySeason();
+    const grid = el('div', 'seasons-grid');
+    MTSeasons.SEASONS.forEach((s) => {
+      const card = el('button', 'season-card');
+      card.type = 'button';
+      if (today && today.id === s.id) card.classList.add('today');
+      card.appendChild(el('span', 'season-emoji', s.emoji));
+      card.appendChild(el('span', 'season-name', s.label));
+      if (today && today.id === s.id) card.appendChild(el('span', 'season-badge', 'hoje'));
+      card.addEventListener('click', () => applySeasonPack(s));
+      grid.appendChild(card);
+    });
+    host.appendChild(grid);
+
+    // Recursos inteligentes (Fase 3).
+    host.appendChild(el('div', 'add-section-label', 'Recursos inteligentes'));
+    host.appendChild(toggleRow('coresAdaptativas',
+      'Cores adaptativas', 'O tema se ajusta às cores da imagem em exibição.'));
+    host.appendChild(toggleRow('layoutInteligente',
+      'Layout inteligente', 'Conteúdos marcados como prioritários tomam a tela e depois voltam.'));
+  }
+
+  // Linha de toggle (checkbox) ligada a uma configuração booleana.
+  function toggleRow(key, label, desc) {
+    const row = el('label', 'toggle-row');
+    const input = el('input'); input.type = 'checkbox';
+    input.checked = config.settings[key] !== false;
+    input.addEventListener('change', () => { config.settings[key] = input.checked; markDirty(); });
+    const txt = el('div', 'toggle-text');
+    txt.appendChild(el('span', 'toggle-label', label));
+    txt.appendChild(el('span', 'toggle-desc', desc));
+    row.appendChild(input);
+    row.appendChild(txt);
+    return row;
+  }
+
+  function applySeasonPack(season) {
+    const theme = ensureTheme();
+    theme.preset = season.theme.preset || theme.preset;
+    theme.overrides = Object.assign({}, season.theme.overrides || {});
+    config.settings.decoracao = season.decoracao || 'none';
+
+    // Adiciona a saudação pronta no início da primeira zona de conteúdo.
+    const layout = MT_getLayout(config.settings.layoutId);
+    const zone = layout.zones.find((z) => z.type === 'playlist');
+    if (zone && season.greeting) {
+      const z = config.zonas[zone.id] || (config.zonas[zone.id] = { items: [] });
+      if (!z.items) z.items = [];
+      z.items.unshift(Object.assign({}, season.greeting));
+    }
+    markDirty();
+    renderThemeEditor();
+    renderSeasonsEditor();
+    renderContent();
+    scheduleLivePreview();
+    $('#save-status').textContent = 'Pacote "' + season.label + '" aplicado — clique em Salvar';
+    $('#save-status').style.color = 'var(--brand)';
+  }
+
   /* ================= Inicialização ================= */
   function renderAll() {
     renderTemplates();
     fillSettings();
+    renderThemeEditor();
+    renderSeasonsEditor();
     renderContent();
   }
 

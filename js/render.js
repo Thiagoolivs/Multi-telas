@@ -116,6 +116,12 @@
     weatherpro: renderWeatherPro,
     traffic: renderTraffic,
     map: renderMap,
+    quote: renderQuote,
+    spotlight: renderSpotlight,
+    agenda: renderAgenda,
+    kpi: renderKpi,
+    promo: renderPromo,
+    social: renderSocial,
     web: renderWeb,
     qrcode: renderQr,
   };
@@ -151,7 +157,21 @@
       el.textContent = 'Imagem indisponível';
     };
     el.appendChild(img);
-    return { el, duration: item.duracao || 8 };
+
+    // Cores adaptativas: ao exibir, o tema desloca o destaque para combinar
+    // com a imagem; ao sair, restaura. Só atua se ligado nas configurações.
+    let adapted = false;
+    function tryAdapt() {
+      if (!adapted && global.MTAdaptive && MTAdaptive.enabled && img.naturalWidth) {
+        adapted = MTAdaptive.adaptTo(img);
+      }
+    }
+    return {
+      el,
+      duration: item.duracao || 8,
+      onEnter: function () { img.complete ? tryAdapt() : (img.onload = tryAdapt); },
+      onLeave: function () { if (adapted && global.MTAdaptive) MTAdaptive.restore(); },
+    };
   }
 
   function renderVideo(item) {
@@ -580,6 +600,152 @@
     }[c]));
   }
 
+  /* ---------- Frase / citação ---------- */
+  function renderQuote(item) {
+    const el = div('mt-slide mt-quote');
+    if (item.bg) el.style.background = item.bg;
+    const inner = div('mt-quote-inner');
+    const mark = div('mt-quote-mark'); mark.textContent = '“';
+    const txt = div('mt-quote-text'); txt.textContent = item.texto || '';
+    inner.appendChild(mark);
+    inner.appendChild(txt);
+    if (item.autor) {
+      const a = div('mt-quote-author'); a.textContent = item.autor;
+      inner.appendChild(a);
+    }
+    el.appendChild(inner);
+    return { el, duration: item.duracao || 12 };
+  }
+
+  /* ---------- Destaque de pessoa (funcionário do mês, reconhecimento) ---------- */
+  function renderSpotlight(item) {
+    const el = div('mt-slide mt-spot');
+    el.style.background = item.bg || '#0c1830';
+    const inner = div('mt-spot-inner');
+
+    const photoWrap = div('mt-spot-photo-wrap');
+    if (item.foto) {
+      const img = document.createElement('img');
+      img.className = 'mt-spot-photo'; img.src = item.foto; img.alt = '';
+      photoWrap.appendChild(img);
+    } else {
+      const ini = div('mt-spot-photo mt-spot-initials');
+      ini.textContent = (item.nome || '?').split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
+      photoWrap.appendChild(ini);
+    }
+
+    const info = div('mt-spot-info');
+    const kicker = div('mt-spot-kicker'); kicker.textContent = item.etiqueta || 'DESTAQUE DO MÊS';
+    const name = div('mt-spot-name'); name.textContent = item.nome || '';
+    info.appendChild(kicker);
+    info.appendChild(name);
+    if (item.cargo) { const r = div('mt-spot-role'); r.textContent = item.cargo; info.appendChild(r); }
+    if (item.mensagem) { const m = div('mt-spot-msg'); m.textContent = item.mensagem; info.appendChild(m); }
+
+    inner.appendChild(photoWrap);
+    inner.appendChild(info);
+    el.appendChild(inner);
+    return { el, duration: item.duracao || 14 };
+  }
+
+  /* ---------- Agenda / programação ---------- */
+  function renderAgenda(item) {
+    const el = div('mt-slide mt-agenda');
+    if (item.bg) el.style.background = item.bg;
+    const inner = div('mt-agenda-inner');
+    const title = div('mt-agenda-title'); title.textContent = item.titulo || 'Programação';
+    inner.appendChild(title);
+    const list = div('mt-agenda-list');
+    String(item.itens || '').split('\n').map((s) => s.trim()).filter(Boolean).forEach((line) => {
+      const parts = line.split(/\s*[|\-–—]\s*/);
+      const row = div('mt-agenda-row');
+      const h = div('mt-agenda-time'); h.textContent = parts[0] || '';
+      const a = div('mt-agenda-act'); a.textContent = parts.slice(1).join(' ') || '';
+      row.appendChild(h); row.appendChild(a);
+      list.appendChild(row);
+    });
+    inner.appendChild(list);
+    el.appendChild(inner);
+    return { el, duration: item.duracao || 15 };
+  }
+
+  /* ---------- Indicador / KPI ---------- */
+  function renderKpi(item) {
+    const el = div('mt-slide mt-kpi');
+    el.style.background = item.bg || '#0b1a2e';
+    const inner = div('mt-kpi-inner');
+    if (item.rotulo) { const l = div('mt-kpi-label'); l.textContent = item.rotulo; inner.appendChild(l); }
+    const valueWrap = div('mt-kpi-value-wrap');
+    const v = div('mt-kpi-value'); v.textContent = item.valor || '—';
+    valueWrap.appendChild(v);
+    const trend = (item.tendencia || 'estavel');
+    if (item.variacao) {
+      const t = div('mt-kpi-trend mt-kpi-' + trend);
+      const arrow = trend === 'subiu' ? '▲' : trend === 'desceu' ? '▼' : '▬';
+      t.textContent = arrow + ' ' + item.variacao;
+      valueWrap.appendChild(t);
+    }
+    inner.appendChild(valueWrap);
+    if (item.detalhe) { const d = div('mt-kpi-detail'); d.textContent = item.detalhe; inner.appendChild(d); }
+    el.appendChild(inner);
+    return { el, duration: item.duracao || 12 };
+  }
+
+  /* ---------- Promoção / produto ---------- */
+  function renderPromo(item) {
+    const el = div('mt-slide mt-promo');
+    el.style.background = item.bg || '#12060f';
+    const media = div('mt-promo-media');
+    if (item.imagem) {
+      const img = document.createElement('img'); img.src = item.imagem; img.alt = '';
+      img.onerror = () => media.classList.add('mt-broken');
+      media.appendChild(img);
+    }
+    const info = div('mt-promo-info');
+    if (item.selo) { const s = div('mt-promo-selo'); s.textContent = item.selo; info.appendChild(s); }
+    if (item.titulo) { const t = div('mt-promo-title'); t.textContent = item.titulo; info.appendChild(t); }
+    const prices = div('mt-promo-prices');
+    if (item.precoDe) { const de = div('mt-promo-de'); de.textContent = item.precoDe; prices.appendChild(de); }
+    if (item.precoPor) { const por = div('mt-promo-por'); por.textContent = item.precoPor; prices.appendChild(por); }
+    if (item.precoDe || item.precoPor) info.appendChild(prices);
+    if (item.cta) { const c = div('mt-promo-cta'); c.textContent = item.cta; info.appendChild(c); }
+    el.appendChild(media);
+    el.appendChild(info);
+    return { el, duration: item.duracao || 12 };
+  }
+
+  /* ---------- Redes sociais ---------- */
+  const SOCIAL_ICONS = {
+    instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/>',
+    facebook: '<path d="M14 8h2V5h-2a3 3 0 0 0-3 3v2H9v3h2v6h3v-6h2.2l.8-3H14V8.5c0-.3.2-.5.5-.5z"/>',
+    youtube: '<rect x="3" y="6" width="18" height="12" rx="3"/><path d="M11 9.5l4 2.5-4 2.5z" fill="currentColor" stroke="none"/>',
+    linkedin: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 10v6M7 7v.01M11 16v-3.5a1.5 1.5 0 0 1 3 0V16M11 16v-6" />',
+    tiktok: '<path d="M14 4v9a3.2 3.2 0 1 1-3-3.2M14 7a4 4 0 0 0 4 3.4"/>',
+    site: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  };
+  function renderSocial(item) {
+    const el = div('mt-slide mt-social');
+    el.style.background = item.bg || '#0b1020';
+    const inner = div('mt-social-inner');
+    const rede = item.rede || 'instagram';
+    const iconBox = div('mt-social-icon');
+    iconBox.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+      'stroke-linecap="round" stroke-linejoin="round">' + (SOCIAL_ICONS[rede] || SOCIAL_ICONS.site) + '</svg>';
+    inner.appendChild(iconBox);
+    const t = div('mt-social-title'); t.textContent = item.titulo || 'Siga-nos nas redes';
+    inner.appendChild(t);
+    if (item.handle) { const h = div('mt-social-handle'); h.textContent = item.handle; inner.appendChild(h); }
+    if (item.qr && item.handle) {
+      const qr = document.createElement('img');
+      qr.className = 'mt-social-qr';
+      qr.src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' +
+        encodeURIComponent(item.url || item.handle);
+      inner.appendChild(qr);
+    }
+    el.appendChild(inner);
+    return { el, duration: item.duracao || 12 };
+  }
+
   function renderWeb(item) {
     const el = div('mt-slide mt-web');
     const iframe = document.createElement('iframe');
@@ -633,6 +799,12 @@
     { type: 'weatherpro', label: 'Painel do Clima', icon: 'cloud' },
     { type: 'traffic', label: 'Trânsito (Waze)', icon: 'car' },
     { type: 'map', label: 'Mapa da Região', icon: 'pin' },
+    { type: 'spotlight', label: 'Destaque de Pessoa', icon: 'star' },
+    { type: 'agenda', label: 'Agenda / Programação', icon: 'calendar' },
+    { type: 'quote', label: 'Frase do Dia', icon: 'quote' },
+    { type: 'kpi', label: 'Indicador (KPI)', icon: 'chart' },
+    { type: 'promo', label: 'Promoção / Produto', icon: 'tag' },
+    { type: 'social', label: 'Redes Sociais', icon: 'share' },
     { type: 'clock', label: 'Relógio', icon: 'clock' },
     { type: 'weather', label: 'Clima (simples)', icon: 'cloud' },
     { type: 'web', label: 'Página Web', icon: 'globe' },

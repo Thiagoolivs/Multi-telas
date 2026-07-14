@@ -51,16 +51,6 @@
     try { return JSON.stringify(cfg); } catch (e) { return String(Math.random()); }
   }
 
-  // Clareia uma cor hex (#rrggbb) somando "amt" a cada canal.
-  function lighten(hex, amt) {
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
-    if (!m) return hex;
-    const n = parseInt(m[1], 16);
-    const r = Math.min(255, (n >> 16) + amt);
-    const g = Math.min(255, ((n >> 8) & 255) + amt);
-    const b = Math.min(255, (n & 255) + amt);
-    return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
-  }
 
   function applyConfig(cfg) {
     const fp = fingerprint(cfg);
@@ -97,6 +87,7 @@
   function teardownZones() {
     zoneControllers.forEach((c) => c.stop && c.stop());
     zoneControllers.length = 0;
+    clearTakeover();
     stage.innerHTML = '';
   }
 
@@ -122,20 +113,31 @@
       zoneControllers.push({ stop: () => clearInterval(breatheTimer) });
     }
 
-    // Cores do tema: destaque + fundo (com tom de zona derivado do fundo).
-    const root = document.documentElement;
-    root.style.setProperty('--brand', cfg.settings.cor || '#2F6FEB');
-    const fundo = cfg.settings.fundo || '#0a1128';
-    root.style.setProperty('--stage-bg', fundo);
-    root.style.setProperty('--zone-bg', lighten(fundo, 14));
-    root.style.setProperty('--zone-bg-2', lighten(fundo, 26));
-    stage.style.background =
-      'radial-gradient(130% 130% at 15% 0%, ' + lighten(fundo, 18) + ' 0%, ' + fundo + ' 55%)';
+    // Tema premium: aplica todos os design tokens (cores, vidro, sombras,
+    // fonte). Retrocompatível — configs antigas já foram migradas no storage.
+    const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme)) || null;
+    // Modo performance: com fx baixo, desliga efeitos caros (blur/aurora).
+    const fx = resolved ? resolved.fx : 0.9;
+    document.documentElement.classList.toggle('mt-perf', fx <= 0.25);
 
-    layout.zones.forEach((zone) => {
+    // Inteligência de cor: registra as cores base e liga/desliga a adaptação.
+    if (global.MTAdaptive) {
+      MTAdaptive.enabled = cfg.settings.coresAdaptativas !== false;
+      if (resolved) MTAdaptive.setBase({ accent: resolved.accent, glow: resolved.glow });
+    }
+    // Layout inteligente (takeover de prioridade) ligado por padrão.
+    smartLayout = cfg.settings.layoutInteligente !== false;
+
+    // Decoração sazonal (neve, corações, bandeirinhas…) sobre o palco.
+    buildDecoration(cfg);
+
+    layout.zones.forEach((zone, i) => {
       const zoneEl = document.createElement('div');
       zoneEl.className = 'mt-zone mt-zone-' + zone.type;
       zoneEl.style.gridArea = zone.area;
+      // Entrada suave e escalonada das zonas ao montar o palco.
+      zoneEl.style.animation = 'mt-zone-in .8s cubic-bezier(.16,.84,.3,1) both';
+      zoneEl.style.animationDelay = (i * 0.09) + 's';
       stage.appendChild(zoneEl);
 
       const data = cfg.zonas[zone.id] || {};
@@ -147,6 +149,143 @@
         zoneControllers.push(startPlaylist(zoneEl, data.items || [], cfg));
       }
     });
+  }
+
+  /* ---------------- Layout inteligente: takeover de prioridade ----------------
+   * Quando uma zona exibe um conteúdo marcado como "destaque" ou "urgente",
+   * o director o promove para o centro da tela, desfocando/escurecendo o
+   * resto — e depois libera, voltando ao layout normal. As zonas por baixo
+   * (inclusive vídeo/live) nunca são interrompidas. */
+
+  let smartLayout = true;
+  const takeover = { el: null, level: null, timer: null, onLeave: null };
+  // Tipos que podem "tomar a tela" (evita duplicar vídeos/lives/iframes).
+  const TAKEOVER_TYPES = {
+    announce: 1, text: 1, notice: 1, birthdaycard: 1, spotlight: 1,
+    kpi: 1, promo: 1, quote: 1, image: 1, agenda: 1, social: 1,
+  };
+  const LEVEL_RANK = { destaque: 1, urgente: 2 };
+
+  function maybeTakeover(item) {
+    if (!smartLayout) return;
+    const level = item && item.prioridade;
+    if (level !== 'destaque' && level !== 'urgente') return;
+    if (!TAKEOVER_TYPES[item.type]) return;
+    // Já há um takeover: só um mais forte (urgente) preempta.
+    if (takeover.el) {
+      if (LEVEL_RANK[level] > LEVEL_RANK[takeover.level]) clearTakeover();
+      else return;
+    }
+    showTakeover(item, level);
+  }
+
+  function showTakeover(item, level) {
+    let rendered;
+    try { rendered = MTRender.renderItem(item); } catch (e) { return; }
+    const layer = document.createElement('div');
+    layer.className = 'mt-takeover mt-takeover-' + level;
+    if (level === 'urgente') {
+      const bar = document.createElement('div');
+      bar.className = 'mt-takeover-alert';
+      bar.textContent = (item.etiqueta || 'AVISO IMPORTANTE');
+      layer.appendChild(bar);
+    }
+    const card = document.createElement('div');
+    card.className = 'mt-takeover-card';
+    rendered.el.classList.add('mt-active');
+    card.appendChild(rendered.el);
+    layer.appendChild(card);
+    document.body.appendChild(layer);
+    void layer.offsetWidth;
+    layer.classList.add('mt-in');
+    try { rendered.onEnter && rendered.onEnter(function () {}); } catch (e) {}
+
+    takeover.el = layer; takeover.level = level; takeover.onLeave = rendered.onLeave;
+    const dur = (item.duracao && item.duracao > 0) ? item.duracao : 10;
+    takeover.timer = setTimeout(clearTakeover, dur * 1000);
+  }
+
+  function clearTakeover() {
+    if (!takeover.el) return;
+    clearTimeout(takeover.timer);
+    const layer = takeover.el;
+    try { takeover.onLeave && takeover.onLeave(); } catch (e) {}
+    layer.classList.remove('mt-in');
+    layer.classList.add('mt-out');
+    setTimeout(() => layer.remove(), 700);
+    takeover.el = null; takeover.level = null; takeover.onLeave = null;
+  }
+
+  /* ---------------- Decoração sazonal ---------------- */
+
+  let decorLayer = null;
+  function buildDecoration(cfg) {
+    if (decorLayer) { decorLayer.remove(); decorLayer = null; }
+    let tipo = (cfg.settings.decoracao || 'none');
+    if (tipo === 'auto') {
+      const s = global.MTSeasons && MTSeasons.todaySeason();
+      tipo = s ? s.decoracao : 'none';
+    }
+    if (!tipo || tipo === 'none') return;
+    // Em modo performance, evita partículas pesadas.
+    if (document.documentElement.classList.contains('mt-perf') &&
+        tipo !== 'flags') return;
+
+    const layer = document.createElement('div');
+    layer.className = 'mt-decor mt-decor-' + tipo;
+    document.body.appendChild(layer);
+    decorLayer = layer;
+
+    if (tipo === 'flags') return buildFlags(layer);
+    if (tipo === 'lights') { buildFlags(layer, true); }
+    const spec = DECOR_SPEC[tipo] || DECOR_SPEC.confetti;
+    const count = spec.count;
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('span');
+      p.className = 'mt-particle';
+      const size = spec.size[0] + Math.random() * (spec.size[1] - spec.size[0]);
+      p.style.setProperty('--s', size.toFixed(1) + 'px');
+      p.style.left = (Math.random() * 100) + 'vw';
+      p.style.setProperty('--dur', (spec.dur[0] + Math.random() * (spec.dur[1] - spec.dur[0])).toFixed(1) + 's');
+      p.style.setProperty('--delay', (-Math.random() * spec.dur[1]).toFixed(1) + 's');
+      p.style.setProperty('--drift', (Math.random() * 12 - 6).toFixed(1) + 'vw');
+      if (spec.glyph) {
+        p.textContent = spec.glyph[Math.floor(Math.random() * spec.glyph.length)];
+        p.style.fontSize = 'var(--s)';
+      } else if (spec.colors) {
+        p.style.background = spec.colors[Math.floor(Math.random() * spec.colors.length)];
+        p.style.setProperty('--spin', (Math.random() * 720 - 360).toFixed(0) + 'deg');
+      }
+      layer.appendChild(p);
+    }
+  }
+
+  const DECOR_SPEC = {
+    snow: { count: 60, size: [4, 12], dur: [6, 13], colors: ['rgba(255,255,255,.9)'] },
+    petals: { count: 34, size: [16, 30], dur: [7, 14], glyph: ['🌸', '🌺', '🎀'] },
+    hearts: { count: 28, size: [18, 34], dur: [6, 12], glyph: ['💗', '💖', '❤️'] },
+    confetti: { count: 70, size: [7, 14], dur: [4, 9], colors: ['#ff5da2', '#ffb454', '#4f8cff', '#39d0c4', '#ffd76e', '#a855f7'] },
+    fireworks: { count: 40, size: [6, 12], dur: [4, 8], colors: ['#ffd76e', '#f5d67b', '#ffe08a', '#fbbf24', '#fff'] },
+  };
+
+  // Bandeirinhas de festa junina (guirlanda no topo). Com "lights"=true,
+  // vira uma fileira de luzes piscantes (Natal).
+  function buildFlags(layer, lights) {
+    const garland = document.createElement('div');
+    garland.className = lights ? 'mt-garland mt-garland-lights' : 'mt-garland';
+    const cols = lights
+      ? ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#f0abfc']
+      : ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#ec4899', '#eab308'];
+    const n = 26;
+    for (let i = 0; i < n; i++) {
+      const f = document.createElement('span');
+      f.className = lights ? 'mt-light' : 'mt-flag';
+      f.style.color = cols[i % cols.length];
+      f.style.background = cols[i % cols.length];
+      f.style.setProperty('--delay', (i * 0.12).toFixed(2) + 's');
+      garland.appendChild(f);
+    }
+    layer.appendChild(garland);
   }
 
   /* ---------------- Zona: Playlist rotativa ---------------- */
@@ -203,6 +342,9 @@
       const goNext = () => { if (!advanced) { advanced = true; schedule(0); } };
       try { rendered.onEnter && rendered.onEnter(goNext); } catch (e) {}
 
+      // Conteúdo prioritário toma a tela (layout inteligente).
+      try { maybeTakeover(item); } catch (e) {}
+
       const dur = rendered.duration;
       if (single) return; // estática — só o próprio item avança (ex.: vídeo ao terminar)
       if (dur && dur > 0) schedule(dur);
@@ -239,17 +381,22 @@
   function startNewsTicker(zoneEl, messages, data) {
     zoneEl.classList.add('mt-news');
 
-    const badge = document.createElement('div');
-    badge.className = 'mt-news-badge';
-    badge.innerHTML =
-      '<span class="nb-day"></span><span class="nb-mon"></span><span class="nb-time"></span>';
-    zoneEl.appendChild(badge);
-
     const content = document.createElement('div');
     content.className = 'mt-news-content';
+
+    // Linha superior: etiqueta "ao vivo" (esquerda) + relógio (direita),
+    // ambos como chips discretos e tech no mesmo estilo.
+    const topline = document.createElement('div');
+    topline.className = 'mt-news-topline';
     const tag = document.createElement('div');
     tag.className = 'mt-news-tag';
     tag.textContent = data.titulo || 'ÚLTIMAS NOTÍCIAS';
+    const clock = document.createElement('div');
+    clock.className = 'mt-news-clock';
+    clock.innerHTML = '<span class="nc-date"></span><span class="nc-sep"></span><span class="nc-time"></span>';
+    topline.appendChild(tag);
+    topline.appendChild(clock);
+
     const headline = document.createElement('div');
     headline.className = 'mt-news-headline';
     const title = document.createElement('div');
@@ -258,7 +405,8 @@
     desc.className = 'mt-news-desc';
     headline.appendChild(title);
     headline.appendChild(desc);
-    content.appendChild(tag);
+
+    content.appendChild(topline);
     content.appendChild(headline);
     zoneEl.appendChild(content);
 
@@ -266,9 +414,9 @@
     const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
     function tick() {
       const now = new Date();
-      badge.querySelector('.nb-day').textContent = String(now.getDate()).padStart(2, '0');
-      badge.querySelector('.nb-mon').textContent = MESES[now.getMonth()] + '.';
-      badge.querySelector('.nb-time').textContent = now.toLocaleTimeString('pt-BR');
+      clock.querySelector('.nc-date').textContent =
+        String(now.getDate()).padStart(2, '0') + ' ' + MESES[now.getMonth()];
+      clock.querySelector('.nc-time').textContent = now.toLocaleTimeString('pt-BR');
     }
     tick();
     const clockTimer = setInterval(tick, 1000);
