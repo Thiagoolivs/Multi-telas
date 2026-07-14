@@ -231,58 +231,38 @@ html, body {
 .mt-hc-time { font-size: clamp(22px, 3.4vw, 52px); font-weight: 800; }
 .mt-hc-date { font-size: clamp(12px, 1.4vw, 22px); opacity: .8; text-transform: capitalize; }
 
-/* ---------- Faixa de notícias (lower-third premium) ---------- */
+/* ---------- Faixa de notícias (lower-third premium) ----------
+   Layout limpo: uma coluna com [etiqueta + relógio] em cima e a
+   manchete embaixo. Sem blocos chapados — tudo discreto e tech. */
 .mt-news {
   display: flex; align-items: center;
   background: transparent;
   overflow: hidden;
-  padding: 0 14cqh 0 12cqh;
-  gap: 16cqh;
-}
-/* Badge = cartão flutuante com data, não um bloco chapado. */
-.mt-news-badge {
-  flex: none;
-  position: relative;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-width: 74cqh; padding: 10cqh 14cqh;
-  line-height: 1;
-  color: var(--on-brand);
-  background: linear-gradient(155deg, var(--brand), var(--brand-2));
-  border-radius: 18cqh;
-  box-shadow: 0 8cqh 22cqh rgba(0,0,0,.28),
-              inset 0 1px 0 rgba(255,255,255,.28);
-}
-.mt-news-badge::after { /* brilho superior de vidro no cartão */
-  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,.18), transparent 55%);
-}
-.nb-day { font-size: 34cqh; font-weight: 800; letter-spacing: .01em; }
-.nb-mon { font-size: 12cqh; font-weight: 700; letter-spacing: .22em; opacity: .92; margin-top: 1cqh; }
-.nb-time {
-  margin-top: 6cqh;
-  font-size: 12.5cqh; font-weight: 700;
-  font-variant-numeric: tabular-nums; letter-spacing: .04em;
-  background: color-mix(in srgb, var(--on-brand) 16%, transparent);
-  padding: 2.5cqh 8cqh; border-radius: 100px;
+  padding: 0 5cqw;
 }
 .mt-news-content {
   flex: 1; min-width: 0;
   display: flex; flex-direction: column; justify-content: center;
-  gap: 5cqh;
-  padding-left: 18cqh;
-  /* Divisor vertical suave (desvanece no topo e na base). */
-  border-left: 2px solid transparent;
-  border-image: linear-gradient(transparent, var(--border) 22%, var(--border) 78%, transparent) 1;
+  gap: 7cqh;
 }
-/* Etiqueta "ao vivo" — pílula sutil com ponto pulsante. */
+.mt-news-topline {
+  display: flex; align-items: center; gap: 14cqh;
+}
+/* Etiqueta "ao vivo" e relógio compartilham o mesmo visual de chip. */
+.mt-news-tag,
+.mt-news-clock {
+  display: inline-flex; align-items: center;
+  height: 26cqh; padding: 0 12cqh;
+  border-radius: 100px;
+  font-size: 12cqh; font-weight: 700; letter-spacing: .14em;
+  line-height: 1; white-space: nowrap;
+}
 .mt-news-tag {
-  align-self: flex-start;
-  display: inline-flex; align-items: center; gap: 6cqh;
-  font-size: 12cqh; font-weight: 800; letter-spacing: .16em;
-  color: var(--accent); text-transform: uppercase;
-  padding: 2.4cqh 10cqh 2.4cqh 8cqh; border-radius: 100px;
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  gap: 7cqh; padding-left: 10cqh;
+  font-weight: 800; text-transform: uppercase;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
 }
 .mt-news-tag::before {
   content: ""; width: 8cqh; height: 8cqh; border-radius: 50%;
@@ -295,6 +275,17 @@ html, body {
   70% { box-shadow: 0 0 0 7cqh transparent; }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
+/* Relógio — chip discreto, texto tabular, tech. */
+.mt-news-clock {
+  gap: 8cqh;
+  color: var(--text-dim);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  border: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+.mt-news-clock .nc-date { color: var(--text); font-weight: 800; }
+.mt-news-clock .nc-sep { width: 4cqh; height: 4cqh; border-radius: 50%; background: currentColor; opacity: .5; }
+.mt-news-clock .nc-time { letter-spacing: .06em; }
 .mt-news-headline { min-width: 0; }
 .mt-news-in { animation: mt-news-slide .6s cubic-bezier(.16,.84,.3,1) both; }
 @keyframes mt-news-slide {
@@ -302,15 +293,13 @@ html, body {
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 .mt-news-title {
-  font-size: 23cqh; font-weight: 800; color: var(--text);
+  font-size: 24cqh; font-weight: 800; color: var(--text);
   letter-spacing: -.01em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-shadow: 0 1px 10px rgba(0,0,0,.18);
 }
 .mt-news-desc {
   font-size: 14cqh; color: var(--text-dim);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  margin-top: 1cqh;
 }
 
 /* ---------- Rodapé / ticker (rolagem clássica) ---------- */
