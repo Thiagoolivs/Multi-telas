@@ -313,8 +313,8 @@
 
   /* ================= Configurações gerais ================= */
   const SETTINGS_MAP = {
-    '#cfg-nome': 'nome', '#cfg-titulo': 'titulo', '#cfg-cor': 'cor',
-    '#cfg-fundo': 'fundo', '#cfg-cidade': 'cidadeClima', '#cfg-logo': 'logoUrl',
+    '#cfg-nome': 'nome', '#cfg-titulo': 'titulo',
+    '#cfg-cidade': 'cidadeClima', '#cfg-logo': 'logoUrl',
     '#cfg-transicao': 'transicao', '#cfg-remote': 'remoteConfigUrl',
     '#cfg-refresh': 'refreshSeconds',
   };
@@ -843,10 +843,136 @@
     $('#preview-frame').contentWindow.location.reload();
   }
 
+  /* ================= Editor de temas ================= */
+  function ensureTheme() {
+    const s = config.settings;
+    if (!s.theme || typeof s.theme !== 'object') s.theme = { preset: 'dark-premium', font: 'system', overrides: {} };
+    if (!s.theme.overrides || typeof s.theme.overrides !== 'object') s.theme.overrides = {};
+    return s.theme;
+  }
+
+  function renderThemeEditor() {
+    const host = $('#theme-editor');
+    if (!host || !window.MTTheme) return;
+    const theme = ensureTheme();
+    host.innerHTML = '';
+
+    // ---- Galeria de presets ----
+    const gallery = el('div', 'theme-presets');
+    MTTheme.listPresets().forEach(({ id, label, preset }) => {
+      const card = el('button', 'theme-preset');
+      card.type = 'button';
+      if (theme.preset === id) card.classList.add('active');
+      const sw = el('div', 'theme-swatch');
+      sw.style.background = 'linear-gradient(135deg, ' + preset.bg + ', ' + preset.bg2 + ')';
+      const dotB = el('span', 'theme-dot'); dotB.style.background = preset.brand;
+      const dotA = el('span', 'theme-dot'); dotA.style.background = preset.accent;
+      const chip = el('span', 'theme-chip');
+      chip.style.background = 'rgba(' + preset.surface + ',' + Math.max(preset.glass, 0.3) + ')';
+      chip.style.borderColor = preset.border;
+      sw.appendChild(chip); sw.appendChild(dotB); sw.appendChild(dotA);
+      card.appendChild(sw);
+      card.appendChild(el('span', 'theme-preset-name', label));
+      card.addEventListener('click', () => {
+        theme.preset = id;
+        theme.overrides = {}; // aplica o preset puro; ajustes ficam por conta do usuário
+        markDirty();
+        renderThemeEditor();
+      });
+      gallery.appendChild(card);
+    });
+    host.appendChild(gallery);
+
+    // ---- Personalização manual ----
+    const eff = MTTheme.resolve(theme); // valores efetivos atuais
+    const ov = theme.overrides;
+
+    const details = el('details', 'theme-custom');
+    const sum = el('summary');
+    sum.textContent = 'Personalizar cores, fonte e efeitos';
+    details.appendChild(sum);
+
+    // Cores
+    const colors = el('div', 'theme-grid');
+    [['brand', 'Cor primária'], ['brand2', 'Cor secundária'],
+     ['accent', 'Cor de destaque'], ['bg', 'Fundo']].forEach(([key, lbl]) => {
+      const f = el('label', 'field');
+      f.appendChild(el('span', null, lbl));
+      const inp = el('input'); inp.type = 'color';
+      inp.value = toHex(eff[key]);
+      inp.addEventListener('input', () => { ov[key] = inp.value; markDirty(); scheduleLivePreview(); });
+      f.appendChild(inp);
+      colors.appendChild(f);
+    });
+    details.appendChild(colors);
+
+    // Fonte
+    const fontField = el('label', 'field');
+    fontField.style.marginTop = '12px';
+    fontField.appendChild(el('span', null, 'Fonte'));
+    const fontSel = el('select');
+    MTTheme.listFonts().forEach(({ id, label }) => {
+      const o = el('option', null, label); o.value = id; fontSel.appendChild(o);
+    });
+    fontSel.value = theme.font || 'system';
+    fontSel.addEventListener('change', () => { theme.font = fontSel.value; markDirty(); scheduleLivePreview(); });
+    fontField.appendChild(fontSel);
+    details.appendChild(fontField);
+
+    // Sliders de efeito
+    const sliders = el('div', 'theme-sliders');
+    [['glass', 'Transparência (vidro)', 0, 1, 0.02],
+     ['blur', 'Desfoque', 0, 44, 1],
+     ['radius', 'Cantos arredondados', 0, 36, 1],
+     ['fx', 'Intensidade dos efeitos', 0, 1, 0.05]].forEach(([key, lbl, min, max, step]) => {
+      const wrap = el('label', 'field theme-slider');
+      const head = el('span', null, lbl);
+      wrap.appendChild(head);
+      const inp = el('input'); inp.type = 'range';
+      inp.min = min; inp.max = max; inp.step = step;
+      inp.value = eff[key];
+      inp.addEventListener('input', () => { ov[key] = Number(inp.value); markDirty(); scheduleLivePreview(); });
+      wrap.appendChild(inp);
+      sliders.appendChild(wrap);
+    });
+    details.appendChild(sliders);
+
+    const reset = el('button', 'btn btn-ghost btn-sm', 'Restaurar tema original');
+    reset.type = 'button';
+    reset.style.marginTop = '12px';
+    reset.addEventListener('click', () => { theme.overrides = {}; markDirty(); renderThemeEditor(); scheduleLivePreview(); });
+    details.appendChild(reset);
+
+    const hint = el('p', 'hint');
+    hint.textContent = 'As alterações aparecem na prévia ao lado. Clique em Salvar para publicar nas TVs.';
+    details.appendChild(hint);
+
+    host.appendChild(details);
+  }
+
+  // Normaliza para #rrggbb (input color exige hex).
+  function toHex(c) {
+    if (typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c)) return c;
+    return '#000000';
+  }
+
+  // Prévia ao vivo do tema: aplica no iframe sem exigir salvar.
+  let livePreviewTimer = null;
+  function scheduleLivePreview() {
+    clearTimeout(livePreviewTimer);
+    livePreviewTimer = setTimeout(() => {
+      try {
+        const win = $('#preview-frame').contentWindow;
+        if (win && win.MTTheme) win.MTTheme.apply(ensureTheme(), win.document.documentElement);
+      } catch (e) { /* silencioso */ }
+    }, 120);
+  }
+
   /* ================= Inicialização ================= */
   function renderAll() {
     renderTemplates();
     fillSettings();
+    renderThemeEditor();
     renderContent();
   }
 

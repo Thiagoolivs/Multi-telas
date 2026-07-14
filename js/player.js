@@ -51,16 +51,6 @@
     try { return JSON.stringify(cfg); } catch (e) { return String(Math.random()); }
   }
 
-  // Clareia uma cor hex (#rrggbb) somando "amt" a cada canal.
-  function lighten(hex, amt) {
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
-    if (!m) return hex;
-    const n = parseInt(m[1], 16);
-    const r = Math.min(255, (n >> 16) + amt);
-    const g = Math.min(255, ((n >> 8) & 255) + amt);
-    const b = Math.min(255, (n & 255) + amt);
-    return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
-  }
 
   function applyConfig(cfg) {
     const fp = fingerprint(cfg);
@@ -122,20 +112,20 @@
       zoneControllers.push({ stop: () => clearInterval(breatheTimer) });
     }
 
-    // Cores do tema: destaque + fundo (com tom de zona derivado do fundo).
-    const root = document.documentElement;
-    root.style.setProperty('--brand', cfg.settings.cor || '#2F6FEB');
-    const fundo = cfg.settings.fundo || '#0a1128';
-    root.style.setProperty('--stage-bg', fundo);
-    root.style.setProperty('--zone-bg', lighten(fundo, 14));
-    root.style.setProperty('--zone-bg-2', lighten(fundo, 26));
-    stage.style.background =
-      'radial-gradient(130% 130% at 15% 0%, ' + lighten(fundo, 18) + ' 0%, ' + fundo + ' 55%)';
+    // Tema premium: aplica todos os design tokens (cores, vidro, sombras,
+    // fonte). Retrocompatível — configs antigas já foram migradas no storage.
+    const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme)) || null;
+    // Modo performance: com fx baixo, desliga efeitos caros (blur/aurora).
+    const fx = resolved ? resolved.fx : 0.9;
+    document.documentElement.classList.toggle('mt-perf', fx <= 0.25);
 
-    layout.zones.forEach((zone) => {
+    layout.zones.forEach((zone, i) => {
       const zoneEl = document.createElement('div');
       zoneEl.className = 'mt-zone mt-zone-' + zone.type;
       zoneEl.style.gridArea = zone.area;
+      // Entrada suave e escalonada das zonas ao montar o palco.
+      zoneEl.style.animation = 'mt-zone-in .8s cubic-bezier(.16,.84,.3,1) both';
+      zoneEl.style.animationDelay = (i * 0.09) + 's';
       stage.appendChild(zoneEl);
 
       const data = cfg.zonas[zone.id] || {};

@@ -65,13 +65,25 @@
         </div>
       </div>
 
-      <!-- Passo 3: Identidade -->
+      <!-- Passo 3: Aparência e tema -->
       <div class="card">
         <div class="card-head">
           <div class="step-chip">3</div>
           <div>
+            <h2>Aparência e tema</h2>
+            <p>Escolha um tema premium pronto ou crie a sua identidade visual.</p>
+          </div>
+        </div>
+        <div id="theme-editor" class="theme-editor"></div>
+      </div>
+
+      <!-- Passo 4: Identidade -->
+      <div class="card">
+        <div class="card-head">
+          <div class="step-chip">4</div>
+          <div>
             <h2>Identidade e exibição</h2>
-            <p>Marca, cores e comportamento do painel.</p>
+            <p>Marca e comportamento do painel.</p>
           </div>
         </div>
         <div class="grid-2">
@@ -82,14 +94,6 @@
           <label class="field">
             <span>Título no cabeçalho da TV</span>
             <input id="cfg-titulo" type="text" placeholder="Ex.: Bem-vindo" />
-          </label>
-          <label class="field">
-            <span>Cor da marca <em class="field-note">padrão: azul Raft</em></span>
-            <input id="cfg-cor" type="color" />
-          </label>
-          <label class="field">
-            <span>Fundo das telas <em class="field-note">padrão: azul noite</em></span>
-            <input id="cfg-fundo" type="color" />
           </label>
           <label class="field">
             <span>Cidade (previsão do tempo)</span>
@@ -106,7 +110,9 @@
           <label class="field">
             <span>Transição entre conteúdos</span>
             <select id="cfg-transicao">
+              <option value="cinematic">Cinematográfica</option>
               <option value="fade">Suave (fade)</option>
+              <option value="zoom">Zoom</option>
               <option value="slide">Deslizar</option>
               <option value="none">Nenhuma</option>
             </select>
@@ -164,6 +170,7 @@
   <input id="import-file" type="file" accept="application/json" hidden />
 
   <script src="js/templates.js"></script>
+  <script src="js/theme.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/news.js"></script>
   <script src="js/render.js"></script>

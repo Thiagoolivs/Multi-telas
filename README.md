@@ -13,9 +13,15 @@ Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
 
 - **Multi-telas numa só exibição:** várias zonas independentes (principal, lateral,
   cabeçalho, rodapé) rodando conteúdos diferentes ao mesmo tempo.
-- **Visual de dashboard profissional:** tema azul noite com zonas arredondadas,
-  fundo e cores 100% personalizáveis.
-- **7 templates prontos** com **zonas clicáveis** — incluindo o "Painel Notícias"
+- **Visual premium com glassmorphism:** zonas em vidro fosco com profundidade,
+  fundo vivo (aurora + granulado sutil) e transições cinematográficas.
+- **9 temas premium prontos:** Dark Premium, Corporate Blue, Luxury Gold, Neon Cyber,
+  Glassmorphism, Minimal White, Elegant Black, Energy Green e Modern Purple — trocar
+  o tema reestiliza a interface inteira num clique.
+- **Editor visual de tema:** cores (primária/secundária/destaque/fundo), fontes
+  (Inter, Poppins, Montserrat, Roboto, Space Grotesk) e sliders de vidro, desfoque,
+  cantos e intensidade dos efeitos — com prévia ao vivo. Identidade visual própria.
+- **8 templates prontos** com **zonas clicáveis** — incluindo o "Painel Notícias"
   (clima na lateral, destaque grande e faixa de notícias com relógio ao vivo).
 - **Dados em tempo real, sem chave de API:** data/hora com segundos, clima atual +
   previsão de 6 dias (Open-Meteo), **trânsito ao vivo (Waze)** e mapas (OpenStreetMap).
@@ -130,10 +136,13 @@ Multi-telas/
 │   └── player.css       # Estilo do player
 ├── js/
 │   ├── templates.js     # Catálogo de layouts (templates prontos)
+│   ├── theme.js         # Motor de temas (9 presets + tokens + fontes)
 │   ├── storage.js       # Dados: salvar/carregar/exportar/importar/remoto
+│   ├── news.js          # Notícias automáticas via RSS
 │   ├── render.js        # Renderiza cada tipo de conteúdo
 │   ├── player.js        # Motor de exibição (zonas, rotação, ticker)
 │   └── admin.js         # Lógica do painel de administração
+├── server.js            # Servidor estático (deploy Railway/Node)
 └── README.md
 ```
 

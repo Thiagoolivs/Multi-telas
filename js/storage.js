@@ -21,12 +21,18 @@
         remoteConfigUrl: '',
         // De quanto em quanto tempo o player recarrega a config (segundos).
         refreshSeconds: 60,
-        cor: '#2F6FEB',   // cor de destaque (azul Raft — combina com o azul noite)
-        fundo: '#0a1128', // fundo das telas (azul noite)
+        cor: '#2F6FEB',   // (legado) cor de destaque — migrada para theme.overrides.brand
+        fundo: '#0a1128', // (legado) fundo — migrado para theme.overrides.bg
         logoUrl: '',
         titulo: 'Raft Embalagens',
         cidadeClima: 'São Paulo',
-        transicao: 'fade', // fade | slide | none
+        transicao: 'cinematic', // cinematic | fade | slide | zoom | none
+        // Tema premium: preset + ajustes manuais (ver js/theme.js).
+        theme: {
+          preset: 'dark-premium',
+          font: 'system',
+          overrides: {}, // { brand, brand2, accent, bg, bg2, surface, glass, radius, blur, fx, ... }
+        },
       },
       zonas: {
         principal: {
@@ -75,6 +81,19 @@
     };
   }
 
+  /* ---------- Migração de tema (retrocompatível) ---------- */
+  // Configs antigas só tinham settings.cor e settings.fundo. Convertemos
+  // para o formato de tema novo, sem perder a identidade visual escolhida.
+  function migrateTheme(settings, theme) {
+    const t = Object.assign({ preset: 'dark-premium', font: 'system', overrides: {} }, theme || {});
+    if (!t.overrides || typeof t.overrides !== 'object') t.overrides = {};
+    // Se a config antiga tinha cores personalizadas e o tema ainda não as
+    // reflete, injeta como ajustes manuais sobre o preset.
+    if (settings.cor && t.overrides.brand === undefined && !theme) t.overrides.brand = settings.cor;
+    if (settings.fundo && t.overrides.bg === undefined && !theme) t.overrides.bg = settings.fundo;
+    return t;
+  }
+
   /* ---------- Validação / normalização ---------- */
   function normalize(cfg) {
     if (!cfg || typeof cfg !== 'object') return sampleConfig();
@@ -84,6 +103,9 @@
       settings: Object.assign({}, base.settings, cfg.settings || {}),
       zonas: {},
     };
+
+    // Garante um objeto de tema e migra configs antigas (cor/fundo → tema).
+    out.settings.theme = migrateTheme(out.settings, (cfg.settings || {}).theme);
 
     // Preserva zonas de outros templates (trocar de layout não apaga conteúdo).
     Object.keys(cfg.zonas || {}).forEach((k) => {
