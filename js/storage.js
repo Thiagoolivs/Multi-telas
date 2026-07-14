@@ -27,6 +27,9 @@
         titulo: 'Raft Embalagens',
         cidadeClima: 'São Paulo',
         transicao: 'cinematic', // cinematic | fade | slide | zoom | none
+        // Decoração animada sobre a tela: none | auto | snow | lights |
+        // hearts | petals | flags | confetti | fireworks ('auto' = pela data).
+        decoracao: 'none',
         // Tema premium: preset + ajustes manuais (ver js/theme.js).
         theme: {
           preset: 'dark-premium',

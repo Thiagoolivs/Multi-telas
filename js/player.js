@@ -119,6 +119,9 @@
     const fx = resolved ? resolved.fx : 0.9;
     document.documentElement.classList.toggle('mt-perf', fx <= 0.25);
 
+    // Decoração sazonal (neve, corações, bandeirinhas…) sobre o palco.
+    buildDecoration(cfg);
+
     layout.zones.forEach((zone, i) => {
       const zoneEl = document.createElement('div');
       zoneEl.className = 'mt-zone mt-zone-' + zone.type;
@@ -137,6 +140,78 @@
         zoneControllers.push(startPlaylist(zoneEl, data.items || [], cfg));
       }
     });
+  }
+
+  /* ---------------- Decoração sazonal ---------------- */
+
+  let decorLayer = null;
+  function buildDecoration(cfg) {
+    if (decorLayer) { decorLayer.remove(); decorLayer = null; }
+    let tipo = (cfg.settings.decoracao || 'none');
+    if (tipo === 'auto') {
+      const s = global.MTSeasons && MTSeasons.todaySeason();
+      tipo = s ? s.decoracao : 'none';
+    }
+    if (!tipo || tipo === 'none') return;
+    // Em modo performance, evita partículas pesadas.
+    if (document.documentElement.classList.contains('mt-perf') &&
+        tipo !== 'flags') return;
+
+    const layer = document.createElement('div');
+    layer.className = 'mt-decor mt-decor-' + tipo;
+    document.body.appendChild(layer);
+    decorLayer = layer;
+
+    if (tipo === 'flags') return buildFlags(layer);
+    if (tipo === 'lights') { buildFlags(layer, true); }
+    const spec = DECOR_SPEC[tipo] || DECOR_SPEC.confetti;
+    const count = spec.count;
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('span');
+      p.className = 'mt-particle';
+      const size = spec.size[0] + Math.random() * (spec.size[1] - spec.size[0]);
+      p.style.setProperty('--s', size.toFixed(1) + 'px');
+      p.style.left = (Math.random() * 100) + 'vw';
+      p.style.setProperty('--dur', (spec.dur[0] + Math.random() * (spec.dur[1] - spec.dur[0])).toFixed(1) + 's');
+      p.style.setProperty('--delay', (-Math.random() * spec.dur[1]).toFixed(1) + 's');
+      p.style.setProperty('--drift', (Math.random() * 12 - 6).toFixed(1) + 'vw');
+      if (spec.glyph) {
+        p.textContent = spec.glyph[Math.floor(Math.random() * spec.glyph.length)];
+        p.style.fontSize = 'var(--s)';
+      } else if (spec.colors) {
+        p.style.background = spec.colors[Math.floor(Math.random() * spec.colors.length)];
+        p.style.setProperty('--spin', (Math.random() * 720 - 360).toFixed(0) + 'deg');
+      }
+      layer.appendChild(p);
+    }
+  }
+
+  const DECOR_SPEC = {
+    snow: { count: 60, size: [4, 12], dur: [6, 13], colors: ['rgba(255,255,255,.9)'] },
+    petals: { count: 34, size: [16, 30], dur: [7, 14], glyph: ['🌸', '🌺', '🎀'] },
+    hearts: { count: 28, size: [18, 34], dur: [6, 12], glyph: ['💗', '💖', '❤️'] },
+    confetti: { count: 70, size: [7, 14], dur: [4, 9], colors: ['#ff5da2', '#ffb454', '#4f8cff', '#39d0c4', '#ffd76e', '#a855f7'] },
+    fireworks: { count: 40, size: [6, 12], dur: [4, 8], colors: ['#ffd76e', '#f5d67b', '#ffe08a', '#fbbf24', '#fff'] },
+  };
+
+  // Bandeirinhas de festa junina (guirlanda no topo). Com "lights"=true,
+  // vira uma fileira de luzes piscantes (Natal).
+  function buildFlags(layer, lights) {
+    const garland = document.createElement('div');
+    garland.className = lights ? 'mt-garland mt-garland-lights' : 'mt-garland';
+    const cols = lights
+      ? ['#f87171', '#fbbf24', '#34d399', '#60a5fa', '#f0abfc']
+      : ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#ec4899', '#eab308'];
+    const n = 26;
+    for (let i = 0; i < n; i++) {
+      const f = document.createElement('span');
+      f.className = lights ? 'mt-light' : 'mt-flag';
+      f.style.color = cols[i % cols.length];
+      f.style.background = cols[i % cols.length];
+      f.style.setProperty('--delay', (i * 0.12).toFixed(2) + 's');
+      garland.appendChild(f);
+    }
+    layer.appendChild(garland);
   }
 
   /* ---------------- Zona: Playlist rotativa ---------------- */

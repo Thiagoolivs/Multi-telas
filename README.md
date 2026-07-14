@@ -23,6 +23,13 @@ Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
   cantos e intensidade dos efeitos — com prévia ao vivo. Identidade visual própria.
 - **8 templates prontos** com **zonas clicáveis** — incluindo o "Painel Notícias"
   (clima na lateral, destaque grande e faixa de notícias com relógio ao vivo).
+- **Biblioteca de conteúdos por categoria:** Comunicação interna, Eventos, Pessoas,
+  Marketing e Tempo real — o cliente escolhe um modelo pronto e só edita os textos.
+- **Datas comemorativas brasileiras:** 13 pacotes (Natal, Ano Novo, Carnaval, Páscoa,
+  Dia do Trabalho, Dia das Mães, Festa Junina, Dia dos Pais, Independência, Dia das
+  Crianças, Outubro Rosa, Novembro Azul, Black Friday) — aplicar define tema, decoração
+  e mensagem pronta. **Decorações animadas** (neve, corações, bandeirinhas, confete,
+  fogos, pétalas, luzes) com opção automática pela data.
 - **Dados em tempo real, sem chave de API:** data/hora com segundos, clima atual +
   previsão de 6 dias (Open-Meteo), **trânsito ao vivo (Waze)** e mapas (OpenStreetMap).
 - **Notícias automáticas de portais famosos (RSS):** G1, UOL, Folha, CNN Brasil,
@@ -137,10 +144,11 @@ Multi-telas/
 ├── js/
 │   ├── templates.js     # Catálogo de layouts (templates prontos)
 │   ├── theme.js         # Motor de temas (9 presets + tokens + fontes)
+│   ├── seasons.js       # Datas comemorativas BR + decorações
 │   ├── storage.js       # Dados: salvar/carregar/exportar/importar/remoto
 │   ├── news.js          # Notícias automáticas via RSS
 │   ├── render.js        # Renderiza cada tipo de conteúdo
-│   ├── player.js        # Motor de exibição (zonas, rotação, ticker)
+│   ├── player.js        # Motor de exibição (zonas, rotação, decorações)
 │   └── admin.js         # Lógica do painel de administração
 ├── server.js            # Servidor estático (deploy Railway/Node)
 └── README.md
