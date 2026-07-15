@@ -31,6 +31,7 @@
     trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
     up: '<path d="M6 14l6-6 6 6"/>',
     down: '<path d="M6 10l6 6 6-6"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
     gift: '<rect x="4" y="10" width="16" height="10" rx="1"/><path d="M3 6.5h18V10H3zM12 6.5V20M12 6.5s-4.2 0-4.2-2.7A1.9 1.9 0 0 1 12 3.2M12 6.5s4.2 0 4.2-2.7A1.9 1.9 0 0 0 12 3.2"/>',
     megaphone: '<path d="M4 10v4a1 1 0 0 0 1 1h2l1.2 5h2.2L9.2 15H10l9 3.5v-13L10 9H5a1 1 0 0 0-1 1z"/>',
     alert: '<path d="M12 3.5L2.8 19.5h18.4z"/><path d="M12 9.8v4.4M12 17.4v.01"/>',
@@ -1265,6 +1266,8 @@
       'Cores adaptativas', 'O tema se ajusta às cores da imagem em exibição.'));
     host.appendChild(toggleRow('layoutInteligente',
       'Layout inteligente', 'Conteúdos marcados como prioritários tomam a tela e depois voltam.'));
+    host.appendChild(toggleRow('somUrgente',
+      'Som no aviso urgente', 'Toca um alerta sonoro e reforça o destaque nos avisos urgentes.'));
   }
 
   // Linha de toggle (checkbox) ligada a uma configuração booleana.
@@ -1304,6 +1307,139 @@
     $('#save-status').style.color = 'var(--brand)';
   }
 
+  /* ================= Vários painéis / playlists ================= */
+  function renderPanelSwitch() {
+    const host = $('#panel-switch');
+    if (!host) return;
+    host.innerHTML = '';
+    const panels = MTStorage.listPanels();
+    const active = MTStorage.activePanelId();
+
+    const label = el('span', 'panel-switch-label', 'Painel');
+    const select = el('select', 'panel-select');
+    panels.forEach((p) => {
+      const opt = el('option', null, p.name);
+      opt.value = p.id;
+      if (p.id === active) opt.selected = true;
+      select.appendChild(opt);
+    });
+    select.addEventListener('change', () => switchToPanel(select.value));
+
+    const actions = el('div', 'panel-switch-actions');
+    actions.appendChild(iconAction('Novo painel', 'plus', () => {
+      const name = (prompt('Nome do novo painel / playlist:', 'Novo painel') || '').trim();
+      if (!name) return;
+      MTStorage.createPanel(name);
+      loadActivePanel();
+    }));
+    actions.appendChild(iconAction('Renomear painel', 'pencil', () => {
+      const cur = panels.find((p) => p.id === active);
+      const name = (prompt('Novo nome do painel:', cur ? cur.name : '') || '').trim();
+      if (!name) return;
+      MTStorage.renamePanel(active, name);
+      config.settings.nome = name;
+      fillSettings();
+      renderPanelSwitch();
+    }));
+    if (panels.length > 1) {
+      actions.appendChild(iconAction('Excluir painel', 'trash', () => {
+        const cur = panels.find((p) => p.id === active);
+        if (!confirm('Excluir o painel "' + (cur ? cur.name : '') + '"? Esta ação não pode ser desfeita.')) return;
+        MTStorage.deletePanel(active);
+        loadActivePanel();
+      }));
+    }
+
+    host.appendChild(label);
+    host.appendChild(select);
+    host.appendChild(actions);
+  }
+
+  function iconAction(title, iconName, fn) {
+    const b = el('button', 'panel-icon-btn');
+    b.type = 'button';
+    b.title = title;
+    b.setAttribute('aria-label', title);
+    b.innerHTML = icon(iconName);
+    b.addEventListener('click', fn);
+    return b;
+  }
+
+  function switchToPanel(id) {
+    if (id === MTStorage.activePanelId()) return;
+    if (dirty && !confirm('Há alterações não salvas neste painel. Trocar mesmo assim? As alterações serão perdidas.')) {
+      renderPanelSwitch(); // restaura a seleção anterior
+      return;
+    }
+    MTStorage.switchPanel(id);
+    loadActivePanel();
+  }
+
+  function loadActivePanel() {
+    config = MTStorage.load();
+    dirty = false;
+    selectedZoneId = null;
+    renderPanelSwitch();
+    renderAll();
+    refreshPreview();
+    $('#save-status').textContent = '';
+  }
+
+  /* ================= Trava do painel por PIN ================= */
+  function refreshPinStatus() {
+    const s = $('#pin-status');
+    if (!s) return;
+    s.textContent = MTStorage.hasPin()
+      ? 'PIN ativo — o painel pede a senha ao abrir.'
+      : 'Sem PIN — o painel abre direto.';
+  }
+
+  function setupPin() {
+    const setBtn = $('#btn-pin-set');
+    const rmBtn = $('#btn-pin-remove');
+    if (setBtn) setBtn.addEventListener('click', () => {
+      const pin = (prompt('Defina um PIN (números ou letras):', '') || '').trim();
+      if (!pin) return;
+      const again = (prompt('Confirme o PIN:', '') || '').trim();
+      if (pin !== again) { alert('Os PINs não conferem.'); return; }
+      MTStorage.setPin(pin);
+      refreshPinStatus();
+      alert('PIN definido. Ele será pedido na próxima vez que abrir o painel.');
+    });
+    if (rmBtn) rmBtn.addEventListener('click', () => {
+      if (!MTStorage.hasPin()) { alert('Não há PIN definido.'); return; }
+      if (!confirm('Remover a trava por PIN?')) return;
+      MTStorage.setPin('');
+      refreshPinStatus();
+    });
+    refreshPinStatus();
+  }
+
+  // Portão de entrada: se há PIN, esconde o painel até validar.
+  function enforcePinLock() {
+    if (!MTStorage.hasPin()) return;
+    const lock = $('#pin-lock');
+    const input = $('#pin-input');
+    const err = $('#pin-error');
+    const enter = $('#pin-enter');
+    if (!lock) return;
+    lock.classList.remove('hidden');
+    document.body.classList.add('locked');
+    setTimeout(() => input && input.focus(), 60);
+    function tryUnlock() {
+      if (MTStorage.checkPin((input.value || '').trim())) {
+        lock.classList.add('hidden');
+        document.body.classList.remove('locked');
+      } else {
+        err.textContent = 'PIN incorreto. Tente novamente.';
+        input.value = '';
+        input.focus();
+      }
+    }
+    enter.addEventListener('click', tryUnlock);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+  }
+
   /* ================= Inicialização ================= */
   function renderAll() {
     renderTemplates();
@@ -1339,6 +1475,9 @@
     });
   }
 
+  enforcePinLock();
+  renderPanelSwitch();
+  setupPin();
   renderAll();
   attachGlobalEvents();
 })();

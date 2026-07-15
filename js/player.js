@@ -166,6 +166,42 @@
   };
   const LEVEL_RANK = { destaque: 1, urgente: 2 };
 
+  /* Alerta sonoro para avisos urgentes — sintetizado via WebAudio, sem
+   * arquivo externo (funciona offline e sem hospedar nada). */
+  let audioCtx = null;
+  function ensureAudio() {
+    if (audioCtx) return audioCtx;
+    try {
+      const AC = global.AudioContext || global.webkitAudioContext;
+      if (AC) audioCtx = new AC();
+    } catch (e) { /* sem áudio disponível */ }
+    return audioCtx;
+  }
+  // Navegadores exigem um gesto do usuário para liberar o áudio.
+  function unlockAudio() {
+    const ctx = ensureAudio();
+    if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+  }
+  function playUrgentChime() {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const now = ctx.currentTime;
+    // Duas notas de atenção, estilo sino de emissora.
+    [[880, 0], [1174.66, 0.16]].forEach(function (n) {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = n[0];
+      const start = now + n[1];
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(0.4, start + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + 0.5);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(start); osc.stop(start + 0.55);
+    });
+  }
+
   function maybeTakeover(item) {
     if (!smartLayout) return;
     const level = item && item.prioridade;
@@ -189,6 +225,10 @@
       bar.className = 'mt-takeover-alert';
       bar.textContent = (item.etiqueta || 'AVISO IMPORTANTE');
       layer.appendChild(bar);
+      // Destaque reforçado (flash vermelho) + alerta sonoro, se habilitado.
+      if (!currentConfig || currentConfig.settings.somUrgente !== false) {
+        try { playUrgentChime(); } catch (e) {}
+      }
     }
     const card = document.createElement('div');
     card.className = 'mt-takeover-card';
@@ -430,11 +470,12 @@
   function startNewsTicker(zoneEl, messages, data) {
     zoneEl.classList.add('mt-news');
 
+    // Estilo clássico (duas linhas): linha superior com o selo "ao vivo" e o
+    // relógio; manchete (título + descrição) embaixo. Melhor aproveitamento
+    // da largura e alinhamento — selo à esquerda, relógio alinhado à direita.
     const content = document.createElement('div');
     content.className = 'mt-news-content';
 
-    // Linha superior: etiqueta "ao vivo" (esquerda) + relógio (direita),
-    // ambos como chips discretos e tech no mesmo estilo.
     const topline = document.createElement('div');
     topline.className = 'mt-news-topline';
     const tag = document.createElement('div');
@@ -628,6 +669,9 @@
     document.addEventListener('keydown', (e) => {
       if (e.key === 'f' || e.key === 'F') goFs();
     });
+    // Libera o áudio (alerta urgente) no primeiro gesto do usuário.
+    ['pointerdown', 'keydown', 'touchstart'].forEach((ev) =>
+      document.addEventListener(ev, unlockAudio, { passive: true }));
   }
 
   enableFullscreenShortcut();
