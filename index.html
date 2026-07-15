@@ -23,6 +23,7 @@
         <span>Gestão de telas corporativas</span>
       </div>
     </div>
+    <div id="panel-switch" class="panel-switch"></div>
     <div class="topbar-actions">
       <button id="btn-preview" class="btn btn-ghost">Atualizar prévia</button>
       <a id="btn-open-player" class="btn btn-ghost" href="player.html" target="_blank">Abrir na TV</a>
@@ -32,6 +33,20 @@
       <span id="save-status" class="save-status"></span>
     </div>
   </header>
+
+  <!-- Trava do painel por PIN (soft-lock local) -->
+  <div id="pin-lock" class="pin-lock hidden">
+    <div class="pin-box">
+      <svg class="pin-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5M12 15v2"/>
+      </svg>
+      <h2>Painel protegido</h2>
+      <p>Digite o PIN para acessar a gestão de telas.</p>
+      <input id="pin-input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••" maxlength="12" />
+      <div id="pin-error" class="pin-error"></div>
+      <button id="pin-enter" class="btn btn-primary">Entrar</button>
+    </div>
+  </div>
 
   <div class="layout">
     <!-- Coluna de edição -->
@@ -134,6 +149,16 @@
             recebem as atualizações automaticamente.
           </p>
         </details>
+        <div class="pin-setting">
+          <div class="pin-setting-text">
+            <strong>Trava do painel (PIN)</strong>
+            <span id="pin-status" class="hint">Sem PIN — o painel abre direto.</span>
+          </div>
+          <div class="pin-setting-actions">
+            <button id="btn-pin-set" class="btn btn-ghost btn-sm" type="button">Definir PIN</button>
+            <button id="btn-pin-remove" class="btn btn-ghost btn-sm" type="button">Remover</button>
+          </div>
+        </div>
       </div>
     </section>
 

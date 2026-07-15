@@ -33,6 +33,7 @@
         // Recursos inteligentes (Fase 3).
         coresAdaptativas: true,   // tema se adapta às cores da imagem exibida
         layoutInteligente: true,  // conteúdo prioritário toma a tela (takeover)
+        somUrgente: true,         // toca um alerta sonoro nos avisos urgentes
         // Tema premium: preset + ajustes manuais (ver js/theme.js).
         theme: {
           preset: 'dark-premium',
@@ -163,10 +164,121 @@
   function save(cfg) {
     const clean = normalize(cfg);
     localStorage.setItem(KEY, JSON.stringify(clean));
+    // Persiste também no painel ativo, quando há vários painéis.
+    try {
+      const p = readPanels();
+      if (p && p.panels[p.active]) {
+        p.panels[p.active].config = clean;
+        p.panels[p.active].name = clean.settings.nome || p.panels[p.active].name;
+        writePanels(p);
+      }
+    } catch (e) { /* ignora */ }
     // Sinaliza para o player (mesmo domínio) que houve atualização.
     localStorage.setItem('multitelas.updatedAt', String(Date.now()));
     return clean;
   }
+
+  /* ---------- Vários painéis / playlists nomeados ----------
+   * O painel ATIVO é sempre espelhado em KEY (o player e a config remota
+   * continuam lendo KEY sem saber que há vários painéis). O registro guarda
+   * um snapshot de cada painel nomeado e qual está ativo. */
+  const PANELS_KEY = 'multitelas.panels.v1';
+  function readPanels() {
+    try {
+      const raw = localStorage.getItem(PANELS_KEY);
+      if (raw) { const p = JSON.parse(raw); if (p && p.panels && p.order) return p; }
+    } catch (e) { /* ignora */ }
+    return null;
+  }
+  function writePanels(p) { localStorage.setItem(PANELS_KEY, JSON.stringify(p)); }
+  function uid() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+
+  function ensurePanels() {
+    let p = readPanels();
+    if (p) return p;
+    // Primeira vez: cria um painel envolvendo a config atual (ou de exemplo).
+    let current;
+    try {
+      const raw = localStorage.getItem(KEY);
+      current = raw ? normalize(JSON.parse(raw)) : sampleConfig();
+    } catch (e) { current = sampleConfig(); }
+    const id = uid();
+    p = { active: id, order: [id], panels: {} };
+    p.panels[id] = { name: current.settings.nome || 'Painel principal', config: current };
+    writePanels(p);
+    localStorage.setItem(KEY, JSON.stringify(current));
+    return p;
+  }
+
+  function listPanels() {
+    const p = ensurePanels();
+    return p.order.filter((id) => p.panels[id])
+      .map((id) => ({ id: id, name: p.panels[id].name, active: id === p.active }));
+  }
+  function activePanelId() { return ensurePanels().active; }
+
+  function createPanel(name) {
+    const p = ensurePanels();
+    const id = uid();
+    const cfg = normalize(sampleConfig());
+    cfg.settings.nome = name || 'Novo painel';
+    p.panels[id] = { name: cfg.settings.nome, config: cfg };
+    p.order.push(id);
+    p.active = id;
+    writePanels(p);
+    localStorage.setItem(KEY, JSON.stringify(cfg));
+    localStorage.setItem('multitelas.updatedAt', String(Date.now()));
+    return { id: id, config: cfg };
+  }
+
+  function switchPanel(id) {
+    const p = ensurePanels();
+    if (!p.panels[id]) return null;
+    p.active = id;
+    writePanels(p);
+    const cfg = normalize(p.panels[id].config);
+    localStorage.setItem(KEY, JSON.stringify(cfg));
+    localStorage.setItem('multitelas.updatedAt', String(Date.now()));
+    return cfg;
+  }
+
+  function renamePanel(id, name) {
+    const p = ensurePanels();
+    if (!p.panels[id] || !name) return;
+    p.panels[id].name = name;
+    // Mantém o nome do painel em sincronia com o nome da empresa/painel.
+    if (id === p.active && p.panels[id].config && p.panels[id].config.settings) {
+      p.panels[id].config.settings.nome = name;
+    }
+    writePanels(p);
+  }
+
+  function deletePanel(id) {
+    const p = ensurePanels();
+    if (!p.panels[id] || p.order.length <= 1) return null; // nunca apaga o último
+    delete p.panels[id];
+    p.order = p.order.filter((x) => x !== id);
+    if (p.active === id) p.active = p.order[0];
+    writePanels(p);
+    return switchPanel(p.active);
+  }
+
+  /* ---------- Trava do painel por PIN (soft-lock local) ----------
+   * Não é segurança criptográfica — é uma trava de acesso ao Painel de
+   * Gestão, guardada só neste navegador. */
+  const PIN_KEY = 'multitelas.pin.v1';
+  function hashPin(pin) {
+    let h = 5381;
+    const s = 'mt:' + String(pin);
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return String(h >>> 0);
+  }
+  function hasPin() { return !!localStorage.getItem(PIN_KEY); }
+  function setPin(pin) {
+    if (!pin) localStorage.removeItem(PIN_KEY);
+    else localStorage.setItem(PIN_KEY, hashPin(pin));
+  }
+  function checkPin(pin) { return hasPin() && localStorage.getItem(PIN_KEY) === hashPin(pin); }
 
   function reset() {
     const c = sampleConfig();
@@ -203,5 +315,16 @@
     exportJSON,
     importJSON,
     fetchRemote,
+    // Vários painéis / playlists
+    listPanels,
+    activePanelId,
+    createPanel,
+    switchPanel,
+    renamePanel,
+    deletePanel,
+    // Trava por PIN
+    hasPin,
+    setPin,
+    checkPin,
   };
 })(window);
