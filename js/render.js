@@ -691,25 +691,30 @@
     return { el, duration: item.duracao || 12 };
   }
 
-  /* ---------- Promoção / produto ---------- */
+  /* ---------- Promoção / produto ----------
+   * Reformulado (nova linguagem "mt-surface"): fundo em gradiente derivado
+   * do tema, composição uniforme e layout que funciona com OU sem imagem. */
   function renderPromo(item) {
-    const el = div('mt-slide mt-promo');
-    el.style.background = item.bg || '#12060f';
-    const media = div('mt-promo-media');
-    if (item.imagem) {
+    const hasImg = !!item.imagem;
+    const el = div('mt-slide mt-surface mt-promo' + (hasImg ? ' mt-promo-split' : ''));
+    if (item.bg) el.style.background = item.bg; // override manual opcional
+
+    if (hasImg) {
+      const media = div('mt-promo-media');
       const img = document.createElement('img'); img.src = item.imagem; img.alt = '';
       img.onerror = () => media.classList.add('mt-broken');
       media.appendChild(img);
+      el.appendChild(media);
     }
+
     const info = div('mt-promo-info');
-    if (item.selo) { const s = div('mt-promo-selo'); s.textContent = item.selo; info.appendChild(s); }
-    if (item.titulo) { const t = div('mt-promo-title'); t.textContent = item.titulo; info.appendChild(t); }
+    if (item.selo) info.appendChild(divText('mt-promo-selo', item.selo));
+    if (item.titulo) info.appendChild(divText('mt-promo-title', item.titulo));
     const prices = div('mt-promo-prices');
-    if (item.precoDe) { const de = div('mt-promo-de'); de.textContent = item.precoDe; prices.appendChild(de); }
-    if (item.precoPor) { const por = div('mt-promo-por'); por.textContent = item.precoPor; prices.appendChild(por); }
+    if (item.precoDe) prices.appendChild(divText('mt-promo-de', item.precoDe));
+    if (item.precoPor) prices.appendChild(divText('mt-promo-por', item.precoPor));
     if (item.precoDe || item.precoPor) info.appendChild(prices);
-    if (item.cta) { const c = div('mt-promo-cta'); c.textContent = item.cta; info.appendChild(c); }
-    el.appendChild(media);
+    if (item.cta) info.appendChild(divText('mt-promo-cta', item.cta));
     el.appendChild(info);
     return { el, duration: item.duracao || 12 };
   }
