@@ -255,73 +255,72 @@ html, body {
   text-transform: capitalize; margin-top: 1.6cqh;
 }
 
-/* ---------- Faixa de notícias (lower-third de emissora) ----------
-   Bandeira sólida da marca à esquerda (selo ao vivo + rótulo), manchete
-   dominante ocupando o centro e relógio compacto à direita. Ocupa toda a
-   largura da zona, sem espaço morto nas laterais e sem chips flutuando. */
+/* ---------- Faixa de notícias (estilo clássico, tech) ----------
+   Duas linhas: selo "ao vivo" + relógio em cima, manchete embaixo.
+   Fundo discreto (sem bloco sólido). Aproveita toda a largura e mantém
+   o selo à esquerda e o relógio alinhado à direita. */
 .mt-news {
-  display: flex; align-items: stretch;
+  display: flex; align-items: center;
   background: transparent;
   overflow: hidden;
-  padding: 0;
+  padding: 0 3.5cqw;
 }
-/* Bandeira esquerda — marca sólida, altura cheia. */
-.mt-news-tag {
-  flex: none;
-  display: flex; align-items: center; gap: 9cqh;
-  padding: 0 4.5cqw;
-  background: linear-gradient(120deg, var(--brand), var(--brand-2));
-  color: var(--on-brand);
-  font-size: 16cqh; font-weight: 800; letter-spacing: .12em;
-  text-transform: uppercase; white-space: nowrap;
-}
-.mt-news-tag-label { line-height: 1; }
-.mt-news-live {
-  flex: none; width: 13cqh; height: 13cqh; border-radius: 50%;
-  background: var(--on-brand);
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--on-brand) 60%, transparent);
-  animation: mt-live-dot 1.8s ease-out infinite;
-}
-@keyframes mt-live-dot {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--on-brand) 55%, transparent); }
-  70% { box-shadow: 0 0 0 9cqh transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
-}
-/* Manchete central — domina a faixa. */
-.mt-news-headline {
+.mt-news-content {
   flex: 1; min-width: 0;
   display: flex; flex-direction: column; justify-content: center;
-  gap: 3.5cqh; padding: 0 4.5cqw;
+  gap: 6cqh;
 }
+/* Linha superior: selo à esquerda, relógio empurrado para a direita. */
+.mt-news-topline {
+  display: flex; align-items: center; gap: 2.5cqw;
+}
+.mt-news-tag {
+  display: inline-flex; align-items: center; gap: 2cqh;
+  padding: 1.8cqh 2.6cqh; border-radius: 100px;
+  font-size: 13cqh; font-weight: 800; letter-spacing: .14em;
+  text-transform: uppercase; line-height: 1; white-space: nowrap;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
+}
+.mt-news-tag::before {
+  content: ""; width: 8cqh; height: 8cqh; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 70%, transparent);
+  animation: mt-live 1.8s ease-out infinite;
+}
+@keyframes mt-live {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 65%, transparent); }
+  70% { box-shadow: 0 0 0 7cqh transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+/* Relógio — alinhado à direita, texto tabular, discreto. */
+.mt-news-clock {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 2cqh;
+  font-size: 13cqh; font-weight: 700; letter-spacing: .06em;
+  color: var(--text-dim); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.mt-news-clock .nc-date { color: var(--text); font-weight: 800; }
+.mt-news-clock .nc-sep { width: 4cqh; height: 4cqh; border-radius: 50%; background: currentColor; opacity: .5; }
+.mt-news-clock .nc-time { letter-spacing: .04em; }
+/* Manchete — ocupa toda a largura; subtítulo legível. */
+.mt-news-headline { min-width: 0; }
 .mt-news-in { animation: mt-news-slide .6s cubic-bezier(.16,.84,.3,1) both; }
 @keyframes mt-news-slide {
   from { opacity: 0; transform: translateY(40%); filter: blur(3px); }
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 .mt-news-title {
-  font-size: 33cqh; font-weight: 800; color: var(--text);
-  line-height: 1.04; letter-spacing: -.01em;
+  font-size: 30cqh; font-weight: 800; color: var(--text);
+  line-height: 1.05; letter-spacing: -.01em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .mt-news-desc {
-  font-size: 21cqh; font-weight: 500; color: var(--text-dim);
-  line-height: 1.1;
+  font-size: 18cqh; font-weight: 500; color: var(--text-dim);
+  line-height: 1.1; margin-top: 1.4cqh;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-/* Relógio compacto à direita. */
-.mt-news-clock {
-  flex: none;
-  display: flex; flex-direction: column; align-items: flex-end; justify-content: center;
-  gap: 1.5cqh; padding: 0 4.5cqw;
-  border-left: 1px solid var(--border);
-  font-variant-numeric: tabular-nums;
-}
-.mt-news-clock .nc-time {
-  font-size: 27cqh; font-weight: 800; color: var(--text); letter-spacing: .04em; line-height: 1;
-}
-.mt-news-clock .nc-date {
-  font-size: 15cqh; font-weight: 700; color: var(--text-dim);
-  letter-spacing: .14em; text-transform: uppercase;
 }
 
 /* ---------- Rodapé / ticker (rolagem clássica) ---------- */
