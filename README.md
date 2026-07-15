@@ -2,10 +2,15 @@
 
 Sistema de **multi-telas na mesma exibição** (digital signage) no estilo Pix Mídia,
 feito para rodar em TVs corporativas com **atualização fácil** e **templates prontos**.
-Identidade visual padrão da **Raft Embalagens** (verde militar), totalmente personalizável.
+Identidade visual padrão da **Raft Embalagens** (azul corporativo `#2F6FEB`),
+totalmente personalizável — 9 temas premium prontos e editor de cores/fontes.
 
 Funciona **100% no navegador**, sem servidor obrigatório — nada de backend para cair.
 Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
+
+> **Modelo de dados:** tudo fica no `localStorage` do navegador (ou numa URL de
+> config remota que você aponta). **Não há contas, login nem multi-tenant** — é
+> "1 navegador = 1 instalação". Veja [Arquitetura e limites](#arquitetura-e-limites).
 
 ---
 
@@ -56,14 +61,28 @@ Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
   em tempo real.
 - **Upload de imagem direto do computador:** a foto é comprimida no navegador e
   salva junto com a configuração (sem precisar hospedar em lugar nenhum).
-- **10 tipos de conteúdo:** Texto/Comunicado, Aviso, Imagem, Vídeo (MP4),
-  YouTube/Ao vivo, Aniversariantes, Relógio, Clima, Página Web e QR Code.
+- **~21 tipos de conteúdo:** Aviso Premium, Texto/Comunicado, Aviso simples, Imagem,
+  Vídeo (MP4), YouTube/Ao vivo, Cartão de Aniversário, Lista de Aniversariantes,
+  Painel do Clima, Trânsito (Waze), Mapa, Destaque de Pessoa, Agenda, Frase do Dia,
+  Indicador (KPI), Promoção/Produto, Redes Sociais, Relógio, Clima simples,
+  Página Web e QR Code.
+- **Superfície adaptativa ao tema:** os conteúdos prontos (frase, KPI, agenda,
+  destaque, aniversariantes, promoção, redes…) derivam fundo, cores e fontes dos
+  tokens do tema — o mesmo conteúdo fica premium e uniforme em qualquer paleta,
+  com contraste garantido no tema claro.
 - **Painel de gestão visual:** qualquer pessoa atualiza sem saber programar.
-  Prévia ao vivo do que a TV vai exibir.
+  Prévia ao vivo do que a TV vai exibir; mapa das áreas da tela abaixo da prévia.
 - **Gestão premium de conteúdo:** arraste para reordenar, **duplicar** com um clique,
   **favoritos** reutilizáveis e **agendamento** (exibir um conteúdo só em certas
   datas, horários e dias da semana — o player filtra em tempo real).
-- **Rodapé de avisos rolando** (ticker) e **cabeçalho com relógio + clima**.
+- **Vários painéis / playlists:** crie, renomeie e alterne entre configurações
+  nomeadas (ex.: "Recepção", "Fábrica") — cada uma com seu próprio conteúdo e tema.
+  *(São guardados neste navegador; não são contas separadas — veja os limites.)*
+- **Trava do painel por PIN:** protege o painel de gestão com um PIN de acesso
+  (trava de conveniência local, não segurança de servidor).
+- **Alerta sonoro no aviso urgente:** avisos marcados como urgentes tocam um alerta
+  sonoro sintetizado e ganham um flash vermelho reforçado (ligável nas configurações).
+- **Rodapé de avisos rolando** (ticker) e **cabeçalho premium com relógio + clima**.
 - **Atualização automática:** o player recarrega sozinho a cada X segundos.
 - **Robusto:** cada conteúdo é isolado — se um falhar, o player pula para o próximo
   sem travar a tela; zonas com um único conteúdo (ex.: live) ficam estáticas e nunca
@@ -169,22 +188,36 @@ Multi-telas/
 {
   "settings": {
     "nome": "Raft Embalagens",
-    "layoutId": "corporate",     // template escolhido
+    "layoutId": "dashboard",     // template escolhido
     "titulo": "Raft Embalagens",
-    "cor": "#4B5320",            // cor da marca (verde militar Raft)
     "cidadeClima": "São Paulo",
     "logoUrl": "",
-    "transicao": "fade",         // fade | slide | none
+    "transicao": "cinematic",    // cinematic | fade | slide | zoom | none
+    "decoracao": "none",         // decoração animada (auto | snow | confetti | …)
+    "coresAdaptativas": true,    // tema se ajusta às cores da imagem exibida
+    "layoutInteligente": true,   // conteúdo prioritário toma a tela (takeover)
+    "somUrgente": true,          // alerta sonoro nos avisos urgentes
     "remoteConfigUrl": "",       // URL de config remota (opcional)
-    "refreshSeconds": 60
+    "refreshSeconds": 60,
+    "theme": {                   // tema premium: preset + ajustes manuais
+      "preset": "dark-premium",
+      "font": "system",
+      "overrides": {}            // { brand, accent, bg, radius, blur, fx, … }
+    }
   },
   "zonas": {
     "principal": { "items": [ /* conteúdos que giram */ ] },
     "lateral":   { "items": [ /* ... */ ] },
-    "rodape":    { "messages": ["Aviso 1", "Aviso 2"], "velocidade": 60 }
+    "rodape":    { "titulo": "ÚLTIMAS NOTÍCIAS", "modo": "noticias",
+                   "fonte": "g1", "messages": ["Título :: descrição"] }
   }
 }
 ```
+
+> Além da config acima (chave `multitelas.config.v1`), o navegador guarda o
+> **registro de painéis** (`multitelas.panels.v1`) e o **PIN** (`multitelas.pin.v1`).
+> O painel ativo é sempre espelhado na config principal — por isso o player e a
+> config remota continuam lendo a mesma chave sem saber que há vários painéis.
 
 ---
 
@@ -203,10 +236,49 @@ Multi-telas/
 | Painel do Clima | Tempo agora + previsão de 6 dias, com data e cidade (Open-Meteo) |
 | Trânsito (Waze) | Mapa de trânsito ao vivo da cidade/região (sem chave de API) |
 | Mapa da Região | OpenStreetMap com marcador (sem chave de API) |
+| Destaque de Pessoa | Funcionário do mês / reconhecimento, com foto e mensagem |
+| Agenda / Programação | Lista de horários e atividades |
+| Frase do Dia | Citação motivacional com autor |
+| Indicador (KPI) | Número de destaque com rótulo, variação e tendência |
+| Promoção / Produto | Selo, título, preço e chamada — adapta-se ao tema, com/sem imagem |
+| Redes Sociais | Perfil + QR para seguir |
 | Relógio | Relógio digital com data |
 | Clima (simples) | Temperatura por cidade (Open-Meteo, sem chave de API) |
 | Página Web | Incorpora um site via iframe |
 | QR Code | Gera um QR a partir de um link/texto |
+
+Todos os conteúdos prontos (exceto os que já têm arte própria, como o cartão de
+aniversário) usam a **superfície adaptativa** — herdam fundo e cores do tema atual.
+
+---
+
+## Arquitetura e limites
+
+O sistema é **client-side puro** (sem backend, sem banco). Isso é ótimo para
+simplicidade e custo, mas define o que ele **é e não é**:
+
+- **Não é multi-tenant / não tem contas.** Não há login, usuários nem organizações
+  isoladas. Não existe "salvar um dispositivo por conta".
+- **Dados por navegador.** A config vive no `localStorage` de quem edita. Para
+  exibir em várias TVs, use a **config remota** (exporte o `config.json`, hospede-o
+  e aponte a URL em cada TV) — veja a seção de atualização centralizada.
+- **"Vários painéis" são locais.** Os painéis nomeados ficam só naquele navegador;
+  não sincronizam entre máquinas nem representam contas.
+- **PIN é uma trava de conveniência**, guardada no `localStorage` (hash simples).
+  Impede acesso casual ao painel, mas **não é segurança de servidor** — quem tem
+  acesso ao navegador/DevTools contorna.
+- **Dependências externas.** Notícias usam fetch direto ou o proxy público
+  *allorigins* como reserva; clima (Open-Meteo), mapas (OSM), trânsito (Waze),
+  QR (api.qrserver) e YouTube dependem desses serviços e de suas políticas de CORS.
+- **Cores adaptativas** só funcionam com imagens do mesmo domínio ou com CORS
+  liberado (o canvas "suja" com imagens de outros domínios e não adapta).
+- **Limite de armazenamento (~5 MB do localStorage).** Uploads de imagem (base64)
+  consomem esse espaço; há aviso ao salvar quando enche — prefira URLs para imagens
+  grandes.
+
+Para **multi-tenant de verdade** (empresas/contas, TVs registradas por dispositivo,
+edição centralizada na nuvem, papéis de acesso) seria necessário um **backend**
+(auth + banco + API). Isso é uma evolução de arquitetura, não um ajuste do atual.
 
 ---
 
@@ -227,5 +299,15 @@ clima, config remota). O sistema em si roda offline.
 **Onde os dados ficam salvos?** No `localStorage` do navegador da máquina.
 Para backup ou levar para outra máquina, use **Exportar / Importar**.
 
-**Dá para ter vários painéis diferentes?** Sim — mantenha um `config.json` por painel
-e aponte a URL remota de cada TV para o arquivo correto.
+**Dá para ter vários painéis diferentes?** Sim, de duas formas: (a) crie **painéis
+nomeados** no seletor do topo do admin (guardados naquele navegador); ou (b) para
+uma rede de TVs, mantenha um `config.json` por painel e aponte a URL remota de cada
+TV para o arquivo correto.
+
+**Tem contas / login / multi-tenant?** Não. Não há autenticação nem separação por
+conta — é "1 navegador = 1 instalação". A trava por PIN é só uma proteção local do
+painel. Para contas e dispositivos registrados na nuvem, veja
+[Arquitetura e limites](#arquitetura-e-limites).
+
+**O PIN protege de verdade?** Ele impede acesso casual ao painel de gestão, mas é
+uma trava local (guardada no navegador) — não substitui autenticação de servidor.
