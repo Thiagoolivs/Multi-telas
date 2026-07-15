@@ -155,7 +155,7 @@ html, body {
 
 /* Texto / aviso */
 .mt-text { padding: 4%; }
-.mt-text::after {
+.mt-text:not(.mt-surface)::after {
   content: "";
   position: absolute; inset: 0;
   background: linear-gradient(165deg, rgba(255,255,255,.08), rgba(0,0,0,.25));
@@ -185,12 +185,6 @@ html, body {
 
 /* Aniversariantes */
 .mt-birthday { flex-direction: column; padding: 5%; }
-.mt-birthday::after {
-  content: "";
-  position: absolute; inset: 0;
-  background: linear-gradient(165deg, rgba(255,255,255,.07), rgba(0,0,0,.28));
-  pointer-events: none;
-}
 .mt-birthday-title {
   position: relative; z-index: 1;
   font-size: clamp(22px, 3vw, 52px);
@@ -205,11 +199,11 @@ html, body {
 .mt-birthday-row {
   display: flex; align-items: center; justify-content: space-between; gap: 1em;
   font-size: clamp(15px, 1.9vw, 32px);
-  background: rgba(255,255,255,.1);
-  border-left: .22em solid rgba(255,255,255,.55);
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  border-left: .22em solid color-mix(in srgb, var(--accent) 72%, transparent);
   padding: .45em .9em; border-radius: .35em;
 }
-.mt-birthday-date { font-weight: 700; opacity: .9; white-space: nowrap; }
+.mt-birthday-date { font-weight: 700; color: var(--accent); white-space: nowrap; }
 
 /* QR Code */
 .mt-qr-inner { text-align: center; }
@@ -503,11 +497,7 @@ html, body {
 .mt-map-error { color: rgba(255,255,255,.55); font-size: 3cqh; }
 
 /* ---------- Frase / citação ---------- */
-.mt-quote { color: #fff; padding: 6cqw; }
-.mt-quote::after {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(160deg, rgba(255,255,255,.06), rgba(0,0,0,.28));
-}
+.mt-quote { padding: 6cqw; }
 .mt-quote-inner { position: relative; z-index: 1; max-width: 82cqw; text-align: center; }
 .mt-quote-mark {
   font-family: Georgia, 'Times New Roman', serif;
@@ -516,7 +506,7 @@ html, body {
 }
 .mt-quote-text { font-size: 7cqw; font-weight: 600; line-height: 1.32; letter-spacing: -.01em; }
 .mt-quote-author {
-  margin-top: 4cqh; font-size: 3.6cqw; color: rgba(255,255,255,.75); font-weight: 500;
+  margin-top: 4cqh; font-size: 3.6cqw; color: var(--text-dim); font-weight: 500;
 }
 .mt-quote-author::before {
   content: ""; display: inline-block; width: 5cqw; height: 2px; vertical-align: middle;
@@ -524,12 +514,12 @@ html, body {
 }
 
 /* ---------- Destaque de pessoa ---------- */
-.mt-spot { color: #fff; padding: 5cqw; }
+.mt-spot { padding: 5cqw; }
 .mt-spot-inner { display: flex; align-items: center; gap: 6cqw; max-width: 92cqw; }
 .mt-spot-photo-wrap { flex: none; position: relative; }
 .mt-spot-photo {
   width: 30cqw; max-width: 42cqh; aspect-ratio: 1; object-fit: cover; display: block;
-  border-radius: 50%; border: .8cqw solid rgba(255,255,255,.9);
+  border-radius: 50%; border: .8cqw solid color-mix(in srgb, var(--text) 82%, transparent);
   box-shadow: 0 12px 40px rgba(0,0,0,.45), 0 0 0 1.6cqw color-mix(in srgb, var(--accent) 40%, transparent);
 }
 .mt-spot-initials {
@@ -547,16 +537,16 @@ html, body {
 }
 .mt-spot-name { font-size: 8.5cqw; font-weight: 800; line-height: 1.05; margin-top: 2.4cqh; letter-spacing: -.01em; }
 .mt-spot-role { font-size: 4cqw; color: var(--accent); font-weight: 600; margin-top: .6cqh; }
-.mt-spot-msg { font-size: 3.4cqw; color: rgba(255,255,255,.85); line-height: 1.4; margin-top: 2.4cqh; max-width: 46cqw; }
+.mt-spot-msg { font-size: 3.4cqw; color: var(--text-dim); line-height: 1.4; margin-top: 2.4cqh; max-width: 46cqw; }
 
 /* ---------- Agenda / programação ---------- */
-.mt-agenda { color: #fff; flex-direction: column; padding: 5cqw; }
+.mt-agenda { flex-direction: column; padding: 5cqw; }
 .mt-agenda-inner { width: 100%; max-width: 88cqw; }
 .mt-agenda-title { font-size: 6.5cqw; font-weight: 800; margin-bottom: 3cqh; letter-spacing: -.01em; }
 .mt-agenda-list { display: flex; flex-direction: column; gap: 1.6cqh; }
 .mt-agenda-row {
   display: flex; align-items: center; gap: 4cqw;
-  padding: 2cqh 0; border-bottom: 1px solid rgba(255,255,255,.12);
+  padding: 2cqh 0; border-bottom: 1px solid var(--border);
 }
 .mt-agenda-row:last-child { border-bottom: 0; }
 .mt-agenda-time {
@@ -568,25 +558,24 @@ html, body {
 .mt-agenda-act { font-size: 4cqw; font-weight: 500; }
 
 /* ---------- Indicador / KPI ---------- */
-.mt-kpi { color: #fff; }
 .mt-kpi-inner { text-align: center; }
 .mt-kpi-label {
   font-size: 4cqw; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-  color: rgba(255,255,255,.62);
+  color: var(--text-dim);
 }
 .mt-kpi-value-wrap { display: flex; align-items: baseline; justify-content: center; gap: 3cqw; margin-top: 1cqh; }
 .mt-kpi-value {
   font-size: 22cqw; font-weight: 800; line-height: 1; letter-spacing: -.03em;
-  background: linear-gradient(160deg, #fff, var(--accent));
+  background: linear-gradient(160deg, var(--text), var(--accent));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .mt-kpi-trend {
   font-size: 4.4cqw; font-weight: 800; padding: 1cqh 2.4cqw; border-radius: 100px;
 }
-.mt-kpi-subiu { color: #34d399; background: rgba(52,211,153,.16); }
-.mt-kpi-desceu { color: #f87171; background: rgba(248,113,113,.16); }
-.mt-kpi-estavel { color: #cbd5e1; background: rgba(203,213,225,.14); }
-.mt-kpi-detail { font-size: 3.4cqw; color: rgba(255,255,255,.7); margin-top: 2cqh; }
+.mt-kpi-subiu { color: #16a34a; background: color-mix(in srgb, #22c55e 18%, transparent); }
+.mt-kpi-desceu { color: #dc2626; background: color-mix(in srgb, #ef4444 18%, transparent); }
+.mt-kpi-estavel { color: var(--text-dim); background: color-mix(in srgb, var(--text) 12%, transparent); }
+.mt-kpi-detail { font-size: 3.4cqw; color: var(--text-dim); margin-top: 2cqh; }
 
 /* ---------- Superfície de conteúdo (linguagem premium adaptativa) ----------
    Fundo em gradiente derivado das cores do tema (accent + brand + fundo),
@@ -642,7 +631,6 @@ html, body {
 }
 
 /* ---------- Redes sociais ---------- */
-.mt-social { color: #fff; }
 .mt-social-inner { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2.4cqh; }
 .mt-social-icon {
   width: 20cqw; max-width: 26cqh; aspect-ratio: 1; border-radius: 28%;

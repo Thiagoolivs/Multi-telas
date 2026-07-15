@@ -128,8 +128,14 @@
 
   function renderText(item) {
     const el = div('mt-slide mt-text');
-    el.style.background = item.bg || '#0d6efd';
-    el.style.color = item.cor || '#ffffff';
+    // Sem cor de fundo manual → herda a superfície adaptativa do tema.
+    if (item.bg) {
+      el.style.background = item.bg;
+      el.style.color = item.cor || '#ffffff';
+    } else {
+      el.classList.add('mt-surface');
+      if (item.cor) el.style.color = item.cor;
+    }
     el.style.textAlign = item.align || 'center';
     const inner = div('mt-text-inner');
     if (item.titulo) {
@@ -224,9 +230,9 @@
   }
 
   function renderBirthday(item) {
-    const el = div('mt-slide mt-birthday');
-    el.style.background = item.bg || '#1f2a52';
-    el.style.color = item.cor || '#ffffff';
+    const el = div('mt-slide mt-surface mt-birthday');
+    if (item.bg) el.style.background = item.bg;
+    if (item.cor) el.style.color = item.cor;
     const title = div('mt-birthday-title');
     title.textContent = item.titulo || 'Aniversariantes do Mês';
     const list = div('mt-birthday-list');
@@ -602,7 +608,7 @@
 
   /* ---------- Frase / citação ---------- */
   function renderQuote(item) {
-    const el = div('mt-slide mt-quote');
+    const el = div('mt-slide mt-surface mt-quote');
     if (item.bg) el.style.background = item.bg;
     const inner = div('mt-quote-inner');
     const mark = div('mt-quote-mark'); mark.textContent = '“';
@@ -619,8 +625,8 @@
 
   /* ---------- Destaque de pessoa (funcionário do mês, reconhecimento) ---------- */
   function renderSpotlight(item) {
-    const el = div('mt-slide mt-spot');
-    el.style.background = item.bg || '#0c1830';
+    const el = div('mt-slide mt-surface mt-spot');
+    if (item.bg) el.style.background = item.bg;
     const inner = div('mt-spot-inner');
 
     const photoWrap = div('mt-spot-photo-wrap');
@@ -650,7 +656,7 @@
 
   /* ---------- Agenda / programação ---------- */
   function renderAgenda(item) {
-    const el = div('mt-slide mt-agenda');
+    const el = div('mt-slide mt-surface mt-agenda');
     if (item.bg) el.style.background = item.bg;
     const inner = div('mt-agenda-inner');
     const title = div('mt-agenda-title'); title.textContent = item.titulo || 'Programação';
@@ -671,8 +677,8 @@
 
   /* ---------- Indicador / KPI ---------- */
   function renderKpi(item) {
-    const el = div('mt-slide mt-kpi');
-    el.style.background = item.bg || '#0b1a2e';
+    const el = div('mt-slide mt-surface mt-kpi');
+    if (item.bg) el.style.background = item.bg;
     const inner = div('mt-kpi-inner');
     if (item.rotulo) { const l = div('mt-kpi-label'); l.textContent = item.rotulo; inner.appendChild(l); }
     const valueWrap = div('mt-kpi-value-wrap');
@@ -729,8 +735,8 @@
     site: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   };
   function renderSocial(item) {
-    const el = div('mt-slide mt-social');
-    el.style.background = item.bg || '#0b1020';
+    const el = div('mt-slide mt-surface mt-social');
+    if (item.bg) el.style.background = item.bg;
     const inner = div('mt-social-inner');
     const rede = item.rede || 'instagram';
     const iconBox = div('mt-social-icon');
