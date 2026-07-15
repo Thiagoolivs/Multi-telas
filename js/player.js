@@ -430,21 +430,17 @@
   function startNewsTicker(zoneEl, messages, data) {
     zoneEl.classList.add('mt-news');
 
-    const content = document.createElement('div');
-    content.className = 'mt-news-content';
-
-    // Linha superior: etiqueta "ao vivo" (esquerda) + relógio (direita),
-    // ambos como chips discretos e tech no mesmo estilo.
-    const topline = document.createElement('div');
-    topline.className = 'mt-news-topline';
+    // Layout emissora (lower-third): bandeira da marca à esquerda, manchete
+    // dominante no centro e relógio compacto à direita — sem chips flutuando.
     const tag = document.createElement('div');
     tag.className = 'mt-news-tag';
-    tag.textContent = data.titulo || 'ÚLTIMAS NOTÍCIAS';
-    const clock = document.createElement('div');
-    clock.className = 'mt-news-clock';
-    clock.innerHTML = '<span class="nc-date"></span><span class="nc-sep"></span><span class="nc-time"></span>';
-    topline.appendChild(tag);
-    topline.appendChild(clock);
+    const live = document.createElement('span');
+    live.className = 'mt-news-live';
+    const tagLabel = document.createElement('span');
+    tagLabel.className = 'mt-news-tag-label';
+    tagLabel.textContent = data.titulo || 'ÚLTIMAS NOTÍCIAS';
+    tag.appendChild(live);
+    tag.appendChild(tagLabel);
 
     const headline = document.createElement('div');
     headline.className = 'mt-news-headline';
@@ -455,17 +451,21 @@
     headline.appendChild(title);
     headline.appendChild(desc);
 
-    content.appendChild(topline);
-    content.appendChild(headline);
-    zoneEl.appendChild(content);
+    const clock = document.createElement('div');
+    clock.className = 'mt-news-clock';
+    clock.innerHTML = '<span class="nc-time"></span><span class="nc-date"></span>';
+
+    zoneEl.appendChild(tag);
+    zoneEl.appendChild(headline);
+    zoneEl.appendChild(clock);
 
     // Relógio ao vivo (com segundos), como numa emissora.
     const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
     function tick() {
       const now = new Date();
+      clock.querySelector('.nc-time').textContent = now.toLocaleTimeString('pt-BR');
       clock.querySelector('.nc-date').textContent =
         String(now.getDate()).padStart(2, '0') + ' ' + MESES[now.getMonth()];
-      clock.querySelector('.nc-time').textContent = now.toLocaleTimeString('pt-BR');
     }
     tick();
     const clockTimer = setInterval(tick, 1000);
