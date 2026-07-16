@@ -108,6 +108,27 @@
       { key: 'loop', label: 'Repetir em loop', kind: 'checkbox' },
       { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela (ao vivo)', kind: 'number', def: 20 },
     ],
+    livesource: [
+      { key: 'deviceId', label: 'Dispositivo de captura (HDMI/USB)', kind: 'devicepicker' },
+      { key: 'audio', label: 'Transmitir também o áudio da entrada', kind: 'checkbox' },
+      { key: 'fit', label: 'Ajuste', kind: 'select', options: [['cover', 'Preencher a tela'], ['contain', 'Mostrar inteira']], def: 'cover' },
+      { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela', kind: 'number', def: 0 },
+      { kind: 'hint', text: 'Ligue a fonte HDMI num captador HDMI→USB (padrão UVC) — ele aparece como "câmera". Na TV, o player precisa rodar em https:// ou localhost e ter permissão de câmera (no modo quiosque isso é liberado automaticamente).' },
+    ],
+    screen: [
+      { key: 'audio', label: 'Capturar também o áudio', kind: 'checkbox' },
+      { key: 'fit', label: 'Ajuste', kind: 'select', options: [['contain', 'Mostrar inteira'], ['cover', 'Preencher a tela']], def: 'contain' },
+      { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela', kind: 'number', def: 0 },
+      { kind: 'hint', text: 'Na TV, toque em "Iniciar captura" e escolha a janela/tela (ex.: Holyrics, PowerPoint). É só a imagem — não dá para operar o app pela captura. Roda na mesma máquina do player e precisa de https:// ou localhost.' },
+    ],
+    stream: [
+      { key: 'url', label: 'URL do stream ao vivo', kind: 'text', ph: 'https://…/playlist.m3u8' },
+      { key: 'tipo', label: 'Tipo', kind: 'select', options: [['auto', 'Detectar automaticamente'], ['hls', 'HLS (.m3u8 / IPTV)'], ['mp4', 'MP4 / progressivo']], def: 'auto' },
+      { key: 'muted', label: 'Sem áudio', kind: 'checkbox', def: true },
+      { key: 'fit', label: 'Ajuste', kind: 'select', options: [['contain', 'Mostrar inteira'], ['cover', 'Preencher a tela']], def: 'contain' },
+      { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela', kind: 'number', def: 0 },
+      { kind: 'hint', text: 'Para canais IPTV/HLS, use a URL .m3u8. No Chromium, o HLS usa a biblioteca hls.js (baixada da internet quando necessário). Para canais no YouTube, use o tipo "YouTube / Ao vivo".' },
+    ],
     birthdaycard: [
       { key: 'nome', label: 'Nome do aniversariante', kind: 'text', ph: 'Ex.: João' },
       { key: 'mensagem', label: 'Mensagem', kind: 'textarea', def: 'Que hoje o seu dia seja o mais feliz de todos!' },
@@ -255,6 +276,18 @@
         {
           label: 'YouTube ao vivo', desc: 'Live em tempo real, fixa na tela', icon: 'live',
           item: { type: 'youtube', videoId: '', channelId: '', duracao: 0 },
+        },
+        {
+          label: 'Entrada HDMI / USB', desc: 'Fonte via captador HDMI→USB, ao vivo', icon: 'live',
+          item: { type: 'livesource', deviceId: '', audio: false, fit: 'cover', duracao: 0 },
+        },
+        {
+          label: 'Stream ao vivo', desc: 'IPTV / HLS por URL (.m3u8)', icon: 'play',
+          item: { type: 'stream', url: '', tipo: 'auto', muted: true, fit: 'contain', duracao: 0 },
+        },
+        {
+          label: 'Captura de tela/janela', desc: 'Exibe uma janela do PC (Holyrics, slides…)', icon: 'film',
+          item: { type: 'screen', audio: false, fit: 'contain', duracao: 0 },
         },
         {
           label: 'Painel do clima', desc: 'Tempo agora + previsão de 6 dias', icon: 'cloud',
@@ -910,6 +943,12 @@
   };
 
   function buildField(f, draft) {
+    if (f.kind === 'hint') {
+      return el('p', 'field-hint-note', f.text || '');
+    }
+
+    if (f.kind === 'devicepicker') return buildDevicePicker(f, draft);
+
     if (f.kind === 'checkbox') {
       const label = el('label', 'field');
       const wrap = el('span');
@@ -950,6 +989,63 @@
     });
     label.appendChild(input);
     return label;
+  }
+
+  /* ---------- Seletor de dispositivo de captura (HDMI/USB) ---------- */
+  function buildDevicePicker(f, draft) {
+    const wrap = el('div', 'field');
+    wrap.appendChild(el('span', null, f.label));
+
+    const row = el('div', 'upload-row');
+    const select = el('select');
+    const optDefault = el('option', null, 'Padrão do sistema');
+    optDefault.value = '';
+    select.appendChild(optDefault);
+    // Se já havia um deviceId salvo, preserva como opção até detectar.
+    if (draft[f.key]) {
+      const o = el('option', null, 'Dispositivo salvo'); o.value = draft[f.key]; o.selected = true;
+      select.appendChild(o);
+    }
+    select.addEventListener('change', () => { draft[f.key] = select.value; });
+
+    const btn = el('button', 'btn btn-ghost btn-sm');
+    btn.type = 'button';
+    btn.innerHTML = icon('live') + '<span>Detectar</span>';
+    const status = el('span', 'field-note');
+
+    async function detect() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        status.textContent = 'Este navegador não permite captura.'; return;
+      }
+      status.textContent = 'Procurando…';
+      try {
+        // Libera os rótulos dos dispositivos (exige permissão de câmera).
+        const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+        tmp.getTracks().forEach((t) => t.stop());
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cams = devices.filter((d) => d.kind === 'videoinput');
+        const cur = select.value;
+        select.innerHTML = '';
+        const od = el('option', null, 'Padrão do sistema'); od.value = ''; select.appendChild(od);
+        cams.forEach((d, i) => {
+          const o = el('option', null, d.label || ('Dispositivo ' + (i + 1)));
+          o.value = d.deviceId;
+          if (d.deviceId === cur) o.selected = true;
+          select.appendChild(o);
+        });
+        draft[f.key] = select.value;
+        status.textContent = cams.length ? (cams.length + ' dispositivo(s) encontrado(s).') : 'Nenhuma captura encontrada.';
+      } catch (e) {
+        status.textContent = 'Permissão negada ou nenhum dispositivo disponível.';
+      }
+    }
+    btn.addEventListener('click', detect);
+
+    row.appendChild(select);
+    row.appendChild(btn);
+    wrap.appendChild(row);
+    wrap.appendChild(status);
+    return wrap;
   }
 
   /* ---------- Campo de imagem com upload direto ---------- */

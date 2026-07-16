@@ -231,6 +231,8 @@ Multi-telas/
 | Imagem | URL ou **upload direto do computador** (comprimida no navegador) |
 | Vídeo (MP4) | URL do vídeo, com loop e duração opcional |
 | YouTube / Ao vivo | Link/ID do vídeo ou da live; ID do canal pega a live ativa; duração 0 = fixo na tela |
+| Entrada HDMI / USB (ao vivo) | Fonte externa por **captador HDMI→USB** (UVC), exibida ao vivo via `getUserMedia` — precisa de contexto seguro + permissão de câmera |
+| Stream ao vivo (IPTV/HLS) | URL de transmissão (`.m3u8`/MP4); HLS no Chromium via hls.js carregado sob demanda |
 | Cartão de Aniversário | Foto, balões, confetes e mensagem — estilo cartão comemorativo |
 | Lista de Aniversariantes | Lista "Nome — data", um por linha |
 | Painel do Clima | Tempo agora + previsão de 6 dias, com data e cidade (Open-Meteo) |
@@ -278,7 +280,13 @@ simplicidade e custo, mas define o que ele **é e não é**:
 
 Para **multi-tenant de verdade** (empresas/contas, TVs registradas por dispositivo,
 edição centralizada na nuvem, papéis de acesso) seria necessário um **backend**
-(auth + banco + API). Isso é uma evolução de arquitetura, não um ajuste do atual.
+(auth + banco + API). Isso é uma evolução de arquitetura, não um ajuste do atual —
+o plano completo está em [`docs/PLANO-SAAS.md`](docs/PLANO-SAAS.md).
+
+> **Fontes ao vivo (HDMI/stream):** um navegador não lê HDMI-in nem sintonizador de
+> TV diretamente. Para exibir uma entrada HDMI, use um **captador HDMI→USB** (o
+> conteúdo "Entrada HDMI / USB" lê esse dispositivo ao vivo). Para canais, use um
+> **stream/IPTV** (`.m3u8`) ou o conteúdo **YouTube / Ao vivo**.
 
 ---
 

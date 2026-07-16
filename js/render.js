@@ -109,6 +109,9 @@
     image: renderImage,
     video: renderVideo,
     youtube: renderYouTube,
+    livesource: renderLiveSource,
+    screen: renderScreen,
+    stream: renderStream,
     birthday: renderBirthday,
     birthdaycard: renderBirthdayCard,
     clock: renderClock,
@@ -227,6 +230,196 @@
     const result = { el, duration: dur };
     if (dur === 0) result.onEnter = function () { /* permanente */ };
     return result;
+  }
+
+  /* ---------- Entrada ao vivo (HDMI via captura USB / webcam) ----------
+   * Um captador HDMI→USB (padrão UVC) aparece como "câmera" para o navegador.
+   * Exibimos o fluxo ao vivo via getUserMedia. Requer contexto seguro
+   * (https/localhost) e permissão de câmera (liberável em modo quiosque). */
+  function renderLiveSource(item) {
+    const el = div('mt-slide mt-live-source');
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.muted = item.audio !== true; // só toca áudio se pedido explicitamente
+    video.playsInline = true;
+    video.style.objectFit = item.fit || 'cover';
+    el.appendChild(video);
+    const msg = divText('mt-live-msg', 'Conectando à entrada de vídeo…');
+    el.appendChild(msg);
+
+    let stream = null, stopped = false, retry = null;
+    function stopTracks() {
+      if (retry) { clearTimeout(retry); retry = null; }
+      if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+      video.srcObject = null;
+    }
+    async function start() {
+      if (stopped) return;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        msg.textContent = 'Captura não suportada neste dispositivo'; return;
+      }
+      try {
+        const videoConstraints = item.deviceId
+          ? { deviceId: { exact: item.deviceId } } : true;
+        const audioConstraints = item.audio === true
+          ? (item.audioDeviceId ? { deviceId: { exact: item.audioDeviceId } } : true)
+          : false;
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: videoConstraints, audio: audioConstraints,
+        });
+        if (stopped) { stopTracks(); return; }
+        video.srcObject = stream;
+        video.play().catch(() => {});
+        msg.style.display = 'none';
+      } catch (e) {
+        msg.style.display = '';
+        msg.textContent = 'Entrada de vídeo indisponível';
+        if (!stopped) retry = setTimeout(start, 6000); // reconecta sozinho
+      }
+    }
+    return {
+      el,
+      duration: item.duracao != null ? Number(item.duracao) : 0, // 0 = fixo na tela
+      onEnter: function () { stopped = false; start(); },
+      onLeave: function () { stopped = true; stopTracks(); },
+    };
+  }
+
+  /* ---------- Captura de tela / janela do sistema ----------
+   * Exibe uma janela do próprio computador (ex.: Holyrics, slides) via
+   * getDisplayMedia. É só imagem (mão única) — não controla o app.
+   * getDisplayMedia exige um gesto do usuário; por isso há um botão
+   * "Iniciar captura" que o operador clica uma vez ao montar a tela. */
+  function renderScreen(item) {
+    const el = div('mt-slide mt-live-source mt-screen');
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.muted = item.audio !== true;
+    video.playsInline = true;
+    video.style.objectFit = item.fit || 'contain';
+    el.appendChild(video);
+
+    const overlay = div('mt-screen-overlay');
+    const hint = divText('mt-screen-hint',
+      'Toque em "Iniciar captura" e escolha a janela ou tela para exibir aqui');
+    const btn = document.createElement('button');
+    btn.className = 'mt-screen-start'; btn.type = 'button';
+    btn.textContent = 'Iniciar captura';
+    overlay.appendChild(hint); overlay.appendChild(btn);
+    el.appendChild(overlay);
+
+    let stream = null, stopped = false;
+    function stopTracks() {
+      if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+      video.srcObject = null;
+    }
+    function showOverlay(show) { overlay.style.display = show ? '' : 'none'; }
+    async function startCapture() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        hint.textContent = 'Captura de tela não suportada neste dispositivo';
+        return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: 30 }, audio: item.audio === true,
+        });
+        if (stopped) { stopTracks(); return; }
+        video.srcObject = stream;
+        video.play().catch(() => {});
+        showOverlay(false);
+        // Se o usuário parar o compartilhamento, reabre o convite.
+        const vt = stream.getVideoTracks()[0];
+        if (vt) vt.addEventListener('ended', function () {
+          stopTracks(); if (!stopped) { hint.textContent = 'Compartilhamento encerrado'; showOverlay(true); }
+        });
+      } catch (e) {
+        showOverlay(true);
+        hint.textContent = 'Captura cancelada — toque para tentar novamente';
+      }
+    }
+    btn.addEventListener('click', startCapture);
+    return {
+      el,
+      duration: item.duracao != null ? Number(item.duracao) : 0, // 0 = fixo
+      onEnter: function () { stopped = false; showOverlay(true); },
+      onLeave: function () { stopped = true; stopTracks(); },
+    };
+  }
+
+  /* ---------- Stream ao vivo (HLS/DASH/IPTV/MP4) ----------
+   * Toca uma URL de transmissão num <video>. HLS nativo quando suportado
+   * (Safari/algumas Smart TVs); no Chromium, carrega hls.js sob demanda. */
+  let hlsLoading = null;
+  function ensureHls() {
+    if (global.Hls) return Promise.resolve(global.Hls);
+    if (hlsLoading) return hlsLoading;
+    hlsLoading = new Promise(function (resolve, reject) {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.light.min.js';
+      s.onload = function () { resolve(global.Hls); };
+      s.onerror = function () { reject(new Error('hls.js indisponível')); };
+      document.head.appendChild(s);
+    });
+    return hlsLoading;
+  }
+  function renderStream(item) {
+    const el = div('mt-slide mt-video mt-stream');
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.muted = item.muted !== false; // por padrão sem som (TVs)
+    video.playsInline = true;
+    video.controls = false;
+    video.style.objectFit = item.fit || 'contain';
+    el.appendChild(video);
+    const msg = divText('mt-live-msg', 'Conectando ao stream…');
+    el.appendChild(msg);
+
+    const url = (item.url || '').trim();
+    const tipo = item.tipo || 'auto';
+    const isHls = tipo === 'hls' || (tipo === 'auto' && /\.m3u8(\?|$)/i.test(url));
+    let hls = null, stopped = false, retry = null;
+
+    function fail(advance) {
+      msg.style.display = ''; msg.textContent = 'Stream indisponível';
+      if (!stopped && !item.duracao) retry = setTimeout(() => start(advance), 8000);
+    }
+    function playNative(advance) {
+      video.src = url;
+      video.play().catch(() => {});
+    }
+    function start(advance) {
+      if (stopped || !url) { if (!url) msg.textContent = 'URL do stream não informada'; return; }
+      msg.style.display = '';
+      video.oncanplay = function () { msg.style.display = 'none'; };
+      video.onerror = function () { fail(advance); };
+      if (isHls && !video.canPlayType('application/vnd.apple.mpegurl')) {
+        ensureHls().then(function (Hls) {
+          if (stopped) return;
+          if (Hls && Hls.isSupported()) {
+            hls = new Hls({ lowLatencyMode: true });
+            hls.on(Hls.Events.ERROR, function (_e, data) { if (data && data.fatal) fail(advance); });
+            hls.loadSource(url); hls.attachMedia(video);
+          } else { playNative(advance); }
+        }).catch(function () { playNative(advance); });
+      } else {
+        playNative(advance);
+      }
+      // MP4/progressivo com duração 0 e sem loop: avança ao terminar.
+      if (!item.duracao && tipo === 'mp4') {
+        video.addEventListener('ended', function () { advance && advance(); }, { once: true });
+      }
+    }
+    return {
+      el,
+      duration: item.duracao != null ? Number(item.duracao) : 0, // 0 = fixo
+      onEnter: function (advance) { stopped = false; start(advance); },
+      onLeave: function () {
+        stopped = true;
+        if (retry) clearTimeout(retry);
+        try { video.pause(); } catch (e) {}
+        if (hls) { try { hls.destroy(); } catch (e) {} hls = null; }
+      },
+    };
   }
 
   function renderBirthday(item) {
@@ -805,6 +998,9 @@
     { type: 'image', label: 'Imagem', icon: 'image' },
     { type: 'video', label: 'Vídeo (MP4)', icon: 'film' },
     { type: 'youtube', label: 'YouTube / Ao vivo', icon: 'play' },
+    { type: 'livesource', label: 'Entrada HDMI / USB (ao vivo)', icon: 'live' },
+    { type: 'screen', label: 'Captura de tela / janela', icon: 'film' },
+    { type: 'stream', label: 'Stream ao vivo (IPTV/HLS)', icon: 'live' },
     { type: 'birthdaycard', label: 'Cartão de Aniversário', icon: 'gift' },
     { type: 'birthday', label: 'Lista de Aniversariantes', icon: 'cake' },
     { type: 'weatherpro', label: 'Painel do Clima', icon: 'cloud' },
