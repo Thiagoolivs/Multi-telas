@@ -288,8 +288,10 @@
   /* ---------- Captura de tela / janela do sistema ----------
    * Exibe uma janela do próprio computador (ex.: Holyrics, slides) via
    * getDisplayMedia. É só imagem (mão única) — não controla o app.
-   * getDisplayMedia exige um gesto do usuário; por isso há um botão
-   * "Iniciar captura" que o operador clica uma vez ao montar a tela. */
+   * getDisplayMedia exige um gesto do usuário. Como o player esconde o
+   * cursor, o convite: (a) reexibe o cursor enquanto está na tela, (b) é
+   * todo clicável e (c) também inicia pela tecla Enter/Espaço — assim
+   * funciona mesmo sem enxergar o mouse. */
   function renderScreen(item) {
     const el = div('mt-slide mt-live-source mt-screen');
     const video = document.createElement('video');
@@ -301,24 +303,30 @@
 
     const overlay = div('mt-screen-overlay');
     const hint = divText('mt-screen-hint',
-      'Toque em "Iniciar captura" e escolha a janela ou tela para exibir aqui');
+      'Clique em qualquer lugar (ou tecle Enter) e escolha a janela/tela para exibir aqui');
     const btn = document.createElement('button');
     btn.className = 'mt-screen-start'; btn.type = 'button';
     btn.textContent = 'Iniciar captura';
     overlay.appendChild(hint); overlay.appendChild(btn);
     el.appendChild(overlay);
 
-    let stream = null, stopped = false;
+    let stream = null, stopped = false, starting = false;
     function stopTracks() {
       if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
       video.srcObject = null;
     }
-    function showOverlay(show) { overlay.style.display = show ? '' : 'none'; }
+    function showOverlay(show) {
+      overlay.style.display = show ? '' : 'none';
+      // Reexibe o cursor do mouse enquanto o convite estiver visível.
+      document.body.classList.toggle('mt-cursor-on', !!show);
+    }
     async function startCapture() {
+      if (starting) return;
       if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
         hint.textContent = 'Captura de tela não suportada neste dispositivo';
         return;
       }
+      starting = true;
       try {
         stream = await navigator.mediaDevices.getDisplayMedia({
           video: { frameRate: 30 }, audio: item.audio === true,
@@ -330,19 +338,35 @@
         // Se o usuário parar o compartilhamento, reabre o convite.
         const vt = stream.getVideoTracks()[0];
         if (vt) vt.addEventListener('ended', function () {
-          stopTracks(); if (!stopped) { hint.textContent = 'Compartilhamento encerrado'; showOverlay(true); }
+          stopTracks(); if (!stopped) { hint.textContent = 'Compartilhamento encerrado — clique ou tecle Enter para reabrir'; showOverlay(true); }
         });
       } catch (e) {
         showOverlay(true);
-        hint.textContent = 'Captura cancelada — toque para tentar novamente';
+        hint.textContent = 'Captura cancelada — clique ou tecle Enter para tentar novamente';
+      } finally {
+        starting = false;
       }
     }
-    btn.addEventListener('click', startCapture);
+    function onKey(e) {
+      if (overlay.style.display === 'none') return;
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault(); startCapture();
+      }
+    }
+    // Clicar em qualquer parte do convite inicia (o botão está dentro dele).
+    overlay.addEventListener('click', startCapture);
     return {
       el,
       duration: item.duracao != null ? Number(item.duracao) : 0, // 0 = fixo
-      onEnter: function () { stopped = false; showOverlay(true); },
-      onLeave: function () { stopped = true; stopTracks(); },
+      onEnter: function () {
+        stopped = false; showOverlay(true);
+        document.addEventListener('keydown', onKey);
+      },
+      onLeave: function () {
+        stopped = true; stopTracks();
+        document.removeEventListener('keydown', onKey);
+        document.body.classList.remove('mt-cursor-on');
+      },
     };
   }
 
