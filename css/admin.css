@@ -317,6 +317,11 @@ body.locked { overflow: hidden; }
 .field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; }
 .field > span { color: var(--muted); font-weight: 600; }
 .field-note { font-style: normal; font-weight: 400; color: var(--muted); opacity: .8; }
+.field-hint-note {
+  margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted);
+  background: var(--brand-soft); border: 1px solid var(--brand-border);
+  border-radius: 8px; padding: 9px 11px;
+}
 .field input, .field select, .field textarea {
   font: inherit; font-size: 13.5px;
   background: #fff; border: 1px solid var(--line); color: var(--text);
