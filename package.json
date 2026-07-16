@@ -1,8 +1,8 @@
 {
-  "name": "multi-telas",
+  "name": "telah",
   "version": "1.0.0",
   "private": true,
-  "description": "Sistema de multi-telas para TVs corporativas (mídia indoor)",
+  "description": "Telah — mídia indoor para TVs corporativas (digital signage)",
   "scripts": {
     "start": "node server.js"
   },

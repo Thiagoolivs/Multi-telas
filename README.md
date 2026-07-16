@@ -1,92 +1,54 @@
-# Raft Mídia — Mídia Indoor para TVs Corporativas
+# Telah — mídia indoor para TVs corporativas
 
-Sistema de **multi-telas na mesma exibição** (digital signage) no estilo Pix Mídia,
-feito para rodar em TVs corporativas com **atualização fácil** e **templates prontos**.
-Identidade visual padrão da **Raft Embalagens** (azul corporativo `#2F6FEB`),
-totalmente personalizável — 9 temas premium prontos e editor de cores/fontes.
+Telah é um sistema de digital signage para TVs corporativas: várias zonas
+independentes (cabeçalho, principal, lateral, rodapé) exibindo conteúdos
+diferentes ao mesmo tempo, com um painel de gestão que qualquer pessoa usa sem
+saber programar. A cor e os temas são personalizáveis.
 
-Funciona **100% no navegador**, sem servidor obrigatório — nada de backend para cair.
-Basta abrir a página numa Smart TV, mini-PC, TV Box ou Chromecast/navegador.
+Roda no navegador, sem backend obrigatório — basta abrir a página numa Smart TV,
+mini-PC, TV Box ou Chromecast. Os dados ficam no `localStorage`, ou numa URL de
+config remota que você aponta.
 
-> **Modelo de dados:** tudo fica no `localStorage` do navegador (ou numa URL de
-> config remota que você aponta). **Não há contas, login nem multi-tenant** — é
-> "1 navegador = 1 instalação". Veja [Arquitetura e limites](#arquitetura-e-limites).
+> Sem contas, login ou multi-tenant — é "1 navegador = 1 instalação".
+> Veja [Arquitetura e limites](#arquitetura-e-limites).
 
 ---
 
-## O que ele faz
+## Recursos
 
-- **Multi-telas numa só exibição:** várias zonas independentes (principal, lateral,
-  cabeçalho, rodapé) rodando conteúdos diferentes ao mesmo tempo.
-- **Visual premium com glassmorphism:** zonas em vidro fosco com profundidade,
-  fundo vivo (aurora + granulado sutil) e transições cinematográficas.
-- **9 temas premium prontos:** Dark Premium, Corporate Blue, Luxury Gold, Neon Cyber,
-  Glassmorphism, Minimal White, Elegant Black, Energy Green e Modern Purple — trocar
-  o tema reestiliza a interface inteira num clique.
-- **Layout inteligente:** conteúdos marcados como **Destaque** ou **Urgente** tomam a
-  tela (os demais desfocam/escurecem), com animação cinematográfica, e depois voltam
-  ao normal — vídeos e lives por baixo nunca são interrompidos.
-- **Cores adaptativas:** ao exibir uma imagem, o tema desloca suavemente o destaque
-  para combinar com as cores dela — o player parece "entender" o conteúdo.
-- **Editor visual de tema:** cores (primária/secundária/destaque/fundo), fontes
-  (Inter, Poppins, Montserrat, Roboto, Space Grotesk) e sliders de vidro, desfoque,
-  cantos e intensidade dos efeitos — com prévia ao vivo. Identidade visual própria.
-- **8 templates prontos** com **zonas clicáveis** — incluindo o "Painel Notícias"
-  (clima na lateral, destaque grande e faixa de notícias com relógio ao vivo).
-- **Biblioteca de conteúdos por categoria:** Comunicação interna, Eventos, Pessoas,
-  Marketing e Tempo real — o cliente escolhe um modelo pronto e só edita os textos.
-- **Datas comemorativas brasileiras:** 13 pacotes (Natal, Ano Novo, Carnaval, Páscoa,
-  Dia do Trabalho, Dia das Mães, Festa Junina, Dia dos Pais, Independência, Dia das
-  Crianças, Outubro Rosa, Novembro Azul, Black Friday) — aplicar define tema, decoração
-  e mensagem pronta. **Decorações animadas** (neve, corações, bandeirinhas, confete,
-  fogos, pétalas, luzes) com opção automática pela data.
-- **Dados em tempo real, sem chave de API:** data/hora com segundos, clima atual +
-  previsão de 6 dias (Open-Meteo), **trânsito ao vivo (Waze)** e mapas (OpenStreetMap).
-- **Notícias automáticas de portais famosos (RSS):** G1, UOL, Folha, CNN Brasil,
-  BBC News Brasil, Agência Brasil, Exame ou qualquer RSS personalizado — as
-  manchetes chegam sozinhas e se renovam a cada 10 minutos, com mensagens de
-  reserva caso o portal esteja fora do ar.
-- **Faixa de notícias estilo emissora:** selo com dia/mês e relógio ao vivo,
-  manchetes rotativas com título + descrição ("Título :: descrição").
-- **Avisos Premium prontos para cada situação:** 9 variantes desenhadas
-  (Comunicado, Urgente, Evento, RH, Segurança, Manutenção, Conquista,
-  Treinamento, Saúde) com ícone, etiqueta e cores próprias — 1 clique e edita.
-- **Cartão de aniversário decorado:** foto (com upload), balões, confetes e
-  mensagem personalizada — pronto em segundos.
-- **Conteúdos prontos (1 clique):** YouTube ao vivo, Aniversariantes do mês,
-  Aviso importante, Clima e tempo, Boas-vindas, Comunicado interno, Segurança,
-  Foto/campanha e Relógio.
-- **YouTube ao vivo:** cole o link da live (ou o ID do canal, que pega a live ativa
-  automaticamente) e deixe **fixa na tela** (duração 0) — ideal para transmissões
-  em tempo real.
-- **Upload de imagem direto do computador:** a foto é comprimida no navegador e
-  salva junto com a configuração (sem precisar hospedar em lugar nenhum).
-- **~21 tipos de conteúdo:** Aviso Premium, Texto/Comunicado, Aviso simples, Imagem,
-  Vídeo (MP4), YouTube/Ao vivo, Cartão de Aniversário, Lista de Aniversariantes,
-  Painel do Clima, Trânsito (Waze), Mapa, Destaque de Pessoa, Agenda, Frase do Dia,
-  Indicador (KPI), Promoção/Produto, Redes Sociais, Relógio, Clima simples,
-  Página Web e QR Code.
-- **Superfície adaptativa ao tema:** os conteúdos prontos (frase, KPI, agenda,
-  destaque, aniversariantes, promoção, redes…) derivam fundo, cores e fontes dos
-  tokens do tema — o mesmo conteúdo fica premium e uniforme em qualquer paleta,
-  com contraste garantido no tema claro.
-- **Painel de gestão visual:** qualquer pessoa atualiza sem saber programar.
-  Prévia ao vivo do que a TV vai exibir; mapa das áreas da tela abaixo da prévia.
-- **Gestão premium de conteúdo:** arraste para reordenar, **duplicar** com um clique,
-  **favoritos** reutilizáveis e **agendamento** (exibir um conteúdo só em certas
-  datas, horários e dias da semana — o player filtra em tempo real).
-- **Vários painéis / playlists:** crie, renomeie e alterne entre configurações
-  nomeadas (ex.: "Recepção", "Fábrica") — cada uma com seu próprio conteúdo e tema.
-  *(São guardados neste navegador; não são contas separadas — veja os limites.)*
-- **Trava do painel por PIN:** protege o painel de gestão com um PIN de acesso
-  (trava de conveniência local, não segurança de servidor).
-- **Alerta sonoro no aviso urgente:** avisos marcados como urgentes tocam um alerta
-  sonoro sintetizado e ganham um flash vermelho reforçado (ligável nas configurações).
-- **Rodapé de avisos rolando** (ticker) e **cabeçalho premium com relógio + clima**.
-- **Atualização automática:** o player recarrega sozinho a cada X segundos.
-- **Robusto:** cada conteúdo é isolado — se um falhar, o player pula para o próximo
-  sem travar a tela; zonas com um único conteúdo (ex.: live) ficam estáticas e nunca
-  recarregam a transmissão.
+**Exibição**
+
+- Multi-telas numa só exibição: zonas independentes rodando em paralelo.
+- 9 temas com editor de cores, fontes e efeitos; trocar o tema reestiliza tudo.
+- Conteúdos prontos que se adaptam ao tema (superfície adaptativa), com bom
+  contraste também no tema claro.
+- Layout inteligente: um aviso marcado como Destaque ou Urgente amplia sobre a
+  tela e depois volta — vídeos e lives por baixo não são interrompidos.
+- Cores adaptativas: o tema se ajusta às cores da imagem em exibição.
+- Transições entre conteúdos e decorações sazonais (neve, confete, corações,
+  bandeirinhas, fogos…), com 13 pacotes de datas comemorativas.
+
+**Conteúdo (~23 tipos)**
+
+- Avisos (9 variantes), texto/comunicado, imagem (com upload), vídeo MP4,
+  YouTube/live.
+- Fontes ao vivo: entrada HDMI/USB (via captador), stream IPTV/HLS e captura de
+  tela/janela do próprio computador.
+- Clima (agora + previsão), trânsito (Waze) e mapa (OpenStreetMap) — sem chave de API.
+- Cartão e lista de aniversário, agenda, KPI, frase do dia, destaque de pessoa,
+  promoção, redes sociais, relógio e QR Code.
+- Notícias por RSS (G1, UOL, Folha, CNN Brasil, BBC, Agência Brasil… ou um RSS
+  próprio), em faixa estilo emissora com relógio ao vivo.
+
+**Gestão**
+
+- 8 templates com zonas clicáveis e prévia ao vivo do que a TV vai exibir.
+- Arrastar para reordenar, duplicar, favoritos e agendamento (data, hora e dia
+  da semana).
+- Vários painéis/playlists nomeados e trava do painel por PIN.
+- Atualização automática e atualização centralizada por URL de config remota.
+- Um conteúdo com erro não derruba a tela: o player isola cada item e pula para
+  o próximo.
 
 ---
 
@@ -162,7 +124,7 @@ Assim uma pessoa atualiza num lugar só e a rede inteira acompanha.
 ## Estrutura do projeto
 
 ```
-Multi-telas/
+telah/
 ├── index.html          # Painel de administração
 ├── player.html         # Tela de exibição (TV)
 ├── css/
@@ -199,7 +161,7 @@ Multi-telas/
     "somUrgente": true,          // alerta sonoro nos avisos urgentes
     "remoteConfigUrl": "",       // URL de config remota (opcional)
     "refreshSeconds": 60,
-    "theme": {                   // tema premium: preset + ajustes manuais
+    "theme": {                   // tema: preset + ajustes manuais
       "preset": "dark-premium",
       "font": "system",
       "overrides": {}            // { brand, accent, bg, radius, blur, fx, … }
