@@ -322,6 +322,14 @@ body.locked { overflow: hidden; }
   background: var(--brand-soft); border: 1px solid var(--brand-border);
   border-radius: 8px; padding: 9px 11px;
 }
+/* Lista de fontes de notícia (várias) */
+.news-sources { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; }
+@media (max-width: 620px) { .news-sources { grid-template-columns: 1fr; } }
+.news-source {
+  display: flex; align-items: center; gap: 7px; font-size: 12.5px;
+  color: var(--text); cursor: pointer;
+}
+.news-source input { flex: none; }
 .field input, .field select, .field textarea {
   font: inherit; font-size: 13.5px;
   background: #fff; border: 1px solid var(--line); color: var(--text);

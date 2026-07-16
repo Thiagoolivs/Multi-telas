@@ -115,5 +115,32 @@
     throw lastErr || new Error('falha ao buscar notícias');
   }
 
-  global.MTNews = { FEEDS, fetchFeed };
+  /**
+   * Busca de VÁRIAS fontes ao mesmo tempo e intercala as manchetes
+   * (round-robin) para alternar entre os portais. Fontes que falharem são
+   * ignoradas; só lança erro se TODAS falharem. Cada fonte é um id de FEED
+   * ('g1', 'uol', …) ou uma URL de RSS.
+   */
+  async function fetchMany(sources, maxTotal) {
+    const list = (sources || []).map((s) => String(s || '').trim()).filter(Boolean);
+    if (!list.length) throw new Error('nenhuma fonte informada');
+    if (list.length === 1) return fetchFeed(list[0], maxTotal);
+
+    const results = await Promise.all(list.map((src) =>
+      fetchFeed(src, maxTotal || 10).then((items) => items).catch(() => [])));
+    // Intercala: 1ª de cada fonte, 2ª de cada fonte, …
+    const merged = [];
+    const seen = {};
+    const maxLen = results.reduce((m, r) => Math.max(m, r.length), 0);
+    for (let i = 0; i < maxLen; i++) {
+      results.forEach((r) => {
+        const it = r[i];
+        if (it && !seen[it.titulo]) { seen[it.titulo] = 1; merged.push(it); }
+      });
+    }
+    if (!merged.length) throw new Error('falha ao buscar notícias');
+    return merged.slice(0, maxTotal || 30);
+  }
+
+  global.MTNews = { FEEDS, fetchFeed, fetchMany };
 })(window);

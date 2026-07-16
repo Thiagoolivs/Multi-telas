@@ -783,28 +783,35 @@
         iv.addEventListener('input', () => { zone.intervalo = Number(iv.value); markDirty(); });
         opts.appendChild(fieldRow('Troca de notícia a cada (s)', iv));
 
-        // Fonte automática de manchetes (RSS de portais famosos).
-        const srcSel = el('select');
-        const srcOptions = [['manual', 'Manual (digitar abaixo)']]
-          .concat(MTNews.FEEDS.map((f) => [f.id, f.label]))
-          .concat([['custom', 'RSS personalizado (URL)']]);
-        srcOptions.forEach(([v, t]) => {
-          const o = el('option', null, t); o.value = v; srcSel.appendChild(o);
+        // Fontes automáticas de manchetes (RSS) — pode marcar VÁRIAS; as
+        // manchetes são intercaladas entre os portais escolhidos.
+        if (!Array.isArray(zone.fontes)) zone.fontes = [];
+        const srcWrap = el('div', 'news-sources');
+        MTNews.FEEDS.forEach((f) => {
+          const lab = el('label', 'news-source');
+          const cb = el('input'); cb.type = 'checkbox';
+          cb.checked = zone.fontes.indexOf(f.id) !== -1;
+          cb.addEventListener('change', () => {
+            const i = zone.fontes.indexOf(f.id);
+            if (cb.checked && i === -1) zone.fontes.push(f.id);
+            else if (!cb.checked && i !== -1) zone.fontes.splice(i, 1);
+            zone.fonte = 'manual'; // legado: a seleção agora vive em fontes
+            markDirty(); redraw();
+          });
+          lab.appendChild(cb); lab.appendChild(el('span', null, f.label));
+          srcWrap.appendChild(lab);
         });
-        srcSel.value = zone.fonte || 'manual';
-        srcSel.addEventListener('change', () => { zone.fonte = srcSel.value; markDirty(); redraw(); });
-        opts.appendChild(fieldRow('Fonte das notícias', srcSel));
+        opts.appendChild(fieldRow('Fontes das notícias (marque uma ou mais)', srcWrap));
 
-        if (zone.fonte === 'custom') {
-          const ru = el('input'); ru.type = 'text';
-          ru.placeholder = 'https://…/feed.xml';
-          ru.value = zone.rssUrl || '';
-          ru.addEventListener('input', () => { zone.rssUrl = ru.value; markDirty(); });
-          opts.appendChild(fieldRow('URL do RSS', ru));
-        }
-        if ((zone.fonte || 'manual') !== 'manual') {
-          const qt = el('input'); qt.type = 'number'; qt.min = '1'; qt.max = '30';
-          qt.value = zone.quantidade || 10;
+        const ru = el('input'); ru.type = 'text';
+        ru.placeholder = 'https://…/feed.xml (opcional)';
+        ru.value = zone.rssUrl || '';
+        ru.addEventListener('input', () => { zone.rssUrl = ru.value; markDirty(); });
+        opts.appendChild(fieldRow('RSS personalizado (URL)', ru));
+
+        if (zone.fontes.length > 0 || (zone.rssUrl || '').trim()) {
+          const qt = el('input'); qt.type = 'number'; qt.min = '1'; qt.max = '40';
+          qt.value = zone.quantidade || 20;
           qt.addEventListener('input', () => { zone.quantidade = Number(qt.value); markDirty(); });
           opts.appendChild(fieldRow('Máximo de manchetes', qt));
         }
@@ -816,7 +823,8 @@
       }
       editor.appendChild(opts);
 
-      const auto = (zone.modo || 'noticias') === 'noticias' && (zone.fonte || 'manual') !== 'manual';
+      const auto = (zone.modo || 'noticias') === 'noticias' &&
+        ((Array.isArray(zone.fontes) && zone.fontes.length > 0) || (zone.rssUrl || '').trim());
       editor.appendChild(el('div', 'add-section-label',
         auto ? 'Mensagens de reserva (se a fonte falhar)' : 'Notícias / mensagens'));
       const hint = el('p', 'hint');
@@ -1364,6 +1372,8 @@
       'Layout inteligente', 'Conteúdos marcados como prioritários tomam a tela e depois voltam.'));
     host.appendChild(toggleRow('somUrgente',
       'Som no aviso urgente', 'Toca um alerta sonoro e reforça o destaque nos avisos urgentes.'));
+    host.appendChild(toggleRow('layoutAuto',
+      'Layout dinâmico', 'A disposição das telas se alterna sozinha (proporções e lado da lateral) sem trocar o conteúdo.'));
   }
 
   // Linha de toggle (checkbox) ligada a uma configuração booleana.

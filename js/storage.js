@@ -34,6 +34,8 @@
         coresAdaptativas: true,   // tema se adapta às cores da imagem exibida
         layoutInteligente: true,  // conteúdo prioritário toma a tela (takeover)
         somUrgente: true,         // toca um alerta sonoro nos avisos urgentes
+        layoutAuto: false,        // a disposição das telas se alterna sozinha
+        layoutAutoSeconds: 20,    // intervalo da alternância de layout (s)
         // Tema premium: preset + ajustes manuais (ver js/theme.js).
         theme: {
           preset: 'dark-premium',
@@ -130,7 +132,11 @@
           titulo: existing.titulo != null ? existing.titulo : 'ÚLTIMAS NOTÍCIAS',
           modo: existing.modo || 'noticias', // noticias | rolagem
           intervalo: existing.intervalo || 8,
-          fonte: existing.fonte || 'manual', // manual | g1 | uol | … | custom
+          fonte: existing.fonte || 'manual', // (legado) manual | g1 | … | custom
+          // Várias fontes ao mesmo tempo (ids de FEED e/ou URLs de RSS).
+          fontes: Array.isArray(existing.fontes) ? existing.fontes
+            : (existing.fonte && existing.fonte !== 'manual' && existing.fonte !== 'custom'
+                ? [existing.fonte] : []),
           rssUrl: existing.rssUrl || '',
           quantidade: existing.quantidade || 10,
         };
