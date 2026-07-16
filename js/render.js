@@ -110,6 +110,7 @@
     video: renderVideo,
     youtube: renderYouTube,
     livesource: renderLiveSource,
+    screen: renderScreen,
     stream: renderStream,
     birthday: renderBirthday,
     birthdaycard: renderBirthdayCard,
@@ -280,6 +281,67 @@
       el,
       duration: item.duracao != null ? Number(item.duracao) : 0, // 0 = fixo na tela
       onEnter: function () { stopped = false; start(); },
+      onLeave: function () { stopped = true; stopTracks(); },
+    };
+  }
+
+  /* ---------- Captura de tela / janela do sistema ----------
+   * Exibe uma janela do próprio computador (ex.: Holyrics, slides) via
+   * getDisplayMedia. É só imagem (mão única) — não controla o app.
+   * getDisplayMedia exige um gesto do usuário; por isso há um botão
+   * "Iniciar captura" que o operador clica uma vez ao montar a tela. */
+  function renderScreen(item) {
+    const el = div('mt-slide mt-live-source mt-screen');
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.muted = item.audio !== true;
+    video.playsInline = true;
+    video.style.objectFit = item.fit || 'contain';
+    el.appendChild(video);
+
+    const overlay = div('mt-screen-overlay');
+    const hint = divText('mt-screen-hint',
+      'Toque em "Iniciar captura" e escolha a janela ou tela para exibir aqui');
+    const btn = document.createElement('button');
+    btn.className = 'mt-screen-start'; btn.type = 'button';
+    btn.textContent = 'Iniciar captura';
+    overlay.appendChild(hint); overlay.appendChild(btn);
+    el.appendChild(overlay);
+
+    let stream = null, stopped = false;
+    function stopTracks() {
+      if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; }
+      video.srcObject = null;
+    }
+    function showOverlay(show) { overlay.style.display = show ? '' : 'none'; }
+    async function startCapture() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        hint.textContent = 'Captura de tela não suportada neste dispositivo';
+        return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: 30 }, audio: item.audio === true,
+        });
+        if (stopped) { stopTracks(); return; }
+        video.srcObject = stream;
+        video.play().catch(() => {});
+        showOverlay(false);
+        // Se o usuário parar o compartilhamento, reabre o convite.
+        const vt = stream.getVideoTracks()[0];
+        if (vt) vt.addEventListener('ended', function () {
+          stopTracks(); if (!stopped) { hint.textContent = 'Compartilhamento encerrado'; showOverlay(true); }
+        });
+      } catch (e) {
+        showOverlay(true);
+        hint.textContent = 'Captura cancelada — toque para tentar novamente';
+      }
+    }
+    btn.addEventListener('click', startCapture);
+    return {
+      el,
+      duration: item.duracao != null ? Number(item.duracao) : 0, // 0 = fixo
+      onEnter: function () { stopped = false; showOverlay(true); },
       onLeave: function () { stopped = true; stopTracks(); },
     };
   }
@@ -937,6 +999,7 @@
     { type: 'video', label: 'Vídeo (MP4)', icon: 'film' },
     { type: 'youtube', label: 'YouTube / Ao vivo', icon: 'play' },
     { type: 'livesource', label: 'Entrada HDMI / USB (ao vivo)', icon: 'live' },
+    { type: 'screen', label: 'Captura de tela / janela', icon: 'film' },
     { type: 'stream', label: 'Stream ao vivo (IPTV/HLS)', icon: 'live' },
     { type: 'birthdaycard', label: 'Cartão de Aniversário', icon: 'gift' },
     { type: 'birthday', label: 'Lista de Aniversariantes', icon: 'cake' },

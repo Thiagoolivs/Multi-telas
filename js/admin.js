@@ -115,6 +115,12 @@
       { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela', kind: 'number', def: 0 },
       { kind: 'hint', text: 'Ligue a fonte HDMI num captador HDMI→USB (padrão UVC) — ele aparece como "câmera". Na TV, o player precisa rodar em https:// ou localhost e ter permissão de câmera (no modo quiosque isso é liberado automaticamente).' },
     ],
+    screen: [
+      { key: 'audio', label: 'Capturar também o áudio', kind: 'checkbox' },
+      { key: 'fit', label: 'Ajuste', kind: 'select', options: [['contain', 'Mostrar inteira'], ['cover', 'Preencher a tela']], def: 'contain' },
+      { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela', kind: 'number', def: 0 },
+      { kind: 'hint', text: 'Na TV, toque em "Iniciar captura" e escolha a janela/tela (ex.: Holyrics, PowerPoint). É só a imagem — não dá para operar o app pela captura. Roda na mesma máquina do player e precisa de https:// ou localhost.' },
+    ],
     stream: [
       { key: 'url', label: 'URL do stream ao vivo', kind: 'text', ph: 'https://…/playlist.m3u8' },
       { key: 'tipo', label: 'Tipo', kind: 'select', options: [['auto', 'Detectar automaticamente'], ['hls', 'HLS (.m3u8 / IPTV)'], ['mp4', 'MP4 / progressivo']], def: 'auto' },
@@ -278,6 +284,10 @@
         {
           label: 'Stream ao vivo', desc: 'IPTV / HLS por URL (.m3u8)', icon: 'play',
           item: { type: 'stream', url: '', tipo: 'auto', muted: true, fit: 'contain', duracao: 0 },
+        },
+        {
+          label: 'Captura de tela/janela', desc: 'Exibe uma janela do PC (Holyrics, slides…)', icon: 'film',
+          item: { type: 'screen', audio: false, fit: 'contain', duracao: 0 },
         },
         {
           label: 'Painel do clima', desc: 'Tempo agora + previsão de 6 dias', icon: 'cloud',
