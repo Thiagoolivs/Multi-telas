@@ -29,6 +29,11 @@ html, body {
   overflow: hidden;
   cursor: none; /* esconde o mouse na TV */
 }
+/* Reexibe o cursor quando há algo interativo na tela (ex.: convite de
+   captura de tela), para o operador conseguir clicar. */
+body.mt-cursor-on, body.mt-cursor-on * { cursor: auto; }
+body.mt-cursor-on .mt-screen-overlay,
+body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 
 /* ---------- Palco / grade de zonas ---------- */
 .mt-stage {

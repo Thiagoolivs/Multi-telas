@@ -41,7 +41,13 @@ const server = http.createServer((req, res) => {
       return res.end('Não encontrado: ' + urlPath);
     }
     const ext = path.extname(filePath).toLowerCase();
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+    // Código e páginas revalidam sempre (evita o navegador exibir uma versão
+    // antiga do player após um deploy); mídia pode ser cacheada por 1h.
+    const revalidate = ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json';
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': revalidate ? 'no-cache' : 'public, max-age=3600',
+    });
     res.end(data);
   });
 });
