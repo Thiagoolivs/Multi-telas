@@ -1,8 +1,8 @@
 {
-  "name": "telah",
+  "name": "vistra",
   "version": "1.0.0",
   "private": true,
-  "description": "Telah — mídia indoor para TVs corporativas (digital signage)",
+  "description": "Vistra — mídia indoor para TVs corporativas (digital signage)",
   "scripts": {
     "start": "node server.js"
   },

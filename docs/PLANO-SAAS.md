@@ -1,6 +1,6 @@
-# Plano — Multi-telas como SaaS (multi-tenant)
+# Plano — Vistra como SaaS (multi-tenant)
 
-Documento de planejamento para evoluir o **Telah** de um app client-side
+Documento de planejamento para evoluir o **Vistra** de um app client-side
 (1 navegador = 1 instalação) para uma **plataforma SaaS multi-tenant** com
 contas, dispositivos registrados, gestão na nuvem e cobrança.
 

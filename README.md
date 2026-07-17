@@ -1,6 +1,6 @@
-# Telah — mídia indoor para TVs corporativas
+# Vistra — mídia indoor para TVs corporativas
 
-Telah é um sistema de digital signage para TVs corporativas: várias zonas
+Vistra é um sistema de digital signage para TVs corporativas: várias zonas
 independentes (cabeçalho, principal, lateral, rodapé) exibindo conteúdos
 diferentes ao mesmo tempo, com um painel de gestão que qualquer pessoa usa sem
 saber programar. A cor e os temas são personalizáveis.
@@ -124,7 +124,7 @@ Assim uma pessoa atualiza num lugar só e a rede inteira acompanha.
 ## Estrutura do projeto
 
 ```
-telah/
+vistra/
 ├── index.html          # Painel de administração
 ├── player.html         # Tela de exibição (TV)
 ├── css/
