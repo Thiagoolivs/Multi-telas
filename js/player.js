@@ -91,19 +91,76 @@
     stage.innerHTML = '';
   }
 
+  /* Gera variações de arranjo (só disposição/tamanho) para um layout,
+   * mantendo exatamente as mesmas zonas. Usado pelo layout dinâmico. */
+  function computeArrangements(layout) {
+    const g = layout.grid;
+    const areas = g.areas.slice();
+    const out = [{ columns: g.columns, rows: g.rows, areas: areas.slice() }];
+    const cols = g.columns.trim().split(/\s+/);
+    const frs = cols.map((c) => /^([\d.]+)fr$/.exec(c));
+
+    // Variações de proporção para layouts de 2 colunas em fr.
+    if (cols.length === 2 && frs[0] && frs[1]) {
+      const total = parseFloat(frs[0][1]) + parseFloat(frs[1][1]);
+      const push = (p) => out.push({
+        columns: (total * p).toFixed(2) + 'fr ' + (total * (1 - p)).toFixed(2) + 'fr',
+        rows: g.rows, areas: areas.slice(),
+      });
+      push(0.5);   // equilibra as duas
+      push(0.72);  // principal maior
+    } else if (layout.dynamic && Array.isArray(layout.dynamic.columns)) {
+      layout.dynamic.columns.forEach((c) => {
+        if (c !== g.columns) out.push({ columns: c, rows: g.rows, areas: areas.slice() });
+      });
+    }
+
+    // Espelhamento horizontal: inverte o lado da lateral (quando muda algo).
+    if (cols.length > 1) {
+      const mareas = areas.map((r) => r.trim().split(/\s+/).reverse().join(' '));
+      if (mareas.join('|') !== areas.join('|')) {
+        out.push({ columns: cols.slice().reverse().join(' '), rows: g.rows, areas: mareas });
+      }
+    }
+    return out;
+  }
+
   function buildStage(cfg) {
     const layout = MT_getLayout(cfg.settings.layoutId);
-    stage.style.gridTemplateColumns = layout.grid.columns;
-    stage.style.gridTemplateRows = layout.grid.rows;
-    stage.style.gridTemplateAreas = layout.grid.areas
-      .map((row) => '"' + row + '"')
-      .join(' ');
+    let currentAreasKey = '';
+    function applyArrangement(a, morph) {
+      stage.style.gridTemplateColumns = a.columns;
+      stage.style.gridTemplateRows = a.rows;
+      const areasKey = a.areas.join('|');
+      stage.style.gridTemplateAreas = a.areas.map((row) => '"' + row + '"').join(' ');
+      // Quando o lado das zonas muda (não só o tamanho), um "morph" suave
+      // disfarça o reposicionamento — que o grid não anima sozinho.
+      if (morph && areasKey !== currentAreasKey) {
+        stage.classList.remove('mt-stage-morphing');
+        void stage.offsetWidth;
+        stage.classList.add('mt-stage-morphing');
+      }
+      currentAreasKey = areasKey;
+    }
+    applyArrangement({ columns: layout.grid.columns, rows: layout.grid.rows, areas: layout.grid.areas }, false);
 
-    // Layouts "dinâmicos": o grid respira entre proporções ao longo do
-    // tempo. Só o tamanho das zonas muda — o DOM de cada zona (vídeo,
-    // iframe da live etc.) nunca é recriado, então nada reinicia.
-    stage.classList.toggle('mt-stage-breathing', !!layout.dynamic);
-    if (layout.dynamic) {
+    // Layout dinâmico: a disposição se alterna sozinha (proporções e lado da
+    // lateral) ao longo do tempo. Só o grid muda — o DOM de cada zona (vídeo,
+    // iframe da live etc.) nunca é recriado, então nada de conteúdo reinicia.
+    const auto = cfg.settings.layoutAuto === true;
+    const arrangements = computeArrangements(layout);
+    if (auto && arrangements.length > 1) {
+      stage.classList.add('mt-stage-breathing');
+      let step = 0;
+      const iv = Math.max(8, cfg.settings.layoutAutoSeconds || 20) * 1000;
+      const t = setInterval(() => {
+        step = (step + 1) % arrangements.length;
+        applyArrangement(arrangements[step], true);
+      }, iv);
+      zoneControllers.push({ stop: () => clearInterval(t) });
+    } else if (layout.dynamic) {
+      // Compatibilidade: "respiro" só de colunas dos layouts que já traziam isso.
+      stage.classList.add('mt-stage-breathing');
       const states = layout.dynamic.columns;
       let step = 0;
       const breatheTimer = setInterval(() => {
@@ -111,6 +168,8 @@
         stage.style.gridTemplateColumns = states[step];
       }, Math.max(6, layout.dynamic.intervalSeconds || 18) * 1000);
       zoneControllers.push({ stop: () => clearInterval(breatheTimer) });
+    } else {
+      stage.classList.remove('mt-stage-breathing');
     }
 
     // Tema premium: aplica todos os design tokens (cores, vidro, sombras,
@@ -516,7 +575,16 @@
       const parts = m.split('::');
       return { titulo: parts[0].trim(), desc: (parts[1] || '').trim() };
     });
-    const usingFeed = data.fonte && data.fonte !== 'manual';
+    // Monta a lista de fontes automáticas: várias (data.fontes) + a URL
+    // personalizada (rssUrl) + compatibilidade com a fonte única antiga.
+    const sources = [];
+    (data.fontes || []).forEach((s) => { if (s && sources.indexOf(s) === -1) sources.push(s); });
+    if (!(data.fontes || []).length && data.fonte && data.fonte !== 'manual' && data.fonte !== 'custom') {
+      sources.push(data.fonte);
+    }
+    const customUrl = (data.rssUrl || '').trim();
+    if (customUrl && sources.indexOf(customUrl) === -1) sources.push(customUrl);
+    const usingFeed = sources.length > 0;
 
     let idx = 0;
     function show() {
@@ -540,8 +608,7 @@
     async function loadFeed() {
       if (!usingFeed || !global.MTNews) return;
       try {
-        const src = data.fonte === 'custom' ? (data.rssUrl || '').trim() : data.fonte;
-        const feed = await MTNews.fetchFeed(src, data.quantidade || 10);
+        const feed = await MTNews.fetchMany(sources, data.quantidade || 20);
         if (feed && feed.length) {
           items = feed;
           if (idx >= items.length) idx = 0;

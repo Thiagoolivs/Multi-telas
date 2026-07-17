@@ -77,7 +77,14 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 /* Layouts "dinâmicos": as zonas mudam de proporção suavemente ao longo
    do tempo, sem recriar nenhum conteúdo (vídeos e lives não reiniciam). */
 .mt-stage-breathing {
-  transition: grid-template-columns 1.8s cubic-bezier(.4, 0, .2, 1);
+  transition: grid-template-columns 1.8s cubic-bezier(.4, 0, .2, 1),
+              grid-template-rows 1.8s cubic-bezier(.4, 0, .2, 1);
+}
+/* "Morph" suave ao trocar o lado das zonas (o grid não anima realocação). */
+.mt-stage-morphing { animation: mt-stage-morph .8s ease; }
+@keyframes mt-stage-morph {
+  0%, 100% { opacity: 1; }
+  40% { opacity: .82; }
 }
 @keyframes mt-zone-in {
   from { opacity: 0; transform: translateY(2.4vh) scale(.985); }
