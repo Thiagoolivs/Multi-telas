@@ -195,6 +195,7 @@ vistra/
 | YouTube / Ao vivo | Link/ID do vídeo ou da live; ID do canal pega a live ativa; duração 0 = fixo na tela |
 | Entrada HDMI / USB (ao vivo) | Fonte externa por **captador HDMI→USB** (UVC), exibida ao vivo via `getUserMedia` — precisa de contexto seguro + permissão de câmera |
 | Stream ao vivo (IPTV/HLS) | URL de transmissão (`.m3u8`/MP4); HLS no Chromium via hls.js carregado sob demanda |
+| Holyrics (letra ao vivo) | Slide/letra atual do Holyrics via API Server (IP + token), renderizado nativo e adaptado ao tema |
 | Cartão de Aniversário | Foto, balões, confetes e mensagem — estilo cartão comemorativo |
 | Lista de Aniversariantes | Lista "Nome — data", um por linha |
 | Painel do Clima | Tempo agora + previsão de 6 dias, com data e cidade (Open-Meteo) |

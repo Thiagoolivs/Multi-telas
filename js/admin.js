@@ -121,6 +121,13 @@
       { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela', kind: 'number', def: 0 },
       { kind: 'hint', text: 'Na TV, toque em "Iniciar captura" e escolha a janela/tela (ex.: Holyrics, PowerPoint). É só a imagem — não dá para operar o app pela captura. Roda na mesma máquina do player e precisa de https:// ou localhost.' },
     ],
+    holyrics: [
+      { key: 'host', label: 'Endereço do Holyrics (IP:porta)', kind: 'text', ph: '192.168.0.10:8091' },
+      { key: 'token', label: 'Token da API', kind: 'text', ph: 'gerado no Holyrics' },
+      { key: 'intervalo', label: 'Atualizar a cada (s)', kind: 'number', def: 2 },
+      { key: 'duracao', label: 'Duração (s) — 0 = fixo na tela', kind: 'number', def: 0 },
+      { kind: 'hint', text: 'No Holyrics: Arquivo → Configurações → API Server → ative e gere um token (em "gerenciar permissões", libere "Receber a apresentação atual"). Use o IP do computador do Holyrics + a porta (padrão 8091). Dica: rode o player na mesma máquina/rede do Holyrics para evitar bloqueio de CORS.' },
+    ],
     stream: [
       { key: 'url', label: 'URL do stream ao vivo', kind: 'text', ph: 'https://…/playlist.m3u8' },
       { key: 'tipo', label: 'Tipo', kind: 'select', options: [['auto', 'Detectar automaticamente'], ['hls', 'HLS (.m3u8 / IPTV)'], ['mp4', 'MP4 / progressivo']], def: 'auto' },
@@ -288,6 +295,10 @@
         {
           label: 'Captura de tela/janela', desc: 'Exibe uma janela do PC (Holyrics, slides…)', icon: 'film',
           item: { type: 'screen', audio: false, fit: 'contain', duracao: 0 },
+        },
+        {
+          label: 'Holyrics (letra ao vivo)', desc: 'Slide atual do Holyrics via API, nativo', icon: 'quote',
+          item: { type: 'holyrics', host: '', token: '', intervalo: 2, duracao: 0 },
         },
         {
           label: 'Painel do clima', desc: 'Tempo agora + previsão de 6 dias', icon: 'cloud',
