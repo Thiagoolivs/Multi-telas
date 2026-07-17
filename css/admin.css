@@ -138,7 +138,8 @@ body.locked { overflow: hidden; }
   align-items: start;
 }
 @media (max-width: 1100px) {
-  .layout { grid-template-columns: 1fr; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .editor, .preview { min-width: 0; }
   .preview { position: static !important; }
 }
 
@@ -322,14 +323,22 @@ body.locked { overflow: hidden; }
   background: var(--brand-soft); border: 1px solid var(--brand-border);
   border-radius: 8px; padding: 9px 11px;
 }
-/* Lista de fontes de notícia (várias) */
-.news-sources { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; }
-@media (max-width: 620px) { .news-sources { grid-template-columns: 1fr; } }
+/* Lista de fontes de notícia (várias) — pílulas que quebram naturalmente */
+.news-sources { display: flex; flex-wrap: wrap; gap: 8px; }
 .news-source {
-  display: flex; align-items: center; gap: 7px; font-size: 12.5px;
-  color: var(--text); cursor: pointer;
+  flex: none;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12.5px; color: var(--text); cursor: pointer;
+  background: #fff; border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 11px;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
 }
-.news-source input { flex: none; }
+.news-source:hover { border-color: var(--brand-border); }
+.news-source input[type="checkbox"] { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--brand); }
+.news-source span { white-space: nowrap; }
+.news-source:has(input:checked) {
+  border-color: var(--brand); background: var(--brand-soft); color: var(--brand-dark);
+}
 .field input, .field select, .field textarea {
   font: inherit; font-size: 13.5px;
   background: #fff; border: 1px solid var(--line); color: var(--text);
@@ -498,3 +507,56 @@ body.locked { overflow: hidden; }
   border: 1px solid var(--line); background: #fff; color: var(--muted);
 }
 .sched-day.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+/* ---------- Responsivo: tablets e celulares ---------- */
+@media (max-width: 720px) {
+  .layout { padding: 12px; gap: 14px; }
+  .card { padding: 14px; border-radius: 10px; margin-bottom: 14px; }
+  .card-head { gap: 10px; margin-bottom: 13px; }
+  .card-head h2 { font-size: 14.5px; }
+
+  .topbar { padding: 9px 13px; gap: 9px; }
+  .brand-text span { display: none; }
+  .panel-switch { order: 3; flex-basis: 100%; min-width: 0; }
+  .panel-select { max-width: none; flex: 1; }
+  .topbar-actions { order: 2; gap: 6px; }
+  .topbar-actions .btn { padding: 7px 10px; font-size: 12.5px; }
+  .save-status { flex-basis: 100%; min-width: 0; text-align: right; }
+
+  .template-gallery { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .presets-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+/* Celular: itens menores, 2 por linha, e edição em tela quase cheia. */
+@media (max-width: 640px) {
+  .layout { padding: 9px; }
+  .card { padding: 12px; }
+  .btn { padding: 7px 10px; }
+
+  /* Modelos de exibição: 2 por linha, miniaturas menores. */
+  .template-gallery { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tpl-thumb { height: 60px; padding: 6px; }
+  .tpl-name { padding: 7px 9px 1px; font-size: 12.5px; }
+  .tpl-desc { padding: 0 9px 9px; font-size: 11px; }
+
+  /* Conteúdos prontos: 2 por linha, compactos. */
+  .presets-grid { grid-template-columns: 1fr 1fr; gap: 7px; }
+  .preset-btn { padding: 9px; flex-direction: column; align-items: flex-start; gap: 5px; }
+  .preset-btn .p-desc { display: none; }
+
+  /* Editar conteúdo ocupa a tela toda (dinâmica mobile). */
+  .modal { padding: 0; align-items: stretch; }
+  .modal-box {
+    max-width: none; width: 100%; height: 100%; max-height: 100%;
+    border-radius: 0; border: 0;
+  }
+  .modal-head { position: sticky; top: 0; background: #fff; z-index: 2; }
+  .modal-body { padding: 15px; flex: 1; }
+  .modal-foot {
+    position: sticky; bottom: 0; background: #fff; z-index: 2;
+    box-shadow: 0 -2px 10px rgba(18,22,10,.06);
+  }
+  .modal-foot .btn { flex: 1; justify-content: center; padding: 11px; font-size: 14px; }
+  /* Alvos de toque maiores nos campos. */
+  .field input, .field select, .field textarea { padding: 10px 11px; font-size: 14px; }
+}
