@@ -112,6 +112,7 @@
     livesource: renderLiveSource,
     screen: renderScreen,
     stream: renderStream,
+    holyrics: renderHolyrics,
     birthday: renderBirthday,
     birthdaycard: renderBirthdayCard,
     clock: renderClock,
@@ -443,6 +444,82 @@
         try { video.pause(); } catch (e) {}
         if (hls) { try { hls.destroy(); } catch (e) {} hls = null; }
       },
+    };
+  }
+
+  /* ---------- Holyrics (letra/slide atual ao vivo, via API Server) ----------
+   * Consulta a API local do Holyrics (POST /api/GetCurrentPresentation) e
+   * renderiza o texto do slide atual de forma nativa (nítido e adaptado ao
+   * tema). Requer o "API Server" ligado no Holyrics (com token). Se o
+   * navegador bloquear por CORS, use o player na mesma máquina/rede. */
+  function renderHolyrics(item) {
+    const el = div('mt-slide mt-surface mt-holyrics');
+    const textEl = div('mt-holyrics-text');
+    const meta = divText('mt-holyrics-meta', '');
+    el.appendChild(textEl);
+    el.appendChild(meta);
+
+    const raw = (item.host || '').trim().replace(/\/+$/, '');
+    const base = raw ? (/^https?:\/\//i.test(raw) ? raw : 'http://' + raw) : '';
+    const token = (item.token || '').trim();
+    let timer = null, stopped = false, lastText = null;
+
+    function setSlide(text, name) {
+      if (!text) {
+        if (lastText !== '') {
+          textEl.className = 'mt-holyrics-text is-empty';
+          textEl.textContent = 'Sem apresentação no momento';
+          meta.textContent = '';
+          lastText = '';
+        }
+        return;
+      }
+      if (text === lastText) return; // evita re-render/animação à toa
+      lastText = text;
+      textEl.className = 'mt-holyrics-text mt-news-in';
+      void textEl.offsetWidth;
+      textEl.innerHTML = '';
+      text.split('\n').forEach((line) => {
+        const p = document.createElement('div');
+        p.className = 'mt-holyrics-line';
+        p.textContent = line;
+        textEl.appendChild(p);
+      });
+      meta.textContent = name || '';
+    }
+
+    async function poll() {
+      if (!base || !token) {
+        textEl.className = 'mt-holyrics-text is-empty';
+        textEl.textContent = 'Configure o IP e o token do Holyrics';
+        return;
+      }
+      try {
+        const res = await fetch(base + '/api/GetCurrentPresentation?token=' + encodeURIComponent(token), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ include_slides: true }),
+        });
+        const json = await res.json();
+        const d = json && json.data;
+        if (!d || !Array.isArray(d.slides) || !d.slides.length) { setSlide('', ''); return; }
+        const idx = Math.max(0, (Number(d.slide_number) || 1) - 1);
+        const slide = d.slides[idx] || d.slides[0];
+        setSlide((slide && slide.text) || '', d.name || '');
+      } catch (e) {
+        // CORS/rede: mantém o último slide na tela e segue tentando.
+      }
+    }
+
+    return {
+      el,
+      duration: item.duracao != null ? Number(item.duracao) : 0, // 0 = fixo
+      onEnter: function () {
+        stopped = false; poll();
+        timer = setInterval(function () { if (!stopped) poll(); },
+          Math.max(1, Number(item.intervalo) || 2) * 1000);
+      },
+      onLeave: function () { stopped = true; if (timer) clearInterval(timer); },
     };
   }
 
@@ -1025,6 +1102,7 @@
     { type: 'livesource', label: 'Entrada HDMI / USB (ao vivo)', icon: 'live' },
     { type: 'screen', label: 'Captura de tela / janela', icon: 'film' },
     { type: 'stream', label: 'Stream ao vivo (IPTV/HLS)', icon: 'live' },
+    { type: 'holyrics', label: 'Holyrics (letra ao vivo)', icon: 'quote' },
     { type: 'birthdaycard', label: 'Cartão de Aniversário', icon: 'gift' },
     { type: 'birthday', label: 'Lista de Aniversariantes', icon: 'cake' },
     { type: 'weatherpro', label: 'Painel do Clima', icon: 'cloud' },

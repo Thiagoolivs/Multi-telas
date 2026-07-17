@@ -696,6 +696,26 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   padding: 1.7cqh 3.4cqh; border-radius: 100px; box-shadow: var(--shadow);
 }
 
+/* ---------- Holyrics (letra/slide ao vivo) ---------- */
+.mt-holyrics { flex-direction: column; padding: 6cqw; text-align: center; }
+.mt-holyrics-text {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; gap: 1.2cqh;
+  max-width: 90cqw;
+  font-size: clamp(24px, 8.5cqh, 96px); font-weight: 800; line-height: 1.14;
+  letter-spacing: -.01em; color: var(--text);
+}
+.mt-holyrics-text.is-empty {
+  font-size: clamp(16px, 3.4cqw, 34px); font-weight: 600; color: var(--text-dim);
+}
+.mt-holyrics-line { min-height: .2em; }
+.mt-holyrics-meta {
+  position: relative; z-index: 1; margin-top: 3cqh;
+  font-size: clamp(13px, 2.6cqw, 26px); font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--accent);
+}
+.mt-holyrics-meta:empty { display: none; }
+
 /* ---------- Redes sociais ---------- */
 .mt-social-inner { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2.4cqh; }
 .mt-social-icon {
