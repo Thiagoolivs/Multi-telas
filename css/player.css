@@ -430,45 +430,52 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   align-items: stretch;
   background: transparent;
 }
+/* Sizings em cqmin (menor dimensão da zona) + clamp: escala bem tanto em
+   zona larga-baixa quanto estreita-alta, sem estourar a altura. */
 .mt-wpro-inner {
-  width: 100%; height: 100%;
+  width: 100%; height: 100%; min-height: 0; overflow: hidden;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   text-align: center;
-  padding: 7cqw 6cqw;
-  gap: 1.2cqh;
-}
-.mt-wpro-inner { color: var(--text); }
-.mt-wpro-loading { color: var(--text-dim); font-size: 5cqw; }
-.wp-date {
-  font-size: 4.6cqw; font-weight: 600; letter-spacing: .03em;
+  padding: clamp(10px, 5cqmin, 44px);
+  gap: clamp(2px, 1cqmin, 10px);
   color: var(--text);
-  padding-bottom: 2.4cqh; margin-bottom: 1cqh;
-  border-bottom: 1px solid var(--border);
-  width: 100%;
 }
-.wp-city { font-size: 4.4cqw; font-weight: 700; }
+.mt-wpro-loading { color: var(--text-dim); font-size: clamp(14px, 5cqmin, 30px); }
+.wp-date {
+  font-size: clamp(11px, 4.2cqmin, 30px); font-weight: 600; letter-spacing: .03em;
+  color: var(--text);
+  padding-bottom: clamp(4px, 2cqmin, 16px); margin-bottom: .3em;
+  border-bottom: 1px solid var(--border);
+  width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wp-city { font-size: clamp(12px, 4.4cqmin, 34px); font-weight: 700; }
 .wp-city span { font-weight: 400; color: var(--text-dim); }
 .wp-now {
-  display: flex; align-items: center; justify-content: center; gap: 4cqw;
-  margin-top: 2cqh;
+  display: flex; align-items: center; justify-content: center; gap: clamp(6px, 3cqmin, 28px);
+  margin-top: .3em;
 }
-.wp-icon { width: 24cqw; height: 24cqw; color: var(--accent); }
-.wp-temp { font-size: 14cqw; font-weight: 300; letter-spacing: -.02em; }
-.wp-cond { font-size: 5cqw; color: var(--text); opacity: .9; margin-bottom: 2.4cqh; }
+.wp-icon { width: clamp(40px, 22cqmin, 150px); height: clamp(40px, 22cqmin, 150px); color: var(--accent); flex: none; }
+.wp-temp { font-size: clamp(40px, 22cqmin, 150px); font-weight: 300; line-height: 1; letter-spacing: -.02em; }
+.wp-cond { font-size: clamp(12px, 4.6cqmin, 32px); color: var(--text); opacity: .9; margin-bottom: .3em; }
 .wp-days {
   display: flex; justify-content: space-between; width: 100%;
-  padding-top: 2.6cqh; margin-top: 1cqh;
+  padding-top: clamp(4px, 2.2cqmin, 18px); margin-top: .2em;
   border-top: 1px solid var(--border);
+  min-height: 0; flex-wrap: nowrap;
 }
 .wp-day {
-  display: flex; flex-direction: column; align-items: center; gap: .8cqh;
+  display: flex; flex-direction: column; align-items: center; gap: .3em;
   flex: 1; min-width: 0;
 }
-.wp-day-name { font-size: 3cqw; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; }
-.wp-day-icon { width: 6.4cqw; height: 6.4cqw; color: var(--text); opacity: .9; }
-.wp-day-max { font-size: 3.4cqw; font-weight: 700; }
-.wp-day-min { font-size: 3cqw; color: var(--text-dim); }
+.wp-day-name { font-size: clamp(9px, 2.8cqmin, 20px); color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; }
+.wp-day-icon { width: clamp(14px, 6cqmin, 44px); height: clamp(14px, 6cqmin, 44px); color: var(--text); opacity: .9; }
+.wp-day-max { font-size: clamp(10px, 3.2cqmin, 24px); font-weight: 700; }
+.wp-day-min { font-size: clamp(9px, 2.8cqmin, 20px); color: var(--text-dim); }
+/* Zona baixa: esconde a previsão de 6 dias para não cortar o essencial
+   (clima atual). Volta a aparecer em zonas com altura suficiente. */
+@container (max-height: 210px) { .wp-days { display: none; } }
+@container (max-height: 140px) { .wp-date { display: none; } }
 
 /* ---------- Cartão de aniversário ---------- */
 /* Componente decorativo com fundo escuro próprio → texto sempre claro,
