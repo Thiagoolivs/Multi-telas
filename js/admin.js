@@ -1177,6 +1177,7 @@
     $('#save-status').textContent = 'Salvo';
     $('#save-status').style.color = 'var(--ok)';
     refreshPreview();
+    cloudAutoPush(); // se conectado a uma TV, envia a atualização
   }
 
   function exportJSON() {
@@ -1557,6 +1558,71 @@
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
   }
 
+  /* ================= Controlar TV (nuvem) ================= */
+  function renderCloudPanel() {
+    const host = $('#cloud-panel');
+    if (!host || !window.MTCloud) return;
+    host.innerHTML = '';
+    const id = MTCloud.controlledDeviceId();
+
+    if (!id) {
+      const row = el('div', 'cloud-connect');
+      const input = el('input', 'cloud-code');
+      input.type = 'text'; input.placeholder = 'Código da TV (ex.: ABC234)';
+      input.maxLength = 6; input.autocapitalize = 'characters'; input.autocomplete = 'off';
+      const btn = el('button', 'btn btn-primary'); btn.type = 'button'; btn.textContent = 'Conectar';
+      const status = el('div', 'cloud-status hint');
+      async function connect() {
+        const code = (input.value || '').trim();
+        if (!code) { status.textContent = 'Digite o código que aparece na TV.'; return; }
+        btn.disabled = true; status.textContent = 'Conectando…';
+        try {
+          const d = await MTCloud.pair(code);
+          await MTCloud.pushConfig(d.id, MTStorage.normalize(config));
+          renderCloudPanel();
+        } catch (e) {
+          status.textContent = 'Não foi possível conectar: ' + e.message;
+          btn.disabled = false;
+        }
+      }
+      btn.addEventListener('click', connect);
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') connect(); });
+      row.appendChild(input); row.appendChild(btn);
+      host.appendChild(row); host.appendChild(status);
+      const hint = el('p', 'hint');
+      hint.innerHTML = 'Na TV, abra o player com <code>?cloud=1</code> no fim da URL para ver o código de pareamento.';
+      host.appendChild(hint);
+      return;
+    }
+
+    const info = el('div', 'cloud-connected');
+    info.innerHTML = '<span class="cloud-dot"></span> Conectado a uma TV';
+    const actions = el('div', 'cloud-actions');
+    const push = el('button', 'btn btn-primary'); push.type = 'button'; push.textContent = 'Enviar para a TV agora';
+    const disc = el('button', 'btn btn-ghost'); disc.type = 'button'; disc.textContent = 'Desconectar';
+    const status = el('div', 'cloud-status hint');
+    push.addEventListener('click', async () => {
+      push.disabled = true; status.textContent = 'Enviando…';
+      try { await MTCloud.pushConfig(id, MTStorage.normalize(config)); status.textContent = 'Enviado! A TV atualizou.'; }
+      catch (e) { status.textContent = 'Falha ao enviar: ' + e.message; }
+      push.disabled = false;
+    });
+    disc.addEventListener('click', () => { MTCloud.disconnect(); renderCloudPanel(); });
+    actions.appendChild(push); actions.appendChild(disc);
+    host.appendChild(info); host.appendChild(actions); host.appendChild(status);
+    const hint = el('p', 'hint');
+    hint.textContent = 'Ao salvar alterações, o conteúdo é enviado automaticamente para a TV conectada.';
+    host.appendChild(hint);
+  }
+
+  // Envia a config atual para a TV conectada (se houver), silenciosamente.
+  function cloudAutoPush() {
+    if (!window.MTCloud) return;
+    const id = MTCloud.controlledDeviceId();
+    if (!id) return;
+    MTCloud.pushConfig(id, MTStorage.normalize(config)).catch(() => {});
+  }
+
   /* ================= Inicialização ================= */
   function renderAll() {
     renderTemplates();
@@ -1595,6 +1661,7 @@
   enforcePinLock();
   renderPanelSwitch();
   setupPin();
+  renderCloudPanel();
   renderAll();
   attachGlobalEvents();
 })();

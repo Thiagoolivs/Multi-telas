@@ -903,6 +903,24 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 @keyframes mt-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes mt-load { 0% { transform: translateX(-160%); } 100% { transform: translateX(360%); } }
 
+/* ---------- Pareamento (modo nuvem) ---------- */
+.mt-pairing {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(80% 80% at 50% 40%, var(--bg-2) 0%, var(--bg) 70%);
+  text-align: center; padding: 6vw;
+}
+.mt-pairing.hidden { display: none; }
+.mt-pairing-title { font-size: clamp(18px, 3vw, 40px); font-weight: 700; color: var(--text); }
+.mt-pairing-code {
+  margin: .5em 0 .3em;
+  font-size: clamp(56px, 16vw, 220px); font-weight: 800; letter-spacing: .12em;
+  line-height: 1; font-variant-numeric: tabular-nums;
+  background: linear-gradient(120deg, var(--text), var(--accent));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.mt-pairing-hint { font-size: clamp(13px, 1.8vw, 26px); color: var(--text-dim); max-width: 32em; margin: 0 auto; }
+
 /* Modo performance: hardware fraco (classe aplicada quando fx é baixo). */
 .mt-perf .mt-stage::before,
 .mt-perf .mt-stage::after { display: none; }

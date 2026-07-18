@@ -20,6 +20,9 @@
   /* ---------------- Ciclo de vida ---------------- */
 
   async function boot() {
+    if (global.MTCloud && MTCloud.deviceMode()) {
+      return bootCloud();
+    }
     let cfg;
     try {
       cfg = await resolveConfig();
@@ -31,6 +34,46 @@
     applyConfig(cfg);
     startWatchers(cfg.settings.refreshSeconds || 60);
     hideOverlayAfter();
+  }
+
+  // Modo nuvem: a TV é controlada pelo celular. Cria/retoma um device,
+  // mostra o código de pareamento e recebe a config em tempo real (SSE).
+  async function bootCloud() {
+    let dev;
+    try {
+      dev = await MTCloud.ensureDevice();
+    } catch (e) {
+      // Sem servidor de nuvem acessível: cai para o modo local.
+      applyConfig(MTStorage.load());
+      startWatchers(60);
+      return hideOverlayAfter();
+    }
+    let cfg = null;
+    try { cfg = await MTCloud.fetchConfig(dev.id); } catch (e) { /* ainda não pareado */ }
+    if (cfg) {
+      applyConfig(cfg);
+      hidePairing();
+    } else {
+      showPairing(dev.code);
+    }
+    hideOverlayAfter();
+    MTCloud.subscribe(dev.id, function (newCfg) {
+      hidePairing();
+      applyConfig(newCfg);
+    });
+  }
+
+  /* ---------------- Pareamento (modo nuvem) ---------------- */
+  function showPairing(code) {
+    let el = document.getElementById('pairing');
+    if (!el) return;
+    const codeEl = el.querySelector('.mt-pairing-code');
+    if (codeEl) codeEl.textContent = code || '••••••';
+    el.classList.remove('hidden');
+  }
+  function hidePairing() {
+    const el = document.getElementById('pairing');
+    if (el) el.classList.add('hidden');
   }
 
   // Decide de onde vem a config: URL remota (se houver) ou localStorage.
