@@ -51,6 +51,20 @@
   <div class="layout">
     <!-- Coluna de edição -->
     <section class="editor">
+      <!-- Controlar uma TV pela internet (modo nuvem) -->
+      <div class="card">
+        <div class="card-head">
+          <div class="step-chip cloud-chip" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          </div>
+          <div>
+            <h2>Controlar TV pelo celular</h2>
+            <p>Conecte-se a uma TV pareada e envie o conteúdo pela internet.</p>
+          </div>
+        </div>
+        <div id="cloud-panel" class="cloud-panel"></div>
+      </div>
+
       <!-- Passo 1: Template -->
       <div class="card">
         <div class="card-head">
@@ -209,6 +223,7 @@
   <script src="js/storage.js"></script>
   <script src="js/news.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/cloud.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>
