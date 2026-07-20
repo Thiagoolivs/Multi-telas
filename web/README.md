@@ -1,60 +1,74 @@
-# Vistra — Painel (React + Vite)
+# MultiTelas — Painel (React + Vite + Tailwind)
 
-Reescrita **incremental** do painel de administração em React. Convive com o
-admin vanilla (`/index.html` + `js/admin.js`) enquanto a migração acontece tela
-a tela — nada de big-bang. O **player** (o que roda na TV) segue vanilla de
-propósito: é leve, sem build, e roda bem em hardware fraco de TV Box/Smart TV.
+Dashboard operacional do SaaS de digital signage, servido em **`/app`** pelo
+`server.js` (a partir de `web/dist`). Aparência de software corporativo real —
+sóbrio, denso, focado em operação (referências: Stripe, Linear, Cloudflare,
+Vercel). O **player** (o que roda na TV) segue vanilla de propósito: leve, sem
+build, roda em hardware fraco.
 
-O painel React é servido em **`/app`** pelo `server.js` (a partir de `web/dist`).
+## Design system
 
-## Telas migradas
+Tokens semânticos em CSS vars (`src/index.css`) + `tailwind.config.js`:
 
-- **Dispositivos** (`src/screens/DevicesScreen.jsx`) — lista das TVs pareadas à
-  conta, pareamento por código, renomear e remover.
-- **Equipe** (`src/screens/TeamScreen.jsx`) — membros da empresa com papéis
-  (owner/admin/member), convite por código, troca de papel e remoção. As ações
-  respeitam a permissão do usuário logado (o backend também valida).
-- **Login/cadastro** (`AuthScreen.jsx`) — inclui entrar por código de convite.
-
-Exercitam build React, chamadas à API (`src/api.js`), sessão por cookie e o
-backend Postgres.
-
-## Rodar
-
-Dev (hot reload, proxy de `/api` para o Node em :8080):
-
-```bash
-# terminal 1 — API + estáticos
-node server.js
-# terminal 2 — painel React
-cd web && npm install && npm run dev   # http://localhost:5173
-```
-
-Produção (o Node serve o build em `/app`):
-
-```bash
-cd web && npm install && npm run build   # gera web/dist
-node server.js                            # painel em http://localhost:8080/app
-```
+- **Cores** — neutros de superfície/borda/texto + **um** acento contido
+  (indigo). Status: ok / warn / danger. Tema **claro** por padrão e **escuro**
+  por troca de variáveis (nenhum componente sabe qual está ativo).
+- **Tipografia** — Inter, base 14 px (densidade de dashboard), números
+  tabulares em dados (`.tnum`).
+- **Espaçamento** — grade de 4 px; painéis com padding 16 px.
+- **Bordas/raio** — 1 px + raios discretos (5–10 px); hierarquia vem da borda e
+  do espaçamento, não de sombra.
+- **Sombras** — mínimas (`xs`/`sm`), só realce sutil.
 
 ## Estrutura
 
 ```
-web/
-  index.html            # entrada Vite
-  vite.config.js        # base /app, proxy /api, outDir dist
-  src/
-    main.jsx            # bootstrap React
-    App.jsx             # shell + gate de sessão
-    api.js              # cliente HTTP (mesmo contrato do server/)
-    styles.css          # tema escuro Vistra
-    screens/
-      AuthScreen.jsx    # login / cadastro (+ código de convite)
-      DevicesScreen.jsx # lista + pareamento de TVs
-      TeamScreen.jsx    # membros, papéis e convites
+web/src/
+  index.css                 # Tailwind + tokens (claro/escuro)
+  main.jsx                  # bootstrap
+  App.jsx                   # shell + roteamento por estado + tema
+  lib/
+    cn.js                   # merge de classes
+    format.js               # bytes, %, tempo relativo (pt-BR)
+    useAsync.js             # loading/erro/dados
+    mockData.js             # "serviço" async com dados plausíveis de operação
+  components/
+    ui/                     # Button, Panel, Badge/StatusDot, Stat, Table,
+                            #   Feedback (Skeleton, Empty, Error, Progress)
+    layout/                 # AppShell, Sidebar, Topbar, PageHeader
+    dashboard/              # KpiRow, FleetTable, AlertsPanel, StorageCard,
+                            #   SyncActivity, CampaignsPanel
+  pages/
+    DashboardPage.jsx       # Visão geral (implementada)
+    PlaceholderPage.jsx     # seções ainda por construir
 ```
 
-## Próximas telas a migrar
+Estados de **loading / erro / vazio** são de primeira classe (cada painel
+carrega de forma independente via `useAsync`). Responsivo de verdade: a sidebar
+vira drawer no mobile e os KPIs empilham.
 
-Editor de conteúdos, temas, agendamento — reaproveitando a lógica de
-`js/admin.js` peça por peça, cada uma num PR próprio.
+## Dados
+
+`lib/mockData.js` expõe um "serviço" assíncrono (`api.getOverview`,
+`getScreens`, `getCampaigns`, `getAlerts`, `getSyncActivity`) com latência
+simulada. Trocar por chamadas reais ao backend é só reimplementar essas funções
+— as telas não mudam. (`FAIL_RATE` liga o estado de erro para demonstração.)
+
+## Rodar
+
+```bash
+# dev (hot reload, proxy de /api para o Node em :8080)
+node server.js                 # API + estáticos
+cd web && npm install && npm run dev    # http://localhost:5173
+
+# produção (o Node serve o build em /app)
+cd web && npm install && npm run build  # gera web/dist
+node server.js                          # http://localhost:8080/app
+```
+
+## Próximos passos
+
+As telas de **Telas**, **Campanhas** e **Equipe** entram no mesmo shell/design
+system (a lógica de auth/equipe já existe no backend; os fluxos anteriores em
+`src/screens/*` serão reintegrados neste layout). Depois: editor de conteúdos e
+temas, reaproveitando `js/admin.js` peça por peça.
