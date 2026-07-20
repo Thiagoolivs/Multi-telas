@@ -53,19 +53,28 @@ dispositivos, nuvem, billing).
 Ver [`CAMPANHA-SCHEMA.md`](CAMPANHA-SCHEMA.md): o schema canônico de Campanha
 e o contrato de saída dos agentes de IA.
 
-## Em andamento
+## Backend na nuvem (`server/`)
 
-- **Controle remoto na nuvem (`server/`)**: pareamento de dispositivo por
-  código + sincronização da config em tempo real (SSE). Permite **controlar
-  uma TV a partir do celular** pela internet — o primeiro tijolo do
-  multi-tenant. Estado: MVP sem autenticação (device + código); contas/RLS
-  são a próxima camada.
+- **Controle remoto + multi-tenant**: `server.js` (dependency-free) serve o app
+  e uma API com **contas (login)**, **dispositivos por empresa (tenant)** e
+  **sincronização em tempo real (SSE)**. Persistência via **`node:sqlite`**
+  (embutido no Node 22; `data/vistra.db`).
+  - `server/db.js` — schema: tenants, users, sessions, devices.
+  - `server/auth.js` — scrypt + sessão por cookie httpOnly.
+  - `js/cloud.js` — cliente (lado TV + lado celular).
+- **Fluxo:** a TV (`player.html?cloud=1`) cria um device e mostra um código; o
+  usuário **loga no painel** e pareia o código → o device passa a **pertencer à
+  conta**; só ela controla. Ao salvar, a config vai para a TV na hora.
+- **Segurança:** parear e publicar exigem login; a TV lê a própria config com um
+  device token. Ownership testada (outra conta recebe 403/409).
+- **Limites:** 1 usuário = 1 empresa; SQLite em arquivo (persistir com volume no
+  deploy ou migrar para Postgres na escala).
 
 ## Roadmap curto
 
-1. Controle remoto na nuvem (pareamento + sync) — MVP funcional. ← agora
-2. Contas + multi-tenant (auth, orgs, RLS) sobre esse MVP.
-3. Mídia na nuvem (storage + CDN), billing.
-4. Campanha-como-dado + render multiformato (TV/Feed/Story) → o pivot.
-5. Camada de IA (brief → JSON, editor por linguagem natural) + templates por
-   segmento.
+1. ~~Controle remoto (pareamento + sync)~~ — feito.
+2. ~~Contas + multi-tenant (auth) sobre o controle remoto~~ — feito (SQLite).
+3. Postgres + durabilidade (volume), multi-usuário e permissões. ← próximo
+4. Mídia na nuvem (storage + CDN), billing.
+5. Campanha-como-dado + render multiformato (TV/Feed/Story) → o pivot.
+6. Camada de IA (brief → JSON, editor por linguagem natural) + templates.

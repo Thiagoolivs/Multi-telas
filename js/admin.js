@@ -1559,11 +1559,56 @@
   }
 
   /* ================= Controlar TV (nuvem) ================= */
-  function renderCloudPanel() {
+  async function renderCloudPanel() {
     const host = $('#cloud-panel');
     if (!host || !window.MTCloud) return;
+    host.textContent = 'Carregando…';
+    let session = null;
+    try { session = await MTCloud.me(); }
+    catch (e) { host.innerHTML = ''; host.appendChild(el('p', 'hint', 'Controle na nuvem indisponível (servidor offline).')); return; }
     host.innerHTML = '';
+    if (!session) return renderCloudAuth(host);
+    return renderCloudControl(host);
+  }
+
+  // Login / criar conta — só o controle na nuvem exige conta; o resto do
+  // painel segue funcionando sem login (modo local).
+  function renderCloudAuth(host) {
+    let mode = 'login';
+    const email = el('input', 'cloud-input'); email.type = 'email'; email.placeholder = 'seu@email.com'; email.autocomplete = 'email';
+    const pass = el('input', 'cloud-input'); pass.type = 'password'; pass.placeholder = 'senha (mín. 6)';
+    const primary = el('button', 'btn btn-primary'); primary.type = 'button';
+    const toggle = el('button', 'btn btn-ghost btn-sm'); toggle.type = 'button';
+    const status = el('div', 'cloud-status hint');
+    function paint() {
+      primary.textContent = mode === 'login' ? 'Entrar' : 'Criar conta';
+      toggle.textContent = mode === 'login' ? 'Não tenho conta' : 'Já tenho conta';
+      status.textContent = '';
+    }
+    toggle.addEventListener('click', () => { mode = mode === 'login' ? 'signup' : 'login'; paint(); });
+    async function submit() {
+      const e = (email.value || '').trim(), p = pass.value || '';
+      if (!e || !p) { status.textContent = 'Informe e-mail e senha.'; return; }
+      primary.disabled = true; status.textContent = mode === 'login' ? 'Entrando…' : 'Criando conta…';
+      try {
+        if (mode === 'login') await MTCloud.login(e, p); else await MTCloud.signup(e, p);
+        renderCloudPanel();
+      } catch (err) { status.textContent = err.message; primary.disabled = false; }
+    }
+    primary.addEventListener('click', submit);
+    pass.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') submit(); });
+    const grid = el('div', 'cloud-auth'); grid.appendChild(email); grid.appendChild(pass);
+    const row = el('div', 'cloud-actions'); row.appendChild(primary); row.appendChild(toggle);
+    host.appendChild(grid); host.appendChild(row); host.appendChild(status); paint();
+  }
+
+  function renderCloudControl(host) {
     const id = MTCloud.controlledDeviceId();
+    const top = el('div', 'cloud-account');
+    top.appendChild(el('span', null, 'Conta conectada'));
+    const out = el('button', 'btn btn-ghost btn-sm'); out.type = 'button'; out.textContent = 'Sair';
+    out.addEventListener('click', async () => { try { await MTCloud.logout(); } catch (e) {} MTCloud.disconnect(); renderCloudPanel(); });
+    top.appendChild(out); host.appendChild(top);
 
     if (!id) {
       const row = el('div', 'cloud-connect');

@@ -124,16 +124,20 @@ Assim uma pessoa atualiza num lugar só e a rede inteira acompanha.
 Primeiro tijolo do multi-tenant: controlar uma TV **de outro dispositivo pela
 internet**, sem hospedar `config.json` na mão.
 
-1. Suba o app com `node server.js` (o servidor já expõe a API de controle).
-2. Na TV, abra o player com `?cloud=1` no fim da URL — aparece um **código de
+1. Suba o app com `node server.js` (o servidor já expõe a API de controle, com
+   contas e banco embutido via `node:sqlite`).
+2. No painel (celular ou PC), no card **"Controlar TV pelo celular"**, **crie
+   uma conta / faça login**.
+3. Na TV, abra o player com `?cloud=1` no fim da URL — aparece um **código de
    pareamento**.
-3. No painel (celular ou PC), no card **"Controlar TV pelo celular"**, digite o
-   código. A partir daí, ao salvar, o conteúdo é enviado para a TV **na hora**
+4. No painel, digite o código para **parear** — a TV passa a pertencer à sua
+   conta. A partir daí, ao salvar, o conteúdo é enviado para a TV **na hora**
    (via SSE).
 
-MVP sem login (device + código); contas/permissões são a próxima camada —
-ver [`docs/PLANO-SAAS.md`](docs/PLANO-SAAS.md) e
-[`docs/ESTADO-DO-PROJETO.md`](docs/ESTADO-DO-PROJETO.md).
+Cada conta controla só os seus dispositivos. O banco fica em `data/vistra.db`
+(persistir com volume no deploy, ou migrar para Postgres na escala) — ver
+[`docs/ESTADO-DO-PROJETO.md`](docs/ESTADO-DO-PROJETO.md) e
+[`docs/PLANO-SAAS.md`](docs/PLANO-SAAS.md).
 
 ---
 

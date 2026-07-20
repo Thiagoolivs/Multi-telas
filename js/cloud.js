@@ -1,87 +1,90 @@
 /*
- * cloud.js — cliente do controle remoto na nuvem (MVP).
+ * cloud.js — cliente do controle remoto na nuvem (multi-tenant).
  *
- * Dois papéis:
- *   - TV (player em "modo nuvem"): cria/retoma um device, mostra o código de
- *     pareamento, busca a config e assina atualizações em tempo real (SSE).
- *   - Celular (admin): pareia informando o código e envia a config para a TV.
+ *   - TV (player "modo nuvem"): cria/retoma um device (id + device token),
+ *     mostra o código de pareamento, busca a config e assina atualizações
+ *     em tempo real (SSE). O device token prova que é aquela TV.
+ *   - Celular (admin): faz login, pareia o código (o device passa a
+ *     pertencer à conta) e envia a config.
  *
- * Sem autenticação neste MVP (device + código). A base da API é a mesma
- * origem que serve o app (server.js). Ver docs/PLANO-SAAS.md para a evolução.
+ * Cookies de sessão fluem automaticamente (mesma origem). Ver server/.
  */
 (function (global) {
   'use strict';
 
-  const API = ''; // mesma origem
-  const DEVICE_KEY = 'vistra.cloudDeviceId';   // guardado na TV
-  const CONTROL_KEY = 'vistra.controlDeviceId'; // guardado no celular
+  const API = '';
+  const DEVICE_KEY = 'vistra.cloudDeviceId';
+  const DTOKEN_KEY = 'vistra.cloudDeviceToken';
+  const CONTROL_KEY = 'vistra.controlDeviceId';
 
-  function qs(name) {
-    return new URLSearchParams(global.location.search).get(name);
-  }
+  function qsp(name) { return new URLSearchParams(global.location.search).get(name); }
 
   async function api(method, path, body) {
-    const opt = { method, headers: {} };
+    const opt = { method, headers: {}, credentials: 'same-origin' };
     if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
     const res = await fetch(API + path, opt);
     if (res.status === 204) return null;
     const data = await res.json().catch(() => null);
-    if (!res.ok) throw new Error((data && data.error) || ('HTTP ' + res.status));
+    if (!res.ok) { const e = new Error((data && data.error) || ('HTTP ' + res.status)); e.status = res.status; throw e; }
     return data;
   }
 
-  /* ---------------- Lado TV (device) ---------------- */
-  // Modo nuvem ligado por ?cloud=1 na URL ou por já ter um device salvo.
-  function deviceMode() {
-    return qs('cloud') === '1' || !!localStorage.getItem(DEVICE_KEY);
-  }
+  /* ---------------- Autenticação (lado celular) ---------------- */
+  async function signup(email, password, name) { return api('POST', '/api/auth/signup', { email, password, name }); }
+  async function login(email, password) { return api('POST', '/api/auth/login', { email, password }); }
+  async function logout() { return api('POST', '/api/auth/logout'); }
+  async function me() { try { return await api('GET', '/api/auth/me'); } catch (e) { return null; } }
 
-  // Garante um device: retoma o salvo (se ainda existir) ou cria um novo.
+  /* ---------------- Lado TV (device) ---------------- */
+  function deviceMode() { return qsp('cloud') === '1' || !!localStorage.getItem(DEVICE_KEY); }
+
   async function ensureDevice() {
     let id = localStorage.getItem(DEVICE_KEY);
-    if (id) {
+    let dt = localStorage.getItem(DTOKEN_KEY);
+    if (id && dt) {
       try {
-        const meta = await api('GET', '/api/devices/' + id);
+        const meta = await api('GET', '/api/devices/' + id + '?dt=' + encodeURIComponent(dt));
         return { id: meta.id, code: meta.code, paired: meta.paired };
-      } catch (e) { localStorage.removeItem(DEVICE_KEY); id = null; }
+      } catch (e) { localStorage.removeItem(DEVICE_KEY); localStorage.removeItem(DTOKEN_KEY); }
     }
     const created = await api('POST', '/api/devices');
     localStorage.setItem(DEVICE_KEY, created.id);
+    localStorage.setItem(DTOKEN_KEY, created.deviceToken);
     return { id: created.id, code: created.code, paired: false };
   }
 
-  async function fetchConfig(id) {
-    return api('GET', '/api/devices/' + id + '/config'); // null se ainda não pareado
-  }
+  function deviceToken() { return localStorage.getItem(DTOKEN_KEY) || ''; }
 
-  // Assina atualizações; chama onConfig(config) sempre que a config mudar.
+  async function fetchConfig(id) {
+    return api('GET', '/api/devices/' + id + '/config?dt=' + encodeURIComponent(deviceToken()));
+  }
   function subscribe(id, onConfig) {
     let es;
     function connect() {
-      es = new EventSource(API + '/api/devices/' + id + '/events');
+      es = new EventSource(API + '/api/devices/' + id + '/events?dt=' + encodeURIComponent(deviceToken()));
       es.addEventListener('config', async () => {
         try { const cfg = await fetchConfig(id); if (cfg) onConfig(cfg); } catch (e) {}
       });
-      es.onerror = () => { /* EventSource tenta reconectar sozinho */ };
+      es.onerror = () => { /* reconecta sozinho */ };
     }
     connect();
     return { close: () => es && es.close() };
   }
 
   /* ---------------- Lado celular (controle) ---------------- */
-  async function pair(code) {
-    const d = await api('POST', '/api/pair', { code: String(code || '').trim().toUpperCase() });
+  async function pair(code, name) {
+    const d = await api('POST', '/api/pair', { code: String(code || '').trim().toUpperCase(), name });
     localStorage.setItem(CONTROL_KEY, d.id);
     return d;
   }
   function controlledDeviceId() { return localStorage.getItem(CONTROL_KEY) || ''; }
   function disconnect() { localStorage.removeItem(CONTROL_KEY); }
-  async function pushConfig(id, config) {
-    return api('PUT', '/api/devices/' + id + '/config', config);
-  }
+  async function listDevices() { return api('GET', '/api/devices'); }
+  async function pushConfig(id, config) { return api('PUT', '/api/devices/' + id + '/config', config); }
 
   global.MTCloud = {
+    signup, login, logout, me,
     deviceMode, ensureDevice, fetchConfig, subscribe,
-    pair, controlledDeviceId, disconnect, pushConfig,
+    pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);
