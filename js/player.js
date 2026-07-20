@@ -170,35 +170,53 @@
 
   function buildStage(cfg) {
     const layout = MT_getLayout(cfg.settings.layoutId);
-    let currentAreasKey = '';
-    function applyArrangement(a, morph) {
+    function setGrid(a) {
       stage.style.gridTemplateColumns = a.columns;
       stage.style.gridTemplateRows = a.rows;
-      const areasKey = a.areas.join('|');
       stage.style.gridTemplateAreas = a.areas.map((row) => '"' + row + '"').join(' ');
-      // Quando o lado das zonas muda (não só o tamanho), um "morph" suave
-      // disfarça o reposicionamento — que o grid não anima sozinho.
-      if (morph && areasKey !== currentAreasKey) {
-        stage.classList.remove('mt-stage-morphing');
-        void stage.offsetWidth;
-        stage.classList.add('mt-stage-morphing');
-      }
-      currentAreasKey = areasKey;
     }
-    applyArrangement({ columns: layout.grid.columns, rows: layout.grid.rows, areas: layout.grid.areas }, false);
+    // Troca de arranjo com animação FLIP: as zonas deslizam/redimensionam
+    // suavemente (o grid, sozinho, não anima realocação). Nada de conteúdo
+    // é recriado — vídeos/lives continuam tocando.
+    function animateArrangement(a) {
+      const zones = Array.prototype.slice.call(stage.querySelectorAll('.mt-zone'));
+      const first = zones.map((z) => z.getBoundingClientRect());
+      setGrid(a); // aplica o layout final (instantâneo)
+      const dur = 1100;
+      zones.forEach((z, i) => {
+        const last = z.getBoundingClientRect();
+        const f = first[i];
+        const dx = f.left - last.left, dy = f.top - last.top;
+        const sx = last.width ? f.width / last.width : 1;
+        const sy = last.height ? f.height / last.height : 1;
+        if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) return;
+        z.style.transformOrigin = 'top left';
+        z.style.transition = 'none';
+        z.style.willChange = 'transform';
+        z.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')';
+      });
+      requestAnimationFrame(() => {
+        zones.forEach((z) => {
+          if (!z.style.transform) return;
+          z.style.transition = 'transform ' + dur + 'ms cubic-bezier(.22,.61,.36,1)';
+          z.style.transform = '';
+        });
+        setTimeout(() => zones.forEach((z) => { z.style.transition = ''; z.style.willChange = ''; z.style.transformOrigin = ''; }), dur + 60);
+      });
+    }
+    setGrid({ columns: layout.grid.columns, rows: layout.grid.rows, areas: layout.grid.areas });
 
     // Layout dinâmico: a disposição se alterna sozinha (proporções e lado da
-    // lateral) ao longo do tempo. Só o grid muda — o DOM de cada zona (vídeo,
-    // iframe da live etc.) nunca é recriado, então nada de conteúdo reinicia.
+    // lateral) ao longo do tempo, com transição fluida (FLIP).
     const auto = cfg.settings.layoutAuto === true;
     const arrangements = computeArrangements(layout);
     if (auto && arrangements.length > 1) {
-      stage.classList.add('mt-stage-breathing');
+      stage.classList.remove('mt-stage-breathing'); // FLIP anima via transform
       let step = 0;
       const iv = Math.max(8, cfg.settings.layoutAutoSeconds || 20) * 1000;
       const t = setInterval(() => {
         step = (step + 1) % arrangements.length;
-        applyArrangement(arrangements[step], true);
+        animateArrangement(arrangements[step]);
       }, iv);
       zoneControllers.push({ stop: () => clearInterval(t) });
     } else if (layout.dynamic) {

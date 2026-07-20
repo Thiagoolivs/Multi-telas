@@ -1,3 +1,6 @@
 node_modules/
 package-lock.json
 data/
+
+# Painel React (Vite) — build gerado, não versionado
+web/dist/
