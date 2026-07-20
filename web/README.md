@@ -27,6 +27,11 @@ Tokens semânticos em CSS vars (`src/index.css`) + `tailwind.config.js`:
   entidades reais no backend.
 - **Telas** (`ScreensPage`) — **API real**: lista dispositivos da conta, pareia
   por código (diálogo), renomeia e remove.
+- **Editor de conteúdo** (`ContentEditorPage`) — **API real**: edita a sequência
+  (playlist) de uma tela e **publica na hora** (`PUT /config` → SSE). Tipos de
+  conteúdo dirigidos por schema (`lib/contentTypes.js`) que batem com o player
+  (`js/render.js`), com prévia aproximada. Fatia 1: tipos sem upload de mídia
+  (imagens/vídeos por URL); upload real entra com o pipeline de object storage.
 - **Equipe** (`TeamPage`) — **API real**: membros com papéis, convite por código
   (diálogo com copiar), troca de papel e remoção. Ações respeitam a permissão
   do usuário; o backend revalida.

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
@@ -11,7 +11,7 @@ import { SkeletonRows, ErrorState, EmptyState } from '../components/ui/Feedback.
 import { useAsync } from '../lib/useAsync.js';
 import { devices } from '../api.js';
 
-export function ScreensPage() {
+export function ScreensPage({ onEditContent }) {
   const { data, loading, error, reload } = useAsync(devices.list);
   const list = data ? data.devices || [] : [];
 
@@ -61,7 +61,8 @@ export function ScreensPage() {
                         : <Badge tone="neutral">aguardando</Badge>}
                     </TD>
                     <TD align="right">
-                      <div className="inline-flex items-center gap-0.5">
+                      <div className="inline-flex items-center gap-1.5">
+                        <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={() => onEditContent(d)}>Conteúdo</Button>
                         <IconButton icon={Pencil} label="Renomear" size={14} onClick={() => setRenameTarget(d)} />
                         <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={() => setRemoveTarget(d)} />
                       </div>

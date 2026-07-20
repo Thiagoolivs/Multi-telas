@@ -4,6 +4,7 @@ import { AppShell } from './components/layout/AppShell.jsx';
 import { AuthScreen } from './pages/AuthScreen.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
 import { ScreensPage } from './pages/ScreensPage.jsx';
+import { ContentEditorPage } from './pages/ContentEditorPage.jsx';
 import { TeamPage } from './pages/TeamPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
@@ -11,6 +12,7 @@ import { Spinner } from './components/ui/Feedback.jsx';
 const META = {
   overview: { title: 'Visão geral' },
   screens: { title: 'Telas' },
+  content: { title: 'Telas', nav: 'screens' },
   campaigns: { title: 'Campanhas', subtitle: 'Crie, agende e distribua conteúdo nas telas.' },
   alerts: { title: 'Alertas', subtitle: 'Incidentes e avisos operacionais.' },
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
@@ -28,16 +30,18 @@ function useTheme() {
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = carregando
-  const [active, setActive] = useState('overview');
+  const [route, setRoute] = useState({ name: 'overview' }); // { name, device? }
   const [theme, toggleTheme] = useTheme();
 
   const refresh = () => auth.me().then((me) => setSession(me || null));
   useEffect(() => { refresh(); }, []);
 
+  const go = (name, params) => setRoute({ name, ...params });
+
   async function logout() {
     await auth.logout();
     setSession(null);
-    setActive('overview');
+    setRoute({ name: 'overview' });
   }
 
   if (session === undefined) {
@@ -51,12 +55,14 @@ export default function App() {
   if (!session) return <AuthScreen onAuthed={refresh} />;
 
   const user = session.user || {};
-  const meta = META[active] || META.overview;
+  const meta = META[route.name] || META.overview;
+  const navActive = meta.nav || route.name; // qual item da sidebar destacar
 
   function renderPage() {
-    switch (active) {
+    switch (route.name) {
       case 'overview': return <DashboardPage />;
-      case 'screens': return <ScreensPage />;
+      case 'screens': return <ScreensPage onEditContent={(device) => go('content', { device })} />;
+      case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       default: return <PlaceholderPage title={meta.title} subtitle={meta.subtitle} />;
     }
@@ -64,8 +70,8 @@ export default function App() {
 
   return (
     <AppShell
-      active={active}
-      onNavigate={setActive}
+      active={navActive}
+      onNavigate={(name) => go(name)}
       title={meta.title}
       theme={theme}
       onToggleTheme={toggleTheme}

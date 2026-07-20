@@ -18,6 +18,16 @@ export function Select({ className, children, ...props }) {
   );
 }
 
+export function Textarea({ className, rows = 3, ...props }) {
+  return (
+    <textarea
+      rows={rows}
+      className={cn(baseInput.replace('h-9 ', ''), 'min-h-[64px] resize-y py-2 leading-snug', className)}
+      {...props}
+    />
+  );
+}
+
 // Rótulo + controle + mensagem de ajuda/erro opcional.
 export function Field({ label, hint, error, children, className }) {
   return (

@@ -44,4 +44,10 @@ export const devices = {
   remove: (id) => api('DELETE', '/api/devices/' + id),
 };
 
+export const deviceConfig = {
+  // GET retorna null quando a tela ainda não tem config (204 no servidor).
+  get: (id) => api('GET', '/api/devices/' + id + '/config'),
+  save: (id, config) => api('PUT', '/api/devices/' + id + '/config', config),
+};
+
 export default api;
