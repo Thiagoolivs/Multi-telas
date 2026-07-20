@@ -7,12 +7,17 @@ propósito: é leve, sem build, e roda bem em hardware fraco de TV Box/Smart TV.
 
 O painel React é servido em **`/app`** pelo `server.js` (a partir de `web/dist`).
 
-## Primeira tela migrada
+## Telas migradas
 
-**Dispositivos** (`src/screens/DevicesScreen.jsx`) — login/cadastro
-(`AuthScreen.jsx`), lista das TVs pareadas à conta, pareamento por código,
-renomear e remover. É uma fatia vertical completa: exercita build React,
-chamadas à API (`src/api.js`), sessão por cookie e o backend Postgres.
+- **Dispositivos** (`src/screens/DevicesScreen.jsx`) — lista das TVs pareadas à
+  conta, pareamento por código, renomear e remover.
+- **Equipe** (`src/screens/TeamScreen.jsx`) — membros da empresa com papéis
+  (owner/admin/member), convite por código, troca de papel e remoção. As ações
+  respeitam a permissão do usuário logado (o backend também valida).
+- **Login/cadastro** (`AuthScreen.jsx`) — inclui entrar por código de convite.
+
+Exercitam build React, chamadas à API (`src/api.js`), sessão por cookie e o
+backend Postgres.
 
 ## Rodar
 
@@ -44,8 +49,9 @@ web/
     api.js              # cliente HTTP (mesmo contrato do server/)
     styles.css          # tema escuro Vistra
     screens/
-      AuthScreen.jsx    # login / cadastro
+      AuthScreen.jsx    # login / cadastro (+ código de convite)
       DevicesScreen.jsx # lista + pareamento de TVs
+      TeamScreen.jsx    # membros, papéis e convites
 ```
 
 ## Próximas telas a migrar

@@ -45,12 +45,16 @@ function parseCookies(req) {
   });
   return out;
 }
-// Retorna a sessão válida (com tenant_id/user_id) ou null.
+// Retorna a sessão válida (com tenant_id/user_id/role/email) ou null. O papel
+// é lido do usuário a cada request, então mudanças de permissão valem na hora.
 async function currentSession(req) {
   const token = parseCookies(req)[COOKIE];
   if (!token) return null;
   const s = await db.getSession(token);
-  return s ? Object.assign({ token }, s) : null;
+  if (!s) return null;
+  const user = await db.getUserById(s.user_id);
+  if (!user) return null; // usuário removido → sessão inválida
+  return Object.assign({ token, role: user.role, email: user.email, name: user.name }, s);
 }
 
 module.exports = { hashPassword, verifyPassword, startSession, clearSession, currentSession, COOKIE };

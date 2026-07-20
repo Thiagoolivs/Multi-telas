@@ -24,9 +24,17 @@ async function api(method, path, body) {
 
 export const auth = {
   me: () => api('GET', '/api/auth/me').catch(() => null),
-  signup: (email, password, name) => api('POST', '/api/auth/signup', { email, password, name }),
+  signup: (payload) => api('POST', '/api/auth/signup', payload),
   login: (email, password) => api('POST', '/api/auth/login', { email, password }),
   logout: () => api('POST', '/api/auth/logout'),
+};
+
+export const team = {
+  list: () => api('GET', '/api/team'),
+  invite: (email, role) => api('POST', '/api/team/invites', { email, role }),
+  revokeInvite: (id) => api('DELETE', '/api/team/invites/' + id),
+  setRole: (id, role) => api('POST', '/api/team/members/' + id + '/role', { role }),
+  remove: (id) => api('DELETE', '/api/team/members/' + id),
 };
 
 export const devices = {

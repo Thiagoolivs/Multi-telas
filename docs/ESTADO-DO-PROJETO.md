@@ -72,14 +72,22 @@ e o contrato de saída dos agentes de IA.
   conta**; só ela controla. Ao salvar, a config vai para a TV na hora.
 - **Segurança:** parear e publicar exigem login; a TV lê a própria config com um
   device token. Ownership testada (outra conta recebe 403/409).
-- **Limites:** 1 usuário = 1 empresa; multi-usuário/permissões ainda não.
+- **Equipe (multi-usuário + permissões):** uma empresa tem vários usuários com
+  papéis **owner / admin / member**. Convite por código (7 dias); a pessoa se
+  cadastra com o código e entra na empresa. Gestão de equipe (convidar, trocar
+  papel, remover) é de owner/admin; só owner muda papéis; sempre há ao menos um
+  dono. `server/auth.js` resolve o papel a cada request. Tela **Equipe** no
+  painel React.
 
 ## Roadmap curto
 
 1. ~~Controle remoto (pareamento + sync)~~ — feito.
 2. ~~Contas + multi-tenant (auth) sobre o controle remoto~~ — feito.
-3. ~~Postgres (produção via `DATABASE_URL`, SQLite no dev)~~ — feito. Falta
-   multi-usuário e permissões por empresa. ← próximo
-4. Mídia na nuvem (storage + CDN), billing.
-5. Campanha-como-dado + render multiformato (TV/Feed/Story) → o pivot.
-6. Camada de IA (brief → JSON, editor por linguagem natural) + templates.
+3. ~~Postgres (produção via `DATABASE_URL`, SQLite no dev)~~ — feito.
+4. ~~Multi-usuário + permissões por empresa (papéis + convites)~~ — feito.
+   **Fundação SaaS completa.**
+5. Mídia na nuvem (storage + CDN), billing.
+6. Campanha-como-dado + render multiformato (TV/Feed/Story) → o pivot.
+7. Camada de IA (brief → JSON, editor por linguagem natural) + templates.
+   *(versão leve pode vir junto do passo 6, assim que existir o schema de
+   campanha + um caminho de render.)*
