@@ -20,27 +20,46 @@ Tokens semânticos em CSS vars (`src/index.css`) + `tailwind.config.js`:
   do espaçamento, não de sombra.
 - **Sombras** — mínimas (`xs`/`sm`), só realce sutil.
 
+## Páginas
+
+- **Visão geral** (`DashboardPage`) — cockpit operacional. Usa dados plausíveis
+  de `lib/mockData.js` enquanto campanhas/alertas/armazenamento não são
+  entidades reais no backend.
+- **Telas** (`ScreensPage`) — **API real**: lista dispositivos da conta, pareia
+  por código (diálogo), renomeia e remove.
+- **Equipe** (`TeamPage`) — **API real**: membros com papéis, convite por código
+  (diálogo com copiar), troca de papel e remoção. Ações respeitam a permissão
+  do usuário; o backend revalida.
+- **Login/cadastro** (`AuthScreen`) — gate de sessão, com entrada por código de
+  convite. Menu do usuário na topbar faz logout.
+- Campanhas / Alertas / Armazenamento / Ajustes — placeholders no mesmo design
+  system, por construir.
+
 ## Estrutura
 
 ```
 web/src/
   index.css                 # Tailwind + tokens (claro/escuro)
   main.jsx                  # bootstrap
-  App.jsx                   # shell + roteamento por estado + tema
+  App.jsx                   # gate de sessão + shell + roteamento + tema
+  api.js                    # cliente HTTP (mesmo contrato do server/)
   lib/
     cn.js                   # merge de classes
     format.js               # bytes, %, tempo relativo (pt-BR)
     useAsync.js             # loading/erro/dados
-    mockData.js             # "serviço" async com dados plausíveis de operação
+    mockData.js             # "serviço" async com dados plausíveis (overview)
   components/
     ui/                     # Button, Panel, Badge/StatusDot, Stat, Table,
-                            #   Feedback (Skeleton, Empty, Error, Progress)
+                            #   Field, Dialog, Feedback (Skeleton/Empty/Error/Progress)
     layout/                 # AppShell, Sidebar, Topbar, PageHeader
     dashboard/              # KpiRow, FleetTable, AlertsPanel, StorageCard,
                             #   SyncActivity, CampaignsPanel
   pages/
-    DashboardPage.jsx       # Visão geral (implementada)
-    PlaceholderPage.jsx     # seções ainda por construir
+    AuthScreen.jsx          # login / cadastro (+ convite)
+    DashboardPage.jsx       # Visão geral
+    ScreensPage.jsx         # Telas (API real)
+    TeamPage.jsx            # Equipe (API real)
+    PlaceholderPage.jsx     # seções por construir
 ```
 
 Estados de **loading / erro / vazio** são de primeira classe (cada painel
@@ -68,7 +87,6 @@ node server.js                          # http://localhost:8080/app
 
 ## Próximos passos
 
-As telas de **Telas**, **Campanhas** e **Equipe** entram no mesmo shell/design
-system (a lógica de auth/equipe já existe no backend; os fluxos anteriores em
-`src/screens/*` serão reintegrados neste layout). Depois: editor de conteúdos e
-temas, reaproveitando `js/admin.js` peça por peça.
+**Campanhas**, **Alertas** e **Armazenamento** viram entidades reais no backend
+e substituem os dados mock da Visão geral. Depois: editor de conteúdos e temas,
+reaproveitando a lógica de `js/admin.js` peça por peça.

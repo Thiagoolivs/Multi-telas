@@ -5,7 +5,7 @@ import { Topbar } from './Topbar.jsx';
 
 // Shell responsivo: sidebar fixa em ≥lg; em telas menores vira drawer sobre
 // um backdrop. O tema (claro/escuro) é controlado aqui e aplicado no <html>.
-export function AppShell({ active, onNavigate, title, theme, onToggleTheme, children }) {
+export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user, onLogout, children }) {
   const [drawer, setDrawer] = useState(false);
 
   function navigate(id) {
@@ -31,7 +31,7 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, chil
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar title={title} onOpenMenu={() => setDrawer(true)} theme={theme} onToggleTheme={onToggleTheme} />
+        <Topbar title={title} onOpenMenu={() => setDrawer(true)} theme={theme} onToggleTheme={onToggleTheme} user={user} onLogout={onLogout} />
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 sm:py-6">{children}</div>
         </main>

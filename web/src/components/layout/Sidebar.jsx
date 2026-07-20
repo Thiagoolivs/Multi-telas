@@ -7,9 +7,9 @@ import {
 const NAV = [
   { section: 'Operação', items: [
     { id: 'overview', label: 'Visão geral', icon: LayoutDashboard },
-    { id: 'screens', label: 'Telas', icon: MonitorPlay, badge: '16' },
-    { id: 'campaigns', label: 'Campanhas', icon: Megaphone, badge: '7' },
-    { id: 'alerts', label: 'Alertas', icon: Bell, badge: '5', badgeTone: 'danger' },
+    { id: 'screens', label: 'Telas', icon: MonitorPlay },
+    { id: 'campaigns', label: 'Campanhas', icon: Megaphone },
+    { id: 'alerts', label: 'Alertas', icon: Bell },
   ] },
   { section: 'Conta', items: [
     { id: 'storage', label: 'Armazenamento', icon: HardDrive },
