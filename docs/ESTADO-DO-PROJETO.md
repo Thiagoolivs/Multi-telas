@@ -57,9 +57,14 @@ e o contrato de saída dos agentes de IA.
 
 - **Controle remoto + multi-tenant**: `server.js` (dependency-free) serve o app
   e uma API com **contas (login)**, **dispositivos por empresa (tenant)** e
-  **sincronização em tempo real (SSE)**. Persistência via **`node:sqlite`**
-  (embutido no Node 22; `data/vistra.db`).
-  - `server/db.js` — schema: tenants, users, sessions, devices.
+  **sincronização em tempo real (SSE)**. Persistência em **PostgreSQL** quando
+  `DATABASE_URL` está definido; sem ele, **SQLite** embutido (`node:sqlite`,
+  `data/vistra.db`) para dev local sem setup. A API de dados é assíncrona e
+  idêntica nos dois backends.
+  - `server/db.js` — escolhe o backend por `DATABASE_URL`.
+  - `server/db-postgres.js` — driver `pg` (produção).
+  - `server/db-sqlite.js` — `node:sqlite` (dev). Schema: tenants, users,
+    sessions, devices.
   - `server/auth.js` — scrypt + sessão por cookie httpOnly.
   - `js/cloud.js` — cliente (lado TV + lado celular).
 - **Fluxo:** a TV (`player.html?cloud=1`) cria um device e mostra um código; o
@@ -67,14 +72,14 @@ e o contrato de saída dos agentes de IA.
   conta**; só ela controla. Ao salvar, a config vai para a TV na hora.
 - **Segurança:** parear e publicar exigem login; a TV lê a própria config com um
   device token. Ownership testada (outra conta recebe 403/409).
-- **Limites:** 1 usuário = 1 empresa; SQLite em arquivo (persistir com volume no
-  deploy ou migrar para Postgres na escala).
+- **Limites:** 1 usuário = 1 empresa; multi-usuário/permissões ainda não.
 
 ## Roadmap curto
 
 1. ~~Controle remoto (pareamento + sync)~~ — feito.
-2. ~~Contas + multi-tenant (auth) sobre o controle remoto~~ — feito (SQLite).
-3. Postgres + durabilidade (volume), multi-usuário e permissões. ← próximo
+2. ~~Contas + multi-tenant (auth) sobre o controle remoto~~ — feito.
+3. ~~Postgres (produção via `DATABASE_URL`, SQLite no dev)~~ — feito. Falta
+   multi-usuário e permissões por empresa. ← próximo
 4. Mídia na nuvem (storage + CDN), billing.
 5. Campanha-como-dado + render multiformato (TV/Feed/Story) → o pivot.
 6. Camada de IA (brief → JSON, editor por linguagem natural) + templates.

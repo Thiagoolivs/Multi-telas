@@ -24,17 +24,17 @@ function verifyPassword(password, stored) {
 }
 
 /* ---------------- Sessão ---------------- */
-function startSession(res, userId, tenantId) {
+async function startSession(res, userId, tenantId) {
   const token = crypto.randomBytes(24).toString('hex');
   const expires = Date.now() + SESSION_DAYS * 864e5;
-  db.createSession(token, userId, tenantId, expires);
+  await db.createSession(token, userId, tenantId, expires);
   const maxAge = SESSION_DAYS * 86400;
   res.setHeader('Set-Cookie',
     COOKIE + '=' + token + '; HttpOnly; Path=/; Max-Age=' + maxAge + '; SameSite=Lax');
   return token;
 }
-function clearSession(res, token) {
-  if (token) db.destroySession(token);
+async function clearSession(res, token) {
+  if (token) await db.destroySession(token);
   res.setHeader('Set-Cookie', COOKIE + '=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
 }
 function parseCookies(req) {
@@ -46,10 +46,10 @@ function parseCookies(req) {
   return out;
 }
 // Retorna a sessão válida (com tenant_id/user_id) ou null.
-function currentSession(req) {
+async function currentSession(req) {
   const token = parseCookies(req)[COOKIE];
   if (!token) return null;
-  const s = db.getSession(token);
+  const s = await db.getSession(token);
   return s ? Object.assign({ token }, s) : null;
 }
 

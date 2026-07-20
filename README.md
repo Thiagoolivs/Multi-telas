@@ -125,7 +125,9 @@ Primeiro tijolo do multi-tenant: controlar uma TV **de outro dispositivo pela
 internet**, sem hospedar `config.json` na mão.
 
 1. Suba o app com `node server.js` (o servidor já expõe a API de controle, com
-   contas e banco embutido via `node:sqlite`).
+   contas). O banco é **PostgreSQL** quando `DATABASE_URL` está definido; sem
+   ele, cai no SQLite embutido (`node:sqlite`) para rodar local sem configurar
+   nada.
 2. No painel (celular ou PC), no card **"Controlar TV pelo celular"**, **crie
    uma conta / faça login**.
 3. Na TV, abra o player com `?cloud=1` no fim da URL — aparece um **código de
@@ -134,8 +136,9 @@ internet**, sem hospedar `config.json` na mão.
    conta. A partir daí, ao salvar, o conteúdo é enviado para a TV **na hora**
    (via SSE).
 
-Cada conta controla só os seus dispositivos. O banco fica em `data/vistra.db`
-(persistir com volume no deploy, ou migrar para Postgres na escala) — ver
+Cada conta controla só os seus dispositivos. Em produção, defina `DATABASE_URL`
+(ex.: Postgres do Railway/Neon/Supabase) e os dados ficam nesse banco. No dev
+local, sem `DATABASE_URL`, o banco fica em `data/vistra.db` (SQLite). Ver
 [`docs/ESTADO-DO-PROJETO.md`](docs/ESTADO-DO-PROJETO.md) e
 [`docs/PLANO-SAAS.md`](docs/PLANO-SAAS.md).
 
