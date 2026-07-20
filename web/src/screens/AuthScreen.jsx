@@ -6,6 +6,8 @@ export default function AuthScreen({ onAuthed }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [inviteCode, setInviteCode] = useState('');
+  const [hasInvite, setHasInvite] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -14,9 +16,14 @@ export default function AuthScreen({ onAuthed }) {
     setError('');
     setBusy(true);
     try {
-      const res = mode === 'signup'
-        ? await auth.signup(email, password, name)
-        : await auth.login(email, password);
+      let res;
+      if (mode === 'signup') {
+        const payload = { email, password, name };
+        if (hasInvite && inviteCode.trim()) payload.inviteCode = inviteCode.trim().toUpperCase();
+        res = await auth.signup(payload);
+      } else {
+        res = await auth.login(email, password);
+      }
       onAuthed(res.tenant);
     } catch (err) {
       setError(err.message || 'Não deu certo. Tente de novo.');
@@ -49,10 +56,22 @@ export default function AuthScreen({ onAuthed }) {
 
         <form onSubmit={submit} className="auth-form">
           {mode === 'signup' && (
-            <label className="field">
-              <span>Nome da empresa</span>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Minha Empresa" autoComplete="organization" />
-            </label>
+            <>
+              <label className="field">
+                <span>{hasInvite ? 'Seu nome' : 'Nome da empresa'}</span>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder={hasInvite ? 'Seu nome' : 'Minha Empresa'} autoComplete={hasInvite ? 'name' : 'organization'} />
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={hasInvite} onChange={(e) => setHasInvite(e.target.checked)} />
+                <span>Tenho um código de convite</span>
+              </label>
+              {hasInvite && (
+                <label className="field">
+                  <span>Código de convite</span>
+                  <input className="code-input code-input-wide" value={inviteCode} onChange={(e) => setInviteCode(e.target.value.toUpperCase())} placeholder="CÓDIGO" maxLength={8} />
+                </label>
+              )}
+            </>
           )}
           <label className="field">
             <span>E-mail</span>

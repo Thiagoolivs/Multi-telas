@@ -71,6 +71,7 @@ body {
 }
 .nav-item.is-active { color: var(--text); background: var(--surface-2); }
 
+.app-user { display: flex; align-items: center; gap: 10px; }
 .app-main { padding: 24px 20px 60px; max-width: 900px; margin: 0 auto; }
 
 /* ---------- Botões ---------- */
@@ -183,9 +184,39 @@ code {
 }
 .empty-icon { font-size: 40px; margin-bottom: 10px; }
 
+/* ---------- Equipe ---------- */
+.check-row { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.check-row input { width: 16px; height: 16px; accent-color: var(--accent); }
+.code-input-wide { width: 100%; letter-spacing: 4px; }
+.role-select {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  border-radius: 10px; padding: 8px 10px; font: inherit; cursor: pointer;
+}
+.role-select:focus { outline: none; border-color: var(--accent); }
+.role-badge {
+  font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 10px;
+  border: 1px solid var(--border);
+}
+.role-owner { color: #ffd68a; border-color: rgba(255, 214, 138, 0.4); background: rgba(255, 214, 138, 0.1); }
+.role-admin { color: var(--accent-2); border-color: rgba(167, 139, 250, 0.4); background: rgba(167, 139, 250, 0.1); }
+.role-member { color: var(--muted); }
+.pill-soft {
+  margin-left: 8px; font-size: 11px; font-weight: 600; letter-spacing: 0;
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 1px 8px; color: var(--muted);
+}
+.code-strong {
+  background: var(--surface-2); border: 1px solid var(--border);
+  padding: 2px 8px; border-radius: 6px; letter-spacing: 2px; font-weight: 700;
+}
+
 @media (max-width: 560px) {
   .device { flex-direction: column; align-items: stretch; }
   .device-actions { justify-content: flex-end; }
   .pair-form { flex-direction: column; }
   .code-input, .name-input { width: 100%; }
+  .role-select { flex: 1; }
+  .app-user .muted { display: none; } /* e-mail some pra caber a barra */
+  .app-bar { gap: 10px; padding: 12px 14px; }
+  .app-main { padding: 20px 14px 60px; }
 }
