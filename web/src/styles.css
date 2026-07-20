@@ -1,0 +1,191 @@
+:root {
+  --bg: #0a0b12;
+  --bg-2: #10121d;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.09);
+  --text: #eef0f6;
+  --muted: #9aa0b4;
+  --accent: #6d5efc;
+  --accent-2: #a78bfa;
+  --danger: #ff6b6b;
+  --ok: #34d399;
+  --radius: 16px;
+  --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(109, 94, 252, 0.18), transparent 60%),
+    radial-gradient(900px 500px at -10% 20%, rgba(167, 139, 250, 0.12), transparent 55%),
+    var(--bg);
+  color: var(--text);
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-loading, .app { min-height: 100%; }
+.app-loading {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+/* ---------- Marca ---------- */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  font-size: 18px;
+}
+.brand-lg { font-size: 30px; }
+.brand-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 18px rgba(109, 94, 252, 0.7);
+}
+.brand-tag {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 2px 8px; margin-left: 4px;
+}
+
+/* ---------- Barra do app ---------- */
+.app-bar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(10, 11, 18, 0.7);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 10;
+}
+.app-nav { display: flex; gap: 6px; margin-left: 8px; flex: 1; }
+.nav-item {
+  background: transparent; border: 0; color: var(--muted);
+  padding: 8px 12px; border-radius: 10px; cursor: pointer; font: inherit;
+}
+.nav-item.is-active { color: var(--text); background: var(--surface-2); }
+
+.app-main { padding: 24px 20px 60px; max-width: 900px; margin: 0 auto; }
+
+/* ---------- Botões ---------- */
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: white; border: 0; border-radius: 12px;
+  padding: 11px 18px; font: inherit; font-weight: 600; cursor: pointer;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-primary:active { transform: translateY(1px); }
+.btn-primary:disabled { opacity: 0.55; cursor: default; }
+.btn-ghost {
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 8px 12px; font: inherit; cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btn-ghost:hover { background: var(--surface-2); }
+.btn-danger { color: var(--danger); }
+
+/* ---------- Auth ---------- */
+.auth { min-height: 100%; display: grid; place-items: center; padding: 24px; }
+.auth-card {
+  width: 100%; max-width: 400px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 22px; padding: 30px; box-shadow: var(--shadow);
+}
+.auth-sub { color: var(--muted); margin: 10px 0 22px; }
+.seg {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 4px; margin-bottom: 20px;
+}
+.seg-btn {
+  background: transparent; border: 0; color: var(--muted);
+  padding: 9px; border-radius: 9px; cursor: pointer; font: inherit; font-weight: 600;
+}
+.seg-btn.is-active { background: var(--surface-2); color: var(--text); }
+.auth-form { display: grid; gap: 14px; }
+
+/* ---------- Campos ---------- */
+.field { display: grid; gap: 6px; }
+.field > span { font-size: 13px; color: var(--muted); }
+.field input, .code-input, .name-input {
+  width: 100%;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 11px; padding: 11px 13px; color: var(--text);
+  font: inherit; outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field input:focus, .code-input:focus, .name-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109, 94, 252, 0.22);
+}
+
+/* ---------- Alertas ---------- */
+.alert {
+  background: rgba(255, 107, 107, 0.12); border: 1px solid rgba(255, 107, 107, 0.4);
+  color: #ffc0c0; padding: 10px 12px; border-radius: 11px; font-size: 14px;
+}
+.alert-info {
+  background: rgba(52, 211, 153, 0.1); border-color: rgba(52, 211, 153, 0.4);
+  color: #b6f2dc;
+}
+
+/* ---------- Tela / cards ---------- */
+.screen { display: grid; gap: 20px; }
+.screen-head h1 { margin: 0 0 6px; font-size: 26px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.card {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}
+.card h2 { margin: 0 0 4px; font-size: 17px; }
+.pair-card .muted { margin: 0 0 14px; }
+.pair-form { display: flex; gap: 10px; flex-wrap: wrap; }
+.code-input {
+  width: 130px; text-transform: uppercase; letter-spacing: 3px;
+  font-weight: 700; text-align: center;
+}
+.name-input { flex: 1; min-width: 160px; }
+code {
+  background: var(--surface-2); padding: 1px 6px; border-radius: 6px;
+  font-family: ui-monospace, Menlo, monospace; font-size: 0.9em;
+}
+
+/* ---------- Lista de dispositivos ---------- */
+.device-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.device {
+  display: flex; align-items: center; gap: 14px; justify-content: space-between;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px 18px;
+}
+.device-name { font-weight: 600; font-size: 16px; }
+.device-meta { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.pill {
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 2px 10px; font-size: 12px;
+  letter-spacing: 2px; font-weight: 700;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); opacity: 0.6; }
+.dot-on { background: var(--ok); opacity: 1; box-shadow: 0 0 10px rgba(52, 211, 153, 0.6); }
+.device-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.empty {
+  text-align: center; color: var(--muted);
+  border: 1px dashed var(--border); border-radius: var(--radius); padding: 40px 20px;
+}
+.empty-icon { font-size: 40px; margin-bottom: 10px; }
+
+@media (max-width: 560px) {
+  .device { flex-direction: column; align-items: stretch; }
+  .device-actions { justify-content: flex-end; }
+  .pair-form { flex-direction: column; }
+  .code-input, .name-input { width: 100%; }
+}

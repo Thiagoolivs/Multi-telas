@@ -192,17 +192,53 @@ async function handleApi(req, res, pathname, query) {
   return sendJson(res, 404, { error: 'rota não encontrada' });
 }
 
+/* ---------------- Painel React (SPA em /app, build em web/dist) ---------------- */
+const APP_DIR = path.join(ROOT, 'web', 'dist');
+function handleApp(req, res, urlPath) {
+  // Migração incremental: o painel React vive em /app, ao lado do admin
+  // vanilla. Rotas de cliente (sem extensão) caem no index.html (SPA).
+  let rest = urlPath.slice('/app'.length) || '/';
+  if (rest === '/') rest = '/index.html';
+  const filePath = path.normalize(path.join(APP_DIR, rest));
+  if (!filePath.startsWith(APP_DIR)) { res.writeHead(403); return res.end('Acesso negado'); }
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      if (!path.extname(rest)) return serveAppIndex(res); // rota de cliente
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Não encontrado: ' + urlPath);
+    }
+    sendFile(res, filePath, data);
+  });
+}
+function serveAppIndex(res) {
+  fs.readFile(path.join(APP_DIR, 'index.html'), (err, data) => {
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end('Painel não compilado. Rode: cd web && npm install && npm run build');
+    }
+    sendFile(res, 'index.html', data);
+  });
+}
+
 /* ---------------- Arquivos estáticos ---------------- */
+function sendFile(res, filePath, data) {
+  const ext = path.extname(filePath).toLowerCase();
+  // Assets do Vite têm hash no nome → cache longo; o resto revalida.
+  const hashed = /\/assets\//.test(filePath);
+  const revalidate = !hashed && (ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json');
+  res.writeHead(200, {
+    'Content-Type': MIME[ext] || 'application/octet-stream',
+    'Cache-Control': hashed ? 'public, max-age=31536000, immutable' : (revalidate ? 'no-cache' : 'public, max-age=3600'),
+  });
+  res.end(data);
+}
 function handleStatic(req, res, urlPath) {
   if (urlPath === '/') urlPath = '/index.html';
   const filePath = path.normalize(path.join(ROOT, urlPath));
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); return res.end('Acesso negado'); }
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Não encontrado: ' + urlPath); }
-    const ext = path.extname(filePath).toLowerCase();
-    const revalidate = ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json';
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': revalidate ? 'no-cache' : 'public, max-age=3600' });
-    res.end(data);
+    sendFile(res, filePath, data);
   });
 }
 
@@ -212,6 +248,9 @@ const server = http.createServer((req, res) => {
   if (pathname === '/api' || pathname.startsWith('/api/')) {
     return handleApi(req, res, pathname, parsed.query || {})
       .catch((e) => { console.warn('[api]', e.message); try { sendJson(res, 500, { error: 'erro interno' }); } catch (_) {} });
+  }
+  if (pathname === '/app' || pathname.startsWith('/app/')) {
+    return handleApp(req, res, pathname);
   }
   return handleStatic(req, res, pathname);
 });
