@@ -34,6 +34,12 @@ async function init() {
     CREATE TABLE IF NOT EXISTS tenants (
       id TEXT PRIMARY KEY, name TEXT, created_at BIGINT
     );
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_status TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_renews_at BIGINT;
+    UPDATE tenants SET plan = 'free' WHERE plan IS NULL;
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT UNIQUE,
       pass_hash TEXT, role TEXT, name TEXT, created_at BIGINT
@@ -75,7 +81,7 @@ async function createAccount(email, passHash, tenantName, userName) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('INSERT INTO tenants (id, name, created_at) VALUES ($1, $2, $3)', [tenantId, tenantName || email, now]);
+    await client.query("INSERT INTO tenants (id, name, created_at, plan) VALUES ($1, $2, $3, 'free')", [tenantId, tenantName || email, now]);
     await client.query('INSERT INTO users (id, tenant_id, email, pass_hash, role, name, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)', [userId, tenantId, email, passHash, 'owner', userName || tenantName || '', now]);
     await client.query('COMMIT');
   } catch (e) {
@@ -177,6 +183,34 @@ async function listDevices(tenantId) {
   return r.rows;
 }
 
+async function countDevices(tenantId) {
+  const r = await pool.query('SELECT COUNT(*)::int AS n FROM devices WHERE tenant_id = $1', [tenantId]);
+  return Number(r.rows[0].n);
+}
+
+/* ---------------- Billing (tenant) ---------------- */
+async function getTenant(id) {
+  const r = await pool.query('SELECT * FROM tenants WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function getTenantByCustomer(customerId) {
+  const r = await pool.query('SELECT * FROM tenants WHERE stripe_customer_id = $1', [customerId]);
+  return r.rows[0] || null;
+}
+// Atualiza só as colunas de billing informadas (patch parcial).
+async function setTenantBilling(id, fields) {
+  const map = {
+    plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
+    subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
+  };
+  const sets = [], vals = [];
+  let i = 1;
+  for (const k of Object.keys(map)) if (k in fields && fields[k] !== undefined) { sets.push(map[k] + ' = $' + (i++)); vals.push(fields[k]); }
+  if (!sets.length) return;
+  vals.push(id);
+  await pool.query('UPDATE tenants SET ' + sets.join(', ') + ' WHERE id = $' + i, vals);
+}
+
 /* ---------------- Mídia ---------------- */
 async function createMedia(m) {
   await pool.query('INSERT INTO media (id, tenant_id, name, mime, size, key, url, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
@@ -212,6 +246,7 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession,
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, touchDevice, listDevices,
+  renameDevice, removeDevice, touchDevice, listDevices, countDevices,
+  getTenant, getTenantByCustomer, setTenantBilling,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes, rid,
 };

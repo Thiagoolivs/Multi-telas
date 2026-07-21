@@ -50,6 +50,12 @@ export const deviceConfig = {
   save: (id, config) => api('PUT', '/api/devices/' + id + '/config', config),
 };
 
+export const billing = {
+  get: () => api('GET', '/api/billing'),
+  checkout: (plan) => api('POST', '/api/billing/checkout', { plan }),
+  portal: () => api('POST', '/api/billing/portal'),
+};
+
 export const media = {
   list: () => api('GET', '/api/media'),
   remove: (id) => api('DELETE', '/api/media/' + id),

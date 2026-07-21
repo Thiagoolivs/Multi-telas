@@ -7,6 +7,7 @@ import { ScreensPage } from './pages/ScreensPage.jsx';
 import { ContentEditorPage } from './pages/ContentEditorPage.jsx';
 import { TeamPage } from './pages/TeamPage.jsx';
 import { StoragePage } from './pages/StoragePage.jsx';
+import { BillingPage } from './pages/BillingPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 
@@ -17,6 +18,7 @@ const META = {
   campaigns: { title: 'Campanhas', subtitle: 'Crie, agende e distribua conteúdo nas telas.' },
   alerts: { title: 'Alertas', subtitle: 'Incidentes e avisos operacionais.' },
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
+  billing: { title: 'Plano e cobrança' },
   settings: { title: 'Ajustes', subtitle: 'Conta, integrações e preferências.' },
 };
 
@@ -31,7 +33,9 @@ function useTheme() {
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = carregando
-  const [route, setRoute] = useState({ name: 'overview' }); // { name, device? }
+  // Volta do checkout (?billing=success|cancel) cai direto na tela de plano.
+  const [route, setRoute] = useState(() =>
+    new URLSearchParams(window.location.search).get('billing') ? { name: 'billing' } : { name: 'overview' });
   const [theme, toggleTheme] = useTheme();
 
   const refresh = () => auth.me().then((me) => setSession(me || null));
@@ -66,6 +70,7 @@ export default function App() {
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
+      case 'billing': return <BillingPage />;
       default: return <PlaceholderPage title={meta.title} subtitle={meta.subtitle} />;
     }
   }

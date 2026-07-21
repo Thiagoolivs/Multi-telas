@@ -23,6 +23,8 @@ const db = require('./server/db');
 const auth = require('./server/auth');
 const storage = require('./server/storage');
 const { rateLimit, clientIp, safeEqual } = require('./server/security');
+const plans = require('./server/plans');
+const billing = require('./server/billing');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -75,6 +77,82 @@ function broadcast(deviceId, event, payload) {
   set.forEach((res) => { try { res.write(msg); } catch (e) {} });
 }
 function validEmail(e) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e || '')); }
+// Base absoluta da requisição (para montar URLs de checkout/portal).
+function reqOrigin(req) {
+  const proto = (req.headers['x-forwarded-proto'] || '').split(',')[0].trim() || (req.socket && req.socket.encrypted ? 'https' : 'http');
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost';
+  return proto + '://' + host;
+}
+// Corpo bruto (sem parse) — necessário para validar a assinatura do webhook.
+function readRawBody(req) {
+  return new Promise((resolve) => {
+    let data = ''; req.on('data', (ch) => { data += ch; if (data.length > 1e6) req.destroy(); });
+    req.on('end', () => resolve(data));
+  });
+}
+function brl(cents) { return 'R$ ' + (cents / 100).toFixed(2).replace('.', ','); }
+
+// Aplica um evento do Stripe ao plano do tenant.
+async function handleStripeEvent(event) {
+  const obj = (event.data && event.data.object) || {};
+  if (event.type === 'checkout.session.completed') {
+    const tenantId = obj.client_reference_id || (obj.metadata && obj.metadata.tenant_id);
+    if (!tenantId) return;
+    await db.setTenantBilling(tenantId, {
+      plan: (obj.metadata && obj.metadata.plan) || undefined,
+      status: 'active', customerId: obj.customer || undefined, subscriptionId: obj.subscription || undefined,
+    });
+  } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.created') {
+    const tenant = await db.getTenantByCustomer(obj.customer);
+    if (!tenant) return;
+    const price = obj.items && obj.items.data && obj.items.data[0] && obj.items.data[0].price;
+    await db.setTenantBilling(tenant.id, {
+      plan: billing.planIdFromPrice(price && price.id) || undefined,
+      status: obj.status, subscriptionId: obj.id,
+      renewsAt: obj.current_period_end ? obj.current_period_end * 1000 : undefined,
+    });
+  } else if (event.type === 'customer.subscription.deleted') {
+    const tenant = await db.getTenantByCustomer(obj.customer);
+    if (!tenant) return;
+    await db.setTenantBilling(tenant.id, { plan: 'free', status: 'canceled', subscriptionId: null, renewsAt: null });
+  }
+}
+
+// Página de checkout SIMULADO (modo dev, sem Stripe). Deixa claro que é teste.
+function devCheckoutPage(p) {
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pagamento simulado — ${p.name}</title>
+<style>
+  :root{color-scheme:light dark}
+  body{margin:0;font:15px/1.5 system-ui,sans-serif;background:#0b0c10;color:#e8eaf0;display:grid;place-items:center;min-height:100vh}
+  .card{background:#15171f;border:1px solid #262a36;border-radius:16px;padding:28px;max-width:380px;width:calc(100% - 32px);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+  .tag{display:inline-block;font-size:12px;font-weight:600;color:#f5b301;background:rgba(245,179,1,.12);padding:3px 9px;border-radius:99px;margin-bottom:14px}
+  h1{font-size:19px;margin:0 0 4px} .muted{color:#9aa0ad;font-size:13px;margin:0 0 18px}
+  .price{font-size:30px;font-weight:700;margin:10px 0 2px} .price small{font-size:14px;font-weight:500;color:#9aa0ad}
+  button{width:100%;border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:600;cursor:pointer;background:#5b8cff;color:#fff;margin-top:16px}
+  button:disabled{opacity:.6} a{display:block;text-align:center;color:#9aa0ad;margin-top:12px;font-size:13px;text-decoration:none}
+</style></head><body>
+<div class="card">
+  <span class="tag">PAGAMENTO SIMULADO — TESTE</span>
+  <h1>Plano ${p.name}</h1>
+  <p class="muted">${p.blurb || ''} Até ${p.screens} telas.</p>
+  <div class="price">${brl(p.priceCents)}<small> /mês</small></div>
+  <button id="go" onclick="pay()">Confirmar assinatura</button>
+  <a href="/app?billing=cancel">Cancelar</a>
+</div>
+<script>
+async function pay(){
+  var b=document.getElementById('go'); b.disabled=true; b.textContent='Processando…';
+  try{
+    var r=await fetch('/api/billing/dev-activate',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({plan:${JSON.stringify(p.id)}})});
+    if(!r.ok) throw new Error('falha');
+    location.href='/app?billing=success';
+  }catch(e){ b.disabled=false; b.textContent='Tentar de novo'; }
+}
+</script>
+</body></html>`;
+}
 function pubDevice(d) { return { id: d.id, name: d.name, code: d.code, paired: !!d.tenant_id, hasConfig: !!d.config, updatedAt: d.updated_at, lastSeen: d.last_seen }; }
 
 /* ---------------- API ---------------- */
@@ -210,6 +288,82 @@ async function handleApi(req, res, pathname, query) {
     return sendJson(res, 404, { error: 'rota de equipe inválida' });
   }
 
+  /* ----- Billing / planos ----- */
+  if (parts[1] === 'billing') {
+    const seg = parts[2];
+
+    // Webhook do Stripe: corpo bruto + assinatura. Sem sessão (vem do Stripe).
+    if (req.method === 'POST' && seg === 'webhook') {
+      const raw = await readRawBody(req);
+      let event;
+      try { event = billing.verifyWebhook(raw, req.headers['stripe-signature']); }
+      catch (e) { return sendJson(res, 400, { error: 'webhook inválido: ' + e.message }); }
+      await handleStripeEvent(event);
+      return sendJson(res, 200, { received: true });
+    }
+
+    // Daqui pra baixo exige login.
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const tenant = await db.getTenant(sess.tenant_id);
+    const curPlan = plans.plan(tenant && tenant.plan);
+
+    // Estado atual do plano + uso + catálogo.
+    if (req.method === 'GET' && !seg) {
+      const used = await db.countDevices(sess.tenant_id);
+      return sendJson(res, 200, {
+        mode: billing.mode(),
+        plan: { id: curPlan.id, name: curPlan.name, screens: curPlan.screens, priceCents: curPlan.priceCents },
+        status: (tenant && tenant.plan_status) || (curPlan.priceCents ? 'active' : 'free'),
+        renewsAt: tenant && tenant.plan_renews_at,
+        usage: { screens: used, limit: curPlan.screens },
+        catalog: plans.catalog(),
+        canManage: sess.role === 'owner',
+      });
+    }
+
+    // Iniciar checkout de upgrade (só dono).
+    if (req.method === 'POST' && seg === 'checkout') {
+      if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
+      return readBody(req, res, async (b) => {
+        const target = plans.plan(b && b.plan);
+        if (!target || target.priceCents <= 0) return sendJson(res, 400, { error: 'plano inválido' });
+        try {
+          const out = await billing.createCheckout(tenant, target.id, reqOrigin(req));
+          return sendJson(res, 200, out);
+        } catch (e) { return sendJson(res, 502, { error: e.message }); }
+      });
+    }
+
+    // Portal de gerenciamento (trocar cartão / cancelar) — só dono.
+    if (req.method === 'POST' && seg === 'portal') {
+      if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
+      try { return sendJson(res, 200, await billing.createPortal(tenant, reqOrigin(req))); }
+      catch (e) { return sendJson(res, 502, { error: e.message }); }
+    }
+
+    // ----- Modo dev (checkout simulado): só existe sem Stripe configurado -----
+    if (billing.mode() === 'dev') {
+      if (req.method === 'GET' && seg === 'dev-checkout') {
+        const target = plans.plan(query.plan);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        return res.end(devCheckoutPage(target));
+      }
+      if (req.method === 'POST' && seg === 'dev-activate') {
+        if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
+        return readBody(req, res, async (b) => {
+          const target = plans.plan(b && b.plan);
+          if (!target || target.priceCents <= 0) return sendJson(res, 400, { error: 'plano inválido' });
+          await db.setTenantBilling(sess.tenant_id, {
+            plan: target.id, status: 'active',
+            renewsAt: Date.now() + 30 * 864e5,
+          });
+          return sendJson(res, 200, { ok: true, plan: target.id });
+        });
+      }
+    }
+    return sendJson(res, 404, { error: 'rota de billing inválida' });
+  }
+
   /* ----- Criar device (a TV chama, sem auth) ----- */
   if (req.method === 'POST' && parts[1] === 'devices' && parts.length === 2) {
     const id = 'dev_' + db.rid(14);
@@ -234,6 +388,14 @@ async function handleApi(req, res, pathname, query) {
       // Primeira reivindicação só vale se a TV está viva (código na tela agora).
       if (!d.tenant_id && (!d.last_seen || Date.now() - d.last_seen > PAIR_ONLINE_MS))
         return sendJson(res, 410, { error: 'código expirado — reinicie a TV para gerar um novo' });
+      // Limite do plano: bloqueia parear acima da cota (só na 1ª reivindicação).
+      if (!d.tenant_id) {
+        const tenant = await db.getTenant(sess.tenant_id);
+        const limit = plans.screenLimit(tenant && tenant.plan);
+        const used = await db.countDevices(sess.tenant_id);
+        if (used >= limit)
+          return sendJson(res, 402, { error: 'limite do plano atingido (' + limit + (limit === 1 ? ' tela' : ' telas') + '). Faça upgrade para adicionar mais.', code: 'plan_limit' });
+      }
       await db.claimDevice(d.id, sess.tenant_id, b.name || d.name || 'TV');
       return sendJson(res, 200, { id: d.id, name: b.name || d.name || 'TV' });
     });

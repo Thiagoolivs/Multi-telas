@@ -17,7 +17,9 @@ const db = new DatabaseSync(path.join(DATA_DIR, 'vistra.db'));
 db.exec(`
   PRAGMA journal_mode = WAL;
   CREATE TABLE IF NOT EXISTS tenants (
-    id TEXT PRIMARY KEY, name TEXT, created_at INTEGER
+    id TEXT PRIMARY KEY, name TEXT, created_at INTEGER,
+    plan TEXT, plan_status TEXT, stripe_customer_id TEXT,
+    stripe_subscription_id TEXT, plan_renews_at INTEGER
   );
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT UNIQUE,
@@ -54,9 +56,17 @@ if (!userCols.includes('name')) db.exec("ALTER TABLE users ADD COLUMN name TEXT"
 db.exec("UPDATE users SET role = 'owner' WHERE role IS NULL");
 const deviceCols = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
 if (!deviceCols.includes('last_seen')) db.exec('ALTER TABLE devices ADD COLUMN last_seen INTEGER');
+const tenantCols = db.prepare('PRAGMA table_info(tenants)').all().map((c) => c.name);
+for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER']) {
+  if (!tenantCols.includes(col.split(' ')[0])) db.exec('ALTER TABLE tenants ADD COLUMN ' + col);
+}
+db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
 
 const q = {
-  insertTenant: db.prepare('INSERT INTO tenants (id, name, created_at) VALUES (?, ?, ?)'),
+  insertTenant: db.prepare("INSERT INTO tenants (id, name, created_at, plan) VALUES (?, ?, ?, 'free')"),
+  tenantById: db.prepare('SELECT * FROM tenants WHERE id = ?'),
+  tenantByCustomer: db.prepare('SELECT * FROM tenants WHERE stripe_customer_id = ?'),
+  countDevicesByTenant: db.prepare('SELECT COUNT(*) AS n FROM devices WHERE tenant_id = ?'),
   insertUser: db.prepare('INSERT INTO users (id, tenant_id, email, pass_hash, role, name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'),
   userByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
   userById: db.prepare('SELECT * FROM users WHERE id = ?'),
@@ -148,6 +158,23 @@ async function renameDevice(id, name) { q.renameDevice.run(name, id); }
 async function removeDevice(id) { q.deleteDevice.run(id); }
 async function touchDevice(id) { q.touchDevice.run(Date.now(), id); }
 async function listDevices(tenantId) { return q.listByTenant.all(tenantId); }
+async function countDevices(tenantId) { return Number(q.countDevicesByTenant.get(tenantId).n); }
+
+/* ---------------- Billing (tenant) ---------------- */
+async function getTenant(id) { return q.tenantById.get(id) || null; }
+async function getTenantByCustomer(customerId) { return q.tenantByCustomer.get(customerId) || null; }
+// Atualiza só as colunas de billing informadas (patch parcial).
+async function setTenantBilling(id, fields) {
+  const map = {
+    plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
+    subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
+  };
+  const sets = [], vals = [];
+  for (const k of Object.keys(map)) if (k in fields && fields[k] !== undefined) { sets.push(map[k] + ' = ?'); vals.push(fields[k]); }
+  if (!sets.length) return;
+  vals.push(id);
+  db.prepare('UPDATE tenants SET ' + sets.join(', ') + ' WHERE id = ?').run(...vals);
+}
 
 /* ---------------- Mídia ---------------- */
 async function createMedia(m) {
@@ -172,6 +199,7 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession,
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, touchDevice, listDevices,
+  renameDevice, removeDevice, touchDevice, listDevices, countDevices,
+  getTenant, getTenantByCustomer, setTenantBilling,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes, rid,
 };
