@@ -573,7 +573,11 @@ function sendFile(res, filePath, data) {
   res.end(data);
 }
 function handleStatic(req, res, urlPath) {
-  if (urlPath === '/') urlPath = '/index.html';
+  // A raiz agora leva ao painel com conta (React em /app). O admin vanilla
+  // antigo (single-screen, sem conta) fica acessível em /legacy até o editor
+  // rico ser portado para o /app — assim nada se perde na transição.
+  if (urlPath === '/') { res.writeHead(302, { Location: '/app' }); return res.end(); }
+  if (urlPath === '/legacy' || urlPath === '/legacy/') urlPath = '/index.html';
   const filePath = path.normalize(path.join(ROOT, urlPath));
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); return res.end('Acesso negado'); }
   fs.readFile(filePath, (err, data) => {

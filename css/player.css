@@ -118,7 +118,9 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   backdrop-filter: blur(var(--blur)) saturate(1.5);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.12);
+  /* Profundidade: sombra base + luz de vidro no topo + halo suave na cor do
+     tema (dá o "brilho" premium sem competir com o conteúdo). */
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.12), 0 0 70px -22px var(--glow);
   /* Permite dimensionar fontes pela largura da própria zona (cqw). */
   container-type: size;
 }
