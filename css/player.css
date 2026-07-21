@@ -44,25 +44,42 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   padding: 1.1vh;
   isolation: isolate;
   background:
+    /* vinheta: escurece as bordas e dá profundidade (foco ao centro) */
+    radial-gradient(135% 120% at 50% 44%, transparent 56%, rgba(0,0,0,.34) 100%),
     radial-gradient(120% 120% at 12% -10%, var(--bg-2) 0%, transparent 55%),
     radial-gradient(120% 120% at 100% 110%, var(--bg-2) 0%, transparent 50%),
     var(--bg);
 }
-/* Camada "aurora": blobs suaves de cor que derivam lentamente, dando a
-   sensação de fundo vivo e tecnológico. Intensidade controlada por --fx. */
+/* Aurora A — blobs grandes de cor derivando/girando: fundo vivo e tecnológico.
+   Mais presente que antes (o "rico/dinâmico" pedido). Escala por --fx. */
 .mt-stage::before {
   content: "";
-  position: absolute; inset: -20%;
-  z-index: -2;
+  position: absolute; inset: -28%;
+  z-index: -3;
   background:
-    radial-gradient(38% 42% at 22% 28%, var(--glow) 0%, transparent 60%),
-    radial-gradient(34% 40% at 78% 30%, var(--brand-2) 0%, transparent 62%),
-    radial-gradient(40% 44% at 60% 84%, var(--accent) 0%, transparent 60%);
-  opacity: calc(.22 * var(--fx));
-  filter: blur(50px) saturate(1.15);
-  animation: mt-aurora 34s ease-in-out infinite alternate;
+    radial-gradient(34% 40% at 20% 26%, var(--glow) 0%, transparent 60%),
+    radial-gradient(30% 36% at 82% 22%, var(--brand-2) 0%, transparent 62%),
+    radial-gradient(42% 46% at 66% 86%, var(--accent) 0%, transparent 60%),
+    radial-gradient(28% 32% at 8% 80%, var(--brand) 0%, transparent 64%);
+  opacity: calc(.5 * var(--fx));
+  filter: blur(58px) saturate(1.28);
+  animation: mt-aurora 32s ease-in-out infinite alternate;
 }
-/* Granulado sutil — dá acabamento "matte" de produto caro. */
+/* Aurora B — segunda camada, cores/posições/tempo diferentes + um facho cônico
+   girando devagar: o conjunto ganha movimento orgânico (nunca "estático"). */
+.mt-stage-fx {
+  content: "";
+  position: absolute; inset: -28%;
+  z-index: -2; pointer-events: none;
+  background:
+    radial-gradient(28% 32% at 72% 16%, var(--accent) 0%, transparent 60%),
+    radial-gradient(32% 38% at 26% 66%, var(--brand-2) 0%, transparent 62%),
+    conic-gradient(from 210deg at 50% 50%, transparent 0deg, var(--glow) 70deg, transparent 150deg);
+  opacity: calc(.3 * var(--fx));
+  filter: blur(72px) saturate(1.2);
+  animation: mt-aurora-2 52s linear infinite;
+}
+/* Granulado sutil — acabamento "matte" de produto caro. */
 .mt-stage::after {
   content: "";
   position: absolute; inset: 0; z-index: -1; pointer-events: none;
@@ -70,9 +87,16 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 @keyframes mt-aurora {
-  0% { transform: translate3d(-2%, -1%, 0) scale(1.05); }
-  50% { transform: translate3d(2%, 1.5%, 0) scale(1.12); }
-  100% { transform: translate3d(-1%, 2%, 0) scale(1.06); }
+  0% { transform: translate3d(-2%, -1%, 0) rotate(0deg) scale(1.05); }
+  50% { transform: translate3d(2%, 1.5%, 0) rotate(4deg) scale(1.14); }
+  100% { transform: translate3d(-1%, 2%, 0) rotate(-3deg) scale(1.07); }
+}
+@keyframes mt-aurora-2 {
+  0% { transform: translate3d(1%, 1%, 0) rotate(0deg) scale(1.08); }
+  100% { transform: translate3d(-1%, -1%, 0) rotate(360deg) scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mt-stage::before, .mt-stage-fx { animation: none; }
 }
 /* Layouts "dinâmicos": as zonas mudam de proporção suavemente ao longo
    do tempo, sem recriar nenhum conteúdo (vídeos e lives não reiniciam). */
@@ -472,6 +496,24 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
    (clima atual). Volta a aparecer em zonas com altura suficiente. */
 @container (max-height: 210px) { .wp-days { display: none; } }
 @container (max-height: 140px) { .wp-date { display: none; } }
+
+/* Fallback do clima: relógio ao vivo + data + cidade (parece intencional). */
+.wp-fallback {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: clamp(4px, 1.6cqmin, 14px); width: 100%;
+}
+.wpf-date {
+  font-size: clamp(11px, 4.2cqmin, 30px); font-weight: 600; letter-spacing: .03em;
+  color: var(--text-dim); text-transform: capitalize; text-align: center;
+}
+.wpf-time {
+  font-size: clamp(52px, 34cqmin, 210px); font-weight: 200; line-height: .95;
+  letter-spacing: -.03em; color: var(--text); font-variant-numeric: tabular-nums;
+}
+.wpf-city {
+  font-size: clamp(12px, 4.6cqmin, 34px); font-weight: 700; letter-spacing: .02em;
+  color: var(--accent); text-align: center;
+}
 
 /* ---------- Cartão de aniversário ---------- */
 /* Componente decorativo com fundo escuro próprio → texto sempre claro,

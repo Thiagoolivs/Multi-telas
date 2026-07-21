@@ -602,10 +602,24 @@
             '<div class="mt-weather-temp">' + w.temp + '°C</div>' +
             '<div class="mt-weather-city">' + w.nome + '</div>';
         } catch (e) {
-          inner.textContent = 'Clima indisponível';
+          inner.innerHTML = weatherFallbackHtml(item.cidade || 'São Paulo');
+          const t = inner.querySelector('[data-clock]');
+          const upd = () => { if (t) t.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
+          upd(); setInterval(upd, 1000);
         }
       },
     };
+  }
+
+  /* ---------- Fallback elegante do clima: relógio + data + cidade ----------
+   * Quando o clima não carrega (sem rede, cidade inválida), a coluna NÃO morre:
+   * vira um relógio ao vivo com data e cidade — parece intencional, não quebrado. */
+  function weatherFallbackHtml(cidade) {
+    return '<div class="wp-fallback">' +
+      '<div class="wpf-date">' + fmtDataLonga(new Date()) + '</div>' +
+      '<div class="wpf-time" data-clock>--:--</div>' +
+      (cidade ? '<div class="wpf-city">' + escapeHtml(cidade) + '</div>' : '') +
+      '</div>';
   }
 
   /* ---------- Painel do clima (estilo dashboard, com previsão) ---------- */
@@ -615,7 +629,17 @@
     const inner = div('mt-wpro-inner');
     inner.innerHTML = '<div class="mt-wpro-loading">Carregando clima…</div>';
     el.appendChild(inner);
-    let timer = null;
+    let timer = null, clock = null;
+
+    function stopClock() { if (clock) { clearInterval(clock); clock = null; } }
+    function startClock() {
+      if (clock) return;
+      const upd = () => {
+        const t = inner.querySelector('[data-clock]');
+        if (t) t.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      };
+      upd(); clock = setInterval(upd, 1000);
+    }
 
     async function load() {
       try {
@@ -644,9 +668,11 @@
           }
           html += '</div>';
         }
+        stopClock();
         inner.innerHTML = html;
       } catch (e) {
-        inner.innerHTML = '<div class="mt-wpro-loading">Clima indisponível</div>';
+        inner.innerHTML = weatherFallbackHtml(item.cidade || 'São Paulo');
+        startClock();
       }
     }
 
@@ -654,7 +680,7 @@
       el,
       duration: item.duracao || 0,
       onEnter: () => { load(); timer = setInterval(load, 15 * 60 * 1000); },
-      onLeave: () => timer && clearInterval(timer),
+      onLeave: () => { if (timer) clearInterval(timer); stopClock(); },
     };
   }
 

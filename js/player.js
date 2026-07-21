@@ -235,6 +235,13 @@
     }
     setGrid({ columns: layout.grid.columns, rows: layout.grid.rows, areas: layout.grid.areas });
 
+    // Segunda camada de aurora (fundo vivo). É position:absolute, fica fora do
+    // fluxo do grid e atrás das zonas; recriada a cada montagem do palco.
+    const fxLayer = document.createElement('div');
+    fxLayer.className = 'mt-stage-fx';
+    fxLayer.setAttribute('aria-hidden', 'true');
+    stage.appendChild(fxLayer);
+
     // Layout dinâmico: a disposição se alterna sozinha (proporções e lado da
     // lateral) ao longo do tempo, com transição fluida (FLIP).
     const auto = cfg.settings.layoutAuto === true;
