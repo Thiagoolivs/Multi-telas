@@ -17,6 +17,72 @@
   let configFingerprint = '';
   const zoneControllers = [];
 
+  /* ---------------- Motor de transições (GSAP + fallback CSS) ----------------
+   * Com GSAP, a troca de slides é coreografada (entrada por tipo + revelação do
+   * conteúdo em cascata). Sem GSAP, cai nas classes CSS .mt-trans-* de sempre.
+   * Só transform/opacity — nada de blur, que pesa na GPU de TV. */
+  const GSAP = window.gsap;
+  const HAS_GSAP = typeof GSAP !== 'undefined';
+  // Estado inicial da entrada, por tipo de transição.
+  const TRANS_FROM = {
+    fade: { opacity: 0 },
+    slide: { opacity: 0, xPercent: 6 },
+    zoom: { opacity: 0, scale: 1.08 },
+    cinematic: { opacity: 0, scale: 1.06, yPercent: 1.8 },
+    none: { opacity: 1 },
+  };
+  const TRANS_DUR = { fade: 0.8, slide: 0.8, zoom: 0.9, cinematic: 1.0, none: 0 };
+
+  // Slides de "conteúdo" (texto/clima/relógio…) revelam os elementos em cascata.
+  // Mídia cheia (imagem/vídeo) e o cartão decorado de aniversário só transitam.
+  function isRevealSlide(el) {
+    if (el.matches('.mt-image, .mt-video, .mt-empty, .mt-broken, .mt-bcard')) return false;
+    return revealTargets(el).length >= 2;
+  }
+  // Folhas de texto do slide (título, mensagem, temperatura…). Ignora SVG
+  // decorativo (balões/confete já têm a própria animação).
+  function revealTargets(el) {
+    const out = [];
+    const nodes = el.querySelectorAll('*');
+    for (let i = 0; i < nodes.length && out.length < 10; i++) {
+      const n = nodes[i];
+      if (n.children.length === 0 && n.textContent && n.textContent.trim()) out.push(n);
+    }
+    return out;
+  }
+
+  function enterSlide(el, type, reveal) {
+    el.classList.add('mt-active'); // opacidade final de referência
+    if (!HAS_GSAP || type === 'none') {
+      if (type !== 'none') { el.classList.add('mt-enter', 'mt-trans-' + type); void el.offsetWidth; }
+      return;
+    }
+    const f = TRANS_FROM[type] || TRANS_FROM.fade;
+    const dur = TRANS_DUR[type] || 0.8;
+    const leaves = reveal ? revealTargets(el) : [];
+    if (leaves.length) {
+      // Contêiner só faz o movimento (fica visível); o conteúdo revela em cascata.
+      GSAP.fromTo(el,
+        { scale: f.scale || 1, xPercent: f.xPercent || 0, yPercent: f.yPercent || 0 },
+        { scale: 1, xPercent: 0, yPercent: 0, opacity: 1, duration: dur, ease: 'power3.out', clearProps: 'transform' });
+      GSAP.from(leaves, { opacity: 0, yPercent: 14, duration: 0.6, stagger: 0.06, delay: dur * 0.28, ease: 'power2.out', clearProps: 'opacity,transform' });
+    } else {
+      GSAP.fromTo(el, Object.assign({ opacity: 0 }, f),
+        { opacity: 1, scale: 1, xPercent: 0, yPercent: 0, duration: dur, ease: 'power3.out', clearProps: 'transform' });
+    }
+  }
+
+  function leaveSlide(prev) {
+    try { prev.onLeave && prev.onLeave(); } catch (e) {}
+    if (!HAS_GSAP) {
+      prev.el.classList.remove('mt-active');
+      prev.el.classList.add('mt-leave');
+      setTimeout(() => prev.el.remove(), 800);
+      return;
+    }
+    GSAP.to(prev.el, { opacity: 0, scale: 0.992, duration: 0.6, ease: 'power1.in', onComplete: () => prev.el.remove() });
+  }
+
   /* ---------------- Ciclo de vida ---------------- */
 
   async function boot() {
@@ -541,21 +607,13 @@
       }
 
       const transition = cfg.settings.transicao || 'fade';
-      rendered.el.classList.add('mt-enter', 'mt-trans-' + transition);
       zoneEl.appendChild(rendered.el);
-      // Força reflow para animar a entrada.
-      void rendered.el.offsetWidth;
-      rendered.el.classList.add('mt-active');
+      enterSlide(rendered.el, transition, isRevealSlide(rendered.el));
 
       const prev = currentSlide;
       currentSlide = { el: rendered.el, onLeave: rendered.onLeave };
 
-      if (prev) {
-        prev.el.classList.remove('mt-active');
-        prev.el.classList.add('mt-leave');
-        try { prev.onLeave && prev.onLeave(); } catch (e) {}
-        setTimeout(() => prev.el.remove(), 800);
-      }
+      if (prev) leaveSlide(prev);
 
       // Alguns itens controlam o próprio avanço (ex.: vídeo até terminar).
       let advanced = false;
@@ -589,12 +647,7 @@
       zoneEl.appendChild(el);
       const prev = currentSlide;
       currentSlide = { el, onLeave: null };
-      if (prev) {
-        prev.el.classList.remove('mt-active');
-        prev.el.classList.add('mt-leave');
-        try { prev.onLeave && prev.onLeave(); } catch (e) {}
-        setTimeout(() => prev.el.remove(), 800);
-      }
+      if (prev) leaveSlide(prev);
     }
 
     advance();
