@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/DashboardPage.jsx';
 import { ScreensPage } from './pages/ScreensPage.jsx';
 import { ContentEditorPage } from './pages/ContentEditorPage.jsx';
 import { TeamPage } from './pages/TeamPage.jsx';
+import { StoragePage } from './pages/StoragePage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 
@@ -64,6 +65,7 @@ export default function App() {
       case 'screens': return <ScreensPage onEditContent={(device) => go('content', { device })} />;
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
+      case 'storage': return <StoragePage />;
       default: return <PlaceholderPage title={meta.title} subtitle={meta.subtitle} />;
     }
   }

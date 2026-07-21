@@ -1,5 +1,5 @@
 import React from 'react';
-import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2 } from 'lucide-react';
+import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film } from 'lucide-react';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
 // Fidelidade total virá de um preview via player embutido, adiante.
@@ -89,6 +89,10 @@ function Body({ item }) {
       return item.src
         ? <img src={item.src} alt="" className="h-full w-full rounded object-cover" style={{ objectFit: item.fit || 'cover' }} onError={(e) => { e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: 'text-xs opacity-40', textContent: 'Imagem indisponível' })); }} />
         : <Placeholder icon={ImageIcon} label="Imagem (defina a URL)" />;
+    case 'video':
+      return item.src
+        ? <video src={item.src} muted loop autoPlay playsInline className="h-full w-full rounded object-contain" />
+        : <Placeholder icon={Film} label="Vídeo (envie o arquivo)" />;
     case 'youtube':
       return <Placeholder icon={Youtube} label={item.channelId ? 'Transmissão ao vivo' : (item.videoId || 'YouTube')} />;
     case 'web':

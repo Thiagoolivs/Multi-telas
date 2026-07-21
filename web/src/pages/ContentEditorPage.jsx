@@ -16,6 +16,12 @@ import { CONTENT_TYPES, typeLabel, itemSummary, defaultConfig } from '../lib/con
 import { zonesOf, ensureZone } from '../lib/screenConfig.js';
 import { cn } from '../lib/cn.js';
 
+// Zona inicial: prefere a "principal" (o destaque), senão a 1ª playlist.
+function defaultZone(zones) {
+  const z = zones.find((x) => x.id === 'principal') || zones.find((x) => x.type === 'playlist') || zones[0];
+  return z ? z.id : null;
+}
+
 export function ContentEditorPage({ device, onBack }) {
   const { data, loading, error, reload } = useAsync(() => deviceConfig.get(device.id), [device.id]);
 
@@ -35,9 +41,7 @@ export function ContentEditorPage({ device, onBack }) {
     const seeded = data || defaultConfig(device.name);
     setCfg(seeded);
     setDirty(false);
-    const zones = zonesOf(seeded);
-    const first = zones.find((z) => z.type === 'playlist') || zones[0];
-    setZoneId(first ? first.id : null);
+    setZoneId(defaultZone(zonesOf(seeded)));
   }, [data, loading, device.name]);
 
   const zones = useMemo(() => (cfg ? zonesOf(cfg) : []), [cfg]);
@@ -47,8 +51,7 @@ export function ContentEditorPage({ device, onBack }) {
   useEffect(() => {
     if (!cfg || !zones.length) return;
     if (!zones.find((z) => z.id === zoneId)) {
-      const first = zones.find((z) => z.type === 'playlist') || zones[0];
-      setZoneId(first.id);
+      setZoneId(defaultZone(zones));
       setSelected(0);
     }
   }, [zones]); // eslint-disable-line react-hooks/exhaustive-deps

@@ -11,7 +11,7 @@
  */
 import {
   Megaphone, Type, Quote, Tag, BarChart3, Share2, Image as ImageIcon,
-  Youtube, Globe, QrCode, CloudSun,
+  Youtube, Globe, QrCode, CloudSun, Film,
 } from 'lucide-react';
 
 // Variantes do "Aviso Premium" (espelha ANN_VARIANTS em js/render.js).
@@ -77,7 +77,7 @@ export const CONTENT_TYPES = {
       { key: 'precoDe', label: 'Preço "de"', kind: 'text' },
       { key: 'precoPor', label: 'Preço "por"', kind: 'text' },
       { key: 'cta', label: 'Chamada (CTA)', kind: 'text' },
-      { key: 'imagem', label: 'Imagem (URL)', kind: 'url' },
+      { key: 'imagem', label: 'Imagem', kind: 'media', accept: 'image' },
       DUR,
     ],
     make: () => ({ type: 'promo', titulo: 'Produto', precoPor: '', duracao: 12 }),
@@ -116,13 +116,26 @@ export const CONTENT_TYPES = {
   image: {
     label: 'Imagem', icon: ImageIcon, group: 'Mídia',
     fields: [
-      { key: 'src', label: 'Imagem (URL)', kind: 'url' },
+      { key: 'src', label: 'Imagem', kind: 'media', accept: 'image' },
       { key: 'fit', label: 'Ajuste', kind: 'select', options: [
         { value: 'cover', label: 'Preencher (cover)' }, { value: 'contain', label: 'Conter (contain)' } ] },
       DUR,
     ],
     make: () => ({ type: 'image', src: '', fit: 'cover', duracao: 8 }),
-    summary: (i) => i.src ? 'Imagem' : 'Imagem (sem URL)',
+    summary: (i) => i.src ? 'Imagem' : 'Imagem (sem arquivo)',
+  },
+  video: {
+    label: 'Vídeo (MP4)', icon: Film, group: 'Mídia',
+    fields: [
+      { key: 'src', label: 'Vídeo', kind: 'media', accept: 'video' },
+      { key: 'loop', label: 'Repetir', kind: 'bool' },
+      { key: 'muted', label: 'Sem som', kind: 'bool' },
+      { key: 'fit', label: 'Ajuste', kind: 'select', options: [
+        { value: 'contain', label: 'Conter (contain)' }, { value: 'cover', label: 'Preencher (cover)' } ] },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', min: 0, hint: '0 = toca o vídeo inteiro' },
+    ],
+    make: () => ({ type: 'video', src: '', loop: false, muted: true, fit: 'contain', duracao: 0 }),
+    summary: (i) => i.src ? 'Vídeo' : 'Vídeo (sem arquivo)',
   },
   youtube: {
     label: 'YouTube / Ao vivo', icon: Youtube, group: 'Mídia',
@@ -166,7 +179,7 @@ export const CONTENT_TYPES = {
   },
 };
 
-export const CONTENT_ORDER = ['text', 'announce', 'quote', 'promo', 'kpi', 'social', 'image', 'youtube', 'web', 'qrcode', 'weatherpro'];
+export const CONTENT_ORDER = ['text', 'announce', 'quote', 'promo', 'kpi', 'social', 'image', 'video', 'youtube', 'web', 'qrcode', 'weatherpro'];
 
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;

@@ -52,6 +52,11 @@ async function init() {
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
       invited_by TEXT, created_at BIGINT, expires_at BIGINT, accepted_at BIGINT
     );
+    CREATE TABLE IF NOT EXISTS media (
+      id TEXT PRIMARY KEY, tenant_id TEXT, name TEXT, mime TEXT, size BIGINT,
+      key TEXT, url TEXT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_devices_tenant ON devices(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_devices_code ON devices(code);
     CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
@@ -169,6 +174,28 @@ async function listDevices(tenantId) {
   return r.rows;
 }
 
+/* ---------------- Mídia ---------------- */
+async function createMedia(m) {
+  await pool.query('INSERT INTO media (id, tenant_id, name, mime, size, key, url, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+    [m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, Date.now()]);
+  return m;
+}
+async function listMedia(tenantId) {
+  const r = await pool.query('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
+  return r.rows;
+}
+async function getMedia(id) {
+  const r = await pool.query('SELECT * FROM media WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function removeMedia(id, tenantId) {
+  await pool.query('DELETE FROM media WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+}
+async function sumMediaBytes(tenantId) {
+  const r = await pool.query('SELECT COALESCE(SUM(size),0)::bigint AS n FROM media WHERE tenant_id = $1', [tenantId]);
+  return Number(r.rows[0].n);
+}
+
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
@@ -182,5 +209,6 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession,
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, listDevices, rid,
+  renameDevice, removeDevice, listDevices,
+  createMedia, listMedia, getMedia, removeMedia, sumMediaBytes, rid,
 };

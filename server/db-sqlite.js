@@ -34,6 +34,11 @@ db.exec(`
     id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
     invited_by TEXT, created_at INTEGER, expires_at INTEGER, accepted_at INTEGER
   );
+  CREATE TABLE IF NOT EXISTS media (
+    id TEXT PRIMARY KEY, tenant_id TEXT, name TEXT, mime TEXT, size INTEGER,
+    key TEXT, url TEXT, created_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
   CREATE INDEX IF NOT EXISTS idx_devices_tenant ON devices(tenant_id);
   CREATE INDEX IF NOT EXISTS idx_devices_code ON devices(code);
   CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
@@ -72,6 +77,11 @@ const q = {
   renameDevice: db.prepare('UPDATE devices SET name = ? WHERE id = ?'),
   deleteDevice: db.prepare('DELETE FROM devices WHERE id = ?'),
   listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
+  insertMedia: db.prepare('INSERT INTO media (id, tenant_id, name, mime, size, key, url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
+  mediaByTenant: db.prepare('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ? ORDER BY created_at DESC'),
+  mediaById: db.prepare('SELECT * FROM media WHERE id = ?'),
+  deleteMedia: db.prepare('DELETE FROM media WHERE id = ? AND tenant_id = ?'),
+  sumMedia: db.prepare('SELECT COALESCE(SUM(size),0) AS n FROM media WHERE tenant_id = ?'),
 };
 
 async function init() { /* schema já criado no require */ }
@@ -133,6 +143,16 @@ async function renameDevice(id, name) { q.renameDevice.run(name, id); }
 async function removeDevice(id) { q.deleteDevice.run(id); }
 async function listDevices(tenantId) { return q.listByTenant.all(tenantId); }
 
+/* ---------------- Mídia ---------------- */
+async function createMedia(m) {
+  q.insertMedia.run(m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, Date.now());
+  return m;
+}
+async function listMedia(tenantId) { return q.mediaByTenant.all(tenantId); }
+async function getMedia(id) { return q.mediaById.get(id) || null; }
+async function removeMedia(id, tenantId) { q.deleteMedia.run(id, tenantId); }
+async function sumMediaBytes(tenantId) { return Number(q.sumMedia.get(tenantId).n); }
+
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
@@ -146,5 +166,6 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession,
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, listDevices, rid,
+  renameDevice, removeDevice, listDevices,
+  createMedia, listMedia, getMedia, removeMedia, sumMediaBytes, rid,
 };

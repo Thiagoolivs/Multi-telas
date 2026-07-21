@@ -50,4 +50,17 @@ export const deviceConfig = {
   save: (id, config) => api('PUT', '/api/devices/' + id + '/config', config),
 };
 
+export const media = {
+  list: () => api('GET', '/api/media'),
+  remove: (id) => api('DELETE', '/api/media/' + id),
+  // Upload de bytes crus (o navegador manda o File direto). Retorna { url, ... }.
+  async upload(file) {
+    const qs = '?name=' + encodeURIComponent(file.name || 'arquivo') + '&mime=' + encodeURIComponent(file.type || '');
+    const res = await fetch('/api/media' + qs, { method: 'POST', body: file, credentials: 'same-origin' });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) { const e = new Error((data && data.error) || ('HTTP ' + res.status)); e.status = res.status; throw e; }
+    return data;
+  },
+};
+
 export default api;

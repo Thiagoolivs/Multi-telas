@@ -20,6 +20,7 @@ const path = require('path');
 const url = require('url');
 const db = require('./server/db');
 const auth = require('./server/auth');
+const storage = require('./server/storage');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -29,6 +30,7 @@ const MIME = {
   '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json',
+  '.webp': 'image/webp', '.gif': 'image/gif', '.mp4': 'video/mp4', '.webm': 'video/webm',
 };
 
 // Assinantes SSE por device (em memória).
@@ -281,7 +283,62 @@ async function handleApi(req, res, pathname, query) {
     }
   }
 
+  /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
+  if (parts[1] === 'media') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+
+    // Upload: corpo = bytes crus; ?name= e ?mime= (ou Content-Type).
+    if (req.method === 'POST' && parts.length === 2) {
+      const mime = query.mime || req.headers['content-type'] || '';
+      if (!storage.extFor(mime)) return sendJson(res, 415, { error: 'tipo não suportado (use PNG, JPG, WEBP, GIF, MP4 ou WEBM)' });
+      const used = await db.sumMediaBytes(sess.tenant_id);
+      if (used >= storage.QUOTA_BYTES) return sendJson(res, 413, { error: 'cota de armazenamento cheia' });
+      try {
+        const saved = await storage.saveStream(sess.tenant_id, req, { mime });
+        const name = String(query.name || 'arquivo').slice(0, 180);
+        await db.createMedia({ id: saved.id, tenantId: sess.tenant_id, name, mime: saved.mime, size: saved.size, key: saved.key, url: saved.url });
+        return sendJson(res, 201, { id: saved.id, name, mime: saved.mime, size: saved.size, url: saved.url });
+      } catch (e) {
+        return sendJson(res, e.status || 500, { error: e.message || 'falha no upload' });
+      }
+    }
+    // Listar + uso
+    if (req.method === 'GET' && parts.length === 2) {
+      const items = await db.listMedia(sess.tenant_id);
+      const used = await db.sumMediaBytes(sess.tenant_id);
+      return sendJson(res, 200, { items, usage: { used, quota: storage.QUOTA_BYTES } });
+    }
+    // Remover
+    if (req.method === 'DELETE' && parts[2]) {
+      const m = await db.getMedia(parts[2]);
+      if (!m || m.tenant_id !== sess.tenant_id) return sendJson(res, 404, { error: 'mídia não encontrada' });
+      await storage.remove(m.key);
+      await db.removeMedia(m.id, sess.tenant_id);
+      return sendJson(res, 200, { ok: true });
+    }
+    return sendJson(res, 404, { error: 'rota de mídia inválida' });
+  }
+
   return sendJson(res, 404, { error: 'rota não encontrada' });
+}
+
+/* ---------------- Mídia servida (driver disk): /media/<tenant>/<arquivo> ----------------
+ * Pública por chave opaca e não-adivinhável. Cache longo (nome único) e
+ * nosniff para não interpretar o conteúdo como outra coisa. */
+function handleMedia(req, res, urlPath) {
+  const key = decodeURIComponent(urlPath.slice('/media/'.length));
+  const full = storage.resolveLocal(key);
+  if (!full) { res.writeHead(403); return res.end('Acesso negado'); }
+  fs.readFile(full, (err, data) => {
+    if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Não encontrado'); }
+    const ext = path.extname(full).toLowerCase();
+    res.writeHead(200, {
+      'Content-Type': MIME[ext] || 'application/octet-stream',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    res.end(data);
+  });
 }
 
 /* ---------------- Painel React (SPA em /app, build em web/dist) ---------------- */
@@ -343,6 +400,9 @@ const server = http.createServer((req, res) => {
   }
   if (pathname === '/app' || pathname.startsWith('/app/')) {
     return handleApp(req, res, pathname);
+  }
+  if (pathname.startsWith('/media/')) {
+    return handleMedia(req, res, pathname);
   }
   return handleStatic(req, res, pathname);
 });
