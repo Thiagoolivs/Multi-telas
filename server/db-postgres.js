@@ -149,8 +149,8 @@ async function destroySession(token) { await pool.query('DELETE FROM sessions WH
 async function createDevice(id, code, deviceToken) {
   const now = Date.now();
   await pool.query(
-    'INSERT INTO devices (id, tenant_id, code, name, config, device_token, updated_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-    [id, null, code, '', null, deviceToken, now, now]);
+    'INSERT INTO devices (id, tenant_id, code, name, config, device_token, updated_at, created_at, last_seen) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+    [id, null, code, '', null, deviceToken, now, now, now]); // nasce "vivo": pareável já
   return { id, code };
 }
 async function getDevice(id) {

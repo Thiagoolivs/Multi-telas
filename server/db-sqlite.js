@@ -137,6 +137,7 @@ async function destroySession(token) { q.deleteSession.run(token); }
 async function createDevice(id, code, deviceToken) {
   const now = Date.now();
   q.insertDevice.run(id, null, code, '', null, deviceToken, now, now);
+  q.touchDevice.run(now, id); // nasce "vivo": pareável já no primeiro segundo
   return { id, code };
 }
 async function getDevice(id) { return q.deviceById.get(id) || null; }

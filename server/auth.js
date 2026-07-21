@@ -4,9 +4,18 @@
  */
 const crypto = require('crypto');
 const db = require('./db');
+const { isSecureRequest } = require('./security');
 
 const SESSION_DAYS = 30;
 const COOKIE = 'vistra_session';
+
+// Monta os atributos do cookie de sessão. Secure só sob HTTPS (senão o browser
+// descartaria o cookie em dev sobre http).
+function cookieAttrs(req, maxAge) {
+  let s = 'HttpOnly; Path=/; SameSite=Lax; Max-Age=' + maxAge;
+  if (req && isSecureRequest(req)) s += '; Secure';
+  return s;
+}
 
 /* ---------------- Senha ---------------- */
 function hashPassword(password) {
@@ -24,18 +33,16 @@ function verifyPassword(password, stored) {
 }
 
 /* ---------------- Sessão ---------------- */
-async function startSession(res, userId, tenantId) {
+async function startSession(res, userId, tenantId, req) {
   const token = crypto.randomBytes(24).toString('hex');
   const expires = Date.now() + SESSION_DAYS * 864e5;
   await db.createSession(token, userId, tenantId, expires);
-  const maxAge = SESSION_DAYS * 86400;
-  res.setHeader('Set-Cookie',
-    COOKIE + '=' + token + '; HttpOnly; Path=/; Max-Age=' + maxAge + '; SameSite=Lax');
+  res.setHeader('Set-Cookie', COOKIE + '=' + token + '; ' + cookieAttrs(req, SESSION_DAYS * 86400));
   return token;
 }
-async function clearSession(res, token) {
+async function clearSession(res, token, req) {
   if (token) await db.destroySession(token);
-  res.setHeader('Set-Cookie', COOKIE + '=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax');
+  res.setHeader('Set-Cookie', COOKIE + '=; ' + cookieAttrs(req, 0));
 }
 function parseCookies(req) {
   const out = {};

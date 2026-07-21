@@ -15,12 +15,14 @@
  * (ver docs/PLANO-SAAS.md).
  */
 const http = require('http');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const url = require('url');
 const db = require('./server/db');
 const auth = require('./server/auth');
 const storage = require('./server/storage');
+const { rateLimit, clientIp, safeEqual } = require('./server/security');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -36,20 +38,23 @@ const MIME = {
 // Assinantes SSE por device (em memória).
 const subscribers = {}; // { [deviceId]: Set<res> }
 
-function pairCode() {
+// Códigos com RNG criptográfico (crypto.randomInt) — não previsíveis.
+function randomCode(len) {
   const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let s = ''; for (let i = 0; i < 6; i++) s += c[Math.floor(Math.random() * c.length)];
+  let s = ''; for (let i = 0; i < len; i++) s += c[crypto.randomInt(c.length)];
   return s;
 }
-function inviteCode() {
-  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let s = ''; for (let i = 0; i < 8; i++) s += c[Math.floor(Math.random() * c.length)];
-  return s;
-}
+function pairCode() { return randomCode(6); }
+function inviteCode() { return randomCode(8); }
+// Janela em que um device pareável precisa estar "vivo" (heartbeat recente).
+// Substitui um TTL fixo: só dá pra parear uma TV que está ligada mostrando o
+// código; código de tela desligada/abandonada deixa de valer. Sem quebrar o
+// fluxo real (a TV pulsa a cada 30s).
+const PAIR_ONLINE_MS = Number(process.env.PAIR_ONLINE_MS) || 10 * 60 * 1000;
 // Papéis: owner (dono) > admin > member. Gestão de equipe: owner e admin.
 function canManageTeam(role) { return role === 'owner' || role === 'admin'; }
-function sendJson(res, status, obj) {
-  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+function sendJson(res, status, obj, extraHeaders) {
+  res.writeHead(status, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, extraHeaders || {}));
   res.end(JSON.stringify(obj));
 }
 function readBody(req, res, cb) {
@@ -81,6 +86,8 @@ async function handleApi(req, res, pathname, query) {
   if (parts[1] === 'auth') {
     const action = parts[2];
     if (req.method === 'POST' && action === 'signup') {
+      const rl = rateLimit('signup:' + clientIp(req), 10, 60 * 60 * 1000); // 10/h por IP
+      if (!rl.ok) return sendJson(res, 429, { error: 'muitas tentativas, tente mais tarde' }, { 'Retry-After': String(rl.retryAfter) });
       return readBody(req, res, async (b) => {
         if (!b || !validEmail(b.email) || !b.password || String(b.password).length < 6)
           return sendJson(res, 400, { error: 'e-mail válido e senha de 6+ caracteres' });
@@ -94,28 +101,33 @@ async function handleApi(req, res, pathname, query) {
           if (inv.expires_at && inv.expires_at < Date.now()) return sendJson(res, 410, { error: 'convite expirado' });
           const { userId } = await db.createUser(inv.tenant_id, email, passHash, inv.role, b.name);
           await db.acceptInvite(inv.id);
-          await auth.startSession(res, userId, inv.tenant_id);
+          await auth.startSession(res, userId, inv.tenant_id, req);
           return sendJson(res, 201, { user: { email, role: inv.role }, tenant: { id: inv.tenant_id } });
         }
         // Sem convite: cria uma nova empresa e o usuário vira dono (owner).
         const { userId, tenantId } = await db.createAccount(email, passHash, b.name, b.name);
-        await auth.startSession(res, userId, tenantId);
+        await auth.startSession(res, userId, tenantId, req);
         return sendJson(res, 201, { user: { email, role: 'owner' }, tenant: { id: tenantId, name: b.name || email } });
       });
     }
     if (req.method === 'POST' && action === 'login') {
+      const ipRl = rateLimit('login-ip:' + clientIp(req), 20, 15 * 60 * 1000); // 20/15min por IP
+      if (!ipRl.ok) return sendJson(res, 429, { error: 'muitas tentativas, tente mais tarde' }, { 'Retry-After': String(ipRl.retryAfter) });
       return readBody(req, res, async (b) => {
         if (!b) return sendJson(res, 400, { error: 'json inválido' });
         const email = String(b.email || '').trim().toLowerCase();
+        // Segunda trava por conta: freia stuffing mirado num e-mail só.
+        const acctRl = rateLimit('login-acct:' + email, 10, 15 * 60 * 1000);
+        if (!acctRl.ok) return sendJson(res, 429, { error: 'muitas tentativas, tente mais tarde' }, { 'Retry-After': String(acctRl.retryAfter) });
         const u = await db.getUserByEmail(email);
         if (!u || !auth.verifyPassword(b.password, u.pass_hash))
           return sendJson(res, 401, { error: 'e-mail ou senha incorretos' });
-        await auth.startSession(res, u.id, u.tenant_id);
+        await auth.startSession(res, u.id, u.tenant_id, req);
         return sendJson(res, 200, { user: { email }, tenant: { id: u.tenant_id } });
       });
     }
     if (req.method === 'POST' && action === 'logout') {
-      await auth.clearSession(res, sess && sess.token);
+      await auth.clearSession(res, sess && sess.token, req);
       return sendJson(res, 200, { ok: true });
     }
     if (req.method === 'GET' && action === 'me') {
@@ -192,7 +204,7 @@ async function handleApi(req, res, pathname, query) {
       if (target.role === 'owner' && (await db.countOwners(sess.tenant_id)) <= 1)
         return sendJson(res, 409, { error: 'a empresa precisa de ao menos um dono' });
       await db.removeUser(targetId, sess.tenant_id);
-      if (isSelf) await auth.clearSession(res, sess.token);
+      if (isSelf) await auth.clearSession(res, sess.token, req);
       return sendJson(res, 200, { ok: true });
     }
     return sendJson(res, 404, { error: 'rota de equipe inválida' });
@@ -210,12 +222,18 @@ async function handleApi(req, res, pathname, query) {
   /* ----- Parear (requer login): reivindica o device para a empresa ----- */
   if (req.method === 'POST' && parts[1] === 'pair') {
     if (!sess) return sendJson(res, 401, { error: 'faça login para parear' });
+    // Trava força-bruta de códigos (por IP e por conta).
+    const prl = rateLimit('pair:' + clientIp(req), 15, 10 * 60 * 1000);
+    if (!prl.ok) return sendJson(res, 429, { error: 'muitas tentativas de pareamento' }, { 'Retry-After': String(prl.retryAfter) });
     return readBody(req, res, async (b) => {
       if (!b) return sendJson(res, 400, { error: 'json inválido' });
       const d = await db.getDeviceByCode(b.code);
       if (!d) return sendJson(res, 404, { error: 'código não encontrado' });
       if (d.tenant_id && d.tenant_id !== sess.tenant_id)
         return sendJson(res, 409, { error: 'este dispositivo já pertence a outra conta' });
+      // Primeira reivindicação só vale se a TV está viva (código na tela agora).
+      if (!d.tenant_id && (!d.last_seen || Date.now() - d.last_seen > PAIR_ONLINE_MS))
+        return sendJson(res, 410, { error: 'código expirado — reinicie a TV para gerar um novo' });
       await db.claimDevice(d.id, sess.tenant_id, b.name || d.name || 'TV');
       return sendJson(res, 200, { id: d.id, name: b.name || d.name || 'TV' });
     });
@@ -236,7 +254,11 @@ async function handleApi(req, res, pathname, query) {
     if (!device) return sendJson(res, 404, { error: 'device não encontrado' });
     const sub = parts[3];
     const owns = sess && device.tenant_id === sess.tenant_id;
-    const dtOk = query.dt && query.dt === device.device_token;
+    // Device token: aceita header (x-device-token) — não vaza em logs/URLs — ou
+    // ?dt= (necessário pro EventSource do SSE, que não seta headers).
+    // Comparação em tempo constante.
+    const provided = req.headers['x-device-token'] || query.dt;
+    const dtOk = !!provided && !!device.device_token && safeEqual(provided, device.device_token);
 
     // Player lê a própria config (com device token)
     if (req.method === 'GET' && sub === 'config') {
