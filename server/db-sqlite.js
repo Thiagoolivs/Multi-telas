@@ -28,7 +28,8 @@ db.exec(`
   );
   CREATE TABLE IF NOT EXISTS devices (
     id TEXT PRIMARY KEY, tenant_id TEXT, code TEXT, name TEXT,
-    config TEXT, device_token TEXT, updated_at INTEGER, created_at INTEGER
+    config TEXT, device_token TEXT, updated_at INTEGER, created_at INTEGER,
+    last_seen INTEGER
   );
   CREATE TABLE IF NOT EXISTS invites (
     id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
@@ -51,6 +52,8 @@ const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name)
 if (!userCols.includes('role')) db.exec("ALTER TABLE users ADD COLUMN role TEXT");
 if (!userCols.includes('name')) db.exec("ALTER TABLE users ADD COLUMN name TEXT");
 db.exec("UPDATE users SET role = 'owner' WHERE role IS NULL");
+const deviceCols = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
+if (!deviceCols.includes('last_seen')) db.exec('ALTER TABLE devices ADD COLUMN last_seen INTEGER');
 
 const q = {
   insertTenant: db.prepare('INSERT INTO tenants (id, name, created_at) VALUES (?, ?, ?)'),
@@ -76,7 +79,8 @@ const q = {
   setConfig: db.prepare('UPDATE devices SET config = ?, name = ?, updated_at = ? WHERE id = ?'),
   renameDevice: db.prepare('UPDATE devices SET name = ? WHERE id = ?'),
   deleteDevice: db.prepare('DELETE FROM devices WHERE id = ?'),
-  listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
+  touchDevice: db.prepare('UPDATE devices SET last_seen = ? WHERE id = ?'),
+  listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
   insertMedia: db.prepare('INSERT INTO media (id, tenant_id, name, mime, size, key, url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
   mediaByTenant: db.prepare('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ? ORDER BY created_at DESC'),
   mediaById: db.prepare('SELECT * FROM media WHERE id = ?'),
@@ -141,6 +145,7 @@ async function claimDevice(id, tenantId, name) { q.claimDevice.run(tenantId, nam
 async function setDeviceConfig(id, configJson, name) { q.setConfig.run(configJson, name || '', Date.now(), id); }
 async function renameDevice(id, name) { q.renameDevice.run(name, id); }
 async function removeDevice(id) { q.deleteDevice.run(id); }
+async function touchDevice(id) { q.touchDevice.run(Date.now(), id); }
 async function listDevices(tenantId) { return q.listByTenant.all(tenantId); }
 
 /* ---------------- Mídia ---------------- */
@@ -166,6 +171,6 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession,
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, listDevices,
+  renameDevice, removeDevice, touchDevice, listDevices,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes, rid,
 };

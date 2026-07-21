@@ -46,8 +46,10 @@ async function init() {
     );
     CREATE TABLE IF NOT EXISTS devices (
       id TEXT PRIMARY KEY, tenant_id TEXT, code TEXT, name TEXT,
-      config TEXT, device_token TEXT, updated_at BIGINT, created_at BIGINT
+      config TEXT, device_token TEXT, updated_at BIGINT, created_at BIGINT,
+      last_seen BIGINT
     );
+    ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_seen BIGINT;
     CREATE TABLE IF NOT EXISTS invites (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
       invited_by TEXT, created_at BIGINT, expires_at BIGINT, accepted_at BIGINT
@@ -167,9 +169,10 @@ async function setDeviceConfig(id, configJson, name) {
 }
 async function renameDevice(id, name) { await pool.query('UPDATE devices SET name = $1 WHERE id = $2', [name, id]); }
 async function removeDevice(id) { await pool.query('DELETE FROM devices WHERE id = $1', [id]); }
+async function touchDevice(id) { await pool.query('UPDATE devices SET last_seen = $1 WHERE id = $2', [Date.now(), id]); }
 async function listDevices(tenantId) {
   const r = await pool.query(
-    'SELECT id, name, code, tenant_id, updated_at, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = $1 ORDER BY created_at DESC',
+    'SELECT id, name, code, tenant_id, updated_at, last_seen, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = $1 ORDER BY created_at DESC',
     [tenantId]);
   return r.rows;
 }
@@ -209,6 +212,6 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession,
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, listDevices,
+  renameDevice, removeDevice, touchDevice, listDevices,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes, rid,
 };

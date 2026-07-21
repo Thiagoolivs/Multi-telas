@@ -70,7 +70,7 @@ function broadcast(deviceId, event, payload) {
   set.forEach((res) => { try { res.write(msg); } catch (e) {} });
 }
 function validEmail(e) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e || '')); }
-function pubDevice(d) { return { id: d.id, name: d.name, code: d.code, paired: !!d.tenant_id, hasConfig: !!d.config, updatedAt: d.updated_at }; }
+function pubDevice(d) { return { id: d.id, name: d.name, code: d.code, paired: !!d.tenant_id, hasConfig: !!d.config, updatedAt: d.updated_at, lastSeen: d.last_seen }; }
 
 /* ---------------- API ---------------- */
 async function handleApi(req, res, pathname, query) {
@@ -225,7 +225,7 @@ async function handleApi(req, res, pathname, query) {
   if (req.method === 'GET' && parts[1] === 'devices' && parts.length === 2) {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     const rows = await db.listDevices(sess.tenant_id);
-    const list = rows.map((d) => ({ id: d.id, name: d.name, code: d.code, hasConfig: !!d.has_config, updatedAt: d.updated_at }));
+    const list = rows.map((d) => ({ id: d.id, name: d.name, code: d.code, hasConfig: !!d.has_config, updatedAt: d.updated_at, lastSeen: d.last_seen }));
     return sendJson(res, 200, { devices: list });
   }
 
@@ -269,6 +269,13 @@ async function handleApi(req, res, pathname, query) {
     if (req.method === 'GET' && !sub) {
       if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
       return sendJson(res, 200, pubDevice(device));
+    }
+    // Heartbeat: a TV avisa que está viva (device token). Alimenta o status
+    // real da frota (online/offline) no painel.
+    if (req.method === 'POST' && sub === 'heartbeat') {
+      if (!dtOk) return sendJson(res, 403, { error: 'device token inválido' });
+      await db.touchDevice(id);
+      return sendJson(res, 200, { ok: true, at: Date.now() });
     }
     // SSE (o player assina, com device token)
     if (req.method === 'GET' && sub === 'events') {

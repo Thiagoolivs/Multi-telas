@@ -58,6 +58,11 @@
   async function fetchConfig(id) {
     return api('GET', '/api/devices/' + id + '/config?dt=' + encodeURIComponent(deviceToken()));
   }
+  // Avisa o servidor que a TV está viva (alimenta o status da frota).
+  async function heartbeat(id) {
+    try { await api('POST', '/api/devices/' + id + '/heartbeat?dt=' + encodeURIComponent(deviceToken())); }
+    catch (e) { /* offline: tenta de novo no próximo ciclo */ }
+  }
   function subscribe(id, onConfig) {
     let es;
     function connect() {
@@ -84,7 +89,7 @@
 
   global.MTCloud = {
     signup, login, logout, me,
-    deviceMode, ensureDevice, fetchConfig, subscribe,
+    deviceMode, ensureDevice, fetchConfig, subscribe, heartbeat,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);

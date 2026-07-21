@@ -8,8 +8,10 @@ import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Field, Input } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { SkeletonRows, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
+import { StatusDot } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { devices } from '../api.js';
+import { deviceStatus } from '../lib/deviceStatus.js';
 
 export function ScreensPage({ onEditContent }) {
   const { data, loading, error, reload } = useAsync(devices.list);
@@ -46,14 +48,24 @@ export function ScreensPage({ onEditContent }) {
             <Table>
               <THead>
                 <TH>Tela</TH>
+                <TH>Status</TH>
                 <TH>Código</TH>
                 <TH>Conteúdo</TH>
                 <TH align="right">Ações</TH>
               </THead>
               <TBody>
-                {list.map((d) => (
+                {list.map((d) => {
+                  const st = deviceStatus(d.lastSeen);
+                  return (
                   <TR key={d.id}>
                     <TD className="font-medium text-ink">{d.name || 'Tela sem nome'}</TD>
+                    <TD>
+                      <span className="inline-flex items-center gap-1.5">
+                        <StatusDot tone={st.tone} pulse={st.pulse} />
+                        <span className="text-ink-2">{st.label}</span>
+                        {st.seen && <span className="text-2xs text-ink-3">· {st.seen}</span>}
+                      </span>
+                    </TD>
                     <TD><span className="tnum rounded border border-line bg-surface-2 px-1.5 py-0.5 text-xs tracking-widest">{d.code}</span></TD>
                     <TD>
                       {d.hasConfig
@@ -68,7 +80,8 @@ export function ScreensPage({ onEditContent }) {
                       </div>
                     </TD>
                   </TR>
-                ))}
+                  );
+                })}
               </TBody>
             </Table>
             <PanelFooter><span>{list.length} {list.length === 1 ? 'tela' : 'telas'}</span></PanelFooter>

@@ -61,6 +61,9 @@
       hidePairing();
       applyConfig(newCfg);
     });
+    // Telemetria: pulsa "estou viva" já e a cada 30s → status real da frota.
+    MTCloud.heartbeat(dev.id);
+    setInterval(function () { MTCloud.heartbeat(dev.id); }, 30000);
   }
 
   /* ---------------- Pareamento (modo nuvem) ---------------- */
