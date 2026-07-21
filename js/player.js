@@ -287,14 +287,21 @@
     // Decoração sazonal (neve, corações, bandeirinhas…) sobre o palco.
     buildDecoration(cfg);
 
+    const hasGsap = typeof window.gsap !== 'undefined';
+    const zoneEls = [];
     layout.zones.forEach((zone, i) => {
       const zoneEl = document.createElement('div');
       zoneEl.className = 'mt-zone mt-zone-' + zone.type;
       zoneEl.style.gridArea = zone.area;
-      // Entrada suave e escalonada das zonas ao montar o palco.
-      zoneEl.style.animation = 'mt-zone-in .8s cubic-bezier(.16,.84,.3,1) both';
-      zoneEl.style.animationDelay = (i * 0.09) + 's';
+      // Entrada escalonada das zonas ao montar o palco. Com GSAP a coreografia
+      // é mais rica (sobe + escala + desfoque saindo); sem GSAP, cai no
+      // keyframe CSS de fallback.
+      if (!hasGsap) {
+        zoneEl.style.animation = 'mt-zone-in .8s cubic-bezier(.16,.84,.3,1) both';
+        zoneEl.style.animationDelay = (i * 0.09) + 's';
+      }
       stage.appendChild(zoneEl);
+      zoneEls.push(zoneEl);
 
       const data = cfg.zonas[zone.id] || {};
       if (zone.type === 'ticker') {
@@ -305,6 +312,15 @@
         zoneControllers.push(startPlaylist(zoneEl, data.items || [], cfg));
       }
     });
+
+    if (hasGsap && zoneEls.length) {
+      // Entrada premium escalonada: sobe + escala + fade. Só transform/opacity
+      // (baratos na GPU de TV); nada de blur, que pesa em hardware fraco.
+      window.gsap.from(zoneEls, {
+        opacity: 0, y: '3.2vh', scale: 0.972,
+        duration: 0.9, ease: 'power3.out', stagger: 0.1, clearProps: 'transform,opacity',
+      });
+    }
   }
 
   /* ---------------- Layout inteligente: takeover de prioridade ----------------
