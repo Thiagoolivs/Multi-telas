@@ -43,15 +43,21 @@
     try {
       dev = await MTCloud.ensureDevice();
     } catch (e) {
-      // Sem servidor de nuvem acessível: cai para o modo local.
-      applyConfig(MTStorage.load());
+      // Sem servidor acessível (offline): usa a última config em cache — a
+      // tela não apaga. Só cai para o exemplo local se nunca houve config.
+      const cached = loadCachedConfig();
+      applyConfig(cached || MTStorage.load());
       startWatchers(60);
       return hideOverlayAfter();
     }
     let cfg = null;
-    try { cfg = await MTCloud.fetchConfig(dev.id); } catch (e) { /* ainda não pareado */ }
+    try { cfg = await MTCloud.fetchConfig(dev.id); } catch (e) { /* offline ou ainda não pareado */ }
+    // Offline: se não veio config da rede mas existe uma última boa em cache,
+    // usa ela — a tela não apaga por causa de uma queda de rede.
+    if (!cfg) cfg = loadCachedConfig();
     if (cfg) {
       applyConfig(cfg);
+      saveCachedConfig(cfg);
       hidePairing();
     } else {
       showPairing(dev.code);
@@ -60,6 +66,7 @@
     MTCloud.subscribe(dev.id, function (newCfg) {
       hidePairing();
       applyConfig(newCfg);
+      saveCachedConfig(newCfg);
     });
     // Telemetria: pulsa "estou viva" já e a cada 30s → status real da frota.
     MTCloud.heartbeat(dev.id);
@@ -105,6 +112,25 @@
     currentConfig = cfg;
     teardownZones();
     buildStage(cfg);
+    precacheMedia(cfg); // baixa a mídia da playlist p/ tocar offline depois
+  }
+
+  /* ---------------- Resiliência offline ---------------- */
+  const CFG_CACHE_KEY = 'vistra.lastConfig';
+  function saveCachedConfig(cfg) {
+    try { localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(cfg)); } catch (e) {}
+  }
+  function loadCachedConfig() {
+    try { const r = localStorage.getItem(CFG_CACHE_KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; }
+  }
+  // Pré-carrega a mídia (/media/...) de toda a playlist para o cache do service
+  // worker, para que a tela toque mesmo sem rede na próxima queda.
+  function precacheMedia(cfg) {
+    try {
+      const urls = {};
+      JSON.stringify(cfg).replace(/\/media\/[A-Za-z0-9_.\/\-]+/g, function (m) { urls[m] = 1; return m; });
+      Object.keys(urls).forEach(function (u) { fetch(u).catch(function () {}); });
+    } catch (e) {}
   }
 
   function startWatchers(refreshSeconds) {
