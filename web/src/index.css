@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Tokens do design system MultiTelas. Tema claro por padrão (operacional,
+ * Stripe/Linear/Cloudflare). O tema escuro é uma troca de variáveis — os
+ * componentes usam só os tokens semânticos (surface, ink, line, accent…).
+ */
+:root {
+  --c-canvas: 247 248 250;      /* #F7F8FA */
+  --c-surface: 255 255 255;     /* #FFFFFF */
+  --c-surface-2: 246 247 249;   /* #F6F7F9 */
+  --c-line: 232 234 238;        /* #E8EAEE */
+  --c-line-strong: 218 221 227; /* #DADDE3 */
+  --c-ink: 21 25 33;            /* #151921 */
+  --c-ink-2: 82 91 106;         /* #525B6A */
+  --c-ink-3: 139 147 161;       /* #8B93A1 */
+  --c-accent: 79 70 229;        /* #4F46E5 indigo contido */
+  --c-accent-fg: 255 255 255;
+  --c-accent-soft: 238 238 252; /* #EEEEFC */
+  --c-ok: 21 128 61;            /* #15803D */
+  --c-ok-soft: 231 246 236;     /* #E7F6EC */
+  --c-warn: 180 83 9;           /* #B45309 */
+  --c-warn-soft: 254 243 218;   /* #FEF3DA */
+  --c-danger: 190 33 42;        /* #BE212A */
+  --c-danger-soft: 252 233 234; /* #FCE9EA */
+}
+
+:root[data-theme='dark'] {
+  --c-canvas: 12 14 18;         /* #0C0E12 */
+  --c-surface: 22 25 31;        /* #16191F */
+  --c-surface-2: 30 34 42;      /* #1E222A */
+  --c-line: 39 44 54;           /* #272C36 */
+  --c-line-strong: 52 58 70;    /* #343A46 */
+  --c-ink: 233 236 242;         /* #E9ECF2 */
+  --c-ink-2: 156 164 178;       /* #9CA4B2 */
+  --c-ink-3: 110 118 132;       /* #6E7684 */
+  --c-accent: 129 122 255;      /* #817AFF */
+  --c-accent-fg: 12 14 18;
+  --c-accent-soft: 32 32 56;    /* #202038 */
+  --c-ok: 74 201 126;
+  --c-ok-soft: 18 38 28;
+  --c-warn: 220 158 76;
+  --c-warn-soft: 43 34 16;
+  --c-danger: 240 110 118;
+  --c-danger-soft: 43 22 24;
+}
+
+@layer base {
+  * { border-color: rgb(var(--c-line)); }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  /* Números tabulares em dados operacionais. */
+  .tnum { font-variant-numeric: tabular-nums; }
+  /* Scrollbar discreta. */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgb(var(--c-line-strong)); border-radius: 6px; border: 2px solid rgb(var(--c-canvas)); }
+  ::-webkit-scrollbar-track { background: transparent; }
+}

@@ -19,8 +19,8 @@
 
   function qsp(name) { return new URLSearchParams(global.location.search).get(name); }
 
-  async function api(method, path, body) {
-    const opt = { method, headers: {}, credentials: 'same-origin' };
+  async function api(method, path, body, headers) {
+    const opt = { method, headers: Object.assign({}, headers), credentials: 'same-origin' };
     if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
     const res = await fetch(API + path, opt);
     if (res.status === 204) return null;
@@ -38,12 +38,16 @@
   /* ---------------- Lado TV (device) ---------------- */
   function deviceMode() { return qsp('cloud') === '1' || !!localStorage.getItem(DEVICE_KEY); }
 
+  function deviceToken() { return localStorage.getItem(DTOKEN_KEY) || ''; }
+  // Manda o device token no header (não vaza em logs/URLs).
+  function dtHeader() { return { 'x-device-token': deviceToken() }; }
+
   async function ensureDevice() {
     let id = localStorage.getItem(DEVICE_KEY);
     let dt = localStorage.getItem(DTOKEN_KEY);
     if (id && dt) {
       try {
-        const meta = await api('GET', '/api/devices/' + id + '?dt=' + encodeURIComponent(dt));
+        const meta = await api('GET', '/api/devices/' + id, undefined, { 'x-device-token': dt });
         return { id: meta.id, code: meta.code, paired: meta.paired };
       } catch (e) { localStorage.removeItem(DEVICE_KEY); localStorage.removeItem(DTOKEN_KEY); }
     }
@@ -53,10 +57,13 @@
     return { id: created.id, code: created.code, paired: false };
   }
 
-  function deviceToken() { return localStorage.getItem(DTOKEN_KEY) || ''; }
-
   async function fetchConfig(id) {
-    return api('GET', '/api/devices/' + id + '/config?dt=' + encodeURIComponent(deviceToken()));
+    return api('GET', '/api/devices/' + id + '/config', undefined, dtHeader());
+  }
+  // Avisa o servidor que a TV está viva (alimenta o status da frota).
+  async function heartbeat(id) {
+    try { await api('POST', '/api/devices/' + id + '/heartbeat', undefined, dtHeader()); }
+    catch (e) { /* offline: tenta de novo no próximo ciclo */ }
   }
   function subscribe(id, onConfig) {
     let es;
@@ -84,7 +91,7 @@
 
   global.MTCloud = {
     signup, login, logout, me,
-    deviceMode, ensureDevice, fetchConfig, subscribe,
+    deviceMode, ensureDevice, fetchConfig, subscribe, heartbeat,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);

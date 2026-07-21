@@ -44,4 +44,29 @@ export const devices = {
   remove: (id) => api('DELETE', '/api/devices/' + id),
 };
 
+export const deviceConfig = {
+  // GET retorna null quando a tela ainda não tem config (204 no servidor).
+  get: (id) => api('GET', '/api/devices/' + id + '/config'),
+  save: (id, config) => api('PUT', '/api/devices/' + id + '/config', config),
+};
+
+export const billing = {
+  get: () => api('GET', '/api/billing'),
+  checkout: (plan) => api('POST', '/api/billing/checkout', { plan }),
+  portal: () => api('POST', '/api/billing/portal'),
+};
+
+export const media = {
+  list: () => api('GET', '/api/media'),
+  remove: (id) => api('DELETE', '/api/media/' + id),
+  // Upload de bytes crus (o navegador manda o File direto). Retorna { url, ... }.
+  async upload(file) {
+    const qs = '?name=' + encodeURIComponent(file.name || 'arquivo') + '&mime=' + encodeURIComponent(file.type || '');
+    const res = await fetch('/api/media' + qs, { method: 'POST', body: file, credentials: 'same-origin' });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) { const e = new Error((data && data.error) || ('HTTP ' + res.status)); e.status = res.status; throw e; }
+    return data;
+  },
+};
+
 export default api;

@@ -34,6 +34,12 @@ async function init() {
     CREATE TABLE IF NOT EXISTS tenants (
       id TEXT PRIMARY KEY, name TEXT, created_at BIGINT
     );
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_status TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_renews_at BIGINT;
+    UPDATE tenants SET plan = 'free' WHERE plan IS NULL;
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT UNIQUE,
       pass_hash TEXT, role TEXT, name TEXT, created_at BIGINT
@@ -46,12 +52,19 @@ async function init() {
     );
     CREATE TABLE IF NOT EXISTS devices (
       id TEXT PRIMARY KEY, tenant_id TEXT, code TEXT, name TEXT,
-      config TEXT, device_token TEXT, updated_at BIGINT, created_at BIGINT
+      config TEXT, device_token TEXT, updated_at BIGINT, created_at BIGINT,
+      last_seen BIGINT
     );
+    ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_seen BIGINT;
     CREATE TABLE IF NOT EXISTS invites (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
       invited_by TEXT, created_at BIGINT, expires_at BIGINT, accepted_at BIGINT
     );
+    CREATE TABLE IF NOT EXISTS media (
+      id TEXT PRIMARY KEY, tenant_id TEXT, name TEXT, mime TEXT, size BIGINT,
+      key TEXT, url TEXT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_devices_tenant ON devices(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_devices_code ON devices(code);
     CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
@@ -68,7 +81,7 @@ async function createAccount(email, passHash, tenantName, userName) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('INSERT INTO tenants (id, name, created_at) VALUES ($1, $2, $3)', [tenantId, tenantName || email, now]);
+    await client.query("INSERT INTO tenants (id, name, created_at, plan) VALUES ($1, $2, $3, 'free')", [tenantId, tenantName || email, now]);
     await client.query('INSERT INTO users (id, tenant_id, email, pass_hash, role, name, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)', [userId, tenantId, email, passHash, 'owner', userName || tenantName || '', now]);
     await client.query('COMMIT');
   } catch (e) {
@@ -142,8 +155,8 @@ async function destroySession(token) { await pool.query('DELETE FROM sessions WH
 async function createDevice(id, code, deviceToken) {
   const now = Date.now();
   await pool.query(
-    'INSERT INTO devices (id, tenant_id, code, name, config, device_token, updated_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-    [id, null, code, '', null, deviceToken, now, now]);
+    'INSERT INTO devices (id, tenant_id, code, name, config, device_token, updated_at, created_at, last_seen) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+    [id, null, code, '', null, deviceToken, now, now, now]); // nasce "vivo": pareável já
   return { id, code };
 }
 async function getDevice(id) {
@@ -162,11 +175,62 @@ async function setDeviceConfig(id, configJson, name) {
 }
 async function renameDevice(id, name) { await pool.query('UPDATE devices SET name = $1 WHERE id = $2', [name, id]); }
 async function removeDevice(id) { await pool.query('DELETE FROM devices WHERE id = $1', [id]); }
+async function touchDevice(id) { await pool.query('UPDATE devices SET last_seen = $1 WHERE id = $2', [Date.now(), id]); }
 async function listDevices(tenantId) {
   const r = await pool.query(
-    'SELECT id, name, code, tenant_id, updated_at, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = $1 ORDER BY created_at DESC',
+    'SELECT id, name, code, tenant_id, updated_at, last_seen, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = $1 ORDER BY created_at DESC',
     [tenantId]);
   return r.rows;
+}
+
+async function countDevices(tenantId) {
+  const r = await pool.query('SELECT COUNT(*)::int AS n FROM devices WHERE tenant_id = $1', [tenantId]);
+  return Number(r.rows[0].n);
+}
+
+/* ---------------- Billing (tenant) ---------------- */
+async function getTenant(id) {
+  const r = await pool.query('SELECT * FROM tenants WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function getTenantByCustomer(customerId) {
+  const r = await pool.query('SELECT * FROM tenants WHERE stripe_customer_id = $1', [customerId]);
+  return r.rows[0] || null;
+}
+// Atualiza só as colunas de billing informadas (patch parcial).
+async function setTenantBilling(id, fields) {
+  const map = {
+    plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
+    subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
+  };
+  const sets = [], vals = [];
+  let i = 1;
+  for (const k of Object.keys(map)) if (k in fields && fields[k] !== undefined) { sets.push(map[k] + ' = $' + (i++)); vals.push(fields[k]); }
+  if (!sets.length) return;
+  vals.push(id);
+  await pool.query('UPDATE tenants SET ' + sets.join(', ') + ' WHERE id = $' + i, vals);
+}
+
+/* ---------------- Mídia ---------------- */
+async function createMedia(m) {
+  await pool.query('INSERT INTO media (id, tenant_id, name, mime, size, key, url, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+    [m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, Date.now()]);
+  return m;
+}
+async function listMedia(tenantId) {
+  const r = await pool.query('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
+  return r.rows;
+}
+async function getMedia(id) {
+  const r = await pool.query('SELECT * FROM media WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function removeMedia(id, tenantId) {
+  await pool.query('DELETE FROM media WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+}
+async function sumMediaBytes(tenantId) {
+  const r = await pool.query('SELECT COALESCE(SUM(size),0)::bigint AS n FROM media WHERE tenant_id = $1', [tenantId]);
+  return Number(r.rows[0].n);
 }
 
 function rid(n) {
@@ -182,5 +246,7 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession,
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, listDevices, rid,
+  renameDevice, removeDevice, touchDevice, listDevices, countDevices,
+  getTenant, getTenantByCustomer, setTenantBilling,
+  createMedia, listMedia, getMedia, removeMedia, sumMediaBytes, rid,
 };

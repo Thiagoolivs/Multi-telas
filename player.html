@@ -36,5 +36,11 @@
   <script src="js/render.js"></script>
   <script src="js/cloud.js"></script>
   <script src="js/player.js"></script>
+  <script>
+    // Offline-first: cacheia shell e mídia para a tela não apagar sem rede.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
+  </script>
 </body>
 </html>
