@@ -44,40 +44,33 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   padding: 1.1vh;
   isolation: isolate;
   background:
-    /* vinheta: escurece as bordas e dá profundidade (foco ao centro) */
-    radial-gradient(135% 120% at 50% 44%, transparent 56%, rgba(0,0,0,.34) 100%),
+    /* vinheta discreta: profundidade sem escurecer demais */
+    radial-gradient(140% 125% at 50% 42%, transparent 60%, rgba(0,0,0,.24) 100%),
     radial-gradient(120% 120% at 12% -10%, var(--bg-2) 0%, transparent 55%),
-    radial-gradient(120% 120% at 100% 110%, var(--bg-2) 0%, transparent 50%),
+    radial-gradient(120% 120% at 100% 110%, var(--bg-2) 0%, transparent 52%),
     var(--bg);
 }
-/* Aurora A — blobs grandes de cor derivando/girando: fundo vivo e tecnológico.
-   Mais presente que antes (o "rico/dinâmico" pedido). Escala por --fx. */
+/* Brilho ambiente TECH: dois halos suaves da cor da MARCA, contidos (nada de
+   aurora colorida girando). Precisão > exagero. Escala por --fx. */
 .mt-stage::before {
   content: "";
-  position: absolute; inset: -28%;
+  position: absolute; inset: -22%;
   z-index: -3;
   background:
-    radial-gradient(34% 40% at 20% 26%, var(--glow) 0%, transparent 60%),
-    radial-gradient(30% 36% at 82% 22%, var(--brand-2) 0%, transparent 62%),
-    radial-gradient(42% 46% at 66% 86%, var(--accent) 0%, transparent 60%),
-    radial-gradient(28% 32% at 8% 80%, var(--brand) 0%, transparent 64%);
-  opacity: calc(.5 * var(--fx));
-  filter: blur(58px) saturate(1.28);
-  animation: mt-aurora 32s ease-in-out infinite alternate;
-}
-/* Aurora B — segunda camada, cores/posições/tempo diferentes + um facho cônico
-   girando devagar: o conjunto ganha movimento orgânico (nunca "estático"). */
-.mt-stage-fx {
-  content: "";
-  position: absolute; inset: -28%;
-  z-index: -2; pointer-events: none;
-  background:
-    radial-gradient(28% 32% at 72% 16%, var(--accent) 0%, transparent 60%),
-    radial-gradient(32% 38% at 26% 66%, var(--brand-2) 0%, transparent 62%),
-    conic-gradient(from 210deg at 50% 50%, transparent 0deg, var(--glow) 70deg, transparent 150deg);
+    radial-gradient(42% 48% at 16% 12%, var(--glow) 0%, transparent 62%),
+    radial-gradient(40% 46% at 90% 92%, var(--brand-2) 0%, transparent 66%);
   opacity: calc(.3 * var(--fx));
-  filter: blur(72px) saturate(1.2);
-  animation: mt-aurora-2 52s linear infinite;
+  filter: blur(66px) saturate(1.06);
+  animation: mt-aurora 46s ease-in-out infinite alternate;
+}
+/* Segundo halo, ainda mais sutil, deriva devagar — dá vida sem chamar atenção. */
+.mt-stage-fx {
+  position: absolute; inset: -22%;
+  z-index: -2; pointer-events: none;
+  background: radial-gradient(36% 42% at 80% 18%, var(--accent) 0%, transparent 66%);
+  opacity: calc(.13 * var(--fx));
+  filter: blur(84px) saturate(1.04);
+  animation: mt-aurora-2 68s linear infinite;
 }
 /* Granulado sutil — acabamento "matte" de produto caro. */
 .mt-stage::after {
@@ -87,13 +80,12 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 @keyframes mt-aurora {
-  0% { transform: translate3d(-2%, -1%, 0) rotate(0deg) scale(1.05); }
-  50% { transform: translate3d(2%, 1.5%, 0) rotate(4deg) scale(1.14); }
-  100% { transform: translate3d(-1%, 2%, 0) rotate(-3deg) scale(1.07); }
+  0% { transform: translate3d(-1.4%, -1%, 0) scale(1.03); }
+  100% { transform: translate3d(1.4%, 1.2%, 0) scale(1.08); }
 }
 @keyframes mt-aurora-2 {
-  0% { transform: translate3d(1%, 1%, 0) rotate(0deg) scale(1.08); }
-  100% { transform: translate3d(-1%, -1%, 0) rotate(360deg) scale(1.08); }
+  0% { transform: translate3d(1%, 1%, 0) rotate(0deg); }
+  100% { transform: translate3d(-1%, -1%, 0) rotate(360deg); }
 }
 @media (prefers-reduced-motion: reduce) {
   .mt-stage::before, .mt-stage-fx { animation: none; }
@@ -118,9 +110,9 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   backdrop-filter: blur(var(--blur)) saturate(1.5);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  /* Profundidade: sombra base + luz de vidro no topo + halo suave na cor do
-     tema (dá o "brilho" premium sem competir com o conteúdo). */
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.12), 0 0 70px -22px var(--glow);
+  /* Profundidade tech: sombra precisa + fina luz de vidro no topo. Sem halo
+     colorido espalhado — contenção é o que passa "caro". */
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.10);
   /* Permite dimensionar fontes pela largura da própria zona (cqw). */
   container-type: size;
 }
