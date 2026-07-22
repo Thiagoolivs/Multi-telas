@@ -13,6 +13,13 @@
     return d;
   }
 
+  // Cor do tema atual (hex resolvido por theme.js). Deixa o conteúdo herdar a
+  // paleta do tema quando o item não define a sua — tela coesa, não remendada.
+  function themeColor(key, fallback) {
+    const t = global.MT_THEME;
+    return (t && t[key]) || fallback;
+  }
+
   /* ---------- Geocodificação + clima (Open-Meteo, sem chave/API key) ---------- */
   const geoCache = {};
   async function geocode(nome) {
@@ -562,7 +569,7 @@
 
   function renderClock(item) {
     const el = div('mt-slide mt-clock');
-    el.style.background = item.bg || '#0b1220';
+    if (item.bg) el.style.background = item.bg; // senão herda o vidro do tema
     const time = div('mt-clock-time');
     const date = div('mt-clock-date');
     el.appendChild(time);
@@ -587,7 +594,7 @@
 
   function renderWeather(item) {
     const el = div('mt-slide mt-weather');
-    el.style.background = item.bg || '#0b1f33';
+    if (item.bg) el.style.background = item.bg; // senão herda o vidro do tema
     const inner = div('mt-weather-inner');
     inner.textContent = 'Carregando clima…';
     el.appendChild(inner);
@@ -725,7 +732,9 @@
 
   function renderBirthdayCard(item) {
     const el = div('mt-slide mt-bcard');
-    el.style.background = item.bg || '#0c1c4d';
+    // Cartão festivo fica sempre escuro (confetes/balões/texto branco pedem
+    // fundo escuro), mas puxa um tom do tema para não destoar da tela.
+    el.style.background = item.bg || blendHex('#0a0e1a', themeColor('brand', '#4f8cff'), 0.2);
 
     el.innerHTML = bcConfetti() +
       bcBalloon('#ff5da2', 'bc-b1') + bcBalloon('#4f8cff', 'bc-b2') +
@@ -885,10 +894,13 @@
     const v = annVariant(item.tipo);
     const cor = v.cor;
     const el = div('mt-slide mt-ann');
+    // Banner sempre escuro (texto branco), mas com um tom do tema para não
+    // destoar; a cor da categoria (cor) dá o destaque.
+    const annBase = blendHex('#0a0f1c', themeColor('brand', '#3b82f6'), .16);
     el.style.background =
       'radial-gradient(85% 85% at 82% 8%, ' + hexToRgba(cor, .28) + ' 0%, rgba(0,0,0,0) 55%),' +
       'radial-gradient(70% 70% at 8% 95%, ' + hexToRgba(cor, .16) + ' 0%, rgba(0,0,0,0) 55%),' +
-      'linear-gradient(165deg, ' + blendHex('#0a1128', cor, .22) + ', #0a1128 70%)';
+      'linear-gradient(165deg, ' + blendHex(annBase, cor, .22) + ', ' + annBase + ' 70%)';
 
     const inner = div('ann-inner');
 

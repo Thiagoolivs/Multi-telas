@@ -338,6 +338,9 @@
     // Tema premium: aplica todos os design tokens (cores, vidro, sombras,
     // fonte). Retrocompatível — configs antigas já foram migradas no storage.
     const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme)) || null;
+    // Expõe os tokens do tema (hex) para os renderizadores herdarem a paleta —
+    // tela coesa em vez de cores fixas espalhadas.
+    global.MT_THEME = resolved;
     // Modo performance: com fx baixo, desliga efeitos caros (blur/aurora).
     const fx = resolved ? resolved.fx : 0.9;
     document.documentElement.classList.toggle('mt-perf', fx <= 0.25);
