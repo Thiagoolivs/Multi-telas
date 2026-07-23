@@ -13,11 +13,15 @@
   'use strict';
 
   const API = '';
-  const DEVICE_KEY = 'vistra.cloudDeviceId';
-  const DTOKEN_KEY = 'vistra.cloudDeviceToken';
   const CONTROL_KEY = 'vistra.controlDeviceId';
 
   function qsp(name) { return new URLSearchParams(global.location.search).get(name); }
+
+  // "pid" isola a instância: cada player (mesmo no mesmo navegador) tem seu
+  // próprio device/código. Permite testar várias telas na mesma máquina.
+  const _pidSfx = qsp('pid') ? ':' + qsp('pid') : '';
+  const DEVICE_KEY = 'vistra.cloudDeviceId' + _pidSfx;
+  const DTOKEN_KEY = 'vistra.cloudDeviceToken' + _pidSfx;
 
   async function api(method, path, body, headers) {
     const opt = { method, headers: Object.assign({}, headers), credentials: 'same-origin' };
