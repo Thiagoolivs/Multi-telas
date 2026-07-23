@@ -11,10 +11,13 @@ pronto; a UI ("gerar com IA") entra no editor React depois.
 Resposta: `{ "mode": "anthropic"|"dev", "items": [ ...itens do config ] }`.
 Rate limit: 30/h por conta.
 
-## Modos
-- **anthropic** — com `ANTHROPIC_API_KEY` (opcional `ANTHROPIC_MODEL`): chama a
-  API da Claude e pede itens no schema.
-- **dev** — sem chave: gerador local simples, para testar o fluxo.
+## Provider (agnóstico)
+`AI_PROVIDER` força o provider; senão escolhe pela chave presente.
+- **groq** — `GROQ_API_KEY` (opcional `GROQ_MODEL`, padrão `llama-3.3-70b-versatile`). API compatível com OpenAI, rápido/barato. Recomendado para texto.
+- **anthropic** — `ANTHROPIC_API_KEY` (opcional `ANTHROPIC_MODEL`).
+- **dev** — sem chave: gerador local, para testar o fluxo.
+
+Imagens ficam para depois; por ora só texto.
 
 ## Schema dos itens (subconjunto seguro do player)
 - `text`: `titulo`, `corpo`, `align`, `tamanho`, `duracao`

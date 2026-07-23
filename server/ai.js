@@ -1,20 +1,26 @@
 /*
  * server/ai.js — geração de conteúdo por IA (trilhas prontas).
  *
- * Dois modos, como no billing:
- *   - 'anthropic' quando ANTHROPIC_API_KEY existe: chama a API da Claude via
- *     fetch (sem SDK) e pede itens de conteúdo no schema do config.
- *   - 'dev' caso contrário: um gerador local simples (sem chave/rede), para o
- *     fluxo ser testável de ponta a ponta.
+ * Provider agnóstico (AI_PROVIDER ou pela chave presente):
+ *   - 'groq'      → API compatível com OpenAI (rápido/barato) via GROQ_API_KEY.
+ *   - 'anthropic' → Claude via ANTHROPIC_API_KEY.
+ *   - 'dev'       → gerador local (sem chave/rede), para testar o fluxo.
+ * Imagens ficam para depois; por ora só texto.
  *
  * Saída: sempre um array de itens válidos para uma zona (ver ITEM_SCHEMA).
  * Quem grava no config é o painel/editor; aqui só geramos sugestões.
  */
-const KEY = process.env.ANTHROPIC_API_KEY || '';
-const MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
-const API = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
+const GROQ_KEY = process.env.GROQ_API_KEY || '';
 
-function mode() { return KEY ? 'anthropic' : 'dev'; }
+// Provider agnóstico: AI_PROVIDER manda; senão, escolhe pela chave presente.
+function mode() {
+  const p = (process.env.AI_PROVIDER || '').toLowerCase();
+  if (p === 'groq' || p === 'anthropic' || p === 'dev') return p;
+  if (GROQ_KEY) return 'groq';
+  if (ANTHROPIC_KEY) return 'anthropic';
+  return 'dev';
+}
 
 // Tipos/campos que a IA pode produzir (subconjunto seguro do schema do player).
 const ITEM_SCHEMA = `Cada item é um objeto. Tipos permitidos:
@@ -39,23 +45,43 @@ function clampItems(arr) {
 async function generateContent(brief, ctx) {
   brief = String(brief || '').slice(0, 600);
   ctx = ctx || {};
-  if (mode() === 'dev') return devGenerate(brief, ctx);
+  const m = mode();
+  if (m === 'dev') return devGenerate(brief, ctx);
 
   const system = 'Você cria conteúdo para telas corporativas (digital signage). ' +
     'Gere de 2 a 4 itens curtos, impactantes e legíveis à distância. ' +
     'Responda APENAS com um array JSON, sem texto fora dele. ' + ITEM_SCHEMA;
   const user = `Empresa: ${ctx.empresa || 'A empresa'}. Tema visual: ${ctx.tema || 'padrão'}.\nBriefing: ${brief}`;
-  const res = await fetch(API, {
-    method: 'POST',
-    headers: { 'x-api-key': KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: MODEL, max_tokens: 1024, system, messages: [{ role: 'user', content: user }] }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Anthropic HTTP ' + res.status));
-  const text = (data.content || []).map((b) => b.text || '').join('').trim();
+  const text = m === 'groq' ? await callGroq(system, user) : await callAnthropic(system, user);
   const json = text.slice(text.indexOf('['), text.lastIndexOf(']') + 1);
   let arr; try { arr = JSON.parse(json); } catch (e) { throw new Error('resposta da IA não é JSON'); }
   return clampItems(arr);
+}
+
+// Groq — API compatível com OpenAI (rápido/barato). Modelo por env.
+async function callGroq(system, user) {
+  const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + GROQ_KEY, 'content-type': 'application/json' },
+    body: JSON.stringify({ model, max_tokens: 700, temperature: 0.7, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Groq HTTP ' + res.status));
+  return ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
+}
+
+// Anthropic — Claude via API de mensagens. Modelo por env.
+async function callAnthropic(system, user) {
+  const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({ model, max_tokens: 700, system, messages: [{ role: 'user', content: user }] }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Anthropic HTTP ' + res.status));
+  return (data.content || []).map((b) => b.text || '').join('').trim();
 }
 
 // Gerador local (dev): monta itens plausíveis a partir do briefing.
