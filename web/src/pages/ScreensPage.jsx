@@ -48,45 +48,14 @@ export function ScreensPage({ onEditContent }) {
 
         {!loading && !error && list.length > 0 && (
           <>
-            <Table>
-              <THead>
-                <TH>Tela</TH>
-                <TH>Status</TH>
-                <TH>Código</TH>
-                <TH>Conteúdo</TH>
-                <TH align="right">Ações</TH>
-              </THead>
-              <TBody>
-                {list.map((d) => {
-                  const st = deviceStatus(d.lastSeen);
-                  return (
-                  <TR key={d.id}>
-                    <TD className="font-medium text-ink">{d.name || 'Tela sem nome'}</TD>
-                    <TD>
-                      <span className="inline-flex items-center gap-1.5">
-                        <StatusDot tone={st.tone} pulse={st.pulse} />
-                        <span className="text-ink-2">{st.label}</span>
-                        {st.seen && <span className="text-2xs text-ink-3">· {st.seen}</span>}
-                      </span>
-                    </TD>
-                    <TD><span className="tnum rounded border border-line bg-surface-2 px-1.5 py-0.5 text-xs tracking-widest">{d.code}</span></TD>
-                    <TD>
-                      {d.hasConfig
-                        ? <Badge tone="ok">com conteúdo</Badge>
-                        : <Badge tone="neutral">aguardando</Badge>}
-                    </TD>
-                    <TD align="right">
-                      <div className="inline-flex items-center gap-1.5">
-                        <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={() => onEditContent(d)}>Conteúdo</Button>
-                        <IconButton icon={Pencil} label="Renomear" size={14} onClick={() => setRenameTarget(d)} />
-                        <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={() => setRemoveTarget(d)} />
-                      </div>
-                    </TD>
-                  </TR>
-                  );
-                })}
-              </TBody>
-            </Table>
+            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+              {list.map((d) => (
+                <FleetCard key={d.id} d={d}
+                  onContent={() => onEditContent(d)}
+                  onRename={() => setRenameTarget(d)}
+                  onRemove={() => setRemoveTarget(d)} />
+              ))}
+            </div>
             <PanelFooter><span>{list.length} {list.length === 1 ? 'tela' : 'telas'}</span></PanelFooter>
           </>
         )}
@@ -95,6 +64,37 @@ export function ScreensPage({ onEditContent }) {
       <PairDialog open={pairOpen} onClose={() => setPairOpen(false)} onDone={reload} />
       <RenameDialog target={renameTarget} onClose={() => setRenameTarget(null)} onDone={reload} />
       <RemoveDialog target={removeTarget} onClose={() => setRemoveTarget(null)} onDone={reload} />
+    </div>
+  );
+}
+
+// Mini "tela" da frota: status + programação (não é espelho ao vivo).
+function FleetCard({ d, onContent, onRename, onRemove }) {
+  const st = deviceStatus(d.lastSeen);
+  const online = st.tone === 'ok';
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-surface transition hover:border-line-strong">
+      <div className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-line bg-gradient-to-br from-surface-2 to-accent-soft/40">
+        <div className="absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2 py-0.5 text-2xs backdrop-blur">
+          <StatusDot tone={st.tone} pulse={st.pulse} /><span className="text-ink-2">{st.label}</span>
+        </div>
+        <div className="flex flex-col items-center gap-1.5 text-center">
+          <MonitorPlay size={26} className={online ? 'text-accent' : 'text-ink-3'} />
+          <span className="text-xs font-medium text-ink-2">{d.hasConfig ? 'Programação ativa' : 'Sem programação'}</span>
+        </div>
+        <span className="tnum absolute bottom-2 left-2 rounded border border-line bg-surface/80 px-1.5 py-0.5 text-2xs tracking-widest text-ink-3 backdrop-blur">{d.code}</span>
+      </div>
+      <div className="flex items-center justify-between gap-2 p-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-ink">{d.name || 'Tela sem nome'}</div>
+          <div className="truncate text-2xs text-ink-3">{st.label}{st.seen ? ' · ' + st.seen : ''}</div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent}>Conteúdo</Button>
+          <IconButton icon={Pencil} label="Renomear" size={14} onClick={onRename} />
+          <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={onRemove} />
+        </div>
+      </div>
     </div>
   );
 }
