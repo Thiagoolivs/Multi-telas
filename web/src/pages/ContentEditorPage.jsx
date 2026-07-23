@@ -12,6 +12,9 @@ import { SettingsForm } from '../components/content/SettingsForm.jsx';
 import { TickerEditor } from '../components/content/TickerEditor.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { deviceConfig } from '../api.js';
+import { Sparkles } from 'lucide-react';
+import { Textarea } from '../components/ui/Field.jsx';
+import { ai } from '../api.js';
 import { CONTENT_TYPES, typeLabel, itemSummary, defaultConfig } from '../lib/contentTypes.js';
 import { zonesOf, ensureZone } from '../lib/screenConfig.js';
 import { cn } from '../lib/cn.js';
@@ -31,6 +34,10 @@ export function ContentEditorPage({ device, onBack }) {
   const [selected, setSelected] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [picker, setPicker] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiBrief, setAiBrief] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiErr, setAiErr] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [publishedAt, setPublishedAt] = useState(null);
   const [publishError, setPublishError] = useState('');
@@ -85,6 +92,21 @@ export function ContentEditorPage({ device, onBack }) {
   };
   const dupItem = (idx) => { mutateItems((arr) => { arr.splice(idx + 1, 0, structuredClone(arr[idx])); return arr; }); setSelected(idx + 1); };
   const removeItem = (idx) => { mutateItems((arr) => { arr.splice(idx, 1); return arr; }); setSelected((s) => Math.max(0, Math.min(s, items.length - 2))); };
+
+  async function generateAI() {
+    if (!aiBrief.trim()) return;
+    setAiBusy(true); setAiErr('');
+    try {
+      const { items: gen } = await ai.generate(aiBrief, {
+        empresa: (cfg && cfg.settings && cfg.settings.nome) || '',
+        tema: (cfg && cfg.settings && cfg.settings.theme && cfg.settings.theme.preset) || '',
+      });
+      if (!gen || !gen.length) { setAiErr('A IA não retornou conteúdo. Tente outro briefing.'); return; }
+      mutateItems((arr) => { gen.forEach((g) => arr.push(g)); return arr; });
+      setSelected(items.length); setAiOpen(false); setAiBrief('');
+    } catch (e) { setAiErr(e.message || 'Falha ao gerar.'); }
+    finally { setAiBusy(false); }
+  }
 
   async function publish() {
     setPublishing(true); setPublishError('');
@@ -165,7 +187,23 @@ export function ContentEditorPage({ device, onBack }) {
               {/* Sequência */}
               <Panel className="flex flex-col">
                 <PanelHeader title="Sequência" description={items.length ? `${items.length} ${items.length === 1 ? 'conteúdo' : 'conteúdos'}` : undefined}
-                  actions={<Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>} />
+                  actions={<>
+                    <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>
+                    <Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
+                  </>} />
+                {aiOpen && (
+                  <div className="space-y-2 border-b border-line bg-surface-2/50 p-3">
+                    <Textarea rows={2} value={aiBrief} onChange={(e) => setAiBrief(e.target.value)}
+                      placeholder="Descreva o que você quer (ex.: campanha de segurança, tom firme)…" />
+                    {aiErr && <p className="text-xs text-danger">{aiErr}</p>}
+                    <div className="flex items-center justify-end gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => setAiOpen(false)}>Cancelar</Button>
+                      <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || !aiBrief.trim()} onClick={generateAI}>
+                        {aiBusy ? 'Gerando…' : 'Gerar conteúdo'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 {items.length === 0 ? (
                   <EmptyState icon={Plus} title="Sem conteúdo" description="Adicione o primeiro conteúdo para esta zona."
                     action={<Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar conteúdo</Button>} />
