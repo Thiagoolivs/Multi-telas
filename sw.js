@@ -17,7 +17,7 @@ const MEDIA_CACHE = 'mt-media-v1';
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
 // estiver fora na primeira recarga.
 const SHELL_ASSETS = [
-  '/player.html', '/css/player.css',
+  '/player.html', '/css/player.css', '/js/vendor/gsap.min.js',
   '/js/templates.js', '/js/theme.js', '/js/seasons.js', '/js/adaptive.js',
   '/js/storage.js', '/js/news.js', '/js/render.js', '/js/cloud.js', '/js/player.js',
 ];

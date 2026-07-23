@@ -44,25 +44,35 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   padding: 1.1vh;
   isolation: isolate;
   background:
+    /* vinheta discreta: profundidade sem escurecer demais */
+    radial-gradient(140% 125% at 50% 42%, transparent 60%, rgba(0,0,0,.24) 100%),
     radial-gradient(120% 120% at 12% -10%, var(--bg-2) 0%, transparent 55%),
-    radial-gradient(120% 120% at 100% 110%, var(--bg-2) 0%, transparent 50%),
+    radial-gradient(120% 120% at 100% 110%, var(--bg-2) 0%, transparent 52%),
     var(--bg);
 }
-/* Camada "aurora": blobs suaves de cor que derivam lentamente, dando a
-   sensação de fundo vivo e tecnológico. Intensidade controlada por --fx. */
+/* Brilho ambiente TECH: dois halos suaves da cor da MARCA, contidos (nada de
+   aurora colorida girando). Precisão > exagero. Escala por --fx. */
 .mt-stage::before {
   content: "";
-  position: absolute; inset: -20%;
-  z-index: -2;
+  position: absolute; inset: -22%;
+  z-index: -3;
   background:
-    radial-gradient(38% 42% at 22% 28%, var(--glow) 0%, transparent 60%),
-    radial-gradient(34% 40% at 78% 30%, var(--brand-2) 0%, transparent 62%),
-    radial-gradient(40% 44% at 60% 84%, var(--accent) 0%, transparent 60%);
-  opacity: calc(.22 * var(--fx));
-  filter: blur(50px) saturate(1.15);
-  animation: mt-aurora 34s ease-in-out infinite alternate;
+    radial-gradient(42% 48% at 16% 12%, var(--glow) 0%, transparent 62%),
+    radial-gradient(40% 46% at 90% 92%, var(--brand-2) 0%, transparent 66%);
+  opacity: calc(.3 * var(--fx));
+  filter: blur(66px) saturate(1.06);
+  animation: mt-aurora 46s ease-in-out infinite alternate;
 }
-/* Granulado sutil — dá acabamento "matte" de produto caro. */
+/* Segundo halo, ainda mais sutil, deriva devagar — dá vida sem chamar atenção. */
+.mt-stage-fx {
+  position: absolute; inset: -22%;
+  z-index: -2; pointer-events: none;
+  background: radial-gradient(36% 42% at 80% 18%, var(--accent) 0%, transparent 66%);
+  opacity: calc(.13 * var(--fx));
+  filter: blur(84px) saturate(1.04);
+  animation: mt-aurora-2 68s linear infinite;
+}
+/* Granulado sutil — acabamento "matte" de produto caro. */
 .mt-stage::after {
   content: "";
   position: absolute; inset: 0; z-index: -1; pointer-events: none;
@@ -70,9 +80,15 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 @keyframes mt-aurora {
-  0% { transform: translate3d(-2%, -1%, 0) scale(1.05); }
-  50% { transform: translate3d(2%, 1.5%, 0) scale(1.12); }
-  100% { transform: translate3d(-1%, 2%, 0) scale(1.06); }
+  0% { transform: translate3d(-1.4%, -1%, 0) scale(1.03); }
+  100% { transform: translate3d(1.4%, 1.2%, 0) scale(1.08); }
+}
+@keyframes mt-aurora-2 {
+  0% { transform: translate3d(1%, 1%, 0) rotate(0deg); }
+  100% { transform: translate3d(-1%, -1%, 0) rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mt-stage::before, .mt-stage-fx { animation: none; }
 }
 /* Layouts "dinâmicos": as zonas mudam de proporção suavemente ao longo
    do tempo, sem recriar nenhum conteúdo (vídeos e lives não reiniciam). */
@@ -94,7 +110,9 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   backdrop-filter: blur(var(--blur)) saturate(1.5);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.12);
+  /* Profundidade tech: sombra precisa + fina luz de vidro no topo. Sem halo
+     colorido espalhado — contenção é o que passa "caro". */
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.10);
   /* Permite dimensionar fontes pela largura da própria zona (cqw). */
   container-type: size;
 }
@@ -198,21 +216,23 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 .mt-text-inner { max-width: 90%; position: relative; z-index: 1; }
 .mt-text-title {
-  font-size: clamp(28px, 5vw, 90px);
-  font-weight: 800; line-height: 1.05; margin-bottom: .4em;
+  font-size: calc(clamp(30px, 5.4vw, 104px) * var(--tscale, 1));
+  font-weight: 750; line-height: 1.02; letter-spacing: -.022em; margin-bottom: .34em;
+  text-wrap: balance;
 }
 .mt-text-body {
-  font-size: clamp(18px, 2.6vw, 44px);
-  font-weight: 400; line-height: 1.3; opacity: .95;
+  font-size: calc(clamp(18px, 2.4vw, 42px) * var(--tscale, 1));
+  font-weight: 400; line-height: 1.32; letter-spacing: -.005em;
+  color: var(--text-dim);
 }
 
 /* Relógio */
-.mt-clock { flex-direction: column; color: #fff; }
-.mt-clock-time { font-size: clamp(40px, 9vw, 160px); font-weight: 800; letter-spacing: .02em; }
-.mt-clock-date { font-size: clamp(16px, 2.4vw, 40px); text-transform: capitalize; opacity: .8; margin-top: .2em; }
+.mt-clock { flex-direction: column; color: var(--text); }
+.mt-clock-time { font-size: clamp(40px, 9vw, 168px); font-weight: 300; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.mt-clock-date { font-size: clamp(15px, 2.2vw, 36px); text-transform: capitalize; color: var(--text-dim); font-weight: 500; letter-spacing: .01em; margin-top: .35em; }
 
 /* Clima */
-.mt-weather { color: #fff; }
+.mt-weather { color: var(--text); }
 .mt-weather-inner { text-align: center; }
 .mt-weather-icon { font-size: clamp(48px, 10vw, 160px); }
 .mt-weather-temp { font-size: clamp(36px, 7vw, 120px); font-weight: 800; }
@@ -473,83 +493,61 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 @container (max-height: 210px) { .wp-days { display: none; } }
 @container (max-height: 140px) { .wp-date { display: none; } }
 
+/* Fallback do clima: relógio ao vivo + data + cidade (parece intencional). */
+.wp-fallback {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: clamp(4px, 1.6cqmin, 14px); width: 100%;
+}
+.wpf-date {
+  font-size: clamp(11px, 4.2cqmin, 30px); font-weight: 600; letter-spacing: .03em;
+  color: var(--text-dim); text-transform: capitalize; text-align: center;
+}
+.wpf-time {
+  font-size: clamp(52px, 34cqmin, 210px); font-weight: 200; line-height: .95;
+  letter-spacing: -.03em; color: var(--text); font-variant-numeric: tabular-nums;
+}
+.wpf-city {
+  font-size: clamp(12px, 4.6cqmin, 34px); font-weight: 700; letter-spacing: .02em;
+  color: var(--accent); text-align: center;
+}
+
 /* ---------- Cartão de aniversário ---------- */
-/* Componente decorativo com fundo escuro próprio → texto sempre claro,
-   independente do tema (não herda --text, que seria escuro no tema claro). */
-.mt-bcard { overflow: hidden; color: #fff; }
-.bc-confetti {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  opacity: .85; pointer-events: none;
-}
-.bc-balloon {
-  position: absolute; width: 9cqw; height: auto;
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.3));
-  animation: bc-float 5.5s ease-in-out infinite;
-}
-.bc-b1 { left: 4%; bottom: 8%; animation-delay: 0s; }
-.bc-b2 { left: 12%; top: 6%; width: 7cqw; animation-delay: 1.2s; }
-.bc-b3 { right: 6%; top: 10%; width: 8cqw; animation-delay: .6s; }
-.bc-b4 { right: 14%; bottom: 6%; width: 6.4cqw; animation-delay: 1.8s; }
-@keyframes bc-float {
-  0%, 100% { transform: translateY(0) rotate(-2deg); }
-  50% { transform: translateY(-2.4cqh) rotate(2deg); }
-}
+/* Aniversário — tech premium: avatar com anel da marca + tipografia limpa.
+   Herda a cor do tema (coeso claro/escuro). */
+.mt-bcard { overflow: hidden; color: var(--text); }
 .bc-inner {
   position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: center;
-  gap: 7cqw; padding: 4cqw;
+  gap: 6cqw; padding: 5cqw;
   width: 100%; height: 100%;
 }
-.bc-photo-wrap { position: relative; flex: none; }
-.bc-photo {
-  width: 26cqw; max-width: 46cqh; aspect-ratio: 1;
-  object-fit: cover; display: block;
-  background: #dbe4ff;
-  border: 1cqw solid #fff; border-radius: 2.4cqw;
-  transform: rotate(-2.5deg);
-  box-shadow: 0 18px 46px rgba(0,0,0,.45);
-}
-.bc-initials {
+.bc-avatar {
+  flex: none; width: 24cqw; max-width: 42cqh; aspect-ratio: 1;
+  border-radius: 50%; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10cqw; font-weight: 800; color: #33406e;
+  background: color-mix(in srgb, var(--brand) 18%, transparent);
+  box-shadow: 0 0 0 .5cqw color-mix(in srgb, var(--brand) 45%, transparent),
+              0 0 0 1cqw var(--border), 0 20px 50px rgba(0,0,0,.4);
 }
-.bc-hat-wrap {
-  position: absolute; top: -7.5cqw; left: -4.5cqw;
-  width: 11cqw; transform: rotate(-24deg);
-  filter: drop-shadow(0 6px 12px rgba(0,0,0,.35));
+.bc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.bc-initials { font-size: 9cqw; font-weight: 600; color: var(--brand); letter-spacing: -.02em; }
+.bc-text { max-width: 48cqw; text-align: left; }
+.bc-kicker {
+  display: inline-block; font-size: 2cqw; font-weight: 700;
+  letter-spacing: .22em; text-transform: uppercase; color: var(--accent);
+  margin-bottom: 2cqh;
 }
-.bc-hat { width: 100%; height: auto; }
-.bc-ribbon {
-  position: absolute; left: 50%; bottom: -2.2cqw;
-  transform: translateX(-50%) rotate(-4deg);
-  background: linear-gradient(180deg, #ff77b2, #f14e93);
-  color: #fff;
-  font-family: 'Segoe Script', 'Brush Script MT', cursive;
-  font-size: 2.6cqw; font-weight: 600;
-  padding: .9cqw 3.4cqw;
-  border-radius: .8cqw;
-  box-shadow: 0 8px 20px rgba(241, 78, 147, .45);
-  white-space: nowrap;
-}
-.bc-text { max-width: 44cqw; text-align: left; }
 .bc-title {
-  font-size: 6cqw; font-weight: 400; line-height: 1.08;
-  margin-bottom: 2.4cqh;
+  font-size: 6.4cqw; font-weight: 300; line-height: 1.04;
+  letter-spacing: -.02em; margin-bottom: 1.8cqh;
 }
-.bc-title strong { font-weight: 800; }
-.bc-msg { font-size: 3.2cqw; line-height: 1.45; color: rgba(255,255,255,.92); }
-.bc-sign {
-  margin-top: 4cqh;
-  font-family: 'Segoe Script', 'Brush Script MT', cursive;
-  font-size: 3cqw; color: rgba(255,255,255,.75);
-  text-align: right;
-}
-/* Zona estreita (lateral): cartão em coluna */
+.bc-title strong { font-weight: 700; }
+.bc-msg { font-size: 3cqw; line-height: 1.4; color: var(--text-dim); }
+/* Zona estreita (lateral): coluna, centralizado */
 @container (aspect-ratio < 1.1) {
-  .bc-inner { flex-direction: column; gap: 5cqh; }
+  .bc-inner { flex-direction: column; gap: 4cqh; }
   .bc-text { max-width: 84cqw; text-align: center; }
-  .bc-photo { width: 44cqw; }
-  .bc-sign { text-align: center; }
+  .bc-avatar { width: 40cqw; }
 }
 
 /* ---------- Mapas (trânsito / região) ---------- */
@@ -849,8 +847,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 /* Tipografia proporcional à zona (não à tela inteira).
    Em navegadores antigos sem suporte a cqw, valem os clamps em vw acima. */
 @supports (width: 1cqw) {
-  .mt-text-title { font-size: clamp(22px, 6.5cqw, 88px); }
-  .mt-text-body { font-size: clamp(15px, 3.4cqw, 44px); }
+  .mt-text-title { font-size: calc(clamp(22px, 6.5cqw, 88px) * var(--tscale, 1)); }
+  .mt-text-body { font-size: calc(clamp(15px, 3.4cqw, 44px) * var(--tscale, 1)); }
   .mt-clock-time { font-size: clamp(36px, 14cqw, 150px); }
   .mt-clock-date { font-size: clamp(14px, 3.6cqw, 38px); }
   .mt-weather-icon { font-size: clamp(40px, 13cqw, 150px); }

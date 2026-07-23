@@ -1,6 +1,16 @@
 import React from 'react';
+import { RotateCcw } from 'lucide-react';
 import { Field, Input, Select, Checkbox } from '../ui/Field.jsx';
+import { IconButton } from '../ui/Button.jsx';
 import { LAYOUTS, THEME_PRESETS, FONTS, TRANSITIONS, DECORATIONS, getLayout } from '../../lib/screenConfig.js';
+
+// hex -> rgba string (para o glow ambiente do fundo).
+function hexRgba(hex, a) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+  if (!m) return `rgba(59,130,246,${a})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
 
 // Edita cfg.settings: identidade, layout, tema e comportamento da tela.
 export function SettingsForm({ settings, onChange }) {
@@ -8,6 +18,15 @@ export function SettingsForm({ settings, onChange }) {
   const theme = s.theme || { preset: 'dark-premium', font: 'system', overrides: {} };
   const set = (patch) => onChange({ ...s, ...patch });
   const setTheme = (patch) => onChange({ ...s, theme: { ...theme, ...patch } });
+  const ov = theme.overrides || {};
+  const setOv = (patch) => setTheme({ overrides: { ...ov, ...patch } });
+  // Cor da marca: além de --brand, deriva o brilho ambiente (glow) para o fundo
+  // acompanhar a marca. Limpar volta ao tom do preset.
+  const setBrand = (hex) => {
+    if (!hex) { const n = { ...ov }; delete n.brand; delete n.glow; setTheme({ overrides: n }); return; }
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex); const g = m ? hexRgba(hex, 0.4) : undefined;
+    setOv({ brand: hex, ...(g ? { glow: g } : {}) });
+  };
 
   const layout = getLayout(s.layoutId);
 
@@ -33,6 +52,14 @@ export function SettingsForm({ settings, onChange }) {
             <Select value={theme.font || 'system'} onChange={(e) => setTheme({ font: e.target.value })}>
               {FONTS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
             </Select>
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Cor da marca" hint="Sobrepõe o tema; comanda o destaque e o fundo.">
+            <Swatch value={ov.brand} fallback="#3b82f6" onChange={setBrand} onClear={() => setBrand('')} />
+          </Field>
+          <Field label="Destaque">
+            <Swatch value={ov.accent} fallback="#60a5fa" onChange={(v) => setOv({ accent: v })} onClear={() => { const n = { ...ov }; delete n.accent; setTheme({ overrides: n }); }} />
           </Field>
         </div>
       </div>
@@ -67,6 +94,21 @@ export function SettingsForm({ settings, onChange }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Seletor de cor: amostra + hex editável + limpar (volta ao tom do tema).
+function Swatch({ value, fallback, onChange, onClear }) {
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="color" value={value || fallback} onChange={(e) => onChange(e.target.value)}
+        className="h-8 w-9 shrink-0 cursor-pointer rounded-md border border-line bg-surface p-0.5"
+        aria-label="Escolher cor"
+      />
+      <Input value={value || ''} placeholder="tema" onChange={(e) => onChange(e.target.value)} className="font-mono" />
+      {value && <IconButton icon={RotateCcw} label="Voltar ao tema" size={14} onClick={onClear} />}
     </div>
   );
 }

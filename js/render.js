@@ -13,6 +13,13 @@
     return d;
   }
 
+  // Cor do tema atual (hex resolvido por theme.js). Deixa o conteúdo herdar a
+  // paleta do tema quando o item não define a sua — tela coesa, não remendada.
+  function themeColor(key, fallback) {
+    const t = global.MT_THEME;
+    return (t && t[key]) || fallback;
+  }
+
   /* ---------- Geocodificação + clima (Open-Meteo, sem chave/API key) ---------- */
   const geoCache = {};
   async function geocode(nome) {
@@ -141,6 +148,8 @@
       if (item.cor) el.style.color = item.cor;
     }
     el.style.textAlign = item.align || 'center';
+    const scale = { pequeno: 0.82, medio: 1, grande: 1.22, gigante: 1.48 }[item.tamanho];
+    if (scale && scale !== 1) el.style.setProperty('--tscale', scale);
     const inner = div('mt-text-inner');
     if (item.titulo) {
       const h = div('mt-text-title');
@@ -562,7 +571,7 @@
 
   function renderClock(item) {
     const el = div('mt-slide mt-clock');
-    el.style.background = item.bg || '#0b1220';
+    if (item.bg) el.style.background = item.bg; // senão herda o vidro do tema
     const time = div('mt-clock-time');
     const date = div('mt-clock-date');
     el.appendChild(time);
@@ -587,7 +596,7 @@
 
   function renderWeather(item) {
     const el = div('mt-slide mt-weather');
-    el.style.background = item.bg || '#0b1f33';
+    if (item.bg) el.style.background = item.bg; // senão herda o vidro do tema
     const inner = div('mt-weather-inner');
     inner.textContent = 'Carregando clima…';
     el.appendChild(inner);
@@ -602,10 +611,24 @@
             '<div class="mt-weather-temp">' + w.temp + '°C</div>' +
             '<div class="mt-weather-city">' + w.nome + '</div>';
         } catch (e) {
-          inner.textContent = 'Clima indisponível';
+          inner.innerHTML = weatherFallbackHtml(item.cidade || 'São Paulo');
+          const t = inner.querySelector('[data-clock]');
+          const upd = () => { if (t) t.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
+          upd(); setInterval(upd, 1000);
         }
       },
     };
+  }
+
+  /* ---------- Fallback elegante do clima: relógio + data + cidade ----------
+   * Quando o clima não carrega (sem rede, cidade inválida), a coluna NÃO morre:
+   * vira um relógio ao vivo com data e cidade — parece intencional, não quebrado. */
+  function weatherFallbackHtml(cidade) {
+    return '<div class="wp-fallback">' +
+      '<div class="wpf-date">' + fmtDataLonga(new Date()) + '</div>' +
+      '<div class="wpf-time" data-clock>--:--</div>' +
+      (cidade ? '<div class="wpf-city">' + escapeHtml(cidade) + '</div>' : '') +
+      '</div>';
   }
 
   /* ---------- Painel do clima (estilo dashboard, com previsão) ---------- */
@@ -615,7 +638,17 @@
     const inner = div('mt-wpro-inner');
     inner.innerHTML = '<div class="mt-wpro-loading">Carregando clima…</div>';
     el.appendChild(inner);
-    let timer = null;
+    let timer = null, clock = null;
+
+    function stopClock() { if (clock) { clearInterval(clock); clock = null; } }
+    function startClock() {
+      if (clock) return;
+      const upd = () => {
+        const t = inner.querySelector('[data-clock]');
+        if (t) t.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      };
+      upd(); clock = setInterval(upd, 1000);
+    }
 
     async function load() {
       try {
@@ -644,9 +677,11 @@
           }
           html += '</div>';
         }
+        stopClock();
         inner.innerHTML = html;
       } catch (e) {
-        inner.innerHTML = '<div class="mt-wpro-loading">Clima indisponível</div>';
+        inner.innerHTML = weatherFallbackHtml(item.cidade || 'São Paulo');
+        startClock();
       }
     }
 
@@ -654,7 +689,7 @@
       el,
       duration: item.duracao || 0,
       onEnter: () => { load(); timer = setInterval(load, 15 * 60 * 1000); },
-      onLeave: () => timer && clearInterval(timer),
+      onLeave: () => { if (timer) clearInterval(timer); stopClock(); },
     };
   }
 
@@ -699,51 +734,37 @@
 
   function renderBirthdayCard(item) {
     const el = div('mt-slide mt-bcard');
-    el.style.background = item.bg || '#0c1c4d';
-
-    el.innerHTML = bcConfetti() +
-      bcBalloon('#ff5da2', 'bc-b1') + bcBalloon('#4f8cff', 'bc-b2') +
-      bcBalloon('#ffb454', 'bc-b3') + bcBalloon('#39d0c4', 'bc-b4');
+    if (item.bg) el.style.background = item.bg; // senão herda o vidro do tema
 
     const inner = div('bc-inner');
 
-    // Foto (ou iniciais) com chapéu e fita.
-    const photoWrap = div('bc-photo-wrap');
+    // Avatar (foto ou iniciais) com anel na cor da marca.
+    const av = div('bc-avatar');
     if (item.foto) {
       const img = document.createElement('img');
-      img.className = 'bc-photo';
-      img.src = item.foto;
-      img.alt = '';
-      photoWrap.appendChild(img);
+      img.src = item.foto; img.alt = '';
+      av.appendChild(img);
     } else {
-      const initials = div('bc-photo bc-initials');
-      initials.textContent = (item.nome || '?')
-        .split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
-      photoWrap.appendChild(initials);
+      av.classList.add('bc-initials');
+      av.textContent = (item.nome || '?').split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
     }
-    const hat = div('bc-hat-wrap');
-    hat.innerHTML = BC_HAT;
-    photoWrap.appendChild(hat);
-    const ribbon = div('bc-ribbon');
-    ribbon.textContent = 'Feliz aniversário!';
-    photoWrap.appendChild(ribbon);
 
-    // Texto principal.
     const txt = div('bc-text');
+    const kicker = div('bc-kicker');
+    kicker.textContent = 'Aniversário';
     const title = div('bc-title');
-    const t1 = document.createElement('strong');
-    t1.textContent = 'Parabéns';
-    title.appendChild(t1);
-    title.appendChild(document.createTextNode(', ' + (item.nome || '') + '!'));
+    title.appendChild(document.createTextNode('Parabéns, '));
+    const strong = document.createElement('strong');
+    strong.textContent = item.nome || '';
+    title.appendChild(strong);
+    title.appendChild(document.createTextNode('!'));
     const msg = div('bc-msg');
-    msg.textContent = item.mensagem || 'Que hoje o seu dia seja o mais feliz de todos!';
-    const sign = div('bc-sign');
-    sign.textContent = 'feliz aniversário';
+    msg.textContent = item.mensagem || 'Que seu dia seja incrível.';
+    txt.appendChild(kicker);
     txt.appendChild(title);
     txt.appendChild(msg);
-    txt.appendChild(sign);
 
-    inner.appendChild(photoWrap);
+    inner.appendChild(av);
     inner.appendChild(txt);
     el.appendChild(inner);
     return { el, duration: item.duracao || 15 };
@@ -859,10 +880,13 @@
     const v = annVariant(item.tipo);
     const cor = v.cor;
     const el = div('mt-slide mt-ann');
+    // Banner sempre escuro (texto branco), mas com um tom do tema para não
+    // destoar; a cor da categoria (cor) dá o destaque.
+    const annBase = blendHex('#0a0f1c', themeColor('brand', '#3b82f6'), .16);
     el.style.background =
       'radial-gradient(85% 85% at 82% 8%, ' + hexToRgba(cor, .28) + ' 0%, rgba(0,0,0,0) 55%),' +
       'radial-gradient(70% 70% at 8% 95%, ' + hexToRgba(cor, .16) + ' 0%, rgba(0,0,0,0) 55%),' +
-      'linear-gradient(165deg, ' + blendHex('#0a1128', cor, .22) + ', #0a1128 70%)';
+      'linear-gradient(165deg, ' + blendHex(annBase, cor, .22) + ', ' + annBase + ' 70%)';
 
     const inner = div('ann-inner');
 
