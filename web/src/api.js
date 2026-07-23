@@ -50,6 +50,10 @@ export const deviceConfig = {
   save: (id, config) => api('PUT', '/api/devices/' + id + '/config', config),
 };
 
+export const ai = {
+  generate: (brief, opts) => api('POST', '/api/ai/generate-content', { brief, ...(opts || {}) }),
+};
+
 export const billing = {
   get: () => api('GET', '/api/billing'),
   checkout: (plan) => api('POST', '/api/billing/checkout', { plan }),

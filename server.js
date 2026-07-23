@@ -25,6 +25,7 @@ const storage = require('./server/storage');
 const { rateLimit, clientIp, safeEqual } = require('./server/security');
 const plans = require('./server/plans');
 const billing = require('./server/billing');
+const ai = require('./server/ai');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -289,6 +290,22 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /* ----- Billing / planos ----- */
+  /* ----- IA: gerar sugestões de conteúdo (requer login) ----- */
+  if (parts[1] === 'ai' && parts[2] === 'generate-content') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:' + sess.tenant_id, 30, 60 * 60 * 1000); // 30/h por conta
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de gerações por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const brief = b && b.brief;
+      if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva o que você quer' });
+      try {
+        const items = await ai.generateContent(brief, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '' });
+        return sendJson(res, 200, { mode: ai.mode(), items });
+      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+    });
+  }
+
   if (parts[1] === 'billing') {
     const seg = parts[2];
 
