@@ -38,6 +38,8 @@ export const CONTENT_TYPES = {
       { key: 'corpo', label: 'Texto', kind: 'textarea' },
       { key: 'align', label: 'Alinhamento', kind: 'select', options: [
         { value: 'center', label: 'Centro' }, { value: 'left', label: 'Esquerda' }, { value: 'right', label: 'Direita' } ] },
+      { key: 'tamanho', label: 'Tamanho do texto', kind: 'select', options: [
+        { value: 'pequeno', label: 'Pequeno' }, { value: 'medio', label: 'Médio' }, { value: 'grande', label: 'Grande' }, { value: 'gigante', label: 'Gigante' } ] },
       { key: 'bg', label: 'Cor de fundo', kind: 'color', optional: true },
       { key: 'cor', label: 'Cor do texto', kind: 'color', optional: true },
       DUR,

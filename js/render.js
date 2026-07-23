@@ -148,6 +148,8 @@
       if (item.cor) el.style.color = item.cor;
     }
     el.style.textAlign = item.align || 'center';
+    const scale = { pequeno: 0.82, medio: 1, grande: 1.22, gigante: 1.48 }[item.tamanho];
+    if (scale && scale !== 1) el.style.setProperty('--tscale', scale);
     const inner = div('mt-text-inner');
     if (item.titulo) {
       const h = div('mt-text-title');
