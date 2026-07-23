@@ -35,6 +35,7 @@ function clampItems(arr) {
     const item = { type: it.type, titulo: String(it.titulo || '').slice(0, 120), corpo: String(it.corpo || '').slice(0, 400), duracao: Math.min(15, Math.max(8, Number(it.duracao) || 12)) };
     if (it.type === 'text') { item.align = ['center', 'left', 'right'].includes(it.align) ? it.align : 'center'; item.tamanho = ['pequeno', 'medio', 'grande', 'gigante'].includes(it.tamanho) ? it.tamanho : 'grande'; }
     else { item.tipo = it.tipo || 'comunicado'; }
+    if (['destaque', 'urgente'].includes(it.prioridade)) item.prioridade = it.prioridade;
     if (item.titulo) ok.push(item);
     if (ok.length >= 6) break;
   }
@@ -84,6 +85,71 @@ async function callAnthropic(system, user) {
   return (data.content || []).map((b) => b.text || '').join('').trim();
 }
 
+/* ---------------- Campanha da TELA INTEIRA ---------------- */
+// Gera conteúdo para TODAS as zonas do layout + ajustes (prioridade, tom da
+// marca). zones: [{ id, type }] (type: playlist|ticker|header). answers: form.
+function isHex(s) { return /^#?[0-9a-f]{6}$/i.test(s || ''); }
+
+function clampCampaign(obj, zones) {
+  obj = obj || {};
+  const out = { followupQuestion: null, settings: {}, zonas: {} };
+  if (typeof obj.followupQuestion === 'string' && obj.followupQuestion.trim()) out.followupQuestion = obj.followupQuestion.trim().slice(0, 200);
+  const st = obj.settings || {};
+  if (isHex(st.brand)) out.settings.brand = st.brand.startsWith('#') ? st.brand : '#' + st.brand;
+  if (['destaque', 'urgente'].includes(st.prioridade)) out.settings.prioridade = st.prioridade;
+  const zin = obj.zonas || {};
+  for (const z of zones || []) {
+    if (z.type === 'header') continue;
+    const src = zin[z.id] || {};
+    if (z.type === 'ticker') {
+      const msgs = (Array.isArray(src.messages) ? src.messages : []).map((m) => String(m).slice(0, 160)).filter(Boolean).slice(0, 6);
+      if (msgs.length) out.zonas[z.id] = { messages: msgs };
+    } else {
+      const items = clampItems(src.items);
+      if (items.length) out.zonas[z.id] = { items };
+    }
+  }
+  return out;
+}
+
+async function generateCampaign(answers, ctx) {
+  answers = answers || {}; ctx = ctx || {};
+  const zones = Array.isArray(ctx.zones) ? ctx.zones : [];
+  if (mode() === 'dev') return devCampaign(answers, ctx, zones);
+
+  const zoneDesc = zones.filter((z) => z.type !== 'header')
+    .map((z) => `- zona "${z.id}" (${z.type === 'ticker' ? 'rodapé de mensagens' : 'destaque/playlist'})`).join('\n');
+  const system =
+    'Você é diretor de arte de digital signage. Crie uma CAMPANHA para uma TELA INTEIRA, ' +
+    'coerente entre as zonas, curta e legível à distância. ' +
+    'Responda APENAS com um objeto JSON:\n' +
+    '{ "followupQuestion": string|null, "settings": { "brand": "#hex"|null, "prioridade": "destaque"|"urgente"|null }, "zonas": { "<id>": { "items": [ITEM...] } | { "messages": [string...] } } }\n' +
+    'Preencha as zonas abaixo. Zona playlist usa "items"; zona rodapé usa "messages" (frases curtas). ' +
+    'Só peça followupQuestion se faltar algo crítico. ' + ITEM_SCHEMA + '\nprioridade "urgente"/"destaque" só se o objetivo pedir.';
+  const user =
+    `Empresa: ${ctx.empresa || 'A empresa'}. Tema: ${ctx.tema || 'padrão'}.\nZonas:\n${zoneDesc}\n\n` +
+    `Objetivo: ${answers.objetivo || ''}\nPúblico: ${answers.publico || ''}\nTom: ${answers.tom || ''}\n` +
+    `Oferta/CTA: ${answers.oferta || ''}\nPrazo: ${answers.prazo || ''}\nExtra: ${answers.extra || ''}`;
+  const text = mode() === 'groq' ? await callGroq(system, user) : await callAnthropic(system, user);
+  const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
+  let obj; try { obj = JSON.parse(json); } catch (e) { throw new Error('resposta da IA não é JSON'); }
+  return clampCampaign(obj, zones);
+}
+
+// Campanha dev (sem chave): distribui conteúdo plausível pelas zonas.
+function devCampaign(answers, ctx, zones) {
+  const obj = (answers.objetivo || 'Campanha').trim();
+  const oferta = (answers.oferta || '').trim();
+  const zonas = {};
+  for (const z of zones) {
+    if (z.type === 'header') continue;
+    if (z.type === 'ticker') zonas[z.id] = { messages: [`${obj} :: ${ctx.empresa || ''}`.trim(), oferta || 'Saiba mais no balcão.'] };
+    else if (Object.keys(zonas).length === 0) zonas[z.id] = { items: [{ type: 'text', titulo: obj, corpo: oferta || 'Aproveite.', align: 'center', tamanho: 'gigante', duracao: 12, prioridade: 'destaque' }] };
+    else zonas[z.id] = { items: [{ type: 'announce', tipo: 'evento', titulo: obj, corpo: oferta || answers.publico || 'Confira.', duracao: 12 }] };
+  }
+  return clampCampaign({ followupQuestion: null, settings: {}, zonas }, zones);
+}
+
 // Gerador local (dev): monta itens plausíveis a partir do briefing.
 function devGenerate(brief, ctx) {
   const empresa = ctx.empresa || 'nossa empresa';
@@ -94,4 +160,4 @@ function devGenerate(brief, ctx) {
   ]);
 }
 
-module.exports = { mode, generateContent, ITEM_SCHEMA };
+module.exports = { mode, generateContent, generateCampaign, ITEM_SCHEMA };
