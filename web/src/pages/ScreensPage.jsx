@@ -27,7 +27,7 @@ export function ScreensPage({ onEditContent }) {
         title="Telas"
         subtitle="Dispositivos pareados à sua conta e o conteúdo que exibem."
         actions={<>
-          <Button variant="secondary" icon={MonitorPlay} onClick={() => window.open('/player.html?cloud=1', '_blank', 'noopener')}>Abrir player</Button>
+          <Button variant="secondary" icon={MonitorPlay} onClick={() => window.open('/player.html?cloud=1&pid=' + Math.random().toString(36).slice(2, 9), '_blank', 'noopener')}>Abrir novo player</Button>
           <Button variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Parear tela</Button>
         </>}
       />
