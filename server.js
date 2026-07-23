@@ -290,6 +290,22 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /* ----- Billing / planos ----- */
+  /* ----- IA: gerar campanha da TELA INTEIRA (todas as zonas) ----- */
+  if (parts[1] === 'ai' && parts[2] === 'generate-campaign') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:' + sess.tenant_id, 30, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de gerações por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const answers = (b && b.answers) || {};
+      if (!answers.objetivo || !String(answers.objetivo).trim()) return sendJson(res, 400, { error: 'informe o objetivo da campanha' });
+      try {
+        const campaign = await ai.generateCampaign(answers, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '', zones: (b && b.zones) || [] });
+        return sendJson(res, 200, { mode: ai.mode(), ...campaign });
+      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+    });
+  }
+
   /* ----- IA: gerar sugestões de conteúdo (requer login) ----- */
   if (parts[1] === 'ai' && parts[2] === 'generate-content') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });

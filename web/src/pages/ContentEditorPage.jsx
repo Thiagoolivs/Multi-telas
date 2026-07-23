@@ -12,8 +12,9 @@ import { SettingsForm } from '../components/content/SettingsForm.jsx';
 import { TickerEditor } from '../components/content/TickerEditor.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { deviceConfig } from '../api.js';
-import { Sparkles } from 'lucide-react';
-import { Textarea } from '../components/ui/Field.jsx';
+import { Sparkles, Wand2 } from 'lucide-react';
+import { Field, Input, Textarea } from '../components/ui/Field.jsx';
+import { Dialog } from '../components/ui/Dialog.jsx';
 import { ai } from '../api.js';
 import { CONTENT_TYPES, typeLabel, itemSummary, defaultConfig } from '../lib/contentTypes.js';
 import { zonesOf, ensureZone } from '../lib/screenConfig.js';
@@ -34,6 +35,7 @@ export function ContentEditorPage({ device, onBack }) {
   const [selected, setSelected] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [picker, setPicker] = useState(false);
+  const [campOpen, setCampOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiBrief, setAiBrief] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
@@ -115,6 +117,24 @@ export function ContentEditorPage({ device, onBack }) {
     finally { setPublishing(false); }
   }
 
+  // Aplica uma campanha da IA (tela inteira) ao config: substitui as zonas
+  // geradas e, se veio, a cor da marca.
+  function applyCampaign(camp) {
+    patchCfg((next) => {
+      next.zonas = next.zonas || {};
+      for (const [zid, zdata] of Object.entries(camp.zonas || {})) {
+        if (zdata.messages) next.zonas[zid] = { ...(next.zonas[zid] || {}), modo: 'mensagens', messages: zdata.messages };
+        else if (zdata.items) next.zonas[zid] = { ...(next.zonas[zid] || {}), items: zdata.items };
+      }
+      const brand = camp.settings && camp.settings.brand;
+      if (brand) {
+        const t = next.settings.theme || (next.settings.theme = { preset: 'dark-premium', font: 'system', overrides: {} });
+        t.overrides = { ...(t.overrides || {}), brand };
+      }
+    });
+    setSelected(0);
+  }
+
   const current = items[selected];
 
   return (
@@ -130,6 +150,7 @@ export function ContentEditorPage({ device, onBack }) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-ink-3">{dirty ? 'Alterações não publicadas' : publishedAt ? 'Publicado agora' : 'Tudo publicado'}</span>
+          <Button variant="secondary" icon={Wand2} onClick={() => setCampOpen(true)}>Campanha com IA</Button>
           <Button variant="primary" icon={UploadCloud} onClick={publish} disabled={!dirty || publishing}>{publishing ? 'Publicando…' : 'Publicar'}</Button>
         </div>
       </div>
@@ -261,6 +282,65 @@ export function ContentEditorPage({ device, onBack }) {
       )}
 
       <TypePicker open={picker} onClose={() => setPicker(false)} onPick={addItem} />
+      <CampaignDialog
+        open={campOpen} onClose={() => setCampOpen(false)}
+        empresa={(cfg && cfg.settings && cfg.settings.nome) || ''}
+        tema={(cfg && cfg.settings && cfg.settings.theme && cfg.settings.theme.preset) || ''}
+        zones={zones.map((z) => ({ id: z.id, type: z.type }))}
+        onApply={(camp) => { applyCampaign(camp); setCampOpen(false); }}
+      />
     </div>
+  );
+}
+
+// Campanha com IA: formulário guiado (híbrido) → gera a TELA INTEIRA.
+function CampaignDialog({ open, onClose, empresa, tema, zones, onApply }) {
+  const [f, setF] = useState({ objetivo: '', publico: '', tom: '', oferta: '', prazo: '' });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [followup, setFollowup] = useState('');
+  const [answer, setAnswer] = useState('');
+  const set = (k, v) => setF((s) => ({ ...s, [k]: v }));
+
+  async function gen() {
+    if (!f.objetivo.trim()) { setErr('Descreva o objetivo da campanha.'); return; }
+    setBusy(true); setErr('');
+    try {
+      const answers = { ...f, extra: answer };
+      const camp = await ai.campaign({ answers, empresa, tema, zones });
+      if (camp.followupQuestion && !answer) { setFollowup(camp.followupQuestion); setBusy(false); return; }
+      onApply(camp);
+    } catch (e) { setErr(e.message || 'Falha ao gerar.'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog open={open} onClose={onClose} title="Campanha com IA"
+      description="Responda o essencial; a IA cria o conteúdo da tela inteira."
+      footer={<>
+        <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+        <Button variant="primary" icon={Wand2} disabled={busy || !f.objetivo.trim()} onClick={gen}>{busy ? 'Gerando…' : 'Gerar campanha'}</Button>
+      </>}>
+      <div className="space-y-3">
+        <Field label="Objetivo *" hint="O que a campanha precisa alcançar.">
+          <Input value={f.objetivo} onChange={(e) => set('objetivo', e.target.value)} placeholder="Ex.: promover skate com 30% OFF esta semana" />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Público"><Input value={f.publico} onChange={(e) => set('publico', e.target.value)} placeholder="jovens, clientes…" /></Field>
+          <Field label="Tom"><Input value={f.tom} onChange={(e) => set('tom', e.target.value)} placeholder="animado, sóbrio…" /></Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Oferta / CTA"><Input value={f.oferta} onChange={(e) => set('oferta', e.target.value)} placeholder="30% OFF · Ver ofertas" /></Field>
+          <Field label="Prazo"><Input value={f.prazo} onChange={(e) => set('prazo', e.target.value)} placeholder="até domingo" /></Field>
+        </div>
+        {followup && (
+          <Field label={`A IA perguntou: ${followup}`}>
+            <Textarea rows={2} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Responda para refinar…" />
+          </Field>
+        )}
+        {err && <p className="text-xs text-danger">{err}</p>}
+        <p className="text-2xs text-ink-3">Vai substituir o conteúdo das zonas desta tela. Você ajusta e publica depois.</p>
+      </div>
+    </Dialog>
   );
 }

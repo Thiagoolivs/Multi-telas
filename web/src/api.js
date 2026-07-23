@@ -52,6 +52,7 @@ export const deviceConfig = {
 
 export const ai = {
   generate: (brief, opts) => api('POST', '/api/ai/generate-content', { brief, ...(opts || {}) }),
+  campaign: (payload) => api('POST', '/api/ai/generate-campaign', payload),
 };
 
 export const billing = {
