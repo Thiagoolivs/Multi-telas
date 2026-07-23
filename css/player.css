@@ -512,82 +512,42 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 
 /* ---------- Cartão de aniversário ---------- */
-/* Componente decorativo com fundo escuro próprio → texto sempre claro,
-   independente do tema (não herda --text, que seria escuro no tema claro). */
-.mt-bcard { overflow: hidden; color: #fff; }
-.bc-confetti {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  opacity: .85; pointer-events: none;
-}
-.bc-balloon {
-  position: absolute; width: 9cqw; height: auto;
-  filter: drop-shadow(0 10px 18px rgba(0,0,0,.3));
-  animation: bc-float 5.5s ease-in-out infinite;
-}
-.bc-b1 { left: 4%; bottom: 8%; animation-delay: 0s; }
-.bc-b2 { left: 12%; top: 6%; width: 7cqw; animation-delay: 1.2s; }
-.bc-b3 { right: 6%; top: 10%; width: 8cqw; animation-delay: .6s; }
-.bc-b4 { right: 14%; bottom: 6%; width: 6.4cqw; animation-delay: 1.8s; }
-@keyframes bc-float {
-  0%, 100% { transform: translateY(0) rotate(-2deg); }
-  50% { transform: translateY(-2.4cqh) rotate(2deg); }
-}
+/* Aniversário — tech premium: avatar com anel da marca + tipografia limpa.
+   Herda a cor do tema (coeso claro/escuro). */
+.mt-bcard { overflow: hidden; color: var(--text); }
 .bc-inner {
   position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: center;
-  gap: 7cqw; padding: 4cqw;
+  gap: 6cqw; padding: 5cqw;
   width: 100%; height: 100%;
 }
-.bc-photo-wrap { position: relative; flex: none; }
-.bc-photo {
-  width: 26cqw; max-width: 46cqh; aspect-ratio: 1;
-  object-fit: cover; display: block;
-  background: #dbe4ff;
-  border: 1cqw solid #fff; border-radius: 2.4cqw;
-  transform: rotate(-2.5deg);
-  box-shadow: 0 18px 46px rgba(0,0,0,.45);
-}
-.bc-initials {
+.bc-avatar {
+  flex: none; width: 24cqw; max-width: 42cqh; aspect-ratio: 1;
+  border-radius: 50%; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
-  font-size: 10cqw; font-weight: 800; color: #33406e;
+  background: color-mix(in srgb, var(--brand) 18%, transparent);
+  box-shadow: 0 0 0 .5cqw color-mix(in srgb, var(--brand) 45%, transparent),
+              0 0 0 1cqw var(--border), 0 20px 50px rgba(0,0,0,.4);
 }
-.bc-hat-wrap {
-  position: absolute; top: -7.5cqw; left: -4.5cqw;
-  width: 11cqw; transform: rotate(-24deg);
-  filter: drop-shadow(0 6px 12px rgba(0,0,0,.35));
+.bc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.bc-initials { font-size: 9cqw; font-weight: 600; color: var(--brand); letter-spacing: -.02em; }
+.bc-text { max-width: 48cqw; text-align: left; }
+.bc-kicker {
+  display: inline-block; font-size: 2cqw; font-weight: 700;
+  letter-spacing: .22em; text-transform: uppercase; color: var(--accent);
+  margin-bottom: 2cqh;
 }
-.bc-hat { width: 100%; height: auto; }
-.bc-ribbon {
-  position: absolute; left: 50%; bottom: -2.2cqw;
-  transform: translateX(-50%) rotate(-4deg);
-  background: linear-gradient(180deg, #ff77b2, #f14e93);
-  color: #fff;
-  font-family: 'Segoe Script', 'Brush Script MT', cursive;
-  font-size: 2.6cqw; font-weight: 600;
-  padding: .9cqw 3.4cqw;
-  border-radius: .8cqw;
-  box-shadow: 0 8px 20px rgba(241, 78, 147, .45);
-  white-space: nowrap;
-}
-.bc-text { max-width: 44cqw; text-align: left; }
 .bc-title {
-  font-size: 6cqw; font-weight: 400; line-height: 1.08;
-  margin-bottom: 2.4cqh;
+  font-size: 6.4cqw; font-weight: 300; line-height: 1.04;
+  letter-spacing: -.02em; margin-bottom: 1.8cqh;
 }
-.bc-title strong { font-weight: 800; }
-.bc-msg { font-size: 3.2cqw; line-height: 1.45; color: rgba(255,255,255,.92); }
-.bc-sign {
-  margin-top: 4cqh;
-  font-family: 'Segoe Script', 'Brush Script MT', cursive;
-  font-size: 3cqw; color: rgba(255,255,255,.75);
-  text-align: right;
-}
-/* Zona estreita (lateral): cartão em coluna */
+.bc-title strong { font-weight: 700; }
+.bc-msg { font-size: 3cqw; line-height: 1.4; color: var(--text-dim); }
+/* Zona estreita (lateral): coluna, centralizado */
 @container (aspect-ratio < 1.1) {
-  .bc-inner { flex-direction: column; gap: 5cqh; }
+  .bc-inner { flex-direction: column; gap: 4cqh; }
   .bc-text { max-width: 84cqw; text-align: center; }
-  .bc-photo { width: 44cqw; }
-  .bc-sign { text-align: center; }
+  .bc-avatar { width: 40cqw; }
 }
 
 /* ---------- Mapas (trânsito / região) ---------- */

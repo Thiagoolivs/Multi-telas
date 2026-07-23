@@ -732,53 +732,37 @@
 
   function renderBirthdayCard(item) {
     const el = div('mt-slide mt-bcard');
-    // Cartão festivo fica sempre escuro (confetes/balões/texto branco pedem
-    // fundo escuro), mas puxa um tom do tema para não destoar da tela.
-    el.style.background = item.bg || blendHex('#0a0e1a', themeColor('brand', '#4f8cff'), 0.2);
-
-    el.innerHTML = bcConfetti() +
-      bcBalloon('#ff5da2', 'bc-b1') + bcBalloon('#4f8cff', 'bc-b2') +
-      bcBalloon('#ffb454', 'bc-b3') + bcBalloon('#39d0c4', 'bc-b4');
+    if (item.bg) el.style.background = item.bg; // senão herda o vidro do tema
 
     const inner = div('bc-inner');
 
-    // Foto (ou iniciais) com chapéu e fita.
-    const photoWrap = div('bc-photo-wrap');
+    // Avatar (foto ou iniciais) com anel na cor da marca.
+    const av = div('bc-avatar');
     if (item.foto) {
       const img = document.createElement('img');
-      img.className = 'bc-photo';
-      img.src = item.foto;
-      img.alt = '';
-      photoWrap.appendChild(img);
+      img.src = item.foto; img.alt = '';
+      av.appendChild(img);
     } else {
-      const initials = div('bc-photo bc-initials');
-      initials.textContent = (item.nome || '?')
-        .split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
-      photoWrap.appendChild(initials);
+      av.classList.add('bc-initials');
+      av.textContent = (item.nome || '?').split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
     }
-    const hat = div('bc-hat-wrap');
-    hat.innerHTML = BC_HAT;
-    photoWrap.appendChild(hat);
-    const ribbon = div('bc-ribbon');
-    ribbon.textContent = 'Feliz aniversário!';
-    photoWrap.appendChild(ribbon);
 
-    // Texto principal.
     const txt = div('bc-text');
+    const kicker = div('bc-kicker');
+    kicker.textContent = 'Aniversário';
     const title = div('bc-title');
-    const t1 = document.createElement('strong');
-    t1.textContent = 'Parabéns';
-    title.appendChild(t1);
-    title.appendChild(document.createTextNode(', ' + (item.nome || '') + '!'));
+    title.appendChild(document.createTextNode('Parabéns, '));
+    const strong = document.createElement('strong');
+    strong.textContent = item.nome || '';
+    title.appendChild(strong);
+    title.appendChild(document.createTextNode('!'));
     const msg = div('bc-msg');
-    msg.textContent = item.mensagem || 'Que hoje o seu dia seja o mais feliz de todos!';
-    const sign = div('bc-sign');
-    sign.textContent = 'feliz aniversário';
+    msg.textContent = item.mensagem || 'Que seu dia seja incrível.';
+    txt.appendChild(kicker);
     txt.appendChild(title);
     txt.appendChild(msg);
-    txt.appendChild(sign);
 
-    inner.appendChild(photoWrap);
+    inner.appendChild(av);
     inner.appendChild(txt);
     el.appendChild(inner);
     return { el, duration: item.duracao || 15 };
