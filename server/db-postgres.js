@@ -20,8 +20,11 @@ function sslOption(connStr) {
   if (process.env.PGSSL === 'require') return { rejectUnauthorized: false };
   try {
     const u = new URL(connStr);
-    const local = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
-    return local ? false : { rejectUnauthorized: false };
+    // Rede privada (localhost ou host interno do Railway) NÃO usa SSL — forçar
+    // SSL aí quebra a conexão ("server does not support SSL connections").
+    const plain = u.hostname === 'localhost' || u.hostname === '127.0.0.1' ||
+      /\.railway\.internal$/.test(u.hostname) || /\.internal$/.test(u.hostname);
+    return plain ? false : { rejectUnauthorized: false };
   } catch (e) { return false; }
 }
 
