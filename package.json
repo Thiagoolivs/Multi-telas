@@ -5,7 +5,7 @@
   "description": "Vistra — mídia indoor para TVs corporativas (digital signage)",
   "scripts": {
     "start": "node server.js",
-    "build": "npm --prefix web install && npm --prefix web run build"
+    "build": "npm --prefix web ci --include=dev && npm --prefix web run build"
   },
   "engines": {
     "node": ">=22"
