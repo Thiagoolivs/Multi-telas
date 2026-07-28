@@ -17,6 +17,14 @@
   let configFingerprint = '';
   const zoneControllers = [];
 
+  // Coordenação entre os dois sistemas de animação: entrada de conteúdo (slide)
+  // e mudança de formato (FLIP do layout). Os dois mexem na opacidade dos
+  // mesmos elementos — se rodarem juntos, enroscam. Marcamos até quando cada um
+  // está ocupado e o outro espera assentar antes de começar.
+  let contentBusyUntil = 0; // um slide está entrando
+  let formatBusyUntil = 0;  // um FLIP de layout está rolando
+  const nowMs = () => (global.performance && performance.now ? performance.now() : Date.now());
+
   /* ---------------- Motor de transições (GSAP + fallback CSS) ----------------
    * Com GSAP, a troca de slides é coreografada (entrada por tipo + revelação do
    * conteúdo em cascata). Sem GSAP, cai nas classes CSS .mt-trans-* de sempre.
@@ -72,6 +80,10 @@
     const dur = TRANS_DUR[type] || 0.9;
     const move = { scale: f.scale || 1, xPercent: f.xPercent || 0, yPercent: f.yPercent || 0 };
     const leaves = reveal ? revealTargets(el) : [];
+    // Sinaliza "conteúdo entrando" até a cascata terminar — o FLIP de formato
+    // espera esse tempo antes de disparar.
+    const busy = Math.max(dur, leaves.length ? dur * 0.2 + 0.7 : 0) + 0.15;
+    contentBusyUntil = nowMs() + busy * 1000;
     if (leaves.length) {
       // Estado inicial já aplicado (contêiner visível, conteúdo escondido) —
       // sem flash. A animação só dispara depois do paint.
@@ -293,6 +305,10 @@
     // suavemente (o grid, sozinho, não anima realocação). Nada de conteúdo
     // é recriado — vídeos/lives continuam tocando.
     function animateArrangement(a) {
+      // Se um slide está entrando, adia o FLIP até o conteúdo assentar — evita
+      // que os dois sistemas animem a mesma opacidade ao mesmo tempo.
+      const busy = contentBusyUntil - nowMs();
+      if (busy > 0) { setTimeout(() => animateArrangement(a), busy + 90); return; }
       const zones = Array.prototype.slice.call(stage.querySelectorAll('.mt-zone'));
       const first = zones.map((z) => z.getBoundingClientRect());
       setGrid(a); // aplica o layout final (instantâneo)
@@ -318,6 +334,8 @@
       // Solução: o conteúdo some (fade) durante TODO o movimento + assentamento e
       // só reaparece DEPOIS que a camada foi desmontada — o pop fica escondido.
       const settle = dur / 1000;
+      // Bloqueia trocas de conteúdo enquanto o formato muda + o conteúdo reaparece.
+      if (moved) formatBusyUntil = nowMs() + (settle + 0.14 + 0.5) * 1000;
       const slides = moved ? stage.querySelectorAll('.mt-zone .mt-slide') : [];
       if (HAS_GSAP && slides.length) {
         GSAP.killTweensOf(slides);
@@ -633,6 +651,11 @@
 
     function advance() {
       if (stopped) return;
+
+      // Se um FLIP de formato está rolando, não troca conteúdo em cima dele —
+      // as duas animações brigariam pela opacidade. Espera assentar e tenta de novo.
+      const wait = formatBusyUntil - nowMs();
+      if (wait > 0) return schedule(wait / 1000 + 0.08);
 
       // Filtra pelos conteúdos agendados para agora.
       const ativos = agendado ? items.filter(agendadoAgora) : items;
