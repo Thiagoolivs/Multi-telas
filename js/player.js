@@ -24,14 +24,18 @@
   const GSAP = window.gsap;
   const HAS_GSAP = typeof GSAP !== 'undefined';
   // Estado inicial da entrada, por tipo de transição.
+  // Movimentos contidos: entrada percebida como "assentar" suave, não empurrão.
   const TRANS_FROM = {
-    fade: { opacity: 0 },
-    slide: { opacity: 0, xPercent: 6 },
-    zoom: { opacity: 0, scale: 1.08 },
-    cinematic: { opacity: 0, scale: 1.06, yPercent: 1.8 },
+    fade: { opacity: 0, scale: 1.012 },
+    slide: { opacity: 0, xPercent: 3.5 },
+    zoom: { opacity: 0, scale: 1.045 },
+    cinematic: { opacity: 0, scale: 1.03, yPercent: 1.1 },
     none: { opacity: 1 },
   };
-  const TRANS_DUR = { fade: 0.8, slide: 0.8, zoom: 0.9, cinematic: 1.0, none: 0 };
+  // Um pouco mais longas: dá tempo da curva macia respirar (premium > apressado).
+  const TRANS_DUR = { fade: 0.95, slide: 0.95, zoom: 1.05, cinematic: 1.2, none: 0 };
+  // Curva suave e orgânica (desaceleração longa) — nada de freada seca.
+  const EASE_IN = 'power2.out';
 
   // Slides de "conteúdo" (texto/clima/relógio…) revelam os elementos em cascata.
   // Mídia cheia (imagem/vídeo) e o cartão decorado de aniversário só transitam.
@@ -51,6 +55,13 @@
     return out;
   }
 
+  // Roda o callback só depois que o navegador terminou layout + paint do frame
+  // atual (2× rAF). Assim a animação nunca disputa com o custo de montar o DOM
+  // novo — começa fluida desde o primeiro frame.
+  function afterPaint(fn) {
+    requestAnimationFrame(function () { requestAnimationFrame(fn); });
+  }
+
   function enterSlide(el, type, reveal) {
     el.classList.add('mt-active'); // opacidade final de referência
     if (!HAS_GSAP || type === 'none') {
@@ -58,17 +69,23 @@
       return;
     }
     const f = TRANS_FROM[type] || TRANS_FROM.fade;
-    const dur = TRANS_DUR[type] || 0.8;
+    const dur = TRANS_DUR[type] || 0.9;
+    const move = { scale: f.scale || 1, xPercent: f.xPercent || 0, yPercent: f.yPercent || 0 };
     const leaves = reveal ? revealTargets(el) : [];
     if (leaves.length) {
-      // Contêiner só faz o movimento (fica visível); o conteúdo revela em cascata.
-      GSAP.fromTo(el,
-        { scale: f.scale || 1, xPercent: f.xPercent || 0, yPercent: f.yPercent || 0 },
-        { scale: 1, xPercent: 0, yPercent: 0, opacity: 1, duration: dur, ease: 'power3.out', clearProps: 'transform' });
-      GSAP.from(leaves, { opacity: 0, yPercent: 14, duration: 0.6, stagger: 0.06, delay: dur * 0.28, ease: 'power2.out', clearProps: 'opacity,transform' });
+      // Estado inicial já aplicado (contêiner visível, conteúdo escondido) —
+      // sem flash. A animação só dispara depois do paint.
+      GSAP.set(el, Object.assign({ opacity: 1 }, move));
+      GSAP.set(leaves, { opacity: 0, yPercent: 7 });
+      afterPaint(function () {
+        GSAP.to(el, { scale: 1, xPercent: 0, yPercent: 0, duration: dur, ease: EASE_IN, clearProps: 'transform' });
+        GSAP.to(leaves, { opacity: 1, yPercent: 0, duration: 0.7, stagger: 0.05, delay: dur * 0.2, ease: EASE_IN, clearProps: 'opacity,transform' });
+      });
     } else {
-      GSAP.fromTo(el, Object.assign({ opacity: 0 }, f),
-        { opacity: 1, scale: 1, xPercent: 0, yPercent: 0, duration: dur, ease: 'power3.out', clearProps: 'transform' });
+      GSAP.set(el, Object.assign({ opacity: 0 }, move));
+      afterPaint(function () {
+        GSAP.to(el, { opacity: 1, scale: 1, xPercent: 0, yPercent: 0, duration: dur, ease: EASE_IN, clearProps: 'transform' });
+      });
     }
   }
 
@@ -80,7 +97,9 @@
       setTimeout(() => prev.el.remove(), 800);
       return;
     }
-    GSAP.to(prev.el, { opacity: 0, scale: 0.992, duration: 0.6, ease: 'power1.in', onComplete: () => prev.el.remove() });
+    // Saída em crossfade puro (só opacidade) — o mais suave possível, sem
+    // brigar com a entrada do próximo slide.
+    GSAP.to(prev.el, { opacity: 0, duration: 0.7, ease: 'sine.inOut', onComplete: () => prev.el.remove() });
   }
 
   /* ---------------- Ciclo de vida ---------------- */
