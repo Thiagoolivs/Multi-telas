@@ -60,17 +60,17 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
     radial-gradient(42% 48% at 16% 12%, var(--glow) 0%, transparent 62%),
     radial-gradient(40% 46% at 90% 92%, var(--brand-2) 0%, transparent 66%);
   opacity: calc(.3 * var(--fx));
-  filter: blur(66px) saturate(1.06);
-  animation: mt-aurora 46s ease-in-out infinite alternate;
+  filter: blur(60px) saturate(1.06);
+  /* ESTÁTICO de propósito: o fundo não se mexe, senão o vidro (backdrop-filter)
+     recalcula o blur a cada frame e trava as animações. Fundo tech = parado. */
 }
-/* Segundo halo, ainda mais sutil, deriva devagar — dá vida sem chamar atenção. */
+/* Segundo halo, sutil e também estático. */
 .mt-stage-fx {
   position: absolute; inset: -22%;
   z-index: -2; pointer-events: none;
   background: radial-gradient(36% 42% at 80% 18%, var(--accent) 0%, transparent 66%);
   opacity: calc(.13 * var(--fx));
-  filter: blur(84px) saturate(1.04);
-  animation: mt-aurora-2 68s linear infinite;
+  filter: blur(76px) saturate(1.04);
 }
 /* Granulado sutil — acabamento "matte" de produto caro. */
 .mt-stage::after {
@@ -132,7 +132,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   align-items: center;
   justify-content: center;
   opacity: 0;
-  will-change: opacity, transform, filter;
+  will-change: opacity, transform;
 }
 .mt-slide.mt-active { opacity: 1; }
 

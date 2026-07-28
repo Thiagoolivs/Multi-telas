@@ -341,9 +341,12 @@
     // Expõe os tokens do tema (hex) para os renderizadores herdarem a paleta —
     // tela coesa em vez de cores fixas espalhadas.
     global.MT_THEME = resolved;
-    // Modo performance: com fx baixo, desliga efeitos caros (blur/aurora).
+    // Modo performance: desliga efeitos caros (blur/aurora/vidro). Liga com fx
+    // baixo OU automaticamente em hardware fraco (TV/stick barato) — evita
+    // engasgo nas animações.
     const fx = resolved ? resolved.fx : 0.9;
-    document.documentElement.classList.toggle('mt-perf', fx <= 0.25);
+    const weakHw = (navigator.hardwareConcurrency || 8) <= 2 || (navigator.deviceMemory || 8) <= 2;
+    document.documentElement.classList.toggle('mt-perf', fx <= 0.25 || weakHw);
 
     // Inteligência de cor: registra as cores base e liga/desliga a adaptação.
     if (global.MTAdaptive) {
