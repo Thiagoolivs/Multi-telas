@@ -153,16 +153,15 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-trans-zoom.mt-active { transform: scale(1); }
 .mt-trans-zoom.mt-leave { transform: scale(.97); }
 
-/* "Cinematic": entra com leve zoom + subida + desfoque que se resolve. */
+/* "Cinematic": entra com leve zoom + subida. Sem blur animado (trava a GPU);
+   só transform/opacity, que fluem no compositor. */
 .mt-trans-cinematic {
-  transition: opacity 1s cubic-bezier(.4,0,.2,1),
-              transform 1.1s cubic-bezier(.16,.84,.3,1),
-              filter 1s ease;
-  transform: scale(1.06) translateY(1.6%);
-  filter: blur(10px);
+  transition: opacity 1.1s cubic-bezier(.4,0,.2,1),
+              transform 1.2s cubic-bezier(.16,.84,.3,1);
+  transform: scale(1.03) translateY(1.1%);
 }
-.mt-trans-cinematic.mt-active { transform: scale(1) translateY(0); filter: blur(0); }
-.mt-trans-cinematic.mt-leave { transform: scale(.985) translateY(-1%); filter: blur(6px); }
+.mt-trans-cinematic.mt-active { transform: scale(1) translateY(0); }
+.mt-trans-cinematic.mt-leave { transform: scale(.99) translateY(-.6%); }
 
 .mt-trans-none { transition: none; }
 .mt-leave { opacity: 0 !important; }
