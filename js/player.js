@@ -297,6 +297,7 @@
       const first = zones.map((z) => z.getBoundingClientRect());
       setGrid(a); // aplica o layout final (instantâneo)
       const dur = 1100;
+      let moved = false;
       zones.forEach((z, i) => {
         const last = z.getBoundingClientRect();
         const f = first[i];
@@ -304,11 +305,22 @@
         const sx = last.width ? f.width / last.width : 1;
         const sy = last.height ? f.height / last.height : 1;
         if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) return;
+        moved = true;
         z.style.transformOrigin = 'top left';
         z.style.transition = 'none';
         z.style.willChange = 'transform';
         z.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')';
       });
+      // O bloco desliza no compositor (fluido), mas o TEXTO dentro dele usa
+      // container-query (cqh/cqw): reencaixa bruscamente quando o tamanho muda.
+      // Reflow de texto não anima. Então o conteúdo dá um respiro (fade) durante
+      // o movimento e volta nítido já no tamanho final — troca suave, sem "trancos".
+      const slides = moved ? stage.querySelectorAll('.mt-zone .mt-slide') : [];
+      if (HAS_GSAP && slides.length) {
+        GSAP.killTweensOf(slides);
+        GSAP.to(slides, { opacity: 0.24, duration: 0.28, ease: 'sine.out' });
+        GSAP.to(slides, { opacity: 1, duration: 0.55, delay: dur / 1000 - 0.15, ease: 'sine.inOut' });
+      }
       requestAnimationFrame(() => {
         zones.forEach((z) => {
           if (!z.style.transform) return;
@@ -341,13 +353,15 @@
       }, iv);
       zoneControllers.push({ stop: () => clearInterval(t) });
     } else if (layout.dynamic) {
-      // Compatibilidade: "respiro" só de colunas dos layouts que já traziam isso.
-      stage.classList.add('mt-stage-breathing');
+      // Compatibilidade: "respiro" só de colunas. Antes animava grid-template via
+      // CSS — isso reflowa as fontes (cqh/cqw) a cada frame e trava. Agora usa o
+      // mesmo FLIP (transform no compositor + fade do conteúdo): fluido.
+      stage.classList.remove('mt-stage-breathing');
       const states = layout.dynamic.columns;
       let step = 0;
       const breatheTimer = setInterval(() => {
         step = (step + 1) % states.length;
-        stage.style.gridTemplateColumns = states[step];
+        animateArrangement({ columns: states[step], rows: layout.grid.rows, areas: layout.grid.areas });
       }, Math.max(6, layout.dynamic.intervalSeconds || 18) * 1000);
       zoneControllers.push({ stop: () => clearInterval(breatheTimer) });
     } else {
