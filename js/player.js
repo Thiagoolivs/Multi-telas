@@ -313,13 +313,16 @@
       });
       // O bloco desliza no compositor (fluido), mas o TEXTO dentro dele usa
       // container-query (cqh/cqw): reencaixa bruscamente quando o tamanho muda.
-      // Reflow de texto não anima. Então o conteúdo dá um respiro (fade) durante
-      // o movimento e volta nítido já no tamanho final — troca suave, sem "trancos".
+      // Reflow de texto não anima. Além disso, no fim do FLIP o navegador
+      // desmonta a camada de GPU e o texto re-rasteriza nítido de uma vez ("pop").
+      // Solução: o conteúdo some (fade) durante TODO o movimento + assentamento e
+      // só reaparece DEPOIS que a camada foi desmontada — o pop fica escondido.
+      const settle = dur / 1000;
       const slides = moved ? stage.querySelectorAll('.mt-zone .mt-slide') : [];
       if (HAS_GSAP && slides.length) {
         GSAP.killTweensOf(slides);
-        GSAP.to(slides, { opacity: 0.24, duration: 0.28, ease: 'sine.out' });
-        GSAP.to(slides, { opacity: 1, duration: 0.55, delay: dur / 1000 - 0.15, ease: 'sine.inOut' });
+        GSAP.to(slides, { opacity: 0.16, duration: 0.3, ease: 'sine.out' });
+        GSAP.to(slides, { opacity: 1, duration: 0.5, delay: settle + 0.14, ease: 'sine.inOut' });
       }
       requestAnimationFrame(() => {
         zones.forEach((z) => {
@@ -327,7 +330,10 @@
           z.style.transition = 'transform ' + dur + 'ms cubic-bezier(.22,.61,.36,1)';
           z.style.transform = '';
         });
-        setTimeout(() => zones.forEach((z) => { z.style.transition = ''; z.style.willChange = ''; z.style.transformOrigin = ''; }), dur + 60);
+        // Limpa transição/origem mas MANTÉM will-change: as zonas ficam sempre
+        // promovidas (são poucas), evitando o promove/desmonta a cada ciclo — que
+        // é justamente o que causava o tranco no fim.
+        setTimeout(() => zones.forEach((z) => { z.style.transition = ''; z.style.transformOrigin = ''; }), dur + 60);
       });
     }
     setGrid({ columns: layout.grid.columns, rows: layout.grid.rows, areas: layout.grid.areas });
