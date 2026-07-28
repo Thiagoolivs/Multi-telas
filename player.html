@@ -42,6 +42,22 @@
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(function () {});
     }
+    // Tela cheia no primeiro toque/clique/tecla — navegadores só permitem
+    // fullscreen a partir de um gesto do usuário. Em TV/kiosk, tira a barra
+    // do navegador e o player ocupa a tela toda.
+    (function () {
+      function goFullscreen() {
+        var el = document.documentElement;
+        var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+        if (req && !(document.fullscreenElement || document.webkitFullscreenElement)) {
+          try { req.call(el); } catch (e) {}
+        }
+        window.removeEventListener('pointerdown', goFullscreen);
+        window.removeEventListener('keydown', goFullscreen);
+      }
+      window.addEventListener('pointerdown', goFullscreen);
+      window.addEventListener('keydown', goFullscreen);
+    })();
   </script>
 </body>
 </html>

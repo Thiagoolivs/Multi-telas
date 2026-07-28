@@ -605,11 +605,63 @@ function sendFile(res, filePath, data) {
   });
   res.end(data);
 }
+// Página inicial: dois caminhos claros — administrar (celular/PC) ou virar TV.
+// Pensada para toque em TV: botões grandes, alto contraste, self-contained.
+const HOME_HTML = `<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vistra</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%232F6FEB'/%3E%3Cg fill='%23fff'%3E%3Crect x='4' y='4' width='9' height='7' rx='1'/%3E%3Crect x='15' y='4' width='5' height='7' rx='1'/%3E%3Crect x='4' y='13' width='16' height='7' rx='1'/%3E%3C/g%3E%3C/svg%3E" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3.2vh;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#eef2ff;text-align:center;padding:5vw;
+    background:radial-gradient(120% 120% at 15% 0%,#1c2c56 0%,transparent 55%),radial-gradient(120% 120% at 100% 100%,#132447 0%,transparent 52%),#0a1020}
+  .brand{display:flex;align-items:center;gap:.6em;font-weight:800;font-size:clamp(28px,5vw,54px);letter-spacing:-.02em}
+  .brand svg{width:1.1em;height:1.1em}
+  .sub{color:#93a3c9;font-size:clamp(15px,2.2vw,22px);max-width:36ch;line-height:1.5}
+  .cards{display:flex;flex-wrap:wrap;gap:2.4vh;justify-content:center;width:100%;max-width:900px;margin-top:1vh}
+  a.card{flex:1 1 320px;min-height:34vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;
+    text-decoration:none;color:inherit;padding:5vh 4vw;border-radius:24px;border:1px solid rgba(255,255,255,.10);
+    background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));backdrop-filter:blur(12px);
+    transition:transform .25s cubic-bezier(.22,.61,.36,1),border-color .25s,background .25s}
+  a.card:hover,a.card:focus{transform:translateY(-6px);border-color:rgba(120,160,255,.5);background:linear-gradient(160deg,rgba(90,130,255,.16),rgba(255,255,255,.03));outline:none}
+  a.card .ico{font-size:clamp(44px,8vw,72px);line-height:1}
+  a.card .t{font-size:clamp(22px,3.4vw,34px);font-weight:750;letter-spacing:-.01em}
+  a.card .d{color:#93a3c9;font-size:clamp(14px,2vw,18px);max-width:26ch;line-height:1.45}
+  a.tv{border-color:rgba(90,130,255,.35);background:linear-gradient(160deg,rgba(47,111,235,.22),rgba(255,255,255,.02))}
+  .foot{color:#5f6f92;font-size:13px;margin-top:1vh}
+</style></head>
+<body>
+  <div class="brand">
+    <svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#2F6FEB"/><g fill="#fff"><rect x="4" y="4" width="9" height="7" rx="1"/><rect x="15" y="4" width="5" height="7" rx="1"/><rect x="4" y="13" width="16" height="7" rx="1"/></g></svg>
+    Vistra
+  </div>
+  <div class="sub">Mídia indoor para TVs. Escolha como quer entrar neste dispositivo.</div>
+  <div class="cards">
+    <a class="card" href="/app">
+      <div class="ico">🛠️</div>
+      <div class="t">Administração</div>
+      <div class="d">Criar conteúdo, controlar as telas e a equipe. Use no celular ou PC.</div>
+    </a>
+    <a class="card tv" href="/tv">
+      <div class="ico">📺</div>
+      <div class="t">Player (TV)</div>
+      <div class="d">Transformar este aparelho em uma tela. Mostra um código para parear.</div>
+    </a>
+  </div>
+  <div class="foot">Dica: na TV, abra este site e toque em <strong>Player (TV)</strong>.</div>
+</body></html>`;
+
 function handleStatic(req, res, urlPath) {
-  // A raiz agora leva ao painel com conta (React em /app). O admin vanilla
-  // antigo (single-screen, sem conta) fica acessível em /legacy até o editor
-  // rico ser portado para o /app — assim nada se perde na transição.
-  if (urlPath === '/') { res.writeHead(302, { Location: '/app' }); return res.end(); }
+  // Página inicial com dois caminhos (administrar × virar TV).
+  if (urlPath === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+    return res.end(HOME_HTML);
+  }
+  // Atalho da TV: abre o player já em modo nuvem (sem digitar ?cloud=1).
+  if (urlPath === '/tv' || urlPath === '/tv/') { res.writeHead(302, { Location: '/player.html?cloud=1' }); return res.end(); }
   if (urlPath === '/legacy' || urlPath === '/legacy/') urlPath = '/index.html';
   const filePath = path.normalize(path.join(ROOT, urlPath));
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); return res.end('Acesso negado'); }
