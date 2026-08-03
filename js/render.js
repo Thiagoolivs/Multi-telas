@@ -136,6 +136,7 @@
     social: renderSocial,
     poster: renderPoster,
     composicao: renderComposicao,
+    pptx: renderPptx,
     web: renderWeb,
     qrcode: renderQr,
   };
@@ -1234,6 +1235,23 @@
     return { el, duration: item.duracao || 20 };
   }
 
+  /* ---------- Apresentação (PPTX / PPT / PDF) ----------
+   * PDF: o próprio navegador renderiza no iframe. PPTX/PPT: exibido pelo
+   * visualizador online do Office (o arquivo precisa estar acessível na
+   * internet — as URLs de /media já são públicas em produção). */
+  function renderPptx(item) {
+    const el = div('mt-slide mt-web mt-pptx');
+    const src = String(item.src || '');
+    if (!src) { el.classList.add('mt-empty'); el.textContent = 'Envie um arquivo (.pptx/.pdf)'; return { el, duration: item.duracao || 8 }; }
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('frameborder', '0');
+    iframe.setAttribute('allowfullscreen', 'true');
+    const isPdf = /\.pdf(\?|$)/i.test(src);
+    iframe.src = isPdf ? src : 'https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(src);
+    el.appendChild(iframe);
+    return { el, duration: item.duracao || 0 };
+  }
+
   function renderQr(item) {
     const el = div('mt-slide mt-qr');
     el.style.background = item.bg || '#ffffff';
@@ -1275,6 +1293,7 @@
     { type: 'youtube', label: 'YouTube / Ao vivo', icon: 'play' },
     { type: 'livesource', label: 'Entrada HDMI / USB (ao vivo)', icon: 'live' },
     { type: 'screen', label: 'Captura de tela / janela', icon: 'film' },
+    { type: 'pptx', label: 'Apresentação (PPTX / PDF)', icon: 'image' },
     { type: 'stream', label: 'Stream ao vivo (IPTV/HLS)', icon: 'live' },
     { type: 'holyrics', label: 'Holyrics (letra ao vivo)', icon: 'quote' },
     { type: 'birthdayauto', label: 'Aniversariantes (automático)', icon: 'cake' },

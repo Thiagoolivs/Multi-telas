@@ -1,5 +1,5 @@
 import React from 'react';
-import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film, Cake } from 'lucide-react';
+import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film, Cake, Airplay, Cast, Presentation } from 'lucide-react';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
 // Fidelidade total virá de um preview via player embutido, adiante.
@@ -141,6 +141,12 @@ function Body({ item }) {
       return <Placeholder icon={Youtube} label={item.channelId ? 'Transmissão ao vivo' : (item.videoId || 'YouTube')} />;
     case 'web':
       return <Placeholder icon={Globe} label={item.url || 'Página web'} />;
+    case 'screen':
+      return <Placeholder icon={Airplay} label="Captura de janela / tela (ao vivo)" />;
+    case 'livesource':
+      return <Placeholder icon={Cast} label="Entrada HDMI / USB (ao vivo)" />;
+    case 'pptx':
+      return <Placeholder icon={Presentation} label={item.src ? 'Apresentação' : 'Apresentação (envie o arquivo)'} />;
     case 'qrcode':
       return (
         <div className="flex h-full flex-col items-center justify-center gap-1.5" style={item.bg ? { background: item.bg } : undefined}>

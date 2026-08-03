@@ -11,8 +11,11 @@
  */
 import {
   Megaphone, Type, Quote, Tag, BarChart3, Share2, Image as ImageIcon,
-  Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout,
+  Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout, Airplay, Cast, Presentation,
 } from 'lucide-react';
+
+const FIT = { key: 'fit', label: 'Ajuste da imagem', kind: 'select', options: [
+  { value: 'cover', label: 'Preencher (corta)' }, { value: 'contain', label: 'Inteira (sem cortar)' } ] };
 
 // Variantes do "Aviso Premium" (espelha ANN_VARIANTS em js/render.js).
 export const ANNOUNCE_VARIANTS = [
@@ -195,6 +198,27 @@ export const CONTENT_TYPES = {
     make: () => ({ type: 'poster', variant: 'bold', titulo: 'Novo poster', corpo: '', cta: '', duracao: 12 }),
     summary: (i) => i.titulo || 'Poster',
   },
+  screen: {
+    label: 'Captura de janela / tela', icon: Airplay, group: 'Mídia',
+    fields: [FIT, { key: 'audio', label: 'Capturar áudio', kind: 'bool' }, DUR],
+    make: () => ({ type: 'screen', fit: 'contain', duracao: 0 }),
+    summary: () => 'Captura de janela ao vivo',
+  },
+  livesource: {
+    label: 'Entrada HDMI / USB (ao vivo)', icon: Cast, group: 'Mídia',
+    fields: [FIT, { key: 'audio', label: 'Com áudio', kind: 'bool' }, DUR],
+    make: () => ({ type: 'livesource', fit: 'cover', duracao: 0 }),
+    summary: () => 'Entrada HDMI / USB',
+  },
+  pptx: {
+    label: 'Apresentação (PPTX / PDF)', icon: Presentation, group: 'Mídia',
+    fields: [
+      { key: 'src', label: 'Arquivo (.pptx, .ppt ou .pdf)', kind: 'media', accept: '.pptx,.ppt,.pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/pdf' },
+      DUR,
+    ],
+    make: () => ({ type: 'pptx', src: '', duracao: 0 }),
+    summary: (i) => (i.src ? 'Apresentação' : 'Apresentação (envie o arquivo)'),
+  },
   composicao: {
     label: 'Composição (editor livre)', icon: Layout, group: 'Mídia',
     fields: [DUR], // os elementos são editados no editor visual (tela cheia)
@@ -216,7 +240,7 @@ export const CONTENT_TYPES = {
   },
 };
 
-export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'promo', 'kpi', 'composicao', 'social', 'image', 'video', 'youtube', 'web', 'qrcode', 'weatherpro', 'birthdayauto'];
+export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'promo', 'kpi', 'composicao', 'social', 'image', 'video', 'pptx', 'screen', 'livesource', 'youtube', 'web', 'qrcode', 'weatherpro', 'birthdayauto'];
 
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;
