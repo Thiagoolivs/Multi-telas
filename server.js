@@ -343,6 +343,36 @@ async function handleApi(req, res, pathname, query) {
     });
   }
 
+  /* ----- Biblioteca de peças (kits): salvar / listar / editar / remover ----- */
+  if (parts[1] === 'library') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method === 'GET' && parts.length === 2) {
+      return sendJson(res, 200, { items: await db.listLibrary(sess.tenant_id) });
+    }
+    if (req.method === 'POST' && parts.length === 2) {
+      return readBody(req, res, async (b) => {
+        const pieces = (b && b.pieces) || [];
+        if (!Array.isArray(pieces) || !pieces.length) return sendJson(res, 400, { error: 'sem peças para salvar' });
+        const n = await db.addLibrary(sess.tenant_id, (b && b.campaign) || 'Campanha', pieces.slice(0, 30));
+        return sendJson(res, 201, { ok: true, saved: n });
+      });
+    }
+    if (parts[2]) {
+      if (req.method === 'PUT') {
+        return readBody(req, res, async (b) => {
+          const changed = await db.updateLibraryItem(parts[2], sess.tenant_id, (b && b.item) || {}, (b && b.label) || '');
+          if (!changed) return sendJson(res, 404, { error: 'peça não encontrada' });
+          return sendJson(res, 200, { ok: true });
+        });
+      }
+      if (req.method === 'DELETE') {
+        await db.deleteLibraryItem(parts[2], sess.tenant_id);
+        return sendJson(res, 200, { ok: true });
+      }
+    }
+    return sendJson(res, 404, { error: 'rota da biblioteca não encontrada' });
+  }
+
   /* ----- Aniversariantes: importar planilha / listar / limpar ----- */
   if (parts[1] === 'birthdays') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });

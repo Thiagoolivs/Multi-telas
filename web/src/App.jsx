@@ -9,6 +9,7 @@ import { TeamPage } from './pages/TeamPage.jsx';
 import { StoragePage } from './pages/StoragePage.jsx';
 import { BirthdaysPage } from './pages/BirthdaysPage.jsx';
 import { StudioPage } from './pages/StudioPage.jsx';
+import { CampaignsPage } from './pages/CampaignsPage.jsx';
 import { BillingPage } from './pages/BillingPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
@@ -75,6 +76,7 @@ export default function App() {
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
       case 'studio': return <StudioPage />;
+      case 'campaigns': return <CampaignsPage />;
       case 'birthdays': return <BirthdaysPage />;
       case 'billing': return <BillingPage />;
       default: return <PlaceholderPage title={meta.title} subtitle={meta.subtitle} />;
