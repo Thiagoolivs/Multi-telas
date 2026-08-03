@@ -126,6 +126,45 @@ async function callAnthropic(system, user) {
   return (data.content || []).map((b) => b.text || '').join('').trim();
 }
 
+/* ---------------- Reescrever para caber + legível à distância ----------------
+ * Encurta/reescreve um texto para caber no espaço e ser lido de longe, sem
+ * perder o sentido. Limites por campo (título curto, corpo um pouco maior). */
+const FIT_MAX = { titulo: 42, frase: 90, corpo: 130 };
+
+async function rewriteText(text, opts) {
+  text = String(text || '').trim();
+  opts = opts || {};
+  const campo = FIT_MAX[opts.campo] ? opts.campo : 'corpo';
+  const max = Math.min(220, Math.max(16, Number(opts.max) || FIT_MAX[campo]));
+  if (!text) return '';
+  if (mode() === 'dev') return devShorten(text, max);
+
+  const system =
+    'Você reescreve textos para telas corporativas (digital signage) lidas À DISTÂNCIA. ' +
+    'Deixe mais curto, direto e fácil de ler de longe, mantendo o sentido e o tom. ' +
+    'Sem emojis, sem aspas, sem reticências. Português do Brasil. ' +
+    `No máximo ${max} caracteres. Responda APENAS com JSON: {"text": "..."}.`;
+  const user = `Tom: ${opts.tom || 'corporativo'}. Campo: ${campo}.\nTexto: ${text}`;
+  let out;
+  try {
+    const raw = await callLLM(system, user);
+    const json = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+    out = JSON.parse(json).text;
+  } catch (e) { out = ''; }
+  out = String(out || '').replace(/["“”]/g, '').trim();
+  if (!out) out = devShorten(text, max);
+  return devShorten(out, max); // garante o teto mesmo se a IA passar do limite
+}
+
+// Encurtador local: corta no limite sem quebrar palavra (fallback/garantia).
+function devShorten(text, max) {
+  text = String(text || '').replace(/\s+/g, ' ').trim();
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const sp = cut.lastIndexOf(' ');
+  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).trim();
+}
+
 /* ---------------- Campanha da TELA INTEIRA ---------------- */
 // Gera conteúdo para TODAS as zonas do layout + ajustes (prioridade, tom da
 // marca). zones: [{ id, type }] (type: playlist|ticker|header). answers: form.
@@ -201,4 +240,4 @@ function devGenerate(brief, ctx) {
   ]);
 }
 
-module.exports = { mode, generateContent, generateCampaign, ITEM_SCHEMA };
+module.exports = { mode, generateContent, generateCampaign, rewriteText, ITEM_SCHEMA };

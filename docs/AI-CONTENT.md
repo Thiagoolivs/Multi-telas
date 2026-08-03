@@ -11,6 +11,10 @@ pronto; a UI ("gerar com IA") entra no editor React depois.
 Resposta: `{ "mode": "gemini"|"groq"|"anthropic"|"dev", "items": [ ...itens do config ] }`.
 Rate limit: 30/h por conta.
 
+## Reescrever para caber (legível à distância)
+`POST /api/ai/rewrite` (login) · body `{ "text": "...", "campo": "titulo"|"frase"|"corpo", "tom": "...", "max": number? }`.
+Resposta `{ "mode", "text" }`. Encurta/reescreve mantendo o sentido e garante o teto de caracteres (título 42 / frase 90 / corpo 130 por padrão). Rate limit 30/h.
+
 ## Provider (agnóstico)
 `AI_PROVIDER` força o provider; senão escolhe pela chave presente
 (ordem de detecção: gemini → groq → anthropic → dev).
