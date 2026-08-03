@@ -1,13 +1,14 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, MonitorPlay, Megaphone, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake,
+  LayoutDashboard, MonitorPlay, Megaphone, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Wand2,
 } from 'lucide-react';
 
 const NAV = [
   { section: 'Operação', items: [
     { id: 'overview', label: 'Visão geral', icon: LayoutDashboard },
     { id: 'screens', label: 'Telas', icon: MonitorPlay },
+    { id: 'studio', label: 'Estúdio', icon: Wand2 },
     { id: 'campaigns', label: 'Campanhas', icon: Megaphone },
     { id: 'alerts', label: 'Alertas', icon: Bell },
   ] },
