@@ -11,6 +11,10 @@ pronto; a UI ("gerar com IA") entra no editor React depois.
 Resposta: `{ "mode": "gemini"|"groq"|"anthropic"|"dev", "items": [ ...itens do config ] }`.
 Rate limit: 30/h por conta.
 
+## Layout de composição (editor livre)
+`POST /api/ai/generate-composition` (login) · body `{ "brief": "...", "empresa"?, "tema"?, "brand"?: "#hex" }`.
+Resposta `{ "mode", "bg": { "kind":"cor", "cor":"#hex" }, "elementos": [ { "tipo":"texto", "text", "x","y","w","h","rot","cor","peso","tamanho","align" } ] }` — a IA monta fundo + blocos de texto posicionados (em %), deixando espaço para a imagem que o usuário insere no editor. Rate limit 30/h.
+
 ## Arte do dia comemorativo
 `POST /api/ai/generate-seasonal` (login) · body `{ "season": { "label": "Dia do Trabalho", "emoji": "🛠️" }, "empresa"?, "tema"? }`.
 Resposta `{ "mode", "items": [...] }` — 1-2 posters temáticos na cor da marca. O cliente descobre a data de hoje pelo `js/seasons.js` (`MTSeasons.todaySeason()`) e passa o `label`/`emoji`. Rate limit 30/h.

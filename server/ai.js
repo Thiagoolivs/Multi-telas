@@ -184,6 +184,59 @@ async function callAnthropic(system, user) {
   return (data.content || []).map((b) => b.text || '').join('').trim();
 }
 
+/* ---------------- Composição (layout do editor tipo Canva) ----------------
+ * A IA monta o LAYOUT: cor de fundo + blocos de TEXTO posicionados (título,
+ * subtítulo, CTA), deixando espaço para a imagem que o usuário insere por cima.
+ * Coordenadas x/y/w/h em % da zona. Não gera imagem. */
+function clampComposition(obj, brand) {
+  obj = obj || {};
+  const out = { bg: { kind: 'cor', cor: '#0a1020' }, elementos: [] };
+  const bgc = (obj.bg && obj.bg.cor) || obj.cor;
+  if (isHex(bgc)) out.bg.cor = bgc.startsWith('#') ? bgc : '#' + bgc;
+  else if (isHex(brand)) out.bg.cor = brand.startsWith('#') ? brand : '#' + brand;
+  const num = (v, lo, hi, d) => { const n = Number(v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
+  for (const e of Array.isArray(obj.elementos) ? obj.elementos : []) {
+    if (!e || e.tipo === 'imagem') continue; // imagem quem põe é o usuário
+    const el = {
+      tipo: 'texto',
+      text: String(e.text || '').slice(0, 160),
+      x: num(e.x, -10, 100, 8), y: num(e.y, -10, 100, 10),
+      w: num(e.w, 4, 110, 60), h: num(e.h, 3, 110, 18),
+      rot: num(e.rot, -180, 180, 0),
+      cor: isHex(e.cor) ? (e.cor.startsWith('#') ? e.cor : '#' + e.cor) : '#ffffff',
+      peso: num(e.peso, 300, 900, 800),
+      tamanho: num(e.tamanho, 2, 16, 6),
+      align: ['left', 'center', 'right'].includes(e.align) ? e.align : 'left',
+      z: num(e.z, 0, 99, 2),
+    };
+    if (el.text) out.elementos.push(el);
+    if (out.elementos.length >= 5) break;
+  }
+  return out;
+}
+
+async function generateComposition(brief, ctx) {
+  brief = String(brief || '').slice(0, 500);
+  ctx = ctx || {};
+  const brand = ctx.brand || '';
+  if (mode() === 'dev') {
+    return clampComposition({ bg: { cor: brand || '#12203f' }, elementos: [
+      { tipo: 'texto', text: (brief.split(/[.\n]/)[0] || 'Título').slice(0, 40), x: 6, y: 14, w: 60, h: 22, cor: '#ffffff', peso: 900, tamanho: 9, align: 'left', z: 2 },
+      { tipo: 'texto', text: 'Chamada de apoio aqui.', x: 6, y: 40, w: 50, h: 14, cor: '#ffffff', peso: 400, tamanho: 4, align: 'left', z: 2 },
+    ] }, brand);
+  }
+  const system =
+    'Você é diretor de arte de digital signage. Monte o LAYOUT de uma peça (composição) para uma tela: ' +
+    'uma cor de fundo forte (use a cor da marca quando informada) e de 1 a 3 blocos de TEXTO posicionados ' +
+    '(título grande, subtítulo curto e um CTA). Coordenadas x/y/w/h em PORCENTAGEM da tela (0 a 100). ' +
+    'Deixe metade da tela LIVRE (sem texto) para uma imagem que será inserida depois. NÃO gere imagem. ' +
+    'Texto legível à distância, português do Brasil. Responda APENAS com JSON: ' +
+    '{ "bg": { "cor": "#hex" }, "elementos": [ { "tipo": "texto", "text": string, "x": num, "y": num, "w": num, "h": num, "rot": num, "cor": "#hex", "peso": 300-900, "tamanho": 2-16, "align": "left"|"center"|"right" } ] }';
+  const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor da marca: ${brand || '(não informada)'}. Tema: ${ctx.tema || 'padrão'}.\nBriefing: ${brief}`;
+  const text = await callLLM(system, user);
+  return clampComposition(parseAiJson(text), brand);
+}
+
 /* ---------------- Reescrever para caber + legível à distância ----------------
  * Encurta/reescreve um texto para caber no espaço e ser lido de longe, sem
  * perder o sentido. Limites por campo (título curto, corpo um pouco maior). */
@@ -383,4 +436,4 @@ async function diagnose() {
   }
 }
 
-module.exports = { mode, generateContent, generateCampaign, generateDayparts, generateSeasonal, rewriteText, diagnose, ITEM_SCHEMA };
+module.exports = { mode, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, rewriteText, diagnose, ITEM_SCHEMA };
