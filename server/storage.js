@@ -31,6 +31,10 @@ const QUOTA_BYTES = Number(process.env.MEDIA_QUOTA || 5 * 1024 * 1024 * 1024);  
 const MIME_EXT = {
   'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif',
   'video/mp4': 'mp4', 'video/webm': 'webm',
+  // Apresentações: PPTX/PPT (exibidas via visualizador) e PDF (nativo no navegador).
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+  'application/vnd.ms-powerpoint': 'ppt',
+  'application/pdf': 'pdf',
 };
 function extFor(mime) { return MIME_EXT[String(mime || '').toLowerCase()] || null; }
 function rid(n) {

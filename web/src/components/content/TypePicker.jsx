@@ -11,12 +11,12 @@ export function TypePicker({ open, onClose, onPick }) {
   });
 
   return (
-    <Dialog open={open} onClose={onClose} title="Adicionar conteúdo" description="Escolha um tipo para começar." className="max-w-lg">
-      <div className="space-y-4">
+    <Dialog open={open} onClose={onClose} title="Adicionar conteúdo" description="Escolha um tipo para começar." className="max-w-3xl">
+      <div className="max-h-[80vh] space-y-4 overflow-y-auto pr-1">
         {Object.entries(groups).map(([group, types]) => (
           <div key={group}>
             <div className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-3">{group}</div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {types.map((t) => {
                 const { label, icon: Icon } = CONTENT_TYPES[t];
                 return (

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { UploadCloud, X, Film } from 'lucide-react';
+import { UploadCloud, X, Film, FileText } from 'lucide-react';
 import { Input } from '../ui/Field.jsx';
 import { Button } from '../ui/Button.jsx';
 import { media } from '../../api.js';
@@ -25,12 +25,17 @@ export function MediaField({ value, onChange, accept = 'image' }) {
   }
 
   const isVideo = accept === 'video';
+  const isImage = accept === 'image';
+  const isDoc = !isVideo && !isImage; // pptx/pdf etc.
+  const inputAccept = isVideo ? 'video/mp4,video/webm' : isImage ? 'image/png,image/jpeg,image/webp,image/gif' : accept;
   return (
     <div className="space-y-2">
       {value ? (
         <div className="relative overflow-hidden rounded-lg border border-line bg-surface-2">
           {isVideo ? (
             <div className="flex items-center gap-2 p-3 text-sm text-ink-2"><Film size={16} /> Vídeo enviado</div>
+          ) : isDoc ? (
+            <div className="flex items-center gap-2 p-3 text-sm text-ink-2"><FileText size={16} /> Arquivo enviado</div>
           ) : (
             <img src={value} alt="" className="max-h-40 w-full object-contain" onError={(e) => { e.currentTarget.style.opacity = 0.3; }} />
           )}
@@ -42,7 +47,7 @@ export function MediaField({ value, onChange, accept = 'image' }) {
       ) : null}
 
       <div className="flex items-center gap-2">
-        <input ref={inputRef} type="file" accept={isVideo ? 'video/mp4,video/webm' : 'image/png,image/jpeg,image/webp,image/gif'} className="hidden" onChange={onFile} />
+        <input ref={inputRef} type="file" accept={inputAccept} className="hidden" onChange={onFile} />
         <Button type="button" size="sm" variant="secondary" icon={UploadCloud} onClick={() => inputRef.current && inputRef.current.click()} disabled={busy}>
           {busy ? 'Enviando…' : value ? 'Trocar arquivo' : 'Enviar arquivo'}
         </Button>
