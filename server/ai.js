@@ -91,11 +91,12 @@ async function callGroq(system, user) {
   return ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
 }
 
-// Gemini — Google Generative Language API. Modelo por env.
-// gemini-2.5-flash: rápido/barato e ótimo para copy curta (recomendado).
-// gemini-2.5-pro: máxima qualidade. responseMimeType garante JSON limpo.
+// Gemini — Google Generative Language API. Modelo por env (GEMINI_MODEL).
+// Padrão gemini-2.0-flash (amplamente disponível). Se a conta tiver acesso,
+// use gemini-2.5-flash / gemini-2.5-pro para melhor qualidade.
+// responseMimeType garante JSON limpo.
 async function callGemini(system, user) {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
     encodeURIComponent(model) + ':generateContent';
   const res = await fetch(url, {
