@@ -4,6 +4,14 @@ import { Field, Input, Select, Checkbox } from '../ui/Field.jsx';
 import { IconButton } from '../ui/Button.jsx';
 import { LAYOUTS, THEME_PRESETS, FONTS, TRANSITIONS, DECORATIONS, getLayout } from '../../lib/screenConfig.js';
 
+// Layouts agrupados por formato de tela no seletor.
+const LAYOUT_GROUPS = [
+  { orient: 'landscape', label: 'Retangular (deitada)' },
+  { orient: 'portrait', label: 'Vertical (em pé)' },
+  { orient: 'square', label: 'Quadrada' },
+  { orient: 'any', label: 'Qualquer formato' },
+];
+
 // hex -> rgba string (para o glow ambiente do fundo).
 function hexRgba(hex, a) {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
@@ -39,7 +47,14 @@ export function SettingsForm({ settings, onChange }) {
         </Field>
         <Field label="Layout" hint={layout.description}>
           <Select value={s.layoutId || 'dashboard'} onChange={(e) => set({ layoutId: e.target.value })}>
-            {LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            {LAYOUT_GROUPS.map((g) => {
+              const items = LAYOUTS.filter((l) => (l.orientation || 'landscape') === g.orient);
+              return items.length ? (
+                <optgroup key={g.orient} label={g.label}>
+                  {items.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </optgroup>
+              ) : null;
+            })}
           </Select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
