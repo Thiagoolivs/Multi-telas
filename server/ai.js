@@ -2,6 +2,7 @@
  * server/ai.js — geração de conteúdo por IA (trilhas prontas).
  *
  * Provider agnóstico (AI_PROVIDER ou pela chave presente):
+ *   - 'gemini'    → Google Gemini via GEMINI_API_KEY (ou GOOGLE_API_KEY).
  *   - 'groq'      → API compatível com OpenAI (rápido/barato) via GROQ_API_KEY.
  *   - 'anthropic' → Claude via ANTHROPIC_API_KEY.
  *   - 'dev'       → gerador local (sem chave/rede), para testar o fluxo.
@@ -12,14 +13,24 @@
  */
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const GROQ_KEY = process.env.GROQ_API_KEY || '';
+const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 
 // Provider agnóstico: AI_PROVIDER manda; senão, escolhe pela chave presente.
 function mode() {
   const p = (process.env.AI_PROVIDER || '').toLowerCase();
-  if (p === 'groq' || p === 'anthropic' || p === 'dev') return p;
+  if (p === 'gemini' || p === 'groq' || p === 'anthropic' || p === 'dev') return p;
+  if (GEMINI_KEY) return 'gemini';
   if (GROQ_KEY) return 'groq';
   if (ANTHROPIC_KEY) return 'anthropic';
   return 'dev';
+}
+
+// Dispatcher: chama o provider ativo e devolve o texto (JSON) da resposta.
+async function callLLM(system, user) {
+  const m = mode();
+  if (m === 'gemini') return callGemini(system, user);
+  if (m === 'groq') return callGroq(system, user);
+  return callAnthropic(system, user);
 }
 
 // Tipos/campos que a IA pode produzir (subconjunto seguro do schema do player).
@@ -53,7 +64,7 @@ async function generateContent(brief, ctx) {
     'Gere de 2 a 4 itens curtos, impactantes e legíveis à distância. ' +
     'Responda APENAS com um array JSON, sem texto fora dele. ' + ITEM_SCHEMA;
   const user = `Empresa: ${ctx.empresa || 'A empresa'}. Tema visual: ${ctx.tema || 'padrão'}.\nBriefing: ${brief}`;
-  const text = m === 'groq' ? await callGroq(system, user) : await callAnthropic(system, user);
+  const text = await callLLM(system, user);
   const json = text.slice(text.indexOf('['), text.lastIndexOf(']') + 1);
   let arr; try { arr = JSON.parse(json); } catch (e) { throw new Error('resposta da IA não é JSON'); }
   return clampItems(arr);
@@ -70,6 +81,28 @@ async function callGroq(system, user) {
   const data = await res.json();
   if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Groq HTTP ' + res.status));
   return ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
+}
+
+// Gemini — Google Generative Language API. Modelo por env.
+// gemini-2.5-flash: rápido/barato e ótimo para copy curta (recomendado).
+// gemini-2.5-pro: máxima qualidade. responseMimeType garante JSON limpo.
+async function callGemini(system, user) {
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
+    encodeURIComponent(model) + ':generateContent';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'x-goog-api-key': GEMINI_KEY, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 900, responseMimeType: 'application/json' },
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Gemini HTTP ' + res.status));
+  const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+  return parts.map((p) => p.text || '').join('').trim();
 }
 
 // Anthropic — Claude via API de mensagens. Modelo por env.
@@ -130,7 +163,7 @@ async function generateCampaign(answers, ctx) {
     `Empresa: ${ctx.empresa || 'A empresa'}. Tema: ${ctx.tema || 'padrão'}.\nZonas:\n${zoneDesc}\n\n` +
     `Objetivo: ${answers.objetivo || ''}\nPúblico: ${answers.publico || ''}\nTom: ${answers.tom || ''}\n` +
     `Oferta/CTA: ${answers.oferta || ''}\nPrazo: ${answers.prazo || ''}\nExtra: ${answers.extra || ''}`;
-  const text = mode() === 'groq' ? await callGroq(system, user) : await callAnthropic(system, user);
+  const text = await callLLM(system, user);
   const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
   let obj; try { obj = JSON.parse(json); } catch (e) { throw new Error('resposta da IA não é JSON'); }
   return clampCampaign(obj, zones);
