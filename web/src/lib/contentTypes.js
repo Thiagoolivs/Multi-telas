@@ -11,7 +11,7 @@
  */
 import {
   Megaphone, Type, Quote, Tag, BarChart3, Share2, Image as ImageIcon,
-  Youtube, Globe, QrCode, CloudSun, Film, Cake,
+  Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout,
 } from 'lucide-react';
 
 // Variantes do "Aviso Premium" (espelha ANN_VARIANTS em js/render.js).
@@ -179,8 +179,24 @@ export const CONTENT_TYPES = {
     make: () => ({ type: 'weatherpro', cidade: 'São Paulo', duracao: 0 }),
     summary: (i) => i.cidade || 'Clima',
   },
+  poster: {
+    label: 'Arte / Poster', icon: Sparkles, group: 'Mensagens',
+    fields: [
+      { key: 'variant', label: 'Estilo', kind: 'select', options: [
+        { value: 'bold', label: 'Cheio (cor da marca)' }, { value: 'aurora', label: 'Aurora' },
+        { value: 'split', label: 'Diagonal' }, { value: 'minimal', label: 'Minimalista' } ] },
+      { key: 'kicker', label: 'Etiqueta (topo)', kind: 'text' },
+      { key: 'titulo', label: 'Título', kind: 'text' },
+      { key: 'corpo', label: 'Texto', kind: 'textarea' },
+      { key: 'cta', label: 'Chamada (botão)', kind: 'text' },
+      { key: 'cor', label: 'Cor (opcional — senão usa a marca)', kind: 'color', optional: true },
+      DUR,
+    ],
+    make: () => ({ type: 'poster', variant: 'bold', titulo: 'Novo poster', corpo: '', cta: '', duracao: 12 }),
+    summary: (i) => i.titulo || 'Poster',
+  },
   composicao: {
-    label: 'Composição (editor livre)', icon: ImageIcon, group: 'Mídia',
+    label: 'Composição (editor livre)', icon: Layout, group: 'Mídia',
     fields: [DUR], // os elementos são editados no editor visual (tela cheia)
     make: () => ({ type: 'composicao', bg: { kind: 'cor', cor: '#0a1020' }, elementos: [], duracao: 12 }),
     summary: (i) => 'Composição (' + ((i.elementos && i.elementos.length) || 0) + ' elemento(s))',
@@ -200,7 +216,7 @@ export const CONTENT_TYPES = {
   },
 };
 
-export const CONTENT_ORDER = ['text', 'announce', 'quote', 'promo', 'kpi', 'composicao', 'social', 'image', 'video', 'youtube', 'web', 'qrcode', 'weatherpro', 'birthdayauto'];
+export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'promo', 'kpi', 'composicao', 'social', 'image', 'video', 'youtube', 'web', 'qrcode', 'weatherpro', 'birthdayauto'];
 
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;

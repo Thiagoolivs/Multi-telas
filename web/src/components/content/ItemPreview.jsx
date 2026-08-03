@@ -1,5 +1,5 @@
 import React from 'react';
-import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film } from 'lucide-react';
+import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film, Cake } from 'lucide-react';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
 // Fidelidade total virá de um preview via player embutido, adiante.
@@ -83,6 +83,50 @@ function Body({ item }) {
           <Share2 size={26} className="opacity-80" />
           <div className="text-sm font-semibold">{item.titulo || 'Siga-nos'}</div>
           {item.handle && <div className="text-xs opacity-70">{item.handle}</div>}
+        </div>
+      );
+    case 'poster': {
+      const pb = /^#?[0-9a-f]{6}$/i.test(item.cor || '') ? (item.cor[0] === '#' ? item.cor : '#' + item.cor) : '#2f6feb';
+      const v = item.variant || 'bold';
+      const bg = v === 'aurora' ? `radial-gradient(60% 60% at 22% 18%, ${pb}, transparent 60%), radial-gradient(50% 50% at 85% 85%, ${pb}55, transparent 60%), #0a1020`
+        : v === 'minimal' ? '#0a1020'
+        : v === 'split' ? `linear-gradient(90deg, ${pb} 46%, #0a1020 46%)`
+        : `linear-gradient(150deg, ${pb}, rgba(0,0,0,.5))`;
+      const alignCenter = v === 'bold' || v === 'aurora';
+      return (
+        <div className="flex h-full w-full flex-col justify-center gap-1 p-3"
+          style={{ background: bg, textAlign: alignCenter ? 'center' : 'left', alignItems: alignCenter ? 'center' : 'flex-start', borderLeft: v === 'minimal' ? `4px solid ${pb}` : undefined }}>
+          {item.kicker && <div className="text-[9px] font-bold uppercase tracking-widest" style={{ color: v === 'minimal' ? pb : '#fff', opacity: v === 'minimal' ? 1 : 0.85 }}>{item.kicker}</div>}
+          <div className="text-lg font-extrabold leading-tight">{item.titulo || 'Poster'}</div>
+          {item.corpo && <div className="line-clamp-2 text-xs opacity-85">{item.corpo}</div>}
+          {item.cta && <div className="mt-1 self-start rounded-full bg-white px-2 py-0.5 text-[10px] font-bold" style={{ color: pb, alignSelf: alignCenter ? 'center' : 'flex-start' }}>{item.cta}</div>}
+        </div>
+      );
+    }
+    case 'composicao': {
+      const b = item.bg || {};
+      const bgStyle = b.kind === 'imagem' && b.src ? { backgroundImage: `url("${b.src}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
+        : b.kind === 'cor' ? { background: b.cor } : { background: '#0a1020' };
+      const els = (item.elementos || []).slice().sort((a, x) => (a.z || 0) - (x.z || 0));
+      return (
+        <div className="relative h-full w-full" style={bgStyle}>
+          {els.map((e, idx) => (
+            <div key={idx} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden' }}>
+              {e.tipo === 'texto'
+                ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: e.cor, fontWeight: e.peso, fontSize: '9px', textAlign: e.align, lineHeight: 1.05 }}>{e.text}</div>
+                : <img src={e.src} alt="" style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain' }} onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />}
+            </div>
+          ))}
+          {!els.length && <div className="flex h-full items-center justify-center text-xs opacity-40">Composição vazia — abra o editor</div>}
+        </div>
+      );
+    }
+    case 'birthdayauto':
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-1.5">
+          <Cake size={26} className="opacity-80" />
+          <div className="text-sm font-semibold">Aniversariantes</div>
+          <div className="text-[10px] opacity-50">{item.modo === 'hoje' ? 'De hoje' : item.modo === 'semana' ? 'Da semana' : 'Automático (hoje/semana)'}</div>
         </div>
       );
     case 'image':

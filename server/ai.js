@@ -36,6 +36,7 @@ async function callLLM(system, user) {
 // Tipos/campos que a IA pode produzir (subconjunto seguro do schema do player).
 const ITEM_SCHEMA = `Cada item é um objeto. Tipos permitidos:
 - { "type": "poster", "variant": "bold"|"aurora"|"split"|"minimal", "kicker": string curto, "titulo": string, "corpo": string, "cta": string curto, "cor": "#hex"(opcional), "duracao": number }
+  → poster SEMPRE com "titulo" forte e curto (2 a 6 palavras) e um "cta" curto. Sem título, o item é descartado.
 - { "type": "text", "titulo": string, "corpo": string, "align": "center"|"left"|"right", "tamanho": "pequeno"|"medio"|"grande"|"gigante", "duracao": number }
 - { "type": "announce", "tipo": "comunicado"|"urgente"|"evento"|"rh"|"seguranca"|"conquista"|"treinamento"|"saude", "titulo": string, "corpo": string, "duracao": number }
 Prefira "poster" para as peças de destaque (capa/arte da campanha): é uma arte visual que já usa a cor da marca. Gere de 1 a 3 posters e VARIE o "variant" entre eles. Não defina "cor" (usa a marca) — só use se quiser variar o tom dentro da identidade.
