@@ -26,7 +26,7 @@ Resposta `{ "mode", "text" }`. Encurta/reescreve mantendo o sentido e garante o 
 ## Provider (agnóstico)
 `AI_PROVIDER` força o provider; senão escolhe pela chave presente
 (ordem de detecção: gemini → groq → anthropic → dev).
-- **gemini** — `GEMINI_API_KEY` (ou `GOOGLE_API_KEY`). Opcional `GEMINI_MODEL`. Como a disponibilidade dos nomes fixos varia por conta ("no longer available"), o código tenta o modelo do env e depois cai por uma lista de candidatos (`gemini-flash-latest` → `gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-pro-latest` → `gemini-1.5-flash`). Recomendado deixar `GEMINI_MODEL` vazio (usa `gemini-flash-latest`) ou apontar para um modelo que sua conta acesse. Usa `responseMimeType: application/json` → JSON limpo.
+- **gemini** — `GEMINI_API_KEY` (ou `GOOGLE_API_KEY`). Opcional `GEMINI_MODEL`. Como a disponibilidade dos nomes fixos varia por conta ("no longer available"), o código tenta o modelo do env e depois cai por uma lista de candidatos (`gemini-3.6-flash` → `gemini-flash-latest` → `gemini-3.5-flash` → `gemini-2.5-flash` → `gemini-2.0-flash` → `gemini-pro-latest`). Recomendado deixar `GEMINI_MODEL` vazio (usa `gemini-3.6-flash`, GA em 2026) ou apontar para um modelo que sua conta acesse. A resposta é parseada com tolerância (aceita cercas ```json``` e objeto/array). Usa `responseMimeType: application/json` → JSON limpo.
 - **groq** — `GROQ_API_KEY` (opcional `GROQ_MODEL`, padrão `llama-3.3-70b-versatile`). API compatível com OpenAI, rápido/barato.
 - **anthropic** — `ANTHROPIC_API_KEY` (opcional `ANTHROPIC_MODEL`).
 - **dev** — sem chave: gerador local, para testar o fluxo.

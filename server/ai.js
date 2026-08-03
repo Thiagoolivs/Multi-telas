@@ -41,6 +41,27 @@ const ITEM_SCHEMA = `Cada item é um objeto. Tipos permitidos:
 Prefira "poster" para as peças de destaque (capa/arte da campanha): é uma arte visual que já usa a cor da marca. Gere de 1 a 3 posters e VARIE o "variant" entre eles. Não defina "cor" (usa a marca) — só use se quiser variar o tom dentro da identidade.
 Responda em português do Brasil, tom corporativo. duracao entre 8 e 15.`;
 
+// Parser tolerante da resposta da IA. Com responseMimeType application/json o
+// texto já vem limpo, mas alguns modelos embrulham em ```json ... ``` ou
+// devolvem um objeto quando pedimos array (e vice-versa). Aqui normalizamos.
+function parseAiJson(text) {
+  let t = String(text || '').trim();
+  t = t.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  if (!t) throw new Error('a IA retornou vazio (verifique o modelo ou o limite de tokens)');
+  try { return JSON.parse(t); } catch (e) { /* tenta recortar abaixo */ }
+  const starts = ['[', '{'].map((c) => t.indexOf(c)).filter((i) => i >= 0);
+  const s = starts.length ? Math.min.apply(null, starts) : -1;
+  const e = Math.max(t.lastIndexOf(']'), t.lastIndexOf('}'));
+  if (s >= 0 && e > s) { try { return JSON.parse(t.slice(s, e + 1)); } catch (e2) { /* cai no throw */ } }
+  throw new Error('resposta da IA não é JSON válido');
+}
+// Extrai um array de itens, aceitando array direto ou objeto { items/itens: [...] }.
+function asItemArray(parsed) {
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === 'object') return parsed.items || parsed.itens || parsed.conteudos || [];
+  return [];
+}
+
 function clampItems(arr) {
   const ok = [];
   for (const it of Array.isArray(arr) ? arr : []) {
@@ -73,9 +94,7 @@ async function generateContent(brief, ctx) {
     'Responda APENAS com um array JSON, sem texto fora dele. ' + ITEM_SCHEMA;
   const user = `Empresa: ${ctx.empresa || 'A empresa'}. Tema visual: ${ctx.tema || 'padrão'}.\nBriefing: ${brief}`;
   const text = await callLLM(system, user);
-  const json = text.slice(text.indexOf('['), text.lastIndexOf(']') + 1);
-  let arr; try { arr = JSON.parse(json); } catch (e) { throw new Error('resposta da IA não é JSON'); }
-  return clampItems(arr);
+  return clampItems(asItemArray(parseAiJson(text)));
 }
 
 // Groq — API compatível com OpenAI (rápido/barato). Modelo por env.
@@ -97,7 +116,8 @@ async function callGroq(system, user) {
 // "gemini-flash-latest" (aponta pro flash atual) e caímos por uma lista de
 // candidatos quando o modelo escolhido não existe/está indisponível.
 // responseMimeType garante JSON limpo.
-const GEMINI_CANDIDATES = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-pro-latest', 'gemini-1.5-flash'];
+// Ordem de preferência (2026): 3.6-flash é o GA atual; -latest é o alias seguro.
+const GEMINI_CANDIDATES = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-pro-latest'];
 
 function geminiUnavailable(msg) {
   return /no longer available|not available|not found|is not supported|unsupported|does not exist|permission|404|400/i.test(msg || '');
@@ -112,7 +132,7 @@ async function geminiOnce(model, system, user) {
     body: JSON.stringify({
       system_instruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 900, responseMimeType: 'application/json' },
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2048, responseMimeType: 'application/json' },
     }),
   });
   const data = await res.json();
@@ -167,8 +187,8 @@ async function rewriteText(text, opts) {
   let out;
   try {
     const raw = await callLLM(system, user);
-    const json = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
-    out = JSON.parse(json).text;
+    const parsed = parseAiJson(raw);
+    out = typeof parsed === 'string' ? parsed : parsed.text;
   } catch (e) { out = ''; }
   out = String(out || '').replace(/["“”]/g, '').trim();
   if (!out) out = devShorten(text, max);
@@ -230,9 +250,7 @@ async function generateCampaign(answers, ctx) {
     `Objetivo: ${answers.objetivo || ''}\nPúblico: ${answers.publico || ''}\nTom: ${answers.tom || ''}\n` +
     `Oferta/CTA: ${answers.oferta || ''}\nPrazo: ${answers.prazo || ''}\nExtra: ${answers.extra || ''}`;
   const text = await callLLM(system, user);
-  const json = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
-  let obj; try { obj = JSON.parse(json); } catch (e) { throw new Error('resposta da IA não é JSON'); }
-  return clampCampaign(obj, zones);
+  return clampCampaign(parseAiJson(text), zones);
 }
 
 // Campanha dev (sem chave): distribui conteúdo plausível pelas zonas.
@@ -266,9 +284,7 @@ async function generateSeasonal(season, ctx) {
   const user = `Empresa: ${ctx.empresa || 'A empresa'}. Tema: ${ctx.tema || 'padrão'}.\n` +
     `Data comemorativa: ${label} ${emoji}`.trim();
   const text = await callLLM(system, user);
-  const json = text.slice(text.indexOf('['), text.lastIndexOf(']') + 1);
-  let arr; try { arr = JSON.parse(json); } catch (e) { throw new Error('resposta da IA não é JSON'); }
-  return { items: clampItems(arr) };
+  return { items: clampItems(asItemArray(parseAiJson(text))) };
 }
 
 function devSeasonal(label) {
@@ -313,9 +329,7 @@ async function generateDayparts(answers, ctx) {
   const user = `Empresa: ${ctx.empresa || 'A empresa'}. Tema: ${ctx.tema || 'padrão'}.\n` +
     `Objetivo: ${objetivo}\nPúblico: ${answers.publico || ''}\nTom base: ${answers.tom || ''}`;
   const raw = await callLLM(system, user);
-  const json = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
-  let obj; try { obj = JSON.parse(json); } catch (e) { throw new Error('resposta da IA não é JSON'); }
-  return { items: daypartItems(obj) };
+  return { items: daypartItems(parseAiJson(raw)) };
 }
 
 function devDayparts(objetivo) {
