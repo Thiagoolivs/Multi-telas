@@ -55,6 +55,12 @@ export const ai = {
   campaign: (payload) => api('POST', '/api/ai/generate-campaign', payload),
 };
 
+export const birthdays = {
+  list: () => api('GET', '/api/birthdays'),
+  import: (rows) => api('POST', '/api/birthdays/import', { rows }),
+  clear: () => api('DELETE', '/api/birthdays'),
+};
+
 export const billing = {
   get: () => api('GET', '/api/billing'),
   checkout: (plan) => api('POST', '/api/billing/checkout', { plan }),

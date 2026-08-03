@@ -7,6 +7,7 @@ import { ScreensPage } from './pages/ScreensPage.jsx';
 import { ContentEditorPage } from './pages/ContentEditorPage.jsx';
 import { TeamPage } from './pages/TeamPage.jsx';
 import { StoragePage } from './pages/StoragePage.jsx';
+import { BirthdaysPage } from './pages/BirthdaysPage.jsx';
 import { BillingPage } from './pages/BillingPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
@@ -18,6 +19,7 @@ const META = {
   campaigns: { title: 'Campanhas', subtitle: 'Crie, agende e distribua conteúdo nas telas.' },
   alerts: { title: 'Alertas', subtitle: 'Incidentes e avisos operacionais.' },
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
+  birthdays: { title: 'Aniversariantes', subtitle: 'Importe a equipe e o player mostra sozinho.' },
   billing: { title: 'Plano e cobrança' },
   settings: { title: 'Ajustes', subtitle: 'Conta, integrações e preferências.' },
 };
@@ -70,6 +72,7 @@ export default function App() {
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
+      case 'birthdays': return <BirthdaysPage />;
       case 'billing': return <BillingPage />;
       default: return <PlaceholderPage title={meta.title} subtitle={meta.subtitle} />;
     }
