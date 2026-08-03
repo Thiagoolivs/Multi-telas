@@ -230,6 +230,56 @@ function devCampaign(answers, ctx, zones) {
   return clampCampaign({ followupQuestion: null, settings: {}, zonas }, zones);
 }
 
+/* ---------------- Variações por horário (dayparts) ----------------
+ * Uma campanha vira 3 versões (manhã / tarde / fim de expediente) com saudação
+ * e tom adaptados. Cada item sai com agendamento de hora — o player já mostra
+ * só o da janela atual (agendadoAgora). Custo zero no player. */
+const DAYPARTS = [
+  { key: 'manha', rotulo: 'manhã', ini: '05:00', fim: '11:59' },
+  { key: 'tarde', rotulo: 'tarde', ini: '12:00', fim: '17:59' },
+  { key: 'noite', rotulo: 'fim de expediente', ini: '18:00', fim: '23:59' },
+];
+
+// Anexa a janela de hora de cada período aos itens já validados.
+function daypartItems(obj) {
+  const out = [];
+  for (const d of DAYPARTS) {
+    for (const it of clampItems((obj && obj[d.key]) || [])) {
+      it.agendamento = { ativo: true, horaInicio: d.ini, horaFim: d.fim };
+      out.push(it);
+    }
+  }
+  return out;
+}
+
+async function generateDayparts(answers, ctx) {
+  answers = answers || {}; ctx = ctx || {};
+  const objetivo = String(answers.objetivo || answers.brief || '').slice(0, 400);
+  if (mode() === 'dev') return { items: devDayparts(objetivo) };
+
+  const system =
+    'Você cria conteúdo para telas corporativas que muda conforme a HORA do dia. ' +
+    'Gere o MESMO tema em 3 períodos, adaptando saudação e tom: manhã (energia, "bom dia"), ' +
+    'tarde (foco), fim de expediente (encerramento/agradecimento, "boa noite"). ' +
+    'De 1 a 2 itens por período. Responda APENAS com JSON: ' +
+    '{ "manha": [ITEM...], "tarde": [ITEM...], "noite": [ITEM...] }. ' + ITEM_SCHEMA;
+  const user = `Empresa: ${ctx.empresa || 'A empresa'}. Tema: ${ctx.tema || 'padrão'}.\n` +
+    `Objetivo: ${objetivo}\nPúblico: ${answers.publico || ''}\nTom base: ${answers.tom || ''}`;
+  const raw = await callLLM(system, user);
+  const json = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+  let obj; try { obj = JSON.parse(json); } catch (e) { throw new Error('resposta da IA não é JSON'); }
+  return { items: daypartItems(obj) };
+}
+
+function devDayparts(objetivo) {
+  const base = objetivo || 'Comunicação interna';
+  return daypartItems({
+    manha: [{ type: 'poster', variant: 'bold', kicker: 'Bom dia', titulo: base, corpo: 'Comece o dia com tudo.', cta: 'Vamos juntos', duracao: 12 }],
+    tarde: [{ type: 'poster', variant: 'aurora', kicker: 'Boa tarde', titulo: base, corpo: 'Foco no que importa.', duracao: 12 }],
+    noite: [{ type: 'poster', variant: 'minimal', kicker: 'Fim de expediente', titulo: base, corpo: 'Obrigado pelo empenho de hoje.', duracao: 12 }],
+  });
+}
+
 // Gerador local (dev): monta itens plausíveis a partir do briefing.
 function devGenerate(brief, ctx) {
   const empresa = ctx.empresa || 'nossa empresa';
@@ -240,4 +290,4 @@ function devGenerate(brief, ctx) {
   ]);
 }
 
-module.exports = { mode, generateContent, generateCampaign, rewriteText, ITEM_SCHEMA };
+module.exports = { mode, generateContent, generateCampaign, generateDayparts, rewriteText, ITEM_SCHEMA };
