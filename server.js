@@ -415,8 +415,21 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a campanha' });
+      // Referências (imagens): lê do disco e converte para base64 (visão da IA).
+      const refImages = [];
+      for (const u of ((b && b.refs) || []).slice(0, 3)) {
+        try {
+          const i = String(u).indexOf('/media/'); if (i < 0) continue;
+          const key = String(u).slice(i + '/media/'.length);
+          const full = storage.resolveLocal(key); if (!full) continue;
+          const buf = fs.readFileSync(full); if (buf.length > 5 * 1024 * 1024) continue;
+          const ext = String(key.split('.').pop() || '').toLowerCase();
+          const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+          refImages.push({ mime, data: buf.toString('base64') });
+        } catch (e) { /* ignora referência inválida */ }
+      }
       try {
-        const out = await ai.generateKit(brief, { empresa: (b && b.empresa) || '', brand: (b && b.brand) || '' });
+        const out = await ai.generateKit(brief, { empresa: (b && b.empresa) || '', brand: (b && b.brand) || '', refImages });
         return sendJson(res, 200, { mode: ai.mode(), ...out });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });

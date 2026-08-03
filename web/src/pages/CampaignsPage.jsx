@@ -8,7 +8,7 @@ import { Field, Input, Textarea, Select } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
-import { ai, library, devices, deviceConfig } from '../api.js';
+import { ai, library, devices, deviceConfig, media } from '../api.js';
 import { primaryZoneKey, defaultConfig } from '../lib/contentTypes.js';
 
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
@@ -40,6 +40,7 @@ export function CampaignsPage() {
   const [brief, setBrief] = useState('');
   const [empresa, setEmpresa] = useState('');
   const [brand, setBrand] = useState('#1e3a8a');
+  const [refs, setRefs] = useState([]);        // URLs de exemplos (referências)
   const [gen, setGen] = useState(null);        // { pieces, headline, ... } recém-gerado
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -50,10 +51,19 @@ export function CampaignsPage() {
 
   const saved = (data && data.items) || [];
 
+  async function onRefs(e) {
+    const files = Array.from(e.target.files || []); e.target.value = '';
+    if (!files.length) return;
+    setBusy(true); setMsg('');
+    const add = [];
+    for (const f of files.slice(0, 3)) { try { const up = await media.upload(f); add.push(up.url); } catch (err) { setMsg(err.message || 'Falha no upload'); } }
+    setRefs((r) => [...r, ...add].slice(0, 3));
+    setBusy(false);
+  }
   async function gerar() {
     if (!brief.trim()) return;
     setBusy(true); setMsg('');
-    try { setGen(await ai.kit({ brief, empresa, brand })); }
+    try { setGen(await ai.kit({ brief, empresa, brand, refs })); }
     catch (e) { setMsg(e.message || 'Falha ao gerar'); }
     setBusy(false);
   }
@@ -110,6 +120,23 @@ export function CampaignsPage() {
           <Field label="Cor da marca (opcional)"><input type="color" value={brand} onChange={(e) => setBrand(e.target.value)} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
           <div className="flex items-end">
             <Button variant="primary" icon={Wand2} disabled={busy || !brief.trim()} onClick={gerar}>{busy && !gen ? 'Gerando…' : 'Gerar biblioteca'}</Button>
+          </div>
+          <div className="md:col-span-3">
+            <div className="mb-1 text-2xs font-medium text-ink-2">Exemplos do cliente (opcional) — a IA imita o estilo</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="cursor-pointer rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink-2 transition hover:bg-surface-2">
+                Enviar imagens
+                <input type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={onRefs} />
+              </label>
+              {refs.map((u, i) => (
+                <div key={i} className="relative">
+                  <img src={u} alt="" className="h-10 w-10 rounded border border-line object-cover" />
+                  <button type="button" onClick={() => setRefs((r) => r.filter((_, j) => j !== i))}
+                    className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-ink text-[10px] leading-none text-white">×</button>
+                </div>
+              ))}
+              <span className="text-2xs text-ink-3">até 3 · usa Gemini visão</span>
+            </div>
           </div>
         </div>
         {msg && <div className="mx-4 mb-4 rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">{msg}</div>}
