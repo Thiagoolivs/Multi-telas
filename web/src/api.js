@@ -54,6 +54,7 @@ export const ai = {
   generate: (brief, opts) => api('POST', '/api/ai/generate-content', { brief, ...(opts || {}) }),
   campaign: (payload) => api('POST', '/api/ai/generate-campaign', payload),
   composition: (payload) => api('POST', '/api/ai/generate-composition', payload),
+  kit: (payload) => api('POST', '/api/ai/generate-kit', payload),
 };
 
 export const birthdays = {

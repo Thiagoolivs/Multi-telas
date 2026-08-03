@@ -376,6 +376,22 @@ async function handleApi(req, res, pathname, query) {
     return sendJson(res, 200, out);
   }
 
+  /* ----- IA: kit de campanha (biblioteca multi-formato) ----- */
+  if (parts[1] === 'ai' && parts[2] === 'generate-kit') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:' + sess.tenant_id, 30, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de gerações por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const brief = b && b.brief;
+      if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a campanha' });
+      try {
+        const out = await ai.generateKit(brief, { empresa: (b && b.empresa) || '', brand: (b && b.brand) || '' });
+        return sendJson(res, 200, { mode: ai.mode(), ...out });
+      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+    });
+  }
+
   /* ----- IA: layout de composição (editor livre) ----- */
   if (parts[1] === 'ai' && parts[2] === 'generate-composition') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
