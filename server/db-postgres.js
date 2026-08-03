@@ -73,6 +73,11 @@ async function init() {
       dia INTEGER, mes INTEGER, cargo TEXT, foto TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_birthdays_tenant ON birthdays(tenant_id);
+    CREATE TABLE IF NOT EXISTS library (
+      id TEXT PRIMARY KEY, tenant_id TEXT, campaign TEXT, canal TEXT, formato TEXT,
+      label TEXT, item TEXT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_library_tenant ON library(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_devices_tenant ON devices(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_devices_code ON devices(code);
     CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
@@ -276,6 +281,34 @@ async function countBirthdays(tenantId) {
   return Number(r.rows[0].n);
 }
 
+/* ----- Biblioteca de peças (kits de campanha) ----- */
+async function addLibrary(tenantId, campaign, pieces) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const p of pieces) {
+      await client.query('INSERT INTO library (id, tenant_id, campaign, canal, formato, label, item, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        [rid(14), tenantId, String(campaign || '').slice(0, 120), p.canal || '', p.formato || '', p.label || '', JSON.stringify(p.item || {}), Date.now()]);
+    }
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
+  return pieces.length;
+}
+function mapLibRow(r) { let item = {}; try { item = JSON.parse(r.item); } catch (e) {} return { id: r.id, campaign: r.campaign, canal: r.canal, formato: r.formato, label: r.label, item, createdAt: Number(r.created_at) }; }
+async function listLibrary(tenantId) {
+  const r = await pool.query('SELECT id, campaign, canal, formato, label, item, created_at FROM library WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
+  return r.rows.map(mapLibRow);
+}
+async function getLibraryItem(id, tenantId) {
+  const r = await pool.query('SELECT * FROM library WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return r.rows[0] ? mapLibRow(r.rows[0]) : null;
+}
+async function updateLibraryItem(id, tenantId, item, label) {
+  const r = await pool.query('UPDATE library SET item = $1, label = $2 WHERE id = $3 AND tenant_id = $4', [JSON.stringify(item || {}), label || '', id, tenantId]);
+  return r.rowCount;
+}
+async function deleteLibraryItem(id, tenantId) { await pool.query('DELETE FROM library WHERE id = $1 AND tenant_id = $2', [id, tenantId]); }
+
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
@@ -292,5 +325,6 @@ module.exports = {
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
   getTenant, getTenantByCustomer, setTenantBilling,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
-  replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays, rid,
+  replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
+  addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
 };

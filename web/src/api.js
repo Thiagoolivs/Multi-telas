@@ -57,6 +57,13 @@ export const ai = {
   kit: (payload) => api('POST', '/api/ai/generate-kit', payload),
 };
 
+export const library = {
+  list: () => api('GET', '/api/library'),
+  save: (campaign, pieces) => api('POST', '/api/library', { campaign, pieces }),
+  update: (id, item, label) => api('PUT', '/api/library/' + id, { item, label }),
+  remove: (id) => api('DELETE', '/api/library/' + id),
+};
+
 export const birthdays = {
   list: () => api('GET', '/api/birthdays'),
   import: (rows) => api('POST', '/api/birthdays/import', { rows }),
