@@ -11,6 +11,10 @@ pronto; a UI ("gerar com IA") entra no editor React depois.
 Resposta: `{ "mode": "gemini"|"groq"|"anthropic"|"dev", "items": [ ...itens do config ] }`.
 Rate limit: 30/h por conta.
 
+## Variações por horário (dayparts)
+`POST /api/ai/generate-dayparts` (login) · body `{ "answers": { "objetivo"|"brief", "publico"?, "tom"? }, "empresa"?, "tema"? }`.
+Resposta `{ "mode", "items": [...] }` — o mesmo tema em 3 períodos (manhã 05–12 / tarde 12–18 / fim de expediente 18–24), cada item já com `agendamento` de hora. O player mostra só o da janela atual (custo zero). Rate limit 30/h.
+
 ## Reescrever para caber (legível à distância)
 `POST /api/ai/rewrite` (login) · body `{ "text": "...", "campo": "titulo"|"frase"|"corpo", "tom": "...", "max": number? }`.
 Resposta `{ "mode", "text" }`. Encurta/reescreve mantendo o sentido e garante o teto de caracteres (título 42 / frase 90 / corpo 130 por padrão). Rate limit 30/h.
