@@ -269,8 +269,46 @@ function kitPiece(fmt, d) {
   return { type: 'composicao', bg: { kind: 'cor', cor: 'linear-gradient(150deg, ' + d.brand + ', rgba(0,0,0,.62))' }, elementos: els, formato: fmt.formato, duracao: 12 };
 }
 
+// Gemini com imagens (visão): extrai identidade das referências do cliente.
+async function geminiVision(system, userText, images) {
+  const parts = [{ text: userText }].concat(images.map((im) => ({ inline_data: { mime_type: im.mime, data: im.data } })));
+  const list = [process.env.GEMINI_MODEL, ...GEMINI_CANDIDATES].filter((m, i, a) => m && a.indexOf(m) === i);
+  let lastErr;
+  for (const model of list) {
+    try {
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent';
+      const res = await fetch(url, {
+        method: 'POST', headers: { 'x-goog-api-key': GEMINI_KEY, 'content-type': 'application/json' },
+        body: JSON.stringify({ system_instruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 2048, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } } }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const cand = data.candidates && data.candidates[0];
+        const text = ((cand && cand.content && cand.content.parts) || []).map((p) => p.text || '').join('').trim();
+        if (text) return text;
+        lastErr = new Error('vazio'); continue;
+      }
+      const msg = (data && data.error && data.error.message) || ('Gemini HTTP ' + res.status);
+      lastErr = new Error(msg); if (!geminiRetryable(msg)) throw lastErr;
+    } catch (e) { lastErr = e; if (!geminiRetryable(e.message)) throw e; }
+  }
+  throw lastErr || new Error('visão falhou');
+}
+
 async function generateKit(brief, ctx) {
   brief = String(brief || '').slice(0, 600); ctx = ctx || {};
+  // Referências do cliente (imagens): a IA extrai cor de marca + estilo.
+  let styleNote = '';
+  if (mode() !== 'dev' && Array.isArray(ctx.refImages) && ctx.refImages.length) {
+    try {
+      const v = parseAiJson(await geminiVision(
+        'Você é diretor de arte. Analise as imagens de referência da marca/cliente e extraia a identidade visual.',
+        'Extraia a cor de marca predominante e o estilo/vibe. Responda APENAS JSON: {"brand":"#hex","vibe":"3 a 5 adjetivos de estilo"}.',
+        ctx.refImages.slice(0, 3)));
+      if (isHex(v.brand)) ctx.brand = v.brand.startsWith('#') ? v.brand : '#' + v.brand;
+      if (v.vibe) styleNote = String(v.vibe).slice(0, 120);
+    } catch (e) { /* segue sem as referências */ }
+  }
   let d;
   if (mode() === 'dev') {
     d = { brand: ctx.brand || '#1e3a8a', kicker: ctx.empresa || 'Campanha', headline: (brief.split(/[.\n]/)[0] || 'Sua campanha').slice(0, 48), sub: 'Mensagem de apoio da campanha.', cta: 'Saiba mais' };
@@ -279,7 +317,9 @@ async function generateKit(brief, ctx) {
       'Você é diretor de arte de uma marca séria e sofisticada. A partir do briefing, defina a IDENTIDADE de uma campanha: ' +
       'uma cor de marca forte e elegante e uma copy curta e profissional (nada de clichê ou exclamação em excesso). ' +
       'Responda APENAS com JSON: {"brand":"#hex","kicker":"etiqueta curta (marca ou tema)","headline":"título forte (2 a 6 palavras)","sub":"subtítulo curto","cta":"chamada curta"}. Português do Brasil.';
-    const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor da marca (se houver): ${ctx.brand || '(escolha uma elegante e coerente)'}\nBriefing: ${brief}`;
+    const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor da marca (se houver): ${ctx.brand || '(escolha uma elegante e coerente)'}` +
+      (styleNote ? `\nEstilo desejado (das referências do cliente): ${styleNote}` : '') +
+      `\nBriefing: ${brief}`;
     const p = parseAiJson(await callLLM(system, user));
     d = {
       brand: isHex(p.brand) ? (p.brand.startsWith('#') ? p.brand : '#' + p.brand) : (ctx.brand || '#1e3a8a'),
