@@ -11,6 +11,10 @@ pronto; a UI ("gerar com IA") entra no editor React depois.
 Resposta: `{ "mode": "gemini"|"groq"|"anthropic"|"dev", "items": [ ...itens do config ] }`.
 Rate limit: 30/h por conta.
 
+## Arte do dia comemorativo
+`POST /api/ai/generate-seasonal` (login) · body `{ "season": { "label": "Dia do Trabalho", "emoji": "🛠️" }, "empresa"?, "tema"? }`.
+Resposta `{ "mode", "items": [...] }` — 1-2 posters temáticos na cor da marca. O cliente descobre a data de hoje pelo `js/seasons.js` (`MTSeasons.todaySeason()`) e passa o `label`/`emoji`. Rate limit 30/h.
+
 ## Variações por horário (dayparts)
 `POST /api/ai/generate-dayparts` (login) · body `{ "answers": { "objetivo"|"brief", "publico"?, "tom"? }, "empresa"?, "tema"? }`.
 Resposta `{ "mode", "items": [...] }` — o mesmo tema em 3 períodos (manhã 05–12 / tarde 12–18 / fim de expediente 18–24), cada item já com `agendamento` de hora. O player mostra só o da janela atual (custo zero). Rate limit 30/h.
