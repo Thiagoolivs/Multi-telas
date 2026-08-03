@@ -322,6 +322,22 @@ async function handleApi(req, res, pathname, query) {
     });
   }
 
+  /* ----- IA: arte do dia comemorativo ----- */
+  if (parts[1] === 'ai' && parts[2] === 'generate-seasonal') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:' + sess.tenant_id, 30, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de gerações por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const season = (b && b.season) || (b && b.label);
+      if (!season) return sendJson(res, 400, { error: 'informe a data comemorativa' });
+      try {
+        const out = await ai.generateSeasonal(season, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '' });
+        return sendJson(res, 200, { mode: ai.mode(), ...out });
+      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+    });
+  }
+
   /* ----- IA: variações por horário (manhã/tarde/fim de expediente) ----- */
   if (parts[1] === 'ai' && parts[2] === 'generate-dayparts') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });

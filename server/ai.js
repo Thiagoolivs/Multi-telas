@@ -230,6 +230,34 @@ function devCampaign(answers, ctx, zones) {
   return clampCampaign({ followupQuestion: null, settings: {}, zonas }, zones);
 }
 
+/* ---------------- Arte do dia comemorativo ----------------
+ * Recebe a data de hoje (o cliente descobre pelo seasons.js) e gera 1-2 peças
+ * temáticas na cor da marca. Reaproveita o tipo "poster" (custo zero no player). */
+async function generateSeasonal(season, ctx) {
+  ctx = ctx || {};
+  const label = String((season && season.label) || season || '').slice(0, 60).trim();
+  const emoji = String((season && season.emoji) || '').slice(0, 4);
+  if (!label) throw new Error('informe a data comemorativa');
+  if (mode() === 'dev') return { items: devSeasonal(label) };
+
+  const system =
+    'Você cria peças para telas corporativas celebrando uma DATA comemorativa. ' +
+    'Gere de 1 a 2 posters curtos, com saudação calorosa e adequada à empresa (sem clichê exagerado). ' +
+    'Use a cor da marca (não defina "cor"). Responda APENAS com um array JSON. ' + ITEM_SCHEMA;
+  const user = `Empresa: ${ctx.empresa || 'A empresa'}. Tema: ${ctx.tema || 'padrão'}.\n` +
+    `Data comemorativa: ${label} ${emoji}`.trim();
+  const text = await callLLM(system, user);
+  const json = text.slice(text.indexOf('['), text.lastIndexOf(']') + 1);
+  let arr; try { arr = JSON.parse(json); } catch (e) { throw new Error('resposta da IA não é JSON'); }
+  return { items: clampItems(arr) };
+}
+
+function devSeasonal(label) {
+  return clampItems([
+    { type: 'poster', variant: 'bold', kicker: 'Hoje', titulo: label, corpo: 'Um dia especial para celebrar com você.', cta: 'Feliz data!', duracao: 12 },
+  ]);
+}
+
 /* ---------------- Variações por horário (dayparts) ----------------
  * Uma campanha vira 3 versões (manhã / tarde / fim de expediente) com saudação
  * e tom adaptados. Cada item sai com agendamento de hora — o player já mostra
@@ -290,4 +318,4 @@ function devGenerate(brief, ctx) {
   ]);
 }
 
-module.exports = { mode, generateContent, generateCampaign, generateDayparts, rewriteText, ITEM_SCHEMA };
+module.exports = { mode, generateContent, generateCampaign, generateDayparts, generateSeasonal, rewriteText, ITEM_SCHEMA };
