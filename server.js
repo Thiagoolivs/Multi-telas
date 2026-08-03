@@ -56,6 +56,27 @@ function inviteCode() { return randomCode(8); }
 const PAIR_ONLINE_MS = Number(process.env.PAIR_ONLINE_MS) || 10 * 60 * 1000;
 // Papéis: owner (dono) > admin > member. Gestão de equipe: owner e admin.
 function canManageTeam(role) { return role === 'owner' || role === 'admin'; }
+
+// Normaliza uma linha da planilha de aniversariantes. Aceita dia/mes numéricos
+// ou um campo "nascimento" (DD/MM ou DD/MM/AAAA). Descarta linhas sem nome/data.
+function normBirthday(r) {
+  if (!r) return null;
+  const nome = String(r.nome || '').trim().slice(0, 80);
+  if (!nome) return null;
+  let dia = parseInt(r.dia, 10), mes = parseInt(r.mes, 10);
+  if ((!dia || !mes) && r.nascimento) {
+    const m = String(r.nascimento).match(/(\d{1,2})[\/\-.](\d{1,2})/);
+    if (m) { dia = parseInt(m[1], 10); mes = parseInt(m[2], 10); }
+  }
+  if (!(dia >= 1 && dia <= 31 && mes >= 1 && mes <= 12)) return null;
+  return {
+    nome,
+    matricula: String(r.matricula || '').trim().slice(0, 40),
+    cargo: String(r.cargo || '').trim().slice(0, 80),
+    foto: String(r.foto || '').trim().slice(0, 400),
+    dia, mes,
+  };
+}
 function sendJson(res, status, obj, extraHeaders) {
   res.writeHead(status, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, extraHeaders || {}));
   res.end(JSON.stringify(obj));
@@ -320,6 +341,32 @@ async function handleApi(req, res, pathname, query) {
         return sendJson(res, 200, { mode: ai.mode(), items });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });
+  }
+
+  /* ----- Aniversariantes: importar planilha / listar / limpar ----- */
+  if (parts[1] === 'birthdays') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method === 'GET') {
+      const list = await db.listBirthdays(sess.tenant_id);
+      return sendJson(res, 200, { count: list.length, birthdays: list });
+    }
+    if (req.method === 'DELETE') {
+      if (!canManageTeam(sess.role)) return sendJson(res, 403, { error: 'sem permissão' });
+      await db.clearBirthdays(sess.tenant_id);
+      return sendJson(res, 200, { ok: true });
+    }
+    if (parts[2] === 'import' && req.method === 'POST') {
+      if (!canManageTeam(sess.role)) return sendJson(res, 403, { error: 'sem permissão' });
+      return readBody(req, res, async (b) => {
+        const raw = (b && b.rows) || [];
+        if (!Array.isArray(raw) || !raw.length) return sendJson(res, 400, { error: 'envie as linhas (rows)' });
+        const rows = raw.map(normBirthday).filter(Boolean).slice(0, 2000);
+        if (!rows.length) return sendJson(res, 400, { error: 'nenhuma linha válida (precisa de nome e data)' });
+        const n = await db.replaceBirthdays(sess.tenant_id, rows);
+        return sendJson(res, 200, { ok: true, imported: n, ignored: raw.length - rows.length });
+      });
+    }
+    return sendJson(res, 404, { error: 'rota de aniversariantes não encontrada' });
   }
 
   /* ----- IA: arte do dia comemorativo ----- */
