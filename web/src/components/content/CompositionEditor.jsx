@@ -1,9 +1,9 @@
 import React, { useRef, useState, useCallback } from 'react';
 import Moveable from 'react-moveable';
-import { ImagePlus, Type, Trash2, ChevronUp, ChevronDown, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical } from 'lucide-react';
+import { ImagePlus, Type, Trash2, ChevronUp, ChevronDown, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical, Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
-import { media } from '../../api.js';
+import { media, ai } from '../../api.js';
 
 const ASPECTS = [
   { id: '16/9', label: 'Retangular', icon: RectangleHorizontal, ratio: 16 / 9 },
@@ -26,6 +26,9 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [aspect, setAspect] = useState(v.formato || '16/9');
   const [dur, setDur] = useState(v.duracao != null ? v.duracao : 12);
   const [busy, setBusy] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiBrief, setAiBrief] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
 
   const canvasRef = useRef(null);
   const nodes = useRef({});          // id -> DOM node (alvo do Moveable)
@@ -61,6 +64,21 @@ export function CompositionEditor({ value, onClose, onSave }) {
     try { const up = await media.upload(f); setBg({ kind: 'imagem', src: up.url }); } catch (err) { alert(err.message || 'Falha no upload'); }
     setBusy(false);
   }
+  async function runAi() {
+    if (!aiBrief.trim()) return;
+    setAiBusy(true);
+    try {
+      const brand = bg.kind === 'cor' ? bg.cor : '';
+      const res = await ai.composition({ brief: aiBrief, brand });
+      if (res.bg && res.bg.cor) setBg({ kind: 'cor', cor: res.bg.cor });
+      // mantém as imagens do usuário; troca os textos pelos gerados.
+      const imgs = els.filter((e) => e.tipo !== 'texto');
+      const texts = withIds((res.elementos || []).map((e) => ({ ...e, tipo: 'texto' })));
+      setEls([...imgs, ...texts]);
+      setSel(null); setAiOpen(false);
+    } catch (err) { alert(err.message || 'Falha na IA'); }
+    setAiBusy(false);
+  }
   const removeSel = () => { if (!sel) return; setEls((a) => a.filter((e) => e.id !== sel)); setSel(null); };
   const layer = (d) => patchSel({ z: Math.max(0, (selEl.z || 0) + d) });
 
@@ -82,6 +100,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
       {/* Barra superior */}
       <div className="flex items-center gap-2 border-b border-line bg-surface px-4 py-2.5">
         <span className="mr-2 text-sm font-semibold text-ink">Editor de composição</span>
+        <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => setAiOpen((o) => !o)}>IA</Button>
         <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Imagem</Button>
         <Button size="sm" variant="secondary" icon={Type} onClick={addText}>Texto</Button>
         <div className="mx-2 h-5 w-px bg-line" />
@@ -96,6 +115,17 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <Button size="sm" variant="primary" icon={Save} onClick={save}>Salvar</Button>
         <input ref={imgInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPickImage} />
       </div>
+
+      {aiOpen && (
+        <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-2">
+          <Sparkles size={15} className="text-accent" />
+          <input autoFocus value={aiBrief} onChange={(e) => setAiBrief(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi(); }}
+            placeholder="Descreva a peça (ex.: promoção de skate 30% OFF, jovem e vibrante)"
+            className="flex-1 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3" />
+          <span className="text-2xs text-ink-3">a IA monta fundo + textos; sua imagem fica por cima</span>
+          <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || !aiBrief.trim()} onClick={runAi}>{aiBusy ? 'Gerando…' : 'Gerar'}</Button>
+        </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
         {/* Palco */}
