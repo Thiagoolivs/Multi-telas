@@ -26,13 +26,13 @@ Resposta `{ "mode", "text" }`. Encurta/reescreve mantendo o sentido e garante o 
 ## Provider (agnóstico)
 `AI_PROVIDER` força o provider; senão escolhe pela chave presente
 (ordem de detecção: gemini → groq → anthropic → dev).
-- **gemini** — `GEMINI_API_KEY` (ou `GOOGLE_API_KEY`). Opcional `GEMINI_MODEL`, padrão **`gemini-2.5-flash`** (rápido/barato, ótimo para copy). Use `gemini-2.5-pro` para máxima qualidade. Usa `responseMimeType: application/json` → JSON limpo.
+- **gemini** — `GEMINI_API_KEY` (ou `GOOGLE_API_KEY`). Opcional `GEMINI_MODEL`, padrão **`gemini-2.0-flash`** (rápido/barato, ótimo para copy). Use `gemini-2.5-pro` para máxima qualidade. Usa `responseMimeType: application/json` → JSON limpo.
 - **groq** — `GROQ_API_KEY` (opcional `GROQ_MODEL`, padrão `llama-3.3-70b-versatile`). API compatível com OpenAI, rápido/barato.
 - **anthropic** — `ANTHROPIC_API_KEY` (opcional `ANTHROPIC_MODEL`).
 - **dev** — sem chave: gerador local, para testar o fluxo.
 
 ### Ligar o Gemini (Railway)
-Em Variables adicione `GEMINI_API_KEY=<sua chave>` (opcional `GEMINI_MODEL=gemini-2.5-flash`) e redeploy. Pronto — a geração passa a usar o Gemini.
+Em Variables adicione `GEMINI_API_KEY=<sua chave>` (opcional `GEMINI_MODEL=gemini-2.0-flash`) e redeploy. Pronto — a geração passa a usar o Gemini.
 
 Imagens ficam para depois; por ora só texto.
 
