@@ -68,6 +68,11 @@ async function init() {
       key TEXT, url TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
+    CREATE TABLE IF NOT EXISTS birthdays (
+      id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, matricula TEXT,
+      dia INTEGER, mes INTEGER, cargo TEXT, foto TEXT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_birthdays_tenant ON birthdays(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_devices_tenant ON devices(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_devices_code ON devices(code);
     CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
@@ -236,6 +241,41 @@ async function sumMediaBytes(tenantId) {
   return Number(r.rows[0].n);
 }
 
+/* ----- Aniversariantes ----- */
+// Substitui toda a relação do tenant de uma vez (re-importação da planilha).
+async function replaceBirthdays(tenantId, rows) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM birthdays WHERE tenant_id = $1', [tenantId]);
+    for (const r of rows) {
+      await client.query(
+        'INSERT INTO birthdays (id, tenant_id, nome, matricula, dia, mes, cargo, foto, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+        [rid(14), tenantId, r.nome, r.matricula || '', r.dia, r.mes, r.cargo || '', r.foto || '', Date.now()]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK'); throw e;
+  } finally {
+    client.release();
+  }
+  return rows.length;
+}
+async function listBirthdays(tenantId) {
+  const r = await pool.query('SELECT id, nome, matricula, dia, mes, cargo, foto FROM birthdays WHERE tenant_id = $1 ORDER BY mes, dia, nome', [tenantId]);
+  return r.rows;
+}
+async function clearBirthdays(tenantId) { await pool.query('DELETE FROM birthdays WHERE tenant_id = $1', [tenantId]); }
+async function setBirthdayPhoto(tenantId, matricula, url) {
+  const r = await pool.query('UPDATE birthdays SET foto = $1 WHERE tenant_id = $2 AND matricula = $3', [url, tenantId, String(matricula)]);
+  return r.rowCount;
+}
+async function countBirthdays(tenantId) {
+  const r = await pool.query('SELECT COUNT(*)::int AS n FROM birthdays WHERE tenant_id = $1', [tenantId]);
+  return Number(r.rows[0].n);
+}
+
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
@@ -251,5 +291,6 @@ module.exports = {
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
   getTenant, getTenantByCustomer, setTenantBilling,
-  createMedia, listMedia, getMedia, removeMedia, sumMediaBytes, rid,
+  createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
+  replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays, rid,
 };

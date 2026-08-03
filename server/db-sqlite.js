@@ -42,6 +42,11 @@ db.exec(`
     key TEXT, url TEXT, created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
+  CREATE TABLE IF NOT EXISTS birthdays (
+    id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, matricula TEXT,
+    dia INTEGER, mes INTEGER, cargo TEXT, foto TEXT, created_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_birthdays_tenant ON birthdays(tenant_id);
   CREATE INDEX IF NOT EXISTS idx_devices_tenant ON devices(tenant_id);
   CREATE INDEX IF NOT EXISTS idx_devices_code ON devices(code);
   CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
@@ -96,6 +101,11 @@ const q = {
   mediaById: db.prepare('SELECT * FROM media WHERE id = ?'),
   deleteMedia: db.prepare('DELETE FROM media WHERE id = ? AND tenant_id = ?'),
   sumMedia: db.prepare('SELECT COALESCE(SUM(size),0) AS n FROM media WHERE tenant_id = ?'),
+  insertBirthday: db.prepare('INSERT INTO birthdays (id, tenant_id, nome, matricula, dia, mes, cargo, foto, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'),
+  birthdaysByTenant: db.prepare('SELECT id, nome, matricula, dia, mes, cargo, foto FROM birthdays WHERE tenant_id = ? ORDER BY mes, dia, nome'),
+  deleteBirthdays: db.prepare('DELETE FROM birthdays WHERE tenant_id = ?'),
+  setBirthdayPhoto: db.prepare('UPDATE birthdays SET foto = ? WHERE tenant_id = ? AND matricula = ?'),
+  countBirthdays: db.prepare('SELECT COUNT(*) AS n FROM birthdays WHERE tenant_id = ?'),
 };
 
 async function init() { /* schema já criado no require */ }
@@ -186,6 +196,24 @@ async function getMedia(id) { return q.mediaById.get(id) || null; }
 async function removeMedia(id, tenantId) { q.deleteMedia.run(id, tenantId); }
 async function sumMediaBytes(tenantId) { return Number(q.sumMedia.get(tenantId).n); }
 
+/* ----- Aniversariantes ----- */
+// Substitui toda a relação do tenant de uma vez (re-importação da planilha).
+async function replaceBirthdays(tenantId, rows) {
+  db.exec('BEGIN');
+  try {
+    q.deleteBirthdays.run(tenantId);
+    for (const r of rows) {
+      q.insertBirthday.run(rid(14), tenantId, r.nome, r.matricula || '', r.dia, r.mes, r.cargo || '', r.foto || '', Date.now());
+    }
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  return rows.length;
+}
+async function listBirthdays(tenantId) { return q.birthdaysByTenant.all(tenantId); }
+async function clearBirthdays(tenantId) { q.deleteBirthdays.run(tenantId); }
+async function setBirthdayPhoto(tenantId, matricula, url) { return q.setBirthdayPhoto.run(url, tenantId, String(matricula)).changes; }
+async function countBirthdays(tenantId) { return Number(q.countBirthdays.get(tenantId).n); }
+
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
@@ -201,5 +229,6 @@ module.exports = {
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
   getTenant, getTenantByCustomer, setTenantBilling,
-  createMedia, listMedia, getMedia, removeMedia, sumMediaBytes, rid,
+  createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
+  replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays, rid,
 };
