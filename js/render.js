@@ -135,6 +135,7 @@
     promo: renderPromo,
     social: renderSocial,
     poster: renderPoster,
+    composicao: renderComposicao,
     web: renderWeb,
     qrcode: renderQr,
   };
@@ -1180,6 +1181,50 @@
     return { el, duration: item.duracao || 12 };
   }
 
+  /* ---------- Composição (editor tipo Canva) ----------
+   * Uma tela livre: fundo (cor/imagem) + elementos posicionados. Cada elemento
+   * guarda x/y/w/h em % da zona + rotação (graus) + camada (z) → escala para
+   * qualquer formato. Renderiza só com position/transform (leve). */
+  function renderComposicao(item) {
+    const el = div('mt-slide mt-comp');
+    const bg = item.bg || {};
+    if (bg.kind === 'imagem' && bg.src) {
+      el.style.backgroundImage = 'url("' + String(bg.src).replace(/"/g, '') + '")';
+    } else if (bg.kind === 'cor' && bg.cor) {
+      el.style.background = bg.cor;
+    } // senão herda o vidro/tema da zona
+    const els = (Array.isArray(item.elementos) ? item.elementos : []).slice()
+      .sort((a, b) => (a.z || 0) - (b.z || 0));
+    els.forEach((e) => {
+      const box = div('mt-comp-el mt-comp-' + (e.tipo === 'texto' ? 'texto' : 'imagem'));
+      box.style.left = (e.x || 0) + '%';
+      box.style.top = (e.y || 0) + '%';
+      box.style.width = (e.w != null ? e.w : 25) + '%';
+      box.style.height = (e.h != null ? e.h : 25) + '%';
+      if (e.rot) box.style.transform = 'rotate(' + e.rot + 'deg)';
+      box.style.opacity = (e.opacidade != null ? e.opacidade : 1);
+      if (e.tipo === 'texto') {
+        const t = div('mt-comp-text');
+        t.textContent = e.text || '';
+        if (e.cor) t.style.color = e.cor;
+        if (e.align) t.style.textAlign = e.align;
+        if (e.peso) t.style.fontWeight = e.peso;
+        if (e.tamanho) t.style.fontSize = e.tamanho + 'cqw';
+        box.appendChild(t);
+      } else {
+        const img = document.createElement('img');
+        img.className = 'mt-comp-img';
+        img.src = e.src || '';
+        img.alt = '';
+        img.style.objectFit = e.fit === 'cover' ? 'cover' : 'contain';
+        if (e.radius) img.style.borderRadius = e.radius + 'cqw';
+        box.appendChild(img);
+      }
+      el.appendChild(box);
+    });
+    return { el, duration: item.duracao || 12 };
+  }
+
   function renderWeb(item) {
     const el = div('mt-slide mt-web');
     const iframe = document.createElement('iframe');
@@ -1244,6 +1289,7 @@
     { type: 'kpi', label: 'Indicador (KPI)', icon: 'chart' },
     { type: 'promo', label: 'Promoção / Produto', icon: 'tag' },
     { type: 'poster', label: 'Arte / Poster (IA)', icon: 'image' },
+    { type: 'composicao', label: 'Composição (editor livre)', icon: 'image' },
     { type: 'social', label: 'Redes Sociais', icon: 'share' },
     { type: 'clock', label: 'Relógio', icon: 'clock' },
     { type: 'weather', label: 'Clima (simples)', icon: 'cloud' },
