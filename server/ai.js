@@ -92,11 +92,18 @@ async function callGroq(system, user) {
 }
 
 // Gemini — Google Generative Language API. Modelo por env (GEMINI_MODEL).
-// Padrão gemini-2.0-flash (amplamente disponível). Se a conta tiver acesso,
-// use gemini-2.5-flash / gemini-2.5-pro para melhor qualidade.
+// Os nomes fixos (gemini-2.5-flash, 2.0-flash) mudam de disponibilidade por
+// conta e passam a dar "no longer available". Por isso usamos o alias
+// "gemini-flash-latest" (aponta pro flash atual) e caímos por uma lista de
+// candidatos quando o modelo escolhido não existe/está indisponível.
 // responseMimeType garante JSON limpo.
-async function callGemini(system, user) {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const GEMINI_CANDIDATES = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-pro-latest', 'gemini-1.5-flash'];
+
+function geminiUnavailable(msg) {
+  return /no longer available|not available|not found|is not supported|unsupported|does not exist|permission|404|400/i.test(msg || '');
+}
+
+async function geminiOnce(model, system, user) {
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
     encodeURIComponent(model) + ':generateContent';
   const res = await fetch(url, {
@@ -112,6 +119,17 @@ async function callGemini(system, user) {
   if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Gemini HTTP ' + res.status));
   const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
   return parts.map((p) => p.text || '').join('').trim();
+}
+
+async function callGemini(system, user) {
+  // Tenta o modelo do env (se houver) primeiro; depois os candidatos, sem repetir.
+  const list = [process.env.GEMINI_MODEL, ...GEMINI_CANDIDATES].filter((m, i, a) => m && a.indexOf(m) === i);
+  let lastErr;
+  for (const model of list) {
+    try { return await geminiOnce(model, system, user); }
+    catch (e) { lastErr = e; if (!geminiUnavailable(e.message)) throw e; } // erro real (rede/JSON): não insiste
+  }
+  throw new Error('Nenhum modelo Gemini disponível para esta chave. Defina GEMINI_MODEL para um modelo que sua conta acesse (ex.: gemini-flash-latest) ou use AI_PROVIDER=groq. Detalhe: ' + (lastErr && lastErr.message));
 }
 
 // Anthropic — Claude via API de mensagens. Modelo por env.
