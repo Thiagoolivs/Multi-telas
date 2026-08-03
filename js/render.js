@@ -1186,6 +1186,16 @@
    * Uma tela livre: fundo (cor/imagem) + elementos posicionados. Cada elemento
    * guarda x/y/w/h em % da zona + rotação (graus) + camada (z) → escala para
    * qualquer formato. Renderiza só com position/transform (leve). */
+  // Preenchimento de forma: cor sólida (string) ou gradiente { grad, ang, cores }.
+  function fillToCss(fill) {
+    if (!fill) return 'rgba(255,255,255,.14)';
+    if (typeof fill === 'string') return fill;
+    const c = Array.isArray(fill.cores) && fill.cores.length ? fill.cores : ['#888888', '#444444'];
+    const c2 = c[1] || c[0];
+    if (fill.grad === 'radial') return 'radial-gradient(circle at 50% 40%, ' + c[0] + ', ' + c2 + ')';
+    return 'linear-gradient(' + (fill.ang != null ? fill.ang : 150) + 'deg, ' + c[0] + ', ' + c2 + ')';
+  }
+
   function renderComposicao(item) {
     const el = div('mt-slide mt-comp');
     const bg = item.bg || {};
@@ -1211,7 +1221,11 @@
         if (e.align) t.style.textAlign = e.align;
         if (e.peso) t.style.fontWeight = e.peso;
         if (e.tamanho) t.style.fontSize = e.tamanho + 'cqw';
+        if (e.sombra) t.style.textShadow = '0 2px 14px rgba(0,0,0,.45)';
         box.appendChild(t);
+      } else if (e.tipo === 'forma') {
+        box.style.background = fillToCss(e.fill);
+        box.style.borderRadius = e.shape === 'ellipse' ? '50%' : ((e.radius || 0) + '%');
       } else {
         const img = document.createElement('img');
         img.className = 'mt-comp-img';
