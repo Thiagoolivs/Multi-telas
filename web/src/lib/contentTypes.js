@@ -179,6 +179,12 @@ export const CONTENT_TYPES = {
     make: () => ({ type: 'weatherpro', cidade: 'São Paulo', duracao: 0 }),
     summary: (i) => i.cidade || 'Clima',
   },
+  composicao: {
+    label: 'Composição (editor livre)', icon: ImageIcon, group: 'Mídia',
+    fields: [DUR], // os elementos são editados no editor visual (tela cheia)
+    make: () => ({ type: 'composicao', bg: { kind: 'cor', cor: '#0a1020' }, elementos: [], duracao: 12 }),
+    summary: (i) => 'Composição (' + ((i.elementos && i.elementos.length) || 0) + ' elemento(s))',
+  },
   birthdayauto: {
     label: 'Aniversariantes (automático)', icon: Cake, group: 'Equipe',
     fields: [
@@ -194,7 +200,7 @@ export const CONTENT_TYPES = {
   },
 };
 
-export const CONTENT_ORDER = ['text', 'announce', 'quote', 'promo', 'kpi', 'social', 'image', 'video', 'youtube', 'web', 'qrcode', 'weatherpro', 'birthdayauto'];
+export const CONTENT_ORDER = ['text', 'announce', 'quote', 'promo', 'kpi', 'composicao', 'social', 'image', 'video', 'youtube', 'web', 'qrcode', 'weatherpro', 'birthdayauto'];
 
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;
