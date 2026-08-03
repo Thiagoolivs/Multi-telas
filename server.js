@@ -369,6 +369,13 @@ async function handleApi(req, res, pathname, query) {
     return sendJson(res, 404, { error: 'rota de aniversariantes não encontrada' });
   }
 
+  /* ----- IA: diagnóstico (qual provider e o que a IA respondeu) ----- */
+  if (parts[1] === 'ai' && parts[2] === 'diagnose') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const out = await ai.diagnose();
+    return sendJson(res, 200, out);
+  }
+
   /* ----- IA: arte do dia comemorativo ----- */
   if (parts[1] === 'ai' && parts[2] === 'generate-seasonal') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });

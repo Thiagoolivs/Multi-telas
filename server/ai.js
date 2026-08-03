@@ -119,26 +119,44 @@ async function callGroq(system, user) {
 // Ordem de preferência (2026): 3.6-flash é o GA atual; -latest é o alias seguro.
 const GEMINI_CANDIDATES = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-pro-latest'];
 
-function geminiUnavailable(msg) {
-  return /no longer available|not available|not found|is not supported|unsupported|does not exist|permission|404|400/i.test(msg || '');
+// Erro em que vale tentar OUTRO modelo (indisponível/transitório/vazio).
+function geminiRetryable(msg) {
+  return /no longer available|not available|not found|is not supported|unsupported|does not exist|vazio|overloaded|unavailable|internal|quota|rate|429|500|503|404/i.test(msg || '');
 }
+// Erro do campo thinkingConfig (modelo não-thinking): refaz sem ele.
+function thinkingRejected(msg) { return /thinking|unknown name|invalid.*(field|argument)|not supported/i.test(msg || ''); }
 
 async function geminiOnce(model, system, user) {
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
     encodeURIComponent(model) + ':generateContent';
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'x-goog-api-key': GEMINI_KEY, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 2048, responseMimeType: 'application/json' },
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Gemini HTTP ' + res.status));
-  const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
-  return parts.map((p) => p.text || '').join('').trim();
+  const base = { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: 'application/json' };
+  // 1ª config: desativa "thinking" (flash 2.5/3.x gastam o orçamento pensando e
+  // podem devolver vazio) → saída direta. 2ª config: sem o campo, p/ modelos que não o aceitam.
+  const configs = [{ ...base, thinkingConfig: { thinkingBudget: 0 } }, base];
+  let emptypReason = '';
+  for (let i = 0; i < configs.length; i++) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'x-goog-api-key': GEMINI_KEY, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: system }] },
+        contents: [{ role: 'user', parts: [{ text: user }] }],
+        generationConfig: configs[i],
+      }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const cand = data.candidates && data.candidates[0];
+      const text = ((cand && cand.content && cand.content.parts) || []).map((p) => p.text || '').join('').trim();
+      if (text) return text;
+      emptypReason = (cand && cand.finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '?';
+      continue; // vazio: tenta a próxima config
+    }
+    const msg = (data && data.error && data.error.message) || ('Gemini HTTP ' + res.status);
+    if (configs[i].thinkingConfig && thinkingRejected(msg)) continue; // refaz sem thinkingConfig
+    throw new Error(msg);
+  }
+  throw new Error('Gemini vazio (finishReason=' + emptypReason + ', modelo=' + model + ')');
 }
 
 async function callGemini(system, user) {
@@ -147,9 +165,9 @@ async function callGemini(system, user) {
   let lastErr;
   for (const model of list) {
     try { return await geminiOnce(model, system, user); }
-    catch (e) { lastErr = e; if (!geminiUnavailable(e.message)) throw e; } // erro real (rede/JSON): não insiste
+    catch (e) { lastErr = e; if (!geminiRetryable(e.message)) throw e; } // erro real (chave/rede): não insiste
   }
-  throw new Error('Nenhum modelo Gemini disponível para esta chave. Defina GEMINI_MODEL para um modelo que sua conta acesse (ex.: gemini-flash-latest) ou use AI_PROVIDER=groq. Detalhe: ' + (lastErr && lastErr.message));
+  throw new Error('Nenhum modelo Gemini retornou conteúdo. Verifique GEMINI_API_KEY / GEMINI_MODEL. Detalhe: ' + (lastErr && lastErr.message));
 }
 
 // Anthropic — Claude via API de mensagens. Modelo por env.
@@ -351,4 +369,17 @@ function devGenerate(brief, ctx) {
   ]);
 }
 
-module.exports = { mode, generateContent, generateCampaign, generateDayparts, generateSeasonal, rewriteText, ITEM_SCHEMA };
+// Diagnóstico: roda uma geração trivial e devolve o que a IA respondeu (ou o
+// erro). Serve para depurar a integração sem expor a chave.
+async function diagnose() {
+  const provider = mode();
+  if (provider === 'dev') return { provider, ok: true, sample: '(modo dev — sem IA real; defina GEMINI_API_KEY)' };
+  try {
+    const raw = await callLLM('Você responde apenas com JSON.', 'Responda com {"ok": true, "msg": "funcionando"}.');
+    return { provider, ok: true, sample: String(raw).slice(0, 300) };
+  } catch (e) {
+    return { provider, ok: false, error: e.message };
+  }
+}
+
+module.exports = { mode, generateContent, generateCampaign, generateDayparts, generateSeasonal, rewriteText, diagnose, ITEM_SCHEMA };
