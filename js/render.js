@@ -122,6 +122,7 @@
     holyrics: renderHolyrics,
     birthday: renderBirthday,
     birthdaycard: renderBirthdayCard,
+    birthdayauto: renderBirthdayAuto,
     clock: renderClock,
     weather: renderWeather,
     weatherpro: renderWeatherPro,
@@ -771,6 +772,88 @@
     return { el, duration: item.duracao || 15 };
   }
 
+  /* ---------- Aniversariantes automáticos (lê a relação da empresa) ----------
+   * Mostra sozinho quem faz aniversário HOJE (cartão) e a lista da SEMANA.
+   * A relação vem de global.MT_BIRTHDAYS (carregada pelo player no modo nuvem).
+   * modo: 'hoje' | 'semana' | 'auto' (hoje se houver, senão a semana). */
+  const WEEKDAYS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+  function birthdayRoster() { return Array.isArray(global.MT_BIRTHDAYS) ? global.MT_BIRTHDAYS : []; }
+  function mmdd2(m, d) { return String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+  function bdayInitials(nome) { return (nome || '?').split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase(); }
+  function bdayAvatar(p, cls) {
+    const w = div('bc-avatar' + (cls ? ' ' + cls : ''));
+    if (p.foto) { const img = document.createElement('img'); img.src = p.foto; img.alt = ''; w.appendChild(img); }
+    else { w.classList.add('bc-initials'); w.textContent = bdayInitials(p.nome); }
+    return w;
+  }
+
+  function renderBirthdayAuto(item) {
+    const modo = ['hoje', 'semana', 'auto'].includes(item.modo) ? item.modo : 'auto';
+    const all = birthdayRoster();
+    const now = new Date();
+    const today = all.filter((p) => +p.dia === now.getDate() && +p.mes === now.getMonth() + 1);
+    // Próximos 7 dias (inclui hoje), preservando a ordem cronológica.
+    const order = {};
+    for (let i = 0; i < 7; i++) { const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i); order[mmdd2(dt.getMonth() + 1, dt.getDate())] = i; }
+    const week = all.filter((p) => mmdd2(+p.mes, +p.dia) in order)
+      .sort((a, b) => order[mmdd2(+a.mes, +a.dia)] - order[mmdd2(+b.mes, +b.dia)] || String(a.nome).localeCompare(b.nome));
+
+    let show = modo === 'hoje' ? 'hoje' : modo === 'semana' ? 'semana' : (today.length ? 'hoje' : 'semana');
+    if (show === 'hoje' && !today.length && week.length) show = 'semana';
+
+    const el = div('mt-slide mt-surface mt-bday mt-bday-' + show);
+
+    // Nada a mostrar: mensagem gentil (não deixa a zona "quebrada").
+    if ((show === 'hoje' && !today.length) || (show === 'semana' && !week.length)) {
+      const e = div('mt-bday-empty');
+      e.textContent = '🎂 Em breve, novos aniversários';
+      el.appendChild(e);
+      return { el, duration: item.duracao || 8 };
+    }
+
+    if (show === 'hoje') {
+      const head = div('mt-bday-head');
+      head.innerHTML = '<span class="mt-bday-emoji">🎉</span>' ;
+      const h = div('mt-bday-h'); h.textContent = item.titulo || 'Feliz aniversário!';
+      head.appendChild(h);
+      el.appendChild(head);
+      const grid = div('mt-bday-grid mt-bday-grid-' + Math.min(today.length, 4));
+      today.slice(0, 8).forEach((p) => {
+        const card = div('mt-bday-person');
+        card.appendChild(bdayAvatar(p, 'bc-avatar-lg'));
+        const nm = div('mt-bday-name'); nm.textContent = p.nome; card.appendChild(nm);
+        if (p.cargo) { const cg = div('mt-bday-role'); cg.textContent = p.cargo; card.appendChild(cg); }
+        grid.appendChild(card);
+      });
+      el.appendChild(grid);
+    } else {
+      const head = div('mt-bday-head');
+      head.innerHTML = '<span class="mt-bday-emoji">🎂</span>';
+      const h = div('mt-bday-h'); h.textContent = item.titulo || 'Aniversariantes da semana';
+      head.appendChild(h);
+      el.appendChild(head);
+      const listEl = div('mt-bday-list');
+      week.slice(0, 8).forEach((p) => {
+        const row = div('mt-bday-row');
+        row.appendChild(bdayAvatar(p));
+        const info = div('mt-bday-rowinfo');
+        const nm = div('mt-bday-name'); nm.textContent = p.nome; info.appendChild(nm);
+        if (p.cargo) { const cg = div('mt-bday-role'); cg.textContent = p.cargo; info.appendChild(cg); }
+        row.appendChild(info);
+        const when = div('mt-bday-when');
+        const dt = new Date(now.getFullYear(), +p.mes - 1, +p.dia);
+        const isToday = order[mmdd2(+p.mes, +p.dia)] === 0;
+        when.innerHTML = '<span class="mt-bday-date">' + String(p.dia).padStart(2, '0') + '/' + String(p.mes).padStart(2, '0') +
+          '</span><span class="mt-bday-wd">' + (isToday ? 'hoje' : WEEKDAYS[dt.getDay()]) + '</span>';
+        if (isToday) when.classList.add('is-today');
+        row.appendChild(when);
+        listEl.appendChild(row);
+      });
+      el.appendChild(listEl);
+    }
+    return { el, duration: item.duracao || 14 };
+  }
+
   /* ---------- Trânsito ao vivo (Waze, sem chave) ---------- */
   function renderTraffic(item) {
     const el = div('mt-slide mt-map');
@@ -1149,6 +1232,7 @@
     { type: 'screen', label: 'Captura de tela / janela', icon: 'film' },
     { type: 'stream', label: 'Stream ao vivo (IPTV/HLS)', icon: 'live' },
     { type: 'holyrics', label: 'Holyrics (letra ao vivo)', icon: 'quote' },
+    { type: 'birthdayauto', label: 'Aniversariantes (automático)', icon: 'cake' },
     { type: 'birthdaycard', label: 'Cartão de Aniversário', icon: 'gift' },
     { type: 'birthday', label: 'Lista de Aniversariantes', icon: 'cake' },
     { type: 'weatherpro', label: 'Painel do Clima', icon: 'cloud' },

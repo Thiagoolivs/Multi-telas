@@ -11,7 +11,7 @@
  */
 import {
   Megaphone, Type, Quote, Tag, BarChart3, Share2, Image as ImageIcon,
-  Youtube, Globe, QrCode, CloudSun, Film,
+  Youtube, Globe, QrCode, CloudSun, Film, Cake,
 } from 'lucide-react';
 
 // Variantes do "Aviso Premium" (espelha ANN_VARIANTS em js/render.js).
@@ -179,9 +179,22 @@ export const CONTENT_TYPES = {
     make: () => ({ type: 'weatherpro', cidade: 'São Paulo', duracao: 0 }),
     summary: (i) => i.cidade || 'Clima',
   },
+  birthdayauto: {
+    label: 'Aniversariantes (automático)', icon: Cake, group: 'Equipe',
+    fields: [
+      { key: 'modo', label: 'O que mostrar', kind: 'select', options: [
+        { value: 'auto', label: 'Automático (hoje, senão a semana)' },
+        { value: 'hoje', label: 'Só de hoje' },
+        { value: 'semana', label: 'Da semana' } ] },
+      { key: 'titulo', label: 'Título (opcional)', kind: 'text' },
+      DUR,
+    ],
+    make: () => ({ type: 'birthdayauto', modo: 'auto', duracao: 14 }),
+    summary: (i) => (i.modo === 'semana' ? 'Aniversariantes da semana' : i.modo === 'hoje' ? 'Aniversariantes de hoje' : 'Aniversariantes (auto)'),
+  },
 };
 
-export const CONTENT_ORDER = ['text', 'announce', 'quote', 'promo', 'kpi', 'social', 'image', 'video', 'youtube', 'web', 'qrcode', 'weatherpro'];
+export const CONTENT_ORDER = ['text', 'announce', 'quote', 'promo', 'kpi', 'social', 'image', 'video', 'youtube', 'web', 'qrcode', 'weatherpro', 'birthdayauto'];
 
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;

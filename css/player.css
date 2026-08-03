@@ -549,6 +549,38 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   .bc-avatar { width: 40cqw; }
 }
 
+/* ---------- Aniversariantes automáticos ---------- */
+/* herda .mt-slide (flex): força coluna para título em cima, conteúdo embaixo. */
+.mt-bday { color: var(--text); overflow: hidden; flex-direction: column; justify-content: center; gap: 1cqh; }
+.mt-bday > * { width: 100%; }
+.mt-bday-head { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 2cqw; padding: 4cqh 4cqw 0; text-align: center; }
+.mt-bday-emoji { font-size: 6cqh; line-height: 1; }
+.mt-bday-h { font-size: clamp(20px, 5cqw, 60px); font-weight: 800; letter-spacing: -.02em; }
+.mt-bday-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: clamp(16px, 3.4cqw, 34px); }
+
+/* HOJE — grade de pessoas */
+.mt-bday-grid { position: relative; z-index: 1; display: grid; gap: 3cqw; padding: 3cqh 5cqw 5cqh; align-content: center; height: 100%; }
+.mt-bday-grid-1 { grid-template-columns: 1fr; }
+.mt-bday-grid-2, .mt-bday-grid-3, .mt-bday-grid-4 { grid-template-columns: repeat(2, 1fr); }
+.mt-bday-person { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.4cqh; }
+.mt-bday-person .bc-avatar { width: 22cqw; max-width: 26cqh; }
+.mt-bday-grid-1 .bc-avatar { width: 30cqw; }
+.mt-bday-name { font-size: clamp(15px, 3cqw, 34px); font-weight: 700; letter-spacing: -.01em; }
+.mt-bday-role { font-size: clamp(12px, 2cqw, 22px); color: var(--text-dim); }
+
+/* SEMANA — lista */
+.mt-bday-list { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 1.4cqh; padding: 3cqh 5cqw 5cqh; }
+.mt-bday-row { display: flex; align-items: center; gap: 2.5cqw; padding: 1.4cqh 2cqw; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid var(--border); }
+.mt-bday-row .bc-avatar { width: 9cqw; max-width: 11cqh; box-shadow: 0 0 0 .3cqw color-mix(in srgb, var(--brand) 45%, transparent); }
+.mt-bday-row .bc-initials { font-size: 3.4cqw; }
+.mt-bday-rowinfo { flex: 1; min-width: 0; }
+.mt-bday-row .mt-bday-name { font-size: clamp(14px, 2.6cqw, 28px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-bday-row .mt-bday-role { font-size: clamp(11px, 1.8cqw, 18px); }
+.mt-bday-when { flex: none; text-align: right; display: flex; flex-direction: column; line-height: 1.1; }
+.mt-bday-date { font-size: clamp(13px, 2.2cqw, 24px); font-weight: 700; }
+.mt-bday-wd { font-size: clamp(10px, 1.6cqw, 16px); color: var(--text-dim); text-transform: capitalize; }
+.mt-bday-when.is-today .mt-bday-date, .mt-bday-when.is-today .mt-bday-wd { color: var(--brand); }
+
 /* ---------- Mapas (trânsito / região) ---------- */
 .mt-map { background: #0e1526; }
 .mt-map iframe { width: 100%; height: 100%; border: 0; }

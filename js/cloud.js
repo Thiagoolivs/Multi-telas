@@ -64,6 +64,11 @@
   async function fetchConfig(id) {
     return api('GET', '/api/devices/' + id + '/config', undefined, dtHeader());
   }
+  // Relação de aniversariantes do tenant desta TV (para exibição automática).
+  async function fetchBirthdays(id) {
+    const r = await api('GET', '/api/devices/' + id + '/birthdays', undefined, dtHeader());
+    return (r && r.birthdays) || [];
+  }
   // Avisa o servidor que a TV está viva (alimenta o status da frota).
   async function heartbeat(id) {
     try { await api('POST', '/api/devices/' + id + '/heartbeat', undefined, dtHeader()); }
@@ -95,7 +100,7 @@
 
   global.MTCloud = {
     signup, login, logout, me,
-    deviceMode, ensureDevice, fetchConfig, subscribe, heartbeat,
+    deviceMode, ensureDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);
