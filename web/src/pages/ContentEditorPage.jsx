@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, Suspense, lazy } from 'react';
 import {
   ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, UploadCloud, Clock, GripVertical, LayoutGrid, Settings2, Info,
 } from 'lucide-react';
@@ -10,6 +10,8 @@ import { ItemPreview } from '../components/content/ItemPreview.jsx';
 import { TypePicker } from '../components/content/TypePicker.jsx';
 import { SettingsForm } from '../components/content/SettingsForm.jsx';
 import { TickerEditor } from '../components/content/TickerEditor.jsx';
+// Editor visual (react-moveable) carregado sob demanda — não pesa o painel.
+const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 import { useAsync } from '../lib/useAsync.js';
 import { deviceConfig } from '../api.js';
 import { Sparkles, Wand2 } from 'lucide-react';
@@ -34,6 +36,7 @@ export function ContentEditorPage({ device, onBack }) {
   const [zoneId, setZoneId] = useState(null);
   const [selected, setSelected] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const [compOpen, setCompOpen] = useState(false); // editor visual da composição
   const [picker, setPicker] = useState(false);
   const [campOpen, setCampOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -270,6 +273,11 @@ export function ContentEditorPage({ device, onBack }) {
                       </div>
                       <div>
                         <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Conteúdo</div>
+                        {current.type === 'composicao' && (
+                          <Button variant="primary" icon={LayoutGrid} className="mb-3 w-full" onClick={() => setCompOpen(true)}>
+                            Abrir editor visual ({(current.elementos && current.elementos.length) || 0} elemento(s))
+                          </Button>
+                        )}
                         <ItemForm item={current} onChange={(it) => updateItem(selected, it)} />
                       </div>
                     </div>
@@ -282,6 +290,16 @@ export function ContentEditorPage({ device, onBack }) {
       )}
 
       <TypePicker open={picker} onClose={() => setPicker(false)} onPick={addItem} />
+
+      {compOpen && current && current.type === 'composicao' && (
+        <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90"><Spinner size={22} /></div>}>
+          <CompositionEditor
+            value={current}
+            onClose={() => setCompOpen(false)}
+            onSave={(it) => { updateItem(selected, it); setCompOpen(false); }}
+          />
+        </Suspense>
+      )}
       <CampaignDialog
         open={campOpen} onClose={() => setCampOpen(false)}
         empresa={(cfg && cfg.settings && cfg.settings.nome) || ''}
