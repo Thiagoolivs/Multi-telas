@@ -168,6 +168,23 @@
     // Telemetria: pulsa "estou viva" já e a cada 30s → status real da frota.
     MTCloud.heartbeat(dev.id);
     setInterval(function () { MTCloud.heartbeat(dev.id); }, 30000);
+    // Relação de aniversariantes: carrega e refresca a cada 6h (muda pouco).
+    loadBirthdays(dev.id);
+    setInterval(function () { loadBirthdays(dev.id); }, 6 * 60 * 60 * 1000);
+  }
+
+  // Busca a relação de aniversariantes e a expõe (global.MT_BIRTHDAYS) para o
+  // renderizador automático. Cacheia em localStorage — sobrevive a quedas de rede.
+  function loadBirthdays(id) {
+    try {
+      const cached = localStorage.getItem('vistra.birthdays');
+      if (cached && !global.MT_BIRTHDAYS) global.MT_BIRTHDAYS = JSON.parse(cached);
+    } catch (e) {}
+    if (!global.MTCloud || !MTCloud.fetchBirthdays) return;
+    MTCloud.fetchBirthdays(id).then(function (list) {
+      global.MT_BIRTHDAYS = list || [];
+      try { localStorage.setItem('vistra.birthdays', JSON.stringify(global.MT_BIRTHDAYS)); } catch (e) {}
+    }).catch(function () { /* offline: mantém o cache */ });
   }
 
   /* ---------------- Pareamento (modo nuvem) ---------------- */

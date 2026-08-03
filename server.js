@@ -577,6 +577,14 @@ async function handleApi(req, res, pathname, query) {
       if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
       await db.removeDevice(id); return sendJson(res, 200, { ok: true });
     }
+    // Aniversariantes do tenant desta tela (player lê com device token).
+    if (req.method === 'GET' && sub === 'birthdays') {
+      if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
+      if (!device.tenant_id) return sendJson(res, 200, { birthdays: [] });
+      const b = await db.listBirthdays(device.tenant_id);
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(JSON.stringify({ birthdays: b }));
+    }
     // Metadados (dono ou device)
     if (req.method === 'GET' && !sub) {
       if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
