@@ -133,6 +133,7 @@
     kpi: renderKpi,
     promo: renderPromo,
     social: renderSocial,
+    poster: renderPoster,
     web: renderWeb,
     qrcode: renderQr,
   };
@@ -1075,6 +1076,27 @@
     return { el, duration: item.duracao || 12 };
   }
 
+  /* ---------- Poster / arte de marca (gerado por IA ou manual) ----------
+   * Composição full-bleed que herda a cor da marca pelas vars do tema
+   * (--brand & cia., já adaptativas). Orna sozinho e escala pra qualquer
+   * formato/zona (container queries). 4 variantes de layout. */
+  function renderPoster(item) {
+    const variant = ['bold', 'aurora', 'split', 'minimal'].includes(item.variant) ? item.variant : 'bold';
+    const el = div('mt-slide mt-poster mt-poster-' + variant);
+    // Cor opcional por peça: a IA pode variar o tom sem sair da identidade.
+    if (/^#?[0-9a-fA-F]{6}$/.test(item.cor || '')) {
+      el.style.setProperty('--pb', item.cor[0] === '#' ? item.cor : '#' + item.cor);
+    }
+    el.appendChild(div('mt-poster-fx')); // camada decorativa (formas/halos)
+    const inner = div('mt-poster-inner');
+    if (item.kicker) { const k = div('mt-poster-kicker'); k.textContent = item.kicker; inner.appendChild(k); }
+    if (item.titulo) { const t = div('mt-poster-title'); t.textContent = item.titulo; inner.appendChild(t); }
+    if (item.corpo) { const c = div('mt-poster-body'); c.textContent = item.corpo; inner.appendChild(c); }
+    if (item.cta) { const a = div('mt-poster-cta'); a.textContent = item.cta; inner.appendChild(a); }
+    el.appendChild(inner);
+    return { el, duration: item.duracao || 12 };
+  }
+
   function renderWeb(item) {
     const el = div('mt-slide mt-web');
     const iframe = document.createElement('iframe');
@@ -1137,6 +1159,7 @@
     { type: 'quote', label: 'Frase do Dia', icon: 'quote' },
     { type: 'kpi', label: 'Indicador (KPI)', icon: 'chart' },
     { type: 'promo', label: 'Promoção / Produto', icon: 'tag' },
+    { type: 'poster', label: 'Arte / Poster (IA)', icon: 'image' },
     { type: 'social', label: 'Redes Sociais', icon: 'share' },
     { type: 'clock', label: 'Relógio', icon: 'clock' },
     { type: 'weather', label: 'Clima (simples)', icon: 'cloud' },

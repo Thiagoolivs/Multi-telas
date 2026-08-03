@@ -35,16 +35,24 @@ async function callLLM(system, user) {
 
 // Tipos/campos que a IA pode produzir (subconjunto seguro do schema do player).
 const ITEM_SCHEMA = `Cada item é um objeto. Tipos permitidos:
+- { "type": "poster", "variant": "bold"|"aurora"|"split"|"minimal", "kicker": string curto, "titulo": string, "corpo": string, "cta": string curto, "cor": "#hex"(opcional), "duracao": number }
 - { "type": "text", "titulo": string, "corpo": string, "align": "center"|"left"|"right", "tamanho": "pequeno"|"medio"|"grande"|"gigante", "duracao": number }
 - { "type": "announce", "tipo": "comunicado"|"urgente"|"evento"|"rh"|"seguranca"|"conquista"|"treinamento"|"saude", "titulo": string, "corpo": string, "duracao": number }
+Prefira "poster" para as peças de destaque (capa/arte da campanha): é uma arte visual que já usa a cor da marca. Gere de 1 a 3 posters e VARIE o "variant" entre eles. Não defina "cor" (usa a marca) — só use se quiser variar o tom dentro da identidade.
 Responda em português do Brasil, tom corporativo. duracao entre 8 e 15.`;
 
 function clampItems(arr) {
   const ok = [];
   for (const it of Array.isArray(arr) ? arr : []) {
-    if (!it || (it.type !== 'text' && it.type !== 'announce')) continue;
+    if (!it || !['text', 'announce', 'poster'].includes(it.type)) continue;
     const item = { type: it.type, titulo: String(it.titulo || '').slice(0, 120), corpo: String(it.corpo || '').slice(0, 400), duracao: Math.min(15, Math.max(8, Number(it.duracao) || 12)) };
     if (it.type === 'text') { item.align = ['center', 'left', 'right'].includes(it.align) ? it.align : 'center'; item.tamanho = ['pequeno', 'medio', 'grande', 'gigante'].includes(it.tamanho) ? it.tamanho : 'grande'; }
+    else if (it.type === 'poster') {
+      item.variant = ['bold', 'aurora', 'split', 'minimal'].includes(it.variant) ? it.variant : 'bold';
+      if (it.kicker) item.kicker = String(it.kicker).slice(0, 40);
+      if (it.cta) item.cta = String(it.cta).slice(0, 40);
+      if (isHex(it.cor)) item.cor = it.cor.startsWith('#') ? it.cor : '#' + it.cor;
+    }
     else { item.tipo = it.tipo || 'comunicado'; }
     if (['destaque', 'urgente'].includes(it.prioridade)) item.prioridade = it.prioridade;
     if (item.titulo) ok.push(item);
