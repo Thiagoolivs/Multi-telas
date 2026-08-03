@@ -237,6 +237,62 @@ async function generateComposition(brief, ctx) {
   return clampComposition(parseAiJson(text), brand);
 }
 
+/* ---------------- Kit de campanha (biblioteca multi-formato) ----------------
+ * A IA define a IDENTIDADE (cor da marca + copy elegante). O CÓDIGO monta o
+ * layout de cada formato (TV 16:9/9:16/1:1, post de feed, story, banner) como
+ * composições — garante beleza e consistência em qualquer proporção.
+ * Cada peça é um item "composicao" que o editor já sabe abrir/ajustar. */
+const KIT_FORMATS = [
+  { id: 'tv-16-9', canal: 'TV / Signage', formato: '16/9', shape: 'wide', label: 'TV horizontal (16:9)' },
+  { id: 'tv-9-16', canal: 'TV / Signage', formato: '9/16', shape: 'tall', label: 'TV vertical (9:16)' },
+  { id: 'tv-1-1', canal: 'TV / Signage', formato: '1/1', shape: 'square', label: 'TV quadrada (1:1)' },
+  { id: 'feed', canal: 'Social', formato: '1/1', shape: 'square', label: 'Post — feed (1:1)' },
+  { id: 'story', canal: 'Social', formato: '9/16', shape: 'tall', label: 'Story (9:16)' },
+  { id: 'banner', canal: 'Banner', formato: '21/9', shape: 'banner', label: 'Banner largo (21:9)' },
+];
+// Posições (em % da peça) por proporção — deixa espaço para a imagem do cliente.
+const KIT_SHAPES = {
+  wide: { title: { x: 6, y: 26, w: 60, h: 24, t: 6, a: 'left' }, sub: { x: 6, y: 55, w: 48, h: 12, t: 3.3, a: 'left' }, cta: { x: 6, y: 75, w: 46, h: 8, t: 2.9, a: 'left' } },
+  tall: { title: { x: 8, y: 16, w: 84, h: 24, t: 9, a: 'left' }, sub: { x: 8, y: 47, w: 80, h: 14, t: 4.3, a: 'left' }, cta: { x: 8, y: 67, w: 76, h: 8, t: 3.9, a: 'left' } },
+  square: { title: { x: 8, y: 27, w: 84, h: 22, t: 8, a: 'center' }, sub: { x: 8, y: 55, w: 80, h: 12, t: 4, a: 'center' }, cta: { x: 8, y: 73, w: 76, h: 8, t: 3.6, a: 'center' } },
+  banner: { title: { x: 4, y: 26, w: 50, h: 30, t: 6, a: 'left' }, sub: { x: 4, y: 76, w: 46, h: 9, t: 2.8, a: 'left' }, cta: { x: 60, y: 44, w: 34, h: 14, t: 3.6, a: 'center' } },
+};
+
+function kitPiece(fmt, d) {
+  const s = KIT_SHAPES[fmt.shape];
+  const mk = (text, p, peso, cor) => ({ tipo: 'texto', text, x: p.x, y: p.y, w: p.w, h: p.h, rot: 0, cor: cor || '#ffffff', peso, tamanho: p.t, align: p.a, z: 2 });
+  const els = [];
+  if (d.kicker) els.push({ tipo: 'texto', text: String(d.kicker).toUpperCase(), x: s.title.x, y: Math.max(3, s.title.y - 13), w: s.title.w, h: 6, rot: 0, cor: '#ffffff', peso: 700, tamanho: Math.max(2.1, s.sub.t * 0.66), align: s.title.a, z: 2 });
+  els.push(mk(d.headline, s.title, 900));
+  if (d.sub) els.push(mk(d.sub, s.sub, 400));
+  if (d.cta) els.push(mk((String(d.cta) + '  →').toUpperCase(), s.cta, 800));
+  return { type: 'composicao', bg: { kind: 'cor', cor: 'linear-gradient(150deg, ' + d.brand + ', rgba(0,0,0,.62))' }, elementos: els, formato: fmt.formato, duracao: 12 };
+}
+
+async function generateKit(brief, ctx) {
+  brief = String(brief || '').slice(0, 600); ctx = ctx || {};
+  let d;
+  if (mode() === 'dev') {
+    d = { brand: ctx.brand || '#1e3a8a', kicker: ctx.empresa || 'Campanha', headline: (brief.split(/[.\n]/)[0] || 'Sua campanha').slice(0, 48), sub: 'Mensagem de apoio da campanha.', cta: 'Saiba mais' };
+  } else {
+    const system =
+      'Você é diretor de arte de uma marca séria e sofisticada. A partir do briefing, defina a IDENTIDADE de uma campanha: ' +
+      'uma cor de marca forte e elegante e uma copy curta e profissional (nada de clichê ou exclamação em excesso). ' +
+      'Responda APENAS com JSON: {"brand":"#hex","kicker":"etiqueta curta (marca ou tema)","headline":"título forte (2 a 6 palavras)","sub":"subtítulo curto","cta":"chamada curta"}. Português do Brasil.';
+    const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor da marca (se houver): ${ctx.brand || '(escolha uma elegante e coerente)'}\nBriefing: ${brief}`;
+    const p = parseAiJson(await callLLM(system, user));
+    d = {
+      brand: isHex(p.brand) ? (p.brand.startsWith('#') ? p.brand : '#' + p.brand) : (ctx.brand || '#1e3a8a'),
+      kicker: String(p.kicker || ctx.empresa || '').slice(0, 40),
+      headline: String(p.headline || 'Sua campanha').slice(0, 60),
+      sub: String(p.sub || '').slice(0, 120),
+      cta: String(p.cta || '').slice(0, 40),
+    };
+  }
+  const pieces = KIT_FORMATS.map((f) => ({ id: f.id, canal: f.canal, formato: f.formato, label: f.label, item: kitPiece(f, d) }));
+  return { brand: d.brand, kicker: d.kicker, headline: d.headline, sub: d.sub, cta: d.cta, pieces };
+}
+
 /* ---------------- Reescrever para caber + legível à distância ----------------
  * Encurta/reescreve um texto para caber no espaço e ser lido de longe, sem
  * perder o sentido. Limites por campo (título curto, corpo um pouco maior). */
@@ -436,4 +492,4 @@ async function diagnose() {
   }
 }
 
-module.exports = { mode, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, rewriteText, diagnose, ITEM_SCHEMA };
+module.exports = { mode, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, rewriteText, diagnose, ITEM_SCHEMA };
