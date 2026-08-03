@@ -1,5 +1,6 @@
 import React, { useState, Suspense, lazy } from 'react';
-import { Wand2, Save, Pencil, Send, Trash2, Sparkles, Check } from 'lucide-react';
+import { Wand2, Save, Pencil, Send, Trash2, Sparkles, Check, Download } from 'lucide-react';
+import { downloadComposition } from '../lib/exportPng.js';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -124,7 +125,10 @@ export function CampaignsPage() {
                 <Thumb item={p.item} />
                 <div className="flex items-center justify-between">
                   <span className="truncate text-2xs text-ink-3">{p.label}</span>
-                  <button className="text-2xs text-accent hover:underline" onClick={() => setEditing({ item: p.item, src: p })}>Editar</button>
+                  <div className="flex gap-2">
+                    <button className="text-2xs text-accent hover:underline" onClick={() => setEditing({ item: p.item, src: p })}>Editar</button>
+                    <button className="text-2xs text-ink-3 hover:text-ink" onClick={() => downloadComposition(p.item, p.formato, p.label)}>PNG</button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -151,6 +155,7 @@ export function CampaignsPage() {
                         <span className="truncate">{it.label}</span>
                         <div className="flex gap-1.5">
                           <button title="Editar" className="hover:text-ink" onClick={() => setEditing({ id: it.id, item: it.item })}><Pencil size={13} /></button>
+                          <button title="Baixar PNG" className="hover:text-ink" onClick={() => downloadComposition(it.item, it.formato, it.label)}><Download size={13} /></button>
                           <button title="Publicar" className="hover:text-accent" onClick={() => { setPublish(it.item); setTarget(screens[0] ? screens[0].id : ''); }}><Send size={13} /></button>
                           <button title="Excluir" className="hover:text-danger" onClick={async () => { if (window.confirm('Excluir esta peça?')) { await library.remove(it.id); reload(); } }}><Trash2 size={13} /></button>
                         </div>
