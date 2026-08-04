@@ -127,8 +127,19 @@ function drawShape(ctx, e, w, h) {
   } else { roundRectPath(ctx, 0, 0, w, h, Math.min(w, h) * ((e.radius || 0) / 100)); ctx.fill(); }
 }
 
-function drawText(ctx, e, w, h, W) {
-  const fontPx = Math.max(8, (Number(e.tamanho) || 6) / 100 * W);
+// Tamanho de fonte em cqw. Se e.auto, proporcional à diagonal do bloco.
+function textFontCqw(e, formato) {
+  if (!e || !e.auto) return (e && e.tamanho != null) ? e.tamanho : 6;
+  const p = String(formato || '16/9').split('/').map(Number);
+  const R = (p[0] && p[1]) ? p[1] / p[0] : 9 / 16;
+  const w = e.w != null ? e.w : 25, h = e.h != null ? e.h : 25;
+  const diag = Math.sqrt(w * w + (h * R) * (h * R));
+  const k = e.escala != null ? e.escala : 0.16;
+  return Math.max(2, diag * k);
+}
+
+function drawText(ctx, e, w, h, W, formato) {
+  const fontPx = Math.max(8, textFontCqw(e, formato) / 100 * W);
   ctx.fillStyle = e.cor || '#ffffff';
   ctx.font = `${e.peso || 700} ${fontPx}px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif`;
   ctx.textBaseline = 'top';
@@ -166,7 +177,7 @@ export async function compositionToCanvas(item, W, H) {
     ctx.translate(x + w / 2, y + h / 2);
     if (e.rot) ctx.rotate((e.rot) * Math.PI / 180);
     ctx.translate(-w / 2, -h / 2);
-    if (e.tipo === 'texto') drawText(ctx, e, w, h, W);
+    if (e.tipo === 'texto') drawText(ctx, e, w, h, W, item.formato);
     else if (e.tipo === 'forma') drawShape(ctx, e, w, h);
     else if (e.tipo === 'icone') await drawIcon(ctx, e, w, h);
     else if (e.src) { try { drawImageFit(ctx, await loadImage(e.src), 0, 0, w, h, e.fit || 'contain'); } catch (err) {} }
