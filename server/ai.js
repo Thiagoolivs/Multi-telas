@@ -258,15 +258,31 @@ const KIT_SHAPES = {
   banner: { title: { x: 4, y: 26, w: 50, h: 30, t: 6, a: 'left' }, sub: { x: 4, y: 76, w: 46, h: 9, t: 2.8, a: 'left' }, cta: { x: 60, y: 44, w: 34, h: 14, t: 3.6, a: 'center' } },
 };
 
+// Formas decorativas em camadas (estilo signage profissional): elipse de
+// profundidade + (no estilo vibrante) um bloco diagonal atrás do título.
+function kitShapes(fmt, d) {
+  const s = KIT_SHAPES[fmt.shape];
+  const shapes = [{ tipo: 'forma', shape: 'ellipse', x: 58, y: -18, w: 64, h: 60, rot: 0, fill: { grad: 'radial', cores: [d.brand2, d.brand] }, opacidade: 0.5, z: 0 }];
+  if (d.style === 'vibrante') {
+    shapes.push({ tipo: 'forma', shape: 'rect', x: Math.max(-6, s.title.x - 5), y: Math.max(2, s.title.y - 3), w: Math.min(72, s.title.w + 14), h: s.title.h + 8, rot: -6, fill: { grad: 'linear', cores: [d.brand, d.brand2], ang: 120 }, opacidade: 0.95, radius: 8, z: 1 });
+    shapes.push({ tipo: 'forma', shape: 'ellipse', x: -12, y: 62, w: 30, h: 30, rot: 0, fill: d.brand2, opacidade: 0.35, z: 0 });
+  }
+  return shapes;
+}
+
 function kitPiece(fmt, d) {
   const s = KIT_SHAPES[fmt.shape];
-  const mk = (text, p, peso, cor) => ({ tipo: 'texto', text, x: p.x, y: p.y, w: p.w, h: p.h, rot: 0, cor: cor || '#ffffff', peso, tamanho: p.t, align: p.a, z: 2 });
-  const els = [];
+  const mk = (text, p, peso, cor) => ({ tipo: 'texto', text, x: p.x, y: p.y, w: p.w, h: p.h, rot: 0, cor: cor || '#ffffff', peso, tamanho: p.t, align: p.a, sombra: true, z: 2 });
+  const els = kitShapes(fmt, d);
   if (d.kicker) els.push({ tipo: 'texto', text: String(d.kicker).toUpperCase(), x: s.title.x, y: Math.max(3, s.title.y - 13), w: s.title.w, h: 6, rot: 0, cor: '#ffffff', peso: 700, tamanho: Math.max(2.1, s.sub.t * 0.66), align: s.title.a, z: 2 });
   els.push(mk(d.headline, s.title, 900));
   if (d.sub) els.push(mk(d.sub, s.sub, 400));
   if (d.cta) els.push(mk((String(d.cta) + '  →').toUpperCase(), s.cta, 800));
-  return { type: 'composicao', bg: { kind: 'cor', cor: 'linear-gradient(150deg, ' + d.brand + ', rgba(0,0,0,.62))' }, elementos: els, formato: fmt.formato, duracao: 12 };
+  // Fundo: vibrante usa gradiente colorido (marca→acento); sóbrio escurece.
+  const bgCor = d.style === 'vibrante'
+    ? 'linear-gradient(150deg, ' + d.brand + ', ' + d.brand2 + ')'
+    : 'linear-gradient(150deg, ' + d.brand + ', rgba(0,0,0,.62))';
+  return { type: 'composicao', bg: { kind: 'cor', cor: bgCor }, elementos: els, formato: fmt.formato, duracao: 12 };
 }
 
 // Gemini com imagens (visão): extrai identidade das referências do cliente.
@@ -309,20 +325,26 @@ async function generateKit(brief, ctx) {
       if (v.vibe) styleNote = String(v.vibe).slice(0, 120);
     } catch (e) { /* segue sem as referências */ }
   }
+  const okHex = (h, fb) => isHex(h) ? (h.startsWith('#') ? h : '#' + h) : fb;
   let d;
   if (mode() === 'dev') {
-    d = { brand: ctx.brand || '#1e3a8a', kicker: ctx.empresa || 'Campanha', headline: (brief.split(/[.\n]/)[0] || 'Sua campanha').slice(0, 48), sub: 'Mensagem de apoio da campanha.', cta: 'Saiba mais' };
+    d = { brand: ctx.brand || '#0ea5e9', brand2: '#7c3aed', style: 'vibrante', kicker: ctx.empresa || 'Campanha', headline: (brief.split(/[.\n]/)[0] || 'Sua campanha').slice(0, 48), sub: 'Mensagem de apoio da campanha.', cta: 'Saiba mais' };
   } else {
     const system =
-      'Você é diretor de arte de uma marca séria e sofisticada. A partir do briefing, defina a IDENTIDADE de uma campanha: ' +
-      'uma cor de marca forte e elegante e uma copy curta e profissional (nada de clichê ou exclamação em excesso). ' +
-      'Responda APENAS com JSON: {"brand":"#hex","kicker":"etiqueta curta (marca ou tema)","headline":"título forte (2 a 6 palavras)","sub":"subtítulo curto","cta":"chamada curta"}. Português do Brasil.';
-    const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor da marca (se houver): ${ctx.brand || '(escolha uma elegante e coerente)'}` +
+      'Você é diretor de arte de digital signage profissional. A partir do briefing, defina a IDENTIDADE de uma campanha com ' +
+      'DUAS cores que combinam (marca + acento) para gradientes vibrantes, e copy curta e forte. ' +
+      'Escolha o estilo: "vibrante" (fundo colorido, formas/blocos — para varejo, promoções, energia) ou ' +
+      '"sobrio" (fundo escuro elegante — para corporativo, institucional). ' +
+      'Responda APENAS com JSON: {"brand":"#hex","brand2":"#hex","style":"vibrante"|"sobrio","kicker":"etiqueta curta","headline":"título forte (2 a 6 palavras)","sub":"subtítulo curto","cta":"chamada curta"}. Português do Brasil.';
+    const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor da marca (se houver): ${ctx.brand || '(escolha uma paleta elegante)'}` +
       (styleNote ? `\nEstilo desejado (das referências do cliente): ${styleNote}` : '') +
       `\nBriefing: ${brief}`;
     const p = parseAiJson(await callLLM(system, user));
+    const brand = okHex(p.brand, ctx.brand || '#0ea5e9');
     d = {
-      brand: isHex(p.brand) ? (p.brand.startsWith('#') ? p.brand : '#' + p.brand) : (ctx.brand || '#1e3a8a'),
+      brand,
+      brand2: okHex(p.brand2, '#7c3aed'),
+      style: p.style === 'sobrio' ? 'sobrio' : 'vibrante',
       kicker: String(p.kicker || ctx.empresa || '').slice(0, 40),
       headline: String(p.headline || 'Sua campanha').slice(0, 60),
       sub: String(p.sub || '').slice(0, 120),
@@ -330,7 +352,7 @@ async function generateKit(brief, ctx) {
     };
   }
   const pieces = KIT_FORMATS.map((f) => ({ id: f.id, canal: f.canal, formato: f.formato, label: f.label, item: kitPiece(f, d) }));
-  return { brand: d.brand, kicker: d.kicker, headline: d.headline, sub: d.sub, cta: d.cta, pieces };
+  return { brand: d.brand, brand2: d.brand2, style: d.style, kicker: d.kicker, headline: d.headline, sub: d.sub, cta: d.cta, pieces };
 }
 
 /* ---------------- Reescrever para caber + legível à distância ----------------
