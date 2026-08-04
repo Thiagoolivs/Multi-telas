@@ -1,6 +1,7 @@
 import React from 'react';
 import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film, Cake, Airplay, Cast, Presentation } from 'lucide-react';
 import { fillToCss, shapeClip, SHAPE_POLY } from '../../lib/composition.js';
+import { ICONS } from '../../lib/icons.js';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
 // Fidelidade total virá de um preview via player embutido, adiante.
@@ -115,6 +116,8 @@ function Body({ item }) {
             <div key={idx} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden' }}>
               {e.tipo === 'texto'
                 ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: e.cor, fontWeight: e.peso, fontSize: '9px', textAlign: e.align, lineHeight: 1.05 }}>{e.text}</div>
+                : e.tipo === 'icone'
+                  ? <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />
                 : e.tipo === 'forma'
                   ? <div style={{ width: '100%', height: '100%', background: fillToCss(e.fill), borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : (e.radius || 0) + '%'), clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none' }} />
                   : <img src={e.src} alt="" style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain' }} onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />}
