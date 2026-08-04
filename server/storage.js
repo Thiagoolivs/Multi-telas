@@ -29,7 +29,7 @@ const QUOTA_BYTES = Number(process.env.MEDIA_QUOTA || 5 * 1024 * 1024 * 1024);  
 
 // Tipos aceitos → extensão. SVG/HTML ficam de fora de propósito (XSS).
 const MIME_EXT = {
-  'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif',
+  'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg',
   'video/mp4': 'mp4', 'video/webm': 'webm',
   // Apresentações: PPTX/PPT (exibidas via visualizador) e PDF (nativo no navegador).
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
@@ -82,6 +82,23 @@ function saveStream(tenantId, req, { mime }) {
   });
 }
 
+// saveBuffer — grava bytes já em memória (ex.: imagem gerada por IA).
+function saveBuffer(tenantId, buf, mime) {
+  return new Promise((resolve, reject) => {
+    const ext = extFor(mime);
+    if (!ext) return reject(httpErr(415, 'tipo de arquivo não suportado'));
+    if (DRIVER !== 'disk') return reject(httpErr(501, 'driver de storage "' + DRIVER + '" não habilitado'));
+    if (buf.length > MAX_FILE_BYTES) return reject(httpErr(413, 'arquivo excede o limite'));
+    const id = rid(20);
+    const key = tenantId + '/' + id + '.' + ext;
+    fs.mkdirSync(path.join(MEDIA_DIR, tenantId), { recursive: true });
+    fs.writeFile(path.join(MEDIA_DIR, key), buf, (err) => {
+      if (err) return reject(err);
+      resolve({ id, key, ext, mime: String(mime).toLowerCase(), size: buf.length, url: publicUrl(key) });
+    });
+  });
+}
+
 function remove(key) {
   if (DRIVER !== 'disk') return Promise.resolve();
   return new Promise((resolve) => fs.unlink(path.join(MEDIA_DIR, key), () => resolve()));
@@ -101,7 +118,7 @@ function resolveLocal(key) {
 
 module.exports = {
   DRIVER, MAX_FILE_BYTES, QUOTA_BYTES, MIME_EXT,
-  extFor, saveStream, remove, publicUrl, resolveLocal,
+  extFor, saveStream, saveBuffer, remove, publicUrl, resolveLocal,
 };
 
 function httpErr(status, message) { const e = new Error(message); e.status = status; return e; }

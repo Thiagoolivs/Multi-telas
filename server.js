@@ -438,6 +438,26 @@ async function handleApi(req, res, pathname, query) {
     });
   }
 
+  /* ----- IA: geração de imagem (Gemini/Imagen) → salva no storage ----- */
+  if (parts[1] === 'ai' && parts[2] === 'generate-image') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:img:' + sess.tenant_id, 20, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de imagens por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const prompt = b && b.prompt;
+      if (!prompt || !String(prompt).trim()) return sendJson(res, 400, { error: 'descreva a imagem' });
+      try {
+        const img = await ai.generateImage(prompt, {
+          formato: (b && b.formato) || '16/9', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '', estilo: (b && b.estilo) || '',
+        });
+        const buf = Buffer.from(img.data, 'base64');
+        const saved = await storage.saveBuffer(sess.tenant_id, buf, img.mime);
+        return sendJson(res, 200, { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' });
+      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+    });
+  }
+
   /* ----- IA: layout de composição (editor livre) ----- */
   if (parts[1] === 'ai' && parts[2] === 'generate-composition') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
