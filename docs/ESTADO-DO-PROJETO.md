@@ -1,4 +1,4 @@
-# Estado do projeto (Vistra)
+# Estado do projeto (MultiTelas)
 
 Resumo do que existe hoje, decisões tomadas e para onde vamos. Serve como
 "contexto de retomada" — qualquer pessoa (ou sessão de IA) que ler `docs/`
@@ -6,7 +6,7 @@ consegue continuar sem depender da memória de um chat.
 
 ## O que é hoje
 
-**Vistra** — sistema de digital signage (mídia indoor para TVs corporativas),
+**MultiTelas** — sistema de digital signage (mídia indoor para TVs corporativas),
 client-side, sem backend obrigatório. Player + painel de gestão rodando no
 navegador, dados no `localStorage` (ou URL de config remota).
 
@@ -29,7 +29,7 @@ navegador, dados no `localStorage` (ou URL de config remota).
   se edita pixel/DOM direto. (Já é assim no signage.)
 - **Player continua vanilla** de propósito (leve, roda em TV fraca). O que
   cresce para SaaS é o backend e o dashboard.
-- **Rebrand:** produto = **Vistra**. Sem referências a terceiros. Commits/PRs
+- **Rebrand:** produto = **MultiTelas**. Sem referências a terceiros. Commits/PRs
   sem assinaturas de IA.
 - **server.js manda `Cache-Control: no-cache`** em html/js/css → deploy novo
   aparece sem hard refresh.
@@ -59,7 +59,7 @@ e o contrato de saída dos agentes de IA.
   e uma API com **contas (login)**, **dispositivos por empresa (tenant)** e
   **sincronização em tempo real (SSE)**. Persistência em **PostgreSQL** quando
   `DATABASE_URL` está definido; sem ele, **SQLite** embutido (`node:sqlite`,
-  `data/vistra.db`) para dev local sem setup. A API de dados é assíncrona e
+  `data/multitelas.db`) para dev local sem setup. A API de dados é assíncrona e
   idêntica nos dois backends.
   - `server/db.js` — escolhe o backend por `DATABASE_URL`.
   - `server/db-postgres.js` — driver `pg` (produção).

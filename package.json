@@ -1,8 +1,8 @@
 {
-  "name": "vistra",
+  "name": "multitelas",
   "version": "1.0.0",
   "private": true,
-  "description": "Vistra — mídia indoor para TVs corporativas (digital signage)",
+  "description": "MultiTelas — mídia indoor para TVs corporativas (digital signage)",
   "scripts": {
     "start": "node server.js",
     "build": "npm --prefix web install --include=dev --no-audit --no-fund && npm --prefix web run build"

@@ -132,6 +132,12 @@ async function setUserGoogle(id, sub) {
 async function setUserPassword(id, passHash) {
   await pool.query('UPDATE users SET pass_hash = $1 WHERE id = $2', [passHash, id]);
 }
+async function setUserName(id, name) {
+  await pool.query('UPDATE users SET name = $1 WHERE id = $2', [String(name || '').slice(0, 80), id]);
+}
+async function setTenantName(id, name) {
+  await pool.query('UPDATE tenants SET name = $1 WHERE id = $2', [String(name || '').slice(0, 80), id]);
+}
 // Reset de senha: token de uso único e validade curta.
 async function createReset(token, userId, expiresAt) {
   await pool.query('DELETE FROM resets WHERE user_id = $1 AND used_at IS NULL', [userId]);
@@ -345,7 +351,7 @@ function rid(n) {
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
-  getUserByGoogle, setUserGoogle, setUserPassword,
+  getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
   createReset, getReset, consumeReset,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,

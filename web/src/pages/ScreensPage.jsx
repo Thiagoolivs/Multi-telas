@@ -207,6 +207,15 @@ function RemoveDialog({ target, onClose, onDone }) {
  * JSON, restaura de arquivo ou copia de outra tela. Serve para quando a TV
  * some, é apagada ou precisa ser trocada por outra que conecte.
  */
+/*
+ * O servidor usa settings.nome como nome da tela. Sem isto, restaurar ou
+ * copiar uma config renomearia a tela de destino com o nome da origem.
+ */
+function comNomeDoDestino(cfg, target) {
+  const nome = (target && target.name) || (cfg.settings && cfg.settings.nome) || 'Tela';
+  return { ...cfg, settings: { ...(cfg.settings || {}), nome } };
+}
+
 function BackupDialog({ target, screens, onClose, onDone }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
@@ -220,12 +229,12 @@ function BackupDialog({ target, screens, onClose, onDone }) {
     try {
       const cfg = await deviceConfig.get(target.id);
       if (!cfg) { setErr('Esta tela ainda não tem configuração para salvar.'); return; }
-      const backup = { kind: 'vistra.screen', version: 1, exportedAt: new Date().toISOString(), name: target.name || '', config: cfg };
+      const backup = { kind: 'multitelas.screen', version: 1, exportedAt: new Date().toISOString(), name: target.name || '', config: cfg };
       const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'vistra-' + (target.name || 'tela').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.json';
+      a.download = 'multitelas-' + (target.name || 'tela').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 2000);
       setMsg('Backup baixado.');
@@ -241,8 +250,8 @@ function BackupDialog({ target, screens, onClose, onDone }) {
       const parsed = JSON.parse(await f.text());
       // Aceita o arquivo do backup e também uma config "crua".
       const cfg = parsed && parsed.config ? parsed.config : parsed;
-      if (!cfg || !cfg.zonas) { setErr('Arquivo não parece um backup do Vistra.'); return; }
-      await deviceConfig.save(target.id, cfg);
+      if (!cfg || !cfg.zonas) { setErr('Arquivo não parece um backup do MultiTelas.'); return; }
+      await deviceConfig.save(target.id, comNomeDoDestino(cfg, target));
       setMsg('Exibição restaurada nesta tela.');
       onDone();
     } catch (e2) { setErr(e2.message || 'Falha ao restaurar.'); }
@@ -255,7 +264,7 @@ function BackupDialog({ target, screens, onClose, onDone }) {
     try {
       const cfg = await deviceConfig.get(from);
       if (!cfg) { setErr('A tela escolhida não tem configuração.'); return; }
-      await deviceConfig.save(target.id, cfg);
+      await deviceConfig.save(target.id, comNomeDoDestino(cfg, target));
       setMsg('Exibição copiada para esta tela.');
       onDone();
     } catch (e) { setErr(e.message || 'Falha ao copiar.'); }

@@ -31,6 +31,8 @@ export const auth = {
   config: () => api('GET', '/api/auth/config').catch(() => ({ google: false, mail: false })),
   forgot: (email) => api('POST', '/api/auth/forgot', { email }),
   reset: (token, password) => api('POST', '/api/auth/reset', { token, password }),
+  updateProfile: (payload) => api('POST', '/api/auth/profile', payload),
+  changePassword: (atual, nova) => api('POST', '/api/auth/password', { atual, nova }),
 };
 
 export const team = {

@@ -13,15 +13,32 @@
   'use strict';
 
   const API = '';
-  const CONTROL_KEY = 'vistra.controlDeviceId';
 
   function qsp(name) { return new URLSearchParams(global.location.search).get(name); }
+
+  /*
+   * As chaves nasceram com o prefixo "vistra." e passaram a "mt." na troca de
+   * marca. migrateKey() copia o valor antigo na primeira vez, então nenhuma TV
+   * já pareada perde o vínculo.
+   */
+  function migrateKey(novo, antigo) {
+    try {
+      if (localStorage.getItem(novo) === null) {
+        const v = localStorage.getItem(antigo);
+        if (v !== null) localStorage.setItem(novo, v);
+      }
+      localStorage.removeItem(antigo);
+    } catch (e) {}
+    return novo;
+  }
+
+  const CONTROL_KEY = migrateKey('mt.controlDeviceId', 'vistra.controlDeviceId');
 
   // "pid" isola a instância: cada player (mesmo no mesmo navegador) tem seu
   // próprio device/código. Permite testar várias telas na mesma máquina.
   const _pidSfx = qsp('pid') ? ':' + qsp('pid') : '';
-  const DEVICE_KEY = 'vistra.cloudDeviceId' + _pidSfx;
-  const DTOKEN_KEY = 'vistra.cloudDeviceToken' + _pidSfx;
+  const DEVICE_KEY = migrateKey('mt.cloudDeviceId' + _pidSfx, 'vistra.cloudDeviceId' + _pidSfx);
+  const DTOKEN_KEY = migrateKey('mt.cloudDeviceToken' + _pidSfx, 'vistra.cloudDeviceToken' + _pidSfx);
 
   /*
    * Esquece a TV guardada neste navegador. O par id+token fica em
@@ -33,8 +50,8 @@
     try {
       localStorage.removeItem(DEVICE_KEY);
       localStorage.removeItem(DTOKEN_KEY);
-      localStorage.removeItem('vistra.lastConfig'); // não herda a exibição da tela antiga
-      localStorage.removeItem('vistra.birthdays');
+      localStorage.removeItem('mt.lastConfig'); // não herda a exibição da tela antiga
+      localStorage.removeItem('mt.birthdays');
     } catch (e) {}
   }
 

@@ -1,9 +1,9 @@
 {
-  "name": "vistra-web",
+  "name": "multitelas-web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Painel do Vistra em React (Vite). Migração incremental do admin vanilla.",
+  "description": "Painel do MultiTelas em React (Vite). Migração incremental do admin vanilla.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

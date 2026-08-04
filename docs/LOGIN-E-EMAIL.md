@@ -8,12 +8,12 @@ funcionando com login por e-mail e senha.
 
 | Variável | Para quê | Obrigatória? |
 | --- | --- | --- |
-| `APP_URL` | URL pública (ex.: `https://vistra.up.railway.app`). Usada nos links do e-mail e no redirect do Google. | Recomendada |
+| `APP_URL` | URL pública (ex.: `https://multitelas.up.railway.app`). Usada nos links do e-mail e no redirect do Google. | Recomendada |
 | `GOOGLE_CLIENT_ID` | Login com Google | Só para o Google |
 | `GOOGLE_CLIENT_SECRET` | Login com Google | Só para o Google |
 | `RESEND_API_KEY` | Envio do e-mail de recuperação (via [Resend](https://resend.com)) | Só para o e-mail |
 | `BREVO_API_KEY` | Alternativa ao Resend (via [Brevo](https://brevo.com)) | Só para o e-mail |
-| `MAIL_FROM` | Remetente, ex.: `Vistra <no-reply@seudominio.com>` | Recomendada com e-mail |
+| `MAIL_FROM` | Remetente, ex.: `MultiTelas <no-reply@seudominio.com>` | Recomendada com e-mail |
 | `MAIL_PROVIDER` | Força o provider (`resend`, `brevo`, `dev`) | Não |
 
 Sem `APP_URL`, o servidor monta a URL a partir do request (respeitando os

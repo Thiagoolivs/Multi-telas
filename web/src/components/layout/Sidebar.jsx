@@ -74,13 +74,17 @@ export function Sidebar({ active, onNavigate }) {
       </nav>
 
       <div className="border-t border-line p-2.5">
-        <a
-          href="#"
-          className="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-ink-2 transition hover:bg-surface-2 hover:text-ink"
+        <button
+          type="button"
+          onClick={() => onNavigate('support')}
+          className={cn(
+            'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition',
+            active === 'support' ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
+          )}
         >
-          <LifeBuoy size={16} strokeWidth={2} className="text-ink-3" />
+          <LifeBuoy size={16} strokeWidth={2} className={active === 'support' ? 'text-accent' : 'text-ink-3'} />
           Suporte
-        </a>
+        </button>
       </div>
     </aside>
   );
