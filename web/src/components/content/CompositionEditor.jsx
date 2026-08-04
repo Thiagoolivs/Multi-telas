@@ -1,9 +1,10 @@
 import React, { useRef, useState, useCallback } from 'react';
 import Moveable from 'react-moveable';
-import { ImagePlus, Type, Trash2, ChevronUp, ChevronDown, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical, Sparkles } from 'lucide-react';
+import { ImagePlus, Type, Trash2, ChevronUp, ChevronDown, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical, Sparkles, Shapes } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { media, ai } from '../../api.js';
+import { fillToCss, bgGradient } from '../../lib/composition.js';
 
 const ASPECTS = [
   { id: '16/9', label: 'Retangular', icon: RectangleHorizontal, ratio: 16 / 9 },
@@ -29,6 +30,10 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [aiOpen, setAiOpen] = useState(false);
   const [aiBrief, setAiBrief] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
+  const [g1, setG1] = useState('#1e3a8a');
+  const [g2, setG2] = useState('#0a1020');
+  const [gType, setGType] = useState('linear');
+  const applyGrad = (a = g1, b = g2, t = gType) => setBg({ kind: 'cor', cor: bgGradient(t, a, b, 150) });
 
   const canvasRef = useRef(null);
   const nodes = useRef({});          // id -> DOM node (alvo do Moveable)
@@ -50,6 +55,16 @@ export function CompositionEditor({ value, onClose, onSave }) {
     const e = { id: uid(), tipo: 'texto', text: 'Texto', x: 10, y: 40, w: 60, h: 18, rot: 0, cor: '#ffffff', peso: 800, tamanho: 6, align: 'center', z: els.length + 1 };
     setEls((a) => [...a, e]); setSel(e.id);
   }
+  function addShape() {
+    const e = { id: uid(), tipo: 'forma', shape: 'rect', x: 12, y: 12, w: 45, h: 35, rot: 0, fill: '#3b82f6', opacidade: 1, radius: 0, z: 0 };
+    setEls((a) => [e, ...a]); setSel(e.id); // formas nascem no fundo
+  }
+  // Preenchimento da forma: alterna sólido/gradiente e ajusta cores.
+  const shapeFill = selEl && selEl.tipo === 'forma' ? (typeof selEl.fill === 'object' ? selEl.fill : { grad: '', cores: [selEl.fill || '#3b82f6', '#1e3a8a'], ang: 150 }) : null;
+  const setFillMode = (mode) => { // '' sólido | 'linear' | 'radial'
+    const c = shapeFill.cores;
+    patchSel({ fill: mode ? { grad: mode === 'radial' ? 'radial' : 'linear', cores: c, ang: shapeFill.ang } : c[0] });
+  };
   async function onPickImage(e) {
     const f = (e.target.files || [])[0]; e.target.value = '';
     if (!f) return;
@@ -103,6 +118,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => setAiOpen((o) => !o)}>IA</Button>
         <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Imagem</Button>
         <Button size="sm" variant="secondary" icon={Type} onClick={addText}>Texto</Button>
+        <Button size="sm" variant="secondary" icon={Shapes} onClick={addShape}>Forma</Button>
         <div className="mx-2 h-5 w-px bg-line" />
         {ASPECTS.map((a) => (
           <button key={a.id} onClick={() => setAspect(a.id)} title={a.label}
@@ -137,13 +153,16 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 onMouseDown={() => setSel(e.id)}
                 style={{
                   position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%',
-                  transform: `rotate(${e.rot || 0}deg)`, cursor: 'move', outline: sel === e.id ? '1px solid rgba(120,160,255,.9)' : 'none',
+                  transform: `rotate(${e.rot || 0}deg)`, cursor: 'move', opacity: e.opacidade != null ? e.opacidade : 1,
+                  outline: sel === e.id ? '1px solid rgba(120,160,255,.9)' : 'none',
                 }}>
                 {e.tipo === 'texto' ? (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: e.cor, fontWeight: e.peso, textAlign: e.align, fontSize: `clamp(10px, ${e.tamanho}vw, 200px)`, lineHeight: 1.05, overflow: 'hidden' }}>
+                    color: e.cor, fontWeight: e.peso, textAlign: e.align, fontSize: `clamp(10px, ${e.tamanho}vw, 200px)`, lineHeight: 1.05, overflow: 'hidden', textShadow: e.sombra ? '0 2px 14px rgba(0,0,0,.45)' : 'none' }}>
                     {e.text}
                   </div>
+                ) : e.tipo === 'forma' ? (
+                  <div style={{ width: '100%', height: '100%', background: fillToCss(e.fill), borderRadius: e.shape === 'ellipse' ? '50%' : ((e.radius || 0) + '%'), pointerEvents: 'none' }} />
                 ) : (
                   <img src={e.src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', display: 'block', pointerEvents: 'none' }} />
                 )}
@@ -175,12 +194,20 @@ export function CompositionEditor({ value, onClose, onSave }) {
               {bg.kind === 'imagem' && <Button size="sm" variant="ghost" onClick={() => setBg({ kind: 'cor', cor: '#0a1020' })}>Limpar</Button>}
               <input ref={bgInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPickBg} />
             </div>
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-2xs text-ink-3">Gradiente</span>
+              <input type="color" value={g1} onChange={(e) => { setG1(e.target.value); applyGrad(e.target.value, g2, gType); }} className="h-7 w-7 cursor-pointer rounded border border-line bg-transparent" />
+              <input type="color" value={g2} onChange={(e) => { setG2(e.target.value); applyGrad(g1, e.target.value, gType); }} className="h-7 w-7 cursor-pointer rounded border border-line bg-transparent" />
+              <Select value={gType} onChange={(e) => { setGType(e.target.value); applyGrad(g1, g2, e.target.value); }} className="h-8 flex-1 text-xs">
+                <option value="linear">Linear</option><option value="radial">Radial</option>
+              </Select>
+            </div>
           </div>
 
           {selEl ? (
             <div className="space-y-3 border-t border-line pt-4">
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-semibold uppercase tracking-wide text-ink-3">{selEl.tipo === 'texto' ? 'Texto' : 'Imagem'} selecionado</span>
+                <span className="text-2xs font-semibold uppercase tracking-wide text-ink-3">{selEl.tipo === 'texto' ? 'Texto' : selEl.tipo === 'forma' ? 'Forma' : 'Imagem'} selecionado</span>
                 <div className="flex gap-1">
                   <button title="Frente" onClick={() => layer(1)} className="rounded p-1 text-ink-3 hover:text-ink"><ChevronUp size={15} /></button>
                   <button title="Trás" onClick={() => layer(-1)} className="rounded p-1 text-ink-3 hover:text-ink"><ChevronDown size={15} /></button>
@@ -198,6 +225,49 @@ export function CompositionEditor({ value, onClose, onSave }) {
                     <Select value={selEl.align} onChange={(e) => patchSel({ align: e.target.value })}>
                       <option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option>
                     </Select>
+                  </Field>
+                  <label className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={!!selEl.sombra} onChange={(e) => patchSel({ sombra: e.target.checked })} /> Sombra no texto</label>
+                </>
+              ) : selEl.tipo === 'forma' ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Formato">
+                      <Select value={selEl.shape || 'rect'} onChange={(e) => patchSel({ shape: e.target.value })}>
+                        <option value="rect">Retângulo</option><option value="ellipse">Elipse</option>
+                      </Select>
+                    </Field>
+                    <Field label="Preenchimento">
+                      <Select value={typeof selEl.fill === 'object' ? (selEl.fill.grad || 'linear') : ''} onChange={(e) => setFillMode(e.target.value)}>
+                        <option value="">Sólido</option><option value="linear">Grad. linear</option><option value="radial">Grad. radial</option>
+                      </Select>
+                    </Field>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Cor 1">
+                      <input type="color" value={(typeof selEl.fill === 'object' ? shapeFill.cores[0] : selEl.fill) || '#3b82f6'}
+                        onChange={(e) => { if (typeof selEl.fill === 'object') { const c = [...shapeFill.cores]; c[0] = e.target.value; patchSel({ fill: { ...selEl.fill, cores: c } }); } else patchSel({ fill: e.target.value }); }}
+                        className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" />
+                    </Field>
+                    {typeof selEl.fill === 'object' && (
+                      <Field label="Cor 2">
+                        <input type="color" value={shapeFill.cores[1] || '#1e3a8a'}
+                          onChange={(e) => { const c = [...shapeFill.cores]; c[1] = e.target.value; patchSel({ fill: { ...selEl.fill, cores: c } }); }}
+                          className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" />
+                      </Field>
+                    )}
+                  </div>
+                  {typeof selEl.fill === 'object' && selEl.fill.grad !== 'radial' && (
+                    <Field label={`Ângulo (${shapeFill.ang || 150}°)`}>
+                      <input type="range" min="0" max="360" value={shapeFill.ang || 150} onChange={(e) => patchSel({ fill: { ...selEl.fill, ang: Number(e.target.value) } })} className="w-full" />
+                    </Field>
+                  )}
+                  {selEl.shape !== 'ellipse' && (
+                    <Field label={`Cantos (${selEl.radius || 0}%)`}>
+                      <input type="range" min="0" max="50" value={selEl.radius || 0} onChange={(e) => patchSel({ radius: Number(e.target.value) })} className="w-full" />
+                    </Field>
+                  )}
+                  <Field label={`Opacidade (${Math.round((selEl.opacidade != null ? selEl.opacidade : 1) * 100)}%)`}>
+                    <input type="range" min="0" max="1" step="0.05" value={selEl.opacidade != null ? selEl.opacidade : 1} onChange={(e) => patchSel({ opacidade: Number(e.target.value) })} className="w-full" />
                   </Field>
                 </>
               ) : (

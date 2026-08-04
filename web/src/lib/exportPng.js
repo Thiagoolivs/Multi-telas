@@ -61,6 +61,32 @@ function drawImageFit(ctx, img, x, y, w, h, fit) {
   else ctx.drawImage(img, dx, dy, dw, dh);
 }
 
+function shapeFill(ctx, fill, w, h) {
+  if (!fill) return 'rgba(255,255,255,0.14)';
+  if (typeof fill === 'string') return fill;
+  const c = (fill.cores && fill.cores.length) ? fill.cores : ['#888888', '#444444'];
+  const c2 = c[1] || c[0];
+  if (fill.grad === 'radial') {
+    const g = ctx.createRadialGradient(w / 2, h * 0.4, 1, w / 2, h * 0.4, Math.max(w, h) / 1.3);
+    g.addColorStop(0, c[0]); g.addColorStop(1, c2); return g;
+  }
+  const ang = ((fill.ang != null ? fill.ang : 150) - 90) * Math.PI / 180;
+  const cx = w / 2, cy = h / 2, len = Math.max(w, h);
+  const g = ctx.createLinearGradient(cx - Math.cos(ang) * len / 2, cy - Math.sin(ang) * len / 2, cx + Math.cos(ang) * len / 2, cy + Math.sin(ang) * len / 2);
+  g.addColorStop(0, c[0]); g.addColorStop(1, c2); return g;
+}
+function roundRectPath(ctx, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+function drawShape(ctx, e, w, h) {
+  ctx.fillStyle = shapeFill(ctx, e.fill, w, h);
+  if (e.shape === 'ellipse') { ctx.beginPath(); ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fill(); }
+  else { roundRectPath(ctx, 0, 0, w, h, Math.min(w, h) * ((e.radius || 0) / 100)); ctx.fill(); }
+}
+
 function drawText(ctx, e, w, h, W) {
   const fontPx = Math.max(8, (Number(e.tamanho) || 6) / 100 * W);
   ctx.fillStyle = e.cor || '#ffffff';
@@ -96,10 +122,12 @@ export async function compositionToCanvas(item, W, H) {
   for (const e of els) {
     const x = (e.x || 0) / 100 * W, y = (e.y || 0) / 100 * H, w = (e.w || 20) / 100 * W, h = (e.h || 20) / 100 * H;
     ctx.save();
+    ctx.globalAlpha = e.opacidade != null ? e.opacidade : 1;
     ctx.translate(x + w / 2, y + h / 2);
     if (e.rot) ctx.rotate((e.rot) * Math.PI / 180);
     ctx.translate(-w / 2, -h / 2);
     if (e.tipo === 'texto') drawText(ctx, e, w, h, W);
+    else if (e.tipo === 'forma') drawShape(ctx, e, w, h);
     else if (e.src) { try { drawImageFit(ctx, await loadImage(e.src), 0, 0, w, h, e.fit || 'contain'); } catch (err) {} }
     ctx.restore();
   }

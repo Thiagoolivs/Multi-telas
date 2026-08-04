@@ -1,5 +1,6 @@
 import React from 'react';
 import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film, Cake, Airplay, Cast, Presentation } from 'lucide-react';
+import { fillToCss } from '../../lib/composition.js';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
 // Fidelidade total virá de um preview via player embutido, adiante.
@@ -114,7 +115,9 @@ function Body({ item }) {
             <div key={idx} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden' }}>
               {e.tipo === 'texto'
                 ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: e.cor, fontWeight: e.peso, fontSize: '9px', textAlign: e.align, lineHeight: 1.05 }}>{e.text}</div>
-                : <img src={e.src} alt="" style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain' }} onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />}
+                : e.tipo === 'forma'
+                  ? <div style={{ width: '100%', height: '100%', background: fillToCss(e.fill), borderRadius: e.shape === 'ellipse' ? '50%' : ((e.radius || 0) + '%') }} />
+                  : <img src={e.src} alt="" style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain' }} onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />}
             </div>
           ))}
           {!els.length && <div className="flex h-full items-center justify-center text-xs opacity-40">Composição vazia — abra o editor</div>}
