@@ -177,13 +177,13 @@
   // renderizador automático. Cacheia em localStorage — sobrevive a quedas de rede.
   function loadBirthdays(id) {
     try {
-      const cached = localStorage.getItem('vistra.birthdays');
+      const cached = localStorage.getItem('mt.birthdays') || localStorage.getItem('vistra.birthdays');
       if (cached && !global.MT_BIRTHDAYS) global.MT_BIRTHDAYS = JSON.parse(cached);
     } catch (e) {}
     if (!global.MTCloud || !MTCloud.fetchBirthdays) return;
     MTCloud.fetchBirthdays(id).then(function (list) {
       global.MT_BIRTHDAYS = list || [];
-      try { localStorage.setItem('vistra.birthdays', JSON.stringify(global.MT_BIRTHDAYS)); } catch (e) {}
+      try { localStorage.setItem('mt.birthdays', JSON.stringify(global.MT_BIRTHDAYS)); } catch (e) {}
     }).catch(function () { /* offline: mantém o cache */ });
   }
 
@@ -243,12 +243,16 @@
   }
 
   /* ---------------- Resiliência offline ---------------- */
-  const CFG_CACHE_KEY = 'vistra.lastConfig';
+  const CFG_CACHE_KEY = 'mt.lastConfig';
+  const CFG_CACHE_LEGACY = 'vistra.lastConfig'; // cache da marca antiga
   function saveCachedConfig(cfg) {
     try { localStorage.setItem(CFG_CACHE_KEY, JSON.stringify(cfg)); } catch (e) {}
   }
   function loadCachedConfig() {
-    try { const r = localStorage.getItem(CFG_CACHE_KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; }
+    try {
+      const r = localStorage.getItem(CFG_CACHE_KEY) || localStorage.getItem(CFG_CACHE_LEGACY);
+      return r ? JSON.parse(r) : null;
+    } catch (e) { return null; }
   }
   // Pré-carrega a mídia (/media/...) de toda a playlist para o cache do service
   // worker, para que a tela toque mesmo sem rede na próxima queda.

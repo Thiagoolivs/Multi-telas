@@ -4,7 +4,7 @@
  * Fallback de desenvolvimento: sem DATABASE_URL, o projeto roda "clone e
  * pronto", sem subir um Postgres. A API é assíncrona para casar 1:1 com o
  * backend Postgres (server/db-postgres.js) — o restante do servidor não
- * precisa saber qual está em uso. Arquivo do banco: data/vistra.db.
+ * precisa saber qual está em uso. Arquivo do banco: data/multitelas.db.
  */
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
@@ -12,7 +12,14 @@ const fs = require('fs');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
-const db = new DatabaseSync(path.join(DATA_DIR, 'vistra.db'));
+/*
+ * Nome do arquivo mudou de vistra.db para multitelas.db na troca de marca.
+ * Se o banco antigo existir, continuamos usando ELE — renomear arquivo em
+ * volume de produção é jeito fácil de perder dados.
+ */
+const LEGACY_DB = path.join(DATA_DIR, 'vistra.db');
+const DB_FILE = fs.existsSync(LEGACY_DB) ? LEGACY_DB : path.join(DATA_DIR, 'multitelas.db');
+const db = new DatabaseSync(DB_FILE);
 
 db.exec(`
   PRAGMA journal_mode = WAL;
@@ -87,6 +94,8 @@ const q = {
   userById: db.prepare('SELECT * FROM users WHERE id = ?'),
   usersByTenant: db.prepare('SELECT id, email, role, name, created_at FROM users WHERE tenant_id = ? ORDER BY created_at ASC'),
   setUserRole: db.prepare('UPDATE users SET role = ? WHERE id = ? AND tenant_id = ?'),
+  setUserName: db.prepare('UPDATE users SET name = ? WHERE id = ?'),
+  setTenantName: db.prepare('UPDATE tenants SET name = ? WHERE id = ?'),
   deleteUser: db.prepare('DELETE FROM users WHERE id = ? AND tenant_id = ?'),
   countOwners: db.prepare("SELECT COUNT(*) AS n FROM users WHERE tenant_id = ? AND role = 'owner'"),
   userByGoogle: db.prepare('SELECT * FROM users WHERE google_sub = ?'),
@@ -152,6 +161,8 @@ async function getUserById(id) { return q.userById.get(id) || null; }
 async function getUserByGoogle(sub) { return q.userByGoogle.get(sub) || null; }
 async function setUserGoogle(id, sub) { q.setUserGoogle.run(sub, id); }
 async function setUserPassword(id, passHash) { q.setUserPass.run(passHash, id); }
+async function setUserName(id, name) { q.setUserName.run(String(name || '').slice(0, 80), id); }
+async function setTenantName(id, name) { q.setTenantName.run(String(name || '').slice(0, 80), id); }
 // Reset de senha: um token de uso único, com validade curta.
 async function createReset(token, userId, expiresAt) {
   q.purgeResets.run(userId); // invalida pedidos anteriores
@@ -272,7 +283,7 @@ function rid(n) {
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
-  getUserByGoogle, setUserGoogle, setUserPassword,
+  getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
   createReset, getReset, consumeReset,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,

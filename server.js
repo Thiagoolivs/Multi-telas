@@ -318,7 +318,7 @@ async function handleApi(req, res, pathname, query) {
         Location: url,
         'Cache-Control': 'no-store',
         // state em cookie curto: confere na volta (proteção CSRF).
-        'Set-Cookie': 'vistra_oauth=' + state + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + (isSecureRequest(req) ? '; Secure' : ''),
+        'Set-Cookie': 'mt_oauth=' + state + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + (isSecureRequest(req) ? '; Secure' : ''),
       });
       return res.end();
     }
@@ -329,7 +329,7 @@ async function handleApi(req, res, pathname, query) {
         res.writeHead(302, { Location: '/app/?erro=' + encodeURIComponent(motivo), 'Cache-Control': 'no-store' });
         res.end();
       };
-      const cookieState = (req.headers.cookie || '').match(/vistra_oauth=([^;]+)/);
+      const cookieState = (req.headers.cookie || '').match(/mt_oauth=([^;]+)/);
       if (!q.get('code') || !cookieState || cookieState[1] !== q.get('state')) return fail('login-google-invalido');
       try {
         const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -368,7 +368,7 @@ async function handleApi(req, res, pathname, query) {
         }
         await auth.startSession(res, u.id, u.tenant_id, req);
         // Limpa o cookie de state e entra no painel.
-        res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), 'vistra_oauth=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'].flat().filter(Boolean));
+        res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), 'mt_oauth=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'].flat().filter(Boolean));
         res.writeHead(302, { Location: '/app/', 'Cache-Control': 'no-store' });
         return res.end();
       } catch (e) {
@@ -377,11 +377,45 @@ async function handleApi(req, res, pathname, query) {
       }
     }
 
+    /* --- Ajustes: nome do usuário e da empresa --- */
+    if (req.method === 'POST' && action === 'profile') {
+      if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+      return readBody(req, res, async (b) => {
+        if (b && typeof b.name === 'string') await db.setUserName(sess.user_id, b.name.trim());
+        // Só o dono muda o nome da empresa (aparece nas telas e nos e-mails).
+        if (b && typeof b.empresa === 'string') {
+          if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono pode mudar o nome da empresa' });
+          await db.setTenantName(sess.tenant_id, b.empresa.trim());
+        }
+        return sendJson(res, 200, { ok: true });
+      });
+    }
+
+    /* --- Ajustes: trocar a própria senha --- */
+    if (req.method === 'POST' && action === 'password') {
+      if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+      return readBody(req, res, async (b) => {
+        const atual = String((b && b.atual) || '');
+        const nova = String((b && b.nova) || '');
+        if (nova.length < 6) return sendJson(res, 400, { error: 'a nova senha precisa ter 6+ caracteres' });
+        const u = await db.getUserById(sess.user_id);
+        if (!u) return sendJson(res, 401, { error: 'não autenticado' });
+        // Conta criada pelo Google não tem senha ainda: nesse caso, define a primeira.
+        if (u.pass_hash && !auth.verifyPassword(atual, u.pass_hash))
+          return sendJson(res, 401, { error: 'senha atual incorreta' });
+        await db.setUserPassword(u.id, auth.hashPassword(nova));
+        return sendJson(res, 200, { ok: true });
+      });
+    }
+
     if (req.method === 'GET' && action === 'me') {
       if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+      const t = await db.getTenant(sess.tenant_id);
+      const u = await db.getUserById(sess.user_id);
       return sendJson(res, 200, {
-        tenant: { id: sess.tenant_id },
-        user: { id: sess.user_id, email: sess.email, role: sess.role, name: sess.name },
+        tenant: { id: sess.tenant_id, name: (t && t.name) || '' },
+        // hasPassword: conta criada pelo Google ainda não tem senha própria.
+        user: { id: sess.user_id, email: sess.email, role: sess.role, name: sess.name, hasPassword: !!(u && u.pass_hash) },
       });
     }
     return sendJson(res, 404, { error: 'rota de auth inválida' });
@@ -968,7 +1002,7 @@ const HOME_HTML = `<!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Vistra</title>
+<title>MultiTelas</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%232F6FEB'/%3E%3Cg fill='%23fff'%3E%3Crect x='4' y='4' width='9' height='7' rx='1'/%3E%3Crect x='15' y='4' width='5' height='7' rx='1'/%3E%3Crect x='4' y='13' width='16' height='7' rx='1'/%3E%3C/g%3E%3C/svg%3E" />
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -993,7 +1027,7 @@ const HOME_HTML = `<!DOCTYPE html>
 <body>
   <div class="brand">
     <svg viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#2F6FEB"/><g fill="#fff"><rect x="4" y="4" width="9" height="7" rx="1"/><rect x="15" y="4" width="5" height="7" rx="1"/><rect x="4" y="13" width="16" height="7" rx="1"/></g></svg>
-    Vistra
+    MultiTelas
   </div>
   <div class="sub">Mídia indoor para TVs. Escolha como quer entrar neste dispositivo.</div>
   <div class="cards">
@@ -1055,5 +1089,5 @@ const server = http.createServer((req, res) => {
 });
 
 db.init()
-  .then(() => server.listen(PORT, () => { console.log('Vistra rodando em http://localhost:' + PORT); }))
+  .then(() => server.listen(PORT, () => { console.log('MultiTelas rodando em http://localhost:' + PORT); }))
   .catch((e) => { console.error('[db] falha ao inicializar:', e.message); process.exit(1); });

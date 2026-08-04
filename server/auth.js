@@ -7,7 +7,10 @@ const db = require('./db');
 const { isSecureRequest } = require('./security');
 
 const SESSION_DAYS = 30;
-const COOKIE = 'vistra_session';
+const COOKIE = 'mt_session';
+// Nome antigo do cookie: ainda é lido para que a troca de marca não derrube
+// quem já estava logado. Pode sair depois que todo mundo tiver reentrado.
+const LEGACY_COOKIE = 'vistra_session';
 
 // Monta os atributos do cookie de sessão. Secure só sob HTTPS (senão o browser
 // descartaria o cookie em dev sobre http).
@@ -42,7 +45,8 @@ async function startSession(res, userId, tenantId, req) {
 }
 async function clearSession(res, token, req) {
   if (token) await db.destroySession(token);
-  res.setHeader('Set-Cookie', COOKIE + '=; ' + cookieAttrs(req, 0));
+  // Apaga também o cookie antigo, senão a sessão legada ressuscitaria.
+  res.setHeader('Set-Cookie', [COOKIE + '=; ' + cookieAttrs(req, 0), LEGACY_COOKIE + '=; ' + cookieAttrs(req, 0)]);
 }
 function parseCookies(req) {
   const out = {};
@@ -55,7 +59,8 @@ function parseCookies(req) {
 // Retorna a sessão válida (com tenant_id/user_id/role/email) ou null. O papel
 // é lido do usuário a cada request, então mudanças de permissão valem na hora.
 async function currentSession(req) {
-  const token = parseCookies(req)[COOKIE];
+  const jar = parseCookies(req);
+  const token = jar[COOKIE] || jar[LEGACY_COOKIE];
   if (!token) return null;
   const s = await db.getSession(token);
   if (!s) return null;

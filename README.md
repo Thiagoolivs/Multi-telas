@@ -1,6 +1,6 @@
-# Vistra — mídia indoor para TVs corporativas
+# MultiTelas — mídia indoor para TVs corporativas
 
-Vistra é um sistema de digital signage para TVs corporativas: várias zonas
+MultiTelas é um sistema de digital signage para TVs corporativas: várias zonas
 independentes (cabeçalho, principal, lateral, rodapé) exibindo conteúdos
 diferentes ao mesmo tempo, com um painel de gestão que qualquer pessoa usa sem
 saber programar. A cor e os temas são personalizáveis.
@@ -138,7 +138,7 @@ internet**, sem hospedar `config.json` na mão.
 
 Cada conta controla só os seus dispositivos. Em produção, defina `DATABASE_URL`
 (ex.: Postgres do Railway/Neon/Supabase) e os dados ficam nesse banco. No dev
-local, sem `DATABASE_URL`, o banco fica em `data/vistra.db` (SQLite). Ver
+local, sem `DATABASE_URL`, o banco fica em `data/multitelas.db` (SQLite). Ver
 [`docs/ESTADO-DO-PROJETO.md`](docs/ESTADO-DO-PROJETO.md) e
 [`docs/PLANO-SAAS.md`](docs/PLANO-SAAS.md).
 
@@ -147,7 +147,7 @@ local, sem `DATABASE_URL`, o banco fica em `data/vistra.db` (SQLite). Ver
 ## Estrutura do projeto
 
 ```
-vistra/
+multitelas/
 ├── index.html          # Painel de administração
 ├── player.html         # Tela de exibição (TV)
 ├── css/

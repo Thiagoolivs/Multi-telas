@@ -9,6 +9,9 @@ import { TeamPage } from './pages/TeamPage.jsx';
 import { StoragePage } from './pages/StoragePage.jsx';
 import { BirthdaysPage } from './pages/BirthdaysPage.jsx';
 import { MyDesignsPage } from './pages/MyDesignsPage.jsx';
+import { SettingsPage } from './pages/SettingsPage.jsx';
+import { AlertsPage } from './pages/AlertsPage.jsx';
+import { SupportPage } from './pages/SupportPage.jsx';
 import { BillingPage } from './pages/BillingPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
@@ -18,7 +21,8 @@ const META = {
   screens: { title: 'Telas' },
   designs: { title: 'Meus Designs', subtitle: 'Crie, guarde e reaproveite todos os seus designs.' },
   content: { title: 'Telas', nav: 'screens' },
-  alerts: { title: 'Alertas', subtitle: 'Incidentes e avisos operacionais.' },
+  alerts: { title: 'Alertas', subtitle: 'O que precisa da sua atenção agora.' },
+  support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
   birthdays: { title: 'Aniversariantes', subtitle: 'Importe a equipe e o player mostra sozinho.' },
   billing: { title: 'Plano e cobrança' },
@@ -76,6 +80,11 @@ export default function App() {
       case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage />;
       case 'birthdays': return <BirthdaysPage />;
       case 'billing': return <BillingPage />;
+      case 'alerts': return <AlertsPage onGoScreens={() => go('screens')} onGoStorage={() => go('storage')} onGoBilling={() => go('billing')} />;
+      case 'support': return <SupportPage me={session} />;
+      case 'settings': return (
+        <SettingsPage me={session} theme={theme} onToggleTheme={toggleTheme} onLogout={logout} onChanged={refresh} />
+      );
       default: return <PlaceholderPage title={meta.title} subtitle={meta.subtitle} />;
     }
   }

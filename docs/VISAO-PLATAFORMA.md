@@ -1,4 +1,4 @@
-# Visão — Plataforma de Comunicação Digital (pivot do Vistra)
+# Visão — Plataforma de Comunicação Digital (pivot do MultiTelas)
 
 Análise de viabilidade e arquitetura para reposicionar o produto de "software
 de digital signage" para uma **plataforma inteligente de comunicação para
