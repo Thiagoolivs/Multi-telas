@@ -11,23 +11,24 @@ export function TypePicker({ open, onClose, onPick }) {
   });
 
   return (
-    <Dialog open={open} onClose={onClose} title="Adicionar conteúdo" description="Escolha um tipo para começar." className="max-w-3xl">
-      <div className="max-h-[80vh] space-y-4 overflow-y-auto pr-1">
+    <Dialog open={open} onClose={onClose} title="Adicionar conteúdo" description="Escolha um tipo para começar." className="max-w-5xl">
+      <div className="max-h-[80vh] space-y-5 overflow-y-auto pr-1">
         {Object.entries(groups).map(([group, types]) => (
           <div key={group}>
-            <div className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-3">{group}</div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">{group}</div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {types.map((t) => {
-                const { label, icon: Icon } = CONTENT_TYPES[t];
+                const { label, icon: Icon, desc } = CONTENT_TYPES[t];
                 return (
                   <button
                     key={t}
                     type="button"
                     onClick={() => { onPick(t); onClose(); }}
-                    className="flex flex-col items-start gap-2 rounded-lg border border-line bg-surface p-3 text-left transition hover:border-accent/50 hover:bg-surface-2"
+                    className="flex flex-col items-start gap-2 rounded-xl border border-line bg-surface p-4 text-left transition hover:border-accent/50 hover:bg-surface-2"
                   >
-                    <Icon size={17} className="text-accent" strokeWidth={2} />
-                    <span className="text-xs font-medium leading-tight text-ink">{label}</span>
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2"><Icon size={18} className="text-accent" strokeWidth={2} /></div>
+                    <span className="text-sm font-semibold leading-tight text-ink">{label}</span>
+                    {desc && <span className="text-2xs leading-snug text-ink-3">{desc}</span>}
                   </button>
                 );
               })}
