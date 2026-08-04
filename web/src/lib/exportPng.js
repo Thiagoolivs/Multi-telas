@@ -81,10 +81,20 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
+const SHAPE_POLY = {
+  triangle: [[50, 0], [100, 100], [0, 100]],
+  diamond: [[50, 0], [100, 50], [50, 100], [0, 50]],
+  diag: [[0, 0], [100, 0], [70, 100], [0, 100]],
+};
 function drawShape(ctx, e, w, h) {
   ctx.fillStyle = shapeFill(ctx, e.fill, w, h);
   if (e.shape === 'ellipse') { ctx.beginPath(); ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fill(); }
-  else { roundRectPath(ctx, 0, 0, w, h, Math.min(w, h) * ((e.radius || 0) / 100)); ctx.fill(); }
+  else if (SHAPE_POLY[e.shape]) {
+    const p = SHAPE_POLY[e.shape];
+    ctx.beginPath();
+    p.forEach((pt, i) => { const x = pt[0] / 100 * w, y = pt[1] / 100 * h; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
+    ctx.closePath(); ctx.fill();
+  } else { roundRectPath(ctx, 0, 0, w, h, Math.min(w, h) * ((e.radius || 0) / 100)); ctx.fill(); }
 }
 
 function drawText(ctx, e, w, h, W) {
