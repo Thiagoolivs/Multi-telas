@@ -326,24 +326,33 @@ async function generateKit(brief, ctx) {
     } catch (e) { /* segue sem as referências */ }
   }
   const okHex = (h, fb) => isHex(h) ? (h.startsWith('#') ? h : '#' + h) : fb;
+  if (ctx.brand2 && isHex(ctx.brand2)) ctx.brand2 = ctx.brand2.startsWith('#') ? ctx.brand2 : '#' + ctx.brand2;
+  const brief2 = [
+    ctx.publico ? `Público-alvo: ${String(ctx.publico).slice(0, 120)}` : '',
+    ctx.tom ? `Tom: ${String(ctx.tom).slice(0, 60)}` : '',
+    ctx.oferta ? `Oferta/CTA: ${String(ctx.oferta).slice(0, 120)}` : '',
+  ].filter(Boolean).join('\n');
   let d;
   if (mode() === 'dev') {
-    d = { brand: ctx.brand || '#0ea5e9', brand2: '#7c3aed', style: 'vibrante', kicker: ctx.empresa || 'Campanha', headline: (brief.split(/[.\n]/)[0] || 'Sua campanha').slice(0, 48), sub: 'Mensagem de apoio da campanha.', cta: 'Saiba mais' };
+    d = { brand: ctx.brand || '#0ea5e9', brand2: ctx.brand2 || '#7c3aed', style: 'vibrante', kicker: ctx.empresa || 'Campanha', headline: (brief.split(/[.\n]/)[0] || 'Sua campanha').slice(0, 48), sub: 'Mensagem de apoio da campanha.', cta: ctx.oferta ? String(ctx.oferta).slice(0, 40) : 'Saiba mais' };
   } else {
     const system =
       'Você é diretor de arte de digital signage profissional. A partir do briefing, defina a IDENTIDADE de uma campanha com ' +
       'DUAS cores que combinam (marca + acento) para gradientes vibrantes, e copy curta e forte. ' +
+      'Respeite o público-alvo e o tom quando informados. ' +
       'Escolha o estilo: "vibrante" (fundo colorido, formas/blocos — para varejo, promoções, energia) ou ' +
       '"sobrio" (fundo escuro elegante — para corporativo, institucional). ' +
       'Responda APENAS com JSON: {"brand":"#hex","brand2":"#hex","style":"vibrante"|"sobrio","kicker":"etiqueta curta","headline":"título forte (2 a 6 palavras)","sub":"subtítulo curto","cta":"chamada curta"}. Português do Brasil.';
-    const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor da marca (se houver): ${ctx.brand || '(escolha uma paleta elegante)'}` +
+    const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor primária (se houver): ${ctx.brand || '(escolha uma paleta elegante)'}. Cor secundária (se houver): ${ctx.brand2 || '(escolha um acento que combine)'}` +
       (styleNote ? `\nEstilo desejado (das referências do cliente): ${styleNote}` : '') +
+      (brief2 ? `\n${brief2}` : '') +
       `\nBriefing: ${brief}`;
     const p = parseAiJson(await callLLM(system, user));
-    const brand = okHex(p.brand, ctx.brand || '#0ea5e9');
+    // Cores informadas pelo usuário mandam; senão a IA escolhe.
+    const brand = ctx.brand ? okHex(ctx.brand, '#0ea5e9') : okHex(p.brand, '#0ea5e9');
     d = {
       brand,
-      brand2: okHex(p.brand2, '#7c3aed'),
+      brand2: ctx.brand2 ? okHex(ctx.brand2, '#7c3aed') : okHex(p.brand2, '#7c3aed'),
       style: p.style === 'sobrio' ? 'sobrio' : 'vibrante',
       kicker: String(p.kicker || ctx.empresa || '').slice(0, 40),
       headline: String(p.headline || 'Sua campanha').slice(0, 60),

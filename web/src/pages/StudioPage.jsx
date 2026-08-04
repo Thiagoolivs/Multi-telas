@@ -1,13 +1,13 @@
 import React, { useState, Suspense, lazy } from 'react';
-import { Wand2, Plus, MonitorPlay, Check } from 'lucide-react';
+import { Wand2, Plus, MonitorPlay, Check, Save } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
-import { Field, Select } from '../components/ui/Field.jsx';
+import { Field, Select, Input } from '../components/ui/Field.jsx';
 import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
-import { devices, deviceConfig } from '../api.js';
+import { devices, deviceConfig, library } from '../api.js';
 import { CONTENT_TYPES, primaryZoneKey, defaultConfig } from '../lib/contentTypes.js';
 
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
@@ -19,6 +19,7 @@ export function StudioPage() {
   const [editing, setEditing] = useState(null);     // item composicao sendo criado
   const [pending, setPending] = useState(null);     // item pronto, aguardando destino
   const [target, setTarget] = useState('');         // id da tela escolhida
+  const [nome, setNome] = useState('');             // nome ao salvar na biblioteca
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -27,11 +28,23 @@ export function StudioPage() {
     setEditing(CONTENT_TYPES.composicao.make());
   }
 
-  // Editor salvou → escolhe a tela de destino.
+  // Editor salvou → escolhe o destino (biblioteca e/ou tela).
   function onEditorSave(item) {
     setEditing(null);
     setPending(item);
+    setNome('');
     setTarget(screens[0] ? screens[0].id : '');
+  }
+
+  async function salvarBiblioteca() {
+    if (!pending) return;
+    setBusy(true); setMsg('');
+    try {
+      await library.save(nome.trim() || 'Estúdio', [{ formato: pending.formato || '16/9', label: nome.trim() || 'Peça', item: pending }]);
+      setMsg('Peça salva na biblioteca (Campanhas).');
+      setPending(null);
+    } catch (err) { setMsg(err.message || 'Falha ao salvar.'); }
+    setBusy(false);
   }
 
   async function enviarParaTela() {
@@ -82,14 +95,18 @@ export function StudioPage() {
         </Suspense>
       )}
 
-      <Dialog open={!!pending} onClose={() => setPending(null)} title="Publicar em qual tela?"
-        description="A composição vai para a zona principal da tela escolhida e publica ao vivo."
+      <Dialog open={!!pending} onClose={() => setPending(null)} title="O que fazer com a peça?"
+        description="Salve na biblioteca para reaproveitar, e/ou publique agora numa tela."
         footer={
           <>
-            <Button variant="ghost" onClick={() => setPending(null)}>Depois</Button>
-            <Button variant="primary" icon={Check} disabled={busy || !target} onClick={enviarParaTela}>{busy ? 'Enviando…' : 'Publicar'}</Button>
+            <Button variant="ghost" onClick={() => setPending(null)}>Fechar</Button>
+            <Button variant="secondary" icon={Save} disabled={busy} onClick={salvarBiblioteca}>{busy ? 'Salvando…' : 'Salvar na biblioteca'}</Button>
+            <Button variant="primary" icon={Check} disabled={busy || !target} onClick={enviarParaTela}>{busy ? 'Enviando…' : 'Publicar na tela'}</Button>
           </>
         }>
+        <Field label="Nome da peça (biblioteca)">
+          <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Promo de inverno" />
+        </Field>
         {screens.length ? (
           <Field label="Tela">
             <Select value={target} onChange={(e) => setTarget(e.target.value)}>
@@ -97,7 +114,7 @@ export function StudioPage() {
             </Select>
           </Field>
         ) : (
-          <p className="text-sm text-ink-3">Nenhuma tela pareada. Pareie uma TV em <b>Telas</b> e volte aqui.</p>
+          <p className="text-sm text-ink-3">Nenhuma tela pareada para publicar — mas você já pode salvar na biblioteca.</p>
         )}
       </Dialog>
     </div>

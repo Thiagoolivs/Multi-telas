@@ -46,6 +46,10 @@ export function CampaignsPage() {
   const [brief, setBrief] = useState('');
   const [empresa, setEmpresa] = useState('');
   const [brand, setBrand] = useState('#1e3a8a');
+  const [brand2, setBrand2] = useState('#0ea5e9');
+  const [publico, setPublico] = useState('');
+  const [tom, setTom] = useState('');
+  const [oferta, setOferta] = useState('');
   const [refs, setRefs] = useState([]);        // URLs de exemplos (referências)
   const [gen, setGen] = useState(null);        // { pieces, headline, ... } recém-gerado
   const [busy, setBusy] = useState(false);
@@ -69,7 +73,7 @@ export function CampaignsPage() {
   async function gerar() {
     if (!brief.trim()) return;
     setBusy(true); setMsg('');
-    try { setGen(await ai.kit({ brief, empresa, brand, refs })); }
+    try { setGen(await ai.kit({ brief, empresa, brand, brand2, publico, tom, oferta, refs })); }
     catch (e) { setMsg(e.message || 'Falha ao gerar'); }
     setBusy(false);
   }
@@ -123,7 +127,20 @@ export function CampaignsPage() {
             </Field>
           </div>
           <Field label="Empresa"><Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Sua empresa" /></Field>
-          <Field label="Cor da marca (opcional)"><input type="color" value={brand} onChange={(e) => setBrand(e.target.value)} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
+          <Field label="Público-alvo (opcional)"><Input value={publico} onChange={(e) => setPublico(e.target.value)} placeholder="Ex.: 25-45, classe A/B" /></Field>
+          <Field label="Tom (opcional)">
+            <Select value={tom} onChange={(e) => setTom(e.target.value)}>
+              <option value="">Automático</option>
+              <option value="sofisticado">Sofisticado</option>
+              <option value="energético">Energético</option>
+              <option value="corporativo">Corporativo</option>
+              <option value="divertido">Divertido</option>
+              <option value="minimalista">Minimalista</option>
+            </Select>
+          </Field>
+          <Field label="Oferta / CTA (opcional)"><Input value={oferta} onChange={(e) => setOferta(e.target.value)} placeholder="Ex.: 30% off até domingo" /></Field>
+          <Field label="Cor primária (opcional)"><input type="color" value={brand} onChange={(e) => setBrand(e.target.value)} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
+          <Field label="Cor secundária (opcional)"><input type="color" value={brand2} onChange={(e) => setBrand2(e.target.value)} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
           <div className="flex items-end">
             <Button variant="primary" icon={Wand2} disabled={busy || !brief.trim()} onClick={gerar}>{busy && !gen ? 'Gerando…' : 'Gerar biblioteca'}</Button>
           </div>
