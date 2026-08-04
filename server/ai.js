@@ -311,6 +311,66 @@ async function geminiVision(system, userText, images) {
   throw lastErr || new Error('visão falhou');
 }
 
+// Modelos de geração de imagem do Gemini (2026): Nano Banana 2 / Pro / 2.5.
+const GEMINI_IMAGE_MODELS = ['gemini-3.1-flash-image-preview', 'gemini-3-pro-image-preview', 'gemini-2.5-flash-image'];
+
+// Placeholder para modo dev (sem chave): SVG com gradiente + prompt.
+function devImage(prompt, opts) {
+  const o = opts || {};
+  const [aw, ah] = String(o.formato || '16/9').split('/').map(Number);
+  const r = (aw && ah) ? aw / ah : 16 / 9;
+  const W = r >= 1 ? 1280 : Math.round(1280 * r), H = r >= 1 ? Math.round(1280 / r) : 1280;
+  const c1 = /^#?[0-9a-f]{6}$/i.test(o.brand || '') ? (o.brand[0] === '#' ? o.brand : '#' + o.brand) : '#1e3a8a';
+  const c2 = /^#?[0-9a-f]{6}$/i.test(o.brand2 || '') ? (o.brand2[0] === '#' ? o.brand2 : '#' + o.brand2) : '#0ea5e9';
+  const txt = String(prompt || 'Imagem').replace(/[<&>]/g, '').slice(0, 60);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>` +
+    `<rect width="${W}" height="${H}" fill="url(#g)"/>` +
+    `<circle cx="${W * 0.8}" cy="${H * 0.2}" r="${Math.min(W, H) * 0.28}" fill="#ffffff" opacity="0.12"/>` +
+    `<circle cx="${W * 0.15}" cy="${H * 0.85}" r="${Math.min(W, H) * 0.2}" fill="#000000" opacity="0.12"/>` +
+    `<text x="50%" y="50%" fill="#ffffff" font-family="system-ui,Arial" font-size="${Math.round(Math.min(W, H) * 0.07)}" font-weight="800" text-anchor="middle" dominant-baseline="middle">${txt}</text>` +
+    `</svg>`;
+  return { mime: 'image/svg+xml', data: Buffer.from(svg).toString('base64') };
+}
+
+// Gera uma imagem a partir de um prompt. Retorna { mime, data (base64) }.
+async function generateImage(prompt, opts) {
+  prompt = String(prompt || '').slice(0, 1200); opts = opts || {};
+  if (mode() === 'dev' || !GEMINI_KEY) return devImage(prompt, opts);
+  const guide = [
+    opts.formato ? `Proporção da imagem: ${opts.formato}.` : '',
+    opts.brand ? `Cor de marca principal: ${opts.brand}.` : '',
+    opts.brand2 ? `Cor de acento: ${opts.brand2}.` : '',
+    opts.estilo ? `Estilo: ${opts.estilo}.` : '',
+    'Digital signage profissional, alta qualidade, composição limpa. Sem marcas d\'água.',
+  ].filter(Boolean).join(' ');
+  const list = [process.env.GEMINI_IMAGE_MODEL, ...GEMINI_IMAGE_MODELS].filter((m, i, a) => m && a.indexOf(m) === i);
+  let lastErr;
+  for (const model of list) {
+    try {
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent';
+      const res = await fetch(url, {
+        method: 'POST', headers: { 'x-goog-api-key': GEMINI_KEY, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt + '\n\n' + guide }] }],
+          generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+        const img = parts.find((p) => p.inline_data || p.inlineData);
+        const inl = img && (img.inline_data || img.inlineData);
+        if (inl && inl.data) return { mime: (inl.mime_type || inl.mimeType || 'image/png'), data: inl.data };
+        lastErr = new Error('sem imagem na resposta'); continue;
+      }
+      const msg = (data && data.error && data.error.message) || ('Gemini HTTP ' + res.status);
+      lastErr = new Error(msg); if (!geminiRetryable(msg)) throw lastErr;
+    } catch (e) { lastErr = e; if (!geminiRetryable(e.message)) throw e; }
+  }
+  throw lastErr || new Error('geração de imagem falhou');
+}
+
 async function generateKit(brief, ctx) {
   brief = String(brief || '').slice(0, 600); ctx = ctx || {};
   // Referências do cliente (imagens): a IA extrai cor de marca + estilo.
@@ -563,4 +623,4 @@ async function diagnose() {
   }
 }
 
-module.exports = { mode, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, rewriteText, diagnose, ITEM_SCHEMA };
+module.exports = { mode, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };

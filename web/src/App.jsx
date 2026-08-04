@@ -10,6 +10,7 @@ import { StoragePage } from './pages/StoragePage.jsx';
 import { BirthdaysPage } from './pages/BirthdaysPage.jsx';
 import { StudioPage } from './pages/StudioPage.jsx';
 import { CampaignsPage } from './pages/CampaignsPage.jsx';
+import { ImagesPage } from './pages/ImagesPage.jsx';
 import { BillingPage } from './pages/BillingPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
@@ -20,6 +21,7 @@ const META = {
   studio: { title: 'Estúdio', subtitle: 'Crie peças e publique nas telas.' },
   content: { title: 'Telas', nav: 'screens' },
   campaigns: { title: 'Campanhas', subtitle: 'Crie, agende e distribua conteúdo nas telas.' },
+  images: { title: 'Imagens IA', subtitle: 'Gere imagens com IA e reutilize nas peças.' },
   alerts: { title: 'Alertas', subtitle: 'Incidentes e avisos operacionais.' },
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
   birthdays: { title: 'Aniversariantes', subtitle: 'Importe a equipe e o player mostra sozinho.' },
@@ -77,6 +79,7 @@ export default function App() {
       case 'storage': return <StoragePage />;
       case 'studio': return <StudioPage />;
       case 'campaigns': return <CampaignsPage />;
+      case 'images': return <ImagesPage />;
       case 'birthdays': return <BirthdaysPage />;
       case 'billing': return <BillingPage />;
       default: return <PlaceholderPage title={meta.title} subtitle={meta.subtitle} />;

@@ -55,6 +55,7 @@ export const ai = {
   campaign: (payload) => api('POST', '/api/ai/generate-campaign', payload),
   composition: (payload) => api('POST', '/api/ai/generate-composition', payload),
   kit: (payload) => api('POST', '/api/ai/generate-kit', payload),
+  image: (payload) => api('POST', '/api/ai/generate-image', payload),
 };
 
 export const library = {
