@@ -602,8 +602,8 @@ async function handleApi(req, res, pathname, query) {
         try {
           const i = String(u).indexOf('/media/'); if (i < 0) continue;
           const key = String(u).slice(i + '/media/'.length);
-          const full = storage.resolveLocal(key); if (!full) continue;
-          const buf = fs.readFileSync(full); if (buf.length > 5 * 1024 * 1024) continue;
+          const buf = await storage.readBuffer(key);
+          if (!buf || buf.length > 5 * 1024 * 1024) continue;
           const ext = String(key.split('.').pop() || '').toLowerCase();
           const mime = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
           refImages.push({ mime, data: buf.toString('base64') });
@@ -940,17 +940,11 @@ async function handleApi(req, res, pathname, query) {
  * nosniff para não interpretar o conteúdo como outra coisa. */
 function handleMedia(req, res, urlPath) {
   const key = decodeURIComponent(urlPath.slice('/media/'.length));
-  const full = storage.resolveLocal(key);
-  if (!full) { res.writeHead(403); return res.end('Acesso negado'); }
-  fs.readFile(full, (err, data) => {
-    if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Não encontrado'); }
-    const ext = path.extname(full).toLowerCase();
-    res.writeHead(200, {
-      'Content-Type': MIME[ext] || 'application/octet-stream',
-      'Cache-Control': 'public, max-age=31536000, immutable',
-      'X-Content-Type-Options': 'nosniff',
-    });
-    res.end(data);
+  // O storage decide de onde vem (disco ou bucket S3) — aqui só entregamos.
+  storage.serve(res, key).catch(() => {
+    if (res.headersSent) return res.end();
+    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Falha ao servir a mídia');
   });
 }
 
@@ -1089,5 +1083,12 @@ const server = http.createServer((req, res) => {
 });
 
 db.init()
-  .then(() => server.listen(PORT, () => { console.log('MultiTelas rodando em http://localhost:' + PORT); }))
+  .then(() => server.listen(PORT, () => {
+    console.log('MultiTelas rodando em http://localhost:' + PORT);
+    console.log('[storage] driver: ' + storage.DRIVER);
+    // Disco efêmero é falha silenciosa: funciona hoje, apaga a mídia no
+    // próximo deploy. Melhor avisar alto do que descobrir com o cliente.
+    const aviso = storage.ephemeralWarning();
+    if (aviso) console.warn('\n⚠️  [storage] ' + aviso + '\n');
+  }))
   .catch((e) => { console.error('[db] falha ao inicializar:', e.message); process.exit(1); });
