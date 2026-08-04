@@ -8,9 +8,7 @@ import { ContentEditorPage } from './pages/ContentEditorPage.jsx';
 import { TeamPage } from './pages/TeamPage.jsx';
 import { StoragePage } from './pages/StoragePage.jsx';
 import { BirthdaysPage } from './pages/BirthdaysPage.jsx';
-import { StudioPage } from './pages/StudioPage.jsx';
-import { CampaignsPage } from './pages/CampaignsPage.jsx';
-import { ImagesPage } from './pages/ImagesPage.jsx';
+import { MyDesignsPage } from './pages/MyDesignsPage.jsx';
 import { BillingPage } from './pages/BillingPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
@@ -18,10 +16,8 @@ import { Spinner } from './components/ui/Feedback.jsx';
 const META = {
   overview: { title: 'Visão geral' },
   screens: { title: 'Telas' },
-  studio: { title: 'Estúdio', subtitle: 'Crie peças e publique nas telas.' },
+  designs: { title: 'Meus Designs', subtitle: 'Crie, guarde e reaproveite todos os seus designs.' },
   content: { title: 'Telas', nav: 'screens' },
-  campaigns: { title: 'Campanhas', subtitle: 'Crie, agende e distribua conteúdo nas telas.' },
-  images: { title: 'Imagens IA', subtitle: 'Gere imagens com IA e reutilize nas peças.' },
   alerts: { title: 'Alertas', subtitle: 'Incidentes e avisos operacionais.' },
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
   birthdays: { title: 'Aniversariantes', subtitle: 'Importe a equipe e o player mostra sozinho.' },
@@ -77,9 +73,7 @@ export default function App() {
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
-      case 'studio': return <StudioPage />;
-      case 'campaigns': return <CampaignsPage />;
-      case 'images': return <ImagesPage />;
+      case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage />;
       case 'birthdays': return <BirthdaysPage />;
       case 'billing': return <BillingPage />;
       default: return <PlaceholderPage title={meta.title} subtitle={meta.subtitle} />;
