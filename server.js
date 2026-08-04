@@ -429,7 +429,10 @@ async function handleApi(req, res, pathname, query) {
         } catch (e) { /* ignora referência inválida */ }
       }
       try {
-        const out = await ai.generateKit(brief, { empresa: (b && b.empresa) || '', brand: (b && b.brand) || '', refImages });
+        const out = await ai.generateKit(brief, {
+          empresa: (b && b.empresa) || '', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
+          publico: (b && b.publico) || '', tom: (b && b.tom) || '', oferta: (b && b.oferta) || '', refImages,
+        });
         return sendJson(res, 200, { mode: ai.mode(), ...out });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });
