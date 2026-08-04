@@ -4,7 +4,7 @@ import { ImagePlus, Type, Trash2, ChevronUp, ChevronDown, RotateCcw, Save, X, Sq
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { media, ai } from '../../api.js';
-import { fillToCss, bgGradient, shapeClip, SHAPE_POLY } from '../../lib/composition.js';
+import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw } from '../../lib/composition.js';
 import { ICONS, ICON_NAMES } from '../../lib/icons.js';
 import { Star } from 'lucide-react';
 
@@ -165,7 +165,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 }}>
                 {e.tipo === 'texto' ? (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: e.cor, fontWeight: e.peso, textAlign: e.align, fontSize: `clamp(10px, ${e.tamanho}vw, 200px)`, lineHeight: 1.05, overflow: 'hidden', textShadow: e.sombra ? '0 2px 14px rgba(0,0,0,.45)' : 'none' }}>
+                    color: e.cor, fontWeight: e.peso, textAlign: e.align, fontSize: `clamp(10px, ${textFontCqw(e, aspect)}vw, 200px)`, lineHeight: 1.05, overflow: 'hidden', textShadow: e.sombra ? '0 2px 14px rgba(0,0,0,.45)' : 'none' }}>
                     {e.text}
                   </div>
                 ) : e.tipo === 'icone' ? (
@@ -228,8 +228,14 @@ export function CompositionEditor({ value, onClose, onSave }) {
                   <Field label="Texto"><Input value={selEl.text} onChange={(e) => patchSel({ text: e.target.value })} /></Field>
                   <div className="grid grid-cols-2 gap-2">
                     <Field label="Cor"><input type="color" value={selEl.cor} onChange={(e) => patchSel({ cor: e.target.value })} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
-                    <Field label="Tamanho"><Input type="number" value={selEl.tamanho} onChange={(e) => patchSel({ tamanho: Number(e.target.value) })} /></Field>
+                    <Field label="Tamanho"><Input type="number" value={selEl.tamanho} disabled={!!selEl.auto} onChange={(e) => patchSel({ tamanho: Number(e.target.value) })} /></Field>
                   </div>
+                  <label className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={!!selEl.auto} onChange={(e) => patchSel({ auto: e.target.checked })} /> Ajustar à diagonal do bloco</label>
+                  {selEl.auto && (
+                    <Field label={`Proporção (${Math.round((selEl.escala != null ? selEl.escala : 0.16) * 100)}%)`}>
+                      <input type="range" min="5" max="40" value={Math.round((selEl.escala != null ? selEl.escala : 0.16) * 100)} onChange={(e) => patchSel({ escala: Number(e.target.value) / 100 })} className="w-full" />
+                    </Field>
+                  )}
                   <Field label="Alinhamento">
                     <Select value={selEl.align} onChange={(e) => patchSel({ align: e.target.value })}>
                       <option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option>

@@ -1227,6 +1227,17 @@
     return 'linear-gradient(' + (fill.ang != null ? fill.ang : 150) + 'deg, ' + c[0] + ', ' + c2 + ')';
   }
 
+  // Tamanho de fonte em cqw. Se e.auto, proporcional à diagonal do bloco.
+  function textFontCqw(e, formato) {
+    if (!e || !e.auto) return (e && e.tamanho != null) ? e.tamanho : 6;
+    const p = String(formato || '16/9').split('/').map(Number);
+    const R = (p[0] && p[1]) ? p[1] / p[0] : 9 / 16;
+    const w = e.w != null ? e.w : 25, h = e.h != null ? e.h : 25;
+    const diag = Math.sqrt(w * w + (h * R) * (h * R));
+    const k = e.escala != null ? e.escala : 0.16;
+    return Math.max(2, diag * k);
+  }
+
   function renderComposicao(item) {
     const el = div('mt-slide mt-comp');
     const bg = item.bg || {};
@@ -1251,7 +1262,7 @@
         if (e.cor) t.style.color = e.cor;
         if (e.align) t.style.textAlign = e.align;
         if (e.peso) t.style.fontWeight = e.peso;
-        if (e.tamanho) t.style.fontSize = e.tamanho + 'cqw';
+        t.style.fontSize = textFontCqw(e, item.formato) + 'cqw';
         if (e.sombra) t.style.textShadow = '0 2px 14px rgba(0,0,0,.45)';
         box.appendChild(t);
       } else if (e.tipo === 'forma') {
