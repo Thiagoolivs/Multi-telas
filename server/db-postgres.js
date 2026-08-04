@@ -49,9 +49,14 @@ async function init() {
     );
     ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;
+    -- google_sub: conta Google vinculada (login social). Nulo = só senha.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT;
     UPDATE users SET role = 'owner' WHERE role IS NULL;
     CREATE TABLE IF NOT EXISTS sessions (
       token TEXT PRIMARY KEY, user_id TEXT, tenant_id TEXT, expires_at BIGINT
+    );
+    CREATE TABLE IF NOT EXISTS resets (
+      token TEXT PRIMARY KEY, user_id TEXT, expires_at BIGINT, used_at BIGINT, created_at BIGINT
     );
     CREATE TABLE IF NOT EXISTS devices (
       id TEXT PRIMARY KEY, tenant_id TEXT, code TEXT, name TEXT,
@@ -116,6 +121,28 @@ async function getUserByEmail(email) {
 async function getUserById(id) {
   const r = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
   return r.rows[0] || null;
+}
+async function getUserByGoogle(sub) {
+  const r = await pool.query('SELECT * FROM users WHERE google_sub = $1', [sub]);
+  return r.rows[0] || null;
+}
+async function setUserGoogle(id, sub) {
+  await pool.query('UPDATE users SET google_sub = $1 WHERE id = $2', [sub, id]);
+}
+async function setUserPassword(id, passHash) {
+  await pool.query('UPDATE users SET pass_hash = $1 WHERE id = $2', [passHash, id]);
+}
+// Reset de senha: token de uso único e validade curta.
+async function createReset(token, userId, expiresAt) {
+  await pool.query('DELETE FROM resets WHERE user_id = $1 AND used_at IS NULL', [userId]);
+  await pool.query('INSERT INTO resets (token, user_id, expires_at, used_at, created_at) VALUES ($1, $2, $3, NULL, $4)', [token, userId, expiresAt, Date.now()]);
+}
+async function getReset(token) {
+  const r = await pool.query('SELECT * FROM resets WHERE token = $1', [token]);
+  return r.rows[0] || null;
+}
+async function consumeReset(token) {
+  await pool.query('UPDATE resets SET used_at = $1 WHERE token = $2', [Date.now(), token]);
 }
 async function listUsers(tenantId) {
   const r = await pool.query('SELECT id, email, role, name, created_at FROM users WHERE tenant_id = $1 ORDER BY created_at ASC', [tenantId]);
@@ -318,6 +345,8 @@ function rid(n) {
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
+  getUserByGoogle, setUserGoogle, setUserPassword,
+  createReset, getReset, consumeReset,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession,

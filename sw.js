@@ -11,7 +11,9 @@
  *
  * Registrado só pelo player.html (o painel/admin não precisa de offline).
  */
-const SHELL_CACHE = 'mt-shell-v1';
+// Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
+// vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
+const SHELL_CACHE = 'mt-shell-v2';
 const MEDIA_CACHE = 'mt-media-v1';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
@@ -27,7 +29,13 @@ self.addEventListener('install', (e) => {
     caches.open(SHELL_CACHE).then((c) => c.addAll(SHELL_ASSETS)).then(() => self.skipWaiting())
   );
 });
-self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+// Ativação: descarta shells de versões antigas e assume as abas abertas.
+self.addEventListener('activate', (e) => e.waitUntil((async () => {
+  const keep = [SHELL_CACHE, MEDIA_CACHE];
+  const names = await caches.keys();
+  await Promise.all(names.filter((n) => n.startsWith('mt-') && !keep.includes(n)).map((n) => caches.delete(n)));
+  await self.clients.claim();
+})()));
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;

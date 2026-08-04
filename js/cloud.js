@@ -23,6 +23,21 @@
   const DEVICE_KEY = 'vistra.cloudDeviceId' + _pidSfx;
   const DTOKEN_KEY = 'vistra.cloudDeviceToken' + _pidSfx;
 
+  /*
+   * Esquece a TV guardada neste navegador. O par id+token fica em
+   * localStorage para a TV sobreviver a recargas — o efeito colateral é que
+   * "abrir outro player" reaproveitava a MESMA tela (parecia cache do
+   * navegador). resetDevice() força uma tela nova, com código novo.
+   */
+  function resetDevice() {
+    try {
+      localStorage.removeItem(DEVICE_KEY);
+      localStorage.removeItem(DTOKEN_KEY);
+      localStorage.removeItem('vistra.lastConfig'); // não herda a exibição da tela antiga
+      localStorage.removeItem('vistra.birthdays');
+    } catch (e) {}
+  }
+
   async function api(method, path, body, headers) {
     const opt = { method, headers: Object.assign({}, headers), credentials: 'same-origin' };
     if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
@@ -47,6 +62,16 @@
   function dtHeader() { return { 'x-device-token': deviceToken() }; }
 
   async function ensureDevice() {
+    // ?new=1 → esta aba é uma TV nova. Limpa a URL depois para que um F5 não
+    // fique gerando telas novas a cada recarga.
+    if (qsp('new') === '1') {
+      resetDevice();
+      try {
+        const u = new URL(global.location.href);
+        u.searchParams.delete('new');
+        history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+      } catch (e) {}
+    }
     let id = localStorage.getItem(DEVICE_KEY);
     let dt = localStorage.getItem(DTOKEN_KEY);
     if (id && dt) {
@@ -100,7 +125,7 @@
 
   global.MTCloud = {
     signup, login, logout, me,
-    deviceMode, ensureDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat,
+    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);

@@ -22,7 +22,8 @@ const url = require('url');
 const db = require('./server/db');
 const auth = require('./server/auth');
 const storage = require('./server/storage');
-const { rateLimit, clientIp, safeEqual } = require('./server/security');
+const { rateLimit, clientIp, safeEqual, isSecureRequest } = require('./server/security');
+const mail = require('./server/mail');
 const plans = require('./server/plans');
 const billing = require('./server/billing');
 const ai = require('./server/ai');
@@ -54,6 +55,24 @@ function inviteCode() { return randomCode(8); }
 // código; código de tela desligada/abandonada deixa de valer. Sem quebrar o
 // fluxo real (a TV pulsa a cada 30s).
 const PAIR_ONLINE_MS = Number(process.env.PAIR_ONLINE_MS) || 10 * 60 * 1000;
+
+/* ---------------- Login com Google (OAuth) ---------------- */
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+function googleEnabled() { return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET); }
+
+/*
+ * URL pública desta instalação. Usada nos links de e-mail e no redirect do
+ * OAuth. Prefere APP_URL (fixa e confiável); senão monta a partir do request,
+ * respeitando os headers do proxy do Railway.
+ */
+function baseUrl(req) {
+  const fixed = (process.env.APP_URL || '').replace(/\/$/, '');
+  if (fixed) return fixed;
+  const proto = isSecureRequest(req) ? 'https' : 'http';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || ('localhost:' + PORT);
+  return proto + '://' + host;
+}
 // Papéis: owner (dono) > admin > member. Gestão de equipe: owner e admin.
 function canManageTeam(role) { return role === 'owner' || role === 'admin'; }
 
@@ -230,6 +249,134 @@ async function handleApi(req, res, pathname, query) {
       await auth.clearSession(res, sess && sess.token, req);
       return sendJson(res, 200, { ok: true });
     }
+    /* --- Capacidades de login (o painel usa para mostrar/ocultar opções) --- */
+    if (req.method === 'GET' && action === 'config') {
+      return sendJson(res, 200, { google: googleEnabled(), mail: mail.configured() });
+    }
+
+    /* --- Esqueci minha senha: gera token de uso único e manda por e-mail --- */
+    if (req.method === 'POST' && action === 'forgot') {
+      const rl = rateLimit('forgot:' + clientIp(req), 10, 60 * 60 * 1000);
+      if (!rl.ok) return sendJson(res, 429, { error: 'muitas tentativas, tente mais tarde' }, { 'Retry-After': String(rl.retryAfter) });
+      return readBody(req, res, async (b) => {
+        const email = String((b && b.email) || '').trim().toLowerCase();
+        if (!validEmail(email)) return sendJson(res, 400, { error: 'informe um e-mail válido' });
+        const u = await db.getUserByEmail(email);
+        // Resposta sempre igual: não revela quais e-mails existem na base.
+        const generic = { ok: true, sent: true };
+        if (!u) return sendJson(res, 200, generic);
+        const token = crypto.randomBytes(24).toString('hex');
+        await db.createReset(token, u.id, Date.now() + 60 * 60 * 1000); // 1 hora
+        const link = baseUrl(req) + '/app/?reset=' + token;
+        try {
+          const msg = mail.resetEmail(link);
+          await mail.send({ to: email, subject: msg.subject, html: msg.html, text: msg.text });
+        } catch (e) {
+          console.error('[forgot] falha ao enviar e-mail:', e.message);
+          return sendJson(res, 502, { error: 'não foi possível enviar o e-mail agora' });
+        }
+        // Sem provider de e-mail (dev/demo), devolve o link para não travar.
+        if (!mail.configured()) return sendJson(res, 200, Object.assign({ devLink: link }, generic));
+        return sendJson(res, 200, generic);
+      });
+    }
+
+    /* --- Redefinir a senha com o token do e-mail --- */
+    if (req.method === 'POST' && action === 'reset') {
+      const rl = rateLimit('reset:' + clientIp(req), 20, 60 * 60 * 1000);
+      if (!rl.ok) return sendJson(res, 429, { error: 'muitas tentativas, tente mais tarde' }, { 'Retry-After': String(rl.retryAfter) });
+      return readBody(req, res, async (b) => {
+        const token = String((b && b.token) || '').trim();
+        const password = String((b && b.password) || '');
+        if (password.length < 6) return sendJson(res, 400, { error: 'a senha precisa ter 6+ caracteres' });
+        const r = token && await db.getReset(token);
+        if (!r || r.used_at || Number(r.expires_at) < Date.now())
+          return sendJson(res, 410, { error: 'link inválido ou expirado — peça outro' });
+        const u = await db.getUserById(r.user_id);
+        if (!u) return sendJson(res, 410, { error: 'link inválido ou expirado — peça outro' });
+        await db.setUserPassword(u.id, auth.hashPassword(password));
+        await db.consumeReset(token);
+        await auth.startSession(res, u.id, u.tenant_id, req);
+        return sendJson(res, 200, { ok: true, user: { email: u.email }, tenant: { id: u.tenant_id } });
+      });
+    }
+
+    /* --- Login com Google (OAuth 2.0, sem dependências) --- */
+    // parts.length === 3 → só /api/auth/google (o /callback é tratado abaixo).
+    if (req.method === 'GET' && action === 'google' && parts.length === 3) {
+      if (!googleEnabled()) return sendJson(res, 501, { error: 'login com Google não configurado' });
+      const state = crypto.randomBytes(16).toString('hex');
+      const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
+        client_id: GOOGLE_CLIENT_ID,
+        redirect_uri: baseUrl(req) + '/api/auth/google/callback',
+        response_type: 'code',
+        scope: 'openid email profile',
+        state,
+        prompt: 'select_account',
+      });
+      res.writeHead(302, {
+        Location: url,
+        'Cache-Control': 'no-store',
+        // state em cookie curto: confere na volta (proteção CSRF).
+        'Set-Cookie': 'vistra_oauth=' + state + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + (isSecureRequest(req) ? '; Secure' : ''),
+      });
+      return res.end();
+    }
+    if (req.method === 'GET' && parts[2] === 'google' && parts[3] === 'callback') {
+      if (!googleEnabled()) return sendJson(res, 501, { error: 'login com Google não configurado' });
+      const q = new URL(req.url, baseUrl(req)).searchParams;
+      const fail = (motivo) => {
+        res.writeHead(302, { Location: '/app/?erro=' + encodeURIComponent(motivo), 'Cache-Control': 'no-store' });
+        res.end();
+      };
+      const cookieState = (req.headers.cookie || '').match(/vistra_oauth=([^;]+)/);
+      if (!q.get('code') || !cookieState || cookieState[1] !== q.get('state')) return fail('login-google-invalido');
+      try {
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'content-type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            code: q.get('code'),
+            client_id: GOOGLE_CLIENT_ID,
+            client_secret: GOOGLE_CLIENT_SECRET,
+            redirect_uri: baseUrl(req) + '/api/auth/google/callback',
+            grant_type: 'authorization_code',
+          }),
+        });
+        const tok = await tokenRes.json();
+        if (!tokenRes.ok || !tok.access_token) return fail('login-google-falhou');
+        const infoRes = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
+          headers: { authorization: 'Bearer ' + tok.access_token },
+        });
+        const info = await infoRes.json();
+        if (!infoRes.ok || !info.sub || !info.email) return fail('login-google-falhou');
+        if (info.email_verified === false) return fail('email-google-nao-verificado');
+        const email = String(info.email).trim().toLowerCase();
+
+        let u = await db.getUserByGoogle(info.sub);
+        if (!u) {
+          u = await db.getUserByEmail(email);
+          if (u) {
+            await db.setUserGoogle(u.id, info.sub); // vincula à conta existente
+          } else {
+            // Primeiro acesso: cria a empresa e o usuário vira dono. Sem senha
+            // (pass_hash nulo) — entra pelo Google ou define senha pelo "esqueci".
+            const { userId, tenantId } = await db.createAccount(email, null, info.name || email, info.name || '');
+            await db.setUserGoogle(userId, info.sub);
+            u = { id: userId, tenant_id: tenantId };
+          }
+        }
+        await auth.startSession(res, u.id, u.tenant_id, req);
+        // Limpa o cookie de state e entra no painel.
+        res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), 'vistra_oauth=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'].flat().filter(Boolean));
+        res.writeHead(302, { Location: '/app/', 'Cache-Control': 'no-store' });
+        return res.end();
+      } catch (e) {
+        console.error('[google] ', e.message);
+        return fail('login-google-falhou');
+      }
+    }
+
     if (req.method === 'GET' && action === 'me') {
       if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
       return sendJson(res, 200, {
@@ -807,9 +954,11 @@ function sendFile(res, filePath, data) {
   // Assets do Vite têm hash no nome → cache longo; o resto revalida.
   const hashed = /\/assets\//.test(filePath);
   const revalidate = !hashed && (ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json');
+  // player.html e sw.js nunca do cache: é por aí que a TV "voltava" antiga.
+  const noStore = /player\.html$|sw\.js$/.test(filePath);
   res.writeHead(200, {
     'Content-Type': MIME[ext] || 'application/octet-stream',
-    'Cache-Control': hashed ? 'public, max-age=31536000, immutable' : (revalidate ? 'no-cache' : 'public, max-age=3600'),
+    'Cache-Control': noStore ? 'no-store' : hashed ? 'public, max-age=31536000, immutable' : (revalidate ? 'no-cache' : 'public, max-age=3600'),
   });
   res.end(data);
 }
@@ -858,8 +1007,13 @@ const HOME_HTML = `<!DOCTYPE html>
       <div class="t">Player (TV)</div>
       <div class="d">Transformar este aparelho em uma tela. Mostra um código para parear.</div>
     </a>
+    <a class="card tv" href="/tv?new=1">
+      <div class="ico">➕</div>
+      <div class="t">Player — tela nova</div>
+      <div class="d">Ignora a TV já salva neste navegador e gera um código novo.</div>
+    </a>
   </div>
-  <div class="foot">Dica: na TV, abra este site e toque em <strong>Player (TV)</strong>.</div>
+  <div class="foot">Dica: na TV, abra este site e toque em <strong>Player (TV)</strong>. Use <strong>tela nova</strong> se aparecer a TV antiga.</div>
 </body></html>`;
 
 function handleStatic(req, res, urlPath) {
@@ -869,7 +1023,12 @@ function handleStatic(req, res, urlPath) {
     return res.end(HOME_HTML);
   }
   // Atalho da TV: abre o player já em modo nuvem (sem digitar ?cloud=1).
-  if (urlPath === '/tv' || urlPath === '/tv/') { res.writeHead(302, { Location: '/player.html?cloud=1' }); return res.end(); }
+  if (urlPath === '/tv' || urlPath === '/tv/') {
+    // ?new=1 passa adiante: o player esquece a TV salva e gera outra.
+    const fresh = /[?&]new=1(&|$)/.test(req.url || '');
+    res.writeHead(302, { Location: '/player.html?cloud=1' + (fresh ? '&new=1' : ''), 'Cache-Control': 'no-store' });
+    return res.end();
+  }
   if (urlPath === '/legacy' || urlPath === '/legacy/') urlPath = '/index.html';
   const filePath = path.normalize(path.join(ROOT, urlPath));
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); return res.end('Acesso negado'); }
