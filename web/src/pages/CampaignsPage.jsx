@@ -2,6 +2,7 @@ import React, { useState, Suspense, lazy } from 'react';
 import { Wand2, Save, Pencil, Send, Trash2, Sparkles, Check, Download } from 'lucide-react';
 import { downloadComposition } from '../lib/exportPng.js';
 import { fillToCss, shapeClip, SHAPE_POLY } from '../lib/composition.js';
+import { ICONS } from '../lib/icons.js';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -26,6 +27,8 @@ function Thumb({ item }) {
         <div key={i} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden' }}>
           {e.tipo === 'texto'
             ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: e.cor, fontWeight: e.peso, fontSize: 'clamp(6px,' + (e.tamanho || 6) + 'cqw,40px)', textAlign: e.align, lineHeight: 1.05 }}>{e.text}</div>
+            : e.tipo === 'icone'
+              ? <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%', opacity: e.opacidade != null ? e.opacidade : 1 }} dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />
             : e.tipo === 'forma'
               ? <div style={{ width: '100%', height: '100%', background: fillToCss(e.fill), borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : (e.radius || 0) + '%'), clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none' }} />
               : <img src={e.src} alt="" style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain' }} />}

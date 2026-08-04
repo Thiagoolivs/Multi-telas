@@ -5,6 +5,8 @@ import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { media, ai } from '../../api.js';
 import { fillToCss, bgGradient, shapeClip, SHAPE_POLY } from '../../lib/composition.js';
+import { ICONS, ICON_NAMES } from '../../lib/icons.js';
+import { Star } from 'lucide-react';
 
 const ASPECTS = [
   { id: '16/9', label: 'Retangular', icon: RectangleHorizontal, ratio: 16 / 9 },
@@ -58,6 +60,10 @@ export function CompositionEditor({ value, onClose, onSave }) {
   function addShape() {
     const e = { id: uid(), tipo: 'forma', shape: 'rect', x: 12, y: 12, w: 45, h: 35, rot: 0, fill: '#3b82f6', opacidade: 1, radius: 0, z: 0 };
     setEls((a) => [e, ...a]); setSel(e.id); // formas nascem no fundo
+  }
+  function addIcon() {
+    const e = { id: uid(), tipo: 'icone', name: 'star', x: 42, y: 20, w: 16, h: 16, rot: 0, cor: '#ffffff', peso: 1.6, opacidade: 1, z: els.length + 1 };
+    setEls((a) => [...a, e]); setSel(e.id);
   }
   // Preenchimento da forma: alterna sólido/gradiente e ajusta cores.
   const shapeFill = selEl && selEl.tipo === 'forma' ? (typeof selEl.fill === 'object' ? selEl.fill : { grad: '', cores: [selEl.fill || '#3b82f6', '#1e3a8a'], ang: 150 }) : null;
@@ -119,6 +125,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Imagem</Button>
         <Button size="sm" variant="secondary" icon={Type} onClick={addText}>Texto</Button>
         <Button size="sm" variant="secondary" icon={Shapes} onClick={addShape}>Forma</Button>
+        <Button size="sm" variant="secondary" icon={Star} onClick={addIcon}>Ícone</Button>
         <div className="mx-2 h-5 w-px bg-line" />
         {ASPECTS.map((a) => (
           <button key={a.id} onClick={() => setAspect(a.id)} title={a.label}
@@ -161,6 +168,8 @@ export function CompositionEditor({ value, onClose, onSave }) {
                     color: e.cor, fontWeight: e.peso, textAlign: e.align, fontSize: `clamp(10px, ${e.tamanho}vw, 200px)`, lineHeight: 1.05, overflow: 'hidden', textShadow: e.sombra ? '0 2px 14px rgba(0,0,0,.45)' : 'none' }}>
                     {e.text}
                   </div>
+                ) : e.tipo === 'icone' ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%', pointerEvents: 'none' }} dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />
                 ) : e.tipo === 'forma' ? (
                   <div style={{ width: '100%', height: '100%', background: fillToCss(e.fill), borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : (e.radius || 0) + '%'), clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none', pointerEvents: 'none' }} />
                 ) : (
@@ -207,7 +216,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
           {selEl ? (
             <div className="space-y-3 border-t border-line pt-4">
               <div className="flex items-center justify-between">
-                <span className="text-2xs font-semibold uppercase tracking-wide text-ink-3">{selEl.tipo === 'texto' ? 'Texto' : selEl.tipo === 'forma' ? 'Forma' : 'Imagem'} selecionado</span>
+                <span className="text-2xs font-semibold uppercase tracking-wide text-ink-3">{selEl.tipo === 'texto' ? 'Texto' : selEl.tipo === 'forma' ? 'Forma' : selEl.tipo === 'icone' ? 'Ícone' : 'Imagem'} selecionado</span>
                 <div className="flex gap-1">
                   <button title="Frente" onClick={() => layer(1)} className="rounded p-1 text-ink-3 hover:text-ink"><ChevronUp size={15} /></button>
                   <button title="Trás" onClick={() => layer(-1)} className="rounded p-1 text-ink-3 hover:text-ink"><ChevronDown size={15} /></button>
@@ -267,6 +276,24 @@ export function CompositionEditor({ value, onClose, onSave }) {
                       <input type="range" min="0" max="50" value={selEl.radius || 0} onChange={(e) => patchSel({ radius: Number(e.target.value) })} className="w-full" />
                     </Field>
                   )}
+                  <Field label={`Opacidade (${Math.round((selEl.opacidade != null ? selEl.opacidade : 1) * 100)}%)`}>
+                    <input type="range" min="0" max="1" step="0.05" value={selEl.opacidade != null ? selEl.opacidade : 1} onChange={(e) => patchSel({ opacidade: Number(e.target.value) })} className="w-full" />
+                  </Field>
+                </>
+              ) : selEl.tipo === 'icone' ? (
+                <>
+                  <div className="grid grid-cols-6 gap-1">
+                    {ICON_NAMES.map((n) => (
+                      <button key={n} type="button" title={n} onClick={() => patchSel({ name: n })}
+                        className={'flex aspect-square items-center justify-center rounded border ' + (selEl.name === n ? 'border-accent text-accent' : 'border-line text-ink-2 hover:text-ink')}>
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: ICONS[n] }} />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Cor"><input type="color" value={selEl.cor || '#ffffff'} onChange={(e) => patchSel({ cor: e.target.value })} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
+                    <Field label={`Traço (${selEl.peso || 1.6})`}><input type="range" min="1" max="3" step="0.1" value={selEl.peso || 1.6} onChange={(e) => patchSel({ peso: Number(e.target.value) })} className="w-full" /></Field>
+                  </div>
                   <Field label={`Opacidade (${Math.round((selEl.opacidade != null ? selEl.opacidade : 1) * 100)}%)`}>
                     <input type="range" min="0" max="1" step="0.05" value={selEl.opacidade != null ? selEl.opacidade : 1} onChange={(e) => patchSel({ opacidade: Number(e.target.value) })} className="w-full" />
                   </Field>
