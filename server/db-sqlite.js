@@ -28,6 +28,9 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY, user_id TEXT, tenant_id TEXT, expires_at INTEGER
   );
+  CREATE TABLE IF NOT EXISTS resets (
+    token TEXT PRIMARY KEY, user_id TEXT, expires_at INTEGER, used_at INTEGER, created_at INTEGER
+  );
   CREATE TABLE IF NOT EXISTS devices (
     id TEXT PRIMARY KEY, tenant_id TEXT, code TEXT, name TEXT,
     config TEXT, device_token TEXT, updated_at INTEGER, created_at INTEGER,
@@ -63,6 +66,8 @@ db.exec(`
 const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
 if (!userCols.includes('role')) db.exec("ALTER TABLE users ADD COLUMN role TEXT");
 if (!userCols.includes('name')) db.exec("ALTER TABLE users ADD COLUMN name TEXT");
+// google_sub: identifica a conta Google (login social). Nulo = só senha.
+if (!userCols.includes('google_sub')) db.exec('ALTER TABLE users ADD COLUMN google_sub TEXT');
 db.exec("UPDATE users SET role = 'owner' WHERE role IS NULL");
 const deviceCols = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
 if (!deviceCols.includes('last_seen')) db.exec('ALTER TABLE devices ADD COLUMN last_seen INTEGER');
@@ -84,6 +89,13 @@ const q = {
   setUserRole: db.prepare('UPDATE users SET role = ? WHERE id = ? AND tenant_id = ?'),
   deleteUser: db.prepare('DELETE FROM users WHERE id = ? AND tenant_id = ?'),
   countOwners: db.prepare("SELECT COUNT(*) AS n FROM users WHERE tenant_id = ? AND role = 'owner'"),
+  userByGoogle: db.prepare('SELECT * FROM users WHERE google_sub = ?'),
+  setUserGoogle: db.prepare('UPDATE users SET google_sub = ? WHERE id = ?'),
+  setUserPass: db.prepare('UPDATE users SET pass_hash = ? WHERE id = ?'),
+  insertReset: db.prepare('INSERT INTO resets (token, user_id, expires_at, used_at, created_at) VALUES (?, ?, ?, NULL, ?)'),
+  resetByToken: db.prepare('SELECT * FROM resets WHERE token = ?'),
+  useReset: db.prepare('UPDATE resets SET used_at = ? WHERE token = ?'),
+  purgeResets: db.prepare('DELETE FROM resets WHERE user_id = ? AND used_at IS NULL'),
   insertInvite: db.prepare('INSERT INTO invites (id, tenant_id, email, role, code, invited_by, created_at, expires_at, accepted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)'),
   inviteByCode: db.prepare('SELECT * FROM invites WHERE code = ?'),
   invitesByTenant: db.prepare('SELECT id, email, role, code, created_at, expires_at, accepted_at FROM invites WHERE tenant_id = ? AND accepted_at IS NULL ORDER BY created_at DESC'),
@@ -137,6 +149,16 @@ async function createUser(tenantId, email, passHash, role, userName) {
 }
 async function getUserByEmail(email) { return q.userByEmail.get(email) || null; }
 async function getUserById(id) { return q.userById.get(id) || null; }
+async function getUserByGoogle(sub) { return q.userByGoogle.get(sub) || null; }
+async function setUserGoogle(id, sub) { q.setUserGoogle.run(sub, id); }
+async function setUserPassword(id, passHash) { q.setUserPass.run(passHash, id); }
+// Reset de senha: um token de uso único, com validade curta.
+async function createReset(token, userId, expiresAt) {
+  q.purgeResets.run(userId); // invalida pedidos anteriores
+  q.insertReset.run(token, userId, expiresAt, Date.now());
+}
+async function getReset(token) { return q.resetByToken.get(token) || null; }
+async function consumeReset(token) { q.useReset.run(Date.now(), token); }
 async function listUsers(tenantId) { return q.usersByTenant.all(tenantId); }
 async function setUserRole(userId, tenantId, role) { q.setUserRole.run(role, userId, tenantId); }
 async function removeUser(userId, tenantId) { q.deleteUser.run(userId, tenantId); }
@@ -250,6 +272,8 @@ function rid(n) {
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
+  getUserByGoogle, setUserGoogle, setUserPassword,
+  createReset, getReset, consumeReset,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession,

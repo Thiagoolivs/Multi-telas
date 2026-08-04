@@ -1004,6 +1004,14 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .mt-pairing-hint { font-size: clamp(13px, 1.8vw, 26px); color: var(--text-dim); max-width: 32em; margin: 0 auto; }
+/* Escape hatch: se este navegador já guardou uma TV, gera outra do zero. */
+.mt-pairing-reset {
+  margin-top: 1.6em; padding: .6em 1.2em; font: inherit;
+  font-size: clamp(11px, 1.2vw, 16px); color: var(--text-dim);
+  background: transparent; border: 1px solid currentColor; border-radius: 999px;
+  opacity: .55; cursor: pointer; transition: opacity .2s;
+}
+.mt-pairing-reset:hover, .mt-pairing-reset:focus { opacity: 1; }
 
 /* Modo performance: hardware fraco (classe aplicada quando fx é baixo). */
 .mt-perf .mt-stage::before,

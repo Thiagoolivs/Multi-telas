@@ -27,6 +27,10 @@ export const auth = {
   signup: (payload) => api('POST', '/api/auth/signup', payload),
   login: (email, password) => api('POST', '/api/auth/login', { email, password }),
   logout: () => api('POST', '/api/auth/logout'),
+  // Quais formas de login este servidor oferece (Google, e-mail de reset).
+  config: () => api('GET', '/api/auth/config').catch(() => ({ google: false, mail: false })),
+  forgot: (email) => api('POST', '/api/auth/forgot', { email }),
+  reset: (token, password) => api('POST', '/api/auth/reset', { token, password }),
 };
 
 export const team = {

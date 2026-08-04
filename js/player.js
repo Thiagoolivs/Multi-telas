@@ -193,6 +193,19 @@
     if (!el) return;
     const codeEl = el.querySelector('.mt-pairing-code');
     if (codeEl) codeEl.textContent = code || '••••••';
+    // "Gerar outro código": esquece a TV guardada neste navegador e recarrega
+    // como tela nova (o navegador reaproveitava a mesma sem isso).
+    const resetEl = document.getElementById('pairing-reset');
+    if (resetEl && !resetEl._wired) {
+      resetEl._wired = true;
+      resetEl.addEventListener('click', function () {
+        if (global.MTCloud && MTCloud.resetDevice) MTCloud.resetDevice();
+        const u = new URL(global.location.href);
+        u.searchParams.set('cloud', '1');
+        u.searchParams.set('new', '1');
+        global.location.replace(u.toString());
+      });
+    }
     el.classList.remove('hidden');
   }
   function hidePairing() {

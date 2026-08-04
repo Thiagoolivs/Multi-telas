@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 import { Button, IconButton } from '../components/ui/Button.jsx';
-import { Field, Input } from '../components/ui/Field.jsx';
+import { Field, Input, Select } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { SkeletonRows, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
-import { devices } from '../api.js';
+import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
 
 export function ScreensPage({ onEditContent }) {
@@ -20,6 +20,7 @@ export function ScreensPage({ onEditContent }) {
   const [pairOpen, setPairOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
+  const [backupTarget, setBackupTarget] = useState(null);
 
   return (
     <div>
@@ -53,6 +54,7 @@ export function ScreensPage({ onEditContent }) {
                 <FleetCard key={d.id} d={d}
                   onContent={() => onEditContent(d)}
                   onRename={() => setRenameTarget(d)}
+                  onBackup={() => setBackupTarget(d)}
                   onRemove={() => setRemoveTarget(d)} />
               ))}
             </div>
@@ -64,12 +66,13 @@ export function ScreensPage({ onEditContent }) {
       <PairDialog open={pairOpen} onClose={() => setPairOpen(false)} onDone={reload} />
       <RenameDialog target={renameTarget} onClose={() => setRenameTarget(null)} onDone={reload} />
       <RemoveDialog target={removeTarget} onClose={() => setRemoveTarget(null)} onDone={reload} />
+      <BackupDialog target={backupTarget} screens={list} onClose={() => setBackupTarget(null)} onDone={reload} />
     </div>
   );
 }
 
 // Mini "tela" da frota: status + programação (não é espelho ao vivo).
-function FleetCard({ d, onContent, onRename, onRemove }) {
+function FleetCard({ d, onContent, onRename, onBackup, onRemove }) {
   const st = deviceStatus(d.lastSeen);
   const online = st.tone === 'ok';
   return (
@@ -91,6 +94,7 @@ function FleetCard({ d, onContent, onRename, onRemove }) {
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent}>Conteúdo</Button>
+          <IconButton icon={Archive} label="Backup / restaurar" size={14} onClick={onBackup} />
           <IconButton icon={Pencil} label="Renomear" size={14} onClick={onRename} />
           <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={onRemove} />
         </div>
@@ -194,6 +198,111 @@ function RemoveDialog({ target, onClose, onDone }) {
       }
     >
       <p className="text-sm text-ink-2">Essa ação não pode ser desfeita. A TV precisará ser pareada de novo para voltar a ser controlada.</p>
+    </Dialog>
+  );
+}
+
+/*
+ * Backup da tela: baixa a configuração inteira (layout, tema e conteúdo) em
+ * JSON, restaura de arquivo ou copia de outra tela. Serve para quando a TV
+ * some, é apagada ou precisa ser trocada por outra que conecte.
+ */
+function BackupDialog({ target, screens, onClose, onDone }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+  const [from, setFrom] = useState('');
+
+  const others = (screens || []).filter((s) => target && s.id !== target.id);
+
+  async function baixar() {
+    setBusy(true); setErr(''); setMsg('');
+    try {
+      const cfg = await deviceConfig.get(target.id);
+      if (!cfg) { setErr('Esta tela ainda não tem configuração para salvar.'); return; }
+      const backup = { kind: 'vistra.screen', version: 1, exportedAt: new Date().toISOString(), name: target.name || '', config: cfg };
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'vistra-' + (target.name || 'tela').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      setMsg('Backup baixado.');
+    } catch (e) { setErr(e.message || 'Falha ao baixar.'); }
+    finally { setBusy(false); }
+  }
+
+  async function restaurar(e) {
+    const f = (e.target.files || [])[0]; e.target.value = '';
+    if (!f) return;
+    setBusy(true); setErr(''); setMsg('');
+    try {
+      const parsed = JSON.parse(await f.text());
+      // Aceita o arquivo do backup e também uma config "crua".
+      const cfg = parsed && parsed.config ? parsed.config : parsed;
+      if (!cfg || !cfg.zonas) { setErr('Arquivo não parece um backup do Vistra.'); return; }
+      await deviceConfig.save(target.id, cfg);
+      setMsg('Exibição restaurada nesta tela.');
+      onDone();
+    } catch (e2) { setErr(e2.message || 'Falha ao restaurar.'); }
+    finally { setBusy(false); }
+  }
+
+  async function copiar() {
+    if (!from) return;
+    setBusy(true); setErr(''); setMsg('');
+    try {
+      const cfg = await deviceConfig.get(from);
+      if (!cfg) { setErr('A tela escolhida não tem configuração.'); return; }
+      await deviceConfig.save(target.id, cfg);
+      setMsg('Exibição copiada para esta tela.');
+      onDone();
+    } catch (e) { setErr(e.message || 'Falha ao copiar.'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog open={!!target} onClose={onClose} title="Backup e restauração"
+      description={target ? `Salve ou recupere toda a exibição de "${target.name || 'sem nome'}".` : ''}
+      className="max-w-xl"
+      footer={<Button variant="primary" icon={Check} onClick={onClose}>Concluir</Button>}>
+      <div className="space-y-4">
+        <div className="rounded-lg border border-line p-3">
+          <div className="text-sm font-semibold text-ink">Salvar backup</div>
+          <p className="mt-0.5 text-xs text-ink-3">Baixa um arquivo com layout, tema e todo o conteúdo desta tela.</p>
+          <Button className="mt-2" size="sm" variant="secondary" icon={Download} disabled={busy || !target} onClick={baixar}>Baixar JSON</Button>
+        </div>
+
+        <div className="rounded-lg border border-line p-3">
+          <div className="text-sm font-semibold text-ink">Restaurar de um arquivo</div>
+          <p className="mt-0.5 text-xs text-ink-3">Use o backup de uma tela antiga para reconstruir esta aqui.</p>
+          <label className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink-2 transition hover:bg-surface-2">
+            <Upload size={14} /> Escolher arquivo
+            <input type="file" accept="application/json,.json" className="hidden" onChange={restaurar} disabled={busy} />
+          </label>
+        </div>
+
+        <div className="rounded-lg border border-line p-3">
+          <div className="text-sm font-semibold text-ink">Copiar de outra tela</div>
+          <p className="mt-0.5 text-xs text-ink-3">Clona a exibição de uma tela que já está funcionando.</p>
+          {others.length ? (
+            <div className="mt-2 flex items-end gap-2">
+              <Field label="Tela de origem" className="flex-1">
+                <Select value={from} onChange={(e) => setFrom(e.target.value)}>
+                  <option value="">Escolha…</option>
+                  {others.map((s) => <option key={s.id} value={s.id}>{s.name || s.code || s.id}</option>)}
+                </Select>
+              </Field>
+              <Button size="sm" variant="secondary" icon={Copy} disabled={busy || !from} onClick={copiar}>Copiar</Button>
+            </div>
+          ) : <p className="mt-2 text-xs text-ink-3">Você só tem esta tela — pareie outra para poder copiar.</p>}
+        </div>
+
+        <p className="text-2xs text-ink-3">O backup guarda a exibição, não o pareamento: a TV nova precisa ser pareada primeiro.</p>
+        {msg && <div className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">{msg}</div>}
+        {err && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{err}</div>}
+      </div>
     </Dialog>
   );
 }
