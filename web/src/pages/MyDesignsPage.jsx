@@ -182,7 +182,7 @@ export function MyDesignsPage() {
       {/* Acervo */}
       <Panel>
         <PanelHeader title="Seus designs" description={saved.length ? `${saved.length} peça(s) em ${collections.length} coleção(ões)` : undefined}
-          action={saved.length ? (
+          actions={saved.length ? (
             <div className="relative">
               <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar…" className="w-44 rounded-md border border-line bg-surface py-1.5 pl-8 pr-2 text-sm text-ink placeholder:text-ink-3" />

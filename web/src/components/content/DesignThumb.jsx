@@ -4,16 +4,19 @@ import { ICONS } from '../../lib/icons.js';
 
 // Miniatura fiel de um design (composição). Usada no hub "Meus Designs" e
 // na prévia de campanhas. Também cobre imagem/pptx quando o item não é composição.
-export function DesignThumb({ item }) {
+export function DesignThumb({ item, fitHeight }) {
   const it = item || {};
   const formato = it.formato || '16/9';
-  const ar = { aspectRatio: formato.replace('/', ' / ') };
+  // fitHeight: encaixa pela altura (grid uniforme quando os formatos variam).
+  const ar = fitHeight
+    ? { aspectRatio: formato.replace('/', ' / '), height: '100%', width: 'auto', maxWidth: '100%' }
+    : { aspectRatio: formato.replace('/', ' / ') };
 
   // Item que não é composição (imagem/vídeo/pptx importados): mostra direto.
   if (it.type && it.type !== 'composicao') {
     if ((it.type === 'image' || it.type === 'video') && it.src) {
       return (
-        <div className="relative w-full overflow-hidden rounded-md border border-line bg-[#0a1020]" style={ar}>
+        <div className={'relative overflow-hidden rounded-md border border-line bg-[#0a1020] ' + (fitHeight ? '' : 'w-full')} style={ar}>
           {it.type === 'video'
             ? <video src={it.src} muted loop className="h-full w-full object-cover" />
             : <img src={it.src} alt="" className="h-full w-full object-cover" />}
@@ -21,7 +24,7 @@ export function DesignThumb({ item }) {
       );
     }
     return (
-      <div className="flex w-full items-center justify-center rounded-md border border-line bg-[#0a1020] text-2xs text-ink-3" style={ar}>
+      <div className={'flex items-center justify-center rounded-md border border-line bg-[#0a1020] text-2xs text-ink-3 ' + (fitHeight ? '' : 'w-full')} style={ar}>
         {it.type === 'pptx' ? 'Apresentação/PDF' : it.type}
       </div>
     );
@@ -32,7 +35,7 @@ export function DesignThumb({ item }) {
     : b.kind === 'cor' ? { background: b.cor } : { background: '#0a1020' };
   const els = (it.elementos || []).slice().sort((a, c) => (a.z || 0) - (c.z || 0));
   return (
-    <div className="relative w-full overflow-hidden rounded-md border border-line" style={{ ...ar, ...bg }}>
+    <div className={'relative overflow-hidden rounded-md border border-line ' + (fitHeight ? '' : 'w-full')} style={{ ...ar, ...bg }}>
       {els.map((e, i) => (
         <div key={i} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden' }}>
           {e.tipo === 'texto'

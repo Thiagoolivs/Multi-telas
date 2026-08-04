@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState, Suspense, lazy } from 'react';
+import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'react';
 import {
-  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, UploadCloud, Clock, GripVertical, LayoutGrid, Settings2, Info,
+  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info,
 } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button, IconButton } from '../components/ui/Button.jsx';
@@ -32,7 +32,7 @@ export function ContentEditorPage({ device, onBack }) {
   const { data, loading, error, reload } = useAsync(() => deviceConfig.get(device.id), [device.id]);
 
   const [cfg, setCfg] = useState(null);
-  const [tab, setTab] = useState('content'); // content | settings
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [zoneId, setZoneId] = useState(null);
   const [selected, setSelected] = useState(0);
   const [dirty, setDirty] = useState(false);
@@ -46,6 +46,7 @@ export function ContentEditorPage({ device, onBack }) {
   const [publishing, setPublishing] = useState(false);
   const [publishedAt, setPublishedAt] = useState(null);
   const [publishError, setPublishError] = useState('');
+  const saveTimer = useRef(null);
 
   // Semeia o config de trabalho quando chega (null = sem config ainda).
   useEffect(() => {
@@ -88,7 +89,17 @@ export function ContentEditorPage({ device, onBack }) {
       next.zonas[activeZone.id].items = fn(arr);
     });
   }
-  const addItem = (type) => { mutateItems((arr) => { arr.push(CONTENT_TYPES[type].make()); return arr; }); setSelected(items.length); };
+  // Criar do zero. Composição já abre o editor visual — sem passo extra.
+  const addItem = (type) => {
+    mutateItems((arr) => { arr.push(CONTENT_TYPES[type].make()); return arr; });
+    setSelected(items.length);
+    if (type === 'composicao') setCompOpen(true);
+  };
+  // Inserir um design salvo da biblioteca (Meus Designs).
+  const addSaved = (item) => {
+    mutateItems((arr) => { arr.push(structuredClone(item)); return arr; });
+    setSelected(items.length);
+  };
   const updateItem = (idx, item) => mutateItems((arr) => { arr[idx] = item; return arr; });
   const moveItem = (idx, dir) => {
     const j = idx + dir; if (j < 0 || j >= items.length) return;
@@ -120,6 +131,14 @@ export function ContentEditorPage({ device, onBack }) {
     finally { setPublishing(false); }
   }
 
+  // Salvamento automático: publica sozinho ~1s depois da última alteração.
+  useEffect(() => {
+    if (!dirty || !cfg) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => { publish(); }, 1000);
+    return () => clearTimeout(saveTimer.current);
+  }, [cfg, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Aplica uma campanha da IA (tela inteira) ao config: substitui as zonas
   // geradas e, se veio, a cor da marca.
   function applyCampaign(camp) {
@@ -148,25 +167,19 @@ export function ContentEditorPage({ device, onBack }) {
           <IconButton icon={ArrowLeft} label="Voltar" onClick={onBack} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-ink">{(cfg && cfg.settings && cfg.settings.nome) || device.name || 'Tela'}</h1>
-            <p className="text-sm text-ink-3">Conteúdo e ajustes da tela · publica ao vivo</p>
+            <p className="text-sm text-ink-3">O que aparece nesta tela · salva e publica sozinho</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-ink-3">{dirty ? 'Alterações não publicadas' : publishedAt ? 'Publicado agora' : 'Tudo publicado'}</span>
+          {/* Estado do salvamento automático */}
+          <span className={cn('inline-flex items-center gap-1.5 text-xs', publishing || dirty ? 'text-ink-3' : 'text-emerald-500')}>
+            {publishing || dirty
+              ? <><Spinner size={12} /> Salvando…</>
+              : <><Check size={13} /> {publishedAt ? 'Salvo' : 'Tudo salvo'}</>}
+          </span>
           <Button variant="secondary" icon={Wand2} onClick={() => setCampOpen(true)}>Campanha com IA</Button>
-          <Button variant="primary" icon={UploadCloud} onClick={publish} disabled={!dirty || publishing}>{publishing ? 'Publicando…' : 'Publicar'}</Button>
+          <Button variant="secondary" icon={Settings2} onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>
         </div>
-      </div>
-
-      {/* Abas */}
-      <div className="mb-4 inline-flex gap-1 rounded-lg border border-line bg-surface-2 p-1">
-        {[['content', 'Conteúdo', LayoutGrid], ['settings', 'Ajustes da tela', Settings2]].map(([id, label, Icon]) => (
-          <button key={id} onClick={() => setTab(id)}
-            className={cn('inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition',
-              tab === id ? 'bg-surface text-ink shadow-xs' : 'text-ink-3 hover:text-ink-2')}>
-            <Icon size={15} /> {label}
-          </button>
-        ))}
       </div>
 
       {publishError && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError}</div>}
@@ -175,11 +188,6 @@ export function ContentEditorPage({ device, onBack }) {
         <div className="flex justify-center py-20"><Spinner size={22} /></div>
       ) : error ? (
         <Panel><ErrorState description="Não foi possível carregar o conteúdo da tela." onRetry={reload} /></Panel>
-      ) : tab === 'settings' ? (
-        <Panel>
-          <PanelHeader title="Ajustes da tela" description="Layout, tema e comportamento." />
-          <div className="p-4"><SettingsForm settings={cfg.settings} onChange={(settings) => patchCfg((next) => { next.settings = settings; })} /></div>
-        </Panel>
       ) : (
         <>
           {/* Chips de zona */}
@@ -204,7 +212,8 @@ export function ContentEditorPage({ device, onBack }) {
           ) : activeZone && activeZone.type === 'header' ? (
             <Panel>
               <EmptyState icon={Info} title="Cabeçalho automático"
-                description="O cabeçalho mostra logo, relógio e clima automaticamente. Ajuste nome e tema na aba Ajustes." />
+                description="O cabeçalho mostra logo, relógio e clima automaticamente. Nome e tema ficam em “Ajustes da tela”."
+                action={<Button size="sm" variant="secondary" icon={Settings2} onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>} />
             </Panel>
           ) : (
             <div className="grid gap-4 lg:grid-cols-[minmax(0,360px)_1fr]">
@@ -289,7 +298,14 @@ export function ContentEditorPage({ device, onBack }) {
         </>
       )}
 
-      <TypePicker open={picker} onClose={() => setPicker(false)} onPick={addItem} />
+      <TypePicker open={picker} onClose={() => setPicker(false)} onPick={addItem} onPickItem={addSaved} />
+
+      {/* Ajustes da tela — fora do fluxo de conteúdo, sem roubar espaço */}
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Ajustes da tela"
+        description="Layout, tema e comportamento. Salva sozinho." className="max-w-3xl"
+        footer={<Button variant="primary" icon={Check} onClick={() => setSettingsOpen(false)}>Concluir</Button>}>
+        {cfg && <SettingsForm settings={cfg.settings} onChange={(settings) => patchCfg((next) => { next.settings = settings; })} />}
+      </Dialog>
 
       {compOpen && current && current.type === 'composicao' && (
         <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90"><Spinner size={22} /></div>}>
