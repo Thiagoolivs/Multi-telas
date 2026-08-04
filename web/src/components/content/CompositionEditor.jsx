@@ -4,7 +4,7 @@ import { ImagePlus, Type, Trash2, ChevronUp, ChevronDown, RotateCcw, Save, X, Sq
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { media, ai } from '../../api.js';
-import { fillToCss, bgGradient } from '../../lib/composition.js';
+import { fillToCss, bgGradient, shapeClip, SHAPE_POLY } from '../../lib/composition.js';
 
 const ASPECTS = [
   { id: '16/9', label: 'Retangular', icon: RectangleHorizontal, ratio: 16 / 9 },
@@ -162,7 +162,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                     {e.text}
                   </div>
                 ) : e.tipo === 'forma' ? (
-                  <div style={{ width: '100%', height: '100%', background: fillToCss(e.fill), borderRadius: e.shape === 'ellipse' ? '50%' : ((e.radius || 0) + '%'), pointerEvents: 'none' }} />
+                  <div style={{ width: '100%', height: '100%', background: fillToCss(e.fill), borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : (e.radius || 0) + '%'), clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none', pointerEvents: 'none' }} />
                 ) : (
                   <img src={e.src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', display: 'block', pointerEvents: 'none' }} />
                 )}
@@ -234,6 +234,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                     <Field label="Formato">
                       <Select value={selEl.shape || 'rect'} onChange={(e) => patchSel({ shape: e.target.value })}>
                         <option value="rect">Retângulo</option><option value="ellipse">Elipse</option>
+                        <option value="triangle">Triângulo</option><option value="diamond">Losango</option><option value="diag">Diagonal</option>
                       </Select>
                     </Field>
                     <Field label="Preenchimento">
