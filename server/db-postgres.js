@@ -193,6 +193,9 @@ async function addBrandAsset(tenantId, kind, url, label) {
 async function removeBrandAsset(id, tenantId) {
   await pool.query('DELETE FROM brandassets WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
 }
+async function labelBrandAsset(id, tenantId, label) {
+  await pool.query('UPDATE brandassets SET label = $1 WHERE id = $2 AND tenant_id = $3', [label || '', id, tenantId]);
+}
 
 async function listUsers(tenantId) {
   const r = await pool.query('SELECT id, email, role, name, created_at FROM users WHERE tenant_id = $1 ORDER BY created_at ASC', [tenantId]);
@@ -406,5 +409,5 @@ module.exports = {
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
-  getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset,
+  getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
 };

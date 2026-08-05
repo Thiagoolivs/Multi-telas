@@ -289,6 +289,7 @@ const qBrand = {
   listAssets: db.prepare('SELECT * FROM brandassets WHERE tenant_id = ? ORDER BY created_at DESC'),
   addAsset: db.prepare('INSERT INTO brandassets (id, tenant_id, kind, url, label, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
   delAsset: db.prepare('DELETE FROM brandassets WHERE id = ? AND tenant_id = ?'),
+  labelAsset: db.prepare('UPDATE brandassets SET label = ? WHERE id = ? AND tenant_id = ?'),
 };
 async function getBrandKit(tenantId) { return mapKit(qBrand.get.get(tenantId)); }
 async function saveBrandKit(tenantId, k) {
@@ -302,6 +303,7 @@ async function addBrandAsset(tenantId, kind, url, label) {
   return { id, kind, url, label: label || '' };
 }
 async function removeBrandAsset(id, tenantId) { qBrand.delAsset.run(id, tenantId); }
+async function labelBrandAsset(id, tenantId, label) { qBrand.labelAsset.run(label || '', id, tenantId); }
 
 function mapKit(r) {
   if (!r) return null;
@@ -336,5 +338,5 @@ module.exports = {
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
-  getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset,
+  getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
 };

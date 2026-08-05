@@ -27,7 +27,7 @@ const DIRECOES = [
 // Grupos de imagem da marca, com o texto que explica para que serve cada um.
 const GRUPOS = [
   { kind: 'logo', titulo: 'Logo', desc: 'Entra no mesmo canto de todas as peças geradas.', unico: true },
-  { kind: 'base', titulo: 'Imagens base', desc: 'Fotos suas (produto, equipe, loja) para a IA usar nas peças.' },
+  { kind: 'base', titulo: 'Imagens base', desc: 'Fotos suas (produto, equipe, loja). A IA usa estas antes de inventar uma imagem — descreva cada uma para ela saber quando cabe.' },
   { kind: 'referencia', titulo: 'Referências de estilo', desc: 'Artes que você gosta. A IA olha e imita a direção — não copia o conteúdo.' },
 ];
 
@@ -72,10 +72,27 @@ export function BrandPage() {
     setBusy(true); setErr('');
     try {
       const up = await media.upload(f);
-      await brand.addAsset(kind, up.url, f.name.slice(0, 40));
+      /*
+       * Imagem base sobe SEM rótulo de propósito: "IMG_2843.jpg" não descreve
+       * nada e ainda impediria a IA de olhar a foto para descrevê-la sozinha.
+       * O usuário escreve depois, se quiser mandar na escolha.
+       */
+      await brand.addAsset(kind, up.url, kind === 'base' ? '' : f.name.slice(0, 40));
       reload();
     } catch (e2) { setErr(e2.message || 'Falha ao enviar.'); }
     finally { setBusy(false); }
+  }
+
+  /*
+   * Salva no blur, sem botão. Não recarrega a lista: o valor já está no campo,
+   * e um reload aqui só faria o cursor pular enquanto o usuário descreve a
+   * próxima foto.
+   */
+  async function renomear(a, label) {
+    const novo = label.trim().slice(0, 160);
+    if (novo === (a.label || '')) return;
+    try { a.label = novo; await brand.labelAsset(a.id, novo); }
+    catch (e) { setErr(e.message || 'Não foi possível salvar a descrição.'); }
   }
 
   async function apagar(id) {
@@ -178,8 +195,18 @@ export function BrandPage() {
                     <div className="flex h-24 items-center justify-center overflow-hidden rounded-md border border-line bg-surface-2">
                       <img src={a.url} alt="" className="max-h-full max-w-full object-contain" />
                     </div>
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="truncate text-2xs text-ink-3">{a.label}</span>
+                    <div className="flex items-center gap-1">
+                      {g.kind === 'base' ? (
+                        <input
+                          defaultValue={a.label}
+                          placeholder="descreva a foto"
+                          title="O que esta foto mostra. É por aqui que a IA escolhe usá-la."
+                          onBlur={(e) => renomear(a, e.target.value)}
+                          className="min-w-0 flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-2xs text-ink-2 placeholder:text-ink-3 hover:border-line focus:border-accent focus:outline-none"
+                        />
+                      ) : (
+                        <span className="min-w-0 flex-1 truncate text-2xs text-ink-3">{a.label}</span>
+                      )}
                       <button title="Remover" className="shrink-0 text-ink-3 hover:text-danger" onClick={() => apagar(a.id)}>
                         <Trash2 size={12} />
                       </button>

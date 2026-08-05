@@ -42,9 +42,14 @@ DIREÇÃO DE ARTE — escolha uma:
 
 DECISÕES QUE SÃO SUAS:
 - quantas peças e para quais formatos, conforme o objetivo do briefing;
-- se a peça pede uma IMAGEM DE FUNDO gerada (produto, ambiente, comida, pessoas)
-  ou se resolve melhor com formas e cor — a maioria das peças corporativas
-  resolve com formas, use imagem quando ela agrega mesmo;
+- se a peça pede uma IMAGEM DE FUNDO ou se resolve melhor com formas e cor — a
+  maioria das peças corporativas resolve com formas, use foto quando ela agrega
+  mesmo. Quando a peça pedir foto, siga esta ordem:
+  1. use uma das IMAGENS DA EMPRESA listadas no briefing ("imagemBase": índice) —
+     é a loja, o produto e a equipe reais do cliente, sempre vence uma foto
+     inventada;
+  2. só se nenhuma servir, peça uma imagem gerada ("precisaImagem": true).
+  Nunca marque as duas na mesma peça.
 - o tom das legendas de rede social, que são MAIS longas e podem ter emoji.
 
 Responda APENAS com JSON, neste formato:
@@ -62,6 +67,7 @@ Responda APENAS com JSON, neste formato:
       "canal": "TV" | "Feed" | "Story" | "Banner",
       "objetivo": "1 frase",
       "kicker": "", "headline": "", "sub": "", "cta": "",
+      "imagemBase": null,
       "precisaImagem": true|false,
       "promptImagem": "descrição da foto, só se precisaImagem for true"
     }
@@ -77,6 +83,23 @@ Responda APENAS com JSON, neste formato:
 }
 Português do Brasil.`;
 
+/*
+ * Lista as fotos da empresa numeradas, para o plano poder escolher pelo índice.
+ * O rótulo é o que o usuário escreveu ao subir a imagem; quando ele não
+ * escreveu nada, `dirigir` preenche com a leitura da visão antes de chegar aqui.
+ */
+function basesDe(ctx) {
+  const b = (ctx && ctx.marca && ctx.marca.bases) || [];
+  return b.filter((x) => x && x.url).slice(0, 8);
+}
+
+function catalogoBases(ctx) {
+  const bases = basesDe(ctx);
+  if (!bases.length) return '';
+  return 'IMAGENS DA EMPRESA (use "imagemBase" com o número):\n'
+    + bases.map((x, i) => `  ${i}. ${x.label || 'foto do acervo'}`).join('\n');
+}
+
 async function planejar(brief, ctx) {
   ctx = ctx || {};
   const usuario = [
@@ -91,6 +114,7 @@ async function planejar(brief, ctx) {
     ctx.marca && ctx.marca.tom ? `Tom da marca (fixo): ${ctx.marca.tom}` : '',
     ctx.marca && ctx.marca.observacoes ? `Regras da marca: ${ctx.marca.observacoes}` : '',
     ctx.marca && ctx.marca.estiloRef ? `Estilo das referências do cliente: ${ctx.marca.estiloRef}` : '',
+    catalogoBases(ctx),
     '',
     `Briefing: ${String(brief || '').slice(0, 900)}`,
   ].filter(Boolean).join('\n');
@@ -126,19 +150,36 @@ function normalizarPlano(p, ctx, brief) {
   const direcao = ds.DIRECOES[m.direcao] ? m.direcao
     : ds.DIRECOES[id.direcao] ? id.direcao : 'chapado';
 
-  let pecas = (Array.isArray(p.pecas) ? p.pecas : []).map((x) => ({
-    formato: FORMATOS_OK.includes(x && x.formato) ? x.formato : '16/9',
-    canal: String((x && x.canal) || 'TV').slice(0, 20),
-    objetivo: String((x && x.objetivo) || '').slice(0, 140),
-    kicker: String((x && x.kicker) || '').slice(0, 40),
-    headline: String((x && x.headline) || '').slice(0, 70),
-    sub: String((x && x.sub) || '').slice(0, 130),
-    cta: String((x && x.cta) || '').slice(0, 40),
-    precisaImagem: !!(x && x.precisaImagem),
-    promptImagem: String((x && x.promptImagem) || '').slice(0, 400),
-  })).filter((x) => x.headline).slice(0, 8);
+  /*
+   * imagemBase: índice do acervo da empresa. Só vale se apontar para uma foto
+   * que existe — modelo alucinando índice não pode virar peça sem fundo. E foto
+   * real escolhida desliga a geração: gastar imagem tendo a do cliente é perda
+   * dupla, de dinheiro e de verdade.
+   */
+  const bases = basesDe(ctx);
+  const normalizarPeca = (x) => {
+    const iBase = Number.isInteger(x && x.imagemBase) && x.imagemBase >= 0 && x.imagemBase < bases.length
+      ? x.imagemBase : null;
+    return {
+      imagemBase: iBase,
+      bgImagem: iBase != null ? bases[iBase].url : '',
+      formato: FORMATOS_OK.includes(x && x.formato) ? x.formato : '16/9',
+      canal: String((x && x.canal) || 'TV').slice(0, 20),
+      objetivo: String((x && x.objetivo) || '').slice(0, 140),
+      kicker: String((x && x.kicker) || '').slice(0, 40),
+      headline: String((x && x.headline) || '').slice(0, 70),
+      sub: String((x && x.sub) || '').slice(0, 130),
+      cta: String((x && x.cta) || '').slice(0, 40),
+      precisaImagem: iBase == null && !!(x && x.precisaImagem),
+      promptImagem: iBase != null ? '' : String((x && x.promptImagem) || '').slice(0, 400),
+    };
+  };
+  let pecas = (Array.isArray(p.pecas) ? p.pecas : []).map(normalizarPeca)
+    .filter((x) => x.headline).slice(0, 8);
 
-  if (!pecas.length) pecas = planoDev(brief, ctx).pecas;
+  // O plano de reserva passa pela MESMA normalização — inclusive a resolução do
+  // acervo, senão a empresa perde as próprias fotos justo quando a IA falhou.
+  if (!pecas.length) pecas = planoDev(brief, ctx).pecas.map(normalizarPeca);
 
   const social = p.social && typeof p.social === 'object' ? p.social : {};
   return {
@@ -167,7 +208,9 @@ function normalizarPlano(p, ctx, brief) {
 // Modo dev (sem chave de IA): plano plausível para o sistema seguir funcionando.
 function planoDev(brief, ctx) {
   const titulo = String(brief || 'Sua campanha').split(/[.\n]/)[0].slice(0, 40) || 'Sua campanha';
-  const base = { kicker: 'NOVIDADE', headline: titulo, sub: 'Passe no balcão e confira.', cta: ctx.oferta || 'Saiba mais', precisaImagem: false, promptImagem: '' };
+  // Tendo foto da empresa, o modo demonstração já a usa — é o caminho que o
+  // cliente vê primeiro, e ele deve mostrar o acervo dele, não um degradê.
+  const base = { kicker: 'NOVIDADE', headline: titulo, sub: 'Passe no balcão e confira.', cta: ctx.oferta || 'Saiba mais', imagemBase: basesDe(ctx).length ? 0 : null, precisaImagem: false, promptImagem: '' };
   return {
     campanha: ctx.empresa || 'Campanha',
     identidade: {
@@ -367,7 +410,12 @@ function layoutReserva(peca, palette, formato, dirId, identidade) {
       fonteApoio: id.fonteApoio || dir.fonteApoio,
     });
   }
-  if (dir.fundo === 'foto' || dir.sangra) return layoutCartaz(peca, palette, formato, dir);
+  /*
+   * Peça com foto vai de cartaz mesmo que a direção seja outra: só o cartaz tem
+   * o véu que garante leitura sobre a imagem. O validador de contraste não sabe
+   * medir texto contra foto — quem resolve isso é o layout.
+   */
+  if (peca.bgImagem || dir.fundo === 'foto' || dir.sangra) return layoutCartaz(peca, palette, formato, dir);
   if (dir.fundo === 'marca') return layoutChapado(peca, palette, formato, dir);
   if (dir.fundo === 'escuro') return layoutChapado(peca, palette, formato, dir);
   return layoutSuave(peca, palette, formato);
@@ -452,7 +500,7 @@ function layoutSuave(peca, palette, formato) {
  * onImagem: função opcional (prompt, formato) => url. Injetada pelo server.js
  * para que este módulo não precise conhecer storage nem tenant.
  */
-async function dirigir(brief, ctx, { onImagem, onLerReferencias } = {}) {
+async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar } = {}) {
   ctx = ctx || {};
   /*
    * Referências do cliente: em vez de descrever o estilo por escrito, a empresa
@@ -462,6 +510,18 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias } = {}) {
   if (onLerReferencias && ctx.marca && ctx.marca.referencias && ctx.marca.referencias.length) {
     try { ctx.marca.estiloRef = await onLerReferencias(ctx.marca.referencias.slice(0, 3)); }
     catch (e) { /* sem as referências, segue com o briefing puro */ }
+  }
+  /*
+   * O diretor só escolhe uma foto do acervo se souber o que ela mostra. O
+   * rótulo escrito pelo usuário basta; quando ele não escreveu, a visão lê as
+   * que faltam — UMA chamada para todas, e só para as sem rótulo.
+   */
+  const semRotulo = basesDe(ctx).filter((b) => !b.label);
+  if (onCatalogar && semRotulo.length) {
+    try {
+      const frases = await onCatalogar(semRotulo.map((b) => b.url));
+      semRotulo.forEach((b, i) => { if (frases[i]) b.label = frases[i]; });
+    } catch (e) { /* sem catálogo, o acervo só não é escolhido automaticamente */ }
   }
   const plano = await planejar(brief, ctx);
   const dir = ds.direcao(plano.identidade.direcao);
@@ -497,6 +557,9 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias } = {}) {
       item,
       correcoes,
       usouReserva,
+      // Para o painel poder dizer "usou a foto da sua marca" em vez de deixar o
+      // cliente achando que a IA inventou aquela imagem.
+      usouAcervo: peca.imagemBase != null,
     });
   }
 

@@ -68,6 +68,7 @@ export const brand = {
   get: () => api('GET', '/api/brand'),
   save: (kit) => api('PUT', '/api/brand', kit),
   addAsset: (kind, url, label) => api('POST', '/api/brand/assets', { kind, url, label }),
+  labelAsset: (id, label) => api('PUT', '/api/brand/assets/' + id, { label }),
   removeAsset: (id) => api('DELETE', '/api/brand/assets/' + id),
 };
 
