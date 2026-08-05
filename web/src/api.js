@@ -62,6 +62,29 @@ export const ai = {
   composition: (payload) => api('POST', '/api/ai/generate-composition', payload),
   kit: (payload) => api('POST', '/api/ai/generate-kit', payload),
   image: (payload) => api('POST', '/api/ai/generate-image', payload),
+  /*
+   * O diretor: briefing → plano → imagens → composição → crítica. É o motor que
+   * respeita a marca e o acervo; `kit` é o antigo, mantido só por compat.
+   *
+   * Roda como TRABALHO porque leva mais que o tempo de uma requisição HTTP:
+   * `director` devolve um id na hora e `directorStatus` conta em que etapa está.
+   */
+  director: (payload) => api('POST', '/api/ai/director', payload),
+  directorStatus: (id) => api('GET', '/api/ai/director/' + id),
+
+  // Dispara a campanha e só resolve quando ela fica pronta, contando o
+  // progresso pelo caminho. É isto que a tela usa — o polling fica aqui.
+  async directorRun(payload, onEtapa) {
+    const job = await api('POST', '/api/ai/director', payload);
+    for (let i = 0; i < 600; i++) {          // teto de ~10 min
+      const s = await api('GET', '/api/ai/director/' + job.id);
+      if (onEtapa) onEtapa(s);
+      if (s.estado === 'pronto') return s.resultado;
+      if (s.estado === 'erro') throw new Error(s.erro || 'a IA não conseguiu terminar');
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    throw new Error('a campanha demorou demais — tente de novo');
+  },
 };
 
 export const brand = {
@@ -77,6 +100,10 @@ export const library = {
   save: (campaign, pieces) => api('POST', '/api/library', { campaign, pieces }),
   update: (id, item, label) => api('PUT', '/api/library/' + id, { item, label }),
   remove: (id) => api('DELETE', '/api/library/' + id),
+  // Campanha como pasta: renomear, duplicar e excluir de uma vez só.
+  renameCampaign: (nome, novo) => api('PUT', '/api/library/campanhas/' + encodeURIComponent(nome), { nome: novo }),
+  removeCampaign: (nome) => api('DELETE', '/api/library/campanhas/' + encodeURIComponent(nome)),
+  duplicateCampaign: (nome, novo) => api('POST', '/api/library/campanhas/' + encodeURIComponent(nome) + '/duplicar', { nome: novo }),
 };
 
 export const birthdays = {

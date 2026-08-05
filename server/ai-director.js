@@ -19,6 +19,79 @@ const ai = require('./ai');
 const ds = require('./design-system');
 const { validarComposicao } = require('./composer');
 
+/* ---------------- Etapa 0: o briefing ---------------- */
+
+/*
+ * O usuário escreve "promoção de café da manhã". Isso não é briefing — é um
+ * assunto. Esta etapa transforma a frase num briefing de agência: qual o
+ * objetivo real, para quem, que argumento convence, que urgência existe.
+ *
+ * Vale uma chamada extra porque tudo depois depende dela: um plano feito sobre
+ * "promoção de café" gera copy genérica, e nenhuma validação de layout conserta
+ * mensagem sem tese.
+ */
+const SISTEMA_BRIEFING = `Você é planner de comunicação. Recebe um pedido curto de um
+pequeno empresário brasileiro e o transforma em briefing de campanha.
+
+Não invente fatos que não dá para deduzir (preços, datas, nomes). Quando faltar
+um dado, deixe o campo vazio em vez de inventar.
+
+Responda APENAS JSON:
+{
+  "objetivo": "o que a campanha precisa fazer acontecer, 1 frase",
+  "publico": "quem vê e o que essa pessoa quer, 1 frase",
+  "argumento": "a razão que convence essa pessoa, 1 frase",
+  "urgencia": "por que agir agora — ou vazio se não houver",
+  "provas": ["fato concreto do pedido que reforça o argumento"],
+  "evitar": ["clichê ou promessa que esta campanha NÃO deve fazer"],
+  "formatos": ["16/9", "9/16"],
+  "quantidade": 3
+}
+"formatos" e "quantidade" refletem onde a mensagem faz sentido: campanha de TV
+corporativa pede 16/9; algo para rede social pede 9/16 e 1/1.
+Português do Brasil.`;
+
+async function enriquecerBrief(brief, ctx) {
+  if (ai.mode() === 'dev') return null;
+  const usuario = [
+    `Pedido: ${String(brief || '').slice(0, 900)}`,
+    ctx.empresa ? `Empresa: ${ctx.empresa}` : '',
+    ctx.segmento ? `Segmento: ${ctx.segmento}` : '',
+    ctx.publico ? `Público informado: ${ctx.publico}` : '',
+    ctx.oferta ? `Oferta: ${ctx.oferta}` : '',
+    ctx.marca && ctx.marca.tom ? `Tom da marca: ${ctx.marca.tom}` : '',
+    ctx.marca && ctx.marca.observacoes ? `Regras da marca: ${ctx.marca.observacoes}` : '',
+  ].filter(Boolean).join('\n');
+  try {
+    const b = ai.parseAiJson(await ai.callLLM(SISTEMA_BRIEFING, usuario));
+    if (!b || typeof b !== 'object') return null;
+    const lista = (v, n) => (Array.isArray(v) ? v : []).map((x) => String(x || '').slice(0, 140)).filter(Boolean).slice(0, n);
+    return {
+      objetivo: String(b.objetivo || '').slice(0, 220),
+      publico: String(b.publico || '').slice(0, 220),
+      argumento: String(b.argumento || '').slice(0, 220),
+      urgencia: String(b.urgencia || '').slice(0, 160),
+      provas: lista(b.provas, 4),
+      evitar: lista(b.evitar, 4),
+      formatos: (Array.isArray(b.formatos) ? b.formatos : []).filter((f) => FORMATOS_OK.includes(f)).slice(0, 4),
+      quantidade: Number.isInteger(b.quantidade) ? ds.clamp(b.quantidade, 1, 8) : 0,
+    };
+  } catch (e) { return null; } // sem briefing rico, o plano usa a frase crua
+}
+
+function textoDoBriefing(rico) {
+  if (!rico) return '';
+  return [
+    'BRIEFING (siga isto, não repita as palavras):',
+    rico.objetivo ? `- objetivo: ${rico.objetivo}` : '',
+    rico.publico ? `- público: ${rico.publico}` : '',
+    rico.argumento ? `- argumento que convence: ${rico.argumento}` : '',
+    rico.urgencia ? `- urgência: ${rico.urgencia}` : '',
+    rico.provas.length ? `- provas: ${rico.provas.join(' · ')}` : '',
+    rico.evitar.length ? `- NÃO faça: ${rico.evitar.join(' · ')}` : '',
+  ].filter(Boolean).join('\n');
+}
+
 /* ---------------- Etapa 1: o plano ---------------- */
 
 const SISTEMA_PLANO = `Você é diretor de arte sênior especializado em digital signage corporativo brasileiro.
@@ -116,7 +189,8 @@ async function planejar(brief, ctx) {
     ctx.marca && ctx.marca.estiloRef ? `Estilo das referências do cliente: ${ctx.marca.estiloRef}` : '',
     catalogoBases(ctx),
     '',
-    `Briefing: ${String(brief || '').slice(0, 900)}`,
+    `Pedido original: ${String(brief || '').slice(0, 900)}`,
+    textoDoBriefing(ctx.briefRico),
   ].filter(Boolean).join('\n');
 
   /*
@@ -270,7 +344,26 @@ Responda APENAS com JSON:
 Sempre inclua o campo "papel". Não escreva nada fora do JSON.`;
 }
 
-async function comporPeca(peca, identidade, palette) {
+/*
+ * A crítica não é opinião: é a lista do que o validador precisou consertar.
+ * Devolvida ao modelo, ela vira instrução concreta. Só refazemos peças que
+ * realmente deram problema — refazer o que já ficou bom é gastar por nada e
+ * arrisca piorar.
+ */
+function textoDaCritica(motivos, usouReserva) {
+  const linhas = [];
+  if (usouReserva) linhas.push('sua resposta anterior não pôde ser usada e a peça caiu num layout genérico');
+  (motivos || []).forEach((m) => linhas.push(m));
+  if (!linhas.length) return '';
+  return [
+    '', 'A TENTATIVA ANTERIOR PRECISOU DE CONSERTO AUTOMÁTICO:',
+    ...linhas.map((l) => '- ' + l),
+    'Refaça a composição já resolvendo isso: texto dentro da área segura, corpo',
+    'compatível com a caixa, e cor com contraste forte contra o que está atrás.',
+  ].join('\n');
+}
+
+async function comporPeca(peca, identidade, palette, critica) {
   const formato = peca.formato || '16/9';
   const dirId = identidade.direcao || 'chapado';
   const usuario = [
@@ -284,6 +377,7 @@ async function comporPeca(peca, identidade, palette) {
     peca.sub ? `sub: ${peca.sub}` : '(sem sub)',
     peca.cta ? `cta: ${peca.cta}` : '(sem cta)',
     peca.bgImagem ? '\nA peça JÁ TEM uma foto de fundo: use formas escuras semitransparentes atrás do texto para garantir leitura, e não cubra a foto inteira.' : '',
+    critica || '',
   ].filter(Boolean).join('\n');
 
   let bruto = null;
@@ -500,14 +594,18 @@ function layoutSuave(peca, palette, formato) {
  * onImagem: função opcional (prompt, formato) => url. Injetada pelo server.js
  * para que este módulo não precise conhecer storage nem tenant.
  */
-async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar } = {}) {
+async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, onProgresso } = {}) {
   ctx = ctx || {};
+  // Etapas contadas para o painel: a campanha demora, e quem espera precisa ver
+  // que algo acontece. Sem isso "1 clique" parece "travou".
+  const passo = (etapa, detalhe) => { try { onProgresso && onProgresso(etapa, detalhe); } catch (e) {} };
   /*
    * Referências do cliente: em vez de descrever o estilo por escrito, a empresa
    * sobe as artes que gosta e a IA olha. O resultado vira uma frase de direção
    * que entra no briefing do plano.
    */
   if (onLerReferencias && ctx.marca && ctx.marca.referencias && ctx.marca.referencias.length) {
+    passo('lendo suas referências', 'extraindo a direção visual das artes que você subiu');
     try { ctx.marca.estiloRef = await onLerReferencias(ctx.marca.referencias.slice(0, 3)); }
     catch (e) { /* sem as referências, segue com o briefing puro */ }
   }
@@ -518,11 +616,21 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar } =
    */
   const semRotulo = basesDe(ctx).filter((b) => !b.label);
   if (onCatalogar && semRotulo.length) {
+    passo('olhando suas fotos', `${semRotulo.length} imagem(ns) do seu acervo sem descrição`);
     try {
       const frases = await onCatalogar(semRotulo.map((b) => b.url));
       semRotulo.forEach((b, i) => { if (frases[i]) b.label = frases[i]; });
     } catch (e) { /* sem catálogo, o acervo só não é escolhido automaticamente */ }
   }
+  // Vira um briefing de verdade antes de virar plano. Sem isto o plano é feito
+  // em cima de um assunto, e assunto não gera copy que convence.
+  passo('montando o briefing', 'transformando seu pedido em objetivo, público e argumento');
+  ctx.briefRico = await enriquecerBrief(brief, ctx);
+  if (ctx.briefRico && ctx.briefRico.formatos.length && !(ctx.formatos && ctx.formatos.length)) {
+    ctx.formatos = ctx.briefRico.formatos;
+  }
+
+  passo('planejando a campanha', 'decidindo peças, copy, legendas e agenda');
   const plano = await planejar(brief, ctx);
   const dir = ds.direcao(plano.identidade.direcao);
   const palette = ds.buildPalette(plano.identidade.brand, plano.identidade.brand2,
@@ -530,16 +638,41 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar } =
 
   // Imagens primeiro: a composição precisa saber se tem foto atrás.
   if (onImagem) {
+    const aGerar = plano.pecas.filter((p) => p.precisaImagem && p.promptImagem);
+    let feitas = 0;
     for (const peca of plano.pecas) {
       if (!peca.precisaImagem || !peca.promptImagem) continue;
+      passo('gerando imagens', `${++feitas} de ${aGerar.length}`);
       try { peca.bgImagem = await onImagem(peca.promptImagem, peca.formato); }
       catch (e) { peca.precisaImagem = false; } // sem imagem, compõe com formas
     }
   }
 
   const pecas = [];
+  let refeitas = 0;
   for (const peca of plano.pecas) {
-    const { item, correcoes, usouReserva } = await comporPeca(peca, plano.identidade, palette);
+    passo('compondo as peças', `${pecas.length + 1} de ${plano.pecas.length} · ${peca.formato}`);
+    let tentativa = await comporPeca(peca, plano.identidade, palette);
+
+    /*
+     * Segunda rodada só onde houve problema — peça que saiu limpa não é
+     * refeita. E o resultado da crítica só substitui o original se realmente
+     * tiver MENOS conserto: refazer às vezes piora, e nesse caso ficamos com a
+     * primeira. Sem essa comparação a "melhoria" seria uma aposta.
+     */
+    const precisaRever = tentativa.usouReserva || (tentativa.correcoes && tentativa.correcoes.length > 0);
+    if (precisaRever && ai.mode() !== 'dev') {
+      passo('revisando', `peça ${pecas.length + 1} precisou de conserto — refazendo`);
+      const critica = textoDaCritica(tentativa.correcoes, tentativa.usouReserva);
+      try {
+        const segunda = await comporPeca(peca, plano.identidade, palette, critica);
+        const notaA = (tentativa.usouReserva ? 100 : 0) + (tentativa.correcoes || []).length;
+        const notaB = (segunda.usouReserva ? 100 : 0) + (segunda.correcoes || []).length;
+        if (notaB < notaA) { tentativa = segunda; refeitas++; }
+      } catch (e) { /* a crítica é bônus: falhou, fica a primeira composição */ }
+    }
+
+    const { item, correcoes, usouReserva } = tentativa;
     // Logo da empresa no canto superior, sempre no mesmo lugar em todas as
     // peças — é o que faz a campanha parecer de uma marca só.
     if (plano.identidade.logo) {
@@ -570,7 +703,14 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar } =
     pecas,
     social: plano.social,
     agenda: plano.agenda,
+    briefing: ctx.briefRico || null,
+    // O painel mostra isto como "a IA revisou N peças" — a transparência é o
+    // que justifica a campanha ter demorado mais.
+    revisao: { refeitas, avaliadas: pecas.length },
   };
 }
 
-module.exports = { dirigir, planejar, comporPeca, layoutReserva, normalizarPlano };
+module.exports = {
+  dirigir, planejar, comporPeca, layoutReserva, normalizarPlano,
+  enriquecerBrief, textoDaCritica,
+};

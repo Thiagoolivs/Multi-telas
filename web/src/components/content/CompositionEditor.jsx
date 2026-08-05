@@ -1,6 +1,6 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useLayoutEffect } from 'react';
 import Moveable from 'react-moveable';
-import { ImagePlus, Type, Trash2, ChevronUp, ChevronDown, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical, Sparkles, Shapes } from 'lucide-react';
+import { ImagePlus, Type, Trash2, ChevronUp, ChevronDown, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical, Columns2, Sparkles, Shapes } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { media, ai } from '../../api.js';
@@ -12,7 +12,9 @@ const ASPECTS = [
   { id: '16/9', label: 'Retangular', icon: RectangleHorizontal, ratio: 16 / 9 },
   { id: '1/1', label: 'Quadrada', icon: Square, ratio: 1 },
   { id: '9/16', label: 'Vertical', icon: RectangleVertical, ratio: 9 / 16 },
+  { id: '21/9', label: 'Banner largo', icon: Columns2, ratio: 21 / 9 },
 ];
+const RESPIRO = 48; // margem do palco dentro da área disponível, em px
 let _uid = 1;
 const uid = () => 'e' + (_uid++) + Math.random().toString(36).slice(2, 6);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -45,6 +47,38 @@ export function CompositionEditor({ value, onClose, onSave }) {
 
   const rect = () => canvasRef.current.getBoundingClientRect();
   const selEl = els.find((e) => e.id === sel) || null;
+
+  /*
+   * O palco é MEDIDO, não descrito em CSS. Empilhar aspect-ratio com uma
+   * largura fixa e um max-height faz o navegador respeitar a largura e cortar a
+   * altura — a peça 9/16 saía achatada. Aqui a caixa disponível é medida e o
+   * lado limitante decide o tamanho, então a proporção nunca quebra.
+   */
+  const wrapRef = useRef(null);
+  const [palco, setPalco] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const box = wrapRef.current;
+    if (!box) return undefined;
+    const medir = () => {
+      const r = box.getBoundingClientRect();
+      const dispW = Math.max(1, r.width - RESPIRO);
+      const dispH = Math.max(1, r.height - RESPIRO);
+      const [aw, ah] = String(aspect).split('/').map(Number);
+      const ratio = (aw && ah) ? aw / ah : 16 / 9;
+      let w = dispW, h = dispW / ratio;
+      if (h > dispH) { h = dispH; w = dispH * ratio; }
+      setPalco({ w: Math.round(w), h: Math.round(h) });
+    };
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [aspect]);
+
+  // O player mede a fonte em cqw (% da largura da PEÇA). Traduzir para px do
+  // palco é o que faz o editor mostrar o mesmo tamanho que vai para a TV —
+  // antes usava vw, que é a largura da janela e não tem relação com a peça.
+  const fontePx = (e) => Math.max(1, (textFontCqw(e, aspect) / 100) * palco.w);
 
   const patch = useCallback((id, p) => setEls((arr) => arr.map((e) => (e.id === id ? { ...e, ...p } : e))), []);
   const patchSel = (p) => sel && patch(sel, p);
@@ -152,9 +186,9 @@ export function CompositionEditor({ value, onClose, onSave }) {
 
       <div className="flex min-h-0 flex-1">
         {/* Palco */}
-        <div className="flex flex-1 items-center justify-center overflow-auto p-6" onMouseDown={(e) => { if (e.target === e.currentTarget) setSel(null); }}>
+        <div ref={wrapRef} className="flex min-w-0 flex-1 items-center justify-center overflow-hidden p-6" onMouseDown={(e) => { if (e.target === e.currentTarget) setSel(null); }}>
           <div ref={canvasRef} onMouseDown={(e) => { if (e.target === canvasRef.current) setSel(null); }}
-            className="relative shadow-2xl" style={{ ...bgStyle, aspectRatio: aspect.replace('/', ' / '), width: 'min(80vw, 900px)', maxHeight: '80vh' }}>
+            className="relative shadow-2xl" style={{ ...bgStyle, width: palco.w, height: palco.h }}>
             {ordered.map((e) => (
               <div key={e.id} ref={(n) => { if (n) nodes.current[e.id] = n; }}
                 onMouseDown={() => setSel(e.id)}
@@ -165,7 +199,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 }}>
                 {e.tipo === 'texto' ? (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: e.cor, fontWeight: e.peso, textAlign: e.align, fontSize: `clamp(10px, ${textFontCqw(e, aspect)}vw, 200px)`, lineHeight: 1.05, overflow: 'hidden', textShadow: e.sombra ? '0 2px 14px rgba(0,0,0,.45)' : 'none' }}>
+                    color: e.cor, fontWeight: e.peso, textAlign: e.align, fontSize: fontePx(e), lineHeight: 1.05, overflow: 'hidden', textShadow: e.sombra ? '0 2px 14px rgba(0,0,0,.45)' : 'none' }}>
                     {e.text}
                   </div>
                 ) : e.tipo === 'icone' ? (

@@ -389,6 +389,20 @@ async function updateLibraryItem(id, tenantId, item, label) {
 }
 async function deleteLibraryItem(id, tenantId) { await pool.query('DELETE FROM library WHERE id = $1 AND tenant_id = $2', [id, tenantId]); }
 
+/* Operações sobre a campanha inteira — uma pasta é gerenciada como um todo. */
+async function listCampaign(tenantId, campaign) {
+  const r = await pool.query('SELECT id, campaign, canal, formato, label, item, created_at FROM library WHERE tenant_id = $1 AND campaign = $2 ORDER BY created_at ASC', [tenantId, campaign]);
+  return r.rows.map(mapLibRow);
+}
+async function renameCampaign(tenantId, de, para) {
+  const r = await pool.query('UPDATE library SET campaign = $1 WHERE tenant_id = $2 AND campaign = $3', [para, tenantId, de]);
+  return r.rowCount;
+}
+async function deleteCampaign(tenantId, campaign) {
+  const r = await pool.query('DELETE FROM library WHERE tenant_id = $1 AND campaign = $2', [tenantId, campaign]);
+  return r.rowCount;
+}
+
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
@@ -409,5 +423,6 @@ module.exports = {
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
+  listCampaign, renameCampaign, deleteCampaign,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
 };
