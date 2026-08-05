@@ -88,3 +88,25 @@ test('peça com foto ganha véu de leitura mesmo na direção chapado', () => {
   assert.ok(comFoto.elementos.some((e) => e.tipo === 'forma' && e.papel === 'decor'),
     'peça sobre foto precisa de forma atrás do texto');
 });
+
+/* ---------------- Orquestração: briefing e crítica ---------------- */
+
+test('a crítica lista o que o validador consertou', () => {
+  const t = director.textoDaCritica(['"headline" não cabia — corpo reduzido'], false);
+  assert.ok(t.includes('não cabia'));
+  assert.ok(!t.includes('layout genérico'), 'não devia falar de reserva quando não houve');
+});
+
+test('a crítica avisa quando a peça caiu no layout de reserva', () => {
+  const t = director.textoDaCritica([], true);
+  assert.ok(t.includes('layout genérico'));
+});
+
+test('sem nada a criticar, não há texto de crítica', () => {
+  assert.equal(director.textoDaCritica([], false), '');
+  assert.equal(director.textoDaCritica(null, false), '');
+});
+
+test('sem chave de IA o briefing rico não é inventado', async () => {
+  assert.equal(await director.enriquecerBrief('promoção de café', {}), null);
+});

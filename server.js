@@ -29,6 +29,7 @@ const billing = require('./server/billing');
 const ai = require('./server/ai');
 const director = require('./server/ai-director');
 const ds = require('./server/design-system');
+const jobs = require('./server/jobs');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -557,6 +558,38 @@ async function handleApi(req, res, pathname, query) {
         return sendJson(res, 201, { ok: true, saved: n });
       });
     }
+    /*
+     * Campanha inteira: /api/library/campanhas/:nome
+     * Vem ANTES do tratamento por id — o segmento fixo "campanhas" nunca é um
+     * id de peça, então não há ambiguidade.
+     */
+    if (parts[2] === 'campanhas' && parts[3]) {
+      const nome = decodeURIComponent(parts[3]);
+      if (req.method === 'PUT') {
+        return readBody(req, res, async (b) => {
+          const novo = String((b && b.nome) || '').trim().slice(0, 120);
+          if (!novo) return sendJson(res, 400, { error: 'informe o novo nome' });
+          const n = await db.renameCampaign(sess.tenant_id, nome, novo);
+          return sendJson(res, 200, { ok: true, alteradas: n });
+        });
+      }
+      if (req.method === 'DELETE') {
+        const n = await db.deleteCampaign(sess.tenant_id, nome);
+        return sendJson(res, 200, { ok: true, removidas: n });
+      }
+      if (req.method === 'POST' && parts[4] === 'duplicar') {
+        return readBody(req, res, async (b) => {
+          const pecas = await db.listCampaign(sess.tenant_id, nome);
+          if (!pecas.length) return sendJson(res, 404, { error: 'campanha não encontrada' });
+          const destino = String((b && b.nome) || (nome + ' (cópia)')).trim().slice(0, 120);
+          const n = await db.addLibrary(sess.tenant_id, destino, pecas.map((p) => ({
+            canal: p.canal, formato: p.formato, label: p.label, item: p.item,
+          })));
+          return sendJson(res, 201, { ok: true, campanha: destino, copiadas: n });
+        });
+      }
+      return sendJson(res, 405, { error: 'método inválido' });
+    }
     if (parts[2]) {
       if (req.method === 'PUT') {
         return readBody(req, res, async (b) => {
@@ -665,6 +698,12 @@ async function handleApi(req, res, pathname, query) {
   /* ----- IA: diretor de arte (campanha inteira, layout autoral) ----- */
   if (parts[1] === 'ai' && parts[2] === 'director') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    // Acompanhar um trabalho em andamento: /api/ai/director/:id
+    if (req.method === 'GET' && parts[3]) {
+      const j = jobs.ler(parts[3], sess.tenant_id);
+      if (!j) return sendJson(res, 404, { error: 'trabalho não encontrado' });
+      return sendJson(res, 200, jobs.publico(j));
+    }
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
     // Custa várias chamadas de modelo (plano + uma por peça) — limite menor.
     const rl = rateLimit('ai:dir:' + sess.tenant_id, 10, 60 * 60 * 1000);
@@ -693,13 +732,20 @@ async function handleApi(req, res, pathname, query) {
           bases: assets.filter((a) => a.kind === 'base').map((a) => ({ url: a.url, label: a.label || '' })),
           referencias: assets.filter((a) => a.kind === 'referencia').map((a) => a.url),
         } : null;
-        const out = await director.dirigir(String(brief), {
+        /*
+         * A campanha roda como TRABALHO, não como requisição. São várias
+         * chamadas de modelo em sequência e isso passa fácil do tempo que um
+         * proxy aguenta — o usuário veria erro numa campanha que ficou pronta.
+         * Aqui devolvemos o id na hora e o painel acompanha o progresso.
+         */
+        const job = jobs.criar(sess.tenant_id, (progresso) => director.dirigir(String(brief), {
           empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '',
           publico: (b && b.publico) || '', tom: (b && b.tom) || '', oferta: (b && b.oferta) || '',
           brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
           formatos: Array.isArray(b && b.formatos) ? b.formatos : null,
           marca,
         }, {
+          onProgresso: progresso,
           // A geração de imagem fica aqui: o diretor não conhece storage nem tenant.
           // A IA olha as referências da marca e devolve a direção em 1 frase.
           onLerReferencias: async (urls) => {
@@ -717,9 +763,9 @@ async function handleApi(req, res, pathname, query) {
             const saved = await storage.saveBuffer(sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime);
             return saved.url;
           },
-        });
-        return sendJson(res, 200, { mode: ai.mode(), ...out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        }).then((out) => ({ mode: ai.mode(), ...out })));
+        return sendJson(res, 202, jobs.publico(job));
+      } catch (e) { return sendJson(res, e.status || 502, { error: e.message }); }
     });
   }
 

@@ -147,6 +147,9 @@ const q = {
   libraryById: db.prepare('SELECT * FROM library WHERE id = ? AND tenant_id = ?'),
   updateLibrary: db.prepare('UPDATE library SET item = ?, label = ? WHERE id = ? AND tenant_id = ?'),
   deleteLibrary: db.prepare('DELETE FROM library WHERE id = ? AND tenant_id = ?'),
+  libraryByCampaign: db.prepare('SELECT id, campaign, canal, formato, label, item, created_at FROM library WHERE tenant_id = ? AND campaign = ? ORDER BY created_at ASC'),
+  renameCampaign: db.prepare('UPDATE library SET campaign = ? WHERE tenant_id = ? AND campaign = ?'),
+  deleteCampaign: db.prepare('DELETE FROM library WHERE tenant_id = ? AND campaign = ?'),
 };
 
 async function init() { /* schema já criado no require */ }
@@ -318,6 +321,11 @@ async function getLibraryItem(id, tenantId) { const r = q.libraryById.get(id, te
 async function updateLibraryItem(id, tenantId, item, label) { return q.updateLibrary.run(JSON.stringify(item || {}), label || '', id, tenantId).changes; }
 async function deleteLibraryItem(id, tenantId) { q.deleteLibrary.run(id, tenantId); }
 
+/* Operações sobre a campanha inteira — uma pasta é gerenciada como um todo. */
+async function listCampaign(tenantId, campaign) { return q.libraryByCampaign.all(tenantId, campaign).map(mapLibRow); }
+async function renameCampaign(tenantId, de, para) { return q.renameCampaign.run(para, tenantId, de).changes; }
+async function deleteCampaign(tenantId, campaign) { return q.deleteCampaign.run(tenantId, campaign).changes; }
+
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
@@ -338,5 +346,6 @@ module.exports = {
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
+  listCampaign, renameCampaign, deleteCampaign,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
 };
