@@ -46,9 +46,21 @@ const S3 = {
   region: process.env.S3_REGION || 'auto',
   key: process.env.S3_ACCESS_KEY_ID || '',
   secret: process.env.S3_SECRET_ACCESS_KEY || '',
-  // R2/MinIO usam caminho (/bucket/chave). AWS moderno usa host virtual.
-  pathStyle: process.env.S3_FORCE_PATH_STYLE !== 'false',
+  // R2/MinIO usam caminho (/bucket/chave). AWS moderno usa host virtual
+  // (bucket.s3.regiao.amazonaws.com). Resolvido logo abaixo.
+  pathStyle: true,
 };
+/*
+ * Endereçamento por caminho × por host. Se o endpoint já começa com o nome do
+ * bucket, é host virtual — repetir o bucket no caminho geraria
+ * "bucket.s3.../bucket/chave" e um 404 difícil de diagnosticar. Só respeitamos
+ * S3_FORCE_PATH_STYLE quando ele foi definido de propósito.
+ */
+if (process.env.S3_FORCE_PATH_STYLE != null) {
+  S3.pathStyle = process.env.S3_FORCE_PATH_STYLE !== 'false';
+} else if (S3.endpoint && S3.bucket) {
+  try { S3.pathStyle = !new URL(S3.endpoint).host.startsWith(S3.bucket + '.'); } catch (e) { /* mantém padrão */ }
+}
 function s3Configured() {
   return !!(S3.endpoint && S3.bucket && S3.key && S3.secret);
 }
@@ -96,6 +108,9 @@ const hmac = (key, str) => crypto.createHmac('sha256', key).update(str).digest()
 const sha256hex = (x) => crypto.createHash('sha256').update(x).digest('hex');
 // Cada segmento da chave é codificado, mas as barras continuam separando.
 const encPath = (p) => p.split('/').map(encodeURIComponent).join('/');
+// Hash do corpo vazio. Para GET/DELETE é o valor estritamente correto e aceito
+// por todos os provedores — UNSIGNED-PAYLOAD só vale em S3 sobre HTTPS.
+const EMPTY_SHA256 = sha256hex('');
 
 function s3Url(key) {
   return S3.pathStyle
@@ -154,7 +169,7 @@ async function s3Put(key, body, mime, payloadHash, contentLength) {
 }
 
 async function s3Get(key) {
-  const { url, headers } = s3Sign('GET', key, 'UNSIGNED-PAYLOAD');
+  const { url, headers } = s3Sign('GET', key, EMPTY_SHA256);
   const res = await fetch(url, { headers });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error('S3 GET ' + res.status);
@@ -162,7 +177,7 @@ async function s3Get(key) {
 }
 
 async function s3Delete(key) {
-  const { url, headers } = s3Sign('DELETE', key, 'UNSIGNED-PAYLOAD');
+  const { url, headers } = s3Sign('DELETE', key, EMPTY_SHA256);
   const res = await fetch(url, { method: 'DELETE', headers });
   if (!res.ok && res.status !== 404) throw new Error('S3 DELETE ' + res.status);
 }
@@ -306,6 +321,8 @@ async function serve(res, key) {
 
 module.exports = {
   DRIVER, MAX_FILE_BYTES, QUOTA_BYTES, MIME_EXT, MEDIA_DIR,
+  // Diagnóstico da configuração do bucket (aparece no boot).
+  s3Info: () => (DRIVER === 's3' ? { endpoint: S3.endpoint, bucket: S3.bucket, region: S3.region, pathStyle: S3.pathStyle } : null),
   extFor, saveStream, saveBuffer, remove, publicUrl, resolveLocal,
   readBuffer, serve, validKey, ephemeralWarning,
 };

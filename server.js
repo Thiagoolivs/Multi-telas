@@ -1085,7 +1085,10 @@ const server = http.createServer((req, res) => {
 db.init()
   .then(() => server.listen(PORT, () => {
     console.log('MultiTelas rodando em http://localhost:' + PORT);
-    console.log('[storage] driver: ' + storage.DRIVER);
+    const s3 = storage.s3Info();
+    console.log('[storage] driver: ' + storage.DRIVER
+      + (s3 ? ' · bucket ' + s3.bucket + ' · região ' + s3.region
+              + ' · endereçamento ' + (s3.pathStyle ? 'por caminho' : 'por host') : ''));
     // Disco efêmero é falha silenciosa: funciona hoje, apaga a mídia no
     // próximo deploy. Melhor avisar alto do que descobrir com o cliente.
     const aviso = storage.ephemeralWarning();
