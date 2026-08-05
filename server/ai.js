@@ -371,6 +371,23 @@ async function generateImage(prompt, opts) {
   throw lastErr || new Error('geração de imagem falhou');
 }
 
+/*
+ * Olha as artes que a empresa subiu como referência e resume a direção visual
+ * numa frase. Mais confiável que pedir para o cliente descrever o próprio
+ * estilo por escrito — ninguém acerta isso em palavras.
+ */
+async function descreverEstilo(images) {
+  if (mode() === 'dev' || !Array.isArray(images) || !images.length) return '';
+  try {
+    const r = parseAiJson(await geminiVision(
+      'Você é diretor de arte. Analise as referências visuais e resuma a direção.',
+      'Descreva em UMA frase o estilo destas artes: tipografia, uso de cor, composição e clima. '
+      + 'Responda APENAS JSON: {"estilo":"..."}.',
+      images.slice(0, 3)));
+    return String((r && r.estilo) || '').slice(0, 200);
+  } catch (e) { return ''; }
+}
+
 async function generateKit(brief, ctx) {
   brief = String(brief || '').slice(0, 600); ctx = ctx || {};
   // Referências do cliente (imagens): a IA extrai cor de marca + estilo.
@@ -623,4 +640,4 @@ async function diagnose() {
   }
 }
 
-module.exports = { mode, callLLM, parseAiJson, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };
+module.exports = { mode, callLLM, parseAiJson, descreverEstilo, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };

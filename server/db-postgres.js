@@ -55,6 +55,16 @@ async function init() {
     CREATE TABLE IF NOT EXISTS sessions (
       token TEXT PRIMARY KEY, user_id TEXT, tenant_id TEXT, expires_at BIGINT
     );
+    -- Identidade visual da empresa: uma linha por tenant.
+    CREATE TABLE IF NOT EXISTS brandkit (
+      tenant_id TEXT PRIMARY KEY, cores TEXT, fonte_titulo TEXT, fonte_apoio TEXT,
+      direcao TEXT, tom TEXT, observacoes TEXT, updated_at BIGINT
+    );
+    -- Imagens da marca: logo, bases reutilizáveis e referências de estilo.
+    CREATE TABLE IF NOT EXISTS brandassets (
+      id TEXT PRIMARY KEY, tenant_id TEXT, kind TEXT, url TEXT, label TEXT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_brandassets_tenant ON brandassets(tenant_id);
     CREATE TABLE IF NOT EXISTS resets (
       token TEXT PRIMARY KEY, user_id TEXT, expires_at BIGINT, used_at BIGINT, created_at BIGINT
     );
@@ -150,6 +160,40 @@ async function getReset(token) {
 async function consumeReset(token) {
   await pool.query('UPDATE resets SET used_at = $1 WHERE token = $2', [Date.now(), token]);
 }
+/* ---------------- Marca (identidade visual) ---------------- */
+function mapKit(r) {
+  if (!r) return null;
+  let cores = []; try { cores = JSON.parse(r.cores || '[]'); } catch (e) {}
+  return { cores, fonteTitulo: r.fonte_titulo || '', fonteApoio: r.fonte_apoio || '',
+    direcao: r.direcao || '', tom: r.tom || '', observacoes: r.observacoes || '', updatedAt: r.updated_at };
+}
+async function getBrandKit(tenantId) {
+  const r = await pool.query('SELECT * FROM brandkit WHERE tenant_id = $1', [tenantId]);
+  return mapKit(r.rows[0]);
+}
+async function saveBrandKit(tenantId, k) {
+  await pool.query(`INSERT INTO brandkit (tenant_id, cores, fonte_titulo, fonte_apoio, direcao, tom, observacoes, updated_at)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    ON CONFLICT (tenant_id) DO UPDATE SET cores=EXCLUDED.cores, fonte_titulo=EXCLUDED.fonte_titulo,
+      fonte_apoio=EXCLUDED.fonte_apoio, direcao=EXCLUDED.direcao, tom=EXCLUDED.tom,
+      observacoes=EXCLUDED.observacoes, updated_at=EXCLUDED.updated_at`,
+    [tenantId, JSON.stringify(k.cores || []), k.fonteTitulo || '', k.fonteApoio || '',
+     k.direcao || '', k.tom || '', k.observacoes || '', Date.now()]);
+}
+async function listBrandAssets(tenantId) {
+  const r = await pool.query('SELECT * FROM brandassets WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
+  return r.rows.map((x) => ({ id: x.id, kind: x.kind, url: x.url, label: x.label || '', createdAt: x.created_at }));
+}
+async function addBrandAsset(tenantId, kind, url, label) {
+  const id = 'ba_' + rid(14);
+  await pool.query('INSERT INTO brandassets (id, tenant_id, kind, url, label, created_at) VALUES ($1,$2,$3,$4,$5,$6)',
+    [id, tenantId, kind, url, label || '', Date.now()]);
+  return { id, kind, url, label: label || '' };
+}
+async function removeBrandAsset(id, tenantId) {
+  await pool.query('DELETE FROM brandassets WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+}
+
 async function listUsers(tenantId) {
   const r = await pool.query('SELECT id, email, role, name, created_at FROM users WHERE tenant_id = $1 ORDER BY created_at ASC', [tenantId]);
   return r.rows;
@@ -362,4 +406,5 @@ module.exports = {
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
+  getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset,
 };

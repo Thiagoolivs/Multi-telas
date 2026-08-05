@@ -62,6 +62,16 @@ db.exec(`
     label TEXT, item TEXT, created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_library_tenant ON library(tenant_id);
+  -- Identidade visual da empresa: uma linha por tenant.
+  CREATE TABLE IF NOT EXISTS brandkit (
+    tenant_id TEXT PRIMARY KEY, cores TEXT, fonte_titulo TEXT, fonte_apoio TEXT,
+    direcao TEXT, tom TEXT, observacoes TEXT, updated_at INTEGER
+  );
+  -- Imagens da marca: logo, bases reutilizáveis e referências de estilo.
+  CREATE TABLE IF NOT EXISTS brandassets (
+    id TEXT PRIMARY KEY, tenant_id TEXT, kind TEXT, url TEXT, label TEXT, created_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_brandassets_tenant ON brandassets(tenant_id);
   CREATE INDEX IF NOT EXISTS idx_devices_tenant ON devices(tenant_id);
   CREATE INDEX IF NOT EXISTS idx_devices_code ON devices(code);
   CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
@@ -268,6 +278,38 @@ async function addLibrary(tenantId, campaign, pieces) {
   } catch (e) { db.exec('ROLLBACK'); throw e; }
   return pieces.length;
 }
+/* ---------------- Marca (identidade visual) ---------------- */
+const qBrand = {
+  get: db.prepare('SELECT * FROM brandkit WHERE tenant_id = ?'),
+  up: db.prepare(`INSERT INTO brandkit (tenant_id, cores, fonte_titulo, fonte_apoio, direcao, tom, observacoes, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(tenant_id) DO UPDATE SET cores=excluded.cores, fonte_titulo=excluded.fonte_titulo,
+      fonte_apoio=excluded.fonte_apoio, direcao=excluded.direcao, tom=excluded.tom,
+      observacoes=excluded.observacoes, updated_at=excluded.updated_at`),
+  listAssets: db.prepare('SELECT * FROM brandassets WHERE tenant_id = ? ORDER BY created_at DESC'),
+  addAsset: db.prepare('INSERT INTO brandassets (id, tenant_id, kind, url, label, created_at) VALUES (?, ?, ?, ?, ?, ?)'),
+  delAsset: db.prepare('DELETE FROM brandassets WHERE id = ? AND tenant_id = ?'),
+};
+async function getBrandKit(tenantId) { return mapKit(qBrand.get.get(tenantId)); }
+async function saveBrandKit(tenantId, k) {
+  qBrand.up.run(tenantId, JSON.stringify(k.cores || []), k.fonteTitulo || '', k.fonteApoio || '',
+    k.direcao || '', k.tom || '', k.observacoes || '', Date.now());
+}
+async function listBrandAssets(tenantId) { return qBrand.listAssets.all(tenantId).map(mapAsset); }
+async function addBrandAsset(tenantId, kind, url, label) {
+  const id = 'ba_' + rid(14);
+  qBrand.addAsset.run(id, tenantId, kind, url, label || '', Date.now());
+  return { id, kind, url, label: label || '' };
+}
+async function removeBrandAsset(id, tenantId) { qBrand.delAsset.run(id, tenantId); }
+
+function mapKit(r) {
+  if (!r) return null;
+  let cores = []; try { cores = JSON.parse(r.cores || '[]'); } catch (e) {}
+  return { cores, fonteTitulo: r.fonte_titulo || '', fonteApoio: r.fonte_apoio || '',
+    direcao: r.direcao || '', tom: r.tom || '', observacoes: r.observacoes || '', updatedAt: r.updated_at };
+}
+function mapAsset(r) { return { id: r.id, kind: r.kind, url: r.url, label: r.label || '', createdAt: r.created_at }; }
 function mapLibRow(r) { let item = {}; try { item = JSON.parse(r.item); } catch (e) {} return { id: r.id, campaign: r.campaign, canal: r.canal, formato: r.formato, label: r.label, item, createdAt: r.created_at }; }
 async function listLibrary(tenantId) { return q.libraryByTenant.all(tenantId).map(mapLibRow); }
 async function getLibraryItem(id, tenantId) { const r = q.libraryById.get(id, tenantId); return r ? mapLibRow(r) : null; }
@@ -294,4 +336,5 @@ module.exports = {
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
+  getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset,
 };
