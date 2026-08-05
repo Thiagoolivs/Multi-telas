@@ -27,6 +27,7 @@ const mail = require('./server/mail');
 const plans = require('./server/plans');
 const billing = require('./server/billing');
 const ai = require('./server/ai');
+const director = require('./server/ai-director');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -588,6 +589,35 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /* ----- IA: kit de campanha (biblioteca multi-formato) ----- */
+  /* ----- IA: diretor de arte (campanha inteira, layout autoral) ----- */
+  if (parts[1] === 'ai' && parts[2] === 'director') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    // Custa várias chamadas de modelo (plano + uma por peça) — limite menor.
+    const rl = rateLimit('ai:dir:' + sess.tenant_id, 10, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de campanhas por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const brief = b && b.brief;
+      if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a campanha' });
+      try {
+        const out = await director.dirigir(String(brief), {
+          empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '',
+          publico: (b && b.publico) || '', tom: (b && b.tom) || '', oferta: (b && b.oferta) || '',
+          brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
+          formatos: Array.isArray(b && b.formatos) ? b.formatos : null,
+        }, {
+          // A geração de imagem fica aqui: o diretor não conhece storage nem tenant.
+          onImagem: async (prompt, formato) => {
+            const img = await ai.generateImage(prompt, { formato, brand: (b && b.brand) || '' });
+            const saved = await storage.saveBuffer(sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime);
+            return saved.url;
+          },
+        });
+        return sendJson(res, 200, { mode: ai.mode(), ...out });
+      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+    });
+  }
+
   if (parts[1] === 'ai' && parts[2] === 'generate-kit') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });

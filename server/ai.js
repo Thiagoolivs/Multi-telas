@@ -623,4 +623,4 @@ async function diagnose() {
   }
 }
 
-module.exports = { mode, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };
+module.exports = { mode, callLLM, parseAiJson, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };
