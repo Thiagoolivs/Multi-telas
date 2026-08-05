@@ -64,6 +64,13 @@ export const ai = {
   image: (payload) => api('POST', '/api/ai/generate-image', payload),
 };
 
+export const brand = {
+  get: () => api('GET', '/api/brand'),
+  save: (kit) => api('PUT', '/api/brand', kit),
+  addAsset: (kind, url, label) => api('POST', '/api/brand/assets', { kind, url, label }),
+  removeAsset: (id) => api('DELETE', '/api/brand/assets/' + id),
+};
+
 export const library = {
   list: () => api('GET', '/api/library'),
   save: (campaign, pieces) => api('POST', '/api/library', { campaign, pieces }),

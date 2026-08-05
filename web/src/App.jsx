@@ -9,6 +9,7 @@ import { TeamPage } from './pages/TeamPage.jsx';
 import { StoragePage } from './pages/StoragePage.jsx';
 import { BirthdaysPage } from './pages/BirthdaysPage.jsx';
 import { MyDesignsPage } from './pages/MyDesignsPage.jsx';
+import { BrandPage } from './pages/BrandPage.jsx';
 import { SettingsPage } from './pages/SettingsPage.jsx';
 import { AlertsPage } from './pages/AlertsPage.jsx';
 import { SupportPage } from './pages/SupportPage.jsx';
@@ -20,6 +21,7 @@ const META = {
   overview: { title: 'Visão geral' },
   screens: { title: 'Telas' },
   designs: { title: 'Meus Designs', subtitle: 'Crie, guarde e reaproveite todos os seus designs.' },
+  brand: { title: 'Marca', subtitle: 'Cores, fontes e imagens que a IA usa para criar.' },
   content: { title: 'Telas', nav: 'screens' },
   alerts: { title: 'Alertas', subtitle: 'O que precisa da sua atenção agora.' },
   support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
@@ -78,6 +80,7 @@ export default function App() {
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
       case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage />;
+      case 'brand': return <BrandPage />;
       case 'birthdays': return <BirthdaysPage />;
       case 'billing': return <BillingPage />;
       case 'alerts': return <AlertsPage onGoScreens={() => go('screens')} onGoStorage={() => go('storage')} onGoBilling={() => go('billing')} />;

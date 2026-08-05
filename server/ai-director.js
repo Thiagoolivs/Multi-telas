@@ -88,14 +88,21 @@ async function planejar(brief, ctx) {
     ctx.brand ? `Cor da marca: ${ctx.brand}` : '',
     ctx.brand2 ? `Cor secundária: ${ctx.brand2}` : '',
     ctx.formatos && ctx.formatos.length ? `Formatos desejados: ${ctx.formatos.join(', ')}` : '',
+    ctx.marca && ctx.marca.tom ? `Tom da marca (fixo): ${ctx.marca.tom}` : '',
+    ctx.marca && ctx.marca.observacoes ? `Regras da marca: ${ctx.marca.observacoes}` : '',
+    ctx.marca && ctx.marca.estiloRef ? `Estilo das referências do cliente: ${ctx.marca.estiloRef}` : '',
     '',
     `Briefing: ${String(brief || '').slice(0, 900)}`,
   ].filter(Boolean).join('\n');
 
-  if (ai.mode() === 'dev') return planoDev(brief, ctx);
-
-  const bruto = await ai.callLLM(SISTEMA_PLANO, usuario);
-  const p = ai.parseAiJson(bruto);
+  /*
+   * Os dois caminhos (dev e IA real) passam pelo MESMO normalizarPlano. Antes o
+   * modo dev retornava direto e pulava a precedência da marca — o resultado era
+   * a identidade da empresa ser ignorada justamente onde ela é testada.
+   */
+  const p = ai.mode() === 'dev'
+    ? planoDev(brief, ctx)
+    : ai.parseAiJson(await ai.callLLM(SISTEMA_PLANO, usuario));
   return normalizarPlano(p, ctx, brief);
 }
 
@@ -104,11 +111,20 @@ const FORMATOS_OK = ['16/9', '9/16', '1/1', '21/9'];
 function normalizarPlano(p, ctx, brief) {
   p = p && typeof p === 'object' ? p : {};
   const id = p.identidade || {};
-  // Cor informada pelo cliente manda; a IA só decide quando não veio nada.
-  const brand = ds.okHex(ctx.brand || id.brand, '#1e3a8a');
-  const brand2 = ds.okHex(ctx.brand2 || id.brand2, null) || ds.girarMatiz(brand, 35);
+  const m = ctx.marca || {};
+  /*
+   * Ordem de precedência das cores: o que veio no pedido > a marca salva da
+   * empresa > o que a IA escolheu. Uma identidade que muda a cada geração não
+   * é identidade — por isso a marca salva ganha do modelo.
+   */
+  const corMarca = (m.cores && m.cores[0]) || '';
+  const corMarca2 = (m.cores && m.cores[1]) || '';
+  const brand = ds.okHex(ctx.brand || corMarca || id.brand, '#1e3a8a');
+  const brand2 = ds.okHex(ctx.brand2 || corMarca2 || id.brand2, null) || ds.girarMatiz(brand, 35);
   const estilo = ['vibrante', 'sobrio', 'elegante', 'energetico'].includes(id.estilo) ? id.estilo : 'vibrante';
-  const direcao = ds.DIRECOES[id.direcao] ? id.direcao : 'chapado';
+  // Direção fixada pela marca só é respeitada se a empresa a definiu.
+  const direcao = ds.DIRECOES[m.direcao] ? m.direcao
+    : ds.DIRECOES[id.direcao] ? id.direcao : 'chapado';
 
   let pecas = (Array.isArray(p.pecas) ? p.pecas : []).map((x) => ({
     formato: FORMATOS_OK.includes(x && x.formato) ? x.formato : '16/9',
@@ -129,6 +145,9 @@ function normalizarPlano(p, ctx, brief) {
     campanha: String(p.campanha || ctx.empresa || 'Campanha').slice(0, 60),
     identidade: {
       brand, brand2, estilo, direcao,
+      fonteTitulo: ds.FAMILIAS[m.fonteTitulo] ? m.fonteTitulo : '',
+      fonteApoio: ds.FAMILIAS[m.fonteApoio] ? m.fonteApoio : '',
+      logo: m.logo || '',
       racional: String(id.racional || '').slice(0, 200),
     },
     pecas,
@@ -233,7 +252,7 @@ async function comporPeca(peca, identidade, palette) {
     }
   }
   if (!bruto || !Array.isArray(bruto.elementos) || !bruto.elementos.length) {
-    bruto = layoutReserva(peca, palette, formato, dirId);
+    bruto = layoutReserva(peca, palette, formato, dirId, identidade);
   }
   if (peca.bgImagem) bruto.bg = { kind: 'imagem', src: peca.bgImagem };
 
@@ -338,8 +357,16 @@ function layoutChapado(peca, palette, formato, dir) {
   return { elementos: els, _reserva: true };
 }
 
-function layoutReserva(peca, palette, formato, dirId) {
-  const dir = ds.direcao(dirId);
+function layoutReserva(peca, palette, formato, dirId, identidade) {
+  let dir = ds.direcao(dirId);
+  // Fonte definida pela marca vence a da direção — identidade acima de estilo.
+  const id = identidade || {};
+  if (id.fonteTitulo || id.fonteApoio) {
+    dir = Object.assign({}, dir, {
+      fonteTitulo: id.fonteTitulo || dir.fonteTitulo,
+      fonteApoio: id.fonteApoio || dir.fonteApoio,
+    });
+  }
   if (dir.fundo === 'foto' || dir.sangra) return layoutCartaz(peca, palette, formato, dir);
   if (dir.fundo === 'marca') return layoutChapado(peca, palette, formato, dir);
   if (dir.fundo === 'escuro') return layoutChapado(peca, palette, formato, dir);
@@ -425,8 +452,17 @@ function layoutSuave(peca, palette, formato) {
  * onImagem: função opcional (prompt, formato) => url. Injetada pelo server.js
  * para que este módulo não precise conhecer storage nem tenant.
  */
-async function dirigir(brief, ctx, { onImagem } = {}) {
+async function dirigir(brief, ctx, { onImagem, onLerReferencias } = {}) {
   ctx = ctx || {};
+  /*
+   * Referências do cliente: em vez de descrever o estilo por escrito, a empresa
+   * sobe as artes que gosta e a IA olha. O resultado vira uma frase de direção
+   * que entra no briefing do plano.
+   */
+  if (onLerReferencias && ctx.marca && ctx.marca.referencias && ctx.marca.referencias.length) {
+    try { ctx.marca.estiloRef = await onLerReferencias(ctx.marca.referencias.slice(0, 3)); }
+    catch (e) { /* sem as referências, segue com o briefing puro */ }
+  }
   const plano = await planejar(brief, ctx);
   const dir = ds.direcao(plano.identidade.direcao);
   const palette = ds.buildPalette(plano.identidade.brand, plano.identidade.brand2,
@@ -444,6 +480,15 @@ async function dirigir(brief, ctx, { onImagem } = {}) {
   const pecas = [];
   for (const peca of plano.pecas) {
     const { item, correcoes, usouReserva } = await comporPeca(peca, plano.identidade, palette);
+    // Logo da empresa no canto superior, sempre no mesmo lugar em todas as
+    // peças — é o que faz a campanha parecer de uma marca só.
+    if (plano.identidade.logo) {
+      const s = ds.safeArea(peca.formato);
+      const r = ds.ratioDe(peca.formato);
+      const lw = r >= 2 ? 10 : r >= 1 ? 14 : 20;
+      item.elementos.push({ tipo: 'imagem', papel: 'logo', src: plano.identidade.logo,
+        x: s.x, y: s.y, w: lw, h: (lw / 3) * r, fit: 'contain', rot: 0, z: 95, opacidade: 1 });
+    }
     pecas.push({
       formato: peca.formato,
       canal: peca.canal,

@@ -28,6 +28,7 @@ const plans = require('./server/plans');
 const billing = require('./server/billing');
 const ai = require('./server/ai');
 const director = require('./server/ai-director');
+const ds = require('./server/design-system');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -589,6 +590,54 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /* ----- IA: kit de campanha (biblioteca multi-formato) ----- */
+  /* ----- Marca: identidade visual da empresa (cores, fontes, imagens) ----- */
+  if (parts[1] === 'brand') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    // Assets: /api/brand/assets[/:id]
+    if (parts[2] === 'assets') {
+      if (req.method === 'POST' && parts.length === 3) {
+        return readBody(req, res, async (b) => {
+          const kind = ['logo', 'base', 'referencia'].includes(b && b.kind) ? b.kind : 'base';
+          const url = String((b && b.url) || '').trim();
+          if (!url) return sendJson(res, 400, { error: 'informe a imagem' });
+          // Só uma logo por empresa: a nova substitui a anterior.
+          if (kind === 'logo') {
+            for (const a of await db.listBrandAssets(sess.tenant_id)) {
+              if (a.kind === 'logo') await db.removeBrandAsset(a.id, sess.tenant_id);
+            }
+          }
+          const a = await db.addBrandAsset(sess.tenant_id, kind, url, (b && b.label) || '');
+          return sendJson(res, 201, a);
+        });
+      }
+      if (req.method === 'DELETE' && parts[3]) {
+        await db.removeBrandAsset(parts[3], sess.tenant_id);
+        return sendJson(res, 200, { ok: true });
+      }
+      return sendJson(res, 404, { error: 'rota de marca não encontrada' });
+    }
+    if (req.method === 'GET') {
+      const [kit, assets] = await Promise.all([db.getBrandKit(sess.tenant_id), db.listBrandAssets(sess.tenant_id)]);
+      return sendJson(res, 200, { kit: kit || null, assets, familias: Object.keys(ds.FAMILIAS), direcoes: ds.DIRECOES });
+    }
+    if (req.method === 'PUT') {
+      return readBody(req, res, async (b) => {
+        const cores = (Array.isArray(b && b.cores) ? b.cores : [])
+          .map((c) => ds.okHex(c, null)).filter(Boolean).slice(0, 6);
+        await db.saveBrandKit(sess.tenant_id, {
+          cores,
+          fonteTitulo: ds.FAMILIAS[b && b.fonteTitulo] ? b.fonteTitulo : '',
+          fonteApoio: ds.FAMILIAS[b && b.fonteApoio] ? b.fonteApoio : '',
+          direcao: ds.DIRECOES[b && b.direcao] ? b.direcao : '',
+          tom: String((b && b.tom) || '').slice(0, 60),
+          observacoes: String((b && b.observacoes) || '').slice(0, 600),
+        });
+        return sendJson(res, 200, { ok: true });
+      });
+    }
+    return sendJson(res, 405, { error: 'método inválido' });
+  }
+
   /* ----- IA: diretor de arte (campanha inteira, layout autoral) ----- */
   if (parts[1] === 'ai' && parts[2] === 'director') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
@@ -600,13 +649,39 @@ async function handleApi(req, res, pathname, query) {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a campanha' });
       try {
+        // Identidade salva da empresa: o que o usuário mandar no pedido tem
+        // prioridade, mas o resto vem da marca — sem isso a IA reinventa a
+        // identidade a cada briefing.
+        const kit = await db.getBrandKit(sess.tenant_id);
+        const assets = await db.listBrandAssets(sess.tenant_id);
+        const marca = kit ? {
+          cores: kit.cores, fonteTitulo: kit.fonteTitulo, fonteApoio: kit.fonteApoio,
+          direcao: kit.direcao, tom: kit.tom, observacoes: kit.observacoes,
+          logo: (assets.find((a) => a.kind === 'logo') || {}).url || '',
+          bases: assets.filter((a) => a.kind === 'base').map((a) => a.url),
+          referencias: assets.filter((a) => a.kind === 'referencia').map((a) => a.url),
+        } : null;
         const out = await director.dirigir(String(brief), {
           empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '',
           publico: (b && b.publico) || '', tom: (b && b.tom) || '', oferta: (b && b.oferta) || '',
           brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
           formatos: Array.isArray(b && b.formatos) ? b.formatos : null,
+          marca,
         }, {
           // A geração de imagem fica aqui: o diretor não conhece storage nem tenant.
+          // A IA olha as referências da marca e devolve a direção em 1 frase.
+          onLerReferencias: async (urls) => {
+            const imgs = [];
+            for (const u of urls) {
+              const i = String(u).indexOf('/media/'); if (i < 0) continue;
+              const buf = await storage.readBuffer(String(u).slice(i + '/media/'.length));
+              if (!buf || buf.length > 5 * 1024 * 1024) continue;
+              const ext = String(u.split('.').pop() || '').toLowerCase();
+              imgs.push({ mime: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg', data: buf.toString('base64') });
+            }
+            if (!imgs.length) return '';
+            return ai.descreverEstilo(imgs);
+          },
           onImagem: async (prompt, formato) => {
             const img = await ai.generateImage(prompt, { formato, brand: (b && b.brand) || '' });
             const saved = await storage.saveBuffer(sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime);
