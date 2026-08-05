@@ -198,6 +198,23 @@ async function pay(){
 }
 function pubDevice(d) { return { id: d.id, name: d.name, code: d.code, paired: !!d.tenant_id, hasConfig: !!d.config, updatedAt: d.updated_at, lastSeen: d.last_seen }; }
 
+/*
+ * Baixa as imagens da marca do storage no formato que a visão do Gemini pede.
+ * Pula o que não é URL de mídia nossa ou passa de 5 MB — então o chamador deve
+ * conferir o tamanho do resultado quando a ORDEM importar.
+ */
+async function lerImagens(urls) {
+  const imgs = [];
+  for (const u of urls || []) {
+    const i = String(u).indexOf('/media/'); if (i < 0) continue;
+    const buf = await storage.readBuffer(String(u).slice(i + '/media/'.length)).catch(() => null);
+    if (!buf || buf.length > 5 * 1024 * 1024) continue;
+    const ext = String(u.split('.').pop() || '').toLowerCase();
+    imgs.push({ mime: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg', data: buf.toString('base64') });
+  }
+  return imgs;
+}
+
 /* ---------------- API ---------------- */
 async function handleApi(req, res, pathname, query) {
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
@@ -614,6 +631,13 @@ async function handleApi(req, res, pathname, query) {
         await db.removeBrandAsset(parts[3], sess.tenant_id);
         return sendJson(res, 200, { ok: true });
       }
+      // Rótulo da imagem base: é por ele que o diretor decide usar a foto.
+      if (req.method === 'PUT' && parts[3]) {
+        return readBody(req, res, async (b) => {
+          await db.labelBrandAsset(parts[3], sess.tenant_id, String((b && b.label) || '').slice(0, 160));
+          return sendJson(res, 200, { ok: true });
+        });
+      }
       return sendJson(res, 404, { error: 'rota de marca não encontrada' });
     }
     if (req.method === 'GET') {
@@ -654,11 +678,19 @@ async function handleApi(req, res, pathname, query) {
         // identidade a cada briefing.
         const kit = await db.getBrandKit(sess.tenant_id);
         const assets = await db.listBrandAssets(sess.tenant_id);
-        const marca = kit ? {
-          cores: kit.cores, fonteTitulo: kit.fonteTitulo, fonteApoio: kit.fonteApoio,
-          direcao: kit.direcao, tom: kit.tom, observacoes: kit.observacoes,
+        /*
+         * Basta ter QUALQUER coisa da marca — cores salvas ou só imagens. Antes
+         * isto exigia o kit, então quem subia logo e fotos sem abrir o
+         * formulário de cores via tudo ser ignorado.
+         */
+        const k = kit || {};
+        const marca = (kit || assets.length) ? {
+          cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '',
+          direcao: k.direcao || '', tom: k.tom || '', observacoes: k.observacoes || '',
           logo: (assets.find((a) => a.kind === 'logo') || {}).url || '',
-          bases: assets.filter((a) => a.kind === 'base').map((a) => a.url),
+          // As bases levam o rótulo junto: é por ele que o diretor escolhe qual
+          // foto do acervo entra em cada peça.
+          bases: assets.filter((a) => a.kind === 'base').map((a) => ({ url: a.url, label: a.label || '' })),
           referencias: assets.filter((a) => a.kind === 'referencia').map((a) => a.url),
         } : null;
         const out = await director.dirigir(String(brief), {
@@ -671,16 +703,14 @@ async function handleApi(req, res, pathname, query) {
           // A geração de imagem fica aqui: o diretor não conhece storage nem tenant.
           // A IA olha as referências da marca e devolve a direção em 1 frase.
           onLerReferencias: async (urls) => {
-            const imgs = [];
-            for (const u of urls) {
-              const i = String(u).indexOf('/media/'); if (i < 0) continue;
-              const buf = await storage.readBuffer(String(u).slice(i + '/media/'.length));
-              if (!buf || buf.length > 5 * 1024 * 1024) continue;
-              const ext = String(u.split('.').pop() || '').toLowerCase();
-              imgs.push({ mime: ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg', data: buf.toString('base64') });
-            }
-            if (!imgs.length) return '';
-            return ai.descreverEstilo(imgs);
+            const imgs = await lerImagens(urls);
+            return imgs.length ? ai.descreverEstilo(imgs) : '';
+          },
+          // Catálogo do acervo: uma frase por foto sem rótulo, para o diretor
+          // saber o que a empresa já tem antes de pagar por uma imagem nova.
+          onCatalogar: async (urls) => {
+            const imgs = await lerImagens(urls);
+            return imgs.length === urls.length ? ai.catalogarImagens(imgs) : [];
           },
           onImagem: async (prompt, formato) => {
             const img = await ai.generateImage(prompt, { formato, brand: (b && b.brand) || '' });

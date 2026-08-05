@@ -388,6 +388,26 @@ async function descreverEstilo(images) {
   } catch (e) { return ''; }
 }
 
+/*
+ * Cataloga as imagens base da empresa: uma frase por foto, dizendo o que ela
+ * mostra e onde serviria. É o que permite ao diretor ESCOLHER a foto real do
+ * cliente em vez de inventar uma — gerar imagem é caro e nunca é a loja dele.
+ * Recebe [{ mime, data }] e devolve um array de strings na MESMA ordem.
+ */
+async function catalogarImagens(images) {
+  if (mode() === 'dev' || !Array.isArray(images) || !images.length) return [];
+  try {
+    const r = parseAiJson(await geminiVision(
+      'Você cataloga o banco de imagens de uma empresa para uso em digital signage.',
+      'As imagens vêm numeradas na ordem em que aparecem. Para CADA uma, escreva uma '
+      + 'frase curta: o que mostra e para que tipo de peça serviria de fundo. '
+      + 'Responda APENAS JSON: {"imagens":["frase da 1","frase da 2"]} — mesma ordem, mesma quantidade.',
+      images.slice(0, 8)));
+    const arr = Array.isArray(r && r.imagens) ? r.imagens : [];
+    return images.slice(0, 8).map((_, i) => String(arr[i] || '').slice(0, 160));
+  } catch (e) { return []; }
+}
+
 async function generateKit(brief, ctx) {
   brief = String(brief || '').slice(0, 600); ctx = ctx || {};
   // Referências do cliente (imagens): a IA extrai cor de marca + estilo.
@@ -640,4 +660,4 @@ async function diagnose() {
   }
 }
 
-module.exports = { mode, callLLM, parseAiJson, descreverEstilo, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };
+module.exports = { mode, callLLM, parseAiJson, descreverEstilo, catalogarImagens, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };
