@@ -11,7 +11,7 @@
 const ds = require('./design-system');
 
 const TIPOS = ['texto', 'forma', 'icone', 'imagem'];
-const PAPEIS = ['kicker', 'headline', 'sub', 'cta', 'fundo', 'destaque', 'decor', 'logo', 'imagem'];
+const PAPEIS = ['kicker', 'headline', 'display', 'sub', 'cta', 'fundo', 'destaque', 'decor', 'logo', 'imagem', 'legal'];
 
 /* ---------------- Saneamento de um elemento ---------------- */
 
@@ -38,9 +38,15 @@ function sanearElemento(e, palette, formato) {
     out.align = ['left', 'center', 'right'].includes(e.align) ? e.align : 'left';
     out.peso = ds.clamp(ds.num(e.peso, 800), 300, 900);
     out.sombra = !!e.sombra;
+    out.fonte = ds.familia(e.fonte);
+    out.italico = !!e.italico;
+    // Família condensada de cartaz pede caixa alta — é parte do estilo.
+    if (ds.FAMILIAS[out.fonte].caixaAlta || e.caixaAlta) out.text = out.text.toUpperCase();
     const escala = ds.escalaTipografica(formato);
     const padrao = escala[papel] || escala.sub;
-    out.tamanho = ds.clamp(ds.num(e.tamanho, padrao), 1.2, 22);
+    // Display pode ser enorme: o teto sobe para caber "ANIVERSÁRIO" ocupando
+    // meia peça, como nas referências.
+    out.tamanho = ds.clamp(ds.num(e.tamanho, padrao), 1.2, papel === 'display' ? 46 : 26);
   } else if (tipo === 'forma') {
     out.shape = ['rect', 'ellipse', 'triangle', 'diamond', 'diag'].includes(e.shape) ? e.shape : 'rect';
     out.radius = ds.clamp(ds.num(e.radius, 0), 0, 50);
@@ -80,6 +86,19 @@ function sanearFill(fill, palette) {
  */
 function dentroDaAreaSegura(el, formato) {
   if (el.tipo === 'forma' || el.papel === 'fundo' || el.papel === 'decor') return el;
+  /*
+   * "display" é o título-cartaz que sangra pelas bordas de propósito (o
+   * ANIVERSÁRIO da referência). Só garantimos que ele não suma da tela: a
+   * altura fica dentro, e sobra pelo menos metade da largura visível.
+   */
+  if (el.papel === 'display') {
+    const s = ds.safeArea(formato);
+    return {
+      ...el,
+      y: ds.clamp(el.y, -5, 100 - Math.min(el.h, 100) + 5),
+      x: ds.clamp(el.x, -el.w * 0.35, 100 - el.w * 0.65),
+    };
+  }
   const s = ds.safeArea(formato);
   const w = Math.min(el.w, s.w);
   const h = Math.min(el.h, s.h);
@@ -130,27 +149,58 @@ function fundoAtras(el, elementos, palette) {
 function corrigirContraste(el, elementos, palette, formato) {
   if (el.tipo !== 'texto' && el.tipo !== 'icone') return el;
   const bg = fundoAtras(el, elementos, palette);
-  const grande = el.tipo === 'texto' && el.tamanho >= ds.escalaTipografica(formato).headline * 0.7;
-  const minimo = grande ? ds.MIN_CONTRAST_TITULO : ds.MIN_CONTRAST;
+  /*
+   * A exigência de contraste vem do PAPEL, não do tamanho: o corpo pode ser
+   * reduzido por não caber e isso não muda o fato de ser um título-cartaz.
+   * Classificar por tamanho fazia o display perder a faixa dele depois do
+   * ajuste e virar preto sobre laranja — o oposto da referência.
+   */
+  const esc = ds.escalaTipografica(formato);
+  const grandePorTamanho = el.tipo === 'texto' && el.tamanho >= esc.headline * 0.7;
+  const minimo = el.papel === 'display' ? ds.MIN_CONTRAST_DISPLAY
+    : (el.papel === 'headline' || grandePorTamanho) ? ds.MIN_CONTRAST_TITULO
+    : ds.MIN_CONTRAST;
   if (ds.contrast(el.cor, bg) >= minimo) return el;
 
-  // 1ª tentativa: manter a intenção de cor, só clarear/escurecer até passar.
-  const paraClaro = ds.luminance(bg) < 0.4;
-  let cor = el.cor;
-  for (let i = 0; i < 12; i++) {
-    cor = paraClaro ? ds.clarear(cor, 0.14) : ds.escurecer(cor, 0.14);
-    if (ds.contrast(cor, bg) >= minimo) return { ...el, cor };
+  /*
+   * Preserva a intenção de cor, clareando OU escurecendo até passar. Testa as
+   * duas direções: decidir pela luminância do fundo erra em cor saturada de
+   * luminância média (laranja, vermelho), onde clarear afasta do alvo.
+   */
+  let melhor = null;
+  for (const paraClaro of [true, false]) {
+    let cor = el.cor;
+    // 22 passos: creme sobre laranja saturado precisa de ~16 para chegar ao
+    // alvo; parar antes jogava a cor para o preto-azulado, fora da identidade.
+    for (let i = 0; i < 22; i++) {
+      cor = paraClaro ? ds.clarear(cor, 0.12) : ds.escurecer(cor, 0.12);
+      if (ds.contrast(cor, bg) >= minimo) {
+        // Entre as duas saídas, fica a que mudou menos a cor original.
+        const passos = i;
+        if (!melhor || passos < melhor.passos) melhor = { cor, passos };
+        break;
+      }
+    }
   }
-  // 2ª: cai para preto/branco, que sempre resolve.
+  if (melhor) return { ...el, cor: melhor.cor };
+  // Nenhuma direção resolveu: preto/branco sempre resolve.
   return { ...el, cor: ds.textOn(bg) };
 }
 
 // Texto que não cabe: reduz o corpo até caber (nunca deixa transbordar).
 function ajustarTamanho(el, formato) {
   if (el.tipo !== 'texto' || !el.text) return el;
-  const r = ds.cabeNaCaixa(el.text, el, el.tamanho, formato);
-  if (r.cabe) return el;
-  return { ...el, tamanho: Math.max(1.4, r.sugestaoCqw) };
+  // A sugestão é uma estimativa, não a solução exata — itera até caber de
+  // fato. Uma passada só deixava título de duas linhas ainda estourando.
+  let tamanho = el.tamanho;
+  for (let i = 0; i < 6; i++) {
+    const r = ds.cabeNaCaixa(el.text, el, tamanho, formato, el.fonte);
+    if (r.cabe) break;
+    const proximo = Math.max(1.4, Math.min(r.sugestaoCqw, tamanho * 0.88));
+    if (proximo >= tamanho) break; // não está convergindo; para para não travar
+    tamanho = proximo;
+  }
+  return tamanho === el.tamanho ? el : { ...el, tamanho: Number(tamanho.toFixed(2)) };
 }
 
 /*

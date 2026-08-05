@@ -22,11 +22,36 @@
     'space-grotesk': { label: 'Space Grotesk', stack: "'Space Grotesk'," + SYSTEM_STACK, google: 'Space+Grotesk:wght@400;500;600;700' },
   };
 
+  /*
+   * Famílias usadas por elemento dentro de uma composição (campo "fonte"). São
+   * outra coisa que a fonte do tema: aqui é tipografia de PEÇA — condensada
+   * gigante, script, serifada. Espelha server/design-system.js FAMILIAS.
+   */
+  const FAMILIAS_PECA = {
+    display: { css: "'Anton','Archivo Black',Impact," + SYSTEM_STACK, google: 'Anton' },
+    condensada: { css: "'Oswald','Archivo Narrow'," + SYSTEM_STACK, google: 'Oswald:wght@400;500;600;700' },
+    script: { css: "'Great Vibes','Brush Script MT',cursive", google: 'Great+Vibes' },
+    serifada: { css: "'Playfair Display',Georgia,serif", google: 'Playfair+Display:ital,wght@0,700;0,900;1,700' },
+    sans: { css: "'Inter'," + SYSTEM_STACK, google: 'Inter:wght@400;500;600;700;800;900' },
+  };
+  // Stack CSS da família da peça, carregando a fonte sob demanda.
+  function familiaPeca(id) {
+    const f = FAMILIAS_PECA[id];
+    if (!f) return null;
+    ensureFontUrl('peca-' + id, f.google);
+    return f.css;
+  }
+
   const loadedFonts = {};
   function ensureFont(id) {
     const f = FONTS[id];
-    if (!f || !f.google || loadedFonts[id]) return;
-    loadedFonts[id] = true;
+    if (!f) return;
+    ensureFontUrl(id, f.google);
+  }
+  // Carrega uma família da Google Fonts uma única vez, por chave.
+  function ensureFontUrl(chave, google) {
+    if (!google || loadedFonts[chave]) return;
+    loadedFonts[chave] = true;
     // Preconnect (uma vez) + folha de estilo da Google Fonts.
     if (!document.getElementById('mt-gfonts-pre')) {
       const p1 = document.createElement('link');
@@ -40,7 +65,7 @@
     }
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=' + f.google + '&display=swap';
+    link.href = 'https://fonts.googleapis.com/css2?family=' + google + '&display=swap';
     document.head.appendChild(link);
   }
 
@@ -215,7 +240,7 @@
   }
 
   global.MTTheme = {
-    PRESETS, FONTS, DEFAULT_PRESET,
+    PRESETS, FONTS, DEFAULT_PRESET, FAMILIAS_PECA, familiaPeca,
     resolve, apply, listPresets, listFonts, ensureFont,
   };
 })(window);

@@ -1264,6 +1264,14 @@
         if (e.peso) t.style.fontWeight = e.peso;
         t.style.fontSize = textFontCqw(e, item.formato) + 'cqw';
         if (e.sombra) t.style.textShadow = '0 2px 14px rgba(0,0,0,.45)';
+        // Família da peça (condensada/script/serifada) — carrega sob demanda.
+        if (e.fonte && global.MTTheme && MTTheme.familiaPeca) {
+          const fam = MTTheme.familiaPeca(e.fonte);
+          if (fam) t.style.fontFamily = fam;
+        }
+        if (e.italico) t.style.fontStyle = 'italic';
+        // Display condensado pede entrelinha apertada, senão fica frouxo.
+        if (e.fonte === 'display' || e.fonte === 'condensada') t.style.lineHeight = '0.92';
         box.appendChild(t);
       } else if (e.tipo === 'forma') {
         box.style.background = fillToCss(e.fill);
