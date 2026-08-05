@@ -47,6 +47,9 @@ function contrast(a, b) {
 // a pessoa lê de longe, de relance e muitas vezes com reflexo na tela.
 const MIN_CONTRAST = 4.5;
 const MIN_CONTRAST_TITULO = 3.5; // texto grande tolera um pouco menos
+// Tipo display (aquele que ocupa meia peça) tolera menos ainda: é o que faz
+// creme sobre laranja funcionar em cartaz. Abaixo disso vira ilegível mesmo.
+const MIN_CONTRAST_DISPLAY = 2.8;
 function textOn(bg) {
   const branco = contrast(bg, '#ffffff');
   const preto = contrast(bg, '#0b1120');
@@ -89,15 +92,27 @@ function girarMatiz(hex, graus) {
  * os tons de apoio saem daqui — é o que evita aquele resultado "duas cores
  * aleatórias brigando" e garante que o texto sempre tenha contraste.
  */
-function buildPalette(brandIn, brand2In, estilo) {
+function buildPalette(brandIn, brand2In, estilo, fundoModo) {
   const brand = okHex(brandIn, '#1e3a8a');
   // Sem cor secundária: deriva uma análoga (não complementar — complementar
   // vibra demais em tela grande).
   const brand2 = okHex(brand2In, girarMatiz(brand, 35));
   const escuro = estilo !== 'claro';
 
-  const bg = escuro ? escurecer(brand, 0.82) : clarear(brand, 0.9);
-  const bgAlt = escuro ? escurecer(brand, 0.68) : clarear(brand, 0.78);
+  let bg, bgAlt;
+  if (fundoModo === 'marca') {
+    // Chapado: a marca ocupa a peça inteira, quase sem variação. É o que dá
+    // aquele impacto de cartaz — e exige texto em tom creme/escuro, não branco puro.
+    bg = brand;
+    bgAlt = escurecer(brand, 0.12);
+  } else if (fundoModo === 'escuro') {
+    // Quase preto, com um toque da marca — telão de palco.
+    bg = escurecer(brand, 0.92);
+    bgAlt = escurecer(brand, 0.86);
+  } else {
+    bg = escuro ? escurecer(brand, 0.82) : clarear(brand, 0.9);
+    bgAlt = escuro ? escurecer(brand, 0.68) : clarear(brand, 0.78);
+  }
   const superficie = escuro ? escurecer(brand, 0.55) : clarear(brand, 0.6);
 
   // Acento precisa saltar do fundo; se não saltar, clareia/escurece até saltar.
@@ -107,15 +122,107 @@ function buildPalette(brandIn, brand2In, estilo) {
     acento = escuro ? clarear(acento, 0.12) : escurecer(acento, 0.12);
   }
 
+  // Sobre fundo chapado saturado, branco puro "vibra". Um creme quente (ou um
+  // tom escuro, se a marca for clara) lê melhor — é o que as referências usam.
+  const texto = fundoModo === 'marca'
+    ? (luminance(bg) < 0.45 ? mix('#ffffff', '#ffe9c7', 0.55) : escurecer(bg, 0.75))
+    : textOn(bg);
+
   return {
-    brand, brand2, escuro,
+    brand, brand2, escuro, fundoModo: fundoModo || 'degrade',
     bg, bgAlt, superficie, acento,
-    texto: textOn(bg),
+    texto,
     textoSuave: escuro ? clarear(bg, 0.62) : escurecer(bg, 0.55),
     textoNoAcento: textOn(acento),
     textoNaMarca: textOn(brand),
   };
 }
+
+/* ---------------- Tipografia: famílias ---------------- */
+
+/*
+ * O que faz uma peça parecer "de agência" é quase sempre a tipografia: uma
+ * condensada pesada gigante, uma script para o toque humano, uma serifada para
+ * elegância. Só com a fonte do sistema tudo sai com cara de slide corporativo.
+ * O player carrega estas por Google Fonts (ver js/theme.js).
+ */
+const FAMILIAS = {
+  // Condensada pesadíssima — o "ANIVERSÁRIO" e o "RESTAURAÇÃO" das referências.
+  display: { css: "'Anton', 'Archivo Black', Impact, system-ui, sans-serif", google: 'Anton', caixaAlta: true, largura: 0.42, larguraFallback: 0.60 },
+  // Condensada com mais graus de peso, para títulos que precisam de nuance.
+  condensada: { css: "'Oswald', 'Archivo Narrow', system-ui, sans-serif", google: 'Oswald:wght@400;500;600;700', caixaAlta: true, largura: 0.45, larguraFallback: 0.56 },
+  // Manuscrita, para nome próprio / assinatura.
+  script: { css: "'Great Vibes', 'Brush Script MT', cursive", google: 'Great+Vibes', caixaAlta: false, largura: 0.4, larguraFallback: 0.5 },
+  // Serifada elegante (o "FELIZ" em itálico).
+  serifada: { css: "'Playfair Display', Georgia, serif", google: 'Playfair+Display:ital,wght@0,700;0,900;1,700', caixaAlta: false, largura: 0.5, larguraFallback: 0.54 },
+  // Sans de leitura, para apoio e legais.
+  sans: { css: "'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif", google: 'Inter:wght@400;500;600;700;800;900', caixaAlta: false, largura: 0.52, larguraFallback: 0.55 },
+};
+const FAMILIA_PADRAO = 'sans';
+function familia(id) { return FAMILIAS[id] ? id : FAMILIA_PADRAO; }
+/*
+ * Largura média de caractere, relativa ao corpo. Usamos a do FALLBACK, não a da
+ * fonte ideal: as famílias vêm do Google Fonts e uma TV sem internet cai na
+ * fonte do sistema, bem mais larga. Estimar pela ideal fazia o título estourar
+ * a caixa justamente na tela que não tem rede — onde ninguém está olhando o
+ * problema. Com a fonte carregada, sobra folga; sem ela, ainda cabe.
+ */
+function larguraCaractereDaFamilia(fam) {
+  const f = FAMILIAS[familia(fam)] || FAMILIAS.sans;
+  return f.larguraFallback || f.largura;
+}
+
+/* ---------------- Direções de arte ---------------- */
+
+/*
+ * Cada direção é um "jeito de fazer a peça", tirado de referências reais de
+ * signage brasileiro. Sem isso toda peça sai igual: fundo degradê escuro e
+ * texto médio — correto, mas sem personalidade.
+ */
+const DIRECOES = {
+  // Ref.: campanha de faculdade. Fundo chapado na cor da marca, tipografia
+  // condensada gigante em tom creme, filete fino decorativo.
+  chapado: {
+    label: 'Chapado saturado',
+    fundo: 'marca',           // usa a marca em cheio, não escurecida
+    fonteTitulo: 'display',
+    fonteApoio: 'sans',
+    escalaTitulo: 1.9,        // multiplicador sobre a escala base
+    caixaAlta: true,
+    filete: true,
+  },
+  // Ref.: arte de aniversário. Foto ocupando a peça, texto gigante sangrando
+  // pelas bordas, script para o nome.
+  cartaz: {
+    label: 'Cartaz dramático',
+    fundo: 'foto',
+    fonteTitulo: 'display',
+    fonteApoio: 'script',
+    escalaTitulo: 2.2,
+    caixaAlta: true,
+    sangra: true,             // o título pode passar da borda de propósito
+  },
+  // Ref.: telão de igreja. Quase preto, tipo branca enorme, subtítulo no acento.
+  contraste: {
+    label: 'Alto contraste',
+    fundo: 'escuro',
+    fonteTitulo: 'display',
+    fonteApoio: 'sans',
+    escalaTitulo: 2.0,
+    caixaAlta: true,
+    filete: true,
+  },
+  // A direção antiga: degradê suave. Continua útil para peça institucional.
+  suave: {
+    label: 'Degradê suave',
+    fundo: 'degrade',
+    fonteTitulo: 'sans',
+    fonteApoio: 'sans',
+    escalaTitulo: 1,
+    caixaAlta: false,
+  },
+};
+function direcao(id) { return DIRECOES[id] ? DIRECOES[id] : DIRECOES.suave; }
 
 /* ---------------- Formato e área segura ---------------- */
 
@@ -167,12 +274,13 @@ function escalaTipografica(formato) {
  * de uma sans-serif (~0.52 do corpo) e a altura de linha. Serve para decidir
  * se reduz o corpo ou se pede um texto mais curto ao modelo.
  */
-function cabeNaCaixa(texto, box, fontCqw, formato) {
+function cabeNaCaixa(texto, box, fontCqw, formato, fonte) {
   const t = String(texto || '');
   if (!t) return { cabe: true, linhas: 0, sugestaoCqw: fontCqw };
   const r = ratioDe(formato);
-  // Tudo em "unidades de largura da peça" (100 = largura total).
-  const larguraCaractere = fontCqw * 0.52;
+  // Tudo em "unidades de largura da peça" (100 = largura total). Uma condensada
+  // cabe MUITO mais caractere por linha que uma sans — daí a largura por família.
+  const larguraCaractere = fontCqw * larguraCaractereDaFamilia(fonte);
   const porLinha = Math.max(1, Math.floor(box.w / larguraCaractere));
   const linhas = Math.ceil(t.length / porLinha);
   // cqw mede % da LARGURA. Para comparar com a altura da caixa (% da altura),
@@ -203,7 +311,8 @@ function areaSobreposta(a, b) {
 
 module.exports = {
   hex2rgb, rgb2hex, okHex, luminance, contrast, textOn, mix, escurecer, clarear, girarMatiz,
-  buildPalette, MIN_CONTRAST, MIN_CONTRAST_TITULO,
+  buildPalette, MIN_CONTRAST, MIN_CONTRAST_TITULO, MIN_CONTRAST_DISPLAY,
   FORMATOS, ratioDe, safeArea, escalaTipografica, cabeNaCaixa,
+  FAMILIAS, FAMILIA_PADRAO, familia, larguraCaractereDaFamilia, DIRECOES, direcao,
   clamp, num, sobrepoe, areaSobreposta,
 };

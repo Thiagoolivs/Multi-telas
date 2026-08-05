@@ -31,6 +31,15 @@ REGRAS DE COPY (tela vista de longe, poucos segundos):
 - cta: chamada de ação curta e concreta. Pode ser vazia em peça institucional.
 - Nada de jargão de agência, nada de reticências, nada de EMOJI nas peças de TV.
 
+DIREÇÃO DE ARTE — escolha uma:
+- "chapado": fundo na cor da marca em cheio, tipografia condensada gigante.
+  Para promoção, varejo, campanha de preço. Alto impacto.
+- "cartaz": foto ocupando a peça, título gigante sangrando pelas bordas, nome
+  em manuscrita. Para homenagem, evento, aniversário, pessoa.
+- "contraste": quase preto, tipo branca enorme, subtítulo colorido. Para
+  telão de palco, culto, congresso, avisos sérios.
+- "suave": degradê discreto. Para institucional e comunicado interno.
+
 DECISÕES QUE SÃO SUAS:
 - quantas peças e para quais formatos, conforme o objetivo do briefing;
 - se a peça pede uma IMAGEM DE FUNDO gerada (produto, ambiente, comida, pessoas)
@@ -44,6 +53,7 @@ Responda APENAS com JSON, neste formato:
   "identidade": {
     "brand": "#hex", "brand2": "#hex",
     "estilo": "vibrante" | "sobrio" | "elegante" | "energetico",
+    "direcao": "chapado" | "cartaz" | "contraste" | "suave",
     "racional": "1 frase explicando a direção visual"
   },
   "pecas": [
@@ -98,6 +108,7 @@ function normalizarPlano(p, ctx, brief) {
   const brand = ds.okHex(ctx.brand || id.brand, '#1e3a8a');
   const brand2 = ds.okHex(ctx.brand2 || id.brand2, null) || ds.girarMatiz(brand, 35);
   const estilo = ['vibrante', 'sobrio', 'elegante', 'energetico'].includes(id.estilo) ? id.estilo : 'vibrante';
+  const direcao = ds.DIRECOES[id.direcao] ? id.direcao : 'chapado';
 
   let pecas = (Array.isArray(p.pecas) ? p.pecas : []).map((x) => ({
     formato: FORMATOS_OK.includes(x && x.formato) ? x.formato : '16/9',
@@ -117,7 +128,7 @@ function normalizarPlano(p, ctx, brief) {
   return {
     campanha: String(p.campanha || ctx.empresa || 'Campanha').slice(0, 60),
     identidade: {
-      brand, brand2, estilo,
+      brand, brand2, estilo, direcao,
       racional: String(id.racional || '').slice(0, 200),
     },
     pecas,
@@ -143,7 +154,7 @@ function planoDev(brief, ctx) {
     identidade: {
       brand: ds.okHex(ctx.brand, '#1e3a8a'),
       brand2: ds.okHex(ctx.brand2, '#0ea5e9'),
-      estilo: 'vibrante',
+      estilo: 'vibrante', direcao: 'chapado',
       racional: 'Modo demonstração — defina GEMINI_API_KEY para a direção real.',
     },
     pecas: [
@@ -199,6 +210,7 @@ Sempre inclua o campo "papel". Não escreva nada fora do JSON.`;
 
 async function comporPeca(peca, identidade, palette) {
   const formato = peca.formato || '16/9';
+  const dirId = identidade.direcao || 'chapado';
   const usuario = [
     `Objetivo: ${peca.objetivo || 'comunicar a mensagem'}`,
     `Estilo: ${identidade.estilo}`,
@@ -221,7 +233,7 @@ async function comporPeca(peca, identidade, palette) {
     }
   }
   if (!bruto || !Array.isArray(bruto.elementos) || !bruto.elementos.length) {
-    bruto = layoutReserva(peca, palette, formato);
+    bruto = layoutReserva(peca, palette, formato, dirId);
   }
   if (peca.bgImagem) bruto.bg = { kind: 'imagem', src: peca.bgImagem };
 
@@ -234,7 +246,107 @@ async function comporPeca(peca, identidade, palette) {
  * "erro na tela" — é uma peça correta, só menos autoral. A tela do cliente
  * nunca fica vazia por causa de uma chamada que caiu.
  */
-function layoutReserva(peca, palette, formato) {
+/*
+ * Layout de cartaz: título display gigante ancorado embaixo, sangrando pelas
+ * bordas — o "ANIVERSÁRIO" das referências. Funciona com ou sem foto atrás.
+ */
+function layoutCartaz(peca, palette, formato, dir) {
+  const s = ds.safeArea(formato);
+  const esc = ds.escalaTipografica(formato);
+  const r = ds.ratioDe(formato);
+  const alto = r < 1;
+  const tam = esc.headline * dir.escalaTitulo;
+  const hTitulo = tam * 1.05 * r;
+
+  const els = [];
+  // Véu escuro embaixo: garante leitura do título sobre qualquer foto.
+  els.push({ tipo: 'forma', papel: 'decor', shape: 'rect', x: -5, y: 45, w: 110, h: 60,
+    fill: { grad: 'linear', ang: 180, cores: [palette.bg + '00', palette.bg] }, opacidade: 0.85, z: 1 });
+
+  if (peca.kicker) {
+    els.push({ tipo: 'texto', papel: 'kicker', text: peca.kicker, x: s.x, y: s.y + 1, w: s.w * 0.6,
+      h: esc.kicker * 1.6 * r, tamanho: esc.kicker, fonte: 'condensada',
+      cor: palette.texto, align: 'left', peso: 600 });
+  }
+  // Nome/assunto em script, o toque humano da referência.
+  if (peca.sub) {
+    els.push({ tipo: 'texto', papel: 'sub', text: peca.sub, x: s.x + 2, y: alto ? 22 : 18,
+      w: s.w * 0.8, h: esc.sub * 2.4 * r, tamanho: esc.sub * 1.9, fonte: 'script',
+      cor: palette.texto, align: 'left', peso: 400 });
+  }
+  /*
+   * Sangrar só vale com palavra curta: "ANIVERSÁRIO" cortado nas pontas lê como
+   * decisão de arte; um título de duas palavras cortado lê como defeito. Acima
+   * de ~13 caracteres o título fica dentro da área segura.
+   */
+  const sangra = peca.headline.length <= 13;
+  els.push({ tipo: 'texto', papel: sangra ? 'display' : 'headline', text: peca.headline,
+    x: sangra ? -8 : s.x, y: 100 - hTitulo - (peca.cta ? 14 : 6),
+    w: sangra ? 116 : s.w, h: hTitulo, tamanho: tam, fonte: dir.fonteTitulo,
+    cor: palette.texto, align: 'center', peso: 900, sombra: true });
+
+  if (peca.cta) {
+    els.push({ tipo: 'texto', papel: 'cta', text: peca.cta, x: s.x, y: 100 - 11,
+      w: s.w, h: esc.cta * 2 * r, tamanho: esc.cta, fonte: 'sans',
+      cor: palette.acento, align: 'center', peso: 700 });
+  }
+  return { elementos: els, _reserva: true };
+}
+
+/*
+ * Layout chapado: fundo na cor da marca em cheio, título condensado gigante
+ * centralizado, filete fino no topo — a campanha de faculdade da referência.
+ */
+function layoutChapado(peca, palette, formato, dir) {
+  const s = ds.safeArea(formato);
+  const esc = ds.escalaTipografica(formato);
+  const r = ds.ratioDe(formato);
+  const tam = esc.headline * dir.escalaTitulo;
+  const linhas = ds.cabeNaCaixa(peca.headline, { w: s.w, h: 100 }, tam, formato, dir.fonteTitulo).linhas || 1;
+  const hTitulo = tam * 1.0 * Math.min(linhas, 3) * r;
+
+  const els = [];
+  // Filete fino atravessando o topo: decoração barata e elegante.
+  if (dir.filete) {
+    els.push({ tipo: 'forma', papel: 'decor', shape: 'rect', x: -5, y: 15, w: 110, h: 0.35,
+      fill: palette.texto, opacidade: 0.45, rot: -8, z: 0 });
+  }
+
+  let y = ds.clamp(50 - hTitulo / 2 - 6, s.y, 60);
+  if (peca.kicker) {
+    els.push({ tipo: 'texto', papel: 'kicker', text: peca.kicker, x: s.x, y: y - esc.kicker * 2.6 * r,
+      w: s.w, h: esc.kicker * 1.7 * r, tamanho: esc.kicker, fonte: 'sans',
+      cor: palette.texto, align: 'center', peso: 800 });
+  }
+  els.push({ tipo: 'texto', papel: 'display', text: peca.headline, x: s.x, y, w: s.w, h: hTitulo,
+    tamanho: tam, fonte: dir.fonteTitulo, cor: palette.texto, align: 'center', peso: 900 });
+  y += hTitulo + esc.sub * 1.2 * r;
+
+  if (peca.sub) {
+    els.push({ tipo: 'texto', papel: 'sub', text: peca.sub, x: s.x + s.w * 0.1, y,
+      w: s.w * 0.8, h: esc.sub * 2.4 * r, tamanho: esc.sub * 1.15, fonte: 'sans',
+      cor: palette.texto, align: 'center', peso: 600 });
+    y += esc.sub * 3 * r;
+  }
+  if (peca.cta) {
+    const h = esc.cta * 2.4 * r;
+    els.push({ tipo: 'forma', papel: 'destaque', shape: 'rect', x: s.x + s.w * 0.18, y,
+      w: s.w * 0.64, h, radius: 14, fill: palette.texto, opacidade: 0.18 });
+    els.push({ tipo: 'texto', papel: 'cta', text: peca.cta, x: s.x + s.w * 0.18, y,
+      w: s.w * 0.64, h, tamanho: esc.cta, fonte: 'sans', cor: palette.texto, align: 'center', peso: 700 });
+  }
+  return { elementos: els, _reserva: true };
+}
+
+function layoutReserva(peca, palette, formato, dirId) {
+  const dir = ds.direcao(dirId);
+  if (dir.fundo === 'foto' || dir.sangra) return layoutCartaz(peca, palette, formato, dir);
+  if (dir.fundo === 'marca') return layoutChapado(peca, palette, formato, dir);
+  if (dir.fundo === 'escuro') return layoutChapado(peca, palette, formato, dir);
+  return layoutSuave(peca, palette, formato);
+}
+
+function layoutSuave(peca, palette, formato) {
   const s = ds.safeArea(formato);
   const esc = ds.escalaTipografica(formato);
   const r = ds.ratioDe(formato);
@@ -316,8 +428,9 @@ function layoutReserva(peca, palette, formato) {
 async function dirigir(brief, ctx, { onImagem } = {}) {
   ctx = ctx || {};
   const plano = await planejar(brief, ctx);
+  const dir = ds.direcao(plano.identidade.direcao);
   const palette = ds.buildPalette(plano.identidade.brand, plano.identidade.brand2,
-    plano.identidade.estilo === 'sobrio' ? 'escuro' : 'escuro');
+    plano.identidade.estilo, dir.fundo === 'marca' ? 'marca' : dir.fundo === 'escuro' ? 'escuro' : 'degrade');
 
   // Imagens primeiro: a composição precisa saber se tem foto atrás.
   if (onImagem) {
@@ -345,7 +458,7 @@ async function dirigir(brief, ctx, { onImagem } = {}) {
   return {
     campanha: plano.campanha,
     identidade: plano.identidade,
-    paleta: { bg: palette.bg, acento: palette.acento, texto: palette.texto },
+    paleta: { bg: palette.bg, acento: palette.acento, texto: palette.texto, direcao: plano.identidade.direcao },
     pecas,
     social: plano.social,
     agenda: plano.agenda,
