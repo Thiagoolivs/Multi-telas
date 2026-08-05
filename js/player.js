@@ -663,6 +663,77 @@
     layer.appendChild(garland);
   }
 
+  /* ---------------- Pré-carga da próxima mídia ---------------- */
+
+  /*
+   * Sem isto a TV pisca preto na troca: o <img> só entra no ar depois de baixar
+   * E decodificar, e as duas coisas acontecem depois do slide já estar visível.
+   * Aqui a próxima mídia é baixada e decodificada enquanto a atual ainda toca,
+   * então a troca só encontra bytes prontos.
+   *
+   * O cache é global (as zonas dividem mídia), pequeno e por URL — numa TV
+   * barata segurar imagem demais custa mais caro que baixar de novo.
+   */
+  var PRELOAD_MAX = 12;
+  var precarregado = new Map(); // url -> Image | HTMLVideoElement
+
+  function lembrar(url, el) {
+    precarregado.delete(url);
+    precarregado.set(url, el);
+    while (precarregado.size > PRELOAD_MAX) {
+      var velha = precarregado.keys().next().value;
+      var alvo = precarregado.get(velha);
+      // Solta o buffer do vídeo explicitamente; imagem o GC resolve sozinho.
+      if (alvo && alvo.tagName === 'VIDEO') { try { alvo.src = ''; alvo.load(); } catch (e) {} }
+      precarregado.delete(velha);
+    }
+  }
+
+  // URLs de imagem que o item precisa ter em mãos para desenhar o primeiro quadro.
+  function imagensDoItem(item) {
+    if (!item) return [];
+    var urls = [];
+    // Os tipos do render são em inglês ('image'), não 'imagem'.
+    if (item.type === 'image' && item.src) urls.push(item.src);
+    if (item.imagem) urls.push(item.imagem);
+    if (item.foto) urls.push(item.foto);
+    if (item.type === 'composicao') {
+      if (item.bg && item.bg.kind === 'imagem' && item.bg.src) urls.push(item.bg.src);
+      (Array.isArray(item.elementos) ? item.elementos : []).forEach(function (e) {
+        if (e && e.tipo === 'imagem' && e.src) urls.push(e.src);
+      });
+    }
+    return urls.filter(function (u, i, a) { return u && a.indexOf(u) === i; });
+  }
+
+  function precarregar(item) {
+    if (!item) return;
+    imagensDoItem(item).forEach(function (url) {
+      if (precarregado.has(url)) return;
+      var img = new Image();
+      img.decoding = 'async';
+      img.src = url;
+      lembrar(url, img);
+      // decode() é o que evita o engasgo: sem ele a decodificação acontece no
+      // primeiro paint do slide, já com o elemento na tela.
+      if (img.decode) img.decode().catch(function () {});
+    });
+    /*
+     * Vídeo entra em buffer só do próximo item, e nunca em modo performance:
+     * segurar dois vídeos na memória de uma TV de entrada trava mais do que a
+     * tela preta que estamos tentando evitar.
+     */
+    if (item.type === 'video' && item.src && !precarregado.has(item.src)
+        && !document.documentElement.classList.contains('mt-perf')) {
+      var v = document.createElement('video');
+      v.preload = 'auto';
+      v.muted = true;
+      v.src = item.src;
+      lembrar(item.src, v);
+      try { v.load(); } catch (e) {}
+    }
+  }
+
   /* ---------------- Zona: Playlist rotativa ---------------- */
 
   function startPlaylist(zoneEl, items, cfg) {
@@ -699,6 +770,12 @@
       }
       const item = ativos[index % ativos.length];
       index++;
+
+      /*
+       * Aquece a próxima enquanto esta ainda está no ar. Feito ANTES de
+       * renderizar de propósito: se o render travar, o próximo já foi pedido.
+       */
+      if (ativos.length > 1) { try { precarregar(ativos[index % ativos.length]); } catch (e) {} }
 
       let rendered;
       try {
