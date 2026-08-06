@@ -161,12 +161,163 @@
 
   const DEFAULT_PRESET = 'dark-premium';
 
+  /* ---------------- Cor: utilidades ---------------- */
+
+  function hex2rgb(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function rgb2hex(r, g, b) {
+    const c = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
+    return '#' + c(r) + c(g) + c(b);
+  }
+  const okHex = (v) => (hex2rgb(v) ? (String(v)[0] === '#' ? String(v) : '#' + v) : null);
+  function mix(a, b, p) {
+    const A = hex2rgb(a), B = hex2rgb(b);
+    if (!A || !B) return a;
+    return rgb2hex(A[0] + (B[0] - A[0]) * p, A[1] + (B[1] - A[1]) * p, A[2] + (B[2] - A[2]) * p);
+  }
+  function girarMatiz(hex, graus) {
+    const rgb = hex2rgb(hex);
+    if (!rgb) return hex;
+    let [r, g, b] = rgb.map((v) => v / 255);
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    let h = 0;
+    if (d) {
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+    }
+    h = (h * 60 + graus + 360) % 360;
+    const l = (max + min) / 2;
+    const s = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
+    const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+    const t = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x]
+      : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+    return rgb2hex((t[0] + m) * 255, (t[1] + m) * 255, (t[2] + m) * 255);
+  }
+  function contraste(a, b) {
+    const la = luminance(a), lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+  const rgbTriple = (hex) => { const c = hex2rgb(hex); return c ? c.join(',') : '22,32,60'; };
+  function rgba(hex, a) { const c = hex2rgb(hex); return c ? 'rgba(' + c.join(',') + ',' + a + ')' : 'rgba(255,255,255,' + a + ')'; }
+
+  /* ---------------- Tema a partir da marca ----------------
+   *
+   * A queixa que isto resolve: os presets eram bonitos e alheios. A empresa
+   * cadastrava laranja na Marca e a TV continuava azul — a identidade parava na
+   * peça e não chegava na tela.
+   *
+   * Dois níveis, de propósito:
+   *
+   *   tingir(t, cores)  — mantém o CLIMA do preset (claro/escuro, vidro, raio,
+   *                       sombra) e troca só as cores de marca. É o caminho
+   *                       "preferencialmente a marca" sem perder a escolha
+   *                       estética que o usuário fez.
+   *
+   *   derivar(cores)    — constrói o tema inteiro a partir da marca: fundo,
+   *                       superfície e texto saem da cor principal. Para quem
+   *                       quer a tela inteira com a cara da empresa.
+   *
+   * Nos dois casos o texto é escolhido por CONTRASTE medido, não por gosto —
+   * uma marca amarela não pode gerar texto branco sobre fundo claro.
+   */
+  const MIN_CONTRASTE = 4.5;
+
+  // Texto legível sobre um fundo, tentando o tom claro da marca antes do branco
+  // puro: mantém a identidade quando ela ainda passa no contraste.
+  function textoSobre(fundo, marca) {
+    const claro = marca ? mix('#ffffff', marca, 0.12) : '#ffffff';
+    if (contraste(fundo, claro) >= MIN_CONTRASTE) return claro;
+    if (contraste(fundo, '#ffffff') >= MIN_CONTRASTE) return '#ffffff';
+    const escuro = marca ? mix('#0b1020', marca, 0.15) : '#0b1020';
+    return contraste(fundo, escuro) >= contraste(fundo, '#ffffff') ? escuro : '#ffffff';
+  }
+
+  /*
+   * Acento que aparece sobre o fundo.
+   *
+   * Tenta clarear E escurecer. Escolher a direção pela luminância do fundo
+   * parece óbvio e erra justamente nas cores de meio-tom: laranja é escuro o
+   * bastante para o cálculo mandar clarear, mas clarear laranja não passa de
+   * ~2.4:1 — o selo sai lavado. Escurecer chega a 5:1 no mesmo caso.
+   */
+  function acentoSobre(fundo, marca) {
+    let melhor = marca, melhorC = contraste(fundo, marca);
+    for (const alvo of ['#ffffff', '#0b1020']) {
+      for (let i = 1; i <= 16; i++) {
+        const c = mix(marca, alvo, i * 0.05);
+        const k = contraste(fundo, c);
+        if (k > melhorC) { melhor = c; melhorC = k; }
+        if (melhorC >= 3.5) return melhor;
+      }
+    }
+    return melhor;
+  }
+
+  function cores1e2(cores) {
+    const lista = (Array.isArray(cores) ? cores : []).map(okHex).filter(Boolean);
+    if (!lista.length) return null;
+    return { marca: lista[0], marca2: lista[1] || girarMatiz(lista[0], 28) };
+  }
+
+  // Tinge um tema já resolvido com as cores da marca, sem mexer no clima.
+  function tingir(t, cores) {
+    const c = cores1e2(cores);
+    if (!c) return t;
+    const out = Object.assign({}, t);
+    out.brand = c.marca;
+    out.brand2 = c.marca2;
+    out.accent = acentoSobre(t.bg, c.marca);
+    out.glow = rgba(c.marca, 0.45);
+    // Borda e brilho seguem a marca só quando o preset já usava cor na borda.
+    if (/^rgba\(\d+,\s*\d+,\s*\d+/.test(String(t.border)) && !/255,\s*255,\s*255/.test(String(t.border))) {
+      out.border = rgba(c.marca, 0.3);
+    }
+    return out;
+  }
+
+  // Constrói um tema completo a partir da marca.
+  function derivar(cores, opts) {
+    const c = cores1e2(cores);
+    if (!c) return null;
+    const claro = (opts && opts.claro) === true;
+    const bg = claro ? mix('#ffffff', c.marca, 0.06) : mix('#070a12', c.marca, 0.16);
+    const bg2 = claro ? mix('#ffffff', c.marca, 0.14) : mix('#070a12', c.marca, 0.32);
+    const surface = claro ? mix('#ffffff', c.marca, 0.03) : mix('#0d1220', c.marca, 0.22);
+    const texto = textoSobre(bg, c.marca);
+    return {
+      label: 'Minha marca', dark: !claro,
+      bg, bg2, brand: c.marca, brand2: c.marca2,
+      accent: acentoSobre(bg, c.marca),
+      surface: rgbTriple(surface), glass: claro ? 0.72 : 0.55,
+      border: rgba(c.marca, claro ? 0.22 : 0.3),
+      text: texto,
+      textDim: mix(texto, bg, 0.38),
+      radius: 20, blur: 22,
+      shadow: claro ? '0 14px 40px rgba(20,25,40,.14)' : '0 18px 50px rgba(0,0,0,.45)',
+      fx: 0.9, glow: rgba(c.marca, 0.45),
+    };
+  }
+
   /* ---------------- Composição do tema ---------------- */
   // Um "tema" = preset base + ajustes manuais (overrides). Só as chaves
   // presentes em overrides sobrescrevem o preset.
   function resolve(theme) {
     theme = theme || {};
-    const base = PRESETS[theme.preset] || PRESETS[DEFAULT_PRESET];
+    /*
+     * A marca entra ANTES dos overrides: o ajuste manual continua sendo a
+     * palavra final. Quem mexeu numa cor à mão não quer que a marca desfaça.
+     */
+    let base = PRESETS[theme.preset] || PRESETS[DEFAULT_PRESET];
+    if (theme.preset === 'marca') {
+      base = derivar(theme.marca, { claro: theme.marcaClara === true }) || PRESETS[DEFAULT_PRESET];
+    } else if (theme.aplicarMarca) {
+      base = tingir(base, theme.marca);
+    }
     const t = Object.assign({}, base);
     // Ajustes manuais possíveis do editor.
     const ov = theme.overrides || {};
@@ -235,12 +386,16 @@
   function listPresets() {
     return Object.keys(PRESETS).map((id) => ({ id, label: PRESETS[id].label, preset: PRESETS[id] }));
   }
+  // Prévia de um tema sem aplicá-lo: o painel desenha a amostra com isto.
+  function preview(theme) { return resolve(theme); }
   function listFonts() {
     return Object.keys(FONTS).map((id) => ({ id, label: FONTS[id].label }));
   }
 
   global.MTTheme = {
     PRESETS, FONTS, DEFAULT_PRESET, FAMILIAS_PECA, familiaPeca,
-    resolve, apply, listPresets, listFonts, ensureFont,
+    resolve, apply, preview, listPresets, listFonts, ensureFont,
+    // Expostos para o painel prever a cor sem duplicar a matemática.
+    derivar, tingir, textoSobre, acentoSobre, contraste, mix, girarMatiz, rgba,
   };
 })(window);

@@ -10,10 +10,12 @@ Revisão do estado atual e o que falta para operar comercialmente. Legenda:
 - **Mídia persistente** em object storage (S3/Cloudflare R2, SigV4 próprio) — não some mais no deploy.
 - **E-mail transacional** (Resend/Brevo) por HTTP, sem dependência pesada.
 - **Player** offline-first (service worker), pareamento na nuvem, tempo real (SSE), formatos 16:9/9:16/1:1/21:9, tema adaptativo, **pré-carga da próxima mídia**.
+- **Tema da tela sai da marca**: preset "Minha marca" (fundo, superfícies e texto derivados da cor da empresa) ou tingir qualquer preset mantendo o clima dele. Contraste calculado, nunca escolhido.
+- **Rodapé personalizável**: cores próprias ou na cor da marca, selo e relógio opcionais, e manchete longa que rola em vez de ser cortada.
 - **Motor de IA**: briefing → plano → imagens → composição → crítica dirigida, com design system próprio, validador de contraste/área segura e **identidade da marca** (cores, fontes, logo, acervo de fotos, referências de estilo). Roda como trabalho em segundo plano com progresso.
 - **Campanhas como pastas**: renomear, duplicar, excluir e **publicar a campanha inteira** em várias telas.
 - **LGPD**: Termos e Política versionados, aceite registrado (versão + data + IP), **exportar meus dados** e **excluir minha conta** (apaga banco e arquivos).
-- 45 testes automatizados (`npm test`).
+- 54 testes automatizados (`npm test`).
 - Deploy no Railway + Postgres.
 
 ## Bloqueadores (resolver antes de vender)

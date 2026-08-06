@@ -1,93 +1,109 @@
-# Estado do projeto (MultiTelas)
+# Estado do projeto
 
-Resumo do que existe hoje, decisões tomadas e para onde vamos. Serve como
-"contexto de retomada" — qualquer pessoa (ou sessão de IA) que ler `docs/`
-consegue continuar sem depender da memória de um chat.
+Retrato honesto do MultiTelas hoje, escrito para quem vai continuar o trabalho.
+A intenção declarada do produto é **qualidade com facilidade**: arte de agência
+para quem não tem agência. Este documento avalia o sistema contra essa régua,
+não contra uma lista de recursos.
 
-## O que é hoje
+## Como o sistema está montado
 
-**MultiTelas** — sistema de digital signage (mídia indoor para TVs corporativas),
-client-side, sem backend obrigatório. Player + painel de gestão rodando no
-navegador, dados no `localStorage` (ou URL de config remota).
+```
+TV (player)                    Painel (React)              Servidor (Node)
+─────────────                  ──────────────              ───────────────
+player.html                    web/src/pages/*             server.js  (rotas)
+ js/player.js  playlist        MyDesignsPage   campanhas   server/ai-director.js
+ js/render.js  desenha item    ContentEditor   telas       server/composer.js
+ js/theme.js   cores           BrandPage       identidade  server/design-system.js
+ js/storage.js config          SettingsPage    conta       server/db-*.js
+ offline-first (SW)            build → /app                server/storage.js (R2)
+```
 
-- **Player** (`player.html` + `js/player.js`): motor de exibição por zonas
-  (cabeçalho, principal, lateral, rodapé), rotação de conteúdos, transições,
-  takeover de prioridade, decorações sazonais, layout dinâmico.
-- **Admin** (`index.html` + `js/admin.js`): painel visual, prévia ao vivo,
-  drag-and-drop, agendamento, favoritos, vários painéis, trava por PIN.
-- **Conteúdo = dado** (`js/render.js`): cada conteúdo é um objeto que um
-  renderer transforma em DOM. ~23 tipos (avisos, imagem, vídeo, YouTube,
-  HDMI/USB, stream, captura de tela, Holyrics, clima, KPI, promoção, etc.).
-- **Temas** (`js/theme.js`): design tokens (cores, fontes, efeitos) — base do
-  "brand kit". Superfície adaptativa faz o conteúdo herdar o tema.
-- **Templates** (`js/templates.js`): 8 layouts de tela.
+O player é vanilla e funciona sem rede: guarda a última configuração e continua
+exibindo. Isso não é detalhe — é o que separa signage de site.
 
-## Decisões arquiteturais tomadas
+## A tese do motor de IA
 
-- **Conteúdo/campanha como estrutura de dados; render determinístico.** A IA
-  (quando entrar) devolve JSON validado por schema; o front renderiza. Nunca
-  se edita pixel/DOM direto. (Já é assim no signage.)
-- **Player continua vanilla** de propósito (leve, roda em TV fraca). O que
-  cresce para SaaS é o backend e o dashboard.
-- **Rebrand:** produto = **MultiTelas**. Sem referências a terceiros. Commits/PRs
-  sem assinaturas de IA.
-- **server.js manda `Cache-Control: no-cache`** em html/js/css → deploy novo
-  aparece sem hard refresh.
+**O modelo dirige; o código garante que dê para ler.**
 
-## Limites atuais (ver README → Arquitetura e limites)
+A IA decide quantas peças, o que cada uma diz, qual direção de arte e se precisa
+de foto. Nada disso chega à tela sem passar por `server/composer.js`, que corrige
+contraste, área segura, sobreposição e texto que não cabe. Uma peça bonita e
+ilegível é uma peça errada, e modelo nenhum garante legibilidade sozinho.
 
-- Sem contas/login/multi-tenant. Dados por navegador.
-- "Vários painéis" e PIN são locais (não sincronizam entre máquinas).
-- Publicação e controle remoto dependiam de config remota manual.
+O pipeline hoje: **briefing → plano → imagens → composição → crítica**. A crítica
+devolve ao modelo o que o validador precisou consertar e refaz a peça, mas só
+onde houve problema, e só substitui se a nova versão tiver *menos* conserto.
 
-## Direção do produto
+Roda como trabalho em segundo plano (`server/jobs.js`) porque leva minutos.
 
-Ver [`VISAO-PLATAFORMA.md`](VISAO-PLATAFORMA.md): reposicionar de "software de
-TV" para **plataforma de comunicação multicanal para PMEs** — uma campanha
-gera/adapta/publica/monitora em vários canais (TV, redes, site, WhatsApp).
-Diferencial = **simplicidade**; IA como agentes que retornam estrutura.
+## O que já funciona bem
 
-Ver [`PLANO-SAAS.md`](PLANO-SAAS.md): a fundação multi-tenant (contas,
-dispositivos, nuvem, billing).
+- **Identidade que atravessa o sistema.** Cores, fontes, logo e fotos cadastradas
+  em Marca valem na geração de peça **e** no tema da TV. Precedência clara:
+  pedido > marca salva > escolha do modelo.
+- **O acervo do cliente vence a foto inventada.** O diretor escolhe entre as
+  fotos da empresa antes de gerar — mais barato e mais verdadeiro.
+- **Legibilidade medida, não estimada.** Contraste calculado em todo lugar: peça,
+  tema derivado da marca, rodapé colorido.
+- **Publicar campanha inteira** em várias telas, filtrando por formato.
+- **LGPD** com aceite versionado, exportar e excluir de verdade.
+- **Player robusto**: offline, pré-carga da próxima mídia, fallback quando a IA
+  ou o feed caem.
 
-Ver [`CAMPANHA-SCHEMA.md`](CAMPANHA-SCHEMA.md): o schema canônico de Campanha
-e o contrato de saída dos agentes de IA.
+## Onde a facilidade ainda escapa
 
-## Backend na nuvem (`server/`)
+Avaliação franca, com números do próprio código:
 
-- **Controle remoto + multi-tenant**: `server.js` (dependency-free) serve o app
-  e uma API com **contas (login)**, **dispositivos por empresa (tenant)** e
-  **sincronização em tempo real (SSE)**. Persistência em **PostgreSQL** quando
-  `DATABASE_URL` está definido; sem ele, **SQLite** embutido (`node:sqlite`,
-  `data/multitelas.db`) para dev local sem setup. A API de dados é assíncrona e
-  idêntica nos dois backends.
-  - `server/db.js` — escolhe o backend por `DATABASE_URL`.
-  - `server/db-postgres.js` — driver `pg` (produção).
-  - `server/db-sqlite.js` — `node:sqlite` (dev). Schema: tenants, users,
-    sessions, devices.
-  - `server/auth.js` — scrypt + sessão por cookie httpOnly.
-  - `js/cloud.js` — cliente (lado TV + lado celular).
-- **Fluxo:** a TV (`player.html?cloud=1`) cria um device e mostra um código; o
-  usuário **loga no painel** e pareia o código → o device passa a **pertencer à
-  conta**; só ela controla. Ao salvar, a config vai para a TV na hora.
-- **Segurança:** parear e publicar exigem login; a TV lê a própria config com um
-  device token. Ownership testada (outra conta recebe 403/409).
-- **Equipe (multi-usuário + permissões):** uma empresa tem vários usuários com
-  papéis **owner / admin / member**. Convite por código (7 dias); a pessoa se
-  cadastra com o código e entra na empresa. Gestão de equipe (convidar, trocar
-  papel, remover) é de owner/admin; só owner muda papéis; sempre há ao menos um
-  dono. `server/auth.js` resolve o papel a cada request. Tela **Equipe** no
-  painel React.
+1. **Ajustes da tela tem 16 controles.** Layout, tema, fonte, cor da marca,
+   destaque, transição, decoração, refresh, 4 caixas de comportamento… Um dono de
+   padaria não sabe o que é "layout inteligente" nem "cores adaptativas". Faltam
+   **padrões que já estejam certos** e um modo avançado que esconda o resto.
 
-## Roadmap curto
+2. **99 tipos de conteúdo no catálogo.** É força na venda e peso no uso. A tela
+   de adicionar precisa de um caminho curto ("o que você quer mostrar?") antes da
+   grade completa.
 
-1. ~~Controle remoto (pareamento + sync)~~ — feito.
-2. ~~Contas + multi-tenant (auth) sobre o controle remoto~~ — feito.
-3. ~~Postgres (produção via `DATABASE_URL`, SQLite no dev)~~ — feito.
-4. ~~Multi-usuário + permissões por empresa (papéis + convites)~~ — feito.
-   **Fundação SaaS completa.**
-5. Mídia na nuvem (storage + CDN), billing.
-6. Campanha-como-dado + render multiformato (TV/Feed/Story) → o pivot.
-7. Camada de IA (brief → JSON, editor por linguagem natural) + templates.
-   *(versão leve pode vir junto do passo 6, assim que existir o schema de
-   campanha + um caminho de render.)*
+3. **Não existe onboarding.** Quem cria conta cai num painel vazio. O primeiro
+   sucesso — parear uma TV e ver algo na tela — depende de o usuário adivinhar a
+   ordem. É a maior perda de conversão possível e a mais barata de resolver.
+
+4. **A matemática de cor está duplicada.** `server/design-system.js` e
+   `js/theme.js` implementam cada um seu `mix`, `luminance`, `contraste`,
+   `girarMatiz`. Foi decisão consciente (o servidor é CommonJS, o player é IIFE
+   de navegador, e nenhum tem build compartilhado), mas é dívida real: um ajuste
+   de contraste feito num lado não chega ao outro. Já aconteceu — o bug de
+   "clarear laranja não passa de 2.4:1" foi corrigido no compositor meses antes
+   de reaparecer no tema.
+
+5. **Fontes vêm da Google.** `js/theme.js` busca de `fonts.googleapis.com`. TV com
+   rede ruim ou bloqueada cai na fonte de sistema, que é mais larga — e todo o
+   cálculo de "cabe na caixa" vira estimativa errada. As fontes são OFL: dá para
+   servir do próprio domínio. **É a melhor relação qualidade/esforço aberta.**
+
+6. **`server.js` tem 1348 linhas** de roteamento manual. Ainda navegável, mas
+   perto do ponto em que separar por domínio deixa de ser luxo.
+
+## Próximos passos de qualidade da geração
+
+Em ordem de impacto:
+
+1. **Auto-hospedar as fontes** — conserta a causa raiz do texto estourado.
+2. **A IA olhar a peça pronta.** A crítica de hoje lê o relatório do validador;
+   renderizar em PNG e devolver pela visão pegaria colisão, respiro torto e logo
+   sobre rosto — coisas que nenhum validador expressa.
+3. **Prompt de imagem ciente do layout** ("deixe o terço inferior limpo"), em vez
+   de remendar com véu depois.
+4. **Medir texto com as métricas reais da fonte** em vez da largura média por
+   caractere.
+5. **Recorte inteligente** da foto do acervo (hoje corta pelo centro).
+6. **Coerência entre peças** — cada uma é composta isolada da anterior.
+
+## Convenções
+
+- Comentários explicam **por quê**, não o quê. Preferência por registrar a
+  decisão e o erro que ela evita.
+- Sem framework no servidor e sem dependência pesada; `node:sqlite` em dev,
+  Postgres em produção, mesma API assíncrona nos dois.
+- Testes em `npm test` (54 hoje). O padrão que funcionou: **renderizar e olhar**
+  pegou bugs que os testes não pegaram, e vários testes existem porque um
+  screenshot mostrou o problema primeiro.
