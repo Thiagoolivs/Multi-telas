@@ -35,6 +35,12 @@ export const auth = {
   changePassword: (atual, nova) => api('POST', '/api/auth/password', { atual, nova }),
 };
 
+// Direitos do titular (LGPD). A exportação não passa por aqui: é um download
+// direto em /api/privacidade/exportar, para o navegador salvar o arquivo.
+export const privacidade = {
+  excluirConta: (confirmacao) => api('DELETE', '/api/privacidade/conta', { confirmacao }),
+};
+
 export const team = {
   list: () => api('GET', '/api/team'),
   invite: (email, role) => api('POST', '/api/team/invites', { email, role }),

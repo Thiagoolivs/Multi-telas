@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { User, Building2, KeyRound, Palette, LogOut, Check, Info } from 'lucide-react';
+import { User, Building2, KeyRound, Palette, LogOut, Check, Info, Download, Trash2, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Field, Input } from '../components/ui/Field.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
-import { auth } from '../api.js';
+import { Dialog } from '../components/ui/Dialog.jsx';
+import { auth, privacidade } from '../api.js';
 import { cn } from '../lib/cn.js';
 
 const ROLE_LABEL = { owner: 'Dono', admin: 'Administrador', member: 'Membro' };
@@ -20,6 +21,11 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged }) 
   const [salvandoPerfil, setSalvandoPerfil] = useState(false);
   const [msgPerfil, setMsgPerfil] = useState('');
   const [errPerfil, setErrPerfil] = useState('');
+
+  const [excluirAberto, setExcluirAberto] = useState(false);
+  const [confirmacao, setConfirmacao] = useState('');
+  const [excluindo, setExcluindo] = useState(false);
+  const [errExcluir, setErrExcluir] = useState('');
 
   const [atual, setAtual] = useState('');
   const [nova, setNova] = useState('');
@@ -59,6 +65,19 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged }) 
       if (onChanged) onChanged();
     } catch (e) { setErrSenha(e.message || 'Não foi possível trocar a senha.'); }
     finally { setSalvandoSenha(false); }
+  }
+
+  async function excluirConta() {
+    setExcluindo(true); setErrExcluir('');
+    try {
+      await privacidade.excluirConta(confirmacao.trim());
+      // Não dá para "recarregar o painel": a conta não existe mais. Volta para
+      // a raiz, que é a única coisa que ainda faz sentido.
+      window.location.href = '/';
+    } catch (e) {
+      setErrExcluir(e.message || 'Não foi possível excluir a conta.');
+      setExcluindo(false);
+    }
   }
 
   // Conta criada pelo Google ainda não tem senha: aqui ela define a primeira.
@@ -137,6 +156,45 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged }) 
         </div>
       </Panel>
 
+      {/* Privacidade e dados (LGPD) */}
+      <Panel>
+        <PanelHeader title="Seus dados"
+          description="A LGPD garante que você acesse e apague o que guardamos. As duas coisas ficam aqui, sem precisar abrir chamado." />
+        <div className="divide-y divide-line">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="max-w-md text-sm text-ink-2">
+              <div className="font-medium text-ink">Exportar meus dados</div>
+              <div className="text-ink-3">Baixa um arquivo com sua conta, telas, campanhas, marca e aniversariantes. Senhas e sessões ficam de fora por segurança.</div>
+            </div>
+            <Button variant="secondary" icon={Download} onClick={() => { window.location.href = '/api/privacidade/exportar'; }}>Baixar</Button>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+            <div className="max-w-md text-sm text-ink-2">
+              <div className="font-medium text-ink">Excluir minha conta</div>
+              <div className="text-ink-3">
+                Apaga tudo: conta, telas, campanhas, marca, aniversariantes e arquivos enviados.
+                {' '}<b className="text-ink-2">Não há lixeira e não dá para desfazer.</b>
+              </div>
+            </div>
+            {isOwner ? (
+              <Button variant="secondary" icon={Trash2} className="text-danger" onClick={() => { setExcluirAberto(true); setConfirmacao(''); setErrExcluir(''); }}>Excluir conta</Button>
+            ) : (
+              <span className="text-xs text-ink-3">Só o dono da conta pode excluir.</span>
+            )}
+          </div>
+
+          <div className="flex items-start gap-2 p-4 text-xs leading-snug text-ink-3">
+            <ShieldCheck size={14} className="mt-0.5 shrink-0" />
+            <span>
+              Leia os <a href="/termos" target="_blank" rel="noreferrer" className="text-accent hover:underline">Termos de Uso</a>
+              {' '}e a <a href="/privacidade" target="_blank" rel="noreferrer" className="text-accent hover:underline">Política de Privacidade</a>.
+              {' '}Dados de funcionários que você cadastra são de sua responsabilidade — nós apenas os processamos por sua conta.
+            </span>
+          </div>
+        </div>
+      </Panel>
+
       {/* Conta */}
       <Panel>
         <PanelHeader title="Conta" />
@@ -148,6 +206,29 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged }) 
           <Button variant="secondary" icon={LogOut} onClick={onLogout}>Sair da conta</Button>
         </div>
       </Panel>
+
+      {/*
+        A confirmação é digitar o próprio e-mail, não clicar em "sim". Apagar a
+        conta inteira não pode ser um clique a mais no caminho de um clique
+        distraído — e o servidor exige a mesma coisa, então não dá para pular.
+      */}
+      <Dialog open={excluirAberto} onClose={() => setExcluirAberto(false)}
+        title="Excluir minha conta" description="Isto apaga tudo permanentemente. Não há como recuperar depois."
+        footer={<><Button variant="ghost" onClick={() => setExcluirAberto(false)}>Cancelar</Button>
+          <Button variant="primary" icon={Trash2} disabled={excluindo || confirmacao.trim().toLowerCase() !== String(user.email || '').toLowerCase()}
+            onClick={excluirConta}>{excluindo ? 'Excluindo…' : 'Excluir para sempre'}</Button></>}>
+        <div className="space-y-3">
+          <div className="rounded-lg border border-danger-soft bg-danger-soft p-3 text-sm text-danger">
+            Serão apagados: sua conta e a da empresa, os usuários, as telas pareadas e suas configurações,
+            todas as campanhas, a identidade da marca, os aniversariantes e os arquivos enviados.
+            As TVs pareadas param de receber conteúdo novo.
+          </div>
+          <Field label={'Digite ' + (user.email || 'seu e-mail') + ' para confirmar'}>
+            <Input value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} placeholder={user.email} autoComplete="off" />
+          </Field>
+          {errExcluir && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{errExcluir}</div>}
+        </div>
+      </Dialog>
     </div>
   );
 }

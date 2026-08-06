@@ -30,6 +30,7 @@ const ai = require('./server/ai');
 const director = require('./server/ai-director');
 const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
+const legal = require('./server/legal');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -230,6 +231,12 @@ async function handleApi(req, res, pathname, query) {
       return readBody(req, res, async (b) => {
         if (!b || !validEmail(b.email) || !b.password || String(b.password).length < 6)
           return sendJson(res, 400, { error: 'e-mail válido e senha de 6+ caracteres' });
+        /*
+         * O aceite é exigido no SERVIDOR, não só na caixinha do formulário.
+         * Sem isso a prova de aceite valeria só para quem usa a interface —
+         * qualquer chamada direta criaria conta sem registro nenhum.
+         */
+        if (b.aceite !== true) return sendJson(res, 400, { error: 'é preciso aceitar os Termos e a Política de Privacidade' });
         const email = String(b.email).trim().toLowerCase();
         if (await db.getUserByEmail(email)) return sendJson(res, 409, { error: 'e-mail já cadastrado' });
         const passHash = auth.hashPassword(b.password);
@@ -240,11 +247,13 @@ async function handleApi(req, res, pathname, query) {
           if (inv.expires_at && inv.expires_at < Date.now()) return sendJson(res, 410, { error: 'convite expirado' });
           const { userId } = await db.createUser(inv.tenant_id, email, passHash, inv.role, b.name);
           await db.acceptInvite(inv.id);
+          await db.registrarAceite(inv.tenant_id, userId, email, legal.VERSAO, 'convite', clientIp(req));
           await auth.startSession(res, userId, inv.tenant_id, req);
           return sendJson(res, 201, { user: { email, role: inv.role }, tenant: { id: inv.tenant_id } });
         }
         // Sem convite: cria uma nova empresa e o usuário vira dono (owner).
         const { userId, tenantId } = await db.createAccount(email, passHash, b.name, b.name);
+        await db.registrarAceite(tenantId, userId, email, legal.VERSAO, 'cadastro', clientIp(req));
         await auth.startSession(res, userId, tenantId, req);
         return sendJson(res, 201, { user: { email, role: 'owner' }, tenant: { id: tenantId, name: b.name || email } });
       });
@@ -383,6 +392,10 @@ async function handleApi(req, res, pathname, query) {
             // (pass_hash nulo) — entra pelo Google ou define senha pelo "esqueci".
             const { userId, tenantId } = await db.createAccount(email, null, info.name || email, info.name || '');
             await db.setUserGoogle(userId, info.sub);
+            // O aceite aqui é o clique em "Entrar com Google", numa tela que
+            // mostra os dois links. Registrado com origem própria para ficar
+            // claro que não veio de caixinha marcada.
+            await db.registrarAceite(tenantId, userId, email, legal.VERSAO, 'google', clientIp(req));
             u = { id: userId, tenant_id: tenantId };
           }
         }
@@ -630,6 +643,53 @@ async function handleApi(req, res, pathname, query) {
       });
     }
     return sendJson(res, 404, { error: 'rota de aniversariantes não encontrada' });
+  }
+
+  /* ----- LGPD: exportar e excluir os dados da conta ----- */
+  if (parts[1] === 'privacidade') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+
+    // Exportar: direito de acesso e portabilidade, num arquivo que o titular
+    // baixa sozinho — sem abrir chamado e sem depender de nós.
+    if (req.method === 'GET' && parts[2] === 'exportar') {
+      const dados = await db.dadosDoTenant(sess.tenant_id);
+      const corpo = JSON.stringify({
+        geradoEm: new Date().toISOString(),
+        aviso: 'Exportação de dados do MultiTelas. Senhas e tokens de sessão não são incluídos por segurança.',
+        termosVigentes: legal.VERSAO,
+        dados,
+      }, null, 2);
+      res.writeHead(200, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="multitelas-meus-dados.json"',
+        'Cache-Control': 'no-store',
+      });
+      return res.end(corpo);
+    }
+
+    /*
+     * Excluir: apaga de verdade, sem lixeira. Duas travas de propósito — só o
+     * dono, e ele precisa digitar o próprio e-mail. Um botão que destrói a
+     * conta inteira não pode ser acionado por engano.
+     */
+    if (req.method === 'DELETE' && parts[2] === 'conta') {
+      if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono pode excluir a conta' });
+      return readBody(req, res, async (b) => {
+        const confirmacao = String((b && b.confirmacao) || '').trim().toLowerCase();
+        if (confirmacao !== String(sess.email || '').toLowerCase()) {
+          return sendJson(res, 400, { error: 'digite seu e-mail para confirmar' });
+        }
+        const chaves = await db.apagarTenant(sess.tenant_id);
+        // Os arquivos saem depois do banco: se o storage falhar, a conta já foi
+        // apagada e o que sobra é lixo órfão, não dado acessível.
+        for (const k of chaves) { try { await storage.remove(k); } catch (e) { /* segue */ } }
+        // A sessão já morreu junto com a linha na tabela; aqui só limpamos o
+        // cookie para o navegador não ficar tentando usar um token inexistente.
+        await auth.clearSession(res, null, req);
+        return sendJson(res, 200, { ok: true, arquivos: chaves.length });
+      });
+    }
+    return sendJson(res, 404, { error: 'rota não encontrada' });
   }
 
   /* ----- IA: diagnóstico (qual provider e o que a IA respondeu) ----- */
@@ -1237,6 +1297,16 @@ function handleStatic(req, res, urlPath) {
     const fresh = /[?&]new=1(&|$)/.test(req.url || '');
     res.writeHead(302, { Location: '/player.html?cloud=1' + (fresh ? '&new=1' : ''), 'Cache-Control': 'no-store' });
     return res.end();
+  }
+  // Termos e Privacidade: HTML puro, sem depender do painel React — precisam
+  // abrir para quem ainda não tem conta, inclusive a partir da tela de cadastro.
+  if (urlPath === '/termos' || urlPath === '/termos/') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+    return res.end(legal.termosHtml());
+  }
+  if (urlPath === '/privacidade' || urlPath === '/privacidade/') {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+    return res.end(legal.privacidadeHtml());
   }
   if (urlPath === '/legacy' || urlPath === '/legacy/') urlPath = '/index.html';
   const filePath = path.normalize(path.join(ROOT, urlPath));
