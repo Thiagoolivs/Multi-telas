@@ -60,6 +60,12 @@ async function init() {
       tenant_id TEXT PRIMARY KEY, cores TEXT, fonte_titulo TEXT, fonte_apoio TEXT,
       direcao TEXT, tom TEXT, observacoes TEXT, updated_at BIGINT
     );
+    -- Prova de que a pessoa aceitou os termos, e QUAL versão deles.
+    CREATE TABLE IF NOT EXISTS aceites (
+      id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, email TEXT,
+      versao TEXT, origem TEXT, ip TEXT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_aceites_tenant ON aceites(tenant_id);
     -- Imagens da marca: logo, bases reutilizáveis e referências de estilo.
     CREATE TABLE IF NOT EXISTS brandassets (
       id TEXT PRIMARY KEY, tenant_id TEXT, kind TEXT, url TEXT, label TEXT, created_at BIGINT
@@ -389,6 +395,19 @@ async function updateLibraryItem(id, tenantId, item, label) {
 }
 async function deleteLibraryItem(id, tenantId) { await pool.query('DELETE FROM library WHERE id = $1 AND tenant_id = $2', [id, tenantId]); }
 
+/*
+ * Aceite dos termos: guarda QUAL versão a pessoa aceitou, quando e de onde. Sem
+ * a versão o registro não prova nada — o texto muda e some a referência.
+ */
+async function registrarAceite(tenantId, userId, email, versao, origem, ip) {
+  await pool.query('INSERT INTO aceites (id, tenant_id, user_id, email, versao, origem, ip, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+    ['ac_' + rid(14), tenantId, userId, email || '', versao || '', origem || '', ip || '', Date.now()]);
+}
+async function listarAceites(tenantId) {
+  const r = await pool.query('SELECT versao, origem, email, created_at FROM aceites WHERE tenant_id = $1 ORDER BY created_at ASC', [tenantId]);
+  return r.rows;
+}
+
 /* Operações sobre a campanha inteira — uma pasta é gerenciada como um todo. */
 async function listCampaign(tenantId, campaign) {
   const r = await pool.query('SELECT id, campaign, canal, formato, label, item, created_at FROM library WHERE tenant_id = $1 AND campaign = $2 ORDER BY created_at ASC', [tenantId, campaign]);
@@ -401,6 +420,53 @@ async function renameCampaign(tenantId, de, para) {
 async function deleteCampaign(tenantId, campaign) {
   const r = await pool.query('DELETE FROM library WHERE tenant_id = $1 AND campaign = $2', [tenantId, campaign]);
   return r.rowCount;
+}
+
+/* ---------------- LGPD: exportar e excluir ---------------- */
+
+/*
+ * Tudo que guardamos de uma conta, num objeto só. Senhas e tokens ficam de
+ * fora: hash de senha não serve ao titular e token de sessão exportado vira
+ * chave de acesso circulando por e-mail.
+ */
+async function dadosDoTenant(tenantId) {
+  const um = async (sql) => (await pool.query(sql, [tenantId])).rows[0] || null;
+  const varios = async (sql) => (await pool.query(sql, [tenantId])).rows;
+  return {
+    conta: await um('SELECT * FROM tenants WHERE id = $1'),
+    usuarios: await varios('SELECT id, email, role, name, created_at FROM users WHERE tenant_id = $1'),
+    aceites: await varios('SELECT versao, origem, email, ip, created_at FROM aceites WHERE tenant_id = $1'),
+    convites: await varios('SELECT id, email, role, created_at, expires_at, accepted_at FROM invites WHERE tenant_id = $1'),
+    telas: await varios('SELECT id, code, name, config, created_at, updated_at, last_seen FROM devices WHERE tenant_id = $1'),
+    biblioteca: await varios('SELECT id, campaign, canal, formato, label, item, created_at FROM library WHERE tenant_id = $1'),
+    marca: await um('SELECT * FROM brandkit WHERE tenant_id = $1'),
+    imagensDaMarca: await varios('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = $1'),
+    aniversariantes: await varios('SELECT id, nome, matricula, dia, mes, cargo, foto, created_at FROM birthdays WHERE tenant_id = $1'),
+    midias: await varios('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1'),
+  };
+}
+
+/*
+ * Exclusão de verdade: não há coluna "apagado", não há lixeira. Devolve as
+ * chaves das mídias para quem chamou apagar os arquivos no storage — o banco
+ * não conhece disco nem R2.
+ */
+async function apagarTenant(tenantId) {
+  const chaves = (await pool.query('SELECT key FROM media WHERE tenant_id = $1', [tenantId])).rows
+    .map((r) => r.key).filter(Boolean);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM resets WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)', [tenantId]);
+    for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
+      'brandassets', 'brandkit', 'birthdays', 'media', 'users']) {
+      await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
+    }
+    await client.query('DELETE FROM tenants WHERE id = $1', [tenantId]);
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+  return chaves;
 }
 
 function rid(n) {
@@ -424,5 +490,6 @@ module.exports = {
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
   listCampaign, renameCampaign, deleteCampaign,
+  registrarAceite, listarAceites, dadosDoTenant, apagarTenant,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
 };

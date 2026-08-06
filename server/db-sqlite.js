@@ -68,6 +68,11 @@ db.exec(`
     direcao TEXT, tom TEXT, observacoes TEXT, updated_at INTEGER
   );
   -- Imagens da marca: logo, bases reutilizáveis e referências de estilo.
+  CREATE TABLE IF NOT EXISTS aceites (
+    id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, email TEXT,
+    versao TEXT, origem TEXT, ip TEXT, created_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_aceites_tenant ON aceites(tenant_id);
   CREATE TABLE IF NOT EXISTS brandassets (
     id TEXT PRIMARY KEY, tenant_id TEXT, kind TEXT, url TEXT, label TEXT, created_at INTEGER
   );
@@ -321,10 +326,68 @@ async function getLibraryItem(id, tenantId) { const r = q.libraryById.get(id, te
 async function updateLibraryItem(id, tenantId, item, label) { return q.updateLibrary.run(JSON.stringify(item || {}), label || '', id, tenantId).changes; }
 async function deleteLibraryItem(id, tenantId) { q.deleteLibrary.run(id, tenantId); }
 
+/*
+ * Aceite dos termos: guarda QUAL versão a pessoa aceitou, quando e de onde. Sem
+ * a versão o registro não prova nada — o texto muda e some a referência.
+ */
+const qAceite = {
+  add: db.prepare('INSERT INTO aceites (id, tenant_id, user_id, email, versao, origem, ip, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
+  byTenant: db.prepare('SELECT versao, origem, email, created_at FROM aceites WHERE tenant_id = ? ORDER BY created_at ASC'),
+};
+async function registrarAceite(tenantId, userId, email, versao, origem, ip) {
+  qAceite.add.run('ac_' + rid(14), tenantId, userId, email || '', versao || '', origem || '', ip || '', Date.now());
+}
+async function listarAceites(tenantId) { return qAceite.byTenant.all(tenantId); }
+
 /* Operações sobre a campanha inteira — uma pasta é gerenciada como um todo. */
 async function listCampaign(tenantId, campaign) { return q.libraryByCampaign.all(tenantId, campaign).map(mapLibRow); }
 async function renameCampaign(tenantId, de, para) { return q.renameCampaign.run(para, tenantId, de).changes; }
 async function deleteCampaign(tenantId, campaign) { return q.deleteCampaign.run(tenantId, campaign).changes; }
+
+/* ---------------- LGPD: exportar e excluir ---------------- */
+
+/*
+ * Tudo que guardamos de uma conta, num objeto só. Senhas e tokens ficam de
+ * fora: hash de senha não serve ao titular e token de sessão exportado vira
+ * chave de acesso circulando por e-mail.
+ */
+async function dadosDoTenant(tenantId) {
+  const t = db.prepare('SELECT * FROM tenants WHERE id = ?').get(tenantId) || null;
+  const pega = (sql) => db.prepare(sql).all(tenantId);
+  return {
+    conta: t,
+    usuarios: pega('SELECT id, email, role, name, created_at FROM users WHERE tenant_id = ?'),
+    aceites: pega('SELECT versao, origem, email, ip, created_at FROM aceites WHERE tenant_id = ?'),
+    convites: pega('SELECT id, email, role, created_at, expires_at, accepted_at FROM invites WHERE tenant_id = ?'),
+    telas: pega('SELECT id, code, name, config, created_at, updated_at, last_seen FROM devices WHERE tenant_id = ?'),
+    biblioteca: pega('SELECT id, campaign, canal, formato, label, item, created_at FROM library WHERE tenant_id = ?'),
+    marca: db.prepare('SELECT * FROM brandkit WHERE tenant_id = ?').get(tenantId) || null,
+    imagensDaMarca: pega('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = ?'),
+    aniversariantes: pega('SELECT id, nome, matricula, dia, mes, cargo, foto, created_at FROM birthdays WHERE tenant_id = ?'),
+    midias: pega('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ?'),
+  };
+}
+
+/*
+ * Exclusão de verdade: não há coluna "apagado", não há lixeira. Devolve as
+ * chaves das mídias para quem chamou apagar os arquivos no storage — o banco
+ * não conhece disco nem R2.
+ */
+async function apagarTenant(tenantId) {
+  const chaves = db.prepare('SELECT key FROM media WHERE tenant_id = ?').all(tenantId).map((r) => r.key).filter(Boolean);
+  const usuarios = db.prepare('SELECT id FROM users WHERE tenant_id = ?').all(tenantId).map((r) => r.id);
+  db.exec('BEGIN');
+  try {
+    for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
+    for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
+      'brandassets', 'brandkit', 'birthdays', 'media', 'users']) {
+      db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
+    }
+    db.prepare('DELETE FROM tenants WHERE id = ?').run(tenantId);
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  return chaves;
+}
 
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -347,5 +410,6 @@ module.exports = {
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
   listCampaign, renameCampaign, deleteCampaign,
+  registrarAceite, listarAceites, dadosDoTenant, apagarTenant,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
 };

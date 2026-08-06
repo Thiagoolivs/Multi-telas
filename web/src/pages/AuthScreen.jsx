@@ -22,6 +22,7 @@ export function AuthScreen({ onAuthed }) {
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ email: '', password: '', name: '', inviteCode: '' });
   const [hasInvite, setHasInvite] = useState(false);
+  const [aceite, setAceite] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -54,7 +55,7 @@ export function AuthScreen({ onAuthed }) {
     setError(''); setInfo(''); setBusy(true);
     try {
       if (mode === 'signup') {
-        const payload = { email: form.email, password: form.password, name: form.name };
+        const payload = { email: form.email, password: form.password, name: form.name, aceite: true };
         if (hasInvite && form.inviteCode.trim()) payload.inviteCode = form.inviteCode.trim().toUpperCase();
         await auth.signup(payload);
         onAuthed();
@@ -160,6 +161,17 @@ export function AuthScreen({ onAuthed }) {
                     <Input value={form.inviteCode} onChange={(e) => setForm((f) => ({ ...f, inviteCode: e.target.value.toUpperCase() }))} placeholder="CÓDIGO" maxLength={8} className="tracking-[0.2em]" />
                   </Field>
                 )}
+                {/*
+                  Nunca pré-marcado: caixinha já marcada não prova que a pessoa
+                  leu, e é o primeiro ponto que uma fiscalização derruba.
+                */}
+                <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-ink-2">
+                  <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} className="mt-0.5 shrink-0" />
+                  <span>
+                    Li e aceito os <a href="/termos" target="_blank" rel="noreferrer" className="text-accent hover:underline">Termos de Uso</a>
+                    {' '}e a <a href="/privacidade" target="_blank" rel="noreferrer" className="text-accent hover:underline">Política de Privacidade</a>.
+                  </span>
+                </label>
               </>
             )}
 
@@ -171,7 +183,7 @@ export function AuthScreen({ onAuthed }) {
               </div>
             )}
 
-            <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
+            <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy || (mode === 'signup' && !aceite)}>
               {busy ? 'Aguarde…'
                 : mode === 'login' ? 'Entrar'
                 : mode === 'signup' ? 'Criar conta'
@@ -188,7 +200,9 @@ export function AuthScreen({ onAuthed }) {
         </div>
 
         <p className="mt-4 text-center text-xs text-ink-3">
-          Ao continuar, você concorda com os termos de uso do MultiTelas.
+          <a href="/termos" target="_blank" rel="noreferrer" className="hover:text-ink-2 hover:underline">Termos de Uso</a>
+          {' · '}
+          <a href="/privacidade" target="_blank" rel="noreferrer" className="hover:text-ink-2 hover:underline">Política de Privacidade</a>
         </p>
       </div>
     </div>
