@@ -3,6 +3,8 @@ import { RotateCcw } from 'lucide-react';
 import { Field, Input, Select, Checkbox } from '../ui/Field.jsx';
 import { IconButton } from '../ui/Button.jsx';
 import { LAYOUTS, THEME_PRESETS, FONTS, TRANSITIONS, DECORATIONS, getLayout } from '../../lib/screenConfig.js';
+import { useAsync } from '../../lib/useAsync.js';
+import { brand } from '../../api.js';
 
 // Layouts agrupados por formato de tela no seletor.
 const LAYOUT_GROUPS = [
@@ -36,6 +38,24 @@ export function SettingsForm({ settings, onChange }) {
     setOv({ brand: hex, ...(g ? { glow: g } : {}) });
   };
 
+  /*
+   * As cores da marca são copiadas PARA DENTRO da config da tela. Poderiam ser
+   * buscadas do servidor no player, mas a TV precisa funcionar offline — e uma
+   * tela que muda de cor sozinha porque alguém mexeu na Marca surpreende. Ao
+   * escolher o tema, o usuário congela a identidade daquele momento.
+   */
+  const { data: brandData } = useAsync(brand.get);
+  const coresMarca = ((brandData && brandData.kit && brandData.kit.cores) || []).filter(Boolean);
+  const temCores = coresMarca.length > 0;
+
+  function escolherTema(preset) {
+    const patch = { preset };
+    // Guarda as cores no momento da escolha; sem elas o preset "marca" não tem
+    // do que derivar e cairia silenciosamente no tema padrão.
+    if (preset === 'marca' || theme.aplicarMarca) patch.marca = coresMarca;
+    setTheme(patch);
+  }
+
   const layout = getLayout(s.layoutId);
 
   return (
@@ -59,7 +79,7 @@ export function SettingsForm({ settings, onChange }) {
         </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Tema">
-            <Select value={theme.preset} onChange={(e) => setTheme({ preset: e.target.value })}>
+            <Select value={theme.preset} onChange={(e) => escolherTema(e.target.value)}>
               {THEME_PRESETS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </Select>
           </Field>
@@ -68,6 +88,39 @@ export function SettingsForm({ settings, onChange }) {
               {FONTS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
             </Select>
           </Field>
+        </div>
+
+        {/* Marca → tela. O painel só GUARDA as cores; quem monta o tema é o
+            player, com o mesmo cálculo de contraste em toda a plataforma. */}
+        <div className="space-y-2 rounded-lg border border-line bg-surface-2/50 p-3">
+          {temCores ? (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Sua marca</span>
+                <div className="flex gap-1">
+                  {coresMarca.slice(0, 4).map((c) => (
+                    <span key={c} className="h-4 w-4 rounded-full border border-line" style={{ background: c }} title={c} />
+                  ))}
+                </div>
+              </div>
+              {theme.preset === 'marca' ? (
+                <>
+                  <p className="text-2xs leading-snug text-ink-3">O tema inteiro — fundo, superfícies e textos — sai da sua cor principal. O contraste é calculado, então o texto nunca fica ilegível.</p>
+                  <Checkbox label="Versão clara" checked={theme.marcaClara === true} onChange={(e) => setTheme({ marcaClara: e.target.checked })} />
+                </>
+              ) : (
+                <>
+                  <Checkbox label="Aplicar minha marca a este tema" checked={theme.aplicarMarca === true}
+                    onChange={(e) => setTheme({ aplicarMarca: e.target.checked, marca: e.target.checked ? coresMarca : theme.marca })} />
+                  <p className="text-2xs leading-snug text-ink-3">Mantém o clima do tema escolhido e troca só as cores de marca e destaque.</p>
+                </>
+              )}
+            </>
+          ) : (
+            <p className="text-2xs leading-snug text-ink-3">
+              Cadastre as cores da empresa em <b className="text-ink-2">Marca</b> e elas passam a valer aqui — a tela deixa de usar cor genérica.
+            </p>
+          )}
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Cor da marca" hint="Sobrepõe o tema; comanda o destaque e o fundo.">

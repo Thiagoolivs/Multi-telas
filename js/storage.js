@@ -143,6 +143,17 @@
                 ? [existing.fonte] : []),
           rssUrl: existing.rssUrl || '',
           quantidade: existing.quantidade || 10,
+          // Rolagem da manchete longa: auto (só quando não cabe) | nunca.
+          rolagem: existing.rolagem === 'nunca' ? 'nunca' : 'auto',
+          velocidadeTexto: existing.velocidadeTexto || 70,
+          // Exibição: selo e relógio podem sair para a manchete ganhar altura.
+          mostrarSelo: existing.mostrarSelo !== false,
+          mostrarRelogio: existing.mostrarRelogio !== false,
+          // Cores: tema (herda) | marca | custom.
+          cores: existing.cores || 'tema',
+          fundo: existing.fundo || '',
+          corTexto: existing.corTexto || '',
+          corDestaque: existing.corDestaque || '',
         };
       } else if (zone.type === 'header') {
         out.zonas[zone.id] = { header: true };

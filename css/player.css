@@ -376,6 +376,23 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   line-height: 1.1; margin-top: 1.4cqh;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* Manchete que não cabe: desliza até o fim e volta, em vez de ser cortada com
+   reticências. A distância e a duração vêm medidas do player — o CSS não tem
+   como saber quanto sobrou. Sem ellipsis aqui, senão o "…" aparece durante o
+   deslize e o texto parece truncado mesmo estando inteiro. */
+.mt-news-roll {
+  text-overflow: clip;
+  animation: mt-news-roll var(--roll-dur, 8s) ease-in-out infinite alternate;
+  animation-delay: 1.2s;
+}
+@keyframes mt-news-roll {
+  0%, 12% { transform: translateX(0); }
+  88%, 100% { transform: translateX(var(--roll-dist, 0)); }
+}
+/* Quem pediu menos movimento no sistema não deve ganhar texto deslizando. */
+@media (prefers-reduced-motion: reduce) {
+  .mt-news-roll { animation: none; text-overflow: ellipsis; }
+}
 
 /* ---------- Rodapé / ticker (rolagem clássica) ---------- */
 .mt-ticker {

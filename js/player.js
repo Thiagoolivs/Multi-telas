@@ -865,8 +865,58 @@
   function startTicker(zoneEl, data, cfg) {
     const messages = (data.messages || []).filter((m) => m && m.trim());
     const modo = data.modo || 'noticias';
+    pintarRodape(zoneEl, data, cfg);
     if (modo === 'rolagem') return startScrollTicker(zoneEl, messages, data);
     return startNewsTicker(zoneEl, messages, data);
+  }
+
+  /*
+   * Cores do rodapé. Por padrão ele herda o tema — é o certo, e é o que faz a
+   * tela parecer uma coisa só. Mas o rodapé é a faixa que mais gente quer
+   * destacar (é onde está o nome da empresa), então dá para fixar cores.
+   *
+   * As variáveis são definidas NA ZONA, não no :root: o CSS já lê --accent e
+   * --text, então sobrescrevê-las aqui repinta o rodapé inteiro sem uma linha
+   * de CSS nova e sem afetar o resto da tela.
+   */
+  function pintarRodape(zoneEl, data, cfg) {
+    const modoCor = data.cores || 'tema';
+    if (modoCor === 'tema') return;
+
+    let fundo = data.fundo, texto = data.corTexto, destaque = data.corDestaque;
+
+    // "marca": puxa do tema já aplicado, para o rodapé acompanhar a identidade
+    // sem o usuário reescrever as cores em dois lugares.
+    if (modoCor === 'marca') {
+      const raiz = getComputedStyle(document.documentElement);
+      const marca = (raiz.getPropertyValue('--brand') || '').trim();
+      if (marca && global.MTTheme) {
+        fundo = marca;
+        texto = MTTheme.textoSobre(marca, marca);
+        destaque = MTTheme.acentoSobre(marca, marca);
+      }
+    }
+
+    if (fundo) {
+      zoneEl.style.background = fundo;
+      // Fundo sólido no rodapé briga com o vidro da zona; sem isto a cor
+      // escolhida sai lavada pela superfície translúcida por baixo.
+      zoneEl.style.backdropFilter = 'none';
+      zoneEl.style.setProperty('--surface', 'transparent');
+      /*
+       * Se o usuário escolheu o fundo mas não o texto, calculamos por contraste
+       * em vez de deixar herdar: fundo claro com o texto claro do tema é o
+       * jeito mais fácil de tornar o rodapé ilegível sem perceber.
+       */
+      if (!texto && global.MTTheme) texto = MTTheme.textoSobre(fundo, fundo);
+      if (!destaque && global.MTTheme) destaque = MTTheme.acentoSobre(fundo, fundo);
+    }
+    if (texto) {
+      zoneEl.style.setProperty('--text', texto);
+      zoneEl.style.setProperty('--text-dim', global.MTTheme && fundo
+        ? MTTheme.mix(texto, fundo, 0.35) : texto);
+    }
+    if (destaque) zoneEl.style.setProperty('--accent', destaque);
   }
 
   // Estilo "jornal": selo com data/hora ao vivo + manchetes rotativas.
@@ -880,6 +930,11 @@
     const content = document.createElement('div');
     content.className = 'mt-news-content';
 
+    // Selo e relógio são opcionais: numa faixa fina os dois roubam a altura da
+    // manchete, que é o que a pessoa realmente precisa ler.
+    const mostrarSelo = data.mostrarSelo !== false;
+    const mostrarRelogio = data.mostrarRelogio !== false;
+
     const topline = document.createElement('div');
     topline.className = 'mt-news-topline';
     const tag = document.createElement('div');
@@ -888,8 +943,8 @@
     const clock = document.createElement('div');
     clock.className = 'mt-news-clock';
     clock.innerHTML = '<span class="nc-date"></span><span class="nc-sep"></span><span class="nc-time"></span>';
-    topline.appendChild(tag);
-    topline.appendChild(clock);
+    if (mostrarSelo) topline.appendChild(tag);
+    if (mostrarRelogio) topline.appendChild(clock);
 
     const headline = document.createElement('div');
     headline.className = 'mt-news-headline';
@@ -900,7 +955,8 @@
     headline.appendChild(title);
     headline.appendChild(desc);
 
-    content.appendChild(topline);
+    // Nenhum dos dois ligado: a linha some e a manchete ganha a altura inteira.
+    if (mostrarSelo || mostrarRelogio) content.appendChild(topline);
     content.appendChild(headline);
     zoneEl.appendChild(content);
 
@@ -913,7 +969,37 @@
       clock.querySelector('.nc-time').textContent = now.toLocaleTimeString('pt-BR');
     }
     tick();
-    const clockTimer = setInterval(tick, 1000);
+    const clockTimer = mostrarRelogio ? setInterval(tick, 1000) : null;
+
+    /*
+     * Rolagem de manchete longa.
+     *
+     * Antes o texto que não cabia era cortado com reticências — a pessoa lia
+     * "Prefeitura anuncia novo horário de funcionamento do…" e nunca sabia o
+     * resto. Aqui medimos: se o texto passa da caixa, ele desliza até o fim e
+     * volta. Se cabe, fica parado, porque texto curto rolando é só distração.
+     *
+     * Duas opções, porque só existem duas: 'auto' (rola o que não cabe) e
+     * 'nunca' (mantém as reticências). Um modo "sempre" seria mentira — texto
+     * que já cabe não tem para onde ir.
+     */
+    const modoRolagem = data.rolagem === 'nunca' ? 'nunca' : 'auto';
+    const velocidadeRolagem = Math.max(20, Number(data.velocidadeTexto) || 70); // px/s
+
+    function ajustarRolagem(el) {
+      el.classList.remove('mt-news-roll');
+      el.style.removeProperty('--roll-dist');
+      el.style.removeProperty('--roll-dur');
+      if (modoRolagem === 'nunca') return;
+      // scrollWidth só passa de clientWidth quando o texto realmente não cabe.
+      const excesso = el.scrollWidth - el.clientWidth;
+      if (excesso <= 2) return;
+      el.style.setProperty('--roll-dist', '-' + excesso + 'px');
+      // Duração proporcional à distância: manchete longa não fica mais rápida
+      // só por ser longa, senão vira ilegível justamente quando importa.
+      el.style.setProperty('--roll-dur', (excesso / velocidadeRolagem + 3).toFixed(1) + 's');
+      el.classList.add('mt-news-roll');
+    }
 
     // Manchetes: manuais ("Título :: descrição") e/ou automáticas via RSS.
     let items = messages.map((m) => {
@@ -946,6 +1032,11 @@
       headline.classList.add('mt-news-in');
       title.textContent = item.titulo;
       desc.textContent = item.desc;
+      /*
+       * A medição precisa acontecer DEPOIS do layout, senão scrollWidth ainda
+       * reflete o texto anterior. Um quadro basta.
+       */
+      requestAnimationFrame(() => { ajustarRolagem(title); ajustarRolagem(desc); });
     }
 
     // Busca automática de manchetes (G1, UOL, CNN…). Em caso de falha,
@@ -970,11 +1061,19 @@
     }, Math.max(3, data.intervalo || 8) * 1000);
     const feedTimer = usingFeed ? setInterval(loadFeed, 10 * 60 * 1000) : null;
 
+    // A TV pode mudar de layout (a zona muda de largura): o que cabia deixa de
+    // caber. Sem isto a rolagem só acertaria no primeiro desenho.
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => { ajustarRolagem(title); ajustarRolagem(desc); })
+      : null;
+    if (ro) ro.observe(zoneEl);
+
     return {
       stop: () => {
-        clearInterval(clockTimer);
+        clockTimer && clearInterval(clockTimer);
         clearInterval(rotateTimer);
         feedTimer && clearInterval(feedTimer);
+        ro && ro.disconnect();
       },
     };
   }

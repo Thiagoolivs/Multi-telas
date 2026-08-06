@@ -56,6 +56,9 @@ export function getLayout(id) { return LAYOUTS.find((l) => l.id === id) || LAYOU
 export function zonesOf(cfg) { return getLayout(cfg && cfg.settings && cfg.settings.layoutId).zones; }
 
 export const THEME_PRESETS = [
+  // Primeiro da lista de propósito: o tema que veste a tela com a identidade da
+  // empresa deve ser o caminho óbvio, não uma opção escondida no fim.
+  { value: 'marca', label: 'Minha marca (cores da empresa)' },
   { value: 'dark-premium', label: 'Dark Premium' },
   { value: 'corporate-blue', label: 'Corporate Blue' },
   { value: 'luxury-gold', label: 'Luxury Gold' },
