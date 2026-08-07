@@ -66,6 +66,12 @@ async function init() {
       versao TEXT, origem TEXT, ip TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_aceites_tenant ON aceites(tenant_id);
+    -- O que o sistema DEDUZIU sobre a empresa, conversando. Separado do
+    -- brandkit: aquilo o usuário declarou; isto é dedução, e dedução precisa
+    -- poder ser revista e esquecida.
+    CREATE TABLE IF NOT EXISTS brandmemoria (
+      tenant_id TEXT PRIMARY KEY, dados TEXT, updated_at BIGINT
+    );
     -- Imagens da marca: logo, bases reutilizáveis e referências de estilo.
     CREATE TABLE IF NOT EXISTS brandassets (
       id TEXT PRIMARY KEY, tenant_id TEXT, kind TEXT, url TEXT, label TEXT, created_at BIGINT
@@ -199,6 +205,21 @@ async function addBrandAsset(tenantId, kind, url, label) {
 async function removeBrandAsset(id, tenantId) {
   await pool.query('DELETE FROM brandassets WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
 }
+/* Memória da empresa: o que aprendemos conversando. */
+async function getMemoria(tenantId) {
+  const r = await pool.query('SELECT dados FROM brandmemoria WHERE tenant_id = $1', [tenantId]);
+  if (!r.rows[0]) return null;
+  try { return JSON.parse(r.rows[0].dados || '{}'); } catch (e) { return null; }
+}
+async function saveMemoria(tenantId, dados) {
+  await pool.query(`INSERT INTO brandmemoria (tenant_id, dados, updated_at) VALUES ($1,$2,$3)
+    ON CONFLICT (tenant_id) DO UPDATE SET dados=EXCLUDED.dados, updated_at=EXCLUDED.updated_at`,
+    [tenantId, JSON.stringify(dados || {}), Date.now()]);
+}
+async function clearMemoria(tenantId) {
+  await pool.query('DELETE FROM brandmemoria WHERE tenant_id = $1', [tenantId]);
+}
+
 async function labelBrandAsset(id, tenantId, label) {
   await pool.query('UPDATE brandassets SET label = $1 WHERE id = $2 AND tenant_id = $3', [label || '', id, tenantId]);
 }
@@ -459,7 +480,7 @@ async function apagarTenant(tenantId) {
     await client.query('BEGIN');
     await client.query('DELETE FROM resets WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)', [tenantId]);
     for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'birthdays', 'media', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'birthdays', 'media', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
     await client.query('DELETE FROM tenants WHERE id = $1', [tenantId]);
@@ -491,5 +512,6 @@ module.exports = {
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
   listCampaign, renameCampaign, deleteCampaign,
   registrarAceite, listarAceites, dadosDoTenant, apagarTenant,
+  getMemoria, saveMemoria, clearMemoria,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
 };

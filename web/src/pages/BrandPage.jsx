@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, Type, ImageUp, Sparkles, Trash2, Check, Plus, Info } from 'lucide-react';
+import { Palette, Type, ImageUp, Sparkles, Trash2, Check, Plus, Info, Brain } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -31,10 +31,26 @@ const GRUPOS = [
   { kind: 'referencia', titulo: 'Referências de estilo', desc: 'Artes que você gosta. A IA olha e imita a direção — não copia o conteúdo.' },
 ];
 
+// Um bloco da ficha: título e texto ou lista.
+function Ficha({ titulo, texto, itens }) {
+  return (
+    <div className="rounded-lg border border-line bg-surface-2/50 p-3">
+      <div className="mb-1 text-2xs font-semibold uppercase tracking-wide text-ink-3">{titulo}</div>
+      {texto && <div className="text-xs leading-snug text-ink-2">{texto}</div>}
+      {itens && (
+        <ul className="space-y-0.5 text-xs leading-snug text-ink-2">
+          {itens.map((i) => <li key={i}>· {i}</li>)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function BrandPage() {
   const { data, loading, reload } = useAsync(brand.get);
   const kit = (data && data.kit) || {};
   const assets = (data && data.assets) || [];
+  const mem = (data && data.memoria) || null;
 
   const [cores, setCores] = useState(['#1e3a8a', '#0ea5e9']);
   const [fonteTitulo, setFonteTitulo] = useState('');
@@ -93,6 +109,14 @@ export function BrandPage() {
     if (novo === (a.label || '')) return;
     try { a.label = novo; await brand.labelAsset(a.id, novo); }
     catch (e) { setErr(e.message || 'Não foi possível salvar a descrição.'); }
+  }
+
+  async function esquecer() {
+    if (!window.confirm('Apagar tudo que a IA aprendeu sobre a sua empresa? As próximas campanhas voltam a começar do zero.')) return;
+    setBusy(true);
+    try { await brand.esquecer(); reload(); setMsg('Memória apagada.'); }
+    catch (e) { setErr(e.message || 'Não foi possível apagar.'); }
+    finally { setBusy(false); }
   }
 
   async function apagar(id) {
@@ -169,6 +193,35 @@ export function BrandPage() {
           {msg && <span className="text-sm text-emerald-500">{msg}</span>}
           {err && <span className="text-sm text-danger">{err}</span>}
         </div>
+      </Panel>
+
+      {/* O que o sistema aprendeu conversando */}
+      <Panel>
+        <PanelHeader title="O que a IA aprendeu sobre você"
+          description="Sai das conversas de briefing e melhora as próximas campanhas. É dedução do sistema, não o que você declarou acima."
+          actions={mem && (
+            <button type="button" onClick={esquecer} disabled={busy}
+              className="rounded-md border border-line px-2.5 py-1.5 text-2xs text-ink-2 transition hover:bg-surface-2 hover:text-danger">
+              Esquecer tudo
+            </button>
+          )} />
+        {!mem ? (
+          <div className="flex items-start gap-2 p-4 text-sm text-ink-3">
+            <Brain size={15} className="mt-0.5 shrink-0" />
+            Nada ainda. Ao criar uma campanha usando <b className="text-ink-2">Refinar conversando</b>, o
+            sistema guarda aqui o que descobrir do seu negócio — e a campanha seguinte já começa sabendo.
+          </div>
+        ) : (
+          <div className="grid gap-3 p-4 text-sm sm:grid-cols-2">
+            {mem.segmento && <Ficha titulo="Negócio" texto={mem.segmento} />}
+            {mem.publico && <Ficha titulo="Cliente dela" texto={mem.publico} />}
+            {mem.jeitoDeFalar && <Ficha titulo="Jeito de falar" texto={mem.jeitoDeFalar} />}
+            {mem.diferenciais.length > 0 && <Ficha titulo="Diferenciais" itens={mem.diferenciais} />}
+            {mem.argumentos.length > 0 && <Ficha titulo="O que costuma convencer" itens={mem.argumentos} />}
+            {mem.evitar.length > 0 && <Ficha titulo="Nunca prometer" itens={mem.evitar} />}
+            {mem.notas.length > 0 && <div className="sm:col-span-2"><Ficha titulo="Notas" itens={mem.notas} /></div>}
+          </div>
+        )}
       </Panel>
 
       {/* Imagens */}
