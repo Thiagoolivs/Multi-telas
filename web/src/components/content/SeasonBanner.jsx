@@ -13,13 +13,18 @@ import { seasons } from '../../api.js';
  * existe um tema de Dia dos Pais, escolher cores nem escrever a mensagem. Ele
  * clica uma vez e a tela está vestida.
  */
-export function SeasonBanner({ onAplicar }) {
-  const { data } = useAsync(seasons.list);
+export function SeasonBanner({ zonas, onAplicar }) {
+  const chave = (zonas || []).join(',');
+  const carregar = React.useCallback(() => seasons.list(zonas || []), [chave]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { data } = useAsync(carregar);
   const [dispensado, setDispensado] = useState(false);
   const [aplicado, setAplicado] = useState(false);
 
   const hoje = data && data.hoje;
-  if (!hoje || dispensado) return null;
+  const programa = data && data.programa;
+  if (!hoje || !programa || dispensado) return null;
+
+  const quantos = programa.principal.length + programa.lateral.length;
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 px-4 py-3">
@@ -30,13 +35,13 @@ export function SeasonBanner({ onAplicar }) {
         </div>
         <div className="text-xs leading-snug text-ink-3">
           {aplicado
-            ? 'Tema, decoração e a mensagem de homenagem já entraram. Dá para editar tudo normalmente.'
-            : 'Aplique o pacote pronto: cores da data, decoração animada e uma mensagem de homenagem na playlist.'}
+            ? 'Cores, decoração, conteúdo em todas as zonas e os avisos do rodapé já entraram. Dá para editar tudo normalmente.'
+            : `Programação pronta: cores da data, decoração, ${quantos} conteúdos nas zonas e os avisos do rodapé — o bastante para rodar o dia inteiro.`}
         </div>
       </div>
       {!aplicado && (
         <Button size="sm" variant="primary" icon={Sparkles}
-          onClick={() => { onAplicar(hoje); setAplicado(true); }}>
+          onClick={() => { onAplicar(hoje, programa); setAplicado(true); }}>
           Vestir a tela
         </Button>
       )}

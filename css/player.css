@@ -833,8 +833,39 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 
 /* ---------- Composição (editor tipo Canva) ----------
    Elementos posicionados em % da zona; escala pra qualquer formato. */
+/* A zona recebe o fundo da peça; o PALCO carrega a proporção dela. Assim a
+   peça nunca estica: ela cabe inteira e o fundo continua até a borda. */
 .mt-comp { position: absolute; inset: 0; overflow: hidden;
-  background-size: cover; background-position: center; }
+  display: flex; align-items: center; justify-content: center; }
+/* Sobra ao redor da peça: o próprio fundo dela, ampliado e desfocado. Repetir
+   o fundo em tamanho diferente deixaria uma emenda onde os dois gradientes não
+   batem — desfocado, a sobra lê como continuação. */
+.mt-comp::before {
+  content: ""; position: absolute; inset: 0;
+  background: var(--peca-bg, transparent);
+  background-size: cover; background-position: center;
+  filter: blur(30px) saturate(1.1) brightness(.8);
+  transform: scale(1.14);
+  z-index: 0;
+}
+.mt-comp-fit, .mt-comp-palco > * { position: relative; z-index: 1; }
+/* Encaixe: largura limitada pela largura da zona E pela altura dela vezes a
+   proporção da peça. Empilhar width:100% com max-height NÃO funciona — o
+   navegador respeita a largura e corta a altura, quebrando a proporção. Por
+   isso a conta é explícita, em unidades de container da zona. */
+.mt-comp-fit {
+  --r: 1.7778;
+  position: relative;
+  width: min(100%, calc(100cqh * var(--r)));
+  aspect-ratio: var(--r);
+}
+.mt-comp-palco {
+  position: absolute; inset: 0; overflow: hidden;
+  background-size: cover; background-position: center;
+  /* container próprio: o cqw das fontes passa a medir a PEÇA, não a zona —
+     é o que faz o corpo do texto bater com o que foi composto. */
+  container-type: size;
+}
 .mt-comp-el { position: absolute; transform-origin: center center; will-change: transform; }
 .mt-comp-img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .mt-comp-text { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;

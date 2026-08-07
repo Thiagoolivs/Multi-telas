@@ -76,33 +76,50 @@ export function ContentEditorPage({ device, onBack }) {
   }
 
   /*
-   * Veste a tela com o pacote da data: tema, decoração e a mensagem de
-   * homenagem. A saudação vai para a ZONA PRINCIPAL — é onde a pessoa olha, e
-   * mandar para a lateral faria a homenagem passar despercebida.
+   * Veste a tela com a PROGRAMAÇÃO da data — não com uma mensagem só.
    *
-   * Não apaga nada: entra no começo da playlist para aparecer já na volta.
+   * Antes isto punha a saudação na zona principal e pronto: a lateral ficava
+   * vazia, o rodapé com o texto de sempre e nenhuma decoração. O cliente
+   * aplicava a data e a tela continuava com cara de nada.
+   *
+   * Agora entra conteúdo em toda zona que o layout tiver, mais tema, decoração
+   * e os avisos do rodapé. Nada é apagado: o que já existia continua depois.
    */
-  function aplicarSeason(season) {
+  function aplicarSeason(season, programa) {
     patchCfg((next) => {
-      if (season.theme) {
+      const t = programa.theme || season.theme;
+      if (t) {
         const atual = next.settings.theme || {};
         next.settings.theme = {
           ...atual,
-          preset: season.theme.preset || atual.preset,
-          overrides: { ...(atual.overrides || {}), ...(season.theme.overrides || {}) },
+          preset: t.preset || atual.preset,
+          overrides: { ...(atual.overrides || {}), ...(t.overrides || {}) },
         };
       }
-      if (season.decoracao) next.settings.decoracao = season.decoracao;
-      if (season.greeting) {
-        const zonas = zonesOf(next);
-        const alvo = (zonas.find((z) => z.id === 'principal') || zonas.find((z) => z.type === 'playlist') || zonas[0]);
-        if (alvo) {
-          ensureZone(next, alvo);
-          const lista = next.zonas[alvo.id].items;
-          // Reaplicar não deve empilhar cópias da mesma homenagem.
-          const jaTem = lista.some((i) => i && i.titulo === season.greeting.titulo);
-          if (!jaTem) lista.unshift({ ...season.greeting, _season: season.id });
-        }
+      if (programa.decoracao) next.settings.decoracao = programa.decoracao;
+
+      const zonas = zonesOf(next);
+      const porTipo = (id) => zonas.find((z) => z.id === id);
+
+      // Reaplicar não empilha: marcamos o que veio da data e trocamos.
+      const juntar = (zona, novos) => {
+        if (!zona || !novos || !novos.length) return;
+        ensureZone(next, zona);
+        const lista = next.zonas[zona.id].items || [];
+        const semAntigos = lista.filter((i) => !(i && i._season === season.id));
+        next.zonas[zona.id].items = novos.map((i) => ({ ...i, _season: season.id })).concat(semAntigos);
+      };
+
+      juntar(porTipo('principal') || zonas.find((z) => z.type === 'playlist'), programa.principal);
+      juntar(porTipo('lateral'), programa.lateral);
+
+      const rod = zonas.find((z) => z.type === 'ticker');
+      if (rod && programa.rodape && programa.rodape.messages.length) {
+        ensureZone(next, rod);
+        const z = next.zonas[rod.id];
+        z.titulo = programa.rodape.titulo || z.titulo;
+        const antigas = (z.messages || []).filter((m) => !programa.rodape.messages.includes(m));
+        z.messages = programa.rodape.messages.concat(antigas);
       }
     });
   }
@@ -217,7 +234,7 @@ export function ContentEditorPage({ device, onBack }) {
 
       {publishError && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError}</div>}
 
-      {cfg && <SeasonBanner onAplicar={aplicarSeason} />}
+      {cfg && <SeasonBanner zonas={zones.map((z) => z.id)} onAplicar={aplicarSeason} />}
 
       {loading || !cfg ? (
         <div className="flex justify-center py-20"><Spinner size={22} /></div>

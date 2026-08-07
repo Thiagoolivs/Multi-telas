@@ -114,7 +114,11 @@ DIREÇÃO DE ARTE — escolha uma:
 - "suave": degradê discreto. Para institucional e comunicado interno.
 
 DECISÕES QUE SÃO SUAS:
-- quantas peças e para quais formatos, conforme o objetivo do briefing;
+- para quais formatos, conforme o objetivo do briefing. Em CADA formato
+  escolhido, entregue NO MÍNIMO DUAS peças com mensagens DIFERENTES — a mesma
+  arte repetindo a cada 12 segundos cansa em minutos. Uma abre o assunto, a
+  outra dá o argumento ou a urgência. Nunca duas peças dizendo o mesmo com
+  palavras trocadas;
 - se a peça pede uma IMAGEM DE FUNDO ou se resolve melhor com formas e cor — a
   maioria das peças corporativas resolve com formas, use foto quando ela agrega
   mesmo. Quando a peça pedir foto, siga esta ordem:
@@ -206,6 +210,45 @@ async function planejar(brief, ctx) {
 
 const FORMATOS_OK = ['16/9', '9/16', '1/1', '21/9'];
 
+/*
+ * Uma peça só por formato faz a TV repetir a mesma arte a cada 12 segundos —
+ * cansa em minutos e é o oposto de "campanha que roda o dia".
+ *
+ * O prompt pede duas; isto GARANTE. Quando falta, trazemos uma MENSAGEM
+ * diferente já existente na campanha e a recompomos no formato que faltou.
+ * Duplicar a mesma peça seria pior que ter uma: repetiria o texto e ainda
+ * fingiria variedade.
+ */
+function garantirDuasPorFormato(pecas) {
+  const porFormato = new Map();
+  pecas.forEach((p) => {
+    if (!porFormato.has(p.formato)) porFormato.set(p.formato, []);
+    porFormato.get(p.formato).push(p);
+  });
+
+  const saida = pecas.slice();
+  for (const [formato, lista] of porFormato) {
+    if (lista.length >= 2) continue;
+    const usados = new Set(lista.map((x) => x.headline));
+    // Candidata: qualquer peça de outro formato cuja mensagem ainda não está
+    // neste. Se não houver, a campanha tem uma mensagem só e não há o que fazer.
+    const outra = pecas.find((x) => x.formato !== formato && !usados.has(x.headline));
+    if (!outra) continue;
+    saida.push({ ...outra, formato, canal: canalDoFormato(formato, outra.canal) });
+  }
+  return saida.slice(0, 12);
+}
+
+// O canal é o rótulo que o usuário lê ("TV", "Story"). Ao mudar de formato ele
+// precisa acompanhar, senão a peça 9/16 aparece anunciada como "TV".
+function canalDoFormato(formato, atual) {
+  if (formato === '9/16') return 'Story';
+  if (formato === '1/1') return 'Feed';
+  if (formato === '21/9') return 'Banner';
+  if (formato === '16/9') return 'TV';
+  return atual || 'TV';
+}
+
 function normalizarPlano(p, ctx, brief) {
   p = p && typeof p === 'object' ? p : {};
   const id = p.identidade || {};
@@ -238,7 +281,10 @@ function normalizarPlano(p, ctx, brief) {
       imagemBase: iBase,
       bgImagem: iBase != null ? bases[iBase].url : '',
       formato: FORMATOS_OK.includes(x && x.formato) ? x.formato : '16/9',
-      canal: String((x && x.canal) || 'TV').slice(0, 20),
+      // O canal é o rótulo que o usuário lê. Sem o formato como padrão, uma
+      // peça vertical aparecia anunciada como "TV".
+      canal: String((x && x.canal) || canalDoFormato(
+        FORMATOS_OK.includes(x && x.formato) ? x.formato : '16/9')).slice(0, 20),
       objetivo: String((x && x.objetivo) || '').slice(0, 140),
       kicker: String((x && x.kicker) || '').slice(0, 40),
       headline: String((x && x.headline) || '').slice(0, 70),
@@ -249,11 +295,13 @@ function normalizarPlano(p, ctx, brief) {
     };
   };
   let pecas = (Array.isArray(p.pecas) ? p.pecas : []).map(normalizarPeca)
-    .filter((x) => x.headline).slice(0, 8);
+    .filter((x) => x.headline).slice(0, 12);
 
   // O plano de reserva passa pela MESMA normalização — inclusive a resolução do
   // acervo, senão a empresa perde as próprias fotos justo quando a IA falhou.
   if (!pecas.length) pecas = planoDev(brief, ctx).pecas.map(normalizarPeca);
+
+  pecas = garantirDuasPorFormato(pecas);
 
   const social = p.social && typeof p.social === 'object' ? p.social : {};
   return {
@@ -293,10 +341,18 @@ function planoDev(brief, ctx) {
       estilo: 'vibrante', direcao: 'chapado',
       racional: 'Modo demonstração — defina GEMINI_API_KEY para a direção real.',
     },
+    /*
+     * Duas mensagens por formato até no modo demonstração: é o que o cliente
+     * vê primeiro, e uma peça só por formato dá a impressão errada de que a
+     * campanha vai ficar repetindo a mesma arte.
+     */
     pecas: [
       { ...base, formato: '16/9', canal: 'TV', objetivo: 'Chamar atenção na tela principal' },
+      { ...base, headline: 'Só esta semana', sub: 'Aproveite enquanto dura.', formato: '16/9', canal: 'TV', objetivo: 'Reforçar a urgência' },
       { ...base, formato: '9/16', canal: 'Story', objetivo: 'Alcance nas redes' },
+      { ...base, headline: 'Passe aqui hoje', sub: 'Estamos esperando você.', formato: '9/16', canal: 'Story', objetivo: 'Chamar para a loja' },
       { ...base, formato: '1/1', canal: 'Feed', objetivo: 'Post de feed' },
+      { ...base, headline: 'Novidade no balcão', sub: 'Venha conhecer.', formato: '1/1', canal: 'Feed', objetivo: 'Segundo post' },
     ],
     social: {
       instagram: titulo + '\n\n(modo demonstração)',

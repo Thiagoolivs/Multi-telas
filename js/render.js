@@ -1238,14 +1238,52 @@
     return Math.max(2, diag * k);
   }
 
+  /*
+   * A peça é composta para um FORMATO (16/9, 9/16…), mas a zona onde ela cai
+   * pode ter qualquer proporção — e com layout dinâmico ela muda de proporção
+   * a cada troca de arranjo.
+   *
+   * Antes o palco da peça era `inset: 0`: ela esticava para preencher a zona.
+   * Um círculo virava elipse, um layout equilibrado ficava torto, e o mesmo
+   * design se deformava de um jeito diferente a cada 20 segundos. É a causa do
+   * "os designs entram em telas que não cabem e ficam feios".
+   *
+   * Agora a peça mantém a própria proporção, centrada, e o FUNDO DELA preenche
+   * o resto da zona. Não são barras pretas: é a mesma cor ou a mesma foto
+   * continuando — a peça parece maior, não recortada.
+   */
   function renderComposicao(item) {
     const el = div('mt-slide mt-comp');
     const bg = item.bg || {};
+    const fundoCss = (alvo) => {
+      if (bg.kind === 'imagem' && bg.src) {
+        alvo.style.backgroundImage = 'url("' + String(bg.src).replace(/"/g, '') + '")';
+      } else if (bg.kind === 'cor' && bg.cor) {
+        alvo.style.background = bg.cor;
+      } // senão herda o vidro/tema da zona
+    };
+    /*
+     * A sobra ao redor da peça recebe o MESMO fundo, mas desfocado e ampliado
+     * — o truque dos players de vídeo. Repetir o fundo em tamanho diferente
+     * deixaria uma emenda visível onde os dois gradientes não batem; desfocado,
+     * a sobra lê como continuação da peça.
+     */
     if (bg.kind === 'imagem' && bg.src) {
-      el.style.backgroundImage = 'url("' + String(bg.src).replace(/"/g, '') + '")';
+      el.style.setProperty('--peca-bg', 'url("' + String(bg.src).replace(/"/g, '') + '")');
     } else if (bg.kind === 'cor' && bg.cor) {
-      el.style.background = bg.cor;
-    } // senão herda o vidro/tema da zona
+      el.style.setProperty('--peca-bg', bg.cor);
+    }
+
+    // O encaixe carrega a proporção; o palco é o container das fontes.
+    const [fw, fh] = String(item.formato || '16/9').split('/').map(Number);
+    const razao = (fw && fh) ? fw / fh : 16 / 9;
+    const fit = div('mt-comp-fit');
+    fit.style.setProperty('--r', razao.toFixed(4));
+    const palco = div('mt-comp-palco');
+    fundoCss(palco); // o fundo também DENTRO do palco, senão a peça fica vazada
+    fit.appendChild(palco);
+    el.appendChild(fit);
+
     const els = (Array.isArray(item.elementos) ? item.elementos : []).slice()
       .sort((a, b) => (a.z || 0) - (b.z || 0));
     els.forEach((e) => {
@@ -1298,7 +1336,7 @@
         if (e.radius) img.style.borderRadius = e.radius + 'cqw';
         box.appendChild(img);
       }
-      el.appendChild(box);
+      palco.appendChild(box);
     });
     return { el, duration: item.duracao || 12 };
   }
