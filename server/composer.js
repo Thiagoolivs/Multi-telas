@@ -249,6 +249,119 @@ function ordenarCamadas(elementos) {
  * com o relatório do que precisou ser corrigido (útil para melhorar o prompt e
  * para mostrar no painel que houve ajuste automático).
  */
+/* ---------------- Autodiagnóstico da peça ----------------
+ *
+ * O validador conserta o que sabe consertar. Isto é diferente: OLHA o
+ * resultado e descreve os problemas que sobraram — os que exigem outra
+ * composição, não um ajuste.
+ *
+ * Por que geometria e não visão de máquina: rasterizar a peça no servidor
+ * exigiria um navegador headless, que não existe no ambiente de produção. Já a
+ * geometria o código conhece com precisão total — sobreposição, vazio,
+ * desalinhamento e aperto de borda são fatos calculáveis, não impressões. É
+ * mais confiável que pedir a um modelo para achar isso numa imagem, e chega
+ * como instrução concreta na hora de refazer.
+ */
+
+// Só o que a pessoa lê. Forma e decoração se sobrepõem de propósito.
+const PAPEIS_CONTEUDO = ['kicker', 'headline', 'display', 'sub', 'cta', 'logo', 'imagem', 'legal'];
+const ehConteudo = (e) => PAPEIS_CONTEUDO.includes(e.papel) || e.tipo === 'texto';
+
+function areaSobreposta(a, b) {
+  const w = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 ? w * h : 0;
+}
+
+function diagnosticar(elementos, formato) {
+  const achados = [];
+  const conteudo = elementos.filter(ehConteudo);
+  if (!conteudo.length) return achados;
+
+  /*
+   * 1. Sobreposição entre conteúdos. Texto por cima de texto é o erro que mais
+   * estraga a peça e o que o validador de contraste não enxerga — ele mede cor
+   * contra o FUNDO, não contra outra palavra.
+   */
+  for (let i = 0; i < conteudo.length; i++) {
+    for (let j = i + 1; j < conteudo.length; j++) {
+      const a = conteudo[i], b = conteudo[j];
+      const inter = areaSobreposta(a, b);
+      if (inter <= 0) continue;
+      const menor = Math.min(a.w * a.h, b.w * b.h) || 1;
+      const parte = inter / menor;
+      // Abaixo de 8% é encosto de caixa, não colisão visível.
+      if (parte >= 0.08) {
+        achados.push(`"${rotulo(a)}" e "${rotulo(b)}" se sobrepõem em ${Math.round(parte * 100)}% — separe os blocos`);
+      }
+    }
+  }
+
+  /*
+   * 2. Alinhamento. Três margens esquerdas quase iguais mas não iguais é o que
+   * separa peça de agência de peça de editor: ninguém aponta o motivo, todo
+   * mundo sente. Só reclamamos do quase-alinhado — variar de propósito é arte.
+   */
+  const esquerdas = conteudo.filter((e) => (e.align || 'left') === 'left').map((e) => e.x);
+  if (esquerdas.length >= 2) {
+    const distintas = [];
+    esquerdas.forEach((x) => { if (!distintas.some((d) => Math.abs(d - x) < 0.4)) distintas.push(x); });
+    const quase = distintas.filter((a, i) => distintas.some((b, j) => j !== i && Math.abs(a - b) <= 4));
+    if (quase.length >= 2) {
+      achados.push(`margens quase iguais (${quase.map((v) => v.toFixed(1) + '%').join(', ')}) — alinhe no mesmo eixo`);
+    }
+  }
+
+  /*
+   * 3. Peso mal distribuído. Divide a peça em quadrantes e mede quanta área de
+   * conteúdo cai em cada um. Tudo empilhado num canto com três quartos vazios
+   * não é respiro, é peça torta.
+   */
+  const quad = [0, 0, 0, 0];
+  conteudo.forEach((e) => {
+    const cx = e.x + e.w / 2, cy = e.y + e.h / 2;
+    const i = (cy >= 50 ? 2 : 0) + (cx >= 50 ? 1 : 0);
+    quad[i] += e.w * e.h;
+  });
+  const total = quad.reduce((s, v) => s + v, 0);
+  if (total > 0) {
+    const maior = Math.max(...quad);
+    const ocupados = quad.filter((v) => v / total >= 0.08).length;
+    if (maior / total > 0.82 && ocupados <= 1) {
+      const nomes = ['superior esquerdo', 'superior direito', 'inferior esquerdo', 'inferior direito'];
+      achados.push(`quase tudo no canto ${nomes[quad.indexOf(maior)]} — distribua o peso na peça`);
+    }
+  }
+
+  /*
+   * 4. Aperto de borda. Elemento colado na margem da área segura passa a
+   * sensação de que a peça foi cortada — em TV com overscan, às vezes é.
+   */
+  const s = ds.safeArea(formato);
+  const colados = conteudo.filter((e) => {
+    if (e.papel === 'display') return false; // display sangra de propósito
+    return (e.x - s.x) < 0.5 || ((s.x + s.w) - (e.x + e.w)) < 0.5
+      || (e.y - s.y) < 0.5 || ((s.y + s.h) - (e.y + e.h)) < 0.5;
+  });
+  if (colados.length >= 2) {
+    achados.push(`${colados.length} elementos colados na borda da área segura — dê respiro`);
+  }
+
+  /*
+   * 5. Hierarquia. Se o maior texto não é o headline, a peça não tem foco: a
+   * pessoa lê o detalhe antes da mensagem.
+   */
+  const textos = conteudo.filter((e) => e.tipo === 'texto' && e.text);
+  if (textos.length >= 2) {
+    const maiorTexto = textos.reduce((a, b) => ((b.tamanho || 0) > (a.tamanho || 0) ? b : a));
+    if (!['headline', 'display'].includes(maiorTexto.papel)) {
+      achados.push(`"${rotulo(maiorTexto)}" está maior que o título — o olho lê o detalhe primeiro`);
+    }
+  }
+
+  return achados.slice(0, 6);
+}
+
 function validarComposicao(bruto, { formato = '16/9', palette, duracao = 12 } = {}) {
   const pal = palette || ds.buildPalette('#1e3a8a', null, 'escuro');
   const correcoes = [];
@@ -286,6 +399,13 @@ function validarComposicao(bruto, { formato = '16/9', palette, duracao = 12 } = 
 
   const bg = sanearBg(bruto && bruto.bg, pal);
 
+  /*
+   * O diagnóstico roda DEPOIS de todo conserto: o que ele acusa é o que
+   * sobrou de errado na peça final, não no rascunho do modelo. Sem isso a
+   * crítica reclamaria de coisas que o código já tinha resolvido.
+   */
+  const problemas = diagnosticar(elementos, formato);
+
   return {
     item: {
       type: 'composicao',
@@ -295,6 +415,7 @@ function validarComposicao(bruto, { formato = '16/9', palette, duracao = 12 } = 
       elementos: elementos.map(({ papel, ...resto }) => (papel ? { ...resto, papel } : resto)),
     },
     correcoes,
+    problemas,
   };
 }
 
@@ -314,4 +435,4 @@ function sanearBg(bg, palette) {
   return { kind: 'cor', cor: `linear-gradient(150deg, ${palette.bg}, ${palette.bgAlt})` };
 }
 
-module.exports = { validarComposicao, sanearElemento, dentroDaAreaSegura, corrigirContraste, ajustarTamanho, separarTextos, ordenarCamadas };
+module.exports = { validarComposicao, diagnosticar, sanearElemento, dentroDaAreaSegura, corrigirContraste, ajustarTamanho, separarTextos, ordenarCamadas };

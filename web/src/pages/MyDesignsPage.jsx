@@ -489,6 +489,16 @@ export function MyDesignsPage() {
                   <div key={i} className="space-y-1">
                     <DesignThumb item={p.item} />
                     <span className="block truncate text-2xs text-ink-3">{p.canal} · {p.formato}{p.usouAcervo ? ' · foto sua' : ''}</span>
+                    {/*
+                      O que a IA viu de errado e não conseguiu resolver. Mostrar
+                      é o que permite ao usuário editar em vez de publicar torto
+                      — esconder seria mentir sobre a qualidade da peça.
+                    */}
+                    {p.problemas && p.problemas.length > 0 && (
+                      <div className="rounded border border-line bg-surface-2 px-1.5 py-1 text-2xs leading-snug text-ink-3">
+                        <span className="font-semibold text-ink-2">revisar:</span> {p.problemas[0]}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

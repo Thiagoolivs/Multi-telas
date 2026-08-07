@@ -10,6 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const ds = require('../server/design-system');
 const { validarComposicao } = require('../server/composer');
+const composer = require('../server/composer');
 
 const palette = ds.buildPalette('#1e3a8a', '#0ea5e9', 'escuro');
 const acha = (item, papel) => item.elementos.find((e) => e.papel === papel);
@@ -194,4 +195,79 @@ test('forma opaca e clara faz o texto virar escuro', () => {
 
   const t = acha(item, 'headline');
   assert.ok(ds.contrast(t.cor, '#ffffff') >= ds.MIN_CONTRAST_TITULO, 'texto continua ilegível sobre branco');
+});
+
+/* ---------------- Autodiagnóstico ----------------
+ * Estes testes protegem o que a IA "vê" da própria peça. Cada detector existe
+ * por causa de um jeito específico de a composição sair errada sem que o
+ * validador de contraste ou de área segura perceba.
+ */
+
+test('diagnóstico acusa conteúdo sobreposto', () => {
+  const p = composer.diagnosticar([
+    { tipo: 'texto', papel: 'headline', text: 'PROMOÇÃO', x: 10, y: 30, w: 50, h: 20, tamanho: 8 },
+    { tipo: 'imagem', papel: 'logo', src: 'x', x: 20, y: 34, w: 30, h: 14 },
+  ], '16/9');
+  assert.ok(p.some((m) => /se sobrep/.test(m)));
+});
+
+test('forma de fundo pode ficar embaixo do texto sem virar problema', () => {
+  const p = composer.diagnosticar([
+    { tipo: 'forma', papel: 'fundo', x: -5, y: 0, w: 110, h: 100 },
+    { tipo: 'texto', papel: 'headline', text: 'Oi', x: 10, y: 30, w: 50, h: 20, tamanho: 8 },
+  ], '16/9');
+  assert.ok(!p.some((m) => /se sobrep/.test(m)), 'fundo atrás do texto é o esperado');
+});
+
+test('diagnóstico acusa margens quase iguais', () => {
+  const p = composer.diagnosticar([
+    { tipo: 'texto', papel: 'kicker', text: 'A', x: 10, y: 15, w: 30, h: 8, tamanho: 3, align: 'left' },
+    { tipo: 'texto', papel: 'headline', text: 'B', x: 12.5, y: 30, w: 50, h: 18, tamanho: 8, align: 'left' },
+  ], '16/9');
+  assert.ok(p.some((m) => /margens quase iguais/.test(m)));
+});
+
+test('margens iguais de verdade não viram problema', () => {
+  const p = composer.diagnosticar([
+    { tipo: 'texto', papel: 'kicker', text: 'A', x: 10, y: 15, w: 30, h: 8, tamanho: 3, align: 'left' },
+    { tipo: 'texto', papel: 'headline', text: 'B', x: 10, y: 32, w: 50, h: 18, tamanho: 8, align: 'left' },
+    { tipo: 'texto', papel: 'cta', text: 'C', x: 10, y: 60, w: 24, h: 9, tamanho: 4, align: 'left' },
+  ], '16/9');
+  assert.ok(!p.some((m) => /margens/.test(m)));
+});
+
+test('diagnóstico acusa peso todo num canto', () => {
+  const p = composer.diagnosticar([
+    { tipo: 'texto', papel: 'headline', text: 'Oi', x: 8, y: 8, w: 24, h: 12, tamanho: 7 },
+    { tipo: 'texto', papel: 'sub', text: 'tudo aqui', x: 8, y: 22, w: 22, h: 8, tamanho: 3 },
+  ], '16/9');
+  assert.ok(p.some((m) => /canto/.test(m)));
+});
+
+test('diagnóstico acusa hierarquia invertida', () => {
+  const p = composer.diagnosticar([
+    { tipo: 'texto', papel: 'headline', text: 'Promo', x: 10, y: 20, w: 40, h: 12, tamanho: 4 },
+    { tipo: 'texto', papel: 'sub', text: '50%', x: 10, y: 45, w: 40, h: 25, tamanho: 12 },
+  ], '16/9');
+  assert.ok(p.some((m) => /maior que o t.tulo/.test(m)));
+});
+
+test('peça bem composta não gera problema nenhum', () => {
+  const p = composer.diagnosticar([
+    { tipo: 'texto', papel: 'kicker', text: 'NOVIDADE', x: 10, y: 18, w: 30, h: 7, tamanho: 3, align: 'left' },
+    { tipo: 'texto', papel: 'headline', text: 'Chegou o inverno', x: 10, y: 30, w: 55, h: 18, tamanho: 9, align: 'left' },
+    { tipo: 'texto', papel: 'cta', text: 'Confira', x: 10, y: 60, w: 24, h: 9, tamanho: 4, align: 'left' },
+  ], '16/9');
+  assert.deepEqual(p, []);
+});
+
+test('validar devolve os problemas que sobraram DEPOIS dos consertos', () => {
+  // O validador separa textos sobrepostos; o diagnóstico não deve reclamar do
+  // que ele já resolveu, senão a crítica manda refazer à toa.
+  const r = composer.validarComposicao({ elementos: [
+    { tipo: 'texto', papel: 'headline', text: 'PROMOÇÃO', x: 10, y: 30, w: 50, h: 20, tamanho: 8, cor: '#ffffff' },
+    { tipo: 'texto', papel: 'sub', text: 'Só hoje', x: 10, y: 34, w: 40, h: 16, tamanho: 4, cor: '#ffffff' },
+  ] }, { formato: '16/9', palette });
+  assert.ok(Array.isArray(r.problemas));
+  assert.ok(!r.problemas.some((m) => /se sobrep/.test(m)), 'o validador já separou os textos');
 });

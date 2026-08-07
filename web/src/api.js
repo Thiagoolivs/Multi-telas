@@ -101,6 +101,11 @@ export const brand = {
   removeAsset: (id) => api('DELETE', '/api/brand/assets/' + id),
 };
 
+// Datas comemorativas: catálogo e qual está valendo hoje.
+export const seasons = {
+  list: () => api('GET', '/api/seasons'),
+};
+
 export const library = {
   list: () => api('GET', '/api/library'),
   save: (campaign, pieces) => api('POST', '/api/library', { campaign, pieces }),

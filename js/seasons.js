@@ -127,5 +127,13 @@
 
   function getSeason(id) { return SEASONS.find((s) => s.id === id) || null; }
 
-  global.MTSeasons = { SEASONS, DECORATIONS, todaySeason, getSeason };
-})(window);
+  const api = { SEASONS, DECORATIONS, todaySeason, getSeason };
+  global.MTSeasons = api;
+  /*
+   * O servidor lê o MESMO arquivo (require) para servir o catálogo ao painel
+   * React. Antes só o player e o admin antigo enxergavam as datas — o painel
+   * novo não tinha como oferecer "aplicar Dia dos Pais", e o pacote existia
+   * sem ninguém alcançar. Duas cópias da lista seria pior: uma envelhece.
+   */
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
