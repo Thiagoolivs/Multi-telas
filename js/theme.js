@@ -161,49 +161,18 @@
 
   const DEFAULT_PRESET = 'dark-premium';
 
-  /* ---------------- Cor: utilidades ---------------- */
-
-  function hex2rgb(hex) {
-    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
-    if (!m) return null;
-    const n = parseInt(m[1], 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  }
-  function rgb2hex(r, g, b) {
-    const c = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
-    return '#' + c(r) + c(g) + c(b);
-  }
-  const okHex = (v) => (hex2rgb(v) ? (String(v)[0] === '#' ? String(v) : '#' + v) : null);
-  function mix(a, b, p) {
-    const A = hex2rgb(a), B = hex2rgb(b);
-    if (!A || !B) return a;
-    return rgb2hex(A[0] + (B[0] - A[0]) * p, A[1] + (B[1] - A[1]) * p, A[2] + (B[2] - A[2]) * p);
-  }
-  function girarMatiz(hex, graus) {
-    const rgb = hex2rgb(hex);
-    if (!rgb) return hex;
-    let [r, g, b] = rgb.map((v) => v / 255);
-    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
-    let h = 0;
-    if (d) {
-      if (max === r) h = ((g - b) / d) % 6;
-      else if (max === g) h = (b - r) / d + 2;
-      else h = (r - g) / d + 4;
-    }
-    h = (h * 60 + graus + 360) % 360;
-    const l = (max + min) / 2;
-    const s = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
-    const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
-    const t = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x]
-      : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
-    return rgb2hex((t[0] + m) * 255, (t[1] + m) * 255, (t[2] + m) * 255);
-  }
-  function contraste(a, b) {
-    const la = luminance(a), lb = luminance(b);
-    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
-  }
-  const rgbTriple = (hex) => { const c = hex2rgb(hex); return c ? c.join(',') : '22,32,60'; };
-  function rgba(hex, a) { const c = hex2rgb(hex); return c ? 'rgba(' + c.join(',') + ',' + a + ')' : 'rgba(255,255,255,' + a + ')'; }
+  /* ---------------- Cor: utilidades ----------------
+   *
+   * A matemática vem de js/cor.js — o MESMO arquivo que o gerador de peças usa
+   * no servidor. Antes existiam duas cópias, e elas já tinham divergido: uma
+   * aceitava hex de três dígitos, a outra não. Pior, o bug do acento sobre
+   * laranja precisou ser corrigido nos dois lugares, com meses de distância.
+   */
+  // No navegador vem do <script> anterior; em teste, do require.
+  const C = global.MTCor || (typeof require === 'function' ? require('./cor.js') : null);
+  const { hex2rgb, rgb2hex, okHex, mix, girarMatiz, contraste, rgba } = C;
+  const luminance = C.luminancia;
+  const rgbTriple = C.rgbTriple;
 
   /* ---------------- Tema a partir da marca ----------------
    *
@@ -227,36 +196,9 @@
    */
   const MIN_CONTRASTE = 4.5;
 
-  // Texto legível sobre um fundo, tentando o tom claro da marca antes do branco
-  // puro: mantém a identidade quando ela ainda passa no contraste.
-  function textoSobre(fundo, marca) {
-    const claro = marca ? mix('#ffffff', marca, 0.12) : '#ffffff';
-    if (contraste(fundo, claro) >= MIN_CONTRASTE) return claro;
-    if (contraste(fundo, '#ffffff') >= MIN_CONTRASTE) return '#ffffff';
-    const escuro = marca ? mix('#0b1020', marca, 0.15) : '#0b1020';
-    return contraste(fundo, escuro) >= contraste(fundo, '#ffffff') ? escuro : '#ffffff';
-  }
-
-  /*
-   * Acento que aparece sobre o fundo.
-   *
-   * Tenta clarear E escurecer. Escolher a direção pela luminância do fundo
-   * parece óbvio e erra justamente nas cores de meio-tom: laranja é escuro o
-   * bastante para o cálculo mandar clarear, mas clarear laranja não passa de
-   * ~2.4:1 — o selo sai lavado. Escurecer chega a 5:1 no mesmo caso.
-   */
-  function acentoSobre(fundo, marca) {
-    let melhor = marca, melhorC = contraste(fundo, marca);
-    for (const alvo of ['#ffffff', '#0b1020']) {
-      for (let i = 1; i <= 16; i++) {
-        const c = mix(marca, alvo, i * 0.05);
-        const k = contraste(fundo, c);
-        if (k > melhorC) { melhor = c; melhorC = k; }
-        if (melhorC >= 3.5) return melhor;
-      }
-    }
-    return melhor;
-  }
+  // Ambas moram em js/cor.js: são as regras que o gerador de peças também usa.
+  const textoSobre = (fundo, marca) => C.textoSobre(fundo, marca, MIN_CONTRASTE);
+  const acentoSobre = (fundo, marca) => C.acentoSobre(fundo, marca, 3.5);
 
   function cores1e2(cores) {
     const lista = (Array.isArray(cores) ? cores : []).map(okHex).filter(Boolean);
@@ -332,16 +274,6 @@
   }
 
   // Luminância relativa (0–1) de uma cor hex, para escolher texto legível.
-  function luminance(hex) {
-    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
-    if (!m) return 0.5;
-    const n = parseInt(m[1], 16);
-    const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
-      v /= 255;
-      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-    });
-    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
-  }
   // Cor de texto que contrasta com um fundo sólido (para chips/badges).
   function onColor(hex) {
     return luminance(hex) > 0.55 ? '#0b1020' : '#ffffff';

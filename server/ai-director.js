@@ -163,6 +163,7 @@ Responda APENAS com JSON, neste formato:
     {
       "formato": "16/9" | "9/16" | "1/1" | "21/9",
       "canal": "TV" | "Feed" | "Story" | "Banner",
+      "faixa": "manha" | "almoco" | "tarde" | "saida" | "dia",
       "objetivo": "1 frase",
       "kicker": "", "headline": "", "sub": "", "cta": "",
       "imagemBase": null,
@@ -179,6 +180,13 @@ Responda APENAS com JSON, neste formato:
     { "quando": "ex.: segunda 9h", "canal": "Feed", "motivo": "1 frase" }
   ]
 }
+
+A "faixa" é a hora do DIA em que a peça faz sentido na TV, e é o que faz a
+campanha durar sem alguém trocando nada: bom dia e avisos de expediente pela
+manhã, cardápio e descanso no almoço, produto e promoção à tarde, agradecimento
+e segurança na saída. Use "dia" só para o que serve a qualquer hora. Varie —
+uma campanha inteira na mesma faixa vira a mesma tela o dia todo.
+
 Português do Brasil.`;
 
 /*
@@ -233,6 +241,43 @@ async function planejar(brief, ctx) {
 }
 
 const FORMATOS_OK = ['16/9', '9/16', '1/1', '21/9'];
+
+/*
+ * As faixas do expediente. Uma campanha que não sabe a hora do dia vira a mesma
+ * tela das 8h às 18h — que é justamente o oposto de "roda por horas ou dias com
+ * ajustes mínimos".
+ *
+ * Os horários são de expediente brasileiro comum e viram `agendamento` no
+ * player, que já sabe respeitar janela de hora e dia da semana.
+ */
+const FAIXAS = {
+  manha:  { rotulo: 'Manhã',        horaInicio: '06:00', horaFim: '11:29' },
+  almoco: { rotulo: 'Almoço',       horaInicio: '11:30', horaFim: '13:59' },
+  tarde:  { rotulo: 'Tarde',        horaInicio: '14:00', horaFim: '17:29' },
+  saida:  { rotulo: 'Fim do dia',   horaInicio: '17:30', horaFim: '23:59' },
+  dia:    { rotulo: 'O dia todo',   horaInicio: '', horaFim: '' },
+};
+const FAIXAS_OK = Object.keys(FAIXAS);
+const ORDEM_FAIXAS = ['manha', 'almoco', 'tarde', 'saida'];
+
+/*
+ * Garante variação ao longo do dia mesmo quando o modelo não classifica nada.
+ *
+ * Sem isto, uma campanha em que a IA esqueceu a faixa cairia inteira em "dia
+ * todo" e a promessa de programa viraria de novo uma playlist plana. O
+ * espalhamento é por formato, para cada zona da tela ter as quatro faixas.
+ */
+function espalharPelasFaixas(pecas) {
+  const porFormato = new Map();
+  return pecas.map((p) => {
+    if (p.faixa) return p;
+    const n = porFormato.get(p.formato) || 0;
+    porFormato.set(p.formato, n + 1);
+    // A primeira de cada formato fica no dia todo: é a mensagem-âncora, que
+    // aparece a qualquer hora se ninguém estiver olhando o relógio.
+    return { ...p, faixa: n === 0 ? 'dia' : ORDEM_FAIXAS[(n - 1) % ORDEM_FAIXAS.length] };
+  });
+}
 
 /*
  * Uma peça só por formato faz a TV repetir a mesma arte a cada 12 segundos —
@@ -314,6 +359,9 @@ function normalizarPlano(p, ctx, brief) {
       headline: String((x && x.headline) || '').slice(0, 70),
       sub: String((x && x.sub) || '').slice(0, 130),
       cta: String((x && x.cta) || '').slice(0, 40),
+      // Hora do dia em que a peça entra. É o que transforma a campanha de uma
+      // playlist plana num programa que muda de cara ao longo do expediente.
+      faixa: FAIXAS_OK.includes(x && x.faixa) ? x.faixa : '',
       precisaImagem: iBase == null && !!(x && x.precisaImagem),
       promptImagem: iBase != null ? '' : String((x && x.promptImagem) || '').slice(0, 400),
     };
@@ -326,6 +374,7 @@ function normalizarPlano(p, ctx, brief) {
   if (!pecas.length) pecas = planoDev(brief, ctx).pecas.map(normalizarPeca);
 
   pecas = garantirDuasPorFormato(pecas);
+  pecas = espalharPelasFaixas(pecas);
 
   const social = p.social && typeof p.social === 'object' ? p.social : {};
   return {
@@ -801,6 +850,9 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
     pecas.push({
       formato: peca.formato,
       canal: peca.canal,
+      // Hora do dia em que esta peça entra na TV. Vira `agendamento` quando o
+      // usuário publica — é o que faz a campanha durar sem babá.
+      faixa: peca.faixa || 'dia',
       label: peca.headline.slice(0, 40),
       objetivo: peca.objetivo,
       item,
@@ -830,6 +882,7 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
 }
 
 module.exports = {
+  FAIXAS, FAIXAS_OK,
   dirigir, planejar, comporPeca, layoutReserva, normalizarPlano,
   enriquecerBrief, textoDaCritica,
 };

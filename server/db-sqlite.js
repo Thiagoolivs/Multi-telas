@@ -47,9 +47,12 @@ db.exec(`
     id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
     invited_by TEXT, created_at INTEGER, expires_at INTEGER, accepted_at INTEGER
   );
+  -- origem: 'upload' (a pessoa enviou), 'ia' (gerada) ou 'mural' (do público).
+  -- Toda gravação de arquivo passa por server/midia.js e cai aqui — sem isso a
+  -- cota mentia e a exclusão de conta deixava arquivo órfão.
   CREATE TABLE IF NOT EXISTS media (
     id TEXT PRIMARY KEY, tenant_id TEXT, name TEXT, mime TEXT, size INTEGER,
-    key TEXT, url TEXT, created_at INTEGER
+    key TEXT, url TEXT, origem TEXT, created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
   CREATE TABLE IF NOT EXISTS birthdays (
@@ -113,6 +116,11 @@ if (!userCols.includes('name')) db.exec("ALTER TABLE users ADD COLUMN name TEXT"
 // google_sub: identifica a conta Google (login social). Nulo = só senha.
 if (!userCols.includes('google_sub')) db.exec('ALTER TABLE users ADD COLUMN google_sub TEXT');
 db.exec("UPDATE users SET role = 'owner' WHERE role IS NULL");
+const mediaCols = db.prepare('PRAGMA table_info(media)').all().map((c) => c.name);
+if (!mediaCols.includes('origem')) {
+  db.exec("ALTER TABLE media ADD COLUMN origem TEXT");
+  db.exec("UPDATE media SET origem = 'upload' WHERE origem IS NULL");
+}
 const deviceCols = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
 if (!deviceCols.includes('last_seen')) db.exec('ALTER TABLE devices ADD COLUMN last_seen INTEGER');
 const tenantCols = db.prepare('PRAGMA table_info(tenants)').all().map((c) => c.name);
@@ -159,8 +167,8 @@ const q = {
   deleteDevice: db.prepare('DELETE FROM devices WHERE id = ?'),
   touchDevice: db.prepare('UPDATE devices SET last_seen = ? WHERE id = ?'),
   listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
-  insertMedia: db.prepare('INSERT INTO media (id, tenant_id, name, mime, size, key, url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
-  mediaByTenant: db.prepare('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ? ORDER BY created_at DESC'),
+  insertMedia: db.prepare('INSERT INTO media (id, tenant_id, name, mime, size, key, url, origem, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'),
+  mediaByTenant: db.prepare('SELECT id, name, mime, size, url, origem, created_at FROM media WHERE tenant_id = ? ORDER BY created_at DESC'),
   mediaById: db.prepare('SELECT * FROM media WHERE id = ?'),
   deleteMedia: db.prepare('DELETE FROM media WHERE id = ? AND tenant_id = ?'),
   sumMedia: db.prepare('SELECT COALESCE(SUM(size),0) AS n FROM media WHERE tenant_id = ?'),
@@ -271,7 +279,7 @@ async function setTenantBilling(id, fields) {
 
 /* ---------------- Mídia ---------------- */
 async function createMedia(m) {
-  q.insertMedia.run(m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, Date.now());
+  q.insertMedia.run(m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, m.origem || 'upload', Date.now());
   return m;
 }
 async function listMedia(tenantId) { return q.mediaByTenant.all(tenantId); }
@@ -456,8 +464,9 @@ async function dadosDoTenant(tenantId) {
  * não conhece disco nem R2.
  */
 async function apagarTenant(tenantId) {
-  // Foto de mural não passa pela tabela `media`: sem juntar as duas listas, o
-  // arquivo continuaria no storage depois da conta apagada.
+  // Foto de mural passou a ter linha em `media` (server/midia.js), mas fotos
+  // gravadas ANTES dessa mudança só existem em `muralfotos`. A união cobre as
+  // duas gerações; apagar uma chave que já sumiu é inofensivo.
   const chaves = [
     ...db.prepare('SELECT key FROM media WHERE tenant_id = ?').all(tenantId).map((r) => r.key),
     ...db.prepare('SELECT chave FROM muralfotos WHERE tenant_id = ?').all(tenantId).map((r) => r.chave),

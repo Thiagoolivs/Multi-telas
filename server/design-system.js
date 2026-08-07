@@ -11,87 +11,23 @@
 
 /* ---------------- Cor ---------------- */
 
-function hex2rgb(hex) {
-  const h = String(hex || '').replace('#', '').trim();
-  const s = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
-  if (!/^[0-9a-f]{6}$/i.test(s)) return null;
-  return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
-}
-function rgb2hex(r, g, b) {
-  const c = (v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0');
-  return '#' + c(r) + c(g) + c(b);
-}
-function okHex(h, fallback) {
-  const v = String(h || '').trim();
-  const withHash = v.startsWith('#') ? v : '#' + v;
-  return hex2rgb(withHash) ? withHash.toLowerCase() : fallback;
-}
+/*
+ * A aritmética vive em js/cor.js, compartilhada com o tema da tela. Aqui ficam
+ * só os pisos de contraste, que são política de signage e não matemática: quem
+ * lê uma TV lê de longe, de relance e com reflexo.
+ */
+const cor = require('../js/cor.js');
+const { hex2rgb, rgb2hex, okHex, mix, escurecer, clarear, girarMatiz } = cor;
+const luminance = cor.luminancia;
+const contrast = cor.contraste;
 
-// Luminância relativa (WCAG 2.1).
-function luminance(hex) {
-  const rgb = hex2rgb(hex);
-  if (!rgb) return 0;
-  const [r, g, b] = rgb.map((v) => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-// Razão de contraste entre duas cores: 1 (igual) a 21 (preto × branco).
-function contrast(a, b) {
-  const la = luminance(a), lb = luminance(b);
-  const [hi, lo] = la > lb ? [la, lb] : [lb, la];
-  return (hi + 0.05) / (lo + 0.05);
-}
-// Texto legível sobre um fundo. Em signage o piso é mais alto que na web:
-// a pessoa lê de longe, de relance e muitas vezes com reflexo na tela.
 const MIN_CONTRAST = 4.5;
 const MIN_CONTRAST_TITULO = 3.5; // texto grande tolera um pouco menos
 // Tipo display (aquele que ocupa meia peça) tolera menos ainda: é o que faz
 // creme sobre laranja funcionar em cartaz. Abaixo disso vira ilegível mesmo.
 const MIN_CONTRAST_DISPLAY = 2.8;
-function textOn(bg) {
-  const branco = contrast(bg, '#ffffff');
-  const preto = contrast(bg, '#0b1120');
-  return branco >= preto ? '#ffffff' : '#0b1120';
-}
+const textOn = (bg) => cor.textoSobre(bg);
 
-function mix(a, b, t) {
-  const ra = hex2rgb(a), rb = hex2rgb(b);
-  if (!ra || !rb) return a;
-  return rgb2hex(ra[0] + (rb[0] - ra[0]) * t, ra[1] + (rb[1] - ra[1]) * t, ra[2] + (rb[2] - ra[2]) * t);
-}
-const escurecer = (hex, t) => mix(hex, '#000000', t);
-const clarear = (hex, t) => mix(hex, '#ffffff', t);
-
-// Gira a matiz. Serve para derivar um acento que combina quando o cliente
-// informou só uma cor de marca.
-function girarMatiz(hex, graus) {
-  const rgb = hex2rgb(hex);
-  if (!rgb) return hex;
-  let [r, g, b] = rgb.map((v) => v / 255);
-  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
-  let h = 0;
-  if (d) {
-    if (max === r) h = ((g - b) / d) % 6;
-    else if (max === g) h = (b - r) / d + 2;
-    else h = (r - g) / d + 4;
-  }
-  h = (h * 60 + graus + 360) % 360;
-  const l = (max + min) / 2;
-  const s = d ? d / (1 - Math.abs(2 * l - 1)) : 0;
-  const c = (1 - Math.abs(2 * l - 1)) * s;
-  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-  const m = l - c / 2;
-  const seg = [[c, x, 0], [x, c, 0], [0, c, x], [0, x, c], [x, 0, c], [c, 0, x]][Math.floor(h / 60) % 6];
-  return rgb2hex((seg[0] + m) * 255, (seg[1] + m) * 255, (seg[2] + m) * 255);
-}
-
-/*
- * Paleta com PAPÉIS, não uma lista solta de cores. O modelo escolhe a marca;
- * os tons de apoio saem daqui — é o que evita aquele resultado "duas cores
- * aleatórias brigando" e garante que o texto sempre tenha contraste.
- */
 function buildPalette(brandIn, brand2In, estilo, fundoModo) {
   const brand = okHex(brandIn, '#1e3a8a');
   // Sem cor secundária: deriva uma análoga (não complementar — complementar

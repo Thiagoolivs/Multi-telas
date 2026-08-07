@@ -12,6 +12,8 @@ import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { ai, library, devices, deviceConfig, media } from '../api.js';
 import { primaryZoneKey, defaultConfig, CONTENT_TYPES } from '../lib/contentTypes.js';
+import { aplicarConteudo, distribuirPorZona, agendarPeca, FAIXAS } from '../lib/aplicarConteudo.js';
+import { zonesOf } from '../lib/screenConfig.js';
 import { downloadComposition } from '../lib/exportPng.js';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { BriefingChat } from '../components/content/BriefingChat.jsx';
@@ -47,6 +49,8 @@ export function MyDesignsPage() {
   const [alvos, setAlvos] = useState([]);         // ids de tela
   const [fmts, setFmts] = useState(DEITADOS);     // formatos incluídos
   const [substituir, setSubstituir] = useState(false);
+  // Por quantos dias a campanha fica no ar. 0 = até alguém trocar.
+  const [dias, setDias] = useState(0);
 
   // Criar campanha com IA (diretor)
   const [aiOpen, setAiOpen] = useState(false);
@@ -103,9 +107,15 @@ export function MyDesignsPage() {
     const padrao = disponiveis.filter((f) => DEITADOS.includes(f));
     setFmts(padrao.length ? padrao : disponiveis);
     setSubstituir(false);
+    setDias(0);
   }
 
   const pecasElegiveis = pub ? pub.pecas.filter((p) => fmts.includes(p.formato || '16/9')) : [];
+  // Quais horas do dia esta campanha cobre — o que faz dela um programa e não
+  // uma playlist plana.
+  const faixasUsadas = Array.from(new Set(pecasElegiveis.map((p) => p.faixa).filter((f) => f && f !== 'dia')));
+  const temFaixas = faixasUsadas.length > 0;
+  const resumoFaixas = faixasUsadas.map((f) => (FAIXAS[f] ? FAIXAS[f].rotulo.toLowerCase() : f)).join(', ');
 
   async function publicar() {
     if (!pub || !alvos.length || !pecasElegiveis.length) return;
@@ -116,14 +126,24 @@ export function MyDesignsPage() {
         let cfg = null;
         try { cfg = await deviceConfig.get(id); } catch (e) { /* tela sem config ainda */ }
         if (!cfg) cfg = defaultConfig(dev ? dev.name : 'Tela');
-        const zk = primaryZoneKey(cfg);
-        if (!cfg.zonas) cfg.zonas = {};
-        if (!cfg.zonas[zk] || !Array.isArray(cfg.zonas[zk].items)) cfg.zonas[zk] = { items: [] };
-        // Marca a origem: é o que permite o resumo da tela dizer "isto veio da
-        // campanha X" em vez de deixar o conteúdo parecer que apareceu sozinho.
-        const novos = pecasElegiveis.map((p) => ({ ...p.item, _campanha: pub.titulo }));
-        cfg.zonas[zk].items = substituir ? novos : cfg.zonas[zk].items.concat(novos);
-        await deviceConfig.save(id, cfg);
+        /*
+         * Peça em pé vai para a zona em pé. Antes tudo caía na principal e a
+         * lateral seguia com a cara de sempre enquanto a campanha rodava ao
+         * lado — a queixa de "adicionou uma tela só na principal".
+         */
+        const zonas = zonesOf(cfg).filter((z) => z.type === 'playlist');
+        let blocos = distribuirPorZona(pecasElegiveis, zonas, dias);
+        if (!Object.keys(blocos).length) {
+          blocos = { [primaryZoneKey(cfg)]: pecasElegiveis.map((p) => agendarPeca(p.item, p.faixa, dias)) };
+        }
+        /*
+         * 'trocar' substitui só o que veio DESTA campanha; 'limpar' esvazia a
+         * zona. Antes o padrão empilhava para sempre e a única alternativa
+         * apagava também o que não era campanha.
+         */
+        const novaCfg = aplicarConteudo(cfg, blocos, { chave: '_campanha', valor: pub.titulo },
+          substituir ? 'limpar' : 'trocar');
+        await deviceConfig.save(id, novaCfg);
       }
       const nTelas = alvos.length;
       setMsg(`${pecasElegiveis.length} peça(s) ${substituir ? 'substituíram a playlist de' : 'publicadas em'} ${nTelas} tela(s).`);
@@ -428,11 +448,34 @@ export function MyDesignsPage() {
               <div className="grid grid-cols-3 gap-2">
                 {pecasElegiveis.slice(0, 6).map((p, i) => <DesignThumb key={i} item={p.item} />)}
               </div>
+              {/*
+                Quanto tempo no ar. A campanha sai sozinha no fim do prazo e a
+                tela volta ao que era — sem isso, "roda por dias" dependia de
+                alguém lembrar de tirar.
+              */}
+              <div className="rounded-lg border border-line p-2.5">
+                <div className="mb-1.5 text-xs font-medium text-ink-2">Fica no ar por</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {[[0, 'Até eu trocar'], [1, 'Hoje'], [3, '3 dias'], [7, '1 semana'], [30, '1 mês']].map(([d, rot]) => (
+                    <button
+                      key={d} type="button" onClick={() => setDias(d)}
+                      className={'rounded-md border px-2.5 py-1 text-xs transition ' +
+                        (dias === d ? 'border-accent bg-accent/10 text-ink' : 'border-line text-ink-3 hover:text-ink')}
+                    >{rot}</button>
+                  ))}
+                </div>
+                {temFaixas && (
+                  <p className="mt-2 text-2xs leading-relaxed text-ink-3">
+                    As peças se revezam ao longo do dia: {resumoFaixas}. Isso vem do plano da campanha — não precisa mexer.
+                  </p>
+                )}
+              </div>
+
               <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-line p-2.5 text-xs text-ink-2">
                 <input type="checkbox" checked={substituir} onChange={(e) => setSubstituir(e.target.checked)} className="mt-0.5" />
                 <span>
                   <b className="text-ink">Substituir a playlist</b>
-                  <span className="block text-ink-3">Apaga o que já estava na tela e deixa só esta campanha. Sem marcar, as peças entram no fim da lista.</span>
+                  <span className="block text-ink-3">Apaga o que já estava na tela e deixa só esta campanha. Sem marcar, troca apenas as peças desta mesma campanha e preserva o resto.</span>
                 </span>
               </label>
             </div>

@@ -22,6 +22,8 @@ const url = require('url');
 const db = require('./server/db');
 const auth = require('./server/auth');
 const storage = require('./server/storage');
+// Toda gravação de arquivo passa por aqui: linha no banco junto com o byte.
+const midia = require('./server/midia');
 const { rateLimit, clientIp, safeEqual, isSecureRequest } = require('./server/security');
 const mail = require('./server/mail');
 const plans = require('./server/plans');
@@ -33,6 +35,8 @@ const jobs = require('./server/jobs');
 const legal = require('./server/legal');
 // Mesmo arquivo que o player carrega no navegador — catálogo único de datas.
 const seasons = require('./js/seasons.js');
+// Mesmo arquivo que o player usa: o que é uma config está definido num lugar só.
+const schema = require('./js/storage.js');
 const briefing = require('./server/ai-briefing');
 const memory = require('./server/ai-memoria');
 const muralLib = require('./server/mural');
@@ -721,7 +725,9 @@ async function handleApi(req, res, pathname, query) {
       return sendJson(res, 415, { error: 'envie uma foto (JPG, PNG ou WEBP)' });
     }
     try {
-      const salvo = await storage.saveStream(mural.tenantId, req, { mime, max: muralLib.MAX_MB * 1024 * 1024 });
+      const salvo = await midia.guardarStream(db, mural.tenantId, req,
+        { mime, max: muralLib.MAX_MB * 1024 * 1024 },
+        { nome: 'Mural ' + mural.codigo, origem: 'mural' });
       const foto = await db.addFotoMural(mural.id, mural.tenantId, {
         url: salvo.url, chave: salvo.key,
         autor: String(query.autor || '').slice(0, 40),
@@ -1082,7 +1088,10 @@ async function handleApi(req, res, pathname, query) {
           },
           onImagem: async (prompt, formato) => {
             const img = await ai.generateImage(prompt, { formato, brand: (b && b.brand) || '' });
-            const saved = await storage.saveBuffer(sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime);
+            // Registrada como qualquer outro arquivo: aparece no Armazenamento,
+            // conta na cota e some junto com a conta.
+            const saved = await midia.guardarBuffer(db, sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime,
+              { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
             return saved.url;
           },
         }).then((out) => ({ mode: ai.mode(), ...out })));
@@ -1136,7 +1145,8 @@ async function handleApi(req, res, pathname, query) {
           formato: (b && b.formato) || '16/9', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '', estilo: (b && b.estilo) || '',
         });
         const buf = Buffer.from(img.data, 'base64');
-        const saved = await storage.saveBuffer(sess.tenant_id, buf, img.mime);
+        const saved = await midia.guardarBuffer(db, sess.tenant_id, buf, img.mime,
+          { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
         return sendJson(res, 200, { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });
@@ -1350,11 +1360,25 @@ async function handleApi(req, res, pathname, query) {
     if (req.method === 'PUT' && sub === 'config') {
       if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
       return readBody(req, res, async (b) => {
-        if (!b || typeof b !== 'object') return sendJson(res, 400, { error: 'config inválida' });
-        const name = (b.settings && b.settings.nome) || device.name;
-        await db.setDeviceConfig(id, JSON.stringify(b), name);
-        broadcast(id, 'config', { updatedAt: Date.now() });
-        return sendJson(res, 200, { ok: true });
+        if (!b || typeof b !== 'object' || Array.isArray(b)) {
+          return sendJson(res, 400, { error: 'config inválida' });
+        }
+        /*
+         * Normaliza ANTES de gravar. Antes daqui a config ia crua para o banco
+         * e crua para a TV: painel e player concordavam por convenção, e todo
+         * campo novo dependia de os dois lados terem sido editados juntos.
+         *
+         * O mesmo arquivo (js/storage.js) define o formato nas duas pontas.
+         */
+        let cfg;
+        try { cfg = schema.normalize(b); }
+        catch (e) { return sendJson(res, 400, { error: 'config inválida: ' + e.message }); }
+        const name = (cfg.settings && cfg.settings.nome) || device.name;
+        cfg.settings.nome = name;
+        const updatedAt = Date.now();
+        await db.setDeviceConfig(id, JSON.stringify(cfg), name);
+        broadcast(id, 'config', { updatedAt });
+        return sendJson(res, 200, { ok: true, updatedAt });
       });
     }
     // Renomear / remover (dono)
@@ -1427,7 +1451,19 @@ async function handleApi(req, res, pathname, query) {
     if (req.method === 'POST' && sub === 'heartbeat') {
       if (!dtOk) return sendJson(res, 403, { error: 'device token inválido' });
       await db.touchDevice(id);
-      return sendJson(res, 200, { ok: true, at: Date.now() });
+      /*
+       * Devolve QUANDO a config mudou pela última vez.
+       *
+       * A TV recebia config só por SSE, e um stream morto é silencioso: o
+       * EventSource desiste de vez quando o servidor responde não-2xx (um
+       * deploy no meio da conexão basta). O heartbeat continuava, então o
+       * painel mostrava a tela como online enquanto ela exibia a config velha
+       * para sempre. Nenhuma das duas pontas mentia sozinha; juntas, mentiam.
+       *
+       * Com isto, a tela compara e busca de novo quando divergir — a rede de
+       * segurança que um canal só não tem, sem custo de requisição extra.
+       */
+      return sendJson(res, 200, { ok: true, at: Date.now(), configEm: device.updated_at || 0 });
     }
     // SSE (o player assina, com device token)
     if (req.method === 'GET' && sub === 'events') {
@@ -1453,9 +1489,8 @@ async function handleApi(req, res, pathname, query) {
       const used = await db.sumMediaBytes(sess.tenant_id);
       if (used >= storage.QUOTA_BYTES) return sendJson(res, 413, { error: 'cota de armazenamento cheia' });
       try {
-        const saved = await storage.saveStream(sess.tenant_id, req, { mime });
         const name = String(query.name || 'arquivo').slice(0, 180);
-        await db.createMedia({ id: saved.id, tenantId: sess.tenant_id, name, mime: saved.mime, size: saved.size, key: saved.key, url: saved.url });
+        const saved = await midia.guardarStream(db, sess.tenant_id, req, { mime }, { nome: name, origem: 'upload' });
         return sendJson(res, 201, { id: saved.id, name, mime: saved.mime, size: saved.size, url: saved.url });
       } catch (e) {
         return sendJson(res, e.status || 500, { error: e.message || 'falha no upload' });
@@ -1469,10 +1504,8 @@ async function handleApi(req, res, pathname, query) {
     }
     // Remover
     if (req.method === 'DELETE' && parts[2]) {
-      const m = await db.getMedia(parts[2]);
-      if (!m || m.tenant_id !== sess.tenant_id) return sendJson(res, 404, { error: 'mídia não encontrada' });
-      await storage.remove(m.key);
-      await db.removeMedia(m.id, sess.tenant_id);
+      const ok = await midia.apagar(db, sess.tenant_id, parts[2]);
+      if (!ok) return sendJson(res, 404, { error: 'mídia não encontrada' });
       return sendJson(res, 200, { ok: true });
     }
     return sendJson(res, 404, { error: 'rota de mídia inválida' });

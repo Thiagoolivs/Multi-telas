@@ -7,9 +7,14 @@ Complementa `AUDITORIA.md` (que olha produto e estratégia); aqui o assunto é
 
 Cada achado aponta arquivo e linha. Onde a falha é minha, está dito.
 
+> **Situação em 2026-08-07, fim do dia.** Os seis primeiros itens da ordem no
+> fim deste documento foram implementados — §1, §2, §3, §4, §5 e §6 estão
+> marcados **[resolvido]** com o que mudou. Continuam abertos §7 (cabeçalhos de
+> segurança, fontes locais, CI, SSE em memória) e §8 (admin legado).
+
 ---
 
-## 1. O contrato da config não existe
+## 1. O contrato da config não existe · [resolvido]
 
 `PUT /api/devices/:id/config` (server.js:1353) aceita qualquer objeto:
 
@@ -42,7 +47,7 @@ HTTP, está em **ter uma definição só** de o que é uma config.
 
 ---
 
-## 2. Imagens da IA não existem para o sistema
+## 2. Imagens da IA não existem para o sistema · [resolvido]
 
 server.js:1085 e server.js:1139 gravam a imagem gerada e devolvem a URL:
 
@@ -72,7 +77,7 @@ cota é ficção e a exclusão é incompleta.
 
 ---
 
-## 3. Campanha e data comemorativa se comportam de formas opostas
+## 3. Campanha e data comemorativa se comportam de formas opostas · [resolvido]
 
 As duas marcam a origem do conteúdo — `_season` e `_campanha` — mas só uma
 limpa o que deixou antes:
@@ -103,7 +108,7 @@ regras diferentes.
 
 ---
 
-## 4. A agenda da campanha é texto, não programação
+## 4. A agenda da campanha é texto, não programação · [resolvido]
 
 O diretor devolve `agenda: [{ quando, canal, motivo }]` (ai-director.js:824) e o
 painel a imprime numa lista com o título "Quando postar"
@@ -122,7 +127,7 @@ nesta lista inteira, e não precisa de código novo no player.
 
 ---
 
-## 5. A TV pode ficar surda sem ninguém notar
+## 5. A TV pode ficar surda sem ninguém notar · [resolvido]
 
 Em modo nuvem, a config chega só por SSE. `es.onerror` (js/cloud.js:152) é um
 comentário:
@@ -150,7 +155,7 @@ que o SSE não tem, sem custo perceptível.
 
 ---
 
-## 6. Matemática de cor duplicada, e já custou um bug
+## 6. Matemática de cor duplicada, e já custou um bug · [resolvido]
 
 `luminance`/`contraste` vivem em `server/design-system.js:31` e, de novo, em
 `js/theme.js:201`. Mesma linguagem, dois arquivos.
@@ -220,3 +225,30 @@ faz o sistema parecer que não se entende.
 6. **§6 cor num arquivo só** — dívida pequena, já cobrou juros.
 7. **§7 cabeçalhos + fontes locais + CI**.
 8. **§8 decidir sobre o admin legado**.
+
+
+---
+
+## O que foi feito (2026-08-07)
+
+| § | Antes | Agora |
+|---|---|---|
+| 1 | `PUT /config` aceitava qualquer objeto; `normalize()` só rodava no player legado | `js/storage.js` virou módulo duplo e roda **no servidor antes de gravar** e **no player antes de montar**. Config lixo é recusada ou saneada; `normalize` deixou de inventar nome de empresa |
+| 2 | imagem da IA gravava arquivo sem linha em `media` | `server/midia.js` é o único caminho de gravação. Coluna `origem` (`upload`/`ia`/`mural`); cota verdadeira; exclusão de conta apaga os arquivos |
+| 3 | data trocava, campanha empilhava; campanha ia para uma zona só | `web/src/lib/aplicarConteudo.js` atende as duas, com política explícita (`trocar`/`somar`/`limpar`). Peça em pé vai para zona em pé (`formato: 'retrato'` no catálogo de layouts) |
+| 4 | `agenda` era texto impresso | cada peça ganha `faixa` (manhã/almoço/tarde/saída/dia) e vira `agendamento` na publicação. Seletor "fica no ar por" com prazo que expira sozinho |
+| 5 | SSE morto era silencioso e o painel dizia "online" | o heartbeat devolve `configEm`; a TV compara e recupera sozinha. O `EventSource` também reconecta quando fecha de vez |
+| 6 | `luminance`/`contraste`/`mix` em dois arquivos, já divergindo | `js/cor.js`, um dono só. −157 linhas. Dois defeitos apareceram na unificação: `okHex` não expandia hex curto e o acento parava a 3.49:1 num carmim |
+
+Verificado no navegador, com TV pareada:
+
+```
+array como config é recusado                     SIM
+config meia-boca é saneada (volume 999 → 100)    SIM
+publicar não renomeia a tela para "Raft"         SIM
+upload e imagem da IA contam na cota             SIM
+publicação chega na TV                           SIM
+TV com o SSE derrubado recupera pelo pulso       SIM
+```
+
+131 testes passando (22 novos: cor, contrato da config, campanha como programa).
