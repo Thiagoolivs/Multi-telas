@@ -7,16 +7,29 @@
 (function (global) {
   'use strict';
 
+  /*
+   * O catálogo de layouts. No navegador vem do <script> anterior; no servidor,
+   * do require — porque `normalize()` deixou de ser coisa só do player.
+   */
+  const templates = global.MT_getLayout
+    ? { getLayout: global.MT_getLayout }
+    : (typeof require === 'function' ? require('./templates.js') : null);
+  const pegarLayout = (id) => templates.getLayout(id);
+
   const KEY = 'multitelas.config.v1';
   const SCHEMA_VERSION = 1;
 
-  /* ---------- Conteúdos de exemplo (para começar rápido) ---------- */
-  function sampleConfig() {
+  /*
+   * Os padrões de comportamento da tela, SEM identidade e SEM conteúdo.
+   *
+   * Separado do exemplo de propósito: `normalize()` completa campos que faltam
+   * e não pode inventar o nome da empresa — ela agora roda também no servidor,
+   * onde uma tela sem nome viraria "Raft Embalagens" para outro cliente.
+   */
+  function settingsPadrao() {
     return {
-      version: SCHEMA_VERSION,
-      settings: {
-        nome: 'Raft Embalagens',
-        layoutId: 'dashboard',
+      nome: '',
+      layoutId: 'dashboard',
         // URL opcional de config remota. Se preenchida, o player prioriza ela.
         remoteConfigUrl: '',
         // De quanto em quanto tempo o player recarrega a config (segundos).
@@ -48,13 +61,20 @@
           // Vídeo com som e música por cima viram barulho. Abaixar e voltar.
           abaixarComVideo: true,
         },
-        // Tema premium: preset + ajustes manuais (ver js/theme.js).
-        theme: {
-          preset: 'dark-premium',
-          font: 'system',
-          overrides: {}, // { brand, brand2, accent, bg, bg2, surface, glass, radius, blur, fx, ... }
-        },
+      // Tema premium: preset + ajustes manuais (ver js/theme.js).
+      theme: {
+        preset: 'dark-premium',
+        font: 'system',
+        overrides: {}, // { brand, brand2, accent, bg, bg2, surface, glass, radius, blur, fx, ... }
       },
+    };
+  }
+
+  /* ---------- Conteúdo de exemplo (para começar rápido) ---------- */
+  function sampleConfig() {
+    return {
+      version: SCHEMA_VERSION,
+      settings: Object.assign(settingsPadrao(), { nome: 'Raft Embalagens' }),
       zonas: {
         principal: {
           items: [
@@ -144,11 +164,10 @@
 
   /* ---------- Validação / normalização ---------- */
   function normalize(cfg) {
-    if (!cfg || typeof cfg !== 'object') return sampleConfig();
-    const base = sampleConfig();
+    if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) return sampleConfig();
     const out = {
       version: SCHEMA_VERSION,
-      settings: Object.assign({}, base.settings, cfg.settings || {}),
+      settings: Object.assign(settingsPadrao(), cfg.settings || {}),
       zonas: {},
     };
 
@@ -161,7 +180,7 @@
       out.zonas[k] = cfg.zonas[k];
     });
 
-    const layout = global.MT_getLayout(out.settings.layoutId);
+    const layout = pegarLayout(out.settings.layoutId);
     // Garante que exista uma entrada para cada zona do layout escolhido.
     layout.zones.forEach((zone) => {
       const existing = (cfg.zonas && cfg.zonas[zone.id]) || {};
@@ -361,6 +380,16 @@
     return normalize(await res.json());
   }
 
+  /*
+   * Módulo duplo. `normalize` era a única barreira antes da TV e rodava apenas
+   * no navegador — configs vindas do painel React chegavam CRUAS ao player.
+   * Agora o servidor a chama antes de gravar, e o mesmo arquivo define o que é
+   * uma config nos dois lados.
+   */
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { normalize, sampleConfig, settingsPadrao, SCHEMA_VERSION };
+  }
+
   global.MTStorage = {
     KEY,
     SCHEMA_VERSION,
@@ -384,4 +413,4 @@
     setPin,
     checkPin,
   };
-})(window);
+})(typeof window !== 'undefined' ? window : globalThis);

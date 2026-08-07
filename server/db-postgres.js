@@ -105,10 +105,14 @@ async function init() {
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
       invited_by TEXT, created_at BIGINT, expires_at BIGINT, accepted_at BIGINT
     );
+    -- origem: 'upload' (a pessoa enviou), 'ia' (gerada) ou 'mural' (do
+    -- público). Toda gravação passa por server/midia.js e cai aqui.
     CREATE TABLE IF NOT EXISTS media (
       id TEXT PRIMARY KEY, tenant_id TEXT, name TEXT, mime TEXT, size BIGINT,
       key TEXT, url TEXT, created_at BIGINT
     );
+    ALTER TABLE media ADD COLUMN IF NOT EXISTS origem TEXT;
+    UPDATE media SET origem = 'upload' WHERE origem IS NULL;
     CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
     CREATE TABLE IF NOT EXISTS birthdays (
       id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, matricula TEXT,
@@ -405,12 +409,12 @@ async function setTenantBilling(id, fields) {
 
 /* ---------------- Mídia ---------------- */
 async function createMedia(m) {
-  await pool.query('INSERT INTO media (id, tenant_id, name, mime, size, key, url, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-    [m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, Date.now()]);
+  await pool.query('INSERT INTO media (id, tenant_id, name, mime, size, key, url, origem, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+    [m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, m.origem || 'upload', Date.now()]);
   return m;
 }
 async function listMedia(tenantId) {
-  const r = await pool.query('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
+  const r = await pool.query('SELECT id, name, mime, size, url, origem, created_at FROM media WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
   return r.rows;
 }
 async function getMedia(id) {
@@ -549,8 +553,9 @@ async function dadosDoTenant(tenantId) {
  * não conhece disco nem R2.
  */
 async function apagarTenant(tenantId) {
-  // Foto de mural não passa pela tabela `media`: sem juntar as duas listas, o
-  // arquivo continuaria no storage depois da conta apagada.
+  // Foto de mural passou a ter linha em `media` (server/midia.js), mas fotos
+  // gravadas ANTES dessa mudança só existem em `muralfotos`. A união cobre as
+  // duas gerações; apagar uma chave que já sumiu é inofensivo.
   const chaves = [
     ...(await pool.query('SELECT key FROM media WHERE tenant_id = $1', [tenantId])).rows.map((r) => r.key),
     ...(await pool.query('SELECT chave FROM muralfotos WHERE tenant_id = $1', [tenantId])).rows.map((r) => r.chave),

@@ -160,10 +160,14 @@
       showPairing(dev.code);
     }
     hideOverlayAfter();
-    MTCloud.subscribe(dev.id, function (newCfg) {
+    // Carimbo da última publicação que esta tela já aplicou (ver `pulsar`).
+    let configEm = 0;
+    MTCloud.subscribe(dev.id, function (newCfg, meta) {
       hidePairing();
       applyConfig(newCfg);
       saveCachedConfig(newCfg);
+      // Marca o carimbo para o pulso não achar que o SSE falhou.
+      if (meta && meta.updatedAt) configEm = Math.max(configEm, meta.updatedAt);
     });
     /*
      * Som: a TV conta o que está tocando sempre que muda, e também de tempos
@@ -174,9 +178,33 @@
     document.addEventListener('mt:som-estado', contarSom);
     setInterval(contarSom, 30000);
     contarSom();
-    // Telemetria: pulsa "estou viva" já e a cada 30s → status real da frota.
-    MTCloud.heartbeat(dev.id);
-    setInterval(function () { MTCloud.heartbeat(dev.id); }, 30000);
+    /*
+     * Telemetria + rede de segurança da config.
+     *
+     * O pulso já ia ao servidor a cada 30s; agora ele volta com o carimbo da
+     * última publicação. Se o carimbo for mais novo que o que esta tela está
+     * exibindo, ela busca a config — sem depender de o SSE estar vivo.
+     *
+     * É barato de propósito: nenhuma requisição a mais, só um campo a mais na
+     * resposta que já existia.
+     */
+    async function pulsar() {
+      const carimbo = await MTCloud.heartbeat(dev.id);
+      if (!carimbo || carimbo <= configEm) return;
+      if (!configEm) { configEm = carimbo; return; }   // primeiro pulso: só marca
+      try {
+        const nova = await MTCloud.fetchConfig(dev.id);
+        if (nova) {
+          console.warn('[player] o SSE não trouxe esta publicação — recuperando pelo pulso');
+          hidePairing();
+          applyConfig(nova);
+          saveCachedConfig(nova);
+          configEm = carimbo;
+        }
+      } catch (e) { /* tenta no próximo pulso */ }
+    }
+    pulsar();
+    setInterval(pulsar, 30000);
     // Relação de aniversariantes: carrega e refresca a cada 6h (muda pouco).
     loadBirthdays(dev.id);
     setInterval(function () { loadBirthdays(dev.id); }, 6 * 60 * 60 * 1000);
@@ -241,7 +269,15 @@
   }
 
 
-  function applyConfig(cfg) {
+  function applyConfig(bruto) {
+    /*
+     * Passa pelo normalizador SEMPRE, inclusive na config que veio da nuvem.
+     * Antes, só a config local passava — a da nuvem chegava crua e todo o
+     * saneamento (tema, rodapé, trilha) valia só para o modo legado.
+     */
+    let cfg;
+    try { cfg = MTStorage.normalize(bruto); }
+    catch (e) { console.warn('[player] config ilegível, mantendo a atual', e); return; }
     const fp = fingerprint(cfg);
     if (fp === configFingerprint) return; // nada mudou
     configFingerprint = fp;

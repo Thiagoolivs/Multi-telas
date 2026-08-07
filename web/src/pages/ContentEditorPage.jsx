@@ -9,6 +9,7 @@ import { ItemForm } from '../components/content/ItemForm.jsx';
 import { ItemPreview } from '../components/content/ItemPreview.jsx';
 import { TypePicker } from '../components/content/TypePicker.jsx';
 import { SettingsForm } from '../components/content/SettingsForm.jsx';
+import { aplicarConteudo } from '../lib/aplicarConteudo.js';
 import { TickerEditor } from '../components/content/TickerEditor.jsx';
 import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
 import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
@@ -102,17 +103,19 @@ export function ContentEditorPage({ device, onBack }) {
       const zonas = zonesOf(next);
       const porTipo = (id) => zonas.find((z) => z.id === id);
 
-      // Reaplicar não empilha: marcamos o que veio da data e trocamos.
-      const juntar = (zona, novos) => {
-        if (!zona || !novos || !novos.length) return;
-        ensureZone(next, zona);
-        const lista = next.zonas[zona.id].items || [];
-        const semAntigos = lista.filter((i) => !(i && i._season === season.id));
-        next.zonas[zona.id].items = novos.map((i) => ({ ...i, _season: season.id })).concat(semAntigos);
-      };
-
-      juntar(porTipo('principal') || zonas.find((z) => z.type === 'playlist'), programa.principal);
-      juntar(porTipo('lateral'), programa.lateral);
+      /*
+       * Mesma função que a campanha usa (lib/aplicarConteudo.js). As duas
+       * marcavam origem e se comportavam ao contrário: a data trocava, a
+       * campanha empilhava. Agora a política é explícita e igual para ambas.
+       */
+      const principal = porTipo('principal') || zonas.find((z) => z.type === 'playlist');
+      const lateral = porTipo('lateral');
+      const blocos = {};
+      if (principal && programa.principal && programa.principal.length) blocos[principal.id] = programa.principal;
+      if (lateral && programa.lateral && programa.lateral.length) blocos[lateral.id] = programa.lateral;
+      for (const id of Object.keys(blocos)) ensureZone(next, zonas.find((z) => z.id === id));
+      const comConteudo = aplicarConteudo(next, blocos, { chave: '_season', valor: season.id }, 'trocar');
+      next.zonas = comConteudo.zonas;
 
       const rod = zonas.find((z) => z.type === 'ticker');
       if (rod && programa.rodape && programa.rodape.messages.length) {

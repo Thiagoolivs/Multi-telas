@@ -111,10 +111,15 @@
     const r = await api('GET', '/api/devices/' + id + '/birthdays', undefined, dtHeader());
     return (r && r.birthdays) || [];
   }
-  // Avisa o servidor que a TV está viva (alimenta o status da frota).
+  /*
+   * Avisa o servidor que a TV está viva e recebe de volta quando a config
+   * mudou pela última vez. Devolve esse carimbo para o player conferir.
+   */
   async function heartbeat(id) {
-    try { await api('POST', '/api/devices/' + id + '/heartbeat', undefined, dtHeader()); }
-    catch (e) { /* offline: tenta de novo no próximo ciclo */ }
+    try {
+      const r = await api('POST', '/api/devices/' + id + '/heartbeat', undefined, dtHeader());
+      return (r && r.configEm) || 0;
+    } catch (e) { return 0; /* offline: tenta de novo no próximo ciclo */ }
   }
   // A TV conta ao servidor o que está tocando, para o painel mostrar de verdade
   // em vez de adivinhar pelo último comando enviado.
@@ -126,8 +131,10 @@
     let es;
     function connect() {
       es = new EventSource(API + '/api/devices/' + id + '/events?dt=' + encodeURIComponent(deviceToken()));
-      es.addEventListener('config', async () => {
-        try { const cfg = await fetchConfig(id); if (cfg) onConfig(cfg); } catch (e) {}
+      es.addEventListener('config', async (ev) => {
+        let meta = {};
+        try { meta = JSON.parse(ev.data || '{}'); } catch (e) {}
+        try { const cfg = await fetchConfig(id); if (cfg) onConfig(cfg, meta); } catch (e) {}
       });
       /*
        * Som: comando ao vivo do painel (tocar/pausar/pular/volume). Não é
@@ -149,7 +156,19 @@
         try { dado = JSON.parse(ev.data || '{}'); } catch (e) {}
         document.dispatchEvent(new CustomEvent('mt:mural', { detail: dado }));
       });
-      es.onerror = () => { /* reconecta sozinho */ };
+      /*
+       * O EventSource reconecta sozinho em queda de rede — mas DESISTE de vez
+       * quando o servidor responde não-2xx, o que acontece num deploy no meio
+       * da conexão. Sem isto, a TV ficava com a config velha para sempre e o
+       * heartbeat continuava dizendo que ela estava online.
+       */
+      es.onerror = () => {
+        if (es.readyState !== 2) return;      // 2 = fechado de vez
+        setTimeout(function () {
+          try { es.close(); } catch (e) {}
+          connect();
+        }, 15000);
+      };
     }
     connect();
     return { close: () => es && es.close() };

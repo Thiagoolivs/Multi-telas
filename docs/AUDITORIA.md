@@ -9,6 +9,10 @@ campo **Status** conforme cada item for resolvido. Última revisão: 2026-07-20.
 > proof-of-play), e o **negócio** ainda não existe (sem billing, sem foco de
 > mercado, sem distribuição). Resolver os **P0** antes de mais telas bonitas.
 
+> **2026-08-07 —** uma auditoria de *fluxo* (o caminho real do uso, ponta a
+> ponta) está em [`AUDITORIA-FLUXO.md`](AUDITORIA-FLUXO.md). Este documento
+> continua tratando de produto e estratégia; lá o assunto é coerência interna.
+
 ## Riscos estratégicos (não-código)
 
 - **Crise de identidade:** o projeto tenta ser três empresas ao mesmo tempo —
