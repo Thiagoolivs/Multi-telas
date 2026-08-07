@@ -51,6 +51,9 @@ const MIME = {
 
 // Assinantes SSE por device (em memória).
 const subscribers = {}; // { [deviceId]: Set<res> }
+// O que cada TV está tocando agora. Estado do instante, não dado: some no
+// restart e volta sozinho no próximo aviso da tela.
+const estadoSom = {}; // { [deviceId]: { em, estado } }
 
 // Códigos com RNG criptográfico (crypto.randomInt) — não previsíveis.
 function randomCode(len) {
@@ -1376,6 +1379,49 @@ async function handleApi(req, res, pathname, query) {
       if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
       return sendJson(res, 200, pubDevice(device));
     }
+    /*
+     * Som ao vivo. O painel manda o comando, o servidor empurra por SSE e a TV
+     * obedece na hora — sem salvar config e sem recarregar a tela.
+     *
+     * Fica FORA da config de propósito: abaixar o volume no meio de um evento é
+     * uma ação, não uma configuração. Passar por salvar significaria reconstruir
+     * o palco e cortar a música exatamente quando alguém está tentando ajustá-la.
+     */
+    if (req.method === 'POST' && sub === 'audio') {
+      if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
+      return readBody(req, res, async (b) => {
+        const acao = String((b && b.acao) || '');
+        if (!['tocar', 'pausar', 'proxima', 'anterior', 'volume'].includes(acao)) {
+          return sendJson(res, 400, { error: 'ação desconhecida' });
+        }
+        broadcast(id, 'som', { acao, valor: b && b.valor });
+        return sendJson(res, 200, { ok: true, enviado: !!subscribers[id] });
+      });
+    }
+    /*
+     * A TV conta o que está tocando. Guardado só em memória: é estado do
+     * instante, não dado — depois de um restart do servidor ele volta sozinho
+     * no próximo aviso da TV, e um banco a mais não compraria nada.
+     */
+    if (req.method === 'POST' && sub === 'audio-estado') {
+      if (!dtOk) return sendJson(res, 403, { error: 'device token inválido' });
+      return readBody(req, res, async (b) => {
+        estadoSom[id] = { em: Date.now(), estado: b || {} };
+        return sendJson(res, 200, { ok: true });
+      });
+    }
+    if (req.method === 'GET' && sub === 'audio') {
+      if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
+      const s = estadoSom[id];
+      // Sem notícia há mais de 2 minutos é notícia velha: melhor dizer que não
+      // sabemos do que mostrar no painel uma faixa que já acabou faz tempo.
+      const fresco = s && (Date.now() - s.em) < 120000;
+      return sendJson(res, 200, {
+        conhecido: !!fresco,
+        online: !!subscribers[id],
+        estado: fresco ? s.estado : null,
+      });
+    }
     // Heartbeat: a TV avisa que está viva (device token). Alimenta o status
     // real da frota (online/offline) no painel.
     if (req.method === 'POST' && sub === 'heartbeat') {
@@ -1403,7 +1449,7 @@ async function handleApi(req, res, pathname, query) {
     // Upload: corpo = bytes crus; ?name= e ?mime= (ou Content-Type).
     if (req.method === 'POST' && parts.length === 2) {
       const mime = query.mime || req.headers['content-type'] || '';
-      if (!storage.extFor(mime)) return sendJson(res, 415, { error: 'tipo não suportado (use PNG, JPG, WEBP, GIF, MP4 ou WEBM)' });
+      if (!storage.extFor(mime)) return sendJson(res, 415, { error: 'tipo não suportado (imagem PNG/JPG/WEBP/GIF, vídeo MP4/WEBM, áudio MP3/M4A/OGG/WAV ou apresentação PPTX/PDF)' });
       const used = await db.sumMediaBytes(sess.tenant_id);
       if (used >= storage.QUOTA_BYTES) return sendJson(res, 413, { error: 'cota de armazenamento cheia' });
       try {

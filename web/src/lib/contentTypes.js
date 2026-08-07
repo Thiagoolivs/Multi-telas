@@ -179,13 +179,13 @@ export const CONTENT_TYPES = {
       { key: 'codigo', label: 'Qual mural', kind: 'mural' },
       { key: 'titulo', label: 'Título na tela', kind: 'text', placeholder: 'Mural de fotos' },
       { key: 'legenda', label: 'Subtítulo', kind: 'text', optional: true },
-      { key: 'chamada', label: 'Convite ao lado do QR', kind: 'text',
-        placeholder: 'Aponte a câmera e mande a sua foto' },
-      { key: 'mostrarQr', label: 'Manter o QR na tela junto com as fotos', kind: 'bool' },
+      { key: 'chamada', label: 'Frase enquanto não chega foto', kind: 'text',
+        placeholder: 'As fotos aparecem aqui',
+        hint: 'O QR não vai para a TV — ele fica na página Mural, para imprimir.' },
       { ...DUR, hint: '0 = fica fixo na tela. O mural rende mais com tempo longo.' },
     ],
     make: () => ({ type: 'mural', codigo: '', titulo: 'Mural de fotos', legenda: '',
-      chamada: 'Aponte a câmera e mande a sua foto', mostrarQr: true, duracao: 30 }),
+      chamada: 'As fotos aparecem aqui', duracao: 30 }),
     summary: (i) => (i.codigo ? i.titulo || 'Mural ' + i.codigo : 'Escolha um mural'),
   },
   weatherpro: {
@@ -273,6 +273,9 @@ export function defaultConfig(deviceName) {
       nome: deviceName || 'Tela',
       layoutId: 'dashboard',
       theme: { preset: 'dark-premium', font: 'system', overrides: {} },
+      // Trilha sonora desligada e vazia: o formulário precisa do objeto para
+      // não nascer com campos indefinidos.
+      audio: { ativo: false, faixas: [], volume: 60, aleatorio: false, abaixarComVideo: true },
     },
     zonas: { principal: { items: [] } },
   };

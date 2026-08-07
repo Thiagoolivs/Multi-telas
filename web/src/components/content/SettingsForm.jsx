@@ -5,6 +5,7 @@ import { IconButton } from '../ui/Button.jsx';
 import { LAYOUTS, THEME_PRESETS, FONTS, TRANSITIONS, DECORATIONS, getLayout } from '../../lib/screenConfig.js';
 import { useAsync } from '../../lib/useAsync.js';
 import { brand } from '../../api.js';
+import { SoundPanel } from './SoundPanel.jsx';
 
 // Layouts agrupados por formato de tela no seletor.
 const LAYOUT_GROUPS = [
@@ -23,7 +24,7 @@ function hexRgba(hex, a) {
 }
 
 // Edita cfg.settings: identidade, layout, tema e comportamento da tela.
-export function SettingsForm({ settings, onChange }) {
+export function SettingsForm({ settings, onChange, deviceId }) {
   const s = settings || {};
   const theme = s.theme || { preset: 'dark-premium', font: 'system', overrides: {} };
   const set = (patch) => onChange({ ...s, ...patch });
@@ -160,6 +161,10 @@ export function SettingsForm({ settings, onChange }) {
               <Input type="number" min={8} value={s.layoutAutoSeconds ?? 20} onChange={(e) => set({ layoutAutoSeconds: Number(e.target.value) })} />
             </Field>
           )}
+        </div>
+
+        <div className="rounded-lg border border-line bg-surface-2/50 p-3">
+          <SoundPanel audio={s.audio} deviceId={deviceId} onChange={(audio) => set({ audio })} />
         </div>
       </div>
     </div>

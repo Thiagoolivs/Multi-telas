@@ -165,6 +165,15 @@
       applyConfig(newCfg);
       saveCachedConfig(newCfg);
     });
+    /*
+     * Som: a TV conta o que está tocando sempre que muda, e também de tempos
+     * em tempos — o estado do servidor é em memória e precisa ser reposto
+     * depois de um restart, sem esperar a próxima faixa terminar.
+     */
+    const contarSom = () => MTCloud.reportAudio(dev.id, trilha.estado());
+    document.addEventListener('mt:som-estado', contarSom);
+    setInterval(contarSom, 30000);
+    contarSom();
     // Telemetria: pulsa "estou viva" já e a cada 30s → status real da frota.
     MTCloud.heartbeat(dev.id);
     setInterval(function () { MTCloud.heartbeat(dev.id); }, 30000);
@@ -239,6 +248,9 @@
     currentConfig = cfg;
     teardownZones();
     buildStage(cfg);
+    // A trilha vem de settings e não das zonas: trocar de layout não pode
+    // cortar a música no meio.
+    trilha.aplicar((cfg.settings || {}).audio);
     precacheMedia(cfg); // baixa a mídia da playlist p/ tocar offline depois
   }
 
@@ -517,6 +529,175 @@
     const ctx = ensureAudio();
     if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
   }
+  /* ---------------- Trilha sonora ----------------
+   *
+   * Música de fundo da tela. Vive fora das zonas: atravessa todos os slides e
+   * não pertence a nenhum.
+   *
+   * O ponto difícil não é tocar — é o navegador. Som sem um gesto do usuário é
+   * bloqueado, e numa TV pendurada na parede não há ninguém para clicar. Então
+   * a trilha nunca finge: quando o `play()` é recusado, ela avisa na tela que
+   * falta um toque, e o primeiro toque em qualquer lugar libera tudo.
+   */
+  function criarTrilha() {
+    const el = document.createElement('audio');
+    el.preload = 'auto';
+    el.crossOrigin = 'anonymous';
+    // No documento, mesmo invisível: elemento solto toca na maioria dos
+    // navegadores, mas não em todos — e um "na maioria" numa TV de cliente é
+    // uma ligação de suporte esperando para acontecer.
+    el.style.display = 'none';
+    if (document.body) document.body.appendChild(el);
+    else document.addEventListener('DOMContentLoaded', () => document.body.appendChild(el));
+    let cfg = { ativo: false, faixas: [], volume: 60, aleatorio: false, abaixarComVideo: true };
+    let ordem = [];        // índices das faixas na ordem de tocar
+    let pos = 0;
+    let pausadoPeloAdmin = false;
+    let abaixados = 0;     // quantos slides com som estão no ar agora
+    let liberado = false;  // o navegador já deixou tocar?
+    let avisoEl = null;
+
+    function embaralhar(n) {
+      const a = Array.from({ length: n }, (_, i) => i);
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const t = a[i]; a[i] = a[j]; a[j] = t;
+      }
+      return a;
+    }
+    function volumeAlvo() {
+      const base = Math.min(100, Math.max(0, cfg.volume)) / 100;
+      // Abaixar em vez de calar: a música continua presente por baixo do vídeo,
+      // e a volta é suave em vez de um susto.
+      return abaixados > 0 && cfg.abaixarComVideo ? base * 0.15 : base;
+    }
+    function aplicarVolume() {
+      try { el.volume = volumeAlvo(); } catch (e) {}
+      global.MT_VIDEO_COM_SOM = !!(liberado && cfg.ativo && cfg.abaixarComVideo);
+    }
+
+    function aviso(mostrar) {
+      if (mostrar && !avisoEl) {
+        avisoEl = document.createElement('div');
+        avisoEl.className = 'mt-som-bloqueado';
+        avisoEl.textContent = 'Toque na tela para ligar o som';
+        document.body.appendChild(avisoEl);
+      } else if (!mostrar && avisoEl) {
+        avisoEl.remove(); avisoEl = null;
+      }
+    }
+
+    function tocar() {
+      if (!cfg.ativo || pausadoPeloAdmin || !ordem.length) return;
+      const faixa = cfg.faixas[ordem[pos % ordem.length]];
+      if (!faixa) return;
+      if (el.src !== faixa.url && !el.src.endsWith(faixa.url)) el.src = faixa.url;
+      aplicarVolume();
+      const p = el.play();
+      if (p && p.catch) {
+        p.then(() => { liberado = true; aviso(false); aplicarVolume(); reportar(); })
+         .catch(() => { liberado = false; aviso(true); reportar(); });
+      }
+    }
+    function proxima(passo) {
+      if (!ordem.length) return;
+      pos = (pos + (passo || 1) + ordem.length) % ordem.length;
+      el.src = '';                 // força recarregar mesmo repetindo a faixa
+      tocar();
+    }
+    el.addEventListener('ended', () => proxima(1));
+    // Faixa quebrada (arquivo apagado, rede caiu) não pode travar a trilha.
+    el.addEventListener('error', () => { if (cfg.ativo && el.src) setTimeout(() => proxima(1), 1500); });
+
+    function reportar() {
+      const e = estado();
+      try { document.dispatchEvent(new CustomEvent('mt:som-estado', { detail: e })); } catch (err) {}
+    }
+    function estado() {
+      const faixa = ordem.length ? cfg.faixas[ordem[pos % ordem.length]] : null;
+      return {
+        ativo: !!cfg.ativo,
+        tocando: !!(cfg.ativo && !pausadoPeloAdmin && !el.paused),
+        pausado: pausadoPeloAdmin,
+        bloqueado: !!(cfg.ativo && !pausadoPeloAdmin && !liberado),
+        volume: cfg.volume,
+        faixa: faixa ? (faixa.nome || faixa.url.split('/').pop()) : '',
+        indice: ordem.length ? (pos % ordem.length) : -1,
+        total: cfg.faixas.length,
+      };
+    }
+
+    return {
+      aplicar(novo) {
+        const antes = JSON.stringify(cfg);
+        cfg = Object.assign({ ativo: false, faixas: [], volume: 60, aleatorio: false, abaixarComVideo: true }, novo || {});
+        if (!cfg.ativo || !cfg.faixas.length) {
+          el.pause(); ordem = []; aviso(false); aplicarVolume(); return reportar();
+        }
+        const listaMudou = JSON.stringify(cfg.faixas) !== JSON.stringify(JSON.parse(antes).faixas)
+          || cfg.aleatorio !== JSON.parse(antes).aleatorio;
+        if (listaMudou || !ordem.length) {
+          ordem = cfg.aleatorio ? embaralhar(cfg.faixas.length)
+            : Array.from({ length: cfg.faixas.length }, (_, i) => i);
+          pos = 0;
+          el.src = '';
+        }
+        aplicarVolume();
+        // Volume não interrompe: só a lista ou o liga/desliga reiniciam a faixa.
+        if (el.paused) tocar();
+        reportar();
+      },
+      /*
+       * Acompanha o vídeo de um slide e abaixa a música ENQUANTO ele estiver
+       * de fato tocando com som.
+       *
+       * Decidir pelo tipo do item era mais simples e estava errado: vídeo
+       * quebrado, ou vídeo que o navegador recusou tocar com som e caiu para
+       * mudo, deixava a música baixa por vários segundos sem nada no lugar.
+       * Quem manda é o elemento, não a configuração.
+       *
+       * Devolve a função de desfazer, para o slide chamar ao sair.
+       */
+      acompanharVideo(slideEl) {
+        const v = slideEl && slideEl.querySelector && slideEl.querySelector('video');
+        if (!v || !cfg.ativo || !cfg.abaixarComVideo) return function () {};
+        let baixo = false;
+        const desce = () => {
+          if (baixo || v.muted || v.volume === 0 || v.paused) return;
+          baixo = true; abaixados++; aplicarVolume();
+        };
+        const sobe = () => {
+          if (!baixo) return;
+          baixo = false; abaixados = Math.max(0, abaixados - 1); aplicarVolume();
+        };
+        v.addEventListener('playing', desce);
+        ['pause', 'ended', 'error', 'emptied', 'stalled'].forEach((e) => v.addEventListener(e, sobe));
+        // O próprio player cala o vídeo quando o navegador recusa tocar com
+        // som — sem isto, a música ficaria baixa por educação a um silêncio.
+        v.addEventListener('volumechange', () => { if (v.muted || v.volume === 0) sobe(); else desce(); });
+        return sobe;
+      },
+      liberar() {
+        if (!cfg.ativo || liberado) return;
+        tocar();
+      },
+      comando(c) {
+        const acao = c && c.acao;
+        if (acao === 'pausar') { pausadoPeloAdmin = true; el.pause(); }
+        else if (acao === 'tocar') { pausadoPeloAdmin = false; tocar(); }
+        else if (acao === 'proxima') { pausadoPeloAdmin = false; proxima(1); }
+        else if (acao === 'anterior') { pausadoPeloAdmin = false; proxima(-1); }
+        else if (acao === 'volume') {
+          const v = Number(c.valor);
+          if (Number.isFinite(v)) { cfg.volume = Math.min(100, Math.max(0, Math.round(v))); aplicarVolume(); }
+        }
+        reportar();
+      },
+      estado,
+    };
+  }
+  const trilha = criarTrilha();
+
   function playUrgentChime() {
     const ctx = ensureAudio();
     if (!ctx) return;
@@ -790,7 +971,21 @@
       enterSlide(rendered.el, transition, isRevealSlide(rendered.el));
 
       const prev = currentSlide;
-      currentSlide = { el: rendered.el, onLeave: rendered.onLeave };
+      /*
+       * Vídeo com som no ar: a música cai para um fundo baixo e volta quando
+       * ele para. O desfazer fica amarrado ao onLeave do próprio slide, então
+       * nenhum caminho de saída (avanço, takeover, troca de layout) deixa a
+       * trilha abaixada para sempre.
+       */
+      const soltarSom = trilha.acompanharVideo(rendered.el);
+      const sairOriginal = rendered.onLeave;
+      currentSlide = {
+        el: rendered.el,
+        onLeave: function () {
+          soltarSom();
+          if (sairOriginal) sairOriginal();
+        },
+      };
 
       if (prev) leaveSlide(prev);
 
@@ -1183,6 +1378,11 @@
     // Libera o áudio (alerta urgente) no primeiro gesto do usuário.
     ['pointerdown', 'keydown', 'touchstart'].forEach((ev) =>
       document.addEventListener(ev, unlockAudio, { passive: true }));
+    // O mesmo gesto libera a trilha: o navegador só deixa tocar depois dele.
+    ['click', 'touchstart', 'keydown'].forEach((ev) =>
+      document.addEventListener(ev, () => trilha.liberar(), { passive: true }));
+    // Comando ao vivo do painel (chega por SSE, ver js/cloud.js).
+    document.addEventListener('mt:som', (e) => trilha.comando((e && e.detail) || {}));
   }
 
   enableFullscreenShortcut();

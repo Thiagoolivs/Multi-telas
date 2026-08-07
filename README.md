@@ -236,6 +236,12 @@ multitelas/
 | QR Code | Gera um QR a partir de um link/texto (desenhado pelo próprio servidor) |
 | Mural de fotos (QR) | O público lê o QR, manda foto pelo celular e ela aparece na TV em segundos |
 
+**Música de fundo.** Cada tela tem uma trilha própria (MP3/M4A/OGG/WAV), com
+volume, ordem aleatória e controle ao vivo — play, pausa, pular faixa e volume
+agem na TV na hora, sem salvar nem recarregar. Vídeo com som abaixa a música e
+ela volta quando ele acaba. Navegador só libera som depois de um toque na tela
+da TV; quando isso falta, o player avisa em vez de fingir que tocou.
+
 Todos os conteúdos prontos (exceto os que já têm arte própria, como o cartão de
 aniversário) usam a **superfície adaptativa** — herdam fundo e cores do tema atual.
 

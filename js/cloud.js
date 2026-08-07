@@ -116,12 +116,28 @@
     try { await api('POST', '/api/devices/' + id + '/heartbeat', undefined, dtHeader()); }
     catch (e) { /* offline: tenta de novo no próximo ciclo */ }
   }
+  // A TV conta ao servidor o que está tocando, para o painel mostrar de verdade
+  // em vez de adivinhar pelo último comando enviado.
+  async function reportAudio(id, estado) {
+    try { await api('POST', '/api/devices/' + id + '/audio-estado', estado, dtHeader()); }
+    catch (e) { /* offline: o painel mostra "sem notícia" */ }
+  }
   function subscribe(id, onConfig) {
     let es;
     function connect() {
       es = new EventSource(API + '/api/devices/' + id + '/events?dt=' + encodeURIComponent(deviceToken()));
       es.addEventListener('config', async () => {
         try { const cfg = await fetchConfig(id); if (cfg) onConfig(cfg); } catch (e) {}
+      });
+      /*
+       * Som: comando ao vivo do painel (tocar/pausar/pular/volume). Não é
+       * config nova — recarregar a tela aqui cortaria a música no meio, que é
+       * justo o contrário do que quem mexeu no volume queria.
+       */
+      es.addEventListener('som', (ev) => {
+        let dado = {};
+        try { dado = JSON.parse(ev.data || '{}'); } catch (e) {}
+        document.dispatchEvent(new CustomEvent('mt:som', { detail: dado }));
       });
       /*
        * Mural: chegou (ou saiu) foto do público. Não é config nova — recarregar
@@ -152,7 +168,7 @@
 
   global.MTCloud = {
     signup, login, logout, me,
-    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat,
+    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat, reportAudio,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);

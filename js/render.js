@@ -202,7 +202,15 @@
     const el = div('mt-slide mt-video');
     const v = document.createElement('video');
     v.src = item.src;
-    v.muted = item.muted !== false; // por padrão sem som (TVs)
+    /*
+     * Som do vídeo. O padrão continua MUDO: navegador só deixa tocar sem som
+     * sem um gesto do usuário, e uma TV na parede não tem quem clique.
+     *
+     * A exceção é a trilha sonora estar tocando (MT_VIDEO_COM_SOM), porque aí
+     * o gesto já aconteceu e o som já está liberado. Mesmo assim, se o play()
+     * for recusado, voltamos ao mudo — vídeo sem som é melhor que tela parada.
+     */
+    v.muted = item.muted != null ? item.muted !== false : !global.MT_VIDEO_COM_SOM;
     v.autoplay = true;
     v.playsInline = true;
     v.loop = !!item.loop;
@@ -210,7 +218,10 @@
     el.appendChild(v);
     // Se não houver duração fixa, avança ao terminar o vídeo.
     let onEnter = function (advance) {
-      const tryPlay = () => v.play().catch(() => {});
+      const tryPlay = () => v.play().catch(() => {
+        // Recusado por causa do som: cala e tenta de novo. A tela nunca para.
+        if (!v.muted) { v.muted = true; v.play().catch(() => {}); }
+      });
       tryPlay();
       if (!item.duracao && !v.loop) {
         v.addEventListener('ended', advance, { once: true });
@@ -1393,10 +1404,9 @@
   /*
    * Mural: as fotos que o público manda pelo QR, na TV, em tempo real.
    *
-   * A tela vazia é o estado mais importante e não o excepcional: no começo do
-   * evento ninguém enviou nada ainda. Por isso, sem fotos, o QR ocupa o palco
-   * inteiro com o convite — é ele que faz a primeira foto existir. Quando as
-   * fotos chegam, o QR encolhe para um canto e continua convidando.
+   * A TV mostra SÓ as fotos. O QR fica no painel do admin, para ser impresso e
+   * posto na mesa — não ocupando espaço numa tela que existe para mostrar as
+   * pessoas. Quem convida é o cartaz; quem exibe é a TV.
    */
   function renderMural(item) {
     const codigo = String(item.codigo || '').toUpperCase();
@@ -1417,40 +1427,28 @@
       return { el, duration: item.duracao || 10 };
     }
 
-    // Mesma origem do servidor — é dele que a TV baixou esta página.
-    const link = item.link || (global.location.origin + '/m/' + codigo);
     // Guarda quais fotos já apareceram: sem isso, cada atualização re-animaria
     // a parede inteira e ninguém repararia na foto que acabou de chegar.
     let vistas = new Set();
     let primeira = true;
 
-    function convite(grande) {
-      const c = div('mt-mural-convite' + (grande ? ' mt-mural-convite-lg' : ''));
-      const img = document.createElement('img');
-      img.src = urlQr(link);
-      img.alt = 'QR Code do mural';
-      c.appendChild(img);
-      const t = div('mt-mural-convite-t');
-      t.textContent = item.chamada || 'Aponte a câmera e mande a sua foto';
-      c.appendChild(t);
-      const cd = div('mt-mural-codigo');
-      cd.textContent = codigo;
-      c.appendChild(cd);
+    // Espera pelas primeiras fotos. Sem QR: a frase segue o tema da tela.
+    function aguardando(texto) {
+      const c = div('mt-mural-aguarde');
+      c.textContent = texto;
       return c;
     }
 
     /*
      * A grade muda com a quantidade. Uma grade fixa de quatro colunas fica
      * ridícula com uma foto só (um retângulo alto e magro num mar de vazio),
-     * e apertada demais com dez. Então a forma vem do número de itens, e a
+     * e apertada demais com dez. Então a forma vem do número de fotos, e a
      * célula em destaque só existe quando já há mosaico para destacar.
      */
-    const comQr = item.mostrarQr !== false;
     function grade(n) {
-      const itens = n + (comQr ? 1 : 0);
-      if (n === 1) return { cols: comQr ? '3fr 1fr' : '1fr', rows: '1fr', destaque: false };
-      if (itens <= 4) return { cols: 'repeat(2, 1fr)', rows: 'repeat(' + Math.ceil(itens / 2) + ', 1fr)', destaque: false };
-      if (itens <= 6) return { cols: 'repeat(3, 1fr)', rows: 'repeat(2, 1fr)', destaque: false };
+      if (n === 1) return { cols: '1fr', rows: '1fr', destaque: false };
+      if (n <= 4) return { cols: 'repeat(2, 1fr)', rows: 'repeat(' + Math.ceil(n / 2) + ', 1fr)', destaque: false };
+      if (n <= 6) return { cols: 'repeat(3, 1fr)', rows: 'repeat(2, 1fr)', destaque: false };
       return { cols: 'repeat(4, 1fr)', rows: 'repeat(3, 1fr)', destaque: true };
     }
 
@@ -1458,12 +1456,13 @@
       palco.innerHTML = '';
       if (!todas.length) {
         palco.classList.add('mt-mural-vazio');
-        palco.appendChild(convite(true));
+        palco.appendChild(aguardando(item.chamada || 'As fotos aparecem aqui'));
         return;
       }
       palco.classList.remove('mt-mural-vazio');
-      // Teto de itens para caber na maior grade sem sobrar linha espremida.
-      const fotos = todas.slice(0, comQr ? 8 : 9);
+      // Teto de fotos para caber na maior grade sem sobrar linha espremida.
+      // Com destaque (2×2), 9 fotos ocupam exatamente as 12 células.
+      const fotos = todas.slice(0, 9);
       const g = grade(fotos.length);
       const parede = div('mt-mural-parede');
       parede.style.gridTemplateColumns = g.cols;
@@ -1493,7 +1492,6 @@
         }
         parede.appendChild(card);
       });
-      if (comQr) parede.appendChild(convite(false));
       palco.appendChild(parede);
       vistas = new Set(todas.map((f) => f.id));
       primeira = false;
@@ -1502,14 +1500,11 @@
     async function buscar() {
       try {
         const r = await fetch("/api/mural/" + encodeURIComponent(codigo) + "/fotos", { cache: "no-store" });
-        // Mural apagado ou código errado: mostrar o QR seria convidar para uma
-        // porta que não existe. Melhor uma tela em branco com o motivo.
+        // Mural apagado ou código errado: dizer o motivo, não fingir espera.
         if (r.status === 404) {
           palco.innerHTML = '';
           palco.classList.add('mt-mural-vazio');
-          const aviso = div('mt-mural-convite-t');
-          aviso.textContent = 'Este mural não existe mais. Escolha outro nas configurações da tela.';
-          palco.appendChild(aviso);
+          palco.appendChild(aguardando('Este mural não existe mais. Escolha outro nas configurações da tela.'));
           primeira = false;
           return;
         }
@@ -1519,7 +1514,11 @@
       } catch (e) {
         // Rede caiu: mantém na tela o que já estava. Uma parede congelada é
         // melhor do que um erro no meio da festa.
-        if (primeira) { palco.classList.add('mt-mural-vazio'); palco.appendChild(convite(true)); primeira = false; }
+        if (primeira) {
+          palco.classList.add('mt-mural-vazio');
+          palco.appendChild(aguardando(item.chamada || 'As fotos aparecem aqui'));
+          primeira = false;
+        }
       }
     }
 
