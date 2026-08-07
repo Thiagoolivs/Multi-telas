@@ -34,6 +34,7 @@ const legal = require('./server/legal');
 // Mesmo arquivo que o player carrega no navegador — catálogo único de datas.
 const seasons = require('./js/seasons.js');
 const briefing = require('./server/ai-briefing');
+const memory = require('./server/ai-memoria');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -755,9 +756,29 @@ async function handleApi(req, res, pathname, query) {
       }
       return sendJson(res, 404, { error: 'rota de marca não encontrada' });
     }
+    /*
+     * A memória é dedução nossa, então o usuário precisa poder VER e APAGAR.
+     * Guardar o que aprendemos de alguém sem mostrar seria o tipo de coisa que
+     * a Política de Privacidade descreve e o produto não deveria fazer.
+     */
+    if (parts[2] === 'memoria') {
+      if (req.method === 'GET') {
+        return sendJson(res, 200, { memoria: await db.getMemoria(sess.tenant_id) });
+      }
+      if (req.method === 'DELETE') {
+        await db.clearMemoria(sess.tenant_id);
+        return sendJson(res, 200, { ok: true });
+      }
+      return sendJson(res, 405, { error: 'método inválido' });
+    }
     if (req.method === 'GET') {
-      const [kit, assets] = await Promise.all([db.getBrandKit(sess.tenant_id), db.listBrandAssets(sess.tenant_id)]);
-      return sendJson(res, 200, { kit: kit || null, assets, familias: Object.keys(ds.FAMILIAS), direcoes: ds.DIRECOES });
+      const [kit, assets, mem] = await Promise.all([
+        db.getBrandKit(sess.tenant_id), db.listBrandAssets(sess.tenant_id), db.getMemoria(sess.tenant_id),
+      ]);
+      return sendJson(res, 200, {
+        kit: kit || null, assets, memoria: mem || null,
+        familias: Object.keys(ds.FAMILIAS), direcoes: ds.DIRECOES,
+      });
     }
     if (req.method === 'PUT') {
       return readBody(req, res, async (b) => {
@@ -800,9 +821,23 @@ async function handleApi(req, res, pathname, query) {
           logo: (assets.find((a) => a.kind === 'logo') || {}).url || '',
           bases: assets.filter((a) => a.kind === 'base').map((a) => ({ url: a.url, label: a.label || '' })),
         } : null;
+        const lembrada = await db.getMemoria(sess.tenant_id);
         const out = await briefing.conversar(mensagens, {
-          empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '', marca,
+          empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '',
+          marca, memoria: lembrada,
         });
+
+        /*
+         * Ao FECHAR o briefing, destilamos o que a conversa revelou sobre a
+         * EMPRESA e guardamos. É o que faz a próxima campanha começar sabendo
+         * mais. Roda em segundo plano de propósito: o usuário não deve esperar
+         * por um ganho que só vale da próxima vez.
+         */
+        if (out.pronto && out.modo !== 'dev') {
+          memory.aprender(lembrada, mensagens, out.resumo)
+            .then((nova) => db.saveMemoria(sess.tenant_id, nova))
+            .catch(() => { /* memória é ganho acumulado, não requisito */ });
+        }
         return sendJson(res, 200, out);
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });
@@ -830,6 +865,7 @@ async function handleApi(req, res, pathname, query) {
         // identidade a cada briefing.
         const kit = await db.getBrandKit(sess.tenant_id);
         const assets = await db.listBrandAssets(sess.tenant_id);
+        const lembrada = await db.getMemoria(sess.tenant_id);
         /*
          * Basta ter QUALQUER coisa da marca — cores salvas ou só imagens. Antes
          * isto exigia o kit, então quem subia logo e fotos sem abrir o
@@ -859,6 +895,8 @@ async function handleApi(req, res, pathname, query) {
           marca,
           // Resumo vindo do chat de briefing, quando o usuário conversou.
           briefingPronto: (b && b.briefingPronto) || null,
+          // O que já sabemos da empresa de conversas anteriores.
+          memoria: lembrada,
         }, {
           onProgresso: progresso,
           // A geração de imagem fica aqui: o diretor não conhece storage nem tenant.

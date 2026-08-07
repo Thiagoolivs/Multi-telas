@@ -67,12 +67,19 @@ db.exec(`
     tenant_id TEXT PRIMARY KEY, cores TEXT, fonte_titulo TEXT, fonte_apoio TEXT,
     direcao TEXT, tom TEXT, observacoes TEXT, updated_at INTEGER
   );
-  -- Imagens da marca: logo, bases reutilizáveis e referências de estilo.
+  -- O que o sistema DEDUZIU sobre a empresa, conversando. Tabela separada do
+  -- brandkit de propósito: aquilo o usuário declarou e é dele para editar;
+  -- isto é dedução nossa, e dedução precisa poder ser revista e esquecida.
+  CREATE TABLE IF NOT EXISTS brandmemoria (
+    tenant_id TEXT PRIMARY KEY, dados TEXT, updated_at INTEGER
+  );
+  -- Prova de que a pessoa aceitou os termos, e QUAL versão deles.
   CREATE TABLE IF NOT EXISTS aceites (
     id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, email TEXT,
     versao TEXT, origem TEXT, ip TEXT, created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_aceites_tenant ON aceites(tenant_id);
+  -- Imagens da marca: logo, bases reutilizáveis e referências de estilo.
   CREATE TABLE IF NOT EXISTS brandassets (
     id TEXT PRIMARY KEY, tenant_id TEXT, kind TEXT, url TEXT, label TEXT, created_at INTEGER
   );
@@ -313,6 +320,21 @@ async function addBrandAsset(tenantId, kind, url, label) {
 async function removeBrandAsset(id, tenantId) { qBrand.delAsset.run(id, tenantId); }
 async function labelBrandAsset(id, tenantId, label) { qBrand.labelAsset.run(label || '', id, tenantId); }
 
+/* Memória da empresa: o que aprendemos conversando. */
+const qMem = {
+  get: db.prepare('SELECT dados FROM brandmemoria WHERE tenant_id = ?'),
+  up: db.prepare(`INSERT INTO brandmemoria (tenant_id, dados, updated_at) VALUES (?, ?, ?)
+    ON CONFLICT(tenant_id) DO UPDATE SET dados=excluded.dados, updated_at=excluded.updated_at`),
+  del: db.prepare('DELETE FROM brandmemoria WHERE tenant_id = ?'),
+};
+async function getMemoria(tenantId) {
+  const r = qMem.get.get(tenantId);
+  if (!r) return null;
+  try { return JSON.parse(r.dados || '{}'); } catch (e) { return null; }
+}
+async function saveMemoria(tenantId, dados) { qMem.up.run(tenantId, JSON.stringify(dados || {}), Date.now()); }
+async function clearMemoria(tenantId) { qMem.del.run(tenantId); }
+
 function mapKit(r) {
   if (!r) return null;
   let cores = []; try { cores = JSON.parse(r.cores || '[]'); } catch (e) {}
@@ -380,7 +402,7 @@ async function apagarTenant(tenantId) {
   try {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'birthdays', 'media', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'birthdays', 'media', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }
     db.prepare('DELETE FROM tenants WHERE id = ?').run(tenantId);
@@ -411,5 +433,6 @@ module.exports = {
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
   listCampaign, renameCampaign, deleteCampaign,
   registrarAceite, listarAceites, dadosDoTenant, apagarTenant,
+  getMemoria, saveMemoria, clearMemoria,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
 };

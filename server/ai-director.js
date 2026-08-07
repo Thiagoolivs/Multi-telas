@@ -18,6 +18,7 @@
 const ai = require('./ai');
 const ds = require('./design-system');
 const { validarComposicao } = require('./composer');
+const memoria = require('./ai-memoria');
 
 /* ---------------- Etapa 0: o briefing ---------------- */
 
@@ -211,6 +212,9 @@ async function planejar(brief, ctx) {
     ctx.marca && ctx.marca.tom ? `Tom da marca (fixo): ${ctx.marca.tom}` : '',
     ctx.marca && ctx.marca.observacoes ? `Regras da marca: ${ctx.marca.observacoes}` : '',
     ctx.marca && ctx.marca.estiloRef ? `Estilo das referências do cliente: ${ctx.marca.estiloRef}` : '',
+    // O que aprendemos desta empresa em conversas anteriores. É isto que faz a
+    // décima campanha ter mais cara da casa que a primeira.
+    memoria.comoTexto(ctx.memoria),
     catalogoBases(ctx),
     '',
     `Pedido original: ${String(brief || '').slice(0, 900)}`,

@@ -103,6 +103,8 @@ export const brand = {
   addAsset: (kind, url, label) => api('POST', '/api/brand/assets', { kind, url, label }),
   labelAsset: (id, label) => api('PUT', '/api/brand/assets/' + id, { label }),
   removeAsset: (id) => api('DELETE', '/api/brand/assets/' + id),
+  // A memória é dedução do sistema — o usuário vê e apaga quando quiser.
+  esquecer: () => api('DELETE', '/api/brand/memoria'),
 };
 
 // Datas comemorativas: catálogo e qual está valendo hoje.

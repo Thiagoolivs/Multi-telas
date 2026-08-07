@@ -67,6 +67,8 @@ Quando já entendeu o bastante:
 Nunca invente preço, data ou nome que a pessoa não disse.
 Português do Brasil.`;
 
+const memoria = require('./ai-memoria');
+
 function contextoDoSistema(ctx) {
   const c = ctx || {};
   const m = c.marca || {};
@@ -81,7 +83,14 @@ function contextoDoSistema(ctx) {
       ? `A empresa tem ${m.bases.length} foto(s) próprias no acervo: ${m.bases.map((b) => b.label || 'sem descrição').join('; ')}. Não pergunte se ela tem fotos.`
       : '',
   ].filter(Boolean);
-  return linhas.length ? 'O QUE O SISTEMA JÁ SABE (não pergunte de novo):\n' + linhas.join('\n') : '';
+  const declarado = linhas.length ? 'O QUE O SISTEMA JÁ SABE (não pergunte de novo):\n' + linhas.join('\n') : '';
+  /*
+   * A memória entra aqui, e é o que faz a segunda campanha ser melhor que a
+   * primeira: a conversa já começa sabendo o negócio, o público e o que não
+   * prometer. Sem isso o chat repetiria as mesmas perguntas para sempre.
+   */
+  const aprendido = memoria.comoTexto(c.memoria);
+  return [declarado, aprendido].filter(Boolean).join('\n\n');
 }
 
 function transcricao(mensagens) {
