@@ -653,7 +653,17 @@ async function handleApi(req, res, pathname, query) {
     // certo sem o usuário precisar procurar na lista.
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     const hoje = seasons.todaySeason();
-    return sendJson(res, 200, { seasons: seasons.SEASONS, decorations: seasons.DECORATIONS, hoje: hoje || null });
+    /*
+     * As zonas vêm do layout da tela que está aberta. Sem isso geraríamos
+     * conteúdo de lateral para um layout que não tem lateral — o usuário
+     * clicaria em "vestir a tela" e metade sumiria sem explicação.
+     */
+    const zonas = String(query.zonas || 'principal').split(',').map((z) => z.trim()).filter(Boolean);
+    const programa = hoje ? seasons.programaDe(hoje, { zonas }) : null;
+    return sendJson(res, 200, {
+      seasons: seasons.SEASONS, decorations: seasons.DECORATIONS,
+      hoje: hoje || null, programa,
+    });
   }
 
   /* ----- LGPD: exportar e excluir os dados da conta ----- */

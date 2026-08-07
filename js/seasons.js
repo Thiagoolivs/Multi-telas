@@ -48,7 +48,7 @@
     },
     {
       id: 'dia-trabalho', label: 'Dia do Trabalho', emoji: '🛠️', from: '0428', to: '0501',
-      decoracao: 'none',
+      decoracao: 'confetti',
       theme: { preset: 'corporate-blue', overrides: {} },
       greeting: { type: 'announce', tipo: 'conquista', titulo: 'Feliz Dia do Trabalho', corpo: 'Nossa gratidão a cada colaborador que constrói a Raft todos os dias.', info: '1º de Maio', duracao: 12 },
     },
@@ -66,7 +66,9 @@
     },
     {
       id: 'dia-pais', label: 'Dia dos Pais', emoji: '👔', from: '0801', to: '0811',
-      decoracao: 'none',
+      // Estava 'none': a data era a única do catálogo sem nada animado, e a
+      // tela ficava idêntica a um dia comum depois de aplicar o pacote.
+      decoracao: 'confetti',
       theme: { preset: 'corporate-blue', overrides: { bg: '#0a1526', bg2: '#123a5e' } },
       greeting: { type: 'text', titulo: 'Feliz Dia dos Pais', corpo: 'Uma homenagem a todos os pais da nossa equipe.', bg: '#1e3a8a', cor: '#ffffff', duracao: 12 },
     },
@@ -90,13 +92,15 @@
     },
     {
       id: 'novembro-azul', label: 'Novembro Azul', emoji: '💙', from: '1101', to: '1130',
-      decoracao: 'none',
+      // Campanha de saúde pede presença discreta, não festa: pétalas caem
+      // devagar e não competem com a mensagem.
+      decoracao: 'petals',
       theme: { preset: 'corporate-blue', overrides: { brand: '#2563eb', accent: '#38bdf8' } },
       greeting: { type: 'announce', tipo: 'saude', titulo: 'Novembro Azul', corpo: 'Mês de conscientização sobre a saúde do homem. Cuide-se e faça seus exames.', info: 'Previna-se', duracao: 14 },
     },
     {
       id: 'black-friday', label: 'Black Friday', emoji: '🏷️', from: '1120', to: '1129',
-      decoracao: 'none',
+      decoracao: 'confetti',
       theme: { preset: 'elegant-black', overrides: { brand: '#f59e0b', accent: '#fbbf24' } },
       greeting: { type: 'text', titulo: 'BLACK FRIDAY', corpo: 'Ofertas imperdíveis. Fale com o comercial e aproveite.', bg: '#000000', cor: '#fbbf24', duracao: 12 },
     },
@@ -127,7 +131,98 @@
 
   function getSeason(id) { return SEASONS.find((s) => s.id === id) || null; }
 
-  const api = { SEASONS, DECORATIONS, todaySeason, getSeason };
+  /* ---------------- Programação da data ----------------
+   *
+   * O pacote antigo entregava UMA mensagem na zona principal. Numa tela de
+   * três zonas isso deixava a lateral vazia, o rodapé com o texto de sempre e
+   * nenhuma decoração — o cliente aplicava a data e a tela continuava com cara
+   * de nada. "Sem graça" foi a palavra usada, e estava certa.
+   *
+   * Aqui a data vira PROGRAMAÇÃO: conteúdo suficiente em cada zona para a tela
+   * rodar horas sem repetir de forma óbvia, e sem o usuário escrever nada.
+   *
+   * As frases por data são poucas de propósito. O resto é montado a partir
+   * delas — data nova entra no catálogo sem precisar preencher tudo à mão.
+   */
+
+  // Frases de apoio por data. Curtas: é tela vista de longe, de passagem.
+  const FRASES = {
+    natal: ['Boas festas a todos', 'Que 2027 comece leve', 'Obrigado por mais um ano juntos'],
+    'ano-novo': ['Ano novo, ciclo novo', 'Que venham as próximas conquistas', 'Comece com o pé direito'],
+    carnaval: ['Aproveite com responsabilidade', 'Descanse e volte com energia', 'Bom feriado'],
+    pascoa: ['Tempo de renovar', 'Boa Páscoa para você e sua família', 'Aproveite os dias com quem ama'],
+    'dia-trabalho': ['Nosso time faz acontecer', 'Orgulho de trabalhar aqui', 'Obrigado por cada dia de dedicação'],
+    'dia-maes': ['Obrigado por tudo, mãe', 'Às mães do nosso time', 'Sua força inspira a gente'],
+    'festa-junina': ['Bora pro arraiá!', 'Quadrilha, quentão e pé de moleque', 'Boa festa junina a todos'],
+    'dia-pais': ['Obrigado, pai', 'Aos pais do nosso time', 'Exemplo que a gente carrega'],
+    independencia: ['7 de Setembro', 'Orgulho de fazer parte', 'Bom feriado'],
+    'dia-criancas': ['Feliz Dia das Crianças', 'A alegria de quem é criança contagia', 'Bom dia das crianças'],
+    'outubro-rosa': ['Outubro Rosa', 'O exame de rotina salva vidas', 'Cuide de você: agende o seu'],
+    'novembro-azul': ['Novembro Azul', 'Homem também cuida da saúde', 'Faça o exame: prevenir é simples'],
+    'black-friday': ['Ofertas por tempo limitado', 'Aproveite enquanto dura', 'Corre que acaba'],
+  };
+
+  // Avisos do rodapé. Formato "Título :: detalhe" do ticker de notícias.
+  const AVISOS = {
+    'dia-pais': [
+      'Feliz Dia dos Pais :: Nossa homenagem a todos os pais da equipe',
+      'Mural :: Deixe seu recado para os pais do time',
+    ],
+    'dia-maes': [
+      'Feliz Dia das Mães :: Nossa homenagem a todas as mães da equipe',
+      'Mural :: Deixe seu recado para as mães do time',
+    ],
+  };
+
+  /*
+   * Monta a programação completa. `formato` decide a proporção das peças e
+   * `zonas` diz quais existem no layout da tela — não adianta gerar conteúdo
+   * para uma lateral que aquele layout não tem.
+   */
+  function programaDe(season, opts) {
+    const o = opts || {};
+    const zonas = o.zonas || ['principal'];
+    const frases = FRASES[season.id] || [];
+    const g = season.greeting || {};
+    const cor = g.cor || '#ffffff';
+    const bg = g.bg || null;
+
+    const principal = [];
+    if (season.greeting) principal.push({ ...season.greeting });
+    /*
+     * As frases entram como "quote": tipografia grande e centrada, feita para
+     * ser lida de longe. Duração escalonada evita que tudo troque junto e a
+     * tela pareça piscar.
+     */
+    frases.slice(0, 3).forEach((texto, i) => {
+      principal.push({
+        type: 'quote', texto, autor: '', duracao: 10 + i * 2,
+        ...(bg ? { bg } : {}), cor,
+      });
+    });
+
+    // Lateral: o que é útil o dia inteiro sem ninguém mexer.
+    const lateral = [];
+    if (zonas.includes('lateral')) {
+      lateral.push({ type: 'clock', duracao: 12 });
+      lateral.push({ type: 'weatherpro', cidade: o.cidade || 'São Paulo', duracao: 0 });
+      if (frases[0]) lateral.push({ type: 'quote', texto: frases[0], autor: '', duracao: 10, ...(bg ? { bg } : {}), cor });
+    }
+
+    // Rodapé: avisos da data, ou a saudação virando aviso.
+    const avisos = AVISOS[season.id]
+      || (g.titulo ? [g.titulo + ' :: ' + (g.corpo || '')] : []);
+
+    return {
+      principal,
+      lateral,
+      rodape: { titulo: (season.label || 'AVISOS').toUpperCase(), messages: avisos },
+      decoracao: season.decoracao || 'none',
+      theme: season.theme || null,
+    };
+  }
+
+  const api = { SEASONS, DECORATIONS, todaySeason, getSeason, programaDe, FRASES };
   global.MTSeasons = api;
   /*
    * O servidor lê o MESMO arquivo (require) para servir o catálogo ao painel

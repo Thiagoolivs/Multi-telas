@@ -103,7 +103,9 @@ export const brand = {
 
 // Datas comemorativas: catálogo e qual está valendo hoje.
 export const seasons = {
-  list: () => api('GET', '/api/seasons'),
+  // `zonas` são as do layout da tela aberta: o servidor só gera conteúdo para
+  // zona que existe, senão metade do pacote sumiria sem explicação.
+  list: (zonas) => api('GET', '/api/seasons' + (zonas && zonas.length ? '?zonas=' + encodeURIComponent(zonas.join(',')) : '')),
 };
 
 export const library = {
