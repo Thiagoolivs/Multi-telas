@@ -358,7 +358,13 @@ export function ContentEditorPage({ device, onBack }) {
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Ajustes da tela"
         description="Layout, tema e comportamento. Salva sozinho." className="max-w-3xl"
         footer={<Button variant="primary" icon={Check} onClick={() => setSettingsOpen(false)}>Concluir</Button>}>
-        {cfg && <SettingsForm settings={cfg.settings} onChange={(settings) => patchCfg((next) => { next.settings = settings; })} />}
+        {cfg && (
+          <SettingsForm
+            settings={cfg.settings}
+            deviceId={device.id}
+            onChange={(settings) => patchCfg((next) => { next.settings = settings; })}
+          />
+        )}
       </Dialog>
 
       {compOpen && current && current.type === 'composicao' && (

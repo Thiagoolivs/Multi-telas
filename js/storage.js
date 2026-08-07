@@ -36,6 +36,18 @@
         somUrgente: true,         // toca um alerta sonoro nos avisos urgentes
         layoutAuto: false,        // a disposição das telas se alterna sozinha
         layoutAutoSeconds: 20,    // intervalo da alternância de layout (s)
+        /*
+         * Trilha sonora da tela. Vive em settings, não numa zona: música não
+         * ocupa espaço, atravessa todos os slides e não pertence a nenhum.
+         */
+        audio: {
+          ativo: false,
+          faixas: [],          // [{ url, nome }]
+          volume: 60,          // 0–100
+          aleatorio: false,
+          // Vídeo com som e música por cima viram barulho. Abaixar e voltar.
+          abaixarComVideo: true,
+        },
         // Tema premium: preset + ajustes manuais (ver js/theme.js).
         theme: {
           preset: 'dark-premium',
@@ -107,6 +119,29 @@
     return t;
   }
 
+  /*
+   * Trilha sonora: config vinda de fora (arquivo importado, banco antigo) pode
+   * ter qualquer coisa. Sai daqui sempre com os campos certos — o player toca
+   * numa TV sem ninguém por perto para consertar.
+   */
+  function normalizeAudio(a) {
+    const src = (a && typeof a === 'object') ? a : {};
+    const faixas = (Array.isArray(src.faixas) ? src.faixas : [])
+      .map((f) => (typeof f === 'string' ? { url: f, nome: '' } : f))
+      .filter((f) => f && typeof f.url === 'string' && f.url)
+      .map((f) => ({ url: String(f.url), nome: String(f.nome || '').slice(0, 120) }))
+      .slice(0, 100);
+    const vol = Number(src.volume);
+    return {
+      // Ligado sem faixa nenhuma seria uma promessa vazia na tela.
+      ativo: src.ativo === true && faixas.length > 0,
+      faixas,
+      volume: Number.isFinite(vol) ? Math.min(100, Math.max(0, Math.round(vol))) : 60,
+      aleatorio: src.aleatorio === true,
+      abaixarComVideo: src.abaixarComVideo !== false,
+    };
+  }
+
   /* ---------- Validação / normalização ---------- */
   function normalize(cfg) {
     if (!cfg || typeof cfg !== 'object') return sampleConfig();
@@ -119,6 +154,7 @@
 
     // Garante um objeto de tema e migra configs antigas (cor/fundo → tema).
     out.settings.theme = migrateTheme(out.settings, (cfg.settings || {}).theme);
+    out.settings.audio = normalizeAudio(out.settings.audio);
 
     // Preserva zonas de outros templates (trocar de layout não apaga conteúdo).
     Object.keys(cfg.zonas || {}).forEach((k) => {

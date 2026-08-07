@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
@@ -12,12 +12,16 @@ import { StatusDot } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
+import { SoundRemote } from '../components/content/SoundRemote.jsx';
 
 export function ScreensPage({ onEditContent }) {
   const { data, loading, error, reload } = useAsync(devices.list);
   const list = data ? data.devices || [] : [];
 
   const [pairOpen, setPairOpen] = useState(false);
+  // Som ao vivo: atalho a partir da frota. Durante um evento, mexer no volume
+  // não pode custar entrar na tela, abrir ajustes e rolar até o fim.
+  const [somTarget, setSomTarget] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [backupTarget, setBackupTarget] = useState(null);
@@ -52,6 +56,7 @@ export function ScreensPage({ onEditContent }) {
             <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
               {list.map((d) => (
                 <FleetCard key={d.id} d={d}
+                  onSom={() => setSomTarget(d)}
                   onContent={() => onEditContent(d)}
                   onRename={() => setRenameTarget(d)}
                   onBackup={() => setBackupTarget(d)}
@@ -65,6 +70,14 @@ export function ScreensPage({ onEditContent }) {
 
       <PairDialog open={pairOpen} onClose={() => setPairOpen(false)} onDone={reload} />
       <RenameDialog target={renameTarget} onClose={() => setRenameTarget(null)} onDone={reload} />
+      <Dialog
+        open={!!somTarget}
+        onClose={() => setSomTarget(null)}
+        title={'Som · ' + ((somTarget && somTarget.name) || 'Tela')}
+        description="Age na TV na hora. A playlist fica em Conteúdo › Ajustes da tela."
+      >
+        {somTarget && <SoundRemote deviceId={somTarget.id} />}
+      </Dialog>
       <RemoveDialog target={removeTarget} onClose={() => setRemoveTarget(null)} onDone={reload} />
       <BackupDialog target={backupTarget} screens={list} onClose={() => setBackupTarget(null)} onDone={reload} />
     </div>
@@ -72,7 +85,7 @@ export function ScreensPage({ onEditContent }) {
 }
 
 // Mini "tela" da frota: status + programação (não é espelho ao vivo).
-function FleetCard({ d, onContent, onRename, onBackup, onRemove }) {
+function FleetCard({ d, onSom, onContent, onRename, onBackup, onRemove }) {
   const st = deviceStatus(d.lastSeen);
   const online = st.tone === 'ok';
   return (
@@ -94,6 +107,7 @@ function FleetCard({ d, onContent, onRename, onBackup, onRemove }) {
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent}>Conteúdo</Button>
+          <IconButton icon={Music} label="Som ao vivo" size={14} onClick={onSom} />
           <IconButton icon={Archive} label="Backup / restaurar" size={14} onClick={onBackup} />
           <IconButton icon={Pencil} label="Renomear" size={14} onClick={onRename} />
           <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={onRemove} />

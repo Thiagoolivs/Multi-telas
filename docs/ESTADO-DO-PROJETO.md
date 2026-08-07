@@ -48,6 +48,8 @@ Roda como trabalho em segundo plano (`server/jobs.js`) porque leva minutos.
 - **Publicar campanha inteira** em várias telas, filtrando por formato.
 - **LGPD** com aceite versionado, exportar e excluir de verdade — inclusive as
   fotos do mural, que são dado pessoal de terceiros.
+- **Música de fundo por tela**, com controle remoto ao vivo (SSE) e vídeo que
+  abaixa a trilha em vez de brigar com ela.
 - **Mural de fotos por QR**: o público manda foto pelo celular e ela entra na TV
   em segundos, com botão de pânico que limpa a tela e fecha o mural num clique.
   O QR é desenhado pelo próprio servidor (`server/qr.js`), sem serviço externo.

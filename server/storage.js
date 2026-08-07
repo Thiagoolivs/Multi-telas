@@ -69,6 +69,13 @@ function s3Configured() {
 const MIME_EXT = {
   'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/svg+xml': 'svg',
   'video/mp4': 'mp4', 'video/webm': 'webm',
+  // Trilha sonora. MP3 é o que sai de qualquer lugar; os outros entram porque
+  // recusar um M4A que o cliente já tem seria um "não" sem motivo técnico.
+  // Sinônimos vêm ANTES do tipo canônico: EXT_MIME é o inverso deste objeto e
+  // a última entrada de cada extensão é a que volta ao servir o arquivo.
+  'audio/mp3': 'mp3', 'audio/mpeg': 'mp3',
+  'audio/x-m4a': 'm4a', 'audio/mp4': 'm4a', 'audio/aac': 'aac',
+  'audio/x-wav': 'wav', 'audio/wav': 'wav', 'audio/ogg': 'ogg',
   // Apresentações: PPTX/PPT (exibidas via visualizador) e PDF (nativo no navegador).
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
   'application/vnd.ms-powerpoint': 'ppt',

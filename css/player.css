@@ -316,20 +316,12 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   to   { transform: scale(1); opacity: 1; }
 }
 
-.mt-mural-convite {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: .8cqh; padding: 1.4cqh 1cqw; text-align: center;
-  border-radius: 1.2cqw; border: .3cqh dashed color-mix(in srgb, var(--text) 28%, transparent);
-  background: color-mix(in srgb, var(--text) 5%, transparent);
+/* Enquanto não chega foto nenhuma. Sem QR na TV: o convite é o cartaz na mesa,
+ * e a tela existe para mostrar as pessoas. A frase segue o tema da tela. */
+.mt-mural-aguarde {
+  font-size: clamp(14px, 3cqw, 44px); font-weight: 600; line-height: 1.25;
+  color: var(--text-dim); text-align: center; max-width: 70cqw;
 }
-.mt-mural-convite img { width: min(72%, 18cqh); height: auto; background:#fff; padding: .8cqh; border-radius: .8cqw; }
-.mt-mural-convite-t { font-size: clamp(10px, 1.4cqw, 20px); color: var(--text-dim); line-height: 1.25; }
-.mt-mural-codigo { font-size: clamp(11px, 1.6cqw, 24px); font-weight: 700; letter-spacing: .12em; }
-/* Sem nenhuma foto ainda, o convite É a tela. */
-.mt-mural-convite-lg { border: 0; background: none; gap: 2cqh; }
-.mt-mural-convite-lg img { width: min(46cqw, 52cqh); padding: 1.6cqh; border-radius: 1.6cqw; }
-.mt-mural-convite-lg .mt-mural-convite-t { font-size: clamp(14px, 3cqw, 44px); color: var(--text); font-weight: 600; }
-.mt-mural-convite-lg .mt-mural-codigo { font-size: clamp(14px, 3.4cqw, 48px); color: var(--accent); }
 
 /* ---------- Cabeçalho (premium, orientado à zona) ---------- */
 .mt-header {
@@ -1135,3 +1127,16 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   -webkit-backdrop-filter: none; backdrop-filter: none;
   background: var(--surface-solid);
 }
+
+/* Trilha bloqueada pelo navegador. Aviso discreto e honesto: a TV não pode
+ * simplesmente ligar o som sozinha, e fingir que ligou seria pior. Some no
+ * primeiro toque em qualquer lugar da tela. */
+.mt-som-bloqueado {
+  position: fixed; right: 2vmin; bottom: 2vmin; z-index: 60;
+  padding: .8vmin 1.6vmin; border-radius: 100px;
+  background: rgba(0, 0, 0, .62); color: #fff;
+  font: 500 clamp(11px, 1.5vmin, 20px)/1.2 inherit;
+  backdrop-filter: blur(6px);
+  animation: mt-som-pulsa 2.4s ease-in-out infinite;
+}
+@keyframes mt-som-pulsa { 0%, 100% { opacity: .65; } 50% { opacity: 1; } }

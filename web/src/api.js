@@ -139,6 +139,16 @@ export const ai = {
   },
 };
 
+/*
+ * Som ao vivo. Fora de `deviceConfig` de propósito: isto NÃO passa por salvar.
+ * Abaixar o volume no meio de um evento é uma ação, e uma ação que exigisse
+ * publicar a tela inteira reconstruiria o palco e cortaria a música.
+ */
+export const som = {
+  comando: (deviceId, acao, valor) => api('POST', '/api/devices/' + deviceId + '/audio', { acao, valor }),
+  estado: (deviceId) => api('GET', '/api/devices/' + deviceId + '/audio'),
+};
+
 export const brand = {
   get: () => api('GET', '/api/brand'),
   save: (kit) => api('PUT', '/api/brand', kit),

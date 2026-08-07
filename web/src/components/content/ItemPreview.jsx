@@ -164,11 +164,14 @@ function Body({ item }) {
         </div>
       );
     case 'mural':
+      // A TV mostra só as fotos — o QR fica na página Mural, para imprimir.
       return (
         <div className="flex h-full flex-col items-center justify-center gap-1.5">
-          {item.codigo
-            ? <img src={murais.qr(window.location.origin + '/m/' + item.codigo)} alt="QR do mural" className="h-16 w-16 rounded bg-white p-1" />
-            : <QrCode size={34} className="opacity-40" />}
+          <div className="grid w-3/5 grid-cols-2 gap-1">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="aspect-square rounded-sm bg-current opacity-20" />
+            ))}
+          </div>
           <div className="text-[10px] font-medium opacity-80">{item.titulo || 'Mural de fotos'}</div>
           <div className="text-[9px] opacity-60">{item.codigo ? 'as fotos entram aqui, ao vivo' : 'escolha um mural'}</div>
         </div>
