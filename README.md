@@ -233,7 +233,8 @@ multitelas/
 | Relógio | Relógio digital com data |
 | Clima (simples) | Temperatura por cidade (Open-Meteo, sem chave de API) |
 | Página Web | Incorpora um site via iframe |
-| QR Code | Gera um QR a partir de um link/texto |
+| QR Code | Gera um QR a partir de um link/texto (desenhado pelo próprio servidor) |
+| Mural de fotos (QR) | O público lê o QR, manda foto pelo celular e ela aparece na TV em segundos |
 
 Todos os conteúdos prontos (exceto os que já têm arte própria, como o cartão de
 aniversário) usam a **superfície adaptativa** — herdam fundo e cores do tema atual.
@@ -256,8 +257,9 @@ simplicidade e custo, mas define o que ele **é e não é**:
   Impede acesso casual ao painel, mas **não é segurança de servidor** — quem tem
   acesso ao navegador/DevTools contorna.
 - **Dependências externas.** Notícias usam fetch direto ou o proxy público
-  *allorigins* como reserva; clima (Open-Meteo), mapas (OSM), trânsito (Waze),
-  QR (api.qrserver) e YouTube dependem desses serviços e de suas políticas de CORS.
+  *allorigins* como reserva; clima (Open-Meteo), mapas (OSM), trânsito (Waze)
+  e YouTube dependem desses serviços e de suas políticas de CORS. O QR **não**
+  depende de ninguém: é desenhado no servidor (`server/qr.js`).
 - **Cores adaptativas** só funcionam com imagens do mesmo domínio ou com CORS
   liberado (o canvas "suja" com imagens de outros domínios e não adapta).
 - **Limite de armazenamento (~5 MB do localStorage).** Uploads de imagem (base64)

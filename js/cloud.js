@@ -123,6 +123,16 @@
       es.addEventListener('config', async () => {
         try { const cfg = await fetchConfig(id); if (cfg) onConfig(cfg); } catch (e) {}
       });
+      /*
+       * Mural: chegou (ou saiu) foto do público. Não é config nova — recarregar
+       * a tela inteira aqui apagaria o slide no meio. Vira um evento no
+       * documento e quem estiver mostrando o mural se atualiza sozinho.
+       */
+      es.addEventListener('mural', (ev) => {
+        let dado = {};
+        try { dado = JSON.parse(ev.data || '{}'); } catch (e) {}
+        document.dispatchEvent(new CustomEvent('mt:mural', { detail: dado }));
+      });
       es.onerror = () => { /* reconecta sozinho */ };
     }
     connect();

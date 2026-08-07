@@ -12,7 +12,7 @@
  * o texto de forma relevante, sobe a versão — assim dá para saber quem aceitou
  * o quê, que é o ponto inteiro de registrar aceite.
  */
-const VERSAO = '2026-08-06';
+const VERSAO = '2026-08-07';
 
 // Trocar por um e-mail do domínio quando ele existir.
 const CONTATO = process.env.SUPPORT_EMAIL || 'thiago.olivs.coelho@gmail.com';
@@ -63,6 +63,17 @@ const TERMOS = `
   <li>Você nos isenta de responsabilidade por dados que cadastrar sem base legal.</li>
 </ul>
 
+<h2>6-A. Mural de fotos enviadas pelo público</h2>
+<p>O mural gera um QR. Quem apontar a câmera manda uma foto que aparece na sua tela — <b>sem cadastro e sem identificação</b>. É o recurso mais sensível do serviço, e as regras abaixo são condição para usá-lo.</p>
+<ul>
+  <li><b>Você é o controlador</b> dessas fotos, como em qualquer dado que cadastra aqui. Nós só transportamos, guardamos e exibimos por sua ordem.</li>
+  <li><b>Avise quem envia.</b> A página do QR já informa que a foto será exibida publicamente, mas o aviso no local do evento é seu.</li>
+  <li><b>Criança e adolescente.</b> Foto de menor de idade só pode ser exibida com autorização de quem é responsável por ele. Se você não tem como garantir isso, não use o mural em evento com crianças.</li>
+  <li><b>Modere.</b> O painel tem um botão que tira tudo da tela e fecha o mural num clique. Manter o mural aberto sem ninguém olhando é decisão sua e risco seu.</li>
+  <li>Guardamos o endereço IP de quem envia, por segurança e para apurar abuso.</li>
+  <li>Podemos remover fotos e suspender murais que violem estes Termos, sem aviso prévio, quando houver denúncia ou risco evidente.</li>
+</ul>
+
 <h2>7. Uso proibido</h2>
 <p>Não use o serviço para conteúdo ilegal, discriminatório, enganoso, que viole direitos de terceiros ou que exponha pessoas sem autorização. Também não tente burlar limites de plano, sobrecarregar a infraestrutura ou acessar dados de outras contas.</p>
 
@@ -99,6 +110,7 @@ const PRIVACIDADE = `
   <tr><td>Telas pareadas: nome, código, configuração e último acesso</td><td>operar o serviço</td><td>execução de contrato</td></tr>
   <tr><td>Conteúdo que você cria: campanhas, imagens, logo, cores e regras da marca</td><td>montar e exibir a programação</td><td>execução de contrato</td></tr>
   <tr><td>Aniversariantes: nome, matrícula, cargo, dia, mês e foto</td><td>exibir a homenagem na tela</td><td><b>definida por você</b> — somos operador</td></tr>
+  <tr><td>Mural: a foto enviada, o nome e a mensagem que a pessoa digitou (ambos opcionais) e o endereço IP de quem enviou</td><td>exibir na tela e apurar abuso</td><td><b>definida por você</b> — somos operador</td></tr>
   <tr><td>Registro do aceite dos Termos: versão, data e endereço IP</td><td>comprovar o aceite</td><td>legítimo interesse e obrigação legal</td></tr>
   <tr><td>Convites de equipe: e-mail do convidado e papel</td><td>dar acesso ao painel</td><td>execução de contrato</td></tr>
 </table>
@@ -116,7 +128,8 @@ const PRIVACIDADE = `
 <h2>4. Por quanto tempo</h2>
 <ul>
   <li>Enquanto sua conta existir, mantemos os dados necessários para o serviço funcionar.</li>
-  <li>Ao excluir a conta, apagamos conta, usuários, telas, configurações, biblioteca, marca, aniversariantes, sessões e os arquivos enviados. A exclusão é imediata e não há lixeira — não dá para desfazer.</li>
+  <li>Fotos do mural ficam guardadas enquanto o mural existir. Tirar uma foto da tela a esconde, não a apaga: excluir o mural apaga o registro dela.</li>
+  <li>Ao excluir a conta, apagamos conta, usuários, telas, configurações, biblioteca, marca, aniversariantes, murais e suas fotos, sessões e os arquivos enviados. A exclusão é imediata e não há lixeira — não dá para desfazer.</li>
   <li>Registros exigidos por lei (fiscais e de cobrança) podem ser mantidos pelo prazo legal, mesmo após a exclusão.</li>
   <li>Cópias em backup do banco podem persistir por até 30 dias antes de serem sobrescritas.</li>
 </ul>

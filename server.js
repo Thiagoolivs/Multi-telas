@@ -35,6 +35,8 @@ const legal = require('./server/legal');
 const seasons = require('./js/seasons.js');
 const briefing = require('./server/ai-briefing');
 const memory = require('./server/ai-memoria');
+const muralLib = require('./server/mural');
+const qrcode = require('./server/qr');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -124,6 +126,19 @@ function broadcast(deviceId, event, payload) {
   if (!set) return;
   const msg = 'event: ' + event + '\ndata: ' + JSON.stringify(payload) + '\n\n';
   set.forEach((res) => { try { res.write(msg); } catch (e) {} });
+}
+/*
+ * Avisa TODAS as telas da empresa. Diferente do `broadcast`, que fala com um
+ * device: aqui o fato é da empresa (chegou foto no mural, o mural foi limpo) e
+ * pode estar em várias telas ao mesmo tempo.
+ *
+ * Só toca em quem está assinando SSE — não é uma consulta cara por tela.
+ */
+async function avisarTelas(tenantId, event, payload) {
+  try {
+    const telas = await db.listDevices(tenantId);
+    for (const d of telas) if (subscribers[d.id]) broadcast(d.id, event, payload || {});
+  } catch (e) { console.warn('[sse]', e.message); }
 }
 function validEmail(e) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e || '')); }
 // Base absoluta da requisição (para montar URLs de checkout/portal).
@@ -225,6 +240,24 @@ async function lerImagens(urls) {
 async function handleApi(req, res, pathname, query) {
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
   const sess = await auth.currentSession(req);
+
+  /*
+   * Desenho de QR. Aberto de propósito: é uma função pura do texto pedido, não
+   * lê nada do banco e não conta nada a ninguém. A TV precisa dele sem sessão,
+   * e o painel precisa dele antes de salvar o mural.
+   */
+  if (parts[1] === 'qr.svg' && req.method === 'GET') {
+    const dado = String(query.d || '');
+    if (!dado) return sendJson(res, 400, { error: 'faltou o parâmetro d' });
+    if (Buffer.byteLength(dado, 'utf8') > qrcode.MAX_BYTES) {
+      return sendJson(res, 413, { error: 'texto longo demais para caber num QR legível' });
+    }
+    let svg;
+    try { svg = qrcode.svg(dado, { escuro: /^#[0-9a-f]{3,8}$/i.test(query.cor || '') ? query.cor : undefined }); }
+    catch (e) { return sendJson(res, 400, { error: 'não foi possível gerar o QR' }); }
+    res.writeHead(200, { 'Content-Type': 'image/svg+xml; charset=utf-8', 'Cache-Control': 'public, max-age=86400' });
+    return res.end(svg);
+  }
 
   /* ----- Auth ----- */
   if (parts[1] === 'auth') {
@@ -647,6 +680,139 @@ async function handleApi(req, res, pathname, query) {
       });
     }
     return sendJson(res, 404, { error: 'rota de aniversariantes não encontrada' });
+  }
+
+  /* ----- Mural: envio público por QR ----- */
+
+  /*
+   * Rota PÚBLICA. Não tem sessão: o código do QR é a credencial, e por isso ela
+   * só ENVIA — nunca lista, apaga nem revela o que os outros mandaram. Quem
+   * escaneia o QR consegue exatamente uma coisa: pôr uma foto na fila.
+   */
+  if (parts[1] === 'mural' && parts[2] && parts[3] === 'foto' && req.method === 'POST') {
+    const mural = await db.muralPorCodigo(String(parts[2]).toUpperCase());
+    if (!mural) return sendJson(res, 404, { error: 'mural não encontrado' });
+    if (!mural.aceitando) return sendJson(res, 403, { error: 'este mural está fechado no momento' });
+
+    /*
+     * Duas travas de abuso, porque a rota é aberta.
+     *
+     * A de IP é FROUXA de propósito: num evento o salão inteiro está no mesmo
+     * Wi-Fi, então todo mundo chega aqui com o mesmo endereço. Um limite
+     * apertado por IP não pararia um abusador — pararia a festa na décima foto.
+     * Quem segura o volume de verdade é o teto por mural, e quem segura o
+     * conteúdo é o botão de pânico, que fecha tudo num clique.
+     */
+    const rlIp = rateLimit('mural:ip:' + clientIp(req), 60, 10 * 60 * 1000);
+    if (!rlIp.ok) return sendJson(res, 429, { error: 'muitos envios desta rede agora — espere um minuto' }, { 'Retry-After': String(rlIp.retryAfter) });
+    const rlMural = rateLimit('mural:m:' + mural.id, 400, 60 * 60 * 1000);
+    if (!rlMural.ok) return sendJson(res, 429, { error: 'muitas fotos agora — tente em instantes' }, { 'Retry-After': String(rlMural.retryAfter) });
+
+    const mime = String(query.mime || req.headers['content-type'] || '').toLowerCase();
+    // HEIC é o padrão do iPhone e não sabemos exibir: a mensagem tem que dizer
+    // o que fazer, não só que deu errado.
+    if (/^image\/hei[cf]/.test(mime)) {
+      return sendJson(res, 415, { error: 'formato do iPhone (HEIC) não abre na TV — no iPhone, Ajustes › Câmera › Formatos › "Mais compatível", ou tire um print da foto e envie o print' });
+    }
+    if (!/^image\/(jpeg|png|webp)$/.test(mime)) {
+      return sendJson(res, 415, { error: 'envie uma foto (JPG, PNG ou WEBP)' });
+    }
+    try {
+      const salvo = await storage.saveStream(mural.tenantId, req, { mime, max: muralLib.MAX_MB * 1024 * 1024 });
+      const foto = await db.addFotoMural(mural.id, mural.tenantId, {
+        url: salvo.url, chave: salvo.key,
+        autor: String(query.autor || '').slice(0, 40),
+        mensagem: String(query.mensagem || '').slice(0, 120),
+        ip: clientIp(req),
+      });
+      // Avisa as TVs na hora: é o "tempo real" que o usuário pediu.
+      await avisarTelas(mural.tenantId, 'mural', { mural: mural.codigo });
+      return sendJson(res, 201, { ok: true, id: foto.id });
+    } catch (e) {
+      if (e.status === 413) return sendJson(res, 413, { error: 'essa foto passa de ' + muralLib.MAX_MB + ' MB — tente outra' });
+      if (e.status === 415) return sendJson(res, 415, { error: 'esse tipo de arquivo não abre na TV' });
+      console.warn('[mural]', e.message);
+      return sendJson(res, 500, { error: 'não foi possível salvar — tente de novo' });
+    }
+  }
+
+  // O player busca as fotos visíveis. Só leitura, só as não ocultas.
+  if (parts[1] === 'mural' && parts[2] && parts[3] === 'fotos' && req.method === 'GET') {
+    const mural = await db.muralPorCodigo(String(parts[2]).toUpperCase());
+    if (!mural) return sendJson(res, 404, { error: 'mural não encontrado' });
+    const fotos = await db.fotosVisiveis(mural.id, 60);
+    return sendJson(res, 200, { titulo: mural.titulo, aceitando: mural.aceitando, fotos }, { 'Cache-Control': 'no-store' });
+  }
+
+  /* ----- Murais: gestão (autenticada) ----- */
+  if (parts[1] === 'murais') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+
+    if (req.method === 'GET' && parts.length === 2) {
+      const murais = await db.listarMurais(sess.tenant_id);
+      return sendJson(res, 200, { murais, base: baseUrl(req) });
+    }
+    if (req.method === 'POST' && parts.length === 2) {
+      return readBody(req, res, async (b) => {
+        // Código único: tenta de novo se colidir, em vez de estourar no banco.
+        let codigo = '';
+        for (let i = 0; i < 6 && !codigo; i++) {
+          const tentativa = muralLib.novoCodigo(6);
+          if (!(await db.muralPorCodigo(tentativa))) codigo = tentativa;
+        }
+        if (!codigo) return sendJson(res, 503, { error: 'tente de novo' });
+        const m = await db.criarMural(sess.tenant_id, codigo, String((b && b.titulo) || 'Mural').slice(0, 60));
+        return sendJson(res, 201, { ...m, base: baseUrl(req) });
+      });
+    }
+    // Tirar uma foto da tela — e devolvê-la, porque quem tira no susto às vezes
+    // se arrepende, e reversível é a diferença entre moderar e destruir.
+    if (parts[2] === 'fotos' && parts[3] && (req.method === 'DELETE' || req.method === 'PUT')) {
+      if (req.method === 'DELETE') {
+        await db.ocultarFoto(parts[3], sess.tenant_id, true);
+        avisarTelas(sess.tenant_id, 'mural', {});
+        return sendJson(res, 200, { ok: true, oculta: true });
+      }
+      return readBody(req, res, async (b) => {
+        await db.ocultarFoto(parts[3], sess.tenant_id, !!(b && b.oculta));
+        avisarTelas(sess.tenant_id, 'mural', {});
+        return sendJson(res, 200, { ok: true, oculta: !!(b && b.oculta) });
+      });
+    }
+    if (parts[2]) {
+      const m = await db.muralPorId(parts[2], sess.tenant_id);
+      if (!m) return sendJson(res, 404, { error: 'mural não encontrado' });
+
+      if (req.method === 'GET' && parts[3] === 'fotos') {
+        return sendJson(res, 200, { fotos: await db.listarFotosMural(m.id, 200) });
+      }
+      if (req.method === 'PUT') {
+        return readBody(req, res, async (b) => {
+          await db.atualizarMural(m.id, sess.tenant_id, String((b && b.titulo) || m.titulo).slice(0, 60), !!(b && b.aceitando));
+          return sendJson(res, 200, { ok: true });
+        });
+      }
+      /*
+       * BOTÃO DE PÂNICO. Tira tudo da tela numa chamada, e FECHA o mural no
+       * mesmo gesto — limpar sem fechar deixaria a próxima foto entrar dois
+       * segundos depois, que é justamente o que se está tentando impedir.
+       *
+       * Oculta em vez de apagar: quem aperta isto está com pressa e talvez com
+       * medo, e uma ação irreversível nesse estado é a pior coisa que o sistema
+       * pode oferecer. O que sumiu da TV continua listado no painel.
+       */
+      if (req.method === 'DELETE' && parts[3] === 'fotos') {
+        const n = await db.ocultarTodasFotos(m.id, sess.tenant_id);
+        await db.atualizarMural(m.id, sess.tenant_id, m.titulo, false);
+        avisarTelas(sess.tenant_id, 'mural', {});
+        return sendJson(res, 200, { ok: true, ocultadas: n, fechado: true });
+      }
+      if (req.method === 'DELETE') {
+        await db.removerMural(m.id, sess.tenant_id);
+        return sendJson(res, 200, { ok: true });
+      }
+    }
+    return sendJson(res, 404, { error: 'rota de mural não encontrada' });
   }
 
   /* ----- Datas comemorativas: catálogo + a data de hoje ----- */
@@ -1378,7 +1544,7 @@ const HOME_HTML = `<!DOCTYPE html>
   <div class="foot">Dica: na TV, abra este site e toque em <strong>Player (TV)</strong>. Use <strong>tela nova</strong> se aparecer a TV antiga.</div>
 </body></html>`;
 
-function handleStatic(req, res, urlPath) {
+async function handleStatic(req, res, urlPath) {
   // Página inicial com dois caminhos (administrar × virar TV).
   if (urlPath === '/') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -1401,6 +1567,26 @@ function handleStatic(req, res, urlPath) {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
     return res.end(legal.privacidadeHtml());
   }
+  /*
+   * Mural: a página que abre ao ler o QR. Endereço curto porque às vezes ele é
+   * digitado à mão, olhando um cartaz do outro lado da sala.
+   *
+   * Sem sessão e sem React: é uma página de trinta segundos, aberta no 4G de um
+   * evento lotado. Mural inexistente ou fechado responde com página honesta em
+   * vez de um formulário que não vai funcionar.
+   */
+  const rotaMural = urlPath.match(/^\/m\/([A-Za-z0-9]{4,12})\/?$/);
+  if (rotaMural) {
+    const mural = await db.muralPorCodigo(rotaMural[1].toUpperCase()).catch(() => null);
+    const html = !mural
+      ? muralLib.paginaFechada('Mural não encontrado', 'Confira o código do cartaz — ele pode ter mudado.')
+      : !mural.aceitando
+        ? muralLib.paginaFechada(mural.titulo, 'Este mural está fechado no momento. Obrigado por participar!')
+        : muralLib.pagina(mural, { empresa: (await db.getTenant(mural.tenantId).catch(() => null) || {}).name || '' });
+    res.writeHead(mural ? 200 : 404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    return res.end(html);
+  }
+
   if (urlPath === '/legacy' || urlPath === '/legacy/') urlPath = '/index.html';
   const filePath = path.normalize(path.join(ROOT, urlPath));
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); return res.end('Acesso negado'); }
@@ -1423,7 +1609,8 @@ const server = http.createServer((req, res) => {
   if (pathname.startsWith('/media/')) {
     return handleMedia(req, res, pathname);
   }
-  return handleStatic(req, res, pathname);
+  return handleStatic(req, res, pathname)
+    .catch((e) => { console.warn('[static]', e.message); try { res.writeHead(500); res.end('erro interno'); } catch (_) {} });
 });
 
 db.init()

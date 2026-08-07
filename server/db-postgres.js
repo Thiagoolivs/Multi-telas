@@ -55,6 +55,21 @@ async function init() {
     CREATE TABLE IF NOT EXISTS sessions (
       token TEXT PRIMARY KEY, user_id TEXT, tenant_id TEXT, expires_at BIGINT
     );
+    -- Mural: o público envia foto por QR e ela aparece na TV. O codigo é o
+    -- que vai no QR — curto porque às vezes alguém digita à mão.
+    CREATE TABLE IF NOT EXISTS murais (
+      id TEXT PRIMARY KEY, tenant_id TEXT, codigo TEXT UNIQUE, titulo TEXT,
+      aceitando BOOLEAN, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_murais_tenant ON murais(tenant_id);
+    -- Coluna oculta em vez de DELETE: o botão de pânico precisa ser
+    -- instantâneo e reversível. Apagar arquivo de storage no meio de um evento
+    -- é irreversível e lento justamente quando a pressa é máxima.
+    CREATE TABLE IF NOT EXISTS muralfotos (
+      id TEXT PRIMARY KEY, mural_id TEXT, tenant_id TEXT, url TEXT, chave TEXT,
+      autor TEXT, mensagem TEXT, ip TEXT, oculta BOOLEAN, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_muralfotos_mural ON muralfotos(mural_id);
     -- Identidade visual da empresa: uma linha por tenant.
     CREATE TABLE IF NOT EXISTS brandkit (
       tenant_id TEXT PRIMARY KEY, cores TEXT, fonte_titulo TEXT, fonte_apoio TEXT,
@@ -205,6 +220,63 @@ async function addBrandAsset(tenantId, kind, url, label) {
 async function removeBrandAsset(id, tenantId) {
   await pool.query('DELETE FROM brandassets WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
 }
+/* ---------------- Mural de fotos do público ---------------- */
+// `tenantId` sai daqui porque a rota pública do QR não tem sessão: quem manda
+// a foto é identificado pelo mural, e é do mural que vem a empresa dona dela.
+const mapMural = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo, aceitando: !!r.aceitando, createdAt: r.created_at } : null);
+const mapFoto = (r) => ({ id: r.id, url: r.url, autor: r.autor || '', mensagem: r.mensagem || '', oculta: !!r.oculta, createdAt: r.created_at });
+
+async function criarMural(tenantId, codigo, titulo) {
+  const id = 'mur_' + rid(12);
+  await pool.query('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, created_at) VALUES ($1,$2,$3,$4,TRUE,$5)',
+    [id, tenantId, codigo, titulo || 'Mural', Date.now()]);
+  return { id, codigo, titulo: titulo || 'Mural', aceitando: true };
+}
+async function listarMurais(tenantId) {
+  const r = await pool.query('SELECT * FROM murais WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
+  return r.rows.map(mapMural);
+}
+async function muralPorCodigo(codigo) {
+  const r = await pool.query('SELECT * FROM murais WHERE codigo = $1', [codigo]);
+  return mapMural(r.rows[0]);
+}
+async function muralPorId(id, tenantId) {
+  const r = await pool.query('SELECT * FROM murais WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapMural(r.rows[0]);
+}
+async function atualizarMural(id, tenantId, titulo, aceitando) {
+  await pool.query('UPDATE murais SET titulo = $1, aceitando = $2 WHERE id = $3 AND tenant_id = $4',
+    [titulo || 'Mural', !!aceitando, id, tenantId]);
+}
+async function removerMural(id, tenantId) {
+  await pool.query('DELETE FROM murais WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+}
+async function addFotoMural(muralId, tenantId, foto) {
+  const id = 'mf_' + rid(14);
+  await pool.query('INSERT INTO muralfotos (id, mural_id, tenant_id, url, chave, autor, mensagem, ip, oculta, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,FALSE,$9)',
+    [id, muralId, tenantId, foto.url, foto.chave || '', foto.autor || '', foto.mensagem || '', foto.ip || '', Date.now()]);
+  return { id, ...foto };
+}
+async function listarFotosMural(muralId, limite) {
+  const r = await pool.query('SELECT * FROM muralfotos WHERE mural_id = $1 ORDER BY created_at DESC LIMIT $2', [muralId, limite || 200]);
+  return r.rows.map(mapFoto);
+}
+async function fotosVisiveis(muralId, limite) {
+  const r = await pool.query('SELECT id, url, autor, mensagem, created_at FROM muralfotos WHERE mural_id = $1 AND oculta = FALSE ORDER BY created_at DESC LIMIT $2', [muralId, limite || 60]);
+  return r.rows.map(mapFoto);
+}
+async function ocultarFoto(id, tenantId, oculta) {
+  await pool.query('UPDATE muralfotos SET oculta = $1 WHERE id = $2 AND tenant_id = $3', [!!oculta, id, tenantId]);
+}
+async function ocultarTodasFotos(muralId, tenantId) {
+  const r = await pool.query('UPDATE muralfotos SET oculta = TRUE WHERE mural_id = $1 AND tenant_id = $2', [muralId, tenantId]);
+  return r.rowCount;
+}
+async function contarFotosRecentes(muralId, desde) {
+  const r = await pool.query('SELECT COUNT(*) AS n FROM muralfotos WHERE mural_id = $1 AND created_at > $2', [muralId, desde]);
+  return Number(r.rows[0].n) || 0;
+}
+
 /* Memória da empresa: o que aprendemos conversando. */
 async function getMemoria(tenantId) {
   const r = await pool.query('SELECT dados FROM brandmemoria WHERE tenant_id = $1', [tenantId]);
@@ -464,6 +536,10 @@ async function dadosDoTenant(tenantId) {
     imagensDaMarca: await varios('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = $1'),
     aniversariantes: await varios('SELECT id, nome, matricula, dia, mes, cargo, foto, created_at FROM birthdays WHERE tenant_id = $1'),
     midias: await varios('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1'),
+    // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
+    // seria entregar uma cópia incompleta com cara de completa.
+    murais: await varios('SELECT id, codigo, titulo, aceitando, created_at FROM murais WHERE tenant_id = $1'),
+    fotosDoMural: await varios('SELECT id, mural_id, url, autor, mensagem, ip, oculta, created_at FROM muralfotos WHERE tenant_id = $1'),
   };
 }
 
@@ -473,14 +549,18 @@ async function dadosDoTenant(tenantId) {
  * não conhece disco nem R2.
  */
 async function apagarTenant(tenantId) {
-  const chaves = (await pool.query('SELECT key FROM media WHERE tenant_id = $1', [tenantId])).rows
-    .map((r) => r.key).filter(Boolean);
+  // Foto de mural não passa pela tabela `media`: sem juntar as duas listas, o
+  // arquivo continuaria no storage depois da conta apagada.
+  const chaves = [
+    ...(await pool.query('SELECT key FROM media WHERE tenant_id = $1', [tenantId])).rows.map((r) => r.key),
+    ...(await pool.query('SELECT chave FROM muralfotos WHERE tenant_id = $1', [tenantId])).rows.map((r) => r.chave),
+  ].filter(Boolean);
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     await client.query('DELETE FROM resets WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)', [tenantId]);
     for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'birthdays', 'media', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
     await client.query('DELETE FROM tenants WHERE id = $1', [tenantId]);
@@ -513,5 +593,7 @@ module.exports = {
   listCampaign, renameCampaign, deleteCampaign,
   registrarAceite, listarAceites, dadosDoTenant, apagarTenant,
   getMemoria, saveMemoria, clearMemoria,
+  criarMural, listarMurais, muralPorCodigo, muralPorId, atualizarMural, removerMural,
+  addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
 };
