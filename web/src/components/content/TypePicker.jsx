@@ -24,6 +24,7 @@ const DESC = {
   youtube: 'Vídeo ou live do YouTube.',
   web: 'Página da web em tempo real.',
   qrcode: 'QR code com legenda.',
+  mural: 'O público manda foto pelo QR e ela aparece aqui na hora.',
   weatherpro: 'Painel do clima da cidade.',
   birthdayauto: 'Aniversariantes automáticos.',
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film, Cake, Airplay, Cast, Presentation } from 'lucide-react';
 import { fillToCss, shapeClip, SHAPE_POLY } from '../../lib/composition.js';
 import { ICONS } from '../../lib/icons.js';
+import { murais } from '../../api.js';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
 // Fidelidade total virá de um preview via player embutido, adiante.
@@ -157,9 +158,19 @@ function Body({ item }) {
       return (
         <div className="flex h-full flex-col items-center justify-center gap-1.5" style={item.bg ? { background: item.bg } : undefined}>
           {item.data
-            ? <img src={'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(item.data)} alt="QR" className="h-20 w-20 rounded bg-white p-1" />
+            ? <img src={murais.qr(item.data)} alt="QR" className="h-20 w-20 rounded bg-white p-1" />
             : <QrCode size={40} className="opacity-40" />}
           {item.caption && <div className="text-[10px] opacity-70">{item.caption}</div>}
+        </div>
+      );
+    case 'mural':
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-1.5">
+          {item.codigo
+            ? <img src={murais.qr(window.location.origin + '/m/' + item.codigo)} alt="QR do mural" className="h-16 w-16 rounded bg-white p-1" />
+            : <QrCode size={34} className="opacity-40" />}
+          <div className="text-[10px] font-medium opacity-80">{item.titulo || 'Mural de fotos'}</div>
+          <div className="text-[9px] opacity-60">{item.codigo ? 'as fotos entram aqui, ao vivo' : 'escolha um mural'}</div>
         </div>
       );
     case 'weatherpro':

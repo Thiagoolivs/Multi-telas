@@ -173,6 +173,21 @@ export const CONTENT_TYPES = {
     make: () => ({ type: 'qrcode', data: '', caption: '', duracao: 12 }),
     summary: (i) => i.caption || i.data || 'QR Code',
   },
+  mural: {
+    label: 'Mural de fotos (QR)', icon: QrCode, group: 'Mídia',
+    fields: [
+      { key: 'codigo', label: 'Qual mural', kind: 'mural' },
+      { key: 'titulo', label: 'Título na tela', kind: 'text', placeholder: 'Mural de fotos' },
+      { key: 'legenda', label: 'Subtítulo', kind: 'text', optional: true },
+      { key: 'chamada', label: 'Convite ao lado do QR', kind: 'text',
+        placeholder: 'Aponte a câmera e mande a sua foto' },
+      { key: 'mostrarQr', label: 'Manter o QR na tela junto com as fotos', kind: 'bool' },
+      { ...DUR, hint: '0 = fica fixo na tela. O mural rende mais com tempo longo.' },
+    ],
+    make: () => ({ type: 'mural', codigo: '', titulo: 'Mural de fotos', legenda: '',
+      chamada: 'Aponte a câmera e mande a sua foto', mostrarQr: true, duracao: 30 }),
+    summary: (i) => (i.codigo ? i.titulo || 'Mural ' + i.codigo : 'Escolha um mural'),
+  },
   weatherpro: {
     label: 'Painel do Clima', icon: CloudSun, group: 'Widgets',
     fields: [
@@ -240,7 +255,7 @@ export const CONTENT_TYPES = {
   },
 };
 
-export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'promo', 'kpi', 'composicao', 'social', 'image', 'video', 'pptx', 'screen', 'livesource', 'youtube', 'web', 'qrcode', 'weatherpro', 'birthdayauto'];
+export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'promo', 'kpi', 'composicao', 'social', 'image', 'video', 'pptx', 'screen', 'livesource', 'youtube', 'web', 'qrcode', 'mural', 'weatherpro', 'birthdayauto'];
 
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;

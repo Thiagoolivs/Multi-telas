@@ -1,6 +1,7 @@
 import React from 'react';
 import { Field, Input, Select, Textarea, Checkbox } from '../ui/Field.jsx';
 import { MediaField } from './MediaField.jsx';
+import { MuralField } from './MuralField.jsx';
 import { CONTENT_TYPES } from '../../lib/contentTypes.js';
 
 // Formulário genérico dirigido pelo schema do tipo. Não conhece tipos
@@ -24,6 +25,8 @@ export function ItemForm({ item, onChange }) {
           <Field key={f.key} label={f.label} hint={f.hint}>
             {f.kind === 'media' ? (
               <MediaField value={value} accept={f.accept || 'image'} onChange={(v) => set(f.key, v)} />
+            ) : f.kind === 'mural' ? (
+              <MuralField value={value} onChange={(v) => set(f.key, v)} />
             ) : f.kind === 'textarea' ? (
               <Textarea value={value || ''} onChange={(e) => set(f.key, e.target.value)} />
             ) : f.kind === 'select' ? (

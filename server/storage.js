@@ -189,11 +189,14 @@ async function s3Delete(key) {
  * e devolve tamanho + sha256. Serve aos dois drivers: no disk vira o arquivo
  * final (move), no s3 é o que sobe. Nunca segura o arquivo inteiro em memória.
  */
-function toTempFile(req) {
+function toTempFile(req, max) {
   return new Promise((resolve, reject) => {
     const tmp = path.join(os.tmpdir(), 'mt-up-' + rid(16));
     const out = fs.createWriteStream(tmp);
     const hash = crypto.createHash('sha256');
+    // Teto do chamador quando ele tem um mais apertado que o global — é o caso
+    // de rota aberta ao público, onde o limite generoso do painel seria convite.
+    const teto = Math.min(MAX_FILE_BYTES, max || MAX_FILE_BYTES);
     let size = 0, aborted = false;
     const fail = (err) => {
       if (aborted) return; aborted = true;
@@ -202,7 +205,7 @@ function toTempFile(req) {
     req.on('data', (chunk) => {
       size += chunk.length;
       hash.update(chunk);
-      if (size > MAX_FILE_BYTES) { fail(httpErr(413, 'arquivo excede o limite')); req.destroy(); }
+      if (size > teto) { fail(httpErr(413, 'arquivo excede o limite')); req.destroy(); }
     });
     req.on('error', fail);
     out.on('error', fail);
@@ -211,14 +214,14 @@ function toTempFile(req) {
   });
 }
 
-async function saveStream(tenantId, req, { mime }) {
+async function saveStream(tenantId, req, { mime, max }) {
   const ext = extFor(mime);
   if (!ext) throw httpErr(415, 'tipo de arquivo não suportado');
   const id = rid(20);
   const key = tenantId + '/' + id + '.' + ext;
   const m = String(mime).toLowerCase();
 
-  const { tmp, size, sha256 } = await toTempFile(req);
+  const { tmp, size, sha256 } = await toTempFile(req, max);
   try {
     if (DRIVER === 's3') {
       await s3Put(key, Readable.toWeb(fs.createReadStream(tmp)), m, sha256, size);

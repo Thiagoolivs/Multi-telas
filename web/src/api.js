@@ -167,6 +167,26 @@ export const library = {
   duplicateCampaign: (nome, novo) => api('POST', '/api/library/campanhas/' + encodeURIComponent(nome) + '/duplicar', { nome: novo }),
 };
 
+/*
+ * Mural de fotos: o público envia pelo QR e aparece na TV.
+ *
+ * `ocultarFoto`/`limpar` escondem em vez de apagar — moderação tem que ser
+ * instantânea e reversível, então nada aqui destrói arquivo.
+ */
+export const murais = {
+  list: () => api('GET', '/api/murais'),
+  create: (titulo) => api('POST', '/api/murais', { titulo }),
+  update: (id, titulo, aceitando) => api('PUT', '/api/murais/' + id, { titulo, aceitando }),
+  remove: (id) => api('DELETE', '/api/murais/' + id),
+  fotos: (id) => api('GET', '/api/murais/' + id + '/fotos'),
+  ocultarFoto: (fotoId) => api('DELETE', '/api/murais/fotos/' + fotoId),
+  mostrarFoto: (fotoId) => api('PUT', '/api/murais/fotos/' + fotoId, { oculta: false }),
+  // Botão de pânico: tira tudo da tela e fecha o mural no mesmo gesto.
+  limpar: (id) => api('DELETE', '/api/murais/' + id + '/fotos'),
+  // Desenho do QR — o mesmo endereço que a TV usa.
+  qr: (link) => '/api/qr.svg?d=' + encodeURIComponent(link),
+};
+
 export const birthdays = {
   list: () => api('GET', '/api/birthdays'),
   import: (rows) => api('POST', '/api/birthdays/import', { rows }),

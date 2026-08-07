@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush,
+  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode,
 } from 'lucide-react';
 
 const NAV = [
@@ -10,6 +10,7 @@ const NAV = [
     { id: 'screens', label: 'Telas', icon: MonitorPlay },
     { id: 'designs', label: 'Meus Designs', icon: Palette },
     { id: 'brand', label: 'Marca', icon: Brush },
+    { id: 'mural', label: 'Mural de fotos', icon: QrCode },
     { id: 'alerts', label: 'Alertas', icon: Bell },
   ] },
   { section: 'Conta', items: [

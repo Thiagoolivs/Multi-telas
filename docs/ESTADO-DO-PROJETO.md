@@ -46,7 +46,11 @@ Roda como trabalho em segundo plano (`server/jobs.js`) porque leva minutos.
 - **Legibilidade medida, não estimada.** Contraste calculado em todo lugar: peça,
   tema derivado da marca, rodapé colorido.
 - **Publicar campanha inteira** em várias telas, filtrando por formato.
-- **LGPD** com aceite versionado, exportar e excluir de verdade.
+- **LGPD** com aceite versionado, exportar e excluir de verdade — inclusive as
+  fotos do mural, que são dado pessoal de terceiros.
+- **Mural de fotos por QR**: o público manda foto pelo celular e ela entra na TV
+  em segundos, com botão de pânico que limpa a tela e fecha o mural num clique.
+  O QR é desenhado pelo próprio servidor (`server/qr.js`), sem serviço externo.
 - **Player robusto**: offline, pré-carga da próxima mídia, fallback quando a IA
   ou o feed caem.
 
