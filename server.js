@@ -33,6 +33,7 @@ const jobs = require('./server/jobs');
 const legal = require('./server/legal');
 // Mesmo arquivo que o player carrega no navegador — catálogo único de datas.
 const seasons = require('./js/seasons.js');
+const briefing = require('./server/ai-briefing');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -776,6 +777,37 @@ async function handleApi(req, res, pathname, query) {
     return sendJson(res, 405, { error: 'método inválido' });
   }
 
+  /* ----- IA: chat de briefing (uma pergunta por vez, antes da campanha) ----- */
+  if (parts[1] === 'ai' && parts[2] === 'briefing') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    // Uma chamada barata por turno — limite folgado, mas existe.
+    const rl = rateLimit('ai:brief:' + sess.tenant_id, 120, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'muitas perguntas por hora' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const mensagens = Array.isArray(b && b.mensagens) ? b.mensagens.slice(0, 24) : [];
+      try {
+        /*
+         * A conversa recebe a marca para NÃO perguntar o que já está
+         * cadastrado. Perguntar a cor de quem acabou de cadastrar a cor é o
+         * jeito mais rápido de o sistema parecer burro.
+         */
+        const kit = await db.getBrandKit(sess.tenant_id);
+        const assets = await db.listBrandAssets(sess.tenant_id);
+        const k = kit || {};
+        const marca = (kit || assets.length) ? {
+          cores: k.cores || [], tom: k.tom || '', observacoes: k.observacoes || '',
+          logo: (assets.find((a) => a.kind === 'logo') || {}).url || '',
+          bases: assets.filter((a) => a.kind === 'base').map((a) => ({ url: a.url, label: a.label || '' })),
+        } : null;
+        const out = await briefing.conversar(mensagens, {
+          empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '', marca,
+        });
+        return sendJson(res, 200, out);
+      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+    });
+  }
+
   /* ----- IA: diretor de arte (campanha inteira, layout autoral) ----- */
   if (parts[1] === 'ai' && parts[2] === 'director') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
@@ -825,6 +857,8 @@ async function handleApi(req, res, pathname, query) {
           brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
           formatos: Array.isArray(b && b.formatos) ? b.formatos : null,
           marca,
+          // Resumo vindo do chat de briefing, quando o usuário conversou.
+          briefingPronto: (b && b.briefingPronto) || null,
         }, {
           onProgresso: progresso,
           // A geração de imagem fica aqui: o diretor não conhece storage nem tenant.

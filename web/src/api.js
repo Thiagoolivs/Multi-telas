@@ -78,6 +78,10 @@ export const ai = {
   director: (payload) => api('POST', '/api/ai/director', payload),
   directorStatus: (id) => api('GET', '/api/ai/director/' + id),
 
+  // Chat de briefing: uma pergunta por vez até a IA entender a campanha.
+  // Devolve { pronto:false, pergunta, sugestoes } ou { pronto:true, resumo }.
+  briefing: (mensagens, extra) => api('POST', '/api/ai/briefing', { mensagens, ...(extra || {}) }),
+
   // Dispara a campanha e só resolve quando ela fica pronta, contando o
   // progresso pelo caminho. É isto que a tela usa — o polling fica aqui.
   async directorRun(payload, onEtapa) {

@@ -1,7 +1,7 @@
 import React, { useState, Suspense, lazy, useMemo } from 'react';
 import {
   Plus, Wand2, ImagePlus, Upload, Pencil, Download, Send, Trash2, Sparkles, Check,
-  MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket,
+  MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket, MessagesSquare,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -14,6 +14,7 @@ import { ai, library, devices, deviceConfig, media } from '../api.js';
 import { primaryZoneKey, defaultConfig, CONTENT_TYPES } from '../lib/contentTypes.js';
 import { downloadComposition } from '../lib/exportPng.js';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
+import { BriefingChat } from '../components/content/BriefingChat.jsx';
 
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 
@@ -57,6 +58,7 @@ export function MyDesignsPage() {
   const [gen, setGen] = useState(null);
   const [aiColl, setAiColl] = useState('');
   const [etapa, setEtapa] = useState(null); // progresso do trabalho em andamento
+  const [conversando, setConversando] = useState(false); // chat de briefing aberto
 
   // Gerar imagem
   const [imgOpen, setImgOpen] = useState(false);
@@ -116,7 +118,9 @@ export function MyDesignsPage() {
         const zk = primaryZoneKey(cfg);
         if (!cfg.zonas) cfg.zonas = {};
         if (!cfg.zonas[zk] || !Array.isArray(cfg.zonas[zk].items)) cfg.zonas[zk] = { items: [] };
-        const novos = pecasElegiveis.map((p) => p.item);
+        // Marca a origem: é o que permite o resumo da tela dizer "isto veio da
+        // campanha X" em vez de deixar o conteúdo parecer que apareceu sozinho.
+        const novos = pecasElegiveis.map((p) => ({ ...p.item, _campanha: pub.titulo }));
         cfg.zonas[zk].items = substituir ? novos : cfg.zonas[zk].items.concat(novos);
         await deviceConfig.save(id, cfg);
       }
@@ -129,11 +133,17 @@ export function MyDesignsPage() {
 
   /* ---------------- Campanha com IA ---------------- */
 
-  async function gerarCampanha() {
+  async function gerarCampanha(briefingPronto) {
     if (!brief.trim()) return;
+    setConversando(false);
     setBusy(true); setMsg(''); setEtapa({ etapa: 'começando', detalhe: '', segundos: 0 });
     try {
-      const out = await ai.directorRun({ brief, empresa, publico, tom, oferta }, setEtapa);
+      const out = await ai.directorRun({
+        brief: (briefingPronto && briefingPronto.briefing) || brief,
+        empresa, publico, tom,
+        oferta: (briefingPronto && briefingPronto.oferta) || oferta,
+        briefingPronto: briefingPronto || null,
+      }, setEtapa);
       setGen(out);
       setAiColl(out.campanha || empresa || 'Campanha');
     } catch (e) { setMsg(e.message || 'Falha ao gerar'); }
@@ -424,10 +434,22 @@ export function MyDesignsPage() {
             <Button variant="secondary" icon={Check} disabled={busy} onClick={() => salvarCampanha(false)}>{busy ? 'Salvando…' : 'Só salvar'}</Button>
             <Button variant="primary" icon={Rocket} disabled={busy} onClick={() => salvarCampanha(true)}>Salvar e publicar</Button>
           </>)
-          : (<>
-            <Button variant="ghost" onClick={() => setAiOpen(false)}>Cancelar</Button>
-            <Button variant="primary" icon={Wand2} disabled={busy || !brief.trim()} onClick={gerarCampanha}>{busy ? 'Dirigindo…' : 'Gerar campanha'}</Button>
-          </>)}>
+          : conversando
+            ? <Button variant="ghost" onClick={() => setConversando(false)}>Voltar</Button>
+            : (<>
+              <Button variant="ghost" onClick={() => setAiOpen(false)}>Cancelar</Button>
+              {/*
+                Duas saídas: conversar melhora a campanha, gerar direto é mais
+                rápido. Nenhuma das duas é escondida — quem tem pressa não pode
+                ser obrigado a passar pela conversa.
+              */}
+              <Button variant="secondary" icon={Wand2} disabled={busy || !brief.trim()} onClick={() => gerarCampanha(null)}>
+                {busy ? 'Dirigindo…' : 'Gerar direto'}
+              </Button>
+              <Button variant="primary" icon={MessagesSquare} disabled={busy || !brief.trim()} onClick={() => setConversando(true)}>
+                Refinar conversando
+              </Button>
+            </>)}>
         {busy && etapa ? (
           /*
            * A campanha leva minutos. Mostrar a etapa em texto é o que separa
@@ -441,6 +463,13 @@ export function MyDesignsPage() {
             </div>
             <div className="tnum text-2xs text-ink-3">{etapa.segundos || 0}s · uma campanha completa leva um ou dois minutos</div>
           </div>
+        ) : conversando ? (
+          <BriefingChat
+            empresa={empresa} segmento=""
+            primeiraFala={brief}
+            onPronto={(resumo) => gerarCampanha(resumo)}
+            onPular={() => gerarCampanha(null)}
+          />
         ) : !gen ? (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">

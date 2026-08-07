@@ -79,6 +79,26 @@ async function enriquecerBrief(brief, ctx) {
   } catch (e) { return null; } // sem briefing rico, o plano usa a frase crua
 }
 
+/*
+ * O resumo vindo do chat tem o mesmo formato do deduzido, mas chega de fora —
+ * então passa pelos mesmos limites. Confiar no formato de quem chama é como um
+ * endpoint sem validação: funciona até o dia que não funciona.
+ */
+function normalizarBriefRico(b) {
+  const lista = (v, n) => (Array.isArray(v) ? v : [])
+    .map((x) => String(x || '').slice(0, 140)).filter(Boolean).slice(0, n);
+  return {
+    objetivo: String((b && b.objetivo) || '').slice(0, 220),
+    publico: String((b && b.publico) || '').slice(0, 220),
+    argumento: String((b && b.argumento) || '').slice(0, 220),
+    urgencia: String((b && b.urgencia) || '').slice(0, 160),
+    provas: lista(b && b.provas, 4),
+    evitar: lista(b && b.evitar, 4),
+    formatos: (Array.isArray(b && b.formatos) ? b.formatos : []).filter((f) => FORMATOS_OK.includes(f)).slice(0, 4),
+    quantidade: 0,
+  };
+}
+
 function textoDoBriefing(rico) {
   if (!rico) return '';
   return [
@@ -694,8 +714,18 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
   }
   // Vira um briefing de verdade antes de virar plano. Sem isto o plano é feito
   // em cima de um assunto, e assunto não gera copy que convence.
-  passo('montando o briefing', 'transformando seu pedido em objetivo, público e argumento');
-  ctx.briefRico = await enriquecerBrief(brief, ctx);
+  /*
+   * Se o usuário conversou com o chat de briefing, o resumo dele VENCE a
+   * dedução automática: são respostas dele, não inferência nossa. Isso também
+   * economiza uma chamada de modelo.
+   */
+  if (ctx.briefingPronto && (ctx.briefingPronto.objetivo || ctx.briefingPronto.briefing)) {
+    passo('usando seu briefing', 'o que você respondeu na conversa');
+    ctx.briefRico = normalizarBriefRico(ctx.briefingPronto);
+  } else {
+    passo('montando o briefing', 'transformando seu pedido em objetivo, público e argumento');
+    ctx.briefRico = await enriquecerBrief(brief, ctx);
+  }
   if (ctx.briefRico && ctx.briefRico.formatos.length && !(ctx.formatos && ctx.formatos.length)) {
     ctx.formatos = ctx.briefRico.formatos;
   }

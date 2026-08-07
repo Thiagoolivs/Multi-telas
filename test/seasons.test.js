@@ -57,3 +57,14 @@ test('a programação roda por minutos, não segundos', () => {
   const total = p.principal.reduce((s, i) => s + (i.duracao || 0), 0);
   assert.ok(total >= 40, 'ciclo de ' + total + 's repete rápido demais');
 });
+
+test('nenhum item da programação trava a zona com duração 0', () => {
+  // Duração 0 = "fica fixo": um item assim impede a zona de rodar os outros.
+  // O widget de clima tem 0 por padrão, então precisa de duração explícita.
+  for (const s of seasons.SEASONS) {
+    const p = seasons.programaDe(s, { zonas: ['principal', 'lateral'] });
+    [...p.principal, ...p.lateral].forEach((i) => {
+      assert.ok(i.duracao > 0, `${s.id}: "${i.type}" com duração ${i.duracao} travaria a zona`);
+    });
+  }
+});
