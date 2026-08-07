@@ -350,17 +350,31 @@ Sempre inclua o campo "papel". Não escreva nada fora do JSON.`;
  * realmente deram problema — refazer o que já ficou bom é gastar por nada e
  * arrisca piorar.
  */
-function textoDaCritica(motivos, usouReserva) {
+function textoDaCritica(motivos, usouReserva, problemas) {
   const linhas = [];
   if (usouReserva) linhas.push('sua resposta anterior não pôde ser usada e a peça caiu num layout genérico');
   (motivos || []).forEach((m) => linhas.push(m));
-  if (!linhas.length) return '';
-  return [
-    '', 'A TENTATIVA ANTERIOR PRECISOU DE CONSERTO AUTOMÁTICO:',
-    ...linhas.map((l) => '- ' + l),
-    'Refaça a composição já resolvendo isso: texto dentro da área segura, corpo',
-    'compatível com a caixa, e cor com contraste forte contra o que está atrás.',
-  ].join('\n');
+  if (!linhas.length && !(problemas || []).length) return '';
+
+  const partes = [];
+  if (linhas.length) {
+    partes.push('', 'A TENTATIVA ANTERIOR PRECISOU DE CONSERTO AUTOMÁTICO:',
+      ...linhas.map((l) => '- ' + l));
+  }
+  /*
+   * Os problemas são de outra natureza: não dá para consertá-los mexendo num
+   * elemento, porque a composição inteira é que está errada. Por isso vêm
+   * separados — o modelo precisa entender que aqui não é ajuste, é refazer.
+   */
+  if ((problemas || []).length) {
+    partes.push('', 'OLHANDO A PEÇA MONTADA, ESTES PROBLEMAS SOBRARAM:',
+      ...problemas.map((p) => '- ' + p),
+      'Estes exigem outra disposição, não um ajuste fino.');
+  }
+  partes.push('Refaça a composição já resolvendo isso: texto dentro da área segura, corpo',
+    'compatível com a caixa, cor com contraste forte contra o que está atrás,',
+    'blocos separados e alinhados no mesmo eixo.');
+  return partes.join('\n');
 }
 
 async function comporPeca(peca, identidade, palette, critica) {
@@ -393,8 +407,8 @@ async function comporPeca(peca, identidade, palette, critica) {
   }
   if (peca.bgImagem) bruto.bg = { kind: 'imagem', src: peca.bgImagem };
 
-  const { item, correcoes } = validarComposicao(bruto, { formato, palette });
-  return { item, correcoes, usouReserva: !!bruto._reserva };
+  const { item, correcoes, problemas } = validarComposicao(bruto, { formato, palette });
+  return { item, correcoes, problemas, usouReserva: !!bruto._reserva };
 }
 
 /*
@@ -660,19 +674,31 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
      * tiver MENOS conserto: refazer às vezes piora, e nesse caso ficamos com a
      * primeira. Sem essa comparação a "melhoria" seria uma aposta.
      */
-    const precisaRever = tentativa.usouReserva || (tentativa.correcoes && tentativa.correcoes.length > 0);
+    /*
+     * A nota pesa o problema mais que o conserto: uma correção automática já
+     * foi resolvida, um problema de composição continua na tela do cliente.
+     */
+    const nota = (t) => (t.usouReserva ? 100 : 0)
+      + (t.problemas || []).length * 3
+      + (t.correcoes || []).length;
+
+    const precisaRever = tentativa.usouReserva
+      || (tentativa.correcoes && tentativa.correcoes.length > 0)
+      || (tentativa.problemas && tentativa.problemas.length > 0);
+
     if (precisaRever && ai.mode() !== 'dev') {
-      passo('revisando', `peça ${pecas.length + 1} precisou de conserto — refazendo`);
-      const critica = textoDaCritica(tentativa.correcoes, tentativa.usouReserva);
+      const quantos = (tentativa.problemas || []).length;
+      passo('revisando', quantos
+        ? `peça ${pecas.length + 1}: ${quantos} problema(s) de composição — refazendo`
+        : `peça ${pecas.length + 1} precisou de conserto — refazendo`);
+      const critica = textoDaCritica(tentativa.correcoes, tentativa.usouReserva, tentativa.problemas);
       try {
         const segunda = await comporPeca(peca, plano.identidade, palette, critica);
-        const notaA = (tentativa.usouReserva ? 100 : 0) + (tentativa.correcoes || []).length;
-        const notaB = (segunda.usouReserva ? 100 : 0) + (segunda.correcoes || []).length;
-        if (notaB < notaA) { tentativa = segunda; refeitas++; }
+        if (nota(segunda) < nota(tentativa)) { tentativa = segunda; refeitas++; }
       } catch (e) { /* a crítica é bônus: falhou, fica a primeira composição */ }
     }
 
-    const { item, correcoes, usouReserva } = tentativa;
+    const { item, correcoes, usouReserva, problemas } = tentativa;
     // Logo da empresa no canto superior, sempre no mesmo lugar em todas as
     // peças — é o que faz a campanha parecer de uma marca só.
     if (plano.identidade.logo) {
@@ -689,6 +715,9 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
       objetivo: peca.objetivo,
       item,
       correcoes,
+      // O que sobrou de errado depois de tudo. O painel mostra para o usuário
+      // decidir se aceita — esconder isso seria mentir sobre a qualidade.
+      problemas,
       usouReserva,
       // Para o painel poder dizer "usou a foto da sua marca" em vez de deixar o
       // cliente achando que a IA inventou aquela imagem.

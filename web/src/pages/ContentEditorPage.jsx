@@ -10,6 +10,7 @@ import { ItemPreview } from '../components/content/ItemPreview.jsx';
 import { TypePicker } from '../components/content/TypePicker.jsx';
 import { SettingsForm } from '../components/content/SettingsForm.jsx';
 import { TickerEditor } from '../components/content/TickerEditor.jsx';
+import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
 // Editor visual (react-moveable) carregado sob demanda — não pesa o painel.
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 import { useAsync } from '../lib/useAsync.js';
@@ -72,6 +73,38 @@ export function ContentEditorPage({ device, onBack }) {
   function patchCfg(fn) {
     setCfg((prev) => { const next = structuredClone(prev); fn(next); return next; });
     setDirty(true);
+  }
+
+  /*
+   * Veste a tela com o pacote da data: tema, decoração e a mensagem de
+   * homenagem. A saudação vai para a ZONA PRINCIPAL — é onde a pessoa olha, e
+   * mandar para a lateral faria a homenagem passar despercebida.
+   *
+   * Não apaga nada: entra no começo da playlist para aparecer já na volta.
+   */
+  function aplicarSeason(season) {
+    patchCfg((next) => {
+      if (season.theme) {
+        const atual = next.settings.theme || {};
+        next.settings.theme = {
+          ...atual,
+          preset: season.theme.preset || atual.preset,
+          overrides: { ...(atual.overrides || {}), ...(season.theme.overrides || {}) },
+        };
+      }
+      if (season.decoracao) next.settings.decoracao = season.decoracao;
+      if (season.greeting) {
+        const zonas = zonesOf(next);
+        const alvo = (zonas.find((z) => z.id === 'principal') || zonas.find((z) => z.type === 'playlist') || zonas[0]);
+        if (alvo) {
+          ensureZone(next, alvo);
+          const lista = next.zonas[alvo.id].items;
+          // Reaplicar não deve empilhar cópias da mesma homenagem.
+          const jaTem = lista.some((i) => i && i.titulo === season.greeting.titulo);
+          if (!jaTem) lista.unshift({ ...season.greeting, _season: season.id });
+        }
+      }
+    });
   }
 
   const items = (activeZone && cfg && cfg.zonas[activeZone.id] && cfg.zonas[activeZone.id].items) || [];
@@ -183,6 +216,8 @@ export function ContentEditorPage({ device, onBack }) {
       </div>
 
       {publishError && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError}</div>}
+
+      {cfg && <SeasonBanner onAplicar={aplicarSeason} />}
 
       {loading || !cfg ? (
         <div className="flex justify-center py-20"><Spinner size={22} /></div>

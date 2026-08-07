@@ -31,6 +31,8 @@ const director = require('./server/ai-director');
 const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
 const legal = require('./server/legal');
+// Mesmo arquivo que o player carrega no navegador — catálogo único de datas.
+const seasons = require('./js/seasons.js');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -643,6 +645,15 @@ async function handleApi(req, res, pathname, query) {
       });
     }
     return sendJson(res, 404, { error: 'rota de aniversariantes não encontrada' });
+  }
+
+  /* ----- Datas comemorativas: catálogo + a data de hoje ----- */
+  if (parts[1] === 'seasons' && req.method === 'GET') {
+    // Aberto a quem está logado. `hoje` é o que faz o painel oferecer o pacote
+    // certo sem o usuário precisar procurar na lista.
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const hoje = seasons.todaySeason();
+    return sendJson(res, 200, { seasons: seasons.SEASONS, decorations: seasons.DECORATIONS, hoje: hoje || null });
   }
 
   /* ----- LGPD: exportar e excluir os dados da conta ----- */
