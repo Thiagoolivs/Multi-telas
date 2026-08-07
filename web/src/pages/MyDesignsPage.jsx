@@ -1,4 +1,4 @@
-import React, { useState, Suspense, lazy, useMemo } from 'react';
+import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
 import {
   Plus, Wand2, ImagePlus, Upload, Pencil, Download, Send, Trash2, Sparkles, Check,
   MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket, MessagesSquare,
@@ -59,6 +59,7 @@ export function MyDesignsPage() {
   const [aiColl, setAiColl] = useState('');
   const [etapa, setEtapa] = useState(null); // progresso do trabalho em andamento
   const [conversando, setConversando] = useState(false); // chat de briefing aberto
+  const [emAndamento, setEmAndamento] = useState(false); // campanha rodando no servidor
 
   // Gerar imagem
   const [imgOpen, setImgOpen] = useState(false);
@@ -133,21 +134,45 @@ export function MyDesignsPage() {
 
   /* ---------------- Campanha com IA ---------------- */
 
+  /*
+   * A campanha roda no servidor. Fechar o diálogo, ir mexer noutra tela ou
+   * recarregar o navegador NÃO cancela nada — antes o resultado se perdia e
+   * parecia que o trabalho tinha sido abortado.
+   *
+   * Aqui o acompanhamento é destacado da janela: `emAndamento` fica na página
+   * inteira, e se o usuário voltar depois a página retoma sozinha.
+   */
+  async function acompanhar(id) {
+    setEmAndamento(true); setMsg('');
+    try {
+      const out = await ai.directorAcompanhar(id, setEtapa);
+      if (!out) return;
+      setGen(out);
+      setAiColl(out.campanha || empresa || 'Campanha');
+      setAiOpen(true); // traz o resultado de volta mesmo se a janela foi fechada
+    } catch (e) { setMsg(e.message || 'Falha ao gerar'); }
+    finally { setEmAndamento(false); setEtapa(null); }
+  }
+
+  // Ao abrir a página: se ficou uma campanha rodando, volta a acompanhar.
+  useEffect(() => {
+    const pend = ai.jobPendente();
+    if (pend) acompanhar(pend.id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function gerarCampanha(briefingPronto) {
     if (!brief.trim()) return;
     setConversando(false);
-    setBusy(true); setMsg(''); setEtapa({ etapa: 'começando', detalhe: '', segundos: 0 });
+    setMsg(''); setEtapa({ etapa: 'começando', detalhe: '', segundos: 0 });
     try {
-      const out = await ai.directorRun({
+      const id = await ai.directorStart({
         brief: (briefingPronto && briefingPronto.briefing) || brief,
         empresa, publico, tom,
         oferta: (briefingPronto && briefingPronto.oferta) || oferta,
         briefingPronto: briefingPronto || null,
-      }, setEtapa);
-      setGen(out);
-      setAiColl(out.campanha || empresa || 'Campanha');
-    } catch (e) { setMsg(e.message || 'Falha ao gerar'); }
-    setBusy(false); setEtapa(null);
+      });
+      await acompanhar(id);
+    } catch (e) { setMsg(e.message || 'Falha ao gerar'); setEtapa(null); }
   }
 
   function pecasDoGen() {
@@ -265,6 +290,26 @@ export function MyDesignsPage() {
           );
         })}
       </div>
+
+      {/*
+        Fica na PÁGINA, não na janela: é o que permite fechar o diálogo e ir
+        mexer noutra coisa sabendo que a campanha continua sendo feita.
+      */}
+      {emAndamento && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 px-4 py-3">
+          <Spinner size={16} />
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-ink">
+              Criando sua campanha{etapa && etapa.etapa ? ' · ' + etapa.etapa : ''}
+            </div>
+            <div className="truncate text-xs text-ink-3">
+              {etapa && etapa.detalhe ? etapa.detalhe + ' · ' : ''}
+              pode fechar e mexer em outra coisa — ela continua e aparece aqui quando ficar pronta
+            </div>
+          </div>
+          {etapa && etapa.segundos != null && <span className="tnum text-xs text-ink-3">{etapa.segundos}s</span>}
+        </div>
+      )}
 
       {msg && <div className="mb-4 rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">{msg}</div>}
 
@@ -443,14 +488,14 @@ export function MyDesignsPage() {
                 rápido. Nenhuma das duas é escondida — quem tem pressa não pode
                 ser obrigado a passar pela conversa.
               */}
-              <Button variant="secondary" icon={Wand2} disabled={busy || !brief.trim()} onClick={() => gerarCampanha(null)}>
-                {busy ? 'Dirigindo…' : 'Gerar direto'}
+              <Button variant="secondary" icon={Wand2} disabled={emAndamento || !brief.trim()} onClick={() => gerarCampanha(null)}>
+                {emAndamento ? 'Dirigindo…' : 'Gerar direto'}
               </Button>
-              <Button variant="primary" icon={MessagesSquare} disabled={busy || !brief.trim()} onClick={() => setConversando(true)}>
+              <Button variant="primary" icon={MessagesSquare} disabled={emAndamento || !brief.trim()} onClick={() => setConversando(true)}>
                 Refinar conversando
               </Button>
             </>)}>
-        {busy && etapa ? (
+        {emAndamento && etapa ? (
           /*
            * A campanha leva minutos. Mostrar a etapa em texto é o que separa
            * "está pensando" de "travou" — e é honesto: são as etapas reais.

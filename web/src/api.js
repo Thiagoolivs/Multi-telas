@@ -62,6 +62,10 @@ export const deviceConfig = {
   save: (id, config) => api('PUT', '/api/devices/' + id + '/config', config),
 };
 
+// Onde fica o id da campanha em andamento. No navegador porque a promessa é
+// "pode fechar e voltar" — e recarregar a página não pode perder o trabalho.
+const PENDENTE = 'mt.campanha.pendente';
+
 export const ai = {
   generate: (brief, opts) => api('POST', '/api/ai/generate-content', { brief, ...(opts || {}) }),
   campaign: (payload) => api('POST', '/api/ai/generate-campaign', payload),
@@ -84,16 +88,54 @@ export const ai = {
 
   // Dispara a campanha e só resolve quando ela fica pronta, contando o
   // progresso pelo caminho. É isto que a tela usa — o polling fica aqui.
-  async directorRun(payload, onEtapa) {
+  /*
+   * O trabalho roda no SERVIDOR. Fechar o diálogo, trocar de página ou até
+   * recarregar o navegador não cancela nada — só perderia o resultado, e era
+   * exatamente isso que acontecia: a campanha ficava pronta e ninguém via.
+   *
+   * Por isso o id fica guardado no navegador e a tela volta a acompanhar
+   * sozinha quando o usuário reaparece.
+   */
+  async directorStart(payload) {
     const job = await api('POST', '/api/ai/director', payload);
-    for (let i = 0; i < 600; i++) {          // teto de ~10 min
-      const s = await api('GET', '/api/ai/director/' + job.id);
+    try { localStorage.setItem(PENDENTE, JSON.stringify({ id: job.id, brief: payload.brief, em: Date.now() })); } catch (e) {}
+    return job.id;
+  },
+
+  jobPendente() {
+    try {
+      const j = JSON.parse(localStorage.getItem(PENDENTE) || 'null');
+      // Trabalho de mais de meia hora já expirou no servidor — não vale esperar.
+      if (!j || !j.id || Date.now() - (j.em || 0) > 30 * 60 * 1000) return null;
+      return j;
+    } catch (e) { return null; }
+  },
+  descartarPendente() { try { localStorage.removeItem(PENDENTE); } catch (e) {} },
+
+  // Acompanha até terminar. `sinal` permite parar o polling sem cancelar o
+  // trabalho — quem sai da tela para de olhar, o servidor continua.
+  async directorAcompanhar(id, onEtapa, sinal) {
+    for (let i = 0; i < 900; i++) {          // teto de ~15 min
+      if (sinal && sinal.parado) return null;
+      let s;
+      try {
+        s = await api('GET', '/api/ai/director/' + id);
+      } catch (e) {
+        // 404 = o servidor reiniciou ou o prazo passou. Insistir seria enganar.
+        if (e.status === 404) { ai.descartarPendente(); throw new Error('o trabalho expirou — gere de novo'); }
+        throw e;
+      }
       if (onEtapa) onEtapa(s);
-      if (s.estado === 'pronto') return s.resultado;
-      if (s.estado === 'erro') throw new Error(s.erro || 'a IA não conseguiu terminar');
+      if (s.estado === 'pronto') { ai.descartarPendente(); return s.resultado; }
+      if (s.estado === 'erro') { ai.descartarPendente(); throw new Error(s.erro || 'a IA não conseguiu terminar'); }
       await new Promise((r) => setTimeout(r, 1000));
     }
     throw new Error('a campanha demorou demais — tente de novo');
+  },
+
+  async directorRun(payload, onEtapa, sinal) {
+    const id = await ai.directorStart(payload);
+    return ai.directorAcompanhar(id, onEtapa, sinal);
   },
 };
 
