@@ -116,7 +116,9 @@ export function MyDesignsPage() {
         const zk = primaryZoneKey(cfg);
         if (!cfg.zonas) cfg.zonas = {};
         if (!cfg.zonas[zk] || !Array.isArray(cfg.zonas[zk].items)) cfg.zonas[zk] = { items: [] };
-        const novos = pecasElegiveis.map((p) => p.item);
+        // Marca a origem: é o que permite o resumo da tela dizer "isto veio da
+        // campanha X" em vez de deixar o conteúdo parecer que apareceu sozinho.
+        const novos = pecasElegiveis.map((p) => ({ ...p.item, _campanha: pub.titulo }));
         cfg.zonas[zk].items = substituir ? novos : cfg.zonas[zk].items.concat(novos);
         await deviceConfig.save(id, cfg);
       }

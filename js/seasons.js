@@ -202,10 +202,18 @@
     });
 
     // Lateral: o que é útil o dia inteiro sem ninguém mexer.
+    /*
+     * Lateral: o que é útil o dia inteiro sem ninguém mexer.
+     *
+     * Nenhum item com duração 0 aqui. Duração 0 significa "fica fixo", e um
+     * item fixo TRAVA a zona: os outros nunca entram. O padrão do widget de
+     * clima é 0, então precisa de duração explícita — a primeira versão desta
+     * programação tinha esse defeito e o resumo da tela o encontrou.
+     */
     const lateral = [];
     if (zonas.includes('lateral')) {
       lateral.push({ type: 'clock', duracao: 12 });
-      lateral.push({ type: 'weatherpro', cidade: o.cidade || 'São Paulo', duracao: 0 });
+      lateral.push({ type: 'weatherpro', cidade: o.cidade || 'São Paulo', duracao: 16 });
       if (frases[0]) lateral.push({ type: 'quote', texto: frases[0], autor: '', duracao: 10, ...(bg ? { bg } : {}), cor });
     }
 

@@ -11,6 +11,7 @@ import { TypePicker } from '../components/content/TypePicker.jsx';
 import { SettingsForm } from '../components/content/SettingsForm.jsx';
 import { TickerEditor } from '../components/content/TickerEditor.jsx';
 import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
+import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
 // Editor visual (react-moveable) carregado sob demanda — não pesa o painel.
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 import { useAsync } from '../lib/useAsync.js';
@@ -235,6 +236,7 @@ export function ContentEditorPage({ device, onBack }) {
       {publishError && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError}</div>}
 
       {cfg && <SeasonBanner zonas={zones.map((z) => z.id)} onAplicar={aplicarSeason} />}
+      {cfg && <ScreenSummary cfg={cfg} />}
 
       {loading || !cfg ? (
         <div className="flex justify-center py-20"><Spinner size={22} /></div>
