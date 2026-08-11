@@ -22,6 +22,9 @@ const url = require('url');
 const db = require('./server/db');
 const auth = require('./server/auth');
 const storage = require('./server/storage');
+// Toda gravação de arquivo passa por aqui: linha no banco junto com o byte.
+const midia = require('./server/midia');
+const reconectar = require('./server/reconectar');
 const { rateLimit, clientIp, safeEqual, isSecureRequest } = require('./server/security');
 const mail = require('./server/mail');
 const plans = require('./server/plans');
@@ -33,6 +36,8 @@ const jobs = require('./server/jobs');
 const legal = require('./server/legal');
 // Mesmo arquivo que o player carrega no navegador — catálogo único de datas.
 const seasons = require('./js/seasons.js');
+// Mesmo arquivo que o player usa: o que é uma config está definido num lugar só.
+const schema = require('./js/storage.js');
 const briefing = require('./server/ai-briefing');
 const memory = require('./server/ai-memoria');
 const muralLib = require('./server/mural');
@@ -721,7 +726,9 @@ async function handleApi(req, res, pathname, query) {
       return sendJson(res, 415, { error: 'envie uma foto (JPG, PNG ou WEBP)' });
     }
     try {
-      const salvo = await storage.saveStream(mural.tenantId, req, { mime, max: muralLib.MAX_MB * 1024 * 1024 });
+      const salvo = await midia.guardarStream(db, mural.tenantId, req,
+        { mime, max: muralLib.MAX_MB * 1024 * 1024 },
+        { nome: 'Mural ' + mural.codigo, origem: 'mural' });
       const foto = await db.addFotoMural(mural.id, mural.tenantId, {
         url: salvo.url, chave: salvo.key,
         autor: String(query.autor || '').slice(0, 40),
@@ -1082,7 +1089,10 @@ async function handleApi(req, res, pathname, query) {
           },
           onImagem: async (prompt, formato) => {
             const img = await ai.generateImage(prompt, { formato, brand: (b && b.brand) || '' });
-            const saved = await storage.saveBuffer(sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime);
+            // Registrada como qualquer outro arquivo: aparece no Armazenamento,
+            // conta na cota e some junto com a conta.
+            const saved = await midia.guardarBuffer(db, sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime,
+              { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
             return saved.url;
           },
         }).then((out) => ({ mode: ai.mode(), ...out })));
@@ -1136,7 +1146,8 @@ async function handleApi(req, res, pathname, query) {
           formato: (b && b.formato) || '16/9', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '', estilo: (b && b.estilo) || '',
         });
         const buf = Buffer.from(img.data, 'base64');
-        const saved = await storage.saveBuffer(sess.tenant_id, buf, img.mime);
+        const saved = await midia.guardarBuffer(db, sess.tenant_id, buf, img.mime,
+          { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
         return sendJson(res, 200, { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });
@@ -1350,13 +1361,70 @@ async function handleApi(req, res, pathname, query) {
     if (req.method === 'PUT' && sub === 'config') {
       if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
       return readBody(req, res, async (b) => {
-        if (!b || typeof b !== 'object') return sendJson(res, 400, { error: 'config inválida' });
-        const name = (b.settings && b.settings.nome) || device.name;
-        await db.setDeviceConfig(id, JSON.stringify(b), name);
-        broadcast(id, 'config', { updatedAt: Date.now() });
-        return sendJson(res, 200, { ok: true });
+        if (!b || typeof b !== 'object' || Array.isArray(b)) {
+          return sendJson(res, 400, { error: 'config inválida' });
+        }
+        /*
+         * Normaliza ANTES de gravar. Antes daqui a config ia crua para o banco
+         * e crua para a TV: painel e player concordavam por convenção, e todo
+         * campo novo dependia de os dois lados terem sido editados juntos.
+         *
+         * O mesmo arquivo (js/storage.js) define o formato nas duas pontas.
+         */
+        let cfg;
+        try { cfg = schema.normalize(b); }
+        catch (e) { return sendJson(res, 400, { error: 'config inválida: ' + e.message }); }
+        const name = (cfg.settings && cfg.settings.nome) || device.name;
+        cfg.settings.nome = name;
+        const updatedAt = Date.now();
+        await db.setDeviceConfig(id, JSON.stringify(cfg), name);
+        broadcast(id, 'config', { updatedAt });
+        return sendJson(res, 200, { ok: true, updatedAt });
       });
     }
+    /*
+     * Reconectar: esta tela do painel passa a ser AQUELA TV ali.
+     *
+     * O problema que isto resolve: a identidade da TV vive no navegador dela.
+     * Quando o navegador da Samsung limpa o armazenamento — o que ele faz ao
+     * fechar —, a TV volta sem identidade e cria uma tela NOVA, com código
+     * novo. A tela antiga fica no painel para sempre: offline, sem receber
+     * publicação, e ocupando uma vaga do plano. Não havia caminho nenhum para
+     * dizer "esta TV é a minha tela da Recepção".
+     *
+     * A tela NOVA absorve o nome e a config da antiga, e a antiga é apagada.
+     * Poderia ser ao contrário — a antiga adotar as credenciais da nova —, mas
+     * aí a TV ficaria com um id que não existe mais e precisaria ser avisada,
+     * o que só funciona se ela estiver com o SSE de pé bem naquele instante.
+     * Deste lado, a TV não precisa saber de nada: ela já é quem ficou.
+     *
+     * O que o cliente chama de "minha tela" é o nome e o conteúdo, e os dois
+     * seguem intactos. O id interno muda, e nada fora da própria tela o
+     * referencia (o mural é por mural_id).
+     */
+    if (req.method === 'POST' && sub === 'reconectar') {
+      if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
+      const rrl = rateLimit('pair:' + clientIp(req), 15, 10 * 60 * 1000);
+      if (!rrl.ok) return sendJson(res, 429, { error: 'muitas tentativas' }, { 'Retry-After': String(rrl.retryAfter) });
+      return readBody(req, res, async (b) => {
+        const nova = await db.getDeviceByCode(b && b.code);
+        const nao = reconectar.impedimento(device, nova, sess.tenant_id, Date.now(), PAIR_ONLINE_MS);
+        if (nao) return sendJson(res, nao.status, { error: nao.error });
+
+        /*
+         * Sem cobrar vaga do plano: entra uma tela e sai outra, o saldo é
+         * zero. Cobrar aqui puniria o cliente justamente pelo defeito que ele
+         * está consertando.
+         */
+        const nome = device.name || 'TV';
+        await db.claimDevice(nova.id, sess.tenant_id, nome);
+        if (device.config) await db.setDeviceConfig(nova.id, device.config, nome);
+        await db.removeDevice(id);
+        broadcast(nova.id, 'config', { updatedAt: Date.now() });
+        return sendJson(res, 200, { id: nova.id, name: nome, herdouConfig: !!device.config });
+      });
+    }
+
     // Renomear / remover (dono)
     if (req.method === 'POST' && sub === 'rename') {
       if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
@@ -1427,7 +1495,19 @@ async function handleApi(req, res, pathname, query) {
     if (req.method === 'POST' && sub === 'heartbeat') {
       if (!dtOk) return sendJson(res, 403, { error: 'device token inválido' });
       await db.touchDevice(id);
-      return sendJson(res, 200, { ok: true, at: Date.now() });
+      /*
+       * Devolve QUANDO a config mudou pela última vez.
+       *
+       * A TV recebia config só por SSE, e um stream morto é silencioso: o
+       * EventSource desiste de vez quando o servidor responde não-2xx (um
+       * deploy no meio da conexão basta). O heartbeat continuava, então o
+       * painel mostrava a tela como online enquanto ela exibia a config velha
+       * para sempre. Nenhuma das duas pontas mentia sozinha; juntas, mentiam.
+       *
+       * Com isto, a tela compara e busca de novo quando divergir — a rede de
+       * segurança que um canal só não tem, sem custo de requisição extra.
+       */
+      return sendJson(res, 200, { ok: true, at: Date.now(), configEm: device.updated_at || 0 });
     }
     // SSE (o player assina, com device token)
     if (req.method === 'GET' && sub === 'events') {
@@ -1453,9 +1533,8 @@ async function handleApi(req, res, pathname, query) {
       const used = await db.sumMediaBytes(sess.tenant_id);
       if (used >= storage.QUOTA_BYTES) return sendJson(res, 413, { error: 'cota de armazenamento cheia' });
       try {
-        const saved = await storage.saveStream(sess.tenant_id, req, { mime });
         const name = String(query.name || 'arquivo').slice(0, 180);
-        await db.createMedia({ id: saved.id, tenantId: sess.tenant_id, name, mime: saved.mime, size: saved.size, key: saved.key, url: saved.url });
+        const saved = await midia.guardarStream(db, sess.tenant_id, req, { mime }, { nome: name, origem: 'upload' });
         return sendJson(res, 201, { id: saved.id, name, mime: saved.mime, size: saved.size, url: saved.url });
       } catch (e) {
         return sendJson(res, e.status || 500, { error: e.message || 'falha no upload' });
@@ -1469,10 +1548,8 @@ async function handleApi(req, res, pathname, query) {
     }
     // Remover
     if (req.method === 'DELETE' && parts[2]) {
-      const m = await db.getMedia(parts[2]);
-      if (!m || m.tenant_id !== sess.tenant_id) return sendJson(res, 404, { error: 'mídia não encontrada' });
-      await storage.remove(m.key);
-      await db.removeMedia(m.id, sess.tenant_id);
+      const ok = await midia.apagar(db, sess.tenant_id, parts[2]);
+      if (!ok) return sendJson(res, 404, { error: 'mídia não encontrada' });
       return sendJson(res, 200, { ok: true });
     }
     return sendJson(res, 404, { error: 'rota de mídia inválida' });

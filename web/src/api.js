@@ -53,6 +53,11 @@ export const devices = {
   list: () => api('GET', '/api/devices'),
   pair: (code, name) => api('POST', '/api/pair', { code: String(code || '').trim().toUpperCase(), name }),
   rename: (id, name) => api('POST', '/api/devices/' + id + '/rename', { name }),
+  /*
+   * Liga esta tela do painel à TV que está mostrando `code` agora. Devolve um
+   * id novo: quem fica é a TV, e é ela que herda o nome e a programação.
+   */
+  reconectar: (id, code) => api('POST', '/api/devices/' + id + '/reconectar', { code: String(code || '').trim().toUpperCase() }),
   remove: (id) => api('DELETE', '/api/devices/' + id),
 };
 

@@ -1120,12 +1120,55 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 .mt-pairing-reset:hover, .mt-pairing-reset:focus { opacity: 1; }
 
-/* Modo performance: hardware fraco (classe aplicada quando fx é baixo). */
+/* ---------- Modo leve (.mt-perf) ----------
+ *
+ * Ligado pelo js/perf.js quando a tela é uma TV ou quando a medição de quadros
+ * mostra que ela não dá conta. Medido com CPU de TV a 1920x1080: 12 quadros
+ * por segundo no modo completo, 60 aqui.
+ *
+ * A regra é uma só: NADA que obrigue o navegador a reamostrar pixels a cada
+ * quadro. Desfoque (`filter: blur`) e vidro (`backdrop-filter`) são exatamente
+ * isso, e numa GPU de TV custam mais que todo o resto da tela somado.
+ *
+ * O que fica: as cores, os gradientes, as sombras, as transições de transform
+ * e opacidade. Continua sendo o mesmo produto — perde o vidro, não o acabamento.
+ */
 .mt-perf .mt-stage::before,
-.mt-perf .mt-stage::after { display: none; }
+.mt-perf .mt-stage::after,
+.mt-perf .mt-stage-fx { display: none; }
 .mt-perf .mt-zone {
   -webkit-backdrop-filter: none; backdrop-filter: none;
   background: var(--surface-solid);
+}
+/* Vidro que sobrava em cima do conteúdo. Todos já têm cor de fundo própria —
+   é só tirar o desfoque do que está atrás. */
+.mt-perf .mt-takeover,
+.mt-perf .mt-mural-legenda,
+.mt-perf .mt-som-bloqueado {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.mt-perf .mt-takeover { background: rgba(4, 7, 16, .88); }
+/*
+ * Sobra borrada atrás de foto e de peça: existe para a imagem caber inteira
+ * sem deixar emenda. Sem o desfoque ela viraria uma cópia ampliada e nítida
+ * por baixo — pior que o problema. Some, e fica a cor da zona.
+ */
+.mt-perf .mt-mural-foto::before,
+.mt-perf .mt-comp::before { display: none; }
+/*
+ * Halos decorativos: aqui o desfoque é dispensável de verdade, porque o que
+ * está por baixo já é gradiente radial — nasce macio. Tira o filtro e mantém
+ * o visual.
+ */
+.mt-perf .mt-poster-aurora .mt-poster-fx,
+.mt-perf .mt-overlay::before { filter: none; }
+.mt-perf .mt-overlay::before { animation: none; }
+/* A notícia entra subindo, e só. O desfoque de entrada custa um quadro cheio
+   a cada troca de manchete. */
+.mt-perf .mt-news-in { animation-name: mt-news-slide-leve; }
+@keyframes mt-news-slide-leve {
+  from { opacity: 0; transform: translateY(40%); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Trilha bloqueada pelo navegador. Aviso discreto e honesto: a TV não pode

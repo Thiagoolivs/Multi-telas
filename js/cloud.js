@@ -40,16 +40,74 @@
   const DEVICE_KEY = migrateKey('mt.cloudDeviceId' + _pidSfx, 'vistra.cloudDeviceId' + _pidSfx);
   const DTOKEN_KEY = migrateKey('mt.cloudDeviceToken' + _pidSfx, 'vistra.cloudDeviceToken' + _pidSfx);
 
+  /* ---------------- Onde mora a identidade da TV ----------------
+   *
+   * O par id+token é a carteira de identidade da tela. Enquanto ele existir,
+   * a TV é a MESMA tela para o painel — sobrevive a recargas, a quedas de
+   * energia, a meses no ar.
+   *
+   * Ele morava só no localStorage. O navegador da Samsung limpa o
+   * localStorage ao fechar, e o efeito era feio: a TV voltava sem identidade,
+   * criava uma tela NOVA com código novo, e a tela antiga ficava no painel
+   * para sempre — marcada como offline, sem receber publicação nenhuma, e
+   * ainda ocupando uma vaga do plano.
+   *
+   * Agora vai também num cookie de um ano. Não é redundância à toa: os
+   * navegadores de TV limpam essas duas gavetas por critérios diferentes, e
+   * basta uma sobreviver. Na leitura, quem tiver valor vence, e o que
+   * sobreviveu repõe o que se perdeu.
+   */
+  function nomeCookie(chave) { return chave.replace(/[.:]/g, '_'); }
+
+  function lerCookie(chave) {
+    try {
+      const alvo = nomeCookie(chave) + '=';
+      const partes = String(document.cookie || '').split(';');
+      for (let i = 0; i < partes.length; i++) {
+        const p = partes[i].trim();
+        if (p.indexOf(alvo) === 0) return decodeURIComponent(p.slice(alvo.length));
+      }
+    } catch (e) {}
+    return null;
+  }
+  function gravarCookie(chave, valor) {
+    try {
+      document.cookie = nomeCookie(chave) + '=' + encodeURIComponent(valor)
+        + '; path=/; max-age=31536000; SameSite=Lax';
+    } catch (e) {}
+  }
+  function apagarCookie(chave) {
+    try { document.cookie = nomeCookie(chave) + '=; path=/; max-age=0; SameSite=Lax'; } catch (e) {}
+  }
+
+  function lembrar(chave) {
+    let local = null;
+    try { local = localStorage.getItem(chave); } catch (e) {}
+    const cookie = lerCookie(chave);
+    // Quem sobreviveu repõe o que se perdeu: na próxima limpeza, a outra gaveta
+    // é que vai segurar a identidade.
+    if (local && !cookie) gravarCookie(chave, local);
+    if (cookie && !local) { try { localStorage.setItem(chave, cookie); } catch (e) {} }
+    return local || cookie || null;
+  }
+  function anotar(chave, valor) {
+    try { localStorage.setItem(chave, valor); } catch (e) {}
+    gravarCookie(chave, valor);
+  }
+  function esquecer(chave) {
+    try { localStorage.removeItem(chave); } catch (e) {}
+    apagarCookie(chave);
+  }
+
   /*
-   * Esquece a TV guardada neste navegador. O par id+token fica em
-   * localStorage para a TV sobreviver a recargas — o efeito colateral é que
-   * "abrir outro player" reaproveitava a MESMA tela (parecia cache do
-   * navegador). resetDevice() força uma tela nova, com código novo.
+   * Esquece a TV guardada neste navegador. Precisa limpar TODAS as gavetas —
+   * senão o cookie ressuscitaria a tela antiga e o "gerar outro código" não
+   * geraria código nenhum.
    */
   function resetDevice() {
+    esquecer(DEVICE_KEY);
+    esquecer(DTOKEN_KEY);
     try {
-      localStorage.removeItem(DEVICE_KEY);
-      localStorage.removeItem(DTOKEN_KEY);
       localStorage.removeItem('mt.lastConfig'); // não herda a exibição da tela antiga
       localStorage.removeItem('mt.birthdays');
     } catch (e) {}
@@ -72,9 +130,9 @@
   async function me() { try { return await api('GET', '/api/auth/me'); } catch (e) { return null; } }
 
   /* ---------------- Lado TV (device) ---------------- */
-  function deviceMode() { return qsp('cloud') === '1' || !!localStorage.getItem(DEVICE_KEY); }
+  function deviceMode() { return qsp('cloud') === '1' || !!lembrar(DEVICE_KEY); }
 
-  function deviceToken() { return localStorage.getItem(DTOKEN_KEY) || ''; }
+  function deviceToken() { return lembrar(DTOKEN_KEY) || ''; }
   // Manda o device token no header (não vaza em logs/URLs).
   function dtHeader() { return { 'x-device-token': deviceToken() }; }
 
@@ -89,17 +147,26 @@
         history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
       } catch (e) {}
     }
-    let id = localStorage.getItem(DEVICE_KEY);
-    let dt = localStorage.getItem(DTOKEN_KEY);
+    let id = lembrar(DEVICE_KEY);
+    let dt = lembrar(DTOKEN_KEY);
     if (id && dt) {
       try {
         const meta = await api('GET', '/api/devices/' + id, undefined, { 'x-device-token': dt });
         return { id: meta.id, code: meta.code, paired: meta.paired };
-      } catch (e) { localStorage.removeItem(DEVICE_KEY); localStorage.removeItem(DTOKEN_KEY); }
+      } catch (e) {
+        /*
+         * Só desiste da identidade quando o SERVIDOR diz que ela não vale
+         * mais. Numa queda de rede o erro não tem status, e apagar aqui
+         * transformaria cada tombo de internet numa tela órfã no painel.
+         */
+        if (!e.status || e.status < 400 || e.status >= 500) throw e;
+        esquecer(DEVICE_KEY);
+        esquecer(DTOKEN_KEY);
+      }
     }
     const created = await api('POST', '/api/devices');
-    localStorage.setItem(DEVICE_KEY, created.id);
-    localStorage.setItem(DTOKEN_KEY, created.deviceToken);
+    anotar(DEVICE_KEY, created.id);
+    anotar(DTOKEN_KEY, created.deviceToken);
     return { id: created.id, code: created.code, paired: false };
   }
 
@@ -111,10 +178,15 @@
     const r = await api('GET', '/api/devices/' + id + '/birthdays', undefined, dtHeader());
     return (r && r.birthdays) || [];
   }
-  // Avisa o servidor que a TV está viva (alimenta o status da frota).
+  /*
+   * Avisa o servidor que a TV está viva e recebe de volta quando a config
+   * mudou pela última vez. Devolve esse carimbo para o player conferir.
+   */
   async function heartbeat(id) {
-    try { await api('POST', '/api/devices/' + id + '/heartbeat', undefined, dtHeader()); }
-    catch (e) { /* offline: tenta de novo no próximo ciclo */ }
+    try {
+      const r = await api('POST', '/api/devices/' + id + '/heartbeat', undefined, dtHeader());
+      return (r && r.configEm) || 0;
+    } catch (e) { return 0; /* offline: tenta de novo no próximo ciclo */ }
   }
   // A TV conta ao servidor o que está tocando, para o painel mostrar de verdade
   // em vez de adivinhar pelo último comando enviado.
@@ -126,8 +198,10 @@
     let es;
     function connect() {
       es = new EventSource(API + '/api/devices/' + id + '/events?dt=' + encodeURIComponent(deviceToken()));
-      es.addEventListener('config', async () => {
-        try { const cfg = await fetchConfig(id); if (cfg) onConfig(cfg); } catch (e) {}
+      es.addEventListener('config', async (ev) => {
+        let meta = {};
+        try { meta = JSON.parse(ev.data || '{}'); } catch (e) {}
+        try { const cfg = await fetchConfig(id); if (cfg) onConfig(cfg, meta); } catch (e) {}
       });
       /*
        * Som: comando ao vivo do painel (tocar/pausar/pular/volume). Não é
@@ -149,7 +223,19 @@
         try { dado = JSON.parse(ev.data || '{}'); } catch (e) {}
         document.dispatchEvent(new CustomEvent('mt:mural', { detail: dado }));
       });
-      es.onerror = () => { /* reconecta sozinho */ };
+      /*
+       * O EventSource reconecta sozinho em queda de rede — mas DESISTE de vez
+       * quando o servidor responde não-2xx, o que acontece num deploy no meio
+       * da conexão. Sem isto, a TV ficava com a config velha para sempre e o
+       * heartbeat continuava dizendo que ela estava online.
+       */
+      es.onerror = () => {
+        if (es.readyState !== 2) return;      // 2 = fechado de vez
+        setTimeout(function () {
+          try { es.close(); } catch (e) {}
+          connect();
+        }, 15000);
+      };
     }
     connect();
     return { close: () => es && es.close() };

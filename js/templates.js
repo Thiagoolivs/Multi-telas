@@ -25,7 +25,7 @@
         ],
       },
       zones: [
-        { id: 'lateral', area: 'lateral', name: 'Lateral', type: 'playlist' },
+        { id: 'lateral', area: 'lateral', name: 'Lateral', type: 'playlist', formato: 'retrato' },
         { id: 'principal', area: 'principal', name: 'Principal', type: 'playlist' },
         { id: 'rodape', area: 'rodape', name: 'Notícias', type: 'ticker' },
       ],
@@ -73,7 +73,7 @@
       },
       zones: [
         { id: 'principal', area: 'principal', name: 'Principal', type: 'playlist' },
-        { id: 'lateral', area: 'lateral', name: 'Lateral', type: 'playlist' },
+        { id: 'lateral', area: 'lateral', name: 'Lateral', type: 'playlist', formato: 'retrato' },
         { id: 'rodape', area: 'rodape', name: 'Rodapé (avisos)', type: 'ticker' },
       ],
     },
@@ -127,7 +127,7 @@
       },
       zones: [
         { id: 'video', area: 'video', name: 'Vídeo / Live', type: 'playlist' },
-        { id: 'info', area: 'info', name: 'Painel Dinâmico', type: 'playlist' },
+        { id: 'info', area: 'info', name: 'Painel Dinâmico', type: 'playlist', formato: 'retrato' },
         { id: 'rodape', area: 'rodape', name: 'Notícias', type: 'ticker' },
       ],
       // Faz o grid "respirar": alterna suavemente entre estas proporções
@@ -153,7 +153,7 @@
       zones: [
         { id: 'cabecalho', area: 'cabecalho', name: 'Cabeçalho', type: 'header' },
         { id: 'principal', area: 'principal', name: 'Principal', type: 'playlist' },
-        { id: 'lateral', area: 'lateral', name: 'Lateral', type: 'playlist' },
+        { id: 'lateral', area: 'lateral', name: 'Lateral', type: 'playlist', formato: 'retrato' },
         { id: 'rodape', area: 'rodape', name: 'Rodapé (avisos)', type: 'ticker' },
       ],
     },
@@ -170,7 +170,7 @@
         areas: ['principal', 'rodape'],
       },
       zones: [
-        { id: 'principal', area: 'principal', name: 'Principal', type: 'playlist' },
+        { id: 'principal', area: 'principal', name: 'Principal', type: 'playlist', formato: 'retrato' },
         { id: 'rodape', area: 'rodape', name: 'Rodapé (avisos)', type: 'ticker' },
       ],
     },
@@ -186,8 +186,8 @@
       },
       zones: [
         { id: 'cabecalho', area: 'cabecalho', name: 'Cabeçalho', type: 'header' },
-        { id: 'principal', area: 'principal', name: 'Principal', type: 'playlist' },
-        { id: 'secundaria', area: 'secundaria', name: 'Secundária', type: 'playlist' },
+        { id: 'principal', area: 'principal', name: 'Principal', type: 'playlist', formato: 'retrato' },
+        { id: 'secundaria', area: 'secundaria', name: 'Secundária', type: 'playlist', formato: 'retrato' },
         { id: 'rodape', area: 'rodape', name: 'Rodapé (avisos)', type: 'ticker' },
       ],
     },
@@ -202,8 +202,8 @@
         areas: ['principal', 'secundaria', 'rodape'],
       },
       zones: [
-        { id: 'principal', area: 'principal', name: 'Superior', type: 'playlist' },
-        { id: 'secundaria', area: 'secundaria', name: 'Inferior', type: 'playlist' },
+        { id: 'principal', area: 'principal', name: 'Superior', type: 'playlist', formato: 'retrato' },
+        { id: 'secundaria', area: 'secundaria', name: 'Inferior', type: 'playlist', formato: 'retrato' },
         { id: 'rodape', area: 'rodape', name: 'Rodapé (avisos)', type: 'ticker' },
       ],
     },
@@ -275,4 +275,13 @@
   global.MT_LAYOUTS = LAYOUTS;
   global.MT_getLayout = getLayout;
   global.MT_layoutsByOrientation = layoutsByOrientation;
-})(window);
+
+  /*
+   * Módulo duplo. O servidor precisa saber quais zonas um layout tem para
+   * validar a config antes de gravá-la — e duas listas de layouts seria a
+   * mesma armadilha da matemática de cor: uma envelhece.
+   */
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { LAYOUTS, getLayout, layoutsByOrientation };
+  }
+})(typeof window !== 'undefined' ? window : globalThis);
