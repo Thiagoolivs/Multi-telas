@@ -66,6 +66,17 @@
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = 'https://fonts.googleapis.com/css2?family=' + google + '&display=swap';
+    /*
+     * `media="print"` é o truque para a folha NÃO segurar a pintura: o
+     * navegador baixa, mas não espera. Quando chega, vira "all" e a fonte
+     * entra no lugar.
+     *
+     * Sem isto, uma TV numa rede ruim fica no escuro até a Google responder —
+     * e a rede da recepção do cliente é justamente a ruim. Fonte é acabamento;
+     * conteúdo é o produto. O conteúdo aparece primeiro.
+     */
+    link.media = 'print';
+    link.onload = function () { link.media = 'all'; };
     document.head.appendChild(link);
   }
 

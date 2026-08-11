@@ -331,6 +331,18 @@
 
   function hideOverlayAfter() {
     setTimeout(() => overlay && overlay.classList.add('hidden'), 1200);
+    /*
+     * Com o palco no ar, conta os quadros de verdade. A lista de TVs do
+     * perf.js é um palpite; isto é a medição — e é ela que pega o aparelho
+     * barato que nenhuma lista tem. Se rebaixar, remonta o palco para as
+     * decorações e o pré-carregamento de vídeo respeitarem a decisão nova.
+     */
+    if (!global.MTPerf) return;
+    MTPerf.medir((r) => {
+      if (!r.leve || !r.fps || !currentConfig) return;
+      teardownZones();
+      buildStage(currentConfig);   // o CSS já mudou sozinho; isto é pelo resto
+    });
   }
 
   /* ---------------- Montagem do palco ---------------- */
@@ -480,12 +492,21 @@
     // Expõe os tokens do tema (hex) para os renderizadores herdarem a paleta —
     // tela coesa em vez de cores fixas espalhadas.
     global.MT_THEME = resolved;
-    // Modo performance: desliga efeitos caros (blur/aurora/vidro). Liga com fx
-    // baixo OU automaticamente em hardware fraco (TV/stick barato) — evita
-    // engasgo nas animações.
+    /*
+     * Modo performance: desliga os efeitos caros (vidro, halos borrados,
+     * partículas). Quem decide pelo APARELHO é o js/perf.js, no boot — antes
+     * da primeira pintura, porque numa TV pintar uma vez no modo caro já custa
+     * os primeiros segundos.
+     *
+     * Aqui só resta a decisão do TEMA: fx baixo também pede modo leve. E é só
+     * ligar, nunca desligar — senão um tema caprichado devolveria o vidro para
+     * a TV que o perf.js acabou de poupar.
+     */
     const fx = resolved ? resolved.fx : 0.9;
-    const weakHw = (navigator.hardwareConcurrency || 8) <= 2 || (navigator.deviceMemory || 8) <= 2;
-    document.documentElement.classList.toggle('mt-perf', fx <= 0.25 || weakHw);
+    if (fx <= 0.25) {
+      if (global.MTPerf) MTPerf.ligarLeve('tema com efeitos no mínimo');
+      else document.documentElement.classList.add('mt-perf');
+    }
 
     // Inteligência de cor: registra as cores base e liga/desliga a adaptação.
     if (global.MTAdaptive) {
