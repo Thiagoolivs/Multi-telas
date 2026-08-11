@@ -114,6 +114,18 @@ async function init() {
     ALTER TABLE media ADD COLUMN IF NOT EXISTS origem TEXT;
     UPDATE media SET origem = 'upload' WHERE origem IS NULL;
     CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
+    /*
+     * Uso de IA: toda chamada entra aqui, cobrando crédito ou não. Medir
+     * antes de cobrar é a fatia 1 de docs/BILLING.md.
+     */
+    CREATE TABLE IF NOT EXISTS uso_ia (
+      id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, tipo TEXT,
+      creditos INTEGER, custo_centavos INTEGER, referencia TEXT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_uso_ia_tenant ON uso_ia(tenant_id, created_at);
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS creditos_franquia INTEGER;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS creditos_comprados INTEGER;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS creditos_ciclo BIGINT;
     CREATE TABLE IF NOT EXISTS birthdays (
       id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, matricula TEXT,
       dia INTEGER, mes INTEGER, cargo TEXT, foto TEXT, created_at BIGINT
@@ -408,6 +420,51 @@ async function setTenantBilling(id, fields) {
 }
 
 /* ---------------- Mídia ---------------- */
+/* ---------------- Uso de IA e créditos ---------------- */
+
+async function registrarUsoIA(tenantId, uso) {
+  const id = 'uso_' + rid(14);
+  await pool.query(
+    'INSERT INTO uso_ia (id, tenant_id, user_id, tipo, creditos, custo_centavos, referencia, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+    [id, tenantId, uso.userId || '', uso.tipo || '', Number(uso.creditos) || 0,
+      Number(uso.custoCentavos) || 0, uso.referencia || '', Date.now()]);
+  return { id };
+}
+async function listarUsoIA(tenantId, limite) {
+  const r = await pool.query(
+    'SELECT id, tipo, creditos, custo_centavos, referencia, created_at FROM uso_ia WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT $2',
+    [tenantId, limite || 100]);
+  return r.rows.map((x) => ({
+    id: x.id, tipo: x.tipo, creditos: Number(x.creditos), custoCentavos: Number(x.custo_centavos),
+    referencia: x.referencia, createdAt: Number(x.created_at),
+  }));
+}
+async function resumoUsoIA(tenantId, desde) {
+  const r = await pool.query(
+    'SELECT COALESCE(SUM(creditos),0) AS creditos, COALESCE(SUM(custo_centavos),0) AS centavos, COUNT(*) AS n FROM uso_ia WHERE tenant_id = $1 AND created_at > $2',
+    [tenantId, desde || 0]);
+  const x = r.rows[0] || {};
+  return { creditos: Number(x.creditos || 0), custoCentavos: Number(x.centavos || 0), chamadas: Number(x.n || 0) };
+}
+async function contarUsoIA(tenantId, desde) {
+  const r = await pool.query('SELECT COUNT(*) AS n FROM uso_ia WHERE tenant_id = $1 AND created_at > $2', [tenantId, desde || 0]);
+  return Number((r.rows[0] || {}).n || 0);
+}
+async function getCreditos(tenantId) {
+  const r = await pool.query('SELECT creditos_franquia, creditos_comprados, creditos_ciclo FROM tenants WHERE id = $1', [tenantId]);
+  const x = r.rows[0];
+  if (!x) return null;
+  return {
+    franquiaRestante: Number(x.creditos_franquia) || 0,
+    creditosComprados: Number(x.creditos_comprados) || 0,
+    cicloEm: Number(x.creditos_ciclo) || 0,
+  };
+}
+async function setCreditos(tenantId, c) {
+  await pool.query('UPDATE tenants SET creditos_franquia = $1, creditos_comprados = $2, creditos_ciclo = $3 WHERE id = $4',
+    [Math.max(0, Number(c.franquiaRestante) || 0), Math.max(0, Number(c.creditosComprados) || 0), Number(c.cicloEm) || 0, tenantId]);
+}
+
 async function createMedia(m) {
   await pool.query('INSERT INTO media (id, tenant_id, name, mime, size, key, url, origem, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
     [m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, m.origem || 'upload', Date.now()]);
@@ -592,6 +649,7 @@ module.exports = {
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
   getTenant, getTenantByCustomer, setTenantBilling,
+  registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,

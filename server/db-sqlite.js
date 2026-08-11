@@ -55,6 +55,21 @@ db.exec(`
     key TEXT, url TEXT, origem TEXT, created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
+  /*
+   * Todo uso de IA passa por aqui, cobrando crédito ou não. Medir antes de
+   * cobrar é a fatia 1 de docs/BILLING.md: duas a quatro semanas de dados
+   * reais valem mais que qualquer estimativa de custo — inclusive as que
+   * estão escritas na própria proposta.
+   *
+   * A coluna creditos é o que saiu do saldo (zero para texto, que é livre);
+   * custo_centavos é o que a chamada nos custou, para o extrato mostrar
+   * dinheiro e para conferir a margem depois.
+   */
+  CREATE TABLE IF NOT EXISTS uso_ia (
+    id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, tipo TEXT,
+    creditos INTEGER, custo_centavos INTEGER, referencia TEXT, created_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_uso_ia_tenant ON uso_ia(tenant_id, created_at);
   CREATE TABLE IF NOT EXISTS birthdays (
     id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, matricula TEXT,
     dia INTEGER, mes INTEGER, cargo TEXT, foto TEXT, created_at INTEGER
@@ -124,7 +139,11 @@ if (!mediaCols.includes('origem')) {
 const deviceCols = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
 if (!deviceCols.includes('last_seen')) db.exec('ALTER TABLE devices ADD COLUMN last_seen INTEGER');
 const tenantCols = db.prepare('PRAGMA table_info(tenants)').all().map((c) => c.name);
-for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER']) {
+for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER',
+  // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
+  // expira). `creditos_ciclo` guarda quando a franquia foi reposta pela
+  // última vez, para a reposição acontecer sozinha na virada do mês.
+  'creditos_franquia INTEGER', 'creditos_comprados INTEGER', 'creditos_ciclo INTEGER']) {
   if (!tenantCols.includes(col.split(' ')[0])) db.exec('ALTER TABLE tenants ADD COLUMN ' + col);
 }
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
@@ -167,6 +186,13 @@ const q = {
   deleteDevice: db.prepare('DELETE FROM devices WHERE id = ?'),
   touchDevice: db.prepare('UPDATE devices SET last_seen = ? WHERE id = ?'),
   listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
+  insertUsoIA: db.prepare('INSERT INTO uso_ia (id, tenant_id, user_id, tipo, creditos, custo_centavos, referencia, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
+  usoIAPorTenant: db.prepare('SELECT id, tipo, creditos, custo_centavos, referencia, created_at FROM uso_ia WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?'),
+  usoIAResumo: db.prepare('SELECT COALESCE(SUM(creditos),0) AS creditos, COALESCE(SUM(custo_centavos),0) AS centavos, COUNT(*) AS n FROM uso_ia WHERE tenant_id = ? AND created_at > ?'),
+  usoIADesde: db.prepare('SELECT COUNT(*) AS n FROM uso_ia WHERE tenant_id = ? AND created_at > ?'),
+  creditosDo: db.prepare('SELECT creditos_franquia, creditos_comprados, creditos_ciclo FROM tenants WHERE id = ?'),
+  setCreditos: db.prepare('UPDATE tenants SET creditos_franquia = ?, creditos_comprados = ?, creditos_ciclo = ? WHERE id = ?'),
+  apagarUsoIA: db.prepare('DELETE FROM uso_ia WHERE tenant_id = ?'),
   insertMedia: db.prepare('INSERT INTO media (id, tenant_id, name, mime, size, key, url, origem, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'),
   mediaByTenant: db.prepare('SELECT id, name, mime, size, url, origem, created_at FROM media WHERE tenant_id = ? ORDER BY created_at DESC'),
   mediaById: db.prepare('SELECT * FROM media WHERE id = ?'),
@@ -260,6 +286,40 @@ async function removeDevice(id) { q.deleteDevice.run(id); }
 async function touchDevice(id) { q.touchDevice.run(Date.now(), id); }
 async function listDevices(tenantId) { return q.listByTenant.all(tenantId); }
 async function countDevices(tenantId) { return Number(q.countDevicesByTenant.get(tenantId).n); }
+
+/* ---------------- Uso de IA e créditos ---------------- */
+
+async function registrarUsoIA(tenantId, uso) {
+  const id = 'uso_' + rid(14);
+  q.insertUsoIA.run(id, tenantId, uso.userId || '', uso.tipo || '', Number(uso.creditos) || 0,
+    Number(uso.custoCentavos) || 0, uso.referencia || '', Date.now());
+  return { id };
+}
+async function listarUsoIA(tenantId, limite) {
+  return q.usoIAPorTenant.all(tenantId, limite || 100).map((r) => ({
+    id: r.id, tipo: r.tipo, creditos: r.creditos, custoCentavos: r.custo_centavos,
+    referencia: r.referencia, createdAt: r.created_at,
+  }));
+}
+async function resumoUsoIA(tenantId, desde) {
+  const r = q.usoIAResumo.get(tenantId, desde || 0);
+  return { creditos: Number(r.creditos), custoCentavos: Number(r.centavos), chamadas: Number(r.n) };
+}
+async function contarUsoIA(tenantId, desde) { return Number(q.usoIADesde.get(tenantId, desde || 0).n); }
+
+async function getCreditos(tenantId) {
+  const r = q.creditosDo.get(tenantId);
+  if (!r) return null;
+  return {
+    franquiaRestante: Number(r.creditos_franquia) || 0,
+    creditosComprados: Number(r.creditos_comprados) || 0,
+    cicloEm: Number(r.creditos_ciclo) || 0,
+  };
+}
+async function setCreditos(tenantId, c) {
+  q.setCreditos.run(Math.max(0, Number(c.franquiaRestante) || 0), Math.max(0, Number(c.creditosComprados) || 0),
+    Number(c.cicloEm) || 0, tenantId);
+}
 
 /* ---------------- Billing (tenant) ---------------- */
 async function getTenant(id) { return q.tenantById.get(id) || null; }
@@ -502,6 +562,7 @@ module.exports = {
   createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
   getTenant, getTenantByCustomer, setTenantBilling,
+  registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,

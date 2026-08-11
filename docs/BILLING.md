@@ -157,15 +157,33 @@ A franquia de crédito é **por tela** (com o mínimo de uma tela). Faz sentido
 porque quem tem mais telas produz mais conteúdo, e mantém a margem estável em
 qualquer tamanho de conta.
 
-### Desconto por volume, automático
+### Desconto por volume, por faixa
+
+Como imposto de renda, e não como cupom: **só as telas daquela faixa** recebem
+o desconto dela.
 
 | Telas | Desconto | Essencial | Pro |
 |---|---|---|---|
-| 1 a 4 | — | R$ 79 | R$ 149 |
-| 5 a 9 | −10% | R$ 71,10 | R$ 134,10 |
-| 10 a 19 | −18% | R$ 64,78 | R$ 122,18 |
-| 20 a 49 | −25% | R$ 59,25 | R$ 111,75 |
-| 50+ | Enterprise | | |
+| 1 a 4 | — | R$ 79,00 | R$ 149,00 |
+| da 5ª à 9ª | −10% | R$ 71,10 | R$ 134,10 |
+| da 10ª à 19ª | −18% | R$ 64,78 | R$ 122,18 |
+| da 20ª em diante | −25% | R$ 59,25 | R$ 111,75 |
+
+A primeira versão desta proposta aplicava o desconto da faixa a **todas** as
+telas, e um teste pegou o defeito antes de virar tabela de preço: no
+Essencial, 19 telas a −18% davam R$ 1.230 e 20 telas a −25% davam R$ 1.185.
+**Vinte telas custariam menos que dezenove** — o cliente teria vantagem em
+desligar uma tela, e a receita cairia quando a conta crescesse.
+
+Por faixa, cada tela a mais custa sempre um valor positivo, e o preço médio
+por tela cai suavemente:
+
+| Conta | Total/mês | Média por tela |
+|---|---|---|
+| Essencial, 5 telas | R$ 387,10 | R$ 77,42 |
+| Pro, 10 telas | R$ 1.388,68 | R$ 138,87 |
+| Pro, 20 telas | R$ 2.600,05 | R$ 130,00 |
+| Pro, 50 telas | R$ 5.952,55 | R$ 119,05 |
 
 **Anual: dois meses grátis** (−16,7%). Reduz cancelamento e antecipa caixa.
 
@@ -315,10 +333,10 @@ suporte. Ainda **não** desconta o piso de R$ 400.
 | Cenário | Receita | Taxas | IA | Infra | Suporte | **Margem** | **%** |
 |---|---|---|---|---|---|---|---|
 | Essencial, 1 tela | R$ 79 | R$ 11 | R$ 2 | R$ 1 | R$ 8 | **R$ 57** | **72%** |
-| Essencial, 5 telas | R$ 356 | R$ 50 | R$ 10 | R$ 3 | R$ 8 | **R$ 285** | **80%** |
+| Essencial, 5 telas | R$ 387 | R$ 55 | R$ 10 | R$ 3 | R$ 8 | **R$ 311** | **80%** |
 | Pro, 1 tela | R$ 149 | R$ 21 | R$ 5 | R$ 1 | R$ 25 | **R$ 97** | **65%** |
-| Pro, 10 telas | R$ 1.222 | R$ 171 | R$ 50 | R$ 6 | R$ 25 | **R$ 970** | **79%** |
-| Pro, 20 telas | R$ 2.235 | R$ 313 | R$ 100 | R$ 12 | R$ 25 | **R$ 1.785** | **80%** |
+| Pro, 10 telas | R$ 1.389 | R$ 195 | R$ 50 | R$ 6 | R$ 25 | **R$ 1.113** | **80%** |
+| Pro, 20 telas | R$ 2.600 | R$ 364 | R$ 100 | R$ 12 | R$ 25 | **R$ 2.099** | **81%** |
 | Enterprise, 100 telas | R$ 6.700 | R$ 938 | R$ 300 | R$ 60 | R$ 400 | **R$ 5.002** | **75%** |
 | Pacote de 500 créditos | R$ 499 | R$ 70 | R$ 100 | — | — | **R$ 329** | **66%** |
 
