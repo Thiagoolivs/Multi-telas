@@ -13,7 +13,7 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v4';
+const SHELL_CACHE = 'mt-shell-v5';
 const MEDIA_CACHE = 'mt-media-v1';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
@@ -25,7 +25,7 @@ const MEDIA_CACHE = 'mt-media-v1';
 // conta de cor inteira.)
 const SHELL_ASSETS = [
   '/player.html', '/css/player.css', '/js/vendor/gsap.min.js',
-  '/js/perf.js', '/js/cor.js',
+  '/js/perf.js', '/js/cor.js', '/js/datas-br.js',
   '/js/templates.js', '/js/theme.js', '/js/seasons.js', '/js/adaptive.js',
   '/js/storage.js', '/js/news.js', '/js/render.js', '/js/cloud.js', '/js/player.js',
 ];
