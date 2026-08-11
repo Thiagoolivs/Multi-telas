@@ -14,6 +14,7 @@ import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw } from '../..
 import { ICONS, ICON_NAMES } from '../../lib/icons.js';
 import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer, podeRefazer } from '../../lib/historico.js';
 import { encaixar, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
+import { decidirColagem } from '../../lib/colar.js';
 import { PainelCamadas } from './PainelCamadas.jsx';
 
 const ASPECTS = [
@@ -306,6 +307,94 @@ export function CompositionEditor({ value, onClose, onSave }) {
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp); };
   }, [els, sel, editandoTexto, duplicar, copiar, colar, remover, moverCamada, empurrar, fecharPasso, saltar]);
 
+  /* ---------------- Colar e arrastar ----------------
+   *
+   * "Dá pra eu copiar algo no Canva e colar dentro do meu editor?" — dá, e a
+   * resposta honesta tem duas metades:
+   *
+   *   Do CANVA vem IMAGEM. Ele põe na área de transferência um PNG da seleção
+   *   e um formato interno proprietário; não existe como abrir aquilo em
+   *   camadas, e fingir que existe seria pior que dizer não.
+   *
+   *   Do FIGMA e do ILLUSTRATOR vem SVG, e daí saem formas e textos
+   *   EDITÁVEIS.
+   *
+   * E de qualquer lugar vem texto, que vira bloco de texto.
+   */
+  const [avisoColagem, setAvisoColagem] = useState('');
+
+  const acrescentarVarios = useCallback((novos) => {
+    const comId = novos.map((e) => ({ ...e, id: uid() }));
+    setEls((a) => [...a, ...comId]);
+    setSel(comId.map((e) => e.id));
+  }, [setEls]);
+
+  const colarArquivo = useCallback(async (arquivo) => {
+    setBusy(true);
+    try {
+      const up = await media.upload(arquivo);
+      acrescentarVarios([{ tipo: 'imagem', src: up.url, x: 20, y: 20, w: 60, h: 60, rot: 0, fit: 'contain' }]);
+    } catch (err) { alert(err.message || 'Não consegui subir a imagem'); }
+    setBusy(false);
+  }, [acrescentarVarios]);
+
+  const aplicarColagem = useCallback(async (dados) => {
+    const plano = dados.getData ? dados.getData('text/plain') : '';
+    const html = dados.getData ? dados.getData('text/html') : '';
+    let arquivo = null;
+    for (const it of dados.items || []) {
+      if (it.kind === 'file' && String(it.type).startsWith('image/')) { arquivo = it.getAsFile(); break; }
+    }
+    for (const f of dados.files || []) {
+      if (!arquivo && String(f.type).startsWith('image/')) arquivo = f;
+    }
+
+    // A proporção da peça vai junto: sem ela, um círculo colado de um SVG
+    // quadrado sai como elipse numa peça 16/9.
+    const [aw, ah] = String(aspect).split('/').map(Number);
+    const razao = (aw && ah) ? aw / ah : 16 / 9;
+    const r = decidirColagem({ arquivoImagem: arquivo, textoHtml: html, textoPlano: plano }, document, razao);
+    if (r.acao === 'imagem') { await colarArquivo(r.arquivo); return true; }
+    if (r.acao === 'elementos') {
+      acrescentarVarios(r.elementos);
+      setAvisoColagem(r.elementos.length > 1 ? r.elementos.length + ' camadas coladas' : '');
+      return true;
+    }
+    if (r.acao === 'svg-como-imagem') {
+      /*
+       * Tem traçado que não sabemos abrir em camadas. Vai inteiro, como
+       * imagem: melhor colar certo e não editável do que colar editável e
+       * errado — a pessoa só descobriria o pedaço faltando na parede.
+       */
+      const blob = new Blob([r.svg], { type: 'image/svg+xml' });
+      await colarArquivo(new File([blob], 'colado.svg', { type: 'image/svg+xml' }));
+      setAvisoColagem('Colado como imagem — ' + r.motivo + '.');
+      return true;
+    }
+    return false;
+  }, [acrescentarVarios, colarArquivo, aspect]);
+
+  useEffect(() => {
+    function onPaste(ev) {
+      // Quem está digitando num campo (ou no texto do palco) cola texto ali,
+      // e não uma camada nova.
+      const a = document.activeElement;
+      const t = (a && a.tagName || '').toLowerCase();
+      if (t === 'input' || t === 'textarea' || (a && a.isContentEditable)) return;
+      if (!ev.clipboardData) return;
+      ev.preventDefault();
+      aplicarColagem(ev.clipboardData);
+    }
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [aplicarColagem]);
+
+  useEffect(() => {
+    if (!avisoColagem) return undefined;
+    const t = setTimeout(() => setAvisoColagem(''), 5000);
+    return () => clearTimeout(t);
+  }, [avisoColagem]);
+
   /* ---------------- Upload e IA ---------------- */
 
   async function onPickImage(e) {
@@ -431,10 +520,16 @@ export function CompositionEditor({ value, onClose, onSave }) {
         </div>
       )}
 
+      {avisoColagem && (
+        <div className="border-b border-line bg-accent-soft px-4 py-1.5 text-xs text-ink-2">{avisoColagem}</div>
+      )}
+
       <div className="flex min-h-0 flex-1">
         {/* ---------------- Palco ---------------- */}
         <div ref={wrapRef} className="flex min-w-0 flex-1 items-center justify-center overflow-auto p-6"
-          onMouseDown={(e) => { if (e.target === e.currentTarget) limparSel(); }}>
+          onMouseDown={(e) => { if (e.target === e.currentTarget) limparSel(); }}
+          onDragOver={(e) => { e.preventDefault(); }}
+          onDrop={(e) => { e.preventDefault(); aplicarColagem(e.dataTransfer); }}>
           <div ref={canvasRef} data-palco
             onMouseDown={(e) => { if (e.target === canvasRef.current) limparSel(); }}
             className="relative shrink-0 shadow-2xl" style={{ ...bgStyle, width: palco.w, height: palco.h }}>

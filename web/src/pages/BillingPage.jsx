@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CreditCard, Check, MonitorPlay, Sparkles, ExternalLink } from 'lucide-react';
+import { CreditCard, Check, MonitorPlay, Sparkles, ExternalLink, HardDrive, Image as ImageIcon } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -56,7 +56,7 @@ export function BillingPage() {
   }
   if (error) return <ErrorState description="Não foi possível carregar o plano." onRetry={reload} />;
 
-  const { plan, usage, catalog, status, renewsAt, canManage, mode } = data;
+  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas } = data;
   const frac = usage.limit ? usage.screens / usage.limit : 0;
   const tone = frac >= 1 ? 'danger' : frac > 0.8 ? 'warn' : 'accent';
   const statusLabel = { active: 'Ativo', free: 'Grátis', canceled: 'Cancelado', past_due: 'Pagamento pendente' }[status] || status;
@@ -85,7 +85,11 @@ export function BillingPage() {
               <Badge tone={status === 'active' ? 'ok' : status === 'canceled' || status === 'past_due' ? 'danger' : 'neutral'}>{statusLabel}</Badge>
             </div>
             <div className="mt-0.5 text-xs text-ink-3">
-              {plan.priceCents > 0 ? `${brl(plan.priceCents)}/mês` : 'Sem custo'}
+              {plan.sobConsulta ? 'Contrato — preço combinado'
+                : usage.mensalidadeCents > 0
+                  ? `${brl(usage.mensalidadeCents)}/mês · ${brl(usage.precoTelaCents)} por tela`
+                  : 'Sem custo'}
+              {usage.descontoVolume > 0 ? ` · −${Math.round(usage.descontoVolume * 100)}% por volume` : ''}
               {renewsAt ? ` · renova em ${new Date(renewsAt).toLocaleDateString('pt-BR')}` : ''}
             </div>
           </div>
@@ -99,13 +103,68 @@ export function BillingPage() {
         </div>
       </Panel>
 
+      {/* Créditos de IA — o saldo e para onde ele foi.
+          A frase de baixo não é enfeite: quem esbarra no limite precisa ler,
+          antes de qualquer coisa, que a operação dele continua de pé. */}
+      {creditos && (
+        <Panel className="mb-5">
+          <PanelHeader title="Créditos de IA" description="Um crédito é uma imagem gerada. Todo o texto por IA é livre." />
+          <div className="flex flex-wrap items-center gap-5 p-4">
+            <div>
+              <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Saldo</div>
+              <div className="tnum text-2xl font-bold text-ink">{creditos.saldo.total}</div>
+              <div className="text-xs text-ink-3">
+                {creditos.saldo.franquia} da franquia
+                {creditos.saldo.comprado > 0 ? ` · ${creditos.saldo.comprado} comprados` : ''}
+              </div>
+            </div>
+            <div>
+              <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Franquia do plano</div>
+              <div className="tnum text-2xl font-bold text-ink">{creditos.franquiaDoPlano}</div>
+              <div className="text-xs text-ink-3">por mês, {creditos.telas === 1 ? 'para 1 tela' : `para ${creditos.telas} telas`}</div>
+            </div>
+            <div>
+              <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Usado neste ciclo</div>
+              <div className="tnum text-2xl font-bold text-ink">{creditos.usoDoCiclo.creditos}</div>
+              <div className="text-xs text-ink-3">{creditos.usoDoCiclo.chamadas} chamadas de IA</div>
+            </div>
+            <div className="ml-auto max-w-xs text-xs text-ink-2">
+              <ImageIcon size={14} className="mr-1 inline text-ink-3" />
+              Sem crédito, as telas continuam no ar e o editor continua inteiro — o que
+              para é gerar imagem nova.
+            </div>
+          </div>
+        </Panel>
+      )}
+
+      {/* Faixas de desconto por volume */}
+      {/* As faixas aparecem inclusive no plano grátis: quem está avaliando
+          precisa ver que crescer sai mais barato por tela. */}
+      {faixas && (
+        <Panel className="mb-5">
+          <PanelHeader title="Desconto por volume" description="Automático, e só sobre as telas daquela faixa." />
+          <div className="flex flex-wrap gap-2 p-4">
+            {faixas.map((f, i) => {
+              const de = i === 0 ? 1 : faixas[i - 1].ate + 1;
+              const ativa = usage.screens >= de && (f.ate == null || usage.screens <= f.ate);
+              return (
+                <div key={i} className={'rounded-lg border px-3 py-2 text-xs ' + (ativa ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink-2')}>
+                  <b className="text-ink">{f.ate == null ? `${de}+` : de === f.ate ? de : `${de}–${f.ate}`}</b> telas
+                  <span className="ml-2">{f.desconto > 0 ? `−${Math.round(f.desconto * 100)}%` : 'preço cheio'}</span>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+      )}
+
       {/* Catálogo de planos */}
       <Panel>
         <PanelHeader title="Planos" description={mode === 'dev' ? 'Cobrança em modo simulado (sem Stripe configurado).' : undefined} />
         <div className="grid gap-3 p-4 sm:grid-cols-3">
           {catalog.map((p) => {
             const isCurrent = p.id === plan.id;
-            const isUpgrade = p.priceCents > plan.priceCents;
+            const isUpgrade = p.sobConsulta || (p.precoTelaCents || 0) > (plan.precoTelaCents || 0);
             return (
               <div key={p.id} className={`relative flex flex-col rounded-xl border p-4 ${isCurrent ? 'border-accent bg-accent-soft/30' : 'border-line bg-surface-2'}`}>
                 {p.id === 'pro' && !isCurrent && (
@@ -113,13 +172,28 @@ export function BillingPage() {
                 )}
                 <div className="text-sm font-semibold text-ink">{p.name}</div>
                 <div className="mt-1 text-2xl font-bold tnum text-ink">
-                  {p.priceCents > 0 ? brl(p.priceCents) : 'Grátis'}
-                  {p.priceCents > 0 && <span className="text-sm font-medium text-ink-3">/mês</span>}
+                  {p.sobConsulta ? <span className="text-lg">A combinar</span>
+                    : p.precoTelaCents > 0 ? brl(p.precoTelaCents) : 'Grátis'}
+                  {!p.sobConsulta && p.precoTelaCents > 0 && (
+                    <span className="text-sm font-medium text-ink-3">/tela/mês</span>
+                  )}
                 </div>
                 <p className="mt-1 text-xs text-ink-3">{p.blurb}</p>
-                <div className="mt-3 flex items-center gap-1.5 text-sm text-ink-2">
-                  <MonitorPlay size={15} className="text-ink-3" />
-                  Até <b className="text-ink">{p.screens}</b> {p.screens === 1 ? 'tela' : 'telas'}
+                <div className="mt-3 space-y-1.5 text-sm text-ink-2">
+                  <div className="flex items-center gap-1.5">
+                    <MonitorPlay size={15} className="text-ink-3" />
+                    {p.sobConsulta ? 'Telas sem limite' : <>Até <b className="text-ink">{p.telasMax}</b> telas</>}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles size={15} className="text-ink-3" />
+                    {p.creditosPorTela > 0
+                      ? <><b className="text-ink">{p.creditosPorTela}</b> imagens de IA por tela/mês</>
+                      : 'IA para experimentar'}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <HardDrive size={15} className="text-ink-3" />
+                    <b className="text-ink">{p.gbPorTela} GB</b> por tela
+                  </div>
                 </div>
                 <div className="mt-4 flex-1" />
                 {isCurrent ? (
@@ -135,7 +209,7 @@ export function BillingPage() {
             );
           })}
         </div>
-        {plan.priceCents > 0 && canManage && mode === 'stripe' && (
+        {plan.precoTelaCents > 0 && canManage && mode === 'stripe' && (
           <div className="border-t border-line px-4 py-3">
             <button onClick={() => billing.portal().then(({ url }) => (window.location.href = url)).catch(() => {})}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-2 hover:text-ink">

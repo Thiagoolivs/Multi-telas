@@ -25,6 +25,8 @@ const storage = require('./server/storage');
 // Toda gravação de arquivo passa por aqui: linha no banco junto com o byte.
 const midia = require('./server/midia');
 const reconectar = require('./server/reconectar');
+const usoIA = require('./server/uso-ia');
+const creditos = require('./server/creditos');
 const { rateLimit, clientIp, safeEqual, isSecureRequest } = require('./server/security');
 const mail = require('./server/mail');
 const plans = require('./server/plans');
@@ -571,6 +573,47 @@ async function handleApi(req, res, pathname, query) {
 
   /* ----- Billing / planos ----- */
   /* ----- IA: gerar campanha da TELA INTEIRA (todas as zonas) ----- */
+  /*
+   * Medir TODA chamada de IA, cobrando crédito ou não.
+   *
+   * É a fatia 1 de docs/BILLING.md: duas a quatro semanas de dados reais
+   * valem mais que qualquer estimativa de custo, inclusive as escritas na
+   * própria proposta. Só a imagem debita saldo — o texto é livre porque uma
+   * campanha inteira dele custa cinco centavos, menos que a taxa fixa do
+   * Stripe na transação que cobraria por ela.
+   *
+   * O registro acontece na ENTRADA da rota, e não no sucesso: a chamada ao
+   * fornecedor é feita de qualquer jeito, então é ela que queremos contar. O
+   * erro de validação que nem chega a chamar a IA conta a mais, e isso é
+   * preferível a não contar o que gastou.
+   */
+  const TIPO_IA = {
+    'generate-campaign': 'gerar-campanha', 'generate-content': 'gerar-conteudo',
+    diagnose: 'diagnosticar', briefing: 'briefing', director: 'diretor',
+    'generate-kit': 'gerar-kit', 'generate-composition': 'gerar-composicao',
+    'generate-seasonal': 'gerar-sazonal', 'generate-dayparts': 'gerar-faixas',
+    rewrite: 'reescrever',
+  };
+  if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
+    /*
+     * A medição não pode derrubar a rota. Ela é contabilidade: se falhar,
+     * perde-se o dado, e não o produto — foi exatamente o que aconteceu na
+     * primeira versão, em que um erro de registro virou 500 para quem só
+     * queria reescrever um texto.
+     */
+    try {
+      const tenantTexto = await db.getTenant(sess.tenant_id);
+      if (tenantTexto) {
+        if (!(await usoIA.tetoTextoOk(db, tenantTexto))) {
+          return sendJson(res, 429, { error: 'muitas chamadas de IA nesta conta hoje. Tente de novo mais tarde.' });
+        }
+        // Não bloqueia: texto é livre. Só registra, para a franquia poder ser
+        // calibrada com dado em vez de palpite.
+        await usoIA.cobrar(db, tenantTexto, { tipo: TIPO_IA[parts[2]], quantidade: 1, userId: sess.user_id, referencia: parts[2] });
+      }
+    } catch (e) { console.warn('[uso-ia] medição falhou:', e.message); }
+  }
+
   if (parts[1] === 'ai' && parts[2] === 'generate-campaign') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
@@ -1141,6 +1184,15 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const prompt = b && b.prompt;
       if (!prompt || !String(prompt).trim()) return sendJson(res, 400, { error: 'descreva a imagem' });
+      /*
+       * Imagem é a ÚNICA coisa da IA que custa dinheiro de verdade, e é a
+       * única que o saldo bloqueia. Confere antes de chamar: gerar primeiro e
+       * cobrar depois deixaria a conta devendo, e recusar depois de a imagem
+       * existir seria pior ainda.
+       */
+      const tenantIA = await db.getTenant(sess.tenant_id);
+      const pode = await usoIA.conferir(db, tenantIA, 'gerar-imagem', 1);
+      if (!pode.ok) return sendJson(res, 402, pode.resposta);
       try {
         const img = await ai.generateImage(prompt, {
           formato: (b && b.formato) || '16/9', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '', estilo: (b && b.estilo) || '',
@@ -1148,6 +1200,8 @@ async function handleApi(req, res, pathname, query) {
         const buf = Buffer.from(img.data, 'base64');
         const saved = await midia.guardarBuffer(db, sess.tenant_id, buf, img.mime,
           { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
+        // Só depois do sucesso: falha não cobra.
+        await usoIA.cobrar(db, tenantIA, { tipo: 'gerar-imagem', quantidade: 1, userId: sess.user_id, referencia: saved.id });
         return sendJson(res, 200, { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });
@@ -1235,15 +1289,43 @@ async function handleApi(req, res, pathname, query) {
     const tenant = await db.getTenant(sess.tenant_id);
     const curPlan = plans.plan(tenant && tenant.plan);
 
+    /*
+     * Extrato de uso de IA. O cliente precisa ver PARA ONDE foi o crédito
+     * antes de qualquer bloqueio existir — a fatia 3 da proposta só entra
+     * depois que esta tela estiver certa e a pessoa tiver aprendido a olhar
+     * o saldo.
+     */
+    if (req.method === 'GET' && seg === 'consumo') {
+      const pan = await usoIA.panorama(db, tenant);
+      const itens = await db.listarUsoIA(sess.tenant_id, 200);
+      return sendJson(res, 200, {
+        ...pan,
+        itens: itens.map((i) => ({ ...i, rotulo: (creditos.operacao(i.tipo) || {}).rotulo || i.tipo })),
+      });
+    }
+
     // Estado atual do plano + uso + catálogo.
     if (req.method === 'GET' && !seg) {
       const used = await db.countDevices(sess.tenant_id);
+      const pan = await usoIA.panorama(db, tenant);
       return sendJson(res, 200, {
         mode: billing.mode(),
-        plan: { id: curPlan.id, name: curPlan.name, screens: curPlan.screens, priceCents: curPlan.priceCents },
-        status: (tenant && tenant.plan_status) || (curPlan.priceCents ? 'active' : 'free'),
+        plan: {
+          id: curPlan.id, name: curPlan.name, telasMax: curPlan.telasMax,
+          precoTelaCents: curPlan.precoTelaCents, sobConsulta: !!curPlan.sobConsulta,
+        },
+        status: (tenant && tenant.plan_status) || (curPlan.precoTelaCents ? 'active' : 'free'),
         renewsAt: tenant && tenant.plan_renews_at,
-        usage: { screens: used, limit: curPlan.screens },
+        usage: {
+          screens: used, limit: curPlan.telasMax,
+          mensalidadeCents: plans.mensalidadeCents(curPlan.id, Math.max(1, used)),
+          precoTelaCents: plans.precoTelaCents(curPlan.id, Math.max(1, used)),
+          proximaTelaCents: plans.precoProximaTelaCents(curPlan.id, used),
+          descontoVolume: plans.descontoVolume(Math.max(1, used)),
+          cotaBytes: plans.cotaBytes(curPlan.id, Math.max(1, used)),
+        },
+        creditos: pan,
+        faixas: plans.FAIXAS.map((f) => ({ ate: f.ate === Infinity ? null : f.ate, desconto: f.desconto })),
         catalog: plans.catalog(),
         canManage: sess.role === 'owner',
       });
@@ -1531,7 +1613,15 @@ async function handleApi(req, res, pathname, query) {
       const mime = query.mime || req.headers['content-type'] || '';
       if (!storage.extFor(mime)) return sendJson(res, 415, { error: 'tipo não suportado (imagem PNG/JPG/WEBP/GIF, vídeo MP4/WEBM, áudio MP3/M4A/OGG/WAV ou apresentação PPTX/PDF)' });
       const used = await db.sumMediaBytes(sess.tenant_id);
-      if (used >= storage.QUOTA_BYTES) return sendJson(res, 413, { error: 'cota de armazenamento cheia' });
+      /*
+       * A cota segue o plano, e é POR CONTA somando as telas: cinco telas no
+       * Pro dão 50 GB no total. Antes eram 5 GB fixos para qualquer conta,
+       * inclusive a grátis — mais do que muitos clientes pagantes usam.
+       */
+      const telasCota = await db.countDevices(sess.tenant_id);
+      const tenantCota = await db.getTenant(sess.tenant_id);
+      const cota = plans.cotaBytes(tenantCota && tenantCota.plan, Math.max(1, telasCota));
+      if (used >= cota) return sendJson(res, 413, { error: 'cota de armazenamento cheia' });
       try {
         const name = String(query.name || 'arquivo').slice(0, 180);
         const saved = await midia.guardarStream(db, sess.tenant_id, req, { mime }, { nome: name, origem: 'upload' });
@@ -1544,7 +1634,12 @@ async function handleApi(req, res, pathname, query) {
     if (req.method === 'GET' && parts.length === 2) {
       const items = await db.listMedia(sess.tenant_id);
       const used = await db.sumMediaBytes(sess.tenant_id);
-      return sendJson(res, 200, { items, usage: { used, quota: storage.QUOTA_BYTES } });
+      const telasQ = await db.countDevices(sess.tenant_id);
+      const tenantQ = await db.getTenant(sess.tenant_id);
+      return sendJson(res, 200, {
+        items,
+        usage: { used, quota: plans.cotaBytes(tenantQ && tenantQ.plan, Math.max(1, telasQ)) },
+      });
     }
     // Remover
     if (req.method === 'DELETE' && parts[2]) {
