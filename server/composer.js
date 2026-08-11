@@ -9,6 +9,7 @@
  * Todas as funções são puras e determinísticas — dá para testar sem chamar IA.
  */
 const ds = require('./design-system');
+const fontes = require('../js/fontes.js');
 
 const TIPOS = ['texto', 'forma', 'icone', 'imagem'];
 const PAPEIS = ['kicker', 'headline', 'display', 'sub', 'cta', 'fundo', 'destaque', 'decor', 'logo', 'imagem', 'legal'];
@@ -36,12 +37,29 @@ function sanearElemento(e, palette, formato) {
     out.text = String(e.text == null ? '' : e.text).slice(0, 240);
     out.cor = ds.okHex(e.cor, palette.texto);
     out.align = ['left', 'center', 'right'].includes(e.align) ? e.align : 'left';
-    out.peso = ds.clamp(ds.num(e.peso, 800), 300, 900);
-    out.sombra = !!e.sombra;
     out.fonte = ds.familia(e.fonte);
+    out.sombra = !!e.sombra;
     out.italico = !!e.italico;
+    /*
+     * O peso é encaixado no que a família TEM. Pedir 900 a uma fonte de um
+     * peso só faz o navegador engordar a letra por conta própria, cada um do
+     * seu jeito — e aí o editor mostra uma coisa e a TV desenha outra.
+     */
+    out.peso = fontes.pesoValido(out.fonte, ds.clamp(ds.num(e.peso, 800), 300, 900));
+    out.caixaAlta = !!e.caixaAlta;
+    /*
+     * Ausente é diferente de zero: quem não mexeu no espaçamento segue o padrão
+     * da família, e o padrão muda quando se troca a fonte. Guardar 0 aqui
+     * congelaria o texto num ajuste que ninguém pediu.
+     */
+    if (e.espacamento != null && Number.isFinite(Number(e.espacamento))) {
+      out.espacamento = ds.clamp(Number(e.espacamento), fontes.ESPACAMENTO.min, fontes.ESPACAMENTO.max);
+    }
+    if (e.entrelinha != null && Number.isFinite(Number(e.entrelinha))) {
+      out.entrelinha = ds.clamp(Number(e.entrelinha), fontes.ENTRELINHA.min, fontes.ENTRELINHA.max);
+    }
     // Família condensada de cartaz pede caixa alta — é parte do estilo.
-    if (ds.FAMILIAS[out.fonte].caixaAlta || e.caixaAlta) out.text = out.text.toUpperCase();
+    if (ds.FAMILIAS[out.fonte].caixaAlta || out.caixaAlta) out.text = out.text.toUpperCase();
     const escala = ds.escalaTipografica(formato);
     const padrao = escala[papel] || escala.sub;
     // Display pode ser enorme: o teto sobe para caber "ANIVERSÁRIO" ocupando

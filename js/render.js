@@ -1309,19 +1309,22 @@
       if (e.tipo === 'texto') {
         const t = div('mt-comp-text');
         t.textContent = e.text || '';
-        if (e.cor) t.style.color = e.cor;
-        if (e.align) t.style.textAlign = e.align;
-        if (e.peso) t.style.fontWeight = e.peso;
+        /*
+         * Todo o estilo do texto sai de MTFontes.estiloTexto — a MESMA função
+         * que o editor usa para desenhar o palco. Enquanto cada lado montava o
+         * seu, a peça saía diferente aqui e lá, e a diferença só aparecia
+         * depois de publicada, na parede.
+         */
+        const estilo = global.MTFontes.estiloTexto(e);
+        for (const k in estilo) t.style[k] = estilo[k];
         t.style.fontSize = textFontCqw(e, item.formato) + 'cqw';
-        if (e.sombra) t.style.textShadow = '0 2px 14px rgba(0,0,0,.45)';
-        // Família da peça (condensada/script/serifada) — carrega sob demanda.
-        if (e.fonte && global.MTTheme && MTTheme.familiaPeca) {
-          const fam = MTTheme.familiaPeca(e.fonte);
-          if (fam) t.style.fontFamily = fam;
-        }
-        if (e.italico) t.style.fontStyle = 'italic';
-        // Display condensado pede entrelinha apertada, senão fica frouxo.
-        if (e.fonte === 'display' || e.fonte === 'condensada') t.style.lineHeight = '0.92';
+        /*
+         * A fonte em si é baixada sob demanda, pela família JÁ RESOLVIDA — sem
+         * isso, um texto sem família declarada pedia estilo de Inter e baixava
+         * coisa nenhuma, e a TV desenhava com a fonte do sistema.
+         * Sem rede, vale o fallback da pilha e a peça continua legível.
+         */
+        if (global.MTTheme && MTTheme.familiaPeca) MTTheme.familiaPeca(MTFontes.familia(e.fonte));
         box.appendChild(t);
       } else if (e.tipo === 'forma') {
         box.style.background = fillToCss(e.fill);

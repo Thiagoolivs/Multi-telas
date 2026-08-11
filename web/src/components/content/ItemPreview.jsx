@@ -1,6 +1,7 @@
 import React from 'react';
 import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film, Cake, Airplay, Cast, Presentation } from 'lucide-react';
 import { fillToCss, shapeClip, SHAPE_POLY } from '../../lib/composition.js';
+import { estiloTexto, carregarDaComposicao } from '../../lib/fontes.js';
 import { ICONS } from '../../lib/icons.js';
 import { murais } from '../../api.js';
 
@@ -111,12 +112,13 @@ function Body({ item }) {
       const bgStyle = b.kind === 'imagem' && b.src ? { backgroundImage: `url("${b.src}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
         : b.kind === 'cor' ? { background: b.cor } : { background: '#0a1020' };
       const els = (item.elementos || []).slice().sort((a, x) => (a.z || 0) - (x.z || 0));
+      carregarDaComposicao(els);
       return (
         <div className="relative h-full w-full" style={bgStyle}>
           {els.map((e, idx) => (
             <div key={idx} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden' }}>
               {e.tipo === 'texto'
-                ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: e.cor, fontWeight: e.peso, fontSize: '9px', textAlign: e.align, lineHeight: 1.05 }}>{e.text}</div>
+                ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', ...estiloTexto(e), fontSize: '9px', whiteSpace: 'pre-wrap' }}>{e.text}</div>
                 : e.tipo === 'icone'
                   ? <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />
                 : e.tipo === 'forma'

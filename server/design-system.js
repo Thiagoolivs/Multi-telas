@@ -77,36 +77,17 @@ function buildPalette(brandIn, brand2In, estilo, fundoModo) {
 /* ---------------- Tipografia: famílias ---------------- */
 
 /*
- * O que faz uma peça parecer "de agência" é quase sempre a tipografia: uma
- * condensada pesada gigante, uma script para o toque humano, uma serifada para
- * elegância. Só com a fonte do sistema tudo sai com cara de slide corporativo.
- * O player carrega estas por Google Fonts (ver js/theme.js).
+ * As famílias vêm de js/fontes.js, o catálogo único — o mesmo arquivo que o
+ * player carrega e que o editor importa. Enquanto isto morava aqui e uma cópia
+ * morava em js/theme.js, o editor não tinha nenhuma das duas: a pessoa compunha
+ * a peça vendo a fonte do sistema e a TV desenhava em Anton.
  */
-const FAMILIAS = {
-  // Condensada pesadíssima — o "ANIVERSÁRIO" e o "RESTAURAÇÃO" das referências.
-  display: { css: "'Anton', 'Archivo Black', Impact, system-ui, sans-serif", google: 'Anton', caixaAlta: true, largura: 0.42, larguraFallback: 0.60 },
-  // Condensada com mais graus de peso, para títulos que precisam de nuance.
-  condensada: { css: "'Oswald', 'Archivo Narrow', system-ui, sans-serif", google: 'Oswald:wght@400;500;600;700', caixaAlta: true, largura: 0.45, larguraFallback: 0.56 },
-  // Manuscrita, para nome próprio / assinatura.
-  script: { css: "'Great Vibes', 'Brush Script MT', cursive", google: 'Great+Vibes', caixaAlta: false, largura: 0.4, larguraFallback: 0.5 },
-  // Serifada elegante (o "FELIZ" em itálico).
-  serifada: { css: "'Playfair Display', Georgia, serif", google: 'Playfair+Display:ital,wght@0,700;0,900;1,700', caixaAlta: false, largura: 0.5, larguraFallback: 0.54 },
-  // Sans de leitura, para apoio e legais.
-  sans: { css: "'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif", google: 'Inter:wght@400;500;600;700;800;900', caixaAlta: false, largura: 0.52, larguraFallback: 0.55 },
-};
-const FAMILIA_PADRAO = 'sans';
-function familia(id) { return FAMILIAS[id] ? id : FAMILIA_PADRAO; }
-/*
- * Largura média de caractere, relativa ao corpo. Usamos a do FALLBACK, não a da
- * fonte ideal: as famílias vêm do Google Fonts e uma TV sem internet cai na
- * fonte do sistema, bem mais larga. Estimar pela ideal fazia o título estourar
- * a caixa justamente na tela que não tem rede — onde ninguém está olhando o
- * problema. Com a fonte carregada, sobra folga; sem ela, ainda cabe.
- */
-function larguraCaractereDaFamilia(fam) {
-  const f = FAMILIAS[familia(fam)] || FAMILIAS.sans;
-  return f.larguraFallback || f.largura;
-}
+const fontes = require('../js/fontes.js');
+
+const FAMILIAS = fontes.FAMILIAS;
+const FAMILIA_PADRAO = fontes.FAMILIA_PADRAO;
+const familia = fontes.familia;
+const larguraCaractereDaFamilia = fontes.larguraCaractere;
 
 /* ---------------- Direções de arte ---------------- */
 

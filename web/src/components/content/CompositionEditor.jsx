@@ -5,7 +5,7 @@ import {
   Columns2, Sparkles, Shapes, Star, Undo2, Redo2, Copy, ZoomIn, ZoomOut, Maximize2,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
-  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers,
+  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper,
 } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
@@ -15,6 +15,10 @@ import { ICONS, ICON_NAMES } from '../../lib/icons.js';
 import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer, podeRefazer } from '../../lib/historico.js';
 import { encaixar, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
 import { decidirColagem } from '../../lib/colar.js';
+import {
+  estiloTexto, listar as listarFontes, pesosDe, pesoValido, dados as dadosDaFonte,
+  carregarFonte, carregarDaComposicao, ESPACAMENTO, ENTRELINHA,
+} from '../../lib/fontes.js';
 import { PainelCamadas } from './PainelCamadas.jsx';
 
 const ASPECTS = [
@@ -166,7 +170,14 @@ export function CompositionEditor({ value, onClose, onSave }) {
 
   const acrescentar = (e) => { setEls((a) => [...a, e]); setSel([e.id]); };
   const addImage = (url) => acrescentar({ id: uid(), tipo: 'imagem', src: url, x: 30, y: 25, w: 40, h: 40, rot: 0, fit: 'contain' });
-  const addText = () => acrescentar({ id: uid(), tipo: 'texto', text: 'Texto', x: 20, y: 40, w: 60, h: 18, rot: 0, cor: '#ffffff', peso: 800, tamanho: 6, align: 'center' });
+  const addText = () => acrescentar({ id: uid(), tipo: 'texto', text: 'Texto', x: 20, y: 40, w: 60, h: 18, rot: 0, cor: '#ffffff', fonte: 'sans', peso: 800, tamanho: 6, align: 'center' });
+
+  /*
+   * As fontes da peça são baixadas assim que ela abre. Sem isto, o palco
+   * desenharia o texto com a fonte do sistema até alguém abrir o seletor — e a
+   * peça pareceria errada exatamente na hora em que se decide se ela está boa.
+   */
+  useEffect(() => { carregarDaComposicao(els); }, [els]);
   const addIcon = () => acrescentar({ id: uid(), tipo: 'icone', name: 'star', x: 42, y: 20, w: 16, h: 16, rot: 0, cor: '#ffffff', peso: 1.6, opacidade: 1 });
   // Forma nasce ATRÁS de tudo: quase sempre ela é fundo de alguma coisa.
   const addShape = () => {
@@ -550,8 +561,9 @@ export function CompositionEditor({ value, onClose, onSave }) {
                     editando={editandoTexto === e.id}
                     estilo={{
                       width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: e.cor, fontWeight: e.peso, textAlign: e.align, fontSize: fontePx(e), lineHeight: 1.05,
-                      overflow: 'hidden', textShadow: e.sombra ? '0 2px 14px rgba(0,0,0,.45)' : 'none',
+                      // Mesma função que o player usa — o palco não inventa estilo próprio.
+                      ...estiloTexto(e), fontSize: fontePx(e),
+                      overflow: 'hidden', whiteSpace: 'pre-wrap',
                       outline: editandoTexto === e.id ? '1px dashed rgba(120,160,255,.9)' : 'none',
                       cursor: editandoTexto === e.id ? 'text' : 'inherit',
                     }}
@@ -693,12 +705,41 @@ export function CompositionEditor({ value, onClose, onSave }) {
                       <Field label="Cor"><input type="color" value={selEl.cor} onChange={(e) => patch(selEl.id, { cor: e.target.value })} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
                       <Field label="Tamanho"><Input type="number" value={selEl.tamanho} disabled={!!selEl.auto} onChange={(e) => patch(selEl.id, { tamanho: Number(e.target.value) })} /></Field>
                     </div>
-                    <Field label="Peso">
-                      <Select value={selEl.peso || 800} onChange={(e) => patch(selEl.id, { peso: Number(e.target.value) })}>
-                        <option value="400">Normal</option><option value="600">Médio</option>
-                        <option value="800">Negrito</option><option value="900">Extra negrito</option>
-                      </Select>
-                    </Field>
+                    <SeletorFonte
+                      valor={selEl.fonte}
+                      onEscolher={(id) => patch(selEl.id, { fonte: id, peso: pesoMaisProximo(id, selEl.peso) })}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field label="Peso">
+                        <Select value={pesoMaisProximo(selEl.fonte, selEl.peso)} onChange={(e) => patch(selEl.id, { peso: Number(e.target.value) })}>
+                          {pesosDe(selEl.fonte).map((p) => <option key={p} value={p}>{ROTULO_PESO[p] || p}</option>)}
+                        </Select>
+                      </Field>
+                      <Field label="Estilo">
+                        <div className="flex gap-1">
+                          <BotaoEstilo ativo={!!selEl.italico} titulo="Itálico" onClick={() => patch(selEl.id, { italico: !selEl.italico })}>
+                            <Italic size={15} />
+                          </BotaoEstilo>
+                          <BotaoEstilo ativo={!!selEl.caixaAlta} titulo="Tudo em maiúsculas" onClick={() => patch(selEl.id, { caixaAlta: !selEl.caixaAlta })}>
+                            <CaseUpper size={17} />
+                          </BotaoEstilo>
+                        </div>
+                      </Field>
+                    </div>
+                    <Ajuste
+                      rotulo="Espaçamento entre letras" unidade="em" casas={2}
+                      valor={selEl.espacamento} padrao={-0.01}
+                      min={ESPACAMENTO.min} max={ESPACAMENTO.max} passo={0.01}
+                      onChange={(n) => patch(selEl.id, { espacamento: n }, 'espacamento:' + selEl.id)}
+                      onSoltar={fecharPasso}
+                    />
+                    <Ajuste
+                      rotulo="Altura da linha" unidade="" casas={2}
+                      valor={selEl.entrelinha} padrao={entrelinhaPadrao(selEl.fonte)}
+                      min={ENTRELINHA.min} max={ENTRELINHA.max} passo={0.01}
+                      onChange={(n) => patch(selEl.id, { entrelinha: n }, 'entrelinha:' + selEl.id)}
+                      onSoltar={fecharPasso}
+                    />
                     <label className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={!!selEl.auto} onChange={(e) => patch(selEl.id, { auto: e.target.checked })} /> Ajustar à diagonal do bloco</label>
                     {selEl.auto && (
                       <Field label={`Proporção (${Math.round((selEl.escala != null ? selEl.escala : 0.16) * 100)}%)`}>
@@ -823,6 +864,103 @@ export function CompositionEditor({ value, onClose, onSave }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ---------------- Tipografia ---------------- */
+
+const ROTULO_PESO = {
+  300: 'Leve', 400: 'Normal', 500: 'Médio', 600: 'Semi',
+  700: 'Negrito', 800: 'Extra negrito', 900: 'Máximo',
+};
+const pesoMaisProximo = (fonte, peso) => pesoValido(fonte, peso != null ? peso : 800);
+const entrelinhaPadrao = (fonte) => dadosDaFonte(fonte).entrelinha;
+
+/*
+ * O seletor de fonte desenha CADA opção na própria fonte.
+ *
+ * É a única forma que funciona: ninguém sabe o que é "Alfa Slab One" pelo nome,
+ * e uma lista de nomes todos na mesma letra obriga a testar um por um no palco
+ * para descobrir. Vendo a letra, a escolha é imediata — é assim no Canva, e é
+ * assim porque é o certo.
+ */
+function SeletorFonte({ valor, onEscolher }) {
+  const lista = React.useMemo(() => listarFontes(), []);
+  // As fontes só chegam se forem pedidas; sem isto a lista inteira sairia na
+  // fonte do sistema, que é justamente o que o seletor existe para evitar.
+  React.useEffect(() => { lista.forEach((f) => carregarFonte(f.id)); }, [lista]);
+  const atual = valor || 'sans';
+  const escolhida = lista.find((f) => f.id === atual) || lista[0];
+  /*
+   * Fechada por padrão. Doze famílias abertas empurram peso, alinhamento e
+   * posição para fora da tela — e a fonte é escolhida uma vez, enquanto o
+   * resto se mexe o tempo todo.
+   */
+  const [aberta, setAberta] = React.useState(false);
+
+  return (
+    <Field label="Fonte">
+      <button type="button" onClick={() => setAberta((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 rounded-md border border-line bg-surface px-2 py-1.5 text-left transition hover:border-accent/50">
+        <span className="truncate text-base leading-tight" style={{ fontFamily: escolhida.css }}>{escolhida.rotulo}</span>
+        <ChevronDown size={14} className={'shrink-0 text-ink-3 transition ' + (aberta ? 'rotate-180' : '')} />
+      </button>
+      {aberta && (
+        /*
+          Sem rolagem própria: o painel de propriedades já rola, e uma caixa que
+          rola dentro de outra que rola é das coisas mais irritantes de usar — a
+          roda do mouse mexe na de dentro quando se queria a de fora.
+        */
+        <div className="mt-1 space-y-0.5 rounded-md border border-line bg-surface p-1">
+          {lista.map((f) => (
+            <button key={f.id} type="button" onClick={() => { onEscolher(f.id); setAberta(false); }}
+              className={'flex w-full items-baseline justify-between gap-2 rounded px-2 py-1.5 text-left transition '
+                + (atual === f.id ? 'bg-accent/15 text-accent ring-1 ring-accent/40' : 'text-ink hover:bg-white/5')}>
+              <span className="truncate text-base leading-tight" style={{ fontFamily: f.css }}>{f.rotulo}</span>
+              <span className="shrink-0 text-2xs text-ink-3">{f.papel}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </Field>
+  );
+}
+
+function BotaoEstilo({ ativo, titulo, onClick, children }) {
+  return (
+    <button type="button" title={titulo} onClick={onClick}
+      className={'flex h-9 flex-1 items-center justify-center rounded border transition '
+        + (ativo ? 'border-accent bg-accent/15 text-accent' : 'border-line text-ink-2 hover:text-ink')}>
+      {children}
+    </button>
+  );
+}
+
+/*
+ * Um ajuste fino com valor visível e volta ao padrão.
+ *
+ * O "voltar ao padrão" não é enfeite: espaçamento e entrelinha são justamente
+ * os controles em que se mexe sem querer e depois não se sabe mais qual era o
+ * número bom. Enquanto ninguém mexe, o campo fica NULO — e aí a peça segue o
+ * padrão da família, que muda quando se troca a fonte.
+ */
+function Ajuste({ rotulo, unidade, casas, valor, padrao, min, max, passo, onChange, onSoltar }) {
+  const definido = valor != null && Number.isFinite(Number(valor));
+  const v = definido ? Number(valor) : padrao;
+  return (
+    <Field label={`${rotulo} (${v.toFixed(casas)}${unidade})`}>
+      <div className="flex items-center gap-2">
+        <input type="range" min={min} max={max} step={passo} value={v}
+          onChange={(e) => onChange(Number(e.target.value))}
+          onMouseUp={onSoltar} onTouchEnd={onSoltar} onKeyUp={onSoltar}
+          className="w-full" />
+        <button type="button" title="Voltar ao padrão da fonte" onClick={() => { onChange(null); onSoltar(); }}
+          disabled={!definido}
+          className="shrink-0 rounded border border-line px-1.5 py-1 text-2xs text-ink-3 transition hover:text-ink disabled:opacity-30">
+          padrão
+        </button>
+      </div>
+    </Field>
   );
 }
 

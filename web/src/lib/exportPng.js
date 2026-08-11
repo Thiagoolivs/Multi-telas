@@ -3,6 +3,7 @@
  * Desenha no canvas o mesmo modelo do player (fundo cor/gradiente/imagem +
  * elementos de texto/imagem em % com rotação). Sem dependências externas.
  */
+import { estiloTexto, prontasParaCanvas } from './fontes.js';
 
 // Espelho de web/src/lib/icons.js — mantido aqui para desenhar no canvas.
 const ICONS = {
@@ -140,23 +141,44 @@ function textFontCqw(e, formato) {
 
 function drawText(ctx, e, w, h, W, formato) {
   const fontPx = Math.max(8, textFontCqw(e, formato) / 100 * W);
-  ctx.fillStyle = e.cor || '#ffffff';
-  ctx.font = `${e.peso || 700} ${fontPx}px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif`;
+  /*
+   * O estilo vem da MESMA função do palco e do player. Antes daqui a
+   * exportação desenhava tudo na fonte do sistema: a peça saía numa fonte no
+   * editor, noutra na TV e numa terceira no PNG que a pessoa mandava no
+   * WhatsApp para aprovar. Aprovava-se uma coisa e ia ao ar outra.
+   */
+  const s = estiloTexto(e);
+  ctx.fillStyle = s.color;
+  ctx.font = `${s.fontStyle} ${s.fontWeight} ${fontPx}px ${s.fontFamily}`;
+  // letterSpacing no canvas é recente; onde não existe, o texto sai sem o
+  // ajuste fino em vez de não sair.
+  if ('letterSpacing' in ctx) ctx.letterSpacing = (parseFloat(s.letterSpacing) * fontPx).toFixed(2) + 'px';
   ctx.textBaseline = 'top';
-  const align = e.align || 'left';
+  const align = s.textAlign;
   ctx.textAlign = align;
-  // Quebra por palavra dentro da largura da caixa.
-  const words = String(e.text || '').split(/\s+/);
-  const lines = []; let line = '';
-  for (const word of words) {
-    const test = line ? line + ' ' + word : word;
-    if (ctx.measureText(test).width > w && line) { lines.push(line); line = word; } else line = test;
+
+  const bruto = String(e.text || '');
+  const texto = s.textTransform === 'uppercase' ? bruto.toUpperCase() : bruto;
+  // Quebra por palavra dentro da largura da caixa, respeitando as quebras que
+  // a pessoa digitou.
+  const lines = [];
+  for (const paragrafo of texto.split('\n')) {
+    let line = '';
+    for (const word of paragrafo.split(/\s+/)) {
+      const test = line ? line + ' ' + word : word;
+      if (ctx.measureText(test).width > w && line) { lines.push(line); line = word; } else line = test;
+    }
+    lines.push(line);
   }
-  if (line) lines.push(line);
-  const lh = fontPx * 1.1;
+  const lh = fontPx * Number(s.lineHeight);
   let ty = (h - lines.length * lh) / 2; // centraliza verticalmente na caixa
   const tx = align === 'center' ? w / 2 : align === 'right' ? w : 0;
+  if (s.textShadow !== 'none') {
+    ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = fontPx * 0.28; ctx.shadowOffsetY = fontPx * 0.04;
+  }
   for (const l of lines) { ctx.fillText(l, tx, ty); ty += lh; }
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 }
 
 export async function compositionToCanvas(item, W, H) {
@@ -170,6 +192,8 @@ export async function compositionToCanvas(item, W, H) {
     fillBackground(ctx, b.cor, W, H);
   }
   const els = (item.elementos || []).slice().sort((a, c) => (a.z || 0) - (c.z || 0));
+  // Sem isto o PNG sai na fonte do sistema: o canvas desenha uma vez só.
+  await prontasParaCanvas(els);
   for (const e of els) {
     const x = (e.x || 0) / 100 * W, y = (e.y || 0) / 100 * H, w = (e.w || 20) / 100 * W, h = (e.h || 20) / 100 * H;
     ctx.save();
