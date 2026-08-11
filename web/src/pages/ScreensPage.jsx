@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
@@ -24,6 +24,7 @@ export function ScreensPage({ onEditContent }) {
   const [somTarget, setSomTarget] = useState(null);
   const [renameTarget, setRenameTarget] = useState(null);
   const [removeTarget, setRemoveTarget] = useState(null);
+  const [reconnectTarget, setReconnectTarget] = useState(null);
   const [backupTarget, setBackupTarget] = useState(null);
 
   return (
@@ -59,6 +60,7 @@ export function ScreensPage({ onEditContent }) {
                   onSom={() => setSomTarget(d)}
                   onContent={() => onEditContent(d)}
                   onRename={() => setRenameTarget(d)}
+                  onReconnect={() => setReconnectTarget(d)}
                   onBackup={() => setBackupTarget(d)}
                   onRemove={() => setRemoveTarget(d)} />
               ))}
@@ -78,6 +80,7 @@ export function ScreensPage({ onEditContent }) {
       >
         {somTarget && <SoundRemote deviceId={somTarget.id} />}
       </Dialog>
+      <ReconnectDialog target={reconnectTarget} onClose={() => setReconnectTarget(null)} onDone={reload} />
       <RemoveDialog target={removeTarget} onClose={() => setRemoveTarget(null)} onDone={reload} />
       <BackupDialog target={backupTarget} screens={list} onClose={() => setBackupTarget(null)} onDone={reload} />
     </div>
@@ -85,7 +88,7 @@ export function ScreensPage({ onEditContent }) {
 }
 
 // Mini "tela" da frota: status + programação (não é espelho ao vivo).
-function FleetCard({ d, onSom, onContent, onRename, onBackup, onRemove }) {
+function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onRemove }) {
   const st = deviceStatus(d.lastSeen);
   const online = st.tone === 'ok';
   return (
@@ -97,6 +100,17 @@ function FleetCard({ d, onSom, onContent, onRename, onBackup, onRemove }) {
         <div className="flex flex-col items-center gap-1.5 text-center">
           <MonitorPlay size={26} className={online ? 'text-accent' : 'text-ink-3'} />
           <span className="text-xs font-medium text-ink-2">{d.hasConfig ? 'Programação ativa' : 'Sem programação'}</span>
+          {/*
+            * Tela offline quase sempre é a TV que voltou sem o vínculo — o
+            * navegador dela limpou o armazenamento ao fechar. O caminho de
+            * volta precisa estar aqui, onde o cliente vê o problema, e não
+            * escondido atrás de um ícone.
+            */}
+          {!online && (
+            <Button size="sm" variant="secondary" icon={RefreshCw} onClick={onReconnect} className="mt-1">
+              Reconectar
+            </Button>
+          )}
         </div>
         <span className="tnum absolute bottom-2 left-2 rounded border border-line bg-surface/80 px-1.5 py-0.5 text-2xs tracking-widest text-ink-3 backdrop-blur">{d.code}</span>
       </div>
@@ -114,6 +128,60 @@ function FleetCard({ d, onSom, onContent, onRename, onBackup, onRemove }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/*
+ * Reconectar: esta tela do painel volta a ser aquela TV ali.
+ *
+ * A TV guarda a própria identidade no navegador dela, e o navegador da
+ * Samsung limpa isso ao fechar. Quando isso acontece, a TV volta como tela
+ * NOVA, com código novo, e a tela antiga fica aqui para sempre — offline, sem
+ * receber publicação e ocupando vaga do plano. Antes daqui, o único caminho
+ * era apagar a tela e refazer a programação do zero.
+ */
+function ReconnectDialog({ target, onClose, onDone }) {
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  React.useEffect(() => { setCode(''); setError(''); }, [target]);
+
+  async function submit() {
+    setBusy(true); setError('');
+    try {
+      await devices.reconectar(target.id, code);
+      onDone(); onClose();
+    } catch (err) { setError(err.message || 'Não foi possível reconectar.'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog
+      open={!!target}
+      onClose={onClose}
+      title={'Reconectar · ' + ((target && target.name) || 'Tela')}
+      description="Use quando a TV voltou mostrando um código de pareamento em vez do conteúdo."
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" icon={RefreshCw} onClick={submit} disabled={busy || code.trim().length < 4}>
+            {busy ? 'Reconectando…' : 'Reconectar'}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3.5">
+        <p className="text-sm text-ink-2">
+          A TV perdeu o vínculo quando o navegador dela foi fechado — acontece com
+          alguns modelos. Digite o código que ela está mostrando agora: o nome e a
+          programação desta tela passam para ela, sem gastar outra vaga do plano.
+        </p>
+        <Field label="Código que aparece na TV">
+          <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="CÓDIGO" maxLength={6} className="tracking-[0.3em]" autoFocus />
+        </Field>
+        {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
+      </div>
+    </Dialog>
   );
 }
 

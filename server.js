@@ -24,6 +24,7 @@ const auth = require('./server/auth');
 const storage = require('./server/storage');
 // Toda gravação de arquivo passa por aqui: linha no banco junto com o byte.
 const midia = require('./server/midia');
+const reconectar = require('./server/reconectar');
 const { rateLimit, clientIp, safeEqual, isSecureRequest } = require('./server/security');
 const mail = require('./server/mail');
 const plans = require('./server/plans');
@@ -1381,6 +1382,49 @@ async function handleApi(req, res, pathname, query) {
         return sendJson(res, 200, { ok: true, updatedAt });
       });
     }
+    /*
+     * Reconectar: esta tela do painel passa a ser AQUELA TV ali.
+     *
+     * O problema que isto resolve: a identidade da TV vive no navegador dela.
+     * Quando o navegador da Samsung limpa o armazenamento — o que ele faz ao
+     * fechar —, a TV volta sem identidade e cria uma tela NOVA, com código
+     * novo. A tela antiga fica no painel para sempre: offline, sem receber
+     * publicação, e ocupando uma vaga do plano. Não havia caminho nenhum para
+     * dizer "esta TV é a minha tela da Recepção".
+     *
+     * A tela NOVA absorve o nome e a config da antiga, e a antiga é apagada.
+     * Poderia ser ao contrário — a antiga adotar as credenciais da nova —, mas
+     * aí a TV ficaria com um id que não existe mais e precisaria ser avisada,
+     * o que só funciona se ela estiver com o SSE de pé bem naquele instante.
+     * Deste lado, a TV não precisa saber de nada: ela já é quem ficou.
+     *
+     * O que o cliente chama de "minha tela" é o nome e o conteúdo, e os dois
+     * seguem intactos. O id interno muda, e nada fora da própria tela o
+     * referencia (o mural é por mural_id).
+     */
+    if (req.method === 'POST' && sub === 'reconectar') {
+      if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
+      const rrl = rateLimit('pair:' + clientIp(req), 15, 10 * 60 * 1000);
+      if (!rrl.ok) return sendJson(res, 429, { error: 'muitas tentativas' }, { 'Retry-After': String(rrl.retryAfter) });
+      return readBody(req, res, async (b) => {
+        const nova = await db.getDeviceByCode(b && b.code);
+        const nao = reconectar.impedimento(device, nova, sess.tenant_id, Date.now(), PAIR_ONLINE_MS);
+        if (nao) return sendJson(res, nao.status, { error: nao.error });
+
+        /*
+         * Sem cobrar vaga do plano: entra uma tela e sai outra, o saldo é
+         * zero. Cobrar aqui puniria o cliente justamente pelo defeito que ele
+         * está consertando.
+         */
+        const nome = device.name || 'TV';
+        await db.claimDevice(nova.id, sess.tenant_id, nome);
+        if (device.config) await db.setDeviceConfig(nova.id, device.config, nome);
+        await db.removeDevice(id);
+        broadcast(nova.id, 'config', { updatedAt: Date.now() });
+        return sendJson(res, 200, { id: nova.id, name: nome, herdouConfig: !!device.config });
+      });
+    }
+
     // Renomear / remover (dono)
     if (req.method === 'POST' && sub === 'rename') {
       if (!owns) return sendJson(res, 403, { error: 'sem permissão' });

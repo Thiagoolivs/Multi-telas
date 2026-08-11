@@ -282,12 +282,113 @@
     if (fp === configFingerprint) return; // nada mudou
     configFingerprint = fp;
     currentConfig = cfg;
-    teardownZones();
-    buildStage(cfg);
+    aplicarNoPalco(cfg);
     // A trilha vem de settings e não das zonas: trocar de layout não pode
     // cortar a música no meio.
     trilha.aplicar((cfg.settings || {}).audio);
     precacheMedia(cfg); // baixa a mídia da playlist p/ tocar offline depois
+  }
+
+  /* ---------------- Aplicar só o que mudou ----------------
+   *
+   * Publicar era sempre um recomeço: `teardownZones()` seguido de
+   * `buildStage()`, para qualquer alteração. Corrigir uma vírgula no rodapé
+   * derrubava o palco inteiro — o vídeo da principal voltava para o segundo
+   * zero, o relógio piscava, as zonas refaziam a animação de entrada. Numa TV
+   * de recepção, cada ajuste do dia aparecia como um solavanco.
+   *
+   * Agora a config nova é comparada com a que está no ar, e só o que mudou é
+   * refeito. Não é economia de máquina — é o contrário do gasto: deixamos de
+   * reconstruir o que continua igual.
+   *
+   * A comparação é por ASSINATURA, e as assinaturas são deliberadamente
+   * grosseiras. Uma zona é refeita quando o que ela exibe muda, e também
+   * quando muda qualquer ajuste que não esteja na lista dos que sabidamente
+   * não a afetam. Errar para o lado de remontar custa um solavanco; errar
+   * para o lado de não remontar deixa conteúdo velho na parede do cliente, o
+   * que é bem pior.
+   */
+
+  // Ajustes que NÃO passam pelos renderizadores de zona — cada um é aplicado
+  // no seu próprio caminho, logo abaixo. Tudo que não estiver aqui remonta a
+  // zona, inclusive um ajuste novo que ninguém lembrou de classificar.
+  const FORA_DA_ZONA = {
+    audio: 1,             // trilha.aplicar
+    theme: 1,             // MTTheme.apply escreve variáveis CSS, nada a refazer
+    decoracao: 1,         // buildDecoration
+    coresAdaptativas: 1,  // uma bandeira lida na hora de adaptar
+    layoutInteligente: 1, // idem, lida na hora do takeover
+    refreshSeconds: 1,    // só o modo legado usa, e lá o palco é outro
+    // layoutAuto e layoutAutoSeconds NÃO entram aqui: eles ligam um
+    // temporizador no nível do palco, e vão na assinatura do palco logo
+    // abaixo. Se ficassem aqui, ligar o layout dinâmico não faria nada.
+  };
+
+  function assinaturaAjustes(settings) {
+    const s = {};
+    for (const k in (settings || {})) if (!FORA_DA_ZONA[k]) s[k] = settings[k];
+    return fingerprint(s);
+  }
+  // Identidade do palco: se isto muda, não há o que reaproveitar.
+  function assinaturaPalco(cfg) {
+    const l = MT_getLayout(cfg.settings.layoutId);
+    return fingerprint([
+      cfg.settings.layoutId, l.grid, l.zones.map((z) => z.id + ':' + z.type),
+      cfg.settings.layoutAuto, cfg.settings.layoutAutoSeconds,
+    ]);
+  }
+  function assinaturaZona(cfg, zoneId, ajustes) {
+    return fingerprint([cfg.zonas[zoneId] || null, ajustes]);
+  }
+
+  // O palco no ar: elemento e controlador de cada zona, com a assinatura do
+  // que está exibindo. É o que permite comparar em vez de recomeçar.
+  let palco = null;
+
+  function aplicarNoPalco(cfg) {
+    if (!palco || palco.chave !== assinaturaPalco(cfg)) {
+      teardownZones();
+      buildStage(cfg);
+      return;
+    }
+    // Mesmo palco: os ajustes de fora da zona são baratos e vão sempre.
+    const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme)) || null;
+    global.MT_THEME = resolved;
+    if (global.MTAdaptive) {
+      MTAdaptive.enabled = cfg.settings.coresAdaptativas !== false;
+      if (resolved) MTAdaptive.setBase({ accent: resolved.accent, glow: resolved.glow });
+    }
+    smartLayout = cfg.settings.layoutInteligente !== false;
+    buildDecoration(cfg);
+
+    const ajustes = assinaturaAjustes(cfg.settings);
+    const layout = MT_getLayout(cfg.settings.layoutId);
+    for (const zone of layout.zones) {
+      const viva = palco.zonas[zone.id];
+      if (!viva) continue;
+      const nova = assinaturaZona(cfg, zone.id, ajustes);
+      if (nova === viva.assinatura) continue;   // esta zona não mudou: fica como está
+      trocarZona(viva, zone, cfg, nova);
+    }
+  }
+
+  // Refaz UMA zona, sem tocar nas vizinhas. Um vídeo tocando na principal não
+  // pode reiniciar porque alguém corrigiu o rodapé.
+  function trocarZona(viva, zone, cfg, assinatura) {
+    try { viva.ctrl && viva.ctrl.stop && viva.ctrl.stop(); } catch (e) {}
+    const i = zoneControllers.indexOf(viva.ctrl);
+    if (i >= 0) zoneControllers.splice(i, 1);
+    viva.el.innerHTML = '';
+    viva.ctrl = iniciarZona(viva.el, zone, cfg);
+    viva.assinatura = assinatura;
+    zoneControllers.push(viva.ctrl);
+  }
+
+  function iniciarZona(zoneEl, zone, cfg) {
+    const data = cfg.zonas[zone.id] || {};
+    if (zone.type === 'ticker') return startTicker(zoneEl, data, cfg);
+    if (zone.type === 'header') return startHeader(zoneEl, cfg);
+    return startPlaylist(zoneEl, data.items || [], cfg);
   }
 
   /* ---------------- Resiliência offline ---------------- */
@@ -352,6 +453,7 @@
     zoneControllers.length = 0;
     clearTakeover();
     stage.innerHTML = '';
+    palco = null;   // o registro morre junto com os elementos que ele apontava
   }
 
   /* Gera variações de arranjo (só disposição/tamanho) para um layout,
@@ -521,6 +623,10 @@
 
     const hasGsap = typeof window.gsap !== 'undefined';
     const zoneEls = [];
+    // Registro do que está no ar, para a próxima publicação poder comparar em
+    // vez de recomeçar (ver aplicarNoPalco).
+    const ajustes = assinaturaAjustes(cfg.settings);
+    palco = { chave: assinaturaPalco(cfg), zonas: {} };
     layout.zones.forEach((zone, i) => {
       const zoneEl = document.createElement('div');
       zoneEl.className = 'mt-zone mt-zone-' + zone.type;
@@ -535,14 +641,9 @@
       stage.appendChild(zoneEl);
       zoneEls.push(zoneEl);
 
-      const data = cfg.zonas[zone.id] || {};
-      if (zone.type === 'ticker') {
-        zoneControllers.push(startTicker(zoneEl, data, cfg));
-      } else if (zone.type === 'header') {
-        zoneControllers.push(startHeader(zoneEl, cfg));
-      } else {
-        zoneControllers.push(startPlaylist(zoneEl, data.items || [], cfg));
-      }
+      const ctrl = iniciarZona(zoneEl, zone, cfg);
+      zoneControllers.push(ctrl);
+      palco.zonas[zone.id] = { el: zoneEl, ctrl, assinatura: assinaturaZona(cfg, zone.id, ajustes) };
     });
 
     if (hasGsap && zoneEls.length) {
