@@ -1,35 +1,76 @@
-import React, { useRef, useState, useCallback, useLayoutEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useMemo, useLayoutEffect } from 'react';
 import Moveable from 'react-moveable';
-import { ImagePlus, Type, Trash2, ChevronUp, ChevronDown, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical, Columns2, Sparkles, Shapes } from 'lucide-react';
+import {
+  ImagePlus, Type, Trash2, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical,
+  Columns2, Sparkles, Shapes, Star, Undo2, Redo2, Copy, ZoomIn, ZoomOut, Maximize2,
+  AlignStartVertical, AlignCenterVertical, AlignEndVertical,
+  AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
+  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers,
+} from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { media, ai } from '../../api.js';
 import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw } from '../../lib/composition.js';
 import { ICONS, ICON_NAMES } from '../../lib/icons.js';
-import { Star } from 'lucide-react';
+import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer, podeRefazer } from '../../lib/historico.js';
+import { encaixar, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
+import { PainelCamadas } from './PainelCamadas.jsx';
 
 const ASPECTS = [
-  { id: '16/9', label: 'Retangular', icon: RectangleHorizontal, ratio: 16 / 9 },
-  { id: '1/1', label: 'Quadrada', icon: Square, ratio: 1 },
-  { id: '9/16', label: 'Vertical', icon: RectangleVertical, ratio: 9 / 16 },
-  { id: '21/9', label: 'Banner largo', icon: Columns2, ratio: 21 / 9 },
+  { id: '16/9', label: 'Retangular', icon: RectangleHorizontal },
+  { id: '1/1', label: 'Quadrada', icon: Square },
+  { id: '9/16', label: 'Vertical', icon: RectangleVertical },
+  { id: '21/9', label: 'Banner largo', icon: Columns2 },
 ];
-const RESPIRO = 48; // margem do palco dentro da área disponível, em px
+const RESPIRO = 48;            // margem do palco dentro da área disponível, em px
+const PASSO = 0.5;             // empurrão de seta, em % da peça
+const PASSO_GRANDE = 3;
+
 let _uid = 1;
 const uid = () => 'e' + (_uid++) + Math.random().toString(36).slice(2, 6);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const round = (n) => Math.round((Number(n) || 0) * 10) / 10;
 
-// Garante id em cada elemento (config salvo não tem id — é só do editor).
-function withIds(els) { return (els || []).map((e) => ({ ...e, id: e.id || uid() })); }
-function stripIds(els) { return els.map(({ id, ...rest }) => rest); }
+/*
+ * A ORDEM DO ARRAY é a ordem de empilhamento, e o último desenha por cima.
+ * O player, porém, ordena por `z` (js/render.js) — então na entrada ordenamos
+ * pelo z que veio salvo, e na saída regravamos z pelo índice. Assim o editor
+ * trabalha com uma lista, que é o que o painel de camadas precisa, e o
+ * formato do arquivo continua o mesmo.
+ */
+function entrar(els) {
+  return [...(els || [])]
+    .sort((a, b) => (a.z || 0) - (b.z || 0))
+    .map((e) => ({ ...e, id: e.id || uid() }));
+}
+function sair(els) {
+  return els.map(({ id, ...resto }, i) => ({
+    ...resto, z: i,
+    x: round(resto.x), y: round(resto.y), w: round(resto.w), h: round(resto.h), rot: round(resto.rot || 0),
+  }));
+}
 
 export function CompositionEditor({ value, onClose, onSave }) {
   const v = value || {};
-  const [bg, setBg] = useState(v.bg && v.bg.kind ? v.bg : { kind: 'cor', cor: '#0a1020' });
-  const [els, setEls] = useState(() => withIds(v.elementos));
-  const [sel, setSel] = useState(null);
-  const [aspect, setAspect] = useState(v.formato || '16/9');
-  const [dur, setDur] = useState(v.duracao != null ? v.duracao : 12);
+
+  /*
+   * Tudo o que dá para desfazer vive num documento só. Fundo, elementos,
+   * formato e duração entram; seleção e zoom ficam de fora — desfazer não pode
+   * mexer no que a pessoa está olhando, só no que ela fez.
+   */
+  const [hist, setHist] = useState(() => criarHistorico({
+    bg: v.bg && v.bg.kind ? v.bg : { kind: 'cor', cor: '#0a1020' },
+    els: entrar(v.elementos),
+    aspect: v.formato || '16/9',
+    dur: v.duracao != null ? v.duracao : 12,
+  }));
+  const doc = agora(hist);
+  const { bg, els, aspect, dur } = doc;
+
+  const [sel, setSel] = useState([]);          // ids selecionados
+  const [zoom, setZoom] = useState(1);
+  const [guias, setGuias] = useState({ x: null, y: null });
+  const [editandoTexto, setEditandoTexto] = useState(null);
   const [busy, setBusy] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiBrief, setAiBrief] = useState('');
@@ -37,25 +78,66 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [g1, setG1] = useState('#1e3a8a');
   const [g2, setG2] = useState('#0a1020');
   const [gType, setGType] = useState('linear');
-  const applyGrad = (a = g1, b = g2, t = gType) => setBg({ kind: 'cor', cor: bgGradient(t, a, b, 150) });
 
   const canvasRef = useRef(null);
-  const nodes = useRef({});          // id -> DOM node (alvo do Moveable)
+  const wrapRef = useRef(null);
+  const nodes = useRef({});
+  const grupoRef = useRef(null);
   const imgInput = useRef(null);
   const bgInput = useRef(null);
-  const moveableRef = useRef(null);
+  const areaTransf = useRef(null);   // { x, y } no começo do arrasto de grupo
 
-  const rect = () => canvasRef.current.getBoundingClientRect();
-  const selEl = els.find((e) => e.id === sel) || null;
+  /* ---------------- Editar o documento ---------------- */
+
+  const editar = useCallback((fn, etiqueta) => {
+    setHist((h) => {
+      const atual = agora(h);
+      const novo = fn(atual);
+      return novo === atual ? h : empilhar(h, novo, etiqueta);
+    });
+  }, []);
+  const fecharPasso = useCallback(() => setHist((h) => selar(h)), []);
 
   /*
-   * O palco é MEDIDO, não descrito em CSS. Empilhar aspect-ratio com uma
-   * largura fixa e um max-height faz o navegador respeitar a largura e cortar a
-   * altura — a peça 9/16 saía achatada. Aqui a caixa disponível é medida e o
-   * lado limitante decide o tamanho, então a proporção nunca quebra.
+   * Desfazer e refazer mantêm selecionado tudo o que ainda existe depois do
+   * salto. A primeira versão limpava a seleção inteira, por medo de apontar
+   * para um elemento apagado — e o efeito era irritante: desfazer e em seguida
+   * duplicar não fazia nada, porque não havia mais nada selecionado. Filtrar
+   * pelo que sobrou resolve as duas coisas.
    */
-  const wrapRef = useRef(null);
-  const [palco, setPalco] = useState({ w: 0, h: 0 });
+  const saltar = useCallback((direcao) => {
+    setHist((h) => {
+      const novo = direcao > 0 ? refazer(h) : desfazer(h);
+      if (novo === h) return h;
+      const vivos = new Set(agora(novo).els.map((e) => e.id));
+      setSel((s) => s.filter((id) => vivos.has(id)));
+      setEditandoTexto(null);
+      return novo;
+    });
+  }, []);
+
+  const setEls = useCallback((fn, etiqueta) => {
+    editar((d) => ({ ...d, els: typeof fn === 'function' ? fn(d.els) : fn }), etiqueta);
+  }, [editar]);
+
+  const patch = useCallback((ids, p, etiqueta) => {
+    const alvo = new Set(Array.isArray(ids) ? ids : [ids]);
+    setEls((arr) => arr.map((e) => (alvo.has(e.id) ? { ...e, ...(typeof p === 'function' ? p(e) : p) } : e)), etiqueta);
+  }, [setEls]);
+
+  const selEls = useMemo(() => els.filter((e) => sel.includes(e.id)), [els, sel]);
+  const selEl = selEls.length === 1 ? selEls[0] : null;
+  const patchSel = (p, etiqueta) => sel.length && patch(sel, p, etiqueta);
+
+  /* ---------------- O palco, medido ----------------
+   *
+   * O palco é MEDIDO, não descrito em CSS: empilhar aspect-ratio com largura
+   * fixa e max-height faz o navegador respeitar a largura e cortar a altura, e
+   * a peça 9/16 saía achatada. O zoom multiplica o tamanho medido em vez de
+   * aplicar `transform: scale`, porque um transform no meio do caminho
+   * desalinha as contas de posição do Moveable.
+   */
+  const [ajuste, setAjuste] = useState({ w: 0, h: 0 });
   useLayoutEffect(() => {
     const box = wrapRef.current;
     if (!box) return undefined;
@@ -67,44 +149,165 @@ export function CompositionEditor({ value, onClose, onSave }) {
       const ratio = (aw && ah) ? aw / ah : 16 / 9;
       let w = dispW, h = dispW / ratio;
       if (h > dispH) { h = dispH; w = dispH * ratio; }
-      setPalco({ w: Math.round(w), h: Math.round(h) });
+      setAjuste({ w: Math.round(w), h: Math.round(h) });
     };
     medir();
     const ro = new ResizeObserver(medir);
     ro.observe(box);
     return () => ro.disconnect();
   }, [aspect]);
+  const palco = { w: Math.round(ajuste.w * zoom), h: Math.round(ajuste.h * zoom) };
 
-  // O player mede a fonte em cqw (% da largura da PEÇA). Traduzir para px do
-  // palco é o que faz o editor mostrar o mesmo tamanho que vai para a TV —
-  // antes usava vw, que é a largura da janela e não tem relação com a peça.
+  const rect = () => canvasRef.current.getBoundingClientRect();
   const fontePx = (e) => Math.max(1, (textFontCqw(e, aspect) / 100) * palco.w);
 
-  const patch = useCallback((id, p) => setEls((arr) => arr.map((e) => (e.id === id ? { ...e, ...p } : e))), []);
-  const patchSel = (p) => sel && patch(sel, p);
+  /* ---------------- Adicionar ---------------- */
 
-  function addImage(url) {
-    const e = { id: uid(), tipo: 'imagem', src: url, x: 30, y: 25, w: 40, h: 40, rot: 0, fit: 'contain', z: els.length + 1 };
-    setEls((a) => [...a, e]); setSel(e.id);
-  }
-  function addText() {
-    const e = { id: uid(), tipo: 'texto', text: 'Texto', x: 10, y: 40, w: 60, h: 18, rot: 0, cor: '#ffffff', peso: 800, tamanho: 6, align: 'center', z: els.length + 1 };
-    setEls((a) => [...a, e]); setSel(e.id);
-  }
-  function addShape() {
-    const e = { id: uid(), tipo: 'forma', shape: 'rect', x: 12, y: 12, w: 45, h: 35, rot: 0, fill: '#3b82f6', opacidade: 1, radius: 0, z: 0 };
-    setEls((a) => [e, ...a]); setSel(e.id); // formas nascem no fundo
-  }
-  function addIcon() {
-    const e = { id: uid(), tipo: 'icone', name: 'star', x: 42, y: 20, w: 16, h: 16, rot: 0, cor: '#ffffff', peso: 1.6, opacidade: 1, z: els.length + 1 };
-    setEls((a) => [...a, e]); setSel(e.id);
-  }
-  // Preenchimento da forma: alterna sólido/gradiente e ajusta cores.
-  const shapeFill = selEl && selEl.tipo === 'forma' ? (typeof selEl.fill === 'object' ? selEl.fill : { grad: '', cores: [selEl.fill || '#3b82f6', '#1e3a8a'], ang: 150 }) : null;
-  const setFillMode = (mode) => { // '' sólido | 'linear' | 'radial'
-    const c = shapeFill.cores;
-    patchSel({ fill: mode ? { grad: mode === 'radial' ? 'radial' : 'linear', cores: c, ang: shapeFill.ang } : c[0] });
+  const acrescentar = (e) => { setEls((a) => [...a, e]); setSel([e.id]); };
+  const addImage = (url) => acrescentar({ id: uid(), tipo: 'imagem', src: url, x: 30, y: 25, w: 40, h: 40, rot: 0, fit: 'contain' });
+  const addText = () => acrescentar({ id: uid(), tipo: 'texto', text: 'Texto', x: 20, y: 40, w: 60, h: 18, rot: 0, cor: '#ffffff', peso: 800, tamanho: 6, align: 'center' });
+  const addIcon = () => acrescentar({ id: uid(), tipo: 'icone', name: 'star', x: 42, y: 20, w: 16, h: 16, rot: 0, cor: '#ffffff', peso: 1.6, opacidade: 1 });
+  // Forma nasce ATRÁS de tudo: quase sempre ela é fundo de alguma coisa.
+  const addShape = () => {
+    const e = { id: uid(), tipo: 'forma', shape: 'rect', x: 12, y: 12, w: 45, h: 35, rot: 0, fill: '#3b82f6', opacidade: 1, radius: 0 };
+    setEls((a) => [e, ...a]); setSel([e.id]);
   };
+
+  /* ---------------- Seleção ---------------- */
+
+  const escolher = (id, somar) => {
+    setSel((s) => {
+      if (!somar) return [id];
+      return s.includes(id) ? s.filter((x) => x !== id) : [...s, id];
+    });
+  };
+  const limparSel = () => { setSel([]); setEditandoTexto(null); };
+
+  /* ---------------- Ações ---------------- */
+
+  const remover = useCallback(() => {
+    if (!sel.length) return;
+    setEls((a) => a.filter((e) => !sel.includes(e.id)));
+    setSel([]);
+  }, [sel, setEls]);
+
+  const duplicar = useCallback(() => {
+    if (!sel.length) return;
+    const copias = els.filter((e) => sel.includes(e.id))
+      .map((e) => ({ ...e, id: uid(), x: (Number(e.x) || 0) + 3, y: (Number(e.y) || 0) + 3 }));
+    setEls((a) => [...a, ...copias]);
+    setSel(copias.map((e) => e.id));
+  }, [els, sel, setEls]);
+
+  // Área de transferência própria: a do sistema não carrega objeto, e depender
+  // dela quebraria a colagem entre uma peça e outra dentro do mesmo editor.
+  const areaCopia = useRef([]);
+  const copiar = useCallback(() => {
+    if (sel.length) areaCopia.current = els.filter((e) => sel.includes(e.id));
+  }, [els, sel]);
+  const colar = useCallback(() => {
+    const guardado = areaCopia.current;
+    if (!guardado.length) return;
+    const copias = guardado.map((e) => ({ ...e, id: uid(), x: (Number(e.x) || 0) + 3, y: (Number(e.y) || 0) + 3 }));
+    setEls((a) => [...a, ...copias]);
+    setSel(copias.map((e) => e.id));
+  }, [setEls]);
+
+  // Camada: mover na lista é mover na pilha.
+  const moverCamada = useCallback((d) => {
+    if (sel.length !== 1) return;
+    setEls((a) => {
+      const i = a.findIndex((e) => e.id === sel[0]);
+      const j = clamp(i + d, 0, a.length - 1);
+      if (i < 0 || i === j) return a;
+      const copia = [...a];
+      const [item] = copia.splice(i, 1);
+      copia.splice(j, 0, item);
+      return copia;
+    });
+  }, [sel, setEls]);
+
+  const reordenar = useCallback((de, para) => {
+    setEls((a) => {
+      const copia = [...a];
+      const [item] = copia.splice(de, 1);
+      copia.splice(para, 0, item);
+      return copia;
+    });
+  }, [setEls]);
+
+  const empurrar = useCallback((dx, dy) => {
+    if (!sel.length) return;
+    patch(sel, (e) => ({ x: (Number(e.x) || 0) + dx, y: (Number(e.y) || 0) + dy }), 'empurrar');
+  }, [sel, patch]);
+
+  const aplicarAlinhar = (como) => {
+    if (!sel.length) return;
+    const novos = alinhar(selEls, como);
+    const mapa = new Map(novos.map((e) => [e.id, e]));
+    setEls((a) => a.map((e) => mapa.get(e.id) || e));
+  };
+  const aplicarDistribuir = (eixo) => {
+    if (sel.length < 3) return;
+    const novos = distribuir(selEls, eixo);
+    const mapa = new Map(novos.map((e) => [e.id, e]));
+    setEls((a) => a.map((e) => mapa.get(e.id) || e));
+  };
+
+  /* ---------------- Teclado ----------------
+   *
+   * Um editor sem atalho é um editor que ninguém usa duas vezes. O cuidado é
+   * não roubar a tecla de quem está digitando: qualquer campo de texto em foco
+   * (inclusive o texto editado direto no palco) devolve o controle ao navegador.
+   */
+  useEffect(() => {
+    function digitando() {
+      const a = document.activeElement;
+      if (!a) return false;
+      const t = (a.tagName || '').toLowerCase();
+      return t === 'input' || t === 'textarea' || t === 'select' || a.isContentEditable;
+    }
+
+    function onKey(ev) {
+      const cmd = ev.metaKey || ev.ctrlKey;
+
+      if (ev.key === 'Escape') {
+        if (editandoTexto) { setEditandoTexto(null); return; }
+        if (!digitando()) { limparSel(); return; }
+        return;
+      }
+      if (digitando()) return;
+
+      if (cmd && ev.key.toLowerCase() === 'z') { ev.preventDefault(); saltar(ev.shiftKey ? 1 : -1); return; }
+      if (cmd && ev.key.toLowerCase() === 'y') { ev.preventDefault(); saltar(1); return; }
+      if (cmd && ev.key.toLowerCase() === 'd') { ev.preventDefault(); duplicar(); return; }
+      if (cmd && ev.key.toLowerCase() === 'c') { copiar(); return; }
+      if (cmd && ev.key.toLowerCase() === 'v') { ev.preventDefault(); colar(); return; }
+      if (cmd && ev.key.toLowerCase() === 'a') { ev.preventDefault(); setSel(els.map((e) => e.id)); return; }
+      if (cmd && ev.key === ']') { ev.preventDefault(); moverCamada(1); return; }
+      if (cmd && ev.key === '[') { ev.preventDefault(); moverCamada(-1); return; }
+
+      if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); remover(); return; }
+
+      const p = ev.shiftKey ? PASSO_GRANDE : PASSO;
+      if (ev.key === 'ArrowLeft') { ev.preventDefault(); empurrar(-p, 0); }
+      else if (ev.key === 'ArrowRight') { ev.preventDefault(); empurrar(p, 0); }
+      else if (ev.key === 'ArrowUp') { ev.preventDefault(); empurrar(0, -p); }
+      else if (ev.key === 'ArrowDown') { ev.preventDefault(); empurrar(0, p); }
+      else return;
+    }
+
+    // Soltar a seta fecha o passo: segurar a seta empurra num passo só, mas
+    // dois toques separados são dois desfazeres.
+    function onKeyUp(ev) { if (String(ev.key).startsWith('Arrow')) fecharPasso(); }
+
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('keyup', onKeyUp);
+    return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp); };
+  }, [els, sel, editandoTexto, duplicar, copiar, colar, remover, moverCamada, empurrar, fecharPasso, saltar]);
+
+  /* ---------------- Upload e IA ---------------- */
+
   async function onPickImage(e) {
     const f = (e.target.files || [])[0]; e.target.value = '';
     if (!f) return;
@@ -116,7 +319,8 @@ export function CompositionEditor({ value, onClose, onSave }) {
     const f = (e.target.files || [])[0]; e.target.value = '';
     if (!f) return;
     setBusy(true);
-    try { const up = await media.upload(f); setBg({ kind: 'imagem', src: up.url }); } catch (err) { alert(err.message || 'Falha no upload'); }
+    try { const up = await media.upload(f); editar((d) => ({ ...d, bg: { kind: 'imagem', src: up.url } })); }
+    catch (err) { alert(err.message || 'Falha no upload'); }
     setBusy(false);
   }
   async function runAi() {
@@ -125,51 +329,94 @@ export function CompositionEditor({ value, onClose, onSave }) {
     try {
       const brand = bg.kind === 'cor' ? bg.cor : '';
       const res = await ai.composition({ brief: aiBrief, brand });
-      if (res.bg && res.bg.cor) setBg({ kind: 'cor', cor: res.bg.cor });
-      // mantém as imagens do usuário; troca os textos pelos gerados.
-      const imgs = els.filter((e) => e.tipo !== 'texto');
-      const texts = withIds((res.elementos || []).map((e) => ({ ...e, tipo: 'texto' })));
-      setEls([...imgs, ...texts]);
-      setSel(null); setAiOpen(false);
+      editar((d) => ({
+        ...d,
+        bg: res.bg && res.bg.cor ? { kind: 'cor', cor: res.bg.cor } : d.bg,
+        // Mantém o que a pessoa trouxe; troca só os textos pelos gerados.
+        els: [...d.els.filter((e) => e.tipo !== 'texto'), ...entrar((res.elementos || []).map((e) => ({ ...e, tipo: 'texto' })))],
+      }));
+      setSel([]); setAiOpen(false);
     } catch (err) { alert(err.message || 'Falha na IA'); }
     setAiBusy(false);
   }
-  const removeSel = () => { if (!sel) return; setEls((a) => a.filter((e) => e.id !== sel)); setSel(null); };
-  const layer = (d) => patchSel({ z: Math.max(0, (selEl.z || 0) + d) });
 
-  function save() {
-    onSave({ ...v, type: 'composicao', bg, elementos: stripIds(els.map((e) => ({
-      ...e, x: round(e.x), y: round(e.y), w: round(e.w), h: round(e.h), rot: round(e.rot || 0),
-    }))), formato: aspect, duracao: Number(dur) || 0 });
+  /* ---------------- Fundo ---------------- */
+
+  const setBg = (b) => editar((d) => ({ ...d, bg: b }));
+  const applyGrad = (a = g1, b = g2, t = gType) => setBg({ kind: 'cor', cor: bgGradient(t, a, b, 150) });
+
+  const shapeFill = selEl && selEl.tipo === 'forma'
+    ? (typeof selEl.fill === 'object' ? selEl.fill : { grad: '', cores: [selEl.fill || '#3b82f6', '#1e3a8a'], ang: 150 })
+    : null;
+  const setFillMode = (mode) => {
+    const c = shapeFill.cores;
+    patchSel({ fill: mode ? { grad: mode === 'radial' ? 'radial' : 'linear', cores: c, ang: shapeFill.ang } : c[0] });
+  };
+
+  function salvar() {
+    onSave({ ...v, type: 'composicao', bg, elementos: sair(els), formato: aspect, duracao: Number(dur) || 0 });
   }
-  function round(n) { return Math.round((Number(n) || 0) * 10) / 10; }
 
   const bgStyle = bg.kind === 'imagem' && bg.src
     ? { backgroundImage: `url("${bg.src}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
     : bg.kind === 'cor' ? { background: bg.cor } : { background: '#0a1020' };
 
-  const ordered = [...els].sort((a, b) => (a.z || 0) - (b.z || 0));
+  // Alvos do Moveable: só os que estão selecionados, visíveis e destravados.
+  const movivel = selEls.filter((e) => !e.travado && !e.oculto);
+  const alvos = movivel.map((e) => nodes.current[e.id]).filter(Boolean);
+  const caixaGrupo = movivel.length > 1 ? envolvente(movivel) : null;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-canvas/95 backdrop-blur">
-      {/* Barra superior */}
-      <div className="flex items-center gap-2 border-b border-line bg-surface px-4 py-2.5">
-        <span className="mr-2 text-sm font-semibold text-ink">Editor de composição</span>
+      {/* ---------------- Barra superior ---------------- */}
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-line bg-surface px-3 py-2">
+        <span className="mr-1 text-sm font-semibold text-ink">Editor</span>
+
+        <IconBtn title="Desfazer (Ctrl+Z)" icon={Undo2} disabled={!podeDesfazer(hist)} onClick={() => saltar(-1)} />
+        <IconBtn title="Refazer (Ctrl+Shift+Z)" icon={Redo2} disabled={!podeRefazer(hist)} onClick={() => saltar(1)} />
+
+        <div className="mx-1 h-5 w-px bg-line" />
         <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => setAiOpen((o) => !o)}>IA</Button>
         <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Imagem</Button>
         <Button size="sm" variant="secondary" icon={Type} onClick={addText}>Texto</Button>
         <Button size="sm" variant="secondary" icon={Shapes} onClick={addShape}>Forma</Button>
         <Button size="sm" variant="secondary" icon={Star} onClick={addIcon}>Ícone</Button>
-        <div className="mx-2 h-5 w-px bg-line" />
+
+        <div className="mx-1 h-5 w-px bg-line" />
+        {/* Alinhar: com um selecionado alinha pela peça, com vários entre eles. */}
+        <IconBtn title="Alinhar à esquerda" icon={AlignStartVertical} disabled={!sel.length} onClick={() => aplicarAlinhar('esq')} />
+        <IconBtn title="Centralizar na horizontal" icon={AlignCenterVertical} disabled={!sel.length} onClick={() => aplicarAlinhar('centroH')} />
+        <IconBtn title="Alinhar à direita" icon={AlignEndVertical} disabled={!sel.length} onClick={() => aplicarAlinhar('dir')} />
+        <IconBtn title="Alinhar ao topo" icon={AlignStartHorizontal} disabled={!sel.length} onClick={() => aplicarAlinhar('topo')} />
+        <IconBtn title="Centralizar na vertical" icon={AlignCenterHorizontal} disabled={!sel.length} onClick={() => aplicarAlinhar('centroV')} />
+        <IconBtn title="Alinhar à base" icon={AlignEndHorizontal} disabled={!sel.length} onClick={() => aplicarAlinhar('base')} />
+        <IconBtn title="Distribuir na horizontal (3+)" icon={AlignHorizontalDistributeCenter} disabled={sel.length < 3} onClick={() => aplicarDistribuir('h')} />
+        <IconBtn title="Distribuir na vertical (3+)" icon={AlignVerticalDistributeCenter} disabled={sel.length < 3} onClick={() => aplicarDistribuir('v')} />
+
+        <div className="mx-1 h-5 w-px bg-line" />
+        <IconBtn title="Duplicar (Ctrl+D)" icon={Copy} disabled={!sel.length} onClick={duplicar} />
+        <IconBtn title="Remover (Delete)" icon={Trash2} disabled={!sel.length} onClick={remover} />
+
+        <div className="mx-1 h-5 w-px bg-line" />
         {ASPECTS.map((a) => (
-          <button key={a.id} onClick={() => setAspect(a.id)} title={a.label}
+          <button key={a.id} onClick={() => editar((d) => ({ ...d, aspect: a.id }))} title={a.label}
             className={'flex h-8 w-8 items-center justify-center rounded-md border ' + (aspect === a.id ? 'border-accent text-accent' : 'border-line text-ink-3 hover:text-ink')}>
             <a.icon size={16} />
           </button>
         ))}
+
+        <div className="mx-1 h-5 w-px bg-line" />
+        <IconBtn title="Menos zoom" icon={ZoomOut} onClick={() => setZoom((z) => clamp(z - 0.25, 0.25, 3))} />
+        <button onClick={() => setZoom(1)} title="Ajustar à tela"
+          className="tnum flex h-8 min-w-[3.2rem] items-center justify-center rounded-md border border-line px-1 text-xs text-ink-2 hover:text-ink">
+          {Math.round(zoom * 100)}%
+        </button>
+        <IconBtn title="Mais zoom" icon={ZoomIn} onClick={() => setZoom((z) => clamp(z + 0.25, 0.25, 3))} />
+        <IconBtn title="Ajustar à tela" icon={Maximize2} onClick={() => setZoom(1)} />
+
         <div className="flex-1" />
         <Button size="sm" variant="ghost" icon={X} onClick={onClose}>Cancelar</Button>
-        <Button size="sm" variant="primary" icon={Save} onClick={save}>Salvar</Button>
+        <Button size="sm" variant="primary" icon={Save} onClick={salvar}>Salvar</Button>
         <input ref={imgInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPickImage} />
       </div>
 
@@ -185,177 +432,390 @@ export function CompositionEditor({ value, onClose, onSave }) {
       )}
 
       <div className="flex min-h-0 flex-1">
-        {/* Palco */}
-        <div ref={wrapRef} className="flex min-w-0 flex-1 items-center justify-center overflow-hidden p-6" onMouseDown={(e) => { if (e.target === e.currentTarget) setSel(null); }}>
-          <div ref={canvasRef} onMouseDown={(e) => { if (e.target === canvasRef.current) setSel(null); }}
-            className="relative shadow-2xl" style={{ ...bgStyle, width: palco.w, height: palco.h }}>
-            {ordered.map((e) => (
-              <div key={e.id} ref={(n) => { if (n) nodes.current[e.id] = n; }}
-                onMouseDown={() => setSel(e.id)}
+        {/* ---------------- Palco ---------------- */}
+        <div ref={wrapRef} className="flex min-w-0 flex-1 items-center justify-center overflow-auto p-6"
+          onMouseDown={(e) => { if (e.target === e.currentTarget) limparSel(); }}>
+          <div ref={canvasRef} data-palco
+            onMouseDown={(e) => { if (e.target === canvasRef.current) limparSel(); }}
+            className="relative shrink-0 shadow-2xl" style={{ ...bgStyle, width: palco.w, height: palco.h }}>
+
+            {els.map((e) => e.oculto ? null : (
+              <div key={e.id} data-el={e.id} ref={(n) => { if (n) nodes.current[e.id] = n; }}
+                onMouseDown={(ev) => { if (!e.travado) { ev.stopPropagation(); escolher(e.id, ev.shiftKey); } }}
+                onDoubleClick={() => { if (e.tipo === 'texto' && !e.travado) setEditandoTexto(e.id); }}
                 style={{
                   position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%',
-                  transform: `rotate(${e.rot || 0}deg)`, cursor: 'move', opacity: e.opacidade != null ? e.opacidade : 1,
-                  outline: sel === e.id ? '1px solid rgba(120,160,255,.9)' : 'none',
+                  transform: `rotate(${e.rot || 0}deg)`, cursor: e.travado ? 'default' : 'move',
+                  opacity: e.opacidade != null ? e.opacidade : 1,
+                  outline: sel.includes(e.id) ? '1px solid rgba(120,160,255,.9)' : 'none',
                 }}>
                 {e.tipo === 'texto' ? (
-                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: e.cor, fontWeight: e.peso, textAlign: e.align, fontSize: fontePx(e), lineHeight: 1.05, overflow: 'hidden', textShadow: e.sombra ? '0 2px 14px rgba(0,0,0,.45)' : 'none' }}>
-                    {e.text}
-                  </div>
+                  <TextoEditavel
+                    el={e}
+                    editando={editandoTexto === e.id}
+                    estilo={{
+                      width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: e.cor, fontWeight: e.peso, textAlign: e.align, fontSize: fontePx(e), lineHeight: 1.05,
+                      overflow: 'hidden', textShadow: e.sombra ? '0 2px 14px rgba(0,0,0,.45)' : 'none',
+                      outline: editandoTexto === e.id ? '1px dashed rgba(120,160,255,.9)' : 'none',
+                      cursor: editandoTexto === e.id ? 'text' : 'inherit',
+                    }}
+                    onTexto={(t) => patch(e.id, { text: t }, 'texto:' + e.id)}
+                    onFim={() => { setEditandoTexto(null); fecharPasso(); }}
+                  />
                 ) : e.tipo === 'icone' ? (
-                  <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%', pointerEvents: 'none' }} dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />
+                  <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round"
+                    style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
+                    dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />
                 ) : e.tipo === 'forma' ? (
-                  <div style={{ width: '100%', height: '100%', background: fillToCss(e.fill), borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : (e.radius || 0) + '%'), clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none', pointerEvents: 'none' }} />
+                  <div style={{
+                    width: '100%', height: '100%', background: fillToCss(e.fill),
+                    borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : (e.radius || 0) + '%'),
+                    clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none', pointerEvents: 'none',
+                  }} />
                 ) : (
-                  <img src={e.src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', display: 'block', pointerEvents: 'none' }} />
+                  <img src={e.src} alt="" draggable={false}
+                    style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', display: 'block', pointerEvents: 'none' }} />
                 )}
               </div>
             ))}
-            {sel && nodes.current[sel] && (
+
+            {/* Guias de encaixe: sem a linha aparecendo, o elemento "pula" e
+                ninguém entende por quê. */}
+            {guias.x != null && (
+              <div style={{ position: 'absolute', left: guias.x + '%', top: 0, bottom: 0, width: 1, background: '#ff3d9a', pointerEvents: 'none', zIndex: 9 }} />
+            )}
+            {guias.y != null && (
+              <div style={{ position: 'absolute', top: guias.y + '%', left: 0, right: 0, height: 1, background: '#ff3d9a', pointerEvents: 'none', zIndex: 9 }} />
+            )}
+
+            {/* Caixa invisível que representa a seleção múltipla — é ela que o
+                Moveable arrasta, e o deslocamento é repassado a cada elemento. */}
+            {caixaGrupo && (
+              <div ref={grupoRef} style={{
+                position: 'absolute', left: caixaGrupo.esq + '%', top: caixaGrupo.topo + '%',
+                width: caixaGrupo.w + '%', height: caixaGrupo.h + '%',
+                outline: '1px dashed rgba(120,160,255,.8)', pointerEvents: 'none', zIndex: 8,
+              }} />
+            )}
+
+            {/* Um selecionado: mover, redimensionar e girar, com encaixe. */}
+            {movivel.length === 1 && alvos.length === 1 && editandoTexto !== movivel[0].id && (
               <Moveable
-                ref={moveableRef}
-                target={nodes.current[sel]}
+                target={alvos[0]}
                 draggable resizable rotatable
                 origin={false} keepRatio={false}
                 throttleDrag={0} throttleResize={0} throttleRotate={0}
-                onDrag={({ left, top }) => { const r = rect(); patchSel({ x: clamp((left / r.width) * 100, -40, 140), y: clamp((top / r.height) * 100, -40, 140) }); }}
-                onResize={({ width, height, drag }) => { const r = rect(); patchSel({ w: (width / r.width) * 100, h: (height / r.height) * 100, x: (drag.left / r.width) * 100, y: (drag.top / r.height) * 100 }); }}
-                onRotate={({ rotation }) => patchSel({ rot: Math.round(rotation) })}
+                onDrag={({ left, top }) => {
+                  const r = rect();
+                  const alvo = movivel[0];
+                  const bruto = { x: (left / r.width) * 100, y: (top / r.height) * 100, w: alvo.w, h: alvo.h };
+                  const fixo = encaixar(bruto, els.filter((e) => e.id !== alvo.id && !e.oculto));
+                  setGuias(fixo.guias);
+                  patch(alvo.id, { x: clamp(fixo.x, -40, 140), y: clamp(fixo.y, -40, 140) }, 'mover:' + alvo.id);
+                }}
+                onDragEnd={() => { setGuias({ x: null, y: null }); fecharPasso(); }}
+                onResize={({ width, height, drag }) => {
+                  const r = rect();
+                  patch(movivel[0].id, {
+                    w: (width / r.width) * 100, h: (height / r.height) * 100,
+                    x: (drag.left / r.width) * 100, y: (drag.top / r.height) * 100,
+                  }, 'redim:' + movivel[0].id);
+                }}
+                onResizeEnd={fecharPasso}
+                onRotate={({ rotation }) => patch(movivel[0].id, { rot: Math.round(rotation) }, 'girar:' + movivel[0].id)}
+                onRotateEnd={fecharPasso}
+              />
+            )}
+
+            {/* Vários selecionados: arrastar o conjunto. Redimensionar em grupo
+                fica de fora de propósito — em coordenadas percentuais ele
+                distorce texto e imagem de formas difíceis de desfazer. */}
+            {caixaGrupo && grupoRef.current && (
+              <Moveable
+                target={grupoRef.current}
+                draggable resizable={false} rotatable={false}
+                origin={false} throttleDrag={0}
+                onDragStart={() => { areaTransf.current = { x: caixaGrupo.esq, y: caixaGrupo.topo }; }}
+                onDrag={({ left, top }) => {
+                  const r = rect();
+                  const nx = (left / r.width) * 100;
+                  const ny = (top / r.height) * 100;
+                  const dx = nx - areaTransf.current.x;
+                  const dy = ny - areaTransf.current.y;
+                  if (!dx && !dy) return;
+                  areaTransf.current = { x: nx, y: ny };
+                  patch(movivel.map((e) => e.id), (e) => ({
+                    x: (Number(e.x) || 0) + dx, y: (Number(e.y) || 0) + dy,
+                  }), 'mover-grupo');
+                }}
+                onDragEnd={fecharPasso}
               />
             )}
           </div>
         </div>
 
-        {/* Painel de propriedades */}
-        <div className="w-72 shrink-0 space-y-4 overflow-y-auto border-l border-line bg-surface p-4">
-          <div>
-            <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Fundo</div>
-            <div className="flex items-center gap-2">
-              <input type="color" value={bg.kind === 'cor' ? bg.cor : '#0a1020'} onChange={(ev) => setBg({ kind: 'cor', cor: ev.target.value })}
-                className="h-9 w-9 cursor-pointer rounded border border-line bg-transparent" />
-              <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => bgInput.current.click()}>Imagem</Button>
-              {bg.kind === 'imagem' && <Button size="sm" variant="ghost" onClick={() => setBg({ kind: 'cor', cor: '#0a1020' })}>Limpar</Button>}
-              <input ref={bgInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPickBg} />
+        {/* ---------------- Painel lateral ---------------- */}
+        <div className="flex w-80 shrink-0 flex-col border-l border-line bg-surface">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
+            <div>
+              <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Fundo</div>
+              <div className="flex items-center gap-2">
+                <input type="color" value={bg.kind === 'cor' && /^#[0-9a-f]{6}$/i.test(bg.cor) ? bg.cor : '#0a1020'}
+                  onChange={(ev) => setBg({ kind: 'cor', cor: ev.target.value })}
+                  className="h-9 w-9 cursor-pointer rounded border border-line bg-transparent" />
+                <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => bgInput.current.click()}>Imagem</Button>
+                {bg.kind === 'imagem' && <Button size="sm" variant="ghost" onClick={() => setBg({ kind: 'cor', cor: '#0a1020' })}>Limpar</Button>}
+                <input ref={bgInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPickBg} />
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-2xs text-ink-3">Gradiente</span>
+                <input type="color" value={g1} onChange={(e) => { setG1(e.target.value); applyGrad(e.target.value, g2, gType); }} className="h-7 w-7 cursor-pointer rounded border border-line bg-transparent" />
+                <input type="color" value={g2} onChange={(e) => { setG2(e.target.value); applyGrad(g1, e.target.value, gType); }} className="h-7 w-7 cursor-pointer rounded border border-line bg-transparent" />
+                <Select value={gType} onChange={(e) => { setGType(e.target.value); applyGrad(g1, g2, e.target.value); }} className="h-8 flex-1 text-xs">
+                  <option value="linear">Linear</option><option value="radial">Radial</option>
+                </Select>
+              </div>
             </div>
-            <div className="mt-2 flex items-center gap-2">
-              <span className="text-2xs text-ink-3">Gradiente</span>
-              <input type="color" value={g1} onChange={(e) => { setG1(e.target.value); applyGrad(e.target.value, g2, gType); }} className="h-7 w-7 cursor-pointer rounded border border-line bg-transparent" />
-              <input type="color" value={g2} onChange={(e) => { setG2(e.target.value); applyGrad(g1, e.target.value, gType); }} className="h-7 w-7 cursor-pointer rounded border border-line bg-transparent" />
-              <Select value={gType} onChange={(e) => { setGType(e.target.value); applyGrad(g1, g2, e.target.value); }} className="h-8 flex-1 text-xs">
-                <option value="linear">Linear</option><option value="radial">Radial</option>
-              </Select>
+
+            {sel.length > 1 ? (
+              <div className="border-t border-line pt-4 text-xs text-ink-2">
+                <strong className="text-ink">{sel.length} elementos selecionados.</strong> Arraste para mover
+                o conjunto, use os botões de alinhar, ou <span className="text-ink">Ctrl+D</span> para duplicar.
+              </div>
+            ) : selEl ? (
+              <div className="space-y-3 border-t border-line pt-4">
+                <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">
+                  {selEl.tipo === 'texto' ? 'Texto' : selEl.tipo === 'forma' ? 'Forma' : selEl.tipo === 'icone' ? 'Ícone' : 'Imagem'}
+                </div>
+
+                {selEl.tipo === 'texto' ? (
+                  <>
+                    <Field label="Texto" hint="Ou dê dois cliques no palco para editar ali mesmo.">
+                      <Input value={selEl.text} onChange={(e) => patch(selEl.id, { text: e.target.value }, 'texto:' + selEl.id)} onBlur={fecharPasso} />
+                    </Field>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field label="Cor"><input type="color" value={selEl.cor} onChange={(e) => patch(selEl.id, { cor: e.target.value })} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
+                      <Field label="Tamanho"><Input type="number" value={selEl.tamanho} disabled={!!selEl.auto} onChange={(e) => patch(selEl.id, { tamanho: Number(e.target.value) })} /></Field>
+                    </div>
+                    <Field label="Peso">
+                      <Select value={selEl.peso || 800} onChange={(e) => patch(selEl.id, { peso: Number(e.target.value) })}>
+                        <option value="400">Normal</option><option value="600">Médio</option>
+                        <option value="800">Negrito</option><option value="900">Extra negrito</option>
+                      </Select>
+                    </Field>
+                    <label className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={!!selEl.auto} onChange={(e) => patch(selEl.id, { auto: e.target.checked })} /> Ajustar à diagonal do bloco</label>
+                    {selEl.auto && (
+                      <Field label={`Proporção (${Math.round((selEl.escala != null ? selEl.escala : 0.16) * 100)}%)`}>
+                        <input type="range" min="5" max="40" value={Math.round((selEl.escala != null ? selEl.escala : 0.16) * 100)} onChange={(e) => patch(selEl.id, { escala: Number(e.target.value) / 100 })} className="w-full" />
+                      </Field>
+                    )}
+                    <Field label="Alinhamento">
+                      <Select value={selEl.align} onChange={(e) => patch(selEl.id, { align: e.target.value })}>
+                        <option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option>
+                      </Select>
+                    </Field>
+                    <label className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={!!selEl.sombra} onChange={(e) => patch(selEl.id, { sombra: e.target.checked })} /> Sombra no texto</label>
+                  </>
+                ) : selEl.tipo === 'forma' ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field label="Formato">
+                        <Select value={selEl.shape || 'rect'} onChange={(e) => patch(selEl.id, { shape: e.target.value })}>
+                          <option value="rect">Retângulo</option><option value="ellipse">Elipse</option>
+                          <option value="triangle">Triângulo</option><option value="diamond">Losango</option><option value="diag">Diagonal</option>
+                        </Select>
+                      </Field>
+                      <Field label="Preenchimento">
+                        <Select value={typeof selEl.fill === 'object' ? (selEl.fill.grad || 'linear') : ''} onChange={(e) => setFillMode(e.target.value)}>
+                          <option value="">Sólido</option><option value="linear">Grad. linear</option><option value="radial">Grad. radial</option>
+                        </Select>
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field label="Cor 1">
+                        <input type="color" value={(typeof selEl.fill === 'object' ? shapeFill.cores[0] : selEl.fill) || '#3b82f6'}
+                          onChange={(e) => { if (typeof selEl.fill === 'object') { const c = [...shapeFill.cores]; c[0] = e.target.value; patch(selEl.id, { fill: { ...selEl.fill, cores: c } }); } else patch(selEl.id, { fill: e.target.value }); }}
+                          className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" />
+                      </Field>
+                      {typeof selEl.fill === 'object' && (
+                        <Field label="Cor 2">
+                          <input type="color" value={shapeFill.cores[1] || '#1e3a8a'}
+                            onChange={(e) => { const c = [...shapeFill.cores]; c[1] = e.target.value; patch(selEl.id, { fill: { ...selEl.fill, cores: c } }); }}
+                            className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" />
+                        </Field>
+                      )}
+                    </div>
+                    {typeof selEl.fill === 'object' && selEl.fill.grad !== 'radial' && (
+                      <Field label={`Ângulo (${shapeFill.ang || 150}°)`}>
+                        <input type="range" min="0" max="360" value={shapeFill.ang || 150} onChange={(e) => patch(selEl.id, { fill: { ...selEl.fill, ang: Number(e.target.value) } })} className="w-full" />
+                      </Field>
+                    )}
+                    {selEl.shape !== 'ellipse' && (
+                      <Field label={`Cantos (${selEl.radius || 0}%)`}>
+                        <input type="range" min="0" max="50" value={selEl.radius || 0} onChange={(e) => patch(selEl.id, { radius: Number(e.target.value) })} className="w-full" />
+                      </Field>
+                    )}
+                    <Opacidade el={selEl} onChange={(o) => patch(selEl.id, { opacidade: o })} />
+                  </>
+                ) : selEl.tipo === 'icone' ? (
+                  <>
+                    <div className="grid grid-cols-6 gap-1">
+                      {ICON_NAMES.map((n) => (
+                        <button key={n} type="button" title={n} onClick={() => patch(selEl.id, { name: n })}
+                          className={'flex aspect-square items-center justify-center rounded border ' + (selEl.name === n ? 'border-accent text-accent' : 'border-line text-ink-2 hover:text-ink')}>
+                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: ICONS[n] }} />
+                        </button>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Field label="Cor"><input type="color" value={selEl.cor || '#ffffff'} onChange={(e) => patch(selEl.id, { cor: e.target.value })} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
+                      <Field label={`Traço (${selEl.peso || 1.6})`}><input type="range" min="1" max="3" step="0.1" value={selEl.peso || 1.6} onChange={(e) => patch(selEl.id, { peso: Number(e.target.value) })} className="w-full" /></Field>
+                    </div>
+                    <Opacidade el={selEl} onChange={(o) => patch(selEl.id, { opacidade: o })} />
+                  </>
+                ) : (
+                  <>
+                    <Field label="Ajuste da imagem">
+                      <Select value={selEl.fit || 'contain'} onChange={(e) => patch(selEl.id, { fit: e.target.value })}>
+                        <option value="contain">Inteira (sem cortar)</option><option value="cover">Preencher (corta)</option>
+                      </Select>
+                    </Field>
+                    <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Trocar imagem</Button>
+                    <Opacidade el={selEl} onChange={(o) => patch(selEl.id, { opacidade: o })} />
+                  </>
+                )}
+
+                <div className="grid grid-cols-4 gap-1.5 border-t border-line pt-3">
+                  <Num rotulo="X" valor={selEl.x} onChange={(n) => patch(selEl.id, { x: n })} />
+                  <Num rotulo="Y" valor={selEl.y} onChange={(n) => patch(selEl.id, { y: n })} />
+                  <Num rotulo="L" valor={selEl.w} onChange={(n) => patch(selEl.id, { w: n })} />
+                  <Num rotulo="A" valor={selEl.h} onChange={(n) => patch(selEl.id, { h: n })} />
+                </div>
+                <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => patch(selEl.id, { rot: 0 })}>Zerar rotação ({Math.round(selEl.rot || 0)}°)</Button>
+              </div>
+            ) : (
+              <div className="border-t border-line pt-4 text-xs text-ink-3">
+                Clique num elemento para editar. Shift+clique soma à seleção; dois cliques num
+                texto edita direto no palco.
+              </div>
+            )}
+
+            <div className="border-t border-line pt-4">
+              <Field label="Duração (s)" hint="0 = fica fixo">
+                <Input type="number" value={dur} onChange={(e) => editar((d) => ({ ...d, dur: e.target.value }), 'duracao')} onBlur={fecharPasso} />
+              </Field>
             </div>
           </div>
 
-          {selEl ? (
-            <div className="space-y-3 border-t border-line pt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-2xs font-semibold uppercase tracking-wide text-ink-3">{selEl.tipo === 'texto' ? 'Texto' : selEl.tipo === 'forma' ? 'Forma' : selEl.tipo === 'icone' ? 'Ícone' : 'Imagem'} selecionado</span>
-                <div className="flex gap-1">
-                  <button title="Frente" onClick={() => layer(1)} className="rounded p-1 text-ink-3 hover:text-ink"><ChevronUp size={15} /></button>
-                  <button title="Trás" onClick={() => layer(-1)} className="rounded p-1 text-ink-3 hover:text-ink"><ChevronDown size={15} /></button>
-                  <button title="Remover" onClick={removeSel} className="rounded p-1 text-ink-3 hover:text-danger"><Trash2 size={15} /></button>
-                </div>
-              </div>
-              {selEl.tipo === 'texto' ? (
-                <>
-                  <Field label="Texto"><Input value={selEl.text} onChange={(e) => patchSel({ text: e.target.value })} /></Field>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field label="Cor"><input type="color" value={selEl.cor} onChange={(e) => patchSel({ cor: e.target.value })} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
-                    <Field label="Tamanho"><Input type="number" value={selEl.tamanho} disabled={!!selEl.auto} onChange={(e) => patchSel({ tamanho: Number(e.target.value) })} /></Field>
-                  </div>
-                  <label className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={!!selEl.auto} onChange={(e) => patchSel({ auto: e.target.checked })} /> Ajustar à diagonal do bloco</label>
-                  {selEl.auto && (
-                    <Field label={`Proporção (${Math.round((selEl.escala != null ? selEl.escala : 0.16) * 100)}%)`}>
-                      <input type="range" min="5" max="40" value={Math.round((selEl.escala != null ? selEl.escala : 0.16) * 100)} onChange={(e) => patchSel({ escala: Number(e.target.value) / 100 })} className="w-full" />
-                    </Field>
-                  )}
-                  <Field label="Alinhamento">
-                    <Select value={selEl.align} onChange={(e) => patchSel({ align: e.target.value })}>
-                      <option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option>
-                    </Select>
-                  </Field>
-                  <label className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={!!selEl.sombra} onChange={(e) => patchSel({ sombra: e.target.checked })} /> Sombra no texto</label>
-                </>
-              ) : selEl.tipo === 'forma' ? (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field label="Formato">
-                      <Select value={selEl.shape || 'rect'} onChange={(e) => patchSel({ shape: e.target.value })}>
-                        <option value="rect">Retângulo</option><option value="ellipse">Elipse</option>
-                        <option value="triangle">Triângulo</option><option value="diamond">Losango</option><option value="diag">Diagonal</option>
-                      </Select>
-                    </Field>
-                    <Field label="Preenchimento">
-                      <Select value={typeof selEl.fill === 'object' ? (selEl.fill.grad || 'linear') : ''} onChange={(e) => setFillMode(e.target.value)}>
-                        <option value="">Sólido</option><option value="linear">Grad. linear</option><option value="radial">Grad. radial</option>
-                      </Select>
-                    </Field>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field label="Cor 1">
-                      <input type="color" value={(typeof selEl.fill === 'object' ? shapeFill.cores[0] : selEl.fill) || '#3b82f6'}
-                        onChange={(e) => { if (typeof selEl.fill === 'object') { const c = [...shapeFill.cores]; c[0] = e.target.value; patchSel({ fill: { ...selEl.fill, cores: c } }); } else patchSel({ fill: e.target.value }); }}
-                        className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" />
-                    </Field>
-                    {typeof selEl.fill === 'object' && (
-                      <Field label="Cor 2">
-                        <input type="color" value={shapeFill.cores[1] || '#1e3a8a'}
-                          onChange={(e) => { const c = [...shapeFill.cores]; c[1] = e.target.value; patchSel({ fill: { ...selEl.fill, cores: c } }); }}
-                          className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" />
-                      </Field>
-                    )}
-                  </div>
-                  {typeof selEl.fill === 'object' && selEl.fill.grad !== 'radial' && (
-                    <Field label={`Ângulo (${shapeFill.ang || 150}°)`}>
-                      <input type="range" min="0" max="360" value={shapeFill.ang || 150} onChange={(e) => patchSel({ fill: { ...selEl.fill, ang: Number(e.target.value) } })} className="w-full" />
-                    </Field>
-                  )}
-                  {selEl.shape !== 'ellipse' && (
-                    <Field label={`Cantos (${selEl.radius || 0}%)`}>
-                      <input type="range" min="0" max="50" value={selEl.radius || 0} onChange={(e) => patchSel({ radius: Number(e.target.value) })} className="w-full" />
-                    </Field>
-                  )}
-                  <Field label={`Opacidade (${Math.round((selEl.opacidade != null ? selEl.opacidade : 1) * 100)}%)`}>
-                    <input type="range" min="0" max="1" step="0.05" value={selEl.opacidade != null ? selEl.opacidade : 1} onChange={(e) => patchSel({ opacidade: Number(e.target.value) })} className="w-full" />
-                  </Field>
-                </>
-              ) : selEl.tipo === 'icone' ? (
-                <>
-                  <div className="grid grid-cols-6 gap-1">
-                    {ICON_NAMES.map((n) => (
-                      <button key={n} type="button" title={n} onClick={() => patchSel({ name: n })}
-                        className={'flex aspect-square items-center justify-center rounded border ' + (selEl.name === n ? 'border-accent text-accent' : 'border-line text-ink-2 hover:text-ink')}>
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: ICONS[n] }} />
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field label="Cor"><input type="color" value={selEl.cor || '#ffffff'} onChange={(e) => patchSel({ cor: e.target.value })} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
-                    <Field label={`Traço (${selEl.peso || 1.6})`}><input type="range" min="1" max="3" step="0.1" value={selEl.peso || 1.6} onChange={(e) => patchSel({ peso: Number(e.target.value) })} className="w-full" /></Field>
-                  </div>
-                  <Field label={`Opacidade (${Math.round((selEl.opacidade != null ? selEl.opacidade : 1) * 100)}%)`}>
-                    <input type="range" min="0" max="1" step="0.05" value={selEl.opacidade != null ? selEl.opacidade : 1} onChange={(e) => patchSel({ opacidade: Number(e.target.value) })} className="w-full" />
-                  </Field>
-                </>
-              ) : (
-                <Field label="Ajuste da imagem">
-                  <Select value={selEl.fit || 'contain'} onChange={(e) => patchSel({ fit: e.target.value })}>
-                    <option value="contain">Inteira (sem cortar)</option><option value="cover">Preencher (corta)</option>
-                  </Select>
-                </Field>
-              )}
-              <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => patchSel({ rot: 0 })}>Zerar rotação ({Math.round(selEl.rot || 0)}°)</Button>
+          {/* Camadas: altura fixa e rolagem própria, para não empurrar as
+              propriedades para fora da tela numa peça com muitos elementos. */}
+          <div className="flex max-h-[38%] min-h-[8rem] shrink-0 flex-col border-t border-line">
+            <div className="flex items-center gap-1.5 px-4 pb-1 pt-3 text-2xs font-semibold uppercase tracking-wide text-ink-3">
+              <Layers size={12} /> Camadas
+              <span className="ml-auto font-normal normal-case tracking-normal">{els.length}</span>
             </div>
-          ) : (
-            <div className="border-t border-line pt-4 text-xs text-ink-3">Clique num elemento para editar. Arraste as alças para mover, redimensionar e girar.</div>
-          )}
-
-          <div className="border-t border-line pt-4">
-            <Field label="Duração (s)" hint="0 = fica fixo"><Input type="number" value={dur} onChange={(e) => setDur(e.target.value)} /></Field>
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+              <PainelCamadas
+                els={els} sel={sel}
+                onSelecionar={escolher}
+                onReordenar={reordenar}
+                onAlternar={(id, campo) => patch(id, (e) => ({ [campo]: !e[campo] }))}
+                onRenomear={(id, nome) => patch(id, { nome: String(nome || '').trim() || undefined })}
+              />
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+/* ---------------- Peças pequenas ---------------- */
+
+/*
+ * Texto editado direto no palco.
+ *
+ * Duas armadilhas do contentEditable, e as duas custaram caro:
+ *
+ * 1. Salvar só no `blur` PERDE o que foi digitado. Clicar fora limpa o modo de
+ *    edição, o React volta a renderizar o texto antigo como filho da div, e o
+ *    blur — que chega depois — lê do DOM justamente o texto antigo. A pessoa
+ *    via "OFERTA" na tela, salvava, e a TV exibia "Texto". Por isso o estado é
+ *    atualizado a cada tecla, no `onInput`.
+ *
+ * 2. Atualizar o estado a cada tecla, com o React controlando os filhos da
+ *    div, joga o cursor para o começo a cada letra. Por isso, ENQUANTO edita,
+ *    esta div não recebe filhos nenhum do React: o texto inicial é escrito uma
+ *    vez pelo efeito, e daí em diante o DOM é dono do que está escrito.
+ *
+ * As duas juntas: o estado sempre certo, o cursor sempre no lugar.
+ */
+function TextoEditavel({ el, editando, estilo, onTexto, onFim }) {
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const n = ref.current;
+    if (!editando || !n) return;
+    n.textContent = el.text || '';
+    n.focus();
+    // Cursor no fim, e não no começo: quem deu dois cliques quer continuar
+    // escrevendo, não empurrar o que já estava lá.
+    const s = window.getSelection();
+    const r = document.createRange();
+    r.selectNodeContents(n);
+    r.collapse(false);
+    s.removeAllRanges();
+    s.addRange(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editando]);
+
+  if (editando) {
+    return (
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        style={estilo}
+        onInput={(ev) => onTexto(ev.currentTarget.textContent)}
+        onBlur={onFim}
+        onKeyDown={(ev) => {
+          ev.stopPropagation();                       // não deixa o atalho global comer a tecla
+          if (ev.key === 'Escape') { ev.preventDefault(); onFim(); }
+        }}
+      />
+    );
+  }
+  return <div style={estilo}>{el.text}</div>;
+}
+
+function IconBtn({ icon: Icone, title, onClick, disabled }) {
+  return (
+    <button type="button" title={title} onClick={onClick} disabled={disabled}
+      className="flex h-8 w-8 items-center justify-center rounded-md border border-line text-ink-2 transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-35">
+      <Icone size={15} />
+    </button>
+  );
+}
+
+function Opacidade({ el, onChange }) {
+  const v = el.opacidade != null ? el.opacidade : 1;
+  return (
+    <Field label={`Opacidade (${Math.round(v * 100)}%)`}>
+      <input type="range" min="0" max="1" step="0.05" value={v} onChange={(e) => onChange(Number(e.target.value))} className="w-full" />
+    </Field>
+  );
+}
+
+// Posição e tamanho numéricos: às vezes a pessoa quer 50 exato, e nenhum mouse
+// acerta 50 exato.
+function Num({ rotulo, valor, onChange }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-2xs text-ink-3">{rotulo}</span>
+      <input type="number" step="0.5" value={Math.round((Number(valor) || 0) * 10) / 10}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="tnum w-full rounded border border-line bg-surface px-1.5 py-1 text-xs text-ink outline-none focus:border-accent" />
+    </label>
   );
 }
