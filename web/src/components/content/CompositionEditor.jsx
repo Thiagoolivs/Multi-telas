@@ -10,7 +10,7 @@ import {
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { media, ai } from '../../api.js';
-import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw } from '../../lib/composition.js';
+import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw, estiloCaixa, recortada, raioCss, SOMBRA_PADRAO, SOMBRA_LIMITES, BORDA_MAX } from '../../lib/composition.js';
 import { ICONS, ICON_NAMES } from '../../lib/icons.js';
 import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer, podeRefazer } from '../../lib/historico.js';
 import { encaixar, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
@@ -165,6 +165,9 @@ export function CompositionEditor({ value, onClose, onSave }) {
 
   const rect = () => canvasRef.current.getBoundingClientRect();
   const fontePx = (e) => Math.max(1, (textFontCqw(e, aspect) / 100) * palco.w);
+  // 1 cqw em pixels do palco. Sombra, borda e canto são medidos em cqw para
+  // saírem iguais no editor, na TV e no PNG; aqui viram pixels desta tela.
+  const cqwPx = palco.w / 100;
 
   /* ---------------- Adicionar ---------------- */
 
@@ -562,7 +565,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                     estilo={{
                       width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                       // Mesma função que o player usa — o palco não inventa estilo próprio.
-                      ...estiloTexto(e), fontSize: fontePx(e),
+                      ...estiloTexto(e), fontSize: fontePx(e), ...estiloCaixa(e, cqwPx),
                       overflow: 'hidden', whiteSpace: 'pre-wrap',
                       outline: editandoTexto === e.id ? '1px dashed rgba(120,160,255,.9)' : 'none',
                       cursor: editandoTexto === e.id ? 'text' : 'inherit',
@@ -572,17 +575,19 @@ export function CompositionEditor({ value, onClose, onSave }) {
                   />
                 ) : e.tipo === 'icone' ? (
                   <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round"
-                    style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
+                    style={{ width: '100%', height: '100%', pointerEvents: 'none', ...estiloCaixa(e, cqwPx) }}
                     dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />
                 ) : e.tipo === 'forma' ? (
                   <div style={{
                     width: '100%', height: '100%', background: fillToCss(e.fill),
-                    borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : (e.radius || 0) + '%'),
+                    borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : raioCss(e, cqwPx)),
                     clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none', pointerEvents: 'none',
+                    ...estiloCaixa(e, cqwPx),
                   }} />
                 ) : (
                   <img src={e.src} alt="" draggable={false}
-                    style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', display: 'block', pointerEvents: 'none' }} />
+                    style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', display: 'block', pointerEvents: 'none',
+                      borderRadius: raioCss(e, cqwPx), ...estiloCaixa(e, cqwPx) }} />
                 )}
               </div>
             ))}
@@ -751,7 +756,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                         <option value="left">Esquerda</option><option value="center">Centro</option><option value="right">Direita</option>
                       </Select>
                     </Field>
-                    <label className="flex items-center gap-2 text-xs text-ink-2"><input type="checkbox" checked={!!selEl.sombra} onChange={(e) => patch(selEl.id, { sombra: e.target.checked })} /> Sombra no texto</label>
+                    <PainelSombra el={selEl} onChange={(sm) => patch(selEl.id, { sombra: sm }, 'sombra:' + selEl.id)} onSoltar={fecharPasso} />
                   </>
                 ) : selEl.tipo === 'forma' ? (
                   <>
@@ -793,6 +798,8 @@ export function CompositionEditor({ value, onClose, onSave }) {
                       </Field>
                     )}
                     <Opacidade el={selEl} onChange={(o) => patch(selEl.id, { opacidade: o })} />
+                    <PainelSombra el={selEl} onChange={(sm) => patch(selEl.id, { sombra: sm }, 'sombra:' + selEl.id)} onSoltar={fecharPasso} />
+                    <PainelBorda el={selEl} onChange={(bd) => patch(selEl.id, { borda: bd }, 'borda:' + selEl.id)} onSoltar={fecharPasso} />
                   </>
                 ) : selEl.tipo === 'icone' ? (
                   <>
@@ -809,6 +816,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                       <Field label={`Traço (${selEl.peso || 1.6})`}><input type="range" min="1" max="3" step="0.1" value={selEl.peso || 1.6} onChange={(e) => patch(selEl.id, { peso: Number(e.target.value) })} className="w-full" /></Field>
                     </div>
                     <Opacidade el={selEl} onChange={(o) => patch(selEl.id, { opacidade: o })} />
+                    <PainelSombra el={selEl} onChange={(sm) => patch(selEl.id, { sombra: sm }, 'sombra:' + selEl.id)} onSoltar={fecharPasso} />
                   </>
                 ) : (
                   <>
@@ -818,7 +826,14 @@ export function CompositionEditor({ value, onClose, onSave }) {
                       </Select>
                     </Field>
                     <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Trocar imagem</Button>
+                    <Field label={`Cantos (${selEl.radius || 0})`}>
+                      <input type="range" min="0" max="20" step="0.5" value={selEl.radius || 0}
+                        onChange={(e) => patch(selEl.id, { radius: Number(e.target.value) }, 'raio:' + selEl.id)}
+                        onMouseUp={fecharPasso} onTouchEnd={fecharPasso} className="w-full" />
+                    </Field>
                     <Opacidade el={selEl} onChange={(o) => patch(selEl.id, { opacidade: o })} />
+                    <PainelSombra el={selEl} onChange={(sm) => patch(selEl.id, { sombra: sm }, 'sombra:' + selEl.id)} onSoltar={fecharPasso} />
+                    <PainelBorda el={selEl} onChange={(bd) => patch(selEl.id, { borda: bd }, 'borda:' + selEl.id)} onSoltar={fecharPasso} />
                   </>
                 )}
 
@@ -961,6 +976,110 @@ function Ajuste({ rotulo, unidade, casas, valor, padrao, min, max, passo, onChan
         </button>
       </div>
     </Field>
+  );
+}
+
+/* ---------------- Sombra e borda ---------------- */
+
+/*
+ * Sombra.
+ *
+ * Duas decisões que valem o comentário:
+ *
+ * 1. Os números são em cqw — por cento da LARGURA da peça — e não em pixel.
+ *    A mesma peça é desenhada num palco de 400px aqui, 1920px na TV e 1080px
+ *    no PNG; uma sombra de 14px seria discreta lá e um borrão na miniatura.
+ * 2. `sombra: true` é como as peças antigas guardam "tem sombra". Ligar o
+ *    painel em cima de uma delas mostra o padrão, e o primeiro ajuste
+ *    converte para objeto — ninguém perde a sombra que já tinha.
+ */
+function PainelSombra({ el, onChange, onSoltar }) {
+  const ligada = !!el.sombra;
+  const v = (el.sombra && typeof el.sombra === 'object') ? { ...SOMBRA_PADRAO, ...el.sombra } : SOMBRA_PADRAO;
+  const mexer = (campo, valor) => onChange({ ...v, [campo]: valor });
+
+  return (
+    <div className="space-y-2 border-t border-line pt-3">
+      <label className="flex items-center gap-2 text-xs text-ink-2">
+        <input type="checkbox" checked={ligada} onChange={(e) => { onChange(e.target.checked ? { ...SOMBRA_PADRAO } : false); onSoltar(); }} />
+        Sombra
+      </label>
+      {ligada && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Cor">
+              <input type="color" value={v.cor} onChange={(e) => mexer('cor', e.target.value)} onBlur={onSoltar}
+                className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" />
+            </Field>
+            <Field label={`Opacidade (${Math.round(v.opacidade * 100)}%)`}>
+              <input type="range" min="0" max="1" step="0.05" value={v.opacidade}
+                onChange={(e) => mexer('opacidade', Number(e.target.value))}
+                onMouseUp={onSoltar} onTouchEnd={onSoltar} className="w-full" />
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label={`Horizontal (${v.x})`}>
+              <input type="range" min={-SOMBRA_LIMITES.desloc} max={SOMBRA_LIMITES.desloc} step="0.05" value={v.x}
+                onChange={(e) => mexer('x', Number(e.target.value))}
+                onMouseUp={onSoltar} onTouchEnd={onSoltar} className="w-full" />
+            </Field>
+            <Field label={`Vertical (${v.y})`}>
+              <input type="range" min={-SOMBRA_LIMITES.desloc} max={SOMBRA_LIMITES.desloc} step="0.05" value={v.y}
+                onChange={(e) => mexer('y', Number(e.target.value))}
+                onMouseUp={onSoltar} onTouchEnd={onSoltar} className="w-full" />
+            </Field>
+          </div>
+          <Field label={`Desfoque (${v.desfoque})`} hint="Sombra dura e deslocada dá cara de adesivo; aberta e rente, dá relevo.">
+            <input type="range" min="0" max={SOMBRA_LIMITES.desfoque} step="0.05" value={v.desfoque}
+              onChange={(e) => mexer('desfoque', Number(e.target.value))}
+              onMouseUp={onSoltar} onTouchEnd={onSoltar} className="w-full" />
+          </Field>
+        </>
+      )}
+    </div>
+  );
+}
+
+/*
+ * Borda.
+ *
+ * Não aparece em forma recortada (triângulo, losango, diagonal): o recorte
+ * corta a borda junto, e o resultado é um traço que aparece de um lado e some
+ * do outro. Melhor não oferecer do que oferecer quebrado.
+ */
+function PainelBorda({ el, onChange, onSoltar }) {
+  if (recortada(el)) {
+    return (
+      <div className="border-t border-line pt-3 text-2xs text-ink-3">
+        Triângulo, losango e diagonal não aceitam borda — o recorte da forma cortaria o traço pela metade.
+      </div>
+    );
+  }
+  const b = el.borda || {};
+  const largura = Number(b.largura) || 0;
+  const mexer = (campo, valor) => onChange({ largura, cor: b.cor || '#ffffff', estilo: b.estilo || 'solid', [campo]: valor });
+
+  return (
+    <div className="space-y-2 border-t border-line pt-3">
+      <Field label={`Borda (${largura || 'sem'})`}>
+        <input type="range" min="0" max={BORDA_MAX} step="0.05" value={largura}
+          onChange={(e) => mexer('largura', Number(e.target.value))}
+          onMouseUp={onSoltar} onTouchEnd={onSoltar} className="w-full" />
+      </Field>
+      {largura > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Cor">
+            <input type="color" value={b.cor || '#ffffff'} onChange={(e) => mexer('cor', e.target.value)} onBlur={onSoltar}
+              className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" />
+          </Field>
+          <Field label="Traço">
+            <Select value={b.estilo || 'solid'} onChange={(e) => { mexer('estilo', e.target.value); onSoltar(); }}>
+              <option value="solid">Contínuo</option><option value="dashed">Tracejado</option><option value="dotted">Pontilhado</option>
+            </Select>
+          </Field>
+        </div>
+      )}
+    </div>
   );
 }
 

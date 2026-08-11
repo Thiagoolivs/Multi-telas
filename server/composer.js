@@ -10,6 +10,7 @@
  */
 const ds = require('./design-system');
 const fontes = require('../js/fontes.js');
+const peca = require('../js/peca.js');
 
 const TIPOS = ['texto', 'forma', 'icone', 'imagem'];
 const PAPEIS = ['kicker', 'headline', 'display', 'sub', 'cta', 'fundo', 'destaque', 'decor', 'logo', 'imagem', 'legal'];
@@ -38,7 +39,7 @@ function sanearElemento(e, palette, formato) {
     out.cor = ds.okHex(e.cor, palette.texto);
     out.align = ['left', 'center', 'right'].includes(e.align) ? e.align : 'left';
     out.fonte = ds.familia(e.fonte);
-    out.sombra = !!e.sombra;
+    out.sombra = sanearSombra(e.sombra);
     out.italico = !!e.italico;
     /*
      * O peso é encaixado no que a família TEM. Pedir 900 a uma fonte de um
@@ -69,16 +70,53 @@ function sanearElemento(e, palette, formato) {
     out.shape = ['rect', 'ellipse', 'triangle', 'diamond', 'diag'].includes(e.shape) ? e.shape : 'rect';
     out.radius = ds.clamp(ds.num(e.radius, 0), 0, 50);
     out.fill = sanearFill(e.fill, palette);
+    out.sombra = sanearSombra(e.sombra);
+    out.borda = sanearBorda(e.borda, palette);
   } else if (tipo === 'icone') {
     out.name = typeof e.name === 'string' ? e.name : 'star';
     out.cor = ds.okHex(e.cor, palette.acento);
     out.peso = ds.clamp(ds.num(e.peso, 1.6), 0.5, 4);
+    out.sombra = sanearSombra(e.sombra);
   } else {
     out.src = typeof e.src === 'string' ? e.src : '';
     out.fit = e.fit === 'cover' ? 'cover' : 'contain';
+    out.radius = ds.clamp(ds.num(e.radius, 0), 0, 50);
+    out.sombra = sanearSombra(e.sombra);
+    out.borda = sanearBorda(e.borda, palette);
     if (!out.src) return null; // imagem sem fonte não vira nada na tela
   }
   return out;
+}
+
+/*
+ * Sombra: `true` continua valendo, porque é assim que as peças já publicadas
+ * guardam "tem sombra" — trocar o formato apagaria a sombra de todas elas.
+ * Objeto vira objeto limitado; qualquer outra coisa vira false.
+ */
+function sanearSombra(s) {
+  if (s === true) return true;
+  if (!s || typeof s !== 'object') return false;
+  const D = peca.SOMBRA_PADRAO;
+  const L = peca.SOMBRA_LIMITES;
+  return {
+    x: ds.clamp(ds.num(s.x, D.x), -L.desloc, L.desloc),
+    y: ds.clamp(ds.num(s.y, D.y), -L.desloc, L.desloc),
+    desfoque: ds.clamp(ds.num(s.desfoque, D.desfoque), 0, L.desfoque),
+    cor: ds.okHex(s.cor, D.cor),
+    opacidade: ds.clamp(ds.num(s.opacidade, D.opacidade), 0, 1),
+  };
+}
+
+/* Borda de espessura zero é ausência de borda, e não uma borda invisível. */
+function sanearBorda(b, palette) {
+  if (!b || typeof b !== 'object') return undefined;
+  const largura = ds.clamp(ds.num(b.largura, 0), 0, peca.BORDA_MAX);
+  if (!(largura > 0)) return undefined;
+  return {
+    largura,
+    cor: ds.okHex(b.cor, palette.texto),
+    estilo: ['solid', 'dashed', 'dotted'].includes(b.estilo) ? b.estilo : 'solid',
+  };
 }
 
 function sanearFill(fill, palette) {
