@@ -78,7 +78,7 @@ export default function App() {
 
   function renderPage() {
     switch (route.name) {
-      case 'overview': return <DashboardPage onGoSystem={() => go('system')} />;
+      case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} />;
       case 'screens': return <ScreensPage onEditContent={(device) => go('content', { device })} />;
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;

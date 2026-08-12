@@ -7,6 +7,7 @@ import { ErrorState, Spinner } from '../components/ui/Feedback.jsx';
 import { KpiRow } from '../components/dashboard/KpiRow.jsx';
 import { FleetTable } from '../components/dashboard/FleetTable.jsx';
 import { AlertsPanel } from '../components/dashboard/AlertsPanel.jsx';
+import { PrimeirosPassos } from '../components/dashboard/PrimeirosPassos.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { devices as devicesApi, media as mediaApi, sistema } from '../api.js';
 import { deviceStatus, ONLINE_WINDOW_MS } from '../lib/deviceStatus.js';
@@ -50,7 +51,7 @@ function AvisoDoSistema({ onAbrir }) {
   );
 }
 
-export function DashboardPage({ onGoSystem }) {
+export function DashboardPage({ onGoSystem, onIr }) {
   const { data, loading, error, reload } = useAsync(async () => {
     const [d, m] = await Promise.all([devicesApi.list(), mediaApi.list()]);
     return { devices: d.devices || [], storage: m.usage || { used: 0, quota: 1 } };
@@ -69,13 +70,13 @@ export function DashboardPage({ onGoSystem }) {
       ) : error ? (
         <Panel><ErrorState description="Não foi possível carregar a operação." onRetry={reload} /></Panel>
       ) : (
-        <Body data={data} />
+        <Body data={data} onIr={onIr} />
       )}
     </div>
   );
 }
 
-function Body({ data }) {
+function Body({ data, onIr }) {
   const now = Date.now();
   const screens = data.devices;
   const online = screens.filter((d) => d.lastSeen && now - d.lastSeen < ONLINE_WINDOW_MS);
@@ -101,6 +102,7 @@ function Body({ data }) {
 
   return (
     <>
+      <PrimeirosPassos devices={screens} onIr={onIr} />
       <KpiRow kpis={kpis} />
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2"><FleetTable screens={screens} /></div>
