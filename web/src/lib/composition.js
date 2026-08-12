@@ -1,43 +1,49 @@
-// Helpers de composição compartilhados entre editor, prévia e export.
+/*
+ * Desenho de composição no editor — o MESMO de js/peca.js, não uma cópia.
+ *
+ * Este arquivo já teve as contas escritas por dentro, e elas também estavam
+ * escritas dentro de js/render.js e outra vez em exportPng.js. Agora só
+ * reexporta o canônico e acrescenta o que é exclusivo do painel.
+ */
+import '../../../js/peca.js';
 
-// Preenchimento de forma: cor sólida (string) ou gradiente { grad, ang, cores }.
-export function fillToCss(fill) {
-  if (!fill) return 'rgba(255,255,255,.14)';
-  if (typeof fill === 'string') return fill;
-  const c = Array.isArray(fill.cores) && fill.cores.length ? fill.cores : ['#888888', '#444444'];
-  const c2 = c[1] || c[0];
-  if (fill.grad === 'radial') return `radial-gradient(circle at 50% 40%, ${c[0]}, ${c2})`;
-  return `linear-gradient(${fill.ang != null ? fill.ang : 150}deg, ${c[0]}, ${c2})`;
-}
+const P = globalThis.MTPeca;
 
-// Polígonos (pontos em % do box) para formas via clip-path.
-export const SHAPE_POLY = {
-  triangle: [[50, 0], [100, 100], [0, 100]],
-  diamond: [[50, 0], [100, 50], [50, 100], [0, 50]],
-  diag: [[0, 0], [100, 0], [70, 100], [0, 100]],
-};
-export function shapeClip(shape) {
-  const p = SHAPE_POLY[shape];
-  return p ? 'polygon(' + p.map(([x, y]) => x + '% ' + y + '%').join(', ') + ')' : 'none';
-}
+export const SHAPE_POLY = P.SHAPE_POLY;
+export const shapeClip = P.shapeClip;
+export const recortada = P.recortada;
+export const fillToCss = P.fillToCss;
+export const formatRatio = P.formatRatio;
+export const textFontCqw = P.textFontCqw;
+export const sombra = P.sombra;
+export const borda = P.borda;
+export const sombraCss = P.sombraCss;
+export const bordaCss = P.bordaCss;
+export const raioCss = P.raioCss;
+export const comoAplicarSombra = P.comoAplicarSombra;
+export const SOMBRA_PADRAO = P.SOMBRA_PADRAO;
+export const SOMBRA_LIMITES = P.SOMBRA_LIMITES;
+export const BORDA_MAX = P.BORDA_MAX;
 
-// Proporção altura/largura do formato ("16/9" → 0.5625). Converte altura em
-// % da zona (eixo Y) para unidades cqw (que medem % da largura, eixo X).
-export function formatRatio(formato) {
-  const [a, b] = String(formato || '16/9').split('/').map(Number);
-  return (a && b) ? b / a : 9 / 16;
-}
-
-// Tamanho de fonte em cqw (% da largura da zona). Quando e.auto, cresce
-// proporcional à diagonal do bloco; senão usa e.tamanho fixo.
-export function textFontCqw(e, formato) {
-  if (!e || !e.auto) return (e && e.tamanho != null) ? e.tamanho : 6;
-  const R = formatRatio(formato);
-  const w = e.w != null ? e.w : 25;
-  const h = e.h != null ? e.h : 25;
-  const diag = Math.sqrt(w * w + (h * R) * (h * R)); // diagonal do bloco, em cqw
-  const k = e.escala != null ? e.escala : 0.16;
-  return Math.max(2, diag * k);
+/*
+ * O CSS de sombra/borda/canto de um elemento, já na propriedade certa para o
+ * tipo dele. Devolve o que o palco do editor, a miniatura e a prévia aplicam —
+ * e é a mesma decisão que o player toma em js/render.js.
+ *
+ * `u` é quantos pixels vale 1 cqw; sem ele, a saída sai em cqw.
+ */
+export function estiloCaixa(el, u) {
+  const onde = P.comoAplicarSombra(el);
+  const s = P.sombraCss(el, u);
+  const fora = {};
+  if (s !== 'none') {
+    if (onde === 'texto') fora.textShadow = s;
+    else if (onde === 'caixa') fora.boxShadow = s;
+    else fora.filter = 'drop-shadow(' + s + ')';
+  }
+  const b = P.bordaCss(el, u);
+  if (b !== 'none') { fora.border = b; fora.boxSizing = 'border-box'; }
+  return fora;
 }
 
 // Gradiente de fundo pronto (para o seletor de fundo do editor).

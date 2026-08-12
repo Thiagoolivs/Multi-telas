@@ -24,16 +24,11 @@
 
   /*
    * Famílias usadas por elemento dentro de uma composição (campo "fonte"). São
-   * outra coisa que a fonte do tema: aqui é tipografia de PEÇA — condensada
-   * gigante, script, serifada. Espelha server/design-system.js FAMILIAS.
+   * outra coisa que a fonte do TEMA: aqui é tipografia de PEÇA — condensada
+   * gigante, script, serifada. Vêm de js/fontes.js, o catálogo único que o
+   * servidor e o editor também usam.
    */
-  const FAMILIAS_PECA = {
-    display: { css: "'Anton','Archivo Black',Impact," + SYSTEM_STACK, google: 'Anton' },
-    condensada: { css: "'Oswald','Archivo Narrow'," + SYSTEM_STACK, google: 'Oswald:wght@400;500;600;700' },
-    script: { css: "'Great Vibes','Brush Script MT',cursive", google: 'Great+Vibes' },
-    serifada: { css: "'Playfair Display',Georgia,serif", google: 'Playfair+Display:ital,wght@0,700;0,900;1,700' },
-    sans: { css: "'Inter'," + SYSTEM_STACK, google: 'Inter:wght@400;500;600;700;800;900' },
-  };
+  const FAMILIAS_PECA = (global.MTFontes || {}).FAMILIAS || {};
   // Stack CSS da família da peça, carregando a fonte sob demanda.
   function familiaPeca(id) {
     const f = FAMILIAS_PECA[id];

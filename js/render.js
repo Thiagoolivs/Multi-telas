@@ -1219,35 +1219,39 @@
     check: '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
     sparkle: '<path d="M12 3v6M12 15v6M3 12h6M15 12h6M6 6l3 3M15 15l3 3M18 6l-3 3M9 15l-3 3"/>',
   };
-  // Polígonos (pontos em % do box) para formas via clip-path.
-  const SHAPE_POLY = {
-    triangle: [[50, 0], [100, 100], [0, 100]],
-    diamond: [[50, 0], [100, 50], [50, 100], [0, 50]],
-    diag: [[0, 0], [100, 0], [70, 100], [0, 100]],
-  };
-  function shapeClip(shape) {
-    const p = SHAPE_POLY[shape];
-    return p ? 'polygon(' + p.map(function (pt) { return pt[0] + '% ' + pt[1] + '%'; }).join(', ') + ')' : 'none';
-  }
-  // Preenchimento de forma: cor sólida (string) ou gradiente { grad, ang, cores }.
-  function fillToCss(fill) {
-    if (!fill) return 'rgba(255,255,255,.14)';
-    if (typeof fill === 'string') return fill;
-    const c = Array.isArray(fill.cores) && fill.cores.length ? fill.cores : ['#888888', '#444444'];
-    const c2 = c[1] || c[0];
-    if (fill.grad === 'radial') return 'radial-gradient(circle at 50% 40%, ' + c[0] + ', ' + c2 + ')';
-    return 'linear-gradient(' + (fill.ang != null ? fill.ang : 150) + 'deg, ' + c[0] + ', ' + c2 + ')';
+  /*
+   * Forma, preenchimento e corpo do texto vêm de js/peca.js — o mesmo módulo
+   * que o editor importa. Estas contas já moraram aqui dentro, e a cópia do
+   * editor foi divergindo em silêncio.
+   */
+  const SHAPE_POLY = global.MTPeca.SHAPE_POLY;
+  const shapeClip = global.MTPeca.shapeClip;
+  const fillToCss = global.MTPeca.fillToCss;
+  function textFontCqw(e, formato) {
+    return global.MTPeca.textFontCqw(e, formato);
   }
 
-  // Tamanho de fonte em cqw. Se e.auto, proporcional à diagonal do bloco.
-  function textFontCqw(e, formato) {
-    if (!e || !e.auto) return (e && e.tamanho != null) ? e.tamanho : 6;
-    const p = String(formato || '16/9').split('/').map(Number);
-    const R = (p[0] && p[1]) ? p[1] / p[0] : 9 / 16;
-    const w = e.w != null ? e.w : 25, h = e.h != null ? e.h : 25;
-    const diag = Math.sqrt(w * w + (h * R) * (h * R));
-    const k = e.escala != null ? e.escala : 0.16;
-    return Math.max(2, diag * k);
+  /*
+   * Sombra e borda. A sombra entra numa propriedade diferente conforme o que o
+   * elemento é — text-shadow no texto, box-shadow na forma inteira, filtro no
+   * que é recortado ou tem transparência — e quem decide isso é o módulo, para
+   * que o editor decida igual.
+   */
+  const P = global.MTPeca;
+  function aplicarSombra(no, e) {
+    const css = P.sombraCss(e);
+    if (css === 'none') return;
+    const onde = P.comoAplicarSombra(e);
+    if (onde === 'texto') no.style.textShadow = css;
+    else if (onde === 'caixa') no.style.boxShadow = css;
+    else no.style.filter = 'drop-shadow(' + css + ')';
+  }
+  function aplicarBorda(no, e) {
+    const css = P.bordaCss(e);
+    if (css === 'none') return;
+    // Sem border-box a borda cresceria o bloco para fora do que foi posicionado.
+    no.style.border = css;
+    no.style.boxSizing = 'border-box';
   }
 
   /*
@@ -1309,25 +1313,33 @@
       if (e.tipo === 'texto') {
         const t = div('mt-comp-text');
         t.textContent = e.text || '';
-        if (e.cor) t.style.color = e.cor;
-        if (e.align) t.style.textAlign = e.align;
-        if (e.peso) t.style.fontWeight = e.peso;
+        /*
+         * Todo o estilo do texto sai de MTFontes.estiloTexto — a MESMA função
+         * que o editor usa para desenhar o palco. Enquanto cada lado montava o
+         * seu, a peça saía diferente aqui e lá, e a diferença só aparecia
+         * depois de publicada, na parede.
+         */
+        const estilo = global.MTFontes.estiloTexto(e);
+        for (const k in estilo) t.style[k] = estilo[k];
         t.style.fontSize = textFontCqw(e, item.formato) + 'cqw';
-        if (e.sombra) t.style.textShadow = '0 2px 14px rgba(0,0,0,.45)';
-        // Família da peça (condensada/script/serifada) — carrega sob demanda.
-        if (e.fonte && global.MTTheme && MTTheme.familiaPeca) {
-          const fam = MTTheme.familiaPeca(e.fonte);
-          if (fam) t.style.fontFamily = fam;
-        }
-        if (e.italico) t.style.fontStyle = 'italic';
-        // Display condensado pede entrelinha apertada, senão fica frouxo.
-        if (e.fonte === 'display' || e.fonte === 'condensada') t.style.lineHeight = '0.92';
+        /*
+         * A fonte em si é baixada sob demanda, pela família JÁ RESOLVIDA — sem
+         * isso, um texto sem família declarada pedia estilo de Inter e baixava
+         * coisa nenhuma, e a TV desenhava com a fonte do sistema.
+         * Sem rede, vale o fallback da pilha e a peça continua legível.
+         */
+        if (global.MTTheme && MTTheme.familiaPeca) MTTheme.familiaPeca(MTFontes.familia(e.fonte));
+        // Sombra de texto é text-shadow; box-shadow numa div de texto
+        // desenharia um retângulo em volta do bloco, não em volta das letras.
+        aplicarSombra(t, e);
         box.appendChild(t);
       } else if (e.tipo === 'forma') {
         box.style.background = fillToCss(e.fill);
         if (e.shape === 'ellipse') box.style.borderRadius = '50%';
         else if (SHAPE_POLY[e.shape]) box.style.clipPath = shapeClip(e.shape);
-        else box.style.borderRadius = (e.radius || 0) + '%';
+        else box.style.borderRadius = P.raioCss(e);
+        aplicarSombra(box, e);
+        aplicarBorda(box, e);
       } else if (e.tipo === 'icone') {
         const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         s.setAttribute('viewBox', '0 0 24 24');
@@ -1338,6 +1350,7 @@
         s.setAttribute('stroke-linejoin', 'round');
         s.style.width = '100%'; s.style.height = '100%';
         s.innerHTML = COMP_ICONS[e.name] || COMP_ICONS.star;
+        aplicarSombra(s, e);
         box.appendChild(s);
       } else {
         const img = document.createElement('img');
@@ -1345,7 +1358,9 @@
         img.src = e.src || '';
         img.alt = '';
         img.style.objectFit = e.fit === 'cover' ? 'cover' : 'contain';
-        if (e.radius) img.style.borderRadius = e.radius + 'cqw';
+        img.style.borderRadius = P.raioCss(e);
+        aplicarSombra(img, e);
+        aplicarBorda(img, e);
         box.appendChild(img);
       }
       palco.appendChild(box);

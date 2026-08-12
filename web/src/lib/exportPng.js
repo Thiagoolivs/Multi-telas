@@ -3,6 +3,8 @@
  * Desenha no canvas o mesmo modelo do player (fundo cor/gradiente/imagem +
  * elementos de texto/imagem em % com rotação). Sem dependências externas.
  */
+import { estiloTexto, prontasParaCanvas } from './fontes.js';
+import { sombra as sombraDe, borda as bordaDe, SHAPE_POLY } from './composition.js';
 
 // Espelho de web/src/lib/icons.js — mantido aqui para desenhar no canvas.
 const ICONS = {
@@ -27,11 +29,46 @@ const ICONS = {
 };
 
 // Desenha um ícone de linha via SVG → data URI → imagem no canvas.
-async function drawIcon(ctx, e, w, h) {
+async function drawIcon(ctx, e, w, h, W) {
   const inner = ICONS[e.name] || ICONS.star;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${e.cor || '#ffffff'}" stroke-width="${e.peso || 1.6}" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
   const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-  try { const img = await loadImage(src); ctx.drawImage(img, 0, 0, w, h); } catch (err) {}
+  try {
+    const img = await loadImage(src);
+    ligarSombra(ctx, e, W);
+    ctx.drawImage(img, 0, 0, w, h);
+    desligarSombra(ctx);
+  } catch (err) {}
+}
+
+/*
+ * Imagem com canto arredondado, sombra e borda.
+ *
+ * A sombra é desenhada num retângulo por trás, e não com `drawImage` ligado à
+ * sombra: uma foto opaca com sombra ligada faz o canvas borrar a foto INTEIRA
+ * em volta dela, e o resultado é uma auréola, não uma sombra.
+ */
+async function drawImagem(ctx, e, w, h, W) {
+  let img;
+  try { img = await loadImage(e.src); } catch (err) { return; }
+  // O canto da IMAGEM é medido em cqw (% da largura da peça), como no player;
+  // o da FORMA é % do próprio bloco. São duas convenções antigas, e mudar
+  // qualquer uma delas mexeria na cara de peças já publicadas.
+  const r = Math.min(Number(e.radius) || 0, 50) / 100 * W;
+  const caminho = () => roundRectPath(ctx, 0, 0, w, h, r);
+
+  if (ligarSombra(ctx, e, W)) {
+    ctx.save();
+    ctx.fillStyle = '#000';
+    caminho(); ctx.fill();
+    ctx.restore();
+    desligarSombra(ctx);
+  }
+  ctx.save();
+  caminho(); ctx.clip();
+  drawImageFit(ctx, img, 0, 0, w, h, e.fit || 'contain');
+  ctx.restore();
+  tracarBorda(ctx, e, W, caminho);
 }
 
 function loadImage(src) {
@@ -111,20 +148,77 @@ function roundRectPath(ctx, x, y, w, h, r) {
   ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
   ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
 }
-const SHAPE_POLY = {
-  triangle: [[50, 0], [100, 100], [0, 100]],
-  diamond: [[50, 0], [100, 50], [50, 100], [0, 50]],
-  diag: [[0, 0], [100, 0], [70, 100], [0, 100]],
-};
-function drawShape(ctx, e, w, h) {
+/*
+ * Sombra e borda no canvas.
+ *
+ * As medidas vêm em cqw — % da largura da PEÇA — e aqui viram pixels do PNG.
+ * É o mesmo número que o editor converte para pixels do palco e que o player
+ * entrega ao CSS: uma sombra só, três tamanhos de tela.
+ *
+ * O canvas não empilha sombra e traço como o CSS: ligar a sombra antes de
+ * preencher pinta a sombra do preenchimento, e é preciso DESLIGAR antes de
+ * traçar a borda, senão a borda ganha uma segunda sombra por cima da primeira.
+ */
+function ligarSombra(ctx, e, W) {
+  const s = sombraDe(e);
+  if (!s) return false;
+  const k = W / 100;
+  ctx.shadowColor = s.cor;
+  ctx.shadowBlur = s.desfoque * k;
+  ctx.shadowOffsetX = s.x * k;
+  ctx.shadowOffsetY = s.y * k;
+  return true;
+}
+function desligarSombra(ctx) {
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+}
+function tracarBorda(ctx, e, W, caminho) {
+  const b = bordaDe(e);
+  if (!b) return;
+  desligarSombra(ctx);
+  const px = b.largura * (W / 100);
+  ctx.strokeStyle = b.cor;
+  // O tracejado do CSS é proporcional à espessura; aqui vale o mesmo ritmo.
+  if (b.estilo === 'dashed') ctx.setLineDash([px * 3, px * 2]);
+  else if (b.estilo === 'dotted') ctx.setLineDash([px, px * 1.6]);
+  else ctx.setLineDash([]);
+  /*
+   * O canvas centra o traço na linha: metade dele ficaria PARA FORA, e a peça
+   * sairia maior no PNG do que no editor, onde o CSS usa border-box e a borda
+   * cresce para dentro. Recortando na própria forma e traçando com o dobro da
+   * espessura, sobra exatamente a metade de dentro — que é a do CSS.
+   *
+   * Isto apareceu ao abrir o PNG e comparar com a tela; nenhum teste de
+   * unidade pegaria, porque os dois lados estavam "certos" cada um no seu.
+   */
+  ctx.save();
+  caminho();
+  ctx.clip();
+  ctx.lineWidth = px * 2;
+  caminho();
+  ctx.stroke();
+  ctx.restore();
+  ctx.setLineDash([]);
+}
+
+function drawShape(ctx, e, w, h, W) {
   ctx.fillStyle = shapeFill(ctx, e.fill, w, h);
-  if (e.shape === 'ellipse') { ctx.beginPath(); ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); ctx.fill(); }
-  else if (SHAPE_POLY[e.shape]) {
+  const elipse = () => { ctx.beginPath(); ctx.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2); };
+  const poligono = () => {
     const p = SHAPE_POLY[e.shape];
     ctx.beginPath();
     p.forEach((pt, i) => { const x = pt[0] / 100 * w, y = pt[1] / 100 * h; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
-    ctx.closePath(); ctx.fill();
-  } else { roundRectPath(ctx, 0, 0, w, h, Math.min(w, h) * ((e.radius || 0) / 100)); ctx.fill(); }
+    ctx.closePath();
+  };
+  const retangulo = () => roundRectPath(ctx, 0, 0, w, h, Math.min(w, h) * ((e.radius || 0) / 100));
+  const caminho = e.shape === 'ellipse' ? elipse : SHAPE_POLY[e.shape] ? poligono : retangulo;
+
+  ligarSombra(ctx, e, W);
+  caminho(); ctx.fill();
+  desligarSombra(ctx);
+  // Forma recortada não recebe borda — é a mesma regra do editor e do player.
+  if (!SHAPE_POLY[e.shape]) tracarBorda(ctx, e, W, caminho);
 }
 
 // Tamanho de fonte em cqw. Se e.auto, proporcional à diagonal do bloco.
@@ -140,23 +234,42 @@ function textFontCqw(e, formato) {
 
 function drawText(ctx, e, w, h, W, formato) {
   const fontPx = Math.max(8, textFontCqw(e, formato) / 100 * W);
-  ctx.fillStyle = e.cor || '#ffffff';
-  ctx.font = `${e.peso || 700} ${fontPx}px system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif`;
+  /*
+   * O estilo vem da MESMA função do palco e do player. Antes daqui a
+   * exportação desenhava tudo na fonte do sistema: a peça saía numa fonte no
+   * editor, noutra na TV e numa terceira no PNG que a pessoa mandava no
+   * WhatsApp para aprovar. Aprovava-se uma coisa e ia ao ar outra.
+   */
+  const s = estiloTexto(e);
+  ctx.fillStyle = s.color;
+  ctx.font = `${s.fontStyle} ${s.fontWeight} ${fontPx}px ${s.fontFamily}`;
+  // letterSpacing no canvas é recente; onde não existe, o texto sai sem o
+  // ajuste fino em vez de não sair.
+  if ('letterSpacing' in ctx) ctx.letterSpacing = (parseFloat(s.letterSpacing) * fontPx).toFixed(2) + 'px';
   ctx.textBaseline = 'top';
-  const align = e.align || 'left';
+  const align = s.textAlign;
   ctx.textAlign = align;
-  // Quebra por palavra dentro da largura da caixa.
-  const words = String(e.text || '').split(/\s+/);
-  const lines = []; let line = '';
-  for (const word of words) {
-    const test = line ? line + ' ' + word : word;
-    if (ctx.measureText(test).width > w && line) { lines.push(line); line = word; } else line = test;
+
+  const bruto = String(e.text || '');
+  const texto = s.textTransform === 'uppercase' ? bruto.toUpperCase() : bruto;
+  // Quebra por palavra dentro da largura da caixa, respeitando as quebras que
+  // a pessoa digitou.
+  const lines = [];
+  for (const paragrafo of texto.split('\n')) {
+    let line = '';
+    for (const word of paragrafo.split(/\s+/)) {
+      const test = line ? line + ' ' + word : word;
+      if (ctx.measureText(test).width > w && line) { lines.push(line); line = word; } else line = test;
+    }
+    lines.push(line);
   }
-  if (line) lines.push(line);
-  const lh = fontPx * 1.1;
+  const lh = fontPx * Number(s.lineHeight);
   let ty = (h - lines.length * lh) / 2; // centraliza verticalmente na caixa
   const tx = align === 'center' ? w / 2 : align === 'right' ? w : 0;
+  ligarSombra(ctx, e, W);
   for (const l of lines) { ctx.fillText(l, tx, ty); ty += lh; }
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  desligarSombra(ctx);
 }
 
 export async function compositionToCanvas(item, W, H) {
@@ -170,6 +283,8 @@ export async function compositionToCanvas(item, W, H) {
     fillBackground(ctx, b.cor, W, H);
   }
   const els = (item.elementos || []).slice().sort((a, c) => (a.z || 0) - (c.z || 0));
+  // Sem isto o PNG sai na fonte do sistema: o canvas desenha uma vez só.
+  await prontasParaCanvas(els);
   for (const e of els) {
     const x = (e.x || 0) / 100 * W, y = (e.y || 0) / 100 * H, w = (e.w || 20) / 100 * W, h = (e.h || 20) / 100 * H;
     ctx.save();
@@ -178,9 +293,9 @@ export async function compositionToCanvas(item, W, H) {
     if (e.rot) ctx.rotate((e.rot) * Math.PI / 180);
     ctx.translate(-w / 2, -h / 2);
     if (e.tipo === 'texto') drawText(ctx, e, w, h, W, item.formato);
-    else if (e.tipo === 'forma') drawShape(ctx, e, w, h);
-    else if (e.tipo === 'icone') await drawIcon(ctx, e, w, h);
-    else if (e.src) { try { drawImageFit(ctx, await loadImage(e.src), 0, 0, w, h, e.fit || 'contain'); } catch (err) {} }
+    else if (e.tipo === 'forma') drawShape(ctx, e, w, h, W);
+    else if (e.tipo === 'icone') await drawIcon(ctx, e, w, h, W);
+    else if (e.src) await drawImagem(ctx, e, w, h, W);
     ctx.restore();
   }
   return canvas;
