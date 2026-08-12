@@ -1,6 +1,11 @@
 node_modules/
-package-lock.json
 data/
+
+# O package-lock.json É versionado, de propósito. Isto aqui é uma aplicação
+# que vai para a parede de um cliente, não uma biblioteca: sem o lock, cada
+# build (CI, Railway) resolve versões novas por conta própria, e uma
+# atualização de dependência transitiva pode quebrar a produção sem ninguém
+# ter tocado numa linha de código.
 
 # Painel React (Vite) — build gerado, não versionado
 web/dist/
