@@ -28,6 +28,7 @@ const reconectar = require('./server/reconectar');
 const usoIA = require('./server/uso-ia');
 const creditos = require('./server/creditos');
 const security = require('./server/security');
+const diagnostico = require('./server/diagnostico');
 const { rateLimit, clientIp, safeEqual, isSecureRequest } = security;
 const mail = require('./server/mail');
 const plans = require('./server/plans');
@@ -1270,6 +1271,16 @@ async function handleApi(req, res, pathname, query) {
         return sendJson(res, 200, { mode: ai.mode(), text: out });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });
+  }
+
+  /*
+   * Estado do sistema. Só o dono: a lista diz onde estão as chaves e o que
+   * está mal configurado, e isso não é assunto de quem só publica conteúdo.
+   */
+  if (parts[1] === 'diagnostico' && req.method === 'GET') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono vê o estado do sistema' });
+    return sendJson(res, 200, diagnostico.diagnosticar(process.env));
   }
 
   if (parts[1] === 'billing') {

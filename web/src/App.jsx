@@ -15,6 +15,7 @@ import { SettingsPage } from './pages/SettingsPage.jsx';
 import { AlertsPage } from './pages/AlertsPage.jsx';
 import { SupportPage } from './pages/SupportPage.jsx';
 import { BillingPage } from './pages/BillingPage.jsx';
+import { SystemPage } from './pages/SystemPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 
@@ -30,6 +31,7 @@ const META = {
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
   birthdays: { title: 'Aniversariantes', subtitle: 'Importe a equipe e o player mostra sozinho.' },
   billing: { title: 'Plano e cobrança' },
+  system: { title: 'Estado do sistema', subtitle: 'O que está configurado, e o que vai doer se ficar como está.' },
   settings: { title: 'Ajustes', subtitle: 'Conta, integrações e preferências.' },
 };
 
@@ -76,7 +78,7 @@ export default function App() {
 
   function renderPage() {
     switch (route.name) {
-      case 'overview': return <DashboardPage />;
+      case 'overview': return <DashboardPage onGoSystem={() => go('system')} />;
       case 'screens': return <ScreensPage onEditContent={(device) => go('content', { device })} />;
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
@@ -86,6 +88,7 @@ export default function App() {
       case 'mural': return <MuralPage />;
       case 'birthdays': return <BirthdaysPage />;
       case 'billing': return <BillingPage />;
+      case 'system': return <SystemPage />;
       case 'alerts': return <AlertsPage onGoScreens={() => go('screens')} onGoStorage={() => go('storage')} onGoBilling={() => go('billing')} />;
       case 'support': return <SupportPage me={session} />;
       case 'settings': return (
