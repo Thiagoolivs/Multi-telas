@@ -1,0 +1,43 @@
+# Roda os testes e o build do painel em cada push.
+#
+# Sem isto, os 252 testes só rodavam quando alguém lembrava — e um erro ia
+# direto para a parede do cliente. O build do painel entra junto porque um
+# erro de import passa em todos os testes e só aparece na hora de servir.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# Um push novo cancela a execução anterior do mesmo branch: o que importa é o
+# último commit, e ficar esperando fila de commits velhos só atrasa o retorno.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # O servidor só depende de `pg`, e o painel tem o seu próprio
+      # package-lock — por isso são duas instalações.
+      - name: Dependências do servidor
+        run: npm install --no-audit --no-fund
+
+      - name: Testes
+        run: npm test
+
+      - name: Dependências do painel
+        run: npm --prefix web ci --no-audit --no-fund
+
+      - name: Build do painel
+        run: npm --prefix web run build

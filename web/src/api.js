@@ -208,6 +208,11 @@ export const birthdays = {
   clear: () => api('DELETE', '/api/birthdays'),
 };
 
+/* Estado do sistema (só o dono). */
+export const sistema = {
+  diagnostico: () => api('GET', '/api/diagnostico'),
+};
+
 export const billing = {
   get: () => api('GET', '/api/billing'),
   checkout: (plan) => api('POST', '/api/billing/checkout', { plan }),

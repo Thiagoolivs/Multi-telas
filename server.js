@@ -27,7 +27,9 @@ const midia = require('./server/midia');
 const reconectar = require('./server/reconectar');
 const usoIA = require('./server/uso-ia');
 const creditos = require('./server/creditos');
-const { rateLimit, clientIp, safeEqual, isSecureRequest } = require('./server/security');
+const security = require('./server/security');
+const diagnostico = require('./server/diagnostico');
+const { rateLimit, clientIp, safeEqual, isSecureRequest } = security;
 const mail = require('./server/mail');
 const plans = require('./server/plans');
 const billing = require('./server/billing');
@@ -1271,6 +1273,16 @@ async function handleApi(req, res, pathname, query) {
     });
   }
 
+  /*
+   * Estado do sistema. Só o dono: a lista diz onde estão as chaves e o que
+   * está mal configurado, e isso não é assunto de quem só publica conteúdo.
+   */
+  if (parts[1] === 'diagnostico' && req.method === 'GET') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono vê o estado do sistema' });
+    return sendJson(res, 200, diagnostico.diagnosticar(process.env));
+  }
+
   if (parts[1] === 'billing') {
     const seg = parts[2];
 
@@ -1817,6 +1829,14 @@ async function handleStatic(req, res, urlPath) {
 const server = http.createServer((req, res) => {
   const parsed = url.parse(req.url || '/', true);
   const pathname = decodeURIComponent(parsed.pathname || '/');
+  /*
+   * Os cabeçalhos de segurança entram AQUI, uma vez, antes de qualquer rota.
+   * O Node junta o que foi posto com setHeader ao que cada rota passa depois
+   * em writeHead, então nenhuma delas precisa saber que isto existe — e
+   * nenhuma delas pode esquecer.
+   */
+  const seg = security.cabecalhosSeguranca(security.isSecureRequest(req));
+  for (const k in seg) res.setHeader(k, seg[k]);
   if (pathname === '/api' || pathname.startsWith('/api/')) {
     return handleApi(req, res, pathname, parsed.query || {})
       .catch((e) => { console.warn('[api]', e.message); try { sendJson(res, 500, { error: 'erro interno' }); } catch (_) {} });

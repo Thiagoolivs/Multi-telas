@@ -47,7 +47,7 @@ export function ScreensPage({ onEditContent }) {
           <EmptyState
             icon={MonitorPlay}
             title="Nenhuma tela pareada"
-            description="Abra o player na TV com ?cloud=1, pegue o código de 6 dígitos e pareie aqui."
+            description="No navegador da TV, abra o endereço abaixo. Ela mostra um código de 6 dígitos — é ele que você digita aqui."
             action={<Button size="sm" variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Parear a primeira</Button>}
           />
         )}
@@ -206,7 +206,7 @@ function PairDialog({ open, onClose, onDone }) {
       open={open}
       onClose={onClose}
       title="Parear uma tela"
-      description="Na TV, abra o player com ?cloud=1 — ela mostra um código de 6 dígitos."
+      description="Dois passos: abra o endereço na TV e digite aqui o código que ela mostrar."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -217,6 +217,7 @@ function PairDialog({ open, onClose, onDone }) {
       }
     >
       <div className="space-y-3.5">
+        <EnderecoDaTv />
         <Field label="Código de pareamento">
           <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="CÓDIGO" maxLength={6} className="tracking-[0.3em]" />
         </Field>
@@ -226,6 +227,43 @@ function PairDialog({ open, onClose, onDone }) {
         {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
       </div>
     </Dialog>
+  );
+}
+
+/*
+ * O endereço que se digita NA TV.
+ *
+ * Antes daqui a instrução era "abra o player com ?cloud=1" — linguagem de
+ * quem escreveu o código, dita a quem está de pé com um controle de TV na
+ * mão. `/tv` já existia no servidor e ninguém sabia: o caminho curto estava
+ * pronto e a instrução continuava mandando digitar um parâmetro de consulta.
+ *
+ * O endereço é montado a partir de onde o painel está sendo servido, então
+ * vale tanto no domínio do cliente quanto numa máquina de teste.
+ */
+function EnderecoDaTv() {
+  const endereco = (typeof window !== 'undefined' ? window.location.origin : '') + '/tv';
+  const [copiado, setCopiado] = React.useState(false);
+  const copiar = () => {
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(endereco).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    }).catch(() => {});
+  };
+  return (
+    <div className="rounded-md border border-line bg-surface-2 p-3">
+      <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">1 · No navegador da TV, abra</div>
+      <div className="mt-1.5 flex items-center gap-2">
+        <code className="min-w-0 flex-1 truncate rounded border border-line bg-surface px-2 py-1.5 text-sm text-ink">{endereco}</code>
+        <Button size="sm" variant="secondary" icon={copiado ? Check : Copy} onClick={copiar}>
+          {copiado ? 'Copiado' : 'Copiar'}
+        </Button>
+      </div>
+      <div className="mt-1.5 text-xs text-ink-3">
+        A TV vai mostrar um código de 6 dígitos. Deixe essa tela aberta enquanto você pareia aqui.
+      </div>
+    </div>
   );
 }
 
