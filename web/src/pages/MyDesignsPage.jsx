@@ -19,6 +19,7 @@ import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { BriefingChat } from '../components/content/BriefingChat.jsx';
 
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
+const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
 
 // Formatos que fazem sentido numa TV deitada. Não sabemos a orientação de cada
 // tela pareada, então este é só o PADRÃO da seleção — o usuário destrava os
@@ -35,6 +36,7 @@ export function MyDesignsPage() {
 
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);   // { id?, item } no editor
+  const [modeloAberto, setModeloAberto] = useState(false);
   const [saveItem, setSaveItem] = useState(null);  // { item } aguardando nome/coleção
   const [coll, setColl] = useState('');
   const [label, setLabel] = useState('');
@@ -71,7 +73,18 @@ export function MyDesignsPage() {
   const [iFormato, setIFormato] = useState('16/9');
   const [iEstilo, setIEstilo] = useState('fotográfico');
 
-  function novoNaMao() { setEditing({ item: CONTENT_TYPES.composicao.make() }); }
+  /*
+   * "Criar na mão" passa por uma escolha antes do editor. A tela em branco
+   * continua a um clique de distância — quem já sabe o que vai fazer não
+   * precisa passar por uma galeria.
+   */
+  function novoNaMao() { setModeloAberto(true); }
+
+  function comecarDe(peca, formato) {
+    setModeloAberto(false);
+    const base = CONTENT_TYPES.composicao.make();
+    setEditing({ item: peca ? { ...base, ...peca } : { ...base, formato } });
+  }
 
   // Editor salvou: peça existente atualiza; nova vai para o diálogo de salvar.
   function onEditorSave(item) {
@@ -393,6 +406,13 @@ export function MyDesignsPage() {
           </div>
         )}
       </Panel>
+
+      {/* Por onde começar: modelo pronto ou tela vazia */}
+      {modeloAberto && (
+        <Suspense fallback={null}>
+          <EscolherModelo aberto onFechar={() => setModeloAberto(false)} onEscolher={comecarDe} />
+        </Suspense>
+      )}
 
       {/* Editor de composição */}
       {editing && (
