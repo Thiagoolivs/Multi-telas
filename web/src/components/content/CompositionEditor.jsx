@@ -5,7 +5,7 @@ import {
   Columns2, Sparkles, Shapes, Star, Undo2, Redo2, Copy, ZoomIn, ZoomOut, Maximize2,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
-  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper,
+  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup,
 } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
@@ -19,6 +19,10 @@ import {
   estiloTexto, listar as listarFontes, pesosDe, pesoValido, dados as dadosDaFonte,
   carregarFonte, carregarDaComposicao, ESPACAMENTO, ENTRELINHA,
 } from '../../lib/fontes.js';
+import {
+  agrupar, desagrupar, expandirSelecao, podeAgrupar, podeDesagrupar,
+  unidades, caixaDe, reordenarLinhas, linhaDe, grupoDe,
+} from '../../lib/grupos.js';
 import { PainelCamadas } from './PainelCamadas.jsx';
 
 const ASPECTS = [
@@ -35,6 +39,8 @@ let _uid = 1;
 const uid = () => 'e' + (_uid++) + Math.random().toString(36).slice(2, 6);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const round = (n) => Math.round((Number(n) || 0) * 10) / 10;
+// A caixa de um grupo, no formato que alinhar.js espera de um elemento.
+const pontoDaCaixa = (c) => ({ x: c.esq, y: c.topo, w: c.w, h: c.h });
 
 /*
  * A ORDEM DO ARRAY é a ordem de empilhamento, e o último desenha por cima.
@@ -76,6 +82,12 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [zoom, setZoom] = useState(1);
   const [guias, setGuias] = useState({ x: null, y: null });
   const [editandoTexto, setEditandoTexto] = useState(null);
+  /*
+   * O grupo "aberto": aquele em que se entrou com dois cliques, e onde os
+   * membros voltam a ser clicáveis um a um. Fora dele, tocar num membro é
+   * tocar no grupo inteiro — que é o que faz o grupo parecer uma coisa só.
+   */
+  const [grupoAberto, setGrupoAberto] = useState(null);
   const [busy, setBusy] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiBrief, setAiBrief] = useState('');
@@ -87,10 +99,33 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
   const nodes = useRef({});
-  const grupoRef = useRef(null);
+  /*
+   * A caixa da seleção múltipla vive em ESTADO, não em ref.
+   *
+   * Estava em `useRef`, e o Moveable do grupo era desenhado sob a condição
+   * `caixaGrupo && grupoRef.current`. No render em que a caixa nasce, a ref
+   * ainda é nula — e como preencher uma ref não redesenha nada, a condição
+   * nunca voltava a ser avaliada: o Moveable do grupo NUNCA montava. O efeito
+   * era que arrastar dois elementos selecionados não fazia absolutamente nada,
+   * em silêncio, desde que a seleção múltipla existe. Apareceu ao arrastar um
+   * grupo no navegador — nenhum teste de unidade alcançaria isto.
+   *
+   * Uma ref de callback que guarda em estado força o segundo render, e aí a
+   * moldura monta.
+   */
+  const [grupoNo, setGrupoNo] = useState(null);
   const imgInput = useRef(null);
   const bgInput = useRef(null);
   const areaTransf = useRef(null);   // { x, y } no começo do arrasto de grupo
+  /*
+   * Shift, acompanhado por conta própria.
+   *
+   * O clique que chega pelo dragArea do Moveable vem embrulhado, e o evento
+   * que ele repassa nem sempre traz os modificadores — somar à seleção com
+   * Shift simplesmente TROCAVA a seleção. Guardar a tecla aqui não depende do
+   * formato do evento de ninguém.
+   */
+  const shift = useRef(false);
 
   /* ---------------- Editar o documento ---------------- */
 
@@ -191,12 +226,49 @@ export function CompositionEditor({ value, onClose, onSave }) {
   /* ---------------- Seleção ---------------- */
 
   const escolher = (id, somar) => {
+    // Dentro do grupo aberto, cada membro responde por si; fora dele, o toque
+    // alcança o grupo inteiro.
+    const dentro = grupoAberto && grupoDe(els, id) === grupoAberto;
+    const alvo = dentro ? [id] : expandirSelecao(els, [id]);
+    if (!dentro && grupoDe(els, id) !== grupoAberto) setGrupoAberto(null);
     setSel((s) => {
-      if (!somar) return [id];
-      return s.includes(id) ? s.filter((x) => x !== id) : [...s, id];
+      if (!somar) return alvo;
+      const juntos = new Set(s);
+      const jaTinha = alvo.every((x) => juntos.has(x));
+      alvo.forEach((x) => (jaTinha ? juntos.delete(x) : juntos.add(x)));
+      return [...juntos];
     });
   };
-  const limparSel = () => { setSel([]); setEditandoTexto(null); };
+  const limparSel = () => { setSel([]); setEditandoTexto(null); setGrupoAberto(null); };
+
+  /* ---------------- Agrupar ---------------- */
+
+  const juntar = useCallback(() => {
+    if (!podeAgrupar(els, sel)) return;
+    const novos = agrupar(els, sel);
+    setEls(novos, null);
+    setSel(expandirSelecao(novos, sel));
+    setGrupoAberto(null);
+  }, [els, sel, setEls]);
+
+  const separar = useCallback(() => {
+    if (!podeDesagrupar(els, sel)) return;
+    setEls(desagrupar(els, sel), null);
+    setGrupoAberto(null);
+  }, [els, sel, setEls]);
+
+  const cliqueAtravesDaArea = (ev, duplo) => {
+    const alvo = document.elementsFromPoint(ev.clientX, ev.clientY)
+      .find((n) => n.hasAttribute && n.hasAttribute('data-el'));
+    const id = alvo && alvo.getAttribute('data-el');
+    if (!id) { limparSel(); return; }
+    if (duplo) {
+      const g = grupoDe(els, id);
+      if (g) { setGrupoAberto(g); setSel([id]); return; }
+      if (els.find((e) => e.id === id && e.tipo === 'texto')) { setSel([id]); setEditandoTexto(id); return; }
+    }
+    escolher(id, !!(ev && ev.shiftKey) || shift.current);
+  };
 
   /* ---------------- Ações ---------------- */
 
@@ -228,27 +300,22 @@ export function CompositionEditor({ value, onClose, onSave }) {
     setSel(copias.map((e) => e.id));
   }, [setEls]);
 
-  // Camada: mover na lista é mover na pilha.
+  /*
+   * Camada: mover na pilha é mover uma LINHA, e um grupo é uma linha só. Assim
+   * "para a frente" leva o grupo inteiro, e nunca deixa um estranho no meio
+   * dele.
+   */
   const moverCamada = useCallback((d) => {
-    if (sel.length !== 1) return;
+    if (!sel.length) return;
     setEls((a) => {
-      const i = a.findIndex((e) => e.id === sel[0]);
-      const j = clamp(i + d, 0, a.length - 1);
-      if (i < 0 || i === j) return a;
-      const copia = [...a];
-      const [item] = copia.splice(i, 1);
-      copia.splice(j, 0, item);
-      return copia;
+      const i = linhaDe(a, sel[0]);
+      if (i < 0) return a;
+      return reordenarLinhas(a, i, clamp(i + d, 0, a.length - 1));
     });
   }, [sel, setEls]);
 
   const reordenar = useCallback((de, para) => {
-    setEls((a) => {
-      const copia = [...a];
-      const [item] = copia.splice(de, 1);
-      copia.splice(para, 0, item);
-      return copia;
-    });
+    setEls((a) => reordenarLinhas(a, de, para));
   }, [setEls]);
 
   const empurrar = useCallback((dx, dy) => {
@@ -256,18 +323,35 @@ export function CompositionEditor({ value, onClose, onSave }) {
     patch(sel, (e) => ({ x: (Number(e.x) || 0) + dx, y: (Number(e.y) || 0) + dy }), 'empurrar');
   }, [sel, patch]);
 
-  const aplicarAlinhar = (como) => {
-    if (!sel.length) return;
-    const novos = alinhar(selEls, como);
-    const mapa = new Map(novos.map((e) => [e.id, e]));
-    setEls((a) => a.map((e) => mapa.get(e.id) || e));
+  /*
+   * Alinhar e distribuir trabalham por UNIDADE: um grupo é uma caixa só.
+   *
+   * Sem isto, alinhar à esquerda uma seleção com um logotipo agrupado
+   * empilharia as partes do logotipo umas sobre as outras — cada pedaço iria
+   * para a esquerda por conta própria, e o desenho que a pessoa montou seria
+   * desmontado por um botão de alinhar. A matemática continua sendo a de
+   * alinhar.js: o que muda é o que se entrega a ela, e o deslocamento de cada
+   * caixa é repassado aos membros dela.
+   */
+  const porUnidade = (fn, minimo) => {
+    const us = unidades(els, sel);
+    if (us.length < minimo) return;
+    const caixas = us.map((u, i) => ({ id: 'u' + i, ...pontoDaCaixa(caixaDe(u.els)) }));
+    const movidas = fn(caixas);
+    const desloc = new Map();
+    movidas.forEach((c, i) => {
+      const dx = c.x - caixas[i].x;
+      const dy = c.y - caixas[i].y;
+      if (dx || dy) us[i].els.forEach((e) => desloc.set(e.id, { dx, dy }));
+    });
+    if (!desloc.size) return;
+    setEls((a) => a.map((e) => {
+      const d = desloc.get(e.id);
+      return d ? { ...e, x: (Number(e.x) || 0) + d.dx, y: (Number(e.y) || 0) + d.dy } : e;
+    }));
   };
-  const aplicarDistribuir = (eixo) => {
-    if (sel.length < 3) return;
-    const novos = distribuir(selEls, eixo);
-    const mapa = new Map(novos.map((e) => [e.id, e]));
-    setEls((a) => a.map((e) => mapa.get(e.id) || e));
-  };
+  const aplicarAlinhar = (como) => porUnidade((caixas) => alinhar(caixas, como), 1);
+  const aplicarDistribuir = (eixo) => porUnidade((caixas) => distribuir(caixas, eixo), 3);
 
   /* ---------------- Teclado ----------------
    *
@@ -285,6 +369,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
 
     function onKey(ev) {
       const cmd = ev.metaKey || ev.ctrlKey;
+      shift.current = ev.shiftKey;
 
       if (ev.key === 'Escape') {
         if (editandoTexto) { setEditandoTexto(null); return; }
@@ -299,6 +384,11 @@ export function CompositionEditor({ value, onClose, onSave }) {
       if (cmd && ev.key.toLowerCase() === 'c') { copiar(); return; }
       if (cmd && ev.key.toLowerCase() === 'v') { ev.preventDefault(); colar(); return; }
       if (cmd && ev.key.toLowerCase() === 'a') { ev.preventDefault(); setSel(els.map((e) => e.id)); return; }
+      if (cmd && ev.key.toLowerCase() === 'g') {
+        ev.preventDefault();
+        if (ev.shiftKey) separar(); else juntar();
+        return;
+      }
       if (cmd && ev.key === ']') { ev.preventDefault(); moverCamada(1); return; }
       if (cmd && ev.key === '[') { ev.preventDefault(); moverCamada(-1); return; }
 
@@ -314,12 +404,15 @@ export function CompositionEditor({ value, onClose, onSave }) {
 
     // Soltar a seta fecha o passo: segurar a seta empurra num passo só, mas
     // dois toques separados são dois desfazeres.
-    function onKeyUp(ev) { if (String(ev.key).startsWith('Arrow')) fecharPasso(); }
+    function onKeyUp(ev) {
+      shift.current = ev.shiftKey;
+      if (String(ev.key).startsWith('Arrow')) fecharPasso();
+    }
 
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKeyUp);
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp); };
-  }, [els, sel, editandoTexto, duplicar, copiar, colar, remover, moverCamada, empurrar, fecharPasso, saltar]);
+  }, [els, sel, editandoTexto, duplicar, copiar, colar, remover, moverCamada, empurrar, fecharPasso, saltar, juntar, separar]);
 
   /* ---------------- Colar e arrastar ----------------
    *
@@ -497,6 +590,8 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <IconBtn title="Distribuir na vertical (3+)" icon={AlignVerticalDistributeCenter} disabled={sel.length < 3} onClick={() => aplicarDistribuir('v')} />
 
         <div className="mx-1 h-5 w-px bg-line" />
+        <IconBtn title="Agrupar (Ctrl+G)" icon={Group} disabled={!podeAgrupar(els, sel)} onClick={juntar} />
+        <IconBtn title="Desagrupar (Ctrl+Shift+G)" icon={Ungroup} disabled={!podeDesagrupar(els, sel)} onClick={separar} />
         <IconBtn title="Duplicar (Ctrl+D)" icon={Copy} disabled={!sel.length} onClick={duplicar} />
         <IconBtn title="Remover (Delete)" icon={Trash2} disabled={!sel.length} onClick={remover} />
 
@@ -546,12 +641,24 @@ export function CompositionEditor({ value, onClose, onSave }) {
           onDrop={(e) => { e.preventDefault(); aplicarColagem(e.dataTransfer); }}>
           <div ref={canvasRef} data-palco
             onMouseDown={(e) => { if (e.target === canvasRef.current) limparSel(); }}
+
             className="relative shrink-0 shadow-2xl" style={{ ...bgStyle, width: palco.w, height: palco.h }}>
 
             {els.map((e) => e.oculto ? null : (
               <div key={e.id} data-el={e.id} ref={(n) => { if (n) nodes.current[e.id] = n; }}
                 onMouseDown={(ev) => { if (!e.travado) { ev.stopPropagation(); escolher(e.id, ev.shiftKey); } }}
-                onDoubleClick={() => { if (e.tipo === 'texto' && !e.travado) setEditandoTexto(e.id); }}
+                onDoubleClick={() => {
+                  if (e.travado) return;
+                  /*
+                   * Dois cliques ENTRAM no grupo antes de qualquer outra coisa.
+                   * É a ordem do Canva, e é a única que deixa os dois gestos
+                   * conviverem: sem ela, dois cliques num texto agrupado
+                   * abririam a edição do texto e não haveria como alcançar o
+                   * elemento sozinho.
+                   */
+                  if (e.grupo && grupoAberto !== e.grupo) { setGrupoAberto(e.grupo); setSel([e.id]); return; }
+                  if (e.tipo === 'texto') setEditandoTexto(e.id);
+                }}
                 style={{
                   position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%',
                   transform: `rotate(${e.rot || 0}deg)`, cursor: e.travado ? 'default' : 'move',
@@ -604,7 +711,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
             {/* Caixa invisível que representa a seleção múltipla — é ela que o
                 Moveable arrasta, e o deslocamento é repassado a cada elemento. */}
             {caixaGrupo && (
-              <div ref={grupoRef} style={{
+              <div ref={setGrupoNo} style={{
                 position: 'absolute', left: caixaGrupo.esq + '%', top: caixaGrupo.topo + '%',
                 width: caixaGrupo.w + '%', height: caixaGrupo.h + '%',
                 outline: '1px dashed rgba(120,160,255,.8)', pointerEvents: 'none', zIndex: 8,
@@ -643,10 +750,28 @@ export function CompositionEditor({ value, onClose, onSave }) {
             {/* Vários selecionados: arrastar o conjunto. Redimensionar em grupo
                 fica de fora de propósito — em coordenadas percentuais ele
                 distorce texto e imagem de formas difíceis de desfazer. */}
-            {caixaGrupo && grupoRef.current && (
+            {caixaGrupo && grupoNo && (
               <Moveable
-                target={grupoRef.current}
+                target={grupoNo}
                 draggable resizable={false} rotatable={false}
+                /*
+                 * `dragArea` é o que faltava para o arrasto existir: a caixa da
+                 * seleção é `pointer-events: none` (senão ela roubaria o clique
+                 * dos elementos que estão embaixo), e sem redimensionar não há
+                 * alça nenhuma para pegar. O dragArea é uma superfície que o
+                 * próprio Moveable desenha por cima só para receber o arrasto.
+                 */
+                dragArea
+                /*
+                 * O dragArea cobre os elementos, então TODO clique passa a
+                 * chegar aqui — inclusive o de quem queria escolher outro
+                 * elemento, ou sair da seleção. Sem devolver esses cliques ao
+                 * seu dono, selecionar um grupo prenderia a pessoa nele.
+                 *
+                 * `elementsFromPoint` devolve tudo o que está naquele ponto,
+                 * em ordem, e daí se acha o elemento que estava por baixo.
+                 */
+                onClick={({ inputEvent, isDouble }) => cliqueAtravesDaArea(inputEvent, isDouble)}
                 origin={false} throttleDrag={0}
                 onDragStart={() => { areaTransf.current = { x: caixaGrupo.esq, y: caixaGrupo.topo }; }}
                 onDrag={({ left, top }) => {

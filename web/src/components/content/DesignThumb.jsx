@@ -3,8 +3,16 @@ import { fillToCss, shapeClip, SHAPE_POLY, textFontCqw, estiloCaixa, raioCss } f
 import { ICONS } from '../../lib/icons.js';
 import { estiloTexto, carregarDaComposicao } from '../../lib/fontes.js';
 
-// Miniatura fiel de um design (composição). Usada no hub "Meus Designs" e
-// na prévia de campanhas. Também cobre imagem/pptx quando o item não é composição.
+/*
+ * Miniatura fiel de um design (composição). Usada no hub "Meus Designs", na
+ * prévia de campanhas e na galeria de modelos.
+ *
+ * O corpo do texto tinha um PISO de 6px, para não sumir em miniatura pequena.
+ * O efeito era o contrário do que a miniatura promete: num cartão de 115px,
+ * um texto de apoio pedia 2px, era subido para 6px, e passava a não caber na
+ * própria caixa — a miniatura mostrava o texto cortado numa peça que na TV
+ * está perfeita. Sem o piso, o texto pequeno fica pequeno, que é o que ele é.
+ */
 export function DesignThumb({ item, fitHeight }) {
   const it = item || {};
   const formato = it.formato || '16/9';
@@ -48,7 +56,7 @@ export function DesignThumb({ item, fitHeight }) {
       {els.map((e, i) => (
         <div key={i} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden' }}>
           {e.tipo === 'texto'
-            ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', ...estiloTexto(e), ...estiloCaixa(e), fontSize: 'clamp(6px,' + textFontCqw(e, formato) + 'cqw,60px)', whiteSpace: 'pre-wrap' }}>{e.text}</div>
+            ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', ...estiloTexto(e), ...estiloCaixa(e), fontSize: 'min(' + textFontCqw(e, formato) + 'cqw, 60px)', whiteSpace: 'pre-wrap' }}>{e.text}</div>
             : e.tipo === 'icone'
               ? <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%', opacity: e.opacidade != null ? e.opacidade : 1, ...estiloCaixa(e) }} dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />
             : e.tipo === 'forma'

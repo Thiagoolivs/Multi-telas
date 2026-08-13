@@ -29,8 +29,13 @@ export function PrimeirosPassos({ devices, onIr }) {
   });
 
   useEffect(() => {
+    // A rota devolve { kit, assets, memoria }: ler `cores` na raiz dava sempre
+    // indefinido, e o passo da marca só se completava por imagem enviada.
     brandApi.get()
-      .then((k) => setTemMarca(!!((k && k.cores && k.cores.length) || (k && k.assets && k.assets.length))))
+      .then((r) => setTemMarca(!!(
+        (r && r.kit && r.kit.cores && r.kit.cores.length)
+        || (r && r.assets && r.assets.length)
+      )))
       .catch(() => setTemMarca(false));
   }, []);
 
