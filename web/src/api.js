@@ -11,7 +11,35 @@ async function api(method, path, body) {
     opt.headers['Content-Type'] = 'application/json';
     opt.body = JSON.stringify(body);
   }
-  const res = await fetch(path, opt);
+  /*
+   * Falha de REDE não é falha do servidor, e a diferença importa para quem
+   * está usando o app instalado.
+   *
+   * O `fetch` estoura um TypeError seco ("Failed to fetch") quando o aparelho
+   * está sem conexão. Sem separar esse caso, a tela dizia "erro ao publicar" —
+   * e "erro ao publicar" faz a pessoa achar que fez algo errado, ou pior, que
+   * o sistema recusou. O que aconteceu foi que a mensagem não saiu do celular.
+   *
+   * Marcado com `.offline`, quem chama pode dizer a verdade: não foi enviado,
+   * tente de novo quando a conexão voltar — e as telas continuam no ar.
+   */
+  let res;
+  try {
+    res = await fetch(path, opt);
+  } catch (falha) {
+    /*
+     * O aviso vem do que ACONTECEU com uma chamada de verdade, e não de
+     * `navigator.onLine`. Aquela bandeira mente com frequência: fica em `true`
+     * num wi-fi de hotel que ainda não deixou passar, ou num escritório cuja
+     * saída caiu. A requisição que falhou é a única testemunha confiável.
+     */
+    window.dispatchEvent(new CustomEvent('mt:sem-rede'));
+    const e = new Error('Sem conexão. Nada foi enviado — tente de novo quando a internet voltar.');
+    e.offline = true;
+    e.causa = falha;
+    throw e;
+  }
+  window.dispatchEvent(new CustomEvent('mt:com-rede'));
   if (res.status === 204) return null;
   const data = await res.json().catch(() => null);
   if (!res.ok) {

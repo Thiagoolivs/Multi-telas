@@ -1,0 +1,23 @@
+{
+  "name": "MultiTelas TV",
+  "short_name": "MultiTelas TV",
+  "description": "Transforma esta tela num painel da sua empresa.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "id": "/player.html",
+  "start_url": "/player.html?cloud=1",
+  "scope": "/player.html",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#05070f",
+  "theme_color": "#05070f",
+  "categories": ["business"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/icons/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icone-mascara-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icone-mascara-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

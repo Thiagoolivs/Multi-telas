@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { auth } from './api.js';
 import { AppShell } from './components/layout/AppShell.jsx';
+import { LimiteDeErro } from './components/layout/LimiteDeErro.jsx';
 import { AuthScreen } from './pages/AuthScreen.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
 import { ScreensPage } from './pages/ScreensPage.jsx';
@@ -35,20 +36,46 @@ const META = {
   settings: { title: 'Ajustes', subtitle: 'Conta, integrações e preferências.' },
 };
 
+// A cor da barra do sistema no app instalado. Precisa casar com --c-canvas de
+// cada tema: instalado, o app pinta a barra de status com este valor, e uma
+// barra escura em cima de um painel claro parece defeito de renderização.
+const COR_BARRA = { light: '#F7F8FA', dark: '#0C0E12' };
+
 function useTheme() {
   const [theme, setTheme] = useState(() => localStorage.getItem('mt.theme') || 'light');
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('mt.theme', theme);
+    const etiqueta = document.querySelector('meta[name="theme-color"]');
+    if (etiqueta) etiqueta.setAttribute('content', COR_BARRA[theme] || COR_BARRA.light);
   }, [theme]);
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))];
 }
 
+/*
+ * Onde a sessão começa, lido da URL.
+ *
+ * Dois caminhos chegam aqui com destino já escolhido: a volta do checkout
+ * (`?billing=success|cancel`) e os atalhos do app instalado — aqueles que
+ * aparecem ao segurar o ícone na tela inicial e apontam para `/app/?ir=telas`.
+ * Um atalho que caísse sempre na visão geral não seria atalho.
+ *
+ * A lista de destinos é fechada de propósito: `?ir=` vem da URL, e URL é coisa
+ * que qualquer um escreve.
+ */
+const ATALHOS = ['screens', 'designs', 'brand', 'mural', 'billing', 'alerts'];
+
+function rotaDaUrl() {
+  const q = new URLSearchParams(window.location.search);
+  if (q.get('billing')) return { name: 'billing' };
+  const ir = q.get('ir');
+  if (ir && ATALHOS.includes(ir)) return { name: ir };
+  return { name: 'overview' };
+}
+
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = carregando
-  // Volta do checkout (?billing=success|cancel) cai direto na tela de plano.
-  const [route, setRoute] = useState(() =>
-    new URLSearchParams(window.location.search).get('billing') ? { name: 'billing' } : { name: 'overview' });
+  const [route, setRoute] = useState(rotaDaUrl);
   const [theme, toggleTheme] = useTheme();
 
   const refresh = () => auth.me().then((me) => setSession(me || null));
@@ -108,7 +135,14 @@ export default function App() {
       user={user}
       onLogout={logout}
     >
-      {renderPage()}
+      {/*
+        A chave é a rota: sem ela, uma tela que falhou deixaria o painel preso
+        na mensagem de erro para sempre — trocar de menu não remonta o limite,
+        e a pessoa teria que recarregar mesmo para ir a outro lugar.
+      */}
+      <LimiteDeErro key={route.name}>
+        {renderPage()}
+      </LimiteDeErro>
     </AppShell>
   );
 }
