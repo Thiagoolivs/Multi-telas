@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { cn } from '../../lib/cn.js';
 import { Sidebar } from './Sidebar.jsx';
 import { Topbar } from './Topbar.jsx';
+import { FaixaOffline } from './FaixaOffline.jsx';
 
 // Shell responsivo: sidebar fixa em ≥lg; em telas menores vira drawer sobre
 // um backdrop. O tema (claro/escuro) é controlado aqui e aplicado no <html>.
@@ -31,6 +32,7 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <FaixaOffline />
         <Topbar title={title} onOpenMenu={() => setDrawer(true)} theme={theme} onToggleTheme={onToggleTheme} user={user} onLogout={onLogout} />
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 sm:py-6">{children}</div>

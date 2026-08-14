@@ -13,7 +13,7 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v8';
+const SHELL_CACHE = 'mt-shell-v9';
 const MEDIA_CACHE = 'mt-media-v1';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
@@ -29,6 +29,9 @@ const SHELL_ASSETS = [
   '/js/templates.js', '/js/theme.js', '/js/seasons.js', '/js/adaptive.js',
   '/js/storage.js', '/js/news.js', '/js/render.js', '/js/cloud.js', '/js/player.js',
   '/js/boot.js',
+  // Instalável: sem o manifesto e o ícone no cache, uma TV que reiniciasse
+  // sem rede abriria como página comum, sem a identidade do app instalado.
+  '/player.webmanifest', '/icons/icone-192.png', '/icons/icone-512.png',
 ];
 
 self.addEventListener('install', (e) => {
@@ -50,12 +53,33 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // cross-origin: deixa passar
   if (url.pathname.startsWith('/api/')) return;     // API/SSE: rede
+  /*
+   * O painel tem o worker DELE (/app/sw.js). Este aqui não encosta.
+   *
+   * O escopo deste registro é "/", então ele enxerga as requisições de
+   * qualquer aba do mesmo navegador — inclusive as do painel, enquanto o
+   * worker de lá ainda não assumiu. Sem esta linha, os pacotes do painel iam
+   * parar no cache do player, que existe para caber a mídia de uma TV.
+   */
+  if (url.pathname.startsWith('/app/')) return;
   if (url.pathname.startsWith('/media/')) {
     event.respondWith(cacheFirst(req, MEDIA_CACHE));
     return;
   }
   // Navegação (player.html?cloud=1): ignora a query ao casar com o cache.
   if (req.mode === 'navigate') {
+    /*
+     * SÓ a navegação do player, e o teste é o caminho — não "é uma
+     * navegação qualquer".
+     *
+     * A versão anterior gravava a resposta de QUALQUER navegação sob a chave
+     * '/player.html'. Como o escopo deste worker é "/", bastava abrir a
+     * landing ou o painel numa aba do mesmo navegador para o HTML deles virar
+     * o casco salvo do player. O estrago só aparecia depois, na queda de rede:
+     * a TV subia mostrando a página de login em vez do conteúdo da parede — e
+     * não havia nada na TV que explicasse por quê.
+     */
+    if (url.pathname !== '/player.html') return;
     event.respondWith(navigation(req));
     return;
   }

@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button.jsx';
 import { Field, Input } from '../components/ui/Field.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
+import { PainelInstalar } from '../components/layout/PainelInstalar.jsx';
 import { auth, privacidade } from '../api.js';
 import { cn } from '../lib/cn.js';
 
@@ -155,6 +156,8 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged }) 
           </div>
         </div>
       </Panel>
+
+      <PainelInstalar />
 
       {/* Privacidade e dados (LGPD) */}
       <Panel>
