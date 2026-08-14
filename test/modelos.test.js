@@ -181,6 +181,80 @@ test('nenhum texto estoura a própria caixa, em nenhum formato', () => {
   }
 });
 
+test('palavra que não quebra cabe na largura da caixa', () => {
+  /*
+   * Este nasceu de olhar a galeria: "CONFRATERNIZAÇÃO" numa peça 9/16 saía
+   * como "FRATERNIZA" no meio da tela.
+   *
+   * A conta de ALTURA achava que cabia — ela dividia a palavra em duas linhas
+   * imaginárias e as duas cabiam. Só que palavra não quebra: o navegador
+   * desenha uma linha só e corta o que passa da caixa. O teste de altura
+   * passava e a peça saía errada, que é a pior combinação possível.
+   */
+  for (const { id } of M.listar()) {
+    for (const f of FORMATOS) {
+      for (const e of M.montar(id, f, CORES).elementos) {
+        if (e.tipo !== 'texto') continue;
+        const d = F.dados(e.fonte);
+        const maior = String(e.text).split(/\s+/).reduce((m, p) => Math.max(m, p.length), 0);
+        const largura = maior * e.tamanho * F.larguraCaractere(e.fonte) * (d.caixaAlta ? 1.25 : 1);
+        assert.ok(
+          largura <= e.w + 0.01,
+          id + '/' + f + ' ("' + String(e.text).slice(0, 18) + '"): a maior palavra pede ' +
+          largura.toFixed(1) + '% de largura e a caixa tem ' + e.w + '%',
+        );
+      }
+    }
+  }
+});
+
+test('o número da lista fica dentro da própria bolinha', () => {
+  /*
+   * `y + emPe ? 1.4 : 1.2` é sempre 1.4 — a soma vira a condição do ternário.
+   * O efeito era os três números empilhados no topo da peça, um por cima do
+   * outro, longe das bolinhas que eles deviam numerar. Nenhum teste de "está
+   * dentro da tela" pega isso: 1.4 está dentro da tela.
+   */
+  for (const f of FORMATOS) {
+    const els = M.montar('lista', f, CORES).elementos;
+    const bolinhas = els.filter((e) => e.tipo === 'forma');
+    const numeros = els.filter((e) => e.tipo === 'texto' && /^[123]$/.test(String(e.text)));
+    assert.equal(numeros.length, 3, f + ': deviam ser três números');
+    // Deitada eles ficam lado a lado (mesmo y, x diferente); em pé, um embaixo
+    // do outro. O que não pode é os três no MESMO ponto.
+    const pontos = new Set(numeros.map((n) => Math.round(n.x) + ':' + Math.round(n.y)));
+    assert.equal(pontos.size, 3, f + ': números empilhados no mesmo lugar');
+    numeros.forEach((n, i) => {
+      const b = bolinhas[i];
+      assert.ok(n.y >= b.y && n.y + n.h <= b.y + b.h + 1.5,
+        f + ': o número ' + n.text + ' (y=' + n.y + ') caiu fora da bolinha (y=' + b.y + '..' + (b.y + b.h).toFixed(1) + ')');
+      assert.ok(n.x >= b.x - 0.01 && n.x + n.w <= b.x + b.w + 0.01, f + ': o número ' + n.text + ' saiu da bolinha na horizontal');
+    });
+  }
+});
+
+test('ícone não desce por cima do texto', () => {
+  /*
+   * O calendário do modelo "evento" era medido em % da LARGURA e ficava
+   * quadrado multiplicando pela proporção. Em 21/9 isso deu 18,7% de altura
+   * para 8% de largura, e ele descia por cima do título — que começa 12%
+   * abaixo. Em 16/9 a mesma conta não passava de 14%, e por isso o defeito só
+   * existia no formato que ninguém abria para conferir.
+   */
+  for (const { id } of M.listar()) {
+    for (const f of FORMATOS) {
+      const els = M.montar(id, f, CORES).elementos;
+      for (const ic of els.filter((e) => e.tipo === 'icone')) {
+        for (const tx of els.filter((e) => e.tipo === 'texto')) {
+          const cruza = ic.x < tx.x + tx.w && tx.x < ic.x + ic.w
+            && ic.y < tx.y + tx.h && tx.y < ic.y + ic.h;
+          assert.ok(!cruza, id + '/' + f + ': o ícone invade a caixa de "' + String(tx.text).slice(0, 18) + '"');
+        }
+      }
+    }
+  }
+});
+
 test('o ajuste encolhe o texto, e não a caixa', () => {
   // Crescer a caixa passaria por cima do elemento de baixo, e dois textos
   // sobrepostos são piores que um título um pouco menor.

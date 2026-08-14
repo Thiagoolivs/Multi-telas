@@ -1274,6 +1274,51 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /*
+   * Catálogo de planos, aberto.
+   *
+   * A landing precisa dos preços, e a única forma de ela nunca mentir é ler
+   * do MESMO lugar que cobra. Copiar os números para dentro da página seria
+   * garantir que um dia eles divergem — e o dia em que divergem é o dia em
+   * que alguém assina esperando um preço e recebe outro.
+   *
+   * Não exige login: é informação de vitrine, e ela já está impressa na
+   * página de preços de qualquer produto.
+   */
+  if (parts[1] === 'planos' && req.method === 'GET') {
+    return sendJson(res, 200, {
+      planos: plans.catalog(),
+      faixas: plans.FAIXAS.map((f) => ({ ate: f.ate === Infinity ? null : f.ate, desconto: f.desconto })),
+      creditosBoasVindas: plans.CREDITOS_BOAS_VINDAS,
+      /*
+       * A tabela inteira de 1 a 50 telas, já calculada.
+       *
+       * A alternativa era mandar só as faixas e deixar a landing fazer a
+       * conta. Seria a MESMA conta escrita duas vezes — e é justamente esta
+       * conta que já esteve errada uma vez (desconto aplicado a todas as
+       * telas fazia 20 telas custarem menos que 19). Cinquenta linhas de
+       * JSON são baratas; uma segunda implementação do preço, não.
+       */
+      simulacao: Array.from({ length: 50 }, (_, i) => {
+        const telas = i + 1;
+        const linha = { telas };
+        for (const id of plans.ORDER) {
+          const p = plans.PLANS[id];
+          if (p.sobConsulta || !p.precoTelaCents) continue;
+          const porTela = plans.precoTelaCents(id, telas);
+          linha[id] = {
+            totalCents: plans.mensalidadeCents(id, telas),
+            porTelaCents: porTela,
+            // O desconto que a pessoa de fato sente: quanto a média por tela
+            // já caiu em relação ao preço cheio.
+            desconto: 1 - porTela / p.precoTelaCents,
+          };
+        }
+        return linha;
+      }),
+    });
+  }
+
+  /*
    * Estado do sistema. Só o dono: a lista diz onde estão as chaves e o que
    * está mal configurado, e isso não é assunto de quem só publica conteúdo.
    */
@@ -1774,9 +1819,50 @@ const HOME_HTML = `<!DOCTYPE html>
   <div class="foot">Dica: na TV, abra este site e toque em <strong>Player (TV)</strong>. Use <strong>tela nova</strong> se aparecer a TV antiga.</div>
 </body></html>`;
 
+const LANDING_DIR = path.join(ROOT, 'landing');
+
 async function handleStatic(req, res, urlPath) {
-  // Página inicial com dois caminhos (administrar × virar TV).
-  if (urlPath === '/') {
+  /*
+   * A raiz agora é a landing. Quem chega sem conhecer o produto precisa
+   * entender o que ele faz; quem já é cliente vai direto para /app, e a TV
+   * vai para /tv — os dois caminhos que a página antiga oferecia continuam
+   * existindo, agora como links dentro dela.
+   */
+  if (urlPath === '/' || urlPath === '/index.html') {
+    return fs.readFile(path.join(LANDING_DIR, 'index.html'), (err, data) => {
+      if (err) {
+        // Sem a landing montada, a casa não cai: volta a página simples.
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+        return res.end(HOME_HTML);
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
+      res.end(data);
+    });
+  }
+  /*
+   * Bibliotecas, fontes e o roteiro da landing.
+   *
+   * `landing.js` está num arquivo, e não dentro da página, porque a CSP proíbe
+   * script inline (`script-src 'self'`). Inline, o navegador simplesmente não
+   * executava nada: a página abria estática, sem TV, sem galeria, sem preço —
+   * e sem erro visível para quem não abrisse o console.
+   */
+  if (urlPath === '/landing.js') {
+    return fs.readFile(path.join(LANDING_DIR, 'landing.js'), (err, data) => {
+      if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('não encontrado'); }
+      sendFile(res, path.join(LANDING_DIR, 'landing.js'), data);
+    });
+  }
+  if (urlPath.startsWith('/vendor/')) {
+    const alvo = path.normalize(path.join(LANDING_DIR, urlPath));
+    if (!alvo.startsWith(LANDING_DIR)) { res.writeHead(403); return res.end('Acesso negado'); }
+    return fs.readFile(alvo, (err, data) => {
+      if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('não encontrado'); }
+      sendFile(res, alvo, data);
+    });
+  }
+  // A antiga página de entrada continua alcançável, para quem tem o link.
+  if (urlPath === '/entrar' || urlPath === '/entrar/') {
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
     return res.end(HOME_HTML);
   }
