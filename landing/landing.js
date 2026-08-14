@@ -136,7 +136,16 @@
 
   function montarCena() {
     cena = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
+    /*
+     * `near` em 1, e não em 0,1.
+     *
+     * A precisão do buffer de profundidade não se distribui por igual: ela se
+     * concentra perto da câmera, e a conta que manda é a RAZÃO far/near. Com
+     * 0,1 e 100 o buffer gastava quase toda a resolução nos primeiros metros,
+     * onde não existe nada — a TV mais próxima está a uns 8. Em 1, sobra
+     * precisão exatamente na faixa onde a TV vive.
+     */
+    camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 1, 100);
     camera.position.set(0, 0, 15.5);
 
     render3d = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -153,12 +162,28 @@
     );
     tv.add(moldura);
 
-    // Borda interna, um fio mais claro — é o que dá "acabamento" à peça
+    /*
+     * Borda interna, um fio mais claro — é o que dá "acabamento" à peça.
+     *
+     * As profundidades destas três peças não são valores soltos: elas foram
+     * escolhidas para que NENHUMA face caia na mesma altura de outra.
+     *
+     * Estava assim: a moldura ia de −0,21 a +0,21; o aro, com 0,44 de fundo em
+     * z = 0,01, ia de −0,21 a +0,23 — o fundo dele exatamente no fundo da
+     * moldura; e a tela ficava em 0,23, exatamente na frente do aro. Duas
+     * superfícies na mesma profundidade deixam o cartão de vídeo sem critério
+     * para decidir qual está na frente, e ele decide pixel a pixel, mudando de
+     * ideia a cada quadro: é o chuviscado que aparecia sobre a peça e piscava
+     * quando a TV girava.
+     *
+     * Agora o aro vai de −0,17 a +0,23 (fundo dentro da moldura, sem encostar)
+     * e a tela fica em 0,26, à frente de tudo, com folga.
+     */
     var aro = new THREE.Mesh(
-      new THREE.BoxGeometry(11.16, 6.46, 0.44),
+      new THREE.BoxGeometry(11.16, 6.46, 0.40),
       new THREE.MeshStandardMaterial({ color: 0x1b2b4a, roughness: 0.5, metalness: 0.6 })
     );
-    aro.position.z = 0.01;
+    aro.position.z = 0.03;
     tv.add(aro);
 
     // A tela
@@ -183,7 +208,7 @@
       new THREE.PlaneGeometry(11, 6.3),
       new THREE.MeshBasicMaterial({ map: texturaTela })
     );
-    ecra.position.z = 0.23;
+    ecra.position.z = 0.26;
     tv.add(ecra);
 
     // Pé
