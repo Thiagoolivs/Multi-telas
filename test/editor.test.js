@@ -139,6 +139,60 @@ test('o elemento arrastado não gruda nele mesmo', async () => {
   assert.ok(Math.abs(perto.x - 45) < 0.001, 'não grudou quando devia: ' + perto.x);
 });
 
+/* ---------------- Encaixe ao REDIMENSIONAR ---------------- */
+
+test('redimensionar move só a borda que a alça pegou', async () => {
+  /*
+   * A diferença entre arrastar e redimensionar, e a razão de existir uma
+   * função separada: ao arrastar, a caixa inteira se desloca; ao esticar, as
+   * bordas do lado oposto estão ancoradas. Se elas se mexessem, o elemento
+   * escorregaria enquanto cresce — que é exatamente a sensação de não saber
+   * para que lado ele está indo.
+   */
+  const A = await carregar('alinhar.js');
+  const vizinho = { x: 60, y: 0, w: 20, h: 20 };
+  // Puxando a alça da direita, com a borda direita chegando perto de 60.
+  const r = A.encaixarRedimensionamento({ x: 10, y: 40, w: 49.6, h: 10 }, [vizinho], [1, 0]);
+  assert.equal(r.x, 10, 'a borda esquerda saiu do lugar');
+  assert.ok(Math.abs(r.w - 50) < 0.001, 'largura ficou em ' + r.w);
+  assert.equal(r.guias.x, 60);
+});
+
+test('puxando pela esquerda, a borda da direita fica onde está', async () => {
+  const A = await carregar('alinhar.js');
+  // Borda esquerda em 20,4 → gruda em 20 (nada) ... usa o centro do palco: 50.
+  const r = A.encaixarRedimensionamento({ x: 49.6, y: 40, w: 30, h: 10 }, [], [-1, 0]);
+  assert.ok(Math.abs(r.x - 50) < 0.001, 'x: ' + r.x);
+  assert.ok(Math.abs((r.x + r.w) - 79.6) < 0.001, 'a borda direita andou: ' + (r.x + r.w));
+});
+
+test('a alça do meio de um lado não encaixa o outro eixo', async () => {
+  // Alça leste: só o eixo X tem borda móvel. Encaixar Y ali mexeria numa borda
+  // que a pessoa não pegou.
+  const A = await carregar('alinhar.js');
+  const r = A.encaixarRedimensionamento({ x: 10, y: 89.6, w: 30, h: 10 }, [], [1, 0]);
+  assert.equal(r.y, 89.6, 'mexeu no topo sem ninguém pedir');
+  assert.equal(r.h, 10, 'mexeu na altura sem ninguém pedir');
+  assert.equal(r.guias.y, null);
+});
+
+test('longe de tudo, redimensionar não gruda em nada', async () => {
+  const A = await carregar('alinhar.js');
+  const caixa = { x: 12, y: 33, w: 21, h: 9 };
+  const r = A.encaixarRedimensionamento(caixa, [], [1, 1]);
+  assert.deepEqual({ x: r.x, y: r.y, w: r.w, h: r.h }, caixa);
+  assert.deepEqual(r.guias, { x: null, y: null });
+});
+
+test('a alça de canto encaixa os dois eixos', async () => {
+  const A = await carregar('alinhar.js');
+  // canto sudeste: direita perto de 100, base perto de 50.
+  const r = A.encaixarRedimensionamento({ x: 10, y: 20, w: 89.6, h: 30.3 }, [], [1, 1]);
+  assert.ok(Math.abs((r.x + r.w) - 100) < 0.001, 'direita: ' + (r.x + r.w));
+  assert.ok(Math.abs((r.y + r.h) - 50) < 0.001, 'base: ' + (r.y + r.h));
+  assert.deepEqual(r.guias, { x: 100, y: 50 });
+});
+
 test('encaixa nos dois eixos ao mesmo tempo', async () => {
   const A = await carregar('alinhar.js');
   // x: borda esquerda perto de 0. y: borda de baixo perto de 100.
