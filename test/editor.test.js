@@ -282,3 +282,48 @@ test('a caixa envolvente cobre todo mundo', async () => {
     { esq: 10, topo: 5, dir: 80, base: 45 },
   );
 });
+
+/* ---------------- O formato que a tela pede ---------------- */
+
+test('a tela em pé pede peça em pé', async () => {
+  /*
+   * A galeria de modelos abre dentro de uma tela, e o formato ali não é
+   * escolha livre: começar em 16/9 para um totem em pé produz arte que só se
+   * descobre torta na parede — e ninguém confere isso antes de publicar.
+   */
+  const S = await carregar('screenConfig.js');
+  assert.equal(S.formatoDoLayout('portrait-hero'), '9/16');
+  assert.equal(S.formatoDoLayout('portrait-stack'), '9/16');
+  assert.equal(S.formatoDoLayout('square-hero'), '1/1');
+  assert.equal(S.formatoDoLayout('full'), '16/9');
+  assert.equal(S.formatoDoLayout('quad'), '16/9');
+});
+
+test('layout desconhecido cai na TV deitada, e não em nada', async () => {
+  // Config antiga, layout renomeado, id digitado errado: a galeria tem que
+  // abrir do mesmo jeito. Deitada é como a esmagadora maioria das TVs de
+  // recepção está pendurada.
+  const S = await carregar('screenConfig.js');
+  assert.equal(S.formatoDoLayout('não-existe'), '16/9');
+  assert.equal(S.formatoDoLayout(undefined), '16/9');
+});
+
+test('todo layout resolve para um formato que a galeria entende', async () => {
+  /*
+   * Um layout novo com a orientação escrita errado abriria a galeria no
+   * formato errado em silêncio — e o defeito só apareceria na peça publicada,
+   * torta, na parede de um cliente.
+   *
+   * A checagem passa por `orientationOf`, e não pelo campo cru: um layout sem
+   * orientação declarada (o 'dashboard' é assim desde que nasceu) cai no
+   * padrão documentado, deitada, o que está certo. O que não pode existir é
+   * uma orientação que ninguém saiba traduzir.
+   */
+  const S = await carregar('screenConfig.js');
+  const validas = ['any', 'portrait', 'square', 'landscape'];
+  for (const l of S.LAYOUTS) {
+    const orient = S.orientationOf(l);
+    assert.ok(validas.includes(orient), l.id + ': orientação desconhecida (' + orient + ')');
+    assert.match(S.formatoDoLayout(l.id), /^(16\/9|9\/16|1\/1)$/, l.id + ': formato estranho');
+  }
+});

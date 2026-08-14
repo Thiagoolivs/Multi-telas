@@ -53,6 +53,24 @@ export function layoutsByOrientation(orient) {
 }
 
 export function getLayout(id) { return LAYOUTS.find((l) => l.id === id) || LAYOUTS[0]; }
+
+/*
+ * O formato de peça que uma tela pede, a partir do layout escolhido.
+ *
+ * Serve para a galeria de modelos já abrir no formato certo quando alguém
+ * cria uma composição DENTRO de uma tela. Começar em 16/9 para um totem em pé
+ * produz arte que só se descobre torta na parede — e ninguém confere isso
+ * antes de publicar.
+ *
+ * `any` é a maioria dos layouts e significa "deitada", que é como a esmagadora
+ * maioria das TVs de recepção está pendurada.
+ */
+export function formatoDoLayout(layoutId) {
+  const orient = getLayout(layoutId).orientation;
+  if (orient === 'portrait') return '9/16';
+  if (orient === 'square') return '1/1';
+  return '16/9';
+}
 export function zonesOf(cfg) { return getLayout(cfg && cfg.settings && cfg.settings.layoutId).zones; }
 
 export const THEME_PRESETS = [

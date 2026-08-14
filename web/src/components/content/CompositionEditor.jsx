@@ -5,7 +5,7 @@ import {
   Columns2, Sparkles, Shapes, Star, Undo2, Redo2, Copy, ZoomIn, ZoomOut, Maximize2,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
-  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup,
+  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup, LayoutTemplate,
 } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
@@ -24,6 +24,7 @@ import {
   unidades, caixaDe, reordenarLinhas, linhaDe, grupoDe,
 } from '../../lib/grupos.js';
 import { PainelCamadas } from './PainelCamadas.jsx';
+import { EscolherModelo } from './EscolherModelo.jsx';
 
 const ASPECTS = [
   { id: '16/9', label: 'Retangular', icon: RectangleHorizontal },
@@ -127,6 +128,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [grupoAberto, setGrupoAberto] = useState(null);
   const [busy, setBusy] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [modeloAberto, setModeloAberto] = useState(false);
   const [aiBrief, setAiBrief] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [g1, setG1] = useState('#1e3a8a');
@@ -556,6 +558,37 @@ export function CompositionEditor({ value, onClose, onSave }) {
     catch (err) { alert(err.message || 'Falha no upload'); }
     setBusy(false);
   }
+  /*
+   * Trocar a peça por um modelo, de dentro do editor.
+   *
+   * Existe porque a decisão de "começar de um modelo" quase nunca acontece
+   * antes de abrir o editor: acontece três minutos depois, olhando a tela em
+   * branco. Ter que fechar, voltar à biblioteca e recomeçar é onde a pessoa
+   * desiste e faz a peça com um texto no meio.
+   *
+   * Com trabalho em cima da mesa, pergunta antes. Não é excesso de zelo: o
+   * modelo substitui TUDO, e um clique sem volta em cima de vinte minutos de
+   * trabalho é o tipo de coisa que faz alguém parar de confiar no editor.
+   * (Ainda assim entra como um passo do histórico, então Ctrl+Z devolve.)
+   */
+  function aplicarModelo(peca, formato) {
+    setModeloAberto(false);
+    setSel([]);
+    if (!peca) { editar((d) => ({ ...d, aspect: formato }), null); return; }
+    editar((d) => ({
+      ...d,
+      aspect: peca.formato || d.aspect,
+      bg: peca.bg && peca.bg.kind ? peca.bg : d.bg,
+      els: entrar(peca.elementos),
+      dur: peca.duracao != null ? peca.duracao : d.dur,
+    }), null);
+  }
+
+  function pedirModelo() {
+    if (els.length && !window.confirm('Começar de um modelo substitui o que está no palco. Continuar?')) return;
+    setModeloAberto(true);
+  }
+
   async function runAi() {
     if (!aiBrief.trim()) return;
     setAiBusy(true);
@@ -609,6 +642,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <IconBtn title="Refazer (Ctrl+Shift+Z)" icon={Redo2} disabled={!podeRefazer(hist)} onClick={() => saltar(1)} />
 
         <div className="mx-1 h-5 w-px bg-line" />
+        <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={pedirModelo}>Modelos</Button>
         <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => setAiOpen((o) => !o)}>IA</Button>
         <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Imagem</Button>
         <Button size="sm" variant="secondary" icon={Type} onClick={addText}>Texto</Button>
@@ -653,6 +687,15 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <Button size="sm" variant="ghost" icon={X} onClick={onClose}>Cancelar</Button>
         <Button size="sm" variant="primary" icon={Save} onClick={salvar}>Salvar</Button>
         <input ref={imgInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPickImage} />
+
+      {modeloAberto && (
+        <EscolherModelo
+          aberto
+          formatoSugerido={aspect}
+          onFechar={() => setModeloAberto(false)}
+          onEscolher={aplicarModelo}
+        />
+      )}
       </div>
 
       {aiOpen && (

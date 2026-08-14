@@ -15,6 +15,7 @@ import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
 import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
 // Editor visual (react-moveable) carregado sob demanda — não pesa o painel.
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
+const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
 import { useAsync } from '../lib/useAsync.js';
 import { deviceConfig } from '../api.js';
 import { Sparkles, Wand2 } from 'lucide-react';
@@ -22,7 +23,7 @@ import { Field, Input, Textarea } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { ai } from '../api.js';
 import { CONTENT_TYPES, typeLabel, itemSummary, defaultConfig } from '../lib/contentTypes.js';
-import { zonesOf, ensureZone } from '../lib/screenConfig.js';
+import { zonesOf, ensureZone, formatoDoLayout } from '../lib/screenConfig.js';
 import { cn } from '../lib/cn.js';
 
 // Zona inicial: prefere a "principal" (o destaque), senão a 1ª playlist.
@@ -40,6 +41,7 @@ export function ContentEditorPage({ device, onBack }) {
   const [selected, setSelected] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [compOpen, setCompOpen] = useState(false); // editor visual da composição
+  const [modeloAberto, setModeloAberto] = useState(false); // galeria de modelos
   const [picker, setPicker] = useState(false);
   const [campOpen, setCampOpen] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
@@ -61,6 +63,18 @@ export function ContentEditorPage({ device, onBack }) {
   }, [data, loading, device.name]);
 
   const zones = useMemo(() => (cfg ? zonesOf(cfg) : []), [cfg]);
+
+  /*
+   * O formato que esta TELA pede.
+   *
+   * O layout escolhido já diz a orientação — um totem em pé, uma tela
+   * quadrada. Começar uma peça em 16/9 para um totem produz arte que só se
+   * descobre torta na parede, e ninguém confere isso antes de publicar.
+   */
+  const formatoDaTela = useMemo(
+    () => formatoDoLayout(cfg && cfg.settings && cfg.settings.layoutId),
+    [cfg],
+  );
   const activeZone = zones.find((z) => z.id === zoneId) || zones[0];
 
   // Se o layout mudou e a zona ativa sumiu, volta para a primeira.
@@ -143,12 +157,29 @@ export function ContentEditorPage({ device, onBack }) {
       next.zonas[activeZone.id].items = fn(arr);
     });
   }
-  // Criar do zero. Composição já abre o editor visual — sem passo extra.
+  /*
+   * Criar do zero.
+   *
+   * Composição passa antes pela galeria de modelos. A porta daqui abria o
+   * palco EM BRANCO, que é exatamente o que os modelos existem para evitar —
+   * e eles só estavam alcançáveis pela biblioteca, do outro lado do painel.
+   * Quem está montando a programação de uma tela é justamente quem tem menos
+   * paciência para começar do zero.
+   */
   const addItem = (type) => {
+    if (type === 'composicao') { setModeloAberto(true); return; }
     mutateItems((arr) => { arr.push(CONTENT_TYPES[type].make()); return arr; });
     setSelected(items.length);
-    if (type === 'composicao') setCompOpen(true);
   };
+
+  /* Saiu da galeria: entra na programação e abre o editor já com a peça. */
+  function comecarDe(peca, formato) {
+    setModeloAberto(false);
+    const base = CONTENT_TYPES.composicao.make();
+    mutateItems((arr) => { arr.push(peca ? { ...base, ...peca } : { ...base, formato }); return arr; });
+    setSelected(items.length);
+    setCompOpen(true);
+  }
   // Inserir um design salvo da biblioteca (Meus Designs).
   const addSaved = (item) => {
     mutateItems((arr) => { arr.push(structuredClone(item)); return arr; });
@@ -369,6 +400,17 @@ export function ContentEditorPage({ device, onBack }) {
           />
         )}
       </Dialog>
+
+      {modeloAberto && (
+        <Suspense fallback={null}>
+          <EscolherModelo
+            aberto
+            formatoSugerido={formatoDaTela}
+            onFechar={() => setModeloAberto(false)}
+            onEscolher={comecarDe}
+          />
+        </Suspense>
+      )}
 
       {compOpen && current && current.type === 'composicao' && (
         <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90"><Spinner size={22} /></div>}>
