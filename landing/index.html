@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MultiTelas — a TV parada da sua empresa vira mídia</title>
+<meta name="description" content="Crie a peça em minutos, publique de onde estiver, e a tela se atualiza sozinha. Mídia indoor para TVs corporativas." />
+
+<!--
+  Tudo servido pelo próprio domínio, de propósito.
+
+  A referência que originou esta página puxava Tailwind, ícones e fontes de
+  três CDNs diferentes. Numa landing page isso custa onde mais dói: cada
+  domínio a mais é uma resolução de DNS e um aperto de mão TLS antes de a
+  primeira letra aparecer, e o Tailwind por CDN ainda baixa um compilador
+  inteiro para montar o CSS no navegador do visitante. Aqui o CSS vem pronto,
+  com só as classes usadas (17 KB), e nada depende de um serviço de terceiros
+  estar no ar.
+-->
+<link rel="stylesheet" href="vendor/fontes/fontes.css">
+<link rel="stylesheet" href="vendor/tailwind.css">
+<link rel="stylesheet" href="vendor/fa/all.min.css">
+
+
+<style>
+  html { scroll-behavior: smooth; }
+  body { background: #05070f; overflow-x: hidden; }
+
+  /* ---------- Preloader: uma TV ligando ---------- */
+  #preloader { position: fixed; inset: 0; z-index: 9999; background: #05070f;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+    transition: opacity .7s ease; }
+  .crt { width: min(260px, 60vw); height: 4px; background: #56ccf2; border-radius: 2px;
+    box-shadow: 0 0 24px 4px rgba(86,204,242,.7); transform: scaleX(.05);
+    animation: crt-on 1.1s cubic-bezier(.16,1,.3,1) .15s forwards; }
+  @keyframes crt-on {
+    0%   { transform: scaleX(.05) scaleY(1); }
+    55%  { transform: scaleX(1) scaleY(1); }
+    100% { transform: scaleX(1) scaleY(14); opacity: .18; }
+  }
+  .crt-label { font-size: 12px; letter-spacing: .32em; text-transform: uppercase; color: #56ccf2;
+    opacity: 0; animation: fade-in .6s ease .9s forwards; }
+  @keyframes fade-in { to { opacity: .8; } }
+
+  /* ---------- Palco 3D fixo atrás de tudo ---------- */
+  #palco3d { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  #palco3d canvas { display: block; }
+
+  /*
+   * Véu do herói.
+   *
+   * A TV é o fundo, e fundo com peça acesa atrás de texto branco não se lê —
+   * a primeira versão tinha o "R$ 19,90" atravessando o título. Este degradê
+   * escurece o lado onde o texto mora e deixa a TV inteira aparecendo do
+   * outro. Vem depois da TV na pilha e antes do conteúdo.
+   */
+  #veu { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      linear-gradient(100deg, rgba(5,7,15,.96) 0%, rgba(5,7,15,.88) 34%, rgba(5,7,15,.35) 62%, rgba(5,7,15,.1) 100%),
+      linear-gradient(to bottom, rgba(5,7,15,.75) 0%, transparent 22%, transparent 74%, rgba(5,7,15,.9) 100%); }
+  @media (max-width: 1023px) {
+    /* No celular a TV fica atrás do texto inteiro: aí o véu é parelho. */
+    #veu { background: linear-gradient(to bottom, rgba(5,7,15,.82) 0%, rgba(5,7,15,.72) 45%, rgba(5,7,15,.92) 100%); }
+  }
+
+  /* Halo que acompanha a cor da peça no ar */
+  #halo { position: fixed; z-index: 0; left: 50%; top: 42%; width: 70vw; height: 70vw;
+    max-width: 900px; max-height: 900px; transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(47,111,235,.28) 0%, transparent 62%);
+    filter: blur(30px); transition: background 1.2s ease; pointer-events: none; }
+
+  /* ---------- Grade de fundo ---------- */
+  .grade { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .5;
+    background-image:
+      linear-gradient(rgba(120,160,255,.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(120,160,255,.055) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 90% 60% at 50% 30%, #000 30%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 30%, #000 30%, transparent 75%); }
+
+  /* ---------- Vidro ---------- */
+  .vidro { background: rgba(10,16,32,.62); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255,255,255,.08); }
+  .vidro-forte { background: rgba(10,16,32,.86); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+
+  /* ---------- Texto com brilho ---------- */
+  .gradiente { background: linear-gradient(100deg, #56ccf2 0%, #2f6feb 45%, #a78bfa 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* ---------- Cartão que reage ao mouse ---------- */
+  .cartao { position: relative; transition: transform .45s cubic-bezier(.16,1,.3,1), border-color .35s, background .35s;
+    transform-style: preserve-3d; }
+  .cartao::before { content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0;
+    transition: opacity .35s; pointer-events: none;
+    background: radial-gradient(420px circle at var(--mx,50%) var(--my,50%), rgba(86,204,242,.16), transparent 42%); }
+  .cartao:hover::before { opacity: 1; }
+  .cartao:hover { border-color: rgba(86,204,242,.45); transform: translateY(-8px); }
+
+  /* ---------- Botão com onda ---------- */
+  .botao { position: relative; overflow: hidden; isolation: isolate; }
+  .botao::after { content: ''; position: absolute; inset: 0; z-index: -1; transform: translateY(101%);
+    background: #fff; transition: transform .42s cubic-bezier(.16,1,.3,1); }
+  .botao:hover::after { transform: translateY(0); }
+  .botao:hover { color: #05070f; }
+
+  .pulso { animation: pulso 2.6s infinite; }
+  @keyframes pulso {
+    0%   { box-shadow: 0 0 0 0 rgba(255,183,3,.55); }
+    70%  { box-shadow: 0 0 0 18px rgba(255,183,3,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,183,3,0); }
+  }
+
+  /* ---------- Marquee ---------- */
+  .esteira { display: flex; gap: 3rem; width: max-content; animation: correr 32s linear infinite; }
+  @keyframes correr { to { transform: translateX(-50%); } }
+
+  /* ---------- Barra de progresso do scroll ---------- */
+  #progresso { position: fixed; top: 0; left: 0; height: 2px; width: 0%; z-index: 60;
+    background: linear-gradient(90deg, #56ccf2, #2f6feb, #ffb703); }
+
+  /* ---------- Rolagem ---------- */
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: #05070f; }
+  ::-webkit-scrollbar-thumb { background: #1f3b71; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #2f6feb; }
+
+  /* ---------- Quem prefere menos movimento ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .esteira, .pulso, .crt { animation: none !important; }
+    .crt { transform: scaleX(1); }
+  }
+</style>
+</head>
+
+<body class="font-sans text-slate-200 antialiased selection:bg-mt-brand selection:text-white">
+
+<!-- ============ Preloader ============ -->
+<div id="preloader">
+  <div class="crt"></div>
+  <p class="crt-label">ligando as telas</p>
+</div>
+
+<div id="progresso"></div>
+<div class="grade"></div>
+<div id="halo"></div>
+<div id="palco3d"></div>
+<div id="veu"></div>
+
+<!-- ============ Navegação ============ -->
+<nav id="nav" class="fixed inset-x-0 top-0 z-50 transition-all duration-300">
+  <div class="mx-auto flex h-20 max-w-7xl items-center justify-between px-5 lg:px-8">
+    <a href="#topo" class="flex items-center gap-2.5">
+      <span class="grid h-9 w-9 place-items-center rounded-lg bg-mt-brand text-white shadow-lg shadow-mt-brand/40">
+        <i class="fa-solid fa-display text-sm"></i>
+      </span>
+      <span class="text-lg font-extrabold tracking-tight text-white">Multi<span class="text-mt-beam">Telas</span></span>
+    </a>
+    <div class="hidden items-center gap-8 md:flex">
+      <a href="#como" class="text-sm font-semibold text-mt-ash transition hover:text-white">Como funciona</a>
+      <a href="#editor" class="text-sm font-semibold text-mt-ash transition hover:text-white">Editor</a>
+      <a href="#ia" class="text-sm font-semibold text-mt-ash transition hover:text-white">Com IA</a>
+      <a href="#precos" class="text-sm font-semibold text-mt-ash transition hover:text-white">Preços</a>
+      <a href="#comecar" class="botao rounded-full bg-mt-gold px-5 py-2.5 text-sm font-extrabold text-mt-void transition">
+        Começar de graça
+      </a>
+    </div>
+    <button id="menu-btn" class="md:hidden text-white text-xl" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+  </div>
+  <div id="menu" class="hidden vidro-forte border-t border-white/5 px-5 py-4 md:hidden">
+    <a href="#como" class="block py-2.5 text-sm font-semibold text-mt-ash">Como funciona</a>
+    <a href="#editor" class="block py-2.5 text-sm font-semibold text-mt-ash">Editor</a>
+    <a href="#ia" class="block py-2.5 text-sm font-semibold text-mt-ash">Com IA</a>
+    <a href="#precos" class="block py-2.5 text-sm font-semibold text-mt-ash">Preços</a>
+    <a href="#comecar" class="mt-2 block rounded-full bg-mt-gold px-5 py-2.5 text-center text-sm font-extrabold text-mt-void">Começar de graça</a>
+  </div>
+</nav>
+
+<!-- ============ Herói ============ -->
+<header id="topo" class="relative z-10 flex min-h-[100svh] items-center px-5 pt-24">
+  <div class="mx-auto w-full max-w-7xl text-center lg:max-w-none lg:pl-6 lg:text-left">
+   <div class="lg:max-w-2xl">
+    <div class="reveal mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 backdrop-blur">
+      <span class="relative flex h-2 w-2">
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-mt-beam opacity-75"></span>
+        <span class="relative inline-flex h-2 w-2 rounded-full bg-mt-beam"></span>
+      </span>
+      <span class="text-xs font-bold uppercase tracking-[.18em] text-mt-ash">Mídia indoor para TVs corporativas</span>
+    </div>
+
+    <h1 id="titulo" class="text-[clamp(2.6rem,7vw,5.4rem)] font-extrabold leading-[1.02] tracking-tight text-white">
+      A TV parada da sua empresa
+      <span class="gradiente">vira mídia.</span>
+    </h1>
+
+    <p class="reveal mt-7 max-w-2xl text-[clamp(1.05rem,2vw,1.35rem)] leading-relaxed text-mt-ash">
+      Crie a peça em minutos, publique de onde estiver, e a tela se atualiza sozinha —
+      <strong class="font-semibold text-white">sem ninguém ir até lá com um pendrive.</strong>
+    </p>
+
+    <div class="reveal mt-10 flex flex-col items-center gap-4 sm:flex-row lg:justify-start">
+      <a href="#comecar" class="botao pulso w-full rounded-full bg-mt-gold px-8 py-4 text-base font-extrabold text-mt-void transition sm:w-auto">
+        Começar de graça <i class="fa-solid fa-arrow-right ml-1.5 text-sm"></i>
+      </a>
+      <a href="#como" class="w-full rounded-full border border-white/15 px-8 py-4 text-base font-bold text-white transition hover:border-mt-beam/60 hover:text-mt-beam sm:w-auto">
+        <i class="fa-solid fa-play mr-1.5 text-xs"></i> Ver funcionando
+      </a>
+    </div>
+
+    <p class="reveal mt-6 text-sm text-mt-ash/70">1 tela grátis para sempre · sem cartão</p>
+   </div>
+  </div>
+
+  <div class="absolute bottom-8 left-1/2 -translate-x-1/2 text-center">
+    <p class="mb-2 text-[10px] font-bold uppercase tracking-[.28em] text-mt-ash/60">role para girar</p>
+    <i class="fa-solid fa-chevron-down animate-bounce text-mt-ash/60"></i>
+  </div>
+</header>
+
+<!-- ============ Esteira de provas ============ -->
+<section class="relative z-10 overflow-hidden border-y border-white/5 py-6 vidro">
+  <div class="esteira text-sm font-bold uppercase tracking-[.2em] text-mt-ash/60">
+    <span><i class="fa-solid fa-bolt mr-2 text-mt-beam"></i>atualiza em segundos</span>
+    <span><i class="fa-solid fa-wifi mr-2 text-mt-beam"></i>continua no ar sem internet</span>
+    <span><i class="fa-solid fa-wand-magic-sparkles mr-2 text-mt-beam"></i>campanha inteira por IA</span>
+    <span><i class="fa-solid fa-calendar-check mr-2 text-mt-beam"></i>datas comemorativas sozinhas</span>
+    <span><i class="fa-solid fa-qrcode mr-2 text-mt-beam"></i>mural de fotos por QR</span>
+    <span><i class="fa-solid fa-bolt mr-2 text-mt-beam"></i>atualiza em segundos</span>
+    <span><i class="fa-solid fa-wifi mr-2 text-mt-beam"></i>continua no ar sem internet</span>
+    <span><i class="fa-solid fa-wand-magic-sparkles mr-2 text-mt-beam"></i>campanha inteira por IA</span>
+    <span><i class="fa-solid fa-calendar-check mr-2 text-mt-beam"></i>datas comemorativas sozinhas</span>
+    <span><i class="fa-solid fa-qrcode mr-2 text-mt-beam"></i>mural de fotos por QR</span>
+  </div>
+</section>
+
+<!-- ============ O problema ============ -->
+<section class="relative z-10 mx-auto max-w-7xl px-5 py-28 lg:px-8">
+  <div class="grid items-center gap-14 lg:grid-cols-2">
+    <div>
+      <span class="reveal mb-4 inline-block text-xs font-extrabold uppercase tracking-[.24em] text-mt-gold">O problema</span>
+      <h2 class="reveal text-[clamp(2rem,4vw,3.2rem)] font-extrabold leading-tight text-white">
+        Aquele cartaz na recepção<br>está desatualizado <span class="gradiente">há três meses.</span>
+      </h2>
+      <p class="reveal mt-6 text-lg leading-relaxed text-mt-ash">
+        Não é preguiça. É que trocar dá trabalho: alguém tem que abrir um programa,
+        exportar, gravar num pendrive, atravessar o prédio e mexer na TV.
+        Então ninguém troca — e a tela mais visível da empresa vira paisagem.
+      </p>
+      <div class="reveal mt-8 space-y-3">
+        <div class="flex items-start gap-3 text-mt-ash"><i class="fa-solid fa-xmark mt-1 text-rose-400"></i><span>Pendrive que some, arquivo na versão errada</span></div>
+        <div class="flex items-start gap-3 text-mt-ash"><i class="fa-solid fa-xmark mt-1 text-rose-400"></i><span>Só uma pessoa sabe mexer — e ela está de férias</span></div>
+        <div class="flex items-start gap-3 text-mt-ash"><i class="fa-solid fa-xmark mt-1 text-rose-400"></i><span>"Feliz Dia das Mães" ainda no ar em julho</span></div>
+      </div>
+    </div>
+
+    <div class="reveal grid grid-cols-2 gap-4">
+      <div class="cartao vidro rounded-2xl p-6">
+        <div class="contador text-[clamp(2.2rem,5vw,3.4rem)] font-extrabold leading-none text-white" data-ate="8">0</div>
+        <p class="mt-2 text-sm text-mt-ash">modelos prontos, já na cor da sua marca</p>
+      </div>
+      <div class="cartao vidro rounded-2xl p-6">
+        <div class="text-[clamp(2.2rem,5vw,3.4rem)] font-extrabold leading-none text-white"><span class="contador" data-ate="3">0</span>s</div>
+        <p class="mt-2 text-sm text-mt-ash">do "publicar" até aparecer na parede</p>
+      </div>
+      <div class="cartao vidro col-span-2 rounded-2xl p-6">
+        <div class="text-[clamp(2.2rem,5vw,3.4rem)] font-extrabold leading-none text-white"><span class="contador" data-ate="0">0</span> pendrives</div>
+        <p class="mt-2 text-sm text-mt-ash">você publica do celular, do escritório, de casa</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Como funciona ============ -->
+<section id="como" class="relative z-10 mx-auto max-w-7xl px-5 py-24 lg:px-8">
+  <div class="mb-16 text-center">
+    <span class="reveal mb-4 inline-block text-xs font-extrabold uppercase tracking-[.24em] text-mt-gold">Como funciona</span>
+    <h2 class="reveal text-[clamp(2rem,4vw,3.2rem)] font-extrabold text-white">Três passos, uma vez só.</h2>
+    <p class="reveal mx-auto mt-4 max-w-xl text-lg text-mt-ash">Depois disso, a tela é sua e você publica de onde estiver.</p>
+  </div>
+
+  <div class="grid gap-6 md:grid-cols-3">
+    <article class="cartao vidro rounded-2xl border border-white/8 p-8">
+      <span class="mb-5 inline-grid h-12 w-12 place-items-center rounded-xl bg-mt-brand/15 text-xl font-extrabold text-mt-beam">1</span>
+      <h3 class="text-xl font-extrabold text-white">Ligue a TV</h3>
+      <p class="mt-3 leading-relaxed text-mt-ash">
+        Abra um endereço no navegador da TV, ou num aparelhinho de R$ 250 atrás dela.
+        Ela mostra um código de 6 dígitos — você digita no painel e pronto.
+      </p>
+      <p class="mt-4 rounded-lg bg-black/30 px-3 py-2 font-mono text-sm text-mt-beam">seudominio.com.br/tv</p>
+    </article>
+
+    <article class="cartao vidro rounded-2xl border border-white/8 p-8">
+      <span class="mb-5 inline-grid h-12 w-12 place-items-center rounded-xl bg-mt-brand/15 text-xl font-extrabold text-mt-beam">2</span>
+      <h3 class="text-xl font-extrabold text-white">Crie a peça</h3>
+      <p class="mt-3 leading-relaxed text-mt-ash">
+        Comece de um modelo pronto — já na cor da sua empresa — ou escreva uma frase
+        e deixe a IA montar a campanha inteira.
+      </p>
+      <div class="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
+        <span class="rounded-full bg-white/5 px-3 py-1 text-mt-ash">Aviso</span>
+        <span class="rounded-full bg-white/5 px-3 py-1 text-mt-ash">Promoção</span>
+        <span class="rounded-full bg-white/5 px-3 py-1 text-mt-ash">Evento</span>
+        <span class="rounded-full bg-white/5 px-3 py-1 text-mt-ash">Boas-vindas</span>
+      </div>
+    </article>
+
+    <article class="cartao vidro rounded-2xl border border-white/8 p-8">
+      <span class="mb-5 inline-grid h-12 w-12 place-items-center rounded-xl bg-mt-brand/15 text-xl font-extrabold text-mt-beam">3</span>
+      <h3 class="text-xl font-extrabold text-white">Publique</h3>
+      <p class="mt-3 leading-relaxed text-mt-ash">
+        Escolha as telas e clique. A peça troca no ar, sem reiniciar,
+        sem piscar, sem ninguém sair da cadeira.
+      </p>
+      <p class="mt-4 flex items-center gap-2 text-sm font-semibold text-emerald-400">
+        <i class="fa-solid fa-circle-check"></i> No ar em 3 segundos
+      </p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ Editor ============ -->
+<section id="editor" class="relative z-10 mx-auto max-w-7xl px-5 py-24 lg:px-8">
+  <div class="grid items-center gap-14 lg:grid-cols-2">
+    <div class="reveal order-2 lg:order-1">
+      <div class="cartao vidro overflow-hidden rounded-2xl border border-white/8 p-3">
+        <div class="mb-3 flex items-center gap-1.5 px-2 pt-1">
+          <span class="h-3 w-3 rounded-full bg-rose-400/70"></span>
+          <span class="h-3 w-3 rounded-full bg-amber-400/70"></span>
+          <span class="h-3 w-3 rounded-full bg-emerald-400/70"></span>
+          <span class="ml-3 text-xs font-semibold text-mt-ash">Editor · Promoção da semana</span>
+        </div>
+        <canvas id="mini-editor" class="w-full rounded-xl" width="800" height="450"></canvas>
+      </div>
+    </div>
+
+    <div class="order-1 lg:order-2">
+      <span class="reveal mb-4 inline-block text-xs font-extrabold uppercase tracking-[.24em] text-mt-gold">O editor</span>
+      <h2 class="reveal text-[clamp(2rem,4vw,3.2rem)] font-extrabold leading-tight text-white">
+        Substitui o Canva<br><span class="gradiente">em quase tudo.</span>
+      </h2>
+      <p class="reveal mt-6 text-lg leading-relaxed text-mt-ash">
+        Um editor de verdade, feito para tela grande — e não um formulário com três campos.
+      </p>
+
+      <div class="reveal mt-8 grid gap-4 sm:grid-cols-2">
+        <div class="flex gap-3"><i class="fa-solid fa-clipboard mt-1 text-mt-beam"></i><div><h4 class="font-bold text-white">Cole do Figma</h4><p class="text-sm text-mt-ash">Vem em camadas editáveis, não como print.</p></div></div>
+        <div class="flex gap-3"><i class="fa-solid fa-font mt-1 text-mt-beam"></i><div><h4 class="font-bold text-white">12 famílias</h4><p class="text-sm text-mt-ash">Cada opção desenhada na própria letra.</p></div></div>
+        <div class="flex gap-3"><i class="fa-solid fa-layer-group mt-1 text-mt-beam"></i><div><h4 class="font-bold text-white">Camadas e grupos</h4><p class="text-sm text-mt-ash">Agrupe o logotipo e mova como um só.</p></div></div>
+        <div class="flex gap-3"><i class="fa-solid fa-wand-sparkles mt-1 text-mt-beam"></i><div><h4 class="font-bold text-white">Sombra e borda</h4><p class="text-sm text-mt-ash">Proporcional: igual na TV e no editor.</p></div></div>
+      </div>
+
+      <p class="reveal mt-8 rounded-xl border-l-2 border-mt-beam bg-white/5 px-5 py-4 text-mt-ash">
+        <strong class="text-white">O que você vê é o que vai para a parede.</strong>
+        O editor, a miniatura e a TV desenham a peça com o mesmo código.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ IA ============ -->
+<section id="ia" class="relative z-10 mx-auto max-w-7xl px-5 py-24 lg:px-8">
+  <div class="cartao vidro overflow-hidden rounded-3xl border border-white/8 p-8 sm:p-14">
+    <div class="grid items-center gap-12 lg:grid-cols-2">
+      <div>
+        <span class="reveal mb-4 inline-block text-xs font-extrabold uppercase tracking-[.24em] text-mt-gold">Com inteligência artificial</span>
+        <h2 class="reveal text-[clamp(1.9rem,3.6vw,2.9rem)] font-extrabold leading-tight text-white">
+          Uma frase vira<br>a campanha inteira.
+        </h2>
+        <p class="reveal mt-6 text-lg leading-relaxed text-mt-ash">
+          Você diz o que quer anunciar. Ela devolve as peças, os textos e a ordem em que devem aparecer —
+          na sua cor, com a sua letra, no formato da sua tela.
+        </p>
+        <p class="reveal mt-6 flex items-start gap-3 text-mt-ash">
+          <i class="fa-solid fa-shield-halved mt-1 text-emerald-400"></i>
+          <span>Sem crédito de IA, <strong class="text-white">a tela continua no ar</strong> e o editor continua inteiro. Nada para.</span>
+        </p>
+      </div>
+
+      <div class="reveal">
+        <div class="rounded-2xl border border-white/10 bg-black/40 p-5 font-mono text-sm">
+          <p class="text-mt-ash/60">// você escreve</p>
+          <p id="prompt-ia" class="mt-2 min-h-[3.5rem] text-white"></p>
+          <div class="my-4 h-px bg-white/10"></div>
+          <p class="text-mt-ash/60">// ela devolve</p>
+          <ul class="mt-2 space-y-2 text-mt-beam">
+            <li><i class="fa-solid fa-check mr-2"></i>4 peças, formatos 16/9 e 9/16</li>
+            <li><i class="fa-solid fa-check mr-2"></i>legendas para o Instagram</li>
+            <li><i class="fa-solid fa-check mr-2"></i>quando cada uma deve entrar</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Mais recursos ============ -->
+<section class="relative z-10 mx-auto max-w-7xl px-5 py-24 lg:px-8">
+  <div class="mb-14 text-center">
+    <span class="reveal mb-4 inline-block text-xs font-extrabold uppercase tracking-[.24em] text-mt-gold">E ainda</span>
+    <h2 class="reveal text-[clamp(2rem,4vw,3.2rem)] font-extrabold text-white">Coisas que ninguém lembra de pedir</h2>
+    <p class="reveal mx-auto mt-4 max-w-2xl text-lg text-mt-ash">— e que fazem falta no primeiro mês.</p>
+  </div>
+
+  <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <article class="cartao vidro rounded-2xl border border-white/8 p-7">
+      <i class="fa-solid fa-calendar-check mb-4 text-2xl text-mt-beam"></i>
+      <h3 class="text-lg font-extrabold text-white">Datas que se calculam sozinhas</h3>
+      <p class="mt-2.5 text-sm leading-relaxed text-mt-ash">
+        Dia das Mães é o 2º domingo de maio, e a Páscoa muda todo ano.
+        O sistema calcula a data certa e entra no dia certo — nunca atrasado.
+      </p>
+    </article>
+    <article class="cartao vidro rounded-2xl border border-white/8 p-7">
+      <i class="fa-solid fa-qrcode mb-4 text-2xl text-mt-beam"></i>
+      <h3 class="text-lg font-extrabold text-white">Mural de fotos por QR</h3>
+      <p class="mt-2.5 text-sm leading-relaxed text-mt-ash">
+        Na confraternização, quem está lá aponta o celular para o QR e a foto
+        aparece na TV na hora. Com botão de pânico, para tirar tudo num clique.
+      </p>
+    </article>
+    <article class="cartao vidro rounded-2xl border border-white/8 p-7">
+      <i class="fa-solid fa-wifi mb-4 text-2xl text-mt-beam"></i>
+      <h3 class="text-lg font-extrabold text-white">A internet caiu? Continua no ar</h3>
+      <p class="mt-2.5 text-sm leading-relaxed text-mt-ash">
+        A tela guarda o conteúdo. Se a rede da recepção cair, ela segue exibindo
+        e volta a sincronizar sozinha quando a rede voltar.
+      </p>
+    </article>
+    <article class="cartao vidro rounded-2xl border border-white/8 p-7">
+      <i class="fa-solid fa-music mb-4 text-2xl text-mt-beam"></i>
+      <h3 class="text-lg font-extrabold text-white">Trilha sonora</h3>
+      <p class="mt-2.5 text-sm leading-relaxed text-mt-ash">
+        Música de fundo que abaixa sozinha quando entra um vídeo com voz,
+        e volta depois. Controle ao vivo do painel.
+      </p>
+    </article>
+    <article class="cartao vidro rounded-2xl border border-white/8 p-7">
+      <i class="fa-solid fa-cake-candles mb-4 text-2xl text-mt-beam"></i>
+      <h3 class="text-lg font-extrabold text-white">Aniversariantes do mês</h3>
+      <p class="mt-2.5 text-sm leading-relaxed text-mt-ash">
+        Importe a equipe uma vez. A TV lembra sozinha, no dia,
+        com o nome e a foto de quem faz aniversário.
+      </p>
+    </article>
+    <article class="cartao vidro rounded-2xl border border-white/8 p-7">
+      <i class="fa-solid fa-users mb-4 text-2xl text-mt-beam"></i>
+      <h3 class="text-lg font-extrabold text-white">Equipe com papéis</h3>
+      <p class="mt-2.5 text-sm leading-relaxed text-mt-ash">
+        Convide o marketing para criar e o gerente da loja para publicar,
+        sem dar a chave da casa inteira para todo mundo.
+      </p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ Preços ============ -->
+<section id="precos" class="relative z-10 mx-auto max-w-7xl px-5 py-24 lg:px-8">
+  <div class="mb-14 text-center">
+    <span class="reveal mb-4 inline-block text-xs font-extrabold uppercase tracking-[.24em] text-mt-gold">Preços</span>
+    <h2 class="reveal text-[clamp(2rem,4vw,3.2rem)] font-extrabold text-white">Você paga por tela no ar.</h2>
+    <p class="reveal mx-auto mt-4 max-w-xl text-lg text-mt-ash">Quanto mais telas, menor o preço de cada uma.</p>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-4">
+    <article class="cartao vidro rounded-2xl border border-white/8 p-7">
+      <h3 class="text-sm font-extrabold uppercase tracking-widest text-mt-ash">Grátis</h3>
+      <p class="mt-4 text-4xl font-extrabold text-white">R$ 0</p>
+      <p class="mt-1 text-sm text-mt-ash">1 tela, para sempre</p>
+      <ul class="mt-6 space-y-2.5 text-sm text-mt-ash">
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>Editor completo</li>
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>Modelos prontos</li>
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>0,5 GB de mídia</li>
+      </ul>
+      <a href="#comecar" class="mt-7 block rounded-xl border border-white/15 py-3 text-center text-sm font-bold text-white transition hover:border-mt-beam">Começar</a>
+    </article>
+
+    <article class="cartao vidro rounded-2xl border border-white/8 p-7">
+      <h3 class="text-sm font-extrabold uppercase tracking-widest text-mt-ash">Essencial</h3>
+      <p class="mt-4 text-4xl font-extrabold text-white">R$ 79<span class="text-base font-semibold text-mt-ash">/tela</span></p>
+      <p class="mt-1 text-sm text-mt-ash">por mês</p>
+      <ul class="mt-6 space-y-2.5 text-sm text-mt-ash">
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>10 créditos de IA por tela</li>
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>2 GB por tela</li>
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>Mural de fotos</li>
+      </ul>
+      <a href="#comecar" class="mt-7 block rounded-xl border border-white/15 py-3 text-center text-sm font-bold text-white transition hover:border-mt-beam">Assinar</a>
+    </article>
+
+    <article class="cartao rounded-2xl border-2 border-mt-gold bg-gradient-to-b from-mt-brand/20 to-transparent p-7 shadow-2xl shadow-mt-brand/20">
+      <div class="mb-2 inline-block rounded-full bg-mt-gold px-3 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-mt-void">mais escolhido</div>
+      <h3 class="text-sm font-extrabold uppercase tracking-widest text-mt-ash">Pro</h3>
+      <p class="mt-4 text-4xl font-extrabold text-white">R$ 149<span class="text-base font-semibold text-mt-ash">/tela</span></p>
+      <p class="mt-1 text-sm text-mt-ash">por mês</p>
+      <ul class="mt-6 space-y-2.5 text-sm text-mt-ash">
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>25 créditos de IA por tela</li>
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>10 GB por tela</li>
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>Equipe com papéis</li>
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>Trilha sonora</li>
+      </ul>
+      <a href="#comecar" class="botao mt-7 block rounded-xl bg-mt-gold py-3 text-center text-sm font-extrabold text-mt-void transition">Assinar</a>
+    </article>
+
+    <article class="cartao vidro rounded-2xl border border-white/8 p-7">
+      <h3 class="text-sm font-extrabold uppercase tracking-widest text-mt-ash">Enterprise</h3>
+      <p class="mt-4 text-4xl font-extrabold text-white">Sob consulta</p>
+      <p class="mt-1 text-sm text-mt-ash">a partir de 20 telas</p>
+      <ul class="mt-6 space-y-2.5 text-sm text-mt-ash">
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>25 GB por tela</li>
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>Suporte dedicado</li>
+        <li><i class="fa-solid fa-check mr-2 text-emerald-400"></i>Domínio próprio</li>
+      </ul>
+      <a href="#comecar" class="mt-7 block rounded-xl border border-white/15 py-3 text-center text-sm font-bold text-white transition hover:border-mt-beam">Falar com a gente</a>
+    </article>
+  </div>
+
+  <p class="reveal mt-8 text-center text-sm text-mt-ash">
+    <i class="fa-solid fa-tag mr-1.5 text-mt-gold"></i>
+    Desconto por faixa: a partir de 5 telas, −10%; de 10, −18%; de 20, −25%.
+  </p>
+</section>
+
+<!-- ============ Chamada final ============ -->
+<section id="comecar" class="relative z-10 mx-auto max-w-5xl px-5 py-28 lg:px-8">
+  <div class="cartao vidro relative overflow-hidden rounded-3xl border border-white/10 p-10 text-center sm:p-16">
+    <div class="pointer-events-none absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-mt-brand/30 blur-3xl"></div>
+    <h2 class="relative text-[clamp(2rem,4.5vw,3.4rem)] font-extrabold leading-tight text-white">
+      Sua primeira tela<br><span class="gradiente">no ar hoje.</span>
+    </h2>
+    <p class="relative mx-auto mt-6 max-w-xl text-lg text-mt-ash">
+      Uma tela grátis para sempre. Sem cartão, sem instalação, sem visita técnica.
+    </p>
+    <div class="relative mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+      <a href="/app" class="botao pulso w-full rounded-full bg-mt-gold px-9 py-4 text-base font-extrabold text-mt-void transition sm:w-auto">
+        Criar minha conta <i class="fa-solid fa-arrow-right ml-1.5 text-sm"></i>
+      </a>
+      <a href="#" class="w-full rounded-full border border-white/15 px-9 py-4 text-base font-bold text-white transition hover:border-mt-beam/60 hover:text-mt-beam sm:w-auto">
+        <i class="fa-brands fa-whatsapp mr-1.5"></i> Falar no WhatsApp
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ Rodapé ============ -->
+<footer class="relative z-10 border-t border-white/5 py-14">
+  <div class="mx-auto grid max-w-7xl gap-10 px-5 md:grid-cols-4 lg:px-8">
+    <div class="md:col-span-2">
+      <div class="flex items-center gap-2.5">
+        <span class="grid h-9 w-9 place-items-center rounded-lg bg-mt-brand text-white"><i class="fa-solid fa-display text-sm"></i></span>
+        <span class="text-lg font-extrabold text-white">Multi<span class="text-mt-beam">Telas</span></span>
+      </div>
+      <p class="mt-4 max-w-sm text-sm leading-relaxed text-mt-ash">
+        Mídia indoor para TVs corporativas. A tela mais visível da sua empresa,
+        dizendo o que precisa ser dito hoje.
+      </p>
+    </div>
+    <div>
+      <h4 class="mb-3 text-sm font-bold text-white">Produto</h4>
+      <ul class="space-y-2 text-sm text-mt-ash">
+        <li><a href="#como" class="transition hover:text-mt-beam">Como funciona</a></li>
+        <li><a href="#editor" class="transition hover:text-mt-beam">Editor</a></li>
+        <li><a href="#precos" class="transition hover:text-mt-beam">Preços</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4 class="mb-3 text-sm font-bold text-white">Legal</h4>
+      <ul class="space-y-2 text-sm text-mt-ash">
+        <li><a href="/termos" class="transition hover:text-mt-beam">Termos de uso</a></li>
+        <li><a href="/privacidade" class="transition hover:text-mt-beam">Privacidade</a></li>
+      </ul>
+    </div>
+  </div>
+  <p class="mt-12 text-center text-xs text-mt-ash/50">© 2026 MultiTelas. Todos os direitos reservados.</p>
+</footer>
+
+<!-- ============ Bibliotecas ============ -->
+<script src="vendor/three.min.js"></script>
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  var menosMovimento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ==========================================================
+   * A PEÇA QUE PASSA NA TV
+   *
+   * Desenhada num canvas, aqui, e usada como TEXTURA da tela 3D.
+   * É de propósito: a TV do topo mostra o produto de verdade —
+   * as mesmas peças de partida que o editor entrega — e não um
+   * print. Trocar de peça troca também a luz que a TV joga na
+   * cena, que é o que faz parecer uma tela ligada.
+   * ========================================================== */
+  var tela = document.createElement('canvas');
+  tela.width = 1024; tela.height = 576;
+  var ctx = tela.getContext('2d');
+
+  var PECAS = [
+    {
+      luz: '#2f6feb', fundo: ['#0a1020', '#132447'],
+      desenhar: function (c, w, h, t) {
+        faixa(c, 0.07 * w, 0.11 * h, 0.06 * w, 0.008 * h, '#2f6feb');
+        txt(c, 'COMUNICADO', 0.07 * w, 0.19 * h, 0.028 * w, '800', '#56ccf2', 'left', 4);
+        txt(c, 'O refeitório funciona', 0.07 * w, 0.34 * h, 0.072 * w, '800', '#ffffff', 'left');
+        txt(c, 'em horário estendido', 0.07 * w, 0.45 * h, 0.072 * w, '800', '#ffffff', 'left');
+        txt(c, 'Segunda a sexta, das 8h às 18h', 0.07 * w, 0.62 * h, 0.03 * w, '500', '#93a3c9', 'left');
+      },
+    },
+    {
+      luz: '#e11d48', fundo: ['#e11d48', '#b0143a'],
+      desenhar: function (c, w, h) {
+        txt(c, 'OFERTA DA SEMANA', w / 2, 0.19 * h, 0.032 * w, '700', '#fff6e6', 'center', 6);
+        txt(c, 'R$ 19,90', w / 2, 0.47 * h, 0.155 * w, '800', '#fff6e6', 'center');
+        pilula(c, w / 2 - 0.2 * w, 0.68 * h, 0.4 * w, 0.11 * h, '#fff6e6');
+        txt(c, 'PEÇA NO BALCÃO', w / 2, 0.755 * h, 0.032 * w, '800', '#e11d48', 'center');
+      },
+    },
+    {
+      luz: '#22c55e', fundo: ['#04140d', '#0a3524'],
+      desenhar: function (c, w, h) {
+        txt(c, 'DIAS SEM ACIDENTES', w / 2, 0.22 * h, 0.032 * w, '700', '#a3e635', 'center', 6);
+        txt(c, '127', w / 2, 0.58 * h, 0.24 * w, '800', '#22c55e', 'center');
+        txt(c, 'Nosso recorde é 180. Falta pouco.', w / 2, 0.82 * h, 0.028 * w, '500', '#93a3c9', 'center');
+      },
+    },
+    {
+      luz: '#a78bfa', fundo: ['#120a2e', '#3b1d73'],
+      desenhar: function (c, w, h) {
+        txt(c, 'Bem-vinda,', w / 2, 0.34 * h, 0.052 * w, '400', '#c4b5fd', 'center');
+        txt(c, 'Dra. Helena Prado', w / 2, 0.52 * h, 0.078 * w, '700', '#ffffff', 'center');
+        faixa(c, w / 2 - 0.08 * w, 0.62 * h, 0.16 * w, 0.006 * h, '#a78bfa');
+        txt(c, 'É um prazer receber você', w / 2, 0.75 * h, 0.028 * w, '500', '#c4b5fd', 'center');
+      },
+    },
+  ];
+
+  function txt(c, s, x, y, tam, peso, cor, alinha, espaco) {
+    c.save();
+    c.font = peso + ' ' + tam + 'px Manrope, system-ui, sans-serif';
+    c.fillStyle = cor;
+    c.textAlign = alinha || 'left';
+    c.textBaseline = 'middle';
+    if (espaco && 'letterSpacing' in c) c.letterSpacing = espaco + 'px';
+    c.fillText(s, x, y);
+    c.restore();
+  }
+  function faixa(c, x, y, w, h, cor) { c.fillStyle = cor; c.fillRect(x, y, w, h); }
+  function pilula(c, x, y, w, h, cor) {
+    c.fillStyle = cor; c.beginPath();
+    var r = h / 2;
+    c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+    c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); c.fill();
+  }
+
+  var atual = 0, proxima = 1, transicao = 0, ultimaTroca = performance.now();
+  var DURACAO = 3400, VARRIDA = 700;
+
+  function pintarPeca(c, peca, w, h) {
+    var g = c.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, peca.fundo[0]); g.addColorStop(1, peca.fundo[1]);
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    peca.desenhar(c, w, h);
+  }
+
+  function desenharTela(agora) {
+    var w = tela.width, h = tela.height;
+    var passado = agora - ultimaTroca;
+
+    if (passado > DURACAO + VARRIDA) {
+      atual = proxima; proxima = (proxima + 1) % PECAS.length;
+      ultimaTroca = agora; passado = 0;
+    }
+    transicao = passado > DURACAO ? Math.min(1, (passado - DURACAO) / VARRIDA) : 0;
+
+    pintarPeca(ctx, PECAS[atual], w, h);
+
+    // A troca é uma VARRIDA lateral, como corte de vinheta — some melhor numa
+    // tela pequena do que um esmaecer, que a essa distância vira borrão.
+    if (transicao > 0) {
+      var corte = fac(transicao) * w;
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, 0, corte, h); ctx.clip();
+      pintarPeca(ctx, PECAS[proxima], w, h);
+      ctx.restore();
+      ctx.fillStyle = 'rgba(255,255,255,.65)';
+      ctx.fillRect(corte - 3, 0, 3, h);
+    }
+
+    // Brilho de varredura, discreto: é o que faz o olho ler "tela ligada".
+    var brilho = ctx.createLinearGradient(0, 0, w, h);
+    brilho.addColorStop(0, 'rgba(255,255,255,.05)');
+    brilho.addColorStop(0.5, 'rgba(255,255,255,0)');
+    ctx.fillStyle = brilho; ctx.fillRect(0, 0, w, h);
+  }
+  function fac(t) { return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+  function corNoAr() { return PECAS[transicao > .5 ? proxima : atual].luz; }
+
+  /* ==========================================================
+   * A TV EM 3D
+   *
+   * Montada com caixas, sem arquivo de modelo: assim a página
+   * continua sendo um arquivo só, carrega rápido e não depende
+   * de nenhum servidor de assets.
+   * ========================================================== */
+  var palco = document.getElementById('palco3d');
+  var temWebGL = (function () {
+    try {
+      var cv = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && (cv.getContext('webgl') || cv.getContext('experimental-webgl')));
+    } catch (e) { return false; }
+  })();
+
+  var cena, camera, render3d, tv, texturaTela, luzTela, relogio;
+
+  function montarCena() {
+    cena = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 0, 15.5);
+
+    render3d = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    render3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    render3d.setSize(window.innerWidth, window.innerHeight);
+    palco.appendChild(render3d.domElement);
+
+    tv = new THREE.Group();
+
+    // Moldura
+    var moldura = new THREE.Mesh(
+      new THREE.BoxGeometry(11.6, 6.9, 0.42),
+      new THREE.MeshStandardMaterial({ color: 0x0d1220, roughness: 0.34, metalness: 0.85 })
+    );
+    tv.add(moldura);
+
+    // Borda interna, um fio mais claro — é o que dá "acabamento" à peça
+    var aro = new THREE.Mesh(
+      new THREE.BoxGeometry(11.16, 6.46, 0.44),
+      new THREE.MeshStandardMaterial({ color: 0x1b2b4a, roughness: 0.5, metalness: 0.6 })
+    );
+    aro.position.z = 0.01;
+    tv.add(aro);
+
+    // A tela
+    texturaTela = new THREE.CanvasTexture(tela);
+    /*
+     * Mipmap LIGADO, e é o que salva a legibilidade.
+     *
+     * A tela aparece bem inclinada: a metade que está mais longe fica
+     * comprimida na horizontal, e sem mipmap o "R$ 19,90" virava um borrão de
+     * listras verticais. Mipmap com filtro anisotrópico é exatamente o remédio
+     * para superfície em ângulo.
+     *
+     * O custo de remontar a pirâmide é real, então a textura não é atualizada
+     * a cada quadro: 20 vezes por segundo basta para uma vinheta trocando de
+     * peça, e ninguém percebe a diferença.
+     */
+    texturaTela.generateMipmaps = true;
+    texturaTela.minFilter = THREE.LinearMipmapLinearFilter;
+    texturaTela.magFilter = THREE.LinearFilter;
+    texturaTela.anisotropy = render3d.capabilities.getMaxAnisotropy();
+    var ecra = new THREE.Mesh(
+      new THREE.PlaneGeometry(11, 6.3),
+      new THREE.MeshBasicMaterial({ map: texturaTela })
+    );
+    ecra.position.z = 0.23;
+    tv.add(ecra);
+
+    // Pé
+    var pescoco = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 1.1, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0x0d1220, roughness: 0.4, metalness: 0.8 })
+    );
+    pescoco.position.y = -3.95;
+    tv.add(pescoco);
+    var base = new THREE.Mesh(
+      new THREE.BoxGeometry(4.4, 0.24, 1.5),
+      new THREE.MeshStandardMaterial({ color: 0x0d1220, roughness: 0.4, metalness: 0.8 })
+    );
+    base.position.y = -4.6;
+    tv.add(base);
+
+    cena.add(tv);
+
+    cena.add(new THREE.AmbientLight(0xffffff, 0.42));
+    var direta = new THREE.DirectionalLight(0xffffff, 0.75);
+    direta.position.set(5, 6, 9);
+    cena.add(direta);
+    var contra = new THREE.DirectionalLight(0x56ccf2, 0.5);
+    contra.position.set(-7, -3, -5);
+    cena.add(contra);
+
+    // A luz que a própria peça joga para frente
+    luzTela = new THREE.PointLight(0x2f6feb, 2.2, 26);
+    luzTela.position.set(0, 0, 4.2);
+    cena.add(luzTela);
+
+    relogio = new THREE.Clock();
+  }
+
+  /* Onde a TV está, em função do scroll. */
+  var alvo = { rotY: -0.42, rotX: 0.04, posX: 3.4, posY: -0.3, posZ: 0, escala: 0.92 };
+  var suave = Object.assign({}, alvo);
+  var mouse = { x: 0, y: 0 };
+  var visivel = true;
+  var ultimoQuadroTela = 0;
+
+  function ligarScroll() {
+    gsap.registerPlugin(ScrollTrigger);
+
+    /*
+     * O GIRO. A TV começa levemente virada, endireita quando o texto do herói
+     * está sendo lido, e continua girando conforme se desce — é o movimento
+     * que o scroll comanda. `scrub` amarra o ângulo à posição da barra de
+     * rolagem em vez de disparar uma animação de duração fixa: o dedo da
+     * pessoa é que gira a TV, e não um cronômetro.
+     */
+    var largo = window.innerWidth >= 1024;
+    gsap.timeline({
+      scrollTrigger: {
+        trigger: '#topo',
+        start: 'top top',
+        endTrigger: '#editor',
+        end: 'top center',
+        scrub: 1.1,
+      },
+    })
+      .fromTo(alvo,
+        { rotY: -0.42, rotX: 0.04, posX: largo ? 3.4 : 0, posY: -0.3, posZ: 0, escala: largo ? 0.92 : 0.8 },
+        { rotY: 0.66, rotX: -0.13, posX: largo ? 1.2 : 0, posY: 1.8, posZ: -8, escala: 0.66, ease: 'none' });
+
+    // A moldura some de vez quando a página passa do editor: dali em diante
+    // ela só atrapalharia a leitura.
+    ScrollTrigger.create({
+      trigger: '#editor',
+      start: 'top center',
+      onEnter: function () { gsap.to(palco, { opacity: 0, duration: .6 }); visivel = false; },
+      onLeaveBack: function () { gsap.to(palco, { opacity: 1, duration: .6 }); visivel = true; },
+    });
+
+    // Barra de progresso
+    ScrollTrigger.create({
+      start: 0, end: 'max',
+      onUpdate: function (self) {
+        document.getElementById('progresso').style.width = (self.progress * 100) + '%';
+      },
+    });
+
+    // Aparições
+    gsap.utils.toArray('.reveal').forEach(function (el, i) {
+      gsap.fromTo(el, { y: 26, opacity: 0 }, {
+        y: 0, opacity: 1, duration: .8, ease: 'power3.out', delay: (i % 4) * 0.06,
+        scrollTrigger: { trigger: el, start: 'top 88%' },
+      });
+    });
+    gsap.utils.toArray('.cartao').forEach(function (el) {
+      gsap.fromTo(el, { y: 40, opacity: 0, scale: .97 }, {
+        y: 0, opacity: 1, scale: 1, duration: .7, ease: 'power3.out',
+        scrollTrigger: { trigger: el, start: 'top 90%' },
+      });
+    });
+
+    // Contadores
+    gsap.utils.toArray('.contador').forEach(function (el) {
+      var ate = Number(el.getAttribute('data-ate')) || 0;
+      var obj = { v: 0 };
+      gsap.to(obj, {
+        v: ate, duration: 1.4, ease: 'power2.out',
+        scrollTrigger: { trigger: el, start: 'top 88%' },
+        onUpdate: function () { el.textContent = Math.round(obj.v); },
+      });
+    });
+  }
+
+  function animar() {
+    requestAnimationFrame(animar);
+    var agora = performance.now();
+
+    if (agora - ultimoQuadroTela > 50) {
+      ultimoQuadroTela = agora;
+      desenharTela(agora);
+      if (texturaTela) texturaTela.needsUpdate = true;
+    }
+
+    // O halo de fundo segue a cor da peça no ar.
+    var cor = corNoAr();
+    var halo = document.getElementById('halo');
+    if (halo.dataset.cor !== cor) {
+      halo.dataset.cor = cor;
+      halo.style.background = 'radial-gradient(circle, ' + cor + '46 0%, transparent 62%)';
+    }
+
+    if (!temWebGL || !visivel) return;
+
+    // Suaviza tudo: o scroll e o mouse mandam o ALVO, e a TV persegue.
+    // Sem isso o movimento fica "digital", preso ao quadro.
+    ['rotY', 'rotX', 'posX', 'posY', 'posZ', 'escala'].forEach(function (k) {
+      suave[k] += (alvo[k] - suave[k]) * 0.08;
+    });
+
+    var respiro = menosMovimento ? 0 : Math.sin(agora / 2200) * 0.035;
+    tv.rotation.y = suave.rotY + mouse.x * 0.16;
+    tv.rotation.x = suave.rotX + mouse.y * 0.1 + respiro;
+    tv.position.x = suave.posX;
+    tv.position.y = suave.posY + (menosMovimento ? 0 : Math.sin(agora / 1800) * 0.12);
+    tv.position.z = suave.posZ;
+    tv.scale.setScalar(suave.escala);
+
+    if (luzTela) {
+      luzTela.color.set(cor);
+      luzTela.intensity = 2.0 + Math.sin(agora / 700) * 0.16;
+    }
+
+    render3d.render(cena, camera);
+  }
+
+  /* ---------- Miniatura do editor (2D) ---------- */
+  function miniEditor() {
+    var cv = document.getElementById('mini-editor');
+    if (!cv) return;
+    var c = cv.getContext('2d');
+    var w = cv.width, h = cv.height;
+    function quadro() {
+      pintarPeca(c, PECAS[1], w, h);
+      // Alças de seleção sobre o preço, como no editor de verdade
+      c.strokeStyle = 'rgba(120,160,255,.95)'; c.lineWidth = 2;
+      c.strokeRect(0.08 * w, 0.3 * h, 0.84 * w, 0.28 * h);
+      [[0.08, 0.3], [0.5, 0.3], [0.92, 0.3], [0.08, 0.44], [0.92, 0.44], [0.08, 0.58], [0.5, 0.58], [0.92, 0.58]]
+        .forEach(function (p) {
+          c.fillStyle = '#0a1020'; c.beginPath(); c.arc(p[0] * w, p[1] * h, 5, 0, 6.3); c.fill();
+          c.strokeStyle = 'rgba(120,160,255,.95)'; c.stroke();
+        });
+    }
+    quadro();
+  }
+
+  /* ---------- Digitação do prompt da IA ---------- */
+  function digitar() {
+    var el = document.getElementById('prompt-ia');
+    if (!el) return;
+    var frases = [
+      'promoção de terça no restaurante, 20% no almoço',
+      'campanha de segurança para a fábrica, tom sério',
+      'boas-vindas para a visita da diretoria amanhã',
+    ];
+    var i = 0, j = 0, apagando = false;
+    (function passo() {
+      var f = frases[i];
+      el.textContent = f.slice(0, j) + '▋';
+      if (!apagando && j < f.length) { j++; setTimeout(passo, 42); }
+      else if (!apagando) { apagando = true; setTimeout(passo, 1900); }
+      else if (j > 0) { j--; setTimeout(passo, 18); }
+      else { apagando = false; i = (i + 1) % frases.length; setTimeout(passo, 260); }
+    })();
+  }
+
+  /* ---------- Eventos ---------- */
+  window.addEventListener('resize', function () {
+    if (!temWebGL || !render3d) return;
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    render3d.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  window.addEventListener('pointermove', function (e) {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = (e.clientY / window.innerHeight) * 2 - 1;
+  });
+
+  // Brilho que segue o mouse dentro de cada cartão
+  document.querySelectorAll('.cartao').forEach(function (card) {
+    card.addEventListener('pointermove', function (e) {
+      var r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+      card.style.setProperty('--my', (e.clientY - r.top) + 'px');
+    });
+  });
+
+  // Navegação: vidro mais opaco depois do topo
+  var nav = document.getElementById('nav');
+  window.addEventListener('scroll', function () {
+    nav.classList.toggle('vidro-forte', window.scrollY > 40);
+    nav.classList.toggle('shadow-xl', window.scrollY > 40);
+  });
+  document.getElementById('menu-btn').addEventListener('click', function () {
+    document.getElementById('menu').classList.toggle('hidden');
+  });
+  document.querySelectorAll('#menu a').forEach(function (a) {
+    a.addEventListener('click', function () { document.getElementById('menu').classList.add('hidden'); });
+  });
+
+  /* ---------- Partida ---------- */
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      var pre = document.getElementById('preloader');
+      pre.style.opacity = '0';
+      setTimeout(function () { pre.style.display = 'none'; }, 700);
+
+      if (temWebGL) montarCena();
+      ligarScroll();
+      animar();
+      miniEditor();
+      digitar();
+
+      // Entrada do título, letra por bloco
+      gsap.fromTo('#titulo', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 1.1, ease: 'power4.out' });
+    }, menosMovimento ? 100 : 1400);
+  });
+})();
+</script>
+</body>
+</html>
