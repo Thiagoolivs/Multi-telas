@@ -184,11 +184,21 @@
       montar: function (f, p) {
         var m = margem(f);
         var k = escala(f);
+        /*
+         * O ícone é medido pela ALTURA, e a largura sai dela.
+         *
+         * Ao contrário, 8% de largura viravam 18,7% de altura numa peça 21/9
+         * — o calendário descia por cima do "CONFRATERNIZAÇÃO", que começa em
+         * 26%. Medindo pela altura, ele ocupa a mesma fatia vertical em
+         * qualquer formato e o título sempre cabe embaixo dele.
+         */
+        var altIcone = 9;
+        var largIcone = altIcone / razao(f);
         return {
           bg: { kind: 'cor', cor: 'linear-gradient(150deg, ' + p.fundo + ', ' + p.fundoAlt + ')' },
           elementos: [
             forma({ x: 0, y: 0, w: 100, h: 3, fill: p.marca }),
-            icone({ name: 'calendar', x: 46, y: 14, w: 8, h: quadrado(8, f), cor: p.marca }),
+            icone({ name: 'calendar', x: 50 - largIcone / 2, y: 14, w: largIcone, h: altIcone, cor: p.marca }),
             texto({ text: 'CONFRATERNIZAÇÃO', x: 8, y: 26, w: 84, h: 16, tamanho: 8 * k, peso: 900, fonte: 'condensada' }),
             texto({ text: '20 de dezembro · 19h', x: 8, y: 44, w: 84, h: 6, tamanho: 4 * k, peso: 700, cor: p.marca }),
             texto({ text: 'Salão de eventos · 3º andar', x: 8, y: 100 - m.y - 7, w: 84, h: 5, tamanho: 2.8 * k, peso: 500, cor: p.apoio }),
@@ -262,10 +272,20 @@
           // Em pé, empilha; deitada, lado a lado. A mesma lista nos dois
           // formatos só funciona se ela mudar de arranjo junto com a peça.
           var x = emPe ? 12 : 6 + i * 30.7;
-          var y = emPe ? 22 + i * 9 : 26;
+          /*
+           * Em pé, os três itens ficavam a 9% de altura um do outro e
+           * terminavam na metade da peça — os outros 54% da tela em branco.
+           * Num totem isso não lê como "espaço": lê como peça inacabada. O
+           * passo de 22% distribui a lista pela altura toda, que é o que a
+           * peça deitada já fazia na largura.
+           */
+          var y = emPe ? 28 + i * 22 : 26;
           var w = emPe ? 76 : 28;
           els.push(forma({ x: x, y: y, w: emPe ? 7 : 6, h: quadrado(emPe ? 7 : 6, f), fill: p.marca, radius: 50 }));
-          els.push(texto({ text: String(i + 1), x: x, y: y + emPe ? 1.4 : 1.2, w: emPe ? 7 : 6, h: 4, tamanho: 3 * k, peso: 900, cor: p.textoNaMarca }));
+          // Os parênteses importam: sem eles a conta era `(y + emPe) ? 1.4 : 1.2`,
+          // que é sempre verdadeiro — e os três números iam parar em y = 1.4,
+          // empilhados no topo da peça em vez de dentro das próprias bolinhas.
+          els.push(texto({ text: String(i + 1), x: x, y: y + (emPe ? 1.4 : 1.2), w: emPe ? 7 : 6, h: 4, tamanho: 3 * k, peso: 900, cor: p.textoNaMarca }));
           els.push(texto({
             text: t,
             x: emPe ? x + 10 : x, y: emPe ? y + quadrado(1.6, f) : y + quadrado(emPe ? 7 : 6, f) + 2,
@@ -307,6 +327,24 @@
   }
   function raizGlobal() { return typeof globalThis !== 'undefined' ? globalThis : null; }
 
+  /*
+   * O texto vai sair em MAIÚSCULA?
+   *
+   * Não basta olhar a família (que pode ter caixa alta forçada) nem o campo
+   * `caixaAlta` do elemento: o modelo pode simplesmente ter o texto digitado
+   * em maiúscula, como "PEÇA NO BALCÃO". Nos três casos o desenho ocupa cerca
+   * de 25% a mais de largura, e ignorar o terceiro caso foi o que fez essa
+   * chamada quebrar em duas linhas e transbordar da pílula em 9/16 — enquanto
+   * a conta aqui dizia, tranquila, que cabia numa linha só.
+   */
+  function emMaiuscula(txt, fonte, caixaAlta) {
+    if (caixaAlta) return true;
+    var F = raizGlobal() && raizGlobal().MTFontes;
+    if (F && F.dados && F.dados(fonte).caixaAlta) return true;
+    var s = String(txt || '');
+    return /\p{Lu}/u.test(s) && !/\p{Ll}/u.test(s);
+  }
+
   function linhasDe(txt, larguraCaixa, corpo, fonte, caixaAlta) {
     /*
      * MAIÚSCULA é mais larga. A tabela de larguras é a média de um texto
@@ -316,11 +354,17 @@
      * de propósito para o lado seguro, porque um título 8% menor ninguém nota
      * e um título cortado todo mundo nota.
      */
-    var alta = caixaAlta || (raizGlobal().MTFontes && raizGlobal().MTFontes.dados(fonte).caixaAlta);
-    var largura = larguraCaractere(fonte) * (alta ? 1.25 : 1);
+    var largura = larguraCaractere(fonte) * (emMaiuscula(txt, fonte, caixaAlta) ? 1.25 : 1);
     var porLinha = Math.max(1, Math.floor(larguraCaixa / (corpo * largura)));
     return String(txt || '').split('\n').reduce(function (n, linha) {
       return n + Math.max(1, Math.ceil(linha.length / porLinha));
+    }, 0);
+  }
+
+  /* A maior palavra do texto — a menor coisa que ainda assim não quebra. */
+  function maiorPalavra(txt) {
+    return String(txt || '').split(/\s+/).reduce(function (m, p) {
+      return Math.max(m, p.length);
     }, 0);
   }
 
@@ -334,14 +378,24 @@
         // Altura ocupada, em % da ALTURA da peça: 1 cqw vale `R` por cento dela.
         var linhas = linhasDe(e.text, e.w, corpo, e.fonte, e.caixaAlta);
         var alto = linhas * corpo * R * el;
-        // Uma linha só não pode ser mais larga que a caixa: nesse caso ela não
-        // quebra, ela é CORTADA nas laterais.
-        // 3% de folga: uma linha que termina exatamente na borda da caixa é
-        // cortada por arredondamento de pixel na hora de desenhar.
+        /*
+         * O que NÃO QUEBRA precisa caber na largura da caixa, senão é cortado
+         * nas laterais em vez de descer para a linha de baixo.
+         *
+         * A conta de altura sozinha não pega isto. "CONFRATERNIZAÇÃO" numa
+         * peça 9/16 era contado como duas linhas, cabia em altura e passava —
+         * só que é UMA palavra, e palavra não quebra: o navegador desenhava
+         * uma linha só, larga demais, e a peça saía com "FRATERNIZA" no meio
+         * da tela. Então a medida é a maior palavra, e não a linha média.
+         *
+         * 3% de folga: uma linha que termina exatamente na borda da caixa é
+         * cortada por arredondamento de pixel na hora de desenhar.
+         */
         var util = e.w * 0.97;
-        var larga = linhas === 1 && String(e.text).indexOf('\n') < 0
-          && String(e.text).length * corpo * larguraCaractere(e.fonte)
-             * ((e.caixaAlta || (raizGlobal().MTFontes && raizGlobal().MTFontes.dados(e.fonte).caixaAlta)) ? 1.25 : 1) > util;
+        var alta = emMaiuscula(e.text, e.fonte, e.caixaAlta);
+        var inteiro = linhas === 1 && String(e.text).indexOf('\n') < 0;
+        var indivisivel = inteiro ? String(e.text).length : maiorPalavra(e.text);
+        var larga = indivisivel * corpo * larguraCaractere(e.fonte) * (alta ? 1.25 : 1) > util;
         if (alto <= e.h && !larga) break;
         corpo *= 0.93;
       }
