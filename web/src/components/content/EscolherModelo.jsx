@@ -28,9 +28,20 @@ const FORMATOS = [
   { id: '21/9', rotulo: 'Banner', icone: Columns2 },
 ];
 
-export function EscolherModelo({ aberto, onFechar, onEscolher }) {
-  const [formato, setFormato] = useState('16/9');
+/*
+ * `formatoSugerido` chega de quem sabe para onde a peça vai.
+ *
+ * Abrindo a galeria dentro de uma TELA, o formato não é uma escolha livre: um
+ * totem em pé pede 9/16, e começar em 16/9 ali produz uma peça que só se
+ * descobre torta na parede. Quem abre da biblioteca continua escolhendo à mão,
+ * porque ali a peça ainda não tem destino.
+ */
+export function EscolherModelo({ aberto, onFechar, onEscolher, formatoSugerido }) {
+  const [formato, setFormato] = useState(formatoSugerido || '16/9');
   const [cores, setCores] = useState(null);
+
+  // O sugerido pode chegar depois (a config da tela carrega por fetch).
+  useEffect(() => { if (formatoSugerido) setFormato(formatoSugerido); }, [formatoSugerido]);
 
   useEffect(() => {
     if (!aberto) return;

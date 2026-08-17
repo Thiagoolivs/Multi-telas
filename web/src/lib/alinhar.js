@@ -99,6 +99,64 @@ export function encaixar(caixa, outros, tolerancia) {
   };
 }
 
+/*
+ * Encaixa uma caixa que está sendo REDIMENSIONADA.
+ *
+ * É um problema diferente de arrastar, e por isso não dava para reaproveitar o
+ * `encaixar` acima. Ao arrastar, a caixa inteira se desloca e as quatro bordas
+ * andam juntas. Ao redimensionar, só as bordas que a alça puxa se movem — as
+ * outras duas estão ancoradas e não podem sair do lugar, senão o elemento
+ * "escorrega" enquanto cresce, que é exatamente a sensação de não saber para
+ * que lado ele está indo.
+ *
+ * `direcao` é o par que o Moveable entrega: [-1, 0, 1] em cada eixo, dizendo
+ * qual borda a pessoa pegou. [1, 1] é a alça de baixo à direita; [-1, 0] é a
+ * do meio da esquerda.
+ *
+ * Sem isto, redimensionar era a única operação do editor sem encaixe nenhum:
+ * dava para arrastar um título e ele grudava no vizinho, mas ao esticá-lo até
+ * a mesma linha ele passava reto — nada indicava onde parar.
+ */
+export function encaixarRedimensionamento(caixa, outros, direcao, tolerancia) {
+  const tol = tolerancia != null ? tolerancia : TOLERANCIA;
+  const a = ancoras(outros);
+  const l = limites(caixa);
+  const [dx, dy] = direcao || [0, 0];
+
+  // A borda móvel de um eixo, grudada na âncora mais próxima. Devolve o
+  // deslocamento a aplicar e a linha a desenhar.
+  const maisPerto = (pos, lista) => {
+    let melhor = null;
+    for (const anc of lista) {
+      const dist = Math.abs(anc.v - pos);
+      if (dist > tol) continue;
+      if (!melhor || dist < melhor.dist) melhor = { desloc: anc.v - pos, dist, guia: anc.v };
+    }
+    return melhor;
+  };
+
+  let { esq, topo, w, h } = { esq: l.esq, topo: l.topo, w: l.w, h: l.h };
+  const guias = { x: null, y: null };
+
+  if (dx > 0) {
+    const g = maisPerto(l.dir, a.x);
+    if (g) { w += g.desloc; guias.x = g.guia; }
+  } else if (dx < 0) {
+    const g = maisPerto(l.esq, a.x);
+    if (g) { esq += g.desloc; w -= g.desloc; guias.x = g.guia; }
+  }
+
+  if (dy > 0) {
+    const g = maisPerto(l.base, a.y);
+    if (g) { h += g.desloc; guias.y = g.guia; }
+  } else if (dy < 0) {
+    const g = maisPerto(l.topo, a.y);
+    if (g) { topo += g.desloc; h -= g.desloc; guias.y = g.guia; }
+  }
+
+  return { x: esq, y: topo, w, h, guias };
+}
+
 /* ---------------- Alinhar ----------------
  *
  * Com um elemento só, alinha em relação à PEÇA. Com vários, em relação à caixa

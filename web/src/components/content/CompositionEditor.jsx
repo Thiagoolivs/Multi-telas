@@ -5,7 +5,7 @@ import {
   Columns2, Sparkles, Shapes, Star, Undo2, Redo2, Copy, ZoomIn, ZoomOut, Maximize2,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
-  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup,
+  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup, LayoutTemplate,
 } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
@@ -13,7 +13,7 @@ import { media, ai } from '../../api.js';
 import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw, estiloCaixa, recortada, raioCss, SOMBRA_PADRAO, SOMBRA_LIMITES, BORDA_MAX } from '../../lib/composition.js';
 import { ICONS, ICON_NAMES } from '../../lib/icons.js';
 import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer, podeRefazer } from '../../lib/historico.js';
-import { encaixar, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
+import { encaixar, encaixarRedimensionamento, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
 import { decidirColagem } from '../../lib/colar.js';
 import {
   estiloTexto, listar as listarFontes, pesosDe, pesoValido, dados as dadosDaFonte,
@@ -24,6 +24,7 @@ import {
   unidades, caixaDe, reordenarLinhas, linhaDe, grupoDe,
 } from '../../lib/grupos.js';
 import { PainelCamadas } from './PainelCamadas.jsx';
+import { EscolherModelo } from './EscolherModelo.jsx';
 
 const ASPECTS = [
   { id: '16/9', label: 'Retangular', icon: RectangleHorizontal },
@@ -38,6 +39,9 @@ const PASSO_GRANDE = 3;
 let _uid = 1;
 const uid = () => 'e' + (_uid++) + Math.random().toString(36).slice(2, 6);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+// Uma casa decimal. Em % da peça, 0,1% já é sub-pixel numa TV Full HD: guardar
+// 43,283746% só engorda o JSON e faz dois elementos "iguais" nunca baterem.
+const arred = (v) => Math.round(v * 10) / 10;
 const round = (n) => Math.round((Number(n) || 0) * 10) / 10;
 // A caixa de um grupo, no formato que alinhar.js espera de um elemento.
 const pontoDaCaixa = (c) => ({ x: c.esq, y: c.topo, w: c.w, h: c.h });
@@ -80,7 +84,41 @@ export function CompositionEditor({ value, onClose, onSave }) {
 
   const [sel, setSel] = useState([]);          // ids selecionados
   const [zoom, setZoom] = useState(1);
-  const [guias, setGuias] = useState({ x: null, y: null });
+  /*
+   * Guias e medida NÃO moram em estado. Isto não é micro-otimização.
+   *
+   * O Moveable calcula o gesto a partir do elemento no DOM. Toda vez que um
+   * `setState` acontecia no meio de um redimensionamento, o React redesenhava
+   * o elemento e o Moveable recomeçava a conta do zero: para cada movimento do
+   * mouse chegavam DOIS eventos, um com o tamanho novo e outro com o tamanho
+   * original logo atrás, e o segundo desfazia o primeiro. O resultado era um
+   * elemento que tremia sob o cursor e voltava exatamente ao tamanho em que
+   * estava — redimensionar simplesmente não funcionava, e o motivo era
+   * invisível porque cada peça isolada parecia certa.
+   *
+   * Enquanto a alça está presa, quem manda é o DOM. O estado do React recebe o
+   * resultado uma vez, ao soltar.
+   */
+  const guiaXRef = useRef(null);
+  const guiaYRef = useRef(null);
+  const medidaRef = useRef(null);
+  const gesto = useRef(null);      // a caixa em construção, em % da peça
+
+  const pintarGuias = useCallback((gx, gy) => {
+    const ex = guiaXRef.current, ey = guiaYRef.current;
+    if (ex) { ex.style.display = gx == null ? 'none' : 'block'; if (gx != null) ex.style.left = gx + '%'; }
+    if (ey) { ey.style.display = gy == null ? 'none' : 'block'; if (gy != null) ey.style.top = gy + '%'; }
+  }, []);
+
+  const pintarMedida = useCallback((caixa) => {
+    const n = medidaRef.current;
+    if (!n) return;
+    if (!caixa) { n.style.display = 'none'; return; }
+    n.style.display = 'block';
+    n.style.left = (caixa.x + caixa.w / 2) + '%';
+    n.style.top = `calc(${caixa.y + caixa.h}% + 8px)`;
+    n.textContent = `${arred(caixa.w)} × ${arred(caixa.h)} %`;
+  }, []);
   const [editandoTexto, setEditandoTexto] = useState(null);
   /*
    * O grupo "aberto": aquele em que se entrou com dois cliques, e onde os
@@ -90,6 +128,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [grupoAberto, setGrupoAberto] = useState(null);
   const [busy, setBusy] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [modeloAberto, setModeloAberto] = useState(false);
   const [aiBrief, setAiBrief] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [g1, setG1] = useState('#1e3a8a');
@@ -519,6 +558,37 @@ export function CompositionEditor({ value, onClose, onSave }) {
     catch (err) { alert(err.message || 'Falha no upload'); }
     setBusy(false);
   }
+  /*
+   * Trocar a peça por um modelo, de dentro do editor.
+   *
+   * Existe porque a decisão de "começar de um modelo" quase nunca acontece
+   * antes de abrir o editor: acontece três minutos depois, olhando a tela em
+   * branco. Ter que fechar, voltar à biblioteca e recomeçar é onde a pessoa
+   * desiste e faz a peça com um texto no meio.
+   *
+   * Com trabalho em cima da mesa, pergunta antes. Não é excesso de zelo: o
+   * modelo substitui TUDO, e um clique sem volta em cima de vinte minutos de
+   * trabalho é o tipo de coisa que faz alguém parar de confiar no editor.
+   * (Ainda assim entra como um passo do histórico, então Ctrl+Z devolve.)
+   */
+  function aplicarModelo(peca, formato) {
+    setModeloAberto(false);
+    setSel([]);
+    if (!peca) { editar((d) => ({ ...d, aspect: formato }), null); return; }
+    editar((d) => ({
+      ...d,
+      aspect: peca.formato || d.aspect,
+      bg: peca.bg && peca.bg.kind ? peca.bg : d.bg,
+      els: entrar(peca.elementos),
+      dur: peca.duracao != null ? peca.duracao : d.dur,
+    }), null);
+  }
+
+  function pedirModelo() {
+    if (els.length && !window.confirm('Começar de um modelo substitui o que está no palco. Continuar?')) return;
+    setModeloAberto(true);
+  }
+
   async function runAi() {
     if (!aiBrief.trim()) return;
     setAiBusy(true);
@@ -572,6 +642,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <IconBtn title="Refazer (Ctrl+Shift+Z)" icon={Redo2} disabled={!podeRefazer(hist)} onClick={() => saltar(1)} />
 
         <div className="mx-1 h-5 w-px bg-line" />
+        <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={pedirModelo}>Modelos</Button>
         <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => setAiOpen((o) => !o)}>IA</Button>
         <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Imagem</Button>
         <Button size="sm" variant="secondary" icon={Type} onClick={addText}>Texto</Button>
@@ -616,6 +687,15 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <Button size="sm" variant="ghost" icon={X} onClick={onClose}>Cancelar</Button>
         <Button size="sm" variant="primary" icon={Save} onClick={salvar}>Salvar</Button>
         <input ref={imgInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPickImage} />
+
+      {modeloAberto && (
+        <EscolherModelo
+          aberto
+          formatoSugerido={aspect}
+          onFechar={() => setModeloAberto(false)}
+          onEscolher={aplicarModelo}
+        />
+      )}
       </div>
 
       {aiOpen && (
@@ -699,14 +779,26 @@ export function CompositionEditor({ value, onClose, onSave }) {
               </div>
             ))}
 
-            {/* Guias de encaixe: sem a linha aparecendo, o elemento "pula" e
-                ninguém entende por quê. */}
-            {guias.x != null && (
-              <div style={{ position: 'absolute', left: guias.x + '%', top: 0, bottom: 0, width: 1, background: '#ff3d9a', pointerEvents: 'none', zIndex: 9 }} />
-            )}
-            {guias.y != null && (
-              <div style={{ position: 'absolute', top: guias.y + '%', left: 0, right: 0, height: 1, background: '#ff3d9a', pointerEvents: 'none', zIndex: 9 }} />
-            )}
+            {/*
+              Guias de encaixe e leitura de tamanho.
+
+              Sempre no ar, escondidas por `display`, e escritas à mão durante
+              o gesto — nunca por estado. Ver o comentário lá em cima: um
+              `setState` no meio do arrasto reinicia a conta do Moveable, e o
+              elemento volta ao tamanho em que estava.
+            */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 9 }}>
+              <div ref={guiaXRef} style={{ position: 'absolute', top: 0, bottom: 0, width: 1, background: '#ff3d9a', display: 'none' }} />
+              <div ref={guiaYRef} style={{ position: 'absolute', left: 0, right: 0, height: 1, background: '#ff3d9a', display: 'none' }} />
+              <div ref={medidaRef}
+                style={{
+                  position: 'absolute', display: 'none', transform: 'translateX(-50%)',
+                  background: 'rgba(17,20,32,.92)', color: '#fff',
+                  padding: '3px 8px', borderRadius: 6, whiteSpace: 'nowrap',
+                  font: '600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace',
+                  boxShadow: '0 2px 10px rgba(0,0,0,.35)',
+                }} />
+            </div>
 
             {/* Caixa invisível que representa a seleção múltipla — é ela que o
                 Moveable arrasta, e o deslocamento é repassado a cada elemento. */}
@@ -723,25 +815,138 @@ export function CompositionEditor({ value, onClose, onSave }) {
               <Moveable
                 target={alvos[0]}
                 draggable resizable rotatable
-                origin={false} keepRatio={false}
+                origin={false}
                 throttleDrag={0} throttleResize={0} throttleRotate={0}
                 onDrag={({ left, top }) => {
                   const r = rect();
                   const alvo = movivel[0];
+                  (window.__dbg=window.__dbg||[]).push({left:+left.toFixed(1),estadoX:alvo.x});
                   const bruto = { x: (left / r.width) * 100, y: (top / r.height) * 100, w: alvo.w, h: alvo.h };
                   const fixo = encaixar(bruto, els.filter((e) => e.id !== alvo.id && !e.oculto));
-                  setGuias(fixo.guias);
+                  pintarGuias(fixo.guias.x, fixo.guias.y);
                   patch(alvo.id, { x: clamp(fixo.x, -40, 140), y: clamp(fixo.y, -40, 140) }, 'mover:' + alvo.id);
                 }}
-                onDragEnd={() => { setGuias({ x: null, y: null }); fecharPasso(); }}
-                onResize={({ width, height, drag }) => {
-                  const r = rect();
-                  patch(movivel[0].id, {
-                    w: (width / r.width) * 100, h: (height / r.height) * 100,
-                    x: (drag.left / r.width) * 100, y: (drag.top / r.height) * 100,
-                  }, 'redim:' + movivel[0].id);
+                onDragEnd={() => { pintarGuias(null, null); fecharPasso(); }}
+                /*
+                 * Proporção travada em imagem e ícone, solta no resto.
+                 *
+                 * Puxar o canto de uma foto e ela sair achatada não é uma
+                 * escolha que alguém faz de propósito — é um acidente que só
+                 * se percebe na parede. Texto e forma continuam livres, porque
+                 * ali esticar é o uso normal. Segurar Shift inverte a regra,
+                 * para o caso em que a distorção é mesmo o que se quer.
+                 */
+                /*
+                 * A GEOMETRIA DO REDIMENSIONAMENTO É CALCULADA AQUI, e não
+                 * lida do Moveable.
+                 *
+                 * O Moveable deriva `width` do elemento que está no DOM. Como
+                 * quem escreve no DOM durante o gesto somos nós, formava-se um
+                 * laço: escrevíamos a largura já encaixada, ele relia aquele
+                 * valor como se fosse o do ponteiro, e o encaixe se
+                 * confirmava sozinho a cada quadro. Na prática a peça GRUDAVA
+                 * na primeira âncora e não saía mais — dava para arrastar o
+                 * mouse meia tela e o elemento ficava parado na borda do
+                 * vizinho.
+                 *
+                 * Guardando a caixa e o ponteiro do início do gesto, a conta
+                 * passa a depender só de onde o dedo está. O encaixe vira
+                 * enfeite por cima de um número que continua andando, e soltar
+                 * da âncora é só continuar movendo.
+                 */
+                onResizeStart={({ inputEvent, direction }) => {
+                  const e = movivel[0];
+                  gesto.current = {
+                    px: inputEvent.clientX, py: inputEvent.clientY, dir: direction,
+                    x: Number(e.x) || 0, y: Number(e.y) || 0,
+                    w: Number(e.w) || 0, h: Number(e.h) || 0,
+                    caixa: null,
+                  };
                 }}
-                onResizeEnd={fecharPasso}
+                onResize={({ inputEvent, target }) => {
+                  const g = gesto.current;
+                  if (!g) return;
+                  const r = rect();
+                  const alvo = movivel[0];
+                  const dx = ((inputEvent.clientX - g.px) / r.width) * 100;
+                  const dy = ((inputEvent.clientY - g.py) / r.height) * 100;
+
+                  let { x, y, w, h } = g;
+                  if (g.dir[0] > 0) w = g.w + dx;
+                  else if (g.dir[0] < 0) { x = g.x + dx; w = g.w - dx; }
+                  if (g.dir[1] > 0) h = g.h + dy;
+                  else if (g.dir[1] < 0) { y = g.y + dy; h = g.h - dy; }
+
+                  /*
+                   * Proporção travada em imagem e ícone, solta no resto.
+                   * Puxar o canto de uma foto e ela sair achatada não é uma
+                   * escolha que alguém faz de propósito — é um acidente que só
+                   * se percebe na parede. Shift inverte a regra.
+                   */
+                  const travada = (alvo.tipo === 'imagem' || alvo.tipo === 'icone') !== shift.current;
+                  if (travada && g.w > 0 && g.h > 0) {
+                    // O eixo que a alça manda comanda; o outro segue.
+                    if (g.dir[0] === 0) w = h * (g.w / g.h);
+                    else h = w * (g.h / g.w);
+                    if (g.dir[0] < 0) x = g.x + (g.w - w);
+                    if (g.dir[1] < 0) y = g.y + (g.h - h);
+                  }
+
+                  const bruto = { x, y, w, h };
+                  const fixo = encaixarRedimensionamento(
+                    bruto, els.filter((e) => e.id !== alvo.id && !e.oculto), g.dir,
+                  );
+                  // Com a proporção presa, encaixar um eixo entortaria o outro:
+                  // aqui o encaixe vale, e o eixo companheiro é refeito.
+                  if (travada && g.w > 0 && g.h > 0) {
+                    if (g.dir[0] === 0) { fixo.w = fixo.h * (g.w / g.h); }
+                    else { fixo.h = fixo.w * (g.h / g.w); fixo.guias.y = null; }
+                  }
+
+                  /*
+                   * Um mínimo medido em PIXELS DO PALCO, e não em % da peça.
+                   * Em porcento, um mínimo que ainda permita a faixa fina que
+                   * os modelos usam (1,2% de altura) é pequeno demais para se
+                   * pegar de volta com o mouse. Oito pixels na tela mantêm a
+                   * alça alcançável em qualquer zoom.
+                   */
+                  const caixa = {
+                    x: clamp(fixo.x, -40, 140), y: clamp(fixo.y, -40, 140),
+                    w: Math.max((8 / r.width) * 100, fixo.w),
+                    h: Math.max((8 / r.height) * 100, fixo.h),
+                  };
+                  g.caixa = caixa;
+
+                  // Escrito em % — a mesma unidade que o React usa ao
+                  // comprometer, para não haver salto na hora de soltar.
+                  target.style.left = caixa.x + '%';
+                  target.style.top = caixa.y + '%';
+                  target.style.width = caixa.w + '%';
+                  target.style.height = caixa.h + '%';
+                  // Texto com corpo preso à diagonal do bloco acompanha ao vivo;
+                  // sem isto ele só cresceria depois de soltar a alça.
+                  if (alvo.tipo === 'texto' && alvo.auto && target.firstElementChild) {
+                    const corpo = textFontCqw({ ...alvo, w: caixa.w, h: caixa.h }, aspect);
+                    target.firstElementChild.style.fontSize = ((corpo / 100) * palco.w) + 'px';
+                  }
+
+                  pintarGuias(fixo.guias.x, fixo.guias.y);
+                  pintarMedida(caixa);
+                }}
+                onResizeEnd={() => {
+                  const caixa = gesto.current && gesto.current.caixa;
+                  gesto.current = null;
+                  pintarGuias(null, null);
+                  pintarMedida(null);
+                  // Uma única entrada no histórico para o gesto inteiro: quem
+                  // desfaz espera voltar ao tamanho de antes, não meio pixel.
+                  if (caixa) {
+                    patch(movivel[0].id, {
+                      x: arred(caixa.x), y: arred(caixa.y), w: arred(caixa.w), h: arred(caixa.h),
+                    }, 'redim:' + movivel[0].id);
+                  }
+                  fecharPasso();
+                }}
                 onRotate={({ rotation }) => patch(movivel[0].id, { rot: Math.round(rotation) }, 'girar:' + movivel[0].id)}
                 onRotateEnd={fecharPasso}
               />

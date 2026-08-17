@@ -139,6 +139,60 @@ test('o elemento arrastado não gruda nele mesmo', async () => {
   assert.ok(Math.abs(perto.x - 45) < 0.001, 'não grudou quando devia: ' + perto.x);
 });
 
+/* ---------------- Encaixe ao REDIMENSIONAR ---------------- */
+
+test('redimensionar move só a borda que a alça pegou', async () => {
+  /*
+   * A diferença entre arrastar e redimensionar, e a razão de existir uma
+   * função separada: ao arrastar, a caixa inteira se desloca; ao esticar, as
+   * bordas do lado oposto estão ancoradas. Se elas se mexessem, o elemento
+   * escorregaria enquanto cresce — que é exatamente a sensação de não saber
+   * para que lado ele está indo.
+   */
+  const A = await carregar('alinhar.js');
+  const vizinho = { x: 60, y: 0, w: 20, h: 20 };
+  // Puxando a alça da direita, com a borda direita chegando perto de 60.
+  const r = A.encaixarRedimensionamento({ x: 10, y: 40, w: 49.6, h: 10 }, [vizinho], [1, 0]);
+  assert.equal(r.x, 10, 'a borda esquerda saiu do lugar');
+  assert.ok(Math.abs(r.w - 50) < 0.001, 'largura ficou em ' + r.w);
+  assert.equal(r.guias.x, 60);
+});
+
+test('puxando pela esquerda, a borda da direita fica onde está', async () => {
+  const A = await carregar('alinhar.js');
+  // Borda esquerda em 20,4 → gruda em 20 (nada) ... usa o centro do palco: 50.
+  const r = A.encaixarRedimensionamento({ x: 49.6, y: 40, w: 30, h: 10 }, [], [-1, 0]);
+  assert.ok(Math.abs(r.x - 50) < 0.001, 'x: ' + r.x);
+  assert.ok(Math.abs((r.x + r.w) - 79.6) < 0.001, 'a borda direita andou: ' + (r.x + r.w));
+});
+
+test('a alça do meio de um lado não encaixa o outro eixo', async () => {
+  // Alça leste: só o eixo X tem borda móvel. Encaixar Y ali mexeria numa borda
+  // que a pessoa não pegou.
+  const A = await carregar('alinhar.js');
+  const r = A.encaixarRedimensionamento({ x: 10, y: 89.6, w: 30, h: 10 }, [], [1, 0]);
+  assert.equal(r.y, 89.6, 'mexeu no topo sem ninguém pedir');
+  assert.equal(r.h, 10, 'mexeu na altura sem ninguém pedir');
+  assert.equal(r.guias.y, null);
+});
+
+test('longe de tudo, redimensionar não gruda em nada', async () => {
+  const A = await carregar('alinhar.js');
+  const caixa = { x: 12, y: 33, w: 21, h: 9 };
+  const r = A.encaixarRedimensionamento(caixa, [], [1, 1]);
+  assert.deepEqual({ x: r.x, y: r.y, w: r.w, h: r.h }, caixa);
+  assert.deepEqual(r.guias, { x: null, y: null });
+});
+
+test('a alça de canto encaixa os dois eixos', async () => {
+  const A = await carregar('alinhar.js');
+  // canto sudeste: direita perto de 100, base perto de 50.
+  const r = A.encaixarRedimensionamento({ x: 10, y: 20, w: 89.6, h: 30.3 }, [], [1, 1]);
+  assert.ok(Math.abs((r.x + r.w) - 100) < 0.001, 'direita: ' + (r.x + r.w));
+  assert.ok(Math.abs((r.y + r.h) - 50) < 0.001, 'base: ' + (r.y + r.h));
+  assert.deepEqual(r.guias, { x: 100, y: 50 });
+});
+
 test('encaixa nos dois eixos ao mesmo tempo', async () => {
   const A = await carregar('alinhar.js');
   // x: borda esquerda perto de 0. y: borda de baixo perto de 100.
@@ -227,4 +281,49 @@ test('a caixa envolvente cobre todo mundo', async () => {
     { esq: env.esq, topo: env.topo, dir: env.dir, base: env.base },
     { esq: 10, topo: 5, dir: 80, base: 45 },
   );
+});
+
+/* ---------------- O formato que a tela pede ---------------- */
+
+test('a tela em pé pede peça em pé', async () => {
+  /*
+   * A galeria de modelos abre dentro de uma tela, e o formato ali não é
+   * escolha livre: começar em 16/9 para um totem em pé produz arte que só se
+   * descobre torta na parede — e ninguém confere isso antes de publicar.
+   */
+  const S = await carregar('screenConfig.js');
+  assert.equal(S.formatoDoLayout('portrait-hero'), '9/16');
+  assert.equal(S.formatoDoLayout('portrait-stack'), '9/16');
+  assert.equal(S.formatoDoLayout('square-hero'), '1/1');
+  assert.equal(S.formatoDoLayout('full'), '16/9');
+  assert.equal(S.formatoDoLayout('quad'), '16/9');
+});
+
+test('layout desconhecido cai na TV deitada, e não em nada', async () => {
+  // Config antiga, layout renomeado, id digitado errado: a galeria tem que
+  // abrir do mesmo jeito. Deitada é como a esmagadora maioria das TVs de
+  // recepção está pendurada.
+  const S = await carregar('screenConfig.js');
+  assert.equal(S.formatoDoLayout('não-existe'), '16/9');
+  assert.equal(S.formatoDoLayout(undefined), '16/9');
+});
+
+test('todo layout resolve para um formato que a galeria entende', async () => {
+  /*
+   * Um layout novo com a orientação escrita errado abriria a galeria no
+   * formato errado em silêncio — e o defeito só apareceria na peça publicada,
+   * torta, na parede de um cliente.
+   *
+   * A checagem passa por `orientationOf`, e não pelo campo cru: um layout sem
+   * orientação declarada (o 'dashboard' é assim desde que nasceu) cai no
+   * padrão documentado, deitada, o que está certo. O que não pode existir é
+   * uma orientação que ninguém saiba traduzir.
+   */
+  const S = await carregar('screenConfig.js');
+  const validas = ['any', 'portrait', 'square', 'landscape'];
+  for (const l of S.LAYOUTS) {
+    const orient = S.orientationOf(l);
+    assert.ok(validas.includes(orient), l.id + ': orientação desconhecida (' + orient + ')');
+    assert.match(S.formatoDoLayout(l.id), /^(16\/9|9\/16|1\/1)$/, l.id + ': formato estranho');
+  }
 });
