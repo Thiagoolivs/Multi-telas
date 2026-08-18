@@ -11,11 +11,16 @@
 
 const MAX_MB = 12;
 
+const crypto = require('crypto');
+
 // Códigos sem 0/O/1/I: alguém vai digitar isto olhando de longe.
 const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function novoCodigo(n) {
+  // Sorteio criptográfico: este código é a credencial de envio do mural, e
+  // ficava exposto ao mesmo problema do `Math.random()` descrito em
+  // server/storage.js — previsível a partir de saídas observadas.
   let s = '';
-  for (let i = 0; i < (n || 6); i++) s += ALFABETO[Math.floor(Math.random() * ALFABETO.length)];
+  for (let i = 0; i < (n || 6); i++) s += ALFABETO[crypto.randomInt(ALFABETO.length)];
   return s;
 }
 
@@ -61,61 +66,6 @@ a.mais { display:inline-block; margin-top:1rem; color:#a5b4fc; }
 }
 `;
 
-/*
- * O envio é feito com fetch e barra de progresso em vez de <form>: numa rede de
- * evento, foto de celular passa de 5 MB e o usuário precisa ver que está
- * subindo. Formulário puro daria uma tela branca e um segundo toque no botão.
- */
-const JS = `
-const input = document.getElementById('f');
-const prev = document.getElementById('preview');
-const alvo = document.getElementById('alvo');
-const btn = document.getElementById('enviar');
-const err = document.getElementById('erro');
-let arquivo = null;
-
-input.addEventListener('change', () => {
-  arquivo = input.files && input.files[0];
-  if (!arquivo) return;
-  if (arquivo.size > ${MAX_MB} * 1024 * 1024) {
-    err.textContent = 'Essa foto tem mais de ${MAX_MB} MB. Tente outra.';
-    err.style.display = 'block'; arquivo = null; return;
-  }
-  err.style.display = 'none';
-  prev.src = URL.createObjectURL(arquivo);
-  prev.style.display = 'block';
-  alvo.style.display = 'none';
-  btn.disabled = false;
-});
-
-btn.addEventListener('click', () => {
-  if (!arquivo) { input.click(); return; }
-  btn.disabled = true;
-  const antes = btn.textContent;
-  const autor = document.getElementById('autor').value.slice(0, 40);
-  const msg = document.getElementById('msg').value.slice(0, 120);
-  const qs = '?autor=' + encodeURIComponent(autor) + '&mensagem=' + encodeURIComponent(msg)
-    + '&mime=' + encodeURIComponent(arquivo.type || '');
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', '/api/mural/' + CODIGO + '/foto' + qs);
-  xhr.upload.onprogress = (e) => {
-    if (e.lengthComputable) btn.textContent = 'Enviando… ' + Math.round((e.loaded / e.total) * 100) + '%';
-  };
-  xhr.onload = () => {
-    if (xhr.status >= 200 && xhr.status < 300) { document.body.innerHTML = PRONTO; return; }
-    let m = 'Não deu para enviar. Tente de novo.';
-    try { m = JSON.parse(xhr.responseText).error || m; } catch (e) {}
-    err.textContent = m; err.style.display = 'block';
-    btn.disabled = false; btn.textContent = antes;
-  };
-  xhr.onerror = () => {
-    err.textContent = 'Sem conexão. Tente de novo.';
-    err.style.display = 'block'; btn.disabled = false; btn.textContent = antes;
-  };
-  xhr.send(arquivo);
-});
-`;
-
 function pagina(mural, opts) {
   const o = opts || {};
   const titulo = esc(mural.titulo || 'Mural');
@@ -125,7 +75,7 @@ function pagina(mural, opts) {
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>${titulo}</title><style>${CSS}</style></head>
-<body><div class="card">
+<body><div class="card" id="dados" data-codigo="${esc(mural.codigo)}" data-max-mb="${MAX_MB}">
   <h1>${titulo}</h1>
   <p class="sub">${empresa ? 'Sua foto aparece na tela d' + (empresa.match(/^[AaEeIiOoUu]/) ? 'a ' : 'e ') + empresa + ' em segundos.' : 'Sua foto aparece na tela em segundos.'}</p>
 
@@ -138,7 +88,12 @@ function pagina(mural, opts) {
     <b>Tirar ou escolher foto</b>
     <span>toque aqui</span>
   </label>
-  <input type="file" id="f" accept="image/*" capture="environment">
+  <!--
+    Sem o atributo "capture": ele forçava a câmera traseira e sumia com a opção de
+    galeria no celular. O botão promete "tirar OU escolher", e numa
+    confraternização a foto boa foi tirada há vinte minutos e está na galeria.
+  -->
+  <input type="file" id="f" accept="image/*">
 
   <input type="text" id="autor" placeholder="Seu nome (opcional)" maxlength="40" autocomplete="name">
   <input type="text" id="msg" placeholder="Uma mensagem (opcional)" maxlength="120">
@@ -154,11 +109,7 @@ function pagina(mural, opts) {
     A organização pode remover qualquer foto a qualquer momento.
   </p>
 </div>
-<script>
-const CODIGO = ${JSON.stringify(mural.codigo)};
-const PRONTO = ${JSON.stringify(`<div class="card"><div class="ok"><div class="big">🎉</div><h2>Enviada!</h2><p class="sub">Olhe para a tela — ela aparece em instantes.</p><a class="mais" href="">Enviar outra</a></div></div>`)};
-${JS}
-</script>
+<script src="/js/mural.js"></script>
 </body></html>`;
 }
 

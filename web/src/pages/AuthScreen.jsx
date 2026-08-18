@@ -60,10 +60,11 @@ export function AuthScreen({ onAuthed }) {
         await auth.signup(payload);
         onAuthed();
       } else if (mode === 'forgot') {
-        const r = await auth.forgot(form.email);
-        setInfo(r && r.devLink
-          ? 'E-mail não configurado neste servidor. Use este link para redefinir: ' + r.devLink
-          : 'Se existir uma conta com esse e-mail, enviamos um link para criar uma nova senha. Confira também o spam.');
+        await auth.forgot(form.email);
+        // Uma resposta só, sempre a mesma. O servidor deixou de devolver o
+        // link de redefinição no corpo — era um atalho de desenvolvimento que
+        // valia como tomada de conta para qualquer visitante.
+        setInfo('Se existir uma conta com esse e-mail, enviamos um link para criar uma nova senha. Confira também o spam.');
       } else if (mode === 'reset') {
         await auth.reset(resetToken, form.password);
         limparUrl();

@@ -294,6 +294,17 @@ async function handleApi(req, res, pathname, query) {
           const inv = await db.getInviteByCode(b.inviteCode);
           if (!inv || inv.accepted_at) return sendJson(res, 404, { error: 'convite inválido' });
           if (inv.expires_at && inv.expires_at < Date.now()) return sendJson(res, 410, { error: 'convite expirado' });
+          /*
+           * O convite vale para o e-mail convidado, e só para ele.
+           *
+           * Sem esta comparação, o código era um cupom ao portador: como não
+           * há envio por e-mail, ele é repassado à mão — por WhatsApp, print,
+           * grupo — e qualquer um que o visse entrava na empresa com o papel
+           * do convite, que pode ser `admin`.
+           */
+          if (email !== String(inv.email || '').trim().toLowerCase()) {
+            return sendJson(res, 403, { error: 'este convite é para outro e-mail' });
+          }
           const { userId } = await db.createUser(inv.tenant_id, email, passHash, inv.role, b.name);
           await db.acceptInvite(inv.id);
           await db.registrarAceite(inv.tenant_id, userId, email, legal.VERSAO, 'convite', clientIp(req));
@@ -346,15 +357,30 @@ async function handleApi(req, res, pathname, query) {
         const token = crypto.randomBytes(24).toString('hex');
         await db.createReset(token, u.id, Date.now() + 60 * 60 * 1000); // 1 hora
         const link = baseUrl(req) + '/app/?reset=' + token;
+        /*
+         * O LINK NUNCA VOLTA NO CORPO DA RESPOSTA.
+         *
+         * Aqui havia `if (!mail.configured()) return sendJson(res, 200, { devLink: link })`
+         * — um atalho de desenvolvimento que virava tomada de conta em
+         * produção. `mail.configured()` é falso sempre que faltam as chaves do
+         * Resend e do Brevo, que é o estado padrão de quem ainda não terminou
+         * de configurar; e nesse modo o envio não lança, então nem o catch
+         * desviava. Duas requisições sem nenhuma credencial — pedir o reset de
+         * um e-mail e usar o token devolvido — davam a sessão do dono da conta.
+         *
+         * O modo dev continua existindo: `mail.send` imprime o link no LOG do
+         * servidor (mail.js), que é onde quem está desenvolvendo tem acesso e
+         * um visitante da internet não tem.
+         */
         try {
           const msg = mail.resetEmail(link);
           await mail.send({ to: email, subject: msg.subject, html: msg.html, text: msg.text });
         } catch (e) {
+          // Resposta genérica também na falha: um 502 aqui e um 200 no e-mail
+          // inexistente diriam, pela diferença, quais contas existem na base.
           console.error('[forgot] falha ao enviar e-mail:', e.message);
-          return sendJson(res, 502, { error: 'não foi possível enviar o e-mail agora' });
+          return sendJson(res, 200, generic);
         }
-        // Sem provider de e-mail (dev/demo), devolve o link para não travar.
-        if (!mail.configured()) return sendJson(res, 200, Object.assign({ devLink: link }, generic));
         return sendJson(res, 200, generic);
       });
     }
@@ -374,6 +400,14 @@ async function handleApi(req, res, pathname, query) {
         if (!u) return sendJson(res, 410, { error: 'link inválido ou expirado — peça outro' });
         await db.setUserPassword(u.id, auth.hashPassword(password));
         await db.consumeReset(token);
+        /*
+         * Derruba as outras sessões ANTES de abrir a nova.
+         *
+         * Este fluxo existe para recuperar uma conta comprometida. Sem esta
+         * linha ele fazia o contrário: trocava a senha e deixava o cookie de
+         * quem invadiu valendo por até 30 dias.
+         */
+        await db.destroySessionsOfUser(u.id);
         await auth.startSession(res, u.id, u.tenant_id, req);
         return sendJson(res, 200, { ok: true, user: { email: u.email }, tenant: { id: u.tenant_id } });
       });
@@ -486,6 +520,16 @@ async function handleApi(req, res, pathname, query) {
         if (u.pass_hash && !auth.verifyPassword(atual, u.pass_hash))
           return sendJson(res, 401, { error: 'senha atual incorreta' });
         await db.setUserPassword(u.id, auth.hashPassword(nova));
+        /*
+         * Trocar a senha expulsa os outros aparelhos, e reemite a sessão de
+         * quem está aqui — senão a pessoa se desconectaria a si mesma no
+         * meio dos Ajustes.
+         *
+         * Sem isto, quem trocava a senha por desconfiar de invasão continuava
+         * invadido: o cookie do outro seguia válido por até 30 dias.
+         */
+        await db.destroySessionsOfUser(u.id);
+        await auth.startSession(res, u.id, u.tenant_id, req);
         return sendJson(res, 200, { ok: true });
       });
     }
@@ -795,6 +839,22 @@ async function handleApi(req, res, pathname, query) {
   if (parts[1] === 'mural' && parts[2] && parts[3] === 'fotos' && req.method === 'GET') {
     const mural = await db.muralPorCodigo(String(parts[2]).toUpperCase());
     if (!mural) return sendJson(res, 404, { error: 'mural não encontrado' });
+    /*
+     * LISTAR exige credencial; ENVIAR, não.
+     *
+     * É a regra que o módulo do mural sempre declarou — "o código do QR só
+     * permite enviar, nunca listar nem ver o que os outros mandaram" — e que
+     * esta rota contrariava sozinha. Com o código impresso num cartaz, qualquer
+     * um que o fotografasse de longe lia, meses depois e de fora da rede, os
+     * nomes e recados de um evento interno. E o código não é revogável.
+     *
+     * Quem precisa listar são duas partes, e as duas têm credencial: a TV que
+     * exibe o mural (token do device) e o painel do dono (sessão do inquilino).
+     */
+    const tokenTv = req.headers['x-device-token'] || (query && query.dt) || '';
+    const daTv = !!tokenTv && await db.deviceComToken(String(tokenTv), mural.tenantId);
+    const daCasa = sess && sess.tenant_id === mural.tenantId;
+    if (!daTv && !daCasa) return sendJson(res, 403, { error: 'sem permissão para listar este mural' });
     const fotos = await db.fotosVisiveis(mural.id, 60);
     return sendJson(res, 200, { titulo: mural.titulo, aceitando: mural.aceitando, fotos }, { 'Cache-Control': 'no-store' });
   }
@@ -896,6 +956,15 @@ async function handleApi(req, res, pathname, query) {
     // Exportar: direito de acesso e portabilidade, num arquivo que o titular
     // baixa sozinho — sem abrir chamado e sem depender de nós.
     if (req.method === 'GET' && parts[2] === 'exportar') {
+      /*
+       * Só o dono, como na exclusão logo abaixo.
+       *
+       * A exportação devolve o dossiê da empresa: identificadores de cobrança,
+       * e-mail e papel de todo mundo, os aceites com IP de cada um e as fotos
+       * do mural com o IP de quem enviou. Um `member`, que existe para
+       * publicar conteúdo, estava levando dado pessoal de terceiros embora.
+       */
+      if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono pode exportar os dados da conta' });
       const dados = await db.dadosDoTenant(sess.tenant_id);
       const corpo = JSON.stringify({
         geradoEm: new Date().toISOString(),
@@ -1731,7 +1800,7 @@ function handleApp(req, res, urlPath) {
   let rest = urlPath.slice('/app'.length) || '/';
   if (rest === '/') rest = '/index.html';
   const filePath = path.normalize(path.join(APP_DIR, rest));
-  if (!filePath.startsWith(APP_DIR)) { res.writeHead(403); return res.end('Acesso negado'); }
+  if (filePath !== APP_DIR && !filePath.startsWith(APP_DIR + path.sep)) { res.writeHead(403); return res.end('Acesso negado'); }
   fs.readFile(filePath, (err, data) => {
     if (err) {
       if (!path.extname(rest)) return serveAppIndex(res); // rota de cliente
@@ -1855,7 +1924,9 @@ async function handleStatic(req, res, urlPath) {
   }
   if (urlPath.startsWith('/vendor/')) {
     const alvo = path.normalize(path.join(LANDING_DIR, urlPath));
-    if (!alvo.startsWith(LANDING_DIR)) { res.writeHead(403); return res.end('Acesso negado'); }
+    // `+ path.sep` não é preciosismo: sem ele um diretório irmão de mesmo
+    // prefixo (`landing-old`) satisfaz o `startsWith` e vaza.
+    if (alvo !== LANDING_DIR && !alvo.startsWith(LANDING_DIR + path.sep)) { res.writeHead(403); return res.end('Acesso negado'); }
     return fs.readFile(alvo, (err, data) => {
       if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('não encontrado'); }
       sendFile(res, alvo, data);
@@ -1904,8 +1975,58 @@ async function handleStatic(req, res, urlPath) {
   }
 
   if (urlPath === '/legacy' || urlPath === '/legacy/') urlPath = '/index.html';
+  return servirPublico(res, urlPath);
+}
+
+/*
+ * ---------------- O que é público, e SÓ o que é público ----------------
+ *
+ * Isto já foi o oposto: uma única linha servia qualquer arquivo abaixo da
+ * raiz do projeto, com a checagem `filePath.startsWith(ROOT)` como única
+ * barreira. Essa checagem impede SAIR da raiz com `..` — e não impede pedir
+ * um caminho perfeitamente legítimo lá dentro.
+ *
+ * O estrago era total, e não teórico. Reproduzido numa instância local, sem
+ * cookie nenhum:
+ *
+ *     GET /data/multitelas.db   → 200, o banco inteiro
+ *     GET /.git/config          → 200
+ *     GET /server/auth.js       → 200
+ *
+ * O banco guarda o token de sessão em texto puro, então baixá-lo e mandar um
+ * token como cookie era login imediato como qualquer usuário, de qualquer
+ * inquilino. Junto vinham hashes de senha, dados de cobrança, aniversariantes
+ * e os IPs de quem enviou foto no mural.
+ *
+ * A inversão é a correção: em vez de "tudo, menos o que eu lembrar de
+ * proibir", passa a ser "nada, exceto o que está listado aqui". Uma pasta
+ * nova com segredo dentro nasce inacessível — que é o padrão certo, porque
+ * quem cria a pasta não vai lembrar de vir aqui negá-la.
+ */
+const PASTAS_PUBLICAS = ['/css/', '/js/', '/icons/', '/img/', '/fonts/'];
+const ARQUIVOS_PUBLICOS = new Set([
+  '/index.html', '/player.html', '/admin.html',
+  '/sw.js', '/player.webmanifest', '/manifest.webmanifest',
+  '/favicon.ico', '/robots.txt',
+]);
+
+function ehPublico(urlPath) {
+  if (ARQUIVOS_PUBLICOS.has(urlPath)) return true;
+  return PASTAS_PUBLICAS.some((p) => urlPath.startsWith(p));
+}
+
+function servirPublico(res, urlPath) {
+  if (!ehPublico(urlPath)) {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('Não encontrado: ' + urlPath);
+  }
   const filePath = path.normalize(path.join(ROOT, urlPath));
-  if (!filePath.startsWith(ROOT)) { res.writeHead(403); return res.end('Acesso negado'); }
+  // Cinto além da lista: `..` dentro de um prefixo permitido não sai da raiz.
+  // `path.sep` no fim importa — sem ele, um diretório irmão de mesmo prefixo
+  // (`/home/u/Multi-telasX`) satisfaz o `startsWith` e escapa.
+  if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) {
+    res.writeHead(403); return res.end('Acesso negado');
+  }
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Não encontrado: ' + urlPath); }
     sendFile(res, filePath, data);

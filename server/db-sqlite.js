@@ -7,6 +7,7 @@
  * precisa saber qual está em uso. Arquivo do banco: data/multitelas.db.
  */
 const { DatabaseSync } = require('node:sqlite');
+const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 
@@ -177,8 +178,10 @@ const q = {
   insertSession: db.prepare('INSERT INTO sessions (token, user_id, tenant_id, expires_at) VALUES (?, ?, ?, ?)'),
   sessionByToken: db.prepare('SELECT * FROM sessions WHERE token = ?'),
   deleteSession: db.prepare('DELETE FROM sessions WHERE token = ?'),
+  deleteSessionsOfUser: db.prepare('DELETE FROM sessions WHERE user_id = ?'),
   insertDevice: db.prepare('INSERT INTO devices (id, tenant_id, code, name, config, device_token, updated_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
   deviceById: db.prepare('SELECT * FROM devices WHERE id = ?'),
+  deviceByToken: db.prepare('SELECT * FROM devices WHERE device_token = ? AND tenant_id = ?'),
   deviceByCode: db.prepare('SELECT * FROM devices WHERE code = ?'),
   claimDevice: db.prepare('UPDATE devices SET tenant_id = ?, name = ? WHERE id = ?'),
   setConfig: db.prepare('UPDATE devices SET config = ?, name = ?, updated_at = ? WHERE id = ?'),
@@ -259,6 +262,18 @@ async function getInviteByCode(code) { return q.inviteByCode.get(String(code || 
 async function listInvites(tenantId) { return q.invitesByTenant.all(tenantId); }
 async function deleteInvite(id, tenantId) { q.deleteInvite.run(id, tenantId); }
 async function acceptInvite(id) { q.acceptInvite.run(Date.now(), id); }
+/*
+ * Apaga TODAS as sessões de um usuário.
+ *
+ * Existe por causa de um caminho que fazia o oposto do que a pessoa espera:
+ * trocar a senha só gravava o novo hash. Com sessão de 30 dias, o cookie de
+ * quem tinha invadido continuava valendo por até um mês — sobrevivendo
+ * exatamente à ação que a vítima faz para se defender. No fluxo de "esqueci a
+ * senha" era pior, porque ele existe justamente para recuperar conta
+ * comprometida.
+ */
+async function destroySessionsOfUser(userId) { Q.deleteSessionsOfUser.run(userId); }
+
 async function createSession(token, userId, tenantId, expiresAt) {
   q.insertSession.run(token, userId, tenantId, expiresAt);
 }
@@ -278,6 +293,19 @@ async function createDevice(id, code, deviceToken) {
   return { id, code };
 }
 async function getDevice(id) { return q.deviceById.get(id) || null; }
+/*
+ * A TV existe, é deste inquilino e apresentou o token certo?
+ *
+ * Serve para autorizar a leitura do mural pelo player: o código do cartaz
+ * autoriza enviar foto, e listar o que os outros mandaram exige a credencial
+ * da tela que vai exibir. A comparação é feita em tempo constante lá em
+ * server.js, onde o segredo chega.
+ */
+async function deviceComToken(token, tenantId) {
+  if (!token || !tenantId) return null;
+  return q.deviceByToken.get(String(token), tenantId) || null;
+}
+
 async function getDeviceByCode(code) { return q.deviceByCode.get(String(code || '').trim().toUpperCase()) || null; }
 async function claimDevice(id, tenantId, name) { q.claimDevice.run(tenantId, name || '', id); }
 async function setDeviceConfig(id, configJson, name) { q.setConfig.run(configJson, name || '', Date.now(), id); }
@@ -545,9 +573,27 @@ async function apagarTenant(tenantId) {
   return chaves;
 }
 
+/*
+ * Identificadores sorteados com RNG CRIPTOGRÁFICO.
+ *
+ * Isto usava `Math.random()`, e três segredos do produto saíam daqui: o
+ * `deviceToken` (a credencial permanente de uma TV), a chave de cada arquivo
+ * de mídia — que é a única barreira de `/media/*`, uma rota sem autenticação
+ * — e o código do mural.
+ *
+ * O `Math.random()` do V8 é um xorshift128+: o estado de 128 bits é
+ * recuperável a partir de saídas observadas. E `POST /api/devices` é público
+ * e devolve 38 sorteios seguidos deste mesmo gerador por chamada. Quem
+ * observasse algumas criações passava a prever os identificadores seguintes —
+ * e com o token previsto vinham a programação e os aniversariantes da tela de
+ * outro cliente.
+ *
+ * `crypto.randomInt` é uniforme e imprevisível. O código de pareamento de 6
+ * dígitos já usava esse caminho desde o começo; o resto é que ficou para trás.
+ */
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
+  let s = ''; for (let i = 0; i < n; i++) s += c[crypto.randomInt(c.length)];
   return s;
 }
 
@@ -558,8 +604,8 @@ module.exports = {
   createReset, getReset, consumeReset,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
-  createSession, getSession, destroySession,
-  createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
+  createSession, getSession, destroySession, destroySessionsOfUser,
+  createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
   getTenant, getTenantByCustomer, setTenantBilling,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,

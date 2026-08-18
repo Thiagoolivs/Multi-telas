@@ -1514,7 +1514,17 @@
 
     async function buscar() {
       try {
-        const r = await fetch("/api/mural/" + encodeURIComponent(codigo) + "/fotos", { cache: "no-store" });
+        /*
+         * A leitura do mural vai assinada com a credencial da TV.
+         *
+         * O código do cartaz autoriza ENVIAR uma foto — é o que está escrito
+         * na regra do módulo. Listar o que os outros mandaram é outra coisa:
+         * sem o cabeçalho, quem fotografasse o cartaz de longe lia os nomes e
+         * recados do evento interno de uma empresa, meses depois, de fora da
+         * rede dela.
+         */
+        var cab = (global.MTCloud && global.MTCloud.dtHeader) ? global.MTCloud.dtHeader() : {};
+        const r = await fetch("/api/mural/" + encodeURIComponent(codigo) + "/fotos", { cache: "no-store", headers: cab });
         // Mural apagado ou código errado: dizer o motivo, não fingir espera.
         if (r.status === 404) {
           palco.innerHTML = '';

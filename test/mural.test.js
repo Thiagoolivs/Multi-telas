@@ -34,10 +34,31 @@ test('título e empresa entram escapados', () => {
   assert.ok(html.includes('&lt;img src=x'));
 });
 
-test('o código vai para o script como string JSON, não concatenado', () => {
+test('o código chega ao script por atributo, e escapado', () => {
+  /*
+   * O script saiu de dentro do HTML: a CSP do servidor é `script-src 'self'`,
+   * e inline ele simplesmente não executava — a página abria bonita e o botão
+   * de enviar não fazia nada. Ninguém descobre isso num teste local; descobre
+   * na confraternização, com trinta pessoas tentando mandar foto.
+   *
+   * Com o código num `data-`, o arquivo é o mesmo para todos os murais. O que
+   * este teste guarda é que ele continua chegando lá, e escapado.
+   */
   const html = mural.pagina({ codigo: 'AB7K9Z', titulo: 'Mural' }, {});
-  assert.ok(html.includes('const CODIGO = "AB7K9Z"'));
-  assert.ok(html.includes('/api/mural/'));
+  assert.ok(html.includes('data-codigo="AB7K9Z"'), 'o código não chegou ao atributo');
+  assert.ok(html.includes('src="/js/mural.js"'), 'a página não carrega o script externo');
+  assert.ok(!/<script>/.test(html), 'voltou a ter script inline — a CSP bloqueia');
+});
+
+test('o seletor de foto aceita a galeria, e não só a câmera', () => {
+  /*
+   * O atributo `capture` forçava a câmera traseira e sumia com a galeria no
+   * celular — enquanto o próprio botão promete "tirar OU escolher". Numa
+   * confraternização a foto boa foi tirada vinte minutos antes e está salva.
+   */
+  const html = mural.pagina({ codigo: 'AB7K9Z', titulo: 'Mural' }, {});
+  assert.ok(!/capture=/.test(html), 'o seletor voltou a forçar a câmera');
+  assert.ok(html.includes('accept="image/*"'), 'perdeu o filtro de imagem');
 });
 
 test('a página avisa sobre foto de terceiros e de criança', () => {
@@ -65,11 +86,14 @@ test('página fechada escapa o que recebe', () => {
   assert.ok(html.includes('&lt;b&gt;x&lt;/b&gt;'));
 });
 
-test('o limite de tamanho é o mesmo no aviso e na checagem', () => {
+test('o limite de tamanho chega ao script pelo mesmo lugar que o servidor usa', () => {
+  /*
+   * O limite era escrito duas vezes: uma na conta de bytes do script e outra
+   * na mensagem de erro. Agora o script vive num arquivo e recebe o número por
+   * atributo — a fonte passa a ser uma só, que é o que este teste guarda.
+   */
   const html = mural.pagina({ codigo: 'AB7K9Z', titulo: 'M' }, {});
   assert.equal(mural.MAX_MB, 12);
-  // O número aparece na conta de bytes e na mensagem de erro — se um mudar sem
-  // o outro, o usuário lê um limite e esbarra em outro.
-  assert.ok(html.includes(mural.MAX_MB + ' * 1024 * 1024'));
-  assert.ok(html.includes('mais de ' + mural.MAX_MB + ' MB'));
+  assert.ok(html.includes('data-max-mb="' + mural.MAX_MB + '"'),
+    'o script não recebe o limite que o servidor aplica');
 });
