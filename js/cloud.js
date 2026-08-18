@@ -254,6 +254,10 @@
 
   global.MTCloud = {
     signup, login, logout, me,
+    // `dtHeader` sai daqui porque a leitura do mural passou a exigir a
+    // credencial da TV: o código do cartaz autoriza ENVIAR foto, e não listar
+    // o que os outros mandaram.
+    dtHeader, deviceToken,
     deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat, reportAudio,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };

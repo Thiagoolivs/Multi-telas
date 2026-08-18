@@ -85,9 +85,27 @@ const EXT_MIME = Object.fromEntries(Object.entries(MIME_EXT).map(([m, e]) => [e,
 function extFor(mime) { return MIME_EXT[String(mime || '').toLowerCase()] || null; }
 function mimeForKey(key) { return EXT_MIME[String(key).split('.').pop().toLowerCase()] || 'application/octet-stream'; }
 
+/*
+ * Identificadores sorteados com RNG CRIPTOGRÁFICO.
+ *
+ * Isto usava `Math.random()`, e três segredos do produto saíam daqui: o
+ * `deviceToken` (a credencial permanente de uma TV), a chave de cada arquivo
+ * de mídia — que é a única barreira de `/media/*`, uma rota sem autenticação
+ * — e o código do mural.
+ *
+ * O `Math.random()` do V8 é um xorshift128+: o estado de 128 bits é
+ * recuperável a partir de saídas observadas. E `POST /api/devices` é público
+ * e devolve 38 sorteios seguidos deste mesmo gerador por chamada. Quem
+ * observasse algumas criações passava a prever os identificadores seguintes —
+ * e com o token previsto vinham a programação e os aniversariantes da tela de
+ * outro cliente.
+ *
+ * `crypto.randomInt` é uniforme e imprevisível. O código de pareamento de 6
+ * dígitos já usava esse caminho desde o começo; o resto é que ficou para trás.
+ */
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
+  let s = ''; for (let i = 0; i < n; i++) s += c[crypto.randomInt(c.length)];
   return s;
 }
 function httpErr(status, message) { const e = new Error(message); e.status = status; return e; }

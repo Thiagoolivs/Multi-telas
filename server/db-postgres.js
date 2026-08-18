@@ -9,6 +9,7 @@
  * pertencem a um tenant após o pareamento. Config guardada como JSON (TEXT).
  */
 const { Pool, types } = require('pg');
+const crypto = require('crypto');
 
 // BIGINT (int8, OID 20) volta como número — nossos timestamps são epoch em
 // milissegundos, bem abaixo de Number.MAX_SAFE_INTEGER. Assim o backend
@@ -358,6 +359,17 @@ async function getSession(token) {
   return s;
 }
 async function destroySession(token) { await pool.query('DELETE FROM sessions WHERE token = $1', [token]); }
+/*
+ * Apaga TODAS as sessões de um usuário.
+ *
+ * Existe por causa de um caminho que fazia o oposto do que a pessoa espera:
+ * trocar a senha só gravava o novo hash. Com sessão de 30 dias, o cookie de
+ * quem tinha invadido continuava valendo por até um mês — sobrevivendo
+ * exatamente à ação que a vítima faz para se defender. No fluxo de "esqueci a
+ * senha" era pior, porque ele existe justamente para recuperar conta
+ * comprometida.
+ */
+async function destroySessionsOfUser(userId) { await pool.query('DELETE FROM sessions WHERE user_id = $1', [userId]); }
 
 /* ---------------- Dispositivos ---------------- */
 async function createDevice(id, code, deviceToken) {
@@ -367,6 +379,20 @@ async function createDevice(id, code, deviceToken) {
     [id, null, code, '', null, deviceToken, now, now, now]); // nasce "vivo": pareável já
   return { id, code };
 }
+/*
+ * A TV existe, é deste inquilino e apresentou o token certo?
+ *
+ * Serve para autorizar a leitura do mural pelo player: o código do cartaz
+ * autoriza enviar foto, e listar o que os outros mandaram exige a credencial
+ * da tela que vai exibir. A comparação é feita em tempo constante lá em
+ * server.js, onde o segredo chega.
+ */
+async function deviceComToken(token, tenantId) {
+  if (!token || !tenantId) return null;
+  const r = await pool.query('SELECT * FROM devices WHERE device_token = $1 AND tenant_id = $2', [String(token), tenantId]);
+  return r.rows[0] || null;
+}
+
 async function getDevice(id) {
   const r = await pool.query('SELECT * FROM devices WHERE id = $1', [id]);
   return r.rows[0] || null;
@@ -632,9 +658,27 @@ async function apagarTenant(tenantId) {
   return chaves;
 }
 
+/*
+ * Identificadores sorteados com RNG CRIPTOGRÁFICO.
+ *
+ * Isto usava `Math.random()`, e três segredos do produto saíam daqui: o
+ * `deviceToken` (a credencial permanente de uma TV), a chave de cada arquivo
+ * de mídia — que é a única barreira de `/media/*`, uma rota sem autenticação
+ * — e o código do mural.
+ *
+ * O `Math.random()` do V8 é um xorshift128+: o estado de 128 bits é
+ * recuperável a partir de saídas observadas. E `POST /api/devices` é público
+ * e devolve 38 sorteios seguidos deste mesmo gerador por chamada. Quem
+ * observasse algumas criações passava a prever os identificadores seguintes —
+ * e com o token previsto vinham a programação e os aniversariantes da tela de
+ * outro cliente.
+ *
+ * `crypto.randomInt` é uniforme e imprevisível. O código de pareamento de 6
+ * dígitos já usava esse caminho desde o começo; o resto é que ficou para trás.
+ */
 function rid(n) {
   const c = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let s = ''; for (let i = 0; i < n; i++) s += c[Math.floor(Math.random() * c.length)];
+  let s = ''; for (let i = 0; i < n; i++) s += c[crypto.randomInt(c.length)];
   return s;
 }
 
@@ -645,8 +689,8 @@ module.exports = {
   createReset, getReset, consumeReset,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
-  createSession, getSession, destroySession,
-  createDevice, getDevice, getDeviceByCode, claimDevice, setDeviceConfig,
+  createSession, getSession, destroySession, destroySessionsOfUser,
+  createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
   getTenant, getTenantByCustomer, setTenantBilling,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
