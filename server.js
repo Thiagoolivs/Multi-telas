@@ -1288,7 +1288,14 @@ async function handleApi(req, res, pathname, query) {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a peça' });
       try {
-        const out = await ai.generateComposition(brief, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '', brand: (b && b.brand) || '' });
+        const out = await ai.generateComposition(brief, {
+          empresa: (b && b.empresa) || '',
+          tema: (b && b.tema) || '',
+          brand: (b && b.brand) || '',
+          // O formato nunca era passado: a IA compunha sempre como se a tela
+          // fosse deitada, e numa peça 9/16 o layout voltava errado.
+          formato: (b && b.formato) || '16/9',
+        });
         return sendJson(res, 200, { mode: ai.mode(), ...out });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });

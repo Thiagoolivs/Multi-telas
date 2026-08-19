@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
-import { media, ai } from '../../api.js';
+import { media, ai, brand as brandApi } from '../../api.js';
 import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw, estiloCaixa, recortada, raioCss, SOMBRA_PADRAO, SOMBRA_LIMITES, BORDA_MAX } from '../../lib/composition.js';
 import { ICONS, ICON_NAMES } from '../../lib/icons.js';
 import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer, podeRefazer } from '../../lib/historico.js';
@@ -129,6 +129,21 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [busy, setBusy] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [modeloAberto, setModeloAberto] = useState(false);
+  /*
+   * A cor da marca da conta, buscada uma vez.
+   *
+   * A IA recebia como "marca" a cor de FUNDO da peça — e só quando o fundo era
+   * cor chapada. Com gradiente ou imagem, ia vazio e a peça voltava sem marca
+   * nenhuma. O kit da empresa é onde a marca mora; é de lá que ela sai.
+   */
+  const [marcaDaConta, setMarcaDaConta] = useState('');
+  useEffect(() => {
+    let vivo = true;
+    brandApi.get()
+      .then((r) => { if (vivo) setMarcaDaConta(((r && r.kit && r.kit.cores) || [])[0] || ''); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, []);
   const [aiBrief, setAiBrief] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [g1, setG1] = useState('#1e3a8a');
@@ -589,18 +604,58 @@ export function CompositionEditor({ value, onClose, onSave }) {
     setModeloAberto(true);
   }
 
-  async function runAi() {
+  /*
+   * A IA do editor.
+   *
+   * A versão anterior fazia duas coisas que ninguém pediu e que custavam
+   * trabalho de verdade:
+   *
+   * 1. APAGAVA TODOS OS TEXTOS DA PEÇA — `els.filter(e => e.tipo !== 'texto')`
+   *    — sem aviso e sem pergunta. Rodar a IA numa peça em andamento jogava
+   *    fora a copy inteira que a pessoa tinha escrito.
+   *
+   * 2. FORÇAVA TUDO A VIRAR TEXTO: `.map(e => ({ ...e, tipo: 'texto' }))`.
+   *    Qualquer forma ou ícone que voltasse era reetiquetado. É por isso que
+   *    "peça uma imagem ou um SVG" nunca funcionou — o editor não conseguia
+   *    produzir outra coisa a partir da IA, por construção.
+   *
+   * Agora ela ACRESCENTA por padrão, e substituir é uma escolha explícita.
+   * Como tudo entra num passo só do histórico, Ctrl+Z desfaz a geração
+   * inteira — o que torna experimentar barato, que é o ponto de ter IA aqui.
+   */
+  const TIPOS_DA_IA = ['texto', 'forma', 'icone'];
+
+  async function runAi(substituir) {
     if (!aiBrief.trim()) return;
     setAiBusy(true);
     try {
-      const brand = bg.kind === 'cor' ? bg.cor : '';
-      const res = await ai.composition({ brief: aiBrief, brand });
+      /*
+       * O que a IA precisa saber para não compor às cegas.
+       *
+       * `brand` era a cor de fundo, e só quando o fundo era cor chapada — com
+       * gradiente ou imagem, ia string vazia e a peça voltava sem marca
+       * nenhuma. Agora vem do kit da empresa, que é onde a marca mora de
+       * verdade, e o fundo atual entra só como reserva.
+       *
+       * O formato nunca era enviado: a IA compunha sempre como se a tela
+       * fosse deitada, e numa peça 9/16 o layout voltava errado.
+       */
+      const res = await ai.composition({
+        brief: aiBrief,
+        brand: marcaDaConta || (bg.kind === 'cor' ? bg.cor : ''),
+        formato: aspect,
+      });
+      const vindos = (res.elementos || [])
+        // Honra o tipo que veio; descarta o que o editor não sabe desenhar,
+        // em vez de reetiquetar como texto e produzir uma peça sem sentido.
+        .filter((e) => TIPOS_DA_IA.includes(e.tipo || 'texto'))
+        .map((e) => ({ ...e, tipo: e.tipo || 'texto' }));
+
       editar((d) => ({
         ...d,
         bg: res.bg && res.bg.cor ? { kind: 'cor', cor: res.bg.cor } : d.bg,
-        // Mantém o que a pessoa trouxe; troca só os textos pelos gerados.
-        els: [...d.els.filter((e) => e.tipo !== 'texto'), ...entrar((res.elementos || []).map((e) => ({ ...e, tipo: 'texto' })))],
-      }));
+        els: substituir ? entrar(vindos) : [...d.els, ...entrar(vindos)],
+      }), null);
       setSel([]); setAiOpen(false);
     } catch (err) { alert(err.message || 'Falha na IA'); }
     setAiBusy(false);
@@ -704,8 +759,20 @@ export function CompositionEditor({ value, onClose, onSave }) {
           <input autoFocus value={aiBrief} onChange={(e) => setAiBrief(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi(); }}
             placeholder="Descreva a peça (ex.: promoção de skate 30% OFF, jovem e vibrante)"
             className="flex-1 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3" />
-          <span className="text-2xs text-ink-3">a IA monta fundo + textos; sua imagem fica por cima</span>
-          <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || !aiBrief.trim()} onClick={runAi}>{aiBusy ? 'Gerando…' : 'Gerar'}</Button>
+          {/*
+            Dois botões, e o destrutivo é o segundo.
+
+            "Acrescentar" é o padrão porque é o que não custa nada desfazer.
+            "Substituir" só aparece quando há algo para substituir — num palco
+            vazio ele seria uma pergunta sem sentido.
+          */}
+          <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || !aiBrief.trim()}
+            onClick={() => runAi(false)}>{aiBusy ? 'Gerando…' : 'Acrescentar'}</Button>
+          {els.length > 0 && (
+            <Button size="sm" variant="secondary" disabled={aiBusy || !aiBrief.trim()}
+              title="Apaga o que está no palco e põe o que a IA gerar. Ctrl+Z devolve."
+              onClick={() => runAi(true)}>Substituir tudo</Button>
+          )}
         </div>
       )}
 

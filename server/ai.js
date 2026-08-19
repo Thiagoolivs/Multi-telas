@@ -225,6 +225,19 @@ async function generateComposition(brief, ctx) {
       { tipo: 'texto', text: 'Chamada de apoio aqui.', x: 6, y: 40, w: 50, h: 14, cor: '#ffffff', peso: 400, tamanho: 4, align: 'left', z: 2 },
     ] }, brand);
   }
+  /*
+   * O FORMATO entra no pedido.
+   *
+   * Sem ele a IA compunha sempre para tela deitada — e numa peça 9/16 o
+   * resultado voltava com o título ocupando a largura toda e o resto
+   * espremido, porque `x`/`w` são % da largura e `y`/`h` são % da altura.
+   * Dizer a proporção é o mínimo para o layout fazer sentido.
+   */
+  const formato = String(ctx.formato || '16/9');
+  const orientacao = formato === '9/16' ? 'EM PÉ (mais alta que larga)'
+    : formato === '1/1' ? 'QUADRADA'
+      : formato === '21/9' ? 'MUITO LARGA E BAIXA'
+        : 'DEITADA (mais larga que alta)';
   const system =
     'Você é diretor de arte de digital signage. Monte o LAYOUT de uma peça (composição) para uma tela: ' +
     'uma cor de fundo forte (use a cor da marca quando informada) e de 1 a 3 blocos de TEXTO posicionados ' +
@@ -232,7 +245,8 @@ async function generateComposition(brief, ctx) {
     'Deixe metade da tela LIVRE (sem texto) para uma imagem que será inserida depois. NÃO gere imagem. ' +
     'Texto legível à distância, português do Brasil. Responda APENAS com JSON: ' +
     '{ "bg": { "cor": "#hex" }, "elementos": [ { "tipo": "texto", "text": string, "x": num, "y": num, "w": num, "h": num, "rot": num, "cor": "#hex", "peso": 300-900, "tamanho": 2-16, "align": "left"|"center"|"right" } ] }';
-  const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor da marca: ${brand || '(não informada)'}. Tema: ${ctx.tema || 'padrão'}.\nBriefing: ${brief}`;
+  const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor da marca: ${brand || '(não informada)'}. Tema: ${ctx.tema || 'padrão'}.\n`
+    + `A tela é ${orientacao} (proporção ${formato}) — componha para ela.\nBriefing: ${brief}`;
   const text = await callLLM(system, user);
   return clampComposition(parseAiJson(text), brand);
 }
