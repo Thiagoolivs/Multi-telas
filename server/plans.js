@@ -155,11 +155,79 @@ function franquiaCreditos(planId, telas) {
 // cartão na frente, o limite tem que ser baixo mesmo.
 const CREDITOS_BOAS_VINDAS = 5;
 
+/* ---------------- O teste de 14 dias ----------------
+ *
+ * O plano grátis dava UMA TELA PARA SEMPRE. Virou teste com prazo, e a
+ * diferença não é de preço: é de qual pergunta o produto responde.
+ *
+ * "Uma tela para sempre" responde "dá para usar de graça?" — e a resposta faz
+ * a conta parar no grátis. O teste com prazo responde outra: "isto funciona na
+ * minha parede?". Ela só pode ser respondida com a TV ligada na recepção, e é
+ * respondida sozinha em duas semanas. Quem viu funcionando decide com o que
+ * viu; quem nunca ligou não tinha o que decidir.
+ *
+ * O prazo conta do NASCIMENTO da conta, e não do primeiro pareamento. Contar
+ * do pareamento premiaria quem enrola para começar, e é justamente quem enrola
+ * que nunca vai começar.
+ *
+ * A regra é uma só, e mora aqui: quem decide se a conta pode parear é
+ * `podeParear`. Espalhar essa decisão pelo código seria garantir que um dia
+ * um caminho novo esquece de perguntar.
+ */
+const DIAS_DE_TESTE = 14;
+const MS_DO_TESTE = DIAS_DE_TESTE * 24 * 60 * 60 * 1000;
+
+/* Quando o teste desta conta termina. */
+function fimDoTeste(tenant) {
+  const nasceu = Number(tenant && tenant.created_at) || 0;
+  return nasceu ? nasceu + MS_DO_TESTE : 0;
+}
+
+/*
+ * Quantos dias faltam — arredondando PARA CIMA, porque é assim que a pessoa
+ * conta. Faltando 30 horas ela diz "tenho dois dias", não "tenho 1,25".
+ */
+function diasDeTesteRestantes(tenant, agora) {
+  const fim = fimDoTeste(tenant);
+  if (!fim) return 0;
+  return Math.max(0, Math.ceil((fim - (agora || Date.now())) / (24 * 60 * 60 * 1000)));
+}
+
+function testeAtivo(tenant, agora) {
+  return fimDoTeste(tenant) > (agora || Date.now());
+}
+
+/*
+ * A conta pode ligar mais uma tela?
+ *
+ * Devolve o motivo junto, porque um "não" sem motivo obriga quem chama a
+ * adivinhar o que dizer — e foi assim que mensagens de erro passaram a mentir
+ * em outros produtos ("limite atingido" quando o caso era teste vencido).
+ */
+function podeParear(tenant, telasEmUso, agora) {
+  const id = (tenant && tenant.plan) || 'free';
+  const limite = screenLimit(id);
+  const usadas = Math.max(0, Number(telasEmUso) || 0);
+
+  if (isPaid(id)) {
+    if (usadas >= limite) return { ok: false, motivo: 'limite', limite };
+    return { ok: true };
+  }
+
+  // Plano grátis: é o período de teste.
+  if (!testeAtivo(tenant, agora)) {
+    return { ok: false, motivo: 'teste_vencido', dias: DIAS_DE_TESTE };
+  }
+  if (usadas >= limite) return { ok: false, motivo: 'limite', limite };
+  return { ok: true, dias: diasDeTesteRestantes(tenant, agora) };
+}
+
 // Catálogo público (para o painel), na ordem de exibição.
 function catalog() { return ORDER.map((id) => PLANS[id]); }
 
 module.exports = {
   PLANS, ORDER, FAIXAS, CREDITOS_BOAS_VINDAS,
+  DIAS_DE_TESTE, fimDoTeste, diasDeTesteRestantes, testeAtivo, podeParear,
   plan, catalog, screenLimit, isPaid, temRecurso,
   descontoVolume, mensalidadeCents, precoTelaCents, precoProximaTelaCents, cotaBytes, franquiaCreditos,
 };

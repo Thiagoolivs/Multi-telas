@@ -634,18 +634,28 @@
           : 'cartao vidro rounded-2xl border border-white/8 p-7') + ' flex flex-col';
 
         var classePreco = p.sobConsulta ? 'mt-4 text-3xl font-extrabold text-white' : 'mt-4 text-4xl font-extrabold text-white';
+        // Declarado ANTES do primeiro uso: `var` é içado, então usá-lo acima
+        // renderia "undefined dias" no cartão mais visível da página.
+        var dias = dados.diasDeTeste || 14;
+        /*
+         * O plano grátis virou TESTE COM PRAZO. Mostrar "R$ 0" aqui seria
+         * repetir a promessa antiga — a de "uma tela para sempre" — bem no
+         * lugar onde a pessoa decide.
+         */
         var preco = p.sobConsulta ? 'Sob consulta'
-          : !p.precoTelaCents ? 'R$ 0'
+          : !p.precoTelaCents ? dias + ' dias'
             : reais(p.precoTelaCents);
         var sufixo = (!p.sobConsulta && p.precoTelaCents)
           ? '<span class="text-base font-semibold text-mt-ash">/tela</span>' : '';
         var sob = p.sobConsulta ? 'a partir de 20 telas'
-          : !p.precoTelaCents ? '1 tela, para sempre' : 'por mês, por tela';
+          : !p.precoTelaCents ? '1 tela no ar, sem cartão' : 'por mês, por tela';
 
         var itens = [];
         if (p.precoTelaCents === 0 && !p.sobConsulta) {
+          itens.push('A tela ligada de verdade, na parede');
           itens.push('Editor completo e modelos');
           itens.push(dados.creditosBoasVindas + ' créditos de boas-vindas');
+          itens.push('Sem cartão para começar');
         } else if (p.creditosPorTela) {
           itens.push(p.creditosPorTela + ' créditos de IA por tela, todo mês');
         }
@@ -667,7 +677,7 @@
           (destaque
             ? 'botao block rounded-xl bg-mt-gold py-3 text-center text-sm font-extrabold text-mt-void transition'
             : 'block rounded-xl border border-white/15 py-3 text-center text-sm font-bold text-white transition hover:border-mt-beam') +
-          '">' + (p.sobConsulta ? 'Falar com a gente' : p.precoTelaCents ? 'Assinar' : 'Começar') + '</a></div>';
+          '">' + (p.sobConsulta ? 'Falar com a gente' : p.precoTelaCents ? 'Assinar' : 'Testar ' + dias + ' dias') + '</a></div>';
 
         // Nome e blurb entram como TEXTO, e não dentro do HTML montado acima:
         // vêm do servidor, e servidor não é lugar de confiar cegamente.
