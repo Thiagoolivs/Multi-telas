@@ -188,43 +188,237 @@ async function callAnthropic(system, user) {
  * A IA monta o LAYOUT: cor de fundo + blocos de TEXTO posicionados (título,
  * subtítulo, CTA), deixando espaço para a imagem que o usuário insere por cima.
  * Coordenadas x/y/w/h em % da zona. Não gera imagem. */
-function clampComposition(obj, brand) {
+/*
+ * Os tipos que o editor sabe desenhar, e os valores que ele aceita.
+ *
+ * Ficam aqui porque `clampComposition` é a ÚNICA porta por onde a resposta da
+ * IA entra: um nome de ícone inventado vira um SVG vazio na parede, e uma
+ * forma desconhecida vira um retângulo sem aviso.
+ */
+const ICONES_DA_IA = ['star', 'heart', 'bell', 'gift', 'clock', 'pin', 'tag', 'cart', 'leaf',
+  'shield', 'like', 'calendar', 'coffee', 'bolt', 'megaphone', 'wifi', 'check', 'sparkle'];
+const FORMAS_DA_IA = ['rect', 'ellipse', 'triangle', 'diamond', 'diag'];
+const TIPOS_DA_IA = ['texto', 'forma', 'icone'];
+
+/*
+ * Onde a peça pediu que o elemento ficasse, como ÂNCORA — não como caixa.
+ *
+ * A IA erra posição com frequência: "no canto de baixo à direita" virava um
+ * texto no meio da tela. Quando a pessoa DIZ onde quer, o pedido vale mais que
+ * o palpite dela, e a posição é imposta depois, sobre o que voltou.
+ *
+ * Âncora e não caixa porque impor largura e altura junto deformaria o
+ * elemento: um ícone forçado a 40% de largura por 20% de altura deixa de ser
+ * um ícone e vira um borrão esticado. O tamanho continua sendo decisão da IA;
+ * só o CANTO é do usuário.
+ */
+const LUGARES = {
+  'topo-esq': { h: 'esq', v: 'topo' },
+  topo: { h: 'centro', v: 'topo' },
+  'topo-dir': { h: 'dir', v: 'topo' },
+  esq: { h: 'esq', v: 'meio' },
+  centro: { h: 'centro', v: 'meio' },
+  dir: { h: 'dir', v: 'meio' },
+  'base-esq': { h: 'esq', v: 'base' },
+  base: { h: 'centro', v: 'base' },
+  'base-dir': { h: 'dir', v: 'base' },
+};
+const MARGEM = 6;   // respiro da borda, em % — casa com a margem de segurança do editor
+
+function ancorar(el, lugar) {
+  const w = Number(el.w) || 0;
+  const h = Number(el.h) || 0;
+  const eixo = (onde, tam) => {
+    if (onde === 'esq' || onde === 'topo') return MARGEM;
+    if (onde === 'dir' || onde === 'base') return Math.max(MARGEM, 100 - MARGEM - tam);
+    return Math.max(0, (100 - tam) / 2);
+  };
+  el.x = Math.round(eixo(lugar.h, w) * 10) / 10;
+  el.y = Math.round(eixo(lugar.v, h) * 10) / 10;
+}
+
+/*
+ * O corpo do texto, ajustado ao bloco que a IA mesma pediu.
+ *
+ * A IA devolve `tamanho` e a caixa `w`/`h` sem conferir se um cabe no outro —
+ * e não cabe com frequência. "30% OFF EM TUDO" a tamanho 9 num bloco de 70 x
+ * 20 quebra em duas linhas e a segunda sai cortada pela borda do bloco. Na
+ * tela do editor dá para arrastar; na parede, não: a peça já foi publicada.
+ *
+ * A conta é grosseira de propósito — não temos a métrica da fonte aqui — mas
+ * erra para o lado seguro: só DIMINUI, nunca aumenta. Um título um ponto menor
+ * do que poderia é invisível; um título cortado é a peça inteira perdida.
+ */
+function corpoQueCabe(el, formato) {
+  const texto = String(el.text || '');
+  if (!texto) return el.tamanho;
+
+  // `y`/`h` são % da ALTURA; `tamanho` e `w` são % da LARGURA (cqw). Para
+  // comparar altura com corpo, a altura do bloco precisa virar cqw.
+  const [aw, ah] = String(formato || '16/9').split('/').map(Number);
+  const alturaEmCqw = (aw && ah) ? (100 * ah) / aw : 56.25;
+  const disponivel = (Number(el.h) || 0) / 100 * alturaEmCqw;
+  const largura = Number(el.w) || 0;
+  if (disponivel <= 0 || largura <= 0) return el.tamanho;
+
+  /*
+   * 0.52 é a largura média de caractere da Inter (js/fontes.js), que é a fonte
+   * padrão do editor. FOLGA existe porque isto é uma ESTIMATIVA: sem ela, um
+   * texto que dá exatamente na conta quebra na tela de verdade — foi o que
+   * aconteceu com "30% OFF em tudo" num bloco de 70, que caía a um pixel de
+   * caber e ia para a segunda linha, cortada.
+   */
+  const LARGURA_MEDIA = 0.52;
+  const ENTRELINHA = 1.15;
+  const FOLGA = 0.9;
+  // 0.52 é a média da fonte em peso NORMAL. Título de peça vem quase sempre em
+  // 800/900, e letra pesada é mais larga — ignorar isso é justamente o erro que
+  // deixava o título encostar na borda e quebrar.
+  const peso = Number(el.peso) || 400;
+  const largo = LARGURA_MEDIA * (peso >= 700 ? 1.08 : 1);
+  let corpo = Number(el.tamanho) || 6;
+
+  // Duas passadas convergem: diminuir o corpo diminui as linhas também.
+  for (let i = 0; i < 2; i++) {
+    const porLinha = Math.max(1, (largura * FOLGA) / (largo * corpo));
+    const linhas = Math.max(1, Math.ceil(texto.length / porLinha));
+    const preciso = linhas * corpo * ENTRELINHA;
+    // A FOLGA vale só na LARGURA, onde a conta é estimativa (não temos a
+    // métrica da fonte). Na altura, entrelinha vezes número de linhas é
+    // exato — apertar aqui encolheria texto que cabe folgado.
+    if (preciso <= disponivel) break;
+    corpo = corpo * Math.sqrt(disponivel / preciso);
+  }
+  return Math.max(2, Math.round(corpo * 10) / 10);
+}
+
+function clampComposition(obj, brand, pedido, formato) {
   obj = obj || {};
+  pedido = pedido || {};
   const out = { bg: { kind: 'cor', cor: '#0a1020' }, elementos: [] };
   const bgc = (obj.bg && obj.bg.cor) || obj.cor;
   if (isHex(bgc)) out.bg.cor = bgc.startsWith('#') ? bgc : '#' + bgc;
   else if (isHex(brand)) out.bg.cor = brand.startsWith('#') ? brand : '#' + brand;
   const num = (v, lo, hi, d) => { const n = Number(v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : d; };
+  const hex = (v, d) => (isHex(v) ? (String(v).startsWith('#') ? v : '#' + v) : d);
+
+  // Um tipo pedido é um tipo EXIGIDO: quem clicou em "ícone" não quer um
+  // parágrafo de volta. Sem isto, "peça um SVG" continua não funcionando.
+  const exigido = TIPOS_DA_IA.includes(pedido.tipo) ? pedido.tipo : null;
+  const lugar = LUGARES[pedido.onde] || null;
+  const corPedida = hex(pedido.cor, null);
+
   for (const e of Array.isArray(obj.elementos) ? obj.elementos : []) {
     if (!e || e.tipo === 'imagem') continue; // imagem quem põe é o usuário
-    const el = {
-      tipo: 'texto',
-      text: String(e.text || '').slice(0, 160),
+    const tipo = TIPOS_DA_IA.includes(e.tipo) ? e.tipo : 'texto';
+    if (exigido && tipo !== exigido) continue;
+
+    const base = {
+      tipo,
       x: num(e.x, -10, 100, 8), y: num(e.y, -10, 100, 10),
       w: num(e.w, 4, 110, 60), h: num(e.h, 3, 110, 18),
       rot: num(e.rot, -180, 180, 0),
-      cor: isHex(e.cor) ? (e.cor.startsWith('#') ? e.cor : '#' + e.cor) : '#ffffff',
-      peso: num(e.peso, 300, 900, 800),
-      tamanho: num(e.tamanho, 2, 16, 6),
-      align: ['left', 'center', 'right'].includes(e.align) ? e.align : 'left',
       z: num(e.z, 0, 99, 2),
     };
-    if (el.text) out.elementos.push(el);
+
+    let el;
+    if (tipo === 'forma') {
+      el = Object.assign(base, {
+        shape: FORMAS_DA_IA.includes(e.shape) ? e.shape : 'rect',
+        fill: hex(e.fill, corPedida || '#3b82f6'),
+        opacidade: num(e.opacidade, 0.05, 1, 1),
+        radius: num(e.radius, 0, 50, 0),
+      });
+    } else if (tipo === 'icone') {
+      // `peso` no ícone é a espessura do TRAÇO (1 a 3), não o peso da fonte.
+      // Um 800 vindo por engano transformaria o SVG numa mancha sólida.
+      el = Object.assign(base, {
+        name: ICONES_DA_IA.includes(e.name) ? e.name : 'star',
+        cor: hex(e.cor, corPedida || '#ffffff'),
+        peso: num(e.peso, 1, 3, 1.6),
+        opacidade: num(e.opacidade, 0.05, 1, 1),
+      });
+    } else {
+      el = Object.assign(base, {
+        text: String(e.text || '').slice(0, 160),
+        cor: hex(e.cor, corPedida || '#ffffff'),
+        peso: num(e.peso, 300, 900, 800),
+        tamanho: num(e.tamanho, 2, 16, 6),
+        align: ['left', 'center', 'right'].includes(e.align) ? e.align : 'left',
+      });
+      // `.trim()`: só espaço em branco é texto vazio disfarçado, e vira uma
+      // camada invisível que ninguém consegue achar no palco.
+      el.text = el.text.trim();
+      if (!el.text) continue;
+      el.tamanho = corpoQueCabe(el, formato);
+    }
+
+    out.elementos.push(el);
     if (out.elementos.length >= 5) break;
   }
+
+  /*
+   * O lugar pedido é aplicado DEPOIS, e só ao primeiro elemento.
+   *
+   * Só ao primeiro porque empilhar três elementos na mesma caixa esconde dois
+   * deles; e depois porque a IA erra posição com frequência — quando alguém
+   * apontou onde quer, esse pedido ganha do palpite dela.
+   */
+  if (lugar && out.elementos.length) ancorar(out.elementos[0], lugar);
   return out;
+}
+
+/*
+ * O que a pessoa pediu, em palavras que entram no prompt.
+ *
+ * Antes o único canal era uma frase livre, e o resultado era sempre a mesma
+ * coisa: dois blocos de texto. Não havia como pedir uma forma, um ícone, uma
+ * cor específica ou um canto da tela — e "peça uma imagem ou um SVG" nunca
+ * funcionou porque o servidor só sabia produzir texto (ver clampComposition).
+ */
+const NOME_DO_TIPO = {
+  texto: 'UM ÚNICO bloco de TEXTO',
+  forma: 'UMA ÚNICA FORMA geométrica (sem texto)',
+  icone: 'UM ÚNICO ÍCONE de linha (sem texto)',
+};
+const NOME_DO_LUGAR = {
+  'topo-esq': 'no canto superior esquerdo', 'topo': 'no topo, centralizado', 'topo-dir': 'no canto superior direito',
+  esq: 'à esquerda, na altura do meio', centro: 'bem no centro', dir: 'à direita, na altura do meio',
+  'base-esq': 'no canto inferior esquerdo', base: 'na base, centralizado', 'base-dir': 'no canto inferior direito',
+};
+
+function pecaDeExemplo(brief, brand, pedido) {
+  const titulo = (String(brief).split(/[.\n]/)[0] || 'Título').slice(0, 40);
+  if (pedido.tipo === 'forma') {
+    return { bg: { cor: brand || '#12203f' }, elementos: [
+      { tipo: 'forma', shape: 'ellipse', x: 20, y: 20, w: 40, h: 40, fill: pedido.cor || '#3b82f6', opacidade: 0.9, z: 1 },
+    ] };
+  }
+  if (pedido.tipo === 'icone') {
+    return { bg: { cor: brand || '#12203f' }, elementos: [
+      { tipo: 'icone', name: 'star', x: 42, y: 34, w: 16, h: 16, cor: pedido.cor || '#ffffff', peso: 1.6, z: 2 },
+    ] };
+  }
+  if (pedido.tipo === 'texto') {
+    return { bg: { cor: brand || '#12203f' }, elementos: [
+      { tipo: 'texto', text: titulo, x: 8, y: 40, w: 70, h: 20, cor: pedido.cor || '#ffffff', peso: 900, tamanho: 8, align: 'left', z: 2 },
+    ] };
+  }
+  return { bg: { cor: brand || '#12203f' }, elementos: [
+    { tipo: 'forma', shape: 'ellipse', x: 58, y: -18, w: 64, h: 60, fill: pedido.cor || '#3b82f6', opacidade: 0.45, z: 0 },
+    { tipo: 'texto', text: titulo, x: 6, y: 14, w: 60, h: 22, cor: '#ffffff', peso: 900, tamanho: 9, align: 'left', z: 2 },
+    { tipo: 'texto', text: 'Chamada de apoio aqui.', x: 6, y: 40, w: 50, h: 14, cor: '#ffffff', peso: 400, tamanho: 4, align: 'left', z: 2 },
+  ] };
 }
 
 async function generateComposition(brief, ctx) {
   brief = String(brief || '').slice(0, 500);
   ctx = ctx || {};
   const brand = ctx.brand || '';
-  if (mode() === 'dev') {
-    return clampComposition({ bg: { cor: brand || '#12203f' }, elementos: [
-      { tipo: 'texto', text: (brief.split(/[.\n]/)[0] || 'Título').slice(0, 40), x: 6, y: 14, w: 60, h: 22, cor: '#ffffff', peso: 900, tamanho: 9, align: 'left', z: 2 },
-      { tipo: 'texto', text: 'Chamada de apoio aqui.', x: 6, y: 40, w: 50, h: 14, cor: '#ffffff', peso: 400, tamanho: 4, align: 'left', z: 2 },
-    ] }, brand);
-  }
+  const pedido = ctx.pedido || {};
+
+  if (mode() === 'dev') return clampComposition(pecaDeExemplo(brief, brand, pedido), brand, pedido, ctx.formato);
+
   /*
    * O FORMATO entra no pedido.
    *
@@ -238,17 +432,33 @@ async function generateComposition(brief, ctx) {
     : formato === '1/1' ? 'QUADRADA'
       : formato === '21/9' ? 'MUITO LARGA E BAIXA'
         : 'DEITADA (mais larga que alta)';
+
+  const oQue = NOME_DO_TIPO[pedido.tipo]
+    || 'a peça inteira: uma cor de fundo forte e de 1 a 4 elementos (texto, formas e ícones)';
+
   const system =
-    'Você é diretor de arte de digital signage. Monte o LAYOUT de uma peça (composição) para uma tela: ' +
-    'uma cor de fundo forte (use a cor da marca quando informada) e de 1 a 3 blocos de TEXTO posicionados ' +
-    '(título grande, subtítulo curto e um CTA). Coordenadas x/y/w/h em PORCENTAGEM da tela (0 a 100). ' +
-    'Deixe metade da tela LIVRE (sem texto) para uma imagem que será inserida depois. NÃO gere imagem. ' +
-    'Texto legível à distância, português do Brasil. Responda APENAS com JSON: ' +
-    '{ "bg": { "cor": "#hex" }, "elementos": [ { "tipo": "texto", "text": string, "x": num, "y": num, "w": num, "h": num, "rot": num, "cor": "#hex", "peso": 300-900, "tamanho": 2-16, "align": "left"|"center"|"right" } ] }';
-  const user = `Empresa: ${ctx.empresa || 'A empresa'}. Cor da marca: ${brand || '(não informada)'}. Tema: ${ctx.tema || 'padrão'}.\n`
-    + `A tela é ${orientacao} (proporção ${formato}) — componha para ela.\nBriefing: ${brief}`;
-  const text = await callLLM(system, user);
-  return clampComposition(parseAiJson(text), brand);
+    'Você é diretor de arte de digital signage. Monte o LAYOUT pedido. ' +
+    'Coordenadas x/y/w/h em PORCENTAGEM da tela (0 a 100): x e w são % da LARGURA, y e h são % da ALTURA. ' +
+    'Texto legível à distância, português do Brasil. NÃO gere imagens (foto quem põe é o usuário). ' +
+    'Responda APENAS com JSON: { "bg": { "cor": "#hex" }, "elementos": [ ... ] }, onde cada elemento é um destes:\n' +
+    '{ "tipo": "texto", "text": string, "x","y","w","h","rot": num, "cor": "#hex", "peso": 300-900, "tamanho": 2-16, "align": "left"|"center"|"right", "z": num }\n' +
+    '{ "tipo": "forma", "shape": "' + FORMAS_DA_IA.join('"|"') + '", "x","y","w","h","rot": num, "fill": "#hex", "opacidade": 0-1, "radius": 0-50, "z": num }\n' +
+    '{ "tipo": "icone", "name": "' + ICONES_DA_IA.join('"|"') + '", "x","y","w","h","rot": num, "cor": "#hex", "peso": 1-3 (espessura do traço), "opacidade": 0-1, "z": num }\n' +
+    'Use SOMENTE os valores listados para "shape" e "name" — qualquer outro é descartado.';
+
+  const linhas = [
+    'Empresa: ' + (ctx.empresa || 'A empresa') + '. Cor da marca: ' + (brand || '(não informada)') + '. Tema: ' + (ctx.tema || 'padrão') + '.',
+    'A tela é ' + orientacao + ' (proporção ' + formato + ') — componha para ela.',
+    'GERE: ' + oQue + '.',
+  ];
+  if (NOME_DO_LUGAR[pedido.onde]) linhas.push('POSIÇÃO pedida: ' + NOME_DO_LUGAR[pedido.onde] + '.');
+  if (isHex(pedido.cor)) linhas.push('COR pedida: ' + pedido.cor + ' — use essa cor no elemento principal.');
+  if (pedido.estilo) linhas.push('ESTILO: ' + String(pedido.estilo).slice(0, 60) + '.');
+  if (!pedido.tipo) linhas.push('Deixe metade da tela LIVRE (sem texto) para uma imagem inserida depois.');
+  linhas.push('Briefing: ' + brief);
+
+  const text = await callLLM(system, linhas.join('\n'));
+  return clampComposition(parseAiJson(text), brand, pedido, formato);
 }
 
 /* ---------------- Kit de campanha (biblioteca multi-formato) ----------------
@@ -674,4 +884,4 @@ async function diagnose() {
   }
 }
 
-module.exports = { mode, callLLM, parseAiJson, descreverEstilo, catalogarImagens, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };
+module.exports = { mode, __clamp: clampComposition, callLLM, parseAiJson, descreverEstilo, catalogarImagens, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };

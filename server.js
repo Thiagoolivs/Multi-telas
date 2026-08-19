@@ -1295,6 +1295,20 @@ async function handleApi(req, res, pathname, query) {
           // O formato nunca era passado: a IA compunha sempre como se a tela
           // fosse deitada, e numa peça 9/16 o layout voltava errado.
           formato: (b && b.formato) || '16/9',
+          /*
+           * O pedido guiado: o quê, onde, em que cor, em que estilo.
+           *
+           * Antes o único canal era a frase livre, e o resultado era sempre
+           * dois blocos de texto — não havia como pedir uma forma, um ícone,
+           * uma cor ou um canto da tela. Cada campo é validado lá dentro
+           * (server/ai.js), que é a única porta por onde a resposta entra.
+           */
+          pedido: {
+            tipo: (b && b.tipo) || '',
+            onde: (b && b.onde) || '',
+            cor: (b && b.cor) || '',
+            estilo: (b && b.estilo) || '',
+          },
         });
         return sendJson(res, 200, { mode: ai.mode(), ...out });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }

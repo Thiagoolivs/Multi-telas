@@ -165,6 +165,18 @@ export function CompositionEditor({ value, onClose, onSave }) {
   }, []);
   const [aiBrief, setAiBrief] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
+  /*
+   * O pedido guiado da IA.
+   *
+   * A barra anterior tinha um campo só: "descreva a peça". Quem quisesse um
+   * ícone vermelho no canto de baixo tinha que TORCER para a frase ser lida do
+   * jeito certo — e não era, porque o servidor só sabia produzir texto. Agora
+   * o que dá para apontar, aponta-se; a frase fica para o que é mesmo texto.
+   */
+  const [aiTipo, setAiTipo] = useState('');      // '' = a peça inteira
+  const [aiOnde, setAiOnde] = useState('');      // '' = a IA decide
+  const [aiCor, setAiCor] = useState('');        // '' = a IA decide
+  const [aiEstilo, setAiEstilo] = useState('');
   const [g1, setG1] = useState('#1e3a8a');
   const [g2, setG2] = useState('#0a1020');
   const [gType, setGType] = useState('linear');
@@ -673,8 +685,19 @@ export function CompositionEditor({ value, onClose, onSave }) {
    */
   const TIPOS_DA_IA = ['texto', 'forma', 'icone'];
 
+  /*
+   * Pedir "um ícone" sem escrever nada é um pedido completo. Sem uma
+   * descrição padrão, o botão ficaria desabilitado e a pessoa teria que
+   * inventar uma frase para conseguir o que já apontou nos botões.
+   */
+  const DESCRICAO_PADRAO = {
+    texto: 'um bloco de texto curto que combine com a peça',
+    forma: 'uma forma que combine com a peça',
+    icone: 'um ícone que combine com a peça',
+  };
+
   async function runAi(substituir) {
-    if (!aiBrief.trim()) return;
+    if (!aiBrief.trim() && !aiTipo) return;
     setAiBusy(true);
     try {
       /*
@@ -689,9 +712,13 @@ export function CompositionEditor({ value, onClose, onSave }) {
        * fosse deitada, e numa peça 9/16 o layout voltava errado.
        */
       const res = await ai.composition({
-        brief: aiBrief,
+        brief: aiBrief || DESCRICAO_PADRAO[aiTipo] || '',
         brand: marcaDaConta || (bg.kind === 'cor' ? bg.cor : ''),
         formato: aspect,
+        tipo: aiTipo,
+        onde: aiOnde,
+        cor: aiCor,
+        estilo: aiEstilo,
       });
       const vindos = (res.elementos || [])
         // Honra o tipo que veio; descarta o que o editor não sabe desenhar,
@@ -699,12 +726,22 @@ export function CompositionEditor({ value, onClose, onSave }) {
         .filter((e) => TIPOS_DA_IA.includes(e.tipo || 'texto'))
         .map((e) => ({ ...e, tipo: e.tipo || 'texto' }));
 
+      /*
+       * Pedir UM elemento não pode trocar o fundo da peça.
+       *
+       * O fundo é decisão da peça inteira. Quem pediu "um ícone no canto"
+       * acabava com o fundo repintado pela IA — e o trabalho de fundo, que
+       * costuma ser o primeiro a ficar pronto, ia embora sem aviso.
+       */
+      const trocaFundo = !aiTipo && res.bg && res.bg.cor;
+
       editar((d) => ({
         ...d,
-        bg: res.bg && res.bg.cor ? { kind: 'cor', cor: res.bg.cor } : d.bg,
+        bg: trocaFundo ? { kind: 'cor', cor: res.bg.cor } : d.bg,
         els: substituir ? entrar(vindos) : [...d.els, ...entrar(vindos)],
       }), null);
-      setSel([]); setAiOpen(false);
+      setSel([]);
+      setAiOpen(false);
     } catch (err) { alert(err.message || 'Falha na IA'); }
     setAiBusy(false);
   }
@@ -805,26 +842,79 @@ export function CompositionEditor({ value, onClose, onSave }) {
       )}
       </div>
 
-      {aiOpen && (
-        <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-2">
-          <Sparkles size={15} className="text-accent" />
-          <input autoFocus value={aiBrief} onChange={(e) => setAiBrief(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi(); }}
-            placeholder="Descreva a peça (ex.: promoção de skate 30% OFF, jovem e vibrante)"
-            className="flex-1 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3" />
-          {/*
-            Dois botões, e o destrutivo é o segundo.
+      {/*
+        A IA guiada.
 
-            "Acrescentar" é o padrão porque é o que não custa nada desfazer.
-            "Substituir" só aparece quando há algo para substituir — num palco
-            vazio ele seria uma pergunta sem sentido.
-          */}
-          <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || !aiBrief.trim()}
-            onClick={() => runAi(false)}>{aiBusy ? 'Gerando…' : 'Acrescentar'}</Button>
-          {els.length > 0 && (
-            <Button size="sm" variant="secondary" disabled={aiBusy || !aiBrief.trim()}
-              title="Apaga o que está no palco e põe o que a IA gerar. Ctrl+Z devolve."
-              onClick={() => runAi(true)}>Substituir tudo</Button>
-          )}
+        A barra anterior tinha um campo só. Quem quisesse um ícone vermelho no
+        canto de baixo tinha que TORCER para a frase ser lida do jeito certo —
+        e nunca era, porque o servidor só sabia produzir texto. O que dá para
+        apontar agora se aponta; a frase fica para o que é mesmo texto.
+      */}
+      {aiOpen && (
+        <div className="border-b border-line bg-surface-2 px-4 py-3">
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <Rotulo>O que você quer</Rotulo>
+              <div className="flex gap-1">
+                <Pastilha ativo={!aiTipo} onClick={() => setAiTipo('')}>A peça inteira</Pastilha>
+                <Pastilha ativo={aiTipo === 'texto'} icone={Type} onClick={() => setAiTipo('texto')}>Texto</Pastilha>
+                <Pastilha ativo={aiTipo === 'forma'} icone={Shapes} onClick={() => setAiTipo('forma')}>Forma</Pastilha>
+                <Pastilha ativo={aiTipo === 'icone'} icone={Star} onClick={() => setAiTipo('icone')}>Ícone</Pastilha>
+              </div>
+            </div>
+
+            {/* Só faz sentido apontar o lugar de UM elemento: a peça inteira
+                tem vários, e cada um vai para um canto diferente. */}
+            {aiTipo && (
+              <div>
+                <Rotulo>Onde</Rotulo>
+                <GradeDeLugar valor={aiOnde} onChange={setAiOnde} />
+              </div>
+            )}
+
+            <div>
+              <Rotulo>Cor</Rotulo>
+              <div className="flex items-center gap-1.5">
+                <input type="color" value={aiCor || '#3b82f6'} onChange={(e) => setAiCor(e.target.value)}
+                  title="Cor pedida" className="h-8 w-9 cursor-pointer rounded border border-line bg-transparent" />
+                {/* Sem "a IA decide" não haveria como VOLTAR a não pedir cor:
+                    um seletor de cor sempre tem uma cor dentro. */}
+                <Pastilha ativo={!aiCor} onClick={() => setAiCor('')}>A IA decide</Pastilha>
+              </div>
+            </div>
+
+            <div className="min-w-[9rem]">
+              <Rotulo>Estilo</Rotulo>
+              <Select value={aiEstilo} onChange={(e) => setAiEstilo(e.target.value)} className="h-8 text-xs">
+                <option value="">Como combinar</option>
+                {ESTILOS_DA_IA.map((x) => <option key={x} value={x}>{x}</option>)}
+              </Select>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <Sparkles size={15} className="shrink-0 text-accent" />
+            <input autoFocus value={aiBrief} onChange={(e) => setAiBrief(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') runAi(false); }}
+              placeholder={aiTipo
+                ? 'Detalhe se quiser (ex.: um carrinho de compras) — ou deixe em branco'
+                : 'Descreva a peça (ex.: promoção de skate 30% OFF, jovem e vibrante)'}
+              className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3" />
+            {/*
+              Dois botões, e o destrutivo é o segundo.
+
+              "Acrescentar" é o padrão porque é o que não custa nada desfazer.
+              "Substituir" só aparece quando há algo para substituir — num palco
+              vazio ele seria uma pergunta sem sentido.
+            */}
+            <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || (!aiBrief.trim() && !aiTipo)}
+              onClick={() => runAi(false)}>{aiBusy ? 'Gerando…' : 'Acrescentar'}</Button>
+            {els.length > 0 && (
+              <Button size="sm" variant="secondary" disabled={aiBusy || (!aiBrief.trim() && !aiTipo)}
+                title="Apaga o que está no palco e põe o que a IA gerar. Ctrl+Z devolve."
+                onClick={() => runAi(true)}>Substituir tudo</Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -1661,6 +1751,48 @@ function TextoEditavel({ el, editando, estilo, onTexto, onFim }) {
     );
   }
   return <div style={estilo}>{el.text}</div>;
+}
+
+const ESTILOS_DA_IA = ['minimalista', 'vibrante', 'elegante', 'corporativo', 'divertido', 'urgente'];
+
+const LUGARES_DA_IA = [
+  [['topo-esq', 'Canto superior esquerdo'], ['topo', 'No topo, centralizado'], ['topo-dir', 'Canto superior direito']],
+  [['esq', 'À esquerda, no meio'], ['centro', 'Bem no centro'], ['dir', 'À direita, no meio']],
+  [['base-esq', 'Canto inferior esquerdo'], ['base', 'Na base, centralizado'], ['base-dir', 'Canto inferior direito']],
+];
+
+function Rotulo({ children }) {
+  return <div className="mb-1 text-2xs font-semibold uppercase tracking-wide text-ink-3">{children}</div>;
+}
+
+function Pastilha({ ativo, icone: Icone, onClick, children }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={ativo}
+      className={'flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition '
+        + (ativo ? 'border-accent bg-accent/10 text-accent' : 'border-line text-ink-2 hover:text-ink')}>
+      {Icone && <Icone size={13} />}{children}
+    </button>
+  );
+}
+
+/*
+ * Onde, em nove quadradinhos.
+ *
+ * É a forma mais curta de dizer "no canto de baixo à direita" sem escrever
+ * — e sem depender de a IA ler a frase do jeito certo, que era o que
+ * acontecia antes (e não funcionava).
+ */
+function GradeDeLugar({ valor, onChange }) {
+  return (
+    <div className="inline-grid grid-cols-3 gap-0.5 rounded-md border border-line p-0.5" role="group" aria-label="Onde">
+      {LUGARES_DA_IA.map((linha) => linha.map(([id, nome]) => (
+        <button key={id} type="button" aria-pressed={valor === id} title={nome} data-lugar={id}
+          onClick={() => onChange(valor === id ? '' : id)}
+          className={'h-[14px] w-[18px] rounded-[2px] border transition '
+            + (valor === id ? 'border-accent bg-accent' : 'border-line bg-surface hover:bg-line')} />
+      )))}
+    </div>
+  );
 }
 
 function IconBtn({ icon: Icone, title, onClick, disabled, ativo }) {
