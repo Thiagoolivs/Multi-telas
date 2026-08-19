@@ -110,7 +110,7 @@ export default function App() {
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
-      case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage />;
+      case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage onIr={go} />;
       case 'brand': return <BrandPage />;
       case 'mural': return <MuralPage />;
       case 'birthdays': return <BirthdaysPage />;
