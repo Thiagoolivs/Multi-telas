@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar.jsx';
 import { Topbar } from './Topbar.jsx';
 import { FaixaOffline } from './FaixaOffline.jsx';
 import { FaixaTeste } from './FaixaTeste.jsx';
+import { Avisos } from './Avisos.jsx';
 
 // Shell responsivo: sidebar fixa em ≥lg; em telas menores vira drawer sobre
 // um backdrop. O tema (claro/escuro) é controlado aqui e aplicado no <html>.
@@ -40,6 +41,9 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
           <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6 sm:py-6">{children}</div>
         </main>
       </div>
+
+      {/* Fora do <main>: o aviso não rola com a página nem some ao trocar de menu. */}
+      <Avisos />
     </div>
   );
 }

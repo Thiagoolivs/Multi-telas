@@ -17,6 +17,9 @@ import { zonesOf } from '../lib/screenConfig.js';
 import { downloadComposition } from '../lib/exportPng.js';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { BriefingChat } from '../components/content/BriefingChat.jsx';
+import { SalvarEm } from '../components/content/SalvarEm.jsx';
+import { aviso } from '../lib/avisos.js';
+import { guardar as guardarNaBandeja, inscrever as inscreverBandeja, limpar as limparBandeja } from '../lib/bandeja.js';
 
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
@@ -26,7 +29,7 @@ const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.j
 // verticais quando a tela dele for de retrato.
 const DEITADOS = ['16/9', '21/9'];
 
-export function MyDesignsPage() {
+export function MyDesignsPage({ onIr }) {
   const { data, loading, reload } = useAsync(library.list);
   const { data: devData } = useAsync(devices.list);
   const screens = (devData && devData.devices) || [];
@@ -37,9 +40,25 @@ export function MyDesignsPage() {
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);   // { id?, item } no editor
   const [modeloAberto, setModeloAberto] = useState(false);
-  const [saveItem, setSaveItem] = useState(null);  // { item } aguardando nome/coleção
-  const [coll, setColl] = useState('');
-  const [label, setLabel] = useState('');
+  /*
+   * O que está esperando para ser guardado: { item, nome, pasta, titulo }.
+   * Nome e pasta são SUGESTÕES — quem decide é o diálogo, e ele pergunta.
+   */
+  const [saveItem, setSaveItem] = useState(null);
+
+  /*
+   * Recolhe o que o aviso tiver deixado na bandeja.
+   *
+   * Vale para os dois casos, e é por isso que a inscrição dispara na hora:
+   * quem clicou "Ver e salvar" estando aqui já tem a página montada, e quem
+   * clicou de outra tela chega aqui depois do depósito.
+   */
+  useEffect(() => inscreverBandeja((p) => {
+    if (!p) return;
+    if (p.tipo === 'campanha') { setGen(p.gen); setAiColl(p.nome || 'Campanha'); setAiOpen(true); }
+    else setSaveItem(p);
+    limparBandeja();
+  }), []);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -94,17 +113,20 @@ export function MyDesignsPage() {
       setEditing(null);
     } else {
       setEditing(null);
-      setSaveItem({ item }); setColl(collections[0] || 'Meus Designs'); setLabel('');
+      setSaveItem({ item, nome: '', pasta: '' });
     }
   }
 
-  async function salvarDesign() {
+  async function salvarDesign({ nome, pasta }) {
     if (!saveItem) return;
     setBusy(true); setMsg('');
     try {
       const it = saveItem.item;
-      await library.save(coll.trim() || 'Meus Designs', [{ formato: it.formato || '16/9', label: label.trim() || 'Design', item: it }]);
-      setSaveItem(null); setMsg('Salvo em “' + (coll.trim() || 'Meus Designs') + '”.'); reload();
+      const nova = !collections.includes(pasta);
+      await library.save(pasta, [{ formato: it.formato || '16/9', label: nome, item: it }]);
+      setSaveItem(null);
+      aviso.ok(nova ? 'Pasta “' + pasta + '” criada com “' + nome + '” dentro.' : '“' + nome + '” salvo em “' + pasta + '”.');
+      reload();
     } catch (e) { setMsg(e.message || 'Falha ao salvar'); }
     setBusy(false);
   }
@@ -183,7 +205,31 @@ export function MyDesignsPage() {
       setGen(out);
       setAiColl(out.campanha || empresa || 'Campanha');
       setAiOpen(true); // traz o resultado de volta mesmo se a janela foi fechada
-    } catch (e) { setMsg(e.message || 'Falha ao gerar'); }
+      /*
+       * A faixa de progresso vive nesta página. Quem foi mexer em Telas ou em
+       * Marca enquanto esperava não vê nada — e a campanha fica pronta em
+       * silêncio. O aviso é o que atravessa a navegação.
+       */
+      aviso.pronto('campanha:' + id, 'Sua campanha ficou pronta.',
+        (out.pecas || []).length + ' peça(s) em “' + (out.campanha || 'Campanha') + '”.',
+        {
+          rotulo: 'Ver as peças',
+          /*
+           * Pela bandeja, pelo mesmo motivo da imagem: o polling continua
+           * depois que a página sai de cena, e o servidor DESCARTA o trabalho
+           * assim que entrega. Se o resultado não for depositado aqui, voltar
+           * para "Meus Designs" não o traz de volta — a campanha inteira,
+           * já paga, se perde.
+           */
+          on: () => {
+            guardarNaBandeja({ tipo: 'campanha', gen: out, nome: out.campanha || empresa || 'Campanha' });
+            if (onIr) onIr('designs');
+          },
+        });
+    } catch (e) {
+      setMsg(e.message || 'Falha ao gerar');
+      aviso.erro('campanha:' + id, 'A campanha não saiu.', e.message || 'Tente de novo em instantes.');
+    }
     finally { setEmAndamento(false); setEtapa(null); }
   }
 
@@ -222,7 +268,7 @@ export function MyDesignsPage() {
       await library.save(nome, pecas);
       setAiOpen(false); setBrief(''); reload();
       if (depoisPublicar) { setGen(null); abrirPublicar(nome, pecas); }
-      else { setGen(null); setMsg('Campanha “' + nome + '” salva.'); }
+      else { setGen(null); aviso.ok('Pasta “' + nome + '” criada com ' + pecas.length + ' peça(s).'); }
     } catch (e) { setMsg(e.message || 'Falha ao salvar'); }
     setBusy(false);
   }
@@ -255,16 +301,54 @@ export function MyDesignsPage() {
 
   /* ---------------- Imagem e importação ---------------- */
 
-  async function gerarImagem() {
-    if (!iPrompt.trim()) return;
-    setBusy(true); setMsg('');
-    try {
-      const out = await ai.image({ prompt: iPrompt, formato: iFormato, estilo: iEstilo });
-      const item = { type: 'composicao', formato: out.formato || iFormato, duracao: 12, bg: { kind: 'imagem', src: out.url }, elementos: [] };
-      setImgOpen(false); setIPrompt('');
-      setSaveItem({ item }); setColl(collections[0] || 'Imagens IA'); setLabel('Imagem IA');
-    } catch (e) { setMsg(e.message || 'Falha ao gerar'); }
-    setBusy(false);
+  /*
+   * Gerar imagem NÃO trava mais a tela.
+   *
+   * A geração leva de dez a sessenta segundos. Antes isso segurava um diálogo
+   * modal: quem esperava não podia fazer mais nada, e sair da página perdia o
+   * trabalho E o crédito, que já tinha sido cobrado. Numa conta com plano por
+   * créditos, isso é dinheiro jogado fora por causa de um clique no menu.
+   *
+   * Agora o diálogo fecha na hora, o trabalho segue em segundo plano e o
+   * resultado VEM ATRÁS da pessoa: um aviso no canto, com o botão que abre a
+   * pergunta "onde isto vai ficar?". É este o padrão para tudo que a conta
+   * cria — avisar, mostrar, e só então perguntar onde guardar.
+   */
+  function gerarImagem() {
+    const prompt = iPrompt.trim();
+    if (!prompt) return;
+    const formato = iFormato;
+    const id = 'img:' + Date.now();
+
+    setImgOpen(false); setIPrompt(''); setMsg('');
+    aviso.trabalho(id, 'Gerando sua imagem…', 'Pode sair desta tela. Aviso aqui quando ficar pronta.');
+
+    ai.image({ prompt, formato, estilo: iEstilo }).then((out) => {
+      const item = { type: 'composicao', formato: out.formato || formato, duracao: 12, bg: { kind: 'imagem', src: out.url }, elementos: [] };
+      aviso.pronto(id, 'Sua imagem ficou pronta.', resumo(prompt), {
+        rotulo: 'Ver e salvar',
+        /*
+         * Pela bandeja, e não por `setSaveItem` direto: quando o aviso é
+         * clicado de outra tela, ESTA página está desmontada e o clique não
+         * faria nada — o resultado de um trabalho já cobrado ficaria
+         * inalcançável. A bandeja guarda; a navegação traz para cá.
+         */
+        on: () => {
+          guardarNaBandeja({ item, nome: resumo(prompt), pasta: 'Imagens da IA', titulo: 'Sua imagem ficou pronta' });
+          if (onIr) onIr('designs');
+        },
+      });
+    }).catch((e) => {
+      aviso.erro(id, 'A imagem não saiu.', e.message || 'Tente de novo em instantes.');
+    });
+  }
+
+  // O prompt vira o nome sugerido: "banner de padaria ao amanhecer" é um nome
+  // melhor do que "Imagem IA", que é o que todas as imagens se chamavam antes.
+  function resumo(texto) {
+    const limpo = String(texto).replace(/\s+/g, ' ').trim();
+    if (limpo.length <= 40) return limpo;
+    return limpo.slice(0, 40).replace(/\s\S*$/, '') + '…';
   }
 
   async function onImport(e) {
@@ -277,7 +361,7 @@ export function MyDesignsPage() {
       const item = isPdf
         ? { type: 'pptx', src: up.url, duracao: 20 }
         : { type: 'composicao', formato: '16/9', duracao: 12, bg: { kind: 'imagem', src: up.url }, elementos: [] };
-      setSaveItem({ item }); setColl(collections[0] || 'Importados'); setLabel(f.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'Importado');
+      setSaveItem({ item, nome: f.name.replace(/\.[^.]+$/, '').slice(0, 40) || 'Importado', pasta: 'Importados' });
     } catch (err) { setMsg(err.message || 'Falha ao importar'); }
     setBusy(false);
   }
@@ -422,18 +506,17 @@ export function MyDesignsPage() {
       )}
 
       {/* Salvar design (nome + coleção) */}
-      <Dialog open={!!saveItem} onClose={() => setSaveItem(null)} title="Salvar design" description="Escolha um nome e a campanha onde ele fica."
-        footer={<><Button variant="ghost" onClick={() => setSaveItem(null)}>Cancelar</Button>
-          <Button variant="primary" icon={Check} disabled={busy} onClick={salvarDesign}>{busy ? 'Salvando…' : 'Salvar'}</Button></>}>
-        {saveItem && <div className="mb-3"><DesignThumb item={saveItem.item} /></div>}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Nome"><Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex.: Promo de inverno" /></Field>
-          <Field label="Campanha">
-            <Input list="colls" value={coll} onChange={(e) => setColl(e.target.value)} placeholder="Ex.: Inverno 2026" />
-            <datalist id="colls">{collections.map((c) => <option key={c} value={c} />)}</datalist>
-          </Field>
-        </div>
-      </Dialog>
+      <SalvarEm
+        aberto={!!saveItem}
+        onFechar={() => setSaveItem(null)}
+        onSalvar={salvarDesign}
+        item={saveItem && saveItem.item}
+        pastas={collections}
+        ocupado={busy}
+        titulo={(saveItem && saveItem.titulo) || 'Salvar design'}
+        nomeSugerido={(saveItem && saveItem.nome) || ''}
+        pastaSugerida={(saveItem && saveItem.pasta) || ''}
+      />
 
       {/* Publicar — uma peça ou a campanha inteira, em uma ou várias telas */}
       <Dialog open={!!pub} onClose={() => setPub(null)} className="max-w-3xl"

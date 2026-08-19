@@ -6,6 +6,7 @@ import {
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup, LayoutTemplate,
+  Ruler, Paintbrush,
 } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
@@ -15,6 +16,7 @@ import { ICONS, ICON_NAMES } from '../../lib/icons.js';
 import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer, podeRefazer } from '../../lib/historico.js';
 import { encaixar, encaixarRedimensionamento, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
 import { decidirColagem } from '../../lib/colar.js';
+import { lerFormato, aplicarFormato } from '../../lib/formato.js';
 import {
   estiloTexto, listar as listarFontes, pesosDe, pesoValido, dados as dadosDaFonte,
   carregarFonte, carregarDaComposicao, ESPACAMENTO, ENTRELINHA,
@@ -130,6 +132,23 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [aiOpen, setAiOpen] = useState(false);
   const [modeloAberto, setModeloAberto] = useState(false);
   /*
+   * Guias do palco: margem de segurança, centro e terços.
+   *
+   * A margem NÃO é decoração. Uma parte das TVs come alguns por cento de cada
+   * lado (overscan), e é justamente nas telas mais baratas — as que acabam
+   * numa recepção — que isso acontece. Sem a linha desenhada, o jeito de
+   * descobrir que o texto encostou demais na borda é ver a peça cortada na
+   * parede, depois de publicada.
+   */
+  const [guiasFixas, setGuiasFixas] = useState(false);
+
+  /*
+   * O pincel de formatação fica ARMADO entre dois cliques: um pega o molde,
+   * o outro aplica. É estado e não gesto porque o segundo clique pode demorar
+   * — rolar a lista de camadas, dar zoom, procurar o elemento.
+   */
+  const [pincel, setPincel] = useState(null);
+  /*
    * A cor da marca da conta, buscada uma vez.
    *
    * A IA recebia como "marca" a cor de FUNDO da peça — e só quando o fundo era
@@ -146,6 +165,18 @@ export function CompositionEditor({ value, onClose, onSave }) {
   }, []);
   const [aiBrief, setAiBrief] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
+  /*
+   * O pedido guiado da IA.
+   *
+   * A barra anterior tinha um campo só: "descreva a peça". Quem quisesse um
+   * ícone vermelho no canto de baixo tinha que TORCER para a frase ser lida do
+   * jeito certo — e não era, porque o servidor só sabia produzir texto. Agora
+   * o que dá para apontar, aponta-se; a frase fica para o que é mesmo texto.
+   */
+  const [aiTipo, setAiTipo] = useState('');      // '' = a peça inteira
+  const [aiOnde, setAiOnde] = useState('');      // '' = a IA decide
+  const [aiCor, setAiCor] = useState('');        // '' = a IA decide
+  const [aiEstilo, setAiEstilo] = useState('');
   const [g1, setG1] = useState('#1e3a8a');
   const [g2, setG2] = useState('#0a1020');
   const [gType, setGType] = useState('linear');
@@ -340,6 +371,34 @@ export function CompositionEditor({ value, onClose, onSave }) {
     setSel(copias.map((e) => e.id));
   }, [els, sel, setEls]);
 
+  /* ---------------- Pincel de formatação ---------------- */
+
+  /*
+   * Pega o molde do elemento selecionado. Só faz sentido com UM selecionado:
+   * com vários não existe "a" formatação, existem várias.
+   */
+  const pegarFormato = useCallback(() => {
+    if (pincel) { setPincel(null); return; }   // clicar de novo desarma
+    if (sel.length !== 1) return;
+    const el = els.find((e) => e.id === sel[0]);
+    if (el) setPincel(lerFormato(el));
+  }, [pincel, sel, els]);
+
+  /*
+   * Aplica e desarma — a menos que Alt esteja pressionado, que é o gesto do
+   * Canva e do Office para "continuar pintando". Sem ele, formatar seis
+   * textos seria seis idas ao botão.
+   */
+  const pintarFormato = useCallback((id, manter) => {
+    const el = els.find((e) => e.id === id);
+    if (!el || !pincel || el.id === pincel.id) return false;
+    const p = aplicarFormato(el, pincel);
+    if (!p) return false;
+    patch(id, p, null);
+    if (!manter) setPincel(null);
+    return true;
+  }, [els, pincel, patch]);
+
   // Área de transferência própria: a do sistema não carrega objeto, e depender
   // dela quebraria a colagem entre uma peça e outra dentro do mesmo editor.
   const areaCopia = useRef([]);
@@ -426,6 +485,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
       shift.current = ev.shiftKey;
 
       if (ev.key === 'Escape') {
+        if (pincel) { setPincel(null); return; }
         if (editandoTexto) { setEditandoTexto(null); return; }
         if (!digitando()) { limparSel(); return; }
         return;
@@ -466,7 +526,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKeyUp);
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp); };
-  }, [els, sel, editandoTexto, duplicar, copiar, colar, remover, moverCamada, empurrar, fecharPasso, saltar, juntar, separar]);
+  }, [els, sel, editandoTexto, pincel, duplicar, copiar, colar, remover, moverCamada, empurrar, fecharPasso, saltar, juntar, separar]);
 
   /* ---------------- Colar e arrastar ----------------
    *
@@ -625,8 +685,19 @@ export function CompositionEditor({ value, onClose, onSave }) {
    */
   const TIPOS_DA_IA = ['texto', 'forma', 'icone'];
 
+  /*
+   * Pedir "um ícone" sem escrever nada é um pedido completo. Sem uma
+   * descrição padrão, o botão ficaria desabilitado e a pessoa teria que
+   * inventar uma frase para conseguir o que já apontou nos botões.
+   */
+  const DESCRICAO_PADRAO = {
+    texto: 'um bloco de texto curto que combine com a peça',
+    forma: 'uma forma que combine com a peça',
+    icone: 'um ícone que combine com a peça',
+  };
+
   async function runAi(substituir) {
-    if (!aiBrief.trim()) return;
+    if (!aiBrief.trim() && !aiTipo) return;
     setAiBusy(true);
     try {
       /*
@@ -641,9 +712,13 @@ export function CompositionEditor({ value, onClose, onSave }) {
        * fosse deitada, e numa peça 9/16 o layout voltava errado.
        */
       const res = await ai.composition({
-        brief: aiBrief,
+        brief: aiBrief || DESCRICAO_PADRAO[aiTipo] || '',
         brand: marcaDaConta || (bg.kind === 'cor' ? bg.cor : ''),
         formato: aspect,
+        tipo: aiTipo,
+        onde: aiOnde,
+        cor: aiCor,
+        estilo: aiEstilo,
       });
       const vindos = (res.elementos || [])
         // Honra o tipo que veio; descarta o que o editor não sabe desenhar,
@@ -651,12 +726,22 @@ export function CompositionEditor({ value, onClose, onSave }) {
         .filter((e) => TIPOS_DA_IA.includes(e.tipo || 'texto'))
         .map((e) => ({ ...e, tipo: e.tipo || 'texto' }));
 
+      /*
+       * Pedir UM elemento não pode trocar o fundo da peça.
+       *
+       * O fundo é decisão da peça inteira. Quem pediu "um ícone no canto"
+       * acabava com o fundo repintado pela IA — e o trabalho de fundo, que
+       * costuma ser o primeiro a ficar pronto, ia embora sem aviso.
+       */
+      const trocaFundo = !aiTipo && res.bg && res.bg.cor;
+
       editar((d) => ({
         ...d,
-        bg: res.bg && res.bg.cor ? { kind: 'cor', cor: res.bg.cor } : d.bg,
+        bg: trocaFundo ? { kind: 'cor', cor: res.bg.cor } : d.bg,
         els: substituir ? entrar(vindos) : [...d.els, ...entrar(vindos)],
       }), null);
-      setSel([]); setAiOpen(false);
+      setSel([]);
+      setAiOpen(false);
     } catch (err) { alert(err.message || 'Falha na IA'); }
     setAiBusy(false);
   }
@@ -718,7 +803,10 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <div className="mx-1 h-5 w-px bg-line" />
         <IconBtn title="Agrupar (Ctrl+G)" icon={Group} disabled={!podeAgrupar(els, sel)} onClick={juntar} />
         <IconBtn title="Desagrupar (Ctrl+Shift+G)" icon={Ungroup} disabled={!podeDesagrupar(els, sel)} onClick={separar} />
-        <IconBtn title="Duplicar (Ctrl+D)" icon={Copy} disabled={!sel.length} onClick={duplicar} />
+        <IconBtn title="Duplicar (Ctrl+D, ou Alt+arrastar)" icon={Copy} disabled={!sel.length} onClick={duplicar} />
+        <IconBtn
+          title={pincel ? 'Clique no elemento que vai receber (Alt para pintar vários)' : 'Copiar formatação de um elemento'}
+          icon={Paintbrush} ativo={!!pincel} disabled={!pincel && sel.length !== 1} onClick={pegarFormato} />
         <IconBtn title="Remover (Delete)" icon={Trash2} disabled={!sel.length} onClick={remover} />
 
         <div className="mx-1 h-5 w-px bg-line" />
@@ -730,6 +818,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         ))}
 
         <div className="mx-1 h-5 w-px bg-line" />
+        <IconBtn title="Margem de segurança, centro e terços" icon={Ruler} ativo={guiasFixas} onClick={() => setGuiasFixas((g) => !g)} />
         <IconBtn title="Menos zoom" icon={ZoomOut} onClick={() => setZoom((z) => clamp(z - 0.25, 0.25, 3))} />
         <button onClick={() => setZoom(1)} title="Ajustar à tela"
           className="tnum flex h-8 min-w-[3.2rem] items-center justify-center rounded-md border border-line px-1 text-xs text-ink-2 hover:text-ink">
@@ -753,26 +842,79 @@ export function CompositionEditor({ value, onClose, onSave }) {
       )}
       </div>
 
-      {aiOpen && (
-        <div className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-2">
-          <Sparkles size={15} className="text-accent" />
-          <input autoFocus value={aiBrief} onChange={(e) => setAiBrief(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') runAi(); }}
-            placeholder="Descreva a peça (ex.: promoção de skate 30% OFF, jovem e vibrante)"
-            className="flex-1 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3" />
-          {/*
-            Dois botões, e o destrutivo é o segundo.
+      {/*
+        A IA guiada.
 
-            "Acrescentar" é o padrão porque é o que não custa nada desfazer.
-            "Substituir" só aparece quando há algo para substituir — num palco
-            vazio ele seria uma pergunta sem sentido.
-          */}
-          <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || !aiBrief.trim()}
-            onClick={() => runAi(false)}>{aiBusy ? 'Gerando…' : 'Acrescentar'}</Button>
-          {els.length > 0 && (
-            <Button size="sm" variant="secondary" disabled={aiBusy || !aiBrief.trim()}
-              title="Apaga o que está no palco e põe o que a IA gerar. Ctrl+Z devolve."
-              onClick={() => runAi(true)}>Substituir tudo</Button>
-          )}
+        A barra anterior tinha um campo só. Quem quisesse um ícone vermelho no
+        canto de baixo tinha que TORCER para a frase ser lida do jeito certo —
+        e nunca era, porque o servidor só sabia produzir texto. O que dá para
+        apontar agora se aponta; a frase fica para o que é mesmo texto.
+      */}
+      {aiOpen && (
+        <div className="border-b border-line bg-surface-2 px-4 py-3">
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <Rotulo>O que você quer</Rotulo>
+              <div className="flex gap-1">
+                <Pastilha ativo={!aiTipo} onClick={() => setAiTipo('')}>A peça inteira</Pastilha>
+                <Pastilha ativo={aiTipo === 'texto'} icone={Type} onClick={() => setAiTipo('texto')}>Texto</Pastilha>
+                <Pastilha ativo={aiTipo === 'forma'} icone={Shapes} onClick={() => setAiTipo('forma')}>Forma</Pastilha>
+                <Pastilha ativo={aiTipo === 'icone'} icone={Star} onClick={() => setAiTipo('icone')}>Ícone</Pastilha>
+              </div>
+            </div>
+
+            {/* Só faz sentido apontar o lugar de UM elemento: a peça inteira
+                tem vários, e cada um vai para um canto diferente. */}
+            {aiTipo && (
+              <div>
+                <Rotulo>Onde</Rotulo>
+                <GradeDeLugar valor={aiOnde} onChange={setAiOnde} />
+              </div>
+            )}
+
+            <div>
+              <Rotulo>Cor</Rotulo>
+              <div className="flex items-center gap-1.5">
+                <input type="color" value={aiCor || '#3b82f6'} onChange={(e) => setAiCor(e.target.value)}
+                  title="Cor pedida" className="h-8 w-9 cursor-pointer rounded border border-line bg-transparent" />
+                {/* Sem "a IA decide" não haveria como VOLTAR a não pedir cor:
+                    um seletor de cor sempre tem uma cor dentro. */}
+                <Pastilha ativo={!aiCor} onClick={() => setAiCor('')}>A IA decide</Pastilha>
+              </div>
+            </div>
+
+            <div className="min-w-[9rem]">
+              <Rotulo>Estilo</Rotulo>
+              <Select value={aiEstilo} onChange={(e) => setAiEstilo(e.target.value)} className="h-8 text-xs">
+                <option value="">Como combinar</option>
+                {ESTILOS_DA_IA.map((x) => <option key={x} value={x}>{x}</option>)}
+              </Select>
+            </div>
+          </div>
+
+          <div className="mt-3 flex items-center gap-2">
+            <Sparkles size={15} className="shrink-0 text-accent" />
+            <input autoFocus value={aiBrief} onChange={(e) => setAiBrief(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') runAi(false); }}
+              placeholder={aiTipo
+                ? 'Detalhe se quiser (ex.: um carrinho de compras) — ou deixe em branco'
+                : 'Descreva a peça (ex.: promoção de skate 30% OFF, jovem e vibrante)'}
+              className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3" />
+            {/*
+              Dois botões, e o destrutivo é o segundo.
+
+              "Acrescentar" é o padrão porque é o que não custa nada desfazer.
+              "Substituir" só aparece quando há algo para substituir — num palco
+              vazio ele seria uma pergunta sem sentido.
+            */}
+            <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || (!aiBrief.trim() && !aiTipo)}
+              onClick={() => runAi(false)}>{aiBusy ? 'Gerando…' : 'Acrescentar'}</Button>
+            {els.length > 0 && (
+              <Button size="sm" variant="secondary" disabled={aiBusy || (!aiBrief.trim() && !aiTipo)}
+                title="Apaga o que está no palco e põe o que a IA gerar. Ctrl+Z devolve."
+                onClick={() => runAi(true)}>Substituir tudo</Button>
+            )}
+          </div>
         </div>
       )}
 
@@ -789,11 +931,20 @@ export function CompositionEditor({ value, onClose, onSave }) {
           <div ref={canvasRef} data-palco
             onMouseDown={(e) => { if (e.target === canvasRef.current) limparSel(); }}
 
-            className="relative shrink-0 shadow-2xl" style={{ ...bgStyle, width: palco.w, height: palco.h }}>
+            className="relative shrink-0 shadow-2xl"
+            style={{ ...bgStyle, width: palco.w, height: palco.h, cursor: pincel ? 'copy' : 'default' }}>
 
             {els.map((e) => e.oculto ? null : (
               <div key={e.id} data-el={e.id} ref={(n) => { if (n) nodes.current[e.id] = n; }}
-                onMouseDown={(ev) => { if (!e.travado) { ev.stopPropagation(); escolher(e.id, ev.shiftKey); } }}
+                onMouseDown={(ev) => {
+                  if (e.travado) return;
+                  ev.stopPropagation();
+                  // Com o pincel armado, o clique PINTA em vez de selecionar:
+                  // é o gesto inteiro do pincel, e trocar a seleção no meio
+                  // dele só faria perder o alvo de vista.
+                  if (pincel && pintarFormato(e.id, ev.altKey)) return;
+                  escolher(e.id, ev.shiftKey);
+                }}
                 onDoubleClick={() => {
                   if (e.travado) return;
                   /*
@@ -854,6 +1005,31 @@ export function CompositionEditor({ value, onClose, onSave }) {
               `setState` no meio do arrasto reinicia a conta do Moveable, e o
               elemento volta ao tamanho em que estava.
             */}
+            {/*
+              Margem de segurança, centro e terços. Fica ABAIXO dos elementos
+              (zIndex 1) para não cobrir a peça — quem precisa aparecer por
+              cima é a guia de encaixe, que é momentânea.
+            */}
+            {guiasFixas && (
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
+                {/* Área segura: 5% de cada lado, que é o overscan típico. */}
+                <div style={{
+                  position: 'absolute', left: '5%', top: '5%', right: '5%', bottom: '5%',
+                  border: '1px dashed rgba(255,180,80,.55)',
+                }} />
+                {/* Centro */}
+                <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: 'rgba(120,160,255,.35)' }} />
+                <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'rgba(120,160,255,.35)' }} />
+                {/* Terços */}
+                {[33.333, 66.667].map((v) => (
+                  <React.Fragment key={v}>
+                    <div style={{ position: 'absolute', left: v + '%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,.12)' }} />
+                    <div style={{ position: 'absolute', top: v + '%', left: 0, right: 0, height: 1, background: 'rgba(255,255,255,.12)' }} />
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+
             <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 9 }}>
               <div ref={guiaXRef} style={{ position: 'absolute', top: 0, bottom: 0, width: 1, background: '#ff3d9a', display: 'none' }} />
               <div ref={guiaYRef} style={{ position: 'absolute', left: 0, right: 0, height: 1, background: '#ff3d9a', display: 'none' }} />
@@ -884,10 +1060,36 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 draggable resizable rotatable
                 origin={false}
                 throttleDrag={0} throttleResize={0} throttleRotate={0}
+                /*
+                 * ALT + ARRASTAR DUPLICA.
+                 *
+                 * O gesto que todo mundo traz do Figma e do Canva, e cuja
+                 * ausência obriga a um ritual de três passos (duplicar, achar
+                 * a cópia empilhada, arrastar) para uma coisa que devia ser
+                 * um gesto só.
+                 *
+                 * A cópia fica PARADA no lugar de origem e quem viaja é o
+                 * elemento original. Visualmente é indistinguível de duplicar
+                 * e arrastar a cópia, e evita o problema de trocar o alvo do
+                 * Moveable no meio do gesto — que reinicia a conta dele, como
+                 * já custou caro no redimensionamento.
+                 */
+                onDragStart={({ inputEvent }) => {
+                  if (!inputEvent || !inputEvent.altKey) return;
+                  const alvo = movivel[0];
+                  if (!alvo) return;
+                  setEls((a) => {
+                    const i = a.findIndex((e) => e.id === alvo.id);
+                    if (i < 0) return a;
+                    const copia = { ...a[i], id: uid() };
+                    // Entra logo ABAIXO do original na pilha: a cópia fica onde
+                    // o original estava, e o original continua por cima.
+                    return [...a.slice(0, i), copia, ...a.slice(i)];
+                  }, 'duplicar:' + alvo.id);
+                }}
                 onDrag={({ left, top }) => {
                   const r = rect();
                   const alvo = movivel[0];
-                  (window.__dbg=window.__dbg||[]).push({left:+left.toFixed(1),estadoX:alvo.x});
                   const bruto = { x: (left / r.width) * 100, y: (top / r.height) * 100, w: alvo.w, h: alvo.h };
                   const fixo = encaixar(bruto, els.filter((e) => e.id !== alvo.id && !e.oculto));
                   pintarGuias(fixo.guias.x, fixo.guias.y);
@@ -1086,6 +1288,19 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 </Select>
               </div>
             </div>
+
+            {/*
+              O pincel armado precisa DIZER que está armado. Um botão aceso e
+              um cursor diferente são pistas fracas: quem armou sem querer fica
+              clicando e vendo a formatação mudar sem entender por quê.
+            */}
+            {pincel && (
+              <div className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-xs text-ink-2">
+                <strong className="text-ink">Pincel de formatação ligado.</strong> Clique no elemento que
+                vai receber. Segure <span className="text-ink">Alt</span> para pintar vários, ou aperte{' '}
+                <span className="text-ink">Esc</span> para desligar.
+              </div>
+            )}
 
             {sel.length > 1 ? (
               <div className="border-t border-line pt-4 text-xs text-ink-2">
@@ -1538,10 +1753,53 @@ function TextoEditavel({ el, editando, estilo, onTexto, onFim }) {
   return <div style={estilo}>{el.text}</div>;
 }
 
-function IconBtn({ icon: Icone, title, onClick, disabled }) {
+const ESTILOS_DA_IA = ['minimalista', 'vibrante', 'elegante', 'corporativo', 'divertido', 'urgente'];
+
+const LUGARES_DA_IA = [
+  [['topo-esq', 'Canto superior esquerdo'], ['topo', 'No topo, centralizado'], ['topo-dir', 'Canto superior direito']],
+  [['esq', 'À esquerda, no meio'], ['centro', 'Bem no centro'], ['dir', 'À direita, no meio']],
+  [['base-esq', 'Canto inferior esquerdo'], ['base', 'Na base, centralizado'], ['base-dir', 'Canto inferior direito']],
+];
+
+function Rotulo({ children }) {
+  return <div className="mb-1 text-2xs font-semibold uppercase tracking-wide text-ink-3">{children}</div>;
+}
+
+function Pastilha({ ativo, icone: Icone, onClick, children }) {
   return (
-    <button type="button" title={title} onClick={onClick} disabled={disabled}
-      className="flex h-8 w-8 items-center justify-center rounded-md border border-line text-ink-2 transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-35">
+    <button type="button" onClick={onClick} aria-pressed={ativo}
+      className={'flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition '
+        + (ativo ? 'border-accent bg-accent/10 text-accent' : 'border-line text-ink-2 hover:text-ink')}>
+      {Icone && <Icone size={13} />}{children}
+    </button>
+  );
+}
+
+/*
+ * Onde, em nove quadradinhos.
+ *
+ * É a forma mais curta de dizer "no canto de baixo à direita" sem escrever
+ * — e sem depender de a IA ler a frase do jeito certo, que era o que
+ * acontecia antes (e não funcionava).
+ */
+function GradeDeLugar({ valor, onChange }) {
+  return (
+    <div className="inline-grid grid-cols-3 gap-0.5 rounded-md border border-line p-0.5" role="group" aria-label="Onde">
+      {LUGARES_DA_IA.map((linha) => linha.map(([id, nome]) => (
+        <button key={id} type="button" aria-pressed={valor === id} title={nome} data-lugar={id}
+          onClick={() => onChange(valor === id ? '' : id)}
+          className={'h-[14px] w-[18px] rounded-[2px] border transition '
+            + (valor === id ? 'border-accent bg-accent' : 'border-line bg-surface hover:bg-line')} />
+      )))}
+    </div>
+  );
+}
+
+function IconBtn({ icon: Icone, title, onClick, disabled, ativo }) {
+  return (
+    <button type="button" title={title} onClick={onClick} disabled={disabled} aria-pressed={ativo ? 'true' : undefined}
+      className={'flex h-8 w-8 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-35 '
+        + (ativo ? 'border-accent text-accent' : 'border-line text-ink-2 hover:text-ink')}>
       <Icone size={15} />
     </button>
   );
