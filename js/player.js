@@ -1215,12 +1215,61 @@
 
   /* ---------------- Zona: Faixa de notícias / avisos ---------------- */
 
+  /*
+   * As FONTES automáticas de manchete (RSS). Estava escrito dentro do modo
+   * "manchetes"; saiu para cá porque o letreiro contínuo passou a poder usar
+   * as mesmas notícias.
+   *
+   * Cuidado com o nome: `data.fonte` (singular) é a fonte RSS antiga, e não
+   * tem relação com `data.conteudo`, que é de onde vem o texto.
+   */
+  function fontesDe(data) {
+    const sources = [];
+    (data.fontes || []).forEach((s) => { if (s && sources.indexOf(s) === -1) sources.push(s); });
+    if (!(data.fontes || []).length && data.fonte && data.fonte !== 'manual' && data.fonte !== 'custom') {
+      sources.push(data.fonte);
+    }
+    const customUrl = (data.rssUrl || '').trim();
+    if (customUrl && sources.indexOf(customUrl) === -1) sources.push(customUrl);
+    return sources;
+  }
+
+  /*
+   * DUAS PERGUNTAS DIFERENTES, DOIS CAMPOS.
+   *
+   * Havia um campo só, `modo`, com dois valores: 'noticias' e 'rolagem'. Ele
+   * misturava DE ONDE VEM O TEXTO com COMO ELE SE MOVE — e o efeito prático
+   * era que quem quisesse o letreiro contínuo tinha de escolher uma opção
+   * chamada "só mensagens fixas" e, ao escolher, PERDIA o feed de notícias. A
+   * combinação mais pedida de todas — notícias rolando sem parar — não existia,
+   * e não por decisão de ninguém: por um campo que respondia duas perguntas.
+   *
+   *   conteudo:   'noticias' | 'mensagens' | 'ambos'
+   *   movimento:  'manchetes' (uma por vez) | 'letreiro' (contínuo)
+   *
+   * As telas já configuradas continuam valendo: `modo` é lido como o par
+   * equivalente quando os campos novos não existem.
+   */
+  function lerModo(data) {
+    if (data.conteudo || data.movimento) {
+      return {
+        conteudo: data.conteudo || 'ambos',
+        movimento: data.movimento || 'manchetes',
+      };
+    }
+    // Config antiga.
+    return data.modo === 'rolagem'
+      ? { conteudo: 'mensagens', movimento: 'letreiro' }
+      : { conteudo: 'ambos', movimento: 'manchetes' };
+  }
+
   function startTicker(zoneEl, data, cfg) {
     const messages = (data.messages || []).filter((m) => m && m.trim());
-    const modo = data.modo || 'noticias';
+    const { conteudo, movimento } = lerModo(data);
     pintarRodape(zoneEl, data, cfg);
-    if (modo === 'rolagem') return startScrollTicker(zoneEl, messages, data);
-    return startNewsTicker(zoneEl, messages, data);
+    const opcoes = Object.assign({}, data, { conteudo });
+    if (movimento === 'letreiro') return startScrollTicker(zoneEl, messages, opcoes);
+    return startNewsTicker(zoneEl, messages, opcoes);
   }
 
   /*
@@ -1359,16 +1408,11 @@
       const parts = m.split('::');
       return { titulo: parts[0].trim(), desc: (parts[1] || '').trim() };
     });
-    // Monta a lista de fontes automáticas: várias (data.fontes) + a URL
-    // personalizada (rssUrl) + compatibilidade com a fonte única antiga.
-    const sources = [];
-    (data.fontes || []).forEach((s) => { if (s && sources.indexOf(s) === -1) sources.push(s); });
-    if (!(data.fontes || []).length && data.fonte && data.fonte !== 'manual' && data.fonte !== 'custom') {
-      sources.push(data.fonte);
-    }
-    const customUrl = (data.rssUrl || '').trim();
-    if (customUrl && sources.indexOf(customUrl) === -1) sources.push(customUrl);
+    // Quem só quer as próprias mensagens não busca feed nenhum.
+    const sources = data.conteudo === 'mensagens' ? [] : fontesDe(data);
     const usingFeed = sources.length > 0;
+    // E quem só quer notícias começa sem as mensagens manuais na roda.
+    if (data.conteudo === 'noticias' && usingFeed) items = [];
 
     let idx = 0;
     function show() {
@@ -1399,7 +1443,13 @@
       try {
         const feed = await MTNews.fetchMany(sources, data.quantidade || 20);
         if (feed && feed.length) {
-          items = feed;
+          // 'ambos' intercala: as mensagens da empresa não somem quando o
+          // feed responde, que era o que acontecia antes.
+          const manuais = data.conteudo === 'noticias' ? [] : messages.map((m) => {
+            const parts = m.split('::');
+            return { titulo: parts[0].trim(), desc: (parts[1] || '').trim() };
+          });
+          items = manuais.concat(feed);
           if (idx >= items.length) idx = 0;
         }
       } catch (e) { /* segue com as mensagens manuais */ }
@@ -1431,33 +1481,80 @@
     };
   }
 
-  // Estilo clássico: texto rolando continuamente.
+  /*
+   * Letreiro contínuo.
+   *
+   * Passou a aceitar NOTÍCIAS além das mensagens fixas. Antes ele só existia
+   * no modo "só mensagens", então pedir o letreiro custava o feed — e a
+   * combinação mais óbvia de todas, notícia rolando sem parar, era a única
+   * que o produto não fazia.
+   */
   function startScrollTicker(zoneEl, messages, data) {
     zoneEl.classList.add('mt-ticker');
-    if (!messages.length) {
-      return { stop: () => {} };
-    }
+
     const track = document.createElement('div');
     track.className = 'mt-ticker-track';
-    const text = messages.join('   •   ');
-    // Duplica para rolagem contínua sem "buracos".
-    for (let i = 0; i < 2; i++) {
-      const span = document.createElement('span');
-      span.className = 'mt-ticker-item';
-      span.textContent = text + '   •   ';
-      track.appendChild(span);
-    }
     zoneEl.appendChild(track);
 
-    // Velocidade constante (px/s) independente do tamanho da tela.
-    requestAnimationFrame(() => {
-      const width = track.scrollWidth / 2;
-      const speed = data.velocidade || 60;
-      const duration = width / speed;
-      track.style.animationDuration = duration + 's';
-    });
+    const sources = data.conteudo === 'mensagens' ? [] : fontesDe(data);
+    const usingFeed = sources.length > 0;
 
-    return { stop: () => {} };
+    function textosManuais() {
+      return data.conteudo === 'noticias' && usingFeed ? [] : messages.slice();
+    }
+
+    function pintar(textos) {
+      if (!textos.length) { track.textContent = ''; return; }
+      const texto = textos.join('   •   ');
+      track.textContent = '';
+      /*
+       * O texto entra DUAS vezes. A animação desloca a faixa em exatamente
+       * metade da sua largura, então quando a primeira cópia termina de sair
+       * a segunda está no lugar dela — a emenda não aparece, e é isso que
+       * torna a rolagem infinita em vez de um laço com buraco no meio.
+       */
+      for (let i = 0; i < 2; i++) {
+        const span = document.createElement('span');
+        span.className = 'mt-ticker-item';
+        span.textContent = texto + '   •   ';
+        track.appendChild(span);
+      }
+      requestAnimationFrame(() => {
+        const largura = track.scrollWidth / 2;
+        // px/s: o mesmo que o modo manchetes usa, para o número significar a
+        // mesma coisa nos dois lugares.
+        const velocidade = Math.max(20, Number(data.velocidadeTexto) || Number(data.velocidade) || 70);
+        track.style.animationDuration = (largura / velocidade).toFixed(1) + 's';
+      });
+    }
+
+    pintar(textosManuais());
+
+    async function carregarFeed() {
+      if (!usingFeed || !global.MTNews) return;
+      try {
+        const feed = await MTNews.fetchMany(sources, data.quantidade || 20);
+        if (!feed || !feed.length) return;
+        const doFeed = feed.map((n) => (n.desc ? n.titulo + ' — ' + n.desc : n.titulo));
+        pintar(textosManuais().concat(doFeed));
+      } catch (e) { /* segue com o que já está na tela */ }
+    }
+    carregarFeed();
+    const feedTimer = usingFeed ? setInterval(carregarFeed, 10 * 60 * 1000) : null;
+
+    // A zona pode mudar de largura quando o layout muda: a duração é calculada
+    // a partir dela, então precisa ser refeita.
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => {
+        const largura = track.scrollWidth / 2;
+        if (!largura) return;
+        const velocidade = Math.max(20, Number(data.velocidadeTexto) || Number(data.velocidade) || 70);
+        track.style.animationDuration = (largura / velocidade).toFixed(1) + 's';
+      })
+      : null;
+    if (ro) ro.observe(zoneEl);
+
+    return { stop: () => { feedTimer && clearInterval(feedTimer); ro && ro.disconnect(); } };
   }
 
   /* ---------------- Zona: Cabeçalho ---------------- */

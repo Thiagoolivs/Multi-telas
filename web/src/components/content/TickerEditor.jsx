@@ -21,6 +21,27 @@ function CorDoRodape({ label, value, onChange }) {
   );
 }
 
+/*
+ * A velocidade, com a unidade que o player de fato usa.
+ *
+ * O campo antigo dizia "Velocidade (s)" e a dica dizia "menor = mais rápido".
+ * As duas coisas estavam erradas: o player lê o número como PIXELS POR
+ * SEGUNDO, e maior é mais rápido. Pior, aquele campo (`velocidade`) só era
+ * lido pelo letreiro — no modo manchetes, o padrão, mexer nele não fazia
+ * absolutamente nada, seguindo uma dica que ensinava o contrário do efeito.
+ *
+ * Agora existe um número só, na unidade certa, valendo para os dois modos.
+ */
+function CampoVelocidade({ z, set }) {
+  const v = z.velocidadeTexto ?? z.velocidade ?? 70;
+  return (
+    <Field label="Velocidade do texto" hint="Pixels por segundo. Menor = mais devagar e mais fácil de ler.">
+      <Input type="number" min={20} max={200} value={v}
+        onChange={(e) => set({ velocidadeTexto: Number(e.target.value) })} />
+    </Field>
+  );
+}
+
 // Edita uma zona do tipo "ticker" (rodapé): notícias automáticas e/ou
 // mensagens fixas rolando.
 export function TickerEditor({ zone, onChange }) {
@@ -28,6 +49,14 @@ export function TickerEditor({ zone, onChange }) {
   const set = (patch) => onChange({ ...z, ...patch });
   const fontes = Array.isArray(z.fontes) ? z.fontes : [];
   const messages = Array.isArray(z.messages) ? z.messages : [];
+
+  /*
+   * As telas já configuradas guardam `modo`, que respondia às duas perguntas
+   * ao mesmo tempo. Aqui ele é lido como o par equivalente — e a primeira
+   * alteração grava os dois campos novos, sem migração de banco.
+   */
+  const conteudo = z.conteudo || (z.modo === 'rolagem' ? 'mensagens' : 'ambos');
+  const movimento = z.movimento || (z.modo === 'rolagem' ? 'letreiro' : 'manchetes');
 
   const toggleFeed = (id) => set({ fontes: fontes.includes(id) ? fontes.filter((f) => f !== id) : [...fontes, id] });
   const setMsg = (i, v) => { const m = [...messages]; m[i] = v; set({ messages: m }); };
@@ -40,15 +69,29 @@ export function TickerEditor({ zone, onChange }) {
         <Field label="Título da faixa">
           <Input value={z.titulo || ''} onChange={(e) => set({ titulo: e.target.value })} placeholder="ÚLTIMAS NOTÍCIAS" />
         </Field>
+        {/*
+          DUAS PERGUNTAS, DOIS CONTROLES.
+
+          Havia um campo só, chamado "Modo", com "Notícias (automático)" e "Só
+          mensagens fixas". Ele misturava DE ONDE VEM O TEXTO com COMO ELE SE
+          MOVE: o letreiro contínuo só existia dentro da segunda opção, então
+          pedir letreiro custava o feed de notícias. Quem quisesse notícia
+          rolando sem parar — que é o que quase todo mundo quer — não tinha
+          como pedir, e o rótulo não dava nenhuma pista do porquê.
+        */}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Modo">
-            <Select value={z.modo || 'noticias'} onChange={(e) => set({ modo: e.target.value })}>
-              <option value="noticias">Notícias (automático)</option>
-              <option value="rolagem">Só mensagens fixas</option>
+          <Field label="O que mostrar">
+            <Select value={conteudo} onChange={(e) => set({ conteudo: e.target.value, movimento })}>
+              <option value="ambos">Notícias e minhas mensagens</option>
+              <option value="noticias">Só notícias</option>
+              <option value="mensagens">Só minhas mensagens</option>
             </Select>
           </Field>
-          <Field label="Velocidade (s)" hint="Menor = mais rápido.">
-            <Input type="number" min={10} value={z.velocidade ?? 60} onChange={(e) => set({ velocidade: Number(e.target.value) })} />
+          <Field label="Como aparece">
+            <Select value={movimento} onChange={(e) => set({ movimento: e.target.value, conteudo })}>
+              <option value="manchetes">Uma manchete por vez</option>
+              <option value="letreiro">Letreiro contínuo</option>
+            </Select>
           </Field>
         </div>
 
@@ -60,7 +103,8 @@ export function TickerEditor({ zone, onChange }) {
           {z.mostrarSelo === false && z.mostrarRelogio === false && (
             <p className="text-2xs text-ink-3">Sem os dois, a manchete ocupa a faixa inteira — bom para rodapé fino.</p>
           )}
-          {z.modo !== 'rolagem' && (
+          <CampoVelocidade z={z} set={set} />
+          {movimento === 'manchetes' && (
             <>
               {/*
                 Só duas opções porque só existem duas: rolar quando não cabe, ou
@@ -75,12 +119,6 @@ export function TickerEditor({ zone, onChange }) {
                   ? 'Manchete longa desliza até o fim e volta. A curta fica parada.'
                   : 'Manchete longa é cortada com “…” — a pessoa não lê o final.'}
               </p>
-              {(z.rolagem || 'auto') !== 'nunca' && (
-                <Field label="Velocidade da rolagem (px/s)" hint="Menor = mais devagar e mais fácil de ler.">
-                  <Input type="number" min={20} max={200} value={z.velocidadeTexto ?? 70}
-                    onChange={(e) => set({ velocidadeTexto: Number(e.target.value) })} />
-                </Field>
-              )}
             </>
           )}
         </div>
@@ -105,7 +143,9 @@ export function TickerEditor({ zone, onChange }) {
           )}
         </div>
 
-        {z.modo !== 'rolagem' && (
+        {/* Quem decide se há feed é o CONTEÚDO, não o movimento: o letreiro
+            contínuo passou a poder rolar notícia também. */}
+        {conteudo !== 'mensagens' && (
           <div>
             <div className="mb-1.5 text-xs font-medium text-ink-2">Fontes de notícia</div>
             <div className="flex flex-wrap gap-1.5">
@@ -143,7 +183,7 @@ export function TickerEditor({ zone, onChange }) {
             </div>
           ))}
         </div>
-        {z.modo !== 'rolagem' && (
+        {conteudo !== 'mensagens' && (
           <Field label="Máx. de manchetes por fonte" className="mt-3">
             <Input type="number" min={1} value={z.quantidade ?? 10} onChange={(e) => set({ quantidade: Number(e.target.value) })} />
           </Field>

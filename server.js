@@ -1288,7 +1288,14 @@ async function handleApi(req, res, pathname, query) {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a peça' });
       try {
-        const out = await ai.generateComposition(brief, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '', brand: (b && b.brand) || '' });
+        const out = await ai.generateComposition(brief, {
+          empresa: (b && b.empresa) || '',
+          tema: (b && b.tema) || '',
+          brand: (b && b.brand) || '',
+          // O formato nunca era passado: a IA compunha sempre como se a tela
+          // fosse deitada, e numa peça 9/16 o layout voltava errado.
+          formato: (b && b.formato) || '16/9',
+        });
         return sendJson(res, 200, { mode: ai.mode(), ...out });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });
@@ -1358,6 +1365,10 @@ async function handleApi(req, res, pathname, query) {
       planos: plans.catalog(),
       faixas: plans.FAIXAS.map((f) => ({ ate: f.ate === Infinity ? null : f.ate, desconto: f.desconto })),
       creditosBoasVindas: plans.CREDITOS_BOAS_VINDAS,
+      // A landing anuncia o prazo do teste; ele sai daqui para não virar um
+      // número escrito à mão numa página, que é como promessa e cobrança
+      // começam a discordar.
+      diasDeTeste: plans.DIAS_DE_TESTE,
       /*
        * A tabela inteira de 1 a 50 telas, já calculada.
        *
@@ -1442,6 +1453,18 @@ async function handleApi(req, res, pathname, query) {
         },
         status: (tenant && tenant.plan_status) || (curPlan.precoTelaCents ? 'active' : 'free'),
         renewsAt: tenant && tenant.plan_renews_at,
+        /*
+         * O teste, para o painel poder avisar ANTES de acabar.
+         *
+         * Descobrir que o prazo venceu na hora de ligar a TV é a pior forma de
+         * saber: a pessoa já está de pé na recepção, com o controle na mão.
+         */
+        teste: plans.isPaid(curPlan.id) ? null : {
+          dias: plans.DIAS_DE_TESTE,
+          restam: plans.diasDeTesteRestantes(tenant),
+          ativo: plans.testeAtivo(tenant),
+          terminaEm: plans.fimDoTeste(tenant),
+        },
         usage: {
           screens: used, limit: curPlan.telasMax,
           mensalidadeCents: plans.mensalidadeCents(curPlan.id, Math.max(1, used)),
@@ -1524,13 +1547,32 @@ async function handleApi(req, res, pathname, query) {
       // Primeira reivindicação só vale se a TV está viva (código na tela agora).
       if (!d.tenant_id && (!d.last_seen || Date.now() - d.last_seen > PAIR_ONLINE_MS))
         return sendJson(res, 410, { error: 'código expirado — reinicie a TV para gerar um novo' });
-      // Limite do plano: bloqueia parear acima da cota (só na 1ª reivindicação).
+      /*
+       * Pode ligar mais uma tela? (só na 1ª reivindicação)
+       *
+       * A decisão inteira mora em plans.podeParear — inclusive o teste de 14
+       * dias. Aqui só se traduz o motivo em mensagem, e cada motivo tem a sua:
+       * "limite atingido" para quem esbarrou na cota, "teste terminou" para
+       * quem passou do prazo. Uma mensagem só para os dois casos manda a
+       * pessoa para o lugar errado — e ela desiste em vez de assinar.
+       */
       if (!d.tenant_id) {
         const tenant = await db.getTenant(sess.tenant_id);
-        const limit = plans.screenLimit(tenant && tenant.plan);
         const used = await db.countDevices(sess.tenant_id);
-        if (used >= limit)
-          return sendJson(res, 402, { error: 'limite do plano atingido (' + limit + (limit === 1 ? ' tela' : ' telas') + '). Faça upgrade para adicionar mais.', code: 'plan_limit' });
+        const veredito = plans.podeParear(tenant, used);
+        if (!veredito.ok && veredito.motivo === 'teste_vencido') {
+          return sendJson(res, 402, {
+            error: 'Seu teste de ' + veredito.dias + ' dias terminou. Escolha um plano para ligar sua tela.',
+            code: 'trial_over',
+          });
+        }
+        if (!veredito.ok) {
+          const limite = veredito.limite;
+          return sendJson(res, 402, {
+            error: 'limite do plano atingido (' + limite + (limite === 1 ? ' tela' : ' telas') + '). Faça upgrade para adicionar mais.',
+            code: 'plan_limit',
+          });
+        }
       }
       await db.claimDevice(d.id, sess.tenant_id, b.name || d.name || 'TV');
       return sendJson(res, 200, { id: d.id, name: b.name || d.name || 'TV' });
