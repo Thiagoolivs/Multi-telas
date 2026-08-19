@@ -6,6 +6,7 @@ import {
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup, LayoutTemplate,
+  Ruler, Paintbrush,
 } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
@@ -15,6 +16,7 @@ import { ICONS, ICON_NAMES } from '../../lib/icons.js';
 import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer, podeRefazer } from '../../lib/historico.js';
 import { encaixar, encaixarRedimensionamento, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
 import { decidirColagem } from '../../lib/colar.js';
+import { lerFormato, aplicarFormato } from '../../lib/formato.js';
 import {
   estiloTexto, listar as listarFontes, pesosDe, pesoValido, dados as dadosDaFonte,
   carregarFonte, carregarDaComposicao, ESPACAMENTO, ENTRELINHA,
@@ -129,6 +131,23 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [busy, setBusy] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [modeloAberto, setModeloAberto] = useState(false);
+  /*
+   * Guias do palco: margem de segurança, centro e terços.
+   *
+   * A margem NÃO é decoração. Uma parte das TVs come alguns por cento de cada
+   * lado (overscan), e é justamente nas telas mais baratas — as que acabam
+   * numa recepção — que isso acontece. Sem a linha desenhada, o jeito de
+   * descobrir que o texto encostou demais na borda é ver a peça cortada na
+   * parede, depois de publicada.
+   */
+  const [guiasFixas, setGuiasFixas] = useState(false);
+
+  /*
+   * O pincel de formatação fica ARMADO entre dois cliques: um pega o molde,
+   * o outro aplica. É estado e não gesto porque o segundo clique pode demorar
+   * — rolar a lista de camadas, dar zoom, procurar o elemento.
+   */
+  const [pincel, setPincel] = useState(null);
   /*
    * A cor da marca da conta, buscada uma vez.
    *
@@ -340,6 +359,34 @@ export function CompositionEditor({ value, onClose, onSave }) {
     setSel(copias.map((e) => e.id));
   }, [els, sel, setEls]);
 
+  /* ---------------- Pincel de formatação ---------------- */
+
+  /*
+   * Pega o molde do elemento selecionado. Só faz sentido com UM selecionado:
+   * com vários não existe "a" formatação, existem várias.
+   */
+  const pegarFormato = useCallback(() => {
+    if (pincel) { setPincel(null); return; }   // clicar de novo desarma
+    if (sel.length !== 1) return;
+    const el = els.find((e) => e.id === sel[0]);
+    if (el) setPincel(lerFormato(el));
+  }, [pincel, sel, els]);
+
+  /*
+   * Aplica e desarma — a menos que Alt esteja pressionado, que é o gesto do
+   * Canva e do Office para "continuar pintando". Sem ele, formatar seis
+   * textos seria seis idas ao botão.
+   */
+  const pintarFormato = useCallback((id, manter) => {
+    const el = els.find((e) => e.id === id);
+    if (!el || !pincel || el.id === pincel.id) return false;
+    const p = aplicarFormato(el, pincel);
+    if (!p) return false;
+    patch(id, p, null);
+    if (!manter) setPincel(null);
+    return true;
+  }, [els, pincel, patch]);
+
   // Área de transferência própria: a do sistema não carrega objeto, e depender
   // dela quebraria a colagem entre uma peça e outra dentro do mesmo editor.
   const areaCopia = useRef([]);
@@ -426,6 +473,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
       shift.current = ev.shiftKey;
 
       if (ev.key === 'Escape') {
+        if (pincel) { setPincel(null); return; }
         if (editandoTexto) { setEditandoTexto(null); return; }
         if (!digitando()) { limparSel(); return; }
         return;
@@ -466,7 +514,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
     window.addEventListener('keydown', onKey);
     window.addEventListener('keyup', onKeyUp);
     return () => { window.removeEventListener('keydown', onKey); window.removeEventListener('keyup', onKeyUp); };
-  }, [els, sel, editandoTexto, duplicar, copiar, colar, remover, moverCamada, empurrar, fecharPasso, saltar, juntar, separar]);
+  }, [els, sel, editandoTexto, pincel, duplicar, copiar, colar, remover, moverCamada, empurrar, fecharPasso, saltar, juntar, separar]);
 
   /* ---------------- Colar e arrastar ----------------
    *
@@ -718,7 +766,10 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <div className="mx-1 h-5 w-px bg-line" />
         <IconBtn title="Agrupar (Ctrl+G)" icon={Group} disabled={!podeAgrupar(els, sel)} onClick={juntar} />
         <IconBtn title="Desagrupar (Ctrl+Shift+G)" icon={Ungroup} disabled={!podeDesagrupar(els, sel)} onClick={separar} />
-        <IconBtn title="Duplicar (Ctrl+D)" icon={Copy} disabled={!sel.length} onClick={duplicar} />
+        <IconBtn title="Duplicar (Ctrl+D, ou Alt+arrastar)" icon={Copy} disabled={!sel.length} onClick={duplicar} />
+        <IconBtn
+          title={pincel ? 'Clique no elemento que vai receber (Alt para pintar vários)' : 'Copiar formatação de um elemento'}
+          icon={Paintbrush} ativo={!!pincel} disabled={!pincel && sel.length !== 1} onClick={pegarFormato} />
         <IconBtn title="Remover (Delete)" icon={Trash2} disabled={!sel.length} onClick={remover} />
 
         <div className="mx-1 h-5 w-px bg-line" />
@@ -730,6 +781,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         ))}
 
         <div className="mx-1 h-5 w-px bg-line" />
+        <IconBtn title="Margem de segurança, centro e terços" icon={Ruler} ativo={guiasFixas} onClick={() => setGuiasFixas((g) => !g)} />
         <IconBtn title="Menos zoom" icon={ZoomOut} onClick={() => setZoom((z) => clamp(z - 0.25, 0.25, 3))} />
         <button onClick={() => setZoom(1)} title="Ajustar à tela"
           className="tnum flex h-8 min-w-[3.2rem] items-center justify-center rounded-md border border-line px-1 text-xs text-ink-2 hover:text-ink">
@@ -789,11 +841,20 @@ export function CompositionEditor({ value, onClose, onSave }) {
           <div ref={canvasRef} data-palco
             onMouseDown={(e) => { if (e.target === canvasRef.current) limparSel(); }}
 
-            className="relative shrink-0 shadow-2xl" style={{ ...bgStyle, width: palco.w, height: palco.h }}>
+            className="relative shrink-0 shadow-2xl"
+            style={{ ...bgStyle, width: palco.w, height: palco.h, cursor: pincel ? 'copy' : 'default' }}>
 
             {els.map((e) => e.oculto ? null : (
               <div key={e.id} data-el={e.id} ref={(n) => { if (n) nodes.current[e.id] = n; }}
-                onMouseDown={(ev) => { if (!e.travado) { ev.stopPropagation(); escolher(e.id, ev.shiftKey); } }}
+                onMouseDown={(ev) => {
+                  if (e.travado) return;
+                  ev.stopPropagation();
+                  // Com o pincel armado, o clique PINTA em vez de selecionar:
+                  // é o gesto inteiro do pincel, e trocar a seleção no meio
+                  // dele só faria perder o alvo de vista.
+                  if (pincel && pintarFormato(e.id, ev.altKey)) return;
+                  escolher(e.id, ev.shiftKey);
+                }}
                 onDoubleClick={() => {
                   if (e.travado) return;
                   /*
@@ -854,6 +915,31 @@ export function CompositionEditor({ value, onClose, onSave }) {
               `setState` no meio do arrasto reinicia a conta do Moveable, e o
               elemento volta ao tamanho em que estava.
             */}
+            {/*
+              Margem de segurança, centro e terços. Fica ABAIXO dos elementos
+              (zIndex 1) para não cobrir a peça — quem precisa aparecer por
+              cima é a guia de encaixe, que é momentânea.
+            */}
+            {guiasFixas && (
+              <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 1 }}>
+                {/* Área segura: 5% de cada lado, que é o overscan típico. */}
+                <div style={{
+                  position: 'absolute', left: '5%', top: '5%', right: '5%', bottom: '5%',
+                  border: '1px dashed rgba(255,180,80,.55)',
+                }} />
+                {/* Centro */}
+                <div style={{ position: 'absolute', left: '50%', top: 0, bottom: 0, width: 1, background: 'rgba(120,160,255,.35)' }} />
+                <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: 1, background: 'rgba(120,160,255,.35)' }} />
+                {/* Terços */}
+                {[33.333, 66.667].map((v) => (
+                  <React.Fragment key={v}>
+                    <div style={{ position: 'absolute', left: v + '%', top: 0, bottom: 0, width: 1, background: 'rgba(255,255,255,.12)' }} />
+                    <div style={{ position: 'absolute', top: v + '%', left: 0, right: 0, height: 1, background: 'rgba(255,255,255,.12)' }} />
+                  </React.Fragment>
+                ))}
+              </div>
+            )}
+
             <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 9 }}>
               <div ref={guiaXRef} style={{ position: 'absolute', top: 0, bottom: 0, width: 1, background: '#ff3d9a', display: 'none' }} />
               <div ref={guiaYRef} style={{ position: 'absolute', left: 0, right: 0, height: 1, background: '#ff3d9a', display: 'none' }} />
@@ -884,10 +970,36 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 draggable resizable rotatable
                 origin={false}
                 throttleDrag={0} throttleResize={0} throttleRotate={0}
+                /*
+                 * ALT + ARRASTAR DUPLICA.
+                 *
+                 * O gesto que todo mundo traz do Figma e do Canva, e cuja
+                 * ausência obriga a um ritual de três passos (duplicar, achar
+                 * a cópia empilhada, arrastar) para uma coisa que devia ser
+                 * um gesto só.
+                 *
+                 * A cópia fica PARADA no lugar de origem e quem viaja é o
+                 * elemento original. Visualmente é indistinguível de duplicar
+                 * e arrastar a cópia, e evita o problema de trocar o alvo do
+                 * Moveable no meio do gesto — que reinicia a conta dele, como
+                 * já custou caro no redimensionamento.
+                 */
+                onDragStart={({ inputEvent }) => {
+                  if (!inputEvent || !inputEvent.altKey) return;
+                  const alvo = movivel[0];
+                  if (!alvo) return;
+                  setEls((a) => {
+                    const i = a.findIndex((e) => e.id === alvo.id);
+                    if (i < 0) return a;
+                    const copia = { ...a[i], id: uid() };
+                    // Entra logo ABAIXO do original na pilha: a cópia fica onde
+                    // o original estava, e o original continua por cima.
+                    return [...a.slice(0, i), copia, ...a.slice(i)];
+                  }, 'duplicar:' + alvo.id);
+                }}
                 onDrag={({ left, top }) => {
                   const r = rect();
                   const alvo = movivel[0];
-                  (window.__dbg=window.__dbg||[]).push({left:+left.toFixed(1),estadoX:alvo.x});
                   const bruto = { x: (left / r.width) * 100, y: (top / r.height) * 100, w: alvo.w, h: alvo.h };
                   const fixo = encaixar(bruto, els.filter((e) => e.id !== alvo.id && !e.oculto));
                   pintarGuias(fixo.guias.x, fixo.guias.y);
@@ -1086,6 +1198,19 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 </Select>
               </div>
             </div>
+
+            {/*
+              O pincel armado precisa DIZER que está armado. Um botão aceso e
+              um cursor diferente são pistas fracas: quem armou sem querer fica
+              clicando e vendo a formatação mudar sem entender por quê.
+            */}
+            {pincel && (
+              <div className="rounded-lg border border-accent/40 bg-accent/10 p-3 text-xs text-ink-2">
+                <strong className="text-ink">Pincel de formatação ligado.</strong> Clique no elemento que
+                vai receber. Segure <span className="text-ink">Alt</span> para pintar vários, ou aperte{' '}
+                <span className="text-ink">Esc</span> para desligar.
+              </div>
+            )}
 
             {sel.length > 1 ? (
               <div className="border-t border-line pt-4 text-xs text-ink-2">
@@ -1538,10 +1663,11 @@ function TextoEditavel({ el, editando, estilo, onTexto, onFim }) {
   return <div style={estilo}>{el.text}</div>;
 }
 
-function IconBtn({ icon: Icone, title, onClick, disabled }) {
+function IconBtn({ icon: Icone, title, onClick, disabled, ativo }) {
   return (
-    <button type="button" title={title} onClick={onClick} disabled={disabled}
-      className="flex h-8 w-8 items-center justify-center rounded-md border border-line text-ink-2 transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-35">
+    <button type="button" title={title} onClick={onClick} disabled={disabled} aria-pressed={ativo ? 'true' : undefined}
+      className={'flex h-8 w-8 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-35 '
+        + (ativo ? 'border-accent text-accent' : 'border-line text-ink-2 hover:text-ink')}>
       <Icone size={15} />
     </button>
   );
