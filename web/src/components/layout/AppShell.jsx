@@ -18,7 +18,7 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
     <div className="flex h-screen overflow-hidden bg-canvas">
       {/* Sidebar desktop */}
       <div className="hidden lg:block">
-        <Sidebar active={active} onNavigate={navigate} />
+        <Sidebar active={active} onNavigate={navigate} papel={user && user.role} />
       </div>
 
       {/* Drawer mobile */}
@@ -26,7 +26,7 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-ink/30 backdrop-blur-sm" onClick={() => setDrawer(false)} />
           <div className={cn('absolute inset-y-0 left-0 w-60 shadow-pop')}>
-            <Sidebar active={active} onNavigate={navigate} />
+            <Sidebar active={active} onNavigate={navigate} papel={user && user.role} />
           </div>
         </div>
       )}

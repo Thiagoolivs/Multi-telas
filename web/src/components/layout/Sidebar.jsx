@@ -18,7 +18,11 @@ const NAV = [
     { id: 'birthdays', label: 'Aniversariantes', icon: Cake },
     { id: 'team', label: 'Equipe', icon: Users2 },
     { id: 'billing', label: 'Plano', icon: CreditCard },
-    { id: 'system', label: 'Estado do sistema', icon: Activity },
+    // `dono: true` some do menu de quem não é dono. O servidor já recusava
+    // com 403 (server.js), então a permissão nunca esteve em risco — o que
+    // havia era um item de menu que prometia uma porta trancada, e um membro
+    // da equipe clicava para receber erro.
+    { id: 'system', label: 'Estado do sistema', icon: Activity, dono: true },
     { id: 'settings', label: 'Ajustes', icon: Settings },
   ] },
 ];
@@ -49,7 +53,11 @@ function NavItem({ item, active, onClick }) {
   );
 }
 
-export function Sidebar({ active, onNavigate }) {
+export function Sidebar({ active, onNavigate, papel }) {
+  const ehDono = papel === 'owner';
+  const secoes = NAV.map((s) => ({ ...s, items: s.items.filter((i) => !i.dono || ehDono) }))
+    .filter((s) => s.items.length);
+
   return (
     <aside className="flex h-full w-60 shrink-0 flex-col border-r border-line bg-surface">
       {/* Marca + seletor de ambiente */}
@@ -64,7 +72,7 @@ export function Sidebar({ active, onNavigate }) {
       </div>
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-2.5 py-4">
-        {NAV.map((group) => (
+        {secoes.map((group) => (
           <div key={group.section}>
             <div className="px-2.5 pb-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-3">{group.section}</div>
             <div className="space-y-0.5">

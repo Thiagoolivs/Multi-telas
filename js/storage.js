@@ -189,7 +189,26 @@
           messages: Array.isArray(existing.messages) ? existing.messages : [],
           velocidade: existing.velocidade || 60,
           titulo: existing.titulo != null ? existing.titulo : 'ÚLTIMAS NOTÍCIAS',
-          modo: existing.modo || 'noticias', // noticias | rolagem
+          /*
+           * DUAS PERGUNTAS, DOIS CAMPOS.
+           *
+           * `modo` respondia às duas ao mesmo tempo — de onde vem o texto e
+           * como ele se move — e por isso o letreiro contínuo só existia
+           * abrindo mão do feed de notícias. Ele fica aqui por compatibilidade
+           * com as telas já configuradas, e é traduzido no padrão dos campos
+           * novos.
+           *
+           * Este normalizador reconstrói a zona CAMPO A CAMPO: o que não está
+           * escrito aqui é descartado no caminho do painel até a TV. Foi
+           * exatamente o que aconteceu na primeira tentativa — o painel
+           * gravava `movimento`, o servidor devolvia a config sem ele, e a TV
+           * seguia mostrando manchete como se nada tivesse mudado.
+           */
+          modo: existing.modo || 'noticias', // (legado) noticias | rolagem
+          conteudo: existing.conteudo
+            || (existing.modo === 'rolagem' ? 'mensagens' : 'ambos'), // noticias | mensagens | ambos
+          movimento: existing.movimento
+            || (existing.modo === 'rolagem' ? 'letreiro' : 'manchetes'), // manchetes | letreiro
           intervalo: existing.intervalo || 8,
           fonte: existing.fonte || 'manual', // (legado) manual | g1 | … | custom
           // Várias fontes ao mesmo tempo (ids de FEED e/ou URLs de RSS).
