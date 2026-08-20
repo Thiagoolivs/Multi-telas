@@ -196,8 +196,28 @@
   }
   function subscribe(id, onConfig) {
     let es;
-    function connect() {
-      es = new EventSource(API + '/api/devices/' + id + '/events?dt=' + encodeURIComponent(deviceToken()));
+    /*
+     * O token da TV NÃO vai mais na URL.
+     *
+     * Ele não expira, e endereço vai parar em log de acesso, log de proxy,
+     * painel do provedor e histórico de console — lugares onde ninguém pensa
+     * que há segredo. Agora a TV troca o token por um PASSE (num POST, com o
+     * segredo no cabeçalho) e é o passe que vai na URL: vale um minuto e uma
+     * vez só.
+     *
+     * `connect` virou async por isso. Se a troca falhar — rede caída, servidor
+     * reiniciando — não adianta abrir o EventSource sem passe: espera e tenta
+     * de novo, que é exatamente o que já se fazia quando o stream caía.
+     */
+    async function connect() {
+      let passe;
+      try {
+        const r = await api('POST', '/api/devices/' + id + '/passe', null, dtHeader());
+        passe = r && r.passe;
+      } catch (e) { /* sem passe agora; tenta de novo abaixo */ }
+      if (!passe) { setTimeout(connect, 15000); return; }
+
+      es = new EventSource(API + '/api/devices/' + id + '/events?passe=' + encodeURIComponent(passe));
       es.addEventListener('config', async (ev) => {
         let meta = {};
         try { meta = JSON.parse(ev.data || '{}'); } catch (e) {}

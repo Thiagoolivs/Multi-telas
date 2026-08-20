@@ -1,0 +1,119 @@
+/* ---------- Animação dos elementos da peça ----------
+ *
+ * O que separa uma peça de mídia indoor de um slide: os elementos ENTRAM, um
+ * depois do outro, e alguns continuam respirando enquanto a peça está no ar.
+ *
+ * DUAS REGRAS mandam em tudo aqui:
+ *
+ * 1. Só `transform` e `opacity`. São as duas coisas que o navegador anima na
+ *    GPU sem refazer o layout. Animar top/left/width recalcula a página a cada
+ *    quadro — numa TV de R$ 900, que é onde este player mais roda, é a
+ *    diferença entre fluido e travando.
+ *
+ * 2. Toda entrada termina em `transform: none` e `opacity: 1` — o estado em
+ *    que o editor desenhou a peça. Uma animação que parasse fora do lugar
+ *    deixaria a peça diferente do que foi aprovado, e quem publicou só
+ *    descobriria olhando a parede.
+ *
+ * A animação mora num DIV INTERNO (.mt-anim), nunca na caixa do elemento: a
+ * caixa carrega a rotação da peça (`transform: rotate(...)`), e uma animação
+ * de transform na mesma caixa apagaria essa rotação.
+ */
+.mt-anim { width: 100%; height: 100%; animation-fill-mode: both; }
+
+@keyframes mt-e-aparecer { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mt-e-subir    { from { opacity: 0; transform: translateY(14%); } to { opacity: 1; transform: none; } }
+@keyframes mt-e-descer   { from { opacity: 0; transform: translateY(-14%); } to { opacity: 1; transform: none; } }
+@keyframes mt-e-esquerda { from { opacity: 0; transform: translateX(-22%); } to { opacity: 1; transform: none; } }
+@keyframes mt-e-direita  { from { opacity: 0; transform: translateX(22%); } to { opacity: 1; transform: none; } }
+@keyframes mt-e-crescer  { from { opacity: 0; transform: scale(.86); } to { opacity: 1; transform: none; } }
+/* O "estourar" passa do ponto e volta — é o único com folga, e é o que dá o
+   toque de propaganda a um preço ou a um selo. */
+@keyframes mt-e-estourar {
+  0%   { opacity: 0; transform: scale(.4); }
+  70%  { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes mt-e-girar { from { opacity: 0; transform: rotate(-12deg) scale(.9); } to { opacity: 1; transform: none; } }
+
+.mt-e-aparecer { animation-name: mt-e-aparecer; }
+.mt-e-subir    { animation-name: mt-e-subir; }
+.mt-e-descer   { animation-name: mt-e-descer; }
+.mt-e-esquerda { animation-name: mt-e-esquerda; }
+.mt-e-direita  { animation-name: mt-e-direita; }
+.mt-e-crescer  { animation-name: mt-e-crescer; }
+.mt-e-estourar { animation-name: mt-e-estourar; animation-timing-function: cubic-bezier(.2, .9, .3, 1.3); }
+.mt-e-girar    { animation-name: mt-e-girar; }
+.mt-e-aparecer, .mt-e-subir, .mt-e-descer, .mt-e-esquerda,
+.mt-e-direita, .mt-e-crescer, .mt-e-girar { animation-timing-function: cubic-bezier(.2, .7, .3, 1); }
+
+/* Contínuas: suaves e lentas de propósito. Movimento forte cansa em vinte
+   segundos, e uma peça fica no ar por doze — a graça é chamar quem passa, não
+   competir com o conteúdo. */
+@keyframes mt-c-flutuar  { 0%, 100% { transform: translateY(-1.2%); } 50% { transform: translateY(1.2%); } }
+@keyframes mt-c-pulsar   { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+@keyframes mt-c-balancar { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+@keyframes mt-c-brilhar  { 0%, 100% { opacity: 1; } 50% { opacity: .72; } }
+
+.mt-c-flutuar, .mt-c-pulsar, .mt-c-balancar, .mt-c-brilhar {
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+}
+.mt-c-flutuar  { animation-name: mt-c-flutuar; }
+.mt-c-pulsar   { animation-name: mt-c-pulsar; }
+.mt-c-balancar { animation-name: mt-c-balancar; }
+.mt-c-brilhar  { animation-name: mt-c-brilhar; }
+
+/* Entrada + contínua no mesmo elemento: os nomes vão em par, e o par de
+   tempos sai de MTAnim.estilo(). A contínua repete; a entrada, não. */
+.mt-e-aparecer.mt-c-flutuar  { animation-name: mt-e-aparecer, mt-c-flutuar; }
+.mt-e-aparecer.mt-c-pulsar   { animation-name: mt-e-aparecer, mt-c-pulsar; }
+.mt-e-aparecer.mt-c-balancar { animation-name: mt-e-aparecer, mt-c-balancar; }
+.mt-e-aparecer.mt-c-brilhar  { animation-name: mt-e-aparecer, mt-c-brilhar; }
+.mt-e-subir.mt-c-flutuar     { animation-name: mt-e-subir, mt-c-flutuar; }
+.mt-e-subir.mt-c-pulsar      { animation-name: mt-e-subir, mt-c-pulsar; }
+.mt-e-subir.mt-c-balancar    { animation-name: mt-e-subir, mt-c-balancar; }
+.mt-e-subir.mt-c-brilhar     { animation-name: mt-e-subir, mt-c-brilhar; }
+.mt-e-descer.mt-c-flutuar    { animation-name: mt-e-descer, mt-c-flutuar; }
+.mt-e-descer.mt-c-pulsar     { animation-name: mt-e-descer, mt-c-pulsar; }
+.mt-e-descer.mt-c-balancar   { animation-name: mt-e-descer, mt-c-balancar; }
+.mt-e-descer.mt-c-brilhar    { animation-name: mt-e-descer, mt-c-brilhar; }
+.mt-e-esquerda.mt-c-flutuar  { animation-name: mt-e-esquerda, mt-c-flutuar; }
+.mt-e-esquerda.mt-c-pulsar   { animation-name: mt-e-esquerda, mt-c-pulsar; }
+.mt-e-esquerda.mt-c-balancar { animation-name: mt-e-esquerda, mt-c-balancar; }
+.mt-e-esquerda.mt-c-brilhar  { animation-name: mt-e-esquerda, mt-c-brilhar; }
+.mt-e-direita.mt-c-flutuar   { animation-name: mt-e-direita, mt-c-flutuar; }
+.mt-e-direita.mt-c-pulsar    { animation-name: mt-e-direita, mt-c-pulsar; }
+.mt-e-direita.mt-c-balancar  { animation-name: mt-e-direita, mt-c-balancar; }
+.mt-e-direita.mt-c-brilhar   { animation-name: mt-e-direita, mt-c-brilhar; }
+.mt-e-crescer.mt-c-flutuar   { animation-name: mt-e-crescer, mt-c-flutuar; }
+.mt-e-crescer.mt-c-pulsar    { animation-name: mt-e-crescer, mt-c-pulsar; }
+.mt-e-crescer.mt-c-balancar  { animation-name: mt-e-crescer, mt-c-balancar; }
+.mt-e-crescer.mt-c-brilhar   { animation-name: mt-e-crescer, mt-c-brilhar; }
+.mt-e-estourar.mt-c-flutuar  { animation-name: mt-e-estourar, mt-c-flutuar; }
+.mt-e-estourar.mt-c-pulsar   { animation-name: mt-e-estourar, mt-c-pulsar; }
+.mt-e-estourar.mt-c-balancar { animation-name: mt-e-estourar, mt-c-balancar; }
+.mt-e-estourar.mt-c-brilhar  { animation-name: mt-e-estourar, mt-c-brilhar; }
+.mt-e-girar.mt-c-flutuar     { animation-name: mt-e-girar, mt-c-flutuar; }
+.mt-e-girar.mt-c-pulsar      { animation-name: mt-e-girar, mt-c-pulsar; }
+.mt-e-girar.mt-c-balancar    { animation-name: mt-e-girar, mt-c-balancar; }
+.mt-e-girar.mt-c-brilhar     { animation-name: mt-e-girar, mt-c-brilhar; }
+
+/*
+ * Modo leve: a peça continua igual, só para de se mexer.
+ *
+ * `.mt-perf` liga sozinho quando a TV não dá conta (js/perf.js). Numa máquina
+ * que já está perdendo quadros, animação é a primeira coisa que sobra — e uma
+ * peça parada e legível é melhor do que uma peça animada aos tropeços.
+ */
+.mt-perf .mt-anim { animation: none !important; }
+
+/*
+ * Quem pediu menos movimento ao sistema, recebe menos movimento.
+ *
+ * Vale sobretudo para o painel: a TV normalmente não tem essa preferência
+ * configurada, mas quem edita no computador pode ter — e tem por um motivo.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .mt-anim { animation: none !important; }
+}

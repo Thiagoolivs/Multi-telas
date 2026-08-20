@@ -17,6 +17,7 @@ import { AlertsPage } from './pages/AlertsPage.jsx';
 import { SupportPage } from './pages/SupportPage.jsx';
 import { BillingPage } from './pages/BillingPage.jsx';
 import { SystemPage } from './pages/SystemPage.jsx';
+import { PlatformPage } from './pages/PlatformPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 
@@ -33,6 +34,7 @@ const META = {
   birthdays: { title: 'Aniversariantes', subtitle: 'Importe a equipe e o player mostra sozinho.' },
   billing: { title: 'Plano e cobrança' },
   system: { title: 'Estado do sistema', subtitle: 'O que está configurado, e o que vai doer se ficar como está.' },
+  platform: { title: 'Plataforma' },
   settings: { title: 'Ajustes', subtitle: 'Conta, integrações e preferências.' },
 };
 
@@ -116,6 +118,7 @@ export default function App() {
       case 'birthdays': return <BirthdaysPage />;
       case 'billing': return <BillingPage />;
       case 'system': return <SystemPage />;
+      case 'platform': return <PlatformPage />;
       case 'alerts': return <AlertsPage onGoScreens={() => go('screens')} onGoStorage={() => go('storage')} onGoBilling={() => go('billing')} />;
       case 'support': return <SupportPage me={session} />;
       case 'settings': return (
@@ -133,6 +136,7 @@ export default function App() {
       theme={theme}
       onToggleTheme={toggleTheme}
       user={user}
+      operador={!!session.operador}
       onLogout={logout}
     >
       {/*

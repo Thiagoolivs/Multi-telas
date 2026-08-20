@@ -5,6 +5,10 @@ import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Field, Input, Textarea, Select } from '../components/ui/Field.jsx';
 import { cn } from '../lib/cn.js';
+import { suporte } from '../api.js';
+import { aviso } from '../lib/avisos.js';
+import { useAsync } from '../lib/useAsync.js';
+import { relativeTime } from '../lib/format.js';
 
 // Contato do suporte. Trocar aqui quando o e-mail do projeto existir.
 const SUPPORT_EMAIL = 'thiago.olivs.coelho@gmail.com';
@@ -70,6 +74,8 @@ export function SupportPage({ me }) {
   const [assunto, setAssunto] = useState('Dúvida');
   const [mensagem, setMensagem] = useState('');
   const [copiado, setCopiado] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const { data: minhas, reload: recarregar } = useAsync(suporte.meus);
 
   const user = (me && me.user) || {};
   const tenant = (me && me.tenant) || {};
@@ -86,6 +92,36 @@ export function SupportPage({ me }) {
     window.location.href = 'mailto:' + SUPPORT_EMAIL
       + '?subject=' + encodeURIComponent('[MultiTelas] ' + assunto)
       + '&body=' + encodeURIComponent(corpo);
+  }
+
+  /*
+   * Enviar pelo produto, e não só por mailto.
+   *
+   * O mailto continua existindo porque tem gente que prefere o próprio
+   * programa de e-mail. Mas ele SÓ funciona se a pessoa tiver um configurado,
+   * e o que ela escreve some do nosso lado — não dá para saber quantos
+   * escreveram, sobre o quê, nem responder de dentro. Uma reclamação que
+   * ninguém consegue contar é uma reclamação que ninguém trata.
+   */
+  const TIPO = {
+    'Dúvida': 'duvida',
+    'Problema com uma tela': 'problema',
+    'Erro no painel': 'problema',
+    'Cobrança e planos': 'cobranca',
+    'Sugestão': 'sugestao',
+  };
+
+  async function enviar() {
+    const texto = mensagem.trim();
+    if (texto.length < 10) return;
+    setEnviando(true);
+    try {
+      await suporte.enviar(TIPO[assunto] || 'duvida', assunto + ': ' + texto);
+      setMensagem('');
+      aviso.ok('Recebemos sua mensagem. Você acompanha a resposta aqui mesmo.');
+      recarregar();
+    } catch (e) { aviso.erro('sup', 'Não consegui enviar.', e.message || ''); }
+    setEnviando(false);
   }
 
   async function copiarEmail() {
@@ -126,14 +162,47 @@ export function SupportPage({ me }) {
                 <Textarea rows={5} value={mensagem} onChange={(e) => setMensagem(e.target.value)}
                   placeholder="Descreva o que você precisa…" />
               </Field>
-              <Button variant="primary" icon={Mail} className="w-full" disabled={!mensagem.trim()} onClick={abrirEmail}>
-                Abrir e-mail para o suporte
+              <Button variant="primary" icon={LifeBuoy} className="w-full"
+                disabled={enviando || mensagem.trim().length < 10} onClick={enviar}>
+                {enviando ? 'Enviando…' : 'Enviar para o suporte'}
+              </Button>
+              <Button variant="ghost" icon={Mail} className="w-full" disabled={!mensagem.trim()} onClick={abrirEmail}>
+                Ou abrir no meu programa de e-mail
               </Button>
               <p className="text-2xs leading-snug text-ink-3">
-                Isso abre seu programa de e-mail com a mensagem pronta. Anexamos automaticamente os dados da sua conta e do navegador.
+                Enviando por aqui, a resposta aparece nesta mesma página. Pelo e-mail, ela vai para a sua caixa —
+                e anexamos automaticamente os dados da conta e do navegador.
               </p>
             </div>
           </Panel>
+
+          {/*
+            O que esta conta já mandou, com a resposta quando houver. Guardar
+            sem devolver seria pedir que a pessoa escrevesse num buraco.
+          */}
+          {!!(minhas && minhas.itens && minhas.itens.length) && (
+            <Panel>
+              <PanelHeader title="Suas mensagens" description={minhas.itens.length + ' enviada(s)'} />
+              <div className="max-h-64 overflow-y-auto">
+                {minhas.itens.map((m) => (
+                  <div key={m.id} className="border-b border-line px-4 py-3 last:border-0">
+                    <div className="mb-1 flex items-center gap-2 text-2xs">
+                      <span className={'rounded px-1.5 py-0.5 ' + (m.status === 'aberta' ? 'bg-warn/15 text-warn' : 'bg-ok/15 text-ok')}>
+                        {m.status === 'aberta' ? 'aguardando' : 'respondida'}
+                      </span>
+                      <span className="ml-auto text-ink-3">{relativeTime(m.createdAt)}</span>
+                    </div>
+                    <div className="text-xs text-ink-2">{m.texto}</div>
+                    {m.resposta && (
+                      <div className="mt-1.5 rounded border border-line bg-surface-2 p-2 text-2xs text-ink-2">
+                        <b className="text-ink">Resposta:</b> {m.resposta}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
 
           <Panel>
             <PanelHeader title="Contato direto" />

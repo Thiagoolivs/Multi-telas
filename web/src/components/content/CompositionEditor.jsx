@@ -6,7 +6,7 @@ import {
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup, LayoutTemplate,
-  Ruler, Paintbrush,
+  Ruler, Paintbrush, Play, Wand,
 } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
@@ -17,6 +17,7 @@ import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer
 import { encaixar, encaixarRedimensionamento, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
 import { decidirColagem } from '../../lib/colar.js';
 import { lerFormato, aplicarFormato } from '../../lib/formato.js';
+import { ENTRADAS, CONTINUAS, LIMITES, ler as lerAnim, estilo as estiloAnim, escalonar } from '../../lib/animacao.js';
 import {
   estiloTexto, listar as listarFontes, pesosDe, pesoValido, dados as dadosDaFonte,
   carregarFonte, carregarDaComposicao, ESPACAMENTO, ENTRELINHA,
@@ -148,6 +149,14 @@ export function CompositionEditor({ value, onClose, onSave }) {
    * — rolar a lista de camadas, dar zoom, procurar o elemento.
    */
   const [pincel, setPincel] = useState(null);
+  /*
+   * A prévia da animação é um GESTO, não um estado do palco.
+   *
+   * Animação rodando o tempo todo enquanto se arrasta um texto é
+   * insuportável — e pior: o elemento se move sozinho debaixo do cursor, então
+   * posicionar vira loteria. Aqui ela roda quando se pede, uma vez, e para.
+   */
+  const [previa, setPrevia] = useState(0);
   /*
    * A cor da marca da conta, buscada uma vez.
    *
@@ -818,6 +827,10 @@ export function CompositionEditor({ value, onClose, onSave }) {
         ))}
 
         <div className="mx-1 h-5 w-px bg-line" />
+        <IconBtn title="Ver a animação da peça" icon={Play} onClick={() => setPrevia((n) => n + 1)} />
+        <IconBtn title="Escalonar a entrada: cada elemento entra logo depois do anterior"
+          icon={Wand} disabled={els.length < 2}
+          onClick={() => { editar((d) => ({ ...d, els: escalonar(d.els) }), null); setPrevia((n) => n + 1); }} />
         <IconBtn title="Margem de segurança, centro e terços" icon={Ruler} ativo={guiasFixas} onClick={() => setGuiasFixas((g) => !g)} />
         <IconBtn title="Menos zoom" icon={ZoomOut} onClick={() => setZoom((z) => clamp(z - 0.25, 0.25, 3))} />
         <button onClick={() => setZoom(1)} title="Ajustar à tela"
@@ -830,7 +843,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <div className="flex-1" />
         <Button size="sm" variant="ghost" icon={X} onClick={onClose}>Cancelar</Button>
         <Button size="sm" variant="primary" icon={Save} onClick={salvar}>Salvar</Button>
-        <input ref={imgInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPickImage} />
+        <input ref={imgInput} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={onPickImage} />
 
       {modeloAberto && (
         <EscolherModelo
@@ -963,6 +976,22 @@ export function CompositionEditor({ value, onClose, onSave }) {
                   opacity: e.opacidade != null ? e.opacidade : 1,
                   outline: sel.includes(e.id) ? '1px solid rgba(120,160,255,.9)' : 'none',
                 }}>
+                {/*
+                  A capa da animação, e só durante a PRÉVIA.
+                  ────────────────────────────────────────
+                  A `key` muda a cada prévia: é o que faz o React trocar o nó e
+                  o navegador RECOMEÇAR a animação. Sem isso, a segunda prévia
+                  não mostraria nada — a animação já teria terminado e o CSS
+                  não a reinicia sozinho.
+
+                  Fora da prévia a capa continua existindo, mas sem classe
+                  nenhuma: montar e desmontar um nó a cada clique de prévia
+                  faria o texto em edição perder o cursor.
+                */}
+                <div
+                  key={'anim' + previa}
+                  className={previa ? 'mt-anim ' + lerAnim(e).classes.join(' ') : ''}
+                  style={{ width: '100%', height: '100%', ...(previa ? estiloAnim(e) : {}) }}>
                 {e.tipo === 'texto' ? (
                   <TextoEditavel
                     el={e}
@@ -994,6 +1023,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                     style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', display: 'block', pointerEvents: 'none',
                       borderRadius: raioCss(e, cqwPx), ...estiloCaixa(e, cqwPx) }} />
                 )}
+                </div>
               </div>
             ))}
 
@@ -1277,7 +1307,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                   className="h-9 w-9 cursor-pointer rounded border border-line bg-transparent" />
                 <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => bgInput.current.click()}>Imagem</Button>
                 {bg.kind === 'imagem' && <Button size="sm" variant="ghost" onClick={() => setBg({ kind: 'cor', cor: '#0a1020' })}>Limpar</Button>}
-                <input ref={bgInput} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPickBg} />
+                <input ref={bgInput} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={onPickBg} />
               </div>
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-2xs text-ink-3">Gradiente</span>
@@ -1448,6 +1478,12 @@ export function CompositionEditor({ value, onClose, onSave }) {
                     <PainelBorda el={selEl} onChange={(bd) => patch(selEl.id, { borda: bd }, 'borda:' + selEl.id)} onSoltar={fecharPasso} />
                   </>
                 )}
+
+                <PainelAnimacao
+                  el={selEl}
+                  onChange={(anim) => patch(selEl.id, { anim }, 'anim:' + selEl.id)}
+                  onPrevia={() => setPrevia((n) => n + 1)}
+                />
 
                 <div className="grid grid-cols-4 gap-1.5 border-t border-line pt-3">
                   <Num rotulo="X" valor={selEl.x} onChange={(n) => patch(selEl.id, { x: n })} />
@@ -1791,6 +1827,59 @@ function GradeDeLugar({ valor, onChange }) {
           className={'h-[14px] w-[18px] rounded-[2px] border transition '
             + (valor === id ? 'border-accent bg-accent' : 'border-line bg-surface hover:bg-line')} />
       )))}
+    </div>
+  );
+}
+
+/*
+ * Como o elemento ENTRA, e como ele se mexe depois.
+ *
+ * É o que separa uma peça de mídia indoor de um slide: os elementos não
+ * aparecem todos de uma vez, eles entram — e alguns continuam respirando
+ * enquanto a peça está no ar.
+ *
+ * O botão de ver é o ponto: sem ele a pessoa escolheria no escuro, e com a
+ * animação rodando SEMPRE o palco viraria inutilizável para posicionar.
+ */
+function PainelAnimacao({ el, onChange, onPrevia }) {
+  const a = lerAnim(el);
+  const mudar = (p) => onChange({ ...(el.anim || {}), ...p });
+
+  return (
+    <div className="space-y-2 border-t border-line pt-3">
+      <div className="flex items-center justify-between">
+        <span className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Animação</span>
+        <Button size="sm" variant="ghost" icon={Play} onClick={onPrevia}>Ver</Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Como entra">
+          <Select value={a.entrada} onChange={(e) => mudar({ entrada: e.target.value })}>
+            {ENTRADAS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+          </Select>
+        </Field>
+        <Field label="Depois de entrar">
+          <Select value={a.continua} onChange={(e) => mudar({ continua: e.target.value })}>
+            {CONTINUAS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+          </Select>
+        </Field>
+      </div>
+
+      {/* Tempo só faz sentido quando há entrada: sem ela não há o que durar
+          nem o que esperar, e dois controles mortos confundem mais do que
+          ajudam. */}
+      {!!a.entrada && (
+        <div className="grid grid-cols-2 gap-2">
+          <Field label={`Duração (${a.duracao}s)`}>
+            <input type="range" min={LIMITES.duracao.min} max={LIMITES.duracao.max} step="0.1" value={a.duracao}
+              onChange={(e) => mudar({ duracao: Number(e.target.value) })} className="w-full" />
+          </Field>
+          <Field label={`Espera (${a.atraso}s)`} hint="Para entrar depois dos outros.">
+            <input type="range" min={LIMITES.atraso.min} max={LIMITES.atraso.max} step="0.1" value={a.atraso}
+              onChange={(e) => mudar({ atraso: Number(e.target.value) })} className="w-full" />
+          </Field>
+        </div>
+      )}
     </div>
   );
 }

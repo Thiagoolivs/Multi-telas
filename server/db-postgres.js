@@ -93,6 +93,56 @@ async function init() {
       id TEXT PRIMARY KEY, tenant_id TEXT, kind TEXT, url TEXT, label TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_brandassets_tenant ON brandassets(tenant_id);
+    ALTER TABLE brandassets ADD COLUMN IF NOT EXISTS marca_id TEXT;
+    /*
+     * Marcas — até três por conta.
+     *
+     * "brandkit" tinha o tenant como CHAVE PRIMÁRIA: uma identidade por
+     * empresa, por construção. Quem atende três clientes com o mesmo painel
+     * tinha que reescrever as cores a cada peça. As linhas antigas são
+     * migradas para cá logo abaixo, uma vez só.
+     */
+    CREATE TABLE IF NOT EXISTS marcas (
+      id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, cores TEXT,
+      fonte_titulo TEXT, fonte_apoio TEXT, direcao TEXT, tom TEXT, observacoes TEXT,
+      site TEXT, site_resumo TEXT, site_shot TEXT, site_em BIGINT,
+      ativa BOOLEAN, created_at BIGINT, updated_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_marcas_tenant ON marcas(tenant_id);
+    -- Quem opera a PLATAFORMA (não uma conta). A raiz da confiança é a
+    -- variável ADMIN_EMAILS; aqui só ficam os que a raiz convidou depois.
+    CREATE TABLE IF NOT EXISTS operadores (
+      email TEXT PRIMARY KEY, nome TEXT, convidado_por TEXT, created_at BIGINT
+    );
+    -- Eventos de uso: QUE função foi usada, por quem e quando. Nunca o
+    -- conteúdo — para saber que o editor é usado não é preciso guardar o que
+    -- foi escrito nele.
+    CREATE TABLE IF NOT EXISTS eventos (
+      id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_eventos_quando ON eventos(created_at);
+    CREATE INDEX IF NOT EXISTS idx_eventos_tenant ON eventos(tenant_id, created_at);
+    -- Reclamações e pedidos escritos pelo cliente. Antes não havia canal
+    -- nenhum dentro do produto.
+    CREATE TABLE IF NOT EXISTS reclamacoes (
+      id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, email TEXT,
+      tipo TEXT, texto TEXT, status TEXT, resposta TEXT,
+      created_at BIGINT, resolvido_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_reclamacoes_quando ON reclamacoes(created_at);
+    /*
+     * A identidade única vira a primeira marca. Idempotente: só age em conta
+     * que ainda não tem marca nenhuma. Sem isto, quem já tinha cores e fontes
+     * abriria a tela de Marca em branco depois do deploy — e concluiria, com
+     * razão, que o sistema perdeu o trabalho dele.
+     */
+    INSERT INTO marcas (id, tenant_id, nome, cores, fonte_titulo, fonte_apoio, direcao, tom,
+        observacoes, site, site_resumo, site_shot, site_em, ativa, created_at, updated_at)
+      SELECT 'mk_' || substr(md5(random()::text || b.tenant_id), 1, 14), b.tenant_id, 'Marca principal',
+             b.cores, b.fonte_titulo, b.fonte_apoio, b.direcao, b.tom, b.observacoes,
+             '', '', '', 0, TRUE, COALESCE(b.updated_at, 0), COALESCE(b.updated_at, 0)
+        FROM brandkit b
+       WHERE NOT EXISTS (SELECT 1 FROM marcas m WHERE m.tenant_id = b.tenant_id);
     CREATE TABLE IF NOT EXISTS resets (
       token TEXT PRIMARY KEY, user_id TEXT, expires_at BIGINT, used_at BIGINT, created_at BIGINT
     );
@@ -205,38 +255,242 @@ async function consumeReset(token) {
   await pool.query('UPDATE resets SET used_at = $1 WHERE token = $2', [Date.now(), token]);
 }
 /* ---------------- Marca (identidade visual) ---------------- */
-function mapKit(r) {
+/* ---------------- Marcas (até três por conta) ---------------- */
+const MAX_MARCAS = 3;
+
+function mapMarca(r) {
   if (!r) return null;
   let cores = []; try { cores = JSON.parse(r.cores || '[]'); } catch (e) {}
-  return { cores, fonteTitulo: r.fonte_titulo || '', fonteApoio: r.fonte_apoio || '',
-    direcao: r.direcao || '', tom: r.tom || '', observacoes: r.observacoes || '', updatedAt: r.updated_at };
+  return {
+    id: r.id, nome: r.nome || 'Marca', cores,
+    fonteTitulo: r.fonte_titulo || '', fonteApoio: r.fonte_apoio || '',
+    direcao: r.direcao || '', tom: r.tom || '', observacoes: r.observacoes || '',
+    site: r.site || '', siteResumo: r.site_resumo || '', siteShot: r.site_shot || '', siteEm: Number(r.site_em) || 0,
+    ativa: !!r.ativa, updatedAt: r.updated_at,
+  };
 }
-async function getBrandKit(tenantId) {
-  const r = await pool.query('SELECT * FROM brandkit WHERE tenant_id = $1', [tenantId]);
-  return mapKit(r.rows[0]);
+
+/*
+ * Toda conta tem PELO MENOS uma marca, criada na hora em que se pergunta por
+ * ela. Sem isto, cada chamador teria que lidar com "não há marca ainda" — e a
+ * tela de Marca abriria sem lugar onde escrever.
+ */
+async function garantirMarca(tenantId) {
+  const r = await pool.query(
+    'SELECT * FROM marcas WHERE tenant_id = $1 ORDER BY ativa DESC, created_at ASC LIMIT 1', [tenantId]);
+  if (r.rows[0]) {
+    const m = r.rows[0];
+    if (!m.ativa) await pool.query('UPDATE marcas SET ativa = (id = $2) WHERE tenant_id = $1', [tenantId, m.id]);
+    return Object.assign({}, m, { ativa: true });
+  }
+  const id = 'mk_' + rid(14);
+  const t = Date.now();
+  await pool.query(`INSERT INTO marcas (id, tenant_id, nome, cores, fonte_titulo, fonte_apoio, direcao, tom,
+      observacoes, site, site_resumo, site_shot, site_em, ativa, created_at, updated_at)
+    VALUES ($1,$2,$3,'[]','','','','','','','','',0,TRUE,$4,$4)`, [id, tenantId, 'Marca principal', t]);
+  const n = await pool.query('SELECT * FROM marcas WHERE id = $1', [id]);
+  return n.rows[0];
 }
+
+async function listMarcas(tenantId) {
+  await garantirMarca(tenantId);
+  const r = await pool.query('SELECT * FROM marcas WHERE tenant_id = $1 ORDER BY created_at ASC', [tenantId]);
+  return r.rows.map(mapMarca);
+}
+async function marcaAtiva(tenantId) { return mapMarca(await garantirMarca(tenantId)); }
+async function criarMarca(tenantId, nome) {
+  await garantirMarca(tenantId);
+  const c = await pool.query('SELECT COUNT(*)::int AS n FROM marcas WHERE tenant_id = $1', [tenantId]);
+  if (c.rows[0].n >= MAX_MARCAS) return { erro: 'limite', limite: MAX_MARCAS };
+  const id = 'mk_' + rid(14);
+  const t = Date.now();
+  // A marca nova já entra ATIVA: quem acabou de criar quer trabalhar nela.
+  await pool.query(`INSERT INTO marcas (id, tenant_id, nome, cores, fonte_titulo, fonte_apoio, direcao, tom,
+      observacoes, site, site_resumo, site_shot, site_em, ativa, created_at, updated_at)
+    VALUES ($1,$2,$3,'[]','','','','','','','','',0,FALSE,$4,$4)`, [id, tenantId, String(nome || 'Marca').slice(0, 60), t]);
+  await pool.query('UPDATE marcas SET ativa = (id = $2) WHERE tenant_id = $1', [tenantId, id]);
+  const n = await pool.query('SELECT * FROM marcas WHERE id = $1', [id]);
+  return { marca: mapMarca(n.rows[0]) };
+}
+async function salvarMarca(id, tenantId, k) {
+  await pool.query(`UPDATE marcas SET nome=$1, cores=$2, fonte_titulo=$3, fonte_apoio=$4,
+      direcao=$5, tom=$6, observacoes=$7, updated_at=$8 WHERE id=$9 AND tenant_id=$10`,
+    [String(k.nome || 'Marca').slice(0, 60), JSON.stringify(k.cores || []), k.fonteTitulo || '',
+     k.fonteApoio || '', k.direcao || '', k.tom || '', k.observacoes || '', Date.now(), id, tenantId]);
+  const r = await pool.query('SELECT * FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapMarca(r.rows[0]);
+}
+async function salvarSiteDaMarca(id, tenantId, site, resumo, shot) {
+  await pool.query('UPDATE marcas SET site=$1, site_resumo=$2, site_shot=$3, site_em=$4, updated_at=$4 WHERE id=$5 AND tenant_id=$6',
+    [site || '', resumo || '', shot || '', Date.now(), id, tenantId]);
+  const r = await pool.query('SELECT * FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapMarca(r.rows[0]);
+}
+async function ativarMarca(id, tenantId) {
+  const r = await pool.query('SELECT 1 FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  if (!r.rows[0]) return null;
+  await pool.query('UPDATE marcas SET ativa = (id = $2) WHERE tenant_id = $1', [tenantId, id]);
+  const n = await pool.query('SELECT * FROM marcas WHERE id = $1', [id]);
+  return mapMarca(n.rows[0]);
+}
+async function removerMarca(id, tenantId) {
+  // A última não sai: uma conta sem marca nenhuma é um estado que nenhuma tela
+  // sabe desenhar, e recriar na marra perderia o nome que a pessoa deu.
+  const c = await pool.query('SELECT COUNT(*)::int AS n FROM marcas WHERE tenant_id = $1', [tenantId]);
+  if (c.rows[0].n <= 1) return { erro: 'ultima' };
+  await pool.query('DELETE FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  await pool.query('DELETE FROM brandassets WHERE marca_id = $1 AND tenant_id = $2', [id, tenantId]);
+  await garantirMarca(tenantId);
+  return { ok: true };
+}
+
+/*
+ * As duas funções antigas continuam existindo e passam a falar da marca ATIVA.
+ *
+ * É o que mantém o diretor de IA, o compositor e o editor funcionando sem
+ * saber que existem três marcas — para eles sempre houve "a marca da conta", e
+ * continua havendo: a que está escolhida agora.
+ */
+async function getBrandKit(tenantId) { return mapMarca(await garantirMarca(tenantId)); }
 async function saveBrandKit(tenantId, k) {
-  await pool.query(`INSERT INTO brandkit (tenant_id, cores, fonte_titulo, fonte_apoio, direcao, tom, observacoes, updated_at)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-    ON CONFLICT (tenant_id) DO UPDATE SET cores=EXCLUDED.cores, fonte_titulo=EXCLUDED.fonte_titulo,
-      fonte_apoio=EXCLUDED.fonte_apoio, direcao=EXCLUDED.direcao, tom=EXCLUDED.tom,
-      observacoes=EXCLUDED.observacoes, updated_at=EXCLUDED.updated_at`,
-    [tenantId, JSON.stringify(k.cores || []), k.fonteTitulo || '', k.fonteApoio || '',
-     k.direcao || '', k.tom || '', k.observacoes || '', Date.now()]);
+  const m = await garantirMarca(tenantId);
+  /*
+   * `k.nome || m.nome`, e não Object.assign({nome: m.nome}, k): quando `k` traz
+   * a chave `nome` com valor undefined — que é o que a rota manda quando o
+   * corpo não tem nome —, o assign COPIA o undefined por cima e toda marca
+   * salva viraria "Marca".
+   */
+  await salvarMarca(m.id, tenantId, Object.assign({}, k, { nome: k.nome || m.nome }));
 }
 async function listBrandAssets(tenantId) {
   const r = await pool.query('SELECT * FROM brandassets WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
-  return r.rows.map((x) => ({ id: x.id, kind: x.kind, url: x.url, label: x.label || '', createdAt: x.created_at }));
+  return r.rows.map((x) => ({ id: x.id, kind: x.kind, url: x.url, label: x.label || '', marcaId: x.marca_id || '', createdAt: x.created_at }));
 }
-async function addBrandAsset(tenantId, kind, url, label) {
+async function addBrandAsset(tenantId, kind, url, label, marcaId) {
   const id = 'ba_' + rid(14);
-  await pool.query('INSERT INTO brandassets (id, tenant_id, kind, url, label, created_at) VALUES ($1,$2,$3,$4,$5,$6)',
-    [id, tenantId, kind, url, label || '', Date.now()]);
-  return { id, kind, url, label: label || '' };
+  await pool.query('INSERT INTO brandassets (id, tenant_id, kind, url, label, marca_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+    [id, tenantId, kind, url, label || '', marcaId || null, Date.now()]);
+  return { id, kind, url, label: label || '', marcaId: marcaId || '' };
 }
 async function removeBrandAsset(id, tenantId) {
   await pool.query('DELETE FROM brandassets WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
 }
+/* ---------------- Plataforma: operadores, eventos e reclamações ---------------- */
+
+async function listarOperadores() {
+  const r = await pool.query('SELECT * FROM operadores ORDER BY created_at ASC');
+  return r.rows.map((x) => ({ email: x.email, nome: x.nome || '', convidadoPor: x.convidado_por || '', createdAt: Number(x.created_at) }));
+}
+async function addOperador(email, nome, convidadoPor) {
+  const e = String(email || '').trim().toLowerCase();
+  if (!e.includes('@')) return null;
+  await pool.query(`INSERT INTO operadores (email, nome, convidado_por, created_at) VALUES ($1,$2,$3,$4)
+    ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome`,
+    [e, String(nome || '').slice(0, 80), String(convidadoPor || '').toLowerCase(), Date.now()]);
+  return { email: e, nome: nome || '', convidadoPor: convidadoPor || '' };
+}
+async function removerOperador(email) {
+  await pool.query('DELETE FROM operadores WHERE email = $1', [String(email || '').trim().toLowerCase()]);
+}
+
+async function registrarEvento(tenantId, userId, acao) {
+  await pool.query('INSERT INTO eventos (id, tenant_id, user_id, acao, created_at) VALUES ($1,$2,$3,$4,$5)',
+    ['ev_' + rid(14), tenantId || '', userId || '', String(acao || '').slice(0, 40), Date.now()]);
+}
+async function eventosPorAcao(desde) {
+  const r = await pool.query('SELECT acao, COUNT(*)::int AS n FROM eventos WHERE created_at >= $1 GROUP BY acao ORDER BY n DESC LIMIT 30', [desde || 0]);
+  return r.rows.map((x) => ({ acao: x.acao, n: Number(x.n) }));
+}
+async function eventosParaSessoes(desde) {
+  // Só o par (usuário, instante): é o suficiente para medir sessão, e não
+  // carrega mais nada de ninguém para dentro da conta.
+  const r = await pool.query('SELECT user_id, created_at FROM eventos WHERE created_at >= $1 ORDER BY user_id ASC, created_at ASC', [desde || 0]);
+  return r.rows.map((x) => ({ userId: x.user_id, em: Number(x.created_at) }));
+}
+async function eventosPorDia(desde) {
+  const r = await pool.query(
+    "SELECT to_char(to_timestamp(created_at / 1000), 'YYYY-MM-DD') AS dia, COUNT(*)::int AS n FROM eventos WHERE created_at >= $1 GROUP BY dia ORDER BY dia ASC", [desde || 0]);
+  return r.rows.map((x) => ({ dia: x.dia, n: Number(x.n) }));
+}
+async function contasAtivas(desde) {
+  const r = await pool.query('SELECT COUNT(DISTINCT tenant_id)::int AS n FROM eventos WHERE created_at >= $1', [desde || 0]);
+  return Number(r.rows[0].n);
+}
+async function pessoasAtivas(desde) {
+  const r = await pool.query('SELECT COUNT(DISTINCT user_id)::int AS n FROM eventos WHERE created_at >= $1', [desde || 0]);
+  return Number(r.rows[0].n);
+}
+async function limparEventos(antesDe) {
+  await pool.query('DELETE FROM eventos WHERE created_at < $1', [antesDe]);
+}
+
+const mapRec = (r) => ({
+  id: r.id, tenantId: r.tenant_id, email: r.email || '', tipo: r.tipo || 'duvida',
+  texto: r.texto || '', status: r.status || 'aberta', resposta: r.resposta || '',
+  createdAt: Number(r.created_at), resolvidoEm: Number(r.resolvido_em) || 0,
+});
+async function criarReclamacao(tenantId, userId, email, tipo, texto) {
+  const id = 'rec_' + rid(14);
+  await pool.query(`INSERT INTO reclamacoes (id, tenant_id, user_id, email, tipo, texto, status, resposta, created_at, resolvido_em)
+    VALUES ($1,$2,$3,$4,$5,$6,'aberta','',$7,0)`,
+    [id, tenantId, userId || '', String(email || '').slice(0, 160),
+     String(tipo || 'duvida').slice(0, 20), String(texto || '').slice(0, 4000), Date.now()]);
+  return { id };
+}
+async function listarReclamacoes(limite) {
+  const r = await pool.query('SELECT * FROM reclamacoes ORDER BY created_at DESC LIMIT $1', [Number(limite) || 100]);
+  return r.rows.map(mapRec);
+}
+async function reclamacoesDoTenant(tenantId) {
+  const r = await pool.query('SELECT * FROM reclamacoes WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 50', [tenantId]);
+  return r.rows.map(mapRec);
+}
+async function resolverReclamacao(id, status, resposta) {
+  await pool.query('UPDATE reclamacoes SET status = $1, resposta = $2, resolvido_em = $3 WHERE id = $4',
+    [status, String(resposta || '').slice(0, 2000), Date.now(), id]);
+}
+async function resumoReclamacoes(desde) {
+  const r = await pool.query('SELECT status, COUNT(*)::int AS n FROM reclamacoes WHERE created_at >= $1 GROUP BY status', [desde || 0]);
+  const out = { aberta: 0, resolvida: 0 };
+  for (const x of r.rows) out[x.status] = Number(x.n);
+  return out;
+}
+
+/* Números da plataforma inteira. Só o operador chega aqui — ver server/operadores.js. */
+async function numerosDaPlataforma(agora, vivaDesde, desde) {
+  const um = async (sql, args) => (await pool.query(sql, args || [])).rows[0];
+  const varios = async (sql, args) => (await pool.query(sql, args || [])).rows;
+  const [contas, contasNovas, pessoas, telas, telasVivas, midia, pecas, ia] = await Promise.all([
+    um('SELECT COUNT(*)::int AS n FROM tenants'),
+    um('SELECT COUNT(*)::int AS n FROM tenants WHERE created_at >= $1', [desde]),
+    um('SELECT COUNT(*)::int AS n FROM users'),
+    um('SELECT COUNT(*)::int AS n FROM devices'),
+    um('SELECT COUNT(*)::int AS n FROM devices WHERE last_seen >= $1', [vivaDesde]),
+    um('SELECT COALESCE(SUM(size), 0)::bigint AS b FROM media'),
+    um('SELECT COUNT(*)::int AS n FROM library'),
+    um('SELECT COALESCE(SUM(creditos),0)::int AS c, COALESCE(SUM(custo_centavos),0)::int AS centavos, COUNT(*)::int AS n FROM uso_ia WHERE created_at >= $1', [desde]),
+  ]);
+  const [porPlano, iaPorTipo, maiores] = await Promise.all([
+    varios("SELECT COALESCE(plan, 'free') AS plano, COUNT(*)::int AS n FROM tenants GROUP BY plano"),
+    varios('SELECT tipo, COUNT(*)::int AS n FROM uso_ia WHERE created_at >= $1 GROUP BY tipo ORDER BY n DESC LIMIT 12', [desde]),
+    varios(`SELECT t.id, t.name, COALESCE(t.plan, 'free') AS plano, t.created_at,
+        (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id)::int AS telas,
+        (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id)::int AS pessoas
+      FROM tenants t ORDER BY telas DESC, t.created_at ASC LIMIT 20`),
+  ]);
+  return {
+    contas: Number(contas.n), contasNovas: Number(contasNovas.n), pessoas: Number(pessoas.n),
+    telas: Number(telas.n), telasVivas: Number(telasVivas.n),
+    porPlano: porPlano.map((r) => ({ plano: r.plano, n: Number(r.n) })),
+    midiaBytes: Number(midia.b), pecas: Number(pecas.n),
+    ia: { creditos: Number(ia.c), custoCentavos: Number(ia.centavos), chamadas: Number(ia.n) },
+    iaPorTipo: iaPorTipo.map((r) => ({ tipo: r.tipo, n: Number(r.n) })),
+    maiores: maiores.map((r) => ({
+      id: r.id, nome: r.name, plano: r.plano, telas: Number(r.telas), pessoas: Number(r.pessoas), createdAt: Number(r.created_at),
+    })),
+  };
+}
+
 /* ---------------- Mural de fotos do público ---------------- */
 // `tenantId` sai daqui porque a rota pública do QR não tem sessão: quem manda
 // a foto é identificado pelo mural, e é do mural que vem a empresa dona dela.
@@ -703,4 +957,9 @@ module.exports = {
   criarMural, listarMurais, muralPorCodigo, muralPorId, atualizarMural, removerMural,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
+  listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,
+  listarOperadores, addOperador, removerOperador,
+  registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
+  criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
+  numerosDaPlataforma,
 };

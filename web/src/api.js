@@ -190,6 +190,15 @@ export const brand = {
   removeAsset: (id) => api('DELETE', '/api/brand/assets/' + id),
   // A memória é dedução do sistema — o usuário vê e apaga quando quiser.
   esquecer: () => api('DELETE', '/api/brand/memoria'),
+  // Até três marcas por conta. `save` continua salvando a ATIVA — é o que
+  // mantém o resto do painel funcionando sem saber que há mais de uma.
+  marcas: () => api('GET', '/api/brand/marcas'),
+  criarMarca: (nome) => api('POST', '/api/brand/marcas', { nome }),
+  ativarMarca: (id) => api('POST', '/api/brand/marcas/' + id + '/ativar'),
+  removerMarca: (id) => api('DELETE', '/api/brand/marcas/' + id),
+  // Lê o site do cliente e guarda o resumo na marca. É rede alheia: pode
+  // demorar, e a tela precisa dizer isso enquanto espera.
+  lerSite: (id, site) => api('POST', '/api/brand/marcas/' + id + '/site', { site }),
 };
 
 // Datas comemorativas: catálogo e qual está valendo hoje.
@@ -197,6 +206,30 @@ export const seasons = {
   // `zonas` são as do layout da tela aberta: o servidor só gera conteúdo para
   // zona que existe, senão metade do pacote sumiria sem explicação.
   list: (zonas) => api('GET', '/api/seasons' + (zonas && zonas.length ? '?zonas=' + encodeURIComponent(zonas.join(',')) : '')),
+};
+
+/*
+ * Suporte: o cliente escreve e alguém do outro lado lê. Antes a página de
+ * Suporte era só perguntas frequentes — quem tinha um problema não tinha para
+ * onde escrever dentro do produto.
+ */
+export const suporte = {
+  enviar: (tipo, texto) => api('POST', '/api/suporte/reclamacao', { tipo, texto }),
+  meus: () => api('GET', '/api/suporte/reclamacao'),
+};
+
+/*
+ * Os números do MultiTelas inteiro. Só quem opera a plataforma chega aqui — e
+ * a porta é do servidor, não daqui: esconder o menu sem fechar a rota seria
+ * segurança de fachada.
+ */
+export const plataforma = {
+  metricas: (dias) => api('GET', '/api/plataforma/metricas' + (dias ? '?dias=' + dias : '')),
+  reclamacoes: () => api('GET', '/api/plataforma/reclamacoes'),
+  resolver: (id, status, resposta) => api('POST', '/api/plataforma/reclamacoes/' + id, { status, resposta }),
+  operadores: () => api('GET', '/api/plataforma/operadores'),
+  addOperador: (email, nome) => api('POST', '/api/plataforma/operadores', { email, nome }),
+  removerOperador: (email) => api('DELETE', '/api/plataforma/operadores/' + encodeURIComponent(email)),
 };
 
 export const library = {
