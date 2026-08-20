@@ -190,6 +190,15 @@ export const brand = {
   removeAsset: (id) => api('DELETE', '/api/brand/assets/' + id),
   // A memória é dedução do sistema — o usuário vê e apaga quando quiser.
   esquecer: () => api('DELETE', '/api/brand/memoria'),
+  // Até três marcas por conta. `save` continua salvando a ATIVA — é o que
+  // mantém o resto do painel funcionando sem saber que há mais de uma.
+  marcas: () => api('GET', '/api/brand/marcas'),
+  criarMarca: (nome) => api('POST', '/api/brand/marcas', { nome }),
+  ativarMarca: (id) => api('POST', '/api/brand/marcas/' + id + '/ativar'),
+  removerMarca: (id) => api('DELETE', '/api/brand/marcas/' + id),
+  // Lê o site do cliente e guarda o resumo na marca. É rede alheia: pode
+  // demorar, e a tela precisa dizer isso enquanto espera.
+  lerSite: (id, site) => api('POST', '/api/brand/marcas/' + id + '/site', { site }),
 };
 
 // Datas comemorativas: catálogo e qual está valendo hoje.

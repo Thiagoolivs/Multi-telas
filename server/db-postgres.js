@@ -93,6 +93,35 @@ async function init() {
       id TEXT PRIMARY KEY, tenant_id TEXT, kind TEXT, url TEXT, label TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_brandassets_tenant ON brandassets(tenant_id);
+    ALTER TABLE brandassets ADD COLUMN IF NOT EXISTS marca_id TEXT;
+    /*
+     * Marcas — até três por conta.
+     *
+     * "brandkit" tinha o tenant como CHAVE PRIMÁRIA: uma identidade por
+     * empresa, por construção. Quem atende três clientes com o mesmo painel
+     * tinha que reescrever as cores a cada peça. As linhas antigas são
+     * migradas para cá logo abaixo, uma vez só.
+     */
+    CREATE TABLE IF NOT EXISTS marcas (
+      id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, cores TEXT,
+      fonte_titulo TEXT, fonte_apoio TEXT, direcao TEXT, tom TEXT, observacoes TEXT,
+      site TEXT, site_resumo TEXT, site_shot TEXT, site_em BIGINT,
+      ativa BOOLEAN, created_at BIGINT, updated_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_marcas_tenant ON marcas(tenant_id);
+    /*
+     * A identidade única vira a primeira marca. Idempotente: só age em conta
+     * que ainda não tem marca nenhuma. Sem isto, quem já tinha cores e fontes
+     * abriria a tela de Marca em branco depois do deploy — e concluiria, com
+     * razão, que o sistema perdeu o trabalho dele.
+     */
+    INSERT INTO marcas (id, tenant_id, nome, cores, fonte_titulo, fonte_apoio, direcao, tom,
+        observacoes, site, site_resumo, site_shot, site_em, ativa, created_at, updated_at)
+      SELECT 'mk_' || substr(md5(random()::text || b.tenant_id), 1, 14), b.tenant_id, 'Marca principal',
+             b.cores, b.fonte_titulo, b.fonte_apoio, b.direcao, b.tom, b.observacoes,
+             '', '', '', 0, TRUE, COALESCE(b.updated_at, 0), COALESCE(b.updated_at, 0)
+        FROM brandkit b
+       WHERE NOT EXISTS (SELECT 1 FROM marcas m WHERE m.tenant_id = b.tenant_id);
     CREATE TABLE IF NOT EXISTS resets (
       token TEXT PRIMARY KEY, user_id TEXT, expires_at BIGINT, used_at BIGINT, created_at BIGINT
     );
@@ -205,34 +234,122 @@ async function consumeReset(token) {
   await pool.query('UPDATE resets SET used_at = $1 WHERE token = $2', [Date.now(), token]);
 }
 /* ---------------- Marca (identidade visual) ---------------- */
-function mapKit(r) {
+/* ---------------- Marcas (até três por conta) ---------------- */
+const MAX_MARCAS = 3;
+
+function mapMarca(r) {
   if (!r) return null;
   let cores = []; try { cores = JSON.parse(r.cores || '[]'); } catch (e) {}
-  return { cores, fonteTitulo: r.fonte_titulo || '', fonteApoio: r.fonte_apoio || '',
-    direcao: r.direcao || '', tom: r.tom || '', observacoes: r.observacoes || '', updatedAt: r.updated_at };
+  return {
+    id: r.id, nome: r.nome || 'Marca', cores,
+    fonteTitulo: r.fonte_titulo || '', fonteApoio: r.fonte_apoio || '',
+    direcao: r.direcao || '', tom: r.tom || '', observacoes: r.observacoes || '',
+    site: r.site || '', siteResumo: r.site_resumo || '', siteShot: r.site_shot || '', siteEm: Number(r.site_em) || 0,
+    ativa: !!r.ativa, updatedAt: r.updated_at,
+  };
 }
-async function getBrandKit(tenantId) {
-  const r = await pool.query('SELECT * FROM brandkit WHERE tenant_id = $1', [tenantId]);
-  return mapKit(r.rows[0]);
+
+/*
+ * Toda conta tem PELO MENOS uma marca, criada na hora em que se pergunta por
+ * ela. Sem isto, cada chamador teria que lidar com "não há marca ainda" — e a
+ * tela de Marca abriria sem lugar onde escrever.
+ */
+async function garantirMarca(tenantId) {
+  const r = await pool.query(
+    'SELECT * FROM marcas WHERE tenant_id = $1 ORDER BY ativa DESC, created_at ASC LIMIT 1', [tenantId]);
+  if (r.rows[0]) {
+    const m = r.rows[0];
+    if (!m.ativa) await pool.query('UPDATE marcas SET ativa = (id = $2) WHERE tenant_id = $1', [tenantId, m.id]);
+    return Object.assign({}, m, { ativa: true });
+  }
+  const id = 'mk_' + rid(14);
+  const t = Date.now();
+  await pool.query(`INSERT INTO marcas (id, tenant_id, nome, cores, fonte_titulo, fonte_apoio, direcao, tom,
+      observacoes, site, site_resumo, site_shot, site_em, ativa, created_at, updated_at)
+    VALUES ($1,$2,$3,'[]','','','','','','','','',0,TRUE,$4,$4)`, [id, tenantId, 'Marca principal', t]);
+  const n = await pool.query('SELECT * FROM marcas WHERE id = $1', [id]);
+  return n.rows[0];
 }
+
+async function listMarcas(tenantId) {
+  await garantirMarca(tenantId);
+  const r = await pool.query('SELECT * FROM marcas WHERE tenant_id = $1 ORDER BY created_at ASC', [tenantId]);
+  return r.rows.map(mapMarca);
+}
+async function marcaAtiva(tenantId) { return mapMarca(await garantirMarca(tenantId)); }
+async function criarMarca(tenantId, nome) {
+  await garantirMarca(tenantId);
+  const c = await pool.query('SELECT COUNT(*)::int AS n FROM marcas WHERE tenant_id = $1', [tenantId]);
+  if (c.rows[0].n >= MAX_MARCAS) return { erro: 'limite', limite: MAX_MARCAS };
+  const id = 'mk_' + rid(14);
+  const t = Date.now();
+  // A marca nova já entra ATIVA: quem acabou de criar quer trabalhar nela.
+  await pool.query(`INSERT INTO marcas (id, tenant_id, nome, cores, fonte_titulo, fonte_apoio, direcao, tom,
+      observacoes, site, site_resumo, site_shot, site_em, ativa, created_at, updated_at)
+    VALUES ($1,$2,$3,'[]','','','','','','','','',0,FALSE,$4,$4)`, [id, tenantId, String(nome || 'Marca').slice(0, 60), t]);
+  await pool.query('UPDATE marcas SET ativa = (id = $2) WHERE tenant_id = $1', [tenantId, id]);
+  const n = await pool.query('SELECT * FROM marcas WHERE id = $1', [id]);
+  return { marca: mapMarca(n.rows[0]) };
+}
+async function salvarMarca(id, tenantId, k) {
+  await pool.query(`UPDATE marcas SET nome=$1, cores=$2, fonte_titulo=$3, fonte_apoio=$4,
+      direcao=$5, tom=$6, observacoes=$7, updated_at=$8 WHERE id=$9 AND tenant_id=$10`,
+    [String(k.nome || 'Marca').slice(0, 60), JSON.stringify(k.cores || []), k.fonteTitulo || '',
+     k.fonteApoio || '', k.direcao || '', k.tom || '', k.observacoes || '', Date.now(), id, tenantId]);
+  const r = await pool.query('SELECT * FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapMarca(r.rows[0]);
+}
+async function salvarSiteDaMarca(id, tenantId, site, resumo, shot) {
+  await pool.query('UPDATE marcas SET site=$1, site_resumo=$2, site_shot=$3, site_em=$4, updated_at=$4 WHERE id=$5 AND tenant_id=$6',
+    [site || '', resumo || '', shot || '', Date.now(), id, tenantId]);
+  const r = await pool.query('SELECT * FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapMarca(r.rows[0]);
+}
+async function ativarMarca(id, tenantId) {
+  const r = await pool.query('SELECT 1 FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  if (!r.rows[0]) return null;
+  await pool.query('UPDATE marcas SET ativa = (id = $2) WHERE tenant_id = $1', [tenantId, id]);
+  const n = await pool.query('SELECT * FROM marcas WHERE id = $1', [id]);
+  return mapMarca(n.rows[0]);
+}
+async function removerMarca(id, tenantId) {
+  // A última não sai: uma conta sem marca nenhuma é um estado que nenhuma tela
+  // sabe desenhar, e recriar na marra perderia o nome que a pessoa deu.
+  const c = await pool.query('SELECT COUNT(*)::int AS n FROM marcas WHERE tenant_id = $1', [tenantId]);
+  if (c.rows[0].n <= 1) return { erro: 'ultima' };
+  await pool.query('DELETE FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  await pool.query('DELETE FROM brandassets WHERE marca_id = $1 AND tenant_id = $2', [id, tenantId]);
+  await garantirMarca(tenantId);
+  return { ok: true };
+}
+
+/*
+ * As duas funções antigas continuam existindo e passam a falar da marca ATIVA.
+ *
+ * É o que mantém o diretor de IA, o compositor e o editor funcionando sem
+ * saber que existem três marcas — para eles sempre houve "a marca da conta", e
+ * continua havendo: a que está escolhida agora.
+ */
+async function getBrandKit(tenantId) { return mapMarca(await garantirMarca(tenantId)); }
 async function saveBrandKit(tenantId, k) {
-  await pool.query(`INSERT INTO brandkit (tenant_id, cores, fonte_titulo, fonte_apoio, direcao, tom, observacoes, updated_at)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-    ON CONFLICT (tenant_id) DO UPDATE SET cores=EXCLUDED.cores, fonte_titulo=EXCLUDED.fonte_titulo,
-      fonte_apoio=EXCLUDED.fonte_apoio, direcao=EXCLUDED.direcao, tom=EXCLUDED.tom,
-      observacoes=EXCLUDED.observacoes, updated_at=EXCLUDED.updated_at`,
-    [tenantId, JSON.stringify(k.cores || []), k.fonteTitulo || '', k.fonteApoio || '',
-     k.direcao || '', k.tom || '', k.observacoes || '', Date.now()]);
+  const m = await garantirMarca(tenantId);
+  /*
+   * `k.nome || m.nome`, e não Object.assign({nome: m.nome}, k): quando `k` traz
+   * a chave `nome` com valor undefined — que é o que a rota manda quando o
+   * corpo não tem nome —, o assign COPIA o undefined por cima e toda marca
+   * salva viraria "Marca".
+   */
+  await salvarMarca(m.id, tenantId, Object.assign({}, k, { nome: k.nome || m.nome }));
 }
 async function listBrandAssets(tenantId) {
   const r = await pool.query('SELECT * FROM brandassets WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
-  return r.rows.map((x) => ({ id: x.id, kind: x.kind, url: x.url, label: x.label || '', createdAt: x.created_at }));
+  return r.rows.map((x) => ({ id: x.id, kind: x.kind, url: x.url, label: x.label || '', marcaId: x.marca_id || '', createdAt: x.created_at }));
 }
-async function addBrandAsset(tenantId, kind, url, label) {
+async function addBrandAsset(tenantId, kind, url, label, marcaId) {
   const id = 'ba_' + rid(14);
-  await pool.query('INSERT INTO brandassets (id, tenant_id, kind, url, label, created_at) VALUES ($1,$2,$3,$4,$5,$6)',
-    [id, tenantId, kind, url, label || '', Date.now()]);
-  return { id, kind, url, label: label || '' };
+  await pool.query('INSERT INTO brandassets (id, tenant_id, kind, url, label, marca_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+    [id, tenantId, kind, url, label || '', marcaId || null, Date.now()]);
+  return { id, kind, url, label: label || '', marcaId: marcaId || '' };
 }
 async function removeBrandAsset(id, tenantId) {
   await pool.query('DELETE FROM brandassets WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
@@ -703,4 +820,5 @@ module.exports = {
   criarMural, listarMurais, muralPorCodigo, muralPorId, atualizarMural, removerMural,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
+  listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,
 };

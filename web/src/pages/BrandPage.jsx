@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Palette, Type, ImageUp, Sparkles, Trash2, Check, Plus, Info, Brain } from 'lucide-react';
+import { Palette, Type, ImageUp, Sparkles, Trash2, Check, Plus, Info, Brain, Building2, X, Globe, Search } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -7,6 +7,7 @@ import { Field, Input, Textarea, Select } from '../components/ui/Field.jsx';
 import { Spinner } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { brand, media } from '../api.js';
+import { aviso } from '../lib/avisos.js';
 
 const FONTES = [
   { id: '', label: 'A IA escolhe' },
@@ -51,6 +52,8 @@ export function BrandPage() {
   const kit = (data && data.kit) || {};
   const assets = (data && data.assets) || [];
   const mem = (data && data.memoria) || null;
+  const marcas = (data && data.marcas) || [];
+  const limiteMarcas = (data && data.limiteMarcas) || 3;
 
   const [cores, setCores] = useState(['#1e3a8a', '#0ea5e9']);
   const [fonteTitulo, setFonteTitulo] = useState('');
@@ -58,6 +61,17 @@ export function BrandPage() {
   const [direcao, setDirecao] = useState('');
   const [tom, setTom] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [nome, setNome] = useState('');
+  const [siteUrl, setSiteUrl] = useState('');
+  const [lendoSite, setLendoSite] = useState(false);
+  /*
+   * Erro PRÓPRIO do painel do site.
+   *
+   * Usar o `err` geral punha a recusa lá embaixo, ao lado de "Salvar
+   * identidade" — fora da tela, num painel que não tem nada a ver. Quem
+   * clicasse em "Ler o site" via o botão voltar ao normal e mais nada.
+   */
+  const [errSite, setErrSite] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -70,12 +84,14 @@ export function BrandPage() {
     setDirecao(kit.direcao || '');
     setTom(kit.tom || '');
     setObservacoes(kit.observacoes || '');
+    setNome(kit.nome || '');
+    setSiteUrl(kit.site || '');
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function salvar() {
     setBusy(true); setMsg(''); setErr('');
     try {
-      await brand.save({ cores, fonteTitulo, fonteApoio, direcao, tom, observacoes });
+      await brand.save({ nome, cores, fonteTitulo, fonteApoio, direcao, tom, observacoes });
       setMsg('Identidade salva. As próximas gerações já usam.');
       reload();
     } catch (e) { setErr(e.message || 'Não foi possível salvar.'); }
@@ -127,6 +143,65 @@ export function BrandPage() {
 
   const setCor = (i, v) => setCores((c) => c.map((x, j) => (j === i ? v : x)));
 
+  /*
+   * Ler o site do cliente.
+   *
+   * É o caminho mais curto entre "tenho uma marca" e "a IA sabe como ela é":
+   * em vez de descrever a identidade em palavras ("azul meio escuro, fonte
+   * moderna"), a pessoa cola o endereço e o sistema lê de lá as cores, as
+   * fontes e a imagem que o próprio site publica como sua cara.
+   */
+  async function lerSite() {
+    const alvo = siteUrl.trim();
+    if (!alvo || !kit.id) return;
+    setLendoSite(true); setErrSite(''); setMsg('');
+    try {
+      const r = await brand.lerSite(kit.id, alvo);
+      const achou = [];
+      if ((r.lido.cores || []).length) achou.push(r.lido.cores.length + ' cor(es)');
+      if ((r.lido.fontes || []).length) achou.push(r.lido.fontes.length + ' fonte(s)');
+      if (r.lido.imagem) achou.push('a imagem do site');
+      aviso.ok(achou.length
+        ? 'Li o site: ' + achou.join(', ') + '. A IA já usa isso.'
+        : 'Li o site, mas não achei pistas de estilo nele.');
+      reload();
+    } catch (e) { setErrSite(e.message || 'Não consegui ler esse site.'); }
+    finally { setLendoSite(false); }
+  }
+
+  /* ---------------- Marcas ---------------- */
+
+  async function trocarMarca(id) {
+    if (id === kit.id) return;
+    setBusy(true); setErr('');
+    try { await brand.ativarMarca(id); reload(); }
+    catch (e) { setErr(e.message || 'Não foi possível trocar de marca.'); }
+    finally { setBusy(false); }
+  }
+
+  async function novaMarca() {
+    const n = window.prompt('Nome da marca nova (ex.: o nome do cliente):', '');
+    if (n === null) return;
+    if (!n.trim()) return;
+    setBusy(true); setErr('');
+    try {
+      const m = await brand.criarMarca(n.trim());
+      aviso.ok('Marca “' + m.nome + '” criada e selecionada.');
+      reload();
+    } catch (e) { setErr(e.message || 'Não foi possível criar.'); }
+    finally { setBusy(false); }
+  }
+
+  async function apagarMarca(m) {
+    // O que some junto precisa estar dito ANTES: cores, fontes e regras da
+    // marca vão com ela, e não há como trazer de volta.
+    if (!window.confirm('Apagar a marca “' + m.nome + '”? Cores, fontes, regras e imagens dela somem junto. Os designs já salvos ficam.')) return;
+    setBusy(true); setErr('');
+    try { await brand.removerMarca(m.id); reload(); }
+    catch (e) { setErr(e.message || 'Não foi possível apagar.'); }
+    finally { setBusy(false); }
+  }
+
   if (loading) return <div className="p-10 text-center"><Spinner size={22} /></div>;
 
   return (
@@ -134,10 +209,56 @@ export function BrandPage() {
       <PageHeader title="Marca"
         subtitle="A identidade da empresa. A IA lê tudo isto antes de criar — sem ela, reinventa o visual a cada campanha." />
 
+      {/*
+        Escolher a marca vem ANTES de tudo o resto na página, porque tudo o
+        resto é dela. Quem atende três clientes com o mesmo painel precisa
+        saber, o tempo todo, em qual está mexendo — editar as cores do cliente
+        errado é o tipo de erro que só aparece na parede dele.
+      */}
+      {marcas.length > 0 && (
+        <Panel>
+          <PanelHeader title="Suas marcas"
+            description={'Até ' + limiteMarcas + '. A escolhida é a que a IA usa e a que esta página edita.'}
+            actions={marcas.length < limiteMarcas
+              ? <Button size="sm" variant="secondary" icon={Plus} disabled={busy} onClick={novaMarca}>Nova marca</Button>
+              : <span className="text-2xs text-ink-3">Limite de {limiteMarcas} atingido</span>} />
+          <div className="flex flex-wrap gap-2 p-4">
+            {marcas.map((m) => {
+              const escolhida = m.id === kit.id;
+              return (
+                <div key={m.id}
+                  className={'flex items-center gap-2 rounded-lg border px-3 py-2 transition '
+                    + (escolhida ? 'border-accent bg-accent/10' : 'border-line hover:border-line-strong')}>
+                  <button type="button" onClick={() => trocarMarca(m.id)} aria-pressed={escolhida}
+                    className="flex items-center gap-2 text-sm">
+                    <Building2 size={14} className={escolhida ? 'text-accent' : 'text-ink-3'} />
+                    <span className={escolhida ? 'font-semibold text-accent' : 'text-ink-2'}>{m.nome}</span>
+                    <span className="flex gap-0.5">
+                      {(m.cores || []).slice(0, 3).map((c, i) => (
+                        <span key={i} className="h-3 w-3 rounded-full border border-line" style={{ background: c }} />
+                      ))}
+                    </span>
+                  </button>
+                  {marcas.length > 1 && (
+                    <button type="button" title={'Apagar ' + m.nome} onClick={() => apagarMarca(m)}
+                      className="text-ink-3 hover:text-danger"><X size={13} /></button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+      )}
+
       {/* Cores */}
       <Panel>
         <PanelHeader title="Cores" description="A primeira é a cor principal; a segunda, o acento. As demais entram como apoio." />
         <div className="flex flex-wrap items-end gap-3 p-4">
+          <div className="w-44">
+            <Field label="Nome da marca">
+              <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Padaria Aurora" />
+            </Field>
+          </div>
           {cores.map((c, i) => (
             <div key={i} className="w-32">
               <Field label={i === 0 ? 'Principal' : i === 1 ? 'Acento' : 'Apoio ' + (i - 1)}>
@@ -155,6 +276,43 @@ export function BrandPage() {
           ))}
           {cores.length < 6 && (
             <Button size="sm" variant="secondary" icon={Plus} onClick={() => setCores((c) => [...c, '#888888'])}>Cor</Button>
+          )}
+        </div>
+      </Panel>
+
+      {/* O site do cliente como referência */}
+      <Panel>
+        <PanelHeader title="Site da marca"
+          description="Cole o endereço e a IA lê de lá as cores, as fontes e a imagem que o site publica como sua cara." />
+        <div className="p-4">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="min-w-[16rem] flex-1">
+              <Field label="Endereço do site" hint="Pode digitar só “padaria.com.br”.">
+                <Input value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') lerSite(); }}
+                  placeholder="padaria.com.br" />
+              </Field>
+            </div>
+            <Button variant="secondary" icon={Search} disabled={lendoSite || !siteUrl.trim()} onClick={lerSite}>
+              {lendoSite ? 'Lendo o site…' : 'Ler o site'}
+            </Button>
+          </div>
+
+          {errSite && <p className="mt-2 text-sm text-danger">{errSite}</p>}
+
+          {/*
+            Mostrar o que foi lido não é enfeite: é o que deixa a pessoa
+            conferir se o sistema entendeu a marca dela. Um resumo escondido
+            que vai para o prompt sem ninguém ver é o tipo de coisa que faz a
+            IA errar e ninguém saber por quê.
+          */}
+          {kit.siteResumo && (
+            <div className="mt-3 rounded-lg border border-line bg-surface-2 p-3">
+              <div className="mb-1 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-3">
+                <Globe size={12} /> O que a IA leu de {kit.site}
+              </div>
+              <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-ink-2">{kit.siteResumo}</pre>
+            </div>
           )}
         </div>
       </Panel>

@@ -35,6 +35,7 @@ const plans = require('./server/plans');
 const billing = require('./server/billing');
 const ai = require('./server/ai');
 const director = require('./server/ai-director');
+const site = require('./server/site.js');
 const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
 const legal = require('./server/legal');
@@ -1061,12 +1062,75 @@ async function handleApi(req, res, pathname, query) {
       }
       return sendJson(res, 405, { error: 'método inválido' });
     }
+    /*
+     * Marcas: /api/brand/marcas[/:id][/ativar]
+     *
+     * A tela de Marca continua falando com /api/brand para a marca ATIVA — é
+     * o que mantém o diretor de IA, o compositor e o editor funcionando sem
+     * saber que agora existem três. Estas rotas são só para escolher entre
+     * elas.
+     */
+    if (parts[2] === 'marcas') {
+      if (req.method === 'GET' && parts.length === 3) {
+        return sendJson(res, 200, { marcas: await db.listMarcas(sess.tenant_id), limite: db.MAX_MARCAS });
+      }
+      if (req.method === 'POST' && parts.length === 3) {
+        return readBody(req, res, async (b) => {
+          const nome = String((b && b.nome) || '').trim().slice(0, 60);
+          if (!nome) return sendJson(res, 400, { error: 'dê um nome à marca' });
+          const r = await db.criarMarca(sess.tenant_id, nome);
+          if (r.erro === 'limite') {
+            return sendJson(res, 409, { error: 'você já tem ' + r.limite + ' marcas — apague uma para criar outra', code: 'limite' });
+          }
+          return sendJson(res, 201, r.marca);
+        });
+      }
+      if (req.method === 'POST' && parts[4] === 'ativar') {
+        const m = await db.ativarMarca(parts[3], sess.tenant_id);
+        if (!m) return sendJson(res, 404, { error: 'marca não encontrada' });
+        return sendJson(res, 200, m);
+      }
+      if (req.method === 'DELETE' && parts[3]) {
+        const r = await db.removerMarca(parts[3], sess.tenant_id);
+        if (r.erro === 'ultima') return sendJson(res, 409, { error: 'esta é a sua única marca', code: 'ultima' });
+        return sendJson(res, 200, { ok: true });
+      }
+      /*
+       * O site do cliente como referência de estilo.
+       *
+       * É um pedido HTTP com endereço escolhido pelo usuário — SSRF por
+       * construção. Toda a defesa mora em server/site.js; aqui só entram o
+       * limite de chamadas (buscar site é rede, e rede alheia é lenta) e a
+       * exigência de sessão.
+       */
+      if (req.method === 'POST' && parts[4] === 'site') {
+        const rl = rateLimit('site:' + sess.tenant_id, 20, 60 * 60 * 1000);
+        if (!rl.ok) return sendJson(res, 429, { error: 'muitas leituras de site por hora' }, { 'Retry-After': String(rl.retryAfter) });
+        return readBody(req, res, async (b) => {
+          const dados = await site.analisar((b && b.site) || '');
+          if (dados.erro) return sendJson(res, 400, { error: dados.erro });
+          const m = await db.salvarSiteDaMarca(parts[3], sess.tenant_id, dados.url, dados.resumo, dados.imagem);
+          if (!m) return sendJson(res, 404, { error: 'marca não encontrada' });
+          /*
+           * A imagem que o site publica como sua cara entra como REFERÊNCIA de
+           * estilo — é literalmente "a imagem do site". Fica junto das outras
+           * referências, então a IA a trata como sempre tratou.
+           */
+          if (dados.imagem) {
+            await db.addBrandAsset(sess.tenant_id, 'referencia', dados.imagem, 'Do site: ' + (dados.titulo || dados.url).slice(0, 40), parts[3]);
+          }
+          return sendJson(res, 200, { marca: m, lido: dados });
+        });
+      }
+      return sendJson(res, 404, { error: 'rota de marca não encontrada' });
+    }
     if (req.method === 'GET') {
-      const [kit, assets, mem] = await Promise.all([
-        db.getBrandKit(sess.tenant_id), db.listBrandAssets(sess.tenant_id), db.getMemoria(sess.tenant_id),
+      const [kit, assets, mem, marcas] = await Promise.all([
+        db.getBrandKit(sess.tenant_id), db.listBrandAssets(sess.tenant_id),
+        db.getMemoria(sess.tenant_id), db.listMarcas(sess.tenant_id),
       ]);
       return sendJson(res, 200, {
-        kit: kit || null, assets, memoria: mem || null,
+        kit: kit || null, assets, memoria: mem || null, marcas, limiteMarcas: db.MAX_MARCAS,
         familias: Object.keys(ds.FAMILIAS), direcoes: ds.DIRECOES,
       });
     }
@@ -1075,6 +1139,7 @@ async function handleApi(req, res, pathname, query) {
         const cores = (Array.isArray(b && b.cores) ? b.cores : [])
           .map((c) => ds.okHex(c, null)).filter(Boolean).slice(0, 6);
         await db.saveBrandKit(sess.tenant_id, {
+          nome: String((b && b.nome) || '').trim().slice(0, 60) || undefined,
           cores,
           fonteTitulo: ds.FAMILIAS[b && b.fonteTitulo] ? b.fonteTitulo : '',
           fonteApoio: ds.FAMILIAS[b && b.fonteApoio] ? b.fonteApoio : '',
@@ -1108,6 +1173,7 @@ async function handleApi(req, res, pathname, query) {
         const k = kit || {};
         const marca = (kit || assets.length) ? {
           cores: k.cores || [], tom: k.tom || '', observacoes: k.observacoes || '',
+          nome: k.nome || '', site: k.site || '', siteResumo: k.siteResumo || '',
           logo: (assets.find((a) => a.kind === 'logo') || {}).url || '',
           bases: assets.filter((a) => a.kind === 'base').map((a) => ({ url: a.url, label: a.label || '' })),
         } : null;
@@ -1165,6 +1231,7 @@ async function handleApi(req, res, pathname, query) {
         const marca = (kit || assets.length) ? {
           cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '',
           direcao: k.direcao || '', tom: k.tom || '', observacoes: k.observacoes || '',
+          nome: k.nome || '', site: k.site || '', siteResumo: k.siteResumo || '',
           logo: (assets.find((a) => a.kind === 'logo') || {}).url || '',
           // As bases levam o rótulo junto: é por ele que o diretor escolhe qual
           // foto do acervo entra em cada peça.
