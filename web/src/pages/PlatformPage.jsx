@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   MonitorPlay, Building2, Users, Sparkles, HardDrive, MessageSquareWarning,
   Clock, Layers, Check, ShieldCheck, Trash2, Plus, Bug, CheckCircle2,
+  Search, Gauge as GaugeIcon, Radio, ChevronRight, X,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -9,6 +10,7 @@ import { Stat } from '../components/ui/Stat.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Field, Input, Select, Textarea } from '../components/ui/Field.jsx';
 import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
+import { Badge } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { plataforma } from '../api.js';
 import { formatBytes, formatNumber, relativeTime } from '../lib/format.js';
@@ -99,6 +101,10 @@ export function PlatformPage() {
         <FuncoesMaisUsadas funcoes={data.funcoes} />
         <UsoPorDia dias={data.porDia} />
       </div>
+
+      <Freios />
+
+      <Contas dias={dias} />
 
       <Erros />
 
@@ -194,6 +200,229 @@ function MaioresContas({ contas }) {
         ))}
       </div>
     </Panel>
+  );
+}
+
+/*
+ * Os freios, e quem está esbarrando neles.
+ *
+ * Freio sem medidor é freio que ninguém sabe se está pegando: o primeiro sinal
+ * seria um cliente ligando para dizer que o painel dele "dá erro". Aqui dá para
+ * ver antes — e distinguir a conta em laço da conta que só está trabalhando
+ * muito, que é a diferença entre ligar para ajudar e ligar para acusar.
+ */
+function Freios() {
+  const { data, loading } = useAsync(plataforma.limites);
+  if (loading || !data) return null;
+  const c = data.conexoes;
+  const cheio = c.teto ? c.total / c.teto : 0;
+
+  return (
+    <Panel>
+      <PanelHeader title="Freios e conexões"
+        description="Tetos por conta, e o que está esbarrando neles agora." />
+      <div className="grid gap-3 p-4 sm:grid-cols-3">
+        <div>
+          <div className="text-2xs uppercase tracking-wide text-ink-3">Conexões ao vivo</div>
+          <div className={'tnum text-lg font-semibold ' + (cheio > 0.8 ? 'text-danger' : 'text-ink')}>
+            {formatNumber(c.total)} <span className="text-xs font-normal text-ink-3">de {formatNumber(c.teto)}</span>
+          </div>
+          <div className="text-2xs text-ink-3">{c.telas} tela(s) · {c.contas} conta(s)</div>
+        </div>
+        <div className="sm:col-span-2">
+          <div className="mb-1 text-2xs uppercase tracking-wide text-ink-3">Contas com mais conexões abertas</div>
+          {!c.maiores.length && <div className="text-xs text-ink-3">Nenhuma conexão aberta agora.</div>}
+          {c.maiores.map((m) => (
+            <div key={m.tenantId} className="flex items-center gap-2 text-xs text-ink-2">
+              <Radio size={12} className="shrink-0 text-ok" />
+              <span className="truncate font-mono text-2xs">{m.tenantId}</span>
+              <span className="ml-auto tnum">{m.abertas}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/*
+        A lista de excessos é a que importa quando algo está errado. Ela fica
+        vazia na maior parte do tempo, e isso é o estado saudável — por isso o
+        vazio diz o que significa, em vez de sumir.
+      */}
+      <div className="border-t border-line">
+        {!data.excessos.length ? (
+          <div className="px-4 py-3 text-xs text-ink-3">
+            Nenhuma conta esbarrou nos tetos nas últimas 24 h.
+          </div>
+        ) : data.excessos.map((e) => (
+          <div key={e.tenantId} className="flex items-center gap-2 border-b border-line px-4 py-2 text-xs last:border-0">
+            <GaugeIcon size={13} className="shrink-0 text-warn" />
+            <span className="truncate font-mono text-2xs text-ink-2">{e.tenantId}</span>
+            <span className="text-ink-3">
+              {e.classes.map((c2) => c2.classe + ' ×' + formatNumber(c2.vezes)).join(' · ')}
+            </span>
+            <span className="ml-auto shrink-0 text-2xs text-ink-3">{relativeTime(e.ultimo)}</span>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+/*
+ * SUPERVISÃO POR CONTA.
+ *
+ * "Maiores contas" ordena por número de telas: diz quem é grande e não diz
+ * quem está com problema. Quando um cliente liga dizendo "não está
+ * funcionando", o que se precisa é procurar pelo e-mail dele e ver tudo numa
+ * tela — plano, telas e quando cada uma apareceu por último, uso de IA, o que
+ * já gastou, e se está esbarrando em algum teto.
+ */
+function Contas({ dias }) {
+  const [termo, setTermo] = useState('');
+  const [busca, setBusca] = useState('');
+  const [aberta, setAberta] = useState(null);
+  const { data, loading } = useAsync(() => plataforma.contas(busca, dias), [busca, dias]);
+  const itens = (data && data.itens) || [];
+
+  return (
+    <Panel>
+      <PanelHeader title="Contas" description="Procure por nome, e-mail ou id e abra a ficha." />
+      <div className="flex gap-2 border-b border-line p-3">
+        <div className="relative flex-1">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
+          <Input value={termo} onChange={(e) => setTermo(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') setBusca(termo); }}
+            placeholder="nome da empresa, e-mail do dono ou id…" className="pl-8" />
+        </div>
+        <Button size="sm" variant="secondary" onClick={() => setBusca(termo)}>Procurar</Button>
+      </div>
+
+      <div className="max-h-96 overflow-y-auto">
+        {loading && <div className="p-6 text-center"><Spinner /></div>}
+        {!loading && !itens.length && (
+          <EmptyState icon={Building2} title="Nenhuma conta"
+            description={busca ? 'Nada bate com essa busca.' : 'Ainda não há contas.'} />
+        )}
+        {itens.map((c) => (
+          <button key={c.id} type="button" onClick={() => setAberta(c.id)}
+            className="flex w-full items-center gap-2 border-b border-line px-4 py-2.5 text-left last:border-0 hover:bg-surface-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-xs font-medium text-ink">{c.nome || 'sem nome'}</span>
+                {c.planoStatus === 'cortesia' && <Badge tone="accent">Cortesia</Badge>}
+              </div>
+              <div className="truncate text-2xs text-ink-3">{c.dono}</div>
+            </div>
+            {/* Telas NO AR sobre pareadas: é a única contagem que diz se a
+                conta está de fato usando o produto. */}
+            <div className="shrink-0 text-right text-2xs text-ink-3">
+              <div className="tnum text-ink-2">{c.vivas}/{c.telas} no ar</div>
+              <div>{c.plano}</div>
+            </div>
+            {!!Object.keys(c.excessos || {}).length && (
+              <GaugeIcon size={13} className="shrink-0 text-warn" title="esbarrou em algum teto" />
+            )}
+            <ChevronRight size={14} className="shrink-0 text-ink-3" />
+          </button>
+        ))}
+      </div>
+
+      {aberta && <FichaDaConta id={aberta} dias={dias} onFechar={() => setAberta(null)} />}
+    </Panel>
+  );
+}
+
+/* A ficha de uma conta, em cima da lista. */
+function FichaDaConta({ id, dias, onFechar }) {
+  const { data, loading } = useAsync(() => plataforma.conta(id, dias), [id, dias]);
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onFechar(); }}>
+      <div className="w-full max-w-2xl rounded-lg border border-line bg-surface shadow-lg">
+        <div className="flex items-center gap-2 border-b border-line px-4 py-3">
+          <Building2 size={16} className="text-accent" />
+          <span className="truncate text-sm font-semibold text-ink">{(data && data.nome) || 'Conta'}</span>
+          <button type="button" onClick={onFechar} className="ml-auto text-ink-3 hover:text-ink"><X size={16} /></button>
+        </div>
+
+        {loading && <div className="p-8 text-center"><Spinner /></div>}
+        {data && (
+          <div className="space-y-4 p-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Campo rotulo="Plano" valor={data.plano + (data.cortesia ? ' (cortesia)' : '')} />
+              <Campo rotulo="Telas no ar" valor={data.telas.filter((t) => Date.now() - t.ultimaVez < 5 * 60 * 1000).length + '/' + data.telas.length} />
+              <Campo rotulo="Mídia" valor={formatBytes(data.midiaBytes)} />
+              <Campo rotulo="Conexões agora" valor={formatNumber(data.conexoes)} />
+              <Campo rotulo="Peças salvas" valor={formatNumber(data.pecas)} />
+              <Campo rotulo={'Ações em ' + data.dias + 'd'} valor={formatNumber(data.acoes)} />
+              <Campo rotulo="Crédito de IA" valor={formatNumber(data.creditos.franquia + data.creditos.comprados)} />
+              <Campo rotulo="Nasceu" valor={relativeTime(data.criadaEm)} />
+            </div>
+
+            {!!Object.keys(data.excessos || {}).length && (
+              <div className="rounded-md border border-warn/40 bg-warn/5 px-3 py-2 text-xs text-ink-2">
+                <b>Esbarrou nos tetos:</b>{' '}
+                {Object.entries(data.excessos).map(([k, v]) => k + ' ×' + v.vezes).join(' · ')}
+              </div>
+            )}
+
+            <Secao titulo={'Telas (' + data.telas.length + ')'}>
+              {!data.telas.length && <div className="text-xs text-ink-3">Nenhuma tela pareada.</div>}
+              {data.telas.slice(0, 12).map((t) => (
+                <div key={t.id} className="flex items-center gap-2 text-xs">
+                  <MonitorPlay size={12} className={Date.now() - t.ultimaVez < 5 * 60 * 1000 ? 'text-ok' : 'text-ink-3'} />
+                  <span className="truncate text-ink-2">{t.nome || t.id}</span>
+                  <span className="ml-auto shrink-0 text-2xs text-ink-3">
+                    {t.ultimaVez ? relativeTime(t.ultimaVez) : 'nunca apareceu'}
+                  </span>
+                </div>
+              ))}
+            </Secao>
+
+            <Secao titulo={'Pessoas (' + data.pessoas.length + ')'}>
+              {data.pessoas.map((u) => (
+                <div key={u.id} className="flex items-center gap-2 text-xs">
+                  <Users size={12} className="text-ink-3" />
+                  <span className="truncate text-ink-2">{u.email}</span>
+                  <span className="ml-auto shrink-0 text-2xs text-ink-3">{u.papel}</span>
+                </div>
+              ))}
+            </Secao>
+
+            {!!data.trabalhos.length && (
+              <Secao titulo="Trabalhos de IA recentes">
+                {data.trabalhos.map((j) => (
+                  <div key={j.id} className="flex items-center gap-2 text-xs">
+                    <Sparkles size={12} className="text-ink-3" />
+                    <span className="truncate text-ink-2">{j.tipo}</span>
+                    <span className="text-2xs text-ink-3">{j.estado}</span>
+                    <span className="ml-auto shrink-0 text-2xs text-ink-3">{relativeTime(j.criadoEm)}</span>
+                  </div>
+                ))}
+              </Secao>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Campo({ rotulo, valor }) {
+  return (
+    <div>
+      <div className="text-2xs uppercase tracking-wide text-ink-3">{rotulo}</div>
+      <div className="tnum truncate text-sm font-medium text-ink">{valor}</div>
+    </div>
+  );
+}
+
+function Secao({ titulo, children }) {
+  return (
+    <div>
+      <div className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-3">{titulo}</div>
+      <div className="space-y-1 rounded-md border border-line bg-surface-2 p-2.5">{children}</div>
+    </div>
   );
 }
 

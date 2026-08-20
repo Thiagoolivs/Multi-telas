@@ -769,6 +769,72 @@ const qPlat = {
       (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id) AS pessoas
     FROM tenants t ORDER BY telas DESC, t.created_at ASC LIMIT 20`),
 };
+
+/*
+ * A ficha de UMA conta, para a supervisão.
+ *
+ * Existia só a lista das maiores, ordenada por número de telas — útil para
+ * saber quem é grande, inútil para saber quem está com problema. Um cliente
+ * que liga dizendo "não funciona" precisa de uma tela onde esteja tudo dele:
+ * plano, telas no ar, uso de IA e o que a conta já gastou.
+ */
+const qFicha = {
+  conta: db.prepare(`SELECT id, name, created_at, COALESCE(plan, 'free') AS plano, plan_status,
+      stripe_subscription_id, creditos_franquia, creditos_comprados, creditos_ciclo
+    FROM tenants WHERE id = ?`),
+  pessoas: db.prepare('SELECT id, email, role, name, created_at FROM users WHERE tenant_id = ? ORDER BY created_at ASC LIMIT 50'),
+  telas: db.prepare(`SELECT id, name, last_seen, updated_at FROM devices WHERE tenant_id = ? ORDER BY last_seen DESC LIMIT 100`),
+  midia: db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM media WHERE tenant_id = ?'),
+  pecas: db.prepare('SELECT COUNT(*) AS n FROM library WHERE tenant_id = ?'),
+  eventos: db.prepare('SELECT COUNT(*) AS n FROM eventos WHERE tenant_id = ? AND created_at > ?'),
+  buscar: db.prepare(`SELECT t.id, t.name, COALESCE(t.plan, 'free') AS plano, t.plan_status, t.created_at,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id AND d.last_seen > ?) AS vivas,
+      (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id) AS pessoas,
+      (SELECT email FROM users u WHERE u.tenant_id = t.id ORDER BY created_at ASC LIMIT 1) AS dono
+    FROM tenants t
+    WHERE (? = '' OR LOWER(t.name) LIKE ? OR t.id LIKE ?
+           OR EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = t.id AND LOWER(u.email) LIKE ?))
+    ORDER BY t.created_at DESC LIMIT ?`),
+};
+
+async function fichaDaConta(tenantId, desde) {
+  const c = qFicha.conta.get(tenantId);
+  if (!c) return null;
+  const m = qFicha.midia.get(tenantId);
+  return {
+    id: c.id, nome: c.name, criadaEm: Number(c.created_at) || 0,
+    plano: c.plano, planoStatus: c.plan_status || 'free',
+    assinatura: !!c.stripe_subscription_id,
+    creditos: {
+      franquia: Number(c.creditos_franquia) || 0,
+      comprados: Number(c.creditos_comprados) || 0,
+      cicloEm: Number(c.creditos_ciclo) || 0,
+    },
+    pessoas: qFicha.pessoas.all(tenantId).map((u) => ({
+      id: u.id, email: u.email, papel: u.role, nome: u.name, criadoEm: Number(u.created_at) || 0,
+    })),
+    telas: qFicha.telas.all(tenantId).map((d) => ({
+      id: d.id, nome: d.name, ultimaVez: Number(d.last_seen) || 0, configEm: Number(d.updated_at) || 0,
+    })),
+    midiaBytes: Number(m.bytes) || 0,
+    midiaArquivos: Number(m.n) || 0,
+    pecas: Number(qFicha.pecas.get(tenantId).n) || 0,
+    acoes: Number(qFicha.eventos.get(tenantId, desde || 0).n) || 0,
+    usoIA: await resumoUsoIA(tenantId, desde || 0),
+  };
+}
+
+async function buscarContas(termo, vivaDesde, limite) {
+  const t = String(termo || '').trim().toLowerCase();
+  const like = '%' + t + '%';
+  return qFicha.buscar.all(vivaDesde || 0, t, like, like, like, limite || 30).map((r) => ({
+    id: r.id, nome: r.name, dono: r.dono || '', plano: r.plano, planoStatus: r.plan_status || 'free',
+    criadaEm: Number(r.created_at) || 0,
+    telas: Number(r.telas), vivas: Number(r.vivas), pessoas: Number(r.pessoas),
+  }));
+}
+
 async function numerosDaPlataforma(agora, vivaDesde, desde) {
   return {
     contas: Number(qPlat.contas.get().n),
@@ -970,6 +1036,7 @@ module.exports = {
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,
   listarOperadores, addOperador, removerOperador,
+  fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,

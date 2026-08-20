@@ -40,6 +40,7 @@ const director = require('./server/ai-director');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
 const cortesia = require('./server/cortesia.js');
+const limites = require('./server/limites.js');
 const passes = require('./server/passes.js');
 const metricas = require('./server/metricas.js');
 const ds = require('./server/design-system');
@@ -281,9 +282,51 @@ async function lerImagens(urls) {
 }
 
 /* ---------------- API ---------------- */
+/*
+ * A qual classe de tráfego esta requisição pertence (ver server/limites.js).
+ *
+ * A classificação é por QUEM ESTÁ AUTENTICADO, não por caminho de URL, e essa
+ * é a correção que importa: `/api/devices/:id/config` é chamado pelos DOIS —
+ * pelo painel, para salvar, e pela TV, para ler. Classificar pela URL faria as
+ * duas coisas caírem no mesmo balde, e um painel em laço passaria despercebido
+ * por estar num orçamento que nunca bloqueia.
+ *
+ * Sessão de navegador é painel; token de tela é player. O player é medido e
+ * NUNCA bloqueado — é o princípio "a tela nunca para": derrubar a TV de uma
+ * recepção porque o painel de alguém entrou em laço puniria quem não fez nada,
+ * na parede, na frente dos clientes dele. Do outro lado do painel há uma pessoa
+ * que vê o aviso e pode parar; do outro lado do player há só uma parede.
+ */
+function classeDaSessao(parts, method) {
+  if (parts[1] === 'media' && method === 'POST') return 'upload';
+  return 'painel';
+}
+
 async function handleApi(req, res, pathname, query) {
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
   const sess = await auth.currentSession(req);
+
+  /*
+   * O FREIO DA CONTA INTEIRA, antes de qualquer rota.
+   *
+   * Os limites por rota já existiam, e cada um deles é razoável sozinho — o
+   * problema é a soma: vinte rotas a trinta por hora dão seiscentas chamadas
+   * por hora sem nenhuma passar do próprio teto, e as rotas comuns (salvar
+   * config, listar mídia, publicar) não tinham teto nenhum.
+   *
+   * Fica aqui em cima, e não espalhado, pelo mesmo motivo da porta da
+   * plataforma: espalhar é como se esquece uma, e a que se esquece é a que
+   * alguém encontra.
+   */
+  if (sess && sess.tenant_id) {
+    const classe = classeDaSessao(parts, req.method);
+    const v = limites.permitir(classe, sess.tenant_id);
+    if (!v.ok) {
+      return sendJson(res, 429, {
+        error: 'muitas requisições desta conta em pouco tempo. Espere um instante e tente de novo.',
+      }, { 'Retry-After': String(v.retryAfter) });
+    }
+  }
 
   /*
    * Desenho de QR. Aberto de propósito: é uma função pura do texto pedido, não
@@ -1138,6 +1181,57 @@ async function handleApi(req, res, pathname, query) {
      * Só operador vê: a pilha diz caminho de arquivo e nome de função, que é
      * mapa da casa para quem estiver procurando por onde entrar.
      */
+    /*
+     * SUPERVISÃO POR CONTA.
+     *
+     * Havia só "maiores contas", ordenada por número de telas: diz quem é
+     * grande e não diz quem está com problema. Quando um cliente liga dizendo
+     * "não está funcionando", o que se precisa é de uma tela com tudo dele —
+     * plano, telas e quando cada uma apareceu pela última vez, uso de IA, o que
+     * ele já gastou, e se a conta está esbarrando em algum teto.
+     */
+    if (req.method === 'GET' && parts[2] === 'contas' && !parts[3]) {
+      const dias = Math.min(180, Math.max(1, Number(query && query.dias) || 30));
+      const vivaDesde = Date.now() - metricas.JANELA_TELA_VIVA_MS;
+      const itens = await db.buscarContas((query && query.q) || '', vivaDesde, 40);
+      /*
+       * O sinal de excesso vem junto da linha, e não numa tela separada: quem
+       * varre a lista procurando problema não deveria ter que abrir conta por
+       * conta para descobrir qual delas está em laço.
+       */
+      return sendJson(res, 200, {
+        itens: itens.map((c) => ({
+          ...c,
+          conexoes: limites.conexoesDaConta(c.id),
+          excessos: limites.excessosDaConta(c.id),
+        })),
+      });
+    }
+    if (req.method === 'GET' && parts[2] === 'contas' && parts[3]) {
+      const dias = Math.min(180, Math.max(1, Number(query && query.dias) || 30));
+      const ficha = await db.fichaDaConta(parts[3], Date.now() - dias * 24 * 60 * 60 * 1000);
+      if (!ficha) return sendJson(res, 404, { error: 'conta não encontrada' });
+      return sendJson(res, 200, {
+        ...ficha,
+        dias,
+        cortesia: ficha.planoStatus === cortesia.STATUS,
+        conexoes: limites.conexoesDaConta(ficha.id),
+        excessos: limites.excessosDaConta(ficha.id),
+        trabalhos: (await jobs.doTenant(ficha.id, 10)).map(jobs.publico),
+      });
+    }
+
+    /*
+     * Os freios: quem está esbarrando, e quantas conexões estão abertas.
+     *
+     * Freio sem medidor é freio que ninguém sabe se está pegando — e o
+     * primeiro sinal seria um cliente ligando para dizer que o painel dele
+     * "dá erro".
+     */
+    if (req.method === 'GET' && parts[2] === 'limites') {
+      return sendJson(res, 200, limites.panorama());
+    }
+
     if (req.method === 'GET' && parts[2] === 'erros') {
       return sendJson(res, 200, { ...erros.resumo(), itens: erros.listar(50) });
     }
@@ -1933,6 +2027,17 @@ async function handleApi(req, res, pathname, query) {
     const provided = req.headers['x-device-token'];
     const dtOk = !!provided && !!device.device_token && safeEqual(provided, device.device_token);
 
+    /*
+     * O tráfego do player é MEDIDO aqui, e nunca bloqueado.
+     *
+     * Não é sobre abuso: é sobre enxergar. Uma TV com defeito de rede pede
+     * config quarenta vezes por minuto e ninguém fica sabendo — nem o cliente,
+     * que só nota a tela piscando, nem quem opera, que só vê a fatura de banda
+     * subir. Com a medição, essa tela aparece sozinha na supervisão antes de
+     * alguém ligar reclamando.
+     */
+    if (dtOk) limites.permitir('tela', device.tenant_id);
+
     // Player lê a própria config (com device token)
     if (req.method === 'GET' && sub === 'config') {
       if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
@@ -2112,12 +2217,48 @@ async function handleApi(req, res, pathname, query) {
       if (!dtOk && !passes.gastar(query.passe, id)) {
         return sendJson(res, 403, { error: 'passe inválido ou vencido' });
       }
+      /*
+       * Uma vaga por conexão, e há teto.
+       *
+       * `subscribers[id]` era um Set sem limite nenhum: quem tivesse um token
+       * de tela válido — o próprio dono, um script dele, ou uma TV com defeito
+       * que reabre sem fechar a anterior — empilhava sockets até o servidor
+       * ficar sem. Não precisa de má intenção: um player em laço de reconexão
+       * faz isso sozinho em minutos, e leva junto o SSE de TODAS as contas.
+       *
+       * 503, e não 403: não é permissão, é lotação. E o Retry-After diz que
+       * vale a pena tentar de novo, que é verdade — a vaga volta quando a
+       * conexão velha fecha.
+       */
+      const telasDaConta = await db.countDevices(device.tenant_id);
+      const vaga = limites.abrirConexao(id, device.tenant_id, telasDaConta);
+      if (!vaga.ok) {
+        return sendJson(res, 503, {
+          error: vaga.motivo === 'servidor'
+            ? 'servidor no limite de conexões — tente em instantes'
+            : 'esta tela já tem conexões demais abertas',
+        }, { 'Retry-After': '15' });
+      }
+
       res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
       res.write('event: ready\ndata: {}\n\n');
       if (!subscribers[id]) subscribers[id] = new Set();
       subscribers[id].add(res);
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) {} }, 25000);
-      req.on('close', () => { clearInterval(ping); subscribers[id] && subscribers[id].delete(res); });
+      /*
+       * `close` dispara também quando o cliente some sem avisar — é o único
+       * lugar em que dá para confiar para devolver a vaga. Sem devolver, o teto
+       * viraria uma contagem que só sobe, e em algumas horas nenhuma TV
+       * conseguiria mais conectar.
+       */
+      let fechou = false;
+      req.on('close', () => {
+        if (fechou) return;
+        fechou = true;
+        clearInterval(ping);
+        subscribers[id] && subscribers[id].delete(res);
+        limites.fecharConexao(id, device.tenant_id);
+      });
       return;
     }
   }

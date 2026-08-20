@@ -161,6 +161,38 @@ transformaria uma instalação nova numa porta aberta.
 O **Estado do sistema** (banco, provedor de IA, bucket, textos legais) também
 mora aqui. É infraestrutura de quem VENDE o produto, não de quem o compra.
 
+O painel traz ainda **supervisão por conta** — procure por nome, e-mail do dono
+ou id e abra a ficha: plano, telas e quando cada uma apareceu por último, uso
+de IA, o que já gastou, conexões abertas e se a conta esbarrou em algum teto.
+
+### Os freios
+
+`server/limites.js` põe teto por **conta inteira**, além dos limites por rota
+que já existiam — vinte rotas a trinta por hora somam seiscentas chamadas sem
+nenhuma passar do próprio teto, e as rotas comuns não tinham teto nenhum.
+
+O que ele defende é a máquina, não o custo de IA (isso é crédito). Um laço no
+navegador de um cliente, um script que repete, uma TV que reabre conexão sem
+fechar a anterior: nenhum é ataque, e todos derrubam o servidor de todo mundo.
+
+| | teto | postura |
+|---|---|---|
+| painel | 600 / 5 min por conta | **bloqueia** (429) |
+| player | 1200 / 5 min por conta | **só mede, nunca bloqueia** |
+| upload | 120 / hora por conta | bloqueia |
+| conexões SSE | 4 por tela · 4×telas (mín. 20) por conta · 2000 no servidor | recusa com 503 |
+
+**O player nunca é bloqueado, e isso é o princípio, não um esquecimento:**
+derrubar a TV de uma recepção porque o painel de alguém entrou em laço puniria
+quem não fez nada, na parede, na frente dos clientes dele. Do outro lado do
+painel há uma pessoa que vê o aviso e pode parar; do outro lado do player há só
+uma parede. O tráfego da tela é medido mesmo assim — é como uma TV com defeito
+de rede aparece na supervisão antes de alguém ligar reclamando.
+
+A classificação é por **quem está autenticado**, não por caminho de URL:
+`/api/devices/:id/config` é chamado pelos dois, e classificar por URL faria um
+painel em laço passar despercebido num orçamento que nunca bloqueia.
+
 ### Contas liberadas para testar
 
 Para mandar o produto a alguém experimentar sem passar pelo teste de 14 dias:
