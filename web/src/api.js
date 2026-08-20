@@ -227,6 +227,8 @@ export const plataforma = {
   metricas: (dias) => api('GET', '/api/plataforma/metricas' + (dias ? '?dias=' + dias : '')),
   reclamacoes: () => api('GET', '/api/plataforma/reclamacoes'),
   resolver: (id, status, resposta) => api('POST', '/api/plataforma/reclamacoes/' + id, { status, resposta }),
+  erros: () => api('GET', '/api/plataforma/erros'),
+  limparErros: () => api('DELETE', '/api/plataforma/erros'),
   operadores: () => api('GET', '/api/plataforma/operadores'),
   addOperador: (email, nome) => api('POST', '/api/plataforma/operadores', { email, nome }),
   removerOperador: (email) => api('DELETE', '/api/plataforma/operadores/' + encodeURIComponent(email)),

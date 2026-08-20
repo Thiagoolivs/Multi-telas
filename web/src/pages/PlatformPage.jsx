@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   MonitorPlay, Building2, Users, Sparkles, HardDrive, MessageSquareWarning,
-  Clock, Layers, Check, ShieldCheck, Trash2, Plus,
+  Clock, Layers, Check, ShieldCheck, Trash2, Plus, Bug, CheckCircle2,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -100,6 +100,8 @@ export function PlatformPage() {
         <UsoPorDia dias={data.porDia} />
       </div>
 
+      <Erros />
+
       <div className="grid gap-4 lg:grid-cols-2">
         <MaioresContas contas={data.maiores} />
         <Reclamacoes resumo={data.reclamacoes} />
@@ -188,6 +190,87 @@ function MaioresContas({ contas }) {
               {c.plano}
             </span>
             <span className="tnum w-20 text-right text-xs text-ink-2">{c.telas} tela(s)</span>
+          </div>
+        ))}
+      </div>
+    </Panel>
+  );
+}
+
+/*
+ * O que quebrou, agrupado por assinatura.
+ *
+ * Fica em linha inteira e ACIMA das reclamações de propósito: quando as duas
+ * listas têm coisa, a de erros costuma ser a CAUSA da outra. Ver a reclamação
+ * primeiro leva a responder o cliente; ver o erro primeiro leva a consertar.
+ *
+ * A contagem importa mais que a lista. Um erro que aconteceu 400 vezes numa
+ * hora e um que aconteceu uma vez ocupam a mesma linha e não são o mesmo
+ * problema — por isso "vezes" vem em destaque, e não escondido no fim.
+ */
+function Erros() {
+  const { data, loading, reload } = useAsync(plataforma.erros);
+  const [aberto, setAberto] = useState(null);
+  const itens = (data && data.itens) || [];
+
+  async function limpar() {
+    await plataforma.limparErros();
+    aviso.ok('Lista zerada. O que continuar quebrando aparece de novo sozinho.');
+    reload();
+  }
+
+  return (
+    <Panel>
+      <PanelHeader
+        title="O que quebrou"
+        description={
+          data && data.grupos
+            ? `${data.grupos} tipo(s) · ${formatNumber(data.total)} ocorrência(s) · ${formatNumber(data.naUltimaHora)} na última hora`
+            : 'Erros do servidor, agrupados. Vivem na memória do processo e somem no próximo deploy.'
+        }
+        actions={itens.length ? <Button size="sm" variant="ghost" icon={Check} onClick={limpar}>Zerar</Button> : null}
+      />
+      <div className="max-h-96 overflow-y-auto">
+        {loading && <div className="p-6 text-center"><Spinner /></div>}
+        {!loading && !itens.length && (
+          <EmptyState icon={CheckCircle2} title="Nada quebrou"
+            description="Nenhum erro desde que o servidor subiu." />
+        )}
+        {itens.map((g) => (
+          <div key={g.id} className="border-b border-line px-4 py-3 last:border-0">
+            <button type="button" className="flex w-full items-start gap-2 text-left"
+              onClick={() => setAberto(aberto === g.id ? null : g.id)}>
+              <Bug size={14} className="mt-0.5 shrink-0 text-danger" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-xs text-ink-1">{g.mensagem || g.tipo}</div>
+                <div className="mt-0.5 text-2xs text-ink-3">{g.tipo} · {g.origem}</div>
+              </div>
+              <div className="shrink-0 text-right">
+                <div className={'text-xs font-semibold ' + (g.vezes > 10 ? 'text-danger' : 'text-ink-2')}>
+                  {formatNumber(g.vezes)}×
+                </div>
+                <div className="text-2xs text-ink-3">{relativeTime(g.ultima)}</div>
+              </div>
+            </button>
+            {aberto === g.id && (
+              <div className="mt-2 space-y-2">
+                {g.pilha && (
+                  <pre className="overflow-x-auto rounded border border-line bg-surface-2 p-2 text-2xs leading-relaxed text-ink-2">
+                    {g.pilha.split(' | ').join('\n')}
+                  </pre>
+                )}
+                {/* Onde aconteceu vale mais que quantas vezes: é o que permite reproduzir. */}
+                {!!(g.exemplos || []).length && (
+                  <div className="space-y-1">
+                    {g.exemplos.map((e, i) => (
+                      <div key={i} className="text-2xs text-ink-3">
+                        {relativeTime(e.em)} · {[e.metodo, e.rota, e.onde].filter(Boolean).join(' ')}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -67,7 +67,19 @@ function criar(tenantId, tarefa) {
   Promise.resolve()
     .then(() => tarefa(progresso))
     .then((r) => { job.resultado = r; job.estado = 'pronto'; })
-    .catch((e) => { job.erro = (e && e.message) || 'falhou'; job.estado = 'erro'; })
+    .catch((e) => {
+      job.erro = (e && e.message) || 'falhou';
+      job.estado = 'erro';
+      /*
+       * O cliente vê a mensagem; quem opera precisa ver a PILHA.
+       *
+       * Geração de peça que falha é a reclamação mais cara que este sistema
+       * recebe — a pessoa esperou minutos e não saiu nada. Enquanto o motivo
+       * morria dentro do objeto do trabalho, o suporte só tinha a frase que a
+       * própria tela já mostrava.
+       */
+      require('./erros.js').registrar(e, { onde: 'trabalho em segundo plano', tenant: job.tenantId });
+    })
     .finally(() => { job.terminadoEm = Date.now(); });
 
   return job;

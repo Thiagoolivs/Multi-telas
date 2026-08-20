@@ -28,6 +28,8 @@ const reconectar = require('./server/reconectar');
 const usoIA = require('./server/uso-ia');
 const creditos = require('./server/creditos');
 const security = require('./server/security');
+const { log } = require('./server/log.js');
+const erros = require('./server/erros.js');
 const diagnostico = require('./server/diagnostico');
 const { rateLimit, clientIp, safeEqual, isSecureRequest } = security;
 const mail = require('./server/mail');
@@ -133,7 +135,7 @@ function readBody(req, res, cb) {
   req.on('end', () => {
     let parsed; try { parsed = data ? JSON.parse(data) : {}; } catch (e) { parsed = null; }
     Promise.resolve(cb(parsed)).catch((e) => {
-      console.warn('[api]', e.message);
+      erros.registrar(e, { rota: req.url, metodo: req.method, onde: 'corpo da requisição' });
       try { sendJson(res, 500, { error: 'erro interno' }); } catch (_) {}
     });
   });
@@ -155,7 +157,7 @@ async function avisarTelas(tenantId, event, payload) {
   try {
     const telas = await db.listDevices(tenantId);
     for (const d of telas) if (subscribers[d.id]) broadcast(d.id, event, payload || {});
-  } catch (e) { console.warn('[sse]', e.message); }
+  } catch (e) { erros.registrar(e, { onde: 'aviso às telas', tenant: tenantId }); }
 }
 function validEmail(e) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e || '')); }
 // Base absoluta da requisição (para montar URLs de checkout/portal).
@@ -383,7 +385,7 @@ async function handleApi(req, res, pathname, query) {
         } catch (e) {
           // Resposta genérica também na falha: um 502 aqui e um 200 no e-mail
           // inexistente diriam, pela diferença, quais contas existem na base.
-          console.error('[forgot] falha ao enviar e-mail:', e.message);
+          erros.registrar(e, { onde: 'recuperação de senha' });
           return sendJson(res, 200, generic);
         }
         return sendJson(res, 200, generic);
@@ -493,7 +495,7 @@ async function handleApi(req, res, pathname, query) {
         res.writeHead(302, { Location: '/app/', 'Cache-Control': 'no-store' });
         return res.end();
       } catch (e) {
-        console.error('[google] ', e.message);
+        erros.registrar(e, { onde: 'login com Google' });
         return fail('login-google-falhou');
       }
     }
@@ -669,7 +671,7 @@ async function handleApi(req, res, pathname, query) {
         // calibrada com dado em vez de palpite.
         await usoIA.cobrar(db, tenantTexto, { tipo: TIPO_IA[parts[2]], quantidade: 1, userId: sess.user_id, referencia: parts[2] });
       }
-    } catch (e) { console.warn('[uso-ia] medição falhou:', e.message); }
+    } catch (e) { log.aviso('uso-ia.medicao-falhou', { motivo: e.message }); }
   }
 
   if (parts[1] === 'ai' && parts[2] === 'generate-campaign') {
@@ -843,7 +845,7 @@ async function handleApi(req, res, pathname, query) {
     } catch (e) {
       if (e.status === 413) return sendJson(res, 413, { error: 'essa foto passa de ' + muralLib.MAX_MB + ' MB — tente outra' });
       if (e.status === 415) return sendJson(res, 415, { error: 'esse tipo de arquivo não abre na TV' });
-      console.warn('[mural]', e.message);
+      erros.registrar(e, { onde: 'mural de fotos' });
       return sendJson(res, 500, { error: 'não foi possível salvar — tente de novo' });
     }
   }
@@ -1085,6 +1087,23 @@ async function handleApi(req, res, pathname, query) {
         reclamacoes,
         raiz: quem.raiz,
       });
+    }
+
+    /*
+     * O que quebrou, agrupado. Vive na memória do processo (ver
+     * server/erros.js) — some no deploy, e some de propósito: erro é sintoma
+     * do que está rodando AGORA, não histórico do cliente.
+     *
+     * Só operador vê: a pilha diz caminho de arquivo e nome de função, que é
+     * mapa da casa para quem estiver procurando por onde entrar.
+     */
+    if (req.method === 'GET' && parts[2] === 'erros') {
+      return sendJson(res, 200, { ...erros.resumo(), itens: erros.listar(50) });
+    }
+    if (req.method === 'DELETE' && parts[2] === 'erros') {
+      // Zerar depois de consertar, para o próximo aparecer sozinho na lista.
+      erros.limpar();
+      return sendJson(res, 200, { ok: true });
     }
 
     if (req.method === 'GET' && parts[2] === 'reclamacoes') {
@@ -2331,7 +2350,10 @@ const server = http.createServer((req, res) => {
   for (const k in seg) res.setHeader(k, seg[k]);
   if (pathname === '/api' || pathname.startsWith('/api/')) {
     return handleApi(req, res, pathname, parsed.query || {})
-      .catch((e) => { console.warn('[api]', e.message); try { sendJson(res, 500, { error: 'erro interno' }); } catch (_) {} });
+      .catch((e) => {
+        erros.registrar(e, { rota: pathname, metodo: req.method });
+        try { sendJson(res, 500, { error: 'erro interno' }); } catch (_) {}
+      });
   }
   if (pathname === '/app' || pathname.startsWith('/app/')) {
     return handleApp(req, res, pathname);
@@ -2340,26 +2362,42 @@ const server = http.createServer((req, res) => {
     return handleMedia(req, res, pathname);
   }
   return handleStatic(req, res, pathname)
-    .catch((e) => { console.warn('[static]', e.message); try { res.writeHead(500); res.end('erro interno'); } catch (_) {} });
+    .catch((e) => {
+      erros.registrar(e, { rota: pathname, metodo: req.method, onde: 'arquivo estático' });
+      try { res.writeHead(500); res.end('erro interno'); } catch (_) {}
+    });
 });
+
+/*
+ * A rede de segurança entra ANTES de o servidor aceitar a primeira conexão.
+ *
+ * Uma promessa rejeitada sem `catch` derruba o processo no Node 22. O Railway
+ * reinicia e a TV volta em segundos, mas o motivo morria junto com o processo
+ * — e defeito que ninguém vê ninguém conserta. Agora fica registrado antes.
+ */
+erros.instalarRedeDeSeguranca();
 
 db.init()
   .then(() => server.listen(PORT, () => {
-    console.log('MultiTelas rodando em http://localhost:' + PORT);
     const s3 = storage.s3Info();
-    console.log('[storage] driver: ' + storage.DRIVER
-      + (s3 ? ' · bucket ' + s3.bucket + ' · região ' + s3.region
-              + ' · endereçamento ' + (s3.pathStyle ? 'por caminho' : 'por host') : ''));
+    log.info('servidor.no-ar', {
+      porta: PORT,
+      storage: storage.DRIVER,
+      bucket: s3 ? s3.bucket : undefined,
+      regiao: s3 ? s3.region : undefined,
+    });
     // Disco efêmero é falha silenciosa: funciona hoje, apaga a mídia no
     // próximo deploy. Melhor avisar alto do que descobrir com o cliente.
     const aviso = storage.ephemeralWarning();
-    if (aviso) console.warn('\n⚠️  [storage] ' + aviso + '\n');
+    if (aviso) log.aviso('storage.disco-efemero', { aviso });
 
     if (!operadores.configurado()) {
       // Dito alto de propósito: sem ADMIN_EMAILS o painel da plataforma
       // simplesmente não existe, e é melhor descobrir isso agora do que
       // procurando um menu que nunca vai aparecer.
-      console.warn('[plataforma] ADMIN_EMAILS não definido — o painel da plataforma fica desligado.');
+      log.aviso('plataforma.sem-admin-emails', {
+        aviso: 'ADMIN_EMAILS não definido — o painel da plataforma fica desligado.',
+      });
     }
 
     /*
@@ -2372,9 +2410,9 @@ db.init()
      */
     const NOVENTA_DIAS = 90 * 24 * 60 * 60 * 1000;
     const varrer = () => db.limparEventos(Date.now() - NOVENTA_DIAS)
-      .catch((e) => console.warn('[eventos] limpeza falhou:', e.message));
+      .catch((e) => erros.registrar(e, { onde: 'limpeza de eventos' }));
     varrer();
     const relogio = setInterval(varrer, 6 * 60 * 60 * 1000);
     if (relogio.unref) relogio.unref();
   }))
-  .catch((e) => { console.error('[db] falha ao inicializar:', e.message); process.exit(1); });
+  .catch((e) => { log.erro('db.init-falhou', e); process.exit(1); });
