@@ -1186,3 +1186,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   animation: mt-som-pulsa 2.4s ease-in-out infinite;
 }
 @keyframes mt-som-pulsa { 0%, 100% { opacity: .65; } 50% { opacity: 1; } }
+
+/* A animação dos elementos da peça mora em css/animacao.css — fonte única,
+   usada pelo player (player.html) e pelo palco do editor (web/src/index.css).
+   Enquanto cada lado tinha a sua, a peça saía diferente aqui e lá, e a
+   diferença só aparecia depois de publicada, na parede. */

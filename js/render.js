@@ -1310,6 +1310,28 @@
       box.style.height = (e.h != null ? e.h : 25) + '%';
       if (e.rot) box.style.transform = 'rotate(' + e.rot + 'deg)';
       box.style.opacity = (e.opacidade != null ? e.opacidade : 1);
+
+      /*
+       * A animação mora num DIV INTERNO, nunca na caixa do elemento.
+       *
+       * A caixa já carrega a rotação da peça (`transform: rotate(...)`), e uma
+       * animação de transform na mesma caixa apagaria essa rotação — o
+       * elemento entraria bonito e terminaria torto, diferente do que foi
+       * desenhado no editor.
+       *
+       * Sem animação, nenhum div extra: uma peça com quarenta elementos parados
+       * não precisa de quarenta caixas a mais para desenhar a mesma coisa.
+       */
+      const anim = global.MTAnim ? MTAnim.ler(e) : { tem: false };
+      let alvo = box;
+      if (anim.tem) {
+        const capa = div('mt-anim ' + anim.classes.join(' '));
+        const est = MTAnim.estilo(e);
+        for (const k in est) capa.style[k] = est[k];
+        box.appendChild(capa);
+        alvo = capa;
+      }
+
       if (e.tipo === 'texto') {
         const t = div('mt-comp-text');
         t.textContent = e.text || '';
@@ -1332,14 +1354,16 @@
         // Sombra de texto é text-shadow; box-shadow numa div de texto
         // desenharia um retângulo em volta do bloco, não em volta das letras.
         aplicarSombra(t, e);
-        box.appendChild(t);
+        alvo.appendChild(t);
       } else if (e.tipo === 'forma') {
-        box.style.background = fillToCss(e.fill);
-        if (e.shape === 'ellipse') box.style.borderRadius = '50%';
-        else if (SHAPE_POLY[e.shape]) box.style.clipPath = shapeClip(e.shape);
-        else box.style.borderRadius = P.raioCss(e);
-        aplicarSombra(box, e);
-        aplicarBorda(box, e);
+        // A forma É a caixa (não tem filho), então o desenho vai no `alvo`:
+        // com animação, `alvo` é a capa; sem, é a própria caixa.
+        alvo.style.background = fillToCss(e.fill);
+        if (e.shape === 'ellipse') alvo.style.borderRadius = '50%';
+        else if (SHAPE_POLY[e.shape]) alvo.style.clipPath = shapeClip(e.shape);
+        else alvo.style.borderRadius = P.raioCss(e);
+        aplicarSombra(alvo, e);
+        aplicarBorda(alvo, e);
       } else if (e.tipo === 'icone') {
         const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         s.setAttribute('viewBox', '0 0 24 24');
@@ -1351,7 +1375,7 @@
         s.style.width = '100%'; s.style.height = '100%';
         s.innerHTML = COMP_ICONS[e.name] || COMP_ICONS.star;
         aplicarSombra(s, e);
-        box.appendChild(s);
+        alvo.appendChild(s);
       } else {
         const img = document.createElement('img');
         img.className = 'mt-comp-img';
@@ -1361,7 +1385,7 @@
         img.style.borderRadius = P.raioCss(e);
         aplicarSombra(img, e);
         aplicarBorda(img, e);
-        box.appendChild(img);
+        alvo.appendChild(img);
       }
       palco.appendChild(box);
     });

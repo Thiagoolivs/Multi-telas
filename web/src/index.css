@@ -1,3 +1,12 @@
+/*
+ * A animação dos elementos da peça vem do MESMO arquivo que o player usa.
+ *
+ * Copiar as keyframes para cá funcionaria hoje e divergiria na primeira
+ * mudança — e a divergência entre o palco do editor e a TV só aparece depois
+ * de a peça estar publicada, na parede.
+ */
+@import '../../css/animacao.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

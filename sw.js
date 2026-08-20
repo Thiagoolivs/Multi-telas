@@ -25,7 +25,7 @@ const MEDIA_CACHE = 'mt-media-v1';
 // conta de cor inteira.)
 const SHELL_ASSETS = [
   '/player.html', '/css/player.css', '/js/vendor/gsap.min.js',
-  '/js/perf.js', '/js/cor.js', '/js/fontes.js', '/js/peca.js', '/js/datas-br.js',
+  '/css/animacao.css', '/js/perf.js', '/js/cor.js', '/js/fontes.js', '/js/peca.js', '/js/animacao.js', '/js/datas-br.js',
   '/js/templates.js', '/js/theme.js', '/js/seasons.js', '/js/adaptive.js',
   '/js/storage.js', '/js/news.js', '/js/render.js', '/js/cloud.js', '/js/player.js',
   '/js/boot.js',
