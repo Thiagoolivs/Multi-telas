@@ -34,37 +34,42 @@ export function pesosDe(id) {
   return M.dados(id).pesos;
 }
 
-const baixadas = {};
+let folhaPedida = false;
 
 /*
- * Baixa uma família da Google Fonts, uma vez só.
+ * A folha das fontes, servida do nosso domínio (fonts/fontes.css, gerada por
+ * tools/baixar-fontes.mjs). Antes cada família vinha da Google numa folha
+ * própria.
+ *
+ * O motivo da troca está em js/theme.js, e vale igual aqui: o editor precisa
+ * desenhar com a MESMA fonte que a TV desenha e que o compositor mediu. Fonte
+ * que depende da rede de terceiro é fonte que às vezes não é a mesma — e o
+ * defeito só aparece na parede do cliente, depois de publicado.
  *
  * `media="print"` faz o navegador buscar sem segurar a pintura; quando chega,
- * vira "all" e a fonte entra. É o mesmo truque de js/theme.js, pelo mesmo
- * motivo: numa rede ruim, o painel continua utilizável enquanto a fonte não
- * chega, em vez de ficar em branco esperando a Google.
+ * vira "all". O painel continua utilizável enquanto a fonte não chegou.
  */
-export function carregarFonte(id) {
-  const f = M.FAMILIAS[M.familia(id)];
-  if (!f || !f.google || baixadas[id] || typeof document === 'undefined') return;
-  baixadas[id] = true;
-
-  if (!document.getElementById('mt-gfonts-pre')) {
-    const p1 = document.createElement('link');
-    p1.id = 'mt-gfonts-pre'; p1.rel = 'preconnect';
-    p1.href = 'https://fonts.googleapis.com';
-    document.head.appendChild(p1);
-    const p2 = document.createElement('link');
-    p2.rel = 'preconnect'; p2.href = 'https://fonts.gstatic.com';
-    p2.crossOrigin = 'anonymous';
-    document.head.appendChild(p2);
-  }
+function pedirFolha() {
+  if (folhaPedida || typeof document === 'undefined') return;
+  folhaPedida = true;
+  if (document.getElementById('mt-fontes')) return;
   const link = document.createElement('link');
+  link.id = 'mt-fontes';
   link.rel = 'stylesheet';
-  link.href = 'https://fonts.googleapis.com/css2?family=' + f.google + '&display=swap';
+  link.href = '/fonts/fontes.css';
   link.media = 'print';
   link.onload = () => { link.media = 'all'; };
   document.head.appendChild(link);
+}
+
+/*
+ * Continua recebendo o id da família porque é assim que o editor chama, e
+ * porque famílias sem `google` (fonte de sistema) não precisam de folha
+ * nenhuma. Só o que mudou é que todas as que precisam vêm do mesmo arquivo.
+ */
+export function carregarFonte(id) {
+  const f = M.FAMILIAS[M.familia(id)];
+  if (f && f.google) pedirFolha();
 }
 
 /* Todas as famílias usadas por uma composição, para a prévia não sair torta. */

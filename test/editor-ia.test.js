@@ -89,3 +89,88 @@ test('a orientação descrita bate com a proporção', () => {
   assert.match(trecho, /'1\/1'.*QUADRADA/s);
   assert.match(trecho, /'21\/9'.*LARGA/s);
 });
+
+/* ---------------- Sair e voltar ---------------- */
+
+const fsIA = require('node:fs');
+const pathIA = require('node:path');
+const lerArquivo = (...p) => fsIA.readFileSync(pathIA.join(__dirname, '..', ...p), 'utf8');
+
+test('TODA geração de IA é trabalho — nenhuma responde na própria requisição', () => {
+  /*
+   * Só a campanha rodava como trabalho, porque era a única que passava do
+   * tempo de uma requisição. As outras oito eram síncronas, e o defeito era o
+   * mesmo em tamanho menor: fechar a aba, trocar de página ou o celular perder
+   * a rede por dez segundos matava o pedido — com o crédito já gasto.
+   *
+   * A conferência é por ROTA, e não por contagem: uma rota nova de IA que
+   * nasça síncrona precisa falhar aqui, e não passar por estar na média.
+   */
+  const SERVER = lerArquivo('server.js');
+  const ROTAS = [
+    'generate-campaign', 'generate-content', 'generate-kit', 'generate-image',
+    'generate-composition', 'generate-seasonal', 'generate-dayparts', 'rewrite',
+  ];
+  for (const rota of ROTAS) {
+    const i = SERVER.indexOf("parts[2] === '" + rota + "'");
+    assert.ok(i > 0, 'sumiu a rota ' + rota);
+    const bloco = SERVER.slice(i, i + 3000);
+    const fim = bloco.indexOf("parts[2] === '", 20);
+    const corpo = fim > 0 ? bloco.slice(0, fim) : bloco;
+    assert.ok(corpo.includes('emTrabalho('), rota + ' voltou a responder na própria requisição');
+  }
+});
+
+test('o trabalho guarda o tipo e o pedido', () => {
+  // Um id não diz nada a quem volta. "Compondo — promoção de sexta" diz tudo,
+  // e é o que permite a tela reconhecer qual trabalho é dela.
+  const SERVER = lerArquivo('server.js');
+  const chamadas = SERVER.match(/emTrabalho\(res, sess, '([^']+)', \{ brief:/g) || [];
+  assert.ok(chamadas.length >= 7, 'alguma geração deixou de guardar o pedido: ' + chamadas.length);
+});
+
+test('o cliente guarda o trabalho POR TIPO, para cada tela achar o seu', () => {
+  /*
+   * Numa lista só, a primeira tela a perguntar levaria o trabalho da outra:
+   * quem tem uma peça sendo composta no editor e uma campanha rodando ao mesmo
+   * tempo precisa que cada uma reencontre a SUA.
+   */
+  const API = lerArquivo('web', 'src', 'api.js');
+  assert.match(API, /function guardarPendente\(tipo,/, 'o pendente deixou de ser por tipo');
+  assert.match(API, /function pendenteDe\(tipo\)/);
+  assert.match(API, /retomar:/, 'sumiu o jeito de voltar a acompanhar sem começar outro');
+  // E o polling tem que parar em `erro` e `pronto`, senão gira para sempre.
+  assert.match(API, /if \(s\.estado === 'pronto'\)/);
+  assert.match(API, /if \(s\.estado === 'erro'\)/);
+});
+
+test('o editor retoma a peça que ficou gerando', () => {
+  const ED = lerArquivo('web', 'src', 'components', 'content', 'CompositionEditor.jsx');
+  assert.match(ED, /ai\.retomar\('peca-do-editor'/, 'o editor não volta a acompanhar a peça');
+  /*
+   * E o erro da IA não pode voltar a ser `alert()`: ele rouba o foco, some ao
+   * primeiro clique e não sobrevive a trocar de aba — três defeitos para uma
+   * mensagem que costuma dizer o que fazer em seguida.
+   *
+   * A conferência é dentro de `runAi`, e não no arquivo inteiro: o upload de
+   * imagem ainda usa alerta, é outro assunto, e um teste que reclamasse dele
+   * aqui obrigaria alguém a mexer no upload para mexer na IA.
+   */
+  const i = ED.indexOf('async function runAi(');
+  assert.ok(i > 0, 'sumiu o pedido de IA do editor');
+  const corpo = ED.slice(i, ED.indexOf('\n  }', i));
+  assert.ok(!/alert\(/.test(corpo), 'o erro da IA voltou para o alerta do navegador');
+  assert.match(corpo, /setAiErro\(/, 'o erro da IA não aparece na barra');
+  assert.match(corpo, /setAiEtapa\(/, 'a etapa da IA não é mostrada');
+});
+
+test('a imagem — a única que custa crédito — também é retomada', () => {
+  /*
+   * O aviso já dizia "pode sair desta tela", e era verdade enquanto a aba
+   * vivesse. Recarregar o navegador quebrava a promessa, e a imagem ficava
+   * paga e inalcançável.
+   */
+  const MD = lerArquivo('web', 'src', 'pages', 'MyDesignsPage.jsx');
+  assert.match(MD, /ai\.retomar\('imagem'/, 'a imagem não é retomada ao reabrir a página');
+  assert.match(MD, /function avisarImagemPronta\(/, 'os dois caminhos não compartilham o aviso de pronto');
+});

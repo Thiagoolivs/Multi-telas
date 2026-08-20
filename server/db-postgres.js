@@ -117,6 +117,16 @@ async function init() {
     -- Eventos de uso: QUE função foi usada, por quem e quando. Nunca o
     -- conteúdo — para saber que o editor é usado não é preciso guardar o que
     -- foi escrito nele.
+    -- Trabalhos de IA. Viviam só na memória: um deploy no meio de uma geração
+    -- matava o trabalho, e uma geração PRONTA que ninguém tinha lido ia junto.
+    -- A coluna resultado é JSON em texto: cada tipo devolve uma forma diferente.
+    CREATE TABLE IF NOT EXISTS jobs (
+      id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, tipo TEXT,
+      estado TEXT, etapa TEXT, detalhe TEXT, resultado TEXT, erro TEXT,
+      pedido TEXT, criado_em BIGINT, terminado_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_jobs_tenant ON jobs(tenant_id, criado_em);
+    CREATE INDEX IF NOT EXISTS idx_jobs_estado ON jobs(estado);
     CREATE TABLE IF NOT EXISTS eventos (
       id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at BIGINT
     );
@@ -424,6 +434,42 @@ async function limparEventos(antesDe) {
   await pool.query('DELETE FROM eventos WHERE created_at < $1', [antesDe]);
 }
 
+/* ---------------- Trabalhos de IA ---------------- */
+/* Ver a nota em db-sqlite.js: a memória guarda o que está rodando, o banco
+ * guarda o que sobrevive a reinício. Mesma API assíncrona nos dois. */
+async function salvarJob(j) {
+  await pool.query(
+    `INSERT INTO jobs (id, tenant_id, user_id, tipo, estado, etapa, detalhe, resultado, erro, pedido, criado_em, terminado_em)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+    [j.id, j.tenantId, j.userId || null, j.tipo || '', j.estado, j.etapa || '', j.detalhe || '',
+      j.resultado == null ? null : JSON.stringify(j.resultado), j.erro || null,
+      j.pedido == null ? null : JSON.stringify(j.pedido), j.criadoEm, j.terminadoEm || null]
+  );
+}
+async function atualizarJob(j) {
+  await pool.query(
+    `UPDATE jobs SET estado = $1, etapa = $2, detalhe = $3, resultado = $4, erro = $5, terminado_em = $6 WHERE id = $7`,
+    [j.estado, j.etapa || '', j.detalhe || '',
+      j.resultado == null ? null : JSON.stringify(j.resultado), j.erro || null, j.terminadoEm || null, j.id]
+  );
+}
+async function lerJob(id) {
+  const r = await pool.query('SELECT * FROM jobs WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function listarJobs(tenantId, desde, limite) {
+  const r = await pool.query('SELECT * FROM jobs WHERE tenant_id = $1 AND criado_em > $2 ORDER BY criado_em DESC LIMIT $3',
+    [tenantId, desde || 0, limite || 20]);
+  return r.rows;
+}
+async function interromperJobs(motivo) {
+  await pool.query("UPDATE jobs SET estado = 'erro', erro = $1, terminado_em = $2 WHERE estado = 'rodando'", [motivo, Date.now()]);
+}
+async function limparJobs(antesDe) {
+  await pool.query('DELETE FROM jobs WHERE criado_em < $1', [antesDe]);
+}
+
+
 const mapRec = (r) => ({
   id: r.id, tenantId: r.tenant_id, email: r.email || '', tipo: r.tipo || 'duvida',
   texto: r.texto || '', status: r.status || 'aberta', resposta: r.resposta || '',
@@ -457,6 +503,71 @@ async function resumoReclamacoes(desde) {
 }
 
 /* Números da plataforma inteira. Só o operador chega aqui — ver server/operadores.js. */
+
+/*
+ * A ficha de UMA conta, para a supervisão. Ver a nota em db-sqlite.js: existia
+ * só a lista das maiores, que diz quem é grande e não diz quem está com
+ * problema. Mesma API assíncrona nos dois bancos.
+ */
+async function fichaDaConta(tenantId, desde) {
+  const c = await pool.query(
+    `SELECT id, name, created_at, COALESCE(plan, 'free') AS plano, plan_status,
+       stripe_subscription_id, creditos_franquia, creditos_comprados, creditos_ciclo
+     FROM tenants WHERE id = $1`, [tenantId]);
+  if (!c.rows[0]) return null;
+  const t = c.rows[0];
+  const [pessoas, telas, midia, pecas, eventos] = await Promise.all([
+    pool.query('SELECT id, email, role, name, created_at FROM users WHERE tenant_id = $1 ORDER BY created_at ASC LIMIT 50', [tenantId]),
+    pool.query('SELECT id, name, last_seen, updated_at FROM devices WHERE tenant_id = $1 ORDER BY last_seen DESC NULLS LAST LIMIT 100', [tenantId]),
+    pool.query('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM media WHERE tenant_id = $1', [tenantId]),
+    pool.query('SELECT COUNT(*) AS n FROM library WHERE tenant_id = $1', [tenantId]),
+    pool.query('SELECT COUNT(*) AS n FROM eventos WHERE tenant_id = $1 AND created_at > $2', [tenantId, desde || 0]),
+  ]);
+  return {
+    id: t.id, nome: t.name, criadaEm: Number(t.created_at) || 0,
+    plano: t.plano, planoStatus: t.plan_status || 'free',
+    assinatura: !!t.stripe_subscription_id,
+    creditos: {
+      franquia: Number(t.creditos_franquia) || 0,
+      comprados: Number(t.creditos_comprados) || 0,
+      cicloEm: Number(t.creditos_ciclo) || 0,
+    },
+    pessoas: pessoas.rows.map((u) => ({
+      id: u.id, email: u.email, papel: u.role, nome: u.name, criadoEm: Number(u.created_at) || 0,
+    })),
+    telas: telas.rows.map((d) => ({
+      id: d.id, nome: d.name, ultimaVez: Number(d.last_seen) || 0, configEm: Number(d.updated_at) || 0,
+    })),
+    midiaBytes: Number(midia.rows[0].bytes) || 0,
+    midiaArquivos: Number(midia.rows[0].n) || 0,
+    pecas: Number(pecas.rows[0].n) || 0,
+    acoes: Number(eventos.rows[0].n) || 0,
+    usoIA: await resumoUsoIA(tenantId, desde || 0),
+  };
+}
+
+async function buscarContas(termo, vivaDesde, limite) {
+  const t = String(termo || '').trim().toLowerCase();
+  const like = '%' + t + '%';
+  const r = await pool.query(
+    `SELECT t.id, t.name, COALESCE(t.plan, 'free') AS plano, t.plan_status, t.created_at,
+       (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas,
+       (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id AND d.last_seen > $1) AS vivas,
+       (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id) AS pessoas,
+       (SELECT email FROM users u WHERE u.tenant_id = t.id ORDER BY created_at ASC LIMIT 1) AS dono
+     FROM tenants t
+     WHERE ($2 = '' OR LOWER(t.name) LIKE $3 OR t.id LIKE $3
+            OR EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = t.id AND LOWER(u.email) LIKE $3))
+     ORDER BY t.created_at DESC LIMIT $4`,
+    [vivaDesde || 0, t, like, limite || 30]
+  );
+  return r.rows.map((x) => ({
+    id: x.id, nome: x.name, dono: x.dono || '', plano: x.plano, planoStatus: x.plan_status || 'free',
+    criadaEm: Number(x.created_at) || 0,
+    telas: Number(x.telas), vivas: Number(x.vivas), pessoas: Number(x.pessoas),
+  }));
+}
+
 async function numerosDaPlataforma(agora, vivaDesde, desde) {
   const um = async (sql, args) => (await pool.query(sql, args || [])).rows[0];
   const varios = async (sql, args) => (await pool.query(sql, args || [])).rows;
@@ -959,7 +1070,9 @@ module.exports = {
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,
   listarOperadores, addOperador, removerOperador,
+  fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
+  salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
 };

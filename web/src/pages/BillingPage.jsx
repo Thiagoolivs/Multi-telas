@@ -56,10 +56,20 @@ export function BillingPage() {
   }
   if (error) return <ErrorState description="Não foi possível carregar o plano." onRetry={reload} />;
 
-  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas } = data;
+  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia } = data;
   const frac = usage.limit ? usage.screens / usage.limit : 0;
   const tone = frac >= 1 ? 'danger' : frac > 0.8 ? 'warn' : 'accent';
-  const statusLabel = { active: 'Ativo', free: 'Grátis', canceled: 'Cancelado', past_due: 'Pagamento pendente' }[status] || status;
+  /*
+   * "Cortesia" tem selo próprio de propósito.
+   *
+   * A conta liberada tem plano Pro DE VERDADE — mesmo limite de telas, mesmo
+   * crédito. Sem este rótulo a tela diria "Pro · Ativo", a pessoa acharia que
+   * está pagando, e quando a cortesia acabasse a conta encolheria sem que
+   * nada tivesse avisado que aquilo era emprestado.
+   */
+  const statusLabel = cortesia
+    ? 'Cortesia'
+    : ({ active: 'Ativo', free: 'Grátis', canceled: 'Cancelado', past_due: 'Pagamento pendente' }[status] || status);
 
   return (
     <div>
@@ -82,10 +92,11 @@ export function BillingPage() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-ink">Plano {plan.name}</span>
-              <Badge tone={status === 'active' ? 'ok' : status === 'canceled' || status === 'past_due' ? 'danger' : 'neutral'}>{statusLabel}</Badge>
+              <Badge tone={cortesia ? 'accent' : status === 'active' ? 'ok' : status === 'canceled' || status === 'past_due' ? 'danger' : 'neutral'}>{statusLabel}</Badge>
             </div>
             <div className="mt-0.5 text-xs text-ink-3">
-              {plan.sobConsulta ? 'Contrato — preço combinado'
+              {cortesia ? 'Acesso liberado para teste — sem cobrança e sem prazo'
+                : plan.sobConsulta ? 'Contrato — preço combinado'
                 : usage.mensalidadeCents > 0
                   ? `${brl(usage.mensalidadeCents)}/mês · ${brl(usage.precoTelaCents)} por tela`
                   : 'Sem custo'}

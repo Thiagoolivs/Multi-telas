@@ -13,7 +13,7 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v9';
+const SHELL_CACHE = 'mt-shell-v10';
 const MEDIA_CACHE = 'mt-media-v1';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
@@ -32,6 +32,16 @@ const SHELL_ASSETS = [
   // Instalável: sem o manifesto e o ícone no cache, uma TV que reiniciasse
   // sem rede abriria como página comum, sem a identidade do app instalado.
   '/player.webmanifest', '/icons/icone-192.png', '/icons/icone-512.png',
+  /*
+   * A folha das fontes entra no shell; os .woff2 NÃO.
+   *
+   * A folha é indispensável e barata (~45 KB): sem as declarações @font-face,
+   * uma TV que suba sem rede desenha tudo na fonte de sistema — que é mais
+   * larga que Anton ou Oswald e estoura o texto que o compositor mediu. Já os
+   * arquivos das 14 famílias somam 1,5 MB, e nenhuma tela usa mais que duas.
+   * Eles entram no cache sozinhos, na primeira vez que aparecem na peça.
+   */
+  '/fonts/fontes.css',
 ];
 
 self.addEventListener('install', (e) => {
@@ -64,6 +74,15 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/app/')) return;
   if (url.pathname.startsWith('/media/')) {
     event.respondWith(cacheFirst(req, MEDIA_CACHE));
+    return;
+  }
+  /*
+   * Arquivo de fonte é imutável: o nome carrega peso, estilo e alfabeto, e
+   * conteúdo novo vira nome novo (tools/baixar-fontes.mjs). Cache primeiro,
+   * sem revalidar — a TV não gasta rede perguntando por algo que não muda.
+   */
+  if (url.pathname.startsWith('/fonts/arquivos/')) {
+    event.respondWith(cacheFirst(req, SHELL_CACHE));
     return;
   }
   // Navegação (player.html?cloud=1): ignora a query ao casar com o cache.

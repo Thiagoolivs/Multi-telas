@@ -52,9 +52,18 @@ test('a TV pode embutir YouTube, Office e a página do cliente', () => {
   assert.ok(politica()['frame-src'].includes('https:'));
 });
 
-test('a tipografia da peça continua chegando', () => {
-  assert.ok(politica()['style-src'].includes('https://fonts.googleapis.com'));
-  assert.ok(politica()['font-src'].includes('https://fonts.gstatic.com'));
+test('a tipografia vem de casa, e a política proíbe voltar para a Google', () => {
+  /*
+   * Ao contrário: este teste falha se alguém reabrir o host de fonte externo.
+   *
+   * A política fechada é o que faz um retorno acidental à Google aparecer no
+   * navegador do desenvolvedor — em vez de aparecer meses depois, numa TV de
+   * cliente cuja rede bloqueia o domínio, como texto estourando a peça.
+   */
+  const p = politica();
+  assert.ok(!p['style-src'].includes('fonts.googleapis.com'), 'style-src reabriu a Google');
+  assert.ok(!p['font-src'].includes('fonts.gstatic.com'), 'font-src reabriu a Google');
+  assert.ok(p['font-src'].includes("'self'"), 'a fonte do próprio domínio precisa passar');
 });
 
 test('o service worker continua podendo ser registrado', () => {

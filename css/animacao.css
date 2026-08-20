@@ -65,39 +65,47 @@
 .mt-c-brilhar  { animation-name: mt-c-brilhar; }
 
 /* Entrada + contínua no mesmo elemento: os nomes vão em par, e o par de
-   tempos sai de MTAnim.estilo(). A contínua repete; a entrada, não. */
-.mt-e-aparecer.mt-c-flutuar  { animation-name: mt-e-aparecer, mt-c-flutuar; }
-.mt-e-aparecer.mt-c-pulsar   { animation-name: mt-e-aparecer, mt-c-pulsar; }
-.mt-e-aparecer.mt-c-balancar { animation-name: mt-e-aparecer, mt-c-balancar; }
-.mt-e-aparecer.mt-c-brilhar  { animation-name: mt-e-aparecer, mt-c-brilhar; }
-.mt-e-subir.mt-c-flutuar     { animation-name: mt-e-subir, mt-c-flutuar; }
-.mt-e-subir.mt-c-pulsar      { animation-name: mt-e-subir, mt-c-pulsar; }
-.mt-e-subir.mt-c-balancar    { animation-name: mt-e-subir, mt-c-balancar; }
-.mt-e-subir.mt-c-brilhar     { animation-name: mt-e-subir, mt-c-brilhar; }
-.mt-e-descer.mt-c-flutuar    { animation-name: mt-e-descer, mt-c-flutuar; }
-.mt-e-descer.mt-c-pulsar     { animation-name: mt-e-descer, mt-c-pulsar; }
-.mt-e-descer.mt-c-balancar   { animation-name: mt-e-descer, mt-c-balancar; }
-.mt-e-descer.mt-c-brilhar    { animation-name: mt-e-descer, mt-c-brilhar; }
-.mt-e-esquerda.mt-c-flutuar  { animation-name: mt-e-esquerda, mt-c-flutuar; }
-.mt-e-esquerda.mt-c-pulsar   { animation-name: mt-e-esquerda, mt-c-pulsar; }
-.mt-e-esquerda.mt-c-balancar { animation-name: mt-e-esquerda, mt-c-balancar; }
-.mt-e-esquerda.mt-c-brilhar  { animation-name: mt-e-esquerda, mt-c-brilhar; }
-.mt-e-direita.mt-c-flutuar   { animation-name: mt-e-direita, mt-c-flutuar; }
-.mt-e-direita.mt-c-pulsar    { animation-name: mt-e-direita, mt-c-pulsar; }
-.mt-e-direita.mt-c-balancar  { animation-name: mt-e-direita, mt-c-balancar; }
-.mt-e-direita.mt-c-brilhar   { animation-name: mt-e-direita, mt-c-brilhar; }
-.mt-e-crescer.mt-c-flutuar   { animation-name: mt-e-crescer, mt-c-flutuar; }
-.mt-e-crescer.mt-c-pulsar    { animation-name: mt-e-crescer, mt-c-pulsar; }
-.mt-e-crescer.mt-c-balancar  { animation-name: mt-e-crescer, mt-c-balancar; }
-.mt-e-crescer.mt-c-brilhar   { animation-name: mt-e-crescer, mt-c-brilhar; }
-.mt-e-estourar.mt-c-flutuar  { animation-name: mt-e-estourar, mt-c-flutuar; }
-.mt-e-estourar.mt-c-pulsar   { animation-name: mt-e-estourar, mt-c-pulsar; }
-.mt-e-estourar.mt-c-balancar { animation-name: mt-e-estourar, mt-c-balancar; }
-.mt-e-estourar.mt-c-brilhar  { animation-name: mt-e-estourar, mt-c-brilhar; }
-.mt-e-girar.mt-c-flutuar     { animation-name: mt-e-girar, mt-c-flutuar; }
-.mt-e-girar.mt-c-pulsar      { animation-name: mt-e-girar, mt-c-pulsar; }
-.mt-e-girar.mt-c-balancar    { animation-name: mt-e-girar, mt-c-balancar; }
-.mt-e-girar.mt-c-brilhar     { animation-name: mt-e-girar, mt-c-brilhar; }
+   tempos sai de MTAnim.estilo(). A contínua repete; a entrada, não.
+ *
+ * O `1, infinite` de cada regra é o que garante isso, e não é redundância.
+ * `animation-iteration-count` é uma LISTA que o navegador repete para cobrir
+ * todos os nomes: com um valor só — o `infinite` que as classes .mt-c-*
+ * declaram acima —, ele vale para as DUAS animações. Era o que acontecia:
+ * "Subir" + "Flutuar" fazia o elemento subir de novo, e de novo, para sempre.
+ * O olho lia como defeito, e numa peça de signage era o defeito mais visível
+ * que este arquivo podia produzir. */
+.mt-e-aparecer.mt-c-flutuar  { animation-name: mt-e-aparecer, mt-c-flutuar; animation-iteration-count: 1, infinite; }
+.mt-e-aparecer.mt-c-pulsar   { animation-name: mt-e-aparecer, mt-c-pulsar; animation-iteration-count: 1, infinite; }
+.mt-e-aparecer.mt-c-balancar { animation-name: mt-e-aparecer, mt-c-balancar; animation-iteration-count: 1, infinite; }
+.mt-e-aparecer.mt-c-brilhar  { animation-name: mt-e-aparecer, mt-c-brilhar; animation-iteration-count: 1, infinite; }
+.mt-e-subir.mt-c-flutuar     { animation-name: mt-e-subir, mt-c-flutuar; animation-iteration-count: 1, infinite; }
+.mt-e-subir.mt-c-pulsar      { animation-name: mt-e-subir, mt-c-pulsar; animation-iteration-count: 1, infinite; }
+.mt-e-subir.mt-c-balancar    { animation-name: mt-e-subir, mt-c-balancar; animation-iteration-count: 1, infinite; }
+.mt-e-subir.mt-c-brilhar     { animation-name: mt-e-subir, mt-c-brilhar; animation-iteration-count: 1, infinite; }
+.mt-e-descer.mt-c-flutuar    { animation-name: mt-e-descer, mt-c-flutuar; animation-iteration-count: 1, infinite; }
+.mt-e-descer.mt-c-pulsar     { animation-name: mt-e-descer, mt-c-pulsar; animation-iteration-count: 1, infinite; }
+.mt-e-descer.mt-c-balancar   { animation-name: mt-e-descer, mt-c-balancar; animation-iteration-count: 1, infinite; }
+.mt-e-descer.mt-c-brilhar    { animation-name: mt-e-descer, mt-c-brilhar; animation-iteration-count: 1, infinite; }
+.mt-e-esquerda.mt-c-flutuar  { animation-name: mt-e-esquerda, mt-c-flutuar; animation-iteration-count: 1, infinite; }
+.mt-e-esquerda.mt-c-pulsar   { animation-name: mt-e-esquerda, mt-c-pulsar; animation-iteration-count: 1, infinite; }
+.mt-e-esquerda.mt-c-balancar { animation-name: mt-e-esquerda, mt-c-balancar; animation-iteration-count: 1, infinite; }
+.mt-e-esquerda.mt-c-brilhar  { animation-name: mt-e-esquerda, mt-c-brilhar; animation-iteration-count: 1, infinite; }
+.mt-e-direita.mt-c-flutuar   { animation-name: mt-e-direita, mt-c-flutuar; animation-iteration-count: 1, infinite; }
+.mt-e-direita.mt-c-pulsar    { animation-name: mt-e-direita, mt-c-pulsar; animation-iteration-count: 1, infinite; }
+.mt-e-direita.mt-c-balancar  { animation-name: mt-e-direita, mt-c-balancar; animation-iteration-count: 1, infinite; }
+.mt-e-direita.mt-c-brilhar   { animation-name: mt-e-direita, mt-c-brilhar; animation-iteration-count: 1, infinite; }
+.mt-e-crescer.mt-c-flutuar   { animation-name: mt-e-crescer, mt-c-flutuar; animation-iteration-count: 1, infinite; }
+.mt-e-crescer.mt-c-pulsar    { animation-name: mt-e-crescer, mt-c-pulsar; animation-iteration-count: 1, infinite; }
+.mt-e-crescer.mt-c-balancar  { animation-name: mt-e-crescer, mt-c-balancar; animation-iteration-count: 1, infinite; }
+.mt-e-crescer.mt-c-brilhar   { animation-name: mt-e-crescer, mt-c-brilhar; animation-iteration-count: 1, infinite; }
+.mt-e-estourar.mt-c-flutuar  { animation-name: mt-e-estourar, mt-c-flutuar; animation-iteration-count: 1, infinite; }
+.mt-e-estourar.mt-c-pulsar   { animation-name: mt-e-estourar, mt-c-pulsar; animation-iteration-count: 1, infinite; }
+.mt-e-estourar.mt-c-balancar { animation-name: mt-e-estourar, mt-c-balancar; animation-iteration-count: 1, infinite; }
+.mt-e-estourar.mt-c-brilhar  { animation-name: mt-e-estourar, mt-c-brilhar; animation-iteration-count: 1, infinite; }
+.mt-e-girar.mt-c-flutuar     { animation-name: mt-e-girar, mt-c-flutuar; animation-iteration-count: 1, infinite; }
+.mt-e-girar.mt-c-pulsar      { animation-name: mt-e-girar, mt-c-pulsar; animation-iteration-count: 1, infinite; }
+.mt-e-girar.mt-c-balancar    { animation-name: mt-e-girar, mt-c-balancar; animation-iteration-count: 1, infinite; }
+.mt-e-girar.mt-c-brilhar     { animation-name: mt-e-girar, mt-c-brilhar; animation-iteration-count: 1, infinite; }
 
 /*
  * Modo leve: a peça continua igual, só para de se mexer.

@@ -93,6 +93,42 @@ test('a landing e o painel continuam de pé', async () => {
   assert.equal(vendor.status, 200);
 });
 
+test('/tv abre a TV direto no player', async () => {
+  /*
+   * É o endereço que se digita numa TV, com o controle remoto, letra por letra.
+   * `multitelas.up.railway.app/tv` precisa ser tudo — sem `/player.html`, sem
+   * `?cloud=1`, que ninguém acerta num teclado de televisão.
+   *
+   * A rota existia e não era guardada por teste nenhum: aparecia só como sonda
+   * de "o servidor subiu", e ali um 404 passaria despercebido, porque a sonda
+   * só quer que a porta responda. Quem apagasse a rota sem querer descobriria
+   * na frente de um cliente, com a TV na mão.
+   */
+  for (const caminho of ['/tv', '/tv/']) {
+    const r = await pedir(caminho);
+    assert.equal(r.status, 302, caminho + ' deixou de redirecionar');
+    assert.equal(r.headers.location, '/player.html?cloud=1', caminho + ' foi para outro lugar');
+    /*
+     * `no-store` importa: com o 302 no cache do navegador da TV, mudar para
+     * onde `/tv` aponta deixaria de valer para as telas que já abriram uma vez
+     * — e TV de recepção fica meses sem limpar cache.
+     */
+    assert.match(String(r.headers['cache-control'] || ''), /no-store/, caminho + ' virou redirect cacheável');
+  }
+
+  // `?new=1` passa adiante: é como se esquece a TV salva e se gera outro código.
+  const novo = await pedir('/tv?new=1');
+  assert.equal(novo.headers.location, '/player.html?cloud=1&new=1');
+});
+
+test('o destino de /tv é uma página de verdade', async () => {
+  // Redirecionar para lugar nenhum é um jeito silencioso de quebrar: o 302
+  // continua respondendo certo e a TV mostra uma tela em branco.
+  const r = await pedir('/player.html?cloud=1');
+  assert.equal(r.status, 200);
+  assert.match(r.corpo, /js\/player\.js/, 'o player não carrega o próprio motor');
+});
+
 test('diretório irmão de mesmo prefixo não vaza', async () => {
   // `startsWith(DIR)` sem separador aceita `/landing-old` como se fosse
   // `/landing`. O `%2e%2e` chega decodificado antes do roteamento.

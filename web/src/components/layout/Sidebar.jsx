@@ -18,11 +18,6 @@ const NAV = [
     { id: 'birthdays', label: 'Aniversariantes', icon: Cake },
     { id: 'team', label: 'Equipe', icon: Users2 },
     { id: 'billing', label: 'Plano', icon: CreditCard },
-    // `dono: true` some do menu de quem não é dono. O servidor já recusava
-    // com 403 (server.js), então a permissão nunca esteve em risco — o que
-    // havia era um item de menu que prometia uma porta trancada, e um membro
-    // da equipe clicava para receber erro.
-    { id: 'system', label: 'Estado do sistema', icon: Activity, dono: true },
     { id: 'settings', label: 'Ajustes', icon: Settings },
   ] },
   /*
@@ -35,6 +30,14 @@ const NAV = [
    */
   { section: 'Plataforma', operador: true, items: [
     { id: 'platform', label: 'Métricas da plataforma', icon: Gauge },
+    /*
+     * "Estado do sistema" morava na seção Conta, marcado como coisa de dono.
+     * O nome `owner` enganou: dono é de UMA EMPRESA CLIENTE, e o que a tela
+     * mostra é a infraestrutura do MultiTelas — banco, provedor de IA, bucket,
+     * estado dos textos legais. Cliente nenhum precisa disso, e vários deles
+     * juntos não deveriam ter.
+     */
+    { id: 'system', label: 'Estado do sistema', icon: Activity },
   ] },
 ];
 

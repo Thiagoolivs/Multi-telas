@@ -24,6 +24,21 @@ const db = new DatabaseSync(DB_FILE);
 
 db.exec(`
   PRAGMA journal_mode = WAL;
+  /*
+   * Sem isto, uma escrita que encontra o banco ocupado falha NA HORA com
+   * SQLITE_BUSY em vez de esperar a vez. O WAL deixa vários leitores e um
+   * escritor conviverem, mas dois escritores ainda disputam — e é o caso comum
+   * aqui: o servidor gravando um trabalho de IA enquanto outra requisição
+   * registra um evento.
+   *
+   * Apareceu na suíte de testes, que roda um processo por arquivo contra o
+   * mesmo arquivo de banco: um teste de persistência falhava de vez em quando
+   * porque o INSERT era recusado e o erro, por projeto, é engolido — gravar é
+   * o registro, não o produto. Falha intermitente em teste é sintoma, e o
+   * sintoma estava certo: em produção isso seria um trabalho que termina e
+   * não fica salvo, sem nada avisando.
+   */
+  PRAGMA busy_timeout = 5000;
   CREATE TABLE IF NOT EXISTS tenants (
     id TEXT PRIMARY KEY, name TEXT, created_at INTEGER,
     plan TEXT, plan_status TEXT, stripe_customer_id TEXT,
@@ -154,6 +169,25 @@ db.exec(`
    * Guardar o conteúdo junto seria fácil e seria errado: para saber que o
    * editor é usado não é preciso guardar o que foi escrito nele.
    */
+  /*
+   * Trabalhos de IA.
+   *
+   * Viviam só na memória do processo, e isso custava duas coisas diferentes:
+   * um deploy no meio de uma geração matava o trabalho, e uma geração PRONTA
+   * que ninguém tinha lido ainda ia junto — a pessoa voltava para buscar a
+   * campanha e recebia "o trabalho expirou".
+   *
+   * A coluna resultado é JSON em texto: cada tipo de trabalho devolve uma forma
+   * diferente, e dar colunas a cada uma amarraria o schema a cada função nova
+   * de IA que aparecesse.
+   */
+  CREATE TABLE IF NOT EXISTS jobs (
+    id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, tipo TEXT,
+    estado TEXT, etapa TEXT, detalhe TEXT, resultado TEXT, erro TEXT,
+    pedido TEXT, criado_em INTEGER, terminado_em INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_jobs_tenant ON jobs(tenant_id, criado_em);
+  CREATE INDEX IF NOT EXISTS idx_jobs_estado ON jobs(estado);
   CREATE TABLE IF NOT EXISTS eventos (
     id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at INTEGER
   );
@@ -657,6 +691,38 @@ async function contasAtivas(desde) { return Number(qEv.contasAtivas.get(desde ||
 async function pessoasAtivas(desde) { return Number(qEv.pessoasAtivas.get(desde || 0).n); }
 async function limparEventos(antesDe) { qEv.limpar.run(antesDe); }
 
+/* ---------------- Trabalhos de IA ---------------- */
+/*
+ * O trabalho vive na memória enquanto roda (é lá que a função async está) e
+ * no banco para sobreviver a reinício. Estas funções são só o lado do banco;
+ * quem orquestra é server/jobs.js.
+ */
+const qJobs = {
+  inserir: db.prepare(`INSERT INTO jobs (id, tenant_id, user_id, tipo, estado, etapa, detalhe, resultado, erro, pedido, criado_em, terminado_em)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+  atualizar: db.prepare(`UPDATE jobs SET estado = ?, etapa = ?, detalhe = ?, resultado = ?, erro = ?, terminado_em = ?
+                         WHERE id = ?`),
+  porId: db.prepare('SELECT * FROM jobs WHERE id = ?'),
+  doTenant: db.prepare('SELECT * FROM jobs WHERE tenant_id = ? AND criado_em > ? ORDER BY criado_em DESC LIMIT ?'),
+  interromper: db.prepare("UPDATE jobs SET estado = 'erro', erro = ?, terminado_em = ? WHERE estado = 'rodando'"),
+  limpar: db.prepare('DELETE FROM jobs WHERE criado_em < ?'),
+};
+
+async function salvarJob(j) {
+  qJobs.inserir.run(j.id, j.tenantId, j.userId || null, j.tipo || '', j.estado, j.etapa || '', j.detalhe || '',
+    j.resultado == null ? null : JSON.stringify(j.resultado), j.erro || null,
+    j.pedido == null ? null : JSON.stringify(j.pedido), j.criadoEm, j.terminadoEm || null);
+}
+async function atualizarJob(j) {
+  qJobs.atualizar.run(j.estado, j.etapa || '', j.detalhe || '',
+    j.resultado == null ? null : JSON.stringify(j.resultado), j.erro || null, j.terminadoEm || null, j.id);
+}
+async function lerJob(id) { return qJobs.porId.get(id) || null; }
+async function listarJobs(tenantId, desde, limite) { return qJobs.doTenant.all(tenantId, desde || 0, limite || 20); }
+async function interromperJobs(motivo) { qJobs.interromper.run(motivo, Date.now()); }
+async function limparJobs(antesDe) { qJobs.limpar.run(antesDe); }
+
+
 const qRec = {
   add: db.prepare('INSERT INTO reclamacoes (id, tenant_id, user_id, email, tipo, texto, status, resposta, created_at, resolvido_em) VALUES (?, ?, ?, ?, ?, ?, ?, \'\', ?, 0)'),
   todas: db.prepare('SELECT * FROM reclamacoes ORDER BY created_at DESC LIMIT ?'),
@@ -703,6 +769,72 @@ const qPlat = {
       (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id) AS pessoas
     FROM tenants t ORDER BY telas DESC, t.created_at ASC LIMIT 20`),
 };
+
+/*
+ * A ficha de UMA conta, para a supervisão.
+ *
+ * Existia só a lista das maiores, ordenada por número de telas — útil para
+ * saber quem é grande, inútil para saber quem está com problema. Um cliente
+ * que liga dizendo "não funciona" precisa de uma tela onde esteja tudo dele:
+ * plano, telas no ar, uso de IA e o que a conta já gastou.
+ */
+const qFicha = {
+  conta: db.prepare(`SELECT id, name, created_at, COALESCE(plan, 'free') AS plano, plan_status,
+      stripe_subscription_id, creditos_franquia, creditos_comprados, creditos_ciclo
+    FROM tenants WHERE id = ?`),
+  pessoas: db.prepare('SELECT id, email, role, name, created_at FROM users WHERE tenant_id = ? ORDER BY created_at ASC LIMIT 50'),
+  telas: db.prepare(`SELECT id, name, last_seen, updated_at FROM devices WHERE tenant_id = ? ORDER BY last_seen DESC LIMIT 100`),
+  midia: db.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM media WHERE tenant_id = ?'),
+  pecas: db.prepare('SELECT COUNT(*) AS n FROM library WHERE tenant_id = ?'),
+  eventos: db.prepare('SELECT COUNT(*) AS n FROM eventos WHERE tenant_id = ? AND created_at > ?'),
+  buscar: db.prepare(`SELECT t.id, t.name, COALESCE(t.plan, 'free') AS plano, t.plan_status, t.created_at,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id AND d.last_seen > ?) AS vivas,
+      (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id) AS pessoas,
+      (SELECT email FROM users u WHERE u.tenant_id = t.id ORDER BY created_at ASC LIMIT 1) AS dono
+    FROM tenants t
+    WHERE (? = '' OR LOWER(t.name) LIKE ? OR t.id LIKE ?
+           OR EXISTS (SELECT 1 FROM users u WHERE u.tenant_id = t.id AND LOWER(u.email) LIKE ?))
+    ORDER BY t.created_at DESC LIMIT ?`),
+};
+
+async function fichaDaConta(tenantId, desde) {
+  const c = qFicha.conta.get(tenantId);
+  if (!c) return null;
+  const m = qFicha.midia.get(tenantId);
+  return {
+    id: c.id, nome: c.name, criadaEm: Number(c.created_at) || 0,
+    plano: c.plano, planoStatus: c.plan_status || 'free',
+    assinatura: !!c.stripe_subscription_id,
+    creditos: {
+      franquia: Number(c.creditos_franquia) || 0,
+      comprados: Number(c.creditos_comprados) || 0,
+      cicloEm: Number(c.creditos_ciclo) || 0,
+    },
+    pessoas: qFicha.pessoas.all(tenantId).map((u) => ({
+      id: u.id, email: u.email, papel: u.role, nome: u.name, criadoEm: Number(u.created_at) || 0,
+    })),
+    telas: qFicha.telas.all(tenantId).map((d) => ({
+      id: d.id, nome: d.name, ultimaVez: Number(d.last_seen) || 0, configEm: Number(d.updated_at) || 0,
+    })),
+    midiaBytes: Number(m.bytes) || 0,
+    midiaArquivos: Number(m.n) || 0,
+    pecas: Number(qFicha.pecas.get(tenantId).n) || 0,
+    acoes: Number(qFicha.eventos.get(tenantId, desde || 0).n) || 0,
+    usoIA: await resumoUsoIA(tenantId, desde || 0),
+  };
+}
+
+async function buscarContas(termo, vivaDesde, limite) {
+  const t = String(termo || '').trim().toLowerCase();
+  const like = '%' + t + '%';
+  return qFicha.buscar.all(vivaDesde || 0, t, like, like, like, limite || 30).map((r) => ({
+    id: r.id, nome: r.name, dono: r.dono || '', plano: r.plano, planoStatus: r.plan_status || 'free',
+    criadaEm: Number(r.created_at) || 0,
+    telas: Number(r.telas), vivas: Number(r.vivas), pessoas: Number(r.pessoas),
+  }));
+}
+
 async function numerosDaPlataforma(agora, vivaDesde, desde) {
   return {
     contas: Number(qPlat.contas.get().n),
@@ -904,7 +1036,9 @@ module.exports = {
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,
   listarOperadores, addOperador, removerOperador,
+  fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
+  salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
 };

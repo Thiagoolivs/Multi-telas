@@ -130,8 +130,18 @@ internet**, sem hospedar `config.json` na mão.
    nada.
 2. No painel (celular ou PC), no card **"Controlar TV pelo celular"**, **crie
    uma conta / faça login**.
-3. Na TV, abra o player com `?cloud=1` no fim da URL — aparece um **código de
-   pareamento**.
+3. Na TV, abra **`seu-dominio/tv`** — aparece um **código de pareamento**.
+
+   Esse endereço existe porque ele é digitado com um controle remoto, letra por
+   letra, num teclado de televisão. `/player.html?cloud=1` funciona igual e
+   ninguém acerta: são dois pontos, uma barra e uma interrogação. `/tv` é tudo.
+
+   ```
+   https://multitelas.up.railway.app/tv
+   ```
+
+   `/tv?new=1` faz a TV esquecer o pareamento salvo e gerar outro código —
+   é o que se usa ao trocar a televisão de sala ou de cliente.
 4. No painel, digite o código para **parear** — a TV passa a pertencer à sua
    conta. A partir daí, ao salvar, o conteúdo é enviado para a TV **na hora**
    (via SSE).
@@ -158,6 +168,62 @@ ver os dados de todos os clientes. **Sem a variável, o painel não aparece e a
 rota responde 404** — "sem configuração, o dono da primeira conta vira operador"
 transformaria uma instalação nova numa porta aberta.
 
+O **Estado do sistema** (banco, provedor de IA, bucket, textos legais) também
+mora aqui. É infraestrutura de quem VENDE o produto, não de quem o compra.
+
+O painel traz ainda **supervisão por conta** — procure por nome, e-mail do dono
+ou id e abra a ficha: plano, telas e quando cada uma apareceu por último, uso
+de IA, o que já gastou, conexões abertas e se a conta esbarrou em algum teto.
+
+### Os freios
+
+`server/limites.js` põe teto por **conta inteira**, além dos limites por rota
+que já existiam — vinte rotas a trinta por hora somam seiscentas chamadas sem
+nenhuma passar do próprio teto, e as rotas comuns não tinham teto nenhum.
+
+O que ele defende é a máquina, não o custo de IA (isso é crédito). Um laço no
+navegador de um cliente, um script que repete, uma TV que reabre conexão sem
+fechar a anterior: nenhum é ataque, e todos derrubam o servidor de todo mundo.
+
+| | teto | postura |
+|---|---|---|
+| painel | 600 / 5 min por conta | **bloqueia** (429) |
+| player | 1200 / 5 min por conta | **só mede, nunca bloqueia** |
+| upload | 120 / hora por conta | bloqueia |
+| conexões SSE | 4 por tela · 4×telas (mín. 20) por conta · 2000 no servidor | recusa com 503 |
+
+**O player nunca é bloqueado, e isso é o princípio, não um esquecimento:**
+derrubar a TV de uma recepção porque o painel de alguém entrou em laço puniria
+quem não fez nada, na parede, na frente dos clientes dele. Do outro lado do
+painel há uma pessoa que vê o aviso e pode parar; do outro lado do player há só
+uma parede. O tráfego da tela é medido mesmo assim — é como uma TV com defeito
+de rede aparece na supervisão antes de alguém ligar reclamando.
+
+A classificação é por **quem está autenticado**, não por caminho de URL:
+`/api/devices/:id/config` é chamado pelos dois, e classificar por URL faria um
+painel em laço passar despercebido num orçamento que nunca bloqueia.
+
+### Contas liberadas para testar
+
+Para mandar o produto a alguém experimentar sem passar pelo teste de 14 dias:
+
+```
+CONTAS_CORTESIA=amigo@empresa.com,cliente@teste.com
+```
+
+Quem está na lista recebe os limites do plano **Pro** — telas, crédito de IA,
+armazenamento e todos os recursos — sem cobrança e sem prazo. A tela de Plano
+diz "Cortesia", para a pessoa não achar que está pagando.
+
+**A lista manda nos dois sentidos:** tirar o e-mail devolve a conta ao grátis
+no próximo login. Sem isso, cada cortesia duraria para sempre e seguiria
+gastando chamada de modelo muito depois do teste.
+
+Duas coisas que ela **não** faz: não toca em conta com assinatura ativa, e
+**não dá acesso ao painel da plataforma** — isso é `ADMIN_EMAILS`, e são duas
+variáveis justamente para que acrescentar um testador nunca possa virar "essa
+pessoa agora vê todos os clientes" por descuido de digitação.
+
 ---
 
 ## Estrutura do projeto
@@ -179,7 +245,16 @@ multitelas/
 │   ├── render.js        # Renderiza cada tipo de conteúdo
 │   ├── player.js        # Motor de exibição (zonas, rotação, decorações)
 │   └── admin.js         # Lógica do painel de administração
-├── server.js            # Servidor estático (deploy Railway/Node)
+├── fonts/               # As 14 famílias (OFL), servidas do próprio domínio
+│   ├── fontes.css        # GERADO — todas as @font-face
+│   ├── arquivos/         # os .woff2
+│   └── licencas/         # a OFL de cada família (a licença vai junto)
+├── tools/
+│   └── baixar-fontes.mjs # Regera fonts/ — rode ao acrescentar família
+├── server/              # Módulos do servidor (auth, billing, IA, log, erros…)
+├── web/                 # Painel React (Vite) → build em /app
+├── test/                # `npm test`
+├── server.js            # Servidor (rotas)
 └── README.md
 ```
 

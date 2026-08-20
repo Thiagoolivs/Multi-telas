@@ -106,12 +106,42 @@ test('toda classe do catálogo existe no CSS', () => {
   }
 });
 
-test('as contínuas repetem para sempre; as entradas, não', () => {
+test('as contínuas repetem para sempre', () => {
   const i = CSS.indexOf('animation-iteration-count: infinite');
   assert.ok(i > 0, 'as animações contínuas deixaram de repetir');
-  // A regra do infinito só pode alcançar as contínuas.
   const seletor = CSS.slice(CSS.lastIndexOf('\n.', i), i);
-  assert.ok(!/mt-e-/.test(seletor), 'uma animação de ENTRADA passou a repetir para sempre: ' + seletor.trim());
+  assert.ok(!/mt-e-/.test(seletor), 'a regra do infinito alcançou uma classe de ENTRADA: ' + seletor.trim());
+});
+
+test('a ENTRADA roda uma vez, mesmo acompanhada de uma contínua', () => {
+  /*
+   * Este teste substitui um meu que passava com o defeito no lugar.
+   *
+   * O antigo conferia o SELETOR da regra do infinito e se dava por satisfeito
+   * porque ali não havia `mt-e-`. Só que a pergunta certa não é sobre o
+   * seletor — é sobre o ELEMENTO, que carrega as duas classes ao mesmo tempo.
+   * `animation-iteration-count` é uma lista que o navegador repete para cobrir
+   * todos os nomes: com um valor só, o `infinite` das contínuas valia também
+   * para a entrada. "Subir" + "Flutuar" subia de novo, e de novo, para sempre.
+   *
+   * Agora a conferência é feita como o navegador faz: para cada combinação,
+   * quantos nomes de animação existem e quantas contagens de iteração.
+   */
+  const combinadas = [...CSS.matchAll(/(\.mt-e-[a-z]+\.mt-c-[a-z]+)\s*\{([^}]*)\}/g)];
+  assert.equal(combinadas.length, A.ENTRADAS.filter((e) => e.classe).length * A.CONTINUAS.filter((c) => c.classe).length,
+    'faltam combinações de entrada + contínua no CSS');
+
+  for (const [, seletor, corpo] of combinadas) {
+    const nomes = /animation-name:\s*([^;]+);/.exec(corpo);
+    assert.ok(nomes, seletor + ' sem animation-name');
+    assert.equal(nomes[1].split(',').length, 2, seletor + ' deveria declarar duas animações');
+
+    const contagem = /animation-iteration-count:\s*([^;]+);/.exec(corpo);
+    assert.ok(contagem, seletor + ' não fixa a contagem — a entrada herda o `infinite` da contínua e repete para sempre');
+    const valores = contagem[1].split(',').map((v) => v.trim());
+    assert.deepEqual(valores, ['1', 'infinite'],
+      seletor + ': a entrada tem que rodar uma vez e a contínua repetir, nessa ordem');
+  }
 });
 
 /* ---------------- A leitura ---------------- */

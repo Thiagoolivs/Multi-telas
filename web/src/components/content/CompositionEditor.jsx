@@ -175,6 +175,15 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [aiBrief, setAiBrief] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   /*
+   * A etapa e o erro da IA na própria barra, em vez de `alert()`.
+   *
+   * O alerta do navegador rouba o foco, some ao clicar e não sobrevive a
+   * trocar de aba — três coisas ruins para uma mensagem que costuma dizer o
+   * que fazer em seguida.
+   */
+  const [aiEtapa, setAiEtapa] = useState('');
+  const [aiErro, setAiErro] = useState('');
+  /*
    * O pedido guiado da IA.
    *
    * A barra anterior tinha um campo só: "descreva a peça". Quem quisesse um
@@ -189,6 +198,30 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [g1, setG1] = useState('#1e3a8a');
   const [g2, setG2] = useState('#0a1020');
   const [gType, setGType] = useState('linear');
+
+  /*
+   * Voltar para uma peça que a IA ainda está compondo.
+   *
+   * O trabalho roda no servidor: fechar a aba nunca cancelou nada, mas antes o
+   * resultado não tinha para onde voltar — a pessoa reabria o editor e a peça
+   * simplesmente não estava lá, junto com o crédito que já tinha sido gasto.
+   *
+   * `aplicarDaIA` fica numa ref porque este efeito roda uma vez, na montagem,
+   * e não pode depender de uma função que muda a cada render — dependeria, e
+   * o efeito reiniciaria o acompanhamento a cada tecla digitada.
+   */
+  const aplicarRef = useRef(null);
+  useEffect(() => {
+    if (!ai.pendente('peca-do-editor')) return undefined;
+    const sinal = { parado: false };
+    setAiBusy(true);
+    setAiEtapa('retomando a peça que ficou gerando…');
+    ai.retomar('peca-do-editor', (s) => setAiEtapa(s.etapa || 'compondo…'), sinal)
+      .then((res) => { if (res && aplicarRef.current) aplicarRef.current(res, false); })
+      .catch((e) => setAiErro(e.message || 'não consegui retomar a peça'))
+      .finally(() => { if (!sinal.parado) { setAiBusy(false); setAiEtapa(''); } });
+    return () => { sinal.parado = true; };
+  }, []);
 
   const canvasRef = useRef(null);
   const wrapRef = useRef(null);
@@ -705,9 +738,45 @@ export function CompositionEditor({ value, onClose, onSave }) {
     icone: 'um ícone que combine com a peça',
   };
 
+  /*
+   * O que fazer com o que a IA devolveu.
+   *
+   * Separado de `runAi` porque duas entradas levam até aqui: o clique de agora
+   * e o trabalho retomado de uma sessão anterior. Enquanto isto vivia dentro
+   * de `runAi`, retomar significava reproduzir a mesma lógica num segundo
+   * lugar — e o segundo lugar é sempre o que fica para trás.
+   */
+  const aplicarDaIA = useCallback((res, substituir) => {
+    const vindos = (res.elementos || [])
+      // Honra o tipo que veio; descarta o que o editor não sabe desenhar,
+      // em vez de reetiquetar como texto e produzir uma peça sem sentido.
+      .filter((e) => TIPOS_DA_IA.includes(e.tipo || 'texto'))
+      .map((e) => ({ ...e, tipo: e.tipo || 'texto' }));
+
+    /*
+     * Pedir UM elemento não pode trocar o fundo da peça.
+     *
+     * O fundo é decisão da peça inteira. Quem pediu "um ícone no canto"
+     * acabava com o fundo repintado pela IA — e o trabalho de fundo, que
+     * costuma ser o primeiro a ficar pronto, ia embora sem aviso.
+     */
+    const trocaFundo = !aiTipo && res.bg && res.bg.cor;
+
+    editar((d) => ({
+      ...d,
+      bg: trocaFundo ? { kind: 'cor', cor: res.bg.cor } : d.bg,
+      els: substituir ? entrar(vindos) : [...d.els, ...entrar(vindos)],
+    }), null);
+    setSel([]);
+    setAiOpen(false);
+  }, [aiTipo, editar]);
+  aplicarRef.current = aplicarDaIA;
+
   async function runAi(substituir) {
     if (!aiBrief.trim() && !aiTipo) return;
     setAiBusy(true);
+    setAiErro('');
+    setAiEtapa('');
     try {
       /*
        * O que a IA precisa saber para não compor às cegas.
@@ -728,31 +797,11 @@ export function CompositionEditor({ value, onClose, onSave }) {
         onde: aiOnde,
         cor: aiCor,
         estilo: aiEstilo,
-      });
-      const vindos = (res.elementos || [])
-        // Honra o tipo que veio; descarta o que o editor não sabe desenhar,
-        // em vez de reetiquetar como texto e produzir uma peça sem sentido.
-        .filter((e) => TIPOS_DA_IA.includes(e.tipo || 'texto'))
-        .map((e) => ({ ...e, tipo: e.tipo || 'texto' }));
-
-      /*
-       * Pedir UM elemento não pode trocar o fundo da peça.
-       *
-       * O fundo é decisão da peça inteira. Quem pediu "um ícone no canto"
-       * acabava com o fundo repintado pela IA — e o trabalho de fundo, que
-       * costuma ser o primeiro a ficar pronto, ia embora sem aviso.
-       */
-      const trocaFundo = !aiTipo && res.bg && res.bg.cor;
-
-      editar((d) => ({
-        ...d,
-        bg: trocaFundo ? { kind: 'cor', cor: res.bg.cor } : d.bg,
-        els: substituir ? entrar(vindos) : [...d.els, ...entrar(vindos)],
-      }), null);
-      setSel([]);
-      setAiOpen(false);
-    } catch (err) { alert(err.message || 'Falha na IA'); }
+      }, (st) => setAiEtapa(st.etapa || 'compondo…'));
+      aplicarDaIA(res, substituir);
+    } catch (err) { setAiErro(err.message || 'A IA não conseguiu terminar.'); }
     setAiBusy(false);
+    setAiEtapa('');
   }
 
   /* ---------------- Fundo ---------------- */
@@ -928,6 +977,29 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 onClick={() => runAi(true)}>Substituir tudo</Button>
             )}
           </div>
+
+          {/*
+            A etapa e o erro ficam AQUI, na barra, e não num alerta do
+            navegador: o alerta rouba o foco, some ao primeiro clique e não
+            sobrevive a trocar de aba — três defeitos para uma mensagem que
+            costuma dizer o que fazer em seguida.
+
+            A frase sobre poder sair não é enfeite. A pessoa não tem como
+            adivinhar que o trabalho continua no servidor, e sem saber disso
+            ela fica olhando a tela porque tem medo de perder o que pagou.
+          */}
+          {aiBusy && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-ink-3">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+              <span>{aiEtapa || 'compondo…'}</span>
+              <span className="text-ink-3">· pode fechar e voltar depois, a peça continua sendo feita</span>
+            </div>
+          )}
+          {aiErro && !aiBusy && (
+            <div className="mt-2 rounded-md border border-danger/30 bg-danger-soft px-2.5 py-1.5 text-xs text-danger">
+              {aiErro}
+            </div>
+          )}
         </div>
       )}
 

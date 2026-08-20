@@ -28,6 +28,8 @@ const reconectar = require('./server/reconectar');
 const usoIA = require('./server/uso-ia');
 const creditos = require('./server/creditos');
 const security = require('./server/security');
+const { log } = require('./server/log.js');
+const erros = require('./server/erros.js');
 const diagnostico = require('./server/diagnostico');
 const { rateLimit, clientIp, safeEqual, isSecureRequest } = security;
 const mail = require('./server/mail');
@@ -37,6 +39,8 @@ const ai = require('./server/ai');
 const director = require('./server/ai-director');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
+const cortesia = require('./server/cortesia.js');
+const limites = require('./server/limites.js');
 const passes = require('./server/passes.js');
 const metricas = require('./server/metricas.js');
 const ds = require('./server/design-system');
@@ -60,6 +64,7 @@ const MIME = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json',
   '.webp': 'image/webp', '.gif': 'image/gif', '.mp4': 'video/mp4', '.webm': 'video/webm',
+  '.woff2': 'font/woff2', '.woff': 'font/woff', '.txt': 'text/plain; charset=utf-8',
 };
 
 // Assinantes SSE por device (em memória).
@@ -132,11 +137,35 @@ function readBody(req, res, cb) {
   req.on('end', () => {
     let parsed; try { parsed = data ? JSON.parse(data) : {}; } catch (e) { parsed = null; }
     Promise.resolve(cb(parsed)).catch((e) => {
-      console.warn('[api]', e.message);
+      erros.registrar(e, { rota: req.url, metodo: req.method, onde: 'corpo da requisição' });
       try { sendJson(res, 500, { error: 'erro interno' }); } catch (_) {}
     });
   });
 }
+/*
+ * Toda geração de IA vira TRABALHO — devolve 202 com um id e o painel
+ * acompanha por polling.
+ *
+ * Antes só o diretor de campanha fazia isso, porque era o único que passava do
+ * tempo de uma requisição. As outras oito eram síncronas, e o defeito era o
+ * mesmo em tamanho menor: fechar a aba, trocar de página ou o celular perder a
+ * rede por dez segundos matava o pedido — e o crédito de IA já tinha sido
+ * gasto. Trabalho de dois segundos que sobrevive vale mais que trabalho de dois
+ * segundos que às vezes se perde.
+ *
+ * `tipo` e `pedido` são gravados junto: é o que permite a pessoa voltar e
+ * reconhecer o que estava esperando, em vez de encarar um id.
+ */
+function emTrabalho(res, sess, tipo, pedido, tarefa) {
+  try {
+    const job = jobs.criar(sess.tenant_id, tarefa, { tipo, pedido, userId: sess.user_id });
+    return sendJson(res, 202, jobs.publico(job));
+  } catch (e) {
+    // O único erro que `criar` levanta é o teto por conta, e ele tem status.
+    return sendJson(res, e.status || 500, { error: e.message });
+  }
+}
+
 function broadcast(deviceId, event, payload) {
   const set = subscribers[deviceId];
   if (!set) return;
@@ -154,7 +183,7 @@ async function avisarTelas(tenantId, event, payload) {
   try {
     const telas = await db.listDevices(tenantId);
     for (const d of telas) if (subscribers[d.id]) broadcast(d.id, event, payload || {});
-  } catch (e) { console.warn('[sse]', e.message); }
+  } catch (e) { erros.registrar(e, { onde: 'aviso às telas', tenant: tenantId }); }
 }
 function validEmail(e) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e || '')); }
 // Base absoluta da requisição (para montar URLs de checkout/portal).
@@ -253,9 +282,51 @@ async function lerImagens(urls) {
 }
 
 /* ---------------- API ---------------- */
+/*
+ * A qual classe de tráfego esta requisição pertence (ver server/limites.js).
+ *
+ * A classificação é por QUEM ESTÁ AUTENTICADO, não por caminho de URL, e essa
+ * é a correção que importa: `/api/devices/:id/config` é chamado pelos DOIS —
+ * pelo painel, para salvar, e pela TV, para ler. Classificar pela URL faria as
+ * duas coisas caírem no mesmo balde, e um painel em laço passaria despercebido
+ * por estar num orçamento que nunca bloqueia.
+ *
+ * Sessão de navegador é painel; token de tela é player. O player é medido e
+ * NUNCA bloqueado — é o princípio "a tela nunca para": derrubar a TV de uma
+ * recepção porque o painel de alguém entrou em laço puniria quem não fez nada,
+ * na parede, na frente dos clientes dele. Do outro lado do painel há uma pessoa
+ * que vê o aviso e pode parar; do outro lado do player há só uma parede.
+ */
+function classeDaSessao(parts, method) {
+  if (parts[1] === 'media' && method === 'POST') return 'upload';
+  return 'painel';
+}
+
 async function handleApi(req, res, pathname, query) {
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
   const sess = await auth.currentSession(req);
+
+  /*
+   * O FREIO DA CONTA INTEIRA, antes de qualquer rota.
+   *
+   * Os limites por rota já existiam, e cada um deles é razoável sozinho — o
+   * problema é a soma: vinte rotas a trinta por hora dão seiscentas chamadas
+   * por hora sem nenhuma passar do próprio teto, e as rotas comuns (salvar
+   * config, listar mídia, publicar) não tinham teto nenhum.
+   *
+   * Fica aqui em cima, e não espalhado, pelo mesmo motivo da porta da
+   * plataforma: espalhar é como se esquece uma, e a que se esquece é a que
+   * alguém encontra.
+   */
+  if (sess && sess.tenant_id) {
+    const classe = classeDaSessao(parts, req.method);
+    const v = limites.permitir(classe, sess.tenant_id);
+    if (!v.ok) {
+      return sendJson(res, 429, {
+        error: 'muitas requisições desta conta em pouco tempo. Espere um instante e tente de novo.',
+      }, { 'Retry-After': String(v.retryAfter) });
+    }
+  }
 
   /*
    * Desenho de QR. Aberto de propósito: é uma função pura do texto pedido, não
@@ -318,6 +389,9 @@ async function handleApi(req, res, pathname, query) {
         // Sem convite: cria uma nova empresa e o usuário vira dono (owner).
         const { userId, tenantId } = await db.createAccount(email, passHash, b.name, b.name);
         await db.registrarAceite(tenantId, userId, email, legal.VERSAO, 'cadastro', clientIp(req));
+        // Convidado para testar entra já com a conta liberada, sem passar pelo
+        // teste de 14 dias — ver server/cortesia.js.
+        await cortesia.sincronizar(db, tenantId, email);
         await auth.startSession(res, userId, tenantId, req);
         return sendJson(res, 201, { user: { email, role: 'owner' }, tenant: { id: tenantId, name: b.name || email } });
       });
@@ -334,6 +408,15 @@ async function handleApi(req, res, pathname, query) {
         const u = await db.getUserByEmail(email);
         if (!u || !auth.verifyPassword(b.password, u.pass_hash))
           return sendJson(res, 401, { error: 'e-mail ou senha incorretos' });
+        /*
+         * A lista de cortesia é conferida no LOGIN, e não a cada requisição.
+         *
+         * É uma escrita no banco; reagir em um segundo em vez de no próximo
+         * login não paga uma escrita por página carregada. Na prática,
+         * acrescentar alguém à lista vale a partir do próximo login dessa
+         * pessoa — que é quando ela vai olhar, porque foi quando você avisou.
+         */
+        await cortesia.sincronizar(db, u.tenant_id, u.email);
         await auth.startSession(res, u.id, u.tenant_id, req);
         return sendJson(res, 200, { user: { email }, tenant: { id: u.tenant_id } });
       });
@@ -382,7 +465,7 @@ async function handleApi(req, res, pathname, query) {
         } catch (e) {
           // Resposta genérica também na falha: um 502 aqui e um 200 no e-mail
           // inexistente diriam, pela diferença, quais contas existem na base.
-          console.error('[forgot] falha ao enviar e-mail:', e.message);
+          erros.registrar(e, { onde: 'recuperação de senha' });
           return sendJson(res, 200, generic);
         }
         return sendJson(res, 200, generic);
@@ -486,13 +569,17 @@ async function handleApi(req, res, pathname, query) {
             u = { id: userId, tenant_id: tenantId };
           }
         }
+        // Entrar pelo Google é entrada de conta como qualquer outra: a lista
+        // de cortesia vale aqui também, senão quem você convidou pelo Google
+        // cairia no teste de 14 dias sem entender por quê.
+        await cortesia.sincronizar(db, u.tenant_id, email);
         await auth.startSession(res, u.id, u.tenant_id, req);
         // Limpa o cookie de state e entra no painel.
         res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), 'mt_oauth=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'].flat().filter(Boolean));
         res.writeHead(302, { Location: '/app/', 'Cache-Control': 'no-store' });
         return res.end();
       } catch (e) {
-        console.error('[google] ', e.message);
+        erros.registrar(e, { onde: 'login com Google' });
         return fail('login-google-falhou');
       }
     }
@@ -668,7 +755,7 @@ async function handleApi(req, res, pathname, query) {
         // calibrada com dado em vez de palpite.
         await usoIA.cobrar(db, tenantTexto, { tipo: TIPO_IA[parts[2]], quantidade: 1, userId: sess.user_id, referencia: parts[2] });
       }
-    } catch (e) { console.warn('[uso-ia] medição falhou:', e.message); }
+    } catch (e) { log.aviso('uso-ia.medicao-falhou', { motivo: e.message }); }
   }
 
   if (parts[1] === 'ai' && parts[2] === 'generate-campaign') {
@@ -679,10 +766,10 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const answers = (b && b.answers) || {};
       if (!answers.objetivo || !String(answers.objetivo).trim()) return sendJson(res, 400, { error: 'informe o objetivo da campanha' });
-      try {
+      return emTrabalho(res, sess, 'campanha-simples', { brief: String(answers.objetivo).slice(0, 200) }, async () => {
         const campaign = await ai.generateCampaign(answers, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '', zones: (b && b.zones) || [] });
-        return sendJson(res, 200, { mode: ai.mode(), ...campaign });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), ...campaign };
+      });
     });
   }
 
@@ -695,10 +782,10 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva o que você quer' });
-      try {
+      return emTrabalho(res, sess, 'conteudo', { brief: String(brief).slice(0, 200) }, async () => {
         const items = await ai.generateContent(brief, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '' });
-        return sendJson(res, 200, { mode: ai.mode(), items });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), items };
+      });
     });
   }
 
@@ -842,7 +929,7 @@ async function handleApi(req, res, pathname, query) {
     } catch (e) {
       if (e.status === 413) return sendJson(res, 413, { error: 'essa foto passa de ' + muralLib.MAX_MB + ' MB — tente outra' });
       if (e.status === 415) return sendJson(res, 415, { error: 'esse tipo de arquivo não abre na TV' });
-      console.warn('[mural]', e.message);
+      erros.registrar(e, { onde: 'mural de fotos' });
       return sendJson(res, 500, { error: 'não foi possível salvar — tente de novo' });
     }
   }
@@ -1086,6 +1173,74 @@ async function handleApi(req, res, pathname, query) {
       });
     }
 
+    /*
+     * O que quebrou, agrupado. Vive na memória do processo (ver
+     * server/erros.js) — some no deploy, e some de propósito: erro é sintoma
+     * do que está rodando AGORA, não histórico do cliente.
+     *
+     * Só operador vê: a pilha diz caminho de arquivo e nome de função, que é
+     * mapa da casa para quem estiver procurando por onde entrar.
+     */
+    /*
+     * SUPERVISÃO POR CONTA.
+     *
+     * Havia só "maiores contas", ordenada por número de telas: diz quem é
+     * grande e não diz quem está com problema. Quando um cliente liga dizendo
+     * "não está funcionando", o que se precisa é de uma tela com tudo dele —
+     * plano, telas e quando cada uma apareceu pela última vez, uso de IA, o que
+     * ele já gastou, e se a conta está esbarrando em algum teto.
+     */
+    if (req.method === 'GET' && parts[2] === 'contas' && !parts[3]) {
+      const dias = Math.min(180, Math.max(1, Number(query && query.dias) || 30));
+      const vivaDesde = Date.now() - metricas.JANELA_TELA_VIVA_MS;
+      const itens = await db.buscarContas((query && query.q) || '', vivaDesde, 40);
+      /*
+       * O sinal de excesso vem junto da linha, e não numa tela separada: quem
+       * varre a lista procurando problema não deveria ter que abrir conta por
+       * conta para descobrir qual delas está em laço.
+       */
+      return sendJson(res, 200, {
+        itens: itens.map((c) => ({
+          ...c,
+          conexoes: limites.conexoesDaConta(c.id),
+          excessos: limites.excessosDaConta(c.id),
+        })),
+      });
+    }
+    if (req.method === 'GET' && parts[2] === 'contas' && parts[3]) {
+      const dias = Math.min(180, Math.max(1, Number(query && query.dias) || 30));
+      const ficha = await db.fichaDaConta(parts[3], Date.now() - dias * 24 * 60 * 60 * 1000);
+      if (!ficha) return sendJson(res, 404, { error: 'conta não encontrada' });
+      return sendJson(res, 200, {
+        ...ficha,
+        dias,
+        cortesia: ficha.planoStatus === cortesia.STATUS,
+        conexoes: limites.conexoesDaConta(ficha.id),
+        excessos: limites.excessosDaConta(ficha.id),
+        trabalhos: (await jobs.doTenant(ficha.id, 10)).map(jobs.publico),
+      });
+    }
+
+    /*
+     * Os freios: quem está esbarrando, e quantas conexões estão abertas.
+     *
+     * Freio sem medidor é freio que ninguém sabe se está pegando — e o
+     * primeiro sinal seria um cliente ligando para dizer que o painel dele
+     * "dá erro".
+     */
+    if (req.method === 'GET' && parts[2] === 'limites') {
+      return sendJson(res, 200, limites.panorama());
+    }
+
+    if (req.method === 'GET' && parts[2] === 'erros') {
+      return sendJson(res, 200, { ...erros.resumo(), itens: erros.listar(50) });
+    }
+    if (req.method === 'DELETE' && parts[2] === 'erros') {
+      // Zerar depois de consertar, para o próximo aparecer sozinho na lista.
+      erros.limpar();
+      return sendJson(res, 200, { ok: true });
+    }
+
     if (req.method === 'GET' && parts[2] === 'reclamacoes') {
       return sendJson(res, 200, { itens: await db.listarReclamacoes(200) });
     }
@@ -1321,12 +1476,39 @@ async function handleApi(req, res, pathname, query) {
     });
   }
 
+  /*
+   * Acompanhar QUALQUER trabalho de IA, e listar os da conta.
+   *
+   * A rota é uma só para todos os tipos porque o que o painel precisa saber é
+   * sempre o mesmo: em que etapa está, terminou, e qual o resultado. Uma rota
+   * de status por tipo de geração seria oito cópias da mesma coisa, e a nona
+   * função de IA nasceria sem status até alguém lembrar.
+   *
+   * `/api/ai/jobs` é o que permite VOLTAR: quem fechou a aba no meio de uma
+   * geração reabre o painel e encontra o trabalho ainda lá, com o pedido junto
+   * para reconhecer qual era.
+   */
+  if (parts[1] === 'ai' && parts[2] === 'job' && parts[3] && req.method === 'GET') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const j = await jobs.ler(parts[3], sess.tenant_id);
+    if (!j) return sendJson(res, 404, { error: 'trabalho não encontrado' });
+    return sendJson(res, 200, jobs.publico(j));
+  }
+  if (parts[1] === 'ai' && parts[2] === 'jobs' && req.method === 'GET') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const lista = await jobs.doTenant(sess.tenant_id, 20);
+    return sendJson(res, 200, { itens: lista.map(jobs.publico) });
+  }
+
   /* ----- IA: diretor de arte (campanha inteira, layout autoral) ----- */
   if (parts[1] === 'ai' && parts[2] === 'director') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     // Acompanhar um trabalho em andamento: /api/ai/director/:id
+    // Mantida além de /api/ai/job/:id porque um painel aberto numa aba antiga
+    // ainda pergunta por aqui, e derrubar essa aba perderia uma campanha que
+    // está pronta no servidor.
     if (req.method === 'GET' && parts[3]) {
-      const j = jobs.ler(parts[3], sess.tenant_id);
+      const j = await jobs.ler(parts[3], sess.tenant_id);
       if (!j) return sendJson(res, 404, { error: 'trabalho não encontrado' });
       return sendJson(res, 200, jobs.publico(j));
     }
@@ -1401,7 +1583,7 @@ async function handleApi(req, res, pathname, query) {
               { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
             return saved.url;
           },
-        }).then((out) => ({ mode: ai.mode(), ...out })));
+        }).then((out) => ({ mode: ai.mode(), ...out })), { tipo: 'campanha', pedido: { brief: String(brief).slice(0, 200) }, userId: sess.user_id });
         return sendJson(res, 202, jobs.publico(job));
       } catch (e) { return sendJson(res, e.status || 502, { error: e.message }); }
     });
@@ -1428,13 +1610,13 @@ async function handleApi(req, res, pathname, query) {
           refImages.push({ mime, data: buf.toString('base64') });
         } catch (e) { /* ignora referência inválida */ }
       }
-      try {
+      return emTrabalho(res, sess, 'kit-de-marca', { brief: String(brief).slice(0, 200) }, async () => {
         const out = await ai.generateKit(brief, {
           empresa: (b && b.empresa) || '', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
           publico: (b && b.publico) || '', tom: (b && b.tom) || '', oferta: (b && b.oferta) || '', refImages,
         });
-        return sendJson(res, 200, { mode: ai.mode(), ...out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), ...out };
+      });
     });
   }
 
@@ -1456,18 +1638,26 @@ async function handleApi(req, res, pathname, query) {
       const tenantIA = await db.getTenant(sess.tenant_id);
       const pode = await usoIA.conferir(db, tenantIA, 'gerar-imagem', 1);
       if (!pode.ok) return sendJson(res, 402, pode.resposta);
-      try {
+      /*
+       * A de imagem é a que MAIS precisa ser trabalho: é a mais lenta e a
+       * única que custa dinheiro. Quando era síncrona, a aba fechada no meio
+       * significava uma imagem paga, gerada, salva no armazenamento — e que
+       * ninguém nunca via.
+       */
+      return emTrabalho(res, sess, 'imagem', { brief: String(prompt).slice(0, 200) }, async (progresso) => {
+        progresso('desenhando a imagem', String(prompt).slice(0, 100));
         const img = await ai.generateImage(prompt, {
           formato: (b && b.formato) || '16/9', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '', estilo: (b && b.estilo) || '',
         });
+        progresso('guardando no armazenamento', '');
         const buf = Buffer.from(img.data, 'base64');
         const saved = await midia.guardarBuffer(db, sess.tenant_id, buf, img.mime,
           { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
         // Só depois do sucesso: falha não cobra.
         await usoIA.cobrar(db, tenantIA, { tipo: 'gerar-imagem', quantidade: 1, userId: sess.user_id, referencia: saved.id });
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
-        return sendJson(res, 200, { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' };
+      });
     });
   }
 
@@ -1480,7 +1670,7 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a peça' });
-      try {
+      return emTrabalho(res, sess, 'peca-do-editor', { brief: String(brief).slice(0, 200) }, async () => {
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.composicao');
         const out = await ai.generateComposition(brief, {
           empresa: (b && b.empresa) || '',
@@ -1504,8 +1694,8 @@ async function handleApi(req, res, pathname, query) {
             estilo: (b && b.estilo) || '',
           },
         });
-        return sendJson(res, 200, { mode: ai.mode(), ...out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), ...out };
+      });
     });
   }
 
@@ -1518,10 +1708,10 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const season = (b && b.season) || (b && b.label);
       if (!season) return sendJson(res, 400, { error: 'informe a data comemorativa' });
-      try {
+      return emTrabalho(res, sess, 'data-comemorativa', { brief: String(season).slice(0, 200) }, async () => {
         const out = await ai.generateSeasonal(season, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '' });
-        return sendJson(res, 200, { mode: ai.mode(), ...out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), ...out };
+      });
     });
   }
 
@@ -1534,10 +1724,10 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const answers = (b && b.answers) || {};
       if (!answers.objetivo && !answers.brief) return sendJson(res, 400, { error: 'informe o objetivo/brief da campanha' });
-      try {
+      return emTrabalho(res, sess, 'faixas-de-horario', { brief: String(answers.objetivo || answers.brief).slice(0, 200) }, async () => {
         const out = await ai.generateDayparts(answers, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '' });
-        return sendJson(res, 200, { mode: ai.mode(), ...out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), ...out };
+      });
     });
   }
 
@@ -1550,10 +1740,10 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const text = b && b.text;
       if (!text || !String(text).trim()) return sendJson(res, 400, { error: 'informe o texto' });
-      try {
+      return emTrabalho(res, sess, 'reescrever', { brief: String(text).slice(0, 200) }, async () => {
         const out = await ai.rewriteText(text, { campo: (b && b.campo) || 'corpo', tom: (b && b.tom) || '', max: b && b.max });
-        return sendJson(res, 200, { mode: ai.mode(), text: out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), text: out };
+      });
     });
   }
 
@@ -1607,12 +1797,22 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /*
-   * Estado do sistema. Só o dono: a lista diz onde estão as chaves e o que
-   * está mal configurado, e isso não é assunto de quem só publica conteúdo.
+   * Estado do sistema. SÓ OPERADOR DA PLATAFORMA — não o dono de uma conta.
+   *
+   * Durante meses esta rota pediu `role === 'owner'`, e o nome enganou: `owner`
+   * é o dono de UMA EMPRESA CLIENTE, não quem opera o MultiTelas. O que a rota
+   * devolve, porém, é `process.env` interpretado — qual banco, qual provedor de
+   * IA, o nome e a região do bucket, se o e-mail está configurado, se os textos
+   * legais ainda são rascunho. Nada disso é da conta de quem compra o produto,
+   * e "o dono da padaria vê a região do meu R2" não é o que a tela prometia.
+   *
+   * Responde 404, e não 403, pelo mesmo motivo do painel da plataforma: 403
+   * confirmaria a quem tentou que o endereço existe e que só falta o crachá.
    */
   if (parts[1] === 'diagnostico' && req.method === 'GET') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
-    if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono vê o estado do sistema' });
+    const quem = await operadores.permissao(db, sess);
+    if (!quem.pode) return sendJson(res, 404, { error: 'rota não encontrada' });
     return sendJson(res, 200, diagnostico.diagnosticar(process.env));
   }
 
@@ -1660,6 +1860,13 @@ async function handleApi(req, res, pathname, query) {
           precoTelaCents: curPlan.precoTelaCents, sobConsulta: !!curPlan.sobConsulta,
         },
         status: (tenant && tenant.plan_status) || (curPlan.precoTelaCents ? 'active' : 'free'),
+        /*
+         * Dito com todas as letras para o painel. Uma conta de cortesia tem
+         * plano Pro de verdade, e sem esta bandeira a tela mostraria "Pro
+         * ativo" — a pessoa acharia que está pagando e o botão de assinar
+         * sumiria justamente de quem um dia precisa clicar nele.
+         */
+        cortesia: cortesia.contaEmCortesia(tenant),
         renewsAt: tenant && tenant.plan_renews_at,
         /*
          * O teste, para o painel poder avisar ANTES de acabar.
@@ -1819,6 +2026,17 @@ async function handleApi(req, res, pathname, query) {
      */
     const provided = req.headers['x-device-token'];
     const dtOk = !!provided && !!device.device_token && safeEqual(provided, device.device_token);
+
+    /*
+     * O tráfego do player é MEDIDO aqui, e nunca bloqueado.
+     *
+     * Não é sobre abuso: é sobre enxergar. Uma TV com defeito de rede pede
+     * config quarenta vezes por minuto e ninguém fica sabendo — nem o cliente,
+     * que só nota a tela piscando, nem quem opera, que só vê a fatura de banda
+     * subir. Com a medição, essa tela aparece sozinha na supervisão antes de
+     * alguém ligar reclamando.
+     */
+    if (dtOk) limites.permitir('tela', device.tenant_id);
 
     // Player lê a própria config (com device token)
     if (req.method === 'GET' && sub === 'config') {
@@ -1999,12 +2217,48 @@ async function handleApi(req, res, pathname, query) {
       if (!dtOk && !passes.gastar(query.passe, id)) {
         return sendJson(res, 403, { error: 'passe inválido ou vencido' });
       }
+      /*
+       * Uma vaga por conexão, e há teto.
+       *
+       * `subscribers[id]` era um Set sem limite nenhum: quem tivesse um token
+       * de tela válido — o próprio dono, um script dele, ou uma TV com defeito
+       * que reabre sem fechar a anterior — empilhava sockets até o servidor
+       * ficar sem. Não precisa de má intenção: um player em laço de reconexão
+       * faz isso sozinho em minutos, e leva junto o SSE de TODAS as contas.
+       *
+       * 503, e não 403: não é permissão, é lotação. E o Retry-After diz que
+       * vale a pena tentar de novo, que é verdade — a vaga volta quando a
+       * conexão velha fecha.
+       */
+      const telasDaConta = await db.countDevices(device.tenant_id);
+      const vaga = limites.abrirConexao(id, device.tenant_id, telasDaConta);
+      if (!vaga.ok) {
+        return sendJson(res, 503, {
+          error: vaga.motivo === 'servidor'
+            ? 'servidor no limite de conexões — tente em instantes'
+            : 'esta tela já tem conexões demais abertas',
+        }, { 'Retry-After': '15' });
+      }
+
       res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
       res.write('event: ready\ndata: {}\n\n');
       if (!subscribers[id]) subscribers[id] = new Set();
       subscribers[id].add(res);
       const ping = setInterval(() => { try { res.write(': ping\n\n'); } catch (e) {} }, 25000);
-      req.on('close', () => { clearInterval(ping); subscribers[id] && subscribers[id].delete(res); });
+      /*
+       * `close` dispara também quando o cliente some sem avisar — é o único
+       * lugar em que dá para confiar para devolver a vaga. Sem devolver, o teto
+       * viraria uma contagem que só sobe, e em algumas horas nenhuma TV
+       * conseguiria mais conectar.
+       */
+      let fechou = false;
+      req.on('close', () => {
+        if (fechou) return;
+        fechou = true;
+        clearInterval(ping);
+        subscribers[id] && subscribers[id].delete(res);
+        limites.fecharConexao(id, device.tenant_id);
+      });
       return;
     }
   }
@@ -2102,8 +2356,13 @@ function serveAppIndex(res) {
 /* ---------------- Arquivos estáticos ---------------- */
 function sendFile(res, filePath, data) {
   const ext = path.extname(filePath).toLowerCase();
-  // Assets do Vite têm hash no nome → cache longo; o resto revalida.
-  const hashed = /\/assets\//.test(filePath);
+  /*
+   * Cache longo para o que não muda de conteúdo sem mudar de nome: assets do
+   * Vite (hash no nome) e os arquivos de fonte. A fonte é o caso que mais
+   * importa numa TV — sem isto, cada recarga do player rebaixa 1,5 MB de
+   * woff2 numa rede que já é o gargalo.
+   */
+  const hashed = /\/assets\//.test(filePath) || /\/fonts\/arquivos\//.test(filePath);
   const revalidate = !hashed && (ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json');
   // player.html e sw.js nunca do cache: é por aí que a TV "voltava" antiga.
   const noStore = /player\.html$|sw\.js$/.test(filePath);
@@ -2325,7 +2584,10 @@ const server = http.createServer((req, res) => {
   for (const k in seg) res.setHeader(k, seg[k]);
   if (pathname === '/api' || pathname.startsWith('/api/')) {
     return handleApi(req, res, pathname, parsed.query || {})
-      .catch((e) => { console.warn('[api]', e.message); try { sendJson(res, 500, { error: 'erro interno' }); } catch (_) {} });
+      .catch((e) => {
+        erros.registrar(e, { rota: pathname, metodo: req.method });
+        try { sendJson(res, 500, { error: 'erro interno' }); } catch (_) {}
+      });
   }
   if (pathname === '/app' || pathname.startsWith('/app/')) {
     return handleApp(req, res, pathname);
@@ -2334,26 +2596,51 @@ const server = http.createServer((req, res) => {
     return handleMedia(req, res, pathname);
   }
   return handleStatic(req, res, pathname)
-    .catch((e) => { console.warn('[static]', e.message); try { res.writeHead(500); res.end('erro interno'); } catch (_) {} });
+    .catch((e) => {
+      erros.registrar(e, { rota: pathname, metodo: req.method, onde: 'arquivo estático' });
+      try { res.writeHead(500); res.end('erro interno'); } catch (_) {}
+    });
 });
+
+/*
+ * A rede de segurança entra ANTES de o servidor aceitar a primeira conexão.
+ *
+ * Uma promessa rejeitada sem `catch` derruba o processo no Node 22. O Railway
+ * reinicia e a TV volta em segundos, mas o motivo morria junto com o processo
+ * — e defeito que ninguém vê ninguém conserta. Agora fica registrado antes.
+ */
+erros.instalarRedeDeSeguranca();
+
+/*
+ * O módulo de trabalhos recebe o banco em vez de escolher um.
+ *
+ * Mesma razão de sempre neste projeto: produção roda Postgres, teste roda
+ * SQLite, e um teste de trabalho não deveria precisar de banco nenhum — sem
+ * banco, `jobs` continua funcionando só na memória.
+ */
+jobs.usarBanco(db);
 
 db.init()
   .then(() => server.listen(PORT, () => {
-    console.log('MultiTelas rodando em http://localhost:' + PORT);
     const s3 = storage.s3Info();
-    console.log('[storage] driver: ' + storage.DRIVER
-      + (s3 ? ' · bucket ' + s3.bucket + ' · região ' + s3.region
-              + ' · endereçamento ' + (s3.pathStyle ? 'por caminho' : 'por host') : ''));
+    log.info('servidor.no-ar', {
+      porta: PORT,
+      storage: storage.DRIVER,
+      bucket: s3 ? s3.bucket : undefined,
+      regiao: s3 ? s3.region : undefined,
+    });
     // Disco efêmero é falha silenciosa: funciona hoje, apaga a mídia no
     // próximo deploy. Melhor avisar alto do que descobrir com o cliente.
     const aviso = storage.ephemeralWarning();
-    if (aviso) console.warn('\n⚠️  [storage] ' + aviso + '\n');
+    if (aviso) log.aviso('storage.disco-efemero', { aviso });
 
     if (!operadores.configurado()) {
       // Dito alto de propósito: sem ADMIN_EMAILS o painel da plataforma
       // simplesmente não existe, e é melhor descobrir isso agora do que
       // procurando um menu que nunca vai aparecer.
-      console.warn('[plataforma] ADMIN_EMAILS não definido — o painel da plataforma fica desligado.');
+      log.aviso('plataforma.sem-admin-emails', {
+        aviso: 'ADMIN_EMAILS não definido — o painel da plataforma fica desligado.',
+      });
     }
 
     /*
@@ -2364,11 +2651,22 @@ db.init()
      * roda uma vez ao subir e a cada seis horas — não precisa de precisão,
      * precisa de acontecer.
      */
+    /*
+     * Trabalhos que o reinício deixou órfãos são fechados AGORA.
+     *
+     * Um trabalho que estava `rodando` quando o processo caiu ficaria
+     * `rodando` para sempre no banco, e o painel de quem estava esperando
+     * contaria etapa de uma geração que não existe mais, sem nunca terminar.
+     * Um erro com frase clara é pior que ter dado certo e muito melhor que
+     * esperar para sempre.
+     */
+    jobs.fecharOrfaos().catch((e) => erros.registrar(e, { onde: 'fechar trabalhos órfãos' }));
+
     const NOVENTA_DIAS = 90 * 24 * 60 * 60 * 1000;
     const varrer = () => db.limparEventos(Date.now() - NOVENTA_DIAS)
-      .catch((e) => console.warn('[eventos] limpeza falhou:', e.message));
+      .catch((e) => erros.registrar(e, { onde: 'limpeza de eventos' }));
     varrer();
     const relogio = setInterval(varrer, 6 * 60 * 60 * 1000);
     if (relogio.unref) relogio.unref();
   }))
-  .catch((e) => { console.error('[db] falha ao inicializar:', e.message); process.exit(1); });
+  .catch((e) => { log.erro('db.init-falhou', e); process.exit(1); });
