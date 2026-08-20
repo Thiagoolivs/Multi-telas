@@ -24,9 +24,11 @@ const today = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit'
  * depender de alguém clicar no menu para descobri-lo — e quem acabou de
  * publicar uma peça não vai clicar.
  *
- * Só o dono recebe o diagnóstico (o servidor responde 403 aos demais); aqui a
- * falha é silenciosa de propósito, porque para quem só publica conteúdo o
- * aviso não teria ação possível.
+ * Só OPERADOR DA PLATAFORMA recebe o diagnóstico — o servidor responde 404 aos
+ * demais. Aqui a falha é silenciosa de propósito, e é o que faz o aviso
+ * desaparecer sozinho para quem usa uma conta: o que ele descreve (bucket,
+ * banco, chave de IA) só quem opera o MultiTelas pode resolver, e avisar quem
+ * não pode agir é só assustar.
  */
 function AvisoDoSistema({ onAbrir }) {
   const [d, setD] = React.useState(null);

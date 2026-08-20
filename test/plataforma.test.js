@@ -109,6 +109,43 @@ test('para quem não é operador, a rota responde 404 — não 403', () => {
   assert.match(bloco, /if \(!quem\.pode\) return sendJson\(res, 404, \{ error: 'rota não encontrada' \}\);/);
 });
 
+test('o estado do sistema é do operador, NÃO do dono de uma conta', () => {
+  /*
+   * A rota devolve `process.env` interpretado: qual banco, qual provedor de
+   * IA, o nome e a região do bucket, se os textos legais ainda são rascunho.
+   *
+   * Durante meses ela pediu `role === 'owner'` e o nome enganou — `owner` é o
+   * dono de uma EMPRESA CLIENTE, não quem opera o MultiTelas. O efeito era que
+   * cada padaria que comprava o produto enxergava a infraestrutura de quem o
+   * vende. Nunca foi vazamento de credencial, mas era o mapa da casa.
+   */
+  const i = SERVER.indexOf("parts[1] === 'diagnostico'");
+  assert.ok(i > 0, 'sumiu a rota do estado do sistema');
+  const bloco = SERVER.slice(i, i + 700);
+
+  assert.ok(!/sess\.role/.test(bloco),
+    'o estado do sistema voltou a ser liberado por papel na conta, e não por operador');
+  assert.match(bloco, /const quem = await operadores\.permissao\(db, sess\);/,
+    'a rota deixou de perguntar se quem chama opera a plataforma');
+  assert.match(bloco, /if \(!quem\.pode\) return sendJson\(res, 404/,
+    '403 confirmaria a quem tentou que a rota existe');
+
+  const leitura = bloco.indexOf('diagnostico.diagnosticar');
+  assert.ok(leitura > bloco.indexOf('quem.pode'), 'o diagnóstico é lido antes da porta');
+});
+
+test('o menu do estado do sistema mora na seção da plataforma', () => {
+  // Esconder o menu é aparência — a rota é a porta. Mas um item de menu que
+  // promete uma porta trancada faz a pessoa clicar para receber erro.
+  const i = SIDEBAR.indexOf("id: 'system'");
+  assert.ok(i > 0, 'sumiu o item do estado do sistema');
+  const secao = SIDEBAR.lastIndexOf('section:', i);
+  assert.match(SIDEBAR.slice(secao, i), /operador: true/,
+    'o estado do sistema saiu da seção de quem opera a plataforma');
+  assert.ok(!/id: 'system'[^}]*dono: true/.test(SIDEBAR),
+    'o estado do sistema voltou a ser item de dono de conta');
+});
+
 test('ver a lista de operadores é de todos; MEXER é só da raiz', () => {
   const i = SERVER.indexOf("parts[2] === 'operadores'");
   assert.ok(i > 0, 'sumiu a rota de operadores');

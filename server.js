@@ -1627,12 +1627,22 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /*
-   * Estado do sistema. Só o dono: a lista diz onde estão as chaves e o que
-   * está mal configurado, e isso não é assunto de quem só publica conteúdo.
+   * Estado do sistema. SÓ OPERADOR DA PLATAFORMA — não o dono de uma conta.
+   *
+   * Durante meses esta rota pediu `role === 'owner'`, e o nome enganou: `owner`
+   * é o dono de UMA EMPRESA CLIENTE, não quem opera o MultiTelas. O que a rota
+   * devolve, porém, é `process.env` interpretado — qual banco, qual provedor de
+   * IA, o nome e a região do bucket, se o e-mail está configurado, se os textos
+   * legais ainda são rascunho. Nada disso é da conta de quem compra o produto,
+   * e "o dono da padaria vê a região do meu R2" não é o que a tela prometia.
+   *
+   * Responde 404, e não 403, pelo mesmo motivo do painel da plataforma: 403
+   * confirmaria a quem tentou que o endereço existe e que só falta o crachá.
    */
   if (parts[1] === 'diagnostico' && req.method === 'GET') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
-    if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono vê o estado do sistema' });
+    const quem = await operadores.permissao(db, sess);
+    if (!quem.pode) return sendJson(res, 404, { error: 'rota não encontrada' });
     return sendJson(res, 200, diagnostico.diagnosticar(process.env));
   }
 
