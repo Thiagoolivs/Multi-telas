@@ -323,6 +323,49 @@ async function readBuffer(key) {
  * bucket e repassa o corpo. Só é usado quando não há MEDIA_PUBLIC_BASE (com
  * CDN/bucket público o navegador vai direto na origem e nem passa por aqui).
  */
+/*
+ * Cabeçalhos extras para o que é PERIGOSO como documento.
+ *
+ * Um SVG é código: pode trazer <script>, <foreignObject> com HTML, e <image
+ * href="https://..."> que avisa alguém de fora que o arquivo foi aberto. E ele
+ * é servido do NOSSO domínio, então tudo isso roda com a nossa origem.
+ *
+ * Hoje o CSP global já barra script inline — conferi no navegador. Mas essa é
+ * UMA camada, e ela é global: no dia em que alguém precisar de 'unsafe-inline'
+ * para um widget qualquer, o buraco reabre calado, num lugar que ninguém vai
+ * ligar a esta linha. Aqui a defesa fica presa ao arquivo:
+ *
+ *   `sandbox` sozinho já desliga script e joga a resposta numa origem própria;
+ *   `default-src 'none'` corta qualquer busca de fora, inclusive o beacon;
+ *   `Content-Disposition: attachment` faz a navegação DIRETA baixar em vez de
+ *   abrir — e não atrapalha nada, porque <img> ignora Content-Disposition e
+ *   continua desenhando o SVG normalmente.
+ */
+const CSP_DA_MIDIA = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+function extrasDeSeguranca(mime, key) {
+  if (!/^image\/svg\+xml/.test(String(mime || ''))) return {};
+  const nome = String(key || 'arquivo.svg').split('/').pop().replace(/[^\w.\-]/g, '');
+  return {
+    'Content-Security-Policy': CSP_DA_MIDIA,
+    'Content-Disposition': 'attachment; filename="' + (nome || 'arquivo.svg') + '"',
+  };
+}
+
+/*
+ * Os extras entram por `setHeader`, NÃO por `writeHead`.
+ *
+ * O CSP global é posto com `setHeader` lá no topo do servidor, antes de
+ * qualquer rota. Passar um CSP diferente em `writeHead` não substitui o que
+ * já está lá — o valor antigo continua valendo, e o conserto vira decoração.
+ *
+ * Foi o que aconteceu na primeira tentativa: o código estava certo, o
+ * cabeçalho não mudava, e só olhando a resposta de verdade dava para saber.
+ */
+function aplicarExtras(res, mime, key) {
+  const extras = extrasDeSeguranca(mime, key);
+  for (const k in extras) res.setHeader(k, extras[k]);
+}
+
 async function serve(res, key) {
   if (!validKey(key)) { res.writeHead(403); return res.end('Acesso negado'); }
   const cache = { 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' };
@@ -332,9 +375,10 @@ async function serve(res, key) {
     try { up = await s3Get(key); }
     catch (e) { res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Falha no armazenamento'); }
     if (!up) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Não encontrado'); }
-    res.writeHead(200, Object.assign({
-      'Content-Type': up.headers.get('content-type') || mimeForKey(key),
-    }, up.headers.get('content-length') ? { 'Content-Length': up.headers.get('content-length') } : {}, cache));
+    const tipoS3 = up.headers.get('content-type') || mimeForKey(key);
+    aplicarExtras(res, tipoS3, key);
+    res.writeHead(200, Object.assign({ 'Content-Type': tipoS3 },
+      up.headers.get('content-length') ? { 'Content-Length': up.headers.get('content-length') } : {}, cache));
     return pipeline(Readable.fromWeb(up.body), res).catch(() => {});
   }
 
@@ -342,13 +386,15 @@ async function serve(res, key) {
   if (!full) { res.writeHead(403); return res.end('Acesso negado'); }
   fs.stat(full, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Não encontrado'); }
-    res.writeHead(200, Object.assign({ 'Content-Type': mimeForKey(key), 'Content-Length': st.size }, cache));
+    const tipo = mimeForKey(key);
+    aplicarExtras(res, tipo, key);
+    res.writeHead(200, Object.assign({ 'Content-Type': tipo, 'Content-Length': st.size }, cache));
     fs.createReadStream(full).pipe(res);
   });
 }
 
 module.exports = {
-  DRIVER, MAX_FILE_BYTES, QUOTA_BYTES, MIME_EXT, MEDIA_DIR,
+  DRIVER, MAX_FILE_BYTES, QUOTA_BYTES, MIME_EXT, MEDIA_DIR, extrasDeSeguranca, aplicarExtras, CSP_DA_MIDIA,
   // Diagnóstico da configuração do bucket (aparece no boot).
   s3Info: () => (DRIVER === 's3' ? { endpoint: S3.endpoint, bucket: S3.bucket, region: S3.region, pathStyle: S3.pathStyle } : null),
   extFor, saveStream, saveBuffer, remove, publicUrl, resolveLocal,

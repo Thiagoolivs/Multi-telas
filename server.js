@@ -37,6 +37,7 @@ const ai = require('./server/ai');
 const director = require('./server/ai-director');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
+const passes = require('./server/passes.js');
 const metricas = require('./server/metricas.js');
 const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
@@ -1802,10 +1803,21 @@ async function handleApi(req, res, pathname, query) {
     if (!device) return sendJson(res, 404, { error: 'device não encontrado' });
     const sub = parts[3];
     const owns = sess && device.tenant_id === sess.tenant_id;
-    // Device token: aceita header (x-device-token) — não vaza em logs/URLs — ou
-    // ?dt= (necessário pro EventSource do SSE, que não seta headers).
-    // Comparação em tempo constante.
-    const provided = req.headers['x-device-token'] || query.dt;
+    /*
+     * Device token: SÓ pelo cabeçalho (x-device-token).
+     *
+     * Aceitava `?dt=` também, porque o EventSource do SSE é a única API do
+     * navegador que não deixa mandar cabeçalho. Mas o token da TV não expira, e
+     * endereço vai parar em log de acesso, log de proxy, painel do provedor e
+     * histórico de console — lugares onde ninguém pensa que há segredo. Quem
+     * lesse qualquer um deles lia a config da tela e recebia os eventos dela
+     * para sempre.
+     *
+     * O SSE passou a usar um PASSE curto (ver server/passes.js): a TV troca o
+     * token por ele num POST comum, e o que vai na URL vale um minuto e uma vez
+     * só. Comparação em tempo constante, como antes.
+     */
+    const provided = req.headers['x-device-token'];
     const dtOk = !!provided && !!device.device_token && safeEqual(provided, device.device_token);
 
     // Player lê a própria config (com device token)
@@ -1967,9 +1979,26 @@ async function handleApi(req, res, pathname, query) {
        */
       return sendJson(res, 200, { ok: true, at: Date.now(), configEm: device.updated_at || 0 });
     }
-    // SSE (o player assina, com device token)
-    if (req.method === 'GET' && sub === 'events') {
+    /*
+     * A troca: token de verdade (no cabeçalho) por um passe curto.
+     *
+     * É um POST justamente para o segredo ir no corpo/cabeçalho e não na URL —
+     * que é o problema que este passe existe para resolver.
+     */
+    if (req.method === 'POST' && sub === 'passe') {
       if (!dtOk) return sendJson(res, 403, { error: 'device token inválido' });
+      const p = passes.emitir(id);
+      if (!p) return sendJson(res, 503, { error: 'muitos passes em uso — tente em instantes' });
+      return sendJson(res, 200, p);
+    }
+
+    // SSE (o player assina com um passe curto; ver server/passes.js)
+    if (req.method === 'GET' && sub === 'events') {
+      // O cabeçalho continua valendo para quem CONSEGUE mandar cabeçalho —
+      // um cliente próprio, um teste. O passe é para o EventSource, que não.
+      if (!dtOk && !passes.gastar(query.passe, id)) {
+        return sendJson(res, 403, { error: 'passe inválido ou vencido' });
+      }
       res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
       res.write('event: ready\ndata: {}\n\n');
       if (!subscribers[id]) subscribers[id] = new Set();
