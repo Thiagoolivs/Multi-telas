@@ -6,35 +6,47 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **20/08/2026** · 522 testes passando · `server.js` com 2374 linhas.
+Atualizado em: **20/08/2026** · 547 testes passando · `server.js` com 2418 linhas.
 
 ---
 
 ## Onde paramos (leia isto primeiro)
 
 Um plano de 10 passos, tirado de uma revisão de UX do dono do produto, foi
-executado por inteiro. Está distribuído em três PRs:
+executado por inteiro e **está todo em `main`** (PRs [#96][96], [#97][97] e
+[#98][98], mesclados). Depois disso veio o trabalho de publicação: **fontes
+próprias** e **observabilidade**.
 
-| PR | passos | estado |
-|---|---|---|
-| [#96](https://github.com/Thiagoolivs/Multi-telas/pull/96) | 1–3 — rodapé de notícias infinito, IA do editor, teste de 14 dias | **mesclado** |
-| [#97](https://github.com/Thiagoolivs/Multi-telas/pull/97) | 4–6 — pincel de formatação, avisos de criação, IA guiada | **mesclado** |
-| [#98](https://github.com/Thiagoolivs/Multi-telas/pull/98) | 7–10 — três marcas + site de referência, painel da plataforma, animação, sobras de segurança | **aberto, rascunho, CI verde** |
+[96]: https://github.com/Thiagoolivs/Multi-telas/pull/96
+[97]: https://github.com/Thiagoolivs/Multi-telas/pull/97
+[98]: https://github.com/Thiagoolivs/Multi-telas/pull/98
 
-Branch de trabalho: `claude/corporate-tv-multi-screen-fgk4g8`.
+**A decisão que manda agora: publicar esta semana.** O que falta para isso não
+é código — é configuração no Railway e revisão jurídica. A lista está em
+[`LANCAMENTO.md`](LANCAMENTO.md), que voltou a ser verdadeira (ficou meses
+dizendo que faltavam CI, landing e cabeçalhos de segurança muito depois de os
+três existirem).
 
-### Duas coisas dependem do dono, não do código
+### O que depende do dono, não do código
 
-1. **`ADMIN_EMAILS` precisa ser definida no Railway** com o e-mail de quem opera.
-   Sem ela o painel da plataforma **não aparece e não responde** — é de propósito:
-   "sem configuração, o dono da primeira conta vira operador" transformaria uma
-   instalação nova numa porta aberta.
-2. **A leitura de um site real nunca foi testada de verdade.** O proxy do
-   ambiente de desenvolvimento bloqueia HTTP externo (403), então `server/site.js`
-   só foi exercitado contra servidores locais. Precisa ser conferido em produção
-   colando o endereço de um cliente e vendo se as cores e fontes saem certas.
+1. **Quatro variáveis no Railway**, e nenhuma é opcional: `STORAGE=s3` com as
+   chaves do R2 (sem elas, **toda mídia some no próximo deploy**),
+   `STRIPE_PRICE_*` e `STRIPE_WEBHOOK_SECRET` (sem eles não há checkout),
+   `ADMIN_EMAILS` (sem ela o painel da plataforma não aparece e não responde —
+   de propósito) e `APP_URL`/`SUPPORT_EMAIL` do domínio próprio.
+2. **Revisão jurídica dos Termos**, e então `LEGAL_REVISADO=true` para o aviso
+   de rascunho sair das páginas.
+3. **A leitura de um site real nunca foi testada de verdade.** O proxy do
+   ambiente de desenvolvimento bloqueia HTTP externo (403), então
+   `server/site.js` só rodou contra servidores locais. Precisa ser conferido em
+   produção colando o endereço de um cliente e vendo se as cores e as fontes
+   saem certas.
 
----
+### Já decidido, adiado de propósito
+
+**A cobrança vai sair do Stripe e ir para o Asaas.** Não entra antes de
+publicar. `server/billing.js` é o único lugar que fala com o provedor, e
+`server/plans.js` guarda o catálogo separado dele — a troca é contida.
 
 ## Como o sistema está montado
 
@@ -48,6 +60,10 @@ player.html                    web/src/pages/*             server.js  (rotas)
  js/theme.js   cores           PlatformPage    operação    server/db-*.js
  js/cloud.js   SSE + passe     SettingsPage    conta       server/storage.js (R2)
  offline-first (SW)            build → /app                server/site.js (SSRF)
+                                                           server/log.js   linhas
+                                                           server/erros.js grupos
+
+ fonts/  as 14 famílias (OFL), servidas por nós — ver tools/baixar-fontes.mjs
 ```
 
 O player é vanilla e funciona sem rede: guarda a última configuração e continua
@@ -70,6 +86,10 @@ existe para matar.
   decoração silenciosa.
 - A config do dispositivo é `{ settings: { layoutId }, zonas: { principal: {
   items: [] } } }` — não `layout`/`zones`.
+- **Família nova no catálogo pede `node tools/baixar-fontes.mjs`.** Sem isso a
+  fonte não existe no domínio, a CSP recusa buscá-la fora, e o texto sai na
+  fonte de sistema — mais larga que a medida. `test/fontes-proprias.test.js`
+  falha antes disso chegar à parede de alguém.
 
 ## A tese do motor de IA
 
@@ -128,6 +148,17 @@ Roda como trabalho em segundo plano (`server/jobs.js`) porque leva minutos.
   ou o feed caem. Painel e player são **instaláveis** (PWA).
 - **Onboarding** (`PrimeirosPassos.jsx`): quem cria conta não cai mais num painel
   vazio.
+- **A tipografia é nossa.** As 14 famílias (todas OFL) moram em `fonts/`, com a
+  licença de cada uma junto. Enquanto vinham da Google, a fonte que a TV
+  desenhava dependia da rede do cliente — e quando não chegava, o navegador
+  caía na fonte de sistema, mais larga, estourando o texto que o compositor
+  tinha medido. Sem erro, sem log, só na parede. A CSP fechou os dois hosts
+  externos para que um retorno acidental falhe no primeiro teste.
+- **Dá para ver o que quebrou.** Log estruturado (`server/log.js`) sem dado
+  pessoal nem segredo, e erros agrupados por assinatura (`server/erros.js`)
+  visíveis no painel da plataforma. Antes disso o servidor falava por
+  `console.warn(e.message)` em quinze lugares: sem pilha, sem contexto, e uma
+  promessa rejeitada derrubava o processo levando o motivo junto.
 
 ## Segurança: o que está fechado
 
@@ -161,13 +192,14 @@ Avaliação franca, com números do próprio código:
    de adicionar precisa de um caminho curto ("o que você quer mostrar?") antes da
    grade completa.
 
-3. **Fontes vêm da Google.** `js/theme.js` e `web/src/lib/fontes.js` buscam de
-   `fonts.googleapis.com`. TV com rede ruim ou bloqueada cai na fonte de sistema,
-   que é mais larga — e todo o cálculo de "cabe na caixa" vira estimativa errada.
-   As fontes são OFL: dá para servir do próprio domínio. **É a melhor relação
-   qualidade/esforço aberta.**
+3. **O texto ainda é medido por estimativa.** Com a fonte servida por nós, a
+   causa raiz do texto estourado foi embora — a fonte que a TV desenha é a
+   mesma que o compositor mediu. Mas a medida continua sendo a largura média
+   por caractere (`largura`, em `js/fontes.js`), e não as métricas reais da
+   fonte. Antes isso não valia a pena, porque a fonte podia nem chegar; agora
+   o arquivo está em `fonts/` e dá para medir de verdade no servidor.
 
-4. **`server.js` tem 2374 linhas** de roteamento manual — quase o dobro de quando
+4. **`server.js` tem 2418 linhas** de roteamento manual — quase o dobro de quando
    isto foi anotado pela primeira vez. Passou do ponto em que separar por domínio
    era luxo.
 
@@ -178,24 +210,30 @@ Avaliação franca, com números do próprio código:
 
 ## Próximos passos
 
-Em ordem de impacto, e sem nada começado:
+**Antes de tudo: publicar.** O que falta não é código, e a lista está em
+[`LANCAMENTO.md`](LANCAMENTO.md). Enquanto as variáveis do Railway não
+estiverem definidas, nada do que vem abaixo chega a um cliente.
+
+Depois, em ordem de impacto e sem nada começado:
 
 1. **Editor: máscara, texto em curva e biblioteca de gráficos.** É o bloco que
    fecha a promessa de paridade com o Canva. O maior dos três em esforço.
-2. **Auto-hospedar as fontes** — conserta a causa raiz do texto estourado, e é
-   barato.
-3. **Quebrar `server.js` por domínio.** Não muda nada para o usuário, mas cada
+2. **Trocar o Stripe pelo Asaas.** Já decidido; adiado para não segurar a
+   publicação. `server/billing.js` é o único lugar que fala com o provedor.
+3. **Verificação de e-mail no cadastro.** O envio existe, falta o fluxo — hoje
+   dá para criar conta com o e-mail de outra pessoa.
+4. **Quebrar `server.js` por domínio.** Não muda nada para o usuário, mas cada
    passo futuro fica mais barato.
-4. **A IA olhar a peça pronta.** A crítica de hoje lê o relatório do validador;
+5. **A IA olhar a peça pronta.** A crítica de hoje lê o relatório do validador;
    renderizar em PNG e devolver pela visão pegaria colisão, respiro torto e logo
    sobre rosto — coisas que nenhum validador expressa.
-5. **Prompt de imagem ciente do layout** ("deixe o terço inferior limpo"), em vez
+6. **Prompt de imagem ciente do layout** ("deixe o terço inferior limpo"), em vez
    de remendar com véu depois.
-6. **Medir texto com as métricas reais da fonte** em vez da largura média por
-   caractere.
-7. **Simplificar Ajustes e o catálogo** (itens 1 e 2 acima).
-8. **Recorte inteligente** da foto do acervo (hoje corta pelo centro).
-9. **Coerência entre peças** — cada uma é composta isolada da anterior.
+7. **Medir texto com as métricas reais da fonte** em vez da largura média por
+   caractere — agora possível, porque o arquivo da fonte é nosso.
+8. **Simplificar Ajustes e o catálogo** (itens 1 e 2 acima).
+9. **Recorte inteligente** da foto do acervo (hoje corta pelo centro).
+10. **Coerência entre peças** — cada uma é composta isolada da anterior.
 
 ## Convenções
 
@@ -203,12 +241,15 @@ Em ordem de impacto, e sem nada começado:
   decisão e o erro que ela evita.
 - Sem framework no servidor e sem dependência pesada; `node:sqlite` em dev,
   Postgres em produção, mesma API assíncrona nos dois.
-- Testes em `npm test` (**522 hoje**, em 39 arquivos). Dois padrões que se
+- Testes em `npm test` (**547 hoje**, em 41 arquivos). Dois padrões que se
   provaram:
   - **Renderizar e olhar.** Screenshot pegou bugs que teste nenhum pegou —
     componente desmontado, texto estourando, botão que não fazia nada, cabeçalho
     que não mudava.
   - **Conferir o teste ao contrário.** Reintroduzir o defeito e exigir que o
-    teste falhe. Nas últimas rodadas isso revelou **sete testes meus que estavam
+    teste falhe. Nas últimas rodadas isso revelou **nove testes meus que estavam
     errados** — entre eles um regex de keyframes que via 2 de 15 blocos e tornava
-    quase vazias as duas regras principais da animação.
+    quase vazias as duas regras principais da animação, e dois do coletor de
+    erros que passavam com o teto de grupos desligado. O segundo desses, ao ser
+    consertado, descobriu um buraco real: `origem()` filtrava `node:internal` e
+    deixava passar `node:fs`.

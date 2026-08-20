@@ -179,7 +179,16 @@ multitelas/
 │   ├── render.js        # Renderiza cada tipo de conteúdo
 │   ├── player.js        # Motor de exibição (zonas, rotação, decorações)
 │   └── admin.js         # Lógica do painel de administração
-├── server.js            # Servidor estático (deploy Railway/Node)
+├── fonts/               # As 14 famílias (OFL), servidas do próprio domínio
+│   ├── fontes.css        # GERADO — todas as @font-face
+│   ├── arquivos/         # os .woff2
+│   └── licencas/         # a OFL de cada família (a licença vai junto)
+├── tools/
+│   └── baixar-fontes.mjs # Regera fonts/ — rode ao acrescentar família
+├── server/              # Módulos do servidor (auth, billing, IA, log, erros…)
+├── web/                 # Painel React (Vite) → build em /app
+├── test/                # `npm test`
+├── server.js            # Servidor (rotas)
 └── README.md
 ```
 
