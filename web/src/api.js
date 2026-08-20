@@ -95,77 +95,147 @@ export const deviceConfig = {
   save: (id, config) => api('PUT', '/api/devices/' + id + '/config', config),
 };
 
-// Onde fica o id da campanha em andamento. No navegador porque a promessa é
-// "pode fechar e voltar" — e recarregar a página não pode perder o trabalho.
-const PENDENTE = 'mt.campanha.pendente';
+/*
+ * ─────────────────────────────────────────────────────────────────────────
+ * TODA geração de IA é um TRABALHO, e nenhuma delas se perde.
+ *
+ * Antes só a campanha rodava assim. As outras oito eram requisições comuns, e
+ * o defeito era o mesmo em tamanho menor: fechar a aba, trocar de página ou o
+ * celular perder a rede por dez segundos matava o pedido — e o crédito de IA
+ * já tinha sido gasto. A imagem era a pior: paga, gerada, salva no
+ * armazenamento, e ninguém nunca via.
+ *
+ * O trabalho roda no SERVIDOR. Sair daqui não cancela nada; só pararia de
+ * olhar. Por isso o id fica guardado no navegador POR TIPO, e a tela que sabe
+ * o que fazer com aquele resultado volta a acompanhar sozinha quando a pessoa
+ * reaparece.
+ *
+ * Por tipo, e não numa lista: quem tem uma peça sendo composta no editor e uma
+ * campanha rodando ao mesmo tempo precisa que cada tela reencontre a SUA — e
+ * uma lista faria a primeira tela a perguntar levar o trabalho da outra.
+ */
+const PENDENTES = 'mt.ia.pendentes';
+
+function lerPendentes() {
+  try { return JSON.parse(localStorage.getItem(PENDENTES) || '{}') || {}; } catch (e) { return {}; }
+}
+function escrever(obj) {
+  try { localStorage.setItem(PENDENTES, JSON.stringify(obj)); } catch (e) {}
+}
+function guardarPendente(tipo, job, pedido) {
+  const t = lerPendentes();
+  t[tipo] = { id: job.id, brief: (pedido && pedido.brief) || '', em: Date.now() };
+  escrever(t);
+}
+function esquecerPendente(tipo) {
+  const t = lerPendentes();
+  delete t[tipo];
+  escrever(t);
+}
+
+/*
+ * O trabalho pendente daquele tipo, se ainda vale a pena esperar.
+ *
+ * O teto de 24 h casa com quanto tempo o servidor guarda o trabalho. Mais que
+ * isso seria oferecer à pessoa um "continuando…" que termina em 404.
+ */
+function pendenteDe(tipo) {
+  const j = lerPendentes()[tipo];
+  if (!j || !j.id || Date.now() - (j.em || 0) > 24 * 60 * 60 * 1000) return null;
+  return j;
+}
+
+/*
+ * Acompanha até terminar. `sinal` para de olhar sem cancelar o trabalho — quem
+ * sai da tela para de acompanhar, o servidor continua.
+ *
+ * O intervalo começa curto e abre. Reescrever um texto responde em um segundo
+ * e esperar um segundo cheio para perguntar dobraria o tempo que a pessoa
+ * sente; uma campanha leva minutos, e perguntar de trezentos em trezentos
+ * milissegundos por quatro minutos são oitocentas requisições à toa.
+ */
+async function acompanhar(id, tipo, onEtapa, sinal) {
+  const limite = Date.now() + 20 * 60 * 1000;
+  let espera = 300;
+  while (Date.now() < limite) {
+    if (sinal && sinal.parado) return null;
+    let s;
+    try {
+      s = await api('GET', '/api/ai/job/' + id);
+    } catch (e) {
+      // 404 = o prazo passou, ou o trabalho nunca existiu. Insistir enganaria.
+      if (e.status === 404) { esquecerPendente(tipo); throw new Error('o trabalho expirou — refaça o pedido'); }
+      throw e;
+    }
+    if (onEtapa) onEtapa(s);
+    if (s.estado === 'pronto') { esquecerPendente(tipo); return s.resultado; }
+    if (s.estado === 'erro') { esquecerPendente(tipo); throw new Error(s.erro || 'a IA não conseguiu terminar'); }
+    await new Promise((r) => setTimeout(r, espera));
+    espera = Math.min(2000, Math.round(espera * 1.4));
+  }
+  throw new Error('a geração demorou demais — tente de novo');
+}
+
+/* Começa um trabalho e espera por ele, guardando o id para poder voltar. */
+async function rodar(rota, payload, tipo, onEtapa, sinal) {
+  const job = await api('POST', rota, payload);
+  guardarPendente(tipo, job, payload);
+  return acompanhar(job.id, tipo, onEtapa, sinal);
+}
 
 export const ai = {
-  generate: (brief, opts) => api('POST', '/api/ai/generate-content', { brief, ...(opts || {}) }),
-  campaign: (payload) => api('POST', '/api/ai/generate-campaign', payload),
-  composition: (payload) => api('POST', '/api/ai/generate-composition', payload),
-  kit: (payload) => api('POST', '/api/ai/generate-kit', payload),
-  image: (payload) => api('POST', '/api/ai/generate-image', payload),
   /*
-   * O diretor: briefing → plano → imagens → composição → crítica. É o motor que
-   * respeita a marca e o acervo; `kit` é o antigo, mantido só por compat.
-   *
-   * Roda como TRABALHO porque leva mais que o tempo de uma requisição HTTP:
-   * `director` devolve um id na hora e `directorStatus` conta em que etapa está.
+   * Cada uma destas devolve o resultado, como sempre devolveu — quem chama não
+   * precisa saber que virou trabalho. O que mudou é que agora dá para passar
+   * `onEtapa` e sobreviver a fechar a aba.
    */
-  director: (payload) => api('POST', '/api/ai/director', payload),
-  directorStatus: (id) => api('GET', '/api/ai/director/' + id),
+  generate: (brief, opts, onEtapa, sinal) =>
+    rodar('/api/ai/generate-content', { brief, ...(opts || {}) }, 'conteudo', onEtapa, sinal),
+  campaign: (payload, onEtapa, sinal) =>
+    rodar('/api/ai/generate-campaign', payload, 'campanha-simples', onEtapa, sinal),
+  composition: (payload, onEtapa, sinal) =>
+    rodar('/api/ai/generate-composition', payload, 'peca-do-editor', onEtapa, sinal),
+  kit: (payload, onEtapa, sinal) =>
+    rodar('/api/ai/generate-kit', payload, 'kit-de-marca', onEtapa, sinal),
+  image: (payload, onEtapa, sinal) =>
+    rodar('/api/ai/generate-image', payload, 'imagem', onEtapa, sinal),
 
   // Chat de briefing: uma pergunta por vez até a IA entender a campanha.
-  // Devolve { pronto:false, pergunta, sugestoes } ou { pronto:true, resumo }.
+  // Continua síncrono: é uma conversa, e conversa que responde por polling
+  // deixa de parecer conversa.
   briefing: (mensagens, extra) => api('POST', '/api/ai/briefing', { mensagens, ...(extra || {}) }),
 
-  // Dispara a campanha e só resolve quando ela fica pronta, contando o
-  // progresso pelo caminho. É isto que a tela usa — o polling fica aqui.
   /*
-   * O trabalho roda no SERVIDOR. Fechar o diálogo, trocar de página ou até
-   * recarregar o navegador não cancela nada — só perderia o resultado, e era
-   * exatamente isso que acontecia: a campanha ficava pronta e ninguém via.
-   *
-   * Por isso o id fica guardado no navegador e a tela volta a acompanhar
-   * sozinha quando o usuário reaparece.
+   * O diretor: briefing → plano → imagens → composição → crítica. É o motor
+   * que respeita a marca e o acervo.
    */
+  director: (payload) => api('POST', '/api/ai/director', payload),
+  directorStatus: (id) => api('GET', '/api/ai/job/' + id),
+
+  /* ---- Voltar para o que ficou rodando ---- */
+
+  // O trabalho pendente de um tipo, para a tela oferecer "continuar".
+  pendente: pendenteDe,
+  esquecer: esquecerPendente,
+  // Volta a acompanhar um trabalho já começado, sem começar outro.
+  retomar: (tipo, onEtapa, sinal) => {
+    const j = pendenteDe(tipo);
+    if (!j) return Promise.resolve(null);
+    return acompanhar(j.id, tipo, onEtapa, sinal);
+  },
+  // Tudo o que a CONTA tem em andamento — inclusive o que outra aba começou.
+  emAndamento: () => api('GET', '/api/ai/jobs'),
+
+  /* ---- Campanha (o diretor) ---- */
+
   async directorStart(payload) {
     const job = await api('POST', '/api/ai/director', payload);
-    try { localStorage.setItem(PENDENTE, JSON.stringify({ id: job.id, brief: payload.brief, em: Date.now() })); } catch (e) {}
+    guardarPendente('campanha', job, payload);
     return job.id;
   },
-
-  jobPendente() {
-    try {
-      const j = JSON.parse(localStorage.getItem(PENDENTE) || 'null');
-      // Trabalho de mais de meia hora já expirou no servidor — não vale esperar.
-      if (!j || !j.id || Date.now() - (j.em || 0) > 30 * 60 * 1000) return null;
-      return j;
-    } catch (e) { return null; }
-  },
-  descartarPendente() { try { localStorage.removeItem(PENDENTE); } catch (e) {} },
-
-  // Acompanha até terminar. `sinal` permite parar o polling sem cancelar o
-  // trabalho — quem sai da tela para de olhar, o servidor continua.
-  async directorAcompanhar(id, onEtapa, sinal) {
-    for (let i = 0; i < 900; i++) {          // teto de ~15 min
-      if (sinal && sinal.parado) return null;
-      let s;
-      try {
-        s = await api('GET', '/api/ai/director/' + id);
-      } catch (e) {
-        // 404 = o servidor reiniciou ou o prazo passou. Insistir seria enganar.
-        if (e.status === 404) { ai.descartarPendente(); throw new Error('o trabalho expirou — gere de novo'); }
-        throw e;
-      }
-      if (onEtapa) onEtapa(s);
-      if (s.estado === 'pronto') { ai.descartarPendente(); return s.resultado; }
-      if (s.estado === 'erro') { ai.descartarPendente(); throw new Error(s.erro || 'a IA não conseguiu terminar'); }
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-    throw new Error('a campanha demorou demais — tente de novo');
-  },
-
+  jobPendente: () => pendenteDe('campanha'),
+  descartarPendente: () => esquecerPendente('campanha'),
+  directorAcompanhar: (id, onEtapa, sinal) => acompanhar(id, 'campanha', onEtapa, sinal),
   async directorRun(payload, onEtapa, sinal) {
     const id = await ai.directorStart(payload);
     return ai.directorAcompanhar(id, onEtapa, sinal);

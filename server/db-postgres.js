@@ -117,6 +117,16 @@ async function init() {
     -- Eventos de uso: QUE função foi usada, por quem e quando. Nunca o
     -- conteúdo — para saber que o editor é usado não é preciso guardar o que
     -- foi escrito nele.
+    -- Trabalhos de IA. Viviam só na memória: um deploy no meio de uma geração
+    -- matava o trabalho, e uma geração PRONTA que ninguém tinha lido ia junto.
+    -- A coluna resultado é JSON em texto: cada tipo devolve uma forma diferente.
+    CREATE TABLE IF NOT EXISTS jobs (
+      id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, tipo TEXT,
+      estado TEXT, etapa TEXT, detalhe TEXT, resultado TEXT, erro TEXT,
+      pedido TEXT, criado_em BIGINT, terminado_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_jobs_tenant ON jobs(tenant_id, criado_em);
+    CREATE INDEX IF NOT EXISTS idx_jobs_estado ON jobs(estado);
     CREATE TABLE IF NOT EXISTS eventos (
       id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at BIGINT
     );
@@ -423,6 +433,42 @@ async function pessoasAtivas(desde) {
 async function limparEventos(antesDe) {
   await pool.query('DELETE FROM eventos WHERE created_at < $1', [antesDe]);
 }
+
+/* ---------------- Trabalhos de IA ---------------- */
+/* Ver a nota em db-sqlite.js: a memória guarda o que está rodando, o banco
+ * guarda o que sobrevive a reinício. Mesma API assíncrona nos dois. */
+async function salvarJob(j) {
+  await pool.query(
+    `INSERT INTO jobs (id, tenant_id, user_id, tipo, estado, etapa, detalhe, resultado, erro, pedido, criado_em, terminado_em)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+    [j.id, j.tenantId, j.userId || null, j.tipo || '', j.estado, j.etapa || '', j.detalhe || '',
+      j.resultado == null ? null : JSON.stringify(j.resultado), j.erro || null,
+      j.pedido == null ? null : JSON.stringify(j.pedido), j.criadoEm, j.terminadoEm || null]
+  );
+}
+async function atualizarJob(j) {
+  await pool.query(
+    `UPDATE jobs SET estado = $1, etapa = $2, detalhe = $3, resultado = $4, erro = $5, terminado_em = $6 WHERE id = $7`,
+    [j.estado, j.etapa || '', j.detalhe || '',
+      j.resultado == null ? null : JSON.stringify(j.resultado), j.erro || null, j.terminadoEm || null, j.id]
+  );
+}
+async function lerJob(id) {
+  const r = await pool.query('SELECT * FROM jobs WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function listarJobs(tenantId, desde, limite) {
+  const r = await pool.query('SELECT * FROM jobs WHERE tenant_id = $1 AND criado_em > $2 ORDER BY criado_em DESC LIMIT $3',
+    [tenantId, desde || 0, limite || 20]);
+  return r.rows;
+}
+async function interromperJobs(motivo) {
+  await pool.query("UPDATE jobs SET estado = 'erro', erro = $1, terminado_em = $2 WHERE estado = 'rodando'", [motivo, Date.now()]);
+}
+async function limparJobs(antesDe) {
+  await pool.query('DELETE FROM jobs WHERE criado_em < $1', [antesDe]);
+}
+
 
 const mapRec = (r) => ({
   id: r.id, tenantId: r.tenant_id, email: r.email || '', tipo: r.tipo || 'duvida',
@@ -960,6 +1006,7 @@ module.exports = {
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,
   listarOperadores, addOperador, removerOperador,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
+  salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
 };

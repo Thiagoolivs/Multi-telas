@@ -108,22 +108,46 @@ test('a pilha de avisos fica FORA do <main>', () => {
   assert.ok(i > SHELL.indexOf('</main>'), 'a pilha de avisos ficou dentro do <main>');
 });
 
+/*
+ * O aviso de "pronto" saiu de dentro de `gerarImagem` e virou
+ * `avisarImagemPronta`, porque agora DOIS caminhos chegam nele: a geração de
+ * agora e o trabalho retomado depois de recarregar o navegador.
+ *
+ * Os testes seguem o comportamento, não o lugar: quem começa a geração
+ * continua sendo conferido em `gerarImagem`, e o que acontece quando ela fica
+ * pronta é conferido onde isso mora agora.
+ */
+const corpoDe = (nome, tamanho) => {
+  const i = PAGINA.indexOf('function ' + nome);
+  assert.ok(i > 0, 'sumiu ' + nome);
+  return PAGINA.slice(i, i + (tamanho || 1400));
+};
+
 test('gerar imagem não trava mais a tela', () => {
   // A versão anterior era `await ai.image(...)` dentro de um `setBusy(true)`,
   // com o diálogo modal aberto o tempo todo.
-  const i = PAGINA.indexOf('function gerarImagem');
-  assert.ok(i > 0, 'sumiu a geração de imagem');
-  const corpo = PAGINA.slice(i, i + 1400);
+  const corpo = corpoDe('gerarImagem');
   assert.ok(!/await ai\.image/.test(corpo), 'a geração voltou a segurar a tela');
   assert.match(corpo, /aviso\.trabalho\(/, 'não avisa que começou');
-  assert.match(corpo, /aviso\.pronto\(/, 'não avisa quando fica pronta');
+  assert.match(corpo, /avisarImagemPronta\(/, 'não avisa quando fica pronta');
   assert.match(corpo, /aviso\.erro\(/, 'a falha some em silêncio');
   assert.match(corpo, /setImgOpen\(false\)[\s\S]{0,200}ai\.image/, 'o diálogo não fecha antes de começar');
+  assert.match(corpoDe('avisarImagemPronta'), /aviso\.pronto\(/, 'o pronto deixou de avisar');
+});
+
+test('a imagem retomada avisa pelo MESMO caminho da recém-gerada', () => {
+  /*
+   * São dois caminhos até o mesmo aviso, e é por isso que ele foi extraído.
+   * Se a retomada montasse o próprio aviso, o segundo lugar seria o que ficaria
+   * para trás — e a imagem retomada perderia o botão de salvar, que é a única
+   * forma de alcançar uma geração que já foi paga.
+   */
+  assert.match(PAGINA, /ai\.retomar\('imagem'[\s\S]{0,400}avisarImagemPronta\(/,
+    'a imagem retomada não usa o aviso compartilhado');
 });
 
 test('o aviso de pronto leva o botão que abre onde salvar', () => {
-  const i = PAGINA.indexOf('function gerarImagem');
-  const corpo = PAGINA.slice(i, i + 1800);
+  const corpo = corpoDe('avisarImagemPronta', 1800);
   assert.match(corpo, /rotulo: 'Ver e salvar'/, 'o aviso ficou sem ação');
   assert.match(corpo, /pasta: 'Imagens da IA'/, 'a imagem não sugere pasta própria');
 });
@@ -233,8 +257,7 @@ test('sair da inscrição para de receber', async () => {
 test('o aviso deposita na bandeja e manda navegar', () => {
   // Antes ele chamava setSaveItem direto — num componente que podia estar
   // desmontado, e aí o clique não fazia nada.
-  const i = PAGINA.indexOf('function gerarImagem');
-  const corpo = PAGINA.slice(i, i + 1800);
+  const corpo = corpoDe('avisarImagemPronta', 1800);
   assert.match(corpo, /guardarNaBandeja\(\{ item,/, 'a imagem pronta deixou de passar pela bandeja');
   assert.match(corpo, /if \(onIr\) onIr\('designs'\)/, 'o aviso deixou de trazer a pessoa de volta');
   assert.ok(!/on: \(\) => setSaveItem\(/.test(corpo),

@@ -141,6 +141,30 @@ function readBody(req, res, cb) {
     });
   });
 }
+/*
+ * Toda geração de IA vira TRABALHO — devolve 202 com um id e o painel
+ * acompanha por polling.
+ *
+ * Antes só o diretor de campanha fazia isso, porque era o único que passava do
+ * tempo de uma requisição. As outras oito eram síncronas, e o defeito era o
+ * mesmo em tamanho menor: fechar a aba, trocar de página ou o celular perder a
+ * rede por dez segundos matava o pedido — e o crédito de IA já tinha sido
+ * gasto. Trabalho de dois segundos que sobrevive vale mais que trabalho de dois
+ * segundos que às vezes se perde.
+ *
+ * `tipo` e `pedido` são gravados junto: é o que permite a pessoa voltar e
+ * reconhecer o que estava esperando, em vez de encarar um id.
+ */
+function emTrabalho(res, sess, tipo, pedido, tarefa) {
+  try {
+    const job = jobs.criar(sess.tenant_id, tarefa, { tipo, pedido, userId: sess.user_id });
+    return sendJson(res, 202, jobs.publico(job));
+  } catch (e) {
+    // O único erro que `criar` levanta é o teto por conta, e ele tem status.
+    return sendJson(res, e.status || 500, { error: e.message });
+  }
+}
+
 function broadcast(deviceId, event, payload) {
   const set = subscribers[deviceId];
   if (!set) return;
@@ -699,10 +723,10 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const answers = (b && b.answers) || {};
       if (!answers.objetivo || !String(answers.objetivo).trim()) return sendJson(res, 400, { error: 'informe o objetivo da campanha' });
-      try {
+      return emTrabalho(res, sess, 'campanha-simples', { brief: String(answers.objetivo).slice(0, 200) }, async () => {
         const campaign = await ai.generateCampaign(answers, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '', zones: (b && b.zones) || [] });
-        return sendJson(res, 200, { mode: ai.mode(), ...campaign });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), ...campaign };
+      });
     });
   }
 
@@ -715,10 +739,10 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva o que você quer' });
-      try {
+      return emTrabalho(res, sess, 'conteudo', { brief: String(brief).slice(0, 200) }, async () => {
         const items = await ai.generateContent(brief, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '' });
-        return sendJson(res, 200, { mode: ai.mode(), items });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), items };
+      });
     });
   }
 
@@ -1358,12 +1382,39 @@ async function handleApi(req, res, pathname, query) {
     });
   }
 
+  /*
+   * Acompanhar QUALQUER trabalho de IA, e listar os da conta.
+   *
+   * A rota é uma só para todos os tipos porque o que o painel precisa saber é
+   * sempre o mesmo: em que etapa está, terminou, e qual o resultado. Uma rota
+   * de status por tipo de geração seria oito cópias da mesma coisa, e a nona
+   * função de IA nasceria sem status até alguém lembrar.
+   *
+   * `/api/ai/jobs` é o que permite VOLTAR: quem fechou a aba no meio de uma
+   * geração reabre o painel e encontra o trabalho ainda lá, com o pedido junto
+   * para reconhecer qual era.
+   */
+  if (parts[1] === 'ai' && parts[2] === 'job' && parts[3] && req.method === 'GET') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const j = await jobs.ler(parts[3], sess.tenant_id);
+    if (!j) return sendJson(res, 404, { error: 'trabalho não encontrado' });
+    return sendJson(res, 200, jobs.publico(j));
+  }
+  if (parts[1] === 'ai' && parts[2] === 'jobs' && req.method === 'GET') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const lista = await jobs.doTenant(sess.tenant_id, 20);
+    return sendJson(res, 200, { itens: lista.map(jobs.publico) });
+  }
+
   /* ----- IA: diretor de arte (campanha inteira, layout autoral) ----- */
   if (parts[1] === 'ai' && parts[2] === 'director') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     // Acompanhar um trabalho em andamento: /api/ai/director/:id
+    // Mantida além de /api/ai/job/:id porque um painel aberto numa aba antiga
+    // ainda pergunta por aqui, e derrubar essa aba perderia uma campanha que
+    // está pronta no servidor.
     if (req.method === 'GET' && parts[3]) {
-      const j = jobs.ler(parts[3], sess.tenant_id);
+      const j = await jobs.ler(parts[3], sess.tenant_id);
       if (!j) return sendJson(res, 404, { error: 'trabalho não encontrado' });
       return sendJson(res, 200, jobs.publico(j));
     }
@@ -1438,7 +1489,7 @@ async function handleApi(req, res, pathname, query) {
               { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
             return saved.url;
           },
-        }).then((out) => ({ mode: ai.mode(), ...out })));
+        }).then((out) => ({ mode: ai.mode(), ...out })), { tipo: 'campanha', pedido: { brief: String(brief).slice(0, 200) }, userId: sess.user_id });
         return sendJson(res, 202, jobs.publico(job));
       } catch (e) { return sendJson(res, e.status || 502, { error: e.message }); }
     });
@@ -1465,13 +1516,13 @@ async function handleApi(req, res, pathname, query) {
           refImages.push({ mime, data: buf.toString('base64') });
         } catch (e) { /* ignora referência inválida */ }
       }
-      try {
+      return emTrabalho(res, sess, 'kit-de-marca', { brief: String(brief).slice(0, 200) }, async () => {
         const out = await ai.generateKit(brief, {
           empresa: (b && b.empresa) || '', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
           publico: (b && b.publico) || '', tom: (b && b.tom) || '', oferta: (b && b.oferta) || '', refImages,
         });
-        return sendJson(res, 200, { mode: ai.mode(), ...out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), ...out };
+      });
     });
   }
 
@@ -1493,18 +1544,26 @@ async function handleApi(req, res, pathname, query) {
       const tenantIA = await db.getTenant(sess.tenant_id);
       const pode = await usoIA.conferir(db, tenantIA, 'gerar-imagem', 1);
       if (!pode.ok) return sendJson(res, 402, pode.resposta);
-      try {
+      /*
+       * A de imagem é a que MAIS precisa ser trabalho: é a mais lenta e a
+       * única que custa dinheiro. Quando era síncrona, a aba fechada no meio
+       * significava uma imagem paga, gerada, salva no armazenamento — e que
+       * ninguém nunca via.
+       */
+      return emTrabalho(res, sess, 'imagem', { brief: String(prompt).slice(0, 200) }, async (progresso) => {
+        progresso('desenhando a imagem', String(prompt).slice(0, 100));
         const img = await ai.generateImage(prompt, {
           formato: (b && b.formato) || '16/9', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '', estilo: (b && b.estilo) || '',
         });
+        progresso('guardando no armazenamento', '');
         const buf = Buffer.from(img.data, 'base64');
         const saved = await midia.guardarBuffer(db, sess.tenant_id, buf, img.mime,
           { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
         // Só depois do sucesso: falha não cobra.
         await usoIA.cobrar(db, tenantIA, { tipo: 'gerar-imagem', quantidade: 1, userId: sess.user_id, referencia: saved.id });
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
-        return sendJson(res, 200, { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' };
+      });
     });
   }
 
@@ -1517,7 +1576,7 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a peça' });
-      try {
+      return emTrabalho(res, sess, 'peca-do-editor', { brief: String(brief).slice(0, 200) }, async () => {
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.composicao');
         const out = await ai.generateComposition(brief, {
           empresa: (b && b.empresa) || '',
@@ -1541,8 +1600,8 @@ async function handleApi(req, res, pathname, query) {
             estilo: (b && b.estilo) || '',
           },
         });
-        return sendJson(res, 200, { mode: ai.mode(), ...out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), ...out };
+      });
     });
   }
 
@@ -1555,10 +1614,10 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const season = (b && b.season) || (b && b.label);
       if (!season) return sendJson(res, 400, { error: 'informe a data comemorativa' });
-      try {
+      return emTrabalho(res, sess, 'data-comemorativa', { brief: String(season).slice(0, 200) }, async () => {
         const out = await ai.generateSeasonal(season, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '' });
-        return sendJson(res, 200, { mode: ai.mode(), ...out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), ...out };
+      });
     });
   }
 
@@ -1571,10 +1630,10 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const answers = (b && b.answers) || {};
       if (!answers.objetivo && !answers.brief) return sendJson(res, 400, { error: 'informe o objetivo/brief da campanha' });
-      try {
+      return emTrabalho(res, sess, 'faixas-de-horario', { brief: String(answers.objetivo || answers.brief).slice(0, 200) }, async () => {
         const out = await ai.generateDayparts(answers, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '' });
-        return sendJson(res, 200, { mode: ai.mode(), ...out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), ...out };
+      });
     });
   }
 
@@ -1587,10 +1646,10 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const text = b && b.text;
       if (!text || !String(text).trim()) return sendJson(res, 400, { error: 'informe o texto' });
-      try {
+      return emTrabalho(res, sess, 'reescrever', { brief: String(text).slice(0, 200) }, async () => {
         const out = await ai.rewriteText(text, { campo: (b && b.campo) || 'corpo', tom: (b && b.tom) || '', max: b && b.max });
-        return sendJson(res, 200, { mode: ai.mode(), text: out });
-      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+        return { mode: ai.mode(), text: out };
+      });
     });
   }
 
@@ -2411,6 +2470,15 @@ const server = http.createServer((req, res) => {
  */
 erros.instalarRedeDeSeguranca();
 
+/*
+ * O módulo de trabalhos recebe o banco em vez de escolher um.
+ *
+ * Mesma razão de sempre neste projeto: produção roda Postgres, teste roda
+ * SQLite, e um teste de trabalho não deveria precisar de banco nenhum — sem
+ * banco, `jobs` continua funcionando só na memória.
+ */
+jobs.usarBanco(db);
+
 db.init()
   .then(() => server.listen(PORT, () => {
     const s3 = storage.s3Info();
@@ -2442,6 +2510,17 @@ db.init()
      * roda uma vez ao subir e a cada seis horas — não precisa de precisão,
      * precisa de acontecer.
      */
+    /*
+     * Trabalhos que o reinício deixou órfãos são fechados AGORA.
+     *
+     * Um trabalho que estava `rodando` quando o processo caiu ficaria
+     * `rodando` para sempre no banco, e o painel de quem estava esperando
+     * contaria etapa de uma geração que não existe mais, sem nunca terminar.
+     * Um erro com frase clara é pior que ter dado certo e muito melhor que
+     * esperar para sempre.
+     */
+    jobs.fecharOrfaos().catch((e) => erros.registrar(e, { onde: 'fechar trabalhos órfãos' }));
+
     const NOVENTA_DIAS = 90 * 24 * 60 * 60 * 1000;
     const varrer = () => db.limparEventos(Date.now() - NOVENTA_DIAS)
       .catch((e) => erros.registrar(e, { onde: 'limpeza de eventos' }));

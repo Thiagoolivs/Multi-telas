@@ -233,11 +233,54 @@ export function MyDesignsPage({ onIr }) {
     finally { setEmAndamento(false); setEtapa(null); }
   }
 
-  // Ao abrir a página: se ficou uma campanha rodando, volta a acompanhar.
+  /*
+   * Ao abrir a página: volta a acompanhar o que ficou rodando.
+   *
+   * São dois trabalhos diferentes, e os dois se perdiam do mesmo jeito. A
+   * campanha já era retomada; a IMAGEM não era, e essa é a que dói — o aviso
+   * dizia "pode sair desta tela", o que era verdade enquanto a aba vivesse.
+   * Recarregar o navegador quebrava a promessa e a imagem, que é a única
+   * geração que custa crédito de verdade, ficava paga e inalcançável.
+   */
   useEffect(() => {
     const pend = ai.jobPendente();
     if (pend) acompanhar(pend.id);
+
+    const img = ai.pendente('imagem');
+    if (!img) return undefined;
+    const sinal = { parado: false };
+    const id = 'img:retomada';
+    aviso.trabalho(id, 'Terminando sua imagem…', 'Ela continuou sendo feita enquanto você esteve fora.');
+    ai.retomar('imagem', null, sinal)
+      .then((out) => { if (out) avisarImagemPronta(id, out, img.brief || 'Imagem'); })
+      .catch((e) => aviso.erro(id, 'A imagem não saiu.', e.message || 'Tente de novo em instantes.'));
+    return () => { sinal.parado = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
+   * O aviso de imagem pronta, num lugar só.
+   *
+   * Chamado por dois caminhos — a geração de agora e a retomada depois de
+   * recarregar — e enquanto isto vivia dentro do `.then()` da geração, o
+   * segundo caminho teria que repetir a mesma lógica. O segundo lugar é
+   * sempre o que fica para trás.
+   */
+  function avisarImagemPronta(id, out, prompt) {
+    const item = { type: 'composicao', formato: out.formato || iFormato, duracao: 12, bg: { kind: 'imagem', src: out.url }, elementos: [] };
+    aviso.pronto(id, 'Sua imagem ficou pronta.', resumo(prompt), {
+      rotulo: 'Ver e salvar',
+      /*
+       * Pela bandeja, e não por `setSaveItem` direto: quando o aviso é
+       * clicado de outra tela, ESTA página está desmontada e o clique não
+       * faria nada — o resultado de um trabalho já cobrado ficaria
+       * inalcançável. A bandeja guarda; a navegação traz para cá.
+       */
+      on: () => {
+        guardarNaBandeja({ item, nome: resumo(prompt), pasta: 'Imagens da IA', titulo: 'Sua imagem ficou pronta' });
+        if (onIr) onIr('designs');
+      },
+    });
+  }
 
   async function gerarCampanha(briefingPronto) {
     if (!brief.trim()) return;
@@ -323,24 +366,9 @@ export function MyDesignsPage({ onIr }) {
     setImgOpen(false); setIPrompt(''); setMsg('');
     aviso.trabalho(id, 'Gerando sua imagem…', 'Pode sair desta tela. Aviso aqui quando ficar pronta.');
 
-    ai.image({ prompt, formato, estilo: iEstilo }).then((out) => {
-      const item = { type: 'composicao', formato: out.formato || formato, duracao: 12, bg: { kind: 'imagem', src: out.url }, elementos: [] };
-      aviso.pronto(id, 'Sua imagem ficou pronta.', resumo(prompt), {
-        rotulo: 'Ver e salvar',
-        /*
-         * Pela bandeja, e não por `setSaveItem` direto: quando o aviso é
-         * clicado de outra tela, ESTA página está desmontada e o clique não
-         * faria nada — o resultado de um trabalho já cobrado ficaria
-         * inalcançável. A bandeja guarda; a navegação traz para cá.
-         */
-        on: () => {
-          guardarNaBandeja({ item, nome: resumo(prompt), pasta: 'Imagens da IA', titulo: 'Sua imagem ficou pronta' });
-          if (onIr) onIr('designs');
-        },
-      });
-    }).catch((e) => {
-      aviso.erro(id, 'A imagem não saiu.', e.message || 'Tente de novo em instantes.');
-    });
+    ai.image({ prompt, formato, estilo: iEstilo })
+      .then((out) => avisarImagemPronta(id, out, prompt))
+      .catch((e) => aviso.erro(id, 'A imagem não saiu.', e.message || 'Tente de novo em instantes.'));
   }
 
   // O prompt vira o nome sugerido: "banner de padaria ao amanhecer" é um nome
