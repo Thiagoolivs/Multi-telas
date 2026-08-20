@@ -130,8 +130,18 @@ internet**, sem hospedar `config.json` na mão.
    nada.
 2. No painel (celular ou PC), no card **"Controlar TV pelo celular"**, **crie
    uma conta / faça login**.
-3. Na TV, abra o player com `?cloud=1` no fim da URL — aparece um **código de
-   pareamento**.
+3. Na TV, abra **`seu-dominio/tv`** — aparece um **código de pareamento**.
+
+   Esse endereço existe porque ele é digitado com um controle remoto, letra por
+   letra, num teclado de televisão. `/player.html?cloud=1` funciona igual e
+   ninguém acerta: são dois pontos, uma barra e uma interrogação. `/tv` é tudo.
+
+   ```
+   https://multitelas.up.railway.app/tv
+   ```
+
+   `/tv?new=1` faz a TV esquecer o pareamento salvo e gerar outro código —
+   é o que se usa ao trocar a televisão de sala ou de cliente.
 4. No painel, digite o código para **parear** — a TV passa a pertencer à sua
    conta. A partir daí, ao salvar, o conteúdo é enviado para a TV **na hora**
    (via SSE).
