@@ -39,6 +39,7 @@ const ai = require('./server/ai');
 const director = require('./server/ai-director');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
+const cortesia = require('./server/cortesia.js');
 const passes = require('./server/passes.js');
 const metricas = require('./server/metricas.js');
 const ds = require('./server/design-system');
@@ -321,6 +322,9 @@ async function handleApi(req, res, pathname, query) {
         // Sem convite: cria uma nova empresa e o usuário vira dono (owner).
         const { userId, tenantId } = await db.createAccount(email, passHash, b.name, b.name);
         await db.registrarAceite(tenantId, userId, email, legal.VERSAO, 'cadastro', clientIp(req));
+        // Convidado para testar entra já com a conta liberada, sem passar pelo
+        // teste de 14 dias — ver server/cortesia.js.
+        await cortesia.sincronizar(db, tenantId, email);
         await auth.startSession(res, userId, tenantId, req);
         return sendJson(res, 201, { user: { email, role: 'owner' }, tenant: { id: tenantId, name: b.name || email } });
       });
@@ -337,6 +341,15 @@ async function handleApi(req, res, pathname, query) {
         const u = await db.getUserByEmail(email);
         if (!u || !auth.verifyPassword(b.password, u.pass_hash))
           return sendJson(res, 401, { error: 'e-mail ou senha incorretos' });
+        /*
+         * A lista de cortesia é conferida no LOGIN, e não a cada requisição.
+         *
+         * É uma escrita no banco; reagir em um segundo em vez de no próximo
+         * login não paga uma escrita por página carregada. Na prática,
+         * acrescentar alguém à lista vale a partir do próximo login dessa
+         * pessoa — que é quando ela vai olhar, porque foi quando você avisou.
+         */
+        await cortesia.sincronizar(db, u.tenant_id, u.email);
         await auth.startSession(res, u.id, u.tenant_id, req);
         return sendJson(res, 200, { user: { email }, tenant: { id: u.tenant_id } });
       });
@@ -489,6 +502,10 @@ async function handleApi(req, res, pathname, query) {
             u = { id: userId, tenant_id: tenantId };
           }
         }
+        // Entrar pelo Google é entrada de conta como qualquer outra: a lista
+        // de cortesia vale aqui também, senão quem você convidou pelo Google
+        // cairia no teste de 14 dias sem entender por quê.
+        await cortesia.sincronizar(db, u.tenant_id, email);
         await auth.startSession(res, u.id, u.tenant_id, req);
         // Limpa o cookie de state e entra no painel.
         res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), 'mt_oauth=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'].flat().filter(Boolean));
@@ -1690,6 +1707,13 @@ async function handleApi(req, res, pathname, query) {
           precoTelaCents: curPlan.precoTelaCents, sobConsulta: !!curPlan.sobConsulta,
         },
         status: (tenant && tenant.plan_status) || (curPlan.precoTelaCents ? 'active' : 'free'),
+        /*
+         * Dito com todas as letras para o painel. Uma conta de cortesia tem
+         * plano Pro de verdade, e sem esta bandeira a tela mostraria "Pro
+         * ativo" — a pessoa acharia que está pagando e o botão de assinar
+         * sumiria justamente de quem um dia precisa clicar nele.
+         */
+        cortesia: cortesia.contaEmCortesia(tenant),
         renewsAt: tenant && tenant.plan_renews_at,
         /*
          * O teste, para o painel poder avisar ANTES de acabar.

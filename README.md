@@ -158,6 +158,30 @@ ver os dados de todos os clientes. **Sem a variável, o painel não aparece e a
 rota responde 404** — "sem configuração, o dono da primeira conta vira operador"
 transformaria uma instalação nova numa porta aberta.
 
+O **Estado do sistema** (banco, provedor de IA, bucket, textos legais) também
+mora aqui. É infraestrutura de quem VENDE o produto, não de quem o compra.
+
+### Contas liberadas para testar
+
+Para mandar o produto a alguém experimentar sem passar pelo teste de 14 dias:
+
+```
+CONTAS_CORTESIA=amigo@empresa.com,cliente@teste.com
+```
+
+Quem está na lista recebe os limites do plano **Pro** — telas, crédito de IA,
+armazenamento e todos os recursos — sem cobrança e sem prazo. A tela de Plano
+diz "Cortesia", para a pessoa não achar que está pagando.
+
+**A lista manda nos dois sentidos:** tirar o e-mail devolve a conta ao grátis
+no próximo login. Sem isso, cada cortesia duraria para sempre e seguiria
+gastando chamada de modelo muito depois do teste.
+
+Duas coisas que ela **não** faz: não toca em conta com assinatura ativa, e
+**não dá acesso ao painel da plataforma** — isso é `ADMIN_EMAILS`, e são duas
+variáveis justamente para que acrescentar um testador nunca possa virar "essa
+pessoa agora vê todos os clientes" por descuido de digitação.
+
 ---
 
 ## Estrutura do projeto
