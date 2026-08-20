@@ -142,6 +142,22 @@ local, sem `DATABASE_URL`, o banco fica em `data/multitelas.db` (SQLite). Ver
 [`docs/ESTADO-DO-PROJETO.md`](docs/ESTADO-DO-PROJETO.md) e
 [`docs/PLANO-SAAS.md`](docs/PLANO-SAAS.md).
 
+### Painel de quem opera a plataforma
+
+Existe uma página separada — telas vivas, contas, tempo de uso, funções mais
+usadas, reclamações — para quem **opera o MultiTelas**, não para quem o usa.
+Ela só existe se `ADMIN_EMAILS` estiver definida:
+
+```
+ADMIN_EMAILS=voce@exemplo.com,socio@exemplo.com
+```
+
+É variável de ambiente de propósito: só muda por deploy. Se a lista de
+operadores vivesse no banco, uma senha vazada bastaria para alguém se promover e
+ver os dados de todos os clientes. **Sem a variável, o painel não aparece e a
+rota responde 404** — "sem configuração, o dono da primeira conta vira operador"
+transformaria uma instalação nova numa porta aberta.
+
 ---
 
 ## Estrutura do projeto
