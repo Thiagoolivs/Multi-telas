@@ -109,6 +109,27 @@ async function init() {
       ativa BOOLEAN, created_at BIGINT, updated_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_marcas_tenant ON marcas(tenant_id);
+    -- Quem opera a PLATAFORMA (não uma conta). A raiz da confiança é a
+    -- variável ADMIN_EMAILS; aqui só ficam os que a raiz convidou depois.
+    CREATE TABLE IF NOT EXISTS operadores (
+      email TEXT PRIMARY KEY, nome TEXT, convidado_por TEXT, created_at BIGINT
+    );
+    -- Eventos de uso: QUE função foi usada, por quem e quando. Nunca o
+    -- conteúdo — para saber que o editor é usado não é preciso guardar o que
+    -- foi escrito nele.
+    CREATE TABLE IF NOT EXISTS eventos (
+      id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_eventos_quando ON eventos(created_at);
+    CREATE INDEX IF NOT EXISTS idx_eventos_tenant ON eventos(tenant_id, created_at);
+    -- Reclamações e pedidos escritos pelo cliente. Antes não havia canal
+    -- nenhum dentro do produto.
+    CREATE TABLE IF NOT EXISTS reclamacoes (
+      id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, email TEXT,
+      tipo TEXT, texto TEXT, status TEXT, resposta TEXT,
+      created_at BIGINT, resolvido_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_reclamacoes_quando ON reclamacoes(created_at);
     /*
      * A identidade única vira a primeira marca. Idempotente: só age em conta
      * que ainda não tem marca nenhuma. Sem isto, quem já tinha cores e fontes
@@ -354,6 +375,122 @@ async function addBrandAsset(tenantId, kind, url, label, marcaId) {
 async function removeBrandAsset(id, tenantId) {
   await pool.query('DELETE FROM brandassets WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
 }
+/* ---------------- Plataforma: operadores, eventos e reclamações ---------------- */
+
+async function listarOperadores() {
+  const r = await pool.query('SELECT * FROM operadores ORDER BY created_at ASC');
+  return r.rows.map((x) => ({ email: x.email, nome: x.nome || '', convidadoPor: x.convidado_por || '', createdAt: Number(x.created_at) }));
+}
+async function addOperador(email, nome, convidadoPor) {
+  const e = String(email || '').trim().toLowerCase();
+  if (!e.includes('@')) return null;
+  await pool.query(`INSERT INTO operadores (email, nome, convidado_por, created_at) VALUES ($1,$2,$3,$4)
+    ON CONFLICT (email) DO UPDATE SET nome = EXCLUDED.nome`,
+    [e, String(nome || '').slice(0, 80), String(convidadoPor || '').toLowerCase(), Date.now()]);
+  return { email: e, nome: nome || '', convidadoPor: convidadoPor || '' };
+}
+async function removerOperador(email) {
+  await pool.query('DELETE FROM operadores WHERE email = $1', [String(email || '').trim().toLowerCase()]);
+}
+
+async function registrarEvento(tenantId, userId, acao) {
+  await pool.query('INSERT INTO eventos (id, tenant_id, user_id, acao, created_at) VALUES ($1,$2,$3,$4,$5)',
+    ['ev_' + rid(14), tenantId || '', userId || '', String(acao || '').slice(0, 40), Date.now()]);
+}
+async function eventosPorAcao(desde) {
+  const r = await pool.query('SELECT acao, COUNT(*)::int AS n FROM eventos WHERE created_at >= $1 GROUP BY acao ORDER BY n DESC LIMIT 30', [desde || 0]);
+  return r.rows.map((x) => ({ acao: x.acao, n: Number(x.n) }));
+}
+async function eventosParaSessoes(desde) {
+  // Só o par (usuário, instante): é o suficiente para medir sessão, e não
+  // carrega mais nada de ninguém para dentro da conta.
+  const r = await pool.query('SELECT user_id, created_at FROM eventos WHERE created_at >= $1 ORDER BY user_id ASC, created_at ASC', [desde || 0]);
+  return r.rows.map((x) => ({ userId: x.user_id, em: Number(x.created_at) }));
+}
+async function eventosPorDia(desde) {
+  const r = await pool.query(
+    "SELECT to_char(to_timestamp(created_at / 1000), 'YYYY-MM-DD') AS dia, COUNT(*)::int AS n FROM eventos WHERE created_at >= $1 GROUP BY dia ORDER BY dia ASC", [desde || 0]);
+  return r.rows.map((x) => ({ dia: x.dia, n: Number(x.n) }));
+}
+async function contasAtivas(desde) {
+  const r = await pool.query('SELECT COUNT(DISTINCT tenant_id)::int AS n FROM eventos WHERE created_at >= $1', [desde || 0]);
+  return Number(r.rows[0].n);
+}
+async function pessoasAtivas(desde) {
+  const r = await pool.query('SELECT COUNT(DISTINCT user_id)::int AS n FROM eventos WHERE created_at >= $1', [desde || 0]);
+  return Number(r.rows[0].n);
+}
+async function limparEventos(antesDe) {
+  await pool.query('DELETE FROM eventos WHERE created_at < $1', [antesDe]);
+}
+
+const mapRec = (r) => ({
+  id: r.id, tenantId: r.tenant_id, email: r.email || '', tipo: r.tipo || 'duvida',
+  texto: r.texto || '', status: r.status || 'aberta', resposta: r.resposta || '',
+  createdAt: Number(r.created_at), resolvidoEm: Number(r.resolvido_em) || 0,
+});
+async function criarReclamacao(tenantId, userId, email, tipo, texto) {
+  const id = 'rec_' + rid(14);
+  await pool.query(`INSERT INTO reclamacoes (id, tenant_id, user_id, email, tipo, texto, status, resposta, created_at, resolvido_em)
+    VALUES ($1,$2,$3,$4,$5,$6,'aberta','',$7,0)`,
+    [id, tenantId, userId || '', String(email || '').slice(0, 160),
+     String(tipo || 'duvida').slice(0, 20), String(texto || '').slice(0, 4000), Date.now()]);
+  return { id };
+}
+async function listarReclamacoes(limite) {
+  const r = await pool.query('SELECT * FROM reclamacoes ORDER BY created_at DESC LIMIT $1', [Number(limite) || 100]);
+  return r.rows.map(mapRec);
+}
+async function reclamacoesDoTenant(tenantId) {
+  const r = await pool.query('SELECT * FROM reclamacoes WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 50', [tenantId]);
+  return r.rows.map(mapRec);
+}
+async function resolverReclamacao(id, status, resposta) {
+  await pool.query('UPDATE reclamacoes SET status = $1, resposta = $2, resolvido_em = $3 WHERE id = $4',
+    [status, String(resposta || '').slice(0, 2000), Date.now(), id]);
+}
+async function resumoReclamacoes(desde) {
+  const r = await pool.query('SELECT status, COUNT(*)::int AS n FROM reclamacoes WHERE created_at >= $1 GROUP BY status', [desde || 0]);
+  const out = { aberta: 0, resolvida: 0 };
+  for (const x of r.rows) out[x.status] = Number(x.n);
+  return out;
+}
+
+/* Números da plataforma inteira. Só o operador chega aqui — ver server/operadores.js. */
+async function numerosDaPlataforma(agora, vivaDesde, desde) {
+  const um = async (sql, args) => (await pool.query(sql, args || [])).rows[0];
+  const varios = async (sql, args) => (await pool.query(sql, args || [])).rows;
+  const [contas, contasNovas, pessoas, telas, telasVivas, midia, pecas, ia] = await Promise.all([
+    um('SELECT COUNT(*)::int AS n FROM tenants'),
+    um('SELECT COUNT(*)::int AS n FROM tenants WHERE created_at >= $1', [desde]),
+    um('SELECT COUNT(*)::int AS n FROM users'),
+    um('SELECT COUNT(*)::int AS n FROM devices'),
+    um('SELECT COUNT(*)::int AS n FROM devices WHERE last_seen >= $1', [vivaDesde]),
+    um('SELECT COALESCE(SUM(size), 0)::bigint AS b FROM media'),
+    um('SELECT COUNT(*)::int AS n FROM library'),
+    um('SELECT COALESCE(SUM(creditos),0)::int AS c, COALESCE(SUM(custo_centavos),0)::int AS centavos, COUNT(*)::int AS n FROM uso_ia WHERE created_at >= $1', [desde]),
+  ]);
+  const [porPlano, iaPorTipo, maiores] = await Promise.all([
+    varios("SELECT COALESCE(plan, 'free') AS plano, COUNT(*)::int AS n FROM tenants GROUP BY plano"),
+    varios('SELECT tipo, COUNT(*)::int AS n FROM uso_ia WHERE created_at >= $1 GROUP BY tipo ORDER BY n DESC LIMIT 12', [desde]),
+    varios(`SELECT t.id, t.name, COALESCE(t.plan, 'free') AS plano, t.created_at,
+        (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id)::int AS telas,
+        (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id)::int AS pessoas
+      FROM tenants t ORDER BY telas DESC, t.created_at ASC LIMIT 20`),
+  ]);
+  return {
+    contas: Number(contas.n), contasNovas: Number(contasNovas.n), pessoas: Number(pessoas.n),
+    telas: Number(telas.n), telasVivas: Number(telasVivas.n),
+    porPlano: porPlano.map((r) => ({ plano: r.plano, n: Number(r.n) })),
+    midiaBytes: Number(midia.b), pecas: Number(pecas.n),
+    ia: { creditos: Number(ia.c), custoCentavos: Number(ia.centavos), chamadas: Number(ia.n) },
+    iaPorTipo: iaPorTipo.map((r) => ({ tipo: r.tipo, n: Number(r.n) })),
+    maiores: maiores.map((r) => ({
+      id: r.id, nome: r.name, plano: r.plano, telas: Number(r.telas), pessoas: Number(r.pessoas), createdAt: Number(r.created_at),
+    })),
+  };
+}
+
 /* ---------------- Mural de fotos do público ---------------- */
 // `tenantId` sai daqui porque a rota pública do QR não tem sessão: quem manda
 // a foto é identificado pelo mural, e é do mural que vem a empresa dona dela.
@@ -821,4 +958,8 @@ module.exports = {
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,
+  listarOperadores, addOperador, removerOperador,
+  registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
+  criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
+  numerosDaPlataforma,
 };

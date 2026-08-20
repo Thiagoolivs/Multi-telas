@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity,
+  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity, Gauge,
 } from 'lucide-react';
 
 const NAV = [
@@ -24,6 +24,17 @@ const NAV = [
     // da equipe clicava para receber erro.
     { id: 'system', label: 'Estado do sistema', icon: Activity, dono: true },
     { id: 'settings', label: 'Ajustes', icon: Settings },
+  ] },
+  /*
+   * A seção da PLATAFORMA só existe para quem opera o MultiTelas inteiro — e
+   * são coisas diferentes: "Estado do sistema" responde "a minha conta está
+   * bem configurada?"; "Plataforma" responde "o produto está de pé e sendo
+   * usado?". Quem usa uma conta nunca precisa da segunda.
+   *
+   * Esconder o menu é só APARÊNCIA: a rota pergunta de novo, no servidor.
+   */
+  { section: 'Plataforma', operador: true, items: [
+    { id: 'platform', label: 'Métricas da plataforma', icon: Gauge },
   ] },
 ];
 
@@ -53,9 +64,11 @@ function NavItem({ item, active, onClick }) {
   );
 }
 
-export function Sidebar({ active, onNavigate, papel }) {
+export function Sidebar({ active, onNavigate, papel, operador }) {
   const ehDono = papel === 'owner';
-  const secoes = NAV.map((s) => ({ ...s, items: s.items.filter((i) => !i.dono || ehDono) }))
+  const secoes = NAV
+    .filter((s) => !s.operador || operador)
+    .map((s) => ({ ...s, items: s.items.filter((i) => !i.dono || ehDono) }))
     .filter((s) => s.items.length);
 
   return (

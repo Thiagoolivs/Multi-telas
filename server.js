@@ -36,6 +36,8 @@ const billing = require('./server/billing');
 const ai = require('./server/ai');
 const director = require('./server/ai-director');
 const site = require('./server/site.js');
+const operadores = require('./server/operadores.js');
+const metricas = require('./server/metricas.js');
 const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
 const legal = require('./server/legal');
@@ -539,10 +541,17 @@ async function handleApi(req, res, pathname, query) {
       if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
       const t = await db.getTenant(sess.tenant_id);
       const u = await db.getUserById(sess.user_id);
+      /*
+       * `operador` decide se o menu da plataforma aparece. É só a APARÊNCIA:
+       * a porta de verdade está em /api/plataforma, e ela pergunta de novo.
+       * Esconder o menu sem fechar a rota seria segurança de fachada.
+       */
+      const quem = await operadores.permissao(db, sess);
       return sendJson(res, 200, {
         tenant: { id: sess.tenant_id, name: (t && t.name) || '' },
         // hasPassword: conta criada pelo Google ainda não tem senha própria.
         user: { id: sess.user_id, email: sess.email, role: sess.role, name: sess.name, hasPassword: !!(u && u.pass_hash) },
+        operador: quem.pode,
       });
     }
     return sendJson(res, 404, { error: 'rota de auth inválida' });
@@ -703,6 +712,7 @@ async function handleApi(req, res, pathname, query) {
         const pieces = (b && b.pieces) || [];
         if (!Array.isArray(pieces) || !pieces.length) return sendJson(res, 400, { error: 'sem peças para salvar' });
         const n = await db.addLibrary(sess.tenant_id, (b && b.campaign) || 'Campanha', pieces.slice(0, 30));
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'peca.salvar');
         return sendJson(res, 201, { ok: true, saved: n });
       });
     }
@@ -1006,6 +1016,116 @@ async function handleApi(req, res, pathname, query) {
     return sendJson(res, 404, { error: 'rota não encontrada' });
   }
 
+  /* ----- Suporte: o cliente escreve, e alguém do outro lado lê ----- */
+  if (parts[1] === 'suporte') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+
+    if (req.method === 'POST' && parts[2] === 'reclamacao') {
+      // Teto por hora: sem ele, um laço de envios enche a caixa de quem lê e
+      // some com o que importa no meio.
+      const rl = rateLimit('rec:' + sess.tenant_id, 10, 60 * 60 * 1000);
+      if (!rl.ok) return sendJson(res, 429, { error: 'muitas mensagens por hora' }, { 'Retry-After': String(rl.retryAfter) });
+      return readBody(req, res, async (b) => {
+        const texto = String((b && b.texto) || '').trim();
+        if (texto.length < 10) return sendJson(res, 400, { error: 'escreva um pouco mais para a gente entender' });
+        const tipo = ['problema', 'duvida', 'sugestao', 'cobranca'].includes(b && b.tipo) ? b.tipo : 'duvida';
+        const r = await db.criarReclamacao(sess.tenant_id, sess.user_id, sess.email, tipo, texto);
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'reclamacao');
+        return sendJson(res, 201, { id: r.id });
+      });
+    }
+
+    // O que ESTA conta já mandou, com a resposta quando houver. Guardar sem
+    // devolver seria pedir que a pessoa escrevesse num buraco.
+    if (req.method === 'GET' && parts[2] === 'reclamacao') {
+      return sendJson(res, 200, { itens: await db.reclamacoesDoTenant(sess.tenant_id) });
+    }
+    return sendJson(res, 404, { error: 'rota de suporte não encontrada' });
+  }
+
+  /* ----- Plataforma: os números do MultiTelas inteiro ----- */
+  if (parts[1] === 'plataforma') {
+    /*
+     * A PORTA. Tudo daqui para baixo enxerga TODAS as contas.
+     *
+     * A checagem é uma só, no topo, e antes de qualquer leitura: espalhá-la
+     * por rota é como se esquece uma. E o operador é definido por uma variável
+     * de ambiente (ver server/operadores.js) justamente para que nem um bug de
+     * rota nem uma senha vazada consigam criar um.
+     */
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const quem = await operadores.permissao(db, sess);
+    if (!quem.pode) return sendJson(res, 404, { error: 'rota não encontrada' });
+
+    if (req.method === 'GET' && parts[2] === 'metricas') {
+      const agora = Date.now();
+      const dias = Math.min(180, Math.max(1, Number(query && query.dias) || 30));
+      const desde = agora - dias * 24 * 60 * 60 * 1000;
+      const vivaDesde = agora - metricas.JANELA_TELA_VIVA_MS;
+
+      const [numeros, porAcao, paraSessoes, porDia, contasAtivas, pessoasAtivas, reclamacoes] = await Promise.all([
+        db.numerosDaPlataforma(agora, vivaDesde, desde),
+        db.eventosPorAcao(desde),
+        db.eventosParaSessoes(desde),
+        db.eventosPorDia(desde),
+        db.contasAtivas(desde),
+        db.pessoasAtivas(desde),
+        db.resumoReclamacoes(desde),
+      ]);
+
+      return sendJson(res, 200, {
+        dias,
+        ...numeros,
+        ativas: { contas: contasAtivas, pessoas: pessoasAtivas },
+        uso: metricas.sessoesDe(paraSessoes),
+        funcoes: metricas.funcoesMaisUsadas(porAcao),
+        porDia,
+        reclamacoes,
+        raiz: quem.raiz,
+      });
+    }
+
+    if (req.method === 'GET' && parts[2] === 'reclamacoes') {
+      return sendJson(res, 200, { itens: await db.listarReclamacoes(200) });
+    }
+    if (req.method === 'POST' && parts[2] === 'reclamacoes' && parts[3]) {
+      return readBody(req, res, async (b) => {
+        const status = ['aberta', 'resolvida'].includes(b && b.status) ? b.status : 'resolvida';
+        await db.resolverReclamacao(parts[3], status, (b && b.resposta) || '');
+        return sendJson(res, 200, { ok: true });
+      });
+    }
+
+    /*
+     * A lista de operadores. Ver pode qualquer operador; MEXER, só a raiz.
+     *
+     * Sem essa separação um convite errado se multiplicaria sozinho, e não
+     * haveria como cortar a árvore de volta a não ser por deploy.
+     */
+    if (parts[2] === 'operadores') {
+      if (req.method === 'GET') {
+        return sendJson(res, 200, {
+          raiz: operadores.listaDoAmbiente(),
+          convidados: await db.listarOperadores(),
+          souRaiz: quem.raiz,
+        });
+      }
+      if (!quem.raiz) return sendJson(res, 403, { error: 'só quem está em ADMIN_EMAILS pode dar ou tirar acesso' });
+      if (req.method === 'POST') {
+        return readBody(req, res, async (b) => {
+          const o = await db.addOperador((b && b.email) || '', (b && b.nome) || '', sess.email);
+          if (!o) return sendJson(res, 400, { error: 'e-mail inválido' });
+          return sendJson(res, 201, o);
+        });
+      }
+      if (req.method === 'DELETE' && parts[3]) {
+        await db.removerOperador(decodeURIComponent(parts[3]));
+        return sendJson(res, 200, { ok: true });
+      }
+    }
+    return sendJson(res, 404, { error: 'rota da plataforma não encontrada' });
+  }
+
   /* ----- IA: diagnóstico (qual provider e o que a IA respondeu) ----- */
   if (parts[1] === 'ai' && parts[2] === 'diagnose') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
@@ -1109,6 +1229,7 @@ async function handleApi(req, res, pathname, query) {
         return readBody(req, res, async (b) => {
           const dados = await site.analisar((b && b.site) || '');
           if (dados.erro) return sendJson(res, 400, { error: dados.erro });
+          await db.registrarEvento(sess.tenant_id, sess.user_id, 'marca.site');
           const m = await db.salvarSiteDaMarca(parts[3], sess.tenant_id, dados.url, dados.resumo, dados.imagem);
           if (!m) return sendJson(res, 404, { error: 'marca não encontrada' });
           /*
@@ -1212,6 +1333,9 @@ async function handleApi(req, res, pathname, query) {
     // Custa várias chamadas de modelo (plano + uma por peça) — limite menor.
     const rl = rateLimit('ai:dir:' + sess.tenant_id, 10, 60 * 60 * 1000);
     if (!rl.ok) return sendJson(res, 429, { error: 'limite de campanhas por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    // Depois do limite: chamada recusada não é uso, e contá-la inflaria a
+    // métrica justamente de quem está esbarrando no teto.
+    await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.campanha');
     return readBody(req, res, async (b) => {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a campanha' });
@@ -1340,6 +1464,7 @@ async function handleApi(req, res, pathname, query) {
           { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
         // Só depois do sucesso: falha não cobra.
         await usoIA.cobrar(db, tenantIA, { tipo: 'gerar-imagem', quantidade: 1, userId: sess.user_id, referencia: saved.id });
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
         return sendJson(res, 200, { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' });
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
     });
@@ -1355,6 +1480,7 @@ async function handleApi(req, res, pathname, query) {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a peça' });
       try {
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.composicao');
         const out = await ai.generateComposition(brief, {
           empresa: (b && b.empresa) || '',
           tema: (b && b.tema) || '',
@@ -1656,6 +1782,7 @@ async function handleApi(req, res, pathname, query) {
         }
       }
       await db.claimDevice(d.id, sess.tenant_id, b.name || d.name || 'TV');
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.parear');
       return sendJson(res, 200, { id: d.id, name: b.name || d.name || 'TV' });
     });
   }
@@ -2192,5 +2319,27 @@ db.init()
     // próximo deploy. Melhor avisar alto do que descobrir com o cliente.
     const aviso = storage.ephemeralWarning();
     if (aviso) console.warn('\n⚠️  [storage] ' + aviso + '\n');
+
+    if (!operadores.configurado()) {
+      // Dito alto de propósito: sem ADMIN_EMAILS o painel da plataforma
+      // simplesmente não existe, e é melhor descobrir isso agora do que
+      // procurando um menu que nunca vai aparecer.
+      console.warn('[plataforma] ADMIN_EMAILS não definido — o painel da plataforma fica desligado.');
+    }
+
+    /*
+     * Eventos velhos saem sozinhos.
+     *
+     * Noventa dias respondem tudo que o painel pergunta, e guardar mais seria
+     * acumular rastro de uso de gente que não ganha nada com isso. A limpeza
+     * roda uma vez ao subir e a cada seis horas — não precisa de precisão,
+     * precisa de acontecer.
+     */
+    const NOVENTA_DIAS = 90 * 24 * 60 * 60 * 1000;
+    const varrer = () => db.limparEventos(Date.now() - NOVENTA_DIAS)
+      .catch((e) => console.warn('[eventos] limpeza falhou:', e.message));
+    varrer();
+    const relogio = setInterval(varrer, 6 * 60 * 60 * 1000);
+    if (relogio.unref) relogio.unref();
   }))
   .catch((e) => { console.error('[db] falha ao inicializar:', e.message); process.exit(1); });

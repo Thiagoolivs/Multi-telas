@@ -137,6 +137,39 @@ db.exec(`
     ativa INTEGER, created_at INTEGER, updated_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_marcas_tenant ON marcas(tenant_id);
+  /*
+   * Quem opera a PLATAFORMA (não uma conta). A raiz da confiança é a variável
+   * ADMIN_EMAILS; esta tabela só guarda quem a raiz convidou depois.
+   */
+  CREATE TABLE IF NOT EXISTS operadores (
+    email TEXT PRIMARY KEY, nome TEXT, convidado_por TEXT, created_at INTEGER
+  );
+  /*
+   * Eventos de uso: QUE função foi usada, por quem e quando. Nunca o conteúdo.
+   *
+   * É o que responde "quais funções são mais usadas" e "quanto tempo a pessoa
+   * passa aqui" — perguntas que hoje não têm dado nenhum por trás, e que sem
+   * isto só poderiam ser respondidas com chute.
+   *
+   * Guardar o conteúdo junto seria fácil e seria errado: para saber que o
+   * editor é usado não é preciso guardar o que foi escrito nele.
+   */
+  CREATE TABLE IF NOT EXISTS eventos (
+    id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_eventos_quando ON eventos(created_at);
+  CREATE INDEX IF NOT EXISTS idx_eventos_tenant ON eventos(tenant_id, created_at);
+  /*
+   * Reclamações e pedidos, escritos pelo cliente. Antes não existia canal
+   * nenhum: a página de Suporte era só perguntas frequentes, e quem tinha um
+   * problema não tinha para onde escrever dentro do produto.
+   */
+  CREATE TABLE IF NOT EXISTS reclamacoes (
+    id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, email TEXT,
+    tipo TEXT, texto TEXT, status TEXT, resposta TEXT,
+    created_at INTEGER, resolvido_em INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_reclamacoes_quando ON reclamacoes(created_at);
   CREATE INDEX IF NOT EXISTS idx_devices_tenant ON devices(tenant_id);
   CREATE INDEX IF NOT EXISTS idx_devices_code ON devices(code);
   CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
@@ -583,6 +616,111 @@ async function addBrandAsset(tenantId, kind, url, label, marcaId) {
 async function removeBrandAsset(id, tenantId) { qBrand.delAsset.run(id, tenantId); }
 async function labelBrandAsset(id, tenantId, label) { qBrand.labelAsset.run(label || '', id, tenantId); }
 
+/* ---------------- Plataforma: operadores, eventos e reclamações ---------------- */
+
+const qOp = {
+  lista: db.prepare('SELECT * FROM operadores ORDER BY created_at ASC'),
+  add: db.prepare('INSERT OR REPLACE INTO operadores (email, nome, convidado_por, created_at) VALUES (?, ?, ?, ?)'),
+  del: db.prepare('DELETE FROM operadores WHERE email = ?'),
+};
+async function listarOperadores() {
+  return qOp.lista.all().map((r) => ({ email: r.email, nome: r.nome || '', convidadoPor: r.convidado_por || '', createdAt: r.created_at }));
+}
+async function addOperador(email, nome, convidadoPor) {
+  const e = String(email || '').trim().toLowerCase();
+  if (!e.includes('@')) return null;
+  qOp.add.run(e, String(nome || '').slice(0, 80), String(convidadoPor || '').toLowerCase(), Date.now());
+  return { email: e, nome: nome || '', convidadoPor: convidadoPor || '' };
+}
+async function removerOperador(email) {
+  qOp.del.run(String(email || '').trim().toLowerCase());
+}
+
+const qEv = {
+  add: db.prepare('INSERT INTO eventos (id, tenant_id, user_id, acao, created_at) VALUES (?, ?, ?, ?, ?)'),
+  porAcao: db.prepare('SELECT acao, COUNT(*) AS n FROM eventos WHERE created_at >= ? GROUP BY acao ORDER BY n DESC LIMIT 30'),
+  // Só o par (usuário, instante) — é o suficiente para medir sessão, e não
+  // carrega mais nada de ninguém para dentro da conta.
+  paraSessoes: db.prepare('SELECT user_id, created_at FROM eventos WHERE created_at >= ? ORDER BY user_id ASC, created_at ASC'),
+  contasAtivas: db.prepare('SELECT COUNT(DISTINCT tenant_id) AS n FROM eventos WHERE created_at >= ?'),
+  pessoasAtivas: db.prepare('SELECT COUNT(DISTINCT user_id) AS n FROM eventos WHERE created_at >= ?'),
+  porDia: db.prepare("SELECT strftime('%Y-%m-%d', created_at / 1000, 'unixepoch') AS dia, COUNT(*) AS n FROM eventos WHERE created_at >= ? GROUP BY dia ORDER BY dia ASC"),
+  limpar: db.prepare('DELETE FROM eventos WHERE created_at < ?'),
+};
+async function registrarEvento(tenantId, userId, acao) {
+  qEv.add.run('ev_' + rid(14), tenantId || '', userId || '', String(acao || '').slice(0, 40), Date.now());
+}
+async function eventosPorAcao(desde) { return qEv.porAcao.all(desde || 0).map((r) => ({ acao: r.acao, n: Number(r.n) })); }
+async function eventosParaSessoes(desde) { return qEv.paraSessoes.all(desde || 0).map((r) => ({ userId: r.user_id, em: Number(r.created_at) })); }
+async function eventosPorDia(desde) { return qEv.porDia.all(desde || 0).map((r) => ({ dia: r.dia, n: Number(r.n) })); }
+async function contasAtivas(desde) { return Number(qEv.contasAtivas.get(desde || 0).n); }
+async function pessoasAtivas(desde) { return Number(qEv.pessoasAtivas.get(desde || 0).n); }
+async function limparEventos(antesDe) { qEv.limpar.run(antesDe); }
+
+const qRec = {
+  add: db.prepare('INSERT INTO reclamacoes (id, tenant_id, user_id, email, tipo, texto, status, resposta, created_at, resolvido_em) VALUES (?, ?, ?, ?, ?, ?, ?, \'\', ?, 0)'),
+  todas: db.prepare('SELECT * FROM reclamacoes ORDER BY created_at DESC LIMIT ?'),
+  doTenant: db.prepare('SELECT * FROM reclamacoes WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 50'),
+  resolver: db.prepare('UPDATE reclamacoes SET status = ?, resposta = ?, resolvido_em = ? WHERE id = ?'),
+  contar: db.prepare('SELECT status, COUNT(*) AS n FROM reclamacoes WHERE created_at >= ? GROUP BY status'),
+};
+const mapRec = (r) => ({
+  id: r.id, tenantId: r.tenant_id, email: r.email || '', tipo: r.tipo || 'duvida',
+  texto: r.texto || '', status: r.status || 'aberta', resposta: r.resposta || '',
+  createdAt: r.created_at, resolvidoEm: r.resolvido_em || 0,
+});
+async function criarReclamacao(tenantId, userId, email, tipo, texto) {
+  const id = 'rec_' + rid(14);
+  qRec.add.run(id, tenantId, userId || '', String(email || '').slice(0, 160),
+    String(tipo || 'duvida').slice(0, 20), String(texto || '').slice(0, 4000), 'aberta', Date.now());
+  return { id };
+}
+async function listarReclamacoes(limite) { return qRec.todas.all(Number(limite) || 100).map(mapRec); }
+async function reclamacoesDoTenant(tenantId) { return qRec.doTenant.all(tenantId).map(mapRec); }
+async function resolverReclamacao(id, status, resposta) {
+  qRec.resolver.run(status, String(resposta || '').slice(0, 2000), Date.now(), id);
+}
+async function resumoReclamacoes(desde) {
+  const out = { aberta: 0, resolvida: 0 };
+  for (const r of qRec.contar.all(desde || 0)) out[r.status] = Number(r.n);
+  return out;
+}
+
+/* Números da plataforma inteira. Só o operador chega aqui — ver server/operadores.js. */
+const qPlat = {
+  contas: db.prepare('SELECT COUNT(*) AS n FROM tenants'),
+  contasNovas: db.prepare('SELECT COUNT(*) AS n FROM tenants WHERE created_at >= ?'),
+  pessoas: db.prepare('SELECT COUNT(*) AS n FROM users'),
+  telas: db.prepare('SELECT COUNT(*) AS n FROM devices'),
+  telasVivas: db.prepare('SELECT COUNT(*) AS n FROM devices WHERE last_seen >= ?'),
+  porPlano: db.prepare("SELECT COALESCE(plan, 'free') AS plano, COUNT(*) AS n FROM tenants GROUP BY plano"),
+  midiaBytes: db.prepare('SELECT COALESCE(SUM(size), 0) AS b FROM media'),
+  pecas: db.prepare('SELECT COUNT(*) AS n FROM library'),
+  iaResumo: db.prepare('SELECT COALESCE(SUM(creditos),0) AS c, COALESCE(SUM(custo_centavos),0) AS centavos, COUNT(*) AS n FROM uso_ia WHERE created_at >= ?'),
+  iaPorTipo: db.prepare('SELECT tipo, COUNT(*) AS n FROM uso_ia WHERE created_at >= ? GROUP BY tipo ORDER BY n DESC LIMIT 12'),
+  maiores: db.prepare(`SELECT t.id, t.name, COALESCE(t.plan, 'free') AS plano, t.created_at,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas,
+      (SELECT COUNT(*) FROM users u WHERE u.tenant_id = t.id) AS pessoas
+    FROM tenants t ORDER BY telas DESC, t.created_at ASC LIMIT 20`),
+};
+async function numerosDaPlataforma(agora, vivaDesde, desde) {
+  return {
+    contas: Number(qPlat.contas.get().n),
+    contasNovas: Number(qPlat.contasNovas.get(desde).n),
+    pessoas: Number(qPlat.pessoas.get().n),
+    telas: Number(qPlat.telas.get().n),
+    telasVivas: Number(qPlat.telasVivas.get(vivaDesde).n),
+    porPlano: qPlat.porPlano.all().map((r) => ({ plano: r.plano, n: Number(r.n) })),
+    midiaBytes: Number(qPlat.midiaBytes.get().b),
+    pecas: Number(qPlat.pecas.get().n),
+    ia: (() => { const r = qPlat.iaResumo.get(desde); return { creditos: Number(r.c), custoCentavos: Number(r.centavos), chamadas: Number(r.n) }; })(),
+    iaPorTipo: qPlat.iaPorTipo.all(desde).map((r) => ({ tipo: r.tipo, n: Number(r.n) })),
+    maiores: qPlat.maiores.all().map((r) => ({
+      id: r.id, nome: r.name, plano: r.plano, telas: Number(r.telas), pessoas: Number(r.pessoas), createdAt: r.created_at,
+    })),
+  };
+}
+
 /* ---------------- Mural de fotos do público ---------------- */
 const qMural = {
   criar: db.prepare('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, created_at) VALUES (?, ?, ?, ?, 1, ?)'),
@@ -765,4 +903,8 @@ module.exports = {
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,
+  listarOperadores, addOperador, removerOperador,
+  registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
+  criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
+  numerosDaPlataforma,
 };
