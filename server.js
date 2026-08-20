@@ -60,6 +60,7 @@ const MIME = {
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json',
   '.webp': 'image/webp', '.gif': 'image/gif', '.mp4': 'video/mp4', '.webm': 'video/webm',
+  '.woff2': 'font/woff2', '.woff': 'font/woff', '.txt': 'text/plain; charset=utf-8',
 };
 
 // Assinantes SSE por device (em memória).
@@ -2102,8 +2103,13 @@ function serveAppIndex(res) {
 /* ---------------- Arquivos estáticos ---------------- */
 function sendFile(res, filePath, data) {
   const ext = path.extname(filePath).toLowerCase();
-  // Assets do Vite têm hash no nome → cache longo; o resto revalida.
-  const hashed = /\/assets\//.test(filePath);
+  /*
+   * Cache longo para o que não muda de conteúdo sem mudar de nome: assets do
+   * Vite (hash no nome) e os arquivos de fonte. A fonte é o caso que mais
+   * importa numa TV — sem isto, cada recarga do player rebaixa 1,5 MB de
+   * woff2 numa rede que já é o gargalo.
+   */
+  const hashed = /\/assets\//.test(filePath) || /\/fonts\/arquivos\//.test(filePath);
   const revalidate = !hashed && (ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json');
   // player.html e sw.js nunca do cache: é por aí que a TV "voltava" antiga.
   const noStore = /player\.html$|sw\.js$/.test(filePath);

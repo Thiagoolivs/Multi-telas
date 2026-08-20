@@ -37,42 +37,47 @@
     return f.css;
   }
 
-  const loadedFonts = {};
-  function ensureFont(id) {
-    const f = FONTS[id];
-    if (!f) return;
-    ensureFontUrl(id, f.google);
-  }
-  // Carrega uma família da Google Fonts uma única vez, por chave.
-  function ensureFontUrl(chave, google) {
-    if (!google || loadedFonts[chave]) return;
-    loadedFonts[chave] = true;
-    // Preconnect (uma vez) + folha de estilo da Google Fonts.
-    if (!document.getElementById('mt-gfonts-pre')) {
-      const p1 = document.createElement('link');
-      p1.id = 'mt-gfonts-pre'; p1.rel = 'preconnect';
-      p1.href = 'https://fonts.googleapis.com';
-      document.head.appendChild(p1);
-      const p2 = document.createElement('link');
-      p2.rel = 'preconnect'; p2.href = 'https://fonts.gstatic.com';
-      p2.crossOrigin = 'anonymous';
-      document.head.appendChild(p2);
-    }
+  /*
+   * As fontes moram no nosso domínio (fonts/fontes.css, gerado por
+   * tools/baixar-fontes.mjs). Antes vinham da Google, uma folha por família.
+   *
+   * A troca não foi por velocidade: foi porque o compositor MEDE o texto com a
+   * largura média de caractere de cada família para decidir se ele cabe na
+   * peça. Quando a rede da TV bloqueava fonts.googleapis.com — Wi-Fi ruim,
+   * rede corporativa fechada, portal cativo — o navegador caía na fonte de
+   * sistema, mais larga, e o título que cabia na conta estourava na parede.
+   * Sem erro, sem aviso. Agora a fonte chega junto com o app, ou nenhum dos
+   * dois chega.
+   *
+   * Uma folha só com todas as famílias não pesa: @font-face é promessa, e o
+   * navegador só busca o arquivo da família que algum texto usa de fato.
+   */
+  let folhaPedida = false;
+  function ensureFolhaFontes() {
+    if (folhaPedida || typeof document === 'undefined') return;
+    folhaPedida = true;
     const link = document.createElement('link');
+    link.id = 'mt-fontes';
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=' + google + '&display=swap';
+    link.href = '/fonts/fontes.css';
     /*
      * `media="print"` é o truque para a folha NÃO segurar a pintura: o
-     * navegador baixa, mas não espera. Quando chega, vira "all" e a fonte
-     * entra no lugar.
+     * navegador baixa, mas não espera. Quando chega, vira "all".
      *
-     * Sem isto, uma TV numa rede ruim fica no escuro até a Google responder —
-     * e a rede da recepção do cliente é justamente a ruim. Fonte é acabamento;
-     * conteúdo é o produto. O conteúdo aparece primeiro.
+     * Continua valendo mesmo servindo do próprio domínio: numa TV lenta,
+     * conteúdo é o produto e fonte é acabamento. O conteúdo aparece primeiro.
      */
     link.media = 'print';
     link.onload = function () { link.media = 'all'; };
     document.head.appendChild(link);
+  }
+
+  function ensureFont(id) {
+    if (FONTS[id] && FONTS[id].google) ensureFolhaFontes();
+  }
+  // Mantida para quem já chamava por família; hoje todas vêm da mesma folha.
+  function ensureFontUrl(_chave, google) {
+    if (google) ensureFolhaFontes();
   }
 
   /* ---------------- Presets ----------------

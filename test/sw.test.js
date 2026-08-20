@@ -261,7 +261,15 @@ test('TV: navegar para o painel não vira o casco do player', async () => {
   assert.equal(await w.pedir('/app/', { mode: 'navigate' }), null, 'interceptou a navegação do painel');
   assert.equal(await w.pedir('/', { mode: 'navigate' }), null, 'interceptou a navegação da landing');
 
-  const casco = await w.caixas.get('mt-shell-v9').get('/player.html');
+  /*
+   * O nome do cache é lido do próprio worker, não escrito aqui: subir a versão
+   * do shell é rotina (toda mudança em player.html ou nos scripts pede uma), e
+   * um nome fixo no teste transformava essa rotina em falha inexplicável.
+   */
+  const nomeShell = /SHELL_CACHE = '([^']+)'/.exec(
+    require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'sw.js'), 'utf8')
+  )[1];
+  const casco = await w.caixas.get(nomeShell).get('/player.html');
   assert.match(await casco.text(), /player\.html/, 'o casco do player foi sobrescrito');
 });
 

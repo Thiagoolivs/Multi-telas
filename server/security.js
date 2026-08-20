@@ -80,7 +80,15 @@ function isSecureRequest(req) {
  *                           quebraria toda conta que usasse outro bucket.
  *   frame https:            A TV embute YouTube, o visualizador do Office e a
  *                           página web que o cliente escolher.
- *   fonts.googleapis        As famílias tipográficas da peça.
+ *
+ * Fonte de terceiro NÃO está mais na lista, e a ausência é a mudança: as
+ * famílias são servidas do próprio domínio (fonts/fontes.css). Enquanto vinham
+ * da Google, `style-src` e `font-src` precisavam abrir dois hosts externos —
+ * e, pior, a TV numa rede que bloqueasse esses hosts desenhava com a fonte de
+ * sistema, mais larga, estourando o texto que o compositor tinha medido. Tirar
+ * o host da política é o que garante que ninguém volte a apontar para lá sem
+ * perceber: se voltar, o navegador recusa e o defeito aparece no primeiro
+ * teste, não na parede do cliente.
  */
 const CSP = [
   "default-src 'self'",
@@ -89,8 +97,8 @@ const CSP = [
   "form-action 'self'",
   "frame-ancestors 'self'",
   "script-src 'self'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com data:",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "connect-src 'self' https:",
