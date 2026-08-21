@@ -42,6 +42,14 @@ três existirem).
    produção colando o endereço de um cliente e vendo se as cores e as fontes
    saem certas.
 
+### Trabalho em paralelo
+
+Há um segundo agente (Antigravity) mexendo neste repositório ao mesmo tempo. As
+regras de convivência, as decisões que **não** podem ser desfeitas e a lista de
+tarefas dele estão em [`TAREFAS-ANTIGRAVITY.md`](TAREFAS-ANTIGRAVITY.md).
+
+Se você é esse agente: comece por lá.
+
 ### Já decidido, adiado de propósito
 
 **A cobrança vai sair do Stripe e ir para o Asaas.** Não entra antes de

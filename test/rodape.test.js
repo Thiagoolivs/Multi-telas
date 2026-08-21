@@ -19,6 +19,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const FONTE = fs.readFileSync(path.join(__dirname, '..', 'js', 'player.js'), 'utf8');
+const CSS = fs.readFileSync(path.join(__dirname, '..', 'css', 'player.css'), 'utf8');
 
 /* Extrai `lerModo` do player sem executar o arquivo inteiro (que precisa de DOM). */
 function lerModo() {
@@ -32,6 +33,33 @@ function lerModo() {
 }
 
 const modo = lerModo();
+
+/* Mesma técnica para a conta de quantas cópias o letreiro precisa. */
+function copiasPara() {
+  const i = FONTE.indexOf('function copiasPara(');
+  assert.ok(i > 0, 'copiasPara sumiu do player');
+  const fim = FONTE.indexOf('\n    }', i) + 6;
+  const ctx = { module: {} };
+  vm.createContext(ctx);
+  vm.runInContext(FONTE.slice(i, fim) + '\nmodule.exports = copiasPara;', ctx);
+  return ctx.module.exports;
+}
+const copias = copiasPara();
+
+/*
+ * A velocidade do letreiro. Fecha sobre `data`, então é extraída com um `data`
+ * injetado — assim dá para exercitar a PRECEDÊNCIA de verdade, em vez de
+ * conferir se a expressão continua escrita de um certo jeito.
+ */
+function velocidadeCom(data) {
+  const i = FONTE.indexOf('function velocidadeDe()');
+  assert.ok(i > 0, 'velocidadeDe sumiu do player');
+  const fim = FONTE.indexOf('\n    }', i) + 6;
+  const ctx = { module: {}, data };
+  vm.createContext(ctx);
+  vm.runInContext(FONTE.slice(i, fim) + '\nmodule.exports = velocidadeDe;', ctx);
+  return ctx.module.exports();
+}
 
 test('as duas perguntas são respondidas por dois campos', () => {
   assert.deepEqual(modo({ conteudo: 'noticias', movimento: 'letreiro' }),
@@ -74,9 +102,23 @@ test('o player lê a velocidade em pixels por segundo, nos dois movimentos', () 
    * é mais rápido. E aquele campo (`velocidade`) só era lido pelo letreiro —
    * no modo padrão, mexer nele não fazia nada.
    */
-  assert.match(FONTE, /velocidadeTexto\) \|\| Number\(data\.velocidade\) \|\| 70/,
-    'o letreiro deixou de aceitar velocidadeTexto');
-  assert.match(FONTE, /largura \/ velocidade/, 'a conta do letreiro mudou de forma');
+  // O campo novo manda; o antigo continua valendo para tela já configurada; e
+  // sem nenhum dos dois há um padrão. Exercitado de verdade, não por formato.
+  assert.equal(velocidadeCom({ velocidadeTexto: 120, velocidade: 40 }), 120, 'o campo novo deixou de mandar');
+  assert.equal(velocidadeCom({ velocidade: 40 }), 40, 'tela já configurada perdeu a velocidade dela');
+  assert.equal(velocidadeCom({}), 70, 'sumiu o padrão');
+
+  /*
+   * E há um PISO. Sem ele, velocidade 0 vira duração infinita e o letreiro
+   * congela — uma faixa parada no rodapé de uma TV parece produto quebrado,
+   * e ninguém adivinharia que a causa foi um campo zerado no painel.
+   */
+  assert.ok(velocidadeCom({ velocidadeTexto: 0 }) >= 20, 'velocidade zero congela o letreiro');
+  assert.ok(velocidadeCom({ velocidadeTexto: -50 }) >= 20, 'velocidade negativa faz o texto andar ao contrário');
+
+  // O letreiro divide uma largura pela velocidade, e as manchetes também —
+  // é o que faz o número significar a mesma coisa nos dois lugares.
+  assert.match(FONTE, /larguraDaCopia \/ velocidadeDe\(\)/, 'a conta do letreiro mudou de forma');
   assert.match(FONTE, /excesso \/ velocidadeRolagem/, 'a conta das manchetes mudou de forma');
 });
 
@@ -96,12 +138,91 @@ test('o painel não promete segundos onde o player conta pixels', () => {
   assert.ok(!rotulos.includes('Modo'), 'o campo que misturava as duas perguntas voltou');
 });
 
-test('o letreiro duplica o texto para não abrir buraco na emenda', () => {
-  // É o que torna a rolagem infinita em vez de um laço com vão no meio.
+/* ---------------- A emenda do letreiro ---------------- */
+
+/*
+ * Este bloco substitui um teste que guardava o DEFEITO em vez da intenção.
+ *
+ * Ele exigia `i < 2` e `scrollWidth / 2` — ou seja, exigia que o código
+ * continuasse pondo exatamente duas cópias e deslizando metade da faixa. E era
+ * justamente isso que abria o buraco: metade da faixa só cobre a tela quando
+ * uma cópia é pelo menos tão larga quanto ela. Medido a 1280px, uma mensagem
+ * fixa deixava 1040px de faixa vazia passando a cada volta.
+ *
+ * O teste passava com o defeito no lugar porque perguntava "o código está
+ * escrito daquele jeito?" em vez de "o texto cobre a tela inteira?".
+ */
+
+test('a faixa cobre a tela no pior instante da volta', () => {
+  /*
+   * O pior instante é quando a faixa já deslizou uma cópia inteira: o que
+   * ainda cobre a tela é `(cópias - 1) × largura da cópia`. Se isso for menor
+   * que a tela, entra vazio — e é o vazio que a pessoa vê atravessando.
+   */
+  const cenarios = [
+    { nome: 'uma mensagem curta numa TV grande', copia: 240, tela: 1920 },
+    { nome: 'três mensagens', copia: 1011, tela: 1280 },
+    { nome: 'feed de notícias longo', copia: 8848, tela: 1280 },
+    { nome: 'texto quase do tamanho da tela', copia: 1279, tela: 1280 },
+    { nome: 'texto do tamanho exato da tela', copia: 1280, tela: 1280 },
+    { nome: 'tela estreita, em pé', copia: 300, tela: 720 },
+  ];
+  for (const c of cenarios) {
+    const n = copias(c.copia, c.tela);
+    const cobertura = (n - 1) * c.copia;
+    assert.ok(cobertura >= c.tela,
+      c.nome + ': sobra ' + (c.tela - cobertura) + 'px de faixa vazia (x' + n + ')');
+  }
+});
+
+test('conteúdo longo não vira dezenas de cópias à toa', () => {
+  // O outro lado do erro: encher a faixa de cópias custa memória e desenho
+  // numa TV barata, e duas já bastam quando uma cópia sozinha cobre a tela.
+  assert.equal(copias(8848, 1280), 2);
+  assert.equal(copias(2000, 1920), 2);
+});
+
+test('nunca menos de duas cópias — é a segunda que fecha a emenda', () => {
+  // Com uma só, o que entra atrás da que sai é nada.
+  assert.ok(copias(99999, 1280) >= 2);
+  assert.ok(copias(1, 1) >= 2);
+});
+
+test('medida zero não trava nem gera infinitas cópias', () => {
+  /*
+   * Acontece de verdade: a fonte ainda não chegou, a zona está com largura 0,
+   * o elemento acabou de nascer. `Math.ceil(1280 / 0)` é Infinity, e um laço
+   * até Infinity pendura a TV — numa tela que precisa ficar no ar o dia todo.
+   */
+  assert.equal(copias(0, 1280), 2);
+  assert.equal(copias(240, 0), 2);
+  assert.ok(Number.isFinite(copias(0, 0)));
+});
+
+test('a volta anda uma cópia, em pixels — não metade da faixa', () => {
+  /*
+   * `-50%` é metade da FAIXA, e metade da faixa só é uma cópia quando existem
+   * exatamente duas. Como o número de cópias agora muda com o conteúdo e com a
+   * tela, a porcentagem deixaria de casar e a emenda voltaria — de um jeito
+   * mais difícil de enxergar, porque só apareceria em alguns tamanhos.
+   */
   const i = FONTE.indexOf('function startScrollTicker');
-  const trecho = FONTE.slice(i, i + 2600);
-  assert.match(trecho, /i < 2/, 'parou de duplicar o texto');
-  assert.match(trecho, /scrollWidth \/ 2/, 'a conta da metade sumiu');
+  const trecho = FONTE.slice(i, i + 4200);
+  assert.match(trecho, /--mt-ticker-volta/, 'a distância da volta deixou de ser escrita em pixels');
+  assert.ok(!/translateX\(-50%\)/.test(CSS), 'o CSS voltou a deslizar metade da faixa');
+  assert.match(CSS, /var\(--mt-ticker-volta\)/, 'o keyframe não usa a distância medida');
+});
+
+test('mudar a largura da zona REMONTA a faixa', () => {
+  /*
+   * O número de cópias vem da largura da tela. Só recalcular a duração — que
+   * era o que o ResizeObserver fazia — deixaria a faixa curta demais para a
+   * tela nova, e o buraco voltaria só para quem trocasse de layout. É o pior
+   * jeito de um defeito voltar: no caminho que ninguém repete.
+   */
+  const i = FONTE.indexOf('function startScrollTicker');
+  const trecho = FONTE.slice(i, i + 5200);
+  assert.match(trecho, /new ResizeObserver\(montar\)/, 'o redimensionamento não remonta a faixa');
 });
 
 test('o letreiro busca notícia quando o conteúdo pede', () => {

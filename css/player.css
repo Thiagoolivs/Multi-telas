@@ -463,14 +463,28 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   display: inline-flex;
   will-change: transform;
   animation: mt-scroll linear infinite;
+  /*
+   * A distância de uma volta: a largura de UMA cópia do texto, em pixels,
+   * escrita aqui por js/player.js. O valor de reserva vale só para o instante
+   * entre a faixa existir e ser medida.
+   */
+  --mt-ticker-volta: 50%;
 }
 .mt-ticker-item {
   font-size: clamp(16px, 2.4vw, 36px);
   font-weight: 600; padding: 0 1vw; color: var(--on-brand);
 }
+/*
+ * Uma volta = uma cópia do texto, e não metade da faixa.
+ *
+ * Era `-50%`, que só é uma cópia quando existem exatamente duas. O número de
+ * cópias agora vem do conteúdo e da largura da tela (ver `copiasPara` em
+ * js/player.js), então a porcentagem deixaria de casar e a emenda se abriria
+ * de novo — só que de um jeito mais difícil de enxergar.
+ */
 @keyframes mt-scroll {
   from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
+  to { transform: translateX(calc(-1 * var(--mt-ticker-volta))); }
 }
 
 /* ---------- Aviso Premium ---------- */

@@ -11,7 +11,20 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+/*
+ * Onde o arquivo do banco mora. `DATA_DIR` existe para poder apontar para
+ * outro lugar sem mexer no código — em produção, um volume montado; num teste,
+ * uma pasta descartável.
+ *
+ * Era fixo, e `test/marcas.test.js` traz a queixa por escrito: sem poder
+ * apontar para outro arquivo, todo teste que cria conta precisa inventar um
+ * e-mail que nunca se repita, porque escreve no MESMO banco de todos os
+ * outros. Testar concorrência de migração era simplesmente impossível: exigiria
+ * apagar o banco que os outros arquivos de teste estão usando ao lado.
+ */
+const DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, '..', 'data');
 fs.mkdirSync(DATA_DIR, { recursive: true });
 /*
  * Nome do arquivo mudou de vistra.db para multitelas.db na troca de marca.
@@ -22,23 +35,27 @@ const LEGACY_DB = path.join(DATA_DIR, 'vistra.db');
 const DB_FILE = fs.existsSync(LEGACY_DB) ? LEGACY_DB : path.join(DATA_DIR, 'multitelas.db');
 const db = new DatabaseSync(DB_FILE);
 
+/*
+ * O ESPERAR VEM PRIMEIRO, e a ordem é o conserto.
+ *
+ * Sem `busy_timeout`, uma operação que encontra o banco ocupado falha NA HORA
+ * com SQLITE_BUSY em vez de esperar a vez. O WAL deixa vários leitores e um
+ * escritor conviverem, mas dois escritores ainda disputam — e é o caso comum
+ * aqui: o servidor gravando um trabalho de IA enquanto outra requisição
+ * registra um evento.
+ *
+ * A primeira versão punha esta linha DEPOIS de `journal_mode = WAL`, e não
+ * adiantava para a linha que mais precisava: trocar o modo de diário exige
+ * lock exclusivo, então era justamente ela que estourava "database is locked"
+ * — antes de o tempo de espera existir. Passou na minha máquina e quebrou no
+ * CI, que roda um processo por arquivo de teste contra o mesmo banco.
+ *
+ * Em produção o estrago seria pior e mais quieto: duas instâncias subindo ao
+ * mesmo tempo depois de um deploy, e uma delas morrendo no boot.
+ */
 db.exec(`
-  PRAGMA journal_mode = WAL;
-  /*
-   * Sem isto, uma escrita que encontra o banco ocupado falha NA HORA com
-   * SQLITE_BUSY em vez de esperar a vez. O WAL deixa vários leitores e um
-   * escritor conviverem, mas dois escritores ainda disputam — e é o caso comum
-   * aqui: o servidor gravando um trabalho de IA enquanto outra requisição
-   * registra um evento.
-   *
-   * Apareceu na suíte de testes, que roda um processo por arquivo contra o
-   * mesmo arquivo de banco: um teste de persistência falhava de vez em quando
-   * porque o INSERT era recusado e o erro, por projeto, é engolido — gravar é
-   * o registro, não o produto. Falha intermitente em teste é sintoma, e o
-   * sintoma estava certo: em produção isso seria um trabalho que termina e
-   * não fica salvo, sem nada avisando.
-   */
   PRAGMA busy_timeout = 5000;
+  PRAGMA journal_mode = WAL;
   CREATE TABLE IF NOT EXISTS tenants (
     id TEXT PRIMARY KEY, name TEXT, created_at INTEGER,
     plan TEXT, plan_status TEXT, stripe_customer_id TEXT,
@@ -218,8 +235,41 @@ db.exec(`
  * tela de Marca em branco depois do deploy — e concluiria, com razão, que o
  * sistema perdeu o trabalho dele.
  */
-const assetCols = db.prepare('PRAGMA table_info(brandassets)').all().map((c) => c.name);
-if (!assetCols.includes('marca_id')) db.exec('ALTER TABLE brandassets ADD COLUMN marca_id TEXT');
+/*
+ * Acrescentar coluna sem morrer quando outro processo chegou primeiro.
+ *
+ * O SQLite não tem `ADD COLUMN IF NOT EXISTS`, então a migração precisa
+ * perguntar antes. Perguntar e agir são DUAS operações, e entre uma e outra
+ * outro processo pode ter agido: os dois leem "a coluna não existe", os dois
+ * tentam criar, e o segundo morre com "duplicate column name".
+ *
+ * `busy_timeout` não resolve isto — não é disputa de lock, é decisão tomada
+ * com informação que envelheceu. O que resolve é aceitar a corrida: se a
+ * coluna já existe quando a hora chega, o trabalho estava feito.
+ *
+ * Não é caso de laboratório. O Railway sobe a instância nova antes de derrubar
+ * a velha, então duas rodam este arquivo ao mesmo tempo a cada deploy — e o
+ * estrago seria a instância nova morrendo no boot, em silêncio, com o produto
+ * parecendo apenas "lento para atualizar". Apareceu no CI, que roda um
+ * processo por arquivo de teste contra o mesmo banco.
+ *
+ * Qualquer outro erro sobe: coluna com tipo inválido ou tabela que não existe
+ * são defeito de código, e engolir isso esconderia um banco meio migrado.
+ */
+function garantirColuna(tabela, definicao) {
+  const nome = definicao.split(' ')[0];
+  const cols = db.prepare('PRAGMA table_info(' + tabela + ')').all().map((c) => c.name);
+  if (cols.includes(nome)) return false;
+  try {
+    db.exec('ALTER TABLE ' + tabela + ' ADD COLUMN ' + definicao);
+    return true;
+  } catch (e) {
+    if (/duplicate column name/i.test(e.message)) return false;
+    throw e;
+  }
+}
+
+garantirColuna('brandassets', 'marca_id TEXT');
 
 function migrarBrandkit() {
   const antigos = db.prepare(`SELECT b.* FROM brandkit b
@@ -239,28 +289,25 @@ function migrarBrandkit() {
   } catch (e) { db.exec('ROLLBACK'); throw e; }
 }
 
-// Migração leve para bancos de dev anteriores (SQLite não tem ADD COLUMN IF
-// NOT EXISTS): garante as colunas role/name em users.
-const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
-if (!userCols.includes('role')) db.exec("ALTER TABLE users ADD COLUMN role TEXT");
-if (!userCols.includes('name')) db.exec("ALTER TABLE users ADD COLUMN name TEXT");
+// Migração leve para bancos anteriores (SQLite não tem ADD COLUMN IF NOT
+// EXISTS). Toda coluna passa por `garantirColuna`, que tolera outro processo
+// ter chegado primeiro — ver a nota lá em cima.
+garantirColuna('users', 'role TEXT');
+garantirColuna('users', 'name TEXT');
 // google_sub: identifica a conta Google (login social). Nulo = só senha.
-if (!userCols.includes('google_sub')) db.exec('ALTER TABLE users ADD COLUMN google_sub TEXT');
+garantirColuna('users', 'google_sub TEXT');
 db.exec("UPDATE users SET role = 'owner' WHERE role IS NULL");
-const mediaCols = db.prepare('PRAGMA table_info(media)').all().map((c) => c.name);
-if (!mediaCols.includes('origem')) {
-  db.exec("ALTER TABLE media ADD COLUMN origem TEXT");
+
+if (garantirColuna('media', 'origem TEXT')) {
   db.exec("UPDATE media SET origem = 'upload' WHERE origem IS NULL");
 }
-const deviceCols = db.prepare('PRAGMA table_info(devices)').all().map((c) => c.name);
-if (!deviceCols.includes('last_seen')) db.exec('ALTER TABLE devices ADD COLUMN last_seen INTEGER');
-const tenantCols = db.prepare('PRAGMA table_info(tenants)').all().map((c) => c.name);
+garantirColuna('devices', 'last_seen INTEGER');
 for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER',
   // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
   // expira). `creditos_ciclo` guarda quando a franquia foi reposta pela
   // última vez, para a reposição acontecer sozinha na virada do mês.
   'creditos_franquia INTEGER', 'creditos_comprados INTEGER', 'creditos_ciclo INTEGER']) {
-  if (!tenantCols.includes(col.split(' ')[0])) db.exec('ALTER TABLE tenants ADD COLUMN ' + col);
+  garantirColuna('tenants', col);
 }
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
 migrarBrandkit();
