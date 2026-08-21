@@ -3,7 +3,7 @@
 Documento de trabalho paralelo. Escrito para outro agente mexer neste
 repositório **ao mesmo tempo** que o Claude, sem que um desfaça o outro.
 
-Base: `main` em `f08385e` · 595 testes · atualizado em 20/08/2026.
+Base: `main` em `f08385e` · 601 testes · atualizado em 21/08/2026.
 
 ---
 
@@ -123,9 +123,18 @@ encontra a linha, não reclama, e o trabalho some.*
 *Desfazer = uma escrita por erro justamente quando o sistema já está mal, e
 erro dentro do banco vira laço de erro gravando erro.*
 
-**`PRAGMA busy_timeout` no SQLite.**
-*Desfazer = escrita que encontra o banco ocupado falha na hora, e o erro é
-engolido por projeto.*
+**`PRAGMA busy_timeout` vem ANTES de `journal_mode = WAL`, e a ordem é o
+conserto.** Trocar o modo de diário exige lock exclusivo: é a instrução que
+mais precisa do tempo de espera.
+*Desfazer = "database is locked" no boot, e a instância nova morre depois de um
+deploy enquanto a velha ainda roda.*
+
+**Coluna nova passa por `garantirColuna`, nunca por `ALTER TABLE` solto.** As
+migrações perguntam "esta coluna existe?" e só então criam — duas operações, e
+entre uma e outra outro processo pode ter criado.
+*Desfazer = "duplicate column name" quando duas instâncias sobem juntas, que é
+o que o Railway faz a cada deploy.*
+Guardado por `test/banco-concorrente.test.js`.
 
 ### Armadilhas que já custaram caro
 
@@ -162,7 +171,7 @@ reorganizar o que já está lá.
 ## Como saber que não quebrou nada
 
 ```bash
-npm test                       # 595 testes, 43 arquivos
+npm test                       # 601 testes, 44 arquivos
 npm --prefix web run build     # erro de import passa em todo teste e só aparece aqui
 ```
 
@@ -173,9 +182,13 @@ deles cobria exatamente o bug do letreiro e passava com o bug no lugar, porque
 perguntava "o código está escrito daquele jeito?" em vez de "o texto cobre a
 tela?".
 
-Se um teste falhar de forma intermitente, **não marque como flaky**. As duas
-últimas intermitências eram bugs reais: escritas fora de ordem no Postgres e
-falta de `busy_timeout`.
+Se um teste falhar de forma intermitente, **não marque como flaky**. As três
+últimas intermitências eram bugs reais: escritas fora de ordem no Postgres,
+falta de `busy_timeout`, e migração de coluna assumindo que estava sozinha.
+
+E se algo passar aqui e quebrar no CI, **o CI está certo**: ele roda um
+processo por arquivo de teste contra o mesmo banco, que é a mesma disputa que o
+Railway cria a cada deploy ao subir a instância nova antes de derrubar a velha.
 
 E o segundo padrão que se provou: **renderizar e olhar.** Screenshot pegou bugs
 que teste nenhum pegou — componente desmontado, texto estourando, botão que não
