@@ -201,29 +201,65 @@ function readRawBody(req) {
 }
 function brl(cents) { return 'R$ ' + (cents / 100).toFixed(2).replace('.', ','); }
 
-// Aplica um evento do Stripe ao plano do tenant.
-async function handleStripeEvent(event) {
-  const obj = (event.data && event.data.object) || {};
-  if (event.type === 'checkout.session.completed') {
-    const tenantId = obj.client_reference_id || (obj.metadata && obj.metadata.tenant_id);
-    if (!tenantId) return;
-    await db.setTenantBilling(tenantId, {
-      plan: (obj.metadata && obj.metadata.plan) || undefined,
-      status: 'active', customerId: obj.customer || undefined, subscriptionId: obj.subscription || undefined,
-    });
-  } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.created') {
-    const tenant = await db.getTenantByCustomer(obj.customer);
-    if (!tenant) return;
-    const price = obj.items && obj.items.data && obj.items.data[0] && obj.items.data[0].price;
-    await db.setTenantBilling(tenant.id, {
-      plan: billing.planIdFromPrice(price && price.id) || undefined,
-      status: obj.status, subscriptionId: obj.id,
-      renewsAt: obj.current_period_end ? obj.current_period_end * 1000 : undefined,
-    });
-  } else if (event.type === 'customer.subscription.deleted') {
-    const tenant = await db.getTenantByCustomer(obj.customer);
-    if (!tenant) return;
+// Aplica um evento do Asaas ao plano do tenant.
+async function handleAsaasEvent(body) {
+  const eventName = body.event;
+  if (!eventName) return;
+
+  const payment = body.payment;
+  const subscription = body.subscription;
+
+  let customerId, subId, status, externalRef, nextDueDate;
+
+  if (payment) {
+    customerId = payment.customer;
+    subId = payment.subscription;
+    status = payment.status;
+    externalRef = payment.externalReference;
+    nextDueDate = payment.dueDate;
+  } else if (subscription) {
+    customerId = subscription.customer;
+    subId = subscription.id;
+    status = subscription.status;
+    externalRef = subscription.externalReference;
+    nextDueDate = subscription.nextDueDate;
+  }
+  
+  if (!customerId) return;
+  
+  let tenantId, planId;
+  if (externalRef && externalRef.includes('|')) {
+    const parts = externalRef.split('|');
+    tenantId = parts[0];
+    planId = parts[1];
+  } else {
+    tenantId = externalRef;
+  }
+  
+  let tenant;
+  if (tenantId) tenant = await db.getTenant(tenantId);
+  if (!tenant) tenant = await db.getTenantByCustomer(customerId);
+  if (!tenant) return;
+
+  let renewsAt = undefined;
+  if (nextDueDate) {
+    const d = new Date(nextDueDate);
+    if (!isNaN(d.getTime())) renewsAt = d.getTime();
+  }
+
+  if (eventName === 'PAYMENT_RECEIVED' || eventName === 'PAYMENT_CONFIRMED') {
+    const updates = { status: 'active', customerId, subscriptionId: subId };
+    if (planId) updates.plan = planId;
+    if (renewsAt) updates.renewsAt = renewsAt;
+    await db.setTenantBilling(tenant.id, updates);
+  } else if (eventName === 'PAYMENT_OVERDUE') {
+    await db.setTenantBilling(tenant.id, { status: 'past_due' });
+  } else if (eventName === 'SUBSCRIPTION_DELETED') {
     await db.setTenantBilling(tenant.id, { plan: 'free', status: 'canceled', subscriptionId: null, renewsAt: null });
+  } else if (eventName === 'SUBSCRIPTION_CREATED') {
+    const updates = { customerId, subscriptionId: subId };
+    if (planId) updates.plan = planId;
+    await db.setTenantBilling(tenant.id, updates);
   }
 }
 
@@ -1467,9 +1503,9 @@ async function handleApi(req, res, pathname, query) {
     if (req.method === 'POST' && seg === 'webhook') {
       const raw = await readRawBody(req);
       let event;
-      try { event = billing.verifyWebhook(raw, req.headers['stripe-signature']); }
+      try { event = billing.verifyWebhook(raw, req.headers['asaas-access-token']); }
       catch (e) { return sendJson(res, 400, { error: 'webhook inválido: ' + e.message }); }
-      await handleStripeEvent(event);
+      await handleAsaasEvent(event);
       return sendJson(res, 200, { received: true });
     }
 
@@ -1546,7 +1582,9 @@ async function handleApi(req, res, pathname, query) {
         const target = plans.plan(b && b.plan);
         if (!target || target.priceCents <= 0) return sendJson(res, 400, { error: 'plano inválido' });
         try {
-          const out = await billing.createCheckout(tenant, target.id, reqOrigin(req));
+          const user = await db.getUser(sess.user_id);
+          const out = await billing.createCheckout(tenant, user, target.id, reqOrigin(req));
+          if (out.customerId && out.customerId !== tenant.stripe_customer_id) await db.setTenantBilling(tenant.id, { customerId: out.customerId });
           return sendJson(res, 200, out);
         } catch (e) { return sendJson(res, 502, { error: e.message }); }
       });
