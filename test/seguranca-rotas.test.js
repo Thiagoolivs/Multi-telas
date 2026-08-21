@@ -40,7 +40,7 @@ function pedir(caminho, opcoes) {
 test.before(async () => {
   servidor = spawn(process.execPath, ['server.js'], {
     cwd: RAIZ,
-    env: { ...process.env, PORT: String(PORTA), STORAGE: 'local', DATABASE_URL: '' },
+    env: { ...process.env, PORT: String(PORTA), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '' },
     stdio: 'ignore',
   });
   // Espera a porta responder em vez de dormir um tempo fixo.

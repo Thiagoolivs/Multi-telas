@@ -1060,11 +1060,39 @@ function rid(n) {
   return s;
 }
 
+
+// --- Verificações de E-mail (Cadastro) ---
+
+// Garante que a tabela existe antes de fazer db.prepare
+db.exec(`
+  CREATE TABLE IF NOT EXISTS verifications (
+    token TEXT PRIMARY KEY, payload TEXT, expires_at INTEGER, used_at INTEGER, created_at INTEGER
+  );
+`);
+
+const qVerif = {
+  create: db.prepare('INSERT INTO verifications (token, payload, expires_at, created_at) VALUES (?, ?, ?, ?)'),
+  get: db.prepare('SELECT * FROM verifications WHERE token = ? AND used_at IS NULL AND expires_at > ?'),
+  use: db.prepare('UPDATE verifications SET used_at = ? WHERE token = ?'),
+};
+async function createVerification(token, payload, expiresAt) {
+  qVerif.create.run(token, JSON.stringify(payload), expiresAt, Date.now());
+}
+async function getVerification(token) {
+  const v = qVerif.get.get(token, Date.now());
+  if (!v) return null;
+  try { v.payload = JSON.parse(v.payload); } catch(e) { v.payload = {}; }
+  return v;
+}
+async function consumeVerification(token) {
+  qVerif.use.run(Date.now(), token);
+}
+
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
-  createReset, getReset, consumeReset,
+  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
