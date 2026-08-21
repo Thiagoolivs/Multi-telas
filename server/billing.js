@@ -74,7 +74,7 @@ async function createCheckout(tenant, user, planId, origin) {
     value: p.precoTelaCents / 100, // centavos para reais
     nextDueDate: new Date().toISOString().split('T')[0], // Hoje
     cycle: 'MONTHLY',
-    description: \`Assinatura do Plano \${p.name}\`,
+    description: `Assinatura do Plano ${p.name}`,
     externalReference: tenant.id + '|' + planId
   }, 'POST');
 
