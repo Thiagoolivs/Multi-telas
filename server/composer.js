@@ -9,6 +9,7 @@
  * Todas as funções são puras e determinísticas — dá para testar sem chamar IA.
  */
 const ds = require('./design-system');
+const fontMetrics = require('./font-metrics');
 const fontes = require('../js/fontes.js');
 const peca = require('../js/peca.js');
 
@@ -246,11 +247,11 @@ function corrigirContraste(el, elementos, palette, formato) {
 // Texto que não cabe: reduz o corpo até caber (nunca deixa transbordar).
 function ajustarTamanho(el, formato) {
   if (el.tipo !== 'texto' || !el.text) return el;
-  // A sugestão é uma estimativa, não a solução exata — itera até caber de
+  // A sugestão é uma estimativa, não a solução exata - itera até caber de
   // fato. Uma passada só deixava título de duas linhas ainda estourando.
   let tamanho = el.tamanho;
   for (let i = 0; i < 6; i++) {
-    const r = ds.cabeNaCaixa(el.text, el, tamanho, formato, el.fonte);
+    const r = fontMetrics.cabeNaCaixaReal(el.text, el, tamanho, formato, el.fonte, el.peso, el.italico);
     if (r.cabe) break;
     const proximo = Math.max(1.4, Math.min(r.sugestaoCqw, tamanho * 0.88));
     if (proximo >= tamanho) break; // não está convergindo; para para não travar
