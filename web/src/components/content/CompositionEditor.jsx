@@ -1093,7 +1093,9 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 ) : (
                   <img src={e.src} alt="" draggable={false}
                     style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', display: 'block', pointerEvents: 'none',
-                      borderRadius: raioCss(e, cqwPx), ...estiloCaixa(e, cqwPx) }} />
+                    borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : raioCss(e, cqwPx)),
+                    clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none',
+                    ...estiloCaixa(e, cqwPx) }} />
                 )}
                 </div>
               </div>
@@ -1540,12 +1542,20 @@ export function CompositionEditor({ value, onClose, onSave }) {
                       </Select>
                     </Field>
                     <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Trocar imagem</Button>
-                    <Field label={`Cantos (${selEl.radius || 0})`}>
-                      <input type="range" min="0" max="20" step="0.5" value={selEl.radius || 0}
+                      <Field label="Máscara">
+                        <Select value={selEl.shape || 'rect'} onChange={(e) => patch(selEl.id, { shape: e.target.value })}>
+                          <option value="rect">Retângulo</option><option value="ellipse">Elipse</option>
+                          <option value="triangle">Triângulo</option><option value="diamond">Losango</option><option value="diag">Diagonal</option>
+                        </Select>
+                      </Field>
+                      {selEl.shape !== 'ellipse' && !SHAPE_POLY[selEl.shape] && (
+                        <Field label={`Cantos (${selEl.radius || 0})`}>
+                          <input type="range" min="0" max="20" step="0.5" value={selEl.radius || 0}
                         onChange={(e) => patch(selEl.id, { radius: Number(e.target.value) }, 'raio:' + selEl.id)}
                         onMouseUp={fecharPasso} onTouchEnd={fecharPasso} className="w-full" />
-                    </Field>
-                    <Opacidade el={selEl} onChange={(o) => patch(selEl.id, { opacidade: o })} />
+                      </Field>
+                      )}
+                      <Opacidade el={selEl} onChange={(o) => patch(selEl.id, { opacidade: o })} />
                     <PainelSombra el={selEl} onChange={(sm) => patch(selEl.id, { sombra: sm }, 'sombra:' + selEl.id)} onSoltar={fecharPasso} />
                     <PainelBorda el={selEl} onChange={(bd) => patch(selEl.id, { borda: bd }, 'borda:' + selEl.id)} onSoltar={fecharPasso} />
                   </>
