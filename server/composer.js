@@ -80,6 +80,7 @@ function sanearElemento(e, palette, formato) {
     out.sombra = sanearSombra(e.sombra);
   } else {
     out.src = typeof e.src === 'string' ? e.src : '';
+      out.shape = typeof e.shape === 'string' ? e.shape : 'rect';
     out.fit = e.fit === 'cover' ? 'cover' : 'contain';
     out.radius = ds.clamp(ds.num(e.radius, 0), 0, 50);
     out.sombra = sanearSombra(e.sombra);
