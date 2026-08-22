@@ -204,7 +204,8 @@ export const ai = {
   // Chat de briefing: uma pergunta por vez até a IA entender a campanha.
   // Continua síncrono: é uma conversa, e conversa que responde por polling
   // deixa de parecer conversa.
-  briefing: (mensagens, extra) => api('POST', '/api/ai/briefing', { mensagens, ...(extra || {}) }),
+  analiseVisual: (imageB64) => api('POST', '/api/ai/analise-visual', { imageB64 }),
+    briefing: (mensagens, extra) => api('POST', '/api/ai/briefing', { mensagens, ...(extra || {}) }),
 
   /*
    * O diretor: briefing → plano → imagens → composição → crítica. É o motor

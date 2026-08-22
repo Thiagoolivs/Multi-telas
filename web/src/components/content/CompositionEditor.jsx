@@ -1,7 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, useLayoutEffect } from 'react';
 import Moveable from 'react-moveable';
 import {
-  ImagePlus, Type, Trash2, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical,
+  ScanSearch, ImagePlus, Type, Trash2, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical,
   Columns2, Sparkles, Shapes, Star, Undo2, Redo2, Copy, ZoomIn, ZoomOut, Maximize2,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
@@ -132,6 +132,26 @@ export function CompositionEditor({ value, onClose, onSave }) {
   const [busy, setBusy] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [modeloAberto, setModeloAberto] = useState(false);
+    const [visaoLoading, setVisaoLoading] = useState(false);
+    const [visaoResultado, setVisaoResultado] = useState(null);
+
+    async function fazerAnaliseVisual() {
+      setVisaoLoading(true);
+      setVisaoResultado(null);
+      try {
+        const d = dimsFor(aspect);
+        const { compositionToCanvas } = await import('../../lib/exportPng.js');
+        const canvas = await compositionToCanvas({ bg, elementos: sair(els), formato: aspect }, d.W, d.H);
+        const b64 = canvas.toDataURL('image/jpeg', 0.85);
+        const res = await ai.analiseVisual(b64);
+        if (res.error) setVisaoResultado({ error: res.error });
+        else setVisaoResultado(res);
+      } catch (e) {
+        setVisaoResultado({ error: e.message || 'Falha ao analisar' });
+      }
+      setVisaoLoading(false);
+    }
+
   /*
    * Guias do palco: margem de segurança, centro e terços.
    *
@@ -841,6 +861,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
 
         <div className="mx-1 h-5 w-px bg-line" />
         <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={pedirModelo}>Modelos</Button>
+          <Button size="sm" variant="secondary" icon={ScanSearch} disabled={visaoLoading} onClick={fazerAnaliseVisual}>Análise IA</Button>
         <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => setAiOpen((o) => !o)}>IA</Button>
         <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Imagem</Button>
         <Button size="sm" variant="secondary" icon={Type} onClick={addText}>Texto</Button>
@@ -912,7 +933,24 @@ export function CompositionEditor({ value, onClose, onSave }) {
         e nunca era, porque o servidor só sabia produzir texto. O que dá para
         apontar agora se aponta; a frase fica para o que é mesmo texto.
       */}
-      {aiOpen && (
+      
+        {visaoResultado && (
+          <div className="border-b border-line bg-surface-2 px-4 py-3 relative">
+            <button className="absolute top-2 right-2 text-ink-3 hover:text-ink" onClick={() => setVisaoResultado(null)}><X size={16}/></button>
+            <div className="font-medium text-sm mb-1 text-ink-1">Análise Visual da IA</div>
+            {visaoResultado.error ? (
+              <div className="text-red-500 text-xs">{visaoResultado.error}</div>
+            ) : (
+              <div className="text-sm">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="text-xs font-bold px-2 py-1 bg-surface-1 rounded">Nota: {visaoResultado.nota}/10</div>
+                </div>
+                <div className="text-ink-2 text-xs leading-relaxed">{visaoResultado.analise}</div>
+              </div>
+            )}
+          </div>
+        )}
+        {aiOpen && (
         <div className="border-b border-line bg-surface-2 px-4 py-3">
           <div className="flex flex-wrap items-end gap-4">
             <div>

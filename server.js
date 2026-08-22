@@ -1342,7 +1342,28 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /* ----- IA: layout de composição (editor livre) ----- */
-  if (parts[1] === 'ai' && parts[2] === 'generate-composition') {
+  
+    /* ----- IA: Avaliação de Peça Pronta (Visão) ----- */
+    if (parts[1] === 'ai' && parts[2] === 'analise-visual') {
+      if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+      if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+      const rl = rateLimit('ai:' + sess.tenant_id, 30, 60 * 60 * 1000);
+      if (!rl.ok) return sendJson(res, 429, { error: 'limite de requisições' }, { 'Retry-After': String(rl.retryAfter) });
+      return readBody(req, res, async (b) => {
+        const imageB64 = b && b.imageB64;
+        if (!imageB64) return sendJson(res, 400, { error: 'informe a imagem em base64' });
+        try {
+          // Extrair prefixo (data:image/jpeg;base64,...)
+          const pureB64 = imageB64.includes(',') ? imageB64.split(',')[1] : imageB64;
+          const out = await ai.analyzeVisual(pureB64);
+          return sendJson(res, 200, out);
+        } catch (e) {
+          return sendJson(res, 500, { error: e.message });
+        }
+      });
+    }
+
+    if (parts[1] === 'ai' && parts[2] === 'generate-composition') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
     const rl = rateLimit('ai:' + sess.tenant_id, 30, 60 * 60 * 1000);
