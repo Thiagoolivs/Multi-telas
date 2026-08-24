@@ -1556,6 +1556,12 @@ async function handleApi(req, res, pathname, query) {
           publico: (b && b.publico) || '', tom: (b && b.tom) || '', oferta: (b && b.oferta) || '',
           brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
           formatos: Array.isArray(b && b.formatos) ? b.formatos : null,
+          /*
+           * O que a pessoa escolheu na tela antes de gerar: quantas peças,
+           * para onde, e o que fazer com imagem. Daqui para baixo isso é
+           * LIMITE, não sugestão — ver `lerPedido` em server/ai-director.js.
+           */
+          pedido: (b && b.pedido) || null,
           marca,
           // Resumo vindo do chat de briefing, quando o usuário conversou.
           briefingPronto: (b && b.briefingPronto) || null,
@@ -1575,12 +1581,44 @@ async function handleApi(req, res, pathname, query) {
             const imgs = await lerImagens(urls);
             return imgs.length === urls.length ? ai.catalogarImagens(imgs) : [];
           },
+          /*
+           * CADA IMAGEM DA CAMPANHA CONFERE SALDO E COBRA.
+           *
+           * Não cobrava nada. A rota de imagem avulsa conferia saldo e debitava
+           * um crédito; a campanha — que gera VÁRIAS imagens, e é a operação
+           * mais cara do produto — passava direto, sem conferir e sem debitar.
+           * O único registro era o do texto: R$ 0,05 para algo que custa entre
+           * R$ 1,20 e R$ 1,60 medidos em produção.
+           *
+           * O gancho já existia: `campanha-peca` está no catálogo de créditos
+           * desde sempre, com o rótulo escrito, e nunca era chamado. Foi criado
+           * e esquecido.
+           *
+           * Confere ANTES de gerar, pelo mesmo motivo da rota avulsa: gerar
+           * primeiro e cobrar depois deixa a conta devendo, e recusar depois de
+           * a imagem existir é pior ainda.
+           *
+           * Sem saldo, isto LEVANTA em vez de gerar — e o diretor trata: a peça
+           * sai sem foto e a campanha continua. Derrubar tudo porque a quinta
+           * imagem não coube jogaria fora as quatro já pagas.
+           */
           onImagem: async (prompt, formato) => {
+            const contaIA = await db.getTenant(sess.tenant_id);
+            const pode = await usoIA.conferir(db, contaIA, 'campanha-peca', 1);
+            if (!pode.ok) {
+              const e = new Error('acabou o crédito de IA — as peças seguintes saem sem foto');
+              e.semSaldo = true;
+              throw e;
+            }
             const img = await ai.generateImage(prompt, { formato, brand: (b && b.brand) || '' });
             // Registrada como qualquer outro arquivo: aparece no Armazenamento,
             // conta na cota e some junto com a conta.
             const saved = await midia.guardarBuffer(db, sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime,
               { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
+            // Só depois do sucesso: falha não cobra.
+            await usoIA.cobrar(db, contaIA, {
+              tipo: 'campanha-peca', quantidade: 1, userId: sess.user_id, referencia: saved.id,
+            });
             return saved.url;
           },
         }).then((out) => ({ mode: ai.mode(), ...out })), { tipo: 'campanha', pedido: { brief: String(brief).slice(0, 200) }, userId: sess.user_id });

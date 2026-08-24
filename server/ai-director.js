@@ -319,13 +319,70 @@ function garantirDuasPorFormato(pecas) {
     // neste. Se não houver, a campanha tem uma mensagem só e não há o que fazer.
     const outra = pecas.find((x) => x.formato !== formato && !usados.has(x.headline));
     if (!outra) continue;
-    saida.push({ ...outra, formato, canal: canalDoFormato(formato, outra.canal) });
+    /*
+     * A cópia NÃO pede imagem nova.
+     *
+     * Ela levava `precisaImagem` e `promptImagem` do original junto, então a
+     * mesma foto era gerada duas vezes — uma por formato — e cobrada duas
+     * vezes. Eram duas imagens quase idênticas, porque o prompt era o mesmo.
+     *
+     * `reusaImagemDe` marca de quem ela copia; o gerador desenha uma vez e as
+     * duas peças apontam para o mesmo arquivo. Enquadramento diferente entre
+     * 16/9 e 9/16 é trabalho do compositor, não motivo para pagar de novo.
+     */
+    saida.push({
+      ...outra,
+      formato,
+      canal: canalDoFormato(formato, outra.canal),
+      precisaImagem: false,
+      promptImagem: '',
+      reusaImagemDe: outra.headline,
+    });
   }
   return saida.slice(0, 12);
 }
 
 // O canal é o rótulo que o usuário lê ("TV", "Story"). Ao mudar de formato ele
 // precisa acompanhar, senão a peça 9/16 aparece anunciada como "TV".
+/*
+ * O PEDIDO EXPLÍCITO da pessoa: quantas peças, para onde, e o que fazer com
+ * imagem.
+ *
+ * Antes nada disso era perguntado. O modelo decidia a quantidade e os formatos,
+ * `garantirDuasPorFormato` acrescentava mais peças por cima, e cada peça com
+ * `precisaImagem` virava uma imagem PAGA. O resultado é o que o dono relatou:
+ * um clique gera um monte de coisa e custa entre R$ 1,20 e R$ 1,60, boa parte
+ * dela em peça que ninguém pediu.
+ *
+ * Cobrar por isso sem deixar escolher seria pior do que não cobrar: o cliente
+ * pagaria pela peça que não quis. Por isso o pedido vem primeiro, e daqui para
+ * baixo ele é LIMITE, não sugestão.
+ *
+ * Campo vazio continua significando "decida por mim" — quem tem pressa não é
+ * obrigado a preencher formulário.
+ */
+function lerPedido(p) {
+  p = p && typeof p === 'object' ? p : {};
+  const formatos = (Array.isArray(p.formatos) ? p.formatos : [])
+    .filter((f) => FORMATOS_OK.includes(f));
+  const imagens = ['gerar', 'acervo', 'nenhuma'].includes(p.imagens) ? p.imagens : 'gerar';
+  return {
+    formatos,
+    // 0 = a IA decide. O teto de 8 é o mesmo do briefing.
+    quantidade: Number.isInteger(p.quantidade) ? ds.clamp(p.quantidade, 1, 8) : 0,
+    imagens,
+  };
+}
+
+/*
+ * Quantas imagens PAGAS um plano ainda vai gerar. É o que a tela mostra antes
+ * de a pessoa clicar, e o que a cobrança confere depois — a mesma conta nos
+ * dois lugares, para o número prometido e o número cobrado não divergirem.
+ */
+function imagensAGerar(pecas) {
+  return (pecas || []).filter((x) => x && x.precisaImagem && x.promptImagem).length;
+}
+
 function canalDoFormato(formato, atual) {
   if (formato === '9/16') return 'Story';
   if (formato === '1/1') return 'Feed';
@@ -382,6 +439,8 @@ function normalizarPlano(p, ctx, brief) {
       promptImagem: iBase != null ? '' : String((x && x.promptImagem) || '').slice(0, 400),
     };
   };
+  const pedido = lerPedido(ctx.pedido);
+
   let pecas = (Array.isArray(p.pecas) ? p.pecas : []).map(normalizarPeca)
     .filter((x) => x.headline).slice(0, 12);
 
@@ -389,7 +448,68 @@ function normalizarPlano(p, ctx, brief) {
   // acervo, senão a empresa perde as próprias fotos justo quando a IA falhou.
   if (!pecas.length) pecas = planoDev(brief, ctx).pecas.map(normalizarPeca);
 
-  pecas = garantirDuasPorFormato(pecas);
+  /*
+   * O FORMATO PEDIDO MANDA.
+   *
+   * O modelo escolhia sozinho onde a campanha ia aparecer, e vinha Story para
+   * quem só tem TV na recepção. Peça de formato que ninguém pediu é peça que
+   * não vai ser usada — e, se ela precisar de imagem, é dinheiro gasto em algo
+   * que ninguém vai ver.
+   *
+   * A conversão é para o PRIMEIRO formato pedido, e não descarte: a mensagem
+   * que o modelo escreveu continua valendo, só muda de moldura.
+   */
+  if (pedido.formatos.length) {
+    pecas = pecas.map((x) => (pedido.formatos.includes(x.formato) ? x : {
+      ...x,
+      formato: pedido.formatos[0],
+      canal: canalDoFormato(pedido.formatos[0], x.canal),
+    }));
+  }
+
+  /*
+   * `garantirDuasPorFormato` existe porque uma campanha com uma peça só por
+   * formato fica repetitiva na parede. Mas ela ACRESCENTA peças, e por isso só
+   * roda quando ainda há espaço embaixo do teto que a pessoa pediu.
+   */
+  if (!pedido.quantidade || pecas.length < pedido.quantidade) {
+    pecas = garantirDuasPorFormato(pecas);
+  }
+
+  /*
+   * O TETO É TETO. Sem ele o pedido de "duas peças" virava seis: o modelo
+   * decidia três, a garantia de formato somava mais, e cada uma podia custar
+   * uma imagem.
+   *
+   * O corte é no fim porque as peças com imagem do acervo — que são grátis —
+   * foram ordenadas para a frente logo abaixo.
+   */
+  if (pedido.quantidade) {
+    /*
+     * Antes de cortar, as que NÃO custam imagem vão para a frente. Se é para
+     * sobrar peça de fora, que sobre a mais cara: entre uma peça que usa a
+     * foto da própria empresa e uma que precisa gerar, a primeira é melhor nas
+     * duas contas — mais barata e mais verdadeira.
+     */
+    pecas = pecas.slice().sort((a, b) => (a.precisaImagem ? 1 : 0) - (b.precisaImagem ? 1 : 0));
+    pecas = pecas.slice(0, pedido.quantidade);
+  }
+
+  /*
+   * O que fazer com imagem, dito pela pessoa:
+   *   'gerar'    a IA desenha quando nenhuma foto do acervo servir (padrão)
+   *   'acervo'   só usa as fotos da empresa; nunca gera, nunca cobra
+   *   'nenhuma'  peça sem foto, composta com cor e forma
+   */
+  if (pedido.imagens !== 'gerar') {
+    pecas = pecas.map((x) => ({
+      ...x,
+      precisaImagem: false,
+      promptImagem: '',
+      ...(pedido.imagens === 'nenhuma' ? { imagemBase: null, bgImagem: '' } : {}),
+    }));
+  }
+
   pecas = espalharPelasFaixas(pecas);
 
   const social = p.social && typeof p.social === 'object' ? p.social : {};
@@ -403,6 +523,10 @@ function normalizarPlano(p, ctx, brief) {
       racional: String(id.racional || '').slice(0, 200),
     },
     pecas,
+    // O pedido normalizado volta junto: é o que permite a tela mostrar "isto
+    // vai usar N créditos" com a MESMA conta que a cobrança usa depois.
+    pedido,
+    imagensAGerar: imagensAGerar(pecas),
     social: {
       instagram: String(social.instagram || '').slice(0, 1200),
       whatsapp: String(social.whatsapp || '').slice(0, 600),
@@ -809,11 +933,36 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
   if (onImagem) {
     const aGerar = plano.pecas.filter((p) => p.precisaImagem && p.promptImagem);
     let feitas = 0;
+    /*
+     * Uma imagem por MENSAGEM, não por peça. A mesma manchete em 16/9 e em
+     * 9/16 aponta para o mesmo arquivo — ver `garantirDuasPorFormato`, que
+     * marca a cópia com `reusaImagemDe`.
+     */
+    const porManchete = new Map();
     for (const peca of plano.pecas) {
       if (!peca.precisaImagem || !peca.promptImagem) continue;
       passo('gerando imagens', `${++feitas} de ${aGerar.length}`);
-      try { peca.bgImagem = await onImagem(peca.promptImagem, peca.formato); }
-      catch (e) { peca.precisaImagem = false; } // sem imagem, compõe com formas
+      try {
+        peca.bgImagem = await onImagem(peca.promptImagem, peca.formato);
+        porManchete.set(peca.headline, peca.bgImagem);
+      } catch (e) {
+        /*
+         * Sem imagem, compõe com formas — e a campanha inteira continua.
+         *
+         * Vale também para o saldo acabar no meio: `onImagem` recusa, esta
+         * peça sai sem foto e as outras seguem. Derrubar a campanha porque a
+         * quinta imagem não coube seria jogar fora as quatro que já foram
+         * pagas e o minuto que a pessoa esperou.
+         */
+        peca.precisaImagem = false;
+        peca.semImagemPorque = String((e && e.message) || 'a imagem não saiu');
+      }
+    }
+    // As cópias herdam o arquivo já gerado, sem custo novo.
+    for (const peca of plano.pecas) {
+      if (peca.reusaImagemDe && porManchete.has(peca.reusaImagemDe)) {
+        peca.bgImagem = porManchete.get(peca.reusaImagemDe);
+      }
     }
   }
 
@@ -891,6 +1040,18 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
     social: plano.social,
     agenda: plano.agenda,
     briefing: ctx.briefRico || null,
+    /*
+     * O que a pessoa pediu e o que isso custou de imagem.
+     *
+     * Vem no resultado para a tela poder confrontar o que foi prometido antes
+     * do clique com o que de fato saiu — e para o extrato dizer por que aquela
+     * campanha custou o que custou.
+     */
+    pedido: plano.pedido || null,
+    imagensGeradas: plano.pecas.filter((x) => x.bgImagem && x.precisaImagem).length,
+    // Peça que ficou sem foto e por quê — quase sempre "acabou o crédito".
+    semImagem: plano.pecas.filter((x) => x.semImagemPorque)
+      .map((x) => ({ headline: x.headline, porque: x.semImagemPorque })),
     // O painel mostra isto como "a IA revisou N peças" — a transparência é o
     // que justifica a campanha ter demorado mais.
     revisao: { refeitas, avaliadas: pecas.length },
