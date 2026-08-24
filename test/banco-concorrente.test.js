@@ -37,7 +37,8 @@ const RAIZ = path.join(__dirname, '..');
  * possível: apagar o banco compartilhado no meio da suíte quebraria os outros
  * arquivos de teste, que rodam ao lado.
  */
-function subirJuntos(quantos) {
+function subirJuntos(quantos, opcoes) {
+  const manter = !!(opcoes && opcoes.manter);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-conc-'));
   const um = () => new Promise((resolve) => {
     execFile(
@@ -49,7 +50,12 @@ function subirJuntos(quantos) {
   });
   // Disparados de uma vez, sem esperar um pelo outro — é o ponto do teste.
   return Promise.all(Array.from({ length: quantos }, um))
-    .then((r) => { fs.rmSync(dir, { recursive: true, force: true }); return r; });
+    .then((r) => {
+      // Quem pede `manter` vai inspecionar o banco depois, e apaga a pasta.
+      if (manter) return { dir, resultados: r };
+      fs.rmSync(dir, { recursive: true, force: true });
+      return r;
+    });
 }
 
 test('vários processos sobem o banco ao mesmo tempo sem nenhum morrer', async () => {
@@ -59,16 +65,49 @@ test('vários processos sobem o banco ao mesmo tempo sem nenhum morrer', async (
   assert.deepStrictEqual(motivos, [], mortos.length + ' de 8 processos morreram ao subir o banco');
 });
 
-test('nenhum processo esbarra em "database is locked"', async () => {
+test('quem perde a disputa pelo WAL segue vivo em vez de morrer no boot', async () => {
   /*
-   * Conferido à parte do teste acima porque é a corrida 1, e ela tem cara
-   * própria: se `busy_timeout` voltar para depois do `journal_mode`, é esta
-   * mensagem que aparece — e ela some do outro teste se por acaso o processo
-   * ainda conseguir terminar.
+   * A primeira versão deste teste subia oito processos juntos e conferia que
+   * o banco terminava em WAL. Ele passava COM o defeito posto de volta: nesta
+   * máquina, quatro núcleos e disco rápido, a janela de disputa simplesmente
+   * não abre. Verde por não conseguir provocar o problema é o pior verde que
+   * existe — e era o mesmo motivo de o CI ter achado o que eu não achei.
+   *
+   * Então aqui a disputa não é torcida, é CONSTRUÍDA: este processo segura uma
+   * leitura aberta no banco, o que basta para impedir a troca do modo de
+   * diário, e solta depois que o tempo de espera do filho já estourou uma vez.
+   *
+   * Sem tolerância, o filho morre na primeira negativa. Com tolerância, ele
+   * tenta de novo, pega o banco livre e sobe. O que se cobra é ele estar VIVO.
    */
-  const r = await subirJuntos(8);
-  const travados = r.filter((x) => /database is locked/i.test(x.stderr));
-  assert.equal(travados.length, 0, 'o tempo de espera do SQLite deixou de valer no boot');
+  const { DatabaseSync } = require('node:sqlite');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-wal-'));
+  const arquivo = path.join(dir, 'multitelas.db');
+
+  // Banco em modo rollback, para que a troca para WAL ainda esteja por fazer.
+  const dono = new DatabaseSync(arquivo);
+  dono.exec('PRAGMA busy_timeout = 500');
+  dono.exec('CREATE TABLE marca_do_teste (a)');
+  dono.exec('BEGIN');
+  dono.prepare('SELECT * FROM marca_do_teste').all(); // leitura aberta = lock
+
+  const filho = new Promise((resolve) => {
+    execFile(process.execPath,
+      ['-e', "require(" + JSON.stringify(path.join(RAIZ, 'server', 'db-sqlite.js')) + ")"],
+      { env: { ...process.env, DATA_DIR: dir }, timeout: 60000 },
+      (erro, _s, stderr) => resolve({ ok: !erro, stderr: String(stderr || '') }));
+  });
+
+  // Solta depois que os 5000ms de espera do filho já venceram uma vez.
+  const solta = new Promise((r) => setTimeout(r, 6500)).then(() => {
+    dono.exec('COMMIT');
+    dono.close();
+  });
+
+  const [r] = await Promise.all([filho, solta]);
+  fs.rmSync(dir, { recursive: true, force: true });
+  assert.ok(r.ok, 'o processo morreu porque não conseguiu ligar o WAL na primeira tentativa: '
+    + r.stderr.slice(0, 300));
 });
 
 test('nenhum processo esbarra em "duplicate column name"', async () => {
