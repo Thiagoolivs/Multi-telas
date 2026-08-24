@@ -5,7 +5,7 @@ module.exports = function(ctx) {
     baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto
   } = ctx;
   
-  return async function(req, res, parts, query, sess) {
+  const tratar = async function(req, res, parts, query, sess) {
     /* ----- Auth ----- */
       if (parts[1] === 'auth') {
         const action = parts[2];
@@ -363,6 +363,25 @@ module.exports = function(ctx) {
         }
         return sendJson(res, 404, { error: 'rota de auth inválida' });
       }
+  };
+
+  /*
+   * Devolve TRUE só quando este arquivo é o DONO do caminho.
+   *
+   * Estava devolvendo `true` sempre — inclusive para caminhos que não são de
+   * auth. `handleApi` lê esse retorno como "já respondi e mandei a resposta",
+   * então saía sem responder nada: toda requisição /api que não fosse
+   * /api/auth/* era engolida em silêncio, sem corpo, sem erro e sem fechar o
+   * socket. O cliente ficava pendurado até desistir sozinho. A API inteira —
+   * telas, mídia, campanha, mural, billing — parava de pé.
+   *
+   * Por isso a decisão é tomada pelo PREFIXO, e não pelo que o corpo devolve:
+   * lá dentro quase todo caminho termina em `return sendJson(...)`, e sendJson
+   * não devolve nada. Qualquer booleano tirado dali seria sempre falso.
+   */
+  return async function(req, res, parts, query, sess) {
+    if (parts[1] !== 'auth') return false;
+    await tratar(req, res, parts, query, sess);
     return true;
   };
 };

@@ -32,6 +32,18 @@ function pedir(caminho, opcoes) {
       },
     );
     req.on('error', reject);
+    /*
+     * Prazo em TODA requisição, e não só nas que testam demora.
+     *
+     * Sem isto, uma rota que aceita a conexão e nunca responde não falha o
+     * teste: ela PENDURA o arquivo inteiro para sempre, e um arquivo pendurado
+     * não vira relatório vermelho — vira uma execução que ninguém entende.
+     * Foi exatamente assim que a API inteira ficou muda sem nenhum teste
+     * reclamar. Rota muda agora é falha, com nome.
+     */
+    req.setTimeout(o.prazo || 8000, () => {
+      req.destroy(new Error('a rota ' + caminho + ' aceitou a conexão e não respondeu'));
+    });
     if (o.body) req.write(o.body);
     req.end();
   });
@@ -192,4 +204,36 @@ test('listar as fotos do mural exige credencial', async () => {
    */
   const r = await pedir('/api/mural/ABC123/fotos');
   assert.notEqual(r.status, 200, 'listou o mural sem credencial nenhuma');
+});
+
+/* ---------------- SEC-06: a API responde ---------------- */
+
+test('nenhuma rota da API fica muda', async () => {
+  /*
+   * A API inteira parou de responder e a suíte não apontou nada.
+   *
+   * O despacho pergunta a cada arquivo de rotas "isto é seu?" e trata a
+   * resposta como "já respondi". Dois arquivos diziam SIM para qualquer
+   * caminho: quem não fosse /api/auth/* ou /api/team/* era engolido — sem
+   * corpo, sem status, com o socket aberto até o cliente desistir. Telas,
+   * mídia, campanha, mural e cobrança, todos mudos ao mesmo tempo.
+   *
+   * O que este teste cobra é o mínimo: um status, qualquer um. 401, 404 e 403
+   * passam de propósito — quem decide QUEM pode são os testes acima. Aqui a
+   * pergunta é só se o servidor abre a boca.
+   */
+  const caminhos = [
+    '/api/auth/me',        // dona de si: a família que existia antes da extração
+    '/api/team',           // a outra família extraída
+    '/api/mural/ABC123/fotos',
+    '/api/planos',
+    '/api/devices',
+    '/api/media',
+    '/api/qr.svg?d=oi',
+    '/api/rota-que-nao-existe',
+  ];
+  for (const caminho of caminhos) {
+    const r = await pedir(caminho, { prazo: 5000 });
+    assert.ok(r.status >= 100 && r.status < 600, caminho + ' respondeu status estranho: ' + r.status);
+  }
 });
