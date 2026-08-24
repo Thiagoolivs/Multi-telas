@@ -1503,29 +1503,87 @@
       return data.conteudo === 'noticias' && usingFeed ? [] : messages.slice();
     }
 
+    function velocidadeDe() {
+      // px/s: o mesmo que o modo manchetes usa, para o número significar a
+      // mesma coisa nos dois lugares.
+      return Math.max(20, Number(data.velocidadeTexto) || Number(data.velocidade) || 70);
+    }
+
+    /*
+     * Quantas cópias do texto cabem na faixa — e por que não são sempre duas.
+     *
+     * A versão anterior punha o texto DUAS vezes e deslizava -50% (metade da
+     * faixa, ou seja, uma cópia). Isso só fecha a emenda quando uma cópia é
+     * pelo menos tão larga quanto a tela: enquanto a primeira cópia sai pela
+     * esquerda, é a segunda que precisa estar cobrindo o que sobrou à direita.
+     *
+     * Com pouco conteúdo ela não cobre, e o que atravessa a tela é vazio.
+     * Medido numa tela de 1280px: uma mensagem fixa deixava 1040px de faixa
+     * vazia passando a cada volta; três mensagens, 269px. Só o feed de
+     * notícias, que é longo, escondia o defeito — e é justamente quem escreve
+     * duas mensagens à mão que via o letreiro piscando um vão.
+     *
+     * A conta certa é: cópias suficientes para cobrir a tela MAIS uma, que é
+     * a que entra enquanto a primeira sai.
+     */
+    function copiasPara(larguraDaCopia, larguraDaTela) {
+      if (!larguraDaCopia) return 2;
+      return Math.max(2, Math.ceil(larguraDaTela / larguraDaCopia) + 1);
+    }
+
+    /*
+     * Mede uma cópia sem piscar na tela.
+     *
+     * `visibility: hidden` em vez de `display: none` porque o que não é
+     * exibido não tem largura — e é a largura que estamos aqui para saber.
+     */
+    function medirUmaCopia(texto) {
+      const molde = document.createElement('span');
+      molde.className = 'mt-ticker-item';
+      molde.textContent = texto;
+      molde.style.visibility = 'hidden';
+      molde.style.position = 'absolute';
+      track.appendChild(molde);
+      const w = molde.getBoundingClientRect().width;
+      track.removeChild(molde);
+      return w;
+    }
+
+    let textoAtual = '';
+
     function pintar(textos) {
-      if (!textos.length) { track.textContent = ''; return; }
-      const texto = textos.join('   •   ');
+      if (!textos.length) { track.textContent = ''; textoAtual = ''; return; }
+      textoAtual = textos.join('   •   ') + '   •   ';
+      montar();
+    }
+
+    function montar() {
+      if (!textoAtual) return;
+      const larguraDaCopia = medirUmaCopia(textoAtual);
+      if (!larguraDaCopia) return;
+      const copias = copiasPara(larguraDaCopia, zoneEl.clientWidth);
+
       track.textContent = '';
-      /*
-       * O texto entra DUAS vezes. A animação desloca a faixa em exatamente
-       * metade da sua largura, então quando a primeira cópia termina de sair
-       * a segunda está no lugar dela — a emenda não aparece, e é isso que
-       * torna a rolagem infinita em vez de um laço com buraco no meio.
-       */
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < copias; i++) {
         const span = document.createElement('span');
         span.className = 'mt-ticker-item';
-        span.textContent = texto + '   •   ';
+        span.textContent = textoAtual;
         track.appendChild(span);
       }
-      requestAnimationFrame(() => {
-        const largura = track.scrollWidth / 2;
-        // px/s: o mesmo que o modo manchetes usa, para o número significar a
-        // mesma coisa nos dois lugares.
-        const velocidade = Math.max(20, Number(data.velocidadeTexto) || Number(data.velocidade) || 70);
-        track.style.animationDuration = (largura / velocidade).toFixed(1) + 's';
-      });
+
+      /*
+       * A animação desliza a largura de UMA cópia, em pixels.
+       *
+       * Antes era `-50%`, que é metade da faixa — e metade da faixa só é uma
+       * cópia quando há exatamente duas. Com um número de cópias que muda com
+       * o conteúdo e com a largura da tela, a porcentagem deixaria de casar e
+       * a emenda voltaria, agora de um jeito mais difícil de enxergar.
+       *
+       * Em pixels, a distância é a mesma coisa que a repetição do texto, e a
+       * emenda fecha com qualquer número de cópias.
+       */
+      track.style.setProperty('--mt-ticker-volta', larguraDaCopia.toFixed(2) + 'px');
+      track.style.animationDuration = (larguraDaCopia / velocidadeDe()).toFixed(1) + 's';
     }
 
     pintar(textosManuais());
@@ -1542,16 +1600,15 @@
     carregarFeed();
     const feedTimer = usingFeed ? setInterval(carregarFeed, 10 * 60 * 1000) : null;
 
-    // A zona pode mudar de largura quando o layout muda: a duração é calculada
-    // a partir dela, então precisa ser refeita.
-    const ro = typeof ResizeObserver !== 'undefined'
-      ? new ResizeObserver(() => {
-        const largura = track.scrollWidth / 2;
-        if (!largura) return;
-        const velocidade = Math.max(20, Number(data.velocidadeTexto) || Number(data.velocidade) || 70);
-        track.style.animationDuration = (largura / velocidade).toFixed(1) + 's';
-      })
-      : null;
+    /*
+     * Mudar a largura da zona REMONTA a faixa, não só recalcula a duração.
+     *
+     * O número de cópias vem da largura da tela: uma zona que encolhe precisa
+     * de menos, uma que cresce precisa de mais. Só ajustar a duração deixaria
+     * a faixa curta demais para a tela nova — o buraco voltaria, e só em quem
+     * trocasse de layout, que é o pior jeito de um defeito voltar.
+     */
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(montar) : null;
     if (ro) ro.observe(zoneEl);
 
     return { stop: () => { feedTimer && clearInterval(feedTimer); ro && ro.disconnect(); } };
