@@ -183,7 +183,7 @@ test('a lista é conferida em TODA porta de entrada', () => {
    */
   const fs = require('node:fs');
   const path = require('node:path');
-  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server', 'routes', 'auth.js'), 'utf8');
   const chamadas = SERVER.match(/cortesia\.sincronizar\(/g) || [];
   assert.ok(chamadas.length >= 3, 'faltou conferir a cortesia em alguma porta de entrada: ' + chamadas.length);
 

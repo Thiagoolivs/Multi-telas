@@ -1047,11 +1047,27 @@ function rid(n) {
   return s;
 }
 
+
+// --- Verificações de E-mail (Cadastro) ---
+async function createVerification(token, payload, expiresAt) {
+  await pool.query('INSERT INTO verifications (token, payload, expires_at, created_at) VALUES ($1, $2, $3, $4)', [token, JSON.stringify(payload), expiresAt, Date.now()]);
+}
+async function getVerification(token) {
+  const r = await pool.query('SELECT * FROM verifications WHERE token = $1 AND used_at IS NULL AND expires_at > $2', [token, Date.now()]);
+  if (!r.rows[0]) return null;
+  const v = r.rows[0];
+  try { v.payload = JSON.parse(v.payload); } catch(e) { v.payload = {}; }
+  return v;
+}
+async function consumeVerification(token) {
+  await pool.query('UPDATE verifications SET used_at = $1 WHERE token = $2', [Date.now(), token]);
+}
+
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
-  createReset, getReset, consumeReset,
+  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,

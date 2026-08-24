@@ -884,4 +884,31 @@ async function diagnose() {
   }
 }
 
-module.exports = { mode, __clamp: clampComposition, callLLM, parseAiJson, descreverEstilo, catalogarImagens, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };
+module.exports = { analyzeVisual, mode, __clamp: clampComposition, callLLM, parseAiJson, descreverEstilo, catalogarImagens, generateContent, generateCampaign, generateDayparts, generateSeasonal, generateComposition, generateKit, generateImage, rewriteText, diagnose, ITEM_SCHEMA };
+
+async function analyzeVisual(imageB64) {
+  const provider = mode();
+  if (provider === 'dev') return { nota: 9, analise: '(Modo dev) A peça parece bem equilibrada.' };
+  if (provider !== 'gemini') throw new Error('A visão computacional requer um modelo multimodal do Gemini (GEMINI_API_KEY).');
+  const system = 'Você é um diretor de arte avaliando uma peça visual pronta para digital signage. Avalie a composição, o contraste e a diagramação. Aponte problemas de legibilidade ou respiro se houver. Seja direto e conciso. Responda apenas com um JSON: { "nota": <inteiro 0 a 10>, "analise": "<texto>" }';
+  
+  const m = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: system }] },
+      contents: [{ role: 'user', parts: [
+        { text: 'Avalie a imagem desta peça de digital signage.' },
+        { inlineData: { mimeType: 'image/jpeg', data: imageB64 } }
+      ]}],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 1024, responseMimeType: 'application/json' }
+    })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error((data.error && data.error.message) || 'Gemini Vision falhou');
+  const txt = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text;
+  if (!txt) throw new Error('Retorno vazio');
+  return parseAiJson(txt);
+}

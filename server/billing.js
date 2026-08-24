@@ -1,112 +1,125 @@
 /*
- * server/billing.js — cobrança de assinatura.
+ * server/billing.js - cobrança de assinatura.
  *
  * Dois modos, escolhidos por ambiente:
- *   - 'stripe'  quando STRIPE_SECRET_KEY está definida: cria sessões de
- *     Checkout reais e valida webhooks assinados. Sem dependências: fala com a
- *     API do Stripe via fetch (form-encoded).
- *   - 'dev'     caso contrário: um checkout SIMULADO local (página clara de
+ *   - 'asaas' quando ASAAS_API_KEY está definida: cria clientes e assinaturas no Asaas.
+ *   - 'dev'   caso contrário: um checkout SIMULADO local (página clara de
  *     "pagamento de teste") que ativa o plano na hora. Deixa todo o fluxo do
  *     painel testável sem chaves nem rede.
- *
- * Em ambos os casos, quem realmente muda o plano do tenant é o server (no
- * webhook do Stripe ou no dev-activate). Aqui só montamos URLs e validamos.
  */
 const crypto = require('crypto');
 const { plan, PLANS } = require('./plans');
 
-const STRIPE_KEY = process.env.STRIPE_SECRET_KEY || '';
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
-const API = 'https://api.stripe.com/v1';
+const ASAAS_KEY = process.env.ASAAS_API_KEY || '';
+const WEBHOOK_TOKEN = process.env.ASAAS_WEBHOOK_TOKEN || '';
+const API = process.env.NODE_ENV === 'development' ? 'https://sandbox.asaas.com/api/v3' : 'https://api.asaas.com/v3';
 
-function mode() { return STRIPE_KEY ? 'stripe' : 'dev'; }
+function mode() { return ASAAS_KEY ? 'asaas' : 'dev'; }
 
-/* ---------------- Stripe REST (sem SDK) ---------------- */
-function encodeForm(obj, prefix, out) {
-  out = out || [];
-  for (const k of Object.keys(obj)) {
-    const key = prefix ? prefix + '[' + k + ']' : k;
-    const v = obj[k];
-    if (v && typeof v === 'object' && !Array.isArray(v)) encodeForm(v, key, out);
-    else if (Array.isArray(v)) v.forEach((item, i) => encodeForm(item, key + '[' + i + ']', out));
-    else if (v !== undefined && v !== null) out.push(encodeURIComponent(key) + '=' + encodeURIComponent(v));
-  }
-  return out;
-}
-async function stripeApi(path, params) {
-  const res = await fetch(API + path, {
-    method: 'POST',
+/* ---------------- Asaas REST ---------------- */
+async function asaasApi(path, params, method = 'GET') {
+  const options = {
+    method,
     headers: {
-      Authorization: 'Bearer ' + STRIPE_KEY,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params ? encodeForm(params).join('&') : undefined,
-  });
+      'access_token': ASAAS_KEY,
+      'Content-Type': 'application/json',
+      'User-Agent': 'Multi-telas'
+    }
+  };
+  if (params && method !== 'GET') options.body = JSON.stringify(params);
+  
+  let url = API + path;
+  if (params && method === 'GET') {
+    url += '?' + new URLSearchParams(params).toString();
+  }
+  
+  const res = await fetch(url, options);
   const data = await res.json();
-  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Stripe HTTP ' + res.status));
+  if (!res.ok) {
+    const err = data.errors ? data.errors.map(e => e.description).join(', ') : 'Asaas HTTP ' + res.status;
+    throw new Error(err);
+  }
   return data;
 }
 
 /* ---------------- Checkout ---------------- */
-// Retorna { url } para onde redirecionar o usuário. `origin` é a base absoluta
-// (ex.: https://app.exemplo.com) para montar success/cancel.
-async function createCheckout(tenant, planId, origin) {
+async function createCheckout(tenant, user, planId, origin) {
   const p = plan(planId);
   if (!p || p.priceCents <= 0) throw new Error('plano inválido para cobrança');
 
   if (mode() === 'dev') {
-    // Checkout simulado: página local que ativa o plano.
     return { url: origin + '/api/billing/dev-checkout?plan=' + encodeURIComponent(planId), simulated: true };
   }
 
-  if (!p.stripePrice) throw new Error('price do Stripe não configurado para ' + planId);
-  const params = {
-    mode: 'subscription',
-    'line_items': [{ price: p.stripePrice, quantity: 1 }],
-    success_url: origin + '/app?billing=success',
-    cancel_url: origin + '/app?billing=cancel',
-    client_reference_id: tenant.id,
-    metadata: { tenant_id: tenant.id, plan: planId },
-    allow_promotion_codes: true,
-  };
-  if (tenant.stripe_customer_id) params.customer = tenant.stripe_customer_id;
-  const session = await stripeApi('/checkout/sessions', params);
-  return { url: session.url, id: session.id };
+  let customerId = tenant.stripe_customer_id; // mantemos a coluna antiga p/ compatibilidade
+
+  if (!customerId) {
+    // 1. Criar cliente no Asaas
+    const custRes = await asaasApi('/customers', {
+      name: tenant.name || user.name || 'Cliente',
+      email: user.email,
+      externalReference: tenant.id
+    }, 'POST');
+    customerId = custRes.id;
+    // Opcional: já retornar para salvar se houvesse injeção, mas webhook 'CUSTOMER_CREATED' pode fazer,
+    // ou salvaremos no webhook da subscription.
+  }
+
+  // 2. Criar a assinatura no Asaas
+  // Em Asaas, se enviarmos billingType=UNDEFINED o cliente escolhe.
+  // Criar assinatura envia o link de pagamento ou podemos pegar da primeira fatura (payment).
+  const subRes = await asaasApi('/subscriptions', {
+    customer: customerId,
+    billingType: 'UNDEFINED',
+    value: p.precoTelaCents / 100, // centavos para reais
+    nextDueDate: new Date().toISOString().split('T')[0], // Hoje
+    cycle: 'MONTHLY',
+    description: `Assinatura do Plano ${p.name}`,
+    externalReference: tenant.id + '|' + planId
+  }, 'POST');
+
+  // 3. Pegar a fatura gerada para obter o invoiceUrl
+  // Como é a primeira, podemos listar payments para a assinatura criada
+  const paymentsRes = await asaasApi('/payments', {
+    subscription: subRes.id,
+    limit: 1
+  });
+
+  if (!paymentsRes.data || paymentsRes.data.length === 0) {
+    throw new Error('Asaas não retornou cobrança para a assinatura gerada');
+  }
+
+  const invoiceUrl = paymentsRes.data[0].invoiceUrl;
+
+  return { url: invoiceUrl, id: subRes.id, customerId }; // id e customerId podem ser salvos pelo chamador
 }
 
-// Portal de gerenciamento da assinatura (trocar cartão, cancelar).
+// Portal de gerenciamento
 async function createPortal(tenant, origin) {
   if (mode() === 'dev') return { url: origin + '/app?billing=portal-dev', simulated: true };
-  if (!tenant.stripe_customer_id) throw new Error('sem assinatura ativa');
-  const session = await stripeApi('/billing_portal/sessions', {
-    customer: tenant.stripe_customer_id,
-    return_url: origin + '/app',
-  });
-  return { url: session.url };
+  
+  // O Asaas não tem um portal unificado como o Stripe, então direcionamos para a invoice
+  // aberta se houver, ou para um cancelamento interno no nosso app.
+  // Por ora, vamos retornar uma url interna que renderiza uma página de gestão nossa.
+  return { url: origin + '/app?billing=portal' };
 }
 
 /* ---------------- Webhook ---------------- */
-// Valida a assinatura do webhook do Stripe (esquema t=...,v1=...). Retorna o
-// evento (objeto) ou lança. rawBody precisa ser o corpo bruto (string/Buffer).
-function verifyWebhook(rawBody, sigHeader) {
-  if (!WEBHOOK_SECRET) throw new Error('STRIPE_WEBHOOK_SECRET ausente');
-  const parts = {};
-  String(sigHeader || '').split(',').forEach((kv) => { const [k, v] = kv.split('='); if (k) parts[k.trim()] = v; });
-  const t = parts.t, sig = parts.v1;
-  if (!t || !sig) throw new Error('assinatura de webhook malformada');
-  const signed = t + '.' + (Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody);
-  const expected = crypto.createHmac('sha256', WEBHOOK_SECRET).update(signed).digest('hex');
-  const a = Buffer.from(expected), b = Buffer.from(sig);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) throw new Error('assinatura de webhook inválida');
-  // Rejeita eventos muito antigos (replay) — tolerância de 5 min.
-  if (Math.abs(Date.now() / 1000 - Number(t)) > 300) throw new Error('webhook expirado');
+function verifyWebhook(rawBody, authHeader) {
+  if (!WEBHOOK_TOKEN) throw new Error('ASAAS_WEBHOOK_TOKEN ausente');
+  
+  if (authHeader !== WEBHOOK_TOKEN) throw new Error('assinatura de webhook inválida');
+  
   return JSON.parse(Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody);
 }
 
-// Descobre nosso planId a partir do price do Stripe (reverso do catálogo).
+// Descobre planId do Asaas (Como Asaas não tem price ID fixo como Stripe,
+// a gente infere pelo \`externalReference\` ou pelo valor)
+// No Asaas, salvaremos o tenant.id no externalReference. E o webhook nos dirá o subscription.
+// Em vez de planIdFromPrice, faremos algo na aplicação para mapear.
 function planIdFromPrice(priceId) {
-  for (const id of Object.keys(PLANS)) if (PLANS[id].stripePrice && PLANS[id].stripePrice === priceId) return id;
-  return null;
+  // Mock para não quebrar referências antigas do Stripe
+  return null; 
 }
 
-module.exports = { mode, createCheckout, createPortal, verifyWebhook, planIdFromPrice, stripeApi };
+module.exports = { mode, createCheckout, createPortal, verifyWebhook, planIdFromPrice, asaasApi };

@@ -28,6 +28,7 @@ export function AuthScreen({ onAuthed }) {
   const [info, setInfo] = useState('');
   const [caps, setCaps] = useState({ google: false, mail: false });
   const [resetToken, setResetToken] = useState('');
+  const [verifyToken, setVerifyToken] = useState('');
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -37,6 +38,8 @@ export function AuthScreen({ onAuthed }) {
     const p = new URLSearchParams(window.location.search);
     const t = p.get('reset');
     if (t) { setResetToken(t); setMode('reset'); }
+    const v = p.get('verify');
+    if (v) { setVerifyToken(v); setMode('verify'); }
     const err = p.get('erro');
     if (err) setError(err === 'email-google-nao-verificado' ? 'Seu e-mail do Google não está verificado.' : 'Não foi possível entrar com o Google.');
   }, []);
@@ -45,7 +48,7 @@ export function AuthScreen({ onAuthed }) {
   function limparUrl() {
     try {
       const u = new URL(window.location.href);
-      u.searchParams.delete('reset'); u.searchParams.delete('erro');
+      u.searchParams.delete('reset'); u.searchParams.delete('erro'); u.searchParams.delete('verify');
       window.history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) {}
   }
@@ -58,6 +61,10 @@ export function AuthScreen({ onAuthed }) {
         const payload = { email: form.email, password: form.password, name: form.name, aceite: true };
         if (hasInvite && form.inviteCode.trim()) payload.inviteCode = form.inviteCode.trim().toUpperCase();
         await auth.signup(payload);
+        onAuthed();
+      } else if (mode === 'verify') {
+        await auth.verify(verifyToken);
+        limparUrl();
         onAuthed();
       } else if (mode === 'forgot') {
         await auth.forgot(form.email);
@@ -191,7 +198,7 @@ export function AuthScreen({ onAuthed }) {
                 : mode === 'forgot' ? 'Enviar link' : 'Salvar nova senha'}
             </Button>
 
-            {(mode === 'forgot' || mode === 'reset') && (
+            {(mode === 'forgot' || mode === 'reset' || mode === 'verify') && (
               <button type="button" onClick={() => { setMode('login'); setError(''); setInfo(''); limparUrl(); }}
                 className="flex w-full items-center justify-center gap-1.5 text-xs font-medium text-ink-3 hover:text-ink">
                 <ArrowLeft size={13} /> Voltar para o login
