@@ -361,6 +361,32 @@ function garantirDuasPorFormato(pecas) {
  * Campo vazio continua significando "decida por mim" — quem tem pressa não é
  * obrigado a preencher formulário.
  */
+/*
+ * Junta a checklist da tela com o que a conversa fechou.
+ *
+ * São duas portas para a mesma decisão, e as duas precisam existir: quem sabe
+ * o que quer marca na tela e gera; quem não sabe conversa e o chat combina no
+ * caminho. Sem juntar, a conversa virava enfeite — a pessoa passava cinco
+ * turnos combinando "duas peças, sem foto" e a campanha ignorava, porque só a
+ * tela era lida.
+ *
+ * A TELA VENCE quando as duas falam. É o gesto mais recente e mais deliberado,
+ * e é a pessoa que paga pelo que sair. A conversa preenche só o que ficou em
+ * branco, campo a campo — e não em bloco, senão marcar um único item na tela
+ * descartaria tudo que foi combinado no chat.
+ */
+function juntarPedido(daTela, doBriefing) {
+  const t = daTela || {};
+  const c = (doBriefing && doBriefing.resumo) || doBriefing || {};
+  const formatos = (Array.isArray(t.formatos) && t.formatos.length)
+    ? t.formatos
+    : (Array.isArray(c.formatos) ? c.formatos : []);
+  const quantidade = t.quantidade || c.quantidade || 0;
+  const imagens = t.imagens || c.imagens || '';
+  if (!formatos.length && !quantidade && !imagens) return null;
+  return { formatos, quantidade, imagens: imagens || 'gerar' };
+}
+
 function lerPedido(p) {
   p = p && typeof p === 'object' ? p : {};
   const formatos = (Array.isArray(p.formatos) ? p.formatos : [])
@@ -1058,7 +1084,7 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
   };
 }
 
-module.exports = {
+module.exports = { juntarPedido,
   FAIXAS, FAIXAS_OK,
   dirigir, planejar, comporPeca, layoutReserva, normalizarPlano,
   enriquecerBrief, textoDaCritica,

@@ -249,7 +249,7 @@ Não encostam no que o Claude está mexendo.
 - [ ] **B3 · Proof-of-play / relatórios** — o que tocou, quando, em qual tela.
       Forte na venda corporativa. Já há `eventos` no banco para se apoiar.
 - [ ] **B4 · Medir o custo real de IA** em vez de estimar. Hoje
-      `server/creditos.js` usa R$ 0,20 por imagem e R$ 0,05 por texto como
+      `server/creditos.js` usa R$ 0,35 por imagem e R$ 0,05 por texto como
       número fixo. Registrar tokens de entrada/saída por chamada e trocar a
       estimativa por dado. **Não mexa nas regras de cobrança** — só na medição.
 - [ ] **B5 · Medir texto com as métricas reais da fonte** em vez da largura

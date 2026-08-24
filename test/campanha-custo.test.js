@@ -227,3 +227,91 @@ test('a conta do custo é a MESMA que a tela promete', () => {
   assert.match(TELA, /pedido: \{ formatos: onde, quantidade: quantas, imagens \}/,
     'a tela deixou de mandar o pedido explícito');
 });
+
+/* ---------------- O briefing também segura o gasto ---------------- */
+
+const fsBrief = require('node:fs');
+const pathBrief = require('node:path');
+const lerFonte = (...p) => fsBrief.readFileSync(pathBrief.join(__dirname, '..', ...p), 'utf8');
+
+test('a conversa pergunta o que decide gasto, e não pergunta o que já foi marcado', () => {
+  /*
+   * O chat era ótimo no que não custa (objetivo, público, argumento) e MUDO
+   * no que custa. Uma conversa inteira terminava sem ninguém ter dito quantas
+   * peças, para onde e se precisa de foto — e o diretor então decidia sozinho,
+   * gerando seis peças em três formatos com foto em todas.
+   */
+  const fonte = lerFonte('server', 'ai-briefing.js');
+  assert.match(fonte, /O QUE DECIDE GASTO/, 'a conversa voltou a ignorar o que custa');
+  assert.match(fonte, /custa um crédito/, 'sumiu o aviso de que a foto por IA é paga');
+  assert.match(fonte, /vá de MENOS/, 'sumiu a regra de errar para o lado barato');
+  // E o contrário: o que a pessoa já marcou não pode ser perguntado de novo.
+  assert.match(fonte, /JÁ ESCOLHIDO PELA PESSOA/, 'a conversa deixou de receber a checklist');
+});
+
+test('o que a conversa combinou vira limite, saneado como o da tela', () => {
+  const briefing = require('../server/ai-briefing.js');
+  // O módulo pode não expor o saneador; então conferimos pela fonte o corte.
+  const fonte = lerFonte('server', 'ai-briefing.js');
+  assert.match(fonte, /Math\.min\(8, Math\.max\(1,/, 'a quantidade vinda da conversa deixou de ter teto');
+  assert.match(fonte, /\['gerar', 'acervo', 'nenhuma'\]\.includes\(s\.imagens\)/,
+    'o modo de imagem vindo da conversa deixou de ser peneirado');
+  assert.equal(typeof briefing.conversar, 'function');
+});
+
+test('a tela vence a conversa, campo a campo', () => {
+  /*
+   * Não em bloco: marcar UM item na tela não pode descartar tudo que foi
+   * combinado no chat. E quando as duas falam do mesmo campo vale a tela —
+   * é o gesto mais recente, e é quem paga.
+   */
+  const { juntarPedido } = require('../server/ai-director.js');
+
+  const conversa = { resumo: { formatos: ['1/1'], quantidade: 6, imagens: 'gerar' } };
+
+  // Nada marcado na tela: vale inteiro o que a conversa combinou.
+  assert.deepStrictEqual(juntarPedido(null, conversa),
+    { formatos: ['1/1'], quantidade: 6, imagens: 'gerar' });
+
+  // Um campo marcado na tela: vence NELE, e o resto da conversa sobrevive.
+  assert.deepStrictEqual(juntarPedido({ quantidade: 2 }, conversa),
+    { formatos: ['1/1'], quantidade: 2, imagens: 'gerar' });
+  assert.deepStrictEqual(juntarPedido({ imagens: 'nenhuma' }, conversa),
+    { formatos: ['1/1'], quantidade: 6, imagens: 'nenhuma' });
+  assert.deepStrictEqual(juntarPedido({ formatos: ['16/9'] }, conversa),
+    { formatos: ['16/9'], quantidade: 6, imagens: 'gerar' });
+
+  // Ninguém disse nada: null, e o diretor segue como sempre seguiu.
+  assert.equal(juntarPedido(null, null), null);
+  assert.equal(juntarPedido({}, { resumo: {} }), null);
+
+  // Lista vazia não é escolha: não pode apagar o que a conversa combinou.
+  assert.deepStrictEqual(juntarPedido({ formatos: [] }, conversa).formatos, ['1/1']);
+});
+
+test('o pedido montado a partir da conversa CHEGA a cortar a campanha', () => {
+  /*
+   * A junção podia estar certa e não valer nada: se o resultado não fosse
+   * lido como pedido, cinco turnos combinando "duas peças, sem foto" viravam
+   * seis peças com foto do mesmo jeito. Aqui o caminho é percorrido inteiro,
+   * da conversa até o corte.
+   */
+  const director = require('../server/ai-director.js');
+  const pedido = director.juntarPedido(null, { resumo: { formatos: ['16/9'], quantidade: 2, imagens: 'nenhuma' } });
+
+  const plano = director.normalizarPlano(
+    { pecas: [
+      { headline: 'A', formato: '16/9', precisaImagem: true, promptImagem: 'foto 1' },
+      { headline: 'B', formato: '1/1', precisaImagem: true, promptImagem: 'foto 2' },
+      { headline: 'C', formato: '9/16', precisaImagem: true, promptImagem: 'foto 3' },
+      { headline: 'D', formato: '16/9', precisaImagem: true, promptImagem: 'foto 4' },
+    ] },
+    { pedido },
+  );
+
+  assert.equal(plano.pecas.length, 2, 'o teto combinado na conversa não foi aplicado');
+  assert.deepStrictEqual([...new Set(plano.pecas.map((p) => p.formato))], ['16/9'],
+    'sobrou peça em formato que ninguém pediu');
+  assert.deepStrictEqual(plano.pecas.filter((p) => p.precisaImagem), [],
+    'ia gerar foto depois de a pessoa ter dito que não queria nenhuma');
+});

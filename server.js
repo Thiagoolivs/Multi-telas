@@ -417,6 +417,18 @@ async function handleApi(req, res, pathname, query) {
     'generate-kit': 'gerar-kit', 'generate-composition': 'gerar-composicao',
     'generate-seasonal': 'gerar-sazonal', 'generate-dayparts': 'gerar-faixas',
     rewrite: 'reescrever',
+    /*
+     * A rota de visão nasceu FORA daqui e ficou invisível: não passava pelo
+     * teto por hora, não entrava no extrato e não aparecia no painel de uso.
+     * Ler uma imagem custa centavos, então não cobra crédito — mas invisível
+     * é o que não pode ser: sem registro, uma conta em laço chama isto sem
+     * limite nenhum e o gasto só aparece na fatura do mês seguinte.
+     *
+     * Entra pelo mapa, e não com um remendo dentro da rota, porque é ESTE
+     * mapa que decide quem é medido. Rota de IA que não estiver nele passa
+     * despercebida, e foi exatamente assim que esta passou.
+     */
+    'analise-visual': 'analise-visual',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
@@ -1138,6 +1150,9 @@ async function handleApi(req, res, pathname, query) {
         const out = await briefing.conversar(mensagens, {
           empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '',
           marca, memoria: lembrada,
+          // O que a pessoa já marcou antes de abrir a conversa. Sem isto o
+          // chat pergunta de novo o que ela acabou de escolher.
+          pedido: (b && b.pedido) || null,
         });
 
         /*
@@ -1237,11 +1252,16 @@ async function handleApi(req, res, pathname, query) {
           brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
           formatos: Array.isArray(b && b.formatos) ? b.formatos : null,
           /*
-           * O que a pessoa escolheu na tela antes de gerar: quantas peças,
-           * para onde, e o que fazer com imagem. Daqui para baixo isso é
-           * LIMITE, não sugestão — ver `lerPedido` em server/ai-director.js.
+           * O que a pessoa escolheu antes de gerar: quantas peças, para onde,
+           * e o que fazer com imagem. Daqui para baixo isso é LIMITE, não
+           * sugestão — ver `lerPedido` em server/ai-director.js.
+           *
+           * A checklist vem primeiro e a conversa preenche o buraco: quem
+           * marcou na tela decidiu, e quem só conversou combinou ali. Se as
+           * duas falarem, vale a tela — foi o último gesto deliberado da
+           * pessoa, e é ela que paga.
            */
-          pedido: (b && b.pedido) || null,
+          pedido: director.juntarPedido((b && b.pedido) || null, (b && b.briefingPronto) || null),
           marca,
           // Resumo vindo do chat de briefing, quando o usuário conversou.
           briefingPronto: (b && b.briefingPronto) || null,
@@ -1396,6 +1416,7 @@ async function handleApi(req, res, pathname, query) {
           const out = await ai.analyzeVisual(pureB64);
           return sendJson(res, 200, out);
         } catch (e) {
+          erros.registrar(e, { rota: '/api/ai/analise-visual' });
           return sendJson(res, 500, { error: e.message });
         }
       });

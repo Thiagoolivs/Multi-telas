@@ -97,7 +97,7 @@ Vale deixar isso escrito.
 
 | Item | Custo |
 |---|---|
-| Crédito de IA (imagem) | R$ 0,20 cada |
+| Crédito de IA (imagem) | R$ 0,35 cada |
 | Suporte, Essencial | R$ 8 — 5 min a R$ 100/h |
 | Suporte, Pro | R$ 25 — 15 min |
 | Suporte, Enterprise | R$ 400 — 4 h |
@@ -115,8 +115,8 @@ custa dinheiro de verdade.
 
 | Ação | Custo real | Cobra? |
 |---|---|---|
-| Gerar imagem | ~R$ 0,20 | **1 crédito** |
-| Campanha completa pelo diretor de arte | R$ 0,20 × peças | **1 por peça** |
+| Gerar imagem | ~R$ 0,35 | **1 crédito** |
+| Campanha completa pelo diretor de arte | R$ 0,35 × peças | **1 por peça** |
 | Briefing conversado, plano de campanha | ~R$ 0,05 | livre |
 | Reescrever texto, variações de headline | ~R$ 0,01 | livre |
 | Kit de marca, faixas do dia, sazonais | ~R$ 0,05 | livre |
@@ -422,7 +422,7 @@ escolhe quais. Apagar tela de cliente por causa de downgrade não tem desfazer.
 - Quantas contas encostam no limite. Se quase ninguém encosta, a franquia está
   generosa demais para ser argumento de upgrade.
 - Conversão do bloqueio: quem viu “acabou” comprou, subiu de plano, ou sumiu.
-- Custo real por imagem, contra os R$ 0,20 assumidos aqui.
+- Custo real por imagem, contra os R$ 0,35 assumidos aqui — valor observado em produção, ainda não medido por chamada.
 - Telas por conta ao longo do tempo — é a alavanca principal da receita.
 - GB por tela — calibra a cota e o excedente.
 
