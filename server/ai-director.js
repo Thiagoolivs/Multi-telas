@@ -1045,7 +1045,7 @@ function layoutSuave(peca, palette, formato) {
  * onImagem: função opcional (prompt, formato) => url. Injetada pelo server.js
  * para que este módulo não precise conhecer storage nem tenant.
  */
-async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, onProgresso } = {}) {
+async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, onProgresso, pararNoPlano } = {}) {
   ctx = ctx || {};
   // Etapas contadas para o painel: a campanha demora, e quem espera precisa ver
   // que algo acontece. Sem isso "1 clique" parece "travou".
@@ -1091,8 +1091,50 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
     ctx.formatos = ctx.briefRico.formatos;
   }
 
-  passo('planejando a campanha', 'decidindo peças, copy, legendas e agenda');
-  const plano = await planejar(brief, ctx);
+  /*
+   * O PLANO CUSTA CENTAVOS; AS IMAGENS CUSTAM CRÉDITO. Dá para parar no meio.
+   *
+   * Antes a campanha ia direto do briefing até a peça pronta, e o cliente só
+   * descobria o que a IA tinha entendido quando o crédito já tinha saído. Se
+   * ela entendeu errado — e entender errado um pedido de uma frase é o caso
+   * comum — ele pagou por peças que não queria e ainda precisa refazer.
+   *
+   * O corte é aqui porque é exatamente aqui que o preço muda de ordem de
+   * grandeza: planejar é UMA chamada de texto; gerar são N chamadas de
+   * imagem, a R$ 0,35 cada. Parar um passo antes disso é o que transforma
+   * "confia e paga" em "olha e decide".
+   *
+   * `planoAprovado` é o caminho de volta: a segunda chamada não replaneja, e
+   * por isso o que o cliente aprovou é exatamente o que ele recebe. Replanejar
+   * devolveria outro plano, e a confirmação não teria valido nada.
+   */
+  let plano;
+  if (ctx.planoAprovado) {
+    passo('retomando o plano aprovado', 'nada foi replanejado');
+    plano = normalizarPlano(ctx.planoAprovado, ctx);
+  } else {
+    passo('planejando a campanha', 'decidindo peças, copy, legendas e agenda');
+    plano = await planejar(brief, ctx);
+  }
+
+  if (pararNoPlano) {
+    /*
+     * Devolve o plano e PARA. Nenhuma imagem foi gerada, nenhum crédito saiu.
+     * O que vai junto é o que o cliente precisa para decidir: quantas peças,
+     * em que formatos, quantas terão foto, e o custo disso em crédito.
+     */
+    return {
+      etapa: 'plano',
+      plano,
+      orcamento: {
+        pecas: plano.pecas.length,
+        comFoto: imagensAGerar(plano.pecas),
+        creditos: imagensAGerar(plano.pecas),
+        formatos: [...new Set(plano.pecas.map((p) => p.formato))],
+      },
+      pedido: plano.pedido || null,
+    };
+  }
   const dir = ds.direcao(plano.identidade.direcao);
   const palette = ds.buildPalette(plano.identidade.brand, plano.identidade.brand2,
     plano.identidade.estilo, dir.fundo === 'marca' ? 'marca' : dir.fundo === 'escuro' ? 'escuro' : 'degrade');

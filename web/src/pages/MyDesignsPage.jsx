@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button.jsx';
 import { Field, Input, Textarea, Select } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
+import { Badge } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { ai, library, devices, deviceConfig, media } from '../api.js';
 import { primaryZoneKey, defaultConfig, CONTENT_TYPES } from '../lib/contentTypes.js';
@@ -56,6 +57,89 @@ const IMAGENS = [
   { id: 'acervo', rotulo: 'Só as minhas fotos', nota: 'não gera imagem nenhuma — sem custo de crédito' },
   { id: 'nenhuma', rotulo: 'Sem foto', nota: 'peças com cor, forma e tipografia' },
 ];
+
+/*
+ * O que o cliente vai receber, antes de pagar por isso.
+ *
+ * Mostra peça a peça o que a IA planejou, marca quais custam crédito, e soma.
+ * A conta é simples de propósito: uma imagem gerada = um crédito. Peça que
+ * reaproveita foto do acervo, ou que é só tipografia, não custa nada — e isso
+ * precisa estar visível, senão a pessoa acha que toda peça é paga e pede
+ * menos do que precisaria.
+ */
+function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
+  const pecas = (plano.plano && plano.plano.pecas) || [];
+  const [fora, setFora] = React.useState(() => new Set());
+
+  const ativas = pecas.filter((_, i) => !fora.has(i));
+  const custo = ativas.filter((p) => p.precisaImagem && p.promptImagem).length;
+
+  function alternar(i) {
+    setFora((antes) => {
+      const n = new Set(antes);
+      if (n.has(i)) n.delete(i); else n.add(i);
+      return n;
+    });
+  }
+
+  const ONDE = { '16/9': 'TV deitada', '9/16': 'TV em pé · Story', '1/1': 'Post quadrado', '21/9': 'Faixa larga' };
+
+  return (
+    <div>
+      <div className="mb-3 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">
+        Isto é o que a IA entendeu. <b className="text-ink">Nada foi gerado ainda</b> — nenhum
+        crédito saiu. Confira, tire o que não quiser, e só então gere.
+      </div>
+
+      <div className="space-y-2">
+        {pecas.map((p, i) => {
+          const cortada = fora.has(i);
+          const paga = p.precisaImagem && p.promptImagem;
+          return (
+            <label key={i}
+              className={'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition '
+                + (cortada ? 'border-line bg-surface opacity-45' : 'border-line bg-surface-2')}>
+              <input type="checkbox" checked={!cortada} onChange={() => alternar(i)} className="mt-1" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-ink">{p.headline || '(sem manchete)'}</span>
+                {p.sub && <span className="mt-0.5 block text-xs text-ink-2">{p.sub}</span>}
+                <span className="mt-1 flex flex-wrap items-center gap-1.5 text-2xs">
+                  <Badge tone="neutral">{ONDE[p.formato] || p.formato}</Badge>
+                  {paga
+                    ? <Badge tone="accent">foto por IA · 1 crédito</Badge>
+                    : p.bgImagem || p.imagemBase != null
+                      ? <Badge tone="ok">foto sua · sem custo</Badge>
+                      : <Badge tone="ok">só texto · sem custo</Badge>}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+        <div className="text-sm text-ink-2">
+          <b className="text-ink">{ativas.length}</b> {ativas.length === 1 ? 'peça' : 'peças'}
+          {' · '}
+          {custo === 0
+            ? <span className="text-ok">nenhum crédito</span>
+            : <><b className="text-ink">{custo}</b> {custo === 1 ? 'crédito' : 'créditos'}</>}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={onVoltar}>Voltar e corrigir</Button>
+          <Button variant="primary" size="sm" disabled={!ativas.length}
+            onClick={() => onGerar({
+              ...plano,
+              plano: { ...plano.plano, pecas: ativas },
+            })}>
+            Gerar {ativas.length === 1 ? 'a peça' : 'as ' + ativas.length + ' peças'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 export function MyDesignsPage({ onIr }) {
   const { data, loading, reload } = useAsync(library.list);
@@ -122,6 +206,7 @@ export function MyDesignsPage({ onIr }) {
   const [aiColl, setAiColl] = useState('');
   const [etapa, setEtapa] = useState(null); // progresso do trabalho em andamento
   const [conversando, setConversando] = useState(false); // chat de briefing aberto
+  const [plano, setPlano] = useState(null); // plano esperando confirmação do cliente
   const [emAndamento, setEmAndamento] = useState(false); // campanha rodando no servidor
 
   // Gerar imagem
@@ -320,24 +405,56 @@ export function MyDesignsPage({ onIr }) {
     });
   }
 
-  async function gerarCampanha(briefingPronto) {
+  /*
+   * O pedido é o mesmo nas duas fases — muda só o que se pede ao servidor:
+   * primeiro o PLANO (texto, centavos), depois a EXECUÇÃO (imagens, crédito).
+   */
+  function pedidoBase(briefingPronto) {
+    return {
+      brief: (briefingPronto && briefingPronto.briefing) || brief,
+      empresa, publico, tom,
+      oferta: (briefingPronto && briefingPronto.oferta) || oferta,
+      briefingPronto: briefingPronto || null,
+      /*
+       * O que a pessoa escolheu. No servidor isto é LIMITE, não sugestão:
+       * sem ele o modelo decidia quantidade e formatos, outra função somava
+       * peças por cima, e cada uma podia custar uma imagem paga.
+       */
+      formatos: onde,
+      pedido: { formatos: onde, quantidade: quantas, imagens },
+    };
+  }
+
+  /*
+   * FASE 1 — planeja e PARA. Nenhum crédito sai aqui.
+   *
+   * Antes o clique ia direto do briefing até a peça pronta, e o cliente só
+   * descobria o que a IA tinha entendido quando o crédito já tinha saído. Se
+   * ela entendeu errado — e entender errado um pedido de uma frase é o caso
+   * comum — ele pagou pelo que não queria e ainda precisa refazer.
+   */
+  async function planejarCampanha(briefingPronto) {
     if (!brief.trim()) return;
     setConversando(false);
+    setMsg(''); setPlano(null); setEtapa({ etapa: 'entendendo seu pedido', detalhe: '', segundos: 0 });
+    try {
+      const id = await ai.directorStart({ ...pedidoBase(briefingPronto), apenasPlano: true });
+      const r = await ai.directorAcompanhar(id, (s) => setEtapa(s));
+      setEtapa(null);
+      setPlano({ ...r, briefingPronto: briefingPronto || null });
+    } catch (e) { setMsg(e.message || 'Falha ao planejar'); setEtapa(null); }
+  }
+
+  /* FASE 2 — executa EXATAMENTE o plano aprovado. Aqui o crédito sai. */
+  async function gerarCampanha(plan) {
     setMsg(''); setEtapa({ etapa: 'começando', detalhe: '', segundos: 0 });
     try {
       const id = await ai.directorStart({
-        brief: (briefingPronto && briefingPronto.briefing) || brief,
-        empresa, publico, tom,
-        oferta: (briefingPronto && briefingPronto.oferta) || oferta,
-        briefingPronto: briefingPronto || null,
-        /*
-         * O que a pessoa escolheu. No servidor isto é LIMITE, não sugestão:
-         * sem ele o modelo decidia quantidade e formatos, outra função somava
-         * peças por cima, e cada uma podia custar uma imagem paga.
-         */
-        formatos: onde,
-        pedido: { formatos: onde, quantidade: quantas, imagens },
+        ...pedidoBase(plan.briefingPronto),
+        // Sem replanejar: o que ele aprovou é o que ele recebe.
+        planoAprovado: plan.plano,
       });
+      setPlano(null);
       await acompanhar(id);
     } catch (e) { setMsg(e.message || 'Falha ao gerar'); setEtapa(null); }
   }
@@ -698,7 +815,16 @@ export function MyDesignsPage({ onIr }) {
             <Button variant="secondary" icon={Check} disabled={busy} onClick={() => salvarCampanha(false)}>{busy ? 'Salvando…' : 'Só salvar'}</Button>
             <Button variant="primary" icon={Rocket} disabled={busy} onClick={() => salvarCampanha(true)}>Salvar e publicar</Button>
           </>)
-          : conversando
+          : plano
+            /*
+             * A tela de confirmação traz os próprios botões — e são outros:
+             * "Voltar e corrigir" e "Gerar as N peças". Deixar o rodapé antigo
+             * embaixo dela põe "Gerar direto" ao lado de "Gerar as 3 peças",
+             * e o cliente não tem como saber que um deles pula a confirmação
+             * que acabou de aparecer.
+             */
+            ? null
+            : conversando
             ? <Button variant="ghost" onClick={() => setConversando(false)}>Voltar</Button>
             : (<>
               <Button variant="ghost" onClick={() => setAiOpen(false)}>Cancelar</Button>
@@ -707,7 +833,7 @@ export function MyDesignsPage({ onIr }) {
                 rápido. Nenhuma das duas é escondida — quem tem pressa não pode
                 ser obrigado a passar pela conversa.
               */}
-              <Button variant="secondary" icon={Wand2} disabled={emAndamento || !brief.trim()} onClick={() => gerarCampanha(null)}>
+              <Button variant="secondary" icon={Wand2} disabled={emAndamento || !brief.trim()} onClick={() => planejarCampanha(null)}>
                 {emAndamento ? 'Dirigindo…' : 'Gerar direto'}
               </Button>
               <Button variant="primary" icon={MessagesSquare} disabled={emAndamento || !brief.trim()} onClick={() => setConversando(true)}>
@@ -727,12 +853,29 @@ export function MyDesignsPage({ onIr }) {
             </div>
             <div className="tnum text-2xs text-ink-3">{etapa.segundos || 0}s · uma campanha completa leva um ou dois minutos</div>
           </div>
+        ) : plano ? (
+          /*
+           * A CERTEZA ANTES DO CRÉDITO.
+           *
+           * Nada aqui foi gerado ainda: o plano custou uma chamada de texto,
+           * centavos. O que o cliente lê é o que a IA ENTENDEU — as manchetes
+           * de verdade, os formatos de verdade, e quantas peças vão custar
+           * imagem. Se entendeu errado, ele volta e corrige de graça.
+           *
+           * Desmarcar peça é o que torna isto uma decisão e não um aviso: sem
+           * poder tirar nada, "confirmar" é só um clique a mais no caminho.
+           */
+          <PlanoParaConfirmar
+            plano={plano}
+            onGerar={(aprovado) => gerarCampanha(aprovado)}
+            onVoltar={() => setPlano(null)}
+          />
         ) : conversando ? (
           <BriefingChat
             empresa={empresa} segmento=""
             primeiraFala={brief}
-            onPronto={(resumo) => gerarCampanha(resumo)}
-            onPular={() => gerarCampanha(null)}
+            onPronto={(resumo) => planejarCampanha(resumo)}
+            onPular={() => planejarCampanha(null)}
           />
         ) : !gen ? (
           <div className="grid gap-3 sm:grid-cols-2">

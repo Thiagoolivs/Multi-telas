@@ -1289,12 +1289,25 @@ async function handleApi(req, res, pathname, query) {
            * pessoa, e é ela que paga.
            */
           pedido: director.juntarPedido((b && b.pedido) || null, (b && b.briefingPronto) || null),
+          /*
+           * O plano que o cliente APROVOU na tela de confirmação. Quando vem,
+           * o diretor não replaneja: replanejar devolveria outro plano, e a
+           * confirmação não teria valido nada — a pessoa aprovaria uma coisa
+           * e receberia outra.
+           */
+          planoAprovado: (b && b.planoAprovado) || null,
           marca,
           // Resumo vindo do chat de briefing, quando o usuário conversou.
           briefingPronto: (b && b.briefingPronto) || null,
           // O que já sabemos da empresa de conversas anteriores.
           memoria: lembrada,
         }, {
+          /*
+           * Primeira chamada: planeja e PARA, sem gerar imagem nenhuma. O
+           * cliente vê o que a IA entendeu e quanto vai custar antes de
+           * qualquer crédito sair. A segunda chamada vem com `planoAprovado`.
+           */
+          pararNoPlano: !!(b && b.apenasPlano),
           onProgresso: progresso,
           // A geração de imagem fica aqui: o diretor não conhece storage nem tenant.
           // A IA olha as referências da marca e devolve a direção em 1 frase.
