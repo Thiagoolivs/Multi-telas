@@ -78,10 +78,25 @@ test('sem chave de IA é atenção, e o texto diz o que CONTINUA funcionando', (
   assert.equal(D.ia({ GEMINI_API_KEY: 'x' }).nivel, 'ok');
 });
 
-test('sem e-mail, ninguém recupera senha nem aceita convite', () => {
+test('sem e-mail, ninguém se cadastra — e antes era só senha e convite', () => {
+  /*
+   * Este teste exigia 'atenção', e exigia certo NA ÉPOCA: sem provedor
+   * perdia-se a recuperação de senha e o convite de equipe, que doem e não
+   * trancam. Depois o cadastro passou a criar a conta só quando a pessoa
+   * clica no link de confirmação — e aí a falta de e-mail deixou de ser
+   * incômodo e virou porta trancada.
+   *
+   * Mudou o produto, muda o teste. O que não pode é o teste continuar
+   * afirmando o mundo antigo e dando verde para um problema que engoliu.
+   */
   const item = D.email({});
-  assert.equal(item.nivel, 'atencao');
-  assert.match(item.consequencia, /senha|convite/i);
+  assert.equal(item.nivel, 'critico');
+  assert.match(item.consequencia, /ninguém consegue se cadastrar/i);
+
+  // Com a saída deliberada, volta a ser o problema de antes: dói, não tranca.
+  const comSaida = D.email({ SKIP_VERIFY: '1' });
+  assert.equal(comSaida.nivel, 'atencao');
+  assert.match(comSaida.consequencia, /senha|convite/i);
 });
 
 test('provedor de e-mail sem remetente também é problema', () => {
@@ -130,6 +145,10 @@ test('produção bem configurada não inventa problema', () => {
     RESEND_API_KEY: 'r', MAIL_FROM: 'oi@multitelas.com',
     APP_URL: 'https://app.multitelas.com',
     LEGAL_REVISADO: 'true', SUPPORT_EMAIL: 'suporte@multitelas.com',
+    // Entraram aqui quando a cobrança passou a ser verificada. Produção sem
+    // chave do Asaas NÃO é "bem configurada": o checkout roda simulado e
+    // libera o plano de graça — este cenário só falhou porque estava certo.
+    ASAAS_API_KEY: 'a', ASAAS_WEBHOOK_TOKEN: 'w',
   });
   assert.equal(r.nivel, 'ok');
   assert.equal(r.criticos, 0);
@@ -148,4 +167,45 @@ test('toda verificação responde as três perguntas', () => {
       if (item.nivel !== 'ok') assert.ok(item.resolver, item.id + ': problema sem saída');
     }
   }
+});
+
+/* ---------------- Cobrança ---------------- */
+
+test('sem chave do Asaas, a cobrança é problema CRÍTICO', () => {
+  /*
+   * O diagnóstico cobria armazenamento, banco, IA, e-mail, endereço e
+   * jurídico — e pulava o dinheiro, que ficou de fora na troca de provedor.
+   * Sem chave o checkout roda em modo SIMULADO: a página diz "pagamento de
+   * teste" e libera o plano de graça. É ótimo para desenvolver e é ruína em
+   * produção, porque PARECE que funcionou.
+   */
+  const r = D.pagamento({});
+  assert.equal(r.nivel, 'critico');
+  assert.match(r.consequencia, /sem pagar/i);
+});
+
+test('chave sem token de webhook é crítico — dinheiro entra, produto não', () => {
+  /*
+   * A metade que ninguém lembra de conferir. Criar a assinatura funciona, o
+   * cliente paga, e o aviso de pagamento é RECUSADO por falta do token: o
+   * plano nunca é liberado. A falha só aparece depois do dinheiro ter saído
+   * da conta de alguém.
+   */
+  const r = D.pagamento({ ASAAS_API_KEY: 'x' });
+  assert.equal(r.nivel, 'critico');
+  assert.match(r.estado, /webhook/i);
+});
+
+test('sandbox é aviso, não erro — e diz que nada é cobrado', () => {
+  const r = D.pagamento({ ASAAS_API_KEY: 'x', ASAAS_WEBHOOK_TOKEN: 'y', ASAAS_AMBIENTE: 'sandbox' });
+  assert.equal(r.nivel, 'atencao');
+  assert.match(r.consequencia, /nenhuma cobrança é real/i);
+  assert.equal(D.pagamento({ ASAAS_API_KEY: 'x', ASAAS_WEBHOOK_TOKEN: 'y' }).nivel, 'ok');
+});
+
+test('a cobrança entra na lista geral, não só como função solta', () => {
+  // Uma verificação que existe e não é chamada é pior que não existir: dá a
+  // impressão de que está coberta.
+  assert.ok(D.diagnosticar({}).itens.some((i) => i.id === 'pagamento'),
+    'a cobrança não aparece no diagnóstico');
 });
