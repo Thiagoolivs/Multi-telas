@@ -283,3 +283,32 @@ test('a medição usa a fonte real, e não estoura quando não acha', () => {
   const chamavel = Object.values(metrics).find((v) => typeof v === 'function');
   assert.ok(chamavel, 'o módulo de métricas não expõe nada chamável');
 });
+
+/* ---------------- Confirmação de e-mail ---------------- */
+
+test('"confira seu e-mail" só é dito se o e-mail saiu', () => {
+  /*
+   * A falha de envio era registrada e ENGOLIDA, e a resposta seguia 202 do
+   * mesmo jeito. A pessoa ficava esperando um link que nunca foi mandado —
+   * chave errada, domínio não verificado e provedor fora do ar davam todos o
+   * mesmo silêncio, e o cadastro parecia ter funcionado.
+   */
+  const codigo = soCodigo(lerFonte('server', 'routes', 'auth.js'));
+  const i = codigo.indexOf('mail.verifyEmail(');
+  assert.ok(i > 0, 'sumiu o envio do e-mail de confirmação');
+  const trecho = codigo.slice(Math.max(0, i - 400), i + 700);
+  assert.match(trecho, /return sendJson\(res, 502/,
+    'a falha de envio voltou a ser engolida com 202');
+});
+
+test('subir sem provedor de e-mail é dito no boot', () => {
+  /*
+   * Sem provedor, o link de confirmação vai para o log e mais nada: o produto
+   * parece funcionar e ninguém consegue se cadastrar. É o tipo de falha que
+   * só aparece pelo primeiro cliente que desiste — por isso é dita no boot,
+   * junto com a saída (SKIP_VERIFY=1) para quem escolher subir assim.
+   */
+  const codigo = soCodigo(lerFonte('server.js'));
+  assert.match(codigo, /cadastro\.sem-email/, 'sumiu o aviso de boot sobre e-mail');
+  assert.match(codigo, /SKIP_VERIFY/, 'o aviso deixou de dizer qual é a saída');
+});

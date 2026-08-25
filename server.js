@@ -2435,6 +2435,30 @@ db.init()
     }
 
     /*
+     * SEM E-MAIL, NINGUÉM SE CADASTRA — e isso precisa ser dito no boot.
+     *
+     * O cadastro passou a criar a conta só depois que a pessoa clica no link
+     * de confirmação. Sem provedor configurado, o link vai para o log do
+     * servidor e mais nada: a tela diz "confira seu e-mail" e o e-mail não
+     * existe. O produto parece funcionar e ninguém entra.
+     *
+     * SKIP_VERIFY=1 é a saída para quem quer subir sem provedor: o cadastro
+     * volta a criar a conta na hora. É como a suíte sobe o servidor, e é
+     * legítimo — mas é escolha, não descuido, então também é dita alto.
+     */
+    if (!mail.configured() && process.env.SKIP_VERIFY !== '1') {
+      log.aviso('cadastro.sem-email', {
+        aviso: 'Nenhum provedor de e-mail configurado (RESEND_API_KEY ou BREVO_API_KEY) — '
+          + 'o link de confirmação só vai para este log, e ninguém consegue terminar o cadastro. '
+          + 'Para subir sem provedor, defina SKIP_VERIFY=1.',
+      });
+    } else if (process.env.SKIP_VERIFY === '1') {
+      log.aviso('cadastro.sem-verificacao', {
+        aviso: 'SKIP_VERIFY=1 — o cadastro cria a conta sem confirmar o e-mail.',
+      });
+    }
+
+    /*
      * Eventos velhos saem sozinhos.
      *
      * Noventa dias respondem tudo que o painel pergunta, e guardar mais seria

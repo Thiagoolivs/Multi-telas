@@ -64,14 +64,37 @@ module.exports = function(ctx) {
             await db.createVerification(token, payload, expiresAt);
             
             const link = baseUrl(req) + '/app/?verify=' + token;
+            /*
+             * "Confira seu e-mail" só pode ser dito se o e-mail SAIU.
+             *
+             * A falha de envio era registrada e engolida, e a resposta seguia
+             * 202 do mesmo jeito: a pessoa ficava esperando um link que nunca
+             * foi mandado, sem nada para tentar de novo e sem nada que indique
+             * o que houve. Chave errada, domínio não verificado e provedor
+             * fora do ar davam todos o mesmo silêncio.
+             *
+             * Agora a falha vira erro na tela. O cadastro não se perde: o
+             * token continua válido pelas 24 horas e tentar de novo com o
+             * mesmo e-mail manda outro.
+             */
             if (mail.configured()) {
               try {
                 await mail.send({ to: email, ...mail.verifyEmail(link) });
               } catch (e) {
                 erros.registrar(e, { onde: 'envio de verificacao' });
+                return sendJson(res, 502, {
+                  error: 'não consegui enviar o e-mail de confirmação agora. Tente de novo em instantes.',
+                });
               }
             } else {
-              mail.send({ to: email, ...mail.verifyEmail(link) }); // log in dev mode
+              /*
+               * Sem provedor configurado o link só vai para o LOG, e ninguém
+               * consegue terminar o cadastro. Em desenvolvimento isso é o
+               * esperado — é assim que se testa sem chave. Em produção é
+               * cadastro quebrado, e o aviso de boot em server.js diz isso
+               * alto antes de alguém descobrir pelo cliente.
+               */
+              mail.send({ to: email, ...mail.verifyEmail(link) });
             }
             
             return sendJson(res, 202, { ok: true, pendingVerification: true });
