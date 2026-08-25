@@ -107,7 +107,7 @@ export default function App() {
 
   function renderPage() {
     switch (route.name) {
-      case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} />;
+      case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
       case 'screens': return <ScreensPage onEditContent={(device) => go('content', { device })} />;
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
@@ -116,7 +116,7 @@ export default function App() {
       case 'brand': return <BrandPage />;
       case 'mural': return <MuralPage />;
       case 'birthdays': return <BirthdaysPage />;
-      case 'billing': return <BillingPage />;
+      case 'billing': return <BillingPage onFalarComVendas={() => go('support')} />;
       case 'system': return <SystemPage />;
       case 'platform': return <PlatformPage />;
       case 'alerts': return <AlertsPage onGoScreens={() => go('screens')} onGoStorage={() => go('storage')} onGoBilling={() => go('billing')} />;

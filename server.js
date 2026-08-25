@@ -275,7 +275,22 @@ async function handleAsaasEvent(body) {
 }
 
 // Página de checkout SIMULADO (modo dev, sem Stripe). Deixa claro que é teste.
-function devCheckoutPage(p) {
+/*
+ * O botão desta página não fazia nada, e por isso o caminho pago inteiro
+ * nunca foi exercido.
+ *
+ * A CSP do projeto é `script-src 'self'`, sem `unsafe-inline` — de propósito.
+ * Esta página, que é anterior a isso, traz o script no HTML e o handler num
+ * `onclick`: o navegador recusa os dois. "Confirmar assinatura" ficava mudo,
+ * e como este é o ÚNICO jeito de testar assinatura sem chave do Asaas, o
+ * caminho pago deixou de ser percorrido por qualquer um. Foi assim que um
+ * `db.getUser is not a function` — que derrubava todo upgrade com 502 — ficou
+ * na main sem ninguém ver.
+ *
+ * Um nonce por resposta resolve sem afrouxar a política global: vale para
+ * ESTE HTML e para mais nada.
+ */
+function devCheckoutPage(p, nonce) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pagamento simulado — ${p.name}</title>
@@ -292,12 +307,12 @@ function devCheckoutPage(p) {
 <div class="card">
   <span class="tag">PAGAMENTO SIMULADO — TESTE</span>
   <h1>Plano ${p.name}</h1>
-  <p class="muted">${p.blurb || ''} Até ${p.screens} telas.</p>
+  <p class="muted">${p.blurb || ''} Até ${p.telasMax} telas.</p>
   <div class="price">${brl(p.precoTelaCents)}<small> /mês</small></div>
-  <button id="go" onclick="pay()">Confirmar assinatura</button>
+  <button id="go">Confirmar assinatura</button>
   <a href="/app?billing=cancel">Cancelar</a>
 </div>
-<script>
+<script nonce="${nonce}">
 async function pay(){
   var b=document.getElementById('go'); b.disabled=true; b.textContent='Processando…';
   try{
@@ -306,6 +321,7 @@ async function pay(){
     location.href='/app?billing=success';
   }catch(e){ b.disabled=false; b.textContent='Tentar de novo'; }
 }
+document.getElementById('go').addEventListener('click', pay);
 </script>
 </body></html>`;
 }
@@ -1673,7 +1689,18 @@ async function handleApi(req, res, pathname, query) {
         const target = plans.plan(b && b.plan);
         if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
         try {
-          const user = await db.getUser(sess.user_id);
+          /*
+           * `getUserById`, e não `getUser` — que nunca existiu.
+           *
+           * A linha entrou junto com o Asaas, porque o checkout passou a
+           * precisar do e-mail para criar o cliente. Desde então TODA tentativa
+           * de assinar respondia 502 "db.getUser is not a function": ninguém
+           * nunca conseguiu pagar, e o erro só aparecia depois do clique.
+           *
+           * Passou por não ter teste: o caminho pago inteiro não era exercido
+           * nem pela suíte nem à mão, porque em modo dev ninguém clicava.
+           */
+          const user = await db.getUserById(sess.user_id);
           const telasDaConta = await db.countDevices(sess.tenant_id);
           const out = await billing.createCheckout(tenant, user, target.id, reqOrigin(req), {
             // A mensalidade é da CONTA: o valor sai de plans.mensalidadeCents,
@@ -1699,19 +1726,55 @@ async function handleApi(req, res, pathname, query) {
       });
     }
 
-    // Portal de gerenciamento (trocar cartão / cancelar) — só dono.
-    if (req.method === 'POST' && seg === 'portal') {
-      if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
-      try { return sendJson(res, 200, await billing.createPortal(tenant, reqOrigin(req))); }
+    /*
+     * Gerenciamento da assinatura. Era um "portal" que não existia.
+     *
+     * A rota devolvia `/app?billing=portal`, e o roteador do painel manda
+     * qualquer `?billing=` para a própria tela de plano: o botão "Gerenciar
+     * assinatura (cartão, cancelamento)" recarregava a página onde a pessoa
+     * já estava. Não havia como cancelar por lugar nenhum.
+     */
+    if (req.method === 'GET' && seg === 'assinatura') {
+      // Leitura serve a qualquer membro: saber se a conta está em dia não é
+      // privilégio de dono, e esconder isso só gera pergunta no suporte.
+      try { return sendJson(res, 200, await billing.assinatura(tenant)); }
       catch (e) { return sendJson(res, 502, { error: e.message }); }
+    }
+    if (req.method === 'DELETE' && seg === 'assinatura') {
+      if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono cancela o plano' });
+      try {
+        const out = await billing.cancelarAssinatura(tenant);
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'plano.cancelar');
+        /*
+         * Em modo simulado não há webhook para rebaixar o plano depois, então
+         * o rebaixamento é feito aqui — é o único jeito de o fluxo inteiro ser
+         * testável sem chave. Com Asaas de verdade, quem rebaixa é o webhook
+         * SUBSCRIPTION_DELETED, e escrever o mesmo estado por duas portas é
+         * como ele fica inconsistente.
+         */
+        if (out.simulado) {
+          await db.setTenantBilling(sess.tenant_id, {
+            plan: 'free', status: 'canceled', subscriptionId: null, renewsAt: null,
+          });
+        }
+        return sendJson(res, 200, out);
+      } catch (e) { return sendJson(res, 502, { error: e.message }); }
     }
 
     // ----- Modo dev (checkout simulado): só existe sem Stripe configurado -----
     if (billing.mode() === 'dev') {
       if (req.method === 'GET' && seg === 'dev-checkout') {
         const target = plans.plan(query.plan);
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-        return res.end(devCheckoutPage(target));
+        // Um nonce por resposta: vale só para este HTML, e a política global
+        // continua sem `unsafe-inline`.
+        const nonce = crypto.randomBytes(16).toString('base64');
+        const csp = security.cabecalhosSeguranca(security.isSecureRequest(req))['Content-Security-Policy'];
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Content-Security-Policy': String(csp).replace("script-src 'self'", "script-src 'self' 'nonce-" + nonce + "'"),
+        });
+        return res.end(devCheckoutPage(target, nonce));
       }
       if (req.method === 'POST' && seg === 'dev-activate') {
         if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
