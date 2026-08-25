@@ -132,12 +132,28 @@ function email(env) {
   const forcado = String(env.MAIL_PROVIDER || '').toLowerCase();
   const temChave = !!(env.RESEND_API_KEY || env.BREVO_API_KEY);
   if (forcado === 'dev' || (!forcado && !temChave)) {
+    /*
+     * Isto era 'atenção' e virou CRÍTICO quando o cadastro passou a exigir
+     * confirmação por e-mail: antes se perdia a recuperação de senha, agora
+     * se perde a porta de entrada inteira. A pessoa se cadastra, vê "confira
+     * seu e-mail", e o e-mail está no log do servidor.
+     *
+     * SKIP_VERIFY=1 é a saída deliberada: o cadastro volta a criar a conta na
+     * hora. Continua sendo problema — sem e-mail não há convite de equipe nem
+     * recuperação de senha —, mas deixa de trancar a porta.
+     */
+    const semVerificacao = String(env.SKIP_VERIFY || '') === '1';
     return {
-      id: 'email', nivel: 'atencao', titulo: 'Envio de e-mail',
+      id: 'email', nivel: semVerificacao ? 'atencao' : 'critico', titulo: 'Envio de e-mail',
       estado: 'Sem provedor: o e-mail é escrito no log do servidor.',
-      consequencia: 'Ninguém consegue recuperar a senha nem aceitar convite de equipe — '
-        + 'a mensagem existe, mas só você a vê, no log.',
-      resolver: 'Defina RESEND_API_KEY (ou BREVO_API_KEY) e MAIL_FROM.',
+      consequencia: semVerificacao
+        ? 'Com SKIP_VERIFY=1 o cadastro funciona, mas ninguém recupera senha nem aceita '
+          + 'convite de equipe — e a conta nasce com um e-mail que nunca foi confirmado.'
+        : 'NINGUÉM CONSEGUE SE CADASTRAR: a conta só nasce quando a pessoa clica no link '
+          + 'de confirmação, e o link só existe neste log. A tela diz "confira seu e-mail" '
+          + 'e não há e-mail.',
+      resolver: 'Defina RESEND_API_KEY (ou BREVO_API_KEY) e MAIL_FROM com um endereço do '
+        + 'domínio verificado no provedor. Para subir sem provedor, SKIP_VERIFY=1.',
     };
   }
   if (!env.MAIL_FROM) {
@@ -152,6 +168,54 @@ function email(env) {
     id: 'email', nivel: 'ok', titulo: 'Envio de e-mail',
     estado: 'Enviando por ' + (forcado || (env.RESEND_API_KEY ? 'resend' : 'brevo')) + '.',
     consequencia: 'Recuperação de senha e convites funcionando.',
+    resolver: '',
+  };
+}
+
+/*
+ * Cobrança. Não existia verificação nenhuma aqui.
+ *
+ * O diagnóstico cobria armazenamento, banco, IA, e-mail, endereço e jurídico
+ * — e pulava o dinheiro, que é a parte que só falha depois que alguém tentou
+ * pagar. Sem chave, o checkout roda em modo SIMULADO: a página diz "pagamento
+ * de teste" e ativa o plano de graça. É ótimo para desenvolver e é ruína em
+ * produção, porque parece que funcionou.
+ */
+function pagamento(env) {
+  const chave = String(env.ASAAS_API_KEY || '');
+  const token = String(env.ASAAS_WEBHOOK_TOKEN || '');
+  const sandbox = String(env.ASAAS_AMBIENTE || '').toLowerCase() === 'sandbox';
+
+  if (!chave) {
+    return {
+      id: 'pagamento', nivel: 'critico', titulo: 'Cobrança',
+      estado: 'Sem ASAAS_API_KEY: o checkout está em modo simulado.',
+      consequencia: 'Quem clicar em assinar recebe uma página de "pagamento de teste" e '
+        + 'ganha o plano pago sem pagar nada.',
+      resolver: 'Defina ASAAS_API_KEY com a chave da sua conta Asaas.',
+    };
+  }
+  if (!token) {
+    return {
+      id: 'pagamento', nivel: 'critico', titulo: 'Cobrança',
+      estado: 'Chave do Asaas definida, mas sem ASAAS_WEBHOOK_TOKEN.',
+      consequencia: 'O cliente paga e o plano NUNCA é liberado: o aviso de pagamento chega '
+        + 'e é recusado por falta do token. Dinheiro entra, produto não.',
+      resolver: 'Defina ASAAS_WEBHOOK_TOKEN com o mesmo valor cadastrado no webhook do Asaas.',
+    };
+  }
+  if (sandbox) {
+    return {
+      id: 'pagamento', nivel: 'atencao', titulo: 'Cobrança',
+      estado: 'Apontando para a SANDBOX do Asaas.',
+      consequencia: 'Nenhuma cobrança é real. Serve para testar, não para vender.',
+      resolver: 'Remova ASAAS_AMBIENTE para cobrar de verdade.',
+    };
+  }
+  return {
+    id: 'pagamento', nivel: 'ok', titulo: 'Cobrança',
+    estado: 'Asaas configurado em produção.',
+    consequencia: 'Assinaturas são cobradas e o plano é liberado quando o pagamento entra.',
     resolver: '',
   };
 }
@@ -207,7 +271,7 @@ function juridico(env) {
   };
 }
 
-const VERIFICACOES = [armazenamento, banco, ia, email, endereco, juridico];
+const VERIFICACOES = [armazenamento, banco, ia, email, pagamento, endereco, juridico];
 
 /*
  * Ordem: o que dói primeiro aparece primeiro. Quem abre esta tela quer saber
@@ -234,4 +298,4 @@ function diagnosticar(env) {
   };
 }
 
-module.exports = { diagnosticar, armazenamento, banco, ia, email, endereco, juridico, naNuvem };
+module.exports = { diagnosticar, armazenamento, banco, ia, email, pagamento, endereco, juridico, naNuvem };
