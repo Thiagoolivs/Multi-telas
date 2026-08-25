@@ -67,6 +67,89 @@ const IMAGENS = [
  * precisa estar visível, senão a pessoa acha que toda peça é paga e pede
  * menos do que precisaria.
  */
+/*
+ * O CARDÁPIO — o que a pessoa vê antes do campo de texto vazio.
+ *
+ * O briefing que existia perguntava uma coisa aberta por vez: "para quem é?",
+ * "por que agora?". Isso exige que ela JÁ TENHA a resposta formulada, e quem
+ * tem padaria não pensa em campanha nesses termos. Trava, escreve "sei lá,
+ * promoção", e a IA decide tudo.
+ *
+ * Reconhecer é muito mais fácil que lembrar. Cada sugestão aqui já traz o
+ * formulário preenchido: clicar numa é escolher onde, quantas, o que fazer com
+ * imagem e como anima — sem precisar saber que essas perguntas existem.
+ */
+function Guia({ empresa, onEscolher, onPular }) {
+  const [dados, setDados] = React.useState(null);
+  const [erro, setErro] = React.useState('');
+
+  React.useEffect(() => {
+    let vivo = true;
+    ai.guia({ empresa })
+      .then((r) => { if (vivo) setDados(r); })
+      .catch((e) => { if (vivo) setErro(e.message || 'não consegui buscar sugestões'); });
+    return () => { vivo = false; };
+  }, [empresa]);
+
+  if (erro) {
+    // O guia é facilitador: se ele cair, escrever à mão continua valendo.
+    return (
+      <div className="py-6 text-center">
+        <p className="text-sm text-ink-2">{erro}</p>
+        <Button variant="secondary" size="sm" className="mt-3" onClick={onPular}>Escrever eu mesmo</Button>
+      </div>
+    );
+  }
+  if (!dados) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-10 text-center">
+        <Spinner size={22} />
+        <div className="text-sm text-ink-2">Pensando em ideias para {empresa || 'o seu negócio'}…</div>
+      </div>
+    );
+  }
+
+  const ONDE = { '16/9': 'TV deitada', '9/16': 'TV em pé · Story', '1/1': 'Post quadrado', '21/9': 'Faixa larga' };
+  const CUSTO = {
+    gerar: { texto: 'foto por IA', tom: 'accent' },
+    acervo: { texto: 'suas fotos · sem custo', tom: 'ok' },
+    nenhuma: { texto: 'só texto · sem custo', tom: 'ok' },
+  };
+
+  return (
+    <div>
+      {dados.abertura && <p className="mb-3 text-sm text-ink-2">{dados.abertura}</p>}
+      <div className="space-y-2">
+        {dados.sugestoes.map((s, i) => {
+          const c = CUSTO[s.imagens] || CUSTO.nenhuma;
+          const creditos = s.imagens === 'gerar' ? s.quantidade : 0;
+          return (
+            <button key={i} type="button" onClick={() => onEscolher(s)}
+              className="block w-full rounded-lg border border-line bg-surface-2 p-3 text-left transition hover:border-accent hover:bg-accent-soft/20">
+              <span className="block text-sm font-semibold text-ink">{s.titulo}</span>
+              <span className="mt-0.5 block text-xs text-ink-2">{s.porque}</span>
+              <span className="mt-1.5 flex flex-wrap items-center gap-1.5 text-2xs">
+                <Badge tone="neutral">{s.formatos.map((f) => ONDE[f] || f).join(' + ')}</Badge>
+                <Badge tone="neutral">{s.quantidade} {s.quantidade === 1 ? 'peça' : 'peças'}</Badge>
+                <Badge tone={c.tom}>{creditos ? c.texto + ' · ' + creditos + (creditos === 1 ? ' crédito' : ' créditos') : c.texto}</Badge>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {/*
+        Sair do cardápio nunca pode ser escondido: quem já sabe o que quer não
+        deve ser obrigado a passar por aqui.
+      */}
+      <button onClick={onPular}
+        className="mt-3 text-xs font-medium text-ink-3 underline-offset-2 hover:text-ink hover:underline">
+        Nenhuma dessas — quero escrever
+      </button>
+    </div>
+  );
+}
+
+
 function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
   const pecas = (plano.plano && plano.plano.pecas) || [];
   const [fora, setFora] = React.useState(() => new Set());
@@ -167,7 +250,7 @@ export function MyDesignsPage({ onIr }) {
    */
   useEffect(() => inscreverBandeja((p) => {
     if (!p) return;
-    if (p.tipo === 'campanha') { setGen(p.gen); setAiColl(p.nome || 'Campanha'); setAiOpen(true); }
+    if (p.tipo === 'campanha') { setGen(p.gen); setAiColl(p.nome || 'Campanha'); (setGuiando(true), setAiOpen(true)); }
     else setSaveItem(p);
     limparBandeja();
   }), []);
@@ -207,6 +290,11 @@ export function MyDesignsPage({ onIr }) {
   const [etapa, setEtapa] = useState(null); // progresso do trabalho em andamento
   const [conversando, setConversando] = useState(false); // chat de briefing aberto
   const [plano, setPlano] = useState(null); // plano esperando confirmação do cliente
+  /*
+   * O cardápio abre PRIMEIRO. Campo de texto vazio é onde quem não sabe o que
+   * pedir desiste — e é a maioria de quem chega.
+   */
+  const [guiando, setGuiando] = useState(true);
   const [emAndamento, setEmAndamento] = useState(false); // campanha rodando no servidor
 
   // Gerar imagem
@@ -327,7 +415,7 @@ export function MyDesignsPage({ onIr }) {
       if (!out) return;
       setGen(out);
       setAiColl(out.campanha || empresa || 'Campanha');
-      setAiOpen(true); // traz o resultado de volta mesmo se a janela foi fechada
+      (setGuiando(true), setAiOpen(true)); // traz o resultado de volta mesmo se a janela foi fechada
       /*
        * A faixa de progresso vive nesta página. Quem foi mexer em Telas ou em
        * Marca enquanto esperava não vê nada — e a campanha fica pronta em
@@ -409,6 +497,22 @@ export function MyDesignsPage({ onIr }) {
    * O pedido é o mesmo nas duas fases — muda só o que se pede ao servidor:
    * primeiro o PLANO (texto, centavos), depois a EXECUÇÃO (imagens, crédito).
    */
+  /*
+   * Escolher no cardápio PREENCHE a refinaria — não pula ela.
+   *
+   * Pular seria mais rápido e mais errado: a pessoa perderia a única chance de
+   * ver que "2 peças, TV deitada, foto por IA" era uma decisão, e não o
+   * destino. Preenchido, ela vê o que foi escolhido por ela e muda o que
+   * quiser antes de qualquer custo.
+   */
+  function escolherSugestao(s) {
+    setBrief(s.brief || s.titulo || '');
+    setOnde(s.formatos && s.formatos.length ? s.formatos : ['16/9']);
+    setQuantas(s.quantidade || 2);
+    setImagens(s.imagens || 'nenhuma');
+    setGuiando(false);
+  }
+
   function pedidoBase(briefingPronto) {
     return {
       brief: (briefingPronto && briefingPronto.briefing) || brief,
@@ -565,7 +669,7 @@ export function MyDesignsPage({ onIr }) {
   const groupNames = Object.keys(groups);
 
   const CREATE = [
-    { key: 'ia', title: 'Criar campanha com IA', desc: 'Uma frase vira a campanha inteira: peças, legendas e quando postar.', icon: Wand2, on: () => setAiOpen(true), accent: 'text-violet-400', destaque: true },
+    { key: 'ia', title: 'Criar campanha com IA', desc: 'Uma frase vira a campanha inteira: peças, legendas e quando postar.', icon: Wand2, on: () => (setGuiando(true), setAiOpen(true)), accent: 'text-violet-400', destaque: true },
     { key: 'mao', title: 'Criar na mão', desc: 'Editor visual: fundo, texto, formas, ícones e imagens.', icon: Plus, on: novoNaMao, accent: 'text-accent' },
     { key: 'img', title: 'Gerar imagem IA', desc: 'Crie uma imagem por prompt e use como arte ou fundo.', icon: ImagePlus, on: () => setImgOpen(true), accent: 'text-sky-400' },
     { key: 'imp', title: 'Importar arquivo', desc: 'Suba um design do Canva (PNG/JPG) ou um PDF.', icon: Upload, on: null, accent: 'text-emerald-400' },
@@ -808,14 +912,26 @@ export function MyDesignsPage({ onIr }) {
       {/* Criar campanha com IA — o diretor de arte */}
       <Dialog open={aiOpen} onClose={() => { setAiOpen(false); setGen(null); }} className="max-w-4xl"
         title="Criar campanha com IA"
-        description="Descreva em uma frase. A IA lê a sua Marca, monta as peças, escreve as legendas e diz quando postar."
+        /*
+          O subtítulo acompanha a etapa. "Descreva em uma frase" na tela do
+          cardápio manda fazer algo que não há onde fazer — não existe campo
+          ali, só três ideias para escolher.
+        */
+        description={guiando
+          ? 'Escolha uma ideia para começar, ou escreva a sua. Nada é gerado antes de você confirmar.'
+          : plano
+            ? 'Confira o que a IA entendeu. Nenhum crédito saiu ainda.'
+            : 'Descreva em uma frase. A IA lê a sua Marca, monta as peças, escreve as legendas e diz quando postar.'}
         footer={gen
           ? (<>
             <Button variant="ghost" onClick={() => setGen(null)}>Voltar</Button>
             <Button variant="secondary" icon={Check} disabled={busy} onClick={() => salvarCampanha(false)}>{busy ? 'Salvando…' : 'Só salvar'}</Button>
             <Button variant="primary" icon={Rocket} disabled={busy} onClick={() => salvarCampanha(true)}>Salvar e publicar</Button>
           </>)
-          : plano
+          : guiando
+            // O cardápio traz os próprios caminhos ("escolher" e "escrever").
+            ? <Button variant="ghost" onClick={() => setAiOpen(false)}>Cancelar</Button>
+            : plano
             /*
              * A tela de confirmação traz os próprios botões — e são outros:
              * "Voltar e corrigir" e "Gerar as N peças". Deixar o rodapé antigo
@@ -853,6 +969,12 @@ export function MyDesignsPage({ onIr }) {
             </div>
             <div className="tnum text-2xs text-ink-3">{etapa.segundos || 0}s · uma campanha completa leva um ou dois minutos</div>
           </div>
+        ) : guiando ? (
+          <Guia
+            empresa={empresa}
+            onEscolher={escolherSugestao}
+            onPular={() => setGuiando(false)}
+          />
         ) : plano ? (
           /*
            * A CERTEZA ANTES DO CRÉDITO.

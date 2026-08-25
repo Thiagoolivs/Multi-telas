@@ -51,6 +51,7 @@ const seasons = require('./js/seasons.js');
 // Mesmo arquivo que o player usa: o que é uma config está definido num lugar só.
 const schema = require('./js/storage.js');
 const briefing = require('./server/ai-briefing');
+const guia = require('./server/ai-guia');
 const memory = require('./server/ai-memoria');
 const muralLib = require('./server/mural');
 const qrcode = require('./server/qr');
@@ -456,6 +457,7 @@ async function handleApi(req, res, pathname, query) {
      * despercebida, e foi exatamente assim que esta passou.
      */
     'analise-visual': 'analise-visual',
+    guia: 'guia',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
@@ -1147,6 +1149,47 @@ async function handleApi(req, res, pathname, query) {
       });
     }
     return sendJson(res, 405, { error: 'método inválido' });
+  }
+
+  /* ----- IA: o guia, que OFERECE em vez de perguntar ----- */
+  if (parts[1] === 'ai' && parts[2] === 'guia') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:guia:' + sess.tenant_id, 40, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'muitas sugestões seguidas — espere um instante' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      try {
+        /*
+         * O guia propõe usando o que a conta JÁ TEM: a marca, e sobretudo o
+         * acervo. Com foto própria, a sugestão mais barata é usá-la — e é
+         * também a mais verdadeira, porque mostra o produto real em vez de um
+         * genérico bonito.
+         */
+        const kit = await db.getBrandKit(sess.tenant_id);
+        const assets = await db.listBrandAssets(sess.tenant_id);
+        const k = kit || {};
+        const marca = (kit || assets.length) ? {
+          cores: k.cores || [], tom: k.tom || '',
+          bases: assets.filter((a) => a.kind === 'base').map((a) => ({ label: a.label || '' })),
+        } : null;
+        const telas = await db.countDevices(sess.tenant_id);
+        /*
+         * O nome vem do INQUILINO, que é o que a pessoa digitou no cadastro.
+         *
+         * Cair no nome do kit de marca fazia o guia abrir com "Algumas ideias
+         * para Marca principal" — que é o rótulo-padrão criado junto com a
+         * conta, não o nome de negócio nenhum. Dizer o nome errado logo na
+         * primeira frase é pior que não dizer nome.
+         */
+        const conta = await db.getTenant(sess.tenant_id);
+        const nomeDoKit = k && k.nome && k.nome !== 'Marca principal' ? k.nome : '';
+        return sendJson(res, 200, await guia.sugerir({
+          empresa: (b && b.empresa) || (conta && conta.name) || nomeDoKit || '',
+          segmento: (b && b.segmento) || '',
+          marca, telas,
+        }));
+      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+    });
   }
 
   /* ----- IA: chat de briefing (uma pergunta por vez, antes da campanha) ----- */

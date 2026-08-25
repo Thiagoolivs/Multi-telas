@@ -208,6 +208,13 @@ export const ai = {
     briefing: (mensagens, extra) => api('POST', '/api/ai/briefing', { mensagens, ...(extra || {}) }),
 
   /*
+   * O guia: OFERECE campanhas em vez de perguntar. Uma chamada, no começo —
+   * quem não sabe o que pedir escolhe de um cardápio em vez de encarar um
+   * campo de texto vazio.
+   */
+  guia: (extra) => api('POST', '/api/ai/guia', extra || {}),
+
+  /*
    * O diretor: briefing → plano → imagens → composição → crítica. É o motor
    * que respeita a marca e o acervo.
    */
