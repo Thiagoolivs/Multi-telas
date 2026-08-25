@@ -36,6 +36,16 @@ jobs:
       - name: Testes
         run: npm test
 
+      # O eval roda em modo dev: sem chave, sem rede, custo zero. Ele não
+      # testa o PROMPT — testa tudo o que vem depois dele, que é onde os
+      # defeitos desta semana moraram: o corte pelo teto, o formato pedido, o
+      # "sem foto", o layout e o custo prometido.
+      #
+      # Bloqueia porque estas conferências são determinísticas. A parte que
+      # não bloqueia é a folha de contato com Gemini, que roda à mão.
+      - name: Eval (modo dev)
+        run: npm run eval
+
       - name: Dependências do painel
         run: npm --prefix web ci --no-audit --no-fund
 

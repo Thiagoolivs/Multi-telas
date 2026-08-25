@@ -484,15 +484,98 @@ function normalizarPlano(p, ctx, brief) {
    * não vai ser usada — e, se ela precisar de imagem, é dinheiro gasto em algo
    * que ninguém vai ver.
    *
-   * A conversão é para o PRIMEIRO formato pedido, e não descarte: a mensagem
-   * que o modelo escreveu continua valendo, só muda de moldura.
+   * A conversão é REVEZANDO entre os formatos pedidos, e não descarte: a
+   * mensagem que o modelo escreveu continua valendo, só muda de moldura.
+   *
+   * Revezar, e não jogar tudo no primeiro. A primeira versão disto usava
+   * `pedido.formatos[0]` sempre, e o eval pegou o resultado: pedido de
+   * `['16/9','1/1']` devolvia QUATRO peças 16/9 e nenhuma quadrada. Quem
+   * marcou dois formatos marcou porque quer os dois — recebe um só, e ainda
+   * fica com duas peças de manchete idêntica na mesma TV, porque as que
+   * viraram 16/9 vieram do outro formato com o mesmo texto.
    */
   if (pedido.formatos.length) {
-    pecas = pecas.map((x) => (pedido.formatos.includes(x.formato) ? x : {
-      ...x,
-      formato: pedido.formatos[0],
-      canal: canalDoFormato(pedido.formatos[0], x.canal),
-    }));
+    let proximo = 0;
+    /*
+     * O destino é escolhido evitando COLISÃO de manchete.
+     *
+     * Revezar cegamente entre os formatos pedidos punha a peça num formato
+     * que já tinha aquele mesmo título — e duas peças de manchete idêntica na
+     * mesma TV é a campanha piscando a mesma arte, que é exatamente a
+     * impressão que `garantirDuasPorFormato` existe para evitar.
+     *
+     * O revezamento continua sendo o padrão; a busca só desempata.
+     */
+    /*
+     * Acumulando, e não com `map`. A primeira versão consultava a lista
+     * ORIGINAL para saber se um título já estava ocupado — e por isso não
+     * enxergava as peças que ela própria acabara de mover. A segunda peça
+     * convertida colidia com a primeira sem que nada percebesse.
+     */
+    const saida = [];
+    const ocupado = (formato, headline) => saida.some(
+      (x) => x.formato === formato
+        && String(x.headline || '').trim().toLowerCase() === String(headline || '').trim().toLowerCase());
+
+    // As que já estão num formato pedido entram primeiro: elas é que definem
+    // o que está ocupado quando as outras forem realocadas.
+    for (const x of pecas) if (pedido.formatos.includes(x.formato)) saida.push(x);
+    for (const x of pecas) {
+      if (pedido.formatos.includes(x.formato)) continue;
+      const giro = proximo % pedido.formatos.length;
+      const roda = pedido.formatos.slice(giro).concat(pedido.formatos.slice(0, giro));
+      const destino = roda.find((f) => !ocupado(f, x.headline)) || roda[0];
+      proximo++;
+      saida.push({ ...x, formato: destino, canal: canalDoFormato(destino, x.canal) });
+    }
+    pecas = saida;
+
+    /*
+     * PENEIRA FINAL: duas peças iguais no mesmo formato não passam.
+     *
+     * Escolher destino sem colisão resolve as peças que são MOVIDAS, e não as
+     * que já nasceram num formato pedido com o mesmo título — a conversão nem
+     * toca nelas. Um teste pegou isso com três peças de manchete idêntica: as
+     * duas que já estavam no lugar certo passavam lado a lado.
+     *
+     * Descartar, e não mover: uma campanha com duas mensagens idênticas tem
+     * uma mensagem a mais, não uma moldura errada. E na parede o efeito é o
+     * pior possível — a tela pisca a mesma arte e parece travada.
+     */
+    const jaVi = new Set();
+    pecas = pecas.filter((x) => {
+      const chave = x.formato + '|' + String(x.headline || '').trim().toLowerCase();
+      if (jaVi.has(chave)) return false;
+      jaVi.add(chave);
+      return true;
+    });
+
+    /*
+     * COBERTURA: cada formato pedido precisa de pelo menos uma peça.
+     *
+     * Converter só o que está FORA da lista não basta, e o eval mostrou por
+     * quê: quando o modelo escreve todas as peças já num dos formatos pedidos,
+     * nenhuma é convertida — e o outro formato marcado nunca aparece. Pedido
+     * de `['16/9','9/16']` com duas peças devolvia duas em 16/9 e nada
+     * vertical, sem nenhum sinal de que faltou algo.
+     *
+     * Só roda quando há peça suficiente para cobrir: com uma peça e dois
+     * formatos, alguém fica de fora de qualquer jeito, e roubar a única peça
+     * do formato principal seria pior.
+     */
+    if (pecas.length >= pedido.formatos.length) {
+      const faltando = pedido.formatos.filter((f) => !pecas.some((p) => p.formato === f));
+      for (const destino of faltando) {
+        // Tira de quem tem mais, para não esvaziar um formato ao encher outro.
+        const contagem = new Map();
+        for (const p of pecas) contagem.set(p.formato, (contagem.get(p.formato) || 0) + 1);
+        const cheio = [...contagem.entries()].sort((a, b) => b[1] - a[1])[0];
+        if (!cheio || cheio[1] < 2) break;
+        const i = pecas.findIndex((p) => p.formato === cheio[0]);
+        if (i < 0) break;
+        pecas[i] = { ...pecas[i], formato: destino, canal: canalDoFormato(destino, pecas[i].canal) };
+      }
+    }
   }
 
   /*
@@ -520,6 +603,31 @@ function normalizarPlano(p, ctx, brief) {
      * duas contas — mais barata e mais verdadeira.
      */
     pecas = pecas.slice().sort((a, b) => (a.precisaImagem ? 1 : 0) - (b.precisaImagem ? 1 : 0));
+
+    /*
+     * O corte RESPEITA OS FORMATOS PEDIDOS antes de completar por ordem.
+     *
+     * Cortar direto pela ordem perdia formato inteiro, e o eval mostrou o
+     * caso: pedido de duas peças em `['16/9','9/16']` devolvia duas peças
+     * 16/9 e nada vertical — porque as duas primeiras da lista eram as
+     * horizontais. Quem marcou dois formatos marcou porque quer os dois, e
+     * receber só um sem nenhum aviso é pior que receber uma peça a menos.
+     *
+     * Uma de cada formato primeiro; o resto entra pela ordem já decidida
+     * acima, que põe as peças sem custo na frente.
+     */
+    if (pedido.formatos.length > 1 && pedido.quantidade >= pedido.formatos.length) {
+      const escolhidas = [];
+      for (const f of pedido.formatos) {
+        const i = pecas.findIndex((x) => x.formato === f && !escolhidas.includes(x));
+        if (i >= 0) escolhidas.push(pecas[i]);
+      }
+      for (const x of pecas) {
+        if (escolhidas.length >= pedido.quantidade) break;
+        if (!escolhidas.includes(x)) escolhidas.push(x);
+      }
+      pecas = escolhidas;
+    }
     pecas = pecas.slice(0, pedido.quantidade);
   }
 
@@ -930,9 +1038,22 @@ function layoutChapado(peca, palette, formato, dir) {
   }
   if (peca.cta) {
     const h = esc.cta * 2.4 * r;
-    els.push({ tipo: 'forma', papel: 'destaque', shape: 'rect', x: s.x + s.w * 0.18, y,
+    /*
+     * O CTA ancora no PÉ da área segura, não no fim da pilha.
+     *
+     * Empilhando com `y +=`, um título alto empurrava o CTA para fora: medido
+     * num aviso de piso molhado, a pílula nascia em y=107 — inteiramente fora
+     * do quadro. E o estrago não era só ela sumir: `separarTextos` puxava o
+     * TEXTO de volta para dentro e deixava a FORMA para trás, porque ele só
+     * mexe em `tipo === 'texto'`. Na tela, o CTA aparecia sem o fundo dele.
+     *
+     * Num cartaz o CTA mora embaixo, sempre. Ancorar ali resolve a posição e
+     * o divórcio de uma vez — os dois saem do mesmo número.
+     */
+    const yCta = Math.min(y, s.y + s.h - h);
+    els.push({ tipo: 'forma', papel: 'destaque', shape: 'rect', x: s.x + s.w * 0.18, y: yCta,
       w: s.w * 0.64, h, radius: 14, fill: palette.texto, opacidade: 0.18 });
-    els.push({ tipo: 'texto', papel: 'cta', text: peca.cta, x: s.x + s.w * 0.18, y,
+    els.push({ tipo: 'texto', papel: 'cta', text: peca.cta, x: s.x + s.w * 0.18, y: yCta,
       w: s.w * 0.64, h, tamanho: esc.cta, fonte: 'sans', cor: palette.texto, align: 'center', peso: 700 });
   }
   return { elementos: els, _reserva: true };
