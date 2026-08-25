@@ -96,29 +96,88 @@ const fsIA = require('node:fs');
 const pathIA = require('node:path');
 const lerArquivo = (...p) => fsIA.readFileSync(pathIA.join(__dirname, '..', ...p), 'utf8');
 
-test('TODA geração de IA é trabalho — nenhuma responde na própria requisição', () => {
+/*
+ * As rotas de IA são DESCOBERTAS na fonte, nunca listadas à mão.
+ *
+ * A versão anterior destes testes trazia oito nomes escritos no próprio teste
+ * e prometia, no comentário, que "uma rota nova de IA que nasça síncrona
+ * precisa falhar aqui". Não falhava: uma rota que não está na lista não é
+ * conferida por ninguém. E aconteceu — `analise-visual` entrou depois,
+ * síncrona e fora da medição, e a suíte inteira passou verde.
+ *
+ * Descobrir muda quem carrega o ônus: quem acrescenta rota de IA precisa
+ * dizer aqui o que ela é, em vez de o teste precisar adivinhar.
+ */
+function rotasDeIA(SERVER) {
+  const achadas = [];
+  const re = /parts\[2\] === '([^']+)'/g;
+  let m;
+  while ((m = re.exec(SERVER))) {
+    const antes = SERVER.slice(Math.max(0, m.index - 60), m.index);
+    if (!antes.includes("parts[1] === 'ai'")) continue;
+    const bloco = SERVER.slice(m.index, m.index + 4000);
+    const fim = bloco.indexOf("parts[2] === '", 20);
+    achadas.push({ nome: m[1], corpo: fim > 0 ? bloco.slice(0, fim) : bloco });
+  }
+  return achadas;
+}
+
+// Leem estado de trabalho já criado. Não chamam IA, não gastam nada.
+const SO_LEEM_ESTADO = ['job', 'jobs'];
+
+test('toda rota de IA aparece em algum lugar da contabilidade', () => {
   /*
-   * Só a campanha rodava como trabalho, porque era a única que passava do
-   * tempo de uma requisição. As outras oito eram síncronas, e o defeito era o
-   * mesmo em tamanho menor: fechar a aba, trocar de página ou o celular perder
-   * a rede por dez segundos matava o pedido — com o crédito já gasto.
+   * `analise-visual` nasceu fora do mapa TIPO_IA: sem teto por hora, sem
+   * extrato, sem aparecer no painel de uso. Uma conta em laço chamaria a
+   * visão sem limite nenhum, e o gasto só apareceria na fatura do mês
+   * seguinte — que é tarde para descobrir.
    *
-   * A conferência é por ROTA, e não por contagem: uma rota nova de IA que
-   * nasça síncrona precisa falhar aqui, e não passar por estar na média.
+   * Dois jeitos valem, e são os dois que existem: entrar no mapa (texto e
+   * visão, que só são medidos) ou conferir e cobrar crédito na própria rota
+   * (imagem, que é a cara). O que não vale é nenhum dos dois.
    */
   const SERVER = lerArquivo('server.js');
-  const ROTAS = [
-    'generate-campaign', 'generate-content', 'generate-kit', 'generate-image',
-    'generate-composition', 'generate-seasonal', 'generate-dayparts', 'rewrite',
-  ];
-  for (const rota of ROTAS) {
-    const i = SERVER.indexOf("parts[2] === '" + rota + "'");
-    assert.ok(i > 0, 'sumiu a rota ' + rota);
-    const bloco = SERVER.slice(i, i + 3000);
-    const fim = bloco.indexOf("parts[2] === '", 20);
-    const corpo = fim > 0 ? bloco.slice(0, fim) : bloco;
-    assert.ok(corpo.includes('emTrabalho('), rota + ' voltou a responder na própria requisição');
+  const mapa = SERVER.slice(SERVER.indexOf('const TIPO_IA'), SERVER.indexOf('const TIPO_IA') + 1400);
+  const foraDaConta = [];
+  for (const { nome, corpo } of rotasDeIA(SERVER)) {
+    if (SO_LEEM_ESTADO.includes(nome)) continue;
+    const noMapa = mapa.includes("'" + nome + "':") || new RegExp('\\b' + nome + ':').test(mapa);
+    const cobraDireto = /usoIA\.conferir\(/.test(corpo) && /usoIA\.cobrar\(/.test(corpo);
+    if (!noMapa && !cobraDireto) foraDaConta.push(nome);
   }
+  assert.deepStrictEqual(foraDaConta, [],
+    'rota de IA sem medição nem cobrança: ou entra no TIPO_IA, ou confere e cobra crédito');
+});
+
+/*
+ * As que ainda respondem na própria requisição, uma a uma e com o motivo.
+ *
+ * A lista é AFIRMADA por igualdade, não usada como perdão: acrescentar rota
+ * síncrona quebra o teste, e converter uma destas em trabalho também quebra —
+ * e aí some daqui, que é o sentido.
+ */
+const AINDA_SINCRONAS = [
+  'analise-visual', // lê uma peça pronta e devolve crítica; não gera nada nem gasta crédito
+  'briefing',       // turno de conversa: a resposta é o próprio fio, sair já perde o contexto
+  'diagnose',       // olha a tela e responde na hora; é ferramenta de suporte, não geração
+  'director',       // monta o plano que as outras rotas executam depois
+];
+
+test('toda rota de IA que GERA roda como trabalho — e as síncronas são só as declaradas', () => {
+  /*
+   * Só a campanha rodava como trabalho, porque era a única que passava do
+   * tempo de uma requisição. As outras eram síncronas, e o defeito era o
+   * mesmo em tamanho menor: fechar a aba, trocar de página ou o celular perder
+   * a rede por dez segundos matava o pedido — com o crédito já gasto.
+   */
+  const SERVER = lerArquivo('server.js');
+  const sincronas = rotasDeIA(SERVER)
+    .filter((r) => !SO_LEEM_ESTADO.includes(r.nome))
+    .filter((r) => !r.corpo.includes('emTrabalho('))
+    .map((r) => r.nome)
+    .sort();
+  assert.deepStrictEqual(sincronas, [...AINDA_SINCRONAS].sort(),
+    'mudou o conjunto de rotas de IA que respondem na própria requisição');
 });
 
 test('o trabalho guarda o tipo e o pedido', () => {

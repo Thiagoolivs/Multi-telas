@@ -21,7 +21,7 @@ maior parte só pode ser feita por quem tem acesso ao Railway e ao contador.
 |---|---|---|---|
 | 🔴 | **Revisão jurídica dos textos** | `server/legal.js` descreve com precisão o que o sistema faz, mas é rascunho técnico. Enquanto `LEGAL_REVISADO` não for `true`, todas as páginas legais exibem aviso de rascunho — e vender com Termos marcados como rascunho é vender sem Termos. | advogado, depois você |
 | 🔴 | **`STORAGE=s3` + as 4 chaves do R2** | Sem bucket nem volume, a mídia grava em disco efêmero: **toda imagem, vídeo e áudio somem no próximo deploy**, sem aviso. A tela simplesmente fica vazia depois de uma atualização. | você |
-| 🔴 | **`STRIPE_PRICE_ESSENCIAL`, `STRIPE_PRICE_PRO`, `STRIPE_WEBHOOK_SECRET`** | Os preços de tabela saem do ambiente (`server/plans.js`). Sem eles não há checkout, e cadastrar a primeira tela exige pagamento. | você |
+| 🔴 | **`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`** | Sem a chave o checkout roda em modo simulado e ninguém paga de verdade; sem o token do webhook o Asaas não consegue confirmar pagamento nenhum. `ASAAS_AMBIENTE=sandbox` para testar sem cobrar. | você |
 | 🔴 | **`ADMIN_EMAILS`** | Sem ela o painel da plataforma **não aparece e não responde** — é de propósito: "sem configuração, o dono da primeira conta vira operador" transformaria instalação nova em porta aberta. Você fica sem enxergar telas vivas, contas, reclamações e erros. | você |
 | 🟡 | **Domínio próprio, `APP_URL` e `SUPPORT_EMAIL` do domínio** | O contato hoje é e-mail pessoal, e ele aparece nas páginas legais. | você |
 | 🟡 | **Backup do Postgres confirmado, e uma restauração testada** | Backup que nunca foi restaurado é backup que talvez não exista. | você |
@@ -132,7 +132,7 @@ Em ordem de impacto — é aqui que o produto melhora de verdade:
 1. Mandar os textos legais para revisão — é o único bloqueador que não depende
    de você e o que tem o prazo mais longo.
 2. Criar o bucket R2 e definir `STORAGE=s3` com as quatro chaves.
-3. Definir `ADMIN_EMAILS`, `STRIPE_PRICE_*`, `STRIPE_WEBHOOK_SECRET`,
+3. Definir `ADMIN_EMAILS`, `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`,
    `APP_URL`, `SUPPORT_EMAIL`.
 4. Abrir `/sistema` e conferir se os seis diagnósticos estão verdes.
 5. Colar o site de um cliente real e olhar as cores e as fontes que saem.

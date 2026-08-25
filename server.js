@@ -257,9 +257,20 @@ async function handleAsaasEvent(body) {
   } else if (eventName === 'SUBSCRIPTION_DELETED') {
     await db.setTenantBilling(tenant.id, { plan: 'free', status: 'canceled', subscriptionId: null, renewsAt: null });
   } else if (eventName === 'SUBSCRIPTION_CREATED') {
-    const updates = { customerId, subscriptionId: subId };
-    if (planId) updates.plan = planId;
-    await db.setTenantBilling(tenant.id, updates);
+    /*
+     * ASSINATURA CRIADA NÃO É PAGAMENTO RECEBIDO.
+     *
+     * Este ramo concedia `plan` — e como `plans.podeParear` decide acesso só
+     * por `tenant.plan`, sem olhar `plan_status`, clicar em assinar já dava o
+     * plano pago inteiro: 49 telas e a franquia de créditos, sem pagar nada.
+     * O Asaas emite este evento ao CRIAR o registro; a primeira fatura ainda
+     * está pendente.
+     *
+     * Aqui ficam só os identificadores, que é o que este evento de fato
+     * prova. O plano é concedido em PAYMENT_RECEIVED/PAYMENT_CONFIRMED, que
+     * é onde o dinheiro entrou.
+     */
+    await db.setTenantBilling(tenant.id, { customerId, subscriptionId: subId });
   }
 }
 
@@ -282,7 +293,7 @@ function devCheckoutPage(p) {
   <span class="tag">PAGAMENTO SIMULADO — TESTE</span>
   <h1>Plano ${p.name}</h1>
   <p class="muted">${p.blurb || ''} Até ${p.screens} telas.</p>
-  <div class="price">${brl(p.priceCents)}<small> /mês</small></div>
+  <div class="price">${brl(p.precoTelaCents)}<small> /mês</small></div>
   <button id="go" onclick="pay()">Confirmar assinatura</button>
   <a href="/app?billing=cancel">Cancelar</a>
 </div>
@@ -417,6 +428,18 @@ async function handleApi(req, res, pathname, query) {
     'generate-kit': 'gerar-kit', 'generate-composition': 'gerar-composicao',
     'generate-seasonal': 'gerar-sazonal', 'generate-dayparts': 'gerar-faixas',
     rewrite: 'reescrever',
+    /*
+     * A rota de visão nasceu FORA daqui e ficou invisível: não passava pelo
+     * teto por hora, não entrava no extrato e não aparecia no painel de uso.
+     * Ler uma imagem custa centavos, então não cobra crédito — mas invisível
+     * é o que não pode ser: sem registro, uma conta em laço chama isto sem
+     * limite nenhum e o gasto só aparece na fatura do mês seguinte.
+     *
+     * Entra pelo mapa, e não com um remendo dentro da rota, porque é ESTE
+     * mapa que decide quem é medido. Rota de IA que não estiver nele passa
+     * despercebida, e foi exatamente assim que esta passou.
+     */
+    'analise-visual': 'analise-visual',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
@@ -1138,6 +1161,9 @@ async function handleApi(req, res, pathname, query) {
         const out = await briefing.conversar(mensagens, {
           empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '',
           marca, memoria: lembrada,
+          // O que a pessoa já marcou antes de abrir a conversa. Sem isto o
+          // chat pergunta de novo o que ela acabou de escolher.
+          pedido: (b && b.pedido) || null,
         });
 
         /*
@@ -1236,6 +1262,17 @@ async function handleApi(req, res, pathname, query) {
           publico: (b && b.publico) || '', tom: (b && b.tom) || '', oferta: (b && b.oferta) || '',
           brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
           formatos: Array.isArray(b && b.formatos) ? b.formatos : null,
+          /*
+           * O que a pessoa escolheu antes de gerar: quantas peças, para onde,
+           * e o que fazer com imagem. Daqui para baixo isso é LIMITE, não
+           * sugestão — ver `lerPedido` em server/ai-director.js.
+           *
+           * A checklist vem primeiro e a conversa preenche o buraco: quem
+           * marcou na tela decidiu, e quem só conversou combinou ali. Se as
+           * duas falarem, vale a tela — foi o último gesto deliberado da
+           * pessoa, e é ela que paga.
+           */
+          pedido: director.juntarPedido((b && b.pedido) || null, (b && b.briefingPronto) || null),
           marca,
           // Resumo vindo do chat de briefing, quando o usuário conversou.
           briefingPronto: (b && b.briefingPronto) || null,
@@ -1255,12 +1292,44 @@ async function handleApi(req, res, pathname, query) {
             const imgs = await lerImagens(urls);
             return imgs.length === urls.length ? ai.catalogarImagens(imgs) : [];
           },
+          /*
+           * CADA IMAGEM DA CAMPANHA CONFERE SALDO E COBRA.
+           *
+           * Não cobrava nada. A rota de imagem avulsa conferia saldo e debitava
+           * um crédito; a campanha — que gera VÁRIAS imagens, e é a operação
+           * mais cara do produto — passava direto, sem conferir e sem debitar.
+           * O único registro era o do texto: R$ 0,05 para algo que custa entre
+           * R$ 1,20 e R$ 1,60 medidos em produção.
+           *
+           * O gancho já existia: `campanha-peca` está no catálogo de créditos
+           * desde sempre, com o rótulo escrito, e nunca era chamado. Foi criado
+           * e esquecido.
+           *
+           * Confere ANTES de gerar, pelo mesmo motivo da rota avulsa: gerar
+           * primeiro e cobrar depois deixa a conta devendo, e recusar depois de
+           * a imagem existir é pior ainda.
+           *
+           * Sem saldo, isto LEVANTA em vez de gerar — e o diretor trata: a peça
+           * sai sem foto e a campanha continua. Derrubar tudo porque a quinta
+           * imagem não coube jogaria fora as quatro já pagas.
+           */
           onImagem: async (prompt, formato) => {
+            const contaIA = await db.getTenant(sess.tenant_id);
+            const pode = await usoIA.conferir(db, contaIA, 'campanha-peca', 1);
+            if (!pode.ok) {
+              const e = new Error('acabou o crédito de IA — as peças seguintes saem sem foto');
+              e.semSaldo = true;
+              throw e;
+            }
             const img = await ai.generateImage(prompt, { formato, brand: (b && b.brand) || '' });
             // Registrada como qualquer outro arquivo: aparece no Armazenamento,
             // conta na cota e some junto com a conta.
             const saved = await midia.guardarBuffer(db, sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime,
               { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
+            // Só depois do sucesso: falha não cobra.
+            await usoIA.cobrar(db, contaIA, {
+              tipo: 'campanha-peca', quantidade: 1, userId: sess.user_id, referencia: saved.id,
+            });
             return saved.url;
           },
         }).then((out) => ({ mode: ai.mode(), ...out })), { tipo: 'campanha', pedido: { brief: String(brief).slice(0, 200) }, userId: sess.user_id });
@@ -1358,6 +1427,7 @@ async function handleApi(req, res, pathname, query) {
           const out = await ai.analyzeVisual(pureB64);
           return sendJson(res, 200, out);
         } catch (e) {
+          erros.registrar(e, { rota: '/api/ai/analise-visual' });
           return sendJson(res, 500, { error: e.message });
         }
       });
@@ -1601,13 +1671,31 @@ async function handleApi(req, res, pathname, query) {
       if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
       return readBody(req, res, async (b) => {
         const target = plans.plan(b && b.plan);
-        if (!target || target.priceCents <= 0) return sendJson(res, 400, { error: 'plano inválido' });
+        if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
         try {
           const user = await db.getUser(sess.user_id);
-          const out = await billing.createCheckout(tenant, user, target.id, reqOrigin(req));
+          const telasDaConta = await db.countDevices(sess.tenant_id);
+          const out = await billing.createCheckout(tenant, user, target.id, reqOrigin(req), {
+            // A mensalidade é da CONTA: o valor sai de plans.mensalidadeCents,
+            // que aplica as faixas de desconto sobre o número de telas.
+            telas: Math.max(1, telasDaConta),
+            /*
+             * Gravado assim que o cliente existe, e não no retorno. Se o resto
+             * do fluxo falhar, a próxima tentativa reencontra este cliente em
+             * vez de criar outro — e outra assinatura junto.
+             */
+            aoCriarCliente: (customerId) => db.setTenantBilling(tenant.id, { customerId }),
+          });
           if (out.customerId && out.customerId !== tenant.stripe_customer_id) await db.setTenantBilling(tenant.id, { customerId: out.customerId });
           return sendJson(res, 200, out);
-        } catch (e) { return sendJson(res, 502, { error: e.message }); }
+        } catch (e) {
+          // A assinatura pode ter sido criada mesmo com erro na fatura. Guardar
+          // o id evita que a tentativa seguinte abra uma segunda.
+          if (e.subscriptionId) {
+            await db.setTenantBilling(tenant.id, { customerId: e.customerId, subscriptionId: e.subscriptionId }).catch(() => {});
+          }
+          return sendJson(res, 502, { error: e.message });
+        }
       });
     }
 
@@ -1629,7 +1717,7 @@ async function handleApi(req, res, pathname, query) {
         if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
         return readBody(req, res, async (b) => {
           const target = plans.plan(b && b.plan);
-          if (!target || target.priceCents <= 0) return sendJson(res, 400, { error: 'plano inválido' });
+          if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
           await db.setTenantBilling(sess.tenant_id, {
             plan: target.id, status: 'active',
             renewsAt: Date.now() + 30 * 864e5,
@@ -2343,6 +2431,30 @@ db.init()
       // procurando um menu que nunca vai aparecer.
       log.aviso('plataforma.sem-admin-emails', {
         aviso: 'ADMIN_EMAILS não definido — o painel da plataforma fica desligado.',
+      });
+    }
+
+    /*
+     * SEM E-MAIL, NINGUÉM SE CADASTRA — e isso precisa ser dito no boot.
+     *
+     * O cadastro passou a criar a conta só depois que a pessoa clica no link
+     * de confirmação. Sem provedor configurado, o link vai para o log do
+     * servidor e mais nada: a tela diz "confira seu e-mail" e o e-mail não
+     * existe. O produto parece funcionar e ninguém entra.
+     *
+     * SKIP_VERIFY=1 é a saída para quem quer subir sem provedor: o cadastro
+     * volta a criar a conta na hora. É como a suíte sobe o servidor, e é
+     * legítimo — mas é escolha, não descuido, então também é dita alto.
+     */
+    if (!mail.configured() && process.env.SKIP_VERIFY !== '1') {
+      log.aviso('cadastro.sem-email', {
+        aviso: 'Nenhum provedor de e-mail configurado (RESEND_API_KEY ou BREVO_API_KEY) — '
+          + 'o link de confirmação só vai para este log, e ninguém consegue terminar o cadastro. '
+          + 'Para subir sem provedor, defina SKIP_VERIFY=1.',
+      });
+    } else if (process.env.SKIP_VERIFY === '1') {
+      log.aviso('cadastro.sem-verificacao', {
+        aviso: 'SKIP_VERIFY=1 — o cadastro cria a conta sem confirmar o e-mail.',
       });
     }
 

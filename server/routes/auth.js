@@ -5,7 +5,7 @@ module.exports = function(ctx) {
     baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto
   } = ctx;
   
-  return async function(req, res, parts, query, sess) {
+  const tratar = async function(req, res, parts, query, sess) {
     /* ----- Auth ----- */
       if (parts[1] === 'auth') {
         const action = parts[2];
@@ -64,14 +64,37 @@ module.exports = function(ctx) {
             await db.createVerification(token, payload, expiresAt);
             
             const link = baseUrl(req) + '/app/?verify=' + token;
+            /*
+             * "Confira seu e-mail" só pode ser dito se o e-mail SAIU.
+             *
+             * A falha de envio era registrada e engolida, e a resposta seguia
+             * 202 do mesmo jeito: a pessoa ficava esperando um link que nunca
+             * foi mandado, sem nada para tentar de novo e sem nada que indique
+             * o que houve. Chave errada, domínio não verificado e provedor
+             * fora do ar davam todos o mesmo silêncio.
+             *
+             * Agora a falha vira erro na tela. O cadastro não se perde: o
+             * token continua válido pelas 24 horas e tentar de novo com o
+             * mesmo e-mail manda outro.
+             */
             if (mail.configured()) {
               try {
                 await mail.send({ to: email, ...mail.verifyEmail(link) });
               } catch (e) {
                 erros.registrar(e, { onde: 'envio de verificacao' });
+                return sendJson(res, 502, {
+                  error: 'não consegui enviar o e-mail de confirmação agora. Tente de novo em instantes.',
+                });
               }
             } else {
-              mail.send({ to: email, ...mail.verifyEmail(link) }); // log in dev mode
+              /*
+               * Sem provedor configurado o link só vai para o LOG, e ninguém
+               * consegue terminar o cadastro. Em desenvolvimento isso é o
+               * esperado — é assim que se testa sem chave. Em produção é
+               * cadastro quebrado, e o aviso de boot em server.js diz isso
+               * alto antes de alguém descobrir pelo cliente.
+               */
+              mail.send({ to: email, ...mail.verifyEmail(link) });
             }
             
             return sendJson(res, 202, { ok: true, pendingVerification: true });
@@ -363,6 +386,25 @@ module.exports = function(ctx) {
         }
         return sendJson(res, 404, { error: 'rota de auth inválida' });
       }
+  };
+
+  /*
+   * Devolve TRUE só quando este arquivo é o DONO do caminho.
+   *
+   * Estava devolvendo `true` sempre — inclusive para caminhos que não são de
+   * auth. `handleApi` lê esse retorno como "já respondi e mandei a resposta",
+   * então saía sem responder nada: toda requisição /api que não fosse
+   * /api/auth/* era engolida em silêncio, sem corpo, sem erro e sem fechar o
+   * socket. O cliente ficava pendurado até desistir sozinho. A API inteira —
+   * telas, mídia, campanha, mural, billing — parava de pé.
+   *
+   * Por isso a decisão é tomada pelo PREFIXO, e não pelo que o corpo devolve:
+   * lá dentro quase todo caminho termina em `return sendJson(...)`, e sendJson
+   * não devolve nada. Qualquer booleano tirado dali seria sempre falso.
+   */
+  return async function(req, res, parts, query, sess) {
+    if (parts[1] !== 'auth') return false;
+    await tratar(req, res, parts, query, sess);
     return true;
   };
 };

@@ -12,7 +12,7 @@
  * atalho.
  *
  * Um crédito ≈ uma imagem gerada, porque a imagem é a única coisa da IA que
- * custa dinheiro de verdade (~R$ 0,20). Uma campanha inteira de TEXTO custa
+ * custa dinheiro de verdade (~R$ 0,35). Uma campanha inteira de TEXTO custa
  * cerca de cinco centavos — menos que a taxa fixa do Stripe na transação que
  * cobraria por ela. Medir o texto adicionaria contabilidade, tela de saldo,
  * mensagem de bloqueio e suporte para recuperar um valor que não paga o
@@ -27,8 +27,15 @@
  * dinheiro e não só contagem. São estimativas até a medição real acumular —
  * a fatia 1 da proposta existe justamente para trocar estes números por
  * dados.
+ *
+ * A imagem estava em 20 e o valor observado em produção é 35. A diferença
+ * não muda a margem — o Essencial dá 10 créditos por tela, e 10 imagens a
+ * R$ 0,35 são R$ 3,50 contra R$ 79 cobrados. O que ela estragava era o
+ * EXTRATO: o painel dizia ao cliente, e a nós, um número quase pela metade
+ * do gasto. Decidir preço com contabilidade errada é o jeito silencioso de
+ * descobrir tarde.
  */
-const CUSTO_IMAGEM_CENTAVOS = 20;
+const CUSTO_IMAGEM_CENTAVOS = 35;
 const CUSTO_TEXTO_CENTAVOS = 5;
 
 /*
@@ -51,6 +58,14 @@ const OPERACOES = {
   'gerar-faixas': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Faixas do dia' },
   reescrever: { creditos: 0, custoCentavos: 1, rotulo: 'Reescrita de texto' },
   diagnosticar: { creditos: 0, custoCentavos: 2, rotulo: 'Diagnóstico de tela' },
+  /*
+   * Visão custa mais que texto e menos que gerar imagem: LÊ um bitmap em vez
+   * de produzir um. Zero crédito pelo mesmo critério do resto do texto — o
+   * valor não paga a contabilidade de cobrá-lo —, mas MEDIDO, que é o que
+   * faltava: a rota nasceu fora deste catálogo e por isso não aparecia em
+   * lugar nenhum, nem no extrato nem no teto por hora.
+   */
+  'analise-visual': { creditos: 0, custoCentavos: 3, rotulo: 'Análise de peça (visão)' },
   diretor: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Diretor de arte' },
 };
 

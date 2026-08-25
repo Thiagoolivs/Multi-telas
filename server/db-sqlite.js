@@ -53,9 +53,64 @@ const db = new DatabaseSync(DB_FILE);
  * Em produção o estrago seria pior e mais quieto: duas instâncias subindo ao
  * mesmo tempo depois de um deploy, e uma delas morrendo no boot.
  */
+db.exec('PRAGMA busy_timeout = 5000;');
+
+/*
+ * TROCAR O MODO DE DIÁRIO PODE FALHAR, E ISSO NÃO PODE MATAR O BOOT.
+ *
+ * Com o tempo de espera na frente, o `journal_mode = WAL` passa a ESPERAR em
+ * vez de estourar na hora — medido: espera os 5000ms inteiros. Só que esperar
+ * não é o mesmo que conseguir. A troca exige lock exclusivo, e quando oito
+ * processos sobem um banco novo ao mesmo tempo num disco lento (o runner do
+ * CI, e duas instâncias no deploy) a janela passa dos cinco segundos e alguém
+ * fica de fora. Foi assim que 2 de 8 morreram, com o tempo de espera já no
+ * lugar e funcionando.
+ *
+ * E o processo morria por causa DISSO — de uma otimização. WAL é ganho de
+ * concorrência, não requisito de correção: sem ele o SQLite continua certo,
+ * só deixa menos gente escrever junto. Trocar isso pela instância nova caindo
+ * no boot é um negócio ruim.
+ *
+ * Duas coisas tornam a tolerância segura:
+ *
+ *   - O modo fica gravado no CABEÇALHO DO ARQUIVO, não na conexão. Quem
+ *     perdeu a disputa abre um banco que JÁ ESTÁ em WAL — quem ganhou ligou
+ *     para todo mundo. Por isso o retorno é conferido em vez de presumido.
+ *   - Desistir é dito alto. Ficar em rollback é aceitável e é anormal: some
+ *     do log e vira o próximo mistério de lentidão.
+ */
+function esperar(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+function ligarWal() {
+  let ultimo = '';
+  // Três voltas, e cada uma já espera até 5s por dentro: o teto é o boot
+  // demorar, nunca o boot morrer.
+  for (let tentativa = 1; tentativa <= 3; tentativa++) {
+    try {
+      const linha = db.prepare('PRAGMA journal_mode = WAL').get();
+      const modo = String((linha && linha.journal_mode) || '').toLowerCase();
+      if (modo === 'wal') return modo;
+      ultimo = 'o banco respondeu ' + modo;
+    } catch (e) {
+      if (!/database is locked|busy/i.test(e.message)) throw e;
+      ultimo = e.message;
+    }
+    esperar(100 * tentativa);
+  }
+  let modo = '(desconhecido)';
+  try { modo = String((db.prepare('PRAGMA journal_mode').get() || {}).journal_mode || '').toLowerCase(); } catch (_) {}
+  // Alguém pode ter ligado no meio das tentativas.
+  if (modo === 'wal') return modo;
+  console.warn('[db] não consegui ligar o WAL (' + ultimo + '); seguindo em ' + modo
+    + ' — o banco funciona, mas com menos escrita simultânea');
+  return modo;
+}
+
+ligarWal();
+
 db.exec(`
-  PRAGMA busy_timeout = 5000;
-  PRAGMA journal_mode = WAL;
   CREATE TABLE IF NOT EXISTS tenants (
     id TEXT PRIMARY KEY, name TEXT, created_at INTEGER,
     plan TEXT, plan_status TEXT, stripe_customer_id TEXT,

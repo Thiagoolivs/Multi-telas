@@ -50,6 +50,25 @@ painel de outra pessoa, na parede, na frente dos clientes dele.*
 que não cabe.
 *Desfazer = arte bonita e ilegível a três metros de distância.*
 
+### Dinheiro
+
+**Toda imagem gerada confere saldo ANTES e cobra DEPOIS do sucesso.** Vale para
+a rota avulsa e para cada imagem de dentro da campanha (`campanha-peca`).
+*Desfazer = a operação mais cara do produto volta a ser de graça. Já foi assim:
+uma campanha custava R$ 1,20–1,60 de verdade, o sistema registrava R$ 0,05 e
+debitava zero.*
+
+**O pedido da pessoa é LIMITE, não sugestão.** Quantidade, formatos e o modo de
+imagem escolhidos na tela cortam o plano do modelo — não o inspiram.
+*Desfazer = "gerar campanha" volta a produzir seis peças em três formatos que
+ninguém pediu, cada uma podendo custar uma imagem paga.*
+
+**A cópia entre formatos reusa a imagem do original.** A mesma manchete em 16/9
+e 9/16 aponta para o mesmo arquivo.
+*Desfazer = duas imagens quase idênticas, cobradas duas vezes, porque o prompt
+era o mesmo.*
+Guardado por `test/campanha-custo.test.js`.
+
 ### Segurança
 
 **`ADMIN_EMAILS` e `CONTAS_CORTESIA` são listas separadas.** Uma dá acesso aos
@@ -230,7 +249,7 @@ Não encostam no que o Claude está mexendo.
 - [ ] **B3 · Proof-of-play / relatórios** — o que tocou, quando, em qual tela.
       Forte na venda corporativa. Já há `eventos` no banco para se apoiar.
 - [ ] **B4 · Medir o custo real de IA** em vez de estimar. Hoje
-      `server/creditos.js` usa R$ 0,20 por imagem e R$ 0,05 por texto como
+      `server/creditos.js` usa R$ 0,35 por imagem e R$ 0,05 por texto como
       número fixo. Registrar tokens de entrada/saída por chamada e trocar a
       estimativa por dado. **Não mexa nas regras de cobrança** — só na medição.
 - [ ] **B5 · Medir texto com as métricas reais da fonte** em vez da largura

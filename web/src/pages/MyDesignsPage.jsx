@@ -29,6 +29,34 @@ const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.j
 // verticais quando a tela dele for de retrato.
 const DEITADOS = ['16/9', '21/9'];
 
+/*
+ * ONDE a campanha vai aparecer, em linguagem de quem usa.
+ *
+ * Antes ninguém perguntava: o modelo decidia os formatos sozinho, e vinha
+ * Story para quem só tem TV na recepção. Peça de formato que ninguém pediu é
+ * peça que não vai ser usada — e, quando ela precisa de imagem, é dinheiro
+ * gasto em algo que ninguém vai ver.
+ *
+ * O rótulo é o lugar, não a proporção: "TV deitada" quer dizer mais do que
+ * "16/9" para o dono de uma padaria.
+ */
+const ONDE = [
+  { id: '16/9', rotulo: 'TV deitada', nota: 'a da recepção' },
+  { id: '9/16', rotulo: 'TV em pé · Story', nota: 'totem, Instagram' },
+  { id: '1/1', rotulo: 'Post quadrado', nota: 'feed' },
+  { id: '21/9', rotulo: 'Faixa larga', nota: 'painel comprido' },
+];
+
+/*
+ * O que fazer com foto. É a escolha que mais mexe no custo: cada imagem que a
+ * IA desenha é um crédito, e as fotos que a empresa já subiu não custam nada.
+ */
+const IMAGENS = [
+  { id: 'gerar', rotulo: 'A IA desenha quando precisar', nota: 'usa suas fotos primeiro; gera só o que faltar' },
+  { id: 'acervo', rotulo: 'Só as minhas fotos', nota: 'não gera imagem nenhuma — sem custo de crédito' },
+  { id: 'nenhuma', rotulo: 'Sem foto', nota: 'peças com cor, forma e tipografia' },
+];
+
 export function MyDesignsPage({ onIr }) {
   const { data, loading, reload } = useAsync(library.list);
   const { data: devData } = useAsync(devices.list);
@@ -75,6 +103,16 @@ export function MyDesignsPage({ onIr }) {
 
   // Criar campanha com IA (diretor)
   const [aiOpen, setAiOpen] = useState(false);
+  /*
+   * O pedido explícito: onde, quantas e o que fazer com imagem.
+   *
+   * O padrão é o caso comum — TV deitada, três peças, IA desenha o que faltar —
+   * para quem tem pressa não precisar mexer em nada. O que muda é que agora dá
+   * para mexer, e o custo aparece antes do clique.
+   */
+  const [onde, setOnde] = useState(['16/9']);
+  const [quantas, setQuantas] = useState(3);
+  const [imagens, setImagens] = useState('gerar');
   const [brief, setBrief] = useState('');
   const [empresa, setEmpresa] = useState('');
   const [publico, setPublico] = useState('');
@@ -292,6 +330,13 @@ export function MyDesignsPage({ onIr }) {
         empresa, publico, tom,
         oferta: (briefingPronto && briefingPronto.oferta) || oferta,
         briefingPronto: briefingPronto || null,
+        /*
+         * O que a pessoa escolheu. No servidor isto é LIMITE, não sugestão:
+         * sem ele o modelo decidia quantidade e formatos, outra função somava
+         * peças por cima, e cada uma podia custar uma imagem paga.
+         */
+        formatos: onde,
+        pedido: { formatos: onde, quantidade: quantas, imagens },
       });
       await acompanhar(id);
     } catch (e) { setMsg(e.message || 'Falha ao gerar'); setEtapa(null); }
@@ -705,6 +750,80 @@ export function MyDesignsPage({ onIr }) {
               </Select>
             </Field>
             <Field label="Oferta / CTA"><Input value={oferta} onChange={(e) => setOferta(e.target.value)} placeholder="Ex.: 30% off até domingo" /></Field>
+
+            {/*
+              O CHECKLIST — onde, quantas, e o que fazer com foto.
+              Fica ANTES do botão de gerar de propósito: era exatamente o que
+              faltava. Sem ele o modelo decidia os três, e o que saía era "um
+              monte de coisa" — peça em formato que a pessoa não usa, na
+              quantidade que ela não pediu, cada uma podendo custar uma imagem.
+            */}
+            <div className="sm:col-span-2 rounded-lg border border-line bg-surface-2 p-3">
+              <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Onde vai aparecer</div>
+              <div className="grid gap-1.5 sm:grid-cols-2">
+                {ONDE.map((o) => {
+                  const marcado = onde.includes(o.id);
+                  return (
+                    <button key={o.id} type="button"
+                      onClick={() => setOnde((atual) => {
+                        // Nunca deixa ficar sem nenhum: campanha para lugar
+                        // nenhum não é uma escolha, é um beco.
+                        if (!marcado) return [...atual, o.id];
+                        return atual.length > 1 ? atual.filter((x) => x !== o.id) : atual;
+                      })}
+                      className={'flex items-start gap-2 rounded-md border p-2 text-left transition '
+                        + (marcado ? 'border-accent bg-accent-soft' : 'border-line bg-surface hover:border-ink-3')}>
+                      <span className={'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border '
+                        + (marcado ? 'border-accent bg-accent text-accent-fg' : 'border-line')}>
+                        {marcado && <Check size={11} strokeWidth={3} />}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-xs font-medium text-ink">{o.rotulo}</span>
+                        <span className="block text-2xs text-ink-3">{o.nota}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Field label="Quantas peças" hint="Cada peça é uma arte diferente.">
+                  <Select value={String(quantas)} onChange={(e) => setQuantas(Number(e.target.value))}>
+                    {[1, 2, 3, 4, 5, 6, 8].map((n) => (
+                      <option key={n} value={n}>{n} peça{n > 1 ? 's' : ''}</option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Fotos">
+                  <Select value={imagens} onChange={(e) => setImagens(e.target.value)}>
+                    {IMAGENS.map((i) => <option key={i.id} value={i.id}>{i.rotulo}</option>)}
+                  </Select>
+                </Field>
+              </div>
+              <div className="mt-1 text-2xs text-ink-3">
+                {(IMAGENS.find((i) => i.id === imagens) || {}).nota}
+              </div>
+
+              {/*
+                O custo ANTES do clique.
+                É um teto, e a frase diz isso: o diretor usa as fotos da empresa
+                antes de desenhar, então o gasto real costuma ser menor. Prometer
+                um número exato que depois vem menor seria mentir para baixo — e
+                prometer para baixo e cobrar mais seria pior ainda.
+              */}
+              <div className="mt-2.5 flex items-start gap-1.5 border-t border-line pt-2.5 text-2xs leading-snug text-ink-2">
+                <Sparkles size={13} className="mt-0.5 shrink-0 text-accent" />
+                <span>
+                  {imagens === 'gerar' ? (
+                    <>Vai usar <b className="text-ink">até {quantas} crédito{quantas > 1 ? 's' : ''}</b> de IA —
+                    um por foto que precisar ser desenhada. Suas fotos do acervo entram primeiro e não custam nada.</>
+                  ) : (
+                    <>Não usa crédito de IA: {imagens === 'acervo' ? 'só entram fotos que você já subiu' : 'as peças saem sem foto'}.</>
+                  )}
+                </span>
+              </div>
+            </div>
+
             <div className="sm:col-span-2 flex items-start gap-1.5 rounded-lg border border-line bg-surface-2 p-2.5 text-2xs leading-snug text-ink-3">
               <ShieldCheck size={13} className="mt-0.5 shrink-0 text-ink-3" />
               As cores, fontes, logo e fotos vêm da sua <b className="text-ink-2">Marca</b>. O que você preencher aqui tem prioridade sobre ela.

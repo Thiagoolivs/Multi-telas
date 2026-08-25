@@ -31,7 +31,7 @@ três existirem).
 
 1. **Quatro variáveis no Railway**, e nenhuma é opcional: `STORAGE=s3` com as
    chaves do R2 (sem elas, **toda mídia some no próximo deploy**),
-   `STRIPE_PRICE_*` e `STRIPE_WEBHOOK_SECRET` (sem eles não há checkout),
+   `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` (sem eles não há checkout de verdade),
    `ADMIN_EMAILS` (sem ela o painel da plataforma não aparece e não responde —
    de propósito) e `APP_URL`/`SUPPORT_EMAIL` do domínio próprio.
 2. **Revisão jurídica dos Termos**, e então `LEGAL_REVISADO=true` para o aviso

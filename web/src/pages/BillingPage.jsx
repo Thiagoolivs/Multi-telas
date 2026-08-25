@@ -220,7 +220,13 @@ export function BillingPage() {
             );
           })}
         </div>
-        {plan.precoTelaCents > 0 && canManage && mode === 'stripe' && (
+        {/*
+          Estava em `mode === 'stripe'`, e o modo passou a ser 'asaas' ou
+          'dev' — o botão simplesmente não aparecia mais, e não havia como
+          cancelar pelo app. Fora o problema de produto, cancelamento difícil
+          é exposição no CDC. A condição certa é "não é o checkout simulado".
+        */}
+        {plan.precoTelaCents > 0 && canManage && mode !== 'dev' && (
           <div className="border-t border-line px-4 py-3">
             <button onClick={() => billing.portal().then(({ url }) => (window.location.href = url)).catch(() => {})}
               className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-2 hover:text-ink">

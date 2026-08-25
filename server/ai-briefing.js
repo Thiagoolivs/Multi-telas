@@ -30,14 +30,30 @@ COMO CONDUZIR:
 - Faça UMA pergunta por vez, curta, que caiba numa linha.
 - Pergunte só o que MUDA a peça: o que está sendo anunciado, para quem, por que
   agora, qual o diferencial concreto, o que fazer (CTA), até quando vale.
-- NUNCA pergunte cor, fonte, logo, estilo visual ou formato: isso o sistema já
-  tem cadastrado. Perguntar isso quebra a confiança do usuário.
+- NUNCA pergunte cor, fonte, logo ou estilo visual: isso o sistema já tem
+  cadastrado. Perguntar isso quebra a confiança do usuário.
 - NUNCA pergunte duas coisas na mesma frase.
 - Se a pessoa já respondeu algo, não repita a pergunta de outro jeito.
 - Se a resposta for vaga, aceite e siga: é melhor uma campanha boa hoje que uma
   entrevista perfeita. Deduza o resto.
 - No máximo ${MAX_PERGUNTAS} perguntas no total. Pare antes se já der para fazer
   uma campanha honesta.
+
+O QUE DECIDE GASTO — três coisas, e só elas:
+- QUANTAS peças a pessoa quer (1 a 8).
+- ONDE elas vão aparecer (TV deitada, TV em pé, post quadrado, faixa larga).
+- Se cada peça precisa de FOTO, e de onde: gerada por IA, tirada do acervo da
+  empresa, ou nenhuma.
+
+Cada foto gerada por IA custa um crédito do bolso da pessoa. Foto do acervo e
+peça sem foto não custam nada.
+
+- Se alguma das três já vier decidida no bloco "JÁ ESCOLHIDO", NÃO pergunte de
+  novo e NÃO proponha diferente: aquilo é decisão tomada, não sugestão.
+- Se alguma das três NÃO estiver decidida, ela tem prioridade sobre qualquer
+  outra pergunta — é a única coisa que, errada, gasta dinheiro à toa.
+- Na dúvida entre gerar mais ou menos, vá de MENOS. Quem quer mais pede mais;
+  quem recebe demais já pagou.
 
 Ofereça de 2 a 4 SUGESTÕES de resposta quando elas ajudarem a pessoa a decidir
 rápido (ex.: públicos comuns, prazos típicos). Sugestão é atalho, não gaiola.
@@ -61,9 +77,14 @@ Quando já entendeu o bastante:
     "evitar": ["promessa ou clichê que esta campanha não deve fazer"],
     "oferta": "o CTA concreto — vazio se não houver",
     "formatos": ["16/9"],
+    "quantidade": 2,
+    "imagens": "gerar",
     "briefing": "parágrafo único juntando tudo, para o diretor de arte ler"
   }
 }
+Em "quantidade" ponha o número de peças combinado (1 a 8). Em "imagens" ponha
+"gerar", "acervo" ou "nenhuma". Em "formatos" ponha só os que foram combinados.
+Se veio do bloco "JÁ ESCOLHIDO", repita igual.
 Nunca invente preço, data ou nome que a pessoa não disse.
 Português do Brasil.`;
 
@@ -85,12 +106,30 @@ function contextoDoSistema(ctx) {
   ].filter(Boolean);
   const declarado = linhas.length ? 'O QUE O SISTEMA JÁ SABE (não pergunte de novo):\n' + linhas.join('\n') : '';
   /*
+   * O que a pessoa já marcou na tela antes de abrir a conversa.
+   *
+   * Sem isto o chat perguntava de novo o que ela acabou de escolher — e, pior,
+   * às vezes propunha diferente, e aí o resumo brigava com a checklist. Quem
+   * decide gasto é a pessoa; a conversa só preenche o que ficou em branco.
+   */
+  const p = c.pedido || {};
+  const escolhido = [
+    (Array.isArray(p.formatos) && p.formatos.length) ? 'Onde vai aparecer: ' + p.formatos.join(', ') : '',
+    p.quantidade ? 'Quantas peças: ' + p.quantidade : '',
+    p.imagens === 'gerar' ? 'Fotos: gerar por IA (cada uma custa um crédito)'
+      : p.imagens === 'acervo' ? 'Fotos: usar o acervo da empresa (não custa crédito)'
+      : p.imagens === 'nenhuma' ? 'Fotos: nenhuma, só texto (não custa crédito)' : '',
+  ].filter(Boolean);
+  const jaEscolhido = escolhido.length
+    ? 'JÁ ESCOLHIDO PELA PESSOA (decisão tomada — não pergunte, não proponha diferente):\n' + escolhido.join('\n')
+    : '';
+  /*
    * A memória entra aqui, e é o que faz a segunda campanha ser melhor que a
    * primeira: a conversa já começa sabendo o negócio, o público e o que não
    * prometer. Sem isso o chat repetiria as mesmas perguntas para sempre.
    */
   const aprendido = memoria.comoTexto(c.memoria);
-  return [declarado, aprendido].filter(Boolean).join('\n\n');
+  return [declarado, jaEscolhido, aprendido].filter(Boolean).join('\n\n');
 }
 
 function transcricao(mensagens) {
@@ -115,6 +154,7 @@ function semIA(mensagens) {
     resumo: {
       objetivo: '', publico: '', argumento: '', urgencia: '',
       provas: [], evitar: [], oferta: '', formatos: [],
+      quantidade: 0, imagens: '',
       briefing: ditas.join(' ').slice(0, 900),
     },
     modo: 'dev',
@@ -163,6 +203,17 @@ async function conversar(mensagens, ctx) {
         evitar: lista(s.evitar, 4, 140),
         oferta: String(s.oferta || '').slice(0, 80),
         formatos: lista(s.formatos, 4, 8),
+        /*
+         * Saem daqui SANEADOS porque viram limite de gasto, e não texto.
+         *
+         * O que o modelo devolve aqui é lido como pedido lá no diretor: um
+         * "quantidade": 40 inventado num turno confuso vira quarenta imagens
+         * cobradas. O corte é o mesmo de `lerPedido`, e de propósito — dois
+         * lugares peneirando com a mesma malha.
+         */
+        quantidade: Number.isFinite(Number(s.quantidade))
+          ? Math.min(8, Math.max(1, Math.round(Number(s.quantidade)))) : 0,
+        imagens: ['gerar', 'acervo', 'nenhuma'].includes(s.imagens) ? s.imagens : '',
         briefing: String(s.briefing || transcricao(mensagens)).slice(0, 1200),
       },
     };
