@@ -257,9 +257,20 @@ async function handleAsaasEvent(body) {
   } else if (eventName === 'SUBSCRIPTION_DELETED') {
     await db.setTenantBilling(tenant.id, { plan: 'free', status: 'canceled', subscriptionId: null, renewsAt: null });
   } else if (eventName === 'SUBSCRIPTION_CREATED') {
-    const updates = { customerId, subscriptionId: subId };
-    if (planId) updates.plan = planId;
-    await db.setTenantBilling(tenant.id, updates);
+    /*
+     * ASSINATURA CRIADA NÃO É PAGAMENTO RECEBIDO.
+     *
+     * Este ramo concedia `plan` — e como `plans.podeParear` decide acesso só
+     * por `tenant.plan`, sem olhar `plan_status`, clicar em assinar já dava o
+     * plano pago inteiro: 49 telas e a franquia de créditos, sem pagar nada.
+     * O Asaas emite este evento ao CRIAR o registro; a primeira fatura ainda
+     * está pendente.
+     *
+     * Aqui ficam só os identificadores, que é o que este evento de fato
+     * prova. O plano é concedido em PAYMENT_RECEIVED/PAYMENT_CONFIRMED, que
+     * é onde o dinheiro entrou.
+     */
+    await db.setTenantBilling(tenant.id, { customerId, subscriptionId: subId });
   }
 }
 
@@ -282,7 +293,7 @@ function devCheckoutPage(p) {
   <span class="tag">PAGAMENTO SIMULADO — TESTE</span>
   <h1>Plano ${p.name}</h1>
   <p class="muted">${p.blurb || ''} Até ${p.screens} telas.</p>
-  <div class="price">${brl(p.priceCents)}<small> /mês</small></div>
+  <div class="price">${brl(p.precoTelaCents)}<small> /mês</small></div>
   <button id="go" onclick="pay()">Confirmar assinatura</button>
   <a href="/app?billing=cancel">Cancelar</a>
 </div>
@@ -1660,13 +1671,31 @@ async function handleApi(req, res, pathname, query) {
       if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
       return readBody(req, res, async (b) => {
         const target = plans.plan(b && b.plan);
-        if (!target || target.priceCents <= 0) return sendJson(res, 400, { error: 'plano inválido' });
+        if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
         try {
           const user = await db.getUser(sess.user_id);
-          const out = await billing.createCheckout(tenant, user, target.id, reqOrigin(req));
+          const telasDaConta = await db.countDevices(sess.tenant_id);
+          const out = await billing.createCheckout(tenant, user, target.id, reqOrigin(req), {
+            // A mensalidade é da CONTA: o valor sai de plans.mensalidadeCents,
+            // que aplica as faixas de desconto sobre o número de telas.
+            telas: Math.max(1, telasDaConta),
+            /*
+             * Gravado assim que o cliente existe, e não no retorno. Se o resto
+             * do fluxo falhar, a próxima tentativa reencontra este cliente em
+             * vez de criar outro — e outra assinatura junto.
+             */
+            aoCriarCliente: (customerId) => db.setTenantBilling(tenant.id, { customerId }),
+          });
           if (out.customerId && out.customerId !== tenant.stripe_customer_id) await db.setTenantBilling(tenant.id, { customerId: out.customerId });
           return sendJson(res, 200, out);
-        } catch (e) { return sendJson(res, 502, { error: e.message }); }
+        } catch (e) {
+          // A assinatura pode ter sido criada mesmo com erro na fatura. Guardar
+          // o id evita que a tentativa seguinte abra uma segunda.
+          if (e.subscriptionId) {
+            await db.setTenantBilling(tenant.id, { customerId: e.customerId, subscriptionId: e.subscriptionId }).catch(() => {});
+          }
+          return sendJson(res, 502, { error: e.message });
+        }
       });
     }
 
@@ -1688,7 +1717,7 @@ async function handleApi(req, res, pathname, query) {
         if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
         return readBody(req, res, async (b) => {
           const target = plans.plan(b && b.plan);
-          if (!target || target.priceCents <= 0) return sendJson(res, 400, { error: 'plano inválido' });
+          if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
           await db.setTenantBilling(sess.tenant_id, {
             plan: target.id, status: 'active',
             renewsAt: Date.now() + 30 * 864e5,

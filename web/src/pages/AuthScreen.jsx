@@ -60,7 +60,21 @@ export function AuthScreen({ onAuthed }) {
       if (mode === 'signup') {
         const payload = { email: form.email, password: form.password, name: form.name, aceite: true };
         if (hasInvite && form.inviteCode.trim()) payload.inviteCode = form.inviteCode.trim().toUpperCase();
-        await auth.signup(payload);
+        const r = await auth.signup(payload);
+        /*
+         * O cadastro passou a ter DOIS finais, e a tela só conhecia um.
+         *
+         * O servidor agora responde 202 { pendingVerification } sem abrir
+         * sessão: a conta só nasce quando a pessoa clica no link do e-mail.
+         * A tela continuava chamando `onAuthed()` do mesmo jeito — o app
+         * carregava sem sessão, `/api/auth/me` devolvia 401, e ninguém era
+         * avisado de que havia um e-mail para conferir. Parecia que o
+         * cadastro tinha falhado sozinho.
+         */
+        if (r && r.pendingVerification) {
+          setInfo('Enviamos um link para ' + form.email + '. Abra o e-mail para terminar o cadastro — confira também o spam.');
+          return;
+        }
         onAuthed();
       } else if (mode === 'verify') {
         await auth.verify(verifyToken);

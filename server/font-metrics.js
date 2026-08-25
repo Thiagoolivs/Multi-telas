@@ -4,6 +4,7 @@ const fontkit = require('fontkit');
 const fontes = require('../js/fontes.js');
 
 const fontCache = {};
+let listaDeArquivos = null;
 
 function getFont(familiaId, peso, italico) {
   const cacheKey = `${familiaId}-${peso}-${italico}`;
@@ -13,13 +14,26 @@ function getFont(familiaId, peso, italico) {
   if (!familia) return null;
 
   // Montar nome do arquivo esperado. Ex: "inter", "anton"
-  let nomeBase = familia.rotulo.toLowerCase().replace(/s+/g, '-');
+  /*
+   * Faltava a barra invertida: `/s+/` troca a LETRA "s", não o espaço.
+   *
+   * "Playfair Display" virava `playfair di-play` e "Poppins" virava
+   * `poppin-`. Sete das doze famílias nunca casavam com arquivo nenhum, a
+   * medição caía calada na estimativa, e caía justamente nas fontes de
+   * display — que são as que mais erram largura, porque é para isso que
+   * elas existem.
+   */
+  const nomeBase = familia.rotulo.toLowerCase().trim().replace(/\s+/g, '-');
   
   // No repositório, temos arquivos tipo: inter-400-normal-latin.woff2
   // Vamos tentar achar o exato, se não, cai para o 400 normal
   const dir = path.join(__dirname, '../fonts/arquivos');
-  let files = [];
-  try { files = fs.readdirSync(dir); } catch (e) {}
+  // A listagem é lida UMA vez: era um readdirSync por família não cacheada,
+  // dentro da requisição. As fontes não mudam com o servidor no ar.
+  if (!listaDeArquivos) {
+    try { listaDeArquivos = fs.readdirSync(dir); } catch (e) { listaDeArquivos = []; }
+  }
+  const files = listaDeArquivos;
 
   let targetWeight = fontes.pesoValido(familiaId, peso);
   let style = italico ? 'italic' : 'normal';
@@ -80,14 +94,24 @@ function cabeNaCaixaReal(texto, box, fontCqw, formato, familiaId, peso, italico)
   }
 
   // Quebra manual de palavras para simular o wrap do navegador
-  const words = t.split(/(s+)/); // Preserva espaços para poder medir corretamente ou quebrar no lugar certo
+  /*
+   * Mesma barra invertida perdida do nome do arquivo, e aqui dói mais.
+   *
+   * `/(s+)/` separa pela LETRA "s": "casa nova" virava ["ca", "s", "a nova"],
+   * e cada pedaço era medido como se fosse uma palavra. A quebra de linha
+   * saía em lugar nenhum e a largura calculada não tinha relação com o texto
+   * — a medição "com métricas reais" era mais errada que a estimativa que ela
+   * veio substituir.
+   */
+  const words = t.split(/(\s+)/); // Preserva espaços para medir e quebrar no lugar certo
   
   let linhas = 1;
   let currentLineWidthCqw = 0;
 
   for (const word of words) {
     if (!word) continue;
-    if (word === 'n') {
+    // Idem: era 'n', a letra, e não a quebra de linha.
+    if (word === '\n') {
       linhas++;
       currentLineWidthCqw = 0;
       continue;
