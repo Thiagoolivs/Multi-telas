@@ -156,6 +156,9 @@
       applyConfig(cfg);
       saveCachedConfig(cfg);
       hidePairing();
+    } else if (dev.paired) {
+      // Reivindicada e ainda vazia: quem pareou precisa ver que DEU CERTO.
+      showAguardando(dev.name);
     } else {
       showPairing(dev.code);
     }
@@ -168,6 +171,14 @@
       saveCachedConfig(newCfg);
       // Marca o carimbo para o pulso não achar que o SSE falhou.
       if (meta && meta.updatedAt) configEm = Math.max(configEm, meta.updatedAt);
+    }, function (dados) {
+      /*
+       * Acabou de ser pareada, com o código ainda na tela. Trocar AQUI é o que
+       * fecha o buraco de verdade: sem isto, a TV só sairia do código quando
+       * chegasse a primeira publicação — e ela pode demorar horas, ou nunca
+       * vir, porque a pessoa foi embora achando que o pareamento falhou.
+       */
+      showAguardando(dados && dados.nome);
     });
     /*
      * Som: a TV conta o que está tocando sempre que muda, e também de tempos
@@ -248,6 +259,40 @@
   function hidePairing() {
     const el = document.getElementById('pairing');
     if (el) el.classList.add('hidden');
+  }
+
+  /*
+   * PAREADA, MAS AINDA SEM CONTEÚDO — que não é a mesma coisa que "não
+   * pareada", e era mostrada como se fosse.
+   *
+   * `GET /devices/:id/config` responde 204 nos DOIS casos: tela que ninguém
+   * reivindicou, e tela reivindicada cujo dono ainda não publicou nada. O
+   * player lia "sem config" e mostrava o código de pareamento, então quem
+   * acabava de parear via o painel dizer "Online · agora mesmo" e a TV
+   * continuar pedindo para parear.
+   *
+   * O dado para separar os dois sempre esteve na mão: `ensureDevice` devolve
+   * `paired`. O que faltava era usá-lo.
+   *
+   * A tela reusa a mesma caixa do pareamento de propósito: é o mesmo lugar,
+   * dizendo a verdade daquele momento — e sem o código, que já não serve para
+   * nada e só convida a parear de novo.
+   */
+  function showAguardando(nome) {
+    const el = document.getElementById('pairing');
+    if (!el) return;
+    const titulo = el.querySelector('.mt-pairing-title');
+    const codeEl = el.querySelector('.mt-pairing-code');
+    const dica = el.querySelector('.mt-pairing-hint');
+    const reset = document.getElementById('pairing-reset');
+    if (titulo) titulo.textContent = nome ? 'Tudo certo, ' + nome : 'Tudo certo';
+    // Um traço no lugar do código: a caixa mantém a altura e nada pisca.
+    if (codeEl) codeEl.textContent = '✓';
+    if (dica) dica.innerHTML = 'Esta TV está conectada à sua conta. '
+      + 'Assim que você publicar um conteúdo no painel, ele aparece aqui sozinho.';
+    // Gerar outro código aqui só serviria para desparear sem querer.
+    if (reset) reset.classList.add('hidden');
+    el.classList.remove('hidden');
   }
 
   // Decide de onde vem a config: URL remota (se houver) ou localStorage.

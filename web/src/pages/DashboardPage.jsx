@@ -30,10 +30,26 @@ const today = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit'
  * banco, chave de IA) só quem opera o MultiTelas pode resolver, e avisar quem
  * não pode agir é só assustar.
  */
-function AvisoDoSistema({ onAbrir }) {
+function AvisoDoSistema({ onAbrir, operador }) {
   const [d, setD] = React.useState(null);
-  React.useEffect(() => { sistema.diagnostico().then(setD).catch(() => {}); }, []);
-  if (!d || d.nivel === 'ok') return null;
+  React.useEffect(() => {
+    /*
+     * NÃO PERGUNTA quando não é operador.
+     *
+     * A porta já era do servidor — ele responde 404 a quem não opera a
+     * plataforma, e o `.catch` fazia o aviso sumir. Só que a pergunta era
+     * feita assim mesmo: TODO cliente disparava um 404 a cada visita ao
+     * painel. Aparecia no console dele como erro, subia no nosso log como
+     * rota não encontrada, e enterrava o 404 que importa no meio do ruído.
+     *
+     * Perguntar só quando pode agir também é a regra que o resto da tela já
+     * segue: o aviso fala de banco, bucket e chave de IA — coisas que só
+     * quem opera o MultiTelas resolve.
+     */
+    if (!operador) return;
+    sistema.diagnostico().then(setD).catch(() => {});
+  }, [operador]);
+  if (!operador || !d || d.nivel === 'ok') return null;
   const grave = d.nivel === 'critico';
   const primeiro = d.itens[0];
   return (
@@ -53,7 +69,7 @@ function AvisoDoSistema({ onAbrir }) {
   );
 }
 
-export function DashboardPage({ onGoSystem, onIr }) {
+export function DashboardPage({ onGoSystem, onIr, operador }) {
   const { data, loading, error, reload } = useAsync(async () => {
     const [d, m] = await Promise.all([devicesApi.list(), mediaApi.list()]);
     return { devices: d.devices || [], storage: m.usage || { used: 0, quota: 1 } };
@@ -66,7 +82,7 @@ export function DashboardPage({ onGoSystem, onIr }) {
         subtitle={`${today} · operação da rede em tempo real`}
         actions={<Button variant="secondary" icon={RefreshCw} onClick={reload}>Atualizar</Button>}
       />
-      <AvisoDoSistema onAbrir={onGoSystem} />
+      <AvisoDoSistema onAbrir={onGoSystem} operador={operador} />
       {loading ? (
         <div className="flex justify-center py-24"><Spinner size={22} /></div>
       ) : error ? (

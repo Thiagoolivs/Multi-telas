@@ -11,11 +11,19 @@ const NAV = [
     { id: 'designs', label: 'Meus Designs', icon: Palette },
     { id: 'brand', label: 'Marca', icon: Brush },
     { id: 'mural', label: 'Mural de fotos', icon: QrCode },
+    /*
+     * Aniversariantes é OPERAÇÃO, não conta.
+     *
+     * Estava em "Conta", junto de armazenamento, equipe e cobrança — que são
+     * coisas que se mexe uma vez e esquece. A lista de aniversariantes é o
+     * contrário: alimenta o que a TV mostra, muda toda semana, e quem cuida
+     * dela é quem cuida do conteúdo, não quem cuida da assinatura.
+     */
+    { id: 'birthdays', label: 'Aniversariantes', icon: Cake },
     { id: 'alerts', label: 'Alertas', icon: Bell },
   ] },
   { section: 'Conta', items: [
     { id: 'storage', label: 'Armazenamento', icon: HardDrive },
-    { id: 'birthdays', label: 'Aniversariantes', icon: Cake },
     { id: 'team', label: 'Equipe', icon: Users2 },
     { id: 'billing', label: 'Plano', icon: CreditCard },
     { id: 'settings', label: 'Ajustes', icon: Settings },

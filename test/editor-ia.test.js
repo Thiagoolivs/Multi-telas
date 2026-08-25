@@ -158,6 +158,14 @@ test('toda rota de IA aparece em algum lugar da contabilidade', () => {
  */
 const AINDA_SINCRONAS = [
   'analise-visual', // lê uma peça pronta e devolve crítica; não gera nada nem gasta crédito
+  /*
+   * O guia é um turno de conversa: a pessoa está PARADA esperando as
+   * sugestões para poder escolher. Virar trabalho em segundo plano aqui
+   * trocaria dois segundos de espera por um "acompanhe o progresso" numa tela
+   * onde não há progresso nenhum a acompanhar — e ela não teria o que fazer
+   * enquanto isso, porque a próxima ação depende justamente do resultado.
+   */
+  'guia',
   'briefing',       // turno de conversa: a resposta é o próprio fio, sair já perde o contexto
   'diagnose',       // olha a tela e responde na hora; é ferramenta de suporte, não geração
   'director',       // monta o plano que as outras rotas executam depois

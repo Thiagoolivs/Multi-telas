@@ -66,6 +66,13 @@ const OPERACOES = {
    * lugar nenhum, nem no extrato nem no teto por hora.
    */
   'analise-visual': { creditos: 0, custoCentavos: 3, rotulo: 'Análise de peça (visão)' },
+  /*
+   * O guia é UMA chamada de texto por campanha começada — o mais barato do
+   * catálogo, e o que mais muda o resultado, porque é onde a pessoa decide o
+   * que pedir. Zero crédito pelo mesmo critério do resto do texto, mas medido:
+   * se um dia ele passar a ser chamado a cada tecla, é aqui que aparece.
+   */
+  guia: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Sugestões do guia' },
   diretor: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Diretor de arte' },
 };
 

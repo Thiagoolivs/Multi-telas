@@ -177,9 +177,17 @@ test('a campanha cobra crédito por imagem, como a rota avulsa', () => {
    * sem conferir saldo e sem debitar. O único registro era o do texto, R$ 0,05
    * para algo que custa mais de um real.
    */
-  const i = SERVER.indexOf('onImagem: async (prompt, formato)');
+  /*
+   * Ancorado no NOME do gancho, não na lista de parâmetros.
+   *
+   * A primeira versão procurava `onImagem: async (prompt, formato)` literal, e
+   * quebrou no dia em que a direção de arte passou a ser um terceiro
+   * argumento — sem que nada do que este teste guarda tivesse mudado. Teste
+   * que falha por assinatura treina a gente a ignorar teste vermelho.
+   */
+  const i = SERVER.indexOf('onImagem: async (');
   assert.ok(i > 0, 'sumiu a geração de imagem da campanha');
-  const bloco = SERVER.slice(i, i + 1400);
+  const bloco = SERVER.slice(i, i + 2200);
 
   assert.match(bloco, /usoIA\.conferir\(db, contaIA, 'campanha-peca', 1\)/,
     'a campanha voltou a gerar imagem sem conferir saldo');
@@ -314,4 +322,59 @@ test('o pedido montado a partir da conversa CHEGA a cortar a campanha', () => {
     'sobrou peça em formato que ninguém pediu');
   assert.deepStrictEqual(plano.pecas.filter((p) => p.precisaImagem), [],
     'ia gerar foto depois de a pessoa ter dito que não queria nenhuma');
+});
+
+/* ---------------- A certeza antes do crédito ---------------- */
+
+test('o diretor sabe PARAR no plano, sem gerar imagem nenhuma', async () => {
+  /*
+   * O plano custa uma chamada de texto; as imagens custam crédito. Antes a
+   * campanha ia direto do briefing até a peça pronta, e o cliente só descobria
+   * o que a IA tinha entendido quando o crédito já tinha saído — e entender
+   * errado um pedido de uma frase é o caso comum, não a exceção.
+   *
+   * O corte é exatamente onde o preço muda de ordem de grandeza.
+   */
+  const director = require('../server/ai-director.js');
+  let gerou = 0;
+  const r = await director.dirigir('promoção de café', { empresa: 'Padaria' }, {
+    pararNoPlano: true,
+    onImagem: async () => { gerou++; return '/x.jpg'; },
+  });
+  assert.equal(gerou, 0, 'gerou imagem numa chamada que era só para planejar');
+  assert.equal(r.etapa, 'plano');
+  assert.ok(r.plano && r.plano.pecas.length, 'não devolveu o plano');
+  // O orçamento é o que o cliente lê antes de decidir.
+  assert.equal(typeof r.orcamento.creditos, 'number');
+  assert.equal(r.orcamento.pecas, r.plano.pecas.length);
+});
+
+test('o plano aprovado é executado SEM replanejar', async () => {
+  /*
+   * Replanejar devolveria outro plano, e a confirmação não teria valido nada:
+   * a pessoa aprovaria uma coisa e receberia outra. O que ela aprovou é o que
+   * ela recebe — inclusive as peças que ela DESMARCOU, que simplesmente não
+   * estão mais na lista.
+   */
+  const director = require('../server/ai-director.js');
+  const aprovado = {
+    identidade: { brand: '#111111', brand2: '#222222', estilo: 'sobrio', direcao: 'suave' },
+    pecas: [{ formato: '16/9', headline: 'Só esta', sub: '', cta: '', precisaImagem: false, promptImagem: '' }],
+  };
+  const r = await director.dirigir('qualquer coisa', { empresa: 'X', planoAprovado: aprovado }, {});
+  const manchetes = r.pecas.map((p) => (p.item && p.item.elementos || []).map((e) => e.text).join(' '));
+  assert.equal(r.pecas.length, 1, 'o plano aprovado tinha 1 peça e voltaram ' + r.pecas.length);
+  assert.ok(manchetes.join(' ').includes('Só esta'), 'a peça entregue não é a que foi aprovada');
+});
+
+test('a tela mostra o custo ANTES, e diz que nada foi gerado', () => {
+  const fs = require('node:fs'); const path = require('node:path');
+  const tela = fs.readFileSync(path.join(__dirname, '..', 'web', 'src', 'pages', 'MyDesignsPage.jsx'), 'utf8');
+  assert.match(tela, /Nada foi gerado ainda/, 'sumiu o aviso de que nada foi gerado');
+  assert.match(tela, /function PlanoParaConfirmar/, 'sumiu a tela de confirmação');
+  // Desmarcar peça é o que torna isto uma decisão e não um aviso.
+  assert.match(tela, /alternar\(i\)/, 'não dá mais para tirar peça do plano');
+  // E o caminho de gerar tem que passar por lá: planejar primeiro.
+  assert.ok(!/onClick=\{\(\) => gerarCampanha\(null\)\}/.test(tela),
+    'algum botão voltou a gerar direto, pulando a confirmação');
 });

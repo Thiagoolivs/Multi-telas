@@ -25,7 +25,7 @@ function useBillingFlash() {
   return [flash, () => setFlash(null)];
 }
 
-export function BillingPage() {
+export function BillingPage({ onFalarComVendas }) {
   const { data, loading, error, reload } = useAsync(billing.get);
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
@@ -38,7 +38,7 @@ export function BillingPage() {
     setBusy(planId); setErr('');
     try {
       const { url } = await billing.checkout(planId);
-      window.location.href = url; // vai pro checkout (Stripe ou simulado)
+      window.location.href = url; // fatura do Asaas, ou o checkout simulado
     } catch (e) {
       setErr(e.message || 'Não foi possível iniciar o checkout.');
       setBusy('');
@@ -126,13 +126,29 @@ export function BillingPage() {
               <div className="tnum text-2xl font-bold text-ink">{creditos.saldo.total}</div>
               <div className="text-xs text-ink-3">
                 {creditos.saldo.franquia} da franquia
-                {creditos.saldo.comprado > 0 ? ` · ${creditos.saldo.comprado} comprados` : ''}
+                {/*
+                  "comprados" mentia para toda conta nova: os 5 de boas-vindas
+                  entram nesse balde de propósito, para não sumirem na primeira
+                  virada de ciclo — e a tela dizia "5 comprados" a quem nunca
+                  comprou nada. O que os dois têm em comum de verdade é que não
+                  expiram, e é isso que a pessoa precisa saber.
+                */}
+                {creditos.saldo.comprado > 0 ? ` · ${creditos.saldo.comprado} que não expiram` : ''}
               </div>
             </div>
             <div>
               <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Franquia do plano</div>
               <div className="tnum text-2xl font-bold text-ink">{creditos.franquiaDoPlano}</div>
-              <div className="text-xs text-ink-3">por mês, {creditos.telas === 1 ? 'para 1 tela' : `para ${creditos.telas} telas`}</div>
+              {/*
+                Dizia "para 0 telas" em conta sem tela pareada — e mostrava
+                franquia de 10 logo acima, porque o cálculo usa `max(1, telas)`.
+                O número e a legenda se contradiziam na mesma linha.
+              */}
+              <div className="text-xs text-ink-3">
+                {creditos.telas === 0
+                  ? 'por mês, já contando a primeira tela'
+                  : `por mês, para ${creditos.telas} ${creditos.telas === 1 ? 'tela' : 'telas'}`}
+              </div>
             </div>
             <div>
               <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Usado neste ciclo</div>
@@ -171,7 +187,7 @@ export function BillingPage() {
 
       {/* Catálogo de planos */}
       <Panel>
-        <PanelHeader title="Planos" description={mode === 'dev' ? 'Cobrança em modo simulado (sem Stripe configurado).' : undefined} />
+        <PanelHeader title="Planos" description={mode === 'dev' ? 'Cobrança em modo simulado — nada é cobrado de verdade (sem ASAAS_API_KEY).' : undefined} />
         <div className="grid gap-3 p-4 sm:grid-cols-3">
           {catalog.map((p) => {
             const isCurrent = p.id === plan.id;
@@ -209,6 +225,17 @@ export function BillingPage() {
                 <div className="mt-4 flex-1" />
                 {isCurrent ? (
                   <Button variant="secondary" size="sm" disabled className="w-full justify-center">Plano atual</Button>
+                ) : p.sobConsulta ? (
+                  /*
+                    O Enterprise mostrava "Fazer upgrade" e o clique levava a
+                    erro: ele não tem preço de tabela, e o checkout recusa plano
+                    sem preço. Preço "a combinar" se resolve conversando, e o
+                    botão passa a dizer isso.
+                  */
+                  <Button variant="secondary" size="sm" className="w-full justify-center"
+                    onClick={() => onFalarComVendas && onFalarComVendas()}>
+                    Falar com a gente
+                  </Button>
                 ) : isUpgrade ? (
                   <Button variant="primary" size="sm" disabled={!canManage || busy === p.id} onClick={() => upgrade(p.id)} className="w-full justify-center">
                     {busy === p.id ? 'Redirecionando…' : canManage ? 'Fazer upgrade' : 'Só o dono'}
@@ -220,21 +247,99 @@ export function BillingPage() {
             );
           })}
         </div>
-        {/*
-          Estava em `mode === 'stripe'`, e o modo passou a ser 'asaas' ou
-          'dev' — o botão simplesmente não aparecia mais, e não havia como
-          cancelar pelo app. Fora o problema de produto, cancelamento difícil
-          é exposição no CDC. A condição certa é "não é o checkout simulado".
-        */}
-        {plan.precoTelaCents > 0 && canManage && mode !== 'dev' && (
-          <div className="border-t border-line px-4 py-3">
-            <button onClick={() => billing.portal().then(({ url }) => (window.location.href = url)).catch(() => {})}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-2 hover:text-ink">
-              Gerenciar assinatura (cartão, cancelamento) <ExternalLink size={12} />
-            </button>
+      </Panel>
+
+      {/*
+        GESTÃO DA ASSINATURA — antes era um botão que não ia a lugar nenhum.
+
+        Ele chamava um "portal" que devolvia `/app?billing=portal`, e o
+        roteador manda qualquer `?billing=` de volta para esta mesma tela: a
+        pessoa clicava em "Gerenciar assinatura (cartão, cancelamento)" e a
+        página recarregava. Não havia como cancelar por lugar nenhum — o que,
+        além de produto ruim, é exposição no CDC.
+
+        O Asaas não tem portal hospedado, então a gestão é nossa.
+      */}
+      {plan.precoTelaCents > 0 && <GestaoDaAssinatura canManage={canManage} onMudou={reload} />}
+    </div>
+  );
+}
+
+function GestaoDaAssinatura({ canManage, onMudou }) {
+  const { data, loading, error } = useAsync(billing.assinatura);
+  const [confirmando, setConfirmando] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [erro, setErro] = useState('');
+
+  if (loading || error || !data) return null;
+  const { assinatura, fatura, simulado } = data;
+
+  async function cancelar() {
+    setBusy(true); setErro('');
+    try { await billing.cancelar(); setConfirmando(false); onMudou(); }
+    catch (e) { setErro(e.message || 'Não foi possível cancelar agora.'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Panel className="mt-5">
+      <PanelHeader title="Sua assinatura" description="Cobrança, próxima fatura e cancelamento." />
+      <div className="space-y-3 p-4">
+        {assinatura && (
+          <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 text-sm text-ink-2">
+            <span>Valor: <b className="text-ink">{brl(Math.round(assinatura.valor * 100))}</b>/mês</span>
+            {assinatura.proximaEm && (
+              <span>Próxima cobrança: <b className="text-ink">{new Date(assinatura.proximaEm + 'T12:00:00').toLocaleDateString('pt-BR')}</b></span>
+            )}
           </div>
         )}
-      </Panel>
-    </div>
+
+        {/*
+          A fatura em aberto resolve sozinha o caso mais comum de suporte:
+          "paguei e não liberou" quase sempre é "gerei o boleto e não paguei".
+        */}
+        {fatura && (
+          <a href={fatura.url} target="_blank" rel="noreferrer"
+            className="flex items-center gap-2 rounded-md border border-warn/40 bg-warn/5 px-3 py-2 text-sm text-ink">
+            <ExternalLink size={14} className="text-warn" />
+            Há uma fatura em aberto de <b>{brl(Math.round(fatura.valor * 100))}</b> — clique para pagar.
+          </a>
+        )}
+
+        {simulado && (
+          <p className="text-xs text-ink-3">Cobrança em modo simulado: não há assinatura de verdade para gerenciar.</p>
+        )}
+
+        {erro && <div className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">{erro}</div>}
+
+        {!canManage ? (
+          <p className="text-xs text-ink-3">Só o dono da conta pode cancelar.</p>
+        ) : confirmando ? (
+          /*
+            A confirmação diz o que ACONTECE, e não "tem certeza?". O que a
+            pessoa precisa saber antes de clicar é que as telas continuam no ar
+            até o fim do período pago — sem isso, cancelar parece desligar tudo
+            agora, e ela liga para o suporte em vez de decidir sozinha.
+          */
+          <div className="rounded-md border border-line bg-surface-2 p-3">
+            <p className="text-sm text-ink">
+              Cancelar encerra a renovação. Suas telas continuam no ar até o fim do período já pago,
+              e depois a conta volta para o plano Grátis — nada é apagado.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <Button size="sm" variant="danger" disabled={busy} onClick={cancelar}>
+                {busy ? 'Cancelando…' : 'Confirmar cancelamento'}
+              </Button>
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => setConfirmando(false)}>Voltar</Button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmando(true)}
+            className="text-xs font-medium text-ink-3 underline-offset-2 hover:text-ink hover:underline">
+            Cancelar assinatura
+          </button>
+        )}
+      </div>
+    </Panel>
   );
 }

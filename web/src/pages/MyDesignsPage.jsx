@@ -9,6 +9,7 @@ import { Button } from '../components/ui/Button.jsx';
 import { Field, Input, Textarea, Select } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
+import { Badge } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { ai, library, devices, deviceConfig, media } from '../api.js';
 import { primaryZoneKey, defaultConfig, CONTENT_TYPES } from '../lib/contentTypes.js';
@@ -57,6 +58,172 @@ const IMAGENS = [
   { id: 'nenhuma', rotulo: 'Sem foto', nota: 'peças com cor, forma e tipografia' },
 ];
 
+/*
+ * O que o cliente vai receber, antes de pagar por isso.
+ *
+ * Mostra peça a peça o que a IA planejou, marca quais custam crédito, e soma.
+ * A conta é simples de propósito: uma imagem gerada = um crédito. Peça que
+ * reaproveita foto do acervo, ou que é só tipografia, não custa nada — e isso
+ * precisa estar visível, senão a pessoa acha que toda peça é paga e pede
+ * menos do que precisaria.
+ */
+/*
+ * O CARDÁPIO — o que a pessoa vê antes do campo de texto vazio.
+ *
+ * O briefing que existia perguntava uma coisa aberta por vez: "para quem é?",
+ * "por que agora?". Isso exige que ela JÁ TENHA a resposta formulada, e quem
+ * tem padaria não pensa em campanha nesses termos. Trava, escreve "sei lá,
+ * promoção", e a IA decide tudo.
+ *
+ * Reconhecer é muito mais fácil que lembrar. Cada sugestão aqui já traz o
+ * formulário preenchido: clicar numa é escolher onde, quantas, o que fazer com
+ * imagem e como anima — sem precisar saber que essas perguntas existem.
+ */
+function Guia({ empresa, onEscolher, onPular }) {
+  const [dados, setDados] = React.useState(null);
+  const [erro, setErro] = React.useState('');
+
+  React.useEffect(() => {
+    let vivo = true;
+    ai.guia({ empresa })
+      .then((r) => { if (vivo) setDados(r); })
+      .catch((e) => { if (vivo) setErro(e.message || 'não consegui buscar sugestões'); });
+    return () => { vivo = false; };
+  }, [empresa]);
+
+  if (erro) {
+    // O guia é facilitador: se ele cair, escrever à mão continua valendo.
+    return (
+      <div className="py-6 text-center">
+        <p className="text-sm text-ink-2">{erro}</p>
+        <Button variant="secondary" size="sm" className="mt-3" onClick={onPular}>Escrever eu mesmo</Button>
+      </div>
+    );
+  }
+  if (!dados) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-10 text-center">
+        <Spinner size={22} />
+        <div className="text-sm text-ink-2">Pensando em ideias para {empresa || 'o seu negócio'}…</div>
+      </div>
+    );
+  }
+
+  const ONDE = { '16/9': 'TV deitada', '9/16': 'TV em pé · Story', '1/1': 'Post quadrado', '21/9': 'Faixa larga' };
+  const CUSTO = {
+    gerar: { texto: 'foto por IA', tom: 'accent' },
+    acervo: { texto: 'suas fotos · sem custo', tom: 'ok' },
+    nenhuma: { texto: 'só texto · sem custo', tom: 'ok' },
+  };
+
+  return (
+    <div>
+      {dados.abertura && <p className="mb-3 text-sm text-ink-2">{dados.abertura}</p>}
+      <div className="space-y-2">
+        {dados.sugestoes.map((s, i) => {
+          const c = CUSTO[s.imagens] || CUSTO.nenhuma;
+          const creditos = s.imagens === 'gerar' ? s.quantidade : 0;
+          return (
+            <button key={i} type="button" onClick={() => onEscolher(s)}
+              className="block w-full rounded-lg border border-line bg-surface-2 p-3 text-left transition hover:border-accent hover:bg-accent-soft/20">
+              <span className="block text-sm font-semibold text-ink">{s.titulo}</span>
+              <span className="mt-0.5 block text-xs text-ink-2">{s.porque}</span>
+              <span className="mt-1.5 flex flex-wrap items-center gap-1.5 text-2xs">
+                <Badge tone="neutral">{s.formatos.map((f) => ONDE[f] || f).join(' + ')}</Badge>
+                <Badge tone="neutral">{s.quantidade} {s.quantidade === 1 ? 'peça' : 'peças'}</Badge>
+                <Badge tone={c.tom}>{creditos ? c.texto + ' · ' + creditos + (creditos === 1 ? ' crédito' : ' créditos') : c.texto}</Badge>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {/*
+        Sair do cardápio nunca pode ser escondido: quem já sabe o que quer não
+        deve ser obrigado a passar por aqui.
+      */}
+      <button onClick={onPular}
+        className="mt-3 text-xs font-medium text-ink-3 underline-offset-2 hover:text-ink hover:underline">
+        Nenhuma dessas — quero escrever
+      </button>
+    </div>
+  );
+}
+
+
+function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
+  const pecas = (plano.plano && plano.plano.pecas) || [];
+  const [fora, setFora] = React.useState(() => new Set());
+
+  const ativas = pecas.filter((_, i) => !fora.has(i));
+  const custo = ativas.filter((p) => p.precisaImagem && p.promptImagem).length;
+
+  function alternar(i) {
+    setFora((antes) => {
+      const n = new Set(antes);
+      if (n.has(i)) n.delete(i); else n.add(i);
+      return n;
+    });
+  }
+
+  const ONDE = { '16/9': 'TV deitada', '9/16': 'TV em pé · Story', '1/1': 'Post quadrado', '21/9': 'Faixa larga' };
+
+  return (
+    <div>
+      <div className="mb-3 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">
+        Isto é o que a IA entendeu. <b className="text-ink">Nada foi gerado ainda</b> — nenhum
+        crédito saiu. Confira, tire o que não quiser, e só então gere.
+      </div>
+
+      <div className="space-y-2">
+        {pecas.map((p, i) => {
+          const cortada = fora.has(i);
+          const paga = p.precisaImagem && p.promptImagem;
+          return (
+            <label key={i}
+              className={'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition '
+                + (cortada ? 'border-line bg-surface opacity-45' : 'border-line bg-surface-2')}>
+              <input type="checkbox" checked={!cortada} onChange={() => alternar(i)} className="mt-1" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-ink">{p.headline || '(sem manchete)'}</span>
+                {p.sub && <span className="mt-0.5 block text-xs text-ink-2">{p.sub}</span>}
+                <span className="mt-1 flex flex-wrap items-center gap-1.5 text-2xs">
+                  <Badge tone="neutral">{ONDE[p.formato] || p.formato}</Badge>
+                  {paga
+                    ? <Badge tone="accent">foto por IA · 1 crédito</Badge>
+                    : p.bgImagem || p.imagemBase != null
+                      ? <Badge tone="ok">foto sua · sem custo</Badge>
+                      : <Badge tone="ok">só texto · sem custo</Badge>}
+                </span>
+              </span>
+            </label>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-3">
+        <div className="text-sm text-ink-2">
+          <b className="text-ink">{ativas.length}</b> {ativas.length === 1 ? 'peça' : 'peças'}
+          {' · '}
+          {custo === 0
+            ? <span className="text-ok">nenhum crédito</span>
+            : <><b className="text-ink">{custo}</b> {custo === 1 ? 'crédito' : 'créditos'}</>}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={onVoltar}>Voltar e corrigir</Button>
+          <Button variant="primary" size="sm" disabled={!ativas.length}
+            onClick={() => onGerar({
+              ...plano,
+              plano: { ...plano.plano, pecas: ativas },
+            })}>
+            Gerar {ativas.length === 1 ? 'a peça' : 'as ' + ativas.length + ' peças'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export function MyDesignsPage({ onIr }) {
   const { data, loading, reload } = useAsync(library.list);
   const { data: devData } = useAsync(devices.list);
@@ -83,7 +250,7 @@ export function MyDesignsPage({ onIr }) {
    */
   useEffect(() => inscreverBandeja((p) => {
     if (!p) return;
-    if (p.tipo === 'campanha') { setGen(p.gen); setAiColl(p.nome || 'Campanha'); setAiOpen(true); }
+    if (p.tipo === 'campanha') { setGen(p.gen); setAiColl(p.nome || 'Campanha'); (setGuiando(true), setAiOpen(true)); }
     else setSaveItem(p);
     limparBandeja();
   }), []);
@@ -122,6 +289,12 @@ export function MyDesignsPage({ onIr }) {
   const [aiColl, setAiColl] = useState('');
   const [etapa, setEtapa] = useState(null); // progresso do trabalho em andamento
   const [conversando, setConversando] = useState(false); // chat de briefing aberto
+  const [plano, setPlano] = useState(null); // plano esperando confirmação do cliente
+  /*
+   * O cardápio abre PRIMEIRO. Campo de texto vazio é onde quem não sabe o que
+   * pedir desiste — e é a maioria de quem chega.
+   */
+  const [guiando, setGuiando] = useState(true);
   const [emAndamento, setEmAndamento] = useState(false); // campanha rodando no servidor
 
   // Gerar imagem
@@ -242,7 +415,7 @@ export function MyDesignsPage({ onIr }) {
       if (!out) return;
       setGen(out);
       setAiColl(out.campanha || empresa || 'Campanha');
-      setAiOpen(true); // traz o resultado de volta mesmo se a janela foi fechada
+      (setGuiando(true), setAiOpen(true)); // traz o resultado de volta mesmo se a janela foi fechada
       /*
        * A faixa de progresso vive nesta página. Quem foi mexer em Telas ou em
        * Marca enquanto esperava não vê nada — e a campanha fica pronta em
@@ -320,24 +493,72 @@ export function MyDesignsPage({ onIr }) {
     });
   }
 
-  async function gerarCampanha(briefingPronto) {
+  /*
+   * O pedido é o mesmo nas duas fases — muda só o que se pede ao servidor:
+   * primeiro o PLANO (texto, centavos), depois a EXECUÇÃO (imagens, crédito).
+   */
+  /*
+   * Escolher no cardápio PREENCHE a refinaria — não pula ela.
+   *
+   * Pular seria mais rápido e mais errado: a pessoa perderia a única chance de
+   * ver que "2 peças, TV deitada, foto por IA" era uma decisão, e não o
+   * destino. Preenchido, ela vê o que foi escolhido por ela e muda o que
+   * quiser antes de qualquer custo.
+   */
+  function escolherSugestao(s) {
+    setBrief(s.brief || s.titulo || '');
+    setOnde(s.formatos && s.formatos.length ? s.formatos : ['16/9']);
+    setQuantas(s.quantidade || 2);
+    setImagens(s.imagens || 'nenhuma');
+    setGuiando(false);
+  }
+
+  function pedidoBase(briefingPronto) {
+    return {
+      brief: (briefingPronto && briefingPronto.briefing) || brief,
+      empresa, publico, tom,
+      oferta: (briefingPronto && briefingPronto.oferta) || oferta,
+      briefingPronto: briefingPronto || null,
+      /*
+       * O que a pessoa escolheu. No servidor isto é LIMITE, não sugestão:
+       * sem ele o modelo decidia quantidade e formatos, outra função somava
+       * peças por cima, e cada uma podia custar uma imagem paga.
+       */
+      formatos: onde,
+      pedido: { formatos: onde, quantidade: quantas, imagens },
+    };
+  }
+
+  /*
+   * FASE 1 — planeja e PARA. Nenhum crédito sai aqui.
+   *
+   * Antes o clique ia direto do briefing até a peça pronta, e o cliente só
+   * descobria o que a IA tinha entendido quando o crédito já tinha saído. Se
+   * ela entendeu errado — e entender errado um pedido de uma frase é o caso
+   * comum — ele pagou pelo que não queria e ainda precisa refazer.
+   */
+  async function planejarCampanha(briefingPronto) {
     if (!brief.trim()) return;
     setConversando(false);
+    setMsg(''); setPlano(null); setEtapa({ etapa: 'entendendo seu pedido', detalhe: '', segundos: 0 });
+    try {
+      const id = await ai.directorStart({ ...pedidoBase(briefingPronto), apenasPlano: true });
+      const r = await ai.directorAcompanhar(id, (s) => setEtapa(s));
+      setEtapa(null);
+      setPlano({ ...r, briefingPronto: briefingPronto || null });
+    } catch (e) { setMsg(e.message || 'Falha ao planejar'); setEtapa(null); }
+  }
+
+  /* FASE 2 — executa EXATAMENTE o plano aprovado. Aqui o crédito sai. */
+  async function gerarCampanha(plan) {
     setMsg(''); setEtapa({ etapa: 'começando', detalhe: '', segundos: 0 });
     try {
       const id = await ai.directorStart({
-        brief: (briefingPronto && briefingPronto.briefing) || brief,
-        empresa, publico, tom,
-        oferta: (briefingPronto && briefingPronto.oferta) || oferta,
-        briefingPronto: briefingPronto || null,
-        /*
-         * O que a pessoa escolheu. No servidor isto é LIMITE, não sugestão:
-         * sem ele o modelo decidia quantidade e formatos, outra função somava
-         * peças por cima, e cada uma podia custar uma imagem paga.
-         */
-        formatos: onde,
-        pedido: { formatos: onde, quantidade: quantas, imagens },
+        ...pedidoBase(plan.briefingPronto),
+        // Sem replanejar: o que ele aprovou é o que ele recebe.
+        planoAprovado: plan.plano,
       });
+      setPlano(null);
       await acompanhar(id);
     } catch (e) { setMsg(e.message || 'Falha ao gerar'); setEtapa(null); }
   }
@@ -448,7 +669,7 @@ export function MyDesignsPage({ onIr }) {
   const groupNames = Object.keys(groups);
 
   const CREATE = [
-    { key: 'ia', title: 'Criar campanha com IA', desc: 'Uma frase vira a campanha inteira: peças, legendas e quando postar.', icon: Wand2, on: () => setAiOpen(true), accent: 'text-violet-400', destaque: true },
+    { key: 'ia', title: 'Criar campanha com IA', desc: 'Uma frase vira a campanha inteira: peças, legendas e quando postar.', icon: Wand2, on: () => (setGuiando(true), setAiOpen(true)), accent: 'text-violet-400', destaque: true },
     { key: 'mao', title: 'Criar na mão', desc: 'Editor visual: fundo, texto, formas, ícones e imagens.', icon: Plus, on: novoNaMao, accent: 'text-accent' },
     { key: 'img', title: 'Gerar imagem IA', desc: 'Crie uma imagem por prompt e use como arte ou fundo.', icon: ImagePlus, on: () => setImgOpen(true), accent: 'text-sky-400' },
     { key: 'imp', title: 'Importar arquivo', desc: 'Suba um design do Canva (PNG/JPG) ou um PDF.', icon: Upload, on: null, accent: 'text-emerald-400' },
@@ -691,14 +912,35 @@ export function MyDesignsPage({ onIr }) {
       {/* Criar campanha com IA — o diretor de arte */}
       <Dialog open={aiOpen} onClose={() => { setAiOpen(false); setGen(null); }} className="max-w-4xl"
         title="Criar campanha com IA"
-        description="Descreva em uma frase. A IA lê a sua Marca, monta as peças, escreve as legendas e diz quando postar."
+        /*
+          O subtítulo acompanha a etapa. "Descreva em uma frase" na tela do
+          cardápio manda fazer algo que não há onde fazer — não existe campo
+          ali, só três ideias para escolher.
+        */
+        description={guiando
+          ? 'Escolha uma ideia para começar, ou escreva a sua. Nada é gerado antes de você confirmar.'
+          : plano
+            ? 'Confira o que a IA entendeu. Nenhum crédito saiu ainda.'
+            : 'Descreva em uma frase. A IA lê a sua Marca, monta as peças, escreve as legendas e diz quando postar.'}
         footer={gen
           ? (<>
             <Button variant="ghost" onClick={() => setGen(null)}>Voltar</Button>
             <Button variant="secondary" icon={Check} disabled={busy} onClick={() => salvarCampanha(false)}>{busy ? 'Salvando…' : 'Só salvar'}</Button>
             <Button variant="primary" icon={Rocket} disabled={busy} onClick={() => salvarCampanha(true)}>Salvar e publicar</Button>
           </>)
-          : conversando
+          : guiando
+            // O cardápio traz os próprios caminhos ("escolher" e "escrever").
+            ? <Button variant="ghost" onClick={() => setAiOpen(false)}>Cancelar</Button>
+            : plano
+            /*
+             * A tela de confirmação traz os próprios botões — e são outros:
+             * "Voltar e corrigir" e "Gerar as N peças". Deixar o rodapé antigo
+             * embaixo dela põe "Gerar direto" ao lado de "Gerar as 3 peças",
+             * e o cliente não tem como saber que um deles pula a confirmação
+             * que acabou de aparecer.
+             */
+            ? null
+            : conversando
             ? <Button variant="ghost" onClick={() => setConversando(false)}>Voltar</Button>
             : (<>
               <Button variant="ghost" onClick={() => setAiOpen(false)}>Cancelar</Button>
@@ -707,7 +949,7 @@ export function MyDesignsPage({ onIr }) {
                 rápido. Nenhuma das duas é escondida — quem tem pressa não pode
                 ser obrigado a passar pela conversa.
               */}
-              <Button variant="secondary" icon={Wand2} disabled={emAndamento || !brief.trim()} onClick={() => gerarCampanha(null)}>
+              <Button variant="secondary" icon={Wand2} disabled={emAndamento || !brief.trim()} onClick={() => planejarCampanha(null)}>
                 {emAndamento ? 'Dirigindo…' : 'Gerar direto'}
               </Button>
               <Button variant="primary" icon={MessagesSquare} disabled={emAndamento || !brief.trim()} onClick={() => setConversando(true)}>
@@ -727,12 +969,35 @@ export function MyDesignsPage({ onIr }) {
             </div>
             <div className="tnum text-2xs text-ink-3">{etapa.segundos || 0}s · uma campanha completa leva um ou dois minutos</div>
           </div>
+        ) : guiando ? (
+          <Guia
+            empresa={empresa}
+            onEscolher={escolherSugestao}
+            onPular={() => setGuiando(false)}
+          />
+        ) : plano ? (
+          /*
+           * A CERTEZA ANTES DO CRÉDITO.
+           *
+           * Nada aqui foi gerado ainda: o plano custou uma chamada de texto,
+           * centavos. O que o cliente lê é o que a IA ENTENDEU — as manchetes
+           * de verdade, os formatos de verdade, e quantas peças vão custar
+           * imagem. Se entendeu errado, ele volta e corrige de graça.
+           *
+           * Desmarcar peça é o que torna isto uma decisão e não um aviso: sem
+           * poder tirar nada, "confirmar" é só um clique a mais no caminho.
+           */
+          <PlanoParaConfirmar
+            plano={plano}
+            onGerar={(aprovado) => gerarCampanha(aprovado)}
+            onVoltar={() => setPlano(null)}
+          />
         ) : conversando ? (
           <BriefingChat
             empresa={empresa} segmento=""
             primeiraFala={brief}
-            onPronto={(resumo) => gerarCampanha(resumo)}
-            onPular={() => gerarCampanha(null)}
+            onPronto={(resumo) => planejarCampanha(resumo)}
+            onPular={() => planejarCampanha(null)}
           />
         ) : !gen ? (
           <div className="grid gap-3 sm:grid-cols-2">

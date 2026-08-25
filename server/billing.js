@@ -132,9 +132,30 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
    * percebe até o cliente reclamar.
    */
   const jaTem = await asaasApi('/subscriptions', { customer: customerId, status: 'ACTIVE', limit: 10 });
-  const aberta = (jaTem.data || []).find((x) => String(x.externalReference || '').split('|')[1] === planId);
+  const aberta = (jaTem.data || [])[0];
+  const valor = mensalidadeCents(planId, Math.max(1, Number(o.telas) || 1)) / 100;
 
-  const sub = aberta || await asaasApi('/subscriptions', {
+  /*
+   * QUALQUER assinatura ativa é reaproveitada, não só a do mesmo plano.
+   *
+   * A primeira versão disto casava pelo planId, e o buraco aparecia na troca:
+   * quem estava no Essencial e ia para o Pro ganhava uma SEGUNDA assinatura
+   * ativa, e as duas cobravam todo mês. Trocar de plano é a operação mais
+   * provável de quem já paga — era o caso pior no caminho mais comum.
+   *
+   * Uma conta tem uma assinatura. Mudar de plano é MUDAR essa assinatura: o
+   * valor e a referência, no lugar. Muda também o número de telas, que é de
+   * onde sai o valor — então isto vale para "cresci de 3 para 12 telas", que
+   * antes não atualizava nada.
+   */
+  const sub = aberta
+    ? await asaasApi('/subscriptions/' + encodeURIComponent(aberta.id), {
+        value: valor,
+        description: 'Assinatura do Plano ' + p.name,
+        externalReference: tenant.id + '|' + planId,
+        updatePendingPayments: true,
+      }, 'POST')
+    : await asaasApi('/subscriptions', {
     customer: customerId,
     billingType: 'UNDEFINED',
     /*
@@ -145,7 +166,7 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
      * cobrado R$ 79,00, devido R$ 3.096,80. `mensalidadeCents` já existia e
      * já aplica as faixas de desconto por volume — só não era chamada.
      */
-    value: mensalidadeCents(planId, Math.max(1, Number(o.telas) || 1)) / 100,
+    value: valor,
     nextDueDate: new Date().toISOString().split('T')[0],
     cycle: 'MONTHLY',
     description: 'Assinatura do Plano ' + p.name,
@@ -179,14 +200,70 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
   return { url: invoiceUrl, id: sub.id, customerId, reaproveitada: !!aberta };
 }
 
-// Portal de gerenciamento
-async function createPortal(tenant, origin) {
-  if (mode() === 'dev') return { url: origin + '/app?billing=portal-dev', simulated: true };
-  
-  // O Asaas não tem um portal unificado como o Stripe, então direcionamos para a invoice
-  // aberta se houver, ou para um cancelamento interno no nosso app.
-  // Por ora, vamos retornar uma url interna que renderiza uma página de gestão nossa.
-  return { url: origin + '/app?billing=portal' };
+/*
+ * O que a tela de gerenciamento precisa saber.
+ *
+ * O Asaas não tem portal hospedado como o Stripe tinha, e a versão anterior
+ * disto devolvia `/app?billing=portal` — que o roteador do painel mapeia de
+ * volta para a PRÓPRIA tela de plano. O botão "Gerenciar assinatura (cartão,
+ * cancelamento)" recarregava a página onde a pessoa já estava, e não havia
+ * como cancelar por lugar nenhum. Cancelamento difícil não é só produto ruim:
+ * é exposição no CDC.
+ *
+ * Sem portal para onde mandar, a gestão é NOSSA. Isto devolve o estado, e o
+ * painel desenha — incluindo a fatura em aberto, que é para onde a pessoa
+ * precisa ir quando o pagamento está pendente.
+ */
+async function assinatura(tenant) {
+  if (mode() === 'dev') return { simulado: true, assinatura: null, fatura: null };
+  const subId = tenant.stripe_subscription_id;
+  if (!subId) return { assinatura: null, fatura: null };
+
+  let sub = null;
+  try { sub = await asaasApi('/subscriptions/' + encodeURIComponent(subId)); }
+  catch (e) { return { assinatura: null, fatura: null, erro: e.message }; }
+
+  /*
+   * A fatura em aberto é o que resolve o caso mais comum de suporte: "paguei
+   * e não liberou" quase sempre é "gerei o boleto e não paguei". Com o link
+   * aqui, a pessoa resolve sozinha em vez de escrever para você.
+   */
+  let fatura = null;
+  try {
+    const pags = await asaasApi('/payments', { subscription: subId, status: 'PENDING', limit: 1 });
+    const p0 = (pags.data || [])[0];
+    if (p0) fatura = { url: p0.invoiceUrl, valor: p0.value, vence: p0.dueDate };
+  } catch (_) { /* a fatura é conveniência: sem ela a tela ainda serve */ }
+
+  return {
+    assinatura: {
+      id: sub.id,
+      status: sub.status,
+      valor: sub.value,
+      proximaEm: sub.nextDueDate,
+      ciclo: sub.cycle,
+    },
+    fatura,
+  };
+}
+
+/*
+ * Cancelar de verdade, no Asaas.
+ *
+ * Não havia como. O plano só voltava para grátis se o webhook
+ * SUBSCRIPTION_DELETED chegasse — e ele só chega se alguém apagar a
+ * assinatura pelo painel do Asaas, o que o cliente não tem acesso a fazer.
+ *
+ * O rebaixamento do plano NÃO acontece aqui: quem faz isso é o webhook, que
+ * é a mesma porta por onde entra o cancelamento feito por fora. Duas portas
+ * escrevendo o mesmo estado é como ele fica inconsistente.
+ */
+async function cancelarAssinatura(tenant) {
+  if (mode() === 'dev') return { simulado: true, cancelada: true };
+  const subId = tenant.stripe_subscription_id;
+  if (!subId) throw new Error('não há assinatura ativa para cancelar');
+  await asaasApi('/subscriptions/' + encodeURIComponent(subId), null, 'DELETE');
+  return { cancelada: true, id: subId };
 }
 
 /* ---------------- Webhook ---------------- */
@@ -222,4 +299,4 @@ function planIdFromPrice(priceId) {
   return null; 
 }
 
-module.exports = { mode, createCheckout, createPortal, verifyWebhook, planIdFromPrice, asaasApi };
+module.exports = { mode, createCheckout, assinatura, cancelarAssinatura, verifyWebhook, planIdFromPrice, asaasApi };

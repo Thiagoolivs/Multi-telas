@@ -51,6 +51,7 @@ const seasons = require('./js/seasons.js');
 // Mesmo arquivo que o player usa: o que é uma config está definido num lugar só.
 const schema = require('./js/storage.js');
 const briefing = require('./server/ai-briefing');
+const guia = require('./server/ai-guia');
 const memory = require('./server/ai-memoria');
 const muralLib = require('./server/mural');
 const qrcode = require('./server/qr');
@@ -275,7 +276,22 @@ async function handleAsaasEvent(body) {
 }
 
 // Página de checkout SIMULADO (modo dev, sem Stripe). Deixa claro que é teste.
-function devCheckoutPage(p) {
+/*
+ * O botão desta página não fazia nada, e por isso o caminho pago inteiro
+ * nunca foi exercido.
+ *
+ * A CSP do projeto é `script-src 'self'`, sem `unsafe-inline` — de propósito.
+ * Esta página, que é anterior a isso, traz o script no HTML e o handler num
+ * `onclick`: o navegador recusa os dois. "Confirmar assinatura" ficava mudo,
+ * e como este é o ÚNICO jeito de testar assinatura sem chave do Asaas, o
+ * caminho pago deixou de ser percorrido por qualquer um. Foi assim que um
+ * `db.getUser is not a function` — que derrubava todo upgrade com 502 — ficou
+ * na main sem ninguém ver.
+ *
+ * Um nonce por resposta resolve sem afrouxar a política global: vale para
+ * ESTE HTML e para mais nada.
+ */
+function devCheckoutPage(p, nonce) {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pagamento simulado — ${p.name}</title>
@@ -292,12 +308,12 @@ function devCheckoutPage(p) {
 <div class="card">
   <span class="tag">PAGAMENTO SIMULADO — TESTE</span>
   <h1>Plano ${p.name}</h1>
-  <p class="muted">${p.blurb || ''} Até ${p.screens} telas.</p>
+  <p class="muted">${p.blurb || ''} Até ${p.telasMax} telas.</p>
   <div class="price">${brl(p.precoTelaCents)}<small> /mês</small></div>
-  <button id="go" onclick="pay()">Confirmar assinatura</button>
+  <button id="go">Confirmar assinatura</button>
   <a href="/app?billing=cancel">Cancelar</a>
 </div>
-<script>
+<script nonce="${nonce}">
 async function pay(){
   var b=document.getElementById('go'); b.disabled=true; b.textContent='Processando…';
   try{
@@ -306,6 +322,7 @@ async function pay(){
     location.href='/app?billing=success';
   }catch(e){ b.disabled=false; b.textContent='Tentar de novo'; }
 }
+document.getElementById('go').addEventListener('click', pay);
 </script>
 </body></html>`;
 }
@@ -440,6 +457,7 @@ async function handleApi(req, res, pathname, query) {
      * despercebida, e foi exatamente assim que esta passou.
      */
     'analise-visual': 'analise-visual',
+    guia: 'guia',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
@@ -1133,6 +1151,47 @@ async function handleApi(req, res, pathname, query) {
     return sendJson(res, 405, { error: 'método inválido' });
   }
 
+  /* ----- IA: o guia, que OFERECE em vez de perguntar ----- */
+  if (parts[1] === 'ai' && parts[2] === 'guia') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:guia:' + sess.tenant_id, 40, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'muitas sugestões seguidas — espere um instante' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      try {
+        /*
+         * O guia propõe usando o que a conta JÁ TEM: a marca, e sobretudo o
+         * acervo. Com foto própria, a sugestão mais barata é usá-la — e é
+         * também a mais verdadeira, porque mostra o produto real em vez de um
+         * genérico bonito.
+         */
+        const kit = await db.getBrandKit(sess.tenant_id);
+        const assets = await db.listBrandAssets(sess.tenant_id);
+        const k = kit || {};
+        const marca = (kit || assets.length) ? {
+          cores: k.cores || [], tom: k.tom || '',
+          bases: assets.filter((a) => a.kind === 'base').map((a) => ({ label: a.label || '' })),
+        } : null;
+        const telas = await db.countDevices(sess.tenant_id);
+        /*
+         * O nome vem do INQUILINO, que é o que a pessoa digitou no cadastro.
+         *
+         * Cair no nome do kit de marca fazia o guia abrir com "Algumas ideias
+         * para Marca principal" — que é o rótulo-padrão criado junto com a
+         * conta, não o nome de negócio nenhum. Dizer o nome errado logo na
+         * primeira frase é pior que não dizer nome.
+         */
+        const conta = await db.getTenant(sess.tenant_id);
+        const nomeDoKit = k && k.nome && k.nome !== 'Marca principal' ? k.nome : '';
+        return sendJson(res, 200, await guia.sugerir({
+          empresa: (b && b.empresa) || (conta && conta.name) || nomeDoKit || '',
+          segmento: (b && b.segmento) || '',
+          marca, telas,
+        }));
+      } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }
+    });
+  }
+
   /* ----- IA: chat de briefing (uma pergunta por vez, antes da campanha) ----- */
   if (parts[1] === 'ai' && parts[2] === 'briefing') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
@@ -1273,12 +1332,25 @@ async function handleApi(req, res, pathname, query) {
            * pessoa, e é ela que paga.
            */
           pedido: director.juntarPedido((b && b.pedido) || null, (b && b.briefingPronto) || null),
+          /*
+           * O plano que o cliente APROVOU na tela de confirmação. Quando vem,
+           * o diretor não replaneja: replanejar devolveria outro plano, e a
+           * confirmação não teria valido nada — a pessoa aprovaria uma coisa
+           * e receberia outra.
+           */
+          planoAprovado: (b && b.planoAprovado) || null,
           marca,
           // Resumo vindo do chat de briefing, quando o usuário conversou.
           briefingPronto: (b && b.briefingPronto) || null,
           // O que já sabemos da empresa de conversas anteriores.
           memoria: lembrada,
         }, {
+          /*
+           * Primeira chamada: planeja e PARA, sem gerar imagem nenhuma. O
+           * cliente vê o que a IA entendeu e quanto vai custar antes de
+           * qualquer crédito sair. A segunda chamada vem com `planoAprovado`.
+           */
+          pararNoPlano: !!(b && b.apenasPlano),
           onProgresso: progresso,
           // A geração de imagem fica aqui: o diretor não conhece storage nem tenant.
           // A IA olha as referências da marca e devolve a direção em 1 frase.
@@ -1313,7 +1385,7 @@ async function handleApi(req, res, pathname, query) {
            * sai sem foto e a campanha continua. Derrubar tudo porque a quinta
            * imagem não coube jogaria fora as quatro já pagas.
            */
-          onImagem: async (prompt, formato) => {
+          onImagem: async (prompt, formato, arte) => {
             const contaIA = await db.getTenant(sess.tenant_id);
             const pode = await usoIA.conferir(db, contaIA, 'campanha-peca', 1);
             if (!pode.ok) {
@@ -1321,7 +1393,18 @@ async function handleApi(req, res, pathname, query) {
               e.semSaldo = true;
               throw e;
             }
-            const img = await ai.generateImage(prompt, { formato, brand: (b && b.brand) || '' });
+            /*
+             * `arte` é a direção que o PLANO decidiu — paleta, clima, acento.
+             * Antes só o formato chegava aqui, e a foto vinha sem relação
+             * nenhuma com a marca que o texto ia usar por cima.
+             */
+            const img = await ai.generateImage(prompt, {
+              formato,
+              brand: (arte && arte.brand) || (b && b.brand) || '',
+              brand2: (arte && arte.brand2) || (b && b.brand2) || '',
+              direcao: (arte && arte.direcao) || '',
+              estilo: (arte && arte.estilo) || '',
+            });
             // Registrada como qualquer outro arquivo: aparece no Armazenamento,
             // conta na cota e some junto com a conta.
             const saved = await midia.guardarBuffer(db, sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime,
@@ -1673,7 +1756,18 @@ async function handleApi(req, res, pathname, query) {
         const target = plans.plan(b && b.plan);
         if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
         try {
-          const user = await db.getUser(sess.user_id);
+          /*
+           * `getUserById`, e não `getUser` — que nunca existiu.
+           *
+           * A linha entrou junto com o Asaas, porque o checkout passou a
+           * precisar do e-mail para criar o cliente. Desde então TODA tentativa
+           * de assinar respondia 502 "db.getUser is not a function": ninguém
+           * nunca conseguiu pagar, e o erro só aparecia depois do clique.
+           *
+           * Passou por não ter teste: o caminho pago inteiro não era exercido
+           * nem pela suíte nem à mão, porque em modo dev ninguém clicava.
+           */
+          const user = await db.getUserById(sess.user_id);
           const telasDaConta = await db.countDevices(sess.tenant_id);
           const out = await billing.createCheckout(tenant, user, target.id, reqOrigin(req), {
             // A mensalidade é da CONTA: o valor sai de plans.mensalidadeCents,
@@ -1699,19 +1793,55 @@ async function handleApi(req, res, pathname, query) {
       });
     }
 
-    // Portal de gerenciamento (trocar cartão / cancelar) — só dono.
-    if (req.method === 'POST' && seg === 'portal') {
-      if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
-      try { return sendJson(res, 200, await billing.createPortal(tenant, reqOrigin(req))); }
+    /*
+     * Gerenciamento da assinatura. Era um "portal" que não existia.
+     *
+     * A rota devolvia `/app?billing=portal`, e o roteador do painel manda
+     * qualquer `?billing=` para a própria tela de plano: o botão "Gerenciar
+     * assinatura (cartão, cancelamento)" recarregava a página onde a pessoa
+     * já estava. Não havia como cancelar por lugar nenhum.
+     */
+    if (req.method === 'GET' && seg === 'assinatura') {
+      // Leitura serve a qualquer membro: saber se a conta está em dia não é
+      // privilégio de dono, e esconder isso só gera pergunta no suporte.
+      try { return sendJson(res, 200, await billing.assinatura(tenant)); }
       catch (e) { return sendJson(res, 502, { error: e.message }); }
+    }
+    if (req.method === 'DELETE' && seg === 'assinatura') {
+      if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono cancela o plano' });
+      try {
+        const out = await billing.cancelarAssinatura(tenant);
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'plano.cancelar');
+        /*
+         * Em modo simulado não há webhook para rebaixar o plano depois, então
+         * o rebaixamento é feito aqui — é o único jeito de o fluxo inteiro ser
+         * testável sem chave. Com Asaas de verdade, quem rebaixa é o webhook
+         * SUBSCRIPTION_DELETED, e escrever o mesmo estado por duas portas é
+         * como ele fica inconsistente.
+         */
+        if (out.simulado) {
+          await db.setTenantBilling(sess.tenant_id, {
+            plan: 'free', status: 'canceled', subscriptionId: null, renewsAt: null,
+          });
+        }
+        return sendJson(res, 200, out);
+      } catch (e) { return sendJson(res, 502, { error: e.message }); }
     }
 
     // ----- Modo dev (checkout simulado): só existe sem Stripe configurado -----
     if (billing.mode() === 'dev') {
       if (req.method === 'GET' && seg === 'dev-checkout') {
         const target = plans.plan(query.plan);
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-        return res.end(devCheckoutPage(target));
+        // Um nonce por resposta: vale só para este HTML, e a política global
+        // continua sem `unsafe-inline`.
+        const nonce = crypto.randomBytes(16).toString('base64');
+        const csp = security.cabecalhosSeguranca(security.isSecureRequest(req))['Content-Security-Policy'];
+        res.writeHead(200, {
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Content-Security-Policy': String(csp).replace("script-src 'self'", "script-src 'self' 'nonce-" + nonce + "'"),
+        });
+        return res.end(devCheckoutPage(target, nonce));
       }
       if (req.method === 'POST' && seg === 'dev-activate') {
         if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
@@ -1781,7 +1911,22 @@ async function handleApi(req, res, pathname, query) {
         }
       }
       await db.claimDevice(d.id, sess.tenant_id, b.name || d.name || 'TV');
-        await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.parear');
+      await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.parear');
+      /*
+       * A TV PRECISA SABER QUE FOI PAREADA. Não sabia.
+       *
+       * Parear não avisava ninguém, e o player só troca de estado quando chega
+       * uma CONFIG. Quem acabou de parear ainda não publicou nada — então a
+       * TV continuava mostrando o código de pareamento, com o painel dizendo
+       * "Online · agora mesmo" na outra tela.
+       *
+       * O estrago é no primeiro minuto de uso, que é o pior lugar: a pessoa
+       * conclui que não funcionou e pareia de novo, criando uma segunda tela.
+       * No plano grátis, que é de uma tela só, a segunda esbarra no limite —
+       * e agora ela tem um erro de cobrança num produto que ela ainda nem viu
+       * funcionar.
+       */
+      broadcast(d.id, 'pareada', { nome: b.name || d.name || 'TV', em: Date.now() });
       return sendJson(res, 200, { id: d.id, name: b.name || d.name || 'TV' });
     });
   }

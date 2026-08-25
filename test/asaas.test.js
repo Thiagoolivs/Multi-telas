@@ -111,23 +111,36 @@ test('o cliente é gravado ANTES da assinatura, não no retorno', async () => {
   });
 });
 
-test('assinatura já aberta é reaproveitada em vez de virar a segunda', async () => {
-  // Clicar duas vezes em "assinar" abria duas assinaturas mensais para o
-  // mesmo cliente. Duas assinaturas cobram duas vezes, todo mês.
+test('assinatura já aberta é ATUALIZADA em vez de virar a segunda', async () => {
+  /*
+   * Este teste nasceu cobrando o reaproveitamento por PLANO, e isso deixava
+   * o buraco pior aberto: quem estava no Essencial e ia para o Pro casava com
+   * nada e ganhava uma SEGUNDA assinatura ativa — as duas cobrando todo mês,
+   * no caminho mais provável de quem já paga.
+   *
+   * Uma conta tem UMA assinatura. Trocar de plano, ou crescer o número de
+   * telas, é mudar o valor dessa assinatura no lugar. O que se cobra aqui é
+   * que nenhuma assinatura NOVA seja criada quando já existe uma ativa.
+   */
   await comAsaasFalso((url, metodo) => {
     if (url.includes('/subscriptions') && metodo === 'GET') {
       return { data: [{ id: 'sub_ja_existe', externalReference: 't1|essencial' }] };
     }
-    if (url.includes('/subscriptions')) return { id: 'sub_NOVA' };
+    if (url.includes('/subscriptions')) return { id: 'sub_ja_existe' };
     if (url.includes('/payments')) return { data: [{ invoiceUrl: 'https://asaas.test/f/1' }] };
     return {};
   }, async (billing, chamadas) => {
+    // De propósito num plano DIFERENTE do que está aberto: é a troca de plano.
     const out = await billing.createCheckout(
-      { ...TENANT, stripe_customer_id: 'cus_1' }, USER, 'essencial', 'https://app.test', { telas: 1 });
+      { ...TENANT, stripe_customer_id: 'cus_1' }, USER, 'pro', 'https://app.test', { telas: 1 });
     assert.equal(out.id, 'sub_ja_existe');
-    assert.equal(out.reaproveitada, true);
-    assert.equal(chamadas.filter((c) => c.url.includes('/subscriptions') && c.metodo === 'POST').length, 0,
-      'criou uma segunda assinatura para quem já tinha uma');
+
+    const criacoes = chamadas.filter((c) => c.metodo === 'POST' && /\/subscriptions$/.test(c.url));
+    assert.deepStrictEqual(criacoes, [], 'criou uma segunda assinatura para quem já tinha uma');
+
+    const alteracao = chamadas.find((c) => c.metodo === 'POST' && c.url.includes('/subscriptions/sub_ja_existe'));
+    assert.ok(alteracao, 'não atualizou a assinatura existente');
+    assert.equal(alteracao.corpo.externalReference, 't1|pro', 'a assinatura ficou apontando para o plano antigo');
   });
 });
 
@@ -206,13 +219,25 @@ test('a sandbox é escolhida por variável própria, não por NODE_ENV', () => {
 
 /* ---------------- Cancelamento ---------------- */
 
-test('o botão de cancelar aparece em modo Asaas', () => {
-  // Estava atrás de `mode === 'stripe'`, e o modo virou 'asaas' — o botão
-  // sumiu, e com ele o único jeito de cancelar pelo app.
-  const codigo = soCodigo(lerFonte('web', 'src', 'pages', 'BillingPage.jsx'))
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' '); // comentário JSX
-  assert.ok(!/mode === 'stripe'/.test(codigo), 'o botão de cancelar voltou a exigir Stripe');
-  assert.match(codigo, /mode !== 'dev'/);
+test('existe um caminho de cancelamento que não volta para a mesma tela', () => {
+  /*
+   * A primeira versão deste teste só exigia que o botão não estivesse mais
+   * atrás de `mode === 'stripe'`. Passou — e o botão continuava inútil: ele
+   * chamava um "portal" que devolvia `/app?billing=portal`, e o roteador
+   * manda qualquer `?billing=` de volta para a PRÓPRIA tela de plano. A
+   * página recarregava e não havia como cancelar por lugar nenhum.
+   *
+   * Exigir a ausência de uma condição não é exigir a presença de um caminho.
+   */
+  const tela = soCodigo(lerFonte('web', 'src', 'pages', 'BillingPage.jsx'))
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ');
+  assert.ok(!/mode === 'stripe'/.test(tela), 'o cancelamento voltou a exigir Stripe');
+  assert.match(tela, /billing\.cancelar\(\)/, 'a tela não chama o cancelamento');
+  assert.match(tela, /Confirmar cancelamento/, 'sumiu a confirmação antes de cancelar');
+
+  const server = soCodigo(lerFonte('server.js'));
+  assert.match(server, /req\.method === 'DELETE' && seg === 'assinatura'/, 'sumiu a rota de cancelamento');
+  assert.ok(!/billing=portal/.test(server), 'voltou a URL que aponta para a própria tela');
 });
 
 /* ---------------- Cadastro ---------------- */
