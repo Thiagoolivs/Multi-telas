@@ -1844,7 +1844,22 @@ async function handleApi(req, res, pathname, query) {
         }
       }
       await db.claimDevice(d.id, sess.tenant_id, b.name || d.name || 'TV');
-        await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.parear');
+      await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.parear');
+      /*
+       * A TV PRECISA SABER QUE FOI PAREADA. Não sabia.
+       *
+       * Parear não avisava ninguém, e o player só troca de estado quando chega
+       * uma CONFIG. Quem acabou de parear ainda não publicou nada — então a
+       * TV continuava mostrando o código de pareamento, com o painel dizendo
+       * "Online · agora mesmo" na outra tela.
+       *
+       * O estrago é no primeiro minuto de uso, que é o pior lugar: a pessoa
+       * conclui que não funcionou e pareia de novo, criando uma segunda tela.
+       * No plano grátis, que é de uma tela só, a segunda esbarra no limite —
+       * e agora ela tem um erro de cobrança num produto que ela ainda nem viu
+       * funcionar.
+       */
+      broadcast(d.id, 'pareada', { nome: b.name || d.name || 'TV', em: Date.now() });
       return sendJson(res, 200, { id: d.id, name: b.name || d.name || 'TV' });
     });
   }

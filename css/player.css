@@ -1205,3 +1205,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
    usada pelo player (player.html) e pelo palco do editor (web/src/index.css).
    Enquanto cada lado tinha a sua, a peça saía diferente aqui e lá, e a
    diferença só aparecia depois de publicada, na parede. */
+
+/* O botão "gerar outro código" some quando a TV já está pareada:
+   ali ele só serviria para desparear sem querer. */
+.mt-pairing-reset.hidden { display: none; }

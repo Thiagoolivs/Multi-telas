@@ -152,7 +152,10 @@
     if (id && dt) {
       try {
         const meta = await api('GET', '/api/devices/' + id, undefined, { 'x-device-token': dt });
-        return { id: meta.id, code: meta.code, paired: meta.paired };
+        // `name` entra aqui para a TV recarregada poder dizer "Tudo certo,
+        // Vitrine" em vez de só "Tudo certo": o servidor já mandava, e este
+        // destructuring jogava fora.
+        return { id: meta.id, code: meta.code, paired: meta.paired, name: meta.name };
       } catch (e) {
         /*
          * Só desiste da identidade quando o SERVIDOR diz que ela não vale
@@ -194,7 +197,7 @@
     try { await api('POST', '/api/devices/' + id + '/audio-estado', estado, dtHeader()); }
     catch (e) { /* offline: o painel mostra "sem notícia" */ }
   }
-  function subscribe(id, onConfig) {
+  function subscribe(id, onConfig, onPareada) {
     let es;
     /*
      * O token da TV NÃO vai mais na URL.
@@ -218,6 +221,16 @@
       if (!passe) { setTimeout(connect, 15000); return; }
 
       es = new EventSource(API + '/api/devices/' + id + '/events?passe=' + encodeURIComponent(passe));
+      /*
+       * Acabou de ser pareada. Chega uma vez, e serve para a TV sair do
+       * código de pareamento SEM esperar a primeira publicação — que pode
+       * demorar horas, ou nunca vir.
+       */
+      es.addEventListener('pareada', (ev) => {
+        let dados = {};
+        try { dados = JSON.parse(ev.data || '{}'); } catch (e) {}
+        if (onPareada) onPareada(dados);
+      });
       es.addEventListener('config', async (ev) => {
         let meta = {};
         try { meta = JSON.parse(ev.data || '{}'); } catch (e) {}

@@ -165,3 +165,59 @@ test('a TV manda o cliente abrir um menu que EXISTE', () => {
   assert.ok(!/Controlar TV/.test(player), 'a TV voltou a citar um menu que não existe');
   assert.match(player, /Telas/, 'a instrução da TV precisa citar o menu real');
 });
+
+/* ---------------- A TV depois de pareada ---------------- */
+
+test('a TV sabe a diferença entre "não pareada" e "pareada e vazia"', () => {
+  /*
+   * `GET /devices/:id/config` responde 204 nos DOIS casos: tela que ninguém
+   * reivindicou, e tela reivindicada cujo dono ainda não publicou nada. O
+   * player lia "sem config" e mostrava o código de pareamento — então quem
+   * acabava de parear via o painel dizer "Online · agora mesmo" enquanto a TV
+   * na frente dele continuava pedindo para parear.
+   *
+   * O estrago é no primeiro minuto de uso: a pessoa conclui que falhou e
+   * pareia de novo, criando uma segunda tela. No plano grátis, que é de uma
+   * tela só, a segunda esbarra no limite — e ela ganha um erro de cobrança
+   * num produto que ainda nem viu funcionar.
+   *
+   * O dado para separar os dois sempre esteve na mão: `ensureDevice` devolve
+   * `paired`. O que faltava era usá-lo.
+   */
+  const player = soCodigo(ler('js', 'player.js'));
+  assert.match(player, /function showAguardando/, 'sumiu o estado de "pareada, aguardando conteúdo"');
+  assert.match(player, /\} else if \(dev\.paired\) \{/, 'o boot voltou a tratar pareada e não pareada igual');
+
+  const cloud = soCodigo(ler('js', 'cloud.js'));
+  assert.match(cloud, /paired: meta\.paired/, 'o player deixou de receber se a tela está pareada');
+});
+
+test('parear AVISA a TV, sem esperar a primeira publicação', () => {
+  /*
+   * Parear não avisava ninguém, e o player só troca de estado quando chega uma
+   * CONFIG. Quem acabou de parear ainda não publicou nada, então a TV ficaria
+   * no código até a primeira publicação — que pode demorar horas, ou nunca
+   * vir, porque a pessoa foi embora achando que não funcionou.
+   */
+  const server = soCodigo(ler('server.js'));
+  const i = server.indexOf('db.claimDevice(');
+  assert.ok(i > 0, 'sumiu o pareamento');
+  assert.match(server.slice(i, i + 600), /broadcast\(d\.id, 'pareada'/,
+    'parear voltou a não avisar a TV');
+
+  const cloud = soCodigo(ler('js', 'cloud.js'));
+  assert.match(cloud, /addEventListener\('pareada'/, 'a TV deixou de ouvir o aviso de pareamento');
+
+  const player = soCodigo(ler('js', 'player.js'));
+  assert.match(player, /showAguardando\(dados && dados\.nome\)/,
+    'a TV recebe o aviso e não troca de tela');
+});
+
+test('a tela de "aguardando" não oferece gerar outro código', () => {
+  // Ali o botão só serviria para desparear sem querer a TV que acabou de
+  // funcionar — e é o único botão da tela, o mais provável de ser apertado.
+  const player = soCodigo(ler('js', 'player.js'));
+  const i = player.indexOf('function showAguardando');
+  assert.match(player.slice(i, i + 1200), /reset\) reset\.classList\.add\('hidden'\)/);
+  assert.match(ler('css', 'player.css'), /\.mt-pairing-reset\.hidden/, 'o CSS não esconde o botão');
+});
