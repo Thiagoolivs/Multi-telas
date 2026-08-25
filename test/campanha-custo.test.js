@@ -177,9 +177,17 @@ test('a campanha cobra crédito por imagem, como a rota avulsa', () => {
    * sem conferir saldo e sem debitar. O único registro era o do texto, R$ 0,05
    * para algo que custa mais de um real.
    */
-  const i = SERVER.indexOf('onImagem: async (prompt, formato)');
+  /*
+   * Ancorado no NOME do gancho, não na lista de parâmetros.
+   *
+   * A primeira versão procurava `onImagem: async (prompt, formato)` literal, e
+   * quebrou no dia em que a direção de arte passou a ser um terceiro
+   * argumento — sem que nada do que este teste guarda tivesse mudado. Teste
+   * que falha por assinatura treina a gente a ignorar teste vermelho.
+   */
+  const i = SERVER.indexOf('onImagem: async (');
   assert.ok(i > 0, 'sumiu a geração de imagem da campanha');
-  const bloco = SERVER.slice(i, i + 1400);
+  const bloco = SERVER.slice(i, i + 2200);
 
   assert.match(bloco, /usoIA\.conferir\(db, contaIA, 'campanha-peca', 1\)/,
     'a campanha voltou a gerar imagem sem conferir saldo');

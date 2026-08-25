@@ -15,6 +15,9 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY || '';
 const GROQ_KEY = process.env.GROQ_API_KEY || '';
 const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
 
+// A direção de arte da FOTO mora fora daqui: ver server/direcao-arte.js.
+const direcaoArte = require('./direcao-arte');
+
 // Provider agnóstico: AI_PROVIDER manda; senão, escolhe pela chave presente.
 function mode() {
   const p = (process.env.AI_PROVIDER || '').toLowerCase();
@@ -561,13 +564,16 @@ function devImage(prompt, opts) {
 async function generateImage(prompt, opts) {
   prompt = String(prompt || '').slice(0, 1200); opts = opts || {};
   if (mode() === 'dev' || !GEMINI_KEY) return devImage(prompt, opts);
-  const guide = [
-    opts.formato ? `Proporção da imagem: ${opts.formato}.` : '',
-    opts.brand ? `Cor de marca principal: ${opts.brand}.` : '',
-    opts.brand2 ? `Cor de acento: ${opts.brand2}.` : '',
-    opts.estilo ? `Estilo: ${opts.estilo}.` : '',
-    'Digital signage profissional, alta qualidade, composição limpa. Sem marcas d\'água.',
-  ].filter(Boolean).join(' ');
+  /*
+   * A direção de arte substitui o guia genérico que estava aqui.
+   *
+   * O antigo dizia proporção, as duas cores e "digital signage profissional,
+   * alta qualidade, composição limpa" — instrução que não decide nada: o
+   * modelo preenchia o quadro inteiro, e o texto que o compositor escreve
+   * depois caía em cima do rosto. E não proibia TEXTO, só marca d'água, então
+   * vinha palavra desenhada por baixo — em português, com acento torto.
+   */
+  const texto = direcaoArte.promptDeFoto(prompt, opts);
   const list = [process.env.GEMINI_IMAGE_MODEL, ...GEMINI_IMAGE_MODELS].filter((m, i, a) => m && a.indexOf(m) === i);
   let lastErr;
   for (const model of list) {
@@ -576,7 +582,7 @@ async function generateImage(prompt, opts) {
       const res = await fetch(url, {
         method: 'POST', headers: { 'x-goog-api-key': GEMINI_KEY, 'content-type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt + '\n\n' + guide }] }],
+          contents: [{ role: 'user', parts: [{ text: texto }] }],
           generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
         }),
       });

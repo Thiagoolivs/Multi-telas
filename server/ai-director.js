@@ -17,6 +17,8 @@
  */
 const ai = require('./ai');
 const ds = require('./design-system');
+const direcaoArte = require('./direcao-arte');
+const fontMetrics = require('./font-metrics');
 const { validarComposicao } = require('./composer');
 const memoria = require('./ai-memoria');
 
@@ -685,7 +687,26 @@ async function comporPeca(peca, identidade, palette, critica) {
     `headline: ${peca.headline}`,
     peca.sub ? `sub: ${peca.sub}` : '(sem sub)',
     peca.cta ? `cta: ${peca.cta}` : '(sem cta)',
-    peca.bgImagem ? '\nA peça JÁ TEM uma foto de fundo: use formas escuras semitransparentes atrás do texto para garantir leitura, e não cubra a foto inteira.' : '',
+    /*
+     * Duas conversas diferentes, porque são duas fotos diferentes.
+     *
+     * A que NÓS geramos foi pedida deixando um lado limpo de propósito — ali
+     * o texto entra sem véu nenhum, que é o que faz a peça parecer desenhada
+     * em vez de legendada. Pedir véu sobre ela seria escurecer justamente o
+     * espaço que mandamos reservar.
+     *
+     * A do acervo do cliente não reservou nada: sem véu não há como garantir
+     * leitura, porque ninguém sabe o que tem atrás.
+     */
+    peca.ladoLimpo
+      ? `\nA foto de fundo foi feita deixando ${peca.ladoLimpo === 'esquerdo' ? 'A METADE ESQUERDA'
+          : peca.ladoLimpo === 'superior' ? 'O TERÇO SUPERIOR' : 'O TERÇO INFERIOR'} LIMPO, `
+        + 'só para o texto. Ponha TODO o texto nesse espaço. '
+        + 'NÃO use véu, faixa nem forma escura atrás do texto: o espaço já está livre, '
+        + 'e escurecê-lo desfaz o motivo de ele existir.'
+      : peca.bgImagem
+        ? '\nA peça JÁ TEM uma foto de fundo e ela NÃO reservou espaço: use formas escuras semitransparentes atrás do texto para garantir leitura, e não cubra a foto inteira.'
+        : '',
     critica || '',
   ].filter(Boolean).join('\n');
 
@@ -715,6 +736,120 @@ async function comporPeca(peca, identidade, palette, critica) {
  * Layout de cartaz: título display gigante ancorado embaixo, sangrando pelas
  * bordas — o "ANIVERSÁRIO" das referências. Funciona com ou sem foto atrás.
  */
+/*
+ * Texto no espaço que a foto deixou vazio. Sem véu, sem faixa, sem sombra.
+ *
+ * É a diferença entre a peça parecer DESENHADA e parecer legendada. O véu
+ * resolve leitura sobre foto desconhecida, e por isso `layoutCartaz` existe —
+ * mas ele custa: escurece a imagem, achata a cor e denuncia que o texto foi
+ * colado depois. Quando a foto foi pedida com um lado limpo, não há o que
+ * resolver: o espaço já está lá, no tom certo, esperando.
+ *
+ * O alinhamento acompanha o lado: texto à esquerda quando o vazio é à
+ * esquerda, centralizado quando o vazio é uma faixa horizontal. Alinhar tudo
+ * ao centro faria o texto flutuar longe da borda que o sustenta.
+ */
+function layoutLadoLimpo(peca, palette, formato, dir) {
+  const s = ds.safeArea(formato);
+  const esc = ds.escalaTipografica(formato);
+  const r = ds.ratioDe(formato);
+  const lateral = peca.ladoLimpo === 'esquerdo';
+
+  /*
+   * O texto mora DENTRO de um orçamento de altura, e não de tamanhos soltos.
+   *
+   * A primeira versão disto somava as alturas de cada elemento a partir de um
+   * tamanho de fonte e empilhava — e o `cta` saía em y=104, fora da peça. O
+   * erro é fácil de cometer e difícil de ver: a fonte é medida em % da
+   * LARGURA, e numa peça 16/9 cada ponto de fonte vale 1,78 ponto de altura.
+   * Um título de três linhas come metade da peça sem parecer grande.
+   *
+   * Aqui a conta é ao contrário: parte-se da altura disponível e reparte-se
+   * entre os quatro papéis. Quem encolhe o TEXTO para caber na caixa é o
+   * compositor, que já faz isso com a fonte de verdade — o que ele não faz é
+   * mover a caixa para dentro da peça, e por isso a caixa precisa nascer
+   * dentro.
+   */
+  const areaX = s.x;
+  const areaW = lateral ? s.w * 0.46 : s.w;
+  /*
+   * A faixa é a fração que o prompt da FOTO prometeu deixar limpa — as duas
+   * saem do mesmo lugar de propósito. Prometer um terço e escrever em 42%
+   * seria escrever em cima do sujeito.
+   */
+  const fatia = direcaoArte.reservaDe(formato).altura;
+  const areaY = peca.ladoLimpo === 'superior' ? s.y
+    : peca.ladoLimpo === 'inferior' ? 100 - s.y - s.h * fatia
+    : s.y;
+  const areaH = lateral ? s.h : s.h * fatia;
+  const align = lateral ? 'left' : 'center';
+
+  // Pesos de altura por papel. Somam 1 entre os que existirem nesta peça.
+  const partes = [
+    peca.kicker ? { papel: 'kicker', peso: 0.10, fonte: 'condensada', cor: palette.acento, forca: 700, base: esc.kicker } : null,
+    { papel: 'headline', peso: 0.50, fonte: dir.fonteTitulo || 'display', cor: palette.texto, forca: 800, base: esc.headline },
+    peca.sub ? { papel: 'sub', peso: 0.24, fonte: 'sans', cor: palette.texto, forca: 400, base: esc.sub } : null,
+    peca.cta ? { papel: 'cta', peso: 0.16, fonte: 'sans', cor: palette.acento, forca: 700, base: esc.cta } : null,
+  ].filter(Boolean);
+  const soma = partes.reduce((t, x) => t + x.peso, 0);
+
+  // Respiro entre blocos, tirado do próprio orçamento — não somado a ele.
+  const respiro = areaH * 0.04;
+  const util = areaH - respiro * (partes.length - 1);
+
+  const els = [];
+  let y = areaY;
+  for (const parte of partes) {
+    const h = util * (parte.peso / soma);
+    /*
+     * O tamanho sai da MEDIÇÃO, não de uma conta de altura.
+     *
+     * A primeira versão limitava o tamanho pela altura da caixa e ignorava a
+     * largura — e numa coluna de 40% quem manda é a largura. Renderizado, o
+     * título de três linhas transbordava para fora da peça inteira. O
+     * compositor encolheria depois, mas encolher muito é sinal de que o
+     * número de partida estava errado, e é ele que decide se a peça tem
+     * presença ou fica tímida.
+     *
+     * `cabeNaCaixaReal` é o mesmo medidor que o compositor usa, com o arquivo
+     * da fonte de verdade. Perguntar aqui é o que faz o layout nascer já
+     * cabendo, em vez de nascer errado e ser corrigido.
+     */
+    const teto = parte.base * (parte.papel === 'headline' ? (dir.escalaTitulo || 1) : 1);
+    const caixa = { w: areaW, h };
+    let tam = teto;
+    try {
+      /*
+       * EM LAÇO, e não uma passada só.
+       *
+       * `sugestaoCqw` é uma estimativa: ela aproxima, não acerta de primeira.
+       * Medido no formato quadrado, a primeira sugestão ainda devolvia
+       * `cabe: false` — o título saía com duas linhas numa caixa de uma, e
+       * transbordava por cima do kicker. Três voltas convergem; a quarta não
+       * muda nada e custa leitura de fonte.
+       *
+       * O mesmo laço que o compositor faz. A diferença é que aqui ele roda
+       * ANTES, para o layout já nascer certo em vez de nascer errado e ser
+       * corrigido depois.
+       */
+      for (let volta = 0; volta < 3; volta++) {
+        const m = fontMetrics.cabeNaCaixaReal(peca[parte.papel], caixa, tam, formato, parte.fonte, parte.forca, false);
+        if (m.cabe) break;
+        const proximo = Math.max(1.4, Math.min(m.sugestaoCqw, tam * 0.88));
+        if (proximo >= tam) break; // não está convergindo; para para não travar
+        tam = proximo;
+      }
+    } catch (_) { /* sem métrica, segue o teto: o compositor ainda encolhe */ }
+    els.push({
+      tipo: 'texto', papel: parte.papel, text: peca[parte.papel], x: areaX, y,
+      w: areaW, h, tamanho: Number(tam.toFixed(2)), fonte: parte.fonte,
+      cor: parte.cor, align, peso: parte.forca,
+    });
+    y += h + respiro;
+  }
+  return { elementos: els, _reserva: true };
+}
+
 function layoutCartaz(peca, palette, formato, dir) {
   const s = ds.safeArea(formato);
   const esc = ds.escalaTipografica(formato);
@@ -818,6 +953,13 @@ function layoutReserva(peca, palette, formato, dirId, identidade) {
    * o véu que garante leitura sobre a imagem. O validador de contraste não sabe
    * medir texto contra foto — quem resolve isso é o layout.
    */
+  /*
+   * Foto NOSSA, com um lado deixado limpo de propósito: o texto vai ali, sem
+   * véu. `layoutCartaz` sempre escurece o rodapé para garantir leitura sobre
+   * uma foto desconhecida — o que aqui apagaria justo o espaço que mandamos
+   * reservar.
+   */
+  if (peca.ladoLimpo) return layoutLadoLimpo(peca, palette, formato, dir);
   if (peca.bgImagem || dir.fundo === 'foto' || dir.sangra) return layoutCartaz(peca, palette, formato, dir);
   if (dir.fundo === 'marca') return layoutChapado(peca, palette, formato, dir);
   if (dir.fundo === 'escuro') return layoutChapado(peca, palette, formato, dir);
@@ -969,8 +1111,32 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
       if (!peca.precisaImagem || !peca.promptImagem) continue;
       passo('gerando imagens', `${++feitas} de ${aGerar.length}`);
       try {
-        peca.bgImagem = await onImagem(peca.promptImagem, peca.formato);
-        porManchete.set(peca.headline, peca.bgImagem);
+        /*
+         * A DIREÇÃO VAI JUNTO. Só o formato ia.
+         *
+         * O plano decide paleta e direção visual — "chapado", a cor da marca,
+         * o acento — e nada disso chegava na hora de pedir a foto: ela vinha
+         * com a cara que o modelo quisesse, e só depois o texto era escrito
+         * por cima, na cor da marca, sobre uma foto que não tinha relação
+         * nenhuma com ela. É o motivo de a peça sair com jeito de banco de
+         * imagens com legenda colada.
+         */
+        peca.bgImagem = await onImagem(peca.promptImagem, peca.formato, {
+          brand: (plano.paleta && plano.paleta.brand) || '',
+          brand2: (plano.paleta && plano.paleta.brand2) || '',
+          direcao: (plano.paleta && plano.paleta.direcao) || '',
+          estilo: (plano.paleta && plano.paleta.estilo) || '',
+        });
+        /*
+         * A foto GERADA por nós reservou um lado limpo (ver direcao-arte.js).
+         * A foto do ACERVO do cliente não reservou nada — ela é o que é.
+         *
+         * Marcar a diferença é o que permite compor de dois jeitos: sobre a
+         * nossa, o texto vai no espaço vazio e SEM véu; sobre a do cliente,
+         * o véu continua, porque sem ele não há garantia de leitura.
+         */
+        peca.ladoLimpo = direcaoArte.reservaDe(peca.formato).lado;
+        porManchete.set(peca.headline, { url: peca.bgImagem, ladoLimpo: peca.ladoLimpo });
       } catch (e) {
         /*
          * Sem imagem, compõe com formas — e a campanha inteira continua.
@@ -987,7 +1153,8 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
     // As cópias herdam o arquivo já gerado, sem custo novo.
     for (const peca of plano.pecas) {
       if (peca.reusaImagemDe && porManchete.has(peca.reusaImagemDe)) {
-        peca.bgImagem = porManchete.get(peca.reusaImagemDe);
+        const reusa = porManchete.get(peca.reusaImagemDe);
+        if (reusa) { peca.bgImagem = reusa.url; peca.ladoLimpo = reusa.ladoLimpo; }
       }
     }
   }

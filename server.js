@@ -1329,7 +1329,7 @@ async function handleApi(req, res, pathname, query) {
            * sai sem foto e a campanha continua. Derrubar tudo porque a quinta
            * imagem não coube jogaria fora as quatro já pagas.
            */
-          onImagem: async (prompt, formato) => {
+          onImagem: async (prompt, formato, arte) => {
             const contaIA = await db.getTenant(sess.tenant_id);
             const pode = await usoIA.conferir(db, contaIA, 'campanha-peca', 1);
             if (!pode.ok) {
@@ -1337,7 +1337,18 @@ async function handleApi(req, res, pathname, query) {
               e.semSaldo = true;
               throw e;
             }
-            const img = await ai.generateImage(prompt, { formato, brand: (b && b.brand) || '' });
+            /*
+             * `arte` é a direção que o PLANO decidiu — paleta, clima, acento.
+             * Antes só o formato chegava aqui, e a foto vinha sem relação
+             * nenhuma com a marca que o texto ia usar por cima.
+             */
+            const img = await ai.generateImage(prompt, {
+              formato,
+              brand: (arte && arte.brand) || (b && b.brand) || '',
+              brand2: (arte && arte.brand2) || (b && b.brand2) || '',
+              direcao: (arte && arte.direcao) || '',
+              estilo: (arte && arte.estilo) || '',
+            });
             // Registrada como qualquer outro arquivo: aparece no Armazenamento,
             // conta na cota e some junto com a conta.
             const saved = await midia.guardarBuffer(db, sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime,
