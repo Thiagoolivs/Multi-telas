@@ -1,5 +1,5 @@
 import React from 'react';
-import { fillToCss, shapeClip, SHAPE_POLY, textFontCqw, estiloCaixa, raioCss } from '../../lib/composition.js';
+import { fillToCss, shapeClip, SHAPE_POLY, textFontCqw, estiloCaixa, raioCss, estiloFundo, tintaImagem } from '../../lib/composition.js';
 import { ICONS } from '../../lib/icons.js';
 import { estiloTexto, carregarDaComposicao } from '../../lib/fontes.js';
 
@@ -40,7 +40,7 @@ export function DesignThumb({ item, fitHeight }) {
   }
 
   const b = it.bg || {};
-  const bg = b.kind === 'imagem' && b.src ? { backgroundImage: `url("${b.src}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
+  const bg = b.kind === 'imagem' && b.src ? estiloFundo(b)
     : b.kind === 'cor' ? { background: b.cor } : { background: '#0a1020' };
   const els = (it.elementos || []).slice().sort((a, c) => (a.z || 0) - (c.z || 0));
   carregarDaComposicao(els);
@@ -54,14 +54,14 @@ export function DesignThumb({ item, fitHeight }) {
     <div className={'relative overflow-hidden rounded-md border border-line ' + (fitHeight ? '' : 'w-full')}
       style={{ ...ar, ...bg, containerType: 'inline-size' }}>
       {els.map((e, i) => (
-        <div key={i} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden' }}>
+        <div key={i} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden', ...((tintaImagem(e.tint) || {}).pai || {}) }}>
           {e.tipo === 'texto'
             ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', ...estiloTexto(e), ...estiloCaixa(e), fontSize: 'min(' + textFontCqw(e, formato) + 'cqw, 60px)', whiteSpace: 'pre-wrap' }}>{e.text}</div>
             : e.tipo === 'icone'
               ? <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%', opacity: e.opacidade != null ? e.opacidade : 1, ...estiloCaixa(e) }} dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />
             : e.tipo === 'forma'
               ? <div style={{ width: '100%', height: '100%', background: fillToCss(e.fill), borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : raioCss(e)), clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none', ...estiloCaixa(e) }} />
-              : <img src={e.src} alt="" style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', borderRadius: raioCss(e), ...estiloCaixa(e) }} />}
+              : <img src={e.src} alt="" style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', borderRadius: raioCss(e), ...estiloCaixa(e), ...((tintaImagem(e.tint) || {}).img || {}) }} />}
         </div>
       ))}
     </div>

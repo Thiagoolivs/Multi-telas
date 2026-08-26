@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity, Gauge,
+  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity, Gauge, Images,
 } from 'lucide-react';
 
 const NAV = [
@@ -10,6 +10,13 @@ const NAV = [
     { id: 'screens', label: 'Telas', icon: MonitorPlay },
     { id: 'designs', label: 'Meus Designs', icon: Palette },
     { id: 'brand', label: 'Marca', icon: Brush },
+    /*
+     * O Banco de Imagens é OPERAÇÃO, ao lado de Marca e Meus Designs: é de
+     * onde sai conteúdo para a tela. Enfiado em "Conta", junto de cobrança e
+     * equipe, ninguém acharia — e uma prateleira que ninguém abre é a mesma
+     * coisa que uma plataforma vazia.
+     */
+    { id: 'banco', label: 'Banco de Imagens', icon: Images },
     { id: 'mural', label: 'Mural de fotos', icon: QrCode },
     /*
      * Aniversariantes é OPERAÇÃO, não conta.

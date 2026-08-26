@@ -39,6 +39,7 @@ const ai = require('./server/ai');
 const director = require('./server/ai-director');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
+const banco = require('./server/banco.js');
 const cortesia = require('./server/cortesia.js');
 const limites = require('./server/limites.js');
 const passes = require('./server/passes.js');
@@ -368,7 +369,7 @@ function classeDaSessao(parts, method) {
 
 async function handleApi(req, res, pathname, query) {
   const ctx = {
-    db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode,
+    db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode,
     baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto
   };
   ctx.routes = {
@@ -979,6 +980,28 @@ async function handleApi(req, res, pathname, query) {
      * Sem essa separação um convite errado se multiplicaria sozinho, e não
      * haveria como cortar a árvore de volta a não ser por deploy.
      */
+    /*
+     * A fila do Banco de Imagens. Nada entra no feed de todo mundo sem alguém
+     * olhar: o volume é minúsculo e o custo de conferir é quase zero — o custo
+     * de UMA imagem errada aparecendo na parede de trinta clientes não é.
+     */
+    if (parts[2] === 'banco') {
+      if (req.method === 'GET') {
+        const estado = ['pendente', 'aprovada', 'recusada', 'revogada'].includes(query && query.estado)
+          ? query.estado : 'pendente';
+        const linhas = await db.bancoPorEstado(estado, Number(query && query.limite) || 100);
+        return sendJson(res, 200, { estado, itens: linhas.map((r) => banco.paraCliente(r)) });
+      }
+      if (req.method === 'POST' && parts[3]) {
+        return readBody(req, res, async (b) => {
+          const r = await banco.moderar(db, parts[3], b && b.estado, sess.email);
+          if (!r.ok) return sendJson(res, r.status, { error: r.error });
+          return sendJson(res, 200, { item: banco.paraCliente(r.item) });
+        });
+      }
+      return sendJson(res, 405, { error: 'método não suportado' });
+    }
+
     if (parts[2] === 'operadores') {
       if (req.method === 'GET') {
         return sendJson(res, 200, {
@@ -1408,7 +1431,14 @@ async function handleApi(req, res, pathname, query) {
             // Registrada como qualquer outro arquivo: aparece no Armazenamento,
             // conta na cota e some junto com a conta.
             const saved = await midia.guardarBuffer(db, sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime,
-              { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
+              {
+                nome: 'IA · ' + String(prompt).slice(0, 60),
+                origem: 'ia',
+                // Proporção e cor de origem: é o que o Banco de Imagens precisa
+                // para filtrar por formato e para saber o que tingir de novo.
+                formato,
+                cor: (arte && arte.brand) || (b && b.brand) || '',
+              });
             // Só depois do sucesso: falha não cobra.
             await usoIA.cobrar(db, contaIA, {
               tipo: 'campanha-peca', quantidade: 1, userId: sess.user_id, referencia: saved.id,
@@ -1484,7 +1514,12 @@ async function handleApi(req, res, pathname, query) {
         progresso('guardando no armazenamento', '');
         const buf = Buffer.from(img.data, 'base64');
         const saved = await midia.guardarBuffer(db, sess.tenant_id, buf, img.mime,
-          { nome: 'IA · ' + String(prompt).slice(0, 60), origem: 'ia' });
+          {
+            nome: 'IA · ' + String(prompt).slice(0, 60),
+            origem: 'ia',
+            formato: (b && b.formato) || '16/9',
+            cor: (b && b.brand) || '',
+          });
         // Só depois do sucesso: falha não cobra.
         await usoIA.cobrar(db, tenantIA, { tipo: 'gerar-imagem', quantidade: 1, userId: sess.user_id, referencia: saved.id });
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
@@ -2200,6 +2235,70 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
+  /* ---------------- Banco de Imagens MultiTelas ----------------
+   *
+   * O feed compartilhado entre contas. As regras estão em server/banco.js —
+   * aqui fica só a sessão, o aceite e o registro de quem aceitou o quê.
+   */
+  if (parts[1] === 'banco') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const seg = parts[2];
+
+    // O feed: aprovadas, com busca e filtro de proporção.
+    if (req.method === 'GET' && !seg) {
+      const itens = await banco.listar(db, {
+        termo: query && query.q, formato: query && query.formato, limite: query && query.limite,
+      }, sess.tenant_id);
+      return sendJson(res, 200, { itens });
+    }
+
+    // O que ESTA conta ofereceu, em qualquer estado — inclusive o recusado.
+    // Quem compartilhou tem direito de saber onde a imagem dele parou.
+    if (req.method === 'GET' && seg === 'minhas') {
+      const linhas = await db.bancoDoTenant(sess.tenant_id);
+      return sendJson(res, 200, { itens: linhas.map((r) => banco.paraCliente(r, sess.tenant_id)) });
+    }
+
+    /*
+     * Compartilhar. Exige `aceito: true` no corpo e grava o aceite com a
+     * versão dos Termos: o dia em que alguém disser "eu não sabia que outra
+     * empresa ia usar", a resposta precisa ser uma linha no banco, não a
+     * lembrança de um botão.
+     */
+    if (req.method === 'POST' && seg && parts[3] === 'compartilhar') {
+      return readBody(req, res, async (b) => {
+        if (!(b && b.aceito === true)) {
+          return sendJson(res, 400, { error: 'é preciso aceitar as condições de compartilhamento' });
+        }
+        const m = await db.getMedia(seg);
+        if (!m || m.tenant_id !== sess.tenant_id) return sendJson(res, 404, { error: 'mídia não encontrada' });
+        const mem = await db.getMemoria(sess.tenant_id).catch(() => null);
+        const r = await banco.oferecer(db, sess.tenant_id, m, { segmento: mem && mem.segmento });
+        if (!r.ok) return sendJson(res, r.status, { error: r.error });
+        await db.registrarAceite(sess.tenant_id, sess.user_id, sess.email, legal.VERSAO,
+          'banco:' + m.id, clientIp(req));
+        return sendJson(res, r.status, { item: banco.paraCliente({ ...r.item, tenant_id: sess.tenant_id }, sess.tenant_id) });
+      });
+    }
+
+    // Descompartilhar. Sai do feed; o que já está publicado em outra conta
+    // continua no ar — ver server/banco.js.
+    if (req.method === 'DELETE' && seg && parts[3] === 'compartilhar') {
+      const r = await banco.revogar(db, sess.tenant_id, seg);
+      if (!r.ok) return sendJson(res, r.status, { error: r.error });
+      return sendJson(res, 200, { ok: true, estado: 'revogada' });
+    }
+
+    // Usar uma imagem do feed: conta o uso e devolve a URL para a peça.
+    if (req.method === 'POST' && seg && parts[3] === 'usar') {
+      const r = await banco.usar(db, sess.tenant_id, seg);
+      if (!r.ok) return sendJson(res, r.status, { error: r.error });
+      return sendJson(res, 200, { item: r.item });
+    }
+
+    return sendJson(res, 404, { error: 'rota do banco inválida' });
+  }
+
   if (parts[1] === 'media') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
 

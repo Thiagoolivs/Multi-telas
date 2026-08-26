@@ -50,6 +50,13 @@ async function registrar(db, tenantId, salvo, meta) {
     url: salvo.url,
     // 'upload' (a pessoa enviou), 'ia' (foi gerada), 'mural' (veio do público).
     origem: m.origem || 'upload',
+    /*
+     * Só a imagem da IA traz estes dois. Ficam na mídia porque o Banco de
+     * Imagens precisa da proporção e da cor de origem sem abrir o arquivo —
+     * ver server/banco.js.
+     */
+    formato: m.formato ? String(m.formato).slice(0, 12) : null,
+    cor: /^#[0-9a-fA-F]{6}$/.test(String(m.cor || '')) ? String(m.cor).toLowerCase() : null,
   });
 }
 
@@ -60,7 +67,21 @@ async function registrar(db, tenantId, salvo, meta) {
 async function apagar(db, tenantId, id) {
   const m = await db.getMedia(id);
   if (!m || m.tenant_id !== tenantId) return false;
-  try { await storage.remove(m.key); } catch (e) { console.warn('[midia]', e.message); }
+  /*
+   * Se esta imagem está APROVADA no Banco de Imagens, o arquivo fica.
+   *
+   * Outra conta pode já ter publicado essa foto numa TV, e apagar o arquivo
+   * deixaria a tela dela com um buraco por decisão de alguém que ela não
+   * conhece. A linha da mídia sai (some do Armazenamento e da cota de quem
+   * apagou); a linha do banco continua, com a chave e a URL que já guarda.
+   * Mesma decisão da exclusão de conta, em server/db-*.js.
+   */
+  const noBanco = db.bancoPorMedia ? await db.bancoPorMedia(m.id) : null;
+  const compartilhada = !!(noBanco && noBanco.estado === 'aprovada');
+  if (!compartilhada) {
+    if (db.bancoApagarDaMedia) await db.bancoApagarDaMedia(m.id, tenantId);
+    try { await storage.remove(m.key); } catch (e) { console.warn('[midia]', e.message); }
+  }
   await db.removeMedia(m.id, tenantId);
   return true;
 }

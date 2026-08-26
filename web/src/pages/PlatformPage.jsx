@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   MonitorPlay, Building2, Users, Sparkles, HardDrive, MessageSquareWarning,
   Clock, Layers, Check, ShieldCheck, Trash2, Plus, Bug, CheckCircle2,
-  Search, Gauge as GaugeIcon, Radio, ChevronRight, X,
+  Search, Gauge as GaugeIcon, Radio, ChevronRight, X, Images,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -112,6 +112,8 @@ export function PlatformPage() {
         <MaioresContas contas={data.maiores} />
         <Reclamacoes resumo={data.reclamacoes} />
       </div>
+
+      <FilaDoBanco />
 
       <Operadores souRaiz={data.raiz} />
     </div>
@@ -503,6 +505,82 @@ function Erros() {
           </div>
         ))}
       </div>
+    </Panel>
+  );
+}
+
+/*
+ * A fila do Banco de Imagens.
+ *
+ * Nada entra no acervo de todo mundo sem alguém olhar. O volume no começo é
+ * minúsculo e conferir custa quase nada; o custo de UMA imagem errada
+ * aparecendo na parede de trinta clientes não é. As regras estão em
+ * server/banco.js — aqui é só o par de botões.
+ */
+function FilaDoBanco() {
+  const [estado, setEstado] = useState('pendente');
+  const { data, loading, reload } = useAsync(() => plataforma.bancoFila(estado), [estado]);
+  const itens = (data && data.itens) || [];
+
+  async function decidir(item, novo) {
+    try {
+      await plataforma.bancoDecidir(item.id, novo);
+      aviso.ok(novo === 'aprovada' ? 'No banco.' : 'Recusada.');
+      reload();
+    } catch (e) { aviso.erro('banco:' + item.id, 'Não deu para decidir.', e.message || ''); }
+  }
+
+  return (
+    <Panel>
+      <PanelHeader title="Banco de Imagens" description="O que os clientes ofereceram para o acervo comum."
+        actions={
+          <div className="flex gap-1">
+            {[['pendente', 'Na fila'], ['aprovada', 'No banco'], ['recusada', 'Recusadas']].map(([id, rotulo]) => (
+              <button key={id} onClick={() => setEstado(id)} aria-pressed={estado === id}
+                className={'rounded-md border px-2.5 py-1.5 text-xs transition '
+                  + (estado === id ? 'border-accent bg-accent/10 text-accent' : 'border-line text-ink-2 hover:text-ink')}>
+                {rotulo}
+              </button>
+            ))}
+          </div>
+        } />
+      {loading && <div className="p-6 text-center"><Spinner /></div>}
+      {!loading && !itens.length && (
+        <EmptyState icon={Images} title={estado === 'pendente' ? 'Fila vazia' : 'Nada aqui'}
+          description={estado === 'pendente' ? 'Nenhuma imagem esperando conferência.' : undefined} />
+      )}
+      {!loading && !!itens.length && (
+        <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
+          {itens.map((i) => (
+            <div key={i.id} className="overflow-hidden rounded-lg border border-line bg-surface-2">
+              <div className="aspect-video bg-[#0a1128]">
+                <img src={i.url} alt="" className="h-full w-full object-cover" loading="lazy"
+                  onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />
+              </div>
+              <div className="p-2">
+                <div className="truncate text-xs text-ink" title={i.descricao}>{i.descricao}</div>
+                <div className="mt-0.5 flex items-center justify-between text-2xs text-ink-3">
+                  <span>{i.segmento || '—'}</span>
+                  <span>{i.formato || '—'}</span>
+                </div>
+                {estado === 'pendente' && (
+                  <div className="mt-1.5 flex gap-1">
+                    <Button size="sm" variant="secondary" className="flex-1" icon={Check}
+                      onClick={() => decidir(i, 'aprovada')}>Aceitar</Button>
+                    <Button size="sm" variant="ghost" icon={X} onClick={() => decidir(i, 'recusada')}>Não</Button>
+                  </div>
+                )}
+                {estado === 'aprovada' && (
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <span className="tnum text-2xs text-ink-3">{i.usos} uso(s)</span>
+                    <Button size="sm" variant="ghost" icon={X} onClick={() => decidir(i, 'recusada')}>Tirar</Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </Panel>
   );
 }

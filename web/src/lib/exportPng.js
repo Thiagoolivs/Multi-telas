@@ -66,9 +66,29 @@ async function drawImagem(ctx, e, w, h, W) {
   }
   ctx.save();
   caminho(); ctx.clip();
-  drawImageFit(ctx, img, 0, 0, w, h, e.fit || 'contain');
+  desenharComTinta(ctx, e.tint, 0, 0, w, h, () => drawImageFit(ctx, img, 0, 0, w, h, e.fit || 'contain'));
   ctx.restore();
   tracarBorda(ctx, e, W, caminho);
+}
+
+/*
+ * Duotone no canvas — o mesmo efeito que o navegador faz com
+ * `mix-blend-mode: luminosity` (ver js/peca.js), para o PNG exportado sair
+ * igual ao que a pessoa aprovou no editor.
+ *
+ * A cor entra primeiro, chapada, e a imagem por cima misturando só o
+ * claro/escuro. Sem a cor embaixo, `luminosity` misturaria com o que já estava
+ * desenhado ali e o resultado dependeria da ordem das camadas.
+ */
+function desenharComTinta(ctx, tint, x, y, w, h, desenhar) {
+  const cor = typeof tint === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(tint.trim()) ? tint.trim() : null;
+  if (!cor) return desenhar();
+  ctx.save();
+  ctx.fillStyle = cor;
+  ctx.fillRect(x, y, w, h);
+  ctx.globalCompositeOperation = 'luminosity';
+  desenhar();
+  ctx.restore();
 }
 
 function loadImage(src) {
@@ -278,7 +298,10 @@ export async function compositionToCanvas(item, W, H) {
   const ctx = canvas.getContext('2d');
   const b = item.bg || {};
   if (b.kind === 'imagem' && b.src) {
-    try { drawImageFit(ctx, await loadImage(b.src), 0, 0, W, H, 'cover'); } catch (e) { fillBackground(ctx, '#0a1020', W, H); }
+    try {
+      const fundo = await loadImage(b.src);
+      desenharComTinta(ctx, b.tint, 0, 0, W, H, () => drawImageFit(ctx, fundo, 0, 0, W, H, 'cover'));
+    } catch (e) { fillBackground(ctx, '#0a1020', W, H); }
   } else {
     fillBackground(ctx, b.cor, W, H);
   }
