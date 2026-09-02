@@ -56,6 +56,34 @@ custa: qualquer pessoa cadastra com o e-mail de qualquer outra, e você não tem
 como falar com o cliente depois. O servidor avisa no boot qual dos dois modos
 está rodando.
 
+### O que mais liga junto com o Resend
+
+Configurar o Resend não acende só o cadastro. O **alerta de tela offline**
+(`server/vigia.js`) depende dele: a cada cinco minutos o servidor procura telas
+sem sinal há mais de quinze minutos e avisa o dono da conta por e-mail, antes
+de o cliente descobrir sozinho que a TV está preta.
+
+Sem provedor de e-mail o alerta fica desligado, e o boot diz isso —
+`vigia.sem-email` — em vez de escrever a queda num log que ninguém lê.
+
+```
+ALERTA_OFFLINE=0
+```
+
+Desliga a varredura mesmo com o Resend configurado. Só é útil enquanto você
+mexe na frota de propósito e não quer o e-mail de cada tela que você mesmo
+desligou.
+
+Três coisas que ele não faz, e que valem saber antes de o primeiro sair:
+
+- **Não avisa duas vezes da mesma queda.** Só volta a valer se a tela pulsar
+  de novo — voltar e cair outra vez é queda nova, e essa merece aviso.
+- **Não avisa de tela abandonada.** Queda mais velha que 24 horas não entra. É
+  o que impede o primeiro deploy disto de mandar um e-mail por cada tela morta
+  que já está no banco.
+- **Não manda um e-mail por tela.** O aviso é por conta, com a lista: uma
+  queda de link na loja é um evento, não oito.
+
 ---
 
 ## 2 · Asaas (cobrança)

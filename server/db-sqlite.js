@@ -392,6 +392,10 @@ if (garantirColuna('media', 'origem TEXT')) {
 garantirColuna('media', 'formato TEXT');
 garantirColuna('media', 'cor TEXT');
 garantirColuna('devices', 'last_seen INTEGER');
+// Quando avisamos o dono que esta tela caiu. Guardado na própria tela porque
+// é o que impede o mesmo aviso de sair a cada varredura: enquanto a tela não
+// pulsar de novo (last_seen > isto), a queda já foi contada. Ver server/vigia.js.
+garantirColuna('devices', 'alerta_offline_em INTEGER');
 for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER',
   // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
   // expira). `creditos_ciclo` guarda quando a franquia foi reposta pela
@@ -442,6 +446,29 @@ const q = {
   deleteDevice: db.prepare('DELETE FROM devices WHERE id = ?'),
   touchDevice: db.prepare('UPDATE devices SET last_seen = ? WHERE id = ?'),
   listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
+  /*
+   * Telas caídas com o e-mail de quem precisa saber.
+   *
+   * O owner sai por subconsulta, e não por JOIN direto, porque uma conta com
+   * dois donos duplicaria a tela no resultado — e a tela duplicada vira o
+   * mesmo nome listado duas vezes no e-mail. O dono mais antigo é quem
+   * responde pela conta.
+   *
+   * O corte por tempo repete o que server/vigia.js decide, para não ler a
+   * frota inteira a cada cinco minutos. Quem manda continua sendo o vigia.
+   */
+  telasCaidas: db.prepare(`SELECT d.id, d.name, d.tenant_id, d.last_seen, d.alerta_offline_em,
+           t.name AS conta,
+           (SELECT u.email FROM users u WHERE u.tenant_id = d.tenant_id AND u.role = 'owner'
+             ORDER BY u.created_at ASC LIMIT 1) AS email
+      FROM devices d
+      LEFT JOIN tenants t ON t.id = d.tenant_id
+     WHERE d.tenant_id IS NOT NULL
+       AND d.last_seen IS NOT NULL AND d.last_seen > 0
+       AND d.last_seen <= ? AND d.last_seen >= ?
+       AND (d.alerta_offline_em IS NULL OR d.alerta_offline_em < d.last_seen)
+     ORDER BY d.last_seen DESC LIMIT 500`),
+  marcarAlertaOffline: db.prepare('UPDATE devices SET alerta_offline_em = ? WHERE id = ?'),
   insertUsoIA: db.prepare('INSERT INTO uso_ia (id, tenant_id, user_id, tipo, creditos, custo_centavos, referencia, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
   usoIAPorTenant: db.prepare('SELECT id, tipo, creditos, custo_centavos, referencia, created_at FROM uso_ia WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?'),
   usoIAResumo: db.prepare('SELECT COALESCE(SUM(creditos),0) AS creditos, COALESCE(SUM(custo_centavos),0) AS centavos, COUNT(*) AS n FROM uso_ia WHERE tenant_id = ? AND created_at > ?'),
@@ -575,6 +602,15 @@ async function renameDevice(id, name) { q.renameDevice.run(name, id); }
 async function removeDevice(id) { q.deleteDevice.run(id); }
 async function touchDevice(id) { q.touchDevice.run(Date.now(), id); }
 async function listDevices(tenantId) { return q.listByTenant.all(tenantId); }
+async function telasCaidas(desde, ate) { return q.telasCaidas.all(ate, desde); }
+async function marcarAlertaOffline(ids, quando) {
+  if (!ids || !ids.length) return;
+  db.exec('BEGIN');
+  try {
+    for (const id of ids) q.marcarAlertaOffline.run(quando, id);
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+}
 async function countDevices(tenantId) { return Number(q.countDevicesByTenant.get(tenantId).n); }
 
 /* ---------------- Uso de IA e créditos ---------------- */
@@ -1253,6 +1289,7 @@ module.exports = {
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
+  telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,

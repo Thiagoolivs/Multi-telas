@@ -47,6 +47,7 @@ const metricas = require('./server/metricas.js');
 const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
 const legal = require('./server/legal');
+const vigia = require('./server/vigia');
 // Mesmo arquivo que o player carrega no navegador — catálogo único de datas.
 const seasons = require('./js/seasons.js');
 // Mesmo arquivo que o player usa: o que é uma config está definido num lugar só.
@@ -2727,5 +2728,24 @@ db.init()
     varrer();
     const relogio = setInterval(varrer, 6 * 60 * 60 * 1000);
     if (relogio.unref) relogio.unref();
+
+    /*
+     * A tela caiu e o cliente fica sabendo por nós.
+     *
+     * Sem provedor de e-mail configurado não há aviso nenhum a dar — o
+     * servidor escreveria a queda no próprio log, que é o lugar onde ninguém
+     * olha. Fica desligado, e o boot diz por quê: é a diferença entre "não
+     * mandou" e "não estava ligado".
+     */
+    if (process.env.ALERTA_OFFLINE === '0') {
+      log.info('vigia.desligado', { motivo: 'ALERTA_OFFLINE=0' });
+    } else if (!mail.configured()) {
+      log.aviso('vigia.sem-email', {
+        aviso: 'sem RESEND_API_KEY/BREVO_API_KEY o alerta de tela offline não sai.',
+      });
+    } else {
+      vigia.ligar({ db, mail, appUrl: (process.env.APP_URL || '').replace(/\/$/, '') });
+      log.info('vigia.ligado', { minutos: vigia.LIMITE_MS / 60000 });
+    }
   }))
   .catch((e) => { log.erro('db.init-falhou', e); process.exit(1); });

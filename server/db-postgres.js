@@ -162,6 +162,11 @@ async function init() {
       last_seen BIGINT
     );
     ALTER TABLE devices ADD COLUMN IF NOT EXISTS last_seen BIGINT;
+    -- Quando avisamos o dono que esta tela caiu. Guardado na própria tela
+    -- porque é o que impede o mesmo aviso de sair a cada varredura: enquanto a
+    -- tela não pulsar de novo (last_seen > isto), a queda já foi contada.
+    -- Ver server/vigia.js.
+    ALTER TABLE devices ADD COLUMN IF NOT EXISTS alerta_offline_em BIGINT;
     CREATE TABLE IF NOT EXISTS invites (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
       invited_by TEXT, created_at BIGINT, expires_at BIGINT, accepted_at BIGINT
@@ -804,6 +809,38 @@ async function listDevices(tenantId) {
   return r.rows;
 }
 
+/*
+ * Telas caídas com o e-mail de quem precisa saber.
+ *
+ * O owner sai por subconsulta, e não por JOIN direto, porque uma conta com
+ * dois donos duplicaria a tela no resultado — e a tela duplicada vira o mesmo
+ * nome listado duas vezes no e-mail. O dono mais antigo é quem responde pela
+ * conta.
+ *
+ * O corte por tempo repete o que server/vigia.js decide, para não ler a frota
+ * inteira a cada cinco minutos. Quem manda continua sendo o vigia.
+ */
+async function telasCaidas(desde, ate) {
+  const r = await pool.query(
+    `SELECT d.id, d.name, d.tenant_id, d.last_seen, d.alerta_offline_em,
+            t.name AS conta,
+            (SELECT u.email FROM users u WHERE u.tenant_id = d.tenant_id AND u.role = 'owner'
+              ORDER BY u.created_at ASC LIMIT 1) AS email
+       FROM devices d
+       LEFT JOIN tenants t ON t.id = d.tenant_id
+      WHERE d.tenant_id IS NOT NULL
+        AND d.last_seen IS NOT NULL AND d.last_seen > 0
+        AND d.last_seen <= $1 AND d.last_seen >= $2
+        AND (d.alerta_offline_em IS NULL OR d.alerta_offline_em < d.last_seen)
+      ORDER BY d.last_seen DESC LIMIT 500`, [ate, desde]);
+  return r.rows;
+}
+
+async function marcarAlertaOffline(ids, quando) {
+  if (!ids || !ids.length) return;
+  await pool.query('UPDATE devices SET alerta_offline_em = $1 WHERE id = ANY($2)', [quando, ids]);
+}
+
 async function countDevices(tenantId) {
   const r = await pool.query('SELECT COUNT(*)::int AS n FROM devices WHERE tenant_id = $1', [tenantId]);
   return Number(r.rows[0].n);
@@ -1164,6 +1201,7 @@ module.exports = {
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
+  telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
