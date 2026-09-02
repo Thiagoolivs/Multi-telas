@@ -8,6 +8,7 @@ import { ScreensPage } from './pages/ScreensPage.jsx';
 import { ContentEditorPage } from './pages/ContentEditorPage.jsx';
 import { TeamPage } from './pages/TeamPage.jsx';
 import { StoragePage } from './pages/StoragePage.jsx';
+import { BancoImagensPage } from './pages/BancoImagensPage.jsx';
 import { BirthdaysPage } from './pages/BirthdaysPage.jsx';
 import { MyDesignsPage } from './pages/MyDesignsPage.jsx';
 import { BrandPage } from './pages/BrandPage.jsx';
@@ -31,6 +32,7 @@ const META = {
   alerts: { title: 'Alertas', subtitle: 'O que precisa da sua atenção agora.' },
   support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
+  banco: { title: 'Banco de Imagens', subtitle: 'Acervo compartilhado entre os clientes. Usar daqui não gasta crédito.' },
   birthdays: { title: 'Aniversariantes', subtitle: 'Importe a equipe e o player mostra sozinho.' },
   billing: { title: 'Plano e cobrança' },
   system: { title: 'Estado do sistema', subtitle: 'O que está configurado, e o que vai doer se ficar como está.' },
@@ -112,6 +114,7 @@ export default function App() {
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
+      case 'banco': return <BancoImagensPage />;
       case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage onIr={go} />;
       case 'brand': return <BrandPage />;
       case 'mural': return <MuralPage />;

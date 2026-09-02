@@ -24,6 +24,23 @@ export const comoAplicarSombra = P.comoAplicarSombra;
 export const SOMBRA_PADRAO = P.SOMBRA_PADRAO;
 export const SOMBRA_LIMITES = P.SOMBRA_LIMITES;
 export const BORDA_MAX = P.BORDA_MAX;
+export const tintaFundo = P.tintaFundo;
+export const tintaImagem = P.tintaImagem;
+
+/*
+ * O fundo de uma peça, já com o duotone quando ele existe.
+ *
+ * Estava escrito três vezes no painel (prévia, miniatura e palco do editor) e
+ * as três discordavam assim que o `tint` entrou — é exatamente o tipo de cópia
+ * que este arquivo existe para não deixar acontecer.
+ */
+export function estiloFundo(bg) {
+  const b = bg || {};
+  if (b.kind === 'imagem' && b.src) {
+    return { ...P.tintaFundo(b.src, b.tint), backgroundSize: 'cover', backgroundPosition: 'center' };
+  }
+  return b.cor ? { background: b.cor } : {};
+}
 
 /*
  * O CSS de sombra/borda/canto de um elemento, já na propriedade certa para o

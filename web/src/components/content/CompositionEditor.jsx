@@ -11,7 +11,7 @@ import {
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { media, ai, brand as brandApi } from '../../api.js';
-import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw, estiloCaixa, recortada, raioCss, SOMBRA_PADRAO, SOMBRA_LIMITES, BORDA_MAX } from '../../lib/composition.js';
+import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw, estiloCaixa, recortada, raioCss, SOMBRA_PADRAO, SOMBRA_LIMITES, BORDA_MAX, estiloFundo, tintaImagem } from '../../lib/composition.js';
 import { ICONS, ICON_NAMES } from '../../lib/icons.js';
 import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer, podeRefazer } from '../../lib/historico.js';
 import { encaixar, encaixarRedimensionamento, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
@@ -842,7 +842,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
   }
 
   const bgStyle = bg.kind === 'imagem' && bg.src
-    ? { backgroundImage: `url("${bg.src}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    ? estiloFundo(bg)
     : bg.kind === 'cor' ? { background: bg.cor } : { background: '#0a1020' };
 
   // Alvos do Moveable: só os que estão selecionados, visíveis e destravados.
@@ -1101,7 +1101,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 <div
                   key={'anim' + previa}
                   className={previa ? 'mt-anim ' + lerAnim(e).classes.join(' ') : ''}
-                  style={{ width: '100%', height: '100%', ...(previa ? estiloAnim(e) : {}) }}>
+                  style={{ width: '100%', height: '100%', ...(previa ? estiloAnim(e) : {}), ...((tintaImagem(e.tint) || {}).pai || {}) }}>
                 {e.tipo === 'texto' ? (
                   <TextoEditavel
                     el={e}
@@ -1133,7 +1133,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
                     style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', display: 'block', pointerEvents: 'none',
                     borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : raioCss(e, cqwPx)),
                     clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none',
-                    ...estiloCaixa(e, cqwPx) }} />
+                    ...estiloCaixa(e, cqwPx), ...((tintaImagem(e.tint) || {}).img || {}) }} />
                 )}
                 </div>
               </div>

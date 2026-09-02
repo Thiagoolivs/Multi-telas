@@ -1273,7 +1273,9 @@
     const bg = item.bg || {};
     const fundoCss = (alvo) => {
       if (bg.kind === 'imagem' && bg.src) {
-        alvo.style.backgroundImage = 'url("' + String(bg.src).replace(/"/g, '') + '")';
+        // Duas camadas quando há duotone; uma só quando não há. Ver js/peca.js.
+        const t = P.tintaFundo(bg.src, bg.tint);
+        if (t) for (const k in t) alvo.style[k] = t[k];
       } else if (bg.kind === 'cor' && bg.cor) {
         alvo.style.background = bg.cor;
       } // senão herda o vidro/tema da zona
@@ -1385,6 +1387,17 @@
         img.style.borderRadius = P.raioCss(e);
         aplicarSombra(img, e);
         aplicarBorda(img, e);
+        /*
+         * Duotone: a imagem mistura por luminosidade contra o PAI pintado com a
+         * cor da marca. É o que faz uma foto do Banco de Imagens — gerada na
+         * cor de outra empresa — ler como desta, sem gerar de novo.
+         */
+        const tinta = P.tintaImagem(e.tint);
+        if (tinta) {
+          for (const k in tinta.pai) alvo.style[k] = tinta.pai[k];
+          alvo.style.borderRadius = P.raioCss(e);
+          for (const k in tinta.img) img.style[k] = tinta.img[k];
+        }
         alvo.appendChild(img);
       }
       palco.appendChild(box);

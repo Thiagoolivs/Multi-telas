@@ -1,20 +1,47 @@
-import React, { useRef, useState } from 'react';
-import { UploadCloud, Trash2, Film, HardDrive, Image as ImageIcon } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { UploadCloud, Trash2, Film, HardDrive, Image as ImageIcon, Share2, Check, Clock, X } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Progress, Skeleton, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
-import { media } from '../api.js';
+import { media, bancoImagens } from '../api.js';
 import { formatBytes, formatPercent, relativeTime } from '../lib/format.js';
+
+/*
+ * O estado de cada imagem no Banco de Imagens, indexado por id de mídia.
+ *
+ * Vem numa chamada só, e não uma por card: a página já mostra dezenas de
+ * arquivos e uma requisição por miniatura transformaria abrir o Armazenamento
+ * numa rajada contra o próprio servidor.
+ */
+function useEstadoNoBanco(itens) {
+  const [porMedia, setPorMedia] = useState({});
+  useEffect(() => {
+    let vivo = true;
+    bancoImagens.minhas()
+      .then((r) => { if (vivo) setPorMedia(Object.fromEntries((r.itens || []).map((i) => [i.mediaId, i]))); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, [itens.length]);
+  return [porMedia, setPorMedia];
+}
+
+const ROTULO = {
+  pendente: { texto: 'Em conferência', Icone: Clock, classe: 'text-warn' },
+  aprovada: { texto: 'No banco', Icone: Check, classe: 'text-ok' },
+  recusada: { texto: 'Não aceita', Icone: X, classe: 'text-ink-3' },
+};
 
 export function StoragePage() {
   const { data, loading, error, reload } = useAsync(media.list);
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [confirmar, setConfirmar] = useState(null);
 
   const items = data ? data.items : [];
+  const [noBanco, setNoBanco] = useEstadoNoBanco(items);
   const usage = data ? data.usage : { used: 0, quota: 1 };
   const frac = usage.quota ? usage.used / usage.quota : 0;
   const tone = frac > 0.9 ? 'danger' : frac > 0.8 ? 'warn' : 'accent';
@@ -31,6 +58,23 @@ export function StoragePage() {
     setBusy(false);
     if (!fail) setMsg(`${ok} arquivo(s) enviados.`);
     reload();
+  }
+
+  async function compartilhar(m) {
+    setConfirmar(null);
+    try {
+      const r = await bancoImagens.compartilhar(m.id);
+      setNoBanco((a) => ({ ...a, [m.id]: r.item }));
+      setMsg('Enviada para conferência. Assim que for aprovada, entra no banco.');
+    } catch (e) { setMsg(e.message || 'Não foi possível compartilhar.'); }
+  }
+
+  async function descompartilhar(m) {
+    try {
+      await bancoImagens.descompartilhar(m.id);
+      setNoBanco((a) => ({ ...a, [m.id]: { ...(a[m.id] || {}), estado: 'revogada' } }));
+      setMsg('Saiu do banco. Quem já estava usando continua com a peça no ar.');
+    } catch (e) { setMsg(e.message || 'Não foi possível descompartilhar.'); }
   }
 
   async function remove(m) {
@@ -99,12 +143,67 @@ export function StoragePage() {
                     <span className="tnum">{formatBytes(m.size)}</span>
                     <span>{relativeTime(m.created_at)}</span>
                   </div>
+                  {/*
+                    Compartilhar só aparece no que a IA gerou. Arquivo enviado
+                    pode ter pessoa, produto ou marca de terceiro — o servidor
+                    recusa (server/banco.js), e oferecer um botão que sempre dá
+                    erro é pior que não oferecer botão nenhum.
+                  */}
+                  {m.origem === 'ia' && String(m.mime).startsWith('image/') && (() => {
+                    const estado = (noBanco[m.id] || {}).estado;
+                    const r = ROTULO[estado];
+                    if (r) {
+                      const { Icone } = r;
+                      return (
+                        <div className="mt-1.5 flex items-center justify-between border-t border-line pt-1.5">
+                          <span className={'flex items-center gap-1 text-2xs ' + r.classe}><Icone size={11} />{r.texto}</span>
+                          {estado !== 'recusada' && (
+                            <button type="button" className="text-2xs text-ink-3 underline hover:text-ink"
+                              onClick={() => descompartilhar(m)}>Tirar</button>
+                          )}
+                        </div>
+                      );
+                    }
+                    return (
+                      <button type="button" onClick={() => setConfirmar(m)}
+                        className="mt-1.5 flex w-full items-center justify-center gap-1 border-t border-line pt-1.5 text-2xs text-ink-3 hover:text-accent">
+                        <Share2 size={11} /> Compartilhar no banco
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             ))}
           </div>
         )}
       </Panel>
+
+      {/*
+        O aceite. Escrito por extenso de propósito: a frase que ninguém quer
+        descobrir depois é "um concorrente seu pode usar", e ela precisa estar
+        na tela ANTES do clique, não só nos Termos. O servidor exige
+        `aceito: true` e grava quem aceitou com a versão vigente.
+      */}
+      {confirmar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-md rounded-lg border border-line bg-surface p-5">
+            <h2 className="text-base font-semibold text-ink">Compartilhar esta imagem?</h2>
+            <div className="mt-3 overflow-hidden rounded-md border border-line">
+              <img src={confirmar.url} alt="" className="h-32 w-full object-cover" />
+            </div>
+            <ul className="mt-4 space-y-2 text-sm text-ink-2">
+              <li>Ela entra no <b className="text-ink">Banco de Imagens MultiTelas</b> e qualquer outro cliente pode usar — <b className="text-ink">inclusive concorrentes seus</b>.</li>
+              <li>Passa antes por conferência nossa. Se for aprovada, aparece no banco.</li>
+              <li>Você pode tirar quando quiser. Quem já tiver usado continua com a peça no ar.</li>
+              <li>Depois de aprovada, ela fica no acervo mesmo se você apagar o arquivo ou encerrar a conta.</li>
+            </ul>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setConfirmar(null)}>Cancelar</Button>
+              <Button variant="primary" icon={Share2} onClick={() => compartilhar(confirmar)}>Concordo e compartilho</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

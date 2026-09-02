@@ -190,8 +190,58 @@
     return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + (Math.round(alpha * 1000) / 1000) + ')';
   }
 
+  /* ---------------- Duotone (tingir imagem com a cor da marca) ----------------
+   *
+   * Imagem que vem do Banco de Imagens MultiTelas foi gerada para OUTRA marca,
+   * na cor DELA — a direção de arte (server/direcao-arte.js) pede monocromia no
+   * hex de quem pediu. Reusada crua, a foto laranja da padaria entra numa peça
+   * azul de ótica e denuncia que veio de fora.
+   *
+   * Gerar de novo na cor certa custaria os mesmos R$ 0,35 e mataria a economia
+   * inteira do banco. Então a cor é trocada no DESENHO, de graça: duotone.
+   *
+   * A conta é a mesma nos dois casos e não precisa de filtro nem de div extra —
+   * o modo de mistura `luminosity` mantém o CLARO/ESCURO da foto e toma matiz e
+   * saturação da camada de baixo, que é a cor da marca. É duotone exato, não o
+   * truque de hue-rotate que acerta a cor por aproximação.
+   *
+   *   fundo      duas camadas de background no mesmo elemento
+   *   <img>      o pai pintado com a cor, a imagem por cima misturando
+   *
+   * `isolation: isolate` no pai é obrigatório: sem ele a mistura vaza para o
+   * que estiver atrás na página, e o elemento vizinho fica com a cor errada.
+   */
+  function corDeTinta(cor) {
+    var s = String(cor || '').trim();
+    return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(s) ? s : null;
+  }
+
+  // Fundo (background-image): devolve null quando não há o que tingir.
+  function tintaFundo(src, cor) {
+    var c = corDeTinta(cor);
+    var u = String(src || '').replace(/["\\]/g, '');
+    if (!u) return null;
+    var img = 'url("' + u + '")';
+    if (!c) return { backgroundImage: img };
+    return {
+      backgroundImage: img + ', linear-gradient(' + c + ', ' + c + ')',
+      backgroundBlendMode: 'luminosity',
+    };
+  }
+
+  // Elemento <img>: estilo do PAI e estilo da IMAGEM, nesta ordem.
+  function tintaImagem(cor) {
+    var c = corDeTinta(cor);
+    if (!c) return null;
+    return {
+      pai: { backgroundColor: c, isolation: 'isolate' },
+      img: { mixBlendMode: 'luminosity' },
+    };
+  }
+
   return {
     SHAPE_POLY: SHAPE_POLY, shapeClip: shapeClip, recortada: recortada, fillToCss: fillToCss,
+    corDeTinta: corDeTinta, tintaFundo: tintaFundo, tintaImagem: tintaImagem,
     formatRatio: formatRatio, textFontCqw: textFontCqw,
     SOMBRA_PADRAO: SOMBRA_PADRAO, SOMBRA_LIMITES: SOMBRA_LIMITES, BORDA_MAX: BORDA_MAX,
     sombra: sombra, borda: borda,

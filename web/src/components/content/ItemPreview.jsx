@@ -1,6 +1,6 @@
 import React from 'react';
 import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film, Cake, Airplay, Cast, Presentation } from 'lucide-react';
-import { fillToCss, shapeClip, SHAPE_POLY, estiloCaixa, raioCss } from '../../lib/composition.js';
+import { fillToCss, shapeClip, SHAPE_POLY, estiloCaixa, raioCss, estiloFundo, tintaImagem } from '../../lib/composition.js';
 import { estiloTexto, carregarDaComposicao } from '../../lib/fontes.js';
 import { ICONS } from '../../lib/icons.js';
 import { murais } from '../../api.js';
@@ -109,7 +109,7 @@ function Body({ item }) {
     }
     case 'composicao': {
       const b = item.bg || {};
-      const bgStyle = b.kind === 'imagem' && b.src ? { backgroundImage: `url("${b.src}")`, backgroundSize: 'cover', backgroundPosition: 'center' }
+      const bgStyle = b.kind === 'imagem' && b.src ? estiloFundo(b)
         : b.kind === 'cor' ? { background: b.cor } : { background: '#0a1020' };
       const els = (item.elementos || []).slice().sort((a, x) => (a.z || 0) - (x.z || 0));
       carregarDaComposicao(els);
@@ -117,14 +117,14 @@ function Body({ item }) {
         // containerType para sombra e borda, medidas em cqw, terem a que se referir.
         <div className="relative h-full w-full" style={{ ...bgStyle, containerType: 'inline-size' }}>
           {els.map((e, idx) => (
-            <div key={idx} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden' }}>
+            <div key={idx} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden', ...((tintaImagem(e.tint) || {}).pai || {}) }}>
               {e.tipo === 'texto'
                 ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', ...estiloTexto(e), ...estiloCaixa(e), fontSize: '9px', whiteSpace: 'pre-wrap' }}>{e.text}</div>
                 : e.tipo === 'icone'
                   ? <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />
                 : e.tipo === 'forma'
                   ? <div style={{ width: '100%', height: '100%', background: fillToCss(e.fill), borderRadius: e.shape === 'ellipse' ? '50%' : (SHAPE_POLY[e.shape] ? 0 : raioCss(e)), clipPath: SHAPE_POLY[e.shape] ? shapeClip(e.shape) : 'none', ...estiloCaixa(e) }} />
-                  : <img src={e.src} alt="" style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', borderRadius: raioCss(e), ...estiloCaixa(e) }} onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />}
+                  : <img src={e.src} alt="" style={{ width: '100%', height: '100%', objectFit: e.fit || 'contain', borderRadius: raioCss(e), ...estiloCaixa(e), ...((tintaImagem(e.tint) || {}).img || {}) }} onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />}
             </div>
           ))}
           {!els.length && <div className="flex h-full items-center justify-center text-xs opacity-40">Composição vazia — abra o editor</div>}

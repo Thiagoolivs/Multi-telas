@@ -12,7 +12,7 @@
  * o texto de forma relevante, sobe a versão — assim dá para saber quem aceitou
  * o quê, que é o ponto inteiro de registrar aceite.
  */
-const VERSAO = '2026-08-07';
+const VERSAO = '2026-08-25';
 
 // Trocar por um e-mail do domínio quando ele existir.
 const CONTATO = process.env.SUPPORT_EMAIL || 'thiago.olivs.coelho@gmail.com';
@@ -29,7 +29,7 @@ const SUBOPERADORES = [
   { nome: 'Cloudflare R2', papel: 'armazenamento das imagens e arquivos enviados', local: 'Estados Unidos' },
   { nome: 'Google (Gemini API)', papel: 'geração de textos e imagens das campanhas; leitura das imagens enviadas como referência ou acervo', local: 'Estados Unidos' },
   { nome: 'Resend', papel: 'envio de e-mails de recuperação de senha e avisos', local: 'Estados Unidos' },
-  { nome: 'Stripe', papel: 'processamento de pagamentos (não recebemos o número do cartão)', local: 'Estados Unidos' },
+  { nome: 'Asaas', papel: 'processamento de pagamentos por Pix, boleto e cartão (não recebemos o número do cartão)', local: 'Brasil' },
   { nome: 'Open-Meteo', papel: 'previsão do tempo exibida nas telas (recebe apenas a cidade, nenhum dado pessoal)', local: 'Alemanha' },
 ];
 
@@ -41,7 +41,7 @@ const TERMOS = `
 <p>Você é responsável por manter a senha em segredo e pelo que acontece na sua conta. Avise imediatamente se suspeitar de acesso indevido. Você precisa ter capacidade legal para contratar e, se estiver agindo por uma empresa, poder para representá-la.</p>
 
 <h2>3. Planos, cobrança e cancelamento</h2>
-<p>O plano gratuito tem limite de telas. Planos pagos são cobrados de forma recorrente pelo Stripe. Você pode cancelar quando quiser; o acesso continua até o fim do período já pago e não há reembolso proporcional, salvo quando a lei exigir.</p>
+<p>O plano gratuito tem limite de telas. Planos pagos são cobrados de forma recorrente pelo Asaas. Você pode cancelar quando quiser; o acesso continua até o fim do período já pago e não há reembolso proporcional, salvo quando a lei exigir.</p>
 
 <h2>4. O conteúdo é seu</h2>
 <p>Tudo que você envia ou gera — imagens, textos, campanhas, logo — continua seu. Você nos autoriza apenas a armazenar, processar e exibir esse conteúdo para operar o serviço, inclusive a enviá-lo aos provedores de IA descritos na Política de Privacidade.</p>
@@ -54,7 +54,18 @@ const TERMOS = `
 </ul>
 <p>Você é o responsável pelo que aparece nas suas telas, inclusive por preços, promessas e condições anunciadas.</p>
 
-<h2>6. Dados de pessoas que você cadastra</h2>
+<h2>6. Banco de Imagens MultiTelas (compartilhar é opcional)</h2>
+<p>Existe um acervo comum de imagens, alimentado pelos próprios clientes. <b>Nada entra nele automaticamente.</b> Sua imagem só vai para lá se você marcar, naquela imagem, a opção de compartilhar.</p>
+<ul>
+  <li><b>Só imagens geradas pela IA</b> podem ser compartilhadas. Arquivos que você enviou não entram, porque podem conter pessoas, produtos ou marcas de terceiros.</li>
+  <li>Ao compartilhar, você concede ao ${EMPRESA} e <b>a qualquer outro cliente do serviço — inclusive concorrentes seus, inclusive na sua cidade</b> — uma licença não exclusiva, gratuita e mundial para usar, exibir e adaptar aquela imagem em campanhas próprias.</li>
+  <li>Você pode <b>descompartilhar quando quiser</b>. A imagem sai do acervo imediatamente e ninguém mais a encontra. As campanhas de outros clientes que <b>já a estavam usando continuam funcionando</b>: não desligamos a tela de terceiros por uma decisão que eles não participaram.</li>
+  <li>Pelo mesmo motivo, uma imagem que você compartilhou e que já foi aprovada no acervo <b>permanece disponível mesmo se você apagar o arquivo ou encerrar sua conta</b>. Ela é gerada por IA, não contém texto, logotipo nem pessoas, e não carrega dado pessoal seu — o vínculo com sua conta é apagado junto com ela.</li>
+  <li>Toda imagem oferecida passa por <b>conferência nossa</b> antes de entrar no acervo. Podemos recusar sem precisar justificar.</li>
+</ul>
+<p>Se você não marcar nada, sua imagem fica <b>só na sua conta</b> e nenhuma outra empresa a vê.</p>
+
+<h2>7. Dados de pessoas que você cadastra</h2>
 <p>Esta é a cláusula mais importante deste documento. Quando você cadastra <b>aniversariantes, fotos ou nomes de funcionários</b>, esses dados são de titulares que não têm relação conosco.</p>
 <ul>
   <li><b>Você é o controlador</b> desses dados. Nós somos apenas <b>operador</b>: tratamos por sua conta e ordem, para executar o serviço.</li>
@@ -63,7 +74,7 @@ const TERMOS = `
   <li>Você nos isenta de responsabilidade por dados que cadastrar sem base legal.</li>
 </ul>
 
-<h2>6-A. Mural de fotos enviadas pelo público</h2>
+<h2>7-A. Mural de fotos enviadas pelo público</h2>
 <p>O mural gera um QR. Quem apontar a câmera manda uma foto que aparece na sua tela — <b>sem cadastro e sem identificação</b>. É o recurso mais sensível do serviço, e as regras abaixo são condição para usá-lo.</p>
 <ul>
   <li><b>Você é o controlador</b> dessas fotos, como em qualquer dado que cadastra aqui. Nós só transportamos, guardamos e exibimos por sua ordem.</li>
@@ -74,22 +85,22 @@ const TERMOS = `
   <li>Podemos remover fotos e suspender murais que violem estes Termos, sem aviso prévio, quando houver denúncia ou risco evidente.</li>
 </ul>
 
-<h2>7. Uso proibido</h2>
+<h2>8. Uso proibido</h2>
 <p>Não use o serviço para conteúdo ilegal, discriminatório, enganoso, que viole direitos de terceiros ou que exponha pessoas sem autorização. Também não tente burlar limites de plano, sobrecarregar a infraestrutura ou acessar dados de outras contas.</p>
 
-<h2>8. Disponibilidade</h2>
+<h2>9. Disponibilidade</h2>
 <p>Trabalhamos para manter tudo no ar, mas não prometemos funcionamento ininterrupto. Pode haver manutenção, falha de terceiros (hospedagem, IA, e-mail) ou indisponibilidade da internet no local da TV. O reprodutor guarda a última configuração recebida e continua exibindo mesmo sem conexão.</p>
 
-<h2>9. Limite de responsabilidade</h2>
+<h2>10. Limite de responsabilidade</h2>
 <p>Na máxima extensão permitida pela lei, nossa responsabilidade total fica limitada ao valor que você pagou nos 12 meses anteriores ao fato. Isto não afasta direitos que a lei brasileira garanta de forma inafastável, inclusive os do Código de Defesa do Consumidor quando aplicável.</p>
 
-<h2>10. Encerramento</h2>
+<h2>11. Encerramento</h2>
 <p>Você pode excluir sua conta a qualquer momento em <b>Ajustes</b>. A exclusão apaga seus dados conforme a Política de Privacidade. Podemos encerrar contas que violem estes Termos, avisando quando for possível.</p>
 
-<h2>11. Mudanças</h2>
+<h2>12. Mudanças</h2>
 <p>Podemos alterar estes Termos. Mudanças relevantes serão avisadas por e-mail ou no painel com antecedência razoável. Continuar usando depois disso significa aceitar a nova versão.</p>
 
-<h2>12. Lei e foro</h2>
+<h2>13. Lei e foro</h2>
 <p>Aplica-se a lei brasileira. Fica eleito o foro do domicílio do consumidor quando a relação for de consumo.</p>
 `;
 
@@ -106,7 +117,7 @@ const PRIVACIDADE = `
   <tr><th>Dado</th><th>Para quê</th><th>Base legal</th></tr>
   <tr><td>E-mail, nome e senha (guardada como hash, nunca em texto)</td><td>criar e acessar a conta</td><td>execução de contrato</td></tr>
   <tr><td>Identificador da conta Google, quando você entra por ela</td><td>autenticação</td><td>execução de contrato</td></tr>
-  <tr><td>Nome da empresa, plano e identificadores do Stripe</td><td>cobrança</td><td>execução de contrato e obrigação legal</td></tr>
+  <tr><td>Nome da empresa, plano e identificadores do Asaas</td><td>cobrança</td><td>execução de contrato e obrigação legal</td></tr>
   <tr><td>Telas pareadas: nome, código, configuração e último acesso</td><td>operar o serviço</td><td>execução de contrato</td></tr>
   <tr><td>Conteúdo que você cria: campanhas, imagens, logo, cores e regras da marca</td><td>montar e exibir a programação</td><td>execução de contrato</td></tr>
   <tr><td>Aniversariantes: nome, matrícula, cargo, dia, mês e foto</td><td>exibir a homenagem na tela</td><td><b>definida por você</b> — somos operador</td></tr>

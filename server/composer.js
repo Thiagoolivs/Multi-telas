@@ -85,6 +85,13 @@ function sanearElemento(e, palette, formato) {
     out.radius = ds.clamp(ds.num(e.radius, 0), 0, 50);
     out.sombra = sanearSombra(e.sombra);
     out.borda = sanearBorda(e.borda, palette);
+    /*
+     * `tint` é a cor do DUOTONE: imagem do Banco de Imagens foi gerada na cor
+     * de outra marca, e é aqui que ela passa a ler como desta. Só entra hex
+     * válido — o desenho vira `mix-blend-mode` (js/peca.js), e um valor torto
+     * ali não erra a cor, apaga a imagem.
+     */
+    if (e.tint) { const t = ds.okHex(e.tint, ''); if (t) out.tint = t; }
     if (!out.src) return null; // imagem sem fonte não vira nada na tela
   }
   return out;
@@ -484,7 +491,9 @@ function rotulo(e) {
 
 function sanearBg(bg, palette) {
   if (bg && bg.kind === 'imagem' && typeof bg.src === 'string' && bg.src) {
-    return { kind: 'imagem', src: bg.src };
+    const out = { kind: 'imagem', src: bg.src };
+    if (bg.tint) { const t = ds.okHex(bg.tint, ''); if (t) out.tint = t; }
+    return out;
   }
   if (bg && bg.kind === 'cor' && typeof bg.cor === 'string' && bg.cor.trim()) {
     return { kind: 'cor', cor: bg.cor };

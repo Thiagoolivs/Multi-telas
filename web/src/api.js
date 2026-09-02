@@ -309,6 +309,9 @@ export const plataforma = {
   contas: (q, dias) => api('GET', '/api/plataforma/contas?q=' + encodeURIComponent(q || '') + (dias ? '&dias=' + dias : '')),
   conta: (id, dias) => api('GET', '/api/plataforma/contas/' + id + (dias ? '?dias=' + dias : '')),
   limites: () => api('GET', '/api/plataforma/limites'),
+  // A fila do Banco de Imagens: nada entra no acervo de todo mundo sem alguém olhar.
+  bancoFila: (estado) => api('GET', '/api/plataforma/banco' + (estado ? '?estado=' + estado : '')),
+  bancoDecidir: (id, estado) => api('POST', '/api/plataforma/banco/' + id, { estado }),
   erros: () => api('GET', '/api/plataforma/erros'),
   limparErros: () => api('DELETE', '/api/plataforma/erros'),
   operadores: () => api('GET', '/api/plataforma/operadores'),
@@ -365,6 +368,20 @@ export const billing = {
   // A gestão é nossa — estado da assinatura, fatura em aberto e cancelamento.
   assinatura: () => api('GET', '/api/billing/assinatura'),
   cancelar: () => api('DELETE', '/api/billing/assinatura'),
+};
+
+/*
+ * Banco de Imagens MultiTelas — o acervo compartilhado entre contas.
+ * As regras (o que pode entrar, o que sai, o que sobrevive) estão em
+ * server/banco.js; aqui é só o transporte.
+ */
+export const bancoImagens = {
+  feed: (q) => api('GET', '/api/banco' + (q ? '?' + new URLSearchParams(q).toString() : '')),
+  minhas: () => api('GET', '/api/banco/minhas'),
+  // `aceito` não é enfeite: sem ele o servidor recusa. Ver Termos, cláusula 6.
+  compartilhar: (mediaId) => api('POST', '/api/banco/' + mediaId + '/compartilhar', { aceito: true }),
+  descompartilhar: (mediaId) => api('DELETE', '/api/banco/' + mediaId + '/compartilhar'),
+  usar: (id) => api('POST', '/api/banco/' + id + '/usar', {}),
 };
 
 export const media = {

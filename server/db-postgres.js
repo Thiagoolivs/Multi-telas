@@ -175,6 +175,28 @@ async function init() {
     ALTER TABLE media ADD COLUMN IF NOT EXISTS origem TEXT;
     UPDATE media SET origem = 'upload' WHERE origem IS NULL;
     CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
+    -- Formato e cor da imagem gerada: o Banco de Imagens precisa da proporção
+    -- e da cor de origem sem abrir o arquivo.
+    ALTER TABLE media ADD COLUMN IF NOT EXISTS formato TEXT;
+    ALTER TABLE media ADD COLUMN IF NOT EXISTS cor TEXT;
+    /*
+     * O Banco de Imagens MultiTelas: o feed compartilhado entre contas.
+     *
+     * Uma linha aqui NÃO é cópia do arquivo — é a permissão de reuso de uma
+     * mídia que continua sendo do tenant que a gerou. A coluna estado guarda
+     * o ciclo inteiro: pendente (esperando moderação), aprovada (no feed),
+     * recusada (barrada) e revogada (o dono tirou — vale para a FRENTE, ver
+     * server/banco.js).
+     */
+    CREATE TABLE IF NOT EXISTS banco (
+      id TEXT PRIMARY KEY, media_id TEXT UNIQUE, tenant_id TEXT,
+      key TEXT, url TEXT, mime TEXT, size BIGINT,
+      formato TEXT, cor TEXT, segmento TEXT, descricao TEXT,
+      estado TEXT, usos INTEGER, created_at BIGINT,
+      decidido_em BIGINT, decidido_por TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_banco_estado ON banco(estado);
+    CREATE INDEX IF NOT EXISTS idx_banco_tenant ON banco(tenant_id);
     /*
      * Uso de IA: toda chamada entra aqui, cobrando crédito ou não. Medir
      * antes de cobrar é a fatia 1 de docs/BILLING.md.
@@ -857,12 +879,12 @@ async function setCreditos(tenantId, c) {
 }
 
 async function createMedia(m) {
-  await pool.query('INSERT INTO media (id, tenant_id, name, mime, size, key, url, origem, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-    [m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, m.origem || 'upload', Date.now()]);
+  await pool.query('INSERT INTO media (id, tenant_id, name, mime, size, key, url, origem, formato, cor, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',
+    [m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, m.origem || 'upload', m.formato || null, m.cor || null, Date.now()]);
   return m;
 }
 async function listMedia(tenantId) {
-  const r = await pool.query('SELECT id, name, mime, size, url, origem, created_at FROM media WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
+  const r = await pool.query('SELECT id, name, mime, size, url, origem, formato, cor, created_at FROM media WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
   return r.rows;
 }
 async function getMedia(id) {
@@ -875,6 +897,62 @@ async function removeMedia(id, tenantId) {
 async function sumMediaBytes(tenantId) {
   const r = await pool.query('SELECT COALESCE(SUM(size),0)::bigint AS n FROM media WHERE tenant_id = $1', [tenantId]);
   return Number(r.rows[0].n);
+}
+
+/* ---------------- Banco de Imagens MultiTelas ---------------- */
+async function bancoOferecer(r) {
+  await pool.query(
+    'INSERT INTO banco (id, media_id, tenant_id, key, url, mime, size, formato, cor, segmento, descricao, estado, usos, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,0,$13)',
+    [r.id, r.mediaId, r.tenantId, r.key, r.url, r.mime, r.size, r.formato || null, r.cor || null,
+      r.segmento || null, r.descricao || null, r.estado, Date.now()]);
+  return r;
+}
+async function bancoPorId(id) {
+  const r = await pool.query('SELECT * FROM banco WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
+async function bancoPorMedia(mediaId) {
+  const r = await pool.query('SELECT * FROM banco WHERE media_id = $1', [mediaId]);
+  return r.rows[0] || null;
+}
+async function bancoDoTenant(tenantId) {
+  const r = await pool.query('SELECT * FROM banco WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
+  return r.rows;
+}
+async function bancoPorEstado(estado, limite) {
+  const r = await pool.query('SELECT * FROM banco WHERE estado = $1 ORDER BY created_at ASC LIMIT $2',
+    [estado, Math.max(1, Number(limite) || 100)]);
+  return r.rows;
+}
+async function bancoDecidir(id, estado, quem) {
+  await pool.query('UPDATE banco SET estado = $1, decidido_em = $2, decidido_por = $3 WHERE id = $4',
+    [estado, Date.now(), quem || null, id]);
+}
+async function bancoUsar(id) {
+  await pool.query('UPDATE banco SET usos = COALESCE(usos, 0) + 1 WHERE id = $1', [id]);
+}
+async function bancoApagarDaMedia(mediaId, tenantId) {
+  await pool.query('DELETE FROM banco WHERE media_id = $1 AND tenant_id = $2', [mediaId, tenantId]);
+}
+/*
+ * A busca do feed. O SQL é montado porque os filtros são opcionais e
+ * combináveis; cada pedaço continua parametrizado — nada de texto do cliente
+ * dentro da consulta.
+ */
+async function bancoBuscar({ estado, formato, termo, limite } = {}) {
+  const onde = ['estado = $1'];
+  const vals = [estado || 'aprovada'];
+  if (formato) { vals.push(String(formato)); onde.push('formato = $' + vals.length); }
+  if (termo) {
+    const like = '%' + String(termo).toLowerCase() + '%';
+    vals.push(like);
+    const i = vals.length;
+    onde.push("(LOWER(COALESCE(descricao, '')) LIKE $" + i + " OR LOWER(COALESCE(segmento, '')) LIKE $" + i + ')');
+  }
+  vals.push(Math.max(1, Math.min(200, Number(limite) || 60)));
+  const r = await pool.query(
+    'SELECT * FROM banco WHERE ' + onde.join(' AND ') + ' ORDER BY usos DESC NULLS LAST, created_at DESC LIMIT $' + vals.length, vals);
+  return r.rows;
 }
 
 /* ----- Aniversariantes ----- */
@@ -1004,10 +1082,21 @@ async function apagarTenant(tenantId) {
   // Foto de mural passou a ter linha em `media` (server/midia.js), mas fotos
   // gravadas ANTES dessa mudança só existem em `muralfotos`. A união cobre as
   // duas gerações; apagar uma chave que já sumiu é inofensivo.
+  /*
+   * O que está APROVADO no Banco de Imagens não é apagado com a conta, e o
+   * arquivo também não: outra conta já pode ter publicado essa imagem numa TV,
+   * e apagar faria a tela de um terceiro ficar com um buraco. O que sobrevive
+   * é imagem GERADA pela IA, sem texto, logotipo ou pessoa, cujo dono
+   * autorizou a redistribuição por escrito — está nos Termos (server/legal.js).
+   * A linha perde o tenant_id: a origem some junto com a conta.
+   */
+  const guardadas = new Set(
+    (await pool.query("SELECT key FROM banco WHERE tenant_id = $1 AND estado = 'aprovada'", [tenantId]))
+      .rows.map((r) => r.key).filter(Boolean));
   const chaves = [
     ...(await pool.query('SELECT key FROM media WHERE tenant_id = $1', [tenantId])).rows.map((r) => r.key),
     ...(await pool.query('SELECT chave FROM muralfotos WHERE tenant_id = $1', [tenantId])).rows.map((r) => r.chave),
-  ].filter(Boolean);
+  ].filter(Boolean).filter((k) => !guardadas.has(k));
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -1016,6 +1105,8 @@ async function apagarTenant(tenantId) {
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
+    await client.query("DELETE FROM banco WHERE tenant_id = $1 AND estado <> 'aprovada'", [tenantId]);
+    await client.query("UPDATE banco SET tenant_id = NULL, media_id = NULL WHERE tenant_id = $1 AND estado = 'aprovada'", [tenantId]);
     await client.query('DELETE FROM tenants WHERE id = $1', [tenantId]);
     await client.query('COMMIT');
   } catch (e) { await client.query('ROLLBACK'); throw e; }
@@ -1076,6 +1167,7 @@ module.exports = {
   getTenant, getTenantByCustomer, setTenantBilling,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
+  bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
   listCampaign, renameCampaign, deleteCampaign,

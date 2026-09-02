@@ -144,6 +144,32 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_media_tenant ON media(tenant_id);
   /*
+   * O Banco de Imagens MultiTelas: o feed compartilhado entre contas.
+   *
+   * Uma linha aqui NÃO é uma cópia do arquivo — é a permissão de reuso de uma
+   * mídia que continua sendo do tenant que a gerou. Por isso media_id e
+   * tenant_id apontam para a origem: quem revoga, quem apaga a conta e quem
+   * conta a cota continua sendo um só dono.
+   *
+   * A coluna estado guarda o ciclo inteiro em vez de um booleano porque as quatro
+   * situações são diferentes e todas precisam ser distinguíveis depois:
+   *   pendente  — oferecida, esperando a moderação da plataforma
+   *   aprovada  — no feed, qualquer conta pode usar
+   *   recusada  — a moderação barrou; não volta para a fila sozinha
+   *   revogada  — o dono tirou. Vale para a FRENTE: campanha que outra conta
+   *               já publicou continua no ar, senão a tela de um terceiro
+   *               apagaria sozinha por decisão de alguém que ele não conhece.
+   */
+  CREATE TABLE IF NOT EXISTS banco (
+    id TEXT PRIMARY KEY, media_id TEXT UNIQUE, tenant_id TEXT,
+    key TEXT, url TEXT, mime TEXT, size INTEGER,
+    formato TEXT, cor TEXT, segmento TEXT, descricao TEXT,
+    estado TEXT, usos INTEGER, created_at INTEGER,
+    decidido_em INTEGER, decidido_por TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_banco_estado ON banco(estado);
+  CREATE INDEX IF NOT EXISTS idx_banco_tenant ON banco(tenant_id);
+  /*
    * Todo uso de IA passa por aqui, cobrando crédito ou não. Medir antes de
    * cobrar é a fatia 1 de docs/BILLING.md: duas a quatro semanas de dados
    * reais valem mais que qualquer estimativa de custo — inclusive as que
@@ -356,6 +382,15 @@ db.exec("UPDATE users SET role = 'owner' WHERE role IS NULL");
 if (garantirColuna('media', 'origem TEXT')) {
   db.exec("UPDATE media SET origem = 'upload' WHERE origem IS NULL");
 }
+/*
+ * Formato e cor da imagem gerada. Ficam na mídia, e não só na peça, porque o
+ * Banco de Imagens precisa saber a proporção e a cor de origem sem abrir o
+ * arquivo: um feed que mistura 16/9 com 9/16 sem avisar entrega peça torta, e
+ * a cor é o que diz se a imagem precisa de duotone ao ser reusada por outra
+ * marca.
+ */
+garantirColuna('media', 'formato TEXT');
+garantirColuna('media', 'cor TEXT');
 garantirColuna('devices', 'last_seen INTEGER');
 for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER',
   // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
@@ -414,11 +449,20 @@ const q = {
   creditosDo: db.prepare('SELECT creditos_franquia, creditos_comprados, creditos_ciclo FROM tenants WHERE id = ?'),
   setCreditos: db.prepare('UPDATE tenants SET creditos_franquia = ?, creditos_comprados = ?, creditos_ciclo = ? WHERE id = ?'),
   apagarUsoIA: db.prepare('DELETE FROM uso_ia WHERE tenant_id = ?'),
-  insertMedia: db.prepare('INSERT INTO media (id, tenant_id, name, mime, size, key, url, origem, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'),
-  mediaByTenant: db.prepare('SELECT id, name, mime, size, url, origem, created_at FROM media WHERE tenant_id = ? ORDER BY created_at DESC'),
+  insertMedia: db.prepare('INSERT INTO media (id, tenant_id, name, mime, size, key, url, origem, formato, cor, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'),
+  mediaByTenant: db.prepare('SELECT id, name, mime, size, url, origem, formato, cor, created_at FROM media WHERE tenant_id = ? ORDER BY created_at DESC'),
   mediaById: db.prepare('SELECT * FROM media WHERE id = ?'),
   deleteMedia: db.prepare('DELETE FROM media WHERE id = ? AND tenant_id = ?'),
   sumMedia: db.prepare('SELECT COALESCE(SUM(size),0) AS n FROM media WHERE tenant_id = ?'),
+  insertBanco: db.prepare('INSERT INTO banco (id, media_id, tenant_id, key, url, mime, size, formato, cor, segmento, descricao, estado, usos, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)'),
+  bancoPorId: db.prepare('SELECT * FROM banco WHERE id = ?'),
+  bancoPorMedia: db.prepare('SELECT * FROM banco WHERE media_id = ?'),
+  bancoDoTenant: db.prepare('SELECT * FROM banco WHERE tenant_id = ? ORDER BY created_at DESC'),
+  bancoPorEstado: db.prepare('SELECT * FROM banco WHERE estado = ? ORDER BY created_at ASC LIMIT ?'),
+  bancoDecidir: db.prepare('UPDATE banco SET estado = ?, decidido_em = ?, decidido_por = ? WHERE id = ?'),
+  bancoUsar: db.prepare('UPDATE banco SET usos = COALESCE(usos, 0) + 1 WHERE id = ?'),
+  bancoApagarDoTenant: db.prepare('DELETE FROM banco WHERE tenant_id = ?'),
+  bancoApagarDaMedia: db.prepare('DELETE FROM banco WHERE media_id = ? AND tenant_id = ?'),
   insertBirthday: db.prepare('INSERT INTO birthdays (id, tenant_id, nome, matricula, dia, mes, cargo, foto, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'),
   birthdaysByTenant: db.prepare('SELECT id, nome, matricula, dia, mes, cargo, foto FROM birthdays WHERE tenant_id = ? ORDER BY mes, dia, nome'),
   deleteBirthdays: db.prepare('DELETE FROM birthdays WHERE tenant_id = ?'),
@@ -585,13 +629,45 @@ async function setTenantBilling(id, fields) {
 
 /* ---------------- Mídia ---------------- */
 async function createMedia(m) {
-  q.insertMedia.run(m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, m.origem || 'upload', Date.now());
+  q.insertMedia.run(m.id, m.tenantId, m.name, m.mime, m.size, m.key, m.url, m.origem || 'upload',
+    m.formato || null, m.cor || null, Date.now());
   return m;
 }
 async function listMedia(tenantId) { return q.mediaByTenant.all(tenantId); }
 async function getMedia(id) { return q.mediaById.get(id) || null; }
 async function removeMedia(id, tenantId) { q.deleteMedia.run(id, tenantId); }
 async function sumMediaBytes(tenantId) { return Number(q.sumMedia.get(tenantId).n); }
+
+/* ---------------- Banco de Imagens MultiTelas ---------------- */
+async function bancoOferecer(r) {
+  q.insertBanco.run(r.id, r.mediaId, r.tenantId, r.key, r.url, r.mime, r.size,
+    r.formato || null, r.cor || null, r.segmento || null, r.descricao || null, r.estado, Date.now());
+  return r;
+}
+async function bancoPorId(id) { return q.bancoPorId.get(id) || null; }
+async function bancoPorMedia(mediaId) { return q.bancoPorMedia.get(mediaId) || null; }
+async function bancoDoTenant(tenantId) { return q.bancoDoTenant.all(tenantId); }
+async function bancoPorEstado(estado, limite) { return q.bancoPorEstado.all(estado, Math.max(1, Number(limite) || 100)); }
+async function bancoDecidir(id, estado, quem) { q.bancoDecidir.run(estado, Date.now(), quem || null, id); }
+async function bancoUsar(id) { q.bancoUsar.run(id); }
+async function bancoApagarDaMedia(mediaId, tenantId) { q.bancoApagarDaMedia.run(mediaId, tenantId); }
+/*
+ * A busca do feed. Monta o SQL porque os filtros são opcionais e combináveis;
+ * cada pedaço continua parametrizado — nada de texto do cliente dentro da
+ * consulta.
+ */
+async function bancoBuscar({ estado, formato, termo, limite } = {}) {
+  const onde = ['estado = ?'];
+  const vals = [estado || 'aprovada'];
+  if (formato) { onde.push('formato = ?'); vals.push(String(formato)); }
+  if (termo) {
+    onde.push('(LOWER(COALESCE(descricao, \'\')) LIKE ? OR LOWER(COALESCE(segmento, \'\')) LIKE ?)');
+    const like = '%' + String(termo).toLowerCase() + '%';
+    vals.push(like, like);
+  }
+  vals.push(Math.max(1, Math.min(200, Number(limite) || 60)));
+  return db.prepare('SELECT * FROM banco WHERE ' + onde.join(' AND ') + ' ORDER BY usos DESC, created_at DESC LIMIT ?').all(...vals);
+}
 
 /* ----- Aniversariantes ----- */
 // Substitui toda a relação do tenant de uma vez (re-importação da planilha).
@@ -1073,10 +1149,32 @@ async function apagarTenant(tenantId) {
   // Foto de mural passou a ter linha em `media` (server/midia.js), mas fotos
   // gravadas ANTES dessa mudança só existem em `muralfotos`. A união cobre as
   // duas gerações; apagar uma chave que já sumiu é inofensivo.
+  /*
+   * O que está APROVADO no Banco de Imagens não é apagado com a conta, e o
+   * arquivo também não.
+   *
+   * Parece contrariar "exclusão de verdade", e o motivo de não contrariar é
+   * que outra conta já pode ter publicado essa imagem numa TV. Apagar o
+   * arquivo faria a tela de um terceiro ficar com um buraco por decisão de
+   * alguém que ele não conhece — e "a tela nunca para" vale principalmente
+   * para quem não participou da conversa.
+   *
+   * O que sobrevive é uma imagem GERADA pela IA (só isso entra no banco, ver
+   * server/banco.js), sem texto, logotipo ou pessoa, e cujo dono autorizou a
+   * redistribuição por escrito. Não há dado pessoal para apagar. A linha
+   * perde o `tenant_id` — a origem some junto com a conta.
+   *
+   * Está dito nos Termos, em server/legal.js: quem compartilha lê isso ANTES
+   * de marcar a caixa.
+   */
+  const guardadas = new Set(
+    db.prepare("SELECT key FROM banco WHERE tenant_id = ? AND estado = 'aprovada'").all(tenantId)
+      .map((r) => r.key).filter(Boolean)
+  );
   const chaves = [
     ...db.prepare('SELECT key FROM media WHERE tenant_id = ?').all(tenantId).map((r) => r.key),
     ...db.prepare('SELECT chave FROM muralfotos WHERE tenant_id = ?').all(tenantId).map((r) => r.chave),
-  ].filter(Boolean);
+  ].filter(Boolean).filter((k) => !guardadas.has(k));
   const usuarios = db.prepare('SELECT id FROM users WHERE tenant_id = ?').all(tenantId).map((r) => r.id);
   db.exec('BEGIN');
   try {
@@ -1085,6 +1183,8 @@ async function apagarTenant(tenantId) {
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }
+    db.prepare("DELETE FROM banco WHERE tenant_id = ? AND estado <> 'aprovada'").run(tenantId);
+    db.prepare("UPDATE banco SET tenant_id = NULL, media_id = NULL WHERE tenant_id = ? AND estado = 'aprovada'").run(tenantId);
     db.prepare('DELETE FROM tenants WHERE id = ?').run(tenantId);
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
@@ -1156,6 +1256,7 @@ module.exports = {
   getTenant, getTenantByCustomer, setTenantBilling,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
+  bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
   listCampaign, renameCampaign, deleteCampaign,
