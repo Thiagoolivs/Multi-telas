@@ -371,7 +371,19 @@ function classeDaSessao(parts, method) {
 async function handleApi(req, res, pathname, query) {
   const ctx = {
     db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode,
-    baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto
+    baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto,
+    /*
+     * O login com Google precisa das credenciais e de saber se a conexão é
+     * https — e as três ficaram para trás quando a rota saiu daqui para
+     * server/routes/auth.js. Lá elas não existiam, e a rota lançava
+     * ReferenceError no primeiro clique em "Entrar com Google": o handler
+     * global respondia "erro interno", que não diz nada a ninguém.
+     *
+     * Pior, só quebrava DEPOIS de configurar as credenciais — sem elas
+     * googleEnabled() é falso e a rota devolve 501 antes de chegar na linha
+     * quebrada. Quem configurava direito era o único a ver o erro.
+     */
+    GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest,
   };
   ctx.routes = {
     auth: require('./server/routes/auth')(ctx),
