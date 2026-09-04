@@ -81,10 +81,10 @@ test('a mensalidade cobrada é a da CONTA, não a de uma tela', async () => {
    */
   const plans = require('../server/plans.js');
   await comAsaasFalso(respostasPadrao(true), async (billing, chamadas) => {
-    await billing.createCheckout(TENANT, USER, 'essencial', 'https://app.test', { telas: 10 });
+    await billing.createCheckout(TENANT, USER, 'pro', 'https://app.test', { telas: 10 });
     const criacao = chamadas.find((c) => c.url.includes('/subscriptions') && c.metodo === 'POST');
     assert.ok(criacao, 'não criou assinatura');
-    assert.equal(criacao.corpo.value, plans.mensalidadeCents('essencial', 10) / 100);
+    assert.equal(criacao.corpo.value, plans.mensalidadeCents('pro', 10) / 100);
     assert.notEqual(criacao.corpo.value, 79, 'voltou a cobrar o preço de uma tela só');
   });
 });
@@ -103,7 +103,7 @@ test('o cliente é gravado ANTES da assinatura, não no retorno', async () => {
   }, async (billing) => {
     const gravados = [];
     await assert.rejects(
-      () => billing.createCheckout(TENANT, USER, 'essencial', 'https://app.test',
+      () => billing.createCheckout(TENANT, USER, 'pro', 'https://app.test',
         { telas: 1, aoCriarCliente: (id) => { gravados.push(id); } }),
       /ainda não gerou a fatura/,
     );
@@ -124,7 +124,7 @@ test('assinatura já aberta é ATUALIZADA em vez de virar a segunda', async () =
    */
   await comAsaasFalso((url, metodo) => {
     if (url.includes('/subscriptions') && metodo === 'GET') {
-      return { data: [{ id: 'sub_ja_existe', externalReference: 't1|essencial' }] };
+      return { data: [{ id: 'sub_ja_existe', externalReference: 't1|free' }] };
     }
     if (url.includes('/subscriptions')) return { id: 'sub_ja_existe' };
     if (url.includes('/payments')) return { data: [{ invoiceUrl: 'https://asaas.test/f/1' }] };

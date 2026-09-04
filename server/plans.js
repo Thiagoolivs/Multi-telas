@@ -25,15 +25,6 @@ const PLANS = {
     recursos: ['player', 'editor', 'agendamento', 'datas'],
     stripePrice: null,
   },
-  essencial: {
-    id: 'essencial', name: 'Essencial',
-    precoTelaCents: 7900, telasMax: 49,
-    creditosPorTela: 10,
-    gbPorTela: 2,
-    blurb: 'Para quem já tem a operação rodando.',
-    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som'],
-    stripePrice: process.env.STRIPE_PRICE_ESSENCIAL || null,
-  },
   pro: {
     id: 'pro', name: 'Pro',
     precoTelaCents: 14900, telasMax: 49,
@@ -61,7 +52,17 @@ const PLANS = {
   },
 };
 
-const ORDER = ['free', 'essencial', 'pro', 'enterprise'];
+/*
+ * A ordem de exibição — e, por tabela, o catálogo inteiro: o painel, a
+ * calculadora da landing e a simulação de preço leem daqui.
+ *
+ * O Essencial saiu. Dois planos pagos com a mesma lista de recursos menos
+ * três itens obrigavam o cliente a comparar features para decidir, e quem
+ * compara acaba adiando. Um plano pago só, com tudo, decide na hora — e o
+ * grátis continua sendo a porta de entrada, que é o que trazia gente para o
+ * Essencial de qualquer jeito.
+ */
+const ORDER = ['free', 'pro', 'enterprise'];
 
 /*
  * Desconto por volume, POR FAIXA — como imposto de renda, e não como cupom.
