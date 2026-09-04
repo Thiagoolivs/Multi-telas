@@ -2,7 +2,10 @@
 module.exports = function(ctx) {
   const { 
     db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode,
-    baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto
+    baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto,
+    // O login com Google usa as três abaixo. Sem elas aqui, a rota lança
+    // ReferenceError e o handler global devolve "erro interno".
+    GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest,
   } = ctx;
   
   const tratar = async function(req, res, parts, query, sess) {

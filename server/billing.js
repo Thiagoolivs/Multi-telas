@@ -139,9 +139,9 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
    * QUALQUER assinatura ativa é reaproveitada, não só a do mesmo plano.
    *
    * A primeira versão disto casava pelo planId, e o buraco aparecia na troca:
-   * quem estava no Essencial e ia para o Pro ganhava uma SEGUNDA assinatura
-   * ativa, e as duas cobravam todo mês. Trocar de plano é a operação mais
-   * provável de quem já paga — era o caso pior no caminho mais comum.
+   * quem mudava de plano ganhava uma SEGUNDA assinatura ativa, e as duas
+   * cobravam todo mês. Trocar de plano é a operação mais provável de quem já
+   * paga — era o caso pior no caminho mais comum.
    *
    * Uma conta tem uma assinatura. Mudar de plano é MUDAR essa assinatura: o
    * valor e a referência, no lugar. Muda também o número de telas, que é de
@@ -162,8 +162,8 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
      * O VALOR É DA CONTA, não de uma tela.
      *
      * Estava em `precoTelaCents`, que é o preço de UMA tela. Dez telas no
-     * Essencial: cobrado R$ 79,00, devido R$ 736,28. Quarenta e nove:
-     * cobrado R$ 79,00, devido R$ 3.096,80. `mensalidadeCents` já existia e
+     * Pro: cobrado R$ 149,00, devido R$ 1.388,68. Quarenta e nove: cobrado
+     * R$ 149,00, devido R$ 5.840,80. `mensalidadeCents` já existia e
      * já aplica as faixas de desconto por volume — só não era chamada.
      */
     value: valor,

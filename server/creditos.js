@@ -29,8 +29,8 @@
  * dados.
  *
  * A imagem estava em 20 e o valor observado em produção é 35. A diferença
- * não muda a margem — o Essencial dá 10 créditos por tela, e 10 imagens a
- * R$ 0,35 são R$ 3,50 contra R$ 79 cobrados. O que ela estragava era o
+ * não muda a margem — o Pro dá 25 créditos por tela, e 25 imagens a
+ * R$ 0,35 são R$ 8,75 contra R$ 149 cobrados. O que ela estragava era o
  * EXTRATO: o painel dizia ao cliente, e a nós, um número quase pela metade
  * do gasto. Decidir preço com contabilidade errada é o jeito silencioso de
  * descobrir tarde.

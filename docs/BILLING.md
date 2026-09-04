@@ -8,6 +8,13 @@ completa, e cada premissa está declarada para você trocar e ver o que muda.
 Há uma calculadora junto desta proposta onde todos os números abaixo são
 editáveis.
 
+> **O plano Essencial saiu do catálogo.** O produto passou a ter um plano pago
+> só — Pro —, com o grátis de 14 dias como porta de entrada e o Enterprise sob
+> consulta. As linhas de "Essencial" nas tabelas abaixo ficam como registro do
+> raciocínio que levou até aqui: os números continuam corretos para o que
+> descrevem, e nenhum deles descreve o que está à venda hoje. Quem for refazer
+> a conta da margem, refaça sobre Pro e Enterprise — não adapte estas.
+
 ---
 
 ## 1 · O que existe hoje, e onde vaza

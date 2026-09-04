@@ -43,14 +43,14 @@ test('quem paga não esbarra no prazo, nunca', () => {
    * O erro caro. Uma conta paga criada há um ano não pode ser tratada como
    * teste vencido só porque nasceu antes — a data de criação é a mesma.
    */
-  for (const plano of ['essencial', 'pro', 'enterprise']) {
+  for (const plano of ['pro', 'enterprise']) {
     const v = plans.podeParear(conta(400, plano), 0, AGORA);
     assert.equal(v.ok, true, plano + ' foi barrado pelo prazo do teste');
   }
 });
 
 test('quem paga esbarra no limite de telas, e o motivo é o limite', () => {
-  const v = plans.podeParear(conta(30, 'essencial'), 49, AGORA);
+  const v = plans.podeParear(conta(30, 'pro'), 49, AGORA);
   assert.equal(v.ok, false);
   assert.equal(v.motivo, 'limite');
   assert.equal(v.limite, 49);

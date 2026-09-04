@@ -20,7 +20,7 @@ const cred = require('../server/creditos');
 test('preço por tela, sem desconto abaixo de 5 telas', () => {
   assert.equal(plans.mensalidadeCents('pro', 1), 14900);
   assert.equal(plans.mensalidadeCents('pro', 4), 14900 * 4);
-  assert.equal(plans.mensalidadeCents('essencial', 1), 7900);
+  assert.equal(plans.mensalidadeCents('pro', 1), 14900);
 });
 
 test('o desconto é da faixa em que a próxima tela cai', () => {
@@ -56,7 +56,7 @@ test('o preço médio por tela cai conforme a conta cresce', () => {
 });
 
 test('crescer nunca fica mais barato em nenhuma virada de faixa', () => {
-  for (const p of ['essencial', 'pro']) {
+  for (const p of ['pro']) {
     for (let n = 1; n < 60; n++) {
       assert.ok(
         plans.mensalidadeCents(p, n + 1) > plans.mensalidadeCents(p, n),
@@ -76,8 +76,8 @@ test('grátis é uma tela e o resto é limitado', () => {
   assert.equal(plans.screenLimit('free'), 1);
   assert.equal(plans.mensalidadeCents('free', 1), 0);
   assert.equal(plans.temRecurso('free', 'mural'), false);
-  assert.equal(plans.temRecurso('essencial', 'mural'), true);
-  assert.equal(plans.temRecurso('essencial', 'marca'), false);
+  assert.equal(plans.temRecurso('pro', 'mural'), true);
+  assert.equal(plans.temRecurso('free', 'marca'), false);
   assert.equal(plans.temRecurso('pro', 'marca'), true);
 });
 
@@ -88,14 +88,14 @@ test('armazenamento é por conta, somando as telas', () => {
   // cota isolada obrigaria o cliente a decidir em qual tela cada arquivo mora.
   const GB = 1024 * 1024 * 1024;
   assert.equal(plans.cotaBytes('pro', 5), 50 * GB);
-  assert.equal(plans.cotaBytes('essencial', 3), 6 * GB);
+  assert.equal(plans.cotaBytes('pro', 3), 30 * GB);
   assert.equal(plans.cotaBytes('free', 1), 0.5 * GB);
 });
 
 test('franquia de crédito também é por tela', () => {
   assert.equal(plans.franquiaCreditos('pro', 1), 25);
   assert.equal(plans.franquiaCreditos('pro', 10), 250);
-  assert.equal(plans.franquiaCreditos('essencial', 4), 40);
+  assert.equal(plans.franquiaCreditos('pro', 4), 100);
   assert.equal(plans.franquiaCreditos('free', 1), 0, 'o grátis ganha só as boas-vindas');
 });
 
