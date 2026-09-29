@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
+import android.provider.Settings;
 import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.View;
@@ -73,6 +74,8 @@ public class MainActivity extends Activity {
                 | WindowManager.LayoutParams.FLAG_FULLSCREEN
                 | WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
                 | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+
+        pedirSobreposicaoUmaVez();
 
         raiz = new FrameLayout(this);
         raiz.setBackgroundColor(Color.BLACK);
@@ -229,6 +232,25 @@ public class MainActivity extends Activity {
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
+    }
+
+    /*
+     * No Android 10+ o receiver de boot não consegue abrir a tela — a menos que
+     * o app seja a tela inicial ou tenha "sobrepor a outros apps". Pede essa
+     * permissão UMA vez (na primeira abertura, com o instalador na frente da
+     * TV). Aparelho sem essa tela de configuração: segue sem, e o caminho é
+     * definir o app como tela inicial (android/README.md).
+     */
+    private void pedirSobreposicaoUmaVez() {
+        if (Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(this)) return;
+        SharedPreferences p = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (p.getBoolean("pediuSobreposicao", false)) return;
+        p.edit().putBoolean("pediuSobreposicao", true).apply();
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
+        } catch (RuntimeException semTela) {
+            // Muitas TVs não têm essa tela; sem problema.
+        }
     }
 
     /* ---------------- Se o app cair ---------------- */

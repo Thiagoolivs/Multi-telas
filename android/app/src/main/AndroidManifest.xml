@@ -5,6 +5,12 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!--
+      "Sobrepor a outros apps": no Android 10+ (Google TV incluso) é uma das
+      poucas exceções que deixam um app abrir sozinho depois do boot sem ser a
+      tela inicial. O app pede uma vez; quem instala concede.
+    -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <!-- Roda em TV sem tela de toque e em aparelho sem leanback: nada disto é obrigatório. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
