@@ -13,7 +13,7 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v22';
+const SHELL_CACHE = 'mt-shell-v23';
 const MEDIA_CACHE = 'mt-media-v1';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
@@ -98,6 +98,18 @@ self.addEventListener('fetch', (event) => {
      * a TV subia mostrando a página de login em vez do conteúdo da parede — e
      * não havia nada na TV que explicasse por quê.
      */
+    /*
+     * `/tv` é o endereço que se digita na TV e o que o app Android abre ao
+     * ligar. O servidor só redireciona para o player; sem rede, esse
+     * redirecionamento não existia e a TV mostrava a página de erro do
+     * navegador — no boot depois de uma queda de energia, quando o box sobe
+     * antes do roteador. Aqui o redirecionamento acontece mesmo sem rede, e o
+     * player sobe do cache com a última programação.
+     */
+    if (url.pathname === '/tv' || url.pathname === '/tv/') {
+      event.respondWith(fetch(req).catch(() => Response.redirect('/player.html?cloud=1', 302)));
+      return;
+    }
     if (url.pathname !== '/player.html') return;
     event.respondWith(navigation(req));
     return;

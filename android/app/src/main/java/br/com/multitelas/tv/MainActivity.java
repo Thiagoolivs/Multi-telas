@@ -58,6 +58,21 @@ public class MainActivity extends Activity {
     // Espera antes de tentar de novo quando a página nem carregou.
     private static final long NOVA_TENTATIVA_MS = 15_000;
 
+    /*
+     * O que aparece quando nem o player abriu: primeira vez ligado e sem
+     * internet (ainda não há cópia guardada). Sem isto, a TV da loja mostrava
+     * a página de erro do Android — "Página da Web não disponível", com o
+     * endereço do servidor — até a rede voltar. Depois da primeira vez o
+     * player sobe do cache e isto não aparece mais.
+     */
+    private static final String PAGINA_SEM_REDE = "<!doctype html><html><head><meta charset='utf-8'>"
+            + "<meta name='viewport' content='width=device-width,initial-scale=1'><style>"
+            + "html,body{margin:0;height:100%;background:#0b1020;color:#f2f6ff;font-family:sans-serif}"
+            + "body{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}"
+            + "h1{font-size:4.2vw;margin:0 0 1.2vw}p{font-size:2vw;color:rgba(226,235,255,.62);margin:0}"
+            + "</style></head><body><h1>Procurando a internet…</h1>"
+            + "<p>A TV tenta de novo sozinha. Confira o Wi-Fi do aparelho.</p></body></html>";
+
     private WebView web;
     private FrameLayout raiz;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -124,7 +139,10 @@ public class MainActivity extends Activity {
             public void onReceivedError(WebView v, WebResourceRequest req, WebResourceError err) {
                 // Só a página principal importa: uma imagem que falhou não é
                 // motivo para recarregar a tela inteira.
-                if (req.isForMainFrame()) tentarDeNovoEmBreve();
+                if (req.isForMainFrame()) {
+                    v.loadDataWithBaseURL(null, PAGINA_SEM_REDE, "text/html", "utf-8", null);
+                    tentarDeNovoEmBreve();
+                }
             }
 
             @android.annotation.TargetApi(26)
