@@ -104,7 +104,7 @@ public class MainActivity extends Activity {
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         s.setUserAgentString(s.getUserAgentString() + " MultiTelasTV/" + BuildConfig.VERSION_NAME);
 
-        web.addJavascriptInterface(new Ponte(this), "MTApp");
+        web.addJavascriptInterface(new Ponte(), "MTApp");
         web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
             @Override

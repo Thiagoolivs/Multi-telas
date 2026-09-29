@@ -37,13 +37,21 @@ function efeitoDoEvento(evento, ctx, agora) {
   switch (evento) {
     case 'PAYMENT_RECEIVED':
     case 'PAYMENT_CONFIRMED': {
-      // Pagou: o atraso (se havia) acaba aqui.
       const p = { status: 'active', customerId: c.customerId, subscriptionId: c.subId, atrasoDesde: null };
       if (c.planId) p.plan = c.planId;
       if (c.renewsAt) p.renewsAt = c.renewsAt;
+      /*
+       * Pagou ESTA fatura — mas pode haver outra, mais velha, ainda vencida
+       * (pagou o mês 2 e não o 1). O Asaas não reenvia o OVERDUE do mês 1,
+       * então zerar o atraso aqui devolveria IA e pareamento a quem ainda
+       * deve. Quem chama pergunta ao Asaas e passa `outrasVencidas`.
+       */
+      if (c.outrasVencidas > 0) { p.status = 'past_due'; delete p.atrasoDesde; }
       return p;
     }
     case 'PAYMENT_OVERDUE':
+      // Conta sem plano pago (checkout abandonado) não tem atraso a contar.
+      if (!plans.isPaid(t.plan || 'free')) return null;
       /*
        * O relógio da carência começa no PRIMEIRO aviso de atraso e não anda
        * a cada reentrega. O Asaas reenvia o mesmo evento; se cada reenvio

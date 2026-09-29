@@ -243,9 +243,17 @@ const comandosPendentes = new Map();
 function lerJsonCurto(req, max) {
   return new Promise((resolve) => {
     let dado = '';
-    req.on('data', (c) => { dado += c; if (dado.length > max) { dado = ''; req.destroy(); } });
-    req.on('end', () => { try { resolve(dado ? JSON.parse(dado) : null); } catch (_) { resolve(null); } });
-    req.on('error', () => resolve(null));
+    let feito = false;
+    const fim = (v) => { if (!feito) { feito = true; resolve(v); } };
+    req.on('data', (c) => {
+      dado += c;
+      // Grande demais: não é pulso de TV. Resolve JÁ — depois do destroy nem
+      // 'end' nem 'error' chegam, e a requisição ficaria pendurada.
+      if (dado.length > max) { dado = ''; fim(null); req.destroy(); }
+    });
+    req.on('end', () => { try { fim(dado ? JSON.parse(dado) : null); } catch (_) { fim(null); } });
+    req.on('error', () => fim(null));
+    req.on('close', () => fim(null));
   });
 }
 
@@ -301,7 +309,14 @@ function classeDaSessao(parts, method) {
   return 'painel';
 }
 
-async function handleApi(req, res, pathname, query) {
+/*
+ * O contexto das rotas é montado UMA vez. Era montado a cada requisição —
+ * setenta campos desestruturados e as fábricas de rota refeitas em cada
+ * pulso de cada TV, para nada: tudo aqui é do módulo, nada é da requisição.
+ */
+let ctxDasRotas = null;
+function montarCtx() {
+  if (ctxDasRotas) return ctxDasRotas;
   const ctx = {
     db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode,
     baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto,
@@ -331,6 +346,12 @@ async function handleApi(req, res, pathname, query) {
     telas: require('./server/routes/telas')(ctx),
     relatorio: require('./server/routes/relatorio')(ctx),
   };
+  ctxDasRotas = ctx;
+  return ctx;
+}
+
+async function handleApi(req, res, pathname, query) {
+  const ctx = montarCtx();
 
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
   const sess = await auth.currentSession(req);

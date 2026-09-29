@@ -475,7 +475,7 @@ module.exports = function (ctx) {
         const para = String((b && b.para) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
         if (!de) return sendJson(res, 400, { error: 'qual grupo?' });
         const telas = await db.renomearGrupo(sess.tenant_id, de, para);
-        return sendJson(res, 200, { ok: true, telas });
+        return sendJson(res, 200, { ok: true, telas, grupo: para });
       });
     }
     return sendJson(res, 404, { error: 'rota de grupos inválida' });

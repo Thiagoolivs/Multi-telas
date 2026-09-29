@@ -315,6 +315,15 @@ async function atualizarValor(subId, planId, valor) {
   }, 'POST');
 }
 
+/* Quantas faturas desta assinatura seguem vencidas (0 se não der para saber). */
+async function faturasVencidas(subId) {
+  if (mode() === 'dev' || !subId) return 0;
+  try {
+    const r = await asaasApi('/payments', { subscription: subId, status: 'OVERDUE', limit: 1 });
+    return Number(r.totalCount) || (r.data || []).length || 0;
+  } catch (e) { return 0; }
+}
+
 /* ---------------- Webhook ---------------- */
 function verifyWebhook(rawBody, authHeader) {
   if (!WEBHOOK_TOKEN) throw new Error('ASAAS_WEBHOOK_TOKEN ausente');
@@ -348,4 +357,4 @@ function planIdFromPrice(priceId) {
   return null; 
 }
 
-module.exports = { mode, createCheckout, cobrarPacote, garantirCliente, assinatura, cancelarAssinatura, atualizarValor, verifyWebhook, planIdFromPrice, asaasApi };
+module.exports = { mode, createCheckout, cobrarPacote, faturasVencidas, garantirCliente, assinatura, cancelarAssinatura, atualizarValor, verifyWebhook, planIdFromPrice, asaasApi };

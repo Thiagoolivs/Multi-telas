@@ -80,41 +80,24 @@
     try { document.cookie = nomeCookie(chave) + '=; path=/; max-age=0; SameSite=Lax'; } catch (e) {}
   }
 
-  /*
-   * Terceira gaveta: o app Android (window.MTApp), quando a TV roda dentro
-   * dele. Guarda nas preferências do app, que só somem se alguém apagar os
-   * dados do app de propósito. Fora do app, as funções simplesmente não
-   * existem e isto não faz nada.
-   */
-  function lerApp(chave) {
-    try { return (global.MTApp && global.MTApp.ler && global.MTApp.ler(chave)) || null; } catch (e) { return null; }
-  }
-  function gravarApp(chave, valor) {
-    try { if (global.MTApp && global.MTApp.guardar) global.MTApp.guardar(chave, valor); } catch (e) {}
-  }
-
   function lembrar(chave) {
     let local = null;
     try { local = localStorage.getItem(chave); } catch (e) {}
     const cookie = lerCookie(chave);
-    const app = lerApp(chave);
-    const valor = local || cookie || app || null;
+    const valor = local || cookie || null;
     // Quem sobreviveu repõe o que se perdeu: na próxima limpeza, a outra gaveta
     // é que vai segurar a identidade.
     if (valor && !cookie) gravarCookie(chave, valor);
     if (valor && !local) { try { localStorage.setItem(chave, valor); } catch (e) {} }
-    if (valor && !app) gravarApp(chave, valor);
     return valor;
   }
   function anotar(chave, valor) {
     try { localStorage.setItem(chave, valor); } catch (e) {}
     gravarCookie(chave, valor);
-    gravarApp(chave, valor);
   }
   function esquecer(chave) {
     try { localStorage.removeItem(chave); } catch (e) {}
     apagarCookie(chave);
-    gravarApp(chave, null);
   }
 
   /*

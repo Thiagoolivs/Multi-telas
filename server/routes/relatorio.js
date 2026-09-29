@@ -25,7 +25,14 @@ module.exports = function (ctx) {
 
   function csv(rel) {
     const esc = (v) => {
-      const s = String(v == null ? '' : v);
+      let s = String(v == null ? '' : v);
+      /*
+       * Célula que começa com = + - @ vira FÓRMULA no Excel. O rótulo vem do
+       * título do conteúdo, que qualquer pessoa da equipe escreve — um
+       * "=HYPERLINK(...)" rodaria no computador de quem abriu o relatório.
+       * O apóstrofo faz o Excel tratar como texto.
+       */
+      if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
       return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
     };
     const horas = (seg) => (Number(seg) / 3600).toFixed(2).replace('.', ',');

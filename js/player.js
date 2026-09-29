@@ -141,6 +141,8 @@
       const ok = await MTCloud.enviarExibicoes(devId, { lote: lote.lote, itens: lote.itens });
       if (ok) contadorExibicoes.confirmar(lote);
     }
+    // Recarregar (comando remoto, vigia do app) não pode perder os últimos segundos.
+    global.addEventListener('pagehide', () => { try { contadorExibicoes.salvar(); } catch (e) {} });
     // Espalha as TVs no tempo: mil telas ligadas juntas não mandam juntas.
     setTimeout(enviar, 30000 + Math.random() * 60000);
     setInterval(enviar, 5 * 60 * 1000);

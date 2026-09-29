@@ -59,7 +59,22 @@
     let linhas = {};
     try { linhas = JSON.parse(ler(CHAVE) || '{}') || {}; } catch (e) { linhas = {}; }
 
+    /*
+     * Gravar no localStorage a cada troca de slide era um JSON de centenas
+     * de KB escrito várias vezes por minuto, na thread que anima a TV — num
+     * box barato, a transição engasgava. Agora a gravação é adiada e juntada
+     * (`adiar` ms, 20 s por padrão); lote(), confirmar() e salvar() gravam na
+     * hora. O que se perde num corte de energia são, no máximo, 20 segundos.
+     */
+    const adiar = o.adiar != null ? o.adiar : 20000;
+    let agendado = null;
     function persistir() {
+      if (!adiar) return persistirJa();
+      if (agendado) return;
+      agendado = setTimeout(() => { agendado = null; persistirJa(); }, adiar);
+    }
+    function persistirJa() {
+      if (agendado) { clearTimeout(agendado); agendado = null; }
       const ks = Object.keys(linhas);
       if (ks.length > MAX_LINHAS) {
         // As horas mais antigas saem primeiro.
@@ -139,6 +154,7 @@
     } catch (e) { pendente = null; }
 
     function lote() {
+      persistirJa();
       if (pendente) return pendente;
       const horaAtual = Math.floor(agora() / HORA) * HORA;
       const itens = Object.keys(linhas).filter((id) => linhas[id].hora < horaAtual).slice(0, 500);
@@ -156,10 +172,10 @@
       for (const id of l.ids) delete linhas[id];
       pendente = null;
       try { guardar(CHAVE_LOTE, 'null'); } catch (e) {}
-      persistir();
+      persistirJa();
     }
 
-    return { iniciar, lote, confirmar, _linhas: () => linhas };
+    return { iniciar, lote, confirmar, salvar: persistirJa, _linhas: () => linhas };
   }
 
   const api = { criar, chaveDoItem, rotuloDoItem, HORA, MAX_LINHAS };

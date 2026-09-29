@@ -18,7 +18,7 @@ const HORA = E.HORA;
 const H0 = Date.UTC(2026, 8, 1, 13, 0, 0); // uma hora cheia
 
 function relogio(t) { const r = { t, agora: () => r.t }; return r; }
-function memoria() { const m = {}; return { m, ler: (k) => m[k] || null, guardar: (k, v) => { m[k] = v; } }; }
+function memoria() { const m = {}; return { m, adiar: 0, ler: (k) => m[k] || null, guardar: (k, v) => { m[k] = v; } }; }
 
 const aviso = { id: 'a1', type: 'announce', titulo: 'Promoção de pão' };
 
@@ -126,4 +126,13 @@ test('o mesmo lote gravado duas vezes conta uma, e o relatório soma certo', asy
   const outra = await db.createAccount('outra' + Date.now() + '@x.com', 'h', 'Outra', 'Dona');
   const nada = await db.relatorioExibicoes(outra.tenantId, H0 - HORA, H0 + HORA, null);
   assert.equal(nada.porConteudo.length, 0);
+});
+
+test('a gravação no armazenamento é adiada e juntada (não a cada slide)', async () => {
+  const r = relogio(H0); const escritas = [];
+  const c = E.criar({ agora: r.agora, adiar: 30, ler: () => null, guardar: (k) => escritas.push(k) });
+  for (let i = 0; i < 20; i++) { const x = c.iniciar(aviso, 'principal'); r.t += 5e3; x.terminar(); }
+  assert.equal(escritas.length, 0, 'gravou a cada troca de slide');
+  await new Promise((res) => setTimeout(res, 60));
+  assert.equal(escritas.filter((k) => k === 'mt.exibicoes').length, 1);
 });

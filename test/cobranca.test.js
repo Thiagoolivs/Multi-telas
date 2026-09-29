@@ -135,10 +135,10 @@ test('pagamento recebido libera o plano e encerra o atraso', () => {
 });
 
 test('o relógio do atraso começa no primeiro aviso e não anda nas reentregas', () => {
-  const primeiro = C.efeitoDoEvento('PAYMENT_OVERDUE', { tenant: {} }, AGORA);
+  const primeiro = C.efeitoDoEvento('PAYMENT_OVERDUE', { tenant: { plan: 'pro' } }, AGORA);
   assert.equal(primeiro.atrasoDesde, AGORA);
   // O Asaas reentrega. Se cada reentrega zerasse a data, a carência nunca venceria.
-  const reenvio = C.efeitoDoEvento('PAYMENT_OVERDUE', { tenant: { atraso_desde: AGORA } }, AGORA + 5 * DIA);
+  const reenvio = C.efeitoDoEvento('PAYMENT_OVERDUE', { tenant: { plan: 'pro', atraso_desde: AGORA } }, AGORA + 5 * DIA);
   assert.equal(reenvio.atrasoDesde, AGORA);
 });
 
@@ -214,4 +214,17 @@ test('passada a carência, a franquia não repõe na virada do mês', async () =
   // Pagou: repõe na próxima chamada.
   await usoIA.garantirCiclo(db, { ...t, plan_status: 'active', atraso_desde: null });
   assert.equal(db.conta.franquiaRestante, plans.franquiaCreditos('pro', 4));
+});
+
+test('checkout abandonado não vira atraso de quem nunca pagou', () => {
+  // Assinou, não pagou, o Asaas mandou OVERDUE. A conta segue no grátis.
+  assert.equal(C.efeitoDoEvento('PAYMENT_OVERDUE', { tenant: { plan: 'free' } }, AGORA), null);
+  const t = { plan: 'free', plan_status: 'past_due', atraso_desde: AGORA - 30 * DIA, created_at: AGORA - 3 * DIA };
+  assert.equal(plans.situacaoAtraso(t, AGORA), null);
+});
+
+test('pagar a fatura nova com a velha ainda vencida não zera o atraso', () => {
+  const p = C.efeitoDoEvento('PAYMENT_RECEIVED', { tenant: { plan: 'pro', atraso_desde: AGORA - 20 * DIA }, planId: 'pro', outrasVencidas: 1 }, AGORA);
+  assert.equal(p.status, 'past_due');
+  assert.ok(!('atrasoDesde' in p), 'a data do atraso tem que continuar a mesma');
 });

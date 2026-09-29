@@ -118,7 +118,7 @@ export function ScreensPage({ onEditContent, parear }) {
       <ReconnectDialog target={reconnectTarget} onClose={() => setReconnectTarget(null)} onDone={reload} />
       <RemoveDialog target={removeTarget} onClose={() => setRemoveTarget(null)} onDone={reload} />
       <ExpedienteDialog target={alertaTarget} onClose={() => setAlertaTarget(null)} onDone={reload} />
-      <BackupDialog target={backupTarget} screens={list} onClose={() => setBackupTarget(null)} onDone={reload} />
+      <BackupDialog target={backupTarget} screens={todas} onClose={() => setBackupTarget(null)} onDone={reload} />
     </div>
   );
 }
@@ -428,10 +428,15 @@ function ExpedienteDialog({ target, onClose, onDone }) {
 function RenomearGrupoDialog({ grupo, onClose, onDone }) {
   const [para, setPara] = useState('');
   const [busy, setBusy] = useState(false);
-  React.useEffect(() => { setPara(grupo || ''); }, [grupo]);
+  const [erro, setErro] = useState('');
+  React.useEffect(() => { setPara(grupo || ''); setErro(''); }, [grupo]);
   async function salvar() {
-    setBusy(true);
-    try { await devices.renomearGrupo(grupo, para); onDone(para.trim()); onClose(); }
+    setBusy(true); setErro('');
+    try {
+      const r = await devices.renomearGrupo(grupo, para);
+      // O nome que VALE é o que o servidor gravou (espaços juntados, 60 letras).
+      onDone((r && r.grupo) || ''); onClose();
+    } catch (e) { setErro(e.message || 'Não foi possível renomear.'); }
     finally { setBusy(false); }
   }
   return (
@@ -440,6 +445,7 @@ function RenomearGrupoDialog({ grupo, onClose, onDone }) {
       footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button>
         <Button variant="primary" onClick={salvar} disabled={busy}>Salvar</Button></>}>
       <Field label="Nome do grupo"><Input value={para} onChange={(e) => setPara(e.target.value)} autoFocus /></Field>
+      {erro && <div className="mt-2 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{erro}</div>}
     </Dialog>
   );
 }

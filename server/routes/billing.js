@@ -85,7 +85,9 @@ module.exports = function (ctx) {
      * A regra de cada evento mora em server/cobranca.js (pura, testada). Aqui
      * só se resolve a conta e se grava o patch.
      */
-    const patch = cobranca.efeitoDoEvento(eventName, { tenant, customerId, subId, planId, renewsAt });
+    const pago = eventName === 'PAYMENT_RECEIVED' || eventName === 'PAYMENT_CONFIRMED';
+    const outrasVencidas = pago && tenant.plan_status === 'past_due' ? await billing.faturasVencidas(subId) : 0;
+    const patch = cobranca.efeitoDoEvento(eventName, { tenant, customerId, subId, planId, renewsAt, outrasVencidas });
     if (!patch) return;
     await db.setTenantBilling(tenant.id, patch);
     // Pagou: se pareou telas entre o checkout e o pagamento, a assinatura já

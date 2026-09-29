@@ -95,7 +95,29 @@ function normalizarExpediente(bruto) {
 }
 
 const formatadores = new Map();
+/*
+ * Memória do relógio por passo de 5 minutos: a varredura pergunta pelos
+ * MESMOS instantes para todas as telas (os passos são alinhados), e
+ * formatToParts é caro. Sem isto, centenas de telas caídas num fim de semana
+ * viravam centenas de milhares de chamadas por varredura, travando o servidor.
+ */
+const memoRelogio = new Map();
 function relogioLocal(t, fuso) {
+  const passo = Math.floor(t / PASSO_MS);
+  const chave = fuso + '|' + passo;
+  let base = memoRelogio.get(chave);
+  if (!base) {
+    base = relogioLocalCru(passo * PASSO_MS, fuso);
+    if (memoRelogio.size > 20000) memoRelogio.clear();
+    memoRelogio.set(chave, base);
+  }
+  // O início do passo vem da memória; os minutos dentro dele, da conta.
+  let min = base.min + Math.floor((t - passo * PASSO_MS) / 60000);
+  let dia = base.dia;
+  if (min >= 1440) { min -= 1440; dia = (dia + 1) % 7; }
+  return { dia, min };
+}
+function relogioLocalCru(t, fuso) {
   if (!formatadores.has(fuso)) {
     formatadores.set(fuso, new Intl.DateTimeFormat('en-US', {
       timeZone: fuso, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
@@ -127,8 +149,13 @@ function dentroDoExpediente(t, exp) {
 /* Quanto do intervalo [de, ate) caiu dentro do expediente. */
 function tempoDeExpediente(de, ate, exp) {
   let soma = 0;
-  for (let t = de; t < ate; t += PASSO_MS) {
-    if (dentroDoExpediente(t, exp)) soma += Math.min(PASSO_MS, ate - t);
+  let t = de;
+  while (t < ate) {
+    // Anda até a próxima fronteira de 5 min: os instantes consultados são os
+    // mesmos para todas as telas, e a memória do relógio serve a todas.
+    const prox = Math.min(ate, (Math.floor(t / PASSO_MS) + 1) * PASSO_MS);
+    if (dentroDoExpediente(t, exp)) soma += prox - t;
+    t = prox;
   }
   return soma;
 }
@@ -155,6 +182,9 @@ function decidir(telas, agora, opcoes) {
     if (!t.tenant_id || !t.email) continue;
     const parada = agora - desde;
     if (parada < limite) continue;
+
+    // Já avisamos desta queda: sai antes da conta cara do expediente.
+    if ((Number(t.alerta_offline_em) || 0) >= desde) continue;
 
     const exp = normalizarExpediente(t.expediente);
     // Desligado pelo dono: nada de aviso para esta tela.

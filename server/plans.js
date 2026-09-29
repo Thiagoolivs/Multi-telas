@@ -224,6 +224,9 @@ const MS_DIA = 24 * 60 * 60 * 1000;
 /* Situação do atraso da conta, ou null se ela está em dia. */
 function situacaoAtraso(tenant, agora) {
   if (!tenant || tenant.plan_status !== 'past_due') return null;
+  // Só existe atraso de quem assinou: a fatura vencida de um checkout
+  // abandonado não é dívida de quem nunca teve plano pago.
+  if (!isPaid(tenant.plan || 'free')) return null;
   const desde = Number(tenant.atraso_desde) || 0;
   if (!desde) return null;
   const t = agora || Date.now();

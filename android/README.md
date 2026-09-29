@@ -7,8 +7,8 @@ comum não tem:
 - **mantém a tela acesa**;
 - se a página travar ou o processo do WebView morrer, **volta sozinho**;
   se o app cair, **reabre em 2 segundos**;
-- guarda a identidade da tela nas preferências do app (além do localStorage
-  e do cookie) — trocar de aparelho não perde o pareamento por acidente;
+- a identidade da tela fica no armazenamento do WebView do próprio app, que
+  não é limpo como o navegador de algumas TVs;
 - aparece no painel, no cartão da tela, como "App 1.0.N".
 
 ## Onde baixar
