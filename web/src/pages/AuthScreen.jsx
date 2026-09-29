@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { parearGuardado } from '../lib/parearPendente.js';
 import { MonitorPlay, ArrowLeft, MailCheck } from 'lucide-react';
 import { auth } from '../api.js';
 import { Button } from '../components/ui/Button.jsx';
@@ -107,6 +108,8 @@ export function AuthScreen({ onAuthed }) {
     : 'Criar uma nova senha';
   const subtitulo = mode === 'forgot' ? 'Enviamos um link para o seu e-mail.'
     : mode === 'reset' ? 'Escolha a senha que você vai usar a partir de agora.'
+    // Chegou pelo QR da TV: dizer que a TV não foi esquecida no meio do cadastro.
+    : parearGuardado() ? 'Entre ou crie sua conta — a TV que mostrou o QR é conectada logo em seguida.'
     : 'Gerencie a rede de telas de qualquer lugar.';
 
   return (

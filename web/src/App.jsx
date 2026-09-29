@@ -22,6 +22,7 @@ import { PlatformPage } from './pages/PlatformPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { RelatorioPage } from './pages/RelatorioPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
+import { parearGuardado } from './lib/parearPendente.js';
 
 const META = {
   overview: { title: 'Visão geral' },
@@ -77,7 +78,7 @@ function rotaDaUrl() {
    * Veio do QR da TV: abre Telas com o pareamento já preenchido. Se a pessoa
    * ainda não estava logada, o endereço sobrevive ao login e cai aqui depois.
    */
-  const parear = (q.get('parear') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  const parear = (q.get('parear') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || parearGuardado();
   if (parear) return { name: 'screens', parear };
   if (q.get('billing')) return { name: 'billing' };
   const ir = q.get('ir');

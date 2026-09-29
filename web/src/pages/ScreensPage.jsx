@@ -13,6 +13,7 @@ import { useAsync } from '../lib/useAsync.js';
 import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
+import { esquecerParear } from '../lib/parearPendente.js';
 
 export function ScreensPage({ onEditContent, parear }) {
   const { data, loading, error, reload } = useAsync(devices.list);
@@ -269,6 +270,7 @@ function PairDialog({ open, onClose, onDone, codigoInicial }) {
     setBusy(true); setError('');
     try {
       await devices.pair(code, name);
+      esquecerParear(); // o código guardado do QR já foi usado
       setCode(''); setName('');
       onDone(); onClose();
     } catch (err) { setError(err.message || 'Não foi possível parear.'); }
@@ -280,7 +282,9 @@ function PairDialog({ open, onClose, onDone, codigoInicial }) {
       open={open}
       onClose={onClose}
       title="Parear uma tela"
-      description="Dois passos: abra o endereço na TV e digite aqui o código que ela mostrar."
+      description={codigoInicial
+        ? 'O código veio da TV. Dê um nome para ela e toque em Parear.'
+        : 'Dois passos: abra o endereço na TV e digite aqui o código que ela mostrar.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -291,12 +295,13 @@ function PairDialog({ open, onClose, onDone, codigoInicial }) {
       }
     >
       <div className="space-y-3.5">
-        <EnderecoDaTv />
+        {/* Veio do QR: a TV já está com o código na tela; o passo 1 só confundiria. */}
+        {!codigoInicial && <EnderecoDaTv />}
         <Field label="Código de pareamento">
           <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="CÓDIGO" maxLength={6} className="tracking-[0.3em]" />
         </Field>
         <Field label="Nome da tela" hint="Ex.: Recepção, Vitrine, Refeitório.">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recepção" />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recepção" autoFocus={!!codigoInicial} />
         </Field>
         {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
       </div>
