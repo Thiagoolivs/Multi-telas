@@ -80,7 +80,7 @@ export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
           <EmptyState
             icon={MonitorPlay}
             title="Nenhuma tela pareada"
-            description="No navegador da TV, abra o endereço abaixo. Ela mostra um código de 6 dígitos — é ele que você digita aqui."
+            description="Ligue a TV no app MultiTelas TV (ou abra o endereço no navegador dela). Ela mostra um código e um QR: aponte o celular para o QR, ou toque abaixo e digite o código."
             action={<Button size="sm" variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Parear a primeira</Button>}
           />
         )}
@@ -320,7 +320,7 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onIrPara
       title="Parear uma tela"
       description={codigoInicial
         ? 'O código veio da TV. Dê um nome para ela e toque em Parear.'
-        : 'Dois passos: abra o endereço na TV e digite aqui o código que ela mostrar.'}
+        : 'Ligue a TV no MultiTelas e digite aqui o código que ela mostrar — ou aponte o celular para o QR dela.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -375,7 +375,7 @@ function EnderecoDaTv() {
   };
   return (
     <div className="rounded-md border border-line bg-surface-2 p-3">
-      <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">1 · No navegador da TV, abra</div>
+      <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">1 · Na TV, abra o app MultiTelas TV — ou, no navegador dela, o endereço</div>
       <div className="mt-1.5 flex items-center gap-2">
         <code className="min-w-0 flex-1 truncate rounded border border-line bg-surface px-2 py-1.5 text-sm text-ink">{endereco}</code>
         <Button size="sm" variant="secondary" icon={copiado ? Check : Copy} onClick={copiar}>
@@ -383,7 +383,7 @@ function EnderecoDaTv() {
         </Button>
       </div>
       <div className="mt-1.5 text-xs text-ink-3">
-        A TV vai mostrar um código de 6 dígitos. Deixe essa tela aberta enquanto você pareia aqui.
+        A TV vai mostrar um código de 6 dígitos e um QR. Deixe essa tela aberta enquanto você pareia aqui.
       </div>
     </div>
   );
