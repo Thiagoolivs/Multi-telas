@@ -70,6 +70,36 @@
     requestAnimationFrame(function () { requestAnimationFrame(fn); });
   }
 
+  /*
+   * Texto que não cabe ENCOLHE até caber.
+   *
+   * Aviso e texto têm corpo proporcional à zona, e um título longo (digitado
+   * à mão, ou vindo da IA) passava da caixa: cortava em cima e embaixo, na
+   * parede. Depois de desenhar, mede o miolo; se passou, reduz a escala do
+   * miolo — só `transform`, que a TV fraca anima sem engasgar. Mede de novo
+   * quando as fontes chegam, porque a fonte certa muda a largura do texto.
+   */
+  function caberNaCaixa(slide) {
+    if (!slide || !slide.querySelector) return;
+    const miolo = slide.querySelector(':scope > .mt-text-inner, :scope > .ann-inner');
+    if (!miolo) return;
+    const medir = function () {
+      miolo.style.transform = '';
+      const cs = getComputedStyle(slide);
+      const altura = slide.clientHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0);
+      const largura = slide.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+      const h = miolo.scrollHeight, w = miolo.scrollWidth;
+      if (!h || !w || altura <= 0) return;
+      const esc = Math.min(1, altura / h, largura / w) * 0.97;
+      if (esc < 0.99) {
+        miolo.style.transformOrigin = 'center center';
+        miolo.style.transform = 'scale(' + Math.max(0.35, esc).toFixed(3) + ')';
+      }
+    };
+    afterPaint(medir);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir).catch(function () {});
+  }
+
   function enterSlide(el, type, reveal) {
     el.classList.add('mt-active'); // opacidade final de referência
     if (!HAS_GSAP || type === 'none') {
@@ -1102,6 +1132,7 @@
     document.body.appendChild(layer);
     void layer.offsetWidth;
     layer.classList.add('mt-in');
+    caberNaCaixa(rendered.el);
     try { rendered.onEnter && rendered.onEnter(function () {}); } catch (e) {}
 
     takeover.el = layer; takeover.level = level; takeover.onLeave = rendered.onLeave;
@@ -1317,6 +1348,7 @@
       const transition = cfg.settings.transicao || 'fade';
       zoneEl.appendChild(rendered.el);
       enterSlide(rendered.el, transition, isRevealSlide(rendered.el));
+      caberNaCaixa(rendered.el);
 
       const prev = currentSlide;
       /*
