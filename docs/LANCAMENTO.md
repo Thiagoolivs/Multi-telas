@@ -1,139 +1,85 @@
 # Prontidão para lançar
 
-Este documento existia desde antes de o produto ter landing page, CI ou
-cabeçalho de segurança, e continuou dizendo que faltavam os três muito depois
-de existirem. Documento de lançamento que mente é pior que documento nenhum:
-quem lê fica gastando a semana no que já está feito.
-
-Atualizado em **20/08/2026** · 547 testes · `server.js` com 2418 linhas ·
-`main` em `f2c4ae1` (PR #98 mesclado).
+Atualizado em **29/09/2026**. Este documento já passou meses dizendo que
+faltava o que existia (CI, landing, cabeçalhos de segurança) e mandando
+configurar Stripe depois da troca para o Asaas. Documento de lançamento que
+mente é pior que documento nenhum: quem lê gasta a semana no que já está
+feito. Se algo aqui ficar velho, conserte junto com o código.
 
 Legenda: 🔴 impede vender · 🟡 resolver logo depois · 🟢 maturidade.
 
 ---
 
-## O que decide a semana
+## O que falta, e quem faz
 
-Nada do que falta para publicar é código. É configuração e é jurídico — e a
-maior parte só pode ser feita por quem tem acesso ao Railway e ao contador.
+Nada disto é código. O passo a passo inteiro, pronto para o Cowork executar
+no seu navegador, está em [`PROMPT-COWORK.md`](PROMPT-COWORK.md).
 
-| | O que | Por que trava | Quem faz |
-|---|---|---|---|
-| 🔴 | **Revisão jurídica dos textos** | `server/legal.js` descreve com precisão o que o sistema faz, mas é rascunho técnico. Enquanto `LEGAL_REVISADO` não for `true`, todas as páginas legais exibem aviso de rascunho — e vender com Termos marcados como rascunho é vender sem Termos. | advogado, depois você |
-| 🔴 | **`STORAGE=s3` + as 4 chaves do R2** | Sem bucket nem volume, a mídia grava em disco efêmero: **toda imagem, vídeo e áudio somem no próximo deploy**, sem aviso. A tela simplesmente fica vazia depois de uma atualização. | você |
-| 🔴 | **`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`** | Sem a chave o checkout roda em modo simulado e ninguém paga de verdade; sem o token do webhook o Asaas não consegue confirmar pagamento nenhum. `ASAAS_AMBIENTE=sandbox` para testar sem cobrar. | você |
-| 🔴 | **`ADMIN_EMAILS`** | Sem ela o painel da plataforma **não aparece e não responde** — é de propósito: "sem configuração, o dono da primeira conta vira operador" transformaria instalação nova em porta aberta. Você fica sem enxergar telas vivas, contas, reclamações e erros. | você |
-| 🟡 | **Domínio próprio, `APP_URL` e `SUPPORT_EMAIL` do domínio** | O contato hoje é e-mail pessoal, e ele aparece nas páginas legais. | você |
-| 🟡 | **Backup do Postgres confirmado, e uma restauração testada** | Backup que nunca foi restaurado é backup que talvez não exista. | você |
+| | O que | Por que trava |
+|---|---|---|
+| 🔴 | **Revisão jurídica dos Termos** e depois `LEGAL_REVISADO=true` + `LEGAL_NOME` | Enquanto não, toda página legal mostra aviso de rascunho. Vender com Termos marcados como rascunho é vender sem Termos. |
+| 🔴 | **`STORAGE=s3` + as chaves do R2** | Sem isso a mídia grava no disco do contêiner e **some no próximo deploy**. |
+| 🔴 | **`RESEND_API_KEY` + `MAIL_FROM` do domínio verificado** | O cadastro só termina no link do e-mail. Sem provedor, ninguém entra. O alerta de tela caída também depende dele. |
+| 🔴 | **`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`** e o webhook com os **7 eventos** (`PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_OVERDUE`, `PAYMENT_REFUNDED`, `PAYMENT_CHARGEBACK_REQUESTED`, `PAYMENT_CHARGEBACK_DISPUTE`, `SUBSCRIPTION_DELETED`) | Sem chave o checkout é simulado; sem os eventos, pagamento não libera plano e estorno não tira. Testar antes com `ASAAS_AMBIENTE=sandbox`. |
+| 🔴 | **`ADMIN_EMAILS`**, **`APP_URL`** (https, domínio próprio) | Sem o primeiro não existe painel da plataforma; sem o segundo o link do e-mail pode sair errado atrás do proxy. |
+| 🔴 | **`GEMINI_API_KEY`** com faturamento no projeto Google | Sem ela a IA roda em modo demonstração. |
+| 🟡 | `SUPPORT_EMAIL` e `WHATSAPP_NUMERO` | Contato nas páginas legais e na página Suporte do painel, e o botão de WhatsApp da landing e do Suporte (sem número, o botão não aparece). |
+| 🟡 | **Backup do Postgres ligado e uma restauração testada** | Backup que nunca foi restaurado é backup que talvez não exista. |
+| 🟡 | Login com Google (`GOOGLE_CLIENT_ID`/`SECRET`) | Opcional. |
 
-**A tela `/sistema` já confere seis desses sozinha** (`server/diagnostico.js`):
-armazenamento, banco, IA, e-mail, endereço e jurídico, cada um dizendo o que
-está acontecendo, o que isso causa e o que fazer.
+Depois de configurar: `/sistema` mostra o diagnóstico, e
+`node tools/conferir-config.mjs --email voce@dominio` prova que as chaves
+**funcionam** (não só que existem).
 
-### Uma coisa nunca foi testada de verdade
+### Nunca testado de verdade
 
-**Ler o site de um cliente** (`server/site.js`) só foi exercitado contra
-servidores locais — o proxy do ambiente de desenvolvimento bloqueia HTTP
-externo (403). Precisa ser conferido no primeiro dia em produção: colar o
-endereço de um cliente real e ver se as cores e as fontes saem certas.
+- **Ler o site de um cliente** (`server/site.js`) só rodou contra servidores
+  locais — o ambiente de desenvolvimento bloqueia HTTP externo.
+- **Os caminhos de sucesso do Asaas e do Resend** (`tools/conferir-config.mjs`,
+  checkout, atualização de valor da assinatura, cobrança de pacote) foram
+  exercitados com respostas simuladas. O primeiro pagamento real em sandbox é
+  o teste de verdade.
 
 ---
 
 ## O que está pronto
 
-**Conta e acesso.** Senha com scrypt+salt, sessão em cookie HttpOnly/SameSite
-(Secure sob HTTPS), rate limit em cadastro, login, pareamento e IA,
-recuperação de senha por e-mail, login com Google. Multi-tenant com Postgres,
-isolamento por `tenant_id`.
+**Conta e acesso.** Cadastro com confirmação de e-mail, login, Google,
+recuperação de senha, equipe com papéis. Multi-tenant por `tenant_id`.
 
-**Cobrança.** Stripe com checkout e webhook assinado, simulador em
-desenvolvimento. Preço **por tela** (Essencial R$ 79, Pro R$ 149, Enterprise
-sob consulta), com franquia de crédito de IA e cota de armazenamento também
-por tela — é o que segura a margem em qualquer tamanho de conta. Teste de 14
-dias. A conta aberta está em `docs/BILLING.md`.
+**Cobrança (Asaas).** Um plano pago (Pro, por tela, com desconto por faixa) e
+o Enterprise sob consulta. Teste de 14 dias.
+- A assinatura **acompanha o número de telas**: parear e remover atualizam o
+  valor; uma conciliação a cada 6h acerta o que falhou.
+- **Atraso**: 7 dias de carência; depois param IA e tela nova. A tela não para.
+- **Estorno e chargeback** tiram o plano.
+- **Pacotes avulsos** de crédito (25/100/500), creditados uma vez só por
+  pagamento.
+- **Teste acabado sem assinatura**: a tela segue no ar com um selo discreto
+  "versão gratuita".
+- Cancelamento pelo painel.
 
-**A tela nunca para.** Crédito acabado ou fatura vencida não apagam a parede de
-uma recepção: a cobrança controla a criação assistida por IA e só ela. O
-editor, o upload e o publicar continuam inteiros.
+**TV.** Pareamento por código ou QR, tempo real (SSE) com rede de segurança
+pelo pulso, offline-first — inclusive **ligando sem internet** (mantém a última
+programação e reconecta sozinha). Recarregar remoto pelo painel, e a TV conta
+resolução e aparelho. Alerta de queda por e-mail respeitando o **horário de
+funcionamento** de cada tela.
 
-**Motor de IA.** Briefing → plano → imagens → composição → crítica dirigida,
-com design system próprio e validador de contraste, área segura, sobreposição e
-texto que não cabe. Identidade da marca (até 3 por conta), acervo de fotos do
-cliente e o site do cliente como referência de estilo. Roda em segundo plano
-com progresso.
+**IA, editor, marca, mural, som, LGPD, observabilidade** — ver
+[`ESTADO-DO-PROJETO.md`](ESTADO-DO-PROJETO.md).
 
-**Editor.** Redimensionamento, pincel de formatação, Alt+arrastar para
-duplicar, réguas, modelos de partida, IA guiada, e elementos que entram
-animados — 8 entradas, 4 movimentos contínuos, só `transform` e `opacity`.
-
-**Player.** Offline-first (service worker), pareamento na nuvem, tempo real
-(SSE), formatos 16:9/9:16/1:1/21:9, tema saído da marca, pré-carga da próxima
-mídia, música de fundo com controle ao vivo, mural de fotos por QR com botão de
-pânico. Painel e player são instaláveis (PWA).
-
-**Segurança.** Auditada em três rodadas (PRs #95, #97, #98): passe de 1 minuto
-no lugar do token na URL do SSE, SVG servido isolado, SSRF fechado por
-construção em `server/site.js`, CSP/HSTS/nosniff/Referrer-Policy em toda
-resposta, painel da plataforma respondendo **404** a quem não pode.
-
-**LGPD.** Termos e Política versionados, aceite com versão, data e IP, exportar
-meus dados e excluir minha conta de verdade — inclusive as fotos do mural, que
-são dado pessoal de terceiros.
-
-**Tipografia servida por nós.** As 14 famílias (todas OFL) vivem em `fonts/`.
-Enquanto vinham da Google, TV em rede que bloqueasse o domínio caía na fonte de
-sistema — mais larga — e estourava o texto que o compositor tinha medido, sem
-erro e sem aviso.
-
-**Observabilidade.** Log estruturado (JSON na nuvem), sem dado pessoal nem
-segredo, e os erros agrupados no painel da plataforma, em "O que quebrou". Com
-`ALERTA_WEBHOOK_URL`, o primeiro de cada defeito vira mensagem no Slack ou
-Discord.
-
-**CI.** `.github/workflows/ci.yml` roda os 547 testes e o build do painel a
-cada push, em todo branch.
+**CI.** Testes, eval em modo dev, `lint:nomes` (nome indefinido no servidor)
+e build do painel, a cada push.
 
 ---
 
 ## Depois de publicar
 
-- 🟡 **Verificação de e-mail no cadastro.** O envio já existe (`server/mail.js`);
-  falta o fluxo. Hoje dá para criar conta com e-mail de outra pessoa.
-- 🟡 **Trocar o Stripe pelo Asaas.** Decidido, e adiado de propósito para não
-  segurar a publicação. `server/billing.js` é o único lugar que fala com o
-  provedor; `server/plans.js` já guarda o catálogo separado dele.
-- 🟡 **Quebrar `server.js` por domínio** (2418 linhas de roteamento manual).
-  Não muda nada para quem usa, mas cada passo futuro fica mais barato.
-- 🟢 **Erros persistidos**, se a memória do processo deixar de bastar.
-- 🟢 **Proof-of-play / relatórios** — o que tocou, quando. Forte na venda
-  corporativa.
-- 🟢 **Grupos de telas**, **rate limit distribuído**, **trabalhos de IA
-  persistidos** (hoje vivem em memória e um reinício perde o que está em voo).
-
-## Qualidade da geração
-
-Em ordem de impacto — é aqui que o produto melhora de verdade:
-
-1. **Editor: máscara, texto em curva e biblioteca de gráficos.** É o bloco que
-   fecha a promessa de paridade com o Canva, e o maior dos três em esforço.
-2. **A IA olhar a peça pronta.** A crítica de hoje lê o relatório do validador;
-   renderizar em PNG e devolver pela visão pegaria colisão, respiro torto e
-   logo sobre rosto — coisas que validador nenhum expressa.
-3. **Prompt de imagem ciente do layout** ("deixe o terço inferior limpo"), em
-   vez de remendar com véu depois.
-4. **Medir o texto com as métricas reais da fonte** em vez da largura média por
-   caractere. Agora que a fonte é nossa, dá para carregá-la no servidor e medir
-   de verdade — antes a métrica dependia de um arquivo que podia não chegar.
-5. **Recorte inteligente** da foto do acervo (hoje corta pelo centro).
-6. **Coerência entre peças** — cada uma é composta isolada da anterior.
-
-## Ordem sugerida para esta semana
-
-1. Mandar os textos legais para revisão — é o único bloqueador que não depende
-   de você e o que tem o prazo mais longo.
-2. Criar o bucket R2 e definir `STORAGE=s3` com as quatro chaves.
-3. Definir `ADMIN_EMAILS`, `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`,
-   `APP_URL`, `SUPPORT_EMAIL`.
-4. Abrir `/sistema` e conferir se os seis diagnósticos estão verdes.
-5. Colar o site de um cliente real e olhar as cores e as fontes que saem.
-6. Publicar. Voltar em "O que quebrou" no dia seguinte.
+- 🟡 **App Android de quiosque** para TV Box (abre sozinho ao ligar, tela
+  sempre acesa, reabre se travar). Ver "TV Box" em
+  [`ESTADO-DO-PROJETO.md`](ESTADO-DO-PROJETO.md).
+- 🟢 **Relatório de exibição (proof-of-play)** — saiu do plano Pro até existir.
+- 🟢 **Grupos de telas**, orientação da tela no pareamento.
+- 🟢 **SSE, limites e comandos em Redis** — hoje em memória, o que prende o
+  produto a uma instância.
+- 🟢 Continuar tirando rotas do `server.js` (cobrança e telas já saíram).

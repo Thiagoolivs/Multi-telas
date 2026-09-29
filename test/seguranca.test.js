@@ -116,7 +116,7 @@ test('nenhuma página tem script embutido', async () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const raiz = path.join(__dirname, '..');
-  for (const arquivo of ['player.html', 'index.html', 'web/index.html']) {
+  for (const arquivo of ['player.html', 'web/index.html', 'landing/index.html']) {
     const html = fs.readFileSync(path.join(raiz, arquivo), 'utf8');
     const embutidos = html.match(/<script(?![^>]*\ssrc=)[^>]*>/gi) || [];
     assert.equal(embutidos.length, 0, arquivo + ' tem script embutido: ' + embutidos.join(', '));

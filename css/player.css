@@ -169,6 +169,17 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-empty, .mt-broken {
   color: var(--text-dim); font-size: 1.4vw; letter-spacing: .04em;
 }
+/* Zona vazia = relógio (ver startPlaylist). Unidades de contêiner: a zona
+   lateral é estreita e a principal é larga, e os dois precisam caber. */
+.mt-empty { flex-direction: column; container-type: size; }
+.mt-empty-hora {
+  color: var(--text); font-weight: 700; letter-spacing: -.02em; line-height: 1;
+  font-size: 6vw; font-size: min(28cqw, 38cqh); font-variant-numeric: tabular-nums;
+}
+.mt-empty-dia {
+  margin-top: .6em; color: var(--text-dim); text-align: center;
+  padding: 0 6%; font-size: 1.6vw; font-size: min(5.5cqw, 8cqh); letter-spacing: .01em;
+}
 
 /* Imagem / vídeo / web */
 .mt-image img, .mt-video video {
@@ -1116,17 +1127,24 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   position: fixed; inset: 0; z-index: 60;
   display: flex; align-items: center; justify-content: center;
   background: radial-gradient(80% 80% at 50% 40%, var(--bg-2) 0%, var(--bg) 70%);
-  text-align: center; padding: 6vw;
+  text-align: center; padding: min(6vw, 4vh);
 }
 .mt-pairing.hidden { display: none; }
 .mt-pairing-title { font-size: clamp(18px, 3vw, 40px); font-weight: 700; color: var(--text); }
 .mt-pairing-code {
   margin: .5em 0 .3em;
-  font-size: clamp(56px, 16vw, 220px); font-weight: 800; letter-spacing: .12em;
+  /* Pela altura também: com o QR embaixo, 16vw estourava a caixa em 720p
+     (a resolução de boa parte dos TV box) e cortava o título. */
+  font-size: clamp(48px, min(16vw, 20vh), 220px); font-weight: 800; letter-spacing: .12em;
   line-height: 1; font-variant-numeric: tabular-nums;
   background: linear-gradient(120deg, var(--text), var(--accent));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
+.mt-pairing-qr {
+  display: block; width: clamp(110px, min(16vw, 26vh), 260px); height: auto; aspect-ratio: 1;
+  margin: 0 auto 1em; padding: .6em; border-radius: 12px; background: #fff;
+}
+.mt-pairing-qr[hidden] { display: none; }
 .mt-pairing-hint { font-size: clamp(13px, 1.8vw, 26px); color: var(--text-dim); max-width: 32em; margin: 0 auto; }
 /* Escape hatch: se este navegador já guardou uma TV, gera outra do zero. */
 .mt-pairing-reset {
@@ -1209,3 +1227,47 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 /* O botão "gerar outro código" some quando a TV já está pareada:
    ali ele só serviria para desparear sem querer. */
 .mt-pairing-reset.hidden { display: none; }
+
+/* Selo da versão gratuita (teste acabado sem assinatura). Discreto, fora do
+   caminho do conteúdo, e nunca captura clique nem foco. */
+.mt-selo {
+  position: fixed; right: 1.2vw; bottom: 1.2vw; z-index: 9000;
+  padding: .35em .8em; border-radius: 999px;
+  font: 600 clamp(10px, .9vw, 18px)/1.2 system-ui, sans-serif; letter-spacing: .02em;
+  color: rgba(255,255,255,.92); background: rgba(10,14,28,.62);
+  pointer-events: none; user-select: none;
+}
+
+/* ---------- TV em pé: moldura girada (ver conferirGiro em player.js) ---------- */
+.mt-com-moldura, .mt-com-moldura body { background: #000; overflow: hidden; }
+.mt-com-moldura body > *:not(.mt-moldura) { display: none !important; }
+.mt-moldura {
+  position: fixed; top: 50%; left: 50%; border: 0;
+  width: 100vh; height: 100vw; /* as medidas da tela EM PÉ */
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.mt-moldura-270 { transform: translate(-50%, -50%) rotate(-90deg); }
+
+/* ---------- Tabela de preços (renderPrecos em js/render.js) ---------- */
+.mt-precos { container-type: size; flex-direction: column; align-items: stretch; justify-content: center; padding: 6cqh 6cqw; }
+.mt-precos-inner { width: 100%; }
+.mt-precos-titulo {
+  color: var(--accent); font-weight: 800; letter-spacing: .01em; line-height: 1.05;
+  font-size: min(6.5cqw, 11cqh); margin-bottom: 3cqh;
+}
+.mt-precos-lista { column-count: var(--cols, 1); column-gap: 5cqw; font-size: var(--corpo); }
+.mt-precos-linha {
+  display: flex; align-items: baseline; gap: .6em; break-inside: avoid;
+  padding: .3em 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 13%, transparent);
+}
+.mt-precos-nome { flex: 1 1 auto; min-width: 0; color: var(--text); font-weight: 600; }
+.mt-precos-preco { flex: none; color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+.mt-precos-secao {
+  break-inside: avoid; break-after: avoid; color: var(--text-dim); font-weight: 700;
+  font-size: .7em; letter-spacing: .14em; text-transform: uppercase; padding: 1em 0 .25em;
+}
+.mt-precos-rodape { margin-top: 3cqh; color: var(--text-dim); font-size: calc(var(--corpo) * .75); }
+@container (orientation: portrait) {
+  .mt-precos-lista { column-count: var(--cols-pe, 1); font-size: var(--corpo-pe); }
+  .mt-precos-rodape { font-size: calc(var(--corpo-pe) * .75); }
+}

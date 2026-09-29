@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
@@ -13,12 +13,29 @@ import { useAsync } from '../lib/useAsync.js';
 import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
+import { esquecerParear } from '../lib/parearPendente.js';
 
-export function ScreensPage({ onEditContent }) {
+export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
   const { data, loading, error, reload } = useAsync(devices.list);
-  const list = data ? data.devices || [] : [];
+  const todas = data ? data.devices || [] : [];
+  /*
+   * Grupos ("Loja Centro", "Loja Sul"): um rótulo por tela. O filtro só
+   * aparece quando existe grupo — conta de uma tela não precisa dele.
+   */
+  const grupos = Array.from(new Set(todas.map((d) => d.grupo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const [filtroGrupo, setFiltroGrupo] = useState('');
+  const [renomeandoGrupo, setRenomeandoGrupo] = useState(null);
+  const list = filtroGrupo === '' ? todas
+    : filtroGrupo === '__sem' ? todas.filter((d) => !d.grupo)
+    : todas.filter((d) => d.grupo === filtroGrupo);
 
-  const [pairOpen, setPairOpen] = useState(false);
+  // Vindo do QR da TV, o diálogo já abre com o código.
+  const [pairOpen, setPairOpen] = useState(!!parear);
+  React.useEffect(() => {
+    if (!parear) return;
+    const u = new URL(window.location.href);
+    if (u.searchParams.has('parear')) { u.searchParams.delete('parear'); u.searchParams.set('ir', 'screens'); window.history.replaceState(window.history.state, '', u.pathname + u.search); }
+  }, [parear]);
   // Som ao vivo: atalho a partir da frota. Durante um evento, mexer no volume
   // não pode custar entrar na tela, abrir ajustes e rolar até o fim.
   const [somTarget, setSomTarget] = useState(null);
@@ -26,6 +43,7 @@ export function ScreensPage({ onEditContent }) {
   const [removeTarget, setRemoveTarget] = useState(null);
   const [reconnectTarget, setReconnectTarget] = useState(null);
   const [backupTarget, setBackupTarget] = useState(null);
+  const [alertaTarget, setAlertaTarget] = useState(null);
 
   return (
     <div>
@@ -33,13 +51,32 @@ export function ScreensPage({ onEditContent }) {
         title="Telas"
         subtitle="Dispositivos pareados à sua conta e o conteúdo que exibem."
         actions={<>
-          <Button variant="secondary" icon={MonitorPlay} onClick={() => window.open('/player.html?cloud=1&pid=' + Math.random().toString(36).slice(2, 9), '_blank', 'noopener')}>Abrir novo player</Button>
+          {/* Abre uma TV nova NESTE aparelho (útil num computador ligado à TV,
+              ou para testar). No celular só confundia: virava uma "tela" a mais. */}
+          <Button variant="secondary" icon={MonitorPlay} className="hidden sm:inline-flex"
+            title="Abre a tela da TV numa aba nova deste computador"
+            onClick={() => window.open('/player.html?cloud=1&pid=' + Math.random().toString(36).slice(2, 9), '_blank', 'noopener')}>Usar este computador como TV</Button>
           <Button variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Parear tela</Button>
         </>}
       />
 
       <Panel>
         <PanelHeader title="Suas telas" description="Cada tela recebe as publicações na hora que você salva." />
+        {grupos.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-4 py-2.5">
+            {[['', 'Todas', todas.length], ...grupos.map((g) => [g, g, todas.filter((d) => d.grupo === g).length]),
+              ['__sem', 'Sem grupo', todas.filter((d) => !d.grupo).length]].map(([v, rot, n]) => (
+              <button key={v || 'todas'} type="button" onClick={() => setFiltroGrupo(v)}
+                className={'rounded-full border px-2.5 py-0.5 text-xs transition ' + (filtroGrupo === v ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink-3 hover:text-ink')}>
+                {rot} <span className="tnum text-ink-3">{n}</span>
+              </button>
+            ))}
+            {filtroGrupo && filtroGrupo !== '__sem' && (
+              <button type="button" className="ml-auto text-xs text-accent hover:underline"
+                onClick={() => setRenomeandoGrupo(filtroGrupo)}>Renomear grupo</button>
+            )}
+          </div>
+        )}
 
         {loading && <SkeletonRows rows={5} cols={4} />}
         {error && <ErrorState description="Não foi possível carregar as telas." onRetry={reload} />}
@@ -47,7 +84,7 @@ export function ScreensPage({ onEditContent }) {
           <EmptyState
             icon={MonitorPlay}
             title="Nenhuma tela pareada"
-            description="No navegador da TV, abra o endereço abaixo. Ela mostra um código de 6 dígitos — é ele que você digita aqui."
+            description="Ligue a TV no app MultiTelas TV (ou abra o endereço no navegador dela). Ela mostra um código e um QR: aponte o celular para o QR, ou toque abaixo e digite o código."
             action={<Button size="sm" variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Parear a primeira</Button>}
           />
         )}
@@ -62,6 +99,7 @@ export function ScreensPage({ onEditContent }) {
                   onRename={() => setRenameTarget(d)}
                   onReconnect={() => setReconnectTarget(d)}
                   onBackup={() => setBackupTarget(d)}
+                  onAlerta={() => setAlertaTarget(d)}
                   onRemove={() => setRemoveTarget(d)} />
               ))}
             </div>
@@ -70,8 +108,11 @@ export function ScreensPage({ onEditContent }) {
         )}
       </Panel>
 
-      <PairDialog open={pairOpen} onClose={() => setPairOpen(false)} onDone={reload} />
-      <RenameDialog target={renameTarget} onClose={() => setRenameTarget(null)} onDone={reload} />
+      <PairDialog open={pairOpen} codigoInicial={parear} onClose={() => setPairOpen(false)} onDone={reload}
+        onConteudo={(dev) => { setPairOpen(false); onEditContent(dev); }} onIrParaPlano={onIrParaPlano} />
+      <RenomearGrupoDialog grupo={renomeandoGrupo} onClose={() => setRenomeandoGrupo(null)}
+        onDone={(para) => { setFiltroGrupo(para); reload(); }} />
+      <RenameDialog target={renameTarget} grupos={grupos} onClose={() => setRenameTarget(null)} onDone={reload} />
       <Dialog
         open={!!somTarget}
         onClose={() => setSomTarget(null)}
@@ -82,15 +123,28 @@ export function ScreensPage({ onEditContent }) {
       </Dialog>
       <ReconnectDialog target={reconnectTarget} onClose={() => setReconnectTarget(null)} onDone={reload} />
       <RemoveDialog target={removeTarget} onClose={() => setRemoveTarget(null)} onDone={reload} />
-      <BackupDialog target={backupTarget} screens={list} onClose={() => setBackupTarget(null)} onDone={reload} />
+      <ExpedienteDialog target={alertaTarget} onClose={() => setAlertaTarget(null)} onDone={reload} />
+      <BackupDialog target={backupTarget} screens={todas} onClose={() => setBackupTarget(null)} onDone={reload} />
     </div>
   );
 }
 
 // Mini "tela" da frota: status + programação (não é espelho ao vivo).
-function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onRemove }) {
+function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onAlerta, onRemove }) {
   const st = deviceStatus(d.lastSeen);
   const online = st.tone === 'ok';
+  /*
+   * Recarregar a TV daqui: o "desliga e liga" que resolve metade dos
+   * chamados, sem ninguém ir até ela. Chega na hora pelo tempo real, ou em
+   * até 30s pelo pulso se o tempo real estiver caído.
+   */
+  const [recarregando, setRecarregando] = useState('');
+  async function recarregar() {
+    setRecarregando('enviando');
+    try { await devices.comando(d.id, 'recarregar'); setRecarregando('ok'); }
+    catch (e) { setRecarregando('erro'); }
+    setTimeout(() => setRecarregando(''), 4000);
+  }
   return (
     <div className="overflow-hidden rounded-xl border border-line bg-surface transition hover:border-line-strong">
       <div className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-line bg-gradient-to-br from-surface-2 to-accent-soft/40">
@@ -114,21 +168,47 @@ function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onRem
         </div>
         <span className="tnum absolute bottom-2 left-2 rounded border border-line bg-surface/80 px-1.5 py-0.5 text-2xs tracking-widest text-ink-3 backdrop-blur">{d.code}</span>
       </div>
-      <div className="flex items-center justify-between gap-2 p-3">
+      {/* Duas linhas: nome e estado em cima, ações embaixo. Numa linha só, as
+          sete ações empurravam o nome para largura zero e cortavam o remover. */}
+      <div className="space-y-2 p-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-ink">{d.name || 'Tela sem nome'}</div>
-          <div className="truncate text-2xs text-ink-3">{st.label}{st.seen ? ' · ' + st.seen : ''}</div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-semibold text-ink">{d.name || 'Tela sem nome'}</span>
+            {d.grupo && <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-px text-2xs text-ink-3">{d.grupo}</span>}
+            <span className="ml-auto flex shrink-0 items-center">
+              <IconButton icon={Pencil} label="Nome e grupo" size={14} onClick={onRename} />
+              <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={onRemove} />
+            </span>
+          </div>
+          <div className="truncate text-2xs text-ink-3">
+            {recarregando === 'ok' ? 'Recarregando a TV…' : recarregando === 'erro' ? 'Não consegui mandar o comando'
+              : <>{st.label}{st.seen ? ' · ' + st.seen : ''}{descreverAparelho(d.info)}</>}
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent}>Conteúdo</Button>
+        <div className="flex flex-wrap items-center gap-1">
+          <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent} className="mr-auto">Conteúdo</Button>
+          <IconButton icon={RotateCw} label="Recarregar a TV" size={14} onClick={recarregar} disabled={!!recarregando} />
           <IconButton icon={Music} label="Som ao vivo" size={14} onClick={onSom} />
+          <IconButton icon={d.expediente && d.expediente.alerta === false ? BellOff : Bell}
+            label="Horário e alerta de queda" size={14} onClick={onAlerta} />
           <IconButton icon={Archive} label="Backup / restaurar" size={14} onClick={onBackup} />
-          <IconButton icon={Pencil} label="Renomear" size={14} onClick={onRename} />
-          <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={onRemove} />
         </div>
       </div>
     </div>
   );
+}
+
+/*
+ * "1920×1080 · Android" a partir do que a TV contou no último pulso. Só o
+ * essencial para o suporte; o texto inteiro do navegador fica no title.
+ */
+function descreverAparelho(info) {
+  if (!info || !info.w) return '';
+  const ua = String(info.ua || '');
+  const so = info.app ? 'App ' + info.app
+    : /Android/i.test(ua) ? 'Android' : /Tizen/i.test(ua) ? 'Samsung' : /Web0S|webOS/i.test(ua) ? 'LG'
+    : /CrKey/i.test(ua) ? 'Chromecast' : /Windows/i.test(ua) ? 'Windows' : /Mac OS/i.test(ua) ? 'Mac' : /Linux/i.test(ua) ? 'Linux' : '';
+  return ' · ' + info.w + '×' + info.h + (so ? ' · ' + so : '');
 }
 
 /*
@@ -185,20 +265,56 @@ function ReconnectDialog({ target, onClose, onDone }) {
   );
 }
 
-function PairDialog({ open, onClose, onDone }) {
-  const [code, setCode] = useState('');
+/*
+ * Parear termina num PRÓXIMO PASSO, e não num diálogo que some.
+ *
+ * Antes, parear fechava tudo e deixava a pessoa olhando uma TV "aguardando
+ * conteúdo" sem saber o que fazer. Agora o sucesso diz que deu certo e
+ * oferece o que vem depois: colocar conteúdo nesta tela.
+ *
+ * E o erro de cobrança (teste acabou, limite do plano, fatura em atraso)
+ * vem com o botão que resolve — só o texto mandava a pessoa procurar.
+ */
+function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onIrParaPlano }) {
+  const [code, setCode] = useState(codigoInicial || '');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [erroDePlano, setErroDePlano] = useState(false);
+  const [pareada, setPareada] = useState(null);
+  React.useEffect(() => { if (open) { setPareada(null); setError(''); setErroDePlano(false); } }, [open]);
 
   async function submit() {
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setErroDePlano(false);
     try {
-      await devices.pair(code, name);
+      const dev = await devices.pair(code, name);
+      esquecerParear(); // o código guardado do QR já foi usado
       setCode(''); setName('');
-      onDone(); onClose();
-    } catch (err) { setError(err.message || 'Não foi possível parear.'); }
+      setPareada(dev);
+      onDone();
+    } catch (err) {
+      setError(err.message || 'Não foi possível parear.');
+      setErroDePlano(err.status === 402);
+    }
     finally { setBusy(false); }
+  }
+
+  if (pareada) {
+    return (
+      <Dialog open={open} onClose={onClose} title="Tela conectada"
+        footer={<>
+          <Button variant="ghost" onClick={onClose}>Depois</Button>
+          <Button variant="primary" icon={LayoutTemplate} onClick={() => onConteudo && onConteudo(pareada)}>Colocar conteúdo agora</Button>
+        </>}>
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><Check size={20} /></div>
+          <div className="text-sm text-ink-2">
+            <b className="text-ink">{pareada.name || 'A TV'}</b> já é sua: ela mostra "Tudo certo" e fica esperando.
+            O que você publicar aparece nela na hora — um modelo pronto, uma data comemorativa ou uma campanha feita pela IA.
+          </div>
+        </div>
+      </Dialog>
+    );
   }
 
   return (
@@ -206,7 +322,9 @@ function PairDialog({ open, onClose, onDone }) {
       open={open}
       onClose={onClose}
       title="Parear uma tela"
-      description="Dois passos: abra o endereço na TV e digite aqui o código que ela mostrar."
+      description={codigoInicial
+        ? 'O código veio da TV. Dê um nome para ela e toque em Parear.'
+        : 'Ligue a TV no MultiTelas e digite aqui o código que ela mostrar — ou aponte o celular para o QR dela.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -217,14 +335,22 @@ function PairDialog({ open, onClose, onDone }) {
       }
     >
       <div className="space-y-3.5">
-        <EnderecoDaTv />
+        {/* Veio do QR: a TV já está com o código na tela; o passo 1 só confundiria. */}
+        {!codigoInicial && <EnderecoDaTv />}
         <Field label="Código de pareamento">
           <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="CÓDIGO" maxLength={6} className="tracking-[0.3em]" />
         </Field>
         <Field label="Nome da tela" hint="Ex.: Recepção, Vitrine, Refeitório.">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recepção" />
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recepção" autoFocus={!!codigoInicial} />
         </Field>
-        {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
+        {error && (
+          <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">
+            {error}
+            {erroDePlano && onIrParaPlano && (
+              <div className="mt-2"><Button size="sm" variant="primary" onClick={() => { onClose(); onIrParaPlano(); }}>Ver planos</Button></div>
+            )}
+          </div>
+        )}
       </div>
     </Dialog>
   );
@@ -253,7 +379,7 @@ function EnderecoDaTv() {
   };
   return (
     <div className="rounded-md border border-line bg-surface-2 p-3">
-      <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">1 · No navegador da TV, abra</div>
+      <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">1 · Na TV, abra o app MultiTelas TV — ou, no navegador dela, o endereço</div>
       <div className="mt-1.5 flex items-center gap-2">
         <code className="min-w-0 flex-1 truncate rounded border border-line bg-surface px-2 py-1.5 text-sm text-ink">{endereco}</code>
         <Button size="sm" variant="secondary" icon={copiado ? Check : Copy} onClick={copiar}>
@@ -261,20 +387,39 @@ function EnderecoDaTv() {
         </Button>
       </div>
       <div className="mt-1.5 text-xs text-ink-3">
-        A TV vai mostrar um código de 6 dígitos. Deixe essa tela aberta enquanto você pareia aqui.
+        A TV vai mostrar um código de 6 dígitos e um QR. Deixe essa tela aberta enquanto você pareia aqui.
       </div>
     </div>
   );
 }
 
-function RenameDialog({ target, onClose, onDone }) {
-  const [name, setName] = useState('');
-  const [busy, setBusy] = useState(false);
-  React.useEffect(() => { setName(target ? target.name || '' : ''); }, [target]);
+/*
+ * Horário de funcionamento e alerta de queda.
+ *
+ * Sem isto, a loja que desliga a TV à noite recebia "tela fora do ar" toda
+ * noite, e em uma semana mandava o aviso para o lixo — levando junto o aviso
+ * de verdade. O servidor só conta tempo fora do ar DENTRO deste horário, e só
+ * avisa durante ele (server/vigia.js).
+ */
+const DIAS = [['D', 0, 'domingo'], ['S', 1, 'segunda'], ['T', 2, 'terça'], ['Q', 3, 'quarta'], ['Q', 4, 'quinta'], ['S', 5, 'sexta'], ['S', 6, 'sábado']];
 
-  async function submit() {
-    setBusy(true);
-    try { await devices.rename(target.id, name); onDone(); onClose(); }
+function ExpedienteDialog({ target, onClose, onDone }) {
+  const [exp, setExp] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  React.useEffect(() => {
+    setError('');
+    setExp(target ? { alerta: true, dias: [1, 2, 3, 4, 5, 6], inicio: '07:00', fim: '22:00', ...(target.expediente || {}) } : null);
+  }, [target]);
+  if (!exp) return null;
+
+  const dia24 = exp.inicio === exp.fim;
+  const alternarDia = (n) => setExp({ ...exp, dias: exp.dias.includes(n) ? exp.dias.filter((x) => x !== n) : [...exp.dias, n].sort() });
+
+  async function salvar() {
+    setBusy(true); setError('');
+    try { await devices.expediente(target.id, exp); onDone(); onClose(); }
+    catch (err) { setError(err.message || 'Não foi possível salvar.'); }
     finally { setBusy(false); }
   }
 
@@ -282,7 +427,104 @@ function RenameDialog({ target, onClose, onDone }) {
     <Dialog
       open={!!target}
       onClose={onClose}
-      title="Renomear tela"
+      title={'Horário e alerta · ' + ((target && target.name) || 'Tela')}
+      description="Se a tela cair durante o horário de funcionamento, avisamos o dono da conta por e-mail."
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={salvar} disabled={busy || (exp.alerta && !exp.dias.length)}>{busy ? 'Salvando…' : 'Salvar'}</Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input type="checkbox" checked={exp.alerta} onChange={(e) => setExp({ ...exp, alerta: e.target.checked })} />
+          Avisar por e-mail quando esta tela cair
+        </label>
+
+        <fieldset disabled={!exp.alerta} className={exp.alerta ? '' : 'opacity-50'}>
+          <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Dias em que a tela fica ligada</div>
+          <div className="mt-1.5 flex gap-1.5">
+            {DIAS.map(([letra, n, nome]) => (
+              <button key={n} type="button" title={nome} aria-pressed={exp.dias.includes(n)} onClick={() => alternarDia(n)}
+                className={'h-8 w-8 rounded-full border text-xs font-semibold ' + (exp.dias.includes(n)
+                  ? 'border-accent bg-accent text-white' : 'border-line bg-surface text-ink-3')}>
+                {letra}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Field label="Liga às">
+              <Input type="time" value={exp.inicio} disabled={dia24} onChange={(e) => setExp({ ...exp, inicio: e.target.value })} />
+            </Field>
+            <Field label="Desliga às">
+              <Input type="time" value={exp.fim} disabled={dia24} onChange={(e) => setExp({ ...exp, fim: e.target.value })} />
+            </Field>
+          </div>
+          <label className="mt-2 flex items-center gap-2 text-sm text-ink-2">
+            <input type="checkbox" checked={dia24} onChange={(e) => setExp({ ...exp, inicio: e.target.checked ? '00:00' : '07:00', fim: e.target.checked ? '00:00' : '22:00' })} />
+            Fica ligada 24 horas
+          </label>
+          <p className="mt-2 text-xs text-ink-3">
+            Fora deste horário a TV pode ficar desligada à vontade: nenhum aviso sai.
+            Se ela não voltar quando o horário começar, avisamos 15 minutos depois.
+          </p>
+        </fieldset>
+        {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
+      </div>
+    </Dialog>
+  );
+}
+
+function RenomearGrupoDialog({ grupo, onClose, onDone }) {
+  const [para, setPara] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [erro, setErro] = useState('');
+  React.useEffect(() => { setPara(grupo || ''); setErro(''); }, [grupo]);
+  async function salvar() {
+    setBusy(true); setErro('');
+    try {
+      const r = await devices.renomearGrupo(grupo, para);
+      // O nome que VALE é o que o servidor gravou (espaços juntados, 60 letras).
+      onDone((r && r.grupo) || ''); onClose();
+    } catch (e) { setErro(e.message || 'Não foi possível renomear.'); }
+    finally { setBusy(false); }
+  }
+  return (
+    <Dialog open={grupo != null} onClose={onClose} title="Renomear grupo"
+      description="Vale para todas as telas do grupo. Deixe vazio para desfazer o grupo (as telas continuam, só sem grupo)."
+      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button>
+        <Button variant="primary" onClick={salvar} disabled={busy}>Salvar</Button></>}>
+      <Field label="Nome do grupo"><Input value={para} onChange={(e) => setPara(e.target.value)} autoFocus /></Field>
+      {erro && <div className="mt-2 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{erro}</div>}
+    </Dialog>
+  );
+}
+
+function RenameDialog({ target, grupos, onClose, onDone }) {
+  const [name, setName] = useState('');
+  const [grupo, setGrupo] = useState('');
+  const [busy, setBusy] = useState(false);
+  React.useEffect(() => {
+    setName(target ? target.name || '' : '');
+    setGrupo(target ? target.grupo || '' : '');
+  }, [target]);
+
+  async function submit() {
+    setBusy(true);
+    try {
+      await devices.rename(target.id, name);
+      if ((target.grupo || '') !== grupo.trim()) await devices.grupo(target.id, grupo.trim());
+      onDone(); onClose();
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog
+      open={!!target}
+      onClose={onClose}
+      title="Nome e grupo"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -290,9 +532,15 @@ function RenameDialog({ target, onClose, onDone }) {
         </>
       }
     >
-      <Field label="Nome da tela">
-        <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-      </Field>
+      <div className="space-y-3.5">
+        <Field label="Nome da tela">
+          <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        </Field>
+        <Field label="Grupo" hint="Ex.: Loja Centro. Na hora de publicar, dá para marcar o grupo inteiro de uma vez.">
+          <Input value={grupo} onChange={(e) => setGrupo(e.target.value)} list="grupos-de-telas" placeholder="Sem grupo" />
+          <datalist id="grupos-de-telas">{(grupos || []).map((g) => <option key={g} value={g} />)}</datalist>
+        </Field>
+      </div>
     </Dialog>
   );
 }

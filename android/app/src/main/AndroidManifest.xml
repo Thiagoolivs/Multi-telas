@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!--
+      "Sobrepor a outros apps": no Android 10+ (Google TV incluso) é uma das
+      poucas exceções que deixam um app abrir sozinho depois do boot sem ser a
+      tela inicial. O app pede uma vez; quem instala concede.
+    -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Roda em TV sem tela de toque e em aparelho sem leanback: nada disto é obrigatório. -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@drawable/icone"
+        android:banner="@drawable/banner"
+        android:allowBackup="false"
+        android:hardwareAccelerated="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/Tela">
+
+        <!--
+          usesCleartextTraffic: o servidor de produção é https, mas o diálogo de
+          endereço (VOLTAR 5 vezes) aceita http:// para testar com um computador
+          na rede da loja. Bloqueado, o app ficava em "Procurando a internet…"
+          sem dizer por quê. O WebView só navega no endereço configurado.
+        -->
+        <!--
+          HOME + DEFAULT: o app pode ser escolhido como TELA INICIAL do
+          aparelho. É o jeito mais robusto de "abrir sozinho ao ligar": o
+          Android abre a tela inicial no boot, sem as restrições que o
+          Android 10+ impõe a quem tenta abrir activity a partir de um
+          receiver. Escolher é do instalador (Configurações › Apps padrão).
+        -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="unspecified"
+            android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|smallestScreenSize|density">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Plano B para quem não define o app como tela inicial (Android até 9). -->
+        <receiver
+            android:name=".AoLigar"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

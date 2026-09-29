@@ -70,6 +70,36 @@
     requestAnimationFrame(function () { requestAnimationFrame(fn); });
   }
 
+  /*
+   * Texto que não cabe ENCOLHE até caber.
+   *
+   * Aviso e texto têm corpo proporcional à zona, e um título longo (digitado
+   * à mão, ou vindo da IA) passava da caixa: cortava em cima e embaixo, na
+   * parede. Depois de desenhar, mede o miolo; se passou, reduz a escala do
+   * miolo — só `transform`, que a TV fraca anima sem engasgar. Mede de novo
+   * quando as fontes chegam, porque a fonte certa muda a largura do texto.
+   */
+  function caberNaCaixa(slide) {
+    if (!slide || !slide.querySelector) return;
+    const miolo = slide.querySelector(':scope > .mt-text-inner, :scope > .ann-inner, :scope > .mt-precos-inner');
+    if (!miolo) return;
+    const medir = function () {
+      miolo.style.transform = '';
+      const cs = getComputedStyle(slide);
+      const altura = slide.clientHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0);
+      const largura = slide.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+      const h = miolo.scrollHeight, w = miolo.scrollWidth;
+      if (!h || !w || altura <= 0) return;
+      const esc = Math.min(1, altura / h, largura / w) * 0.97;
+      if (esc < 0.99) {
+        miolo.style.transformOrigin = 'center center';
+        miolo.style.transform = 'scale(' + Math.max(0.35, esc).toFixed(3) + ')';
+      }
+    };
+    afterPaint(medir);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir).catch(function () {});
+  }
+
   function enterSlide(el, type, reveal) {
     el.classList.add('mt-active'); // opacidade final de referência
     if (!HAS_GSAP || type === 'none') {
@@ -114,6 +144,40 @@
     GSAP.to(prev.el, { opacity: 0, duration: 0.7, ease: 'sine.inOut', onComplete: () => prev.el.remove() });
   }
 
+  /* ---------------- Relatório de exibição ----------------
+   *
+   * Só no modo nuvem (é lá que existe relatório). O contador agrega por hora
+   * no localStorage e o envio sai em lotes — ver js/exibicoes.js.
+   */
+  let contadorExibicoes = null;
+  const exibicoesAbertas = new Set();
+  // Nasce ANTES de qualquer zona subir — inclusive a que sobe da config em
+  // cache quando a TV liga sem internet, que é exibição como qualquer outra.
+  function criarContadorExibicoes() {
+    if (contadorExibicoes || !global.MTExibicoes) return;
+    contadorExibicoes = MTExibicoes.criar({
+      ler: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+      guardar: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+    });
+  }
+  function ligarExibicoes(devId) {
+    criarContadorExibicoes();
+    if (!contadorExibicoes || !global.MTCloud || !MTCloud.enviarExibicoes) return;
+    async function enviar() {
+      // Zona com um conteúdo só nunca "termina": conta o tempo até agora.
+      exibicoesAbertas.forEach((e) => { try { e.parcial(); } catch (err) {} });
+      const lote = contadorExibicoes.lote();
+      if (!lote) return;
+      const ok = await MTCloud.enviarExibicoes(devId, { lote: lote.lote, itens: lote.itens });
+      if (ok) contadorExibicoes.confirmar(lote);
+    }
+    // Recarregar (comando remoto, vigia do app) não pode perder os últimos segundos.
+    global.addEventListener('pagehide', () => { try { contadorExibicoes.salvar(); } catch (e) {} });
+    // Espalha as TVs no tempo: mil telas ligadas juntas não mandam juntas.
+    setTimeout(enviar, 30000 + Math.random() * 60000);
+    setInterval(enviar, 5 * 60 * 1000);
+  }
+
   /* ---------------- Ciclo de vida ---------------- */
 
   async function boot() {
@@ -136,16 +200,29 @@
   // Modo nuvem: a TV é controlada pelo celular. Cria/retoma um device,
   // mostra o código de pareamento e recebe a config em tempo real (SSE).
   async function bootCloud() {
+    criarContadorExibicoes();
     let dev;
     try {
       dev = await MTCloud.ensureDevice();
     } catch (e) {
-      // Sem servidor acessível (offline): usa a última config em cache — a
-      // tela não apaga. Só cai para o exemplo local se nunca houve config.
+      /*
+       * LIGOU SEM INTERNET — e é o caso comum, não o raro.
+       *
+       * Depois de uma queda de energia o aparelho liga antes do roteador. Aqui
+       * havia `startWatchers(60)`, que é o relógio do modo LOCAL: um minuto
+       * depois ele trocava a config da nuvem pela do localStorage — o
+       * EXEMPLO, numa TV de nuvem —, e ninguém mais tentava falar com o
+       * servidor. A vitrine do cliente virava a demonstração até alguém
+       * tirar a TV da tomada.
+       *
+       * Agora a última config boa fica na tela e a TV insiste com o servidor
+       * até ele responder; daí em diante segue o boot normal.
+       */
       const cached = loadCachedConfig();
-      applyConfig(cached || MTStorage.load());
-      startWatchers(60);
-      return hideOverlayAfter();
+      if (cached) applyConfig(cached);
+      else showSemConexao();
+      hideOverlayAfter();
+      dev = await esperarServidor();
     }
     let cfg = null;
     try { cfg = await MTCloud.fetchConfig(dev.id); } catch (e) { /* offline ou ainda não pareado */ }
@@ -199,6 +276,24 @@
      * É barato de propósito: nenhuma requisição a mais, só um campo a mais na
      * resposta que já existia.
      */
+    /*
+     * Selo "MultiTelas grátis": teste acabado sem assinatura. A tela segue
+     * exibindo tudo; o selo é um canto discreto, fora do caminho do
+     * conteúdo e sem capturar clique. Some sozinho no pulso seguinte à
+     * assinatura.
+     */
+    document.addEventListener('mt:selo', function (ev) {
+      let el = document.getElementById('mt-selo');
+      if (ev.detail && !el) {
+        el = document.createElement('div');
+        el.id = 'mt-selo';
+        el.className = 'mt-selo';
+        el.textContent = 'MultiTelas · versão gratuita';
+        document.body.appendChild(el);
+      } else if (!ev.detail && el) {
+        el.remove();
+      }
+    });
     async function pulsar() {
       const carimbo = await MTCloud.heartbeat(dev.id);
       if (!carimbo || carimbo <= configEm) return;
@@ -216,6 +311,7 @@
     }
     pulsar();
     setInterval(pulsar, 30000);
+    ligarExibicoes(dev.id);
     // Relação de aniversariantes: carrega e refresca a cada 6h (muda pouco).
     loadBirthdays(dev.id);
     setInterval(function () { loadBirthdays(dev.id); }, 6 * 60 * 60 * 1000);
@@ -239,11 +335,33 @@
   function showPairing(code) {
     let el = document.getElementById('pairing');
     if (!el) return;
+    restaurarTextosPairing(el);
     const codeEl = el.querySelector('.mt-pairing-code');
     if (codeEl) codeEl.textContent = code || '••••••';
+    /*
+     * QR para parear pelo celular: aponta a câmera e cai no painel com o
+     * código já preenchido. Digitar seis caracteres olhando para uma TV do
+     * outro lado da sala é o passo em que a instalação mais empaca.
+     * Desenhado pelo nosso servidor (/api/qr.svg), sem serviço externo.
+     */
+    let qr = el.querySelector('.mt-pairing-qr');
+    if (code) {
+      if (!qr) {
+        qr = document.createElement('img');
+        qr.className = 'mt-pairing-qr';
+        qr.alt = '';
+        if (codeEl && codeEl.parentNode) codeEl.parentNode.insertBefore(qr, codeEl.nextSibling);
+      }
+      const destino = global.location.origin + '/app/?parear=' + encodeURIComponent(code);
+      qr.src = '/api/qr.svg?d=' + encodeURIComponent(destino);
+      qr.hidden = false;
+    } else if (qr) {
+      qr.hidden = true;
+    }
     // "Gerar outro código": esquece a TV guardada neste navegador e recarrega
     // como tela nova (o navegador reaproveitava a mesma sem isso).
     const resetEl = document.getElementById('pairing-reset');
+    if (resetEl) resetEl.classList.remove('hidden');
     if (resetEl && !resetEl._wired) {
       resetEl._wired = true;
       resetEl.addEventListener('click', function () {
@@ -259,6 +377,61 @@
   function hidePairing() {
     const el = document.getElementById('pairing');
     if (el) el.classList.add('hidden');
+  }
+
+  /*
+   * A caixa do pareamento é reaproveitada por três estados (código, "tudo
+   * certo" e "sem internet"). Guarda o texto original na primeira troca para
+   * que o código de pareamento, se vier depois, apareça com as instruções
+   * certas — e não embaixo de um "sem internet" que já não é verdade.
+   */
+  let textosPairing = null;
+  function guardarTextosPairing(el) {
+    if (textosPairing) return;
+    const t = el.querySelector('.mt-pairing-title');
+    const d = el.querySelector('.mt-pairing-hint');
+    textosPairing = { titulo: t ? t.textContent : '', dica: d ? d.innerHTML : '' };
+  }
+  function restaurarTextosPairing(el) {
+    if (!textosPairing) return;
+    const t = el.querySelector('.mt-pairing-title');
+    const d = el.querySelector('.mt-pairing-hint');
+    if (t) t.textContent = textosPairing.titulo;
+    if (d) d.innerHTML = textosPairing.dica;
+  }
+
+  // Ligou sem internet e sem nenhuma config guardada: dizer isso, e não
+  // mostrar a demonstração como se fosse o conteúdo do cliente.
+  function showSemConexao() {
+    const el = document.getElementById('pairing');
+    if (!el) return;
+    guardarTextosPairing(el);
+    const titulo = el.querySelector('.mt-pairing-title');
+    const codeEl = el.querySelector('.mt-pairing-code');
+    const dica = el.querySelector('.mt-pairing-hint');
+    const reset = document.getElementById('pairing-reset');
+    if (titulo) titulo.textContent = 'Procurando a internet…';
+    if (codeEl) codeEl.textContent = '···';
+    if (dica) dica.textContent = 'Esta TV ainda não conseguiu falar com o MultiTelas. '
+      + 'Ela tenta sozinha e mostra o conteúdo assim que a conexão voltar.';
+    if (reset) reset.classList.add('hidden');
+    { const qr = el.querySelector('.mt-pairing-qr'); if (qr) qr.hidden = true; }
+    el.classList.remove('hidden');
+  }
+
+  /*
+   * Insiste com o servidor até ele responder. Espera crescente (5s → 60s):
+   * rápido o bastante para a TV voltar logo depois do roteador, e sem martelar
+   * o servidor quando é ele quem está fora — mil TVs religando juntas depois
+   * de um deploy não podem virar mil requisições por segundo.
+   */
+  async function esperarServidor() {
+    let espera = 5000;
+    for (;;) {
+      await new Promise(function (r) { setTimeout(r, espera + Math.random() * 1000); });
+      try { return await MTCloud.ensureDevice(); }
+      catch (e) { espera = Math.min(60000, espera * 2); }
+    }
   }
 
   /*
@@ -281,6 +454,7 @@
   function showAguardando(nome) {
     const el = document.getElementById('pairing');
     if (!el) return;
+    guardarTextosPairing(el);
     const titulo = el.querySelector('.mt-pairing-title');
     const codeEl = el.querySelector('.mt-pairing-code');
     const dica = el.querySelector('.mt-pairing-hint');
@@ -292,6 +466,7 @@
       + 'Assim que você publicar um conteúdo no painel, ele aparece aqui sozinho.';
     // Gerar outro código aqui só serviria para desparear sem querer.
     if (reset) reset.classList.add('hidden');
+    { const qr = el.querySelector('.mt-pairing-qr'); if (qr) qr.hidden = true; }
     el.classList.remove('hidden');
   }
 
@@ -327,6 +502,7 @@
     if (fp === configFingerprint) return; // nada mudou
     configFingerprint = fp;
     currentConfig = cfg;
+    conferirGiro((cfg.settings || {}).girar);
     aplicarNoPalco(cfg);
     // A trilha vem de settings e não das zonas: trocar de layout não pode
     // cortar a música no meio.
@@ -364,6 +540,7 @@
     coresAdaptativas: 1,  // uma bandeira lida na hora de adaptar
     layoutInteligente: 1, // idem, lida na hora do takeover
     refreshSeconds: 1,    // só o modo legado usa, e lá o palco é outro
+    girar: 1,             // conferirGiro: recarrega a página, não a zona
     // layoutAuto e layoutAutoSeconds NÃO entram aqui: eles ligam um
     // temporizador no nível do palco, e vão na assinatura do palco logo
     // abaixo. Se ficassem aqui, ligar o layout dinâmico não faria nada.
@@ -433,7 +610,7 @@
     const data = cfg.zonas[zone.id] || {};
     if (zone.type === 'ticker') return startTicker(zoneEl, data, cfg);
     if (zone.type === 'header') return startHeader(zoneEl, cfg);
-    return startPlaylist(zoneEl, data.items || [], cfg);
+    return startPlaylist(zoneEl, data.items || [], cfg, zone.id);
   }
 
   /* ---------------- Resiliência offline ---------------- */
@@ -957,6 +1134,7 @@
     document.body.appendChild(layer);
     void layer.offsetWidth;
     layer.classList.add('mt-in');
+    caberNaCaixa(rendered.el);
     try { rendered.onEnter && rendered.onEnter(function () {}); } catch (e) {}
 
     takeover.el = layer; takeover.level = level; takeover.onLeave = rendered.onLeave;
@@ -1118,9 +1296,50 @@
     }
   }
 
+  /*
+   * Relógio em que dá para confiar.
+   *
+   * TV Box barato não tem bateria de relógio: depois de faltar luz ele liga em
+   * 1970 (ou na data de fábrica) e só acerta quando acha a internet. Mostrar
+   * "00:03 · Quinta-feira, 1 de janeiro" na vitrine é pior que não mostrar.
+   */
+  function relogioConfiavel(d) { return d.getFullYear() >= 2025; }
+
+  // "Terça-feira, 29 de setembro" — para zona vazia e faixa sem manchete.
+  function dataPorExtenso(d) {
+    let t = '';
+    try { t = d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) {}
+    if (!t) t = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+
+  /*
+   * Zona sem nada a mostrar — vazia, ou com tudo fora do horário agendado —
+   * vira relógio. Hora e data servem a quem passa; o aviso fica no painel.
+   */
+  function relogioDeZona() {
+    const el = document.createElement('div');
+    el.className = 'mt-slide mt-empty mt-active';
+    const hora = document.createElement('div');
+    hora.className = 'mt-empty-hora';
+    const dia = document.createElement('div');
+    dia.className = 'mt-empty-dia';
+    el.appendChild(hora);
+    el.appendChild(dia);
+    const pintar = function () {
+      const agora = new Date();
+      const ok = relogioConfiavel(agora);
+      hora.textContent = ok ? String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0') : '';
+      dia.textContent = ok ? dataPorExtenso(agora) : '';
+    };
+    pintar();
+    const t = setInterval(pintar, 15000);
+    return { el: el, parar: () => clearInterval(t) };
+  }
+
   /* ---------------- Zona: Playlist rotativa ---------------- */
 
-  function startPlaylist(zoneEl, items, cfg) {
+  function startPlaylist(zoneEl, items, cfg, zonaId) {
     let index = 0;
     let timer = null;
     let currentSlide = null;
@@ -1130,12 +1349,18 @@
     const single = items.length === 1 && !hasAgenda(items[0]);
     const agendado = items.some(hasAgenda);
 
+    /*
+     * Zona vazia vira relógio.
+     *
+     * Antes aparecia "Sem conteúdo" — na vitrine, para o cliente da loja, na
+     * primeira hora de uso de quem acabou de parear e só preencheu a zona
+     * principal. Hora e data são úteis para quem passa e não denunciam nada;
+     * o aviso de zona vazia continua no painel, que é onde o dono olha.
+     */
     if (!items.length) {
-      const empty = document.createElement('div');
-      empty.className = 'mt-slide mt-empty mt-active';
-      empty.textContent = 'Sem conteúdo';
-      zoneEl.appendChild(empty);
-      return { stop: () => {} };
+      const relogio = relogioDeZona();
+      zoneEl.appendChild(relogio.el);
+      return { stop: relogio.parar };
     }
 
     function advance() {
@@ -1149,7 +1374,8 @@
       // Filtra pelos conteúdos agendados para agora.
       const ativos = agendado ? items.filter(agendadoAgora) : items;
       if (!ativos.length) {
-        showPlaceholder('Nenhum conteúdo agendado agora');
+        // Antes: "Nenhum conteúdo agendado agora", escrito para o público.
+        mostrarRelogio();
         return schedule(30); // reavalia periodicamente
       }
       const item = ativos[index % ativos.length];
@@ -1172,6 +1398,7 @@
       const transition = cfg.settings.transicao || 'fade';
       zoneEl.appendChild(rendered.el);
       enterSlide(rendered.el, transition, isRevealSlide(rendered.el));
+      caberNaCaixa(rendered.el);
 
       const prev = currentSlide;
       /*
@@ -1182,12 +1409,17 @@
        */
       const soltarSom = trilha.acompanharVideo(rendered.el);
       const sairOriginal = rendered.onLeave;
+      // Relatório de exibição: começou agora; termina no onLeave (ver js/exibicoes.js).
+      const exib = contadorExibicoes ? contadorExibicoes.iniciar(item, zonaId) : null;
+      if (exib) exibicoesAbertas.add(exib);
       currentSlide = {
         el: rendered.el,
         onLeave: function () {
+          if (exib) { exib.terminar(); exibicoesAbertas.delete(exib); }
           soltarSom();
           if (sairOriginal) sairOriginal();
         },
+        exib,
       };
 
       if (prev) leaveSlide(prev);
@@ -1216,20 +1448,24 @@
       timer = setTimeout(advance, Math.max(0, seconds) * 1000);
     }
 
-    function showPlaceholder(text) {
+    function mostrarRelogio() {
       if (currentSlide && currentSlide.el.classList.contains('mt-empty')) return;
-      const el = document.createElement('div');
-      el.className = 'mt-slide mt-empty mt-active';
-      el.textContent = text;
-      zoneEl.appendChild(el);
+      const r = relogioDeZona();
+      zoneEl.appendChild(r.el);
       const prev = currentSlide;
-      currentSlide = { el, onLeave: null };
+      currentSlide = { el: r.el, onLeave: r.parar, parar: r.parar };
       if (prev) leaveSlide(prev);
     }
 
     advance();
     return {
-      stop: () => { stopped = true; clearTimeout(timer); },
+      stop: () => {
+        stopped = true; clearTimeout(timer);
+        if (currentSlide && currentSlide.parar) currentSlide.parar(); // relógio de fora do horário
+        // A zona está sendo refeita: o slide que estava no ar termina aqui,
+        // senão a exibição dele some do relatório.
+        if (currentSlide && currentSlide.exib) { currentSlide.exib.terminar(); exibicoesAbertas.delete(currentSlide.exib); }
+      },
     };
   }
 
@@ -1411,6 +1647,8 @@
     const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
     function tick() {
       const now = new Date();
+      // Hora de fábrica (box sem bateria, sem rede ainda): relógio em branco.
+      clock.style.visibility = relogioConfiavel(now) ? '' : 'hidden';
       clock.querySelector('.nc-date').textContent =
         String(now.getDate()).padStart(2, '0') + ' ' + MESES[now.getMonth()];
       clock.querySelector('.nc-time').textContent = now.toLocaleTimeString('pt-BR');
@@ -1460,13 +1698,21 @@
     if (data.conteudo === 'noticias' && usingFeed) items = [];
 
     let idx = 0;
+    const tagPadrao = tag.textContent;
     function show() {
+      /*
+       * Faixa sem manchete (nada cadastrado, ou o feed ainda não respondeu ou
+       * falhou): vai ao ar a data por extenso. Antes era "Adicione notícias no
+       * painel de gestão" — um recado para o dono exposto ao público da loja.
+       */
       if (!items.length) {
-        title.textContent = usingFeed
-          ? 'Carregando notícias…' : 'Adicione notícias no painel de gestão';
+        const agora = new Date();
+        if (/not[ií]cias/i.test(tagPadrao)) tag.textContent = relogioConfiavel(agora) ? 'HOJE' : tagPadrao;
+        title.textContent = relogioConfiavel(agora) ? dataPorExtenso(agora) : '';
         desc.textContent = '';
         return;
       }
+      tag.textContent = tagPadrao;
       const item = items[idx % items.length];
       idx++;
       headline.classList.remove('mt-news-in');
@@ -1504,8 +1750,9 @@
     if (usingFeed) {
       loadFeed().then(() => { idx = 0; show(); });
     }
+    // Vazia também repinta: a data por extenso tem que virar à meia-noite.
     const rotateTimer = setInterval(() => {
-      if (items.length > 1) show();
+      if (items.length !== 1) show();
     }, Math.max(3, data.intervalo || 8) * 1000);
     const feedTimer = usingFeed ? setInterval(loadFeed, 10 * 60 * 1000) : null;
 
@@ -1690,6 +1937,7 @@
 
     function tickClock() {
       const now = new Date();
+      if (!relogioConfiavel(now)) { clock.innerHTML = ''; return; }
       const dia = now.toLocaleDateString('pt-BR', { weekday: 'long' });
       clock.innerHTML =
         '<span class="mt-hc-time">' +
@@ -1742,6 +1990,56 @@
     document.addEventListener('mt:som', (e) => trilha.comando((e && e.detail) || {}));
   }
 
-  enableFullscreenShortcut();
-  boot();
+  /* ---------------- TV em pé ----------------
+   *
+   * Totem e TV pendurada em pé são comuns em loja, e TV Box não gira a
+   * imagem: o Android TV só sabe deitado. O conteúdo aparecia de lado.
+   *
+   * Girar o palco com CSS não bastaria: o player inteiro mede em vw/vh, e
+   * girado essas medidas continuariam sendo as da tela deitada — texto 78%
+   * maior, zonas estouradas. Então o player se carrega DENTRO de uma moldura
+   * (iframe) com as medidas da tela em pé, e só a moldura é girada. Lá dentro
+   * vw/vh são os da tela em pé e nada mais precisa saber que existe giro.
+   *
+   * O giro fica guardado no aparelho para valer já no boot, inclusive sem
+   * rede; a config só o confirma ou troca (e aí recarrega).
+   */
+  const CHAVE_GIRO = 'mt.girar';
+  function normalizarGiro(g) { g = Number(g); return g === 90 || g === 270 ? g : 0; }
+  function giroGuardado() {
+    try { return normalizarGiro(localStorage.getItem(CHAVE_GIRO)); } catch (e) { return 0; }
+  }
+  let naMoldura = false;
+  try { naMoldura = global.top !== global && /[?&]moldura=1(&|$)/.test(global.location.search); } catch (e) {}
+
+  function montarMolduraSeGirada() {
+    if (naMoldura) return false;
+    const g = giroGuardado();
+    if (!g) return false;
+    const u = new URL(global.location.href);
+    u.searchParams.set('moldura', '1');
+    const f = document.createElement('iframe');
+    f.src = u.pathname + u.search;
+    f.setAttribute('allow', 'autoplay; fullscreen');
+    f.className = 'mt-moldura mt-moldura-' + g;
+    document.documentElement.classList.add('mt-com-moldura');
+    if (document.body) document.body.appendChild(f);
+    else document.addEventListener('DOMContentLoaded', () => document.body.appendChild(f));
+    return true;
+  }
+
+  // Chamado a cada config aplicada: se o giro pedido não é o que está no ar,
+  // guarda e recarrega a página de fora (que monta ou desmonta a moldura).
+  function conferirGiro(pedido) {
+    const g = normalizarGiro(pedido);
+    const noAr = naMoldura ? giroGuardado() : 0;
+    if (g === noAr) return;
+    try { localStorage.setItem(CHAVE_GIRO, String(g)); } catch (e) { return; }
+    try { (naMoldura ? global.top : global).location.reload(); } catch (e) {}
+  }
+
+  if (!montarMolduraSeGirada()) {
+    enableFullscreenShortcut();
+    boot();
+  }
 })(window);

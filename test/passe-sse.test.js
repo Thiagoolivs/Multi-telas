@@ -22,7 +22,7 @@ const storage = require('../server/storage.js');
 
 const semComentarios = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const ler = (...p) => semComentarios(fs.readFileSync(path.join(__dirname, '..', ...p), 'utf8'));
-const SERVER = ler('server.js');
+const SERVER = require('./fonte-servidor.js').fonteDoServidor();
 const CLOUD = ler('js', 'cloud.js');
 
 /* ---------------- O passe ---------------- */

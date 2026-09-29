@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity, Gauge, Images,
+  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity, Gauge, Images, BarChart3,
 } from 'lucide-react';
 
 const NAV = [
@@ -27,6 +27,7 @@ const NAV = [
      * dela é quem cuida do conteúdo, não quem cuida da assinatura.
      */
     { id: 'birthdays', label: 'Aniversariantes', icon: Cake },
+    { id: 'relatorio', label: 'Relatório', icon: BarChart3 },
     { id: 'alerts', label: 'Alertas', icon: Bell },
   ] },
   { section: 'Conta', items: [
@@ -82,7 +83,7 @@ function NavItem({ item, active, onClick }) {
   );
 }
 
-export function Sidebar({ active, onNavigate, papel, operador }) {
+export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
   const ehDono = papel === 'owner';
   const secoes = NAV
     .filter((s) => !s.operador || operador)
@@ -98,7 +99,10 @@ export function Sidebar({ active, onNavigate, papel, operador }) {
         </div>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-ink">MultiTelas</div>
-          <div className="truncate text-2xs text-ink-3">Rede corporativa</div>
+          {/* O nome da empresa do cliente — "Rede corporativa" fixo não dizia
+              nada a uma padaria, e quem cuida de duas contas precisa saber em
+              qual está. */}
+          <div className="truncate text-2xs text-ink-3" title={empresa || undefined}>{empresa || 'Painel'}</div>
         </div>
       </div>
 

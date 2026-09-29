@@ -219,9 +219,8 @@ test('o editor retoma a peça que ficou gerando', () => {
    * primeiro clique e não sobrevive a trocar de aba — três defeitos para uma
    * mensagem que costuma dizer o que fazer em seguida.
    *
-   * A conferência é dentro de `runAi`, e não no arquivo inteiro: o upload de
-   * imagem ainda usa alerta, é outro assunto, e um teste que reclamasse dele
-   * aqui obrigaria alguém a mexer no upload para mexer na IA.
+   * (O painel inteiro está livre de alert() — ver o último teste deste
+   * arquivo. Este aqui confere também que o erro aparece NA BARRA.)
    */
   const i = ED.indexOf('async function runAi(');
   assert.ok(i > 0, 'sumiu o pedido de IA do editor');
@@ -240,4 +239,28 @@ test('a imagem — a única que custa crédito — também é retomada', () => {
   const MD = lerArquivo('web', 'src', 'pages', 'MyDesignsPage.jsx');
   assert.match(MD, /ai\.retomar\('imagem'/, 'a imagem não é retomada ao reabrir a página');
   assert.match(MD, /function avisarImagemPronta\(/, 'os dois caminhos não compartilham o aviso de pronto');
+});
+
+test('nenhum alert() do navegador no painel React', () => {
+  /*
+   * O upload do editor era o último a usar. Agora o arquivo inteiro — e o
+   * painel inteiro — fica livre dele: comentários à parte, `alert(` não
+   * aparece em nenhum .js/.jsx de web/src.
+   */
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const raiz = path.join(__dirname, '..', 'web', 'src');
+  const achados = [];
+  (function varrer(dir) {
+    for (const nome of fs.readdirSync(dir)) {
+      const p = path.join(dir, nome);
+      if (fs.statSync(p).isDirectory()) { varrer(p); continue; }
+      if (!/\.(jsx?|mjs)$/.test(nome)) continue;
+      const semComentario = fs.readFileSync(p, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');
+      if (/(^|[^\w.])alert\(/.test(semComentario) || /window\.alert\(/.test(semComentario)) achados.push(path.relative(raiz, p));
+    }
+  })(raiz);
+  assert.deepEqual(achados, [], 'alert() de volta em: ' + achados.join(', '));
 });

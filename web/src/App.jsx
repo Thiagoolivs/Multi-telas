@@ -20,7 +20,9 @@ import { BillingPage } from './pages/BillingPage.jsx';
 import { SystemPage } from './pages/SystemPage.jsx';
 import { PlatformPage } from './pages/PlatformPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
+import { RelatorioPage } from './pages/RelatorioPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
+import { parearGuardado } from './lib/parearPendente.js';
 
 const META = {
   overview: { title: 'Visão geral' },
@@ -30,6 +32,7 @@ const META = {
   mural: { title: 'Mural de fotos', subtitle: 'O público manda foto pelo QR e ela aparece na TV.' },
   content: { title: 'Telas', nav: 'screens' },
   alerts: { title: 'Alertas', subtitle: 'O que precisa da sua atenção agora.' },
+  relatorio: { title: 'Relatório de exibição', subtitle: 'O que passou, quantas vezes e em qual tela — contado pela própria TV.' },
   support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
   banco: { title: 'Banco de Imagens', subtitle: 'Acervo compartilhado entre os clientes. Usar daqui não gasta crédito.' },
@@ -67,10 +70,33 @@ function useTheme() {
  * A lista de destinos é fechada de propósito: `?ir=` vem da URL, e URL é coisa
  * que qualquer um escreve.
  */
-const ATALHOS = ['screens', 'designs', 'brand', 'mural', 'billing', 'alerts'];
+const ATALHOS = ['screens', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
+  'team', 'storage', 'banco', 'birthdays', 'support', 'settings'];
+
+/*
+ * O painel no histórico do navegador.
+ *
+ * A troca de página era só estado do React: no celular — onde o dono da loja
+ * mais usa — o gesto de VOLTAR saía do painel em vez de voltar para a tela
+ * anterior, e recarregar sempre caía na visão geral. Cada navegação agora vira
+ * uma entrada no histórico, e o endereço guarda a página (`?ir=`) para
+ * sobreviver ao recarregar. O editor de uma tela recarrega em Telas: o
+ * aparelho vem da lista, não do endereço.
+ */
+function enderecoDaRota(r) {
+  if (r.name === 'content') return '/app/?ir=screens';
+  if (ATALHOS.includes(r.name)) return '/app/?ir=' + r.name;
+  return '/app/';
+}
 
 function rotaDaUrl() {
   const q = new URLSearchParams(window.location.search);
+  /*
+   * Veio do QR da TV: abre Telas com o pareamento já preenchido. Se a pessoa
+   * ainda não estava logada, o endereço sobrevive ao login e cai aqui depois.
+   */
+  const parear = (q.get('parear') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || parearGuardado();
+  if (parear) return { name: 'screens', parear };
   if (q.get('billing')) return { name: 'billing' };
   const ir = q.get('ir');
   if (ir && ATALHOS.includes(ir)) return { name: ir };
@@ -85,7 +111,23 @@ export default function App() {
   const refresh = () => auth.me().then((me) => setSession(me || null));
   useEffect(() => { refresh(); }, []);
 
-  const go = (name, params) => setRoute({ name, ...params });
+  const go = (name, params) => {
+    const r = { name, ...params };
+    setRoute(r);
+    try { window.history.pushState({ mtRota: r }, '', enderecoDaRota(r)); } catch (e) { /* sem histórico: segue só com o estado */ }
+  };
+  useEffect(() => {
+    try { window.history.replaceState({ ...(window.history.state || {}), mtRota: route }, '', window.location.href); } catch (e) { /* idem */ }
+    const voltar = (e) => {
+      const r = e.state && e.state.mtRota;
+      if (!r) { setRoute(rotaDaUrl()); return; }
+      // Voltar não reabre o pareamento: aquele código já foi usado.
+      const { parear, ...resto } = r;
+      setRoute(resto);
+    };
+    window.addEventListener('popstate', voltar);
+    return () => window.removeEventListener('popstate', voltar);
+  }, []);
 
   async function logout() {
     await auth.logout();
@@ -110,7 +152,7 @@ export default function App() {
   function renderPage() {
     switch (route.name) {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
-      case 'screens': return <ScreensPage onEditContent={(device) => go('content', { device })} />;
+      case 'screens': return <ScreensPage parear={route.parear} onEditContent={(device) => go('content', { device })} onIrParaPlano={() => go('billing')} />;
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
@@ -119,6 +161,7 @@ export default function App() {
       case 'brand': return <BrandPage />;
       case 'mural': return <MuralPage />;
       case 'birthdays': return <BirthdaysPage />;
+      case 'relatorio': return <RelatorioPage onIrParaPlano={() => go('billing')} />;
       case 'billing': return <BillingPage onFalarComVendas={() => go('support')} />;
       case 'system': return <SystemPage />;
       case 'platform': return <PlatformPage />;
@@ -139,6 +182,7 @@ export default function App() {
       theme={theme}
       onToggleTheme={toggleTheme}
       user={user}
+      empresa={session.tenant && session.tenant.name}
       operador={!!session.operador}
       onLogout={logout}
     >

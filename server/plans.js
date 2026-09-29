@@ -30,7 +30,14 @@ const PLANS = {
     precoTelaCents: 14900, telasMax: 49,
     creditosPorTela: 25,
     gbPorTela: 10,
-    blurb: 'Marca própria, equipe e relatório.',
+    blurb: 'Tudo incluso: IA com a sua marca, relatório de exibição, mural, som e equipe.',
+    /*
+     * Só o que EXISTE. 'sso' e 'marca-branca' já estiveram no Enterprise e a
+     * landing os anunciava sem nenhuma linha de código por trás — vender
+     * recurso que não existe é problema de CDC, não de roadmap. 'relatorio'
+     * saiu pelo mesmo motivo e voltou quando o relatório de exibição passou
+     * a existir (server/routes/relatorio.js).
+     */
     recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe', 'relatorio'],
     stripePrice: process.env.STRIPE_PRICE_PRO || null,
   },
@@ -46,7 +53,7 @@ const PLANS = {
     creditosPorTela: 15,
     gbPorTela: 25,
     blurb: 'Contrato, SLA e o que mais a operação precisar.',
-    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe', 'relatorio', 'sso', 'marca-branca'],
+    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe', 'relatorio'],
     sobConsulta: true,
     stripePrice: null,
   },
@@ -198,6 +205,47 @@ function testeAtivo(tenant, agora) {
   return fimDoTeste(tenant) > (agora || Date.now());
 }
 
+/* ---------------- Pagamento atrasado ----------------
+ *
+ * Atraso tinha zero consequência: o webhook marcava `past_due` e nada olhava
+ * para isso. A franquia de IA renovava todo mês e o pareamento seguia aberto.
+ *
+ * A regra: a tela nunca para. Durante a carência nada muda (boleto atrasa,
+ * cartão vence, gente viaja). Passada a carência, corta o que custa dinheiro
+ * a nós — crédito de IA e tela nova — e só isso. Pagou, volta na hora.
+ *
+ * `atraso_desde` é gravado no PRIMEIRO aviso de atraso (server/cobranca.js).
+ * Conta marcada `past_due` antes desta regra existir não tem a data e não é
+ * bloqueada: sem saber desde quando, cortar seria chutar.
+ */
+const CARENCIA_ATRASO_DIAS = 7;
+const MS_DIA = 24 * 60 * 60 * 1000;
+
+/* Situação do atraso da conta, ou null se ela está em dia. */
+function situacaoAtraso(tenant, agora) {
+  if (!tenant || tenant.plan_status !== 'past_due') return null;
+  // Só existe atraso de quem assinou: a fatura vencida de um checkout
+  // abandonado não é dívida de quem nunca teve plano pago.
+  if (!isPaid(tenant.plan || 'free')) return null;
+  const desde = Number(tenant.atraso_desde) || 0;
+  if (!desde) return null;
+  const t = agora || Date.now();
+  const bloqueiaEm = desde + CARENCIA_ATRASO_DIAS * MS_DIA;
+  return {
+    desde,
+    bloqueiaEm,
+    bloqueado: t >= bloqueiaEm,
+    diasAteBloquear: Math.max(0, Math.ceil((bloqueiaEm - t) / MS_DIA)),
+    dias: CARENCIA_ATRASO_DIAS,
+  };
+}
+
+/* O atraso já passou da carência? Devolve a situação, ou null. */
+function bloqueioPorAtraso(tenant, agora) {
+  const s = situacaoAtraso(tenant, agora);
+  return s && s.bloqueado ? s : null;
+}
+
 /*
  * A conta pode ligar mais uma tela?
  *
@@ -211,6 +259,8 @@ function podeParear(tenant, telasEmUso, agora) {
   const usadas = Math.max(0, Number(telasEmUso) || 0);
 
   if (isPaid(id)) {
+    const atraso = bloqueioPorAtraso(tenant, agora);
+    if (atraso) return { ok: false, motivo: 'atraso', dias: atraso.dias };
     if (usadas >= limite) return { ok: false, motivo: 'limite', limite };
     return { ok: true };
   }
@@ -223,12 +273,29 @@ function podeParear(tenant, telasEmUso, agora) {
   return { ok: true, dias: diasDeTesteRestantes(tenant, agora) };
 }
 
+/*
+ * A tela desta conta mostra o selo "MultiTelas grátis"?
+ *
+ * Decisão do dono do produto: acabado o teste sem assinatura, a tela NÃO
+ * apaga — continua exibindo e publicando, com uma marca discreta num canto.
+ * Antes, o teste de 14 dias não expirava nada para quem já tinha pareado:
+ * a tela seguia de graça, limpa, para sempre, e só a IA sumia.
+ *
+ * Plano pago (inclusive cortesia, que é Pro de verdade) nunca tem selo.
+ */
+function exibeSelo(tenant, agora) {
+  if (!tenant) return false;
+  if (isPaid(tenant.plan || 'free')) return false;
+  return !testeAtivo(tenant, agora);
+}
+
 // Catálogo público (para o painel), na ordem de exibição.
 function catalog() { return ORDER.map((id) => PLANS[id]); }
 
 module.exports = {
   PLANS, ORDER, FAIXAS, CREDITOS_BOAS_VINDAS,
   DIAS_DE_TESTE, fimDoTeste, diasDeTesteRestantes, testeAtivo, podeParear,
+  CARENCIA_ATRASO_DIAS, situacaoAtraso, bloqueioPorAtraso, exibeSelo,
   plan, catalog, screenLimit, isPaid, temRecurso,
   descontoVolume, mensalidadeCents, precoTelaCents, precoProximaTelaCents, cotaBytes, franquiaCreditos,
 };

@@ -19,7 +19,7 @@ function useBillingFlash() {
     if (flash) {
       const url = new URL(window.location.href);
       url.searchParams.delete('billing');
-      window.history.replaceState({}, '', url.pathname + url.search);
+      window.history.replaceState(window.history.state, '', url.pathname + url.search);
     }
   }, [flash]);
   return [flash, () => setFlash(null)];
@@ -45,6 +45,19 @@ export function BillingPage({ onFalarComVendas }) {
     }
   }
 
+  // Pacote de créditos: vai para a fatura do Asaas; em modo simulado credita na hora.
+  async function comprarPacote(id) {
+    setBusy(id); setErr('');
+    try {
+      const r = await billing.pacote(id);
+      if (r.url) { window.location.href = r.url; return; }
+      reload(); setBusy('');
+    } catch (e) {
+      setErr(e.message || 'Não foi possível abrir a compra.');
+      setBusy('');
+    }
+  }
+
   if (loading) {
     return (
       <div>
@@ -56,9 +69,12 @@ export function BillingPage({ onFalarComVendas }) {
   }
   if (error) return <ErrorState description="Não foi possível carregar o plano." onRetry={reload} />;
 
-  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia } = data;
+  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia, atraso, pacotes, teste } = data;
   const frac = usage.limit ? usage.screens / usage.limit : 0;
-  const tone = frac >= 1 ? 'danger' : frac > 0.8 ? 'warn' : 'accent';
+  // Usar todas as telas do plano é o uso normal (o grátis tem uma, e quem
+  // pareou a primeira via uma barra VERMELHA "no limite" logo de cara, como
+  // se algo tivesse dado errado). Vermelho fica para quando passa do limite.
+  const tone = frac > 1 ? 'danger' : 'accent';
   /*
    * "Cortesia" tem selo próprio de propósito.
    *
@@ -69,7 +85,7 @@ export function BillingPage({ onFalarComVendas }) {
    */
   const statusLabel = cortesia
     ? 'Cortesia'
-    : ({ active: 'Ativo', free: 'Grátis', canceled: 'Cancelado', past_due: 'Pagamento pendente' }[status] || status);
+    : ({ active: 'Ativo', free: 'Grátis', canceled: 'Cancelado', past_due: 'Pagamento pendente', estornado: 'Estornado', chargeback: 'Contestado' }[status] || status);
 
   return (
     <div>
@@ -85,6 +101,20 @@ export function BillingPage({ onFalarComVendas }) {
       )}
       {err && <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">{err}</div>}
 
+      {/* Pagamento atrasado: avisa desde o primeiro dia, com a data do corte.
+          A primeira frase é a mesma de sempre — a tela continua no ar. */}
+      {atraso && (
+        <div className={'mb-4 rounded-md border px-3 py-2 text-sm ' + (atraso.bloqueado
+          ? 'border-danger/30 bg-danger-soft text-danger'
+          : 'border-warn/30 bg-warn-soft text-warn')}>
+          <b>Há uma fatura em atraso.</b> Suas telas continuam no ar.{' '}
+          {atraso.bloqueado
+            ? 'Gerar imagem com IA e ligar telas novas estão pausados até o pagamento.'
+            : `Se não for paga, em ${atraso.diasAteBloquear} ${atraso.diasAteBloquear === 1 ? 'dia' : 'dias'} a IA e o pareamento de telas novas pausam.`}
+          {' '}A fatura em aberto está em "Assinatura", logo abaixo.
+        </div>
+      )}
+
       {/* Plano atual + uso */}
       <Panel className="mb-5">
         <div className="flex flex-wrap items-center gap-4 p-4">
@@ -99,7 +129,12 @@ export function BillingPage({ onFalarComVendas }) {
                 : plan.sobConsulta ? 'Contrato — preço combinado'
                 : usage.mensalidadeCents > 0
                   ? `${brl(usage.mensalidadeCents)}/mês · ${brl(usage.precoTelaCents)} por tela`
-                  : 'Sem custo'}
+                  /* O plano grátis é o TESTE de 14 dias: dizer "sem custo" escondia o prazo. */
+                  : teste && teste.ativo
+                    ? `Teste grátis · ${teste.restam === 1 ? 'último dia' : 'faltam ' + teste.restam + ' dias'} — sem cartão`
+                    : teste
+                      ? 'Teste encerrado · a tela segue no ar com o selo "versão gratuita"'
+                      : 'Sem custo'}
               {usage.descontoVolume > 0 ? ` · −${Math.round(usage.descontoVolume * 100)}% por volume` : ''}
               {renewsAt ? ` · renova em ${new Date(renewsAt).toLocaleDateString('pt-BR')}` : ''}
             </div>
@@ -107,7 +142,9 @@ export function BillingPage({ onFalarComVendas }) {
           <div className="w-full sm:w-56">
             <div className="flex items-baseline justify-between text-xs">
               <span className="text-ink-2"><b className="tnum text-ink">{usage.screens}</b> de {usage.limit} {usage.limit === 1 ? 'tela' : 'telas'}</span>
-              {frac >= 1 && <span className="font-medium text-danger">no limite</span>}
+              {frac > 1
+                ? <span className="font-medium text-danger">acima do limite</span>
+                : frac === 1 && <span className="text-ink-3">todas em uso</span>}
             </div>
             <Progress value={Math.min(100, frac * 100)} tone={tone} className="mt-1.5 h-2" />
           </div>
@@ -161,6 +198,23 @@ export function BillingPage({ onFalarComVendas }) {
               para é gerar imagem nova.
             </div>
           </div>
+          {/* Pacotes avulsos. Crédito comprado não expira e é gasto depois da
+              franquia — dito aqui, porque é a dúvida de quem vai pagar. */}
+          {canManage && pacotes && pacotes.length > 0 && (
+            <div className="border-t border-line p-4">
+              <div className="mb-2 text-xs text-ink-2">
+                Precisa de mais? Créditos avulsos <b>não expiram</b> e só são usados depois da franquia do mês.
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {pacotes.map((p) => (
+                  <Button key={p.id} size="sm" variant="secondary" disabled={!!busy || (atraso && atraso.bloqueado)}
+                    onClick={() => comprarPacote(p.id)}>
+                    {busy === p.id ? 'Abrindo…' : `+${p.creditos} créditos · ${brl(p.precoCents)}`}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </Panel>
       )}
 

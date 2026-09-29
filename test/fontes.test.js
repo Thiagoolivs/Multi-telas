@@ -140,3 +140,15 @@ test('o validador limita o ajuste fino em vez de aceitar qualquer número', () =
   assert.equal(t.espacamento, F.ESPACAMENTO.max);
   assert.equal(t.entrelinha, F.ENTRELINHA.max);
 });
+
+test('alinhar à esquerda ou à direita move o texto de verdade (a caixa é flex)', () => {
+  /*
+   * A caixa do texto é flex centralizado, e isso engolia o text-align numa
+   * linha só: "Esquerda" no editor não fazia nada no palco, na TV nem na
+   * miniatura. Visto no navegador com o modelo de cardápio.
+   */
+  assert.equal(F.estiloTexto({ align: 'left' }).justifyContent, 'flex-start');
+  assert.equal(F.estiloTexto({ align: 'right' }).justifyContent, 'flex-end');
+  assert.equal(F.estiloTexto({ align: 'center' }).justifyContent, 'center');
+  assert.equal(F.estiloTexto({}).justifyContent, 'center');
+});

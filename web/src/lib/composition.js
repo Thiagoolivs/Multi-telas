@@ -26,6 +26,9 @@ export const SOMBRA_LIMITES = P.SOMBRA_LIMITES;
 export const BORDA_MAX = P.BORDA_MAX;
 export const tintaFundo = P.tintaFundo;
 export const tintaImagem = P.tintaImagem;
+export const temCurva = P.temCurva;
+export const arcoTexto = P.arcoTexto;
+export const alturaParaCurva = P.alturaParaCurva;
 
 /*
  * O fundo de uma peça, já com o duotone quando ele existe.

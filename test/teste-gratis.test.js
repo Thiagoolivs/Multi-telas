@@ -92,3 +92,25 @@ test('o prazo conta do nascimento da conta, não do primeiro pareamento', () => 
   const t = conta(3);
   assert.equal(plans.fimDoTeste(t), t.created_at + 14 * DIA);
 });
+
+/* ---------------- O selo depois do teste ----------------
+ *
+ * Antes, o teste não expirava nada para quem já tinha pareado: a tela
+ * seguia de graça, limpa, para sempre. Agora ela segue — com o selo.
+ */
+test('durante o teste, nada de selo', () => {
+  assert.equal(plans.exibeSelo(conta(3), AGORA), false);
+});
+
+test('teste acabado sem assinatura: selo', () => {
+  assert.equal(plans.exibeSelo(conta(15), AGORA), true);
+});
+
+test('quem paga nunca vê o selo, nem com a conta velha', () => {
+  assert.equal(plans.exibeSelo(conta(400, 'pro'), AGORA), false);
+  assert.equal(plans.exibeSelo(conta(400, 'enterprise'), AGORA), false);
+});
+
+test('conta que não existe não ganha selo por engano', () => {
+  assert.equal(plans.exibeSelo(null, AGORA), false);
+});

@@ -613,7 +613,30 @@
       .catch(function () {});
   }
 
+  /*
+   * O endereço que se digita NA TV, montado de onde a página está sendo
+   * servida. Estava escrito "seudominio.com.br/tv" — literal, na página que
+   * o cliente lê antes de assinar.
+   */
+  function enderecoDaTv() {
+    var el = document.getElementById('endereco-tv');
+    if (el && location.host) el.textContent = location.host.replace(/^www\./, '') + '/tv';
+  }
+
+  /*
+   * WhatsApp só aparece com número configurado (WHATSAPP_NUMERO). Era um
+   * `href="#"`: o botão mais importante para PME no Brasil não fazia nada.
+   */
+  function whatsapp(dados) {
+    var el = document.getElementById('whatsapp');
+    var n = dados && dados.contato && dados.contato.whatsapp;
+    if (!el || !n) return;
+    el.href = 'https://wa.me/' + n + '?text=' + encodeURIComponent('Olá! Vi o site do MultiTelas e quero saber mais.');
+    el.hidden = false;
+  }
+
   function montarPrecos(dados) {
+    whatsapp(dados);
     var bv = document.getElementById('boas-vindas');
     if (bv && dados.creditosBoasVindas) bv.textContent = dados.creditosBoasVindas;
 
@@ -664,7 +687,8 @@
         if (p.recursos.indexOf('som') >= 0) itens.push('Trilha sonora');
         if (p.recursos.indexOf('equipe') >= 0) itens.push('Equipe com papéis');
         if (p.recursos.indexOf('marca') >= 0) itens.push('Marca própria');
-        if (p.recursos.indexOf('sso') >= 0) itens.push('SSO e marca branca');
+        if (p.recursos.indexOf('relatorio') >= 0) itens.push('Relatório de exibição');
+        if (p.sobConsulta) itens.push('Contrato e SLA combinados');
 
         art.innerHTML =
           (destaque ? '<div class="mb-2 inline-block rounded-full bg-mt-gold px-3 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-mt-void">mais escolhido</div>' : '') +
@@ -809,6 +833,7 @@
       montarControles();
       pintarGaleria();
       precos();
+      enderecoDaTv();
 
       // Entrada do título, letra por bloco
       gsap.fromTo('#titulo', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 1.1, ease: 'power4.out' });

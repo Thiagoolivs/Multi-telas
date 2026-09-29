@@ -46,6 +46,13 @@ jobs:
       - name: Eval (modo dev)
         run: npm run eval
 
+      # Nome solto no servidor. As rotas extraídas de server.js recebem tudo
+      # por `ctx`, e um nome esquecido não quebra boot nem teste: explode na
+      # primeira requisição, como "erro interno". Já custou o login com
+      # Google, o convite de equipe e a troca de senha no SQLite.
+      - name: Nomes indefinidos no servidor (no-undef)
+        run: npm run lint:nomes
+
       - name: Dependências do painel
         run: npm --prefix web ci --no-audit --no-fund
 

@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'react';
 import {
-  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info,
+  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info, CalendarClock,
 } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
+import { QuandoMostrar } from '../components/content/QuandoMostrar.jsx';
+import { temAgenda, resumoAgenda } from '../lib/agenda.js';
+import { emitir } from '../lib/avisos.js';
 import { ItemForm } from '../components/content/ItemForm.jsx';
 import { ItemPreview } from '../components/content/ItemPreview.jsx';
 import { TypePicker } from '../components/content/TypePicker.jsx';
@@ -17,7 +20,7 @@ import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
 import { useAsync } from '../lib/useAsync.js';
-import { deviceConfig } from '../api.js';
+import { deviceConfig, brand as brandApi } from '../api.js';
 import { Sparkles, Wand2 } from 'lucide-react';
 import { Field, Input, Textarea } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
@@ -63,6 +66,8 @@ export function ContentEditorPage({ device, onBack }) {
   }, [data, loading, device.name]);
 
   const zones = useMemo(() => (cfg ? zonesOf(cfg) : []), [cfg]);
+  const telaVazia = useMemo(() => !!cfg && zones.filter((z) => z.type === 'playlist')
+    .every((z) => !((cfg.zonas[z.id] || {}).items || []).length), [cfg, zones]);
 
   /*
    * O formato que esta TELA pede.
@@ -168,16 +173,34 @@ export function ContentEditorPage({ device, onBack }) {
    */
   const addItem = (type) => {
     if (type === 'composicao') { setModeloAberto(true); return; }
+    // Atalho para um modelo pronto (TypePicker): já na cor da marca e no
+    // formato desta tela, e abre o editor para trocar os itens.
+    if (type.startsWith('modelo:')) {
+      Promise.all([import('../../../js/modelos.js'), brandApi.get().catch(() => null)]).then(([, r]) => {
+        const cores = (r && r.kit && r.kit.cores) || [];
+        const peca = globalThis.MTModelos && globalThis.MTModelos.montar(type.slice(7), formatoDaTela, cores);
+        comecarDe(peca, formatoDaTela);
+      });
+      return;
+    }
     mutateItems((arr) => { arr.push(CONTENT_TYPES[type].make()); return arr; });
     setSelected(items.length);
   };
 
-  /* Saiu da galeria: entra na programação e abre o editor já com a peça. */
+  /*
+   * Saiu da galeria: abre o editor com a peça, mas ela só entra na
+   * programação no SALVAR.
+   *
+   * Antes entrava na hora, e o salvamento automático a publicava enquanto a
+   * pessoa ainda editava — com os preços de exemplo do modelo ("R$ 19,90",
+   * "Café expresso R$ 6,00") na TV da loja. Preço exibido ao público pode ter
+   * que ser honrado. Cancelar agora descarta sem ter ido ao ar.
+   */
+  const [novaPeca, setNovaPeca] = useState(null);
   function comecarDe(peca, formato) {
     setModeloAberto(false);
     const base = CONTENT_TYPES.composicao.make();
-    mutateItems((arr) => { arr.push(peca ? { ...base, ...peca } : { ...base, formato }); return arr; });
-    setSelected(items.length);
+    setNovaPeca(peca ? { ...base, ...peca } : { ...base, formato });
     setCompOpen(true);
   }
   // Inserir um design salvo da biblioteca (Meus Designs).
@@ -192,7 +215,28 @@ export function ContentEditorPage({ device, onBack }) {
     setSelected(j);
   };
   const dupItem = (idx) => { mutateItems((arr) => { arr.splice(idx + 1, 0, structuredClone(arr[idx])); return arr; }); setSelected(idx + 1); };
-  const removeItem = (idx) => { mutateItems((arr) => { arr.splice(idx, 1); return arr; }); setSelected((s) => Math.max(0, Math.min(s, items.length - 2))); };
+  /*
+   * Remover publica na hora (salvamento automático): um toque errado na
+   * lixeira tirava o conteúdo da TV sem volta. O aviso traz "Desfazer", que
+   * devolve na MESMA zona e posição, mesmo que a pessoa já tenha trocado de
+   * zona no painel.
+   */
+  const removeItem = (idx) => {
+    const zona = activeZone.id;
+    const removido = items[idx];
+    mutateItems((arr) => { arr.splice(idx, 1); return arr; });
+    setSelected((s) => Math.max(0, Math.min(s, items.length - 2)));
+    if (!removido) return;
+    emitir({
+      tom: 'desfazer', texto: 'Conteúdo removido da tela.',
+      acao: { rotulo: 'Desfazer', on: () => patchCfg((next) => {
+        if (!next.zonas[zona]) next.zonas[zona] = { items: [] };
+        const arr = [...(next.zonas[zona].items || [])];
+        arr.splice(Math.min(idx, arr.length), 0, removido);
+        next.zonas[zona].items = arr;
+      }) },
+    });
+  };
 
   async function generateAI() {
     if (!aiBrief.trim()) return;
@@ -223,6 +267,38 @@ export function ContentEditorPage({ device, onBack }) {
     saveTimer.current = setTimeout(() => { publish(); }, 1000);
     return () => clearTimeout(saveTimer.current);
   }, [cfg, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /*
+   * Saiu antes do segundo de espera: salva mesmo assim.
+   *
+   * O temporizador acima é cancelado quando a página desmonta, então a última
+   * alteração feita logo antes de voltar (seta, menu ou o gesto de voltar do
+   * celular) se perdia em silêncio — com "Salvando…" na tela um instante
+   * antes. Fechar a aba também: ali vai com keepalive, que o navegador
+   * termina de enviar depois que a página já foi embora.
+   */
+  const pendente = useRef(null);
+  useEffect(() => { pendente.current = dirty && cfg ? cfg : null; }, [cfg, dirty]);
+  useEffect(() => {
+    const aoFechar = () => {
+      const c = pendente.current;
+      if (!c) return;
+      pendente.current = null;
+      try {
+        fetch('/api/devices/' + device.id + '/config', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c),
+          credentials: 'same-origin', keepalive: true,
+        }).catch(() => {});
+      } catch (e) { /* acima de 64 KB o keepalive recusa; não há mais o que fazer */ }
+    };
+    window.addEventListener('pagehide', aoFechar);
+    return () => {
+      window.removeEventListener('pagehide', aoFechar);
+      const c = pendente.current;
+      pendente.current = null;
+      if (c) deviceConfig.save(device.id, c).catch(() => {});
+    };
+  }, [device.id]);
 
   // Aplica uma campanha da IA (tela inteira) ao config: substitui as zonas
   // geradas e, se veio, a cor da marca.
@@ -255,21 +331,57 @@ export function ContentEditorPage({ device, onBack }) {
             <p className="text-sm text-ink-3">O que aparece nesta tela · salva e publica sozinho</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        {/* No celular os três dividem uma linha sem quebrar texto: "Tudo salvo"
+            e "Campanha com IA" em duas linhas cada pareciam botões quebrados. */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Estado do salvamento automático */}
-          <span className={cn('inline-flex items-center gap-1.5 text-xs', publishing || dirty ? 'text-ink-3' : 'text-emerald-500')}>
+          <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-xs', publishing || dirty ? 'text-ink-3' : 'text-emerald-500')}>
             {publishing || dirty
               ? <><Spinner size={12} /> Salvando…</>
               : <><Check size={13} /> {publishedAt ? 'Salvo' : 'Tudo salvo'}</>}
           </span>
-          <Button variant="secondary" icon={Wand2} onClick={() => setCampOpen(true)}>Campanha com IA</Button>
-          <Button variant="secondary" icon={Settings2} onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>
+          <Button variant="secondary" icon={Wand2} className="whitespace-nowrap" onClick={() => setCampOpen(true)}>Campanha com IA</Button>
+          <Button variant="secondary" icon={Settings2} className="whitespace-nowrap" onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>
         </div>
       </div>
 
       {publishError && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError}</div>}
 
       {cfg && <SeasonBanner zonas={zones.map((z) => z.id)} onAplicar={aplicarSeason} />}
+      {/*
+        COMECE POR AQUI — só enquanto a tela inteira está vazia.
+
+        Uma tela nova abria com três áreas vazias e três avisos, e a pergunta
+        "por onde eu começo?" ficava sem resposta. Três caminhos, do mais
+        automático ao mais manual; some sozinho no primeiro conteúdo.
+      */}
+      {cfg && telaVazia && (
+        <Panel className="mb-4">
+          <div className="p-4">
+            <div className="text-sm font-semibold text-ink">Esta tela ainda está vazia. Como você quer começar?</div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <button type="button" onClick={() => setCampOpen(true)}
+                className="rounded-lg border border-accent bg-accent-soft p-3 text-left transition hover:brightness-95">
+                <Wand2 size={18} className="text-accent" />
+                <div className="mt-1.5 text-sm font-semibold text-ink">A IA monta tudo</div>
+                <div className="text-xs text-ink-3">Diga o que está acontecendo na loja; ela preenche a tela inteira com a sua marca.</div>
+              </button>
+              <button type="button" onClick={() => setPicker(true)}
+                className="rounded-lg border border-line p-3 text-left transition hover:bg-surface-2">
+                <Plus size={18} className="text-ink-2" />
+                <div className="mt-1.5 text-sm font-semibold text-ink">Escolher um conteúdo pronto</div>
+                <div className="text-xs text-ink-3">Cardápio, promoção, aviso, foto, vídeo, clima, QR code…</div>
+              </button>
+              <button type="button" onClick={() => setSettingsOpen(true)}
+                className="rounded-lg border border-line p-3 text-left transition hover:bg-surface-2">
+                <Settings2 size={18} className="text-ink-2" />
+                <div className="mt-1.5 text-sm font-semibold text-ink">Mudar o layout</div>
+                <div className="text-xs text-ink-3">Tela cheia, com lateral, vertical… e o tema com as cores da empresa.</div>
+              </button>
+            </div>
+          </div>
+        </Panel>
+      )}
       {cfg && <ScreenSummary cfg={cfg} />}
 
       {loading || !cfg ? (
@@ -339,6 +451,11 @@ export function ContentEditorPage({ device, onBack }) {
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium text-ink">{itemSummary(it)}</span>
                             <span className="block text-2xs text-ink-3">{typeLabel(it.type)} · {it.duracao === 0 ? 'fixo' : (it.duracao || 0) + 's'}</span>
+                            {temAgenda(it) && (
+                              <span className="mt-0.5 flex items-center gap-1 truncate text-2xs text-accent" title={resumoAgenda(it.agendamento)}>
+                                <CalendarClock size={11} className="shrink-0" /> {resumoAgenda(it.agendamento)}
+                              </span>
+                            )}
                           </span>
                         </button>
                       </li>
@@ -376,6 +493,10 @@ export function ContentEditorPage({ device, onBack }) {
                           </Button>
                         )}
                         <ItemForm item={current} onChange={(it) => updateItem(selected, it)} />
+                        <div className="mt-4">
+                          <QuandoMostrar agendamento={current.agendamento}
+                            onChange={(ag) => updateItem(selected, { ...current, agendamento: ag })} />
+                        </div>
                       </div>
                     </div>
                   </>
@@ -412,12 +533,21 @@ export function ContentEditorPage({ device, onBack }) {
         </Suspense>
       )}
 
-      {compOpen && current && current.type === 'composicao' && (
+      {compOpen && (novaPeca || (current && current.type === 'composicao')) && (
         <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90"><Spinner size={22} /></div>}>
           <CompositionEditor
-            value={current}
-            onClose={() => setCompOpen(false)}
-            onSave={(it) => { updateItem(selected, it); setCompOpen(false); }}
+            value={novaPeca || current}
+            onClose={() => { setCompOpen(false); setNovaPeca(null); }}
+            onSave={(it) => {
+              if (novaPeca) {
+                mutateItems((arr) => { arr.push(it); return arr; });
+                setSelected(items.length);
+                setNovaPeca(null);
+              } else {
+                updateItem(selected, it);
+              }
+              setCompOpen(false);
+            }}
           />
         </Suspense>
       )}

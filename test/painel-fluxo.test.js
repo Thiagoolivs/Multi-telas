@@ -25,7 +25,7 @@ test('o upgrade não morre em "db.getUser is not a function"', () => {
    * que nunca existiu — o nome é `getUserById`. Ninguém nunca conseguiu
    * assinar, e o erro só aparecia depois do clique.
    */
-  const server = soCodigo(ler('server.js'));
+  const server = soCodigo(require('./fonte-servidor.js').fonteDoServidor());
   assert.ok(!/\bdb\.getUser\(/.test(server), 'voltou a chamar db.getUser, que não existe');
 
   // E o nome certo tem que existir de verdade nos dois bancos.
@@ -43,7 +43,7 @@ test('a página de checkout simulado roda sob a CSP do projeto', () => {
    * Asaas, o caminho pago parou de ser percorrido. Foi assim que o 502 acima
    * ficou na main sem ninguém ver.
    */
-  const server = ler('server.js');
+  const server = require('./fonte-servidor.js').fonteDoServidor();
   const i = server.indexOf('function devCheckoutPage');
   assert.ok(i > 0, 'sumiu a página de checkout simulado');
   const pagina = server.slice(i, i + 4000);
@@ -58,7 +58,7 @@ test('a página de checkout simulado roda sob a CSP do projeto', () => {
 
 test('a página de checkout simulado não diz "undefined telas"', () => {
   // Era `p.screens`, e o campo é `telasMax` — mesma classe do `priceCents`.
-  const pagina = ler('server.js');
+  const pagina = require('./fonte-servidor.js').fonteDoServidor();
   assert.ok(!/\$\{p\.screens\}/.test(pagina), 'voltou a ler um campo que não existe no plano');
 });
 
@@ -69,7 +69,7 @@ test('existe como cancelar a assinatura', () => {
    * `?billing=` de volta para a MESMA tela. A página recarregava e não havia
    * como cancelar por lugar nenhum. Além de produto ruim, é exposição no CDC.
    */
-  const server = soCodigo(ler('server.js'));
+  const server = soCodigo(require('./fonte-servidor.js').fonteDoServidor());
   assert.match(server, /req\.method === 'DELETE' && seg === 'assinatura'/, 'sumiu a rota de cancelamento');
   assert.ok(!/billing\?=?portal|billing=portal/.test(server), 'voltou o portal que aponta para a própria tela');
 
@@ -199,7 +199,7 @@ test('parear AVISA a TV, sem esperar a primeira publicação', () => {
    * no código até a primeira publicação — que pode demorar horas, ou nunca
    * vir, porque a pessoa foi embora achando que não funcionou.
    */
-  const server = soCodigo(ler('server.js'));
+  const server = soCodigo(require('./fonte-servidor.js').fonteDoServidor());
   const i = server.indexOf('db.claimDevice(');
   assert.ok(i > 0, 'sumiu o pareamento');
   assert.match(server.slice(i, i + 600), /broadcast\(d\.id, 'pareada'/,
@@ -220,4 +220,94 @@ test('a tela de "aguardando" não oferece gerar outro código', () => {
   const i = player.indexOf('function showAguardando');
   assert.match(player.slice(i, i + 1200), /reset\) reset\.classList\.add\('hidden'\)/);
   assert.match(ler('css', 'player.css'), /\.mt-pairing-reset\.hidden/, 'o CSS não esconde o botão');
+});
+
+test('VOLTAR do celular volta uma página do painel, não sai dele', () => {
+  /*
+   * A troca de página era só estado do React. No celular — onde o dono da
+   * loja mais usa o painel — o gesto de voltar saía do app inteiro, e
+   * recarregar sempre caía na visão geral.
+   */
+  const app = soCodigo(ler('web', 'src', 'App.jsx'));
+  assert.match(app, /history\.pushState\(\{ mtRota: r \}/, 'navegar não entra mais no histórico');
+  assert.match(app, /addEventListener\('popstate'/, 'ninguém escuta o voltar');
+  // Voltar até a entrada do QR não pode reabrir o pareamento de um código já usado.
+  assert.match(app, /const \{ parear, \.\.\.resto \} = r;/);
+  // Quem limpa parâmetros da URL não pode apagar a rota guardada no histórico:
+  // `replaceState({}, …)` fazia o voltar cair na visão geral.
+  for (const f of ['ScreensPage.jsx', 'BillingPage.jsx']) {
+    const src = soCodigo(ler('web', 'src', 'pages', f));
+    assert.ok(!/replaceState\(\{\}/.test(src), f + ' apaga o estado do histórico');
+  }
+});
+
+test('o passo "publique o primeiro conteúdo" abre a tela pareada', () => {
+  // Mandava para Meus Designs: a peça feita ali ainda precisava ser levada até a tela.
+  const src = soCodigo(ler('web', 'src', 'components', 'dashboard', 'PrimeirosPassos.jsx'));
+  assert.match(src, /destino: primeira \? 'content'/);
+  assert.match(src, /onIr\(p\.destino, p\.params\)/, 'o aparelho não chega ao editor');
+});
+
+test('a última edição antes de sair da tela não se perde', () => {
+  /*
+   * O salvamento automático espera 1s, e o temporizador era cancelado quando
+   * a página desmontava: editar e voltar logo em seguida perdia a edição em
+   * silêncio. Reproduzido no navegador (celular, gesto de voltar).
+   */
+  const src = soCodigo(ler('web', 'src', 'pages', 'ContentEditorPage.jsx'));
+  assert.match(src, /if \(c\) deviceConfig\.save\(device\.id, c\)/, 'desmontar não salva o que estava pendente');
+  assert.match(src, /addEventListener\('pagehide'/, 'fechar a aba perde a edição pendente');
+  assert.match(src, /keepalive: true/, 'sem keepalive o envio morre junto com a página');
+});
+
+test('editor visual no celular: palco em cima, textos da peça como campos', () => {
+  /*
+   * No celular o palco virava uma miniatura de 100px espremida ao lado do
+   * painel, e a barra de ferramentas ocupava cinco linhas. O dono não
+   * conseguia trocar um preço do cardápio pelo telefone. Visto no navegador
+   * (Pixel 7) antes e depois.
+   */
+  const src = ler('web', 'src', 'components', 'content', 'CompositionEditor.jsx');
+  assert.match(src, /flex min-h-0 flex-1 flex-col md:flex-row/, 'o palco volta a ficar espremido ao lado do painel');
+  assert.match(src, /h-\[40vh\][^"]*md:flex-1/);
+  assert.match(src, /Textos da peça/);
+  assert.match(src, /onChange=\{\(ev\) => patch\(e\.id, \{ text: ev\.target\.value \}, 'texto:' \+ e\.id\)\}/);
+  assert.match(src, /<div className="hidden md:contents">/, 'a barra do celular voltou a ter todos os botões');
+});
+
+test('apagar e descartar sem querer têm volta', () => {
+  /*
+   * Remover um conteúdo publica na hora (salvamento automático), "Cancelar"
+   * no editor visual jogava a peça fora sem perguntar, e o gesto de voltar
+   * do celular saía da página com o editor aberto. Os três vistos no
+   * navegador antes e depois.
+   */
+  const pagina = soCodigo(ler('web', 'src', 'pages', 'ContentEditorPage.jsx'));
+  assert.match(pagina, /tom: 'desfazer'[\s\S]{0,120}rotulo: 'Desfazer'/, 'remover sem "Desfazer"');
+  assert.match(pagina, /next\.zonas\[zona\]/, 'o desfazer precisa voltar para a zona de origem, não a aberta agora');
+  const editor = soCodigo(ler('web', 'src', 'components', 'content', 'CompositionEditor.jsx'));
+  assert.match(editor, /onClick=\{cancelar\}>Cancelar/);
+  assert.match(editor, /podeDesfazer\(hist\) && !window\.confirm\(/);
+  assert.match(editor, /addEventListener\('popstate', aoVoltar\)/, 'voltar com o editor aberto sai da página');
+  assert.match(editor, /!vivo\.current && !saiuPeloVoltar\.current/, 'sem esta guarda o StrictMode fecha o editor recém-aberto');
+  const avisos = ler('web', 'src', 'lib', 'avisos.js');
+  assert.match(avisos, /desfazer: \d{4,}/, 'o aviso de desfazer precisa sumir sozinho, e não rápido demais');
+});
+
+test('preço de exemplo nunca vai ao ar sozinho', () => {
+  /*
+   * O salvamento automático publica na hora. Peça nova de modelo entrava na
+   * programação ANTES de a pessoa editar, e a TV da loja mostrava os preços
+   * de exemplo ("R$ 19,90", "Café expresso R$ 6,00") — preço exibido ao
+   * público pode ter que ser honrado. Visto no navegador antes e depois.
+   */
+  const pagina = soCodigo(ler('web', 'src', 'pages', 'ContentEditorPage.jsx'));
+  const comecar = pagina.slice(pagina.indexOf('function comecarDe('), pagina.indexOf('const addSaved'));
+  assert.ok(!/mutateItems/.test(comecar), 'a peça do modelo voltou a entrar na programação antes do Salvar');
+  assert.match(comecar, /setNovaPeca\(/);
+  assert.match(pagina, /if \(novaPeca\) \{\s*mutateItems\(\(arr\) => \{ arr\.push\(it\)/, 'o Salvar não põe a peça nova na programação');
+  // A tabela de preços nasce vazia; os exemplos ficam só como dica no campo.
+  const tipos = ler('web', 'src', 'lib', 'contentTypes.js');
+  const make = tipos.slice(tipos.indexOf("type: 'precos'"), tipos.indexOf("type: 'precos'") + 200);
+  assert.match(make, /linhas: ''/);
 });

@@ -180,3 +180,77 @@ test('uma conta com falha não impede o aviso das outras', async () => {
   assert.equal(r.enviados, 1);
   assert.deepEqual(db.marcados[0].ids, ['d2']);
 });
+
+/* ---------------- Expediente ----------------
+ *
+ * O defeito: a loja desliga a TV às 22h e às 22h15 saía "Vitrine está fora
+ * do ar" — toda noite. Em uma semana o aviso vai para o lixo, e o de verdade
+ * vai junto.
+ *
+ * As datas abaixo são em Brasília (UTC−3): terça, 14/11/2023.
+ */
+const BRT = (dia, h, m) => Date.UTC(2023, 10, dia, h + 3, m || 0);
+
+test('TV desligada às 22h não vira aviso de noite', () => {
+  // Pulsou pela última vez às 22h02 de terça; varredura à meia-noite.
+  const r = V.decidir([tela({ last_seen: BRT(14, 22, 2) })], BRT(15, 0, 0));
+  assert.equal(r.length, 0);
+});
+
+test('...mas se não voltar de manhã, avisa quando o expediente começa', () => {
+  const t = tela({ last_seen: BRT(14, 22, 2) });
+  // 7h10: só 10 minutos de expediente fora do ar — ainda não.
+  assert.equal(V.decidir([t], BRT(15, 7, 10)).length, 0);
+  // 7h20: 20 minutos de expediente fora do ar — agora sim.
+  assert.equal(V.decidir([t], BRT(15, 7, 20)).length, 1);
+});
+
+test('caiu no sábado à noite: avisa segunda de manhã, e não conta o domingo', () => {
+  // Sábado 18/11 22h01 → segunda 20/11 7h20. São 33 horas de relógio, mais
+  // que a janela de 24h; em expediente, são 20 minutos.
+  const t = tela({ last_seen: BRT(18, 22, 1) });
+  assert.equal(V.decidir([t], BRT(19, 12, 0)).length, 0, 'domingo não é expediente');
+  assert.equal(V.decidir([t], BRT(20, 7, 20)).length, 1);
+});
+
+test('queda no meio do expediente continua avisando em 15 minutos', () => {
+  const t = tela({ last_seen: BRT(14, 10, 0) });
+  assert.equal(V.decidir([t], BRT(14, 10, 20)).length, 1);
+});
+
+test('alerta desligado pelo dono não avisa nunca', () => {
+  const t = tela({ last_seen: BRT(14, 10, 0), expediente: JSON.stringify({ alerta: false }) });
+  assert.equal(V.decidir([t], BRT(14, 12, 0)).length, 0);
+});
+
+test('expediente 24 horas avisa de madrugada', () => {
+  const t = tela({ last_seen: BRT(15, 2, 0), expediente: { inicio: '00:00', fim: '00:00', dias: [0, 1, 2, 3, 4, 5, 6] } });
+  assert.equal(V.decidir([t], BRT(15, 2, 20)).length, 1);
+});
+
+test('expediente que atravessa a meia-noite (bar das 18h às 2h)', () => {
+  const exp = V.normalizarExpediente({ inicio: '18:00', fim: '02:00', dias: [2] }); // terça
+  assert.equal(V.dentroDoExpediente(BRT(14, 23, 0), exp), true);
+  assert.equal(V.dentroDoExpediente(BRT(15, 1, 30), exp), true, 'madrugada de quarta é o expediente de terça');
+  assert.equal(V.dentroDoExpediente(BRT(15, 3, 0), exp), false);
+  assert.equal(V.dentroDoExpediente(BRT(15, 23, 0), exp), false, 'quarta não está nos dias');
+});
+
+test('lixo no expediente vira o padrão, e não um alerta desligado', () => {
+  const e = V.normalizarExpediente('{isto não é json');
+  assert.deepEqual(e, { ...V.EXPEDIENTE_PADRAO, dias: [...V.EXPEDIENTE_PADRAO.dias] });
+  const e2 = V.normalizarExpediente({ inicio: '99:00', fim: 'x', dias: [9, 'a', 3], fuso: 'Marte/Olimpo' });
+  assert.equal(e2.inicio, '07:00');
+  assert.equal(e2.fim, '22:00');
+  assert.deepEqual(e2.dias, [3]);
+  assert.equal(e2.fuso, 'America/Sao_Paulo');
+  assert.equal(e2.alerta, true);
+});
+
+test('caiu às 21h30 e passou das 22h: espera a manhã, não manda de noite', () => {
+  // 30 minutos de expediente fora do ar JÁ contaram — mas o aviso não sai
+  // às 23h. Sai na próxima varredura dentro do expediente.
+  const t = tela({ last_seen: BRT(14, 21, 30) });
+  assert.equal(V.decidir([t], BRT(14, 23, 0)).length, 0);
+  assert.equal(V.decidir([t], BRT(15, 7, 0)).length, 1);
+});

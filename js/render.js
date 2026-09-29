@@ -133,6 +133,7 @@
     agenda: renderAgenda,
     kpi: renderKpi,
     promo: renderPromo,
+    precos: renderPrecos,
     social: renderSocial,
     poster: renderPoster,
     composicao: renderComposicao,
@@ -1141,6 +1142,43 @@
     return { el, duration: item.duracao || 12 };
   }
 
+  /* ---------- Tabela de preços (js/precos.js lê o texto colado) ----------
+   *
+   * Colunas e corpo saem da QUANTIDADE de linhas: oito itens numa coluna com
+   * letra grande, trinta em três colunas com letra menor. Deitada ou em pé,
+   * quem escolhe é a própria zona (@container orientation em player.css) —
+   * o renderizador não sabe onde a peça vai morar.
+   */
+  function renderPrecos(item) {
+    const P = global.MTPrecos;
+    const linhas = P ? P.ler(item.linhas) : [];
+    const el = div('mt-slide mt-surface mt-precos');
+    if (item.bg) el.style.background = item.bg;
+    const inner = div('mt-precos-inner');
+    if (item.titulo) inner.appendChild(divText('mt-precos-titulo', item.titulo));
+    const lista = div('mt-precos-lista');
+    linhas.forEach(function (l) {
+      if (l.tipo === 'secao') { lista.appendChild(divText('mt-precos-secao', l.nome)); return; }
+      const row = div('mt-precos-linha');
+      row.appendChild(divText('mt-precos-nome', l.nome));
+      row.appendChild(divText('mt-precos-preco', l.preco));
+      lista.appendChild(row);
+    });
+    inner.appendChild(lista);
+    if (item.rodape) inner.appendChild(divText('mt-precos-rodape', item.rodape));
+    el.appendChild(inner);
+
+    // Arranjo para a zona deitada e para em pé; o CSS escolhe pela zona real.
+    const corpo = (m) => 'min(' + m.cqh.toFixed(2) + 'cqh, ' + m.cqw.toFixed(2) + 'cqw)';
+    const deitada = P ? P.layout(linhas, 0.6, item.colunas) : { cols: 1, cqh: 5, cqw: 3 };
+    const emPe = P ? P.layout(linhas, 1.7, item.colunas) : deitada;
+    el.style.setProperty('--cols', deitada.cols);
+    el.style.setProperty('--corpo', corpo(deitada));
+    el.style.setProperty('--cols-pe', emPe.cols);
+    el.style.setProperty('--corpo-pe', corpo(emPe));
+    return { el, duration: item.duracao || 20 };
+  }
+
   /* ---------- Redes sociais ---------- */
   const SOCIAL_ICONS = {
     instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/>',
@@ -1238,6 +1276,42 @@
    * que o editor decida igual.
    */
   const P = global.MTPeca;
+
+  /*
+   * Texto em curva: SVG do tamanho da caixa com o texto correndo sobre um
+   * arco (textPath). Uma linha só — curva com quebra de linha não se lê.
+   * `overflow: visible` porque o arco pode passar da caixa, como no Canva.
+   */
+  let seqCurva = 0;
+  function textoCurvo(e, formato) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const a = P.arcoTexto(e, formato);
+    const est = global.MTFontes.estiloTexto(e);
+    const id = 'mtcurva' + (++seqCurva);
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', a.viewBox);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.style.width = '100%'; svg.style.height = '100%'; svg.style.overflow = 'visible';
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('id', id); path.setAttribute('d', a.d); path.setAttribute('fill', 'none');
+    const txt = document.createElementNS(NS, 'text');
+    txt.setAttribute('fill', est.color || '#fff');
+    txt.setAttribute('font-size', a.fonte.toFixed(1));
+    txt.style.fontFamily = est.fontFamily; txt.style.fontWeight = est.fontWeight; txt.style.fontStyle = est.fontStyle;
+    if (est.letterSpacing) txt.style.letterSpacing = est.letterSpacing;
+    if (est.textTransform) txt.style.textTransform = est.textTransform;
+    const tp = document.createElementNS(NS, 'textPath');
+    tp.setAttribute('href', '#' + id);
+    tp.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + id); // WebView antiga de TV
+    tp.setAttribute('startOffset', '50%');
+    tp.setAttribute('text-anchor', 'middle');
+    tp.textContent = String(e.text || '').replace(/\s*\n\s*/g, ' ');
+    txt.appendChild(tp);
+    svg.appendChild(path); svg.appendChild(txt);
+    aplicarSombra(svg, e);
+    return svg;
+  }
+
   function aplicarSombra(no, e) {
     const css = P.sombraCss(e);
     if (css === 'none') return;
@@ -1334,7 +1408,11 @@
         alvo = capa;
       }
 
-      if (e.tipo === 'texto') {
+      if (e.tipo === 'texto' && P.temCurva(e)) {
+        // Texto em curva: arco de js/peca.js, o mesmo que o editor desenha.
+        if (global.MTTheme && MTTheme.familiaPeca) MTTheme.familiaPeca(MTFontes.familia(e.fonte));
+        alvo.appendChild(textoCurvo(e, item.formato));
+      } else if (e.tipo === 'texto') {
         const t = div('mt-comp-text');
         t.textContent = e.text || '';
         /*
@@ -1366,6 +1444,17 @@
         else alvo.style.borderRadius = P.raioCss(e);
         aplicarSombra(alvo, e);
         aplicarBorda(alvo, e);
+      } else if (e.tipo === 'grafico' && global.MTGraficos) {
+        // Elemento da biblioteca gráfica (js/graficos.js): um caminho preenchido.
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const at = MTGraficos.svgAtributos(e.name);
+        g.setAttribute('viewBox', at.viewBox);
+        g.setAttribute('preserveAspectRatio', at.preserveAspectRatio);
+        g.setAttribute('fill', e.cor || '#ffffff');
+        g.style.width = '100%'; g.style.height = '100%'; g.style.display = 'block';
+        g.innerHTML = MTGraficos.svgMiolo(e.name);
+        aplicarSombra(g, e);
+        alvo.appendChild(g);
       } else if (e.tipo === 'icone') {
         const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         s.setAttribute('viewBox', '0 0 24 24');
@@ -1607,8 +1696,7 @@
     return fn(item);
   }
 
-  // Metadados dos tipos, usados pelo Admin para montar formulários.
-  // "icon" referencia um ícone SVG definido no painel (js/admin.js).
+  // Metadados dos tipos (rótulo e ícone por tipo de conteúdo).
   const ITEM_TYPES = [
     { type: 'announce', label: 'Aviso Premium', icon: 'bell' },
     { type: 'text', label: 'Texto / Comunicado', icon: 'text' },

@@ -43,6 +43,25 @@ async function init() {
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_renews_at BIGINT;
+    -- Quantas telas a assinatura cobra hoje, e desde quando o pagamento está
+    -- atrasado. Ver server/cobranca.js.
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_telas INTEGER;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS atraso_desde BIGINT;
+    -- Qual lembrete de fim de teste já foi enviado. Ver server/lembretes.js.
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS lembrete_teste TEXT;
+    CREATE TABLE IF NOT EXISTS exibicoes (
+      device_id TEXT, tenant_id TEXT, hora BIGINT, zona TEXT, chave TEXT,
+      rotulo TEXT, tipo TEXT, vezes INTEGER, segundos INTEGER,
+      PRIMARY KEY (device_id, hora, zona, chave)
+    );
+    CREATE INDEX IF NOT EXISTS exibicoes_tenant_hora ON exibicoes (tenant_id, hora);
+    CREATE TABLE IF NOT EXISTS lotes_exibicao (
+      device_id TEXT, lote TEXT, em BIGINT, PRIMARY KEY (device_id, lote)
+    );
+    CREATE TABLE IF NOT EXISTS pacotes_pagos (
+      payment_id TEXT PRIMARY KEY, tenant_id TEXT, pacote TEXT, creditos INTEGER,
+      pago_em BIGINT, estornado_em BIGINT
+    );
     UPDATE tenants SET plan = 'free' WHERE plan IS NULL;
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT UNIQUE,
@@ -167,6 +186,14 @@ async function init() {
     -- tela não pulsar de novo (last_seen > isto), a queda já foi contada.
     -- Ver server/vigia.js.
     ALTER TABLE devices ADD COLUMN IF NOT EXISTS alerta_offline_em BIGINT;
+    -- Horário de funcionamento da tela e se o alerta de queda está ligado
+    -- (JSON). Nulo = o padrão de server/vigia.js.
+    ALTER TABLE devices ADD COLUMN IF NOT EXISTS expediente TEXT;
+    -- O que a TV contou de si no último pulso (modelo, resolução, versão).
+    ALTER TABLE devices ADD COLUMN IF NOT EXISTS info TEXT;
+    -- Grupo da tela ("Loja Centro"). Um rótulo, e não uma tabela: grupo é a
+    -- lista dos rótulos em uso, e renomear é um UPDATE.
+    ALTER TABLE devices ADD COLUMN IF NOT EXISTS grupo TEXT;
     CREATE TABLE IF NOT EXISTS invites (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
       invited_by TEXT, created_at BIGINT, expires_at BIGINT, accepted_at BIGINT
@@ -800,11 +827,20 @@ async function setDeviceConfig(id, configJson, name) {
   await pool.query('UPDATE devices SET config = $1, name = $2, updated_at = $3 WHERE id = $4', [configJson, name || '', Date.now(), id]);
 }
 async function renameDevice(id, name) { await pool.query('UPDATE devices SET name = $1 WHERE id = $2', [name, id]); }
+async function setGrupoDaTela(id, grupo) { await pool.query('UPDATE devices SET grupo = $1 WHERE id = $2', [grupo || null, id]); }
+async function renomearGrupo(tenantId, de, para) {
+  const r = await pool.query('UPDATE devices SET grupo = $1 WHERE tenant_id = $2 AND grupo = $3', [para || null, tenantId, de]);
+  return r.rowCount || 0;
+}
+async function setExpediente(id, json) { await pool.query('UPDATE devices SET expediente = $1 WHERE id = $2', [json, id]); }
 async function removeDevice(id) { await pool.query('DELETE FROM devices WHERE id = $1', [id]); }
-async function touchDevice(id) { await pool.query('UPDATE devices SET last_seen = $1 WHERE id = $2', [Date.now(), id]); }
+async function touchDevice(id, info) {
+  if (info) await pool.query('UPDATE devices SET last_seen = $1, info = $2 WHERE id = $3', [Date.now(), info, id]);
+  else await pool.query('UPDATE devices SET last_seen = $1 WHERE id = $2', [Date.now(), id]);
+}
 async function listDevices(tenantId) {
   const r = await pool.query(
-    'SELECT id, name, code, tenant_id, updated_at, last_seen, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = $1 ORDER BY created_at DESC',
+    'SELECT id, name, code, tenant_id, updated_at, last_seen, expediente, info, grupo, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = $1 ORDER BY created_at DESC',
     [tenantId]);
   return r.rows;
 }
@@ -822,7 +858,7 @@ async function listDevices(tenantId) {
  */
 async function telasCaidas(desde, ate) {
   const r = await pool.query(
-    `SELECT d.id, d.name, d.tenant_id, d.last_seen, d.alerta_offline_em,
+    `SELECT d.id, d.name, d.tenant_id, d.last_seen, d.alerta_offline_em, d.expediente,
             t.name AS conta,
             (SELECT u.email FROM users u WHERE u.tenant_id = d.tenant_id AND u.role = 'owner'
               ORDER BY u.created_at ASC LIMIT 1) AS email
@@ -860,6 +896,7 @@ async function setTenantBilling(id, fields) {
   const map = {
     plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
     subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
+    telasCobradas: 'plan_telas', atrasoDesde: 'atraso_desde',
   };
   const sets = [], vals = [];
   let i = 1;
@@ -867,6 +904,30 @@ async function setTenantBilling(id, fields) {
   if (!sets.length) return;
   vals.push(id);
   await pool.query('UPDATE tenants SET ' + sets.join(', ') + ' WHERE id = $' + i, vals);
+}
+/*
+ * Contas com assinatura cujo número de telas pareadas difere do que a
+ * assinatura cobra. É a lista da conciliação periódica (server/cobranca.js).
+ */
+async function contasEmTeste(desde) {
+  const r = await pool.query(`SELECT t.id, t.name, t.plan, t.created_at, t.lembrete_teste,
+      (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
+      (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = t.id) AS telas
+    FROM tenants t
+    WHERE COALESCE(t.plan, 'free') = 'free' AND t.created_at > $1`, [desde]);
+  return r.rows.map((x) => ({ ...x, created_at: Number(x.created_at), telas: Number(x.telas) }));
+}
+async function marcarLembreteTeste(id, tipo) {
+  await pool.query('UPDATE tenants SET lembrete_teste = $1 WHERE id = $2', [tipo, id]);
+}
+
+async function contasParaConciliar() {
+  const r = await pool.query(`SELECT t.id, t.plan, t.plan_status, t.plan_telas, t.stripe_subscription_id,
+      (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = t.id) AS telas
+    FROM tenants t
+    WHERE t.stripe_subscription_id IS NOT NULL AND t.stripe_subscription_id <> ''
+      AND COALESCE(t.plan_telas, -1) <> (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id)`);
+  return r.rows.map((x) => ({ ...x, telas: Number(x.telas) }));
 }
 
 /* ---------------- Mídia ---------------- */
@@ -1139,7 +1200,7 @@ async function apagarTenant(tenantId) {
     await client.query('BEGIN');
     await client.query('DELETE FROM resets WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)', [tenantId]);
     for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
     await client.query("DELETE FROM banco WHERE tenant_id = $1 AND estado <> 'aprovada'", [tenantId]);
@@ -1191,18 +1252,125 @@ async function consumeVerification(token) {
   await pool.query('UPDATE verifications SET used_at = $1 WHERE token = $2', [Date.now(), token]);
 }
 
+/*
+ * Faxina do que venceu. Roda uma vez por dia (server.js).
+ *
+ * - Tela nunca pareada e sem sinal há mais de 7 dias: toda TV que limpa o
+ *   navegador ao desligar cria uma tela nova ao religar, e a rota que cria é
+ *   pública. Sem isto a tabela só crescia. Se a TV voltar, ela recebe 404,
+ *   esquece a identidade e ganha outra — o mesmo caminho de uma TV nova.
+ * - Sessões vencidas, links de senha vencidos ou usados.
+ * - Verificações de cadastro vencidas ou usadas — que guardam o HASH DA SENHA
+ *   no payload e ficavam no banco para sempre depois de usadas.
+ */
+async function limparVencidos(agora) {
+  const t = agora || Date.now();
+  const n = async (sql, v) => (await pool.query(sql, v)).rowCount || 0;
+  return {
+    telas: await n('DELETE FROM devices WHERE tenant_id IS NULL AND COALESCE(last_seen, created_at, 0) < $1', [t - 7 * 864e5]),
+    sessoes: await n('DELETE FROM sessions WHERE expires_at < $1', [t]),
+    resets: await n('DELETE FROM resets WHERE expires_at < $1 OR used_at IS NOT NULL', [t]),
+    verificacoes: await n('DELETE FROM verifications WHERE expires_at < $1 OR used_at IS NOT NULL', [t]),
+    exibicoes: await n('DELETE FROM exibicoes WHERE hora < $1', [t - 400 * 864e5]),
+    lotes: await n('DELETE FROM lotes_exibicao WHERE em < $1', [t - 30 * 864e5]),
+  };
+}
+
+/*
+ * Pacotes de crédito pagos. A tabela é a trava de idempotência: o Asaas
+ * manda PAYMENT_CONFIRMED e PAYMENT_RECEIVED para o MESMO pagamento de
+ * cartão, e reentrega qualquer evento — sem a trava, cada entrega somaria o
+ * pacote de novo. `payment_id` é a chave; somar só acontece quando a linha
+ * nasce. O estorno segue a mesma ideia com `estornado_em`.
+ */
+async function creditarPacote(paymentId, tenantId, pacote, creditos) {
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const ins = await c.query(
+      'INSERT INTO pacotes_pagos (payment_id, tenant_id, pacote, creditos, pago_em) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (payment_id) DO NOTHING',
+      [paymentId, tenantId, pacote, creditos, Date.now()]);
+    if (ins.rowCount) {
+      // Soma no banco, e não lê-soma-grava: não perde crédito para um débito concorrente.
+      await c.query('UPDATE tenants SET creditos_comprados = COALESCE(creditos_comprados, 0) + $1 WHERE id = $2', [creditos, tenantId]);
+    }
+    await c.query('COMMIT');
+    return ins.rowCount > 0;
+  } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; }
+  finally { c.release(); }
+}
+async function estornarPacote(paymentId) {
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const r = await c.query(
+      'UPDATE pacotes_pagos SET estornado_em = $1 WHERE payment_id = $2 AND estornado_em IS NULL RETURNING tenant_id, creditos',
+      [Date.now(), paymentId]);
+    const x = r.rows[0];
+    if (x) {
+      await c.query('UPDATE tenants SET creditos_comprados = GREATEST(0, COALESCE(creditos_comprados, 0) - $1) WHERE id = $2', [x.creditos, x.tenant_id]);
+    }
+    await c.query('COMMIT');
+    return x ? Number(x.creditos) : 0;
+  } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; }
+  finally { c.release(); }
+}
+
+/*
+ * Relatório de exibição (proof-of-play). A TV agrega por hora e manda em
+ * lotes com id (js/exibicoes.js); `lotes_exibicao` é a trava que impede o
+ * mesmo lote, reenviado depois de uma resposta perdida, de contar em dobro.
+ * A soma é no banco (vezes = vezes + ?), nunca lê-soma-grava.
+ */
+async function registrarExibicoes(deviceId, tenantId, lote, itens) {
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const ins = await c.query('INSERT INTO lotes_exibicao (device_id, lote, em) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [deviceId, lote, Date.now()]);
+    if (ins.rowCount) {
+      for (const i of itens) {
+        await c.query(`INSERT INTO exibicoes (device_id, tenant_id, hora, zona, chave, rotulo, tipo, vezes, segundos)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          ON CONFLICT (device_id, hora, zona, chave)
+          DO UPDATE SET vezes = exibicoes.vezes + EXCLUDED.vezes, segundos = exibicoes.segundos + EXCLUDED.segundos, rotulo = EXCLUDED.rotulo`,
+          [deviceId, tenantId, i.hora, i.zona, i.chave, i.rotulo, i.tipo, i.vezes, i.segundos]);
+      }
+    }
+    await c.query('COMMIT');
+    return ins.rowCount > 0;
+  } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; }
+  finally { c.release(); }
+}
+async function relatorioExibicoes(tenantId, de, ate, deviceId) {
+  const f = deviceId ? ' AND e.device_id = $4' : '';
+  const v = deviceId ? [tenantId, de, ate, deviceId] : [tenantId, de, ate];
+  const porConteudo = (await pool.query(`SELECT e.chave, MAX(e.rotulo) AS rotulo, MAX(e.tipo) AS tipo,
+      SUM(e.vezes)::bigint AS vezes, SUM(e.segundos)::bigint AS segundos, COUNT(DISTINCT e.device_id)::int AS telas
+    FROM exibicoes e WHERE e.tenant_id = $1 AND e.hora >= $2 AND e.hora < $3${f}
+    GROUP BY e.chave ORDER BY SUM(e.segundos) DESC LIMIT 500`, v)).rows;
+  const porTela = (await pool.query(`SELECT e.device_id, MAX(d.name) AS nome,
+      SUM(e.vezes)::bigint AS vezes, SUM(e.segundos)::bigint AS segundos
+    FROM exibicoes e LEFT JOIN devices d ON d.id = e.device_id
+    WHERE e.tenant_id = $1 AND e.hora >= $2 AND e.hora < $3${f}
+    GROUP BY e.device_id ORDER BY SUM(e.segundos) DESC`, v)).rows;
+  const porHora = (await pool.query(`SELECT e.hora, SUM(e.vezes)::bigint AS vezes, SUM(e.segundos)::bigint AS segundos
+    FROM exibicoes e WHERE e.tenant_id = $1 AND e.hora >= $2 AND e.hora < $3${f}
+    GROUP BY e.hora ORDER BY e.hora`, v)).rows;
+  return { porConteudo, porTela, porHora };
+}
+
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
-  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification,
+  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote, registrarExibicoes, relatorioExibicoes,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, touchDevice, listDevices, countDevices,
+  renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
-  getTenant, getTenantByCustomer, setTenantBilling,
+  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,

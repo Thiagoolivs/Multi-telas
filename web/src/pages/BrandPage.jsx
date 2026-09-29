@@ -260,7 +260,7 @@ export function BrandPage() {
             </Field>
           </div>
           {cores.map((c, i) => (
-            <div key={i} className="w-32">
+            <div key={i} className="w-40">
               <Field label={i === 0 ? 'Principal' : i === 1 ? 'Acento' : 'Apoio ' + (i - 1)}>
                 <div className="flex gap-1.5">
                   <input type="color" value={c} onChange={(e) => setCor(i, e.target.value)}

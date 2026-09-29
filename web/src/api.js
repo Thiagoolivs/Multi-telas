@@ -43,8 +43,14 @@ async function api(method, path, body) {
   if (res.status === 204) return null;
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const e = new Error((data && data.error) || 'HTTP ' + res.status);
+    /*
+     * Crédito acabado e pagamento atrasado respondem 402 com `mensagem`, e
+     * não `error` (server/creditos.js). Lendo só `error`, a pessoa via
+     * "HTTP 402" no lugar de "suas telas continuam no ar".
+     */
+    const e = new Error((data && (data.error || data.mensagem)) || 'HTTP ' + res.status);
     e.status = res.status;
+    e.codigo = data && (data.erro || data.code);
     throw e;
   }
   return data;
@@ -82,6 +88,10 @@ export const devices = {
   list: () => api('GET', '/api/devices'),
   pair: (code, name) => api('POST', '/api/pair', { code: String(code || '').trim().toUpperCase(), name }),
   rename: (id, name) => api('POST', '/api/devices/' + id + '/rename', { name }),
+  expediente: (id, exp) => api('POST', '/api/devices/' + id + '/expediente', exp),
+  comando: (id, acao) => api('POST', '/api/devices/' + id + '/comando', { acao }),
+  grupo: (id, grupo) => api('POST', '/api/devices/' + id + '/grupo', { grupo }),
+  renomearGrupo: (de, para) => api('POST', '/api/grupos/renomear', { de, para }),
   /*
    * Liga esta tela do painel à TV que está mostrando `code` agora. Devolve um
    * id novo: quem fica é a TV, e é ela que herda o nome e a programação.
@@ -361,9 +371,19 @@ export const sistema = {
   diagnostico: () => api('GET', '/api/diagnostico'),
 };
 
+/* Relatório de exibição (server/routes/relatorio.js). */
+function qsRelatorio(dias, tela) {
+  return '?dias=' + encodeURIComponent(dias) + (tela ? '&tela=' + encodeURIComponent(tela) : '');
+}
+export const relatorio = {
+  get: (dias, tela) => api('GET', '/api/relatorio' + qsRelatorio(dias, tela)),
+  csvUrl: (dias, tela) => '/api/relatorio' + qsRelatorio(dias, tela) + '&formato=csv',
+};
+
 export const billing = {
   get: () => api('GET', '/api/billing'),
   checkout: (plan) => api('POST', '/api/billing/checkout', { plan }),
+  pacote: (pacote) => api('POST', '/api/billing/pacote', { pacote }),
   // O "portal" não existia: devolvia uma URL que voltava para esta mesma tela.
   // A gestão é nossa — estado da assinatura, fatura em aberto e cancelamento.
   assinatura: () => api('GET', '/api/billing/assinatura'),

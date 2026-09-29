@@ -82,6 +82,53 @@ async function asaasApi(path, params, method = 'GET') {
   return data;
 }
 
+/*
+ * O cliente da conta no Asaas: o que já existe, ou um novo — gravado ASSIM
+ * QUE NASCE, e não no retorno de quem chamou.
+ *
+ * O id do cliente só era gravado depois que o checkout inteiro voltava. Se
+ * qualquer chamada seguinte falhasse, o cliente já existia no Asaas e não
+ * existia aqui: a próxima tentativa criava OUTRO cliente e OUTRA assinatura,
+ * e o cartão passava duas vezes. Gravar antes torna a repetição inofensiva.
+ */
+async function garantirCliente(tenant, user, aoCriarCliente) {
+  if (tenant.stripe_customer_id) return tenant.stripe_customer_id; // coluna antiga, mantida por compatibilidade
+  const custRes = await asaasApi('/customers', {
+    name: tenant.name || (user && user.name) || 'Cliente',
+    email: user && user.email,
+    externalReference: tenant.id,
+  }, 'POST');
+  if (aoCriarCliente) await aoCriarCliente(custRes.id);
+  return custRes.id;
+}
+
+/*
+ * Cobrança AVULSA de um pacote de créditos.
+ *
+ * O externalReference "tenant|pacote|id" é o que o webhook usa para separar
+ * pagamento de pacote de pagamento de assinatura. Sem essa separação, o
+ * atraso ou o estorno de um pacote de R$ 39 derrubaria o plano da conta.
+ */
+async function cobrarPacote(tenant, user, pac, origin, aoCriarCliente) {
+  if (!pac || !(pac.precoCents > 0)) throw new Error('pacote inválido');
+  if (mode() === 'dev') {
+    // Sem Asaas não há fatura: quem chama credita na hora (modo simulado).
+    return { simulated: true };
+  }
+  const customer = await garantirCliente(tenant, user, aoCriarCliente);
+  const vence = new Date(Date.now() + 3 * 864e5).toISOString().split('T')[0];
+  const pag = await asaasApi('/payments', {
+    customer,
+    billingType: 'UNDEFINED',
+    value: pac.precoCents / 100,
+    dueDate: vence,
+    description: pac.creditos + ' créditos de IA — MultiTelas',
+    externalReference: tenant.id + '|pacote|' + pac.id,
+  }, 'POST');
+  if (!pag.invoiceUrl) throw new Error('o Asaas não devolveu o link da fatura — tente de novo');
+  return { url: pag.invoiceUrl, id: pag.id, customerId: customer };
+}
+
 /* ---------------- Checkout ---------------- */
 /*
  * `opcoes.telas` é quantas telas a conta tem hoje, e `opcoes.aoCriarCliente`
@@ -102,26 +149,8 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
     return { url: origin + '/api/billing/dev-checkout?plan=' + encodeURIComponent(planId), simulated: true };
   }
 
-  let customerId = tenant.stripe_customer_id; // mantemos a coluna antiga p/ compatibilidade
-
-  if (!customerId) {
-    const custRes = await asaasApi('/customers', {
-      name: tenant.name || user.name || 'Cliente',
-      email: user.email,
-      externalReference: tenant.id,
-    }, 'POST');
-    customerId = custRes.id;
-    /*
-     * GRAVA AGORA, e não no retorno.
-     *
-     * O id do cliente só era gravado depois que a função inteira voltava. Se
-     * qualquer chamada seguinte falhasse — e a busca da fatura falha fácil,
-     * ver abaixo —, o cliente já existia no Asaas e não existia aqui: a
-     * próxima tentativa criava OUTRO cliente e OUTRA assinatura, e o cartão
-     * passava duas vezes. Gravar antes torna a repetição inofensiva.
-     */
-    if (o.aoCriarCliente) await o.aoCriarCliente(customerId);
-  }
+  // Gravado assim que nasce — ver garantirCliente.
+  const customerId = await garantirCliente(tenant, user, o.aoCriarCliente);
 
   /*
    * ASSINATURA JÁ ABERTA É REAPROVEITADA.
@@ -266,6 +295,35 @@ async function cancelarAssinatura(tenant) {
   return { cancelada: true, id: subId };
 }
 
+/*
+ * Muda o valor da assinatura que já existe — é o que acontece quando a conta
+ * pareia ou remove uma tela (ver server/cobranca.js).
+ *
+ * `updatePendingPayments` leva o valor novo também para a fatura já gerada e
+ * ainda não paga: sem ele, a próxima cobrança sairia com o valor velho e só a
+ * seguinte acertaria. Não há proração no meio do ciclo — a tela nova entra na
+ * próxima fatura, que é o que o cliente entende como "por mês".
+ */
+async function atualizarValor(subId, planId, valor) {
+  if (mode() === 'dev') return { simulado: true };
+  if (!subId) throw new Error('sem assinatura para atualizar');
+  const p = plan(planId);
+  return asaasApi('/subscriptions/' + encodeURIComponent(subId), {
+    value: valor,
+    description: 'Assinatura do Plano ' + p.name,
+    updatePendingPayments: true,
+  }, 'POST');
+}
+
+/* Quantas faturas desta assinatura seguem vencidas (0 se não der para saber). */
+async function faturasVencidas(subId) {
+  if (mode() === 'dev' || !subId) return 0;
+  try {
+    const r = await asaasApi('/payments', { subscription: subId, status: 'OVERDUE', limit: 1 });
+    return Number(r.totalCount) || (r.data || []).length || 0;
+  } catch (e) { return 0; }
+}
+
 /* ---------------- Webhook ---------------- */
 function verifyWebhook(rawBody, authHeader) {
   if (!WEBHOOK_TOKEN) throw new Error('ASAAS_WEBHOOK_TOKEN ausente');
@@ -299,4 +357,4 @@ function planIdFromPrice(priceId) {
   return null; 
 }
 
-module.exports = { mode, createCheckout, assinatura, cancelarAssinatura, verifyWebhook, planIdFromPrice, asaasApi };
+module.exports = { mode, createCheckout, cobrarPacote, faturasVencidas, garantirCliente, assinatura, cancelarAssinatura, atualizarValor, verifyWebhook, planIdFromPrice, asaasApi };

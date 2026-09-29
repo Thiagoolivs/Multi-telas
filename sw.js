@@ -13,7 +13,7 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v12';
+const SHELL_CACHE = 'mt-shell-v30';
 const MEDIA_CACHE = 'mt-media-v1';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
@@ -27,7 +27,7 @@ const SHELL_ASSETS = [
   '/player.html', '/css/player.css', '/js/vendor/gsap.min.js',
   '/css/animacao.css', '/js/perf.js', '/js/cor.js', '/js/fontes.js', '/js/peca.js', '/js/animacao.js', '/js/datas-br.js',
   '/js/templates.js', '/js/theme.js', '/js/seasons.js', '/js/adaptive.js',
-  '/js/storage.js', '/js/news.js', '/js/render.js', '/js/cloud.js', '/js/player.js',
+  '/js/storage.js', '/js/news.js', '/js/graficos.js', '/js/precos.js', '/js/render.js', '/js/exibicoes.js', '/js/cloud.js', '/js/player.js',
   '/js/boot.js',
   // Instalável: sem o manifesto e o ícone no cache, uma TV que reiniciasse
   // sem rede abriria como página comum, sem a identidade do app instalado.
@@ -98,6 +98,22 @@ self.addEventListener('fetch', (event) => {
      * a TV subia mostrando a página de login em vez do conteúdo da parede — e
      * não havia nada na TV que explicasse por quê.
      */
+    /*
+     * `/tv` é o endereço que se digita na TV e o que o app Android abre ao
+     * ligar. O servidor só redireciona para o player; sem rede, esse
+     * redirecionamento não existia e a TV mostrava a página de erro do
+     * navegador — no boot depois de uma queda de energia, quando o box sobe
+     * antes do roteador. Aqui o redirecionamento acontece mesmo sem rede, e o
+     * player sobe do cache com a última programação.
+     */
+    if (url.pathname === '/tv' || url.pathname === '/tv/') {
+      // Erro 5xx conta como "sem servidor": durante um deploy o Railway
+      // responde 502 por alguns segundos, e a TV que recarregasse nessa hora
+      // ficaria na página de erro dele em vez da programação guardada.
+      const paraOPlayer = () => Response.redirect('/player.html?cloud=1', 302);
+      event.respondWith(fetch(req).then((res) => (res && res.status >= 500 ? paraOPlayer() : res)).catch(paraOPlayer));
+      return;
+    }
     if (url.pathname !== '/player.html') return;
     event.respondWith(navigation(req));
     return;
@@ -110,6 +126,12 @@ async function navigation(req) {
   try {
     const res = await fetch(req);
     if (res && res.ok) cache.put('/player.html', res.clone());
+    // Servidor de pé mas com erro (deploy, 502): a cópia guardada é melhor
+    // que a página de erro na parede do cliente.
+    if (res && res.status >= 500) {
+      const guardado = (await cache.match(req, { ignoreSearch: true })) || (await cache.match('/player.html'));
+      if (guardado) return guardado;
+    }
     return res;
   } catch (e) {
     return (await cache.match(req, { ignoreSearch: true })) || (await cache.match('/player.html')) || Response.error();

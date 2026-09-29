@@ -29,6 +29,7 @@ class RespostaFalsa {
     this.headers = (init && init.headers) || {};
   }
   get ok() { return this.status >= 200 && this.status < 300; }
+  static redirect(url, status) { return new RespostaFalsa('', { status: status || 302, headers: { Location: url } }); }
   clone() { return new RespostaFalsa(this.corpo, { status: this.status }); }
   async text() { return this.corpo; }
   async json() { return JSON.parse(this.corpo); }
@@ -98,7 +99,7 @@ function carregar(arquivo, servidor) {
     rede.push(caminho);
     const r = servidor(caminho);
     if (r == null) throw new TypeError('Failed to fetch');
-    return new RespostaFalsa(r);
+    return r instanceof RespostaFalsa ? r : new RespostaFalsa(r);
   };
 
   const self_ = {
@@ -289,6 +290,45 @@ test('TV: sem rede, o player sobe do cache', async () => {
   const res = await caiu.pedir('/player.html?cloud=1', { mode: 'navigate' });
   assert.ok(res, 'a TV ficaria sem página');
   assert.match(await res.text(), /player\.html/);
+});
+
+test('TV: /tv sem rede leva ao player do cache (o boot do app Android)', async () => {
+  /*
+   * O app abre /tv ao ligar, e /tv é um redirecionamento do servidor. Sem
+   * rede — o box sobe antes do roteador depois de uma queda de energia — a TV
+   * mostrava a página de erro do navegador em vez da última programação.
+   * Reproduzido no Chromium antes da correção.
+   */
+  const w = carregar('sw.js', servidorPadrao);
+  await w.instalar();
+  const caiu = carregar('sw.js', () => null);
+  for (const [nome, caixa] of w.caixas) caiu.caixas.set(nome, caixa);
+  for (const caminho of ['/tv', '/tv/']) {
+    const res = await caiu.pedir(caminho, { mode: 'navigate' });
+    assert.ok(res, caminho + ': a TV ficaria na página de erro');
+    assert.equal(res.status, 302);
+    assert.equal(res.headers.Location, '/player.html?cloud=1');
+  }
+});
+
+test('TV: servidor respondendo 502 (deploy) conta como sem servidor', async () => {
+  const w = carregar('sw.js', servidorPadrao);
+  await w.instalar();
+  const deploy = carregar('sw.js', (c) => new RespostaFalsa('Application failed to respond', { status: 502 }));
+  for (const [nome, caixa] of w.caixas) deploy.caixas.set(nome, caixa);
+  const tv = await deploy.pedir('/tv', { mode: 'navigate' });
+  assert.equal(tv.status, 302, '/tv com 502 ficaria na página de erro');
+  const player = await deploy.pedir('/player.html', { mode: 'navigate' });
+  assert.equal(player.status, 200);
+  assert.match(await player.text(), /player\.html/, 'o player com 502 ficaria na página de erro');
+});
+
+test('TV: com rede, /tv continua sendo do servidor', async () => {
+  const w = carregar('sw.js', (c) => (c === '/tv' ? 'do servidor' : servidorPadrao(c)));
+  await w.instalar();
+  // Passar direto (null) ou devolver a resposta da rede: os dois são do servidor.
+  const res = await w.pedir('/tv', { mode: 'navigate' });
+  assert.ok(!res || (res.status === 200 && (await res.text()) === 'do servidor'), 'redirecionou mesmo com rede');
 });
 
 test('TV: os pacotes do painel não entram no cache da TV', async () => {

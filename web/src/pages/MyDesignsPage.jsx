@@ -887,6 +887,22 @@ export function MyDesignsPage({ onIr }) {
                       {alvos.length === screens.length ? 'limpar' : 'todas'}
                     </button>
                   </div>
+                  {/* Grupo inteiro de uma vez: marca (ou desmarca) todas as telas dele. */}
+                  {Array.from(new Set(screens.map((s) => s.grupo).filter(Boolean))).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {Array.from(new Set(screens.map((s) => s.grupo).filter(Boolean))).sort().map((g) => {
+                        const ids = screens.filter((s) => s.grupo === g).map((s) => s.id);
+                        const todos = ids.every((id) => alvos.includes(id));
+                        return (
+                          <button key={g} type="button"
+                            onClick={() => setAlvos((a) => (todos ? a.filter((x) => !ids.includes(x)) : Array.from(new Set(a.concat(ids)))))}
+                            className={'rounded-full border px-2.5 py-0.5 text-xs transition ' + (todos ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink-3 hover:text-ink')}>
+                            {g} · {ids.length}{todos && ' ✓'}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
                     {screens.map((s) => {
                       const on = alvos.includes(s.id);
@@ -895,6 +911,7 @@ export function MyDesignsPage({ onIr }) {
                           className={'flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ' + (on ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink-2 hover:bg-surface-2')}>
                           <MonitorPlay size={16} className={on ? 'text-accent' : 'text-ink-3'} />
                           <span className="flex-1 truncate">{s.name || s.code || s.id}</span>
+                          {s.grupo && <span className="shrink-0 text-2xs text-ink-3">{s.grupo}</span>}
                           {on && <Check size={15} className="text-accent" />}
                         </button>
                       );

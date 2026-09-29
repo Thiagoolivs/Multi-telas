@@ -36,6 +36,12 @@ async function garantirCiclo(db, tenant) {
   const atual = (await db.getCreditos(tenant.id)) || { franquiaRestante: 0, creditosComprados: 0, cicloEm: 0 };
   const agora = Date.now();
   if (atual.cicloEm && agora - atual.cicloEm < MES) return atual;
+  /*
+   * Atraso além da carência: a franquia NÃO repõe. Sem isto, quem parou de
+   * pagar recebia crédito novo todo mês, para sempre. O ciclo não anda, então
+   * no dia em que pagar a reposição acontece na próxima chamada.
+   */
+  if (atual.cicloEm && plans.bloqueioPorAtraso(tenant, agora)) return atual;
 
   const telas = await db.countDevices(tenant.id);
   const franquia = plans.franquiaCreditos(tenant.plan, Math.max(1, telas));
@@ -61,6 +67,7 @@ async function garantirCiclo(db, tenant) {
 async function conferir(db, tenant, tipo, quantidade) {
   const precisa = cred.creditosDe(tipo, quantidade);
   if (precisa === 0) return { ok: true, precisa: 0 };
+  if (plans.bloqueioPorAtraso(tenant)) return { ok: false, precisa, resposta: cred.pagamentoAtrasado() };
 
   const conta = await garantirCiclo(db, tenant);
   const s = cred.saldo(conta);

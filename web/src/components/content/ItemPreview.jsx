@@ -1,9 +1,12 @@
 import React from 'react';
 import { Youtube, Globe, QrCode, CloudSun, Image as ImageIcon, Share2, Film, Cake, Airplay, Cast, Presentation } from 'lucide-react';
 import { fillToCss, shapeClip, SHAPE_POLY, estiloCaixa, raioCss, estiloFundo, tintaImagem } from '../../lib/composition.js';
+import { TextoCurvo, GraficoSvg } from './PecaExtras.jsx';
+import { temCurva } from '../../lib/composition.js';
 import { estiloTexto, carregarDaComposicao } from '../../lib/fontes.js';
 import { ICONS } from '../../lib/icons.js';
 import { murais } from '../../api.js';
+import '../../../../js/precos.js';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
 // Fidelidade total virá de um preview via player embutido, adiante.
@@ -68,6 +71,21 @@ function Body({ item }) {
           </div>
         </div>
       );
+    case 'precos': {
+      const P = globalThis.MTPrecos;
+      const linhas = P ? P.ler(item.linhas) : [];
+      return (
+        <div className="flex h-full w-full flex-col justify-center gap-1 px-2 text-left">
+          {item.titulo && <div className="text-xs font-extrabold uppercase tracking-wide text-sky-300">{item.titulo}</div>}
+          <div className="columns-2 gap-3 text-[9px] leading-tight">
+            {linhas.slice(0, 12).map((l, i) => (l.tipo === 'secao'
+              ? <div key={i} className="break-inside-avoid pt-1 font-bold uppercase opacity-60">{l.nome}</div>
+              : <div key={i} className="flex break-inside-avoid justify-between gap-1 border-b border-white/10 py-0.5"><span className="truncate">{l.nome}</span><span className="font-bold text-sky-300">{l.preco}</span></div>))}
+          </div>
+          {linhas.length > 12 && <div className="text-[9px] opacity-50">+ {linhas.length - 12} linha(s)</div>}
+        </div>
+      );
+    }
     case 'kpi':
       return (
         <div className="flex h-full flex-col items-center justify-center gap-0.5">
@@ -118,7 +136,11 @@ function Body({ item }) {
         <div className="relative h-full w-full" style={{ ...bgStyle, containerType: 'inline-size' }}>
           {els.map((e, idx) => (
             <div key={idx} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden', ...((tintaImagem(e.tint) || {}).pai || {}) }}>
-              {e.tipo === 'texto'
+              {e.tipo === 'texto' && temCurva(e)
+              ? <TextoCurvo el={e} formato={item.formato} />
+              : e.tipo === 'grafico'
+              ? <GraficoSvg el={e} estilo={estiloCaixa(e)} />
+              : e.tipo === 'texto'
                 ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', ...estiloTexto(e), ...estiloCaixa(e), fontSize: '9px', whiteSpace: 'pre-wrap' }}>{e.text}</div>
                 : e.tipo === 'icone'
                   ? <svg viewBox="0 0 24 24" fill="none" stroke={e.cor || '#fff'} strokeWidth={e.peso || 1.6} strokeLinecap="round" strokeLinejoin="round" style={{ width: '100%', height: '100%' }} dangerouslySetInnerHTML={{ __html: ICONS[e.name] || ICONS.star }} />

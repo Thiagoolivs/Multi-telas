@@ -15,6 +15,15 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
+
+/*
+ * Banco próprio, num diretório temporário. No banco de desenvolvimento a fila
+ * de moderação acumula a cada execução, e depois de uma centena de rodadas a
+ * consulta (mais antigos primeiro, limite 100) já não alcançava o item recém-
+ * oferecido: o teste falhava sem defeito nenhum no código.
+ */
+process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-banco-'));
 
 const db = require('../server/db-sqlite.js');
 const banco = require('../server/banco.js');

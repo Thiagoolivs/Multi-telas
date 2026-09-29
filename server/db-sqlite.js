@@ -396,11 +396,22 @@ garantirColuna('devices', 'last_seen INTEGER');
 // é o que impede o mesmo aviso de sair a cada varredura: enquanto a tela não
 // pulsar de novo (last_seen > isto), a queda já foi contada. Ver server/vigia.js.
 garantirColuna('devices', 'alerta_offline_em INTEGER');
+// Horário de funcionamento e alerta ligado/desligado (JSON; nulo = padrão).
+garantirColuna('devices', 'expediente TEXT');
+// O que a TV contou de si no último pulso (modelo, resolução, versão).
+garantirColuna('devices', 'info TEXT');
+// Grupo da tela ("Loja Centro"): um rótulo; grupo é a lista dos rótulos em uso.
+garantirColuna('devices', 'grupo TEXT');
 for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER',
   // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
   // expira). `creditos_ciclo` guarda quando a franquia foi reposta pela
   // última vez, para a reposição acontecer sozinha na virada do mês.
-  'creditos_franquia INTEGER', 'creditos_comprados INTEGER', 'creditos_ciclo INTEGER']) {
+  'creditos_franquia INTEGER', 'creditos_comprados INTEGER', 'creditos_ciclo INTEGER',
+  // Quantas telas a assinatura do Asaas está cobrando hoje, e desde quando a
+  // conta está com pagamento atrasado. Ver server/cobranca.js.
+  'plan_telas INTEGER', 'atraso_desde INTEGER',
+  // Qual lembrete de fim de teste já foi enviado ('2d' ou 'fim'). Ver server/lembretes.js.
+  'lembrete_teste TEXT']) {
   garantirColuna('tenants', col);
 }
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
@@ -443,9 +454,11 @@ const q = {
   claimDevice: db.prepare('UPDATE devices SET tenant_id = ?, name = ? WHERE id = ?'),
   setConfig: db.prepare('UPDATE devices SET config = ?, name = ?, updated_at = ? WHERE id = ?'),
   renameDevice: db.prepare('UPDATE devices SET name = ? WHERE id = ?'),
+  setExpediente: db.prepare('UPDATE devices SET expediente = ? WHERE id = ?'),
   deleteDevice: db.prepare('DELETE FROM devices WHERE id = ?'),
   touchDevice: db.prepare('UPDATE devices SET last_seen = ? WHERE id = ?'),
-  listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
+  touchDeviceInfo: db.prepare('UPDATE devices SET last_seen = ?, info = ? WHERE id = ?'),
+  listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, expediente, info, grupo, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
   /*
    * Telas caídas com o e-mail de quem precisa saber.
    *
@@ -457,7 +470,7 @@ const q = {
    * O corte por tempo repete o que server/vigia.js decide, para não ler a
    * frota inteira a cada cinco minutos. Quem manda continua sendo o vigia.
    */
-  telasCaidas: db.prepare(`SELECT d.id, d.name, d.tenant_id, d.last_seen, d.alerta_offline_em,
+  telasCaidas: db.prepare(`SELECT d.id, d.name, d.tenant_id, d.last_seen, d.alerta_offline_em, d.expediente,
            t.name AS conta,
            (SELECT u.email FROM users u WHERE u.tenant_id = d.tenant_id AND u.role = 'owner'
              ORDER BY u.created_at ASC LIMIT 1) AS email
@@ -561,7 +574,7 @@ async function acceptInvite(id) { q.acceptInvite.run(Date.now(), id); }
  * senha" era pior, porque ele existe justamente para recuperar conta
  * comprometida.
  */
-async function destroySessionsOfUser(userId) { Q.deleteSessionsOfUser.run(userId); }
+async function destroySessionsOfUser(userId) { q.deleteSessionsOfUser.run(userId); }
 
 async function createSession(token, userId, tenantId, expiresAt) {
   q.insertSession.run(token, userId, tenantId, expiresAt);
@@ -599,8 +612,16 @@ async function getDeviceByCode(code) { return q.deviceByCode.get(String(code || 
 async function claimDevice(id, tenantId, name) { q.claimDevice.run(tenantId, name || '', id); }
 async function setDeviceConfig(id, configJson, name) { q.setConfig.run(configJson, name || '', Date.now(), id); }
 async function renameDevice(id, name) { q.renameDevice.run(name, id); }
+async function setExpediente(id, json) { q.setExpediente.run(json, id); }
+async function setGrupoDaTela(id, grupo) { db.prepare('UPDATE devices SET grupo = ? WHERE id = ?').run(grupo || null, id); }
+async function renomearGrupo(tenantId, de, para) {
+  return Number(db.prepare('UPDATE devices SET grupo = ? WHERE tenant_id = ? AND grupo = ?').run(para || null, tenantId, de).changes) || 0;
+}
 async function removeDevice(id) { q.deleteDevice.run(id); }
-async function touchDevice(id) { q.touchDevice.run(Date.now(), id); }
+async function touchDevice(id, info) {
+  if (info) q.touchDeviceInfo.run(Date.now(), info, id);
+  else q.touchDevice.run(Date.now(), id);
+}
 async function listDevices(tenantId) { return q.listByTenant.all(tenantId); }
 async function telasCaidas(desde, ate) { return q.telasCaidas.all(ate, desde); }
 async function marcarAlertaOffline(ids, quando) {
@@ -655,12 +676,38 @@ async function setTenantBilling(id, fields) {
   const map = {
     plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
     subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
+    telasCobradas: 'plan_telas', atrasoDesde: 'atraso_desde',
   };
   const sets = [], vals = [];
   for (const k of Object.keys(map)) if (k in fields && fields[k] !== undefined) { sets.push(map[k] + ' = ?'); vals.push(fields[k]); }
   if (!sets.length) return;
   vals.push(id);
   db.prepare('UPDATE tenants SET ' + sets.join(', ') + ' WHERE id = ?').run(...vals);
+}
+/*
+ * Contas com assinatura cujo número de telas pareadas difere do que a
+ * assinatura cobra. É a lista da conciliação periódica (server/cobranca.js).
+ */
+/* Contas no plano grátis nascidas depois de `desde`, com o e-mail do dono e quantas telas têm. */
+async function contasEmTeste(desde) {
+  return db.prepare(`SELECT t.id, t.name, t.plan, t.created_at, t.lembrete_teste,
+      (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas
+    FROM tenants t
+    WHERE COALESCE(t.plan, 'free') = 'free' AND t.created_at > ?`).all(desde)
+    .map((r) => ({ ...r, created_at: Number(r.created_at), telas: Number(r.telas) }));
+}
+async function marcarLembreteTeste(id, tipo) {
+  db.prepare('UPDATE tenants SET lembrete_teste = ? WHERE id = ?').run(tipo, id);
+}
+
+async function contasParaConciliar() {
+  return db.prepare(`SELECT t.id, t.plan, t.plan_status, t.plan_telas, t.stripe_subscription_id,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas
+    FROM tenants t
+    WHERE t.stripe_subscription_id IS NOT NULL AND t.stripe_subscription_id <> ''
+      AND COALESCE(t.plan_telas, -1) <> (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id)`).all()
+    .map((r) => ({ ...r, telas: Number(r.telas) }));
 }
 
 /* ---------------- Mídia ---------------- */
@@ -1216,7 +1263,7 @@ async function apagarTenant(tenantId) {
   try {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }
     db.prepare("DELETE FROM banco WHERE tenant_id = ? AND estado <> 'aprovada'").run(tenantId);
@@ -1279,18 +1326,125 @@ async function consumeVerification(token) {
   qVerif.use.run(Date.now(), token);
 }
 
+/*
+ * Faxina do que venceu. Roda uma vez por dia (server.js).
+ *
+ * - Tela nunca pareada e sem sinal há mais de 7 dias: toda TV que limpa o
+ *   navegador ao desligar cria uma tela nova ao religar, e a rota que cria é
+ *   pública. Sem isto a tabela só crescia. Se a TV voltar, ela recebe 404,
+ *   esquece a identidade e ganha outra — o mesmo caminho de uma TV nova.
+ * - Sessões vencidas, links de senha vencidos ou usados.
+ * - Verificações de cadastro vencidas ou usadas — que guardam o HASH DA SENHA
+ *   no payload e ficavam no banco para sempre depois de usadas.
+ */
+async function limparVencidos(agora) {
+  const t = agora || Date.now();
+  const r = {
+    telas: db.prepare('DELETE FROM devices WHERE tenant_id IS NULL AND COALESCE(last_seen, created_at, 0) < ?').run(t - 7 * 864e5).changes,
+    sessoes: db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(t).changes,
+    resets: db.prepare('DELETE FROM resets WHERE expires_at < ? OR used_at IS NOT NULL').run(t).changes,
+    verificacoes: db.prepare('DELETE FROM verifications WHERE expires_at < ? OR used_at IS NOT NULL').run(t).changes,
+    exibicoes: db.prepare('DELETE FROM exibicoes WHERE hora < ?').run(t - 400 * 864e5).changes,
+    lotes: db.prepare('DELETE FROM lotes_exibicao WHERE em < ?').run(t - 30 * 864e5).changes,
+  };
+  for (const k of Object.keys(r)) r[k] = Number(r[k]) || 0;
+  return r;
+}
+
+/*
+ * Pacotes de crédito pagos. A tabela é a trava de idempotência: o Asaas
+ * manda PAYMENT_CONFIRMED e PAYMENT_RECEIVED para o MESMO pagamento de
+ * cartão, e reentrega qualquer evento — sem a trava, cada entrega somaria o
+ * pacote de novo. `payment_id` é a chave; somar só acontece quando a linha
+ * nasce. O estorno segue a mesma ideia com `estornado_em`.
+ */
+db.exec(`CREATE TABLE IF NOT EXISTS exibicoes (
+  device_id TEXT, tenant_id TEXT, hora INTEGER, zona TEXT, chave TEXT,
+  rotulo TEXT, tipo TEXT, vezes INTEGER, segundos INTEGER,
+  PRIMARY KEY (device_id, hora, zona, chave)
+);
+CREATE INDEX IF NOT EXISTS exibicoes_tenant_hora ON exibicoes (tenant_id, hora);
+CREATE TABLE IF NOT EXISTS lotes_exibicao (
+  device_id TEXT, lote TEXT, em INTEGER, PRIMARY KEY (device_id, lote)
+);`);
+db.exec(`CREATE TABLE IF NOT EXISTS pacotes_pagos (
+  payment_id TEXT PRIMARY KEY, tenant_id TEXT, pacote TEXT, creditos INTEGER,
+  pago_em INTEGER, estornado_em INTEGER
+);`);
+/*
+ * Relatório de exibição (proof-of-play). A TV agrega por hora e manda em
+ * lotes com id (js/exibicoes.js); `lotes_exibicao` é a trava que impede o
+ * mesmo lote, reenviado depois de uma resposta perdida, de contar em dobro.
+ * A soma é no banco (vezes = vezes + ?), nunca lê-soma-grava.
+ */
+async function registrarExibicoes(deviceId, tenantId, lote, itens) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const ins = db.prepare('INSERT OR IGNORE INTO lotes_exibicao (device_id, lote, em) VALUES (?, ?, ?)').run(deviceId, lote, Date.now());
+    if (ins.changes) {
+      const up = db.prepare(`INSERT INTO exibicoes (device_id, tenant_id, hora, zona, chave, rotulo, tipo, vezes, segundos)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (device_id, hora, zona, chave)
+        DO UPDATE SET vezes = vezes + excluded.vezes, segundos = segundos + excluded.segundos, rotulo = excluded.rotulo`);
+      for (const i of itens) up.run(deviceId, tenantId, i.hora, i.zona, i.chave, i.rotulo, i.tipo, i.vezes, i.segundos);
+    }
+    db.exec('COMMIT');
+    return ins.changes > 0;
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+}
+async function relatorioExibicoes(tenantId, de, ate, deviceId) {
+  const f = deviceId ? ' AND e.device_id = ?' : '';
+  const v = deviceId ? [tenantId, de, ate, deviceId] : [tenantId, de, ate];
+  const porConteudo = db.prepare(`SELECT e.chave, MAX(e.rotulo) AS rotulo, MAX(e.tipo) AS tipo,
+      SUM(e.vezes) AS vezes, SUM(e.segundos) AS segundos, COUNT(DISTINCT e.device_id) AS telas
+    FROM exibicoes e WHERE e.tenant_id = ? AND e.hora >= ? AND e.hora < ?${f}
+    GROUP BY e.chave ORDER BY SUM(e.segundos) DESC LIMIT 500`).all(...v);
+  const porTela = db.prepare(`SELECT e.device_id, MAX(d.name) AS nome, SUM(e.vezes) AS vezes, SUM(e.segundos) AS segundos
+    FROM exibicoes e LEFT JOIN devices d ON d.id = e.device_id
+    WHERE e.tenant_id = ? AND e.hora >= ? AND e.hora < ?${f}
+    GROUP BY e.device_id ORDER BY SUM(e.segundos) DESC`).all(...v);
+  const porHora = db.prepare(`SELECT e.hora, SUM(e.vezes) AS vezes, SUM(e.segundos) AS segundos
+    FROM exibicoes e WHERE e.tenant_id = ? AND e.hora >= ? AND e.hora < ?${f}
+    GROUP BY e.hora ORDER BY e.hora`).all(...v);
+  return { porConteudo, porTela, porHora };
+}
+async function creditarPacote(paymentId, tenantId, pacote, creditos) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const ins = db.prepare('INSERT OR IGNORE INTO pacotes_pagos (payment_id, tenant_id, pacote, creditos, pago_em) VALUES (?, ?, ?, ?, ?)')
+      .run(paymentId, tenantId, pacote, creditos, Date.now());
+    if (ins.changes) {
+      db.prepare('UPDATE tenants SET creditos_comprados = COALESCE(creditos_comprados, 0) + ? WHERE id = ?').run(creditos, tenantId);
+    }
+    db.exec('COMMIT');
+    return ins.changes > 0;
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+}
+async function estornarPacote(paymentId) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const x = db.prepare('SELECT tenant_id, creditos FROM pacotes_pagos WHERE payment_id = ? AND estornado_em IS NULL').get(paymentId);
+    if (x) {
+      db.prepare('UPDATE pacotes_pagos SET estornado_em = ? WHERE payment_id = ?').run(Date.now(), paymentId);
+      db.prepare('UPDATE tenants SET creditos_comprados = MAX(0, COALESCE(creditos_comprados, 0) - ?) WHERE id = ?').run(x.creditos, x.tenant_id);
+    }
+    db.exec('COMMIT');
+    return x ? Number(x.creditos) : 0;
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+}
+
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
-  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification,
+  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote, registrarExibicoes, relatorioExibicoes,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, touchDevice, listDevices, countDevices,
+  renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
-  getTenant, getTenantByCustomer, setTenantBilling,
+  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,

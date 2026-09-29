@@ -10,8 +10,9 @@
  * quanto tempo o ciclo dura e o que está errado. Nenhuma decisão é tomada por
  * este arquivo; ele só descreve. Consertar continua sendo escolha do usuário.
  */
-import { zonesOf, getLayout } from './screenConfig.js';
+import { zonesOf, getLayout, THEME_PRESETS } from './screenConfig.js';
 import { typeLabel } from './contentTypes.js';
+import { zonaSoComHorario } from './agenda.js';
 
 // Duração de um item na tela. 0 significa "fica fixo" — para efeito de ciclo,
 // um item fixo prende a zona e a rotação deixa de existir.
@@ -47,8 +48,11 @@ export function origemDoTema(settings) {
   const ov = t.overrides || {};
   const mexeuAMao = Object.keys(ov).length > 0;
   if (t.preset === 'marca') return { chave: 'marca', texto: 'as cores da sua Marca', mexeuAMao };
-  if (t.aplicarMarca) return { chave: 'marca-tingida', texto: `o tema ${t.preset} com as cores da sua Marca`, mexeuAMao };
-  return { chave: 'preset', texto: `o tema ${t.preset || 'padrão'}`, mexeuAMao };
+  // O nome que aparece em Ajustes, não o id interno ("dark-premium").
+  const p = THEME_PRESETS.find((x) => x.value === t.preset);
+  const nome = p ? p.label : (t.preset || 'padrão');
+  if (t.aplicarMarca) return { chave: 'marca-tingida', texto: `o tema ${nome} com as cores da sua Marca`, mexeuAMao };
+  return { chave: 'preset', texto: `o tema ${nome}`, mexeuAMao };
 }
 
 /*
@@ -59,8 +63,11 @@ export function origemDoTema(settings) {
 function problemasDaZona(zona, itens, ciclo) {
   const p = [];
   if (!itens.length) {
-    p.push({ nivel: 'aviso', texto: `${zona.name} está vazia — a TV mostra "Sem conteúdo" nesse espaço` });
+    p.push({ nivel: 'aviso', texto: `${zona.name} está vazia — a TV mostra só um relógio nesse espaço` });
     return p;
+  }
+  if (zonaSoComHorario(itens)) {
+    p.push({ nivel: 'dica', texto: `${zona.name}: todos os conteúdos têm horário — fora deles a TV mostra só o relógio. Deixe um sem horário para cobrir o resto do dia.` });
   }
   const fixo = itens.find((i) => duracaoDe(i) === 0);
   if (fixo && itens.length > 1) {
@@ -116,7 +123,7 @@ export function digest(cfg, ratios) {
           : `${msgs} aviso(s) fixo(s)`,
         ciclo: 0, itens: msgs, origens: {},
       });
-      if (!feeds && !msgs) problemas.push({ nivel: 'aviso', texto: `${z.name} não tem nem notícia nem aviso` });
+      if (!feeds && !msgs) problemas.push({ nivel: 'aviso', texto: `${z.name} não tem notícia nem aviso — a faixa mostra só a data de hoje` });
       return;
     }
     if (z.type === 'header') {

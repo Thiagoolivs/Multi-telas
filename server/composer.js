@@ -13,7 +13,8 @@ const fontMetrics = require('./font-metrics');
 const fontes = require('../js/fontes.js');
 const peca = require('../js/peca.js');
 
-const TIPOS = ['texto', 'forma', 'icone', 'imagem'];
+const TIPOS = ['texto', 'forma', 'icone', 'grafico', 'imagem'];
+const graficos = require('../js/graficos.js');
 const PAPEIS = ['kicker', 'headline', 'display', 'sub', 'cta', 'fundo', 'destaque', 'decor', 'logo', 'imagem', 'legal'];
 
 /* ---------------- Saneamento de um elemento ---------------- */
@@ -67,6 +68,14 @@ function sanearElemento(e, palette, formato) {
     // Display pode ser enorme: o teto sobe para caber "ANIVERSÁRIO" ocupando
     // meia peça, como nas referências.
     out.tamanho = ds.clamp(ds.num(e.tamanho, padrao), 1.2, papel === 'display' ? 46 : 26);
+    // Texto em curva (js/peca.js): -100 a 100; zero ou lixo é texto reto.
+    const curva = Math.round(ds.clamp(ds.num(e.curva, 0), -100, 100));
+    if (curva) out.curva = curva;
+  } else if (tipo === 'grafico') {
+    // Só nome do catálogo (js/graficos.js): um nome inventado desenharia o primeiro da lista.
+    out.name = graficos.CATALOGO.some((g) => g.nome === e.name) ? e.name : graficos.CATALOGO[0].nome;
+    out.cor = ds.okHex(e.cor, palette.acento);
+    out.sombra = sanearSombra(e.sombra);
   } else if (tipo === 'forma') {
     out.shape = ['rect', 'ellipse', 'triangle', 'diamond', 'diag'].includes(e.shape) ? e.shape : 'rect';
     out.radius = ds.clamp(ds.num(e.radius, 0), 0, 50);
