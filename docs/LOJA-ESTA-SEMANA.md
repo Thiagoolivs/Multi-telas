@@ -1,7 +1,7 @@
 # Bom dia: o que foi feito e como colocar numa loja esta semana
 
 Escrito em 29/09/2026, durante a madrugada. Tudo está no PR
-[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 800
+[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 805
 testes passando e o APK compilando no GitHub Actions.
 
 ---
@@ -35,6 +35,26 @@ testes passando e o APK compilando no GitHub Actions.
   ajustes".
 - O painel antigo (`/legacy`) saiu do ar. O README e os documentos voltaram a
   dizer a verdade.
+
+**Primeira experiência do dono da loja** (percorrida no navegador, no
+computador e no celular)
+- Leu o QR sem ter conta: cria a conta, confirma o e-mail e o painel volta
+  **com o código já preenchido**.
+- Pareou: aparece "Tela conectada" com o botão **"Colocar conteúdo agora"**.
+- Tela vazia mostra **"Comece por aqui"**: a IA monta tudo, conteúdo pronto
+  ou mudar o layout.
+- Na TV, **zona vazia vira relógio** e a faixa sem notícia mostra a data.
+  Antes aparecia "Sem conteúdo" e "Adicione notícias no painel de gestão"
+  para o cliente da loja.
+- **Texto longo encolhe** para caber na caixa (título de campanha da IA
+  passava da borda).
+- No celular, o **gesto de voltar** volta uma página do painel (antes saía do
+  app) e recarregar mantém a página.
+- Menu mostra o nome da empresa; "Adicionar conteúdo" abre direto em "Criar
+  novo" para quem ainda não tem biblioteca; captura de janela e HDMI ficaram
+  num grupo "Com computador ligado à TV" (num TV Box não funcionam).
+- Conferido: com a internet da loja fora, a TV recarrega e **continua
+  mostrando as imagens** (ficam guardadas no aparelho).
 
 ---
 
