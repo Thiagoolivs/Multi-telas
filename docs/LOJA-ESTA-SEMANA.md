@@ -64,6 +64,12 @@ computador e no celular)
   em duas colunas (TV deitada) ou uma (em pé). É o uso nº 1 de TV em padaria
   e lanchonete — bom para mostrar na primeira visita à loja.
 
+**Editar pelo celular**
+- O editor visual ficava inutilizável no celular (palco de 100px, cinco
+  linhas de botões). Agora o palco fica em cima e a lista **"Textos da
+  peça"** mostra cada texto como um campo: trocar o preço do pão pelo
+  telefone leva segundos.
+
 **Horário por conteúdo**
 - Cada conteúdo tem **"Mostrar só em alguns dias ou horários"**: o cardápio
   do café só até as 10h, o happy hour de sexta das 17h às 19h, a promoção de
