@@ -34,7 +34,7 @@ export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
   React.useEffect(() => {
     if (!parear) return;
     const u = new URL(window.location.href);
-    if (u.searchParams.has('parear')) { u.searchParams.delete('parear'); window.history.replaceState({}, '', u.pathname + u.search); }
+    if (u.searchParams.has('parear')) { u.searchParams.delete('parear'); u.searchParams.set('ir', 'screens'); window.history.replaceState(window.history.state, '', u.pathname + u.search); }
   }, [parear]);
   // Som ao vivo: atalho a partir da frota. Durante um evento, mexer no volume
   // não pode custar entrar na tela, abrir ajustes e rolar até o fim.

@@ -257,15 +257,17 @@ export function ContentEditorPage({ device, onBack }) {
             <p className="text-sm text-ink-3">O que aparece nesta tela · salva e publica sozinho</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        {/* No celular os três dividem uma linha sem quebrar texto: "Tudo salvo"
+            e "Campanha com IA" em duas linhas cada pareciam botões quebrados. */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Estado do salvamento automático */}
-          <span className={cn('inline-flex items-center gap-1.5 text-xs', publishing || dirty ? 'text-ink-3' : 'text-emerald-500')}>
+          <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-xs', publishing || dirty ? 'text-ink-3' : 'text-emerald-500')}>
             {publishing || dirty
               ? <><Spinner size={12} /> Salvando…</>
               : <><Check size={13} /> {publishedAt ? 'Salvo' : 'Tudo salvo'}</>}
           </span>
-          <Button variant="secondary" icon={Wand2} onClick={() => setCampOpen(true)}>Campanha com IA</Button>
-          <Button variant="secondary" icon={Settings2} onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>
+          <Button variant="secondary" icon={Wand2} className="whitespace-nowrap" onClick={() => setCampOpen(true)}>Campanha com IA</Button>
+          <Button variant="secondary" icon={Settings2} className="whitespace-nowrap" onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>
         </div>
       </div>
 

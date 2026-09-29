@@ -41,6 +41,10 @@ export function PrimeirosPassos({ devices, onIr }) {
 
   const telaLigada = devices.some((d) => d.lastSeen);
   const temConteudo = devices.some((d) => d.hasConfig);
+  // Com uma tela pareada, "publicar" começa DENTRO dela — é lá que estão a IA
+  // que monta a tela inteira e os conteúdos prontos. Meus Designs era um
+  // desvio: a peça feita ali ainda precisava ser levada até a tela.
+  const primeira = devices.find((d) => d.lastSeen) || devices[0];
 
   const passos = [
     {
@@ -48,7 +52,7 @@ export function PrimeirosPassos({ devices, onIr }) {
       feito: telaLigada,
       icone: MonitorPlay,
       titulo: 'Ligue a primeira TV',
-      texto: 'Abra o endereço no navegador da TV e digite aqui o código que ela mostrar.',
+      texto: 'Ligue o app MultiTelas TV no box (ou abra o endereço no navegador da TV) e aponte o celular para o QR que aparecer.',
       acao: 'Parear tela',
       destino: 'screens',
     },
@@ -57,9 +61,12 @@ export function PrimeirosPassos({ devices, onIr }) {
       feito: temConteudo,
       icone: Palette,
       titulo: 'Publique o primeiro conteúdo',
-      texto: 'Crie uma peça no editor, ou peça uma campanha inteira à IA, e publique na tela.',
-      acao: 'Meus Designs',
-      destino: 'designs',
+      texto: primeira
+        ? 'Abra a tela e deixe a IA montar tudo, ou escolha um conteúdo pronto.'
+        : 'Crie uma peça no editor, ou peça uma campanha inteira à IA, e publique na tela.',
+      acao: primeira ? 'Abrir a tela' : 'Meus Designs',
+      destino: primeira ? 'content' : 'designs',
+      params: primeira ? { device: primeira } : undefined,
     },
     {
       id: 'marca',
@@ -115,7 +122,7 @@ export function PrimeirosPassos({ devices, onIr }) {
               {!p.feito && (
                 <button
                   type="button"
-                  onClick={() => onIr(p.destino)}
+                  onClick={() => onIr(p.destino, p.params)}
                   className="flex shrink-0 items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-ink transition hover:border-accent/50 hover:text-accent"
                 >
                   <Icone size={14} />

@@ -70,7 +70,24 @@ function useTheme() {
  * A lista de destinos é fechada de propósito: `?ir=` vem da URL, e URL é coisa
  * que qualquer um escreve.
  */
-const ATALHOS = ['screens', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio'];
+const ATALHOS = ['screens', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
+  'team', 'storage', 'banco', 'birthdays', 'support', 'settings'];
+
+/*
+ * O painel no histórico do navegador.
+ *
+ * A troca de página era só estado do React: no celular — onde o dono da loja
+ * mais usa — o gesto de VOLTAR saía do painel em vez de voltar para a tela
+ * anterior, e recarregar sempre caía na visão geral. Cada navegação agora vira
+ * uma entrada no histórico, e o endereço guarda a página (`?ir=`) para
+ * sobreviver ao recarregar. O editor de uma tela recarrega em Telas: o
+ * aparelho vem da lista, não do endereço.
+ */
+function enderecoDaRota(r) {
+  if (r.name === 'content') return '/app/?ir=screens';
+  if (ATALHOS.includes(r.name)) return '/app/?ir=' + r.name;
+  return '/app/';
+}
 
 function rotaDaUrl() {
   const q = new URLSearchParams(window.location.search);
@@ -94,7 +111,23 @@ export default function App() {
   const refresh = () => auth.me().then((me) => setSession(me || null));
   useEffect(() => { refresh(); }, []);
 
-  const go = (name, params) => setRoute({ name, ...params });
+  const go = (name, params) => {
+    const r = { name, ...params };
+    setRoute(r);
+    try { window.history.pushState({ mtRota: r }, '', enderecoDaRota(r)); } catch (e) { /* sem histórico: segue só com o estado */ }
+  };
+  useEffect(() => {
+    try { window.history.replaceState({ ...(window.history.state || {}), mtRota: route }, '', window.location.href); } catch (e) { /* idem */ }
+    const voltar = (e) => {
+      const r = e.state && e.state.mtRota;
+      if (!r) { setRoute(rotaDaUrl()); return; }
+      // Voltar não reabre o pareamento: aquele código já foi usado.
+      const { parear, ...resto } = r;
+      setRoute(resto);
+    };
+    window.addEventListener('popstate', voltar);
+    return () => window.removeEventListener('popstate', voltar);
+  }, []);
 
   async function logout() {
     await auth.logout();

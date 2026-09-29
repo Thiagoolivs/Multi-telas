@@ -19,7 +19,7 @@ function useBillingFlash() {
     if (flash) {
       const url = new URL(window.location.href);
       url.searchParams.delete('billing');
-      window.history.replaceState({}, '', url.pathname + url.search);
+      window.history.replaceState(window.history.state, '', url.pathname + url.search);
     }
   }, [flash]);
   return [flash, () => setFlash(null)];

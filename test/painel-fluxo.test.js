@@ -221,3 +221,29 @@ test('a tela de "aguardando" não oferece gerar outro código', () => {
   assert.match(player.slice(i, i + 1200), /reset\) reset\.classList\.add\('hidden'\)/);
   assert.match(ler('css', 'player.css'), /\.mt-pairing-reset\.hidden/, 'o CSS não esconde o botão');
 });
+
+test('VOLTAR do celular volta uma página do painel, não sai dele', () => {
+  /*
+   * A troca de página era só estado do React. No celular — onde o dono da
+   * loja mais usa o painel — o gesto de voltar saía do app inteiro, e
+   * recarregar sempre caía na visão geral.
+   */
+  const app = soCodigo(ler('web', 'src', 'App.jsx'));
+  assert.match(app, /history\.pushState\(\{ mtRota: r \}/, 'navegar não entra mais no histórico');
+  assert.match(app, /addEventListener\('popstate'/, 'ninguém escuta o voltar');
+  // Voltar até a entrada do QR não pode reabrir o pareamento de um código já usado.
+  assert.match(app, /const \{ parear, \.\.\.resto \} = r;/);
+  // Quem limpa parâmetros da URL não pode apagar a rota guardada no histórico:
+  // `replaceState({}, …)` fazia o voltar cair na visão geral.
+  for (const f of ['ScreensPage.jsx', 'BillingPage.jsx']) {
+    const src = soCodigo(ler('web', 'src', 'pages', f));
+    assert.ok(!/replaceState\(\{\}/.test(src), f + ' apaga o estado do histórico');
+  }
+});
+
+test('o passo "publique o primeiro conteúdo" abre a tela pareada', () => {
+  // Mandava para Meus Designs: a peça feita ali ainda precisava ser levada até a tela.
+  const src = soCodigo(ler('web', 'src', 'components', 'dashboard', 'PrimeirosPassos.jsx'));
+  assert.match(src, /destino: primeira \? 'content'/);
+  assert.match(src, /onIr\(p\.destino, p\.params\)/, 'o aparelho não chega ao editor');
+});
