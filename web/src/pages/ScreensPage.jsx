@@ -51,7 +51,11 @@ export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
         title="Telas"
         subtitle="Dispositivos pareados à sua conta e o conteúdo que exibem."
         actions={<>
-          <Button variant="secondary" icon={MonitorPlay} onClick={() => window.open('/player.html?cloud=1&pid=' + Math.random().toString(36).slice(2, 9), '_blank', 'noopener')}>Abrir novo player</Button>
+          {/* Abre uma TV nova NESTE aparelho (útil num computador ligado à TV,
+              ou para testar). No celular só confundia: virava uma "tela" a mais. */}
+          <Button variant="secondary" icon={MonitorPlay} className="hidden sm:inline-flex"
+            title="Abre a tela da TV numa aba nova deste computador"
+            onClick={() => window.open('/player.html?cloud=1&pid=' + Math.random().toString(36).slice(2, 9), '_blank', 'noopener')}>Usar este computador como TV</Button>
           <Button variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Parear tela</Button>
         </>}
       />
