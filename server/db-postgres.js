@@ -189,6 +189,9 @@ async function init() {
     ALTER TABLE devices ADD COLUMN IF NOT EXISTS expediente TEXT;
     -- O que a TV contou de si no último pulso (modelo, resolução, versão).
     ALTER TABLE devices ADD COLUMN IF NOT EXISTS info TEXT;
+    -- Grupo da tela ("Loja Centro"). Um rótulo, e não uma tabela: grupo é a
+    -- lista dos rótulos em uso, e renomear é um UPDATE.
+    ALTER TABLE devices ADD COLUMN IF NOT EXISTS grupo TEXT;
     CREATE TABLE IF NOT EXISTS invites (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
       invited_by TEXT, created_at BIGINT, expires_at BIGINT, accepted_at BIGINT
@@ -822,6 +825,11 @@ async function setDeviceConfig(id, configJson, name) {
   await pool.query('UPDATE devices SET config = $1, name = $2, updated_at = $3 WHERE id = $4', [configJson, name || '', Date.now(), id]);
 }
 async function renameDevice(id, name) { await pool.query('UPDATE devices SET name = $1 WHERE id = $2', [name, id]); }
+async function setGrupoDaTela(id, grupo) { await pool.query('UPDATE devices SET grupo = $1 WHERE id = $2', [grupo || null, id]); }
+async function renomearGrupo(tenantId, de, para) {
+  const r = await pool.query('UPDATE devices SET grupo = $1 WHERE tenant_id = $2 AND grupo = $3', [para || null, tenantId, de]);
+  return r.rowCount || 0;
+}
 async function setExpediente(id, json) { await pool.query('UPDATE devices SET expediente = $1 WHERE id = $2', [json, id]); }
 async function removeDevice(id) { await pool.query('DELETE FROM devices WHERE id = $1', [id]); }
 async function touchDevice(id, info) {
@@ -830,7 +838,7 @@ async function touchDevice(id, info) {
 }
 async function listDevices(tenantId) {
   const r = await pool.query(
-    'SELECT id, name, code, tenant_id, updated_at, last_seen, expediente, info, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = $1 ORDER BY created_at DESC',
+    'SELECT id, name, code, tenant_id, updated_at, last_seen, expediente, info, grupo, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = $1 ORDER BY created_at DESC',
     [tenantId]);
   return r.rows;
 }
@@ -1346,7 +1354,7 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
-  renameDevice, setExpediente, removeDevice, touchDevice, listDevices, countDevices,
+  renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,

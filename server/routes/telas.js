@@ -112,6 +112,7 @@ module.exports = function (ctx) {
       const list = rows.map((d) => ({
         id: d.id, name: d.name, code: d.code, hasConfig: !!d.has_config, updatedAt: d.updated_at, lastSeen: d.last_seen,
         expediente: vigia.normalizarExpediente(d.expediente),
+        grupo: d.grupo || '',
         info: (() => { try { return d.info ? JSON.parse(d.info) : null; } catch (_) { return null; } })(),
       }));
       return sendJson(res, 200, { devices: list });
@@ -256,6 +257,19 @@ module.exports = function (ctx) {
           broadcast(id, 'comando', cmd);
           await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.recarregar');
           return sendJson(res, 200, { ok: true, aoVivo: !!subscribers[id] });
+        });
+      }
+      /*
+       * Grupo da tela ("Loja Centro"). Vazio tira do grupo. Publicar para o
+       * grupo é o painel marcando as telas dele — o servidor não precisa de
+       * um segundo caminho de publicação.
+       */
+      if (req.method === 'POST' && sub === 'grupo') {
+        if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
+        return readBody(req, res, async (b) => {
+          const grupo = String((b && b.grupo) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+          await db.setGrupoDaTela(id, grupo);
+          return sendJson(res, 200, { ok: true, grupo });
         });
       }
       if (req.method === 'POST' && sub === 'rename') {
@@ -452,7 +466,23 @@ module.exports = function (ctx) {
     return NAO_TRATEI;
   }
 
+  /* Renomear (ou desfazer, com `para` vazio) um grupo inteiro de uma vez. */
+  async function grupos(req, res, parts, query, sess) {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method === 'POST' && parts[2] === 'renomear') {
+      return readBody(req, res, async (b) => {
+        const de = String((b && b.de) || '').trim();
+        const para = String((b && b.para) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+        if (!de) return sendJson(res, 400, { error: 'qual grupo?' });
+        const telas = await db.renomearGrupo(sess.tenant_id, de, para);
+        return sendJson(res, 200, { ok: true, telas });
+      });
+    }
+    return sendJson(res, 404, { error: 'rota de grupos inválida' });
+  }
+
   return async function (req, res, parts, query, sess) {
+    if (parts[1] === 'grupos') { await grupos(req, res, parts, query, sess); return true; }
     if (parts[1] !== 'devices' && parts[1] !== 'pair') return false;
     const r = await tratar(req, res, parts, query, sess);
     // `tratar` devolve undefined quando nenhum caminho casou (rota de telas

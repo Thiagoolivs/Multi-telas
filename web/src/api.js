@@ -90,6 +90,8 @@ export const devices = {
   rename: (id, name) => api('POST', '/api/devices/' + id + '/rename', { name }),
   expediente: (id, exp) => api('POST', '/api/devices/' + id + '/expediente', exp),
   comando: (id, acao) => api('POST', '/api/devices/' + id + '/comando', { acao }),
+  grupo: (id, grupo) => api('POST', '/api/devices/' + id + '/grupo', { grupo }),
+  renomearGrupo: (de, para) => api('POST', '/api/grupos/renomear', { de, para }),
   /*
    * Liga esta tela do painel à TV que está mostrando `code` agora. Devolve um
    * id novo: quem fica é a TV, e é ela que herda o nome e a programação.

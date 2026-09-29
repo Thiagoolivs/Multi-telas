@@ -400,6 +400,8 @@ garantirColuna('devices', 'alerta_offline_em INTEGER');
 garantirColuna('devices', 'expediente TEXT');
 // O que a TV contou de si no último pulso (modelo, resolução, versão).
 garantirColuna('devices', 'info TEXT');
+// Grupo da tela ("Loja Centro"): um rótulo; grupo é a lista dos rótulos em uso.
+garantirColuna('devices', 'grupo TEXT');
 for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER',
   // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
   // expira). `creditos_ciclo` guarda quando a franquia foi reposta pela
@@ -454,7 +456,7 @@ const q = {
   deleteDevice: db.prepare('DELETE FROM devices WHERE id = ?'),
   touchDevice: db.prepare('UPDATE devices SET last_seen = ? WHERE id = ?'),
   touchDeviceInfo: db.prepare('UPDATE devices SET last_seen = ?, info = ? WHERE id = ?'),
-  listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, expediente, info, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
+  listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, expediente, info, grupo, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
   /*
    * Telas caídas com o e-mail de quem precisa saber.
    *
@@ -609,6 +611,10 @@ async function claimDevice(id, tenantId, name) { q.claimDevice.run(tenantId, nam
 async function setDeviceConfig(id, configJson, name) { q.setConfig.run(configJson, name || '', Date.now(), id); }
 async function renameDevice(id, name) { q.renameDevice.run(name, id); }
 async function setExpediente(id, json) { q.setExpediente.run(json, id); }
+async function setGrupoDaTela(id, grupo) { db.prepare('UPDATE devices SET grupo = ? WHERE id = ?').run(grupo || null, id); }
+async function renomearGrupo(tenantId, de, para) {
+  return Number(db.prepare('UPDATE devices SET grupo = ? WHERE tenant_id = ? AND grupo = ?').run(para || null, tenantId, de).changes) || 0;
+}
 async function removeDevice(id) { q.deleteDevice.run(id); }
 async function touchDevice(id, info) {
   if (info) q.touchDeviceInfo.run(Date.now(), info, id);
@@ -1421,7 +1427,7 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
-  renameDevice, setExpediente, removeDevice, touchDevice, listDevices, countDevices,
+  renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,

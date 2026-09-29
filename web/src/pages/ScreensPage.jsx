@@ -16,7 +16,17 @@ import { SoundRemote } from '../components/content/SoundRemote.jsx';
 
 export function ScreensPage({ onEditContent, parear }) {
   const { data, loading, error, reload } = useAsync(devices.list);
-  const list = data ? data.devices || [] : [];
+  const todas = data ? data.devices || [] : [];
+  /*
+   * Grupos ("Loja Centro", "Loja Sul"): um rótulo por tela. O filtro só
+   * aparece quando existe grupo — conta de uma tela não precisa dele.
+   */
+  const grupos = Array.from(new Set(todas.map((d) => d.grupo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const [filtroGrupo, setFiltroGrupo] = useState('');
+  const [renomeandoGrupo, setRenomeandoGrupo] = useState(null);
+  const list = filtroGrupo === '' ? todas
+    : filtroGrupo === '__sem' ? todas.filter((d) => !d.grupo)
+    : todas.filter((d) => d.grupo === filtroGrupo);
 
   // Vindo do QR da TV, o diálogo já abre com o código.
   const [pairOpen, setPairOpen] = useState(!!parear);
@@ -47,6 +57,21 @@ export function ScreensPage({ onEditContent, parear }) {
 
       <Panel>
         <PanelHeader title="Suas telas" description="Cada tela recebe as publicações na hora que você salva." />
+        {grupos.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-4 py-2.5">
+            {[['', 'Todas', todas.length], ...grupos.map((g) => [g, g, todas.filter((d) => d.grupo === g).length]),
+              ['__sem', 'Sem grupo', todas.filter((d) => !d.grupo).length]].map(([v, rot, n]) => (
+              <button key={v || 'todas'} type="button" onClick={() => setFiltroGrupo(v)}
+                className={'rounded-full border px-2.5 py-0.5 text-xs transition ' + (filtroGrupo === v ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink-3 hover:text-ink')}>
+                {rot} <span className="tnum text-ink-3">{n}</span>
+              </button>
+            ))}
+            {filtroGrupo && filtroGrupo !== '__sem' && (
+              <button type="button" className="ml-auto text-xs text-accent hover:underline"
+                onClick={() => setRenomeandoGrupo(filtroGrupo)}>Renomear grupo</button>
+            )}
+          </div>
+        )}
 
         {loading && <SkeletonRows rows={5} cols={4} />}
         {error && <ErrorState description="Não foi possível carregar as telas." onRetry={reload} />}
@@ -79,7 +104,9 @@ export function ScreensPage({ onEditContent, parear }) {
       </Panel>
 
       <PairDialog open={pairOpen} codigoInicial={parear} onClose={() => setPairOpen(false)} onDone={reload} />
-      <RenameDialog target={renameTarget} onClose={() => setRenameTarget(null)} onDone={reload} />
+      <RenomearGrupoDialog grupo={renomeandoGrupo} onClose={() => setRenomeandoGrupo(null)}
+        onDone={(para) => { setFiltroGrupo(para); reload(); }} />
+      <RenameDialog target={renameTarget} grupos={grupos} onClose={() => setRenameTarget(null)} onDone={reload} />
       <Dialog
         open={!!somTarget}
         onClose={() => setSomTarget(null)}
@@ -135,23 +162,30 @@ function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onAle
         </div>
         <span className="tnum absolute bottom-2 left-2 rounded border border-line bg-surface/80 px-1.5 py-0.5 text-2xs tracking-widest text-ink-3 backdrop-blur">{d.code}</span>
       </div>
-      <div className="flex items-center justify-between gap-2 p-3">
+      {/* Duas linhas: nome e estado em cima, ações embaixo. Numa linha só, as
+          sete ações empurravam o nome para largura zero e cortavam o remover. */}
+      <div className="space-y-2 p-3">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-ink">{d.name || 'Tela sem nome'}</div>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-semibold text-ink">{d.name || 'Tela sem nome'}</span>
+            {d.grupo && <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-px text-2xs text-ink-3">{d.grupo}</span>}
+            <span className="ml-auto flex shrink-0 items-center">
+              <IconButton icon={Pencil} label="Nome e grupo" size={14} onClick={onRename} />
+              <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={onRemove} />
+            </span>
+          </div>
           <div className="truncate text-2xs text-ink-3">
             {recarregando === 'ok' ? 'Recarregando a TV…' : recarregando === 'erro' ? 'Não consegui mandar o comando'
               : <>{st.label}{st.seen ? ' · ' + st.seen : ''}{descreverAparelho(d.info)}</>}
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
-          <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent}>Conteúdo</Button>
+        <div className="flex flex-wrap items-center gap-1">
+          <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent} className="mr-auto">Conteúdo</Button>
           <IconButton icon={RotateCw} label="Recarregar a TV" size={14} onClick={recarregar} disabled={!!recarregando} />
           <IconButton icon={Music} label="Som ao vivo" size={14} onClick={onSom} />
           <IconButton icon={d.expediente && d.expediente.alerta === false ? BellOff : Bell}
             label="Horário e alerta de queda" size={14} onClick={onAlerta} />
           <IconButton icon={Archive} label="Backup / restaurar" size={14} onClick={onBackup} />
-          <IconButton icon={Pencil} label="Renomear" size={14} onClick={onRename} />
-          <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={onRemove} />
         </div>
       </div>
     </div>
@@ -391,22 +425,48 @@ function ExpedienteDialog({ target, onClose, onDone }) {
   );
 }
 
-function RenameDialog({ target, onClose, onDone }) {
-  const [name, setName] = useState('');
+function RenomearGrupoDialog({ grupo, onClose, onDone }) {
+  const [para, setPara] = useState('');
   const [busy, setBusy] = useState(false);
-  React.useEffect(() => { setName(target ? target.name || '' : ''); }, [target]);
+  React.useEffect(() => { setPara(grupo || ''); }, [grupo]);
+  async function salvar() {
+    setBusy(true);
+    try { await devices.renomearGrupo(grupo, para); onDone(para.trim()); onClose(); }
+    finally { setBusy(false); }
+  }
+  return (
+    <Dialog open={grupo != null} onClose={onClose} title="Renomear grupo"
+      description="Vale para todas as telas do grupo. Deixe vazio para desfazer o grupo (as telas continuam, só sem grupo)."
+      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button>
+        <Button variant="primary" onClick={salvar} disabled={busy}>Salvar</Button></>}>
+      <Field label="Nome do grupo"><Input value={para} onChange={(e) => setPara(e.target.value)} autoFocus /></Field>
+    </Dialog>
+  );
+}
+
+function RenameDialog({ target, grupos, onClose, onDone }) {
+  const [name, setName] = useState('');
+  const [grupo, setGrupo] = useState('');
+  const [busy, setBusy] = useState(false);
+  React.useEffect(() => {
+    setName(target ? target.name || '' : '');
+    setGrupo(target ? target.grupo || '' : '');
+  }, [target]);
 
   async function submit() {
     setBusy(true);
-    try { await devices.rename(target.id, name); onDone(); onClose(); }
-    finally { setBusy(false); }
+    try {
+      await devices.rename(target.id, name);
+      if ((target.grupo || '') !== grupo.trim()) await devices.grupo(target.id, grupo.trim());
+      onDone(); onClose();
+    } finally { setBusy(false); }
   }
 
   return (
     <Dialog
       open={!!target}
       onClose={onClose}
-      title="Renomear tela"
+      title="Nome e grupo"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -414,9 +474,15 @@ function RenameDialog({ target, onClose, onDone }) {
         </>
       }
     >
-      <Field label="Nome da tela">
-        <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-      </Field>
+      <div className="space-y-3.5">
+        <Field label="Nome da tela">
+          <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        </Field>
+        <Field label="Grupo" hint="Ex.: Loja Centro. Na hora de publicar, dá para marcar o grupo inteiro de uma vez.">
+          <Input value={grupo} onChange={(e) => setGrupo(e.target.value)} list="grupos-de-telas" placeholder="Sem grupo" />
+          <datalist id="grupos-de-telas">{(grupos || []).map((g) => <option key={g} value={g} />)}</datalist>
+        </Field>
+      </div>
     </Dialog>
   );
 }
