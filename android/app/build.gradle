@@ -1,0 +1,75 @@
+/*
+ * App de quiosque do MultiTelas para TV Box / Android TV.
+ *
+ * O player é web e mora no servidor; este app é só a moldura que o TV Box
+ * comum não tem: abrir sozinho ao ligar, manter a tela acesa, reabrir se
+ * travar e nunca sair do /tv. Ver android/README.md.
+ *
+ * O endereço do servidor entra no build (-PmtUrl=https://…) e pode ser
+ * trocado na própria TV (5× VOLTAR). A versão sai de -PversaoApp / do CI.
+ */
+plugins {
+    id 'com.android.application'
+}
+
+def mtUrl = (project.findProperty('mtUrl') ?: 'https://multitelas.up.railway.app').toString().replaceAll('/+$', '')
+def versaoApp = (project.findProperty('versaoApp') ?: '1.0.0').toString()
+def codigoVersao = (project.findProperty('codigoVersao') ?: '1').toString().toInteger()
+
+android {
+    namespace 'br.com.multitelas.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'br.com.multitelas.tv'
+        // Android 5: boa parte dos TV Box baratos ainda roda 7 a 9, e alguns 5.
+        minSdk 21
+        targetSdk 34
+        versionCode codigoVersao
+        versionName versaoApp
+        buildConfigField 'String', 'MT_URL', "\"${mtUrl}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    /*
+     * Assinatura de release só com a chave vinda do CI (secrets). Sem ela, o
+     * CI gera só o debug — instalável por sideload, que é como TV Box recebe
+     * app na prática. Para a Play Store, a chave de release é obrigatória.
+     */
+    def ks = System.getenv('MT_KEYSTORE_FILE')
+    signingConfigs {
+        if (ks) {
+            release {
+                storeFile file(ks)
+                storePassword System.getenv('MT_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('MT_KEY_ALIAS')
+                keyPassword System.getenv('MT_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (ks) signingConfig signingConfigs.release
+        }
+    }
+
+    /*
+     * O lint de release (lintVital) derrubaria o build por aviso de API nova
+     * em código já protegido por versão (onRenderProcessGone é 26+, e o
+     * Android só chama nos aparelhos que têm). O lint roda à parte no CI.
+     */
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
