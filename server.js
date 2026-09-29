@@ -1984,7 +1984,16 @@ async function handleStatic(req, res, urlPath) {
     return res.end(html);
   }
 
-  if (urlPath === '/legacy' || urlPath === '/legacy/') urlPath = '/index.html';
+  /*
+   * O painel antigo (tudo no localStorage, sem conta, sem sincronizar) saiu.
+   * Era um segundo produto com outro modelo de dados, aberto a qualquer
+   * visitante, que não conhecia mural, som, cobrança nem IA. Quem tiver o
+   * link antigo cai no painel de verdade.
+   */
+  if (urlPath === '/legacy' || urlPath === '/legacy/' || urlPath === '/admin.html') {
+    res.writeHead(301, { Location: '/app', 'Cache-Control': 'no-store' });
+    return res.end();
+  }
   return servirPublico(res, urlPath);
 }
 
@@ -2015,7 +2024,7 @@ async function handleStatic(req, res, urlPath) {
  */
 const PASTAS_PUBLICAS = ['/css/', '/js/', '/icons/', '/img/', '/fonts/'];
 const ARQUIVOS_PUBLICOS = new Set([
-  '/index.html', '/player.html', '/admin.html',
+  '/player.html',
   '/sw.js', '/player.webmanifest', '/manifest.webmanifest',
   '/favicon.ico', '/robots.txt',
 ]);

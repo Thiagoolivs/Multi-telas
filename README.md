@@ -15,9 +15,8 @@ Box, num mini-PC ou num Chromecast — e continua exibindo sem internet.
 - **Cobrança:** Asaas (Pix, boleto, cartão), preço por tela.
 - **IA:** Gemini (texto, imagem e visão), com validador próprio de legibilidade.
 
-> O modo antigo "1 navegador = 1 instalação" (sem conta, dados no
-> `localStorage`) ainda existe em `/legacy`. Ver
-> [Arquitetura e limites](#arquitetura-e-limites).
+> O painel antigo "1 navegador = 1 instalação" (sem conta, dados no
+> `localStorage`) saiu; `/legacy` redireciona para `/app`.
 
 ---
 
@@ -109,13 +108,6 @@ chaves funcionam.
 
 ---
 
-## Modo local (legado)
-
-Em `/legacy` continua o painel antigo, que guarda tudo no `localStorage` do
-navegador e não sincroniza com a nuvem. Para várias TVs nesse modo, exporte o
-`config.json`, hospede-o e cole a URL em **Configurações › Atualização
-automática** de cada TV. Não conhece mural, trilha sonora, cobrança nem IA.
-
 ### Painel de quem opera a plataforma
 
 Existe uma página separada — telas vivas, contas, tempo de uso, funções mais
@@ -194,10 +186,8 @@ pessoa agora vê todos os clientes" por descuido de digitação.
 
 ```
 multitelas/
-├── index.html          # Painel de administração
 ├── player.html         # Tela de exibição (TV)
 ├── css/
-│   ├── admin.css        # Estilo do painel
 │   └── player.css       # Estilo do player
 ├── js/
 │   ├── templates.js     # Catálogo de layouts (templates prontos)
@@ -208,7 +198,6 @@ multitelas/
 │   ├── news.js          # Notícias automáticas via RSS
 │   ├── render.js        # Renderiza cada tipo de conteúdo
 │   ├── player.js        # Motor de exibição (zonas, rotação, decorações)
-│   └── admin.js         # Lógica do painel de administração
 ├── fonts/               # As 14 famílias (OFL), servidas do próprio domínio
 │   ├── fontes.css        # GERADO — todas as @font-face
 │   ├── arquivos/         # os .woff2

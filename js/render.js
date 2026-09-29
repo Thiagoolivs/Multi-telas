@@ -1607,8 +1607,7 @@
     return fn(item);
   }
 
-  // Metadados dos tipos, usados pelo Admin para montar formulários.
-  // "icon" referencia um ícone SVG definido no painel (js/admin.js).
+  // Metadados dos tipos (rótulo e ícone por tipo de conteúdo).
   const ITEM_TYPES = [
     { type: 'announce', label: 'Aviso Premium', icon: 'bell' },
     { type: 'text', label: 'Texto / Comunicado', icon: 'text' },

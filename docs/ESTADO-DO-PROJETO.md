@@ -33,8 +33,8 @@ ordem, de tudo o que ela achou (PR #108). Resumo do que mudou:
 
 ### Decisões que ficaram com o dono
 
-- **`/legacy`** (painel antigo em `localStorage`): manter declarado como modo
-  local ou tirar.
+- ~~`/legacy`~~ — decidido e feito: o painel antigo saiu, o endereço
+  redireciona para `/app`.
 - **App Android de quiosque** para TV Box (ver abaixo).
 
 ### TV Box: como fica plug and play

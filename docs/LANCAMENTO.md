@@ -78,7 +78,6 @@ e build do painel, a cada push.
 - 🟡 **App Android de quiosque** para TV Box (abre sozinho ao ligar, tela
   sempre acesa, reabre se travar). Ver "TV Box" em
   [`ESTADO-DO-PROJETO.md`](ESTADO-DO-PROJETO.md).
-- 🟡 **Decidir o `/legacy`** (painel antigo em `localStorage`).
 - 🟢 **Relatório de exibição (proof-of-play)** — saiu do plano Pro até existir.
 - 🟢 **Grupos de telas**, orientação da tela no pareamento.
 - 🟢 **SSE, limites e comandos em Redis** — hoje em memória, o que prende o
