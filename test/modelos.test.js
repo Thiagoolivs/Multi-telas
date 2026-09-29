@@ -269,3 +269,35 @@ test('texto que já cabe fica exatamente como estava', () => {
   const ok = { tipo: 'texto', text: 'oi', x: 10, y: 10, w: 60, h: 30, tamanho: 4, fonte: 'sans' };
   assert.strictEqual(M.ajustarTextos([ok], '16/9')[0], ok);
 });
+
+test('cardápio: nome à esquerda, preço à direita, todas as linhas no mesmo corpo', () => {
+  for (const f of FORMATOS) {
+    const els = M.montar('cardapio', f, CORES).elementos.filter((e) => e.tipo === 'texto');
+    const precos = els.filter((e) => /^R\$/.test(e.text));
+    const nomes = els.filter((e) => e.align === 'left' && !/^R\$/.test(e.text) && e.peso === 600);
+    assert.equal(precos.length, 8, f + ': oito preços');
+    assert.ok(precos.every((e) => e.align === 'right'), f + ': preço alinhado à direita');
+    const corpos = new Set(precos.concat(nomes).map((e) => e.tamanho));
+    assert.equal(corpos.size, 1, f + ': linhas com corpos diferentes ' + [...corpos].join(', '));
+    assert.ok(els.every((e) => !('_mesmoCorpo' in e)), f + ': a marca interna vazou para a peça');
+  }
+  // Deitada, duas colunas; em pé, uma.
+  const colunas = (f) => new Set(M.montar('cardapio', f, CORES).elementos.filter((e) => /^R\$/.test(e.text)).map((e) => Math.round(e.x))).size;
+  assert.equal(colunas('16/9'), 2);
+  assert.equal(colunas('9/16'), 1);
+});
+
+test('cardápio: preço legível mesmo com marca escura', () => {
+  // Verde-garrafa e marinho viravam texto quase da cor do fundo (a marca
+  // escurecida) — justamente o preço, que é o que o cliente procura.
+  const lum = (h) => {
+    const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const contraste = (a, b) => (Math.max(lum(a), lum(b)) + 0.05) / (Math.min(lum(a), lum(b)) + 0.05);
+  for (const marca of ['#15803d', '#1e3a8a', '#7f1d1d', '#2f6feb', '#fde047']) {
+    const p = M.paleta([marca]);
+    const preco = M.montar('cardapio', '16/9', [marca]).elementos.find((e) => /^R\$/.test(e.text));
+    assert.ok(contraste(preco.cor, p.fundo) >= 4.5, marca + ': preço ' + preco.cor + ' sobre ' + p.fundo + ' = ' + contraste(preco.cor, p.fundo).toFixed(2));
+  }
+});

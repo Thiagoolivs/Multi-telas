@@ -28,8 +28,15 @@
    * js/fontes.js. No Node, pedimos aqui para não depender de quem carregou
    * primeiro — sem isto, o mesmo modelo saía com corpo diferente conforme a
    * ordem dos testes. No navegador, o catálogo já está no global.
+   *
+   * `typeof require` também, e não só `module`: o empacotador do painel
+   * embrulha este arquivo numa função que CRIA um `module` mas não um
+   * `require`. Sem esta conferida, bastou o módulo ir para um pedaço
+   * compartilhado do pacote para a galeria de modelos quebrar com
+   * "require is not defined" — mesmo padrão de seasons.js, storage.js e
+   * theme.js, que já conferiam.
    */
-  if (typeof module === 'object' && module.exports) require('./fontes.js');
+  if (typeof module === 'object' && module.exports && typeof require === 'function') require('./fontes.js');
   var api = fabrica();
   if (typeof module === 'object' && module.exports) module.exports = api;
   if (raiz) raiz.MTModelos = api;
@@ -89,7 +96,30 @@
       // Sobre a cor da marca, um creme lê melhor que branco puro: branco puro
       // "vibra" em fundo saturado numa tela grande.
       textoNaMarca: claro(marca) ? escurecer(marca, 0.8) : '#fff6e6',
+      /*
+       * A marca como TEXTO sobre o fundo escuro da peça. O fundo é a própria
+       * marca escurecida, então uma marca já escura (verde-garrafa, marinho)
+       * vira texto quase da cor do fundo — no cardápio, justamente o preço.
+       * Clareia até ter contraste de leitura (4,5:1), mantendo o tom.
+       */
+      destaque: legivelSobre(marca, escurecer(marca, 0.86)),
     };
+  }
+  function luminancia(hex) {
+    var c = hexRgb(hex).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function contraste(a, b) {
+    var x = luminancia(a), y = luminancia(b);
+    return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+  }
+  function legivelSobre(cor, fundo) {
+    var rgb = hexRgb(cor);
+    for (var i = 0; i <= 10; i++) {
+      var c = rgbHex(rgb.map(function (v) { return v + (255 - v) * i / 10; }));
+      if (contraste(c, fundo) >= 4.5) return c;
+    }
+    return '#ffffff';
   }
   function hexRgb(h) {
     var s = String(h || '').replace('#', '');
@@ -134,7 +164,7 @@
           bg: { kind: 'cor', cor: 'linear-gradient(150deg, ' + p.fundo + ', ' + p.fundoAlt + ')' },
           elementos: [
             forma({ x: m.x, y: m.x, w: 8, h: 1.2, fill: p.marca, radius: 40 }),
-            texto({ text: 'COMUNICADO', x: m.x, y: m.x + 3, w: 100 - m.x * 2, h: 4, tamanho: 2.6 * k, peso: 700, align: 'left', cor: p.marca, espacamento: 0.18 }),
+            texto({ text: 'COMUNICADO', x: m.x, y: m.x + 3, w: 100 - m.x * 2, h: 4, tamanho: 2.6 * k, peso: 700, align: 'left', cor: p.destaque, espacamento: 0.18 }),
             texto({ text: 'O refeitório funciona\nem horário estendido', x: m.x, y: m.x + 8, w: 100 - m.x * 2, h: 22, tamanho: 8 * k, peso: 900, align: 'left', fonte: 'condensada' }),
             texto({ text: 'Segunda a sexta, das 8h às 18h', x: m.x, y: 100 - m.y - 6, w: 100 - m.x * 2, h: 5, tamanho: 3 * k, peso: 500, align: 'left', cor: p.apoio }),
           ],
@@ -156,6 +186,55 @@
             forma({ x: 30, y: 100 - m.y - 9, w: 40, h: 7, fill: p.textoNaMarca, radius: 50 }),
             texto({ text: 'PEÇA NO BALCÃO', x: 30, y: 100 - m.y - 7.4, w: 40, h: 4, tamanho: 2.8 * k, peso: 800, cor: p.marca }),
           ],
+        };
+      },
+    },
+    {
+      /*
+       * Cardápio: o uso número um de TV em padaria, lanchonete e café.
+       *
+       * Nome à esquerda e preço à direita, na mesma linha, com um fio entre as
+       * linhas: é assim que se lê do balcão, correndo o olho do nome ao preço.
+       * Deitada, duas colunas; em pé, uma só — oito linhas numa coluna de
+       * totem ficam no tamanho certo, e duas colunas estreitas quebrariam
+       * "Pão de queijo" em duas linhas.
+       */
+      id: 'cardapio',
+      nome: 'Cardápio',
+      para: 'Tabela de preços que se lê do balcão.',
+      montar: function (f, p) {
+        var m = margem(f);
+        var k = escala(f);
+        var emPe = razao(f) < 1;
+        var itens = [
+          ['Café expresso', 'R$ 6,00'], ['Cappuccino', 'R$ 9,50'], ['Pão na chapa', 'R$ 7,00'], ['Misto quente', 'R$ 12,00'],
+          ['Pão de queijo', 'R$ 4,50'], ['Suco natural', 'R$ 10,00'], ['Bolo do dia', 'R$ 8,00'], ['Tapioca', 'R$ 14,00'],
+        ];
+        var colunas = emPe ? 1 : 2;
+        var porColuna = Math.ceil(itens.length / colunas);
+        var altTitulo = emPe ? 8 : 12;
+        var topo = m.y + altTitulo + 8;
+        var base = 100 - m.y - 8; // o rodapé mora abaixo daqui
+        var passo = (base - topo) / porColuna;
+        var vao = 6;
+        var larg = (100 - m.x * 2 - vao * (colunas - 1)) / colunas;
+        var els = [
+          texto({ text: 'CAFÉ DA MANHÃ', x: m.x, y: m.y + 1, w: 100 - m.x * 2, h: altTitulo, tamanho: 6 * k, peso: 900, align: 'left', fonte: 'condensada', cor: p.destaque }),
+          forma({ x: m.x, y: m.y + altTitulo + 2.5, w: 10, h: 0.8, fill: p.marca, radius: 40 }),
+        ];
+        itens.forEach(function (it, i) {
+          var x = m.x + Math.floor(i / porColuna) * (larg + vao);
+          var y = topo + (i % porColuna) * passo;
+          var alto = passo * 0.62;
+          els.push(texto({ text: it[0], x: x, y: y, w: larg * 0.6, h: alto, tamanho: 3.2 * k, peso: 600, align: 'left', _mesmoCorpo: 'linha' }));
+          els.push(texto({ text: it[1], x: x + larg * 0.6, y: y, w: larg * 0.4, h: alto, tamanho: 3.2 * k, peso: 800, align: 'right', cor: p.destaque, _mesmoCorpo: 'linha' }));
+          els.push(forma({ x: x, y: y + passo * 0.8, w: larg, h: 0.25, fill: p.apoio, opacidade: 0.25 }));
+        });
+        els.push(texto({ text: 'Peça no balcão · aceitamos Pix e cartão', x: m.x, y: 100 - m.y - 5, w: 100 - m.x * 2, h: 4.5, tamanho: 2.4 * k, peso: 500, align: 'left', cor: p.apoio }));
+        return {
+          bg: { kind: 'cor', cor: 'linear-gradient(150deg, ' + p.fundo + ', ' + p.fundoAlt + ')' },
+          elementos: els,
+          dica: 'Troque os itens e os preços; para mais linhas, duplique uma linha (nome, preço e fio) e desça.',
         };
       },
     },
@@ -200,7 +279,7 @@
             forma({ x: 0, y: 0, w: 100, h: 3, fill: p.marca }),
             icone({ name: 'calendar', x: 50 - largIcone / 2, y: 14, w: largIcone, h: altIcone, cor: p.marca }),
             texto({ text: 'CONFRATERNIZAÇÃO', x: 8, y: 26, w: 84, h: 16, tamanho: 8 * k, peso: 900, fonte: 'condensada' }),
-            texto({ text: '20 de dezembro · 19h', x: 8, y: 44, w: 84, h: 6, tamanho: 4 * k, peso: 700, cor: p.marca }),
+            texto({ text: '20 de dezembro · 19h', x: 8, y: 44, w: 84, h: 6, tamanho: 4 * k, peso: 700, cor: p.destaque }),
             texto({ text: 'Salão de eventos · 3º andar', x: 8, y: 100 - m.y - 7, w: 84, h: 5, tamanho: 2.8 * k, peso: 500, cor: p.apoio }),
           ],
         };
@@ -217,7 +296,7 @@
           bg: { kind: 'cor', cor: 'linear-gradient(150deg, ' + p.fundo + ', ' + p.fundoAlt + ')' },
           elementos: [
             texto({ text: 'DIAS SEM ACIDENTES', x: 8, y: 18, w: 84, h: 5, tamanho: 3 * k, peso: 700, cor: p.apoio, espacamento: 0.2 }),
-            texto({ text: '127', x: 8, y: 26, w: 84, h: 28, tamanho: 22 * k, peso: 900, fonte: 'display', cor: p.marca }),
+            texto({ text: '127', x: 8, y: 26, w: 84, h: 28, tamanho: 22 * k, peso: 900, fonte: 'display', cor: p.destaque }),
             texto({ text: 'Nosso recorde é 180. Falta pouco.', x: 8, y: 100 - m.y - 7, w: 84, h: 5, tamanho: 2.8 * k, peso: 500, cor: p.apoio }),
           ],
         };
@@ -266,7 +345,7 @@
         var emPe = razao(f) < 1;
         var itens = ['Use o crachá', 'Bata o ponto', 'Fale com o RH'];
         var els = [
-          texto({ text: 'ANTES DE COMEÇAR', x: 6, y: 10, w: 88, h: 6, tamanho: 3.4 * k, peso: 800, cor: p.marca, espacamento: 0.18 }),
+          texto({ text: 'ANTES DE COMEÇAR', x: 6, y: 10, w: 88, h: 6, tamanho: 3.4 * k, peso: 800, cor: p.destaque, espacamento: 0.18 }),
         ];
         itens.forEach(function (t, i) {
           // Em pé, empilha; deitada, lado a lado. A mesma lista nos dois
@@ -409,6 +488,27 @@
     });
   }
 
+  /*
+   * Linhas de uma tabela saem no MESMO corpo.
+   *
+   * O ajuste acima é por elemento: num cardápio, "R$ 12,00" encolhia um
+   * pouco e "R$ 6,00" não, e a coluna de preços ficava com dois tamanhos —
+   * cara de erro, justamente no que o cliente lê. Textos marcados com o mesmo
+   * `_mesmoCorpo` ficam todos no menor corpo do grupo (e a marca sai da peça).
+   */
+  function igualarCorpos(els) {
+    var menor = {};
+    els.forEach(function (e) {
+      if (e._mesmoCorpo) menor[e._mesmoCorpo] = Math.min(menor[e._mesmoCorpo] != null ? menor[e._mesmoCorpo] : Infinity, e.tamanho);
+    });
+    return els.map(function (e) {
+      if (!e._mesmoCorpo) return e;
+      var c = Object.assign({}, e, { tamanho: menor[e._mesmoCorpo] });
+      delete c._mesmoCorpo;
+      return c;
+    });
+  }
+
   /* ---------------- API ---------------- */
 
   function listar() {
@@ -429,7 +529,7 @@
       formato: formato || '16/9',
       duracao: 12,
       bg: fora.bg,
-      elementos: ajustarTextos(fora.elementos, formato || '16/9'),
+      elementos: igualarCorpos(ajustarTextos(fora.elementos, formato || '16/9')),
       dica: fora.dica || '',
     };
   }

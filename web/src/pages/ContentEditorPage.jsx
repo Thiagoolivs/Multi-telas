@@ -17,7 +17,7 @@ import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
 import { useAsync } from '../lib/useAsync.js';
-import { deviceConfig } from '../api.js';
+import { deviceConfig, brand as brandApi } from '../api.js';
 import { Sparkles, Wand2 } from 'lucide-react';
 import { Field, Input, Textarea } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
@@ -170,6 +170,16 @@ export function ContentEditorPage({ device, onBack }) {
    */
   const addItem = (type) => {
     if (type === 'composicao') { setModeloAberto(true); return; }
+    // Atalho para um modelo pronto (TypePicker): já na cor da marca e no
+    // formato desta tela, e abre o editor para trocar os itens.
+    if (type.startsWith('modelo:')) {
+      Promise.all([import('../../../js/modelos.js'), brandApi.get().catch(() => null)]).then(([, r]) => {
+        const cores = (r && r.kit && r.kit.cores) || [];
+        const peca = globalThis.MTModelos && globalThis.MTModelos.montar(type.slice(7), formatoDaTela, cores);
+        comecarDe(peca, formatoDaTela);
+      });
+      return;
+    }
     mutateItems((arr) => { arr.push(CONTENT_TYPES[type].make()); return arr; });
     setSelected(items.length);
   };

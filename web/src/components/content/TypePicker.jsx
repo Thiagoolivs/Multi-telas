@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Palette, Plus } from 'lucide-react';
+import { Search, Palette, Plus, UtensilsCrossed } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { CONTENT_TYPES, CONTENT_ORDER } from '../../lib/contentTypes.js';
 import { DesignThumb } from './DesignThumb.jsx';
@@ -27,6 +27,18 @@ const DESC = {
   mural: 'O público manda foto pelo QR e ela aparece aqui na hora.',
   weatherpro: 'Painel do clima da cidade.',
   birthdayauto: 'Aniversariantes automáticos.',
+};
+
+/*
+ * Atalhos para um MODELO pronto (js/modelos.js) com cara de tipo próprio.
+ *
+ * O cardápio é uma composição, e morava dentro de "Composição (editor
+ * livre)" › galeria — onde o dono da padaria nunca procuraria. Aqui ele
+ * aparece com o nome que a pessoa usa, junto do que é comercial.
+ */
+const ATALHOS = {
+  'modelo:cardapio': { label: 'Cardápio / Tabela de preços', icon: UtensilsCrossed, group: 'Comercial',
+    desc: 'Nome e preço na mesma linha, na cor da sua marca.' },
 };
 
 /*
@@ -63,6 +75,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem }) {
     const g = CONTENT_TYPES[t].group;
     (groups[g] = groups[g] || []).push(t);
   });
+  Object.keys(ATALHOS).forEach((t) => { (groups[ATALHOS[t].group] = groups[ATALHOS[t].group] || []).unshift(t); });
 
   const TABS = [['lib', 'Minha biblioteca', Palette], ['new', 'Criar novo', Plus]];
 
@@ -118,13 +131,14 @@ export function TypePicker({ open, onClose, onPick, onPickItem }) {
               <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">{group}</div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {types.map((t) => {
-                  const { label, icon: Icon } = CONTENT_TYPES[t];
+                  const { label, icon: Icon } = CONTENT_TYPES[t] || ATALHOS[t];
+                  const descricao = DESC[t] || (ATALHOS[t] && ATALHOS[t].desc);
                   return (
                     <button key={t} type="button" onClick={() => { onPick(t); onClose(); }}
                       className="flex flex-col items-start gap-2 rounded-xl border border-line bg-surface p-4 text-left transition hover:border-accent/50 hover:bg-surface-2">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-2"><Icon size={18} className="text-accent" strokeWidth={2} /></div>
                       <span className="text-sm font-semibold leading-snug text-ink">{label}</span>
-                      {DESC[t] && <span className="text-2xs leading-snug text-ink-3">{DESC[t]}</span>}
+                      {descricao && <span className="text-2xs leading-snug text-ink-3">{descricao}</span>}
                     </button>
                   );
                 })}
