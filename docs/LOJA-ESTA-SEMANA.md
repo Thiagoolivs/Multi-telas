@@ -106,8 +106,8 @@ box.
 2. Fazer o merge do PR #108 (o Railway publica sozinho).
 3. No GitHub: **Settings › Secrets and variables › Actions › Variables** →
    criar `MT_URL` com o seu endereço (ex.: `https://app.seudominio.com.br`).
-   Depois rodar de novo o workflow **App Android** e baixar o `.apk` em
-   *Artifacts*. Sem isso o app aponta para o endereço padrão; dá para trocar na
+   Depois **Actions › App Android › Run workflow** (branch `main`) e baixar
+   o `.apk` em *Artifacts*. Sem isso o app aponta para o endereço padrão; dá para trocar na
    TV (VOLTAR 5 vezes), mas é mais fácil já vir certo.
 4. Comprar o box (entrega em 1 ou 2 dias nas grandes lojas).
 5. Mandar os Termos para o advogado.

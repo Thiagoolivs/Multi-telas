@@ -19,6 +19,7 @@ O `.apk` fica em **Actions › App Android › (a execução) › Artifacts**.
 O endereço do servidor entra no build pela variável do repositório `MT_URL`
 (**Settings › Secrets and variables › Actions › Variables**), por exemplo
 `https://app.suaempresa.com.br`. Sem ela, o padrão do `app/build.gradle`.
+Trocou a variável? **Actions › App Android › Run workflow** gera o APK novo.
 
 ## Instalar num TV Box (sideload)
 

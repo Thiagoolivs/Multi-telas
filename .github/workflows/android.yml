@@ -18,6 +18,9 @@ on:
     paths: ['android/**', '.github/workflows/android.yml']
   pull_request:
     paths: ['android/**', '.github/workflows/android.yml']
+  # Botão "Run workflow": trocar MT_URL não mexe em android/**, então sem isto
+  # não haveria como gerar um APK novo apontando para o endereço novo.
+  workflow_dispatch:
   workflow_dispatch:
 
 concurrency:

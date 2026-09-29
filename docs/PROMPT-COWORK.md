@@ -139,6 +139,18 @@ definir `ALERTA_WEBHOOK_URL=…`.
    cores e as fontes que saíram fazem sentido. (Isso nunca foi testado em
    produção.)
 
+## Etapa 10 — App Android da TV (APK)
+
+1. No GitHub, repositório **Thiagoolivs/Multi-telas** → **Settings › Secrets
+   and variables › Actions › aba Variables** → **New repository variable**:
+   `MT_URL=<APP_URL>` (ex.: `https://app.seudominio.com.br`, sem barra no fim).
+2. **Actions › App Android › Run workflow** (branch `main`). Espere ficar
+   verde, abra a execução e baixe o artefato **multitelas-tv-…** (o `.apk`).
+3. Me entregue o `.apk` e diga a versão que aparece no nome.
+4. (Opcional, pergunte antes) Para o APK sair assinado sempre com a mesma
+   chave — e o Android aceitar atualizações por cima —, os segredos de
+   assinatura estão descritos em `android/README.md`.
+
 ## O que NÃO é com você
 
 - Revisão jurídica dos Termos: fica comigo e com o advogado. Só depois dela
