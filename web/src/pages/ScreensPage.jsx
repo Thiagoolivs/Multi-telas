@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
@@ -26,6 +26,7 @@ export function ScreensPage({ onEditContent }) {
   const [removeTarget, setRemoveTarget] = useState(null);
   const [reconnectTarget, setReconnectTarget] = useState(null);
   const [backupTarget, setBackupTarget] = useState(null);
+  const [alertaTarget, setAlertaTarget] = useState(null);
 
   return (
     <div>
@@ -62,6 +63,7 @@ export function ScreensPage({ onEditContent }) {
                   onRename={() => setRenameTarget(d)}
                   onReconnect={() => setReconnectTarget(d)}
                   onBackup={() => setBackupTarget(d)}
+                  onAlerta={() => setAlertaTarget(d)}
                   onRemove={() => setRemoveTarget(d)} />
               ))}
             </div>
@@ -82,13 +84,14 @@ export function ScreensPage({ onEditContent }) {
       </Dialog>
       <ReconnectDialog target={reconnectTarget} onClose={() => setReconnectTarget(null)} onDone={reload} />
       <RemoveDialog target={removeTarget} onClose={() => setRemoveTarget(null)} onDone={reload} />
+      <ExpedienteDialog target={alertaTarget} onClose={() => setAlertaTarget(null)} onDone={reload} />
       <BackupDialog target={backupTarget} screens={list} onClose={() => setBackupTarget(null)} onDone={reload} />
     </div>
   );
 }
 
 // Mini "tela" da frota: status + programação (não é espelho ao vivo).
-function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onRemove }) {
+function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onAlerta, onRemove }) {
   const st = deviceStatus(d.lastSeen);
   const online = st.tone === 'ok';
   return (
@@ -122,6 +125,8 @@ function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onRem
         <div className="flex shrink-0 items-center gap-1">
           <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent}>Conteúdo</Button>
           <IconButton icon={Music} label="Som ao vivo" size={14} onClick={onSom} />
+          <IconButton icon={d.expediente && d.expediente.alerta === false ? BellOff : Bell}
+            label="Horário e alerta de queda" size={14} onClick={onAlerta} />
           <IconButton icon={Archive} label="Backup / restaurar" size={14} onClick={onBackup} />
           <IconButton icon={Pencil} label="Renomear" size={14} onClick={onRename} />
           <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={onRemove} />
@@ -264,6 +269,90 @@ function EnderecoDaTv() {
         A TV vai mostrar um código de 6 dígitos. Deixe essa tela aberta enquanto você pareia aqui.
       </div>
     </div>
+  );
+}
+
+/*
+ * Horário de funcionamento e alerta de queda.
+ *
+ * Sem isto, a loja que desliga a TV à noite recebia "tela fora do ar" toda
+ * noite, e em uma semana mandava o aviso para o lixo — levando junto o aviso
+ * de verdade. O servidor só conta tempo fora do ar DENTRO deste horário, e só
+ * avisa durante ele (server/vigia.js).
+ */
+const DIAS = [['D', 0, 'domingo'], ['S', 1, 'segunda'], ['T', 2, 'terça'], ['Q', 3, 'quarta'], ['Q', 4, 'quinta'], ['S', 5, 'sexta'], ['S', 6, 'sábado']];
+
+function ExpedienteDialog({ target, onClose, onDone }) {
+  const [exp, setExp] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  React.useEffect(() => {
+    setError('');
+    setExp(target ? { alerta: true, dias: [1, 2, 3, 4, 5, 6], inicio: '07:00', fim: '22:00', ...(target.expediente || {}) } : null);
+  }, [target]);
+  if (!exp) return null;
+
+  const dia24 = exp.inicio === exp.fim;
+  const alternarDia = (n) => setExp({ ...exp, dias: exp.dias.includes(n) ? exp.dias.filter((x) => x !== n) : [...exp.dias, n].sort() });
+
+  async function salvar() {
+    setBusy(true); setError('');
+    try { await devices.expediente(target.id, exp); onDone(); onClose(); }
+    catch (err) { setError(err.message || 'Não foi possível salvar.'); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <Dialog
+      open={!!target}
+      onClose={onClose}
+      title={'Horário e alerta · ' + ((target && target.name) || 'Tela')}
+      description="Se a tela cair durante o horário de funcionamento, avisamos o dono da conta por e-mail."
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={salvar} disabled={busy || (exp.alerta && !exp.dias.length)}>{busy ? 'Salvando…' : 'Salvar'}</Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input type="checkbox" checked={exp.alerta} onChange={(e) => setExp({ ...exp, alerta: e.target.checked })} />
+          Avisar por e-mail quando esta tela cair
+        </label>
+
+        <fieldset disabled={!exp.alerta} className={exp.alerta ? '' : 'opacity-50'}>
+          <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Dias em que a tela fica ligada</div>
+          <div className="mt-1.5 flex gap-1.5">
+            {DIAS.map(([letra, n, nome]) => (
+              <button key={n} type="button" title={nome} aria-pressed={exp.dias.includes(n)} onClick={() => alternarDia(n)}
+                className={'h-8 w-8 rounded-full border text-xs font-semibold ' + (exp.dias.includes(n)
+                  ? 'border-accent bg-accent text-white' : 'border-line bg-surface text-ink-3')}>
+                {letra}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Field label="Liga às">
+              <Input type="time" value={exp.inicio} disabled={dia24} onChange={(e) => setExp({ ...exp, inicio: e.target.value })} />
+            </Field>
+            <Field label="Desliga às">
+              <Input type="time" value={exp.fim} disabled={dia24} onChange={(e) => setExp({ ...exp, fim: e.target.value })} />
+            </Field>
+          </div>
+          <label className="mt-2 flex items-center gap-2 text-sm text-ink-2">
+            <input type="checkbox" checked={dia24} onChange={(e) => setExp({ ...exp, inicio: e.target.checked ? '00:00' : '07:00', fim: e.target.checked ? '00:00' : '22:00' })} />
+            Fica ligada 24 horas
+          </label>
+          <p className="mt-2 text-xs text-ink-3">
+            Fora deste horário a TV pode ficar desligada à vontade: nenhum aviso sai.
+            Se ela não voltar quando o horário começar, avisamos 15 minutos depois.
+          </p>
+        </fieldset>
+        {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
+      </div>
+    </Dialog>
   );
 }
 

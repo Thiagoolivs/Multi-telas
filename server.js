@@ -2003,7 +2003,10 @@ async function handleApi(req, res, pathname, query) {
   if (req.method === 'GET' && parts[1] === 'devices' && parts.length === 2) {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     const rows = await db.listDevices(sess.tenant_id);
-    const list = rows.map((d) => ({ id: d.id, name: d.name, code: d.code, hasConfig: !!d.has_config, updatedAt: d.updated_at, lastSeen: d.last_seen }));
+    const list = rows.map((d) => ({
+      id: d.id, name: d.name, code: d.code, hasConfig: !!d.has_config, updatedAt: d.updated_at, lastSeen: d.last_seen,
+      expediente: vigia.normalizarExpediente(d.expediente),
+    }));
     return sendJson(res, 200, { devices: list });
   }
 
@@ -2118,6 +2121,19 @@ async function handleApi(req, res, pathname, query) {
     }
 
     // Renomear / remover (dono)
+    /*
+     * Horário de funcionamento e alerta de queda, por tela. O corpo passa por
+     * normalizarExpediente: lixo vira o padrão, nunca um alerta desligado
+     * sem o dono ter pedido.
+     */
+    if (req.method === 'POST' && sub === 'expediente') {
+      if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
+      return readBody(req, res, async (b) => {
+        const exp = vigia.normalizarExpediente(b || {});
+        await db.setExpediente(id, JSON.stringify(exp));
+        return sendJson(res, 200, { ok: true, expediente: exp });
+      });
+    }
     if (req.method === 'POST' && sub === 'rename') {
       if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
       return readBody(req, res, async (b) => { await db.renameDevice(id, (b && b.name) || device.name); return sendJson(res, 200, { ok: true }); });

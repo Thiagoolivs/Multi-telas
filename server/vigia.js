@@ -31,12 +31,107 @@ const { log } = require('./log.js');
 
 // A TV pulsa a cada 30s. 15 min = 30 batidas perdidas: já não é oscilação.
 const LIMITE_MS = 15 * 60 * 1000;
-// Queda mais velha que isto é tela abandonada, não novidade.
+// Queda mais velha que isto é tela abandonada, não novidade. Contada em
+// horas de EXPEDIENTE (ver abaixo), não de relógio.
 const JANELA_MS = 24 * 60 * 60 * 1000;
 // De quanto em quanto a varredura roda.
 const INTERVALO_MS = 5 * 60 * 1000;
 // Quantas telas o e-mail nomeia antes de resumir o resto.
 const MAX_NOMEADAS = 8;
+
+/* ---------------- Expediente ----------------
+ *
+ * O defeito que isto conserta: a loja desliga a TV às 22h, e às 22h15 saía
+ * "Vitrine está fora do ar". Toda noite. Em uma semana o cliente cria uma
+ * regra que manda o aviso para o lixo — e o aviso de verdade, o da TV que
+ * morreu numa terça de manhã, vai junto.
+ *
+ * A regra: só conta tempo fora do ar DENTRO do expediente, e só avisa
+ * DURANTE o expediente. A TV desligada às 22h que não voltou às 7h vira
+ * aviso às 7h15 — que é exatamente quando alguém precisa saber.
+ *
+ * O horário é o de Brasília por padrão: o servidor roda em UTC, e "7h" para
+ * o dono da padaria é 7h no relógio dele.
+ */
+const EXPEDIENTE_PADRAO = Object.freeze({
+  alerta: true,
+  dias: [1, 2, 3, 4, 5, 6],   // 0 = domingo … 6 = sábado
+  inicio: '07:00',
+  fim: '22:00',
+  fuso: 'America/Sao_Paulo',
+});
+// Quanto para trás o banco busca: um fim de semana prolongado inteiro.
+const BUSCA_MS = 5 * 24 * 60 * 60 * 1000;
+// Passo da soma de tempo de expediente. Cinco minutos = a mesma precisão da varredura.
+const PASSO_MS = 5 * 60 * 1000;
+
+function hhmm(v, padrao) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || ''));
+  if (!m) return padrao;
+  const h = Number(m[1]), mi = Number(m[2]);
+  if (h > 24 || mi > 59 || (h === 24 && mi > 0)) return padrao;
+  return String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0');
+}
+
+/* Aceita o que vier (JSON do banco, corpo da requisição) e devolve algo válido. */
+function normalizarExpediente(bruto) {
+  let e = bruto;
+  if (typeof e === 'string') { try { e = JSON.parse(e); } catch (_) { e = null; } }
+  if (!e || typeof e !== 'object') return { ...EXPEDIENTE_PADRAO, dias: [...EXPEDIENTE_PADRAO.dias] };
+  const dias = Array.isArray(e.dias)
+    ? [...new Set(e.dias.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort()
+    : [...EXPEDIENTE_PADRAO.dias];
+  let fuso = EXPEDIENTE_PADRAO.fuso;
+  if (typeof e.fuso === 'string') {
+    try { new Intl.DateTimeFormat('en-US', { timeZone: e.fuso }); fuso = e.fuso; } catch (_) { /* fuso inválido: padrão */ }
+  }
+  return {
+    alerta: e.alerta !== false,
+    dias,
+    inicio: hhmm(e.inicio, EXPEDIENTE_PADRAO.inicio),
+    fim: hhmm(e.fim, EXPEDIENTE_PADRAO.fim),
+    fuso,
+  };
+}
+
+const formatadores = new Map();
+function relogioLocal(t, fuso) {
+  if (!formatadores.has(fuso)) {
+    formatadores.set(fuso, new Intl.DateTimeFormat('en-US', {
+      timeZone: fuso, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }));
+  }
+  const partes = formatadores.get(fuso).formatToParts(new Date(t));
+  const val = (tipo) => (partes.find((p) => p.type === tipo) || {}).value;
+  const dia = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(val('weekday'));
+  return { dia, min: Number(val('hour')) * 60 + Number(val('minute')) };
+}
+
+const emMin = (s) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3));
+
+/*
+ * O instante `t` está dentro do expediente? Início igual ao fim = 24 horas.
+ * Fim antes do início (bar das 18h às 2h) atravessa a meia-noite, e a
+ * madrugada pertence ao dia em que o expediente COMEÇOU.
+ */
+function dentroDoExpediente(t, exp) {
+  const { dia, min } = relogioLocal(t, exp.fuso);
+  const ini = emMin(exp.inicio), fim = emMin(exp.fim);
+  if (ini === fim) return exp.dias.includes(dia);
+  if (ini < fim) return exp.dias.includes(dia) && min >= ini && min < fim;
+  if (min >= ini) return exp.dias.includes(dia);
+  if (min < fim) return exp.dias.includes((dia + 6) % 7);
+  return false;
+}
+
+/* Quanto do intervalo [de, ate) caiu dentro do expediente. */
+function tempoDeExpediente(de, ate, exp) {
+  let soma = 0;
+  for (let t = de; t < ate; t += PASSO_MS) {
+    if (dentroDoExpediente(t, exp)) soma += Math.min(PASSO_MS, ate - t);
+  }
+  return soma;
+}
 
 /*
  * decidir — puro: recebe linhas do banco, devolve os avisos a mandar.
@@ -60,7 +155,16 @@ function decidir(telas, agora, opcoes) {
     if (!t.tenant_id || !t.email) continue;
     const parada = agora - desde;
     if (parada < limite) continue;
-    if (parada > janela) continue;
+
+    const exp = normalizarExpediente(t.expediente);
+    // Desligado pelo dono: nada de aviso para esta tela.
+    if (!exp.alerta) continue;
+    // Fora do expediente ninguém precisa ser acordado. O aviso sai quando o
+    // expediente começar, se a tela ainda estiver fora.
+    if (!dentroDoExpediente(agora, exp)) continue;
+    const paradaNoExpediente = tempoDeExpediente(desde, agora, exp);
+    if (paradaNoExpediente < limite) continue;
+    if (paradaNoExpediente > janela) continue;
     // Já avisamos desta queda: só volta a valer se a tela pulsou depois.
     const avisado = Number(t.alerta_offline_em) || 0;
     if (avisado >= desde) continue;
@@ -150,7 +254,10 @@ function escapar(s) {
  */
 async function varrer({ db, mail, appUrl, agora }) {
   const t0 = typeof agora === 'number' ? agora : Date.now();
-  const linhas = await db.telasCaidas(t0 - JANELA_MS, t0 - LIMITE_MS);
+  // A busca volta mais que a janela: a janela conta horas de EXPEDIENTE, e
+  // uma TV que caiu sábado às 22h só completa 15 minutos de expediente
+  // fora do ar na segunda às 7h15.
+  const linhas = await db.telasCaidas(t0 - BUSCA_MS, t0 - LIMITE_MS);
   const avisos = decidir(linhas, t0);
   let enviados = 0;
 
@@ -188,4 +295,7 @@ function ligar({ db, mail, appUrl }) {
   return () => { clearTimeout(inicio); clearInterval(relogio); };
 }
 
-module.exports = { decidir, mensagem, varrer, ligar, faz, LIMITE_MS, JANELA_MS, INTERVALO_MS, MAX_NOMEADAS };
+module.exports = {
+  decidir, mensagem, varrer, ligar, faz, LIMITE_MS, JANELA_MS, INTERVALO_MS, MAX_NOMEADAS,
+  EXPEDIENTE_PADRAO, normalizarExpediente, dentroDoExpediente, tempoDeExpediente,
+};

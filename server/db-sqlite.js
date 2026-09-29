@@ -396,6 +396,8 @@ garantirColuna('devices', 'last_seen INTEGER');
 // é o que impede o mesmo aviso de sair a cada varredura: enquanto a tela não
 // pulsar de novo (last_seen > isto), a queda já foi contada. Ver server/vigia.js.
 garantirColuna('devices', 'alerta_offline_em INTEGER');
+// Horário de funcionamento e alerta ligado/desligado (JSON; nulo = padrão).
+garantirColuna('devices', 'expediente TEXT');
 for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER',
   // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
   // expira). `creditos_ciclo` guarda quando a franquia foi reposta pela
@@ -446,9 +448,10 @@ const q = {
   claimDevice: db.prepare('UPDATE devices SET tenant_id = ?, name = ? WHERE id = ?'),
   setConfig: db.prepare('UPDATE devices SET config = ?, name = ?, updated_at = ? WHERE id = ?'),
   renameDevice: db.prepare('UPDATE devices SET name = ? WHERE id = ?'),
+  setExpediente: db.prepare('UPDATE devices SET expediente = ? WHERE id = ?'),
   deleteDevice: db.prepare('DELETE FROM devices WHERE id = ?'),
   touchDevice: db.prepare('UPDATE devices SET last_seen = ? WHERE id = ?'),
-  listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
+  listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, expediente, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
   /*
    * Telas caídas com o e-mail de quem precisa saber.
    *
@@ -460,7 +463,7 @@ const q = {
    * O corte por tempo repete o que server/vigia.js decide, para não ler a
    * frota inteira a cada cinco minutos. Quem manda continua sendo o vigia.
    */
-  telasCaidas: db.prepare(`SELECT d.id, d.name, d.tenant_id, d.last_seen, d.alerta_offline_em,
+  telasCaidas: db.prepare(`SELECT d.id, d.name, d.tenant_id, d.last_seen, d.alerta_offline_em, d.expediente,
            t.name AS conta,
            (SELECT u.email FROM users u WHERE u.tenant_id = d.tenant_id AND u.role = 'owner'
              ORDER BY u.created_at ASC LIMIT 1) AS email
@@ -602,6 +605,7 @@ async function getDeviceByCode(code) { return q.deviceByCode.get(String(code || 
 async function claimDevice(id, tenantId, name) { q.claimDevice.run(tenantId, name || '', id); }
 async function setDeviceConfig(id, configJson, name) { q.setConfig.run(configJson, name || '', Date.now(), id); }
 async function renameDevice(id, name) { q.renameDevice.run(name, id); }
+async function setExpediente(id, json) { q.setExpediente.run(json, id); }
 async function removeDevice(id) { q.deleteDevice.run(id); }
 async function touchDevice(id) { q.touchDevice.run(Date.now(), id); }
 async function listDevices(tenantId) { return q.listByTenant.all(tenantId); }
@@ -1304,7 +1308,7 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, touchDevice, listDevices, countDevices,
+  renameDevice, setExpediente, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,

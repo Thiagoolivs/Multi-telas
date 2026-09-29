@@ -171,6 +171,9 @@ async function init() {
     -- tela não pulsar de novo (last_seen > isto), a queda já foi contada.
     -- Ver server/vigia.js.
     ALTER TABLE devices ADD COLUMN IF NOT EXISTS alerta_offline_em BIGINT;
+    -- Horário de funcionamento da tela e se o alerta de queda está ligado
+    -- (JSON). Nulo = o padrão de server/vigia.js.
+    ALTER TABLE devices ADD COLUMN IF NOT EXISTS expediente TEXT;
     CREATE TABLE IF NOT EXISTS invites (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
       invited_by TEXT, created_at BIGINT, expires_at BIGINT, accepted_at BIGINT
@@ -804,11 +807,12 @@ async function setDeviceConfig(id, configJson, name) {
   await pool.query('UPDATE devices SET config = $1, name = $2, updated_at = $3 WHERE id = $4', [configJson, name || '', Date.now(), id]);
 }
 async function renameDevice(id, name) { await pool.query('UPDATE devices SET name = $1 WHERE id = $2', [name, id]); }
+async function setExpediente(id, json) { await pool.query('UPDATE devices SET expediente = $1 WHERE id = $2', [json, id]); }
 async function removeDevice(id) { await pool.query('DELETE FROM devices WHERE id = $1', [id]); }
 async function touchDevice(id) { await pool.query('UPDATE devices SET last_seen = $1 WHERE id = $2', [Date.now(), id]); }
 async function listDevices(tenantId) {
   const r = await pool.query(
-    'SELECT id, name, code, tenant_id, updated_at, last_seen, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = $1 ORDER BY created_at DESC',
+    'SELECT id, name, code, tenant_id, updated_at, last_seen, expediente, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = $1 ORDER BY created_at DESC',
     [tenantId]);
   return r.rows;
 }
@@ -826,7 +830,7 @@ async function listDevices(tenantId) {
  */
 async function telasCaidas(desde, ate) {
   const r = await pool.query(
-    `SELECT d.id, d.name, d.tenant_id, d.last_seen, d.alerta_offline_em,
+    `SELECT d.id, d.name, d.tenant_id, d.last_seen, d.alerta_offline_em, d.expediente,
             t.name AS conta,
             (SELECT u.email FROM users u WHERE u.tenant_id = d.tenant_id AND u.role = 'owner'
               ORDER BY u.created_at ASC LIMIT 1) AS email
@@ -1217,7 +1221,7 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
-  renameDevice, removeDevice, touchDevice, listDevices, countDevices,
+  renameDevice, setExpediente, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
