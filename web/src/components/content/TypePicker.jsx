@@ -13,6 +13,7 @@ const DESC = {
   poster: 'Arte pronta com a cor da marca.',
   quote: 'Frase com autor.',
   promo: 'Produto, preço e chamada.',
+  precos: 'Cardápio ou lista de preços: cole as linhas e a TV organiza em colunas.',
   kpi: 'Número grande com variação.',
   composicao: 'Editor livre: formas, texto e imagens.',
   social: 'Perfil e QR das redes.',
@@ -37,8 +38,8 @@ const DESC = {
  * aparece com o nome que a pessoa usa, junto do que é comercial.
  */
 const ATALHOS = {
-  'modelo:cardapio': { label: 'Cardápio / Tabela de preços', icon: UtensilsCrossed, group: 'Comercial',
-    desc: 'Nome e preço na mesma linha, na cor da sua marca.' },
+  'modelo:cardapio': { label: 'Cardápio em arte', icon: UtensilsCrossed, group: 'Comercial',
+    desc: 'Modelo pronto no editor visual, na cor da sua marca — para até oito itens.' },
 };
 
 /*

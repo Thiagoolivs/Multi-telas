@@ -133,6 +133,7 @@
     agenda: renderAgenda,
     kpi: renderKpi,
     promo: renderPromo,
+    precos: renderPrecos,
     social: renderSocial,
     poster: renderPoster,
     composicao: renderComposicao,
@@ -1139,6 +1140,44 @@
     if (item.cta) info.appendChild(divText('mt-promo-cta', item.cta));
     el.appendChild(info);
     return { el, duration: item.duracao || 12 };
+  }
+
+  /* ---------- Tabela de preços (js/precos.js lê o texto colado) ----------
+   *
+   * Colunas e corpo saem da QUANTIDADE de linhas: oito itens numa coluna com
+   * letra grande, trinta em três colunas com letra menor. Deitada ou em pé,
+   * quem escolhe é a própria zona (@container orientation em player.css) —
+   * o renderizador não sabe onde a peça vai morar.
+   */
+  function renderPrecos(item) {
+    const P = global.MTPrecos;
+    const linhas = P ? P.ler(item.linhas) : [];
+    const el = div('mt-slide mt-surface mt-precos');
+    if (item.bg) el.style.background = item.bg;
+    const inner = div('mt-precos-inner');
+    if (item.titulo) inner.appendChild(divText('mt-precos-titulo', item.titulo));
+    const lista = div('mt-precos-lista');
+    linhas.forEach(function (l) {
+      if (l.tipo === 'secao') { lista.appendChild(divText('mt-precos-secao', l.nome)); return; }
+      const row = div('mt-precos-linha');
+      row.appendChild(divText('mt-precos-nome', l.nome));
+      row.appendChild(divText('mt-precos-preco', l.preco));
+      lista.appendChild(row);
+    });
+    if (!linhas.length) lista.appendChild(divText('mt-precos-secao', 'Tabela de preços'));
+    inner.appendChild(lista);
+    if (item.rodape) inner.appendChild(divText('mt-precos-rodape', item.rodape));
+    el.appendChild(inner);
+
+    // Arranjo para a zona deitada e para em pé; o CSS escolhe pela zona real.
+    const corpo = (m) => 'min(' + m.cqh.toFixed(2) + 'cqh, ' + m.cqw.toFixed(2) + 'cqw)';
+    const deitada = P ? P.layout(linhas, 0.6, item.colunas) : { cols: 1, cqh: 5, cqw: 3 };
+    const emPe = P ? P.layout(linhas, 1.7, item.colunas) : deitada;
+    el.style.setProperty('--cols', deitada.cols);
+    el.style.setProperty('--corpo', corpo(deitada));
+    el.style.setProperty('--cols-pe', emPe.cols);
+    el.style.setProperty('--corpo-pe', corpo(emPe));
+    return { el, duration: item.duracao || 20 };
   }
 
   /* ---------- Redes sociais ---------- */

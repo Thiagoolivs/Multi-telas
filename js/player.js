@@ -81,7 +81,7 @@
    */
   function caberNaCaixa(slide) {
     if (!slide || !slide.querySelector) return;
-    const miolo = slide.querySelector(':scope > .mt-text-inner, :scope > .ann-inner');
+    const miolo = slide.querySelector(':scope > .mt-text-inner, :scope > .ann-inner, :scope > .mt-precos-inner');
     if (!miolo) return;
     const medir = function () {
       miolo.style.transform = '';

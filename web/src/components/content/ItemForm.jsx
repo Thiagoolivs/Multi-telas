@@ -28,7 +28,7 @@ export function ItemForm({ item, onChange }) {
             ) : f.kind === 'mural' ? (
               <MuralField value={value} onChange={(v) => set(f.key, v)} />
             ) : f.kind === 'textarea' ? (
-              <Textarea value={value || ''} onChange={(e) => set(f.key, e.target.value)} />
+              <Textarea value={value || ''} rows={f.rows} onChange={(e) => set(f.key, e.target.value)} placeholder={f.placeholder} />
             ) : f.kind === 'select' ? (
               <Select value={value ?? f.options[0].value} onChange={(e) => set(f.key, e.target.value)}>
                 {f.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

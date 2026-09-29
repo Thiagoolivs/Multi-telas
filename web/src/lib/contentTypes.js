@@ -11,7 +11,7 @@
  */
 import {
   Megaphone, Type, Quote, Tag, BarChart3, Share2, Image as ImageIcon,
-  Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout, Airplay, Cast, Presentation,
+  Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout, Airplay, Cast, Presentation, ReceiptText,
 } from 'lucide-react';
 
 const GRUPO_PC = 'Com computador ligado à TV';
@@ -89,6 +89,24 @@ export const CONTENT_TYPES = {
     ],
     make: () => ({ type: 'promo', titulo: 'Produto', precoPor: '', duracao: 12 }),
     summary: (i) => i.titulo || 'Promoção',
+  },
+  precos: {
+    label: 'Tabela de preços', icon: ReceiptText, group: 'Comercial',
+    fields: [
+      { key: 'titulo', label: 'Título', kind: 'text', placeholder: 'CARDÁPIO' },
+      { key: 'linhas', label: 'Itens e preços', kind: 'textarea', rows: 10,
+        hint: 'Uma linha por item: "Café expresso ; 6,00". Pode colar do WhatsApp ou da planilha. Linha sem preço vira título de seção (ex.: BEBIDAS).' },
+      { key: 'rodape', label: 'Rodapé', kind: 'text', placeholder: 'Aceitamos Pix e cartão' },
+      { key: 'colunas', label: 'Colunas', kind: 'select', options: [
+        { value: 'auto', label: 'Automático (pela quantidade de itens)' },
+        { value: '1', label: '1 coluna' }, { value: '2', label: '2 colunas' }, { value: '3', label: '3 colunas' } ] },
+      DUR,
+    ],
+    make: () => ({
+      type: 'precos', titulo: 'CAFÉ DA MANHÃ', colunas: 'auto', duracao: 20, rodape: 'Aceitamos Pix e cartão',
+      linhas: 'Café expresso ; 6,00\nCappuccino ; 9,50\nPão na chapa ; 7,00\nMisto quente ; 12,00\nPão de queijo ; 4,50\nSuco natural ; 10,00',
+    }),
+    summary: (i) => (i.titulo || 'Tabela de preços') + ' · ' + String(i.linhas || '').split('\n').filter((l) => l.trim()).length + ' linha(s)',
   },
   kpi: {
     label: 'Indicador (KPI)', icon: BarChart3, group: 'Comercial',
@@ -259,7 +277,7 @@ export const CONTENT_TYPES = {
 
 // Captura de janela e entrada HDMI só existem com um computador ligado à TV;
 // num TV Box ficam pretas. Vão para o fim, num grupo que diz isso.
-export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'promo', 'kpi', 'composicao', 'social', 'image', 'video', 'pptx', 'youtube', 'web', 'qrcode', 'mural', 'weatherpro', 'birthdayauto', 'screen', 'livesource'];
+export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'promo', 'precos', 'kpi', 'composicao', 'social', 'image', 'video', 'pptx', 'youtube', 'web', 'qrcode', 'mural', 'weatherpro', 'birthdayauto', 'screen', 'livesource'];
 
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;

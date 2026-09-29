@@ -6,6 +6,7 @@ import { temCurva } from '../../lib/composition.js';
 import { estiloTexto, carregarDaComposicao } from '../../lib/fontes.js';
 import { ICONS } from '../../lib/icons.js';
 import { murais } from '../../api.js';
+import '../../../../js/precos.js';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
 // Fidelidade total virá de um preview via player embutido, adiante.
@@ -70,6 +71,21 @@ function Body({ item }) {
           </div>
         </div>
       );
+    case 'precos': {
+      const P = globalThis.MTPrecos;
+      const linhas = P ? P.ler(item.linhas) : [];
+      return (
+        <div className="flex h-full w-full flex-col justify-center gap-1 px-2 text-left">
+          {item.titulo && <div className="text-xs font-extrabold uppercase tracking-wide text-sky-300">{item.titulo}</div>}
+          <div className="columns-2 gap-3 text-[9px] leading-tight">
+            {linhas.slice(0, 12).map((l, i) => (l.tipo === 'secao'
+              ? <div key={i} className="break-inside-avoid pt-1 font-bold uppercase opacity-60">{l.nome}</div>
+              : <div key={i} className="flex break-inside-avoid justify-between gap-1 border-b border-white/10 py-0.5"><span className="truncate">{l.nome}</span><span className="font-bold text-sky-300">{l.preco}</span></div>))}
+          </div>
+          {linhas.length > 12 && <div className="text-[9px] opacity-50">+ {linhas.length - 12} linha(s)</div>}
+        </div>
+      );
+    }
     case 'kpi':
       return (
         <div className="flex h-full flex-col items-center justify-center gap-0.5">

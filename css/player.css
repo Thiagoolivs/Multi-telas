@@ -1247,3 +1247,27 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   transform: translate(-50%, -50%) rotate(90deg);
 }
 .mt-moldura-270 { transform: translate(-50%, -50%) rotate(-90deg); }
+
+/* ---------- Tabela de preços (renderPrecos em js/render.js) ---------- */
+.mt-precos { container-type: size; flex-direction: column; align-items: stretch; justify-content: center; padding: 6cqh 6cqw; }
+.mt-precos-inner { width: 100%; }
+.mt-precos-titulo {
+  color: var(--accent); font-weight: 800; letter-spacing: .01em; line-height: 1.05;
+  font-size: min(6.5cqw, 11cqh); margin-bottom: 3cqh;
+}
+.mt-precos-lista { column-count: var(--cols, 1); column-gap: 5cqw; font-size: var(--corpo); }
+.mt-precos-linha {
+  display: flex; align-items: baseline; gap: .6em; break-inside: avoid;
+  padding: .3em 0; border-bottom: 1px solid color-mix(in srgb, var(--text) 13%, transparent);
+}
+.mt-precos-nome { flex: 1 1 auto; min-width: 0; color: var(--text); font-weight: 600; }
+.mt-precos-preco { flex: none; color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+.mt-precos-secao {
+  break-inside: avoid; break-after: avoid; color: var(--text-dim); font-weight: 700;
+  font-size: .7em; letter-spacing: .14em; text-transform: uppercase; padding: 1em 0 .25em;
+}
+.mt-precos-rodape { margin-top: 3cqh; color: var(--text-dim); font-size: calc(var(--corpo) * .75); }
+@container (orientation: portrait) {
+  .mt-precos-lista { column-count: var(--cols-pe, 1); font-size: var(--corpo-pe); }
+  .mt-precos-rodape { font-size: calc(var(--corpo-pe) * .75); }
+}
