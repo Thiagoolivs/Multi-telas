@@ -1,7 +1,7 @@
 # Bom dia: o que foi feito e como colocar numa loja esta semana
 
 Escrito em 29/09/2026, durante a madrugada. Tudo está no PR
-[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 844
+[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 845
 testes passando e o APK compilando no GitHub Actions.
 
 ---
@@ -108,6 +108,11 @@ computador e no celular)
   do roteador) a TV ficava na **página de erro** em vez da programação.
   Agora sobe com a última programação. Na primeiríssima vez, sem cópia,
   aparece "Procurando a internet…" em vez do erro do Android.
+- **Deploy no meio do dia:** o Railway responde erro 502 por alguns
+  segundos a cada deploy; a TV que recarregasse nessa hora mostrava a
+  página de erro dele. Agora sobe a cópia guardada.
+- O app aceita endereço `http://` (para testar com um computador na rede da
+  loja); antes ficava em "Procurando a internet…" sem dizer por quê.
 - **Box sem bateria de relógio** liga em 1970 depois de faltar luz: os
   relógios da TV ficam em branco até a hora acertar.
 - **Edição perdida:** mexer num conteúdo e sair em menos de 1 segundo perdia a
