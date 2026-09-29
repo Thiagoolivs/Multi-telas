@@ -1,7 +1,7 @@
 # Bom dia: o que foi feito e como colocar numa loja esta semana
 
 Escrito em 29/09/2026, durante a madrugada. Tudo está no PR
-[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 845
+[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 846
 testes passando e o APK compilando no GitHub Actions.
 
 ## Em 30 segundos
