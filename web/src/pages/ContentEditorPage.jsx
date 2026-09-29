@@ -63,6 +63,8 @@ export function ContentEditorPage({ device, onBack }) {
   }, [data, loading, device.name]);
 
   const zones = useMemo(() => (cfg ? zonesOf(cfg) : []), [cfg]);
+  const telaVazia = useMemo(() => !!cfg && zones.filter((z) => z.type === 'playlist')
+    .every((z) => !((cfg.zonas[z.id] || {}).items || []).length), [cfg, zones]);
 
   /*
    * O formato que esta TELA pede.
@@ -270,6 +272,40 @@ export function ContentEditorPage({ device, onBack }) {
       {publishError && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError}</div>}
 
       {cfg && <SeasonBanner zonas={zones.map((z) => z.id)} onAplicar={aplicarSeason} />}
+      {/*
+        COMECE POR AQUI — só enquanto a tela inteira está vazia.
+
+        Uma tela nova abria com três áreas vazias e três avisos, e a pergunta
+        "por onde eu começo?" ficava sem resposta. Três caminhos, do mais
+        automático ao mais manual; some sozinho no primeiro conteúdo.
+      */}
+      {cfg && telaVazia && (
+        <Panel className="mb-4">
+          <div className="p-4">
+            <div className="text-sm font-semibold text-ink">Esta tela ainda está vazia. Como você quer começar?</div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <button type="button" onClick={() => setCampOpen(true)}
+                className="rounded-lg border border-accent bg-accent-soft p-3 text-left transition hover:brightness-95">
+                <Wand2 size={18} className="text-accent" />
+                <div className="mt-1.5 text-sm font-semibold text-ink">A IA monta tudo</div>
+                <div className="text-xs text-ink-3">Diga o que está acontecendo na loja; ela preenche a tela inteira com a sua marca.</div>
+              </button>
+              <button type="button" onClick={() => setPicker(true)}
+                className="rounded-lg border border-line p-3 text-left transition hover:bg-surface-2">
+                <Plus size={18} className="text-ink-2" />
+                <div className="mt-1.5 text-sm font-semibold text-ink">Escolher um conteúdo pronto</div>
+                <div className="text-xs text-ink-3">Aviso, promoção, relógio, clima, notícias, vídeo, imagem…</div>
+              </button>
+              <button type="button" onClick={() => setSettingsOpen(true)}
+                className="rounded-lg border border-line p-3 text-left transition hover:bg-surface-2">
+                <Settings2 size={18} className="text-ink-2" />
+                <div className="mt-1.5 text-sm font-semibold text-ink">Mudar o layout</div>
+                <div className="text-xs text-ink-3">Tela cheia, com lateral, vertical… e o tema com as cores da empresa.</div>
+              </button>
+            </div>
+          </div>
+        </Panel>
+      )}
       {cfg && <ScreenSummary cfg={cfg} />}
 
       {loading || !cfg ? (
