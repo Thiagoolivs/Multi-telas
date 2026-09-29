@@ -50,7 +50,7 @@ async function api(method, path, body) {
      */
     const e = new Error((data && (data.error || data.mensagem)) || 'HTTP ' + res.status);
     e.status = res.status;
-    e.codigo = data && data.erro;
+    e.codigo = data && (data.erro || data.code);
     throw e;
   }
   return data;

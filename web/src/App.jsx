@@ -119,7 +119,7 @@ export default function App() {
   function renderPage() {
     switch (route.name) {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
-      case 'screens': return <ScreensPage parear={route.parear} onEditContent={(device) => go('content', { device })} />;
+      case 'screens': return <ScreensPage parear={route.parear} onEditContent={(device) => go('content', { device })} onIrParaPlano={() => go('billing')} />;
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;

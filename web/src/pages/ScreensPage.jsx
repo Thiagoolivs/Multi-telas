@@ -15,7 +15,7 @@ import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
 import { esquecerParear } from '../lib/parearPendente.js';
 
-export function ScreensPage({ onEditContent, parear }) {
+export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
   const { data, loading, error, reload } = useAsync(devices.list);
   const todas = data ? data.devices || [] : [];
   /*
@@ -104,7 +104,8 @@ export function ScreensPage({ onEditContent, parear }) {
         )}
       </Panel>
 
-      <PairDialog open={pairOpen} codigoInicial={parear} onClose={() => setPairOpen(false)} onDone={reload} />
+      <PairDialog open={pairOpen} codigoInicial={parear} onClose={() => setPairOpen(false)} onDone={reload}
+        onConteudo={(dev) => { setPairOpen(false); onEditContent(dev); }} onIrParaPlano={onIrParaPlano} />
       <RenomearGrupoDialog grupo={renomeandoGrupo} onClose={() => setRenomeandoGrupo(null)}
         onDone={(para) => { setFiltroGrupo(para); reload(); }} />
       <RenameDialog target={renameTarget} grupos={grupos} onClose={() => setRenameTarget(null)} onDone={reload} />
@@ -260,21 +261,56 @@ function ReconnectDialog({ target, onClose, onDone }) {
   );
 }
 
-function PairDialog({ open, onClose, onDone, codigoInicial }) {
+/*
+ * Parear termina num PRÓXIMO PASSO, e não num diálogo que some.
+ *
+ * Antes, parear fechava tudo e deixava a pessoa olhando uma TV "aguardando
+ * conteúdo" sem saber o que fazer. Agora o sucesso diz que deu certo e
+ * oferece o que vem depois: colocar conteúdo nesta tela.
+ *
+ * E o erro de cobrança (teste acabou, limite do plano, fatura em atraso)
+ * vem com o botão que resolve — só o texto mandava a pessoa procurar.
+ */
+function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onIrParaPlano }) {
   const [code, setCode] = useState(codigoInicial || '');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [erroDePlano, setErroDePlano] = useState(false);
+  const [pareada, setPareada] = useState(null);
+  React.useEffect(() => { if (open) { setPareada(null); setError(''); setErroDePlano(false); } }, [open]);
 
   async function submit() {
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setErroDePlano(false);
     try {
-      await devices.pair(code, name);
+      const dev = await devices.pair(code, name);
       esquecerParear(); // o código guardado do QR já foi usado
       setCode(''); setName('');
-      onDone(); onClose();
-    } catch (err) { setError(err.message || 'Não foi possível parear.'); }
+      setPareada(dev);
+      onDone();
+    } catch (err) {
+      setError(err.message || 'Não foi possível parear.');
+      setErroDePlano(err.status === 402);
+    }
     finally { setBusy(false); }
+  }
+
+  if (pareada) {
+    return (
+      <Dialog open={open} onClose={onClose} title="Tela conectada"
+        footer={<>
+          <Button variant="ghost" onClick={onClose}>Depois</Button>
+          <Button variant="primary" icon={LayoutTemplate} onClick={() => onConteudo && onConteudo(pareada)}>Colocar conteúdo agora</Button>
+        </>}>
+        <div className="flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><Check size={20} /></div>
+          <div className="text-sm text-ink-2">
+            <b className="text-ink">{pareada.name || 'A TV'}</b> já é sua: ela mostra "Tudo certo" e fica esperando.
+            O que você publicar aparece nela na hora — um modelo pronto, uma data comemorativa ou uma campanha feita pela IA.
+          </div>
+        </div>
+      </Dialog>
+    );
   }
 
   return (
@@ -303,7 +339,14 @@ function PairDialog({ open, onClose, onDone, codigoInicial }) {
         <Field label="Nome da tela" hint="Ex.: Recepção, Vitrine, Refeitório.">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recepção" autoFocus={!!codigoInicial} />
         </Field>
-        {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
+        {error && (
+          <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">
+            {error}
+            {erroDePlano && onIrParaPlano && (
+              <div className="mt-2"><Button size="sm" variant="primary" onClick={() => { onClose(); onIrParaPlano(); }}>Ver planos</Button></div>
+            )}
+          </div>
+        )}
       </div>
     </Dialog>
   );
