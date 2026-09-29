@@ -65,6 +65,11 @@ function problemasDaZona(zona, itens, ciclo) {
     p.push({ nivel: 'aviso', texto: `${zona.name} está vazia — a TV mostra só um relógio nesse espaço` });
     return p;
   }
+  // Tudo com horário: fora das janelas a zona fica só no relógio, e isso
+  // costuma ser surpresa ("de tarde a TV não mostra nada").
+  if (itens.every((i) => i && i.agendamento && i.agendamento.ativo)) {
+    p.push({ nivel: 'dica', texto: `${zona.name}: todos os conteúdos têm horário — fora deles a TV mostra só o relógio. Deixe um sem horário para cobrir o resto do dia.` });
+  }
   const fixo = itens.find((i) => duracaoDe(i) === 0);
   if (fixo && itens.length > 1) {
     p.push({ nivel: 'aviso', texto: `${zona.name}: "${typeLabel(fixo.type)}" está com duração 0 (fica fixo) e trava os outros ${itens.length - 1}` });
@@ -119,7 +124,7 @@ export function digest(cfg, ratios) {
           : `${msgs} aviso(s) fixo(s)`,
         ciclo: 0, itens: msgs, origens: {},
       });
-      if (!feeds && !msgs) problemas.push({ nivel: 'aviso', texto: `${z.name} não tem nem notícia nem aviso` });
+      if (!feeds && !msgs) problemas.push({ nivel: 'aviso', texto: `${z.name} não tem notícia nem aviso — a faixa mostra só a data de hoje` });
       return;
     }
     if (z.type === 'header') {

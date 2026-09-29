@@ -42,3 +42,14 @@ test('agendamento que nunca acontece é apontado', async () => {
   assert.match(problemaDaAgenda({ ativo: true, dataFim: '2020-01-01' }), /já terminou/);
   assert.equal(problemaDaAgenda({ ativo: true, horaInicio: '06:00', horaFim: '10:00' }), '');
 });
+
+test('resumo da tela avisa quando TODO conteúdo da zona tem horário', async () => {
+  // Fora das janelas a zona fica só no relógio — "de tarde a TV não mostra nada".
+  const { digest } = await import('../web/src/lib/screenDigest.js');
+  const ag = { ativo: true, horaInicio: '06:00', horaFim: '10:00' };
+  const cfg = (itens) => ({ version: 1, settings: { layoutId: 'fullscreen' }, zonas: { principal: { items: itens } } });
+  const tudo = digest(cfg([{ type: 'text', titulo: 'a', duracao: 10, agendamento: ag }]));
+  assert.ok(tudo.problemas.some((p) => /todos os conteúdos têm horário/.test(p.texto)), JSON.stringify(tudo.problemas));
+  const misto = digest(cfg([{ type: 'text', titulo: 'a', duracao: 10, agendamento: ag }, { type: 'text', titulo: 'b', duracao: 10 }]));
+  assert.ok(!misto.problemas.some((p) => /todos os conteúdos têm horário/.test(p.texto)));
+});
