@@ -169,6 +169,17 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-empty, .mt-broken {
   color: var(--text-dim); font-size: 1.4vw; letter-spacing: .04em;
 }
+/* Zona vazia = relógio (ver startPlaylist). Unidades de contêiner: a zona
+   lateral é estreita e a principal é larga, e os dois precisam caber. */
+.mt-empty { flex-direction: column; container-type: size; }
+.mt-empty-hora {
+  color: var(--text); font-weight: 700; letter-spacing: -.02em; line-height: 1;
+  font-size: 6vw; font-size: min(28cqw, 38cqh); font-variant-numeric: tabular-nums;
+}
+.mt-empty-dia {
+  margin-top: .6em; color: var(--text-dim); text-align: center;
+  padding: 0 6%; font-size: 1.6vw; font-size: min(5.5cqw, 8cqh); letter-spacing: .01em;
+}
 
 /* Imagem / vídeo / web */
 .mt-image img, .mt-video video {

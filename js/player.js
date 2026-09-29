@@ -1294,6 +1294,14 @@
     }
   }
 
+  // "Terça-feira, 29 de setembro" — para zona vazia e faixa sem manchete.
+  function dataPorExtenso(d) {
+    let t = '';
+    try { t = d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) {}
+    if (!t) t = String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+
   /* ---------------- Zona: Playlist rotativa ---------------- */
 
   function startPlaylist(zoneEl, items, cfg, zonaId) {
@@ -1306,12 +1314,32 @@
     const single = items.length === 1 && !hasAgenda(items[0]);
     const agendado = items.some(hasAgenda);
 
+    /*
+     * Zona vazia vira relógio.
+     *
+     * Antes aparecia "Sem conteúdo" — na vitrine, para o cliente da loja, na
+     * primeira hora de uso de quem acabou de parear e só preencheu a zona
+     * principal. Hora e data são úteis para quem passa e não denunciam nada;
+     * o aviso de zona vazia continua no painel, que é onde o dono olha.
+     */
     if (!items.length) {
       const empty = document.createElement('div');
       empty.className = 'mt-slide mt-empty mt-active';
-      empty.textContent = 'Sem conteúdo';
+      const hora = document.createElement('div');
+      hora.className = 'mt-empty-hora';
+      const dia = document.createElement('div');
+      dia.className = 'mt-empty-dia';
+      empty.appendChild(hora);
+      empty.appendChild(dia);
       zoneEl.appendChild(empty);
-      return { stop: () => {} };
+      const pintar = function () {
+        const agora = new Date();
+        hora.textContent = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+        dia.textContent = dataPorExtenso(agora);
+      };
+      pintar();
+      const relogio = setInterval(pintar, 15000);
+      return { stop: () => clearInterval(relogio) };
     }
 
     function advance() {
@@ -1647,13 +1675,20 @@
     if (data.conteudo === 'noticias' && usingFeed) items = [];
 
     let idx = 0;
+    const tagPadrao = tag.textContent;
     function show() {
+      /*
+       * Faixa sem manchete (nada cadastrado, ou o feed ainda não respondeu ou
+       * falhou): vai ao ar a data por extenso. Antes era "Adicione notícias no
+       * painel de gestão" — um recado para o dono exposto ao público da loja.
+       */
       if (!items.length) {
-        title.textContent = usingFeed
-          ? 'Carregando notícias…' : 'Adicione notícias no painel de gestão';
+        if (/not[ií]cias/i.test(tagPadrao)) tag.textContent = 'HOJE';
+        title.textContent = dataPorExtenso(new Date());
         desc.textContent = '';
         return;
       }
+      tag.textContent = tagPadrao;
       const item = items[idx % items.length];
       idx++;
       headline.classList.remove('mt-news-in');
@@ -1691,8 +1726,9 @@
     if (usingFeed) {
       loadFeed().then(() => { idx = 0; show(); });
     }
+    // Vazia também repinta: a data por extenso tem que virar à meia-noite.
     const rotateTimer = setInterval(() => {
-      if (items.length > 1) show();
+      if (items.length !== 1) show();
     }, Math.max(3, data.intervalo || 8) * 1000);
     const feedTimer = usingFeed ? setInterval(loadFeed, 10 * 60 * 1000) : null;
 
