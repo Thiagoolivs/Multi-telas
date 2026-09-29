@@ -664,7 +664,7 @@
         if (p.recursos.indexOf('som') >= 0) itens.push('Trilha sonora');
         if (p.recursos.indexOf('equipe') >= 0) itens.push('Equipe com papéis');
         if (p.recursos.indexOf('marca') >= 0) itens.push('Marca própria');
-        if (p.recursos.indexOf('sso') >= 0) itens.push('SSO e marca branca');
+        if (p.sobConsulta) itens.push('Contrato e SLA combinados');
 
         art.innerHTML =
           (destaque ? '<div class="mb-2 inline-block rounded-full bg-mt-gold px-3 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-mt-void">mais escolhido</div>' : '') +

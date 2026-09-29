@@ -30,8 +30,14 @@ const PLANS = {
     precoTelaCents: 14900, telasMax: 49,
     creditosPorTela: 25,
     gbPorTela: 10,
-    blurb: 'Marca própria, equipe e relatório.',
-    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe', 'relatorio'],
+    blurb: 'Tudo incluso: IA com a sua marca, mural, som e equipe.',
+    /*
+     * Só o que EXISTE. Já estiveram aqui 'relatorio' (Pro) e 'sso' com
+     * 'marca-branca' (Enterprise), e a landing os anunciava sem nenhuma linha
+     * de código por trás — vender recurso que não existe é problema de CDC,
+     * não de roadmap. Voltam para cá no dia em que forem construídos.
+     */
+    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe'],
     stripePrice: process.env.STRIPE_PRICE_PRO || null,
   },
   /*
@@ -46,7 +52,7 @@ const PLANS = {
     creditosPorTela: 15,
     gbPorTela: 25,
     blurb: 'Contrato, SLA e o que mais a operação precisar.',
-    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe', 'relatorio', 'sso', 'marca-branca'],
+    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe'],
     sobConsulta: true,
     stripePrice: null,
   },
