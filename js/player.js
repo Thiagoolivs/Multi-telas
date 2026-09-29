@@ -140,12 +140,24 @@
     try {
       dev = await MTCloud.ensureDevice();
     } catch (e) {
-      // Sem servidor acessível (offline): usa a última config em cache — a
-      // tela não apaga. Só cai para o exemplo local se nunca houve config.
+      /*
+       * LIGOU SEM INTERNET — e é o caso comum, não o raro.
+       *
+       * Depois de uma queda de energia o aparelho liga antes do roteador. Aqui
+       * havia `startWatchers(60)`, que é o relógio do modo LOCAL: um minuto
+       * depois ele trocava a config da nuvem pela do localStorage — o
+       * EXEMPLO, numa TV de nuvem —, e ninguém mais tentava falar com o
+       * servidor. A vitrine do cliente virava a demonstração até alguém
+       * tirar a TV da tomada.
+       *
+       * Agora a última config boa fica na tela e a TV insiste com o servidor
+       * até ele responder; daí em diante segue o boot normal.
+       */
       const cached = loadCachedConfig();
-      applyConfig(cached || MTStorage.load());
-      startWatchers(60);
-      return hideOverlayAfter();
+      if (cached) applyConfig(cached);
+      else showSemConexao();
+      hideOverlayAfter();
+      dev = await esperarServidor();
     }
     let cfg = null;
     try { cfg = await MTCloud.fetchConfig(dev.id); } catch (e) { /* offline ou ainda não pareado */ }
@@ -239,11 +251,13 @@
   function showPairing(code) {
     let el = document.getElementById('pairing');
     if (!el) return;
+    restaurarTextosPairing(el);
     const codeEl = el.querySelector('.mt-pairing-code');
     if (codeEl) codeEl.textContent = code || '••••••';
     // "Gerar outro código": esquece a TV guardada neste navegador e recarrega
     // como tela nova (o navegador reaproveitava a mesma sem isso).
     const resetEl = document.getElementById('pairing-reset');
+    if (resetEl) resetEl.classList.remove('hidden');
     if (resetEl && !resetEl._wired) {
       resetEl._wired = true;
       resetEl.addEventListener('click', function () {
@@ -259,6 +273,60 @@
   function hidePairing() {
     const el = document.getElementById('pairing');
     if (el) el.classList.add('hidden');
+  }
+
+  /*
+   * A caixa do pareamento é reaproveitada por três estados (código, "tudo
+   * certo" e "sem internet"). Guarda o texto original na primeira troca para
+   * que o código de pareamento, se vier depois, apareça com as instruções
+   * certas — e não embaixo de um "sem internet" que já não é verdade.
+   */
+  let textosPairing = null;
+  function guardarTextosPairing(el) {
+    if (textosPairing) return;
+    const t = el.querySelector('.mt-pairing-title');
+    const d = el.querySelector('.mt-pairing-hint');
+    textosPairing = { titulo: t ? t.textContent : '', dica: d ? d.innerHTML : '' };
+  }
+  function restaurarTextosPairing(el) {
+    if (!textosPairing) return;
+    const t = el.querySelector('.mt-pairing-title');
+    const d = el.querySelector('.mt-pairing-hint');
+    if (t) t.textContent = textosPairing.titulo;
+    if (d) d.innerHTML = textosPairing.dica;
+  }
+
+  // Ligou sem internet e sem nenhuma config guardada: dizer isso, e não
+  // mostrar a demonstração como se fosse o conteúdo do cliente.
+  function showSemConexao() {
+    const el = document.getElementById('pairing');
+    if (!el) return;
+    guardarTextosPairing(el);
+    const titulo = el.querySelector('.mt-pairing-title');
+    const codeEl = el.querySelector('.mt-pairing-code');
+    const dica = el.querySelector('.mt-pairing-hint');
+    const reset = document.getElementById('pairing-reset');
+    if (titulo) titulo.textContent = 'Procurando a internet…';
+    if (codeEl) codeEl.textContent = '···';
+    if (dica) dica.textContent = 'Esta TV ainda não conseguiu falar com o MultiTelas. '
+      + 'Ela tenta sozinha e mostra o conteúdo assim que a conexão voltar.';
+    if (reset) reset.classList.add('hidden');
+    el.classList.remove('hidden');
+  }
+
+  /*
+   * Insiste com o servidor até ele responder. Espera crescente (5s → 60s):
+   * rápido o bastante para a TV voltar logo depois do roteador, e sem martelar
+   * o servidor quando é ele quem está fora — mil TVs religando juntas depois
+   * de um deploy não podem virar mil requisições por segundo.
+   */
+  async function esperarServidor() {
+    let espera = 5000;
+    for (;;) {
+      await new Promise(function (r) { setTimeout(r, espera + Math.random() * 1000); });
+      try { return await MTCloud.ensureDevice(); }
+      catch (e) { espera = Math.min(60000, espera * 2); }
+    }
   }
 
   /*
@@ -281,6 +349,7 @@
   function showAguardando(nome) {
     const el = document.getElementById('pairing');
     if (!el) return;
+    guardarTextosPairing(el);
     const titulo = el.querySelector('.mt-pairing-title');
     const codeEl = el.querySelector('.mt-pairing-code');
     const dica = el.querySelector('.mt-pairing-hint');
