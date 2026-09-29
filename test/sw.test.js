@@ -99,7 +99,7 @@ function carregar(arquivo, servidor) {
     rede.push(caminho);
     const r = servidor(caminho);
     if (r == null) throw new TypeError('Failed to fetch');
-    return new RespostaFalsa(r);
+    return r instanceof RespostaFalsa ? r : new RespostaFalsa(r);
   };
 
   const self_ = {
@@ -309,6 +309,18 @@ test('TV: /tv sem rede leva ao player do cache (o boot do app Android)', async (
     assert.equal(res.status, 302);
     assert.equal(res.headers.Location, '/player.html?cloud=1');
   }
+});
+
+test('TV: servidor respondendo 502 (deploy) conta como sem servidor', async () => {
+  const w = carregar('sw.js', servidorPadrao);
+  await w.instalar();
+  const deploy = carregar('sw.js', (c) => new RespostaFalsa('Application failed to respond', { status: 502 }));
+  for (const [nome, caixa] of w.caixas) deploy.caixas.set(nome, caixa);
+  const tv = await deploy.pedir('/tv', { mode: 'navigate' });
+  assert.equal(tv.status, 302, '/tv com 502 ficaria na página de erro');
+  const player = await deploy.pedir('/player.html', { mode: 'navigate' });
+  assert.equal(player.status, 200);
+  assert.match(await player.text(), /player\.html/, 'o player com 502 ficaria na página de erro');
 });
 
 test('TV: com rede, /tv continua sendo do servidor', async () => {

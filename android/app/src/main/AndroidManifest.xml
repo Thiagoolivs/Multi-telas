@@ -22,9 +22,15 @@
         android:banner="@drawable/banner"
         android:allowBackup="false"
         android:hardwareAccelerated="true"
-        android:usesCleartextTraffic="false"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Tela">
 
+        <!--
+          usesCleartextTraffic: o servidor de produção é https, mas o diálogo de
+          endereço (VOLTAR 5 vezes) aceita http:// para testar com um computador
+          na rede da loja. Bloqueado, o app ficava em "Procurando a internet…"
+          sem dizer por quê. O WebView só navega no endereço configurado.
+        -->
         <!--
           HOME + DEFAULT: o app pode ser escolhido como TELA INICIAL do
           aparelho. É o jeito mais robusto de "abrir sozinho ao ligar": o

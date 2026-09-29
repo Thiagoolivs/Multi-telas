@@ -13,7 +13,7 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v28';
+const SHELL_CACHE = 'mt-shell-v29';
 const MEDIA_CACHE = 'mt-media-v1';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
@@ -107,7 +107,11 @@ self.addEventListener('fetch', (event) => {
      * player sobe do cache com a última programação.
      */
     if (url.pathname === '/tv' || url.pathname === '/tv/') {
-      event.respondWith(fetch(req).catch(() => Response.redirect('/player.html?cloud=1', 302)));
+      // Erro 5xx conta como "sem servidor": durante um deploy o Railway
+      // responde 502 por alguns segundos, e a TV que recarregasse nessa hora
+      // ficaria na página de erro dele em vez da programação guardada.
+      const paraOPlayer = () => Response.redirect('/player.html?cloud=1', 302);
+      event.respondWith(fetch(req).then((res) => (res && res.status >= 500 ? paraOPlayer() : res)).catch(paraOPlayer));
       return;
     }
     if (url.pathname !== '/player.html') return;
@@ -122,6 +126,12 @@ async function navigation(req) {
   try {
     const res = await fetch(req);
     if (res && res.ok) cache.put('/player.html', res.clone());
+    // Servidor de pé mas com erro (deploy, 502): a cópia guardada é melhor
+    // que a página de erro na parede do cliente.
+    if (res && res.status >= 500) {
+      const guardado = (await cache.match(req, { ignoreSearch: true })) || (await cache.match('/player.html'));
+      if (guardado) return guardado;
+    }
     return res;
   } catch (e) {
     return (await cache.match(req, { ignoreSearch: true })) || (await cache.match('/player.html')) || Response.error();
