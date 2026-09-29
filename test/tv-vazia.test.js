@@ -61,7 +61,22 @@ test('faixa sem manchete mostra a data e repinta mesmo vazia (vira à meia-noite
   const i = FONTE.indexOf('const tagPadrao = tag.textContent;');
   assert.ok(i > 0);
   const bloco = FONTE.slice(i, FONTE.indexOf('const item = items[idx % items.length];', i));
-  assert.match(bloco, /title\.textContent = dataPorExtenso\(/);
+  assert.match(bloco, /title\.textContent = relogioConfiavel\(agora\) \? dataPorExtenso\(agora\)/);
   assert.match(FONTE, /if \(items\.length !== 1\) show\(\);/,
     'com a condição antiga (> 1) a faixa vazia ficaria com a data de ontem');
+});
+
+test('box sem bateria de relógio (ano de fábrica) não mostra hora errada', () => {
+  const i = FONTE.indexOf('function relogioConfiavel(d)');
+  assert.ok(i > 0, 'relogioConfiavel sumiu do player');
+  const ctx = { module: {} };
+  vm.createContext(ctx);
+  vm.runInContext(FONTE.slice(i, FONTE.indexOf('\n', i)) + '\nmodule.exports = relogioConfiavel;', ctx);
+  const f = ctx.module.exports;
+  assert.strictEqual(f(new Date(1970, 0, 1)), false);
+  assert.strictEqual(f(new Date(2020, 0, 1)), false);
+  assert.strictEqual(f(new Date(2026, 8, 29)), true);
+  // Os quatro relógios da TV consultam a mesma regra.
+  const usos = FONTE.split('relogioConfiavel(').length - 2; // menos a declaração
+  assert.ok(usos >= 4, 'algum relógio voltou a desenhar sem conferir a hora (' + usos + ')');
 });

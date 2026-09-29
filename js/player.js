@@ -1294,6 +1294,15 @@
     }
   }
 
+  /*
+   * Relógio em que dá para confiar.
+   *
+   * TV Box barato não tem bateria de relógio: depois de faltar luz ele liga em
+   * 1970 (ou na data de fábrica) e só acerta quando acha a internet. Mostrar
+   * "00:03 · Quinta-feira, 1 de janeiro" na vitrine é pior que não mostrar.
+   */
+  function relogioConfiavel(d) { return d.getFullYear() >= 2025; }
+
   // "Terça-feira, 29 de setembro" — para zona vazia e faixa sem manchete.
   function dataPorExtenso(d) {
     let t = '';
@@ -1334,8 +1343,9 @@
       zoneEl.appendChild(empty);
       const pintar = function () {
         const agora = new Date();
-        hora.textContent = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
-        dia.textContent = dataPorExtenso(agora);
+        const ok = relogioConfiavel(agora);
+        hora.textContent = ok ? String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0') : '';
+        dia.textContent = ok ? dataPorExtenso(agora) : '';
       };
       pintar();
       const relogio = setInterval(pintar, 15000);
@@ -1626,6 +1636,8 @@
     const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
     function tick() {
       const now = new Date();
+      // Hora de fábrica (box sem bateria, sem rede ainda): relógio em branco.
+      clock.style.visibility = relogioConfiavel(now) ? '' : 'hidden';
       clock.querySelector('.nc-date').textContent =
         String(now.getDate()).padStart(2, '0') + ' ' + MESES[now.getMonth()];
       clock.querySelector('.nc-time').textContent = now.toLocaleTimeString('pt-BR');
@@ -1683,8 +1695,9 @@
        * painel de gestão" — um recado para o dono exposto ao público da loja.
        */
       if (!items.length) {
-        if (/not[ií]cias/i.test(tagPadrao)) tag.textContent = 'HOJE';
-        title.textContent = dataPorExtenso(new Date());
+        const agora = new Date();
+        if (/not[ií]cias/i.test(tagPadrao)) tag.textContent = relogioConfiavel(agora) ? 'HOJE' : tagPadrao;
+        title.textContent = relogioConfiavel(agora) ? dataPorExtenso(agora) : '';
         desc.textContent = '';
         return;
       }
@@ -1913,6 +1926,7 @@
 
     function tickClock() {
       const now = new Date();
+      if (!relogioConfiavel(now)) { clock.innerHTML = ''; return; }
       const dia = now.toLocaleDateString('pt-BR', { weekday: 'long' });
       clock.innerHTML =
         '<span class="mt-hc-time">' +
