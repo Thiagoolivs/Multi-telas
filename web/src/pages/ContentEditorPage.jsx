@@ -187,12 +187,20 @@ export function ContentEditorPage({ device, onBack }) {
     setSelected(items.length);
   };
 
-  /* Saiu da galeria: entra na programação e abre o editor já com a peça. */
+  /*
+   * Saiu da galeria: abre o editor com a peça, mas ela só entra na
+   * programação no SALVAR.
+   *
+   * Antes entrava na hora, e o salvamento automático a publicava enquanto a
+   * pessoa ainda editava — com os preços de exemplo do modelo ("R$ 19,90",
+   * "Café expresso R$ 6,00") na TV da loja. Preço exibido ao público pode ter
+   * que ser honrado. Cancelar agora descarta sem ter ido ao ar.
+   */
+  const [novaPeca, setNovaPeca] = useState(null);
   function comecarDe(peca, formato) {
     setModeloAberto(false);
     const base = CONTENT_TYPES.composicao.make();
-    mutateItems((arr) => { arr.push(peca ? { ...base, ...peca } : { ...base, formato }); return arr; });
-    setSelected(items.length);
+    setNovaPeca(peca ? { ...base, ...peca } : { ...base, formato });
     setCompOpen(true);
   }
   // Inserir um design salvo da biblioteca (Meus Designs).
@@ -525,12 +533,21 @@ export function ContentEditorPage({ device, onBack }) {
         </Suspense>
       )}
 
-      {compOpen && current && current.type === 'composicao' && (
+      {compOpen && (novaPeca || (current && current.type === 'composicao')) && (
         <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90"><Spinner size={22} /></div>}>
           <CompositionEditor
-            value={current}
-            onClose={() => setCompOpen(false)}
-            onSave={(it) => { updateItem(selected, it); setCompOpen(false); }}
+            value={novaPeca || current}
+            onClose={() => { setCompOpen(false); setNovaPeca(null); }}
+            onSave={(it) => {
+              if (novaPeca) {
+                mutateItems((arr) => { arr.push(it); return arr; });
+                setSelected(items.length);
+                setNovaPeca(null);
+              } else {
+                updateItem(selected, it);
+              }
+              setCompOpen(false);
+            }}
           />
         </Suspense>
       )}

@@ -128,6 +128,10 @@ computador e no celular)
   relógios da TV ficam em branco até a hora acertar.
 - **Edição perdida:** mexer num conteúdo e sair em menos de 1 segundo perdia a
   alteração. Agora salva ao sair.
+- **Preço de exemplo na TV da loja:** peça nova de modelo ia ao ar antes de
+  ser editada, com os preços de exemplo ("R$ 19,90") — e preço exibido ao
+  público pode ter que ser honrado. Agora a peça só entra no **Salvar**, e a
+  tabela de preços nasce vazia (os exemplos ficam só como dica no campo).
 - **Alinhar à esquerda/direita não funcionava** em texto de uma linha no
   editor, na TV e na miniatura (a caixa centralizava). Consertado.
 - Com marca escura (verde-garrafa, marinho), títulos e preços dos modelos

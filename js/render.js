@@ -1164,7 +1164,6 @@
       row.appendChild(divText('mt-precos-preco', l.preco));
       lista.appendChild(row);
     });
-    if (!linhas.length) lista.appendChild(divText('mt-precos-secao', 'Tabela de preços'));
     inner.appendChild(lista);
     if (item.rodape) inner.appendChild(divText('mt-precos-rodape', item.rodape));
     el.appendChild(inner);

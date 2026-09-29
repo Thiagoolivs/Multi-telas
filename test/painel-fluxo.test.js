@@ -293,3 +293,21 @@ test('apagar e descartar sem querer têm volta', () => {
   const avisos = ler('web', 'src', 'lib', 'avisos.js');
   assert.match(avisos, /desfazer: \d{4,}/, 'o aviso de desfazer precisa sumir sozinho, e não rápido demais');
 });
+
+test('preço de exemplo nunca vai ao ar sozinho', () => {
+  /*
+   * O salvamento automático publica na hora. Peça nova de modelo entrava na
+   * programação ANTES de a pessoa editar, e a TV da loja mostrava os preços
+   * de exemplo ("R$ 19,90", "Café expresso R$ 6,00") — preço exibido ao
+   * público pode ter que ser honrado. Visto no navegador antes e depois.
+   */
+  const pagina = soCodigo(ler('web', 'src', 'pages', 'ContentEditorPage.jsx'));
+  const comecar = pagina.slice(pagina.indexOf('function comecarDe('), pagina.indexOf('const addSaved'));
+  assert.ok(!/mutateItems/.test(comecar), 'a peça do modelo voltou a entrar na programação antes do Salvar');
+  assert.match(comecar, /setNovaPeca\(/);
+  assert.match(pagina, /if \(novaPeca\) \{\s*mutateItems\(\(arr\) => \{ arr\.push\(it\)/, 'o Salvar não põe a peça nova na programação');
+  // A tabela de preços nasce vazia; os exemplos ficam só como dica no campo.
+  const tipos = ler('web', 'src', 'lib', 'contentTypes.js');
+  const make = tipos.slice(tipos.indexOf("type: 'precos'"), tipos.indexOf("type: 'precos'") + 200);
+  assert.match(make, /linhas: ''/);
+});

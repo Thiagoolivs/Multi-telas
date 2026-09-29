@@ -95,6 +95,7 @@ export const CONTENT_TYPES = {
     fields: [
       { key: 'titulo', label: 'Título', kind: 'text', placeholder: 'CARDÁPIO' },
       { key: 'linhas', label: 'Itens e preços', kind: 'textarea', rows: 10,
+        placeholder: 'Café expresso ; 6,00\nPão de queijo ; 4,50\nBEBIDAS\nSuco natural ; 10,00',
         hint: 'Uma linha por item: "Café expresso ; 6,00". Pode colar do WhatsApp ou da planilha. Linha sem preço vira título de seção (ex.: BEBIDAS).' },
       { key: 'rodape', label: 'Rodapé', kind: 'text', placeholder: 'Aceitamos Pix e cartão' },
       { key: 'colunas', label: 'Colunas', kind: 'select', options: [
@@ -102,10 +103,9 @@ export const CONTENT_TYPES = {
         { value: '1', label: '1 coluna' }, { value: '2', label: '2 colunas' }, { value: '3', label: '3 colunas' } ] },
       DUR,
     ],
-    make: () => ({
-      type: 'precos', titulo: 'CAFÉ DA MANHÃ', colunas: 'auto', duracao: 20, rodape: 'Aceitamos Pix e cartão',
-      linhas: 'Café expresso ; 6,00\nCappuccino ; 9,50\nPão na chapa ; 7,00\nMisto quente ; 12,00\nPão de queijo ; 4,50\nSuco natural ; 10,00',
-    }),
+    // Nasce SEM preços: o conteúdo vai ao ar na hora, e preço de exemplo na
+    // TV da loja pode ter que ser honrado. Os exemplos ficam só como dica.
+    make: () => ({ type: 'precos', titulo: 'CARDÁPIO', colunas: 'auto', duracao: 20, rodape: '', linhas: '' }),
     summary: (i) => (i.titulo || 'Tabela de preços') + ' · ' + String(i.linhas || '').split('\n').filter((l) => l.trim()).length + ' linha(s)',
   },
   kpi: {
