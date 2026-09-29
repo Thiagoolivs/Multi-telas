@@ -6,7 +6,7 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **29/09/2026** · 828 testes passando · `server.js` com ~2.200
+Atualizado em: **29/09/2026** · 837 testes passando · `server.js` com ~2.200
 linhas (cobrança e telas saíram para `server/routes/`).
 
 ---
@@ -242,7 +242,7 @@ telas, Ajustes simplificados, texto em curva e elementos gráficos, TV em pé
   decisão e o erro que ela evita.
 - Sem framework no servidor e sem dependência pesada; `node:sqlite` em dev,
   Postgres em produção, mesma API assíncrona nos dois.
-- Testes em `npm test` (**828 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
+- Testes em `npm test` (**837 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
   provaram:
   - **Renderizar e olhar.** Screenshot pegou bugs que teste nenhum pegou —
     componente desmontado, texto estourando, botão que não fazia nada, cabeçalho

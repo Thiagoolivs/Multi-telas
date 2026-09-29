@@ -1,7 +1,7 @@
 # Bom dia: o que foi feito e como colocar numa loja esta semana
 
 Escrito em 29/09/2026, durante a madrugada. Tudo está no PR
-[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 828
+[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 837
 testes passando e o APK compilando no GitHub Actions.
 
 ---
@@ -67,6 +67,18 @@ computador e no celular)
   conteúdo › Comercial**: nome à esquerda, preço à direita, na cor da marca,
   em duas colunas (TV deitada) ou uma (em pé). É o uso nº 1 de TV em padaria
   e lanchonete — bom para mostrar na primeira visita à loja.
+
+**E-mails que vendem sozinhos**
+- Faltando 2 dias para o teste acabar, a conta recebe "seu teste acaba em 2
+  dias" (ou, se nunca pareou uma TV, um passo a passo para ligar a
+  primeira). No dia em que acaba: "a TV continua no ar, com o selo — assine
+  para tirar". Uma vez cada, só no plano grátis. Precisa do Resend
+  configurado (já está no prompt do Cowork).
+
+**Proteção contra engano**
+- Apagar um conteúdo mostra **"Desfazer"** por 9 segundos; "Cancelar" no
+  editor pergunta antes de jogar fora; o gesto de voltar do celular fecha o
+  editor em vez de sair da página.
 
 **Editar pelo celular**
 - O editor visual ficava inutilizável no celular (palco de 100px, cinco
