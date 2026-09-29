@@ -20,6 +20,7 @@ import { BillingPage } from './pages/BillingPage.jsx';
 import { SystemPage } from './pages/SystemPage.jsx';
 import { PlatformPage } from './pages/PlatformPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
+import { RelatorioPage } from './pages/RelatorioPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 
 const META = {
@@ -30,6 +31,7 @@ const META = {
   mural: { title: 'Mural de fotos', subtitle: 'O público manda foto pelo QR e ela aparece na TV.' },
   content: { title: 'Telas', nav: 'screens' },
   alerts: { title: 'Alertas', subtitle: 'O que precisa da sua atenção agora.' },
+  relatorio: { title: 'Relatório de exibição', subtitle: 'O que passou, quantas vezes e em qual tela — contado pela própria TV.' },
   support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
   banco: { title: 'Banco de Imagens', subtitle: 'Acervo compartilhado entre os clientes. Usar daqui não gasta crédito.' },
@@ -67,7 +69,7 @@ function useTheme() {
  * A lista de destinos é fechada de propósito: `?ir=` vem da URL, e URL é coisa
  * que qualquer um escreve.
  */
-const ATALHOS = ['screens', 'designs', 'brand', 'mural', 'billing', 'alerts'];
+const ATALHOS = ['screens', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio'];
 
 function rotaDaUrl() {
   const q = new URLSearchParams(window.location.search);
@@ -125,6 +127,7 @@ export default function App() {
       case 'brand': return <BrandPage />;
       case 'mural': return <MuralPage />;
       case 'birthdays': return <BirthdaysPage />;
+      case 'relatorio': return <RelatorioPage onIrParaPlano={() => go('billing')} />;
       case 'billing': return <BillingPage onFalarComVendas={() => go('support')} />;
       case 'system': return <SystemPage />;
       case 'platform': return <PlatformPage />;

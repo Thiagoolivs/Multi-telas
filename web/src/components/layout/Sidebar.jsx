@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity, Gauge, Images,
+  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity, Gauge, Images, BarChart3,
 } from 'lucide-react';
 
 const NAV = [
@@ -27,6 +27,7 @@ const NAV = [
      * dela é quem cuida do conteúdo, não quem cuida da assinatura.
      */
     { id: 'birthdays', label: 'Aniversariantes', icon: Cake },
+    { id: 'relatorio', label: 'Relatório', icon: BarChart3 },
     { id: 'alerts', label: 'Alertas', icon: Bell },
   ] },
   { section: 'Conta', items: [

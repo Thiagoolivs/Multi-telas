@@ -329,6 +329,7 @@ async function handleApi(req, res, pathname, query) {
     team: require('./server/routes/team')(ctx),
     billing: require('./server/routes/billing')(ctx),
     telas: require('./server/routes/telas')(ctx),
+    relatorio: require('./server/routes/relatorio')(ctx),
   };
 
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
@@ -1670,6 +1671,7 @@ async function handleApi(req, res, pathname, query) {
   /* ----- Cobrança e telas: server/routes/billing.js e server/routes/telas.js ----- */
   if (await ctx.routes.billing(req, res, parts, query, sess)) return;
   if (await ctx.routes.telas(req, res, parts, query, sess)) return;
+  if (await ctx.routes.relatorio(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------

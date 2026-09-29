@@ -687,6 +687,7 @@
         if (p.recursos.indexOf('som') >= 0) itens.push('Trilha sonora');
         if (p.recursos.indexOf('equipe') >= 0) itens.push('Equipe com papéis');
         if (p.recursos.indexOf('marca') >= 0) itens.push('Marca própria');
+        if (p.recursos.indexOf('relatorio') >= 0) itens.push('Relatório de exibição');
         if (p.sobConsulta) itens.push('Contrato e SLA combinados');
 
         art.innerHTML =

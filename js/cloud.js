@@ -254,6 +254,11 @@
     try { await api('POST', '/api/devices/' + id + '/audio-estado', estado, dtHeader()); }
     catch (e) { /* offline: o painel mostra "sem notícia" */ }
   }
+  /* Lote do relatório de exibição. Devolve true se o servidor aceitou. */
+  async function enviarExibicoes(id, corpo) {
+    try { await api('POST', '/api/devices/' + id + '/exibicoes', corpo, dtHeader()); return true; }
+    catch (e) { return false; /* offline: o lote fica guardado e sai no próximo ciclo */ }
+  }
   function subscribe(id, onConfig, onPareada) {
     let es;
     /*
@@ -353,7 +358,7 @@
     // credencial da TV: o código do cartaz autoriza ENVIAR foto, e não listar
     // o que os outros mandaram.
     dtHeader, deviceToken,
-    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat, reportAudio,
+    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat, reportAudio, enviarExibicoes,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);

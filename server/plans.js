@@ -30,14 +30,15 @@ const PLANS = {
     precoTelaCents: 14900, telasMax: 49,
     creditosPorTela: 25,
     gbPorTela: 10,
-    blurb: 'Tudo incluso: IA com a sua marca, mural, som e equipe.',
+    blurb: 'Tudo incluso: IA com a sua marca, relatório de exibição, mural, som e equipe.',
     /*
-     * Só o que EXISTE. Já estiveram aqui 'relatorio' (Pro) e 'sso' com
-     * 'marca-branca' (Enterprise), e a landing os anunciava sem nenhuma linha
-     * de código por trás — vender recurso que não existe é problema de CDC,
-     * não de roadmap. Voltam para cá no dia em que forem construídos.
+     * Só o que EXISTE. 'sso' e 'marca-branca' já estiveram no Enterprise e a
+     * landing os anunciava sem nenhuma linha de código por trás — vender
+     * recurso que não existe é problema de CDC, não de roadmap. 'relatorio'
+     * saiu pelo mesmo motivo e voltou quando o relatório de exibição passou
+     * a existir (server/routes/relatorio.js).
      */
-    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe'],
+    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe', 'relatorio'],
     stripePrice: process.env.STRIPE_PRICE_PRO || null,
   },
   /*
@@ -52,7 +53,7 @@ const PLANS = {
     creditosPorTela: 15,
     gbPorTela: 25,
     blurb: 'Contrato, SLA e o que mais a operação precisar.',
-    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe'],
+    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe', 'relatorio'],
     sobConsulta: true,
     stripePrice: null,
   },

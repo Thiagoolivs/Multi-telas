@@ -1242,7 +1242,7 @@ async function apagarTenant(tenantId) {
   try {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }
     db.prepare("DELETE FROM banco WHERE tenant_id = ? AND estado <> 'aprovada'").run(tenantId);
@@ -1323,6 +1323,8 @@ async function limparVencidos(agora) {
     sessoes: db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(t).changes,
     resets: db.prepare('DELETE FROM resets WHERE expires_at < ? OR used_at IS NOT NULL').run(t).changes,
     verificacoes: db.prepare('DELETE FROM verifications WHERE expires_at < ? OR used_at IS NOT NULL').run(t).changes,
+    exibicoes: db.prepare('DELETE FROM exibicoes WHERE hora < ?').run(t - 400 * 864e5).changes,
+    lotes: db.prepare('DELETE FROM lotes_exibicao WHERE em < ?').run(t - 30 * 864e5).changes,
   };
   for (const k of Object.keys(r)) r[k] = Number(r[k]) || 0;
   return r;
@@ -1335,10 +1337,56 @@ async function limparVencidos(agora) {
  * pacote de novo. `payment_id` é a chave; somar só acontece quando a linha
  * nasce. O estorno segue a mesma ideia com `estornado_em`.
  */
+db.exec(`CREATE TABLE IF NOT EXISTS exibicoes (
+  device_id TEXT, tenant_id TEXT, hora INTEGER, zona TEXT, chave TEXT,
+  rotulo TEXT, tipo TEXT, vezes INTEGER, segundos INTEGER,
+  PRIMARY KEY (device_id, hora, zona, chave)
+);
+CREATE INDEX IF NOT EXISTS exibicoes_tenant_hora ON exibicoes (tenant_id, hora);
+CREATE TABLE IF NOT EXISTS lotes_exibicao (
+  device_id TEXT, lote TEXT, em INTEGER, PRIMARY KEY (device_id, lote)
+);`);
 db.exec(`CREATE TABLE IF NOT EXISTS pacotes_pagos (
   payment_id TEXT PRIMARY KEY, tenant_id TEXT, pacote TEXT, creditos INTEGER,
   pago_em INTEGER, estornado_em INTEGER
 );`);
+/*
+ * Relatório de exibição (proof-of-play). A TV agrega por hora e manda em
+ * lotes com id (js/exibicoes.js); `lotes_exibicao` é a trava que impede o
+ * mesmo lote, reenviado depois de uma resposta perdida, de contar em dobro.
+ * A soma é no banco (vezes = vezes + ?), nunca lê-soma-grava.
+ */
+async function registrarExibicoes(deviceId, tenantId, lote, itens) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const ins = db.prepare('INSERT OR IGNORE INTO lotes_exibicao (device_id, lote, em) VALUES (?, ?, ?)').run(deviceId, lote, Date.now());
+    if (ins.changes) {
+      const up = db.prepare(`INSERT INTO exibicoes (device_id, tenant_id, hora, zona, chave, rotulo, tipo, vezes, segundos)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT (device_id, hora, zona, chave)
+        DO UPDATE SET vezes = vezes + excluded.vezes, segundos = segundos + excluded.segundos, rotulo = excluded.rotulo`);
+      for (const i of itens) up.run(deviceId, tenantId, i.hora, i.zona, i.chave, i.rotulo, i.tipo, i.vezes, i.segundos);
+    }
+    db.exec('COMMIT');
+    return ins.changes > 0;
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+}
+async function relatorioExibicoes(tenantId, de, ate, deviceId) {
+  const f = deviceId ? ' AND e.device_id = ?' : '';
+  const v = deviceId ? [tenantId, de, ate, deviceId] : [tenantId, de, ate];
+  const porConteudo = db.prepare(`SELECT e.chave, MAX(e.rotulo) AS rotulo, MAX(e.tipo) AS tipo,
+      SUM(e.vezes) AS vezes, SUM(e.segundos) AS segundos, COUNT(DISTINCT e.device_id) AS telas
+    FROM exibicoes e WHERE e.tenant_id = ? AND e.hora >= ? AND e.hora < ?${f}
+    GROUP BY e.chave ORDER BY SUM(e.segundos) DESC LIMIT 500`).all(...v);
+  const porTela = db.prepare(`SELECT e.device_id, MAX(d.name) AS nome, SUM(e.vezes) AS vezes, SUM(e.segundos) AS segundos
+    FROM exibicoes e LEFT JOIN devices d ON d.id = e.device_id
+    WHERE e.tenant_id = ? AND e.hora >= ? AND e.hora < ?${f}
+    GROUP BY e.device_id ORDER BY SUM(e.segundos) DESC`).all(...v);
+  const porHora = db.prepare(`SELECT e.hora, SUM(e.vezes) AS vezes, SUM(e.segundos) AS segundos
+    FROM exibicoes e WHERE e.tenant_id = ? AND e.hora >= ? AND e.hora < ?${f}
+    GROUP BY e.hora ORDER BY e.hora`).all(...v);
+  return { porConteudo, porTela, porHora };
+}
 async function creditarPacote(paymentId, tenantId, pacote, creditos) {
   db.exec('BEGIN IMMEDIATE');
   try {
@@ -1368,7 +1416,7 @@ module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
-  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote,
+  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote, registrarExibicoes, relatorioExibicoes,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,

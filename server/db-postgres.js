@@ -47,6 +47,15 @@ async function init() {
     -- atrasado. Ver server/cobranca.js.
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_telas INTEGER;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS atraso_desde BIGINT;
+    CREATE TABLE IF NOT EXISTS exibicoes (
+      device_id TEXT, tenant_id TEXT, hora BIGINT, zona TEXT, chave TEXT,
+      rotulo TEXT, tipo TEXT, vezes INTEGER, segundos INTEGER,
+      PRIMARY KEY (device_id, hora, zona, chave)
+    );
+    CREATE INDEX IF NOT EXISTS exibicoes_tenant_hora ON exibicoes (tenant_id, hora);
+    CREATE TABLE IF NOT EXISTS lotes_exibicao (
+      device_id TEXT, lote TEXT, em BIGINT, PRIMARY KEY (device_id, lote)
+    );
     CREATE TABLE IF NOT EXISTS pacotes_pagos (
       payment_id TEXT PRIMARY KEY, tenant_id TEXT, pacote TEXT, creditos INTEGER,
       pago_em BIGINT, estornado_em BIGINT
@@ -1169,7 +1178,7 @@ async function apagarTenant(tenantId) {
     await client.query('BEGIN');
     await client.query('DELETE FROM resets WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)', [tenantId]);
     for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
     await client.query("DELETE FROM banco WHERE tenant_id = $1 AND estado <> 'aprovada'", [tenantId]);
@@ -1240,6 +1249,8 @@ async function limparVencidos(agora) {
     sessoes: await n('DELETE FROM sessions WHERE expires_at < $1', [t]),
     resets: await n('DELETE FROM resets WHERE expires_at < $1 OR used_at IS NOT NULL', [t]),
     verificacoes: await n('DELETE FROM verifications WHERE expires_at < $1 OR used_at IS NOT NULL', [t]),
+    exibicoes: await n('DELETE FROM exibicoes WHERE hora < $1', [t - 400 * 864e5]),
+    lotes: await n('DELETE FROM lotes_exibicao WHERE em < $1', [t - 30 * 864e5]),
   };
 }
 
@@ -1283,11 +1294,54 @@ async function estornarPacote(paymentId) {
   finally { c.release(); }
 }
 
+/*
+ * Relatório de exibição (proof-of-play). A TV agrega por hora e manda em
+ * lotes com id (js/exibicoes.js); `lotes_exibicao` é a trava que impede o
+ * mesmo lote, reenviado depois de uma resposta perdida, de contar em dobro.
+ * A soma é no banco (vezes = vezes + ?), nunca lê-soma-grava.
+ */
+async function registrarExibicoes(deviceId, tenantId, lote, itens) {
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const ins = await c.query('INSERT INTO lotes_exibicao (device_id, lote, em) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [deviceId, lote, Date.now()]);
+    if (ins.rowCount) {
+      for (const i of itens) {
+        await c.query(`INSERT INTO exibicoes (device_id, tenant_id, hora, zona, chave, rotulo, tipo, vezes, segundos)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          ON CONFLICT (device_id, hora, zona, chave)
+          DO UPDATE SET vezes = exibicoes.vezes + EXCLUDED.vezes, segundos = exibicoes.segundos + EXCLUDED.segundos, rotulo = EXCLUDED.rotulo`,
+          [deviceId, tenantId, i.hora, i.zona, i.chave, i.rotulo, i.tipo, i.vezes, i.segundos]);
+      }
+    }
+    await c.query('COMMIT');
+    return ins.rowCount > 0;
+  } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; }
+  finally { c.release(); }
+}
+async function relatorioExibicoes(tenantId, de, ate, deviceId) {
+  const f = deviceId ? ' AND e.device_id = $4' : '';
+  const v = deviceId ? [tenantId, de, ate, deviceId] : [tenantId, de, ate];
+  const porConteudo = (await pool.query(`SELECT e.chave, MAX(e.rotulo) AS rotulo, MAX(e.tipo) AS tipo,
+      SUM(e.vezes)::bigint AS vezes, SUM(e.segundos)::bigint AS segundos, COUNT(DISTINCT e.device_id)::int AS telas
+    FROM exibicoes e WHERE e.tenant_id = $1 AND e.hora >= $2 AND e.hora < $3${f}
+    GROUP BY e.chave ORDER BY SUM(e.segundos) DESC LIMIT 500`, v)).rows;
+  const porTela = (await pool.query(`SELECT e.device_id, MAX(d.name) AS nome,
+      SUM(e.vezes)::bigint AS vezes, SUM(e.segundos)::bigint AS segundos
+    FROM exibicoes e LEFT JOIN devices d ON d.id = e.device_id
+    WHERE e.tenant_id = $1 AND e.hora >= $2 AND e.hora < $3${f}
+    GROUP BY e.device_id ORDER BY SUM(e.segundos) DESC`, v)).rows;
+  const porHora = (await pool.query(`SELECT e.hora, SUM(e.vezes)::bigint AS vezes, SUM(e.segundos)::bigint AS segundos
+    FROM exibicoes e WHERE e.tenant_id = $1 AND e.hora >= $2 AND e.hora < $3${f}
+    GROUP BY e.hora ORDER BY e.hora`, v)).rows;
+  return { porConteudo, porTela, porHora };
+}
+
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
-  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote,
+  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote, registrarExibicoes, relatorioExibicoes,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,

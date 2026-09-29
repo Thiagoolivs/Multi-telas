@@ -326,6 +326,33 @@ module.exports = function (ctx) {
       }
       // Heartbeat: a TV avisa que está viva (device token). Alimenta o status
       // real da frota (online/offline) no painel.
+      /*
+       * Lote do relatório de exibição (js/exibicoes.js). Só a TV manda, e
+       * só tela com dono conta. Cada linha é saneada: nada que a TV mande
+       * vai cru para o banco, e hora no futuro ou velha demais é descartada.
+       */
+      if (req.method === 'POST' && sub === 'exibicoes') {
+        if (!dtOk) return sendJson(res, 403, { error: 'device token inválido' });
+        if (!device.tenant_id) return sendJson(res, 200, { ok: true, ignorado: 'tela sem dono' });
+        return readBody(req, res, async (b) => {
+          const lote = String((b && b.lote) || '').slice(0, 40);
+          if (!/^[A-Za-z0-9_-]{6,40}$/.test(lote)) return sendJson(res, 400, { error: 'lote inválido' });
+          const agora = Date.now();
+          const HORA = 3600 * 1000;
+          const itens = (Array.isArray(b.itens) ? b.itens : []).slice(0, 500).map((i) => ({
+            hora: Math.floor(Number(i && i.hora) / HORA) * HORA,
+            zona: String((i && i.zona) || 'principal').slice(0, 40),
+            chave: String((i && i.chave) || '').slice(0, 80),
+            rotulo: String((i && i.rotulo) || '').slice(0, 120),
+            tipo: String((i && i.tipo) || '').slice(0, 40),
+            vezes: Math.max(0, Math.min(10000, Math.floor(Number(i && i.vezes) || 0))),
+            segundos: Math.max(0, Math.min(3600, Math.floor(Number(i && i.segundos) || 0))),
+          })).filter((i) => i.chave && Number.isFinite(i.hora)
+            && i.hora <= agora && i.hora > agora - 90 * 24 * HORA && (i.vezes || i.segundos));
+          const novo = await db.registrarExibicoes(id, device.tenant_id, lote, itens);
+          return sendJson(res, 200, { ok: true, novo, linhas: itens.length });
+        });
+      }
       if (req.method === 'POST' && sub === 'heartbeat') {
         if (!dtOk) return sendJson(res, 403, { error: 'device token inválido' });
         /*

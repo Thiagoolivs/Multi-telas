@@ -13,7 +13,7 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v17';
+const SHELL_CACHE = 'mt-shell-v18';
 const MEDIA_CACHE = 'mt-media-v1';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
@@ -27,7 +27,7 @@ const SHELL_ASSETS = [
   '/player.html', '/css/player.css', '/js/vendor/gsap.min.js',
   '/css/animacao.css', '/js/perf.js', '/js/cor.js', '/js/fontes.js', '/js/peca.js', '/js/animacao.js', '/js/datas-br.js',
   '/js/templates.js', '/js/theme.js', '/js/seasons.js', '/js/adaptive.js',
-  '/js/storage.js', '/js/news.js', '/js/render.js', '/js/cloud.js', '/js/player.js',
+  '/js/storage.js', '/js/news.js', '/js/render.js', '/js/exibicoes.js', '/js/cloud.js', '/js/player.js',
   '/js/boot.js',
   // Instalável: sem o manifesto e o ícone no cache, uma TV que reiniciasse
   // sem rede abriria como página comum, sem a identidade do app instalado.

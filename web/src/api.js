@@ -369,6 +369,15 @@ export const sistema = {
   diagnostico: () => api('GET', '/api/diagnostico'),
 };
 
+/* Relatório de exibição (server/routes/relatorio.js). */
+function qsRelatorio(dias, tela) {
+  return '?dias=' + encodeURIComponent(dias) + (tela ? '&tela=' + encodeURIComponent(tela) : '');
+}
+export const relatorio = {
+  get: (dias, tela) => api('GET', '/api/relatorio' + qsRelatorio(dias, tela)),
+  csvUrl: (dias, tela) => '/api/relatorio' + qsRelatorio(dias, tela) + '&formato=csv',
+};
+
 export const billing = {
   get: () => api('GET', '/api/billing'),
   checkout: (plan) => api('POST', '/api/billing/checkout', { plan }),

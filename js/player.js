@@ -114,6 +114,38 @@
     GSAP.to(prev.el, { opacity: 0, duration: 0.7, ease: 'sine.inOut', onComplete: () => prev.el.remove() });
   }
 
+  /* ---------------- Relatório de exibição ----------------
+   *
+   * Só no modo nuvem (é lá que existe relatório). O contador agrega por hora
+   * no localStorage e o envio sai em lotes — ver js/exibicoes.js.
+   */
+  let contadorExibicoes = null;
+  const exibicoesAbertas = new Set();
+  // Nasce ANTES de qualquer zona subir — inclusive a que sobe da config em
+  // cache quando a TV liga sem internet, que é exibição como qualquer outra.
+  function criarContadorExibicoes() {
+    if (contadorExibicoes || !global.MTExibicoes) return;
+    contadorExibicoes = MTExibicoes.criar({
+      ler: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+      guardar: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+    });
+  }
+  function ligarExibicoes(devId) {
+    criarContadorExibicoes();
+    if (!contadorExibicoes || !global.MTCloud || !MTCloud.enviarExibicoes) return;
+    async function enviar() {
+      // Zona com um conteúdo só nunca "termina": conta o tempo até agora.
+      exibicoesAbertas.forEach((e) => { try { e.parcial(); } catch (err) {} });
+      const lote = contadorExibicoes.lote();
+      if (!lote) return;
+      const ok = await MTCloud.enviarExibicoes(devId, { lote: lote.lote, itens: lote.itens });
+      if (ok) contadorExibicoes.confirmar(lote);
+    }
+    // Espalha as TVs no tempo: mil telas ligadas juntas não mandam juntas.
+    setTimeout(enviar, 30000 + Math.random() * 60000);
+    setInterval(enviar, 5 * 60 * 1000);
+  }
+
   /* ---------------- Ciclo de vida ---------------- */
 
   async function boot() {
@@ -136,6 +168,7 @@
   // Modo nuvem: a TV é controlada pelo celular. Cria/retoma um device,
   // mostra o código de pareamento e recebe a config em tempo real (SSE).
   async function bootCloud() {
+    criarContadorExibicoes();
     let dev;
     try {
       dev = await MTCloud.ensureDevice();
@@ -246,6 +279,7 @@
     }
     pulsar();
     setInterval(pulsar, 30000);
+    ligarExibicoes(dev.id);
     // Relação de aniversariantes: carrega e refresca a cada 6h (muda pouco).
     loadBirthdays(dev.id);
     setInterval(function () { loadBirthdays(dev.id); }, 6 * 60 * 60 * 1000);
@@ -542,7 +576,7 @@
     const data = cfg.zonas[zone.id] || {};
     if (zone.type === 'ticker') return startTicker(zoneEl, data, cfg);
     if (zone.type === 'header') return startHeader(zoneEl, cfg);
-    return startPlaylist(zoneEl, data.items || [], cfg);
+    return startPlaylist(zoneEl, data.items || [], cfg, zone.id);
   }
 
   /* ---------------- Resiliência offline ---------------- */
@@ -1229,7 +1263,7 @@
 
   /* ---------------- Zona: Playlist rotativa ---------------- */
 
-  function startPlaylist(zoneEl, items, cfg) {
+  function startPlaylist(zoneEl, items, cfg, zonaId) {
     let index = 0;
     let timer = null;
     let currentSlide = null;
@@ -1291,12 +1325,17 @@
        */
       const soltarSom = trilha.acompanharVideo(rendered.el);
       const sairOriginal = rendered.onLeave;
+      // Relatório de exibição: começou agora; termina no onLeave (ver js/exibicoes.js).
+      const exib = contadorExibicoes ? contadorExibicoes.iniciar(item, zonaId) : null;
+      if (exib) exibicoesAbertas.add(exib);
       currentSlide = {
         el: rendered.el,
         onLeave: function () {
+          if (exib) { exib.terminar(); exibicoesAbertas.delete(exib); }
           soltarSom();
           if (sairOriginal) sairOriginal();
         },
+        exib,
       };
 
       if (prev) leaveSlide(prev);
@@ -1338,7 +1377,12 @@
 
     advance();
     return {
-      stop: () => { stopped = true; clearTimeout(timer); },
+      stop: () => {
+        stopped = true; clearTimeout(timer);
+        // A zona está sendo refeita: o slide que estava no ar termina aqui,
+        // senão a exibição dele some do relatório.
+        if (currentSlide && currentSlide.exib) { currentSlide.exib.terminar(); exibicoesAbertas.delete(currentSlide.exib); }
+      },
     };
   }
 
