@@ -204,6 +204,14 @@
       lineHeight: String(ent != null ? ent : f.entrelinha),
       textTransform: (e.caixaAlta || f.caixaAlta) ? 'uppercase' : 'none',
       textAlign: ['left', 'center', 'right'].indexOf(e.align) >= 0 ? e.align : 'center',
+      /*
+       * A caixa do texto é flex (centraliza na vertical), e flex centralizado
+       * na horizontal ENGOLE o text-align: numa linha só, o bloco encolhe até
+       * o tamanho do texto e fica no meio. "Esquerda" no editor não mudava
+       * nada — no palco, na TV e na miniatura —, enquanto o PNG exportado
+       * (canvas) alinhava certo. O eixo horizontal do flex segue o alinhamento.
+       */
+      justifyContent: e.align === 'left' ? 'flex-start' : e.align === 'right' ? 'flex-end' : 'center',
       color: e.cor || '#ffffff',
       textShadow: e.sombra ? '0 2px 14px rgba(0,0,0,.45)' : 'none',
     };
