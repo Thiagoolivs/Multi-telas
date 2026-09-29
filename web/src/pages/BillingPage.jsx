@@ -56,7 +56,7 @@ export function BillingPage({ onFalarComVendas }) {
   }
   if (error) return <ErrorState description="Não foi possível carregar o plano." onRetry={reload} />;
 
-  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia } = data;
+  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia, atraso } = data;
   const frac = usage.limit ? usage.screens / usage.limit : 0;
   const tone = frac >= 1 ? 'danger' : frac > 0.8 ? 'warn' : 'accent';
   /*
@@ -69,7 +69,7 @@ export function BillingPage({ onFalarComVendas }) {
    */
   const statusLabel = cortesia
     ? 'Cortesia'
-    : ({ active: 'Ativo', free: 'Grátis', canceled: 'Cancelado', past_due: 'Pagamento pendente' }[status] || status);
+    : ({ active: 'Ativo', free: 'Grátis', canceled: 'Cancelado', past_due: 'Pagamento pendente', estornado: 'Estornado', chargeback: 'Contestado' }[status] || status);
 
   return (
     <div>
@@ -84,6 +84,20 @@ export function BillingPage({ onFalarComVendas }) {
         <div className="mb-4 rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">Checkout cancelado — nada foi cobrado.</div>
       )}
       {err && <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">{err}</div>}
+
+      {/* Pagamento atrasado: avisa desde o primeiro dia, com a data do corte.
+          A primeira frase é a mesma de sempre — a tela continua no ar. */}
+      {atraso && (
+        <div className={'mb-4 rounded-md border px-3 py-2 text-sm ' + (atraso.bloqueado
+          ? 'border-danger/30 bg-danger-soft text-danger'
+          : 'border-warn/30 bg-warn-soft text-warn')}>
+          <b>Há uma fatura em atraso.</b> Suas telas continuam no ar.{' '}
+          {atraso.bloqueado
+            ? 'Gerar imagem com IA e ligar telas novas estão pausados até o pagamento.'
+            : `Se não for paga, em ${atraso.diasAteBloquear} ${atraso.diasAteBloquear === 1 ? 'dia' : 'dias'} a IA e o pareamento de telas novas pausam.`}
+          {' '}A fatura em aberto está em "Assinatura", logo abaixo.
+        </div>
+      )}
 
       {/* Plano atual + uso */}
       <Panel className="mb-5">

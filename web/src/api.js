@@ -43,8 +43,14 @@ async function api(method, path, body) {
   if (res.status === 204) return null;
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const e = new Error((data && data.error) || 'HTTP ' + res.status);
+    /*
+     * Crédito acabado e pagamento atrasado respondem 402 com `mensagem`, e
+     * não `error` (server/creditos.js). Lendo só `error`, a pessoa via
+     * "HTTP 402" no lugar de "suas telas continuam no ar".
+     */
+    const e = new Error((data && (data.error || data.mensagem)) || 'HTTP ' + res.status);
     e.status = res.status;
+    e.codigo = data && data.erro;
     throw e;
   }
   return data;

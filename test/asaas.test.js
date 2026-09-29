@@ -167,25 +167,20 @@ test('assinatura criada NÃO libera o plano — só o pagamento libera', () => {
    * e a franquia de créditos — sem pagar nada. O Asaas emite esse evento ao
    * criar o registro; a primeira fatura ainda está pendente.
    */
-  const server = soCodigo(lerFonte('server.js'));
-  const i = server.indexOf("eventName === 'SUBSCRIPTION_CREATED'");
-  assert.ok(i > 0, 'sumiu o tratamento de SUBSCRIPTION_CREATED');
   /*
-   * O ramo inteiro, até a próxima chave de fechamento do bloco — e a busca é
-   * por QUALQUER menção a `plan`, não por uma grafia específica. A primeira
-   * versão procurava `updates.plan`, e passou quando eu reintroduzi o defeito
-   * escrevendo `u.plan`: um teste que proíbe um nome de variável não proíbe
-   * o comportamento.
+   * A regra saiu do handler HTTP para server/cobranca.js e virou função pura
+   * — então o teste deixa de procurar texto no server.js e passa a perguntar
+   * o que interessa: o que o evento FAZ com a conta.
    */
-  const ramo = server.slice(i, i + 600).split('} else if')[0];
-  assert.ok(!/\bplan\b/.test(ramo),
-    'SUBSCRIPTION_CREATED voltou a mexer no plano antes do pagamento: ' + ramo.slice(0, 200));
+  const { efeitoDoEvento } = require('../server/cobranca.js');
+  const criada = efeitoDoEvento('SUBSCRIPTION_CREATED', { tenant: {}, planId: 'pro', subId: 's', customerId: 'c' });
+  assert.ok(!('plan' in criada), 'SUBSCRIPTION_CREATED voltou a mexer no plano antes do pagamento');
+  assert.equal(criada.subscriptionId, 's', 'e ainda precisa guardar o id da assinatura');
 
   // E o contrário: quem paga tem que continuar recebendo.
-  const j = server.indexOf("eventName === 'PAYMENT_RECEIVED'");
-  assert.ok(j > 0, 'sumiu o tratamento de PAYMENT_RECEIVED');
-  assert.match(server.slice(j, j + 400), /updates\.plan = planId/,
-    'pagar deixou de conceder o plano');
+  for (const ev of ['PAYMENT_RECEIVED', 'PAYMENT_CONFIRMED']) {
+    assert.equal(efeitoDoEvento(ev, { tenant: {}, planId: 'pro' }).plan, 'pro', ev + ' deixou de conceder o plano');
+  }
 });
 
 test('o token do webhook é comparado em tempo constante', () => {

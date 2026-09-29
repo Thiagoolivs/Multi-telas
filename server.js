@@ -48,6 +48,7 @@ const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
 const legal = require('./server/legal');
 const vigia = require('./server/vigia');
+const cobranca = require('./server/cobranca');
 // Mesmo arquivo que o player carrega no navegador — catálogo único de datas.
 const seasons = require('./js/seasons.js');
 // Mesmo arquivo que o player usa: o que é uma config está definido num lugar só.
@@ -202,6 +203,15 @@ function readRawBody(req) {
     req.on('end', () => resolve(data));
   });
 }
+/*
+ * Leva a assinatura para o número de telas de agora (server/cobranca.js).
+ * Nunca espera nem derruba quem chamou: falhou, fica registrado e a
+ * conciliação de seis em seis horas refaz.
+ */
+function sincronizarCobranca(tenantId) {
+  cobranca.sincronizarTelas(db, billing, tenantId)
+    .catch((e) => erros.registrar(e, { onde: 'assinatura acompanhando telas', tenant: tenantId }));
+}
 function brl(cents) { return 'R$ ' + (cents / 100).toFixed(2).replace('.', ','); }
 
 // Aplica um evento do Asaas ao plano do tenant.
@@ -250,30 +260,19 @@ async function handleAsaasEvent(body) {
     if (!isNaN(d.getTime())) renewsAt = d.getTime();
   }
 
-  if (eventName === 'PAYMENT_RECEIVED' || eventName === 'PAYMENT_CONFIRMED') {
-    const updates = { status: 'active', customerId, subscriptionId: subId };
-    if (planId) updates.plan = planId;
-    if (renewsAt) updates.renewsAt = renewsAt;
-    await db.setTenantBilling(tenant.id, updates);
-  } else if (eventName === 'PAYMENT_OVERDUE') {
-    await db.setTenantBilling(tenant.id, { status: 'past_due' });
-  } else if (eventName === 'SUBSCRIPTION_DELETED') {
-    await db.setTenantBilling(tenant.id, { plan: 'free', status: 'canceled', subscriptionId: null, renewsAt: null });
-  } else if (eventName === 'SUBSCRIPTION_CREATED') {
-    /*
-     * ASSINATURA CRIADA NÃO É PAGAMENTO RECEBIDO.
-     *
-     * Este ramo concedia `plan` — e como `plans.podeParear` decide acesso só
-     * por `tenant.plan`, sem olhar `plan_status`, clicar em assinar já dava o
-     * plano pago inteiro: 49 telas e a franquia de créditos, sem pagar nada.
-     * O Asaas emite este evento ao CRIAR o registro; a primeira fatura ainda
-     * está pendente.
-     *
-     * Aqui ficam só os identificadores, que é o que este evento de fato
-     * prova. O plano é concedido em PAYMENT_RECEIVED/PAYMENT_CONFIRMED, que
-     * é onde o dinheiro entrou.
-     */
-    await db.setTenantBilling(tenant.id, { customerId, subscriptionId: subId });
+  /*
+   * A regra de cada evento mora em server/cobranca.js (pura, testada). Aqui
+   * só se resolve a conta e se grava o patch.
+   */
+  const patch = cobranca.efeitoDoEvento(eventName, { tenant, customerId, subId, planId, renewsAt });
+  if (!patch) return;
+  await db.setTenantBilling(tenant.id, patch);
+  // Pagou: se pareou telas entre o checkout e o pagamento, a assinatura já
+  // passa a cobrar por elas.
+  if (patch.plan && plans.isPaid(patch.plan)) sincronizarCobranca(tenant.id);
+  if (/REFUNDED|CHARGEBACK/.test(eventName)) {
+    await db.registrarEvento(tenant.id, '', 'plano.' + (eventName === 'PAYMENT_REFUNDED' ? 'estorno' : 'chargeback')).catch(() => {});
+    log.aviso('cobranca.dinheiro-voltou', { evento: eventName, tenant: tenant.id });
   }
 }
 
@@ -1425,7 +1424,9 @@ async function handleApi(req, res, pathname, query) {
             const contaIA = await db.getTenant(sess.tenant_id);
             const pode = await usoIA.conferir(db, contaIA, 'campanha-peca', 1);
             if (!pode.ok) {
-              const e = new Error('acabou o crédito de IA — as peças seguintes saem sem foto');
+              const e = new Error(pode.resposta && pode.resposta.erro === 'pagamento_atrasado'
+                ? 'pagamento em atraso — as peças seguintes saem sem foto'
+                : 'acabou o crédito de IA — as peças seguintes saem sem foto');
               e.semSaldo = true;
               throw e;
             }
@@ -1769,6 +1770,12 @@ async function handleApi(req, res, pathname, query) {
          * sumiria justamente de quem um dia precisa clicar nele.
          */
         cortesia: cortesia.contaEmCortesia(tenant),
+        /*
+         * Pagamento atrasado, com a data em que a carência acaba. O painel
+         * avisa desde o primeiro dia: descobrir o corte na hora de gerar uma
+         * imagem é a pior forma de saber.
+         */
+        atraso: plans.situacaoAtraso(tenant),
         renewsAt: tenant && tenant.plan_renews_at,
         /*
          * O teste, para o painel poder avisar ANTES de acabar.
@@ -1829,6 +1836,9 @@ async function handleApi(req, res, pathname, query) {
             aoCriarCliente: (customerId) => db.setTenantBilling(tenant.id, { customerId }),
           });
           if (out.customerId && out.customerId !== tenant.stripe_customer_id) await db.setTenantBilling(tenant.id, { customerId: out.customerId });
+          // A assinatura nasceu (ou foi atualizada) cobrando estas telas; é o
+          // ponto de partida da conciliação.
+          if (out.id) await db.setTenantBilling(tenant.id, { subscriptionId: out.id, telasCobradas: telasDaConta });
           return sendJson(res, 200, out);
         } catch (e) {
           // A assinatura pode ter sido criada mesmo com erro na fatura. Guardar
@@ -1944,6 +1954,13 @@ async function handleApi(req, res, pathname, query) {
         const tenant = await db.getTenant(sess.tenant_id);
         const used = await db.countDevices(sess.tenant_id);
         const veredito = plans.podeParear(tenant, used);
+        if (!veredito.ok && veredito.motivo === 'atraso') {
+          return sendJson(res, 402, {
+            error: 'Há uma fatura em atraso há mais de ' + veredito.dias + ' dias. Suas telas continuam no ar; '
+              + 'para ligar uma tela nova, regularize o pagamento em Plano.',
+            code: 'pagamento_atrasado',
+          });
+        }
         if (!veredito.ok && veredito.motivo === 'teste_vencido') {
           return sendJson(res, 402, {
             error: 'Seu teste de ' + veredito.dias + ' dias terminou. Escolha um plano para ligar sua tela.',
@@ -1960,6 +1977,9 @@ async function handleApi(req, res, pathname, query) {
       }
       await db.claimDevice(d.id, sess.tenant_id, b.name || d.name || 'TV');
       await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.parear');
+      // Tela nova na conta = mensalidade nova. Sem esperar o Asaas: o
+      // pareamento já aconteceu, e a conciliação refaz se falhar agora.
+      if (!d.tenant_id) sincronizarCobranca(sess.tenant_id);
       /*
        * A TV PRECISA SABER QUE FOI PAREADA. Não sabia.
        *
@@ -2104,7 +2124,9 @@ async function handleApi(req, res, pathname, query) {
     }
     if (req.method === 'DELETE' && !sub) {
       if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
-      await db.removeDevice(id); return sendJson(res, 200, { ok: true });
+      await db.removeDevice(id);
+      sincronizarCobranca(sess.tenant_id);
+      return sendJson(res, 200, { ok: true });
     }
     // Aniversariantes do tenant desta tela (player lê com device token).
     if (req.method === 'GET' && sub === 'birthdays') {
@@ -2759,5 +2781,11 @@ db.init()
       vigia.ligar({ db, mail, appUrl: (process.env.APP_URL || '').replace(/\/$/, '') });
       log.info('vigia.ligado', { minutos: vigia.LIMITE_MS / 60000 });
     }
+    /*
+     * A assinatura acompanhando as telas: o acerto acontece na hora de
+     * parear e de remover; isto é a rede de segurança para quando o Asaas não
+     * respondeu naquele segundo.
+     */
+    cobranca.ligarConciliacao(db, billing, (e, ctx) => erros.registrar(e, ctx));
   }))
   .catch((e) => { log.erro('db.init-falhou', e); process.exit(1); });

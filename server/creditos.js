@@ -135,6 +135,20 @@ function semSaldo(precisa, tem) {
 }
 
 /*
+ * A mesma forma de resposta de semSaldo, para o painel tratar os dois do
+ * mesmo jeito — e com a mesma primeira linha: as telas continuam no ar.
+ */
+function pagamentoAtrasado() {
+  return {
+    erro: 'pagamento_atrasado',
+    titulo: 'Pagamento em atraso',
+    mensagem: 'Suas telas continuam no ar, e o editor continua inteiro. '
+      + 'Gerar imagem com IA volta assim que a fatura em aberto for paga.',
+    saidas: ['pagar-fatura'],
+  };
+}
+
+/*
  * Teto de segurança do texto livre: não é preço, é proteção contra laço
  * infinito no cliente. Uma conta que estoure isto num dia está com defeito,
  * não com pressa.
@@ -154,5 +168,5 @@ function franquiaDoCiclo(plans, planId, telas) {
 module.exports = {
   OPERACOES, CUSTO_IMAGEM_CENTAVOS, CUSTO_TEXTO_CENTAVOS,
   TETO_TEXTO_DIA, TETO_TEXTO_HORA,
-  operacao, custaCredito, creditosDe, saldo, debitar, semSaldo, franquiaDoCiclo,
+  operacao, custaCredito, creditosDe, saldo, debitar, semSaldo, pagamentoAtrasado, franquiaDoCiclo,
 };

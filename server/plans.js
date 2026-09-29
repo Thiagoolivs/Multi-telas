@@ -198,6 +198,44 @@ function testeAtivo(tenant, agora) {
   return fimDoTeste(tenant) > (agora || Date.now());
 }
 
+/* ---------------- Pagamento atrasado ----------------
+ *
+ * Atraso tinha zero consequência: o webhook marcava `past_due` e nada olhava
+ * para isso. A franquia de IA renovava todo mês e o pareamento seguia aberto.
+ *
+ * A regra: a tela nunca para. Durante a carência nada muda (boleto atrasa,
+ * cartão vence, gente viaja). Passada a carência, corta o que custa dinheiro
+ * a nós — crédito de IA e tela nova — e só isso. Pagou, volta na hora.
+ *
+ * `atraso_desde` é gravado no PRIMEIRO aviso de atraso (server/cobranca.js).
+ * Conta marcada `past_due` antes desta regra existir não tem a data e não é
+ * bloqueada: sem saber desde quando, cortar seria chutar.
+ */
+const CARENCIA_ATRASO_DIAS = 7;
+const MS_DIA = 24 * 60 * 60 * 1000;
+
+/* Situação do atraso da conta, ou null se ela está em dia. */
+function situacaoAtraso(tenant, agora) {
+  if (!tenant || tenant.plan_status !== 'past_due') return null;
+  const desde = Number(tenant.atraso_desde) || 0;
+  if (!desde) return null;
+  const t = agora || Date.now();
+  const bloqueiaEm = desde + CARENCIA_ATRASO_DIAS * MS_DIA;
+  return {
+    desde,
+    bloqueiaEm,
+    bloqueado: t >= bloqueiaEm,
+    diasAteBloquear: Math.max(0, Math.ceil((bloqueiaEm - t) / MS_DIA)),
+    dias: CARENCIA_ATRASO_DIAS,
+  };
+}
+
+/* O atraso já passou da carência? Devolve a situação, ou null. */
+function bloqueioPorAtraso(tenant, agora) {
+  const s = situacaoAtraso(tenant, agora);
+  return s && s.bloqueado ? s : null;
+}
+
 /*
  * A conta pode ligar mais uma tela?
  *
@@ -211,6 +249,8 @@ function podeParear(tenant, telasEmUso, agora) {
   const usadas = Math.max(0, Number(telasEmUso) || 0);
 
   if (isPaid(id)) {
+    const atraso = bloqueioPorAtraso(tenant, agora);
+    if (atraso) return { ok: false, motivo: 'atraso', dias: atraso.dias };
     if (usadas >= limite) return { ok: false, motivo: 'limite', limite };
     return { ok: true };
   }
@@ -229,6 +269,7 @@ function catalog() { return ORDER.map((id) => PLANS[id]); }
 module.exports = {
   PLANS, ORDER, FAIXAS, CREDITOS_BOAS_VINDAS,
   DIAS_DE_TESTE, fimDoTeste, diasDeTesteRestantes, testeAtivo, podeParear,
+  CARENCIA_ATRASO_DIAS, situacaoAtraso, bloqueioPorAtraso,
   plan, catalog, screenLimit, isPaid, temRecurso,
   descontoVolume, mensalidadeCents, precoTelaCents, precoProximaTelaCents, cotaBytes, franquiaCreditos,
 };

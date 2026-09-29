@@ -43,6 +43,10 @@ async function init() {
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_renews_at BIGINT;
+    -- Quantas telas a assinatura cobra hoje, e desde quando o pagamento está
+    -- atrasado. Ver server/cobranca.js.
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_telas INTEGER;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS atraso_desde BIGINT;
     UPDATE tenants SET plan = 'free' WHERE plan IS NULL;
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT UNIQUE,
@@ -860,6 +864,7 @@ async function setTenantBilling(id, fields) {
   const map = {
     plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
     subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
+    telasCobradas: 'plan_telas', atrasoDesde: 'atraso_desde',
   };
   const sets = [], vals = [];
   let i = 1;
@@ -867,6 +872,18 @@ async function setTenantBilling(id, fields) {
   if (!sets.length) return;
   vals.push(id);
   await pool.query('UPDATE tenants SET ' + sets.join(', ') + ' WHERE id = $' + i, vals);
+}
+/*
+ * Contas com assinatura cujo número de telas pareadas difere do que a
+ * assinatura cobra. É a lista da conciliação periódica (server/cobranca.js).
+ */
+async function contasParaConciliar() {
+  const r = await pool.query(`SELECT t.id, t.plan, t.plan_status, t.plan_telas, t.stripe_subscription_id,
+      (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = t.id) AS telas
+    FROM tenants t
+    WHERE t.stripe_subscription_id IS NOT NULL AND t.stripe_subscription_id <> ''
+      AND COALESCE(t.plan_telas, -1) <> (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id)`);
+  return r.rows.map((x) => ({ ...x, telas: Number(x.telas) }));
 }
 
 /* ---------------- Mídia ---------------- */
@@ -1202,7 +1219,7 @@ module.exports = {
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
-  getTenant, getTenantByCustomer, setTenantBilling,
+  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,

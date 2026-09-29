@@ -400,7 +400,10 @@ for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', '
   // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
   // expira). `creditos_ciclo` guarda quando a franquia foi reposta pela
   // última vez, para a reposição acontecer sozinha na virada do mês.
-  'creditos_franquia INTEGER', 'creditos_comprados INTEGER', 'creditos_ciclo INTEGER']) {
+  'creditos_franquia INTEGER', 'creditos_comprados INTEGER', 'creditos_ciclo INTEGER',
+  // Quantas telas a assinatura do Asaas está cobrando hoje, e desde quando a
+  // conta está com pagamento atrasado. Ver server/cobranca.js.
+  'plan_telas INTEGER', 'atraso_desde INTEGER']) {
   garantirColuna('tenants', col);
 }
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
@@ -655,12 +658,25 @@ async function setTenantBilling(id, fields) {
   const map = {
     plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
     subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
+    telasCobradas: 'plan_telas', atrasoDesde: 'atraso_desde',
   };
   const sets = [], vals = [];
   for (const k of Object.keys(map)) if (k in fields && fields[k] !== undefined) { sets.push(map[k] + ' = ?'); vals.push(fields[k]); }
   if (!sets.length) return;
   vals.push(id);
   db.prepare('UPDATE tenants SET ' + sets.join(', ') + ' WHERE id = ?').run(...vals);
+}
+/*
+ * Contas com assinatura cujo número de telas pareadas difere do que a
+ * assinatura cobra. É a lista da conciliação periódica (server/cobranca.js).
+ */
+async function contasParaConciliar() {
+  return db.prepare(`SELECT t.id, t.plan, t.plan_status, t.plan_telas, t.stripe_subscription_id,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas
+    FROM tenants t
+    WHERE t.stripe_subscription_id IS NOT NULL AND t.stripe_subscription_id <> ''
+      AND COALESCE(t.plan_telas, -1) <> (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id)`).all()
+    .map((r) => ({ ...r, telas: Number(r.telas) }));
 }
 
 /* ---------------- Mídia ---------------- */
@@ -1290,7 +1306,7 @@ module.exports = {
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
-  getTenant, getTenantByCustomer, setTenantBilling,
+  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,

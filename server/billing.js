@@ -266,6 +266,26 @@ async function cancelarAssinatura(tenant) {
   return { cancelada: true, id: subId };
 }
 
+/*
+ * Muda o valor da assinatura que já existe — é o que acontece quando a conta
+ * pareia ou remove uma tela (ver server/cobranca.js).
+ *
+ * `updatePendingPayments` leva o valor novo também para a fatura já gerada e
+ * ainda não paga: sem ele, a próxima cobrança sairia com o valor velho e só a
+ * seguinte acertaria. Não há proração no meio do ciclo — a tela nova entra na
+ * próxima fatura, que é o que o cliente entende como "por mês".
+ */
+async function atualizarValor(subId, planId, valor) {
+  if (mode() === 'dev') return { simulado: true };
+  if (!subId) throw new Error('sem assinatura para atualizar');
+  const p = plan(planId);
+  return asaasApi('/subscriptions/' + encodeURIComponent(subId), {
+    value: valor,
+    description: 'Assinatura do Plano ' + p.name,
+    updatePendingPayments: true,
+  }, 'POST');
+}
+
 /* ---------------- Webhook ---------------- */
 function verifyWebhook(rawBody, authHeader) {
   if (!WEBHOOK_TOKEN) throw new Error('ASAAS_WEBHOOK_TOKEN ausente');
@@ -299,4 +319,4 @@ function planIdFromPrice(priceId) {
   return null; 
 }
 
-module.exports = { mode, createCheckout, assinatura, cancelarAssinatura, verifyWebhook, planIdFromPrice, asaasApi };
+module.exports = { mode, createCheckout, assinatura, cancelarAssinatura, atualizarValor, verifyWebhook, planIdFromPrice, asaasApi };
