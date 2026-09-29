@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, Unlock, GripVertical, Type, Image as ImageIcon, Shapes, Star, ChevronRight, ChevronDown, Group } from 'lucide-react';
+import { Eye, EyeOff, Lock, Unlock, GripVertical, Type, Image as ImageIcon, Shapes, Star, Sticker, ChevronRight, ChevronDown, Group } from 'lucide-react';
 import { linhasDeCamada } from '../../lib/grupos.js';
 
 /*
@@ -22,13 +22,14 @@ import { linhasDeCamada } from '../../lib/grupos.js';
  * e um segundo nível de arrasto confunde mais do que resolve.
  */
 
-const ICONE = { texto: Type, imagem: ImageIcon, forma: Shapes, icone: Star };
+const ICONE = { texto: Type, imagem: ImageIcon, forma: Shapes, icone: Star, grafico: Sticker };
 
 function rotulo(e) {
   if (e.nome) return e.nome;
   if (e.tipo === 'texto') return (e.text || 'Texto').slice(0, 28);
   if (e.tipo === 'forma') return 'Forma · ' + (e.shape || 'rect');
   if (e.tipo === 'icone') return 'Ícone · ' + (e.name || 'star');
+  if (e.tipo === 'grafico') return 'Elemento · ' + (e.name || '');
   return 'Imagem';
 }
 

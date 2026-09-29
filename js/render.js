@@ -1238,6 +1238,42 @@
    * que o editor decida igual.
    */
   const P = global.MTPeca;
+
+  /*
+   * Texto em curva: SVG do tamanho da caixa com o texto correndo sobre um
+   * arco (textPath). Uma linha só — curva com quebra de linha não se lê.
+   * `overflow: visible` porque o arco pode passar da caixa, como no Canva.
+   */
+  let seqCurva = 0;
+  function textoCurvo(e, formato) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const a = P.arcoTexto(e, formato);
+    const est = global.MTFontes.estiloTexto(e);
+    const id = 'mtcurva' + (++seqCurva);
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', a.viewBox);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.style.width = '100%'; svg.style.height = '100%'; svg.style.overflow = 'visible';
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('id', id); path.setAttribute('d', a.d); path.setAttribute('fill', 'none');
+    const txt = document.createElementNS(NS, 'text');
+    txt.setAttribute('fill', est.color || '#fff');
+    txt.setAttribute('font-size', a.fonte.toFixed(1));
+    txt.style.fontFamily = est.fontFamily; txt.style.fontWeight = est.fontWeight; txt.style.fontStyle = est.fontStyle;
+    if (est.letterSpacing) txt.style.letterSpacing = est.letterSpacing;
+    if (est.textTransform) txt.style.textTransform = est.textTransform;
+    const tp = document.createElementNS(NS, 'textPath');
+    tp.setAttribute('href', '#' + id);
+    tp.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + id); // WebView antiga de TV
+    tp.setAttribute('startOffset', '50%');
+    tp.setAttribute('text-anchor', 'middle');
+    tp.textContent = String(e.text || '').replace(/\s*\n\s*/g, ' ');
+    txt.appendChild(tp);
+    svg.appendChild(path); svg.appendChild(txt);
+    aplicarSombra(svg, e);
+    return svg;
+  }
+
   function aplicarSombra(no, e) {
     const css = P.sombraCss(e);
     if (css === 'none') return;
@@ -1334,7 +1370,11 @@
         alvo = capa;
       }
 
-      if (e.tipo === 'texto') {
+      if (e.tipo === 'texto' && P.temCurva(e)) {
+        // Texto em curva: arco de js/peca.js, o mesmo que o editor desenha.
+        if (global.MTTheme && MTTheme.familiaPeca) MTTheme.familiaPeca(MTFontes.familia(e.fonte));
+        alvo.appendChild(textoCurvo(e, item.formato));
+      } else if (e.tipo === 'texto') {
         const t = div('mt-comp-text');
         t.textContent = e.text || '';
         /*
@@ -1366,6 +1406,17 @@
         else alvo.style.borderRadius = P.raioCss(e);
         aplicarSombra(alvo, e);
         aplicarBorda(alvo, e);
+      } else if (e.tipo === 'grafico' && global.MTGraficos) {
+        // Elemento da biblioteca gráfica (js/graficos.js): um caminho preenchido.
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const at = MTGraficos.svgAtributos(e.name);
+        g.setAttribute('viewBox', at.viewBox);
+        g.setAttribute('preserveAspectRatio', at.preserveAspectRatio);
+        g.setAttribute('fill', e.cor || '#ffffff');
+        g.style.width = '100%'; g.style.height = '100%'; g.style.display = 'block';
+        g.innerHTML = MTGraficos.svgMiolo(e.name);
+        aplicarSombra(g, e);
+        alvo.appendChild(g);
       } else if (e.tipo === 'icone') {
         const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         s.setAttribute('viewBox', '0 0 24 24');

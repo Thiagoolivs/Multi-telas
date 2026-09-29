@@ -171,7 +171,7 @@
   function comoAplicarSombra(el) {
     if (!el) return null;
     if (el.tipo === 'texto') return 'texto';
-    if (el.tipo === 'imagem' || el.tipo === 'icone') return 'filtro';
+    if (el.tipo === 'imagem' || el.tipo === 'icone' || el.tipo === 'grafico') return 'filtro';
     if (el.tipo === 'forma') return recortada(el) ? 'filtro' : 'caixa';
     return 'caixa';
   }
@@ -239,7 +239,59 @@
     };
   }
 
+  /* ---------------- Texto em curva ----------------
+   *
+   * `e.curva` vai de -100 a 100: positivo arqueia para cima (texto no alto
+   * de um selo), negativo para baixo (sorriso). Zero, ou ausente, é texto
+   * reto — e o texto reto continua no caminho de sempre, com quebra de linha.
+   *
+   * O desenho é um arco de círculo num SVG do tamanho da caixa, e o texto
+   * corre sobre ele (textPath). A conta mora aqui para o editor, a TV e o
+   * PNG usarem o mesmo arco: no quadro de 1000 de largura, a mesma curva e
+   * a mesma fonte, em qualquer tamanho de tela.
+   */
+  function temCurva(e) {
+    var c = Number(e && e.curva);
+    return !!(e && e.tipo === 'texto' && isFinite(c) && Math.abs(c) >= 1);
+  }
+  function arcoTexto(e, formato) {
+    var c = limitar(num(e.curva, 0), -100, 100);
+    var w = e.w != null ? e.w : 25;
+    var h = e.h != null ? e.h : 25;
+    var vbW = 1000;
+    var vbH = Math.max(50, Math.round(vbW * (h * formatRatio(formato)) / w));
+    var fonte = textFontCqw(e, formato) / w * vbW;       // fonte no quadro de 1000
+    var L = vbW * 0.94;
+    var x0 = (vbW - L) / 2, x1 = x0 + L;
+    var sag = Math.max(1, Math.abs(c) / 100 * L / 2);      // 100 = meio círculo
+    var raio = (L * L / 4 + sag * sag) / (2 * sag);
+    // Linha de base: o arco inteiro, mais a altura das letras, centrado na caixa.
+    var y0 = c > 0 ? vbH / 2 + sag / 2 + fonte * 0.35 : vbH / 2 - sag / 2 + fonte * 0.35;
+    var d = 'M' + x0.toFixed(1) + ' ' + y0.toFixed(1) +
+      ' A' + raio.toFixed(1) + ' ' + raio.toFixed(1) + ' 0 0 ' + (c > 0 ? 1 : 0) + ' ' + x1.toFixed(1) + ' ' + y0.toFixed(1);
+    return {
+      viewBox: '0 0 ' + vbW + ' ' + vbH, vbW: vbW, vbH: vbH, d: d, fonte: fonte,
+      // Para o canvas, que não tem textPath: o círculo, em números.
+      cx: vbW / 2, cy: c > 0 ? y0 + (raio - sag) : y0 - (raio - sag), raio: raio, sobe: c > 0,
+    };
+  }
+
+  /*
+   * Altura (em % da peça) que a caixa precisa para o arco caber. O editor
+   * ajusta a caixa ao mexer na curva: sem isso o texto arqueado sai da
+   * própria caixa, e selecionar vira caçar a letra.
+   */
+  function alturaParaCurva(e, formato) {
+    var c = limitar(num(e.curva, 0), -100, 100);
+    var w = e.w != null ? e.w : 25;
+    var fonte = textFontCqw(e, formato) / w * 1000;
+    var sag = Math.abs(c) / 100 * 940 / 2;
+    var precisa = sag + fonte * 1.35;
+    return limitar(precisa / 1000 * w / formatRatio(formato), 3, 100);
+  }
+
   return {
+    temCurva: temCurva, arcoTexto: arcoTexto, alturaParaCurva: alturaParaCurva,
     SHAPE_POLY: SHAPE_POLY, shapeClip: shapeClip, recortada: recortada, fillToCss: fillToCss,
     corDeTinta: corDeTinta, tintaFundo: tintaFundo, tintaImagem: tintaImagem,
     formatRatio: formatRatio, textFontCqw: textFontCqw,

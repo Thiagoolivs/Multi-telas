@@ -4,7 +4,8 @@
  * elementos de texto/imagem em % com rotação). Sem dependências externas.
  */
 import { estiloTexto, prontasParaCanvas } from './fontes.js';
-import { sombra as sombraDe, borda as bordaDe, SHAPE_POLY } from './composition.js';
+import { sombra as sombraDe, borda as bordaDe, SHAPE_POLY, temCurva, arcoTexto } from './composition.js';
+import { desenharGraficoCanvas } from './graficos.js';
 
 // Espelho de web/src/lib/icons.js — mantido aqui para desenhar no canvas.
 const ICONS = {
@@ -292,6 +293,43 @@ function drawText(ctx, e, w, h, W, formato) {
   desligarSombra(ctx);
 }
 
+/*
+ * Texto em curva no canvas, que não tem textPath: letra por letra sobre o
+ * MESMO círculo que js/peca.js calcula para o SVG da TV e do editor. O
+ * quadro é esticado para a caixa como no SVG (preserveAspectRatio none), para
+ * o PNG sair igual ao que se vê.
+ */
+function drawTextoCurvo(ctx, e, w, h, W, formato) {
+  const a = arcoTexto(e, formato);
+  const s = estiloTexto(e);
+  ctx.save();
+  ctx.scale(w / a.vbW, h / a.vbH);
+  ctx.fillStyle = s.color;
+  ctx.font = `${s.fontStyle} ${s.fontWeight} ${a.fonte}px ${s.fontFamily}`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  const bruto = String(e.text || '').replace(/\s*\n\s*/g, ' ');
+  const texto = s.textTransform === 'uppercase' ? bruto.toUpperCase() : bruto;
+  const extra = (parseFloat(s.letterSpacing) || 0) * a.fonte;
+  const larguras = [...texto].map((ch) => ctx.measureText(ch).width + extra);
+  const total = larguras.reduce((x, y) => x + y, 0);
+  const vao = total / a.raio;
+  ligarSombra(ctx, e, W);
+  let acc = 0;
+  [...texto].forEach((ch, i) => {
+    const meio = (acc + larguras[i] / 2) / a.raio;
+    const ang = a.sobe ? -Math.PI / 2 - vao / 2 + meio : Math.PI / 2 + vao / 2 - meio;
+    ctx.save();
+    ctx.translate(a.cx + a.raio * Math.cos(ang), a.cy + a.raio * Math.sin(ang));
+    ctx.rotate(a.sobe ? ang + Math.PI / 2 : ang - Math.PI / 2);
+    ctx.fillText(ch, 0, 0);
+    ctx.restore();
+    acc += larguras[i];
+  });
+  desligarSombra(ctx);
+  ctx.restore();
+}
+
 export async function compositionToCanvas(item, W, H) {
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
@@ -315,7 +353,9 @@ export async function compositionToCanvas(item, W, H) {
     ctx.translate(x + w / 2, y + h / 2);
     if (e.rot) ctx.rotate((e.rot) * Math.PI / 180);
     ctx.translate(-w / 2, -h / 2);
-    if (e.tipo === 'texto') drawText(ctx, e, w, h, W, item.formato);
+    if (e.tipo === 'texto' && temCurva(e)) drawTextoCurvo(ctx, e, w, h, W, item.formato);
+    else if (e.tipo === 'texto') drawText(ctx, e, w, h, W, item.formato);
+    else if (e.tipo === 'grafico') { ligarSombra(ctx, e, W); desenharGraficoCanvas(ctx, e.name, w, h, e.cor); desligarSombra(ctx); }
     else if (e.tipo === 'forma') drawShape(ctx, e, w, h, W);
     else if (e.tipo === 'icone') await drawIcon(ctx, e, w, h, W);
     else if (e.src) await drawImagem(ctx, e, w, h, W);

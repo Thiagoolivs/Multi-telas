@@ -2,7 +2,7 @@ import React, { useRef, useState, useCallback, useEffect, useMemo, useLayoutEffe
 import Moveable from 'react-moveable';
 import {
   ScanSearch, ImagePlus, Type, Trash2, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical,
-  Columns2, Sparkles, Shapes, Star, Undo2, Redo2, Copy, ZoomIn, ZoomOut, Maximize2,
+  Columns2, Sparkles, Shapes, Star, Sticker, Undo2, Redo2, Copy, ZoomIn, ZoomOut, Maximize2,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup, LayoutTemplate,
@@ -11,7 +11,9 @@ import {
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { media, ai, brand as brandApi } from '../../api.js';
-import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw, estiloCaixa, recortada, raioCss, SOMBRA_PADRAO, SOMBRA_LIMITES, BORDA_MAX, estiloFundo, tintaImagem } from '../../lib/composition.js';
+import { fillToCss, bgGradient, shapeClip, SHAPE_POLY, textFontCqw, estiloCaixa, recortada, raioCss, SOMBRA_PADRAO, SOMBRA_LIMITES, BORDA_MAX, estiloFundo, tintaImagem, temCurva, formatRatio, alturaParaCurva } from '../../lib/composition.js';
+import { GRAFICOS, svgAtributosGrafico, svgMioloGrafico } from '../../lib/graficos.js';
+import { TextoCurvo, GraficoSvg } from './PecaExtras.jsx';
 import { ICONS, ICON_NAMES } from '../../lib/icons.js';
 import { criarHistorico, agora, empilhar, desfazer, refazer, selar, podeDesfazer, podeRefazer } from '../../lib/historico.js';
 import { encaixar, encaixarRedimensionamento, alinhar, distribuir, envolvente } from '../../lib/alinhar.js';
@@ -363,6 +365,17 @@ export function CompositionEditor({ value, onClose, onSave }) {
    * peça pareceria errada exatamente na hora em que se decide se ela está boa.
    */
   useEffect(() => { carregarDaComposicao(els); }, [els]);
+  /*
+   * Elemento da biblioteca gráfica. Os de proporção fixa (selo, balão) nascem
+   * QUADRADOS na tela — `h` é % da altura, então o quadrado depende do
+   * formato da peça; os livres (faixa, onda) nascem largos e baixos.
+   */
+  const addGrafico = (g) => {
+    const R = formatRatio(aspect);
+    const w = g.proporcao === 'fixa' ? 24 : 44;
+    const h = g.proporcao === 'fixa' ? Math.min(90, w / R) : Math.min(60, 14 / R);
+    acrescentar({ id: uid(), tipo: 'grafico', name: g.nome, x: (100 - w) / 2, y: (100 - h) / 2, w, h, rot: 0, cor: '#f5b301', opacidade: 1 });
+  };
   const addIcon = () => acrescentar({ id: uid(), tipo: 'icone', name: 'star', x: 42, y: 20, w: 16, h: 16, rot: 0, cor: '#ffffff', peso: 1.6, opacidade: 1 });
   // Forma nasce ATRÁS de tudo: quase sempre ela é fundo de alguma coisa.
   const addShape = () => {
@@ -611,6 +624,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
    * de aba. Este fica até a pessoa fechar ou o próximo upload dar certo.
    */
   const [erroUpload, setErroUpload] = useState('');
+  const [bibliotecaAberta, setBibliotecaAberta] = useState(false);
 
   const acrescentarVarios = useCallback((novos) => {
     const comId = novos.map((e) => ({ ...e, id: uid() }));
@@ -875,6 +889,23 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <Button size="sm" variant="secondary" icon={Type} onClick={addText}>Texto</Button>
         <Button size="sm" variant="secondary" icon={Shapes} onClick={addShape}>Forma</Button>
         <Button size="sm" variant="secondary" icon={Star} onClick={addIcon}>Ícone</Button>
+        <div className="relative">
+          <Button size="sm" variant="secondary" icon={Sticker} onClick={() => setBibliotecaAberta((v) => !v)}>Elementos</Button>
+          {bibliotecaAberta && (
+            <div className="absolute left-0 top-full z-30 mt-1 w-[340px] rounded-lg border border-line bg-surface p-2 shadow-lg">
+              <div className="mb-1.5 px-1 text-2xs font-semibold uppercase tracking-wide text-ink-3">Biblioteca de elementos</div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {GRAFICOS.map((g) => (
+                  <button key={g.nome} type="button" title={g.rotulo} onClick={() => { addGrafico(g); setBibliotecaAberta(false); }}
+                    className="flex aspect-square items-center justify-center rounded border border-line p-1.5 text-accent hover:border-accent hover:bg-accent-soft">
+                    <svg {...svgAtributosGrafico(g.nome)} fill="currentColor" style={{ width: '100%', height: '100%' }}
+                      dangerouslySetInnerHTML={{ __html: svgMioloGrafico(g.nome) }} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="mx-1 h-5 w-px bg-line" />
         {/* Alinhar: com um selecionado alinha pela peça, com vários entre eles. */}
@@ -1116,7 +1147,11 @@ export function CompositionEditor({ value, onClose, onSave }) {
                   key={'anim' + previa}
                   className={previa ? 'mt-anim ' + lerAnim(e).classes.join(' ') : ''}
                   style={{ width: '100%', height: '100%', ...(previa ? estiloAnim(e) : {}), ...((tintaImagem(e.tint) || {}).pai || {}) }}>
-                {e.tipo === 'texto' ? (
+                {e.tipo === 'texto' && temCurva(e) && editandoTexto !== e.id ? (
+                  <TextoCurvo el={e} formato={aspect} />
+                ) : e.tipo === 'grafico' ? (
+                  <GraficoSvg el={e} estilo={estiloCaixa(e, cqwPx)} />
+                ) : e.tipo === 'texto' ? (
                   <TextoEditavel
                     el={e}
                     editando={editandoTexto === e.id}
@@ -1466,7 +1501,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
             ) : selEl ? (
               <div className="space-y-3 border-t border-line pt-4">
                 <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">
-                  {selEl.tipo === 'texto' ? 'Texto' : selEl.tipo === 'forma' ? 'Forma' : selEl.tipo === 'icone' ? 'Ícone' : 'Imagem'}
+                  {selEl.tipo === 'texto' ? 'Texto' : selEl.tipo === 'forma' ? 'Forma' : selEl.tipo === 'icone' ? 'Ícone' : selEl.tipo === 'grafico' ? 'Elemento' : 'Imagem'}
                 </div>
 
                 {selEl.tipo === 'texto' ? (
@@ -1478,6 +1513,17 @@ export function CompositionEditor({ value, onClose, onSave }) {
                       <Field label="Cor"><input type="color" value={selEl.cor} onChange={(e) => patch(selEl.id, { cor: e.target.value })} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
                       <Field label="Tamanho"><Input type="number" value={selEl.tamanho} disabled={!!selEl.auto} onChange={(e) => patch(selEl.id, { tamanho: Number(e.target.value) })} /></Field>
                     </div>
+                    {/* Texto em curva: 0 é reto. O arco é o mesmo na TV e no PNG (js/peca.js). */}
+                    <Field label={`Curva${selEl.curva ? ' (' + selEl.curva + ')' : ' (reto)'}`} hint="Arraste para arquear o texto — para cima ou para baixo. Fica numa linha só.">
+                      <input type="range" min="-100" max="100" step="5" value={selEl.curva || 0}
+                        onChange={(e) => {
+                          const curva = Number(e.target.value) || undefined;
+                          // A caixa acompanha o arco, mantendo o centro no lugar.
+                          const h = curva ? alturaParaCurva({ ...selEl, curva }, aspect) : selEl.h;
+                          patch(selEl.id, { curva, h, y: (selEl.y || 0) + ((selEl.h || 0) - h) / 2 }, 'curva:' + selEl.id);
+                        }}
+                        onMouseUp={fecharPasso} className="w-full" />
+                    </Field>
                     <SeletorFonte
                       valor={selEl.fonte}
                       onEscolher={(id) => patch(selEl.id, { fonte: id, peso: pesoMaisProximo(id, selEl.peso) })}
@@ -1568,6 +1614,21 @@ export function CompositionEditor({ value, onClose, onSave }) {
                     <Opacidade el={selEl} onChange={(o) => patch(selEl.id, { opacidade: o })} />
                     <PainelSombra el={selEl} onChange={(sm) => patch(selEl.id, { sombra: sm }, 'sombra:' + selEl.id)} onSoltar={fecharPasso} />
                     <PainelBorda el={selEl} onChange={(bd) => patch(selEl.id, { borda: bd }, 'borda:' + selEl.id)} onSoltar={fecharPasso} />
+                  </>
+                ) : selEl.tipo === 'grafico' ? (
+                  <>
+                    <div className="grid grid-cols-6 gap-1">
+                      {GRAFICOS.map((g) => (
+                        <button key={g.nome} type="button" title={g.rotulo} onClick={() => patch(selEl.id, { name: g.nome })}
+                          className={'flex aspect-square items-center justify-center rounded border p-1 ' + (selEl.name === g.nome ? 'border-accent text-accent' : 'border-line text-ink-2 hover:text-ink')}>
+                          <svg {...svgAtributosGrafico(g.nome)} fill="currentColor" style={{ width: '100%', height: '100%' }}
+                            dangerouslySetInnerHTML={{ __html: svgMioloGrafico(g.nome) }} />
+                        </button>
+                      ))}
+                    </div>
+                    <Field label="Cor"><input type="color" value={selEl.cor || '#ffffff'} onChange={(e) => patch(selEl.id, { cor: e.target.value })} className="h-9 w-full cursor-pointer rounded border border-line bg-transparent" /></Field>
+                    <Opacidade el={selEl} onChange={(o) => patch(selEl.id, { opacidade: o })} />
+                    <PainelSombra el={selEl} onChange={(sm) => patch(selEl.id, { sombra: sm }, 'sombra:' + selEl.id)} onSoltar={fecharPasso} />
                   </>
                 ) : selEl.tipo === 'icone' ? (
                   <>
