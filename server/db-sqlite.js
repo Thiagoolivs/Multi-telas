@@ -1299,11 +1299,34 @@ async function consumeVerification(token) {
   qVerif.use.run(Date.now(), token);
 }
 
+/*
+ * Faxina do que venceu. Roda uma vez por dia (server.js).
+ *
+ * - Tela nunca pareada e sem sinal há mais de 7 dias: toda TV que limpa o
+ *   navegador ao desligar cria uma tela nova ao religar, e a rota que cria é
+ *   pública. Sem isto a tabela só crescia. Se a TV voltar, ela recebe 404,
+ *   esquece a identidade e ganha outra — o mesmo caminho de uma TV nova.
+ * - Sessões vencidas, links de senha vencidos ou usados.
+ * - Verificações de cadastro vencidas ou usadas — que guardam o HASH DA SENHA
+ *   no payload e ficavam no banco para sempre depois de usadas.
+ */
+async function limparVencidos(agora) {
+  const t = agora || Date.now();
+  const r = {
+    telas: db.prepare('DELETE FROM devices WHERE tenant_id IS NULL AND COALESCE(last_seen, created_at, 0) < ?').run(t - 7 * 864e5).changes,
+    sessoes: db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(t).changes,
+    resets: db.prepare('DELETE FROM resets WHERE expires_at < ? OR used_at IS NOT NULL').run(t).changes,
+    verificacoes: db.prepare('DELETE FROM verifications WHERE expires_at < ? OR used_at IS NOT NULL').run(t).changes,
+  };
+  for (const k of Object.keys(r)) r[k] = Number(r[k]) || 0;
+  return r;
+}
+
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
-  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification,
+  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,

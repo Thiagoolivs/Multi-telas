@@ -1924,6 +1924,13 @@ async function handleApi(req, res, pathname, query) {
 
   /* ----- Criar device (a TV chama, sem auth) ----- */
   if (req.method === 'POST' && parts[1] === 'devices' && parts.length === 2) {
+    /*
+     * A rota é pública (a TV ainda não tem dono), e não tinha limite: um laço
+     * qualquer enchia a tabela. Sessenta por hora por IP cobre com folga a
+     * matriz instalando uma frota inteira atrás do mesmo roteador.
+     */
+    const drl = rateLimit('device-novo:' + clientIp(req), 60, 60 * 60 * 1000);
+    if (!drl.ok) return sendJson(res, 429, { error: 'muitas telas novas deste endereço — tente mais tarde' }, { 'Retry-After': String(drl.retryAfter) });
     const id = 'dev_' + db.rid(14);
     const deviceToken = db.rid(24);
     const code = pairCode();
@@ -2808,5 +2815,11 @@ db.init()
      * respondeu naquele segundo.
      */
     cobranca.ligarConciliacao(db, billing, (e, ctx) => erros.registrar(e, ctx));
+    // Faxina diária do que venceu (ver limparVencidos nos dois bancos).
+    const faxina = () => db.limparVencidos()
+      .then((r) => { if (Object.values(r).some(Boolean)) log.info('faxina', r); })
+      .catch((e) => erros.registrar(e, { onde: 'faxina diária' }));
+    setTimeout(faxina, 2 * 60 * 1000).unref();
+    setInterval(faxina, 24 * 60 * 60 * 1000).unref();
   }))
   .catch((e) => { log.erro('db.init-falhou', e); process.exit(1); });
