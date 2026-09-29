@@ -1,7 +1,7 @@
 # Bom dia: o que foi feito e como colocar numa loja esta semana
 
 Escrito em 29/09/2026, durante a madrugada. Tudo está no PR
-[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 805
+[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 809
 testes passando e o APK compilando no GitHub Actions.
 
 ---
@@ -55,6 +55,21 @@ computador e no celular)
   num grupo "Com computador ligado à TV" (num TV Box não funcionam).
 - Conferido: com a internet da loja fora, a TV recarrega e **continua
   mostrando as imagens** (ficam guardadas no aparelho).
+- Plano não mostra mais barra **vermelha "no limite"** para quem só pareou a
+  primeira TV; relatório cabe no celular.
+
+**Achados da revisão desta madrugada (corrigidos e conferidos)**
+- **Box ligando sem internet pelo app:** o app abre `/tv`, e esse endereço
+  não tinha cópia offline. Depois de uma queda de energia (o box liga antes
+  do roteador) a TV ficava na **página de erro** em vez da programação.
+  Agora sobe com a última programação. Na primeiríssima vez, sem cópia,
+  aparece "Procurando a internet…" em vez do erro do Android.
+- **Box sem bateria de relógio** liga em 1970 depois de faltar luz: os
+  relógios da TV ficam em branco até a hora acertar.
+- **Edição perdida:** mexer num conteúdo e sair em menos de 1 segundo perdia a
+  alteração. Agora salva ao sair.
+- O workflow do APK tinha ficado inválido por uma chave duplicada que eu
+  mesmo introduzi; corrigido, e o APK volta a compilar.
 
 ---
 
