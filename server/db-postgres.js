@@ -47,6 +47,10 @@ async function init() {
     -- atrasado. Ver server/cobranca.js.
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_telas INTEGER;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS atraso_desde BIGINT;
+    CREATE TABLE IF NOT EXISTS pacotes_pagos (
+      payment_id TEXT PRIMARY KEY, tenant_id TEXT, pacote TEXT, creditos INTEGER,
+      pago_em BIGINT, estornado_em BIGINT
+    );
     UPDATE tenants SET plan = 'free' WHERE plan IS NULL;
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT UNIQUE,
@@ -1234,11 +1238,51 @@ async function limparVencidos(agora) {
   };
 }
 
+/*
+ * Pacotes de crédito pagos. A tabela é a trava de idempotência: o Asaas
+ * manda PAYMENT_CONFIRMED e PAYMENT_RECEIVED para o MESMO pagamento de
+ * cartão, e reentrega qualquer evento — sem a trava, cada entrega somaria o
+ * pacote de novo. `payment_id` é a chave; somar só acontece quando a linha
+ * nasce. O estorno segue a mesma ideia com `estornado_em`.
+ */
+async function creditarPacote(paymentId, tenantId, pacote, creditos) {
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const ins = await c.query(
+      'INSERT INTO pacotes_pagos (payment_id, tenant_id, pacote, creditos, pago_em) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (payment_id) DO NOTHING',
+      [paymentId, tenantId, pacote, creditos, Date.now()]);
+    if (ins.rowCount) {
+      // Soma no banco, e não lê-soma-grava: não perde crédito para um débito concorrente.
+      await c.query('UPDATE tenants SET creditos_comprados = COALESCE(creditos_comprados, 0) + $1 WHERE id = $2', [creditos, tenantId]);
+    }
+    await c.query('COMMIT');
+    return ins.rowCount > 0;
+  } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; }
+  finally { c.release(); }
+}
+async function estornarPacote(paymentId) {
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const r = await c.query(
+      'UPDATE pacotes_pagos SET estornado_em = $1 WHERE payment_id = $2 AND estornado_em IS NULL RETURNING tenant_id, creditos',
+      [Date.now(), paymentId]);
+    const x = r.rows[0];
+    if (x) {
+      await c.query('UPDATE tenants SET creditos_comprados = GREATEST(0, COALESCE(creditos_comprados, 0) - $1) WHERE id = $2', [x.creditos, x.tenant_id]);
+    }
+    await c.query('COMMIT');
+    return x ? Number(x.creditos) : 0;
+  } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; }
+  finally { c.release(); }
+}
+
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
-  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos,
+  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,

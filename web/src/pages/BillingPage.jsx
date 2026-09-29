@@ -45,6 +45,19 @@ export function BillingPage({ onFalarComVendas }) {
     }
   }
 
+  // Pacote de créditos: vai para a fatura do Asaas; em modo simulado credita na hora.
+  async function comprarPacote(id) {
+    setBusy(id); setErr('');
+    try {
+      const r = await billing.pacote(id);
+      if (r.url) { window.location.href = r.url; return; }
+      reload(); setBusy('');
+    } catch (e) {
+      setErr(e.message || 'Não foi possível abrir a compra.');
+      setBusy('');
+    }
+  }
+
   if (loading) {
     return (
       <div>
@@ -56,7 +69,7 @@ export function BillingPage({ onFalarComVendas }) {
   }
   if (error) return <ErrorState description="Não foi possível carregar o plano." onRetry={reload} />;
 
-  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia, atraso } = data;
+  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia, atraso, pacotes } = data;
   const frac = usage.limit ? usage.screens / usage.limit : 0;
   const tone = frac >= 1 ? 'danger' : frac > 0.8 ? 'warn' : 'accent';
   /*
@@ -175,6 +188,23 @@ export function BillingPage({ onFalarComVendas }) {
               para é gerar imagem nova.
             </div>
           </div>
+          {/* Pacotes avulsos. Crédito comprado não expira e é gasto depois da
+              franquia — dito aqui, porque é a dúvida de quem vai pagar. */}
+          {canManage && pacotes && pacotes.length > 0 && (
+            <div className="border-t border-line p-4">
+              <div className="mb-2 text-xs text-ink-2">
+                Precisa de mais? Créditos avulsos <b>não expiram</b> e só são usados depois da franquia do mês.
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {pacotes.map((p) => (
+                  <Button key={p.id} size="sm" variant="secondary" disabled={!!busy || (atraso && atraso.bloqueado)}
+                    onClick={() => comprarPacote(p.id)}>
+                    {busy === p.id ? 'Abrindo…' : `+${p.creditos} créditos · ${brl(p.precoCents)}`}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </Panel>
       )}
 

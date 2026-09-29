@@ -371,6 +371,7 @@ export const sistema = {
 export const billing = {
   get: () => api('GET', '/api/billing'),
   checkout: (plan) => api('POST', '/api/billing/checkout', { plan }),
+  pacote: (pacote) => api('POST', '/api/billing/pacote', { pacote }),
   // O "portal" não existia: devolvia uma URL que voltava para esta mesma tela.
   // A gestão é nossa — estado da assinatura, fatura em aberto e cancelamento.
   assinatura: () => api('GET', '/api/billing/assinatura'),

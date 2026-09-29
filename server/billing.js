@@ -82,6 +82,53 @@ async function asaasApi(path, params, method = 'GET') {
   return data;
 }
 
+/*
+ * O cliente da conta no Asaas: o que já existe, ou um novo — gravado ASSIM
+ * QUE NASCE, e não no retorno de quem chamou.
+ *
+ * O id do cliente só era gravado depois que o checkout inteiro voltava. Se
+ * qualquer chamada seguinte falhasse, o cliente já existia no Asaas e não
+ * existia aqui: a próxima tentativa criava OUTRO cliente e OUTRA assinatura,
+ * e o cartão passava duas vezes. Gravar antes torna a repetição inofensiva.
+ */
+async function garantirCliente(tenant, user, aoCriarCliente) {
+  if (tenant.stripe_customer_id) return tenant.stripe_customer_id; // coluna antiga, mantida por compatibilidade
+  const custRes = await asaasApi('/customers', {
+    name: tenant.name || (user && user.name) || 'Cliente',
+    email: user && user.email,
+    externalReference: tenant.id,
+  }, 'POST');
+  if (aoCriarCliente) await aoCriarCliente(custRes.id);
+  return custRes.id;
+}
+
+/*
+ * Cobrança AVULSA de um pacote de créditos.
+ *
+ * O externalReference "tenant|pacote|id" é o que o webhook usa para separar
+ * pagamento de pacote de pagamento de assinatura. Sem essa separação, o
+ * atraso ou o estorno de um pacote de R$ 39 derrubaria o plano da conta.
+ */
+async function cobrarPacote(tenant, user, pac, origin, aoCriarCliente) {
+  if (!pac || !(pac.precoCents > 0)) throw new Error('pacote inválido');
+  if (mode() === 'dev') {
+    // Sem Asaas não há fatura: quem chama credita na hora (modo simulado).
+    return { simulated: true };
+  }
+  const customer = await garantirCliente(tenant, user, aoCriarCliente);
+  const vence = new Date(Date.now() + 3 * 864e5).toISOString().split('T')[0];
+  const pag = await asaasApi('/payments', {
+    customer,
+    billingType: 'UNDEFINED',
+    value: pac.precoCents / 100,
+    dueDate: vence,
+    description: pac.creditos + ' créditos de IA — MultiTelas',
+    externalReference: tenant.id + '|pacote|' + pac.id,
+  }, 'POST');
+  if (!pag.invoiceUrl) throw new Error('o Asaas não devolveu o link da fatura — tente de novo');
+  return { url: pag.invoiceUrl, id: pag.id, customerId: customer };
+}
+
 /* ---------------- Checkout ---------------- */
 /*
  * `opcoes.telas` é quantas telas a conta tem hoje, e `opcoes.aoCriarCliente`
@@ -102,26 +149,8 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
     return { url: origin + '/api/billing/dev-checkout?plan=' + encodeURIComponent(planId), simulated: true };
   }
 
-  let customerId = tenant.stripe_customer_id; // mantemos a coluna antiga p/ compatibilidade
-
-  if (!customerId) {
-    const custRes = await asaasApi('/customers', {
-      name: tenant.name || user.name || 'Cliente',
-      email: user.email,
-      externalReference: tenant.id,
-    }, 'POST');
-    customerId = custRes.id;
-    /*
-     * GRAVA AGORA, e não no retorno.
-     *
-     * O id do cliente só era gravado depois que a função inteira voltava. Se
-     * qualquer chamada seguinte falhasse — e a busca da fatura falha fácil,
-     * ver abaixo —, o cliente já existia no Asaas e não existia aqui: a
-     * próxima tentativa criava OUTRO cliente e OUTRA assinatura, e o cartão
-     * passava duas vezes. Gravar antes torna a repetição inofensiva.
-     */
-    if (o.aoCriarCliente) await o.aoCriarCliente(customerId);
-  }
+  // Gravado assim que nasce — ver garantirCliente.
+  const customerId = await garantirCliente(tenant, user, o.aoCriarCliente);
 
   /*
    * ASSINATURA JÁ ABERTA É REAPROVEITADA.
@@ -319,4 +348,4 @@ function planIdFromPrice(priceId) {
   return null; 
 }
 
-module.exports = { mode, createCheckout, assinatura, cancelarAssinatura, atualizarValor, verifyWebhook, planIdFromPrice, asaasApi };
+module.exports = { mode, createCheckout, cobrarPacote, garantirCliente, assinatura, cancelarAssinatura, atualizarValor, verifyWebhook, planIdFromPrice, asaasApi };

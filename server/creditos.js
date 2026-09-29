@@ -135,6 +135,17 @@ function semSaldo(precisa, tem) {
 }
 
 /*
+ * Pacotes avulsos (docs/BILLING.md §7). Crédito comprado nunca expira e é
+ * gasto DEPOIS da franquia — ninguém perde o que pagou.
+ */
+const PACOTES = [
+  { id: 'p25', creditos: 25, precoCents: 3900 },
+  { id: 'p100', creditos: 100, precoCents: 12900 },
+  { id: 'p500', creditos: 500, precoCents: 49900 },
+];
+function pacote(id) { return PACOTES.find((p) => p.id === id) || null; }
+
+/*
  * A mesma forma de resposta de semSaldo, para o painel tratar os dois do
  * mesmo jeito — e com a mesma primeira linha: as telas continuam no ar.
  */
@@ -169,4 +180,5 @@ module.exports = {
   OPERACOES, CUSTO_IMAGEM_CENTAVOS, CUSTO_TEXTO_CENTAVOS,
   TETO_TEXTO_DIA, TETO_TEXTO_HORA,
   operacao, custaCredito, creditosDe, saldo, debitar, semSaldo, pagamentoAtrasado, franquiaDoCiclo,
+  PACOTES, pacote,
 };

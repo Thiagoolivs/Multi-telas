@@ -259,7 +259,29 @@ async function handleAsaasEvent(body) {
   }
   
   if (!customerId) return;
-  
+
+  /*
+   * Pacote de créditos: caminho próprio, ANTES da regra de plano. Um pacote
+   * atrasado ou estornado não pode mexer na assinatura da conta.
+   */
+  const refPacote = cobranca.referenciaDePacote(externalRef);
+  if (refPacote) {
+    const acao = cobranca.efeitoDoPacote(eventName);
+    const pac = creditos.pacote(refPacote.pacoteId);
+    const contaDoPacote = await db.getTenant(refPacote.tenantId);
+    if (!acao || !pac || !payment || !payment.id || !contaDoPacote) return;
+    // O pagamento tem que ser do cliente desta conta no Asaas.
+    if (contaDoPacote.stripe_customer_id && contaDoPacote.stripe_customer_id !== customerId) return;
+    if (acao === 'creditar') {
+      const novo = await db.creditarPacote(payment.id, contaDoPacote.id, pac.id, pac.creditos);
+      if (novo) log.info('cobranca.pacote-creditado', { tenant: contaDoPacote.id, pacote: pac.id });
+    } else {
+      const tirados = await db.estornarPacote(payment.id);
+      if (tirados) log.aviso('cobranca.pacote-estornado', { tenant: contaDoPacote.id, pacote: pac.id, creditos: tirados });
+    }
+    return;
+  }
+
   let tenantId, planId;
   if (externalRef && externalRef.includes('|')) {
     const parts = externalRef.split('|');
@@ -1825,7 +1847,32 @@ async function handleApi(req, res, pathname, query) {
         creditos: pan,
         faixas: plans.FAIXAS.map((f) => ({ ate: f.ate === Infinity ? null : f.ate, desconto: f.desconto })),
         catalog: plans.catalog(),
+        pacotes: creditos.PACOTES,
         canManage: sess.role === 'owner',
+      });
+    }
+
+    /*
+     * Comprar um pacote de créditos (só dono). Cobrança avulsa no Asaas; o
+     * crédito entra quando o webhook confirmar o pagamento, uma vez só.
+     * Em modo simulado credita na hora, para o fluxo ser testável sem chave.
+     */
+    if (req.method === 'POST' && seg === 'pacote') {
+      if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono compra créditos' });
+      return readBody(req, res, async (b) => {
+        const pac = creditos.pacote(b && b.pacote);
+        if (!pac) return sendJson(res, 400, { error: 'pacote inválido' });
+        try {
+          const user = await db.getUserById(sess.user_id);
+          const out = await billing.cobrarPacote(tenant, user, pac, reqOrigin(req),
+            (customerId) => db.setTenantBilling(tenant.id, { customerId }));
+          if (out.simulated) {
+            await db.creditarPacote('sim_' + db.rid(14), tenant.id, pac.id, pac.creditos);
+            return sendJson(res, 200, { simulado: true, creditado: pac.creditos });
+          }
+          await db.registrarEvento(sess.tenant_id, sess.user_id, 'creditos.pacote');
+          return sendJson(res, 200, { url: out.url });
+        } catch (e) { return sendJson(res, 502, { error: e.message }); }
       });
     }
 

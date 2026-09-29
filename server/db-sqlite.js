@@ -1322,11 +1322,47 @@ async function limparVencidos(agora) {
   return r;
 }
 
+/*
+ * Pacotes de crédito pagos. A tabela é a trava de idempotência: o Asaas
+ * manda PAYMENT_CONFIRMED e PAYMENT_RECEIVED para o MESMO pagamento de
+ * cartão, e reentrega qualquer evento — sem a trava, cada entrega somaria o
+ * pacote de novo. `payment_id` é a chave; somar só acontece quando a linha
+ * nasce. O estorno segue a mesma ideia com `estornado_em`.
+ */
+db.exec(`CREATE TABLE IF NOT EXISTS pacotes_pagos (
+  payment_id TEXT PRIMARY KEY, tenant_id TEXT, pacote TEXT, creditos INTEGER,
+  pago_em INTEGER, estornado_em INTEGER
+);`);
+async function creditarPacote(paymentId, tenantId, pacote, creditos) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const ins = db.prepare('INSERT OR IGNORE INTO pacotes_pagos (payment_id, tenant_id, pacote, creditos, pago_em) VALUES (?, ?, ?, ?, ?)')
+      .run(paymentId, tenantId, pacote, creditos, Date.now());
+    if (ins.changes) {
+      db.prepare('UPDATE tenants SET creditos_comprados = COALESCE(creditos_comprados, 0) + ? WHERE id = ?').run(creditos, tenantId);
+    }
+    db.exec('COMMIT');
+    return ins.changes > 0;
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+}
+async function estornarPacote(paymentId) {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const x = db.prepare('SELECT tenant_id, creditos FROM pacotes_pagos WHERE payment_id = ? AND estornado_em IS NULL').get(paymentId);
+    if (x) {
+      db.prepare('UPDATE pacotes_pagos SET estornado_em = ? WHERE payment_id = ?').run(Date.now(), paymentId);
+      db.prepare('UPDATE tenants SET creditos_comprados = MAX(0, COALESCE(creditos_comprados, 0) - ?) WHERE id = ?').run(x.creditos, x.tenant_id);
+    }
+    db.exec('COMMIT');
+    return x ? Number(x.creditos) : 0;
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+}
+
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
-  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos,
+  createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,

@@ -73,6 +73,26 @@ function efeitoDoEvento(evento, ctx, agora) {
 }
 
 /*
+ * Evento de um PACOTE de créditos (externalReference "tenant|pacote|id").
+ *
+ * Fica separado de efeitoDoEvento de propósito: o atraso ou o estorno de um
+ * pacote avulso não pode derrubar o plano da conta, e cair no mesmo switch
+ * faria exatamente isso. Pacote vencido sem pagar não faz nada — ele só vale
+ * quando pago.
+ */
+function efeitoDoPacote(evento) {
+  if (evento === 'PAYMENT_RECEIVED' || evento === 'PAYMENT_CONFIRMED') return 'creditar';
+  if (evento === 'PAYMENT_REFUNDED' || evento === 'PAYMENT_CHARGEBACK_REQUESTED' || evento === 'PAYMENT_CHARGEBACK_DISPUTE') return 'estornar';
+  return null;
+}
+
+/* "tenant|pacote|p100" → { tenantId, pacoteId }, ou null se não for pacote. */
+function referenciaDePacote(ref) {
+  const p = String(ref || '').split('|');
+  return p.length === 3 && p[1] === 'pacote' && p[0] && p[2] ? { tenantId: p[0], pacoteId: p[2] } : null;
+}
+
+/*
  * Quanto a assinatura DEVERIA cobrar com estas telas, em reais (o Asaas
  * trabalha em reais). Zero tela cobra uma: a assinatura é a porta, e uma
  * conta paga sem tela nenhuma é quase sempre a véspera de parear a primeira.
@@ -147,4 +167,4 @@ function ligarConciliacao(db, billing, registrarErro) {
   timer.unref();
 }
 
-module.exports = { efeitoDoEvento, valorDaAssinatura, sincronizarTelas, conciliar, ligarConciliacao };
+module.exports = { efeitoDoEvento, efeitoDoPacote, referenciaDePacote, valorDaAssinatura, sincronizarTelas, conciliar, ligarConciliacao };
