@@ -69,7 +69,7 @@ export function BillingPage({ onFalarComVendas }) {
   }
   if (error) return <ErrorState description="Não foi possível carregar o plano." onRetry={reload} />;
 
-  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia, atraso, pacotes } = data;
+  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia, atraso, pacotes, teste } = data;
   const frac = usage.limit ? usage.screens / usage.limit : 0;
   const tone = frac >= 1 ? 'danger' : frac > 0.8 ? 'warn' : 'accent';
   /*
@@ -126,7 +126,12 @@ export function BillingPage({ onFalarComVendas }) {
                 : plan.sobConsulta ? 'Contrato — preço combinado'
                 : usage.mensalidadeCents > 0
                   ? `${brl(usage.mensalidadeCents)}/mês · ${brl(usage.precoTelaCents)} por tela`
-                  : 'Sem custo'}
+                  /* O plano grátis é o TESTE de 14 dias: dizer "sem custo" escondia o prazo. */
+                  : teste && teste.ativo
+                    ? `Teste grátis · ${teste.restam === 1 ? 'último dia' : 'faltam ' + teste.restam + ' dias'} — sem cartão`
+                    : teste
+                      ? 'Teste encerrado · a tela segue no ar com o selo "versão gratuita"'
+                      : 'Sem custo'}
               {usage.descontoVolume > 0 ? ` · −${Math.round(usage.descontoVolume * 100)}% por volume` : ''}
               {renewsAt ? ` · renova em ${new Date(renewsAt).toLocaleDateString('pt-BR')}` : ''}
             </div>
