@@ -4,6 +4,17 @@ Escrito em 29/09/2026, durante a madrugada. Tudo está no PR
 [#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 845
 testes passando e o APK compilando no GitHub Actions.
 
+## Em 30 segundos
+
+- **Pronto para uma loja:** app da TV para TV Box, pareamento por QR,
+  tabela de preços (cardápio), horário por conteúdo, TV em pé, relatório de
+  exibição, cobrança que acompanha as telas e e-mails de fim do teste.
+- **Comprar:** Xiaomi TV Box S 3ª geração (~R$ 450) + filtro de linha. Seção 2.
+- **Hoje:** rodar o prompt do Cowork, fazer o merge do PR, gerar o APK.
+  Seção 4.
+- **Não testado por mim:** o APK num box de verdade, e Asaas/Resend reais.
+  Seção 5.
+
 ---
 
 ## 1. O que mudou esta noite (resumo)
@@ -193,8 +204,9 @@ completo, sem cobrança e sem o selo. Comece a cobrar depois da revisão.
    a conta, e a tela está pareada.
 5. Em **Telas › sino**: horário de funcionamento da loja (é o que evita alerta
    à noite). TV em pé? **Ajustes da tela**: layout vertical e o giro.
-6. Publicar um modelo pronto (o **Cardápio** com os preços da loja costuma
-   ser o que convence), ou gerar uma campanha com IA na frente do dono.
+6. Colar os preços da loja numa **Tabela de preços** (costuma ser o que
+   convence: o cardápio deles na TV em dois minutos), ou gerar uma campanha
+   com IA na frente do dono.
 7. **Teste obrigatório:** tire o box da tomada, ligue de novo e confira que o
    MultiTelas volta sozinho com a programação.
 8. No painel, a tela aparece "Online" com "1920×1080 · App 1.0.N".
