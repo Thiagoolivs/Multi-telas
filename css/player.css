@@ -1116,17 +1116,24 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   position: fixed; inset: 0; z-index: 60;
   display: flex; align-items: center; justify-content: center;
   background: radial-gradient(80% 80% at 50% 40%, var(--bg-2) 0%, var(--bg) 70%);
-  text-align: center; padding: 6vw;
+  text-align: center; padding: min(6vw, 4vh);
 }
 .mt-pairing.hidden { display: none; }
 .mt-pairing-title { font-size: clamp(18px, 3vw, 40px); font-weight: 700; color: var(--text); }
 .mt-pairing-code {
   margin: .5em 0 .3em;
-  font-size: clamp(56px, 16vw, 220px); font-weight: 800; letter-spacing: .12em;
+  /* Pela altura também: com o QR embaixo, 16vw estourava a caixa em 720p
+     (a resolução de boa parte dos TV box) e cortava o título. */
+  font-size: clamp(48px, min(16vw, 20vh), 220px); font-weight: 800; letter-spacing: .12em;
   line-height: 1; font-variant-numeric: tabular-nums;
   background: linear-gradient(120deg, var(--text), var(--accent));
   -webkit-background-clip: text; background-clip: text; color: transparent;
 }
+.mt-pairing-qr {
+  display: block; width: clamp(110px, min(16vw, 26vh), 260px); height: auto; aspect-ratio: 1;
+  margin: 0 auto 1em; padding: .6em; border-radius: 12px; background: #fff;
+}
+.mt-pairing-qr[hidden] { display: none; }
 .mt-pairing-hint { font-size: clamp(13px, 1.8vw, 26px); color: var(--text-dim); max-width: 32em; margin: 0 auto; }
 /* Escape hatch: se este navegador já guardou uma TV, gera outra do zero. */
 .mt-pairing-reset {

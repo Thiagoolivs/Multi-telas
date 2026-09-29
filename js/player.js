@@ -272,6 +272,26 @@
     restaurarTextosPairing(el);
     const codeEl = el.querySelector('.mt-pairing-code');
     if (codeEl) codeEl.textContent = code || '••••••';
+    /*
+     * QR para parear pelo celular: aponta a câmera e cai no painel com o
+     * código já preenchido. Digitar seis caracteres olhando para uma TV do
+     * outro lado da sala é o passo em que a instalação mais empaca.
+     * Desenhado pelo nosso servidor (/api/qr.svg), sem serviço externo.
+     */
+    let qr = el.querySelector('.mt-pairing-qr');
+    if (code) {
+      if (!qr) {
+        qr = document.createElement('img');
+        qr.className = 'mt-pairing-qr';
+        qr.alt = '';
+        if (codeEl && codeEl.parentNode) codeEl.parentNode.insertBefore(qr, codeEl.nextSibling);
+      }
+      const destino = global.location.origin + '/app/?parear=' + encodeURIComponent(code);
+      qr.src = '/api/qr.svg?d=' + encodeURIComponent(destino);
+      qr.hidden = false;
+    } else if (qr) {
+      qr.hidden = true;
+    }
     // "Gerar outro código": esquece a TV guardada neste navegador e recarrega
     // como tela nova (o navegador reaproveitava a mesma sem isso).
     const resetEl = document.getElementById('pairing-reset');
@@ -329,6 +349,7 @@
     if (dica) dica.textContent = 'Esta TV ainda não conseguiu falar com o MultiTelas. '
       + 'Ela tenta sozinha e mostra o conteúdo assim que a conexão voltar.';
     if (reset) reset.classList.add('hidden');
+    { const qr = el.querySelector('.mt-pairing-qr'); if (qr) qr.hidden = true; }
     el.classList.remove('hidden');
   }
 
@@ -379,6 +400,7 @@
       + 'Assim que você publicar um conteúdo no painel, ele aparece aqui sozinho.';
     // Gerar outro código aqui só serviria para desparear sem querer.
     if (reset) reset.classList.add('hidden');
+    { const qr = el.querySelector('.mt-pairing-qr'); if (qr) qr.hidden = true; }
     el.classList.remove('hidden');
   }
 

@@ -71,6 +71,12 @@ const ATALHOS = ['screens', 'designs', 'brand', 'mural', 'billing', 'alerts'];
 
 function rotaDaUrl() {
   const q = new URLSearchParams(window.location.search);
+  /*
+   * Veio do QR da TV: abre Telas com o pareamento já preenchido. Se a pessoa
+   * ainda não estava logada, o endereço sobrevive ao login e cai aqui depois.
+   */
+  const parear = (q.get('parear') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+  if (parear) return { name: 'screens', parear };
   if (q.get('billing')) return { name: 'billing' };
   const ir = q.get('ir');
   if (ir && ATALHOS.includes(ir)) return { name: ir };
@@ -110,7 +116,7 @@ export default function App() {
   function renderPage() {
     switch (route.name) {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
-      case 'screens': return <ScreensPage onEditContent={(device) => go('content', { device })} />;
+      case 'screens': return <ScreensPage parear={route.parear} onEditContent={(device) => go('content', { device })} />;
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;

@@ -14,11 +14,17 @@ import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
 
-export function ScreensPage({ onEditContent }) {
+export function ScreensPage({ onEditContent, parear }) {
   const { data, loading, error, reload } = useAsync(devices.list);
   const list = data ? data.devices || [] : [];
 
-  const [pairOpen, setPairOpen] = useState(false);
+  // Vindo do QR da TV, o diálogo já abre com o código.
+  const [pairOpen, setPairOpen] = useState(!!parear);
+  React.useEffect(() => {
+    if (!parear) return;
+    const u = new URL(window.location.href);
+    if (u.searchParams.has('parear')) { u.searchParams.delete('parear'); window.history.replaceState({}, '', u.pathname + u.search); }
+  }, [parear]);
   // Som ao vivo: atalho a partir da frota. Durante um evento, mexer no volume
   // não pode custar entrar na tela, abrir ajustes e rolar até o fim.
   const [somTarget, setSomTarget] = useState(null);
@@ -72,7 +78,7 @@ export function ScreensPage({ onEditContent }) {
         )}
       </Panel>
 
-      <PairDialog open={pairOpen} onClose={() => setPairOpen(false)} onDone={reload} />
+      <PairDialog open={pairOpen} codigoInicial={parear} onClose={() => setPairOpen(false)} onDone={reload} />
       <RenameDialog target={renameTarget} onClose={() => setRenameTarget(null)} onDone={reload} />
       <Dialog
         open={!!somTarget}
@@ -190,8 +196,8 @@ function ReconnectDialog({ target, onClose, onDone }) {
   );
 }
 
-function PairDialog({ open, onClose, onDone }) {
-  const [code, setCode] = useState('');
+function PairDialog({ open, onClose, onDone, codigoInicial }) {
+  const [code, setCode] = useState(codigoInicial || '');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
