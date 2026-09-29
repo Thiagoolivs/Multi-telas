@@ -409,7 +409,9 @@ for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', '
   'creditos_franquia INTEGER', 'creditos_comprados INTEGER', 'creditos_ciclo INTEGER',
   // Quantas telas a assinatura do Asaas está cobrando hoje, e desde quando a
   // conta está com pagamento atrasado. Ver server/cobranca.js.
-  'plan_telas INTEGER', 'atraso_desde INTEGER']) {
+  'plan_telas INTEGER', 'atraso_desde INTEGER',
+  // Qual lembrete de fim de teste já foi enviado ('2d' ou 'fim'). Ver server/lembretes.js.
+  'lembrete_teste TEXT']) {
   garantirColuna('tenants', col);
 }
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
@@ -686,6 +688,19 @@ async function setTenantBilling(id, fields) {
  * Contas com assinatura cujo número de telas pareadas difere do que a
  * assinatura cobra. É a lista da conciliação periódica (server/cobranca.js).
  */
+/* Contas no plano grátis nascidas depois de `desde`, com o e-mail do dono e quantas telas têm. */
+async function contasEmTeste(desde) {
+  return db.prepare(`SELECT t.id, t.name, t.plan, t.created_at, t.lembrete_teste,
+      (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas
+    FROM tenants t
+    WHERE COALESCE(t.plan, 'free') = 'free' AND t.created_at > ?`).all(desde)
+    .map((r) => ({ ...r, created_at: Number(r.created_at), telas: Number(r.telas) }));
+}
+async function marcarLembreteTeste(id, tipo) {
+  db.prepare('UPDATE tenants SET lembrete_teste = ? WHERE id = ?').run(tipo, id);
+}
+
 async function contasParaConciliar() {
   return db.prepare(`SELECT t.id, t.plan, t.plan_status, t.plan_telas, t.stripe_subscription_id,
       (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas
@@ -1429,7 +1444,7 @@ module.exports = {
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
-  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar,
+  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,

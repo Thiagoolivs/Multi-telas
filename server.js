@@ -48,6 +48,7 @@ const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
 const legal = require('./server/legal');
 const vigia = require('./server/vigia');
+const lembretes = require('./server/lembretes');
 const cobranca = require('./server/cobranca');
 // Mesmo arquivo que o player carrega no navegador — catálogo único de datas.
 const seasons = require('./js/seasons.js');
@@ -2220,6 +2221,9 @@ db.init()
       vigia.ligar({ db, mail, appUrl: (process.env.APP_URL || '').replace(/\/$/, '') });
       log.info('vigia.ligado', { minutos: vigia.LIMITE_MS / 60000 });
     }
+    // Lembretes de fim do teste (server/lembretes.js). Sem provedor de e-mail
+    // iriam só para o log; em desenvolvimento é o que se quer ver.
+    lembretes.ligar({ db, mail, appUrl: (process.env.APP_URL || '').replace(/\/$/, '') });
     /*
      * A assinatura acompanhando as telas: o acerto acontece na hora de
      * parear e de remover; isto é a rede de segurança para quando o Asaas não

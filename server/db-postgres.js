@@ -47,6 +47,8 @@ async function init() {
     -- atrasado. Ver server/cobranca.js.
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_telas INTEGER;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS atraso_desde BIGINT;
+    -- Qual lembrete de fim de teste já foi enviado. Ver server/lembretes.js.
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS lembrete_teste TEXT;
     CREATE TABLE IF NOT EXISTS exibicoes (
       device_id TEXT, tenant_id TEXT, hora BIGINT, zona TEXT, chave TEXT,
       rotulo TEXT, tipo TEXT, vezes INTEGER, segundos INTEGER,
@@ -907,6 +909,18 @@ async function setTenantBilling(id, fields) {
  * Contas com assinatura cujo número de telas pareadas difere do que a
  * assinatura cobra. É a lista da conciliação periódica (server/cobranca.js).
  */
+async function contasEmTeste(desde) {
+  const r = await pool.query(`SELECT t.id, t.name, t.plan, t.created_at, t.lembrete_teste,
+      (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
+      (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = t.id) AS telas
+    FROM tenants t
+    WHERE COALESCE(t.plan, 'free') = 'free' AND t.created_at > $1`, [desde]);
+  return r.rows.map((x) => ({ ...x, created_at: Number(x.created_at), telas: Number(x.telas) }));
+}
+async function marcarLembreteTeste(id, tipo) {
+  await pool.query('UPDATE tenants SET lembrete_teste = $1 WHERE id = $2', [tipo, id]);
+}
+
 async function contasParaConciliar() {
   const r = await pool.query(`SELECT t.id, t.plan, t.plan_status, t.plan_telas, t.stripe_subscription_id,
       (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = t.id) AS telas
@@ -1356,7 +1370,7 @@ module.exports = {
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
-  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar,
+  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,
