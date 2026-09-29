@@ -1,7 +1,7 @@
 # Bom dia: o que foi feito e como colocar numa loja esta semana
 
 Escrito em 29/09/2026, durante a madrugada. Tudo está no PR
-[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 837
+[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 844
 testes passando e o APK compilando no GitHub Actions.
 
 ---
@@ -63,10 +63,14 @@ computador e no celular)
   primeira TV; relatório cabe no celular.
 
 **Cardápio**
-- Modelo novo **"Cardápio / Tabela de preços"**, direto em **Adicionar
-  conteúdo › Comercial**: nome à esquerda, preço à direita, na cor da marca,
-  em duas colunas (TV deitada) ou uma (em pé). É o uso nº 1 de TV em padaria
-  e lanchonete — bom para mostrar na primeira visita à loja.
+- **"Tabela de preços"** em **Adicionar conteúdo › Comercial**: o dono cola a
+  lista (do WhatsApp, da planilha), uma linha por item — "Café ; 6,00",
+  "Pão de queijo - R$ 4,50" —, e linha sem preço vira seção ("BEBIDAS"). A
+  TV escolhe colunas e tamanho de letra sozinha, deitada ou em pé. Trinta
+  itens cabem.
+- **"Cardápio em arte"**: modelo pronto no editor visual, na cor da marca,
+  para até oito itens. É o uso nº 1 de TV em padaria e lanchonete — bom para
+  mostrar na primeira visita à loja.
 
 **E-mails que vendem sozinhos**
 - Faltando 2 dias para o teste acabar, a conta recebe "seu teste acaba em 2
