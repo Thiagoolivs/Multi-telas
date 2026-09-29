@@ -865,6 +865,53 @@ export function CompositionEditor({ value, onClose, onSave }) {
     patchSel({ fill: mode ? { grad: mode === 'radial' ? 'radial' : 'linear', cores: c, ang: shapeFill.ang } : c[0] });
   };
 
+  /*
+   * O gesto de VOLTAR (celular) fecha o editor, e não a página.
+   *
+   * O editor é uma camada por cima da página; sem uma entrada própria no
+   * histórico, voltar saía da página inteira e a peça ia junto, sem pergunta.
+   * Com alteração, pergunta como o Cancelar.
+   *
+   * A entrada sai do histórico quando o editor fecha por Salvar/Cancelar. Isso
+   * é adiado um instante e só acontece se o editor não voltou a montar: o
+   * StrictMode monta, desmonta e remonta no desenvolvimento, e um back()
+   * imediato ali fecharia o editor recém-aberto.
+   */
+  const histAtual = useRef(hist);
+  histAtual.current = hist;
+  const fecharAtual = useRef(onClose);
+  fecharAtual.current = onClose;
+  const vivo = useRef(false);
+  const saiuPeloVoltar = useRef(false);
+  useEffect(() => {
+    vivo.current = true;
+    const nossa = () => !!(window.history.state && window.history.state.mtEditor);
+    const empurrar = () => { try { window.history.pushState({ ...(window.history.state || {}), mtEditor: true }, ''); } catch (e) { /* sem histórico */ } };
+    if (!nossa()) empurrar();
+    const aoVoltar = () => {
+      if (podeDesfazer(histAtual.current) && !window.confirm('Descartar as alterações desta peça?')) { empurrar(); return; }
+      saiuPeloVoltar.current = true;
+      fecharAtual.current();
+    };
+    window.addEventListener('popstate', aoVoltar);
+    return () => {
+      vivo.current = false;
+      window.removeEventListener('popstate', aoVoltar);
+      setTimeout(() => {
+        if (!vivo.current && !saiuPeloVoltar.current && nossa()) { try { window.history.back(); } catch (e) { /* idem */ } }
+      }, 0);
+    };
+  }, []);
+
+  /*
+   * Cancelar com alteração pergunta antes. Era um clique para jogar fora
+   * meia hora de cardápio — e "Cancelar" fica colado em "Salvar".
+   */
+  function cancelar() {
+    if (podeDesfazer(hist) && !window.confirm('Descartar as alterações desta peça?')) return;
+    onClose();
+  }
+
   function salvar() {
     onSave({ ...v, type: 'composicao', bg, elementos: sair(els), formato: aspect, duracao: Number(dur) || 0 });
   }
@@ -962,7 +1009,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         </div>
 
         <div className="flex-1" />
-        <Button size="sm" variant="ghost" icon={X} onClick={onClose}>Cancelar</Button>
+        <Button size="sm" variant="ghost" icon={X} onClick={cancelar}>Cancelar</Button>
         <Button size="sm" variant="primary" icon={Save} onClick={salvar}>Salvar</Button>
         <input ref={imgInput} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={onPickImage} />
 

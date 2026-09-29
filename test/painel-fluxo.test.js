@@ -274,3 +274,22 @@ test('editor visual no celular: palco em cima, textos da peça como campos', () 
   assert.match(src, /onChange=\{\(ev\) => patch\(e\.id, \{ text: ev\.target\.value \}, 'texto:' \+ e\.id\)\}/);
   assert.match(src, /<div className="hidden md:contents">/, 'a barra do celular voltou a ter todos os botões');
 });
+
+test('apagar e descartar sem querer têm volta', () => {
+  /*
+   * Remover um conteúdo publica na hora (salvamento automático), "Cancelar"
+   * no editor visual jogava a peça fora sem perguntar, e o gesto de voltar
+   * do celular saía da página com o editor aberto. Os três vistos no
+   * navegador antes e depois.
+   */
+  const pagina = soCodigo(ler('web', 'src', 'pages', 'ContentEditorPage.jsx'));
+  assert.match(pagina, /tom: 'desfazer'[\s\S]{0,120}rotulo: 'Desfazer'/, 'remover sem "Desfazer"');
+  assert.match(pagina, /next\.zonas\[zona\]/, 'o desfazer precisa voltar para a zona de origem, não a aberta agora');
+  const editor = soCodigo(ler('web', 'src', 'components', 'content', 'CompositionEditor.jsx'));
+  assert.match(editor, /onClick=\{cancelar\}>Cancelar/);
+  assert.match(editor, /podeDesfazer\(hist\) && !window\.confirm\(/);
+  assert.match(editor, /addEventListener\('popstate', aoVoltar\)/, 'voltar com o editor aberto sai da página');
+  assert.match(editor, /!vivo\.current && !saiuPeloVoltar\.current/, 'sem esta guarda o StrictMode fecha o editor recém-aberto');
+  const avisos = ler('web', 'src', 'lib', 'avisos.js');
+  assert.match(avisos, /desfazer: \d{4,}/, 'o aviso de desfazer precisa sumir sozinho, e não rápido demais');
+});

@@ -45,7 +45,8 @@ export function listar() {
  * Só `ok` some sozinho. Aviso com botão que evapora em quatro segundos é pior
  * do que não ter botão: a pessoa vê que havia algo a fazer e não alcança.
  */
-const SOME_SOZINHO = { ok: 4500 };
+// 'desfazer' fica mais tempo: é o tempo de a pessoa perceber o que apagou.
+const SOME_SOZINHO = { ok: 4500, desfazer: 9000 };
 
 export function emitir(aviso) {
   const id = aviso.id || 'a' + (seq++);

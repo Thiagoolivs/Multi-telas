@@ -7,6 +7,7 @@ import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { QuandoMostrar } from '../components/content/QuandoMostrar.jsx';
 import { temAgenda, resumoAgenda } from '../lib/agenda.js';
+import { emitir } from '../lib/avisos.js';
 import { ItemForm } from '../components/content/ItemForm.jsx';
 import { ItemPreview } from '../components/content/ItemPreview.jsx';
 import { TypePicker } from '../components/content/TypePicker.jsx';
@@ -206,7 +207,28 @@ export function ContentEditorPage({ device, onBack }) {
     setSelected(j);
   };
   const dupItem = (idx) => { mutateItems((arr) => { arr.splice(idx + 1, 0, structuredClone(arr[idx])); return arr; }); setSelected(idx + 1); };
-  const removeItem = (idx) => { mutateItems((arr) => { arr.splice(idx, 1); return arr; }); setSelected((s) => Math.max(0, Math.min(s, items.length - 2))); };
+  /*
+   * Remover publica na hora (salvamento automático): um toque errado na
+   * lixeira tirava o conteúdo da TV sem volta. O aviso traz "Desfazer", que
+   * devolve na MESMA zona e posição, mesmo que a pessoa já tenha trocado de
+   * zona no painel.
+   */
+  const removeItem = (idx) => {
+    const zona = activeZone.id;
+    const removido = items[idx];
+    mutateItems((arr) => { arr.splice(idx, 1); return arr; });
+    setSelected((s) => Math.max(0, Math.min(s, items.length - 2)));
+    if (!removido) return;
+    emitir({
+      tom: 'desfazer', texto: 'Conteúdo removido da tela.',
+      acao: { rotulo: 'Desfazer', on: () => patchCfg((next) => {
+        if (!next.zonas[zona]) next.zonas[zona] = { items: [] };
+        const arr = [...(next.zonas[zona].items || [])];
+        arr.splice(Math.min(idx, arr.length), 0, removido);
+        next.zonas[zona].items = arr;
+      }) },
+    });
+  };
 
   async function generateAI() {
     if (!aiBrief.trim()) return;
