@@ -71,7 +71,10 @@ export function BillingPage({ onFalarComVendas }) {
 
   const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia, atraso, pacotes, teste } = data;
   const frac = usage.limit ? usage.screens / usage.limit : 0;
-  const tone = frac >= 1 ? 'danger' : frac > 0.8 ? 'warn' : 'accent';
+  // Usar todas as telas do plano é o uso normal (o grátis tem uma, e quem
+  // pareou a primeira via uma barra VERMELHA "no limite" logo de cara, como
+  // se algo tivesse dado errado). Vermelho fica para quando passa do limite.
+  const tone = frac > 1 ? 'danger' : 'accent';
   /*
    * "Cortesia" tem selo próprio de propósito.
    *
@@ -139,7 +142,9 @@ export function BillingPage({ onFalarComVendas }) {
           <div className="w-full sm:w-56">
             <div className="flex items-baseline justify-between text-xs">
               <span className="text-ink-2"><b className="tnum text-ink">{usage.screens}</b> de {usage.limit} {usage.limit === 1 ? 'tela' : 'telas'}</span>
-              {frac >= 1 && <span className="font-medium text-danger">no limite</span>}
+              {frac > 1
+                ? <span className="font-medium text-danger">acima do limite</span>
+                : frac === 1 && <span className="text-ink-3">todas em uso</span>}
             </div>
             <Progress value={Math.min(100, frac * 100)} tone={tone} className="mt-1.5 h-2" />
           </div>

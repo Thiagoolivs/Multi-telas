@@ -35,19 +35,21 @@ export function RelatorioPage({ onIrParaPlano }) {
   return (
     <div>
       {/* Filtros numa linha só, acima de tudo que eles filtram. */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="w-44"><Select value={dias} onChange={(e) => setDias(Number(e.target.value))}>
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+        <div className="min-w-0 sm:w-44"><Select value={dias} onChange={(e) => setDias(Number(e.target.value))}>
           <option value={1}>Últimas 24 horas</option>
           <option value={7}>Últimos 7 dias</option>
           <option value={30}>Últimos 30 dias</option>
           <option value={90}>Últimos 90 dias</option>
         </Select></div>
-        <div className="w-52"><Select value={tela} onChange={(e) => setTela(e.target.value)}>
+        <div className="min-w-0 sm:w-52"><Select value={tela} onChange={(e) => setTela(e.target.value)}>
           <option value="">Todas as telas</option>
           {telas.map((t) => <option key={t.id} value={t.id}>{t.name || 'Tela sem nome'}</option>)}
         </Select></div>
-        <div className="ml-auto">
-          <Button size="sm" variant="secondary" icon={Download} disabled={!data}
+        <div className="col-span-2 sm:col-span-1 sm:ml-auto">
+          {/* Planilha vazia não serve para nada: só baixa com exibição no período. */}
+          <Button size="sm" variant="secondary" icon={Download} className="w-full justify-center sm:w-auto"
+            disabled={!data || !data.totais || data.totais.vezes === 0}
             onClick={() => { window.location.href = relatorio.csvUrl(dias, tela); }}>
             Baixar planilha (CSV)
           </Button>
