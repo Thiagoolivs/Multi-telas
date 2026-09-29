@@ -605,6 +605,12 @@ export function CompositionEditor({ value, onClose, onSave }) {
    * E de qualquer lugar vem texto, que vira bloco de texto.
    */
   const [avisoColagem, setAvisoColagem] = useState('');
+  /*
+   * Erro de upload na própria tela, e não em `alert()`: o alerta do
+   * navegador rouba o foco, some no primeiro clique e não sobrevive a trocar
+   * de aba. Este fica até a pessoa fechar ou o próximo upload dar certo.
+   */
+  const [erroUpload, setErroUpload] = useState('');
 
   const acrescentarVarios = useCallback((novos) => {
     const comId = novos.map((e) => ({ ...e, id: uid() }));
@@ -617,7 +623,8 @@ export function CompositionEditor({ value, onClose, onSave }) {
     try {
       const up = await media.upload(arquivo);
       acrescentarVarios([{ tipo: 'imagem', src: up.url, x: 20, y: 20, w: 60, h: 60, rot: 0, fit: 'contain' }]);
-    } catch (err) { alert(err.message || 'Não consegui subir a imagem'); }
+      setErroUpload('');
+    } catch (err) { setErroUpload(err.message || 'Não consegui subir a imagem'); }
     setBusy(false);
   }, [acrescentarVarios]);
 
@@ -684,15 +691,16 @@ export function CompositionEditor({ value, onClose, onSave }) {
     const f = (e.target.files || [])[0]; e.target.value = '';
     if (!f) return;
     setBusy(true);
-    try { const up = await media.upload(f); addImage(up.url); } catch (err) { alert(err.message || 'Falha no upload'); }
+    try { const up = await media.upload(f); addImage(up.url); setErroUpload(''); }
+    catch (err) { setErroUpload(err.message || 'Falha no upload'); }
     setBusy(false);
   }
   async function onPickBg(e) {
     const f = (e.target.files || [])[0]; e.target.value = '';
     if (!f) return;
     setBusy(true);
-    try { const up = await media.upload(f); editar((d) => ({ ...d, bg: { kind: 'imagem', src: up.url } })); }
-    catch (err) { alert(err.message || 'Falha no upload'); }
+    try { const up = await media.upload(f); editar((d) => ({ ...d, bg: { kind: 'imagem', src: up.url } })); setErroUpload(''); }
+    catch (err) { setErroUpload(err.message || 'Falha no upload'); }
     setBusy(false);
   }
   /*
@@ -1041,6 +1049,12 @@ export function CompositionEditor({ value, onClose, onSave }) {
         </div>
       )}
 
+      {erroUpload && (
+        <div role="alert" className="flex items-center gap-2 border-b border-danger/30 bg-danger-soft px-4 py-1.5 text-xs text-danger">
+          <span className="min-w-0 flex-1">Upload: {erroUpload}</span>
+          <button type="button" onClick={() => setErroUpload('')} className="underline underline-offset-2">fechar</button>
+        </div>
+      )}
       {avisoColagem && (
         <div className="border-b border-line bg-accent-soft px-4 py-1.5 text-xs text-ink-2">{avisoColagem}</div>
       )}
