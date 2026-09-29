@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'react';
 import {
-  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info,
+  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info, CalendarClock,
 } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
+import { QuandoMostrar } from '../components/content/QuandoMostrar.jsx';
+import { temAgenda, resumoAgenda } from '../lib/agenda.js';
 import { ItemForm } from '../components/content/ItemForm.jsx';
 import { ItemPreview } from '../components/content/ItemPreview.jsx';
 import { TypePicker } from '../components/content/TypePicker.jsx';
@@ -419,6 +421,11 @@ export function ContentEditorPage({ device, onBack }) {
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium text-ink">{itemSummary(it)}</span>
                             <span className="block text-2xs text-ink-3">{typeLabel(it.type)} · {it.duracao === 0 ? 'fixo' : (it.duracao || 0) + 's'}</span>
+                            {temAgenda(it) && (
+                              <span className="mt-0.5 flex items-center gap-1 truncate text-2xs text-accent" title={resumoAgenda(it.agendamento)}>
+                                <CalendarClock size={11} className="shrink-0" /> {resumoAgenda(it.agendamento)}
+                              </span>
+                            )}
                           </span>
                         </button>
                       </li>
@@ -456,6 +463,10 @@ export function ContentEditorPage({ device, onBack }) {
                           </Button>
                         )}
                         <ItemForm item={current} onChange={(it) => updateItem(selected, it)} />
+                        <div className="mt-4">
+                          <QuandoMostrar agendamento={current.agendamento}
+                            onChange={(ag) => updateItem(selected, { ...current, agendamento: ag })} />
+                        </div>
                       </div>
                     </div>
                   </>

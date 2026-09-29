@@ -1313,6 +1313,30 @@
     return t.charAt(0).toUpperCase() + t.slice(1);
   }
 
+  /*
+   * Zona sem nada a mostrar — vazia, ou com tudo fora do horário agendado —
+   * vira relógio. Hora e data servem a quem passa; o aviso fica no painel.
+   */
+  function relogioDeZona() {
+    const el = document.createElement('div');
+    el.className = 'mt-slide mt-empty mt-active';
+    const hora = document.createElement('div');
+    hora.className = 'mt-empty-hora';
+    const dia = document.createElement('div');
+    dia.className = 'mt-empty-dia';
+    el.appendChild(hora);
+    el.appendChild(dia);
+    const pintar = function () {
+      const agora = new Date();
+      const ok = relogioConfiavel(agora);
+      hora.textContent = ok ? String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0') : '';
+      dia.textContent = ok ? dataPorExtenso(agora) : '';
+    };
+    pintar();
+    const t = setInterval(pintar, 15000);
+    return { el: el, parar: () => clearInterval(t) };
+  }
+
   /* ---------------- Zona: Playlist rotativa ---------------- */
 
   function startPlaylist(zoneEl, items, cfg, zonaId) {
@@ -1334,24 +1358,9 @@
      * o aviso de zona vazia continua no painel, que é onde o dono olha.
      */
     if (!items.length) {
-      const empty = document.createElement('div');
-      empty.className = 'mt-slide mt-empty mt-active';
-      const hora = document.createElement('div');
-      hora.className = 'mt-empty-hora';
-      const dia = document.createElement('div');
-      dia.className = 'mt-empty-dia';
-      empty.appendChild(hora);
-      empty.appendChild(dia);
-      zoneEl.appendChild(empty);
-      const pintar = function () {
-        const agora = new Date();
-        const ok = relogioConfiavel(agora);
-        hora.textContent = ok ? String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0') : '';
-        dia.textContent = ok ? dataPorExtenso(agora) : '';
-      };
-      pintar();
-      const relogio = setInterval(pintar, 15000);
-      return { stop: () => clearInterval(relogio) };
+      const relogio = relogioDeZona();
+      zoneEl.appendChild(relogio.el);
+      return { stop: relogio.parar };
     }
 
     function advance() {
@@ -1365,7 +1374,8 @@
       // Filtra pelos conteúdos agendados para agora.
       const ativos = agendado ? items.filter(agendadoAgora) : items;
       if (!ativos.length) {
-        showPlaceholder('Nenhum conteúdo agendado agora');
+        // Antes: "Nenhum conteúdo agendado agora", escrito para o público.
+        mostrarRelogio();
         return schedule(30); // reavalia periodicamente
       }
       const item = ativos[index % ativos.length];
@@ -1438,14 +1448,12 @@
       timer = setTimeout(advance, Math.max(0, seconds) * 1000);
     }
 
-    function showPlaceholder(text) {
+    function mostrarRelogio() {
       if (currentSlide && currentSlide.el.classList.contains('mt-empty')) return;
-      const el = document.createElement('div');
-      el.className = 'mt-slide mt-empty mt-active';
-      el.textContent = text;
-      zoneEl.appendChild(el);
+      const r = relogioDeZona();
+      zoneEl.appendChild(r.el);
       const prev = currentSlide;
-      currentSlide = { el, onLeave: null };
+      currentSlide = { el: r.el, onLeave: r.parar, parar: r.parar };
       if (prev) leaveSlide(prev);
     }
 
@@ -1453,6 +1461,7 @@
     return {
       stop: () => {
         stopped = true; clearTimeout(timer);
+        if (currentSlide && currentSlide.parar) currentSlide.parar(); // relógio de fora do horário
         // A zona está sendo refeita: o slide que estava no ar termina aqui,
         // senão a exibição dele some do relatório.
         if (currentSlide && currentSlide.exib) { currentSlide.exib.terminar(); exibicoesAbertas.delete(currentSlide.exib); }

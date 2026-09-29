@@ -50,11 +50,22 @@ test('nenhum recado para o dono vai ao ar na TV', () => {
 });
 
 test('zona vazia vira relógio e para o timer quando a zona sai', () => {
+  const r = FONTE.slice(FONTE.indexOf('function relogioDeZona()'), FONTE.indexOf('/* ---------------- Zona: Playlist rotativa'));
+  assert.match(r, /mt-empty-hora/);
+  assert.match(r, /dataPorExtenso\(/);
+  assert.match(r, /parar: \(\) => clearInterval\(t\)/);
   const i = FONTE.indexOf('if (!items.length) {', FONTE.indexOf('function startPlaylist('));
   const bloco = FONTE.slice(i, FONTE.indexOf('function advance()', i));
-  assert.match(bloco, /mt-empty-hora/);
-  assert.match(bloco, /dataPorExtenso\(/);
-  assert.match(bloco, /stop: \(\) => clearInterval\(/, 'o relógio ficaria rodando depois de trocar o layout');
+  assert.match(bloco, /relogioDeZona\(\)/);
+  assert.match(bloco, /stop: relogio\.parar/, 'o relógio ficaria rodando depois de trocar o layout');
+});
+
+test('tudo fora do horário agendado: relógio, não recado', () => {
+  assert.ok(!FONTE.includes("'Nenhum conteúdo agendado agora'"), 'a TV voltou a escrever o recado para o público');
+  assert.match(FONTE, /if \(!ativos\.length\) \{[\s\S]{0,120}mostrarRelogio\(\)/);
+  // O relógio de fora do horário para quando sai do ar ou quando a zona é refeita.
+  assert.match(FONTE, /currentSlide = \{ el: r\.el, onLeave: r\.parar, parar: r\.parar \}/);
+  assert.match(FONTE, /if \(currentSlide && currentSlide\.parar\) currentSlide\.parar\(\);/);
 });
 
 test('faixa sem manchete mostra a data e repinta mesmo vazia (vira à meia-noite)', () => {
