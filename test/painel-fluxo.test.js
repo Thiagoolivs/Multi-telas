@@ -25,7 +25,7 @@ test('o upgrade não morre em "db.getUser is not a function"', () => {
    * que nunca existiu — o nome é `getUserById`. Ninguém nunca conseguiu
    * assinar, e o erro só aparecia depois do clique.
    */
-  const server = soCodigo(ler('server.js'));
+  const server = soCodigo(require('./fonte-servidor.js').fonteDoServidor());
   assert.ok(!/\bdb\.getUser\(/.test(server), 'voltou a chamar db.getUser, que não existe');
 
   // E o nome certo tem que existir de verdade nos dois bancos.
@@ -43,7 +43,7 @@ test('a página de checkout simulado roda sob a CSP do projeto', () => {
    * Asaas, o caminho pago parou de ser percorrido. Foi assim que o 502 acima
    * ficou na main sem ninguém ver.
    */
-  const server = ler('server.js');
+  const server = require('./fonte-servidor.js').fonteDoServidor();
   const i = server.indexOf('function devCheckoutPage');
   assert.ok(i > 0, 'sumiu a página de checkout simulado');
   const pagina = server.slice(i, i + 4000);
@@ -58,7 +58,7 @@ test('a página de checkout simulado roda sob a CSP do projeto', () => {
 
 test('a página de checkout simulado não diz "undefined telas"', () => {
   // Era `p.screens`, e o campo é `telasMax` — mesma classe do `priceCents`.
-  const pagina = ler('server.js');
+  const pagina = require('./fonte-servidor.js').fonteDoServidor();
   assert.ok(!/\$\{p\.screens\}/.test(pagina), 'voltou a ler um campo que não existe no plano');
 });
 
@@ -69,7 +69,7 @@ test('existe como cancelar a assinatura', () => {
    * `?billing=` de volta para a MESMA tela. A página recarregava e não havia
    * como cancelar por lugar nenhum. Além de produto ruim, é exposição no CDC.
    */
-  const server = soCodigo(ler('server.js'));
+  const server = soCodigo(require('./fonte-servidor.js').fonteDoServidor());
   assert.match(server, /req\.method === 'DELETE' && seg === 'assinatura'/, 'sumiu a rota de cancelamento');
   assert.ok(!/billing\?=?portal|billing=portal/.test(server), 'voltou o portal que aponta para a própria tela');
 
@@ -199,7 +199,7 @@ test('parear AVISA a TV, sem esperar a primeira publicação', () => {
    * no código até a primeira publicação — que pode demorar horas, ou nunca
    * vir, porque a pessoa foi embora achando que não funcionou.
    */
-  const server = soCodigo(ler('server.js'));
+  const server = soCodigo(require('./fonte-servidor.js').fonteDoServidor());
   const i = server.indexOf('db.claimDevice(');
   assert.ok(i > 0, 'sumiu o pareamento');
   assert.match(server.slice(i, i + 600), /broadcast\(d\.id, 'pareada'/,

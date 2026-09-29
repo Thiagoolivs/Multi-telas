@@ -570,7 +570,7 @@ async function acceptInvite(id) { q.acceptInvite.run(Date.now(), id); }
  * senha" era pior, porque ele existe justamente para recuperar conta
  * comprometida.
  */
-async function destroySessionsOfUser(userId) { Q.deleteSessionsOfUser.run(userId); }
+async function destroySessionsOfUser(userId) { q.deleteSessionsOfUser.run(userId); }
 
 async function createSession(token, userId, tenantId, expiresAt) {
   q.insertSession.run(token, userId, tenantId, expiresAt);

@@ -200,7 +200,7 @@ test('o painel recebe a bandeira de cortesia', () => {
   // botão de assinar sumiria justamente de quem um dia precisa clicar nele.
   const fs = require('node:fs');
   const path = require('node:path');
-  const SERVER = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const SERVER = require('./fonte-servidor.js').fonteDoServidor();
   assert.match(SERVER, /cortesia: cortesia\.contaEmCortesia\(tenant\)/);
   const BILLING = fs.readFileSync(path.join(__dirname, '..', 'web', 'src', 'pages', 'BillingPage.jsx'), 'utf8');
   assert.match(BILLING, /cortesia\s*\?\s*'Cortesia'/, 'a tela de Plano não mostra que o acesso é emprestado');

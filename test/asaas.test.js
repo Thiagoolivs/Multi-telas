@@ -230,7 +230,7 @@ test('existe um caminho de cancelamento que não volta para a mesma tela', () =>
   assert.match(tela, /billing\.cancelar\(\)/, 'a tela não chama o cancelamento');
   assert.match(tela, /Confirmar cancelamento/, 'sumiu a confirmação antes de cancelar');
 
-  const server = soCodigo(lerFonte('server.js'));
+  const server = soCodigo(require('./fonte-servidor.js').fonteDoServidor());
   assert.match(server, /req\.method === 'DELETE' && seg === 'assinatura'/, 'sumiu a rota de cancelamento');
   assert.ok(!/billing=portal/.test(server), 'voltou a URL que aponta para a própria tela');
 });
@@ -328,7 +328,7 @@ test('subir sem provedor de e-mail é dito no boot', () => {
    * só aparece pelo primeiro cliente que desiste — por isso é dita no boot,
    * junto com a saída (SKIP_VERIFY=1) para quem escolher subir assim.
    */
-  const codigo = soCodigo(lerFonte('server.js'));
+  const codigo = soCodigo(require('./fonte-servidor.js').fonteDoServidor());
   assert.match(codigo, /cadastro\.sem-email/, 'sumiu o aviso de boot sobre e-mail');
   assert.match(codigo, /SKIP_VERIFY/, 'o aviso deixou de dizer qual é a saída');
 });

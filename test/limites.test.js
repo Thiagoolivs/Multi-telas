@@ -14,7 +14,7 @@ const path = require('node:path');
 const limites = require('../server/limites.js');
 
 const semComentarios = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-const SERVER = semComentarios(fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8'));
+const SERVER = semComentarios(require('./fonte-servidor.js').fonteDoServidor());
 
 test.beforeEach(() => limites.zerar());
 
