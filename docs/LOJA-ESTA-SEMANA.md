@@ -1,7 +1,7 @@
 # Bom dia: o que foi feito e como colocar numa loja esta semana
 
 Escrito em 29/09/2026, durante a madrugada. Tudo está no PR
-[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 809
+[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 818
 testes passando e o APK compilando no GitHub Actions.
 
 ---
@@ -57,6 +57,12 @@ computador e no celular)
   mostrando as imagens** (ficam guardadas no aparelho).
 - Plano não mostra mais barra **vermelha "no limite"** para quem só pareou a
   primeira TV; relatório cabe no celular.
+
+**TV em pé (totem)**
+- TV Box não gira a imagem, então uma TV pendurada em pé mostrava tudo de
+  lado. Agora: **Ajustes da tela › Layout vertical › "A TV está em pé?"** e
+  escolha o giro. A TV recarrega sozinha já girada, inclusive sem internet
+  depois.
 
 **Achados da revisão desta madrugada (corrigidos e conferidos)**
 - **Box ligando sem internet pelo app:** o app abre `/tv`, e esse endereço
@@ -139,7 +145,7 @@ completo, sem cobrança e sem o selo. Comece a cobrar depois da revisão.
 4. A TV mostra o código e o QR. **O dono aponta o celular**, faz login ou cria
    a conta, e a tela está pareada.
 5. Em **Telas › sino**: horário de funcionamento da loja (é o que evita alerta
-   à noite).
+   à noite). TV em pé? **Ajustes da tela**: layout vertical e o giro.
 6. Publicar um modelo pronto, ou gerar uma campanha com IA na frente do dono.
 7. **Teste obrigatório:** tire o box da tomada, ligue de novo e confira que o
    MultiTelas volta sozinho com a programação.

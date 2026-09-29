@@ -102,7 +102,8 @@ const CSP = [
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "connect-src 'self' https:",
-  "frame-src https:",
+  // 'self': a TV em pé roda o player dentro de uma moldura girada (player.js).
+  "frame-src 'self' https:",
   "worker-src 'self'",
 ].join('; ');
 

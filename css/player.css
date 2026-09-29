@@ -1237,3 +1237,13 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   color: rgba(255,255,255,.92); background: rgba(10,14,28,.62);
   pointer-events: none; user-select: none;
 }
+
+/* ---------- TV em pé: moldura girada (ver conferirGiro em player.js) ---------- */
+.mt-com-moldura, .mt-com-moldura body { background: #000; overflow: hidden; }
+.mt-com-moldura body > *:not(.mt-moldura) { display: none !important; }
+.mt-moldura {
+  position: fixed; top: 50%; left: 50%; border: 0;
+  width: 100vh; height: 100vw; /* as medidas da tela EM PÉ */
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.mt-moldura-270 { transform: translate(-50%, -50%) rotate(-90deg); }

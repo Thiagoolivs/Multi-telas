@@ -502,6 +502,7 @@
     if (fp === configFingerprint) return; // nada mudou
     configFingerprint = fp;
     currentConfig = cfg;
+    conferirGiro((cfg.settings || {}).girar);
     aplicarNoPalco(cfg);
     // A trilha vem de settings e não das zonas: trocar de layout não pode
     // cortar a música no meio.
@@ -539,6 +540,7 @@
     coresAdaptativas: 1,  // uma bandeira lida na hora de adaptar
     layoutInteligente: 1, // idem, lida na hora do takeover
     refreshSeconds: 1,    // só o modo legado usa, e lá o palco é outro
+    girar: 1,             // conferirGiro: recarrega a página, não a zona
     // layoutAuto e layoutAutoSeconds NÃO entram aqui: eles ligam um
     // temporizador no nível do palco, e vão na assinatura do palco logo
     // abaixo. Se ficassem aqui, ligar o layout dinâmico não faria nada.
@@ -1979,6 +1981,56 @@
     document.addEventListener('mt:som', (e) => trilha.comando((e && e.detail) || {}));
   }
 
-  enableFullscreenShortcut();
-  boot();
+  /* ---------------- TV em pé ----------------
+   *
+   * Totem e TV pendurada em pé são comuns em loja, e TV Box não gira a
+   * imagem: o Android TV só sabe deitado. O conteúdo aparecia de lado.
+   *
+   * Girar o palco com CSS não bastaria: o player inteiro mede em vw/vh, e
+   * girado essas medidas continuariam sendo as da tela deitada — texto 78%
+   * maior, zonas estouradas. Então o player se carrega DENTRO de uma moldura
+   * (iframe) com as medidas da tela em pé, e só a moldura é girada. Lá dentro
+   * vw/vh são os da tela em pé e nada mais precisa saber que existe giro.
+   *
+   * O giro fica guardado no aparelho para valer já no boot, inclusive sem
+   * rede; a config só o confirma ou troca (e aí recarrega).
+   */
+  const CHAVE_GIRO = 'mt.girar';
+  function normalizarGiro(g) { g = Number(g); return g === 90 || g === 270 ? g : 0; }
+  function giroGuardado() {
+    try { return normalizarGiro(localStorage.getItem(CHAVE_GIRO)); } catch (e) { return 0; }
+  }
+  let naMoldura = false;
+  try { naMoldura = global.top !== global && /[?&]moldura=1(&|$)/.test(global.location.search); } catch (e) {}
+
+  function montarMolduraSeGirada() {
+    if (naMoldura) return false;
+    const g = giroGuardado();
+    if (!g) return false;
+    const u = new URL(global.location.href);
+    u.searchParams.set('moldura', '1');
+    const f = document.createElement('iframe');
+    f.src = u.pathname + u.search;
+    f.setAttribute('allow', 'autoplay; fullscreen');
+    f.className = 'mt-moldura mt-moldura-' + g;
+    document.documentElement.classList.add('mt-com-moldura');
+    if (document.body) document.body.appendChild(f);
+    else document.addEventListener('DOMContentLoaded', () => document.body.appendChild(f));
+    return true;
+  }
+
+  // Chamado a cada config aplicada: se o giro pedido não é o que está no ar,
+  // guarda e recarrega a página de fora (que monta ou desmonta a moldura).
+  function conferirGiro(pedido) {
+    const g = normalizarGiro(pedido);
+    const noAr = naMoldura ? giroGuardado() : 0;
+    if (g === noAr) return;
+    try { localStorage.setItem(CHAVE_GIRO, String(g)); } catch (e) { return; }
+    try { (naMoldura ? global.top : global).location.reload(); } catch (e) {}
+  }
+
+  if (!montarMolduraSeGirada()) {
+    enableFullscreenShortcut();
+    boot();
+  }
 })(window);

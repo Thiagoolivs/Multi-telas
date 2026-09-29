@@ -6,7 +6,7 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **29/09/2026** · 809 testes passando · `server.js` com ~2.200
+Atualizado em: **29/09/2026** · 818 testes passando · `server.js` com ~2.200
 linhas (cobrança e telas saíram para `server/routes/`).
 
 ---
@@ -228,13 +228,13 @@ Avaliação franca, com números do próprio código:
 Depois, em ordem de impacto:
 
 1. **Testar o APK num box de verdade** (boot, tela acesa, sobreposição).
-2. **Orientação da tela no pareamento** (TV em pé).
-3. **Simplificar o catálogo** (item 2 acima).
-4. **Recorte inteligente** da foto do acervo e **coerência entre peças**.
-5. **SSE, limites e comandos em Redis** para rodar mais de uma instância.
+2. **Simplificar o catálogo** (item 2 acima).
+3. **Recorte inteligente** da foto do acervo e **coerência entre peças**.
+4. **SSE, limites e comandos em Redis** para rodar mais de uma instância.
 
 Feito nesta rodada: app Android, relatório de exibição (no Pro), grupos de
-telas, Ajustes simplificados, texto em curva e elementos gráficos.
+telas, Ajustes simplificados, texto em curva e elementos gráficos, TV em pé
+(giro no player, para TV Box que não gira a imagem).
 
 ## Convenções
 
@@ -242,7 +242,7 @@ telas, Ajustes simplificados, texto em curva e elementos gráficos.
   decisão e o erro que ela evita.
 - Sem framework no servidor e sem dependência pesada; `node:sqlite` em dev,
   Postgres em produção, mesma API assíncrona nos dois.
-- Testes em `npm test` (**809 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
+- Testes em `npm test` (**818 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
   provaram:
   - **Renderizar e olhar.** Screenshot pegou bugs que teste nenhum pegou —
     componente desmontado, texto estourando, botão que não fazia nada, cabeçalho

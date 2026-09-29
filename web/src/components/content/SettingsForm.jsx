@@ -93,6 +93,19 @@ export function SettingsForm({ settings, onChange, deviceId }) {
             })}
           </Select>
         </Field>
+        {/* TV em pé: TV Box e Fire Stick não giram a imagem, então quem gira é
+            o player. Só aparece para layout vertical (ou se já há giro), para
+            não pôr mais uma pergunta na frente de quem tem TV deitada. */}
+        {((layout.orientation || 'landscape') === 'portrait' || s.girar) ? (
+          <Field label="A TV está em pé?"
+            hint="TV Box não gira a imagem sozinho. Se o conteúdo aparecer de lado, escolha um giro; se ficar de cabeça para baixo, o outro.">
+            <Select value={String(s.girar || 0)} onChange={(e) => set({ girar: Number(e.target.value) })}>
+              <option value="0">Não girar (o aparelho já mostra em pé)</option>
+              <option value="90">Girar a imagem ↻ (sentido horário)</option>
+              <option value="270">Girar a imagem ↺ (sentido anti-horário)</option>
+            </Select>
+          </Field>
+        ) : null}
         <Field label="Tema">
           <Select value={theme.preset} onChange={(e) => escolherTema(e.target.value)}>
             {THEME_PRESETS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
