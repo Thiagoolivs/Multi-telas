@@ -226,6 +226,38 @@ export function ContentEditorPage({ device, onBack }) {
     return () => clearTimeout(saveTimer.current);
   }, [cfg, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /*
+   * Saiu antes do segundo de espera: salva mesmo assim.
+   *
+   * O temporizador acima é cancelado quando a página desmonta, então a última
+   * alteração feita logo antes de voltar (seta, menu ou o gesto de voltar do
+   * celular) se perdia em silêncio — com "Salvando…" na tela um instante
+   * antes. Fechar a aba também: ali vai com keepalive, que o navegador
+   * termina de enviar depois que a página já foi embora.
+   */
+  const pendente = useRef(null);
+  useEffect(() => { pendente.current = dirty && cfg ? cfg : null; }, [cfg, dirty]);
+  useEffect(() => {
+    const aoFechar = () => {
+      const c = pendente.current;
+      if (!c) return;
+      pendente.current = null;
+      try {
+        fetch('/api/devices/' + device.id + '/config', {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c),
+          credentials: 'same-origin', keepalive: true,
+        }).catch(() => {});
+      } catch (e) { /* acima de 64 KB o keepalive recusa; não há mais o que fazer */ }
+    };
+    window.addEventListener('pagehide', aoFechar);
+    return () => {
+      window.removeEventListener('pagehide', aoFechar);
+      const c = pendente.current;
+      pendente.current = null;
+      if (c) deviceConfig.save(device.id, c).catch(() => {});
+    };
+  }, [device.id]);
+
   // Aplica uma campanha da IA (tela inteira) ao config: substitui as zonas
   // geradas e, se veio, a cor da marca.
   function applyCampaign(camp) {

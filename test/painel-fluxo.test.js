@@ -247,3 +247,15 @@ test('o passo "publique o primeiro conteúdo" abre a tela pareada', () => {
   assert.match(src, /destino: primeira \? 'content'/);
   assert.match(src, /onIr\(p\.destino, p\.params\)/, 'o aparelho não chega ao editor');
 });
+
+test('a última edição antes de sair da tela não se perde', () => {
+  /*
+   * O salvamento automático espera 1s, e o temporizador era cancelado quando
+   * a página desmontava: editar e voltar logo em seguida perdia a edição em
+   * silêncio. Reproduzido no navegador (celular, gesto de voltar).
+   */
+  const src = soCodigo(ler('web', 'src', 'pages', 'ContentEditorPage.jsx'));
+  assert.match(src, /if \(c\) deviceConfig\.save\(device\.id, c\)/, 'desmontar não salva o que estava pendente');
+  assert.match(src, /addEventListener\('pagehide'/, 'fechar a aba perde a edição pendente');
+  assert.match(src, /keepalive: true/, 'sem keepalive o envio morre junto com a página');
+});
