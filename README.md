@@ -5,12 +5,19 @@ independentes (cabeçalho, principal, lateral, rodapé) exibindo conteúdos
 diferentes ao mesmo tempo, com um painel de gestão que qualquer pessoa usa sem
 saber programar. A cor e os temas são personalizáveis.
 
-Roda no navegador, sem backend obrigatório — basta abrir a página numa Smart TV,
-mini-PC, TV Box ou Chromecast. Os dados ficam no `localStorage`, ou numa URL de
-config remota que você aponta.
+É um SaaS: a empresa cria a conta, pareia as TVs pelo celular e publica do
+painel (`/app`). A TV é só um navegador abrindo `/tv` — numa Smart TV, num TV
+Box, num mini-PC ou num Chromecast — e continua exibindo sem internet.
 
-> Sem contas, login ou multi-tenant — é "1 navegador = 1 instalação".
-> Veja [Arquitetura e limites](#arquitetura-e-limites).
+- **Servidor:** Node 22 sem framework, Postgres em produção (SQLite em dev).
+- **Painel:** React (Vite), servido em `/app`.
+- **TV (player):** JavaScript puro, offline-first (service worker).
+- **Cobrança:** Asaas (Pix, boleto, cartão), preço por tela.
+- **IA:** Gemini (texto, imagem e visão), com validador próprio de legibilidade.
+
+> O modo antigo "1 navegador = 1 instalação" (sem conta, dados no
+> `localStorage`) ainda existe em `/legacy`. Ver
+> [Arquitetura e limites](#arquitetura-e-limites).
 
 ---
 
@@ -54,103 +61,60 @@ config remota que você aponta.
 
 ## Como usar (rápido)
 
-1. Abra **`index.html`** no navegador → é o **Painel de Gestão**.
-2. Escolha um **modelo**, clique em uma **área do desenho da TV** e adicione um
-   **conteúdo pronto** (ou monte do zero).
-3. Clique em **Salvar alterações**.
-4. Abra **`player.html`** na TV (botão **Abrir na TV**). Pronto.
-
-> Dica: na TV, dê **duplo clique** (ou tecle **F**) no player para entrar em tela cheia.
+1. Crie a conta em **`/app`**.
+2. Na TV, abra **`seu-dominio/tv`**. Ela mostra um código de 6 dígitos e um QR.
+3. Aponte a câmera do celular para o QR (ou digite o código em **Telas ›
+   Parear tela**). A TV passa a ser da sua conta.
+4. Publique um conteúdo: modelo pronto, editor ou campanha por IA. A TV troca
+   na hora.
 
 ### Rodando localmente
 
 ```bash
-# na pasta do projeto
-node server.js
-# depois acesse:
-#   Admin  -> http://localhost:8080/index.html
-#   Player -> http://localhost:8080/player.html
+npm install
+npm run build          # painel React → web/dist
+SKIP_VERIFY=1 node server.js
+#   Site    -> http://localhost:8080/
+#   Painel  -> http://localhost:8080/app
+#   TV      -> http://localhost:8080/tv
 ```
 
-(Alternativa sem Node: `python3 -m http.server 8080`.)
+Sem `DATABASE_URL` o banco é SQLite em `data/`. Sem `ASAAS_API_KEY` a cobrança
+é simulada, sem `GEMINI_API_KEY` a IA roda em modo demonstração, e sem
+provedor de e-mail o link de confirmação vai para o log — por isso o
+`SKIP_VERIFY=1` local. **Nunca** use `SKIP_VERIFY=1` em produção.
+
+```bash
+npm test               # a suíte inteira
+npm run lint:nomes     # nome indefinido no servidor (roda no CI)
+```
 
 ---
 
-## Hospedando no Railway (ou qualquer provedor)
+## Hospedando no Railway
 
-O projeto já vem pronto para deploy — é só HTML/CSS/JS servidos por um
-`server.js` mínimo, sem banco de dados e sem dependências externas.
+`railway.json` já traz build e start. O que falta é configuração, e ela está
+em três lugares:
 
-1. Suba este repositório para o GitHub (se ainda não estiver lá).
-2. No [Railway](https://railway.app), clique em **New Project → Deploy from
-   GitHub repo** e selecione este repositório.
-3. O Railway detecta o `package.json`, roda `npm install` (instantâneo, sem
-   dependências) e inicia com `node server.js` — não precisa configurar nada.
-4. Em **Settings → Networking**, gere um domínio público (**Generate Domain**).
-5. Acesse `https://SEU-APP.up.railway.app/index.html` para o **Painel de
-   Gestão** e `https://SEU-APP.up.railway.app/player.html` para o **Player**
-   (essa é a URL que você abre na TV).
+- [`docs/LANCAMENTO.md`](docs/LANCAMENTO.md) — o que precisa estar definido
+  antes de vender.
+- [`docs/CONFIGURAR-RESEND-E-ASAAS.md`](docs/CONFIGURAR-RESEND-E-ASAAS.md) e
+  [`docs/ARMAZENAMENTO.md`](docs/ARMAZENAMENTO.md) — passo a passo.
+- [`docs/PROMPT-COWORK.md`](docs/PROMPT-COWORK.md) — um prompt para o Cowork
+  fazer a configuração inteira no seu navegador.
 
-> Como os dados ficam salvos no navegador (localStorage) de quem edita, use
-> a **Atualização centralizada** (exportar o `config.json` e apontar a URL
-> remota) se quiser editar de um computador e exibir em TVs numa rede
-> diferente — veja a seção acima.
-
-Funciona da mesma forma em qualquer outro provedor que rode Node.js
-(Render, Fly.io, um VPS próprio etc.) — basta `node server.js` respeitando
-a variável de ambiente `PORT`.
+Depois de subir, `/sistema` (logado com um e-mail de `ADMIN_EMAILS`) diz o que
+está verde e o que falta, e `node tools/conferir-config.mjs` prova que as
+chaves funcionam.
 
 ---
 
-## Atualização de várias TVs (centralizada)
+## Modo local (legado)
 
-Você tem duas formas de trabalhar:
-
-**A) Local (uma máquina):** edite no Admin e salve. O player na mesma máquina/navegador
-já reflete tudo. Simples e sem depender de internet.
-
-**B) Centralizada (várias TVs):** ideal para uma rede de telas.
-1. No Admin, monte tudo e clique em **Exportar** → gera `config-multitelas.json`.
-2. Hospede esse arquivo em qualquer lugar público (GitHub Pages, Dropbox, seu servidor…).
-3. Em cada TV, abra o Admin uma vez, vá em **Configurações → Atualização automática**
-   e cole a **URL de config remota**. Salve.
-4. A partir daí, sempre que você atualizar o `config.json` hospedado, **todas as TVs
-   pegam a atualização sozinhas** (no intervalo definido em "Recarregar a cada").
-
-Assim uma pessoa atualiza num lugar só e a rede inteira acompanha.
-
-### Controle pelo celular (nuvem) — em evolução
-
-Primeiro tijolo do multi-tenant: controlar uma TV **de outro dispositivo pela
-internet**, sem hospedar `config.json` na mão.
-
-1. Suba o app com `node server.js` (o servidor já expõe a API de controle, com
-   contas). O banco é **PostgreSQL** quando `DATABASE_URL` está definido; sem
-   ele, cai no SQLite embutido (`node:sqlite`) para rodar local sem configurar
-   nada.
-2. No painel (celular ou PC), no card **"Controlar TV pelo celular"**, **crie
-   uma conta / faça login**.
-3. Na TV, abra **`seu-dominio/tv`** — aparece um **código de pareamento**.
-
-   Esse endereço existe porque ele é digitado com um controle remoto, letra por
-   letra, num teclado de televisão. `/player.html?cloud=1` funciona igual e
-   ninguém acerta: são dois pontos, uma barra e uma interrogação. `/tv` é tudo.
-
-   ```
-   https://multitelas.up.railway.app/tv
-   ```
-
-   `/tv?new=1` faz a TV esquecer o pareamento salvo e gerar outro código —
-   é o que se usa ao trocar a televisão de sala ou de cliente.
-4. No painel, digite o código para **parear** — a TV passa a pertencer à sua
-   conta. A partir daí, ao salvar, o conteúdo é enviado para a TV **na hora**
-   (via SSE).
-
-Cada conta controla só os seus dispositivos. Em produção, defina `DATABASE_URL`
-(ex.: Postgres do Railway/Neon/Supabase) e os dados ficam nesse banco. No dev
-local, sem `DATABASE_URL`, o banco fica em `data/multitelas.db` (SQLite). Ver
-[`docs/ESTADO-DO-PROJETO.md`](docs/ESTADO-DO-PROJETO.md) e
-[`docs/PLANO-SAAS.md`](docs/PLANO-SAAS.md).
+Em `/legacy` continua o painel antigo, que guarda tudo no `localStorage` do
+navegador e não sincroniza com a nuvem. Para várias TVs nesse modo, exporte o
+`config.json`, hospede-o e cole a URL em **Configurações › Atualização
+automática** de cada TV. Não conhece mural, trilha sonora, cobrança nem IA.
 
 ### Painel de quem opera a plataforma
 
@@ -251,7 +215,8 @@ multitelas/
 │   └── licencas/         # a OFL de cada família (a licença vai junto)
 ├── tools/
 │   └── baixar-fontes.mjs # Regera fonts/ — rode ao acrescentar família
-├── server/              # Módulos do servidor (auth, billing, IA, log, erros…)
+├── server/              # Módulos do servidor (auth, cobrança, IA, log, erros…)
+│   └── routes/           # Rotas extraídas de server.js (auth, equipe, cobrança, telas)
 ├── web/                 # Painel React (Vite) → build em /app
 ├── test/                # `npm test`
 ├── server.js            # Servidor (rotas)
@@ -340,33 +305,22 @@ aniversário) usam a **superfície adaptativa** — herdam fundo e cores do tema
 
 ## Arquitetura e limites
 
-O sistema é **client-side puro** (sem backend, sem banco). Isso é ótimo para
-simplicidade e custo, mas define o que ele **é e não é**:
-
-- **Não é multi-tenant / não tem contas.** Não há login, usuários nem organizações
-  isoladas. Não existe "salvar um dispositivo por conta".
-- **Dados por navegador.** A config vive no `localStorage` de quem edita. Para
-  exibir em várias TVs, use a **config remota** (exporte o `config.json`, hospede-o
-  e aponte a URL em cada TV) — veja a seção de atualização centralizada.
-- **"Vários painéis" são locais.** Os painéis nomeados ficam só naquele navegador;
-  não sincronizam entre máquinas nem representam contas.
-- **PIN é uma trava de conveniência**, guardada no `localStorage` (hash simples).
-  Impede acesso casual ao painel, mas **não é segurança de servidor** — quem tem
-  acesso ao navegador/DevTools contorna.
-- **Dependências externas.** Notícias usam fetch direto ou o proxy público
-  *allorigins* como reserva; clima (Open-Meteo), mapas (OSM), trânsito (Waze)
-  e YouTube dependem desses serviços e de suas políticas de CORS. O QR **não**
-  depende de ninguém: é desenhado no servidor (`server/qr.js`).
-- **Cores adaptativas** só funcionam com imagens do mesmo domínio ou com CORS
-  liberado (o canvas "suja" com imagens de outros domínios e não adapta).
-- **Limite de armazenamento (~5 MB do localStorage).** Uploads de imagem (base64)
-  consomem esse espaço; há aviso ao salvar quando enche — prefira URLs para imagens
-  grandes.
-
-Para **multi-tenant de verdade** (empresas/contas, TVs registradas por dispositivo,
-edição centralizada na nuvem, papéis de acesso) seria necessário um **backend**
-(auth + banco + API). Isso é uma evolução de arquitetura, não um ajuste do atual —
-o plano completo está em [`docs/PLANO-SAAS.md`](docs/PLANO-SAAS.md).
+- **Multi-tenant por `tenant_id`**, com papéis (dono, admin, membro). Sessão em
+  cookie HttpOnly; a TV se identifica por um token próprio (cabeçalho), e o
+  tempo real (SSE) usa um passe de 1 minuto — nunca o token na URL.
+- **A tela nunca para.** Fatura atrasada, crédito acabado ou teste vencido não
+  apagam a TV de ninguém. O que se corta é IA e tela nova (ver
+  [`docs/BILLING.md`](docs/BILLING.md)).
+- **Offline-first.** A TV guarda a última config e as mídias; se ligar sem
+  internet, mostra o que tinha e insiste com o servidor até voltar.
+- **Uma instância só, por enquanto.** SSE, limites e comandos pendentes vivem
+  em memória do processo. Para escalar horizontalmente é preciso levar isso
+  para um Redis (ver `docs/LANCAMENTO.md`).
+- **Mídia no R2/S3** (`STORAGE=s3`). Sem isso, a mídia vai para o disco do
+  contêiner e some no próximo deploy.
+- **Dependências externas de conteúdo:** notícias (RSS, com proxy público de
+  reserva), clima (Open-Meteo), mapas (OSM), trânsito (Waze) e YouTube. O QR e
+  as fontes são nossos.
 
 > **Fontes ao vivo (HDMI/stream):** um navegador não lê HDMI-in nem sintonizador de
 > TV diretamente. Para exibir uma entrada HDMI, use um **captador HDMI→USB** (o
@@ -377,30 +331,25 @@ o plano completo está em [`docs/PLANO-SAAS.md`](docs/PLANO-SAAS.md).
 
 ## Dicas para a TV
 
-- Configure a TV/mini-PC para **abrir o navegador em tela cheia** com a URL do player
-  ao ligar (modo quiosque). No Chrome: `chrome --kiosk http://.../player.html`.
-- Para evitar que a tela apague, desative a suspensão/proteção de tela do dispositivo.
-- O player já esconde o cursor do mouse automaticamente.
+- O endereço é sempre **`seu-dominio/tv`**. `/tv?new=1` esquece o pareamento
+  e gera outro código (TV trocada de sala ou de cliente).
+- TV Box / mini-PC: configure para abrir o navegador em tela cheia no `/tv` ao
+  ligar (modo quiosque; no Chrome, `chrome --kiosk https://seu-dominio/tv`) e
+  desligue a suspensão de tela.
+- **Recarregar a TV** e ver **resolução e aparelho** estão no cartão da tela,
+  em **Telas**. O **horário de funcionamento** de cada tela (sino) decide
+  quando o alerta de queda por e-mail vale.
 
 ---
 
 ## Perguntas comuns
 
-**Preciso de internet?** Só para conteúdos externos (imagens/vídeos por URL, YouTube,
-clima, config remota). O sistema em si roda offline.
+**Preciso de internet?** Para receber publicações, sim. Sem internet a TV
+continua exibindo a última programação e as mídias que já baixou.
 
-**Onde os dados ficam salvos?** No `localStorage` do navegador da máquina.
-Para backup ou levar para outra máquina, use **Exportar / Importar**.
+**Onde os dados ficam?** No banco do servidor (Postgres) e a mídia no R2/S3. A
+TV guarda uma cópia da última config para funcionar offline.
 
-**Dá para ter vários painéis diferentes?** Sim, de duas formas: (a) crie **painéis
-nomeados** no seletor do topo do admin (guardados naquele navegador); ou (b) para
-uma rede de TVs, mantenha um `config.json` por painel e aponte a URL remota de cada
-TV para o arquivo correto.
-
-**Tem contas / login / multi-tenant?** Não. Não há autenticação nem separação por
-conta — é "1 navegador = 1 instalação". A trava por PIN é só uma proteção local do
-painel. Para contas e dispositivos registrados na nuvem, veja
-[Arquitetura e limites](#arquitetura-e-limites).
-
-**O PIN protege de verdade?** Ele impede acesso casual ao painel de gestão, mas é
-uma trava local (guardada no navegador) — não substitui autenticação de servidor.
+**O que acontece se o cliente não pagar?** A tela continua no ar. Depois de 7
+dias de atraso, param a IA e o pareamento de telas novas. Terminado o teste
+sem assinatura, a tela mostra um selo discreto "versão gratuita".

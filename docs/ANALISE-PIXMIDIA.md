@@ -1,5 +1,10 @@
 # Pix Mídia — análise competitiva
 
+> **Nota (29/09/2026):** a tabela de preço mudou depois desta análise. Não há
+> mais Essencial nem plano grátis permanente: é **Pro R$ 149/tela** com teste
+> de 14 dias (depois dele a tela segue com selo "versão gratuita"). O alerta
+> de tela offline, o WhatsApp na landing e o QR no pareamento já existem.
+
 Estudo do concorrente **Pix Mídia / ImidiaTV** (pixmidia.com.br) e o que dele
 serve ao MultiTelas: oferta, precificação, comunicação, atendimento e
 experiência. Complementa [`REFERENCIA-CONCORRENTES.md`](REFERENCIA-CONCORRENTES.md),

@@ -15,6 +15,26 @@ editáveis.
 > descrevem, e nenhum deles descreve o que está à venda hoje. Quem for refazer
 > a conta da margem, refaça sobre Pro e Enterprise — não adapte estas.
 
+> **O que está implementado (29/09/2026)** — o resto deste documento é a
+> proposta que levou até aqui.
+>
+> - **Assinatura acompanha as telas** (`server/cobranca.js`): parear e remover
+>   atualizam o valor no Asaas (`updatePendingPayments`, sem proração no meio
+>   do ciclo); conciliação a cada 6h.
+> - **Atraso** (`plans.situacaoAtraso`): 7 dias de carência contados do
+>   primeiro `PAYMENT_OVERDUE`; depois param crédito de IA, a reposição da
+>   franquia e o pareamento de tela nova. A tela nunca para.
+> - **Estorno e chargeback** da assinatura voltam a conta para o grátis. A
+>   assinatura no Asaas NÃO é cancelada automaticamente — pode ser acerto seu.
+> - **Pacotes avulsos** (§7): 25/100/500 créditos, cobrança avulsa no Asaas,
+>   idempotentes por `payment_id` (tabela `pacotes_pagos`). Estorno de pacote
+>   tira o pacote e não mexe no plano. Assinatura de créditos e recarga
+>   automática **não** foram feitas.
+> - **Fim do teste sem assinatura:** a tela segue no ar com o selo "versão
+>   gratuita" (`plans.exibeSelo`).
+> - O provedor é o **Asaas**, não o Stripe: as taxas da §3.1 precisam ser
+>   refeitas com a tabela do Asaas.
+
 ---
 
 ## 1 · O que existe hoje, e onde vaza

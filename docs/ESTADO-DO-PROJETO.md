@@ -6,55 +6,62 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **20/08/2026** · 547 testes passando · `server.js` com 2418 linhas.
+Atualizado em: **29/09/2026** · 774 testes passando · `server.js` com ~2.200
+linhas (cobrança e telas saíram para `server/routes/`).
 
 ---
 
 ## Onde paramos (leia isto primeiro)
 
-Um plano de 10 passos, tirado de uma revisão de UX do dono do produto, foi
-executado por inteiro e **está todo em `main`** (PRs [#96][96], [#97][97] e
-[#98][98], mesclados). Depois disso veio o trabalho de publicação: **fontes
-próprias** e **observabilidade**.
+A última rodada foi uma auditoria de ponta a ponta seguida da correção, em
+ordem, de tudo o que ela achou (PR #108). Resumo do que mudou:
 
-[96]: https://github.com/Thiagoolivs/Multi-telas/pull/96
-[97]: https://github.com/Thiagoolivs/Multi-telas/pull/97
-[98]: https://github.com/Thiagoolivs/Multi-telas/pull/98
+- **TV ligando sem internet** trocava a vitrine pela demonstração em 60s e
+  nunca mais reconectava. Consertado e conferido no navegador.
+- **Cobrança que vazava:** assinatura não acompanhava as telas, atraso sem
+  consequência, estorno ignorado. Consertado (`server/cobranca.js`).
+- **Promessas sem código** (relatório, SSO, marca branca) saíram do site.
+- **Alerta de queda** respeita horário de funcionamento por tela.
+- **Pacotes de crédito avulsos**, **QR no pareamento**, **recarregar TV
+  remoto**, **selo "versão gratuita"** depois do teste.
+- `no-undef` no CI achou e consertou dois bugs em produção: convite de equipe
+  ("erro interno") e troca de senha no SQLite.
 
-**A decisão que manda agora: publicar esta semana.** O que falta para isso não
-é código — é configuração no Railway e revisão jurídica. A lista está em
-[`LANCAMENTO.md`](LANCAMENTO.md), que voltou a ser verdadeira (ficou meses
-dizendo que faltavam CI, landing e cabeçalhos de segurança muito depois de os
-três existirem).
+**O que falta para publicar não é código:** é configuração e jurídico —
+[`LANCAMENTO.md`](LANCAMENTO.md), com um prompt pronto para o Cowork em
+[`PROMPT-COWORK.md`](PROMPT-COWORK.md).
 
-### O que depende do dono, não do código
+### Decisões que ficaram com o dono
 
-1. **Quatro variáveis no Railway**, e nenhuma é opcional: `STORAGE=s3` com as
-   chaves do R2 (sem elas, **toda mídia some no próximo deploy**),
-   `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` (sem eles não há checkout de verdade),
-   `ADMIN_EMAILS` (sem ela o painel da plataforma não aparece e não responde —
-   de propósito) e `APP_URL`/`SUPPORT_EMAIL` do domínio próprio.
-2. **Revisão jurídica dos Termos**, e então `LEGAL_REVISADO=true` para o aviso
-   de rascunho sair das páginas.
-3. **A leitura de um site real nunca foi testada de verdade.** O proxy do
-   ambiente de desenvolvimento bloqueia HTTP externo (403), então
-   `server/site.js` só rodou contra servidores locais. Precisa ser conferido em
-   produção colando o endereço de um cliente e vendo se as cores e as fontes
-   saem certas.
+- **`/legacy`** (painel antigo em `localStorage`): manter declarado como modo
+  local ou tirar.
+- **App Android de quiosque** para TV Box (ver abaixo).
+
+### TV Box: como fica plug and play
+
+O player já é web e o pareamento já existe, então o aparelho só precisa ser um
+navegador que abre `/tv` e não sai dali. O que já está pronto do lado do
+servidor e do player:
+
+- pareamento por **código ou QR** (a pessoa aponta o celular e cai no painel
+  com o código preenchido);
+- **ligar sem internet** mantém a última programação e reconecta sozinho —
+  importante porque depois de queda de energia o box liga antes do roteador;
+- **recarregar remoto** pelo painel e o **pulso conta aparelho e resolução**
+  (`window.MTApp.versao`, se o app existir, aparece no cartão da tela);
+- a pairing screen cabe em **1280×720**, a resolução de boa parte dos boxes.
+
+O que falta é o **app Android** (WebView em tela cheia): abrir no boot,
+manter a tela acesa, reabrir se travar, guardar a identidade da tela no
+armazenamento do app (o navegador de algumas TVs apaga) e expor
+`window.MTApp = { versao }`. Comercialmente: começar com o app na loja e o
+cliente usando o aparelho que tem; kit pré-configurado com um modelo
+homologado depois. Comodato de hardware, não (ver `ANALISE-PIXMIDIA.md`).
 
 ### Trabalho em paralelo
 
-Há um segundo agente (Antigravity) mexendo neste repositório ao mesmo tempo. As
-regras de convivência, as decisões que **não** podem ser desfeitas e a lista de
-tarefas dele estão em [`TAREFAS-ANTIGRAVITY.md`](TAREFAS-ANTIGRAVITY.md).
-
-Se você é esse agente: comece por lá.
-
-### Já decidido, adiado de propósito
-
-**A cobrança vai sair do Stripe e ir para o Asaas.** Não entra antes de
-publicar. `server/billing.js` é o único lugar que fala com o provedor, e
-`server/plans.js` guarda o catálogo separado dele — a troca é contida.
+Regras para outro agente mexendo aqui ao mesmo tempo:
+[`TAREFAS-ANTIGRAVITY.md`](TAREFAS-ANTIGRAVITY.md).
 
 ## Como o sistema está montado
 
@@ -185,8 +192,9 @@ Auditoria ponta a ponta feita em três rodadas (PRs #95, #97, #98):
   resolveria o nome de novo — essa janela é o DNS rebinding inteiro), redirect
   seguido à mão com no máximo 3 saltos e re-checagem em cada um, tetos de tempo,
   tamanho e chamadas por hora.
-- **Cobrança como porta**: dá para entrar e explorar, mas cadastrar a primeira
-  tela exige pagamento; teste de 14 dias.
+- **Cobrança como porta**: teste de 14 dias com uma tela; depois, a tela
+  segue com selo e ligar tela nova pede assinatura. Webhook do Asaas com token
+  comparado em tempo constante; pacotes creditados uma vez por pagamento.
 
 ## Onde a facilidade ainda escapa
 
@@ -200,48 +208,26 @@ Avaliação franca, com números do próprio código:
    de adicionar precisa de um caminho curto ("o que você quer mostrar?") antes da
    grade completa.
 
-3. **O texto ainda é medido por estimativa.** Com a fonte servida por nós, a
-   causa raiz do texto estourado foi embora — a fonte que a TV desenha é a
-   mesma que o compositor mediu. Mas a medida continua sendo a largura média
-   por caractere (`largura`, em `js/fontes.js`), e não as métricas reais da
-   fonte. Antes isso não valia a pena, porque a fonte podia nem chegar; agora
-   o arquivo está em `fonts/` e dá para medir de verdade no servidor.
+3. **`server.js` ainda tem ~2.200 linhas.** Auth, equipe, cobrança e telas
+   já saíram para `server/routes/`; IA, marca, mural e plataforma continuam
+   lá. O `npm run lint:nomes` no CI é o que torna a extração segura.
 
-4. **`server.js` tem 2418 linhas** de roteamento manual — quase o dobro de quando
-   isto foi anotado pela primeira vez. Passou do ponto em que separar por domínio
-   era luxo.
-
-5. **Falta o essencial de um editor tipo Canva.** Ganhou pincel, réguas, modelos e
-   animação, mas ainda **não tem camada com máscara, texto em curva nem
-   biblioteca de elementos gráficos**. Sem esses três, a meta de "80% das funções
-   do Canva" não está cumprida, e é honesto dizer isso.
+4. **Falta parte do essencial de um editor tipo Canva.** Máscara de imagem
+   entrou; **texto em curva e biblioteca de elementos gráficos** não.
 
 ## Próximos passos
 
-**Antes de tudo: publicar.** O que falta não é código, e a lista está em
-[`LANCAMENTO.md`](LANCAMENTO.md). Enquanto as variáveis do Railway não
-estiverem definidas, nada do que vem abaixo chega a um cliente.
+**Antes de tudo: publicar** ([`LANCAMENTO.md`](LANCAMENTO.md)).
 
-Depois, em ordem de impacto e sem nada começado:
+Depois, em ordem de impacto:
 
-1. **Editor: máscara, texto em curva e biblioteca de gráficos.** É o bloco que
-   fecha a promessa de paridade com o Canva. O maior dos três em esforço.
-2. **Trocar o Stripe pelo Asaas.** Já decidido; adiado para não segurar a
-   publicação. `server/billing.js` é o único lugar que fala com o provedor.
-3. **Verificação de e-mail no cadastro.** O envio existe, falta o fluxo — hoje
-   dá para criar conta com o e-mail de outra pessoa.
-4. **Quebrar `server.js` por domínio.** Não muda nada para o usuário, mas cada
-   passo futuro fica mais barato.
-5. **A IA olhar a peça pronta.** A crítica de hoje lê o relatório do validador;
-   renderizar em PNG e devolver pela visão pegaria colisão, respiro torto e logo
-   sobre rosto — coisas que nenhum validador expressa.
-6. **Prompt de imagem ciente do layout** ("deixe o terço inferior limpo"), em vez
-   de remendar com véu depois.
-7. **Medir texto com as métricas reais da fonte** em vez da largura média por
-   caractere — agora possível, porque o arquivo da fonte é nosso.
-8. **Simplificar Ajustes e o catálogo** (itens 1 e 2 acima).
-9. **Recorte inteligente** da foto do acervo (hoje corta pelo centro).
-10. **Coerência entre peças** — cada uma é composta isolada da anterior.
+1. **App Android de quiosque** para TV Box.
+2. **Relatório de exibição (proof-of-play)** — volta ao plano Pro quando existir.
+3. **Grupos de telas** e **orientação da tela no pareamento**.
+4. **Editor: texto em curva e biblioteca de gráficos.**
+5. **Simplificar Ajustes da tela e o catálogo** (itens 1 e 2 acima).
+6. **Recorte inteligente** da foto do acervo e **coerência entre peças**.
+7. **SSE, limites e comandos em Redis** para rodar mais de uma instância.
 
 ## Convenções
 
@@ -249,7 +235,7 @@ Depois, em ordem de impacto e sem nada começado:
   decisão e o erro que ela evita.
 - Sem framework no servidor e sem dependência pesada; `node:sqlite` em dev,
   Postgres em produção, mesma API assíncrona nos dois.
-- Testes em `npm test` (**547 hoje**, em 41 arquivos). Dois padrões que se
+- Testes em `npm test` (**774 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
   provaram:
   - **Renderizar e olhar.** Screenshot pegou bugs que teste nenhum pegou —
     componente desmontado, texto estourando, botão que não fazia nada, cabeçalho
