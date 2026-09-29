@@ -315,6 +315,12 @@ export function CompositionEditor({ value, onClose, onSave }) {
   }, [setEls]);
 
   const selEls = useMemo(() => els.filter((e) => sel.includes(e.id)), [els, sel]);
+  // Em ordem de leitura (linha, depois coluna): a lista de camadas é por
+  // profundidade, e num cardápio isso embaralha nome e preço.
+  const textosDaPeca = useMemo(() => els
+    .filter((e) => e.tipo === 'texto' && !e.oculto)
+    .slice()
+    .sort((a, b) => (Math.round(a.y) - Math.round(b.y)) || (a.x - b.x)), [els]);
   const selEl = selEls.length === 1 ? selEls[0] : null;
   const patchSel = (p, etiqueta) => sel.length && patch(sel, p, etiqueta);
 
@@ -876,20 +882,24 @@ export function CompositionEditor({ value, onClose, onSave }) {
     <div className="fixed inset-0 z-50 flex flex-col bg-canvas/95 backdrop-blur">
       {/* ---------------- Barra superior ---------------- */}
       <div className="flex flex-wrap items-center gap-1.5 border-b border-line bg-surface px-3 py-2">
-        <span className="mr-1 text-sm font-semibold text-ink">Editor</span>
+        {/* No celular a barra fica no essencial (desfazer, modelos, imagem,
+            texto, remover, salvar): o resto é trabalho de computador, e cinco
+            linhas de botões empurravam o palco para fora da tela. */}
+        <span className="mr-1 hidden text-sm font-semibold text-ink sm:inline">Editor</span>
 
         <IconBtn title="Desfazer (Ctrl+Z)" icon={Undo2} disabled={!podeDesfazer(hist)} onClick={() => saltar(-1)} />
         <IconBtn title="Refazer (Ctrl+Shift+Z)" icon={Redo2} disabled={!podeRefazer(hist)} onClick={() => saltar(1)} />
 
         <div className="mx-1 h-5 w-px bg-line" />
         <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={pedirModelo}>Modelos</Button>
-          <Button size="sm" variant="secondary" icon={ScanSearch} disabled={visaoLoading} onClick={fazerAnaliseVisual}>Análise IA</Button>
-        <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => setAiOpen((o) => !o)}>IA</Button>
+        <Button size="sm" variant="secondary" icon={ScanSearch} className="hidden md:inline-flex" disabled={visaoLoading} onClick={fazerAnaliseVisual}>Análise IA</Button>
+        <Button size="sm" variant="secondary" icon={Sparkles} className="hidden md:inline-flex" onClick={() => setAiOpen((o) => !o)}>IA</Button>
         <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Imagem</Button>
         <Button size="sm" variant="secondary" icon={Type} onClick={addText}>Texto</Button>
-        <Button size="sm" variant="secondary" icon={Shapes} onClick={addShape}>Forma</Button>
-        <Button size="sm" variant="secondary" icon={Star} onClick={addIcon}>Ícone</Button>
-        <div className="relative">
+        <Button size="sm" variant="secondary" icon={Shapes} className="hidden md:inline-flex" onClick={addShape}>Forma</Button>
+        <Button size="sm" variant="secondary" icon={Star} className="hidden md:inline-flex" onClick={addIcon}>Ícone</Button>
+        <span className="md:hidden"><IconBtn title="Remover (Delete)" icon={Trash2} disabled={!sel.length} onClick={remover} /></span>
+        <div className="relative hidden md:block">
           <Button size="sm" variant="secondary" icon={Sticker} onClick={() => setBibliotecaAberta((v) => !v)}>Elementos</Button>
           {bibliotecaAberta && (
             <div className="absolute left-0 top-full z-30 mt-1 w-[340px] rounded-lg border border-line bg-surface p-2 shadow-lg">
@@ -907,6 +917,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
           )}
         </div>
 
+        <div className="hidden md:contents">
         <div className="mx-1 h-5 w-px bg-line" />
         {/* Alinhar: com um selecionado alinha pela peça, com vários entre eles. */}
         <IconBtn title="Alinhar à esquerda" icon={AlignStartVertical} disabled={!sel.length} onClick={() => aplicarAlinhar('esq')} />
@@ -948,6 +959,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         </button>
         <IconBtn title="Mais zoom" icon={ZoomIn} onClick={() => setZoom((z) => clamp(z + 0.25, 0.25, 3))} />
         <IconBtn title="Ajustar à tela" icon={Maximize2} onClick={() => setZoom(1)} />
+        </div>
 
         <div className="flex-1" />
         <Button size="sm" variant="ghost" icon={X} onClick={onClose}>Cancelar</Button>
@@ -1090,9 +1102,11 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <div className="border-b border-line bg-accent-soft px-4 py-1.5 text-xs text-ink-2">{avisoColagem}</div>
       )}
 
-      <div className="flex min-h-0 flex-1">
-        {/* ---------------- Palco ---------------- */}
-        <div ref={wrapRef} className="flex min-w-0 flex-1 items-center justify-center overflow-auto p-6"
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        {/* ---------------- Palco ----------------
+            No celular: em cima, com altura própria; o painel desce para baixo
+            dele em vez de espremê-lo numa coluna de 100px. */}
+        <div ref={wrapRef} className="flex h-[40vh] min-w-0 shrink-0 items-center justify-center overflow-auto p-2 md:h-auto md:flex-1 md:shrink md:p-6"
           onMouseDown={(e) => { if (e.target === e.currentTarget) limparSel(); }}
           onDragOver={(e) => { e.preventDefault(); }}
           onDrop={(e) => { e.preventDefault(); aplicarColagem(e.dataTransfer); }}>
@@ -1458,7 +1472,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         </div>
 
         {/* ---------------- Painel lateral ---------------- */}
-        <div className="flex w-80 shrink-0 flex-col border-l border-line bg-surface">
+        <div className="flex min-h-0 w-full flex-1 flex-col border-t border-line bg-surface md:w-80 md:flex-none md:shrink-0 md:border-l md:border-t-0">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
             <div>
               <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Fundo</div>
@@ -1689,9 +1703,31 @@ export function CompositionEditor({ value, onClose, onSave }) {
                 <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => patch(selEl.id, { rot: 0 })}>Zerar rotação ({Math.round(selEl.rot || 0)}°)</Button>
               </div>
             ) : (
-              <div className="border-t border-line pt-4 text-xs text-ink-3">
-                Clique num elemento para editar. Shift+clique soma à seleção; dois cliques num
-                texto edita direto no palco.
+              <div className="space-y-3 border-t border-line pt-4">
+                {/* Textos da peça: trocar nome e preço de um cardápio, a data de
+                    um evento — o trabalho de todo dia — sem mirar no palco. No
+                    celular é o único jeito confortável; no computador, o mais
+                    rápido. Em ordem de leitura, não de camada. */}
+                {textosDaPeca.length > 0 && (
+                  <div>
+                    <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Textos da peça</div>
+                    <div className="space-y-1.5">
+                      {textosDaPeca.map((e) => (
+                        String(e.text || '').includes('\n')
+                          ? <textarea key={e.id} value={e.text || ''} rows={2} aria-label="Texto da peça"
+                              onChange={(ev) => patch(e.id, { text: ev.target.value }, 'texto:' + e.id)} onBlur={fecharPasso}
+                              className="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink" />
+                          : <input key={e.id} value={e.text || ''} aria-label="Texto da peça"
+                              onChange={(ev) => patch(e.id, { text: ev.target.value }, 'texto:' + e.id)} onBlur={fecharPasso}
+                              className="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink" />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-ink-3">
+                  Clique num elemento para editar. Shift+clique soma à seleção; dois cliques num
+                  texto edita direto no palco.
+                </p>
               </div>
             )}
 
@@ -1703,8 +1739,9 @@ export function CompositionEditor({ value, onClose, onSave }) {
           </div>
 
           {/* Camadas: altura fixa e rolagem própria, para não empurrar as
-              propriedades para fora da tela numa peça com muitos elementos. */}
-          <div className="flex max-h-[38%] min-h-[8rem] shrink-0 flex-col border-t border-line">
+              propriedades para fora da tela numa peça com muitos elementos.
+              No celular fica de fora: o espaço vai para os textos da peça. */}
+          <div className="hidden max-h-[38%] min-h-[8rem] shrink-0 flex-col border-t border-line md:flex">
             <div className="flex items-center gap-1.5 px-4 pb-1 pt-3 text-2xs font-semibold uppercase tracking-wide text-ink-3">
               <Layers size={12} /> Camadas
               <span className="ml-auto font-normal normal-case tracking-normal">{els.length}</span>

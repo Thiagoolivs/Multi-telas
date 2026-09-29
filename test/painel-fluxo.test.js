@@ -259,3 +259,18 @@ test('a última edição antes de sair da tela não se perde', () => {
   assert.match(src, /addEventListener\('pagehide'/, 'fechar a aba perde a edição pendente');
   assert.match(src, /keepalive: true/, 'sem keepalive o envio morre junto com a página');
 });
+
+test('editor visual no celular: palco em cima, textos da peça como campos', () => {
+  /*
+   * No celular o palco virava uma miniatura de 100px espremida ao lado do
+   * painel, e a barra de ferramentas ocupava cinco linhas. O dono não
+   * conseguia trocar um preço do cardápio pelo telefone. Visto no navegador
+   * (Pixel 7) antes e depois.
+   */
+  const src = ler('web', 'src', 'components', 'content', 'CompositionEditor.jsx');
+  assert.match(src, /flex min-h-0 flex-1 flex-col md:flex-row/, 'o palco volta a ficar espremido ao lado do painel');
+  assert.match(src, /h-\[40vh\][^"]*md:flex-1/);
+  assert.match(src, /Textos da peça/);
+  assert.match(src, /onChange=\{\(ev\) => patch\(e\.id, \{ text: ev\.target\.value \}, 'texto:' \+ e\.id\)\}/);
+  assert.match(src, /<div className="hidden md:contents">/, 'a barra do celular voltou a ter todos os botões');
+});
