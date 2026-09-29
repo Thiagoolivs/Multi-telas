@@ -1,7 +1,7 @@
 # Bom dia: o que foi feito e como colocar numa loja esta semana
 
 Escrito em 29/09/2026, durante a madrugada. Tudo está no PR
-[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 821
+[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 827
 testes passando e o APK compilando no GitHub Actions.
 
 ---
@@ -63,6 +63,12 @@ computador e no celular)
   conteúdo › Comercial**: nome à esquerda, preço à direita, na cor da marca,
   em duas colunas (TV deitada) ou uma (em pé). É o uso nº 1 de TV em padaria
   e lanchonete — bom para mostrar na primeira visita à loja.
+
+**Horário por conteúdo**
+- Cada conteúdo tem **"Mostrar só em alguns dias ou horários"**: o cardápio
+  do café só até as 10h, o happy hour de sexta das 17h às 19h, a promoção de
+  Natal de 01/12 a 24/12. A lista mostra o resumo ("De segunda a sexta, das
+  06:00 às 10:00"). Fora do horário a TV passa os outros conteúdos.
 
 **TV em pé (totem)**
 - TV Box não gira a imagem, então uma TV pendurada em pé mostrava tudo de
