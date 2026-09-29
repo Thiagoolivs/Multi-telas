@@ -14,6 +14,8 @@ import {
   Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout, Airplay, Cast, Presentation,
 } from 'lucide-react';
 
+const GRUPO_PC = 'Com computador ligado à TV';
+
 const FIT = { key: 'fit', label: 'Ajuste da imagem', kind: 'select', options: [
   { value: 'cover', label: 'Preencher (corta)' }, { value: 'contain', label: 'Inteira (sem cortar)' } ] };
 
@@ -214,13 +216,13 @@ export const CONTENT_TYPES = {
     summary: (i) => i.titulo || 'Poster',
   },
   screen: {
-    label: 'Captura de janela / tela', icon: Airplay, group: 'Mídia',
+    label: 'Captura de janela / tela', icon: Airplay, group: GRUPO_PC,
     fields: [FIT, { key: 'audio', label: 'Capturar áudio', kind: 'bool' }, DUR],
     make: () => ({ type: 'screen', fit: 'contain', duracao: 0 }),
     summary: () => 'Captura de janela ao vivo',
   },
   livesource: {
-    label: 'Entrada HDMI / USB (ao vivo)', icon: Cast, group: 'Mídia',
+    label: 'Entrada HDMI / USB (ao vivo)', icon: Cast, group: GRUPO_PC,
     fields: [FIT, { key: 'audio', label: 'Com áudio', kind: 'bool' }, DUR],
     make: () => ({ type: 'livesource', fit: 'cover', duracao: 0 }),
     summary: () => 'Entrada HDMI / USB',
@@ -255,7 +257,9 @@ export const CONTENT_TYPES = {
   },
 };
 
-export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'promo', 'kpi', 'composicao', 'social', 'image', 'video', 'pptx', 'screen', 'livesource', 'youtube', 'web', 'qrcode', 'mural', 'weatherpro', 'birthdayauto'];
+// Captura de janela e entrada HDMI só existem com um computador ligado à TV;
+// num TV Box ficam pretas. Vão para o fim, num grupo que diz isso.
+export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'promo', 'kpi', 'composicao', 'social', 'image', 'video', 'pptx', 'youtube', 'web', 'qrcode', 'mural', 'weatherpro', 'birthdayauto', 'screen', 'livesource'];
 
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;

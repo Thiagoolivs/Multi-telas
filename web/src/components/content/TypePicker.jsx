@@ -42,7 +42,13 @@ export function TypePicker({ open, onClose, onPick, onPickItem }) {
   useEffect(() => {
     if (!open) return;
     setQ('');
-    library.list().then((r) => setSaved((r && r.items) || [])).catch(() => setSaved([]));
+    // Biblioteca vazia (conta nova) abre direto em "Criar novo": abrir numa
+    // aba que só diz "está vazia" é o primeiro beco sem saída de quem chega.
+    library.list().then((r) => {
+      const itens = (r && r.items) || [];
+      setSaved(itens);
+      setTab(itens.length ? 'lib' : 'new');
+    }).catch(() => { setSaved([]); setTab('new'); });
   }, [open]);
 
   const results = useMemo(() => {

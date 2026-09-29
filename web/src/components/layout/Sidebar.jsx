@@ -83,7 +83,7 @@ function NavItem({ item, active, onClick }) {
   );
 }
 
-export function Sidebar({ active, onNavigate, papel, operador }) {
+export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
   const ehDono = papel === 'owner';
   const secoes = NAV
     .filter((s) => !s.operador || operador)
@@ -99,7 +99,10 @@ export function Sidebar({ active, onNavigate, papel, operador }) {
         </div>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-ink">MultiTelas</div>
-          <div className="truncate text-2xs text-ink-3">Rede corporativa</div>
+          {/* O nome da empresa do cliente — "Rede corporativa" fixo não dizia
+              nada a uma padaria, e quem cuida de duas contas precisa saber em
+              qual está. */}
+          <div className="truncate text-2xs text-ink-3" title={empresa || undefined}>{empresa || 'Painel'}</div>
         </div>
       </div>
 

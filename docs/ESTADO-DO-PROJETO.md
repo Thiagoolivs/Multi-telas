@@ -6,7 +6,7 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **29/09/2026** · 774 testes passando · `server.js` com ~2.200
+Atualizado em: **29/09/2026** · 798 testes passando · `server.js` com ~2.200
 linhas (cobrança e telas saíram para `server/routes/`).
 
 ---
@@ -26,6 +26,12 @@ ordem, de tudo o que ela achou (PR #108). Resumo do que mudou:
   remoto**, **selo "versão gratuita"** depois do teste.
 - `no-undef` no CI achou e consertou dois bugs em produção: convite de equipe
   ("erro interno") e troca de senha no SQLite.
+- **App Android de quiosque** (`android/`, APK gerado no GitHub Actions),
+  **relatório de exibição**, **grupos de telas**, **Ajustes simplificados**,
+  **texto em curva e 19 elementos gráficos** no editor.
+- **Primeira experiência:** o QR sobrevive ao cadastro, o pareamento termina em
+  "Colocar conteúdo agora", tela vazia mostra "Comece por aqui", e texto longo
+  encolhe para caber na zona da TV.
 
 **O que falta para publicar não é código:** é configuração e jurídico —
 [`LANCAMENTO.md`](LANCAMENTO.md), com um prompt pronto para o Cowork em
@@ -35,7 +41,7 @@ ordem, de tudo o que ela achou (PR #108). Resumo do que mudou:
 
 - ~~`/legacy`~~ — decidido e feito: o painel antigo saiu, o endereço
   redireciona para `/app`.
-- **App Android de quiosque** para TV Box (ver abaixo).
+- ~~App Android~~ — feito (`android/`). Falta rodar num box de verdade.
 
 ### TV Box: como fica plug and play
 
@@ -51,12 +57,13 @@ servidor e do player:
   (`window.MTApp.versao`, se o app existir, aparece no cartão da tela);
 - a pairing screen cabe em **1280×720**, a resolução de boa parte dos boxes.
 
-O que falta é o **app Android** (WebView em tela cheia): abrir no boot,
-manter a tela acesa, reabrir se travar, guardar a identidade da tela no
-armazenamento do app (o navegador de algumas TVs apaga) e expor
-`window.MTApp = { versao }`. Comercialmente: começar com o app na loja e o
-cliente usando o aparelho que tem; kit pré-configurado com um modelo
-homologado depois. Comodato de hardware, não (ver `ANALISE-PIXMIDIA.md`).
+O **app Android** (`android/`, WebView em tela cheia) abre no boot, mantém a
+tela acesa, reabre se travar, guarda a identidade da tela no armazenamento do
+app e expõe `window.MTApp = { versao }`. O APK sai do workflow **App Android**
+(variável `MT_URL` no GitHub). **Nunca rodou num box de verdade** — o primeiro
+teste é tirar da tomada e ver voltar. Comercialmente: kit com um modelo
+homologado (Xiaomi TV Box S). Comodato de hardware, não (ver
+`ANALISE-PIXMIDIA.md`).
 
 ### Trabalho em paralelo
 
@@ -200,9 +207,8 @@ Auditoria ponta a ponta feita em três rodadas (PRs #95, #97, #98):
 
 Avaliação franca, com números do próprio código:
 
-1. **Ajustes da tela tem 16 controles.** Um dono de padaria não sabe o que é
-   "layout inteligente" nem "cores adaptativas". Faltam **padrões que já estejam
-   certos** e um modo avançado que esconda o resto.
+1. ~~Ajustes da tela com 16 controles~~ — o essencial fica à vista, o resto
+   em "Mais ajustes", com a contagem do que foi mudado.
 
 2. **99 tipos de conteúdo no catálogo.** É força na venda e peso no uso. A tela
    de adicionar precisa de um caminho curto ("o que você quer mostrar?") antes da
@@ -212,8 +218,8 @@ Avaliação franca, com números do próprio código:
    já saíram para `server/routes/`; IA, marca, mural e plataforma continuam
    lá. O `npm run lint:nomes` no CI é o que torna a extração segura.
 
-4. **Falta parte do essencial de um editor tipo Canva.** Máscara de imagem
-   entrou; **texto em curva e biblioteca de elementos gráficos** não.
+4. ~~Editor sem texto em curva e elementos gráficos~~ — entraram (`js/graficos.js`,
+   `arcoTexto` em `js/peca.js`); editor, TV, miniatura e PNG desenham igual.
 
 ## Próximos passos
 
@@ -221,13 +227,14 @@ Avaliação franca, com números do próprio código:
 
 Depois, em ordem de impacto:
 
-1. **App Android de quiosque** para TV Box.
-2. **Relatório de exibição (proof-of-play)** — volta ao plano Pro quando existir.
-3. **Grupos de telas** e **orientação da tela no pareamento**.
-4. **Editor: texto em curva e biblioteca de gráficos.**
-5. **Simplificar Ajustes da tela e o catálogo** (itens 1 e 2 acima).
-6. **Recorte inteligente** da foto do acervo e **coerência entre peças**.
-7. **SSE, limites e comandos em Redis** para rodar mais de uma instância.
+1. **Testar o APK num box de verdade** (boot, tela acesa, sobreposição).
+2. **Orientação da tela no pareamento** (TV em pé).
+3. **Simplificar o catálogo** (item 2 acima).
+4. **Recorte inteligente** da foto do acervo e **coerência entre peças**.
+5. **SSE, limites e comandos em Redis** para rodar mais de uma instância.
+
+Feito nesta rodada: app Android, relatório de exibição (no Pro), grupos de
+telas, Ajustes simplificados, texto em curva e elementos gráficos.
 
 ## Convenções
 
@@ -235,7 +242,7 @@ Depois, em ordem de impacto:
   decisão e o erro que ela evita.
 - Sem framework no servidor e sem dependência pesada; `node:sqlite` em dev,
   Postgres em produção, mesma API assíncrona nos dois.
-- Testes em `npm test` (**774 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
+- Testes em `npm test` (**798 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
   provaram:
   - **Renderizar e olhar.** Screenshot pegou bugs que teste nenhum pegou —
     componente desmontado, texto estourando, botão que não fazia nada, cabeçalho

@@ -149,6 +149,7 @@ export default function App() {
       theme={theme}
       onToggleTheme={toggleTheme}
       user={user}
+      empresa={session.tenant && session.tenant.name}
       operador={!!session.operador}
       onLogout={logout}
     >

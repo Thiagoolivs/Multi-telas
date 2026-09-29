@@ -294,7 +294,7 @@ export function ContentEditorPage({ device, onBack }) {
                 className="rounded-lg border border-line p-3 text-left transition hover:bg-surface-2">
                 <Plus size={18} className="text-ink-2" />
                 <div className="mt-1.5 text-sm font-semibold text-ink">Escolher um conteúdo pronto</div>
-                <div className="text-xs text-ink-3">Aviso, promoção, relógio, clima, notícias, vídeo, imagem…</div>
+                <div className="text-xs text-ink-3">Aviso, promoção, foto, vídeo, clima, QR code, aniversariantes…</div>
               </button>
               <button type="button" onClick={() => setSettingsOpen(true)}
                 className="rounded-lg border border-line p-3 text-left transition hover:bg-surface-2">
