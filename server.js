@@ -1638,7 +1638,12 @@ async function handleApi(req, res, pathname, query) {
        * Contato comercial. Só dígitos: o que vier com espaço, traço ou "+"
        * é limpo aqui para o link do WhatsApp não quebrar calado.
        */
-      contato: { whatsapp: String(process.env.WHATSAPP_NUMERO || '').replace(/\D/g, '') || null },
+      contato: {
+        whatsapp: String(process.env.WHATSAPP_NUMERO || '').replace(/\D/g, '') || null,
+        // O mesmo contato das páginas legais (server/legal.js), agora também
+        // na página de Suporte do painel.
+        email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(process.env.SUPPORT_EMAIL || '') ? process.env.SUPPORT_EMAIL : null,
+      },
       /*
        * A tabela inteira de 1 a 50 telas, já calculada.
        *

@@ -23,7 +23,7 @@ no seu navegador, está em [`PROMPT-COWORK.md`](PROMPT-COWORK.md).
 | 🔴 | **`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`** e o webhook com os **7 eventos** (`PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_OVERDUE`, `PAYMENT_REFUNDED`, `PAYMENT_CHARGEBACK_REQUESTED`, `PAYMENT_CHARGEBACK_DISPUTE`, `SUBSCRIPTION_DELETED`) | Sem chave o checkout é simulado; sem os eventos, pagamento não libera plano e estorno não tira. Testar antes com `ASAAS_AMBIENTE=sandbox`. |
 | 🔴 | **`ADMIN_EMAILS`**, **`APP_URL`** (https, domínio próprio) | Sem o primeiro não existe painel da plataforma; sem o segundo o link do e-mail pode sair errado atrás do proxy. |
 | 🔴 | **`GEMINI_API_KEY`** com faturamento no projeto Google | Sem ela a IA roda em modo demonstração. |
-| 🟡 | `SUPPORT_EMAIL` e `WHATSAPP_NUMERO` | Contato nas páginas legais e o botão de WhatsApp da landing (sem número, o botão não aparece). |
+| 🟡 | `SUPPORT_EMAIL` e `WHATSAPP_NUMERO` | Contato nas páginas legais e na página Suporte do painel, e o botão de WhatsApp da landing e do Suporte (sem número, o botão não aparece). |
 | 🟡 | **Backup do Postgres ligado e uma restauração testada** | Backup que nunca foi restaurado é backup que talvez não exista. |
 | 🟡 | Login com Google (`GOOGLE_CLIENT_ID`/`SECRET`) | Opcional. |
 

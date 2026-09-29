@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { LifeBuoy, Mail, ChevronDown, Copy, Check, BookOpen } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { LifeBuoy, Mail, ChevronDown, Copy, Check, BookOpen, MessageCircle } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -10,8 +10,8 @@ import { aviso } from '../lib/avisos.js';
 import { useAsync } from '../lib/useAsync.js';
 import { relativeTime } from '../lib/format.js';
 
-// Contato do suporte. Trocar aqui quando o e-mail do projeto existir.
-const SUPPORT_EMAIL = 'thiago.olivs.coelho@gmail.com';
+// Contato do suporte quando o servidor não informa um (SUPPORT_EMAIL).
+const EMAIL_PADRAO = 'thiago.olivs.coelho@gmail.com';
 
 const FAQ = [
   {
@@ -76,6 +76,16 @@ export function SupportPage({ me }) {
   const [copiado, setCopiado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const { data: minhas, reload: recarregar } = useAsync(suporte.meus);
+  // O número vem do servidor (a mesma rota pública que a landing usa).
+  const [whatsapp, setWhatsapp] = useState(null);
+  const [SUPPORT_EMAIL, setEmailSuporte] = useState(EMAIL_PADRAO);
+  useEffect(() => {
+    fetch('/api/planos').then((r) => r.json()).then((d) => {
+      const c = (d && d.contato) || {};
+      setWhatsapp(c.whatsapp || null);
+      if (c.email) setEmailSuporte(c.email);
+    }).catch(() => {});
+  }, []);
 
   const user = (me && me.user) || {};
   const tenant = (me && me.tenant) || {};
@@ -207,6 +217,16 @@ export function SupportPage({ me }) {
           <Panel>
             <PanelHeader title="Contato direto" />
             <div className="space-y-3 p-4">
+              {/* WhatsApp primeiro quando existe (WHATSAPP_NUMERO no servidor):
+                  é o canal que o dono da loja usa, e com a TV apagada ninguém
+                  quer esperar e-mail. A mensagem já vai com a conta. */}
+              {whatsapp && (
+                <a href={'https://wa.me/' + whatsapp + '?text=' + encodeURIComponent('Olá! Preciso de ajuda com o MultiTelas.\n\n' + contexto)}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700">
+                  <MessageCircle size={16} /> Falar no WhatsApp
+                </a>
+              )}
               <div className="flex items-center justify-between gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2">
                 <span className="truncate text-sm text-ink-2">{SUPPORT_EMAIL}</span>
                 <Button size="sm" variant="ghost" icon={copiado ? Check : Copy} onClick={copiarEmail}>
@@ -230,7 +250,7 @@ export function SupportPage({ me }) {
       </div>
 
       <p className="flex items-center gap-1.5 text-2xs text-ink-3">
-        <BookOpen size={12} /> Dica: quase toda dúvida de tela offline se resolve reabrindo o player na TV.
+        <BookOpen size={12} /> Dica: tela fora do ar? Confira o Wi-Fi da loja e, se precisar, tire o aparelho da tomada e ligue de novo — ele volta sozinho com a programação.
       </p>
     </div>
   );
