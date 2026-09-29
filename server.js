@@ -212,6 +212,26 @@ function sincronizarCobranca(tenantId) {
   cobranca.sincronizarTelas(db, billing, tenantId)
     .catch((e) => erros.registrar(e, { onde: 'assinatura acompanhando telas', tenant: tenantId }));
 }
+/*
+ * O selo "MultiTelas grátis" de uma conta (regra em plans.exibeSelo).
+ *
+ * Vai no heartbeat, que cada TV manda a cada 30s — ler a conta do banco a
+ * cada pulso seria uma consulta a mais por tela por meio minuto. Cinco
+ * minutos de memória bastam: quem acabou de assinar vê o selo sumir no
+ * próximo pulso depois disso, e o selo não é cobrança, é lembrete.
+ */
+const seloCache = new Map();
+async function seloDaConta(tenantId) {
+  if (!tenantId) return false;
+  const c = seloCache.get(tenantId);
+  if (c && Date.now() - c.em < 5 * 60 * 1000) return c.selo;
+  let selo = false;
+  try { selo = plans.exibeSelo(await db.getTenant(tenantId)); }
+  catch (e) { selo = c ? c.selo : false; }
+  seloCache.set(tenantId, { selo, em: Date.now() });
+  if (seloCache.size > 5000) seloCache.delete(seloCache.keys().next().value);
+  return selo;
+}
 function brl(cents) { return 'R$ ' + (cents / 100).toFixed(2).replace('.', ','); }
 
 // Aplica um evento do Asaas ao plano do tenant.
@@ -2229,7 +2249,7 @@ async function handleApi(req, res, pathname, query) {
        * Com isto, a tela compara e busca de novo quando divergir — a rede de
        * segurança que um canal só não tem, sem custo de requisição extra.
        */
-      return sendJson(res, 200, { ok: true, at: Date.now(), configEm: device.updated_at || 0 });
+      return sendJson(res, 200, { ok: true, at: Date.now(), configEm: device.updated_at || 0, selo: await seloDaConta(device.tenant_id) });
     }
     /*
      * A troca: token de verdade (no cabeçalho) por um passe curto.

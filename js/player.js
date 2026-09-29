@@ -211,6 +211,24 @@
      * É barato de propósito: nenhuma requisição a mais, só um campo a mais na
      * resposta que já existia.
      */
+    /*
+     * Selo "MultiTelas grátis": teste acabado sem assinatura. A tela segue
+     * exibindo tudo; o selo é um canto discreto, fora do caminho do
+     * conteúdo e sem capturar clique. Some sozinho no pulso seguinte à
+     * assinatura.
+     */
+    document.addEventListener('mt:selo', function (ev) {
+      let el = document.getElementById('mt-selo');
+      if (ev.detail && !el) {
+        el = document.createElement('div');
+        el.id = 'mt-selo';
+        el.className = 'mt-selo';
+        el.textContent = 'MultiTelas · versão gratuita';
+        document.body.appendChild(el);
+      } else if (!ev.detail && el) {
+        el.remove();
+      }
+    });
     async function pulsar() {
       const carimbo = await MTCloud.heartbeat(dev.id);
       if (!carimbo || carimbo <= configEm) return;

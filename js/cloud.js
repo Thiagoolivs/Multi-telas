@@ -188,6 +188,11 @@
   async function heartbeat(id) {
     try {
       const r = await api('POST', '/api/devices/' + id + '/heartbeat', undefined, dtHeader());
+      // O selo da versão gratuita vem de carona no pulso: não é config, e
+      // trocar a config por causa dele reconstruiria o palco a cada mudança.
+      if (r && typeof r.selo === 'boolean') {
+        document.dispatchEvent(new CustomEvent('mt:selo', { detail: r.selo }));
+      }
       return (r && r.configEm) || 0;
     } catch (e) { return 0; /* offline: tenta de novo no próximo ciclo */ }
   }

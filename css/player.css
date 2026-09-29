@@ -1209,3 +1209,13 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 /* O botão "gerar outro código" some quando a TV já está pareada:
    ali ele só serviria para desparear sem querer. */
 .mt-pairing-reset.hidden { display: none; }
+
+/* Selo da versão gratuita (teste acabado sem assinatura). Discreto, fora do
+   caminho do conteúdo, e nunca captura clique nem foco. */
+.mt-selo {
+  position: fixed; right: 1.2vw; bottom: 1.2vw; z-index: 9000;
+  padding: .35em .8em; border-radius: 999px;
+  font: 600 clamp(10px, .9vw, 18px)/1.2 system-ui, sans-serif; letter-spacing: .02em;
+  color: rgba(255,255,255,.92); background: rgba(10,14,28,.62);
+  pointer-events: none; user-select: none;
+}

@@ -269,13 +269,29 @@ function podeParear(tenant, telasEmUso, agora) {
   return { ok: true, dias: diasDeTesteRestantes(tenant, agora) };
 }
 
+/*
+ * A tela desta conta mostra o selo "MultiTelas grátis"?
+ *
+ * Decisão do dono do produto: acabado o teste sem assinatura, a tela NÃO
+ * apaga — continua exibindo e publicando, com uma marca discreta num canto.
+ * Antes, o teste de 14 dias não expirava nada para quem já tinha pareado:
+ * a tela seguia de graça, limpa, para sempre, e só a IA sumia.
+ *
+ * Plano pago (inclusive cortesia, que é Pro de verdade) nunca tem selo.
+ */
+function exibeSelo(tenant, agora) {
+  if (!tenant) return false;
+  if (isPaid(tenant.plan || 'free')) return false;
+  return !testeAtivo(tenant, agora);
+}
+
 // Catálogo público (para o painel), na ordem de exibição.
 function catalog() { return ORDER.map((id) => PLANS[id]); }
 
 module.exports = {
   PLANS, ORDER, FAIXAS, CREDITOS_BOAS_VINDAS,
   DIAS_DE_TESTE, fimDoTeste, diasDeTesteRestantes, testeAtivo, podeParear,
-  CARENCIA_ATRASO_DIAS, situacaoAtraso, bloqueioPorAtraso,
+  CARENCIA_ATRASO_DIAS, situacaoAtraso, bloqueioPorAtraso, exibeSelo,
   plan, catalog, screenLimit, isPaid, temRecurso,
   descontoVolume, mensalidadeCents, precoTelaCents, precoProximaTelaCents, cotaBytes, franquiaCreditos,
 };

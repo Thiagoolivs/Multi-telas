@@ -50,7 +50,9 @@ export function FaixaTeste({ onIrParaPlano }) {
           que acontece: o que trava é ligar tela nova.
         */}
         <span className="font-normal opacity-90">
-          {acabou ? 'As telas já ligadas continuam exibindo.' : 'Depois disso, ligar uma tela nova pede um plano.'}
+          {acabou
+            ? 'As telas já ligadas continuam exibindo, com o selo "versão gratuita" num canto. Assinando, o selo sai.'
+            : 'Depois disso, a tela continua no ar com o selo "versão gratuita", e ligar uma tela nova pede um plano.'}
         </span>
       </span>
       {onIrParaPlano && (
