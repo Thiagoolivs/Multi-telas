@@ -43,13 +43,17 @@ test('agendamento que nunca acontece é apontado', async () => {
   assert.equal(problemaDaAgenda({ ativo: true, horaInicio: '06:00', horaFim: '10:00' }), '');
 });
 
-test('resumo da tela avisa quando TODO conteúdo da zona tem horário', async () => {
+test('zona em que TODO conteúdo tem horário é apontada (o resumo da tela avisa)', async () => {
   // Fora das janelas a zona fica só no relógio — "de tarde a TV não mostra nada".
-  const { digest } = await import('../web/src/lib/screenDigest.js');
+  // (A regra mora em agenda.js: screenDigest.js puxa ícones do painel, que o
+  // CI não instala — importá-lo aqui derrubou a execução.)
+  const { zonaSoComHorario } = await carregar();
   const ag = { ativo: true, horaInicio: '06:00', horaFim: '10:00' };
-  const cfg = (itens) => ({ version: 1, settings: { layoutId: 'fullscreen' }, zonas: { principal: { items: itens } } });
-  const tudo = digest(cfg([{ type: 'text', titulo: 'a', duracao: 10, agendamento: ag }]));
-  assert.ok(tudo.problemas.some((p) => /todos os conteúdos têm horário/.test(p.texto)), JSON.stringify(tudo.problemas));
-  const misto = digest(cfg([{ type: 'text', titulo: 'a', duracao: 10, agendamento: ag }, { type: 'text', titulo: 'b', duracao: 10 }]));
-  assert.ok(!misto.problemas.some((p) => /todos os conteúdos têm horário/.test(p.texto)));
+  assert.equal(zonaSoComHorario([{ agendamento: ag }]), true);
+  assert.equal(zonaSoComHorario([{ agendamento: ag }, { type: 'text' }]), false);
+  assert.equal(zonaSoComHorario([]), false);
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const digest = fs.readFileSync(path.join(__dirname, '..', 'web', 'src', 'lib', 'screenDigest.js'), 'utf8');
+  assert.match(digest, /if \(zonaSoComHorario\(itens\)\)/, 'o resumo da tela deixou de usar a regra');
 });

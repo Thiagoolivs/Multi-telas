@@ -66,3 +66,12 @@ export function problemaDaAgenda(ag) {
   if (ag.dataFim && ag.dataFim < iso) return 'O período já terminou: esse conteúdo não aparece mais.';
   return '';
 }
+
+/*
+ * Toda a zona com horário: fora das janelas, a TV fica só no relógio — e
+ * isso costuma ser surpresa ("de tarde a TV não mostra nada").
+ */
+export function zonaSoComHorario(itens) {
+  const lista = (itens || []).filter(Boolean);
+  return lista.length > 0 && lista.every(temAgenda);
+}

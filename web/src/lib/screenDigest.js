@@ -12,6 +12,7 @@
  */
 import { zonesOf, getLayout, THEME_PRESETS } from './screenConfig.js';
 import { typeLabel } from './contentTypes.js';
+import { zonaSoComHorario } from './agenda.js';
 
 // Duração de um item na tela. 0 significa "fica fixo" — para efeito de ciclo,
 // um item fixo prende a zona e a rotação deixa de existir.
@@ -65,9 +66,7 @@ function problemasDaZona(zona, itens, ciclo) {
     p.push({ nivel: 'aviso', texto: `${zona.name} está vazia — a TV mostra só um relógio nesse espaço` });
     return p;
   }
-  // Tudo com horário: fora das janelas a zona fica só no relógio, e isso
-  // costuma ser surpresa ("de tarde a TV não mostra nada").
-  if (itens.every((i) => i && i.agendamento && i.agendamento.ativo)) {
+  if (zonaSoComHorario(itens)) {
     p.push({ nivel: 'dica', texto: `${zona.name}: todos os conteúdos têm horário — fora deles a TV mostra só o relógio. Deixe um sem horário para cobrir o resto do dia.` });
   }
   const fixo = itens.find((i) => duracaoDe(i) === 0);
