@@ -9,3 +9,6 @@ data/
 
 # Painel React (Vite) — build gerado, não versionado
 web/dist/
+
+# Saída de teste solta (já foi parar na raiz uma vez)
+test_out*.txt
