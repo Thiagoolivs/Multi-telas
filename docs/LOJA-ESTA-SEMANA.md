@@ -1,7 +1,7 @@
 # Bom dia: o que foi feito e como colocar numa loja esta semana
 
 Escrito em 29/09/2026, durante a madrugada. Tudo está no PR
-[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 818
+[#108](https://github.com/Thiagoolivs/Multi-telas/pull/108), com 821
 testes passando e o APK compilando no GitHub Actions.
 
 ---
@@ -58,6 +58,12 @@ computador e no celular)
 - Plano não mostra mais barra **vermelha "no limite"** para quem só pareou a
   primeira TV; relatório cabe no celular.
 
+**Cardápio**
+- Modelo novo **"Cardápio / Tabela de preços"**, direto em **Adicionar
+  conteúdo › Comercial**: nome à esquerda, preço à direita, na cor da marca,
+  em duas colunas (TV deitada) ou uma (em pé). É o uso nº 1 de TV em padaria
+  e lanchonete — bom para mostrar na primeira visita à loja.
+
 **TV em pé (totem)**
 - TV Box não gira a imagem, então uma TV pendurada em pé mostrava tudo de
   lado. Agora: **Ajustes da tela › Layout vertical › "A TV está em pé?"** e
@@ -74,6 +80,10 @@ computador e no celular)
   relógios da TV ficam em branco até a hora acertar.
 - **Edição perdida:** mexer num conteúdo e sair em menos de 1 segundo perdia a
   alteração. Agora salva ao sair.
+- **Alinhar à esquerda/direita não funcionava** em texto de uma linha no
+  editor, na TV e na miniatura (a caixa centralizava). Consertado.
+- Com marca escura (verde-garrafa, marinho), títulos e preços dos modelos
+  saíam quase da cor do fundo; agora clareiam até ler bem.
 - O workflow do APK tinha ficado inválido por uma chave duplicada que eu
   mesmo introduzi; corrigido, e o APK volta a compilar.
 
@@ -146,7 +156,8 @@ completo, sem cobrança e sem o selo. Comece a cobrar depois da revisão.
    a conta, e a tela está pareada.
 5. Em **Telas › sino**: horário de funcionamento da loja (é o que evita alerta
    à noite). TV em pé? **Ajustes da tela**: layout vertical e o giro.
-6. Publicar um modelo pronto, ou gerar uma campanha com IA na frente do dono.
+6. Publicar um modelo pronto (o **Cardápio** com os preços da loja costuma
+   ser o que convence), ou gerar uma campanha com IA na frente do dono.
 7. **Teste obrigatório:** tire o box da tomada, ligue de novo e confira que o
    MultiTelas volta sozinho com a programação.
 8. No painel, a tela aparece "Online" com "1920×1080 · App 1.0.N".
