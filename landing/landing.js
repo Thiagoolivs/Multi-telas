@@ -613,7 +613,30 @@
       .catch(function () {});
   }
 
+  /*
+   * O endereço que se digita NA TV, montado de onde a página está sendo
+   * servida. Estava escrito "seudominio.com.br/tv" — literal, na página que
+   * o cliente lê antes de assinar.
+   */
+  function enderecoDaTv() {
+    var el = document.getElementById('endereco-tv');
+    if (el && location.host) el.textContent = location.host.replace(/^www\./, '') + '/tv';
+  }
+
+  /*
+   * WhatsApp só aparece com número configurado (WHATSAPP_NUMERO). Era um
+   * `href="#"`: o botão mais importante para PME no Brasil não fazia nada.
+   */
+  function whatsapp(dados) {
+    var el = document.getElementById('whatsapp');
+    var n = dados && dados.contato && dados.contato.whatsapp;
+    if (!el || !n) return;
+    el.href = 'https://wa.me/' + n + '?text=' + encodeURIComponent('Olá! Vi o site do MultiTelas e quero saber mais.');
+    el.hidden = false;
+  }
+
   function montarPrecos(dados) {
+    whatsapp(dados);
     var bv = document.getElementById('boas-vindas');
     if (bv && dados.creditosBoasVindas) bv.textContent = dados.creditosBoasVindas;
 
@@ -809,6 +832,7 @@
       montarControles();
       pintarGaleria();
       precos();
+      enderecoDaTv();
 
       // Entrada do título, letra por bloco
       gsap.fromTo('#titulo', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 1.1, ease: 'power4.out' });

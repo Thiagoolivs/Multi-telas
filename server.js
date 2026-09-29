@@ -1671,6 +1671,11 @@ async function handleApi(req, res, pathname, query) {
       // começam a discordar.
       diasDeTeste: plans.DIAS_DE_TESTE,
       /*
+       * Contato comercial. Só dígitos: o que vier com espaço, traço ou "+"
+       * é limpo aqui para o link do WhatsApp não quebrar calado.
+       */
+      contato: { whatsapp: String(process.env.WHATSAPP_NUMERO || '').replace(/\D/g, '') || null },
+      /*
        * A tabela inteira de 1 a 50 telas, já calculada.
        *
        * A alternativa era mandar só as faixas e deixar a landing fazer a
