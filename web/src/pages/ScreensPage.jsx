@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
@@ -100,6 +100,18 @@ export function ScreensPage({ onEditContent, parear }) {
 function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onAlerta, onRemove }) {
   const st = deviceStatus(d.lastSeen);
   const online = st.tone === 'ok';
+  /*
+   * Recarregar a TV daqui: o "desliga e liga" que resolve metade dos
+   * chamados, sem ninguém ir até ela. Chega na hora pelo tempo real, ou em
+   * até 30s pelo pulso se o tempo real estiver caído.
+   */
+  const [recarregando, setRecarregando] = useState('');
+  async function recarregar() {
+    setRecarregando('enviando');
+    try { await devices.comando(d.id, 'recarregar'); setRecarregando('ok'); }
+    catch (e) { setRecarregando('erro'); }
+    setTimeout(() => setRecarregando(''), 4000);
+  }
   return (
     <div className="overflow-hidden rounded-xl border border-line bg-surface transition hover:border-line-strong">
       <div className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-line bg-gradient-to-br from-surface-2 to-accent-soft/40">
@@ -126,10 +138,14 @@ function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onAle
       <div className="flex items-center justify-between gap-2 p-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-ink">{d.name || 'Tela sem nome'}</div>
-          <div className="truncate text-2xs text-ink-3">{st.label}{st.seen ? ' · ' + st.seen : ''}</div>
+          <div className="truncate text-2xs text-ink-3">
+            {recarregando === 'ok' ? 'Recarregando a TV…' : recarregando === 'erro' ? 'Não consegui mandar o comando'
+              : <>{st.label}{st.seen ? ' · ' + st.seen : ''}{descreverAparelho(d.info)}</>}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent}>Conteúdo</Button>
+          <IconButton icon={RotateCw} label="Recarregar a TV" size={14} onClick={recarregar} disabled={!!recarregando} />
           <IconButton icon={Music} label="Som ao vivo" size={14} onClick={onSom} />
           <IconButton icon={d.expediente && d.expediente.alerta === false ? BellOff : Bell}
             label="Horário e alerta de queda" size={14} onClick={onAlerta} />
@@ -140,6 +156,19 @@ function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onAle
       </div>
     </div>
   );
+}
+
+/*
+ * "1920×1080 · Android" a partir do que a TV contou no último pulso. Só o
+ * essencial para o suporte; o texto inteiro do navegador fica no title.
+ */
+function descreverAparelho(info) {
+  if (!info || !info.w) return '';
+  const ua = String(info.ua || '');
+  const so = info.app ? 'App ' + info.app
+    : /Android/i.test(ua) ? 'Android' : /Tizen/i.test(ua) ? 'Samsung' : /Web0S|webOS/i.test(ua) ? 'LG'
+    : /CrKey/i.test(ua) ? 'Chromecast' : /Windows/i.test(ua) ? 'Windows' : /Mac OS/i.test(ua) ? 'Mac' : /Linux/i.test(ua) ? 'Linux' : '';
+  return ' · ' + info.w + '×' + info.h + (so ? ' · ' + so : '');
 }
 
 /*

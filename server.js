@@ -232,6 +232,32 @@ async function seloDaConta(tenantId) {
   if (seloCache.size > 5000) seloCache.delete(seloCache.keys().next().value);
   return selo;
 }
+/*
+ * Comandos à espera de a TV buscar no pulso. Em memória, como o SSE: um
+ * restart perde o comando, e a pessoa clica de novo — é "recarregar", não
+ * dinheiro. Um por tela; o mais novo vence.
+ */
+const comandosPendentes = new Map();
+
+/* Corpo JSON pequeno e opcional (o pulso antigo não manda nada). */
+function lerJsonCurto(req, max) {
+  return new Promise((resolve) => {
+    let dado = '';
+    req.on('data', (c) => { dado += c; if (dado.length > max) { dado = ''; req.destroy(); } });
+    req.on('end', () => { try { resolve(dado ? JSON.parse(dado) : null); } catch (_) { resolve(null); } });
+    req.on('error', () => resolve(null));
+  });
+}
+
+/* Só os campos esperados, curtos. Nada que a TV mande vai cru para o banco. */
+function infoDaTela(b) {
+  if (!b || typeof b !== 'object') return null;
+  const txt = (v, n) => (typeof v === 'string' ? v.slice(0, n) : undefined);
+  const num = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);
+  const info = { ua: txt(b.ua, 300), w: num(b.w), h: num(b.h), dpr: Number(b.dpr) || undefined, versao: txt(b.versao, 40), app: txt(b.app, 40) };
+  return Object.values(info).some((v) => v !== undefined) ? info : null;
+}
+
 function brl(cents) { return 'R$ ' + (cents / 100).toFixed(2).replace('.', ','); }
 
 // Aplica um evento do Asaas ao plano do tenant.
@@ -2085,6 +2111,7 @@ async function handleApi(req, res, pathname, query) {
     const list = rows.map((d) => ({
       id: d.id, name: d.name, code: d.code, hasConfig: !!d.has_config, updatedAt: d.updated_at, lastSeen: d.last_seen,
       expediente: vigia.normalizarExpediente(d.expediente),
+      info: (() => { try { return d.info ? JSON.parse(d.info) : null; } catch (_) { return null; } })(),
     }));
     return sendJson(res, 200, { devices: list });
   }
@@ -2213,6 +2240,23 @@ async function handleApi(req, res, pathname, query) {
         return sendJson(res, 200, { ok: true, expediente: exp });
       });
     }
+    /*
+     * Comando remoto (dono): hoje, recarregar a TV. É o "desliga e liga" que
+     * resolve metade dos chamados — sem ninguém ir até a TV. Vai pelo SSE e,
+     * se o stream estiver caído, no próximo pulso (até 30s).
+     */
+    if (req.method === 'POST' && sub === 'comando') {
+      if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
+      return readBody(req, res, async (b) => {
+        const acao = String((b && b.acao) || '');
+        if (acao !== 'recarregar') return sendJson(res, 400, { error: 'comando desconhecido' });
+        const cmd = { id: db.rid(10), acao, em: Date.now() };
+        comandosPendentes.set(id, cmd);
+        broadcast(id, 'comando', cmd);
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.recarregar');
+        return sendJson(res, 200, { ok: true, aoVivo: !!subscribers[id] });
+      });
+    }
     if (req.method === 'POST' && sub === 'rename') {
       if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
       return readBody(req, res, async (b) => { await db.renameDevice(id, (b && b.name) || device.name); return sendJson(res, 200, { ok: true }); });
@@ -2283,7 +2327,16 @@ async function handleApi(req, res, pathname, query) {
     // real da frota (online/offline) no painel.
     if (req.method === 'POST' && sub === 'heartbeat') {
       if (!dtOk) return sendJson(res, 403, { error: 'device token inválido' });
-      await db.touchDevice(id);
+      /*
+       * A TV conta de si (navegador, resolução, versão do player) — é a
+       * primeira pergunta de todo suporte, e ninguém sabe responder de pé na
+       * frente da TV. Curto e sem nada pessoal; só grava se veio algo.
+       */
+      const b = await lerJsonCurto(req, 2048);
+      const info = infoDaTela(b);
+      await db.touchDevice(id, info ? JSON.stringify(info) : null);
+      const comando = comandosPendentes.get(id);
+      if (comando) comandosPendentes.delete(id);
       /*
        * Devolve QUANDO a config mudou pela última vez.
        *
@@ -2296,7 +2349,11 @@ async function handleApi(req, res, pathname, query) {
        * Com isto, a tela compara e busca de novo quando divergir — a rede de
        * segurança que um canal só não tem, sem custo de requisição extra.
        */
-      return sendJson(res, 200, { ok: true, at: Date.now(), configEm: device.updated_at || 0, selo: await seloDaConta(device.tenant_id) });
+      return sendJson(res, 200, {
+        ok: true, at: Date.now(), configEm: device.updated_at || 0, selo: await seloDaConta(device.tenant_id),
+        // Comando que o SSE pode não ter entregue (stream caído): vai no pulso.
+        comando: comando || undefined,
+      });
     }
     /*
      * A troca: token de verdade (no cabeçalho) por um passe curto.

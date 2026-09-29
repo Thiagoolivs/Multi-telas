@@ -182,12 +182,45 @@
     return (r && r.birthdays) || [];
   }
   /*
+   * O que a TV conta de si no pulso: é a primeira pergunta de todo suporte
+   * ("que aparelho é? que resolução?"), e ninguém sabe responder de pé na
+   * frente da TV. O app Android, quando houver, se identifica por
+   * `window.MTApp`.
+   */
+  function infoDaTela() {
+    try {
+      return {
+        ua: navigator.userAgent,
+        w: screen.width, h: screen.height, dpr: global.devicePixelRatio || 1,
+        versao: global.MT_VERSAO || '',
+        app: (global.MTApp && global.MTApp.versao) || '',
+      };
+    } catch (e) { return undefined; }
+  }
+
+  /*
+   * Comando remoto do painel. Chega pelo SSE E pelo pulso (se o stream
+   * estiver caído) — então o mesmo comando pode chegar duas vezes, e depois
+   * de recarregar o pulso ainda o traria de novo. O id do último executado
+   * fica guardado: sem isso, "recarregar" viraria um laço.
+   */
+  function executarComando(cmd) {
+    if (!cmd || !cmd.id) return;
+    let ultimo = '';
+    try { ultimo = localStorage.getItem('mt.ultimoComando') || ''; } catch (e) {}
+    if (ultimo === cmd.id) return;
+    try { localStorage.setItem('mt.ultimoComando', cmd.id); } catch (e) {}
+    if (cmd.acao === 'recarregar') global.location.reload();
+  }
+
+  /*
    * Avisa o servidor que a TV está viva e recebe de volta quando a config
    * mudou pela última vez. Devolve esse carimbo para o player conferir.
    */
   async function heartbeat(id) {
     try {
-      const r = await api('POST', '/api/devices/' + id + '/heartbeat', undefined, dtHeader());
+      const r = await api('POST', '/api/devices/' + id + '/heartbeat', infoDaTela(), dtHeader());
+      if (r && r.comando) executarComando(r.comando);
       // O selo da versão gratuita vem de carona no pulso: não é config, e
       // trocar a config por causa dele reconstruiria o palco a cada mudança.
       if (r && typeof r.selo === 'boolean') {
@@ -246,6 +279,11 @@
        * config nova — recarregar a tela aqui cortaria a música no meio, que é
        * justo o contrário do que quem mexeu no volume queria.
        */
+      es.addEventListener('comando', (ev) => {
+        let cmd = {};
+        try { cmd = JSON.parse(ev.data || '{}'); } catch (e) {}
+        executarComando(cmd);
+      });
       es.addEventListener('som', (ev) => {
         let dado = {};
         try { dado = JSON.parse(ev.data || '{}'); } catch (e) {}

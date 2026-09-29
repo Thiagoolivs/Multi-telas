@@ -398,6 +398,8 @@ garantirColuna('devices', 'last_seen INTEGER');
 garantirColuna('devices', 'alerta_offline_em INTEGER');
 // Horário de funcionamento e alerta ligado/desligado (JSON; nulo = padrão).
 garantirColuna('devices', 'expediente TEXT');
+// O que a TV contou de si no último pulso (modelo, resolução, versão).
+garantirColuna('devices', 'info TEXT');
 for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER',
   // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
   // expira). `creditos_ciclo` guarda quando a franquia foi reposta pela
@@ -451,7 +453,8 @@ const q = {
   setExpediente: db.prepare('UPDATE devices SET expediente = ? WHERE id = ?'),
   deleteDevice: db.prepare('DELETE FROM devices WHERE id = ?'),
   touchDevice: db.prepare('UPDATE devices SET last_seen = ? WHERE id = ?'),
-  listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, expediente, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
+  touchDeviceInfo: db.prepare('UPDATE devices SET last_seen = ?, info = ? WHERE id = ?'),
+  listByTenant: db.prepare('SELECT id, name, code, tenant_id, updated_at, last_seen, expediente, info, (config IS NOT NULL) AS has_config FROM devices WHERE tenant_id = ? ORDER BY created_at DESC'),
   /*
    * Telas caídas com o e-mail de quem precisa saber.
    *
@@ -607,7 +610,10 @@ async function setDeviceConfig(id, configJson, name) { q.setConfig.run(configJso
 async function renameDevice(id, name) { q.renameDevice.run(name, id); }
 async function setExpediente(id, json) { q.setExpediente.run(json, id); }
 async function removeDevice(id) { q.deleteDevice.run(id); }
-async function touchDevice(id) { q.touchDevice.run(Date.now(), id); }
+async function touchDevice(id, info) {
+  if (info) q.touchDeviceInfo.run(Date.now(), info, id);
+  else q.touchDevice.run(Date.now(), id);
+}
 async function listDevices(tenantId) { return q.listByTenant.all(tenantId); }
 async function telasCaidas(desde, ate) { return q.telasCaidas.all(ate, desde); }
 async function marcarAlertaOffline(ids, quando) {
