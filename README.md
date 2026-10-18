@@ -61,7 +61,7 @@ Box, num mini-PC ou num Chromecast — e continua exibindo sem internet.
 ## Como usar (rápido)
 
 1. Crie a conta em **`/app`**.
-2. Na TV, abra **`seu-dominio/tv`**. Ela mostra um código de 6 dígitos e um QR.
+2. Na TV, abra **`tv.multitelas.net.br`** (ou `seu-dominio/tv`). Ela mostra um código de 6 dígitos e um QR.
 3. Aponte a câmera do celular para o QR (ou digite o código em **Telas ›
    Parear tela**). A TV passa a ser da sua conta.
 4. Publique um conteúdo: modelo pronto, editor ou campanha por IA. A TV troca
@@ -320,10 +320,11 @@ aniversário) usam a **superfície adaptativa** — herdam fundo e cores do tema
 
 ## Dicas para a TV
 
-- O endereço é sempre **`seu-dominio/tv`**. `/tv?new=1` esquece o pareamento
+- O endereço é **`tv.multitelas.net.br`**, só o domínio (em outro domínio,
+  `seu-dominio/tv`). `?new=1` no fim esquece o pareamento
   e gera outro código (TV trocada de sala ou de cliente).
 - TV Box / mini-PC: configure para abrir o navegador em tela cheia no `/tv` ao
-  ligar (modo quiosque; no Chrome, `chrome --kiosk https://seu-dominio/tv`) e
+  ligar (modo quiosque; no Chrome, `chrome --kiosk https://tv.multitelas.net.br`) e
   desligue a suspensão de tela.
 - **Recarregar a TV** e ver **resolução e aparelho** estão no cartão da tela,
   em **Telas**. O **horário de funcionamento** de cada tela (sino) decide

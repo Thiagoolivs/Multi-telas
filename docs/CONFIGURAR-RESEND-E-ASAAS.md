@@ -34,11 +34,11 @@ No Railway:
 
 ```
 RESEND_API_KEY=re_xxxxxxxxxxxx
-MAIL_FROM=MultiTelas <nao-responda@SEUDOMINIO.com.br>
+MAIL_FROM=MultiTelas <nao-responda@multitelas.net.br>
 ```
 
 **O `MAIL_FROM` tem que ser do domínio verificado.** Se você verificou
-`multitelas.com.br`, o remetente não pode ser `@gmail.com` — o Resend recusa a
+`multitelas.net.br`, o remetente não pode ser `@gmail.com` — o Resend recusa a
 mensagem e a pessoa fica esperando um e-mail que nunca sai. É o erro mais
 comum e o mais silencioso.
 

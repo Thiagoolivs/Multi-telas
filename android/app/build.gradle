@@ -12,7 +12,7 @@ plugins {
     id 'com.android.application'
 }
 
-def mtUrl = (project.findProperty('mtUrl') ?: 'https://multitelas.up.railway.app').toString().replaceAll('/+$', '')
+def mtUrl = (project.findProperty('mtUrl') ?: 'https://tv.multitelas.net.br').toString().replaceAll('/+$', '')
 def versaoApp = (project.findProperty('versaoApp') ?: '1.0.0').toString()
 def codigoVersao = (project.findProperty('codigoVersao') ?: '1').toString().toInteger()
 

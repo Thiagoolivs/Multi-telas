@@ -18,7 +18,8 @@ O `.apk` fica em **Actions › App Android › (a execução) › Artifacts**.
 
 O endereço do servidor entra no build pela variável do repositório `MT_URL`
 (**Settings › Secrets and variables › Actions › Variables**), por exemplo
-`https://tv.multitelas.net.br`. Sem ela, o padrão do `app/build.gradle`.
+`https://tv.multitelas.net.br`. Sem ela, o padrão do `app/build.gradle`, que
+já é `https://tv.multitelas.net.br`.
 Trocou a variável? **Actions › App Android › Run workflow** gera o APK novo.
 
 ## Instalar num TV Box (sideload)

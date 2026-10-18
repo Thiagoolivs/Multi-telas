@@ -160,7 +160,7 @@ computador e no celular)
   abrir o app na mão.
 
 **Custo zero para testar hoje:** se a loja já tem Smart TV Samsung ou LG,
-abra `seu-dominio/tv` no navegador da própria TV. Serve para o piloto. O
+abra `tv.multitelas.net.br` no navegador da própria TV. Serve para o piloto. O
 navegador da TV pode fechar sozinho ou dormir; para ficar em definitivo, use o
 box.
 
@@ -188,7 +188,8 @@ box.
    Asaas (primeiro em sandbox), Gemini e `ADMIN_EMAILS`.
 2. Fazer o merge do PR #108 (o Railway publica sozinho).
 3. No GitHub: **Settings › Secrets and variables › Actions › Variables** →
-   criar `MT_URL` com o seu endereço (ex.: `https://app.seudominio.com.br`).
+   criar `MT_URL` com o domínio da TV (ex.: `https://tv.multitelas.net.br`,
+   que já é o padrão do build).
    Depois **Actions › App Android › Run workflow** (branch `main`) e baixar
    o `.apk` em *Artifacts*. Sem isso o app aponta para o endereço padrão; dá para trocar na
    TV (VOLTAR 5 vezes), mas é mais fácil já vir certo.

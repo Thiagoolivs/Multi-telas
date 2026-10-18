@@ -108,7 +108,7 @@ test('a landing e o painel continuam de pé', async () => {
 test('/tv abre a TV direto no player', async () => {
   /*
    * É o endereço que se digita numa TV, com o controle remoto, letra por letra.
-   * `multitelas.up.railway.app/tv` precisa ser tudo — sem `/player.html`, sem
+   * `app.multitelas.net.br/tv` precisa ser tudo — sem `/player.html`, sem
    * `?cloud=1`, que ninguém acerta num teclado de televisão.
    *
    * A rota existia e não era guardada por teste nenhum: aparecia só como sonda

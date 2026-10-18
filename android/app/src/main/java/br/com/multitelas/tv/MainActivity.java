@@ -235,7 +235,7 @@ public class MainActivity extends Activity {
         campo.setText(urlDoServidor());
         new AlertDialog.Builder(this)
                 .setTitle("Endereço do MultiTelas")
-                .setMessage("Normalmente não precisa mudar. Ex.: https://app.suaempresa.com.br")
+                .setMessage("Normalmente não precisa mudar. Ex.: https://tv.multitelas.net.br")
                 .setView(campo)
                 .setPositiveButton("Salvar", (d, w) -> {
                     String url = campo.getText().toString().trim();

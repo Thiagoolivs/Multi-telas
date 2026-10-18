@@ -6,7 +6,7 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **29/09/2026** · 846 testes passando · `server.js` com ~2.200
+Atualizado em: **18/10/2026** · 847 testes passando · `server.js` com ~2.200
 linhas (cobrança e telas saíram para `server/routes/`).
 
 ---
@@ -32,6 +32,10 @@ ordem, de tudo o que ela achou (PR #108). Resumo do que mudou:
 - **Primeira experiência:** o QR sobrevive ao cadastro, o pareamento termina em
   "Colocar conteúdo agora", tela vazia mostra "Comece por aqui", e texto longo
   encolhe para caber na zona da TV.
+
+**Domínios em produção** (mesmo serviço no Railway): `app.multitelas.net.br`
+serve a landing em `/` e o painel em `/app`; em `tv.multitelas.net.br` a raiz
+já abre o player (igual a `/tv`). O APK aponta para o domínio da TV.
 
 **O que falta para publicar não é código:** é configuração e jurídico —
 [`LANCAMENTO.md`](LANCAMENTO.md), com um prompt pronto para o Cowork em
@@ -242,7 +246,7 @@ telas, Ajustes simplificados, texto em curva e elementos gráficos, TV em pé
   decisão e o erro que ela evita.
 - Sem framework no servidor e sem dependência pesada; `node:sqlite` em dev,
   Postgres em produção, mesma API assíncrona nos dois.
-- Testes em `npm test` (**846 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
+- Testes em `npm test` (**847 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
   provaram:
   - **Renderizar e olhar.** Screenshot pegou bugs que teste nenhum pegou —
     componente desmontado, texto estourando, botão que não fazia nada, cabeçalho

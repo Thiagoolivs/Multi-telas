@@ -13,7 +13,7 @@ funcionando com login por e-mail e senha.
 | `GOOGLE_CLIENT_SECRET` | Login com Google | Só para o Google |
 | `RESEND_API_KEY` | Envio do e-mail de recuperação (via [Resend](https://resend.com)) | Só para o e-mail |
 | `BREVO_API_KEY` | Alternativa ao Resend (via [Brevo](https://brevo.com)) | Só para o e-mail |
-| `MAIL_FROM` | Remetente, ex.: `MultiTelas <no-reply@seudominio.com>` | Recomendada com e-mail |
+| `MAIL_FROM` | Remetente, ex.: `MultiTelas <no-reply@multitelas.net.br>` | Recomendada com e-mail |
 | `MAIL_PROVIDER` | Força o provider (`resend`, `brevo`, `dev`) | Não |
 
 Sem `APP_URL`, o servidor monta a URL a partir do request (respeitando os

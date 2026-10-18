@@ -27,7 +27,7 @@ variáveis de ambiente. Trabalhe no meu navegador, nos painéis de cada serviço
 
 ## Antes de começar, me pergunte
 
-- Qual é o **domínio** (ex.: `multitelas.com.br`)? Já está comprado? Onde (Registro.br, Cloudflare…)?
+- Qual é o **domínio** (ex.: `multitelas.net.br`)? Já está comprado? Onde (Registro.br, Cloudflare…)?
 - Qual **e-mail** será o do operador da plataforma (`ADMIN_EMAILS`)?
 - Qual **e-mail de suporte** público (`SUPPORT_EMAIL`)?
 - Qual **número de WhatsApp** comercial/suporte?
@@ -37,8 +37,9 @@ variáveis de ambiente. Trabalhe no meu navegador, nos painéis de cada serviço
 
 1. No Railway, abra o projeto do MultiTelas → serviço web → **Settings →
    Networking → Custom Domain**, adicione `app.<dominio>` (ou o domínio raiz,
-   se eu preferir) e anote o registro CNAME que ele pedir.
-2. No painel DNS do domínio, crie esse CNAME. Espere o Railway mostrar o
+   se eu preferir) e `tv.<dominio>` — no `tv.` a raiz já abre o player — e
+   anote os registros CNAME que ele pedir.
+2. No painel DNS do domínio, crie esses CNAMEs. Espere o Railway mostrar o
    certificado como emitido.
 3. Variáveis no Railway (serviço web → **Variables**):
    - `APP_URL=https://<endereço final, sem barra no fim>`
@@ -143,7 +144,7 @@ definir `ALERTA_WEBHOOK_URL=…`.
 
 1. No GitHub, repositório **Thiagoolivs/Multi-telas** → **Settings › Secrets
    and variables › Actions › aba Variables** → **New repository variable**:
-   `MT_URL=<APP_URL>` (ex.: `https://app.seudominio.com.br`, sem barra no fim).
+   `MT_URL=https://tv.<dominio>` (ex.: `https://tv.multitelas.net.br`, sem barra no fim).
 2. **Actions › App Android › Run workflow** (branch `main`). Espere ficar
    verde, abra a execução e baixe o artefato **multitelas-tv-…** (o `.apk`).
 3. Me entregue o `.apk` e diga a versão que aparece no nome.
