@@ -1929,14 +1929,33 @@ const HOME_HTML = `<!DOCTYPE html>
 
 const LANDING_DIR = path.join(ROOT, 'landing');
 
+// Host pedido pelo navegador. Atrás do proxy do Railway vem em
+// x-forwarded-host (às vezes como lista); minúsculas e sem porta.
+function hostDoPedido(req) {
+  const h = req.headers['x-forwarded-host'] || req.headers.host || '';
+  return String(h).split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
+}
+
+// Abre o player já em modo nuvem (sem digitar ?cloud=1).
+function abrirTv(req, res) {
+  // ?new=1 passa adiante: o player esquece a TV salva e gera outra.
+  const fresh = /[?&]new=1(&|$)/.test(req.url || '');
+  res.writeHead(302, { Location: '/player.html?cloud=1' + (fresh ? '&new=1' : ''), 'Cache-Control': 'no-store' });
+  return res.end();
+}
+
 async function handleStatic(req, res, urlPath) {
   /*
    * A raiz agora é a landing. Quem chega sem conhecer o produto precisa
    * entender o que ele faz; quem já é cliente vai direto para /app, e a TV
    * vai para /tv — os dois caminhos que a página antiga oferecia continuam
    * existindo, agora como links dentro dela.
+   *
+   * Exceção: no domínio da TV (tv.…) a raiz já é o player. Na TV se digita
+   * só o domínio, com o controle remoto; a landing ali não serve a ninguém.
    */
   if (urlPath === '/' || urlPath === '/index.html') {
+    if (hostDoPedido(req).startsWith('tv.')) return abrirTv(req, res);
     return fs.readFile(path.join(LANDING_DIR, 'index.html'), (err, data) => {
       if (err) {
         // Sem a landing montada, a casa não cai: volta a página simples.
@@ -1977,12 +1996,7 @@ async function handleStatic(req, res, urlPath) {
     return res.end(HOME_HTML);
   }
   // Atalho da TV: abre o player já em modo nuvem (sem digitar ?cloud=1).
-  if (urlPath === '/tv' || urlPath === '/tv/') {
-    // ?new=1 passa adiante: o player esquece a TV salva e gera outra.
-    const fresh = /[?&]new=1(&|$)/.test(req.url || '');
-    res.writeHead(302, { Location: '/player.html?cloud=1' + (fresh ? '&new=1' : ''), 'Cache-Control': 'no-store' });
-    return res.end();
-  }
+  if (urlPath === '/tv' || urlPath === '/tv/') return abrirTv(req, res);
   // Termos e Privacidade: HTML puro, sem depender do painel React — precisam
   // abrir para quem ainda não tem conta, inclusive a partir da tela de cadastro.
   if (urlPath === '/termos' || urlPath === '/termos/') {

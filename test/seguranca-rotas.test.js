@@ -133,6 +133,30 @@ test('/tv abre a TV direto no player', async () => {
   assert.equal(novo.headers.location, '/player.html?cloud=1&new=1');
 });
 
+test('no domínio da TV, a raiz já é o player', async () => {
+  /*
+   * `tv.multitelas.net.br` e `app.multitelas.net.br` são o mesmo serviço.
+   * Na TV se digita só o domínio; se a raiz servisse a landing ali, a TV
+   * abria uma página de vendas em vez do player.
+   */
+  const tv = await pedir('/', { headers: { Host: 'tv.multitelas.net.br' } });
+  assert.equal(tv.status, 302, 'a raiz da TV deixou de redirecionar');
+  assert.equal(tv.headers.location, '/player.html?cloud=1');
+  assert.match(String(tv.headers['cache-control'] || ''), /no-store/, 'a raiz da TV virou redirect cacheável');
+
+  const novo = await pedir('/?new=1', { headers: { Host: 'tv.multitelas.net.br' } });
+  assert.equal(novo.headers.location, '/player.html?cloud=1&new=1');
+
+  // Atrás do proxy do Railway, o domínio pedido chega em X-Forwarded-Host.
+  const proxy = await pedir('/', { headers: { Host: '127.0.0.1', 'X-Forwarded-Host': 'tv.multitelas.net.br' } });
+  assert.equal(proxy.status, 302, 'X-Forwarded-Host da TV foi ignorado');
+  assert.equal(proxy.headers.location, '/player.html?cloud=1');
+
+  // Qualquer outro domínio continua na landing.
+  const app = await pedir('/', { headers: { Host: 'app.multitelas.net.br' } });
+  assert.equal(app.status, 200, 'o domínio do app perdeu a landing');
+});
+
 test('o destino de /tv é uma página de verdade', async () => {
   // Redirecionar para lugar nenhum é um jeito silencioso de quebrar: o 302
   // continua respondendo certo e a TV mostra uma tela em branco.

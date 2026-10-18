@@ -18,7 +18,7 @@ O `.apk` fica em **Actions › App Android › (a execução) › Artifacts**.
 
 O endereço do servidor entra no build pela variável do repositório `MT_URL`
 (**Settings › Secrets and variables › Actions › Variables**), por exemplo
-`https://app.suaempresa.com.br`. Sem ela, o padrão do `app/build.gradle`.
+`https://tv.multitelas.net.br`. Sem ela, o padrão do `app/build.gradle`.
 Trocou a variável? **Actions › App Android › Run workflow** gera o APK novo.
 
 ## Instalar num TV Box (sideload)
@@ -71,5 +71,5 @@ também**: perder a chave é nunca mais conseguir atualizar o app na loja.
 
 - Não compila no ambiente de desenvolvimento deste repositório (sem Android
   SDK); o CI compila. O Java foi conferido contra a API do Android 9.
-- Só HTTPS (`usesCleartextTraffic=false`). Servidor de teste em `http://`
-  numa rede local não abre.
+- `usesCleartextTraffic=true`: produção é HTTPS, mas o endereço trocado na
+  TV (5× VOLTAR) aceita `http://` para testar com um servidor na rede local.

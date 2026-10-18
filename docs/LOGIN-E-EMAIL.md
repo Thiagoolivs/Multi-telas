@@ -8,7 +8,7 @@ funcionando com login por e-mail e senha.
 
 | Variável | Para quê | Obrigatória? |
 | --- | --- | --- |
-| `APP_URL` | URL pública (ex.: `https://multitelas.up.railway.app`). Usada nos links do e-mail e no redirect do Google. | Recomendada |
+| `APP_URL` | URL pública do painel (ex.: `https://app.multitelas.net.br`). Usada nos links do e-mail e no redirect do Google. | Recomendada |
 | `GOOGLE_CLIENT_ID` | Login com Google | Só para o Google |
 | `GOOGLE_CLIENT_SECRET` | Login com Google | Só para o Google |
 | `RESEND_API_KEY` | Envio do e-mail de recuperação (via [Resend](https://resend.com)) | Só para o e-mail |
@@ -24,7 +24,7 @@ headers de proxy do Railway). Funciona, mas fixar é mais seguro.
 1. No [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
    crie uma credencial **OAuth client ID** do tipo *Web application*.
 2. Em **Authorized redirect URIs**, adicione exatamente:
-   `https://SEU-DOMINIO/api/auth/google/callback`
+   `https://app.multitelas.net.br/api/auth/google/callback`
 3. Copie o *Client ID* e o *Client secret* para `GOOGLE_CLIENT_ID` e
    `GOOGLE_CLIENT_SECRET`.
 
