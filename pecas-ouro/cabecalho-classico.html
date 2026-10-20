@@ -1,0 +1,43 @@
+<!--
+  Cabeçalho clássico — papel cabeçalho (PLANO §4.7: "quem e agora").
+  Marca à esquerda (logo, ou o nome quando não há logo), a chamada da
+  campanha no meio, clima, hora e data à direita. Medidas em cqh: a faixa
+  tem ~130px de altura numa TV 1080p, e é a ALTURA que decide o tamanho da
+  letra — a largura varia de 1920 (deitada) a 1080 (em pé).
+-->
+<style>
+.mt-peca { display: flex; align-items: center; gap: 6cqh; padding: 0 3cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: linear-gradient(180deg, var(--mt-fundo-2), var(--mt-fundo)); border-bottom: 1.2cqh solid var(--mt-linha); }
+.marca { display: flex; align-items: center; gap: 4cqh; flex: none; }
+.logo { height: 56cqh; width: auto; max-width: 28cqw; object-fit: contain; }
+.logo[data-sem-foto] { display: none; }
+.logo:not([data-sem-foto]) + .nome { display: none; }
+.nome { font: 600 21cqh/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; white-space: nowrap; }
+.nome b { font-weight: 800; }
+.chamada { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4cqh; min-width: 0;
+  font: 600 19cqh/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
+.chamada i { display: block; width: 40cqh; height: 1.2cqh; background: var(--mt-destaque); }
+.agora { display: flex; align-items: center; gap: 5cqh; flex: none; margin-left: auto; }
+.clima { font: 500 26cqh/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.sep { display: block; width: 1.2cqh; height: 44cqh; background: var(--mt-linha); }
+.tempo { display: flex; flex-direction: column; align-items: flex-end; gap: 4cqh; }
+.hora { font: 400 46cqh/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
+.data { font: 600 15cqh/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+/* Faixa mais curta (TV em pé): a chamada sai, marca e hora ficam. */
+@container (aspect-ratio < 9) {
+  .chamada { display: none; }
+  .nome { font-size: 19cqh; letter-spacing: .32em; }
+}
+</style>
+<section class="mt-peca cabecalho">
+  <div class="marca" data-entrada="aparecer">
+    <img class="logo" data-campo-img="logo" alt="">
+    <span class="nome" data-campo="marca">Ótica <b>Central</b></span>
+  </div>
+  <div class="chamada" data-entrada="aparecer" data-ordem="1"><i aria-hidden="true"></i><span data-campo="chamada">Semana do sol · até sábado</span><i aria-hidden="true"></i></div>
+  <div class="agora" data-entrada="aparecer" data-ordem="2">
+    <span class="clima" data-vivo="clima">27°</span>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="tempo"><span class="hora" data-vivo="relogio">14:32</span><span class="data" data-vivo="data">Terça · 20 out</span></span>
+  </div>
+</section>

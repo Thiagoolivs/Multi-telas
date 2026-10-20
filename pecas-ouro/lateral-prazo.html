@@ -1,0 +1,42 @@
+<!--
+  Prazo em destaque — família oferta. Nasceu para a lateral, serve no destaque.
+  O "quando" da campanha (PLANO §4.7: a lateral diz como, onde e quando —
+  nunca repete o título do destaque). Medidas em cqmin, o menor lado: a
+  mesma peça fica certa na coluna estreita e na tela deitada sem duas
+  versões.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+/* Anel fino saindo da borda: profundidade sem foto e sem custo. */
+.mt-peca::before { content: ''; position: absolute; width: 120cqmin; height: 120cqmin; right: -58cqmin; top: -34cqmin;
+  border-radius: 50%; border: .5cqmin solid var(--mt-linha); }
+.mt-peca::after { content: ''; position: absolute; width: 84cqmin; height: 84cqmin; right: -40cqmin; top: -16cqmin;
+  border-radius: 50%; border: .5cqmin solid var(--mt-linha); }
+.bloco { position: absolute; left: 9cqmin; right: 9cqmin; top: 50%; transform: translateY(-50%); z-index: 1; }
+.kicker { font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .28em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.ate { margin-top: 6cqmin; }
+.pre { display: block; font: 400 8cqmin/1 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .06em; }
+.dia { display: block; font: 400 25cqmin/.86 var(--mt-fonte-titulo); text-transform: uppercase; color: var(--mt-destaque); letter-spacing: -.005em; }
+.data { display: flex; align-items: center; gap: 3cqmin; margin-top: 5cqmin; padding-top: 5cqmin; border-top: .5cqmin solid var(--mt-linha);
+  font: 600 5.2cqmin/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; }
+.apoio { margin-top: 5cqmin; font: 400 4.2cqmin/1.45 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.cta { position: absolute; left: 9cqmin; bottom: 8cqmin; z-index: 1; font: 600 3.8cqmin/1 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase;
+  padding-bottom: 1.6cqmin; border-bottom: .5cqmin solid var(--mt-destaque); }
+/* Deitada: o bloco vira duas colunas — o prazo à esquerda, o resto à direita. */
+@container (aspect-ratio >= 1.25) {
+  .bloco { right: auto; width: 46cqw; }
+  .apoio { max-width: 40cqw; }
+}
+@container (max-width: 700px) {
+  .apoio { display: none; }
+}
+</style>
+<section class="mt-peca lateral-prazo">
+  <div class="bloco">
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="1">Oferta válida</p>
+    <div class="ate" data-entrada="subir" data-ordem="2"><span class="pre" data-campo="pre">até</span><span class="dia" data-campo="dia">Sábado</span></div>
+    <div class="data" data-entrada="aparecer" data-ordem="3"><span data-campo="data">25 de outubro</span></div>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="4">30% de desconto em todos os óculos de sol da vitrine.</p>
+  </div>
+  <div class="cta" data-entrada="aparecer" data-ordem="5"><span data-campo="cta">Reserve o seu</span> <span aria-hidden="true">→</span></div>
+</section>

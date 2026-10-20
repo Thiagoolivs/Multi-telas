@@ -30,14 +30,26 @@
        consultas de @container precisam ver os pixels de verdade (a lateral
        estreita esconde o apoio abaixo de 700px). */
     .real { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+    figcaption.ruim { color: #ff9b9b; }
+    .so-tela { display: none; }
+    .modo-tela .so-tela { display: flex; }
+    .modo-tela .so-peca { display: none; }
+    /* A tela montada como o player monta: fresta e zonas arredondadas. */
+    .tv { display: grid; background: radial-gradient(120% 120% at 12% -10%, #16213f 0%, transparent 55%), #0a1020; }
+    .zona { position: relative; overflow: hidden; border-radius: 20px; border: 1px solid rgba(255,255,255,.09); background: rgba(22,32,60,.55); }
+    .zona.vazia { display: grid; place-items: center; color: var(--suave); font-size: 28px; }
+    .host { position: absolute; inset: 0; }
   </style>
 </head>
 <body>
   <header>
     <h1>Bancada de peças-ouro</h1>
-    <label>Peça <select id="peca"></select></label>
-    <label>Marca <select id="marca"></select></label>
-    <label>Modo <select id="modo"></select></label>
+    <label>Ver <select id="ver"></select></label>
+    <label class="so-peca">Peça <select id="peca"></select></label>
+    <label class="so-peca">Marca <select id="marca"></select></label>
+    <label class="so-peca">Modo <select id="modo"></select></label>
+    <label class="so-tela">Tela <select id="tela"></select></label>
+    <label class="so-tela">Layout <select id="layout"></select></label>
     <button id="rodar" type="button">Rodar a entrada de novo</button>
   </header>
   <main>
@@ -48,6 +60,7 @@
   <script src="/js/cor.js"></script>
   <script src="/js/fontes.js"></script>
   <script src="/js/animacao.js"></script>
+  <script src="/js/templates.js"></script>
   <script src="/js/tokens.js"></script>
   <script src="/js/peca-html.js"></script>
   <script src="/js/peca-render.js"></script>

@@ -46,7 +46,7 @@ function semPerigo(r) {
   assert.doesNotMatch(r.html, /\s(src|srcset|href|xlink:href|formaction)\s*=/i, 'endereço por atributo na saída');
   // Todo atributo que sobrou está na lista do que pode.
   const permitidos = new Set(['class', 'data-campo', 'data-campo-img', 'data-vivo', 'data-entrada',
-    'data-continua', 'data-ordem', 'data-camada', 'style', 'aria-hidden', 'alt']);
+    'data-continua', 'data-ordem', 'data-camada', 'style', 'aria-hidden', 'alt', 'data-campo-qr', 'data-repete']);
   for (const m of r.html.matchAll(/<[a-z0-9]+((?:\s+[^\s=>]+="[^"]*")*)\s*>/g)) {
     for (const a of m[1].matchAll(/\s+([^\s=>]+)="/g)) assert.ok(permitidos.has(a[1]), 'atributo fora da lista: ' + a[1]);
   }
@@ -376,4 +376,25 @@ test('o mesmo arquivo roda no navegador (player) e dá a mesma saída', () => {
   assert.equal(noNavegador.html, noServidor.html);
   assert.equal(noNavegador.css, noServidor.css);
   assert.equal(noNavegador.ok, true);
+});
+
+/* ---------------- Campos do lote 1: QR e marca que não se repete ---------------- */
+
+test('QR é um campo de TEXTO que só vale em <img>: o cliente digita o link, a imagem é nossa', () => {
+  const r = so(embrulhar('<p data-campo="t">x</p><img data-campo-qr="link" alt="QR">'));
+  assert.equal(r.ok, true, r.problemas.join('\n'));
+  assert.deepEqual(r.campos.find((c) => c.nome === 'link'), { nome: 'link', tipo: 'qr', exemplo: '' });
+  // Fora de <img> não existe — e <img> com QR não precisa de foto.
+  assert.equal(so(embrulhar('<p data-campo="t" data-campo-qr="link">x</p>')).ok, false);
+  const v = P.validarItem({ type: 'peca-html', html: embrulhar('<p data-campo="t">x</p><img data-campo-qr="link">'),
+    css: '', campos: { link: 'https://wa.me/5511999990000\u0000' } });
+  assert.equal(v.ok, true, v.problemas.join('\n'));
+  assert.equal(v.item.campos.link, 'https://wa.me/5511999990000');
+});
+
+test('data-repete só aceita "marca"', () => {
+  assert.equal(so(embrulhar('<p data-campo="t" data-repete="marca">x</p>')).ok, true);
+  const r = so(embrulhar('<p data-campo="t" data-repete="titulo">x</p>'));
+  assert.equal(r.ok, false);
+  assert.ok(!r.html.includes('data-repete'));
 });

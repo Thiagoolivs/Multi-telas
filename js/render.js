@@ -1704,6 +1704,7 @@
     const ctl = global.MTPecaRender.montar(el, item, {
       marca: t.brand ? { cores: [t.brand, t.brand2].filter(Boolean) } : null,
       leve: document.documentElement.classList.contains('mt-perf'),
+      marcaNaTela: !!global.MT_MARCA_NA_TELA,
       hostsMidia: global.MT_HOSTS_MIDIA || [],
       clima: climaDaPeca,
     });

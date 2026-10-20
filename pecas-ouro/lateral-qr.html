@@ -1,0 +1,51 @@
+<!--
+  Reserve pelo QR — família social. Nasceu para a lateral, serve no destaque.
+  O "como" da campanha: aponte a câmera e fale com a loja. O QR é desenhado
+  pelo nosso servidor a partir do link que o cliente digita
+  (`data-campo-qr`) e tem fundo branco próprio — lê em qualquer modo.
+  Medidas em cqmin, como o prazo: uma peça, coluna estreita e tela deitada.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); text-align: center;
+  background: radial-gradient(100% 70% at 50% 100%, var(--mt-fundo-2), var(--mt-fundo) 70%); }
+.bloco { position: absolute; left: 9cqmin; right: 9cqmin; top: 50%; transform: translateY(-52%); display: flex; flex-direction: column; align-items: center; }
+.kicker { display: flex; align-items: center; gap: 2.4cqmin; font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .28em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 6cqmin; height: .5cqmin; background: var(--mt-destaque); }
+h1 { font: 400 10cqmin/1 var(--mt-fonte-titulo); text-transform: uppercase; margin: 4.4cqmin 0 6cqmin; text-wrap: balance; }
+.qr { margin: 0; width: 46cqmin; height: 46cqmin; padding: 1.6cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie);
+  box-shadow: 0 0 0 .6cqmin var(--mt-destaque); }
+.qr img { width: 100%; height: 100%; border-radius: calc(var(--mt-raio) * .6); }
+.apoio { margin-top: 6cqmin; font: 400 4.2cqmin/1.45 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 70cqmin; }
+.contato { margin-top: 4cqmin; font: 600 5cqmin/1 var(--mt-fonte-texto); letter-spacing: .08em; }
+/* Deitada: texto à esquerda, QR à direita. */
+@container (aspect-ratio >= 1.25) {
+  .mt-peca { text-align: left; }
+  .bloco { left: 8cqw; right: 8cqw; flex-direction: row; align-items: center; justify-content: space-between; gap: 6cqw; }
+  .texto { display: flex; flex-direction: column; align-items: flex-start; }
+  h1 { margin-bottom: 4cqmin; }
+  .qr { order: 2; flex: none; width: 56cqmin; height: 56cqmin; }
+  .apoio { margin-top: 0; }
+}
+/* Quase quadrada: a coluna não cabe com o QR grande — ele e o título encolhem. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .kicker { font-size: 3cqmin; }
+  h1 { font-size: 8cqmin; margin: 3cqmin 0 4.4cqmin; }
+  .qr { width: 36cqmin; height: 36cqmin; }
+  .apoio { margin-top: 4.4cqmin; font-size: 3.4cqmin; }
+  .contato { margin-top: 3cqmin; font-size: 4cqmin; }
+}
+@container (max-width: 700px) {
+  .apoio { display: none; }
+}
+</style>
+<section class="mt-peca lateral-qr">
+  <div class="bloco">
+    <div class="texto">
+      <p class="kicker" data-entrada="aparecer" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Sem fila</span><i aria-hidden="true"></i></p>
+      <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Reserve pelo WhatsApp</h1>
+      <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="4">Escolha o modelo pelo celular e retire na loja.</p>
+      <p class="contato" data-campo="contato" data-entrada="aparecer" data-ordem="5">(11) 99999-0000</p>
+    </div>
+    <figure class="qr" data-entrada="crescer" data-ordem="3"><img data-campo-qr="link" alt="QR para reservar pelo WhatsApp"></figure>
+  </div>
+</section>

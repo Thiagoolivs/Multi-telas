@@ -193,3 +193,104 @@ test('a bancada roda sob a CSP: nenhum script embutido', () => {
   assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/i, 'script embutido não roda com script-src self');
   assert.match(html, /<meta name="robots" content="noindex"/);
 });
+
+/* ---------------- Lote 1: o que a tela montada mostrou ---------------- */
+
+test('os padrões da sombra não pesam nada: o espaçamento da peça sempre vence', () => {
+  /*
+   * A primeira versão usava `.mt-peca :is(h1,p…){margin:0}`, que pesa mais
+   * que o `h1 {…}` da peça — e zerava calado todo espaçamento desenhado.
+   * O título encostava no apoio e parecia defeito de entrelinha.
+   */
+  assert.match(R.BASE, /:where\(\.mt-peca\) :where\(h1,/);
+  assert.doesNotMatch(R.BASE, /\.mt-peca :is\(/);
+  for (const regra of R.BASE.split('}')) {
+    if (/margin:0[;}]?$|display:block$|box-sizing/.test(regra) && !/!important/.test(regra)) {
+      assert.match(regra, /^:where\(/, 'padrão com peso: ' + regra);
+    }
+  }
+});
+
+test('o rodapé rola só com translate, em volta sem emenda', () => {
+  assert.equal(R.ROLAR, 'from{translate:0 0}to{translate:-50% 0}');
+  assert.ok(R.keyframes().includes('@keyframes mt-pr-rolar{' + R.ROLAR + '}'));
+  const fonte = semComentarios(ler('js', 'peca-render.js'));
+  // A linha vai duas vezes: andando metade, a segunda cópia está onde a primeira começou.
+  assert.match(fonte, /el\.textContent = linha \+ linha/);
+  assert.match(R.BASE, /\[data-vivo="mensagens"\]\{display:inline-block;white-space:nowrap\}/);
+});
+
+test('o QR é desenhado pelo nosso servidor, a partir do texto do campo', () => {
+  const fonte = semComentarios(ler('js', 'peca-render.js'));
+  assert.match(fonte, /'\/api\/qr\.svg\?d=' \+ encodeURIComponent\(valor\)/);
+});
+
+test('numa tela com cabeçalho, a peça não repete a marca — no player e na bancada', () => {
+  assert.match(R.BASE, /\.mt-peca\[data-marca-na-tela\] \[data-repete="marca"\]\{display:none!important\}/);
+  assert.match(semComentarios(ler('js', 'render.js')), /marcaNaTela: !!global\.MT_MARCA_NA_TELA/);
+  assert.match(semComentarios(ler('js', 'player.js')), /MT_MARCA_NA_TELA = !!\(layout && layout\.zones\.some\(\(z\) => z\.type === 'header'\)\)/);
+  // Toda peça de destaque que mostra o nome da marca marca esse nome como repetível.
+  for (const def of MANIFESTO.pecas.filter((p) => p.papeis.includes('destaque'))) {
+    const html = ler('pecas-ouro', def.id + '.html');
+    if (/class="marca-nome"/.test(html)) assert.match(html, /class="marca-nome"[^>]*data-repete="marca"/, def.id);
+  }
+});
+
+/* ---------------- As telas completas ---------------- */
+
+const { getLayout } = require('../js/templates.js');
+const PAPEL_DO_GRUPO = { cabecalho: 'cabecalho', principal: 'destaque', lateral: 'lateral', rodape: 'rodape' };
+const entrada = (e) => (typeof e === 'string' ? { id: e, campos: {} } : { id: e.id, campos: e.campos || {} });
+
+test('toda tela completa do manifesto é montável: marca, layout, modos e peças no papel certo', () => {
+  assert.ok((MANIFESTO.telas || []).length >= 1);
+  for (const tela of MANIFESTO.telas) {
+    assert.ok(MANIFESTO.marcas.some((m) => m.id === tela.marca), tela.id + ': marca');
+    assert.equal(getLayout(tela.layout).id, tela.layout, tela.id + ': layout');
+    for (const [grupo, z] of Object.entries(tela.zonas)) {
+      assert.ok(PAPEL_DO_GRUPO[grupo], tela.id + ': zona ' + grupo);
+      assert.ok(T.MODOS.includes(z.modo), tela.id + ': modo ' + z.modo);
+      for (const e of z.pecas.map(entrada)) {
+        const def = MANIFESTO.pecas.find((p) => p.id === e.id);
+        assert.ok(def, tela.id + ': peça ' + e.id);
+        assert.ok(def.papeis.includes(PAPEL_DO_GRUPO[grupo]), `${tela.id}: ${e.id} não serve em ${grupo}`);
+        const nomes = P.higienizar(P.doArquivo(ler('pecas-ouro', e.id + '.html'))).campos.map((c) => c.nome);
+        for (const k of Object.keys(e.campos)) assert.ok(nomes.includes(k), `${tela.id}: ${e.id} não tem o campo ${k}`);
+      }
+    }
+  }
+});
+
+test('numa tela completa, nenhum texto aparece em duas zonas', () => {
+  /*
+   * PLANO §4.7: cada zona tem um papel. Na primeira montagem da ótica,
+   * "até sábado" estava no cabeçalho, no destaque e na lateral ao mesmo
+   * tempo, e o nome da marca, três vezes. O nome da marca nas peças é
+   * escondido pelo renderizador (data-repete); o resto, a tela precisa
+   * escrever diferente.
+   */
+  const norm = (s) => String(s).toLowerCase().replace(/\s+/g, ' ').trim();
+  for (const tela of MANIFESTO.telas) {
+    const porZona = {};
+    for (const [grupo, z] of Object.entries(tela.zonas)) {
+      porZona[grupo] = new Set();
+      for (const e of z.pecas.map(entrada)) {
+        const def = MANIFESTO.pecas.find((p) => p.id === e.id);
+        const campos = P.higienizar(P.doArquivo(ler('pecas-ouro', e.id + '.html'))).campos;
+        for (const c of campos) {
+          if (c.tipo !== 'texto' || c.nome === 'marca') continue;
+          const v = e.campos[c.nome] != null ? e.campos[c.nome] : (def.campos || {})[c.nome] != null ? def.campos[c.nome] : c.exemplo;
+          if (norm(v)) porZona[grupo].add(norm(v));
+        }
+      }
+    }
+    porZona.mensagens = new Set((MANIFESTO.mensagens || []).map(norm));
+    const grupos = Object.keys(porZona);
+    for (let a = 0; a < grupos.length; a++) {
+      for (let b = a + 1; b < grupos.length; b++) {
+        const repetidos = [...porZona[grupos[a]]].filter((t) => porZona[grupos[b]].has(t));
+        assert.deepEqual(repetidos, [], `${tela.id}: "${repetidos[0]}" em ${grupos[a]} e ${grupos[b]}`);
+      }
+    }
+  }
+});

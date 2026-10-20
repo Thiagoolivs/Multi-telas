@@ -61,11 +61,16 @@
     balancar: '0%,100%{rotate:-2deg}50%{rotate:2deg}',
     brilhar: '0%,100%{opacity:1}50%{opacity:.72}',
   };
-  const RITMO = { duracao: 0.7, passo: 0.15, inicio: 0.15, continua: 3.6, curva: 'cubic-bezier(.2,.7,.2,1)' };
+  // `rolagem`: segundos por caractere das mensagens do rodapé.
+  const RITMO = { duracao: 0.7, passo: 0.15, inicio: 0.15, continua: 3.6, curva: 'cubic-bezier(.2,.7,.2,1)', rolagem: 0.22 };
+  // Espaço largo dos dois lados do ponto: espaço comum seria colapsado.
+  const SEPARADOR = ' · ';
+  const ROLAR = 'from{translate:0 0}to{translate:-50% 0}';
 
   function keyframes() {
     return Object.keys(ENTRADAS).map((k) => '@keyframes mt-pe-' + k + '{' + ENTRADAS[k] + '}').join('')
-      + Object.keys(CONTINUAS).map((k) => '@keyframes mt-pc-' + k + '{' + CONTINUAS[k] + '}').join('');
+      + Object.keys(CONTINUAS).map((k) => '@keyframes mt-pc-' + k + '{' + CONTINUAS[k] + '}').join('')
+      + '@keyframes mt-pr-rolar{' + ROLAR + '}';
   }
 
   /*
@@ -74,13 +79,22 @@
    * pode estilizar a própria raiz (fundo, cor), mas não tirar ela do lugar —
    * uma raiz com `position: relative` e sem altura sumiria da zona.
    */
+  /*
+   * Os PADRÕES (margem zero, imagem em bloco) vão em `:where()`, que não pesa
+   * nada: qualquer regra da peça vence. A primeira versão usava
+   * `.mt-peca :is(h1,p…)` — que pesa mais que o `h1 {…}` da peça — e zerava
+   * calado todo espaçamento que a peça desenhou: o título encostava no
+   * texto de baixo e parecia defeito de entrelinha. Visto na tela montada.
+   */
   const BASE = ':host{display:block;position:relative;width:100%;height:100%;overflow:hidden}'
     + '.mt-palco{position:absolute;inset:0;overflow:hidden;container-type:size}'
     + '.mt-palco>.mt-peca{position:absolute!important;inset:0!important;margin:0!important;overflow:hidden!important;container-type:size!important}'
-    + '.mt-peca,.mt-peca *,.mt-peca *::before,.mt-peca *::after{box-sizing:border-box}'
-    + '.mt-peca :is(h1,h2,h3,h4,p,ul,ol,figure,figcaption){margin:0}'
-    + '.mt-peca img{display:block}'
-    + '.mt-peca img[data-sem-foto]{visibility:hidden}';
+    + ':where(.mt-peca,.mt-peca *,.mt-peca *::before,.mt-peca *::after){box-sizing:border-box}'
+    + ':where(.mt-peca) :where(h1,h2,h3,h4,p,ul,ol,figure,figcaption){margin:0}'
+    + ':where(.mt-peca) :where(img){display:block}'
+    + '.mt-peca img[data-sem-foto]{visibility:hidden}'
+    + '.mt-peca [data-vivo="mensagens"]{display:inline-block;white-space:nowrap}'
+    + '.mt-peca[data-marca-na-tela] [data-repete="marca"]{display:none!important}';
 
   // As variáveis da marca, num bloco do palco.
   function cssDosTokens(tokens) {
@@ -131,6 +145,8 @@
    *   marca        { cores, fonteTitulo, fonteApoio } quando o item não traz
    *   rascunho     true desenha o wireframe (tokens do rascunho, foto silhueta)
    *   leve         true sem animação (box que se mostrou lento, js/perf.js)
+   *   marcaNaTela  true quando a tela já mostra a marca (há cabeçalho): some
+   *                o que a peça marcou com data-repete="marca"
    *   hostsMidia   hosts aceitos para foto além de /media/ (ver peca-html.js)
    *   clima        () => Promise<string>, ex.: "27°"
    *   mensagens    frases do rodapé
@@ -163,18 +179,22 @@
     const sombra = host.shadowRoot || host.attachShadow({ mode: 'open' });
     sombra.innerHTML = '<style>' + cssCompleto(it.css, tokens) + '</style><div class="mt-palco">' + it.html + '</div>';
     const peca = sombra.querySelector('.mt-peca');
+    // A tela já mostra a marca (no cabeçalho): a peça não repete.
+    if (o.marcaNaTela && peca) peca.setAttribute('data-marca-na-tela', '');
 
     // Campos: TEXTO, sempre. O que o cliente digita nunca vira tag.
     sombra.querySelectorAll('[data-campo]').forEach((el) => {
       const valor = it.campos[el.getAttribute('data-campo')];
       if (valor != null) el.textContent = valor;
     });
-    sombra.querySelectorAll('img[data-campo-img]').forEach((el) => {
-      const valor = it.campos[el.getAttribute('data-campo-img')];
+    sombra.querySelectorAll('img[data-campo-img],img[data-campo-qr]').forEach((el) => {
+      const qr = el.hasAttribute('data-campo-qr');
+      const valor = it.campos[el.getAttribute(qr ? 'data-campo-qr' : 'data-campo-img')];
       // Foto que não carrega some, em vez do ícone de imagem quebrada na parede.
       el.onerror = () => el.setAttribute('data-sem-foto', '');
-      if (o.rascunho) el.src = silhueta(tokens);
-      else if (valor) el.src = valor;
+      if (o.rascunho && !qr) el.src = silhueta(tokens);
+      // O QR é desenhado pelo nosso servidor a partir do texto: nada vem de fora.
+      else if (valor) el.src = qr ? '/api/qr.svg?d=' + encodeURIComponent(valor) : valor;
       else el.setAttribute('data-sem-foto', '');
     });
 
@@ -188,8 +208,19 @@
     tick();
     let relogio = null;
     if (vivos.some((el) => /^(relogio|data)$/.test(el.getAttribute('data-vivo')))) relogio = setInterval(tick, 20000);
-    vivos.filter((el) => el.getAttribute('data-vivo') === 'mensagens')
-      .forEach((el) => { el.textContent = (o.mensagens || []).join('  ·  '); });
+    /*
+     * As mensagens do rodapé ROLAM. O texto vai duas vezes seguidas e anda
+     * metade do próprio comprimento: quando a primeira cópia sai, a segunda
+     * está exatamente onde ela começou, e a volta não tem emenda. A
+     * velocidade é por caractere, para frase longa não passar correndo.
+     */
+    vivos.filter((el) => el.getAttribute('data-vivo') === 'mensagens').forEach((el) => {
+      const msgs = (o.mensagens || []).map((m) => String(m || '').trim()).filter(Boolean);
+      if (!msgs.length) { el.textContent = ''; return; }
+      const linha = msgs.join(SEPARADOR) + SEPARADOR;
+      el.textContent = linha + linha;
+      if (!o.leve) el.style.animation = 'mt-pr-rolar ' + Math.max(12, linha.length * RITMO.rolagem).toFixed(1) + 's linear infinite';
+    });
     const clima = vivos.filter((el) => el.getAttribute('data-vivo') === 'clima');
     if (clima.length && o.clima) {
       Promise.resolve().then(o.clima).then((t) => { clima.forEach((el) => { el.textContent = t || ''; }); }, () => {});
@@ -223,5 +254,5 @@
     };
   }
 
-  return { ENTRADAS, CONTINUAS, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, montar };
+  return { ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, montar };
 });
