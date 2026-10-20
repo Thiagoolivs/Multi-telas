@@ -454,6 +454,19 @@ ela deve ser; o cliente **autoriza antes** de qualquer foto ser gerada.
 - **Regras que não mudam:** nenhum texto desenhado na foto (`direcao-arte`
   já proíbe); pessoa gerada nunca é retrato de alguém real e identificável;
   foto do acervo do cliente vence foto gerada quando serve.
+- **Banco de fotos gratuito (Pexels), decidido em 20/10.** A ordem de
+  procura vira: acervo do cliente → Banco de Imagens MultiTelas → Pexels →
+  gerar. Foto de banco custa zero; gerada, 1 crédito.
+  - Pexels e não Unsplash: a API do Unsplash exige carregar a imagem direto
+    do servidor deles (a TV precisa funcionar offline e só aceita mídia
+    nossa) e diz ser para uso "non-automated" — a IA escolhendo sozinha é
+    arriscado. A do Pexels não tem essas duas travas (confirmar no contrato
+    antes de construir).
+  - Crédito obrigatório (fotógrafo + Pexels, com link): fica no painel, junto
+    da foto, não na TV. A foto escolhida é copiada para as Mídias, como
+    qualquer outra, e passa a ser servida por nós.
+  - A chave da API fica em variável de ambiente; limite de 200 buscas por
+    hora — a busca passa pelo servidor, com cache.
 - **Custo:** foto gerada continua 1 crédito. Foto com referência de produto
   pode custar mais — sai medida do experimento antes de ter preço.
 
@@ -565,7 +578,9 @@ Um PR por etapa, cada um aprovado pelo dono antes de começar.
 8. **Experimento** (§4.4), com a página de nota às cegas.
 9. **Foto do produto real** (§4.11): gerar a partir da foto de referência
    que o cliente sobe, com aprovação antes.
-10. **Chat de refinamento** unificado (§4.12).
+10. **Banco de fotos gratuito** (§4.11): busca no Pexels pelo servidor, com
+    crédito no painel e cópia para as Mídias.
+11. **Chat de refinamento** unificado (§4.12).
 
 Antes da primeira peça-html numa tela de cliente: a Fase 0 (§10).
 
