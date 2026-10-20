@@ -18,7 +18,12 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const P = require('../js/peca-html.js');
-const BOA = require('./fixtures/peca-oferta-foto.js');
+/*
+ * A peça boa é a primeira da biblioteca-ouro, lida do arquivo de verdade:
+ * se alguém editar a peça e ela deixar de passar pela porta, é aqui que
+ * aparece — antes da bancada, antes da TV.
+ */
+const BOA = P.doArquivo(fs.readFileSync(path.join(__dirname, '..', 'pecas-ouro', 'oferta-foto.html'), 'utf8'));
 
 const embrulhar = (miolo) => '<section class="mt-peca">' + miolo + '</section>';
 const so = (html, css) => P.higienizar({ html: html == null ? embrulhar('<p data-campo="t">oi</p>') : html, css: css || '' });

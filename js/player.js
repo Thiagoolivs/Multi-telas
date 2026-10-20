@@ -576,6 +576,7 @@
     // Mesmo palco: os ajustes de fora da zona são baratos e vão sempre.
     const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme)) || null;
     global.MT_THEME = resolved;
+    contextoDaPeca(cfg);
     if (global.MTAdaptive) {
       MTAdaptive.enabled = cfg.settings.coresAdaptativas !== false;
       if (resolved) MTAdaptive.setBase({ accent: resolved.accent, glow: resolved.glow });
@@ -816,6 +817,7 @@
     // Expõe os tokens do tema (hex) para os renderizadores herdarem a paleta —
     // tela coesa em vez de cores fixas espalhadas.
     global.MT_THEME = resolved;
+    contextoDaPeca(cfg);
     /*
      * Modo performance: desliga os efeitos caros (vidro, halos borrados,
      * partículas). Quem decide pelo APARELHO é o js/perf.js, no boot — antes
@@ -1904,6 +1906,18 @@
     if (ro) ro.observe(zoneEl);
 
     return { stop: () => { feedTimer && clearInterval(feedTimer); ro && ro.disconnect(); } };
+  }
+
+  /* ---------------- Peça em HTML: o que ela precisa saber da tela ----------------
+   * js/render.js desenha a peça sem receber a config; o que ela usa da tela
+   * fica exposto aqui, como já é com MT_THEME. A cidade é a do clima do
+   * cabeçalho; os hosts de mídia são os que o SERVIDOR gravou ao salvar —
+   * a TV não aceita foto de um host que o servidor não declarou.
+   */
+  function contextoDaPeca(cfg) {
+    const s = (cfg && cfg.settings) || {};
+    global.MT_CIDADE_CLIMA = s.cidadeClima || 'São Paulo';
+    global.MT_HOSTS_MIDIA = Array.isArray(s.hostsMidia) ? s.hostsMidia.filter((h) => typeof h === 'string') : [];
   }
 
   /* ---------------- Zona: Cabeçalho ---------------- */

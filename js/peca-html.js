@@ -655,11 +655,32 @@
    */
   function ehMidia(v, hosts) {
     const s = String(v || '');
-    const caminho = (p) => /^\/media\/[A-Za-z0-9._/-]+$/.test(p) && p.indexOf('..') < 0;
+    /*
+     * /pecas-ouro/fotos/ também é nosso: são as fotos de exemplo das
+     * peças-ouro, as que aparecem quando o cliente preenche uma peça à mão
+     * (PLANO §4.15: IA fora do ar nunca é tela vazia).
+     */
+    const caminho = (p) => /^\/(media|pecas-ouro\/fotos)\/[A-Za-z0-9._/-]+$/.test(p) && p.indexOf('..') < 0;
     if (s[0] === '/') return caminho(s);
     let u;
     try { u = new URL(s); } catch (e) { return false; }
     return u.protocol === 'https:' && (hosts || []).indexOf(u.host) >= 0 && caminho(u.pathname) && !u.search && !u.hash;
+  }
+
+  /*
+   * A marca VAI JUNTO no item: cores e fontes, copiadas da Marca no momento
+   * de publicar. A TV desenha sem internet — ela não pode ir buscar a marca
+   * pelo `marcaId` na hora de exibir. Quando a Marca muda, o servidor copia
+   * de novo (é o que faz "trocar a marca reestiliza a peça sem gerar").
+   * Sem marca, o renderizador usa a do tema da tela.
+   */
+  function marcaDoItem(m) {
+    if (!m || typeof m !== 'object') return null;
+    const cores = (Array.isArray(m.cores) ? m.cores : [])
+      .map((c) => String(c || '').toLowerCase()).filter((c) => /^#[0-9a-f]{6}$/.test(c)).slice(0, 3);
+    const fonte = (id) => (F.FAMILIAS[id] ? id : '');
+    if (!cores.length) return null;
+    return { cores, fonteTitulo: fonte(m.fonteTitulo), fonteApoio: fonte(m.fonteApoio) };
   }
 
   /*
@@ -699,6 +720,7 @@
     const formatos = (Array.isArray(it.formatos) ? it.formatos : []).filter((f) => FORMATOS.indexOf(f) >= 0);
     const origem = it.origem && typeof it.origem === 'object' ? it.origem : {};
     const curto = (v, n) => String(v == null ? '' : v).slice(0, n);
+    const duracao = Number(it.duracao);
     return {
       item: {
         type: 'peca-html',
@@ -708,7 +730,9 @@
         css: h.css,
         campos,
         marcaId: /^[A-Za-z0-9_-]{0,40}$/.test(String(it.marcaId || '')) ? String(it.marcaId || '') : '',
+        marca: marcaDoItem(it.marca),
         modo: T.MODOS.indexOf(it.modo) >= 0 ? it.modo : T.MODO_PADRAO,
+        duracao: isFinite(duracao) && duracao >= 4 ? Math.min(120, duracao) : 12,
         formatos: formatos.length ? Array.from(new Set(formatos)) : ['16/9'],
         origem: { motor: curto(origem.motor, 40), modelo: curto(origem.modelo, 60), pedido: curto(origem.pedido, 400) },
       },
@@ -719,8 +743,44 @@
     };
   }
 
+  /*
+   * Passa toda peça em HTML de uma config de tela pela porta, trocando cada
+   * item pela versão que saiu dela. Devolve os problemas com a zona e a
+   * posição de cada um — o servidor recusa a config inteira se houver algum.
+   *
+   * Os campos de PLAYLIST (agendamento, a marca da campanha, o id…) não são
+   * da peça e passam como estão, iguais aos de qualquer outro item.
+   */
+  function conferirConfig(cfg, opts) {
+    const problemas = [];
+    const zonas = (cfg && cfg.zonas) || {};
+    Object.keys(zonas).forEach((zona) => {
+      const dados = zonas[zona];
+      if (!dados || !Array.isArray(dados.items)) return;
+      dados.items = dados.items.map((item, i) => {
+        if (!item || item.type !== 'peca-html') return item;
+        const v = validarItem(item, opts);
+        v.problemas.forEach((p) => problemas.push(zona + ' #' + (i + 1) + ': ' + p));
+        return Object.assign({}, item, v.item);
+      });
+    });
+    return { problemas };
+  }
+
+  /*
+   * Lê um arquivo de peça-ouro (pecas-ouro/*.html): um <style> e a
+   * <section class="mt-peca">. Um arquivo só por peça porque é assim que
+   * se desenha e se revisa — o CSS ao lado do HTML que ele estiliza. O que
+   * sai daqui ainda passa pela porta; ser nosso não dispensa.
+   */
+  function doArquivo(texto) {
+    const s = String(texto || '').replace(/<!--[\s\S]*?-->/g, '');
+    const m = /<style[^>]*>([\s\S]*?)<\/style>/i.exec(s);
+    return { css: m ? m[1] : '', html: (m ? s.replace(m[0], '') : s).trim() };
+  }
+
   return {
     LIMITES, PAPEIS, FORMATOS, VIVOS,
-    higienizar, validarItem, ehMidia,
+    higienizar, validarItem, ehMidia, doArquivo, conferirConfig,
   };
 });

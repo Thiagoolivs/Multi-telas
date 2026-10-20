@@ -2065,9 +2065,14 @@ async function handleStatic(req, res, urlPath) {
  * nova com segredo dentro nasce inacessível — que é o padrão certo, porque
  * quem cria a pasta não vai lembrar de vir aqui negá-la.
  */
-const PASTAS_PUBLICAS = ['/css/', '/js/', '/icons/', '/img/', '/fonts/'];
+/*
+ * /pecas-ouro/ e a bancada são públicos de propósito: as peças-ouro são os
+ * modelos que todo cliente vê e preenche, e as fotos delas entram nas TVs.
+ * Nada ali é dado de conta.
+ */
+const PASTAS_PUBLICAS = ['/css/', '/js/', '/icons/', '/img/', '/fonts/', '/pecas-ouro/'];
 const ARQUIVOS_PUBLICOS = new Set([
-  '/player.html',
+  '/player.html', '/bancada.html',
   '/sw.js', '/player.webmanifest', '/manifest.webmanifest',
   '/favicon.ico', '/robots.txt',
 ]);
