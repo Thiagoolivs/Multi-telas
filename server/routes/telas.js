@@ -15,6 +15,13 @@ module.exports = function (ctx) {
 
   const NAO_TRATEI = Symbol('nao-tratei');
 
+  // De onde a TV aceita foto de peça em HTML: o host público do storage (R2),
+  // quando há um. Relativo (disco), só /media/.
+  const pecaHtml = require('../../js/peca-html.js');
+  const hostsMidia = (() => {
+    try { return [new URL(storage.publicUrl('x')).host]; } catch (e) { return []; }
+  })();
+
   async function tratar(req, res, parts, query, sess) {
     /* ----- Criar device (a TV chama, sem auth) ----- */
     if (req.method === 'POST' && parts[1] === 'devices' && parts.length === 2) {
@@ -177,6 +184,18 @@ module.exports = function (ctx) {
           let cfg;
           try { cfg = schema.normalize(b); }
           catch (e) { return sendJson(res, 400, { error: 'config inválida: ' + e.message }); }
+          /*
+           * Peça em HTML passa pela porta (js/peca-html.js) antes de gravar.
+           * A TV confere de novo ao exibir; aqui é a primeira barreira, e a
+           * que RECUSA: peça com problema não vai para o banco, volta com a
+           * lista do que corrigir.
+           */
+          const pecas = pecaHtml.conferirConfig(cfg, { hostsMidia });
+          if (pecas.problemas.length) {
+            return sendJson(res, 400, { error: 'peça em HTML recusada', problemas: pecas.problemas.slice(0, 20) });
+          }
+          // De onde a TV aceita foto de peça: quem declara é o servidor, sempre.
+          cfg.settings.hostsMidia = hostsMidia;
           const name = (cfg.settings && cfg.settings.nome) || device.name;
           cfg.settings.nome = name;
           const updatedAt = Date.now();

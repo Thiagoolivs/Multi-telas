@@ -113,7 +113,8 @@ test('pasta pública não abre caminho para fora dela, com `..` de nenhum jeito'
 test('o que é público continua público', async () => {
   // A lista de permissão não pode ter fechado o produto junto com o buraco.
   for (const caminho of ['/player.html', '/sw.js', '/player.webmanifest',
-    '/css/player.css', '/js/player.js', '/js/mural.js', '/icons/icone-192.png']) {
+    '/css/player.css', '/js/player.js', '/js/mural.js', '/icons/icone-192.png',
+    '/bancada.html', '/js/peca-render.js', '/pecas-ouro/manifesto.json', '/pecas-ouro/oferta-foto.html']) {
     const r = await pedir(caminho);
     assert.equal(r.status, 200, caminho + ' deveria ser público e respondeu ' + r.status);
   }

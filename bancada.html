@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Bancada · peças-ouro</title>
+  <link rel="stylesheet" href="/fonts/fontes.css" />
+  <style>
+    :root { --fundo: #1d1f24; --painel: #272a31; --linha: #3a3e47; --texto: #eef0f4; --suave: #9aa1ad; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--fundo); color: var(--texto); font: 14px/1.4 Inter, system-ui, sans-serif; }
+    header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
+      padding: 12px 16px; background: var(--painel); border-bottom: 1px solid var(--linha); }
+    header h1 { margin: 0 8px 0 0; font-size: 15px; font-weight: 700; }
+    label { display: flex; gap: 6px; align-items: center; color: var(--suave); font-size: 12px; }
+    select, button { background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 6px; padding: 6px 8px; font: inherit; }
+    button { cursor: pointer; }
+    main { padding: 16px; }
+    .info { color: var(--suave); font-size: 12px; margin: 0 0 14px; }
+    .info b { color: var(--texto); }
+    .problemas { background: #3a1d1d; border: 1px solid #7a2f2f; color: #ffd6d6; padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 12px; }
+    .linha { margin-bottom: 22px; }
+    .linha h2 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--suave); letter-spacing: .04em; text-transform: uppercase; }
+    .grade { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+    figure { margin: 0; }
+    figcaption { margin-top: 6px; color: var(--suave); font-size: 11px; }
+    .moldura { position: relative; overflow: hidden; background: #000; border-radius: 4px; }
+    /* A peça é desenhada no tamanho REAL da zona e reduzida para caber: as
+       consultas de @container precisam ver os pixels de verdade (a lateral
+       estreita esconde o apoio abaixo de 700px). */
+    .real { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Bancada de peças-ouro</h1>
+    <label>Peça <select id="peca"></select></label>
+    <label>Marca <select id="marca"></select></label>
+    <label>Modo <select id="modo"></select></label>
+    <button id="rodar" type="button">Rodar a entrada de novo</button>
+  </header>
+  <main>
+    <p class="info" id="info"></p>
+    <div id="problemas"></div>
+    <div id="palco"></div>
+  </main>
+  <script src="/js/cor.js"></script>
+  <script src="/js/fontes.js"></script>
+  <script src="/js/animacao.js"></script>
+  <script src="/js/tokens.js"></script>
+  <script src="/js/peca-html.js"></script>
+  <script src="/js/peca-render.js"></script>
+  <script src="/js/bancada.js"></script>
+</body>
+</html>

@@ -1685,6 +1685,32 @@
     return { el, duration: item.duracao == null ? 30 : item.duracao };
   }
 
+  /* ---------- Peça em HTML (js/peca-render.js) ----------
+   * Quem desenha é o renderizador compartilhado com a bancada e o editor; aqui
+   * só se diz o que a TV sabe: a marca do tema (quando a peça não trouxe a
+   * dela), se o aparelho está no modo leve, a cidade do clima e os hosts de
+   * mídia que o servidor declarou (ver contextoDaPeca em js/player.js).
+   */
+  // O mesmo cache de clima dos outros itens (15 min): cada peça pediria de novo.
+  async function climaDaPeca() {
+    const d = await fetchWeather(global.MT_CIDADE_CLIMA || 'São Paulo');
+    return d.temp + '°';
+  }
+
+  function renderPecaHtml(item) {
+    const el = div('mt-slide mt-peca-html');
+    if (!global.MTPecaRender) return { el, duration: item.duracao || 12 };
+    const t = global.MT_THEME || {};
+    const ctl = global.MTPecaRender.montar(el, item, {
+      marca: t.brand ? { cores: [t.brand, t.brand2].filter(Boolean) } : null,
+      leve: document.documentElement.classList.contains('mt-perf'),
+      hostsMidia: global.MT_HOSTS_MIDIA || [],
+      clima: climaDaPeca,
+    });
+    return { el, duration: ctl.duracao, onLeave: ctl.parar };
+  }
+  RENDERERS['peca-html'] = renderPecaHtml;
+
   /* ---------- API pública ---------- */
   function renderItem(item) {
     const fn = RENDERERS[item.type];

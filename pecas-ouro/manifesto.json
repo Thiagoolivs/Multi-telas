@@ -1,0 +1,19 @@
+{
+  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html).",
+  "marcas": [
+    { "id": "otica", "nome": "Ótica Central", "cores": ["#1b2a4a", "#c8a96e"], "fonteTitulo": "condensada", "fonteApoio": "sans" },
+    { "id": "padaria", "nome": "Padaria do Bairro", "cores": ["#b4532a", "#f2c14e"], "fonteTitulo": "condensada", "fonteApoio": "sans" },
+    { "id": "salao", "nome": "Studio Bella", "cores": ["#c2577a"], "fonteTitulo": "serifada", "fonteApoio": "sans" },
+    { "id": "clinica", "nome": "Clínica Vida", "cores": ["#0f766e"], "fonteTitulo": "moderna", "fonteApoio": "sans" }
+  ],
+  "pecas": [
+    {
+      "id": "oferta-foto",
+      "nome": "Oferta com foto",
+      "familia": "oferta",
+      "papeis": ["destaque", "lateral"],
+      "estado": "rascunho",
+      "campos": { "foto": "/pecas-ouro/fotos/otica-sol.jpg" }
+    }
+  ]
+}
