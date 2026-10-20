@@ -993,7 +993,9 @@ export function MyDesignsPage({ onIr }) {
           cardápio manda fazer algo que não há onde fazer — não existe campo
           ali, só três ideias para escolher.
         */
-        description={guiando
+        description={gen
+          ? 'Confira as peças antes de salvar ou publicar.'
+          : guiando
           ? 'Escolha uma ideia para começar, ou escreva a sua. Nada é gerado antes de você confirmar.'
           : plano
             ? 'Confira o que a IA entendeu. Nenhum crédito saiu ainda.'
@@ -1045,7 +1047,12 @@ export function MyDesignsPage({ onIr }) {
             </div>
             <div className="tnum text-2xs text-ink-3">{etapa.segundos || 0}s · uma campanha completa leva um ou dois minutos</div>
           </div>
-        ) : guiando ? (
+        ) : guiando && !gen ? (
+          /*
+           * Com a campanha pronta, o resultado vence o cardápio. Antes o
+           * cardápio aparecia por cima: o rodapé dizia "Só salvar" e as peças
+           * geradas não apareciam — salvava-se sem ver (visto em 20/10).
+           */
           <Guia
             empresa={empresa}
             onEscolher={escolherSugestao}
@@ -1207,7 +1214,15 @@ export function MyDesignsPage({ onIr }) {
                         <span className="font-semibold text-ink-2">revisar:</span> {p.problemas[0]}
                       </div>
                     )}
-                    {p.item && p.item.type === 'peca-html' && <AvisoDeEncaixe item={p.item} />}
+                    {p.item && p.item.type === 'peca-html' && (
+                      <AvisoDeEncaixe item={p.item}
+                        // A mesma peça em outro formato é a mesma peça: só a primeira pede o conserto sozinha.
+                        auto={gen.pecas.findIndex((x) => x.item && x.item.html === p.item.html) === i}
+                        onTrocar={(novo) => setGen((g) => ({
+                          ...g,
+                          pecas: g.pecas.map((x) => (x.item && x.item.html === p.item.html ? { ...x, item: { ...novo, formato: x.formato } } : x)),
+                        }))} />
+                    )}
                   </div>
                 ))}
               </div>

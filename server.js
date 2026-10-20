@@ -39,6 +39,7 @@ const ai = require('./server/ai');
 // Cada requisição da API é uma medição de IA: os tokens somam e o uso-ia.cobrar os grava.
 const motores = require('./server/motores');
 const director = require('./server/ai-director');
+const compositor = require('./server/compositor');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
 const banco = require('./server/banco.js');
@@ -438,6 +439,8 @@ async function handleApi(req, res, pathname, query) {
      */
     'analise-visual': 'analise-visual',
     guia: 'guia',
+    // Redesenhar a peça que não coube (§4.10): texto, medido como a composição.
+    'refazer-peca': 'gerar-composicao',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
@@ -1524,6 +1527,28 @@ async function handleApi(req, res, pathname, query) {
         await usoIA.cobrar(db, tenantIA, { tipo: 'gerar-imagem', quantidade: 1, userId: sess.user_id, referencia: saved.id });
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
         return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' };
+      });
+    });
+  }
+
+  /*
+   * ----- IA: refazer a peça em HTML que não coube (PLANO §4.10) -----
+   * O painel mede a peça com o detector da bancada; o que não coube volta
+   * aqui com a medida, e a IA redesenha mantendo campos e textos. A peça que
+   * chega passa pela porta antes de ir para o modelo.
+   */
+  if (parts[1] === 'ai' && parts[2] === 'refazer-peca') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:refazer:' + sess.tenant_id, 40, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de redesenhos por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      if (!b || !b.item || b.item.type !== 'peca-html') return sendJson(res, 400, { error: 'envie a peça em HTML' });
+      return emTrabalho(res, sess, 'peca', { brief: 'redesenhar a peça' }, async (progresso) => {
+        progresso('redesenhando a peça', String((b.problemas || [])[0] || ''));
+        const r = await compositor.refazerPeca({ item: b.item, problemas: b.problemas, motor: compositor.motorDoHtml() });
+        if (!r.ok) throw new Error('a IA não conseguiu redesenhar a peça agora');
+        return { item: Object.assign({}, r.item, { formato: b.item.formato || '16/9' }) };
       });
     });
   }

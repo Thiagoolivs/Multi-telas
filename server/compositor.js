@@ -109,6 +109,10 @@ function pedidoTexto(o) {
     'Escreva ' + (PAPEL_TXT[o.papel] || PAPEL_TXT.destaque) + '.',
     o.foto ? 'Há uma foto para a peça (campo "foto"): use <img data-campo-img="foto">, com véu.' : 'NÃO há foto: a peça é só tipografia e forma — não use data-campo-img.',
   ];
+  if (o.textosCampos && Object.keys(o.textosCampos).length) {
+    linhas.push('Os campos da peça e o texto de cada um — mantenha os mesmos nomes de data-campo e estes textos: '
+      + Object.keys(o.textosCampos).map((k) => k + ' "' + String(o.textosCampos[k]).slice(0, 160) + '"').join('; ') + '.');
+  }
   if (o.evitar && o.evitar.length) linhas.push('As outras zonas da tela já dizem: ' + o.evitar.map((x) => '"' + x + '"').join(', ') + '. Não repita nenhum desses textos.');
   linhas.push('Responda só com o arquivo da peça.');
   return linhas.filter(Boolean).join('\n');
@@ -235,7 +239,10 @@ async function comporPeca(o) {
   const max = Math.max(1, o.tentativas || 3);
   const pedido = Object.assign({}, o, { papel });
   const usos = [];
-  let usuario = pedidoTexto(pedido);
+  // Refazer (§4.10): a primeira chamada já leva a peça anterior e o que a tela mediu de errado nela.
+  let usuario = o.anterior && o.critica
+    ? pedidoTexto(pedido) + '\n\n' + o.critica + '\n\nA peça atual era:\n' + String(o.anterior).slice(0, 12000) + '\n\nResponda com o arquivo inteiro, corrigido.'
+    : pedidoTexto(pedido);
   let ultimo = null;
   const t0 = Date.now();
   for (let i = 1; i <= max; i++) {
@@ -249,8 +256,8 @@ async function comporPeca(o) {
         ok: true,
         item: {
           type: 'peca-html', versao: 1, papel, html: h.html, css: h.css,
-          // Só se a peça tem onde pôr a foto: campo que não existe faz a TV recusar a peça.
-          campos: o.foto && h.campos.some((c) => c.nome === 'foto' && c.tipo === 'img') ? { foto: o.foto } : {},
+          // Só campos que a peça tem: campo que não existe faz a TV recusar a peça.
+          campos: camposQueExistem(o.camposDe || (o.foto ? { foto: o.foto } : {}), h.campos),
           marca: o.marca || null, modo: o.modo || 'escuro', duracao: 12,
           origem: { motor: o.motor || motores.motorPadrao(), pedido: String(o.pedido || '').slice(0, 200) },
         },
@@ -262,6 +269,39 @@ async function comporPeca(o) {
       + '\n\nA resposta anterior era:\n' + arquivo.slice(0, 12000) + '\n\nCorrija e responda com o arquivo inteiro.';
   }
   return { ok: false, item: null, tentativas: max, passouDePrimeira: false, problemas: ultimo.h.problemas, uso: somar(usos), ms: Date.now() - t0 };
+}
+
+function camposQueExistem(campos, def) {
+  const saida = {};
+  for (const k of Object.keys(campos || {})) {
+    const d = def.find((c) => c.nome === k);
+    // Foto vazia não vira campo: a porta recusaria um endereço vazio.
+    if (d && campos[k] != null && (d.tipo !== 'img' || campos[k])) saida[k] = campos[k];
+  }
+  return saida;
+}
+
+/*
+ * REFAZER (§4.10, a barreira): a peça foi desenhada e MEDIDA no painel — o
+ * mesmo detector da bancada — e algo não coube ("TV em pé: Título passa da
+ * borda"). Ela volta para a IA com a medida, e a IA redesenha mantendo os
+ * campos e os textos que o cliente aprovou ou editou.
+ */
+async function refazerPeca(o) {
+  const v = P.validarItem(o.item);
+  if (v.problemas.length) { const e = new Error('peça inválida: ' + v.problemas[0]); e.status = 400; throw e; }
+  const it = v.item;
+  const textosCampos = {};
+  for (const c of v.campos) if (c.tipo === 'texto') textosCampos[c.nome] = it.campos[c.nome] != null ? it.campos[c.nome] : c.exemplo;
+  const problemas = (o.problemas || []).map((x) => String(x).slice(0, 200)).filter(Boolean).slice(0, 10);
+  return comporPeca({
+    pedido: it.origem.pedido, papel: it.papel, marca: it.marca, modo: it.modo, motor: o.motor,
+    foto: it.campos.foto || null, camposDe: it.campos, textosCampos,
+    anterior: '<style>' + it.css + '</style>\n' + it.html,
+    critica: 'A peça abaixo foi desenhada e MEDIDA na tela, e tem estes problemas:\n- ' + (problemas.join('\n- ') || 'texto que não cabe')
+      + '\nRedesenhe para que tudo caiba na TV deitada (1920×1080), em pé (1080×1920) e na quadrada (1080×1080): '
+      + 'letra menor onde precisar, quebra de linha decidida, outra organização se for o caso. Nada pode sair da peça nem ficar por cima de outro texto.',
+  });
 }
 
 function somar(usos) {
@@ -289,4 +329,4 @@ async function comporTela(o) {
   return pecas;
 }
 
-module.exports = { comporPeca, comporTela, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, partirTitulo, OURO };
+module.exports = { comporPeca, comporTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, partirTitulo, OURO };

@@ -210,6 +210,9 @@ export const ai = {
     rodar('/api/ai/generate-kit', payload, 'kit-de-marca', onEtapa, sinal),
   image: (payload, onEtapa, sinal) =>
     rodar('/api/ai/generate-image', payload, 'imagem', onEtapa, sinal),
+  // Redesenha a peça em HTML que não coube; devolve { item }.
+  refazerPeca: (item, problemas, onEtapa, sinal) =>
+    rodar('/api/ai/refazer-peca', { item, problemas }, 'peca', onEtapa, sinal),
 
   // Chat de briefing: uma pergunta por vez até a IA entender a campanha.
   // Continua síncrono: é uma conversa, e conversa que responde por polling
