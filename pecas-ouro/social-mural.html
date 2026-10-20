@@ -1,0 +1,69 @@
+<!--
+  Foto do cliente (ou do mural) — família social. Destaque.
+  A foto de quem comprou, num cartão de revelação inclinado, com a legenda
+  embaixo — é gente de verdade, não modelo de banco de imagem. Do lado, o
+  convite para mandar a sua. O QR é opcional: link em branco, ele some.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(90% 110% at 25% 50%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+.cartao { position: absolute; left: 9cqw; top: 50%; width: 32cqw; margin: 0; padding: 1.4cqw 1.4cqw 0; background: var(--mt-superficie); border-radius: calc(var(--mt-raio) * .5);
+  translate: 0 -50%; rotate: -4deg; box-shadow: 0 .8cqw 2.4cqw 0 var(--mt-linha); }
+.cartao img { display: block; width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 40%; border-radius: calc(var(--mt-raio) * .3); }
+/* Sem foto: o recorte vira um vazio da cor da linha — o cartão continua de pé. */
+.cartao img[data-sem-foto] { visibility: visible; background: var(--mt-linha); }
+/* Texto sobre a superfície: o contrato de cor garante a leitura nos 4 modos (no escuro a superfície é escura). */
+.legenda { padding: 1.4cqw .4cqw 1.8cqw; font: 600 1.5cqw/1.3 var(--mt-fonte-texto); color: var(--mt-texto); }
+.legenda small { display: block; margin-top: .4cqw; font: 500 1.15cqw/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.bloco { position: absolute; left: 50cqw; right: 7cqw; top: 50%; transform: translateY(-50%); }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { margin-top: 2.2cqw; font: 400 5.6cqw/.98 var(--mt-fonte-titulo); text-transform: uppercase; text-wrap: balance; }
+.apoio { margin-top: 2.4cqw; font: 400 1.6cqw/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.mande { display: flex; align-items: center; gap: 2cqw; margin-top: 3cqw; }
+.qr { flex: none; margin: 0; width: 11cqw; height: 11cqw; padding: .5cqw; border-radius: calc(var(--mt-raio) * .6); background: var(--mt-superficie); box-shadow: 0 0 0 .2cqw var(--mt-destaque); }
+.qr img { width: 100%; height: 100%; }
+.qr:has(img[data-sem-foto]) { display: none; }
+.pedido { font: 600 1.25cqw/1.35 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase; }
+@container (aspect-ratio < 0.8) {
+  .cartao { left: 50%; top: 6cqh; width: 58cqw; padding: 2.4cqw 2.4cqw 0; translate: -50% 0; }
+  .legenda { padding: 2.6cqw .8cqw 3.2cqw; font-size: 3cqw; }
+  .legenda small { font-size: 2.3cqw; margin-top: .8cqw; }
+  .bloco { left: 8cqw; right: 8cqw; top: auto; bottom: 6cqh; transform: none; }
+  .kicker { font-size: 2.4cqw; }
+  .kicker i { width: 6cqw; height: .28cqw; }
+  h1 { font-size: 10cqw; margin-top: 3cqw; }
+  .apoio { font-size: 3cqw; margin-top: 3cqw; }
+  .mande { gap: 4cqw; margin-top: 4cqw; }
+  .qr { width: 20cqw; height: 20cqw; padding: .9cqw; box-shadow: 0 0 0 .35cqw var(--mt-destaque); }
+  .pedido { font-size: 2.4cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .cartao { left: 7cqw; top: 8cqh; width: 40cqw; translate: none; padding: 1.8cqw 1.8cqw 0; }
+  .legenda { font-size: 2.2cqw; padding: 1.8cqw .6cqw 2.2cqw; }
+  .legenda small { font-size: 1.7cqw; }
+  .bloco { left: 54cqw; right: 6cqw; top: 9cqh; transform: none; }
+  .kicker { font-size: 1.8cqw; letter-spacing: .22em; }
+  .kicker i { display: none; }
+  h1 { font-size: 6.4cqw; margin-top: 2.6cqw; }
+  .apoio { font-size: 2.3cqw; }
+  .mande { flex-direction: column; align-items: flex-start; gap: 2cqw; margin-top: 3.4cqw; }
+  .qr { width: 18cqw; height: 18cqw; }
+  .pedido { font-size: 1.8cqw; }
+}
+</style>
+<section class="mt-peca social-mural">
+  <figure class="cartao" data-entrada="girar">
+    <img data-campo-img="foto" alt="">
+    <figcaption class="legenda"><span data-campo="legenda">Juliana, de óculos novo</span><small data-campo="quando">Cliente desde 2019</small></figcaption>
+  </figure>
+  <div class="bloco">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Mural dos clientes</span></p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">A próxima foto pode ser a sua</h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Tire uma foto com o óculos novo e mande para a gente. Ela entra no mural da loja.</p>
+    <div class="mande" data-entrada="aparecer" data-ordem="4">
+      <figure class="qr"><img data-campo-qr="link" alt="QR para mandar a sua foto"></figure>
+      <p class="pedido" data-campo="pedido">Mande pelo QR</p>
+    </div>
+  </div>
+</section>
