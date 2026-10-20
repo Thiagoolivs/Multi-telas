@@ -634,9 +634,24 @@ aviso. Corrigido (`js/peca-conferir.js`, um detector só para bancada e
 painel), a varredura de 39 peças × 6 marcas × todas as zonas (948
 combinações) achou 9 peças que vazam ou sobrepõem com a fonte de OUTRA
 marca — com a própria, só o lançamento, já corrigido. Fica um PR de
-robustez para as 8: cabecalho-chamada (em pé), cardapio-colunas (lateral),
+robustez para as 8 (abaixo): cabecalho-chamada (em pé), cardapio-colunas (lateral),
 gente-mes, lateral-prazo, manifesto, oferta-foto (marca × kicker com
 Playfair/Poppins), oferta-parcelado (em pé) e servico-horario.
+
+**Escopo enxuto (20/10, o dono: "descarte do escopo o que não for
+necessário").** Fica o que melhora a peça que vai para a TV ou é exigido
+antes da ótica:
+
+- **Fica:** refazer automático da peça que não cabe (a barreira fecha com
+  o conserto: o painel mede, a IA redesenha com a medida); robustez das 8
+  peças-ouro (a IA copia delas); tela completa com o motor novo; canal
+  beta antes da ótica; backup quando o bucket existir.
+- **Sai por ora:** 3 opções por peça (o "refazer" cobre o que importava:
+  peça que não ficou boa ganha outra); banco de fotos Pexels; chat de
+  refinamento unificado (o briefing atual fica); preencher peça-ouro do
+  zero (a reserva automática cobre a IA fora do ar); print no servidor
+  com Chromium (a conferência no navegador do painel já mede igual à
+  bancada, sem serviço novo).
 
 ### 4.15 Pronto quando
 

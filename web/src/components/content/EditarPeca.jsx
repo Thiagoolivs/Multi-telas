@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, AlertTriangle } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
@@ -6,6 +6,7 @@ import { Field, Input } from '../ui/Field.jsx';
 import { PecaHtml } from './PecaHtml.jsx';
 import { FotoDoProduto } from './FotoDoProduto.jsx';
 import { carregarDesenhista, conferirNosFormatos, NOME_DO_FORMATO } from '../../lib/pecaHtml.js';
+import { ai } from '../../api.js';
 
 /*
  * Editar os textos e a foto de uma peça em HTML (PLANO §4.5, "Campos"; PR 14).
@@ -45,17 +46,51 @@ export function avisosDaConferencia(conferencia) {
  * defeito que o dono achou nas notas do experimento ("Pet Feliz" por cima de
  * "pacote de cuidados") — visto aqui, a peça já vem marcada para revisar.
  */
-export function AvisoDeEncaixe({ item }) {
-  const [avisos, setAvisos] = useState(null);
+/*
+ * E o conserto: a peça que não coube volta para a IA com a medida (`auto`,
+ * uma vez, sozinha) e a nova entra no lugar por `onTrocar`. Se ainda não
+ * couber, fica o "revisar:" com o botão — gastar sem parar, não.
+ */
+export function AvisoDeEncaixe({ item, onTrocar, auto }) {
+  const [estado, setEstado] = useState({ fase: 'conferindo', avisos: [] });
+  const tentou = useRef(false);
+  const trocou = useRef(false);
+
+  async function refazer(avisos, vivo) {
+    tentou.current = true;
+    setEstado({ fase: 'refazendo', avisos });
+    try {
+      const out = await ai.refazerPeca(item, avisos);
+      if (vivo() && out && out.item) { trocou.current = true; onTrocar(out.item); return; }
+    } catch (e) { /* fica o revisar, com o botão */ }
+    if (vivo()) setEstado({ fase: 'revisar', avisos });
+  }
+
   useEffect(() => {
-    let vivo = true;
-    conferirNosFormatos(item).then((r) => { if (vivo) setAvisos(avisosDaConferencia(r)); }).catch(() => {});
-    return () => { vivo = false; };
+    let ativo = true;
+    const vivo = () => ativo;
+    setEstado({ fase: 'conferindo', avisos: [] });
+    conferirNosFormatos(item).then((r) => {
+      if (!ativo) return;
+      const avisos = avisosDaConferencia(r);
+      if (!avisos.length) setEstado({ fase: 'ok', avisos });
+      else if (auto && onTrocar && !tentou.current) refazer(avisos, vivo);
+      else setEstado({ fase: 'revisar', avisos });
+    }).catch(() => {});
+    return () => { ativo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item]);
-  if (!avisos || !avisos.length) return null;
+
+  if (estado.fase === 'ok' && trocou.current) return <div className="text-2xs text-ok">✓ redesenhada para caber</div>;
+  if (estado.fase === 'refazendo') return <div className="text-2xs text-ink-3">não coube ({estado.avisos[0]}) — redesenhando…</div>;
+  if (estado.fase !== 'revisar') return null;
   return (
     <div className="rounded border border-warn/40 bg-warn/10 px-1.5 py-1 text-2xs leading-snug text-ink">
-      <span className="font-semibold">revisar:</span> {avisos[0]}{avisos.length > 1 ? ' (+' + (avisos.length - 1) + ')' : ''}
+      <span className="font-semibold">revisar:</span> {estado.avisos[0]}{estado.avisos.length > 1 ? ' (+' + (estado.avisos.length - 1) + ')' : ''}
+      {onTrocar && (
+        <button type="button" onClick={() => refazer(estado.avisos, () => true)}
+          className="ml-1 font-semibold text-accent hover:underline">Refazer</button>
+      )}
     </div>
   );
 }

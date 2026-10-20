@@ -79,6 +79,44 @@ test('o painel desenha a peça com o mesmo arquivo da TV, em tamanho real', () =
   assert.match(peca, /'scale\(' \+ escala/, 'desenhada pequena, a peça cairia no layout da lateral');
 });
 
+test('refazer: a peça volta para a IA com a medida, e os textos editados e a foto ficam', async () => {
+  const chamar = motores.chamar;
+  const nova = '<style>.mt-peca{background:var(--mt-fundo)}h1{font-size:6cqw;color:var(--mt-texto)}.f{width:40%}</style>'
+    + '<section class="mt-peca"><img class="f" data-campo-img="foto" alt=""><h1 data-campo="titulo">Exemplo</h1><p data-campo="apoio">x</p></section>';
+  let pedido = '';
+  motores.chamar = async (o) => { pedido = o.usuario; return { texto: nova, uso: { entrada: 1, saida: 1, cacheLida: 0, cacheEscrita: 0, custoCentavos: 0, modelo: 'x' } }; };
+  try {
+    const velha = compositor.preencherOuro({ textos: { titulo: 'Só esta semana', apoio: 'Até sábado' }, foto: '/media/c1/f.jpg', empresa: 'Ótica', marca: { cores: ['#123456'] }, modo: 'claro', pedido: 'óculos 30%' });
+    velha.campos.titulo = 'Título que o cliente editou';
+    const r = await compositor.refazerPeca({ item: velha, problemas: ['TV em pé: "Título" passa da borda'], motor: 'gemini' });
+    assert.equal(r.ok, true);
+    assert.match(pedido, /foi desenhada e MEDIDA na tela/);
+    assert.match(pedido, /TV em pé: "Título" passa da borda/);
+    assert.match(pedido, /titulo "Título que o cliente editou"/, 'a IA recebe o texto atual, não o do exemplo');
+    assert.match(pedido, /A peça atual era:\n<style>/);
+    assert.deepEqual(r.item.campos, { titulo: 'Título que o cliente editou', foto: '/media/c1/f.jpg' }, 'só os campos que a peça nova tem');
+    assert.equal(r.item.modo, 'claro');
+    assert.deepEqual(P.validarItem(r.item).problemas, []);
+    await assert.rejects(compositor.refazerPeca({ item: { type: 'peca-html', html: '<script>x</script>', css: '' }, problemas: [] }), (e) => e.status === 400);
+  } finally { motores.chamar = chamar; }
+});
+
+test('o refazer passa pela rota medida e o painel tenta sozinho uma vez só', () => {
+  const server = fs.readFileSync(path.join(RAIZ, 'server.js'), 'utf8');
+  assert.match(server, /'refazer-peca': 'gerar-composicao'/, 'rota de IA fora do mapa não é medida nem tem teto');
+  assert.match(server, /compositor\.refazerPeca\(\{ item: b\.item, problemas: b\.problemas/);
+  const aviso = fs.readFileSync(path.join(RAIZ, 'web', 'src', 'components', 'content', 'EditarPeca.jsx'), 'utf8');
+  assert.match(aviso, /else if \(auto && onTrocar && !tentou\.current\) refazer\(avisos, vivo\)/);
+  const tela = fs.readFileSync(path.join(RAIZ, 'web', 'src', 'pages', 'MyDesignsPage.jsx'), 'utf8');
+  assert.match(tela, /auto=\{gen\.pecas\.findIndex\(\(x\) => x\.item && x\.item\.html === p\.item\.html\) === i\}/, 'cópia em outro formato pediria o conserto de novo');
+});
+
+test('campanha pronta: o resultado aparece, não o cardápio de ideias', () => {
+  // Antes o rodapé dizia "Só salvar" e o corpo mostrava as ideias: salvava-se sem ver as peças.
+  const tela = fs.readFileSync(path.join(RAIZ, 'web', 'src', 'pages', 'MyDesignsPage.jsx'), 'utf8');
+  assert.match(tela, /\) : guiando && !gen \? \(/);
+});
+
 test('compor com a IA: a foto só entra se a peça tem onde pô-la', async () => {
   const chamar = motores.chamar;
   const semFoto = '<style>.mt-peca{background:var(--mt-fundo)}h1{font-size:8cqw;color:var(--mt-texto)}</style><section class="mt-peca"><h1 data-campo="titulo">Óculos</h1></section>';
