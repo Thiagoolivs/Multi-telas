@@ -1,0 +1,58 @@
+/*
+ * Uma peça de verdade, para os testes da porta (js/peca-html.js).
+ *
+ * É a "Oferta com foto" da primeira amostra renderizada (20/10), a que o
+ * dono aprovou como o estilo a seguir — reescrita no formato de peça-ouro:
+ * campos marcados, foto por campo, cor só por token, medida só de
+ * container, entrada declarada. Se a porta recusar esta peça, a porta está
+ * errada, não a peça.
+ */
+module.exports = {
+  html: `
+<section class="mt-peca oferta-foto">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+  <div class="veu" aria-hidden="true"></div>
+  <div class="marca-nome" data-campo="marca">Ótica <b>Central</b></div>
+  <div class="bloco">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Semana do sol · até sábado</span></p>
+    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Óculos de sol</span><em data-campo="oferta">30% off</em></h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Proteção UV400 e garantia de um ano em todas as armações da vitrine.</p>
+    <div class="preco" data-entrada="subir" data-ordem="4">
+      <span class="de"><span data-campo="preco-rotulo">a partir de</span><span class="parc" data-campo="parcelas">ou 10× de R$ 18,99</span></span>
+      <span class="valor"><small aria-hidden="true">R$</small><span data-campo="preco">189</span><sup data-campo="centavos">,90</sup></span>
+    </div>
+  </div>
+  <div class="cta" data-entrada="aparecer" data-ordem="5"><span data-campo="cta">Reserve pelo WhatsApp</span> <span aria-hidden="true">→</span></div>
+</section>`,
+  css: `
+.mt-peca { position: relative; overflow: hidden; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(120% 100% at 0% 0%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+.foto { position: absolute; inset: 0 0 0 auto; width: 64%; height: 100%; object-fit: cover; object-position: 50% 28%; }
+.veu { position: absolute; inset: 0; background: linear-gradient(90deg, var(--mt-fundo) 40%, var(--mt-fundo-0) 68%); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.bloco { position: absolute; left: 6cqw; top: 50%; transform: translateY(-56%); width: 40cqw; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 400 4.4cqw/1 var(--mt-fonte-titulo); text-transform: uppercase; margin: 2.2cqw 0 1.8cqw; }
+h1 > span { display: block; }
+h1 em { display: block; font-style: normal; font-size: 2.6em; line-height: .86; color: var(--mt-destaque); }
+.apoio { font: 400 1.5cqw/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 29cqw; }
+.preco { margin-top: 2.6cqw; padding-top: 2.2cqw; border-top: .12cqw solid var(--mt-linha); width: 29cqw; display: flex; align-items: flex-end; justify-content: space-between; }
+.de { font: 500 1.05cqw/1.3 var(--mt-fonte-texto); letter-spacing: .22em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.parc { display: block; margin-top: .6cqw; font: 500 1.25cqw/1 var(--mt-fonte-texto); color: var(--mt-texto); letter-spacing: 0; text-transform: none; }
+.valor { font: 400 6.2cqw/.8 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.valor small { font-size: .34em; vertical-align: 1.05em; margin-right: .2em; }
+.valor sup { font-size: .38em; vertical-align: 1em; }
+.cta { position: absolute; left: 6cqw; bottom: 6cqh; font: 600 1.2cqw/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
+@container (aspect-ratio < 1) {
+  .foto { inset: 0 0 auto 0; width: 100%; height: 56%; object-position: 50% 18%; }
+  .veu { background: linear-gradient(0deg, var(--mt-fundo) 46%, var(--mt-fundo-0) 60%); }
+  .bloco { left: 8cqw; right: 8cqw; width: auto; top: auto; bottom: 11cqh; transform: none; }
+  h1 { font-size: 8.4cqw; }
+  .apoio { font-size: 3.4cqw; max-width: none; }
+}
+/* A lateral estreita esconde o apoio: em espaço pequeno, menos texto. */
+@container (max-width: 700px) {
+  .apoio, .parc { display: none; }
+}`,
+};
