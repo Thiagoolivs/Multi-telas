@@ -178,7 +178,7 @@ const OURO = {
   semFoto: {
     id: 'institucional-lancamento',
     campos: (t, e) => ({ marca: e, selo: t.kicker || 'Novidade', titulo: t.titulo1, titulo2: t.titulo2, apoio: t.apoio, quando: t.cta }),
-    ajuste: (t) => titulosQueCabem(t, { deitada: { base: 13, largura: 88 }, empe: { base: 22, largura: 84 }, quadrada: { base: 16, largura: 86 } },
+    ajuste: (t) => titulosQueCabem(t, { deitada: { base: 13, largura: 88 }, empe: { base: 18, largura: 84 }, quadrada: { base: 16, largura: 86 } },
       // O carimbo no máximo metade do título; o recheio em em, para encolher junto com a letra.
       (f, tam) => '.mt-peca .carimbo { font-size: ' + Math.min({ deitada: 3.2, empe: 7, quadrada: 4.4 }[f], tam * 0.5).toFixed(2) + 'cqw; padding: .32em .68em .28em; }')
       // Deitada, o carimbo sobe para cima do título em vez de dividir a linha com ele.

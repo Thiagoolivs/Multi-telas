@@ -20,6 +20,7 @@ import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { BriefingChat } from '../components/content/BriefingChat.jsx';
 import { SalvarEm } from '../components/content/SalvarEm.jsx';
 import { FotoDoProduto } from '../components/content/FotoDoProduto.jsx';
+import { EditarPeca, AvisoDeEncaixe } from '../components/content/EditarPeca.jsx';
 import { aviso } from '../lib/avisos.js';
 import { guardar as guardarNaBandeja, inscrever as inscreverBandeja, limpar as limparBandeja } from '../lib/bandeja.js';
 
@@ -275,6 +276,7 @@ export function MyDesignsPage({ onIr }) {
 
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);   // { id?, item } no editor
+  const [editandoPeca, setEditandoPeca] = useState(null); // { id, item, label } — peça em HTML
   const [modeloAberto, setModeloAberto] = useState(false);
   /*
    * O que está esperando para ser guardado: { item, nome, pasta, titulo }.
@@ -812,13 +814,15 @@ export function MyDesignsPage({ onIr }) {
                             className="flex flex-1 items-center justify-center gap-1 rounded-md bg-surface-2 px-2 py-1.5 text-2xs font-semibold text-ink-2 transition hover:bg-accent hover:text-white">
                             <Send size={12} /> Publicar
                           </button>
-                          {/* O editor e o PNG ainda só sabem a composição antiga; a peça em HTML ganha os dela no PR 14. */}
-                          {!(it.item && it.item.type === 'peca-html') && (
-                            <>
-                              <button title="Editar" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => setEditing({ id: it.id, item: it.item, label: it.label })}><Pencil size={13} /></button>
-                              <button title="Baixar PNG" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => downloadComposition(it.item, it.formato, it.label)}><Download size={13} /></button>
-                            </>
-                          )}
+                          {/* A peça em HTML edita textos e foto (EditarPeca); o PNG ainda só sabe a composição antiga. */}
+                          {it.item && it.item.type === 'peca-html'
+                            ? <button title="Editar textos" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => setEditandoPeca({ id: it.id, item: it.item, label: it.label })}><Pencil size={13} /></button>
+                            : (
+                              <>
+                                <button title="Editar" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => setEditing({ id: it.id, item: it.item, label: it.label })}><Pencil size={13} /></button>
+                                <button title="Baixar PNG" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => downloadComposition(it.item, it.formato, it.label)}><Download size={13} /></button>
+                              </>
+                            )}
                           <button title="Excluir" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-danger" onClick={async () => { if (window.confirm('Excluir este design?')) { await library.remove(it.id); reload(); } }}><Trash2 size={13} /></button>
                         </div>
                       </div>
@@ -836,6 +840,15 @@ export function MyDesignsPage({ onIr }) {
         <Suspense fallback={null}>
           <EscolherModelo aberto onFechar={() => setModeloAberto(false)} onEscolher={comecarDe} />
         </Suspense>
+      )}
+
+      {/* Textos e foto da peça em HTML */}
+      {editandoPeca && (
+        <EditarPeca item={editandoPeca.item} label={editandoPeca.label} onFechar={() => setEditandoPeca(null)}
+          onSalvar={async (item) => {
+            await library.update(editandoPeca.id, item, editandoPeca.label || '');
+            setEditandoPeca(null); reload(); aviso.ok('Peça atualizada.');
+          }} />
       )}
 
       {/* Editor de composição */}
@@ -1194,6 +1207,7 @@ export function MyDesignsPage({ onIr }) {
                         <span className="font-semibold text-ink-2">revisar:</span> {p.problemas[0]}
                       </div>
                     )}
+                    {p.item && p.item.type === 'peca-html' && <AvisoDeEncaixe item={p.item} />}
                   </div>
                 ))}
               </div>

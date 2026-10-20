@@ -80,7 +80,7 @@ self.addEventListener('fetch', (event) => {
    * lote 1). A TV não busca esses arquivos: a peça chega dentro da config.
    * As FOTOS das peças vão para a TV, e essas continuam no cache.
    */
-  if (url.pathname === '/bancada.html' || url.pathname === '/js/bancada.js'
+  if (url.pathname === '/bancada.html' || url.pathname === '/js/bancada.js' || url.pathname === '/js/peca-conferir.js'
     || url.pathname === '/experimento.html' || url.pathname === '/js/experimento.js'
     || /^\/pecas-ouro\/[^/]+\.(html|json)$/.test(url.pathname)) return;
   if (url.pathname.startsWith('/media/') || url.pathname.startsWith('/pecas-ouro/fotos/')) {

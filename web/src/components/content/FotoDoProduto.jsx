@@ -15,9 +15,13 @@ import { media } from '../../api.js';
 const ACEITA = /^image\/(png|jpeg|webp)$/;
 const MAX_BYTES = 5 * 1024 * 1024; // o mesmo teto que o servidor lê
 
-export function FotoDoProduto({ onEscolher, onFechar }) {
+/*
+ * Também é o seletor de foto do editor de textos da peça (`aviso`, `botao`,
+ * `incluirIa`): lá a foto não é referência de produto, então a gerada vale.
+ */
+export function FotoDoProduto({ onEscolher, onFechar, aviso, botao, incluirIa }) {
   const { data, loading } = useAsync(media.list);
-  const fotos = ((data && data.items) || []).filter((m) => ACEITA.test(m.mime) && m.origem !== 'ia' && (!m.size || m.size <= MAX_BYTES)).slice(0, 24);
+  const fotos = ((data && data.items) || []).filter((m) => ACEITA.test(m.mime) && (incluirIa || m.origem !== 'ia') && (!m.size || m.size <= MAX_BYTES)).slice(0, 24);
   const entrada = useRef(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');
@@ -40,7 +44,7 @@ export function FotoDoProduto({ onEscolher, onFechar }) {
   return (
     <div className="mt-2 rounded-lg border border-line bg-surface p-2.5">
       <div className="mb-2 flex items-start justify-between gap-2">
-        <span className="text-xs text-ink-2">Escolha a foto do produto. A IA cria a cena com <b className="text-ink">o seu produto, igual</b>.</span>
+        <span className="text-xs text-ink-2">{aviso || <>Escolha a foto do produto. A IA cria a cena com <b className="text-ink">o seu produto, igual</b>.</>}</span>
         <button type="button" onClick={onFechar} aria-label="Fechar"
           className="rounded p-0.5 text-ink-3 transition hover:text-ink"><X size={14} /></button>
       </div>
@@ -62,7 +66,7 @@ export function FotoDoProduto({ onEscolher, onFechar }) {
         <input ref={entrada} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={enviar} />
         <Button type="button" size="sm" variant="secondary" icon={UploadCloud} disabled={enviando}
           onClick={() => entrada.current && entrada.current.click()}>
-          {enviando ? 'Enviando…' : 'Enviar foto do produto'}
+          {enviando ? 'Enviando…' : (botao || 'Enviar foto do produto')}
         </Button>
       </div>
       {erro && <p className="mt-1.5 text-xs text-danger">{erro}</p>}
