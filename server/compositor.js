@@ -329,4 +329,70 @@ async function comporTela(o) {
   return pecas;
 }
 
-module.exports = { comporPeca, comporTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, partirTitulo, OURO };
+/*
+ * A TELA INTEIRA na "Campanha com IA" de dentro da tela (§4.7): uma peça por
+ * zona que o layout tem — cabeçalho, duas no destaque (se revezam), lateral
+ * e o rodapé com as frases que rolam. Cada uma sabe o que as anteriores já
+ * disseram. Zona que falhar fica como estava, e a resposta diz qual foi.
+ */
+const ORDEM_DOS_PAPEIS = ['cabecalho', 'destaque', 'lateral', 'rodape'];
+
+function papeisDaTela(zones) {
+  const listas = (zones || []).filter((z) => z && z.type === 'playlist');
+  const principal = listas.find((z) => /^(principal|video|z1)$/.test(z.id)) || listas[0];
+  const plano = [];
+  for (const z of zones || []) {
+    if (!z) continue;
+    if (z.type === 'header') plano.push({ zid: z.id, papel: 'cabecalho' });
+    else if (z.type === 'ticker') plano.push({ zid: z.id, papel: 'rodape' });
+    else if (z === principal) plano.push({ zid: z.id, papel: 'destaque' }, { zid: z.id, papel: 'destaque' });
+    else if (z.type === 'playlist') plano.push({ zid: z.id, papel: 'lateral' });
+  }
+  return plano.sort((a, b) => ORDEM_DOS_PAPEIS.indexOf(a.papel) - ORDEM_DOS_PAPEIS.indexOf(b.papel));
+}
+
+// As frases do rodapé: o motor de rolagem do player as passa por dentro da pele (data-vivo="mensagens").
+async function mensagensDoRodape(o, ditos) {
+  try {
+    const r = await motores.chamar({
+      motor: o.motor, json: true, maxTokens: 400, temperatura: 0.7,
+      sistema: 'Você escreve as frases curtas do rodapé rolante de uma TV de loja.',
+      usuario: 'Empresa: ' + (o.empresa || 'a empresa') + '. Pedido: "' + String(o.pedido || '').slice(0, 400) + '".\n'
+        + 'Escreva 4 frases de até 60 caracteres: horário, pagamento, contato, um aviso útil — o que completa a tela.'
+        + (ditos.length ? ' Não repita: ' + ditos.slice(0, 12).map((x) => '"' + x + '"').join(', ') + '.' : '')
+        + '\nResponda só com um JSON: ["frase", "frase", "frase", "frase"]',
+    });
+    const lista = JSON.parse((String(r.texto).match(/\[[\s\S]*\]/) || ['[]'])[0]);
+    const frases = lista.map((x) => String(x).trim().slice(0, 80)).filter(Boolean).slice(0, 8);
+    if (frases.length) return frases;
+  } catch (e) { /* sem frases da IA, ficam as do pedido */ }
+  return [o.oferta, o.prazo, o.empresa].map((x) => String(x || '').trim()).filter(Boolean);
+}
+
+async function comporTelaInteira(o) {
+  const a = o.answers || {};
+  const pedido = [a.objetivo, a.oferta && 'Oferta: ' + a.oferta, a.prazo && 'Prazo: ' + a.prazo,
+    a.publico && 'Público: ' + a.publico, a.tom && 'Tom: ' + a.tom, a.extra].filter(Boolean).join('. ');
+  const base = { pedido, empresa: o.empresa || '', segmento: o.segmento || '', marca: o.marca || null, modo: o.modo || 'escuro', motor: o.motor };
+  const zonas = {};
+  const falhas = [];
+  const ditos = [];
+  for (const p of papeisDaTela(o.zones)) {
+    if (o.progresso) o.progresso('compondo a tela', p.papel);
+    let r;
+    try { r = await comporPeca(Object.assign({}, base, { papel: p.papel, evitar: ditos.slice(0, 20) })); }
+    catch (e) { r = { ok: false }; }
+    if (!r.ok) { falhas.push(p.papel); continue; }
+    P.higienizar({ html: r.item.html, css: r.item.css }).campos.forEach((c) => { if (c.tipo === 'texto' && c.exemplo) ditos.push(c.exemplo); });
+    const z = zonas[p.zid] = zonas[p.zid] || {};
+    if (p.papel === 'cabecalho' || p.papel === 'rodape') z.peca = r.item;
+    else (z.items = z.items || []).push(r.item);
+  }
+  for (const p of papeisDaTela(o.zones).filter((x) => x.papel === 'rodape')) {
+    if (o.progresso) o.progresso('compondo a tela', 'frases do rodapé');
+    zonas[p.zid] = Object.assign(zonas[p.zid] || {}, { messages: await mensagensDoRodape(Object.assign({}, base, a), ditos) });
+  }
+  return { zonas, falhas };
+}
+
+module.exports = { comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, partirTitulo, OURO };

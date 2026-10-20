@@ -34,7 +34,11 @@ export function carregarDesenhista() {
 
 // O tamanho real da TV em cada formato: a peça decide o layout pelo tamanho
 // do contêiner (@container), então ela é desenhada assim e só depois reduzida.
-export const TAMANHO_REAL = { '16/9': [1920, 1080], '9/16': [1080, 1920], '1/1': [1080, 1080], '21/9': [2520, 1080], '4/5': [1080, 1350] };
+export const TAMANHO_REAL = {
+  '16/9': [1920, 1080], '9/16': [1080, 1920], '1/1': [1080, 1080], '21/9': [2520, 1080], '4/5': [1080, 1350],
+  // As faixas do layout Corporativo em 1080p (as mesmas medidas da bancada).
+  cabecalho: [1920, 130], rodape: [1920, 119],
+};
 
 export const NOME_DO_FORMATO = { '16/9': 'TV deitada', '9/16': 'TV em pé', '1/1': 'tela quadrada' };
 
