@@ -291,11 +291,36 @@ test('a bancada acusa texto sobre texto, não só texto fora da peça', () => {
    * sem sair da peça — a medida de vazamento não via. A hora é data-vivo,
    * então os vivos parados entram na conta; a rolagem do rodapé, não.
    */
+  // O detector é um só (js/peca-conferir.js): a bancada e o painel medem igual.
+  const c = semComentarios(ler('js', 'peca-conferir.js'));
+  assert.match(c, /querySelectorAll\('\[data-campo\], \[data-vivo\]:not\(\[data-vivo="mensagens"\]\)'\)/);
+  assert.match(c, /function sobrepostos\(caixas\)/);
+  assert.match(c, /if \(a\.el\.contains\(b\.el\) \|\| b\.el\.contains\(a\.el\)\) continue/);
   const b = semComentarios(ler('js', 'bancada.js'));
-  assert.match(b, /querySelectorAll\('\[data-campo\], \[data-vivo\]:not\(\[data-vivo="mensagens"\]\)'\)/);
-  assert.match(b, /function sobrepostos\(caixas\)/);
-  assert.match(b, /if \(a\.el\.contains\(b\.el\) \|\| b\.el\.contains\(a\.el\)\) continue/);
+  assert.match(b, /MTPecaConferir\.conferir\(host, \{ esperar: 2500 \}\)/);
   assert.match(b, /' · SOBREPÕE: '/);
+  assert.match(ler('bancada.html'), /<script src="\/js\/peca-conferir\.js"><\/script>\s*<script src="\/js\/bancada\.js">/);
+});
+
+test('detector: "passa da borda" mede também as linhas do texto, não só a caixa', () => {
+  /*
+   * Uma palavra longa que não quebra transborda a própria caixa, e a caixa
+   * continua dentro da peça: o editor mostrava "ANTICONSTITU…" cortado e o
+   * detector dizia que cabia. Com a medida certa, a varredura de 948
+   * combinações achou "DE COSTELA" vazando 91px no lançamento em pé.
+   */
+  const c = semComentarios(ler('js', 'peca-conferir.js'));
+  assert.match(c, /if \(passa\(r\) \|\| linhas\.some\(passa\)\) fora\.push\(nome\)/);
+  const lanc = ler('pecas-ouro', 'institucional-lancamento.html');
+  assert.doesNotMatch(lanc, /h1 span, h1 em \{[^}]*nowrap/, 'título sem quebra vaza com fonte larga');
+});
+
+test('detector: linhas se cobrem só acima de um quinto da menor', () => {
+  const { cobre } = require('../js/peca-conferir.js');
+  const r = (left, top, right, bottom) => ({ left, top, right, bottom });
+  assert.equal(cobre(r(0, 0, 100, 10), r(50, 5, 150, 15)), true);
+  assert.equal(cobre(r(0, 0, 100, 10), r(0, 9, 100, 19)), false, 'encostar um décimo não é sobrepor');
+  assert.equal(cobre(r(0, 0, 100, 10), r(100, 0, 200, 10)), false, 'lado a lado não é sobrepor');
 });
 
 test('a bancada não desenha a tela com largura zero quando abre escondida', () => {

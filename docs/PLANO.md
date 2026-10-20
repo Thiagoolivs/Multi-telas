@@ -628,6 +628,16 @@ compõe em HTML com os textos aprovados, a peça-ouro preenchida entra quando
 a IA falha, e Meus Designs mostra a peça com o desenhista da TV. Faltam no
 13 as 3 opções e a tela completa ("Campanha com IA" dentro da tela).
 
+**Achado de 20/10 — peças-ouro e fontes largas.** O detector da bancada
+media a caixa do campo, não o texto: palavra que não quebra vazava sem
+aviso. Corrigido (`js/peca-conferir.js`, um detector só para bancada e
+painel), a varredura de 39 peças × 6 marcas × todas as zonas (948
+combinações) achou 9 peças que vazam ou sobrepõem com a fonte de OUTRA
+marca — com a própria, só o lançamento, já corrigido. Fica um PR de
+robustez para as 8: cabecalho-chamada (em pé), cardapio-colunas (lateral),
+gente-mes, lateral-prazo, manifesto, oferta-foto (marca × kicker com
+Playfair/Poppins), oferta-parcelado (em pé) e servico-horario.
+
 ### 4.15 Pronto quando
 
 - [ ] 39 peças-ouro e 6 telas completas aprovadas pelo dono.
