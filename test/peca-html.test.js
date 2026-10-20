@@ -377,3 +377,24 @@ test('o mesmo arquivo roda no navegador (player) e dá a mesma saída', () => {
   assert.equal(noNavegador.css, noServidor.css);
   assert.equal(noNavegador.ok, true);
 });
+
+/* ---------------- Campos do lote 1: QR e marca que não se repete ---------------- */
+
+test('QR é um campo de TEXTO que só vale em <img>: o cliente digita o link, a imagem é nossa', () => {
+  const r = so(embrulhar('<p data-campo="t">x</p><img data-campo-qr="link" alt="QR">'));
+  assert.equal(r.ok, true, r.problemas.join('\n'));
+  assert.deepEqual(r.campos.find((c) => c.nome === 'link'), { nome: 'link', tipo: 'qr', exemplo: '' });
+  // Fora de <img> não existe — e <img> com QR não precisa de foto.
+  assert.equal(so(embrulhar('<p data-campo="t" data-campo-qr="link">x</p>')).ok, false);
+  const v = P.validarItem({ type: 'peca-html', html: embrulhar('<p data-campo="t">x</p><img data-campo-qr="link">'),
+    css: '', campos: { link: 'https://wa.me/5511999990000\u0000' } });
+  assert.equal(v.ok, true, v.problemas.join('\n'));
+  assert.equal(v.item.campos.link, 'https://wa.me/5511999990000');
+});
+
+test('data-repete só aceita "marca"', () => {
+  assert.equal(so(embrulhar('<p data-campo="t" data-repete="marca">x</p>')).ok, true);
+  const r = so(embrulhar('<p data-campo="t" data-repete="titulo">x</p>'));
+  assert.equal(r.ok, false);
+  assert.ok(!r.html.includes('data-repete'));
+});

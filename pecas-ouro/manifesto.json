@@ -48,7 +48,8 @@
       "papeis": [
         "cabecalho"
       ],
-      "estado": "rascunho"
+      "estado": "aprovada",
+      "aprovadaEm": "2026-10-20"
     },
     {
       "id": "oferta-foto",
@@ -58,10 +59,11 @@
         "destaque",
         "lateral"
       ],
-      "estado": "rascunho",
+      "estado": "aprovada",
       "campos": {
         "foto": "/pecas-ouro/fotos/otica-sol.jpg"
-      }
+      },
+      "aprovadaEm": "2026-10-20"
     },
     {
       "id": "oferta-lista",
@@ -71,7 +73,8 @@
         "destaque",
         "lateral"
       ],
-      "estado": "rascunho"
+      "estado": "aprovada",
+      "aprovadaEm": "2026-10-20"
     },
     {
       "id": "numero-grande",
@@ -81,7 +84,8 @@
         "destaque",
         "lateral"
       ],
-      "estado": "rascunho"
+      "estado": "aprovada",
+      "aprovadaEm": "2026-10-20"
     },
     {
       "id": "lateral-prazo",
@@ -91,7 +95,8 @@
         "lateral",
         "destaque"
       ],
-      "estado": "rascunho"
+      "estado": "aprovada",
+      "aprovadaEm": "2026-10-20"
     },
     {
       "id": "lateral-qr",
@@ -101,10 +106,11 @@
         "lateral",
         "destaque"
       ],
-      "estado": "rascunho",
+      "estado": "aprovada",
       "campos": {
         "link": "https://wa.me/5511999990000"
-      }
+      },
+      "aprovadaEm": "2026-10-20"
     },
     {
       "id": "rodape-selo",
@@ -113,7 +119,8 @@
       "papeis": [
         "rodape"
       ],
-      "estado": "rascunho"
+      "estado": "aprovada",
+      "aprovadaEm": "2026-10-20"
     }
   ],
   "mensagens": [
@@ -128,7 +135,7 @@
       "nome": "Ótica Central · Semana do Sol",
       "marca": "otica",
       "layout": "corporate",
-      "estado": "rascunho",
+      "estado": "aprovada",
       "zonas": {
         "cabecalho": {
           "modo": "escuro",
@@ -186,7 +193,8 @@
           ]
         }
       },
-      "sobre": "Cada zona diz uma coisa (PLANO §4.7): o cabeçalho, quem e a campanha; o destaque, a oferta; a lateral, quando e como; o rodapé, o resto. Nenhum texto se repete entre zonas que aparecem juntas."
+      "sobre": "Cada zona diz uma coisa (PLANO §4.7): o cabeçalho, quem e a campanha; o destaque, a oferta; a lateral, quando e como; o rodapé, o resto. Nenhum texto se repete entre zonas que aparecem juntas.",
+      "aprovadaEm": "2026-10-20"
     }
   ]
 }
