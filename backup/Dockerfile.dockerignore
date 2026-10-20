@@ -1,0 +1,8 @@
+# Só entra na imagem o que o backup usa — o resto do repositório nem sobe.
+*
+!package.json
+!package-lock.json
+!server/backup.js
+!server/s3.js
+!server/mail.js
+!tools/backup.mjs

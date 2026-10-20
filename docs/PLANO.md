@@ -886,6 +886,10 @@ antes dela por decisão do dono (§3); a primeira peça-html numa tela de
 cliente, não.
 
 - [ ] `pg_dump` diário do Postgres para o R2, com teste de restauração.
+      Código pronto (`docs/BACKUP.md`): serviço próprio no Railway por cron,
+      bucket **separado e privado** só de backup, dump cifrado, e a
+      restauração conferida tabela por tabela **todo dia**, num Postgres
+      descartável — não uma vez na implantação. Falta o dono criar o bucket.
 - [ ] Canal estável/beta por tela; a ótica e o cliente de 3 telas no estável.
 - [ ] Box do dono rodando o player em beta, como bancada de teste.
 
