@@ -15,7 +15,7 @@
 .nome { font: 700 17cqh/1.05 var(--mt-fonte-texto); letter-spacing: .26em; text-transform: uppercase; white-space: nowrap; }
 .chamada { flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; justify-content: center; gap: 8cqh; margin: 14cqh 0;
   background: var(--mt-destaque); color: var(--mt-sobre-destaque); border-radius: var(--mt-raio); }
-.chamada span { font: 400 46cqh/1 var(--mt-fonte-titulo); letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+.chamada span { font: 400 calc(46cqh * var(--mt-escala-titulo, 1))/1 var(--mt-fonte-titulo); letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
 .chamada small { font: 700 15cqh/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; white-space: nowrap; opacity: .85; }
 .hora { flex: none; font: 400 46cqh/1 var(--mt-fonte-titulo); letter-spacing: .02em; }
 /* Faixa em pé: a largura é pouca — a chamada e a marca encolhem, o "quando" sai. */
@@ -23,7 +23,7 @@
   .mt-peca { gap: 5cqh; }
   .nome { font-size: 12cqh; letter-spacing: .14em; }
   .chamada { margin: 18cqh 0; }
-  .chamada span { font-size: 30cqh; }
+  .chamada span { font-size: calc(30cqh * var(--mt-escala-titulo, 1)); }
   .chamada small { display: none; }
   .hora { font-size: 38cqh; }
 }

@@ -73,8 +73,9 @@ h1 { font: 400 6.4cqw/.92 var(--mt-fonte-titulo); text-transform: uppercase; mar
   h1 { font-size: 13cqw; white-space: normal; }
   .itens { bottom: 11cqh; }
   .itens li { padding: 3.6cqw 0 3.2cqw; }
-  .nome { font-size: 6.4cqw; }
-  .valor { font-size: 7.6cqw; }
+  /* Nome e preço dividem a linha estreita: com fonte de marca larga, encolhem juntos (--mt-escala-titulo). */
+  .nome { font-size: calc(6.4cqw * var(--mt-escala-titulo, 1)); }
+  .valor { font-size: calc(7.6cqw * var(--mt-escala-titulo, 1)); }
   .cta { font-size: 3.2cqw; letter-spacing: .16em; }
 }
 </style>

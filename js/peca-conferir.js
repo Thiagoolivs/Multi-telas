@@ -100,12 +100,14 @@
       const nome = el.getAttribute('data-campo') || el.getAttribute('data-vivo');
       const linhas = linhasDoTexto(el, r, p.width / peca.offsetWidth);
       /*
-       * A caixa do elemento E as linhas do texto: uma palavra longa que não
-       * quebra transborda a própria caixa, e a caixa continua dentro da peça.
-       * Visto no editor do painel: "ANTICONSTITU…" cortado na borda e o
-       * detector dizendo que cabia.
+       * As LINHAS do texto, não a caixa: uma palavra longa que não quebra
+       * transborda a própria caixa, e a caixa continua dentro da peça (visto
+       * no editor: "ANTICONSTITU…" cortado e o detector dizendo que cabia).
+       * E a caixa de um número enorme é a da fonte, não a da tinta: o "10"
+       * do parcelado em pé era acusado 2px acima da peça sem nada sair.
+       * Campo sem texto (foto, vazio) fica com a caixa — é o que linhasDoTexto devolve.
        */
-      if (passa(r) || linhas.some(passa)) fora.push(nome);
+      if (linhas.some(passa)) fora.push(nome);
       // Desenho de fundo (aria-hidden) pode ficar atrás do texto de propósito.
       if (!el.closest('[aria-hidden="true"]')) caixas.push({ el, linhas, nome });
     });

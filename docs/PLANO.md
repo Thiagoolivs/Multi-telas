@@ -637,6 +637,13 @@ marca — com a própria, só o lançamento, já corrigido. Fica um PR de
 robustez para as 8 (abaixo): cabecalho-chamada (em pé), cardapio-colunas (lateral),
 gente-mes, lateral-prazo, manifesto, oferta-foto (marca × kicker com
 Playfair/Poppins), oferta-parcelado (em pé) e servico-horario.
+**Feito no mesmo dia** com um token, `--mt-escala-titulo` (js/tokens.js): a
+largura das maiúsculas da fonte da marca contra a Oswald, medida no
+navegador (js/fontes.js). Título e número grandes usam
+`calc(… * var(--mt-escala-titulo, 1))`; condensada e Anton ficam em 1, e
+nada muda na marca de cada peça — a ótica do lote 1 conferida ponto a
+ponto. As 948 combinações passam limpas, e a régua do compositor ensina a
+IA a usar o token.
 
 **Escopo enxuto (20/10, o dono: "descarte do escopo o que não for
 necessário").** Fica o que melhora a peça que vai para a TV ou é exigido
