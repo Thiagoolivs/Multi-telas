@@ -283,6 +283,77 @@
       ],
       "estado": "rascunho",
       "marca": "salao"
+    },
+    {
+      "id": "cabecalho-minimo",
+      "nome": "Cabeçalho mínimo",
+      "familia": "cabeçalho",
+      "papeis": [
+        "cabecalho"
+      ],
+      "estado": "rascunho",
+      "marca": "clinica"
+    },
+    {
+      "id": "social-data",
+      "nome": "Data comemorativa",
+      "familia": "social",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "clinica"
+    },
+    {
+      "id": "oferta-parcelado",
+      "nome": "Parcelado",
+      "familia": "oferta",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "clinica"
+    },
+    {
+      "id": "institucional-valores",
+      "nome": "Três valores com ícone",
+      "familia": "institucional",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "clinica"
+    },
+    {
+      "id": "servico-alerta",
+      "nome": "Aviso de alerta",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "estado": "rascunho",
+      "marca": "clinica"
+    },
+    {
+      "id": "servico-comunicado",
+      "nome": "Comunicado",
+      "familia": "serviço",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "clinica"
+    },
+    {
+      "id": "rodape-relogio",
+      "nome": "Rodapé com relógio",
+      "familia": "rodapé",
+      "papeis": [
+        "rodape"
+      ],
+      "estado": "rascunho",
+      "marca": "clinica"
     }
   ],
   "telas": [
@@ -475,6 +546,77 @@
         "Aberto de terça a sábado"
       ],
       "sobre": "O salão vende pelo nome e pela confiança: o cabeçalho é a assinatura; o destaque, a oferta, como funciona e quem já foi; a lateral, os dois QRs (agendar e seguir), que se revezam e nunca aparecem juntos; o rodapé fica quieto, só com o jeito de falar com a casa."
+    },
+    {
+      "id": "clinica-outubro-rosa",
+      "nome": "Clínica Vida · Outubro Rosa",
+      "marca": "clinica",
+      "layout": "sidebar-right",
+      "estado": "rascunho",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo"
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "social-data"
+            },
+            {
+              "id": "oferta-parcelado"
+            },
+            {
+              "id": "institucional-valores"
+            },
+            {
+              "id": "servico-comunicado"
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "servico-alerta"
+            },
+            {
+              "id": "servico-agenda",
+              "campos": {
+                "kicker": "Pelo celular",
+                "titulo": "Mamografia",
+                "titulo2": "com hora marcada",
+                "meta": "Pedido médico e documento com foto",
+                "preco": "180",
+                "centavos": ",00",
+                "pedido": "Agende pelo QR",
+                "pedido-apoio": "Abre a conversa com a recepção",
+                "link": "https://wa.me/5511977770000"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-relogio"
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Resultados de exame pelo WhatsApp",
+        "Estacionamento gratuito para pacientes",
+        "Atendemos os principais convênios",
+        "Chegue 15 minutos antes da consulta"
+      ],
+      "sobre": "Tela sem cabeçalho (Destaque + Barra Lateral): a hora vai para o rodapé. O destaque fala da campanha, do check-up, do jeito da casa e do feriado; a lateral, do aviso e de como marcar; o rodapé, do resto. Com cabeçalho (Corporativo), entra o cabeçalho mínimo."
     }
   ]
 }

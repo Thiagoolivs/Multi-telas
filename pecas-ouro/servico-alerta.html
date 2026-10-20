@@ -1,0 +1,57 @@
+<!--
+  Aviso de alerta — família serviço. Destaque e lateral.
+  O único modelo da biblioteca que pinta a peça inteira na cor de
+  destaque: aviso precisa interromper o olhar. O triângulo com "!" é
+  desenho (clip-path), e a faixa listrada no pé é o código universal de
+  atenção. Para piso molhado, uso de máscara, área de EPI. Medidas em
+  cqmin: a mesma peça na coluna e na tela inteira.
+-->
+<style>
+.mt-peca { display: flex; flex-direction: column; justify-content: center; padding: 9cqmin 9cqmin 20cqmin;
+  color: var(--mt-sobre-destaque); font-family: var(--mt-fonte-texto); background: var(--mt-destaque); }
+/* A faixa de atenção: listras diagonais nas duas cores do aviso. */
+.mt-peca::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 8cqmin;
+  background: repeating-linear-gradient(-45deg, var(--mt-sobre-destaque) 0 3cqmin, var(--mt-destaque) 3cqmin 6cqmin); }
+.sinal { position: relative; width: 24cqmin; height: 21cqmin; background: var(--mt-sobre-destaque); clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.sinal::after { content: '!'; position: absolute; left: 0; right: 0; bottom: 1.4cqmin; text-align: center; font: 800 13cqmin/1 var(--mt-fonte-texto); color: var(--mt-destaque); }
+.kicker { margin-top: 7cqmin; font: 700 3.8cqmin/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; }
+h1 { margin-top: 4cqmin; font: 700 11cqmin/1.02 var(--mt-fonte-titulo); letter-spacing: -.02em; text-wrap: balance; }
+.apoio { margin-top: 5cqmin; font: 500 4.6cqmin/1.4 var(--mt-fonte-texto); max-width: 120cqmin; text-wrap: pretty; }
+@container (aspect-ratio >= 1.25) {
+  .mt-peca { padding: 0 10cqw 10cqmin; }
+  .sinal { width: 22cqmin; height: 19.2cqmin; }
+  .sinal::after { font-size: 12cqmin; bottom: 1.2cqmin; }
+  .kicker { margin-top: 5cqmin; font-size: 3.2cqmin; }
+  h1 { font-size: 14cqmin; max-width: 150cqmin; }
+  .apoio { font-size: 4.6cqmin; max-width: 140cqmin; }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .sinal { width: 30cqmin; height: 26cqmin; }
+  .sinal::after { font-size: 16cqmin; bottom: 1.8cqmin; }
+  .kicker { font-size: 4cqmin; }
+  h1 { font-size: 14cqmin; }
+  .apoio { font-size: 5cqmin; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { padding-bottom: 16cqmin; }
+  .sinal { width: 18cqmin; height: 15.6cqmin; }
+  .sinal::after { font-size: 10cqmin; bottom: 1cqmin; }
+  .kicker { margin-top: 5cqmin; font-size: 3cqmin; }
+  h1 { font-size: 10cqmin; }
+  .apoio { font-size: 3.8cqmin; }
+}
+/* A coluna estreita: o aviso ocupa a altura — é para ser visto do outro lado da sala. */
+@container (max-width: 700px) {
+  .sinal { width: 30cqmin; height: 26cqmin; }
+  .sinal::after { font-size: 16cqmin; bottom: 1.8cqmin; }
+  .kicker { font-size: 4.2cqmin; }
+  h1 { font-size: 13cqmin; }
+  .apoio { font-size: 5.2cqmin; }
+}
+</style>
+<section class="mt-peca servico-alerta">
+  <span class="sinal" aria-hidden="true" data-entrada="estourar"></span>
+  <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="1">Atenção</p>
+  <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Com sintomas de gripe?</h1>
+  <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Pegue uma máscara na recepção e avise a equipe antes de sentar.</p>
+</section>

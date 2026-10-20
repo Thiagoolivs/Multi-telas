@@ -1,0 +1,55 @@
+<!--
+  Data comemorativa — família social. Destaque.
+  O nome da data é a imagem: grande, em duas linhas decididas, com a
+  segunda na cor de destaque. Atrás, o número do mês (ou do dia) em
+  contorno, só desenho — a peça não precisa de foto para ter profundidade.
+  O número é campo (o cliente troca), então cabe inteiro na peça.
+  Serve para Outubro Rosa, Dia das Mães, aniversário da loja.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(90% 120% at 100% 50%, var(--mt-fundo-2), var(--mt-fundo) 60%); }
+/* O número de fundo: contorno fino, sem preenchimento. */
+.fundo-num { position: absolute; right: 4cqw; top: 50%; transform: translateY(-50%); font: 700 54cqh/.8 var(--mt-fonte-titulo); letter-spacing: -.04em;
+  color: var(--mt-fundo-0); -webkit-text-stroke: .16cqw var(--mt-linha); white-space: nowrap; }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.bloco { position: absolute; left: 6cqw; top: 50%; transform: translateY(-50%); width: 60cqw; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 600 9cqw/.95 var(--mt-fonte-titulo); letter-spacing: -.02em; margin: 2.4cqw 0 2.8cqw; }
+h1 span, h1 em { display: block; white-space: nowrap; }
+h1 em { font-style: normal; color: var(--mt-destaque); }
+.apoio { font: 400 1.6cqw/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 38cqw; }
+.cta { display: inline-block; margin-top: 3.2cqw; font: 600 1.2cqw/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
+@container (aspect-ratio < 0.8) {
+  .fundo-num { right: 6cqw; top: 8cqh; transform: none; font-size: 64cqw; -webkit-text-stroke-width: .3cqw; }
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
+  .bloco { left: 8cqw; right: 8cqw; width: auto; top: auto; bottom: 10cqh; transform: none; }
+  .kicker { font-size: 2.2cqw; }
+  .kicker i { width: 6cqw; height: .25cqw; }
+  h1 { font-size: 17cqw; margin: 4cqw 0 4.4cqw; }
+  .apoio { font-size: 3cqw; max-width: none; }
+  .cta { font-size: 2.2cqw; margin-top: 5cqw; border-bottom-width: .25cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .fundo-num { right: 6cqw; top: 6cqh; transform: none; font-size: 46cqw; -webkit-text-stroke-width: .22cqw; }
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
+  .bloco { left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 9cqh; transform: none; }
+  .kicker { font-size: 1.9cqw; }
+  .kicker i { width: 5cqw; height: .2cqw; }
+  h1 { font-size: 13cqw; margin: 3cqw 0 3.2cqw; }
+  .apoio { font-size: 2.4cqw; max-width: 70cqw; }
+  .cta { font-size: 1.9cqw; margin-top: 3.6cqw; border-bottom-width: .2cqw; }
+}
+</style>
+<section class="mt-peca social-data">
+  <span class="fundo-num" data-campo="numero" aria-hidden="true" data-entrada="aparecer">10</span>
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Clínica <b>Vida</b></div>
+  <div class="bloco">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Mês de prevenção</span></p>
+    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Outubro</span><em data-campo="titulo2">Rosa</em></h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Mamografia para mulheres a partir de 40 anos, com resultado em dois dias.</p>
+    <p class="cta" data-entrada="aparecer" data-ordem="4"><span data-campo="cta">Agende na recepção</span> <span aria-hidden="true">→</span></p>
+  </div>
+</section>

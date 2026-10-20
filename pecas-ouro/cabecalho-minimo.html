@@ -1,0 +1,35 @@
+<!--
+  Cabeçalho mínimo — papel cabeçalho (PLANO §4.7: "quem e agora").
+  Só o nome e a hora, na cor da marca, com espaço sobrando: é o cabeçalho
+  de quem quer a tela calma — consultório, escritório, recepção. Nasceu
+  para o modo marca, e lê nos quatro. Medidas em cqh: a altura da faixa
+  decide a letra.
+-->
+<style>
+.mt-peca { display: flex; align-items: center; justify-content: space-between; gap: 6cqh; padding: 0 3.4cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.marca { display: flex; align-items: center; gap: 9cqh; min-width: 0; }
+.logo { height: 54cqh; width: auto; max-width: 30cqw; object-fit: contain; }
+.logo[data-sem-foto] { display: none; }
+.logo:not([data-sem-foto]) + .nome { display: none; }
+.nome { font: 600 30cqh/1 var(--mt-fonte-titulo); letter-spacing: -.01em; white-space: nowrap; }
+.nome b { font-weight: 300; }
+.agora { display: flex; align-items: baseline; gap: 8cqh; white-space: nowrap; }
+.data { font: 500 17cqh/1 var(--mt-fonte-texto); letter-spacing: .04em; color: var(--mt-texto-suave); }
+.hora { font: 300 40cqh/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
+@container (aspect-ratio < 9) {
+  .data { display: none; }
+  .nome { font-size: 28cqh; }
+  .hora { font-size: 36cqh; }
+}
+</style>
+<section class="mt-peca cabecalho-minimo">
+  <div class="marca" data-entrada="aparecer">
+    <img class="logo" data-campo-img="logo" alt="">
+    <span class="nome" data-campo="marca">Clínica <b>Vida</b></span>
+  </div>
+  <div class="agora" data-entrada="aparecer" data-ordem="1">
+    <span class="data" data-vivo="data">Terça · 20 out</span>
+    <span class="hora" data-vivo="relogio">08:40</span>
+  </div>
+</section>
