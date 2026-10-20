@@ -972,6 +972,10 @@ continua obrigatório **antes de instalar a ótica**.
       restauração conferida tabela por tabela **todo dia**, num Postgres
       descartável — não uma vez na implantação. Falta o dono criar o bucket.
 - [ ] Canal estável/beta por tela; a ótica e o cliente de 3 telas no estável.
+      Decidido em 20/10 (escopo enxuto): canal por ENDEREÇO, sem código —
+      produção serve a branch `estavel`, um serviço `beta` serve o `main`, e
+      o box do dono aponta para o beta (`docs/CANAL-BETA.md`). Falta montar
+      no Railway, com a autorização do dono.
 - [ ] Box do dono rodando o player em beta, como bancada de teste.
 
 ---
