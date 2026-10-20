@@ -1,0 +1,65 @@
+<!--
+  Três passos — família serviço. Destaque.
+  Como funciona, em três tempos: tira o medo de quem nunca foi. O número
+  de cada passo é grande e em itálico; um filete liga os três, como uma
+  linha do tempo. Deitada, os passos lado a lado; em pé e quadrada, um
+  embaixo do outro.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(100% 100% at 100% 0%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.cabeca { position: absolute; left: 6cqw; right: 6cqw; top: 16cqh; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 400 5.6cqw/1.02 var(--mt-fonte-titulo); margin-top: 2.2cqw; white-space: nowrap; }
+h1 em { font-style: italic; color: var(--mt-destaque); }
+.passos { position: absolute; left: 6cqw; right: 6cqw; bottom: 15cqh; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 4cqw; }
+.passos li { position: relative; padding-top: 2.6cqw; border-top: .14cqw solid var(--mt-linha); }
+/* O ponto no filete marca onde cada passo começa. */
+.passos li::before { content: ''; position: absolute; left: 0; top: -.6cqw; width: 1.1cqw; height: 1.1cqw; border-radius: 50%; background: var(--mt-destaque); }
+.num { display: block; font: italic 400 5.4cqw/.9 var(--mt-fonte-titulo); color: var(--mt-destaque); }
+.passos b { display: block; margin-top: 1.6cqw; font: 400 2.5cqw/1.1 var(--mt-fonte-titulo); }
+.passos small { display: block; margin-top: 1cqw; font: 400 1.3cqw/1.45 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 24cqw; }
+.cta { position: absolute; left: 6cqw; bottom: 6cqh; font: 600 1.2cqw/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
+/* Em pé e quase quadrada: os passos em coluna, número à esquerda. */
+@container (aspect-ratio < 1.25) {
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
+  .cabeca { left: 8cqw; right: 8cqw; top: 11cqh; }
+  .kicker { font-size: 2.2cqw; }
+  .kicker i { width: 6cqw; height: .25cqw; }
+  h1 { font-size: 9.4cqw; margin-top: 3.4cqw; white-space: normal; }
+  h1 span, h1 em { display: block; white-space: nowrap; }
+  .passos { left: 8cqw; right: 8cqw; bottom: 13cqh; grid-template-columns: 1fr; row-gap: 0; }
+  .passos li { display: grid; grid-template-columns: 14cqw 1fr; column-gap: 3cqw; align-items: baseline; padding: 4.4cqw 0; border-top-width: .25cqw; }
+  .passos li::before { top: -1cqw; width: 1.8cqw; height: 1.8cqw; }
+  .num { grid-row: 1 / 3; font-size: 11cqw; }
+  .passos b { margin: 0; font-size: 5.4cqw; }
+  .passos small { margin-top: 1.4cqw; font-size: 2.8cqw; max-width: none; }
+  .cta { left: 8cqw; bottom: 5cqh; font-size: 2.2cqw; border-bottom-width: .25cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .cabeca { top: 10cqh; }
+  h1 { font-size: 7cqw; margin-top: 2.4cqw; }
+  .passos { bottom: 12cqh; }
+  .passos li { padding: 2.2cqw 0; grid-template-columns: 10cqw 1fr; }
+  .num { font-size: 7cqw; }
+  .passos b { font-size: 4cqw; }
+  .passos small { font-size: 2.1cqw; margin-top: 1cqw; }
+  .cta { font-size: 1.9cqw; }
+}
+</style>
+<section class="mt-peca servico-passos">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Studio <b>Bella</b></div>
+  <div class="cabeca">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Primeira vez aqui?</span></p>
+    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Sua cor nova</span> <em data-campo="titulo2">em três tempos</em></h1>
+  </div>
+  <ol class="passos">
+    <li data-entrada="subir" data-ordem="3"><span class="num" aria-hidden="true">01</span><b data-campo="passo1">Avaliação dos fios</b><small data-campo="passo1-detalhe">Vemos o histórico do cabelo e o que ele aguenta.</small></li>
+    <li data-entrada="subir" data-ordem="4"><span class="num" aria-hidden="true">02</span><b data-campo="passo2">Escolha do tom</b><small data-campo="passo2-detalhe">Mecha de teste na luz natural, antes de decidir.</small></li>
+    <li data-entrada="subir" data-ordem="5"><span class="num" aria-hidden="true">03</span><b data-campo="passo3">Aplicação e finalização</b><small data-campo="passo3-detalhe">Com tratamento para a cor durar mais.</small></li>
+  </ol>
+  <div class="cta" data-entrada="aparecer" data-ordem="6"><span data-campo="cta">A avaliação não tem custo</span></div>
+</section>

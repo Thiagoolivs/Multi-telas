@@ -1,0 +1,72 @@
+<!--
+  Selo "% OFF" — família oferta. Destaque.
+  O desconto vira um selo redondo, cheio, na cor de destaque: é o que o
+  olho acha primeiro do outro lado da loja. O texto, do lado, diz em quê e
+  quando. O selo entra girando de leve — o único gesto da peça.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(90% 120% at 100% 50%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.bloco { position: absolute; left: 6cqw; top: 50%; transform: translateY(-50%); width: 46cqw; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 400 6.6cqw/1 var(--mt-fonte-titulo); margin: 2.4cqw 0 2.6cqw; }
+h1 span, h1 em { display: block; white-space: nowrap; }
+h1 em { font-style: italic; color: var(--mt-destaque); }
+.apoio { font: 400 1.5cqw/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 34cqw; }
+.cta { display: inline-block; margin-top: 3.4cqw; font: 600 1.2cqw/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
+/* O selo: disco cheio com um anel fino por dentro. */
+.selo { position: absolute; right: 9cqw; top: 50%; width: 32cqw; height: 32cqw; margin-top: -16cqw; border-radius: 50%;
+  background: var(--mt-destaque); color: var(--mt-sobre-destaque); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.selo::before { content: ''; position: absolute; inset: 1.4cqw; border-radius: 50%; border: .14cqw solid var(--mt-sobre-destaque); opacity: .55; }
+.pct { font: 400 12cqw/.82 var(--mt-fonte-titulo); letter-spacing: -.02em; white-space: nowrap; }
+.pct small { font-size: .45em; vertical-align: .9em; margin-left: .04em; }
+.off { margin-top: 1.4cqw; font: 700 1.9cqw/1 var(--mt-fonte-texto); letter-spacing: .5em; text-transform: uppercase; margin-right: -.5em; }
+.nota { margin-top: 1.2cqw; font: 500 1.15cqw/1.3 var(--mt-fonte-texto); letter-spacing: .08em; max-width: 20cqw; text-align: center; }
+/* Em pé: o selo em cima, grande; o texto embaixo. */
+@container (aspect-ratio < 0.8) {
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
+  .selo { left: 50%; right: auto; top: 10cqh; width: 64cqw; height: 64cqw; margin: 0 0 0 -32cqw; }
+  .selo::before { inset: 2.6cqw; border-width: .25cqw; }
+  .pct { font-size: 24cqw; }
+  .off { font-size: 3.8cqw; margin-top: 2.6cqw; }
+  .nota { font-size: 2.3cqw; max-width: 40cqw; margin-top: 2.2cqw; }
+  .bloco { left: 8cqw; right: 8cqw; width: auto; top: auto; bottom: 8cqh; transform: none; }
+  .kicker { font-size: 2.2cqw; }
+  .kicker i { width: 6cqw; height: .25cqw; }
+  h1 { font-size: 12cqw; margin: 4cqw 0 4cqw; }
+  .apoio { font-size: 2.8cqw; max-width: none; }
+  .cta { font-size: 2.2cqw; margin-top: 5cqw; border-bottom-width: .25cqw; }
+}
+/* Quase quadrada: o selo no canto de cima, o texto embaixo à esquerda. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
+  .selo { right: 7cqw; top: 7cqh; width: 40cqw; height: 40cqw; margin-top: 0; }
+  .selo::before { inset: 1.8cqw; border-width: .2cqw; }
+  .pct { font-size: 15cqw; }
+  .off { font-size: 2.4cqw; margin-top: 1.6cqw; }
+  .nota { display: none; }
+  .bloco { left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 8cqh; transform: none; }
+  .kicker { font-size: 1.9cqw; }
+  .kicker i { width: 5cqw; height: .2cqw; }
+  h1 { font-size: 9cqw; margin: 3cqw 0 3cqw; }
+  .apoio { font-size: 2.3cqw; max-width: 64cqw; }
+  .cta { font-size: 1.9cqw; margin-top: 3.6cqw; border-bottom-width: .2cqw; }
+}
+</style>
+<section class="mt-peca oferta-selo">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Studio <b>Bella</b></div>
+  <div class="bloco">
+    <p class="kicker" data-entrada="esquerda" data-ordem="2"><i aria-hidden="true"></i><span data-campo="kicker">Toda terça-feira</span></p>
+    <h1 data-entrada="subir" data-ordem="3"><span data-campo="titulo">Coloração</span><em data-campo="titulo2">com desconto</em></h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="4">Do retoque de raiz à mudança completa, com a avaliação dos fios incluída.</p>
+    <p class="cta" data-entrada="aparecer" data-ordem="5"><span data-campo="cta">Agende o seu horário</span> <span aria-hidden="true">→</span></p>
+  </div>
+  <div class="selo" data-entrada="girar" data-ordem="1">
+    <span class="pct"><span data-campo="desconto">20</span><small aria-hidden="true">%</small></span>
+    <span class="off" data-campo="off">off</span>
+    <span class="nota" data-campo="nota">em toda a coloração</span>
+  </div>
+</section>

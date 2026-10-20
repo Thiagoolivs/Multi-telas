@@ -1,0 +1,47 @@
+<!--
+  Cabeçalho centralizado — papel cabeçalho (PLANO §4.7: "quem e agora").
+  A marca no centro, como o nome de uma revista; dois filetes saem dela
+  para os lados e terminam no clima e na data, à esquerda, e na hora, à
+  direita. Para quem vende pelo nome: salão, boutique, restaurante. Medidas
+  em cqh: a altura da faixa decide a letra.
+-->
+<style>
+.mt-peca { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 7cqh; padding: 0 3cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: linear-gradient(180deg, var(--mt-fundo-2), var(--mt-fundo)); border-bottom: 1.2cqh solid var(--mt-linha); }
+.lado { display: flex; align-items: center; gap: 7cqh; min-width: 0; }
+.lado > i { flex: 1; min-width: 4cqw; height: 1.2cqh; background: var(--mt-linha); }
+.info { display: flex; flex-direction: column; gap: 6cqh; }
+.clima { font: 500 22cqh/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.data { font: 600 14cqh/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.marca { display: flex; flex-direction: column; align-items: center; gap: 7cqh; }
+.logo { height: 60cqh; width: auto; max-width: 30cqw; object-fit: contain; }
+.logo[data-sem-foto] { display: none; }
+.logo:not([data-sem-foto]) + .nome { display: none; }
+.nome { font: italic 400 48cqh/.95 var(--mt-fonte-titulo); letter-spacing: .01em; white-space: nowrap; }
+.nome b { font-weight: inherit; color: var(--mt-destaque); }
+.sub { font: 600 11cqh/1 var(--mt-fonte-texto); letter-spacing: .5em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.hora { font: 400 46cqh/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
+/* Faixa mais curta (TV em pé): o clima, a data e a linha de baixo da marca saem. */
+@container (aspect-ratio < 9) {
+  .mt-peca { gap: 5cqh; }
+  .info, .sub { display: none; }
+  .nome { font-size: 38cqh; }
+  .hora { font-size: 38cqh; }
+}
+</style>
+<section class="mt-peca cabecalho-centro">
+  <div class="lado" data-entrada="aparecer" data-ordem="1">
+    <span class="info"><span class="clima" data-vivo="clima">24°</span><span class="data" data-vivo="data">Terça · 20 out</span></span>
+    <i aria-hidden="true"></i>
+  </div>
+  <div class="marca" data-entrada="aparecer">
+    <img class="logo" data-campo-img="logo" alt="">
+    <span class="nome" data-campo="marca">Studio <b>Bella</b></span>
+    <span class="sub" data-campo="sub">Cabelo · unhas · estética</span>
+  </div>
+  <div class="lado" data-entrada="aparecer" data-ordem="1">
+    <i aria-hidden="true"></i>
+    <span class="hora" data-vivo="relogio">10:20</span>
+  </div>
+</section>

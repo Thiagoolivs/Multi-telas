@@ -1,0 +1,89 @@
+<!--
+  Serviço com preço e QR para agendar — família serviço. Destaque e lateral.
+  O que é, quanto tempo leva, quanto custa — e o QR que já abre a conversa
+  para marcar. O QR é desenhado pelo nosso servidor a partir do link
+  (`data-campo-qr`) e tem fundo próprio: lê em qualquer modo. A peça é um
+  fluxo só: em pé, um bloco embaixo do outro; deitada, o QR vai para a
+  direita. Medidas em cqmin, como as outras peças de lateral.
+-->
+<style>
+.mt-peca { display: flex; flex-direction: column; justify-content: center; gap: 6cqmin; padding: 9cqmin;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(110% 80% at 0% 0%, var(--mt-fundo-2), var(--mt-fundo) 66%); }
+.kicker { display: flex; align-items: center; gap: 2.4cqmin; font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .28em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 6cqmin; height: .5cqmin; background: var(--mt-destaque); }
+h1 { font: 400 11cqmin/1.02 var(--mt-fonte-titulo); margin-top: 4.4cqmin; }
+h1 span, h1 em { display: block; white-space: nowrap; }
+h1 em { font-style: italic; color: var(--mt-destaque); }
+.meta { margin-top: 4cqmin; font: 500 3.8cqmin/1.4 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.preco { margin-top: 5cqmin; padding-top: 5cqmin; border-top: .5cqmin solid var(--mt-linha); }
+.valor { font: 400 17cqmin/.8 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.valor small { font-size: .3em; vertical-align: 1.5em; margin-right: .25em; }
+.valor sup { font-size: .36em; vertical-align: 1.15em; }
+.agendar { display: flex; align-items: center; gap: 4cqmin; }
+.qr { flex: none; margin: 0; width: 34cqmin; height: 34cqmin; padding: 1.4cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie);
+  box-shadow: 0 0 0 .6cqmin var(--mt-destaque); }
+.qr img { width: 100%; height: 100%; border-radius: calc(var(--mt-raio) * .6); }
+.pedido { font: 600 3.6cqmin/1.35 var(--mt-fonte-texto); letter-spacing: .16em; text-transform: uppercase; }
+.pedido small { display: block; margin-top: 2cqmin; font: 500 3.4cqmin/1.3 var(--mt-fonte-texto); letter-spacing: .02em; text-transform: none; color: var(--mt-texto-suave); }
+/* Deitada: o serviço à esquerda, o QR grande à direita. */
+@container (aspect-ratio >= 1.25) {
+  .mt-peca { flex-direction: row; align-items: center; justify-content: space-between; padding: 0 8cqw 0 6cqw; }
+  .kicker { font-size: 3cqmin; }
+  h1 { font-size: 12cqmin; }
+  .meta { font-size: 3.2cqmin; }
+  .preco { width: 40cqw; }
+  .agendar { flex-direction: column; gap: 5cqmin; text-align: center; }
+  .qr { width: 52cqmin; height: 52cqmin; }
+  .pedido { font-size: 3cqmin; }
+  .pedido small { font-size: 3cqmin; }
+}
+/* Em pé numa tela inteira: tudo maior, e o QR com espaço em volta. */
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .mt-peca { gap: 12cqmin; }
+  .kicker { font-size: 3.4cqmin; }
+  h1 { font-size: 15cqmin; margin-top: 6cqmin; }
+  .meta { font-size: 4cqmin; margin-top: 5cqmin; }
+  .valor { font-size: 24cqmin; }
+  .preco { margin-top: 8cqmin; padding-top: 8cqmin; }
+  .agendar { gap: 6cqmin; }
+  .qr { width: 40cqmin; height: 40cqmin; }
+  .pedido { font-size: 4cqmin; }
+  .pedido small { font-size: 3.8cqmin; }
+}
+/* Quase quadrada: tudo um pouco menor, para a coluna caber. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { gap: 5cqmin; padding: 8cqmin; }
+  .kicker { font-size: 3cqmin; }
+  h1 { font-size: 10cqmin; margin-top: 3.6cqmin; }
+  .meta { font-size: 3.2cqmin; margin-top: 3cqmin; }
+  .preco { margin-top: 4cqmin; padding-top: 4cqmin; }
+  .valor { font-size: 15cqmin; }
+  .qr { width: 26cqmin; height: 26cqmin; }
+  .pedido, .pedido small { font-size: 3cqmin; }
+}
+/* A coluna estreita: o que fica, maior; o pedido fica só o rótulo. */
+@container (max-width: 700px) {
+  .mt-peca { gap: 9cqmin; }
+  h1 { font-size: 12.6cqmin; }
+  .meta { font-size: 4cqmin; }
+  .valor { font-size: 21cqmin; }
+  .qr { width: 40cqmin; height: 40cqmin; }
+  .pedido { font-size: 4cqmin; }
+  .pedido small { display: none; }
+}
+</style>
+<section class="mt-peca servico-agenda">
+  <div class="servico">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Serviço da semana</span></p>
+    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Escova</span><em data-campo="titulo2">e hidratação</em></h1>
+    <p class="meta" data-campo="meta" data-entrada="aparecer" data-ordem="3">1h30 · com a Ana ou a Bia</p>
+    <div class="preco" data-entrada="subir" data-ordem="4">
+      <span class="valor"><small aria-hidden="true">R$</small><span data-campo="preco">89</span><sup data-campo="centavos">,90</sup></span>
+    </div>
+  </div>
+  <div class="agendar" data-entrada="crescer" data-ordem="5">
+    <figure class="qr"><img data-campo-qr="link" alt="QR para agendar pelo WhatsApp"></figure>
+    <p class="pedido"><span data-campo="pedido">Agende pelo QR</span><small data-campo="pedido-apoio">Abre a conversa no WhatsApp</small></p>
+  </div>
+</section>

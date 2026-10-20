@@ -1,0 +1,37 @@
+<!--
+  Faixa fixa com chamada e contato — papel rodapé (PLANO §4.7: "o resto").
+  Nada rola: a chamada à esquerda, e os três jeitos de falar com a casa à
+  direita, cada um com o rótulo pequeno em cima. Para quem prefere a tela
+  quieta — salão, consultório, escritório. Contato deixado em branco some.
+  Medidas em cqh: a altura da faixa decide a letra.
+-->
+<style>
+.mt-peca { display: flex; align-items: center; gap: 6cqh; padding: 0 3cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: var(--mt-fundo); border-top: 1.2cqh solid var(--mt-linha); }
+.chamada { flex: none; display: flex; align-items: center; gap: 8cqh; font: italic 400 40cqh/1 var(--mt-fonte-titulo); white-space: nowrap; }
+.chamada::after { content: ''; display: block; width: 26cqh; height: 1.2cqh; background: var(--mt-destaque); }
+.contatos { flex: 1; min-width: 0; display: flex; justify-content: flex-end; gap: 16cqh; list-style: none; margin: 0; padding: 0; }
+.contatos li { display: flex; flex-direction: column; gap: 7cqh; white-space: nowrap; }
+.contatos li + li { padding-left: 16cqh; border-left: 1.2cqh solid var(--mt-linha); }
+.contatos li:has(> span:empty) { display: none; }
+.rotulo { font: 600 12cqh/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; color: var(--mt-destaque); }
+.contatos span { font: 500 24cqh/1 var(--mt-fonte-texto); letter-spacing: .02em; }
+/* Faixa em pé: o endereço sai, a chamada encolhe. */
+@container (aspect-ratio < 9) {
+  .chamada { font-size: 32cqh; gap: 5cqh; }
+  .chamada::after { width: 14cqh; }
+  .contatos { gap: 10cqh; }
+  .contatos li + li { padding-left: 10cqh; }
+  .contatos li:last-child { display: none; }
+  .rotulo { font-size: 10cqh; }
+  .contatos span { font-size: 20cqh; }
+}
+</style>
+<section class="mt-peca rodape-faixa">
+  <p class="chamada" data-campo="chamada" data-entrada="esquerda">Hora marcada, sem espera</p>
+  <ul class="contatos" data-entrada="aparecer" data-ordem="1">
+    <li><b class="rotulo" data-campo="rotulo1">WhatsApp</b><span data-campo="contato1">(11) 98888-0000</span></li>
+    <li><b class="rotulo" data-campo="rotulo2">Instagram</b><span data-campo="contato2">@studiobella</span></li>
+    <li><b class="rotulo" data-campo="rotulo3">Endereço</b><span data-campo="contato3">Rua Oscar Freire, 900</span></li>
+  </ul>
+</section>
