@@ -4,6 +4,7 @@ import { TextoCurvo, GraficoSvg } from './PecaExtras.jsx';
 import { temCurva } from '../../lib/composition.js';
 import { ICONS } from '../../lib/icons.js';
 import { estiloTexto, carregarDaComposicao } from '../../lib/fontes.js';
+import { PecaHtml } from './PecaHtml.jsx';
 
 /*
  * Miniatura fiel de um design (composição). Usada no hub "Meus Designs", na
@@ -22,6 +23,9 @@ export function DesignThumb({ item, fitHeight }) {
   const ar = fitHeight
     ? { aspectRatio: formato.replace('/', ' / '), height: '100%', width: 'auto', maxWidth: '100%' }
     : { aspectRatio: formato.replace('/', ' / ') };
+
+  // Peça em HTML (motor novo): o mesmo desenhista da TV.
+  if (it.type === 'peca-html') return <PecaHtml item={it} formato={formato} fitHeight={fitHeight} />;
 
   // Item que não é composição (imagem/vídeo/pptx importados): mostra direto.
   if (it.type && it.type !== 'composicao') {

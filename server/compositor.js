@@ -89,16 +89,132 @@ const PAPEL_TXT = {
   rodape: 'o RODAPÉ (faixa de ~120px): as mensagens rolando em data-vivo="mensagens" e um selo',
 };
 
+// Os textos que o cliente aprovou no plano, na ordem em que a peça os lê.
+const ROTULO_TEXTO = { kicker: 'kicker', titulo: 'título', apoio: 'apoio', cta: 'chamada' };
+
 function pedidoTexto(o) {
+  const t = o.textos || null;
+  const aprovados = t ? Object.keys(ROTULO_TEXTO).filter((k) => String(t[k] || '').trim())
+    .map((k) => ROTULO_TEXTO[k] + ' "' + String(t[k]).trim().slice(0, 160) + '"') : [];
   const linhas = [
     'Empresa: ' + (o.empresa || 'a empresa') + (o.segmento ? ' (' + o.segmento + ')' : '') + '.',
     'Pedido do cliente, como chegou: "' + String(o.pedido || '').slice(0, 600) + '".',
+    /*
+     * Na campanha, o texto já foi APROVADO na revisão do plano: a peça diz
+     * exatamente aquilo. A IA decide o desenho, não as palavras — a pessoa
+     * aprovaria uma coisa e veria outra na TV.
+     */
+    aprovados.length ? 'Textos aprovados pelo cliente — use exatamente estes, sem trocar palavra nem acrescentar frase: '
+      + aprovados.join('; ') + '. O título pode ser quebrado em duas linhas.' : '',
     'Escreva ' + (PAPEL_TXT[o.papel] || PAPEL_TXT.destaque) + '.',
     o.foto ? 'Há uma foto para a peça (campo "foto"): use <img data-campo-img="foto">, com véu.' : 'NÃO há foto: a peça é só tipografia e forma — não use data-campo-img.',
   ];
-  if (o.evitar && o.evitar.length) linhas.push('As outras zonas da tela já dizem: ' + o.evitar.map((t) => '"' + t + '"').join(', ') + '. Não repita nenhum desses textos.');
+  if (o.evitar && o.evitar.length) linhas.push('As outras zonas da tela já dizem: ' + o.evitar.map((x) => '"' + x + '"').join(', ') + '. Não repita nenhum desses textos.');
   linhas.push('Responda só com o arquivo da peça.');
-  return linhas.join('\n');
+  return linhas.filter(Boolean).join('\n');
+}
+
+/*
+ * O modelo que compõe. O experimento de 20/10 escolheu o Gemini (§4.4): 4,65
+ * contra 1,40 do motor antigo. MT_MOTOR_HTML troca sem deploy de código.
+ */
+function motorDoHtml() {
+  const m = process.env.MT_MOTOR_HTML;
+  if (m && motores.MOTORES[m]) return m;
+  if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) return 'gemini';
+  return motores.motorPadrao();
+}
+
+/*
+ * A PEÇA-OURO PREENCHIDA (§4.9): quando a IA falha — fora do ar, recusada
+ * três vezes — a peça não some. Uma peça-ouro recebe os textos aprovados.
+ *
+ * Só as duas que servem a QUALQUER negócio e cujos campos todos têm de onde
+ * vir: um campo sem texto aprovado mostraria o exemplo da peça ("Ótica
+ * Central", "30% OFF") na TV de uma padaria.
+ */
+/*
+ * As duas foram desenhadas para títulos CURTOS ("Burger / de costela", "Ver
+ * bem / muda tudo"), em letra enorme e sem quebra. Aqui elas recebem
+ * qualquer manchete — visto na tela: "Só esta semana" passou por baixo do
+ * carimbo. Então o título ganha quebra e encolhe na proporção do tamanho
+ * (`k`), formato por formato; e no lançamento deitado o carimbo sobe para
+ * cima do título em vez de dividir a linha com ele.
+ */
+/*
+ * Por formato: a letra do título é a base da peça, ou menor, até a linha
+ * mais longa caber na largura livre. A conta supõe letra LARGA (0,7 em por
+ * caractere, maiúscula): palavra sozinha não quebra, e "SEMANA" em pé
+ * passou 16px da borda com a conta otimista. Quebra só não basta.
+ */
+const LETRA_LARGA = 0.7;
+const QUERY = { deitada: '', empe: '(aspect-ratio < 0.8)', quadrada: '(aspect-ratio >= 0.8) and (aspect-ratio < 1.25)' };
+/*
+ * `extra(tamanho)` acrescenta regras que dependem do tamanho final do título
+ * no formato — o carimbo do lançamento, que não pode ficar maior que ele: com
+ * "Superpromoção" em pé, o título encolhia e o carimbo virava o elemento que
+ * domina. "Um elemento domina" (§4.8) vale também na peça de reserva.
+ */
+function titulosQueCabem(t, formatos, extra) {
+  const maior = Math.max(t.titulo1.length, t.titulo2.length, 1);
+  let css = '.mt-peca h1 span, .mt-peca h1 em { white-space: normal; text-wrap: balance; }';
+  for (const f of Object.keys(QUERY)) {
+    const tam = formatos[f].base * Math.min(1, formatos[f].largura / (LETRA_LARGA * formatos[f].base * maior));
+    const regras = '.mt-peca h1 { font-size: ' + tam.toFixed(2) + 'cqw; }' + (extra ? ' ' + extra(f, tam) : '');
+    css += QUERY[f] ? ' @container ' + QUERY[f] + ' { ' + regras + ' }' : ' ' + regras;
+  }
+  return css;
+}
+
+const OURO = {
+  // com foto: a foto cheia com véu e a assinatura
+  comFoto: {
+    id: 'institucional-foto',
+    campos: (t, e) => ({ kicker: t.kicker, titulo: t.titulo1, titulo2: t.titulo2, marca: e, endereco: t.cta || t.apoio }),
+    // Deitada, a frase divide a linha com a assinatura: sobra ~60cqw.
+    ajuste: (t) => titulosQueCabem(t, { deitada: { base: 6.4, largura: 60 }, empe: { base: 13, largura: 84 }, quadrada: { base: 9, largura: 86 } }),
+  },
+  // sem foto: só tipografia
+  semFoto: {
+    id: 'institucional-lancamento',
+    campos: (t, e) => ({ marca: e, selo: t.kicker || 'Novidade', titulo: t.titulo1, titulo2: t.titulo2, apoio: t.apoio, quando: t.cta }),
+    ajuste: (t) => titulosQueCabem(t, { deitada: { base: 13, largura: 88 }, empe: { base: 22, largura: 84 }, quadrada: { base: 16, largura: 86 } },
+      // O carimbo no máximo metade do título; o recheio em em, para encolher junto com a letra.
+      (f, tam) => '.mt-peca .carimbo { font-size: ' + Math.min({ deitada: 3.2, empe: 7, quadrada: 4.4 }[f], tam * 0.5).toFixed(2) + 'cqw; padding: .32em .68em .28em; }')
+      // Deitada, o carimbo sobe para cima do título em vez de dividir a linha com ele.
+      + ' @container (aspect-ratio >= 1.25) { .mt-peca .carimbo { left: 6cqw; right: auto; top: 15cqh; border-width: .3cqw; rotate: -6deg; }'
+      + ' .mt-peca .bloco { top: 31cqh; } }',
+  },
+};
+
+// "Óculos de sol com 30% até sábado" → duas linhas parecidas, quebradas entre palavras.
+function partirTitulo(s) {
+  const p = String(s || '').trim().split(/\s+/).filter(Boolean);
+  if (p.length < 3) return [p.join(' '), ''];
+  let melhor = 1, dif = Infinity;
+  for (let i = 1; i < p.length; i++) {
+    const d = Math.abs(p.slice(0, i).join(' ').length - p.slice(i).join(' ').length);
+    if (d < dif) { dif = d; melhor = i; }
+  }
+  return [p.slice(0, melhor).join(' '), p.slice(melhor).join(' ')];
+}
+
+function preencherOuro(o) {
+  const escolha = o.foto ? OURO.comFoto : OURO.semFoto;
+  const t = o.textos || {};
+  const [titulo1, titulo2] = partirTitulo(t.titulo);
+  const textos = { kicker: t.kicker || '', titulo1, titulo2, apoio: t.apoio || '', cta: t.cta || '' };
+  const arquivo = P.doArquivo(fs.readFileSync(path.join(PASTA, escolha.id + '.html'), 'utf8'));
+  // O ajuste passa pela MESMA porta que a peça: CSS nosso também não entra sem conferência.
+  const h = P.higienizar({ html: arquivo.html, css: arquivo.css + '\n' + escolha.ajuste(textos) });
+  const campos = escolha.campos(textos, o.empresa || '');
+  for (const k of Object.keys(campos)) campos[k] = String(campos[k] || '').slice(0, 160);
+  if (o.foto) campos.foto = o.foto;
+  return {
+    type: 'peca-html', versao: 1, papel: 'destaque', html: h.html, css: h.css, campos,
+    marca: o.marca || null, modo: o.modo || 'escuro', duracao: 12,
+    origem: { motor: 'ouro', base: escolha.id, pedido: String(o.pedido || '').slice(0, 200) },
+  };
 }
 
 // O modelo às vezes embrulha a resposta em cerca de código: tira.
@@ -133,7 +249,8 @@ async function comporPeca(o) {
         ok: true,
         item: {
           type: 'peca-html', versao: 1, papel, html: h.html, css: h.css,
-          campos: o.foto ? { foto: o.foto } : {},
+          // Só se a peça tem onde pôr a foto: campo que não existe faz a TV recusar a peça.
+          campos: o.foto && h.campos.some((c) => c.nome === 'foto' && c.tipo === 'img') ? { foto: o.foto } : {},
           marca: o.marca || null, modo: o.modo || 'escuro', duracao: 12,
           origem: { motor: o.motor || motores.motorPadrao(), pedido: String(o.pedido || '').slice(0, 200) },
         },
@@ -172,4 +289,4 @@ async function comporTela(o) {
   return pecas;
 }
 
-module.exports = { comporPeca, comporTela, regras, fixo, pedidoTexto, limparResposta };
+module.exports = { comporPeca, comporTela, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, partirTitulo, OURO };

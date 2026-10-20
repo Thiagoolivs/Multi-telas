@@ -812,8 +812,13 @@ export function MyDesignsPage({ onIr }) {
                             className="flex flex-1 items-center justify-center gap-1 rounded-md bg-surface-2 px-2 py-1.5 text-2xs font-semibold text-ink-2 transition hover:bg-accent hover:text-white">
                             <Send size={12} /> Publicar
                           </button>
-                          <button title="Editar" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => setEditing({ id: it.id, item: it.item, label: it.label })}><Pencil size={13} /></button>
-                          <button title="Baixar PNG" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => downloadComposition(it.item, it.formato, it.label)}><Download size={13} /></button>
+                          {/* O editor e o PNG ainda só sabem a composição antiga; a peça em HTML ganha os dela no PR 14. */}
+                          {!(it.item && it.item.type === 'peca-html') && (
+                            <>
+                              <button title="Editar" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => setEditing({ id: it.id, item: it.item, label: it.label })}><Pencil size={13} /></button>
+                              <button title="Baixar PNG" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => downloadComposition(it.item, it.formato, it.label)}><Download size={13} /></button>
+                            </>
+                          )}
                           <button title="Excluir" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-danger" onClick={async () => { if (window.confirm('Excluir este design?')) { await library.remove(it.id); reload(); } }}><Trash2 size={13} /></button>
                         </div>
                       </div>
@@ -1178,7 +1183,7 @@ export function MyDesignsPage({ onIr }) {
                 {gen.pecas.map((p, i) => (
                   <div key={i} className="space-y-1">
                     <DesignThumb item={p.item} />
-                    <span className="block truncate text-2xs text-ink-3">{p.canal} · {p.formato}{p.usouAcervo ? ' · foto sua' : ''}</span>
+                    <span className="block truncate text-2xs text-ink-3">{p.canal} · {p.formato}{p.usouAcervo ? ' · foto sua' : ''}{p.motor === 'ouro' ? ' · modelo pronto' : ''}</span>
                     {/*
                       O que a IA viu de errado e não conseguiu resolver. Mostrar
                       é o que permite ao usuário editar em vez de publicar torto
