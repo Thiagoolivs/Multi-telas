@@ -457,6 +457,33 @@ ela deve ser; o cliente **autoriza antes** de qualquer foto ser gerada.
 - **Custo:** foto gerada continua 1 crédito. Foto com referência de produto
   pode custar mais — sai medida do experimento antes de ter preço.
 
+**Fundos e texturas.** Além da foto, o fundo da peça é uma escolha de gosto
+— e quem escolhe é o cliente, dentro do escopo que ele pediu. Cinco níveis,
+do grátis ao gerado:
+
+| Fundo | O que é | Custo |
+|---|---|---|
+| Liso | `--mt-fundo` | zero |
+| Degradê | `--mt-fundo` → `--mt-fundo-2`, só tokens | zero |
+| Padrão | listras, pontos, malha — desenhados em CSS com tokens | zero |
+| Textura | gerada pela IA na cor da marca: papel, linho, mármore, concreto, granulado | 1 crédito, **uma vez** |
+| Foto | a cena inteira (§4.11 acima) | 1 crédito por foto |
+
+- A textura é **da marca, não da peça**: gerada uma vez, guardada em Marca
+  ("texturas da marca") e reusada em toda peça e campanha depois. O custo
+  se dilui; a identidade se repete, que é o que a faz ser identidade.
+- Entra como camada de imagem por campo (`data-campo-img="fundo"`), igual
+  à foto — a porta do PR 3 já aceita, sem `url()` no CSS. Monocromática na
+  cor da marca (regra que `server/direcao-arte.js` já usa para foto), para
+  o texto por cima continuar se lendo; sem `mix-blend-mode`, que o box não
+  aguenta.
+- **Depende do gosto:** no chat (§4.12, passo 2), o fundo é um dos botões de
+  ajuste — "liso · degradê · padrão · textura · foto" — mostrado na peça
+  dele antes de gastar. Quem não escolhe recebe o que a peça-ouro sugere,
+  sempre do lado grátis.
+- Texturas genéricas boas entram no Banco de Imagens MultiTelas e passam a
+  custar zero para todo mundo.
+
 ### 4.12 Chat de refinamento — conversar é barato, gerar é caro
 
 Tudo o que dá para decidir antes de gerar, decide-se na conversa: uma troca
@@ -482,8 +509,8 @@ tem padaria não sabe descrever o estilo que quer, mas reconhece quando vê.
 2. **Escolher o caminho visual** — o chat mostra 3 peças-ouro já com o texto
    e a marca do cliente, desenhadas no próprio navegador (sem geração).
    "Qual chega mais perto?" Ajustes por botão: mais sóbrio, mais chamativo,
-   claro, escuro, com foto, sem foto. Cada botão só troca modo ou token:
-   custo zero.
+   claro, escuro, e o fundo (liso, degradê, padrão, textura, foto — §4.11).
+   Cada botão só troca modo, token ou camada: custo zero até a geração.
 3. **Wireframe da tela inteira**, editado conversando ("troca a lateral por
    QR do Instagram", "título mais curto"). A IA devolve só a **alteração** no
    plano — um texto curto, centavos.
