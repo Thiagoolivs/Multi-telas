@@ -1,19 +1,192 @@
 {
-  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html).",
+  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas.",
   "marcas": [
-    { "id": "otica", "nome": "Ótica Central", "cores": ["#1b2a4a", "#c8a96e"], "fonteTitulo": "condensada", "fonteApoio": "sans" },
-    { "id": "padaria", "nome": "Padaria do Bairro", "cores": ["#b4532a", "#f2c14e"], "fonteTitulo": "condensada", "fonteApoio": "sans" },
-    { "id": "salao", "nome": "Studio Bella", "cores": ["#c2577a"], "fonteTitulo": "serifada", "fonteApoio": "sans" },
-    { "id": "clinica", "nome": "Clínica Vida", "cores": ["#0f766e"], "fonteTitulo": "moderna", "fonteApoio": "sans" }
+    {
+      "id": "otica",
+      "nome": "Ótica Central",
+      "cores": [
+        "#1b2a4a",
+        "#c8a96e"
+      ],
+      "fonteTitulo": "condensada",
+      "fonteApoio": "sans"
+    },
+    {
+      "id": "padaria",
+      "nome": "Padaria do Bairro",
+      "cores": [
+        "#b4532a",
+        "#f2c14e"
+      ],
+      "fonteTitulo": "condensada",
+      "fonteApoio": "sans"
+    },
+    {
+      "id": "salao",
+      "nome": "Studio Bella",
+      "cores": [
+        "#c2577a"
+      ],
+      "fonteTitulo": "serifada",
+      "fonteApoio": "sans"
+    },
+    {
+      "id": "clinica",
+      "nome": "Clínica Vida",
+      "cores": [
+        "#0f766e"
+      ],
+      "fonteTitulo": "moderna",
+      "fonteApoio": "sans"
+    }
   ],
   "pecas": [
+    {
+      "id": "cabecalho-classico",
+      "nome": "Cabeçalho clássico",
+      "familia": "cabeçalho",
+      "papeis": [
+        "cabecalho"
+      ],
+      "estado": "rascunho"
+    },
     {
       "id": "oferta-foto",
       "nome": "Oferta com foto",
       "familia": "oferta",
-      "papeis": ["destaque", "lateral"],
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
       "estado": "rascunho",
-      "campos": { "foto": "/pecas-ouro/fotos/otica-sol.jpg" }
+      "campos": {
+        "foto": "/pecas-ouro/fotos/otica-sol.jpg"
+      }
+    },
+    {
+      "id": "oferta-lista",
+      "nome": "Três produtos com preço",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "estado": "rascunho"
+    },
+    {
+      "id": "numero-grande",
+      "nome": "Número grande",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "estado": "rascunho"
+    },
+    {
+      "id": "lateral-prazo",
+      "nome": "Prazo em destaque",
+      "familia": "oferta",
+      "papeis": [
+        "lateral",
+        "destaque"
+      ],
+      "estado": "rascunho"
+    },
+    {
+      "id": "lateral-qr",
+      "nome": "Reserve pelo QR",
+      "familia": "social",
+      "papeis": [
+        "lateral",
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "campos": {
+        "link": "https://wa.me/5511999990000"
+      }
+    },
+    {
+      "id": "rodape-selo",
+      "nome": "Rodapé com selo",
+      "familia": "rodapé",
+      "papeis": [
+        "rodape"
+      ],
+      "estado": "rascunho"
+    }
+  ],
+  "mensagens": [
+    "10x sem juros no cartão",
+    "Exame de vista com hora marcada",
+    "Aberto de segunda a sábado, até 19h",
+    "@oticacentral"
+  ],
+  "telas": [
+    {
+      "id": "otica-semana-do-sol",
+      "nome": "Ótica Central · Semana do Sol",
+      "marca": "otica",
+      "layout": "corporate",
+      "estado": "rascunho",
+      "zonas": {
+        "cabecalho": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cabecalho-classico",
+              "campos": {
+                "chamada": "Semana do Sol"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "oferta-foto",
+              "campos": {
+                "kicker": "Lente polarizada · UV400",
+                "cta": "Veja a vitrine",
+                "apoio": "Garantia de um ano em todas as armações da vitrine."
+              }
+            },
+            {
+              "id": "oferta-lista"
+            },
+            {
+              "id": "numero-grande"
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "lateral-prazo",
+              "campos": {
+                "cta": "Aproveite"
+              }
+            },
+            {
+              "id": "lateral-qr"
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "sobre": "Cada zona diz uma coisa (PLANO §4.7): o cabeçalho, quem e a campanha; o destaque, a oferta; a lateral, quando e como; o rodapé, o resto. Nenhum texto se repete entre zonas que aparecem juntas."
     }
   ]
 }

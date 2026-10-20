@@ -46,7 +46,7 @@ function semPerigo(r) {
   assert.doesNotMatch(r.html, /\s(src|srcset|href|xlink:href|formaction)\s*=/i, 'endereço por atributo na saída');
   // Todo atributo que sobrou está na lista do que pode.
   const permitidos = new Set(['class', 'data-campo', 'data-campo-img', 'data-vivo', 'data-entrada',
-    'data-continua', 'data-ordem', 'data-camada', 'style', 'aria-hidden', 'alt']);
+    'data-continua', 'data-ordem', 'data-camada', 'style', 'aria-hidden', 'alt', 'data-campo-qr', 'data-repete']);
   for (const m of r.html.matchAll(/<[a-z0-9]+((?:\s+[^\s=>]+="[^"]*")*)\s*>/g)) {
     for (const a of m[1].matchAll(/\s+([^\s=>]+)="/g)) assert.ok(permitidos.has(a[1]), 'atributo fora da lista: ' + a[1]);
   }

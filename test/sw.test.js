@@ -339,6 +339,20 @@ test('TV: os pacotes do painel não entram no cache da TV', async () => {
   assert.equal(await w.pedir('/app/assets/index-abc.js'), null);
 });
 
+test('a bancada e as peças-ouro vão sempre à rede; as fotos das peças, ao cache', async () => {
+  /*
+   * Servida daqui com "o guardado primeiro", a bancada mostrava a peça de
+   * uma edição atrás — e o dono aprovaria o que já não existe. A TV não
+   * busca esses arquivos; as fotos, sim, e essas precisam funcionar offline.
+   */
+  const w = carregar('sw.js', servidorPadrao);
+  await w.instalar();
+  for (const caminho of ['/bancada.html', '/js/bancada.js', '/pecas-ouro/oferta-foto.html', '/pecas-ouro/manifesto.json']) {
+    assert.equal(await w.pedir(caminho), null, caminho + ' passou pelo cache');
+  }
+  assert.notEqual(await w.pedir('/pecas-ouro/fotos/otica-sol.jpg'), null, 'a foto da peça não foi para o cache');
+});
+
 test('TV: o casco declarado é o que o player.html carrega de verdade', async () => {
   /*
    * A lista de SHELL_ASSETS tem que casar com os <script> da página. Quando

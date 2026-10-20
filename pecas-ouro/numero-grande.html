@@ -1,0 +1,53 @@
+<!--
+  Número grande — família institucional. Destaque e lateral.
+  Um número que prova algo ("25 anos", "12 mil clientes") ocupando metade
+  da peça, e a frase que o explica do outro lado de um filete. Sem foto:
+  a tipografia é a imagem.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(110% 120% at 0% 100%, var(--mt-fundo-2), var(--mt-fundo) 58%); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.numero { position: absolute; left: 5cqw; top: 50%; transform: translateY(-54%); width: 36cqw; }
+.numero > span { display: block; font: 400 25cqw/.78 var(--mt-fonte-titulo); color: var(--mt-destaque); letter-spacing: -.01em; }
+.numero small { display: block; margin: 1.6cqw 0 0 .6cqw; font: 600 1.6cqw/1 var(--mt-fonte-texto); letter-spacing: .5em; text-transform: uppercase; }
+.texto { position: absolute; left: 45cqw; right: 8cqw; top: 50%; transform: translateY(-50%); padding-left: 4cqw; border-left: .12cqw solid var(--mt-linha); }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 400 4.6cqw/1.02 var(--mt-fonte-titulo); text-transform: uppercase; margin: 2.2cqw 0 2.2cqw; text-wrap: balance; }
+.apoio { font: 400 1.5cqw/1.55 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 36cqw; }
+.assinatura { position: absolute; right: 8cqw; bottom: 6cqh; font: 600 1.05cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-texto-suave); }
+/* Em pé e quase quadrada: o número em cima, a frase embaixo. */
+@container (aspect-ratio < 1.25) {
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
+  .numero { left: 7cqw; right: 8cqw; width: auto; top: 13cqh; transform: none; }
+  .numero > span { font-size: 46cqw; }
+  .numero small { font-size: 3cqw; margin-top: 2.6cqw; }
+  .texto { left: 8cqw; right: 8cqw; top: auto; bottom: 14cqh; transform: none; padding: 4cqw 0 0; border-left: 0; border-top: .2cqw solid var(--mt-linha); }
+  .kicker { font-size: 2cqw; }
+  .kicker i { width: 5.5cqw; height: .22cqw; }
+  h1 { font-size: 7.6cqw; margin: 3cqw 0 2.6cqw; }
+  .apoio { font-size: 2.7cqw; max-width: none; }
+  .assinatura { left: 8cqw; right: auto; bottom: 5cqh; font-size: 1.9cqw; }
+}
+/* A lateral: o número e a frase; o resto sai. */
+@container (max-width: 700px) {
+  .apoio { display: none; }
+  .marca-nome { font-size: 3.2cqw; letter-spacing: .32em; }
+  .numero small { font-size: 4.4cqw; letter-spacing: .4em; }
+  .kicker { font-size: 3.4cqw; letter-spacing: .22em; }
+  h1 { font-size: 9.6cqw; }
+  .assinatura { font-size: 2.8cqw; letter-spacing: .2em; }
+}
+</style>
+<section class="mt-peca numero-grande">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Ótica <b>Central</b></div>
+  <div class="numero" data-entrada="crescer" data-ordem="1"><span data-campo="numero">25</span><small data-campo="unidade">anos</small></div>
+  <div class="texto">
+    <p class="kicker" data-entrada="esquerda" data-ordem="2"><i aria-hidden="true"></i><span data-campo="kicker">Desde 2001</span></p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="3">Cuidando da visão do bairro</h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="4">Exame de vista, lentes sob medida e ajuste na hora — com a mesma equipe de sempre.</p>
+  </div>
+  <div class="assinatura" data-campo="endereco" data-entrada="aparecer" data-ordem="5">Rua Augusta, 1200 · São Paulo</div>
+</section>

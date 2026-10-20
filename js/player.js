@@ -1918,6 +1918,9 @@
     const s = (cfg && cfg.settings) || {};
     global.MT_CIDADE_CLIMA = s.cidadeClima || 'São Paulo';
     global.MT_HOSTS_MIDIA = Array.isArray(s.hostsMidia) ? s.hostsMidia.filter((h) => typeof h === 'string') : [];
+    // Layout com cabeçalho já mostra a marca: a peça não precisa repetir.
+    const layout = global.MT_getLayout ? MT_getLayout(s.layoutId) : null;
+    global.MT_MARCA_NA_TELA = !!(layout && layout.zones.some((z) => z.type === 'header'));
   }
 
   /* ---------------- Zona: Cabeçalho ---------------- */

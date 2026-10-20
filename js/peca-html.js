@@ -501,7 +501,13 @@
         if (boas.length) saida.push(['class', boas.join(' ')]);
         continue;
       }
-      if (nome === 'data-campo' || nome === 'data-camada' || (nome === 'data-campo-img' && no.nome === 'img')) {
+      /*
+       * `data-campo-qr` é um QR desenhado pelo NOSSO servidor (/api/qr.svg) a
+       * partir do texto do campo — o link do WhatsApp, o Instagram. O cliente
+       * digita o link; a imagem nunca vem de fora.
+       */
+      if (nome === 'data-campo' || nome === 'data-camada'
+        || ((nome === 'data-campo-img' || nome === 'data-campo-qr') && no.nome === 'img')) {
         if (NOME_CAMPO.test(v)) saida.push([nome, v]);
         else problemas.push(`${nome}="${v.slice(0, 30)}": use letras minúsculas, números e hífen`);
         continue;
@@ -528,6 +534,16 @@
         continue;
       }
       if (nome === 'aria-hidden' && v === 'true') { saida.push([nome, v]); continue; }
+      /*
+       * `data-repete="marca"`: o nome da marca DENTRO da peça. Sozinha, a
+       * peça precisa dele; numa tela com cabeçalho, ele apareceria duas vezes
+       * — e o renderizador esconde (PLANO §4.7: cada zona tem um papel).
+       */
+      if (nome === 'data-repete') {
+        if (v === 'marca') saida.push([nome, v]);
+        else problemas.push(`data-repete="${v.slice(0, 20)}" não existe (use marca)`);
+        continue;
+      }
       if (nome === 'alt' && no.nome === 'img') { saida.push([nome, v.slice(0, 160)]); continue; }
       if (nome === 'src' || nome === 'srcset' || nome === 'href') {
         problemas.push(`${nome} não é permitido: foto entra por data-campo-img e o renderizador resolve o arquivo`);
@@ -568,16 +584,18 @@
           limparAtributos(no, problemas);
           const campo = (no.attrs.find((a) => a[0] === 'data-campo') || [])[1];
           const campoImg = (no.attrs.find((a) => a[0] === 'data-campo-img') || [])[1];
+          const campoQr = (no.attrs.find((a) => a[0] === 'data-campo-qr') || [])[1];
           if (no.nome === 'img') {
             imagens++;
-            if (!campoImg) problemas.push('<img> sem data-campo-img: toda foto é um campo que o cliente troca');
+            if (!campoImg && !campoQr) problemas.push('<img> sem data-campo-img: toda foto é um campo que o cliente troca');
           }
-          const nome = campo || campoImg;
+          const nome = campo || campoImg || campoQr;
+          const tipo = campoImg ? 'img' : campoQr ? 'qr' : 'texto';
           if (nome) {
             if (vistos.has(nome)) avisos.push(`campo "${nome}" aparece mais de uma vez`);
             else {
               vistos.add(nome);
-              campos.push({ nome, tipo: campoImg ? 'img' : 'texto', exemplo: campoImg ? '' : textoDe(no).trim().slice(0, LIMITES.campo) });
+              campos.push({ nome, tipo, exemplo: tipo === 'texto' ? textoDe(no).trim().slice(0, LIMITES.campo) : '' });
             }
           }
           emCampo = emCampo || !!campo || (no.attrs.some((a) => a[0] === 'data-vivo')) || (no.attrs.some((a) => a[0] === 'aria-hidden'));
