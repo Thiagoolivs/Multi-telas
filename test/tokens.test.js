@@ -190,12 +190,12 @@ test('marca escura e apagada ganha croma no destaque do modo escuro', () => {
 test('variaveis: exatamente os nomes do plano, com valores que o CSS aceita', () => {
   const v = T.variaveis(T.gerar({ marca: '#1b2a4a', modo: 'claro', fonteTitulo: 'condensada', fonteTexto: 'sans', raio: 'redondo' }));
   assert.deepEqual(Object.keys(v).sort(), [
-    '--mt-destaque', '--mt-fonte-texto', '--mt-fonte-titulo', '--mt-fundo', '--mt-fundo-0', '--mt-fundo-2',
+    '--mt-destaque', '--mt-escala-titulo', '--mt-fonte-texto', '--mt-fonte-titulo', '--mt-fundo', '--mt-fundo-0', '--mt-fundo-2',
     '--mt-linha', '--mt-preco', '--mt-raio', '--mt-sobre-destaque', '--mt-superficie',
     '--mt-texto', '--mt-texto-suave',
   ]);
   for (const [k, x] of Object.entries(v)) {
-    if (k.includes('fonte') || k === '--mt-raio' || k === '--mt-fundo-0') continue;
+    if (k.includes('fonte') || k === '--mt-raio' || k === '--mt-fundo-0' || k === '--mt-escala-titulo') continue;
     assert.match(x, /^#[0-9a-f]{6}$/, k);
   }
   // O véu da foto some na MESMA cor do fundo, não em preto transparente.
@@ -205,6 +205,17 @@ test('variaveis: exatamente os nomes do plano, com valores que o CSS aceita', ()
   assert.equal(v['--mt-fonte-texto'], F.FAMILIAS.sans.css);
   // Medida do container, como tudo na peça: em pixel o canto seria outro na miniatura.
   assert.equal(v['--mt-raio'], '3cqmin');
+  // Fonte condensada é a referência das peças-ouro: título no tamanho desenhado.
+  assert.equal(v['--mt-escala-titulo'], '1');
+});
+
+test('escala do título: fonte larga encolhe o título grande; estreita nunca o aumenta', () => {
+  const e = (f) => T.gerar({ marca: '#1b2a4a', fonteTitulo: f }).escalaTitulo;
+  assert.equal(e('condensada'), 1);
+  assert.equal(e('display'), 1, 'Anton é mais estreita que a referência, e mesmo assim não cresce');
+  assert.equal(e('serifada'), 0.821, 'Playfair em caixa alta: 0,554 em contra 0,455 da Oswald');
+  assert.ok(e('grotesca') < 0.75, 'Archivo Black é a mais larga do catálogo');
+  for (const id of Object.keys(F.FAMILIAS)) assert.ok(e(id) > 0.5 && e(id) <= 1, id);
 });
 
 test('entrada torta não quebra: cai nos padrões', () => {

@@ -136,6 +136,19 @@
     },
   };
 
+  /*
+   * Largura média do caractere em CAIXA ALTA (maiúsculas, números, %), em em.
+   * Medida no navegador em 20/10 com as fontes carregadas ("30% OFF ÓCULOS DE
+   * SOL SEMANA BURGER 1234567890 HORÁRIO", peso 400). `largura` acima é a de
+   * texto misto e engana no título: Anton parece mais estreita que Oswald e
+   * em maiúscula é igual. É desta que sai --mt-escala-titulo (js/tokens.js).
+   */
+  var CAIXA_ALTA = {
+    sans: 0.605, moderna: 0.574, amigavel: 0.598, tech: 0.564, display: 0.445, condensada: 0.455,
+    grotesca: 0.683, serifada: 0.554, leitura: 0.597, slab: 0.673, script: 0.676, manuscrita: 0.453,
+  };
+  Object.keys(FAMILIAS).forEach(function (id) { FAMILIAS[id].larguraCaixaAlta = CAIXA_ALTA[id] || FAMILIAS[id].largura; });
+
   var FAMILIA_PADRAO = 'sans';
   var IDS = Object.keys(FAMILIAS);
 

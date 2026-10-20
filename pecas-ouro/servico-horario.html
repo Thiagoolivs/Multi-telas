@@ -11,7 +11,7 @@
 .cabeca { position: absolute; left: 9cqmin; right: 9cqmin; top: 10cqmin; }
 .kicker { display: flex; align-items: center; gap: 2.4cqmin; font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .28em; text-transform: uppercase; color: var(--mt-destaque); }
 .kicker i { display: block; width: 6cqmin; height: .5cqmin; background: var(--mt-destaque); }
-h1 { font: 400 11cqmin/.95 var(--mt-fonte-titulo); text-transform: uppercase; margin-top: 4cqmin; }
+h1 { font: 400 calc(11cqmin * var(--mt-escala-titulo, 1))/.95 var(--mt-fonte-titulo); text-transform: uppercase; margin-top: 4cqmin; }
 h1 span { display: block; white-space: nowrap; }
 h1 span + span { color: var(--mt-destaque); }
 .dias { position: absolute; left: 9cqmin; right: 9cqmin; bottom: 22cqmin; list-style: none; margin: 0; padding: 0; }
@@ -19,38 +19,38 @@ h1 span + span { color: var(--mt-destaque); }
 .dias li:last-child { border-bottom: .5cqmin solid var(--mt-linha); }
 .dias li:has(.dia:empty) { display: none; }
 .dia { display: block; font: 600 3.4cqmin/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
-.hora { display: block; margin-top: 2.4cqmin; font: 400 12cqmin/.9 var(--mt-fonte-titulo); letter-spacing: .01em; white-space: nowrap; }
+.hora { display: block; margin-top: 2.4cqmin; font: 400 calc(12cqmin * var(--mt-escala-titulo, 1))/.9 var(--mt-fonte-titulo); letter-spacing: .01em; white-space: nowrap; }
 .nota { position: absolute; left: 9cqmin; right: 9cqmin; bottom: 8cqmin; font: 500 3.8cqmin/1.35 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 /* Deitada: o título à esquerda; à direita, uma linha por dia, a hora alinhada na ponta. */
 @container (aspect-ratio >= 1.25) {
   .cabeca { left: 6cqw; right: auto; width: 34cqw; top: 50%; transform: translateY(-56%); }
   .kicker { font-size: 3cqmin; }
-  h1 { font-size: 11cqmin; }
+  h1 { font-size: calc(11cqmin * var(--mt-escala-titulo, 1)); }
   .dias { left: 46cqw; right: 6cqw; top: 50%; bottom: auto; transform: translateY(-50%); }
   .dias li { display: flex; align-items: center; justify-content: space-between; gap: 4cqw; padding: 4.4cqmin 0 4.8cqmin; }
   .dia { font-size: 3cqmin; }
-  .hora { margin-top: 0; font-size: 11cqmin; }
+  .hora { margin-top: 0; font-size: calc(11cqmin * var(--mt-escala-titulo, 1)); }
   .nota { left: 6cqw; right: auto; bottom: 7cqh; font-size: 3cqmin; }
 }
 /* Em pé numa tela inteira (não na coluna): tudo maior, a hora domina de longe. */
 @container (aspect-ratio < 0.8) and (min-width: 701px) {
   .cabeca { top: 12cqmin; }
   .kicker { font-size: 3.4cqmin; }
-  h1 { font-size: 15cqmin; margin-top: 5cqmin; }
+  h1 { font-size: calc(15cqmin * var(--mt-escala-titulo, 1)); margin-top: 5cqmin; }
   .dias { bottom: 24cqmin; }
   .dias li { padding: 4.6cqmin 0 5cqmin; }
   .dia { font-size: 3.6cqmin; }
-  .hora { font-size: 17cqmin; margin-top: 3cqmin; }
+  .hora { font-size: calc(17cqmin * var(--mt-escala-titulo, 1)); margin-top: 3cqmin; }
   .nota { bottom: 10cqmin; font-size: 4cqmin; }
 }
 /* Quase quadrada: a lista em pé não cabe embaixo do título — o dia e a hora vão na mesma linha. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .cabeca { top: 8cqmin; }
-  h1 { font-size: 9cqmin; }
+  h1 { font-size: calc(9cqmin * var(--mt-escala-titulo, 1)); }
   .dias { bottom: 16cqmin; }
   .dias li { display: flex; align-items: center; justify-content: space-between; gap: 4cqw; padding: 3cqmin 0 3.4cqmin; }
   .dia { font-size: 3cqmin; }
-  .hora { margin-top: 0; font-size: 8.5cqmin; }
+  .hora { margin-top: 0; font-size: calc(8.5cqmin * var(--mt-escala-titulo, 1)); }
   .nota { bottom: 6.5cqmin; font-size: 3.2cqmin; }
 }
 </style>

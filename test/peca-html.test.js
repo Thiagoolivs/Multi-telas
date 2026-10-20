@@ -61,7 +61,7 @@ test('a peça aprovada pelo dono passa inteira, sem nenhum problema nem aviso', 
   assert.equal(r.ok, true);
   // Nada de importante foi perdido no caminho.
   for (const trecho of ['@container (aspect-ratio < 1)', '@container (max-width: 700px)', 'var(--mt-fundo-0)',
-    'translateY(-56%)', 'h1 > span', 'var(--mt-fonte-titulo)', 'data-entrada="esquerda"']) {
+    'justify-content:safe center', 'h1 > span', 'var(--mt-fonte-titulo)', 'data-entrada="esquerda"']) {
     assert.ok((r.html + r.css).includes(trecho), 'sumiu: ' + trecho);
   }
   assert.deepEqual(r.campos.map((c) => c.nome), ['foto', 'marca', 'kicker', 'titulo', 'oferta', 'apoio',

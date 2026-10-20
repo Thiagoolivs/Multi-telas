@@ -310,7 +310,8 @@ test('detector: "passa da borda" mede também as linhas do texto, não só a cai
    * combinações achou "DE COSTELA" vazando 91px no lançamento em pé.
    */
   const c = semComentarios(ler('js', 'peca-conferir.js'));
-  assert.match(c, /if \(passa\(r\) \|\| linhas\.some\(passa\)\) fora\.push\(nome\)/);
+  assert.match(c, /if \(linhas\.some\(passa\)\) fora\.push\(nome\)/);
+  assert.match(c, /if \(!el\.textContent\.trim\(\)\) return \[r\]/, 'campo sem texto (foto) continua medido pela caixa');
   const lanc = ler('pecas-ouro', 'institucional-lancamento.html');
   assert.doesNotMatch(lanc, /h1 span, h1 em \{[^}]*nowrap/, 'título sem quebra vaza com fonte larga');
 });

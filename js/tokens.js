@@ -61,7 +61,20 @@
     fonteTitulo: '--mt-fonte-titulo',
     fonteTexto: '--mt-fonte-texto',
     raio: '--mt-raio',
+    escalaTitulo: '--mt-escala-titulo',
   };
+
+  /*
+   * --mt-escala-titulo: quanto o título GRANDE encolhe para ocupar a mesma
+   * largura que ocuparia na fonte condensada, a referência das peças-ouro.
+   *
+   * As peças foram desenhadas em Oswald/Anton (estreitas). Com a fonte de
+   * outra marca — Playfair, Poppins, Archivo Black — o mesmo "30% OFF" ficava
+   * até 40% mais largo, quebrava em duas linhas e empurrava o resto (a
+   * varredura de 20/10 achou 9 peças assim). Nunca passa de 1: fonte estreita
+   * não ganha título maior que o desenhado. Uso: calc(… * var(--mt-escala-titulo, 1)).
+   */
+  const LARGURA_REFERENCIA = 0.455; // Oswald em caixa alta (js/fontes.js, CAIXA_ALTA)
 
   /*
    * Cantos em `cqmin`: medida do container, como tudo na peça. Em pixel, o
@@ -309,7 +322,9 @@
     const fundos = [base.fundo, base.fundo2, base.superficie];
 
     const familia = (id) => F.FAMILIAS[F.familia(id)].css;
+    const largura = F.FAMILIAS[F.familia(p.fonteTitulo)].larguraCaixaAlta || LARGURA_REFERENCIA;
     return {
+      escalaTitulo: Math.round(Math.min(1, LARGURA_REFERENCIA / largura) * 1000) / 1000,
       modo,
       marca,
       cores: {
@@ -359,6 +374,7 @@
     out[NOMES.fonteTitulo] = t.fontes.titulo;
     out[NOMES.fonteTexto] = t.fontes.texto;
     out[NOMES.raio] = t.raio;
+    out[NOMES.escalaTitulo] = String(t.escalaTitulo != null ? t.escalaTitulo : 1);
     return out;
   }
 

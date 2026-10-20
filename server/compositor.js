@@ -42,6 +42,7 @@ function regras() {
     '- Cor SÓ por token: ' + tokens + '. Nenhum hex, rgb(), hsl() ou nome de cor.',
     '- Medida SÓ relativa ao container: cqw, cqh, cqmin, cqmax, %, fr, em. px só dentro da condição de @container.',
     '- Fonte SÓ var(--mt-fonte-titulo) ou var(--mt-fonte-texto).',
+    '- Título e número GRANDES em var(--mt-fonte-titulo): font-size: calc(<tamanho> * var(--mt-escala-titulo, 1)). A fonte da marca pode ser bem mais larga que a do exemplo, e a escala é o que impede o título de vazar.',
     '- Proibido: filter, backdrop-filter, mix-blend-mode, mask, animation, transition, will-change, position fixed/sticky, @media.',
     '- No máximo 2 sombras por elemento, desfoque até 3cqw.',
     '- Todo texto editável com data-campo="nome" (nomes curtos, sem espaço). Foto só com <img data-campo-img="foto" alt="">. QR só com <img data-campo-qr="link" alt="…">.',
