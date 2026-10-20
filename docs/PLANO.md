@@ -54,8 +54,9 @@ atendimento — a arquitetura desta rodada já deixa essa porta aberta (§9).
 | Operação | Dono instala e dá suporte; ZL, ZS, ZO, ZN e Centro de SP; sem interior por ora | WhatsApp provisório, depois número dedicado com atendimento 24h e parceiros |
 | Ordem | **Peças-ouro primeiro**, depois a Fase 0 | Decidido em 19/10. A bancada não muda o que a TV exibe hoje (§3) |
 | Tela completa | Peças-ouro para **cabeçalho, destaque, lateral e rodapé**, com papel definido para cada zona | §4.7 |
-| Refinamento | **Chat antes de gerar**: conversar é barato, gerar é caro. Gosto se mostra, não se pergunta | §4.11 |
-| Animação | JavaScript **só no player** (GSAP já carregado); a peça declara a animação, nunca executa código | §4.12 |
+| Refinamento | **Chat antes de gerar**: conversar é barato, gerar é caro. Gosto se mostra, não se pergunta | §4.12 |
+| Animação | JavaScript **só no player** (GSAP já carregado); a peça declara a animação, nunca executa código | §4.13 |
+| Foto | A IA decide quando e qual foto; o cliente **autoriza antes**. Produto do cliente é gerado a partir da foto real dele | §4.11 |
 | Modelos no experimento | Gemini (atual), `claude-sonnet-5-5` e `claude-opus-5-5` | §4.4 |
 
 ---
@@ -164,7 +165,7 @@ como está** (lido em 19/10):
 - Não há cache de prompt. Com a biblioteca-ouro no prompt de toda chamada,
   o cache é o que impede o exemplo de virar o maior custo da criação.
 
-Isso vira um PR próprio antes do experimento (§4.13).
+Isso vira um PR próprio antes do experimento (§4.14).
 
 ### 4.3 Sistema de cores v2 — tema que faz sentido
 
@@ -199,7 +200,7 @@ reestiliza tudo, coerente.
 ### 4.4 O experimento (primeira semana)
 
 Antes de reescrever, provar. O experimento roda **depois** da
-biblioteca-ouro (§4.13): ela é o exemplo que o motor HTML imita.
+biblioteca-ouro (§4.14): ela é o exemplo que o motor HTML imita.
 
 1. Os **20 pedidos** abaixo. Os 10 primeiros são os casos de
    `tools/eval.mjs`, mantidos para dar continuidade; todas as empresas são
@@ -362,8 +363,27 @@ comunicado interno. Não são peças novas: são combinações das acima, para
 aprovar a coerência da parede inteira, que peça por peça não aparece.
 
 **Toda peça-ouro**: cor só por token v2 (nenhum hex), `data-campo` em todo
-texto e foto, camadas com `--x --y --w --h`, coreografia de entrada (§4.12)
-e os 4 modos (claro, escuro, marca, rascunho).
+texto e foto, camadas com `--x --y --w --h`, coreografia de entrada (§4.13)
+e os 4 modos (claro, escuro, marca, rascunho). Toda estrutura existe **com
+foto e sem foto** (§4.11).
+
+**A régua visual** — tirada da primeira amostra renderizada (20/10), em que
+o dono pediu "mais premium" e o mesmo conteúdo mudou de patamar só com isto:
+
+- **Um elemento domina.** "Óculos de sol" pequeno e "30% OFF" enorme lê
+  melhor e parece mais caro que as duas linhas do mesmo tamanho.
+- **Fontes de verdade.** Condensada para oferta, serifada (com itálico) para
+  institucional e moda, Inter no apoio. A fonte do sistema é o que faz peça
+  parecer slide.
+- **Kicker espaçado com filete**, em vez de selo pesado. **Chamada como texto
+  sublinhado**, em vez de botão gordo.
+- **Preço com o R$ e os centavos pequenos.** O número é o que se lê.
+- **Quebra de linha decidida**, nunca deixada ao acaso: "deve / ser." com a
+  palavra sozinha na última linha estraga a peça mais bonita.
+- **Nada escrito sobre foto sem véu.** O véu vai de `--mt-fundo` a
+  `--mt-fundo-0`; endereço e assinatura nunca sobre a imagem.
+- **Respiro.** Margem de 6% da largura e espaço entre o bloco de texto e a
+  chamada; peça apertada parece barata.
 
 **Marcas de teste**, todas fictícias: Ótica Central, Padaria do Bairro,
 Studio Bella e Clínica Vida.
@@ -410,7 +430,34 @@ peça-ouro preenchida. Nunca tela vazia, nunca peça quebrada.
 
 Peça avulsa pula o wireframe e vai direto às 3 opções prontas.
 
-### 4.11 Chat de refinamento — conversar é barato, gerar é caro
+### 4.11 Foto — a IA decide, o cliente autoriza
+
+A foto é o que mais aproxima a peça de "parece de agência", e é a parte mais
+cara. A IA tem **autonomia para decidir** quando uma peça pede foto e como
+ela deve ser; o cliente **autoriza antes** de qualquer foto ser gerada.
+
+- **A IA decide e descreve.** No plano, cada peça com foto vem com a
+  descrição em português ("mulher de 30 anos usando o vestido de linho cru,
+  luz natural, fundo liso à esquerda") e o custo. O cliente aprova, edita a
+  descrição ou troca por uma foto dele. Já existe o portão: o plano para
+  antes do crédito (`pararNoPlano`).
+- **O pedido específico é atendido.** Loja de roupas que quer "uma mulher
+  usando este vestido" recebe isso. Quando o produto é **dele** (a roupa da
+  coleção, a armação da vitrine), a foto é gerada **a partir da foto real do
+  produto**, que ele sobe em Mídias: o modelo de imagem recebe a foto de
+  referência e mantém o produto fiel. Inventar o vestido não serve — o
+  cliente vende aquele vestido, não um parecido.
+- **A peça-ouro diz onde a foto entra.** Cada estrutura com foto declara o
+  enquadramento (metade lateral, arco, cheia com véu, recorte) e de que lado
+  o texto fica; o pedido da foto já sai com esse lado limpo
+  (`server/direcao-arte.js` faz isso hoje para 16:9, 9:16, 1:1 e 21:9).
+- **Regras que não mudam:** nenhum texto desenhado na foto (`direcao-arte`
+  já proíbe); pessoa gerada nunca é retrato de alguém real e identificável;
+  foto do acervo do cliente vence foto gerada quando serve.
+- **Custo:** foto gerada continua 1 crédito. Foto com referência de produto
+  pode custar mais — sai medida do experimento antes de ter preço.
+
+### 4.12 Chat de refinamento — conversar é barato, gerar é caro
 
 Tudo o que dá para decidir antes de gerar, decide-se na conversa: uma troca
 de mensagens custa centavos, uma geração com foto e crítica visual custa
@@ -454,7 +501,7 @@ tem padaria não sabe descrever o estilo que quer, mas reconhece quando vê.
 - A memória passa a guardar o **gosto** ("prefere escuro", "recusou o
   layout X"): a próxima conversa já começa mais perto.
 
-### 4.12 Animação — JavaScript no player, nunca na peça
+### 4.13 Animação — JavaScript no player, nunca na peça
 
 A peça **declara** a intenção (`data-entrada="subir"`, `data-ordem="2"`) e
 o **nosso** código anima. A IA escolhe de uma lista fechada e nunca escreve
@@ -473,7 +520,7 @@ recusando qualquer `<script>` ou `on*=`.
   a palavra. Antes de chegar a cliente, 72 h no box beta medindo memória e
   quadros. Sem GSAP, a peça cai na camada 1.
 
-### 4.13 Ordem dos PRs desta fase
+### 4.14 Ordem dos PRs desta fase
 
 Um PR por etapa, cada um aprovado pelo dono antes de começar.
 
@@ -489,11 +536,13 @@ Um PR por etapa, cada um aprovado pelo dono antes de começar.
 7. **Camada de IA**: modelo por chamada, saída maior, visão nos três
    modelos, cache de prompt e tokens medidos (§4.2).
 8. **Experimento** (§4.4), com a página de nota às cegas.
-9. **Chat de refinamento** unificado (§4.11).
+9. **Foto do produto real** (§4.11): gerar a partir da foto de referência
+   que o cliente sobe, com aprovação antes.
+10. **Chat de refinamento** unificado (§4.12).
 
 Antes da primeira peça-html numa tela de cliente: a Fase 0 (§10).
 
-### 4.14 Pronto quando
+### 4.15 Pronto quando
 
 - [ ] 39 peças-ouro e 6 telas completas aprovadas pelo dono.
 - [ ] Experimento feito e motor escolhido pela nota, não pelo gosto do dia.
@@ -501,6 +550,8 @@ Antes da primeira peça-html numa tela de cliente: a Fase 0 (§10).
 - [ ] Tela completa gerada com papel certo em cada zona, sem repetir mensagem
       entre elas.
 - [ ] Wireframe aprovado antes de qualquer foto ser gerada.
+- [ ] Foto com o produto real do cliente, fiel ao produto, aprovada antes de
+      ir para a tela.
 - [ ] Trocar marca ou modo reestiliza a peça sem gerar de novo.
 - [ ] Peça idêntica — inclusive a entrada animada — no editor, na miniatura
       e no box da ótica.
