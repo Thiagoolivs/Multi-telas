@@ -103,10 +103,20 @@ function promptDeFoto(pedido, opcoes) {
   const dir = String(o.direcao || 'suave');
   const marca = nomeDaCor(o.brand);
   const acento = nomeDaCor(o.brand2);
+  const produto = !!o.produto;
 
   const linhas = [
     String(pedido || '').trim(),
     '',
+    /*
+     * A foto anexada é o produto que o cliente VENDE (PLANO §4.11). Um vestido
+     * "parecido" não serve: ele vende aquele. Por isso a fidelidade vem antes
+     * de toda a direção de arte, e a monocromia abaixo deixa de valer para o
+     * produto — tingir o produto na cor da marca seria inventar outro.
+     */
+    produto ? 'A IMAGEM ANEXADA É O PRODUTO REAL DO CLIENTE. Ele aparece na foto EXATAMENTE como é: '
+      + 'mesma forma, cor, estampa, material, proporção e detalhes. Não redesenhe, não simplifique, '
+      + 'não troque por um parecido. Pode mudar o cenário, a luz, o ângulo e quem usa ou segura o produto.' : '',
     'DIREÇÃO DE ARTE — siga à risca:',
     `- Proporção ${formato}.`,
     /*
@@ -119,10 +129,13 @@ function promptDeFoto(pedido, opcoes) {
       + 'apenas fundo liso, sem objeto, sem sujeito, sem detalhe. '
       + 'Esse espaço vai receber texto depois.',
     `- O sujeito principal fica no lado oposto, em sangria, ocupando o resto do quadro.`,
-    marca
-      ? `- MONOCROMIA: o fundo e a roupa (ou o objeto) principal na mesma família de cor de ${marca}. `
-        + 'Tons diferentes da mesma cor, não cores diferentes.'
-      : '- MONOCROMIA: fundo e sujeito na mesma família de cor.',
+    produto
+      ? (marca ? `- O fundo e o cenário na família de cor de ${marca}; o PRODUTO mantém as cores reais dele.`
+        : '- O fundo e o cenário em poucos tons; o PRODUTO mantém as cores reais dele.')
+      : marca
+        ? `- MONOCROMIA: o fundo e a roupa (ou o objeto) principal na mesma família de cor de ${marca}. `
+          + 'Tons diferentes da mesma cor, não cores diferentes.'
+        : '- MONOCROMIA: fundo e sujeito na mesma família de cor.',
     acento ? `- Um único ponto de ${acento} como acento, pequeno.` : '',
     `- ${CLIMA[dir] || CLIMA.suave}.`,
     `- ${APOIO[dir] || APOIO.suave}.`,
@@ -134,7 +147,8 @@ function promptDeFoto(pedido, opcoes) {
      * baixo do texto de verdade e não sai mais.
      */
     'NENHUM TEXTO, LETRA, NÚMERO, LOGOTIPO OU MARCA D\'ÁGUA NA IMAGEM. '
-      + 'O texto é escrito depois, por fora. Se aparecer qualquer palavra, a imagem é inútil.',
+      + 'O texto é escrito depois, por fora. Se aparecer qualquer palavra, a imagem é inútil.'
+      + (produto ? ' A única exceção é o que já vem impresso no próprio produto (rótulo, etiqueta), que fica como está.' : ''),
     'Fotografia profissional, pessoas brasileiras reais quando houver pessoas, sem aparência de banco de imagens genérico.',
   ];
   return linhas.filter((l) => l !== '').join('\n');

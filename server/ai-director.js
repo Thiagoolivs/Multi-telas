@@ -255,6 +255,8 @@ async function planejar(brief, ctx) {
   const p = ai.mode() === 'dev'
     ? planoDev(brief, ctx)
     : ai.parseAiJson(await ai.callLLM(SISTEMA_PLANO, usuario));
+  // A foto do produto é escolha da pessoa na revisão, nunca do modelo.
+  if (p && Array.isArray(p.pecas)) p.pecas.forEach((x) => { if (x && typeof x === 'object') delete x.referenciaProduto; });
   return normalizarPlano(p, ctx, brief);
 }
 
@@ -447,6 +449,16 @@ function normalizarPlano(p, ctx, brief) {
   const normalizarPeca = (x) => {
     const iBase = Number.isInteger(x && x.imagemBase) && x.imagemBase >= 0 && x.imagemBase < bases.length
       ? x.imagemBase : null;
+    /*
+     * A foto do produto REAL que o cliente escolheu na revisão do plano
+     * (PLANO §4.11): a imagem gerada parte dela. Aqui só a forma — que é um
+     * endereço de mídia nossa; de QUEM é a mídia, quem confere é o servidor,
+     * que conhece a conta. Foto do acervo usada como está dispensa a geração.
+     */
+    const ref = iBase == null && typeof (x && x.referenciaProduto) === 'string'
+      && x.referenciaProduto.length < 500 && /\/media\/[\w\-./]+$/.test(x.referenciaProduto) && !/\.\./.test(x.referenciaProduto)
+      ? x.referenciaProduto : '';
+    const promptPadrao = ref ? 'O produto da foto em destaque, numa cena que combina com: ' + String((x && x.headline) || '').slice(0, 70) : '';
     return {
       imagemBase: iBase,
       bgImagem: iBase != null ? bases[iBase].url : '',
@@ -463,8 +475,9 @@ function normalizarPlano(p, ctx, brief) {
       // Hora do dia em que a peça entra. É o que transforma a campanha de uma
       // playlist plana num programa que muda de cara ao longo do expediente.
       faixa: FAIXAS_OK.includes(x && x.faixa) ? x.faixa : '',
-      precisaImagem: iBase == null && !!(x && x.precisaImagem),
-      promptImagem: iBase != null ? '' : String((x && x.promptImagem) || '').slice(0, 400),
+      precisaImagem: iBase == null && (!!(x && x.precisaImagem) || !!ref),
+      promptImagem: iBase != null ? '' : String((x && x.promptImagem) || promptPadrao).slice(0, 400),
+      referenciaProduto: ref,
     };
   };
   const pedido = lerPedido(ctx.pedido);
@@ -636,9 +649,14 @@ function normalizarPlano(p, ctx, brief) {
    *   'gerar'    a IA desenha quando nenhuma foto do acervo servir (padrão)
    *   'acervo'   só usa as fotos da empresa; nunca gera, nunca cobra
    *   'nenhuma'  peça sem foto, composta com cor e forma
+   *
+   * A exceção é a peça em que a pessoa escolheu a foto do PRODUTO na revisão
+   * do plano: é o gesto mais recente e deliberado dela, com o custo à vista,
+   * e vale para aquela peça. Só a revisão põe `referenciaProduto` — o modelo
+   * nunca recebe esse campo para preencher.
    */
   if (pedido.imagens !== 'gerar') {
-    pecas = pecas.map((x) => ({
+    pecas = pecas.map((x) => (x.referenciaProduto ? x : {
       ...x,
       precisaImagem: false,
       promptImagem: '',
@@ -1289,6 +1307,7 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
           brand2: (plano.paleta && plano.paleta.brand2) || '',
           direcao: (plano.paleta && plano.paleta.direcao) || '',
           estilo: (plano.paleta && plano.paleta.estilo) || '',
+          referencia: peca.referenciaProduto || '',
         });
         /*
          * A foto GERADA por nós reservou um lado limpo (ver direcao-arte.js).

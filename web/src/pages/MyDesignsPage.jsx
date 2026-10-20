@@ -19,6 +19,7 @@ import { downloadComposition } from '../lib/exportPng.js';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { BriefingChat } from '../components/content/BriefingChat.jsx';
 import { SalvarEm } from '../components/content/SalvarEm.jsx';
+import { FotoDoProduto } from '../components/content/FotoDoProduto.jsx';
 import { aviso } from '../lib/avisos.js';
 import { guardar as guardarNaBandeja, inscrever as inscreverBandeja, limpar as limparBandeja } from '../lib/bandeja.js';
 
@@ -151,8 +152,17 @@ function Guia({ empresa, onEscolher, onPular }) {
 
 
 function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
-  const pecas = (plano.plano && plano.plano.pecas) || [];
+  const originais = (plano.plano && plano.plano.pecas) || [];
   const [fora, setFora] = React.useState(() => new Set());
+  /*
+   * O que a pessoa muda antes de gerar (PLANO §4.11): a foto do produto real
+   * e a descrição da foto. É texto no plano — custa zero até o "Gerar".
+   */
+  const [ajustes, setAjustes] = React.useState({});
+  const [escolhendo, setEscolhendo] = React.useState(null);
+  const pecas = originais.map((p, i) => ({ ...p, ...(ajustes[i] || {}) }));
+  const ajustar = (i, mudanca) => setAjustes((a) => ({ ...a, [i]: { ...(a[i] || {}), ...mudanca } }));
+  const desfazer = (i) => setAjustes((a) => { const n = { ...a }; delete n[i]; return n; });
 
   const ativas = pecas.filter((_, i) => !fora.has(i));
   const custo = ativas.filter((p) => p.precisaImagem && p.promptImagem).length;
@@ -179,23 +189,54 @@ function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
           const cortada = fora.has(i);
           const paga = p.precisaImagem && p.promptImagem;
           return (
-            <label key={i}
-              className={'flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition '
+            <div key={i}
+              className={'flex items-start gap-3 rounded-lg border p-3 transition '
                 + (cortada ? 'border-line bg-surface opacity-45' : 'border-line bg-surface-2')}>
-              <input type="checkbox" checked={!cortada} onChange={() => alternar(i)} className="mt-1" />
-              <span className="min-w-0 flex-1">
+              <input type="checkbox" checked={!cortada} onChange={() => alternar(i)} className="mt-1"
+                aria-label={'Incluir a peça ' + (p.headline || (i + 1))} />
+              <div className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold text-ink">{p.headline || '(sem manchete)'}</span>
                 {p.sub && <span className="mt-0.5 block text-xs text-ink-2">{p.sub}</span>}
                 <span className="mt-1 flex flex-wrap items-center gap-1.5 text-2xs">
                   <Badge tone="neutral">{ONDE[p.formato] || p.formato}</Badge>
-                  {paga
-                    ? <Badge tone="accent">foto por IA · 1 crédito</Badge>
-                    : p.bgImagem || p.imagemBase != null
-                      ? <Badge tone="ok">foto sua · sem custo</Badge>
-                      : <Badge tone="ok">só texto · sem custo</Badge>}
+                  {paga && p.referenciaProduto
+                    ? <Badge tone="accent">foto com o seu produto · 1 crédito</Badge>
+                    : paga
+                      ? <Badge tone="accent">foto por IA · 1 crédito</Badge>
+                      : p.bgImagem || p.imagemBase != null
+                        ? <Badge tone="ok">foto sua · sem custo</Badge>
+                        : <Badge tone="ok">só texto · sem custo</Badge>}
                 </span>
-              </span>
-            </label>
+                {!cortada && p.referenciaProduto && (
+                  <span className="mt-2 flex items-center gap-2">
+                    <img src={p.referenciaProduto} alt="" className="h-10 w-10 rounded-md border border-line object-cover" />
+                    <span className="text-xs text-ink-2">A foto parte do seu produto.</span>
+                    <button type="button" onClick={() => setEscolhendo(i)} className="text-xs font-medium text-accent hover:underline">Trocar</button>
+                    <button type="button" onClick={() => desfazer(i)} className="text-xs font-medium text-ink-3 hover:text-ink hover:underline">Tirar</button>
+                  </span>
+                )}
+                {!cortada && p.precisaImagem && (
+                  <Textarea rows={2} maxLength={400} value={p.promptImagem || ''} className="mt-2 text-xs"
+                    aria-label="Como a foto deve ser" placeholder="Como a foto deve ser: quem aparece, onde, que luz"
+                    onChange={(e) => ajustar(i, { promptImagem: e.target.value })} />
+                )}
+                {!cortada && !p.referenciaProduto && escolhendo !== i && (
+                  <button type="button" onClick={() => setEscolhendo(i)}
+                    className="mt-2 text-xs font-medium text-accent hover:underline">
+                    Usar a foto do meu produto
+                  </button>
+                )}
+                {!cortada && escolhendo === i && (
+                  <FotoDoProduto onFechar={() => setEscolhendo(null)} onEscolher={(url) => {
+                    ajustar(i, {
+                      referenciaProduto: url, precisaImagem: true, imagemBase: null, bgImagem: '',
+                      promptImagem: p.promptImagem || ('O produto da foto em destaque, numa cena que combina com: ' + (p.headline || '')),
+                    });
+                    setEscolhendo(null);
+                  }} />
+                )}
+              </div>
+            </div>
           );
         })}
       </div>

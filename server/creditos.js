@@ -47,6 +47,12 @@ const CUSTO_TEXTO_CENTAVOS = 5;
 const OPERACOES = {
   'gerar-imagem': { creditos: 1, custoCentavos: CUSTO_IMAGEM_CENTAVOS, rotulo: 'Imagem gerada' },
   'campanha-peca': { creditos: 1, custoCentavos: CUSTO_IMAGEM_CENTAVOS, rotulo: 'Peça de campanha' },
+  /*
+   * A foto gerada a partir da foto REAL do produto (PLANO §4.11). Mesmo preço
+   * por ora, tipo separado de propósito: a referência entra na chamada como
+   * imagem, e o custo de verdade sai do extrato antes de virar preço.
+   */
+  'campanha-peca-produto': { creditos: 1, custoCentavos: CUSTO_IMAGEM_CENTAVOS, rotulo: 'Peça com a foto do seu produto' },
 
   // Tudo abaixo é texto: livre, medido, nunca cobrado.
   briefing: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Briefing' },
