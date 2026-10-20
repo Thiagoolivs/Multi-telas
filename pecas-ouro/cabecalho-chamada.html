@@ -1,0 +1,38 @@
+<!--
+  Cabeçalho com a chamada da campanha — papel cabeçalho (PLANO §4.7).
+  Aqui quem domina é a campanha, não a marca: a chamada grande no meio da
+  faixa, numa tarja da cor de destaque; a marca pequena à esquerda e a hora
+  à direita. Para a semana em que a casa quer gritar uma coisa só. Medidas
+  em cqh: a altura da faixa decide a letra.
+-->
+<style>
+.mt-peca { display: flex; align-items: center; gap: 8cqh; padding: 0 3cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: var(--mt-fundo); border-bottom: 1.2cqh solid var(--mt-linha); }
+.marca { flex: none; display: flex; align-items: center; }
+.logo { height: 52cqh; width: auto; max-width: 22cqw; object-fit: contain; }
+.logo[data-sem-foto] { display: none; }
+.logo:not([data-sem-foto]) + .nome { display: none; }
+.nome { font: 700 17cqh/1.05 var(--mt-fonte-texto); letter-spacing: .26em; text-transform: uppercase; white-space: nowrap; }
+.chamada { flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; justify-content: center; gap: 8cqh; margin: 14cqh 0;
+  background: var(--mt-destaque); color: var(--mt-sobre-destaque); border-radius: var(--mt-raio); }
+.chamada span { font: 400 46cqh/1 var(--mt-fonte-titulo); letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+.chamada small { font: 700 15cqh/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; white-space: nowrap; opacity: .85; }
+.hora { flex: none; font: 400 46cqh/1 var(--mt-fonte-titulo); letter-spacing: .02em; }
+/* Faixa em pé: a largura é pouca — a chamada e a marca encolhem, o "quando" sai. */
+@container (aspect-ratio < 9) {
+  .mt-peca { gap: 5cqh; }
+  .nome { font-size: 12cqh; letter-spacing: .14em; }
+  .chamada { margin: 18cqh 0; }
+  .chamada span { font-size: 30cqh; }
+  .chamada small { display: none; }
+  .hora { font-size: 38cqh; }
+}
+</style>
+<section class="mt-peca cabecalho-chamada">
+  <div class="marca" data-entrada="aparecer">
+    <img class="logo" data-campo-img="logo" alt="">
+    <span class="nome" data-campo="marca">Lanchonete<br>da Praça</span>
+  </div>
+  <div class="chamada" data-entrada="crescer" data-ordem="1"><span data-campo="chamada">Terça do burger em dobro</span><small data-campo="quando">só hoje</small></div>
+  <span class="hora" data-vivo="relogio" data-entrada="aparecer" data-ordem="2">12:05</span>
+</section>

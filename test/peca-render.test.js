@@ -259,7 +259,7 @@ test('as marcas de teste da bancada são válidas e todas fictícias', () => {
     for (const modo of T.MODOS) assert.deepEqual(T.conferir(T.daMarca(m, modo)), [], m.nome + ' ' + modo);
   }
   assert.deepEqual(MANIFESTO.marcas.map((m) => m.nome).sort(),
-    ['Clínica Vida', 'Padaria do Bairro', 'Studio Bella', 'Ótica Central'].sort());
+    ['Clínica Vida', 'Distribuidora Rota Sul', 'Lanchonete da Praça', 'Padaria do Bairro', 'Studio Bella', 'Ótica Central'].sort());
 });
 
 test('toda peça diz em que marca nasceu, e a bancada abre nela', () => {
@@ -283,6 +283,19 @@ test('as mensagens do rodapé são de cada tela, não da biblioteca', () => {
   assert.match(b, /mensagens: tela\.mensagens \|\| \[\]/);
   assert.match(b, /mensagens: mensagensDaMarca\(marca\.id\)/);
   assert.doesNotMatch(b, /manifesto\.mensagens/);
+});
+
+test('a bancada acusa texto sobre texto, não só texto fora da peça', () => {
+  /*
+   * A chamada do cabeçalho em pé passava por baixo da hora ("DOBR04:12")
+   * sem sair da peça — a medida de vazamento não via. A hora é data-vivo,
+   * então os vivos parados entram na conta; a rolagem do rodapé, não.
+   */
+  const b = semComentarios(ler('js', 'bancada.js'));
+  assert.match(b, /querySelectorAll\('\[data-campo\], \[data-vivo\]:not\(\[data-vivo="mensagens"\]\)'\)/);
+  assert.match(b, /function sobrepostos\(caixas\)/);
+  assert.match(b, /if \(a\.el\.contains\(b\.el\) \|\| b\.el\.contains\(a\.el\)\) continue/);
+  assert.match(b, /' · SOBREPÕE: '/);
 });
 
 test('a bancada não desenha a tela com largura zero quando abre escondida', () => {
@@ -401,7 +414,8 @@ test('numa tela completa, nenhum texto aparece em duas zonas', () => {
         for (const c of campos) {
           if (c.tipo !== 'texto' || c.nome === 'marca') continue;
           const v = e.campos[c.nome] != null ? e.campos[c.nome] : (def.campos || {})[c.nome] != null ? def.campos[c.nome] : c.exemplo;
-          if (norm(v)) porZona[grupo].add(norm(v));
+          // Número sozinho (preço, centavos) pode coincidir: R$ 22 da batata e R$ 22 do suco não são a mesma mensagem.
+          if (norm(v) && !/^[\d\s.,%×]+$/.test(norm(v))) porZona[grupo].add(norm(v));
         }
       }
     }

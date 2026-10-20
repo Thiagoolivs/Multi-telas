@@ -1,0 +1,59 @@
+<!--
+  Painel de bebidas em três colunas — família cardápio. Destaque e lateral.
+  Bebida se escolhe por tamanho, então os tamanhos são o cabeçalho das
+  colunas e cada bebida é uma linha com três preços — a leitura de tabela
+  que todo mundo conhece do balcão. Preço em branco vira um traço.
+-->
+<style>
+.mt-peca { display: flex; flex-direction: column; justify-content: center; padding: 0 7cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(100% 80% at 100% 0%, var(--mt-fundo-2), var(--mt-fundo) 66%); }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 700 1.3cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .16cqw; background: var(--mt-destaque); }
+h1 { margin-top: 1.8cqw; font: 400 7.4cqw/.95 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .01em; }
+.tabela { margin-top: 3.4cqw; }
+.linha { display: grid; grid-template-columns: 1fr repeat(3, 14cqw); align-items: baseline; padding: 1.9cqw 0; border-bottom: .12cqw solid var(--mt-linha); }
+.linha:has(> b:empty) { display: none; }
+.topo { padding-top: 0; border-bottom: .16cqw solid var(--mt-destaque); }
+.topo span { font: 700 1.4cqw/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); text-align: right; }
+.linha b { font: 700 2.5cqw/1.2 var(--mt-fonte-texto); }
+.linha > span:not(:first-child) { text-align: right; }
+.p { font: 400 3.8cqw/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.p:empty::before { content: '—'; color: var(--mt-texto-suave); }
+/* Em pé e quadrada: a mesma tabela, maior, com as colunas de preço mais largas. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { padding: 0 8cqw; }
+  .kicker { font-size: 2.2cqw; }
+  .kicker i { width: 6cqw; height: .25cqw; }
+  h1 { font-size: 13cqw; margin-top: 3cqw; }
+  .tabela { margin-top: 6cqw; }
+  .linha { grid-template-columns: 1fr repeat(3, 17cqw); padding: 3.4cqw 0; border-bottom-width: .2cqw; }
+  .topo { border-bottom-width: .3cqw; }
+  .topo span { font-size: 2.2cqw; }
+  .linha b { font-size: 4cqw; }
+  .p { font-size: 6.2cqw; }
+}
+/* A coluna estreita: os tamanhos continuam no topo; cada bebida ocupa uma
+   linha inteira e os três preços vão embaixo, nas colunas dos tamanhos. */
+@container (max-width: 700px) {
+  .mt-peca { padding: 0 9cqw; }
+  .kicker { font-size: 3.4cqw; letter-spacing: .22em; }
+  h1 { font-size: 15cqw; }
+  .linha { grid-template-columns: repeat(3, 1fr); row-gap: 1.6cqw; padding: 3.2cqw 0; }
+  .topo > span:first-child { display: none; }
+  .topo span { font-size: 3cqw; text-align: left; }
+  .linha b { grid-column: 1 / -1; font-size: 5.6cqw; }
+  .linha > span:not(:first-child) { text-align: left; }
+  .p { font-size: 7.4cqw; }
+}
+</style>
+<section class="mt-peca cardapio-bebidas">
+  <p class="kicker" data-entrada="esquerda"><i aria-hidden="true"></i><span data-campo="kicker">Para acompanhar</span></p>
+  <h1 data-campo="titulo" data-entrada="subir" data-ordem="1">Bebidas</h1>
+  <div class="tabela">
+    <div class="linha topo" data-entrada="aparecer" data-ordem="2"><span></span><span data-campo="tam1">Lata</span><span data-campo="tam2">600 ml</span><span data-campo="tam3">Jarra</span></div>
+    <div class="linha" data-entrada="subir" data-ordem="3"><b data-campo="bebida1">Refrigerante</b><span class="p" data-campo="b1-p1">6</span><span class="p" data-campo="b1-p2">9</span><span class="p" data-campo="b1-p3">16</span></div>
+    <div class="linha" data-entrada="subir" data-ordem="4"><b data-campo="bebida2">Suco natural</b><span class="p" data-campo="b2-p1"></span><span class="p" data-campo="b2-p2">11</span><span class="p" data-campo="b2-p3">22</span></div>
+    <div class="linha" data-entrada="subir" data-ordem="5"><b data-campo="bebida3">Chá gelado</b><span class="p" data-campo="b3-p1">7</span><span class="p" data-campo="b3-p2">10</span><span class="p" data-campo="b3-p3">18</span></div>
+    <div class="linha" data-entrada="subir" data-ordem="6"><b data-campo="bebida4">Água com gás</b><span class="p" data-campo="b4-p1">5</span><span class="p" data-campo="b4-p2">7</span><span class="p" data-campo="b4-p3"></span></div>
+  </div>
+</section>
