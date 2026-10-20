@@ -238,6 +238,13 @@ async function init() {
       creditos INTEGER, custo_centavos INTEGER, referencia TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_uso_ia_tenant ON uso_ia(tenant_id, created_at);
+    ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS modelo TEXT;
+    ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS chamadas INTEGER;
+    ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS tokens_entrada INTEGER;
+    ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS tokens_saida INTEGER;
+    ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS tokens_cache INTEGER;
+    ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS tokens_cache_escrita INTEGER;
+    ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS custo_medido DOUBLE PRECISION;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS creditos_franquia INTEGER;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS creditos_comprados INTEGER;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS creditos_ciclo BIGINT;
@@ -935,10 +942,13 @@ async function contasParaConciliar() {
 
 async function registrarUsoIA(tenantId, uso) {
   const id = 'uso_' + rid(14);
+  const t = uso.tokens || {};
   await pool.query(
-    'INSERT INTO uso_ia (id, tenant_id, user_id, tipo, creditos, custo_centavos, referencia, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+    'INSERT INTO uso_ia (id, tenant_id, user_id, tipo, creditos, custo_centavos, referencia, created_at, modelo, chamadas, tokens_entrada, tokens_saida, tokens_cache, tokens_cache_escrita, custo_medido) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)',
     [id, tenantId, uso.userId || '', uso.tipo || '', Number(uso.creditos) || 0,
-      Number(uso.custoCentavos) || 0, uso.referencia || '', Date.now()]);
+      Number(uso.custoCentavos) || 0, uso.referencia || '', Date.now(),
+      t.modelos || '', Number(t.chamadas) || 0, Number(t.entrada) || 0, Number(t.saida) || 0,
+      Number(t.cacheLida) || 0, Number(t.cacheEscrita) || 0, t.chamadas ? Number(t.custoCentavos) || 0 : null]);
   return { id };
 }
 async function listarUsoIA(tenantId, limite) {

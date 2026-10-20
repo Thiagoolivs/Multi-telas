@@ -17,6 +17,8 @@ const GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '
 
 // A direção de arte da FOTO mora fora daqui: ver server/direcao-arte.js.
 const direcaoArte = require('./direcao-arte');
+// A camada de IA (motor por chamada, visão, cache, tokens medidos) mora em server/motores.js.
+const motores = require('./motores');
 
 // Provider agnóstico: AI_PROVIDER manda; senão, escolhe pela chave presente.
 function mode() {
@@ -28,12 +30,14 @@ function mode() {
   return 'dev';
 }
 
-// Dispatcher: chama o provider ativo e devolve o texto (JSON) da resposta.
+/*
+ * O caminho de sempre das trilhas prontas: o motor padrão (o mesmo provedor
+ * que o mode() escolhe), resposta em JSON. Passa por server/motores.js, então
+ * também é medido — e o Claude saiu do claude-3-5 com 700 tokens.
+ */
 async function callLLM(system, user) {
-  const m = mode();
-  if (m === 'gemini') return callGemini(system, user);
-  if (m === 'groq') return callGroq(system, user);
-  return callAnthropic(system, user);
+  const r = await motores.chamar({ motor: motores.motorPadrao(), sistema: system, usuario: user, json: true, maxTokens: 4096, temperatura: 0.7 });
+  return r.texto;
 }
 
 // Tipos/campos que a IA pode produzir (subconjunto seguro do schema do player).
@@ -101,91 +105,8 @@ async function generateContent(brief, ctx) {
   return clampItems(asItemArray(parseAiJson(text)));
 }
 
-// Groq — API compatível com OpenAI (rápido/barato). Modelo por env.
-async function callGroq(system, user) {
-  const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + GROQ_KEY, 'content-type': 'application/json' },
-    body: JSON.stringify({ model, max_tokens: 700, temperature: 0.7, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Groq HTTP ' + res.status));
-  return ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim();
-}
-
-// Gemini — Google Generative Language API. Modelo por env (GEMINI_MODEL).
-// Os nomes fixos (gemini-2.5-flash, 2.0-flash) mudam de disponibilidade por
-// conta e passam a dar "no longer available". Por isso usamos o alias
-// "gemini-flash-latest" (aponta pro flash atual) e caímos por uma lista de
-// candidatos quando o modelo escolhido não existe/está indisponível.
-// responseMimeType garante JSON limpo.
-// Ordem de preferência (2026): 3.6-flash é o GA atual; -latest é o alias seguro.
-const GEMINI_CANDIDATES = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-pro-latest'];
-
-// Erro em que vale tentar OUTRO modelo (indisponível/transitório/vazio).
-function geminiRetryable(msg) {
-  return /no longer available|not available|not found|is not supported|unsupported|does not exist|vazio|overloaded|unavailable|internal|quota|rate|429|500|503|404/i.test(msg || '');
-}
-// Erro do campo thinkingConfig (modelo não-thinking): refaz sem ele.
-function thinkingRejected(msg) { return /thinking|unknown name|invalid.*(field|argument)|not supported/i.test(msg || ''); }
-
-async function geminiOnce(model, system, user) {
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' +
-    encodeURIComponent(model) + ':generateContent';
-  const base = { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: 'application/json' };
-  // 1ª config: desativa "thinking" (flash 2.5/3.x gastam o orçamento pensando e
-  // podem devolver vazio) → saída direta. 2ª config: sem o campo, p/ modelos que não o aceitam.
-  const configs = [{ ...base, thinkingConfig: { thinkingBudget: 0 } }, base];
-  let emptypReason = '';
-  for (let i = 0; i < configs.length; i++) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'x-goog-api-key': GEMINI_KEY, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: system }] },
-        contents: [{ role: 'user', parts: [{ text: user }] }],
-        generationConfig: configs[i],
-      }),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      const cand = data.candidates && data.candidates[0];
-      const text = ((cand && cand.content && cand.content.parts) || []).map((p) => p.text || '').join('').trim();
-      if (text) return text;
-      emptypReason = (cand && cand.finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '?';
-      continue; // vazio: tenta a próxima config
-    }
-    const msg = (data && data.error && data.error.message) || ('Gemini HTTP ' + res.status);
-    if (configs[i].thinkingConfig && thinkingRejected(msg)) continue; // refaz sem thinkingConfig
-    throw new Error(msg);
-  }
-  throw new Error('Gemini vazio (finishReason=' + emptypReason + ', modelo=' + model + ')');
-}
-
-async function callGemini(system, user) {
-  // Tenta o modelo do env (se houver) primeiro; depois os candidatos, sem repetir.
-  const list = [process.env.GEMINI_MODEL, ...GEMINI_CANDIDATES].filter((m, i, a) => m && a.indexOf(m) === i);
-  let lastErr;
-  for (const model of list) {
-    try { return await geminiOnce(model, system, user); }
-    catch (e) { lastErr = e; if (!geminiRetryable(e.message)) throw e; } // erro real (chave/rede): não insiste
-  }
-  throw new Error('Nenhum modelo Gemini retornou conteúdo. Verifique GEMINI_API_KEY / GEMINI_MODEL. Detalhe: ' + (lastErr && lastErr.message));
-}
-
-// Anthropic — Claude via API de mensagens. Modelo por env.
-async function callAnthropic(system, user) {
-  const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model, max_tokens: 700, system, messages: [{ role: 'user', content: user }] }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Anthropic HTTP ' + res.status));
-  return (data.content || []).map((b) => b.text || '').join('').trim();
-}
+// Os provedores (Gemini, Groq, Anthropic) moram em server/motores.js.
+const geminiRetryable = motores.geminiTentaOutro;
 
 /* ---------------- Composição (layout do editor tipo Canva) ----------------
  * A IA monta o LAYOUT: cor de fundo + blocos de TEXTO posicionados (título,
@@ -512,30 +433,16 @@ function kitPiece(fmt, d) {
   return { type: 'composicao', bg: { kind: 'cor', cor: bgCor }, elementos: els, formato: fmt.formato, duracao: 12 };
 }
 
-// Gemini com imagens (visão): extrai identidade das referências do cliente.
+/*
+ * Visão: extrai identidade das referências do cliente. O Gemini continua
+ * sendo o motor quando há chave dele (é o que estas trilhas sempre usaram);
+ * sem ela, vai o motor padrão — a camada nova tem visão nos três provedores.
+ */
 async function geminiVision(system, userText, images) {
-  const parts = [{ text: userText }].concat(images.map((im) => ({ inline_data: { mime_type: im.mime, data: im.data } })));
-  const list = [process.env.GEMINI_MODEL, ...GEMINI_CANDIDATES].filter((m, i, a) => m && a.indexOf(m) === i);
-  let lastErr;
-  for (const model of list) {
-    try {
-      const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent';
-      const res = await fetch(url, {
-        method: 'POST', headers: { 'x-goog-api-key': GEMINI_KEY, 'content-type': 'application/json' },
-        body: JSON.stringify({ system_instruction: { parts: [{ text: system }] }, contents: [{ role: 'user', parts }], generationConfig: { temperature: 0.4, maxOutputTokens: 2048, responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } } }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        const cand = data.candidates && data.candidates[0];
-        const text = ((cand && cand.content && cand.content.parts) || []).map((p) => p.text || '').join('').trim();
-        if (text) return text;
-        lastErr = new Error('vazio'); continue;
-      }
-      const msg = (data && data.error && data.error.message) || ('Gemini HTTP ' + res.status);
-      lastErr = new Error(msg); if (!geminiRetryable(msg)) throw lastErr;
-    } catch (e) { lastErr = e; if (!geminiRetryable(e.message)) throw e; }
-  }
-  throw lastErr || new Error('visão falhou');
+  const temGemini = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
+  const motor = temGemini ? 'gemini' : motores.motorPadrao();
+  const r = await motores.chamar({ motor, sistema: system, usuario: userText, imagens: images, json: true, maxTokens: 2048, temperatura: 0.4 });
+  return r.texto;
 }
 
 // Modelos de geração de imagem do Gemini (2026): Nano Banana 2 / Pro / 2.5.
