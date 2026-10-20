@@ -1,5 +1,5 @@
 {
-  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas.",
+  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens).",
   "marcas": [
     {
       "id": "otica",
@@ -49,6 +49,7 @@
         "cabecalho"
       ],
       "estado": "aprovada",
+      "marca": "otica",
       "aprovadaEm": "2026-10-20"
     },
     {
@@ -60,6 +61,7 @@
         "lateral"
       ],
       "estado": "aprovada",
+      "marca": "otica",
       "campos": {
         "foto": "/pecas-ouro/fotos/otica-sol.jpg"
       },
@@ -74,6 +76,7 @@
         "lateral"
       ],
       "estado": "aprovada",
+      "marca": "otica",
       "aprovadaEm": "2026-10-20"
     },
     {
@@ -85,6 +88,7 @@
         "lateral"
       ],
       "estado": "aprovada",
+      "marca": "otica",
       "aprovadaEm": "2026-10-20"
     },
     {
@@ -96,6 +100,7 @@
         "destaque"
       ],
       "estado": "aprovada",
+      "marca": "otica",
       "aprovadaEm": "2026-10-20"
     },
     {
@@ -107,6 +112,7 @@
         "destaque"
       ],
       "estado": "aprovada",
+      "marca": "otica",
       "campos": {
         "link": "https://wa.me/5511999990000"
       },
@@ -120,14 +126,85 @@
         "rodape"
       ],
       "estado": "aprovada",
+      "marca": "otica",
       "aprovadaEm": "2026-10-20"
+    },
+    {
+      "id": "cabecalho-status",
+      "nome": "Cabeçalho com status",
+      "familia": "cabeçalho",
+      "papeis": [
+        "cabecalho"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria"
+    },
+    {
+      "id": "cardapio-combo",
+      "nome": "Combo",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria"
+    },
+    {
+      "id": "cardapio-colunas",
+      "nome": "Cardápio em duas colunas",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria"
+    },
+    {
+      "id": "manifesto",
+      "nome": "Manifesto",
+      "familia": "institucional",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria"
+    },
+    {
+      "id": "servico-horario",
+      "nome": "Horário de funcionamento",
+      "familia": "serviço",
+      "papeis": [
+        "lateral",
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria"
+    },
+    {
+      "id": "social-avaliacao",
+      "nome": "Avalie no Google",
+      "familia": "social",
+      "papeis": [
+        "lateral",
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria",
+      "campos": {
+        "link": "https://g.page/r/padariadobairro/review"
+      }
+    },
+    {
+      "id": "rodape-pagamento",
+      "nome": "Rodapé com formas de pagamento",
+      "familia": "rodapé",
+      "papeis": [
+        "rodape"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria"
     }
-  ],
-  "mensagens": [
-    "10x sem juros no cartão",
-    "Exame de vista com hora marcada",
-    "Aberto de segunda a sábado, até 19h",
-    "@oticacentral"
   ],
   "telas": [
     {
@@ -193,8 +270,71 @@
           ]
         }
       },
+      "mensagens": [
+        "10x sem juros no cartão",
+        "Exame de vista com hora marcada",
+        "Aberto de segunda a sábado, até 19h",
+        "@oticacentral"
+      ],
       "sobre": "Cada zona diz uma coisa (PLANO §4.7): o cabeçalho, quem e a campanha; o destaque, a oferta; a lateral, quando e como; o rodapé, o resto. Nenhum texto se repete entre zonas que aparecem juntas.",
       "aprovadaEm": "2026-10-20"
+    },
+    {
+      "id": "padaria-cafe-da-manha",
+      "nome": "Padaria do Bairro · Café da manhã",
+      "marca": "padaria",
+      "layout": "corporate",
+      "estado": "rascunho",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-status"
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "cardapio-combo"
+            },
+            {
+              "id": "cardapio-colunas"
+            },
+            {
+              "id": "manifesto"
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "servico-horario"
+            },
+            {
+              "id": "social-avaliacao"
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-pagamento"
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Encomendas de bolo com 48h de antecedência",
+        "Wi-Fi grátis para clientes",
+        "Entregamos no bairro pelo WhatsApp",
+        "@padariadobairro"
+      ],
+      "sobre": "Balcão de manhã: o cabeçalho diz se está aberto; o destaque, o que tem e quanto custa; a lateral, até que horas e onde avaliar; o rodapé, como pagar e o resto."
     }
   ]
 }

@@ -1,0 +1,80 @@
+<!--
+  Avalie no Google — família social. Nasceu para a lateral, serve no
+  destaque. A nota grande é a prova; o QR é o pedido. As estrelas são
+  desenho (clip-path), não letra: a fonte da marca pode não ter ★. O QR é
+  desenhado pelo nosso servidor a partir do link (`data-campo-qr`), com
+  fundo próprio — lê em qualquer modo. Medidas em cqmin.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); text-align: center;
+  background: radial-gradient(100% 70% at 50% 0%, var(--mt-fundo-2), var(--mt-fundo) 70%); }
+.bloco { position: absolute; left: 9cqmin; right: 9cqmin; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; }
+.texto { display: flex; flex-direction: column; align-items: center; }
+.kicker { display: flex; align-items: center; gap: 2.4cqmin; font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .28em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 6cqmin; height: .5cqmin; background: var(--mt-destaque); }
+.nota { display: flex; align-items: center; gap: 4cqmin; margin-top: 6cqmin; }
+.numero { font: 400 24cqmin/.8 var(--mt-fonte-titulo); }
+.lado { display: flex; flex-direction: column; align-items: flex-start; gap: 2.6cqmin; }
+.estrelas { display: flex; gap: 1cqmin; }
+.estrelas i { display: block; width: 6.4cqmin; height: 6.4cqmin; background: var(--mt-destaque);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.total { font: 500 3.4cqmin/1 var(--mt-fonte-texto); letter-spacing: .06em; color: var(--mt-texto-suave); white-space: nowrap; }
+h1 { font: 400 9cqmin/1 var(--mt-fonte-titulo); text-transform: uppercase; margin: 7cqmin 0 6cqmin; padding-top: 6cqmin; border-top: .5cqmin solid var(--mt-linha); }
+h1 span { display: block; white-space: nowrap; }
+h1 span:first-child { color: var(--mt-destaque); }
+.qr { margin: 0; width: 40cqmin; height: 40cqmin; padding: 1.6cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie);
+  box-shadow: 0 0 0 .6cqmin var(--mt-destaque); }
+.qr img { width: 100%; height: 100%; border-radius: calc(var(--mt-raio) * .6); }
+.pedido { margin-top: 5cqmin; font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase; }
+/* Deitada: a prova e o pedido à esquerda, o QR grande à direita. */
+@container (aspect-ratio >= 1.25) {
+  .mt-peca { text-align: left; }
+  .bloco { left: 8cqw; right: 8cqw; flex-direction: row; justify-content: space-between; gap: 6cqw; }
+  .texto { align-items: flex-start; }
+  h1 { margin-bottom: 0; font-size: 10cqmin; max-width: 80cqmin; }
+  .qr { flex: none; width: 56cqmin; height: 56cqmin; }
+  .pedido { display: none; }
+}
+/* Quase quadrada: o QR e o título encolhem para a coluna caber. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .nota { margin-top: 4cqmin; }
+  .numero { font-size: 18cqmin; }
+  h1 { font-size: 7cqmin; margin: 4.4cqmin 0 4.4cqmin; padding-top: 4.4cqmin; }
+  .qr { width: 32cqmin; height: 32cqmin; }
+  .pedido { margin-top: 3.6cqmin; font-size: 3cqmin; }
+}
+/* Em pé numa tela inteira: a nota e o QR crescem para ocupar a altura. */
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .kicker { font-size: 4cqmin; }
+  .nota { margin-top: 8cqmin; }
+  .numero { font-size: 32cqmin; }
+  .estrelas i { width: 8cqmin; height: 8cqmin; }
+  .total { font-size: 4cqmin; }
+  h1 { font-size: 11cqmin; margin: 9cqmin 0 8cqmin; padding-top: 8cqmin; }
+  .qr { width: 56cqmin; height: 56cqmin; }
+  .pedido { margin-top: 7cqmin; font-size: 4cqmin; }
+}
+/* A coluna estreita: o que está lá, maior — ela é lida do outro lado da loja. */
+@container (max-width: 700px) {
+  .numero { font-size: 27cqmin; }
+  .estrelas i { width: 7cqmin; height: 7cqmin; }
+  .total { font-size: 3.8cqmin; }
+  h1 { font-size: 10.4cqmin; }
+  .qr { width: 46cqmin; height: 46cqmin; }
+  .pedido { font-size: 3.8cqmin; }
+}
+</style>
+<section class="mt-peca social-avaliacao">
+  <div class="bloco">
+    <div class="texto">
+      <p class="kicker" data-entrada="aparecer" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">No Google</span><i aria-hidden="true"></i></p>
+      <div class="nota" data-entrada="crescer" data-ordem="2">
+        <span class="numero" data-campo="nota">4,9</span>
+        <span class="lado"><span class="estrelas" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span class="total" data-campo="total">1.240 avaliações</span></span>
+      </div>
+      <h1 data-entrada="subir" data-ordem="3"><span data-campo="titulo">Gostou?</span><span data-campo="titulo2">Conta pra gente</span></h1>
+    </div>
+    <figure class="qr" data-entrada="crescer" data-ordem="4"><img data-campo-qr="link" alt="QR para avaliar no Google"></figure>
+    <p class="pedido" data-campo="pedido" data-entrada="aparecer" data-ordem="5">Aponte a câmera</p>
+  </div>
+</section>

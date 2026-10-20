@@ -1,0 +1,51 @@
+<!--
+  Manifesto — família institucional. Destaque.
+  Uma frase em três linhas, e a quebra é decidida pelo campo, nunca pelo
+  acaso (PLANO §4.8, a régua). A última linha é a que fica na cabeça e vai
+  na cor de destaque. Só tipografia: a frase é a imagem. Cada linha cabe
+  inteira até uns 16 caracteres; a linha nunca é quebrada pela tela.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(90% 110% at 100% 100%, var(--mt-fundo-2), var(--mt-fundo) 60%); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.bloco { position: absolute; left: 6cqw; right: 6cqw; top: 50%; transform: translateY(-54%); }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 400 10cqw/.94 var(--mt-fonte-titulo); text-transform: uppercase; margin-top: 3cqw; letter-spacing: -.005em; }
+h1 span { display: block; white-space: nowrap; }
+h1 em { display: block; font-style: normal; color: var(--mt-destaque); white-space: nowrap; }
+.pe { position: absolute; left: 6cqw; right: 6cqw; bottom: 7cqh; display: flex; align-items: center; gap: 2cqw; }
+.pe i { flex: 1; height: .12cqw; background: var(--mt-linha); }
+.assinatura { font: 600 1.15cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+/* Em pé: a frase maior e mais alta; a assinatura pode ir em duas linhas. */
+@container (aspect-ratio < 0.8) {
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
+  .bloco { left: 8cqw; right: 8cqw; }
+  .kicker { font-size: 2.2cqw; }
+  .kicker i { width: 6cqw; height: .25cqw; }
+  h1 { font-size: 12.4cqw; line-height: .98; margin-top: 5cqw; }
+  .pe { left: 8cqw; right: 8cqw; bottom: 5cqh; }
+  .pe i { height: .25cqw; }
+  .assinatura { font-size: 2cqw; white-space: normal; line-height: 1.5; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
+  .bloco { left: 7cqw; right: 7cqw; }
+  .kicker { font-size: 1.9cqw; }
+  .kicker i { width: 5cqw; height: .2cqw; }
+  h1 { font-size: 11.4cqw; margin-top: 3.6cqw; }
+  .pe { left: 7cqw; right: 7cqw; bottom: 6cqh; }
+  .pe i { height: .2cqw; }
+  .assinatura { font-size: 1.7cqw; }
+}
+</style>
+<section class="mt-peca manifesto">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Padaria <b>do Bairro</b></div>
+  <div class="bloco">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Fermentação natural</span></p>
+    <h1><span data-campo="linha1" data-entrada="subir" data-ordem="2">Pão de verdade</span><span data-campo="linha2" data-entrada="subir" data-ordem="3">leva 24 horas.</span><em data-campo="linha3" data-entrada="subir" data-ordem="4">A gente espera.</em></h1>
+  </div>
+  <div class="pe" data-entrada="aparecer" data-ordem="5"><i aria-hidden="true"></i><span class="assinatura" data-campo="assinatura">Rua das Flores, 210 · Vila Mariana</span></div>
+</section>

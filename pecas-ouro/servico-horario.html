@@ -1,0 +1,68 @@
+<!--
+  Horário de funcionamento — família serviço. Nasceu para a lateral, serve
+  no destaque. O "quando" da casa (PLANO §4.7). A hora é o que se lê de
+  longe, então ela domina; o dia vai pequeno em cima. Dia deixado em branco
+  some com a linha toda. Medidas em cqmin, como o prazo: uma peça para a
+  coluna estreita e a tela deitada.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(110% 80% at 100% 0%, var(--mt-fundo-2), var(--mt-fundo) 64%); }
+.cabeca { position: absolute; left: 9cqmin; right: 9cqmin; top: 10cqmin; }
+.kicker { display: flex; align-items: center; gap: 2.4cqmin; font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .28em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 6cqmin; height: .5cqmin; background: var(--mt-destaque); }
+h1 { font: 400 11cqmin/.95 var(--mt-fonte-titulo); text-transform: uppercase; margin-top: 4cqmin; }
+h1 span { display: block; white-space: nowrap; }
+h1 span + span { color: var(--mt-destaque); }
+.dias { position: absolute; left: 9cqmin; right: 9cqmin; bottom: 22cqmin; list-style: none; margin: 0; padding: 0; }
+.dias li { padding: 4cqmin 0 4.4cqmin; border-top: .5cqmin solid var(--mt-linha); }
+.dias li:last-child { border-bottom: .5cqmin solid var(--mt-linha); }
+.dias li:has(.dia:empty) { display: none; }
+.dia { display: block; font: 600 3.4cqmin/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.hora { display: block; margin-top: 2.4cqmin; font: 400 12cqmin/.9 var(--mt-fonte-titulo); letter-spacing: .01em; white-space: nowrap; }
+.nota { position: absolute; left: 9cqmin; right: 9cqmin; bottom: 8cqmin; font: 500 3.8cqmin/1.35 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+/* Deitada: o título à esquerda; à direita, uma linha por dia, a hora alinhada na ponta. */
+@container (aspect-ratio >= 1.25) {
+  .cabeca { left: 6cqw; right: auto; width: 34cqw; top: 50%; transform: translateY(-56%); }
+  .kicker { font-size: 3cqmin; }
+  h1 { font-size: 11cqmin; }
+  .dias { left: 46cqw; right: 6cqw; top: 50%; bottom: auto; transform: translateY(-50%); }
+  .dias li { display: flex; align-items: center; justify-content: space-between; gap: 4cqw; padding: 4.4cqmin 0 4.8cqmin; }
+  .dia { font-size: 3cqmin; }
+  .hora { margin-top: 0; font-size: 11cqmin; }
+  .nota { left: 6cqw; right: auto; bottom: 7cqh; font-size: 3cqmin; }
+}
+/* Em pé numa tela inteira (não na coluna): tudo maior, a hora domina de longe. */
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .cabeca { top: 12cqmin; }
+  .kicker { font-size: 3.4cqmin; }
+  h1 { font-size: 15cqmin; margin-top: 5cqmin; }
+  .dias { bottom: 24cqmin; }
+  .dias li { padding: 4.6cqmin 0 5cqmin; }
+  .dia { font-size: 3.6cqmin; }
+  .hora { font-size: 17cqmin; margin-top: 3cqmin; }
+  .nota { bottom: 10cqmin; font-size: 4cqmin; }
+}
+/* Quase quadrada: a lista em pé não cabe embaixo do título — o dia e a hora vão na mesma linha. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .cabeca { top: 8cqmin; }
+  h1 { font-size: 9cqmin; }
+  .dias { bottom: 16cqmin; }
+  .dias li { display: flex; align-items: center; justify-content: space-between; gap: 4cqw; padding: 3cqmin 0 3.4cqmin; }
+  .dia { font-size: 3cqmin; }
+  .hora { margin-top: 0; font-size: 8.5cqmin; }
+  .nota { bottom: 6.5cqmin; font-size: 3.2cqmin; }
+}
+</style>
+<section class="mt-peca servico-horario">
+  <div class="cabeca">
+    <p class="kicker" data-entrada="aparecer" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Funcionamento</span></p>
+    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Pão quente</span><span data-campo="titulo2">o dia todo</span></h1>
+  </div>
+  <ul class="dias">
+    <li data-entrada="subir" data-ordem="3"><span class="dia" data-campo="dia1">Segunda a sexta</span><span class="hora" data-campo="hora1">6h – 20h</span></li>
+    <li data-entrada="subir" data-ordem="4"><span class="dia" data-campo="dia2">Sábado</span><span class="hora" data-campo="hora2">6h – 19h</span></li>
+    <li data-entrada="subir" data-ordem="5"><span class="dia" data-campo="dia3">Domingo e feriado</span><span class="hora" data-campo="hora3">7h – 13h</span></li>
+  </ul>
+  <p class="nota" data-campo="nota" data-entrada="aparecer" data-ordem="6">Fornadas às 6h, 11h e 16h</p>
+</section>

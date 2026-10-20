@@ -1,0 +1,38 @@
+<!--
+  Formas de pagamento + rolagem — papel rodapé (PLANO §4.7: "o resto").
+  À esquerda, parado, o que a casa aceita — é a pergunta que todo cliente
+  faz na fila; à direita, as mensagens rolando (`data-vivo="mensagens"`).
+  Forma de pagamento deixada em branco some, e as outras se juntam.
+  Medidas em cqh: a altura da faixa decide a letra.
+-->
+<style>
+.mt-peca { display: flex; align-items: stretch; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: var(--mt-fundo); border-top: 1.2cqh solid var(--mt-linha); }
+.pagar { flex: none; display: flex; align-items: center; gap: 9cqh; padding: 0 7cqh 0 3cqw; background: var(--mt-fundo-2); border-right: 1.2cqh solid var(--mt-linha); }
+.rotulo { font: 600 15cqh/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.formas { display: flex; align-items: center; gap: 5cqh; }
+.formas span { display: flex; align-items: center; height: 48cqh; padding: 0 9cqh; border-radius: 24cqh; border: 1.4cqh solid var(--mt-destaque);
+  font: 600 19cqh/1 var(--mt-fonte-texto); letter-spacing: .06em; white-space: nowrap; }
+.formas span:empty { display: none; }
+.trilho { position: relative; flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: center; padding-left: 6cqh; }
+.trilho [data-vivo] { font: 500 34cqh/1 var(--mt-fonte-texto); letter-spacing: .02em; }
+/* As mensagens somem nas pontas em vez de serem cortadas a seco. */
+.trilho::before, .trilho::after { content: ''; position: absolute; top: 0; bottom: 0; width: 8cqw; z-index: 1; }
+.trilho::before { left: 0; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
+.trilho::after { right: 0; background: linear-gradient(270deg, var(--mt-fundo), var(--mt-fundo-0)); }
+/* Faixa em pé: o rótulo sai — as formas de pagamento se explicam sozinhas. */
+@container (aspect-ratio < 9) {
+  .rotulo { display: none; }
+  .pagar { padding-left: 3cqw; }
+  .formas { gap: 4cqh; }
+  .formas span { height: 42cqh; padding: 0 7cqh; font-size: 16cqh; }
+  .trilho [data-vivo] { font-size: 30cqh; }
+}
+</style>
+<section class="mt-peca rodape-pagamento">
+  <div class="pagar" data-entrada="esquerda">
+    <span class="rotulo" data-campo="rotulo">Aceitamos</span>
+    <span class="formas"><span data-campo="pagamento1">Pix</span><span data-campo="pagamento2">Crédito</span><span data-campo="pagamento3">Débito</span><span data-campo="pagamento4">Vale-refeição</span></span>
+  </div>
+  <div class="trilho"><span data-vivo="mensagens">Encomendas de bolo com 48h de antecedência · Wi-Fi grátis</span></div>
+</section>

@@ -258,6 +258,34 @@ test('as marcas de teste da bancada são válidas e todas fictícias', () => {
     ['Clínica Vida', 'Padaria do Bairro', 'Studio Bella', 'Ótica Central'].sort());
 });
 
+test('toda peça diz em que marca nasceu, e a bancada abre nela', () => {
+  /*
+   * O texto de exemplo de uma peça é da marca em que ela nasceu ("Pães da
+   * casa" é da padaria). Abrir a peça em outra marca mostraria a padaria
+   * com as cores da ótica — e o dono aprovaria a combinação errada.
+   */
+  for (const def of MANIFESTO.pecas) {
+    assert.ok(MANIFESTO.marcas.some((m) => m.id === def.marca), def.id + ': marca ' + def.marca);
+  }
+  const b = semComentarios(ler('js', 'bancada.js'));
+  assert.match(b, /if \(k === 'peca' && defDe\(\$\('peca'\)\.value\)\.marca\) \$\('marca'\)\.value = /);
+  assert.match(b, /if \(k === 'tela'\) \$\('layout'\)\.value = /);
+});
+
+test('as mensagens do rodapé são de cada tela, não da biblioteca', () => {
+  // A padaria passando "Exame de vista com hora marcada" no rodapé foi o que motivou isto.
+  assert.ok(!('mensagens' in MANIFESTO), 'mensagens soltas no manifesto valem para toda tela');
+  const b = semComentarios(ler('js', 'bancada.js'));
+  assert.match(b, /mensagens: tela\.mensagens \|\| \[\]/);
+  assert.match(b, /mensagens: mensagensDaMarca\(marca\.id\)/);
+  assert.doesNotMatch(b, /manifesto\.mensagens/);
+});
+
+test('a bancada não desenha a tela com largura zero quando abre escondida', () => {
+  // Aberta numa aba em segundo plano, innerWidth é 0: a escala ficava negativa e a tela sumia.
+  assert.match(semComentarios(ler('js', 'bancada.js')), /Math\.min\(1400, Math\.max\(640, innerWidth - 40\)\)/);
+});
+
 test('a bancada roda sob a CSP: nenhum script embutido', () => {
   const html = ler('bancada.html');
   assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/i, 'script embutido não roda com script-src self');
@@ -354,7 +382,9 @@ test('numa tela completa, nenhum texto aparece em duas zonas', () => {
         }
       }
     }
-    porZona.mensagens = new Set((MANIFESTO.mensagens || []).map(norm));
+    // As mensagens do rodapé são da tela — cada campanha tem as suas.
+    assert.ok(Array.isArray(tela.mensagens) && tela.mensagens.length >= 3, tela.id + ': mensagens do rodapé');
+    porZona.mensagens = new Set(tela.mensagens.map(norm));
     const grupos = Object.keys(porZona);
     for (let a = 0; a < grupos.length; a++) {
       for (let b = a + 1; b < grupos.length; b++) {
