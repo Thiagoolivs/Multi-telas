@@ -507,7 +507,13 @@
         "destaque"
       ],
       "estado": "rascunho",
-      "marca": "padaria"
+      "marca": "padaria",
+      "campos": {
+        "foto": "/pecas-ouro/fotos/prato-do-dia.jpg",
+        "titulo": "Churrasco",
+        "titulo2": "com milho",
+        "acompanha": "Linguiça, frango e alcatra com arroz e feijão da casa."
+      }
     }
   ],
   "telas": [
