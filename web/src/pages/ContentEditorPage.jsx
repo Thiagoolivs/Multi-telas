@@ -10,6 +10,7 @@ import { temAgenda, resumoAgenda } from '../lib/agenda.js';
 import { emitir } from '../lib/avisos.js';
 import { ItemForm } from '../components/content/ItemForm.jsx';
 import { ItemPreview } from '../components/content/ItemPreview.jsx';
+import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { TypePicker } from '../components/content/TypePicker.jsx';
 import { SettingsForm } from '../components/content/SettingsForm.jsx';
 import { aplicarConteudo } from '../lib/aplicarConteudo.js';
@@ -306,6 +307,8 @@ export function ContentEditorPage({ device, onBack }) {
     patchCfg((next) => {
       next.zonas = next.zonas || {};
       for (const [zid, zdata] of Object.entries(camp.zonas || {})) {
+        // Motor HTML: cabeçalho e rodapé ganham a peça da campanha (a pele); o rodapé, também as frases.
+        if (zdata.peca) next.zonas[zid] = { ...(next.zonas[zid] || {}), peca: zdata.peca };
         if (zdata.messages) next.zonas[zid] = { ...(next.zonas[zid] || {}), modo: 'mensagens', messages: zdata.messages };
         else if (zdata.items) next.zonas[zid] = { ...(next.zonas[zid] || {}), items: zdata.items };
       }
@@ -407,13 +410,18 @@ export function ContentEditorPage({ device, onBack }) {
           {activeZone && activeZone.type === 'ticker' ? (
             <Panel>
               <PanelHeader title={activeZone.name} description="Faixa de notícias e avisos rolando." />
+              <PecaDaZona zona={cfg.zonas[activeZone.id]} formato="rodape"
+                onRemover={() => patchCfg((next) => { delete next.zonas[activeZone.id].peca; })} />
               <TickerEditor zone={cfg.zonas[activeZone.id]} onChange={(z) => patchCfg((next) => { next.zonas[activeZone.id] = z; })} />
             </Panel>
           ) : activeZone && activeZone.type === 'header' ? (
             <Panel>
-              <EmptyState icon={Info} title="Cabeçalho automático"
-                description="O cabeçalho mostra logo, relógio e clima automaticamente. Nome e tema ficam em “Ajustes da tela”."
-                action={<Button size="sm" variant="secondary" icon={Settings2} onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>} />
+              {cfg.zonas[activeZone.id] && cfg.zonas[activeZone.id].peca
+                ? <PecaDaZona zona={cfg.zonas[activeZone.id]} formato="cabecalho"
+                  onRemover={() => patchCfg((next) => { delete next.zonas[activeZone.id].peca; })} />
+                : <EmptyState icon={Info} title="Cabeçalho automático"
+                  description="O cabeçalho mostra logo, relógio e clima automaticamente. Nome e tema ficam em “Ajustes da tela”."
+                  action={<Button size="sm" variant="secondary" icon={Settings2} onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>} />}
             </Panel>
           ) : (
             <div className="grid gap-4 lg:grid-cols-[minmax(0,360px)_1fr]">
@@ -558,6 +566,24 @@ export function ContentEditorPage({ device, onBack }) {
         zones={zones.map((z) => ({ id: z.id, type: z.type }))}
         onApply={(camp) => { applyCampaign(camp); setCampOpen(false); }}
       />
+    </div>
+  );
+}
+
+/*
+ * A peça da campanha no cabeçalho ou no rodapé (motor HTML). Sem este
+ * quadro, aplicar a campanha prendia a zona na peça: não havia como voltar
+ * ao cabeçalho automático nem ao letreiro de sempre.
+ */
+function PecaDaZona({ zona, formato, onRemover }) {
+  if (!zona || !zona.peca) return null;
+  return (
+    <div className="space-y-2 border-b border-line p-3">
+      <PecaHtml item={zona.peca} formato={formato} />
+      <div className="flex items-center justify-between gap-2 text-xs text-ink-2">
+        <span>{formato === 'rodape' ? 'Pele da campanha · as frases abaixo rolam por dentro dela.' : 'Cabeçalho da campanha · relógio e clima continuam vivos.'}</span>
+        <Button size="sm" variant="ghost" onClick={onRemover}>{formato === 'rodape' ? 'Voltar ao letreiro padrão' : 'Voltar ao automático'}</Button>
+      </div>
     </div>
   );
 }

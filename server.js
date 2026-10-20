@@ -470,8 +470,25 @@ async function handleApi(req, res, pathname, query) {
     return readBody(req, res, async (b) => {
       const answers = (b && b.answers) || {};
       if (!answers.objetivo || !String(answers.objetivo).trim()) return sendJson(res, 400, { error: 'informe o objetivo da campanha' });
-      return emTrabalho(res, sess, 'campanha-simples', { brief: String(answers.objetivo).slice(0, 200) }, async () => {
-        const campaign = await ai.generateCampaign(answers, { empresa: (b && b.empresa) || '', tema: (b && b.tema) || '', zones: (b && b.zones) || [] });
+      const zones = Array.isArray(b && b.zones) ? b.zones.slice(0, 8) : [];
+      const empresa = (b && b.empresa) || '';
+      /*
+       * A tela inteira no motor HTML (PLANO §4.7): uma peça por zona, com o
+       * papel de cada uma. Sem IA (modo dev) ou se nenhuma zona sair, segue a
+       * campanha antiga — a tela nunca fica sem nada.
+       */
+      const html = process.env.MT_MOTOR_CAMPANHA !== 'coordenadas' && ai.mode() !== 'dev' && zones.length;
+      const kit = html ? await db.getBrandKit(sess.tenant_id) : null;
+      return emTrabalho(res, sess, 'campanha-simples', { brief: String(answers.objetivo).slice(0, 200) }, async (progresso) => {
+        if (html) {
+          const k = kit || {};
+          const out = await compositor.comporTelaInteira({
+            answers, empresa: k.nome || empresa, zones, motor: compositor.motorDoHtml(), progresso,
+            marca: (k.cores && k.cores.length) ? { cores: k.cores, fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '' } : null,
+          });
+          if (Object.keys(out.zonas).length) return { mode: ai.mode(), motor: 'html', zonas: out.zonas, falhas: out.falhas };
+        }
+        const campaign = await ai.generateCampaign(answers, { empresa, tema: (b && b.tema) || '', zones });
         return { mode: ai.mode(), ...campaign };
       });
     });

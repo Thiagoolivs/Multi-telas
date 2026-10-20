@@ -111,6 +111,54 @@ test('o refazer passa pela rota medida e o painel tenta sozinho uma vez só', ()
   assert.match(tela, /auto=\{gen\.pecas\.findIndex\(\(x\) => x\.item && x\.item\.html === p\.item\.html\) === i\}/, 'cópia em outro formato pediria o conserto de novo');
 });
 
+test('tela completa: cada zona do layout ganha o seu papel', () => {
+  const T = require('../js/templates.js');
+  const corp = T.getLayout('corporate').zones.map((z) => ({ id: z.id, type: z.type }));
+  assert.deepEqual(compositor.papeisDaTela(corp).map((p) => p.zid + ':' + p.papel),
+    ['cabecalho:cabecalho', 'principal:destaque', 'principal:destaque', 'lateral:lateral', 'rodape:rodape']);
+  const quad = T.getLayout('quad').zones.map((z) => ({ id: z.id, type: z.type }));
+  assert.deepEqual(compositor.papeisDaTela(quad).map((p) => p.papel), ['destaque', 'destaque', 'lateral', 'lateral', 'lateral']);
+});
+
+test('tela completa: peças por zona, sem repetir texto, e uma zona que falha não derruba a tela', async () => {
+  const chamar = motores.chamar;
+  const pedidos = [];
+  let n = 0;
+  motores.chamar = async (o) => {
+    pedidos.push(o.usuario);
+    if (o.json) return { texto: '["Aberto até 19h", "Pague com Pix"]', uso: { entrada: 1, saida: 1, cacheLida: 0, cacheEscrita: 0, custoCentavos: 0, modelo: 'x' } };
+    n++;
+    // A lateral volta com <script>: a porta recusa as três tentativas.
+    const lateral = /LATERAL/.test(o.usuario);
+    const texto = lateral ? '<section class="mt-peca"><script>x</script></section>'
+      : '<style>.mt-peca{background:var(--mt-fundo)}h1{font-size:6cqw;color:var(--mt-texto)}</style><section class="mt-peca"><h1 data-campo="titulo">Texto ' + n + '</h1></section>';
+    return { texto, uso: { entrada: 1, saida: 1, cacheLida: 0, cacheEscrita: 0, custoCentavos: 0, modelo: 'x' } };
+  };
+  try {
+    const T = require('../js/templates.js');
+    const zones = T.getLayout('corporate').zones.map((z) => ({ id: z.id, type: z.type }));
+    const r = await compositor.comporTelaInteira({ answers: { objetivo: 'óculos 30%', oferta: '30% OFF' }, empresa: 'Ótica', zones, motor: 'gemini' });
+    assert.equal(r.zonas.cabecalho.peca.type, 'peca-html');
+    assert.equal(r.zonas.principal.items.length, 2, 'duas peças se revezam no destaque');
+    assert.equal(r.zonas.rodape.peca.type, 'peca-html');
+    assert.deepEqual(r.zonas.rodape.messages, ['Aberto até 19h', 'Pague com Pix']);
+    assert.ok(!r.zonas.lateral, 'a zona que falhou fica como estava');
+    assert.deepEqual(r.falhas, ['lateral']);
+    // A segunda peça do destaque sabe o que a primeira disse.
+    const segundo = pedidos.filter((p) => /DESTAQUE/.test(p))[1];
+    assert.match(segundo, /já dizem: .*"Texto 2"/);
+  } finally { motores.chamar = chamar; }
+});
+
+test('tela completa: o servidor usa o motor HTML e o painel aceita a peça no cabeçalho e no rodapé', () => {
+  const server = fs.readFileSync(path.join(RAIZ, 'server.js'), 'utf8');
+  assert.match(server, /compositor\.comporTelaInteira\(\{/);
+  assert.match(server, /process\.env\.MT_MOTOR_CAMPANHA !== 'coordenadas' && ai\.mode\(\) !== 'dev' && zones\.length/);
+  const tela = fs.readFileSync(path.join(RAIZ, 'web', 'src', 'pages', 'ContentEditorPage.jsx'), 'utf8');
+  assert.match(tela, /if \(zdata\.peca\) next\.zonas\[zid\] = \{ \.\.\.\(next\.zonas\[zid\] \|\| \{\}\), peca: zdata\.peca \}/);
+  assert.match(tela, /delete next\.zonas\[activeZone\.id\]\.peca/, 'sem isto, a zona fica presa na peça');
+});
+
 test('campanha pronta: o resultado aparece, não o cardápio de ideias', () => {
   // Antes o rodapé dizia "Só salvar" e o corpo mostrava as ideias: salvava-se sem ver as peças.
   const tela = fs.readFileSync(path.join(RAIZ, 'web', 'src', 'pages', 'MyDesignsPage.jsx'), 'utf8');
