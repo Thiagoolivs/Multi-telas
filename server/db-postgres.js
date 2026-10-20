@@ -175,6 +175,11 @@ async function init() {
     CREATE TABLE IF NOT EXISTS resets (
       token TEXT PRIMARY KEY, user_id TEXT, expires_at BIGINT, used_at BIGINT, created_at BIGINT
     );
+    -- Confirmação de e-mail do cadastro. Existia só no SQLite: em produção o
+    -- cadastro por e-mail caía no INSERT e a faxina diária no DELETE.
+    CREATE TABLE IF NOT EXISTS verifications (
+      token TEXT PRIMARY KEY, payload TEXT, expires_at BIGINT, used_at BIGINT, created_at BIGINT
+    );
     CREATE TABLE IF NOT EXISTS devices (
       id TEXT PRIMARY KEY, tenant_id TEXT, code TEXT, name TEXT,
       config TEXT, device_token TEXT, updated_at BIGINT, created_at BIGINT,
