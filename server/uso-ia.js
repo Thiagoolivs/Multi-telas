@@ -21,6 +21,7 @@
 'use strict';
 
 const cred = require('./creditos');
+const motores = require('./motores');
 const plans = require('./plans');
 
 const MES = 30 * 24 * 60 * 60 * 1000;
@@ -87,7 +88,18 @@ async function cobrar(db, tenant, { tipo, quantidade, userId, referencia }) {
   const op = cred.operacao(tipo);
   const n = Math.max(1, Math.floor(Number(quantidade) || 1));
   const creditos = cred.creditosDe(tipo, n);
-  const custoCentavos = op ? op.custoCentavos * n : 0;
+  /*
+   * O custo é MEDIDO quando a requisição chamou a IA de texto pela camada
+   * nova (server/motores.js soma os tokens da requisição inteira). Aí a
+   * estimativa fixa do texto sai e entra o que foi gasto de verdade. A
+   * imagem continua estimada — o provedor de imagem não devolve tokens — e
+   * soma o texto medido da mesma requisição.
+   */
+  const medido = motores.consumirMedicao();
+  const estimado = op ? op.custoCentavos * n : 0;
+  const custoCentavos = medido.chamadas
+    ? Math.round((creditos > 0 ? estimado : 0) + medido.custoCentavos)
+    : estimado;
 
   /*
    * REGISTRA ANTES DE DEBITAR, e a ordem não é gosto.
@@ -101,7 +113,7 @@ async function cobrar(db, tenant, { tipo, quantidade, userId, referencia }) {
    * depois, que é a direção certa de errar quando o assunto é dinheiro.
    */
   try {
-    await db.registrarUsoIA(tenant.id, { userId, tipo, creditos, custoCentavos, referencia });
+    await db.registrarUsoIA(tenant.id, { userId, tipo, creditos, custoCentavos, referencia, tokens: medido.chamadas ? medido : null });
   } catch (e) {
     /*
      * Contabilidade não pode derrubar o produto. A imagem já foi gerada e
@@ -133,7 +145,7 @@ async function cobrar(db, tenant, { tipo, quantidade, userId, referencia }) {
     }
   }
 
-  return { creditos, custoCentavos };
+  return { creditos, custoCentavos, medido };
 }
 
 /*

@@ -392,6 +392,18 @@ if (garantirColuna('media', 'origem TEXT')) {
 garantirColuna('media', 'formato TEXT');
 garantirColuna('media', 'cor TEXT');
 garantirColuna('devices', 'last_seen INTEGER');
+/*
+ * Tokens MEDIDOS de cada uso de IA (server/motores.js, PLANO §4.2): o custo
+ * fixo estimado vira medição. custo_medido é em centavos COM fração — uma
+ * chamada de texto custa menos de um centavo, e arredondar apagaria a conta.
+ */
+garantirColuna('uso_ia', 'modelo TEXT');
+garantirColuna('uso_ia', 'chamadas INTEGER');
+garantirColuna('uso_ia', 'tokens_entrada INTEGER');
+garantirColuna('uso_ia', 'tokens_saida INTEGER');
+garantirColuna('uso_ia', 'tokens_cache INTEGER');
+garantirColuna('uso_ia', 'tokens_cache_escrita INTEGER');
+garantirColuna('uso_ia', 'custo_medido REAL');
 // Quando avisamos o dono que esta tela caiu. Guardado na própria tela porque
 // é o que impede o mesmo aviso de sair a cada varredura: enquanto a tela não
 // pulsar de novo (last_seen > isto), a queda já foi contada. Ver server/vigia.js.
@@ -482,7 +494,7 @@ const q = {
        AND (d.alerta_offline_em IS NULL OR d.alerta_offline_em < d.last_seen)
      ORDER BY d.last_seen DESC LIMIT 500`),
   marcarAlertaOffline: db.prepare('UPDATE devices SET alerta_offline_em = ? WHERE id = ?'),
-  insertUsoIA: db.prepare('INSERT INTO uso_ia (id, tenant_id, user_id, tipo, creditos, custo_centavos, referencia, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
+  insertUsoIA: db.prepare('INSERT INTO uso_ia (id, tenant_id, user_id, tipo, creditos, custo_centavos, referencia, created_at, modelo, chamadas, tokens_entrada, tokens_saida, tokens_cache, tokens_cache_escrita, custo_medido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'),
   usoIAPorTenant: db.prepare('SELECT id, tipo, creditos, custo_centavos, referencia, created_at FROM uso_ia WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?'),
   usoIAResumo: db.prepare('SELECT COALESCE(SUM(creditos),0) AS creditos, COALESCE(SUM(custo_centavos),0) AS centavos, COUNT(*) AS n FROM uso_ia WHERE tenant_id = ? AND created_at > ?'),
   usoIADesde: db.prepare('SELECT COUNT(*) AS n FROM uso_ia WHERE tenant_id = ? AND created_at > ?'),
@@ -638,8 +650,11 @@ async function countDevices(tenantId) { return Number(q.countDevicesByTenant.get
 
 async function registrarUsoIA(tenantId, uso) {
   const id = 'uso_' + rid(14);
+  const t = uso.tokens || {};
   q.insertUsoIA.run(id, tenantId, uso.userId || '', uso.tipo || '', Number(uso.creditos) || 0,
-    Number(uso.custoCentavos) || 0, uso.referencia || '', Date.now());
+    Number(uso.custoCentavos) || 0, uso.referencia || '', Date.now(),
+    t.modelos || '', Number(t.chamadas) || 0, Number(t.entrada) || 0, Number(t.saida) || 0,
+    Number(t.cacheLida) || 0, Number(t.cacheEscrita) || 0, t.chamadas ? Number(t.custoCentavos) || 0 : null);
   return { id };
 }
 async function listarUsoIA(tenantId, limite) {

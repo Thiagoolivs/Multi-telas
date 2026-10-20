@@ -36,6 +36,8 @@ const mail = require('./server/mail');
 const plans = require('./server/plans');
 const billing = require('./server/billing');
 const ai = require('./server/ai');
+// Cada requisição da API é uma medição de IA: os tokens somam e o uso-ia.cobrar os grava.
+const motores = require('./server/motores');
 const director = require('./server/ai-director');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
@@ -2134,7 +2136,7 @@ const server = http.createServer((req, res) => {
   const seg = security.cabecalhosSeguranca(security.isSecureRequest(req));
   for (const k in seg) res.setHeader(k, seg[k]);
   if (pathname === '/api' || pathname.startsWith('/api/')) {
-    return handleApi(req, res, pathname, parsed.query || {})
+    return motores.medir(() => handleApi(req, res, pathname, parsed.query || {}))
       .catch((e) => {
         erros.registrar(e, { rota: pathname, metodo: req.method });
         try { sendJson(res, 500, { error: 'erro interno' }); } catch (_) {}
