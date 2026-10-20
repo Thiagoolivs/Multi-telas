@@ -6,6 +6,7 @@ import { temCurva } from '../../lib/composition.js';
 import { estiloTexto, carregarDaComposicao } from '../../lib/fontes.js';
 import { ICONS } from '../../lib/icons.js';
 import { murais } from '../../api.js';
+import { PecaHtml } from './PecaHtml.jsx';
 import '../../../../js/precos.js';
 
 // Preview aproximado (não é o player real): dá a ideia da composição em 16:9.
@@ -16,6 +17,8 @@ const ANN_COLOR = {
 };
 
 export function ItemPreview({ item, className }) {
+  // A peça em HTML tem prévia fiel: o mesmo desenhista da TV.
+  if (item && item.type === 'peca-html') return <PecaHtml item={item} formato="16/9" className={className} />;
   return (
     <div className={'aspect-video w-full overflow-hidden rounded-lg border border-line ' + (className || '')}>
       <div className="flex h-full w-full flex-col items-center justify-center bg-[#0a1128] p-4 text-center text-white">

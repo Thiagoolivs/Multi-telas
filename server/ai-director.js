@@ -21,6 +21,10 @@ const direcaoArte = require('./direcao-arte');
 const fontMetrics = require('./font-metrics');
 const { validarComposicao } = require('./composer');
 const memoria = require('./ai-memoria');
+const compositor = require('./compositor');
+
+// A direção visual do plano vira o modo dos tokens da peça em HTML (js/tokens.js).
+const MODO_DA_DIRECAO = { chapado: 'marca', cartaz: 'escuro', contraste: 'escuro', suave: 'claro' };
 
 /* ---------------- Etapa 0: o briefing ---------------- */
 
@@ -1343,7 +1347,50 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
 
   const pecas = [];
   let refeitas = 0;
-  for (const peca of plano.pecas) {
+  /*
+   * O MOTOR HTML (PLANO §4.2, escolhido pelo experimento de 20/10): a IA
+   * desenha a peça imitando a biblioteca-ouro, com os textos que o cliente
+   * aprovou. Quem liga é o servidor (`ctx.motorHtml`); sem ele, segue a
+   * composição por coordenadas de sempre — é a que o experimento usa como
+   * "atual", e a que fica de reserva enquanto o motor novo se prova.
+   */
+  if (ctx.motorHtml) {
+    const modo = MODO_DA_DIRECAO[plano.identidade.direcao] || 'escuro';
+    const marcaDaPeca = { cores: [plano.identidade.brand, plano.identidade.brand2].filter(Boolean),
+      fonteTitulo: (ctx.marca && ctx.marca.fonteTitulo) || '', fonteApoio: (ctx.marca && ctx.marca.fonteApoio) || '' };
+    // Uma peça em HTML serve deitada e em pé: a cópia de outro formato reaproveita, sem nova chamada.
+    const porManchete = new Map();
+    for (const peca of plano.pecas) {
+      passo('compondo as peças', `${pecas.length + 1} de ${plano.pecas.length} · ${peca.formato}`);
+      const chave = peca.headline + '|' + (peca.bgImagem || '');
+      let feito = porManchete.get(chave);
+      if (!feito) {
+        const base = {
+          pedido: brief, empresa: ctx.empresa || '', segmento: ctx.segmento || '', marca: marcaDaPeca, modo,
+          foto: peca.bgImagem || null, papel: 'destaque',
+          textos: { kicker: peca.kicker, titulo: peca.headline, apoio: peca.sub, cta: peca.cta },
+        };
+        let r = null;
+        if (ai.mode() !== 'dev') {
+          try { r = await compositor.comporPeca(Object.assign({ motor: compositor.motorDoHtml() }, base)); }
+          catch (e) { r = { ok: false, problemas: [String((e && e.message) || e)] }; }
+        }
+        feito = r && r.ok
+          ? { item: r.item, motor: 'html', problemas: [] }
+          // A IA fora do ar ou recusada três vezes: a peça-ouro com os textos aprovados (§4.9).
+          : { item: compositor.preencherOuro(base), motor: 'ouro', problemas: (r && r.problemas) || [] };
+        porManchete.set(chave, feito);
+      }
+      pecas.push({
+        formato: peca.formato, canal: peca.canal, faixa: peca.faixa || 'dia',
+        label: peca.headline.slice(0, 40), objetivo: peca.objetivo,
+        item: Object.assign({}, feito.item, { formato: peca.formato }),
+        motor: feito.motor, correcoes: [], problemas: [], usouReserva: feito.motor === 'ouro',
+        usouAcervo: peca.imagemBase != null,
+      });
+    }
+  }
+  for (const peca of ctx.motorHtml ? [] : plano.pecas) {
     passo('compondo as peças', `${pecas.length + 1} de ${plano.pecas.length} · ${peca.formato}`);
     let tentativa = await comporPeca(peca, plano.identidade, palette);
 

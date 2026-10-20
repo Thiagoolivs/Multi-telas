@@ -1346,6 +1346,11 @@ async function handleApi(req, res, pathname, query) {
           briefingPronto: (b && b.briefingPronto) || null,
           // O que já sabemos da empresa de conversas anteriores.
           memoria: lembrada,
+          /*
+           * O motor HTML, escolhido pelo experimento (PLANO §4.4: 4,65 contra
+           * 1,40). MT_MOTOR_CAMPANHA=coordenadas volta ao antigo sem deploy.
+           */
+          motorHtml: process.env.MT_MOTOR_CAMPANHA !== 'coordenadas',
         }, {
           /*
            * Primeira chamada: planeja e PARA, sem gerar imagem nenhuma. O

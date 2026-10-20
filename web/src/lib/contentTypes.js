@@ -260,6 +260,17 @@ export const CONTENT_TYPES = {
     make: () => ({ type: 'composicao', bg: { kind: 'cor', cor: '#0a1020' }, elementos: [], duracao: 12 }),
     summary: (i) => 'Composição (' + ((i.elementos && i.elementos.length) || 0) + ' elemento(s))',
   },
+  /*
+   * A peça do motor novo (PLANO §4.6). Nasce na campanha com IA, não aqui:
+   * fica FORA de CONTENT_ORDER, então não aparece em "Adicionar conteúdo".
+   * Esta entrada é para a lista da tela saber o nome e a duração dela.
+   */
+  'peca-html': {
+    label: 'Peça da campanha (IA)', icon: Layout, group: 'Mídia',
+    fields: [DUR],
+    make: () => null,
+    summary: (i) => 'Peça · ' + String((i.campos && (i.campos.titulo || i.campos.kicker)) || (i.origem && i.origem.pedido) || 'campanha com IA').slice(0, 40),
+  },
   birthdayauto: {
     label: 'Aniversariantes (automático)', icon: Cake, group: 'Equipe',
     fields: [

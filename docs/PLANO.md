@@ -622,6 +622,12 @@ com o resultado do experimento:
 14. **Preencher à mão**: escolher uma peça-ouro e escrever os campos, com
     limite de caracteres por campo; miniatura e editor com o mesmo desenhista.
 
+**Ordem mudada em 20/10:** o 13 veio antes de 10 e 11 — sem ele o dono não
+testa o motor novo. Feitos: 9 (#126) e a primeira parte do 13: a campanha
+compõe em HTML com os textos aprovados, a peça-ouro preenchida entra quando
+a IA falha, e Meus Designs mostra a peça com o desenhista da TV. Faltam no
+13 as 3 opções e a tela completa ("Campanha com IA" dentro da tela).
+
 ### 4.15 Pronto quando
 
 - [ ] 39 peças-ouro e 6 telas completas aprovadas pelo dono.
