@@ -38,6 +38,26 @@
       ],
       "fonteTitulo": "moderna",
       "fonteApoio": "sans"
+    },
+    {
+      "id": "lanchonete",
+      "nome": "Lanchonete da Praça",
+      "cores": [
+        "#d62828",
+        "#fcbf49"
+      ],
+      "fonteTitulo": "display",
+      "fonteApoio": "sans"
+    },
+    {
+      "id": "rotasul",
+      "nome": "Distribuidora Rota Sul",
+      "cores": [
+        "#23395d",
+        "#f4a261"
+      ],
+      "fonteTitulo": "tech",
+      "fonteApoio": "sans"
     }
   ],
   "pecas": [
@@ -354,6 +374,47 @@
       ],
       "estado": "rascunho",
       "marca": "clinica"
+    },
+    {
+      "id": "cabecalho-chamada",
+      "nome": "Cabeçalho com a chamada",
+      "familia": "cabeçalho",
+      "papeis": [
+        "cabecalho"
+      ],
+      "estado": "rascunho",
+      "marca": "lanchonete"
+    },
+    {
+      "id": "cardapio-categorias",
+      "nome": "Cardápio por categoria",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "lanchonete"
+    },
+    {
+      "id": "cardapio-bebidas",
+      "nome": "Painel de bebidas",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "estado": "rascunho",
+      "marca": "lanchonete"
+    },
+    {
+      "id": "institucional-lancamento",
+      "nome": "Lançamento",
+      "familia": "institucional",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "lanchonete"
     }
   ],
   "telas": [
@@ -617,6 +678,83 @@
         "Chegue 15 minutos antes da consulta"
       ],
       "sobre": "Tela sem cabeçalho (Destaque + Barra Lateral): a hora vai para o rodapé. O destaque fala da campanha, do check-up, do jeito da casa e do feriado; a lateral, do aviso e de como marcar; o rodapé, do resto. Com cabeçalho (Corporativo), entra o cabeçalho mínimo."
+    },
+    {
+      "id": "lanchonete-terca-do-burger",
+      "nome": "Lanchonete da Praça · Terça do burger",
+      "marca": "lanchonete",
+      "layout": "portrait-stack",
+      "estado": "rascunho",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-chamada"
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cardapio-categorias"
+            },
+            {
+              "id": "institucional-lancamento"
+            },
+            {
+              "id": "cardapio-combo",
+              "campos": {
+                "kicker": "Almoço · até as 15h",
+                "titulo": "Combo",
+                "titulo2": "da praça",
+                "item1": "Burger da casa",
+                "item1-detalhe": "120 g no pão de brioche",
+                "item2": "Fritas",
+                "item2-detalhe": "Porção individual",
+                "item3": "Refri lata",
+                "item3-detalhe": "350 ml, bem gelado",
+                "preco": "29",
+                "centavos": ",90",
+                "nota": "Peça no balcão · retire no painel"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "cardapio-bebidas"
+            },
+            {
+              "id": "social-instagram",
+              "campos": {
+                "kicker": "Siga a gente",
+                "arroba": "@lanchonetedapraca",
+                "apoio": "A promoção relâmpago sai primeiro lá.",
+                "link": "https://instagram.com/lanchonetedapraca"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-pagamento"
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Delivery pelo WhatsApp até as 23h",
+        "Pedido para viagem sai em 10 minutos",
+        "Mesa para grupos: reserve no balcão",
+        "Aberto todos os dias, das 11h às 23h"
+      ],
+      "sobre": "TV em pé, como o cardápio de parede: o cabeçalho grita a campanha; o destaque é o cardápio, a novidade e o combo; a parte de baixo, as bebidas e onde seguir; o rodapé, como pagar e o resto."
     }
   ]
 }

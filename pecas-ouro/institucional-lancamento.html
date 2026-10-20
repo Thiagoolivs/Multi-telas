@@ -1,0 +1,56 @@
+<!--
+  Lançamento — família institucional. Destaque.
+  Produto novo, coleção nova, sabor novo: o "novo" é a notícia. Ele vem
+  num carimbo inclinado, o nome do produto vem enorme, e a data de
+  chegada fecha a peça. Sem foto de propósito — a versão com foto é outra
+  estrutura; esta funciona antes de o produto existir para fotografar.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(80% 110% at 85% 40%, var(--mt-fundo-2), var(--mt-fundo) 64%); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 700 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.carimbo { position: absolute; left: 6cqw; top: 19cqh; padding: 1cqw 2.2cqw .9cqw; border: .3cqw solid var(--mt-destaque); border-radius: calc(var(--mt-raio) * .6);
+  color: var(--mt-destaque); font: 400 3.2cqw/1 var(--mt-fonte-titulo); letter-spacing: .14em; text-transform: uppercase; rotate: -6deg; }
+.bloco { position: absolute; left: 6cqw; right: 6cqw; top: 34cqh; }
+h1 { font: 400 13cqw/.88 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: -.005em; }
+h1 span, h1 em { display: block; white-space: nowrap; }
+h1 em { font-style: normal; color: var(--mt-destaque); }
+.apoio { margin-top: 3cqw; font: 400 1.7cqw/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 52cqw; text-wrap: pretty; }
+.chega { position: absolute; left: 6cqw; right: 6cqw; bottom: 8cqh; display: flex; align-items: center; gap: 2cqw; }
+.chega i { flex: 1; height: .14cqw; background: var(--mt-linha); }
+.chega span { font: 700 1.5cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; white-space: nowrap; }
+/* Deitada: o carimbo vai para a direita, grande e virado para o outro lado — contrapeso do nome. */
+@container (aspect-ratio >= 1.25) {
+  .carimbo { left: auto; right: 9cqw; top: 24cqh; font-size: 5.6cqw; padding: 1.6cqw 3.4cqw 1.4cqw; border-width: .4cqw; rotate: 7deg; }
+  .bloco { top: 26cqh; }
+}
+@container (aspect-ratio < 0.8) {
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2.2cqw; }
+  .carimbo { left: 8cqw; top: 20cqh; font-size: 7cqw; padding: 2.2cqw 4.4cqw 2cqw; border-width: .5cqw; }
+  .bloco { left: 8cqw; right: 8cqw; top: 32cqh; }
+  h1 { font-size: 22cqw; }
+  .apoio { margin-top: 5cqw; font-size: 3.8cqw; max-width: none; }
+  .chega { left: 8cqw; right: 8cqw; bottom: 6cqh; gap: 3cqw; }
+  .chega i { height: .25cqw; }
+  .chega span { font-size: 2.8cqw; white-space: normal; line-height: 1.4; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
+  .carimbo { left: 7cqw; top: 14cqh; font-size: 4.4cqw; padding: 1.4cqw 3cqw 1.2cqw; border-width: .4cqw; }
+  .bloco { left: 7cqw; right: 7cqw; top: 29cqh; }
+  h1 { font-size: 16cqw; }
+  .apoio { margin-top: 3.6cqw; font-size: 2.4cqw; max-width: none; }
+  .chega { left: 7cqw; right: 7cqw; bottom: 7cqh; }
+  .chega i { height: .2cqw; }
+  .chega span { font-size: 2cqw; }
+}
+</style>
+<section class="mt-peca institucional-lancamento">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Lanchonete da Praça</div>
+  <p class="carimbo" data-campo="selo" data-entrada="estourar" data-ordem="3">Novidade</p>
+  <div class="bloco">
+    <h1 data-entrada="subir" data-ordem="1"><span data-campo="titulo">Burger</span><em data-campo="titulo2">de costela</em></h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="2">Costela desfiada no pão de brioche, com queijo coalho e cebola caramelizada.</p>
+  </div>
+  <div class="chega" data-entrada="aparecer" data-ordem="4"><span data-campo="quando">A partir de sexta, 25</span><i aria-hidden="true"></i></div>
+</section>

@@ -1,0 +1,86 @@
+<!--
+  Cardápio por categoria — família cardápio. Destaque (nasceu para a TV em pé).
+  O cardápio de parede da lanchonete: categorias com o nome numa tarja da
+  cor de destaque, e os itens com preço alinhado à direita. Em pé, uma
+  categoria embaixo da outra; deitada, as três lado a lado. Item deixado
+  em branco some com a linha.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 700 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.cabeca { position: absolute; left: 6cqw; right: 6cqw; top: 12cqh; display: flex; align-items: baseline; justify-content: space-between; gap: 4cqw; }
+h1 { font: 400 6.4cqw/.95 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .01em; }
+.nota { font: 600 1.3cqw/1.3 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.grupos { position: absolute; left: 6cqw; right: 6cqw; top: 30cqh; bottom: 9cqh; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 3.6cqw; }
+.grupo h2 { display: inline-block; padding: .8cqw 1.4cqw .7cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); border-radius: calc(var(--mt-raio) * .5);
+  font: 400 2.2cqw/1 var(--mt-fonte-titulo); letter-spacing: .06em; text-transform: uppercase; }
+.grupo ul { list-style: none; margin: 1.6cqw 0 0; padding: 0; }
+.grupo li { display: flex; align-items: baseline; justify-content: space-between; gap: 1.4cqw; padding: 1.25cqw 0; border-bottom: .12cqw solid var(--mt-linha); }
+.grupo li:has(> b > span:empty) { display: none; }
+.grupo b { font: 700 1.7cqw/1.2 var(--mt-fonte-texto); }
+.grupo b small { display: block; margin-top: .4cqw; font: 500 1.15cqw/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.preco { font: 400 2.6cqw/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.preco small { font-size: .5em; margin-right: .15em; vertical-align: .6em; }
+/* Em pé: o cardápio de parede — uma categoria embaixo da outra, letra grande.
+   As três categorias de três itens cabem medidas: título curto, nota à direita
+   quebrando se precisar. */
+@container (aspect-ratio < 0.8) {
+  .marca-nome { left: 7cqw; top: 4cqh; font-size: 2.2cqw; }
+  .cabeca { left: 7cqw; right: 7cqw; top: 7cqh; align-items: flex-end; }
+  h1 { font-size: 12cqw; }
+  .nota { font-size: 2cqw; white-space: normal; max-width: 38cqw; text-align: right; }
+  .grupos { left: 7cqw; right: 7cqw; top: 17cqh; bottom: 4cqh; grid-template-columns: 1fr; grid-auto-rows: min-content; row-gap: 2.2cqh; }
+  .grupo h2 { font-size: 4.2cqw; padding: 1.5cqw 2.4cqw 1.3cqw; }
+  .grupo ul { margin-top: 1.6cqw; }
+  .grupo li { padding: 1.45cqw 0; border-bottom-width: .25cqw; gap: 3cqw; }
+  .grupo b { font-size: 3.2cqw; }
+  .grupo b small { font-size: 2.1cqw; margin-top: .7cqw; }
+  .preco { font-size: 5.4cqw; }
+}
+/* Quase quadrada: três colunas não cabem — duas em cima, a terceira embaixo; o detalhe do item sai. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
+  .cabeca { left: 7cqw; right: 7cqw; top: 10cqh; }
+  h1 { font-size: 9cqw; }
+  .nota { font-size: 1.7cqw; }
+  .grupos { left: 7cqw; right: 7cqw; top: 23cqh; bottom: 5cqh; grid-template-columns: repeat(2, 1fr); grid-auto-rows: min-content; column-gap: 5cqw; row-gap: 3.4cqh; }
+  .grupo h2 { font-size: 3cqw; padding: 1.1cqw 1.8cqw 1cqw; }
+  .grupo li { padding: 1.7cqw 0; border-bottom-width: .2cqw; }
+  .grupo b { font-size: 2.4cqw; }
+  .grupo b small { display: none; }
+  .preco { font-size: 3.8cqw; }
+}
+</style>
+<section class="mt-peca cardapio-categorias">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Lanchonete da Praça</div>
+  <div class="cabeca" data-entrada="aparecer">
+    <h1 data-campo="titulo">Cardápio</h1>
+    <p class="nota" data-campo="nota">Pão de fermentação natural</p>
+  </div>
+  <div class="grupos">
+    <div class="grupo" data-entrada="subir" data-ordem="1">
+      <h2 data-campo="grupo1">Lanches</h2>
+      <ul>
+        <li><b><span data-campo="g1-item1">X-Salada</span><small data-campo="g1-det1">Burger 120 g, queijo, alface e tomate</small></b><span class="preco"><small aria-hidden="true">R$</small><span data-campo="g1-preco1">24</span></span></li>
+        <li><b><span data-campo="g1-item2">X-Bacon</span><small data-campo="g1-det2">Burger 120 g, cheddar e bacon crocante</small></b><span class="preco"><small aria-hidden="true">R$</small><span data-campo="g1-preco2">29</span></span></li>
+        <li><b><span data-campo="g1-item3">Misto quente</span><small data-campo="g1-det3">Presunto e queijo na chapa</small></b><span class="preco"><small aria-hidden="true">R$</small><span data-campo="g1-preco3">14</span></span></li>
+      </ul>
+    </div>
+    <div class="grupo" data-entrada="subir" data-ordem="2">
+      <h2 data-campo="grupo2">Porções</h2>
+      <ul>
+        <li><b><span data-campo="g2-item1">Batata frita</span><small data-campo="g2-det1">400 g, para dois</small></b><span class="preco"><small aria-hidden="true">R$</small><span data-campo="g2-preco1">22</span></span></li>
+        <li><b><span data-campo="g2-item2">Anéis de cebola</span><small data-campo="g2-det2">Com maionese da casa</small></b><span class="preco"><small aria-hidden="true">R$</small><span data-campo="g2-preco2">19</span></span></li>
+        <li><b><span data-campo="g2-item3">Mandioca frita</span><small data-campo="g2-det3">Sequinha, com sal grosso</small></b><span class="preco"><small aria-hidden="true">R$</small><span data-campo="g2-preco3">18</span></span></li>
+      </ul>
+    </div>
+    <div class="grupo" data-entrada="subir" data-ordem="3">
+      <h2 data-campo="grupo3">Doces</h2>
+      <ul>
+        <li><b><span data-campo="g3-item1">Milk-shake</span><small data-campo="g3-det1">Chocolate, morango ou baunilha</small></b><span class="preco"><small aria-hidden="true">R$</small><span data-campo="g3-preco1">16</span></span></li>
+        <li><b><span data-campo="g3-item2">Petit gâteau</span><small data-campo="g3-det2">Com sorvete de creme</small></b><span class="preco"><small aria-hidden="true">R$</small><span data-campo="g3-preco2">21</span></span></li>
+        <li><b><span data-campo="g3-item3">Brownie</span><small data-campo="g3-det3">Nozes e calda quente</small></b><span class="preco"><small aria-hidden="true">R$</small><span data-campo="g3-preco3">12</span></span></li>
+      </ul>
+    </div>
+  </div>
+</section>
