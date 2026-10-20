@@ -52,6 +52,12 @@ atendimento — a arquitetura desta rodada já deixa essa porta aberta (§9).
 | Identidade visual | A IA constrói, o dono aprova. Subir a régua. **Não é prioridade agora** | Fase 5 |
 | Público | Varejo/PME primeiro; depois interno, consultório, fila | §9 |
 | Operação | Dono instala e dá suporte; ZL, ZS, ZO, ZN e Centro de SP; sem interior por ora | WhatsApp provisório, depois número dedicado com atendimento 24h e parceiros |
+| Ordem | **Peças-ouro primeiro**, depois a Fase 0 | Decidido em 19/10. A bancada não muda o que a TV exibe hoje (§3) |
+| Tela completa | Peças-ouro para **cabeçalho, destaque, lateral e rodapé**, com papel definido para cada zona | §4.7 |
+| Refinamento | **Chat antes de gerar**: conversar é barato, gerar é caro. Gosto se mostra, não se pergunta | §4.12 |
+| Animação | JavaScript **só no player** (GSAP já carregado); a peça declara a animação, nunca executa código | §4.13 |
+| Foto | A IA decide quando e qual foto; o cliente **autoriza antes**. Produto do cliente é gerado a partir da foto real dele | §4.11 |
+| Modelos no experimento | Gemini (atual), `claude-sonnet-5-5` e `claude-opus-5-5` | §4.4 |
 
 ---
 
@@ -71,6 +77,12 @@ trabalhando com PRs pequenos.
 
 Em paralelo, sem código: contratos, CNPJ no Asaas, contador e homologação de
 aparelho (§8).
+
+**Exceção de ordem (19/10):** a Fase 1 começa pela biblioteca-ouro, antes da
+Fase 0. As peças-ouro nascem numa bancada e o tipo `peca-html` não é usado
+por nenhuma tela até lá, então nada do que a TV exibe hoje muda. A Fase 0
+precisa estar pronta **antes de a primeira peça-html chegar a uma tela de
+cliente** — esse é o portão, não o calendário.
 
 ---
 
@@ -119,9 +131,10 @@ pedido do cliente
 | Formatos por `@container` (paisagem, retrato, quadrado) | Uma peça, todas as telas |
 
 **A biblioteca-ouro.** A qualidade de uma IA que imita é o teto do que ela
-imita. Antes do motor, criamos **30 peças de referência em HTML** (as 6
-famílias do roadmap: oferta, institucional, serviço, cardápio, social e
-gente) no padrão premium. A IA as constrói e o dono aprova uma a uma. Elas
+imita. Antes do motor, criamos **39 peças de referência em HTML** — 30 de
+conteúdo nas 6 famílias do roadmap (oferta, institucional, serviço,
+cardápio, social e gente), 5 cabeçalhos e 4 rodapés — no padrão premium
+(§4.8). A IA as constrói e o dono aprova uma a uma. Elas
 são os exemplos no prompt e também os modelos que o cliente preenche à mão
 quando não quer IA. É o ativo mais importante desta fase.
 
@@ -134,9 +147,25 @@ gera depois o PNG da peça para redes sociais e a miniatura do painel.
 **O modelo de IA.** A qualidade do HTML depende muito do modelo. O
 experimento compara o Gemini atual com os modelos Claude mais recentes
 (`claude-sonnet-5-5` como padrão de custo e qualidade, `claude-opus-5-5`
-como teto), medindo nota e custo por criação. O `server/ai.js` já é
-agnóstico de provedor; pode haver um modelo para compor e outro, mais
-barato, para briefing.
+como teto), medindo nota e custo por criação. Pode haver um modelo para
+compor e outro, mais barato, para conversar e fazer o briefing.
+
+O `server/ai.js` é agnóstico de provedor, mas **não aguenta o motor novo
+como está** (lido em 19/10):
+
+- `callLLM` usa **um provedor para tudo**, escolhido por variável de
+  ambiente. O experimento precisa escolher o modelo **por chamada**.
+- O Claude está em `claude-3-5-sonnet-latest` com `max_tokens: 700`. Uma
+  peça em HTML não cabe nisso.
+- Visão existe só para o Gemini (`geminiVision`). A crítica visual precisa
+  dela nos três modelos.
+- O custo do texto é **estimado fixo** (`CUSTO_TEXTO_CENTAVOS = 5` em
+  `server/creditos.js`), não medido. O experimento precisa dos tokens de
+  verdade de cada chamada, gravados em `uso_ia`.
+- Não há cache de prompt. Com a biblioteca-ouro no prompt de toda chamada,
+  o cache é o que impede o exemplo de virar o maior custo da criação.
+
+Isso vira um PR próprio antes do experimento (§4.14).
 
 ### 4.3 Sistema de cores v2 — tema que faz sentido
 
@@ -159,20 +188,56 @@ em OKLCH, com contraste garantido por cálculo (`js/cor.js` continua sendo a
 
 Três **modos** derivados de cada marca: **claro**, **escuro** e **marca**
 (chapado na cor da marca, efeito cartaz). Cada modo passa por teste de
-contraste AA em todas as combinações antes de existir. A TV, a peça, a
+contraste AA em todas as combinações antes de existir.
+
+Um quarto modo, **rascunho**, troca tudo por cinzas neutros e a foto por uma
+silhueta. É o **wireframe** que o cliente aprova antes de gerar (§4.10): a
+mesma peça, com o texto real, sem custo nenhum — porque wireframe aqui não
+é outra peça, é outro jogo de tokens. A TV, a peça, a
 miniatura e o editor leem **os mesmos tokens** — trocar de modo ou de marca
 reestiliza tudo, coerente.
 
 ### 4.4 O experimento (primeira semana)
 
-Antes de reescrever, provar.
+Antes de reescrever, provar. O experimento roda **depois** da
+biblioteca-ouro (§4.14): ela é o exemplo que o motor HTML imita.
 
-1. Escolher **20 pedidos reais** (ótica, padaria, salão, clínica, aniversário,
-   aviso interno, promoção com preço, texto longo).
-2. Gerar cada um pelo motor atual e pelo motor HTML (com 2 modelos).
-3. O dono dá nota de **1 a 5 às cegas** (sem saber qual motor fez qual).
-4. Medir também: custo por criação, tempo, quantas passaram no lint de
-   primeira e se rodam lisas no box da ótica.
+1. Os **20 pedidos** abaixo. Os 10 primeiros são os casos de
+   `tools/eval.mjs`, mantidos para dar continuidade; todas as empresas são
+   fictícias.
+2. Gerar cada um por **4 motores**: o atual (Gemini posicionando por
+   coordenadas), HTML + Gemini, HTML + `claude-sonnet-5-5` e HTML +
+   `claude-opus-5-5`. Uma peça por pedido, em 16:9 e 9:16. Os casos 3, 11, 15
+   e 19 rodam também como **tela completa** (§4.7).
+3. **A mesma foto vai para todos os motores** — gerada uma vez e reaproveitada.
+   A nota mede o layout, não a sorte da imagem.
+4. O dono dá nota de **1 a 5 às cegas**, numa página com as peças embaralhadas;
+   a chave de qual motor fez cada uma só abre no fim. São 80 peças.
+5. Medir também: custo por criação (tokens reais), tempo, quantas passaram no
+   lint de primeira e se rodam lisas no box da ótica.
+
+| # | Empresa (fictícia) | Pedido, como chega | Família | Foto |
+|---|---|---|---|---|
+| 1 | Padaria do Bairro | promoção de café da manhã, pão na chapa e café por 9 reais | oferta | gerar |
+| 2 | Padaria do Bairro | fechado no feriado de quinta | serviço | nenhuma |
+| 3 | Ótica Central | óculos de sol com 30% de desconto até sábado | oferta | gerar |
+| 4 | Ótica Central | consulta de vista grátis para quem comprar armação | serviço | acervo |
+| 5 | Metalúrgica Sul | feliz aniversário, João | gente | nenhuma |
+| 6 | Padaria do Bairro | estamos contratando atendente de balcão | gente | gerar |
+| 7 | Supermercado Ponto | cuidado, piso molhado | serviço (alerta) | nenhuma |
+| 8 | Metalúrgica Sul | uso de EPI obrigatório nesta área | serviço (alerta) | nenhuma |
+| 9 | Padaria do Bairro | novidade no cardápio (sem mais nada) | cardápio | — |
+| 10 | Ótica Central | venha conhecer nossa linha completa de armações importadas com garantia estendida de dois anos | institucional | gerar |
+| 11 | Studio Bella | escova + hidratação por 79 reais de terça a quinta | oferta | gerar |
+| 12 | Studio Bella | siga a gente no Instagram @studiobella | social | acervo |
+| 13 | Clínica Vida | vacina da gripe disponível, sem agendamento | serviço | nenhuma |
+| 14 | Sorriso Odonto | clareamento em até 10x sem juros | oferta | gerar |
+| 15 | Lanchonete da Praça | cardápio do almoço: PF 22, executivo 28, marmitex 18, suco 7 | cardápio | nenhuma |
+| 16 | Pet Feliz | banho e tosa: leve 4 pague 3 | oferta | gerar |
+| 17 | Ótica Central | Black Friday: até 40% em armações | oferta | acervo |
+| 18 | Ótica Central | há 25 anos cuidando da sua visão | institucional | acervo |
+| 19 | Escritório Lima | reunião geral sexta às 17h no refeitório | gente | nenhuma |
+| 20 | Clínica Vida | a partir de novembro o sábado será das 8h às 12h, e exame de sangue pede jejum de 8 horas | serviço (texto longo) | nenhuma |
 
 **Critério para o HTML virar o motor:** média ≥ 4, pelo menos 1 ponto acima
 do atual, custo médio por criação ≤ R$ 1,00 sem imagem gerada, e nenhuma
@@ -202,6 +267,7 @@ Um tipo de item novo, `peca-html`:
 {
   tipo: 'peca-html',
   versao: 1,
+  papel: 'destaque',                                // cabecalho | destaque | lateral | rodape (§4.7)
   html: '<section class="mt-peca">…</section>',   // já higienizado no servidor
   css: '…',                                         // escopo da peça
   campos: { titulo: 'Lentes com 20%', foto: 'asset_123' },
@@ -219,13 +285,318 @@ servidor ao salvar, no player ao exibir) com uma lista do que é permitido —
 nunca uma lista do que é proibido. O mesmo renderizador roda no editor, na
 miniatura e na TV: o que o dono vê no celular é o que sai na parede.
 
-### 4.7 Pronto quando
+### 4.7 Tela completa — o papel de cada zona
 
-- [ ] 30 peças-ouro aprovadas pelo dono.
+"Gerar tela completa" cria conteúdo para **todas as zonas** do layout da tela:
+cabeçalho, destaque, lateral e rodapé. Cada zona tem um papel. Uma lateral
+que repete o título do destaque é espaço de parede jogado fora.
+
+Proporções medidas no layout Corporativo em 1920×1080 (`js/templates.js`):
+
+| Zona | Proporção | Papel | Regra |
+|---|---|---|---|
+| Cabeçalho | faixa ~15:1 (retrato ~6:1) | **Quem e agora**: marca, hora, clima, tema da campanha | Campos vivos, preenchidos pelo player |
+| Destaque | ~1,7:1 no Corporativo; ~1:1 na Vertical em pilha; retrato na Vertical cheia | **O quê**: a oferta ou a mensagem | Uma mensagem por peça |
+| Lateral | retrato estreito ~5:8 | **Como, onde e quando**: QR, prazo, preço, prova | Nunca repete o título do destaque; em espaço pequeno esconde o texto secundário |
+| Rodapé | faixa ~16:1 | **O resto**: horário, pagamento, contato, avisos | Frases de até 60 caracteres |
+
+Exemplo — Ótica Central (fictícia), "óculos de sol com 30% até sábado":
+
+- **Cabeçalho:** logo · "Semana do Sol" · 14:32 · 27°.
+- **Destaque** (3 peças se revezando): 30% OFF com foto · 3 modelos com preço
+  · garantia.
+- **Lateral** (2): "Só até sábado" · QR "reserve pelo WhatsApp".
+- **Rodapé:** "10x sem juros" · "Proteção UV400" · "Aberto até 19h" ·
+  "@oticacentral".
+
+**O que o cliente escolhe:**
+
+- **O quê:** Tela completa · Só destaque · Só lateral · Só rodapé · Post
+  avulso.
+- **Quanto, por zona:** destaque 1 a 5 peças (padrão 3), lateral 1 a 3
+  (padrão 2), rodapé 3 a 8 frases (padrão 4), cabeçalho 1.
+
+**Como encaixa no que existe:**
+
+- A peça não tem JavaScript. Relógio, data e clima entram por
+  `data-vivo="relogio|data|clima"`, que o player preenche como já faz hoje em
+  `startHeader`.
+- O rodapé continua rolando pelo motor de ticker do player. A peça-ouro de
+  rodapé é a **pele** dele (selo, cor, separador), e as frases entram em
+  `data-vivo="mensagens"`.
+- Zona que o layout da tela não tem é pulada. A mesma tela completa serve
+  Corporativo, Destaque + Lateral, Cabeçalho + Principal + Rodapé e Vertical
+  em pilha.
+- Hoje existem dois "gerar tela inteira": "Campanha com IA" dentro da tela
+  (`ContentEditorPage` → `ai.generateCampaign`, que gera posters por zona) e
+  o diretor em Meus Designs. Os dois passam a usar este motor. A geração
+  antiga sai depois de 30 dias sem uso (§11).
+
+### 4.8 A biblioteca-ouro — 39 peças e 6 telas completas
+
+**30 peças de conteúdo**: 6 famílias × 5 **estruturas** diferentes (não 5
+segmentos), cada uma servindo em 16:9, 9:16 e 1:1.
+
+| Família | 5 estruturas |
+|---|---|
+| **Oferta** | preço gigante com foto · selo "% OFF" · 3 produtos com preço · prazo em destaque ("até sábado") · parcelado ("10x sem juros") |
+| **Institucional** | manifesto só tipográfico · foto cheia com assinatura · número grande ("25 anos") · lançamento ou coleção · 3 valores com ícone |
+| **Serviço** | serviço + preço + QR para agendar · 3 passos · horário de funcionamento · aviso de alerta (piso, EPI) · comunicado (feriado, mudança) |
+| **Cardápio** | lista em 2 colunas · prato do dia com foto · combo · tabela por categoria (retrato) · painel de bebidas em 3 colunas |
+| **Social** | Instagram + QR · depoimento de cliente (5 estrelas) · foto do cliente ou do mural · data comemorativa · "avalie no Google" com QR |
+| **Gente** | aniversariante do dia · aniversariantes do mês · boas-vindas · vaga · comunicado interno |
+
+**12 delas servem também na lateral**: prazo, 3 produtos com preço, número
+grande, horário, QR para agendar, aviso de alerta, lista do cardápio,
+bebidas, Instagram, depoimento, avalie no Google e aniversariante do dia.
+
+**5 cabeçalhos**: clássico (logo à esquerda, hora e clima à direita) ·
+centralizado · com a chamada da campanha · status "Aberto até 19h" · mínimo
+no modo marca.
+
+**4 rodapés**: rolagem com selo · rolagem com relógio fixo (para tela sem
+cabeçalho) · faixa fixa com chamada e contato · formas de pagamento +
+rolagem.
+
+**6 telas completas** — ótica, padaria, salão, clínica, lanchonete e
+comunicado interno. Não são peças novas: são combinações das acima, para
+aprovar a coerência da parede inteira, que peça por peça não aparece.
+
+**Toda peça-ouro**: cor só por token v2 (nenhum hex), `data-campo` em todo
+texto e foto, camadas com `--x --y --w --h`, coreografia de entrada (§4.13)
+e os 4 modos (claro, escuro, marca, rascunho). Toda estrutura existe **com
+foto e sem foto** (§4.11).
+
+**A régua visual** — tirada da primeira amostra renderizada (20/10), em que
+o dono pediu "mais premium" e o mesmo conteúdo mudou de patamar só com isto:
+
+- **Um elemento domina.** "Óculos de sol" pequeno e "30% OFF" enorme lê
+  melhor e parece mais caro que as duas linhas do mesmo tamanho.
+- **Fontes de verdade.** Condensada para oferta, serifada (com itálico) para
+  institucional e moda, Inter no apoio. A fonte do sistema é o que faz peça
+  parecer slide.
+- **Kicker espaçado com filete**, em vez de selo pesado. **Chamada como texto
+  sublinhado**, em vez de botão gordo.
+- **Preço com o R$ e os centavos pequenos.** O número é o que se lê.
+- **Quebra de linha decidida**, nunca deixada ao acaso: "deve / ser." com a
+  palavra sozinha na última linha estraga a peça mais bonita.
+- **Nada escrito sobre foto sem véu.** O véu vai de `--mt-fundo` a
+  `--mt-fundo-0`; endereço e assinatura nunca sobre a imagem.
+- **Respiro.** Margem de 6% da largura e espaço entre o bloco de texto e a
+  chamada; peça apertada parece barata.
+
+**Marcas de teste**, todas fictícias: Ótica Central, Padaria do Bairro,
+Studio Bella e Clínica Vida.
+
+**Aprovação**: em lotes, numa **bancada** que mostra cada peça × zona × modo
+× marca. O dono aprova peça por peça, olhando. O lote 1 é a **tela completa
+da ótica** (1 cabeçalho, 3 destaques, 2 laterais, 1 rodapé): testa o sistema
+de ponta a ponta antes de produzir em volume.
+
+### 4.9 Três jeitos de gerar
+
+HTML escrito do zero tem **mais** texto que a lista de coordenadas de hoje —
+estimativa de 2 a 3 vezes mais tokens de saída por peça; o experimento dá o
+número real. A economia vem de outro lugar: a peça sai certa sem rodada de
+conserto, a maior parte das zonas só **preenche** uma peça-ouro, e a
+biblioteca no prompt vai para o cache.
+
+| Jeito | O que a IA faz | Custo | Onde usar |
+|---|---|---|---|
+| **Preencher** | Escolhe uma peça-ouro e escreve os campos (JSON curto) | Muito baixo | Cabeçalho, rodapé, lateral |
+| **Variar** | Adapta o CSS e a estrutura de uma peça-ouro | Médio | Destaque (padrão) |
+| **Criar** | HTML do zero, com crítica visual | Alto | Destaque, opção "mais criativo" |
+
+Peça que reprova duas vezes na barreira automática (§4.10) cai para a
+peça-ouro preenchida. Nunca tela vazia, nunca peça quebrada.
+
+### 4.10 Aprovação — o cliente só vê peça pronta ou wireframe
+
+**Barreira automática, que o cliente não vê:** lint → render em 16:9, 9:16 e
+1:1 → crítica visual. Reprovou duas vezes → peça-ouro preenchida.
+
+**Fluxo do cliente:**
+
+1. Pedido.
+2. Plano em texto (já existe: `pararNoPlano` em `server/ai-director.js`).
+3. **Wireframe da tela inteira**: instantâneo e sem custo. São as peças-ouro
+   escolhidas, no modo rascunho (§4.3), com o texto real e a foto como
+   silhueta.
+4. O cliente ajusta estrutura e texto e aprova.
+5. Geração final: fotos, acabamento e crítica. **As fotos só são geradas
+   depois do ok** — foto é o que mais gasta crédito.
+6. Prévia pronta dentro da moldura da TV dele, com 3 opções para o destaque.
+7. Publicar.
+
+Peça avulsa pula o wireframe e vai direto às 3 opções prontas.
+
+### 4.11 Foto — a IA decide, o cliente autoriza
+
+A foto é o que mais aproxima a peça de "parece de agência", e é a parte mais
+cara. A IA tem **autonomia para decidir** quando uma peça pede foto e como
+ela deve ser; o cliente **autoriza antes** de qualquer foto ser gerada.
+
+- **A IA decide e descreve.** No plano, cada peça com foto vem com a
+  descrição em português ("mulher de 30 anos usando o vestido de linho cru,
+  luz natural, fundo liso à esquerda") e o custo. O cliente aprova, edita a
+  descrição ou troca por uma foto dele. Já existe o portão: o plano para
+  antes do crédito (`pararNoPlano`).
+- **O pedido específico é atendido.** Loja de roupas que quer "uma mulher
+  usando este vestido" recebe isso. Quando o produto é **dele** (a roupa da
+  coleção, a armação da vitrine), a foto é gerada **a partir da foto real do
+  produto**, que ele sobe em Mídias: o modelo de imagem recebe a foto de
+  referência e mantém o produto fiel. Inventar o vestido não serve — o
+  cliente vende aquele vestido, não um parecido.
+- **A peça-ouro diz onde a foto entra.** Cada estrutura com foto declara o
+  enquadramento (metade lateral, arco, cheia com véu, recorte) e de que lado
+  o texto fica; o pedido da foto já sai com esse lado limpo
+  (`server/direcao-arte.js` faz isso hoje para 16:9, 9:16, 1:1 e 21:9).
+- **Regras que não mudam:** nenhum texto desenhado na foto (`direcao-arte`
+  já proíbe); pessoa gerada nunca é retrato de alguém real e identificável;
+  foto do acervo do cliente vence foto gerada quando serve.
+- **Banco de fotos gratuito (Pexels), decidido em 20/10.** A ordem de
+  procura vira: acervo do cliente → Banco de Imagens MultiTelas → Pexels →
+  gerar. Foto de banco custa zero; gerada, 1 crédito.
+  - Pexels e não Unsplash: a API do Unsplash exige carregar a imagem direto
+    do servidor deles (a TV precisa funcionar offline e só aceita mídia
+    nossa) e diz ser para uso "non-automated" — a IA escolhendo sozinha é
+    arriscado. A do Pexels não tem essas duas travas (confirmar no contrato
+    antes de construir).
+  - Crédito obrigatório (fotógrafo + Pexels, com link): fica no painel, junto
+    da foto, não na TV. A foto escolhida é copiada para as Mídias, como
+    qualquer outra, e passa a ser servida por nós.
+  - A chave da API fica em variável de ambiente; limite de 200 buscas por
+    hora — a busca passa pelo servidor, com cache.
+- **Custo:** foto gerada continua 1 crédito. Foto com referência de produto
+  pode custar mais — sai medida do experimento antes de ter preço.
+
+**Fundos e texturas.** Além da foto, o fundo da peça é uma escolha de gosto
+— e quem escolhe é o cliente, dentro do escopo que ele pediu. Cinco níveis,
+do grátis ao gerado:
+
+| Fundo | O que é | Custo |
+|---|---|---|
+| Liso | `--mt-fundo` | zero |
+| Degradê | `--mt-fundo` → `--mt-fundo-2`, só tokens | zero |
+| Padrão | listras, pontos, malha — desenhados em CSS com tokens | zero |
+| Textura | gerada pela IA na cor da marca: papel, linho, mármore, concreto, granulado | 1 crédito, **uma vez** |
+| Foto | a cena inteira (§4.11 acima) | 1 crédito por foto |
+
+- A textura é **da marca, não da peça**: gerada uma vez, guardada em Marca
+  ("texturas da marca") e reusada em toda peça e campanha depois. O custo
+  se dilui; a identidade se repete, que é o que a faz ser identidade.
+- Entra como camada de imagem por campo (`data-campo-img="fundo"`), igual
+  à foto — a porta do PR 3 já aceita, sem `url()` no CSS. Monocromática na
+  cor da marca (regra que `server/direcao-arte.js` já usa para foto), para
+  o texto por cima continuar se lendo; sem `mix-blend-mode`, que o box não
+  aguenta.
+- **Depende do gosto:** no chat (§4.12, passo 2), o fundo é um dos botões de
+  ajuste — "liso · degradê · padrão · textura · foto" — mostrado na peça
+  dele antes de gastar. Quem não escolhe recebe o que a peça-ouro sugere,
+  sempre do lado grátis.
+- Texturas genéricas boas entram no Banco de Imagens MultiTelas e passam a
+  custar zero para todo mundo.
+
+### 4.12 Chat de refinamento — conversar é barato, gerar é caro
+
+Tudo o que dá para decidir antes de gerar, decide-se na conversa: uma troca
+de mensagens custa centavos, uma geração com foto e crítica visual custa
+crédito. O chat existe para a geração acertar de primeira.
+
+**Já existe, em quatro partes**, e não nasce chat novo — elas viram uma
+conversa só:
+
+- o **guia** (`server/ai-guia.js`) oferece 3 ideias prontas;
+- o **briefing** (`server/ai-briefing.js`) faz até 5 perguntas, uma por vez,
+  com sugestões para clicar, e nunca pergunta cor nem estilo (isso vem da
+  Marca);
+- a **memória** (`server/ai-memoria.js`) é a ficha da empresa que cresce a
+  cada conversa;
+- o **plano** para antes de gastar crédito.
+
+**O que falta é o gosto visual, e gosto não se pergunta: se mostra.** Quem
+tem padaria não sabe descrever o estilo que quer, mas reconhece quando vê.
+
+1. **Entender o pedido** — o briefing atual: o que é, para quem, até quando,
+   quantas peças, onde aparecem, se tem foto.
+2. **Escolher o caminho visual** — o chat mostra 3 peças-ouro já com o texto
+   e a marca do cliente, desenhadas no próprio navegador (sem geração).
+   "Qual chega mais perto?" Ajustes por botão: mais sóbrio, mais chamativo,
+   claro, escuro, e o fundo (liso, degradê, padrão, textura, foto — §4.11).
+   Cada botão só troca modo, token ou camada: custo zero até a geração.
+3. **Wireframe da tela inteira**, editado conversando ("troca a lateral por
+   QR do Instagram", "título mais curto"). A IA devolve só a **alteração** no
+   plano — um texto curto, centavos.
+4. **Resumo com o custo** ("3 peças, 1 foto, 1 crédito") e só então gerar.
+5. **Depois de gerado**, os ajustes continuam pelo chat, reversíveis (§4.5).
+
+**Regras de economia:**
+
+- Botão antes de texto livre: clique não gasta token.
+- Cada mensagem manda o **estado atual** e o último pedido, não o histórico
+  inteiro. O começo fixo do prompt vai para o cache.
+- Modelo barato para conversar; o caro só na geração final.
+- Teto de perguntas imposto pelo código, como hoje (`MAX_PERGUNTAS`). Os
+  botões de ajuste visual não contam.
+- A memória passa a guardar o **gosto** ("prefere escuro", "recusou o
+  layout X"): a próxima conversa já começa mais perto.
+
+### 4.13 Animação — JavaScript no player, nunca na peça
+
+A peça **declara** a intenção (`data-entrada="subir"`, `data-ordem="2"`) e
+o **nosso** código anima. A IA escolhe de uma lista fechada e nunca escreve
+JavaScript — a CSP (`script-src 'self'`) e o higienizador continuam
+recusando qualquer `<script>` ou `on*=`.
+
+- **Camada 1, já nas peças-ouro.** Cada peça nasce com a coreografia
+  desenhada — ordem, lado e ritmo de entrada — usando a biblioteca que já
+  existe (`js/animacao.js` e `css/animacao.css`: 8 entradas e 4 movimentos
+  contínuos, só `transform` e `opacity`, com teste). Funciona igual no
+  editor, na miniatura e na TV, sem JavaScript. É o "cru extremamente bem
+  feito", já animado.
+- **Camada 2, num PR separado na Fase 3.** Coreografias com GSAP 3.15, que já
+  está carregado no player (`js/vendor/gsap.min.js`) para a troca de slides:
+  preço contando até o valor, revelação por máscara, texto entrando palavra
+  a palavra. Antes de chegar a cliente, 72 h no box beta medindo memória e
+  quadros. Sem GSAP, a peça cai na camada 1.
+
+### 4.14 Ordem dos PRs desta fase
+
+Um PR por etapa, cada um aprovado pelo dono antes de começar.
+
+1. **Este escopo** no `PLANO.md`.
+2. **Tokens v2** de cor (§4.3): claro, escuro, marca e rascunho, com teste de
+   contraste AA em todas as combinações.
+3. **Formato `peca-html`**: higienizador por lista do que é permitido e lint
+   dos trilhos (§4.2), incluindo os atributos de animação permitidos.
+4. **Renderizador** em Shadow DOM, campos vivos, coreografia CSS e a
+   **bancada**.
+5. **Lote 1**: a tela completa da ótica.
+6. **Lotes 2 a 6**: o restante da biblioteca, cerca de 6 peças por lote.
+7. **Camada de IA**: modelo por chamada, saída maior, visão nos três
+   modelos, cache de prompt e tokens medidos (§4.2).
+8. **Experimento** (§4.4), com a página de nota às cegas.
+9. **Foto do produto real** (§4.11): gerar a partir da foto de referência
+   que o cliente sobe, com aprovação antes.
+10. **Banco de fotos gratuito** (§4.11): busca no Pexels pelo servidor, com
+    crédito no painel e cópia para as Mídias.
+11. **Chat de refinamento** unificado (§4.12).
+
+Antes da primeira peça-html numa tela de cliente: a Fase 0 (§10).
+
+### 4.15 Pronto quando
+
+- [ ] 39 peças-ouro e 6 telas completas aprovadas pelo dono.
 - [ ] Experimento feito e motor escolhido pela nota, não pelo gosto do dia.
 - [ ] Pedido → 3 opções em menos de 60 s, média ≥ 4 no banco de avaliação.
+- [ ] Tela completa gerada com papel certo em cada zona, sem repetir mensagem
+      entre elas.
+- [ ] Wireframe aprovado antes de qualquer foto ser gerada.
+- [ ] Foto com o produto real do cliente, fiel ao produto, aprovada antes de
+      ir para a tela.
 - [ ] Trocar marca ou modo reestiliza a peça sem gerar de novo.
-- [ ] Peça idêntica no editor, na miniatura e no box da ótica.
+- [ ] Peça idêntica — inclusive a entrada animada — no editor, na miniatura
+      e no box da ótica.
 - [ ] IA fora do ar → o cliente preenche uma peça-ouro à mão, nunca tela vazia.
 
 ---
@@ -507,6 +878,10 @@ Decisões desta rodada que deixam a porta aberta, sem construir o futuro agora:
 ---
 
 ## 10 · Fase 0 — Antes de tudo
+
+Antes de tudo **que chegue à tela de um cliente**. A biblioteca-ouro vem
+antes dela por decisão do dono (§3); a primeira peça-html numa tela de
+cliente, não.
 
 - [ ] `pg_dump` diário do Postgres para o R2, com teste de restauração.
 - [ ] Canal estável/beta por tela; a ótica e o cliente de 3 telas no estável.
