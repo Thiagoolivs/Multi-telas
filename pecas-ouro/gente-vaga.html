@@ -1,0 +1,75 @@
+<!--
+  Vaga — família gente. Destaque e lateral.
+  "Estamos contratando" para quem já está dentro: o cargo grande, três
+  requisitos curtos e o QR que abre o formulário de indicação. O QR é
+  desenhado pelo nosso servidor a partir do link (`data-campo-qr`), com
+  fundo próprio. Fluxo único, medidas em cqmin; deitada, o QR à direita.
+-->
+<style>
+.mt-peca { display: flex; flex-direction: column; justify-content: center; gap: 7cqmin; padding: 9cqmin;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(110% 80% at 0% 0%, var(--mt-fundo-2), var(--mt-fundo) 66%); }
+.selo { display: inline-flex; align-items: center; gap: 2cqmin; padding: 1.8cqmin 3.4cqmin; border-radius: 10cqmin; background: var(--mt-destaque); color: var(--mt-sobre-destaque);
+  font: 700 3.2cqmin/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; }
+h1 { margin-top: 5cqmin; font: 600 11cqmin/1.02 var(--mt-fonte-titulo); letter-spacing: -.025em; text-wrap: balance; }
+.setor { margin-top: 3cqmin; font: 500 4cqmin/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.requisitos { list-style: none; margin: 5cqmin 0 0; padding: 0; }
+.requisitos li { display: flex; align-items: baseline; gap: 2.6cqmin; padding: 2.4cqmin 0; border-top: .5cqmin solid var(--mt-linha); font: 500 4cqmin/1.3 var(--mt-fonte-texto); }
+.requisitos li::before { content: ''; flex: none; width: 2cqmin; height: 2cqmin; translate: 0 -.3cqmin; border-radius: .5cqmin; background: var(--mt-destaque); }
+.requisitos li:empty { display: none; }
+.indique { display: flex; align-items: center; gap: 4cqmin; }
+.qr { flex: none; margin: 0; width: 30cqmin; height: 30cqmin; padding: 1.4cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie); box-shadow: 0 0 0 .6cqmin var(--mt-destaque); }
+.qr img { width: 100%; height: 100%; border-radius: calc(var(--mt-raio) * .6); }
+.pedido { font: 700 3.6cqmin/1.35 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; }
+.pedido small { display: block; margin-top: 1.6cqmin; font: 500 3.4cqmin/1.35 var(--mt-fonte-texto); letter-spacing: 0; text-transform: none; color: var(--mt-texto-suave); }
+@container (aspect-ratio >= 1.25) {
+  .mt-peca { flex-direction: row; align-items: center; justify-content: space-between; padding: 0 8cqw 0 6cqw; }
+  .vaga { max-width: 54cqw; }
+  .selo { font-size: 2.6cqmin; }
+  h1 { font-size: 11cqmin; }
+  .setor { font-size: 3.4cqmin; }
+  .requisitos li { font-size: 3.4cqmin; padding: 2cqmin 0; }
+  .indique { flex-direction: column; text-align: center; gap: 4cqmin; }
+  .qr { width: 44cqmin; height: 44cqmin; }
+  .pedido { font-size: 3cqmin; }
+  .pedido small { font-size: 2.8cqmin; }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .mt-peca { gap: 10cqmin; }
+  .selo { font-size: 3.6cqmin; }
+  h1 { font-size: 14cqmin; }
+  .setor, .requisitos li { font-size: 4.6cqmin; }
+  .qr { width: 38cqmin; height: 38cqmin; }
+  .pedido { font-size: 4cqmin; }
+  .pedido small { font-size: 3.8cqmin; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { gap: 5cqmin; padding: 8cqmin; }
+  h1 { font-size: 9cqmin; margin-top: 4cqmin; }
+  .setor { font-size: 3.4cqmin; }
+  .requisitos { margin-top: 3.6cqmin; }
+  .requisitos li { font-size: 3.2cqmin; padding: 1.8cqmin 0; }
+  .qr { width: 22cqmin; height: 22cqmin; }
+  .pedido, .pedido small { font-size: 3cqmin; }
+}
+@container (max-width: 700px) {
+  .requisitos li:nth-child(3) { display: none; }
+  .pedido small { display: none; }
+}
+</style>
+<section class="mt-peca gente-vaga">
+  <div class="vaga">
+    <p class="selo" data-campo="selo" data-entrada="estourar">Vaga aberta</p>
+    <h1 data-campo="cargo" data-entrada="subir" data-ordem="1">Motorista de entrega</h1>
+    <p class="setor" data-campo="setor" data-entrada="aparecer" data-ordem="2">Frota · turno da manhã</p>
+    <ul class="requisitos">
+      <li data-campo="req1" data-entrada="aparecer" data-ordem="3">CNH categoria D</li>
+      <li data-campo="req2" data-entrada="aparecer" data-ordem="4">Conhecer a região sul da cidade</li>
+      <li data-campo="req3" data-entrada="aparecer" data-ordem="5">Curso de direção defensiva</li>
+    </ul>
+  </div>
+  <div class="indique" data-entrada="crescer" data-ordem="6">
+    <figure class="qr"><img data-campo-qr="link" alt="QR para indicar alguém para a vaga"></figure>
+    <p class="pedido"><span data-campo="pedido">Indique alguém</span><small data-campo="pedido-apoio">Indicação contratada ganha bônus</small></p>
+  </div>
+</section>

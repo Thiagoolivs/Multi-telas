@@ -1,0 +1,72 @@
+<!--
+  Aniversariante do dia — família gente. Destaque e lateral.
+  A pessoa no centro: o retrato (ou as iniciais, quando não há foto) num
+  círculo com anel na cor de destaque, o nome grande e o setor. Confete
+  discreto em volta — desenho, não imagem. Fluxo único, medidas em cqmin:
+  a mesma peça na coluna e na tela inteira.
+-->
+<style>
+.mt-peca { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8cqmin; text-align: center;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(70% 60% at 50% 38%, var(--mt-fundo-2), var(--mt-fundo) 72%); }
+.confete { position: absolute; inset: 0; }
+.confete i { position: absolute; width: 2.2cqmin; height: 2.2cqmin; border-radius: .4cqmin; background: var(--mt-destaque); opacity: .8; }
+.confete i:nth-child(2n) { background: var(--mt-texto-suave); width: 1.6cqmin; height: 1.6cqmin; border-radius: 50%; }
+.confete i:nth-child(1) { left: 14%; top: 16%; rotate: 20deg; }
+.confete i:nth-child(2) { left: 24%; top: 34%; }
+.confete i:nth-child(3) { left: 10%; top: 58%; rotate: -30deg; }
+.confete i:nth-child(4) { right: 14%; top: 14%; }
+.confete i:nth-child(5) { right: 22%; top: 38%; rotate: 45deg; }
+.confete i:nth-child(6) { right: 9%; top: 62%; }
+.kicker { font: 700 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.avatar { position: relative; margin-top: 6cqmin; width: 40cqmin; height: 40cqmin; border-radius: 50%; overflow: hidden;
+  background: var(--mt-superficie); box-shadow: 0 0 0 1cqmin var(--mt-fundo), 0 0 0 1.8cqmin var(--mt-destaque); }
+.avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.iniciais { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 600 16cqmin/1 var(--mt-fonte-titulo); color: var(--mt-destaque); }
+h1 { margin-top: 7cqmin; font: 600 11cqmin/1.02 var(--mt-fonte-titulo); letter-spacing: -.02em; text-wrap: balance; }
+.setor { margin-top: 3cqmin; font: 500 4.2cqmin/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.recado { margin-top: 5cqmin; font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; }
+/* Deitada: o retrato à esquerda, o texto à direita. */
+@container (aspect-ratio >= 1.25) {
+  .mt-peca { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto auto; column-gap: 7cqw; align-content: center; justify-content: center;
+    text-align: left; padding: 0 10cqw; }
+  .avatar { grid-column: 1; grid-row: 1 / 5; align-self: center; margin: 0; width: 50cqmin; height: 50cqmin; }
+  .kicker, h1, .setor, .recado { grid-column: 2; }
+  .kicker { align-self: end; }
+  h1 { margin-top: 4cqmin; font-size: 12cqmin; }
+  .recado { margin-top: 5cqmin; }
+  /* Confete só nas bordas: o miolo direito é do nome. */
+  .confete i:nth-child(1) { left: 5%; top: 12%; }
+  .confete i:nth-child(2) { left: 34%; top: 86%; }
+  .confete i:nth-child(5) { right: 4%; top: 46%; }
+  .confete i:nth-child(3) { left: 4%; top: 80%; }
+  .confete i:nth-child(4) { right: 6%; top: 14%; }
+  .confete i:nth-child(6) { right: 5%; top: 78%; }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .kicker { font-size: 4cqmin; }
+  .avatar { width: 54cqmin; height: 54cqmin; margin-top: 8cqmin; }
+  .iniciais { font-size: 22cqmin; }
+  h1 { font-size: 13cqmin; margin-top: 9cqmin; }
+  .setor { font-size: 4.6cqmin; }
+  .recado { font-size: 4cqmin; margin-top: 7cqmin; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .avatar { width: 32cqmin; height: 32cqmin; margin-top: 4.4cqmin; }
+  .iniciais { font-size: 13cqmin; }
+  h1 { font-size: 9cqmin; margin-top: 5cqmin; }
+  .setor { font-size: 3.6cqmin; }
+  .recado { font-size: 3.2cqmin; margin-top: 4cqmin; }
+}
+@container (max-width: 700px) {
+  .setor { font-size: 4.6cqmin; }
+}
+</style>
+<section class="mt-peca gente-aniversariante">
+  <div class="confete" aria-hidden="true" data-entrada="aparecer" data-ordem="4"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="1">Aniversariante do dia</p>
+  <figure class="avatar" data-entrada="crescer"><span class="iniciais" data-campo="iniciais">MS</span><img data-campo-img="foto" alt=""></figure>
+  <h1 data-campo="nome" data-entrada="subir" data-ordem="2">Marina Souza</h1>
+  <p class="setor" data-campo="setor" data-entrada="aparecer" data-ordem="3">Logística · 6 anos de casa</p>
+  <p class="recado" data-campo="recado" data-entrada="aparecer" data-ordem="4">Parabéns, Marina!</p>
+</section>
