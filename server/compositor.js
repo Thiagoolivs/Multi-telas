@@ -1,0 +1,175 @@
+/*
+ * server/compositor.js — o motor HTML (PLANO §4.2): a IA escreve a peça.
+ *
+ *   pedido → COMPOR (HTML + CSS imitando a biblioteca-ouro)
+ *          → LINT (a porta de js/peca-html.js; recusou, pede de novo
+ *            dizendo o que estava errado)
+ *          → item peca-html pronto para a TV
+ *
+ * A biblioteca-ouro vai INTEIRA como exemplo, no `fixo` da chamada: é o
+ * mesmo texto em todo pedido, e por isso fica no cache do provedor (server/
+ * motores.js). O que muda por pedido — empresa, frase, foto — vai no fim.
+ *
+ * Renderizar e criticar o print (o resto do motor no §4.2) ficam para o
+ * serviço de render; o experimento (§4.4) mede primeiro se a IA compõe bem
+ * com exemplo bom e regra dura.
+ */
+
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
+const P = require('../js/peca-html.js');
+const T = require('../js/tokens.js');
+const motores = require('./motores');
+
+const PASTA = path.join(__dirname, '..', 'pecas-ouro');
+
+/*
+ * Os trilhos, em português de quem escreve a peça. São as regras da porta
+ * (js/peca-html.js) e a régua visual do lote 1 (PLANO §4.8) — a porta
+ * recusa o que quebra regra; a régua é o que separa peça de agência de
+ * slide.
+ */
+function regras() {
+  const tokens = Object.keys(T.NOMES).map((k) => 'var(' + T.NOMES[k] + ')').join(', ');
+  return [
+    'FORMATO DO ARQUIVO: um <style> e uma <section class="mt-peca …">. Nada antes, nada depois, sem cercas de código.',
+    '',
+    'REGRAS DURAS (a peça é recusada se quebrar qualquer uma):',
+    '- Sem JavaScript, sem <script>, sem on*=, sem url(), sem @import, sem link externo.',
+    '- Tags permitidas: section div header footer aside figure figcaption p h1 h2 h3 h4 span em strong b i small sup sub s del ul ol li br img.',
+    '- Cor SÓ por token: ' + tokens + '. Nenhum hex, rgb(), hsl() ou nome de cor.',
+    '- Medida SÓ relativa ao container: cqw, cqh, cqmin, cqmax, %, fr, em. px só dentro da condição de @container.',
+    '- Fonte SÓ var(--mt-fonte-titulo) ou var(--mt-fonte-texto).',
+    '- Proibido: filter, backdrop-filter, mix-blend-mode, mask, animation, transition, will-change, position fixed/sticky, @media.',
+    '- No máximo 2 sombras por elemento, desfoque até 3cqw.',
+    '- Todo texto editável com data-campo="nome" (nomes curtos, sem espaço). Foto só com <img data-campo-img="foto" alt="">. QR só com <img data-campo-qr="link" alt="…">.',
+    '- Animação só declarada: data-entrada="aparecer|subir|descer|esquerda|direita|crescer|estourar|girar", data-ordem="1..8", data-continua="flutuar|pulsar|balancar|brilhar".',
+    '- Hora/data/clima só por data-vivo="relogio|data|clima"; o nome da marca, se aparecer no destaque, com data-repete="marca".',
+    '- Formatos por @container: deitada (padrão), (aspect-ratio < 0.8) em pé, (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) quadrada. A MESMA peça precisa ficar certa em 1920×1080 e 1080×1920.',
+    '- Peça que serve na lateral: @container (max-width: 700px) — menos texto, letra maior, nada some.',
+    '',
+    'A RÉGUA VISUAL (é isto que o cliente aprova):',
+    '- Um elemento domina. O resto é menor e mais calmo.',
+    '- Kicker pequeno, espaçado, com filete; chamada como texto sublinhado, nunca botão gordo.',
+    '- Preço com o R$ e os centavos pequenos; o número é o que se lê.',
+    '- Quebra de linha DECIDIDA: título em duas linhas vira dois <span> (ou span + em) com display:block; nunca uma palavra sozinha na última linha.',
+    '- Nada escrito sobre foto sem véu (gradiente de var(--mt-fundo) a var(--mt-fundo-0)).',
+    '- Respiro: margem de ~6cqw; nada encostado na borda.',
+    '- Texto que cabe: nada pode sair da peça nem ficar por cima de outro texto.',
+  ].join('\n');
+}
+
+// A biblioteca no papel pedido, em ordem fixa — o fixo precisa ser igual entre chamadas para o cache valer.
+function biblioteca(papel) {
+  const m = JSON.parse(fs.readFileSync(path.join(PASTA, 'manifesto.json'), 'utf8'));
+  return m.pecas
+    .filter((p) => p.papeis.includes(papel))
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((p) => '### ' + p.nome + ' (' + p.familia + ')\n' + fs.readFileSync(path.join(PASTA, p.id + '.html'), 'utf8').trim());
+}
+
+function fixo(papel) {
+  return [
+    'Você escreve peças de digital signage em HTML+CSS, para TVs de comércio. Estas são as REGRAS e a BIBLIOTECA-OURO — o padrão de qualidade que o dono aprovou. Imite o vocabulário dela; não copie o texto.',
+    '',
+    regras(),
+    '',
+    '## BIBLIOTECA-OURO (papel: ' + papel + ')',
+    '',
+    biblioteca(papel).join('\n\n'),
+  ].join('\n');
+}
+
+const PAPEL_TXT = {
+  destaque: 'o DESTAQUE da tela (a zona grande): a oferta ou a mensagem principal',
+  lateral: 'a LATERAL estreita (515×832 numa TV deitada): como, onde e quando — sem repetir o destaque',
+  cabecalho: 'o CABEÇALHO (faixa de ~130px de altura): marca, hora (data-vivo) e a chamada da campanha',
+  rodape: 'o RODAPÉ (faixa de ~120px): as mensagens rolando em data-vivo="mensagens" e um selo',
+};
+
+function pedidoTexto(o) {
+  const linhas = [
+    'Empresa: ' + (o.empresa || 'a empresa') + (o.segmento ? ' (' + o.segmento + ')' : '') + '.',
+    'Pedido do cliente, como chegou: "' + String(o.pedido || '').slice(0, 600) + '".',
+    'Escreva ' + (PAPEL_TXT[o.papel] || PAPEL_TXT.destaque) + '.',
+    o.foto ? 'Há uma foto para a peça (campo "foto"): use <img data-campo-img="foto">, com véu.' : 'NÃO há foto: a peça é só tipografia e forma — não use data-campo-img.',
+  ];
+  if (o.evitar && o.evitar.length) linhas.push('As outras zonas da tela já dizem: ' + o.evitar.map((t) => '"' + t + '"').join(', ') + '. Não repita nenhum desses textos.');
+  linhas.push('Responda só com o arquivo da peça.');
+  return linhas.join('\n');
+}
+
+// O modelo às vezes embrulha a resposta em cerca de código: tira.
+function limparResposta(t) {
+  const s = String(t || '').trim();
+  const cerca = s.match(/```(?:html)?\s*([\s\S]*?)```/i);
+  return (cerca ? cerca[1] : s).trim();
+}
+
+/*
+ * Compõe uma peça. Até `tentativas` chamadas: a cada recusa da porta, o
+ * motor recebe a própria resposta de volta com a lista do que estava errado.
+ * Devolve o item e a medição — inclusive se passou de primeira, que é um dos
+ * números do experimento.
+ */
+async function comporPeca(o) {
+  const papel = PAPEL_TXT[o.papel] ? o.papel : 'destaque';
+  const max = Math.max(1, o.tentativas || 3);
+  const pedido = Object.assign({}, o, { papel });
+  const usos = [];
+  let usuario = pedidoTexto(pedido);
+  let ultimo = null;
+  const t0 = Date.now();
+  for (let i = 1; i <= max; i++) {
+    const r = await motores.chamar({ motor: o.motor, fixo: fixo(papel), sistema: 'Escreva a peça pedida seguindo as regras e a régua.', usuario, maxTokens: 8192, temperatura: 0.6 });
+    usos.push(r.uso);
+    const arquivo = limparResposta(r.texto);
+    const h = P.higienizar(P.doArquivo(arquivo));
+    ultimo = { arquivo, h };
+    if (!h.problemas.length) {
+      return {
+        ok: true,
+        item: {
+          type: 'peca-html', versao: 1, papel, html: h.html, css: h.css,
+          campos: o.foto ? { foto: o.foto } : {},
+          marca: o.marca || null, modo: o.modo || 'escuro', duracao: 12,
+          origem: { motor: o.motor || motores.motorPadrao(), pedido: String(o.pedido || '').slice(0, 200) },
+        },
+        tentativas: i, passouDePrimeira: i === 1, problemas: [], avisos: h.avisos,
+        uso: somar(usos), ms: Date.now() - t0,
+      };
+    }
+    usuario = pedidoTexto(pedido) + '\n\nSua resposta anterior foi RECUSADA pela porta:\n- ' + h.problemas.join('\n- ')
+      + '\n\nA resposta anterior era:\n' + arquivo.slice(0, 12000) + '\n\nCorrija e responda com o arquivo inteiro.';
+  }
+  return { ok: false, item: null, tentativas: max, passouDePrimeira: false, problemas: ultimo.h.problemas, uso: somar(usos), ms: Date.now() - t0 };
+}
+
+function somar(usos) {
+  const s = { chamadas: usos.length, entrada: 0, saida: 0, cacheLida: 0, cacheEscrita: 0, custoCentavos: 0, modelo: '' };
+  for (const u of usos) {
+    s.entrada += u.entrada; s.saida += u.saida; s.cacheLida += u.cacheLida; s.cacheEscrita += u.cacheEscrita; s.custoCentavos += u.custoCentavos;
+    s.modelo = u.modelo;
+  }
+  return s;
+}
+
+/*
+ * Tela completa (§4.7): uma peça por zona, em ordem, e cada uma sabe o que
+ * as anteriores já disseram — a lateral nunca repete o destaque.
+ */
+async function comporTela(o) {
+  const zonas = ['cabecalho', 'destaque', 'lateral', 'rodape'];
+  const pecas = {};
+  const ditos = [];
+  for (const papel of zonas) {
+    const r = await comporPeca(Object.assign({}, o, { papel, foto: papel === 'destaque' ? o.foto : null, evitar: ditos.slice(0, 20) }));
+    pecas[papel] = r;
+    if (r.ok) P.higienizar({ html: r.item.html, css: r.item.css }).campos.forEach((c) => { if (c.tipo === 'texto' && c.exemplo) ditos.push(c.exemplo); });
+  }
+  return pecas;
+}
+
+module.exports = { comporPeca, comporTela, regras, fixo, pedidoTexto, limparResposta };

@@ -1,0 +1,37 @@
+{
+  "sobre": "Banco de avaliação visual (PLANO §4.4). Os 20 pedidos do experimento, como chegam do cliente. Os 10 primeiros são os casos de tools/eval.mjs. Todas as empresas são fictícias. Roda a cada mudança de prompt ou de modelo, e a nota não pode cair.",
+  "empresas": {
+    "Padaria do Bairro": { "segmento": "padaria", "marca": { "cores": ["#b4532a", "#f2c14e"], "fonteTitulo": "condensada", "fonteApoio": "sans" } },
+    "Ótica Central": { "segmento": "ótica", "marca": { "cores": ["#1b2a4a", "#c8a96e"], "fonteTitulo": "condensada", "fonteApoio": "sans" } },
+    "Metalúrgica Sul": { "segmento": "indústria", "marca": { "cores": ["#2b3a42", "#f4a300"], "fonteTitulo": "grotesca", "fonteApoio": "sans" } },
+    "Supermercado Ponto": { "segmento": "varejo", "marca": { "cores": ["#c1121f", "#ffd166"], "fonteTitulo": "display", "fonteApoio": "sans" } },
+    "Studio Bella": { "segmento": "salão de beleza", "marca": { "cores": ["#c2577a"], "fonteTitulo": "serifada", "fonteApoio": "sans" } },
+    "Clínica Vida": { "segmento": "clínica", "marca": { "cores": ["#0f766e"], "fonteTitulo": "moderna", "fonteApoio": "sans" } },
+    "Sorriso Odonto": { "segmento": "odontologia", "marca": { "cores": ["#0077b6"], "fonteTitulo": "moderna", "fonteApoio": "sans" } },
+    "Lanchonete da Praça": { "segmento": "lanchonete", "marca": { "cores": ["#d62828", "#fcbf49"], "fonteTitulo": "display", "fonteApoio": "sans" } },
+    "Pet Feliz": { "segmento": "pet shop", "marca": { "cores": ["#7b2cbf", "#ffbe0b"], "fonteTitulo": "amigavel", "fonteApoio": "sans" } },
+    "Escritório Lima": { "segmento": "escritório", "marca": { "cores": ["#264653", "#e9c46a"], "fonteTitulo": "tech", "fonteApoio": "sans" } }
+  },
+  "pedidos": [
+    { "n": 1, "id": "padaria-promo", "empresa": "Padaria do Bairro", "pedido": "promoção de café da manhã, pão na chapa e café por 9 reais", "familia": "oferta", "foto": "gerar" },
+    { "n": 2, "id": "padaria-feriado", "empresa": "Padaria do Bairro", "pedido": "fechado no feriado de quinta", "familia": "serviço", "foto": "nenhuma" },
+    { "n": 3, "id": "otica-desconto", "empresa": "Ótica Central", "pedido": "óculos de sol com 30% de desconto até sábado", "familia": "oferta", "foto": "gerar", "tela": true },
+    { "n": 4, "id": "otica-consulta", "empresa": "Ótica Central", "pedido": "consulta de vista grátis para quem comprar armação", "familia": "serviço", "foto": "acervo" },
+    { "n": 5, "id": "rh-aniversario", "empresa": "Metalúrgica Sul", "pedido": "feliz aniversário, João", "familia": "gente", "foto": "nenhuma" },
+    { "n": 6, "id": "rh-vaga", "empresa": "Padaria do Bairro", "pedido": "estamos contratando atendente de balcão", "familia": "gente", "foto": "gerar" },
+    { "n": 7, "id": "aviso-piso", "empresa": "Supermercado Ponto", "pedido": "cuidado, piso molhado", "familia": "serviço (alerta)", "foto": "nenhuma" },
+    { "n": 8, "id": "aviso-epi", "empresa": "Metalúrgica Sul", "pedido": "uso de EPI obrigatório nesta área", "familia": "serviço (alerta)", "foto": "nenhuma" },
+    { "n": 9, "id": "sem-pedido", "empresa": "Padaria do Bairro", "pedido": "novidade no cardápio", "familia": "cardápio", "foto": null },
+    { "n": 10, "id": "texto-longo", "empresa": "Ótica Central", "pedido": "venha conhecer nossa linha completa de armações importadas com garantia estendida de dois anos", "familia": "institucional", "foto": "gerar" },
+    { "n": 11, "id": "salao-escova", "empresa": "Studio Bella", "pedido": "escova + hidratação por 79 reais de terça a quinta", "familia": "oferta", "foto": "gerar", "tela": true },
+    { "n": 12, "id": "salao-instagram", "empresa": "Studio Bella", "pedido": "siga a gente no Instagram @studiobella", "familia": "social", "foto": "acervo" },
+    { "n": 13, "id": "clinica-vacina", "empresa": "Clínica Vida", "pedido": "vacina da gripe disponível, sem agendamento", "familia": "serviço", "foto": "nenhuma" },
+    { "n": 14, "id": "odonto-clareamento", "empresa": "Sorriso Odonto", "pedido": "clareamento em até 10x sem juros", "familia": "oferta", "foto": "gerar" },
+    { "n": 15, "id": "lanchonete-almoco", "empresa": "Lanchonete da Praça", "pedido": "cardápio do almoço: PF 22, executivo 28, marmitex 18, suco 7", "familia": "cardápio", "foto": "nenhuma", "tela": true },
+    { "n": 16, "id": "pet-banho", "empresa": "Pet Feliz", "pedido": "banho e tosa: leve 4 pague 3", "familia": "oferta", "foto": "gerar" },
+    { "n": 17, "id": "otica-black", "empresa": "Ótica Central", "pedido": "Black Friday: até 40% em armações", "familia": "oferta", "foto": "acervo" },
+    { "n": 18, "id": "otica-25anos", "empresa": "Ótica Central", "pedido": "há 25 anos cuidando da sua visão", "familia": "institucional", "foto": "acervo" },
+    { "n": 19, "id": "escritorio-reuniao", "empresa": "Escritório Lima", "pedido": "reunião geral sexta às 17h no refeitório", "familia": "gente", "foto": "nenhuma", "tela": true },
+    { "n": 20, "id": "clinica-horario", "empresa": "Clínica Vida", "pedido": "a partir de novembro o sábado será das 8h às 12h, e exame de sangue pede jejum de 8 horas", "familia": "serviço (texto longo)", "foto": "nenhuma" }
+  ]
+}

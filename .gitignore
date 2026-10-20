@@ -12,3 +12,7 @@ web/dist/
 
 # Saída de teste solta (já foi parar na raiz uma vez)
 test_out*.txt
+
+# Experimento do PLANO §4.4: resultados e fotos geradas ficam na máquina de quem roda
+experimento/
+pecas-ouro/fotos/experimento/

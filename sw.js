@@ -81,6 +81,7 @@ self.addEventListener('fetch', (event) => {
    * As FOTOS das peças vão para a TV, e essas continuam no cache.
    */
   if (url.pathname === '/bancada.html' || url.pathname === '/js/bancada.js'
+    || url.pathname === '/experimento.html' || url.pathname === '/js/experimento.js'
     || /^\/pecas-ouro\/[^/]+\.(html|json)$/.test(url.pathname)) return;
   if (url.pathname.startsWith('/media/') || url.pathname.startsWith('/pecas-ouro/fotos/')) {
     event.respondWith(cacheFirst(req, MEDIA_CACHE));
