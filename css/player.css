@@ -1271,3 +1271,9 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   .mt-precos-lista { column-count: var(--cols-pe, 1); font-size: var(--corpo-pe); }
   .mt-precos-rodape { font-size: calc(var(--corpo-pe) * .75); }
 }
+
+/* ---------- Cabeçalho e rodapé com peça em HTML (js/player.js, startPecaFixa) ----------
+ * A peça ocupa a zona inteira: ela traz o próprio fundo, margem e tipografia.
+ * O vidro da zona continua por trás só para a borda arredondada. */
+.mt-zona-peca { padding: 0; }
+.mt-peca-fixa { position: absolute; inset: 0; }

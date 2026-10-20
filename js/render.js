@@ -1697,17 +1697,26 @@
     return d.temp + '°';
   }
 
-  function renderPecaHtml(item) {
-    const el = div('mt-slide mt-peca-html');
-    if (!global.MTPecaRender) return { el, duration: item.duracao || 12 };
+  /*
+   * O que a TV diz ao desenhista, num lugar só: a playlist e as zonas fixas
+   * (cabeçalho e rodapé com peça, js/player.js) pedem daqui, para as duas
+   * nunca desenharem a mesma peça com contexto diferente.
+   */
+  function opcoesDaPeca(extra) {
     const t = global.MT_THEME || {};
-    const ctl = global.MTPecaRender.montar(el, item, {
+    return Object.assign({
       marca: t.brand ? { cores: [t.brand, t.brand2].filter(Boolean) } : null,
       leve: document.documentElement.classList.contains('mt-perf'),
       marcaNaTela: !!global.MT_MARCA_NA_TELA,
       hostsMidia: global.MT_HOSTS_MIDIA || [],
       clima: climaDaPeca,
-    });
+    }, extra || {});
+  }
+
+  function renderPecaHtml(item) {
+    const el = div('mt-slide mt-peca-html');
+    if (!global.MTPecaRender) return { el, duration: item.duracao || 12 };
+    const ctl = global.MTPecaRender.montar(el, item, opcoesDaPeca());
     return { el, duration: ctl.duracao, onLeave: ctl.parar };
   }
   RENDERERS['peca-html'] = renderPecaHtml;
@@ -1757,5 +1766,5 @@
     { type: 'mural', label: 'Mural de fotos (QR do público)', icon: 'qr' },
   ];
 
-  global.MTRender = { renderItem, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId };
+  global.MTRender = { renderItem, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca };
 })(window);

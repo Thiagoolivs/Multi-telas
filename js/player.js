@@ -609,9 +609,38 @@
 
   function iniciarZona(zoneEl, zone, cfg) {
     const data = cfg.zonas[zone.id] || {};
+    if (temPecaFixa(zone, data)) return startPecaFixa(zoneEl, zone, data);
     if (zone.type === 'ticker') return startTicker(zoneEl, data, cfg);
     if (zone.type === 'header') return startHeader(zoneEl, cfg);
     return startPlaylist(zoneEl, data.items || [], cfg, zone.id);
+  }
+
+  /* ---------------- Cabeçalho e rodapé com peça em HTML ----------------
+   * PLANO §4.7: a tela completa desenha TODAS as zonas — o cabeçalho e o
+   * rodapé também podem ser peças-ouro, e não só o desenho fixo do player.
+   * Quem desenha é o mesmo js/peca-render.js da playlist e da bancada.
+   *
+   * O rodapé com peça mostra as mensagens escritas na zona. Rodapé só de
+   * notícias (sem mensagem nenhuma) fica no letreiro de sempre: uma pele de
+   * rodapé passando vazia na parede seria pior que o desenho padrão.
+   */
+  function temPecaFixa(zone, data) {
+    if (zone.type !== 'header' && zone.type !== 'ticker') return false;
+    if (!data.peca || data.peca.type !== 'peca-html' || !global.MTPecaRender || !global.MTRender) return false;
+    return zone.type === 'header' || (Array.isArray(data.messages) && data.messages.some((m) => String(m || '').trim()));
+  }
+
+  function startPecaFixa(zoneEl, zone, data) {
+    zoneEl.classList.add('mt-zona-peca');
+    const host = document.createElement('div');
+    host.className = 'mt-peca-fixa';
+    zoneEl.appendChild(host);
+    // A peça do cabeçalho/rodapé É a marca: não esconde o nome dela.
+    const ctl = MTPecaRender.montar(host, data.peca, MTRender.opcoesDaPeca({
+      marcaNaTela: false,
+      mensagens: zone.type === 'ticker' ? data.messages : [],
+    }));
+    return { stop: ctl.parar };
   }
 
   /* ---------------- Resiliência offline ---------------- */
