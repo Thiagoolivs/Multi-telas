@@ -2077,13 +2077,35 @@ function ehPublico(urlPath) {
   return PASTAS_PUBLICAS.some((p) => urlPath.startsWith(p));
 }
 
+/*
+ * O caminho já NORMALIZADO, ou null se ele precisaria ser normalizado.
+ *
+ * A lista de permissão conferia só o COMEÇO do caminho: `/js/../data/
+ * multitelas.db` começa com `/js/`, e depois do `path.normalize` virava
+ * `data/multitelas.db` — dentro da raiz, então o cinto abaixo deixava
+ * passar. O banco inteiro saía por aí, com os tokens de sessão. O navegador
+ * resolve o `..` antes de pedir, por isso ninguém viu; `curl --path-as-is`
+ * não resolve.
+ *
+ * A regra agora é simples: caminho público não tem `.`, `..`, barra dupla,
+ * barra invertida nem byte nulo. Quem precisa normalizar não está pedindo
+ * um arquivo nosso.
+ */
+function caminhoLimpo(urlPath) {
+  if (/[\\\0]/.test(urlPath)) return null;
+  const limpo = path.posix.normalize(urlPath);
+  if (limpo !== urlPath) return null;
+  if (urlPath.split('/').some((seg) => seg === '.' || seg === '..')) return null;
+  return limpo;
+}
+
 function servirPublico(res, urlPath) {
-  if (!ehPublico(urlPath)) {
+  if (!caminhoLimpo(urlPath) || !ehPublico(urlPath)) {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('Não encontrado: ' + urlPath);
   }
   const filePath = path.normalize(path.join(ROOT, urlPath));
-  // Cinto além da lista: `..` dentro de um prefixo permitido não sai da raiz.
+  // Cinto além da lista: mesmo limpo, o caminho final não sai da raiz.
   // `path.sep` no fim importa — sem ele, um diretório irmão de mesmo prefixo
   // (`/home/u/Multi-telasX`) satisfaz o `startsWith` e escapa.
   if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) {
