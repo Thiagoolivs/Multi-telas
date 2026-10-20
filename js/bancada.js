@@ -104,7 +104,7 @@
       const nome = el.getAttribute('data-campo') || el.getAttribute('data-vivo');
       if (r.left < p.left - 1 || r.right > p.right + 1 || r.top < p.top - 1 || r.bottom > p.bottom + 1) fora.push(nome);
       // Desenho de fundo (aria-hidden) pode ficar atrás do texto de propósito.
-      if (!el.closest('[aria-hidden="true"]')) caixas.push({ el, r: caixaDoTexto(el, r, p.width / peca.offsetWidth), nome });
+      if (!el.closest('[aria-hidden="true"]')) caixas.push({ el, linhas: linhasDoTexto(el, r, p.width / peca.offsetWidth), nome });
     });
     return { fora, juntos: sobrepostos(caixas) };
   }
@@ -115,29 +115,33 @@
    * via. Conta como defeito quando um campo cobre mais de um quinto do
    * outro.
    *
-   * A medida é a do TEXTO, linha a linha, e não a do elemento: um título em
+   * A medida é a do TEXTO, linha por linha, e não a do elemento: um título em
    * bloco ocupa a largura toda da coluna, e o carimbo ao lado dele seria
    * acusado sem encostar em letra nenhuma. E cada linha vale a altura da
    * LINHA, não a da fonte: com letra enorme e entrelinha justa ("R$ 14" a
    * .78) a caixa da fonte passa por cima do "Tudo por" sem a tinta encostar.
    * Imagem e campo vazio ficam com a caixa do elemento.
    */
-  function caixaDoTexto(el, r, escala) {
-    if (!el.textContent.trim()) return r;
+  function linhasDoTexto(el, r, escala) {
+    if (!el.textContent.trim()) return [r];
     const lh = parseFloat(getComputedStyle(el).lineHeight) * escala;
     const faixa = document.createRange();
     faixa.selectNodeContents(el);
-    const linhas = [...faixa.getClientRects()].filter((x) => x.width && x.height);
-    if (!linhas.length) return r;
-    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-    for (const x of linhas) {
+    const linhas = [...faixa.getClientRects()].filter((x) => x.width && x.height).map((x) => {
       const meio = (x.top + x.bottom) / 2;
       const meia = lh && x.height > lh ? lh / 2 : x.height / 2;
-      left = Math.min(left, x.left); right = Math.max(right, x.right);
-      top = Math.min(top, meio - meia); bottom = Math.max(bottom, meio + meia);
-    }
-    return { left, top, right, bottom, width: right - left, height: bottom - top };
+      return { left: x.left, right: x.right, top: meio - meia, bottom: meio + meia };
+    });
+    return linhas.length ? linhas : [r];
   }
+
+  // Duas linhas de texto se cobrem quando a área em comum passa de um quinto da menor.
+  const cobre = (a, b) => {
+    const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+    const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+    const area = (x) => (x.right - x.left) * (x.bottom - x.top);
+    return w > 0 && h > 0 && w * h > Math.min(area(a), area(b)) / 5;
+  };
 
   function sobrepostos(caixas) {
     const pares = [];
@@ -145,10 +149,7 @@
       for (let j = i + 1; j < caixas.length; j++) {
         const a = caixas[i], b = caixas[j];
         if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
-        const w = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
-        const h = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
-        const menor = Math.min(a.r.width * a.r.height, b.r.width * b.r.height);
-        if (w > 0 && h > 0 && w * h > menor / 5) pares.push(a.nome + ' × ' + b.nome);
+        if (a.linhas.some((x) => b.linhas.some((y) => cobre(x, y)))) pares.push(a.nome + ' × ' + b.nome);
       }
     }
     return pares;

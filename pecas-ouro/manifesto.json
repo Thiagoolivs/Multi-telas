@@ -415,6 +415,62 @@
       ],
       "estado": "rascunho",
       "marca": "lanchonete"
+    },
+    {
+      "id": "gente-aniversariante",
+      "nome": "Aniversariante do dia",
+      "familia": "gente",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "estado": "rascunho",
+      "marca": "rotasul"
+    },
+    {
+      "id": "gente-mes",
+      "nome": "Aniversariantes do mês",
+      "familia": "gente",
+      "papeis": [
+        "lateral",
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "rotasul"
+    },
+    {
+      "id": "gente-boas-vindas",
+      "nome": "Boas-vindas",
+      "familia": "gente",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "rotasul"
+    },
+    {
+      "id": "gente-vaga",
+      "nome": "Vaga",
+      "familia": "gente",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "estado": "rascunho",
+      "marca": "rotasul",
+      "campos": {
+        "link": "https://rotasul.com.br/indique"
+      }
+    },
+    {
+      "id": "gente-comunicado",
+      "nome": "Comunicado interno",
+      "familia": "gente",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "rotasul"
     }
   ],
   "telas": [
@@ -755,6 +811,74 @@
         "Aberto todos os dias, das 11h às 23h"
       ],
       "sobre": "TV em pé, como o cardápio de parede: o cabeçalho grita a campanha; o destaque é o cardápio, a novidade e o combo; a parte de baixo, as bebidas e onde seguir; o rodapé, como pagar e o resto."
+    },
+    {
+      "id": "rotasul-mural-da-equipe",
+      "nome": "Distribuidora Rota Sul · Mural da equipe",
+      "marca": "rotasul",
+      "layout": "corporate",
+      "estado": "rascunho",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-classico",
+              "campos": {
+                "marca": "Rota Sul",
+                "chamada": "Mural da equipe"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "gente-aniversariante"
+            },
+            {
+              "id": "gente-boas-vindas"
+            },
+            {
+              "id": "gente-comunicado"
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "gente-mes",
+              "campos": {
+                "nome4": "Paula Mendes",
+                "setor4": "Comercial"
+              }
+            },
+            {
+              "id": "gente-vaga"
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Refeitório: cardápio novo a partir de segunda",
+        "Use o crachá em todas as áreas",
+        "Ginástica laboral às 15h",
+        "Ramal do RH: 2040"
+      ],
+      "sobre": "Comunicação interna: o cabeçalho diz que é o mural; o destaque fala de gente (aniversário, quem chegou) e do recado da empresa; a lateral, a lista do mês e a vaga com QR para indicar; o rodapé, os avisos do dia a dia."
     }
   ]
 }

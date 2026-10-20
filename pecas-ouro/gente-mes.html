@@ -1,0 +1,68 @@
+<!--
+  Aniversariantes do mês — família gente. Destaque e lateral.
+  A lista do mês, com o dia grande à esquerda — a pessoa procura o próprio
+  nome pelo dia. Deitada, duas colunas; em pé e na lateral, uma só. Linha
+  deixada em branco some.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(90% 90% at 100% 0%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+.cabeca { position: absolute; left: 6cqw; right: 6cqw; top: 13cqh; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 700 1.3cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .16cqw; background: var(--mt-destaque); }
+h1 { margin-top: 2cqw; font: 600 6cqw/1 var(--mt-fonte-titulo); letter-spacing: -.02em; }
+h1 span, h1 em { display: block; white-space: nowrap; }
+h1 em { font-style: normal; color: var(--mt-destaque); }
+.lista { position: absolute; left: 6cqw; right: 6cqw; bottom: 12cqh; list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; grid-template-rows: repeat(3, auto); column-gap: 5cqw; }
+.lista li { display: grid; grid-template-columns: 6cqw 1fr; align-items: baseline; column-gap: 1.6cqw; padding: 1.5cqw 0; border-top: .14cqw solid var(--mt-linha); }
+.lista li:has(> b > span:empty) { display: none; }
+.dia { font: 600 3.4cqw/1 var(--mt-fonte-titulo); color: var(--mt-destaque); letter-spacing: -.02em; }
+.lista b { font: 600 2cqw/1.2 var(--mt-fonte-texto); }
+.lista small { display: block; margin-top: .5cqw; font: 500 1.3cqw/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+@container (aspect-ratio < 1.25) {
+  .cabeca { left: 8cqw; right: 8cqw; top: 9cqh; }
+  .kicker { font-size: 2.4cqw; }
+  .kicker i { width: 6cqw; height: .28cqw; }
+  h1 { font-size: 10cqw; margin-top: 3cqw; }
+  .lista { left: 8cqw; right: 8cqw; bottom: 8cqh; grid-template-columns: 1fr; grid-auto-flow: row; grid-template-rows: none; }
+  .lista li { grid-template-columns: 12cqw 1fr; column-gap: 3cqw; padding: 2.8cqw 0; border-top-width: .25cqw; }
+  .dia { font-size: 7cqw; }
+  .lista b { font-size: 4cqw; }
+  .lista small { font-size: 2.6cqw; margin-top: .8cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .cabeca { top: 8cqh; }
+  h1 { font-size: 7.6cqw; margin-top: 2.4cqw; }
+  .lista { bottom: 6cqh; grid-template-columns: 1fr 1fr; column-gap: 5cqw; grid-auto-flow: column; grid-template-rows: repeat(3, auto); }
+  .lista li { grid-template-columns: 8cqw 1fr; column-gap: 2cqw; padding: 2.2cqw 0; }
+  .dia { font-size: 5cqw; }
+  .lista b { font-size: 2.8cqw; }
+  .lista small { font-size: 1.9cqw; }
+}
+/* A coluna estreita: o dia e o nome; o setor fica, menor. O kicker sai — o título já diz. */
+@container (max-width: 700px) {
+  .cabeca { top: 7cqh; }
+  .kicker { display: none; }
+  h1 { font-size: 8.6cqw; margin-top: 0; }
+  .lista { bottom: 6cqh; }
+  .lista li { grid-template-columns: 14cqw 1fr; padding: 2.6cqw 0; }
+  .dia { font-size: 8cqw; }
+  .lista b { font-size: 5cqw; }
+  .lista small { font-size: 3.2cqw; margin-top: .6cqw; }
+}
+</style>
+<section class="mt-peca gente-mes">
+  <div class="cabeca">
+    <p class="kicker" data-entrada="esquerda"><i aria-hidden="true"></i><span data-campo="kicker">Parabéns a quem faz aniversário</span></p>
+    <h1 data-entrada="subir" data-ordem="1"><span data-campo="titulo">Aniversariantes de</span> <em data-campo="mes">outubro</em></h1>
+  </div>
+  <ul class="lista">
+    <li data-entrada="subir" data-ordem="2"><span class="dia" data-campo="dia1">03</span><b><span data-campo="nome1">Carlos Lima</span><small data-campo="setor1">Expedição</small></b></li>
+    <li data-entrada="subir" data-ordem="3"><span class="dia" data-campo="dia2">09</span><b><span data-campo="nome2">Ana Ribeiro</span><small data-campo="setor2">Financeiro</small></b></li>
+    <li data-entrada="subir" data-ordem="4"><span class="dia" data-campo="dia3">14</span><b><span data-campo="nome3">João Pedro Alves</span><small data-campo="setor3">Frota</small></b></li>
+    <li data-entrada="subir" data-ordem="3"><span class="dia" data-campo="dia4">20</span><b><span data-campo="nome4">Marina Souza</span><small data-campo="setor4">Logística</small></b></li>
+    <li data-entrada="subir" data-ordem="4"><span class="dia" data-campo="dia5">26</span><b><span data-campo="nome5">Rafael Torres</span><small data-campo="setor5">Compras</small></b></li>
+    <li data-entrada="subir" data-ordem="5"><span class="dia" data-campo="dia6">31</span><b><span data-campo="nome6">Beatriz Nunes</span><small data-campo="setor6">Atendimento</small></b></li>
+  </ul>
+</section>
