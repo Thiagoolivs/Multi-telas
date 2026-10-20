@@ -151,10 +151,12 @@ em OKLCH, com contraste garantido por cálculo (`js/cor.js` continua sendo a
 | Token | Função |
 |---|---|
 | `--mt-fundo`, `--mt-fundo-2` | Fundo da peça e variação |
+| `--mt-fundo-0` | O fundo com transparência zero — o fim do véu sobre a foto |
 | `--mt-superficie` | Cartão, faixa, caixa sobre o fundo |
 | `--mt-texto`, `--mt-texto-suave` | Texto principal e secundário |
 | `--mt-destaque`, `--mt-sobre-destaque` | Cor de ação e o texto que vai em cima dela |
 | `--mt-preco` | Preço e desconto (pode ser igual ao destaque) |
+| `--mt-linha` | Filete e divisor — decoração, nunca texto |
 | `--mt-fonte-titulo`, `--mt-fonte-texto`, `--mt-raio` | Tipografia e cantos |
 
 Três **modos** derivados de cada marca: **claro**, **escuro** e **marca**

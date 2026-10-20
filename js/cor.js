@@ -155,9 +155,85 @@
     return contraste(fundo, '#ffffff') >= contraste(fundo, '#0b1120') ? '#ffffff' : '#0b1120';
   }
 
+  /*
+   * OKLCH — luminosidade, croma e matiz num espaço onde "um pouco mais claro"
+   * quer dizer a mesma coisa para qualquer cor.
+   *
+   * `mix` com preto ou branco funciona para um ajuste, mas não para um
+   * sistema: escurecer amarelo misturando preto dá oliva, clarear azul dá
+   * lavanda, e dois passos "iguais" de mistura parecem diferentes conforme a
+   * matiz. Os tokens v2 (js/tokens.js) derivam o tema inteiro da cor da marca
+   * mexendo SÓ na luminosidade e mantendo a matiz — é o que faz o fundo
+   * escuro de uma marca laranja continuar parecendo laranja, e não marrom.
+   *
+   * Fórmulas de Björn Ottosson (2020), as mesmas do `oklch()` do CSS.
+   */
+  function linear(v) {
+    const s = v / 255;
+    return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  }
+  function gama(v) {
+    return v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055;
+  }
+
+  // Hex → { l: 0..1, c: 0..~0.37, h: 0..360 }. Cor inválida devolve null.
+  function paraOklch(hex) {
+    const rgb = hex2rgb(hex);
+    if (!rgb) return null;
+    const [r, g, b] = rgb.map(linear);
+    const l_ = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m_ = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s_ = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    const L = 0.2104542553 * l_ + 0.7936177850 * m_ - 0.0040720468 * s_;
+    const a = 1.9779984951 * l_ - 2.4285922050 * m_ + 0.4505937099 * s_;
+    const bb = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.8086757660 * s_;
+    const c = Math.sqrt(a * a + bb * bb);
+    const h = c < 1e-6 ? 0 : (Math.atan2(bb, a) * 180 / Math.PI + 360) % 360;
+    return { l: L, c, h };
+  }
+
+  // OKLCH → sRGB linear, sem cortar. Fora da tela, algum canal sai de 0..1.
+  function oklchLinear(l, c, h) {
+    const rad = h * Math.PI / 180;
+    const a = c * Math.cos(rad), b = c * Math.sin(rad);
+    const l_ = Math.pow(l + 0.3963377774 * a + 0.2158037573 * b, 3);
+    const m_ = Math.pow(l - 0.1055613458 * a - 0.0638541728 * b, 3);
+    const s_ = Math.pow(l - 0.0894841775 * a - 1.2914855480 * b, 3);
+    return [
+      4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_,
+      -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_,
+      -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_,
+    ];
+  }
+
+  /*
+   * OKLCH → hex, trazendo para dentro da tela o que não cabe.
+   *
+   * Uma marca saturada clareada até perto do branco pede um croma que o sRGB
+   * não tem. Cortar cada canal em 0..1 mudaria a MATIZ (o azul vira ciano);
+   * reduzir o croma até caber mantém a matiz e a luminosidade, e só perde
+   * saturação — que é a perda que o olho menos estranha.
+   */
+  function deOklch(l, c, h) {
+    const L = Math.max(0, Math.min(1, Number(l) || 0));
+    const dentro = (rgb) => rgb.every((v) => v >= -1e-4 && v <= 1 + 1e-4);
+    let C = Math.max(0, Number(c) || 0);
+    if (!dentro(oklchLinear(L, C, h))) {
+      let lo = 0, hi = C;
+      for (let i = 0; i < 24; i++) {
+        const meio = (lo + hi) / 2;
+        if (dentro(oklchLinear(L, meio, h))) lo = meio; else hi = meio;
+      }
+      C = lo;
+    }
+    const rgb = oklchLinear(L, C, h).map((v) => gama(Math.max(0, Math.min(1, v))) * 255);
+    return rgb2hex(rgb[0], rgb[1], rgb[2]);
+  }
+
   return {
     hex2rgb, rgb2hex, okHex, luminancia, contraste, mix,
     escurecer, clarear, girarMatiz, rgba, rgbTriple,
     acentoSobre, textoSobre,
+    paraOklch, deOklch,
   };
 });
