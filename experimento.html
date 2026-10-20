@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Notas às cegas · experimento</title>
+  <link rel="stylesheet" href="/fonts/fontes.css" />
+  <!-- O motor atual (composição por coordenadas) é desenhado pelo render.js do player, com o CSS dele. -->
+  <link rel="stylesheet" href="/css/player.css" />
+  <style>
+    :root { --fundo: #17191e; --painel: #22252c; --linha: #363a44; --texto: #eef0f4; --suave: #9aa1ad; --nota: #f2c14e; --bom: #7ed4a1; --ruim: #ff9b9b; }
+    * { box-sizing: border-box; }
+    html, body { height: auto; overflow: auto; cursor: auto; }
+    body { margin: 0; background: var(--fundo); color: var(--texto); font: 14px/1.45 Inter, system-ui, sans-serif; }
+    header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 18px; background: var(--painel); border-bottom: 1px solid var(--linha); }
+    header h1 { margin: 0 6px 0 0; font-size: 15px; font-weight: 700; }
+    .progresso { color: var(--suave); font-size: 13px; }
+    .progresso b { color: var(--texto); }
+    button, .arquivo { background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px; padding: 7px 12px; font: inherit; cursor: pointer; }
+    button:disabled { opacity: .4; cursor: default; }
+    .arquivo input { display: none; }
+    .espaco { flex: 1; }
+    main { padding: 18px; max-width: 1500px; margin: 0 auto; }
+    .vazio { margin: 12vh auto; max-width: 560px; text-align: center; color: var(--suave); }
+    .vazio h2 { color: var(--texto); font-size: 20px; margin-bottom: 8px; }
+    .vazio code { color: var(--texto); }
+    .pedido { margin: 0 0 14px; font-size: 13px; color: var(--suave); }
+    .pedido b { display: block; margin-top: 4px; color: var(--texto); font-size: 18px; font-weight: 600; }
+    .telas { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+    figure { margin: 0; }
+    figcaption { margin-top: 6px; color: var(--suave); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+    .moldura { position: relative; overflow: hidden; background: #000; border-radius: 6px; }
+    .real { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+    .real, .zona > .host { container-type: size; }
+    .real > .mt-slide { position: absolute; inset: 0; }
+    .falta { display: grid; place-items: center; color: var(--suave); font-size: 40px; background: #0d0f13; }
+    .tv { display: grid; background: #0a1020; }
+    .zona { position: relative; overflow: hidden; border-radius: 20px; background: rgba(22,32,60,.55); }
+    .zona > .host, .zona > .mt-slide { position: absolute; inset: 0; }
+    .faixa { display: flex; align-items: center; gap: 40px; padding: 0 40px; font: 600 40px/1 Inter, sans-serif; color: #fff; white-space: nowrap; }
+    .notas { display: flex; gap: 10px; align-items: center; margin: 18px 0 8px; flex-wrap: wrap; }
+    .notas button { width: 64px; height: 56px; font-size: 22px; font-weight: 700; border-radius: 10px; }
+    .notas button.escolhida { background: var(--nota); color: #1b1b1b; border-color: var(--nota); }
+    .notas small { color: var(--suave); margin-left: 8px; }
+    .comentario { width: 100%; max-width: 760px; min-height: 44px; background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px; padding: 8px 10px; font: inherit; }
+    .nav { display: flex; gap: 10px; margin-top: 12px; }
+    table { border-collapse: collapse; margin: 12px 0 28px; font-size: 13px; }
+    th, td { padding: 8px 12px; border-bottom: 1px solid var(--linha); text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--suave); font-weight: 600; }
+    .ok { color: var(--bom); }
+    .nao { color: var(--ruim); }
+    h2.secao { font-size: 16px; margin: 26px 0 4px; }
+    .aviso { color: var(--suave); font-size: 12px; max-width: 900px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Notas às cegas</h1>
+    <label class="arquivo">Abrir resultados<input id="arquivo" type="file" accept="application/json,.json" /></label>
+    <span class="progresso" id="progresso"></span>
+    <span class="espaco"></span>
+    <button id="exportar" type="button" disabled>Baixar as notas</button>
+    <button id="revelar" type="button" disabled>Revelar a chave</button>
+  </header>
+  <main id="palco">
+    <div class="vazio">
+      <h2>Abra o arquivo do experimento</h2>
+      <p>Rode <code>node tools/experimento.mjs</code> e abra aqui o <code>experimento/resultados-….json</code>.
+        As peças aparecem embaralhadas, sem dizer qual motor fez cada uma. Dê nota de 1 a 5 (teclas 1–5);
+        a chave só abre no fim. As notas ficam guardadas neste navegador.</p>
+    </div>
+  </main>
+  <script src="/js/perf.js"></script>
+  <script src="/js/vendor/gsap.min.js"></script>
+  <script src="/js/cor.js"></script>
+  <script src="/js/fontes.js"></script>
+  <script src="/js/peca.js"></script>
+  <script src="/js/animacao.js"></script>
+  <script src="/js/tokens.js"></script>
+  <script src="/js/peca-html.js"></script>
+  <script src="/js/peca-render.js"></script>
+  <script src="/js/templates.js"></script>
+  <script src="/js/theme.js"></script>
+  <script src="/js/datas-br.js"></script>
+  <script src="/js/seasons.js"></script>
+  <script src="/js/adaptive.js"></script>
+  <script src="/js/storage.js"></script>
+  <script src="/js/news.js"></script>
+  <script src="/js/graficos.js"></script>
+  <script src="/js/precos.js"></script>
+  <script src="/js/render.js"></script>
+  <script src="/js/experimento.js"></script>
+</body>
+</html>

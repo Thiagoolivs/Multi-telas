@@ -347,7 +347,7 @@ test('a bancada e as peças-ouro vão sempre à rede; as fotos das peças, ao ca
    */
   const w = carregar('sw.js', servidorPadrao);
   await w.instalar();
-  for (const caminho of ['/bancada.html', '/js/bancada.js', '/pecas-ouro/oferta-foto.html', '/pecas-ouro/manifesto.json']) {
+  for (const caminho of ['/bancada.html', '/js/bancada.js', '/experimento.html', '/js/experimento.js', '/pecas-ouro/oferta-foto.html', '/pecas-ouro/manifesto.json']) {
     assert.equal(await w.pedir(caminho), null, caminho + ' passou pelo cache');
   }
   assert.notEqual(await w.pedir('/pecas-ouro/fotos/otica-sol.jpg'), null, 'a foto da peça não foi para o cache');

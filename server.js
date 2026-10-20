@@ -2070,11 +2070,13 @@ async function handleStatic(req, res, urlPath) {
 /*
  * /pecas-ouro/ e a bancada são públicos de propósito: as peças-ouro são os
  * modelos que todo cliente vê e preenche, e as fotos delas entram nas TVs.
- * Nada ali é dado de conta.
+ * Nada ali é dado de conta. A página do experimento (PLANO §4.4) também: ela
+ * não traz dado nenhum — o arquivo de resultados é aberto do computador de
+ * quem dá as notas.
  */
 const PASTAS_PUBLICAS = ['/css/', '/js/', '/icons/', '/img/', '/fonts/', '/pecas-ouro/'];
 const ARQUIVOS_PUBLICOS = new Set([
-  '/player.html', '/bancada.html',
+  '/player.html', '/bancada.html', '/experimento.html',
   '/sw.js', '/player.webmanifest', '/manifest.webmanifest',
   '/favicon.ico', '/robots.txt',
 ]);
