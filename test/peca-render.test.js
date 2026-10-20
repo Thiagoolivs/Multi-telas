@@ -132,6 +132,76 @@ test('o servidor confere a peça ANTES de gravar e declara de onde a TV aceita f
   assert.match(rota.slice(conferir, gravar), /cfg\.settings\.hostsMidia = hostsMidia/);
 });
 
+/* ---------------- Cabeçalho e rodapé com peça (PLANO §4.7) ---------------- */
+
+const CAB = P.doArquivo(ler('pecas-ouro', 'cabecalho-classico.html'));
+const ROD = P.doArquivo(ler('pecas-ouro', 'rodape-selo.html'));
+const pecaFixa = (a, extra) => Object.assign({ type: 'peca-html', html: a.html, css: a.css }, extra);
+
+test('a peça fixa do cabeçalho e do rodapé passa pela mesma porta da playlist', () => {
+  const cfg = {
+    zonas: {
+      cabecalho: { header: true, peca: pecaFixa(CAB, { css: CAB.css + '.y{color:#fff}', modo: 'escuro' }) },
+      rodape: { messages: ['oi'], peca: pecaFixa(ROD) },
+    },
+  };
+  const r = P.conferirConfig(cfg, { hostsMidia: [] });
+  // Problema com a zona e "(peça fixa)" — o painel diz ONDE está a peça ruim.
+  assert.ok(r.problemas.some((p) => /^cabecalho \(peça fixa\): .*cor só por token/.test(p)), r.problemas.join('\n'));
+  assert.ok(!r.problemas.some((p) => /^rodape/.test(p)), r.problemas.join('\n'));
+  // A porta limpa a peça e não mexe no resto da zona.
+  assert.ok(!cfg.zonas.cabecalho.peca.css.includes('#fff'), 'o CSS ruim ficou');
+  assert.equal(cfg.zonas.cabecalho.peca.modo, 'escuro');
+  assert.equal(cfg.zonas.cabecalho.header, true);
+  assert.deepEqual(cfg.zonas.rodape.messages, ['oi']);
+  // Peça de outro tipo na zona fixa não entra: só peca-html tem desenhista lá.
+  const outra = P.conferirConfig({ zonas: { rodape: { peca: { type: 'composicao', elementos: [] } } } });
+  assert.deepEqual(outra.problemas.filter((p) => /type precisa/.test(p)), ['rodape (peça fixa): type precisa ser "peca-html"']);
+  // Config sem peça fixa continua sem problema.
+  assert.deepEqual(P.conferirConfig({ zonas: { cabecalho: { header: true }, rodape: { messages: [] } } }).problemas, []);
+});
+
+test('a peça fixa sobrevive à normalização do painel até a TV', () => {
+  /*
+   * normalize() reconstrói a zona campo a campo. Sem esta linha, a peça
+   * gravada no cabeçalho some calada e a TV mostra o desenho padrão.
+   */
+  const S = require('../js/storage.js');
+  const peca = pecaFixa(CAB);
+  const out = S.normalize({
+    settings: { layoutId: 'header-main-ticker' },
+    zonas: { cabecalho: { header: true, peca }, rodape: { messages: ['oi'], peca: pecaFixa(ROD) } },
+  });
+  assert.deepEqual(out.zonas.cabecalho.peca, peca);
+  assert.equal(out.zonas.rodape.peca.html, ROD.html);
+  assert.deepEqual(out.zonas.rodape.messages, ['oi']);
+  // Quem não tem peça não ganha uma.
+  const sem = S.normalize({ settings: { layoutId: 'header-main-ticker' }, zonas: {} });
+  assert.ok(!('peca' in sem.zonas.cabecalho) && !('peca' in sem.zonas.rodape));
+});
+
+test('o player desenha a peça fixa com o mesmo contexto da playlist', () => {
+  const p = semComentarios(ler('js', 'player.js'));
+  const zona = p.slice(p.indexOf('function iniciarZona('), p.indexOf('function temPecaFixa('));
+  // A peça vem ANTES do desenho padrão do cabeçalho e do letreiro.
+  const fixa = zona.indexOf('temPecaFixa(zone, data)');
+  assert.ok(fixa > 0 && fixa < zona.indexOf("zone.type === 'ticker'") && fixa < zona.indexOf("zone.type === 'header'"));
+  const tem = p.slice(p.indexOf('function temPecaFixa('), p.indexOf('function startPecaFixa('));
+  assert.match(tem, /zone\.type !== 'header' && zone\.type !== 'ticker'/, 'peça fixa só em cabeçalho e rodapé');
+  assert.match(tem, /data\.peca\.type !== 'peca-html'/);
+  // Rodapé sem mensagem nenhuma fica no letreiro padrão.
+  assert.match(tem, /Array\.isArray\(data\.messages\) && data\.messages\.some\(/);
+  const start = p.slice(p.indexOf('function startPecaFixa('), p.indexOf('const CFG_CACHE_KEY'));
+  assert.match(start, /MTRender\.opcoesDaPeca\(\{/);
+  assert.match(start, /marcaNaTela: false/, 'a peça do cabeçalho é a marca: não pode esconder o nome');
+  assert.match(start, /mensagens: zone\.type === 'ticker' \? data\.messages : \[\]/);
+  assert.match(start, /return \{ stop: ctl\.parar \}/, 'o relógio da peça fica rodando depois que a zona sai');
+  // E a playlist pede o contexto do mesmo lugar.
+  const r = semComentarios(ler('js', 'render.js'));
+  assert.match(r, /MTPecaRender\.montar\(el, item, opcoesDaPeca\(\)\)/);
+  assert.match(r, /global\.MTRender = \{[^}]*opcoesDaPeca[^}]*\}/);
+});
+
 /* ---------------- No player ---------------- */
 
 test('o player carrega tokens, porta e desenhista depois das dependências e antes do render', () => {

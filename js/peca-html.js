@@ -774,7 +774,15 @@
     const zonas = (cfg && cfg.zonas) || {};
     Object.keys(zonas).forEach((zona) => {
       const dados = zonas[zona];
-      if (!dados || !Array.isArray(dados.items)) return;
+      if (!dados || typeof dados !== 'object') return;
+      // A peça FIXA do cabeçalho/rodapé passa pela mesma porta que a da playlist.
+      if (dados.peca) {
+        if (dados.peca.type !== 'peca-html') problemas.push(zona + ' (peça fixa): type precisa ser "peca-html"');
+        const v = validarItem(dados.peca, opts);
+        v.problemas.forEach((p) => { if (!/^type precisa/.test(p)) problemas.push(zona + ' (peça fixa): ' + p); });
+        dados.peca = Object.assign({}, dados.peca, v.item);
+      }
+      if (!Array.isArray(dados.items)) return;
       dados.items = dados.items.map((item, i) => {
         if (!item || item.type !== 'peca-html') return item;
         const v = validarItem(item, opts);

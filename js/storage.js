@@ -229,8 +229,17 @@
           corTexto: existing.corTexto || '',
           corDestaque: existing.corDestaque || '',
         };
+        if (existing.peca) out.zonas[zone.id].peca = existing.peca;
       } else if (zone.type === 'header') {
         out.zonas[zone.id] = { header: true };
+        /*
+         * A peça em HTML do cabeçalho/rodapé (PLANO §4.7) sobrevive à
+         * normalização. Este normalizador reconstrói a zona CAMPO A CAMPO —
+         * o que não está escrito aqui some no caminho do painel até a TV.
+         * Quem confere a peça é o servidor (js/peca-html.js), não este
+         * arquivo.
+         */
+        if (existing.peca) out.zonas[zone.id].peca = existing.peca;
       } else {
         out.zonas[zone.id] = {
           items: Array.isArray(existing.items) ? existing.items : [],
