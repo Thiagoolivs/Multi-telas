@@ -471,6 +471,49 @@
       ],
       "estado": "rascunho",
       "marca": "rotasul"
+    },
+    {
+      "id": "institucional-foto",
+      "nome": "Foto cheia com assinatura",
+      "familia": "institucional",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "otica",
+      "campos": {
+        "foto": "/pecas-ouro/fotos/otica-sol.jpg"
+      }
+    },
+    {
+      "id": "social-mural",
+      "nome": "Foto do cliente",
+      "familia": "social",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "otica",
+      "campos": {
+        "foto": "/pecas-ouro/fotos/otica-sol.jpg",
+        "link": "https://oticacentral.com.br/mural"
+      }
+    },
+    {
+      "id": "cardapio-dia-foto",
+      "nome": "Prato do dia com foto",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria",
+      "campos": {
+        "foto": "/pecas-ouro/fotos/prato-do-dia.jpg",
+        "titulo": "Churrasco",
+        "titulo2": "com milho",
+        "acompanha": "Linguiça, frango e alcatra com arroz e feijão da casa."
+      }
     }
   ],
   "telas": [

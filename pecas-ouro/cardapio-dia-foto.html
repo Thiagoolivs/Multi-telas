@@ -1,0 +1,84 @@
+<!--
+  Prato do dia com foto — família cardápio. Destaque.
+  Comida se fotografa de cima, então a foto entra num círculo — o prato —
+  entre um garfo e uma faca desenhados (CSS, não imagem). Sem foto, o
+  círculo mostra a borda do prato e a peça continua inteira até a foto
+  chegar. Do lado, o nome do prato, o que acompanha e o preço.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(80% 110% at 75% 50%, var(--mt-fundo-2), var(--mt-fundo) 64%); }
+/* O prato. A borda (sombra por dentro) só aparece sem foto: a foto pinta por cima dela. */
+.prato { position: absolute; right: 11cqw; top: 50%; width: 40cqw; height: 40cqw; margin: -20cqw 0 0; border-radius: 50%; overflow: hidden; background: var(--mt-superficie);
+  box-shadow: inset 0 0 0 3.4cqw var(--mt-fundo-2), 0 0 0 .14cqw var(--mt-linha); }
+.prato img { width: 100%; height: 100%; object-fit: cover; }
+/* Os talheres: o garfo à esquerda do prato, a faca à direita. Tudo em em — crescem juntos. */
+.talher { position: absolute; top: 50%; font-size: 1cqw; width: 2em; height: 30em; margin-top: -15em; }
+.garfo { right: 54cqw; }
+.faca { right: 6cqw; }
+.garfo::before, .garfo::after, .faca::before { content: ''; position: absolute; left: 0; right: 0; background: var(--mt-linha); }
+.garfo::before { top: 0; height: 9em; border-radius: .3em .3em 1em 1em;
+  background: repeating-linear-gradient(90deg, var(--mt-linha) 0 .35em, var(--mt-fundo-0) .35em .55em); }
+.garfo::after { top: 8.6em; bottom: 0; left: .6em; right: .6em; border-radius: .4em; }
+.faca::before { top: 0; bottom: 0; left: .3em; right: .3em; border-radius: 1.4em 1.4em .4em .4em / 6em 6em .4em .4em; }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.bloco { position: absolute; left: 6cqw; top: 50%; transform: translateY(-50%); width: 34cqw; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { margin-top: 2.2cqw; font: 400 6cqw/.95 var(--mt-fonte-titulo); text-transform: uppercase; }
+/* Cada campo numa linha. Nome longo quebra dentro do bloco: sem nowrap, ele passaria por cima do garfo. */
+h1 span, h1 em { display: block; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--mt-destaque); }
+.acompanha { margin-top: 2.4cqw; font: 400 1.6cqw/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.preco { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 3cqw; padding-top: 2.4cqw; border-top: .12cqw solid var(--mt-linha); }
+.quando { font: 600 1.15cqw/1.35 var(--mt-fonte-texto); letter-spacing: .22em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.valor { font: 400 6cqw/.8 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.valor small { font-size: .34em; vertical-align: 1.05em; margin-right: .2em; }
+.valor sup { font-size: .38em; vertical-align: 1em; }
+@container (aspect-ratio < 0.8) {
+  .prato { right: auto; left: 50%; top: 9cqh; width: 64cqw; height: 64cqw; margin: 0 0 0 -32cqw; box-shadow: inset 0 0 0 5.4cqw var(--mt-fundo-2), 0 0 0 .25cqw var(--mt-linha); }
+  .talher { top: calc(9cqh + 32cqw); font-size: 1.7cqw; }
+  .garfo { right: auto; left: 7cqw; }
+  .faca { right: 7cqw; }
+  .marca-nome { left: 8cqw; top: 3cqh; font-size: 2.2cqw; }
+  .bloco { left: 8cqw; right: 8cqw; width: auto; top: auto; bottom: 6cqh; transform: none; }
+  .kicker { font-size: 2.4cqw; }
+  .kicker i { width: 6cqw; height: .28cqw; }
+  h1 { font-size: 11cqw; margin-top: 3.4cqw; }
+  .acompanha { font-size: 3cqw; margin-top: 3cqw; }
+  .preco { margin-top: 4cqw; padding-top: 3.6cqw; border-top-width: .25cqw; }
+  .quando { font-size: 2.2cqw; }
+  .valor { font-size: 13cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .prato { right: 12cqw; top: 6cqh; width: 42cqw; height: 42cqw; margin: 0; }
+  .talher { top: calc(6cqh + 21cqw); font-size: 1.2cqw; }
+  .garfo { right: 57cqw; }
+  .faca { right: 5cqw; }
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
+  .bloco { left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 6cqh; transform: none; }
+  .kicker { font-size: 1.9cqw; }
+  .kicker i { width: 5cqw; height: .2cqw; }
+  h1 { font-size: 8cqw; margin-top: 2.4cqw; }
+  .acompanha { font-size: 2.3cqw; max-width: 70cqw; }
+  .preco { margin-top: 2.8cqw; padding-top: 2.4cqw; border-top-width: .2cqw; }
+  .quando { font-size: 1.7cqw; }
+  .valor { font-size: 9cqw; }
+}
+</style>
+<section class="mt-peca cardapio-dia-foto">
+  <span class="talher garfo" aria-hidden="true" data-entrada="aparecer" data-ordem="2"></span>
+  <span class="talher faca" aria-hidden="true" data-entrada="aparecer" data-ordem="2"></span>
+  <figure class="prato" data-entrada="crescer" data-ordem="1"><img data-campo-img="foto" alt=""></figure>
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Padaria <b>do Bairro</b></div>
+  <div class="bloco">
+    <p class="kicker" data-entrada="esquerda" data-ordem="2"><i aria-hidden="true"></i><span data-campo="kicker">Prato do dia · quinta</span></p>
+    <h1 data-entrada="subir" data-ordem="3"><span data-campo="titulo">Frango assado</span><em data-campo="titulo2">com polenta</em></h1>
+    <p class="acompanha" data-campo="acompanha" data-entrada="aparecer" data-ordem="4">Arroz soltinho, feijão da casa e salada de folhas com tomate.</p>
+    <div class="preco" data-entrada="subir" data-ordem="5">
+      <span class="quando" data-campo="quando">Das 11h às 15h</span>
+      <span class="valor"><small aria-hidden="true">R$</small><span data-campo="preco">32</span><sup data-campo="centavos">,90</sup></span>
+    </div>
+  </div>
+</section>
