@@ -85,6 +85,12 @@
    * `.mt-peca :is(h1,p…)` — que pesa mais que o `h1 {…}` da peça — e zerava
    * calado todo espaçamento que a peça desenhou: o título encostava no
    * texto de baixo e parecia defeito de entrelinha. Visto na tela montada.
+   *
+   * Algarismos alinhados SEMPRE: a serifada do catálogo (Playfair) usa
+   * algarismos antigos, e o 9 de "R$ 89" descia da linha como letra
+   * minúscula. Em TV número é preço e hora — e precisa ler alinhado. Vai com
+   * !important em todo elemento porque o `font:` abreviado das peças zera o
+   * font-variant-numeric herdado (conferido no Chrome).
    */
   const BASE = ':host{display:block;position:relative;width:100%;height:100%;overflow:hidden}'
     + '.mt-palco{position:absolute;inset:0;overflow:hidden;container-type:size}'
@@ -92,6 +98,7 @@
     + ':where(.mt-peca,.mt-peca *,.mt-peca *::before,.mt-peca *::after){box-sizing:border-box}'
     + ':where(.mt-peca) :where(h1,h2,h3,h4,p,ul,ol,figure,figcaption){margin:0}'
     + ':where(.mt-peca) :where(img){display:block}'
+    + '.mt-peca,.mt-peca *{font-variant-numeric:lining-nums!important}'
     + '.mt-peca img[data-sem-foto]{visibility:hidden}'
     + '.mt-peca [data-vivo="mensagens"]{display:inline-block;white-space:nowrap}'
     + '.mt-peca[data-marca-na-tela] [data-repete="marca"]{display:none!important}';

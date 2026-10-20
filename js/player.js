@@ -622,12 +622,15 @@
    *
    * O rodapé com peça mostra as mensagens escritas na zona. Rodapé só de
    * notícias (sem mensagem nenhuma) fica no letreiro de sempre: uma pele de
-   * rodapé passando vazia na parede seria pior que o desenho padrão.
+   * rodapé passando vazia na parede seria pior que o desenho padrão. A
+   * faixa fixa (chamada e contato, sem rolagem) não usa mensagem nenhuma e
+   * entra sempre.
    */
   function temPecaFixa(zone, data) {
     if (zone.type !== 'header' && zone.type !== 'ticker') return false;
     if (!data.peca || data.peca.type !== 'peca-html' || !global.MTPecaRender || !global.MTRender) return false;
-    return zone.type === 'header' || (Array.isArray(data.messages) && data.messages.some((m) => String(m || '').trim()));
+    if (zone.type === 'header' || !/data-vivo="mensagens"/.test(data.peca.html || '')) return true;
+    return Array.isArray(data.messages) && data.messages.some((m) => String(m || '').trim());
   }
 
   function startPecaFixa(zoneEl, zone, data) {

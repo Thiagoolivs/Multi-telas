@@ -204,6 +204,85 @@
       ],
       "estado": "rascunho",
       "marca": "padaria"
+    },
+    {
+      "id": "cabecalho-centro",
+      "nome": "Cabeçalho centralizado",
+      "familia": "cabeçalho",
+      "papeis": [
+        "cabecalho"
+      ],
+      "estado": "rascunho",
+      "marca": "salao"
+    },
+    {
+      "id": "oferta-selo",
+      "nome": "Selo de desconto",
+      "familia": "oferta",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "salao"
+    },
+    {
+      "id": "servico-agenda",
+      "nome": "Serviço com QR para agendar",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "estado": "rascunho",
+      "marca": "salao",
+      "campos": {
+        "link": "https://wa.me/5511988880000"
+      }
+    },
+    {
+      "id": "servico-passos",
+      "nome": "Três passos",
+      "familia": "serviço",
+      "papeis": [
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "salao"
+    },
+    {
+      "id": "social-depoimento",
+      "nome": "Depoimento de cliente",
+      "familia": "social",
+      "papeis": [
+        "lateral",
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "salao"
+    },
+    {
+      "id": "social-instagram",
+      "nome": "Instagram com QR",
+      "familia": "social",
+      "papeis": [
+        "lateral",
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "salao",
+      "campos": {
+        "link": "https://instagram.com/studiobella"
+      }
+    },
+    {
+      "id": "rodape-faixa",
+      "nome": "Faixa fixa com chamada e contato",
+      "familia": "rodapé",
+      "papeis": [
+        "rodape"
+      ],
+      "estado": "rascunho",
+      "marca": "salao"
     }
   ],
   "telas": [
@@ -335,6 +414,67 @@
         "@padariadobairro"
       ],
       "sobre": "Balcão de manhã: o cabeçalho diz se está aberto; o destaque, o que tem e quanto custa; a lateral, até que horas e onde avaliar; o rodapé, como pagar e o resto."
+    },
+    {
+      "id": "salao-terca-da-cor",
+      "nome": "Studio Bella · Terça da cor",
+      "marca": "salao",
+      "layout": "corporate",
+      "estado": "rascunho",
+      "zonas": {
+        "cabecalho": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cabecalho-centro"
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "oferta-selo"
+            },
+            {
+              "id": "servico-passos"
+            },
+            {
+              "id": "social-depoimento"
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "servico-agenda"
+            },
+            {
+              "id": "social-instagram"
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "rotulo2": "Site",
+                "contato2": "studiobella.com.br"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Escova a partir de R$ 49",
+        "Manicure sem hora marcada",
+        "Estacionamento conveniado na rua de trás",
+        "Aberto de terça a sábado"
+      ],
+      "sobre": "O salão vende pelo nome e pela confiança: o cabeçalho é a assinatura; o destaque, a oferta, como funciona e quem já foi; a lateral, os dois QRs (agendar e seguir), que se revezam e nunca aparecem juntos; o rodapé fica quieto, só com o jeito de falar com a casa."
     }
   ]
 }

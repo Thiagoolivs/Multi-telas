@@ -189,8 +189,12 @@ test('o player desenha a peça fixa com o mesmo contexto da playlist', () => {
   const tem = p.slice(p.indexOf('function temPecaFixa('), p.indexOf('function startPecaFixa('));
   assert.match(tem, /zone\.type !== 'header' && zone\.type !== 'ticker'/, 'peça fixa só em cabeçalho e rodapé');
   assert.match(tem, /data\.peca\.type !== 'peca-html'/);
-  // Rodapé sem mensagem nenhuma fica no letreiro padrão.
+  // Rodapé sem mensagem nenhuma fica no letreiro padrão…
   assert.match(tem, /Array\.isArray\(data\.messages\) && data\.messages\.some\(/);
+  // …a não ser que a peça não mostre mensagem (a faixa fixa com chamada e contato).
+  assert.match(tem, /!\/data-vivo="mensagens"\/\.test\(data\.peca\.html \|\| ''\)\) return true/);
+  for (const id of ['rodape-selo', 'rodape-pagamento']) assert.match(ler('pecas-ouro', id + '.html'), /data-vivo="mensagens"/, id);
+  assert.doesNotMatch(ler('pecas-ouro', 'rodape-faixa.html'), /data-vivo="mensagens"/);
   const start = p.slice(p.indexOf('function startPecaFixa('), p.indexOf('const CFG_CACHE_KEY'));
   assert.match(start, /MTRender\.opcoesDaPeca\(\{/);
   assert.match(start, /marcaNaTela: false/, 'a peça do cabeçalho é a marca: não pode esconder o nome');
@@ -309,6 +313,15 @@ test('os padrões da sombra não pesam nada: o espaçamento da peça sempre venc
   }
 });
 
+test('número na peça é sempre algarismo alinhado, em qualquer fonte da marca', () => {
+  /*
+   * A Playfair (serifada) usa algarismos antigos: o 9 de "R$ 89" descia
+   * da linha. O `font:` abreviado das peças zera o que vem herdado, por
+   * isso a regra vai em todo elemento e com !important.
+   */
+  assert.ok(R.BASE.includes('.mt-peca,.mt-peca *{font-variant-numeric:lining-nums!important}'));
+});
+
 test('o rodapé rola só com translate, em volta sem emenda', () => {
   assert.equal(R.ROLAR, 'from{translate:0 0}to{translate:-50% 0}');
   assert.ok(R.keyframes().includes('@keyframes mt-pr-rolar{' + R.ROLAR + '}'));
@@ -356,6 +369,16 @@ test('toda tela completa do manifesto é montável: marca, layout, modos e peça
         for (const k of Object.keys(e.campos)) assert.ok(nomes.includes(k), `${tela.id}: ${e.id} não tem o campo ${k}`);
       }
     }
+  }
+});
+
+test('numa tela completa, QR só numa zona — dois QRs juntos, o cliente não sabe qual ler', () => {
+  // Visto na tela do salão: o QR de agendar no destaque e o do Instagram na lateral, lado a lado.
+  for (const tela of MANIFESTO.telas) {
+    const comQr = Object.entries(tela.zonas)
+      .filter(([, z]) => z.pecas.map(entrada).some((e) => /data-campo-qr=/.test(ler('pecas-ouro', e.id + '.html'))))
+      .map(([grupo]) => grupo);
+    assert.ok(comQr.length <= 1, `${tela.id}: QR em ${comQr.join(' e ')}`);
   }
 });
 

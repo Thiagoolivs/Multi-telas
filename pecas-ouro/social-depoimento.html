@@ -1,0 +1,54 @@
+<!--
+  Depoimento de cliente — família social. Lateral e destaque.
+  A fala de quem já foi atendido vende mais que qualquer adjetivo da loja.
+  As aspas grandes na cor de destaque dizem "alguém falou isso" antes de a
+  frase ser lida; as cinco estrelas são desenho (clip-path), não letra. A
+  frase cabe em até uns 110 caracteres. Fluxo único, medidas em cqmin.
+-->
+<style>
+.mt-peca { display: flex; flex-direction: column; justify-content: center; padding: 9cqmin;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(100% 80% at 0% 0%, var(--mt-fundo-2), var(--mt-fundo) 68%); }
+/* As aspas ocupam só o alto da caixa da letra: a altura e a margem em em recortam a caixa na tinta, em qualquer fonte do catálogo. */
+.aspas { display: block; height: .46em; margin: -.12em 0 0 -.04em; font: 400 60cqmin/1 var(--mt-fonte-titulo); color: var(--mt-destaque); }
+.estrelas { display: flex; gap: 1.2cqmin; margin-top: 4cqmin; }
+.estrelas i { display: block; width: 5cqmin; height: 5cqmin; background: var(--mt-destaque);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.frase { margin-top: 5cqmin; font: italic 400 8.4cqmin/1.26 var(--mt-fonte-titulo); text-wrap: pretty; }
+.autor { display: flex; align-items: center; gap: 3cqmin; margin-top: 7cqmin; padding-top: 6cqmin; border-top: .5cqmin solid var(--mt-linha); }
+.autor b { display: block; font: 700 3.8cqmin/1 var(--mt-fonte-texto); letter-spacing: .22em; text-transform: uppercase; }
+.autor small { display: block; margin-top: 1.8cqmin; font: 500 3.6cqmin/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+/* Deitada: a frase grande à esquerda, quem falou embaixo; as aspas no alto. */
+@container (aspect-ratio >= 1.25) {
+  .mt-peca { padding: 0 14cqw 0 10cqw; }
+  .aspas { font-size: 44cqmin; }
+  .estrelas i { width: 4cqmin; height: 4cqmin; }
+  .frase { font-size: 9cqmin; line-height: 1.22; }
+  .autor { margin-top: 6cqmin; padding-top: 5cqmin; width: 40cqw; }
+  .autor b { font-size: 2.8cqmin; }
+  .autor small { font-size: 2.8cqmin; }
+}
+/* Em pé numa tela inteira: a frase maior. */
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .aspas { font-size: 66cqmin; }
+  .estrelas i { width: 6cqmin; height: 6cqmin; }
+  .frase { font-size: 10cqmin; }
+  .autor b { font-size: 4cqmin; }
+  .autor small { font-size: 3.8cqmin; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { padding: 0 10cqmin; }
+  .aspas { font-size: 46cqmin; }
+  .frase { font-size: 7cqmin; }
+  .autor { margin-top: 5cqmin; padding-top: 4.4cqmin; }
+  .autor b, .autor small { font-size: 3cqmin; }
+}
+</style>
+<section class="mt-peca social-depoimento">
+  <span class="aspas" aria-hidden="true" data-entrada="crescer">“</span>
+  <span class="estrelas" aria-hidden="true" data-entrada="aparecer" data-ordem="1"><i></i><i></i><i></i><i></i><i></i></span>
+  <p class="frase" data-campo="frase" data-entrada="subir" data-ordem="2">Saí daqui outra pessoa. A Bia entendeu na hora o tom que eu queria.</p>
+  <div class="autor" data-entrada="aparecer" data-ordem="3">
+    <span><b data-campo="nome">Juliana M.</b><small data-campo="quem">cliente desde 2019</small></span>
+  </div>
+</section>
