@@ -1,0 +1,70 @@
+<!--
+  Três valores com ícone — família institucional. Destaque.
+  O que a casa promete, em três palavras e uma frase cada. Os ícones são
+  desenho de CSS (cruz, relógio, visto), não imagem: leem em qualquer modo
+  e trocam de cor com a marca. Deitada, três colunas; em pé e quadrada, três
+  linhas com o ícone à esquerda.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(100% 100% at 50% 0%, var(--mt-fundo-2), var(--mt-fundo) 64%); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.cabeca { position: absolute; left: 6cqw; right: 6cqw; top: 16cqh; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 600 5.8cqw/1.04 var(--mt-fonte-titulo); letter-spacing: -.02em; margin-top: 2.2cqw; }
+h1 span { display: block; white-space: nowrap; }
+.valores { position: absolute; left: 6cqw; right: 6cqw; bottom: 13cqh; list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 4cqw; }
+.valores li { padding-top: 2.4cqw; border-top: .14cqw solid var(--mt-linha); }
+.valores b { display: block; margin-top: 2.2cqw; font: 600 2.9cqw/1.1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
+.valores small { display: block; margin-top: 1.1cqw; font: 400 1.55cqw/1.45 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 25cqw; text-wrap: pretty; }
+/* Os ícones: um quadrado com o desenho dentro, tudo em em — crescem juntos. */
+.ic { position: relative; display: block; width: 1em; height: 1em; font-size: 5.4cqw; border-radius: .26em; background: var(--mt-destaque); }
+.ic::before, .ic::after { content: ''; position: absolute; background: var(--mt-sobre-destaque); }
+.mais::before { left: .43em; top: .24em; width: .14em; height: .52em; border-radius: .04em; }
+.mais::after { left: .24em; top: .43em; width: .52em; height: .14em; border-radius: .04em; }
+.relogio::before { left: .2em; top: .2em; width: .6em; height: .6em; border-radius: 50%; background: none; border: .08em solid var(--mt-sobre-destaque); }
+.relogio::after { left: .46em; top: .3em; width: .17em; height: .23em; background: none; border: solid var(--mt-sobre-destaque); border-width: 0 0 .08em .08em; }
+.visto::before { left: .3em; top: .2em; width: .24em; height: .44em; background: none; border: solid var(--mt-sobre-destaque); border-width: 0 .09em .09em 0; transform: rotate(45deg); }
+.visto::after { display: none; }
+@container (aspect-ratio < 1.25) {
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
+  .cabeca { left: 8cqw; right: 8cqw; top: 11cqh; }
+  .kicker { font-size: 2.2cqw; }
+  .kicker i { width: 6cqw; height: .25cqw; }
+  h1 { font-size: 8.6cqw; margin-top: 3.4cqw; }
+  .valores { left: 8cqw; right: 8cqw; bottom: 10cqh; grid-template-columns: 1fr; }
+  .valores li { display: grid; grid-template-columns: auto 1fr; column-gap: 4cqw; align-items: center; padding: 4.4cqw 0; border-top-width: .25cqw; }
+  .ic { grid-row: 1 / 3; font-size: 11cqw; }
+  .valores b { margin: 0; font-size: 5.4cqw; }
+  .valores small { margin-top: 1.2cqw; font-size: 2.8cqw; max-width: none; }
+}
+/* Em pé: a lista cresce para ocupar a altura que sobra. */
+@container (aspect-ratio < 0.8) {
+  .valores li { padding: 5.6cqw 0; }
+  .ic { font-size: 13cqw; }
+  .valores b { font-size: 6.4cqw; }
+  .valores small { font-size: 3.2cqw; margin-top: 1.6cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .cabeca { top: 11cqh; }
+  h1 { font-size: 6.6cqw; margin-top: 2.6cqw; }
+  .valores li { padding: 2.6cqw 0; }
+  .ic { font-size: 8cqw; }
+  .valores b { font-size: 4.2cqw; }
+  .valores small { font-size: 2.2cqw; margin-top: .8cqw; }
+}
+</style>
+<section class="mt-peca institucional-valores">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Clínica <b>Vida</b></div>
+  <div class="cabeca">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Como a gente cuida</span></p>
+    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Três promessas</span> <span data-campo="titulo2">para cada consulta</span></h1>
+  </div>
+  <ul class="valores">
+    <li data-entrada="subir" data-ordem="3"><span class="ic mais" aria-hidden="true"></span><b data-campo="valor1">Acolhimento</b><small data-campo="valor1-texto">Quem chega é recebido pelo nome, não pela senha.</small></li>
+    <li data-entrada="subir" data-ordem="4"><span class="ic relogio" aria-hidden="true"></span><b data-campo="valor2">Pontualidade</b><small data-campo="valor2-texto">Atraso de mais de 15 minutos, a gente avisa antes.</small></li>
+    <li data-entrada="subir" data-ordem="5"><span class="ic visto" aria-hidden="true"></span><b data-campo="valor3">Acompanhamento</b><small data-campo="valor3-texto">O resultado do exame chega explicado, por mensagem.</small></li>
+  </ul>
+</section>

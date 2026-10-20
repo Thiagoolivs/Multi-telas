@@ -1,0 +1,64 @@
+<!--
+  Comunicado — família serviço. Destaque.
+  Feriado, mudança de horário, obra: o que muda e quando. A data vira uma
+  folha de calendário (o mês numa tarja, o dia grande) — o cliente entende
+  "é sobre um dia" antes de ler. O texto do lado diz o que muda e quando
+  volta ao normal.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(110% 110% at 0% 0%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.folha { position: absolute; left: 7cqw; top: 50%; transform: translateY(-50%); width: 30cqw; border-radius: var(--mt-raio); overflow: hidden;
+  background: var(--mt-superficie); box-shadow: 0 0 0 .14cqw var(--mt-linha); text-align: center; }
+.mes { display: block; padding: 1.6cqw 0; background: var(--mt-destaque); color: var(--mt-sobre-destaque); font: 700 1.9cqw/1 var(--mt-fonte-texto); letter-spacing: .4em; text-transform: uppercase; }
+.dia { display: block; padding: 2.4cqw 0 1cqw; font: 700 16cqw/.9 var(--mt-fonte-titulo); letter-spacing: -.04em; color: var(--mt-texto); }
+.semana { display: block; padding-bottom: 2.4cqw; font: 600 1.6cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.texto { position: absolute; left: 45cqw; right: 7cqw; top: 50%; transform: translateY(-50%); }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 600 5.2cqw/1.04 var(--mt-fonte-titulo); letter-spacing: -.02em; margin: 2.2cqw 0 2.4cqw; text-wrap: balance; }
+.apoio { font: 400 1.7cqw/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.volta { margin-top: 2.8cqw; padding-top: 2.2cqw; border-top: .12cqw solid var(--mt-linha); font: 600 1.6cqw/1.3 var(--mt-fonte-texto); }
+@container (aspect-ratio < 0.8) {
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
+  .folha { left: 8cqw; top: 11cqh; transform: none; width: 50cqw; }
+  .mes { font-size: 3.2cqw; padding: 2.6cqw 0; }
+  .dia { font-size: 27cqw; padding-top: 4cqw; }
+  .semana { font-size: 2.6cqw; padding-bottom: 4cqw; }
+  .texto { left: 8cqw; right: 8cqw; top: auto; bottom: 9cqh; transform: none; }
+  .kicker { font-size: 2.2cqw; }
+  .kicker i { width: 6cqw; height: .25cqw; }
+  h1 { font-size: 9.4cqw; margin: 3.6cqw 0 3.6cqw; }
+  .apoio { font-size: 3.2cqw; }
+  .volta { font-size: 3cqw; margin-top: 4.4cqw; padding-top: 3.6cqw; border-top-width: .25cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
+  .folha { left: 7cqw; top: 12cqh; transform: none; width: 34cqw; }
+  .mes { font-size: 2.2cqw; padding: 1.8cqw 0; }
+  .dia { font-size: 18cqw; padding-top: 2.6cqw; }
+  .semana { font-size: 1.8cqw; padding-bottom: 2.6cqw; }
+  .texto { left: 7cqw; right: 7cqw; top: auto; bottom: 8cqh; transform: none; }
+  .kicker { font-size: 1.9cqw; }
+  .kicker i { width: 5cqw; height: .2cqw; }
+  h1 { font-size: 6.6cqw; margin: 2.6cqw 0 2.6cqw; }
+  .apoio { font-size: 2.4cqw; }
+  .volta { font-size: 2.3cqw; margin-top: 3cqw; padding-top: 2.6cqw; border-top-width: .2cqw; }
+}
+</style>
+<section class="mt-peca servico-comunicado">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Clínica <b>Vida</b></div>
+  <div class="folha" data-entrada="crescer" data-ordem="1">
+    <span class="mes" data-campo="mes">Novembro</span>
+    <span class="dia" data-campo="dia">15</span>
+    <span class="semana" data-campo="semana">Sexta-feira</span>
+  </div>
+  <div class="texto">
+    <p class="kicker" data-entrada="esquerda" data-ordem="2"><i aria-hidden="true"></i><span data-campo="kicker">Feriado</span></p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="3">Não haverá atendimento</h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="4">Resultados de exame continuam saindo pelo WhatsApp. Em urgência, procure o pronto-socorro mais próximo.</p>
+    <p class="volta" data-campo="volta" data-entrada="aparecer" data-ordem="5">Voltamos no sábado, 16, às 8h.</p>
+  </div>
+</section>

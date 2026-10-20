@@ -1,0 +1,38 @@
+<!--
+  Rolagem com relógio fixo — papel rodapé (PLANO §4.7: "o resto").
+  Para a tela sem cabeçalho: a hora e a data param à esquerda, num bloco
+  da cor de destaque, e as mensagens rolam à direita
+  (`data-vivo="mensagens"`), depois de um rótulo curto. Medidas em cqh:
+  a altura da faixa decide a letra.
+-->
+<style>
+.mt-peca { display: flex; align-items: stretch; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: var(--mt-fundo); border-top: 1.2cqh solid var(--mt-linha); }
+.agora { flex: none; display: flex; align-items: center; gap: 10cqh; padding: 0 9cqh 0 3cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); }
+.hora { font: 600 50cqh/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
+.data { display: flex; flex-direction: column; gap: 6cqh; font: 700 13cqh/1 var(--mt-fonte-texto); letter-spacing: .26em; text-transform: uppercase; white-space: nowrap; }
+.clima { font-weight: 500; letter-spacing: .06em; font-size: 17cqh; }
+.rotulo { flex: none; align-self: center; margin-left: 12cqh; padding-right: 12cqh; border-right: 1.2cqh solid var(--mt-linha); font: 700 14cqh/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
+.rotulo:empty { display: none; }
+.trilho { position: relative; flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: center; padding-left: 6cqh; }
+.trilho [data-vivo] { font: 500 34cqh/1 var(--mt-fonte-texto); letter-spacing: .01em; }
+.trilho::before, .trilho::after { content: ''; position: absolute; top: 0; bottom: 0; width: 8cqw; z-index: 1; }
+.trilho::before { left: 0; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
+.trilho::after { right: 0; background: linear-gradient(270deg, var(--mt-fundo), var(--mt-fundo-0)); }
+@container (aspect-ratio < 9) {
+  .agora { gap: 7cqh; padding-left: 3cqw; padding-right: 7cqh; }
+  .hora { font-size: 42cqh; }
+  .clima { display: none; }
+  .data { font-size: 11cqh; }
+  .rotulo { display: none; }
+  .trilho [data-vivo] { font-size: 30cqh; }
+}
+</style>
+<section class="mt-peca rodape-relogio">
+  <div class="agora" data-entrada="esquerda">
+    <span class="hora" data-vivo="relogio">08:40</span>
+    <span class="data"><span data-vivo="data">Terça · 20 out</span><span class="clima" data-vivo="clima">22°</span></span>
+  </div>
+  <span class="rotulo" data-campo="rotulo">Avisos</span>
+  <div class="trilho"><span data-vivo="mensagens">Resultados de exame pelo WhatsApp · Estacionamento gratuito</span></div>
+</section>

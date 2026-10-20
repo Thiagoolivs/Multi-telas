@@ -1,0 +1,76 @@
+<!--
+  Parcelado — família oferta. Destaque.
+  Quando a parcela vende mais que o preço cheio, ela é que domina: o "10×"
+  enorme, a parcela embaixo, e o total pequeno, para quem quiser saber.
+  Do outro lado, o que está incluído — três itens, separados por filete.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(100% 110% at 0% 100%, var(--mt-fundo-2), var(--mt-fundo) 60%); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.bloco { position: absolute; left: 6cqw; top: 50%; transform: translateY(-50%); width: 44cqw; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 600 5.4cqw/1.02 var(--mt-fonte-titulo); letter-spacing: -.02em; margin: 2.2cqw 0 3cqw; text-wrap: balance; }
+.inclui { list-style: none; margin: 0; padding: 0; }
+.inclui li { display: flex; align-items: center; gap: 1.4cqw; padding: 1.3cqw 0; border-top: .12cqw solid var(--mt-linha); font: 500 1.6cqw/1.2 var(--mt-fonte-texto); }
+.inclui li:last-child { border-bottom: .12cqw solid var(--mt-linha); }
+.inclui li::before { content: ''; flex: none; width: .9cqw; height: .9cqw; border-radius: 50%; background: var(--mt-destaque); }
+.parcela { position: absolute; right: 7cqw; top: 50%; transform: translateY(-50%); text-align: right; }
+.vezes { display: block; font: 700 21cqw/.78 var(--mt-fonte-titulo); letter-spacing: -.05em; color: var(--mt-preco); white-space: nowrap; }
+.vezes small { font-size: .5em; font-weight: 400; margin-left: .04em; }
+.de { display: block; margin-top: 2.4cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.valor { display: block; margin-top: 1cqw; font: 600 4.8cqw/1 var(--mt-fonte-titulo); letter-spacing: -.02em; white-space: nowrap; }
+.valor small { font-size: .4em; font-weight: 500; vertical-align: .95em; margin-right: .2em; }
+.valor sup { font-size: .42em; vertical-align: .9em; }
+.total { display: block; margin-top: 1.4cqw; font: 500 1.3cqw/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+@container (aspect-ratio < 0.8) {
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
+  .parcela { left: 8cqw; right: 8cqw; top: 9cqh; transform: none; text-align: left; }
+  .vezes { font-size: 46cqw; }
+  .de { font-size: 2.2cqw; margin-top: 4cqw; }
+  .valor { font-size: 10cqw; margin-top: 1.6cqw; }
+  .total { font-size: 2.6cqw; margin-top: 2cqw; }
+  .bloco { left: 8cqw; right: 8cqw; width: auto; top: auto; bottom: 8cqh; transform: none; }
+  .kicker { font-size: 2.2cqw; }
+  .kicker i { width: 6cqw; height: .25cqw; }
+  h1 { font-size: 9cqw; margin: 3.6cqw 0 4.4cqw; }
+  .inclui li { font-size: 3cqw; padding: 2.4cqw 0; gap: 2.4cqw; border-top-width: .25cqw; }
+  .inclui li:last-child { border-bottom-width: .25cqw; }
+  .inclui li::before { width: 1.6cqw; height: 1.6cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
+  .parcela { right: 7cqw; top: 11cqh; transform: none; }
+  .vezes { font-size: 26cqw; }
+  .de { font-size: 1.7cqw; margin-top: 2.6cqw; }
+  .valor { font-size: 6.6cqw; }
+  .total { font-size: 1.8cqw; }
+  .bloco { left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 7cqh; transform: none; }
+  .kicker { font-size: 1.9cqw; }
+  .kicker i { width: 5cqw; height: .2cqw; }
+  h1 { font-size: 6.6cqw; margin: 2.6cqw 0 3cqw; }
+  .inclui li { font-size: 2.3cqw; padding: 1.6cqw 0; border-top-width: .2cqw; }
+  .inclui li:last-child { border-bottom-width: .2cqw; }
+  .inclui li::before { width: 1.2cqw; height: 1.2cqw; }
+}
+</style>
+<section class="mt-peca oferta-parcelado">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Clínica <b>Vida</b></div>
+  <div class="bloco">
+    <p class="kicker" data-entrada="esquerda" data-ordem="2"><i aria-hidden="true"></i><span data-campo="kicker">Check-up anual</span></p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="3">Exames de rotina num dia só</h1>
+    <ul class="inclui">
+      <li data-campo="item1" data-entrada="aparecer" data-ordem="4">Consulta com clínico geral</li>
+      <li data-campo="item2" data-entrada="aparecer" data-ordem="5">Exames de sangue e urina</li>
+      <li data-campo="item3" data-entrada="aparecer" data-ordem="6">Eletrocardiograma</li>
+    </ul>
+  </div>
+  <div class="parcela" data-entrada="crescer" data-ordem="1">
+    <span class="vezes"><span data-campo="vezes">10</span><small aria-hidden="true">×</small></span>
+    <span class="de" data-campo="de">sem juros, de</span>
+    <span class="valor"><small aria-hidden="true">R$</small><span data-campo="parcela">39</span><sup data-campo="centavos">,90</sup></span>
+    <span class="total" data-campo="total">Total de R$ 399,00 no cartão</span>
+  </div>
+</section>
