@@ -1388,8 +1388,21 @@ async function handleApi(req, res, pathname, query) {
            * imagem não coube jogaria fora as quatro já pagas.
            */
           onImagem: async (prompt, formato, arte) => {
+            /*
+             * Foto do produto REAL (PLANO §4.11): o endereço vem do plano que o
+             * navegador devolveu, então só vale mídia DESTA conta — conferido
+             * no banco, não pelo formato do endereço.
+             */
+            let referencias = null;
+            if (arte && arte.referencia) {
+              const dele = (await db.listMedia(sess.tenant_id)).find((m) => m.url === arte.referencia && /^image\/(png|jpeg|webp)$/.test(m.mime));
+              if (!dele) throw new Error('a foto do produto não é desta conta');
+              referencias = await lerImagens([dele.url]);
+              if (!referencias.length) throw new Error('a foto do produto não abriu (até 5 MB, PNG, JPG ou WEBP)');
+            }
+            const tipo = referencias ? 'campanha-peca-produto' : 'campanha-peca';
             const contaIA = await db.getTenant(sess.tenant_id);
-            const pode = await usoIA.conferir(db, contaIA, 'campanha-peca', 1);
+            const pode = await usoIA.conferir(db, contaIA, tipo, 1);
             if (!pode.ok) {
               const e = new Error(pode.resposta && pode.resposta.erro === 'pagamento_atrasado'
                 ? 'pagamento em atraso — as peças seguintes saem sem foto'
@@ -1408,6 +1421,7 @@ async function handleApi(req, res, pathname, query) {
               brand2: (arte && arte.brand2) || (b && b.brand2) || '',
               direcao: (arte && arte.direcao) || '',
               estilo: (arte && arte.estilo) || '',
+              referencias,
             });
             // Registrada como qualquer outro arquivo: aparece no Armazenamento,
             // conta na cota e some junto com a conta.
@@ -1422,7 +1436,7 @@ async function handleApi(req, res, pathname, query) {
               });
             // Só depois do sucesso: falha não cobra.
             await usoIA.cobrar(db, contaIA, {
-              tipo: 'campanha-peca', quantidade: 1, userId: sess.user_id, referencia: saved.id,
+              tipo, quantidade: 1, userId: sess.user_id, referencia: saved.id,
             });
             return saved.url;
           },

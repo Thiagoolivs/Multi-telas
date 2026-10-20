@@ -187,18 +187,38 @@ test('a campanha cobra crédito por imagem, como a rota avulsa', () => {
    */
   const i = SERVER.indexOf('onImagem: async (');
   assert.ok(i > 0, 'sumiu a geração de imagem da campanha');
-  const bloco = SERVER.slice(i, i + 2200);
+  const bloco = SERVER.slice(i, i + 3400);
 
-  assert.match(bloco, /usoIA\.conferir\(db, contaIA, 'campanha-peca', 1\)/,
+  // O tipo depende de a foto partir do produto real (PLANO §4.11); os dois cobram.
+  assert.match(bloco, /const tipo = referencias \? 'campanha-peca-produto' : 'campanha-peca'/,
+    'sumiu a escolha do tipo cobrado');
+  assert.match(bloco, /usoIA\.conferir\(db, contaIA, tipo, 1\)/,
     'a campanha voltou a gerar imagem sem conferir saldo');
-  assert.match(bloco, /usoIA\.cobrar\(/, 'a campanha voltou a gerar imagem sem cobrar');
+  assert.match(bloco, /usoIA\.cobrar\(db, contaIA, \{\s*tipo,/, 'a campanha voltou a gerar imagem sem cobrar');
 
   // Confere ANTES de gerar, cobra DEPOIS do sucesso: gerar primeiro e cobrar
   // depois deixa a conta devendo; cobrar antes cobra por falha.
+  assert.ok(bloco.indexOf('ai.generateImage') > 0, 'a geração saiu da janela do teste');
   assert.ok(bloco.indexOf('usoIA.conferir') < bloco.indexOf('ai.generateImage'),
     'confere o saldo depois de já ter gerado');
   assert.ok(bloco.indexOf('usoIA.cobrar') > bloco.indexOf('midia.guardarBuffer'),
     'cobra antes de a imagem existir de fato');
+});
+
+test('a foto do produto só vale se a mídia for desta conta', () => {
+  /*
+   * O endereço da referência vem do plano que o NAVEGADOR devolve. Sem esta
+   * conferência, bastaria trocar o endereço para a IA ler a mídia de outra
+   * conta. Conferido no banco, pela conta da sessão — e antes de cobrar.
+   */
+  const i = SERVER.indexOf('onImagem: async (');
+  const bloco = SERVER.slice(i, i + 3400);
+  assert.match(bloco, /db\.listMedia\(sess\.tenant_id\)\)\.find\(\(m\) => m\.url === arte\.referencia/);
+  assert.match(bloco, /throw new Error\('a foto do produto não é desta conta'\)/);
+  assert.ok(bloco.indexOf('listMedia') < bloco.indexOf('usoIA.conferir'), 'confere a conta depois do saldo');
+  assert.match(bloco, /referencias,\s*\}\);/, 'a referência não chega ao gerador de imagem');
+  const op = creditos.operacao('campanha-peca-produto');
+  assert.ok(op && op.creditos >= 1, 'a foto do produto saiu de graça');
 });
 
 test('o gancho de cobrança da campanha existe e cobra mesmo', () => {

@@ -467,10 +467,18 @@ function devImage(prompt, opts) {
   return { mime: 'image/svg+xml', data: Buffer.from(svg).toString('base64') };
 }
 
-// Gera uma imagem a partir de um prompt. Retorna { mime, data (base64) }.
+/*
+ * Gera uma imagem a partir de um prompt. Retorna { mime, data (base64) }.
+ *
+ * `opts.referencias` ([{ mime, data }]): fotos do produto REAL do cliente
+ * (PLANO §4.11). Vão antes do texto, como imagem, e a direção de arte troca a
+ * monocromia por fidelidade ao produto.
+ */
 async function generateImage(prompt, opts) {
   prompt = String(prompt || '').slice(0, 1200); opts = opts || {};
   if (mode() === 'dev' || !GEMINI_KEY) return devImage(prompt, opts);
+  const referencias = (Array.isArray(opts.referencias) ? opts.referencias : []).filter((r) => r && r.data).slice(0, 3);
+  if (referencias.length) opts = Object.assign({}, opts, { produto: true });
   /*
    * A direção de arte substitui o guia genérico que estava aqui.
    *
@@ -489,7 +497,10 @@ async function generateImage(prompt, opts) {
       const res = await fetch(url, {
         method: 'POST', headers: { 'x-goog-api-key': GEMINI_KEY, 'content-type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: texto }] }],
+          contents: [{ role: 'user', parts: [
+            ...referencias.map((r) => ({ inline_data: { mime_type: r.mime || 'image/jpeg', data: r.data } })),
+            { text: texto },
+          ] }],
           generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
         }),
       });
