@@ -1,0 +1,61 @@
+<!--
+  Cabeçalho com status — papel cabeçalho (PLANO §4.7: "quem e agora").
+  A marca no centro, como assinatura; à esquerda, se a casa está aberta e
+  até que horas; à direita, clima, hora e data. É o cabeçalho de quem
+  atende no balcão: padaria, lanchonete, farmácia. O ponto do status pisca
+  devagar — o único movimento da faixa. Medidas em cqh, como o clássico:
+  a altura da faixa decide a letra.
+-->
+<style>
+.mt-peca { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6cqh; padding: 0 3cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: linear-gradient(180deg, var(--mt-fundo-2), var(--mt-fundo)); border-bottom: 1.2cqh solid var(--mt-linha); }
+.status { display: flex; align-items: center; gap: 9cqh; min-width: 0; }
+.ponto { flex: none; width: 13cqh; height: 13cqh; border-radius: 50%; background: var(--mt-destaque);
+  box-shadow: 0 0 0 4.5cqh var(--mt-fundo-2), 0 0 0 5.7cqh var(--mt-destaque); }
+.estado { display: flex; flex-direction: column; gap: 7cqh; min-width: 0; }
+.aberto { font: 700 17cqh/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
+.ate { font: 500 19cqh/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); white-space: nowrap; }
+.marca { display: flex; flex-direction: column; align-items: center; gap: 8cqh; }
+.logo { height: 58cqh; width: auto; max-width: 30cqw; object-fit: contain; }
+.logo[data-sem-foto] { display: none; }
+.logo:not([data-sem-foto]) + .nome { display: none; }
+.nome { font: 400 40cqh/.9 var(--mt-fonte-titulo); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+.nome b { font-weight: inherit; color: var(--mt-destaque); }
+.desde { display: flex; align-items: center; gap: 4cqh; font: 600 11cqh/1 var(--mt-fonte-texto); letter-spacing: .5em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.desde i { display: block; width: 18cqh; height: 1cqh; background: var(--mt-linha); }
+.agora { justify-self: end; display: flex; align-items: center; gap: 5cqh; }
+.clima { font: 500 26cqh/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.sep { display: block; width: 1.2cqh; height: 44cqh; background: var(--mt-linha); }
+.tempo { display: flex; flex-direction: column; align-items: flex-end; gap: 4cqh; }
+.hora { font: 400 46cqh/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
+.data { font: 600 15cqh/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+/* Faixa mais curta (TV em pé): o "desde" e o clima saem; status, marca e hora ficam. */
+@container (aspect-ratio < 9) {
+  .mt-peca { gap: 4cqh; }
+  .desde, .clima, .sep, .data { display: none; }
+  .status { gap: 7cqh; }
+  .ponto { width: 10cqh; height: 10cqh; box-shadow: 0 0 0 3.5cqh var(--mt-fundo-2), 0 0 0 4.5cqh var(--mt-destaque); }
+  .estado { gap: 6cqh; }
+  .aberto { font-size: 13cqh; letter-spacing: .2em; }
+  .ate { font-size: 15cqh; }
+  .nome { font-size: 30cqh; letter-spacing: .08em; }
+  .hora { font-size: 38cqh; }
+}
+</style>
+<section class="mt-peca cabecalho-status">
+  <div class="status" data-entrada="aparecer" data-ordem="1">
+    <span class="ponto" aria-hidden="true" data-continua="brilhar"></span>
+    <span class="estado"><span class="aberto" data-campo="status">Aberto agora</span><span class="ate" data-campo="horario">Hoje até as 20h</span></span>
+  </div>
+  <div class="marca" data-entrada="aparecer">
+    <img class="logo" data-campo-img="logo" alt="">
+    <span class="nome" data-campo="marca">Padaria <b>do Bairro</b></span>
+    <span class="desde"><i aria-hidden="true"></i><span data-campo="desde">Desde 1987</span><i aria-hidden="true"></i></span>
+  </div>
+  <div class="agora" data-entrada="aparecer" data-ordem="2">
+    <span class="clima" data-vivo="clima">22°</span>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="tempo"><span class="hora" data-vivo="relogio">07:15</span><span class="data" data-vivo="data">Terça · 20 out</span></span>
+  </div>
+</section>

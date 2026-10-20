@@ -1,0 +1,90 @@
+<!--
+  Combo — família cardápio. Destaque.
+  Três itens somados e um preço só: a conta já feita é o que vende o
+  combo. Os itens ficam em linha, ligados pelo "+", e o preço domina o
+  canto. Sem foto de propósito; com foto é outra estrutura.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(110% 100% at 0% 0%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+/* Dois anéis finos em volta do preço: a borda de um prato visto de cima. Profundidade sem foto. */
+.mt-peca::before, .mt-peca::after { content: ''; position: absolute; border-radius: 50%; border: .14cqw solid var(--mt-linha); }
+.mt-peca::before { width: 56cqw; height: 56cqw; right: -12cqw; top: calc(19cqh - 22cqw); }
+.mt-peca::after { width: 40cqw; height: 40cqw; right: -4cqw; top: calc(19cqh - 14cqw); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.cabeca { position: absolute; left: 6cqw; top: 17cqh; width: 52cqw; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 400 8cqw/.88 var(--mt-fonte-titulo); text-transform: uppercase; margin-top: 2.2cqw; }
+h1 span { display: block; }
+.soma { position: absolute; left: 6cqw; right: 6cqw; bottom: 17cqh; display: flex; align-items: flex-start; gap: 2cqw; list-style: none; margin: 0; padding: 0; }
+.soma li { position: relative; flex: 1 1 auto; min-width: 0; padding-top: 1.8cqw; border-top: .14cqw solid var(--mt-destaque); }
+.soma .mais { flex: none; padding: 0; border: 0; font: 300 4cqw/.6 var(--mt-fonte-texto); color: var(--mt-destaque); margin-top: 2.4cqw; }
+.soma b { display: block; font: 400 2.5cqw/1.05 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .02em; text-wrap: balance; }
+.soma small { display: block; max-width: 20cqw; margin-top: .8cqw; font: 400 1.25cqw/1.35 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.preco { position: absolute; right: 6cqw; top: 19cqh; text-align: right; }
+.rotulo { font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.valor { display: block; margin-top: 1.2cqw; font: 400 12cqw/.78 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.valor small { font-size: .26em; vertical-align: 1.9em; margin-right: .2em; }
+.valor sup { font-size: .32em; vertical-align: 1.5em; }
+.nota { position: absolute; left: 6cqw; bottom: 6cqh; font: 500 1.15cqw/1 var(--mt-fonte-texto); letter-spacing: .22em; text-transform: uppercase; color: var(--mt-texto-suave); }
+/* Em pé: título, a soma em coluna e o preço embaixo. */
+@container (aspect-ratio < 0.8) {
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
+  .cabeca { left: 8cqw; right: 8cqw; width: auto; top: 12cqh; }
+  .kicker { font-size: 2cqw; }
+  .kicker i { width: 5.5cqw; height: .22cqw; }
+  h1 { font-size: 15cqw; margin-top: 3.4cqw; }
+  .mt-peca::before { width: 110cqw; height: 110cqw; right: -50cqw; top: -46cqw; border-width: .25cqw; }
+  .mt-peca::after { width: 80cqw; height: 80cqw; right: -36cqw; top: -30cqw; border-width: .25cqw; }
+  .soma { left: 8cqw; right: 8cqw; top: 38cqh; bottom: auto; flex-direction: column; align-items: stretch; gap: 3cqw; }
+  .soma li { padding-top: 2.6cqw; border-top-width: .25cqw; }
+  /* Em coluna o + não ganha linha própria: vai para a ponta do item que ele soma. */
+  .soma .mais { display: none; }
+  .soma .mais + li::before { content: '+'; position: absolute; right: 0; top: 2.4cqw; font: 300 8cqw/.8 var(--mt-fonte-texto); color: var(--mt-destaque); }
+  .soma small { max-width: none; }
+  .soma b { font-size: 6cqw; }
+  .soma small { font-size: 2.6cqw; margin-top: 1.2cqw; }
+  .preco { left: 8cqw; right: 8cqw; top: auto; bottom: 12cqh; text-align: left; padding-top: 4cqw; border-top: .25cqw solid var(--mt-linha); }
+  .rotulo { font-size: 2.2cqw; }
+  .valor { font-size: 26cqw; margin-top: 2.4cqw; }
+  .nota { left: 8cqw; bottom: 5cqh; font-size: 2cqw; }
+}
+/* Quase quadrada: a soma continua em linha, o preço vai para baixo dela. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
+  .cabeca { left: 7cqw; right: 7cqw; width: auto; top: 12cqh; }
+  .kicker { font-size: 1.9cqw; }
+  .kicker i { width: 5cqw; height: .2cqw; }
+  h1 { font-size: 10.4cqw; margin-top: 2.6cqw; }
+  .soma { left: 7cqw; right: 7cqw; bottom: auto; top: 47cqh; gap: 2.4cqw; }
+  .soma li { border-top-width: .2cqw; }
+  .soma .mais { font-size: 5cqw; margin-top: 3cqw; }
+  .soma b { font-size: 3.6cqw; }
+  .soma small { font-size: 1.8cqw; }
+  .preco { right: 7cqw; top: auto; bottom: 12cqh; }
+  .rotulo { font-size: 1.9cqw; }
+  .valor { font-size: 17cqw; }
+  .nota { left: 7cqw; bottom: 5cqh; font-size: 1.7cqw; }
+}
+</style>
+<section class="mt-peca cardapio-combo">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Padaria <b>do Bairro</b></div>
+  <div class="cabeca">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Café da manhã · até as 10h</span></p>
+    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Combo</span><span data-campo="titulo2">do padeiro</span></h1>
+  </div>
+  <ul class="soma">
+    <li data-entrada="subir" data-ordem="3"><b data-campo="item1">Café coado</b><small data-campo="item1-detalhe">Xícara grande, grão do sul de Minas</small></li>
+    <li class="mais" aria-hidden="true" data-entrada="aparecer" data-ordem="4">+</li>
+    <li data-entrada="subir" data-ordem="4"><b data-campo="item2">Pão na chapa</b><small data-campo="item2-detalhe">Francês com manteiga</small></li>
+    <li class="mais" aria-hidden="true" data-entrada="aparecer" data-ordem="5">+</li>
+    <li data-entrada="subir" data-ordem="5"><b data-campo="item3">Suco de laranja</b><small data-campo="item3-detalhe">300 ml, espremido na hora</small></li>
+  </ul>
+  <div class="preco" data-entrada="crescer" data-ordem="6">
+    <span class="rotulo" data-campo="preco-rotulo">Tudo por</span>
+    <span class="valor"><small aria-hidden="true">R$</small><span data-campo="preco">14</span><sup data-campo="centavos">,90</sup></span>
+  </div>
+  <p class="nota" data-campo="nota" data-entrada="aparecer" data-ordem="7">Peça no balcão · servido na mesa</p>
+</section>

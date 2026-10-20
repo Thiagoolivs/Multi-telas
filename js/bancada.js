@@ -41,6 +41,8 @@
   const GIRO_MS = 8000;
 
   const $ = (id) => document.getElementById(id);
+  // "Tamanho real": sem redução, um pixel da peça por pixel da tela — para conferir o acabamento.
+  const real = () => $('tamanho').value === 'real';
   const arquivos = {};
   let manifesto = null;
   let giros = [];
@@ -118,9 +120,20 @@
       rascunho: modo === 'rascunho',
       marcaNaTela: !!x.marcaNaTela,
       clima: () => Promise.resolve('27°'),
-      mensagens: manifesto.mensagens || [],
+      mensagens: x.mensagens || [],
     });
   }
+
+  /*
+   * As mensagens do rodapé são de cada tela (a da ótica fala de exame de
+   * vista; a da padaria, de encomenda de bolo). Olhando uma peça só, vale a
+   * primeira tela da marca escolhida.
+   */
+  const mensagensDaMarca = (id) => {
+    const telas = manifesto.telas || [];
+    const t = telas.find((x) => x.marca === id) || telas[0];
+    return (t && t.mensagens) || [];
+  };
 
   // Uma moldura no tamanho real, reduzida para caber no teto dado.
   function moldura(w, h, teto) {
@@ -165,8 +178,8 @@
         grade.className = 'grade';
         for (const modo of modos) {
           const fig = document.createElement('figure');
-          const m = moldura(zona.w, zona.h, TETO);
-          montarPeca(m.real, arq, def, papel, marca, modo);
+          const m = moldura(zona.w, zona.h, real() ? zona : TETO);
+          montarPeca(m.real, arq, def, papel, marca, modo, { mensagens: mensagensDaMarca(marca.id) });
           const legenda = document.createElement('figcaption');
           legenda.textContent = modo;
           vazamentos(m.real).then((fora) => {
@@ -213,8 +226,9 @@
 
     const palco = $('palco');
     palco.textContent = '';
-    const teto = emPe ? { w: 520, h: 900 } : { w: Math.min(1400, innerWidth - 40), h: 900 };
-    const m = moldura(W, H, teto);
+    // A janela pode abrir escondida, com largura 0: a moldura nunca fica menor que 640.
+    const teto = emPe ? { w: 520, h: 900 } : { w: Math.min(1400, Math.max(640, innerWidth - 40)), h: 900 };
+    const m = moldura(W, H, real() ? { w: W, h: H } : teto);
     const tv = m.real;
     tv.classList.add('tv');
     tv.style.gridTemplateColumns = layout.grid.columns;
@@ -243,7 +257,7 @@
         caixa.textContent = '';
         caixa.appendChild(host);
         montarPeca(host, await lerPeca(e.id), defDe(e.id), papel, marca, grupo.modo,
-          { campos: e.campos, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape' });
+          { campos: e.campos, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
       };
       await mostrar();
       if (grupo.pecas.length > 1) giros.push(setInterval(mostrar, GIRO_MS));
@@ -269,14 +283,19 @@
     MTTokens.MODOS.forEach((m) => opcao($('modo'), m, m));
     (manifesto.telas || []).forEach((t) => opcao($('tela'), t.id, t.nome + (t.estado === 'aprovada' ? ' ✓' : '')));
     LAYOUTS_DA_TELA.forEach((id) => opcao($('layout'), id, MT_getLayout(id).name));
+    opcao($('tamanho'), 'caber', 'Caber na janela');
+    opcao($('tamanho'), 'real', 'Real (1:1)');
     const primeira = (manifesto.telas || [])[0];
     if (primeira) $('layout').value = primeira.layout;
 
     // A escolha fica na URL: dá para mandar o link de uma combinação.
-    const CHAVES = ['ver', 'peca', 'marca', 'modo', 'tela', 'layout'];
+    const CHAVES = ['ver', 'peca', 'marca', 'modo', 'tela', 'layout', 'tamanho'];
     const q = new URLSearchParams(location.search);
     CHAVES.forEach((k) => { if (q.get(k)) $(k).value = q.get(k); });
     CHAVES.forEach((k) => $(k).addEventListener('change', () => {
+      // Peça nova abre na marca em que nasceu; tela nova, no layout dela.
+      if (k === 'peca' && defDe($('peca').value).marca) $('marca').value = defDe($('peca').value).marca;
+      if (k === 'tela') $('layout').value = (manifesto.telas.find((t) => t.id === $('tela').value) || {}).layout || $('layout').value;
       const p = new URLSearchParams();
       CHAVES.forEach((c) => p.set(c, $(c).value));
       history.replaceState(null, '', '?' + p);

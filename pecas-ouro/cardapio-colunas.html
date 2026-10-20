@@ -1,0 +1,99 @@
+<!--
+  Cardápio em duas colunas — família cardápio. Destaque e lateral.
+  Seis itens com o nome, a medida e o preço ligados por pontilhado, como no
+  cardápio de papel: o olho corre da esquerda para a direita sem se perder.
+  Sem foto de propósito — cardápio é para ler. Deitada, duas colunas; em
+  pé, quadrada e na lateral, uma só.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(100% 90% at 100% 0%, var(--mt-fundo-2), var(--mt-fundo) 64%); }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome b { font-weight: 800; }
+.cabeca { position: absolute; left: 6cqw; right: 6cqw; top: 15cqh; display: flex; align-items: flex-end; justify-content: space-between; gap: 6cqw; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 400 6.4cqw/.92 var(--mt-fonte-titulo); text-transform: uppercase; margin-top: 2cqw; white-space: nowrap; }
+.apoio { font: 400 1.5cqw/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 27cqw; text-align: right; padding-bottom: .6cqw; }
+.itens { position: absolute; left: 6cqw; right: 6cqw; bottom: 15cqh; list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; grid-template-rows: repeat(3, auto); column-gap: 6cqw; }
+.itens li { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; column-gap: 1.2cqw; padding: 1.7cqw 0 1.5cqw; border-top: .12cqw solid var(--mt-linha); }
+.itens li:nth-child(3), .itens li:nth-child(6) { border-bottom: .12cqw solid var(--mt-linha); }
+.nome { font: 400 2.6cqw/1.05 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .02em; white-space: nowrap; }
+.pontos { align-self: end; margin-bottom: .9cqw; border-bottom: .2cqw dotted var(--mt-texto-suave); opacity: .55; }
+.valor { font: 400 3.2cqw/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.valor small { font-size: .4em; vertical-align: .95em; margin-right: .25em; }
+.valor sup { font-size: .45em; vertical-align: .85em; }
+.medida { grid-column: 1 / -1; margin-top: .5cqw; font: 500 1.15cqw/1 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.medida:empty { display: none; }
+.cta { position: absolute; left: 6cqw; bottom: 6cqh; font: 600 1.2cqw/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
+/* Em pé e quase quadrada: uma coluna, o título em cima. */
+@container (aspect-ratio < 1.25) {
+  .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
+  .cabeca { left: 8cqw; right: 8cqw; top: 11cqh; display: block; }
+  .kicker { font-size: 2cqw; }
+  .kicker i { width: 5.5cqw; height: .22cqw; }
+  h1 { font-size: 10cqw; margin-top: 3cqw; }
+  .apoio { font-size: 2.6cqw; max-width: none; text-align: left; margin-top: 2.6cqw; }
+  .itens { left: 8cqw; right: 8cqw; bottom: 12cqh; grid-template-columns: 1fr; grid-auto-flow: row; grid-template-rows: none; }
+  .itens li { column-gap: 2cqw; padding: 2.6cqw 0 2.4cqw; border-top-width: .2cqw; }
+  .itens li:nth-child(3) { border-bottom: 0; }
+  .itens li:nth-child(6) { border-bottom-width: .2cqw; }
+  .nome { font-size: 4.6cqw; }
+  .pontos { margin-bottom: 1.4cqw; border-bottom-width: .35cqw; }
+  .valor { font-size: 5.6cqw; }
+  .medida { font-size: 1.9cqw; margin-top: .9cqw; }
+  .cta { left: 8cqw; bottom: 5cqh; font-size: 2cqw; border-bottom-width: .2cqw; }
+}
+/* Em pé numa tela inteira: a lista cresce para a altura que tem. */
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  h1 { font-size: 13cqw; }
+  .itens li { padding: 3.4cqw 0 3.2cqw; }
+  .nome { font-size: 5.6cqw; }
+  .valor { font-size: 7cqw; }
+  .medida { font-size: 2.2cqw; margin-top: 1.1cqw; }
+}
+/* Quadrada: a altura é a da largura — título e lista encolhem para caber. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .cabeca { top: 13cqh; }
+  h1 { font-size: 7.6cqw; margin-top: 2.2cqw; }
+  .apoio { display: none; }
+  .itens { bottom: 11cqh; }
+  .itens li { padding: 1.7cqw 0 1.6cqw; }
+  .nome { font-size: 3.6cqw; }
+  .valor { font-size: 4.4cqw; }
+  .medida { font-size: 1.5cqw; margin-top: .6cqw; }
+}
+/* A lateral: o nome e o preço; a medida e o apoio saem. */
+@container (max-width: 700px) {
+  .apoio, .medida { display: none; }
+  .marca-nome { font-size: 3.2cqw; letter-spacing: .32em; }
+  .cabeca { top: 11cqh; }
+  .kicker { font-size: 3.4cqw; letter-spacing: .22em; }
+  h1 { font-size: 13cqw; white-space: normal; }
+  .itens { bottom: 11cqh; }
+  .itens li { padding: 3.6cqw 0 3.2cqw; }
+  .nome { font-size: 6.4cqw; }
+  .valor { font-size: 7.6cqw; }
+  .cta { font-size: 3.2cqw; letter-spacing: .16em; }
+}
+</style>
+<section class="mt-peca cardapio-colunas">
+  <div class="marca-nome" data-campo="marca" data-repete="marca">Padaria <b>do Bairro</b></div>
+  <div class="cabeca">
+    <div>
+      <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Saindo do forno</span></p>
+      <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Pães da casa</h1>
+    </div>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Massa feita aqui, de madrugada, com farinha de moinho de pedra.</p>
+  </div>
+  <ol class="itens">
+    <li data-entrada="subir" data-ordem="3"><span class="nome" data-campo="item1-nome">Pão francês</span><span class="pontos" aria-hidden="true"></span><span class="valor"><small aria-hidden="true">R$</small><span data-campo="item1-preco">16</span><sup data-campo="item1-centavos">,90</sup></span><span class="medida" data-campo="item1-medida">o quilo</span></li>
+    <li data-entrada="subir" data-ordem="4"><span class="nome" data-campo="item2-nome">Fermentação natural</span><span class="pontos" aria-hidden="true"></span><span class="valor"><small aria-hidden="true">R$</small><span data-campo="item2-preco">24</span><sup data-campo="item2-centavos">,00</sup></span><span class="medida" data-campo="item2-medida">a unidade · 600 g</span></li>
+    <li data-entrada="subir" data-ordem="5"><span class="nome" data-campo="item3-nome">Baguete</span><span class="pontos" aria-hidden="true"></span><span class="valor"><small aria-hidden="true">R$</small><span data-campo="item3-preco">9</span><sup data-campo="item3-centavos">,50</sup></span><span class="medida" data-campo="item3-medida">a unidade</span></li>
+    <li data-entrada="subir" data-ordem="4"><span class="nome" data-campo="item4-nome">Pão de queijo</span><span class="pontos" aria-hidden="true"></span><span class="valor"><small aria-hidden="true">R$</small><span data-campo="item4-preco">54</span><sup data-campo="item4-centavos">,90</sup></span><span class="medida" data-campo="item4-medida">o quilo</span></li>
+    <li data-entrada="subir" data-ordem="5"><span class="nome" data-campo="item5-nome">Croissant</span><span class="pontos" aria-hidden="true"></span><span class="valor"><small aria-hidden="true">R$</small><span data-campo="item5-preco">8</span><sup data-campo="item5-centavos">,90</sup></span><span class="medida" data-campo="item5-medida">manteiga francesa</span></li>
+    <li data-entrada="subir" data-ordem="6"><span class="nome" data-campo="item6-nome">Sonho</span><span class="pontos" aria-hidden="true"></span><span class="valor"><small aria-hidden="true">R$</small><span data-campo="item6-preco">6</span><sup data-campo="item6-centavos">,50</sup></span><span class="medida" data-campo="item6-medida">creme da casa</span></li>
+  </ol>
+  <div class="cta" data-entrada="aparecer" data-ordem="7"><span data-campo="cta">Encomende pelo WhatsApp</span> <span aria-hidden="true">→</span></div>
+</section>
