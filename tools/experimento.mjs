@@ -64,7 +64,13 @@ const pedidos = banco.pedidos.filter((p) => !numeros || numeros.includes(p.n));
 
 /* ---------------- A foto, uma vez por pedido ---------------- */
 
-const PASTA_FOTOS = path.join(RAIZ, 'pecas-ouro', 'fotos', 'experimento');
+/*
+ * A simulação guarda o marcador (o SVG cinza do modo dev) numa pasta própria.
+ * Na mesma pasta, a rodada de verdade achava o marcador "já gerado" e o usava
+ * como foto — foi o que aconteceu na primeira rodada real, em 20/10.
+ */
+const PASTA_FOTOS = path.join(RAIZ, 'pecas-ouro', 'fotos', 'experimento', ...(SIMULAR ? ['simulado'] : []));
+const URL_FOTOS = '/pecas-ouro/fotos/experimento/' + (SIMULAR ? 'simulado/' : '');
 const FOTO_ACERVO_OTICA = '/pecas-ouro/fotos/otica-sol.jpg';
 
 async function fotoDo(pedido) {
@@ -74,12 +80,14 @@ async function fotoDo(pedido) {
   }
   if (pedido.foto !== 'gerar') return null;
   fs.mkdirSync(PASTA_FOTOS, { recursive: true });
-  const ja = fs.readdirSync(PASTA_FOTOS).find((f) => f.startsWith(pedido.id + '.'));
-  if (ja) return '/pecas-ouro/fotos/experimento/' + ja;
+  // Foto de verdade nunca é SVG: um SVG aqui é marcador que sobrou e não serve.
+  const ja = fs.readdirSync(PASTA_FOTOS).find((f) => f.startsWith(pedido.id + '.') && (SIMULAR || !f.endsWith('.svg')));
+  if (ja) return URL_FOTOS + ja;
   const img = await ai.generateImage('Foto publicitária para TV de loja: ' + pedido.pedido + '. ' + pedido.empresa + ', sem texto na imagem.', { formato: '16/9' });
+  if (!SIMULAR && /svg/.test(img.mime)) throw new Error('veio o marcador do modo dev, não uma foto (confira GEMINI_API_KEY e AI_PROVIDER)');
   const ext = /svg/.test(img.mime) ? 'svg' : /png/.test(img.mime) ? 'png' : 'jpg';
   fs.writeFileSync(path.join(PASTA_FOTOS, pedido.id + '.' + ext), Buffer.from(img.data, 'base64'));
-  return '/pecas-ouro/fotos/experimento/' + pedido.id + '.' + ext;
+  return URL_FOTOS + pedido.id + '.' + ext;
 }
 
 /* ---------------- Simulação (custo zero) ---------------- */

@@ -186,6 +186,15 @@ test('o rodador simulado percorre os motores e grava o que a página abre', () =
   assert.equal(av.filter((a) => a.falhou).length, 0);
   // A mesma foto para todos os motores do pedido 3.
   assert.equal(new Set(d.pecas.filter((p) => p.n === 3).map((p) => p.foto)).size, 1);
+  // E o marcador da simulação fica na pasta dele: a rodada de verdade não pode achá-lo.
+  assert.match(d.pecas.find((p) => p.n === 3).foto, /^\/pecas-ouro\/fotos\/experimento\/simulado\/[\w-]+\.svg$/);
+});
+
+test('a rodada de verdade não reaproveita o marcador cinza como foto', () => {
+  const fonte = ler('tools/experimento.mjs');
+  assert.match(fonte, /SIMULAR \? \['simulado'\]/);
+  assert.match(fonte, /SIMULAR \|\| !f\.endsWith\('\.svg'\)/);
+  assert.match(fonte, /!SIMULAR && \/svg\/\.test\(img\.mime\)\) throw/);
 });
 
 test('a página roda sob a CSP e o resultado do experimento não vai para o git', () => {
