@@ -87,6 +87,29 @@ test('o repositório não é navegável por HTTP', async () => {
   }
 });
 
+test('pasta pública não abre caminho para fora dela, com `..` de nenhum jeito', async () => {
+  /*
+   * `/js/../data/multitelas.db` respondia 200 com o banco inteiro: a lista
+   * de permissão olhava só o começo do caminho, e o `..` depois dele era
+   * resolvido dentro da raiz do projeto. O navegador resolve o `..` antes de
+   * pedir, então ninguém via; um pedido feito à mão não resolve.
+   *
+   * As pastas vêm do próprio server.js: pasta pública nova já nasce
+   * conferida, sem ninguém lembrar de vir aqui.
+   */
+  const fonte = require('node:fs').readFileSync(path.join(RAIZ, 'server.js'), 'utf8');
+  const pastas = JSON.parse(/const PASTAS_PUBLICAS = (\[[^\]]*\])/.exec(fonte)[1].replace(/'/g, '"'));
+  assert.ok(pastas.includes('/js/'), 'não achei a lista de pastas públicas');
+  const truques = ['../server.js', '../data/multitelas.db', '..%2fserver.js', '%2e%2e/server.js',
+    '.%2e/server.js', '..%5cserver.js', '../.git/HEAD', './../package.json'];
+  for (const pasta of pastas) {
+    for (const t of truques) {
+      const r = await pedir(pasta + t);
+      assert.notEqual(r.status, 200, pasta + t + ' foi servido');
+    }
+  }
+});
+
 test('o que é público continua público', async () => {
   // A lista de permissão não pode ter fechado o produto junto com o buraco.
   for (const caminho of ['/player.html', '/sw.js', '/player.webmanifest',
