@@ -247,6 +247,31 @@ peça travando no box. O conjunto de 20 vira o **banco de avaliação visual**
 permanente: roda a cada mudança de prompt ou de modelo, e a nota não pode
 cair.
 
+**Resultado (20/10) — o motor é HTML + Gemini.** Rodaram 2 dos 4 motores: não
+havia chave do Claude, e o resultado não pediu mais. Notas do dono às cegas:
+
+| Motor | Nota da peça | Nota da tela | Custo médio | Tempo médio | Passou de primeira |
+|---|---|---|---|---|---|
+| Atual (coordenadas) | 1,40 | 1,0 | R$ 0,080 | 27,5 s | 100% |
+| **HTML + Gemini** | **4,65** | **5,0** | **R$ 0,065** | **8,8 s** | 100% |
+
+Passa nos três critérios medidos (média ≥ 4; 3,25 pontos acima; R$ 0,065 ≤
+R$ 1,00). O quarto, "nada travando no box", se confere no box de teste. O
+Claude fica como opção, se a nota cair num modelo novo do Gemini.
+
+Ressalva: nos 7 pedidos com foto gerada entrou um marcador cinza no lugar da
+foto, igual para os dois motores (defeito do rodador, já corrigido). A nota
+mede o layout; as fotos entram na próxima rodada do banco.
+
+O que o dono apontou nas peças do HTML, todas com nota 4 ou 5 — a lista da
+barreira automática (render + conferência no servidor):
+
+- texto sobre texto: "Pet Feliz" × "pacote de cuidados" (#16) e "novidade" (#9);
+- no vertical, o texto não quebrou de acordo com o tamanho (#18);
+- o calendário do comunicado ficou feio (#2);
+- o ícone do Instagram saiu torto (#12);
+- falta textura, um pouco mais premium (#5).
+
 ### 4.5 Editar sem código
 
 - **Campos:** clicar no texto ou na foto da peça abre edição direta; o
@@ -586,10 +611,22 @@ Um PR por etapa, cada um aprovado pelo dono antes de começar.
 
 Antes da primeira peça-html numa tela de cliente: a Fase 0 (§10).
 
+**Situação em 20/10:** 1 a 8 no `main` (PRs #109 a #123). Depois de 9 a 11,
+com o resultado do experimento:
+
+12. **Barreira automática**: o servidor desenha a peça em 16:9, 9:16 e 1:1 e
+    acusa texto vazando ou sobre texto — o mesmo detector da bancada. É o que
+    pega os defeitos que o dono achou no experimento (§4.4).
+13. **O motor novo no produto**: Meus Designs e "Campanha com IA" passam a
+    compor em HTML, com 3 opções e a peça-ouro preenchida quando a IA falha.
+14. **Preencher à mão**: escolher uma peça-ouro e escrever os campos, com
+    limite de caracteres por campo; miniatura e editor com o mesmo desenhista.
+
 ### 4.15 Pronto quando
 
 - [ ] 39 peças-ouro e 6 telas completas aprovadas pelo dono.
-- [ ] Experimento feito e motor escolhido pela nota, não pelo gosto do dia.
+- [x] Experimento feito e motor escolhido pela nota, não pelo gosto do dia
+      (20/10: HTML + Gemini, 4,65 contra 1,40 — §4.4).
 - [ ] Pedido → 3 opções em menos de 60 s, média ≥ 4 no banco de avaliação.
 - [ ] Tela completa gerada com papel certo em cada zona, sem repetir mensagem
       entre elas.
@@ -749,7 +786,9 @@ tem 5 telas não cria 5 vezes mais — repete o mesmo conteúdo.
   mais.
 - **A geração de HTML com crítica visual deixa de ser "texto grátis".** O
   custo real por criação sai do experimento (§4.4) e define quantos créditos
-  cada criação consome.
+  cada criação consome. Saiu em 20/10: **R$ 0,065 por peça** sem foto (~0,2
+  crédito); a tela completa soma quatro composições (~R$ 0,26). A crítica
+  visual ainda não entrou nessa conta.
 
 ### 6.6 Inadimplência
 
@@ -884,6 +923,10 @@ Decisões desta rodada que deixam a porta aberta, sem construir o futuro agora:
 Antes de tudo **que chegue à tela de um cliente**. A biblioteca-ouro vem
 antes dela por decisão do dono (§3); a primeira peça-html numa tela de
 cliente, não.
+
+**20/10:** a ótica ainda não tem aparelho — a única tela no ar é a de teste,
+na casa do dono. Por isso a Fase 1 foi direto para o `main`. O canal beta
+continua obrigatório **antes de instalar a ótica**.
 
 - [ ] `pg_dump` diário do Postgres para o R2, com teste de restauração.
       Código pronto (`docs/BACKUP.md`): serviço próprio no Railway por cron,
