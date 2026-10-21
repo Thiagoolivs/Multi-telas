@@ -734,6 +734,42 @@ async function marcarAvisoAtraso(id, desde) {
   db.prepare('UPDATE tenants SET aviso_atraso = ? WHERE id = ?').run(desde, id);
 }
 
+/*
+ * O NEGÓCIO, para o painel do operador (PLANO §7.2, EXECUTOR item 13). As
+ * contas em cima destas linhas moram em server/admin.js; aqui só se busca.
+ */
+/* Todas as telas pareadas, da que deu sinal há mais tempo para a mais recente. */
+async function frotaDaPlataforma(limite) {
+  return db.prepare(`SELECT d.id, d.name, d.tenant_id, d.last_seen, d.created_at, d.info, d.expediente, t.name AS conta
+    FROM devices d LEFT JOIN tenants t ON t.id = d.tenant_id
+    WHERE d.tenant_id IS NOT NULL AND d.tenant_id <> ''
+    ORDER BY COALESCE(d.last_seen, 0) ASC LIMIT ?`).all(limite || 500);
+}
+/* As contas que não estão no grátis, com o e-mail do dono e quantas telas têm. */
+async function contasPagas() {
+  return db.prepare(`SELECT t.id, t.name, t.plan, t.plan_status, t.plan_contrato, t.contrato_desde, t.plan_telas,
+      t.atraso_desde, t.plan_renews_at, t.created_at,
+      (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas
+    FROM tenants t WHERE COALESCE(t.plan, 'free') <> 'free' ORDER BY t.name`).all();
+}
+/* Cadastros desde `desde`, e se a conta já pareou alguma TV (o teste de verdade). */
+async function cadastrosDesde(desde) {
+  return db.prepare(`SELECT t.id, t.created_at, t.plan, t.plan_status,
+      (SELECT COUNT(*) FROM eventos e WHERE e.tenant_id = t.id AND e.acao = 'tela.parear') AS pareou
+    FROM tenants t WHERE t.created_at >= ?`).all(desde);
+}
+/* Custo de IA por conta na janela (medido em uso_ia), das que mais gastam. */
+async function custoIaPorConta(desde, limite) {
+  return db.prepare(`SELECT u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato,
+      SUM(u.custo_centavos) AS centavos, SUM(u.creditos) AS criacoes, COUNT(*) AS chamadas,
+      (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = u.tenant_id) AS telas
+    FROM uso_ia u LEFT JOIN tenants t ON t.id = u.tenant_id
+    WHERE u.created_at >= ?
+    GROUP BY u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato
+    ORDER BY centavos DESC LIMIT ?`).all(desde, limite || 50);
+}
+
 async function contasParaConciliar() {
   return db.prepare(`SELECT t.id, t.plan, t.plan_status, t.plan_telas, t.stripe_subscription_id,
       (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas
@@ -1479,6 +1515,7 @@ module.exports = {
   renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
+  frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,

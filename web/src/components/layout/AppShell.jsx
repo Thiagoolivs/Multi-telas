@@ -19,7 +19,12 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-canvas">
+    /*
+     * No painel do operador a cor de destaque muda (web/src/index.css,
+     * data-modo): quem está vendo TODAS as contas nunca pode confundir isso
+     * com o painel de uma loja (PLANO §7.2).
+     */
+    <div className="flex h-screen overflow-hidden bg-canvas" data-modo={active === 'platform' ? 'operador' : undefined}>
       {/* Sidebar desktop */}
       <div className="hidden lg:block">
         <Sidebar active={active} onNavigate={navigate} papel={user && user.role} operador={operador} empresa={empresa} />

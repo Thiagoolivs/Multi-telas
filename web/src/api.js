@@ -317,6 +317,8 @@ export const suporte = {
  */
 export const plataforma = {
   metricas: (dias) => api('GET', '/api/plataforma/metricas' + (dias ? '?dias=' + dias : '')),
+  // Frota, clientes, receita, funil, custo de IA e saúde (server/admin.js).
+  negocio: (dias) => api('GET', '/api/plataforma/negocio' + (dias ? '?dias=' + dias : '')),
   reclamacoes: () => api('GET', '/api/plataforma/reclamacoes'),
   resolver: (id, status, resposta) => api('POST', '/api/plataforma/reclamacoes/' + id, { status, resposta }),
   contas: (q, dias) => api('GET', '/api/plataforma/contas?q=' + encodeURIComponent(q || '') + (dias ? '&dias=' + dias : '')),

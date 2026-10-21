@@ -954,6 +954,46 @@ async function marcarAvisoAtraso(id, desde) {
   await pool.query('UPDATE tenants SET aviso_atraso = $1 WHERE id = $2', [desde, id]);
 }
 
+/*
+ * O NEGÓCIO, para o painel do operador (PLANO §7.2, EXECUTOR item 13). As
+ * contas em cima destas linhas moram em server/admin.js; aqui só se busca.
+ */
+/* Todas as telas pareadas, da que deu sinal há mais tempo para a mais recente. */
+async function frotaDaPlataforma(limite) {
+  const r = await pool.query(`SELECT d.id, d.name, d.tenant_id, d.last_seen, d.created_at, d.info, d.expediente, t.name AS conta
+    FROM devices d LEFT JOIN tenants t ON t.id = d.tenant_id
+    WHERE d.tenant_id IS NOT NULL AND d.tenant_id <> ''
+    ORDER BY COALESCE(d.last_seen, 0) ASC LIMIT $1`, [limite || 500]);
+  return r.rows;
+}
+/* As contas que não estão no grátis, com o e-mail do dono e quantas telas têm. */
+async function contasPagas() {
+  const r = await pool.query(`SELECT t.id, t.name, t.plan, t.plan_status, t.plan_contrato, t.contrato_desde, t.plan_telas,
+      t.atraso_desde, t.plan_renews_at, t.created_at,
+      (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
+      (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = t.id) AS telas
+    FROM tenants t WHERE COALESCE(t.plan, 'free') <> 'free' ORDER BY t.name`);
+  return r.rows;
+}
+/* Cadastros desde `desde`, e se a conta já pareou alguma TV (o teste de verdade). */
+async function cadastrosDesde(desde) {
+  const r = await pool.query(`SELECT t.id, t.created_at, t.plan, t.plan_status,
+      (SELECT COUNT(*)::int FROM eventos e WHERE e.tenant_id = t.id AND e.acao = 'tela.parear') AS pareou
+    FROM tenants t WHERE t.created_at >= $1`, [desde]);
+  return r.rows;
+}
+/* Custo de IA por conta na janela (medido em uso_ia), das que mais gastam. */
+async function custoIaPorConta(desde, limite) {
+  const r = await pool.query(`SELECT u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato,
+      SUM(u.custo_centavos)::bigint AS centavos, SUM(u.creditos)::bigint AS criacoes, COUNT(*)::int AS chamadas,
+      (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = u.tenant_id) AS telas
+    FROM uso_ia u LEFT JOIN tenants t ON t.id = u.tenant_id
+    WHERE u.created_at >= $1
+    GROUP BY u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato
+    ORDER BY centavos DESC LIMIT $2`, [desde, limite || 50]);
+  return r.rows;
+}
+
 async function contasParaConciliar() {
   const r = await pool.query(`SELECT t.id, t.plan, t.plan_status, t.plan_telas, t.stripe_subscription_id,
       (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = t.id) AS telas
@@ -1407,6 +1447,7 @@ module.exports = {
   renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
+  frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,
