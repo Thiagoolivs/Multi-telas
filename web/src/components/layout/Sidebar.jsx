@@ -1,46 +1,30 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, Wand2, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity, Gauge, Images, BarChart3,
+  LayoutDashboard, Wand2, MonitorPlay, LifeBuoy, Brush, Activity, Gauge, Images, BarChart3, Repeat, UserRound,
 } from 'lucide-react';
+import { GRUPOS, grupoDa } from '../../lib/menu.js';
+
+/*
+ * O MENU: os 8 grupos de web/src/lib/menu.js (PLANO §5.1), na ordem em que o
+ * dono da loja pensa. Antes eram 14 entradas soltas em "Operação" e "Conta",
+ * e quem procurava "onde ponho a foto?" lia a lista inteira. Cada página
+ * antiga mora dentro de um grupo, como aba (AbasDoGrupo, no AppShell).
+ */
+const ICONES = {
+  inicio: LayoutDashboard,
+  telas: MonitorPlay,
+  criar: Wand2,
+  midias: Images,
+  marca: Brush,
+  automaticos: Repeat,
+  relatorios: BarChart3,
+  conta: UserRound,
+};
+export const ICONE_DO_GRUPO = ICONES;
 
 const NAV = [
-  { section: 'Operação', items: [
-    { id: 'overview', label: 'Visão geral', icon: LayoutDashboard },
-    /*
-     * Uma entrada só para criar (PLANO §5.1). Meus Designs continua: é a
-     * biblioteca do que já foi feito, não o lugar de começar.
-     */
-    { id: 'criar', label: 'Criar', icon: Wand2 },
-    { id: 'screens', label: 'Telas', icon: MonitorPlay },
-    { id: 'designs', label: 'Meus Designs', icon: Palette },
-    { id: 'brand', label: 'Marca', icon: Brush },
-    /*
-     * O Banco de Imagens é OPERAÇÃO, ao lado de Marca e Meus Designs: é de
-     * onde sai conteúdo para a tela. Enfiado em "Conta", junto de cobrança e
-     * equipe, ninguém acharia — e uma prateleira que ninguém abre é a mesma
-     * coisa que uma plataforma vazia.
-     */
-    { id: 'banco', label: 'Banco de Imagens', icon: Images },
-    { id: 'mural', label: 'Mural de fotos', icon: QrCode },
-    /*
-     * Aniversariantes é OPERAÇÃO, não conta.
-     *
-     * Estava em "Conta", junto de armazenamento, equipe e cobrança — que são
-     * coisas que se mexe uma vez e esquece. A lista de aniversariantes é o
-     * contrário: alimenta o que a TV mostra, muda toda semana, e quem cuida
-     * dela é quem cuida do conteúdo, não quem cuida da assinatura.
-     */
-    { id: 'birthdays', label: 'Aniversariantes', icon: Cake },
-    { id: 'relatorio', label: 'Relatório', icon: BarChart3 },
-    { id: 'alerts', label: 'Alertas', icon: Bell },
-  ] },
-  { section: 'Conta', items: [
-    { id: 'storage', label: 'Armazenamento', icon: HardDrive },
-    { id: 'team', label: 'Equipe', icon: Users2 },
-    { id: 'billing', label: 'Plano', icon: CreditCard },
-    { id: 'settings', label: 'Ajustes', icon: Settings },
-  ] },
+  { section: 'Painel', items: GRUPOS.map((g) => ({ id: g.id, label: g.label, icon: ICONES[g.id], destino: g.paginas[0] })) },
   /*
    * A seção da PLATAFORMA só existe para quem opera o MultiTelas inteiro — e
    * são coisas diferentes: "Estado do sistema" responde "a minha conta está
@@ -66,7 +50,8 @@ function NavItem({ item, active, onClick }) {
   const Icon = item.icon;
   return (
     <button
-      onClick={() => onClick(item.id)}
+      onClick={() => onClick(item.destino || item.id)}
+      aria-current={active ? 'page' : undefined}
       className={cn(
         'group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition',
         active ? 'bg-surface-2 text-ink' : 'text-ink-2 hover:bg-surface-2 hover:text-ink'
@@ -74,22 +59,15 @@ function NavItem({ item, active, onClick }) {
     >
       <Icon size={16} strokeWidth={2} className={cn(active ? 'text-accent' : 'text-ink-3 group-hover:text-ink-2')} />
       <span className="flex-1 text-left">{item.label}</span>
-      {item.badge && (
-        <span
-          className={cn(
-            'tnum rounded px-1.5 py-0.5 text-2xs font-semibold',
-            item.badgeTone === 'danger' ? 'bg-danger-soft text-danger' : 'bg-surface-2 text-ink-3 group-hover:bg-surface'
-          )}
-        >
-          {item.badge}
-        </span>
-      )}
     </button>
   );
 }
 
 export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
   const ehDono = papel === 'owner';
+  // O grupo da página aberta fica aceso: Aniversariantes acende Automáticos.
+  const grupo = grupoDa(active);
+  const aceso = (item) => (grupo ? grupo.id === item.id : active === item.id);
   const secoes = NAV
     .filter((s) => !s.operador || operador)
     .map((s) => ({ ...s, items: s.items.filter((i) => !i.dono || ehDono) }))
@@ -117,13 +95,14 @@ export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
             <div className="px-2.5 pb-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-3">{group.section}</div>
             <div className="space-y-0.5">
               {group.items.map((item) => (
-                <NavItem key={item.id} item={item} active={active === item.id} onClick={onNavigate} />
+                <NavItem key={item.id} item={item} active={aceso(item)} onClick={onNavigate} />
               ))}
             </div>
           </div>
         ))}
       </nav>
 
+      {/* Suporte também está em Conta; aqui fica à mão, que é onde se procura ajuda. */}
       <div className="border-t border-line p-2.5">
         <button
           type="button"
