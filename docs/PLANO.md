@@ -671,7 +671,8 @@ antes da ótica:
 - [ ] Wireframe aprovado antes de qualquer foto ser gerada.
 - [ ] Foto com o produto real do cliente, fiel ao produto, aprovada antes de
       ir para a tela.
-- [ ] Trocar marca ou modo reestiliza a peça sem gerar de novo.
+- [x] Trocar marca ou modo reestiliza a peça sem gerar de novo
+      (21/10, PR #137: Escuro, Claro, Cor da marca e a marca, no editor).
 - [ ] Peça idêntica — inclusive a entrada animada — no editor, na miniatura
       e no box da ótica.
 - [ ] IA fora do ar → o cliente preenche uma peça-ouro à mão, nunca tela vazia.
