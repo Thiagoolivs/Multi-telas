@@ -1,29 +1,39 @@
-# Dois agentes no mesmo repositório
+# Consultor e executor no mesmo repositório
 
-Dois agentes do Claude Code, em contas separadas, executam o `docs/PLANO.md`
-ao mesmo tempo. Cada um tem uma pasta, uma frente de trabalho e um conjunto
-de arquivos. O conflito de merge é evitado na divisão, e não resolvido depois.
+Dois Claude Code trabalham neste repositório:
 
-| | Agente A — **Criação** | Agente B — **Operação e vendas** |
+- **Consultor:** a sessão no PC do dono, com o contexto todo do projeto.
+  Planeja, responde dúvidas e revisa os PRs depois do merge. Não escreve
+  código de produto; mexe só em `docs/`.
+- **Executor:** a conta Max, em outro computador. Faz todo o trabalho: código,
+  testes, conferência visual e merge.
+
+O executor pode rodar **uma ou duas sessões**. Com duas, cada uma fica numa
+pasta própria e numa frente, e a divisão de arquivos abaixo é o que evita
+conflito de merge. As duas sessões gastam a mesma cota da conta Max.
+
+| | Frente **Criação** | Frente **Operação e vendas** |
 |---|---|---|
-| Pasta | `C:\Projetos\Multi-telas` | `C:\Projetos\Multi-telas-b` |
+| Pasta | `C:\Projetos\Multi-telas` | `C:\Projetos\Multi-telas-op` |
 | Branches | `criar/…` | `op/…` |
 | Porta local | 8080 | **8081** (`PORT=8081`) |
 | Frente | Fase 1 (fechamento) e Fase 2 (painel) | §6 Comercial, Fase 3 (TV 24/7), Fase 4 (admin), Fase 5 (landing e preços) |
 
-O banco local fica em `data/`, dentro de cada pasta. Por isso cada agente tem
-o seu, e as contas de teste de um não existem no outro.
+Com uma sessão só, ela segue a fila única de "Plano até amanhã".
+
+O banco local fica em `data/`, dentro de cada pasta. Por isso cada sessão tem
+o seu, e as contas de teste de uma não existem na outra.
 
 ## Quem mexe em quê
 
-**A — Criação**
+**Criação**
 - `js/peca*.js`, `js/tokens.js`, `js/fontes.js`, `js/cor.js`, `js/animacao.js`, `js/render.js`, `js/templates.js`, `js/modelos.js`, `pecas-ouro/`, `bancada.html`
 - `server/compositor.js`, `server/ai*.js`, `server/motores.js`, `server/direcao-arte.js`, `server/design-system.js`
 - `web/src/pages/MyDesignsPage.jsx`, `ContentEditorPage.jsx`, `BrandPage.jsx`, `DashboardPage.jsx`
 - `web/src/components/content/`, `web/src/lib/contentTypes.js`, `web/src/lib/pecaHtml.js`
 - **Navegação** (Fase 2): `web/src/App.jsx`, `web/src/components/layout/` (Sidebar, Topbar, AppShell)
 
-**B — Operação e vendas**
+**Operação e vendas**
 - `server/plans.js`, `server/creditos.js`, `server/cobranca.js`, `server/routes/billing.js`, `web/src/pages/BillingPage.jsx`
 - `player.html`, `js/player.js`, `js/boot.js`, `js/adaptive.js`, `js/cloud.js`, `js/storage.js`, `js/perf.js`, `js/exibicoes.js`, `js/theme.js`, `server/vigia.js`, `server/routes/telas.js`, `android/`
 - `web/src/pages/PlatformPage.jsx`, `SystemPage.jsx`, `ScreensPage.jsx`, `AlertsPage.jsx`, `RelatorioPage.jsx`
@@ -40,7 +50,7 @@ ou "aproveitar para arrumar".
 - `sw.js`: só a linha do arquivo novo na lista.
 - `web/src/api.js`: o grupo novo vai no fim do arquivo.
 - `docs/PLANO.md`: cada um marca só os itens da sua frente.
-- A navegação é do A. Se B precisar de um item no menu, ele acrescenta uma
+- A navegação é da Criação. Se a Operação precisar de um item no menu, ela acrescenta uma
   linha DEPOIS que o menu novo da Fase 2 estiver no `main`, e avisa na
   issue #135.
 
@@ -63,46 +73,86 @@ explicada no PR.
    ou `data/`.
 
 **Infra é do dono.** Nenhum agente cria serviço, muda variável ou faz
-deploy no Railway sem a autorização dele no chat. B não mexe no Railway.
+deploy no Railway sem a autorização dele no chat. O executor não mexe no
+Railway.
+
+## Plano até amanhã
+
+"Quase pronto" quer dizer: todo o software do PLANO no `main`, testado e
+conferido na tela. Ficam de fora o que só o relógio ou o dono resolvem: as
+72 h no box, o contrato, o Asaas de produção e a aprovação das peças.
+
+Fila única, por prioridade: **o que aparece na TV do cliente vem primeiro.**
+Cada item é um PR. A frente vai entre parênteses.
+
+1. **(Criação)** PR #137: conferir na tela e fazer o merge. São a troca de
+   estilo e marca no editor e o rascunho de cada peça no plano.
+2. **(Operação)** TV adaptável (§7.1):
+   - margem contra overscan ajustável por tela, no painel;
+   - retrato de primeira classe;
+   - CSS do player em unidades de container.
+
+   Para conferir: peça-ouro e layout em 720p, 1080p e 4K, deitada e em pé.
+3. **(Operação)** Expediente: a tela apaga fora do horário da loja, e o
+   alerta de tela offline não dispara nesse horário.
+4. **(Operação)** Print remoto da tela: o painel pede, a TV manda a imagem
+   do que está mostrando.
+5. **(Criação)** Peça idêntica na TV: a entrada animada da peça-ouro roda
+   no player (`player.html`) igual à bancada, sem engasgo no modo da TV
+   fraca (`js/perf.js`).
+6. **(Criação)** Fase 2, o painel (§5): menu de 8 itens e barra inferior no
+   celular, "Criar" num lugar só, "Adicionar conteúdo" com 6 entradas e
+   "Mais tipos" com busca, e redirect de toda página antiga. Conferir em
+   360 px.
+7. **(Criação)** Primeira peça na TV em menos de 10 minutos, guiado: cadastro
+   → marca pelo site → primeira peça → parear a TV.
+8. **(Operação)** Comercial (§6):
+   - planos mensal e anual com desconto por faixa;
+   - teto de IA por conta (§6.5);
+   - teste de 14 dias com 20 créditos;
+   - o cliente vê "criações", não créditos;
+   - inadimplência (§6.6), nunca tela preta sem aviso.
+9. **(Operação)** Vídeo normalizado no upload (H.264 1080p). Se precisar de
+   ffmpeg no servidor, pergunte ao consultor antes: é infra.
+10. **(Operação)** Fase 4, administração (§7.2), com o mesmo design do
+    painel e outra cor de destaque.
+11. **(Operação)** Fase 5 (§7.3): landing nova e página de preços. Nenhuma
+    promessa sem código por trás, menos de 500 KB.
+
+Com duas sessões, cada uma pega os itens da sua frente, na ordem da fila.
 
 ## Recados — issue #135
 
-Os agentes conversam pela issue
-[#135](https://github.com/Thiagoolivs/Multi-telas/issues/135), e não por
-este arquivo: comentário não dá conflito de merge, tem hora e os dois leem.
+O executor e o consultor conversam pela issue
+[#135](https://github.com/Thiagoolivs/Multi-telas/issues/135). Comentário
+não dá conflito de merge, tem hora, e todo mundo lê, inclusive o dono.
 
-- Escrever: `gh issue comment 135 --body "[A] …"` (ou `[B] …`).
+- Escrever: `gh issue comment 135 --body "[executor] …"`.
 - Ler: `gh issue view 135 --comments` ao começar cada PR e antes de cada
   merge.
-- Vai para lá: o pedido para mexer em arquivo do outro, o aviso de mudança
-  em arquivo dos dois, o aviso de "rebase, mudei X" e o recado para o dono.
-- Decisão de produto não se resolve entre os agentes: vai para o dono.
-- Se os dois aparecerem um para o outro na lista de sessões (`ListAgents`,
-  o que acontece quando estão na mesma máquina e na mesma conta), dá para
-  usar `SendMessage` para avisar na hora. O registro, mesmo assim, fica na
-  issue.
+- **Dúvida para o consultor:** comece com `@consultor`. Enquanto espera a
+  resposta, faça outra coisa da fila.
+- **Duas sessões:** use `[criação]` e `[operação]` e avise ali toda mudança
+  em arquivo dos dois.
+- Decisão de produto não se resolve entre agentes: vai para o dono.
 
-## Prompt de partida do Agente B
+## Prompt de partida do executor
 
-Cole isto no chat do agente B, aberto na pasta `C:\Projetos\Multi-telas-b`:
+Cole isto no Claude Code do outro computador, aberto na pasta do clone (com
+duas sessões, troque a primeira frase por "Você é a frente Criação" ou "Você
+é a frente Operação e vendas"):
 
-> Você é o Agente B deste repositório. Outro agente (A) trabalha em paralelo
-> em outra pasta, na criação de conteúdo e no menu do painel. Leia primeiro
-> `docs/AGENTES.md` (divisão de arquivos e regras de PR) e depois
-> `docs/PLANO.md`; os recados com o agente A passam pela issue #135
-> (`gh issue view 135 --comments`). Sua frente, nesta ordem:
-> (1) §6 Comercial: planos mensal e anual com desconto por faixa, teto de IA
-> por conta (§6.5), teste de 14 dias com 20 créditos, o cliente vê
-> "criações", e inadimplência (§6.6);
-> (2) Fase 3 (§7.1), só a parte de software: CSS do player em unidades de
-> container e retrato, margem contra overscan ajustável por tela,
-> expediente (a tela apaga fora do horário), print remoto da tela, vídeo
-> normalizado no upload e alerta de tela offline (o de e-mail já existe em
-> `server/vigia.js`);
-> (3) Fase 4 (§7.2), administração;
-> (4) Fase 5 (§7.3), landing e página de preços.
-> Para as decisões abertas do §13, use as recomendações do próprio PLANO.
-> O dono autoriza: você trabalha sem perguntar antes de cada tarefa e faz o
+> Você é o executor deste repositório. Leia, nesta ordem:
+> `docs/AGENTES.md` (papéis, divisão de arquivos, regras de PR e o "Plano
+> até amanhã"), depois `docs/PLANO.md` e `docs/ESTADO-DO-PROJETO.md`.
+> Siga a fila do "Plano até amanhã" na ordem.
+>
+> Um consultor (outro Claude, com o contexto do projeto todo) responde
+> dúvidas na issue #135: escreva com `@consultor` e siga trabalhando
+> enquanto espera. Leia a issue (`gh issue view 135 --comments`) ao começar
+> cada PR e antes de cada merge.
+>
+> O dono autoriza: trabalhe sem perguntar antes de cada tarefa e faça o
 > merge dos seus PRs quando os testes passarem e o visual for conferido.
-> Railway e qualquer outra infra só com a autorização dele no chat. Rode o
-> servidor local com `PORT=8081`. Respostas curtas, em português.
+> Um PR pequeno por item. Railway e qualquer outra infra só com a
+> autorização dele no chat. Respostas curtas, em português.
