@@ -421,3 +421,12 @@ export const media = {
 };
 
 export default api;
+
+/*
+ * Os textos das redes para uma peça (EXECUTOR item 6): legenda do Instagram,
+ * mensagem do WhatsApp, post do Facebook e do Google, e quando postar. A
+ * imagem de cada canal é desenhada no navegador (lib/rasterizar.js).
+ */
+export const redes = {
+  textos: (dados) => api('POST', '/api/ai/redes', dados),
+};

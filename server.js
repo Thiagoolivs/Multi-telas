@@ -63,6 +63,7 @@ const memory = require('./server/ai-memoria');
 const muralLib = require('./server/mural');
 const qrcode = require('./server/qr');
 const paletaInicial = require('./server/paleta');
+const redesRotas = require('./server/routes/redes');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -350,6 +351,7 @@ function montarCtx() {
     billing: require('./server/routes/billing')(ctx),
     telas: require('./server/routes/telas')(ctx),
     relatorio: require('./server/routes/relatorio')(ctx),
+    redes: redesRotas(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -442,6 +444,8 @@ async function handleApi(req, res, pathname, query) {
     guia: 'guia',
     // Redesenhar a peça que não coube (§4.10): texto, medido como a composição.
     'refazer-peca': 'gerar-composicao',
+    // Os textos das redes (item 6): quatro chamadas de texto, um pedido por canal.
+    redes: 'redes-sociais',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
@@ -1176,6 +1180,11 @@ async function handleApi(req, res, pathname, query) {
           tom: String((b && b.tom) || '').slice(0, 60),
           observacoes: String((b && b.observacoes) || '').slice(0, 600),
         });
+        // Onde a loja fica (as redes pedem): só quando a tela manda.
+        if (b && b.local && typeof b.local === 'object') {
+          const ativa = await db.getBrandKit(sess.tenant_id);
+          if (ativa) await db.salvarLocalDaMarca(ativa.id, sess.tenant_id, redesRotas.localLimpo(b.local));
+        }
         return sendJson(res, 200, { ok: true });
       });
     }
@@ -1774,6 +1783,7 @@ async function handleApi(req, res, pathname, query) {
   if (await ctx.routes.billing(req, res, parts, query, sess)) return;
   if (await ctx.routes.telas(req, res, parts, query, sess)) return;
   if (await ctx.routes.relatorio(req, res, parts, query, sess)) return;
+  if (await ctx.routes.redes(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------

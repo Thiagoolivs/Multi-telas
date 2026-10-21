@@ -351,6 +351,8 @@ function garantirColuna(tabela, definicao) {
 }
 
 garantirColuna('brandassets', 'marca_id TEXT');
+// Onde a loja fica (endereço, bairro, cidade, link), em JSON: as redes pedem.
+garantirColuna('marcas', 'localizacao TEXT');
 
 function migrarBrandkit() {
   const antigos = db.prepare(`SELECT b.* FROM brandkit b
@@ -837,6 +839,7 @@ function mapMarca(r) {
     direcao: r.direcao || '', tom: r.tom || '', observacoes: r.observacoes || '',
     site: r.site || '', siteResumo: r.site_resumo || '', siteShot: r.site_shot || '', siteEm: r.site_em || 0,
     ativa: !!r.ativa, updatedAt: r.updated_at,
+    local: lerLocal(r.localizacao),
   };
 }
 
@@ -1478,4 +1481,21 @@ module.exports = {
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
+  salvarLocalDaMarca,
 };
+
+/*
+ * Onde a loja fica: { endereco, bairro, cidade, link }, em JSON na coluna
+ * `localizacao` da marca. As redes usam (hashtag do bairro e da cidade,
+ * endereço ou link na mensagem). Normalizado na rota (server.js, PUT /api/brand).
+ */
+function lerLocal(texto) {
+  let l = {};
+  try { l = JSON.parse(texto || '{}') || {}; } catch (e) { l = {}; }
+  return { endereco: l.endereco || '', bairro: l.bairro || '', cidade: l.cidade || '', link: l.link || '' };
+}
+async function salvarLocalDaMarca(id, tenantId, local) {
+  db.prepare('UPDATE marcas SET localizacao = ?, updated_at = ? WHERE id = ? AND tenant_id = ?')
+    .run(JSON.stringify(local || {}), Date.now(), id, tenantId);
+  return mapMarca(qMarca.porId.get(id, tenantId));
+}
