@@ -430,3 +430,12 @@ export default api;
 export const redes = {
   textos: (dados) => api('POST', '/api/ai/redes', dados),
 };
+
+/*
+ * "Ver a tela agora" (EXECUTOR item 9): pede à TV o que está no ar e lê a
+ * resposta. A TV responde pelo comando "estado" (js/player.js, coletarEstado).
+ */
+export const telaAgora = {
+  pedir: (id) => api('POST', '/api/devices/' + id + '/comando', { acao: 'estado' }),
+  ler: (id) => api('GET', '/api/devices/' + id + '/estado'),
+};

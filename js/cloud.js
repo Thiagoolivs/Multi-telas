@@ -213,6 +213,17 @@
     if (ultimo === cmd.id) return;
     try { localStorage.setItem('mt.ultimoComando', cmd.id); } catch (e) {}
     if (cmd.acao === 'recarregar') global.location.reload();
+    // Os outros comandos são do player ("estado": o painel quer ver a tela).
+    else document.dispatchEvent(new CustomEvent('mt:comando', { detail: cmd }));
+  }
+
+  /*
+   * A resposta do "Ver a tela agora": o que está no ar, zona por zona
+   * (js/player.js, coletarEstado). Falhar aqui só deixa o painel sem resposta.
+   */
+  async function enviarEstado(id, estado) {
+    try { await api('POST', '/api/devices/' + id + '/estado', estado, dtHeader()); }
+    catch (e) { /* offline: o painel diz que a TV não respondeu */ }
   }
 
   /*
@@ -341,7 +352,7 @@
     // credencial da TV: o código do cartaz autoriza ENVIAR foto, e não listar
     // o que os outros mandaram.
     dtHeader, deviceToken,
-    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat, reportAudio, enviarExibicoes,
+    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat, reportAudio, enviarExibicoes, enviarEstado,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);

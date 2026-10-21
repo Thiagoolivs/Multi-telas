@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw, Eye } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
@@ -13,6 +13,7 @@ import { useAsync } from '../lib/useAsync.js';
 import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
+import { VerTelaAgora } from '../components/content/VerTelaAgora.jsx';
 import { esquecerParear } from '../lib/parearPendente.js';
 
 export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
@@ -44,6 +45,7 @@ export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
   const [reconnectTarget, setReconnectTarget] = useState(null);
   const [backupTarget, setBackupTarget] = useState(null);
   const [alertaTarget, setAlertaTarget] = useState(null);
+  const [verTarget, setVerTarget] = useState(null);
 
   return (
     <div>
@@ -95,6 +97,7 @@ export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
               {list.map((d) => (
                 <FleetCard key={d.id} d={d}
                   onSom={() => setSomTarget(d)}
+                  onVer={() => setVerTarget(d)}
                   onContent={() => onEditContent(d)}
                   onRename={() => setRenameTarget(d)}
                   onReconnect={() => setReconnectTarget(d)}
@@ -121,6 +124,7 @@ export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
       >
         {somTarget && <SoundRemote deviceId={somTarget.id} />}
       </Dialog>
+      <VerTelaAgora target={verTarget} onClose={() => setVerTarget(null)} />
       <ReconnectDialog target={reconnectTarget} onClose={() => setReconnectTarget(null)} onDone={reload} />
       <RemoveDialog target={removeTarget} onClose={() => setRemoveTarget(null)} onDone={reload} />
       <ExpedienteDialog target={alertaTarget} onClose={() => setAlertaTarget(null)} onDone={reload} />
@@ -130,7 +134,7 @@ export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
 }
 
 // Mini "tela" da frota: status + programação (não é espelho ao vivo).
-function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onAlerta, onRemove }) {
+function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup, onAlerta, onRemove }) {
   const st = deviceStatus(d.lastSeen);
   const online = st.tone === 'ok';
   /*
@@ -187,6 +191,7 @@ function FleetCard({ d, onSom, onContent, onRename, onReconnect, onBackup, onAle
         </div>
         <div className="flex flex-wrap items-center gap-1">
           <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent} className="mr-auto">Conteúdo</Button>
+          <IconButton icon={Eye} label="Ver a tela agora" size={14} onClick={onVer} />
           <IconButton icon={RotateCw} label="Recarregar a TV" size={14} onClick={recarregar} disabled={!!recarregando} />
           <IconButton icon={Music} label="Som ao vivo" size={14} onClick={onSom} />
           <IconButton icon={d.expediente && d.expediente.alerta === false ? BellOff : Bell}
