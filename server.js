@@ -48,6 +48,7 @@ const limites = require('./server/limites.js');
 const passes = require('./server/passes.js');
 const metricas = require('./server/metricas.js');
 const admin = require('./server/admin.js');
+const suporte = require('./server/suporte.js');
 const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
 const legal = require('./server/legal');
@@ -364,6 +365,17 @@ async function handleApi(req, res, pathname, query) {
 
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
   const sess = await auth.currentSession(req);
+
+  /*
+   * SESSÃO DE SUPORTE (o operador dentro da conta de um cliente): o que é do
+   * dono — cobrança, equipe, senha, dados pessoais — não se faz por ele. Aqui
+   * em cima, antes de qualquer rota, pelo mesmo motivo da porta da
+   * plataforma: espalhar é como se esquece uma. Regra em server/suporte.js.
+   */
+  if (sess && sess.operador) {
+    const recusa = suporte.bloqueio(parts, req.method);
+    if (recusa) return sendJson(res, 403, { error: recusa, suporte: true });
+  }
 
   /*
    * O FREIO DA CONTA INTEIRA, antes de qualquer rota.
@@ -941,6 +953,8 @@ const negocioCache = new Map();
       const dias = Math.min(180, Math.max(1, Number(query && query.dias) || 30));
       const ficha = await db.fichaDaConta(parts[3], Date.now() - dias * 24 * 60 * 60 * 1000);
       if (!ficha) return sendJson(res, 404, { error: 'conta não encontrada' });
+      // Para as ações: o teste, o contrato e quem do suporte já entrou nesta conta.
+      const t = await db.getTenant(ficha.id);
       return sendJson(res, 200, {
         ...ficha,
         dias,
@@ -948,6 +962,94 @@ const negocioCache = new Map();
         conexoes: limites.conexoesDaConta(ficha.id),
         excessos: limites.excessosDaConta(ficha.id),
         trabalhos: (await jobs.doTenant(ficha.id, 10)).map(jobs.publico),
+        teste: plans.isPaid((t && t.plan) || 'free') ? null : { ativo: plans.testeAtivo(t), terminaEm: plans.fimDoTeste(t) },
+        contrato: plans.contratoDe(t && t.plan_contrato),
+        contratoDesde: Number(t && t.contrato_desde) || 0,
+        acessos: await db.acessosSuporte(ficha.id, 10),
+      });
+    }
+
+    /*
+     * AS AÇÕES DO OPERADOR (PLANO §7.2, EXECUTOR item 13). Cada uma vai para
+     * os eventos da conta com quem fez ('suporte:<e-mail>') e para o log.
+     */
+    const registrarAcao = (tenantId, acao, extra) => {
+      log.aviso('suporte.' + acao, { operador: sess.email, tenant: tenantId, ...(extra || {}) });
+      return db.registrarEvento(tenantId, 'suporte:' + sess.email, 'suporte.' + acao).catch(() => {});
+    };
+
+    // Recarregar uma TV de qualquer conta: o mesmo comando do botão do cliente.
+    if (req.method === 'POST' && parts[2] === 'telas' && parts[3] && parts[4] === 'recarregar') {
+      const device = await db.getDevice(parts[3]);
+      if (!device || !device.tenant_id) return sendJson(res, 404, { error: 'tela não encontrada' });
+      const cmd = { id: db.rid(10), acao: 'recarregar', em: Date.now() };
+      comandosPendentes.set(device.id, cmd);
+      broadcast(device.id, 'comando', cmd);
+      await registrarAcao(device.tenant_id, 'recarregar', { tela: device.id });
+      return sendJson(res, 200, { ok: true, aoVivo: !!subscribers[device.id] });
+    }
+
+    if (req.method === 'POST' && parts[2] === 'contas' && parts[3] && parts[4]) {
+      const tenant = await db.getTenant(parts[3]);
+      if (!tenant) return sendJson(res, 404, { error: 'conta não encontrada' });
+      return readBody(req, res, async (b) => {
+        const corpo = b || {};
+
+        /*
+         * Estender o teste: a partir do fim de hoje ou do fim atual, o que for
+         * mais tarde. Nunca encurta (plans.fimDoTeste) e tem teto, para um
+         * clique errado não virar um ano grátis.
+         */
+        if (parts[4] === 'estender') {
+          if (plans.isPaid(tenant.plan || 'free')) return sendJson(res, 400, { error: 'a conta já paga: não há teste para estender' });
+          const dias = Math.floor(Number(corpo.dias) || 0);
+          if (dias < 1 || dias > 30) return sendJson(res, 400, { error: 'estenda de 1 a 30 dias' });
+          const ate = Math.max(Date.now(), plans.fimDoTeste(tenant)) + dias * 24 * 60 * 60 * 1000;
+          await db.setTenantBilling(tenant.id, { testeAte: ate });
+          seloCache.delete(tenant.id);
+          await registrarAcao(tenant.id, 'estendeu-teste', { dias, ate });
+          return sendJson(res, 200, { ok: true, terminaEm: ate });
+        }
+
+        /*
+         * O contrato da conta: o anual nasce numa conversa com o termo assinado
+         * (item 11), e é aqui que a equipe o registra. A assinatura no Asaas
+         * acompanha na hora (sincronizarCobranca, com as telas zeradas para
+         * forçar o novo valor).
+         */
+        if (parts[4] === 'contrato') {
+          const contrato = corpo.contrato === 'anual' ? 'anual' : corpo.contrato === 'mensal' ? 'mensal' : '';
+          if (!contrato) return sendJson(res, 400, { error: 'contrato precisa ser mensal ou anual' });
+          const desde = contrato === 'anual' ? Date.parse(String(corpo.desde || '') + 'T12:00:00-03:00') : null;
+          if (contrato === 'anual' && (!desde || desde > Date.now() + 24 * 60 * 60 * 1000)) {
+            return sendJson(res, 400, { error: 'diga o dia em que o contrato anual começou (AAAA-MM-DD, até hoje)' });
+          }
+          await db.setTenantBilling(tenant.id, { contrato, contratoDesde: desde, telasCobradas: null });
+          sincronizarCobranca(tenant.id);
+          await registrarAcao(tenant.id, 'contrato', { contrato, desde });
+          return sendJson(res, 200, { ok: true, contrato, desde });
+        }
+
+        /*
+         * ENTRAR COMO CLIENTE, com registro (server/suporte.js): só com motivo,
+         * por uma hora, como o dono da conta. A sessão do operador fica guardada
+         * no cookie de volta.
+         */
+        if (parts[4] === 'entrar') {
+          const motivo = suporte.motivoValido(corpo.motivo);
+          if (!motivo) return sendJson(res, 400, { error: 'escreva o motivo (pelo menos ' + suporte.MOTIVO.min + ' letras): ele vai para o registro' });
+          const dono = suporte.donoDa(await db.listUsers(tenant.id));
+          if (!dono) return sendJson(res, 400, { error: 'a conta não tem dono para entrar como' });
+          const agora = Date.now();
+          await db.registrarAcessoSuporte({
+            id: db.rid(12), operador: sess.email, tenantId: tenant.id, motivo, em: agora, expiraEm: agora + suporte.TTL_MS,
+          });
+          await registrarAcao(tenant.id, 'entrou', { motivo });
+          await auth.startOperatorSession(res, dono.id, tenant.id, req, sess.email, sess.token, suporte.TTL_MS);
+          return sendJson(res, 200, { ok: true, expiraEm: agora + suporte.TTL_MS });
+        }
+
+        return sendJson(res, 404, { error: 'ação desconhecida' });
       });
     }
 

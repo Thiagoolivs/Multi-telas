@@ -68,6 +68,8 @@ export const auth = {
   verify: (token) => api('POST', '/api/auth/verify', { token }),
   updateProfile: (payload) => api('POST', '/api/auth/profile', payload),
   changePassword: (atual, nova) => api('POST', '/api/auth/password', { atual, nova }),
+  // Sai da conta do cliente e volta ao painel do operador (acesso de suporte).
+  voltar: () => api('POST', '/api/auth/voltar'),
 };
 
 // Direitos do titular (LGPD). A exportação não passa por aqui: é um download
@@ -319,6 +321,11 @@ export const plataforma = {
   metricas: (dias) => api('GET', '/api/plataforma/metricas' + (dias ? '?dias=' + dias : '')),
   // Frota, clientes, receita, funil, custo de IA e saúde (server/admin.js).
   negocio: (dias) => api('GET', '/api/plataforma/negocio' + (dias ? '?dias=' + dias : '')),
+  // As ações do operador (EXECUTOR item 13): cada uma fica no registro da conta.
+  recarregarTela: (id) => api('POST', '/api/plataforma/telas/' + id + '/recarregar'),
+  estenderTeste: (id, dias) => api('POST', '/api/plataforma/contas/' + id + '/estender', { dias }),
+  contrato: (id, contrato, desde) => api('POST', '/api/plataforma/contas/' + id + '/contrato', { contrato, desde }),
+  entrar: (id, motivo) => api('POST', '/api/plataforma/contas/' + id + '/entrar', { motivo }),
   reclamacoes: () => api('GET', '/api/plataforma/reclamacoes'),
   resolver: (id, status, resposta) => api('POST', '/api/plataforma/reclamacoes/' + id, { status, resposta }),
   contas: (q, dias) => api('GET', '/api/plataforma/contas?q=' + encodeURIComponent(q || '') + (dias ? '&dias=' + dias : '')),

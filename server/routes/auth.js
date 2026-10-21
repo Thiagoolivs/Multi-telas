@@ -376,6 +376,13 @@ module.exports = function(ctx) {
           });
         }
     
+        // Sai da conta do cliente e volta ao painel do operador (sessão de suporte).
+        if (req.method === 'POST' && action === 'voltar') {
+          if (!sess || !sess.operador) return sendJson(res, 400, { error: 'não há acesso de suporte aberto' });
+          await db.registrarEvento(sess.tenant_id, 'suporte:' + sess.operador, 'suporte.saiu').catch(() => {});
+          const ok = await auth.voltarAoOperador(req, res, sess);
+          return sendJson(res, 200, { ok, voltou: ok });
+        }
         if (req.method === 'GET' && action === 'me') {
           if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
           const t = await db.getTenant(sess.tenant_id);
@@ -391,6 +398,11 @@ module.exports = function(ctx) {
             // hasPassword: conta criada pelo Google ainda não tem senha própria.
             user: { id: sess.user_id, email: sess.email, role: sess.role, name: sess.name, hasPassword: !!(u && u.pass_hash) },
             operador: quem.pode,
+            /*
+             * Sessão de SUPORTE (server/suporte.js): o painel mostra a faixa
+             * "você está dentro desta conta como suporte" o tempo todo.
+             */
+            suporte: sess.operador ? { operador: sess.operador, expiraEm: Number(sess.expires_at) || 0 } : null,
           });
         }
         return sendJson(res, 404, { error: 'rota de auth inválida' });

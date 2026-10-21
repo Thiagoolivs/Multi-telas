@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   MonitorPlay, Building2, Users, Sparkles, HardDrive, MessageSquareWarning,
   Clock, Layers, Check, ShieldCheck, Trash2, Plus, Bug, CheckCircle2,
-  Search, Gauge as GaugeIcon, Radio, ChevronRight, X, Images,
+  Search, Gauge as GaugeIcon, Radio, ChevronRight, X, Images, RotateCw, LogIn, CalendarPlus, FileSignature,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -339,7 +339,7 @@ function Contas({ dias }) {
 
 /* A ficha de uma conta, em cima da lista. */
 function FichaDaConta({ id, dias, onFechar }) {
-  const { data, loading } = useAsync(() => plataforma.conta(id, dias), [id, dias]);
+  const { data, loading, reload } = useAsync(() => plataforma.conta(id, dias), [id, dias]);
 
   return (
     <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8"
@@ -365,6 +365,8 @@ function FichaDaConta({ id, dias, onFechar }) {
               <Campo rotulo="Nasceu" valor={relativeTime(data.criadaEm)} />
             </div>
 
+            <AcoesDaConta conta={data} onMudou={reload} />
+
             {!!Object.keys(data.excessos || {}).length && (
               <div className="rounded-md border border-warn/40 bg-warn/5 px-3 py-2 text-xs text-ink-2">
                 <b>Esbarrou nos tetos:</b>{' '}
@@ -381,6 +383,13 @@ function FichaDaConta({ id, dias, onFechar }) {
                   <span className="ml-auto shrink-0 text-2xs text-ink-3">
                     {t.ultimaVez ? relativeTime(t.ultimaVez) : 'nunca apareceu'}
                   </span>
+                  <button type="button" title="Recarregar a TV" aria-label={'Recarregar ' + (t.nome || 'a TV')}
+                    className="shrink-0 rounded p-0.5 text-ink-3 hover:bg-surface hover:text-ink"
+                    onClick={() => plataforma.recarregarTela(t.id)
+                      .then((r) => aviso.ok(r.aoVivo ? 'A TV recebeu o comando agora.' : 'A TV recebe o comando no próximo pulso.'))
+                      .catch((e) => aviso.erro('recarregar', e.message || 'Não deu para mandar.'))}>
+                    <RotateCw size={12} />
+                  </button>
                 </div>
               ))}
             </Secao>
@@ -411,6 +420,95 @@ function FichaDaConta({ id, dias, onFechar }) {
         )}
       </div>
     </div>
+  );
+}
+
+/*
+ * AS AÇÕES DO OPERADOR numa conta (PLANO §7.2, EXECUTOR item 13): estender o
+ * teste, registrar o contrato anual (vendido numa conversa, item 11) e
+ * ENTRAR COMO O DONO — só com motivo, por uma hora, com faixa na tela e
+ * registro (server/suporte.js). Cada uma vai para os eventos da conta.
+ */
+function AcoesDaConta({ conta, onMudou }) {
+  const [dias, setDias] = useState(7);
+  const [contrato, setContrato] = useState(conta.contrato || 'mensal');
+  const [desde, setDesde] = useState(conta.contratoDesde ? new Date(conta.contratoDesde).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+  const [motivo, setMotivo] = useState('');
+  const [busy, setBusy] = useState('');
+  const pago = conta.plano !== 'free';
+
+  async function fazer(qual, fn, ok) {
+    setBusy(qual);
+    try { await fn(); aviso.ok(ok); onMudou(); }
+    catch (e) { aviso.erro('acao-' + qual, e.message || 'Não deu.'); }
+    finally { setBusy(''); }
+  }
+  async function entrar() {
+    setBusy('entrar');
+    try { await plataforma.entrar(conta.id, motivo); window.location.href = '/app/'; }
+    catch (e) { aviso.erro('acao-entrar', e.message || 'Não deu para entrar.'); setBusy(''); }
+  }
+
+  return (
+    <Secao titulo="Ações">
+      <div className="space-y-3 text-xs">
+        {conta.teste && (
+          <div className="flex flex-wrap items-center gap-2">
+            <CalendarPlus size={13} className="text-ink-3" />
+            <span className="text-ink-2">Teste {conta.teste.ativo ? 'termina' : 'terminou'} em <b className="text-ink">{new Date(conta.teste.terminaEm).toLocaleDateString('pt-BR')}</b></span>
+            <select value={dias} onChange={(e) => setDias(Number(e.target.value))} className="ml-auto rounded border border-line bg-surface px-1.5 py-1">
+              {[3, 7, 14, 30].map((d) => <option key={d} value={d}>+{d} dias</option>)}
+            </select>
+            <Button size="sm" variant="secondary" disabled={!!busy}
+              onClick={() => fazer('estender', () => plataforma.estenderTeste(conta.id, dias), 'Teste estendido em ' + dias + ' dias.')}>
+              Estender
+            </Button>
+          </div>
+        )}
+        {pago && !conta.cortesia && (
+          <div className="flex flex-wrap items-center gap-2">
+            <FileSignature size={13} className="text-ink-3" />
+            <span className="text-ink-2">Contrato</span>
+            <select value={contrato} onChange={(e) => setContrato(e.target.value)} className="rounded border border-line bg-surface px-1.5 py-1">
+              <option value="mensal">Mensal</option>
+              <option value="anual">Anual (12 meses)</option>
+            </select>
+            {contrato === 'anual' && (
+              <label className="inline-flex items-center gap-1 text-ink-2">desde
+                <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="rounded border border-line bg-surface px-1.5 py-0.5" />
+              </label>
+            )}
+            <Button size="sm" variant="secondary" className="ml-auto" disabled={!!busy}
+              onClick={() => fazer('contrato', () => plataforma.contrato(conta.id, contrato, desde), 'Contrato salvo; a assinatura acompanha.')}>
+              Salvar contrato
+            </Button>
+          </div>
+        )}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 text-ink-2"><LogIn size={13} className="text-ink-3" /> Entrar como o dono da conta, por 1 hora</div>
+          <Textarea rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Por quê? (vai para o registro — ex.: cliente ligou dizendo que a TV da vitrine não atualiza)" />
+          <div className="flex items-center gap-2">
+            <span className="text-2xs text-ink-3">Cobrança, equipe, senha e dados pessoais ficam bloqueados lá dentro.</span>
+            <Button size="sm" variant="primary" className="ml-auto" disabled={!!busy || motivo.trim().length < 10} onClick={entrar}>
+              {busy === 'entrar' ? 'Entrando…' : 'Entrar'}
+            </Button>
+          </div>
+        </div>
+        {!!(conta.acessos && conta.acessos.length) && (
+          <div className="border-t border-line pt-2">
+            <div className="mb-1 text-2xs font-semibold uppercase tracking-wide text-ink-3">Quem do suporte já entrou</div>
+            {conta.acessos.map((a) => (
+              <div key={a.id} className="flex gap-2 py-0.5">
+                <span className="shrink-0 text-ink-3">{new Date(a.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="shrink-0 text-ink-2">{a.operador}</span>
+                <span className="min-w-0 truncate text-ink-3" title={a.motivo}>{a.motivo}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Secao>
   );
 }
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { RotateCw } from 'lucide-react';
 import {
   MonitorPlay, MonitorOff, Moon, Wallet, AlertTriangle, CalendarClock, TrendingDown,
   Filter, DatabaseBackup, Bug, Cpu, Radio, Target,
@@ -11,6 +12,7 @@ import { Table, THead, TBody, TH, TR, TD } from '../ui/Table.jsx';
 import { useAsync } from '../../lib/useAsync.js';
 import { plataforma } from '../../api.js';
 import { formatNumber, relativeTime } from '../../lib/format.js';
+import { aviso } from '../../lib/avisos.js';
 
 /*
  * O NEGÓCIO, no painel do operador (PLANO §7.2, EXECUTOR item 13).
@@ -62,7 +64,7 @@ function Frota({ frota }) {
           footer={<Progress value={Math.min(100, (noAr / META_TELAS) * 100)} className="h-1.5" />} hint="até o meio de 2027" />
       </div>
       <Table>
-        <THead><TH>Tela</TH><TH>Conta</TH><TH>Último sinal</TH><TH>Aparelho</TH><TH>Situação</TH></THead>
+        <THead><TH>Tela</TH><TH>Conta</TH><TH>Último sinal</TH><TH>Aparelho</TH><TH>Situação</TH><TH /></THead>
         <TBody>
           {lista.map((t) => (
             <TR key={t.id}>
@@ -75,6 +77,7 @@ function Frota({ frota }) {
                   : t.foraDoExpediente ? <Badge tone="neutral">fora do expediente</Badge>
                     : <Badge tone="danger">apagada</Badge>}
               </TD>
+              <TD><Recarregar id={t.id} /></TD>
             </TR>
           ))}
         </TBody>
@@ -87,6 +90,29 @@ function Frota({ frota }) {
         </div>
       )}
     </Panel>
+  );
+}
+
+/*
+ * Recarregar a TV de qualquer conta: o mesmo comando do botão do cliente.
+ * TV sem o tempo real recebe no próximo pulso (até 30 s); desligada, quando
+ * voltar.
+ */
+function Recarregar({ id }) {
+  const [estado, setEstado] = useState('');
+  async function ir() {
+    setEstado('indo');
+    try {
+      const r = await plataforma.recarregarTela(id);
+      setEstado('ok');
+      aviso.ok(r.aoVivo ? 'A TV recebeu o comando agora.' : 'A TV recebe o comando no próximo pulso.');
+    } catch (e) { setEstado(''); aviso.erro('recarregar', e.message || 'Não deu para mandar.'); }
+  }
+  return (
+    <button type="button" onClick={ir} disabled={estado === 'indo'} title="Recarregar a TV" aria-label="Recarregar a TV"
+      className={'rounded-md p-1 transition hover:bg-surface-2 ' + (estado === 'ok' ? 'text-ok' : 'text-ink-3 hover:text-ink')}>
+      <RotateCw size={14} />
+    </button>
   );
 }
 

@@ -48,6 +48,37 @@ async function clearSession(res, token, req) {
   // Apaga também o cookie antigo, senão a sessão legada ressuscitaria.
   res.setHeader('Set-Cookie', [COOKIE + '=; ' + cookieAttrs(req, 0), LEGACY_COOKIE + '=; ' + cookieAttrs(req, 0)]);
 }
+/*
+ * SESSÃO DE SUPORTE (server/suporte.js): o operador entra na conta do cliente
+ * como o dono, por `ttlMs` (uma hora), com o e-mail dele gravado na sessão.
+ * A sessão DELE não é apagada: fica guardada no cookie de volta, e
+ * voltarAoOperador a devolve — sem senha de novo e sem perder o painel.
+ */
+const VOLTA = 'mt_volta';
+async function startOperatorSession(res, userId, tenantId, req, operador, tokenDeVolta, ttlMs) {
+  const token = crypto.randomBytes(24).toString('hex');
+  await db.createSession(token, userId, tenantId, Date.now() + ttlMs, operador);
+  const seg = Math.round(ttlMs / 1000);
+  res.setHeader('Set-Cookie', [
+    COOKIE + '=' + token + '; ' + cookieAttrs(req, seg),
+    VOLTA + '=' + tokenDeVolta + '; ' + cookieAttrs(req, seg),
+  ]);
+  return token;
+}
+async function voltarAoOperador(req, res, sess) {
+  if (sess && sess.token) await db.destroySession(sess.token);
+  const volta = parseCookies(req)[VOLTA];
+  const original = volta ? await db.getSession(volta) : null;
+  if (!original) {
+    // A sessão do operador venceu enquanto ele estava dentro: sai de tudo.
+    res.setHeader('Set-Cookie', [COOKIE + '=; ' + cookieAttrs(req, 0), VOLTA + '=; ' + cookieAttrs(req, 0)]);
+    return false;
+  }
+  const seg = Math.max(60, Math.round(((Number(original.expires_at) || 0) - Date.now()) / 1000));
+  res.setHeader('Set-Cookie', [COOKIE + '=' + volta + '; ' + cookieAttrs(req, seg), VOLTA + '=; ' + cookieAttrs(req, 0)]);
+  return true;
+}
+
 function parseCookies(req) {
   const out = {};
   (req.headers.cookie || '').split(';').forEach((p) => {
@@ -69,4 +100,4 @@ async function currentSession(req) {
   return Object.assign({ token, role: user.role, email: user.email, name: user.name }, s);
 }
 
-module.exports = { hashPassword, verifyPassword, startSession, clearSession, currentSession, COOKIE };
+module.exports = { hashPassword, verifyPassword, startSession, startOperatorSession, voltarAoOperador, clearSession, currentSession, COOKIE };

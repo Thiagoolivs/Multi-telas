@@ -3,6 +3,7 @@ import { cn } from '../../lib/cn.js';
 import { Sidebar } from './Sidebar.jsx';
 import { Topbar } from './Topbar.jsx';
 import { FaixaOffline } from './FaixaOffline.jsx';
+import { FaixaSuporte } from './FaixaSuporte.jsx';
 import { FaixaTeste } from './FaixaTeste.jsx';
 import { Avisos } from './Avisos.jsx';
 import { SubirConteudo } from '../content/SubirConteudo.jsx';
@@ -10,7 +11,7 @@ import { ConviteInstalar } from './ConviteInstalar.jsx';
 
 // Shell responsivo: sidebar fixa em ≥lg; em telas menores vira drawer sobre
 // um backdrop. O tema (claro/escuro) é controlado aqui e aplicado no <html>.
-export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user, empresa, operador, onLogout, children }) {
+export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user, empresa, operador, suporte, onLogout, children }) {
   const [drawer, setDrawer] = useState(false);
 
   function navigate(id) {
@@ -41,6 +42,7 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <FaixaSuporte suporte={suporte} empresa={empresa} />
         <FaixaTeste onIrParaPlano={() => onNavigate('billing')} />
         <FaixaOffline />
         <Topbar title={title} onOpenMenu={() => setDrawer(true)} theme={theme} onToggleTheme={onToggleTheme} user={user} onLogout={onLogout} />
