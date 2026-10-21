@@ -7,7 +7,8 @@ import { CartaoEscopo, linhaDoCusto } from '../components/criar/CartaoEscopo.jsx
 import { ResultadoCampanha } from '../components/criar/ResultadoCampanha.jsx';
 import { PorPraRodar } from '../components/criar/PorPraRodar.jsx';
 import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
-import { ai, criar, devices } from '../api.js';
+import { ai, criar, devices, seasons } from '../api.js';
+import { ideiaDaData } from '../lib/ideiaDaData.js';
 import E from '../lib/escopo.js';
 import { OPCOES } from './CriacaoRapidaPage.jsx';
 import { aviso } from '../lib/avisos.js';
@@ -53,7 +54,7 @@ function cartaoInicial(nome, objetivo, telaId, imagens, zona) {
   return E.normalizar({ ...base, nome, objetivo, imagens: imagens || base.imagens });
 }
 
-export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, onIr }) {
+export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial, onIr }) {
   const [conversa, setConversa] = useState(null);   // { id, mensagens, escopo, estado, titulo }
   const [mensagens, setMensagens] = useState([]);
   const [escopo, setEscopo] = useState(() => {
@@ -67,6 +68,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, onIr }) {
   const [pronto, setPronto] = useState(false);
   const [pensando, setPensando] = useState(false);
   const [ideias, setIdeias] = useState(null);
+  const [daData, setDaData] = useState(null);   // a data comemorativa de hoje, como ideia (item 35)
   const [recentes, setRecentes] = useState([]);
   const [telas, setTelas] = useState([]);
   const [gerando, setGerando] = useState(null);     // etapa do trabalho
@@ -83,6 +85,12 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, onIr }) {
     criar.conversas().then((r) => setRecentes((r && r.conversas) || [])).catch(() => {});
     // As sugestões da conta. Sem IA, o guia devolve um cardápio genérico — e isso já basta.
     ai.guia({}).then((r) => setIdeias((r && r.sugestoes) || [])).catch(() => setIdeias([]));
+    seasons.list().then((r) => {
+      const ideia = ideiaDaData(r && r.hoje);
+      setDaData(ideia);
+      // Veio do Início pelo "Criar para a data": a conversa já começa nela.
+      if (ideia && ideiaInicial === 'data') usarIdeia(ideia);
+    }).catch(() => {});
     const id = lerGuarda();
     if (id && !opcaoInicial && !telaInicial) abrir(id);
     // Uma geração que estava rodando quando a aba fechou: volta a acompanhar.
@@ -292,9 +300,9 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, onIr }) {
                 <div className="mb-1.5 text-xs font-medium text-ink-3">Ideias para hoje</div>
                 {ideias === null ? <Spinner size={16} /> : (
                   <div className="grid gap-2 sm:grid-cols-3">
-                    {ideias.slice(0, 3).map((s, i) => (
+                    {(daData ? [daData, ...ideias] : ideias).slice(0, 3).map((s, i) => (
                       <button key={i} type="button" onClick={() => usarIdeia(s)}
-                        className="rounded-lg border border-line bg-surface p-3 text-left transition hover:border-accent/60">
+                        className={cn('rounded-lg border p-3 text-left transition hover:border-accent/60', s.daData ? 'border-accent/40 bg-accent-soft/40' : 'border-line bg-surface')}>
                         <div className="text-sm font-semibold text-ink">{s.titulo}</div>
                         {s.porque && <div className="mt-0.5 line-clamp-2 text-xs text-ink-3">{s.porque}</div>}
                       </button>
