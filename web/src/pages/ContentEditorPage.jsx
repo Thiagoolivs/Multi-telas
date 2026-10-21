@@ -572,12 +572,12 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
 
       {/* Ajustes da tela — fora do fluxo de conteúdo, sem roubar espaço */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Ajustes da tela"
-        description="Layout, tema e comportamento. Salva sozinho." className="max-w-3xl"
+        description="Aparência, encaixe, som e horário. Salva sozinho; o horário, no botão dele." className="max-w-3xl"
         footer={<Button variant="primary" icon={Check} onClick={() => setSettingsOpen(false)}>Concluir</Button>}>
         {cfg && (
           <SettingsForm
             settings={cfg.settings}
-            deviceId={device.id}
+            deviceId={device.id} device={device} zonas={cfg.zonas}
             onChange={(settings) => patchCfg((next) => { next.settings = settings; })}
           />
         )}

@@ -92,7 +92,10 @@ test('a TV: camada por cima, sem remontar as zonas, som e vídeo parados, músic
 });
 
 test('no painel: o horário fica sempre editável, e a escolha do que a TV mostra é explícita', () => {
-  const s = ler('web/src/pages/ScreensPage.jsx');
+  // Desde o item 33 o formulário mora em HorarioDaTela.jsx, usado pela lista de Telas e pelos Ajustes.
+  const s = ler('web/src/components/tela/HorarioDaTela.jsx');
+  assert.ok(ler('web/src/pages/ScreensPage.jsx').includes('<CamposDoHorario exp={exp} setExp={setExp} />'));
+  assert.ok(ler('web/src/components/content/SettingsForm.jsx').includes('<CamposDoHorario exp={exp} setExp={setExp} />'));
   assert.match(s, /\['ligada', 'Continua mostrando a programação'\], \['relogio', 'Mostra só o relógio'\], \['preta', 'Fica preta/);
   assert.doesNotMatch(s, /<fieldset disabled=\{!exp\.alerta\}/, 'desligar o alerta não pode travar o horário');
 });
