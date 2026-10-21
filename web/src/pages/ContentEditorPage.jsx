@@ -396,7 +396,11 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
 
       {publishError && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError}</div>}
 
-      {cfg && <SeasonBanner zonas={zones.map((z) => z.id)} onAplicar={aplicarSeason} />}
+      {/*
+        A data comemorativa saiu daqui (EXECUTOR §2c, item 35): virou ideia no
+        Criar e no Início. O SeasonBanner e o aplicarSeason ficam, escondidos.
+      */}
+      {false && cfg && <SeasonBanner zonas={zones.map((z) => z.id)} onAplicar={aplicarSeason} />}
       {/*
         COMECE POR AQUI — só enquanto a tela inteira está vazia.
 

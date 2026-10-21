@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus, Sparkles } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Panel } from '../components/ui/Panel.jsx';
@@ -11,7 +11,8 @@ import { PrimeirosPassos } from '../components/dashboard/PrimeirosPassos.jsx';
 import { OpcoesDeCriar } from './CriacaoRapidaPage.jsx';
 import { abrirSubir } from '../lib/subir.js';
 import { useAsync } from '../lib/useAsync.js';
-import { devices as devicesApi, media as mediaApi, sistema } from '../api.js';
+import { devices as devicesApi, media as mediaApi, sistema, seasons } from '../api.js';
+import { ideiaDaData } from '../lib/ideiaDaData.js';
 import { deviceStatus, ONLINE_WINDOW_MS } from '../lib/deviceStatus.js';
 import { formatBytes } from '../lib/format.js';
 
@@ -94,6 +95,7 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
       */}
       <section className="mb-4">
         <h2 className="mb-2 text-sm font-semibold text-ink">O que você quer mostrar hoje?</h2>
+        <IdeiaDeHoje onIr={onIr} />
         <OpcoesDeCriar compacto onEscolher={(opcao) => onIr && onIr('criar', { opcao })} />
         {/* A foto que já existe vai direto, sem passar pela IA: três toques até a TV. */}
         <button type="button" onClick={() => abrirSubir()}
@@ -109,6 +111,27 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
         <Body data={data} onIr={onIr} />
       )}
     </div>
+  );
+}
+
+/*
+ * A data comemorativa de hoje, como ideia (EXECUTOR §2c, item 35). Antes ela
+ * aparecia no topo da página da TV e vestia a tela por fora do Criar; agora
+ * leva ao Criar, que já começa a conversa nela.
+ */
+function IdeiaDeHoje({ onIr }) {
+  const [ideia, setIdeia] = React.useState(null);
+  React.useEffect(() => { seasons.list().then((r) => setIdeia(ideiaDaData(r && r.hoje))).catch(() => {}); }, []);
+  if (!ideia) return null;
+  return (
+    <button type="button" onClick={() => onIr && onIr('criar', { ideia: 'data' })}
+      className="mb-2.5 flex w-full items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 px-4 py-3 text-left transition hover:border-accent/70">
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-semibold text-ink">Hoje: {ideia.titulo}</div>
+        <div className="text-xs text-ink-3">{ideia.porque}</div>
+      </div>
+      <span className="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-accent"><Sparkles size={15} /> Criar para a data</span>
+    </button>
   );
 }
 

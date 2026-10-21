@@ -152,3 +152,19 @@ test('item 34: Mídias por propósito, com as peças prontas e o disco discreto'
   assert.match(p, /await porPecaNasTelas\(porNaTv, alvos, telas\);/);
   assert.match(p, /criar\.pecasProntas\(\)/);
 });
+
+test('item 35: a data de hoje é ideia no Criar e no Início, não aviso no topo da TV', async () => {
+  const { pathToFileURL } = require('node:url');
+  const D = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/ideiaDaData.js')).href);
+  assert.equal(D.ideiaDaData(null), null);
+  const i = D.ideiaDaData({ id: 'outubro-rosa', label: 'Outubro Rosa', emoji: '🎀' });
+  assert.equal(i.titulo, '🎀 Outubro Rosa');
+  assert.ok(i.brief.includes('Outubro Rosa') && i.daData);
+  const tv = semComentarios(ler('web/src/pages/ContentEditorPage.jsx'));
+  assert.match(tv, /\{false && cfg && <SeasonBanner/, 'escondido, não apagado');
+  const c = semComentarios(ler('web/src/pages/CriarPage.jsx'));
+  assert.match(c, /\(daData \? \[daData, \.\.\.ideias\] : ideias\)\.slice\(0, 3\)/, 'a data é a primeira ideia');
+  assert.match(c, /if \(ideia && ideiaInicial === 'data'\) usarIdeia\(ideia\);/);
+  assert.match(semComentarios(ler('web/src/pages/DashboardPage.jsx')), /onIr\('criar', \{ ideia: 'data' \}\)/);
+  assert.match(ler('web/src/App.jsx'), /ideiaInicial=\{route\.ideia\}/);
+});
