@@ -1,0 +1,9 @@
+2s abriu o painel
+5s cadastro enviado (cafemvi6nux8@teste.local) — esperando o link do e-mail
+23s e-mail confirmado: painel com "Comece por aqui"
+25s marca: paleta aplicada, a página diz o próximo passo
+27s rascunho pronto
+28s peça guardada: o próximo passo é ligar a TV
+30s TV ligada, mostrando o código SC3AM5
+30s TV pareada: o painel oferece mandar a peça
+31s A PEÇA ESTÁ NA TV
