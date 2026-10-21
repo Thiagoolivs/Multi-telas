@@ -153,6 +153,13 @@ async function init() {
     );
     CREATE INDEX IF NOT EXISTS idx_jobs_tenant ON jobs(tenant_id, criado_em);
     CREATE INDEX IF NOT EXISTS idx_jobs_estado ON jobs(estado);
+    -- A conversa do Criar: mensagens e escopo em JSON (ver db-sqlite.js).
+    CREATE TABLE IF NOT EXISTS conversas (
+      id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, titulo TEXT,
+      mensagens TEXT, escopo TEXT, estado TEXT, campanha_id TEXT,
+      criado_em BIGINT, atualizado_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_conversas_tenant ON conversas(tenant_id, atualizado_em);
     CREATE TABLE IF NOT EXISTS eventos (
       id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at BIGINT
     );
@@ -551,6 +558,46 @@ async function interromperJobs(motivo) {
 }
 async function limparJobs(antesDe) {
   await pool.query('DELETE FROM jobs WHERE criado_em < $1', [antesDe]);
+}
+
+/* ---------------- Conversas do Criar ---------------- */
+/* Ver a nota em db-sqlite.js. Mesma API assíncrona nos dois. */
+const jsonOu = (t, padrao) => { try { return t ? JSON.parse(t) : padrao; } catch (e) { return padrao; } };
+const mapConv = (r) => r && ({
+  id: r.id, titulo: r.titulo || '', estado: r.estado || 'conversando', campanhaId: r.campanha_id || '',
+  mensagens: r.mensagens === undefined ? undefined : jsonOu(r.mensagens, []),
+  escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
+  criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
+});
+async function criarConversa(tenantId, userId, c) {
+  const id = 'conv_' + rid(14);
+  const agora = Date.now();
+  await pool.query(
+    `INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    [id, tenantId, userId || '', String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []),
+      JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora]
+  );
+  return lerConversa(tenantId, id);
+}
+async function lerConversa(tenantId, id) {
+  const r = await pool.query('SELECT * FROM conversas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapConv(r.rows[0]) || null;
+}
+async function salvarConversa(tenantId, id, c) {
+  await pool.query(
+    `UPDATE conversas SET titulo = $1, mensagens = $2, escopo = $3, estado = $4, campanha_id = $5, atualizado_em = $6
+     WHERE id = $7 AND tenant_id = $8`,
+    [String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []), JSON.stringify(c.escopo || null),
+      c.estado || 'conversando', c.campanhaId || '', Date.now(), id, tenantId]
+  );
+  return lerConversa(tenantId, id);
+}
+async function listarConversas(tenantId, limite) {
+  const r = await pool.query(
+    `SELECT id, titulo, estado, campanha_id, criado_em, atualizado_em FROM conversas
+     WHERE tenant_id = $1 ORDER BY atualizado_em DESC LIMIT $2`, [tenantId, limite || 20]);
+  return r.rows.map(mapConv);
 }
 
 
@@ -1484,6 +1531,7 @@ module.exports = {
   fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
+  criarConversa, lerConversa, salvarConversa, listarConversas,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
   salvarLocalDaMarca,

@@ -82,6 +82,8 @@ const OPERACOES = {
    */
   guia: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Sugestões do guia' },
   diretor: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Diretor de arte' },
+  // Uma volta da conversa do Criar (EXECUTOR item 21): texto, livre, medido. Sem limite de perguntas.
+  conversa: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Conversa do Criar' },
 };
 
 function operacao(tipo) { return OPERACOES[tipo] || null; }

@@ -355,6 +355,7 @@ function montarCtx() {
     telas: require('./server/routes/telas')(ctx),
     relatorio: require('./server/routes/relatorio')(ctx),
     redes: redesRotas(ctx),
+    conversas: require('./server/routes/conversas')(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -460,6 +461,8 @@ async function handleApi(req, res, pathname, query) {
     'refazer-peca': 'gerar-composicao',
     // Os textos das redes (item 6): quatro chamadas de texto, um pedido por canal.
     redes: 'redes-sociais',
+    // A conversa do Criar (item 21): uma chamada de texto por volta, sem limite de perguntas.
+    conversa: 'conversa',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
@@ -1937,6 +1940,7 @@ const negocioCache = new Map();
   if (await ctx.routes.telas(req, res, parts, query, sess)) return;
   if (await ctx.routes.relatorio(req, res, parts, query, sess)) return;
   if (await ctx.routes.redes(req, res, parts, query, sess)) return;
+  if (await ctx.routes.conversas(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------
