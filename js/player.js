@@ -2142,16 +2142,17 @@
       clock.innerHTML =
         '<span class="mt-hc-time">' +
         now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) +
-        '</span><span class="mt-hc-date">' +
-        dia.charAt(0).toUpperCase() + dia.slice(1) + ' | ' +
+        '</span><span class="mt-hc-date"><span class="mt-hc-dia">' +
+        dia.charAt(0).toUpperCase() + dia.slice(1) + ' | </span>' +
         now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) +
         '</span>';
     }
     tickClock();
     const t = setInterval(tickClock, 1000 * 20);
 
-    // Clima no cabeçalho (opcional).
-    updateHeaderWeather(weather, cfg.settings.cidadeClima || 'São Paulo');
+    // Clima no cabeçalho (opcional). Quando chega, o nome tem menos espaço.
+    updateHeaderWeather(weather, cfg.settings.cidadeClima || 'São Paulo').then(() => caberNome(title));
+    caberNome(title);
 
     return { stop: () => clearInterval(t) };
   }
@@ -2166,8 +2167,35 @@
       const w = await (await fetch(
         'https://api.open-meteo.com/v1/forecast?current=temperature_2m,weather_code&timezone=auto&latitude=' +
         g.latitude + '&longitude=' + g.longitude)).json();
-      el.textContent = Math.round(w.current.temperature_2m) + '°C · ' + g.name;
+      // A cidade num span: no cabeçalho estreito (TV em pé) ela some e fica a
+      // temperatura. Tudo dentro de UM span, senão vira dois itens do flex da
+      // pílula e o `gap` abre um buraco antes do "·".
+      const texto = document.createElement('span');
+      texto.textContent = Math.round(w.current.temperature_2m) + '°C';
+      const local = document.createElement('span');
+      local.className = 'mt-hw-cidade';
+      local.textContent = ' · ' + g.name;
+      texto.appendChild(local);
+      el.textContent = '';
+      el.appendChild(texto);
     } catch (e) { /* silencioso */ }
+  }
+
+  /*
+   * Nome da empresa que não cabe no cabeçalho ENCOLHE (até 70%) antes de
+   * virar reticências: "Ótica Visão Clara Centro" inteiro e um pouco menor é
+   * melhor do que "Ótica Visão…". Mede de novo quando as fontes chegam.
+   */
+  function caberNome(el) {
+    const medir = function () {
+      el.style.fontSize = '';
+      const base = parseFloat(getComputedStyle(el).fontSize);
+      if (!base || !el.clientWidth || el.scrollWidth <= el.clientWidth) return;
+      const esc = Math.max(0.7, (el.clientWidth / el.scrollWidth) * 0.98);
+      el.style.fontSize = (base * esc).toFixed(1) + 'px';
+    };
+    afterPaint(medir);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir).catch(function () {});
   }
 
   /* ---------------- Fullscreen no clique/tecla ---------------- */
