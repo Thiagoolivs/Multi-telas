@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
 import {
   Plus, Wand2, ImagePlus, Upload, Pencil, Download, Send, Trash2, Sparkles, Check,
-  MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket, MessagesSquare,
+  MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket, MessagesSquare, Share2,
 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -20,6 +20,7 @@ import { BriefingChat } from '../components/content/BriefingChat.jsx';
 import { SalvarEm } from '../components/content/SalvarEm.jsx';
 import { FotoDoProduto } from '../components/content/FotoDoProduto.jsx';
 import { EditarPeca, AvisoDeEncaixe } from '../components/content/EditarPeca.jsx';
+import { RedesSociais } from '../components/content/RedesSociais.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { TAMANHO_REAL } from '../lib/pecaHtml.js';
 import { aviso } from '../lib/avisos.js';
@@ -291,6 +292,7 @@ export function MyDesignsPage({ onIr }) {
   const [q, setQ] = useState('');
   const [editing, setEditing] = useState(null);   // { id?, item } no editor
   const [editandoPeca, setEditandoPeca] = useState(null); // { id, item, label } — peça em HTML
+  const [redesDe, setRedesDe] = useState(null); // { item, label } — postar nas redes
   const [modeloAberto, setModeloAberto] = useState(false);
   /*
    * O que está esperando para ser guardado: { item, nome, pasta, titulo }.
@@ -825,7 +827,10 @@ export function MyDesignsPage({ onIr }) {
                           </button>
                           {/* A peça em HTML edita textos e foto (EditarPeca); o PNG ainda só sabe a composição antiga. */}
                           {it.item && it.item.type === 'peca-html'
-                            ? <button title="Editar textos" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => setEditandoPeca({ id: it.id, item: it.item, label: it.label })}><Pencil size={13} /></button>
+                            ? <>
+                              <button title="Editar textos" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => setEditandoPeca({ id: it.id, item: it.item, label: it.label })}><Pencil size={13} /></button>
+                              <button title="Postar nas redes" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => setRedesDe({ item: it.item, label: it.label })}><Share2 size={13} /></button>
+                            </>
                             : (
                               <>
                                 <button title="Editar" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => setEditing({ id: it.id, item: it.item, label: it.label })}><Pencil size={13} /></button>
@@ -852,6 +857,7 @@ export function MyDesignsPage({ onIr }) {
       )}
 
       {/* Textos e foto da peça em HTML */}
+      {redesDe && <RedesSociais item={redesDe.item} label={redesDe.label} onFechar={() => setRedesDe(null)} />}
       {editandoPeca && (
         <EditarPeca item={editandoPeca.item} label={editandoPeca.label} onFechar={() => setEditandoPeca(null)}
           onSalvar={async (item) => {

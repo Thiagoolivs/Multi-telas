@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Tag, Sparkles, Megaphone, Camera, Cake, QrCode, ArrowLeft, Check, Rocket, SlidersHorizontal, MonitorPlay, RefreshCw, ImagePlus,
+  Tag, Sparkles, Megaphone, Camera, Cake, QrCode, ArrowLeft, Check, Rocket, SlidersHorizontal, MonitorPlay, RefreshCw, ImagePlus, Share2,
 } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -8,6 +8,7 @@ import { Textarea } from '../components/ui/Field.jsx';
 import { Spinner } from '../components/ui/Feedback.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
+import { RedesSociais } from '../components/content/RedesSociais.jsx';
 import { TAMANHO_REAL } from '../lib/pecaHtml.js';
 import { ai, devices, library, media, brand } from '../api.js';
 import { publicarPecas } from '../lib/publicar.js';
@@ -112,6 +113,7 @@ export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
   const [alvos, setAlvos] = useState([]);
   const [pronto, setPronto] = useState(null);       // { pecas, nTelas, titulo }
   const [erro, setErro] = useState('');
+  const [redesAberto, setRedesAberto] = useState(false);
 
   const op = OPCOES.find((o) => o.id === opcao) || null;
   const passo = pronto ? 5 : plano ? 3 : op ? 2 : 1;
@@ -387,12 +389,15 @@ export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="primary" icon={RefreshCw} onClick={recomecar}>Criar outra</Button>
+              {/* A mesma peça, nas redes: post, Story, Status e o texto de cada uma. */}
+              <Button variant="primary" icon={Share2} onClick={() => setRedesAberto(true)}>Postar nas redes</Button>
+              <Button variant="secondary" icon={RefreshCw} onClick={recomecar}>Criar outra</Button>
               <Button variant="secondary" onClick={() => onIr && onIr('designs')}>Ver em Meus Designs</Button>
             </div>
           </div>
         </Panel>
       )}
+      {redesAberto && pronto && <RedesSociais item={pronto.pecas[0].item} label={pronto.titulo} onFechar={() => setRedesAberto(false)} />}
     </div>
   );
 }

@@ -63,6 +63,8 @@ const OPERACOES = {
   'gerar-sazonal': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Pacote de data' },
   'gerar-faixas': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Faixas do dia' },
   reescrever: { creditos: 0, custoCentavos: 1, rotulo: 'Reescrita de texto' },
+  // Os textos das redes para uma peça: quatro chamadas curtas (um pedido por canal).
+  'redes-sociais': { creditos: 0, custoCentavos: 2, rotulo: 'Textos para as redes' },
   diagnosticar: { creditos: 0, custoCentavos: 2, rotulo: 'Diagnóstico de tela' },
   /*
    * Visão custa mais que texto e menos que gerar imagem: LÊ um bitmap em vez

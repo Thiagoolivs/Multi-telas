@@ -268,6 +268,9 @@ async function init() {
     CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_invites_tenant ON invites(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_invites_code ON invites(code);
+    -- Onde a loja fica (endereço, bairro, cidade, link): as redes pedem
+    -- (hashtag do bairro, endereço na mensagem). JSON, uma coluna só.
+    ALTER TABLE marcas ADD COLUMN IF NOT EXISTS localizacao TEXT;
   `);
 }
 
@@ -343,6 +346,7 @@ function mapMarca(r) {
     direcao: r.direcao || '', tom: r.tom || '', observacoes: r.observacoes || '',
     site: r.site || '', siteResumo: r.site_resumo || '', siteShot: r.site_shot || '', siteEm: Number(r.site_em) || 0,
     ativa: !!r.ativa, updatedAt: r.updated_at,
+    local: lerLocal(r.localizacao),
   };
 }
 
@@ -1404,4 +1408,22 @@ module.exports = {
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
+  salvarLocalDaMarca,
 };
+
+/*
+ * Onde a loja fica: { endereco, bairro, cidade, link }, em JSON na coluna
+ * `localizacao` da marca. As redes usam (hashtag do bairro e da cidade,
+ * endereço ou link na mensagem). Normalizado na rota (server.js, PUT /api/brand).
+ */
+function lerLocal(texto) {
+  let l = {};
+  try { l = JSON.parse(texto || '{}') || {}; } catch (e) { l = {}; }
+  return { endereco: l.endereco || '', bairro: l.bairro || '', cidade: l.cidade || '', link: l.link || '' };
+}
+async function salvarLocalDaMarca(id, tenantId, local) {
+  await pool.query('UPDATE marcas SET localizacao = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4',
+    [JSON.stringify(local || {}), Date.now(), id, tenantId]);
+  const r = await pool.query('SELECT * FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapMarca(r.rows[0]);
+}

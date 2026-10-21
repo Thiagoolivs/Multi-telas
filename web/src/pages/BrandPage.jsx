@@ -64,6 +64,7 @@ export function BrandPage() {
   const [observacoes, setObservacoes] = useState('');
   const [nome, setNome] = useState('');
   const [siteUrl, setSiteUrl] = useState('');
+  const [local, setLocal] = useState({ endereco: '', bairro: '', cidade: '', link: '' });
   const [lendoSite, setLendoSite] = useState(false);
   /*
    * Erro PRÓPRIO do painel do site.
@@ -87,12 +88,13 @@ export function BrandPage() {
     setObservacoes(kit.observacoes || '');
     setNome(kit.nome || '');
     setSiteUrl(kit.site || '');
+    setLocal(Object.assign({ endereco: '', bairro: '', cidade: '', link: '' }, kit.local || {}));
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function salvar() {
     setBusy(true); setMsg(''); setErr('');
     try {
-      await brand.save({ nome, cores, fonteTitulo, fonteApoio, direcao, tom, observacoes });
+      await brand.save({ nome, cores, fonteTitulo, fonteApoio, direcao, tom, observacoes, local });
       setMsg('Identidade salva. As próximas gerações já usam.');
       reload();
     } catch (e) { setErr(e.message || 'Não foi possível salvar.'); }
@@ -306,6 +308,20 @@ export function BrandPage() {
               <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-ink-2">{kit.siteResumo}</pre>
             </div>
           )}
+        </div>
+      </Panel>
+
+      {/*
+        Onde a loja fica. As redes usam (item 6 do EXECUTOR): hashtag do
+        bairro e da cidade, endereço ou link na mensagem do WhatsApp.
+      */}
+      <Panel>
+        <PanelHeader title="Onde fica a loja" description="Vai para as hashtags do bairro e da cidade e para a mensagem do WhatsApp. Salva junto com a identidade, lá embaixo." />
+        <div className="grid gap-3 p-4 sm:grid-cols-2">
+          <Field label="Endereço"><Input value={local.endereco} onChange={(e) => setLocal({ ...local, endereco: e.target.value })} placeholder="Rua das Flores, 120" /></Field>
+          <Field label="Bairro"><Input value={local.bairro} onChange={(e) => setLocal({ ...local, bairro: e.target.value })} placeholder="Mooca" /></Field>
+          <Field label="Cidade"><Input value={local.cidade} onChange={(e) => setLocal({ ...local, cidade: e.target.value })} placeholder="São Paulo" /></Field>
+          <Field label="WhatsApp ou site" hint="Ex.: wa.me/5511999990000 ou padaria.com.br"><Input value={local.link} onChange={(e) => setLocal({ ...local, link: e.target.value })} placeholder="wa.me/55…" /></Field>
         </div>
       </Panel>
 
