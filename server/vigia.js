@@ -53,48 +53,20 @@ const MAX_NOMEADAS = 8;
  * O horário é o de Brasília por padrão: o servidor roda em UTC, e "7h" para
  * o dono da padaria é 7h no relógio dele.
  */
-const EXPEDIENTE_PADRAO = Object.freeze({
-  alerta: true,
-  dias: [1, 2, 3, 4, 5, 6],   // 0 = domingo … 6 = sábado
-  inicio: '07:00',
-  fim: '22:00',
-  fuso: 'America/Sao_Paulo',
-});
+/*
+ * A regra mora em js/expediente.js, a MESMA que a TV usa para apagar fora do
+ * horário (EXECUTOR, item 8). Duas contas e, um dia, a TV apagaria às 22h e
+ * o vigia acharia que ela caiu.
+ */
+const E = require('../js/expediente.js');
+const EXPEDIENTE_PADRAO = E.PADRAO;
+const normalizarExpediente = E.normalizar;
+
 // Quanto para trás o banco busca: um fim de semana prolongado inteiro.
 const BUSCA_MS = 5 * 24 * 60 * 60 * 1000;
 // Passo da soma de tempo de expediente. Cinco minutos = a mesma precisão da varredura.
 const PASSO_MS = 5 * 60 * 1000;
 
-function hhmm(v, padrao) {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || ''));
-  if (!m) return padrao;
-  const h = Number(m[1]), mi = Number(m[2]);
-  if (h > 24 || mi > 59 || (h === 24 && mi > 0)) return padrao;
-  return String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0');
-}
-
-/* Aceita o que vier (JSON do banco, corpo da requisição) e devolve algo válido. */
-function normalizarExpediente(bruto) {
-  let e = bruto;
-  if (typeof e === 'string') { try { e = JSON.parse(e); } catch (_) { e = null; } }
-  if (!e || typeof e !== 'object') return { ...EXPEDIENTE_PADRAO, dias: [...EXPEDIENTE_PADRAO.dias] };
-  const dias = Array.isArray(e.dias)
-    ? [...new Set(e.dias.map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort()
-    : [...EXPEDIENTE_PADRAO.dias];
-  let fuso = EXPEDIENTE_PADRAO.fuso;
-  if (typeof e.fuso === 'string') {
-    try { new Intl.DateTimeFormat('en-US', { timeZone: e.fuso }); fuso = e.fuso; } catch (_) { /* fuso inválido: padrão */ }
-  }
-  return {
-    alerta: e.alerta !== false,
-    dias,
-    inicio: hhmm(e.inicio, EXPEDIENTE_PADRAO.inicio),
-    fim: hhmm(e.fim, EXPEDIENTE_PADRAO.fim),
-    fuso,
-  };
-}
-
-const formatadores = new Map();
 /*
  * Memória do relógio por passo de 5 minutos: a varredura pergunta pelos
  * MESMOS instantes para todas as telas (os passos são alinhados), e
@@ -107,7 +79,7 @@ function relogioLocal(t, fuso) {
   const chave = fuso + '|' + passo;
   let base = memoRelogio.get(chave);
   if (!base) {
-    base = relogioLocalCru(passo * PASSO_MS, fuso);
+    base = E.relogioLocal(passo * PASSO_MS, fuso);
     if (memoRelogio.size > 20000) memoRelogio.clear();
     memoRelogio.set(chave, base);
   }
@@ -117,33 +89,10 @@ function relogioLocal(t, fuso) {
   if (min >= 1440) { min -= 1440; dia = (dia + 1) % 7; }
   return { dia, min };
 }
-function relogioLocalCru(t, fuso) {
-  if (!formatadores.has(fuso)) {
-    formatadores.set(fuso, new Intl.DateTimeFormat('en-US', {
-      timeZone: fuso, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-    }));
-  }
-  const partes = formatadores.get(fuso).formatToParts(new Date(t));
-  const val = (tipo) => (partes.find((p) => p.type === tipo) || {}).value;
-  const dia = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(val('weekday'));
-  return { dia, min: Number(val('hour')) * 60 + Number(val('minute')) };
-}
 
-const emMin = (s) => Number(s.slice(0, 2)) * 60 + Number(s.slice(3));
-
-/*
- * O instante `t` está dentro do expediente? Início igual ao fim = 24 horas.
- * Fim antes do início (bar das 18h às 2h) atravessa a meia-noite, e a
- * madrugada pertence ao dia em que o expediente COMEÇOU.
- */
+/* O instante `t` está dentro do expediente? (a regra: js/expediente.js) */
 function dentroDoExpediente(t, exp) {
-  const { dia, min } = relogioLocal(t, exp.fuso);
-  const ini = emMin(exp.inicio), fim = emMin(exp.fim);
-  if (ini === fim) return exp.dias.includes(dia);
-  if (ini < fim) return exp.dias.includes(dia) && min >= ini && min < fim;
-  if (min >= ini) return exp.dias.includes(dia);
-  if (min < fim) return exp.dias.includes((dia + 6) % 7);
-  return false;
+  return E.dentro(t, exp, relogioLocal);
 }
 
 /* Quanto do intervalo [de, ate) caiu dentro do expediente. */
