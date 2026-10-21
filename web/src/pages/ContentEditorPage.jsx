@@ -36,7 +36,7 @@ function defaultZone(zones) {
   return z ? z.id : null;
 }
 
-export function ContentEditorPage({ device, onBack }) {
+export function ContentEditorPage({ device, onBack, onCriar }) {
   const { data, loading, error, reload } = useAsync(() => deviceConfig.get(device.id), [device.id]);
 
   const [cfg, setCfg] = useState(null);
@@ -429,7 +429,14 @@ export function ContentEditorPage({ device, onBack }) {
               <Panel className="flex flex-col">
                 <PanelHeader title="Sequência" description={items.length ? `${items.length} ${items.length === 1 ? 'conteúdo' : 'conteúdos'}` : undefined}
                   actions={<>
-                    <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>
+                    {/*
+                      "IA" aqui gerava texto solto numa caixa à parte. Criar é
+                      um lugar só (PLANO §5.1): o botão leva ao Criar com esta
+                      tela marcada. A caixa antiga fica escondida por 30 dias.
+                    */}
+                    {onCriar
+                      ? <Button size="sm" variant="secondary" icon={Wand2} onClick={onCriar}>Criar</Button>
+                      : <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>}
                     <Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
                   </>} />
                 {aiOpen && (
@@ -515,7 +522,7 @@ export function ContentEditorPage({ device, onBack }) {
         </>
       )}
 
-      <TypePicker open={picker} onClose={() => setPicker(false)} onPick={addItem} onPickItem={addSaved} />
+      <TypePicker open={picker} onClose={() => setPicker(false)} onPick={addItem} onPickItem={addSaved} onCriar={onCriar} />
 
       {/* Ajustes da tela — fora do fluxo de conteúdo, sem roubar espaço */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Ajustes da tela"

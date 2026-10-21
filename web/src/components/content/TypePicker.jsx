@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Palette, Plus, UtensilsCrossed } from 'lucide-react';
+import { Search, Palette, Plus, UtensilsCrossed, Wand2 } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { CONTENT_TYPES, CONTENT_ORDER } from '../../lib/contentTypes.js';
 import { DesignThumb } from './DesignThumb.jsx';
@@ -44,10 +44,12 @@ const ATALHOS = {
 
 /*
  * Adicionar conteúdo: começa pela BIBLIOTECA (reaproveitar o que já existe,
- * com busca) e tem a aba de criar do zero. onPick(type) cria novo;
- * onPickItem(item) insere um design salvo.
+ * com busca), com "Criar novo" no topo — que leva ao Criar, já com esta tela
+ * marcada (PLANO §5.1: a tela recebe e organiza; cria-se em Criar). Os tipos
+ * prontos (clima, vídeo, QR…) ficam em "Mais tipos". onPick(type) cria um
+ * tipo; onPickItem(item) insere um design salvo; onCriar() vai ao Criar.
  */
-export function TypePicker({ open, onClose, onPick, onPickItem }) {
+export function TypePicker({ open, onClose, onPick, onPickItem, onCriar }) {
   const [tab, setTab] = useState('lib');
   const [q, setQ] = useState('');
   const [saved, setSaved] = useState(null); // null = carregando
@@ -55,13 +57,10 @@ export function TypePicker({ open, onClose, onPick, onPickItem }) {
   useEffect(() => {
     if (!open) return;
     setQ('');
-    // Biblioteca vazia (conta nova) abre direto em "Criar novo": abrir numa
-    // aba que só diz "está vazia" é o primeiro beco sem saída de quem chega.
-    library.list().then((r) => {
-      const itens = (r && r.items) || [];
-      setSaved(itens);
-      setTab(itens.length ? 'lib' : 'new');
-    }).catch(() => { setSaved([]); setTab('new'); });
+    // A biblioteca abre sempre: o "Criar novo" mora no topo dela, então ela
+    // vazia já não é beco sem saída.
+    setTab('lib');
+    library.list().then((r) => setSaved((r && r.items) || [])).catch(() => setSaved([]));
   }, [open]);
 
   const results = useMemo(() => {
@@ -78,11 +77,21 @@ export function TypePicker({ open, onClose, onPick, onPickItem }) {
   });
   Object.keys(ATALHOS).forEach((t) => { (groups[ATALHOS[t].group] = groups[ATALHOS[t].group] || []).unshift(t); });
 
-  const TABS = [['lib', 'Minha biblioteca', Palette], ['new', 'Criar novo', Plus]];
+  const TABS = [['lib', 'Minha biblioteca', Palette], ['new', 'Mais tipos', Plus]];
 
   return (
     <Dialog open={open} onClose={onClose} title="Adicionar conteúdo"
-      description="Reaproveite um design salvo ou crie do zero." className="max-w-5xl">
+      description="Crie um novo, reaproveite um design salvo ou escolha um tipo pronto." className="max-w-5xl">
+      {onCriar && (
+        <button type="button" onClick={() => { onClose(); onCriar(); }}
+          className="mb-4 flex w-full items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 p-4 text-left transition hover:border-accent">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft"><Wand2 size={20} className="text-accent" /></span>
+          <span>
+            <span className="block text-sm font-semibold text-ink">Criar novo</span>
+            <span className="block text-xs text-ink-3">Promoção, novidade, aviso, foto do produto… com a sua marca, direto nesta tela.</span>
+          </span>
+        </button>
+      )}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="inline-flex gap-1 rounded-lg border border-line bg-surface-2 p-1">
           {TABS.map(([id, label, Icon]) => (
@@ -108,8 +117,8 @@ export function TypePicker({ open, onClose, onPick, onPickItem }) {
         ) : results.length === 0 ? (
           <div className="py-10 text-center">
             <p className="text-sm text-ink-2">{saved.length ? 'Nenhum design encontrado.' : 'Sua biblioteca está vazia.'}</p>
-            <p className="mt-1 text-xs text-ink-3">{saved.length ? 'Tente outro termo.' : 'Crie designs em Meus Designs — eles aparecem aqui.'}</p>
-            <button onClick={() => setTab('new')} className="mt-3 text-xs font-medium text-accent hover:underline">Criar do zero</button>
+            <p className="mt-1 text-xs text-ink-3">{saved.length ? 'Tente outro termo.' : 'O que você criar aparece aqui para reaproveitar.'}</p>
+            <button onClick={() => setTab('new')} className="mt-3 text-xs font-medium text-accent hover:underline">Ver os tipos prontos</button>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">

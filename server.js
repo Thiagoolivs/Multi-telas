@@ -1371,6 +1371,9 @@ async function handleApi(req, res, pathname, query) {
            */
           planoAprovado: (b && b.planoAprovado) || null,
           marca,
+          // "Foto do produto" no Criar: só vale endereço que é imagem base DESTA conta.
+          fotoDoPedido: (b && typeof b.fotoProduto === 'string' && marca
+            && marca.bases.some((x) => x.url === b.fotoProduto)) ? b.fotoProduto : '',
           // Resumo vindo do chat de briefing, quando o usuário conversou.
           briefingPronto: (b && b.briefingPronto) || null,
           // O que já sabemos da empresa de conversas anteriores.

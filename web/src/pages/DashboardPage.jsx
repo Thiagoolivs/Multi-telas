@@ -8,6 +8,7 @@ import { KpiRow } from '../components/dashboard/KpiRow.jsx';
 import { FleetTable } from '../components/dashboard/FleetTable.jsx';
 import { AlertsPanel } from '../components/dashboard/AlertsPanel.jsx';
 import { PrimeirosPassos } from '../components/dashboard/PrimeirosPassos.jsx';
+import { OpcoesDeCriar } from './CriarPage.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { devices as devicesApi, media as mediaApi, sistema } from '../api.js';
 import { deviceStatus, ONLINE_WINDOW_MS } from '../lib/deviceStatus.js';
@@ -83,6 +84,15 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
         actions={<Button variant="secondary" icon={RefreshCw} onClick={reload}>Atualizar</Button>}
       />
       <AvisoDoSistema onAbrir={onGoSystem} operador={operador} />
+      {/*
+        O passo 1 do Criar, aqui no Início: quem abre o app e quer pôr algo
+        na TV toca numa opção e cai direto na frase. É o que faz "criar com
+        IA e publicar" caber em três toques (opção → rascunho → publicar).
+      */}
+      <section className="mb-4">
+        <h2 className="mb-2 text-sm font-semibold text-ink">O que você quer mostrar hoje?</h2>
+        <OpcoesDeCriar compacto onEscolher={(opcao) => onIr && onIr('criar', { opcao })} />
+      </section>
       {loading ? (
         <div className="flex justify-center py-24"><Spinner size={22} /></div>
       ) : error ? (

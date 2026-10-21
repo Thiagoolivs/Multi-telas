@@ -11,10 +11,9 @@ import { Dialog } from '../components/ui/Dialog.jsx';
 import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
-import { ai, library, devices, deviceConfig, media } from '../api.js';
-import { primaryZoneKey, defaultConfig, CONTENT_TYPES } from '../lib/contentTypes.js';
-import { aplicarConteudo, distribuirPorZona, agendarPeca, FAIXAS } from '../lib/aplicarConteudo.js';
-import { zonesOf } from '../lib/screenConfig.js';
+import { ai, library, devices, media } from '../api.js';
+import { CONTENT_TYPES } from '../lib/contentTypes.js';
+import { FAIXAS } from '../lib/aplicarConteudo.js';
 import { downloadComposition } from '../lib/exportPng.js';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { BriefingChat } from '../components/content/BriefingChat.jsx';
@@ -24,6 +23,7 @@ import { EditarPeca, AvisoDeEncaixe } from '../components/content/EditarPeca.jsx
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { TAMANHO_REAL } from '../lib/pecaHtml.js';
 import { aviso } from '../lib/avisos.js';
+import { publicarPecas } from '../lib/publicar.js';
 import { guardar as guardarNaBandeja, inscrever as inscreverBandeja, limpar as limparBandeja } from '../lib/bandeja.js';
 
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
@@ -424,30 +424,7 @@ export function MyDesignsPage({ onIr }) {
     if (!pub || !alvos.length || !pecasElegiveis.length) return;
     setBusy(true); setMsg('');
     try {
-      for (const id of alvos) {
-        const dev = screens.find((s) => s.id === id);
-        let cfg = null;
-        try { cfg = await deviceConfig.get(id); } catch (e) { /* tela sem config ainda */ }
-        if (!cfg) cfg = defaultConfig(dev ? dev.name : 'Tela');
-        /*
-         * Peça em pé vai para a zona em pé. Antes tudo caía na principal e a
-         * lateral seguia com a cara de sempre enquanto a campanha rodava ao
-         * lado — a queixa de "adicionou uma tela só na principal".
-         */
-        const zonas = zonesOf(cfg).filter((z) => z.type === 'playlist');
-        let blocos = distribuirPorZona(pecasElegiveis, zonas, dias);
-        if (!Object.keys(blocos).length) {
-          blocos = { [primaryZoneKey(cfg)]: pecasElegiveis.map((p) => agendarPeca(p.item, p.faixa, dias)) };
-        }
-        /*
-         * 'trocar' substitui só o que veio DESTA campanha; 'limpar' esvazia a
-         * zona. Antes o padrão empilhava para sempre e a única alternativa
-         * apagava também o que não era campanha.
-         */
-        const novaCfg = aplicarConteudo(cfg, blocos, { chave: '_campanha', valor: pub.titulo },
-          substituir ? 'limpar' : 'trocar');
-        await deviceConfig.save(id, novaCfg);
-      }
+      await publicarPecas({ alvos, pecas: pecasElegiveis, titulo: pub.titulo, telas: screens, dias, substituir });
       const nTelas = alvos.length;
       setMsg(`${pecasElegiveis.length} peça(s) ${substituir ? 'substituíram a playlist de' : 'publicadas em'} ${nTelas} tela(s).`);
       setPub(null);
@@ -725,38 +702,56 @@ export function MyDesignsPage({ onIr }) {
   }
   const groupNames = Object.keys(groups);
 
-  const CREATE = [
-    { key: 'ia', title: 'Criar campanha com IA', desc: 'Uma frase vira a campanha inteira: peças, legendas e quando postar.', icon: Wand2, on: () => (setGuiando(true), setAiOpen(true)), accent: 'text-violet-400', destaque: true },
-    { key: 'mao', title: 'Criar na mão', desc: 'Editor visual: fundo, texto, formas, ícones e imagens.', icon: Plus, on: novoNaMao, accent: 'text-accent' },
-    { key: 'img', title: 'Gerar imagem IA', desc: 'Crie uma imagem por prompt e use como arte ou fundo.', icon: ImagePlus, on: () => setImgOpen(true), accent: 'text-sky-400' },
-    { key: 'imp', title: 'Importar arquivo', desc: 'Suba um design do Canva (PNG/JPG) ou um PDF.', icon: Upload, on: null, accent: 'text-emerald-400' },
+  /*
+   * "Mais" (PLANO §5.1): continua tudo aqui, só fora do caminho principal.
+   * Criar começa em Criar; Meus Designs é a biblioteca do que já foi feito.
+   */
+  const MAIS = [
+    { key: 'ia', title: 'Campanha completa com IA', desc: 'Várias peças, legendas e quando postar.', icon: MessagesSquare, on: () => (setGuiando(true), setAiOpen(true)) },
+    { key: 'mao', title: 'Criar na mão', desc: 'Editor visual: fundo, texto, formas e imagens.', icon: Plus, on: novoNaMao },
+    { key: 'img', title: 'Gerar imagem IA', desc: 'Uma imagem por descrição, para arte ou fundo.', icon: ImagePlus, on: () => setImgOpen(true) },
+    { key: 'imp', title: 'Importar arquivo', desc: 'Design do Canva (PNG/JPG) ou PDF.', icon: Upload, on: null },
   ];
 
   return (
     <div>
-      <PageHeader title="Meus Designs" subtitle="Crie na mão, com IA, gere imagens ou importe — tudo fica aqui, pronto para reaproveitar e publicar." />
+      <PageHeader title="Meus Designs" subtitle="Tudo o que você já criou, pronto para reaproveitar e publicar." />
 
-      {/* Formas de criar — espaçoso no desktop */}
-      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {CREATE.map((c) => {
-          const Icon = c.icon;
-          const inner = (
-            <>
-              <div className={'flex h-11 w-11 items-center justify-center rounded-xl ' + (c.destaque ? 'bg-accent-soft' : 'bg-surface-2')}><Icon size={22} className={c.accent} /></div>
-              <div className="mt-3 text-sm font-semibold text-ink">{c.title}</div>
-              <div className="mt-1 text-xs leading-snug text-ink-3">{c.desc}</div>
-            </>
-          );
-          const base = 'rounded-xl border p-5 text-left transition hover:bg-surface-2 ' + (c.destaque ? 'border-accent/40 bg-surface hover:border-accent' : 'border-line bg-surface hover:border-accent/50');
-          return c.on ? (
-            <button key={c.key} onClick={c.on} className={base}>{inner}</button>
-          ) : (
-            <label key={c.key} className={'cursor-pointer ' + base}>
-              {inner}
-              <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={onImport} />
-            </label>
-          );
-        })}
+      <div className="mb-5 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
+        <button type="button" onClick={() => onIr && onIr('criar')}
+          className="flex items-center gap-4 rounded-xl border border-accent/40 bg-surface p-5 text-left transition hover:border-accent hover:bg-surface-2">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-soft"><Wand2 size={24} className="text-accent" /></div>
+          <div>
+            <div className="text-base font-semibold text-ink">Criar</div>
+            <div className="mt-0.5 text-xs leading-snug text-ink-3">Promoção, novidade, aviso, foto do produto… Uma frase e a peça sai com a sua marca, pronta para a TV.</div>
+          </div>
+        </button>
+        <div className="rounded-xl border border-line bg-surface">
+          <div className="border-b border-line px-4 py-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Mais</div>
+          <div className="grid grid-cols-2 gap-px bg-line">
+            {MAIS.map((c) => {
+              const Icon = c.icon;
+              const inner = (
+                <>
+                  <Icon size={16} className="mt-0.5 shrink-0 text-ink-3" />
+                  <span className="min-w-0">
+                    <span className="block text-xs font-semibold text-ink">{c.title}</span>
+                    <span className="block text-2xs leading-snug text-ink-3">{c.desc}</span>
+                  </span>
+                </>
+              );
+              const base = 'flex items-start gap-2 bg-surface p-3 text-left transition hover:bg-surface-2';
+              return c.on ? (
+                <button key={c.key} type="button" onClick={c.on} className={base}>{inner}</button>
+              ) : (
+                <label key={c.key} className={'cursor-pointer ' + base}>
+                  {inner}
+                  <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={onImport} />
+                </label>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/*
@@ -794,7 +789,7 @@ export function MyDesignsPage({ onIr }) {
           <div className="p-6"><Spinner size={20} /></div>
         ) : saved.length === 0 ? (
           <EmptyState icon={Sparkles} title="Nada por aqui ainda"
-            description="Comece por “Criar campanha com IA”: uma frase e você tem as peças prontas para colocar na TV." />
+            description="Comece por “Criar”: uma frase e a peça sai pronta para a TV, com a sua marca." />
         ) : groupNames.length === 0 ? (
           <EmptyState icon={Search} title="Nenhum resultado" description="Tente outro termo de busca." />
         ) : (
@@ -1001,7 +996,7 @@ export function MyDesignsPage({ onIr }) {
 
       {/* Criar campanha com IA — o diretor de arte */}
       <Dialog open={aiOpen} onClose={() => { setAiOpen(false); setGen(null); }} className="max-w-4xl"
-        title="Criar campanha com IA"
+        title="Campanha completa com IA"
         /*
           O subtítulo acompanha a etapa. "Descreva em uma frase" na tela do
           cardápio manda fazer algo que não há onde fazer — não existe campo
