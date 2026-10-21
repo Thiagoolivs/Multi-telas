@@ -96,7 +96,15 @@
       marcaNaTela: !!x.marcaNaTela,
       clima: () => Promise.resolve('27°'),
       mensagens: x.mensagens || [],
+      contagem: alvoDaContagem(),
     });
+  }
+
+  // A contagem na bancada: sempre dois dias e quatro horas à frente, para a peça mostrar o número cheio.
+  function alvoDaContagem() {
+    const d = new Date(Date.now() + (2 * 24 + 4) * 3600 * 1000);
+    const z = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + 'T' + z(d.getHours()) + ':' + z(d.getMinutes());
   }
 
   /*

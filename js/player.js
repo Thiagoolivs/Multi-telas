@@ -759,13 +759,32 @@
    * faixa fixa (chamada e contato, sem rolagem) não usa mensagem nenhuma e
    * entra sempre.
    */
-  function temPecaFixa(zone, data) {
-    if (zone.type !== 'header' && zone.type !== 'ticker') return false;
-    if (!data.peca || data.peca.type !== 'peca-html' || !global.MTPecaRender || !global.MTRender) return false;
-    if (zone.type === 'header' || !/data-vivo="mensagens"/.test(data.peca.html || '')) return true;
-    return Array.isArray(data.messages) && data.messages.some((m) => String(m || '').trim());
+  /*
+   * As peças da faixa: a lista que gira (`pecas`, EXECUTOR item 22) ou a peça
+   * única de antes. No rodapé, a peça que rola mensagens só entra quando há
+   * mensagem (a regra de cima); a faixa fixa entra sempre.
+   */
+  function pecasDaFaixa(zone, data) {
+    const lista = (Array.isArray(data.pecas) && data.pecas.length ? data.pecas : (data.peca ? [data.peca] : []))
+      .filter((p) => p && p.type === 'peca-html');
+    if (zone.type !== 'ticker') return lista;
+    const temMensagem = Array.isArray(data.messages) && data.messages.some((m) => String(m || '').trim());
+    return lista.filter((p) => temMensagem || !/data-vivo="mensagens"/.test(p.html || ''));
   }
 
+  function temPecaFixa(zone, data) {
+    if (zone.type !== 'header' && zone.type !== 'ticker') return false;
+    if (!global.MTPecaRender || !global.MTRender) return false;
+    return pecasDaFaixa(zone, data).length > 0;
+  }
+
+  /*
+   * Com mais de uma peça, elas GIRAM, cada uma pela própria duração ("2
+   * estilos de cabeçalho"). A troca remonta a peça no mesmo lugar, e a
+   * entrada que ela declarou é a transição; na TV fraca (modo leve) não há
+   * entrada, e a troca é seca — sem engasgo. A contagem e o relógio seguem
+   * mudando o texto nos dois modos.
+   */
   function startPecaFixa(zoneEl, zone, data) {
     zoneEl.classList.add('mt-zona-peca');
     const host = document.createElement('div');
@@ -774,11 +793,27 @@
     // A peça do cabeçalho/rodapé É a marca: não esconde o nome dela.
     // Desenhada no tamanho de 1080p e escalada, como a da playlist (MTRender.hostDaPeca).
     const alvo = MTRender.hostDaPeca ? MTRender.hostDaPeca(host) : host;
-    const ctl = MTPecaRender.montar(alvo, data.peca, MTRender.opcoesDaPeca({
-      marcaNaTela: false,
-      mensagens: zone.type === 'ticker' ? data.messages : [],
-    }));
-    return { stop: ctl.parar };
+    const lista = pecasDaFaixa(zone, data);
+    let i = 0;
+    let ctl = null;
+    let espera = null;
+    let parada = false;
+    const mostrar = () => {
+      if (parada) return;
+      if (ctl) ctl.parar();
+      ctl = MTPecaRender.montar(alvo, lista[i], MTRender.opcoesDaPeca({
+        marcaNaTela: false,
+        // As frases do rodapé, e as chamadas que giram no cabeçalho.
+        mensagens: Array.isArray(data.messages) ? data.messages : [],
+        contagem: data.contagem || '',
+      }));
+      if (lista.length > 1) {
+        const segundos = Math.max(6, Number(lista[i].duracao) || 20);
+        espera = setTimeout(() => { i = (i + 1) % lista.length; mostrar(); }, segundos * 1000);
+      }
+    };
+    mostrar();
+    return { stop() { parada = true; clearTimeout(espera); if (ctl) ctl.parar(); } };
   }
 
   /* ---------------- Resiliência offline ---------------- */

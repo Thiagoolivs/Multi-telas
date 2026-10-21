@@ -376,6 +376,16 @@
       "marca": "clinica"
     },
     {
+      "id": "rodape-contagem",
+      "nome": "Rodapé com contagem",
+      "familia": "rodapé",
+      "papeis": [
+        "rodape"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria"
+    },
+    {
       "id": "cabecalho-chamada",
       "nome": "Cabeçalho com a chamada",
       "familia": "cabeçalho",
@@ -384,6 +394,16 @@
       ],
       "estado": "rascunho",
       "marca": "lanchonete"
+    },
+    {
+      "id": "cabecalho-chamadas",
+      "nome": "Cabeçalho com chamadas",
+      "familia": "cabeçalho",
+      "papeis": [
+        "cabecalho"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria"
     },
     {
       "id": "cardapio-categorias",

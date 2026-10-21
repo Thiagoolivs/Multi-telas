@@ -47,7 +47,7 @@ function regras() {
     '- No máximo 2 sombras por elemento, desfoque até 3cqw.',
     '- Todo texto editável com data-campo="nome" (nomes curtos, sem espaço). Foto só com <img data-campo-img="foto" alt="">. QR só com <img data-campo-qr="link" alt="…">.',
     '- Animação só declarada: data-entrada="aparecer|subir|descer|esquerda|direita|crescer|estourar|girar", data-ordem="1..8", data-continua="flutuar|pulsar|balancar|brilhar".',
-    '- Hora/data/clima só por data-vivo="relogio|data|clima"; o nome da marca, se aparecer no destaque, com data-repete="marca".',
+    '- Hora/data/clima só por data-vivo="relogio|data|clima"; contagem regressiva só por data-vivo="contagem" (o player conta até a data da zona); o nome da marca, se aparecer no destaque, com data-repete="marca".',
     '- Formatos por @container: deitada (padrão), (aspect-ratio < 0.8) em pé, (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) quadrada. A MESMA peça precisa ficar certa em 1920×1080 e 1080×1920.',
     '- Peça que serve na lateral: @container (max-width: 700px) — menos texto, letra maior, nada some.',
     '',
@@ -244,6 +244,14 @@ const OURO_PAPEL = {
     { id: 'rodape-relogio', campos: (t, e) => ({ rotulo: t.kicker || e }) },
   ],
 };
+/*
+ * Quando a faixa tem o que só uma peça mostra — a contagem no rodapé, as
+ * chamadas girando no cabeçalho (EXECUTOR item 22) —, é ela que entra.
+ */
+const OURO_VIVO = {
+  rodape: { id: 'rodape-contagem', campos: () => ({ rotulo: 'Acaba em' }), quando: (o) => !!o.contagem },
+  cabecalho: { id: 'cabecalho-chamadas', campos: (t, e) => ({ marca: e }), quando: (o) => Array.isArray(o.chamadas) && o.chamadas.length > 0 },
+};
 // Faixa fina e coluna estreita: texto curto, cortado na palavra.
 const CABE_NO_PAPEL = { kicker: 22, titulo: 38, apoio: 90, cta: 36 };
 
@@ -260,7 +268,9 @@ function preencherPapel(o) {
   // Destaque, e a lateral com foto (a foto já foi paga): a reserva de sempre, que sabe a foto.
   if (papel === 'destaque' || (papel === 'lateral' && o.foto)) return Object.assign(preencherOuro(o), { papel });
   const opcoes = OURO_PAPEL[papel];
-  const escolha = opcoes[Math.abs(o.indice || 0) % opcoes.length];
+  const vivo = OURO_VIVO[papel];
+  // Só a primeira peça da faixa: a segunda, se houver, gira com outro estilo.
+  const escolha = vivo && vivo.quando(o) && !o.indice ? vivo : opcoes[Math.abs(o.indice || 0) % opcoes.length];
   const arquivo = P.doArquivo(fs.readFileSync(path.join(PASTA, escolha.id + '.html'), 'utf8'));
   const h = P.higienizar(arquivo);
   const t = {};
@@ -460,4 +470,4 @@ async function comporTelaInteira(o) {
   return { zonas, falhas };
 }
 
-module.exports = { comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, partirTitulo, OURO, OURO_PAPEL };
+module.exports = { comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO };

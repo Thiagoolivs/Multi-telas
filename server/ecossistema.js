@@ -310,6 +310,9 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, agora } = {}) {
       pedido: [escopo.objetivo, v.pedido].filter(Boolean).join(' — ') || escopo.nome,
       empresa: ctx.empresa || '', segmento: ctx.segmento || '', marca: marcaDaPeca, modo,
       papel: v.papel, foto: fotos[v.id] || null, logo: m.logo || '', indice: v.indice,
+      // O que só a faixa tem: a contagem do rodapé e as chamadas do cabeçalho (item 22).
+      contagem: v.zona === 'rodape' && escopo.telas[v.tela] ? escopo.telas[v.tela].zonas.rodape.contagem : '',
+      chamadas: v.zona === 'cabecalho' && escopo.telas[v.tela] ? escopo.telas[v.tela].zonas.cabecalho.mensagens : [],
       textos: { kicker: t.kicker, titulo: t.titulo, apoio: t.apoio, cta: t.cta },
       evitar: ditos.slice(0, 20),
     };
@@ -337,7 +340,16 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, agora } = {}) {
       zonas: {
         principal: comHorario(daZona('principal')),
         lateral: comHorario(daZona('lateral')),
-        cabecalho: { pecas: daZona('cabecalho'), vivos: t.zonas.cabecalho.vivos, mensagens: t.zonas.cabecalho.mensagens },
+        /*
+         * As chamadas do cabeçalho: as que o cliente escreveu, ou os títulos
+         * das próprias peças dele. Peça de cabeçalho com chamadas girando e
+         * nenhuma chamada passaria vazia na TV.
+         */
+        cabecalho: {
+          pecas: daZona('cabecalho'), vivos: t.zonas.cabecalho.vivos,
+          mensagens: t.zonas.cabecalho.mensagens.length ? t.zonas.cabecalho.mensagens
+            : daZona('cabecalho').map((p) => textos.vagas[p.vaga].titulo).filter(Boolean),
+        },
         rodape: {
           pecas: daZona('rodape'), vivos: t.zonas.rodape.vivos, contagem: t.zonas.rodape.contagem,
           mensagens: t.zonas.rodape.pecas || t.zonas.rodape.mensagens.length ? (textos.mensagens[ti] || []) : [],

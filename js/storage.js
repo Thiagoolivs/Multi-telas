@@ -163,6 +163,23 @@
   }
 
   /* ---------- Validação / normalização ---------- */
+  /*
+   * CABEÇALHO E RODAPÉ VIVOS (EXECUTOR item 22): várias peças girando
+   * (`pecas`, cada uma com a sua duração) e a data da contagem regressiva.
+   * `peca` continua: é a primeira da lista, e é ela que a TV com o JS antigo
+   * no cache mostra. Sem as duas linhas abaixo, o normalizador (que refaz a
+   * zona campo a campo) jogaria a lista fora no caminho até a TV.
+   */
+  function vivosDaFaixa(zona, existing) {
+    const lista = Array.isArray(existing.pecas)
+      ? existing.pecas.filter((p) => p && p.type === 'peca-html').slice(0, 4) : [];
+    if (lista.length) {
+      zona.pecas = lista;
+      if (!zona.peca) zona.peca = lista[0];
+    }
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(String(existing.contagem || ''))) zona.contagem = existing.contagem;
+  }
+
   function normalize(cfg) {
     if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) return sampleConfig();
     const out = {
@@ -230,6 +247,7 @@
           corDestaque: existing.corDestaque || '',
         };
         if (existing.peca) out.zonas[zone.id].peca = existing.peca;
+        vivosDaFaixa(out.zonas[zone.id], existing);
       } else if (zone.type === 'header') {
         out.zonas[zone.id] = { header: true };
         /*
@@ -240,6 +258,9 @@
          * arquivo.
          */
         if (existing.peca) out.zonas[zone.id].peca = existing.peca;
+        // As chamadas que giram no cabeçalho (data-vivo="mensagens" na peça dele).
+        if (Array.isArray(existing.messages) && existing.messages.length) out.zonas[zone.id].messages = existing.messages.slice(0, 20);
+        vivosDaFaixa(out.zonas[zone.id], existing);
       } else {
         out.zonas[zone.id] = {
           items: Array.isArray(existing.items) ? existing.items : [],

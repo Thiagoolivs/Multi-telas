@@ -65,7 +65,8 @@
 
   const PAPEIS = ['cabecalho', 'destaque', 'lateral', 'rodape'];
   const FORMATOS = ['16/9', '9/16', '1/1', '21/9'];
-  const VIVOS = ['relogio', 'data', 'clima', 'mensagens'];
+  // contagem: a regressiva até a data da zona (EXECUTOR item 22).
+  const VIVOS = ['relogio', 'data', 'clima', 'mensagens', 'contagem'];
 
   /* ======================= HTML ======================= */
 
@@ -781,6 +782,15 @@
         const v = validarItem(dados.peca, opts);
         v.problemas.forEach((p) => { if (!/^type precisa/.test(p)) problemas.push(zona + ' (peça fixa): ' + p); });
         dados.peca = Object.assign({}, dados.peca, v.item);
+      }
+      // As peças que giram no cabeçalho/rodapé (EXECUTOR item 22): cada uma pela mesma porta.
+      if (Array.isArray(dados.pecas)) {
+        dados.pecas = dados.pecas.map((peca, i) => {
+          if (!peca || peca.type !== 'peca-html') { problemas.push(zona + ' (peça ' + (i + 1) + ' do giro): type precisa ser "peca-html"'); return peca; }
+          const v = validarItem(peca, opts);
+          v.problemas.forEach((p) => problemas.push(zona + ' (peça ' + (i + 1) + ' do giro): ' + p));
+          return Object.assign({}, peca, v.item);
+        });
       }
       if (!Array.isArray(dados.items)) return;
       dados.items = dados.items.map((item, i) => {

@@ -188,18 +188,26 @@ test('o player desenha a peça fixa com o mesmo contexto da playlist', () => {
   assert.ok(fixa > 0 && fixa < zona.indexOf("zone.type === 'ticker'") && fixa < zona.indexOf("zone.type === 'header'"));
   const tem = p.slice(p.indexOf('function temPecaFixa('), p.indexOf('function startPecaFixa('));
   assert.match(tem, /zone\.type !== 'header' && zone\.type !== 'ticker'/, 'peça fixa só em cabeçalho e rodapé');
-  assert.match(tem, /data\.peca\.type !== 'peca-html'/);
+  /*
+   * Desde o item 22 a faixa tem uma LISTA que gira (`pecas`), e `peca`
+   * continua valendo sozinha. A regra de quem entra mora em pecasDaFaixa.
+   */
+  const faixa = p.slice(p.indexOf('function pecasDaFaixa('), p.indexOf('function temPecaFixa('));
+  assert.match(faixa, /Array\.isArray\(data\.pecas\) && data\.pecas\.length \? data\.pecas : \(data\.peca \? \[data\.peca\] : \[\]\)/);
+  assert.match(faixa, /\.filter\(\(p\) => p && p\.type === 'peca-html'\)/);
+  assert.match(tem, /return pecasDaFaixa\(zone, data\)\.length > 0/);
   // Rodapé sem mensagem nenhuma fica no letreiro padrão…
-  assert.match(tem, /Array\.isArray\(data\.messages\) && data\.messages\.some\(/);
+  assert.match(faixa, /Array\.isArray\(data\.messages\) && data\.messages\.some\(/);
   // …a não ser que a peça não mostre mensagem (a faixa fixa com chamada e contato).
-  assert.match(tem, /!\/data-vivo="mensagens"\/\.test\(data\.peca\.html \|\| ''\)\) return true/);
+  assert.match(faixa, /temMensagem \|\| !\/data-vivo="mensagens"\/\.test\(p\.html \|\| ''\)/);
   for (const id of ['rodape-selo', 'rodape-pagamento']) assert.match(ler('pecas-ouro', id + '.html'), /data-vivo="mensagens"/, id);
   assert.doesNotMatch(ler('pecas-ouro', 'rodape-faixa.html'), /data-vivo="mensagens"/);
   const start = p.slice(p.indexOf('function startPecaFixa('), p.indexOf('const CFG_CACHE_KEY'));
   assert.match(start, /MTRender\.opcoesDaPeca\(\{/);
   assert.match(start, /marcaNaTela: false/, 'a peça do cabeçalho é a marca: não pode esconder o nome');
-  assert.match(start, /mensagens: zone\.type === 'ticker' \? data\.messages : \[\]/);
-  assert.match(start, /return \{ stop: ctl\.parar \}/, 'o relógio da peça fica rodando depois que a zona sai');
+  assert.match(start, /mensagens: Array\.isArray\(data\.messages\) \? data\.messages : \[\]/);
+  assert.match(start, /contagem: data\.contagem \|\| ''/);
+  assert.match(start, /stop\(\) \{ parada = true; clearTimeout\(espera\); if \(ctl\) ctl\.parar\(\); \}/, 'o relógio e o giro ficam rodando depois que a zona sai');
   // E a playlist pede o contexto do mesmo lugar.
   const r = semComentarios(ler('js', 'render.js'));
   // Desenhada no tamanho de 1080p e escalada para a tela (item 7 do EXECUTOR: hostDaPeca).
