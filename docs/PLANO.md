@@ -755,8 +755,8 @@ fica simples e o cliente experimenta tudo no teste.
 ### 5.3 Pronto quando
 
 - [ ] Do cadastro à primeira peça na TV em **menos de 10 minutos**, guiado.
-- [ ] Toda tarefa principal em 3 toques no celular de 360 px.
-- [ ] Nenhum recurso perdido: cada página antiga tem endereço novo ou redirect.
+- [x] Toda tarefa principal em 3 toques no celular de 360 px. *(21/10, item 15: ver a TV, recarregar, plano, aniversariantes, mídias, pôr foto na TV e as 6 entradas do Adicionar conteúdo — de 1 a 3 toques, medidos no navegador.)*
+- [x] Nenhum recurso perdido: cada página antiga tem endereço novo ou redirect. *(21/10, item 15: o menu tem os 8 grupos, cada página antiga é aba de um deles, e todo ?ir= antigo abre a mesma página — test/menu.test.js.)*
 - [ ] Testado em Android e iPhone, em 4G fraco.
 
 ---

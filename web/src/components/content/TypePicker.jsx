@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Search, Palette, Plus, UtensilsCrossed, Wand2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Search, Palette, Plus, UtensilsCrossed, Wand2, Image as ImageIcon, Tag, Megaphone, Cake, Instagram, LayoutGrid } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { CONTENT_TYPES, CONTENT_ORDER } from '../../lib/contentTypes.js';
 import { DesignThumb } from './DesignThumb.jsx';
 import { library } from '../../api.js';
 import { cn } from '../../lib/cn.js';
+import { prepararFoto, prepararVideo, avaliarVideo, enviarComProgresso, itemDaMidia, ehVideo, ehImagem } from '../../lib/subir.js';
 
 // Descrição curta por tipo — deixa a escolha óbvia para quem chega agora.
 const DESC = {
@@ -43,23 +44,42 @@ const ATALHOS = {
 };
 
 /*
- * Adicionar conteúdo: começa pela BIBLIOTECA (reaproveitar o que já existe,
- * com busca), com "Criar novo" no topo — que leva ao Criar, já com esta tela
- * marcada (PLANO §5.1: a tela recebe e organiza; cria-se em Criar). Os tipos
- * prontos (clima, vídeo, QR…) ficam em "Mais tipos". onPick(type) cria um
- * tipo; onPickItem(item) insere um design salvo; onCriar() vai ao Criar.
+ * As 6 entradas grandes do "O que você quer mostrar?" (PLANO §5.1): o que o
+ * dono da loja quer quase sempre. Criar com IA leva ao Criar com esta tela
+ * marcada (a tela recebe e organiza; cria-se em Criar); as outras já põem o
+ * tipo na tela, para preencher ali mesmo.
+ */
+const ENTRADAS = [
+  { id: 'criar', label: 'Criar com IA', desc: 'Promoção, novidade, aviso… com a sua marca.', icon: Wand2 },
+  { id: 'midia', label: 'Foto ou vídeo', desc: 'Da galeria do celular ou do computador: entra inteira.', icon: ImageIcon },
+  { id: 'promo', label: 'Promoção com preço', desc: 'Produto, preço e chamada, já na cor da marca.', icon: Tag },
+  { id: 'announce', label: 'Aviso', desc: 'Horário, recado, comunicado.', icon: Megaphone },
+  { id: 'birthdayauto', label: 'Aniversariantes', desc: 'Os aniversariantes do dia, sozinhos.', icon: Cake },
+  { id: 'social', label: 'Instagram ou QR', desc: 'O perfil e o QR para seguir a loja.', icon: Instagram },
+];
+
+/*
+ * Adicionar conteúdo pergunta ANTES de mostrar a grade (PLANO §5.1): "O que
+ * você quer mostrar?", com as 6 entradas. Reaproveitar um design salvo fica
+ * em "Minha biblioteca" (com busca); todos os tipos prontos (clima, vídeo do
+ * YouTube, página da web…) em "Mais tipos", também com busca. onPick(type)
+ * cria um tipo; onPickItem(item) insere um design salvo; onCriar() vai ao
+ * Criar.
  */
 export function TypePicker({ open, onClose, onPick, onPickItem, onCriar }) {
-  const [tab, setTab] = useState('lib');
+  const [tab, setTab] = useState('inicio');
   const [q, setQ] = useState('');
   const [saved, setSaved] = useState(null); // null = carregando
+  // Foto ou vídeo: escolhe, sobe e já entra na tela (o mesmo caminho do "Pôr na TV", lib/subir.js).
+  const arquivo = useRef(null);
+  const [envio, setEnvio] = useState(null);
 
   useEffect(() => {
     if (!open) return;
     setQ('');
-    // A biblioteca abre sempre: o "Criar novo" mora no topo dela, então ela
-    // vazia já não é beco sem saída.
-    setTab('lib');
+    setEnvio(null);
+    // Abre sempre na pergunta: a grade de tudo é o segundo passo, não o primeiro.
+    setTab('inicio');
     library.list().then((r) => setSaved((r && r.items) || [])).catch(() => setSaved([]));
   }, [open]);
 
@@ -71,29 +91,46 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar }) {
   }, [saved, q]);
 
   const groups = {};
-  CONTENT_ORDER.forEach((t) => {
+  const termo = q.trim().toLowerCase();
+  const bate = (t) => {
+    if (!termo) return true;
+    const info = CONTENT_TYPES[t] || ATALHOS[t] || {};
+    return ((info.label || '') + ' ' + (DESC[t] || info.desc || '')).toLowerCase().includes(termo);
+  };
+  CONTENT_ORDER.filter(bate).forEach((t) => {
     const g = CONTENT_TYPES[t].group;
     (groups[g] = groups[g] || []).push(t);
   });
-  Object.keys(ATALHOS).forEach((t) => { (groups[ATALHOS[t].group] = groups[ATALHOS[t].group] || []).unshift(t); });
+  Object.keys(ATALHOS).filter(bate).forEach((t) => { (groups[ATALHOS[t].group] = groups[ATALHOS[t].group] || []).unshift(t); });
 
-  const TABS = [['lib', 'Minha biblioteca', Palette], ['new', 'Mais tipos', Plus]];
+  const TABS = [['inicio', 'O que mostrar', LayoutGrid], ['lib', 'Minha biblioteca', Palette], ['new', 'Mais tipos', Plus]];
+  function escolher(id) {
+    if (id === 'midia') { if (arquivo.current) arquivo.current.click(); return; }
+    onClose();
+    if (id === 'criar') { if (onCriar) onCriar(); return; }
+    onPick(id);
+  }
+  async function subir(f) {
+    if (!f || !(ehImagem(f) || ehVideo(f))) { setEnvio({ erro: 'Escolha uma foto (JPG, PNG, WEBP) ou um vídeo (MP4, WEBM).' }); return; }
+    const video = ehVideo(f);
+    setEnvio({ progresso: 0, nome: f.name });
+    try {
+      const prep = video ? await prepararVideo(f) : await prepararFoto(f);
+      const av = video ? await avaliarVideo(f, prep).catch(() => null) : null;
+      const r = await enviarComProgresso(prep.envio, (p) => setEnvio((e) => ({ ...e, progresso: p })));
+      onPickItem(itemDaMidia({ url: r.url, fundo: prep.fundo, video }));
+      if (av && av.pesado) { setEnvio({ pronto: true, aviso: av.aviso }); return; }
+      onClose();
+    } catch (e) {
+      setEnvio({ erro: e.message || 'Não deu para enviar.' });
+    }
+  }
 
   return (
     <Dialog open={open} onClose={onClose} title="Adicionar conteúdo"
-      description="Crie um novo, reaproveite um design salvo ou escolha um tipo pronto." className="max-w-5xl">
-      {onCriar && (
-        <button type="button" onClick={() => { onClose(); onCriar(); }}
-          className="mb-4 flex w-full items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 p-4 text-left transition hover:border-accent">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-soft"><Wand2 size={20} className="text-accent" /></span>
-          <span>
-            <span className="block text-sm font-semibold text-ink">Criar novo</span>
-            <span className="block text-xs text-ink-3">Promoção, novidade, aviso, foto do produto… com a sua marca, direto nesta tela.</span>
-          </span>
-        </button>
-      )}
+      description="Escolha o que mostrar, reaproveite um design salvo ou procure um tipo pronto." className="max-w-5xl">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="inline-flex gap-1 rounded-lg border border-line bg-surface-2 p-1">
+        <div className="inline-flex max-w-full gap-1 overflow-x-auto whitespace-nowrap rounded-lg border border-line bg-surface-2 p-1">
           {TABS.map(([id, label, Icon]) => (
             <button key={id} onClick={() => setTab(id)}
               className={cn('inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition',
@@ -102,16 +139,46 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar }) {
             </button>
           ))}
         </div>
-        {tab === 'lib' && (
+        {tab !== 'inicio' && (
           <div className="relative sm:w-64">
             <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
-            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar na biblioteca…"
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === 'lib' ? 'Buscar na biblioteca…' : 'Buscar um tipo: clima, vídeo, QR…'}
               className="w-full rounded-md border border-line bg-surface py-1.5 pl-8 pr-2 text-sm text-ink placeholder:text-ink-3" />
           </div>
         )}
       </div>
 
-      {tab === 'lib' ? (
+      {tab === 'inicio' ? (
+        <div>
+          <input ref={arquivo} type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" className="hidden"
+            onChange={(e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; subir(f); }} />
+          {envio && (
+            <div className={'mb-3 rounded-md border px-3 py-2 text-xs ' + (envio.erro ? 'border-danger/30 bg-danger-soft text-danger' : 'border-line bg-surface-2 text-ink-2')}>
+              {envio.erro ? envio.erro
+                : envio.pronto ? <>Entrou na tela. {envio.aviso} <button type="button" className="ml-1 font-semibold text-accent hover:underline" onClick={onClose}>Fechar</button></>
+                  : 'Enviando ' + (envio.nome || '') + '… ' + Math.round((envio.progresso || 0) * 100) + '%'}
+            </div>
+          )}
+          <p className="mb-3 text-sm font-semibold text-ink">O que você quer mostrar?</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {ENTRADAS.filter((e) => e.id !== 'criar' || onCriar).map((e) => {
+              const Icon = e.icon;
+              return (
+                <button key={e.id} type="button" onClick={() => escolher(e.id)} disabled={!!(envio && !envio.erro && !envio.pronto)}
+                  className={cn('flex min-h-[7.5rem] flex-col items-start gap-2 rounded-xl border p-4 text-left transition hover:border-accent/60',
+                    e.id === 'criar' ? 'border-accent/40 bg-accent-soft/40' : 'border-line bg-surface hover:bg-surface-2')}>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft"><Icon size={20} className="text-accent" /></span>
+                  <span className="text-sm font-semibold leading-snug text-ink">{e.label}</span>
+                  <span className="text-2xs leading-snug text-ink-3">{e.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+          <button type="button" onClick={() => setTab('new')} className="mt-4 text-xs font-medium text-accent hover:underline">
+            Ver todos os tipos ({CONTENT_ORDER.length + Object.keys(ATALHOS).length}), com busca
+          </button>
+        </div>
+      ) : tab === 'lib' ? (
         saved === null ? (
           <div className="py-10 text-center text-sm text-ink-3">Carregando…</div>
         ) : results.length === 0 ? (
@@ -136,6 +203,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar }) {
         )
       ) : (
         <div className="space-y-5">
+          {!Object.keys(groups).length && <p className="py-8 text-center text-sm text-ink-3">Nenhum tipo com esse nome.</p>}
           {Object.entries(groups).map(([group, types]) => (
             <div key={group}>
               <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">{group}</div>

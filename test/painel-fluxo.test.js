@@ -147,13 +147,13 @@ test('Aniversariantes é operação, não conta', () => {
   /*
    * Estava em "Conta", junto de armazenamento, equipe e cobrança — coisas que
    * se mexe uma vez e esquece. A lista alimenta o que a TV mostra e muda toda
-   * semana; quem cuida dela é quem cuida do conteúdo.
+   * semana; quem cuida dela é quem cuida do conteúdo. No menu novo (PLANO
+   * §5.1) ela mora em Automáticos, junto do Mural.
    */
-  const nav = ler('web', 'src', 'components', 'layout', 'Sidebar.jsx');
-  const operacao = nav.slice(nav.indexOf("section: 'Operação'"), nav.indexOf("section: 'Conta'"));
-  const conta = nav.slice(nav.indexOf("section: 'Conta'"), nav.indexOf("section: 'Plataforma'"));
-  assert.match(operacao, /id: 'birthdays'/, 'Aniversariantes saiu de Operação');
-  assert.ok(!/id: 'birthdays'/.test(conta), 'Aniversariantes voltou para Conta');
+  const menu = ler('web', 'src', 'lib', 'menu.js');
+  assert.match(menu, /\{ id: 'automaticos', label: 'Automáticos', paginas: \['birthdays', 'mural'\] \}/);
+  const conta = menu.slice(menu.indexOf("{ id: 'conta'"));
+  assert.ok(!/birthdays/.test(conta.slice(0, conta.indexOf('}'))), 'Aniversariantes voltou para Conta');
 });
 
 test('a TV manda o cliente abrir um menu que EXISTE', () => {

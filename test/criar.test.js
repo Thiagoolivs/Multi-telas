@@ -66,7 +66,7 @@ test('o tipo do pedido vai na SEGUNDA linha: sem IA, a primeira vira o título',
 });
 
 test('uma entrada só: Criar no menu e no Início; o resto em "Mais"', () => {
-  assert.match(ler('web/src/components/layout/Sidebar.jsx'), /\{ id: 'criar', label: 'Criar'/);
+  assert.match(ler('web/src/lib/menu.js'), /\{ id: 'criar', label: 'Criar', paginas: \['criar', 'designs'\]/);
   const app = ler('web/src/App.jsx');
   assert.match(app, /case 'criar': return <CriarPage /);
   assert.match(app, /const ATALHOS = \['criar',/);
@@ -74,8 +74,8 @@ test('uma entrada só: Criar no menu e no Início; o resto em "Mais"', () => {
   const md = ler('web/src/pages/MyDesignsPage.jsx');
   for (const t of ['Criar na mão', 'Gerar imagem IA', 'Importar arquivo', 'Campanha completa com IA']) assert.ok(md.includes("title: '" + t + "'"), t);
   assert.match(md, /const MAIS = \[/);
-  // A tela recebe e organiza: "Criar novo" no topo do Adicionar conteúdo.
-  assert.match(ler('web/src/components/content/TypePicker.jsx'), /Criar novo/);
+  // A tela recebe e organiza: "Criar com IA" é a primeira entrada do Adicionar conteúdo.
+  assert.match(ler('web/src/components/content/TypePicker.jsx'), /\{ id: 'criar', label: 'Criar com IA'/);
   assert.match(app, /onCriar=\{\(\) => go\('criar', \{ tela: route\.device && route\.device\.id \}\)\}/);
 });
 

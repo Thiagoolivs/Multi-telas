@@ -24,6 +24,7 @@ import { RelatorioPage } from './pages/RelatorioPage.jsx';
 import { CriarPage } from './pages/CriarPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 import { parearGuardado } from './lib/parearPendente.js';
+import { paginaDoIr } from './lib/menu.js';
 
 const META = {
   overview: { title: 'Visão geral' },
@@ -100,8 +101,12 @@ function rotaDaUrl() {
   const parear = (q.get('parear') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || parearGuardado();
   if (parear) return { name: 'screens', parear };
   if (q.get('billing')) return { name: 'billing' };
-  const ir = q.get('ir');
-  if (ir && ATALHOS.includes(ir)) return { name: ir };
+  /*
+   * `?ir=` aceita o nome de uma página (o endereço antigo, que continua
+   * valendo) ou de um grupo do menu novo (`?ir=midias` abre a primeira aba).
+   */
+  const ir = paginaDoIr(q.get('ir'));
+  if (ir) return { name: ir };
   return { name: 'overview' };
 }
 

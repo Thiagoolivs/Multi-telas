@@ -37,7 +37,7 @@ export function Avisos() {
   if (!lista.length) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2">
+    <div className="pointer-events-none fixed bottom-[4.75rem] right-4 z-[60] lg:bottom-4 flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2">
       {lista.map((a) => (
         <div key={a.id} role="status"
           className={'pointer-events-auto flex items-start gap-2.5 rounded-xl border p-3 shadow-pop backdrop-blur ' + (CORES[a.tom] || CORES.ok)}>

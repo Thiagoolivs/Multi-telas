@@ -41,7 +41,7 @@ export function ConviteInstalar() {
   }
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-40 rounded-xl border border-line bg-surface p-3 shadow-pop lg:hidden" role="region" aria-label="Instalar o app">
+    <div className="fixed inset-x-3 bottom-[4.75rem] z-40 rounded-xl border border-line bg-surface p-3 shadow-pop lg:hidden" role="region" aria-label="Instalar o app">
       <div className="flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft"><Smartphone size={18} className="text-accent" /></span>
         <div className="min-w-0 flex-1">
