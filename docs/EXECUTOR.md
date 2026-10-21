@@ -52,6 +52,108 @@ PR, até ela acabar ou o limite de uso chegar.
 - Comentários explicam o porquê, em português, no estilo dos arquivos
   vizinhos. Decisão nova entra no `PLANO.md`.
 
+## 1b · O que não pode regredir
+
+Cada regra abaixo veio de um defeito real ou de uma decisão do dono. Antes
+do merge, confira as que o seu PR toca. Na dúvida, pergunte ao consultor.
+
+**A TV do cliente**
+- **Nunca tela preta sem aviso.** Falta de IA, de crédito ou de pagamento,
+  internet caída: a TV continua mostrando o último conteúdo bom, e a
+  cobrança mostra selo, nunca apaga (`server/cobranca.js`). A única tela
+  apagada de propósito é a do expediente, que o cliente escolheu.
+- **A TV funciona offline.** Toda mídia é servida por nós e guardada no
+  cache (`sw.js`, `js/storage.js`). Nada de imagem ou script carregado de
+  servidor de terceiros na TV.
+- **A TV fraca não engasga.** O box tem pouca memória: sem
+  `mix-blend-mode`, sem filtro pesado, e animação só nas propriedades que a
+  placa acelera. O modo leve (`js/perf.js`) continua funcionando.
+- **Script novo da TV entra com valor de reserva.** A TV pode estar com o
+  JS antigo no cache quando o conteúdo novo chega (o `sw.js` serve o antigo
+  e atualiza por trás). Token novo é sempre usado como
+  `var(--mt-novo, <padrão>)`, e a peça tem de ficar certa com o padrão.
+
+**As peças em HTML**
+- **Tudo passa pela porta.** Peça da IA, peça-ouro e CSS gerado por nós
+  passam por `js/peca-html.js` (`higienizar`, `validarItem`). A porta não
+  se afrouxa: sem `<script>`, sem `url()` no CSS, sem atributos fora da
+  lista. Precisa de algo novo? Acrescente na lista, com teste.
+- **Um desenhista só.** A TV, a bancada, a miniatura, o editor e a
+  exportação para redes usam `js/peca-render.js` em Shadow DOM, e o
+  detector de `js/peca-conferir.js`. O painel carrega esses arquivos de
+  `/js` em tempo de execução: nunca copie para dentro do `web/`.
+- **Cores e fontes só por tokens** `--mt-*` (`js/tokens.js`). Nada de cor
+  fixa na peça: é isso que deixa trocar marca e modo sem gerar de novo.
+- **Título grande usa** `calc(N * var(--mt-escala-titulo, 1))`, ou vaza com
+  fonte larga.
+- **Peça desenhada no tamanho real** da TV (1920×1080) e só depois reduzida
+  (`PecaHtml.jsx`). Desenhada pequena, ela cai na regra de lateral do
+  `@container` e mostra outro layout.
+- **Nada vaza nem se sobrepõe.** A varredura de 39 peças × 6 marcas × todas
+  as zonas (948 combinações) passou limpa em 20/10. Mexeu em peça-ouro ou
+  em token? Rode a bancada de novo.
+- **A ótica do lote 1 é intocável.** Ela é a régua aprovada pelo dono: mudar
+  token ou peça-ouro não pode mover nenhum texto dela mais que 2 px.
+- **Não repete a marca:** a peça marca o nome da empresa com
+  `data-repete="marca"`, e ele some quando a tela já tem cabeçalho.
+
+**IA e dinheiro**
+- **Nada caro sem o ok do cliente.** Foto gerada custa crédito, então o
+  plano para antes (`pararNoPlano`), e a foto só é gerada depois da
+  aprovação.
+- **Foto não tem texto desenhado**, nem retrato de pessoa real
+  identificável (`server/direcao-arte.js`).
+- **Foto do produto do cliente é dele.** A referência só é aceita se a
+  mídia é da própria conta e é imagem PNG, JPG ou WebP (`server.js`,
+  `onImagem`).
+- **Toda chamada de IA é medida e tem limite.** Uso registrado em `uso_ia`,
+  limite por hora por conta, custo em `server/creditos.js`. Rota nova de IA
+  segue o padrão da `/api/ai/refazer-peca`.
+- **A IA nunca deixa a tela vazia.** Falhou ou foi recusada: entra a
+  peça-ouro preenchida (`compositor.preencherOuro`).
+- **O motor HTML desliga sem deploy,** com `MT_MOTOR_CAMPANHA=coordenadas`.
+  O caminho antigo continua funcionando.
+
+**Segurança**
+- **Toda consulta é presa à conta** (`sess.tenant_id`). Um cliente nunca
+  vê nem mexe em nada de outro, nem por id adivinhado.
+- **Endereço digitado pelo usuário só é buscado por `server/site.js`**: a
+  defesa de SSRF mora lá. Não use `fetch` direto em URL de usuário.
+- **CSP `script-src 'self'`** (`server/security.js`): nada de script inline, e o painel só carrega script do
+  próprio servidor.
+- **SVG é servido isolado,** e o token da TV nunca vai na URL (passe de 1
+  minuto, uso único).
+- **Segredo só em variável de ambiente.** Nunca em código, teste, PR,
+  issue ou log.
+- **Webhook de pagamento:** token comparado em tempo constante, e cada
+  pagamento credita uma vez só.
+
+**Banco**
+- **Toda mudança vai nos dois bancos,** `db-sqlite.js` (local e testes) e
+  `db-postgres.js` (produção). Uma tabela que existia só no SQLite derrubou
+  o cadastro por e-mail em produção (corrigido no #127).
+  `test/db-tabelas.test.js` pega isso; mantenha-o passando.
+- **Migração só acrescenta:** `CREATE TABLE IF NOT EXISTS` e coluna nova
+  com padrão. Nunca apague nem renomeie coluna com dados.
+
+**Produto e venda**
+- **Só se vende o que existe.** Plano, landing e página de preços só
+  anunciam recurso com código por trás (`server/plans.js`, CDC).
+- **O cliente fala com o produto em português de lojista:** "criações", não
+  créditos ou tokens; "TV deitada" ou "em pé", não 16/9; erro que diz o
+  que fazer.
+- **Celular primeiro:** toda tela do painel funciona em 360 px e com o
+  polegar.
+- **Esconder antes de apagar:** funcionalidade realocada continua
+  acessível, por redirect ou em "Mais", por 30 dias.
+
+**Testes**
+- **Teste que não falha com o defeito não é teste.** Reintroduza o defeito
+  e veja o teste falhar antes de confiar nele.
+- **A contagem de testes só sobe.** Não apague nem pule teste para o PR
+  passar: conserte o código, ou o teste, se ele estiver errado, explicando
+  no PR.
+
 ## 2 · A fila
 
 Na ordem. Cada item diz o que fazer e como saber que acabou. Travou num
