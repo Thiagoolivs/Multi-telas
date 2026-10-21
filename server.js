@@ -297,6 +297,98 @@ async function lerImagens(urls) {
   return imgs;
 }
 
+/*
+ * A marca da conta como a IA lê (EXECUTOR item 23): cores, fontes, tom, site,
+ * logo, as fotos do acervo com o rótulo e as referências. A campanha de Meus
+ * Designs e o ecossistema do Criar leem daqui, para as duas saberem o mesmo.
+ */
+async function marcaDaConta(tenantId) {
+  const kit = await paletaInicial.garantir(db, tenantId); // sem cor nenhuma: a paleta do ramo
+  const assets = await db.listBrandAssets(tenantId);
+  const lembrada = await db.getMemoria(tenantId);
+  /*
+   * Basta ter QUALQUER coisa da marca — cores salvas ou só imagens. Antes
+   * isto exigia o kit, então quem subia logo e fotos sem abrir o
+   * formulário de cores via tudo ser ignorado.
+   */
+  const k = kit || {};
+  const marca = (kit || assets.length) ? {
+    cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '',
+    direcao: k.direcao || '', tom: k.tom || '', observacoes: k.observacoes || '',
+    nome: k.nome || '', site: k.site || '', siteResumo: k.siteResumo || '',
+    logo: (assets.find((a) => a.kind === 'logo') || {}).url || '',
+    // As bases levam o rótulo junto: é por ele que o diretor escolhe qual
+    // foto do acervo entra em cada peça.
+    bases: assets.filter((a) => a.kind === 'base').map((a) => ({ url: a.url, label: a.label || '' })),
+    referencias: assets.filter((a) => a.kind === 'referencia').map((a) => a.url),
+  } : null;
+  return { kit, marca, lembrada };
+}
+
+/*
+ * A FOTO DA CAMPANHA, num lugar só (EXECUTOR item 23): confere o saldo, gera,
+ * guarda nas Mídias e cobra, nessa ordem. A campanha de Meus Designs e o
+ * ecossistema do Criar usam esta mesma; duas cópias do caminho do dinheiro
+ * seriam duas chances de cobrar errado.
+ *
+ * `b` é o pedido de quem chamou: as cores mandadas nele, se houver.
+ */
+function fotoDaConta(sess, b) {
+  return async (prompt, formato, arte) => {
+    /*
+     * Foto do produto REAL (PLANO §4.11): o endereço vem do plano que o
+     * navegador devolveu, então só vale mídia DESTA conta — conferido
+     * no banco, não pelo formato do endereço.
+     */
+    let referencias = null;
+    if (arte && arte.referencia) {
+      const dele = (await db.listMedia(sess.tenant_id)).find((m) => m.url === arte.referencia && /^image\/(png|jpeg|webp)$/.test(m.mime));
+      if (!dele) throw new Error('a foto do produto não é desta conta');
+      referencias = await lerImagens([dele.url]);
+      if (!referencias.length) throw new Error('a foto do produto não abriu (até 5 MB, PNG, JPG ou WEBP)');
+    }
+    const tipo = referencias ? 'campanha-peca-produto' : 'campanha-peca';
+    const contaIA = await db.getTenant(sess.tenant_id);
+    const pode = await usoIA.conferir(db, contaIA, tipo, 1);
+    if (!pode.ok) {
+      const e = new Error(pode.resposta && pode.resposta.erro === 'pagamento_atrasado'
+        ? 'pagamento em atraso — as peças seguintes saem sem foto'
+        : 'acabaram as criações com IA do mês — as peças seguintes saem sem foto');
+      e.semSaldo = true;
+      throw e;
+    }
+    /*
+     * `arte` é a direção que o PLANO decidiu — paleta, clima, acento.
+     * Antes só o formato chegava aqui, e a foto vinha sem relação
+     * nenhuma com a marca que o texto ia usar por cima.
+     */
+    const img = await ai.generateImage(prompt, {
+      formato,
+      brand: (arte && arte.brand) || (b && b.brand) || '',
+      brand2: (arte && arte.brand2) || (b && b.brand2) || '',
+      direcao: (arte && arte.direcao) || '',
+      estilo: (arte && arte.estilo) || '',
+      referencias,
+    });
+    // Registrada como qualquer outro arquivo: aparece no Armazenamento,
+    // conta na cota e some junto com a conta.
+    const saved = await midia.guardarBuffer(db, sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime,
+      {
+        nome: 'IA · ' + String(prompt).slice(0, 60),
+        origem: 'ia',
+        // Proporção e cor de origem: é o que o Banco de Imagens precisa
+        // para filtrar por formato e para saber o que tingir de novo.
+        formato,
+        cor: (arte && arte.brand) || (b && b.brand) || '',
+      });
+    // Só depois do sucesso: falha não cobra, e a foto de reserva (sem chave) também não.
+    if (!img.reserva) await usoIA.cobrar(db, contaIA, {
+      tipo, quantidade: 1, userId: sess.user_id, referencia: saved.id,
+    });
+    return saved.url;
+  };
+}
+
 /* ---------------- API ---------------- */
 /*
  * A qual classe de tráfego esta requisição pertence (ver server/limites.js).
@@ -347,6 +439,8 @@ function montarCtx() {
     // Convite de equipe (server/routes/team.js). Ficou para trás na extração da
     // rota: convidar alguém respondia "erro interno" com ReferenceError.
     inviteCode,
+    // A marca e a foto da campanha, uma função só para Meus Designs e o Criar (server/routes/campanhas.js).
+    marcaDaConta, fotoDaConta,
   };
   ctx.routes = {
     auth: require('./server/routes/auth')(ctx),
@@ -356,6 +450,7 @@ function montarCtx() {
     relatorio: require('./server/routes/relatorio')(ctx),
     redes: redesRotas(ctx),
     conversas: require('./server/routes/conversas')(ctx),
+    campanhas: require('./server/routes/campanhas')(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -463,6 +558,8 @@ async function handleApi(req, res, pathname, query) {
     redes: 'redes-sociais',
     // A conversa do Criar (item 21): uma chamada de texto por volta, sem limite de perguntas.
     conversa: 'conversa',
+    // O ecossistema do Criar (item 23): o texto da campanha inteira. As fotos cobram à parte, em fotoDaConta.
+    ecossistema: 'ecossistema',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
@@ -1485,25 +1582,7 @@ const negocioCache = new Map();
         // Identidade salva da empresa: o que o usuário mandar no pedido tem
         // prioridade, mas o resto vem da marca — sem isso a IA reinventa a
         // identidade a cada briefing.
-        const kit = await paletaInicial.garantir(db, sess.tenant_id); // sem cor nenhuma: a paleta do ramo
-        const assets = await db.listBrandAssets(sess.tenant_id);
-        const lembrada = await db.getMemoria(sess.tenant_id);
-        /*
-         * Basta ter QUALQUER coisa da marca — cores salvas ou só imagens. Antes
-         * isto exigia o kit, então quem subia logo e fotos sem abrir o
-         * formulário de cores via tudo ser ignorado.
-         */
-        const k = kit || {};
-        const marca = (kit || assets.length) ? {
-          cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '',
-          direcao: k.direcao || '', tom: k.tom || '', observacoes: k.observacoes || '',
-          nome: k.nome || '', site: k.site || '', siteResumo: k.siteResumo || '',
-          logo: (assets.find((a) => a.kind === 'logo') || {}).url || '',
-          // As bases levam o rótulo junto: é por ele que o diretor escolhe qual
-          // foto do acervo entra em cada peça.
-          bases: assets.filter((a) => a.kind === 'base').map((a) => ({ url: a.url, label: a.label || '' })),
-          referencias: assets.filter((a) => a.kind === 'referencia').map((a) => a.url),
-        } : null;
+        const { marca, lembrada } = await marcaDaConta(sess.tenant_id);
         /*
          * A campanha roda como TRABALHO, não como requisição. São várias
          * chamadas de modelo em sequência e isso passa fácil do tempo que um
@@ -1587,59 +1666,7 @@ const negocioCache = new Map();
            * sai sem foto e a campanha continua. Derrubar tudo porque a quinta
            * imagem não coube jogaria fora as quatro já pagas.
            */
-          onImagem: async (prompt, formato, arte) => {
-            /*
-             * Foto do produto REAL (PLANO §4.11): o endereço vem do plano que o
-             * navegador devolveu, então só vale mídia DESTA conta — conferido
-             * no banco, não pelo formato do endereço.
-             */
-            let referencias = null;
-            if (arte && arte.referencia) {
-              const dele = (await db.listMedia(sess.tenant_id)).find((m) => m.url === arte.referencia && /^image\/(png|jpeg|webp)$/.test(m.mime));
-              if (!dele) throw new Error('a foto do produto não é desta conta');
-              referencias = await lerImagens([dele.url]);
-              if (!referencias.length) throw new Error('a foto do produto não abriu (até 5 MB, PNG, JPG ou WEBP)');
-            }
-            const tipo = referencias ? 'campanha-peca-produto' : 'campanha-peca';
-            const contaIA = await db.getTenant(sess.tenant_id);
-            const pode = await usoIA.conferir(db, contaIA, tipo, 1);
-            if (!pode.ok) {
-              const e = new Error(pode.resposta && pode.resposta.erro === 'pagamento_atrasado'
-                ? 'pagamento em atraso — as peças seguintes saem sem foto'
-                : 'acabaram as criações com IA do mês — as peças seguintes saem sem foto');
-              e.semSaldo = true;
-              throw e;
-            }
-            /*
-             * `arte` é a direção que o PLANO decidiu — paleta, clima, acento.
-             * Antes só o formato chegava aqui, e a foto vinha sem relação
-             * nenhuma com a marca que o texto ia usar por cima.
-             */
-            const img = await ai.generateImage(prompt, {
-              formato,
-              brand: (arte && arte.brand) || (b && b.brand) || '',
-              brand2: (arte && arte.brand2) || (b && b.brand2) || '',
-              direcao: (arte && arte.direcao) || '',
-              estilo: (arte && arte.estilo) || '',
-              referencias,
-            });
-            // Registrada como qualquer outro arquivo: aparece no Armazenamento,
-            // conta na cota e some junto com a conta.
-            const saved = await midia.guardarBuffer(db, sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime,
-              {
-                nome: 'IA · ' + String(prompt).slice(0, 60),
-                origem: 'ia',
-                // Proporção e cor de origem: é o que o Banco de Imagens precisa
-                // para filtrar por formato e para saber o que tingir de novo.
-                formato,
-                cor: (arte && arte.brand) || (b && b.brand) || '',
-              });
-            // Só depois do sucesso: falha não cobra, e a foto de reserva (sem chave) também não.
-            if (!img.reserva) await usoIA.cobrar(db, contaIA, {
-              tipo, quantidade: 1, userId: sess.user_id, referencia: saved.id,
-            });
-            return saved.url;
-          },
+          onImagem: fotoDaConta(sess, b),
         }).then((out) => ({ mode: ai.mode(), ...out })), { tipo: 'campanha', pedido: { brief: String(brief).slice(0, 200) }, userId: sess.user_id });
         return sendJson(res, 202, jobs.publico(job));
       } catch (e) { return sendJson(res, e.status || 502, { error: e.message }); }
@@ -1941,6 +1968,7 @@ const negocioCache = new Map();
   if (await ctx.routes.relatorio(req, res, parts, query, sess)) return;
   if (await ctx.routes.redes(req, res, parts, query, sess)) return;
   if (await ctx.routes.conversas(req, res, parts, query, sess)) return;
+  if (await ctx.routes.campanhas(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------

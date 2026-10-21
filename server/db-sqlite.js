@@ -293,6 +293,12 @@ db.exec(`
     criado_em INTEGER, atualizado_em INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_conversas_tenant ON conversas(tenant_id, atualizado_em);
+  -- A campanha que o Criar gerou: o escopo pedido e o resultado (ver campanhas mais abaixo).
+  CREATE TABLE IF NOT EXISTS campanhas (
+    id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, nome TEXT, conversa_id TEXT,
+    escopo TEXT, resultado TEXT, estado TEXT, telas TEXT, criado_em INTEGER, atualizado_em INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_campanhas_tenant ON campanhas(tenant_id, atualizado_em);
   CREATE TABLE IF NOT EXISTS eventos (
     id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at INTEGER
   );
@@ -1123,6 +1129,45 @@ async function salvarConversa(tenantId, id, c) {
 }
 async function listarConversas(tenantId, limite) { return qConv.doTenant.all(tenantId, limite || 20).map(mapConv); }
 
+/* ---------------- Campanhas do Criar ---------------- */
+/*
+ * O ecossistema que o Criar gerou (EXECUTOR item 23): o escopo que foi
+ * pedido, o resultado inteiro (TVs, zonas, redes, horários) e o estado —
+ * pronta, no ar ou pausada. Salva sozinha ao terminar: a pessoa não perde o
+ * que pagou porque fechou a aba. As peças também vão para a `library`, com
+ * o nome da campanha, e Meus Designs continua mostrando tudo.
+ */
+const qCamp = {
+  inserir: db.prepare(`INSERT INTO campanhas (id, tenant_id, user_id, nome, conversa_id, escopo, resultado, estado, telas, criado_em, atualizado_em)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+  salvar: db.prepare(`UPDATE campanhas SET nome = ?, escopo = ?, resultado = ?, estado = ?, telas = ?, atualizado_em = ?
+                      WHERE id = ? AND tenant_id = ?`),
+  ler: db.prepare('SELECT * FROM campanhas WHERE id = ? AND tenant_id = ?'),
+  doTenant: db.prepare(`SELECT id, nome, conversa_id, estado, telas, criado_em, atualizado_em FROM campanhas
+                        WHERE tenant_id = ? ORDER BY atualizado_em DESC LIMIT ?`),
+};
+const mapCamp = (r) => r && ({
+  id: r.id, nome: r.nome || '', conversaId: r.conversa_id || '', estado: r.estado || 'pronta',
+  escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
+  resultado: r.resultado === undefined ? undefined : jsonOu(r.resultado, null),
+  telas: jsonOu(r.telas, []),
+  criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
+});
+async function criarCampanha(tenantId, userId, c) {
+  const id = 'camp_' + rid(14);
+  const agora = Date.now();
+  qCamp.inserir.run(id, tenantId, userId || '', String(c.nome || '').slice(0, 80), c.conversaId || '',
+    JSON.stringify(c.escopo || null), JSON.stringify(c.resultado || null), c.estado || 'pronta', JSON.stringify(c.telas || []), agora, agora);
+  return lerCampanha(tenantId, id);
+}
+async function lerCampanha(tenantId, id) { return mapCamp(qCamp.ler.get(id, tenantId)) || null; }
+async function salvarCampanha(tenantId, id, c) {
+  qCamp.salvar.run(String(c.nome || '').slice(0, 80), JSON.stringify(c.escopo || null), JSON.stringify(c.resultado || null),
+    c.estado || 'pronta', JSON.stringify(c.telas || []), Date.now(), id, tenantId);
+  return lerCampanha(tenantId, id);
+}
+async function listarCampanhas(tenantId, limite) { return qCamp.doTenant.all(tenantId, limite || 20).map(mapCamp); }
+
 
 const qRec = {
   add: db.prepare('INSERT INTO reclamacoes (id, tenant_id, user_id, email, tipo, texto, status, resposta, created_at, resolvido_em) VALUES (?, ?, ?, ?, ?, ?, ?, \'\', ?, 0)'),
@@ -1603,6 +1648,7 @@ module.exports = {
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarConversa, lerConversa, salvarConversa, listarConversas,
+  criarCampanha, lerCampanha, salvarCampanha, listarCampanhas,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
   salvarLocalDaMarca,

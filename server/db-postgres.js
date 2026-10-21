@@ -160,6 +160,12 @@ async function init() {
       criado_em BIGINT, atualizado_em BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_conversas_tenant ON conversas(tenant_id, atualizado_em);
+    -- A campanha que o Criar gerou (ver db-sqlite.js).
+    CREATE TABLE IF NOT EXISTS campanhas (
+      id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, nome TEXT, conversa_id TEXT,
+      escopo TEXT, resultado TEXT, estado TEXT, telas TEXT, criado_em BIGINT, atualizado_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_campanhas_tenant ON campanhas(tenant_id, atualizado_em);
     CREATE TABLE IF NOT EXISTS eventos (
       id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at BIGINT
     );
@@ -592,6 +598,45 @@ async function salvarConversa(tenantId, id, c) {
       c.estado || 'conversando', c.campanhaId || '', Date.now(), id, tenantId]
   );
   return lerConversa(tenantId, id);
+}
+/* ---------------- Campanhas do Criar ---------------- */
+/* Ver a nota em db-sqlite.js. Mesma API assíncrona nos dois. */
+const mapCamp = (r) => r && ({
+  id: r.id, nome: r.nome || '', conversaId: r.conversa_id || '', estado: r.estado || 'pronta',
+  escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
+  resultado: r.resultado === undefined ? undefined : jsonOu(r.resultado, null),
+  telas: jsonOu(r.telas, []),
+  criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
+});
+async function criarCampanha(tenantId, userId, c) {
+  const id = 'camp_' + rid(14);
+  const agora = Date.now();
+  await pool.query(
+    `INSERT INTO campanhas (id, tenant_id, user_id, nome, conversa_id, escopo, resultado, estado, telas, criado_em, atualizado_em)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    [id, tenantId, userId || '', String(c.nome || '').slice(0, 80), c.conversaId || '',
+      JSON.stringify(c.escopo || null), JSON.stringify(c.resultado || null), c.estado || 'pronta', JSON.stringify(c.telas || []), agora, agora]
+  );
+  return lerCampanha(tenantId, id);
+}
+async function lerCampanha(tenantId, id) {
+  const r = await pool.query('SELECT * FROM campanhas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapCamp(r.rows[0]) || null;
+}
+async function salvarCampanha(tenantId, id, c) {
+  await pool.query(
+    `UPDATE campanhas SET nome = $1, escopo = $2, resultado = $3, estado = $4, telas = $5, atualizado_em = $6
+     WHERE id = $7 AND tenant_id = $8`,
+    [String(c.nome || '').slice(0, 80), JSON.stringify(c.escopo || null), JSON.stringify(c.resultado || null),
+      c.estado || 'pronta', JSON.stringify(c.telas || []), Date.now(), id, tenantId]
+  );
+  return lerCampanha(tenantId, id);
+}
+async function listarCampanhas(tenantId, limite) {
+  const r = await pool.query(
+    `SELECT id, nome, conversa_id, estado, telas, criado_em, atualizado_em FROM campanhas
+     WHERE tenant_id = $1 ORDER BY atualizado_em DESC LIMIT $2`, [tenantId, limite || 20]);
+  return r.rows.map(mapCamp);
 }
 async function listarConversas(tenantId, limite) {
   const r = await pool.query(
@@ -1532,6 +1577,7 @@ module.exports = {
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarConversa, lerConversa, salvarConversa, listarConversas,
+  criarCampanha, lerCampanha, salvarCampanha, listarCampanhas,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
   salvarLocalDaMarca,
