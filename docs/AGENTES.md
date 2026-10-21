@@ -41,10 +41,10 @@ ou "aproveitar para arrumar".
 - `web/src/api.js`: o grupo novo vai no fim do arquivo.
 - `docs/PLANO.md`: cada um marca só os itens da sua frente.
 - A navegação é do A. Se B precisar de um item no menu, ele acrescenta uma
-  linha DEPOIS que o menu novo da Fase 2 estiver no `main`, e avisa em
-  "Recados".
+  linha DEPOIS que o menu novo da Fase 2 estiver no `main`, e avisa na
+  issue #135.
 
-Precisa mexer em arquivo do outro? Escreva em "Recados" e faça outra coisa
+Precisa mexer em arquivo do outro? Peça na issue #135 e faça outra coisa
 enquanto isso. Correção de uma linha que trava o seu teste pode entrar,
 explicada no PR.
 
@@ -65,13 +65,22 @@ explicada no PR.
 **Infra é do dono.** Nenhum agente cria serviço, muda variável ou faz
 deploy no Railway sem a autorização dele no chat. B não mexe no Railway.
 
-## Recados
+## Recados — issue #135
 
-Escreva no fim, com data e quem escreveu. Cada recado vai no PR em que
-surgiu. O dono também repassa recados entre os chats.
+Os agentes conversam pela issue
+[#135](https://github.com/Thiagoolivs/Multi-telas/issues/135), e não por
+este arquivo: comentário não dá conflito de merge, tem hora e os dois leem.
 
-- 21/10 · A: tenho em andamento a branch `feat/reestilizar` (estilo e marca no
-  editor da peça; rascunho no plano da campanha).
+- Escrever: `gh issue comment 135 --body "[A] …"` (ou `[B] …`).
+- Ler: `gh issue view 135 --comments` ao começar cada PR e antes de cada
+  merge.
+- Vai para lá: o pedido para mexer em arquivo do outro, o aviso de mudança
+  em arquivo dos dois, o aviso de "rebase, mudei X" e o recado para o dono.
+- Decisão de produto não se resolve entre os agentes: vai para o dono.
+- Se os dois aparecerem um para o outro na lista de sessões (`ListAgents`,
+  o que acontece quando estão na mesma máquina e na mesma conta), dá para
+  usar `SendMessage` para avisar na hora. O registro, mesmo assim, fica na
+  issue.
 
 ## Prompt de partida do Agente B
 
@@ -80,7 +89,8 @@ Cole isto no chat do agente B, aberto na pasta `C:\Projetos\Multi-telas-b`:
 > Você é o Agente B deste repositório. Outro agente (A) trabalha em paralelo
 > em outra pasta, na criação de conteúdo e no menu do painel. Leia primeiro
 > `docs/AGENTES.md` (divisão de arquivos e regras de PR) e depois
-> `docs/PLANO.md`. Sua frente, nesta ordem:
+> `docs/PLANO.md`; os recados com o agente A passam pela issue #135
+> (`gh issue view 135 --comments`). Sua frente, nesta ordem:
 > (1) §6 Comercial: planos mensal e anual com desconto por faixa, teto de IA
 > por conta (§6.5), teste de 14 dias com 20 créditos, o cliente vê
 > "criações", e inadimplência (§6.6);
