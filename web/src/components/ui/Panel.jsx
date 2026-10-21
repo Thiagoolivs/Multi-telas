@@ -13,7 +13,8 @@ export function Panel({ className, children, ...props }) {
 
 export function PanelHeader({ title, description, actions, className }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3 border-b border-line px-4 py-3', className)}>
+    // Quebra a linha no celular: título e ações lado a lado estouravam a 360 px (item 30).
+    <div className={cn('flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-3', className)}>
       <div className="min-w-0">
         <h2 className="text-sm font-semibold text-ink">{title}</h2>
         {description && <p className="mt-0.5 text-xs text-ink-3">{description}</p>}

@@ -156,7 +156,10 @@ test('tela completa: o servidor usa o motor HTML e o painel aceita a peça no ca
   assert.match(server, /process\.env\.MT_MOTOR_CAMPANHA !== 'coordenadas' && ai\.mode\(\) !== 'dev' && zones\.length/);
   const tela = fs.readFileSync(path.join(RAIZ, 'web', 'src', 'pages', 'ContentEditorPage.jsx'), 'utf8');
   assert.match(tela, /if \(zdata\.peca\) next\.zonas\[zid\] = \{ \.\.\.\(next\.zonas\[zid\] \|\| \{\}\), peca: zdata\.peca \}/);
-  assert.match(tela, /delete next\.zonas\[activeZone\.id\]\.peca/, 'sem isto, a zona fica presa na peça');
+  // Desde o item 30 a faixa é uma lista (FaixaDaTela): tirar a última peça apaga `pecas` e `peca`.
+  const lib = fs.readFileSync(path.join(RAIZ, 'web', 'src', 'lib', 'tela.js'), 'utf8');
+  assert.match(lib, /else { delete z.pecas; delete z.peca; }/, 'sem isto, a zona fica presa na peça');
+  assert.match(tela, /<FaixaDaTela key=\{activeZone\.id\} tipo=\{activeZone\.type\} zona=\{cfg\.zonas\[activeZone\.id\]\}/);
 });
 
 test('campanha pronta: o resultado aparece, não o cardápio de ideias', () => {

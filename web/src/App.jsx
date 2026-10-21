@@ -171,7 +171,7 @@ export default function App() {
     switch (route.name) {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
       case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onIrParaPlano={() => go('billing')} />;
-      case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} onCriar={() => go('criar', { tela: route.device && route.device.id })} />;
+      case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} onCriar={() => go('criar', { tela: route.device && route.device.id })} onIr={go} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
       case 'banco': return <BancoImagensPage />;
