@@ -766,6 +766,15 @@ fica simples e o cliente experimenta tudo no teste.
 Números de partida — validar com o contador, com o advogado e com o app de
 orçamento do dono antes de publicar.
 
+*(21/10, EXECUTOR item 11: no código — `server/plans.js` tem o mensal, o anual
+por faixa, a multa (§6.3, só calculada e mostrada; nada é cobrado sozinho), o
+teto de IA por conta em criações, o teste com 20 criações que vencem com ele e
+a régua de atraso 3/10/20 com o selo "MultiTelas" na TV. O anual é vendido
+numa conversa ("Quero o anual — falar com a gente"): o termo do contrato ainda
+não está nos Termos de Uso. Duas perguntas abertas na issue #135: liberar o
+checkout anual, e a multa da §6.3 cresce perto do fim do contrato — o oposto
+do que o texto promete.)*
+
 ### 6.1 Mensalidade por tela
 
 | | Por tela/mês |

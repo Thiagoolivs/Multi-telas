@@ -105,8 +105,8 @@ function referenciaDePacote(ref) {
  * trabalha em reais). Zero tela cobra uma: a assinatura é a porta, e uma
  * conta paga sem tela nenhuma é quase sempre a véspera de parear a primeira.
  */
-function valorDaAssinatura(planId, telas) {
-  const cents = plans.mensalidadeCents(planId, Math.max(1, Number(telas) || 0));
+function valorDaAssinatura(planId, telas, contrato) {
+  const cents = plans.mensalidadeCents(planId, Math.max(1, Number(telas) || 0), contrato);
   return cents == null ? null : cents / 100;
 }
 
@@ -131,7 +131,8 @@ async function sincronizarTelas(db, billing, tenantId) {
    */
   if (!plans.isPaid(tenant.plan)) return { mudou: false, motivo: 'nao-pago' };
 
-  const valor = valorDaAssinatura(tenant.plan, telas);
+  // O contrato da conta decide a tabela: mensal (R$ 149 cada) ou anual (por faixa).
+  const valor = valorDaAssinatura(tenant.plan, telas, tenant.plan_contrato);
   // Enterprise é contrato: o valor não sai da tabela. Só anota as telas para
   // a conciliação não voltar nesta conta a cada rodada.
   if (valor == null) {

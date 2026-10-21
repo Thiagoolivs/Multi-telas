@@ -425,7 +425,11 @@ for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', '
   // conta está com pagamento atrasado. Ver server/cobranca.js.
   'plan_telas INTEGER', 'atraso_desde INTEGER',
   // Qual lembrete de fim de teste já foi enviado ('2d' ou 'fim'). Ver server/lembretes.js.
-  'lembrete_teste TEXT']) {
+  'lembrete_teste TEXT',
+  // Contrato ('mensal' ou 'anual') e desde quando — a multa do anual conta
+  // os meses usados (server/plans.js). E o atraso para o qual o e-mail de
+  // aviso já saiu (o valor de atraso_desde), para não repetir.
+  'plan_contrato TEXT', 'contrato_desde INTEGER', 'aviso_atraso INTEGER']) {
   garantirColuna('tenants', col);
 }
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
@@ -694,6 +698,7 @@ async function setTenantBilling(id, fields) {
     plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
     subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
     telasCobradas: 'plan_telas', atrasoDesde: 'atraso_desde',
+    contrato: 'plan_contrato', contratoDesde: 'contrato_desde',
   };
   const sets = [], vals = [];
   for (const k of Object.keys(map)) if (k in fields && fields[k] !== undefined) { sets.push(map[k] + ' = ?'); vals.push(fields[k]); }
@@ -716,6 +721,17 @@ async function contasEmTeste(desde) {
 }
 async function marcarLembreteTeste(id, tipo) {
   db.prepare('UPDATE tenants SET lembrete_teste = ? WHERE id = ?').run(tipo, id);
+}
+/* Contas pagas com fatura em atraso, com o e-mail do dono (aviso de 3 dias, server/lembretes.js). */
+async function contasEmAtraso() {
+  return db.prepare(`SELECT t.id, t.name, t.plan, t.plan_status, t.atraso_desde, t.aviso_atraso,
+      (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email
+    FROM tenants t
+    WHERE t.plan_status = 'past_due' AND t.atraso_desde IS NOT NULL`).all()
+    .map((r) => ({ ...r, atraso_desde: Number(r.atraso_desde), aviso_atraso: Number(r.aviso_atraso) || 0 }));
+}
+async function marcarAvisoAtraso(id, desde) {
+  db.prepare('UPDATE tenants SET aviso_atraso = ? WHERE id = ?').run(desde, id);
 }
 
 async function contasParaConciliar() {
@@ -1462,7 +1478,7 @@ module.exports = {
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
-  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste,
+  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,

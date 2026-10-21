@@ -45,8 +45,9 @@ O QUE DECIDE GASTO — três coisas, e só elas:
 - Se cada peça precisa de FOTO, e de onde: gerada por IA, tirada do acervo da
   empresa, ou nenhuma.
 
-Cada foto gerada por IA custa um crédito do bolso da pessoa. Foto do acervo e
-peça sem foto não custam nada.
+Cada foto gerada por IA gasta uma das criações do mês da pessoa (é o que ela
+paga, e é o nome que ela conhece: "criações", nunca "créditos"). Foto do
+acervo e peça sem foto não gastam nada.
 
 - Se alguma das três já vier decidida no bloco "JÁ ESCOLHIDO", NÃO pergunte de
   novo e NÃO proponha diferente: aquilo é decisão tomada, não sugestão.
@@ -116,9 +117,9 @@ function contextoDoSistema(ctx) {
   const escolhido = [
     (Array.isArray(p.formatos) && p.formatos.length) ? 'Onde vai aparecer: ' + p.formatos.join(', ') : '',
     p.quantidade ? 'Quantas peças: ' + p.quantidade : '',
-    p.imagens === 'gerar' ? 'Fotos: gerar por IA (cada uma custa um crédito)'
-      : p.imagens === 'acervo' ? 'Fotos: usar o acervo da empresa (não custa crédito)'
-      : p.imagens === 'nenhuma' ? 'Fotos: nenhuma, só texto (não custa crédito)' : '',
+    p.imagens === 'gerar' ? 'Fotos: gerar por IA (cada uma gasta uma criação)'
+      : p.imagens === 'acervo' ? 'Fotos: usar o acervo da empresa (não gasta criação)'
+      : p.imagens === 'nenhuma' ? 'Fotos: nenhuma, só texto (não gasta criação)' : '',
   ].filter(Boolean);
   const jaEscolhido = escolhido.length
     ? 'JÁ ESCOLHIDO PELA PESSOA (decisão tomada — não pergunte, não proponha diferente):\n' + escolhido.join('\n')

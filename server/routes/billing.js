@@ -90,6 +90,9 @@ module.exports = function (ctx) {
     const patch = cobranca.efeitoDoEvento(eventName, { tenant, customerId, subId, planId, renewsAt, outrasVencidas });
     if (!patch) return;
     await db.setTenantBilling(tenant.id, patch);
+    // Passou a pagar agora: as criações do plano começam HOJE, e não na virada
+    // do ciclo que nasceu com a conta (server/uso-ia.js, renovarCiclo).
+    if (patch.plan && plans.isPaid(patch.plan) && !plans.isPaid(tenant.plan)) await usoIA.renovarCiclo(db, tenant.id);
     // Pagou: se pareou telas entre o checkout e o pagamento, a assinatura já
     // passa a cobrar por elas.
     if (patch.plan && plans.isPaid(patch.plan)) sincronizarCobranca(tenant.id);
@@ -191,12 +194,18 @@ module.exports = function (ctx) {
       if (req.method === 'GET' && !seg) {
         const used = await db.countDevices(sess.tenant_id);
         const pan = await usoIA.panorama(db, tenant);
+        const contrato = plans.contratoDe(tenant && tenant.plan_contrato);
+        const telas = Math.max(1, used);
+        // Meses usados do contrato anual, para a multa que o cancelamento mostra.
+        const desde = Number(tenant && tenant.contrato_desde) || 0;
+        const mesesUsados = desde ? Math.floor((Date.now() - desde) / (30 * 864e5)) : 0;
         return sendJson(res, 200, {
           mode: billing.mode(),
           plan: {
             id: curPlan.id, name: curPlan.name, telasMax: curPlan.telasMax,
             precoTelaCents: curPlan.precoTelaCents, sobConsulta: !!curPlan.sobConsulta,
           },
+          contrato,
           status: (tenant && tenant.plan_status) || (curPlan.precoTelaCents ? 'active' : 'free'),
           /*
            * Dito com todas as letras para o painel. Uma conta de cortesia tem
@@ -223,17 +232,34 @@ module.exports = function (ctx) {
             restam: plans.diasDeTesteRestantes(tenant),
             ativo: plans.testeAtivo(tenant),
             terminaEm: plans.fimDoTeste(tenant),
+            criacoes: plans.CRIACOES_DO_TESTE,
           },
           usage: {
             screens: used, limit: curPlan.telasMax,
-            mensalidadeCents: plans.mensalidadeCents(curPlan.id, Math.max(1, used)),
-            precoTelaCents: plans.precoTelaCents(curPlan.id, Math.max(1, used)),
-            proximaTelaCents: plans.precoProximaTelaCents(curPlan.id, used),
-            descontoVolume: plans.descontoVolume(Math.max(1, used)),
-            cotaBytes: plans.cotaBytes(curPlan.id, Math.max(1, used)),
+            mensalidadeCents: plans.mensalidadeCents(curPlan.id, telas, contrato),
+            precoTelaCents: plans.precoTelaCents(curPlan.id, telas, contrato),
+            proximaTelaCents: plans.precoProximaTelaCents(curPlan.id, used, contrato),
+            cotaBytes: plans.cotaBytes(curPlan.id, telas),
           },
           creditos: pan,
-          faixas: plans.FAIXAS.map((f) => ({ ate: f.ate === Infinity ? null : f.ate, desconto: f.desconto })),
+          /*
+           * Mensal × anual para AS TELAS DESTA CONTA, já calculados: o painel
+           * mostra a economia sem refazer a conta do preço (PLANO §6.1).
+           */
+          anual: {
+            faixas: plans.faixasAnual(),
+            meses: plans.MESES_DO_CONTRATO,
+            telasNegociadas: plans.TELAS_NEGOCIADAS,
+            mensalCents: plans.mensalidadeCents('pro', telas, 'mensal'),
+            anualCents: plans.mensalidadeCents('pro', telas, 'anual'),
+            multa: contrato === 'anual' ? plans.multaCancelamentoCents({ telas, mesesUsados }) : null,
+          },
+          // As criações do plano pago para estas telas (teto por conta, PLANO §6.5).
+          ia: {
+            criacoesDoPlano: plans.franquiaCreditos('pro', telas),
+            ate3Telas: plans.franquiaCreditos('pro', plans.TETO_IA.ateTelas),
+            maximo: plans.franquiaCreditos('pro', 1000),
+          },
           catalog: plans.catalog(),
           pacotes: creditos.PACOTES,
           canManage: sess.role === 'owner',
@@ -246,7 +272,7 @@ module.exports = function (ctx) {
        * Em modo simulado credita na hora, para o fluxo ser testável sem chave.
        */
       if (req.method === 'POST' && seg === 'pacote') {
-        if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono compra créditos' });
+        if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono compra criações' });
         return readBody(req, res, async (b) => {
           const pac = creditos.pacote(b && b.pacote);
           if (!pac) return sendJson(res, 400, { error: 'pacote inválido' });
@@ -288,6 +314,12 @@ module.exports = function (ctx) {
               // A mensalidade é da CONTA: o valor sai de plans.mensalidadeCents,
               // que aplica as faixas de desconto sobre o número de telas.
               telas: Math.max(1, telasDaConta),
+              /*
+               * O contrato é o da CONTA: o anual nasce numa conversa com a
+               * equipe, com o termo assinado (EXECUTOR item 11; o termo ainda
+               * não está nos Termos de Uso). Daqui não se escolhe anual.
+               */
+              contrato: tenant.plan_contrato,
               /*
                * Gravado assim que o cliente existe, e não no retorno. Se o resto
                * do fluxo falhar, a próxima tentativa reencontra este cliente em
@@ -370,6 +402,8 @@ module.exports = function (ctx) {
               plan: target.id, status: 'active',
               renewsAt: Date.now() + 30 * 864e5,
             });
+            // O mesmo que o pagamento de verdade faz (ver handleAsaasEvent).
+            if (!plans.isPaid(tenant && tenant.plan)) await usoIA.renovarCiclo(db, sess.tenant_id);
             return sendJson(res, 200, { ok: true, plan: target.id });
           });
         }

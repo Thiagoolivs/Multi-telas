@@ -40,7 +40,7 @@ const ONDE = {
   '21/9': 'Faixa larga — painel comprido, topo de parede',
 };
 const IMAGENS = {
-  gerar: 'a IA desenha a foto (custa 1 crédito por peça)',
+  gerar: 'a IA desenha a foto (gasta 1 criação por peça)',
   acervo: 'usa as fotos que a empresa já subiu (sem custo)',
   nenhuma: 'só tipografia e cor (sem custo)',
 };
@@ -67,8 +67,8 @@ CADA SUGESTÃO PRECISA SER ÓBVIA DE ENTENDER
   é o que ele já faria sozinho.
 
 DINHEIRO
-Cada foto gerada por IA custa um crédito do bolso dele. Foto do acervo e peça
-só de texto não custam nada. Não proponha as três com foto gerada: ofereça ao
+Cada foto gerada por IA gasta uma das criações do mês dele (o nome que ele
+conhece: "criações"). Foto do acervo e peça só de texto não gastam nada. Não proponha as três com foto gerada: ofereça ao
 menos uma sem custo, e diga isso no "porque" quando for o caso.
 Quantidade entre 1 e 4. Mais que isso ninguém troca na parede.
 

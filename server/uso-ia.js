@@ -29,13 +29,23 @@ const MES = 30 * 24 * 60 * 60 * 1000;
 /*
  * Repõe a franquia quando o ciclo virou.
  *
- * A franquia é POR TELA, e o número de telas muda: a reposição usa a
- * contagem do dia da virada, que é o que o cliente tem de fato agora. Contas
- * novas caem aqui na primeira chamada e recebem os créditos de boas-vindas.
+ * O teto é POR CONTA, mas cresce com as telas (PLANO §6.5): a reposição usa
+ * a contagem do dia da virada, que é o que o cliente tem de fato agora.
+ *
+ * Conta nova cai aqui na primeira chamada. No teste, ganha as criações do
+ * teste (plans.CRIACOES_DO_TESTE) — na FRANQUIA, que expira, porque elas só
+ * valem durante os 14 dias. Acabou o teste sem assinatura: zeram, e a tela
+ * segue com o selo e sem IA (PLANO §6.4). Crédito comprado nunca é tocado.
  */
 async function garantirCiclo(db, tenant) {
   const atual = (await db.getCreditos(tenant.id)) || { franquiaRestante: 0, creditosComprados: 0, cicloEm: 0 };
   const agora = Date.now();
+  const noTeste = !plans.isPaid(tenant.plan) && plans.testeAtivo(tenant, agora);
+  if (atual.cicloEm && !plans.isPaid(tenant.plan) && !noTeste && atual.franquiaRestante > 0) {
+    const vencido = { ...atual, franquiaRestante: 0 };
+    await db.setCreditos(tenant.id, vencido);
+    return vencido;
+  }
   if (atual.cicloEm && agora - atual.cicloEm < MES) return atual;
   /*
    * Atraso além da carência: a franquia NÃO repõe. Sem isto, quem parou de
@@ -45,19 +55,30 @@ async function garantirCiclo(db, tenant) {
   if (atual.cicloEm && plans.bloqueioPorAtraso(tenant, agora)) return atual;
 
   const telas = await db.countDevices(tenant.id);
-  const franquia = plans.franquiaCreditos(tenant.plan, Math.max(1, telas));
-
-  // Primeira vez da conta: o punhado de boas-vindas entra como crédito
-  // comprado, porque ele não deve sumir na primeira virada de ciclo.
-  const boasVindas = atual.cicloEm ? 0 : plans.CREDITOS_BOAS_VINDAS;
+  // As do teste só na PRIMEIRA vez: uma virada de ciclo no meio do teste não
+  // dá mais 20.
+  const franquia = plans.franquiaCreditos(tenant.plan, Math.max(1, telas))
+    + (!atual.cicloEm && noTeste ? plans.CRIACOES_DO_TESTE : 0);
 
   const novo = {
     franquiaRestante: franquia,
-    creditosComprados: atual.creditosComprados + boasVindas,
+    creditosComprados: atual.creditosComprados,
     cicloEm: agora,
   };
   await db.setCreditos(tenant.id, novo);
   return novo;
+}
+
+/*
+ * A conta acabou de passar a pagar: o ciclo recomeça HOJE, com o teto do
+ * plano. Sem isto, quem assinava no 5º dia do teste ficava até o fim do
+ * ciclo (30 dias desde a criação da conta) sem nenhuma criação do plano
+ * pago. `cicloEm: 1` é "ciclo vencido, mas não é conta nova": a próxima
+ * chamada repõe, sem as criações do teste.
+ */
+async function renovarCiclo(db, tenantId) {
+  const atual = (await db.getCreditos(tenantId)) || { franquiaRestante: 0, creditosComprados: 0, cicloEm: 0 };
+  await db.setCreditos(tenantId, { ...atual, cicloEm: 1 });
 }
 
 /*
@@ -72,7 +93,10 @@ async function conferir(db, tenant, tipo, quantidade) {
 
   const conta = await garantirCiclo(db, tenant);
   const s = cred.saldo(conta);
-  if (s.total < precisa) return { ok: false, precisa, resposta: cred.semSaldo(precisa, s.total) };
+  if (s.total < precisa) {
+    const testeVencido = !plans.isPaid(tenant.plan) && !plans.testeAtivo(tenant);
+    return { ok: false, precisa, resposta: testeVencido ? cred.testeAcabou() : cred.semSaldo(precisa, s.total) };
+  }
   return { ok: true, precisa, conta };
 }
 
@@ -176,4 +200,4 @@ async function panorama(db, tenant) {
   };
 }
 
-module.exports = { garantirCiclo, conferir, cobrar, tetoTextoOk, panorama, MES };
+module.exports = { garantirCiclo, renovarCiclo, conferir, cobrar, tetoTextoOk, panorama, MES };

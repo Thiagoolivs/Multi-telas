@@ -8,7 +8,7 @@
  *     painel testável sem chaves nem rede.
  */
 const crypto = require('crypto');
-const { plan, PLANS, mensalidadeCents } = require('./plans');
+const { plan, PLANS, mensalidadeCents, contratoDe } = require('./plans');
 
 const ASAAS_KEY = process.env.ASAAS_API_KEY || '';
 const WEBHOOK_TOKEN = process.env.ASAAS_WEBHOOK_TOKEN || '';
@@ -122,7 +122,7 @@ async function cobrarPacote(tenant, user, pac, origin, aoCriarCliente) {
     billingType: 'UNDEFINED',
     value: pac.precoCents / 100,
     dueDate: vence,
-    description: pac.creditos + ' créditos de IA — MultiTelas',
+    description: pac.creditos + ' criações com IA — MultiTelas',
     externalReference: tenant.id + '|pacote|' + pac.id,
   }, 'POST');
   if (!pag.invoiceUrl) throw new Error('o Asaas não devolveu o link da fatura — tente de novo');
@@ -162,7 +162,10 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
    */
   const jaTem = await asaasApi('/subscriptions', { customer: customerId, status: 'ACTIVE', limit: 10 });
   const aberta = (jaTem.data || [])[0];
-  const valor = mensalidadeCents(planId, Math.max(1, Number(o.telas) || 1)) / 100;
+  // Mensal ou anual (PLANO §6.1): o anual tem o preço por faixa.
+  const contrato = contratoDe(o.contrato);
+  const valor = mensalidadeCents(planId, Math.max(1, Number(o.telas) || 1), contrato) / 100;
+  const descricao = 'Assinatura do Plano ' + p.name + (contrato === 'anual' ? ' — contrato anual (12 meses)' : '');
 
   /*
    * QUALQUER assinatura ativa é reaproveitada, não só a do mesmo plano.
@@ -180,7 +183,7 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
   const sub = aberta
     ? await asaasApi('/subscriptions/' + encodeURIComponent(aberta.id), {
         value: valor,
-        description: 'Assinatura do Plano ' + p.name,
+        description: descricao,
         externalReference: tenant.id + '|' + planId,
         updatePendingPayments: true,
       }, 'POST')
@@ -198,7 +201,7 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
     value: valor,
     nextDueDate: new Date().toISOString().split('T')[0],
     cycle: 'MONTHLY',
-    description: 'Assinatura do Plano ' + p.name,
+    description: descricao,
     externalReference: tenant.id + '|' + planId,
   }, 'POST');
 

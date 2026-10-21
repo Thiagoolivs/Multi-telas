@@ -67,7 +67,7 @@ export function BancoImagensPage({ onUsar }) {
     <div>
       <PageHeader
         title="Banco de Imagens"
-        subtitle="Imagens que outros clientes geraram e liberaram para reuso. Usar daqui não gasta crédito de IA."
+        subtitle="Imagens que outros clientes geraram e liberaram para reuso. Usar daqui não gasta criação com IA."
       />
 
       <Panel className="mb-4">

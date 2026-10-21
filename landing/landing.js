@@ -638,7 +638,7 @@
   function montarPrecos(dados) {
     whatsapp(dados);
     var bv = document.getElementById('boas-vindas');
-    if (bv && dados.creditosBoasVindas) bv.textContent = dados.creditosBoasVindas;
+    if (bv && dados.criacoesDoTeste) bv.textContent = dados.criacoesDoTeste;
 
     /* ---- Cartões de plano ---- */
     var grade = document.getElementById('planos');
@@ -677,10 +677,12 @@
         if (p.precoTelaCents === 0 && !p.sobConsulta) {
           itens.push('A tela ligada de verdade, na parede');
           itens.push('Editor completo e modelos');
-          itens.push(dados.creditosBoasVindas + ' créditos de boas-vindas');
+          itens.push(dados.criacoesDoTeste + ' criações com IA no teste');
           itens.push('Sem cartão para começar');
-        } else if (p.creditosPorTela) {
-          itens.push(p.creditosPorTela + ' créditos de IA por tela, todo mês');
+        } else if (!p.sobConsulta && dados.criacoesDoPlano) {
+          // O teto de IA é da CONTA, não da tela (PLANO §6.5).
+          itens.push(dados.criacoesDoPlano.ate3Telas + ' criações com IA por mês, por conta (até ' + dados.criacoesDoPlano.maximo + ' com mais telas)');
+          itens.push('No anual (12 meses): a partir de ' + reais((dados.faixasAnual || [])[0] ? dados.faixasAnual[0].precoTelaCents : 0) + ' por tela');
         }
         itens.push(p.gbPorTela + ' GB por tela');
         if (p.recursos.indexOf('mural') >= 0) itens.push('Mural de fotos por QR');
@@ -725,8 +727,7 @@
     var sim = dados.simulacao || [];
     if (!range || !saida || !sim.length) return;
 
-    var nomes = {};
-    (dados.planos || []).forEach(function (p) { nomes[p.id] = p.name; });
+    var nomes = { mensal: 'Mensal, sem contrato', anual: 'Anual, contrato de 12 meses' };
 
     function atualizar() {
       var n = Number(range.value);
@@ -738,6 +739,16 @@
         if (id === 'telas') return;
         var v = linha[id];
         var d = document.createElement('div');
+        // Da 26ª tela em diante o anual é conversado, não tabelado.
+        if (v.negociado) {
+          d.className = 'rounded-2xl border border-white/10 bg-black/25 p-5';
+          d.innerHTML = '<p class="text-xs font-extrabold uppercase tracking-widest text-mt-ash"></p>' +
+            '<p class="mt-2 text-3xl font-extrabold text-white">A combinar</p>' +
+            '<p class="mt-1 text-sm text-mt-ash">com 26 telas ou mais, o preço por tela é negociado</p>';
+          d.querySelector('p').textContent = nomes[id] || id;
+          saida.appendChild(d);
+          return;
+        }
         d.className = 'rounded-2xl border border-white/10 bg-black/25 p-5';
         d.innerHTML =
           '<p class="text-xs font-extrabold uppercase tracking-widest text-mt-ash"></p>' +

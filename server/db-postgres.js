@@ -49,6 +49,11 @@ async function init() {
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS atraso_desde BIGINT;
     -- Qual lembrete de fim de teste já foi enviado. Ver server/lembretes.js.
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS lembrete_teste TEXT;
+    -- Contrato ('mensal' ou 'anual') e desde quando, para a multa do anual; e
+    -- o atraso para o qual o e-mail de aviso já saiu. Ver server/plans.js.
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_contrato TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS contrato_desde BIGINT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS aviso_atraso BIGINT;
     CREATE TABLE IF NOT EXISTS exibicoes (
       device_id TEXT, tenant_id TEXT, hora BIGINT, zona TEXT, chave TEXT,
       rotulo TEXT, tipo TEXT, vezes INTEGER, segundos INTEGER,
@@ -913,6 +918,7 @@ async function setTenantBilling(id, fields) {
     plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
     subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
     telasCobradas: 'plan_telas', atrasoDesde: 'atraso_desde',
+    contrato: 'plan_contrato', contratoDesde: 'contrato_desde',
   };
   const sets = [], vals = [];
   let i = 1;
@@ -935,6 +941,17 @@ async function contasEmTeste(desde) {
 }
 async function marcarLembreteTeste(id, tipo) {
   await pool.query('UPDATE tenants SET lembrete_teste = $1 WHERE id = $2', [tipo, id]);
+}
+/* Contas pagas com fatura em atraso, com o e-mail do dono (aviso de 3 dias, server/lembretes.js). */
+async function contasEmAtraso() {
+  const r = await pool.query(`SELECT t.id, t.name, t.plan, t.plan_status, t.atraso_desde, t.aviso_atraso,
+      (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email
+    FROM tenants t
+    WHERE t.plan_status = 'past_due' AND t.atraso_desde IS NOT NULL`);
+  return r.rows.map((x) => ({ ...x, atraso_desde: Number(x.atraso_desde), aviso_atraso: Number(x.aviso_atraso) || 0 }));
+}
+async function marcarAvisoAtraso(id, desde) {
+  await pool.query('UPDATE tenants SET aviso_atraso = $1 WHERE id = $2', [desde, id]);
 }
 
 async function contasParaConciliar() {
@@ -1389,7 +1406,7 @@ module.exports = {
   createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
-  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste,
+  getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,

@@ -37,7 +37,7 @@ const META = {
   relatorio: { title: 'Relatório de exibição', subtitle: 'O que passou, quantas vezes e em qual tela — contado pela própria TV.' },
   support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
   storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
-  banco: { title: 'Banco de Imagens', subtitle: 'Acervo compartilhado entre os clientes. Usar daqui não gasta crédito.' },
+  banco: { title: 'Banco de Imagens', subtitle: 'Acervo compartilhado entre os clientes. Usar daqui não gasta criação.' },
   birthdays: { title: 'Aniversariantes', subtitle: 'Importe a equipe e o player mostra sozinho.' },
   billing: { title: 'Plano e cobrança' },
   system: { title: 'Estado do sistema', subtitle: 'O que está configurado, e o que vai doer se ficar como está.' },

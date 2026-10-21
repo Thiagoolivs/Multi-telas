@@ -59,7 +59,7 @@ const ONDE = [
  */
 const IMAGENS = [
   { id: 'gerar', rotulo: 'A IA desenha quando precisar', nota: 'usa suas fotos primeiro; gera só o que faltar' },
-  { id: 'acervo', rotulo: 'Só as minhas fotos', nota: 'não gera imagem nenhuma — sem custo de crédito' },
+  { id: 'acervo', rotulo: 'Só as minhas fotos', nota: 'não gera imagem nenhuma — não gasta criação' },
   { id: 'nenhuma', rotulo: 'Sem foto', nota: 'peças com cor, forma e tipografia' },
 ];
 
@@ -136,7 +136,7 @@ function Guia({ empresa, onEscolher, onPular }) {
               <span className="mt-1.5 flex flex-wrap items-center gap-1.5 text-2xs">
                 <Badge tone="neutral">{s.formatos.map((f) => ONDE[f] || f).join(' + ')}</Badge>
                 <Badge tone="neutral">{s.quantidade} {s.quantidade === 1 ? 'peça' : 'peças'}</Badge>
-                <Badge tone={c.tom}>{creditos ? c.texto + ' · ' + creditos + (creditos === 1 ? ' crédito' : ' créditos') : c.texto}</Badge>
+                <Badge tone={c.tom}>{creditos ? c.texto + ' · ' + creditos + (creditos === 1 ? ' criação' : ' criações') : c.texto}</Badge>
               </span>
             </button>
           );
@@ -186,8 +186,8 @@ function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
   return (
     <div>
       <div className="mb-3 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">
-        Isto é o que a IA entendeu{rascunhos.length ? ', em rascunho' : ''}. <b className="text-ink">Nada foi gerado ainda</b> — nenhum
-        crédito saiu. Confira, tire o que não quiser, e só então gere{rascunhos.length ? ' — a peça final é desenhada depois, com as fotos' : ''}.
+        Isto é o que a IA entendeu{rascunhos.length ? ', em rascunho' : ''}. <b className="text-ink">Nada foi gerado ainda</b> — nenhuma
+        criação foi gasta. Confira, tire o que não quiser, e só então gere{rascunhos.length ? ' — a peça final é desenhada depois, com as fotos' : ''}.
       </div>
 
       <div className="space-y-2">
@@ -216,9 +216,9 @@ function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
                 <span className="mt-1 flex flex-wrap items-center gap-1.5 text-2xs">
                   <Badge tone="neutral">{ONDE[p.formato] || p.formato}</Badge>
                   {paga && p.referenciaProduto
-                    ? <Badge tone="accent">foto com o seu produto · 1 crédito</Badge>
+                    ? <Badge tone="accent">foto com o seu produto · 1 criação</Badge>
                     : paga
-                      ? <Badge tone="accent">foto por IA · 1 crédito</Badge>
+                      ? <Badge tone="accent">foto por IA · 1 criação</Badge>
                       : p.bgImagem || p.imagemBase != null
                         ? <Badge tone="ok">foto sua · sem custo</Badge>
                         : <Badge tone="ok">só texto · sem custo</Badge>}
@@ -262,8 +262,8 @@ function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
           <b className="text-ink">{ativas.length}</b> {ativas.length === 1 ? 'peça' : 'peças'}
           {' · '}
           {custo === 0
-            ? <span className="text-ok">nenhum crédito</span>
-            : <><b className="text-ink">{custo}</b> {custo === 1 ? 'crédito' : 'créditos'}</>}
+            ? <span className="text-ok">nenhuma criação</span>
+            : <><b className="text-ink">{custo}</b> {custo === 1 ? 'criação' : 'criações'}</>}
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={onVoltar}>Voltar e corrigir</Button>
@@ -1013,7 +1013,7 @@ export function MyDesignsPage({ onIr }) {
           : guiando
           ? 'Escolha uma ideia para começar, ou escreva a sua. Nada é gerado antes de você confirmar.'
           : plano
-            ? 'Confira o que a IA entendeu. Nenhum crédito saiu ainda.'
+            ? 'Confira o que a IA entendeu. Nenhuma criação foi gasta ainda.'
             : 'Descreva em uma frase. A IA lê a sua Marca, monta as peças, escreve as legendas e diz quando postar.'}
         footer={gen
           ? (<>
@@ -1178,10 +1178,10 @@ export function MyDesignsPage({ onIr }) {
                 <Sparkles size={13} className="mt-0.5 shrink-0 text-accent" />
                 <span>
                   {imagens === 'gerar' ? (
-                    <>Vai usar <b className="text-ink">até {quantas} crédito{quantas > 1 ? 's' : ''}</b> de IA —
+                    <>Vai usar <b className="text-ink">até {quantas} {quantas > 1 ? 'criações' : 'criação'}</b> com IA —
                     um por foto que precisar ser desenhada. Suas fotos do acervo entram primeiro e não custam nada.</>
                   ) : (
-                    <>Não usa crédito de IA: {imagens === 'acervo' ? 'só entram fotos que você já subiu' : 'as peças saem sem foto'}.</>
+                    <>Não gasta criação com IA: {imagens === 'acervo' ? 'só entram fotos que você já subiu' : 'as peças saem sem foto'}.</>
                   )}
                 </span>
               </div>

@@ -465,8 +465,10 @@ module.exports = function (ctx) {
          * Com isto, a tela compara e busca de novo quando divergir — a rede de
          * segurança que um canal só não tem, sem custo de requisição extra.
          */
+        // `selo` continua booleano para as TVs com o casco antigo; o texto vai à parte.
+        const seloTexto = await seloDaConta(device.tenant_id);
         return sendJson(res, 200, {
-          ok: true, at: Date.now(), configEm: device.updated_at || 0, selo: await seloDaConta(device.tenant_id),
+          ok: true, at: Date.now(), configEm: device.updated_at || 0, selo: !!seloTexto, seloTexto,
           // Comando que o SSE pode não ter entregue (stream caído): vai no pulso.
           comando: comando || undefined,
         });

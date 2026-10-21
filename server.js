@@ -219,7 +219,8 @@ function sincronizarCobranca(tenantId) {
     .catch((e) => erros.registrar(e, { onde: 'assinatura acompanhando telas', tenant: tenantId }));
 }
 /*
- * O selo "MultiTelas grátis" de uma conta (regra em plans.exibeSelo).
+ * O TEXTO do selo de uma conta, ou '' (regra em plans.textoDoSelo): teste
+ * acabado ou fatura com 10 dias de atraso.
  *
  * Vai no heartbeat, que cada TV manda a cada 30s — ler a conta do banco a
  * cada pulso seria uma consulta a mais por tela por meio minuto. Cinco
@@ -228,12 +229,12 @@ function sincronizarCobranca(tenantId) {
  */
 const seloCache = new Map();
 async function seloDaConta(tenantId) {
-  if (!tenantId) return false;
+  if (!tenantId) return '';
   const c = seloCache.get(tenantId);
   if (c && Date.now() - c.em < 5 * 60 * 1000) return c.selo;
-  let selo = false;
-  try { selo = plans.exibeSelo(await db.getTenant(tenantId)); }
-  catch (e) { selo = c ? c.selo : false; }
+  let selo = '';
+  try { selo = plans.textoDoSelo(await db.getTenant(tenantId)); }
+  catch (e) { selo = c ? c.selo : ''; }
   seloCache.set(tenantId, { selo, em: Date.now() });
   if (seloCache.size > 5000) seloCache.delete(seloCache.keys().next().value);
   return selo;
@@ -1452,7 +1453,7 @@ async function handleApi(req, res, pathname, query) {
             if (!pode.ok) {
               const e = new Error(pode.resposta && pode.resposta.erro === 'pagamento_atrasado'
                 ? 'pagamento em atraso — as peças seguintes saem sem foto'
-                : 'acabou o crédito de IA — as peças seguintes saem sem foto');
+                : 'acabaram as criações com IA do mês — as peças seguintes saem sem foto');
               e.semSaldo = true;
               throw e;
             }
@@ -1713,8 +1714,10 @@ async function handleApi(req, res, pathname, query) {
   if (parts[1] === 'planos' && req.method === 'GET') {
     return sendJson(res, 200, {
       planos: plans.catalog(),
-      faixas: plans.FAIXAS.map((f) => ({ ate: f.ate === Infinity ? null : f.ate, desconto: f.desconto })),
-      creditosBoasVindas: plans.CREDITOS_BOAS_VINDAS,
+      // O anual por faixa (PLANO §6.1) e as criações: do teste e do plano, por conta.
+      faixasAnual: plans.faixasAnual(),
+      criacoesDoTeste: plans.CRIACOES_DO_TESTE,
+      criacoesDoPlano: { ate3Telas: plans.franquiaCreditos('pro', plans.TETO_IA.ateTelas), maximo: plans.franquiaCreditos('pro', 1000) },
       // A landing anuncia o prazo do teste; ele sai daqui para não virar um
       // número escrito à mão numa página, que é como promessa e cobrança
       // começam a discordar.
@@ -1730,7 +1733,7 @@ async function handleApi(req, res, pathname, query) {
         email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(process.env.SUPPORT_EMAIL || '') ? process.env.SUPPORT_EMAIL : null,
       },
       /*
-       * A tabela inteira de 1 a 50 telas, já calculada.
+       * A tabela inteira de 1 a 50 telas, já calculada: mensal e anual.
        *
        * A alternativa era mandar só as faixas e deixar a landing fazer a
        * conta. Seria a MESMA conta escrita duas vezes — e é justamente esta
@@ -1741,16 +1744,16 @@ async function handleApi(req, res, pathname, query) {
       simulacao: Array.from({ length: 50 }, (_, i) => {
         const telas = i + 1;
         const linha = { telas };
-        for (const id of plans.ORDER) {
-          const p = plans.PLANS[id];
-          if (p.sobConsulta || !p.precoTelaCents) continue;
-          const porTela = plans.precoTelaCents(id, telas);
-          linha[id] = {
-            totalCents: plans.mensalidadeCents(id, telas),
+        for (const contrato of plans.CONTRATOS) {
+          const porTela = plans.precoTelaCents('pro', telas, contrato);
+          linha[contrato] = {
+            totalCents: plans.mensalidadeCents('pro', telas, contrato),
             porTelaCents: porTela,
             // O desconto que a pessoa de fato sente: quanto a média por tela
-            // já caiu em relação ao preço cheio.
-            desconto: 1 - porTela / p.precoTelaCents,
+            // caiu em relação ao mensal.
+            desconto: 1 - porTela / plans.PLANS.pro.precoTelaCents,
+            // Da 26ª tela em diante o anual é negociado: a vitrine diz isso.
+            negociado: contrato === 'anual' && telas >= plans.TELAS_NEGOCIADAS,
           };
         }
         return linha;
