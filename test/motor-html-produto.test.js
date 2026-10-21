@@ -248,3 +248,17 @@ test('editar a peça troca estilo e marca sem chamar a IA', () => {
   assert.match(ed, /brand\.marcas\(\)/);
   for (const m of ['escuro', 'claro', 'marca']) assert.match(ed, new RegExp("id: '" + m + "'"));
 });
+
+test('miniatura da peça sem filete escuro na borda: contorno por ring, não por border', () => {
+  // A borda de 1px saía do clientWidth/clientHeight e a escala pela altura
+  // deixava 1,5px do fundo escuro aparecendo à direita de toda miniatura.
+  const c = fs.readFileSync(path.join(RAIZ, 'web/src/components/content/PecaHtml.jsx'), 'utf8');
+  assert.match(c, /ring-1 ring-line bg-\[#0a1020\]/);
+  assert.doesNotMatch(c, /rounded-md border border-line bg-\[#0a1020\]/);
+});
+
+test('plano no celular: o rascunho desce para baixo do texto, na largura toda', () => {
+  const pagina = fs.readFileSync(path.join(RAIZ, 'web/src/pages/MyDesignsPage.jsx'), 'utf8');
+  assert.match(pagina, /grid grid-cols-\[auto_1fr\][^']*sm:flex/);
+  assert.match(pagina, /col-start-2 row-start-2 shrink-0/);
+});

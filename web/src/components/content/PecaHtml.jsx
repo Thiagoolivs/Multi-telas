@@ -49,10 +49,16 @@ export function PecaHtml({ item, formato, fitHeight, className, rascunho }) {
     return () => { vivo = false; if (ctl) ctl.parar(); };
   }, [item, rascunho]);
 
+  /*
+   * Contorno por `ring` (sombra), não por `border`. A borda de 1px entrava
+   * na caixa da proporção mas saía do clientWidth/clientHeight: a escala pela
+   * altura ficava 1,5px mais estreita que a caixa, e o fundo escuro aparecia
+   * como um filete na borda direita de toda miniatura.
+   */
   const proporcao = { aspectRatio: w + ' / ' + h };
   return (
     <div ref={caixa}
-      className={'relative overflow-hidden rounded-md border border-line bg-[#0a1020] ' + (fitHeight ? '' : 'w-full ') + (className || '')}
+      className={'relative overflow-hidden rounded-md ring-1 ring-line bg-[#0a1020] ' + (fitHeight ? '' : 'w-full ') + (className || '')}
       style={fitHeight ? { ...proporcao, height: '100%', width: 'auto', maxWidth: '100%' } : proporcao}>
       <div ref={palco}
         style={{ position: 'absolute', left: 0, top: 0, width: w, height: h, transformOrigin: '0 0',
