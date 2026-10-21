@@ -19,6 +19,8 @@ const E = require('../../js/escopo.js');
 const Pal = require('../../js/paletas.js');
 const eco = require('../ecossistema');
 const conversa = require('../ai-conversa');
+const ajuste = require('../ajuste');
+const P = require('../../js/peca-html.js');
 
 function configDe(d) {
   try { return typeof d.config === 'string' ? JSON.parse(d.config || '{}') : (d.config || {}); } catch (e) { return {}; }
@@ -35,24 +37,13 @@ module.exports = function (ctx) {
       const conversaId = b && typeof b.conversaId === 'string' ? b.conversaId : '';
       const conv = conversaId ? await db.lerConversa(sess.tenant_id, conversaId) : null;
       if (conversaId && !conv) return sendJson(res, 404, { error: 'conversa não encontrada' });
-      const [{ kit, marca, lembrada }, telasDb, tenant] = await Promise.all([
-        marcaDaConta(sess.tenant_id), db.listDevices(sess.tenant_id), db.getTenant(sess.tenant_id),
-      ]);
-      const telas = (telasDb || []).map((d) => {
-        const s = configDe(d).settings || {};
-        return { id: d.id, nome: d.name || '', layout: s.layoutId || '', emPe: /^portrait/.test(s.layoutId || '') };
-      });
+      const ctxConta = await contextoDaConta(sess.tenant_id);
       // O alvo é conferido contra as TVs desta conta, como na conversa.
-      const escopo = conversa.conferirEscopo(b && b.escopo && typeof b.escopo === 'object' ? b.escopo : (conv && conv.escopo), { telas });
+      const escopo = conversa.conferirEscopo(b && b.escopo && typeof b.escopo === 'object' ? b.escopo : (conv && conv.escopo), ctxConta);
       if (!E.temOQueGerar(escopo)) return sendJson(res, 400, { error: 'ainda não tem nada para criar: diga o que quer mostrar' });
-      const k = kit || {};
-      const empresa = (k.nome && k.nome !== 'Marca principal' ? k.nome : '') || (tenant && tenant.name) || '';
       await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.ecossistema');
       return emTrabalho(res, sess, 'campanha', { brief: (escopo.nome || 'Campanha').slice(0, 200) }, async (progresso) => {
-        const resultado = await eco.gerar(escopo, {
-          empresa, segmento: (lembrada && lembrada.segmento) || '', marca: marca || {}, memoria: lembrada, telas,
-          local: k.local || {}, ramo: Pal.detectarRamo([tenant && tenant.name, k.nome, lembrada && lembrada.segmento, k.siteResumo]),
-        }, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
+        const resultado = await eco.gerar(escopo, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
         progresso('guardando a campanha', '');
         const campanha = await db.criarCampanha(sess.tenant_id, sess.user_id, {
           nome: resultado.nome, conversaId: conv ? conv.id : '', escopo, resultado, estado: 'pronta', telas: [],
@@ -64,13 +55,92 @@ module.exports = function (ctx) {
     });
   }
 
+  // O que o gerador precisa saber da conta, para o ajuste desenhar igual (item 26).
+  async function contextoDaConta(tenantId) {
+    const [{ kit, marca, lembrada }, telasDb, tenant] = await Promise.all([
+      marcaDaConta(tenantId), db.listDevices(tenantId), db.getTenant(tenantId),
+    ]);
+    const k = kit || {};
+    return {
+      empresa: (k.nome && k.nome !== 'Marca principal' ? k.nome : '') || (tenant && tenant.name) || '',
+      segmento: (lembrada && lembrada.segmento) || '', marca: marca || {}, memoria: lembrada, local: k.local || {},
+      ramo: Pal.detectarRamo([tenant && tenant.name, k.nome, lembrada && lembrada.segmento, k.siteResumo]),
+      telas: (telasDb || []).map((d) => ({ id: d.id, nome: d.name || '', emPe: /^portrait/.test((configDe(d).settings || {}).layoutId || '') })),
+    };
+  }
+
+  /*
+   * AJUSTAR DEPOIS (item 26): "troca a foto da peça 2". Só o que o pedido
+   * aponta é refeito, e só a foto nova é cobrada (fotoDaConta). O resultado
+   * de antes fica guardado para desfazer.
+   */
+  async function ajustar(req, res, sess) {
+    const rl = rateLimit('ai:ajuste:' + sess.tenant_id, 30, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'muitos ajustes nesta hora. Espere um pouco.' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const texto = String((b && b.texto) || '').trim().slice(0, 600);
+      if (!texto) return sendJson(res, 400, { error: 'diga o que mudar' });
+      const id = b && typeof b.campanhaId === 'string' ? b.campanhaId : '';
+      const c = id ? await db.lerCampanha(sess.tenant_id, id) : null;
+      if (!c || !c.resultado) return sendJson(res, 404, { error: 'campanha não encontrada' });
+      return emTrabalho(res, sess, 'campanha', { brief: ('Ajuste: ' + texto).slice(0, 200) }, async (progresso) => {
+        progresso('entendendo o ajuste', texto.slice(0, 80));
+        const { resposta, mudancas } = await ajuste.entender(texto, c);
+        if (!mudancas.length) return { campanha: c, resposta, mudancas };
+        const ctxConta = await contextoDaConta(sess.tenant_id);
+        const feito = await ajuste.aplicar(c, mudancas, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
+        const salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo });
+        if (c.conversaId) {
+          const conv = await db.lerConversa(sess.tenant_id, c.conversaId);
+          if (conv) {
+            const mensagens = (conv.mensagens || []).concat({ papel: 'pessoa', texto, em: Date.now() }, { papel: 'ia', texto: resposta, em: Date.now() }).slice(-200);
+            await db.salvarConversa(sess.tenant_id, conv.id, { ...conv, mensagens, escopo: feito.escopo });
+          }
+        }
+        return { campanha: salva, resposta, mudancas, refeitas: feito.refeitas };
+      });
+    });
+  }
+
   async function tratar(req, res, parts, query, sess) {
     const ehGerar = parts[1] === 'ai' && parts[2] === 'ecossistema';
-    if (!ehGerar && parts[1] !== 'campanhas') return false;
+    const ehAjustar = parts[1] === 'ai' && parts[2] === 'ajustar';
+    if (!ehGerar && !ehAjustar && parts[1] !== 'campanhas') return false;
     if (!sess) { sendJson(res, 401, { error: 'não autenticado' }); return true; }
-    if (ehGerar) {
+    if (ehGerar || ehAjustar) {
       if (req.method !== 'POST') { sendJson(res, 405, { error: 'método inválido' }); return true; }
-      await gerar(req, res, sess);
+      await (ehGerar ? gerar(req, res, sess) : ajustar(req, res, sess));
+      return true;
+    }
+    // Editar uma peça à mão (EditarPeca) e desfazer o último ajuste.
+    if (parts.length === 4 && /^camp_[a-z0-9]{6,40}$/i.test(parts[2] || '') && (parts[3] === 'peca' || parts[3] === 'desfazer')) {
+      if (req.method !== (parts[3] === 'peca' ? 'PUT' : 'POST')) { sendJson(res, 405, { error: 'método inválido' }); return true; }
+      const c = await db.lerCampanha(sess.tenant_id, parts[2]);
+      if (!c || !c.resultado) { sendJson(res, 404, { error: 'campanha não encontrada' }); return true; }
+      if (parts[3] === 'desfazer') {
+        const volta = ajuste.desfazer(c);
+        if (!volta) { sendJson(res, 409, { error: 'não há ajuste para desfazer' }); return true; }
+        sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: volta.resultado, escopo: volta.escopo }) });
+        return true;
+      }
+      readBody(req, res, async (b) => {
+        const vaga = String((b && b.vaga) || '');
+        const alvo = ajuste.numerar(c.resultado).find((x) => x.peca.vaga === vaga);
+        if (!alvo) return sendJson(res, 404, { error: 'peça não encontrada' });
+        // A peça editada passa pela porta da TV, como qualquer outra.
+        const v = P.validarItem(b && b.item);
+        if (v.problemas.length) return sendJson(res, 400, { error: 'a peça não passou: ' + v.problemas[0] });
+        const r = JSON.parse(JSON.stringify(c.resultado));
+        const z = r.telas[alvo.tela].zonas[alvo.zona];
+        const lista = Array.isArray(z) ? z : z.pecas;
+        const i = lista.findIndex((x) => x.vaga === vaga);
+        const antes = lista[i];
+        lista[i] = { ...antes, item: { ...antes.item, ...v.item, formato: antes.formato, ...(antes.item.agendamento ? { agendamento: antes.item.agendamento } : {}) },
+          label: String((b.item.campos && (b.item.campos.titulo || b.item.campos.chamada)) || antes.label).slice(0, 40) };
+        const anterior = { ...c.resultado }; delete anterior.anterior;
+        r.anterior = { resultado: anterior, escopo: c.escopo };
+        return sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: r }) });
+      });
       return true;
     }
     if (parts.length === 2 && req.method === 'GET') {

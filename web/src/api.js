@@ -287,6 +287,13 @@ export const criar = {
   campanha: (id) => api('GET', '/api/campanhas/' + id),
   // O estado da campanha (no ar, pausada) e em quais TVs: quem põe as peças na TV é lib/rodar.js.
   marcar: (id, estado, telas) => api('PUT', '/api/campanhas/' + id, { estado, telas }),
+  // Ajustar depois de gerada (item 26): o pedido vira trabalho, porque pode ter foto nova.
+  async ajustar(campanhaId, texto, onEtapa, sinal) {
+    const job = await api('POST', '/api/ai/ajustar', { campanhaId, texto });
+    return acompanhar(job.id, 'ajuste', onEtapa, sinal);
+  },
+  editarPeca: (id, vaga, item) => api('PUT', '/api/campanhas/' + id + '/peca', { vaga, item }),
+  desfazer: (id) => api('POST', '/api/campanhas/' + id + '/desfazer'),
 };
 
 /*

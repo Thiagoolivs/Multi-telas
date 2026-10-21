@@ -68,7 +68,7 @@ test('o resultado: salvo, por TV e por zona, com as redes e a programação', ()
   const r = semComentarios(ler('web/src/components/criar/ResultadoCampanha.jsx'));
   assert.match(r, /está pronta e salva\./);
   for (const z of ['Cabeçalho', 'Principal', 'Lateral', 'Rodapé']) assert.match(r, new RegExp('<Zona titulo="' + z + '"'), z);
-  assert.match(r, /<PecaHtml key=\{p\.vaga\} item=\{p\.item\} formato=\{faixa\} mensagens=\{mensagens\} contagem=\{contagem\} \/>/, 'faixa no tamanho de faixa, com o letreiro');
+  assert.match(r, /<PecaHtml item=\{p\.item\} formato=\{faixa\} mensagens=\{mensagens\} contagem=\{contagem\} \/>/, 'faixa no tamanho de faixa, com o letreiro');
   assert.match(r, /Postar nas redes/);
   assert.match(r, /Programação/);
   // A prévia da faixa mostra o letreiro e a contagem de verdade.

@@ -246,6 +246,62 @@ function agendamentoDe(h, periodo, hoje) {
   };
 }
 
+/* ---------------- As partes, para o gerador e o ajuste ---------------- */
+
+/*
+ * Os textos das vagas, numa chamada só. `ajuste` é o pedido de mudança do
+ * cliente (EXECUTOR item 26), que vai junto quando só algumas vagas são
+ * escritas de novo.
+ */
+async function escreverTextos(escopo, vagas, ctx, bases, ajuste) {
+  if (ai.mode() === 'dev') return lerTextos(textosSemIA(escopo, vagas), escopo, vagas, bases);
+  const pedido = pedidoDosTextos(escopo, vagas, ctx)
+    + (ajuste ? '\n\nAJUSTE PEDIDO PELO CLIENTE (escreva estas vagas de novo seguindo isto): ' + String(ajuste).slice(0, 400) : '');
+  let r = null;
+  try { r = ai.parseAiJson(await ai.callLLM(SISTEMA, pedido)); } catch (e) { r = null; }
+  return lerTextos(r, escopo, vagas, bases);
+}
+
+// A identidade: a marca salva vence o modelo, como no diretor.
+function identidadeDe(m, direcaoDoModelo, estilo) {
+  const brand = ds.okHex((m.cores && m.cores[0]) || '', '#1e3a8a');
+  const brand2 = ds.okHex((m.cores && m.cores[1]) || '', null) || ds.girarMatiz(brand, 35);
+  const direcao = ds.DIRECOES[m.direcao] ? m.direcao : (ds.DIRECOES[direcaoDoModelo] ? direcaoDoModelo : 'chapado');
+  return {
+    identidade: { brand, brand2, direcao, estilo: estilo || 'vibrante' },
+    modo: director.MODO_DA_DIRECAO[direcao] || 'escuro',
+    marcaDaPeca: { cores: [brand, brand2], fonteTitulo: m.fonteTitulo || '', fonteApoio: m.fonteApoio || '' },
+  };
+}
+
+/*
+ * Uma vaga vira peça: o motor HTML no papel certo e, se ele falhar (ou sem
+ * IA), a peça-ouro daquele papel. `ditos` são os títulos que já saíram,
+ * para a peça nova não repetir.
+ */
+async function comporVaga(v, t, foto, { escopo, ctx, marcaDaPeca, modo, ditos }) {
+  const m = ctx.marca || {};
+  const tela = escopo.telas[v.tela];
+  const base = {
+    pedido: [escopo.objetivo, v.pedido].filter(Boolean).join(' — ') || escopo.nome,
+    empresa: ctx.empresa || '', segmento: ctx.segmento || '', marca: marcaDaPeca, modo,
+    papel: v.papel, foto: foto || null, logo: m.logo || '', indice: v.indice,
+    // O que só a faixa tem: a contagem do rodapé e as chamadas do cabeçalho (item 22).
+    contagem: v.zona === 'rodape' && tela ? tela.zonas.rodape.contagem : '',
+    chamadas: v.zona === 'cabecalho' && tela ? tela.zonas.cabecalho.mensagens : [],
+    textos: { kicker: t.kicker, titulo: t.titulo, apoio: t.apoio, cta: t.cta },
+    evitar: (ditos || []).slice(0, 20),
+  };
+  let r = null;
+  if (ai.mode() !== 'dev') {
+    try { r = await compositor.comporPeca(Object.assign({ motor: compositor.motorDoHtml() }, base)); }
+    catch (e) { r = null; }
+  }
+  const item = r && r.ok ? r.item : compositor.preencherPapel(base);
+  return { vaga: v.id, zona: v.zona, papel: v.papel, formato: v.formato, label: t.titulo.slice(0, 40),
+    item: Object.assign({}, item, { formato: v.formato }), motor: r && r.ok ? 'html' : 'ouro', comFoto: !!foto };
+}
+
 /* ---------------- O gerador ---------------- */
 
 async function gerar(escopoCru, ctx, { onImagem, onProgresso, agora } = {}) {
@@ -261,22 +317,8 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, agora } = {}) {
 
   // 2. Os textos, de uma vez.
   passo('escrevendo a campanha', vagas.length + ' peças');
-  let textos;
-  if (ai.mode() === 'dev') textos = textosSemIA(escopo, vagas);
-  else {
-    let r = null;
-    try { r = ai.parseAiJson(await ai.callLLM(SISTEMA, pedidoDosTextos(escopo, vagas, ctx))); } catch (e) { r = null; }
-    textos = lerTextos(r, escopo, vagas, bases);
-  }
-  if (ai.mode() === 'dev') textos = lerTextos(textos, escopo, vagas, bases);
-
-  // A identidade: a marca salva vence o modelo, como no diretor.
-  const brand = ds.okHex((m.cores && m.cores[0]) || '', '#1e3a8a');
-  const brand2 = ds.okHex((m.cores && m.cores[1]) || '', null) || ds.girarMatiz(brand, 35);
-  const direcao = ds.DIRECOES[m.direcao] ? m.direcao : textos.direcao;
-  const identidade = { brand, brand2, direcao, estilo: textos.estilo };
-  const modo = director.MODO_DA_DIRECAO[direcao] || 'escuro';
-  const marcaDaPeca = { cores: [brand, brand2], fonteTitulo: m.fonteTitulo || '', fonteApoio: m.fonteApoio || '' };
+  const textos = await escreverTextos(escopo, vagas, ctx, bases);
+  const { identidade, modo, marcaDaPeca } = identidadeDe(m, textos.direcao, textos.estilo);
 
   // 3. As fotos.
   const fotos = {};
@@ -307,25 +349,8 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, agora } = {}) {
   for (const v of vagas) {
     passo('desenhando as peças', ++n + ' de ' + vagas.length + ' · ' + (E.NOME_ZONA[v.zona] || 'redes'));
     const t = textos.vagas[v.id];
-    const base = {
-      pedido: [escopo.objetivo, v.pedido].filter(Boolean).join(' — ') || escopo.nome,
-      empresa: ctx.empresa || '', segmento: ctx.segmento || '', marca: marcaDaPeca, modo,
-      papel: v.papel, foto: fotos[v.id] || null, logo: m.logo || '', indice: v.indice,
-      // O que só a faixa tem: a contagem do rodapé e as chamadas do cabeçalho (item 22).
-      contagem: v.zona === 'rodape' && escopo.telas[v.tela] ? escopo.telas[v.tela].zonas.rodape.contagem : '',
-      chamadas: v.zona === 'cabecalho' && escopo.telas[v.tela] ? escopo.telas[v.tela].zonas.cabecalho.mensagens : [],
-      textos: { kicker: t.kicker, titulo: t.titulo, apoio: t.apoio, cta: t.cta },
-      evitar: ditos.slice(0, 20),
-    };
-    let r = null;
-    if (ai.mode() !== 'dev') {
-      try { r = await compositor.comporPeca(Object.assign({ motor: compositor.motorDoHtml() }, base)); }
-      catch (e) { r = null; }
-    }
-    const item = r && r.ok ? r.item : compositor.preencherPapel(base);
+    pecas[v.id] = await comporVaga(v, t, fotos[v.id], { escopo, ctx, marcaDaPeca, modo, ditos });
     ditos.push(t.titulo);
-    pecas[v.id] = { vaga: v.id, zona: v.zona, papel: v.papel, formato: v.formato, label: t.titulo.slice(0, 40),
-      item: Object.assign({}, item, { formato: v.formato }), motor: r && r.ok ? 'html' : 'ouro', comFoto: !!fotos[v.id] };
   }
 
   // 5. A programação: os horários se revezam entre as peças da principal e da lateral.
@@ -394,4 +419,7 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, agora } = {}) {
   };
 }
 
-module.exports = { gerar, vagasDoEscopo, decidirFoto, agendamentoDe, textosSemIA, lerTextos, pedidoDosTextos, SISTEMA, levaFoto };
+module.exports = {
+  gerar, vagasDoEscopo, decidirFoto, agendamentoDe, textosSemIA, lerTextos, pedidoDosTextos, SISTEMA, levaFoto,
+  escreverTextos, identidadeDe, comporVaga, PAPEL_DA_ZONA,
+};
