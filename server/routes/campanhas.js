@@ -163,6 +163,25 @@ module.exports = function (ctx) {
       });
       return true;
     }
+    /*
+     * As peças prontas das campanhas (item 32): o Adicionar de uma zona e
+     * Mídias › Peças prontas mostram o que já foi criado, com o papel de
+     * cada peça (cabeçalho, destaque, lateral, rodapé) para saber onde cabe.
+     */
+    if (parts.length === 3 && parts[2] === 'pecas' && req.method === 'GET') {
+      const lista = await db.listarCampanhas(sess.tenant_id, 20);
+      const pecas = [];
+      for (const c of lista) {
+        const k = await db.lerCampanha(sess.tenant_id, c.id);
+        for (const x of ajuste.numerar(k && k.resultado)) {
+          pecas.push({ campanha: c.nome, campanhaId: c.id, vaga: x.peca.vaga, zona: x.zona, papel: x.peca.papel, formato: x.peca.formato, label: x.peca.label, item: x.peca.item });
+          if (pecas.length >= 120) break;
+        }
+        if (pecas.length >= 120) break;
+      }
+      sendJson(res, 200, { pecas });
+      return true;
+    }
     if (parts.length === 2 && req.method === 'GET') {
       const lista = await db.listarCampanhas(sess.tenant_id, 20);
       // Campanha de antes da coluna capa: calcula na hora (sem gravar, para não mexer na ordem da lista).

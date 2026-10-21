@@ -79,7 +79,8 @@ test('uma entrada só: Criar no menu e no Início; o resto em "Mais"', () => {
   assert.match(md, /const MAIS = \[/);
   // A tela recebe e organiza: "Criar com IA" é a primeira entrada do Adicionar conteúdo.
   assert.match(ler('web/src/components/content/TypePicker.jsx'), /\{ id: 'criar', label: 'Criar com IA'/);
-  assert.match(app, /onCriar=\{\(\) => go\('criar', \{ tela: route\.device && route\.device\.id \}\)\}/);
+  // Desde o item 32 o Criar da TV leva também a zona.
+  assert.match(app, /onCriar=\{\(zona\) => go\('criar', \{ tela: route\.device && route\.device\.id, zona: typeof zona === 'string' \? zona : undefined \}\)\}/);
 });
 
 test('foto do produto: só vale imagem base DESTA conta, e entra em todas as peças', async () => {

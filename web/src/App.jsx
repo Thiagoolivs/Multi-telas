@@ -171,7 +171,7 @@ export default function App() {
     switch (route.name) {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
       case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onIrParaPlano={() => go('billing')} />;
-      case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} onCriar={() => go('criar', { tela: route.device && route.device.id })} onIr={go} />;
+      case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
       case 'banco': return <BancoImagensPage />;
@@ -179,7 +179,7 @@ export default function App() {
        * A chave remonta o Criar quando se chega de novo com outra opção (do
        * Início, ou de "Criar novo" numa tela) — senão ficaria no passo antigo.
        */
-      case 'criar': return <CriarPage key={(route.opcao || '') + (route.tela || '')} opcaoInicial={route.opcao} telaInicial={route.tela} onIr={go} />;
+      case 'criar': return <CriarPage key={(route.opcao || '') + (route.tela || '') + (route.zona || '')} opcaoInicial={route.opcao} telaInicial={route.tela} zonaInicial={route.zona} onIr={go} />;
       case 'rapida': return <CriacaoRapidaPage key={(route.opcao || '') + (route.tela || '')} opcaoInicial={route.opcao} telaInicial={route.tela} onIr={go} />;
       case 'campanhas': return <CampanhasPage key={route.campanha || ''} campanhaInicial={route.campanha} onIr={go} />;
       case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage onIr={go} />;

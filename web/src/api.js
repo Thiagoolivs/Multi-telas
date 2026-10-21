@@ -284,6 +284,8 @@ export const criar = {
   acompanhar: (id, onEtapa, sinal) => acompanhar(id, 'ecossistema', onEtapa, sinal),
   pendente: () => pendenteDe('ecossistema'),
   campanhas: () => api('GET', '/api/campanhas'),
+  // As peças prontas de todas as campanhas, com o papel de cada uma (item 32).
+  pecasProntas: () => api('GET', '/api/campanhas/pecas'),
   campanha: (id) => api('GET', '/api/campanhas/' + id),
   // O estado da campanha (no ar, pausada) e em quais TVs: quem põe as peças na TV é lib/rodar.js.
   marcar: (id, estado, telas) => api('PUT', '/api/campanhas/' + id, { estado, telas }),
