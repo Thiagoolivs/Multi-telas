@@ -623,6 +623,110 @@ Os itens 17 e 18 de novo, para esta rodada:
 - `npm test` três vezes;
 - o `ESTADO-DO-PROJETO.md` e o `PLANO.md` em dia.
 
+## 2c · Rodada 3 — o painel coerente com o Criar (decidido pelo dono em 21/10)
+
+O dono, testando a rodada 2: "está tudo bom até eu clicar em Conteúdo". A
+página da TV, as Mídias e Meus Designs ficaram do jeito de antes do Criar
+conversando, e não conversam com ele. A auditoria (prints em `qa/`, branch
+`prints`) achou, entre outras coisas:
+- três IAs disputando com o Criar na página da TV;
+- o cabeçalho e o rodapé da TV que não conhecem a lista de peças nem a
+  contagem;
+- o rodapé tratado como feed de notícias;
+- zonas como botões soltos, sem desenho da TV;
+- a página da TV estourando a largura no celular;
+- Ajustes da tela misturando layout, tema, marca e música;
+- Mídias organizada pelo disco, e não pelo propósito;
+- Meus Designs repetindo a mesma campanha e publicando por outro caminho.
+
+**As decisões do dono:**
+- As peças prontas viram uma aba em **Mídias**. Mídias passa a ser "tudo o
+  que eu tenho".
+- Os avisos de data viram **sugestão no Criar e no Início**, e saem do topo
+  da TV.
+- Quando a TV não tem as zonas da campanha, o painel **pergunta, já marcado
+  para trocar** o layout.
+
+### 28. Um caminho de IA só
+
+"Campanha com IA", "A IA monta tudo" e o formulário antigo saem da página da
+TV. "Campanha completa com IA" sai de Meus Designs › Mais. Tudo leva ao
+Criar com a TV marcada. Esconda antes de apagar: o código fica, sem botão,
+por 30 dias.
+
+**Pronto quando:** não sobra nenhuma IA fora do Criar.
+
+### 29. Campanhas como unidade
+
+- Página **Campanhas** no grupo Criar. Cada campanha aparece com o estado
+  (no ar, pausada, pronta), as TVs e uma prévia por zona.
+- Abrir uma campanha leva ao resultado do Criar: Pôr pra rodar, Pausar,
+  Ajustar.
+- Meus Designs deixa de repetir a campanha. "Publicar campanha" de uma
+  campanha do Criar usa o mesmo caminho do Pôr pra rodar (`lib/rodar.js`).
+
+**Pronto quando:** uma campanha aparece uma vez, com o estado e as TVs.
+
+### 30. A TV como desenho
+
+- A página da TV mostra a miniatura do layout, com as zonas clicáveis.
+- Cada zona mostra o que gira nela. No cabeçalho e no rodapé, a **lista**:
+  pôr, tirar, ordenar, a duração e a contagem.
+- Bloco **Campanhas nesta TV**, com pausar e tirar.
+
+**Pronto quando:** uma campanha completa aparece inteira na TV e se mexe por
+lá.
+
+### 31. O rodapé com dois modos claros
+
+"Peças e avisos" (o da campanha) ou "Notícias" (RSS). Cada modo mostra só os
+controles que valem para ele.
+
+**Pronto quando:** nenhum controle aparece sem fazer nada.
+
+### 32. Adicionar numa zona
+
+Começa pelo que já existe: peças prontas que cabem naquela zona, depois
+fotos e vídeos, depois tipos prontos, depois "Criar novo", que abre o chat
+com a TV e a zona marcadas.
+
+**Pronto quando:** uma peça pronta entra numa zona em 3 toques.
+
+### 33. Ajustes da tela por tarefa
+
+- **Aparência:** o layout com desenho, a marca como padrão e o tema como
+  opção.
+- **Encaixe:** a margem, com explicação visual, e girar.
+- **Som.**
+- **Horário:** o expediente.
+- **Avançado.**
+
+O nome da TV fica separado do nome do cabeçalho. Ao trocar o layout, o
+painel diz o que muda nas zonas.
+
+**Pronto quando:** cada ajuste está onde se espera, no celular e no desktop.
+
+### 34. Mídias por propósito
+
+- Abas: **Peças prontas** · **Fotos e vídeos** · **Músicas** · **Da IA** ·
+  **Banco de imagens**.
+- O uso do disco vira uma linha discreta.
+- Filtros por formato e por zona (principal, lateral, faixas).
+
+**Pronto quando:** "o que eu tenho para pôr na TV" se acha em um toque.
+
+### 35. Celular e avisos de data
+
+- A página da TV e as páginas novas funcionam em 360 px, conferidas com uma
+  conta que **tem TV**.
+- O aviso de data sai do topo da TV e vira ideia no Criar e no Início.
+
+**Pronto quando:** não há rolagem lateral com conta de TV.
+
+### 36. Varredura e documentos
+
+Como no item 27, agora com uma conta que tem TV pareada.
+
 ## 3 · O consultor (issue #135)
 
 Um Claude com o contexto todo do projeto fica de plantão na issue
