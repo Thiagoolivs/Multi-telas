@@ -14,9 +14,12 @@ import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { TypePicker } from '../components/content/TypePicker.jsx';
 import { SettingsForm } from '../components/content/SettingsForm.jsx';
 import { aplicarConteudo } from '../lib/aplicarConteudo.js';
-import { TickerEditor } from '../components/content/TickerEditor.jsx';
 import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
 import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
+import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
+import { FaixaDaTela, pecasDaFaixa } from '../components/tela/FaixaDaTela.jsx';
+import { CampanhasNaTela, semCampanha } from '../components/tela/CampanhasNaTela.jsx';
+import { criar } from '../api.js';
 // Editor visual (react-moveable) carregado sob demanda — não pesa o painel.
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
@@ -36,7 +39,7 @@ function defaultZone(zones) {
   return z ? z.id : null;
 }
 
-export function ContentEditorPage({ device, onBack, onCriar }) {
+export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
   const { data, loading, error, reload } = useAsync(() => deviceConfig.get(device.id), [device.id]);
 
   const [cfg, setCfg] = useState(null);
@@ -82,6 +85,43 @@ export function ContentEditorPage({ device, onBack, onCriar }) {
     [cfg],
   );
   const activeZone = zones.find((z) => z.id === zoneId) || zones[0];
+  const layoutCanonico = useMemo(() => {
+    const id = cfg && cfg.settings && cfg.settings.layoutId;
+    return globalThis.MT_getLayout ? globalThis.MT_getLayout(id) : null;
+  }, [cfg]);
+
+  // O que gira em cada zona, em poucas palavras, para o desenho da TV.
+  function resumoDaZona(z) {
+    const d = (cfg && cfg.zonas[z.id]) || {};
+    if (z.type === 'header') { const n = pecasDaFaixa(d).length; return n ? n + (n === 1 ? ' peça' : ' estilos') : 'automático'; }
+    if (z.type === 'ticker') { const n = pecasDaFaixa(d).length; return n ? n + (n === 1 ? ' peça' : ' peças') : (Array.isArray(d.fontes) && d.fontes.length ? 'notícias' : 'avisos'); }
+    const n = (d.items || []).length;
+    return n ? n + (n === 1 ? ' conteúdo' : ' conteúdos') : 'vazia';
+  }
+
+  /*
+   * Campanhas nesta TV (item 30): tirar daqui também tira esta TV da lista
+   * da campanha; sem TV nenhuma, ela fica pausada.
+   */
+  async function campanhaPeloNome(nome) {
+    const r = await criar.campanhas().catch(() => null);
+    return ((r && r.campanhas) || []).find((c) => c.nome === nome) || null;
+  }
+  async function tirarCampanha(nome) {
+    const antes = cfg;
+    patchCfg((next) => { const sem = semCampanha(next, nome); next.zonas = sem.zonas; });
+    emitir({ tom: 'desfazer', texto: 'A campanha "' + nome + '" saiu desta TV.', acao: { rotulo: 'Desfazer', on: () => { setCfg(antes); setDirty(true); } } });
+    const c = await campanhaPeloNome(nome);
+    if (c && (c.telas || []).includes(device.id)) {
+      const resto = c.telas.filter((x) => x !== device.id);
+      criar.marcar(c.id, resto.length ? c.estado : 'pausada', resto).catch(() => {});
+    }
+  }
+  async function abrirCampanha(nome) {
+    const c = await campanhaPeloNome(nome);
+    if (c && onIr) onIr('campanhas', { campanha: c.id });
+    else if (onIr) onIr('campanhas');
+  }
 
   // Se o layout mudou e a zona ativa sumiu, volta para a primeira.
   useEffect(() => {
@@ -398,38 +438,23 @@ export function ContentEditorPage({ device, onBack, onCriar }) {
         <Panel><ErrorState description="Não foi possível carregar o conteúdo da tela." onRetry={reload} /></Panel>
       ) : (
         <>
-          {/* Chips de zona */}
-          {zones.length > 1 && (
-            <div className="mb-4 flex flex-wrap gap-1.5">
-              {zones.map((z) => (
-                <button key={z.id} onClick={() => selectZone(z)}
-                  className={cn('rounded-full border px-3 py-1 text-xs font-medium transition',
-                    z.id === (activeZone && activeZone.id) ? 'border-accent bg-accent-soft text-accent' : 'border-line text-ink-2 hover:bg-surface-2')}>
-                  {z.name}
-                  <span className="ml-1.5 text-ink-3">{z.type === 'ticker' ? 'notícias' : z.type === 'header' ? 'cabeçalho' : ''}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="mb-4 space-y-3">
+            <CampanhasNaTela cfg={cfg} onTirar={tirarCampanha} onAbrir={onIr ? abrirCampanha : null} />
+            {layoutCanonico && (
+              <MapaDaTela layout={layoutCanonico} ativa={activeZone && activeZone.id} onEscolher={selectZone} resumo={resumoDaZona} />
+            )}
+          </div>
 
-          {activeZone && activeZone.type === 'ticker' ? (
+          {activeZone && (activeZone.type === 'ticker' || activeZone.type === 'header') ? (
             <Panel>
-              <PanelHeader title={activeZone.name} description="Faixa de notícias e avisos rolando." />
-              <PecaDaZona zona={cfg.zonas[activeZone.id]} formato="rodape"
-                onRemover={() => patchCfg((next) => { delete next.zonas[activeZone.id].peca; })} />
-              <TickerEditor zone={cfg.zonas[activeZone.id]} onChange={(z) => patchCfg((next) => { next.zonas[activeZone.id] = z; })} />
-            </Panel>
-          ) : activeZone && activeZone.type === 'header' ? (
-            <Panel>
-              {cfg.zonas[activeZone.id] && cfg.zonas[activeZone.id].peca
-                ? <PecaDaZona zona={cfg.zonas[activeZone.id]} formato="cabecalho"
-                  onRemover={() => patchCfg((next) => { delete next.zonas[activeZone.id].peca; })} />
-                : <EmptyState icon={Info} title="Cabeçalho automático"
-                  description="O cabeçalho mostra logo, relógio e clima automaticamente. Nome e tema ficam em “Ajustes da tela”."
-                  action={<Button size="sm" variant="secondary" icon={Settings2} onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>} />}
+              <PanelHeader title={activeZone.type === 'header' ? 'Cabeçalho' : 'Rodapé'}
+                description={activeZone.type === 'header' ? 'A faixa de cima: a marca, a hora e as chamadas.' : 'A faixa de baixo: as peças e os avisos que passam, ou as notícias.'} />
+              <FaixaDaTela key={activeZone.id} tipo={activeZone.type} zona={cfg.zonas[activeZone.id]}
+                onAjustes={() => setSettingsOpen(true)}
+                onChange={(z) => patchCfg((next) => { next.zonas[activeZone.id] = z; })} />
             </Panel>
           ) : (
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,360px)_1fr]">
+            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
               {/* Sequência */}
               <Panel className="flex flex-col">
                 <PanelHeader title="Sequência" description={items.length ? `${items.length} ${items.length === 1 ? 'conteúdo' : 'conteúdos'}` : undefined}
@@ -582,24 +607,6 @@ export function ContentEditorPage({ device, onBack, onCriar }) {
         zones={zones.map((z) => ({ id: z.id, type: z.type }))}
         onApply={(camp) => { applyCampaign(camp); setCampOpen(false); }}
       />
-    </div>
-  );
-}
-
-/*
- * A peça da campanha no cabeçalho ou no rodapé (motor HTML). Sem este
- * quadro, aplicar a campanha prendia a zona na peça: não havia como voltar
- * ao cabeçalho automático nem ao letreiro de sempre.
- */
-function PecaDaZona({ zona, formato, onRemover }) {
-  if (!zona || !zona.peca) return null;
-  return (
-    <div className="space-y-2 border-b border-line p-3">
-      <PecaHtml item={zona.peca} formato={formato} />
-      <div className="flex items-center justify-between gap-2 text-xs text-ink-2">
-        <span>{formato === 'rodape' ? 'Pele da campanha · as frases abaixo rolam por dentro dela.' : 'Cabeçalho da campanha · relógio e clima continuam vivos.'}</span>
-        <Button size="sm" variant="ghost" onClick={onRemover}>{formato === 'rodape' ? 'Voltar ao letreiro padrão' : 'Voltar ao automático'}</Button>
-      </div>
     </div>
   );
 }

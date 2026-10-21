@@ -47,3 +47,41 @@ test('item 29: Campanhas é a casa da campanha — uma vez, com estado, TVs e o 
   assert.equal((rota.match(/capa: capaDe\(/g) || []).length, 4, 'toda gravação de resultado atualiza a capa');
   for (const f of ['server/db-sqlite.js', 'server/db-postgres.js']) assert.match(ler(f), /capa/, f);
 });
+
+test('itens 30 e 31: a faixa é uma lista, as campanhas da TV se contam e se tiram, a TV é desenhada', async () => {
+  const { pathToFileURL } = require('node:url');
+  const T = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/tela.js')).href);
+  const a = { type: 'peca-html', html: 'a', _campanha: 'Pão' };
+  const b = { type: 'peca-html', html: 'b' };
+  assert.deepEqual(T.pecasDaFaixa({ peca: b }), [b], 'a peça única de antes vale como lista');
+  assert.deepEqual(T.pecasDaFaixa({ pecas: [a, b], peca: a }), [a, b]);
+  assert.deepEqual(T.comPecas({ header: true }, [b, a]), { header: true, pecas: [b, a], peca: b }, 'a primeira é a da TV antiga');
+  assert.deepEqual(T.comPecas({ header: true, pecas: [a], peca: a }, []), { header: true }, 'vazia volta ao automático');
+  const cfg = { zonas: {
+    principal: { items: [{ type: 'text', titulo: 'meu' }, { type: 'peca-html', _campanha: 'Pão' }] },
+    cabecalho: { header: true, pecas: [a, b], peca: a },
+    rodape: { peca: { type: 'peca-html', _campanha: 'Pão' }, messages: ['Pix'] },
+  } };
+  assert.deepEqual(T.campanhasDaConfig(cfg), [{ nome: 'Pão', pecas: 3 }]);
+  const sem = T.semCampanha(cfg, 'Pão');
+  assert.deepEqual(sem.zonas.principal.items, [{ type: 'text', titulo: 'meu' }]);
+  assert.deepEqual(sem.zonas.cabecalho.pecas, [b], 'o estilo que não é da campanha fica');
+  assert.deepEqual(sem.zonas.cabecalho.peca, b);
+  assert.equal(sem.zonas.rodape.peca, undefined);
+  assert.deepEqual(sem.zonas.rodape.messages, ['Pix']);
+  assert.equal(cfg.zonas.cabecalho.pecas.length, 2, 'não mexe na config recebida');
+  // A grade da miniatura: vh vira fr na mesma proporção.
+  assert.equal(T.emFr('12vh 1fr 11vh'), 'minmax(2.1rem, 12.00fr) 77.00fr minmax(2.1rem, 11.00fr)');
+  assert.equal(T.emFr('3fr 1.1fr'), '73.17fr 26.83fr');
+  assert.equal(T.proporcaoDoLayout({ orientation: 'portrait' }), '9 / 16');
+  // A página da TV usa as peças da faixa, o desenho e as campanhas.
+  const tv = semComentarios(ler('web/src/pages/ContentEditorPage.jsx'));
+  assert.match(tv, /<MapaDaTela layout=\{layoutCanonico\} ativa=\{activeZone && activeZone\.id\} onEscolher=\{selectZone\} resumo=\{resumoDaZona\} \/>/);
+  assert.match(tv, /<CampanhasNaTela cfg=\{cfg\} onTirar=\{tirarCampanha\}/);
+  assert.doesNotMatch(tv, /function PecaDaZona/, 'a peça única de antes saiu');
+  const faixa = semComentarios(ler('web/src/components/tela/FaixaDaTela.jsx'));
+  assert.match(faixa, /\[\['pecas', 'Peças e avisos', Layers\], \['noticias', 'Notícias', Newspaper\]\]/, 'o rodapé com dois modos');
+  assert.match(faixa, /\{modo === 'pecas' \? \(/);
+  assert.match(faixa, /<TickerEditor zone=\{z\} onChange=\{onChange\} \/>/, 'as notícias só no modo Notícias');
+  assert.match(faixa, /type="datetime-local"/, 'a contagem regressiva');
+});
