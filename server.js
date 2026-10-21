@@ -560,6 +560,8 @@ async function handleApi(req, res, pathname, query) {
     conversa: 'conversa',
     // O ecossistema do Criar (item 23): o texto da campanha inteira. As fotos cobram à parte, em fotoDaConta.
     ecossistema: 'ecossistema',
+    // Ajustar a campanha depois de gerada (item 26): entender o pedido é texto; a foto nova cobra em fotoDaConta.
+    ajustar: 'ajuste',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*

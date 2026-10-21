@@ -226,7 +226,7 @@ export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
         )}
         <ResultadoCampanha campanha={campanha} telas={telas} onIr={onIr}
           acoes={<PorPraRodar campanha={campanha} telas={telas} onMudou={setCampanha} />}
-          onContinuar={() => setCampanha(null)} onNova={nova} />
+          onMudou={setCampanha} onNova={nova} />
       </div>
     );
   }

@@ -86,6 +86,8 @@ const OPERACOES = {
   conversa: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Conversa do Criar' },
   // O texto da campanha inteira do Criar (item 23). Cada foto gerada cobra à parte, como campanha-peca.
   ecossistema: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Campanha do Criar' },
+  // Ajustar a campanha do Criar (item 26). A foto nova cobra à parte, como campanha-peca.
+  ajuste: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Ajuste de campanha' },
 };
 
 function operacao(tipo) { return OPERACOES[tipo] || null; }
