@@ -1,3 +1,7 @@
+> **21/10:** os preços, o anual e o teto de IA mudaram — o que vale está no
+> `docs/PLANO.md` §6 e em `server/plans.js` (EXECUTOR item 11). Este documento
+> guarda a conta aberta da versão anterior (franquia por tela).
+
 # Proposta de cobrança — MultiTelas
 
 Segunda versão. A primeira calculava só o custo de IA sobre a receita e

@@ -1,5 +1,6 @@
 /*
- * server/lembretes.js — os dois e-mails do fim do teste.
+ * server/lembretes.js — os dois e-mails do fim do teste, e o aviso de fatura
+ * em atraso (3 dias, PLANO §6.6; ver decidirAtraso mais abaixo).
  *
  * O teste de 14 dias acabava em silêncio: a conta descobria no painel, ou
  * pela TV com o selo "versão gratuita" no canto. Quem ia assinar não tinha
@@ -84,6 +85,11 @@ function mensagem(tipo, conta, appUrl, agora) {
     destino = '/app/?ir=billing';
   }
 
+  return montar({ assunto, titulo, paragrafos, botao, destino }, appUrl);
+}
+
+/* O e-mail pronto (texto e HTML), o mesmo desenho para todos os avisos. */
+function montar({ assunto, titulo, paragrafos, botao, destino }, appUrl) {
   const link = appUrl ? appUrl + destino : '';
   const text = titulo + '\n\n' + paragrafos.join('\n\n') + (link ? '\n\n' + botao + ': ' + link : '');
   const html = '<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0f172a">' +
@@ -92,6 +98,54 @@ function mensagem(tipo, conta, appUrl, agora) {
     (link ? '<p style="margin:8px 0 0"><a href="' + escapar(link) + '" style="display:inline-block;background:#2f6feb;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 20px;border-radius:8px">' + escapar(botao) + '</a></p>' : '') +
     '</div>';
   return { subject: assunto, text, html };
+}
+
+/* ---------------- Fatura em atraso (PLANO §6.6) ----------------
+ *
+ * O aviso de 3 dias. Um por atraso: a marca é o próprio atraso_desde, então
+ * um atraso novo (pagou, atrasou de novo meses depois) avisa de novo, e o
+ * mesmo atraso nunca avisa duas vezes. Conta que já pagou sai da lista pelo
+ * plan_status.
+ */
+function decidirAtraso(conta, agora) {
+  if (!conta || !conta.email) return false;
+  const s = plans.situacaoAtraso(conta, agora);
+  return !!(s && s.aviso && Number(conta.aviso_atraso) !== s.desde);
+}
+
+function mensagemAtraso(conta, appUrl, agora) {
+  const s = plans.situacaoAtraso(conta, agora) || { diasEmAtraso: plans.ATRASO.avisoDias, diasAteSelo: 0, diasAteBloquear: 0 };
+  const dias = (n) => n + (n === 1 ? ' dia' : ' dias');
+  return montar({
+    assunto: 'Fatura do MultiTelas em atraso — suas telas continuam no ar',
+    titulo: 'Há uma fatura em atraso há ' + dias(s.diasEmAtraso),
+    paragrafos: [
+      'Suas telas continuam no ar, do jeito que estão. Nunca desligamos uma tela por causa de fatura.',
+      'Se a fatura não for paga: ' + (s.diasAteSelo > 0 ? 'em ' + dias(s.diasAteSelo) + ' as TVs passam a mostrar um pequeno selo do MultiTelas no canto, e ' : '')
+        + 'em ' + dias(s.diasAteBloquear) + ' criar com IA e ligar telas novas ficam pausados até o pagamento.',
+      'A fatura em aberto está no painel, em Plano. Pagou, tudo volta na hora.',
+    ],
+    botao: 'Ver a fatura',
+    destino: '/app/?ir=billing',
+  }, appUrl);
+}
+
+async function varrerAtraso({ db, mail, appUrl }, t0) {
+  if (!db.contasEmAtraso) return 0;
+  let enviados = 0;
+  for (const conta of await db.contasEmAtraso()) {
+    if (!decidirAtraso(conta, t0)) continue;
+    const { subject, text, html } = mensagemAtraso(conta, appUrl, t0);
+    try {
+      await mail.send({ to: conta.email, subject, html, text });
+      await db.marcarAvisoAtraso(conta.id, Number(conta.atraso_desde));
+      enviados++;
+    } catch (e) {
+      log.aviso('lembrete.atraso-falhou', { conta: conta.id, motivo: e.message });
+    }
+  }
+  if (enviados) log.info('lembrete.atraso', { enviados });
+  return enviados;
 }
 
 async function varrer({ db, mail, appUrl, agora }) {
@@ -112,7 +166,8 @@ async function varrer({ db, mail, appUrl, agora }) {
     }
   }
   if (enviados) log.info('lembrete.teste', { enviados });
-  return { enviados };
+  const atrasos = await varrerAtraso({ db, mail, appUrl }, t0);
+  return { enviados, atrasos };
 }
 
 function ligar({ db, mail, appUrl }) {
@@ -125,4 +180,4 @@ function ligar({ db, mail, appUrl }) {
   return () => { clearTimeout(inicio); clearInterval(relogio); };
 }
 
-module.exports = { decidir, mensagem, varrer, ligar, JANELA_FIM_MS, INTERVALO_MS };
+module.exports = { decidir, mensagem, decidirAtraso, mensagemAtraso, varrer, ligar, JANELA_FIM_MS, INTERVALO_MS };

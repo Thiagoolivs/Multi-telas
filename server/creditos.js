@@ -135,9 +135,11 @@ function semSaldo(precisa, tem) {
     erro: 'creditos_insuficientes',
     precisa,
     tem,
-    titulo: 'Seus créditos acabaram',
+    // O cliente vê CRIAÇÕES, não créditos (PLANO §6.5).
+    titulo: 'As criações do mês acabaram',
     mensagem: 'Suas telas continuam no ar, e o editor continua inteiro. '
-      + 'O que precisa de crédito é gerar imagem nova.',
+      + 'Você segue com os modelos prontos, o banco de imagens e as suas fotos; '
+      + 'criar imagem nova com IA volta quando o mês renovar, ou com um pacote de criações.',
     saidas: ['comprar-pacote', 'mudar-plano', 'usar-biblioteca'],
   };
 }
@@ -162,8 +164,22 @@ function pagamentoAtrasado() {
     erro: 'pagamento_atrasado',
     titulo: 'Pagamento em atraso',
     mensagem: 'Suas telas continuam no ar, e o editor continua inteiro. '
-      + 'Gerar imagem com IA volta assim que a fatura em aberto for paga.',
+      + 'Criar com IA volta assim que a fatura em aberto for paga.',
     saidas: ['pagar-fatura'],
+  };
+}
+
+/*
+ * O teste de 14 dias acabou sem assinatura: as criações do teste venceram
+ * (PLANO §6.4). Mesma forma e mesma primeira linha das outras duas.
+ */
+function testeAcabou() {
+  return {
+    erro: 'teste_acabou',
+    titulo: 'O teste acabou',
+    mensagem: 'Suas telas continuam no ar, com o selo da versão gratuita, e o editor continua inteiro. '
+      + 'Para voltar a criar com IA, assine o plano.',
+    saidas: ['mudar-plano', 'usar-biblioteca'],
   };
 }
 
@@ -187,6 +203,6 @@ function franquiaDoCiclo(plans, planId, telas) {
 module.exports = {
   OPERACOES, CUSTO_IMAGEM_CENTAVOS, CUSTO_TEXTO_CENTAVOS,
   TETO_TEXTO_DIA, TETO_TEXTO_HORA,
-  operacao, custaCredito, creditosDe, saldo, debitar, semSaldo, pagamentoAtrasado, franquiaDoCiclo,
+  operacao, custaCredito, creditosDe, saldo, debitar, semSaldo, pagamentoAtrasado, testeAcabou, franquiaDoCiclo,
   PACOTES, pacote,
 };

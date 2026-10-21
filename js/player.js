@@ -301,17 +301,21 @@
      * conteúdo e sem capturar clique. Some sozinho no pulso seguinte à
      * assinatura.
      */
+    // O texto vem do servidor: "versão gratuita" (teste acabado) ou só a marca
+    // (fatura com 10 dias de atraso — PLANO §6.6; nunca tela preta).
     document.addEventListener('mt:selo', function (ev) {
       let el = document.getElementById('mt-selo');
+      const texto = typeof ev.detail === 'string' ? ev.detail : 'MultiTelas · versão gratuita';
       if (ev.detail && !el) {
         el = document.createElement('div');
         el.id = 'mt-selo';
         el.className = 'mt-selo';
-        el.textContent = 'MultiTelas · versão gratuita';
         document.body.appendChild(el);
       } else if (!ev.detail && el) {
         el.remove();
+        return;
       }
+      if (el && el.textContent !== texto) el.textContent = texto;
     });
     async function pulsar() {
       const carimbo = await MTCloud.heartbeat(dev.id);

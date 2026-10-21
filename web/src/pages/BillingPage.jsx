@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CreditCard, Check, MonitorPlay, Sparkles, ExternalLink, HardDrive, Image as ImageIcon } from 'lucide-react';
+import { CreditCard, Check, MonitorPlay, Sparkles, ExternalLink, HardDrive, Image as ImageIcon, ShieldCheck, CalendarCheck } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -8,9 +8,18 @@ import { Progress, Skeleton, ErrorState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { billing } from '../api.js';
 
+/*
+ * PLANO E COBRANÇA — em português de lojista (EXECUTOR, item 11).
+ *
+ * O cliente vê CRIAÇÕES, e não créditos, franquia ou ciclo ("faltam 32
+ * criações este mês"). Os números vêm todos do servidor (server/plans.js):
+ * esta página não refaz conta de preço, só mostra.
+ */
 function brl(cents) {
-  return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0 });
+  return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
+const data = (ms) => new Date(ms).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+const plural = (n, um, varios) => n + ' ' + (n === 1 ? um : varios);
 
 // Banner de retorno do checkout (?billing=success|cancel), limpo da URL após ler.
 function useBillingFlash() {
@@ -26,7 +35,7 @@ function useBillingFlash() {
 }
 
 export function BillingPage({ onFalarComVendas }) {
-  const { data, loading, error, reload } = useAsync(billing.get);
+  const { data: d, loading, error, reload } = useAsync(billing.get);
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const [flash] = useBillingFlash();
@@ -45,7 +54,7 @@ export function BillingPage({ onFalarComVendas }) {
     }
   }
 
-  // Pacote de créditos: vai para a fatura do Asaas; em modo simulado credita na hora.
+  // Pacote de criações: vai para a fatura do Asaas; em modo simulado entra na hora.
   async function comprarPacote(id) {
     setBusy(id); setErr('');
     try {
@@ -61,7 +70,7 @@ export function BillingPage({ onFalarComVendas }) {
   if (loading) {
     return (
       <div>
-        <PageHeader title="Plano e cobrança" subtitle="Sua assinatura, uso e upgrades." />
+        <PageHeader title="Plano e cobrança" subtitle="O que você paga, o que está incluído e as suas criações." />
         <Skeleton className="mb-4 h-24 rounded-xl" />
         <div className="grid gap-3 sm:grid-cols-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-60 rounded-xl" />)}</div>
       </div>
@@ -69,27 +78,23 @@ export function BillingPage({ onFalarComVendas }) {
   }
   if (error) return <ErrorState description="Não foi possível carregar o plano." onRetry={reload} />;
 
-  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, faixas, cortesia, atraso, pacotes, teste } = data;
+  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, cortesia, atraso, pacotes, teste, contrato, anual, ia } = d;
+  const pago = plan.precoTelaCents > 0 || plan.sobConsulta;
   const frac = usage.limit ? usage.screens / usage.limit : 0;
-  // Usar todas as telas do plano é o uso normal (o grátis tem uma, e quem
-  // pareou a primeira via uma barra VERMELHA "no limite" logo de cara, como
-  // se algo tivesse dado errado). Vermelho fica para quando passa do limite.
+  // Usar todas as telas do plano é o uso normal; vermelho só quando passa do limite.
   const tone = frac > 1 ? 'danger' : 'accent';
   /*
-   * "Cortesia" tem selo próprio de propósito.
-   *
-   * A conta liberada tem plano Pro DE VERDADE — mesmo limite de telas, mesmo
-   * crédito. Sem este rótulo a tela diria "Pro · Ativo", a pessoa acharia que
-   * está pagando, e quando a cortesia acabasse a conta encolheria sem que
-   * nada tivesse avisado que aquilo era emprestado.
+   * "Cortesia" tem selo próprio de propósito: a conta liberada tem plano Pro
+   * DE VERDADE, e sem o rótulo a pessoa acharia que está pagando.
    */
   const statusLabel = cortesia
     ? 'Cortesia'
-    : ({ active: 'Ativo', free: 'Grátis', canceled: 'Cancelado', past_due: 'Pagamento pendente', estornado: 'Estornado', chargeback: 'Contestado' }[status] || status);
+    : ({ active: 'Em dia', free: teste && !teste.ativo ? 'Versão gratuita' : 'Teste', canceled: 'Cancelado', past_due: 'Fatura em atraso', estornado: 'Estornado', chargeback: 'Contestado' }[status] || status);
+  const anualMenor = anual && anual.anualCents < anual.mensalCents;
 
   return (
     <div>
-      <PageHeader title="Plano e cobrança" subtitle="Sua assinatura, uso e upgrades." />
+      <PageHeader title="Plano e cobrança" subtitle="O que você paga, o que está incluído e as suas criações." />
 
       {flash === 'success' && (
         <div className="mb-4 flex items-center gap-2 rounded-md border border-ok/30 bg-ok-soft px-3 py-2 text-sm text-ok">
@@ -101,115 +106,127 @@ export function BillingPage({ onFalarComVendas }) {
       )}
       {err && <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">{err}</div>}
 
-      {/* Pagamento atrasado: avisa desde o primeiro dia, com a data do corte.
-          A primeira frase é a mesma de sempre — a tela continua no ar. */}
+      {/*
+        Fatura em atraso (PLANO §6.6). Avisa desde o primeiro dia, com o que
+        acontece e quando. A primeira frase é sempre a mesma: a tela continua.
+      */}
       {atraso && (
         <div className={'mb-4 rounded-md border px-3 py-2 text-sm ' + (atraso.bloqueado
           ? 'border-danger/30 bg-danger-soft text-danger'
           : 'border-warn/30 bg-warn-soft text-warn')}>
-          <b>Há uma fatura em atraso.</b> Suas telas continuam no ar.{' '}
+          <b>Há uma fatura em atraso{atraso.diasEmAtraso > 0 ? ' há ' + plural(atraso.diasEmAtraso, 'dia', 'dias') : ''}.</b> Suas telas continuam no ar.{' '}
           {atraso.bloqueado
-            ? 'Gerar imagem com IA e ligar telas novas estão pausados até o pagamento.'
-            : `Se não for paga, em ${atraso.diasAteBloquear} ${atraso.diasAteBloquear === 1 ? 'dia' : 'dias'} a IA e o pareamento de telas novas pausam.`}
-          {' '}A fatura em aberto está em "Assinatura", logo abaixo.
+            ? 'Criar com IA e ligar telas novas estão pausados até o pagamento, e as TVs mostram o selo do MultiTelas no canto.'
+            : atraso.selo
+              ? `As TVs estão mostrando um pequeno selo do MultiTelas no canto. Em ${plural(atraso.diasAteBloquear, 'dia', 'dias')}, criar com IA e ligar telas novas ficam pausados.`
+              : `Em ${plural(atraso.diasAteSelo, 'dia', 'dias')}, as TVs passam a mostrar um pequeno selo do MultiTelas no canto; em ${plural(atraso.diasAteBloquear, 'dia', 'dias')}, criar com IA e ligar telas novas ficam pausados.`}
+          {' '}Pagou, tudo volta na hora. A fatura está em "Sua assinatura", logo abaixo.
         </div>
       )}
 
-      {/* Plano atual + uso */}
+      {/* O plano de hoje: quanto custa e quantas telas */}
       <Panel className="mb-5">
         <div className="flex flex-wrap items-center gap-4 p-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-surface-2 text-accent"><CreditCard size={18} /></div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-ink">Plano {plan.name}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-ink">{pago ? 'Plano ' + plan.name : 'Teste grátis'}</span>
               <Badge tone={cortesia ? 'accent' : status === 'active' ? 'ok' : status === 'canceled' || status === 'past_due' ? 'danger' : 'neutral'}>{statusLabel}</Badge>
+              {pago && !plan.sobConsulta && !cortesia && <Badge tone="neutral">{contrato === 'anual' ? 'Contrato anual' : 'Mensal, sem contrato'}</Badge>}
             </div>
             <div className="mt-0.5 text-xs text-ink-3">
               {cortesia ? 'Acesso liberado para teste — sem cobrança e sem prazo'
                 : plan.sobConsulta ? 'Contrato — preço combinado'
                 : usage.mensalidadeCents > 0
-                  ? `${brl(usage.mensalidadeCents)}/mês · ${brl(usage.precoTelaCents)} por tela`
+                  ? `Você paga ${brl(usage.mensalidadeCents)} por mês · ${plural(Math.max(1, usage.screens), 'tela', 'telas')}${usage.screens > 1 ? ', ' + brl(usage.precoTelaCents) + ' cada em média' : ''}`
                   /* O plano grátis é o TESTE de 14 dias: dizer "sem custo" escondia o prazo. */
                   : teste && teste.ativo
-                    ? `Teste grátis · ${teste.restam === 1 ? 'último dia' : 'faltam ' + teste.restam + ' dias'} — sem cartão`
+                    ? `${teste.restam === 1 ? 'Último dia' : 'Faltam ' + teste.restam + ' dias'} de teste · sem cartão`
                     : teste
-                      ? 'Teste encerrado · a tela segue no ar com o selo "versão gratuita"'
+                      ? 'O teste acabou · a tela segue no ar com o selo "versão gratuita"'
                       : 'Sem custo'}
-              {usage.descontoVolume > 0 ? ` · −${Math.round(usage.descontoVolume * 100)}% por volume` : ''}
-              {renewsAt ? ` · renova em ${new Date(renewsAt).toLocaleDateString('pt-BR')}` : ''}
+              {renewsAt ? ` · próxima cobrança em ${new Date(renewsAt).toLocaleDateString('pt-BR')}` : ''}
             </div>
           </div>
           <div className="w-full sm:w-56">
             <div className="flex items-baseline justify-between text-xs">
-              <span className="text-ink-2"><b className="tnum text-ink">{usage.screens}</b> de {usage.limit} {usage.limit === 1 ? 'tela' : 'telas'}</span>
+              <span className="text-ink-2"><b className="tnum text-ink">{usage.screens}</b> de {plural(usage.limit, 'tela', 'telas')}</span>
               {frac > 1
                 ? <span className="font-medium text-danger">acima do limite</span>
                 : frac === 1 && <span className="text-ink-3">todas em uso</span>}
             </div>
             <Progress value={Math.min(100, frac * 100)} tone={tone} className="mt-1.5 h-2" />
+            {pago && usage.proximaTelaCents > 0 && (
+              <div className="mt-1 text-2xs text-ink-3">Mais uma tela: + {brl(usage.proximaTelaCents)} por mês</div>
+            )}
           </div>
         </div>
       </Panel>
 
-      {/* Créditos de IA — o saldo e para onde ele foi.
-          A frase de baixo não é enfeite: quem esbarra no limite precisa ler,
-          antes de qualquer coisa, que a operação dele continua de pé. */}
+      {/*
+        CRIAÇÕES COM IA — quantas faltam, e para onde foram. A frase de baixo
+        não é enfeite: quem esbarra no fim precisa ler, antes de tudo, que a
+        loja continua de pé.
+      */}
       {creditos && (
         <Panel className="mb-5">
-          <PanelHeader title="Créditos de IA" description="Um crédito é uma imagem gerada. Todo o texto por IA é livre." />
-          <div className="flex flex-wrap items-center gap-5 p-4">
+          <PanelHeader title="Criações com IA"
+            description="Uma criação é uma imagem feita pela IA: a foto, o fundo, a ilustração. Os textos e as peças sem foto não contam." />
+          <div className="flex flex-wrap items-center gap-6 p-4">
             <div>
-              <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Saldo</div>
-              <div className="tnum text-2xl font-bold text-ink">{creditos.saldo.total}</div>
-              <div className="text-xs text-ink-3">
-                {creditos.saldo.franquia} da franquia
-                {/*
-                  "comprados" mentia para toda conta nova: os 5 de boas-vindas
-                  entram nesse balde de propósito, para não sumirem na primeira
-                  virada de ciclo — e a tela dizia "5 comprados" a quem nunca
-                  comprou nada. O que os dois têm em comum de verdade é que não
-                  expiram, e é isso que a pessoa precisa saber.
-                */}
-                {creditos.saldo.comprado > 0 ? ` · ${creditos.saldo.comprado} que não expiram` : ''}
+              <div className="tnum text-3xl font-bold text-ink">{creditos.saldo.total}</div>
+              <div className="text-xs text-ink-2">
+                {creditos.saldo.total === 1 ? 'criação disponível' : 'criações disponíveis'}{pago ? ' este mês' : teste && teste.ativo ? ' no teste' : ''}
               </div>
-            </div>
-            <div>
-              <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Franquia do plano</div>
-              <div className="tnum text-2xl font-bold text-ink">{creditos.franquiaDoPlano}</div>
               {/*
-                Dizia "para 0 telas" em conta sem tela pareada — e mostrava
-                franquia de 10 logo acima, porque o cálculo usa `max(1, telas)`.
-                O número e a legenda se contradiziam na mesma linha.
+                O balde que não vence tem pacote comprado E as boas-vindas das
+                contas antigas (5, de antes do teste com 20 criações): "comprado"
+                mentiria para quem nunca comprou. O que os dois têm em comum é
+                não vencer, e é isso que a pessoa precisa saber.
               */}
-              <div className="text-xs text-ink-3">
-                {creditos.telas === 0
-                  ? 'por mês, já contando a primeira tela'
-                  : `por mês, para ${creditos.telas} ${creditos.telas === 1 ? 'tela' : 'telas'}`}
-              </div>
+              {!pago && teste && teste.ativo && creditos.saldo.franquia > 0 && (
+                <div className="text-2xs text-ink-3">as do teste valem até {data(teste.terminaEm)}</div>
+              )}
+              {creditos.saldo.comprado > 0 && (
+                <div className="text-2xs text-ink-3">{creditos.saldo.comprado} {creditos.saldo.comprado === 1 ? 'delas não vence' : 'delas não vencem'}</div>
+              )}
             </div>
             <div>
-              <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Usado neste ciclo</div>
-              <div className="tnum text-2xl font-bold text-ink">{creditos.usoDoCiclo.creditos}</div>
-              <div className="text-xs text-ink-3">{creditos.usoDoCiclo.chamadas} chamadas de IA</div>
+              <div className="tnum text-3xl font-bold text-ink">{creditos.usoDoCiclo.creditos}</div>
+              <div className="text-xs text-ink-2">{creditos.usoDoCiclo.creditos === 1 ? 'criação feita' : 'criações feitas'} {pago ? 'este mês' : 'até agora'}</div>
             </div>
-            <div className="ml-auto max-w-xs text-xs text-ink-2">
+            <div>
+              {pago ? (
+                <>
+                  <div className="tnum text-3xl font-bold text-ink">{creditos.franquiaDoPlano}</div>
+                  <div className="text-xs text-ink-2">por mês no seu plano</div>
+                  <div className="text-2xs text-ink-3">renova em {data(creditos.renovaEm)}</div>
+                </>
+              ) : (
+                <>
+                  <div className="tnum text-3xl font-bold text-ink">{ia.criacoesDoPlano}</div>
+                  <div className="text-xs text-ink-2">por mês, assinando</div>
+                </>
+              )}
+            </div>
+            <div className="max-w-xs text-xs text-ink-2 sm:ml-auto">
               <ImageIcon size={14} className="mr-1 inline text-ink-3" />
-              Sem crédito, as telas continuam no ar e o editor continua inteiro — o que
-              para é gerar imagem nova.
+              Acabaram? Suas telas continuam no ar, e você segue com os modelos prontos,
+              o banco de imagens e as suas fotos.
             </div>
           </div>
-          {/* Pacotes avulsos. Crédito comprado não expira e é gasto depois da
-              franquia — dito aqui, porque é a dúvida de quem vai pagar. */}
+          {/* Pacotes avulsos: não vencem e só são usados depois das do mês —
+              dito aqui, porque é a dúvida de quem vai pagar. */}
           {canManage && pacotes && pacotes.length > 0 && (
             <div className="border-t border-line p-4">
               <div className="mb-2 text-xs text-ink-2">
-                Precisa de mais? Créditos avulsos <b>não expiram</b> e só são usados depois da franquia do mês.
+                Precisa de mais? Pacotes de criações <b>não vencem</b> e só são usados depois das do mês.
               </div>
               <div className="flex flex-wrap gap-2">
                 {pacotes.map((p) => (
                   <Button key={p.id} size="sm" variant="secondary" disabled={!!busy || (atraso && atraso.bloqueado)}
                     onClick={() => comprarPacote(p.id)}>
-                    {busy === p.id ? 'Abrindo…' : `+${p.creditos} créditos · ${brl(p.precoCents)}`}
+                    {busy === p.id ? 'Abrindo…' : `+${p.creditos} criações · ${brl(p.precoCents)}`}
                   </Button>
                 ))}
               </div>
@@ -218,81 +235,100 @@ export function BillingPage({ onFalarComVendas }) {
         </Panel>
       )}
 
-      {/* Faixas de desconto por volume */}
-      {/* As faixas aparecem inclusive no plano grátis: quem está avaliando
-          precisa ver que crescer sai mais barato por tela. */}
-      {faixas && (
+      {/*
+        MENSAL OU ANUAL (PLANO §6.1), para as telas DESTA conta. O anual nasce
+        numa conversa (o termo do contrato é assinado com a equipe), por isso
+        o botão é "falar com a gente" e não um checkout.
+      */}
+      {anual && !plan.sobConsulta && !cortesia && (
         <Panel className="mb-5">
-          <PanelHeader title="Desconto por volume" description="Automático, e só sobre as telas daquela faixa." />
-          <div className="flex flex-wrap gap-2 p-4">
-            {faixas.map((f, i) => {
-              const de = i === 0 ? 1 : faixas[i - 1].ate + 1;
-              const ativa = usage.screens >= de && (f.ate == null || usage.screens <= f.ate);
-              return (
-                <div key={i} className={'rounded-lg border px-3 py-2 text-xs ' + (ativa ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink-2')}>
-                  <b className="text-ink">{f.ate == null ? `${de}+` : de === f.ate ? de : `${de}–${f.ate}`}</b> telas
-                  <span className="ml-2">{f.desconto > 0 ? `−${Math.round(f.desconto * 100)}%` : 'preço cheio'}</span>
-                </div>
-              );
-            })}
+          <PanelHeader title="Mensal ou anual"
+            description={`Para ${plural(Math.max(1, usage.screens), 'tela', 'telas')}, por mês.`} />
+          <div className="grid gap-3 p-4 sm:grid-cols-2">
+            <div className={'rounded-xl border p-4 ' + (pago && contrato !== 'anual' ? 'border-accent bg-accent-soft/30' : 'border-line bg-surface-2')}>
+              <div className="text-sm font-semibold text-ink">Mensal</div>
+              <div className="mt-1 text-2xl font-bold tnum text-ink">{brl(anual.mensalCents)}<span className="text-sm font-medium text-ink-3">/mês</span></div>
+              <p className="mt-1 text-xs text-ink-3">R$ 149 por tela. Sem contrato: cancela quando quiser.</p>
+            </div>
+            <div className={'rounded-xl border p-4 ' + (contrato === 'anual' ? 'border-accent bg-accent-soft/30' : 'border-line bg-surface-2')}>
+              <div className="flex items-center gap-2 text-sm font-semibold text-ink">Anual <Badge tone="accent">contrato de {anual.meses} meses</Badge></div>
+              <div className="mt-1 text-2xl font-bold tnum text-ink">
+                {usage.screens >= anual.telasNegociadas ? <span className="text-lg">A combinar</span> : <>{brl(anual.anualCents)}<span className="text-sm font-medium text-ink-3">/mês</span></>}
+              </div>
+              {anualMenor && usage.screens < anual.telasNegociadas && (
+                <p className="mt-1 text-xs font-medium text-ok">Economia de {brl(anual.mensalCents - anual.anualCents)} por mês ({brl((anual.mensalCents - anual.anualCents) * 12)} no ano)</p>
+              )}
+              <ul className="mt-2 space-y-0.5 text-xs text-ink-2">
+                {anual.faixas.map((f) => (
+                  <li key={f.de} className="flex justify-between gap-2">
+                    <span>{f.ate == null ? `da ${f.de}ª tela em diante` : f.de === 1 ? `até ${f.ate} telas` : `da ${f.de}ª à ${f.ate}ª`}</span>
+                    <b className="tnum text-ink">{f.negociado ? 'a combinar' : brl(f.precoTelaCents) + ' cada'}</b>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-2xs text-ink-3">
+                Cancelar antes dos 12 meses tem multa: 30% do que falta pagar, ou o desconto que você recebeu, o que for maior.
+              </p>
+              {contrato !== 'anual' && (
+                <Button size="sm" variant="secondary" className="mt-3 w-full justify-center" onClick={() => onFalarComVendas && onFalarComVendas()}>
+                  Quero o anual — falar com a gente
+                </Button>
+              )}
+            </div>
           </div>
         </Panel>
       )}
 
-      {/* Catálogo de planos */}
+      {/* Os planos */}
       <Panel>
         <PanelHeader title="Planos" description={mode === 'dev' ? 'Cobrança em modo simulado — nada é cobrado de verdade (sem ASAAS_API_KEY).' : undefined} />
         <div className="grid gap-3 p-4 sm:grid-cols-3">
           {catalog.map((p) => {
             const isCurrent = p.id === plan.id;
             const isUpgrade = p.sobConsulta || (p.precoTelaCents || 0) > (plan.precoTelaCents || 0);
+            const gratis = !p.sobConsulta && !p.precoTelaCents;
             return (
               <div key={p.id} className={`relative flex flex-col rounded-xl border p-4 ${isCurrent ? 'border-accent bg-accent-soft/30' : 'border-line bg-surface-2'}`}>
                 {p.id === 'pro' && !isCurrent && (
                   <span className="absolute -top-2 right-3 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold text-accent-fg"><Sparkles size={11} /> Popular</span>
                 )}
-                <div className="text-sm font-semibold text-ink">{p.name}</div>
+                <div className="text-sm font-semibold text-ink">{gratis ? 'Teste' : p.name}</div>
                 <div className="mt-1 text-2xl font-bold tnum text-ink">
                   {p.sobConsulta ? <span className="text-lg">A combinar</span>
-                    : p.precoTelaCents > 0 ? brl(p.precoTelaCents) : 'Grátis'}
+                    : p.precoTelaCents > 0 ? brl(p.precoTelaCents) : (teste ? teste.dias : 14) + ' dias'}
                   {!p.sobConsulta && p.precoTelaCents > 0 && (
                     <span className="text-sm font-medium text-ink-3">/tela/mês</span>
                   )}
                 </div>
-                <p className="mt-1 text-xs text-ink-3">{p.blurb}</p>
+                <p className="mt-1 text-xs text-ink-3">{gratis ? 'Grátis, sem cartão. Depois, a tela segue no ar com um selo.' : p.blurb}</p>
                 <div className="mt-3 space-y-1.5 text-sm text-ink-2">
                   <div className="flex items-center gap-1.5">
-                    <MonitorPlay size={15} className="text-ink-3" />
-                    {p.sobConsulta ? 'Telas sem limite' : <>Até <b className="text-ink">{p.telasMax}</b> telas</>}
+                    <MonitorPlay size={15} className="shrink-0 text-ink-3" />
+                    {p.sobConsulta ? 'Telas sem limite' : p.telasMax === 1 ? '1 tela' : <>Até <b className="text-ink">{p.telasMax}</b> telas</>}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Sparkles size={15} className="text-ink-3" />
-                    {p.creditosPorTela > 0
-                      ? <><b className="text-ink">{p.creditosPorTela}</b> imagens de IA por tela/mês</>
-                      : 'IA para experimentar'}
+                    <Sparkles size={15} className="shrink-0 text-ink-3" />
+                    {gratis
+                      ? <><b className="text-ink">{teste ? teste.criacoes : 20}</b>&nbsp;criações com IA no teste</>
+                      : <span><b className="text-ink">{ia.ate3Telas}</b> criações por mês até 3 telas, mais com mais telas (até {ia.maximo})</span>}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <HardDrive size={15} className="text-ink-3" />
-                    <b className="text-ink">{p.gbPorTela} GB</b> por tela
+                    <HardDrive size={15} className="shrink-0 text-ink-3" />
+                    <span><b className="text-ink">{String(p.gbPorTela).replace('.', ',')} GB</b> para fotos e vídeos{gratis ? '' : ', por tela'}</span>
                   </div>
                 </div>
                 <div className="mt-4 flex-1" />
                 {isCurrent ? (
-                  <Button variant="secondary" size="sm" disabled className="w-full justify-center">Plano atual</Button>
+                  <Button variant="secondary" size="sm" disabled className="w-full justify-center">Seu plano</Button>
                 ) : p.sobConsulta ? (
-                  /*
-                    O Enterprise mostrava "Fazer upgrade" e o clique levava a
-                    erro: ele não tem preço de tabela, e o checkout recusa plano
-                    sem preço. Preço "a combinar" se resolve conversando, e o
-                    botão passa a dizer isso.
-                  */
+                  // Sem preço de tabela: o checkout recusaria. Preço "a combinar" se resolve conversando.
                   <Button variant="secondary" size="sm" className="w-full justify-center"
                     onClick={() => onFalarComVendas && onFalarComVendas()}>
                     Falar com a gente
                   </Button>
                 ) : isUpgrade ? (
                   <Button variant="primary" size="sm" disabled={!canManage || busy === p.id} onClick={() => upgrade(p.id)} className="w-full justify-center">
-                    {busy === p.id ? 'Redirecionando…' : canManage ? 'Fazer upgrade' : 'Só o dono'}
+                    {busy === p.id ? 'Abrindo…' : canManage ? 'Assinar (mensal)' : 'Só o dono assina'}
                   </Button>
                 ) : (
                   <Button variant="ghost" size="sm" disabled className="w-full justify-center">Incluído</Button>
@@ -303,30 +339,40 @@ export function BillingPage({ onFalarComVendas }) {
         </div>
       </Panel>
 
+      {/* O que nunca muda, dito com todas as letras (PLANO §6.6 e §6.7). */}
+      <Panel className="mt-5">
+        <div className="grid gap-3 p-4 text-xs text-ink-2 sm:grid-cols-2">
+          <div className="flex items-start gap-2">
+            <ShieldCheck size={16} className="mt-0.5 shrink-0 text-ok" />
+            <span><b className="text-ink">Nunca desligamos sua tela por causa de fatura.</b> Atrasou: avisamos com 3 dias;
+              com 10, as TVs mostram um pequeno selo do MultiTelas no canto; com 20, criar com IA e ligar telas novas
+              ficam pausados. Pagou, tudo volta na hora.</span>
+          </div>
+          <div className="flex items-start gap-2">
+            <CalendarCheck size={16} className="mt-0.5 shrink-0 text-ink-3" />
+            <span><b className="text-ink">A tela nova entra na próxima fatura.</b> Ligou ou tirou uma tela, o valor do
+              mês seguinte acompanha sozinho — sem cobrança no meio do mês.</span>
+          </div>
+        </div>
+      </Panel>
+
       {/*
-        GESTÃO DA ASSINATURA — antes era um botão que não ia a lugar nenhum.
-
-        Ele chamava um "portal" que devolvia `/app?billing=portal`, e o
-        roteador manda qualquer `?billing=` de volta para esta mesma tela: a
-        pessoa clicava em "Gerenciar assinatura (cartão, cancelamento)" e a
-        página recarregava. Não havia como cancelar por lugar nenhum — o que,
-        além de produto ruim, é exposição no CDC.
-
-        O Asaas não tem portal hospedado, então a gestão é nossa.
+        GESTÃO DA ASSINATURA — o Asaas não tem portal hospedado, então a
+        gestão é nossa (cancelar tem que ser possível daqui: CDC).
       */}
-      {plan.precoTelaCents > 0 && <GestaoDaAssinatura canManage={canManage} onMudou={reload} />}
+      {plan.precoTelaCents > 0 && <GestaoDaAssinatura canManage={canManage} onMudou={reload} contrato={contrato} multa={anual && anual.multa} />}
     </div>
   );
 }
 
-function GestaoDaAssinatura({ canManage, onMudou }) {
-  const { data, loading, error } = useAsync(billing.assinatura);
+function GestaoDaAssinatura({ canManage, onMudou, contrato, multa }) {
+  const { data: d, loading, error } = useAsync(billing.assinatura);
   const [confirmando, setConfirmando] = useState(false);
   const [busy, setBusy] = useState(false);
   const [erro, setErro] = useState('');
 
-  if (loading || error || !data) return null;
-  const { assinatura, fatura, simulado } = data;
+  if (loading || error || !d) return null;
+  const { assinatura, fatura, simulado } = d;
 
   async function cancelar() {
     setBusy(true); setErro('');
@@ -348,10 +394,7 @@ function GestaoDaAssinatura({ canManage, onMudou }) {
           </div>
         )}
 
-        {/*
-          A fatura em aberto resolve sozinha o caso mais comum de suporte:
-          "paguei e não liberou" quase sempre é "gerei o boleto e não paguei".
-        */}
+        {/* "Paguei e não liberou" quase sempre é "gerei o boleto e não paguei": o link resolve. */}
         {fatura && (
           <a href={fatura.url} target="_blank" rel="noreferrer"
             className="flex items-center gap-2 rounded-md border border-warn/40 bg-warn/5 px-3 py-2 text-sm text-ink">
@@ -370,16 +413,21 @@ function GestaoDaAssinatura({ canManage, onMudou }) {
           <p className="text-xs text-ink-3">Só o dono da conta pode cancelar.</p>
         ) : confirmando ? (
           /*
-            A confirmação diz o que ACONTECE, e não "tem certeza?". O que a
-            pessoa precisa saber antes de clicar é que as telas continuam no ar
-            até o fim do período pago — sem isso, cancelar parece desligar tudo
-            agora, e ela liga para o suporte em vez de decidir sozinha.
+            A confirmação diz o que ACONTECE, e não "tem certeza?": as telas
+            continuam no ar até o fim do período pago. No anual, a multa vem
+            em número, antes do clique.
           */
           <div className="rounded-md border border-line bg-surface-2 p-3">
             <p className="text-sm text-ink">
               Cancelar encerra a renovação. Suas telas continuam no ar até o fim do período já pago,
-              e depois a conta volta para o plano Grátis — nada é apagado.
+              e depois a conta volta para a versão gratuita, com o selo — nada é apagado.
             </p>
+            {contrato === 'anual' && multa && multa.cents > 0 && (
+              <p className="mt-2 text-sm text-ink">
+                Seu contrato é anual e faltam {plural(multa.faltam, 'mês', 'meses')}: pelo contrato, a multa fica em <b>{brl(multa.cents)}</b>.
+                A equipe confirma o valor com você antes de cobrar.
+              </p>
+            )}
             <div className="mt-3 flex gap-2">
               <Button size="sm" variant="danger" disabled={busy} onClick={cancelar}>
                 {busy ? 'Cancelando…' : 'Confirmar cancelamento'}

@@ -15,55 +15,76 @@ const assert = require('node:assert');
 const plans = require('../server/plans');
 const cred = require('../server/creditos');
 
-/* ---------------- Preço por tela ---------------- */
+/* ---------------- Preço por tela: mensal e anual (PLANO §6.1) ---------------- */
 
-test('preço por tela, sem desconto abaixo de 5 telas', () => {
+test('mensal: R$ 149 por tela, sem contrato e sem desconto por volume', () => {
   assert.equal(plans.mensalidadeCents('pro', 1), 14900);
   assert.equal(plans.mensalidadeCents('pro', 4), 14900 * 4);
-  assert.equal(plans.mensalidadeCents('pro', 1), 14900);
+  assert.equal(plans.mensalidadeCents('pro', 20, 'mensal'), 14900 * 20, 'o desconto por volume é só do anual');
+  // Contrato desconhecido é mensal: nunca cai num preço que ninguém assinou.
+  assert.equal(plans.mensalidadeCents('pro', 5, 'trimestral'), 14900 * 5);
 });
 
-test('o desconto é da faixa em que a próxima tela cai', () => {
-  assert.equal(plans.descontoVolume(4), 0);
-  assert.equal(plans.descontoVolume(5), 0.10);
-  assert.equal(plans.descontoVolume(9), 0.10);
-  assert.equal(plans.descontoVolume(10), 0.18);
-  assert.equal(plans.descontoVolume(19), 0.18);
-  assert.equal(plans.descontoVolume(20), 0.25);
-  assert.equal(plans.descontoVolume(500), 0.25);
-});
-
-test('o desconto vale só para as telas daquela faixa', () => {
-  // 5 telas no Pro: 4 cheias + 1 com 10% de desconto.
-  assert.equal(plans.mensalidadeCents('pro', 5), 14900 * 4 + 13410);
-  // 10 telas: 4 cheias + 5 a −10% + 1 a −18%.
-  assert.equal(plans.mensalidadeCents('pro', 10), 14900 * 4 + 13410 * 5 + 12218);
-});
-
-test('a próxima tela sempre custa alguma coisa', () => {
+test('anual: o preço da faixa em que a próxima tela cai', () => {
   // O número que a pessoa quer ver antes de parear mais uma.
-  assert.equal(plans.precoProximaTelaCents('pro', 4), 13410);   // a 5ª entra a −10%
-  assert.equal(plans.precoProximaTelaCents('pro', 9), 12218);   // a 10ª entra a −18%
-  assert.equal(plans.precoProximaTelaCents('pro', 19), 11175);  // a 20ª entra a −25%
-  assert.equal(plans.precoProximaTelaCents('pro', 0), 14900);
+  assert.equal(plans.precoProximaTelaCents('pro', 0, 'anual'), 12000);  // 1ª a 3ª: R$ 120
+  assert.equal(plans.precoProximaTelaCents('pro', 3, 'anual'), 10800);  // 4ª a 10ª: R$ 108
+  assert.equal(plans.precoProximaTelaCents('pro', 10, 'anual'), 9600);  // 11ª a 25ª: R$ 96
+  assert.equal(plans.precoProximaTelaCents('pro', 4, 'mensal'), 14900);
 });
 
-test('o preço médio por tela cai conforme a conta cresce', () => {
-  const medio = (n) => plans.precoTelaCents('pro', n);
-  assert.ok(medio(50) < medio(20));
-  assert.ok(medio(20) < medio(10));
-  assert.ok(medio(10) < medio(4));
+test('anual: só as telas daquela faixa pagam o preço dela', () => {
+  // O exemplo do PLANO §6.1: 5 telas no anual = 3 × 120 + 2 × 108 = R$ 576.
+  assert.equal(plans.mensalidadeCents('pro', 5, 'anual'), 57600);
+  // 11 telas: 3 × 120 + 7 × 108 + 1 × 96.
+  assert.equal(plans.mensalidadeCents('pro', 11, 'anual'), 3 * 12000 + 7 * 10800 + 9600);
+});
+
+test('anual: da 26ª tela em diante é negociado, e nunca abaixo do piso', () => {
+  assert.equal(plans.TELAS_NEGOCIADAS, 26);
+  const ultima = plans.FAIXAS_ANUAL[plans.FAIXAS_ANUAL.length - 1];
+  assert.equal(ultima.negociado, true);
+  assert.ok(ultima.precoTelaCents >= plans.PISO_NEGOCIADO_CENTS, 'o preço sem conversa ficou abaixo do piso');
+  assert.equal(plans.PISO_NEGOCIADO_CENTS, 9000);
+  const f = plans.faixasAnual();
+  assert.deepStrictEqual(f.map((x) => [x.de, x.ate, x.negociado]), [[1, 3, false], [4, 10, false], [11, 25, false], [26, null, true]]);
+});
+
+test('o preço médio por tela cai no anual conforme a conta cresce', () => {
+  const medio = (n) => plans.precoTelaCents('pro', n, 'anual');
+  assert.ok(medio(25) < medio(10));
+  assert.ok(medio(10) < medio(3));
+  assert.ok(medio(1) < plans.precoTelaCents('pro', 1, 'mensal'), 'o anual tem que ser mais barato que o mensal');
 });
 
 test('crescer nunca fica mais barato em nenhuma virada de faixa', () => {
-  for (const p of ['pro']) {
+  for (const contrato of ['mensal', 'anual']) {
     for (let n = 1; n < 60; n++) {
       assert.ok(
-        plans.mensalidadeCents(p, n + 1) > plans.mensalidadeCents(p, n),
-        p + ': ' + (n + 1) + ' telas custaria menos que ' + n,
+        plans.mensalidadeCents('pro', n + 1, contrato) > plans.mensalidadeCents('pro', n, contrato),
+        contrato + ': ' + (n + 1) + ' telas custaria menos que ' + n,
       );
     }
   }
+});
+
+test('multa do anual: o maior entre 30% do que falta e o custo não recuperado (PLANO §6.3)', () => {
+  // O exemplo do PLANO: 5 telas, cancela no 4º mês, devolve os aparelhos.
+  const devolveu = plans.multaCancelamentoCents({ telas: 5, mesesUsados: 4, visitaRetirada: true });
+  assert.equal(devolveu.a, 138240, '(a) 30% de 8 × R$ 576');
+  assert.equal(devolveu.b, 82600, '(b) (R$ 745 − R$ 576) × 4 + R$ 150 de retirada');
+  assert.equal(devolveu.cents, 138240);
+  // Sem devolver os 5 aparelhos: (b) soma R$ 210 por aparelho e passa a valer.
+  assert.equal(plans.multaCancelamentoCents({ telas: 5, mesesUsados: 4, visitaRetirada: true, aparelhosNaoDevolvidos: 5 }).cents, 187600);
+  // No fim do contrato, nada falta pagar.
+  assert.equal(plans.multaCancelamentoCents({ telas: 5, mesesUsados: 12 }).a, 0);
+  /*
+   * ATENÇÃO, e por isso o teste existe: pela fórmula escrita, (b) CRESCE com
+   * os meses usados — no 11º mês a multa é R$ 1.859, mais que no 4º. O PLANO
+   * diz que "quem cancela perto do fim paga pouco", e a fórmula não faz isso.
+   * Ficou como está escrito, com a pergunta feita ao dono (issue #135).
+   */
+  assert.equal(plans.multaCancelamentoCents({ telas: 5, mesesUsados: 11 }).cents, 185900);
 });
 
 test('Enterprise não tem preço de tabela', () => {
@@ -92,11 +113,19 @@ test('armazenamento é por conta, somando as telas', () => {
   assert.equal(plans.cotaBytes('free', 1), 0.5 * GB);
 });
 
-test('franquia de crédito também é por tela', () => {
-  assert.equal(plans.franquiaCreditos('pro', 1), 25);
-  assert.equal(plans.franquiaCreditos('pro', 10), 250);
-  assert.equal(plans.franquiaCreditos('pro', 4), 100);
-  assert.equal(plans.franquiaCreditos('free', 1), 0, 'o grátis ganha só as boas-vindas');
+test('o teto de IA é por conta: 85 criações até 3 telas, cresce com as telas, até 228 (PLANO §6.5)', () => {
+  // R$ 30 até 3 telas, + R$ 3 por tela a mais, teto R$ 80 — em criações de ~R$ 0,35.
+  assert.equal(plans.franquiaCreditos('pro', 1), 85);
+  assert.equal(plans.franquiaCreditos('pro', 3), 85, 'até 3 telas é o mesmo teto');
+  assert.equal(plans.franquiaCreditos('pro', 4), 94);
+  assert.equal(plans.franquiaCreditos('pro', 20), 228);
+  assert.equal(plans.franquiaCreditos('pro', 49), 228, 'nunca passa de R$ 80');
+  assert.equal(plans.tetoIaCents(100), 8000);
+  // Era por tela (25 cada): dez telas davam 250, quase três vezes o teto de hoje.
+  assert.ok(plans.franquiaCreditos('pro', 10) < 250);
+  assert.equal(plans.franquiaCreditos('enterprise', 3), 85, 'Enterprise segue a mesma régua, salvo contrato');
+  assert.equal(plans.franquiaCreditos('free', 1), 0, 'o grátis tem só as criações do teste');
+  assert.equal(plans.CRIACOES_DO_TESTE, 20);
 });
 
 /* ---------------- O que custa crédito ---------------- */

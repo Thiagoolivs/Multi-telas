@@ -245,13 +245,13 @@ test('acabar o crédito no meio não derruba a campanha', () => {
 
 test('a conta do custo é a MESMA que a tela promete', () => {
   /*
-   * A tela diz "até N créditos" antes do clique. Se a conta do aviso e a da
+   * A tela diz "até N criações" antes do clique. Se a conta do aviso e a da
    * cobrança fossem duas implementações, um dia divergiriam — e o dia em que
    * divergem é o dia em que alguém é cobrado a mais do que leu.
    */
   assert.match(DIRETOR, /function imagensAGerar\(/, 'sumiu a conta de imagens a gerar');
   const TELA = fs.readFileSync(path.join(RAIZ, 'web', 'src', 'pages', 'MyDesignsPage.jsx'), 'utf8');
-  assert.match(TELA, /até \{quantas\} crédito/, 'a tela deixou de avisar o custo antes do clique');
+  assert.match(TELA, /até \{quantas\} \{quantas > 1 \? 'criações' : 'criação'\}/, 'a tela deixou de avisar o custo antes do clique');
   assert.match(TELA, /pedido: \{ formatos: onde, quantidade: quantas, imagens \}/,
     'a tela deixou de mandar o pedido explícito');
 });
@@ -271,7 +271,7 @@ test('a conversa pergunta o que decide gasto, e não pergunta o que já foi marc
    */
   const fonte = lerFonte('server', 'ai-briefing.js');
   assert.match(fonte, /O QUE DECIDE GASTO/, 'a conversa voltou a ignorar o que custa');
-  assert.match(fonte, /custa um crédito/, 'sumiu o aviso de que a foto por IA é paga');
+  assert.match(fonte, /gasta uma das criações do mês/, 'sumiu o aviso de que a foto por IA é paga');
   assert.match(fonte, /vá de MENOS/, 'sumiu a regra de errar para o lado barato');
   // E o contrário: o que a pessoa já marcou não pode ser perguntado de novo.
   assert.match(fonte, /JÁ ESCOLHIDO PELA PESSOA/, 'a conversa deixou de receber a checklist');

@@ -99,11 +99,11 @@ test('o plano do Enterprise não manda para um checkout que recusa', () => {
   // o botão dizia "Fazer upgrade" e o clique dava erro.
   const tela = soCodigo(ler('web', 'src', 'pages', 'BillingPage.jsx'));
   /*
-   * Ancorado em "Plano atual", que é o começo do bloco de BOTÕES — `sobConsulta`
+   * Ancorado em "Seu plano" (o botão do plano atual), começo do bloco de BOTÕES — `sobConsulta`
    * aparece quatro vezes antes disso (preço, limite de telas, rótulo), e a
    * primeira versão deste teste casou com uma delas e falhou por isso.
    */
-  const botoes = tela.slice(tela.indexOf('Plano atual'));
+  const botoes = tela.slice(tela.indexOf('>Seu plano<'));
   const sob = botoes.indexOf('p.sobConsulta ?');
   const upg = botoes.indexOf('isUpgrade ?');
   assert.ok(sob > 0, 'o plano sob consulta não tem mais caminho próprio');
@@ -113,13 +113,15 @@ test('o plano do Enterprise não manda para um checkout que recusa', () => {
 
 test('o saldo de boas-vindas não é chamado de "comprado"', () => {
   /*
-   * Os 5 de boas-vindas entram no balde de "comprados" de propósito — para não
-   * sumirem na primeira virada de ciclo. Mas a tela dizia "5 comprados" a quem
-   * nunca comprou nada. O que os dois têm em comum de verdade é não expirar.
+   * Os 5 de boas-vindas (contas de antes do teste com 20 criações) ficaram no
+   * balde de "comprados" — para não sumirem na primeira virada de ciclo. Mas a
+   * tela dizia "5 comprados" a quem nunca comprou nada. O que os dois têm em
+   * comum de verdade é não vencer.
    */
   const tela = soCodigo(ler('web', 'src', 'pages', 'BillingPage.jsx'));
   assert.ok(!/\$\{creditos\.saldo\.comprado\} comprados/.test(tela), 'voltou a chamar boas-vindas de compra');
-  assert.match(tela, /que não expiram/);
+  assert.ok(!/de pacote/.test(tela), 'voltou a chamar o que não vence de pacote');
+  assert.match(tela, /delas não vencem/);
 });
 
 test('a tela de plano não fala mais em Stripe', () => {
