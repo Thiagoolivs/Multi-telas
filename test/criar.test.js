@@ -73,7 +73,9 @@ test('uma entrada só: Criar no menu e no Início; o resto em "Mais"', () => {
   assert.match(app, /const ATALHOS = \['criar',/);
   assert.match(ler('web/src/pages/DashboardPage.jsx'), /<OpcoesDeCriar compacto onEscolher=\{\(opcao\) => onIr && onIr\('criar', \{ opcao \}\)\}/);
   const md = ler('web/src/pages/MyDesignsPage.jsx');
-  for (const t of ['Criar na mão', 'Gerar imagem IA', 'Importar arquivo', 'Campanha completa com IA']) assert.ok(md.includes("title: '" + t + "'"), t);
+  for (const t of ['Criar na mão', 'Gerar imagem IA', 'Importar arquivo', 'Criação rápida']) assert.ok(md.includes("title: '" + t + "'"), t);
+  // Um caminho de IA só (item 28): a campanha pela IA é o Criar.
+  assert.ok(!md.includes("title: 'Campanha completa com IA'"), 'a campanha antiga voltou para o Mais');
   assert.match(md, /const MAIS = \[/);
   // A tela recebe e organiza: "Criar com IA" é a primeira entrada do Adicionar conteúdo.
   assert.match(ler('web/src/components/content/TypePicker.jsx'), /\{ id: 'criar', label: 'Criar com IA'/);

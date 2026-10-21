@@ -709,7 +709,11 @@ export function MyDesignsPage({ onIr }) {
    * Criar começa em Criar; Meus Designs é a biblioteca do que já foi feito.
    */
   const MAIS = [
-    { key: 'ia', title: 'Campanha completa com IA', desc: 'Várias peças, legendas e quando postar.', icon: MessagesSquare, on: () => (setGuiando(true), setAiOpen(true)) },
+    /*
+     * 'Campanha completa com IA' saiu daqui (EXECUTOR item 28): o Criar faz a
+     * campanha inteira, conversando. O diálogo fica no código por 30 dias, e
+     * uma campanha dele que ainda estava gerando volta sozinha (jobPendente).
+     */
     // Os quatro passos de antes do chat (item 24), para quem já sabe o que quer.
     { key: 'rapida', title: 'Criação rápida', desc: 'Uma frase, o rascunho e publicar.', icon: Rocket, on: () => onIr && onIr('rapida') },
     { key: 'mao', title: 'Criar na mão', desc: 'Editor visual: fundo, texto, formas e imagens.', icon: Plus, on: novoNaMao },
