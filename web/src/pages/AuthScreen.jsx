@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { parearGuardado } from '../lib/parearPendente.js';
 import { MonitorPlay, ArrowLeft, MailCheck } from 'lucide-react';
 import { auth } from '../api.js';
@@ -19,7 +19,7 @@ function GoogleMark() {
 }
 
 export function AuthScreen({ onAuthed }) {
-  // login | signup | forgot | reset
+  // login | signup | forgot | reset | verify
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ email: '', password: '', name: '', inviteCode: '' });
   const [hasInvite, setHasInvite] = useState(false);
@@ -30,6 +30,7 @@ export function AuthScreen({ onAuthed }) {
   const [caps, setCaps] = useState({ google: false, mail: false });
   const [resetToken, setResetToken] = useState('');
   const [verifyToken, setVerifyToken] = useState('');
+  const confirmando = useRef(false);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -40,7 +41,7 @@ export function AuthScreen({ onAuthed }) {
     const t = p.get('reset');
     if (t) { setResetToken(t); setMode('reset'); }
     const v = p.get('verify');
-    if (v) { setVerifyToken(v); setMode('verify'); }
+    if (v) { setVerifyToken(v); setMode('verify'); confirmar(v); }
     const err = p.get('erro');
     if (err) setError(err === 'email-google-nao-verificado' ? 'Seu e-mail do Google não está verificado.' : 'Não foi possível entrar com o Google.');
   }, []);
@@ -52,6 +53,47 @@ export function AuthScreen({ onAuthed }) {
       u.searchParams.delete('reset'); u.searchParams.delete('erro'); u.searchParams.delete('verify');
       window.history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
     } catch (e) {}
+  }
+
+  /*
+   * O link do e-mail confirma sozinho.
+   *
+   * A tela de confirmação herdava o formulário da nova senha: título "Criar
+   * uma nova senha", e-mail e senha obrigatórios e "Salvar nova senha" — e
+   * o servidor nem lê esses campos, só o token. Quem acabou de se cadastrar
+   * achava que tinha caído no lugar errado. Agora abrir o link basta; o
+   * botão fica só para tentar de novo se a rede falhar.
+   *
+   * A trava (useRef) impede a segunda chamada do mesmo token: no modo
+   * estrito do React o efeito roda duas vezes, e a segunda chegaria depois
+   * do token gasto, mostrando "link inválido" a quem já entrou.
+   */
+  async function confirmar(token) {
+    if (confirmando.current) return;
+    confirmando.current = true;
+    setError(''); setInfo(''); setBusy(true);
+    try {
+      await auth.verify(token);
+      limparUrl();
+      onAuthed();
+    } catch (err) {
+      if (err.status === 409) {
+        // Link aberto de novo depois de a conta existir: é só entrar.
+        limparUrl();
+        setMode('login');
+        setInfo('Seu e-mail já está confirmado. Entre com a sua senha.');
+      } else if (err.status === 404) {
+        // Link gasto ou vencido: tentar de novo não adianta, o caminho é o cadastro.
+        limparUrl();
+        setMode('signup');
+        setError('Este link já foi usado ou expirou. Preencha de novo para receber outro.');
+      } else {
+        setError(err.message || 'Não deu certo. Tente de novo.');
+      }
+    } finally {
+      confirmando.current = false;
+      setBusy(false);
+    }
   }
 
   async function submit(e) {
@@ -78,9 +120,7 @@ export function AuthScreen({ onAuthed }) {
         }
         onAuthed();
       } else if (mode === 'verify') {
-        await auth.verify(verifyToken);
-        limparUrl();
-        onAuthed();
+        await confirmar(verifyToken);
       } else if (mode === 'forgot') {
         await auth.forgot(form.email);
         // Uma resposta só, sempre a mesma. O servidor deixou de devolver o
@@ -105,9 +145,11 @@ export function AuthScreen({ onAuthed }) {
   const titulo = mode === 'login' ? 'Entrar na sua conta'
     : mode === 'signup' ? 'Criar sua conta'
     : mode === 'forgot' ? 'Recuperar acesso'
+    : mode === 'verify' ? 'Confirmando seu e-mail'
     : 'Criar uma nova senha';
   const subtitulo = mode === 'forgot' ? 'Enviamos um link para o seu e-mail.'
     : mode === 'reset' ? 'Escolha a senha que você vai usar a partir de agora.'
+    : mode === 'verify' ? 'Um instante: sua conta está sendo criada.'
     // Chegou pelo QR da TV: dizer que a TV não foi esquecida no meio do cadastro.
     : parearGuardado() ? 'Entre ou crie sua conta — a TV que mostrou o QR é conectada logo em seguida.'
     : 'Gerencie a rede de telas de qualquer lugar.';
@@ -160,13 +202,13 @@ export function AuthScreen({ onAuthed }) {
               </Field>
             )}
 
-            {mode !== 'reset' && (
+            {mode !== 'reset' && mode !== 'verify' && (
               <Field label="E-mail">
                 <Input type="email" value={form.email} onChange={set('email')} placeholder="voce@empresa.com" autoComplete="email" required />
               </Field>
             )}
 
-            {mode !== 'forgot' && (
+            {mode !== 'forgot' && mode !== 'verify' && (
               <Field label={mode === 'reset' ? 'Nova senha' : 'Senha'} hint={mode === 'signup' || mode === 'reset' ? 'Mínimo de 6 caracteres.' : undefined}>
                 <Input type="password" value={form.password} onChange={set('password')} placeholder="••••••••"
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={6} />
@@ -212,7 +254,8 @@ export function AuthScreen({ onAuthed }) {
               {busy ? 'Aguarde…'
                 : mode === 'login' ? 'Entrar'
                 : mode === 'signup' ? 'Criar conta'
-                : mode === 'forgot' ? 'Enviar link' : 'Salvar nova senha'}
+                : mode === 'forgot' ? 'Enviar link'
+                : mode === 'verify' ? 'Confirmar e-mail' : 'Salvar nova senha'}
             </Button>
 
             {(mode === 'forgot' || mode === 'reset' || mode === 'verify') && (
