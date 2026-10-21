@@ -356,6 +356,47 @@ Nenhuma promessa sem código por trás. Menos de 500 KB e carga abaixo de
 2,5 s em 4G. Onde faltar foto real ou número de WhatsApp, deixe o espaço
 marcado e avise o consultor.
 
+### 15. O menu novo do painel (PLANO §5.1)
+
+- 8 itens: Início, Telas, Criar, Mídias, Marca, Automáticos, Relatórios,
+  Conta.
+- No celular, uma barra inferior com Início, Telas, Criar, Mídias e Mais.
+- "Adicionar conteúdo", na tela, começa com 6 entradas grandes; os 99 tipos
+  ficam em "Mais tipos", com busca.
+- Toda página antiga tem endereço novo ou redirect. Nada some, só muda de
+  lugar.
+
+**Pronto quando:** passa no teste dos 3 toques e nenhum link antigo quebra.
+
+### 16. Primeira peça na TV em menos de 10 minutos (PLANO §5.3)
+
+Do cadastro à TV, guiado: cadastro → marca pelo site (com a paleta sugerida)
+→ primeira peça → parear a TV.
+- O "Comece por aqui" do Início segue esse caminho.
+- Cada passo diz o próximo.
+
+**Pronto quando:** uma conta nova no localhost chega à peça na TV (player
+num navegador) em menos de 10 minutos, cronometrado e com prints no PR.
+
+### 17. Varredura de regressão
+
+Confira se os PRs desta rodada (#137 a #157) respeitam a seção 1b:
+- rode a bancada nas 39 peças × 6 marcas;
+- passe por todas as páginas do painel em 360 px;
+- confira o player em 720p, 1080p e em pé;
+- rode `npm test` três vezes, para pegar teste instável.
+
+Conserte o que achar, um PR por defeito.
+
+### 18. Documentos em dia
+
+- `docs/ESTADO-DO-PROJETO.md`: o que entrou nesta rodada, como está montado
+  e as armadilhas novas.
+- `docs/PLANO.md`: marcar o que ficou pronto.
+- Contagem de testes atualizada.
+
+**Pronto quando:** uma sessão nova entende o projeto só lendo os dois.
+
 ## 3 · O consultor (issue #135)
 
 Um Claude com o contexto todo do projeto fica de plantão na issue
