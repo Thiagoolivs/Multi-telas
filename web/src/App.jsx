@@ -31,6 +31,11 @@ const META = {
   criar: { title: 'Criar' },
   screens: { title: 'Telas' },
   designs: { title: 'Meus Designs', subtitle: 'Crie, guarde e reaproveite todos os seus designs.' },
+  // Endereços antigos que abrem Meus Designs.
+  studio: { title: 'Meus Designs', nav: 'designs' },
+  campaigns: { title: 'Meus Designs', nav: 'designs' },
+  images: { title: 'Meus Designs', nav: 'designs' },
+  team: { title: 'Equipe' },
   brand: { title: 'Marca', subtitle: 'Cores, fontes e imagens que a IA usa para criar.' },
   mural: { title: 'Mural de fotos', subtitle: 'O público manda foto pelo QR e ela aparece na TV.' },
   content: { title: 'Telas', nav: 'screens' },
