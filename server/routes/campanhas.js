@@ -78,10 +78,25 @@ module.exports = function (ctx) {
       return true;
     }
     const id = parts[2];
-    if (parts.length === 3 && /^camp_[a-z0-9]{6,40}$/i.test(id || '') && req.method === 'GET') {
+    if (parts.length === 3 && /^camp_[a-z0-9]{6,40}$/i.test(id || '') && (req.method === 'GET' || req.method === 'PUT')) {
       const c = await db.lerCampanha(sess.tenant_id, id);
       if (!c) { sendJson(res, 404, { error: 'campanha não encontrada' }); return true; }
-      sendJson(res, 200, { campanha: c });
+      if (req.method === 'GET') { sendJson(res, 200, { campanha: c }); return true; }
+      /*
+       * "Pôr pra rodar" e "Pausar" (item 25): quem põe as peças na TV é o
+       * painel, pelo mesmo PUT da config de sempre (que passa pela porta).
+       * Aqui fica o ESTADO — no ar, pausada — e em quais TVs, para a campanha
+       * saber de onde sair. Só vale TV desta conta.
+       */
+      readBody(req, res, async (b) => {
+        const estado = ['pronta', 'no_ar', 'pausada'].includes(b && b.estado) ? b.estado : null;
+        if (!estado) return sendJson(res, 400, { error: 'estado inválido' });
+        const daConta = new Set(((await db.listDevices(sess.tenant_id)) || []).map((d) => d.id));
+        const telas = (Array.isArray(b.telas) ? b.telas : c.telas).filter((t) => daConta.has(t)).slice(0, 50);
+        const salva = await db.salvarCampanha(sess.tenant_id, id, { ...c, estado, telas });
+        await db.registrarEvento(sess.tenant_id, sess.user_id, estado === 'no_ar' ? 'campanha.rodar' : 'campanha.' + estado);
+        return sendJson(res, 200, { campanha: salva });
+      });
       return true;
     }
     sendJson(res, 404, { error: 'não encontrado' });

@@ -17,7 +17,7 @@ import { cn } from '../../lib/cn.js';
 const FAIXA = { manha: 'Manhã', almoco: 'Almoço', tarde: 'Tarde', saida: 'Fim do dia', dia: 'O dia todo' };
 const quando = (h) => (h ? (h.faixa ? FAIXA[h.faixa] : h.inicio + '–' + h.fim) : '');
 
-function Zona({ titulo, pecas, faixa, mensagens, contagem }) {
+function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto }) {
   if (!pecas.length && !(mensagens && mensagens.length)) return null;
   return (
     <div className="space-y-1.5">
@@ -38,7 +38,7 @@ function Zona({ titulo, pecas, faixa, mensagens, contagem }) {
               <DesignThumb item={p.item} />
               <div className="flex items-center gap-1 text-2xs text-ink-3">
                 {p.horario && <><Clock size={10} /> {quando(p.horario)}</>}
-                {!p.comFoto && (p.zona === 'principal' || p.zona === 'lateral') && <span className="ml-auto flex items-center gap-0.5"><ImageOff size={10} /> sem foto</span>}
+                {querFoto && !p.comFoto && (p.zona === 'principal' || p.zona === 'lateral') && <span className="ml-auto flex items-center gap-0.5"><ImageOff size={10} /> sem foto</span>}
               </div>
             </div>
           ))}
@@ -51,6 +51,8 @@ function Zona({ titulo, pecas, faixa, mensagens, contagem }) {
 export function ResultadoCampanha({ campanha, telas = [], acoes, onContinuar, onNova, onIr }) {
   const [redesDe, setRedesDe] = useState(null);
   const r = (campanha && campanha.resultado) || {};
+  // "sem foto" só avisa quando o cliente quis foto: quem escolheu sem foto já sabe.
+  const querFoto = !!(campanha && campanha.escopo && campanha.escopo.imagens !== 'nenhuma');
   const nomeDaTela = (t, i) => t.nome || (t.alvo && t.alvo.tipo === 'tela' ? ((telas.find((d) => d.id === t.alvo.id) || {}).name || 'Tela ' + (i + 1)) : (r.telas.length > 1 ? 'Tela ' + (i + 1) : 'Todas as TVs'));
   const todas = (r.telas || []).flatMap((t) => [...t.zonas.principal, ...t.zonas.lateral]);
   const daRede = (r.social && todas.find((p) => p.vaga === r.social.peca)) || todas[0]
@@ -76,8 +78,8 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onContinuar, on
         <section key={i} className="space-y-3 rounded-lg border border-line bg-surface p-3">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><MonitorPlay size={15} className="text-accent" /> {nomeDaTela(t, i)}</h3>
           <Zona titulo="Cabeçalho" pecas={t.zonas.cabecalho.pecas} faixa="cabecalho" mensagens={t.zonas.cabecalho.mensagens} />
-          <Zona titulo="Principal" pecas={t.zonas.principal} />
-          <Zona titulo="Lateral" pecas={t.zonas.lateral} />
+          <Zona titulo="Principal" pecas={t.zonas.principal} querFoto={querFoto} />
+          <Zona titulo="Lateral" pecas={t.zonas.lateral} querFoto={querFoto} />
           <Zona titulo="Rodapé" pecas={t.zonas.rodape.pecas} faixa="rodape" mensagens={t.zonas.rodape.mensagens} contagem={t.zonas.rodape.contagem} />
         </section>
       ))}

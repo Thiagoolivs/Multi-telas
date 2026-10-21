@@ -285,6 +285,8 @@ export const criar = {
   pendente: () => pendenteDe('ecossistema'),
   campanhas: () => api('GET', '/api/campanhas'),
   campanha: (id) => api('GET', '/api/campanhas/' + id),
+  // O estado da campanha (no ar, pausada) e em quais TVs: quem põe as peças na TV é lib/rodar.js.
+  marcar: (id, estado, telas) => api('PUT', '/api/campanhas/' + id, { estado, telas }),
 };
 
 /*
