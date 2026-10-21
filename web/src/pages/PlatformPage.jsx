@@ -15,6 +15,7 @@ import { useAsync } from '../lib/useAsync.js';
 import { plataforma } from '../api.js';
 import { formatBytes, formatNumber, relativeTime } from '../lib/format.js';
 import { aviso } from '../lib/avisos.js';
+import { Negocio } from '../components/platform/Negocio.jsx';
 
 /*
  * O painel de quem opera a plataforma — não de quem usa uma conta.
@@ -63,7 +64,10 @@ export function PlatformPage() {
         }
       />
 
-      {/* O que está NO AR agora */}
+      {/* O negócio primeiro (PLANO §7.2): frota, clientes, receita, funil, saúde, custo. */}
+      <Negocio dias={dias} />
+
+      {/* O uso do produto */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/*
           "Telas no ar" é a única que conta a verdade sobre o produto: uma TV

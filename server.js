@@ -47,6 +47,7 @@ const cortesia = require('./server/cortesia.js');
 const limites = require('./server/limites.js');
 const passes = require('./server/passes.js');
 const metricas = require('./server/metricas.js');
+const admin = require('./server/admin.js');
 const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
 const legal = require('./server/legal');
@@ -859,6 +860,8 @@ async function handleApi(req, res, pathname, query) {
   }
 
   /* ----- Plataforma: os números do MultiTelas inteiro ----- */
+// Memória de um minuto do painel do negócio (ver a rota 'negocio').
+const negocioCache = new Map();
   if (parts[1] === 'plataforma') {
     /*
      * A PORTA. Tudo daqui para baixo enxerga TODAS as contas.
@@ -957,6 +960,51 @@ async function handleApi(req, res, pathname, query) {
      */
     if (req.method === 'GET' && parts[2] === 'limites') {
       return sendJson(res, 200, limites.panorama());
+    }
+
+    /*
+     * O NEGÓCIO (PLANO §7.2, EXECUTOR item 13): frota, clientes, receita,
+     * funil, custo de IA e saúde, numa resposta só. Consultas pesadas, por
+     * isso com memória de um minuto — o painel do operador nunca deixa o do
+     * cliente lento. As contas moram em server/admin.js.
+     */
+    if (req.method === 'GET' && parts[2] === 'negocio') {
+      const dias = Math.min(180, Math.max(1, Number(query && query.dias) || 30));
+      const agora = Date.now();
+      const guardado = negocioCache.get(dias);
+      if (guardado && agora - guardado.em < 60 * 1000) return sendJson(res, 200, guardado.dados);
+      const desde = agora - dias * 24 * 60 * 60 * 1000;
+      const [frota, pagas, cadastros, custo, porAcao, backupInfo] = await Promise.all([
+        db.frotaDaPlataforma(500),
+        db.contasPagas(),
+        db.cadastrosDesde(agora - 12 * 7 * 24 * 60 * 60 * 1000),
+        // Custo contra mensalidade é conta de MÊS: a janela é sempre 30 dias.
+        db.custoIaPorConta(agora - 30 * 24 * 60 * 60 * 1000, 50),
+        db.eventosPorAcao(desde),
+        admin.ultimoBackup(process.env, require('./server/s3.js'), require('./server/backup.js'))
+          .catch((e) => ({ disponivel: true, erro: 'não consegui ler o bucket de backup: ' + e.message })),
+      ]);
+      const clientes = admin.clientes(pagas, agora, cortesia.STATUS);
+      const cancelou = (porAcao || []).find((a) => a.acao === 'plano.cancelar');
+      const dia = agora - 24 * 60 * 60 * 1000;
+      const errosDoDia = erros.listar(500).filter((g) => g.ultima >= dia);
+      const dados = {
+        dias,
+        em: agora,
+        frota: admin.frota(frota, agora, metricas.JANELA_TELA_VIVA_MS),
+        clientes,
+        receita: admin.receita(clientes, agora, cancelou ? cancelou.n : 0),
+        funil: admin.funil(cadastros, cortesia.STATUS),
+        custoIa: admin.custoIa(custo, cortesia.STATUS),
+        saude: {
+          backup: backupInfo,
+          erros24h: { grupos: errosDoDia.length, vezes: errosDoDia.reduce((s, g) => s + g.vezes, 0) },
+          trabalhos: jobs.panorama(),
+          conexoes: limites.panorama().conexoes,
+        },
+      };
+      negocioCache.set(dias, { em: agora, dados });
+      return sendJson(res, 200, dados);
     }
 
     if (req.method === 'GET' && parts[2] === 'erros') {

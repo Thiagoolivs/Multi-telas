@@ -15,6 +15,7 @@ import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
 import { VerTelaAgora } from '../components/content/VerTelaAgora.jsx';
 import { esquecerParear } from '../lib/parearPendente.js';
+import '../../../js/aparelho.js';
 
 export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
   const { data, loading, error, reload } = useAsync(devices.list);
@@ -208,12 +209,9 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
  * essencial para o suporte; o texto inteiro do navegador fica no title.
  */
 function descreverAparelho(info) {
-  if (!info || !info.w) return '';
-  const ua = String(info.ua || '');
-  const so = info.app ? 'App ' + info.app
-    : /Android/i.test(ua) ? 'Android' : /Tizen/i.test(ua) ? 'Samsung' : /Web0S|webOS/i.test(ua) ? 'LG'
-    : /CrKey/i.test(ua) ? 'Chromecast' : /Windows/i.test(ua) ? 'Windows' : /Mac OS/i.test(ua) ? 'Mac' : /Linux/i.test(ua) ? 'Linux' : '';
-  return ' · ' + info.w + '×' + info.h + (so ? ' · ' + so : '');
+  // A regra mora em js/aparelho.js: a frota do operador descreve igual.
+  const d = globalThis.MTAparelho.descrever(info);
+  return d ? ' · ' + d : '';
 }
 
 /*

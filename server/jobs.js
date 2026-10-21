@@ -246,4 +246,11 @@ async function fecharOrfaos() {
   }
 }
 
-module.exports = { criar, ler, publico, usarBanco, doTenant, fecharOrfaos, MAX_POR_TENANT };
+/* Quantos trabalhos estão rodando agora (a "fila do render" do painel do operador). */
+function panorama() {
+  let rodando = 0;
+  for (const j of jobs.values()) if (j.estado === 'rodando') rodando++;
+  return { rodando, naMemoria: jobs.size };
+}
+
+module.exports = { criar, ler, publico, usarBanco, doTenant, fecharOrfaos, panorama, MAX_POR_TENANT };

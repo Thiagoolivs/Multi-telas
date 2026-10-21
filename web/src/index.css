@@ -56,6 +56,21 @@
   --c-danger-soft: 43 22 24;
 }
 
+/*
+ * Painel do operador: outra cor de destaque (verde-azulado), para nunca
+ * confundir "estou como operador" com o painel de uma loja (PLANO §7.2).
+ */
+[data-modo='operador'] {
+  --c-accent: 13 148 136;       /* #0D9488 */
+  --c-accent-fg: 255 255 255;
+  --c-accent-soft: 223 244 241; /* #DFF4F1 */
+}
+:root[data-theme='dark'] [data-modo='operador'] {
+  --c-accent: 45 212 191;       /* #2DD4BF */
+  --c-accent-fg: 12 14 18;
+  --c-accent-soft: 17 42 40;    /* #112A28 */
+}
+
 @layer base {
   * { border-color: rgb(var(--c-line)); }
   html { -webkit-text-size-adjust: 100%; }
