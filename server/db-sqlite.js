@@ -416,6 +416,17 @@ garantirColuna('devices', 'expediente TEXT');
 garantirColuna('devices', 'info TEXT');
 // Grupo da tela ("Loja Centro"): um rótulo; grupo é a lista dos rótulos em uso.
 garantirColuna('devices', 'grupo TEXT');
+/*
+ * Sessão de SUPORTE: o operador dentro da conta de um cliente (EXECUTOR item
+ * 13). Guarda o e-mail de quem entrou; a sessão vale uma hora e o que ela
+ * não pode fazer está em server/suporte.js.
+ */
+garantirColuna('sessions', 'operador TEXT');
+// O registro de cada entrada de suporte: quem, em qual conta, por quê e quando.
+db.exec(`CREATE TABLE IF NOT EXISTS acessos_suporte (
+  id TEXT PRIMARY KEY, operador TEXT, tenant_id TEXT, motivo TEXT, created_at INTEGER, expira_em INTEGER
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_acessos_suporte ON acessos_suporte(tenant_id, created_at)');
 for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER',
   // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
   // expira). `creditos_ciclo` guarda quando a franquia foi reposta pela
@@ -429,7 +440,9 @@ for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', '
   // Contrato ('mensal' ou 'anual') e desde quando — a multa do anual conta
   // os meses usados (server/plans.js). E o atraso para o qual o e-mail de
   // aviso já saiu (o valor de atraso_desde), para não repetir.
-  'plan_contrato TEXT', 'contrato_desde INTEGER', 'aviso_atraso INTEGER']) {
+  'plan_contrato TEXT', 'contrato_desde INTEGER', 'aviso_atraso INTEGER',
+  // Até quando o teste vale, quando o operador estendeu (server/plans.js, fimDoTeste).
+  'teste_ate INTEGER']) {
   garantirColuna('tenants', col);
 }
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
@@ -461,7 +474,7 @@ const q = {
   invitesByTenant: db.prepare('SELECT id, email, role, code, created_at, expires_at, accepted_at FROM invites WHERE tenant_id = ? AND accepted_at IS NULL ORDER BY created_at DESC'),
   deleteInvite: db.prepare('DELETE FROM invites WHERE id = ? AND tenant_id = ?'),
   acceptInvite: db.prepare('UPDATE invites SET accepted_at = ? WHERE id = ?'),
-  insertSession: db.prepare('INSERT INTO sessions (token, user_id, tenant_id, expires_at) VALUES (?, ?, ?, ?)'),
+  insertSession: db.prepare('INSERT INTO sessions (token, user_id, tenant_id, expires_at, operador) VALUES (?, ?, ?, ?, ?)'),
   sessionByToken: db.prepare('SELECT * FROM sessions WHERE token = ?'),
   deleteSession: db.prepare('DELETE FROM sessions WHERE token = ?'),
   deleteSessionsOfUser: db.prepare('DELETE FROM sessions WHERE user_id = ?'),
@@ -594,8 +607,9 @@ async function acceptInvite(id) { q.acceptInvite.run(Date.now(), id); }
  */
 async function destroySessionsOfUser(userId) { q.deleteSessionsOfUser.run(userId); }
 
-async function createSession(token, userId, tenantId, expiresAt) {
-  q.insertSession.run(token, userId, tenantId, expiresAt);
+// `operador`: e-mail de quem do suporte entrou na conta (sessão de suporte), ou nada.
+async function createSession(token, userId, tenantId, expiresAt, operador) {
+  q.insertSession.run(token, userId, tenantId, expiresAt, operador || null);
 }
 async function getSession(token) {
   const s = q.sessionByToken.get(token);
@@ -698,7 +712,7 @@ async function setTenantBilling(id, fields) {
     plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
     subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
     telasCobradas: 'plan_telas', atrasoDesde: 'atraso_desde',
-    contrato: 'plan_contrato', contratoDesde: 'contrato_desde',
+    contrato: 'plan_contrato', contratoDesde: 'contrato_desde', testeAte: 'teste_ate',
   };
   const sets = [], vals = [];
   for (const k of Object.keys(map)) if (k in fields && fields[k] !== undefined) { sets.push(map[k] + ' = ?'); vals.push(fields[k]); }
@@ -768,6 +782,16 @@ async function custoIaPorConta(desde, limite) {
     WHERE u.created_at >= ?
     GROUP BY u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato
     ORDER BY centavos DESC LIMIT ?`).all(desde, limite || 50);
+}
+
+/* O registro das entradas de suporte (quem entrou, onde, por quê). */
+async function registrarAcessoSuporte(a) {
+  db.prepare('INSERT INTO acessos_suporte (id, operador, tenant_id, motivo, created_at, expira_em) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(a.id, a.operador, a.tenantId, a.motivo, a.em, a.expiraEm);
+}
+async function acessosSuporte(tenantId, limite) {
+  return db.prepare('SELECT * FROM acessos_suporte WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?').all(tenantId, limite || 20)
+    .map((r) => ({ id: r.id, operador: r.operador, motivo: r.motivo, em: Number(r.created_at), expiraEm: Number(r.expira_em) }));
 }
 
 async function contasParaConciliar() {
@@ -1515,7 +1539,7 @@ module.exports = {
   renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
-  frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta,
+  frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta, registrarAcessoSuporte, acessosSuporte,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,

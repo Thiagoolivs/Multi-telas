@@ -191,6 +191,7 @@ export default function App() {
       user={user}
       empresa={session.tenant && session.tenant.name}
       operador={!!session.operador}
+      suporte={session.suporte || null}
       onLogout={logout}
     >
       {/*

@@ -949,6 +949,16 @@ Mesmo design do painel do cliente, com outra cor de destaque, para nunca
 confundir "estou como operador". Consultas pesadas com cache — o painel do
 operador nunca deixa o do cliente lento.
 
+*(21/10, EXECUTOR item 13: no ar em "Métricas da plataforma" — frota,
+clientes, receita, funil, custo de IA, saúde e meta (server/admin.js), com
+destaque verde-azulado; e as ações: recarregar TV, estender teste (até 30
+dias, nunca encurta), registrar o contrato anual e entrar como o dono — só
+com motivo, por uma hora, com faixa na tela e registro em acessos_suporte;
+lá dentro cobrança, equipe, senha e dados pessoais ficam com o dono
+(server/suporte.js). Faltam: aparelhos (estoque por número de série), links
+para o Asaas, crescimento da receita (precisa de histórico), "suspender", e
+o último backup depende de o serviço web poder ler o bucket de backup.)*
+
 ### 7.3 Fase 5 — Identidade, landing e preços
 
 **Identidade (a IA constrói, o dono aprova):** logo (horizontal, ícone,

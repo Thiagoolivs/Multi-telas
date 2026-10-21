@@ -54,6 +54,8 @@ async function init() {
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_contrato TEXT;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS contrato_desde BIGINT;
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS aviso_atraso BIGINT;
+    -- Até quando o teste vale, quando o operador estendeu (server/plans.js, fimDoTeste).
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS teste_ate BIGINT;
     CREATE TABLE IF NOT EXISTS exibicoes (
       device_id TEXT, tenant_id TEXT, hora BIGINT, zona TEXT, chave TEXT,
       rotulo TEXT, tipo TEXT, vezes INTEGER, segundos INTEGER,
@@ -204,6 +206,13 @@ async function init() {
     -- Grupo da tela ("Loja Centro"). Um rótulo, e não uma tabela: grupo é a
     -- lista dos rótulos em uso, e renomear é um UPDATE.
     ALTER TABLE devices ADD COLUMN IF NOT EXISTS grupo TEXT;
+    -- Sessão de SUPORTE: o operador dentro da conta de um cliente (server/suporte.js).
+    ALTER TABLE sessions ADD COLUMN IF NOT EXISTS operador TEXT;
+    -- O registro de cada entrada de suporte: quem, em qual conta, por quê e quando.
+    CREATE TABLE IF NOT EXISTS acessos_suporte (
+      id TEXT PRIMARY KEY, operador TEXT, tenant_id TEXT, motivo TEXT, created_at BIGINT, expira_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_acessos_suporte ON acessos_suporte(tenant_id, created_at);
     CREATE TABLE IF NOT EXISTS invites (
       id TEXT PRIMARY KEY, tenant_id TEXT, email TEXT, role TEXT, code TEXT,
       invited_by TEXT, created_at BIGINT, expires_at BIGINT, accepted_at BIGINT
@@ -788,8 +797,9 @@ async function deleteInvite(id, tenantId) {
 async function acceptInvite(id) {
   await pool.query('UPDATE invites SET accepted_at = $1 WHERE id = $2', [Date.now(), id]);
 }
-async function createSession(token, userId, tenantId, expiresAt) {
-  await pool.query('INSERT INTO sessions (token, user_id, tenant_id, expires_at) VALUES ($1, $2, $3, $4)', [token, userId, tenantId, expiresAt]);
+// `operador`: e-mail de quem do suporte entrou na conta (sessão de suporte), ou nada.
+async function createSession(token, userId, tenantId, expiresAt, operador) {
+  await pool.query('INSERT INTO sessions (token, user_id, tenant_id, expires_at, operador) VALUES ($1, $2, $3, $4, $5)', [token, userId, tenantId, expiresAt, operador || null]);
 }
 async function getSession(token) {
   const r = await pool.query('SELECT * FROM sessions WHERE token = $1', [token]);
@@ -918,7 +928,7 @@ async function setTenantBilling(id, fields) {
     plan: 'plan', status: 'plan_status', customerId: 'stripe_customer_id',
     subscriptionId: 'stripe_subscription_id', renewsAt: 'plan_renews_at',
     telasCobradas: 'plan_telas', atrasoDesde: 'atraso_desde',
-    contrato: 'plan_contrato', contratoDesde: 'contrato_desde',
+    contrato: 'plan_contrato', contratoDesde: 'contrato_desde', testeAte: 'teste_ate',
   };
   const sets = [], vals = [];
   let i = 1;
@@ -992,6 +1002,16 @@ async function custoIaPorConta(desde, limite) {
     GROUP BY u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato
     ORDER BY centavos DESC LIMIT $2`, [desde, limite || 50]);
   return r.rows;
+}
+
+/* O registro das entradas de suporte (quem entrou, onde, por quê). */
+async function registrarAcessoSuporte(a) {
+  await pool.query('INSERT INTO acessos_suporte (id, operador, tenant_id, motivo, created_at, expira_em) VALUES ($1, $2, $3, $4, $5, $6)',
+    [a.id, a.operador, a.tenantId, a.motivo, a.em, a.expiraEm]);
+}
+async function acessosSuporte(tenantId, limite) {
+  const r = await pool.query('SELECT * FROM acessos_suporte WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT $2', [tenantId, limite || 20]);
+  return r.rows.map((x) => ({ id: x.id, operador: x.operador, motivo: x.motivo, em: Number(x.created_at), expiraEm: Number(x.expira_em) }));
 }
 
 async function contasParaConciliar() {
@@ -1447,7 +1467,7 @@ module.exports = {
   renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
-  frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta,
+  frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta, registrarAcessoSuporte, acessosSuporte,
   registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,

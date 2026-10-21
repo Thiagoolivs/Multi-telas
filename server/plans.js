@@ -242,10 +242,15 @@ const CRIACOES_DO_TESTE = 20;
 const DIAS_DE_TESTE = 14;
 const MS_DO_TESTE = DIAS_DE_TESTE * 24 * 60 * 60 * 1000;
 
-/* Quando o teste desta conta termina. */
+/*
+ * Quando o teste desta conta termina. O operador pode ESTENDER (EXECUTOR item
+ * 13, "estender teste"): `teste_ate` só vale se for depois do prazo normal —
+ * estender nunca encurta.
+ */
 function fimDoTeste(tenant) {
   const nasceu = Number(tenant && tenant.created_at) || 0;
-  return nasceu ? nasceu + MS_DO_TESTE : 0;
+  const normal = nasceu ? nasceu + MS_DO_TESTE : 0;
+  return Math.max(normal, Number(tenant && tenant.teste_ate) || 0);
 }
 
 /*
