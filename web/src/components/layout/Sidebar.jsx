@@ -1,12 +1,17 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity, Gauge, Images, BarChart3,
+  LayoutDashboard, Wand2, MonitorPlay, HardDrive, Bell, Users2, Settings, LifeBuoy, CreditCard, Cake, Palette, Brush, QrCode, Activity, Gauge, Images, BarChart3,
 } from 'lucide-react';
 
 const NAV = [
   { section: 'Operação', items: [
     { id: 'overview', label: 'Visão geral', icon: LayoutDashboard },
+    /*
+     * Uma entrada só para criar (PLANO §5.1). Meus Designs continua: é a
+     * biblioteca do que já foi feito, não o lugar de começar.
+     */
+    { id: 'criar', label: 'Criar', icon: Wand2 },
     { id: 'screens', label: 'Telas', icon: MonitorPlay },
     { id: 'designs', label: 'Meus Designs', icon: Palette },
     { id: 'brand', label: 'Marca', icon: Brush },

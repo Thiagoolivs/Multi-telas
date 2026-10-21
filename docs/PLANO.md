@@ -720,6 +720,15 @@ mostrar?" com 6 entradas grandes (criar com IA, foto ou vídeo, promoção com
 preço, aviso, aniversariantes, Instagram/QR). Os 99 tipos ficam em "Mais
 tipos", com busca.
 
+**Feito em 21/10 (item 3 do EXECUTOR): Criar em 4 passos.** Entrada única
+"Criar" no menu, e o passo 1 também no Início: opção → frase → rascunho →
+publicar, com a tela já marcada. Criar com IA e publicar = 3 toques no
+celular (opção, "Ver o rascunho", "Publicar"). Empresa, tom e público vêm da
+Marca; formato e quantidade ficam em "ajustar". Meus Designs vira a
+biblioteca, com "Criar na mão", "Gerar imagem IA", "Importar arquivo" e a
+campanha completa em "Mais". Na tela, "Adicionar conteúdo" abre a biblioteca
+com "Criar novo" no topo; os tipos prontos ficam em "Mais tipos".
+
 ### 5.2 Avançado × pago — dois eixos diferentes
 
 - **Avançado** responde *onde fica*: complexidade de uso. Fica fora do

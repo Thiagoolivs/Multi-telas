@@ -1,3 +1,5 @@
+import '../../../js/templates.js';
+
 /*
  * screenConfig.js — catálogo de layouts, temas e opções de tela (espelha
  * js/templates.js, js/theme.js e js/news.js). Fonte única para a aba "Ajustes"
@@ -39,6 +41,26 @@ export const LAYOUTS = [
   { id: 'square-header', name: 'Quadrada · Cabeçalho + Principal + Rodapé', orientation: 'square', description: 'Tela quadrada: cabeçalho, destaque e rodapé.',
     zones: [ { id: 'cabecalho', name: 'Cabeçalho', type: 'header' }, { id: 'principal', name: 'Principal', type: 'playlist' }, { id: 'rodape', name: 'Rodapé', type: 'ticker' } ] },
 ];
+
+/*
+ * O formato de cada zona vem do catálogo CANÔNICO (js/templates.js).
+ *
+ * Esta lista espelhava as zonas sem o `formato: 'retrato'` das laterais, e
+ * `distribuirPorZona` (lib/aplicarConteudo.js) manda a peça deitada para a
+ * primeira zona que não é retrato: no layout padrão ("Painel Notícias") essa
+ * era a LATERAL estreita — a promoção saía espremida ao lado de um relógio
+ * gigante. Copiar o formato para cá seria a segunda lista que envelhece; ele é
+ * lido de lá.
+ */
+const CANONICOS = globalThis.MT_LAYOUTS || [];
+for (const l of LAYOUTS) {
+  const c = CANONICOS.find((x) => x.id === l.id);
+  if (!c) continue;
+  for (const z of l.zones) {
+    const cz = c.zones.find((y) => y.id === z.id);
+    if (cz && cz.formato) z.formato = cz.formato;
+  }
+}
 
 // Grupos de orientação para o seletor de layout (retangular / vertical / quadrada).
 export const LAYOUT_ORIENTATIONS = [

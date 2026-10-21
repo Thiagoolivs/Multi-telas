@@ -1282,6 +1282,20 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
     plano = await planejar(brief, ctx);
   }
 
+  /*
+   * A foto que a pessoa mandou NESTE pedido ("Foto do produto", no Criar)
+   * entra em todas as peças, como está. Ela já está no acervo (o painel sobe
+   * como imagem base antes de pedir), e o servidor só aceita endereço que é
+   * base desta conta — ver a rota em server.js. Foto real escolhida dispensa
+   * a geração: é a regra de `normalizarPeca`, aplicada por quem decidiu.
+   */
+  const iFoto = ctx.fotoDoPedido ? basesDe(ctx).findIndex((x) => x.url === ctx.fotoDoPedido) : -1;
+  if (iFoto >= 0) {
+    plano.pecas = plano.pecas.map((p) => Object.assign({}, p, {
+      imagemBase: iFoto, bgImagem: ctx.fotoDoPedido, precisaImagem: false, promptImagem: '', referenciaProduto: '',
+    }));
+  }
+
   if (pararNoPlano) {
     /*
      * Devolve o plano e PARA. Nenhuma imagem foi gerada, nenhum crédito saiu.

@@ -21,11 +21,13 @@ import { SystemPage } from './pages/SystemPage.jsx';
 import { PlatformPage } from './pages/PlatformPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { RelatorioPage } from './pages/RelatorioPage.jsx';
+import { CriarPage } from './pages/CriarPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 import { parearGuardado } from './lib/parearPendente.js';
 
 const META = {
   overview: { title: 'Visão geral' },
+  criar: { title: 'Criar' },
   screens: { title: 'Telas' },
   designs: { title: 'Meus Designs', subtitle: 'Crie, guarde e reaproveite todos os seus designs.' },
   brand: { title: 'Marca', subtitle: 'Cores, fontes e imagens que a IA usa para criar.' },
@@ -70,7 +72,7 @@ function useTheme() {
  * A lista de destinos é fechada de propósito: `?ir=` vem da URL, e URL é coisa
  * que qualquer um escreve.
  */
-const ATALHOS = ['screens', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
+const ATALHOS = ['criar', 'screens', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
   'team', 'storage', 'banco', 'birthdays', 'support', 'settings'];
 
 /*
@@ -153,10 +155,15 @@ export default function App() {
     switch (route.name) {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
       case 'screens': return <ScreensPage parear={route.parear} onEditContent={(device) => go('content', { device })} onIrParaPlano={() => go('billing')} />;
-      case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} />;
+      case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} onCriar={() => go('criar', { tela: route.device && route.device.id })} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
       case 'banco': return <BancoImagensPage />;
+      /*
+       * A chave remonta o Criar quando se chega de novo com outra opção (do
+       * Início, ou de "Criar novo" numa tela) — senão ficaria no passo antigo.
+       */
+      case 'criar': return <CriarPage key={(route.opcao || '') + (route.tela || '')} opcaoInicial={route.opcao} telaInicial={route.tela} onIr={go} />;
       case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage onIr={go} />;
       case 'brand': return <BrandPage />;
       case 'mural': return <MuralPage />;
