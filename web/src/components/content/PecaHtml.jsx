@@ -19,7 +19,11 @@ import { carregarDesenhista, TAMANHO_REAL } from '../../lib/pecaHtml.js';
  * `tamanho`: [largura, altura] de uma zona de verdade (o "Ver a tela agora"
  * desenha a peça no tamanho da zona da TV, não num dos três formatos).
  */
-export function PecaHtml({ item, formato, tamanho, fitHeight, className, rascunho }) {
+/*
+ * `mensagens` e `contagem`: o letreiro e a regressiva de uma faixa (cabeçalho
+ * e rodapé), para a prévia mostrar o que a TV vai mostrar (EXECUTOR item 24).
+ */
+export function PecaHtml({ item, formato, tamanho, fitHeight, className, rascunho, mensagens, contagem }) {
   const caixa = useRef(null);
   const palco = useRef(null);
   const [escala, setEscala] = useState(0);
@@ -46,12 +50,12 @@ export function PecaHtml({ item, formato, tamanho, fitHeight, className, rascunh
     carregarDesenhista()
       .then((R) => {
         if (!vivo || !palco.current) return;
-        ctl = R.montar(palco.current, item, { leve: true, rascunho: !!rascunho, marcaNaTela: false, clima: () => Promise.resolve('') });
+        ctl = R.montar(palco.current, item, { leve: true, rascunho: !!rascunho, marcaNaTela: false, clima: () => Promise.resolve(''), mensagens: mensagens || [], contagem: contagem || '' });
         setErro('');
       })
       .catch((e) => { if (vivo) setErro(e.message || 'não desenhou'); });
     return () => { vivo = false; if (ctl) ctl.parar(); };
-  }, [item, rascunho]);
+  }, [item, rascunho, (mensagens || []).join('|'), contagem]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /*
    * Contorno por `ring` (sombra), não por `border`. A borda de 1px entrava

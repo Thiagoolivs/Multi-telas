@@ -40,7 +40,8 @@ test('as zonas do painel têm o MESMO formato do catálogo canônico (lateral em
 });
 
 test('Criar: as seis opções, a frase, o rascunho e publicar na tela já marcada', () => {
-  const c = soCodigo(ler('web/src/pages/CriarPage.jsx'));
+  // Desde o item 24 estes quatro passos são a Criação rápida; o Criar é a conversa (criar-chat.test.js).
+  const c = soCodigo(ler('web/src/pages/CriacaoRapidaPage.jsx'));
   for (const t of ['Promoção com preço', 'Novidade', 'Aviso ou horário', 'Foto do produto', 'Aniversariantes', 'Instagram ou QR']) {
     assert.ok(c.includes("titulo: '" + t + "'"), t);
   }
@@ -59,7 +60,7 @@ test('Criar: as seis opções, a frase, o rascunho e publicar na tela já marcad
 });
 
 test('o tipo do pedido vai na SEGUNDA linha: sem IA, a primeira vira o título', () => {
-  const c = ler('web/src/pages/CriarPage.jsx');
+  const c = ler('web/src/pages/CriacaoRapidaPage.jsx');
   assert.match(c, /brief: frase\.trim\(\) \+ '\\n\(' \+ op\.pedido \+ '\)'/);
   const d = ler('server/ai-director.js');
   assert.match(d, /const titulo = String\(brief \|\| 'Sua campanha'\)\.split\(\/\[\.\\n\]\/\)\[0\]/);

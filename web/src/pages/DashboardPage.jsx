@@ -8,7 +8,7 @@ import { KpiRow } from '../components/dashboard/KpiRow.jsx';
 import { FleetTable } from '../components/dashboard/FleetTable.jsx';
 import { AlertsPanel } from '../components/dashboard/AlertsPanel.jsx';
 import { PrimeirosPassos } from '../components/dashboard/PrimeirosPassos.jsx';
-import { OpcoesDeCriar } from './CriarPage.jsx';
+import { OpcoesDeCriar } from './CriacaoRapidaPage.jsx';
 import { abrirSubir } from '../lib/subir.js';
 import { useAsync } from '../lib/useAsync.js';
 import { devices as devicesApi, media as mediaApi, sistema } from '../api.js';

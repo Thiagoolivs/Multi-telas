@@ -111,7 +111,8 @@ test('foto de reserva não se cobra, nem na campanha nem na imagem solta', () =>
 });
 
 test('o Criar deixa escolher a foto, e o padrão é a IA gerar', () => {
-  const c = ler('web/src/pages/CriarPage.jsx');
+  // A escolha da foto em Ajustar mora na Criação rápida (no chat, ela está no cartão).
+  const c = ler('web/src/pages/CriacaoRapidaPage.jsx');
   assert.doesNotMatch(c, /imagens: 'acervo'/, 'a foto voltou a ser fixa');
   assert.match(c, /pedido: \{ formatos: onde, quantidade: quantas, imagens: fotos \}/);
   assert.match(c, /const \[fotos, setFotos\] = useState\('gerar'\)/);

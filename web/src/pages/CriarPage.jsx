@@ -1,425 +1,351 @@
-import React, { useEffect, useState } from 'react';
-import {
-  Tag, Sparkles, Megaphone, Camera, Cake, QrCode, ArrowLeft, Check, Rocket, SlidersHorizontal, MonitorPlay, RefreshCw, ImagePlus, Share2,
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Send, Sparkles, Wand2, MessageSquare, RotateCcw, Zap } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
-import { Textarea } from '../components/ui/Field.jsx';
 import { Spinner } from '../components/ui/Feedback.jsx';
-import { PecaHtml } from '../components/content/PecaHtml.jsx';
-import { DesignThumb } from '../components/content/DesignThumb.jsx';
-import { RedesSociais } from '../components/content/RedesSociais.jsx';
-import { TAMANHO_REAL } from '../lib/pecaHtml.js';
-import { ai, devices, library, media, brand } from '../api.js';
+import { CartaoEscopo, linhaDoCusto } from '../components/criar/CartaoEscopo.jsx';
+import { ResultadoCampanha } from '../components/criar/ResultadoCampanha.jsx';
 import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
-import { publicarPecas } from '../lib/publicar.js';
+import { ai, criar, devices } from '../api.js';
+import E from '../lib/escopo.js';
+import { OPCOES } from './CriacaoRapidaPage.jsx';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 
 /*
- * CRIAR, em quatro passos (docs/EXECUTOR.md, item 3; PLANO §5.1).
+ * CRIAR É A CONVERSA (EXECUTOR §2b, item 24).
  *
- * Criar era confuso e espalhado: Meus Designs com quatro cartões, a página da
- * tela com outros botões, e um formulário longo que perguntava empresa, tom e
- * público — coisas que a Marca já sabe. Aqui é uma entrada só:
+ * O dono, em 21/10: "clicou em criar > o que você quer exibir hoje? > o chat
+ * de refinamento, sem limite de perguntas, a pessoa refina até o próprio
+ * chat falar que entendeu > a IA gera o ecossistema inteiro > é salvo
+ * automaticamente com a opção de já colocar pra rodar".
  *
- *   1. o que quer mostrar      seis opções grandes
- *   2. uma frase               com exemplos para tocar
- *   3. o rascunho              a peça com o texto real, sem gastar nada
- *   4. publicar                na tela, já marcada
+ *   - A pessoa conta o que quer e para que. A IA pergunta, propõe, e o
+ *     cartão "O que vou criar" mostra, zona por zona, o que vai sair.
+ *   - O cartão se mexe à mão (mais, menos, que TV, quais redes): é o pedido.
+ *   - As SUGESTÕES são da conta (o guia lê a marca, o segmento e a data) e
+ *     as entradas de sempre viram começos de frase: um toque põe o texto na
+ *     caixa e já monta um cartão, e a pessoa muda o que quiser.
+ *   - "Gerar" acende quando a IA diz que entendeu; "Gerar já" é para quem
+ *     não quer conversar.
  *
- * Formato e quantidade têm padrão (TV deitada, uma peça) e ficam em
- * "ajustar". O passo 1 também mora no Início: quem abre o app e toca numa
- * opção cai direto no passo 2 — é o que põe "criar com IA e publicar" em
- * três toques (opção → ver rascunho → publicar).
+ * Os quatro passos de antes continuam em "Criação rápida" (Meus Designs ›
+ * Mais), para quem já sabe o que quer.
  */
 
-export const OPCOES = [
-  { id: 'promocao', titulo: 'Promoção com preço', icone: Tag, pedido: 'Promoção com preço',
-    dica: 'O produto, o preço e até quando.',
-    exemplos: ['Café + pão na chapa por R$ 9', 'Óculos de sol com 30% até sábado', 'Corte + barba por R$ 50 às quartas'] },
-  { id: 'novidade', titulo: 'Novidade', icone: Sparkles, pedido: 'Novidade na loja',
-    dica: 'O que chegou ou começou.',
-    exemplos: ['Chegou a coleção de verão', 'Agora temos açaí no copo', 'Novo horário de atendimento aos sábados'] },
-  { id: 'aviso', titulo: 'Aviso ou horário', icone: Megaphone, pedido: 'Aviso para os clientes',
-    dica: 'O aviso, curto, como você falaria no balcão.',
-    exemplos: ['Fechado no feriado de quinta', 'Aberto de segunda a sábado, das 8h às 19h', 'Aceitamos Pix e cartão'] },
-  { id: 'foto', titulo: 'Foto do produto', icone: Camera, pedido: 'Destaque do produto da foto', foto: true,
-    dica: 'Tire ou escolha a foto e diga o que é.',
-    exemplos: ['Bolo de cenoura com cobertura', 'Armação nova, linha importada', 'Kit de presente para o Dia dos Pais'] },
-  { id: 'aniversario', titulo: 'Aniversariantes', icone: Cake, pedido: 'Parabéns aos aniversariantes',
-    dica: 'Quem faz aniversário, e quando.',
-    exemplos: ['Parabéns, Ana! Dia 12', 'Aniversariantes de outubro: João, Marta e Pedro', 'Feliz aniversário, equipe da manhã'] },
-  { id: 'instagram', titulo: 'Instagram ou QR', icone: QrCode, pedido: 'Convite para seguir no Instagram',
-    dica: 'O @ ou o link que o QR deve abrir.',
-    exemplos: ['Siga @padariadobairro', 'Peça pelo WhatsApp: wa.me/5511999999999', 'Avalie a gente no Google'] },
-];
+// A conversa aberta, para quem recarrega o app voltar no mesmo ponto.
+const GUARDA = 'mt.criar.conversa';
+const lerGuarda = () => { try { return localStorage.getItem(GUARDA) || ''; } catch (e) { return ''; } };
+const guardar = (id) => { try { if (id) localStorage.setItem(GUARDA, id); else localStorage.removeItem(GUARDA); } catch (e) { /* sem armazenamento, sem retomar */ } };
 
-const ONDE = [
-  { id: '16/9', nome: 'TV deitada' },
-  { id: '9/16', nome: 'TV em pé' },
-];
+const IMAGENS_DO_GUIA = { gerar: 'gerar', acervo: 'minhas', nenhuma: 'nenhuma' };
 
-/*
- * A foto é escolha do cliente (EXECUTOR item 19). Antes era `acervo` fixo, e
- * conta sem foto própria nunca via foto na peça. O padrão é a IA gerar, com
- * a ordem de sempre: a foto da empresa vence quando serve. O custo aparece no
- * passo 3, antes de gastar.
- */
-const FOTOS = [
-  { id: 'gerar', nome: 'A IA gera' },
-  { id: 'acervo', nome: 'Só as minhas' },
-  { id: 'nenhuma', nome: 'Sem foto' },
-];
-
-// O passo 1: as seis opções grandes. Mora aqui e no Início.
-export function OpcoesDeCriar({ onEscolher, compacto }) {
-  return (
-    <div className={cn('grid grid-cols-2 gap-2.5', compacto ? 'sm:grid-cols-3 lg:grid-cols-6' : 'sm:grid-cols-3')}>
-      {OPCOES.map((o) => {
-        const Icone = o.icone;
-        return (
-          <button key={o.id} type="button" onClick={() => onEscolher(o.id)}
-            className="flex min-h-[5.5rem] flex-col items-start justify-between gap-2 rounded-xl border border-line bg-surface p-3 text-left transition hover:border-accent/60 hover:bg-surface-2 active:scale-[0.98]">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft"><Icone size={18} className="text-accent" /></span>
-            <span className="text-sm font-semibold leading-tight text-ink">{o.titulo}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function Passos({ atual }) {
-  const nomes = ['O quê', 'A frase', 'Rascunho', 'Publicar'];
-  return (
-    <ol className="mb-4 flex items-center gap-1.5 text-2xs font-medium">
-      {nomes.map((n, i) => {
-        const k = i + 1;
-        const feito = k < atual, agora = k === atual || (atual === 3 && k === 4);
-        return (
-          <li key={n} className="flex items-center gap-1.5">
-            <span className={cn('flex h-5 w-5 items-center justify-center rounded-full',
-              feito ? 'bg-accent text-accent-fg' : agora ? 'bg-accent-soft text-accent ring-1 ring-accent' : 'bg-surface-2 text-ink-3')}>
-              {feito ? <Check size={11} /> : k}
-            </span>
-            <span className={cn('hidden sm:inline', agora ? 'text-ink' : 'text-ink-3')}>{n}</span>
-            {k < 4 && <span className="h-px w-3 bg-line sm:w-6" />}
-          </li>
-        );
-      })}
-    </ol>
-  );
+// Um cartão já montado a partir de um começo: o cliente gera direto, ou conversa e muda.
+function cartaoInicial(nome, objetivo, telaId, imagens) {
+  const base = E.padrao();
+  if (telaId) base.telas[0].alvo = { tipo: 'tela', id: telaId };
+  return E.normalizar({ ...base, nome, objetivo, imagens: imagens || base.imagens });
 }
 
 export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
-  const [opcao, setOpcao] = useState(opcaoInicial || null);
-  const [frase, setFrase] = useState('');
-  const [foto, setFoto] = useState(null);           // { url } já no acervo
-  const [subindo, setSubindo] = useState(false);
-  const [onde, setOnde] = useState(['16/9']);
-  const [quantas, setQuantas] = useState(1);
-  const [fotos, setFotos] = useState('gerar');
-  const [ajustar, setAjustar] = useState(false);
-  const [plano, setPlano] = useState(null);         // resposta do plano (com rascunhos)
-  const [etapa, setEtapa] = useState(null);         // progresso do trabalho
-  const [telas, setTelas] = useState(null);
-  const [alvos, setAlvos] = useState([]);
-  const [pronto, setPronto] = useState(null);       // { pecas, nTelas, titulo }
-  const [erro, setErro] = useState('');
-  const [redesAberto, setRedesAberto] = useState(false);
-
-  const op = OPCOES.find((o) => o.id === opcao) || null;
-  const passo = pronto ? 5 : plano ? 3 : op ? 2 : 1;
-
-  /*
-   * Telas da conta. A publicação já vem MARCADA: com uma tela, ela; vindo
-   * de uma tela ("Criar novo" no Adicionar conteúdo), aquela; senão todas —
-   * a maioria das lojas tem uma ou duas e quer a novidade em todas.
-   */
-  useEffect(() => {
-    devices.list().then((r) => {
-      const lista = (r && r.devices) || [];
-      setTelas(lista);
-      const inicial = telaInicial && lista.some((t) => t.id === telaInicial) ? [telaInicial] : lista.map((t) => t.id);
-      setAlvos(inicial);
-    }).catch(() => setTelas([]));
-  }, [telaInicial]);
-
-  function recomecar() {
-    setOpcao(null); setFrase(''); setFoto(null); setPlano(null); setPronto(null); setErro(''); setEtapa(null);
-  }
-
-  async function escolherFoto(e) {
-    const f = (e.target.files || [])[0]; e.target.value = '';
-    if (!f) return;
-    setSubindo(true); setErro('');
-    try {
-      const up = await media.upload(f);
-      /*
-       * A foto entra no acervo da marca (imagens base): é por lá que o diretor
-       * usa foto da empresa, e assim ela fica para as próximas criações. O
-       * rótulo é a frase — é por ele que a IA sabe o que a foto mostra.
-       */
-      await brand.addAsset('base', up.url, (frase || op.titulo).slice(0, 160));
-      setFoto({ url: up.url });
-    } catch (e2) { setErro(e2.message || 'Não consegui enviar a foto.'); }
-    finally { setSubindo(false); }
-  }
-
-  const pedido = () => ({
-    /*
-     * A frase da pessoa na primeira linha, o tipo na segunda. "Promoção com
-     * preço: pão na chapa…" numa linha só virava o TÍTULO da peça quando a IA
-     * está fora do ar (o plano de reserva usa a primeira linha do pedido).
-     */
-    brief: frase.trim() + '\n(' + op.pedido + ')',
-    formatos: onde,
-    // A Marca já sabe empresa, tom e público: o servidor lê de lá.
-    pedido: { formatos: onde, quantidade: quantas, imagens: fotos },
-    fotoProduto: foto ? foto.url : undefined,
+  const [conversa, setConversa] = useState(null);   // { id, mensagens, escopo, estado, titulo }
+  const [mensagens, setMensagens] = useState([]);
+  const [escopo, setEscopo] = useState(() => {
+    const op = OPCOES.find((o) => o.id === opcaoInicial);
+    return op ? cartaoInicial(op.titulo, op.pedido, telaInicial) : (telaInicial ? cartaoInicial('', '', telaInicial) : E.vazio());
   });
+  const [texto, setTexto] = useState(() => {
+    const op = OPCOES.find((o) => o.id === opcaoInicial);
+    return op ? op.pedido + ': ' : '';
+  });
+  const [pronto, setPronto] = useState(false);
+  const [pensando, setPensando] = useState(false);
+  const [ideias, setIdeias] = useState(null);
+  const [recentes, setRecentes] = useState([]);
+  const [telas, setTelas] = useState([]);
+  const [gerando, setGerando] = useState(null);     // etapa do trabalho
+  const [campanha, setCampanha] = useState(null);
+  const [erro, setErro] = useState('');
+  const caixa = useRef(null);
+  const fim = useRef(null);
+  const salvarCartao = useRef(null);
 
-  // Passo 3: o plano com o rascunho de cada peça. Uma chamada de texto, nenhum crédito.
-  async function verRascunho() {
-    if (!frase.trim()) return;
-    setErro(''); setEtapa({ etapa: 'entendendo o pedido', segundos: 0 });
+  const conversando = mensagens.length > 0;
+
+  useEffect(() => {
+    devices.list().then((r) => setTelas((r && r.devices) || [])).catch(() => setTelas([]));
+    criar.conversas().then((r) => setRecentes((r && r.conversas) || [])).catch(() => {});
+    // As sugestões da conta. Sem IA, o guia devolve um cardápio genérico — e isso já basta.
+    ai.guia({}).then((r) => setIdeias((r && r.sugestoes) || [])).catch(() => setIdeias([]));
+    const id = lerGuarda();
+    if (id && !opcaoInicial && !telaInicial) abrir(id);
+    // Uma geração que estava rodando quando a aba fechou: volta a acompanhar.
+    const pendente = criar.pendente();
+    if (pendente) acompanhar(pendente.id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { if (fim.current && conversando) fim.current.scrollIntoView({ block: 'end', behavior: 'instant' }); }, [mensagens, pensando]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function abrir(id) {
     try {
-      const id = await ai.directorStart({ ...pedido(), apenasPlano: true });
-      const r = await ai.directorAcompanhar(id, setEtapa);
-      setPlano(r);
-    } catch (e) { setErro(e.message || 'Não deu para montar o rascunho. Tente de novo.'); }
-    finally { setEtapa(null); }
+      const r = await criar.conversa(id);
+      const c = r.conversa;
+      setConversa(c); setMensagens(c.mensagens || []); setEscopo(E.normalizar(c.escopo || {}));
+      setPronto(c.estado === 'entendido' || c.estado === 'gerado');
+      guardar(c.id);
+      if (c.campanhaId) {
+        const k = await criar.campanha(c.campanhaId).catch(() => null);
+        if (k && k.campanha) setCampanha(k.campanha);
+      }
+    } catch (e) { guardar(''); }
   }
 
-  // Passo 4: gera a versão final, guarda em Meus Designs e publica nas telas marcadas.
-  async function publicar() {
-    setErro(''); setEtapa({ etapa: 'desenhando a peça', segundos: 0 });
+  async function enviar(t) {
+    const frase = String(t == null ? texto : t).trim();
+    if (!frase || pensando) return;
+    setErro(''); setTexto(''); setCampanha(null);
+    setMensagens((m) => m.concat({ papel: 'pessoa', texto: frase }));
+    setPensando(true);
     try {
-      const id = await ai.directorStart({ ...pedido(), planoAprovado: plano.plano });
-      const out = await ai.directorAcompanhar(id, setEtapa);
-      const pecas = ((out && out.pecas) || []).map((p) => ({ formato: p.formato, canal: p.canal, label: p.label, item: p.item, faixa: p.faixa }));
-      if (!pecas.length) throw new Error('A peça não saiu. Tente de novo em instantes.');
-      /*
-       * O nome é a frase, não o "Campanha" que o diretor devolve sem IA. Além
-       * de ser a pasta em Meus Designs, ele é a ORIGEM na tela: publicar troca
-       * o que veio da mesma origem — com um nome fixo, cada criação nova
-       * tiraria a anterior do ar.
-       */
-      const titulo = frase.trim().split('\n')[0].slice(0, 60) || op.titulo;
-      await library.save(titulo, pecas);
-      if (alvos.length) await publicarPecas({ alvos, pecas, titulo, telas });
-      setPronto({ pecas, nTelas: alvos.length, titulo });
-      aviso.ok(alvos.length ? 'Publicado em ' + alvos.length + ' tela(s).' : 'Guardado em Meus Designs.');
-    } catch (e) { setErro(e.message || 'Não deu para publicar. Tente de novo.'); }
-    finally { setEtapa(null); }
+      const r = await criar.conversar(conversa && conversa.id, frase, escopo);
+      setConversa(r.conversa);
+      setMensagens(r.conversa.mensagens || []);
+      setEscopo(E.normalizar(r.conversa.escopo || {}));
+      setPronto(!!r.pronto);
+      guardar(r.conversa.id);
+    } catch (e) {
+      setErro(e.message || 'A conversa falhou. Tente mandar de novo.');
+      setMensagens((m) => m.slice(0, -1));
+      setTexto(frase);
+    } finally { setPensando(false); }
   }
 
-  const rascunhos = (plano && plano.rascunhos) || [];
-  const pecasDoPlano = (plano && plano.plano && plano.plano.pecas) || [];
-  const custo = (plano && plano.orcamento && plano.orcamento.creditos) || 0;
+  // Mexer no cartão é mexer no pedido: guarda (sem IA) para a conversa saber.
+  function mudarCartao(novo) {
+    setEscopo(novo);
+    if (!conversa) return;
+    clearTimeout(salvarCartao.current);
+    salvarCartao.current = setTimeout(() => { criar.salvarEscopo(conversa.id, novo).catch(() => {}); }, 600);
+  }
+
+  function usarIdeia(s) {
+    setTexto(s.brief || s.titulo || '');
+    if (!E.temOQueGerar(escopo)) setEscopo(cartaoInicial(s.titulo || '', s.brief || '', telaInicial, IMAGENS_DO_GUIA[s.imagens]));
+    if (caixa.current) caixa.current.focus();
+  }
+
+  function usarComeco(op) {
+    setTexto(op.pedido + ': ');
+    if (!E.temOQueGerar(escopo)) setEscopo(cartaoInicial(op.titulo, op.pedido, telaInicial));
+    if (caixa.current) caixa.current.focus();
+  }
+
+  async function acompanhar(jobId) {
+    setGerando({ etapa: 'retomando a criação', segundos: 0 });
+    try {
+      const r = await criar.acompanhar(jobId, setGerando);
+      if (r && r.campanha) terminou(r.campanha);
+    } catch (e) { setErro(e.message || 'A criação não terminou.'); }
+    finally { setGerando(null); }
+  }
+
+  function terminou(c) {
+    setCampanha(c);
+    criar.conversas().then((r) => setRecentes((r && r.conversas) || [])).catch(() => {});
+    aviso.ok('Pronta e salva em Meus Designs.');
+  }
+
+  async function gerar() {
+    if (!E.temOQueGerar(escopo) || gerando) return;
+    setErro('');
+    // O texto que ficou na caixa vale como pedido, mesmo sem ter sido enviado.
+    const extra = texto.trim();
+    const pedido = extra && !escopo.objetivo ? { ...escopo, objetivo: extra.slice(0, 300) } : escopo;
+    setGerando({ etapa: 'começando', segundos: 0 });
+    try {
+      const r = await criar.gerar({ conversaId: conversa ? conversa.id : undefined, escopo: pedido }, setGerando);
+      if (r && r.campanha) terminou(r.campanha);
+    } catch (e) { setErro(e.message || 'Não deu para criar agora. Tente de novo em instantes.'); }
+    finally { setGerando(null); }
+  }
+
+  function nova() {
+    guardar('');
+    setConversa(null); setMensagens([]); setEscopo(E.vazio()); setPronto(false); setCampanha(null); setTexto(''); setErro('');
+  }
+
+  const podeGerar = E.temOQueGerar(escopo);
+  const ultimaIa = [...mensagens].reverse().find((m) => m.papel === 'ia');
+
+  const botaoGerar = (
+    <div className="space-y-1.5">
+      <Button variant={pronto || !conversando ? 'primary' : 'secondary'} size="lg" icon={pronto ? Wand2 : Zap} disabled={!podeGerar || !!gerando} onClick={gerar} className="w-full justify-center">
+        {pronto || !conversando ? 'Gerar' : 'Gerar já'}
+      </Button>
+      <p className="text-center text-2xs text-ink-3">
+        {podeGerar ? linhaDoCusto(escopo) + '. Conversar não gasta nada.' : 'Conte o que você quer mostrar, ou toque numa ideia.'}
+      </p>
+    </div>
+  );
+
+  const entrada = (
+    <div className="flex items-end gap-2">
+      <textarea ref={caixa} rows={conversando ? 2 : 3} value={texto} onChange={(e) => setTexto(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
+        placeholder={conversando ? 'Responda, peça uma mudança ou diga "pode gerar"' : 'Ex.: quero divulgar o pão de queijo em dobro à tarde, na TV e no Instagram'}
+        aria-label="O que você quer mostrar"
+        className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
+      <Button variant="primary" icon={Send} disabled={pensando || !texto.trim()} onClick={() => enviar()} aria-label="Enviar">
+        <span className="hidden sm:inline">Enviar</span>
+      </Button>
+    </div>
+  );
+
+  if (gerando) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <Panel>
+          <div className="flex flex-col items-center gap-3 px-4 py-12 text-center">
+            <Spinner size={26} />
+            <div className="text-sm font-semibold text-ink">{gerando.etapa || 'criando'}</div>
+            {gerando.detalhe && <div className="text-xs text-ink-3">{gerando.detalhe}</div>}
+            <div className="tnum text-2xs text-ink-3">{gerando.segundos || 0}s · pode sair desta tela: a criação continua e fica salva.</div>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
+
+  if (campanha) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-3">
+        {!telas.length && (
+          <ProximoPasso feito="A campanha está pronta." proximo="ligar a TV — ela já recebe esta campanha." acao="Ligar a TV"
+            onIr={() => onIr && onIr('screens', { abrirParear: true })} />
+        )}
+        <ResultadoCampanha campanha={campanha} telas={telas} onIr={onIr}
+          onContinuar={() => setCampanha(null)} onNova={nova} />
+      </div>
+    );
+  }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="mb-3 flex items-center gap-2">
-        {passo > 1 && passo < 5 && (
-          <button type="button" onClick={() => (plano ? setPlano(null) : recomecar())} aria-label="Voltar"
-            className="rounded-md p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink"><ArrowLeft size={18} /></button>
-        )}
-        <h1 className="text-xl font-semibold tracking-tight text-ink">
-          {passo === 1 ? 'O que você quer mostrar?' : passo === 2 ? op.titulo : passo === 3 ? 'Confira e publique' : 'Pronto!'}
-        </h1>
-      </div>
-      {passo < 5 && <Passos atual={passo} />}
+    <div className={cn('mx-auto', conversando ? 'max-w-5xl' : 'max-w-3xl')}>
+      {!conversando && (
+        <div className="mb-4">
+          <h1 className="text-xl font-semibold tracking-tight text-ink">O que você quer mostrar hoje?</h1>
+          <p className="mt-1 text-sm text-ink-2">Conte o que você quer e para quê. Eu sugiro, você ajusta, e eu crio tudo: as TVs, a programação e as redes.</p>
+        </div>
+      )}
 
       {erro && <div className="mb-3 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{erro}</div>}
 
-      {etapa ? (
-        <Panel>
-          <div className="flex flex-col items-center gap-3 py-12 text-center">
-            <Spinner size={26} />
-            <div className="text-sm font-semibold text-ink">{etapa.etapa || 'trabalhando'}</div>
-            {etapa.detalhe && <div className="text-xs text-ink-3">{etapa.detalhe}</div>}
-            <div className="tnum text-2xs text-ink-3">{etapa.segundos || 0}s</div>
-          </div>
-        </Panel>
-      ) : passo === 1 ? (
-        <>
-          <OpcoesDeCriar onEscolher={setOpcao} />
-          {/*
-            O resto continua existindo, só fora do caminho: quem quer desenhar
-            do zero, gerar uma imagem solta ou trazer um arquivo do Canva acha
-            em "Mais", em Meus Designs.
-          */}
-          <p className="mt-4 text-xs text-ink-3">
-            Quer desenhar do zero, gerar uma imagem ou trazer um arquivo? Está em{' '}
-            <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('designs')}>Meus Designs › Mais</button>.
-          </p>
-        </>
-      ) : passo === 2 ? (
-        <Panel>
-          <div className="space-y-3 p-4">
-            {op.foto && (
-              <div className="flex items-center gap-3">
-                {foto
-                  ? <img src={foto.url} alt="" className="h-20 w-20 rounded-lg border border-line object-cover" />
-                  : <span className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-line text-ink-3"><ImagePlus size={22} /></span>}
-                <label className={cn('cursor-pointer rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2', subindo && 'pointer-events-none opacity-60')}>
-                  {subindo ? 'Enviando…' : foto ? 'Trocar a foto' : 'Tirar ou escolher a foto'}
-                  <input type="file" accept="image/png,image/jpeg,image/webp" capture="environment" className="hidden" onChange={escolherFoto} />
-                </label>
-              </div>
-            )}
-            <div>
-              <label htmlFor="frase" className="mb-1 block text-xs font-medium text-ink-2">{op.dica}</label>
-              <Textarea id="frase" autoFocus rows={2} value={frase} onChange={(e) => setFrase(e.target.value)} placeholder={op.exemplos[0]}
-                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); verRascunho(); } }} />
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {op.exemplos.map((x) => (
-                <button key={x} type="button" onClick={() => setFrase(x)}
-                  className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-2 hover:border-accent/60 hover:text-ink">{x}</button>
-              ))}
-            </div>
-
-            {/* O padrão serve quase sempre; quem quer mexer, mexe. */}
-            <div className="rounded-lg border border-line">
-              <button type="button" onClick={() => setAjustar((v) => !v)} aria-expanded={ajustar}
-                className="flex w-full items-center justify-between px-3 py-2 text-xs text-ink-2 hover:text-ink">
-                <span className="flex items-center gap-1.5"><SlidersHorizontal size={13} /> Ajustar</span>
-                <span className="text-ink-3">{onde.map((f) => (ONDE.find((o) => o.id === f) || {}).nome).join(' e ')} · {quantas} {quantas === 1 ? 'peça' : 'peças'} · {fotos === 'nenhuma' ? 'sem foto' : 'com foto'}</span>
-              </button>
-              {ajustar && (
-                <div className="space-y-2 border-t border-line p-3 text-xs">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="w-14 text-ink-3">Onde</span>
-                    {ONDE.map((o) => {
-                      const ativo = onde.includes(o.id);
-                      return (
-                        <button key={o.id} type="button" aria-pressed={ativo}
-                          onClick={() => setOnde((x) => (ativo ? (x.length > 1 ? x.filter((y) => y !== o.id) : x) : [...x, o.id]))}
-                          className={cn('rounded-md border px-2.5 py-1', ativo ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2')}>{o.nome}</button>
-                      );
-                    })}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="w-14 text-ink-3">Quantas</span>
-                    {[1, 2, 3].map((n) => (
-                      <button key={n} type="button" aria-pressed={quantas === n} onClick={() => setQuantas(n)}
-                        className={cn('rounded-md border px-2.5 py-1', quantas === n ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2')}>{n}</button>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="w-14 text-ink-3">Foto</span>
-                    {FOTOS.map((o) => (
-                      <button key={o.id} type="button" aria-pressed={fotos === o.id} onClick={() => setFotos(o.id)}
-                        className={cn('rounded-md border px-2.5 py-1', fotos === o.id ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2')}>{o.nome}</button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end">
-              <Button variant="primary" size="lg" disabled={!frase.trim() || (op.foto && !foto) || subindo} onClick={verRascunho}>
-                Ver o rascunho
-              </Button>
-            </div>
-          </div>
-        </Panel>
-      ) : passo === 3 ? (
+      <div className={cn(conversando && 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-4')}>
         <div className="space-y-3">
-          {/* 3 · o rascunho */}
-          <Panel>
-            <div className="space-y-3 p-4">
-              {pecasDoPlano.map((p, i) => {
-                const r = rascunhos[i];
-                // Foto que ainda vai ser gerada não existe: aí o rascunho mostra a silhueta.
-                const silhueta = !!(p.precisaImagem && p.promptImagem);
-                return (
-                  <div key={i} className="space-y-1.5">
-                    {r ? (
-                      <div className={p.formato === '9/16' ? 'mx-auto w-40' : ''}>
-                        <PecaHtml item={r} formato={r.formato in TAMANHO_REAL ? r.formato : '16/9'} rascunho={silhueta} />
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border border-line bg-surface-2 p-4">
-                        <div className="text-lg font-semibold text-ink">{p.headline}</div>
-                        {p.sub && <div className="text-sm text-ink-2">{p.sub}</div>}
-                      </div>
-                    )}
+          {conversando && (
+            <Panel>
+              <div className="space-y-2.5 p-3" aria-live="polite">
+                {mensagens.map((m, i) => (
+                  <div key={i} className={m.papel === 'ia' ? 'flex gap-2' : 'flex justify-end'}>
+                    {m.papel === 'ia' && <Sparkles size={14} className="mt-1 shrink-0 text-accent" />}
+                    <div className={cn('max-w-[85%] whitespace-pre-line rounded-lg px-3 py-2 text-sm',
+                      m.papel === 'ia' ? 'rounded-tl-sm bg-surface-2 text-ink' : 'rounded-tr-sm bg-accent text-accent-fg')}>{m.texto}</div>
                   </div>
-                );
-              })}
-              <p className="text-xs text-ink-3">
-                Rascunho com o seu texto e a sua marca. A arte final é desenhada ao publicar.{' '}
-                <button type="button" className="font-medium text-accent hover:underline" onClick={() => setPlano(null)}>Mudar a frase</button>
-              </p>
-            </div>
-          </Panel>
-
-          {/* 4 · publicar, na tela já marcada */}
-          <Panel>
-            <div className="space-y-3 p-4">
-              {telas === null ? <Spinner size={16} /> : telas.length ? (
-                <div>
-                  <div className="mb-1.5 text-xs font-medium text-ink-2">Publicar em</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {telas.map((t) => {
-                      const ativo = alvos.includes(t.id);
-                      return (
-                        <button key={t.id} type="button" aria-pressed={ativo}
-                          onClick={() => setAlvos((a) => (ativo ? a.filter((x) => x !== t.id) : [...a, t.id]))}
-                          className={cn('flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs',
-                            ativo ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2')}>
-                          {ativo ? <Check size={12} className="text-accent" /> : <MonitorPlay size={12} />} {t.name || 'Tela'}
-                        </button>
-                      );
-                    })}
+                ))}
+                {pensando && <div className="flex items-center gap-2 text-xs text-ink-3"><Spinner size={13} /> pensando…</div>}
+                {/* As respostas prontas da última fala da IA: na voz da pessoa, um toque manda. */}
+                {!pensando && ultimaIa && (ultimaIa.sugestoes || []).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pl-6">
+                    {ultimaIa.sugestoes.map((s) => (
+                      <button key={s} type="button" onClick={() => enviar(s)}
+                        className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-2 transition hover:border-accent hover:text-accent">{s}</button>
+                    ))}
                   </div>
-                </div>
-              ) : (
-                <p className="text-xs text-ink-2">
-                  Você ainda não tem TV conectada. A peça fica guardada em Meus Designs e você publica depois.{' '}
-                  <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('screens')}>Conectar uma TV</button>
-                </p>
-              )}
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs text-ink-3">{custo ? custo + (custo === 1 ? ' criação com foto' : ' criações com foto') : 'Sem foto gerada · não usa criação'}</span>
-                <Button variant="primary" size="lg" icon={Rocket} onClick={publicar}>
-                  {alvos.length ? 'Publicar' : 'Guardar'}
-                </Button>
+                )}
+                <div ref={fim} />
               </div>
+            </Panel>
+          )}
+
+          {/* No celular, o cartão fica entre a conversa e a caixa, recolhido numa linha. */}
+          {(conversando || podeGerar) && (
+            <div className="space-y-2 lg:hidden">
+              <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} recolhivel />
+              {botaoGerar}
             </div>
-          </Panel>
+          )}
+
+          {entrada}
+
+          {!conversando && (
+            <>
+              {podeGerar && <div className="hidden lg:block"><CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} />{<div className="mt-2">{botaoGerar}</div>}</div>}
+
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-ink-3">Ideias para hoje</div>
+                {ideias === null ? <Spinner size={16} /> : (
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {ideias.slice(0, 3).map((s, i) => (
+                      <button key={i} type="button" onClick={() => usarIdeia(s)}
+                        className="rounded-lg border border-line bg-surface p-3 text-left transition hover:border-accent/60">
+                        <div className="text-sm font-semibold text-ink">{s.titulo}</div>
+                        {s.porque && <div className="mt-0.5 line-clamp-2 text-xs text-ink-3">{s.porque}</div>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="mb-1.5 text-xs font-medium text-ink-3">Ou comece por</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {OPCOES.map((op) => (
+                    <button key={op.id} type="button" onClick={() => usarComeco(op)}
+                      className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-ink-2 hover:border-accent/60 hover:text-ink">
+                      <op.icone size={13} /> {op.titulo}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {recentes.length > 0 && (
+                <div>
+                  <div className="mb-1.5 text-xs font-medium text-ink-3">Continuar uma conversa</div>
+                  <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
+                    {recentes.slice(0, 5).map((c) => (
+                      <li key={c.id}>
+                        <button type="button" onClick={() => abrir(c.id)} className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-surface-2">
+                          <MessageSquare size={14} className="shrink-0 text-ink-3" />
+                          <span className="min-w-0 flex-1 truncate text-sm text-ink">{c.titulo || 'Sem título'}</span>
+                          <span className="shrink-0 text-2xs text-ink-3">{c.estado === 'gerado' ? 'criada' : c.estado === 'entendido' ? 'pronta para gerar' : 'conversando'}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <p className="text-xs text-ink-3">
+                Já sabe o que quer e prefere ir direto? Use a{' '}
+                <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('rapida')}>Criação rápida</button>.
+              </p>
+            </>
+          )}
+
+          {conversando && (
+            <button type="button" onClick={nova} className="flex items-center gap-1 text-xs text-ink-3 hover:text-ink-2">
+              <RotateCcw size={12} /> Começar outra conversa
+            </button>
+          )}
         </div>
-      ) : (
-        <Panel>
-          <div className="space-y-4 p-4">
-            {/* Sem TV ainda: o próximo passo é ligar uma (PLANO §5.3) — e a peça vai junto no pareamento. */}
-            {!pronto.nTelas && (
-              <ProximoPasso feito="A peça está pronta." proximo="ligar a TV — ela já recebe esta peça." acao="Ligar a TV"
-                onIr={() => onIr && onIr('screens', { abrirParear: true })} />
-            )}
-            <div className="flex items-center gap-2 text-sm text-ink">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ok/15 text-ok"><Check size={16} /></span>
-              {pronto.nTelas ? 'No ar em ' + pronto.nTelas + (pronto.nTelas === 1 ? ' tela.' : ' telas.') : 'Guardado em Meus Designs.'}
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {pronto.pecas.map((p, i) => (
-                <div key={i} className="overflow-hidden rounded-lg border border-line"><DesignThumb item={p.item} /></div>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {/* A mesma peça, nas redes: post, Story, Status e o texto de cada uma. */}
-              <Button variant="primary" icon={Share2} onClick={() => setRedesAberto(true)}>Postar nas redes</Button>
-              <Button variant="secondary" icon={RefreshCw} onClick={recomecar}>Criar outra</Button>
-              <Button variant="secondary" onClick={() => onIr && onIr('designs')}>Ver em Meus Designs</Button>
-            </div>
-          </div>
-        </Panel>
-      )}
-      {redesAberto && pronto && <RedesSociais item={pronto.pecas[0].item} label={pronto.titulo} onFechar={() => setRedesAberto(false)} />}
+
+        {conversando && (
+          <aside className="hidden space-y-2 lg:sticky lg:top-4 lg:block">
+            <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} />
+            {botaoGerar}
+          </aside>
+        )}
+      </div>
     </div>
   );
 }
