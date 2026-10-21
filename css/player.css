@@ -378,11 +378,15 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
     radial-gradient(70% 180% at 0% 50%, color-mix(in srgb, var(--brand) 30%, transparent) 0%, transparent 60%),
     linear-gradient(100deg, color-mix(in srgb, var(--accent) 10%, transparent) 0%, transparent 55%);
 }
-.mt-header-left { display: flex; align-items: center; gap: 3cqw; min-width: 0; }
+/* O nome da empresa tem a vez: o lado direito (clima e relógio) não encolhe. */
+.mt-header-left { display: flex; align-items: center; gap: 3cqw; min-width: 0; flex: 1 1 auto; }
 .mt-header-logo { height: 54cqh; width: auto; max-width: 24cqw; object-fit: contain; }
 .mt-header-title {
   position: relative; padding-left: 3cqw;
-  font-size: 30cqh; font-weight: 800; letter-spacing: -.01em; line-height: 1;
+  font-size: 30cqh; font-weight: 800; letter-spacing: -.01em;
+  /* Com line-height 1 e overflow hidden, a perna do g, do p e do j era
+     cortada (EXECUTOR item 17): "Embalagens" virava "Embalaqens". */
+  line-height: 1.22;
   color: var(--text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -392,7 +396,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   width: 5cqh; height: 62cqh; border-radius: 100px;
   background: linear-gradient(180deg, var(--brand), var(--accent));
 }
-.mt-header-right { display: flex; align-items: center; gap: 3cqw; }
+.mt-header-right { display: flex; align-items: center; gap: 3cqw; flex: none; }
 .mt-header-weather {
   display: inline-flex; align-items: center; gap: 1.6cqw;
   font-size: 17cqh; font-weight: 700; color: var(--text); white-space: nowrap;
@@ -411,7 +415,18 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 .mt-hc-date {
   font-size: 14cqh; font-weight: 600; color: var(--text-dim);
-  margin-top: 1.6cqh;
+  margin-top: 1.6cqh; white-space: nowrap;
+}
+/*
+ * Cabeçalho estreito: TV em pé (EXECUTOR item 17). Na mesma altura e com
+ * metade da largura, nome, clima e relógio não cabiam juntos: "Padaria do
+ * Bairro" virava "Padaria d…" e a data quebrava em duas linhas. Aqui o clima
+ * fica só com a temperatura e a data perde o dia da semana — o nome inteiro
+ * vale mais do que "quarta-feira". Se ainda não couber, o player encolhe a
+ * fonte do nome (js/player.js, caberNome).
+ */
+@container (aspect-ratio < 10) {
+  .mt-hw-cidade, .mt-hc-dia { display: none; }
 }
 
 /* ---------- Faixa de notícias (estilo clássico, tech) ----------
