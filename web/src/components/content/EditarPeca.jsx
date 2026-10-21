@@ -6,7 +6,7 @@ import { Field, Input } from '../ui/Field.jsx';
 import { PecaHtml } from './PecaHtml.jsx';
 import { FotoDoProduto } from './FotoDoProduto.jsx';
 import { carregarDesenhista, conferirNosFormatos, NOME_DO_FORMATO } from '../../lib/pecaHtml.js';
-import { ai } from '../../api.js';
+import { ai, brand } from '../../api.js';
 
 /*
  * Editar os textos e a foto de uma peça em HTML (PLANO §4.5, "Campos"; PR 14).
@@ -30,6 +30,19 @@ export function rotulo(nome) {
   if (m) return m[1].charAt(0).toUpperCase() + m[1].slice(1) + ' ' + m[2] + (m[3] ? ' · ' + m[3] : '');
   return nome.charAt(0).toUpperCase() + nome.slice(1).replace(/-/g, ' ');
 }
+/*
+ * Estilo e marca (§4.15: "trocar marca ou modo reestiliza a peça sem gerar de
+ * novo"). A peça só usa as variáveis --mt-*; trocar o modo ou a marca troca
+ * os tokens e o mesmo HTML se redesenha — nada vai para a IA, nada é cobrado.
+ */
+export const ESTILOS = [
+  { id: 'escuro', nome: 'Escuro' }, { id: 'claro', nome: 'Claro' }, { id: 'marca', nome: 'Cor da marca' },
+];
+export const marcaDaPeca = (m) => (m && m.cores && m.cores.length
+  ? { cores: m.cores, fonteTitulo: m.fonteTitulo || '', fonteApoio: m.fonteApoio || '' } : null);
+const mesmaMarca = (a, b) => !!a && !!b && JSON.stringify(a.cores) === JSON.stringify(b.cores)
+  && (a.fonteTitulo || '') === (b.fonteTitulo || '');
+
 const limite = (exemplo) => Math.max(12, Math.ceil(String(exemplo || '').length * 1.5));
 
 // "TV em pé: "Título" passa da borda" — o que o detector achou, na língua de quem usa.
@@ -101,13 +114,21 @@ export function EditarPeca({ item, label, onFechar, onSalvar }) {
   const [fotoAberta, setFotoAberta] = useState(null);
   const [conferencia, setConferencia] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const [modo, setModo] = useState(item.modo || 'escuro');
+  const [marca, setMarca] = useState(item.marca || null);
+  const [marcas, setMarcas] = useState([]);
+
+  // As marcas da conta (até três): só aparece a escolha quando há mais de uma.
+  useEffect(() => {
+    brand.marcas().then((r) => setMarcas(((r && r.marcas) || []).filter((m) => marcaDaPeca(m)))).catch(() => {});
+  }, []);
 
   // Os campos que a peça declara: lidos pela MESMA porta da TV.
   useEffect(() => {
     carregarDesenhista().then(() => setDefinicao(window.MTPecaHtml.higienizar({ html: item.html, css: item.css }).campos));
   }, [item]);
 
-  const atual = useMemo(() => ({ ...item, campos }), [item, campos]);
+  const atual = useMemo(() => ({ ...item, campos, modo, marca }), [item, campos, modo, marca]);
 
   // Confere nos três formatos meio segundo depois da última tecla.
   useEffect(() => {
@@ -132,7 +153,7 @@ export function EditarPeca({ item, label, onFechar, onSalvar }) {
 
   return (
     <Dialog open onClose={onFechar} className="max-w-3xl" title={'Editar · ' + (label || 'peça')}
-      description="Troque os textos e a foto. A peça é conferida na TV deitada, em pé e na quadrada enquanto você digita."
+      description="Troque os textos, a foto e o estilo. A peça é conferida na TV deitada, em pé e na quadrada enquanto você digita."
       footer={<>
         <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
         <Button variant="primary" icon={Check} disabled={salvando || !definicao} onClick={salvar}>{salvando ? 'Salvando…' : 'Salvar'}</Button>
@@ -153,6 +174,35 @@ export function EditarPeca({ item, label, onFechar, onSalvar }) {
               : <p className="flex items-center gap-1.5 text-2xs text-ok"><Check size={13} /> Cabe na TV deitada, em pé e na quadrada.</p>}
         </div>
         <div className="space-y-3">
+          <div>
+            <span className="mb-1.5 block text-xs font-medium text-ink-2">Estilo</span>
+            <div className="flex flex-wrap gap-1.5">
+              {ESTILOS.map((e) => (
+                <button key={e.id} type="button" onClick={() => setModo(e.id)} aria-pressed={modo === e.id}
+                  className={'rounded-md border px-2.5 py-1 text-xs ' + (modo === e.id ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3')}>
+                  {e.nome}
+                </button>
+              ))}
+            </div>
+          </div>
+          {marcas.length > 1 && (
+            <div>
+              <span className="mb-1.5 block text-xs font-medium text-ink-2">Marca</span>
+              <div className="flex flex-wrap gap-1.5">
+                {marcas.map((m) => {
+                  const nova = marcaDaPeca(m);
+                  const ativa = mesmaMarca(marca, nova);
+                  return (
+                    <button key={m.id} type="button" onClick={() => setMarca(nova)} aria-pressed={ativa}
+                      className={'flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs ' + (ativa ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3')}>
+                      <span className="flex">{m.cores.slice(0, 2).map((c) => <span key={c} className="h-3 w-3 rounded-full border border-line" style={{ background: c }} />)}</span>
+                      {m.nome}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           {!definicao && <p className="text-xs text-ink-3">Lendo a peça…</p>}
           {textos.map((c) => {
             const valor = campos[c.nome] != null ? campos[c.nome] : c.exemplo;

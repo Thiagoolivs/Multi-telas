@@ -21,6 +21,8 @@ import { BriefingChat } from '../components/content/BriefingChat.jsx';
 import { SalvarEm } from '../components/content/SalvarEm.jsx';
 import { FotoDoProduto } from '../components/content/FotoDoProduto.jsx';
 import { EditarPeca, AvisoDeEncaixe } from '../components/content/EditarPeca.jsx';
+import { PecaHtml } from '../components/content/PecaHtml.jsx';
+import { TAMANHO_REAL } from '../lib/pecaHtml.js';
 import { aviso } from '../lib/avisos.js';
 import { guardar as guardarNaBandeja, inscrever as inscreverBandeja, limpar as limparBandeja } from '../lib/bandeja.js';
 
@@ -154,6 +156,8 @@ function Guia({ empresa, onEscolher, onPular }) {
 
 function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
   const originais = (plano.plano && plano.plano.pecas) || [];
+  // O rascunho de cada peça (§4.10): estrutura e texto reais, foto como silhueta — sem custo.
+  const rascunhos = plano.rascunhos || [];
   const [fora, setFora] = React.useState(() => new Set());
   /*
    * O que a pessoa muda antes de gerar (PLANO §4.11): a foto do produto real
@@ -181,8 +185,8 @@ function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
   return (
     <div>
       <div className="mb-3 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">
-        Isto é o que a IA entendeu. <b className="text-ink">Nada foi gerado ainda</b> — nenhum
-        crédito saiu. Confira, tire o que não quiser, e só então gere.
+        Isto é o que a IA entendeu{rascunhos.length ? ', em rascunho' : ''}. <b className="text-ink">Nada foi gerado ainda</b> — nenhum
+        crédito saiu. Confira, tire o que não quiser, e só então gere{rascunhos.length ? ' — a peça final é desenhada depois, com as fotos' : ''}.
       </div>
 
       <div className="space-y-2">
@@ -190,12 +194,22 @@ function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
           const cortada = fora.has(i);
           const paga = p.precisaImagem && p.promptImagem;
           return (
+            /*
+             * No celular o rascunho desce para baixo do texto, na largura toda:
+             * lado a lado, a 360 px, sobravam 100 px para o título e a peça
+             * ficava do tamanho de um selo. A partir de sm volta a ser linha.
+             */
             <div key={i}
-              className={'flex items-start gap-3 rounded-lg border p-3 transition '
+              className={'grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-2 rounded-lg border p-3 transition sm:flex '
                 + (cortada ? 'border-line bg-surface opacity-45' : 'border-line bg-surface-2')}>
               <input type="checkbox" checked={!cortada} onChange={() => alternar(i)} className="mt-1"
                 aria-label={'Incluir a peça ' + (p.headline || (i + 1))} />
-              <div className="min-w-0 flex-1">
+              {rascunhos[i] && (
+                <div className={'col-start-2 row-start-2 shrink-0 ' + (p.formato === '9/16' ? 'w-28 sm:w-16' : 'w-full max-w-xs sm:w-44')}>
+                  <PecaHtml item={rascunhos[i]} formato={rascunhos[i].formato in TAMANHO_REAL ? rascunhos[i].formato : '16/9'} rascunho />
+                </div>
+              )}
+              <div className="col-start-2 row-start-1 min-w-0 flex-1">
                 <span className="block text-sm font-semibold text-ink">{p.headline || '(sem manchete)'}</span>
                 {p.sub && <span className="mt-0.5 block text-xs text-ink-2">{p.sub}</span>}
                 <span className="mt-1 flex flex-wrap items-center gap-1.5 text-2xs">
