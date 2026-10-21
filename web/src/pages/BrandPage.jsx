@@ -8,6 +8,7 @@ import { Spinner } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { brand, media } from '../api.js';
 import { aviso } from '../lib/avisos.js';
+import { PaletasSugeridas } from '../components/content/PaletasSugeridas.jsx';
 
 const FONTES = [
   { id: '', label: 'A IA escolhe' },
@@ -98,6 +99,22 @@ export function BrandPage() {
     finally { setBusy(false); }
   }
 
+  /*
+   * Aplicar uma paleta é UM toque: salva na hora, com o resto da identidade
+   * como está na tela. Pedir "agora clique em Salvar" depois de escolher é
+   * o tipo de passo que a pessoa esquece — e sai achando que trocou.
+   */
+  async function aplicarPaleta(nova) {
+    setCores(nova);
+    setBusy(true); setErr('');
+    try {
+      await brand.save({ nome, cores: nova, fonteTitulo, fonteApoio, direcao, tom, observacoes });
+      aviso.ok('Paleta aplicada. As próximas peças e a TV já usam estas cores.');
+      reload();
+    } catch (e) { setErr(e.message || 'Não foi possível aplicar a paleta.'); }
+    finally { setBusy(false); }
+  }
+
   async function subir(kind, e) {
     const f = (e.target.files || [])[0]; e.target.value = '';
     if (!f) return;
@@ -140,8 +157,6 @@ export function BrandPage() {
     try { await brand.removeAsset(id); reload(); }
     finally { setBusy(false); }
   }
-
-  const setCor = (i, v) => setCores((c) => c.map((x, j) => (j === i ? v : x)));
 
   /*
    * Ler o site do cliente.
@@ -250,35 +265,12 @@ export function BrandPage() {
         </Panel>
       )}
 
-      {/* Cores */}
-      <Panel>
-        <PanelHeader title="Cores" description="A primeira é a cor principal; a segunda, o acento. As demais entram como apoio." />
-        <div className="flex flex-wrap items-end gap-3 p-4">
-          <div className="w-44">
-            <Field label="Nome da marca">
-              <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Padaria Aurora" />
-            </Field>
-          </div>
-          {cores.map((c, i) => (
-            <div key={i} className="w-40">
-              <Field label={i === 0 ? 'Principal' : i === 1 ? 'Acento' : 'Apoio ' + (i - 1)}>
-                <div className="flex gap-1.5">
-                  <input type="color" value={c} onChange={(e) => setCor(i, e.target.value)}
-                    className="h-9 w-12 shrink-0 cursor-pointer rounded border border-line bg-transparent" />
-                  <Input value={c} onChange={(e) => setCor(i, e.target.value)} className="font-mono text-xs" />
-                </div>
-              </Field>
-              {i > 1 && (
-                <button className="mt-1 text-2xs text-ink-3 hover:text-danger"
-                  onClick={() => setCores((x) => x.filter((_, j) => j !== i))}>remover</button>
-              )}
-            </div>
-          ))}
-          {cores.length < 6 && (
-            <Button size="sm" variant="secondary" icon={Plus} onClick={() => setCores((c) => [...c, '#888888'])}>Cor</Button>
-          )}
-        </div>
-      </Panel>
+      {/* Cores: paletas prontas primeiro, cor livre em "avançado" */}
+      <PaletasSugeridas kit={kit} ramoDaConta={data && data.ramo} empresa={nome && nome !== 'Marca principal' ? nome : (data && data.empresa)}
+        logoUrl={(assets.find((a) => a.kind === 'logo') || {}).url}
+        fonteTitulo={fonteTitulo} fonteApoio={fonteApoio}
+        cores={cores} setCores={setCores} nome={nome} setNome={setNome}
+        aplicar={aplicarPaleta} ocupado={busy} />
 
       {/* O site do cliente como referência */}
       <Panel>

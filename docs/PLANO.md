@@ -199,6 +199,16 @@ mesma peça, com o texto real, sem custo nenhum — porque wireframe aqui não
 miniatura e o editor leem **os mesmos tokens** — trocar de modo ou de marca
 reestiliza tudo, coerente.
 
+**Paletas sugeridas (21/10, item 2 do EXECUTOR).** O dono: "se deixar ao
+gosto do cliente fica feio para quem tem mau gosto". A Marca mostra 3 ou 4
+paletas prontas, desenhadas numa peça-ouro, e aplicar é um toque. A cor da
+empresa (digitada, do logo ou do site) vira a BASE: o sistema mantém a
+matiz e acerta luminosidade e saturação. Cor livre fica em "avançado", com
+aviso. Conta nova nasce com a paleta do ramo (`server/paleta.js`). Tudo em
+`js/paletas.js`, sem chamar modelo: é gosto codificado mais conta de
+contraste — de graça, na hora e com a IA fora do ar. Toda paleta passa no
+contrato de `js/tokens.js` nos estilos claro, escuro e marca.
+
 ### 4.4 O experimento (primeira semana)
 
 Antes de reescrever, provar. O experimento roda **depois** da
