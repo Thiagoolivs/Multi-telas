@@ -231,8 +231,13 @@ function preencherOuro(o) {
  * padaria. Várias por papel, para dois estilos de cabeçalho não saírem iguais.
  */
 const OURO_PAPEL = {
+  /*
+   * A lateral sem foto: a coluna com chamada. Era a peça de alerta (o
+   * triângulo com '!'), que dizia "atenção" até para a promoção da tarde
+   * (visto na varredura do item 27).
+   */
   lateral: [
-    { id: 'servico-alerta', campos: (t) => ({ kicker: t.kicker, titulo: t.titulo, apoio: t.apoio }) },
+    { id: 'lateral-chamada', campos: (t) => ({ kicker: t.kicker, titulo: t.titulo, apoio: t.apoio, cta: t.cta }) },
   ],
   cabecalho: [
     { id: 'cabecalho-classico', campos: (t, e) => ({ marca: e, chamada: t.titulo }) },

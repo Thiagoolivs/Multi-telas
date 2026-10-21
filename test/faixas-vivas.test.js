@@ -123,3 +123,13 @@ test('as peças-ouro novas passam pela porta e entram quando a faixa pede', () =
   // A IA aprende que a contagem existe.
   assert.match(compositor.regras(), /contagem regressiva só por data-vivo="contagem"/);
 });
+
+test('a lateral sem foto da reserva é uma chamada, não um aviso de atenção', () => {
+  // Item 27: a reserva usava a peça de alerta (triângulo com "!") até para a promoção da tarde.
+  const p = compositor.preencherPapel({ papel: 'lateral', textos: { kicker: 'Só à tarde', titulo: 'Pão de queijo em dobro', apoio: 'Das 15h às 17h.', cta: 'Peça no balcão' } });
+  assert.equal(p.origem.base, 'lateral-chamada');
+  assert.deepEqual(p.campos, { kicker: 'Só à tarde', titulo: 'Pão de queijo em dobro', apoio: 'Das 15h às 17h.', cta: 'Peça no balcão' });
+  assert.deepEqual(P.validarItem(p).problemas, []);
+  assert.doesNotMatch(p.html, /sinal/, 'nada de ícone de alerta');
+  assert.match(ouro('lateral-chamada').css, /\.cta:empty \{ display: none; \}/, 'sem chamada, sem o sublinhado sozinho');
+});
