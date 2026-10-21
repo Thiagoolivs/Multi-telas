@@ -40,6 +40,8 @@ class PedidoFalso {
     this.url = typeof url === 'string' ? new URL(url, 'https://telas.exemplo').href : url.url;
     this.method = (init && init.method) || 'GET';
     this.mode = (init && init.mode) || 'no-cors';
+    // O POST do compartilhar (share_target) chega como formulário.
+    if (init && init.formulario) this.formData = async () => init.formulario;
   }
 }
 
@@ -367,4 +369,32 @@ test('TV: o casco declarado é o que o player.html carrega de verdade', async ()
   for (const s of scripts) {
     assert.ok(lista.includes("'/" + s.replace(/^\//, '') + "'"), 'player.html carrega ' + s + ' e o casco não guarda');
   }
+});
+
+test('painel: compartilhar da galeria guarda os arquivos e abre o painel', async () => {
+  /*
+   * Web Share Target (item 5 do EXECUTOR): o celular manda a foto num POST
+   * para /app/compartilhar. Sem o worker atender, o arquivo se perderia — a
+   * página que vai recebê-lo só existe depois do redirect.
+   */
+  const w = carregar('web/public/sw.js', servidorPadrao);
+  await w.instalar();
+  const foto = { size: 10, type: 'image/jpeg', name: 'bolo.jpg' };
+  const vazio = { size: 0, type: 'image/jpeg', name: 'nada.jpg' };
+  const formulario = { getAll: (k) => (k === 'midia' ? [foto, vazio] : []) };
+  const r = await w.pedir('/app/compartilhar', { method: 'POST', formulario });
+  assert.ok(r, 'o worker deixou o POST passar para o servidor');
+  assert.equal(r.status, 303);
+  assert.equal(r.headers.Location, '/app/?compartilhado=1', 'arquivo vazio não conta');
+  const guardados = w.caixas.get('mt-compartilhado');
+  assert.deepEqual([...guardados.keys()], ['/app/compartilhado/0']);
+  assert.equal(guardados.get('/app/compartilhado/0').headers['X-Nome'], 'bolo.jpg');
+
+  // Atualizar o app não apaga o que acabou de ser compartilhado.
+  await w.ativar();
+  assert.ok(w.caixas.has('mt-compartilhado'));
+
+  // Formulário quebrado: volta ao painel dizendo que não chegou, sem tela de erro.
+  const ruim = await w.pedir('/app/compartilhar', { method: 'POST', formulario: { getAll() { throw new Error('x'); } } });
+  assert.equal(ruim.headers.Location, '/app/?compartilhado=0');
 });

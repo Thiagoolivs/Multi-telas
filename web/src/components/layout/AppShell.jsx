@@ -6,6 +6,7 @@ import { FaixaOffline } from './FaixaOffline.jsx';
 import { FaixaTeste } from './FaixaTeste.jsx';
 import { Avisos } from './Avisos.jsx';
 import { SubirConteudo } from '../content/SubirConteudo.jsx';
+import { ConviteInstalar } from './ConviteInstalar.jsx';
 
 // Shell responsivo: sidebar fixa em ≥lg; em telas menores vira drawer sobre
 // um backdrop. O tema (claro/escuro) é controlado aqui e aplicado no <html>.
@@ -47,6 +48,7 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
       <Avisos />
       {/* Subir foto ou vídeo: do Início, arrastando em qualquer página ou pelo compartilhar do celular. */}
       <SubirConteudo />
+      <ConviteInstalar />
     </div>
   );
 }
