@@ -117,3 +117,15 @@ test('item 32: adicionar numa zona começa pelo que já existe e cabe nela', asy
   assert.match(c, /if \(zona && base\.telas\[0\]\.zonas\[zona\]\)/, 'o cartão já pede só aquela zona');
   assert.match(ler('server/routes/campanhas.js'), /parts\[2\] === 'pecas'/);
 });
+
+test('item 33: Ajustes da tela por tarefa, com o desenho do layout e o horário num formulário só', () => {
+  const f = semComentarios(ler('web/src/components/content/SettingsForm.jsx'));
+  assert.match(f, /\['aparencia', 'Aparência', Palette\], \['encaixe', 'Encaixe', Maximize\], \['som', 'Som', Music\],\s*\['horario', 'Horário', Clock\], \['avancado', 'Avançado', SlidersHorizontal\]/);
+  assert.match(f, /<MiniLayout id=\{l\.id\} \/>/, 'o layout escolhido olhando o desenho');
+  assert.match(f, /As cores da minha marca/, 'a marca vem primeiro, e o tema é a opção');
+  assert.match(f, /Nome no cabeçalho/);
+  assert.match(f, /const saem = zonasQueSaem\(zonas, id\);/, 'trocar o layout diz o que muda nas zonas');
+  assert.match(f, /await devices\.expediente\(deviceId, exp\)/);
+  assert.match(f, /aria-label="Margem contra o corte da TV"/);
+  assert.match(ler('web/src/pages/ContentEditorPage.jsx'), /deviceId=\{device\.id\} device=\{device\} zonas=\{cfg\.zonas\}/);
+});

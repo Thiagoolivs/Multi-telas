@@ -49,7 +49,8 @@ export function semCampanha(cfg, nome) {
  * A grade da miniatura. O player mistura `fr` e `vh` ("12vh 1fr 11vh"); aqui
  * tudo vira `fr` na mesma proporção: 12vh de uma TV são 12 de 100 partes.
  */
-export function emFr(trilha) {
+// `minimo`: só no desenho grande da TV; na miniatura pequena dos Ajustes ele esticaria as faixas.
+export function emFr(trilha, minimo = true) {
   const partes = String(trilha || '1fr').trim().split(/\s+/);
   const fixos = partes.map((p) => (/(vh|vw)$/.test(p) ? parseFloat(p) : 0));
   const somaFixa = fixos.reduce((a, b) => a + b, 0);
@@ -57,14 +58,14 @@ export function emFr(trilha) {
   const somaFr = frs.reduce((a, b) => a + b, 0) || 1;
   const sobra = Math.max(10, 100 - somaFixa);
   // A faixa fina (cabeçalho, rodapé) não fica menor que o texto dela na miniatura do celular.
-  return partes.map((p, i) => (fixos[i] ? 'minmax(2.1rem, ' + fixos[i].toFixed(2) + 'fr)' : ((frs[i] / somaFr) * sobra).toFixed(2) + 'fr')).join(' ');
+  return partes.map((p, i) => (fixos[i] ? (minimo ? 'minmax(2.1rem, ' + fixos[i].toFixed(2) + 'fr)' : fixos[i].toFixed(2) + 'fr') : ((frs[i] / somaFr) * sobra).toFixed(2) + 'fr')).join(' ');
 }
 
-export function gradeDaMiniatura(layout) {
+export function gradeDaMiniatura(layout, { minimo = true } = {}) {
   const g = (layout && layout.grid) || {};
   return {
-    gridTemplateColumns: emFr(g.columns),
-    gridTemplateRows: emFr(g.rows),
+    gridTemplateColumns: emFr(g.columns, minimo),
+    gridTemplateRows: emFr(g.rows, minimo),
     gridTemplateAreas: (g.areas || []).map((a) => '"' + a + '"').join(' ') || undefined,
   };
 }
