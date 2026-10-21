@@ -185,6 +185,14 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-image img, .mt-video video {
   width: 100%; height: 100%; display: block;
 }
+/*
+ * Foto fora do formato da tela: a própria foto, minúscula e esticada, atrás
+ * (js/render.js, comFundo). Sem filter — só imagem e um véu, que qualquer
+ * placa desenha.
+ */
+.mt-com-fundo { background-size: cover; background-position: center; background-color: #000; }
+.mt-com-fundo::before { content: ''; position: absolute; inset: 0; background: rgba(0, 0, 0, .32); }
+.mt-com-fundo img, .mt-com-fundo video { position: relative; }
 .mt-video iframe, .mt-web iframe {
   width: 100%; height: 100%; border: 0;
 }

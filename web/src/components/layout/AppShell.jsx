@@ -5,6 +5,7 @@ import { Topbar } from './Topbar.jsx';
 import { FaixaOffline } from './FaixaOffline.jsx';
 import { FaixaTeste } from './FaixaTeste.jsx';
 import { Avisos } from './Avisos.jsx';
+import { SubirConteudo } from '../content/SubirConteudo.jsx';
 
 // Shell responsivo: sidebar fixa em ≥lg; em telas menores vira drawer sobre
 // um backdrop. O tema (claro/escuro) é controlado aqui e aplicado no <html>.
@@ -44,6 +45,8 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
 
       {/* Fora do <main>: o aviso não rola com a página nem some ao trocar de menu. */}
       <Avisos />
+      {/* Subir foto ou vídeo: do Início, arrastando em qualquer página ou pelo compartilhar do celular. */}
+      <SubirConteudo />
     </div>
   );
 }
