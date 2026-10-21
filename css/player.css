@@ -265,7 +265,14 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 /* Relógio */
 .mt-clock { flex-direction: column; color: var(--text); }
 .mt-clock-time { font-size: clamp(40px, 9vw, 168px); font-size: min(26cqw, 18.6cqh); font-weight: 300; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.mt-clock-date { font-size: clamp(15px, 2.2vw, 36px); font-size: min(6cqw, 4cqh); text-transform: capitalize; color: var(--text-dim); font-weight: 500; letter-spacing: .01em; margin-top: .35em; }
+.mt-clock-date { font-size: clamp(15px, 2.2vw, 36px); font-size: min(6cqw, 4cqh); color: var(--text-dim); font-weight: 500; letter-spacing: .01em; margin-top: .35em; }
+/*
+ * A data vem do navegador em minúsculas ("quarta-feira, 21 de outubro").
+ * `text-transform: capitalize` punha maiúscula em TODA palavra — "Quarta-Feira,
+ * 21 De Outubro" —, errado em português e bem visível na parede. Só a
+ * primeira letra sobe (EXECUTOR item 17).
+ */
+.mt-clock-date::first-letter, .mt-hc-date::first-letter, .wpf-date::first-letter, .mt-fora-dia::first-letter { text-transform: uppercase; }
 
 /* Clima */
 .mt-weather { color: var(--text); }
@@ -404,7 +411,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 .mt-hc-date {
   font-size: 14cqh; font-weight: 600; color: var(--text-dim);
-  text-transform: capitalize; margin-top: 1.6cqh;
+  margin-top: 1.6cqh;
 }
 
 /* ---------- Faixa de notícias (estilo clássico, tech) ----------
@@ -629,7 +636,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 .wpf-date {
   font-size: clamp(11px, 4.2cqmin, 30px); font-weight: 600; letter-spacing: .03em;
-  color: var(--text-dim); text-transform: capitalize; text-align: center;
+  color: var(--text-dim); text-align: center;
 }
 .wpf-time {
   font-size: clamp(52px, 34cqmin, 210px); font-weight: 200; line-height: .95;
@@ -1165,7 +1172,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   transform: translate(var(--mt-fora-x, 0), var(--mt-fora-y, 0)); color: #8a93a6;
 }
 .mt-fora-hora { font-size: 12vmin; font-weight: 300; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
-.mt-fora-dia { margin-top: 2vmin; font-size: 3vmin; text-transform: capitalize; opacity: .7; }
+.mt-fora-dia { margin-top: 2vmin; font-size: 3vmin; opacity: .7; }
 .mt-fora-do-horario .mt-stage { visibility: hidden; }
 
 .mt-pairing {
