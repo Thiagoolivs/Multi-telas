@@ -37,6 +37,20 @@ h1 { font: 400 6.4cqw/.95 var(--mt-fonte-titulo); text-transform: uppercase; let
   .grupo b small { font-size: 2.1cqw; margin-top: .7cqw; }
   .preco { font-size: 5.4cqw; }
 }
+/*
+ * Em pé, mas menos alta que 9:16 — o destaque do layout "Vertical ·
+ * Destaque + Rodapé" (1038×1723, por causa do rodapé): a última linha dos
+ * doces passava da borda. A lista aperta um pouco; o 9:16 não muda.
+ */
+@container (aspect-ratio >= 0.58) and (aspect-ratio < 0.8) {
+  .grupos { top: 16cqh; row-gap: 1.6cqh; }
+  .grupo h2 { font-size: 3.8cqw; }
+  .grupo ul { margin-top: 1.2cqw; }
+  .grupo li { padding: 1.1cqw 0; }
+  .grupo b { font-size: 3cqw; }
+  .grupo b small { font-size: 1.9cqw; }
+  .preco { font-size: 4.9cqw; }
+}
 /* Quase quadrada: três colunas não cabem — duas em cima, a terceira embaixo; o detalhe do item sai. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }

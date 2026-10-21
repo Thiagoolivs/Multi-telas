@@ -16,9 +16,14 @@
 .contatos li:has(> span:empty) { display: none; }
 .rotulo { font: 600 12cqh/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; color: var(--mt-destaque); }
 .contatos span { font: 500 24cqh/1 var(--mt-fonte-texto); letter-spacing: .02em; }
-/* Faixa em pé: o endereço sai, a chamada encolhe. */
-@container (aspect-ratio < 9) {
-  .chamada { font-size: 32cqh; gap: 5cqh; }
+/*
+ * Faixa curta: o endereço sai, a chamada encolhe. Em pé (8:1) e também a
+ * faixa do layout padrão, ao lado da lateral (1390×140, 10:1): ali a
+ * chamada passava por cima do WhatsApp. A faixa de 16:1 não muda.
+ */
+@container (aspect-ratio < 12) {
+  /* Com a fonte da marca, que pode ser mais larga que a condensada (--mt-escala-titulo). */
+  .chamada { font-size: calc(32cqh * var(--mt-escala-titulo, 1)); gap: 5cqh; }
   .chamada::after { width: 14cqh; }
   .contatos { gap: 10cqh; }
   .contatos li + li { padding-left: 10cqh; }

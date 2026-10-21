@@ -42,6 +42,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   width: 100vw; height: 100vh;
   gap: 1.1vh;
   padding: 1.1vh;
+  /* Margem contra o overscan da TV (js/player.js, aplicarMargem): % de cada lado. */
+  padding: calc(1.1vh + var(--mt-margem, 0) * 1vh) calc(1.1vh + var(--mt-margem, 0) * 1vw);
   isolation: isolate;
   background:
     /* vinheta discreta: profundidade sem escurecer demais */
@@ -167,7 +169,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-leave { opacity: 0 !important; }
 
 .mt-empty, .mt-broken {
-  color: var(--text-dim); font-size: 1.4vw; letter-spacing: .04em;
+  color: var(--text-dim); font-size: 1.4vw; font-size: min(3.4cqw, 3cqh); letter-spacing: .04em;
 }
 /* Zona vazia = relógio (ver startPlaylist). Unidades de contêiner: a zona
    lateral é estreita e a principal é larga, e os dois precisam caber. */
@@ -180,6 +182,20 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   margin-top: .6em; color: var(--text-dim); text-align: center;
   padding: 0 6%; font-size: 1.6vw; font-size: min(5.5cqw, 8cqh); letter-spacing: .01em;
 }
+
+/*
+ * CONTEÚDO EM UNIDADES DA ZONA (PLANO §7.1).
+ *
+ * Os textos abaixo eram medidos pela TELA (vw) com teto em pixel (clamp):
+ * na lateral estreita o relógio de 168 px não cabia, na TV em pé o título
+ * saía do tamanho da TV deitada, e numa 4K tudo travava no teto — título de
+ * 104 px numa tela de 3840. Agora cada um é medido pela ZONA onde está
+ * (cqw/cqh, a zona é `container-type: size`), com os números calibrados
+ * para dar o MESMO tamanho de antes na principal de uma TV 1080p.
+ *
+ * A linha antiga fica antes, como reserva: o WebView velho de box que não
+ * conhece container query descarta a linha nova e usa a de sempre.
+ */
 
 /* Imagem / vídeo / web */
 .mt-image img, .mt-video video {
@@ -235,32 +251,35 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-text-inner { max-width: 90%; position: relative; z-index: 1; }
 .mt-text-title {
   font-size: calc(clamp(30px, 5.4vw, 104px) * var(--tscale, 1));
+  font-size: calc(min(7.6cqw, 11.5cqh) * var(--tscale, 1));
   font-weight: 750; line-height: 1.02; letter-spacing: -.022em; margin-bottom: .34em;
   text-wrap: balance;
 }
 .mt-text-body {
   font-size: calc(clamp(18px, 2.4vw, 42px) * var(--tscale, 1));
+  font-size: calc(min(3.6cqw, 4.6cqh) * var(--tscale, 1));
   font-weight: 400; line-height: 1.32; letter-spacing: -.005em;
   color: var(--text-dim);
 }
 
 /* Relógio */
 .mt-clock { flex-direction: column; color: var(--text); }
-.mt-clock-time { font-size: clamp(40px, 9vw, 168px); font-weight: 300; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.mt-clock-date { font-size: clamp(15px, 2.2vw, 36px); text-transform: capitalize; color: var(--text-dim); font-weight: 500; letter-spacing: .01em; margin-top: .35em; }
+.mt-clock-time { font-size: clamp(40px, 9vw, 168px); font-size: min(26cqw, 18.6cqh); font-weight: 300; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.mt-clock-date { font-size: clamp(15px, 2.2vw, 36px); font-size: min(6cqw, 4cqh); text-transform: capitalize; color: var(--text-dim); font-weight: 500; letter-spacing: .01em; margin-top: .35em; }
 
 /* Clima */
 .mt-weather { color: var(--text); }
 .mt-weather-inner { text-align: center; }
-.mt-weather-icon { font-size: clamp(48px, 10vw, 160px); }
-.mt-weather-temp { font-size: clamp(36px, 7vw, 120px); font-weight: 800; }
-.mt-weather-city { font-size: clamp(16px, 2.4vw, 40px); opacity: .85; }
+.mt-weather-icon { font-size: clamp(48px, 10vw, 160px); font-size: min(30cqw, 17.7cqh); }
+.mt-weather-temp { font-size: clamp(36px, 7vw, 120px); font-size: min(24cqw, 13.3cqh); font-weight: 800; }
+.mt-weather-city { font-size: clamp(16px, 2.4vw, 40px); font-size: min(7cqw, 4.4cqh); opacity: .85; }
 
 /* Aniversariantes */
 .mt-birthday { flex-direction: column; padding: 5%; }
 .mt-birthday-title {
   position: relative; z-index: 1;
   font-size: clamp(22px, 3vw, 52px);
+  font-size: min(7cqw, 5.75cqh);
   font-weight: 800; margin-bottom: .9em;
   letter-spacing: .01em;
 }
@@ -272,6 +291,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-birthday-row {
   display: flex; align-items: center; justify-content: space-between; gap: 1em;
   font-size: clamp(15px, 1.9vw, 32px);
+  font-size: min(4.5cqw, 3.5cqh);
   background: color-mix(in srgb, var(--text) 8%, transparent);
   border-left: .22em solid color-mix(in srgb, var(--accent) 72%, transparent);
   padding: .45em .9em; border-radius: .35em;
@@ -280,8 +300,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 
 /* QR Code */
 .mt-qr-inner { text-align: center; }
-.mt-qr-inner img { width: clamp(180px, 22vw, 420px); height: auto; background:#fff; padding:10px; border-radius:12px; }
-.mt-qr-caption { margin-top: 1em; font-size: clamp(16px, 2vw, 34px); color:#0b1220; font-weight:600; }
+.mt-qr-inner img { width: clamp(180px, 22vw, 420px); width: min(60cqw, 46cqh); height: auto; background:#fff; padding:10px; border-radius:12px; }
+.mt-qr-caption { margin-top: 1em; font-size: clamp(16px, 2vw, 34px); font-size: min(5cqw, 3.8cqh); color:#0b1220; font-weight:600; }
 
 /* ---------- Mural de fotos do público (QR) ----------
  * Tudo aqui é medido em cqw/cqh: o mural roda tanto na zona principal de uma
@@ -491,7 +511,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 .mt-ticker-item {
   font-size: clamp(16px, 2.4vw, 36px);
-  font-weight: 600; padding: 0 1vw; color: var(--on-brand);
+  font-size: min(2.6cqw, 26cqh);
+  font-weight: 600; padding: 0 1vw; padding: 0 1.4cqw; color: var(--on-brand);
 }
 /*
  * Uma volta = uma cópia do texto, e não metade da faixa.
@@ -1030,6 +1051,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   position: fixed; inset: 0; z-index: 45;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 4vh 4vw; opacity: 0;
+  padding: calc(4vh + var(--mt-margem, 0) * 1vh) calc(4vw + var(--mt-margem, 0) * 1vw);
   background: rgba(4, 7, 16, .55);
   -webkit-backdrop-filter: blur(16px) saturate(1.1);
   backdrop-filter: blur(16px) saturate(1.1);

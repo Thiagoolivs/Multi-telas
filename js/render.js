@@ -1734,10 +1734,41 @@
     }, extra || {});
   }
 
+  /*
+   * A PEÇA É DESENHADA NO TAMANHO DE UMA TV 1080p E SÓ DEPOIS ESCALADA.
+   *
+   * As peças-ouro decidem o desenho pela caixa em PIXELS — "lateral" é até
+   * 700 px de largura. Numa TV 4K a lateral tem 1011 px e a peça escolhia o
+   * desenho de tela em pé inteira; numa 720p o mosaico tem 628 px e a peça
+   * da principal virava lateral (matriz de 21/10). Medida assim, a peça vê
+   * sempre a zona como ela seria em 1080p, e o `scale` a leva ao tamanho
+   * real: a mesma peça, o mesmo desenho, em 720p, 1080p e 4K. É o que o
+   * painel e a bancada já fazem (desenhar no tamanho real e reduzir).
+   *
+   * A conta usa o PALCO, e não a janela: com a TV em pé girada pelo
+   * player, a janela é deitada e o palco, em pé.
+   */
+  function escalaDaTela() {
+    const palco = document.getElementById('stage');
+    const w = (palco && palco.offsetWidth) || global.innerWidth || 1920;
+    const h = (palco && palco.offsetHeight) || global.innerHeight || 1080;
+    const k = w >= h ? Math.min(w / 1920, h / 1080) : Math.min(w / 1080, h / 1920);
+    return k > 0.2 && k < 8 ? k : 1;
+  }
+  function hostDaPeca(el) {
+    const k = escalaDaTela();
+    const host = document.createElement('div');
+    host.className = 'mt-peca-escala';
+    host.style.cssText = Math.abs(k - 1) < 0.01 ? 'position:absolute;inset:0'
+      : 'position:absolute;left:0;top:0;width:' + (100 / k) + '%;height:' + (100 / k) + '%;transform:scale(' + k + ');transform-origin:0 0';
+    el.appendChild(host);
+    return host;
+  }
+
   function renderPecaHtml(item) {
     const el = div('mt-slide mt-peca-html');
     if (!global.MTPecaRender) return { el, duration: item.duracao || 12 };
-    const ctl = global.MTPecaRender.montar(el, item, opcoesDaPeca());
+    const ctl = global.MTPecaRender.montar(hostDaPeca(el), item, opcoesDaPeca());
     return { el, duration: ctl.duracao, onLeave: ctl.parar };
   }
   RENDERERS['peca-html'] = renderPecaHtml;
@@ -1787,5 +1818,5 @@
     { type: 'mural', label: 'Mural de fotos (QR do público)', icon: 'qr' },
   ];
 
-  global.MTRender = { renderItem, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca };
+  global.MTRender = { renderItem, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca, hostDaPeca };
 })(window);
