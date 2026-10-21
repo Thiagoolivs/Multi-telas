@@ -44,6 +44,16 @@ test('nenhuma página sumiu: cada uma mora em exatamente um grupo', async () => 
   for (const p of Object.keys(M.PAGINAS)) assert.ok(casos.includes(p), 'o menu aponta para "' + p + '", que o painel não abre');
 });
 
+test('toda página tem o próprio título na barra de cima (sem cair em "Visão geral")', () => {
+  // Item 17: a Equipe abria com "Visão geral" no topo — faltava no META.
+  const app = ler('web/src/App.jsx');
+  const meta = app.slice(app.indexOf('const META = {'), app.indexOf('};', app.indexOf('const META = {')));
+  const titulos = new Set([...meta.matchAll(/^\s+([a-z]+): \{ title:/gm)].map((m) => m[1]));
+  for (const p of [...app.matchAll(/case '([a-z]+)':/g)].map((m) => m[1])) {
+    assert.ok(titulos.has(p), 'a página "' + p + '" não tem título no META');
+  }
+});
+
 test('nenhum link antigo quebra; os novos (por grupo) funcionam', async () => {
   const M = await menu();
   // Os destinos que já existiam em /app/?ir= (os atalhos do App, do ícone instalado e dos e-mails).
