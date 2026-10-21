@@ -286,6 +286,13 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_jobs_tenant ON jobs(tenant_id, criado_em);
   CREATE INDEX IF NOT EXISTS idx_jobs_estado ON jobs(estado);
+  -- A conversa do Criar: mensagens e escopo em JSON (ver conversas mais abaixo).
+  CREATE TABLE IF NOT EXISTS conversas (
+    id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, titulo TEXT,
+    mensagens TEXT, escopo TEXT, estado TEXT, campanha_id TEXT,
+    criado_em INTEGER, atualizado_em INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_conversas_tenant ON conversas(tenant_id, atualizado_em);
   CREATE TABLE IF NOT EXISTS eventos (
     id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at INTEGER
   );
@@ -1077,6 +1084,45 @@ async function listarJobs(tenantId, desde, limite) { return qJobs.doTenant.all(t
 async function interromperJobs(motivo) { qJobs.interromper.run(motivo, Date.now()); }
 async function limparJobs(antesDe) { qJobs.limpar.run(antesDe); }
 
+/* ---------------- Conversas do Criar ---------------- */
+/*
+ * A conversa do Criar (EXECUTOR item 21): a pessoa conta o que quer, a IA
+ * pergunta e sugere, e o ESCOPO (js/escopo.js) vai sendo preenchido. Fica
+ * guardada para ela fechar o app e continuar depois — uma conversa sem
+ * limite de perguntas que sumisse ao recarregar seria pior que um formulário.
+ * Mensagens e escopo são JSON em texto, como o resultado dos trabalhos.
+ */
+const qConv = {
+  inserir: db.prepare(`INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+  salvar: db.prepare(`UPDATE conversas SET titulo = ?, mensagens = ?, escopo = ?, estado = ?, campanha_id = ?, atualizado_em = ?
+                      WHERE id = ? AND tenant_id = ?`),
+  ler: db.prepare('SELECT * FROM conversas WHERE id = ? AND tenant_id = ?'),
+  doTenant: db.prepare(`SELECT id, titulo, estado, campanha_id, criado_em, atualizado_em FROM conversas
+                        WHERE tenant_id = ? ORDER BY atualizado_em DESC LIMIT ?`),
+};
+const jsonOu = (t, padrao) => { try { return t ? JSON.parse(t) : padrao; } catch (e) { return padrao; } };
+const mapConv = (r) => r && ({
+  id: r.id, titulo: r.titulo || '', estado: r.estado || 'conversando', campanhaId: r.campanha_id || '',
+  mensagens: r.mensagens === undefined ? undefined : jsonOu(r.mensagens, []),
+  escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
+  criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
+});
+async function criarConversa(tenantId, userId, c) {
+  const id = 'conv_' + rid(14);
+  const agora = Date.now();
+  qConv.inserir.run(id, tenantId, userId || '', String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []),
+    JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora);
+  return lerConversa(tenantId, id);
+}
+async function lerConversa(tenantId, id) { return mapConv(qConv.ler.get(id, tenantId)) || null; }
+async function salvarConversa(tenantId, id, c) {
+  qConv.salvar.run(String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []), JSON.stringify(c.escopo || null),
+    c.estado || 'conversando', c.campanhaId || '', Date.now(), id, tenantId);
+  return lerConversa(tenantId, id);
+}
+async function listarConversas(tenantId, limite) { return qConv.doTenant.all(tenantId, limite || 20).map(mapConv); }
+
 
 const qRec = {
   add: db.prepare('INSERT INTO reclamacoes (id, tenant_id, user_id, email, tipo, texto, status, resposta, created_at, resolvido_em) VALUES (?, ?, ?, ?, ?, ?, ?, \'\', ?, 0)'),
@@ -1556,6 +1602,7 @@ module.exports = {
   fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
+  criarConversa, lerConversa, salvarConversa, listarConversas,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
   salvarLocalDaMarca,
