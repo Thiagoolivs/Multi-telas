@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, AlertTriangle, CircleAlert } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Panel } from '../components/ui/Panel.jsx';
@@ -9,6 +9,7 @@ import { FleetTable } from '../components/dashboard/FleetTable.jsx';
 import { AlertsPanel } from '../components/dashboard/AlertsPanel.jsx';
 import { PrimeirosPassos } from '../components/dashboard/PrimeirosPassos.jsx';
 import { OpcoesDeCriar } from './CriarPage.jsx';
+import { abrirSubir } from '../lib/subir.js';
 import { useAsync } from '../lib/useAsync.js';
 import { devices as devicesApi, media as mediaApi, sistema } from '../api.js';
 import { deviceStatus, ONLINE_WINDOW_MS } from '../lib/deviceStatus.js';
@@ -92,6 +93,11 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
       <section className="mb-4">
         <h2 className="mb-2 text-sm font-semibold text-ink">O que você quer mostrar hoje?</h2>
         <OpcoesDeCriar compacto onEscolher={(opcao) => onIr && onIr('criar', { opcao })} />
+        {/* A foto que já existe vai direto, sem passar pela IA: três toques até a TV. */}
+        <button type="button" onClick={() => abrirSubir()}
+          className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent/60 hover:bg-surface-2">
+          <ImagePlus size={17} className="text-accent" /> Pôr foto ou vídeo na TV
+        </button>
       </section>
       {loading ? (
         <div className="flex justify-center py-24"><Spinner size={22} /></div>

@@ -171,8 +171,28 @@
     return { el, duration: item.duracao || 10 };
   }
 
+  /*
+   * Fundo da foto que não tem o formato da TV (foto em pé na TV deitada, e o
+   * contrário). Em vez de faixa preta, a própria foto, borrada, atrás.
+   *
+   * O borrão NÃO é `filter: blur()`: filtro é o que a placa do box barato
+   * não aguenta. O painel manda uma versão minúscula da foto (uns 24 px) e o
+   * navegador, ao esticá-la, já a desenha borrada — de graça. Um véu escuro
+   * por cima põe a foto de verdade em primeiro plano.
+   *
+   * Só entra endereço nosso ou imagem embutida em base64, sem aspas nem
+   * parênteses: o valor vai parar dentro de `url()`.
+   */
+  const FUNDO_OK = /^(data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+|\/media\/(?!.*\.\.)[\w\-./]+)$/;
+  function comFundo(el, item) {
+    if ((item.fit || 'cover') !== 'contain' || !item.fundo || !FUNDO_OK.test(String(item.fundo))) return;
+    el.classList.add('mt-com-fundo');
+    el.style.backgroundImage = 'url("' + item.fundo + '")';
+  }
+
   function renderImage(item) {
     const el = div('mt-slide mt-image');
+    comFundo(el, item);
     const img = document.createElement('img');
     img.style.objectFit = item.fit || 'cover';
     img.alt = '';
@@ -201,6 +221,7 @@
 
   function renderVideo(item) {
     const el = div('mt-slide mt-video');
+    comFundo(el, item);
     const v = document.createElement('video');
     v.src = item.src;
     /*
