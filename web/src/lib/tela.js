@@ -73,3 +73,34 @@ export function proporcaoDoLayout(layout) {
   const o = (layout && layout.orientation) || 'landscape';
   return o === 'portrait' ? '9 / 16' : o === 'square' ? '1 / 1' : '16 / 9';
 }
+
+/*
+ * O papel de uma zona da TV, na língua do escopo e das peças (item 32):
+ * cabeçalho, rodapé, principal ou lateral. Em pé, a "secundaria" faz o papel
+ * da lateral.
+ */
+export function papelDaZona(zona) {
+  if (!zona) return 'principal';
+  if (zona.type === 'header') return 'cabecalho';
+  if (zona.type === 'ticker') return 'rodape';
+  return /^(principal|video|z1)$/.test(zona.id) ? 'principal' : 'lateral';
+}
+
+/*
+ * Quanto uma peça pronta cabe numa zona: 0 não cabe, 1 cabe, 2 é a cara dela.
+ * Peça de faixa só vai para a faixa do mesmo papel; peça de zona grande nunca
+ * vai para a faixa (ficaria espremida em 130 px). Entre as zonas grandes, a
+ * orientação desempata: em pé na lateral, deitada na principal.
+ */
+export function cabeNaZona(peca, zona) {
+  const p = peca || {};
+  const item = p.item || {};
+  const papel = p.papel || item.papel || '';
+  const alvo = papelDaZona(zona);
+  const faixa = (x) => x === 'cabecalho' || x === 'rodape';
+  if (faixa(alvo)) return papel === alvo ? 2 : 0;
+  if (faixa(papel)) return 0;
+  const emPe = String(p.formato || item.formato || '').startsWith('9/');
+  const zonaEmPe = (zona && zona.formato === 'retrato') || alvo === 'lateral';
+  return emPe === zonaEmPe ? 2 : 1;
+}

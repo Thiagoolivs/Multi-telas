@@ -85,3 +85,35 @@ test('itens 30 e 31: a faixa é uma lista, as campanhas da TV se contam e se tir
   assert.match(faixa, /<TickerEditor zone=\{z\} onChange=\{onChange\} \/>/, 'as notícias só no modo Notícias');
   assert.match(faixa, /type="datetime-local"/, 'a contagem regressiva');
 });
+
+test('item 32: adicionar numa zona começa pelo que já existe e cabe nela', async () => {
+  const { pathToFileURL } = require('node:url');
+  const T = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/tela.js')).href);
+  const principal = { id: 'principal', type: 'playlist' };
+  const lateral = { id: 'lateral', type: 'playlist', formato: 'retrato' };
+  const cab = { id: 'cabecalho', type: 'header' };
+  const rod = { id: 'rodape', type: 'ticker' };
+  assert.deepEqual([principal, lateral, cab, rod].map(T.papelDaZona), ['principal', 'lateral', 'cabecalho', 'rodape']);
+  assert.equal(T.papelDaZona({ id: 'secundaria', type: 'playlist' }), 'lateral', 'em pé, a secundária é a lateral');
+  const deitada = { formato: '16/9', papel: 'destaque', item: { type: 'peca-html' } };
+  const emPe = { formato: '9/16', papel: 'lateral', item: { type: 'peca-html' } };
+  const faixaCab = { formato: '21/9', papel: 'cabecalho', item: { type: 'peca-html' } };
+  assert.equal(T.cabeNaZona(deitada, principal), 2);
+  assert.equal(T.cabeNaZona(emPe, principal), 1, 'cabe, com outra orientação');
+  assert.equal(T.cabeNaZona(emPe, lateral), 2);
+  assert.equal(T.cabeNaZona(faixaCab, principal), 0, 'peça de faixa não vai para a zona grande');
+  assert.equal(T.cabeNaZona(deitada, cab), 0, 'peça grande não vai para a faixa');
+  assert.equal(T.cabeNaZona(faixaCab, cab), 2);
+  assert.equal(T.cabeNaZona(faixaCab, rod), 0, 'cabeçalho não vai para o rodapé');
+  const p = semComentarios(ler('web/src/components/content/TypePicker.jsx'));
+  assert.match(p, /criar\.pecasProntas\(\)/, 'as peças das campanhas');
+  assert.match(p, /library\.list\(\)/, 'e as da biblioteca');
+  assert.match(p, /\['prontas', 'Peças prontas', Layers\], \['midia', 'Fotos e vídeos', ImageIcon\], \['inicio', 'Tipos prontos', LayoutGrid\], \['new', 'Todos os tipos', Plus\]/, 'a ordem: o que existe, mídia, tipos');
+  assert.match(p, /Criar novo com a IA/);
+  const tv = semComentarios(ler('web/src/pages/ContentEditorPage.jsx'));
+  assert.match(tv, /onCriar=\{onCriar \? \(\) => onCriar\(papelDaZona\(activeZone\)\) : null\}/, 'o Criar novo leva a zona');
+  assert.match(tv, /next\.zonas\[activeZone\.id\] = comPecas\(z, pecasDaFaixa\(z\)\.concat\(/, 'na faixa, entra na lista que gira');
+  const c = semComentarios(ler('web/src/pages/CriarPage.jsx'));
+  assert.match(c, /if \(zona && base\.telas\[0\]\.zonas\[zona\]\)/, 'o cartão já pede só aquela zona');
+  assert.match(ler('server/routes/campanhas.js'), /parts\[2\] === 'pecas'/);
+});

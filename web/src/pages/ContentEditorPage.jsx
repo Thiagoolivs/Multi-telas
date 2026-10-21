@@ -17,7 +17,8 @@ import { aplicarConteudo } from '../lib/aplicarConteudo.js';
 import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
 import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
 import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
-import { FaixaDaTela, pecasDaFaixa } from '../components/tela/FaixaDaTela.jsx';
+import { FaixaDaTela, pecasDaFaixa, comPecas } from '../components/tela/FaixaDaTela.jsx';
+import { papelDaZona } from '../lib/tela.js';
 import { CampanhasNaTela, semCampanha } from '../components/tela/CampanhasNaTela.jsx';
 import { criar } from '../api.js';
 // Editor visual (react-moveable) carregado sob demanda — não pesa o painel.
@@ -450,7 +451,7 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
               <PanelHeader title={activeZone.type === 'header' ? 'Cabeçalho' : 'Rodapé'}
                 description={activeZone.type === 'header' ? 'A faixa de cima: a marca, a hora e as chamadas.' : 'A faixa de baixo: as peças e os avisos que passam, ou as notícias.'} />
               <FaixaDaTela key={activeZone.id} tipo={activeZone.type} zona={cfg.zonas[activeZone.id]}
-                onAjustes={() => setSettingsOpen(true)}
+                onAjustes={() => setSettingsOpen(true)} onAdicionar={() => setPicker(true)}
                 onChange={(z) => patchCfg((next) => { next.zonas[activeZone.id] = z; })} />
             </Panel>
           ) : (
@@ -465,7 +466,7 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
                       tela marcada. A caixa antiga fica escondida por 30 dias.
                     */}
                     {onCriar
-                      ? <Button size="sm" variant="secondary" icon={Wand2} onClick={onCriar}>Criar</Button>
+                      ? <Button size="sm" variant="secondary" icon={Wand2} onClick={() => onCriar(papelDaZona(activeZone))}>Criar</Button>
                       : <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>}
                     <Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
                   </>} />
@@ -556,7 +557,18 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
         </>
       )}
 
-      <TypePicker open={picker} onClose={() => setPicker(false)} onPick={addItem} onPickItem={addSaved} onCriar={onCriar} />
+      {/*
+        Adicionar numa zona (item 32): o seletor sabe a zona — peças prontas
+        que cabem nela primeiro — e o Criar novo abre o chat com esta TV e esta
+        zona. No cabeçalho e no rodapé, a peça entra na lista que gira.
+      */}
+      <TypePicker open={picker} onClose={() => setPicker(false)} onPick={addItem} zona={activeZone}
+        onPickItem={(item) => {
+          if (activeZone && (activeZone.type === 'header' || activeZone.type === 'ticker')) {
+            patchCfg((next) => { const z = next.zonas[activeZone.id] || {}; next.zonas[activeZone.id] = comPecas(z, pecasDaFaixa(z).concat({ duracao: 20, ...item })); });
+          } else addSaved(item);
+        }}
+        onCriar={onCriar ? () => onCriar(papelDaZona(activeZone)) : null} />
 
       {/* Ajustes da tela — fora do fluxo de conteúdo, sem roubar espaço */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Ajustes da tela"

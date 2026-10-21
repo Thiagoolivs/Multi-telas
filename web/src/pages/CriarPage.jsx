@@ -42,18 +42,23 @@ const guardar = (id) => { try { if (id) localStorage.setItem(GUARDA, id); else l
 const IMAGENS_DO_GUIA = { gerar: 'gerar', acervo: 'minhas', nenhuma: 'nenhuma' };
 
 // Um cartão já montado a partir de um começo: o cliente gera direto, ou conversa e muda.
-function cartaoInicial(nome, objetivo, telaId, imagens) {
+function cartaoInicial(nome, objetivo, telaId, imagens, zona) {
   const base = E.padrao();
   if (telaId) base.telas[0].alvo = { tipo: 'tela', id: telaId };
+  // Vindo do Adicionar de uma zona (item 32): o cartão já pede só aquela zona.
+  if (zona && base.telas[0].zonas[zona]) {
+    for (const z of E.ZONAS) base.telas[0].zonas[z].pecas = z === zona ? (z === 'principal' ? 2 : 1) : 0;
+    for (const r of E.REDES) base.redes[r] = false;
+  }
   return E.normalizar({ ...base, nome, objetivo, imagens: imagens || base.imagens });
 }
 
-export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
+export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, onIr }) {
   const [conversa, setConversa] = useState(null);   // { id, mensagens, escopo, estado, titulo }
   const [mensagens, setMensagens] = useState([]);
   const [escopo, setEscopo] = useState(() => {
     const op = OPCOES.find((o) => o.id === opcaoInicial);
-    return op ? cartaoInicial(op.titulo, op.pedido, telaInicial) : (telaInicial ? cartaoInicial('', '', telaInicial) : E.vazio());
+    return op ? cartaoInicial(op.titulo, op.pedido, telaInicial) : (telaInicial ? cartaoInicial('', '', telaInicial, undefined, zonaInicial) : E.vazio());
   });
   const [texto, setTexto] = useState(() => {
     const op = OPCOES.find((o) => o.id === opcaoInicial);
