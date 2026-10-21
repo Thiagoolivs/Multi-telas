@@ -275,7 +275,10 @@ test('rotas: da conversa à campanha salva, presa à conta', async (t) => {
   assert.equal(daConversa.estado, 'gerado');
   assert.equal(daConversa.campanhaId, id);
   const biblioteca = (await pedir('/api/library', { cookie: cA })).json.items;
-  assert.ok(biblioteca.filter((x) => x.campaign === c.nome).length >= 5, 'as peças foram para Meus Designs');
+  // Item 29: a campanha mora em Campanhas, não é copiada para Meus Designs (repetia a cada geração).
+  assert.equal(biblioteca.filter((x) => x.campaign === c.nome).length, 0, 'a campanha voltou a ser copiada para a biblioteca');
+  assert.ok(lista[0].capa && lista[0].capa.item && lista[0].capa.item.type === 'peca-html', 'a lista traz a capa');
+  assert.equal(lista[0].capa.formato, '16/9');
 
   assert.equal((await pedir('/api/campanhas/' + id, { cookie: cB })).status, 404);
   assert.deepEqual((await pedir('/api/campanhas', { cookie: cB })).json.campanhas, []);

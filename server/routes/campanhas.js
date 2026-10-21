@@ -22,6 +22,21 @@ const conversa = require('../ai-conversa');
 const ajuste = require('../ajuste');
 const P = require('../../js/peca-html.js');
 
+/*
+ * A capa da campanha (item 29): a primeira peça da principal (ou a primeira
+ * que houver). É o que a lista de Campanhas mostra sem carregar o resultado.
+ */
+function capaDe(r) {
+  const telas = (r && r.telas) || [];
+  for (const t of telas) if (t.zonas.principal[0]) return { item: t.zonas.principal[0].item, formato: t.zonas.principal[0].formato };
+  for (const t of telas) {
+    const p = t.zonas.lateral[0] || t.zonas.cabecalho.pecas[0] || t.zonas.rodape.pecas[0];
+    if (p) return { item: p.item, formato: p.formato };
+  }
+  const b = ((r && r.biblioteca) || [])[0];
+  return b ? { item: b.item, formato: b.formato } : null;
+}
+
 function configDe(d) {
   try { return typeof d.config === 'string' ? JSON.parse(d.config || '{}') : (d.config || {}); } catch (e) { return {}; }
 }
@@ -46,9 +61,14 @@ module.exports = function (ctx) {
         const resultado = await eco.gerar(escopo, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
         progresso('guardando a campanha', '');
         const campanha = await db.criarCampanha(sess.tenant_id, sess.user_id, {
-          nome: resultado.nome, conversaId: conv ? conv.id : '', escopo, resultado, estado: 'pronta', telas: [],
+          nome: resultado.nome, conversaId: conv ? conv.id : '', escopo, resultado, estado: 'pronta', telas: [], capa: capaDe(resultado),
         });
-        if (resultado.biblioteca.length) await db.addLibrary(sess.tenant_id, resultado.nome, resultado.biblioteca);
+        /*
+         * A campanha NÃO vai mais para a biblioteca (item 29): cada geração com o
+         * mesmo nome empilhava as peças na mesma pasta de Meus Designs, e a
+         * campanha aparecia repetida. Ela mora em Campanhas; as peças prontas
+         * dela aparecem em Mídias › Peças prontas (item 34).
+         */
         if (conv) await db.salvarConversa(sess.tenant_id, conv.id, { ...conv, escopo, estado: 'gerado', campanhaId: campanha.id });
         return { campanha };
       });
@@ -89,7 +109,7 @@ module.exports = function (ctx) {
         if (!mudancas.length) return { campanha: c, resposta, mudancas };
         const ctxConta = await contextoDaConta(sess.tenant_id);
         const feito = await ajuste.aplicar(c, mudancas, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
-        const salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo });
+        const salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo, capa: capaDe(feito.resultado) });
         if (c.conversaId) {
           const conv = await db.lerConversa(sess.tenant_id, c.conversaId);
           if (conv) {
@@ -120,7 +140,7 @@ module.exports = function (ctx) {
       if (parts[3] === 'desfazer') {
         const volta = ajuste.desfazer(c);
         if (!volta) { sendJson(res, 409, { error: 'não há ajuste para desfazer' }); return true; }
-        sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: volta.resultado, escopo: volta.escopo }) });
+        sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: volta.resultado, escopo: volta.escopo, capa: capaDe(volta.resultado) }) });
         return true;
       }
       readBody(req, res, async (b) => {
@@ -139,12 +159,19 @@ module.exports = function (ctx) {
           label: String((b.item.campos && (b.item.campos.titulo || b.item.campos.chamada)) || antes.label).slice(0, 40) };
         const anterior = { ...c.resultado }; delete anterior.anterior;
         r.anterior = { resultado: anterior, escopo: c.escopo };
-        return sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: r }) });
+        return sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: r, capa: capaDe(r) }) });
       });
       return true;
     }
     if (parts.length === 2 && req.method === 'GET') {
-      sendJson(res, 200, { campanhas: await db.listarCampanhas(sess.tenant_id, 20) });
+      const lista = await db.listarCampanhas(sess.tenant_id, 20);
+      // Campanha de antes da coluna capa: calcula na hora (sem gravar, para não mexer na ordem da lista).
+      for (const c of lista) {
+        if (c.capa) continue;
+        const k = await db.lerCampanha(sess.tenant_id, c.id);
+        c.capa = k && k.resultado ? capaDe(k.resultado) : null;
+      }
+      sendJson(res, 200, { campanhas: lista });
       return true;
     }
     const id = parts[2];

@@ -18,6 +18,7 @@ export const PAGINAS = {
   alerts: 'Alertas',
   screens: 'Telas',
   criar: 'Criar',
+  campanhas: 'Campanhas',
   designs: 'Meus Designs',
   storage: 'Armazenamento',
   banco: 'Banco de Imagens',
@@ -38,7 +39,7 @@ export const PAGINAS = {
 export const GRUPOS = [
   { id: 'inicio', label: 'Início', paginas: ['overview', 'alerts'] },
   { id: 'telas', label: 'Telas', paginas: ['screens'], tambem: ['content'] },
-  { id: 'criar', label: 'Criar', paginas: ['criar', 'designs'], tambem: ['studio', 'campaigns', 'images', 'rapida'] },
+  { id: 'criar', label: 'Criar', paginas: ['criar', 'campanhas', 'designs'], tambem: ['studio', 'campaigns', 'images', 'rapida'] },
   { id: 'midias', label: 'Mídias', paginas: ['storage', 'banco'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },
   { id: 'automaticos', label: 'Automáticos', paginas: ['birthdays', 'mural'] },

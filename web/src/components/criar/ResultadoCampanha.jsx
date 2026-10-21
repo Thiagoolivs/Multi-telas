@@ -158,7 +158,7 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
           <div className="text-xs text-ink-2">
             {r.contagem ? r.contagem.pecas + (r.contagem.pecas === 1 ? ' peça' : ' peças') : ''}
             {r.contagem && r.contagem.fotosGeradas ? ' · ' + r.contagem.fotosGeradas + (r.contagem.fotosGeradas === 1 ? ' foto gerada' : ' fotos geradas') : ''}
-            {' · também em Meus Designs'}
+            {' · salva em Campanhas'}
           </div>
         </div>
       </div>
@@ -205,7 +205,7 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
 
       <div className="flex flex-wrap gap-2">
         {onNova && <Button icon={Plus} onClick={onNova}>Criar outra</Button>}
-        {onIr && <Button variant="ghost" icon={FolderOpen} onClick={() => onIr('designs')}>Ver em Meus Designs</Button>}
+        {onIr && <Button variant="ghost" icon={FolderOpen} onClick={() => onIr('campanhas')}>Ver todas as campanhas</Button>}
       </div>
 
       {redesDe && <RedesSociais item={redesDe.item} label={redesDe.label} onFechar={() => setRedesDe(null)} />}

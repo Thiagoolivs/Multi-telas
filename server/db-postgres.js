@@ -298,6 +298,8 @@ async function init() {
     -- Onde a loja fica (endereço, bairro, cidade, link): as redes pedem
     -- (hashtag do bairro, endereço na mensagem). JSON, uma coluna só.
     ALTER TABLE marcas ADD COLUMN IF NOT EXISTS localizacao TEXT;
+    -- A capa da campanha (item 29): a lista não carrega o resultado inteiro.
+    ALTER TABLE campanhas ADD COLUMN IF NOT EXISTS capa TEXT;
   `);
 }
 
@@ -605,17 +607,18 @@ const mapCamp = (r) => r && ({
   id: r.id, nome: r.nome || '', conversaId: r.conversa_id || '', estado: r.estado || 'pronta',
   escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
   resultado: r.resultado === undefined ? undefined : jsonOu(r.resultado, null),
-  telas: jsonOu(r.telas, []),
+  telas: jsonOu(r.telas, []), capa: jsonOu(r.capa, null),
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
 });
 async function criarCampanha(tenantId, userId, c) {
   const id = 'camp_' + rid(14);
   const agora = Date.now();
   await pool.query(
-    `INSERT INTO campanhas (id, tenant_id, user_id, nome, conversa_id, escopo, resultado, estado, telas, criado_em, atualizado_em)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    `INSERT INTO campanhas (id, tenant_id, user_id, nome, conversa_id, escopo, resultado, estado, telas, criado_em, atualizado_em, capa)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
     [id, tenantId, userId || '', String(c.nome || '').slice(0, 80), c.conversaId || '',
-      JSON.stringify(c.escopo || null), JSON.stringify(c.resultado || null), c.estado || 'pronta', JSON.stringify(c.telas || []), agora, agora]
+      JSON.stringify(c.escopo || null), JSON.stringify(c.resultado || null), c.estado || 'pronta', JSON.stringify(c.telas || []), agora, agora,
+      JSON.stringify(c.capa || null)]
   );
   return lerCampanha(tenantId, id);
 }
@@ -625,16 +628,16 @@ async function lerCampanha(tenantId, id) {
 }
 async function salvarCampanha(tenantId, id, c) {
   await pool.query(
-    `UPDATE campanhas SET nome = $1, escopo = $2, resultado = $3, estado = $4, telas = $5, atualizado_em = $6
-     WHERE id = $7 AND tenant_id = $8`,
+    `UPDATE campanhas SET nome = $1, escopo = $2, resultado = $3, estado = $4, telas = $5, atualizado_em = $6, capa = $7
+     WHERE id = $8 AND tenant_id = $9`,
     [String(c.nome || '').slice(0, 80), JSON.stringify(c.escopo || null), JSON.stringify(c.resultado || null),
-      c.estado || 'pronta', JSON.stringify(c.telas || []), Date.now(), id, tenantId]
+      c.estado || 'pronta', JSON.stringify(c.telas || []), Date.now(), JSON.stringify(c.capa || null), id, tenantId]
   );
   return lerCampanha(tenantId, id);
 }
 async function listarCampanhas(tenantId, limite) {
   const r = await pool.query(
-    `SELECT id, nome, conversa_id, estado, telas, criado_em, atualizado_em FROM campanhas
+    `SELECT id, nome, conversa_id, estado, telas, criado_em, atualizado_em, capa FROM campanhas
      WHERE tenant_id = $1 ORDER BY atualizado_em DESC LIMIT $2`, [tenantId, limite || 20]);
   return r.rows.map(mapCamp);
 }
