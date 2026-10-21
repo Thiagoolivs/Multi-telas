@@ -60,6 +60,18 @@ const ONDE = [
   { id: '9/16', nome: 'TV em pé' },
 ];
 
+/*
+ * A foto é escolha do cliente (EXECUTOR item 19). Antes era `acervo` fixo, e
+ * conta sem foto própria nunca via foto na peça. O padrão é a IA gerar, com
+ * a ordem de sempre: a foto da empresa vence quando serve. O custo aparece no
+ * passo 3, antes de gastar.
+ */
+const FOTOS = [
+  { id: 'gerar', nome: 'A IA gera' },
+  { id: 'acervo', nome: 'Só as minhas' },
+  { id: 'nenhuma', nome: 'Sem foto' },
+];
+
 // O passo 1: as seis opções grandes. Mora aqui e no Início.
 export function OpcoesDeCriar({ onEscolher, compacto }) {
   return (
@@ -107,6 +119,7 @@ export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
   const [subindo, setSubindo] = useState(false);
   const [onde, setOnde] = useState(['16/9']);
   const [quantas, setQuantas] = useState(1);
+  const [fotos, setFotos] = useState('gerar');
   const [ajustar, setAjustar] = useState(false);
   const [plano, setPlano] = useState(null);         // resposta do plano (com rascunhos)
   const [etapa, setEtapa] = useState(null);         // progresso do trabalho
@@ -162,12 +175,8 @@ export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
      */
     brief: frase.trim() + '\n(' + op.pedido + ')',
     formatos: onde,
-    /*
-     * A Marca já sabe empresa, tom e público: o servidor lê de lá. Foto só
-     * do acervo da empresa (ou a que ela mandou agora) — gerar foto custa
-     * criação e pede aprovação, e isso fica para a campanha completa.
-     */
-    pedido: { formatos: onde, quantidade: quantas, imagens: 'acervo' },
+    // A Marca já sabe empresa, tom e público: o servidor lê de lá.
+    pedido: { formatos: onde, quantidade: quantas, imagens: fotos },
     fotoProduto: foto ? foto.url : undefined,
   });
 
@@ -278,7 +287,7 @@ export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
               <button type="button" onClick={() => setAjustar((v) => !v)} aria-expanded={ajustar}
                 className="flex w-full items-center justify-between px-3 py-2 text-xs text-ink-2 hover:text-ink">
                 <span className="flex items-center gap-1.5"><SlidersHorizontal size={13} /> Ajustar</span>
-                <span className="text-ink-3">{onde.map((f) => (ONDE.find((o) => o.id === f) || {}).nome).join(' e ')} · {quantas} {quantas === 1 ? 'peça' : 'peças'}</span>
+                <span className="text-ink-3">{onde.map((f) => (ONDE.find((o) => o.id === f) || {}).nome).join(' e ')} · {quantas} {quantas === 1 ? 'peça' : 'peças'} · {fotos === 'nenhuma' ? 'sem foto' : 'com foto'}</span>
               </button>
               {ajustar && (
                 <div className="space-y-2 border-t border-line p-3 text-xs">
@@ -298,6 +307,13 @@ export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
                     {[1, 2, 3].map((n) => (
                       <button key={n} type="button" aria-pressed={quantas === n} onClick={() => setQuantas(n)}
                         className={cn('rounded-md border px-2.5 py-1', quantas === n ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2')}>{n}</button>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="w-14 text-ink-3">Foto</span>
+                    {FOTOS.map((o) => (
+                      <button key={o.id} type="button" aria-pressed={fotos === o.id} onClick={() => setFotos(o.id)}
+                        className={cn('rounded-md border px-2.5 py-1', fotos === o.id ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2')}>{o.nome}</button>
                     ))}
                   </div>
                 </div>

@@ -165,17 +165,40 @@ test('campanha pronta: o resultado aparece, não o cardápio de ideias', () => {
   assert.match(tela, /\) : guiando && !gen \? \(/);
 });
 
-test('compor com a IA: a foto só entra se a peça tem onde pô-la', async () => {
+test('compor com a IA: peça sem lugar para a foto já paga é recusada, não perde a foto', async () => {
+  /*
+   * Antes a peça passava e a foto era jogada fora (`camposQueExistem`): o
+   * cliente pagava a foto e via só texto. EXECUTOR item 19: "nem imagens ele
+   * colocou". Agora é recusa da porta, e o modelo tenta de novo.
+   */
   const chamar = motores.chamar;
   const semFoto = '<style>.mt-peca{background:var(--mt-fundo)}h1{font-size:8cqw;color:var(--mt-texto)}</style><section class="mt-peca"><h1 data-campo="titulo">Óculos</h1></section>';
-  let pedido = '';
-  motores.chamar = async (o) => { pedido = o.usuario; return { texto: semFoto, uso: { entrada: 1, saida: 1, cacheLida: 0, cacheEscrita: 0, custoCentavos: 0, modelo: 'x' } }; };
+  const comFoto = '<style>.mt-peca{background:var(--mt-fundo)}img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}h1{font-size:8cqw;color:var(--mt-texto)}</style><section class="mt-peca"><img data-campo-img="foto" alt=""><h1 data-campo="titulo">Óculos</h1></section>';
+  const pedidos = [];
+  const uso = { entrada: 1, saida: 1, cacheLida: 0, cacheEscrita: 0, custoCentavos: 0, modelo: 'x' };
   try {
+    // Sempre sem foto: recusa nas três, e quem chama cai na peça-ouro com foto.
+    motores.chamar = async (o) => { pedidos.push(o.usuario); return { texto: semFoto, uso }; };
     const r = await compositor.comporPeca({ pedido: 'óculos', foto: '/media/conta1/f.jpg', textos: TEXTOS, motor: 'gemini' });
-    assert.equal(r.ok, true);
-    assert.deepEqual(r.item.campos, {}, 'campo "foto" que a peça não tem faria a TV recusar');
-    assert.deepEqual(P.validarItem(r.item).problemas, []);
-    assert.match(pedido, /Textos aprovados/);
+    assert.equal(r.ok, false);
+    assert.equal(pedidos.length, 3);
+    assert.match(r.problemas.join(' '), /data-campo-img="foto"/);
+    assert.match(pedidos[1], /não tem onde pô-la/, 'a segunda tentativa diz o que faltou');
+    assert.match(pedidos[0], /Textos aprovados/);
+
+    // Na segunda tentativa o modelo põe a foto: a peça passa, com a foto.
+    let n = 0;
+    motores.chamar = async () => ({ texto: ++n === 1 ? semFoto : comFoto, uso });
+    const r2 = await compositor.comporPeca({ pedido: 'óculos', foto: '/media/conta1/f.jpg', textos: TEXTOS, motor: 'gemini' });
+    assert.equal(r2.ok, true);
+    assert.equal(r2.item.campos.foto, '/media/conta1/f.jpg');
+    assert.deepEqual(P.validarItem(r2.item).problemas, []);
+
+    // Sem foto no pedido, peça sem foto continua passando.
+    motores.chamar = async () => ({ texto: semFoto, uso });
+    const r3 = await compositor.comporPeca({ pedido: 'óculos', textos: TEXTOS, motor: 'gemini' });
+    assert.equal(r3.ok, true);
+    assert.deepEqual(r3.item.campos, {});
   } finally { motores.chamar = chamar; }
 });
 

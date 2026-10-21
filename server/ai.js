@@ -448,7 +448,15 @@ async function geminiVision(system, userText, images) {
 // Modelos de geração de imagem do Gemini (2026): Nano Banana 2 / Pro / 2.5.
 const GEMINI_IMAGE_MODELS = ['gemini-3.1-flash-image-preview', 'gemini-3-pro-image-preview', 'gemini-2.5-flash-image'];
 
-// Placeholder para modo dev (sem chave): SVG com gradiente + prompt.
+/*
+ * A foto de reserva do modo demonstração (sem nenhuma chave): um degradê da
+ * marca com formas suaves, para o fluxo inteiro dar para testar no localhost.
+ *
+ * SEM TEXTO DESENHADO (EXECUTOR item 19). Antes ela escrevia o prompt no
+ * meio da imagem, e a regra é que foto não tem texto (direcao-arte.js): a
+ * frase da peça caía em cima de outra frase. `reserva: true` diz a quem
+ * chama que não é foto de verdade, e foto de reserva não se cobra.
+ */
 function devImage(prompt, opts) {
   const o = opts || {};
   const [aw, ah] = String(o.formato || '16/9').split('/').map(Number);
@@ -456,15 +464,17 @@ function devImage(prompt, opts) {
   const W = r >= 1 ? 1280 : Math.round(1280 * r), H = r >= 1 ? Math.round(1280 / r) : 1280;
   const c1 = /^#?[0-9a-f]{6}$/i.test(o.brand || '') ? (o.brand[0] === '#' ? o.brand : '#' + o.brand) : '#1e3a8a';
   const c2 = /^#?[0-9a-f]{6}$/i.test(o.brand2 || '') ? (o.brand2[0] === '#' ? o.brand2 : '#' + o.brand2) : '#0ea5e9';
-  const txt = String(prompt || 'Imagem').replace(/[<&>]/g, '').slice(0, 60);
+  const m = Math.min(W, H);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">` +
-    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient></defs>` +
-    `<rect width="${W}" height="${H}" fill="url(#g)"/>` +
-    `<circle cx="${W * 0.8}" cy="${H * 0.2}" r="${Math.min(W, H) * 0.28}" fill="#ffffff" opacity="0.12"/>` +
-    `<circle cx="${W * 0.15}" cy="${H * 0.85}" r="${Math.min(W, H) * 0.2}" fill="#000000" opacity="0.12"/>` +
-    `<text x="50%" y="50%" fill="#ffffff" font-family="system-ui,Arial" font-size="${Math.round(Math.min(W, H) * 0.07)}" font-weight="800" text-anchor="middle" dominant-baseline="middle">${txt}</text>` +
+    `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>` +
+    `<radialGradient id="l" cx="0.72" cy="0.38" r="0.6"><stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs>` +
+    `<rect width="${W}" height="${H}" fill="url(#g)"/><rect width="${W}" height="${H}" fill="url(#l)"/>` +
+    // Uma silhueta de produto (prato e cúpula) do lado direito, onde a foto de verdade teria o assunto.
+    `<ellipse cx="${W * 0.7}" cy="${H * 0.72}" rx="${m * 0.3}" ry="${m * 0.06}" fill="#000000" opacity="0.18"/>` +
+    `<path d="M${W * 0.7 - m * 0.24} ${H * 0.7} A${m * 0.24} ${m * 0.24} 0 0 1 ${W * 0.7 + m * 0.24} ${H * 0.7} Z" fill="#ffffff" opacity="0.22"/>` +
+    `<circle cx="${W * 0.7}" cy="${H * 0.7 - m * 0.26}" r="${m * 0.025}" fill="#ffffff" opacity="0.3"/>` +
     `</svg>`;
-  return { mime: 'image/svg+xml', data: Buffer.from(svg).toString('base64') };
+  return { mime: 'image/svg+xml', data: Buffer.from(svg).toString('base64'), reserva: true };
 }
 
 /*
@@ -476,7 +486,17 @@ function devImage(prompt, opts) {
  */
 async function generateImage(prompt, opts) {
   prompt = String(prompt || '').slice(0, 1200); opts = opts || {};
-  if (mode() === 'dev' || !GEMINI_KEY) return devImage(prompt, opts);
+  if (mode() === 'dev') return devImage(prompt, opts);
+  /*
+   * Com IA de texto e sem a chave de imagem, a reserva ia para a peça como
+   * se fosse foto, e era COBRADA. Agora é erro com o motivo: a peça sai sem
+   * foto, o cliente lê por quê, e nada se cobra.
+   */
+  if (!GEMINI_KEY) {
+    const e = new Error('o gerador de fotos não está ligado (falta a chave de imagem)');
+    e.status = 503;
+    throw e;
+  }
   const referencias = (Array.isArray(opts.referencias) ? opts.referencias : []).filter((r) => r && r.data).slice(0, 3);
   if (referencias.length) opts = Object.assign({}, opts, { produto: true });
   /*

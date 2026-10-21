@@ -154,9 +154,10 @@ DECISÕES QUE SÃO SUAS:
   arte repetindo a cada 12 segundos cansa em minutos. Uma abre o assunto, a
   outra dá o argumento ou a urgência. Nunca duas peças dizendo o mesmo com
   palavras trocadas;
-- se a peça pede uma IMAGEM DE FUNDO ou se resolve melhor com formas e cor — a
-  maioria das peças corporativas resolve com formas, use foto quando ela agrega
-  mesmo. Quando a peça pedir foto, siga esta ordem:
+- a FOTO de cada peça. Peça de TV, Story ou Feed fica muito melhor com foto: o
+  produto, a cena, o ambiente da loja. É o que tira a peça do "só texto
+  colorido". Fica sem foto só o banner 21/9, um aviso sério ou um comunicado
+  interno. Para cada foto, siga esta ordem:
   1. use uma das IMAGENS DA EMPRESA listadas no briefing ("imagemBase": índice) —
      é a loja, o produto e a equipe reais do cliente, sempre vence uma foto
      inventada;
@@ -261,7 +262,18 @@ async function planejar(brief, ctx) {
     : ai.parseAiJson(await ai.callLLM(SISTEMA_PLANO, usuario));
   // A foto do produto é escolha da pessoa na revisão, nunca do modelo.
   if (p && Array.isArray(p.pecas)) p.pecas.forEach((x) => { if (x && typeof x === 'object') delete x.referenciaProduto; });
-  return normalizarPlano(p, ctx, brief);
+  return comFotoNoDestaque(normalizarPlano(p, ctx, brief));
+}
+
+/*
+ * Só no plano NOVO, depois do corte do teto: o plano aprovado é o que o
+ * cliente revisou, e uma foto que ele tirou não volta (ver `dirigir`, que
+ * não replaneja).
+ */
+function comFotoNoDestaque(plano) {
+  if (!plano || !plano.pedido || plano.pedido.imagens !== 'gerar') return plano;
+  const pecas = plano.pecas.map(comFotoDeDestaque);
+  return { ...plano, pecas, imagensAGerar: imagensAGerar(pecas) };
 }
 
 const FORMATOS_OK = ['16/9', '9/16', '1/1', '21/9'];
@@ -415,6 +427,24 @@ function lerPedido(p) {
  */
 function imagensAGerar(pecas) {
   return (pecas || []).filter((x) => x && x.precisaImagem && x.promptImagem).length;
+}
+
+/*
+ * DESTAQUE COM FOTO (EXECUTOR item 19). Com imagens pedidas, a peça de TV,
+ * Story ou Feed que o modelo deixou só com texto passa a pedir foto. O dono
+ * gerou e "nem imagens ele colocou": o prompt antigo dizia que "a maioria
+ * resolve com formas", e o modelo obedecia.
+ *
+ * Ficam de fora o banner 21/9 (faixa fina, foto não aparece), a peça que já
+ * usa foto da empresa e a cópia que reusa a foto de outra peça: essas duas
+ * não custam nada a mais. A foto nova continua passando pelo plano, com o
+ * custo à vista, antes de ser gerada.
+ */
+function comFotoDeDestaque(x) {
+  if (!x || x.formato === '21/9' || x.imagemBase != null || x.reusaImagemDe || x.bgImagem) return x;
+  if (x.precisaImagem && x.promptImagem) return x;
+  const assunto = [x.headline, x.objetivo].filter(Boolean).join(' — ');
+  return { ...x, precisaImagem: true, promptImagem: x.promptImagem || ('Foto que ilustra: ' + assunto).slice(0, 400) };
 }
 
 function canalDoFormato(formato, atual) {
@@ -1347,11 +1377,17 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
          * nenhuma com ela. É o motivo de a peça sair com jeito de banco de
          * imagens com legenda colada.
          */
+        /*
+         * De `plano.identidade`. Antes vinha de um campo "paleta" que o plano não tem
+         * (EXECUTOR item 19): a direção acima nunca chegava, e a foto saía
+         * sem a cor da marca.
+         */
+        const id = plano.identidade || {};
         peca.bgImagem = await onImagem(peca.promptImagem, peca.formato, {
-          brand: (plano.paleta && plano.paleta.brand) || '',
-          brand2: (plano.paleta && plano.paleta.brand2) || '',
-          direcao: (plano.paleta && plano.paleta.direcao) || '',
-          estilo: (plano.paleta && plano.paleta.estilo) || '',
+          brand: id.brand || '',
+          brand2: id.brand2 || '',
+          direcao: id.direcao || '',
+          estilo: id.estilo || '',
           referencia: peca.referenciaProduto || '',
         });
         /*
@@ -1522,6 +1558,6 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
 
 module.exports = { juntarPedido,
   FAIXAS, FAIXAS_OK,
-  dirigir, planejar, comporPeca, layoutReserva, normalizarPlano,
+  dirigir, planejar, comporPeca, layoutReserva, normalizarPlano, comFotoDeDestaque, comFotoNoDestaque,
   enriquecerBrief, textoDaCritica,
 };

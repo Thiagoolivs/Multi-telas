@@ -251,6 +251,17 @@ async function comporPeca(o) {
     usos.push(r.uso);
     const arquivo = limparResposta(r.texto);
     const h = P.higienizar(P.doArquivo(arquivo));
+    /*
+     * A FOTO NÃO SE PERDE (EXECUTOR item 19). A foto chega aqui já gerada e
+     * paga; se o modelo desenhou uma peça sem lugar para ela,
+     * `camposQueExistem` a jogava fora sem aviso, e o cliente via a peça só
+     * com texto: "nem imagens ele colocou". Agora a peça sem o campo é
+     * recusada como qualquer outra falha da porta. Na última recusa, quem
+     * chama cai na peça-ouro com foto.
+     */
+    if (o.foto && !h.campos.some((c) => c.nome === 'foto' && c.tipo === 'img')) {
+      h.problemas = h.problemas.concat('a peça tem foto e não tem onde pô-la: use <img data-campo-img="foto" alt="">, com véu');
+    }
     ultimo = { arquivo, h };
     if (!h.problemas.length) {
       return {
