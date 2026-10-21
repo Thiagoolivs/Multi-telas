@@ -132,3 +132,26 @@ export const EVENTO_SUBIR = 'mt:subir';
 export function abrirSubir(arquivos) {
   window.dispatchEvent(new CustomEvent(EVENTO_SUBIR, { detail: { arquivos: arquivos ? Array.from(arquivos) : [] } }));
 }
+
+/*
+ * O que chegou pelo "compartilhar" do celular (Web Share Target).
+ *
+ * O worker do painel (web/public/sw.js) guarda os arquivos no Cache e manda
+ * o app abrir em /app/?compartilhado=N. Aqui eles viram File de novo, e o
+ * cache é limpo: o mesmo compartilhar não pode reaparecer na próxima visita.
+ */
+export const CACHE_COMPARTILHADO = 'mt-compartilhado';
+export async function lerCompartilhados() {
+  if (typeof caches === 'undefined') return [];
+  const cache = await caches.open(CACHE_COMPARTILHADO);
+  const arquivos = [];
+  for (const req of await cache.keys()) {
+    const r = await cache.match(req);
+    if (!r) continue;
+    const blob = await r.blob();
+    const nome = decodeURIComponent(r.headers.get('X-Nome') || 'arquivo');
+    arquivos.push(new File([blob], nome, { type: blob.type || r.headers.get('Content-Type') || '' }));
+    await cache.delete(req);
+  }
+  return arquivos;
+}

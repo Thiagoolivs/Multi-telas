@@ -7,7 +7,7 @@ import { publicarPecas } from '../../lib/publicar.js';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
 import {
-  ehVideo, ehImagem, prepararFoto, prepararVideo, enviarComProgresso, itemDaMidia, EVENTO_SUBIR,
+  ehVideo, ehImagem, prepararFoto, prepararVideo, enviarComProgresso, itemDaMidia, EVENTO_SUBIR, lerCompartilhados,
 } from '../../lib/subir.js';
 
 /*
@@ -86,6 +86,31 @@ export function SubirConteudo() {
       }
     }
   }
+
+  /*
+   * Chegou pelo "compartilhar" da galeria (?compartilhado=N, ver
+   * web/public/sw.js) ou pelo atalho do ícone instalado (?subir=1). O
+   * endereço é limpo logo: recarregar a página não pode abrir o envio de novo.
+   */
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const compartilhado = q.get('compartilhado');
+    const atalho = q.get('subir');
+    if (compartilhado == null && !atalho) return;
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete('compartilhado'); u.searchParams.delete('subir');
+      window.history.replaceState(window.history.state, '', u.pathname + u.search + u.hash);
+    } catch (e) { /* segue */ }
+    if (atalho) { abrir([]); return; }
+    lerCompartilhados().then((arquivos) => {
+      if (arquivos.length) abrir(arquivos);
+      else {
+        abrir([]);
+        aviso.erro('compartilhar', 'O arquivo não chegou.', 'Abra o MultiTelas uma vez pelo ícone e compartilhe de novo.');
+      }
+    }).catch(() => abrir([]));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Quem chama: o botão do Início, o arrastar-e-soltar e o compartilhar do celular.
   useEffect(() => {

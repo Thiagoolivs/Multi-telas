@@ -1907,6 +1907,16 @@ function handleApp(req, res, urlPath) {
   // Migração incremental: o painel React vive em /app, ao lado do admin
   // vanilla. Rotas de cliente (sem extensão) caem no index.html (SPA).
   let rest = urlPath.slice('/app'.length) || '/';
+  /*
+   * Compartilhar da galeria (share_target) quando o worker do painel ainda
+   * não está ativo: o arquivo não tem para onde ir, mas a pessoa volta ao
+   * painel com o aviso de compartilhar de novo — e não a uma página em branco.
+   */
+  if (req.method === 'POST' && rest === '/compartilhar') {
+    req.resume();
+    res.writeHead(303, { Location: '/app/?compartilhado=0', 'Cache-Control': 'no-store' });
+    return res.end();
+  }
   if (rest === '/') rest = '/index.html';
   const filePath = path.normalize(path.join(APP_DIR, rest));
   if (filePath !== APP_DIR && !filePath.startsWith(APP_DIR + path.sep)) { res.writeHead(403); return res.end('Acesso negado'); }

@@ -8,31 +8,109 @@
   "start_url": "/app/",
   "scope": "/app/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone"],
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
   "orientation": "any",
   "background_color": "#F7F8FA",
   "theme_color": "#F7F8FA",
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
-    { "src": "/icons/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icone-mascara-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/icons/icone-mascara-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/icone-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icone-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icone-mascara-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icone-mascara-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
+    {
+      "name": "Criar",
+      "short_name": "Criar",
+      "description": "Promoção, novidade, aviso: uma frase e a peça sai pronta.",
+      "url": "/app/?ir=criar",
+      "icons": [
+        {
+          "src": "/icons/icone-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Pôr foto na TV",
+      "short_name": "Foto na TV",
+      "description": "Da galeria ou da câmera, direto para a TV.",
+      "url": "/app/?subir=1",
+      "icons": [
+        {
+          "src": "/icons/icone-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
     {
       "name": "Minhas telas",
       "short_name": "Telas",
       "description": "Ver o que cada TV está exibindo agora.",
       "url": "/app/?ir=screens",
-      "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/icone-192.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Meus designs",
       "short_name": "Designs",
       "description": "Abrir o editor e as peças salvas.",
       "url": "/app/?ir=designs",
-      "icons": [{ "src": "/icons/icone-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/icone-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/app/compartilhar",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "titulo",
+      "text": "texto",
+      "files": [
+        {
+          "name": "midia",
+          "accept": [
+            "image/*",
+            "video/*"
+          ]
+        }
+      ]
+    }
+  }
 }

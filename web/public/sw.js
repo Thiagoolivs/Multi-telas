@@ -92,8 +92,43 @@ self.addEventListener('activate', (e) => e.waitUntil((async () => {
   await self.clients.claim();
 })()));
 
+/*
+ * Compartilhar → MultiTelas (Web Share Target, `share_target` no manifesto).
+ *
+ * A galeria do celular manda a foto ou o vídeo num POST para
+ * /app/compartilhar. O worker guarda os arquivos e responde com um redirect
+ * para o painel, que os entrega ao "Subir" (lib/subir.js, lerCompartilhados).
+ * Guardar no Cache e não passar adiante porque a página nova só existe DEPOIS
+ * do redirect — não há ninguém para receber o arquivo na hora.
+ *
+ * Fora do prefixo `mt-app-`: a limpeza do `activate` apaga os caches velhos
+ * do casco por esse prefixo, e um compartilhar no meio de uma atualização do
+ * app não pode sumir.
+ */
+const COMPARTILHADO = 'mt-compartilhado';
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
+  if (req.method === 'POST' && new URL(req.url).pathname === '/app/compartilhar') {
+    e.respondWith((async () => {
+      try {
+        const form = await req.formData();
+        const arquivos = form.getAll('midia').filter((f) => f && typeof f === 'object' && f.size);
+        const cache = await caches.open(COMPARTILHADO);
+        for (const k of await cache.keys()) await cache.delete(k);
+        let i = 0;
+        for (const f of arquivos.slice(0, 10)) {
+          await cache.put('/app/compartilhado/' + (i++), new Response(f, {
+            headers: { 'Content-Type': f.type || 'application/octet-stream', 'X-Nome': encodeURIComponent(f.name || 'arquivo') },
+          }));
+        }
+        return Response.redirect('/app/?compartilhado=' + i, 303);
+      } catch (_) {
+        return Response.redirect('/app/?compartilhado=0', 303);
+      }
+    })());
+    return;
+  }
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
