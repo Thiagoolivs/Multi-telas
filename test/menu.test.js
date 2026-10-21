@@ -24,7 +24,8 @@ test('os 8 grupos, na ordem do PLANO', async () => {
   assert.deepStrictEqual(M.GRUPOS.map((g) => g.label), ['Início', 'Telas', 'Criar', 'Mídias', 'Marca', 'Automáticos', 'Relatórios', 'Conta']);
   const de = (id) => M.GRUPOS.find((g) => g.id === id).paginas;
   assert.deepStrictEqual(de('inicio'), ['overview', 'alerts']);
-  assert.deepStrictEqual(de('midias'), ['storage', 'banco']);
+  // Item 34: Mídias por propósito, com as peças prontas primeiro.
+  assert.deepStrictEqual(de('midias'), ['pecas', 'storage', 'musicas', 'ia', 'banco']);
   assert.deepStrictEqual(de('automaticos'), ['birthdays', 'mural']);
   assert.deepStrictEqual(de('conta'), ['billing', 'team', 'settings', 'support']);
   assert.deepStrictEqual(M.BARRA_INFERIOR, ['inicio', 'telas', 'criar', 'midias'], 'a barra de baixo: Início · Telas · Criar · Mídias (+ Mais)');
@@ -60,7 +61,8 @@ test('nenhum link antigo quebra; os novos (por grupo) funcionam', async () => {
   const antigos = ['criar', 'screens', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
     'team', 'storage', 'banco', 'birthdays', 'support', 'settings'];
   for (const ir of antigos) assert.equal(M.paginaDoIr(ir), ir, '?ir=' + ir + ' deixou de abrir a mesma página');
-  assert.equal(M.paginaDoIr('midias'), 'storage');
+  assert.equal(M.paginaDoIr('midias'), 'pecas');
+  assert.equal(M.paginaDoIr('storage'), 'storage', 'o endereço antigo continua: é Fotos e vídeos');
   assert.equal(M.paginaDoIr('automaticos'), 'birthdays');
   assert.equal(M.paginaDoIr('conta'), 'billing');
   assert.equal(M.paginaDoIr('inicio'), 'overview');

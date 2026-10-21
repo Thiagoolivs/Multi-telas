@@ -24,6 +24,7 @@ import { RelatorioPage } from './pages/RelatorioPage.jsx';
 import { CriarPage } from './pages/CriarPage.jsx';
 import { CriacaoRapidaPage } from './pages/CriacaoRapidaPage.jsx';
 import { CampanhasPage } from './pages/CampanhasPage.jsx';
+import { PecasProntasPage } from './pages/PecasProntasPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 import { parearGuardado } from './lib/parearPendente.js';
 import { paginaDoIr } from './lib/menu.js';
@@ -48,7 +49,11 @@ const META = {
   alerts: { title: 'Alertas', subtitle: 'O que precisa da sua atenção agora.' },
   relatorio: { title: 'Relatório de exibição', subtitle: 'O que passou, quantas vezes e em qual tela — contado pela própria TV.' },
   support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
-  storage: { title: 'Armazenamento', subtitle: 'Mídias, uso e limites do plano.' },
+  // Mídias por propósito (item 34). 'storage' segue como endereço: é Fotos e vídeos.
+  pecas: { title: 'Peças prontas' },
+  storage: { title: 'Fotos e vídeos' },
+  musicas: { title: 'Músicas' },
+  ia: { title: 'Da IA' },
   banco: { title: 'Banco de Imagens', subtitle: 'Acervo compartilhado entre os clientes. Usar daqui não gasta criação.' },
   birthdays: { title: 'Aniversariantes', subtitle: 'Importe a equipe e o player mostra sozinho.' },
   billing: { title: 'Plano e cobrança' },
@@ -173,7 +178,10 @@ export default function App() {
       case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onIrParaPlano={() => go('billing')} />;
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
-      case 'storage': return <StoragePage />;
+      case 'pecas': return <PecasProntasPage onIr={go} />;
+      case 'storage': return <StoragePage filtro="fotos" />;
+      case 'musicas': return <StoragePage key="musicas" filtro="musicas" />;
+      case 'ia': return <StoragePage key="ia" filtro="ia" />;
       case 'banco': return <BancoImagensPage />;
       /*
        * A chave remonta o Criar quando se chega de novo com outra opção (do

@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { UploadCloud, Trash2, Film, HardDrive, Image as ImageIcon, Share2, Check, Clock, X } from 'lucide-react';
+import { UploadCloud, Trash2, Film, Image as ImageIcon, Share2, Check, Clock, X, Music, FileText, Sparkles } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
-import { Progress, Skeleton, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
+import { Skeleton, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { media, bancoImagens } from '../api.js';
 import { formatBytes, formatPercent, relativeTime } from '../lib/format.js';
@@ -34,18 +34,48 @@ const ROTULO = {
   recusada: { texto: 'Não aceita', Icone: X, classe: 'text-ink-3' },
 };
 
-export function StoragePage() {
+/*
+ * MÍDIAS POR PROPÓSITO (EXECUTOR §2c, item 34).
+ *
+ * Era "Armazenamento": o uso do disco em destaque e tudo misturado — a foto
+ * do produto, a foto que a IA gerou, o vídeo, a música. O dono procura pelo
+ * que quer FAZER, então a mesma página mostra um recorte por vez, cada um
+ * com o seu envio, e o disco vira uma linha discreta.
+ */
+const RECORTES = {
+  fotos: {
+    titulo: 'Fotos e vídeos', vazio: 'Sem fotos nem vídeos ainda', enviar: 'Enviar fotos ou vídeos',
+    subtitulo: 'O que você enviou: fotos, vídeos e apresentações para pôr nas TVs.',
+    accept: 'image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    pertence: (m) => m.origem !== 'ia' && !/^audio\//.test(m.mime || ''),
+  },
+  musicas: {
+    titulo: 'Músicas', vazio: 'Sem músicas ainda', enviar: 'Enviar música',
+    subtitulo: 'Para a música de fundo das TVs: escolha em Ajustes da tela › Som.',
+    accept: 'audio/mpeg,audio/mp4,audio/ogg,audio/wav,.mp3,.m4a,.ogg,.wav',
+    pertence: (m) => /^audio\//.test(m.mime || ''),
+  },
+  ia: {
+    titulo: 'Da IA', vazio: 'A IA ainda não gerou fotos', enviar: null,
+    subtitulo: 'As fotos que a IA gerou para as suas campanhas. Dá para compartilhar no Banco de Imagens.',
+    accept: null,
+    pertence: (m) => m.origem === 'ia',
+  },
+};
+
+export function StoragePage({ filtro = 'fotos' }) {
+  const recorte = RECORTES[filtro] || RECORTES.fotos;
   const { data, loading, error, reload } = useAsync(media.list);
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const [confirmar, setConfirmar] = useState(null);
 
-  const items = data ? data.items : [];
-  const [noBanco, setNoBanco] = useEstadoNoBanco(items);
+  const todos = data ? data.items : [];
+  const items = todos.filter(recorte.pertence);
+  const [noBanco, setNoBanco] = useEstadoNoBanco(todos);
   const usage = data ? data.usage : { used: 0, quota: 1 };
   const frac = usage.quota ? usage.used / usage.quota : 0;
-  const tone = frac > 0.9 ? 'danger' : frac > 0.8 ? 'warn' : 'accent';
 
   async function onFiles(e) {
     const files = Array.from(e.target.files || []);
@@ -93,35 +123,27 @@ export function StoragePage() {
   return (
     <div>
       <PageHeader
-        title="Armazenamento"
-        subtitle="Imagens e vídeos da sua conta, usados nas telas."
-        actions={
+        title={recorte.titulo}
+        subtitle={recorte.subtitulo}
+        actions={recorte.enviar && (
           <>
-            <input ref={inputRef} type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" className="hidden" onChange={onFiles} />
+            <input ref={inputRef} type="file" multiple accept={recorte.accept} className="hidden" onChange={onFiles} />
             <Button variant="primary" icon={UploadCloud} disabled={busy} onClick={() => inputRef.current && inputRef.current.click()}>
-              {busy ? 'Enviando…' : 'Enviar mídia'}
+              {busy ? 'Enviando…' : recorte.enviar}
             </Button>
           </>
-        }
+        )}
       />
 
-      <Panel className="mb-4">
-        <div className="flex items-center gap-4 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-surface-2 text-ink-3"><HardDrive size={18} /></div>
-          <div className="flex-1">
-            <div className="flex items-baseline justify-between">
-              <span className="text-sm text-ink-2"><b className="tnum text-ink">{formatBytes(usage.used)}</b> de {formatBytes(usage.quota)}</span>
-              <span className="tnum text-xs text-ink-3">{formatPercent(frac)}</span>
-            </div>
-            <Progress value={frac * 100} tone={tone} className="mt-2 h-2" />
-          </div>
-        </div>
-      </Panel>
+      {/* O disco: uma linha discreta, que só chama a atenção perto do limite. */}
+      <p className={'mb-4 text-xs ' + (frac > 0.9 ? 'text-danger' : frac > 0.8 ? 'text-warn' : 'text-ink-3')}>
+        <span className="tnum">{formatBytes(usage.used)}</span> de <span className="tnum">{formatBytes(usage.quota)}</span> usados ({formatPercent(frac)})
+      </p>
 
       {msg && <div className="mb-4 rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">{msg}</div>}
 
       <Panel>
-        <PanelHeader title="Biblioteca" description={items.length ? `${items.length} arquivo(s)` : undefined} />
+        <PanelHeader title={recorte.titulo} description={items.length ? `${items.length} arquivo(s)` : undefined} />
         {loading ? (
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-video rounded-lg" />)}
@@ -129,8 +151,8 @@ export function StoragePage() {
         ) : error ? (
           <ErrorState description="Não foi possível carregar a biblioteca." onRetry={reload} />
         ) : items.length === 0 ? (
-          <EmptyState icon={ImageIcon} title="Sem mídia ainda" description="Envie imagens e vídeos para usar nas telas."
-            action={<Button size="sm" variant="primary" icon={UploadCloud} onClick={() => inputRef.current && inputRef.current.click()}>Enviar mídia</Button>} />
+          <EmptyState icon={filtro === 'musicas' ? Music : filtro === 'ia' ? Sparkles : ImageIcon} title={recorte.vazio} description={recorte.subtitulo}
+            action={recorte.enviar && <Button size="sm" variant="primary" icon={UploadCloud} onClick={() => inputRef.current && inputRef.current.click()}>{recorte.enviar}</Button>} />
         ) : (
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
             {items.map((m) => (
@@ -138,7 +160,11 @@ export function StoragePage() {
                 <div className="relative aspect-video bg-[#0a1128]">
                   {String(m.mime).startsWith('video/')
                     ? <div className="flex h-full items-center justify-center text-white/70"><Film size={26} /></div>
-                    : <img src={m.url} alt="" className="h-full w-full object-cover" />}
+                    : String(m.mime).startsWith('audio/')
+                      ? <div className="flex h-full items-center justify-center text-white/70"><Music size={26} /></div>
+                      : String(m.mime).startsWith('image/')
+                        ? <img src={m.url} alt="" className="h-full w-full object-cover" />
+                        : <div className="flex h-full items-center justify-center text-white/70"><FileText size={26} /></div>}
                   <button type="button" onClick={() => remove(m)} aria-label="Remover"
                     className="absolute right-1.5 top-1.5 rounded-md bg-ink/60 p-1 text-white opacity-0 transition hover:bg-danger group-hover:opacity-100">
                     <Trash2 size={14} />
