@@ -1,0 +1,47 @@
+<!--
+  Lateral com chamada — papel lateral (e destaque). Feita para a reserva do
+  Criar (EXECUTOR item 27): a coluna ao lado da principal com um rótulo, o
+  título grande, uma frase e a chamada sublinhada. Sem ícone de aviso — a
+  peça de alerta é para piso molhado, não para a promoção da tarde. Todos
+  os campos são texto, para a reserva preencher inteira sem sobrar exemplo
+  de outro negócio. Medidas em cqmin: a mesma peça na coluna e na tela cheia.
+-->
+<style>
+.mt-peca { display: flex; flex-direction: column; justify-content: center; padding: 10cqmin;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: linear-gradient(160deg, var(--mt-fundo-2), var(--mt-fundo)); }
+/* O filete na cor de destaque abre a coluna: é o que a liga à principal ao lado. */
+.mt-peca::before { content: ''; position: absolute; left: 10cqmin; top: 9cqmin; width: 16cqmin; height: 1.6cqmin; background: var(--mt-destaque); }
+.kicker { font: 700 4cqmin/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+h1 { margin-top: 5cqmin; font: 700 calc(12cqmin * var(--mt-escala-titulo, 1))/1.02 var(--mt-fonte-titulo); letter-spacing: -.02em; text-wrap: balance; }
+.apoio { margin-top: 5cqmin; font: 500 4.8cqmin/1.4 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 120cqmin; text-wrap: pretty; }
+.cta { margin-top: 7cqmin; align-self: flex-start; font: 700 4.2cqmin/1 var(--mt-fonte-texto); letter-spacing: .16em; text-transform: uppercase;
+  padding-bottom: 1.6cqmin; border-bottom: .8cqmin solid var(--mt-destaque); }
+/* Sem chamada, sem o sublinhado sozinho. */
+.cta:empty { display: none; }
+@container (aspect-ratio >= 1.25) {
+  .mt-peca { padding: 0 10cqw; }
+  .mt-peca::before { left: 10cqw; top: 14cqmin; }
+  h1 { font-size: calc(15cqmin * var(--mt-escala-titulo, 1)); max-width: 150cqmin; }
+  .apoio { font-size: 4.6cqmin; max-width: 140cqmin; }
+  .cta { font-size: 3.6cqmin; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  h1 { font-size: calc(11cqmin * var(--mt-escala-titulo, 1)); }
+  .apoio { font-size: 4cqmin; }
+  .cta { font-size: 3.6cqmin; }
+}
+/* A coluna estreita: título maior, para ler do outro lado da loja. */
+@container (max-width: 700px) {
+  .kicker { font-size: 4.6cqmin; }
+  h1 { font-size: calc(14cqmin * var(--mt-escala-titulo, 1)); }
+  .apoio { font-size: 5.4cqmin; }
+  .cta { font-size: 4.8cqmin; }
+}
+</style>
+<section class="mt-peca lateral-chamada">
+  <p class="kicker" data-campo="kicker" data-entrada="aparecer">Só à tarde</p>
+  <h1 data-campo="titulo" data-entrada="subir" data-ordem="1">Pão de queijo em dobro</h1>
+  <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="2">Das 15h às 17h, todo dia, saindo do forno.</p>
+  <span class="cta" data-campo="cta" data-entrada="aparecer" data-ordem="3">Peça no balcão</span>
+</section>

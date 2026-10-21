@@ -139,6 +139,17 @@
       "aprovadaEm": "2026-10-20"
     },
     {
+      "id": "lateral-chamada",
+      "nome": "Lateral com chamada",
+      "familia": "oferta",
+      "papeis": [
+        "lateral",
+        "destaque"
+      ],
+      "estado": "rascunho",
+      "marca": "padaria"
+    },
+    {
       "id": "rodape-selo",
       "nome": "Rodapé com selo",
       "familia": "rodapé",
