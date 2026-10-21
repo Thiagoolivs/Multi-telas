@@ -899,7 +899,11 @@ estar escrito na página de preços.
       aprovados, centralizadas — `enquadrar` em js/peca-render.js.)
 - [ ] Matriz de teste: 720p, 1080p, 4K; paisagem e retrato; box e navegador.
       (21/10: navegador feito — os 15 layouts nas três resoluções, e as
-      peças-ouro nas zonas medidas, 3834 combinações limpas. Falta o box.)
+      peças-ouro nas zonas medidas, 3834 combinações limpas. Falta o box.
+      Na varredura de regressão, EXECUTOR item 17: 6210 combinações da
+      bancada limpas; o player em 720p, 1080p e em pé, nativo e girado, pegou
+      dois defeitos do cabeçalho — data "21 De Out." (#164) e nome cortado
+      em pé, com a perna do g comida em todo tamanho (#167).)
 
 **24/7:**
 - [ ] 72 horas seguidas no box, medindo a memória do WebView de hora em hora.
@@ -1055,7 +1059,7 @@ continua obrigatório **antes de instalar a ótica**.
 
 ## 11 · Regras para quem for executar
 
-- **Um PR por etapa**, pequeno, com os testes passando (847 hoje) e
+- **Um PR por etapa**, pequeno, com os testes passando (1193 hoje) e
   `npm run lint:nomes` limpo.
 - **Renderizar e olhar** toda mudança visual, em celular de 360 px e em TV.
 - **Esconder antes de apagar.** Código de funcionalidade realocada só sai

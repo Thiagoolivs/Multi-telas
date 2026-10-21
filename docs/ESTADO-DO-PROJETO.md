@@ -6,15 +6,79 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **18/10/2026** · 847 testes passando · `server.js` com ~2.200
-linhas (cobrança e telas saíram para `server/routes/`).
+Atualizado em: **21/10/2026** · 1193 testes passando · `server.js` com ~2.500
+linhas (cobrança, telas e redes em `server/routes/`).
 
 ---
 
 ## Onde paramos (leia isto primeiro)
 
-A última rodada foi uma auditoria de ponta a ponta seguida da correção, em
-ordem, de tudo o que ela achou (PR #108). Resumo do que mudou:
+A rodada de 21/10 (PRs #137 a #167) foi a fila do
+[`EXECUTOR.md`](EXECUTOR.md), itens 1 a 18: um PR por item, com o consultor
+de plantão na issue #135. Do ponto de vista de quem usa:
+
+**Criar e subir**
+- **Criar em 4 passos** (`CriarPage.jsx`): uma entrada só, 3 toques do Início
+  à TV (#144). Estilo e marca também no editor da peça (#137).
+- **Subir foto ou vídeo do celular:** a foto encolhe antes de sair, a TV mostra
+  a mídia inteira com o fundo borrado (sem faixa preta), barra de progresso
+  (`web/src/lib/subir.js`, #145).
+- **Vídeo pesado para o box:** o upload AVISA — HEVC/AV1, acima de Full HD,
+  mais de 10 Mbps, mais de 150 MB — e não proíbe (`js/video.js`, #154).
+  Converter precisa de ffmpeg no servidor: infra, com o dono.
+- **Postar nas redes:** a peça da TV no tamanho de cada rede, com texto
+  próprio por canal (`server/redes.js`, `web/src/lib/rasterizar.js`, #147, #149).
+- **Paletas prontas na Marca**, e a conta nasce com a paleta do ramo
+  (`js/paletas.js`, `server/paleta.js`, #143).
+
+**Painel**
+- **Menu novo:** 8 grupos no lugar de 14 entradas, abas dentro do grupo e
+  barra de baixo no celular (Início · Telas · Criar · Mídias · Mais). Nada
+  sumiu: todo `?ir=` antigo abre a mesma página (`web/src/lib/menu.js`, #159).
+- **Primeira peça na TV em menos de 10 minutos:** marca → peça → TV, e cada
+  passo diz o próximo (`web/src/lib/jornada.js`, `ProximoPasso.jsx`, #160).
+  Cronometrado: 31 s do cadastro à peça na TV, 18 deles esperando o e-mail.
+- **Painel como app (PWA):** compartilhar da galeria direto para a TV e
+  convite de instalar (#146). O link de confirmação confirma sozinho (#142).
+
+**TV**
+- **TV adaptável:** margem contra overscan por tela; a peça-html é desenhada
+  em 1080p e escalada, igual em 720p, 1080p e 4K; em pé de primeira classe (#148).
+- **Peça idêntica:** a entrada animada da peça é a transição; editor,
+  miniatura e TV desenham igual (#152).
+- **Expediente:** fora do horário a TV fica preta ou só com o relógio — uma
+  regra só para a TV e o vigia (`js/expediente.js`, #150).
+- **Ver a tela agora:** a TV manda o estado e o painel desenha; o servidor só
+  deixa passar item que está salvo (`server/ver-tela.js`, #151).
+
+**Negócio**
+- **Planos e preços** (#153), **landing e página de preços** (#157).
+- **Administração:** frota, devedores e crescimento no painel do operador;
+  ações do operador e entrar na conta do cliente com sessão marcada e
+  registro (`server/admin.js`, `server/suporte.js`, #155, #156).
+
+**Varredura de regressão (item 17):** `npm test` três vezes, sem teste
+instável; bancada com as 39 peças × 6 marcas × 3 modos × zonas (6210
+combinações), limpa; as 17 páginas do painel a 360 px, nos dois temas; o
+player em 720p, 1080p e em pé (nativo e girado na TV Box). Quatro defeitos,
+um PR cada: a Equipe com "Visão geral" no topo (#161), as ações da Equipe
+fora da tela no celular (#162), datas da TV com "De" maiúsculo (#164) e o
+cabeçalho da TV cortando a perna do g e o nome em pé (#167).
+
+**Em andamento:** rodada 2, "Criar conversando" ([`EXECUTOR.md`](EXECUTOR.md)
+§2b, itens 19 a 27) — o Criar vira um chat que entende o pedido e gera o
+ecossistema inteiro da TV. Já entraram a imagem de verdade (#165) e o
+escopo, o contrato entre o chat e o gerador (`js/escopo.js`, #166).
+
+**Com o dono e o consultor** (decisão ou infra, não código): ffmpeg no
+servidor; condições do anual e regra da multa; o serviço web lendo o bucket
+de backup; o número do WhatsApp; foto real de TV e autorização para usar a
+prova da ótica.
+
+### Rodada anterior (18/10)
+
+Uma auditoria de ponta a ponta seguida da correção, em ordem, de tudo o que
+ela achou (PR #108):
 
 - **TV ligando sem internet** trocava a vitrine pela demonstração em 60s e
   nunca mais reconectava. Consertado e conferido no navegador.
@@ -33,7 +97,9 @@ ordem, de tudo o que ela achou (PR #108). Resumo do que mudou:
   "Colocar conteúdo agora", tela vazia mostra "Comece por aqui", e texto longo
   encolhe para caber na zona da TV.
 
-**Domínios em produção** (mesmo serviço no Railway): `app.multitelas.net.br`
+### Produção
+
+**Domínios** (mesmo serviço no Railway): `app.multitelas.net.br`
 serve a landing em `/` e o painel em `/app`; em `tv.multitelas.net.br` a raiz
 já abre o player (igual a `/tv`). O APK aponta para o domínio da TV.
 
@@ -71,8 +137,14 @@ homologado (Xiaomi TV Box S). Comodato de hardware, não (ver
 
 ### Trabalho em paralelo
 
-Regras para outro agente mexendo aqui ao mesmo tempo:
-[`TAREFAS-ANTIGRAVITY.md`](TAREFAS-ANTIGRAVITY.md).
+- **Executor e consultor:** a fila e as regras que não podem regredir moram
+  no [`EXECUTOR.md`](EXECUTOR.md) (seção 1b); o canal é a issue #135
+  (`[executor]` pergunta, `[consultor]` responde e testa no ar). Infra
+  (Railway, variáveis, bucket, ffmpeg) é com o consultor.
+- **Prints de PR** vão para a branch órfã `prints` e entram no PR como
+  `https://github.com/Thiagoolivs/Multi-telas/blob/prints/<caminho>?raw=true`.
+- Outro agente mexendo aqui ao mesmo tempo:
+  [`TAREFAS-ANTIGRAVITY.md`](TAREFAS-ANTIGRAVITY.md).
 
 ## Como o sistema está montado
 
@@ -95,9 +167,26 @@ player.html                    web/src/pages/*             server.js  (rotas)
 O player é vanilla e funciona sem rede: guarda a última configuração e continua
 exibindo. Isso não é detalhe — é o que separa signage de site.
 
-**Módulos UMD (fonte única):** `js/cor.js`, `js/seasons.js`, `js/animacao.js`.
-Cada um funciona como global de navegador, `require()` no Node e `import` no
-Vite. O lado ESM importa por efeito colateral e **reexporta `globalThis.MTx`** —
+**O que entrou nesta rodada, por lugar:**
+
+| Onde | Arquivo | O que faz |
+|---|---|---|
+| TV e servidor | `js/expediente.js` | horário da loja: a TV apaga e o vigia não acusa queda |
+| TV e painel | `js/video.js` | o vídeo aguenta o box? (lido nos bytes, avisa no upload) |
+| painel e operador | `js/aparelho.js` | "1920×1080 · Android", do último pulso da TV |
+| painel e servidor | `js/paletas.js` | as paletas sugeridas; a conta nasce com a do ramo (`server/paleta.js`) |
+| chat e gerador | `js/escopo.js` | o que vai ser criado, para onde e como (rodada 2) |
+| servidor | `server/ver-tela.js` | confere o estado que a TV mandou contra a programação salva |
+| servidor | `server/redes.js` | o texto de cada rede, um pedido por canal |
+| servidor | `server/admin.js` · `server/suporte.js` | o negócio no painel do operador · entrar na conta do cliente com registro |
+| painel | `web/src/lib/menu.js` | os 8 grupos; `?ir=` aceita página ou grupo, lista fechada |
+| painel | `web/src/lib/jornada.js` | onde a conta está (marca → peça → TV), DEDUZIDO do estado real |
+| painel | `web/src/lib/subir.js` · `publicar.js` · `rasterizar.js` | foto/vídeo antes de subir · publicar em telas, um caminho só · a peça vira imagem para as redes |
+
+**Módulos UMD (fonte única):** `js/cor.js`, `js/seasons.js`, `js/animacao.js`,
+`js/paletas.js`, `js/expediente.js`, `js/video.js`, `js/aparelho.js`,
+`js/escopo.js`. Cada um funciona como global de navegador, `require()` no
+Node e `import` no Vite. O lado ESM importa por efeito colateral e **reexporta `globalThis.MTx`** —
 nunca uma cópia. Quebrar isso ressuscita a classe de bug que o `js/cor.js`
 existe para matar.
 
@@ -116,6 +205,37 @@ existe para matar.
   fonte não existe no domínio, a CSP recusa buscá-la fora, e o texto sai na
   fonte de sistema — mais larga que a medida. `test/fontes-proprias.test.js`
   falha antes disso chegar à parede de alguém.
+
+Armadilhas novas desta rodada:
+
+- **Mexeu em `player.html`, `js/` ou `css/` do player? Suba o `SHELL_CACHE`**
+  em `sw.js` (hoje `mt-shell-v40`). A TV serve o shell do cache; sem a versão
+  nova ela continua com o arquivo velho e ninguém vê a correção na parede.
+- **Banco no SQLite e mídia são variáveis diferentes.** `DATA_DIR` aponta o
+  banco; `MEDIA_DIR` (ou `RAILWAY_VOLUME_MOUNT_PATH`) aponta `media/`. Um
+  segundo servidor local com só `DATA_DIR` acha as contas e mostra as
+  miniaturas quebradas.
+- **`const` com o nome do parâmetro dentro de um `try`** cai na zona morta
+  (TDZ): a primeira linha que lê o parâmetro estoura, o `catch` engole, e a
+  função "não faz nada" sem erro nenhum. Foi assim que o clima sumiu do
+  cabeçalho numa versão da #167 — o teste agora roda a função de verdade.
+- **`text-transform: capitalize` em data em português** põe maiúscula em toda
+  palavra ("21 De Outubro"). Data sobe só a primeira letra (`::first-letter`).
+- **`line-height: 1` com `overflow: hidden` corta a perna do g, p e j.** Em
+  texto de uma linha com reticências, use 1.2 ou mais.
+- **`cn()` só junta classes, não resolve conflito do Tailwind.** Entre
+  `whitespace-nowrap` e `whitespace-normal`, quem ganha é a ordem no CSS
+  gerado, não a ordem no `className`. Para mudar no celular, use o variante
+  (`max-sm:whitespace-normal`), que vem depois.
+- **Layout deitado numa TV em pé fica espremido** — de propósito o painel só
+  oferece layouts verticais quando a TV está em pé (`SettingsForm.jsx`, por
+  `orientation`). Para conferir em pé, use `portrait-*`, não o `dashboard`.
+- **Para dirigir uma TV de teste sem parear:** grave `mt.cloudDeviceId` e
+  `mt.cloudDeviceToken` no `localStorage` antes de abrir `/tv` (no puppeteer,
+  `evaluateOnNewDocument`). Abrir `/tv` sem identidade pede pareamento novo.
+- **No navegador sem tela (headless), `MediaRecorder` grava 0 byte.** Teste
+  de vídeo usa arquivo sintético; e rolagem nos scripts de print é
+  `behavior: 'instant'`, senão a foto sai no meio do caminho.
 
 ## A tese do motor de IA
 
@@ -214,16 +334,22 @@ Avaliação franca, com números do próprio código:
 1. ~~Ajustes da tela com 16 controles~~ — o essencial fica à vista, o resto
    em "Mais ajustes", com a contagem do que foi mudado.
 
-2. **99 tipos de conteúdo no catálogo.** É força na venda e peso no uso. A tela
-   de adicionar precisa de um caminho curto ("o que você quer mostrar?") antes da
-   grade completa.
+2. ~~99 tipos de conteúdo no catálogo~~ — "Adicionar conteúdo" agora pergunta
+   antes ("O que você quer mostrar?", 6 entradas grandes); a grade inteira
+   ficou em "Mais tipos", com busca (#159).
 
-3. **`server.js` ainda tem ~2.200 linhas.** Auth, equipe, cobrança e telas
-   já saíram para `server/routes/`; IA, marca, mural e plataforma continuam
-   lá. O `npm run lint:nomes` no CI é o que torna a extração segura.
+3. **`server.js` voltou a crescer: ~2.500 linhas.** Auth, equipe, cobrança,
+   telas e redes estão em `server/routes/`; IA, marca, mural e plataforma
+   continuam lá. O `npm run lint:nomes` no CI é o que torna a extração segura.
 
 4. ~~Editor sem texto em curva e elementos gráficos~~ — entraram (`js/graficos.js`,
    `arcoTexto` em `js/peca.js`); editor, TV, miniatura e PNG desenham igual.
+
+5. **O Criar ainda decide demais pelo cliente.** O dono, em 21/10: as peças
+   saem boas, mas "sem sal", às vezes sem imagem, e o fluxo de 4 passos é
+   pré-definido demais — o cliente quer conversar e receber a campanha
+   inteira da TV (várias telas, cabeçalho e rodapé animados). É a rodada 2
+   ([`EXECUTOR.md`](EXECUTOR.md) §2b).
 
 ## Próximos passos
 
@@ -231,14 +357,16 @@ Avaliação franca, com números do próprio código:
 
 Depois, em ordem de impacto:
 
-1. **Testar o APK num box de verdade** (boot, tela acesa, sobreposição).
-2. **Simplificar o catálogo** (item 2 acima).
-3. **Recorte inteligente** da foto do acervo e **coerência entre peças**.
-4. **SSE, limites e comandos em Redis** para rodar mais de uma instância.
+1. **A rodada 2, "Criar conversando"** (itens 19 a 27 do
+   [`EXECUTOR.md`](EXECUTOR.md)), já em andamento.
+2. **Testar o APK num box de verdade** (boot, tela acesa, sobreposição) — é
+   o que falta na matriz de teste da TV (PLANO §7.1).
+3. **ffmpeg no servidor** para normalizar vídeo; a régua de quem converter
+   já existe (`js/video.js`).
+4. **Recorte inteligente** da foto do acervo e **coerência entre peças**.
+5. **SSE, limites e comandos em Redis** para rodar mais de uma instância.
 
-Feito nesta rodada: app Android, relatório de exibição (no Pro), grupos de
-telas, Ajustes simplificados, texto em curva e elementos gráficos, TV em pé
-(giro no player, para TV Box que não gira a imagem).
+O que entrou na rodada de 21/10 está em "Onde paramos", no topo.
 
 ## Convenções
 
@@ -246,7 +374,7 @@ telas, Ajustes simplificados, texto em curva e elementos gráficos, TV em pé
   decisão e o erro que ela evita.
 - Sem framework no servidor e sem dependência pesada; `node:sqlite` em dev,
   Postgres em produção, mesma API assíncrona nos dois.
-- Testes em `npm test` (**847 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
+- Testes em `npm test` (**1193 hoje**). `npm run lint:nomes` pega nome indefinido no servidor. Dois padrões que se
   provaram:
   - **Renderizar e olhar.** Screenshot pegou bugs que teste nenhum pegou —
     componente desmontado, texto estourando, botão que não fazia nada, cabeçalho
