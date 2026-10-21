@@ -1188,6 +1188,28 @@ function layoutSuave(peca, palette, formato) {
  * onImagem: função opcional (prompt, formato) => url. Injetada pelo server.js
  * para que este módulo não precise conhecer storage nem tenant.
  */
+// A marca que a peça em HTML usa: as cores que o plano decidiu, as fontes da marca salva.
+function marcaDoPlano(plano, ctx) {
+  return { cores: [plano.identidade.brand, plano.identidade.brand2].filter(Boolean),
+    fonteTitulo: (ctx.marca && ctx.marca.fonteTitulo) || '', fonteApoio: (ctx.marca && ctx.marca.fonteApoio) || '' };
+}
+
+/*
+ * O rascunho de uma peça do plano: a mesma peça-ouro da reserva, com os
+ * textos do plano. A foto que AINDA não existe entra como um endereço
+ * qualquer — no modo rascunho o desenhista troca toda foto por silhueta.
+ */
+function rascunhoDaPeca(peca, plano, ctx, brief) {
+  const temFoto = !!(peca.bgImagem || (peca.precisaImagem && peca.promptImagem));
+  const item = compositor.preencherOuro({
+    pedido: brief, empresa: ctx.empresa || '', marca: marcaDoPlano(plano, ctx),
+    modo: MODO_DA_DIRECAO[plano.identidade.direcao] || 'escuro',
+    foto: temFoto ? (peca.bgImagem || '/media/rascunho.jpg') : null,
+    textos: { kicker: peca.kicker, titulo: peca.headline, apoio: peca.sub, cta: peca.cta },
+  });
+  return Object.assign(item, { formato: peca.formato });
+}
+
 async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, onProgresso, pararNoPlano } = {}) {
   ctx = ctx || {};
   // Etapas contadas para o painel: a campanha demora, e quem espera precisa ver
@@ -1265,10 +1287,15 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
      * Devolve o plano e PARA. Nenhuma imagem foi gerada, nenhum crédito saiu.
      * O que vai junto é o que o cliente precisa para decidir: quantas peças,
      * em que formatos, quantas terão foto, e o custo disso em crédito.
+     *
+     * Com o motor HTML vai também o RASCUNHO de cada peça (§4.10, passo 3): a
+     * peça-ouro com o texto real, desenhada no modo rascunho — a foto vira
+     * silhueta. Instantâneo e sem custo; a foto só é gerada depois do ok.
      */
     return {
       etapa: 'plano',
       plano,
+      rascunhos: ctx.motorHtml ? plano.pecas.map((p) => rascunhoDaPeca(p, plano, ctx, brief)) : undefined,
       orcamento: {
         pecas: plano.pecas.length,
         comFoto: imagensAGerar(plano.pecas),
@@ -1356,8 +1383,7 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
    */
   if (ctx.motorHtml) {
     const modo = MODO_DA_DIRECAO[plano.identidade.direcao] || 'escuro';
-    const marcaDaPeca = { cores: [plano.identidade.brand, plano.identidade.brand2].filter(Boolean),
-      fonteTitulo: (ctx.marca && ctx.marca.fonteTitulo) || '', fonteApoio: (ctx.marca && ctx.marca.fonteApoio) || '' };
+    const marcaDaPeca = marcaDoPlano(plano, ctx);
     // Uma peça em HTML serve deitada e em pé: a cópia de outro formato reaproveita, sem nova chamada.
     const porManchete = new Map();
     for (const peca of plano.pecas) {

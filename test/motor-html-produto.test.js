@@ -215,3 +215,36 @@ test('o servidor liga o motor HTML na campanha, e dá para voltar sem deploy', (
   const server = fs.readFileSync(path.join(RAIZ, 'server.js'), 'utf8');
   assert.match(server, /motorHtml: process\.env\.MT_MOTOR_CAMPANHA !== 'coordenadas'/);
 });
+
+test('plano com o motor HTML: cada peça vem com o rascunho, foto como silhueta, sem gastar', async () => {
+  const r = await director.dirigir('óculos de sol 30%', {
+    empresa: 'Ótica Central', motorHtml: true,
+    planoAprovado: { identidade: IDENT, pecas: [
+      { formato: '16/9', headline: 'Óculos de sol com 30% de desconto', kicker: 'Semana do Sol', sub: 'Até sábado.', cta: 'Passe na loja' },
+      { formato: '9/16', headline: 'Garantia de 2 anos', precisaImagem: true, promptImagem: 'armação na vitrine' },
+    ] },
+  }, { pararNoPlano: true });
+  assert.equal(r.etapa, 'plano');
+  assert.equal(r.rascunhos.length, r.plano.pecas.length);
+  for (const [i, it] of r.rascunhos.entries()) {
+    assert.deepEqual(P.validarItem(it).problemas, [], 'rascunho ' + i);
+    assert.equal(it.formato, r.plano.pecas[i].formato);
+  }
+  const comFoto = r.rascunhos[r.plano.pecas.findIndex((p) => p.promptImagem)];
+  assert.equal(comFoto.origem.base, 'institucional-foto', 'peça que vai ter foto: o rascunho já reserva o lugar dela');
+  assert.equal(r.rascunhos[0].origem.base, 'institucional-lancamento');
+  const pagina = fs.readFileSync(path.join(RAIZ, 'web/src/pages/MyDesignsPage.jsx'), 'utf8');
+  assert.match(pagina, /<PecaHtml item=\{rascunhos\[i\]\}[^>]*rascunho \/>/);
+});
+
+test('sem o motor HTML, o plano não traz rascunho', async () => {
+  const r = await director.dirigir('x', { empresa: 'X', planoAprovado: { identidade: IDENT, pecas: [{ formato: '16/9', headline: 'Só esta' }] } }, { pararNoPlano: true });
+  assert.equal(r.rascunhos, undefined);
+});
+
+test('editar a peça troca estilo e marca sem chamar a IA', () => {
+  const ed = fs.readFileSync(path.join(RAIZ, 'web/src/components/content/EditarPeca.jsx'), 'utf8');
+  assert.match(ed, /\{ \.\.\.item, campos, modo, marca \}/);
+  assert.match(ed, /brand\.marcas\(\)/);
+  for (const m of ['escuro', 'claro', 'marca']) assert.match(ed, new RegExp("id: '" + m + "'"));
+});
