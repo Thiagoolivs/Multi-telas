@@ -42,11 +42,41 @@ export function TeamPage({ me, onLeft }) {
     setBusyId(m.id);
     try { await team.setRole(m.id, role); await reload(); } finally { setBusyId(null); }
   }
+  async function revogar(inv) { await team.revokeInvite(inv.id); reload(); }
   async function removeMember(m) {
     setBusyId(m.id);
     try { await team.remove(m.id); if (m.isMe) return onLeft(); await reload(); }
     finally { setBusyId(null); }
   }
+
+  function papel(m) {
+    return isOwner && !m.isMe ? (
+      <Select value={m.role} disabled={busyId === m.id} onChange={(e) => changeRole(m, e.target.value)} className="h-8 w-32">
+        <option value="owner">Dono</option>
+        <option value="admin">Admin</option>
+        <option value="member">Membro</option>
+      </Select>
+    ) : (
+      <Badge tone={ROLE[m.role].tone}>{ROLE[m.role].label}</Badge>
+    );
+  }
+  function acao(m) {
+    if (rowAction(m) === 'leave') {
+      return <Button size="sm" variant="secondary" disabled={busyId === m.id} onClick={() => removeMember(m)}>Sair da empresa</Button>;
+    }
+    if (rowAction(m) === 'remove') {
+      return <Button size="sm" variant="danger" disabled={busyId === m.id} onClick={() => removeMember(m)}>Remover</Button>;
+    }
+    return null;
+  }
+
+  /*
+   * No celular (360 px) a tabela de três colunas não cabe: "Ações" ficava
+   * para fora do card, e só aparecia rolando a tabela de lado — quem não
+   * sabe disso não acha o "Remover" (EXECUTOR item 17). Abaixo de `sm` o
+   * papel e a ação descem para baixo do nome, e as colunas somem.
+   */
+  const SO_LARGA = 'hidden sm:table-cell';
 
   return (
     <div>
@@ -64,49 +94,29 @@ export function TeamPage({ me, onLeft }) {
           <Table>
             <THead>
               <TH>Pessoa</TH>
-              <TH>Papel</TH>
-              <TH align="right">Ações</TH>
+              <TH className={SO_LARGA}>Papel</TH>
+              <TH className={SO_LARGA} align="right">Ações</TH>
             </THead>
             <TBody>
               {members.map((m) => (
                 <TR key={m.id}>
-                  <TD>
+                  <TD className="max-sm:whitespace-normal">
                     <div className="flex items-center gap-2.5">
                       <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-2xs font-semibold text-accent">
                         {initials(m.name || m.email)}
                       </span>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-medium text-ink">{m.name || m.email}</span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="break-words font-medium text-ink">{m.name || m.email}</span>
                           {m.isMe && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-2xs text-ink-3">você</span>}
                         </div>
-                        <div className="text-xs text-ink-3">{m.email}</div>
+                        <div className="break-all text-xs text-ink-3">{m.email}</div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">{papel(m)}{acao(m)}</div>
                       </div>
                     </div>
                   </TD>
-                  <TD>
-                    {isOwner && !m.isMe ? (
-                      <Select value={m.role} disabled={busyId === m.id} onChange={(e) => changeRole(m, e.target.value)} className="h-8 w-32">
-                        <option value="owner">Dono</option>
-                        <option value="admin">Admin</option>
-                        <option value="member">Membro</option>
-                      </Select>
-                    ) : (
-                      <Badge tone={ROLE[m.role].tone}>{ROLE[m.role].label}</Badge>
-                    )}
-                  </TD>
-                  <TD align="right">
-                    {rowAction(m) === 'leave' && (
-                      <Button size="sm" variant="secondary" disabled={busyId === m.id} onClick={() => removeMember(m)}>
-                        Sair da empresa
-                      </Button>
-                    )}
-                    {rowAction(m) === 'remove' && (
-                      <Button size="sm" variant="danger" disabled={busyId === m.id} onClick={() => removeMember(m)}>
-                        Remover
-                      </Button>
-                    )}
-                  </TD>
+                  <TD className={SO_LARGA}>{papel(m)}</TD>
+                  <TD className={SO_LARGA} align="right">{acao(m)}</TD>
                 </TR>
               ))}
             </TBody>
@@ -120,18 +130,25 @@ export function TeamPage({ me, onLeft }) {
           <Table>
             <THead>
               <TH>E-mail</TH>
-              <TH>Papel</TH>
-              <TH>Código</TH>
-              <TH align="right">Ações</TH>
+              <TH className={SO_LARGA}>Papel</TH>
+              <TH className={SO_LARGA}>Código</TH>
+              <TH className={SO_LARGA} align="right">Ações</TH>
             </THead>
             <TBody>
               {invites.map((inv) => (
                 <TR key={inv.id}>
-                  <TD className="font-medium text-ink">{inv.email}</TD>
-                  <TD><Badge tone={ROLE[inv.role].tone}>{ROLE[inv.role].label}</Badge></TD>
-                  <TD><CopyCode code={inv.code} /></TD>
-                  <TD align="right">
-                    <Button size="sm" variant="ghost" onClick={async () => { await team.revokeInvite(inv.id); reload(); }}>Revogar</Button>
+                  <TD className="font-medium text-ink max-sm:whitespace-normal">
+                    <span className="break-all">{inv.email}</span>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 font-normal sm:hidden">
+                      <Badge tone={ROLE[inv.role].tone}>{ROLE[inv.role].label}</Badge>
+                      <CopyCode code={inv.code} />
+                      <Button size="sm" variant="ghost" onClick={() => revogar(inv)}>Revogar</Button>
+                    </div>
+                  </TD>
+                  <TD className={SO_LARGA}><Badge tone={ROLE[inv.role].tone}>{ROLE[inv.role].label}</Badge></TD>
+                  <TD className={SO_LARGA}><CopyCode code={inv.code} /></TD>
+                  <TD className={SO_LARGA} align="right">
+                    <Button size="sm" variant="ghost" onClick={() => revogar(inv)}>Revogar</Button>
                   </TD>
                 </TR>
               ))}
