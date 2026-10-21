@@ -32,6 +32,17 @@ h1 span + span { color: var(--mt-destaque); }
   .hora { margin-top: 0; font-size: calc(11cqmin * var(--mt-escala-titulo, 1)); }
   .nota { left: 6cqw; right: auto; bottom: 7cqh; font-size: 3cqmin; }
 }
+/*
+ * Deitada, mas menos larga que a TV inteira (as principais com lateral, de
+ * 1,46 a 1,65): a hora não cabe ao lado do dia — passava da borda. Cada dia
+ * vira duas linhas, o dia em cima e a hora embaixo. O 16:9 e o destaque do
+ * Corporativo (1,69) não mudam.
+ */
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.65) {
+  .dias li { display: block; padding: 2.6cqmin 0 3cqmin; }
+  .dia { font-size: 2.8cqmin; }
+  .hora { margin-top: 1.6cqmin; font-size: calc(9.6cqmin * var(--mt-escala-titulo, 1)); }
+}
 /* Em pé numa tela inteira (não na coluna): tudo maior, a hora domina de longe. */
 @container (aspect-ratio < 0.8) and (min-width: 701px) {
   .cabeca { top: 12cqmin; }

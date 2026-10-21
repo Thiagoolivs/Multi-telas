@@ -92,8 +92,34 @@
    * !important em todo elemento porque o `font:` abreviado das peças zera o
    * font-variant-numeric herdado (conferido no Chrome).
    */
-  const BASE = ':host{display:block;position:relative;width:100%;height:100%;overflow:hidden}'
+  /*
+   * Zona QUASE quadrada, mas deitada (proporção de 1,02 a 1,46): a peça é
+   * desenhada QUADRADA, no centro (`enquadrar`, logo abaixo), e as sobras
+   * dos lados levam o fundo da marca (.mt-faixas).
+   *
+   * São as zonas dos layouts em pé (Vertical · Duas zonas: 1038×851;
+   * Vertical em pilha: 1038×949), a TV 4:3 (1,33) e a principal do layout
+   * quadrado com cabeçalho (1,40). As peças decidem o desenho
+   * pela própria caixa já sem o padding, e nessa faixa a conta cai no
+   * desenho DEITADO sem largura para ele: o QR empurrava o texto para fora,
+   * a lista do cardápio subia por cima do título (varredura de 21/10, 69
+   * combinações). Desenhada quadrada, a peça usa o desenho de 1:1, que cabe.
+   *
+   * 1:1 exato, 16:9, 9:16 e a lateral ficam fora da faixa e não mudam um
+   * pixel — a ótica do lote 1 continua onde o dono aprovou. O <host> é um
+   * container para a regra medir a ZONA onde a peça está, em qualquer lugar
+   * (TV, painel, bancada).
+   *
+   * O mesmo para a zona LARGA DEMAIS (de 1,95 a 4): a principal do layout
+   * "Cabeçalho + Principal + Rodapé" tem 2,4:1, e o título e a foto saíam
+   * por cima e por baixo. Ali a peça é desenhada em 16:9, no centro. O teto
+   * de 4 deixa de fora cabeçalho e rodapé, que são faixas de 6:1 para cima.
+   */
+  const BASE = ':host{display:block;position:relative;width:100%;height:100%;overflow:hidden;container-type:size}'
     + '.mt-palco{position:absolute;inset:0;overflow:hidden;container-type:size}'
+    + '.mt-faixas{position:absolute;inset:0;background:var(--mt-fundo);visibility:hidden}'
+    + '@container (min-aspect-ratio:51/50) and (max-aspect-ratio:22/15){.mt-faixas{visibility:visible}}'
+    + '@container (min-aspect-ratio:39/20) and (max-aspect-ratio:4/1){.mt-faixas{visibility:visible}}'
     + '.mt-palco>.mt-peca{position:absolute!important;inset:0!important;margin:0!important;overflow:hidden!important;container-type:size!important}'
     + ':where(.mt-peca,.mt-peca *,.mt-peca *::before,.mt-peca *::after){box-sizing:border-box}'
     + ':where(.mt-peca) :where(h1,h2,h3,h4,p,ul,ol,figure,figcaption){margin:0}'
@@ -106,7 +132,8 @@
   // As variáveis da marca, num bloco do palco.
   function cssDosTokens(tokens) {
     const v = T.variaveis(tokens);
-    return '.mt-palco{' + Object.keys(v).map((k) => k + ':' + v[k]).join(';') + '}';
+    // No host também: as faixas da zona quase quadrada (BASE) pintam com o fundo da marca.
+    return ':host,.mt-palco{' + Object.keys(v).map((k) => k + ':' + v[k]).join(';') + '}';
   }
 
   /*
@@ -175,6 +202,30 @@
     doc.head.appendChild(link);
   }
 
+  /*
+   * O enquadramento das duas faixas do BASE: o palco é desenhado no tamanho
+   * APROVADO (1080×1080 ou 1920×1080) e escalado para a altura da zona,
+   * centralizado. Em JS, e não só no CSS, porque as peças decidem "coluna
+   * estreita" por largura em PIXEL (até 700 px): um quadrado de 752 px não
+   * é coluna, mas a peça achava que era — e o ladrilho do layout quadrado
+   * dividido (522×418) também. Desenhado em 1080 e reduzido, é o 1:1 que o
+   * dono aprovou na bancada, só menor. Fora das faixas, o palco fica como
+   * sempre (inset: 0, sem estilo inline).
+   */
+  const QUADRADA = [51 / 50, 22 / 15];
+  const LARGA = [39 / 20, 4];
+  function enquadrar(host, palco) {
+    const w = host.clientWidth, h = host.clientHeight;
+    if (!w || !h || !palco) return;
+    const ar = w / h;
+    const ref = ar >= QUADRADA[0] && ar <= QUADRADA[1] ? [1080, 1080]
+      : ar >= LARGA[0] && ar <= LARGA[1] ? [1920, 1080] : null;
+    if (!ref) { palco.removeAttribute('style'); return; }
+    const k = h / ref[1];
+    palco.style.cssText = 'left:' + ((w - ref[0] * k) / 2).toFixed(2) + 'px;top:0;right:auto;bottom:auto;width:'
+      + ref[0] + 'px;height:' + ref[1] + 'px;transform:scale(' + k.toFixed(5) + ');transform-origin:0 0';
+  }
+
   function montar(host, item, opts) {
     const o = opts || {};
     garantirFontes(host.ownerDocument);
@@ -184,8 +235,16 @@
     const tokens = T.daMarca(it.marca || o.marca || null, modo);
 
     const sombra = host.shadowRoot || host.attachShadow({ mode: 'open' });
-    sombra.innerHTML = '<style>' + cssCompleto(it.css, tokens) + '</style><div class="mt-palco">' + it.html + '</div>';
+    sombra.innerHTML = '<style>' + cssCompleto(it.css, tokens) + '</style><div class="mt-faixas"></div><div class="mt-palco">' + it.html + '</div>';
     const peca = sombra.querySelector('.mt-peca');
+    const palcoEl = sombra.querySelector('.mt-palco');
+    enquadrar(host, palcoEl);
+    // A zona muda de tamanho (layout que "respira", tela girada): enquadra de novo.
+    let observador = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observador = new ResizeObserver(() => enquadrar(host, palcoEl));
+      observador.observe(host);
+    }
     // A tela já mostra a marca (no cabeçalho): a peça não repete.
     if (o.marcaNaTela && peca) peca.setAttribute('data-marca-na-tela', '');
 
@@ -257,9 +316,9 @@
       tokens,
       problemas: v.problemas,
       duracao: Number(item && item.duracao) || 12,
-      parar() { if (relogio) clearInterval(relogio); relogio = null; },
+      parar() { if (relogio) clearInterval(relogio); relogio = null; if (observador) observador.disconnect(); observador = null; },
     };
   }
 
-  return { ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, montar };
+  return { ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, montar, enquadrar, QUADRADA, LARGA };
 });

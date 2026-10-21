@@ -202,7 +202,8 @@ test('o player desenha a peça fixa com o mesmo contexto da playlist', () => {
   assert.match(start, /return \{ stop: ctl\.parar \}/, 'o relógio da peça fica rodando depois que a zona sai');
   // E a playlist pede o contexto do mesmo lugar.
   const r = semComentarios(ler('js', 'render.js'));
-  assert.match(r, /MTPecaRender\.montar\(el, item, opcoesDaPeca\(\)\)/);
+  // Desenhada no tamanho de 1080p e escalada para a tela (item 7 do EXECUTOR: hostDaPeca).
+  assert.match(r, /MTPecaRender\.montar\(hostDaPeca\(el\), item, opcoesDaPeca\(\)\)/);
   assert.match(r, /global\.MTRender = \{[^}]*opcoesDaPeca[^}]*\}/);
 });
 

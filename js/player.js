@@ -541,6 +541,7 @@
     layoutInteligente: 1, // idem, lida na hora do takeover
     refreshSeconds: 1,    // só o modo legado usa, e lá o palco é outro
     girar: 1,             // conferirGiro: recarrega a página, não a zona
+    margemSegura: 1,      // aplicarMargem: uma variável CSS no <html>
     // layoutAuto e layoutAutoSeconds NÃO entram aqui: eles ligam um
     // temporizador no nível do palco, e vão na assinatura do palco logo
     // abaixo. Se ficassem aqui, ligar o layout dinâmico não faria nada.
@@ -567,7 +568,25 @@
   // que está exibindo. É o que permite comparar em vez de recomeçar.
   let palco = null;
 
+  /*
+   * Margem contra o OVERSCAN (PLANO §7.1), ajustável por tela no painel.
+   *
+   * Muita TV corta de 2% a 5% das bordas da imagem ("overscan"), herança da
+   * TV de tubo, e o box não tem como saber. Quem vê a parede vê o rodapé
+   * comido e o relógio sem o último dígito. A margem empurra o palco e o
+   * aviso em destaque para dentro, em % de cada lado da tela.
+   *
+   * Vai no <html>, e não no palco: o destaque (takeover) e a moldura de giro
+   * moram fora dele. O CSS usa `var(--mt-margem, 0)`: player antigo no cache
+   * com config nova só ignora, e nada sai do lugar.
+   */
+  function aplicarMargem(cfg) {
+    const m = Math.max(0, Math.min(5, Number(cfg && cfg.settings && cfg.settings.margemSegura) || 0));
+    document.documentElement.style.setProperty('--mt-margem', String(m));
+  }
+
   function aplicarNoPalco(cfg) {
+    aplicarMargem(cfg);
     if (!palco || palco.chave !== assinaturaPalco(cfg)) {
       teardownZones();
       buildStage(cfg);
@@ -639,7 +658,9 @@
     host.className = 'mt-peca-fixa';
     zoneEl.appendChild(host);
     // A peça do cabeçalho/rodapé É a marca: não esconde o nome dela.
-    const ctl = MTPecaRender.montar(host, data.peca, MTRender.opcoesDaPeca({
+    // Desenhada no tamanho de 1080p e escalada, como a da playlist (MTRender.hostDaPeca).
+    const alvo = MTRender.hostDaPeca ? MTRender.hostDaPeca(host) : host;
+    const ctl = MTPecaRender.montar(alvo, data.peca, MTRender.opcoesDaPeca({
       marcaNaTela: false,
       mensagens: zone.type === 'ticker' ? data.messages : [],
     }));

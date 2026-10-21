@@ -106,6 +106,18 @@ export function SettingsForm({ settings, onChange, deviceId }) {
             </Select>
           </Field>
         ) : null}
+        {/*
+          Overscan (PLANO §7.1): muita TV corta as bordas da imagem. A margem
+          empurra tudo para dentro; a TV aplica na hora (js/player.js,
+          aplicarMargem). Fora de "Mais ajustes" porque quem precisa
+          descobre olhando a parede — o rodapé comido.
+        */}
+        <Field label={'Margem da borda: ' + String(s.margemSegura || 0).replace('.', ',') + '%'}
+          hint="Se a borda da imagem some na TV (o rodapé ou o relógio cortados), aumente até aparecer inteira.">
+          <input type="range" min="0" max="5" step="0.5" value={s.margemSegura || 0}
+            onChange={(e) => set({ margemSegura: Number(e.target.value) })}
+            aria-label="Margem contra o corte da TV" className="w-full accent-[rgb(var(--c-accent))]" />
+        </Field>
         <Field label="Tema">
           <Select value={theme.preset} onChange={(e) => escolherTema(e.target.value)}>
             {THEME_PRESETS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}

@@ -869,11 +869,20 @@ estar escrito na página de preços.
 ### 7.1 Fase 3 — TV adaptável e operação 24/7
 
 **Adaptável:**
-- [ ] Todo o CSS do player em unidades de container; aposentar a mistura de
-      `vw`, `clamp(px)` e `cqw`.
-- [ ] Margem segura contra overscan, **ajustável por tela** no painel.
-- [ ] Retrato de primeira classe (vitrine de ótica usa TV de pé).
+- [x] Todo o CSS do player em unidades de container; aposentar a mistura de
+      `vw`, `clamp(px)` e `cqw`. (21/10: o conteúdo das zonas — texto,
+      relógio, clima, aniversário, QR, letreiro — em cqw/cqh, com a linha
+      antiga como reserva para WebView velho; o que é da TELA inteira —
+      palco, destaque, pareamento — continua em vw/vh, de propósito. A
+      peça-html é desenhada no tamanho de 1080p e escalada: as peças decidem
+      "coluna" por pixel, e em 720p e 4K erravam.)
+- [x] Margem segura contra overscan, **ajustável por tela** no painel (0 a 5%, 21/10).
+- [x] Retrato de primeira classe (vitrine de ótica usa TV de pé). (21/10: zona
+      quase quadrada e zona larga demais desenhadas no 1:1 e no 16:9
+      aprovados, centralizadas — `enquadrar` em js/peca-render.js.)
 - [ ] Matriz de teste: 720p, 1080p, 4K; paisagem e retrato; box e navegador.
+      (21/10: navegador feito — os 15 layouts nas três resoluções, e as
+      peças-ouro nas zonas medidas, 3834 combinações limpas. Falta o box.)
 
 **24/7:**
 - [ ] 72 horas seguidas no box, medindo a memória do WebView de hora em hora.
