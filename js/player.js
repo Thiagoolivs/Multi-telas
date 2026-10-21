@@ -102,6 +102,21 @@
 
   function enterSlide(el, type, reveal) {
     el.classList.add('mt-active'); // opacidade final de referência
+    /*
+     * PEÇA EM HTML ENTRA SEM TRANSIÇÃO DO SLIDE (EXECUTOR, item 10).
+     *
+     * A peça declara a própria entrada (data-entrada, js/peca-render.js), e é
+     * ela que o dono aprova na bancada. O esmaecer + escala do slide por cima
+     * deixava o fundo e a marca da peça apagados e azulados no primeiro
+     * segundo, e os primeiros elementos entravam já meio transparentes:
+     * conferido quadro a quadro, lado a lado com a bancada. Aqui o slide
+     * aparece inteiro e a entrada da peça é a transição — na TV fraca
+     * (.mt-perf), a peça vem parada, e também nada se mexe por cima.
+     */
+    if (el.classList.contains('mt-peca-html')) {
+      if (HAS_GSAP) GSAP.set(el, { opacity: 1, clearProps: 'transform' });
+      return;
+    }
     if (!HAS_GSAP || type === 'none') {
       if (type !== 'none') { el.classList.add('mt-enter', 'mt-trans-' + type); void el.offsetWidth; }
       return;
@@ -1405,6 +1420,7 @@
   function imagensDoItem(item) {
     if (!item) return [];
     var urls = [];
+    if (item.type === 'peca-html' && global.MTPecaHtml) MTPecaHtml.fotosDoItem(item, global.MT_HOSTS_MIDIA || []).forEach(function (u) { urls.push(u); });
     // Os tipos do render são em inglês ('image'), não 'imagem'.
     if (item.type === 'image' && item.src) urls.push(item.src);
     if (item.imagem) urls.push(item.imagem);
@@ -1418,6 +1434,16 @@
     return urls.filter(function (u, i, a) { return u && a.indexOf(u) === i; });
   }
 
+  /*
+   * PEÇA EM HTML: a foto do campo vem ANTES (EXECUTOR, item 10). Sem isto,
+   * ela decodificava no primeiro quadro da entrada — um tranco que a
+   * bancada, com tudo carregado, nunca mostrava.
+   *
+   * As fontes NÃO: pedir os pesos da marca de antemão (document.fonts.load)
+   * carregava faces que a peça nem usa e refazia o layout da tela inteira —
+   * uma tarefa de 50–95ms na troca, numa TV fraca simulada (CPU 6×), contra
+   * nenhuma sem a pré-carga. A fonte do SW chega antes de a entrada aparecer.
+   */
   function precarregar(item) {
     if (!item) return;
     imagensDoItem(item).forEach(function (url) {

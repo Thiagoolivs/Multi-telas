@@ -685,6 +685,9 @@ antes da ótica:
       (21/10, PR #137: Escuro, Claro, Cor da marca e a marca, no editor).
 - [ ] Peça idêntica — inclusive a entrada animada — no editor, na miniatura
       e no box da ótica.
+      *(21/10: o player ficou igual à bancada, quadro a quadro — o slide não
+      esmaece nem escala por cima da entrada da peça; no modo leve ela vem
+      parada. Falta conferir no box da ótica, com o consultor.)*
 - [ ] IA fora do ar → o cliente preenche uma peça-ouro à mão, nunca tela vazia.
 
 ---
