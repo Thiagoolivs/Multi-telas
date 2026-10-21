@@ -67,7 +67,7 @@ test('o tipo do pedido vai na SEGUNDA linha: sem IA, a primeira vira o título',
 });
 
 test('uma entrada só: Criar no menu e no Início; o resto em "Mais"', () => {
-  assert.match(ler('web/src/lib/menu.js'), /\{ id: 'criar', label: 'Criar', paginas: \['criar', 'designs'\]/);
+  assert.match(ler('web/src/lib/menu.js'), /\{ id: 'criar', label: 'Criar', paginas: \['criar', 'campanhas', 'designs'\]/);
   const app = ler('web/src/App.jsx');
   assert.match(app, /case 'criar': return <CriarPage /);
   assert.match(app, /const ATALHOS = \['criar',/);

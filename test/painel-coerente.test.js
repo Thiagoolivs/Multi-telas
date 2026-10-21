@@ -29,3 +29,21 @@ test('item 28: um caminho de IA só — a TV leva ao Criar, sem o formulário an
   // A campanha antiga que ainda estava gerando volta sozinha.
   assert.match(md, /ai\.jobPendente\(\)/);
 });
+
+test('item 29: Campanhas é a casa da campanha — uma vez, com estado, TVs e o mesmo resultado do Criar', async () => {
+  const { pathToFileURL } = require('node:url');
+  const M = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
+  assert.deepEqual(M.GRUPOS.find((g) => g.id === 'criar').paginas, ['criar', 'campanhas', 'designs']);
+  assert.equal(M.paginaDoIr('campanhas'), 'campanhas');
+  const app = ler('web/src/App.jsx');
+  assert.match(app, /case 'campanhas': return <CampanhasPage key=\{route\.campanha \|\| ''\} campanhaInicial=\{route\.campanha\} onIr=\{go\} \/>;/);
+  const p = semComentarios(ler('web/src/pages/CampanhasPage.jsx'));
+  assert.match(p, /criar\.campanhas\(\)/);
+  assert.match(p, /<ResultadoCampanha campanha=\{aberta\}[\s\S]*acoes=\{<PorPraRodar campanha=\{aberta\} telas=\{telas\} onMudou=\{mudou\} \/>\}/, 'abrir é o mesmo resultado do Criar');
+  for (const e of ['No ar', 'Pausada', 'Pronta']) assert.match(p, new RegExp("rotulo: '" + e + "'"));
+  // A campanha não é mais copiada para Meus Designs, e a lista traz só a capa.
+  const rota = semComentarios(ler('server/routes/campanhas.js'));
+  assert.doesNotMatch(rota, /addLibrary/);
+  assert.equal((rota.match(/capa: capaDe\(/g) || []).length, 4, 'toda gravação de resultado atualiza a capa');
+  for (const f of ['server/db-sqlite.js', 'server/db-postgres.js']) assert.match(ler(f), /capa/, f);
+});

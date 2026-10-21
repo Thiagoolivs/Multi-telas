@@ -153,7 +153,7 @@ export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
   function terminou(c) {
     setCampanha(c);
     criar.conversas().then((r) => setRecentes((r && r.conversas) || [])).catch(() => {});
-    aviso.ok('Pronta e salva em Meus Designs.');
+    aviso.ok('Pronta e salva em Campanhas.');
   }
 
   async function gerar() {

@@ -366,6 +366,8 @@ function garantirColuna(tabela, definicao) {
 garantirColuna('brandassets', 'marca_id TEXT');
 // Onde a loja fica (endereço, bairro, cidade, link), em JSON: as redes pedem.
 garantirColuna('marcas', 'localizacao TEXT');
+// A capa da campanha (a primeira peça), para a lista de Campanhas não carregar o resultado inteiro (item 29).
+garantirColuna('campanhas', 'capa TEXT');
 
 function migrarBrandkit() {
   const antigos = db.prepare(`SELECT b.* FROM brandkit b
@@ -1138,32 +1140,33 @@ async function listarConversas(tenantId, limite) { return qConv.doTenant.all(ten
  * o nome da campanha, e Meus Designs continua mostrando tudo.
  */
 const qCamp = {
-  inserir: db.prepare(`INSERT INTO campanhas (id, tenant_id, user_id, nome, conversa_id, escopo, resultado, estado, telas, criado_em, atualizado_em)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
-  salvar: db.prepare(`UPDATE campanhas SET nome = ?, escopo = ?, resultado = ?, estado = ?, telas = ?, atualizado_em = ?
+  inserir: db.prepare(`INSERT INTO campanhas (id, tenant_id, user_id, nome, conversa_id, escopo, resultado, estado, telas, criado_em, atualizado_em, capa)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+  salvar: db.prepare(`UPDATE campanhas SET nome = ?, escopo = ?, resultado = ?, estado = ?, telas = ?, atualizado_em = ?, capa = ?
                       WHERE id = ? AND tenant_id = ?`),
   ler: db.prepare('SELECT * FROM campanhas WHERE id = ? AND tenant_id = ?'),
-  doTenant: db.prepare(`SELECT id, nome, conversa_id, estado, telas, criado_em, atualizado_em FROM campanhas
+  doTenant: db.prepare(`SELECT id, nome, conversa_id, estado, telas, criado_em, atualizado_em, capa FROM campanhas
                         WHERE tenant_id = ? ORDER BY atualizado_em DESC LIMIT ?`),
 };
 const mapCamp = (r) => r && ({
   id: r.id, nome: r.nome || '', conversaId: r.conversa_id || '', estado: r.estado || 'pronta',
   escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
   resultado: r.resultado === undefined ? undefined : jsonOu(r.resultado, null),
-  telas: jsonOu(r.telas, []),
+  telas: jsonOu(r.telas, []), capa: jsonOu(r.capa, null),
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
 });
 async function criarCampanha(tenantId, userId, c) {
   const id = 'camp_' + rid(14);
   const agora = Date.now();
   qCamp.inserir.run(id, tenantId, userId || '', String(c.nome || '').slice(0, 80), c.conversaId || '',
-    JSON.stringify(c.escopo || null), JSON.stringify(c.resultado || null), c.estado || 'pronta', JSON.stringify(c.telas || []), agora, agora);
+    JSON.stringify(c.escopo || null), JSON.stringify(c.resultado || null), c.estado || 'pronta', JSON.stringify(c.telas || []), agora, agora,
+    JSON.stringify(c.capa || null));
   return lerCampanha(tenantId, id);
 }
 async function lerCampanha(tenantId, id) { return mapCamp(qCamp.ler.get(id, tenantId)) || null; }
 async function salvarCampanha(tenantId, id, c) {
   qCamp.salvar.run(String(c.nome || '').slice(0, 80), JSON.stringify(c.escopo || null), JSON.stringify(c.resultado || null),
-    c.estado || 'pronta', JSON.stringify(c.telas || []), Date.now(), id, tenantId);
+    c.estado || 'pronta', JSON.stringify(c.telas || []), Date.now(), JSON.stringify(c.capa || null), id, tenantId);
   return lerCampanha(tenantId, id);
 }
 async function listarCampanhas(tenantId, limite) { return qCamp.doTenant.all(tenantId, limite || 20).map(mapCamp); }
