@@ -22,6 +22,7 @@ import { PlatformPage } from './pages/PlatformPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { RelatorioPage } from './pages/RelatorioPage.jsx';
 import { CriarPage } from './pages/CriarPage.jsx';
+import { CriacaoRapidaPage } from './pages/CriacaoRapidaPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 import { parearGuardado } from './lib/parearPendente.js';
 import { paginaDoIr } from './lib/menu.js';
@@ -29,6 +30,8 @@ import { paginaDoIr } from './lib/menu.js';
 const META = {
   overview: { title: 'Visão geral' },
   criar: { title: 'Criar' },
+  // Os quatro passos de antes do chat (item 24): continuam, em Meus Designs › Mais.
+  rapida: { title: 'Criação rápida', nav: 'criar' },
   screens: { title: 'Telas' },
   designs: { title: 'Meus Designs', subtitle: 'Crie, guarde e reaproveite todos os seus designs.' },
   // Endereços antigos que abrem Meus Designs.
@@ -174,6 +177,7 @@ export default function App() {
        * Início, ou de "Criar novo" numa tela) — senão ficaria no passo antigo.
        */
       case 'criar': return <CriarPage key={(route.opcao || '') + (route.tela || '')} opcaoInicial={route.opcao} telaInicial={route.tela} onIr={go} />;
+      case 'rapida': return <CriacaoRapidaPage key={(route.opcao || '') + (route.tela || '')} opcaoInicial={route.opcao} telaInicial={route.tela} onIr={go} />;
       case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage onIr={go} />;
       case 'brand': return <BrandPage onIr={go} />;
       case 'mural': return <MuralPage />;

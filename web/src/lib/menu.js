@@ -38,7 +38,7 @@ export const PAGINAS = {
 export const GRUPOS = [
   { id: 'inicio', label: 'Início', paginas: ['overview', 'alerts'] },
   { id: 'telas', label: 'Telas', paginas: ['screens'], tambem: ['content'] },
-  { id: 'criar', label: 'Criar', paginas: ['criar', 'designs'], tambem: ['studio', 'campaigns', 'images'] },
+  { id: 'criar', label: 'Criar', paginas: ['criar', 'designs'], tambem: ['studio', 'campaigns', 'images', 'rapida'] },
   { id: 'midias', label: 'Mídias', paginas: ['storage', 'banco'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },
   { id: 'automaticos', label: 'Automáticos', paginas: ['birthdays', 'mural'] },

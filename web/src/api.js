@@ -267,6 +267,27 @@ export const ai = {
 };
 
 /*
+ * O Criar conversando (EXECUTOR §2b): a conversa, o cartão do escopo, a
+ * geração do ecossistema e as campanhas salvas. A geração é trabalho, como a
+ * campanha: o id fica guardado para quem fechar a aba voltar e achar.
+ */
+export const criar = {
+  conversar: (id, texto, escopo) => api('POST', '/api/ai/conversa', { id: id || undefined, texto, escopo }),
+  conversas: () => api('GET', '/api/conversas'),
+  conversa: (id) => api('GET', '/api/conversas/' + id),
+  salvarEscopo: (id, escopo) => api('PUT', '/api/conversas/' + id, { escopo }),
+  async gerar(payload, onEtapa, sinal) {
+    const job = await api('POST', '/api/ai/ecossistema', payload);
+    guardarPendente('ecossistema', job, { brief: (payload.escopo && payload.escopo.nome) || '' });
+    return acompanhar(job.id, 'ecossistema', onEtapa, sinal);
+  },
+  acompanhar: (id, onEtapa, sinal) => acompanhar(id, 'ecossistema', onEtapa, sinal),
+  pendente: () => pendenteDe('ecossistema'),
+  campanhas: () => api('GET', '/api/campanhas'),
+  campanha: (id) => api('GET', '/api/campanhas/' + id),
+};
+
+/*
  * Som ao vivo. Fora de `deviceConfig` de propósito: isto NÃO passa por salvar.
  * Abaixar o volume no meio de um evento é uma ação, e uma ação que exigisse
  * publicar a tela inteira reconstruiria o palco e cortaria a música.

@@ -146,10 +146,11 @@ const KICKERS = ['NOVIDADE', 'HOJE', 'APROVEITE', 'SÓ AQUI'];
 // Sem IA: textos tirados do próprio escopo. Nada inventado — só o que o cliente disse.
 function textosSemIA(escopo, vagas) {
   const e = escopo;
-  const frases = [e.nome, e.objetivo].map((x) => String(x || '').trim()).filter(Boolean);
+  // Sem repetir: nome e objetivo iguais ("Promoção da semana" duas vezes) virariam o mesmo título em toda peça.
+  const frases = [e.nome, e.objetivo].map((x) => String(x || '').trim()).filter((x, i, a) => x && a.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i);
   const vagasOut = {};
   for (const v of vagas) {
-    const lista = [v.pedido, ...frases].filter(Boolean);
+    const lista = [v.pedido, ...frases].filter((x, i, a) => x && a.findIndex((y) => String(y).toLowerCase() === x.toLowerCase()) === i);
     const titulo = lista[v.indice % Math.max(1, lista.length)] || 'Confira';
     vagasOut[v.id] = {
       kicker: v.zona === 'lateral' ? 'AQUI TEM' : KICKERS[v.indice % KICKERS.length],

@@ -710,6 +710,8 @@ export function MyDesignsPage({ onIr }) {
    */
   const MAIS = [
     { key: 'ia', title: 'Campanha completa com IA', desc: 'Várias peças, legendas e quando postar.', icon: MessagesSquare, on: () => (setGuiando(true), setAiOpen(true)) },
+    // Os quatro passos de antes do chat (item 24), para quem já sabe o que quer.
+    { key: 'rapida', title: 'Criação rápida', desc: 'Uma frase, o rascunho e publicar.', icon: Rocket, on: () => onIr && onIr('rapida') },
     { key: 'mao', title: 'Criar na mão', desc: 'Editor visual: fundo, texto, formas e imagens.', icon: Plus, on: novoNaMao },
     { key: 'img', title: 'Gerar imagem IA', desc: 'Uma imagem por descrição, para arte ou fundo.', icon: ImagePlus, on: () => setImgOpen(true) },
     { key: 'imp', title: 'Importar arquivo', desc: 'Design do Canva (PNG/JPG) ou PDF.', icon: Upload, on: null },
@@ -725,7 +727,7 @@ export function MyDesignsPage({ onIr }) {
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-soft"><Wand2 size={24} className="text-accent" /></div>
           <div>
             <div className="text-base font-semibold text-ink">Criar</div>
-            <div className="mt-0.5 text-xs leading-snug text-ink-3">Promoção, novidade, aviso, foto do produto… Uma frase e a peça sai com a sua marca, pronta para a TV.</div>
+            <div className="mt-0.5 text-xs leading-snug text-ink-3">Conte o que você quer mostrar. A IA conversa, sugere e cria tudo: as TVs, a programação e as redes.</div>
           </div>
         </button>
         <div className="rounded-xl border border-line bg-surface">

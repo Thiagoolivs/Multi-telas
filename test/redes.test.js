@@ -124,7 +124,9 @@ test('rota, medição, banco e painel ligados', () => {
   for (const f of ["'4/5'", "'9/16'", "'1/1'"]) assert.ok(c.includes(f), f);
   assert.match(ler('web/src/lib/rasterizar.js'), /<foreignObject/);
   assert.match(ler('web/src/pages/MyDesignsPage.jsx'), /title="Postar nas redes"/);
-  assert.match(ler('web/src/pages/CriarPage.jsx'), /Postar nas redes/);
+  // Na Criação rápida e no resultado do Criar (item 24).
+  assert.match(ler('web/src/pages/CriacaoRapidaPage.jsx'), /Postar nas redes/);
+  assert.match(ler('web/src/components/criar/ResultadoCampanha.jsx'), /Postar nas redes/);
 });
 
 test('a peça vira imagem pelo MESMO desenhista da TV, com fonte e foto embutidas', () => {
