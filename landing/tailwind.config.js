@@ -7,7 +7,8 @@
  * pronto, com só as classes usadas.
  */
 module.exports = {
-  content: ['./index.html'],
+  // O landing.js também monta classes (simulador, contato): entra na varredura.
+  content: ['./index.html', './landing.js'],
   theme: {
     extend: {
       fontFamily: { sans: ['Manrope', 'system-ui', 'sans-serif'], display: ['Anton', 'Impact', 'sans-serif'] },

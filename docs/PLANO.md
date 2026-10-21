@@ -975,6 +975,16 @@ negócio (com peças geradas pelo motor novo) → prova (ótica, com autorizaç�
 → preço (§6.7) → perguntas → WhatsApp em destaque. Menos de 500 KB, carga
 abaixo de 2,5 s em 4G, nenhuma promessa sem código por trás.
 
+*(21/10, EXECUTOR item 14: landing reescrita — herói, 3 passos, galeria por
+ramo com peças do motor, o que vem junto, preço com mensal × anual e
+simulador, perguntas, WhatsApp. 189 KB, maior pintura em ~1,2 s num celular
+em 4G simulado. Cada promessa tem teste apontando o código
+(test/landing.test.js). Faltam: a foto real de TV instalada (o herói mostra
+peças do motor numa moldura), o número de WhatsApp (variável
+WHATSAPP_NUMERO; sem ela o botão vira e-mail ou some) e a prova da ótica,
+que precisa de autorização. A demo de temas em tempo real ficou de fora:
+pesava mais do que o orçamento deixa.)*
+
 ---
 
 ## 8 · Trilha sem código (em paralelo)
