@@ -573,8 +573,13 @@ tem padaria não sabe descrever o estilo que quer, mas reconhece quando vê.
 - Cada mensagem manda o **estado atual** e o último pedido, não o histórico
   inteiro. O começo fixo do prompt vai para o cache.
 - Modelo barato para conversar; o caro só na geração final.
-- Teto de perguntas imposto pelo código, como hoje (`MAX_PERGUNTAS`). Os
-  botões de ajuste visual não contam.
+- ~~Teto de perguntas imposto pelo código, como hoje (`MAX_PERGUNTAS`).~~
+  **Mudou em 21/10, por decisão do dono:** a conversa não tem limite de
+  perguntas. A pessoa refina até a IA dizer que entendeu. O que segura o
+  custo é um teto diário de mensagens por conta, e conversar não gasta
+  criação. O desenho novo está no EXECUTOR, seção 2b, itens 19 a 27: o
+  Criar vira o chat, e a IA gera o ecossistema inteiro (as TVs com as
+  zonas, a programação e as redes) ou só o recorte pedido.
 - A memória passa a guardar o **gosto** ("prefere escuro", "recusou o
   layout X"): a próxima conversa já começa mais perto.
 

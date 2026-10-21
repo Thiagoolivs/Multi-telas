@@ -397,6 +397,232 @@ Conserte o que achar, um PR por defeito.
 
 **Pronto quando:** uma sessão nova entende o projeto só lendo os dois.
 
+## 2b · Rodada 2 — Criar conversando (decidido pelo dono em 21/10)
+
+O dono, depois de usar: "faz boas criações, mas muito sem sal", "nem
+imagens ele colocou", "o fluxo do Criar está confuso", "cria só algumas
+peças", "está pré-definido e isso atrapalha". O propósito, nas palavras
+dele: **o cliente decide, a IA dá suporte, sugere, conversa e cria.**
+
+O fluxo novo:
+
+1. **Criar** é uma aba própria e fácil de achar: "O que você quer mostrar
+   hoje?" e um chat.
+2. **Conversa sem limite de perguntas.** O cliente conta o que quer e para
+   que quer. A IA pergunta, sugere e refina até dizer "entendi, posso
+   gerar".
+3. **A IA gera o ecossistema inteiro, ou só o que foi pedido:**
+   - as TVs, cada uma com as suas zonas (várias peças girando na principal
+     e na lateral; cabeçalho e rodapé animados);
+   - a programação por horário;
+   - os posts de Instagram, Facebook e Google, e o Status e a mensagem do
+     WhatsApp.
+4. **Salva sozinho**, com o botão "Pôr pra rodar".
+5. **Ajustes depois:** pelo chat ("troca a foto da tela 2") ou à mão, no
+   editor.
+
+As respostas do dono no alinhamento:
+
+- **Imagens:** o chat pergunta se usa as fotos do cliente ou se a IA gera.
+- **Programação:** com horários. A IA sugere ("6–10h café da manhã") e o
+  cliente ajusta.
+- **Telas:** os dois sentidos — zonas dentro de cada TV, e a campanha
+  espalhada por várias TVs.
+- **Animação no cabeçalho e no rodapé:** letreiro, relógio, clima e data,
+  logo e chamadas animadas, contagem regressiva.
+- **Sugestões, não opções fixas.** Elas fazem sentido para a conta, são
+  fáceis de achar e se mudam conversando. O cliente sabe, antes de gerar, o
+  que vai em cada zona ("uma promoção na lateral, uma imagem com chamada na
+  principal, avisos animados no rodapé").
+- **O tamanho do pedido é dele.** A IA entende pelo pedido se é tudo ou uma
+  peça só, e o cliente também escolhe o recorte: "só principal e lateral",
+  "só cabeçalho e rodapé", "3 peças para a principal", "2 estilos de
+  cabeçalho".
+- **Custo:** conversar não gasta criação; só a geração gasta. Um teto
+  diário de mensagens por conta segura o abuso.
+
+**O contrato entre o chat e o gerador é o ESCOPO:** um objeto que diz o que
+vai ser criado, para onde e como. O chat preenche, o cliente vê e mexe, e o
+gerador obedece. Ele mora em `js/escopo.js` (UMD, como os outros `js/`), e
+o servidor e o painel usam o mesmo arquivo.
+
+### 19. Imagem de verdade
+
+Todos os caminhos em que a campanha sai sem foto, achados em 21/10:
+- `CriarPage.jsx` manda `imagens: 'acervo'` fixo: o Criar nunca gera foto.
+- Em `ai-director.js`, `plano.paleta` não existe, e a cor da marca e a
+  direção de arte nunca chegam ao pedido da foto.
+- `compositor.camposQueExistem` joga fora a foto **já paga** quando o HTML
+  do modelo não tem `data-campo-img="foto"`. Tem de escolher uma peça com
+  lugar para a foto, ou cair na peça-ouro com foto.
+- O prompt do plano empurra para "a maioria resolve com formas". Com
+  imagens pedidas, a peça de destaque tem foto.
+- As cópias de `garantirDuasPorFormato` herdam a foto da original.
+- Em modo demonstração, a foto de reserva é bonita (um degradê da marca com
+  silhueta, não um cinza) e não é cobrada.
+
+Peça ao consultor: a chave de imagem (`GEMINI_API_KEY`) está em produção?
+Sem ela, toda foto vira a reserva.
+
+**Pronto quando:** com imagens pedidas, toda peça de destaque sai com foto,
+com teste para cada caminho acima.
+
+### 20. O escopo (`js/escopo.js`)
+
+- A forma:
+  - `nome`, `objetivo`, `publico`, `periodo`;
+  - `imagens`: `minhas`, `gerar`, `mistura` ou `nenhuma`;
+  - `telas[]`: o alvo (uma TV, todas ou um grupo), o layout e, por zona
+    (principal, lateral, cabeçalho, rodapé), quantas peças, o objetivo de
+    cada uma, os estilos de cabeçalho, os campos vivos (relógio, clima,
+    data, contagem) e as mensagens do letreiro;
+  - `redes`: post e Story do Instagram, Status e mensagem do WhatsApp,
+    Facebook e Google, cada um ligado ou desligado;
+  - `horarios[]`: a faixa, o começo, o fim e o foco.
+- `normalizar`, que corta o que vem errado da IA ou da URL, com tetos (até
+  8 peças por zona e 12 TVs).
+- `custo`, que diz quantas peças e quantas fotos o escopo gera, e quantas
+  criações isso gasta.
+- `descrever`, que escreve o escopo em português de lojista ("Principal: 3
+  peças com foto e chamada").
+- `recortes`: "tudo", "só principal e lateral", "só cabeçalho e rodapé",
+  "3 peças para a principal", "2 estilos de cabeçalho", "só redes". Cada um
+  aplica um recorte no escopo sem gastar token.
+
+**Pronto quando:** os testes cobrem a forma, os tetos, o custo e cada
+recorte.
+
+### 21. A conversa (servidor)
+
+- `server/ai-conversa.js` substitui o teto de 5 perguntas do briefing.
+  - **Sem limite de perguntas.**
+  - Cada volta manda à IA o escopo atual, a marca, a memória, as TVs da
+    conta e as últimas mensagens (não o histórico inteiro, PLANO §4.12).
+  - Devolve a resposta, as sugestões clicáveis, o escopo atualizado e
+    `pronto` quando a IA entendeu.
+  - Fala português de lojista, uma pergunta por vez, e sempre propõe
+    alguma coisa em vez de só perguntar.
+- Tabela `conversas`, nos dois bancos: `id`, `tenant_id`, `titulo`,
+  `mensagens`, `escopo`, `campanha_id`, datas. Assim a pessoa fecha e volta
+  depois.
+- Rotas `/api/criar/conversas`: criar, listar, abrir e mandar mensagem.
+  Todas presas à conta.
+- Teto: 120 mensagens por hora e 400 por dia, por conta. Conversar não
+  gasta criação.
+- Modo demonstração: uma conversa roteirizada, que preenche o escopo pelas
+  palavras do pedido, para dar para testar o fluxo no localhost.
+
+**Pronto quando:** uma conversa de 15 voltas funciona, guarda e retoma, e
+não vaza entre contas.
+
+### 22. Cabeçalho e rodapé vivos (player)
+
+- O cabeçalho e o rodapé passam a aceitar **várias peças girando**
+  (`zona.pecas[]`, cada uma com a sua duração). `zona.peca` continua
+  valendo, e a TV com JS antigo mostra a primeira.
+  - `normalize`, em `js/storage.js`, aprende o campo novo; sem isso, a TV
+    perde o campo no caminho.
+- Campo vivo novo, `data-vivo="contagem"`, com `data-alvo` (data e hora): a
+  contagem regressiva ("acaba em 2d 04:15:09"). Entra na lista da porta
+  (`js/peca-html.js`), com teste.
+- As chamadas giram no cabeçalho também (`data-vivo="mensagens"`), não só no
+  rodapé.
+- **TV fraca:** as peças trocam sem transição, e a contagem e o relógio
+  continuam mudando o texto, sem animação. Nada de engasgo.
+- Peças-ouro novas de cabeçalho e de rodapé que usam isso, passando pela
+  bancada.
+
+**Pronto quando:** o player em 1080p e em pé mostra o cabeçalho girando 2
+estilos e o rodapé com letreiro e contagem, e a bancada passa limpa.
+
+### 23. O gerador do ecossistema (servidor)
+
+- `server/ecossistema.js`: recebe o escopo e devolve tudo.
+  1. Planeja peça por peça, já com zona e papel (cabeçalho, destaque,
+     lateral, rodapé), textos, pedido de foto e faixa de horário. Reusa o
+     plano do `ai-director` (`planoAprovado`) em vez de criar outro motor.
+  2. Gera as fotos conforme a escolha (`minhas`: as fotos do cliente e o
+     banco; `gerar`: a IA gera; `mistura`: as do cliente primeiro).
+  3. Compõe as peças no tamanho da zona (`compositor`, com o papel certo).
+  4. Escreve as redes (`server/redes.js`) e a programação: os horários
+     viram `agendamento` nos itens.
+- **Menos sem sal:** direção de arte da marca em toda foto, coreografia de
+  entrada em toda peça, variedade de peças-ouro na mesma campanha (nunca a
+  mesma estrutura duas vezes na mesma zona) e destaque sempre com foto
+  quando há imagens.
+- Tabela `campanhas`, nos dois bancos: `id`, `tenant_id`, `nome`,
+  `conversa_id`, `escopo`, `resultado`, `estado` (pronta, no ar ou pausada),
+  `telas` e datas. As peças também entram na `library` com o nome da
+  campanha, e Meus Designs continua funcionando.
+- **Salva sozinho** ao terminar. Retoma depois de recarregar, como o job de
+  hoje.
+- Custo: gasta o que `escopo.custo` disse, com o portão de saldo de hoje.
+
+**Pronto quando:** um escopo de 2 TVs × 4 zonas + redes + 3 horários gera
+tudo no modo demonstração, com teste de cada parte.
+
+### 24. Criar é o chat (painel)
+
+- A página **Criar** vira a conversa:
+  - "O que você quer mostrar hoje?" no topo;
+  - **sugestões da conta** (do guia, pela marca, pelo segmento e pela
+    data): o clique põe o texto na caixa para a pessoa mudar, não manda
+    sozinho;
+  - os **recortes** como botões;
+  - o cartão **"O que vou criar"** sempre à vista: por TV e por zona, com a
+    quantidade, a foto ou não e as redes, editável à mão (liga, desliga,
+    mais, menos) ou pelo chat;
+  - a linha de custo e o botão **Gerar**, que acende quando a IA diz que
+    entendeu (e "Gerar já", para quem não quer conversar).
+- **Conversas recentes**, para continuar depois.
+- O Criar de 4 passos vira **"Criação rápida"**, em Mais (esconder antes de
+  apagar). A campanha de Meus Designs continua lá.
+- Celular primeiro: 360 px, com o teclado aberto, e o cartão do escopo
+  recolhível.
+
+**Pronto quando:** do celular, uma conta nova conversa, gera e vê o
+resultado sem ajuda, e o teste dos 3 toques passa ("criar com IA e
+publicar": abrir Criar → tocar numa sugestão → Gerar → Pôr pra rodar).
+
+### 25. O resultado e o "Pôr pra rodar"
+
+- O resultado aparece agrupado:
+  - **TVs:** a prévia da tela inteira, com as zonas;
+  - **Redes:** `RedesSociais` por peça;
+  - **Programação:** os horários.
+- **"Pôr pra rodar":** publica em várias TVs de uma vez, com cada peça na
+  zona que o escopo disse.
+  - `aplicarConteudo` recebe a zona explícita, e `distribuirPorZona` fica
+    de reserva.
+  - Troca o layout da TV quando a TV não tem as zonas do escopo, com
+    confirmação.
+  - A campanha passa a "no ar". Pausar e retomar tiram e põem os itens dela
+    (`_campanha`).
+- A página da tela mostra de qual campanha vem cada item.
+
+**Pronto quando:** uma campanha de 2 TVs vai ao ar nas duas, cada peça na
+sua zona, com prints do player.
+
+### 26. Ajustar depois
+
+- No resultado, cada peça tem **Editar** (o `EditarPeca` de hoje) e o chat
+  continua aberto: "troca a foto da tela 2", "mais uma peça na lateral",
+  "tira o Facebook". A IA devolve só a mudança no escopo, e só o que mudou é
+  gerado de novo (e cobrado).
+- Desfazer o último ajuste.
+
+**Pronto quando:** três ajustes por chat refazem só as peças certas, com
+teste.
+
+### 27. Varredura e documentos
+
+Os itens 17 e 18 de novo, para esta rodada:
+- a bancada;
+- as páginas em 360 px;
+- o player em 720p, 1080p e em pé;
+- `npm test` três vezes;
+- o `ESTADO-DO-PROJETO.md` e o `PLANO.md` em dia.
+
 ## 3 · O consultor (issue #135)
 
 Um Claude com o contexto todo do projeto fica de plantão na issue
