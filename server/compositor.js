@@ -222,6 +222,59 @@ function preencherOuro(o) {
   };
 }
 
+/*
+ * A RESERVA POR PAPEL (EXECUTOR item 23). O ecossistema pede peça para as
+ * quatro zonas, e a reserva só sabia o destaque. Sem IA (ou com ela recusada
+ * três vezes), cabeçalho, lateral e rodapé também saem de uma peça-ouro, e
+ * só das que dá para preencher INTEIRAS com o que temos: campo que sobrasse
+ * mostraria o texto de exemplo de outro negócio ("Ótica Central") na TV da
+ * padaria. Várias por papel, para dois estilos de cabeçalho não saírem iguais.
+ */
+const OURO_PAPEL = {
+  lateral: [
+    { id: 'servico-alerta', campos: (t) => ({ kicker: t.kicker, titulo: t.titulo, apoio: t.apoio }) },
+  ],
+  cabecalho: [
+    { id: 'cabecalho-classico', campos: (t, e) => ({ marca: e, chamada: t.titulo }) },
+    { id: 'cabecalho-chamada', campos: (t, e) => ({ marca: e, chamada: t.titulo, quando: t.apoio || t.cta }) },
+    { id: 'cabecalho-centro', campos: (t, e) => ({ marca: e, sub: t.titulo }) },
+  ],
+  rodape: [
+    { id: 'rodape-selo', campos: (t) => ({ selo: t.kicker || t.titulo }) },
+    { id: 'rodape-relogio', campos: (t, e) => ({ rotulo: t.kicker || e }) },
+  ],
+};
+// Faixa fina e coluna estreita: texto curto, cortado na palavra.
+const CABE_NO_PAPEL = { kicker: 22, titulo: 38, apoio: 90, cta: 36 };
+
+function cortarNaPalavra(s, max) {
+  const t = String(s || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  const c = t.slice(0, max + 1);
+  const i = c.lastIndexOf(' ');
+  return (i > max * 0.5 ? c.slice(0, i) : t.slice(0, max)).replace(/[,;:·—-]+$/, '').trim();
+}
+
+function preencherPapel(o) {
+  const papel = OURO_PAPEL[o.papel] ? o.papel : 'destaque';
+  // Destaque, e a lateral com foto (a foto já foi paga): a reserva de sempre, que sabe a foto.
+  if (papel === 'destaque' || (papel === 'lateral' && o.foto)) return Object.assign(preencherOuro(o), { papel });
+  const opcoes = OURO_PAPEL[papel];
+  const escolha = opcoes[Math.abs(o.indice || 0) % opcoes.length];
+  const arquivo = P.doArquivo(fs.readFileSync(path.join(PASTA, escolha.id + '.html'), 'utf8'));
+  const h = P.higienizar(arquivo);
+  const t = {};
+  for (const k of Object.keys(CABE_NO_PAPEL)) t[k] = cortarNaPalavra((o.textos || {})[k], CABE_NO_PAPEL[k]);
+  const campos = escolha.campos(t, cortarNaPalavra(o.empresa, 28));
+  for (const k of Object.keys(campos)) campos[k] = String(campos[k] || '');
+  if (o.logo && h.campos.some((c) => c.nome === 'logo' && c.tipo === 'img')) campos.logo = o.logo;
+  return {
+    type: 'peca-html', versao: 1, papel, html: h.html, css: h.css, campos,
+    marca: o.marca || null, modo: o.modo || 'escuro', duracao: papel === 'lateral' ? 12 : 20,
+    origem: { motor: 'ouro', base: escolha.id, pedido: String(o.pedido || '').slice(0, 200) },
+  };
+}
+
 // O modelo às vezes embrulha a resposta em cerca de código: tira.
 function limparResposta(t) {
   const s = String(t || '').trim();
@@ -407,4 +460,4 @@ async function comporTelaInteira(o) {
   return { zonas, falhas };
 }
 
-module.exports = { comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, partirTitulo, OURO };
+module.exports = { comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, partirTitulo, OURO, OURO_PAPEL };

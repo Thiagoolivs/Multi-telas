@@ -184,9 +184,13 @@ test('a campanha cobra crédito por imagem, como a rota avulsa', () => {
    * quebrou no dia em que a direção de arte passou a ser um terceiro
    * argumento — sem que nada do que este teste guarda tivesse mudado. Teste
    * que falha por assinatura treina a gente a ignorar teste vermelho.
+   *
+   * Desde o item 23 o gancho mora em `fotoDaConta`, uma função só para a
+   * campanha e o ecossistema do Criar: o teste segue a função.
    */
-  const i = SERVER.indexOf('onImagem: async (');
+  const i = SERVER.indexOf('function fotoDaConta(sess, b) {');
   assert.ok(i > 0, 'sumiu a geração de imagem da campanha');
+  assert.match(SERVER, /onImagem: fotoDaConta\(sess, b\),/, 'a campanha deixou de usar a foto com saldo e cobrança');
   const bloco = SERVER.slice(i, i + 3400);
 
   // O tipo depende de a foto partir do produto real (PLANO §4.11); os dois cobram.
@@ -211,7 +215,7 @@ test('a foto do produto só vale se a mídia for desta conta', () => {
    * conferência, bastaria trocar o endereço para a IA ler a mídia de outra
    * conta. Conferido no banco, pela conta da sessão — e antes de cobrar.
    */
-  const i = SERVER.indexOf('onImagem: async (');
+  const i = SERVER.indexOf('function fotoDaConta(sess, b) {');
   const bloco = SERVER.slice(i, i + 3400);
   assert.match(bloco, /db\.listMedia\(sess\.tenant_id\)\)\.find\(\(m\) => m\.url === arte\.referencia/);
   assert.match(bloco, /throw new Error\('a foto do produto não é desta conta'\)/);

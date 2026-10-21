@@ -1557,7 +1557,7 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
 }
 
 module.exports = { juntarPedido,
-  FAIXAS, FAIXAS_OK,
+  FAIXAS, FAIXAS_OK, MODO_DA_DIRECAO,
   dirigir, planejar, comporPeca, layoutReserva, normalizarPlano, comFotoDeDestaque, comFotoNoDestaque,
   enriquecerBrief, textoDaCritica,
 };

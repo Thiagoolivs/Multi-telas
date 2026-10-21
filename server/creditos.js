@@ -84,6 +84,8 @@ const OPERACOES = {
   diretor: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Diretor de arte' },
   // Uma volta da conversa do Criar (EXECUTOR item 21): texto, livre, medido. Sem limite de perguntas.
   conversa: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Conversa do Criar' },
+  // O texto da campanha inteira do Criar (item 23). Cada foto gerada cobra à parte, como campanha-peca.
+  ecossistema: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Campanha do Criar' },
 };
 
 function operacao(tipo) { return OPERACOES[tipo] || null; }
