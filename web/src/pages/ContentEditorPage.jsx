@@ -343,7 +343,12 @@ export function ContentEditorPage({ device, onBack, onCriar }) {
               ? <><Spinner size={12} /> Salvando…</>
               : <><Check size={13} /> {publishedAt ? 'Salvo' : 'Tudo salvo'}</>}
           </span>
-          <Button variant="secondary" icon={Wand2} className="whitespace-nowrap" onClick={() => setCampOpen(true)}>Campanha com IA</Button>
+          {/*
+            Um caminho de IA só (EXECUTOR item 28): "Campanha com IA" abria o
+            formulário antigo, sem conversa nem escopo. Agora leva ao Criar com
+            esta TV marcada. O CampaignDialog fica no código, sem botão, por 30 dias.
+          */}
+          {onCriar && <Button variant="secondary" icon={Wand2} className="whitespace-nowrap" onClick={onCriar}>Criar para esta TV</Button>}
           <Button variant="secondary" icon={Settings2} className="whitespace-nowrap" onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>
         </div>
       </div>
@@ -363,11 +368,11 @@ export function ContentEditorPage({ device, onBack, onCriar }) {
           <div className="p-4">
             <div className="text-sm font-semibold text-ink">Esta tela ainda está vazia. Como você quer começar?</div>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              <button type="button" onClick={() => setCampOpen(true)}
+              <button type="button" onClick={() => onCriar && onCriar()}
                 className="rounded-lg border border-accent bg-accent-soft p-3 text-left transition hover:brightness-95">
                 <Wand2 size={18} className="text-accent" />
-                <div className="mt-1.5 text-sm font-semibold text-ink">A IA monta tudo</div>
-                <div className="text-xs text-ink-3">Diga o que está acontecendo na loja; ela preenche a tela inteira com a sua marca.</div>
+                <div className="mt-1.5 text-sm font-semibold text-ink">Criar com a IA</div>
+                <div className="text-xs text-ink-3">Conte o que quer mostrar; a IA conversa e monta a tela inteira com a sua marca.</div>
               </button>
               <button type="button" onClick={() => setPicker(true)}
                 className="rounded-lg border border-line p-3 text-left transition hover:bg-surface-2">
