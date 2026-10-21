@@ -465,7 +465,11 @@ export function ContentEditorPage({ device, onBack, onCriar }) {
                           <span className="w-10 shrink-0"><ItemPreview item={it} className="!rounded" /></span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium text-ink">{itemSummary(it)}</span>
-                            <span className="block text-2xs text-ink-3">{typeLabel(it.type)} · {it.duracao === 0 ? 'fixo' : (it.duracao || 0) + 's'}</span>
+                            <span className="block truncate text-2xs text-ink-3">
+                              {typeLabel(it.type)} · {it.duracao === 0 ? 'fixo' : (it.duracao || 0) + 's'}
+                              {/* De qual campanha veio (item 25): é ela que "Pausar" tira daqui. */}
+                              {it._campanha ? ' · campanha ' + it._campanha : ''}
+                            </span>
                             {temAgenda(it) && (
                               <span className="mt-0.5 flex items-center gap-1 truncate text-2xs text-accent" title={resumoAgenda(it.agendamento)}>
                                 <CalendarClock size={11} className="shrink-0" /> {resumoAgenda(it.agendamento)}

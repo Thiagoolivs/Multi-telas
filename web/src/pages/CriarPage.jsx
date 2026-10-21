@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button.jsx';
 import { Spinner } from '../components/ui/Feedback.jsx';
 import { CartaoEscopo, linhaDoCusto } from '../components/criar/CartaoEscopo.jsx';
 import { ResultadoCampanha } from '../components/criar/ResultadoCampanha.jsx';
+import { PorPraRodar } from '../components/criar/PorPraRodar.jsx';
 import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { ai, criar, devices } from '../api.js';
 import E from '../lib/escopo.js';
@@ -224,6 +225,7 @@ export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
             onIr={() => onIr && onIr('screens', { abrirParear: true })} />
         )}
         <ResultadoCampanha campanha={campanha} telas={telas} onIr={onIr}
+          acoes={<PorPraRodar campanha={campanha} telas={telas} onMudou={setCampanha} />}
           onContinuar={() => setCampanha(null)} onNova={nova} />
       </div>
     );
