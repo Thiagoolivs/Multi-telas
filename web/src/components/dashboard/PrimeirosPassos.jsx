@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check, MonitorPlay, Palette, Brush } from 'lucide-react';
 import { brand as brandApi } from '../../api.js';
+import { mesmaPaleta, CURADAS } from '../../lib/paletas.js';
 
 /*
  * Primeiros passos.
@@ -31,11 +32,18 @@ export function PrimeirosPassos({ devices, onIr }) {
   useEffect(() => {
     // A rota devolve { kit, assets, memoria }: ler `cores` na raiz dava sempre
     // indefinido, e o passo da marca só se completava por imagem enviada.
+    /*
+     * A conta nasce com a primeira paleta do ramo (server/paleta.js), então
+     * "tem cor" deixou de querer dizer "a pessoa disse quem é a empresa".
+     * O passo conta quando ela escolheu outra paleta ou mandou o logo.
+     */
     brandApi.get()
-      .then((r) => setTemMarca(!!(
-        (r && r.kit && r.kit.cores && r.kit.cores.length)
-        || (r && r.assets && r.assets.length)
-      )))
+      .then((r) => {
+        const cores = (r && r.kit && r.kit.cores) || [];
+        const automatica = (CURADAS[r && r.ramo] || [])[0];
+        const escolheu = cores.length && !(automatica && mesmaPaleta(cores, automatica.cores));
+        setTemMarca(!!(escolheu || (r && r.assets && r.assets.length)));
+      })
       .catch(() => setTemMarca(false));
   }, []);
 
@@ -73,7 +81,7 @@ export function PrimeirosPassos({ devices, onIr }) {
       feito: !!temMarca,
       icone: Brush,
       titulo: 'Diga quem é a empresa',
-      texto: 'Cores e logo. É com isso que a IA cria peças com a cara do cliente, e não genéricas.',
+      texto: 'Escolha a paleta e mande o logo. É com isso que a IA cria peças com a cara do cliente, e não genéricas.',
       acao: 'Marca',
       destino: 'brand',
     },

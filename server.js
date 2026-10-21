@@ -62,6 +62,7 @@ const guia = require('./server/ai-guia');
 const memory = require('./server/ai-memoria');
 const muralLib = require('./server/mural');
 const qrcode = require('./server/qr');
+const paletaInicial = require('./server/paleta');
 
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
@@ -478,7 +479,7 @@ async function handleApi(req, res, pathname, query) {
        * campanha antiga — a tela nunca fica sem nada.
        */
       const html = process.env.MT_MOTOR_CAMPANHA !== 'coordenadas' && ai.mode() !== 'dev' && zones.length;
-      const kit = html ? await db.getBrandKit(sess.tenant_id) : null;
+      const kit = html ? await paletaInicial.garantir(db, sess.tenant_id) : null;
       return emTrabalho(res, sess, 'campanha-simples', { brief: String(answers.objetivo).slice(0, 200) }, async (progresso) => {
         if (html) {
           const k = kit || {};
@@ -1145,11 +1146,19 @@ async function handleApi(req, res, pathname, query) {
       return sendJson(res, 404, { error: 'rota de marca não encontrada' });
     }
     if (req.method === 'GET') {
+      /*
+       * Conta antiga sem cor nenhuma ganha a paleta do ramo aqui, na primeira
+       * vez que abre a Marca (as novas já nascem com ela). O ramo vai junto:
+       * é ele que escolhe as paletas sugeridas na tela (js/paletas.js).
+       */
+      await paletaInicial.garantir(db, sess.tenant_id);
       const [kit, assets, mem, marcas] = await Promise.all([
         db.getBrandKit(sess.tenant_id), db.listBrandAssets(sess.tenant_id),
         db.getMemoria(sess.tenant_id), db.listMarcas(sess.tenant_id),
       ]);
       return sendJson(res, 200, {
+        ramo: await paletaInicial.ramoDaConta(db, sess.tenant_id, kit),
+        empresa: ((await db.getTenant(sess.tenant_id)) || {}).name || '',
         kit: kit || null, assets, memoria: mem || null, marcas, limiteMarcas: db.MAX_MARCAS,
         familias: Object.keys(ds.FAMILIAS), direcoes: ds.DIRECOES,
       });
@@ -1313,7 +1322,7 @@ async function handleApi(req, res, pathname, query) {
         // Identidade salva da empresa: o que o usuário mandar no pedido tem
         // prioridade, mas o resto vem da marca — sem isso a IA reinventa a
         // identidade a cada briefing.
-        const kit = await db.getBrandKit(sess.tenant_id);
+        const kit = await paletaInicial.garantir(db, sess.tenant_id); // sem cor nenhuma: a paleta do ramo
         const assets = await db.listBrandAssets(sess.tenant_id);
         const lembrada = await db.getMemoria(sess.tenant_id);
         /*

@@ -1,4 +1,7 @@
 
+// A conta nasce com a paleta do ramo dela, nunca com marca vazia (js/paletas.js).
+const paleta = require('../paleta.js');
+
 module.exports = function(ctx) {
   const { 
     db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode,
@@ -58,6 +61,7 @@ module.exports = function(ctx) {
                 userId = resCreate.userId;
                 tenantId = resCreate.tenantId;
                 await db.registrarAceite(tenantId, userId, email, legal.VERSAO, 'cadastro', clientIp(req));
+                await paleta.garantir(db, tenantId);
               }
               await cortesia.sincronizar(db, tenantId, email);
               await auth.startSession(res, userId, tenantId, req);
@@ -132,6 +136,7 @@ module.exports = function(ctx) {
               userId = resCreate.userId;
               tenantId = resCreate.tenantId;
               await db.registrarAceite(tenantId, userId, p.email, legal.VERSAO, 'cadastro', p.ip);
+              await paleta.garantir(db, tenantId);
             }
             
             await db.consumeVerification(token);
@@ -311,6 +316,7 @@ module.exports = function(ctx) {
                 // mostra os dois links. Registrado com origem própria para ficar
                 // claro que não veio de caixinha marcada.
                 await db.registrarAceite(tenantId, userId, email, legal.VERSAO, 'google', clientIp(req));
+                await paleta.garantir(db, tenantId);
                 u = { id: userId, tenant_id: tenantId };
               }
             }
