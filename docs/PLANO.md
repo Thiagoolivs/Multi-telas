@@ -900,6 +900,11 @@ estar escrito na página de preços.
 - [ ] 72 horas seguidas no box, medindo a memória do WebView de hora em hora.
 - [ ] Tirar da tomada 10 vezes; voltar sozinho em todas.
 - [ ] Vídeo normalizado no upload (H.264 1080p, bitrate máximo).
+      *(21/10: converter precisa de ffmpeg no servidor — decisão do dono. Já
+      existe a régua, em js/video.js: todo upload de vídeo AVISA quando o box
+      pode engasgar — HEVC/AV1 lidos nos bytes, acima de Full HD, mais de
+      10 Mbps, mais de 150 MB — e não proíbe. O ffmpeg, quando vier, usa a
+      mesma régua para decidir quem converter.)*
 - [ ] Cortar a internet por 24 h; nada some.
 - [x] Expediente: tela apaga fora do horário (menos desgaste, menos alerta falso).
       (21/10: preta ou só o relógio, à escolha; o padrão continua mostrando.

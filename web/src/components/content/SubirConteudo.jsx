@@ -7,7 +7,7 @@ import { publicarPecas } from '../../lib/publicar.js';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
 import {
-  ehVideo, ehImagem, prepararFoto, prepararVideo, enviarComProgresso, itemDaMidia, EVENTO_SUBIR, lerCompartilhados,
+  ehVideo, ehImagem, prepararFoto, prepararVideo, avaliarVideo, enviarComProgresso, itemDaMidia, EVENTO_SUBIR, lerCompartilhados,
 } from '../../lib/subir.js';
 
 /*
@@ -72,13 +72,12 @@ export function SubirConteudo() {
       try {
         const prep = video ? await prepararVideo(f) : await prepararFoto(f);
         /*
-         * Vídeo pesado para o box: avisa, não proíbe. A normalização no
-         * servidor (item 12) precisa de ffmpeg, que é infra; até lá, quem
-         * sobe um 4K de 300 MB fica sabendo antes de a TV engasgar.
+         * Vídeo pesado para o box: avisa, com o motivo, e não proíbe. A
+         * normalização no servidor (item 12) precisa de ffmpeg, que é infra;
+         * até lá, quem sobe um 4K em HEVC fica sabendo antes de a TV engasgar.
          */
-        const pesado = video && (f.size > 150 * 1024 * 1024 || Math.max(prep.largura, prep.altura) > 1920);
-        atualizar(id, { previa: prep.previa, fundo: prep.fundo,
-          aviso: pesado ? 'Vídeo pesado para TV Box: prefira até 1080p e 150 MB. Ele vai, mas pode engasgar.' : '' });
+        const av = video ? await avaliarVideo(f, prep) : null;
+        atualizar(id, { previa: prep.previa, fundo: prep.fundo, aviso: av ? av.aviso : '' });
         const r = await enviarComProgresso(prep.envio, (p) => atualizar(id, { progresso: p }));
         atualizar(id, { url: r.url, progresso: 1 });
       } catch (e) {

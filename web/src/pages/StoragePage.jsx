@@ -7,6 +7,7 @@ import { Progress, Skeleton, ErrorState, EmptyState } from '../components/ui/Fee
 import { useAsync } from '../lib/useAsync.js';
 import { media, bancoImagens } from '../api.js';
 import { formatBytes, formatPercent, relativeTime } from '../lib/format.js';
+import { avaliarVideo, ehVideo } from '../lib/subir.js';
 
 /*
  * O estado de cada imagem no Banco de Imagens, indexado por id de mídia.
@@ -52,11 +53,17 @@ export function StoragePage() {
     if (!files.length) return;
     setBusy(true); setMsg('');
     let ok = 0, fail = 0;
+    // Vídeo que pode engasgar no TV Box (js/video.js): avisa depois, com o nome.
+    const avisos = [];
     for (const f of files) {
+      if (ehVideo(f)) {
+        const av = await avaliarVideo(f).catch(() => null);
+        if (av && av.pesado) avisos.push(f.name + ': ' + av.aviso);
+      }
       try { await media.upload(f); ok++; } catch (err) { fail++; setMsg(err.message || 'Falha em um arquivo.'); }
     }
     setBusy(false);
-    if (!fail) setMsg(`${ok} arquivo(s) enviados.`);
+    if (!fail) setMsg(`${ok} arquivo(s) enviados.` + (avisos.length ? ' ' + avisos.join(' ') : ''));
     reload();
   }
 

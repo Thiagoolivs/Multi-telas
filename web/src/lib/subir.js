@@ -6,6 +6,7 @@
  * devagar), tirar dela a miniatura borrada que vira o fundo na TV, e mandar
  * com barra de progresso — sem ela, 30 segundos de upload parecem travamento.
  */
+import '../../../js/video.js';
 
 // O maior lado de uma foto enviada. Cobre a TV 4K com folga e corta o
 // arquivo de celular para algo que sobe em segundos.
@@ -89,6 +90,32 @@ export function prepararVideo(arquivo) {
     setTimeout(() => fim(), 6000);
     v.src = url;
   });
+}
+
+/*
+ * O vídeo aguenta um TV Box? (EXECUTOR, item 12; a régua mora em
+ * js/video.js.) O codec sai dos bytes do começo e do fim do arquivo — a
+ * caixa que diz o codec pode estar em qualquer ponta. Oito megas lidos do
+ * disco do próprio aparelho: não sobe nada, e não demora.
+ *
+ * `medidas` é o que prepararVideo já mediu; sem ela, mede aqui e solta a
+ * prévia (quem chama não vai mostrá-la).
+ */
+const PONTA = 4 * 1024 * 1024;
+async function bytesDasPontas(arquivo) {
+  const ler = async (b) => new Uint8Array(await b.arrayBuffer());
+  if (arquivo.size <= 2 * PONTA) return [await ler(arquivo)];
+  return [await ler(arquivo.slice(0, PONTA)), await ler(arquivo.slice(arquivo.size - PONTA))];
+}
+export async function avaliarVideo(arquivo, medidas) {
+  let m = medidas;
+  if (!m) {
+    m = await prepararVideo(arquivo);
+    if (m.previa) URL.revokeObjectURL(m.previa);
+  }
+  let codec = '';
+  try { codec = globalThis.MTVideo.codecNosBytes(await bytesDasPontas(arquivo)); } catch (e) { codec = ''; }
+  return globalThis.MTVideo.avaliar({ bytes: arquivo.size, largura: m.largura, altura: m.altura, duracao: m.duracao, codec });
 }
 
 /*
