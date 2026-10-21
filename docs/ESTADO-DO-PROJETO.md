@@ -6,7 +6,7 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **21/10/2026** · 1243 testes passando (três vezes seguidas, sem
+Atualizado em: **21/10/2026** · 1250 testes passando (três vezes seguidas, sem
 teste instável) · `server.js` com ~2.570 linhas (cobrança, telas, redes,
 conversas e campanhas em `server/routes/`).
 
@@ -114,6 +114,37 @@ da reserva era a peça de alerta, com "!", até para promoção (#175).
 servidor; condições do anual e regra da multa; o serviço web lendo o bucket
 de backup; o número do WhatsApp; foto real de TV e autorização para usar a
 prova da ótica.
+
+### Rodada 3 — o painel coerente com o Criar (21/10, PRs #177 a #185)
+
+O dono, testando a rodada 2: "está tudo bom, até eu clicar em Conteúdo". A
+página da TV, as Mídias e Meus Designs eram de antes do Criar conversando.
+A fila está no [`EXECUTOR.md`](EXECUTOR.md) §2c:
+
+- **Um caminho só para criar** (#178): "Criar para esta TV" na página da TV
+  leva ao Criar já com a tela; o diálogo antigo de campanha ficou escondido.
+- **Campanhas** (#179): a página nova em Criar › Campanhas, com capa,
+  estado (no ar, pausada, pronta) e as TVs; abrir mostra o resultado e o
+  Pôr pra rodar. A campanha não é mais copiada para Meus Designs.
+- **A página da TV** (#180): o desenho da TV, clicável, no lugar das abas
+  de zona; cabeçalho e rodapé com a lista de peças, as chamadas, os avisos
+  e a contagem (`components/tela/FaixaDaTela.jsx`); as campanhas que estão
+  na TV, com abrir e tirar (`CampanhasNaTela.jsx`).
+- **Adicionar numa zona** (#181) começa pelas peças prontas que cabem nela
+  (`GET /api/campanhas/pecas`), depois fotos e vídeos, depois os tipos;
+  "Criar novo com a IA" abre o Criar só para aquela zona.
+- **Ajustes da tela** (#182) em abas: Aparência (layout desenhado, marca ou
+  tema, aviso do que sai ao trocar), Encaixe, Som, Horário (o mesmo
+  formulário da lista de Telas, `HorarioDaTela.jsx`) e Avançado.
+- **Mídias por propósito** (#183): Peças prontas (pôr numa ou várias TVs
+  na zona certa, redes, campanha), Fotos e vídeos, Músicas, Da IA, Banco.
+- **A data comemorativa** (#184) saiu do topo da TV: é a primeira ideia do
+  Criar e um atalho no Início.
+
+**Varredura (item 36):** `npm test` três vezes (1250, sem teste instável);
+bancada com 6498 combinações, limpa; as 22 páginas do painel a 360 px, nos
+dois temas, agora com uma conta que **tem TV** (a ótica); o player em 720p,
+1080p e em pé, nativo e girado. Sem defeito novo.
 
 ### Rodada anterior (18/10)
 
