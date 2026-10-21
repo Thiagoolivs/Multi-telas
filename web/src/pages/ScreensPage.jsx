@@ -409,7 +409,7 @@ function ExpedienteDialog({ target, onClose, onDone }) {
   const [error, setError] = useState('');
   React.useEffect(() => {
     setError('');
-    setExp(target ? { alerta: true, dias: [1, 2, 3, 4, 5, 6], inicio: '07:00', fim: '22:00', ...(target.expediente || {}) } : null);
+    setExp(target ? { alerta: true, dias: [1, 2, 3, 4, 5, 6], inicio: '07:00', fim: '22:00', foraDoHorario: 'ligada', ...(target.expediente || {}) } : null);
   }, [target]);
   if (!exp) return null;
 
@@ -428,21 +428,21 @@ function ExpedienteDialog({ target, onClose, onDone }) {
       open={!!target}
       onClose={onClose}
       title={'Horário e alerta · ' + ((target && target.name) || 'Tela')}
-      description="Se a tela cair durante o horário de funcionamento, avisamos o dono da conta por e-mail."
+      description="O horário da loja vale para duas coisas: o que a TV mostra fora dele e o aviso de queda por e-mail."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" onClick={salvar} disabled={busy || (exp.alerta && !exp.dias.length)}>{busy ? 'Salvando…' : 'Salvar'}</Button>
+          <Button variant="primary" onClick={salvar} disabled={busy || !exp.dias.length}>{busy ? 'Salvando…' : 'Salvar'}</Button>
         </>
       }
     >
       <div className="space-y-4">
-        <label className="flex items-center gap-2 text-sm text-ink">
-          <input type="checkbox" checked={exp.alerta} onChange={(e) => setExp({ ...exp, alerta: e.target.checked })} />
-          Avisar por e-mail quando esta tela cair
-        </label>
-
-        <fieldset disabled={!exp.alerta} className={exp.alerta ? '' : 'opacity-50'}>
+        {/*
+          O horário deixou de ser só do alerta (item 8 do EXECUTOR): ele
+          também diz o que a TV mostra quando a loja fecha. Por isso fica
+          sempre editável, e o alerta é uma escolha à parte, embaixo.
+        */}
+        <fieldset>
           <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Dias em que a tela fica ligada</div>
           <div className="mt-1.5 flex gap-1.5">
             {DIAS.map(([letra, n, nome]) => (
@@ -466,11 +466,31 @@ function ExpedienteDialog({ target, onClose, onDone }) {
             <input type="checkbox" checked={dia24} onChange={(e) => setExp({ ...exp, inicio: e.target.checked ? '00:00' : '07:00', fim: e.target.checked ? '00:00' : '22:00' })} />
             Fica ligada 24 horas
           </label>
-          <p className="mt-2 text-xs text-ink-3">
+        </fieldset>
+
+        <div>
+          <div className="text-2xs font-semibold uppercase tracking-wide text-ink-3">Fora do horário, a TV</div>
+          <div className="mt-1.5 grid gap-1.5">
+            {[['ligada', 'Continua mostrando a programação'], ['relogio', 'Mostra só o relógio'], ['preta', 'Fica preta (menos desgaste e menos luz)']].map(([v, rotulo]) => (
+              <label key={v} className="flex items-center gap-2 text-sm text-ink">
+                <input type="radio" name="foraDoHorario" checked={(exp.foraDoHorario || 'ligada') === v} onChange={() => setExp({ ...exp, foraDoHorario: v })} />
+                {rotulo}
+              </label>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-ink-3">Vale na hora: a TV muda sozinha quando a loja abre e fecha.</p>
+        </div>
+
+        <div>
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input type="checkbox" checked={exp.alerta} onChange={(e) => setExp({ ...exp, alerta: e.target.checked })} />
+            Avisar por e-mail quando esta tela cair
+          </label>
+          <p className="mt-1 text-xs text-ink-3">
             Fora deste horário a TV pode ficar desligada à vontade: nenhum aviso sai.
             Se ela não voltar quando o horário começar, avisamos 15 minutos depois.
           </p>
-        </fieldset>
+        </div>
         {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
       </div>
     </Dialog>

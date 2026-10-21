@@ -542,6 +542,7 @@
     refreshSeconds: 1,    // só o modo legado usa, e lá o palco é outro
     girar: 1,             // conferirGiro: recarrega a página, não a zona
     margemSegura: 1,      // aplicarMargem: uma variável CSS no <html>
+    expediente: 1,        // aplicarExpediente: uma camada por cima, nada a refazer
     // layoutAuto e layoutAutoSeconds NÃO entram aqui: eles ligam um
     // temporizador no nível do palco, e vão na assinatura do palco logo
     // abaixo. Se ficassem aqui, ligar o layout dinâmico não faria nada.
@@ -585,8 +586,65 @@
     document.documentElement.style.setProperty('--mt-margem', String(m));
   }
 
+  /*
+   * EXPEDIENTE (EXECUTOR, item 8): fora do horário da loja, a TV fica preta
+   * ou mostra só o relógio — à escolha do dono, em "Horário e alerta". O
+   * padrão é continuar mostrando: nenhuma TV apaga sem alguém ter pedido.
+   *
+   * A regra é a mesma do vigia (js/expediente.js), que por isso não avisa
+   * queda fora do horário. A camada fica POR CIMA do palco: a programação
+   * continua montada e volta no instante em que o expediente começa, sem
+   * baixar nada. Vídeo e música param, porque tela preta com som tocando não
+   * é tela desligada. Preto também poupa o painel (menos desgaste) e a luz.
+   */
+  let expediente = null;
+  let foraEl = null;
+  let expTimer = null;
+  let musicaPausadaPeloHorario = false;
+  function aplicarExpediente(cfg) {
+    expediente = (cfg && cfg.settings && cfg.settings.expediente) || null;
+    conferirExpediente();
+    if (!expTimer) expTimer = setInterval(conferirExpediente, 20000);
+  }
+  function conferirExpediente() {
+    const E = global.MTExpediente;
+    const estado = E ? E.estadoDaTela(Date.now(), expediente) : 'normal';
+    const fora = estado !== 'normal';
+    document.documentElement.classList.toggle('mt-fora-do-horario', fora);
+    if (!fora) {
+      if (foraEl) { foraEl.remove(); foraEl = null; }
+      // A loja abriu: a música volta — se fomos NÓS que paramos, e não o dono.
+      if (musicaPausadaPeloHorario) { musicaPausadaPeloHorario = false; try { trilha.comando({ acao: 'tocar' }); } catch (e) { /* sem trilha */ } }
+      return;
+    }
+    if (!foraEl) {
+      foraEl = document.createElement('div');
+      foraEl.className = 'mt-fora';
+      foraEl.innerHTML = '<div class="mt-fora-relogio"><div class="mt-fora-hora"></div><div class="mt-fora-dia"></div></div>';
+      document.body.appendChild(foraEl);
+      // Sem som e sem vídeo enquanto a loja está fechada.
+      try {
+        if (trilha.estado().tocando) { musicaPausadaPeloHorario = true; trilha.comando({ acao: 'pausar' }); }
+      } catch (e) { /* sem trilha */ }
+      document.querySelectorAll('video').forEach((v) => { try { v.pause(); } catch (e) { /* segue */ } });
+    }
+    foraEl.classList.toggle('mt-fora-com-relogio', estado === 'relogio');
+    if (estado === 'relogio') {
+      // A hora da LOJA (o fuso do expediente): box de fábrica costuma vir em UTC.
+      const agora = new Date();
+      const fuso = E.normalizar(expediente).fuso;
+      foraEl.querySelector('.mt-fora-hora').textContent = agora.toLocaleTimeString('pt-BR', { timeZone: fuso, hour: '2-digit', minute: '2-digit' });
+      foraEl.querySelector('.mt-fora-dia').textContent = agora.toLocaleDateString('pt-BR', { timeZone: fuso, weekday: 'long', day: 'numeric', month: 'long' });
+      // O relógio anda um pouco a cada 10 minutos: parado no mesmo lugar a noite toda, marca o painel.
+      const passo = Math.floor(agora.getTime() / 600000) % 6;
+      foraEl.style.setProperty('--mt-fora-x', ((passo % 3) - 1) * 8 + 'vw');
+      foraEl.style.setProperty('--mt-fora-y', (passo < 3 ? -1 : 1) * 6 + 'vh');
+    }
+  }
+
   function aplicarNoPalco(cfg) {
     aplicarMargem(cfg);
+    aplicarExpediente(cfg);
     if (!palco || palco.chave !== assinaturaPalco(cfg)) {
       teardownZones();
       buildStage(cfg);

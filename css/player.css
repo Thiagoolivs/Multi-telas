@@ -1153,6 +1153,21 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 @keyframes mt-load { 0% { transform: translateX(-160%); } 100% { transform: translateX(360%); } }
 
 /* ---------- Pareamento (modo nuvem) ---------- */
+/*
+ * Fora do horário da loja (js/player.js, aplicarExpediente): preto por cima
+ * de tudo, ou só o relógio, discreto e andando de leve para não marcar o
+ * painel. O palco por baixo fica escondido: não pinta, não anima.
+ */
+.mt-fora { position: fixed; inset: 0; z-index: 90; background: #000; cursor: none; }
+.mt-fora-relogio { display: none; }
+.mt-fora-com-relogio .mt-fora-relogio {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;
+  transform: translate(var(--mt-fora-x, 0), var(--mt-fora-y, 0)); color: #8a93a6;
+}
+.mt-fora-hora { font-size: 12vmin; font-weight: 300; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
+.mt-fora-dia { margin-top: 2vmin; font-size: 3vmin; text-transform: capitalize; opacity: .7; }
+.mt-fora-do-horario .mt-stage { visibility: hidden; }
+
 .mt-pairing {
   position: fixed; inset: 0; z-index: 60;
   display: flex; align-items: center; justify-content: center;

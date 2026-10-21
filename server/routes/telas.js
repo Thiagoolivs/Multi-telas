@@ -196,6 +196,14 @@ module.exports = function (ctx) {
           }
           // De onde a TV aceita foto de peça: quem declara é o servidor, sempre.
           cfg.settings.hostsMidia = hostsMidia;
+          /*
+           * O horário da loja vai na config que a TV lê (item 8 do EXECUTOR:
+           * fora dele, tela preta ou só o relógio). Quem manda é a coluna da
+           * tela, gravada em "Horário e alerta" — o painel não decide isto ao
+           * salvar o conteúdo, senão uma aba velha desfaria o horário novo.
+           */
+          if (device.expediente) cfg.settings.expediente = vigia.normalizarExpediente(device.expediente);
+          else delete cfg.settings.expediente;
           const name = (cfg.settings && cfg.settings.nome) || device.name;
           cfg.settings.nome = name;
           const updatedAt = Date.now();
@@ -258,6 +266,20 @@ module.exports = function (ctx) {
         return readBody(req, res, async (b) => {
           const exp = vigia.normalizarExpediente(b || {});
           await db.setExpediente(id, JSON.stringify(exp));
+          /*
+           * E a TV fica sabendo na hora: o horário vai para a config dela
+           * (ela apaga ou mostra o relógio fora dele) e o aviso de config nova
+           * sai pelo SSE, como numa publicação.
+           */
+          if (device.config) {
+            try {
+              const cfg = JSON.parse(device.config);
+              cfg.settings = cfg.settings || {};
+              cfg.settings.expediente = exp;
+              await db.setDeviceConfig(id, JSON.stringify(cfg), cfg.settings.nome || device.name);
+              broadcast(id, 'config', { updatedAt: Date.now() });
+            } catch (e) { /* config ilegível: o horário vale para o alerta e entra na próxima publicação */ }
+          }
           return sendJson(res, 200, { ok: true, expediente: exp });
         });
       }

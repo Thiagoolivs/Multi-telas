@@ -889,7 +889,9 @@ estar escrito na página de preços.
 - [ ] Tirar da tomada 10 vezes; voltar sozinho em todas.
 - [ ] Vídeo normalizado no upload (H.264 1080p, bitrate máximo).
 - [ ] Cortar a internet por 24 h; nada some.
-- [ ] Expediente: tela apaga fora do horário (menos desgaste, menos alerta falso).
+- [x] Expediente: tela apaga fora do horário (menos desgaste, menos alerta falso).
+      (21/10: preta ou só o relógio, à escolha; o padrão continua mostrando.
+      Uma regra só para a TV e o vigia: js/expediente.js.)
 
 **Operação:**
 - [ ] **Alerta proativo de tela offline** por e-mail e WhatsApp, em minutos —
