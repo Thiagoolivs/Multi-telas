@@ -243,11 +243,18 @@ test('VOLTAR do celular volta uma página do painel, não sai dele', () => {
   }
 });
 
-test('o passo "publique o primeiro conteúdo" abre a tela pareada', () => {
-  // Mandava para Meus Designs: a peça feita ali ainda precisava ser levada até a tela.
+test('a primeira peça não fica longe da TV', () => {
+  /*
+   * O passo mandava para Meus Designs, e a peça feita ali ainda precisava
+   * ser levada até a tela. No caminho de hoje (item 16: marca → peça → TV) a
+   * peça nasce no Criar ANTES da TV, e é o pareamento que a leva: "Mandar a
+   * peça para a TV", um toque depois de parear.
+   */
   const src = soCodigo(ler('web', 'src', 'components', 'dashboard', 'PrimeirosPassos.jsx'));
-  assert.match(src, /destino: primeira \? 'content'/);
-  assert.match(src, /onIr\(p\.destino, p\.params\)/, 'o aparelho não chega ao editor');
+  assert.match(src, /destino: 'criar'/);
+  assert.match(src, /onIr\(p\.destino, p\.params\)/, 'o passo não leva a lugar nenhum');
+  const telas = soCodigo(ler('web', 'src', 'pages', 'ScreensPage.jsx'));
+  assert.match(telas, /Mandar a peça para a TV/, 'pareou e a peça ficou para trás');
 });
 
 test('a última edição antes de sair da tela não se perde', () => {

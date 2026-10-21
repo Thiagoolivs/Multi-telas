@@ -11,6 +11,7 @@ import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { RedesSociais } from '../components/content/RedesSociais.jsx';
 import { TAMANHO_REAL } from '../lib/pecaHtml.js';
 import { ai, devices, library, media, brand } from '../api.js';
+import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { publicarPecas } from '../lib/publicar.js';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
@@ -379,6 +380,11 @@ export function CriarPage({ opcaoInicial, telaInicial, onIr }) {
       ) : (
         <Panel>
           <div className="space-y-4 p-4">
+            {/* Sem TV ainda: o próximo passo é ligar uma (PLANO §5.3) — e a peça vai junto no pareamento. */}
+            {!pronto.nTelas && (
+              <ProximoPasso feito="A peça está pronta." proximo="ligar a TV — ela já recebe esta peça." acao="Ligar a TV"
+                onIr={() => onIr && onIr('screens', { abrirParear: true })} />
+            )}
             <div className="flex items-center gap-2 text-sm text-ink">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ok/15 text-ok"><Check size={16} /></span>
               {pronto.nTelas ? 'No ar em ' + pronto.nTelas + (pronto.nTelas === 1 ? ' tela.' : ' telas.') : 'Guardado em Meus Designs.'}

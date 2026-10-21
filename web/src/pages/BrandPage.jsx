@@ -8,6 +8,8 @@ import { Spinner } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { brand, media } from '../api.js';
 import { aviso } from '../lib/avisos.js';
+import { lerJornada } from '../lib/jornada.js';
+import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { PaletasSugeridas } from '../components/content/PaletasSugeridas.jsx';
 
 const FONTES = [
@@ -48,7 +50,7 @@ function Ficha({ titulo, texto, itens }) {
   );
 }
 
-export function BrandPage() {
+export function BrandPage({ onIr }) {
   const { data, loading, reload } = useAsync(brand.get);
   const kit = (data && data.kit) || {};
   const assets = (data && data.assets) || [];
@@ -91,12 +93,20 @@ export function BrandPage() {
     setLocal(Object.assign({ endereco: '', bairro: '', cidade: '', link: '' }, kit.local || {}));
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /*
+   * Conta nova, marca feita agora e ainda sem peça: a página diz que o
+   * próximo passo é a primeira peça (lib/jornada.js, PLANO §5.3).
+   */
+  const [proximo, setProximo] = useState(false);
+  const conferirJornada = () => lerJornada().then((j) => setProximo(j.marca && !j.peca)).catch(() => {});
+
   async function salvar() {
     setBusy(true); setMsg(''); setErr('');
     try {
       await brand.save({ nome, cores, fonteTitulo, fonteApoio, direcao, tom, observacoes, local });
       setMsg('Identidade salva. As próximas gerações já usam.');
       reload();
+      conferirJornada();
     } catch (e) { setErr(e.message || 'Não foi possível salvar.'); }
     finally { setBusy(false); }
   }
@@ -113,6 +123,7 @@ export function BrandPage() {
       await brand.save({ nome, cores: nova, fonteTitulo, fonteApoio, direcao, tom, observacoes });
       aviso.ok('Paleta aplicada. As próximas peças e a TV já usam estas cores.');
       reload();
+      conferirJornada();
     } catch (e) { setErr(e.message || 'Não foi possível aplicar a paleta.'); }
     finally { setBusy(false); }
   }
@@ -182,6 +193,7 @@ export function BrandPage() {
         ? 'Li o site: ' + achou.join(', ') + '. A IA já usa isso.'
         : 'Li o site, mas não achei pistas de estilo nele.');
       reload();
+      conferirJornada();
     } catch (e) { setErrSite(e.message || 'Não consegui ler esse site.'); }
     finally { setLendoSite(false); }
   }
@@ -225,6 +237,9 @@ export function BrandPage() {
     <div className="space-y-4">
       <PageHeader title="Marca"
         subtitle="A identidade da empresa. A IA lê tudo isto antes de criar — sem ela, reinventa o visual a cada campanha." />
+      {proximo && onIr && (
+        <ProximoPasso feito="A IA já usa a sua marca." proximo="criar a primeira peça." acao="Criar a primeira peça" onIr={() => onIr('criar')} />
+      )}
 
       {/*
         Escolher a marca vem ANTES de tudo o resto na página, porque tudo o
