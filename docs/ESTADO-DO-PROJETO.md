@@ -6,8 +6,9 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **21/10/2026** · 1193 testes passando · `server.js` com ~2.500
-linhas (cobrança, telas e redes em `server/routes/`).
+Atualizado em: **21/10/2026** · 1243 testes passando (três vezes seguidas, sem
+teste instável) · `server.js` com ~2.570 linhas (cobrança, telas, redes,
+conversas e campanhas em `server/routes/`).
 
 ---
 
@@ -65,10 +66,49 @@ um PR cada: a Equipe com "Visão geral" no topo (#161), as ações da Equipe
 fora da tela no celular (#162), datas da TV com "De" maiúsculo (#164) e o
 cabeçalho da TV cortando a perna do g e o nome em pé (#167).
 
-**Em andamento:** rodada 2, "Criar conversando" ([`EXECUTOR.md`](EXECUTOR.md)
-§2b, itens 19 a 27) — o Criar vira um chat que entende o pedido e gera o
-ecossistema inteiro da TV. Já entraram a imagem de verdade (#165) e o
-escopo, o contrato entre o chat e o gerador (`js/escopo.js`, #166).
+### Rodada 2 — Criar conversando (21/10, PRs #163 a #176)
+
+O dono, depois de usar: "faz boas criações, mas sem sal", "nem imagens ele
+colocou", "o Criar está confuso", "cria só algumas peças". O propósito, nas
+palavras dele: **o cliente decide, a IA dá suporte, sugere, conversa e cria.**
+A fila está no [`EXECUTOR.md`](EXECUTOR.md) §2b, e ficou assim:
+
+- **Criar é a conversa** (`CriarPage.jsx`, #172). "O que você quer mostrar
+  hoje?", ideias da conta (o guia) e começos de frase. A conversa **não tem
+  limite de perguntas** (`server/ai-conversa.js`, #168); a IA sempre propõe
+  e diz quando entendeu. O cartão **"O que vou criar"** mostra, por TV e por
+  zona, o que vai sair, e se mexe à mão (`CartaoEscopo.jsx`).
+- **O escopo** é o contrato entre o chat, o cartão, o gerador e a cobrança
+  (`js/escopo.js`, #166): telas × zonas, redes, horários, fotos, os recortes
+  ("só principal e lateral", "2 estilos de cabeçalho"…) e o custo.
+- **O ecossistema** (`server/ecossistema.js`, #170): o escopo vira
+  EXATAMENTE as peças pedidas, no papel de cada zona, com os textos de todas
+  numa chamada só, as fotos pela escolha do cliente, os horários como
+  `agendamento` do player e as redes. Salva sozinha (tabela `campanhas`).
+- **Pôr pra rodar** (`web/src/lib/rodar.js`, #173): cada peça na zona do
+  escopo; troca o layout da TV só com o ok; pausar tira só o que é dela.
+- **Ajustar depois** (`server/ajuste.js`, #174): "troca a foto da peça 2"
+  refaz só aquela peça e cobra só a foto nova. Editar à mão e desfazer.
+- **TV:** cabeçalho e rodapé com várias peças girando, contagem regressiva
+  (`data-vivo="contagem"`) e chamadas no cabeçalho (#171). Peças-ouro novas,
+  em rascunho para o dono aprovar: `rodape-contagem`, `cabecalho-chamadas`
+  e `lateral-chamada` (#175).
+- **Imagem de verdade** (#165): o Criar mandava `imagens: 'acervo'` fixo, a
+  cor da marca não chegava à foto, o compositor jogava fora a foto já paga, e
+  sem a chave de imagem um degradê com o prompt escrito ia como foto, cobrado.
+- Os quatro passos de antes continuam como **Criação rápida** (Meus Designs ›
+  Mais).
+
+Do Início, em 3 toques: uma entrada (o cartão já vem montado) → Gerar → Pôr
+pra rodar. **Conferido só no modo demonstração** (sem chave de IA): a
+qualidade com IA de verdade — o "sem sal" — ainda precisa ser medida com
+campanhas reais (ver "Próximos passos").
+
+**Varredura (item 27):** `npm test` três vezes (1243, sem teste instável);
+bancada com 43 peças × 6 marcas × 3 modos × zonas (6498 combinações), limpa;
+as 18 páginas do painel (com a Criação rápida) a 360 px, nos dois temas; o
+player em 720p, 1080p e em pé, nativo e girado. Um defeito, um PR: a lateral
+da reserva era a peça de alerta, com "!", até para promoção (#175).
 
 **Com o dono e o consultor** (decisão ou infra, não código): ffmpeg no
 servidor; condições do anual e regra da multa; o serviço web lendo o bucket
@@ -176,6 +216,11 @@ exibindo. Isso não é detalhe — é o que separa signage de site.
 | painel e operador | `js/aparelho.js` | "1920×1080 · Android", do último pulso da TV |
 | painel e servidor | `js/paletas.js` | as paletas sugeridas; a conta nasce com a do ramo (`server/paleta.js`) |
 | chat e gerador | `js/escopo.js` | o que vai ser criado, para onde e como (rodada 2) |
+| servidor | `server/ai-conversa.js` · `server/routes/conversas.js` | a conversa do Criar, sem limite de perguntas; tabela `conversas` |
+| servidor | `server/ecossistema.js` · `server/routes/campanhas.js` | o escopo vira as peças de cada TV e zona; tabela `campanhas` |
+| servidor | `server/ajuste.js` | ajustar depois: só o que mudou é refeito; desfazer um passo |
+| servidor | `fotoDaConta` · `marcaDaConta` (em `server.js`) | a foto da campanha (saldo, gera, guarda, cobra) e a marca, uma função só |
+| painel | `web/src/components/criar/*` · `web/src/lib/rodar.js` | o cartão do escopo, o resultado, Pôr pra rodar |
 | servidor | `server/ver-tela.js` | confere o estado que a TV mandou contra a programação salva |
 | servidor | `server/redes.js` | o texto de cada rede, um pedido por canal |
 | servidor | `server/admin.js` · `server/suporte.js` | o negócio no painel do operador · entrar na conta do cliente com registro |
@@ -209,7 +254,7 @@ existe para matar.
 Armadilhas novas desta rodada:
 
 - **Mexeu em `player.html`, `js/` ou `css/` do player? Suba o `SHELL_CACHE`**
-  em `sw.js` (hoje `mt-shell-v40`). A TV serve o shell do cache; sem a versão
+  em `sw.js` (hoje `mt-shell-v41`). A TV serve o shell do cache; sem a versão
   nova ela continua com o arquivo velho e ninguém vê a correção na parede.
 - **Banco no SQLite e mídia são variáveis diferentes.** `DATA_DIR` aponta o
   banco; `MEDIA_DIR` (ou `RAILWAY_VOLUME_MOUNT_PATH`) aponta `media/`. Um
@@ -236,6 +281,24 @@ Armadilhas novas desta rodada:
 - **No navegador sem tela (headless), `MediaRecorder` grava 0 byte.** Teste
   de vídeo usa arquivo sintético; e rolagem nos scripts de print é
   `behavior: 'instant'`, senão a foto sai no meio do caminho.
+
+Armadilhas da rodada 2:
+
+- **Campo novo de zona some no caminho até a TV** se não entrar no
+  `normalize` de `js/storage.js`, que refaz a zona campo a campo. A lista
+  que gira e a contagem entram por `vivosDaFaixa`; a porta do servidor
+  (`conferirConfig`) confere cada peça da lista.
+- **Peça-ouro de reserva tem de ser preenchível INTEIRA.** Campo que sobra
+  mostra o texto de exemplo de outro negócio ("Ótica Central") na TV da
+  padaria. `compositor.preencherPapel` só usa peças cujos campos ele tem.
+- **O print de página inteira do painel corta**: quem rola é o `<main>`, não a
+  página. Nos scripts, a janela cresce até o fim do conteúdo antes do print.
+- **Teste de rota de ponta a ponta:** servidor de verdade com `DATA_DIR`
+  temporário e `AI_PROVIDER=dev` (ver `test/ecossistema.test.js`), para não
+  sujar o banco local nem depender de chave.
+- **Arquivos com CRLF:** editar por script lendo e devolvendo `\r\n` (aqui
+  não tem Python). E `npm run lint:nomes` com aspas simples falha no npm do
+  Windows: rode o `npx eslint@8 …` direto, com os globs sem aspas.
 
 ## A tese do motor de IA
 
@@ -345,11 +408,10 @@ Avaliação franca, com números do próprio código:
 4. ~~Editor sem texto em curva e elementos gráficos~~ — entraram (`js/graficos.js`,
    `arcoTexto` em `js/peca.js`); editor, TV, miniatura e PNG desenham igual.
 
-5. **O Criar ainda decide demais pelo cliente.** O dono, em 21/10: as peças
-   saem boas, mas "sem sal", às vezes sem imagem, e o fluxo de 4 passos é
-   pré-definido demais — o cliente quer conversar e receber a campanha
-   inteira da TV (várias telas, cabeçalho e rodapé animados). É a rodada 2
-   ([`EXECUTOR.md`](EXECUTOR.md) §2b).
+5. ~~O Criar decide demais pelo cliente~~ — virou a conversa, com o cartão
+   do escopo e a campanha inteira da TV (rodada 2, no topo). O que falta
+   saber é se, com IA de verdade, as peças deixaram de ser "sem sal": isso
+   só se mede gerando campanhas reais.
 
 ## Próximos passos
 
@@ -357,8 +419,12 @@ Avaliação franca, com números do próprio código:
 
 Depois, em ordem de impacto:
 
-1. **A rodada 2, "Criar conversando"** (itens 19 a 27 do
-   [`EXECUTOR.md`](EXECUTOR.md)), já em andamento.
+1. **Medir a rodada 2 com IA de verdade.** Com a chave de imagem no ar
+   (`GEMINI_API_KEY`, pergunta ao consultor), gerar 10 campanhas de
+   segmentos diferentes pelo chat e conferir uma a uma: foto em todo
+   destaque, nada de "sem sal", o cartão acompanhando a conversa, e o
+   extrato cobrando só o que foi gerado. O dono aprova as peças-ouro novas
+   na bancada.
 2. **Testar o APK num box de verdade** (boot, tela acesa, sobreposição) — é
    o que falta na matriz de teste da TV (PLANO §7.1).
 3. **ffmpeg no servidor** para normalizar vídeo; a régua de quem converter

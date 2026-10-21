@@ -580,6 +580,9 @@ tem padaria não sabe descrever o estilo que quer, mas reconhece quando vê.
   criação. O desenho novo está no EXECUTOR, seção 2b, itens 19 a 27: o
   Criar vira o chat, e a IA gera o ecossistema inteiro (as TVs com as
   zonas, a programação e as redes) ou só o recorte pedido.
+  - [x] **Feito em 21/10** (PRs #165 a #176), conferido no modo
+    demonstração. Falta medir a qualidade com IA de verdade
+    (ESTADO-DO-PROJETO, "Próximos passos").
 - A memória passa a guardar o **gosto** ("prefere escuro", "recusou o
   layout X"): a próxima conversa já começa mais perto.
 
