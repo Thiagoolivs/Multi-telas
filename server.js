@@ -1631,8 +1631,8 @@ const negocioCache = new Map();
                 formato,
                 cor: (arte && arte.brand) || (b && b.brand) || '',
               });
-            // Só depois do sucesso: falha não cobra.
-            await usoIA.cobrar(db, contaIA, {
+            // Só depois do sucesso: falha não cobra, e a foto de reserva (sem chave) também não.
+            if (!img.reserva) await usoIA.cobrar(db, contaIA, {
               tipo, quantidade: 1, userId: sess.user_id, referencia: saved.id,
             });
             return saved.url;
@@ -1712,8 +1712,8 @@ const negocioCache = new Map();
             formato: (b && b.formato) || '16/9',
             cor: (b && b.brand) || '',
           });
-        // Só depois do sucesso: falha não cobra.
-        await usoIA.cobrar(db, tenantIA, { tipo: 'gerar-imagem', quantidade: 1, userId: sess.user_id, referencia: saved.id });
+        // Só depois do sucesso: falha não cobra, e a foto de reserva (sem chave) também não.
+        if (!img.reserva) await usoIA.cobrar(db, tenantIA, { tipo: 'gerar-imagem', quantidade: 1, userId: sess.user_id, referencia: saved.id });
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
         return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' };
       });
