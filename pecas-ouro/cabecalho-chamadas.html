@@ -1,0 +1,37 @@
+<!--
+  Cabeçalho com chamadas — papel cabeçalho (EXECUTOR item 22). A marca à
+  esquerda (logo, ou o nome quando não há logo), as chamadas da campanha
+  passando no meio (`data-vivo="mensagens"`: as chamadas da zona, roladas
+  pelo desenhista) e a hora à direita. Medidas em cqh: a faixa tem ~130px de
+  altura numa TV 1080p, e é a ALTURA que decide o tamanho da letra.
+-->
+<style>
+.mt-peca { display: flex; align-items: center; gap: 6cqh; padding: 0 3cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: var(--mt-fundo); border-bottom: 1.2cqh solid var(--mt-linha); }
+/* Fundo liso, e não degradê: o esfumado das pontas do trilho é da cor do fundo, e num degradê ele vira uma faixa escura. */
+.marca { display: flex; align-items: center; gap: 4cqh; flex: none; }
+.logo { height: 56cqh; width: auto; max-width: 28cqw; object-fit: contain; }
+.logo[data-sem-foto] { display: none; }
+.logo:not([data-sem-foto]) + .nome { display: none; }
+.nome { font: 700 21cqh/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; white-space: nowrap; }
+.trilho { position: relative; flex: 1; min-width: 0; align-self: stretch; overflow: hidden; display: flex; align-items: center; }
+.trilho [data-vivo] { font: 600 25cqh/1 var(--mt-fonte-texto); letter-spacing: .06em; text-transform: uppercase; color: var(--mt-destaque); }
+.trilho::before, .trilho::after { content: ''; position: absolute; top: 0; bottom: 0; width: 6cqw; z-index: 1; }
+.trilho::before { left: 0; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
+.trilho::after { right: 0; background: linear-gradient(270deg, var(--mt-fundo), var(--mt-fundo-0)); }
+.hora { flex: none; font: 400 calc(46cqh * var(--mt-escala-titulo, 1))/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
+/* Faixa mais curta (TV em pé): a marca encolhe para a chamada ter onde passar. */
+@container (aspect-ratio < 9) {
+  .nome { font-size: 18cqh; letter-spacing: .24em; }
+  .trilho [data-vivo] { font-size: 22cqh; }
+  .hora { font-size: calc(40cqh * var(--mt-escala-titulo, 1)); }
+}
+</style>
+<section class="mt-peca cabecalho-chamadas">
+  <div class="marca" data-entrada="aparecer">
+    <img class="logo" data-campo-img="logo" alt="">
+    <span class="nome" data-campo="marca">Padaria do Bairro</span>
+  </div>
+  <div class="trilho" data-entrada="aparecer" data-ordem="1"><span data-vivo="mensagens">Pão quentinho toda hora · Café passado na hora</span></div>
+  <span class="hora" data-vivo="relogio" data-entrada="aparecer" data-ordem="2">08:42</span>
+</section>

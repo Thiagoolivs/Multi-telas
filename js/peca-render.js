@@ -173,6 +173,22 @@
   }
 
   /*
+   * A CONTAGEM REGRESSIVA (EXECUTOR item 22): "acaba em 2d 04:15:09". O alvo
+   * é "AAAA-MM-DDTHH:MM" na hora da loja (o relógio da TV), como o resto do
+   * agendamento. Passou do alvo, zera: nunca conta para o negativo. Relógio
+   * da TV errado (antes de 2024) não mostra nada, como o relógio.
+   */
+  function contagem(alvo, agora) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(String(alvo || ''));
+    if (!m || !confiavel(agora)) return '';
+    const fim = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+    let s = Math.max(0, Math.floor((fim - agora) / 1000));
+    const dias = Math.floor(s / 86400); s -= dias * 86400;
+    const hms = doisDigitos(Math.floor(s / 3600)) + ':' + doisDigitos(Math.floor((s % 3600) / 60)) + ':' + doisDigitos(s % 60);
+    return (dias ? dias + 'd ' : '') + hms;
+  }
+
+  /*
    * Monta a peça dentro de `host` e devolve como parar.
    *
    * opts:
@@ -183,7 +199,8 @@
    *                o que a peça marcou com data-repete="marca"
    *   hostsMidia   hosts aceitos para foto além de /media/ (ver peca-html.js)
    *   clima        () => Promise<string>, ex.: "27°"
-   *   mensagens    frases do rodapé
+   *   mensagens    frases do rodapé (e as chamadas do cabeçalho)
+   *   contagem     "AAAA-MM-DDTHH:MM", o alvo de data-vivo="contagem"
    *   agora        () => Date, para a bancada e os testes
    */
   /*
@@ -270,10 +287,16 @@
     const tick = () => vivos.forEach((el) => {
       const nome = el.getAttribute('data-vivo');
       if (nome === 'relogio' || nome === 'data') el.textContent = vivo(nome, agora());
+      else if (nome === 'contagem') el.textContent = contagem(o.contagem, agora());
     });
     tick();
     let relogio = null;
-    if (vivos.some((el) => /^(relogio|data)$/.test(el.getAttribute('data-vivo')))) relogio = setInterval(tick, 20000);
+    /*
+     * A contagem anda de segundo em segundo; o relógio, a cada 20 s. É troca
+     * de texto, não animação: vale também na TV fraca (modo leve).
+     */
+    const temContagem = !!o.contagem && vivos.some((el) => el.getAttribute('data-vivo') === 'contagem');
+    if (temContagem || vivos.some((el) => /^(relogio|data)$/.test(el.getAttribute('data-vivo')))) relogio = setInterval(tick, temContagem ? 1000 : 20000);
     /*
      * As mensagens do rodapé ROLAM. O texto vai duas vezes seguidas e anda
      * metade do próprio comprimento: quando a primeira cópia sai, a segunda
@@ -320,5 +343,5 @@
     };
   }
 
-  return { ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, montar, enquadrar, QUADRADA, LARGA };
+  return { ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA };
 });

@@ -1,0 +1,33 @@
+<!--
+  Rodapé com contagem — papel rodapé (EXECUTOR item 22). "Acaba em" e a
+  contagem regressiva até a data da zona (`data-vivo="contagem"`: quem conta
+  é o desenhista, a peça só diz onde), e as mensagens rolando à direita, como
+  no rodapé com selo. Medidas em cqh: a faixa tem ~120px de altura, e é a
+  altura que decide a letra.
+-->
+<style>
+.mt-peca { display: flex; align-items: stretch; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: var(--mt-fundo); border-top: 1.2cqh solid var(--mt-linha); }
+.conta { flex: none; display: flex; align-items: center; gap: 6cqh; padding: 0 30cqh 0 3cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 22cqh) 100%, 0 100%); }
+.rotulo { font: 700 18cqh/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; white-space: nowrap; }
+/* Algarismos de largura fixa: a contagem muda a cada segundo, e o selo não pode pular junto. */
+.tempo { font: 400 calc(46cqh * var(--mt-escala-titulo, 1))/1 var(--mt-fonte-titulo); letter-spacing: .02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.trilho { position: relative; flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: center; padding-left: 4cqh; }
+.trilho [data-vivo] { font: 500 34cqh/1 var(--mt-fonte-texto); letter-spacing: .02em; }
+/* As mensagens somem nas pontas em vez de serem cortadas a seco. */
+.trilho::before, .trilho::after { content: ''; position: absolute; top: 0; bottom: 0; width: 8cqw; z-index: 1; }
+.trilho::before { left: 0; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
+.trilho::after { right: 0; background: linear-gradient(270deg, var(--mt-fundo), var(--mt-fundo-0)); }
+/* Faixa em pé: o rótulo sai, a contagem e a mensagem ficam. */
+@container (aspect-ratio < 9) {
+  .rotulo { display: none; }
+  .conta { padding-right: 24cqh; }
+  .tempo { font-size: calc(40cqh * var(--mt-escala-titulo, 1)); }
+  .trilho [data-vivo] { font-size: 30cqh; }
+}
+</style>
+<section class="mt-peca rodape-contagem">
+  <div class="conta" data-entrada="esquerda"><span class="rotulo" data-campo="rotulo">Acaba em</span><span class="tempo" data-vivo="contagem">2d 04:15:09</span></div>
+  <div class="trilho"><span data-vivo="mensagens">Pão de queijo em dobro das 15h às 17h · Encomende pelo WhatsApp</span></div>
+</section>
