@@ -583,6 +583,8 @@ tem padaria não sabe descrever o estilo que quer, mas reconhece quando vê.
   - [x] **Feito em 21/10** (PRs #165 a #176), conferido no modo
     demonstração. Falta medir a qualidade com IA de verdade
     (ESTADO-DO-PROJETO, "Próximos passos").
+  - [x] **Rodada 3, 21/10** (PRs #177 a #185): o resto do painel (página
+    da TV, Mídias, Campanhas, Ajustes) conversa com o Criar. EXECUTOR §2c.
 - A memória passa a guardar o **gosto** ("prefere escuro", "recusou o
   layout X"): a próxima conversa já começa mais perto.
 
