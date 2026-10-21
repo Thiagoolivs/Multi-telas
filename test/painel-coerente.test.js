@@ -129,3 +129,26 @@ test('item 33: Ajustes da tela por tarefa, com o desenho do layout e o horário 
   assert.match(f, /aria-label="Margem contra o corte da TV"/);
   assert.match(ler('web/src/pages/ContentEditorPage.jsx'), /deviceId=\{device\.id\} device=\{device\} zonas=\{cfg\.zonas\}/);
 });
+
+test('item 34: Mídias por propósito, com as peças prontas e o disco discreto', async () => {
+  const { pathToFileURL } = require('node:url');
+  const R = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/rodar.js')).href);
+  const cfg = { settings: { layoutId: 'corporate' }, zonas: { principal: { items: [{ type: 'text' }] }, cabecalho: { header: true } } };
+  const deitada = R.aplicarPeca(cfg, { item: { type: 'peca-html', html: 'a' }, formato: '16/9', campanha: 'Pão' });
+  assert.equal(deitada.zonas.principal.items.length, 2, 'entra no fim, sem tirar nada');
+  assert.equal(deitada.zonas.principal.items[1]._campanha, 'Pão');
+  const emPe = R.aplicarPeca(cfg, { item: { type: 'peca-html', html: 'b' }, formato: '9/16' });
+  assert.equal(emPe.zonas.lateral.items.length, 1, 'em pé vai para a lateral');
+  const cab = R.aplicarPeca(cfg, { item: { type: 'peca-html', html: 'c', papel: 'cabecalho' }, papel: 'cabecalho' });
+  assert.equal(cab.zonas.cabecalho.pecas.length, 1, 'faixa vai para a lista do cabeçalho');
+  assert.equal(cab.zonas.cabecalho.peca.html, 'c');
+  const semFaixa = R.aplicarPeca({ settings: { layoutId: 'full' }, zonas: {} }, { item: { html: 'd' }, papel: 'rodape' });
+  assert.deepEqual(semFaixa.zonas, {}, 'sem rodapé na TV, a faixa não vira peça espremida na principal');
+  const s = semComentarios(ler('web/src/pages/StoragePage.jsx'));
+  for (const t of ["titulo: 'Fotos e vídeos'", "titulo: 'Músicas'", "titulo: 'Da IA'"]) assert.ok(s.includes(t), t);
+  assert.match(s, /pertence: \(m\) => m\.origem === 'ia'/);
+  assert.doesNotMatch(s, /<Progress/, 'o disco não é mais o destaque');
+  const p = semComentarios(ler('web/src/pages/PecasProntasPage.jsx'));
+  assert.match(p, /await porPecaNasTelas\(porNaTv, alvos, telas\);/);
+  assert.match(p, /criar\.pecasProntas\(\)/);
+});

@@ -170,3 +170,39 @@ export async function pausarCampanha(resultado, nome, telas, ids) {
     await deviceConfig.save(a.tela.id, tirarCampanha(cfg, a.entrada, nome));
   }
 }
+
+/*
+ * UMA PEÇA PRONTA EM VÁRIAS TVS (EXECUTOR §2c, item 34): Mídias › Peças
+ * prontas. A zona sai do papel da peça — faixa no cabeçalho ou no rodapé,
+ * em pé na lateral, deitada na principal — e, sem a zona certa, ela vai para
+ * a principal (nunca uma peça grande espremida numa faixa). Entra no fim da
+ * zona, sem tirar nada do que já está lá.
+ */
+export function aplicarPeca(cfg, peca) {
+  const next = JSON.parse(JSON.stringify(cfg || {}));
+  if (!next.zonas) next.zonas = {};
+  const z = zonasPorPapel(next);
+  const item = { ...peca.item, ...(peca.campanha ? { _campanha: peca.campanha } : {}) };
+  const papel = peca.papel || (peca.item && peca.item.papel) || '';
+  if ((papel === 'cabecalho' || papel === 'rodape') && z[papel]) {
+    const atual = next.zonas[z[papel]] || {};
+    const lista = (Array.isArray(atual.pecas) && atual.pecas.length ? atual.pecas : (atual.peca ? [atual.peca] : [])).concat({ duracao: 20, ...item });
+    next.zonas[z[papel]] = { ...atual, ...(papel === 'cabecalho' ? { header: true } : {}), pecas: lista, peca: lista[0] };
+    return next;
+  }
+  if (papel === 'cabecalho' || papel === 'rodape') return next; // a TV não tem essa faixa: nada a fazer
+  const emPe = String(peca.formato || item.formato || '').startsWith('9/');
+  const zona = (emPe && z.lateral) ? z.lateral : (z.principal || z.lateral);
+  if (!zona) return next;
+  const atual = next.zonas[zona] || { items: [] };
+  next.zonas[zona] = { ...atual, items: (Array.isArray(atual.items) ? atual.items : []).concat(item) };
+  return next;
+}
+
+export async function porPecaNasTelas(peca, ids, telas) {
+  for (const id of ids) {
+    const tela = (telas || []).find((t) => t.id === id) || { id, name: 'Tela' };
+    const cfg = await configDa(tela);
+    await deviceConfig.save(id, aplicarPeca(cfg, peca));
+  }
+}
