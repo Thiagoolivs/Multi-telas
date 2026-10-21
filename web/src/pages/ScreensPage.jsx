@@ -10,14 +10,15 @@ import { Dialog } from '../components/ui/Dialog.jsx';
 import { SkeletonRows, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
-import { devices, deviceConfig } from '../api.js';
+import { devices, deviceConfig, library } from '../api.js';
+import { publicarPecas } from '../lib/publicar.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
 import { VerTelaAgora } from '../components/content/VerTelaAgora.jsx';
 import { esquecerParear } from '../lib/parearPendente.js';
 import '../../../js/aparelho.js';
 
-export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
+export function ScreensPage({ onEditContent, parear, abrirParear, onIrParaPlano }) {
   const { data, loading, error, reload } = useAsync(devices.list);
   const todas = data ? data.devices || [] : [];
   /*
@@ -32,7 +33,8 @@ export function ScreensPage({ onEditContent, parear, onIrParaPlano }) {
     : todas.filter((d) => d.grupo === filtroGrupo);
 
   // Vindo do QR da TV, o diálogo já abre com o código.
-  const [pairOpen, setPairOpen] = useState(!!parear);
+  // Do Início ou do Criar ("Ligar a TV"), o pareamento já abre.
+  const [pairOpen, setPairOpen] = useState(!!parear || !!abrirParear);
   React.useEffect(() => {
     if (!parear) return;
     const u = new URL(window.location.href);
@@ -285,7 +287,26 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onIrPara
   const [error, setError] = useState('');
   const [erroDePlano, setErroDePlano] = useState(false);
   const [pareada, setPareada] = useState(null);
-  React.useEffect(() => { if (open) { setPareada(null); setError(''); setErroDePlano(false); } }, [open]);
+  /*
+   * A peça que a conta já fez (PLANO §5.3): pareou, ela vai para a TV com um
+   * toque — é o último passo do caminho até a primeira peça na parede.
+   */
+  const [peca, setPeca] = useState(null);
+  const [mandada, setMandada] = useState('');
+  React.useEffect(() => { if (open) { setPareada(null); setError(''); setErroDePlano(false); setMandada(''); } }, [open]);
+  React.useEffect(() => {
+    if (!pareada) return;
+    library.list().then((r) => setPeca(((r && r.items) || [])[0] || null)).catch(() => setPeca(null));
+  }, [pareada]);
+
+  async function mandarPeca() {
+    setMandada('indo');
+    try {
+      await publicarPecas({ alvos: [pareada.id], pecas: [{ formato: peca.formato || '16/9', item: peca.item }], titulo: peca.campaign || peca.label || 'Primeira peça', telas: [pareada] });
+      setMandada('ok');
+      onDone();
+    } catch (e) { setMandada(''); setError(e.message || 'Não deu para mandar a peça.'); }
+  }
 
   async function submit() {
     setBusy(true); setError(''); setErroDePlano(false);
@@ -305,15 +326,19 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onIrPara
   if (pareada) {
     return (
       <Dialog open={open} onClose={onClose} title="Tela conectada"
-        footer={<>
+        footer={mandada === 'ok' ? <Button variant="primary" onClick={onClose}>Pronto</Button> : <>
           <Button variant="ghost" onClick={onClose}>Depois</Button>
-          <Button variant="primary" icon={LayoutTemplate} onClick={() => onConteudo && onConteudo(pareada)}>Colocar conteúdo agora</Button>
+          {peca
+            ? <Button variant="primary" icon={Check} disabled={mandada === 'indo'} onClick={mandarPeca}>{mandada === 'indo' ? 'Mandando…' : 'Mandar a peça para a TV'}</Button>
+            : <Button variant="primary" icon={LayoutTemplate} onClick={() => onConteudo && onConteudo(pareada)}>Colocar conteúdo agora</Button>}
         </>}>
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><Check size={20} /></div>
           <div className="text-sm text-ink-2">
             <b className="text-ink">{pareada.name || 'A TV'}</b> já é sua: ela mostra "Tudo certo" e fica esperando.
             O que você publicar aparece nela na hora — um modelo pronto, uma data comemorativa ou uma campanha feita pela IA.
+            {mandada === 'ok' && <div className="mt-2 font-medium text-ok">A sua peça foi para a TV. Olhe para ela!</div>}
+            {error && <div className="mt-2 text-danger">{error}</div>}
           </div>
         </div>
       </Dialog>

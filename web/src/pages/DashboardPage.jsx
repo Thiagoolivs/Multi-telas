@@ -85,6 +85,8 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
         actions={<Button variant="secondary" icon={RefreshCw} onClick={reload}>Atualizar</Button>}
       />
       <AvisoDoSistema onAbrir={onGoSystem} operador={operador} />
+      {/* Conta nova: o caminho até a primeira peça na TV vem ANTES de tudo (PLANO §5.3). Some quando termina. */}
+      {data && <PrimeirosPassos devices={data.devices} onIr={onIr} />}
       {/*
         O passo 1 do Criar, aqui no Início: quem abre o app e quer pôr algo
         na TV toca numa opção e cai direto na frase. É o que faz "criar com
@@ -136,7 +138,6 @@ function Body({ data, onIr }) {
 
   return (
     <>
-      <PrimeirosPassos devices={screens} onIr={onIr} />
       <KpiRow kpis={kpis} />
       <div className="mt-4 grid gap-4 xl:grid-cols-3">
         <div className="xl:col-span-2"><FleetTable screens={screens} /></div>

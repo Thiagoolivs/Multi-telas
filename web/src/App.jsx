@@ -159,7 +159,7 @@ export default function App() {
   function renderPage() {
     switch (route.name) {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
-      case 'screens': return <ScreensPage parear={route.parear} onEditContent={(device) => go('content', { device })} onIrParaPlano={() => go('billing')} />;
+      case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onIrParaPlano={() => go('billing')} />;
       case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} onCriar={() => go('criar', { tela: route.device && route.device.id })} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'storage': return <StoragePage />;
@@ -170,7 +170,7 @@ export default function App() {
        */
       case 'criar': return <CriarPage key={(route.opcao || '') + (route.tela || '')} opcaoInicial={route.opcao} telaInicial={route.tela} onIr={go} />;
       case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage onIr={go} />;
-      case 'brand': return <BrandPage />;
+      case 'brand': return <BrandPage onIr={go} />;
       case 'mural': return <MuralPage />;
       case 'birthdays': return <BirthdaysPage />;
       case 'relatorio': return <RelatorioPage onIrParaPlano={() => go('billing')} />;
