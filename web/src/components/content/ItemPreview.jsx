@@ -28,7 +28,8 @@ export function ItemPreview({ item, className }) {
   );
 }
 
-function Body({ item }) {
+// Também usado pelo "Ver a tela agora" (VerTelaAgora.jsx), dentro de cada zona.
+export function Body({ item }) {
   switch (item.type) {
     case 'text':
       return (

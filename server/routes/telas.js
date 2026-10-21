@@ -15,6 +15,14 @@ module.exports = function (ctx) {
 
   const NAO_TRATEI = Symbol('nao-tratei');
 
+  /*
+   * O que cada TV disse que está mostrando, na última vez que o painel
+   * perguntou ("Ver a tela agora", EXECUTOR item 9). Em memória, como o som:
+   * é uma foto do instante, não histórico — e some num restart sem dano.
+   */
+  const estadosDaTela = new Map();
+  const verTela = require('../ver-tela.js');
+
   // De onde a TV aceita foto de peça em HTML: o host público do storage (R2),
   // quando há um. Relativo (disco), só /media/.
   const pecaHtml = require('../../js/peca-html.js');
@@ -292,11 +300,15 @@ module.exports = function (ctx) {
         if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
         return readBody(req, res, async (b) => {
           const acao = String((b && b.acao) || '');
-          if (acao !== 'recarregar') return sendJson(res, 400, { error: 'comando desconhecido' });
+          // "estado": o painel quer ver a tela agora (a TV responde em /estado).
+          if (acao !== 'recarregar' && acao !== 'estado') return sendJson(res, 400, { error: 'comando desconhecido' });
           const cmd = { id: db.rid(10), acao, em: Date.now() };
-          comandosPendentes.set(id, cmd);
+          // A fila do pulso guarda UM comando: "ver" não pode apagar um
+          // "recarregar" que ainda não chegou na TV.
+          const pendente = comandosPendentes.get(id);
+          if (!(acao === 'estado' && pendente && pendente.acao === 'recarregar')) comandosPendentes.set(id, cmd);
           broadcast(id, 'comando', cmd);
-          await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.recarregar');
+          await db.registrarEvento(sess.tenant_id, sess.user_id, acao === 'estado' ? 'tela.ver' : 'tela.recarregar');
           return sendJson(res, 200, { ok: true, aoVivo: !!subscribers[id] });
         });
       }
@@ -366,6 +378,27 @@ module.exports = function (ctx) {
           estadoSom[id] = { em: Date.now(), estado: b || {} };
           return sendJson(res, 200, { ok: true });
         });
+      }
+      /*
+       * "Ver a tela agora": a TV responde ao comando "estado" com o que está
+       * no ar, zona por zona (js/player.js, coletarEstado), e o painel busca
+       * aqui. Um navegador não fotografa a própria tela; o painel desenha o
+       * estado com o mesmo desenhista.
+       */
+      if (req.method === 'POST' && sub === 'estado') {
+        if (!dtOk) return sendJson(res, 403, { error: 'device token inválido' });
+        return readBody(req, res, async (b) => {
+          // Conferido contra a programação salva: o painel só desenha o que o dono salvou.
+          estadosDaTela.set(id, { em: Date.now(), estado: verTela.conferirEstado(b, device.config) });
+          // Teto de memória: a mais antiga sai (Map guarda a ordem de entrada).
+          if (estadosDaTela.size > 5000) estadosDaTela.delete(estadosDaTela.keys().next().value);
+          return sendJson(res, 200, { ok: true });
+        });
+      }
+      if (req.method === 'GET' && sub === 'estado') {
+        if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
+        const e = estadosDaTela.get(id);
+        return sendJson(res, 200, e ? { em: e.em, estado: e.estado, online: !!subscribers[id] } : { em: 0, estado: null, online: !!subscribers[id] });
       }
       if (req.method === 'GET' && sub === 'audio') {
         if (!owns) return sendJson(res, 403, { error: 'sem permissão' });

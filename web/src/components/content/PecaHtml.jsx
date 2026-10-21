@@ -15,12 +15,16 @@ import { carregarDesenhista, TAMANHO_REAL } from '../../lib/pecaHtml.js';
 /*
  * `rascunho`: o wireframe (§4.10) — tokens do rascunho e foto como silhueta.
  */
-export function PecaHtml({ item, formato, fitHeight, className, rascunho }) {
+/*
+ * `tamanho`: [largura, altura] de uma zona de verdade (o "Ver a tela agora"
+ * desenha a peça no tamanho da zona da TV, não num dos três formatos).
+ */
+export function PecaHtml({ item, formato, tamanho, fitHeight, className, rascunho }) {
   const caixa = useRef(null);
   const palco = useRef(null);
   const [escala, setEscala] = useState(0);
   const [erro, setErro] = useState('');
-  const [w, h] = TAMANHO_REAL[formato] || TAMANHO_REAL['16/9'];
+  const [w, h] = tamanho || TAMANHO_REAL[formato] || TAMANHO_REAL['16/9'];
 
   useEffect(() => {
     const el = caixa.current;

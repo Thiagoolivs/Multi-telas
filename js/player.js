@@ -264,6 +264,10 @@
      */
     const contarSom = () => MTCloud.reportAudio(dev.id, trilha.estado());
     document.addEventListener('mt:som-estado', contarSom);
+    // "Ver a tela agora" (painel): a TV conta o que está no ar, zona por zona.
+    document.addEventListener('mt:comando', (e) => {
+      if (e && e.detail && e.detail.acao === 'estado' && MTCloud.enviarEstado) MTCloud.enviarEstado(dev.id, coletarEstado());
+    });
     setInterval(contarSom, 30000);
     contarSom();
     /*
@@ -640,6 +644,39 @@
       foraEl.style.setProperty('--mt-fora-x', ((passo % 3) - 1) * 8 + 'vw');
       foraEl.style.setProperty('--mt-fora-y', (passo < 3 ? -1 : 1) * 6 + 'vh');
     }
+  }
+
+  /*
+   * "VER A TELA AGORA" (EXECUTOR, item 9): o que esta TV está mostrando, zona
+   * por zona. Um navegador não fotografa a própria tela — e vídeo e YouTube
+   * nem se deixam desenhar num canvas —, então a TV manda o ESTADO e o painel
+   * desenha com o mesmo desenhista. O item vai inteiro (e não só o índice):
+   * se a TV estiver com uma config antiga no cache, o painel mostra a antiga,
+   * que é a verdade da parede.
+   */
+  function coletarEstado() {
+    const cfg = currentConfig || {};
+    const s = cfg.settings || {};
+    const zonas = {};
+    if (palco) {
+      for (const id of Object.keys(palco.zonas)) {
+        const viva = palco.zonas[id];
+        const dados = (cfg.zonas && cfg.zonas[id]) || {};
+        let atual = null;
+        try { atual = viva.ctrl && viva.ctrl.atual ? viva.ctrl.atual() : null; } catch (e) { atual = null; }
+        zonas[id] = Object.assign({ mensagens: Array.isArray(dados.messages) ? dados.messages.slice(0, 20) : undefined, peca: !!dados.peca }, atual || {});
+      }
+    }
+    const fora = document.documentElement.classList.contains('mt-fora-do-horario');
+    return {
+      em: Date.now(),
+      layoutId: s.layoutId || 'dashboard',
+      nome: s.nome || '',
+      tela: { w: global.innerWidth, h: global.innerHeight },
+      foraDoHorario: fora ? (document.querySelector('.mt-fora-com-relogio') ? 'relogio' : 'preta') : '',
+      margem: Number(s.margemSegura) || 0,
+      zonas,
+    };
   }
 
   function aplicarNoPalco(cfg) {
@@ -1454,6 +1491,8 @@
 
   function startPlaylist(zoneEl, items, cfg, zonaId) {
     let index = 0;
+    // O que está no ar agora, para o "Ver a tela agora" do painel (coletarEstado).
+    let noAr = null;
     let timer = null;
     let currentSlide = null;
     let stopped = false;
@@ -1473,7 +1512,7 @@
     if (!items.length) {
       const relogio = relogioDeZona();
       zoneEl.appendChild(relogio.el);
-      return { stop: relogio.parar };
+      return { stop: relogio.parar, atual: () => ({ relogio: true }) };
     }
 
     function advance() {
@@ -1492,6 +1531,7 @@
         return schedule(30); // reavalia periodicamente
       }
       const item = ativos[index % ativos.length];
+      noAr = { item, posicao: (index % ativos.length) + 1, total: ativos.length };
       index++;
 
       /*
@@ -1562,6 +1602,7 @@
     }
 
     function mostrarRelogio() {
+      noAr = { relogio: true };
       if (currentSlide && currentSlide.el.classList.contains('mt-empty')) return;
       const r = relogioDeZona();
       zoneEl.appendChild(r.el);
@@ -1572,6 +1613,7 @@
 
     advance();
     return {
+      atual: () => noAr,
       stop: () => {
         stopped = true; clearTimeout(timer);
         if (currentSlide && currentSlide.parar) currentSlide.parar(); // relógio de fora do horário
