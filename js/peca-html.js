@@ -805,8 +805,27 @@
     return { css: m ? m[1] : '', html: (m ? s.replace(m[0], '') : s).trim() };
   }
 
+  /*
+   * As fotos que a peça vai pedir ao ser desenhada: os campos de foto
+   * (data-campo-img) com valor que a porta aceita. O player as carrega e
+   * decodifica ANTES da vez da peça (EXECUTOR, item 10) — sem isso a foto
+   * decodificava no primeiro quadro da entrada. Leitura leve, por expressão,
+   * e não higienizar(): roda a cada troca de slide, numa TV que pode ser fraca.
+   */
+  function fotosDoItem(item, hosts) {
+    const it = item && typeof item === 'object' ? item : {};
+    const campos = it.campos && typeof it.campos === 'object' ? it.campos : {};
+    const urls = [];
+    String(it.html || '').replace(/data-campo-img="([\w-]+)"/g, (_, nome) => {
+      const v = campos[nome];
+      if (ehMidia(v, hosts) && urls.indexOf(v) < 0) urls.push(v);
+      return '';
+    });
+    return urls;
+  }
+
   return {
     LIMITES, PAPEIS, FORMATOS, VIVOS,
-    higienizar, validarItem, ehMidia, doArquivo, conferirConfig,
+    higienizar, validarItem, ehMidia, doArquivo, conferirConfig, fotosDoItem,
   };
 });

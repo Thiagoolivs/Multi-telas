@@ -2035,7 +2035,10 @@ function hostDoPedido(req) {
 function abrirTv(req, res) {
   // ?new=1 passa adiante: o player esquece a TV salva e gera outra.
   const fresh = /[?&]new=1(&|$)/.test(req.url || '');
-  res.writeHead(302, { Location: '/player.html?cloud=1' + (fresh ? '&new=1' : ''), 'Cache-Control': 'no-store' });
+  // ?perf=1 / ?perf=0 também (js/perf.js): é o escape do modo leve que o suporte
+  // manda digitar na TV, e pelo endereço curto ele se perdia no caminho.
+  const perf = /[?&]perf=([01])(&|$)/.exec(req.url || '');
+  res.writeHead(302, { Location: '/player.html?cloud=1' + (fresh ? '&new=1' : '') + (perf ? '&perf=' + perf[1] : ''), 'Cache-Control': 'no-store' });
   return res.end();
 }
 
