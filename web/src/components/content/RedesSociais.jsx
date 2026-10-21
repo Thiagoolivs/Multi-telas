@@ -74,13 +74,23 @@ async function compartilhar(blob, nome, texto) {
   return false;
 }
 
-function Imagem({ blob, rotulo, proporcao }) {
+/*
+ * O iPhone (WebKit) pode recusar ler o canvas depois de desenhar o SVG com
+ * HTML dentro — o toBlob dá SecurityError (alerta do consultor, 21/10). Aí a
+ * imagem não sai neste aparelho: o texto continua, e a tela diz onde a
+ * imagem sai, em vez de girar para sempre.
+ */
+const SEM_IMAGEM = 'A imagem não sai neste aparelho. Ela sai pelo computador ou por um Android — o texto, sim, dá para usar daqui.';
+
+function Imagem({ blob, rotulo, proporcao, erro }) {
   const url = useMemo(() => (blob ? URL.createObjectURL(blob) : ''), [blob]);
   useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
   return (
     <figure className="space-y-1">
       <div className="overflow-hidden rounded-lg border border-line bg-surface-2" style={{ aspectRatio: proporcao }}>
-        {url ? <img src={url} alt={rotulo} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Spinner size={18} /></div>}
+        {url ? <img src={url} alt={rotulo} className="h-full w-full object-cover" />
+          : erro ? <div className="flex h-full items-center justify-center p-3 text-center text-2xs leading-snug text-ink-3">{SEM_IMAGEM}</div>
+            : <div className="flex h-full items-center justify-center"><Spinner size={18} /></div>}
       </div>
       <figcaption className="text-center text-2xs text-ink-3">{rotulo}</figcaption>
     </figure>
@@ -127,7 +137,11 @@ export function RedesSociais({ item, label, onFechar }) {
         try {
           const b = await rasterizar(item, f, 'image/png');
           if (vivo) setImgs((x) => ({ ...x, [k]: b }));
-        } catch (e) { if (vivo) setImgs((x) => ({ ...x, [k + 'Erro']: true })); }
+        } catch (e) {
+          // Recusa de segurança vale para as três: nem tenta as outras.
+          if (vivo) setImgs((x) => ({ ...x, postErro: true, storyErro: true, quadradoErro: true }));
+          break;
+        }
       }
     })();
     return () => { vivo = false; };
@@ -152,7 +166,19 @@ export function RedesSociais({ item, label, onFechar }) {
   const legendaIg = ig ? ig.legenda + '\n\n' + ig.hashtags.join(' ') : '';
   const nome = label || 'peça';
 
-  function Acoes({ blob, sufixo, texto }) {
+  function Acoes({ blob, sufixo, texto, erro }) {
+    // Sem a imagem neste aparelho: compartilha só o texto (ou copia), sem botão morto.
+    if (!blob && erro) {
+      return (
+        <div className="flex flex-wrap gap-2">
+          {texto && <Button variant="primary" icon={Share2} onClick={async () => {
+            if (navigator.share) { try { await navigator.share({ text: texto }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+            copiar(texto);
+          }}>Compartilhar o texto</Button>}
+          {texto && <Button variant="secondary" icon={Copy} onClick={() => copiar(texto)}>Copiar texto</Button>}
+        </div>
+      );
+    }
     return (
       <div className="flex flex-wrap gap-2">
         <Button variant="primary" icon={Share2} disabled={!blob} onClick={async () => {
@@ -208,45 +234,47 @@ export function RedesSociais({ item, label, onFechar }) {
       ) : textos && aba === 'instagram' ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Imagem blob={imgs.post} rotulo="Post 4:5 (1080×1350)" proporcao="4 / 5" />
-            <Imagem blob={imgs.story} rotulo="Story 9:16 (1080×1920)" proporcao="9 / 16" />
+            <Imagem blob={imgs.post} erro={imgs.postErro} rotulo="Post 4:5 (1080×1350)" proporcao="4 / 5" />
+            <Imagem blob={imgs.story} erro={imgs.storyErro} rotulo="Story 9:16 (1080×1920)" proporcao="9 / 16" />
           </div>
           <Texto>{legendaIg}</Texto>
-          <Acoes blob={imgs.post} sufixo="post" texto={legendaIg} />
-          <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3 text-xs text-ink-3">
-            Story: <Button size="sm" variant="secondary" icon={Share2} disabled={!imgs.story}
-              onClick={async () => { if (!(await compartilhar(imgs.story, nomeArquivo(nome, 'story'), ''))) baixar(imgs.story, nomeArquivo(nome, 'story')); }}>Compartilhar o Story</Button>
-          </div>
+          <Acoes blob={imgs.post} erro={imgs.postErro} sufixo="post" texto={legendaIg} />
+          {!imgs.storyErro && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3 text-xs text-ink-3">
+              Story: <Button size="sm" variant="secondary" icon={Share2} disabled={!imgs.story}
+                onClick={async () => { if (!(await compartilhar(imgs.story, nomeArquivo(nome, 'story'), ''))) baixar(imgs.story, nomeArquivo(nome, 'story')); }}>Compartilhar o Story</Button>
+            </div>
+          )}
         </div>
       ) : textos && aba === 'whatsapp' ? (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Imagem blob={imgs.story} rotulo="Status 9:16 (1080×1920)" proporcao="9 / 16" />
+            <Imagem blob={imgs.story} erro={imgs.storyErro} rotulo="Status 9:16 (1080×1920)" proporcao="9 / 16" />
             <div className="space-y-2">
               <div className="text-xs font-medium text-ink-2">Mensagem para a lista de transmissão</div>
               <Texto>{textos.whatsapp.mensagem}</Texto>
             </div>
           </div>
-          <Acoes blob={imgs.story} sufixo="status" texto={textos.whatsapp.mensagem} />
+          <Acoes blob={imgs.story} erro={imgs.storyErro} sufixo="status" texto={textos.whatsapp.mensagem} />
         </div>
       ) : textos && aba === 'facebook' ? (
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-[minmax(0,14rem)_1fr]">
-            <Imagem blob={imgs.post} rotulo="Post 4:5" proporcao="4 / 5" />
+            <Imagem blob={imgs.post} erro={imgs.postErro} rotulo="Post 4:5" proporcao="4 / 5" />
             <Texto>{textos.facebook.texto}</Texto>
           </div>
-          <Acoes blob={imgs.post} sufixo="facebook" texto={textos.facebook.texto} />
+          <Acoes blob={imgs.post} erro={imgs.postErro} sufixo="facebook" texto={textos.facebook.texto} />
         </div>
       ) : textos && aba === 'google' ? (
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-[minmax(0,14rem)_1fr]">
-            <Imagem blob={imgs.quadrado} rotulo="Quadrado 1080×1080" proporcao="1 / 1" />
+            <Imagem blob={imgs.quadrado} erro={imgs.quadradoErro} rotulo="Quadrado 1080×1080" proporcao="1 / 1" />
             <div className="space-y-2">
               <Texto>{textos.google.texto}</Texto>
               <p className="text-xs text-ink-3">Botão sugerido: <b className="text-ink">{textos.google.botao}</b>. No Perfil da Empresa: Adicionar atualização → Oferta ou Novidade.</p>
             </div>
           </div>
-          <Acoes blob={imgs.quadrado} sufixo="google" texto={textos.google.texto} />
+          <Acoes blob={imgs.quadrado} erro={imgs.quadradoErro} sufixo="google" texto={textos.google.texto} />
         </div>
       ) : textos ? (
         <ul className="divide-y divide-line rounded-lg border border-line">

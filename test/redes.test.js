@@ -134,3 +134,18 @@ test('a peça vira imagem pelo MESMO desenhista da TV, com fonte e foto embutida
   assert.match(r, /img\.setAttribute\('src', await comoDados\(src\)\)/, 'foto embutida');
   assert.match(r, /\.replace\(\/:host\/g, '\.mt-raiz'\)/);
 });
+
+test('iPhone que recusa ler o canvas: a imagem diz onde sai, e o texto continua compartilhável', () => {
+  /*
+   * Alerta do consultor (21/10): o WebKit marca o canvas como "sujo" depois
+   * de desenhar SVG com HTML dentro, e o toBlob dá SecurityError. Conferido
+   * forçando o erro no Chrome: sem girar para sempre, sem botão morto.
+   */
+  const c = ler('web/src/components/content/RedesSociais.jsx');
+  assert.match(c, /A imagem não sai neste aparelho\. Ela sai pelo computador ou por um Android/);
+  assert.match(c, /setImgs\(\(x\) => \(\{ \.\.\.x, postErro: true, storyErro: true, quadradoErro: true \}\)\);\s+break;/);
+  assert.match(c, /if \(!blob && erro\) \{/);
+  assert.match(c, /Compartilhar o texto/);
+  assert.match(c, /\{!imgs\.storyErro && \(/);
+  for (const k of ['postErro', 'storyErro', 'quadradoErro']) assert.ok((c.match(new RegExp('erro=\\{imgs\\.' + k + '\\}', 'g')) || []).length >= 2, k);
+});
