@@ -3,6 +3,7 @@ import { UploadCloud, X, Film, FileText } from 'lucide-react';
 import { Input } from '../ui/Field.jsx';
 import { Button } from '../ui/Button.jsx';
 import { media } from '../../api.js';
+import { avaliarVideo } from '../../lib/subir.js';
 
 // Campo de mídia: envia arquivo (para o storage) OU aceita uma URL colada.
 // O upload devolve uma URL estável — nada de base64 no config.
@@ -10,13 +11,19 @@ export function MediaField({ value, onChange, accept = 'image' }) {
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Vídeo que pode engasgar no TV Box: avisa, não proíbe (js/video.js).
+  const [aviso, setAviso] = useState('');
 
   async function onFile(e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = ''; // permite reenviar o mesmo arquivo
     if (!file) return;
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setAviso('');
     try {
+      if (accept === 'video') {
+        const av = await avaliarVideo(file).catch(() => null);
+        if (av) setAviso(av.aviso);
+      }
       const res = await media.upload(file);
       onChange(res.url);
     } catch (err) {
@@ -54,6 +61,7 @@ export function MediaField({ value, onChange, accept = 'image' }) {
         <Input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder="ou cole uma URL" className="flex-1" />
       </div>
       {error && <p className="text-xs text-danger">{error}</p>}
+      {aviso && <p className="text-xs text-warn">{aviso}</p>}
     </div>
   );
 }
