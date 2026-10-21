@@ -311,3 +311,20 @@ test('preço de exemplo nunca vai ao ar sozinho', () => {
   const make = tipos.slice(tipos.indexOf("type: 'precos'"), tipos.indexOf("type: 'precos'") + 200);
   assert.match(make, /linhas: ''/);
 });
+
+/*
+ * O link de confirmação abria "Criar uma nova senha", com e-mail e senha
+ * obrigatórios e o botão "Salvar nova senha" — o formulário do reset. Quem
+ * acabou de se cadastrar achava que tinha caído no lugar errado. O servidor
+ * só lê o token, então o link confirma sozinho.
+ */
+test('link de confirmação: confirma sozinho, sem pedir e-mail nem senha', () => {
+  const f = soCodigo(ler('web/src/pages/AuthScreen.jsx'));
+  assert.match(f, /setMode\('verify'\); confirmar\(v\);/, 'abrir o link já confirma');
+  assert.match(f, /mode === 'verify' \? 'Confirmando seu e-mail'/);
+  assert.match(f, /mode !== 'reset' && mode !== 'verify' && \(\s*<Field label="E-mail"/);
+  assert.match(f, /mode !== 'forgot' && mode !== 'verify' && \(/);
+  assert.match(f, /mode === 'verify' \? 'Confirmar e-mail'/);
+  // A segunda chamada do mesmo token (modo estrito) diria "link inválido" a quem já entrou.
+  assert.match(f, /if \(confirmando\.current\) return;/);
+});
