@@ -113,14 +113,14 @@
         var v = linha[c];
         if (!v) return;
         var caixa = document.createElement('div');
-        caixa.className = 'rounded-xl border border-white/10 bg-black/25 p-5';
+        caixa.className = 'rounded-xl border border-mt-linha bg-white p-5';
         var nome = document.createElement('p');
-        nome.className = 'text-xs font-extrabold uppercase tracking-widest text-mt-ash';
+        nome.className = 'text-xs font-semibold uppercase tracking-widest text-mt-cinza';
         nome.textContent = NOMES[c];
         var valor = document.createElement('p');
-        valor.className = 'mt-2 text-3xl font-extrabold';
+        valor.className = 'titulo mt-2 text-3xl font-bold';
         var nota = document.createElement('p');
-        nota.className = 'mt-1 text-sm text-mt-ash';
+        nota.className = 'mt-1 text-sm text-mt-cinza';
         if (v.negociado) {
           valor.textContent = 'A combinar';
           nota.textContent = 'com ' + n + ' telas, o preço por tela é conversado';
@@ -148,7 +148,11 @@
     var email = document.getElementById('contato-email');
     if (c.whatsapp) {
       var link = 'https://wa.me/' + c.whatsapp + '?text=' + encodeURIComponent('Olá! Vi o site do MultiTelas e quero saber mais.');
-      [grande, flutuante].forEach(function (a) {
+      // No topo, o WhatsApp entra no lugar de "Ver preços" (a landing clara, 22/10).
+      var heroi = document.getElementById('whats-heroi');
+      var precos = document.getElementById('heroi-precos');
+      if (heroi && precos) precos.classList.add('hidden');
+      [grande, flutuante, heroi].forEach(function (a) {
         if (!a) return;
         a.href = link; a.target = '_blank'; a.rel = 'noopener';
         a.classList.remove('hidden');

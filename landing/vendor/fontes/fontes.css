@@ -1,7 +1,8 @@
 /* Fontes servidas pelo próprio domínio: sem depender da Google, e sem o
-   salto de layout de quem espera a fonte chegar de outro servidor. */
-@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 400; font-display: swap; src: url('./manrope-latin-400-normal.woff2') format('woff2'); }
-@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 500; font-display: swap; src: url('./manrope-latin-500-normal.woff2') format('woff2'); }
-@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 700; font-display: swap; src: url('./manrope-latin-700-normal.woff2') format('woff2'); }
-@font-face { font-family: 'Manrope'; font-style: normal; font-weight: 800; font-display: swap; src: url('./manrope-latin-800-normal.woff2') format('woff2'); }
-@font-face { font-family: 'Anton'; font-style: normal; font-weight: 400; font-display: swap; src: url('./anton-latin-400-normal.woff2') format('woff2'); }
+   salto de layout de quem espera a fonte chegar de outro servidor.
+   Poppins nos títulos, Nunito Sans no texto (landing clara, 22/10). */
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 600; font-display: swap; src: url('./poppins-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 700; font-display: swap; src: url('./poppins-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Nunito Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('./nunito-sans-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Nunito Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('./nunito-sans-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Nunito Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('./nunito-sans-latin-700-normal.woff2') format('woff2'); }
