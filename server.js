@@ -67,6 +67,7 @@ const qrcode = require('./server/qr');
 const paletaInicial = require('./server/paleta');
 const redesRotas = require('./server/routes/redes');
 
+const { semCopiasDeCampanha } = require('./server/copias-de-campanha.js');
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
 
@@ -635,7 +636,9 @@ async function handleApi(req, res, pathname, query) {
   if (parts[1] === 'library') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     if (req.method === 'GET' && parts.length === 2) {
-      return sendJson(res, 200, { items: await db.listLibrary(sess.tenant_id) });
+      // As cópias antigas das campanhas do Criar ficam de fora (item 43): a campanha mora em Campanhas.
+      const campanhas = await db.listarCampanhas(sess.tenant_id, 500).catch(() => []);
+      return sendJson(res, 200, { items: semCopiasDeCampanha(await db.listLibrary(sess.tenant_id), campanhas) });
     }
     if (req.method === 'POST' && parts.length === 2) {
       return readBody(req, res, async (b) => {

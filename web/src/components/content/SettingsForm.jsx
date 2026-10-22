@@ -69,7 +69,7 @@ export function zonasQueSaem(zonasAtuais, idNovo) {
 }
 
 // Edita cfg.settings por tarefa. `device` traz o horário (expediente), que tem rota própria.
-export function SettingsForm({ settings, onChange, deviceId, device, zonas }) {
+export function SettingsForm({ settings, onChange, deviceId, device, zonas, dataDeHoje }) {
   const s = settings || {};
   const theme = s.theme || { preset: 'dark-premium', font: 'system', overrides: {} };
   const set = (patch) => onChange({ ...s, ...patch });
@@ -223,6 +223,9 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas }) {
               </>
             )}
           </div>
+
+          {/* Vestir a tela com a data de hoje (item 44): saiu do topo da TV no item 35, e mora aqui. Some quando não há data. */}
+          {dataDeHoje}
 
           {/* O fundo da TV (item 41): o que fica atrás das peças, e o cabeçalho e o rodapé automáticos. */}
           <div>

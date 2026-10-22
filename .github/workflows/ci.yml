@@ -33,6 +33,11 @@ jobs:
       - name: Dependências do servidor
         run: npm install --no-audit --no-fund
 
+      # Antes dos testes: desde o item 25 eles importam módulos do painel
+      # (web/src/lib/rodar.js puxa lucide-react). Sem isto, o CI falhava desde o #173.
+      - name: Dependências do painel
+        run: npm --prefix web ci --no-audit --no-fund
+
       - name: Testes
         run: npm test
 
@@ -53,8 +58,6 @@ jobs:
       - name: Nomes indefinidos no servidor (no-undef)
         run: npm run lint:nomes
 
-      - name: Dependências do painel
-        run: npm --prefix web ci --no-audit --no-fund
 
       - name: Build do painel
         run: npm --prefix web run build

@@ -757,6 +757,26 @@ Item próprio no menu, entre Telas e Criar: cada TV desenhada com o que está
 passando e o botão de editar. Telas fica com o aparelho.
 **Pronto quando:** do menu ao editor de uma TV em um toque.
 
+### 41. Fundo da TV
+Combina com as peças (padrão), claro, escuro ou uma cor. Feito em #191.
+
+## 2e · O que sobrou da auditoria da rodada 3 (noite de 22/10)
+
+O dono: "pode trabalhar que eu vou dormir". As três sobras que ficaram de
+fora dos itens 28–36.
+
+### 42. Meus Designs publica pelo mesmo caminho
+Peça de cabeçalho ou rodapé publicada de Meus Designs vai para a faixa
+(`aplicarPeca`), e não para a principal. Publicar de novo troca, não empilha.
+
+### 43. As campanhas repetidas em Meus Designs
+As cópias que o Criar fazia antes do item 29 somem da lista de Meus Designs
+(escondidas, não apagadas): a campanha mora em Criar › Campanhas.
+
+### 44. Vestir a tela, de volta
+O pacote da data (cores, decoração, conteúdo) volta como opção em
+Ajustes › Aparência, já que saiu do topo da TV no item 35.
+
 ## 3 · O consultor (issue #135)
 
 Um Claude com o contexto todo do projeto fica de plantão na issue
