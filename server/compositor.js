@@ -99,7 +99,9 @@ function pedidoTexto(o) {
     .map((k) => ROTULO_TEXTO[k] + ' "' + String(t[k]).trim().slice(0, 160) + '"') : [];
   const linhas = [
     'Empresa: ' + (o.empresa || 'a empresa') + (o.segmento ? ' (' + o.segmento + ')' : '') + '.',
-    'Pedido do cliente, como chegou: "' + String(o.pedido || '').slice(0, 600) + '".',
+    'Pedido do cliente, como chegou: "' + String(o.pedido || '').slice(0, 600) + '".'
+      // Com o texto aprovado, o pedido é só a ordem: copiado, a TV mostraria "letreiro com mensagem…".
+      + (aprovados.length ? ' É a instrução do que fazer, não texto para a peça.' : ''),
     /*
      * Na campanha, o texto já foi APROVADO na revisão do plano: a peça diz
      * exatamente aquilo. A IA decide o desenho, não as palavras — a pessoa
