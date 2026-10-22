@@ -202,6 +202,65 @@ test('com IA: uma chamada para os textos de todas as peças; a peça recusada ca
   assert.deepEqual(r.telas[1].zonas.rodape.mensagens, ['Semana do pão de queijo', 'vender mais pão de queijo à tarde']);
 });
 
+/*
+ * O pedido da zona é a ordem para a IA, nunca texto na TV. Visto na Teste3
+ * (Outubro Rosa): a IA deu só o selo do rodapé, o título caiu na reserva, e a
+ * reserva era o pedido — o rodapé dizia "Letreiro com mensagem especial…".
+ */
+const OUTUBRO = () => ({
+  nome: 'Outubro Rosa', objetivo: 'Conscientizar sobre o Outubro Rosa', imagens: 'nenhuma',
+  telas: [{
+    alvo: { tipo: 'tela', id: 'dev_balcao1' }, nome: 'Teste3',
+    zonas: {
+      principal: { pecas: 1, pedido: 'Destaque do combo rosa com café e bolo' },
+      lateral: { pecas: 2, pedido: 'Lembretes rápidos da campanha' },
+      cabecalho: { pecas: 1, pedido: 'Identificação e apoio ao Outubro Rosa' },
+      rodape: { pecas: 1, pedido: 'Letreiro com mensagem especial de apoio à prevenção do câncer de mama' },
+    },
+  }],
+});
+const PEDIDOS_OUTUBRO = /Destaque do combo|Lembretes rápidos|Identificação e apoio|Letreiro com mensagem/i;
+
+function semPedidoNaTela(r) {
+  const tela = r.telas[0];
+  const pecas = [...tela.zonas.principal, ...tela.zonas.lateral, ...tela.zonas.cabecalho.pecas, ...tela.zonas.rodape.pecas];
+  assert.equal(pecas.length, 5);
+  for (const p of pecas) {
+    assert.doesNotMatch(p.item.html, PEDIDOS_OUTUBRO, p.vaga + ': o pedido no html');
+    assert.doesNotMatch(JSON.stringify(p.item.campos), PEDIDOS_OUTUBRO, p.vaga + ': o pedido nos campos');
+    assert.doesNotMatch(p.label, PEDIDOS_OUTUBRO, p.vaga + ': o pedido no nome da peça');
+  }
+  assert.doesNotMatch(JSON.stringify(tela.zonas.cabecalho.mensagens), PEDIDOS_OUTUBRO, 'o pedido nas chamadas do cabeçalho');
+  assert.doesNotMatch(JSON.stringify(tela.zonas.rodape.mensagens), PEDIDOS_OUTUBRO, 'o pedido no letreiro');
+}
+
+test('o pedido da zona não vira texto na peça (modo demonstração)', async (t) => {
+  modo(t, 'dev');
+  const r = await eco.gerar(OUTUBRO(), { empresa: 'Padaria do Bairro', telas: TELAS }, { agora: AGORA });
+  semPedidoNaTela(r);
+  assert.equal(r.telas[0].zonas.rodape.pecas[0].item.origem.pedido.includes('Letreiro com mensagem'), true, 'o pedido segue na origem, para a IA');
+});
+
+test('o pedido da zona não vira texto na peça (IA que deixa o título do rodapé vazio)', async (t) => {
+  modo(t, 'anthropic');
+  const chamar = { llm: ai.callLLM, motor: motores.chamar };
+  t.after(() => { ai.callLLM = chamar.llm; motores.chamar = chamar.motor; });
+  ai.callLLM = async () => JSON.stringify({
+    vagas: { 't0-rodape-0': { kicker: 'Apoio Rosa', titulo: '' }, 't0-cabecalho-0': { kicker: '' } },
+    mensagens: { 0: ['Outubro Rosa: cuide-se, faça o exame'] },
+  });
+  motores.chamar = async () => { throw new Error('fora do ar'); };
+  const r = await eco.gerar(OUTUBRO(), { empresa: 'Padaria do Bairro', telas: TELAS }, { agora: AGORA });
+  semPedidoNaTela(r);
+  assert.equal(r.telas[0].zonas.rodape.pecas[0].item.campos.selo, 'Apoio Rosa');
+});
+
+test('com texto aprovado, o compositor avisa que o pedido é instrução', () => {
+  const comp = require('../server/compositor.js');
+  assert.match(comp.pedidoTexto({ pedido: 'Letreiro com mensagem', papel: 'rodape', textos: { titulo: 'Cuide-se' } }), /instrução do que fazer, não texto/);
+  assert.doesNotMatch(comp.pedidoTexto({ pedido: 'pão a R$ 0,50', papel: 'destaque' }), /não texto/);
+});
+
 /* ---------- de ponta a ponta ---------- */
 
 const PORTA = 4160 + Math.floor(Math.random() * 9);

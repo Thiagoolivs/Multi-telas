@@ -143,15 +143,19 @@ function pedidoDosTextos(escopo, vagas, ctx) {
 
 const KICKERS = ['NOVIDADE', 'HOJE', 'APROVEITE', 'SÓ AQUI'];
 
-// Sem IA: textos tirados do próprio escopo. Nada inventado — só o que o cliente disse.
+/*
+ * Sem IA: textos tirados do próprio escopo. Nada inventado — só o que o
+ * cliente disse. O `pedido` da zona NÃO vira texto: é instrução ("letreiro
+ * com mensagem de apoio…"), e a TV mostraria a ordem em vez da mensagem. Ele
+ * só descreve a foto, que é pedida a outra IA.
+ */
 function textosSemIA(escopo, vagas) {
   const e = escopo;
   // Sem repetir: nome e objetivo iguais ("Promoção da semana" duas vezes) virariam o mesmo título em toda peça.
   const frases = [e.nome, e.objetivo].map((x) => String(x || '').trim()).filter((x, i, a) => x && a.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i);
   const vagasOut = {};
   for (const v of vagas) {
-    const lista = [v.pedido, ...frases].filter((x, i, a) => x && a.findIndex((y) => String(y).toLowerCase() === x.toLowerCase()) === i);
-    const titulo = lista[v.indice % Math.max(1, lista.length)] || 'Confira';
+    const titulo = frases[v.indice % Math.max(1, frases.length)] || 'Confira';
     vagasOut[v.id] = {
       kicker: v.zona === 'lateral' ? 'AQUI TEM' : KICKERS[v.indice % KICKERS.length],
       titulo: compositor.cortarNaPalavra(titulo, 48),
@@ -159,7 +163,7 @@ function textosSemIA(escopo, vagas) {
       cta: v.zona === 'principal' ? 'Peça no balcão' : '',
       foto: e.imagens === 'nenhuma' ? 'nenhuma' : e.imagens === 'minhas' ? 'minha' : 'gerar',
       base: null,
-      descricaoFoto: titulo,
+      descricaoFoto: v.pedido || titulo,
     };
   }
   const mensagens = {};
