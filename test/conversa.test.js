@@ -231,3 +231,26 @@ test('a tabela existe nos dois bancos, com as mesmas funções', () => {
     assert.match(s, /WHERE id = \S+ AND tenant_id = /, f + ': presa à conta');
   }
 });
+
+test('item 37: quando a pessoa manda gerar, a geração começa sem o clique', async (t) => {
+  for (const s of ['Pode gerar!', 'gostei assim, pode gerar', 'manda ver', 'sim, pode', 'gera já', 'Pode gerar com as minhas fotos'])
+    assert.equal(C.pediuParaGerar(s), true, s);
+  for (const s of ['Pode gerar as fotos', 'não pode gerar ainda', 'quero 3 peças', 'embora seja cedo'])
+    assert.equal(C.pediuParaGerar(s), false, s);
+  const antes = process.env.AI_PROVIDER;
+  process.env.AI_PROVIDER = 'dev';
+  t.after(() => { if (antes === undefined) delete process.env.AI_PROVIDER; else process.env.AI_PROVIDER = antes; });
+  const msgs = [{ papel: 'pessoa', texto: 'Promoção do café' }];
+  const r1 = await C.conversar({ mensagens: msgs, escopo: null, ctx: { telas: TELAS } });
+  assert.ok(!r1.gerar, 'a primeira fala é o pedido, não a ordem');
+  msgs.push({ papel: 'ia', texto: r1.resposta }, { papel: 'pessoa', texto: 'Pode gerar!' });
+  const r2 = await C.conversar({ mensagens: msgs, escopo: r1.escopo, ctx: { telas: TELAS } });
+  assert.equal(r2.gerar, true);
+  assert.equal(r2.pronto, true);
+  // A IA de verdade também é ouvida: o campo "gerar" está no combinado.
+  assert.match(C.SISTEMA, /"gerar": true \| false/);
+  // O painel começa sozinho com o escopo que acabou de voltar.
+  const p = fs.readFileSync(path.join(__dirname, '..', 'web/src/pages/CriarPage.jsx'), 'utf8');
+  assert.match(p, /if \(r\.gerar\) gerar\(\{ escopo: E\.normalizar\(r\.conversa\.escopo \|\| \{\}\), conversa: r\.conversa \}\);/);
+  assert.match(fs.readFileSync(path.join(__dirname, '..', 'server/routes/conversas.js'), 'utf8'), /gerar: !!out\.gerar/);
+});

@@ -29,7 +29,7 @@ test('a página Criar é a conversa, com o cartão do escopo', () => {
   assert.match(c, /await criar\.conversar\(conversa && conversa\.id, frase, escopo\)/, 'cada mensagem leva o cartão como está');
   assert.match(c, /<CartaoEscopo escopo=\{escopo\} onChange=\{mudarCartao\} telas=\{telas\}/);
   assert.match(c, /criar\.salvarEscopo\(conversa\.id, novo\)/, 'mexer no cartão guarda, sem IA');
-  assert.match(c, /criar\.gerar\(\{ conversaId: conversa \? conversa\.id : undefined, escopo: pedido \}, setGerando\)/);
+  assert.match(c, /criar\.gerar\(\{ conversaId: conv \? conv\.id : undefined, escopo: pedido \}, setGerando\)/);
   assert.match(c, /\{pronto \|\| !conversando \? 'Gerar' : 'Gerar já'\}/, '"Gerar já" para quem não quer conversar');
   assert.match(c, /disabled=\{!podeGerar \|\| !!gerando\}/, 'sem nada no cartão, nada a gerar');
   assert.doesNotMatch(c, /MAX_PERGUNTAS|restantes/, 'a conversa não tem limite de perguntas');

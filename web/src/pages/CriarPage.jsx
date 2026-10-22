@@ -127,6 +127,8 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       setEscopo(E.normalizar(r.conversa.escopo || {}));
       setPronto(!!r.pronto);
       guardar(r.conversa.id);
+      // A pessoa mandou gerar: começa sem esperar o clique (EXECUTOR §2d, item 37).
+      if (r.gerar) gerar({ escopo: E.normalizar(r.conversa.escopo || {}), conversa: r.conversa });
     } catch (e) {
       setErro(e.message || 'A conversa falhou. Tente mandar de novo.');
       setMensagens((m) => m.slice(0, -1));
@@ -169,15 +171,18 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     aviso.ok('Pronta e salva em Campanhas.');
   }
 
-  async function gerar() {
-    if (!E.temOQueGerar(escopo) || gerando) return;
+  // Do botão, usa o estado da tela; da conversa (a pessoa mandou gerar), o que acabou de voltar.
+  async function gerar(daConversa) {
+    const esc = (daConversa && daConversa.escopo) || escopo;
+    const conv = (daConversa && daConversa.conversa) || conversa;
+    if (!E.temOQueGerar(esc) || gerando) return;
     setErro('');
     // O texto que ficou na caixa vale como pedido, mesmo sem ter sido enviado.
-    const extra = texto.trim();
-    const pedido = extra && !escopo.objetivo ? { ...escopo, objetivo: extra.slice(0, 300) } : escopo;
+    const extra = daConversa ? '' : texto.trim();
+    const pedido = extra && !esc.objetivo ? { ...esc, objetivo: extra.slice(0, 300) } : esc;
     setGerando({ etapa: 'começando', segundos: 0 });
     try {
-      const r = await criar.gerar({ conversaId: conversa ? conversa.id : undefined, escopo: pedido }, setGerando);
+      const r = await criar.gerar({ conversaId: conv ? conv.id : undefined, escopo: pedido }, setGerando);
       if (r && r.campanha) terminou(r.campanha);
     } catch (e) { setErro(e.message || 'Não deu para criar agora. Tente de novo em instantes.'); }
     finally { setGerando(null); }
@@ -193,7 +198,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
   const botaoGerar = (
     <div className="space-y-1.5">
-      <Button variant={pronto || !conversando ? 'primary' : 'secondary'} size="lg" icon={pronto ? Wand2 : Zap} disabled={!podeGerar || !!gerando} onClick={gerar} className="w-full justify-center">
+      <Button variant={pronto || !conversando ? 'primary' : 'secondary'} size="lg" icon={pronto ? Wand2 : Zap} disabled={!podeGerar || !!gerando} onClick={() => gerar()} className="w-full justify-center">
         {pronto || !conversando ? 'Gerar' : 'Gerar já'}
       </Button>
       <p className="text-center text-2xs text-ink-3">

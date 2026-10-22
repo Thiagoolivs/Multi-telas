@@ -103,10 +103,14 @@ Responda APENAS JSON:
   "resposta": "o que você diz para a pessoa",
   "sugestoes": ["resposta pronta que ela pode tocar", "outra"],
   "escopo": { ...o escopo inteiro, atualizado... },
-  "pronto": true | false
+  "pronto": true | false,
+  "gerar": true | false
 }
 "pronto" é true quando você já entendeu o bastante para gerar bem. Aí a
 resposta resume em uma frase o que vai ser criado e pergunta se pode gerar.
+"gerar" é true quando a ÚLTIMA fala da pessoa pede para começar agora ("pode
+gerar", "manda ver", "pode criar", "sim, pode"). A geração começa sozinha:
+a resposta diz que começou, e não pergunta de novo.
 As sugestões (2 a 4, curtas) são respostas na voz DELA, que ela toca em vez
 de digitar: "Pode gerar", "Só para a TV", "Use as minhas fotos".`;
 
@@ -196,6 +200,19 @@ function aplicarPalavras(e, texto) {
   return E.normalizar(x);
 }
 
+/*
+ * A pessoa mandou gerar? (EXECUTOR §2d, item 37.) O dono: "quando a pessoa
+ * pede, tem que gerar". A IA diz `gerar`; esta regra é a reserva, para a
+ * IA que esquece o campo e para o modo demonstração. "Pode gerar AS FOTOS" é
+ * a escolha das imagens, não a ordem de começar.
+ */
+function pediuParaGerar(texto) {
+  const t = String(texto || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (!t || /gera(r)? (as |umas )?(fotos|imagens)/.test(t)) return false;
+  if (/\b(n[aã]o|ainda n[aã]o|espera)\b/.test(t)) return false;
+  return /(^|[^a-z])(pode (gerar|criar|come[cç]ar|seguir)|ger[ae] (a[ií]|j[aá]|agora)|manda (ver|bala)|vai l[aá]|bora|pode sim|sim,? pode|ok,? pode|isso,? pode|^gera(r)?!*$|cri[ae] (a[ií]|j[aá]|agora))(?![a-z])/.test(t);
+}
+
 function roteiro(mensagens, escopo) {
   const ditas = (mensagens || []).filter((m) => m && m.papel !== 'ia');
   const ultima = (ditas[ditas.length - 1] || {}).texto || '';
@@ -221,6 +238,9 @@ function roteiro(mensagens, escopo) {
       sugestoes: ['Manhã café, tarde lanche', 'O dia todo igual'],
     },
   ];
+  if (etapa > 0 && pediuParaGerar(ultima) && E.temOQueGerar(e)) {
+    return { resposta: 'Começando! Vou criar tudo o que combinamos.', sugestoes: [], escopo: e, pronto: true, gerar: true };
+  }
   if (etapa < perguntas.length) return { ...perguntas[etapa], escopo: e, pronto: false };
   const resumo = E.descrever(e).map((l) => l.titulo + ': ' + l.itens.join('; ')).join(' · ');
   return {
@@ -269,14 +289,18 @@ async function conversar({ mensagens, escopo, ctx } = {}) {
   }
   const resposta = String((r && r.resposta) || '').trim().slice(0, 900)
     || 'Entendi. Quer que eu gere com o que combinamos?';
+  const escopoNovo = conferirEscopo(r && r.escopo && typeof r.escopo === 'object' ? r.escopo : atual, ctx);
+  const ditas = (mensagens || []).filter((m) => m && m.papel !== 'ia');
+  const gerar = E.temOQueGerar(escopoNovo) && (r && r.gerar === true || pediuParaGerar((ditas[ditas.length - 1] || {}).texto));
   return {
     resposta,
     sugestoes: listaCurta(r && r.sugestoes, 4, 60),
     // Sem escopo na resposta, fica o que estava: a IA não apaga o combinado por omissão.
-    escopo: conferirEscopo(r && r.escopo && typeof r.escopo === 'object' ? r.escopo : atual, ctx),
-    pronto: !!(r && r.pronto === true),
+    escopo: escopoNovo,
+    pronto: !!(r && r.pronto === true) || gerar,
+    gerar,
     modo: ai.mode(),
   };
 }
 
-module.exports = { conversar, contexto, conferirEscopo, transcricao, JANELA, SISTEMA };
+module.exports = { conversar, contexto, conferirEscopo, transcricao, pediuParaGerar, JANELA, SISTEMA };
