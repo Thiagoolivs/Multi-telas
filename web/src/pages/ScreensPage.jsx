@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw, Eye } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw, Eye, Wand2 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
@@ -10,8 +10,9 @@ import { Dialog } from '../components/ui/Dialog.jsx';
 import { SkeletonRows, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
-import { devices, deviceConfig, library } from '../api.js';
-import { publicarPecas } from '../lib/publicar.js';
+import { devices, deviceConfig, criar } from '../api.js';
+import { porCampanhaNaTela } from '../lib/rodar.js';
+import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
 import { VerTelaAgora } from '../components/content/VerTelaAgora.jsx';
@@ -19,7 +20,7 @@ import { esquecerParear } from '../lib/parearPendente.js';
 import { CamposDoHorario } from '../components/tela/HorarioDaTela.jsx';
 import '../../../js/aparelho.js';
 
-export function ScreensPage({ onEditContent, parear, abrirParear, onIrParaPlano }) {
+export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrParaPlano }) {
   const { data, loading, error, reload } = useAsync(devices.list);
   const todas = data ? data.devices || [] : [];
   /*
@@ -116,7 +117,8 @@ export function ScreensPage({ onEditContent, parear, abrirParear, onIrParaPlano 
       </Panel>
 
       <PairDialog open={pairOpen} codigoInicial={parear} onClose={() => setPairOpen(false)} onDone={reload}
-        onConteudo={(dev) => { setPairOpen(false); onEditContent(dev); }} onIrParaPlano={onIrParaPlano} />
+        onConteudo={(dev) => { setPairOpen(false); onEditContent(dev); }}
+        onCriar={onCriar && ((dev) => { setPairOpen(false); onCriar(dev); })} onIrParaPlano={onIrParaPlano} />
       <RenomearGrupoDialog grupo={renomeandoGrupo} onClose={() => setRenomeandoGrupo(null)}
         onDone={(para) => { setFiltroGrupo(para); reload(); }} />
       <RenameDialog target={renameTarget} grupos={grupos} onClose={() => setRenameTarget(null)} onDone={reload} />
@@ -281,7 +283,7 @@ function ReconnectDialog({ target, onClose, onDone }) {
  * E o erro de cobrança (teste acabou, limite do plano, fatura em atraso)
  * vem com o botão que resolve — só o texto mandava a pessoa procurar.
  */
-function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onIrParaPlano }) {
+function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar, onIrParaPlano }) {
   const [code, setCode] = useState(codigoInicial || '');
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -289,24 +291,32 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onIrPara
   const [erroDePlano, setErroDePlano] = useState(false);
   const [pareada, setPareada] = useState(null);
   /*
-   * A peça que a conta já fez (PLANO §5.3): pareou, ela vai para a TV com um
-   * toque — é o último passo do caminho até a primeira peça na parede.
+   * Pareou: a campanha que a conta já fez vai para a TV com um toque, INTEIRA
+   * — cabeçalho, principal, lateral e rodapé (EXECUTOR §2d, item 38). Antes
+   * ia a última peça da biblioteca, sozinha: uma peça qualquer numa zona, e o
+   * resto da TV com o desenho de exemplo. A campanha no ar vem primeiro.
    */
-  const [peca, setPeca] = useState(null);
+  const [campanha, setCampanha] = useState(null);
   const [mandada, setMandada] = useState('');
   React.useEffect(() => { if (open) { setPareada(null); setError(''); setErroDePlano(false); setMandada(''); } }, [open]);
   React.useEffect(() => {
     if (!pareada) return;
-    library.list().then((r) => setPeca(((r && r.items) || [])[0] || null)).catch(() => setPeca(null));
+    criar.campanhas().then((r) => {
+      const lista = ((r && r.campanhas) || []).filter((c) => c.capa);
+      setCampanha(lista.find((c) => c.estado === 'no_ar') || lista[0] || null);
+    }).catch(() => setCampanha(null));
   }, [pareada]);
 
-  async function mandarPeca() {
+  async function mandarCampanha() {
     setMandada('indo');
     try {
-      await publicarPecas({ alvos: [pareada.id], pecas: [{ formato: peca.formato || '16/9', item: peca.item }], titulo: peca.campaign || peca.label || 'Primeira peça', telas: [pareada] });
+      const k = await criar.campanha(campanha.id);
+      const c = k && k.campanha;
+      await porCampanhaNaTela(c && c.resultado, c.nome, pareada);
+      await criar.marcar(c.id, 'no_ar', [...new Set([...(c.telas || []), pareada.id])]);
       setMandada('ok');
       onDone();
-    } catch (e) { setMandada(''); setError(e.message || 'Não deu para mandar a peça.'); }
+    } catch (e) { setMandada(''); setError(e.message || 'Não deu para pôr a campanha na TV.'); }
   }
 
   async function submit() {
@@ -329,19 +339,29 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onIrPara
       <Dialog open={open} onClose={onClose} title="Tela conectada"
         footer={mandada === 'ok' ? <Button variant="primary" onClick={onClose}>Pronto</Button> : <>
           <Button variant="ghost" onClick={onClose}>Depois</Button>
-          {peca
-            ? <Button variant="primary" icon={Check} disabled={mandada === 'indo'} onClick={mandarPeca}>{mandada === 'indo' ? 'Mandando…' : 'Mandar a peça para a TV'}</Button>
-            : <Button variant="primary" icon={LayoutTemplate} onClick={() => onConteudo && onConteudo(pareada)}>Colocar conteúdo agora</Button>}
+          {onCriar && <Button variant={campanha ? 'secondary' : 'primary'} icon={Wand2} onClick={() => onCriar(pareada)}>Criar para esta TV</Button>}
+          {campanha
+            ? <Button variant="primary" icon={Check} disabled={mandada === 'indo'} onClick={mandarCampanha}>{mandada === 'indo' ? 'Pondo…' : 'Pôr a campanha'}</Button>
+            : !onCriar && <Button variant="primary" icon={LayoutTemplate} onClick={() => onConteudo && onConteudo(pareada)}>Colocar conteúdo agora</Button>}
         </>}>
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><Check size={20} /></div>
           <div className="text-sm text-ink-2">
             <b className="text-ink">{pareada.name || 'A TV'}</b> já é sua: ela mostra "Tudo certo" e fica esperando.
             O que você publicar aparece nela na hora — um modelo pronto, uma data comemorativa ou uma campanha feita pela IA.
-            {mandada === 'ok' && <div className="mt-2 font-medium text-ok">A sua peça foi para a TV. Olhe para ela!</div>}
+            {mandada === 'ok' && <div className="mt-2 font-medium text-ok">A campanha foi para a TV, com cabeçalho e rodapé. Olhe para ela!</div>}
             {error && <div className="mt-2 text-danger">{error}</div>}
           </div>
         </div>
+        {campanha && mandada !== 'ok' && (
+          <div className="mt-4 flex items-center gap-3 rounded-lg border border-line bg-surface-2 p-2.5">
+            <div className="w-24 shrink-0 overflow-hidden rounded">{campanha.capa && campanha.capa.item && <DesignThumb item={{ ...campanha.capa.item, formato: campanha.capa.formato || campanha.capa.item.formato }} />}</div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold text-ink">{campanha.nome || 'Campanha'}</div>
+              <div className="text-xs text-ink-3">{campanha.estado === 'no_ar' ? 'No ar nas outras TVs. ' : 'A sua campanha mais recente. '}Vai inteira: todas as partes da tela.</div>
+            </div>
+          </div>
+        )}
       </Dialog>
     );
   }

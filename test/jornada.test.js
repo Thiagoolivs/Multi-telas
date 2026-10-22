@@ -74,7 +74,8 @@ test('cada passo diz o próximo: Marca → Criar → Ligar a TV → a peça vai 
   // O pareamento: a peça que a conta fez vai para a TV com um toque.
   const telas = ler('web/src/pages/ScreensPage.jsx');
   assert.match(telas, /useState\(!!parear \|\| !!abrirParear\)/);
-  assert.match(telas, /await publicarPecas\(\{ alvos: \[pareada\.id\], pecas: \[\{ formato: peca\.formato \|\| '16\/9', item: peca\.item \}\]/);
+  // Desde o item 38 vai a campanha inteira, e não uma peça solta.
+  assert.match(telas, /await porCampanhaNaTela\(c && c\.resultado, c\.nome, pareada\);/);
   // No Início, o caminho vem antes de tudo.
   const inicio = ler('web/src/pages/DashboardPage.jsx');
   assert.ok(inicio.indexOf('<PrimeirosPassos') > 0 && inicio.indexOf('<PrimeirosPassos') < inicio.indexOf('<OpcoesDeCriar'),

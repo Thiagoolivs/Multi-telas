@@ -163,6 +163,24 @@ export async function rodarCampanha(plano, nome, { trocarLayout } = {}) {
   return ids;
 }
 
+/*
+ * Uma campanha inteira numa TV que ela ainda não conhece (EXECUTOR §2d, item
+ * 38): a TV recém-pareada. Vale a entrada "todas as TVs", ou a primeira —
+ * a TV para quem ela foi feita pode nem existir mais. Cabeçalho e rodapé
+ * vão junto, e a TV nova (vazia) troca de layout para ter as zonas.
+ */
+export function entradaParaTvNova(resultado) {
+  const lista = (resultado && resultado.telas) || [];
+  return lista.find((t) => !t.alvo || t.alvo.tipo === 'todas') || lista[0] || null;
+}
+
+export async function porCampanhaNaTela(resultado, nome, tela) {
+  const entrada = entradaParaTvNova(resultado);
+  if (!entrada) throw new Error('Essa campanha não tem peças para TV.');
+  const cfg = await configDa(tela);
+  await deviceConfig.save(tela.id, aplicarCampanha(cfg, entrada, nome, { trocarLayout: true }));
+}
+
 export async function pausarCampanha(resultado, nome, telas, ids) {
   const alvos = alvosDaCampanha(resultado, telas).filter((a) => !ids || ids.includes(a.tela.id));
   for (const a of alvos) {

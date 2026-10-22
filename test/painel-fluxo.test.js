@@ -254,7 +254,7 @@ test('a primeira peça não fica longe da TV', () => {
   assert.match(src, /destino: 'criar'/);
   assert.match(src, /onIr\(p\.destino, p\.params\)/, 'o passo não leva a lugar nenhum');
   const telas = soCodigo(ler('web', 'src', 'pages', 'ScreensPage.jsx'));
-  assert.match(telas, /Mandar a peça para a TV/, 'pareou e a peça ficou para trás');
+  assert.match(telas, /'Pôr a campanha'/, 'pareou e a campanha ficou para trás');
 });
 
 test('a última edição antes de sair da tela não se perde', () => {

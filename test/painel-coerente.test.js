@@ -168,3 +168,21 @@ test('item 35: a data de hoje é ideia no Criar e no Início, não aviso no topo
   assert.match(semComentarios(ler('web/src/pages/DashboardPage.jsx')), /onIr\('criar', \{ ideia: 'data' \}\)/);
   assert.match(ler('web/src/App.jsx'), /ideiaInicial=\{route\.ideia\}/);
 });
+
+test('item 38: a TV recém-pareada recebe a campanha inteira, e não uma peça solta', async () => {
+  const { pathToFileURL } = require('node:url');
+  const R = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/rodar.js')).href);
+  const entrada = (alvo, n) => ({ alvo, zonas: {
+    principal: [{ item: { type: 'peca-html', html: 'p' + n }, formato: '16/9' }], lateral: [],
+    cabecalho: { pecas: [{ type: 'peca-html', html: 'c' }], vivos: [], mensagens: [] },
+    rodape: { pecas: [{ type: 'peca-html', html: 'r' }], vivos: [], mensagens: ['oi'], contagem: '' } } });
+  const res = { telas: [entrada({ tipo: 'tela', id: 'tv_que_sumiu' }, 1), entrada({ tipo: 'todas' }, 2)] };
+  assert.equal(R.entradaParaTvNova(res).alvo.tipo, 'todas', '"todas as TVs" vale para a TV nova');
+  assert.equal(R.entradaParaTvNova({ telas: [entrada({ tipo: 'tela', id: 'x' }, 1)] }).alvo.id, 'x', 'sem "todas", a primeira');
+  assert.equal(R.entradaParaTvNova({}), null);
+  const s = semComentarios(ler('web/src/pages/ScreensPage.jsx'));
+  assert.doesNotMatch(s, /library\.list\(\)/, 'a última peça da biblioteca não vai mais sozinha');
+  assert.match(s, /lista\.find\(\(c\) => c\.estado === 'no_ar'\) \|\| lista\[0\]/, 'a campanha no ar vem primeiro');
+  assert.match(s, /await criar\.marcar\(c\.id, 'no_ar', \[\.\.\.new Set\(\[\.\.\.\(c\.telas \|\| \[\]\), pareada\.id\]\)\]\);/, 'a TV entra na lista da campanha');
+  assert.match(ler('web/src/App.jsx'), /onCriar=\{\(device\) => go\('criar', \{ tela: device\.id \}\)\}/);
+});
