@@ -223,3 +223,27 @@ test('item 41: o player passa as peças da TV para o tema; o painel escolhe o fu
   assert.match(f, /delete n\.bg; delete n\.bg2;/, 'escolher o fundo apaga o fundo pintado à mão');
   assert.match(ler('web/src/lib/fundoDaTV.js'), /\['pecas', 'Combinar com as peças'/);
 });
+
+test('item 42: Meus Designs publica faixa na faixa, pelo mesmo caminho das Peças prontas', async () => {
+  const { pathToFileURL } = require('node:url');
+  const api = await import(pathToFileURL(path.join(RAIZ, 'web/src/api.js')).href);
+  const P = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/publicar.js')).href);
+  let salva = { settings: { layoutId: 'corporate' }, zonas: { principal: { items: [] }, cabecalho: { header: true } } };
+  const antes = { get: api.deviceConfig.get, save: api.deviceConfig.save };
+  api.deviceConfig.get = async () => JSON.parse(JSON.stringify(salva));
+  api.deviceConfig.save = async (_id, c) => { salva = c; };
+  try {
+    const pecas = [
+      { formato: '16/9', item: { type: 'peca-html', html: 'cartaz' } },
+      { formato: '16/9', item: { type: 'peca-html', html: 'faixa', papel: 'cabecalho' } },
+    ];
+    await P.publicarPecas({ alvos: ['tv1'], pecas, titulo: 'Pão', telas: [{ id: 'tv1', name: 'TV' }] });
+    assert.equal(salva.zonas.principal.items.length, 1, 'só o cartaz na principal');
+    assert.equal(salva.zonas.cabecalho.pecas.length, 1, 'a faixa vai para o cabeçalho');
+    assert.equal(salva.zonas.cabecalho.pecas[0]._campanha, 'Pão');
+    // Publicar de novo troca, não empilha.
+    await P.publicarPecas({ alvos: ['tv1'], pecas, titulo: 'Pão', telas: [{ id: 'tv1', name: 'TV' }] });
+    assert.equal(salva.zonas.cabecalho.pecas.length, 1);
+    assert.equal(salva.zonas.principal.items.length, 1);
+  } finally { Object.assign(api.deviceConfig, antes); }
+});
