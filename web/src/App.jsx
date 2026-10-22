@@ -4,6 +4,7 @@ import { AppShell } from './components/layout/AppShell.jsx';
 import { LimiteDeErro } from './components/layout/LimiteDeErro.jsx';
 import { AuthScreen } from './pages/AuthScreen.jsx';
 import { DashboardPage } from './pages/DashboardPage.jsx';
+import { ProgramacaoPage } from './pages/ProgramacaoPage.jsx';
 import { ScreensPage } from './pages/ScreensPage.jsx';
 import { ContentEditorPage } from './pages/ContentEditorPage.jsx';
 import { TeamPage } from './pages/TeamPage.jsx';
@@ -37,6 +38,8 @@ const META = {
   // A campanha do Criar como unidade (item 29).
   campanhas: { title: 'Campanhas' },
   screens: { title: 'Telas' },
+  // O que passa em cada TV, com aba própria (item 40).
+  programacao: { title: 'Programação' },
   designs: { title: 'Meus Designs', subtitle: 'Crie, guarde e reaproveite todos os seus designs.' },
   // Endereços antigos que abrem Meus Designs.
   studio: { title: 'Meus Designs', nav: 'designs' },
@@ -45,7 +48,7 @@ const META = {
   team: { title: 'Equipe' },
   brand: { title: 'Marca', subtitle: 'Cores, fontes e imagens que a IA usa para criar.' },
   mural: { title: 'Mural de fotos', subtitle: 'O público manda foto pelo QR e ela aparece na TV.' },
-  content: { title: 'Telas', nav: 'screens' },
+  content: { title: 'Programação', nav: 'programacao' },
   alerts: { title: 'Alertas', subtitle: 'O que precisa da sua atenção agora.' },
   relatorio: { title: 'Relatório de exibição', subtitle: 'O que passou, quantas vezes e em qual tela — contado pela própria TV.' },
   support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
@@ -89,7 +92,7 @@ function useTheme() {
  * A lista de destinos é fechada de propósito: `?ir=` vem da URL, e URL é coisa
  * que qualquer um escreve.
  */
-const ATALHOS = ['criar', 'screens', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
+const ATALHOS = ['criar', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
   'team', 'storage', 'banco', 'birthdays', 'support', 'settings'];
 
 /*
@@ -103,7 +106,7 @@ const ATALHOS = ['criar', 'screens', 'designs', 'brand', 'mural', 'billing', 'al
  * aparelho vem da lista, não do endereço.
  */
 function enderecoDaRota(r) {
-  if (r.name === 'content') return '/app/?ir=screens';
+  if (r.name === 'content') return '/app/?ir=programacao';
   if (ATALHOS.includes(r.name)) return '/app/?ir=' + r.name;
   return '/app/';
 }
@@ -176,7 +179,8 @@ export default function App() {
     switch (route.name) {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
       case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onCriar={(device) => go('criar', { tela: device.id })} onIrParaPlano={() => go('billing')} />;
-      case 'content': return <ContentEditorPage device={route.device} onBack={() => go('screens')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
+      case 'programacao': return <ProgramacaoPage onIr={go} />;
+      case 'content': return <ContentEditorPage device={route.device} onBack={() => go('programacao')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'pecas': return <PecasProntasPage onIr={go} />;
       case 'storage': return <StoragePage filtro="fotos" />;

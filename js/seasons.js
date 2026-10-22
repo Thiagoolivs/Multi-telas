@@ -58,7 +58,7 @@
       quando: { tipo: 'fixo', mes: 5, dia: 1 }, antes: 3, depois: 0,
       decoracao: 'confetti',
       theme: { preset: 'corporate-blue', overrides: {} },
-      greeting: { type: 'announce', tipo: 'conquista', titulo: 'Feliz Dia do Trabalho', corpo: 'Nossa gratidão a cada colaborador que constrói a Raft todos os dias.', info: '1º de Maio', duracao: 12 },
+      greeting: { type: 'announce', tipo: 'conquista', titulo: 'Feliz Dia do Trabalho', corpo: 'Nossa gratidão a cada pessoa que faz esta casa todos os dias.', info: '1º de Maio', duracao: 12 },
     },
     {
       id: 'dia-maes', label: 'Dia das Mães', emoji: '💐',
@@ -75,7 +75,7 @@
       quando: { tipo: 'fixo', mes: 6, dia: 24 }, antes: 23, depois: 12,
       decoracao: 'flags',
       theme: { preset: 'luxury-gold', overrides: { bg: '#1a0e05', bg2: '#3a1e0a', brand: '#ea580c', accent: '#facc15' } },
-      greeting: { type: 'text', titulo: 'Arraiá da Raft!', corpo: 'Chegou o São João! Bora pular fogueira e comer pé de moleque.', bg: '#7c2d12', cor: '#fde68a', duracao: 12 },
+      greeting: { type: 'text', titulo: 'Arraiá chegou!', corpo: 'Chegou o São João! Bora pular fogueira e comer pé de moleque.', bg: '#7c2d12', cor: '#fde68a', duracao: 12 },
     },
     {
       id: 'dia-pais', label: 'Dia dos Pais', emoji: '👔',
