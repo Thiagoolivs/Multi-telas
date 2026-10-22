@@ -707,7 +707,7 @@
       return;
     }
     // Mesmo palco: os ajustes de fora da zona são baratos e vão sempre.
-    const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme)) || null;
+    const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme, null, { pecas: MTTheme.pecasDaConfig && MTTheme.pecasDaConfig(cfg) })) || null;
     global.MT_THEME = resolved;
     contextoDaPeca(cfg);
     if (global.MTAdaptive) {
@@ -1020,7 +1020,7 @@
 
     // Tema premium: aplica todos os design tokens (cores, vidro, sombras,
     // fonte). Retrocompatível — configs antigas já foram migradas no storage.
-    const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme)) || null;
+    const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme, null, { pecas: MTTheme.pecasDaConfig && MTTheme.pecasDaConfig(cfg) })) || null;
     // Expõe os tokens do tema (hex) para os renderizadores herdarem a paleta —
     // tela coesa em vez de cores fixas espalhadas.
     global.MT_THEME = resolved;

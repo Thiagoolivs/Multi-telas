@@ -214,3 +214,12 @@ test('item 40: Programação tem aba própria; Telas fica com o aparelho', async
   assert.match(p, /onIr\('content', \{ device: d \}\)/);
   assert.doesNotMatch(ler('js/seasons.js'), /Raft/, 'os pacotes de data não falam da empresa de exemplo');
 });
+
+test('item 41: o player passa as peças da TV para o tema; o painel escolhe o fundo', () => {
+  const p = ler('js/player.js');
+  assert.equal(p.split('MTTheme.apply(cfg.settings.theme, null, { pecas: MTTheme.pecasDaConfig && MTTheme.pecasDaConfig(cfg) })').length - 1, 2);
+  const f = ler('web/src/components/content/SettingsForm.jsx');
+  assert.match(f, /Fundo da TV/);
+  assert.match(f, /delete n\.bg; delete n\.bg2;/, 'escolher o fundo apaga o fundo pintado à mão');
+  assert.match(ler('web/src/lib/fundoDaTV.js'), /\['pecas', 'Combinar com as peças'/);
+});
