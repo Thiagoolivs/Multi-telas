@@ -727,6 +727,36 @@ painel diz o que muda nas zonas.
 
 Como no item 27, agora com uma conta que tem TV pareada.
 
+## 2d · Rodada 4 — o que o dono achou testando (22/10)
+
+O dono, testando local: o cabeçalho e o rodapé não entraram; pediu para
+gerar e nada começou; a TV nova recebeu uma peça qualquer e o nome de outra
+empresa; o Conteúdo está escondido dentro de Telas.
+
+**Decisões do dono:** o Conteúdo ganha aba própria, **Programação**; o
+cabeçalho sem peça fica com o nome da conta e o relógio, e o resto sem
+conteúdo fica preto, pulsando, esperando.
+
+### 37. Pediu, gerou
+A IA devolve `gerar` quando a última fala manda começar ("pode gerar",
+"manda ver"), com uma regra de palavras de reserva; o Criar gera sozinho.
+**Pronto quando:** "Pode gerar!" no chat começa a geração sem clique.
+
+### 38. TV nova recebe a campanha inteira
+O diálogo de parear oferece a campanha mais recente, inteira (cabeçalho e
+rodapé junto), ou Criar para esta TV — nunca uma peça solta.
+**Pronto quando:** parear e aceitar põe todas as zonas da campanha.
+
+### 39. A TV esperando
+Zona sem conteúdo: preta, pulsando. O nome de exemplo ("Raft Embalagens")
+nunca aparece numa tela de cliente: vale o nome da conta.
+**Pronto quando:** TV com uma peça só mostra o resto pulsando, com o nome certo.
+
+### 40. Programação
+Item próprio no menu, entre Telas e Criar: cada TV desenhada com o que está
+passando e o botão de editar. Telas fica com o aparelho.
+**Pronto quando:** do menu ao editor de uma TV em um toque.
+
 ## 3 · O consultor (issue #135)
 
 Um Claude com o contexto todo do projeto fica de plantão na issue

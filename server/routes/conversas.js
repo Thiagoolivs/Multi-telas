@@ -98,7 +98,7 @@ module.exports = function (ctx) {
             .catch(() => { /* memória é ganho acumulado, não requisito */ });
         }
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.conversa');
-        return sendJson(res, 200, { conversa: salva, pronto: out.pronto, sugestoes: out.sugestoes, modo: out.modo });
+        return sendJson(res, 200, { conversa: salva, pronto: out.pronto, gerar: !!out.gerar, sugestoes: out.sugestoes, modo: out.modo });
       } catch (e) {
         erros.registrar(e, { rota: '/api/ai/conversa' });
         return sendJson(res, 500, { error: 'não deu para continuar a conversa agora' });
