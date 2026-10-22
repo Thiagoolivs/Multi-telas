@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, Wand2, MonitorPlay, LifeBuoy, Brush, Activity, Gauge, Images, BarChart3, Repeat, UserRound,
+  LayoutDashboard, Wand2, MonitorPlay, LifeBuoy, Brush, Activity, Gauge, Images, BarChart3, Repeat, UserRound, Clapperboard,
 } from 'lucide-react';
 import { GRUPOS, grupoDa } from '../../lib/menu.js';
 
@@ -14,6 +14,7 @@ import { GRUPOS, grupoDa } from '../../lib/menu.js';
 const ICONES = {
   inicio: LayoutDashboard,
   telas: MonitorPlay,
+  programacao: Clapperboard,
   criar: Wand2,
   midias: Images,
   marca: Brush,

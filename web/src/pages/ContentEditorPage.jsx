@@ -371,7 +371,8 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
         <div className="flex items-center gap-2">
           <IconButton icon={ArrowLeft} label="Voltar" onClick={onBack} />
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-ink">{(cfg && cfg.settings && cfg.settings.nome) || device.name || 'Tela'}</h1>
+            {/* O nome da TV (o da lista de Telas). settings.nome é o do cabeçalho: desde o item 39, o da conta. */}
+            <h1 className="text-xl font-semibold tracking-tight text-ink">{device.name || (cfg && cfg.settings && cfg.settings.nome) || 'Tela'}</h1>
             <p className="text-sm text-ink-3">O que aparece nesta tela · salva e publica sozinho</p>
           </div>
         </div>

@@ -198,3 +198,19 @@ test('item 39: o exemplo "Raft Embalagens" não vai mais para a TV de cliente', 
   assert.match(t, /nomeDaConta\(cfg, device, await empresaDa\(device\.tenant_id\)\);/, 'ao gravar');
   assert.match(t, /if \(c && c\.settings && nomeDaConta\(c, device, await empresaDa\(device\.tenant_id\)\)\) corpo = JSON\.stringify\(c\);/, 'ao entregar à TV');
 });
+
+test('item 40: Programação tem aba própria; Telas fica com o aparelho', async () => {
+  const { pathToFileURL } = require('node:url');
+  const M = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
+  const ids = M.GRUPOS.map((g) => g.id);
+  assert.equal(ids.indexOf('programacao'), ids.indexOf('telas') + 1, 'entre Telas e Criar');
+  assert.equal(M.paginaDoIr('programacao'), 'programacao');
+  const app = ler('web/src/App.jsx');
+  assert.match(app, /case 'programacao': return <ProgramacaoPage onIr=\{go\} \/>;/);
+  assert.match(app, /onBack=\{\(\) => go\('programacao'\)\}/, 'voltar do editor volta para a Programação');
+  assert.match(app, /if \(r\.name === 'content'\) return '\/app\/\?ir=programacao';/);
+  const p = semComentarios(ler('web/src/pages/ProgramacaoPage.jsx'));
+  assert.match(p, /<MapaDaTela layout=\{layout\} onEscolher=\{\(\) => editar\(d\)\} resumo=\{resumoDaZona\(cfg\)\} \/>/);
+  assert.match(p, /onIr\('content', \{ device: d \}\)/);
+  assert.doesNotMatch(ler('js/seasons.js'), /Raft/, 'os pacotes de data não falam da empresa de exemplo');
+});

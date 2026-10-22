@@ -6,7 +6,7 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **21/10/2026** · 1250 testes passando (três vezes seguidas, sem
+Atualizado em: **21/10/2026** · 1254 testes passando (três vezes seguidas, sem
 teste instável) · `server.js` com ~2.570 linhas (cobrança, telas, redes,
 conversas e campanhas em `server/routes/`).
 
@@ -145,6 +145,17 @@ A fila está no [`EXECUTOR.md`](EXECUTOR.md) §2c:
 bancada com 6498 combinações, limpa; as 22 páginas do painel a 360 px, nos
 dois temas, agora com uma conta que **tem TV** (a ótica); o player em 720p,
 1080p e em pé, nativo e girado. Sem defeito novo.
+
+### Rodada 4 — o que o dono achou testando (22/10, PRs #187 a #190)
+
+- **Pediu, gerou** (#187): "pode gerar" no chat começa a geração, sem clique.
+- **TV nova recebe a campanha inteira** (#188): parear oferece a campanha no ar,
+  com cabeçalho e rodapé, em vez da última peça da biblioteca sozinha.
+- **A TV esperando** (#189): zona sem conteúdo fica preta, pulsando. E o
+  título "Raft Embalagens" do exemplo, que o normalize gravava em TODA TV de
+  cliente, saiu: o cabeçalho mostra o nome da conta.
+- **Programação** (#190): aba própria entre Telas e Criar (e na barra do
+  celular), com cada TV desenhada. Telas fica com o aparelho.
 
 ### Rodada anterior (18/10)
 

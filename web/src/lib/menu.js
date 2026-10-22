@@ -17,6 +17,7 @@ export const PAGINAS = {
   overview: 'Visão geral',
   alerts: 'Alertas',
   screens: 'Telas',
+  programacao: 'Programação',
   criar: 'Criar',
   campanhas: 'Campanhas',
   designs: 'Meus Designs',
@@ -36,12 +37,16 @@ export const PAGINAS = {
 };
 
 /*
- * Os 8 grupos. A primeira página é para onde o clique no menu leva.
- * `content` (a programação de uma tela) não tem aba: abre de dentro de Telas.
+ * Os grupos. A primeira página é para onde o clique no menu leva.
+ * `content` (o editor de uma tela) não tem aba: abre de dentro da Programação.
+ *
+ * Programação é um grupo próprio desde o item 40 (EXECUTOR §2d): "dentro de
+ * Telas está muito escondido". Telas é o aparelho; Programação é o que passa.
  */
 export const GRUPOS = [
   { id: 'inicio', label: 'Início', paginas: ['overview', 'alerts'] },
-  { id: 'telas', label: 'Telas', paginas: ['screens'], tambem: ['content'] },
+  { id: 'telas', label: 'Telas', paginas: ['screens'] },
+  { id: 'programacao', label: 'Programação', paginas: ['programacao'], tambem: ['content'] },
   { id: 'criar', label: 'Criar', paginas: ['criar', 'campanhas', 'designs'], tambem: ['studio', 'campaigns', 'images', 'rapida'] },
   // Mídias por propósito (item 34): o que está pronto para a TV primeiro, depois a matéria-prima.
   { id: 'midias', label: 'Mídias', paginas: ['pecas', 'storage', 'musicas', 'ia', 'banco'] },
@@ -52,7 +57,9 @@ export const GRUPOS = [
 ];
 
 // No celular: a barra de baixo. O resto fica em "Mais" (o menu inteiro).
-export const BARRA_INFERIOR = ['inicio', 'telas', 'criar', 'midias'];
+// A Programação entra no lugar de Telas: mudar o que passa é o uso de todo dia;
+// parear é uma vez só (e Telas segue em "Mais").
+export const BARRA_INFERIOR = ['inicio', 'programacao', 'criar', 'midias'];
 
 /* O grupo de uma página (ou nulo, para as páginas de quem opera a plataforma). */
 export function grupoDa(pagina) {

@@ -19,16 +19,16 @@ const RAIZ = path.join(__dirname, '..');
 const ler = (...p) => fs.readFileSync(path.join(RAIZ, ...p), 'utf8');
 const menu = () => import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
 
-test('os 8 grupos, na ordem do PLANO', async () => {
+test('os 9 grupos, na ordem do PLANO (Programação desde o item 40)', async () => {
   const M = await menu();
-  assert.deepStrictEqual(M.GRUPOS.map((g) => g.label), ['Início', 'Telas', 'Criar', 'Mídias', 'Marca', 'Automáticos', 'Relatórios', 'Conta']);
+  assert.deepStrictEqual(M.GRUPOS.map((g) => g.label), ['Início', 'Telas', 'Programação', 'Criar', 'Mídias', 'Marca', 'Automáticos', 'Relatórios', 'Conta']);
   const de = (id) => M.GRUPOS.find((g) => g.id === id).paginas;
   assert.deepStrictEqual(de('inicio'), ['overview', 'alerts']);
   // Item 34: Mídias por propósito, com as peças prontas primeiro.
   assert.deepStrictEqual(de('midias'), ['pecas', 'storage', 'musicas', 'ia', 'banco']);
   assert.deepStrictEqual(de('automaticos'), ['birthdays', 'mural']);
   assert.deepStrictEqual(de('conta'), ['billing', 'team', 'settings', 'support']);
-  assert.deepStrictEqual(M.BARRA_INFERIOR, ['inicio', 'telas', 'criar', 'midias'], 'a barra de baixo: Início · Telas · Criar · Mídias (+ Mais)');
+  assert.deepStrictEqual(M.BARRA_INFERIOR, ['inicio', 'programacao', 'criar', 'midias'], 'a barra de baixo: Início · Programação · Criar · Mídias (+ Mais)');
 });
 
 test('nenhuma página sumiu: cada uma mora em exatamente um grupo', async () => {
@@ -79,7 +79,7 @@ test('nenhum link antigo quebra; os novos (por grupo) funcionam', async () => {
 test('o grupo aceso é o da página; abas nos grupos de mais de uma página; barra de baixo no celular', async () => {
   const M = await menu();
   assert.equal(M.grupoDa('birthdays').id, 'automaticos');
-  assert.equal(M.grupoDa('content').id, 'telas', 'a programação de uma tela acende Telas');
+  assert.equal(M.grupoDa('content').id, 'programacao', 'o editor de uma tela acende Programação');
   assert.equal(M.grupoDa('studio').id, 'criar');
   assert.equal(M.grupoDa('platform'), null);
   const side = ler('web/src/components/layout/Sidebar.jsx');
