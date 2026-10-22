@@ -399,7 +399,7 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
 
       {/*
         A data comemorativa saiu daqui (EXECUTOR §2c, item 35): virou ideia no
-        Criar e no Início. O SeasonBanner e o aplicarSeason ficam, escondidos.
+        Criar e no Início. Vestir a tela com a data mora em Ajustes › Aparência (item 44).
       */}
       {false && cfg && <SeasonBanner zonas={zones.map((z) => z.id)} onAplicar={aplicarSeason} />}
       {/*
@@ -584,6 +584,7 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
             settings={cfg.settings}
             deviceId={device.id} device={device} zonas={cfg.zonas}
             onChange={(settings) => patchCfg((next) => { next.settings = settings; })}
+            dataDeHoje={<SeasonBanner zonas={zones.map((z) => z.id)} onAplicar={aplicarSeason} />}
           />
         )}
       </Dialog>
