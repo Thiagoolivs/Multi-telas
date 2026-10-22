@@ -264,3 +264,12 @@ test('item 43: as cópias antigas das campanhas do Criar saem de Meus Designs (e
   assert.match(s, /return sendJson\(res, 200, \{ items: semCopiasDeCampanha\(await db\.listLibrary\(sess\.tenant_id\), campanhas\) \}\);/);
   assert.doesNotMatch(ler('server/copias-de-campanha.js'), /delete|DELETE/, 'esconder, nunca apagar');
 });
+
+test('item 44: Vestir a tela com a data de hoje mora em Ajustes › Aparência', () => {
+  const tv = ler('web/src/pages/ContentEditorPage.jsx');
+  assert.match(tv, /dataDeHoje=\{<SeasonBanner zonas=\{zones\.map\(\(z\) => z\.id\)\} onAplicar=\{aplicarSeason\} \/>\}/);
+  assert.match(tv, /\{false && cfg && <SeasonBanner/, 'e continua fora do topo da TV');
+  const f = ler('web/src/components/content/SettingsForm.jsx');
+  assert.match(f, /export function SettingsForm\(\{ settings, onChange, deviceId, device, zonas, dataDeHoje \}\)/);
+  assert.match(f, /\{dataDeHoje\}/);
+});
