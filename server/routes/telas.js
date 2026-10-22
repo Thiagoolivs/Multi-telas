@@ -30,6 +30,25 @@ module.exports = function (ctx) {
     try { return [new URL(storage.publicUrl('x')).host]; } catch (e) { return []; }
   })();
 
+  /*
+   * O NOME NO CABEÇALHO (EXECUTOR §2d, item 39). O painel semeava a config
+   * com o nome da TV ("Teste3", "TV da vitrine"), e o título vinha com o da
+   * empresa de exemplo — o cabeçalho de todo cliente dizia "Raft Embalagens".
+   * Nome vazio, ou igual ao da TV, vira o nome da conta; o que o dono
+   * escreveu em "Nome no cabeçalho" fica. Devolve se mudou algo.
+   */
+  function nomeDaConta(cfg, device, empresa) {
+    const s = cfg.settings;
+    let mudou = false;
+    if (s.titulo === 'Raft Embalagens' && s.nome !== 'Raft Embalagens') { s.titulo = ''; mudou = true; }
+    if (empresa && (!s.nome || s.nome === device.name)) { s.nome = empresa; mudou = true; }
+    return mudou;
+  }
+  async function empresaDa(tenantId) {
+    if (!tenantId) return '';
+    try { const t = await db.getTenant(tenantId); return (t && t.name && t.name !== 'Empresa') ? t.name : ''; } catch (e) { return ''; }
+  }
+
   async function tratar(req, res, parts, query, sess) {
     /* ----- Criar device (a TV chama, sem auth) ----- */
     if (req.method === 'POST' && parts[1] === 'devices' && parts.length === 2) {
@@ -173,7 +192,13 @@ module.exports = function (ctx) {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
         if (!device.config) return sendJson(res, 204, {});
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-        return res.end(device.config); // já é JSON string
+        // A config gravada antes do item 39 traz o título de exemplo e o nome da TV no cabeçalho.
+        let corpo = device.config;
+        try {
+          const c = JSON.parse(device.config);
+          if (c && c.settings && nomeDaConta(c, device, await empresaDa(device.tenant_id))) corpo = JSON.stringify(c);
+        } catch (e) { /* config ilegível: vai como está, e a TV se vira */ }
+        return res.end(corpo);
       }
       // Dono publica config (requer login + posse)
       if (req.method === 'PUT' && sub === 'config') {
@@ -204,6 +229,7 @@ module.exports = function (ctx) {
           }
           // De onde a TV aceita foto de peça: quem declara é o servidor, sempre.
           cfg.settings.hostsMidia = hostsMidia;
+          nomeDaConta(cfg, device, await empresaDa(device.tenant_id));
           /*
            * O horário da loja vai na config que a TV lê (item 8 do EXECUTOR:
            * fora dele, tela preta ou só o relógio). Quem manda é a coluna da

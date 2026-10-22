@@ -175,7 +175,10 @@ function Zona({ zona, dados, escala, hora }) {
     : dados.peca && dados.peca.type === 'peca-html' ? dados.peca : null;
   let corpo;
   if (peca) corpo = tam && <PecaHtml item={peca} tamanho={tam} fitHeight className="!rounded-none !ring-0" />;
-  else if (dados.antigo) {
+  else if (dados.esperando) {
+    // A TV mostra a zona preta, pulsando: nada publicado ali (item 39).
+    corpo = <div className="flex h-full w-full items-center justify-center bg-black"><span className="h-3 w-3 animate-pulse rounded-full bg-white/40" /></div>;
+  } else if (dados.antigo) {
     corpo = <Aviso>Esta TV está com uma programação antiga. Toque em “Recarregar a TV”.</Aviso>;
   } else if (dados.item) {
     corpo = tam && (

@@ -171,7 +171,18 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-empty, .mt-broken {
   color: var(--text-dim); font-size: 1.4vw; font-size: min(3.4cqw, 3cqh); letter-spacing: .04em;
 }
-/* Zona vazia = relógio (ver startPlaylist). Unidades de contêiner: a zona
+/* Zona sem conteúdo = preta, pulsando, esperando (EXECUTOR §2d, item 39).
+   Só transform e opacity: a TV Box fraca anima sem engasgar. */
+.mt-espera { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; container-type: size; }
+.mt-espera-pulso {
+  width: 9vw; width: min(22cqw, 22cqh, 160px); aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.7) 0%, rgba(255,255,255,.18) 40%, rgba(255,255,255,0) 70%);
+  animation: mt-espera 2.6s ease-in-out infinite;
+}
+@keyframes mt-espera { 0%, 100% { transform: scale(.6); opacity: .3; } 50% { transform: scale(1); opacity: .85; } }
+@media (prefers-reduced-motion: reduce) { .mt-espera-pulso { animation: none; opacity: .3; } }
+
+/* Zona com conteúdo, todo fora do horário = relógio (ver startPlaylist). Unidades de contêiner: a zona
    lateral é estreita e a principal é larga, e os dois precisam caber. */
 .mt-empty { flex-direction: column; container-type: size; }
 .mt-empty-hora {

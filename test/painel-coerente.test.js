@@ -186,3 +186,15 @@ test('item 38: a TV recém-pareada recebe a campanha inteira, e não uma peça s
   assert.match(s, /await criar\.marcar\(c\.id, 'no_ar', \[\.\.\.new Set\(\[\.\.\.\(c\.telas \|\| \[\]\), pareada\.id\]\)\]\);/, 'a TV entra na lista da campanha');
   assert.match(ler('web/src/App.jsx'), /onCriar=\{\(device\) => go\('criar', \{ tela: device\.id \}\)\}/);
 });
+
+test('item 39: o exemplo "Raft Embalagens" não vai mais para a TV de cliente', () => {
+  const S = require('../js/storage.js');
+  assert.equal(S.normalize({ settings: { layoutId: 'full' }, zonas: {} }).settings.titulo, '', 'o título padrão é vazio');
+  const vazado = S.normalize({ settings: { nome: 'TV da vitrine', titulo: 'Raft Embalagens' }, zonas: {} });
+  assert.equal(vazado.settings.titulo, '', 'o título que vazou some ao normalizar');
+  assert.equal(S.sampleConfig().settings.titulo, 'Raft Embalagens', 'a demonstração continua com o nome dela');
+  const t = ler('server/routes/telas.js');
+  assert.match(t, /if \(empresa && \(!s\.nome \|\| s\.nome === device\.name\)\) \{ s\.nome = empresa; mudou = true; \}/);
+  assert.match(t, /nomeDaConta\(cfg, device, await empresaDa\(device\.tenant_id\)\);/, 'ao gravar');
+  assert.match(t, /if \(c && c\.settings && nomeDaConta\(c, device, await empresaDa\(device\.tenant_id\)\)\) corpo = JSON\.stringify\(c\);/, 'ao entregar à TV');
+});

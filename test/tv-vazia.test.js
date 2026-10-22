@@ -49,15 +49,20 @@ test('nenhum recado para o dono vai ao ar na TV', () => {
   }
 });
 
-test('zona vazia vira relógio e para o timer quando a zona sai', () => {
-  const r = FONTE.slice(FONTE.indexOf('function relogioDeZona()'), FONTE.indexOf('/* ---------------- Zona: Playlist rotativa'));
+test('zona vazia fica preta, pulsando (item 39); o relógio é da zona toda fora do horário', () => {
+  const r = FONTE.slice(FONTE.indexOf('function relogioDeZona()'), FONTE.indexOf('function esperaDeZona()'));
   assert.match(r, /mt-empty-hora/);
   assert.match(r, /dataPorExtenso\(/);
   assert.match(r, /parar: \(\) => clearInterval\(t\)/);
   const i = FONTE.indexOf('if (!items.length) {', FONTE.indexOf('function startPlaylist('));
   const bloco = FONTE.slice(i, FONTE.indexOf('function advance()', i));
-  assert.match(bloco, /relogioDeZona\(\)/);
-  assert.match(bloco, /stop: relogio\.parar/, 'o relógio ficaria rodando depois de trocar o layout');
+  assert.match(bloco, /esperaDeZona\(\)/);
+  assert.match(bloco, /stop: espera\.parar/);
+  // O rodapé que ninguém configurou também espera, em vez do letreiro de exemplo.
+  assert.match(FONTE, /if \(zone\.type === 'ticker' && rodapeEsperando\(data\)\) \{/);
+  const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'player.css'), 'utf8');
+  assert.match(css, /\.mt-espera \{ position: absolute; inset: 0; background: #000;/);
+  assert.match(css, /@keyframes mt-espera/);
 });
 
 test('tudo fora do horário agendado: relógio, não recado', () => {

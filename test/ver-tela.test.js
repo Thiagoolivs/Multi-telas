@@ -86,7 +86,8 @@ test('a TV: comando "estado" responde com o que está no ar em cada zona', () =>
   assert.match(p, /e\.detail\.acao === 'estado' && MTCloud\.enviarEstado\) MTCloud\.enviarEstado\(dev\.id, coletarEstado\(\)\)/);
   assert.match(p, /noAr = \{ item, posicao: \(index % ativos\.length\) \+ 1, total: ativos\.length \};/);
   assert.match(p, /atual: \(\) => noAr,/);
-  assert.match(p, /return \{ stop: relogio\.parar, atual: \(\) => \(\{ relogio: true \}\) \};/);
+  // Desde o item 39 a zona vazia espera (preta, pulsando) em vez de virar relógio.
+  assert.match(p, /return \{ stop: espera\.parar, atual: \(\) => \(\{ esperando: true \}\) \};/);
   // O player mudou: o casco da TV troca de versão para a TV baixar o novo.
   assert.ok(Number((ler('sw.js').match(/const SHELL_CACHE = 'mt-shell-v(\d+)';/) || [])[1]) >= 36);
 });
