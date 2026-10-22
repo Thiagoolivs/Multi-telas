@@ -110,7 +110,7 @@ test('as peças-ouro novas passam pela porta e entram quando a faixa pede', () =
   for (const id of ['rodape-contagem', 'cabecalho-chamadas']) {
     const def = m.pecas.find((x) => x.id === id);
     assert.ok(def, id + ' fora do manifesto');
-    assert.equal(def.estado, 'rascunho', id + ': só o dono aprova');
+    assert.equal(def.estado, 'aprovada', id + ': aprovada pelo dono em 21/10');
   }
   const base = { textos: { kicker: 'HOJE', titulo: 'Pão de queijo em dobro' }, empresa: 'Padaria do Bairro' };
   assert.equal(compositor.preencherPapel({ ...base, papel: 'rodape', contagem: '2026-10-27T18:00' }).origem.base, 'rodape-contagem');
