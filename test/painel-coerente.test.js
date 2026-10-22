@@ -247,3 +247,20 @@ test('item 42: Meus Designs publica faixa na faixa, pelo mesmo caminho das Peça
     assert.equal(salva.zonas.principal.items.length, 1);
   } finally { Object.assign(api.deviceConfig, antes); }
 });
+
+test('item 43: as cópias antigas das campanhas do Criar saem de Meus Designs (escondidas, não apagadas)', () => {
+  const { semCopiasDeCampanha } = require('../server/copias-de-campanha.js');
+  const campanhas = [{ nome: 'Promoção da semana', criadoEm: 1000000, atualizadoEm: 1000000 }];
+  const items = [
+    { campaign: 'Promoção da semana', createdAt: 1000004 },          // copiada ao criar
+    { campaign: 'Promoção da semana', createdAt: 1000000 + 5 * 60e3 }, // outra, feita depois à mão
+    { campaign: 'Criação rápida', createdAt: 1000004 },               // sem campanha no Criar
+  ];
+  const ficam = semCopiasDeCampanha(items, campanhas);
+  assert.equal(ficam.length, 2);
+  assert.ok(!ficam.includes(items[0]));
+  assert.deepEqual(semCopiasDeCampanha(items, []), items);
+  const s = ler('server.js');
+  assert.match(s, /return sendJson\(res, 200, \{ items: semCopiasDeCampanha\(await db\.listLibrary\(sess\.tenant_id\), campanhas\) \}\);/);
+  assert.doesNotMatch(ler('server/copias-de-campanha.js'), /delete|DELETE/, 'esconder, nunca apagar');
+});
