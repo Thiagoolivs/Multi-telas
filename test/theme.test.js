@@ -95,3 +95,31 @@ test('textoSobre prefere o tom da marca quando ele já passa no contraste', () =
   assert.notEqual(t, '#ffffff');
   assert.ok(T.contraste('#0b0505', t) >= 4.5);
 });
+
+test('item 41: o fundo da TV combina com as peças, ou é claro, escuro ou uma cor', () => {
+  const C = require('../js/cor.js');
+  const claraDaMarca = { zonas: { principal: { items: [
+    { type: 'peca-html', modo: 'claro', marca: { cores: ['#7a3e1d', '#e8b04b'] } },
+    { type: 'peca-html', modo: 'claro', marca: { cores: ['#7a3e1d', '#e8b04b'] } },
+    { type: 'peca-html', modo: 'escuro', marca: { cores: ['#7a3e1d', '#e8b04b'] } },
+  ] } } };
+  const pecas = T.pecasDaConfig(claraDaMarca);
+  assert.equal(pecas.modo, 'claro', 'vale o par mais frequente');
+  assert.equal(T.pecasDaConfig({ zonas: { principal: { items: [{ type: 'text' }] } } }), null);
+  // Padrão: o tema escuro, com peças claras, vira claro — e o texto continua legível.
+  const t = T.resolve({ preset: 'dark-premium' }, { pecas });
+  assert.equal(t.dark, false);
+  assert.ok(C.luminancia(t.bg) > 0.45);
+  assert.ok(T.contraste(t.bg, t.text) >= 4.5);
+  // Sem peça, fica o tema como era.
+  assert.equal(T.resolve({ preset: 'dark-premium' }, { pecas: null }).bg, T.PRESETS['dark-premium'].bg);
+  // Claro e escuro à mão.
+  assert.equal(T.resolve({ preset: 'dark-premium', fundo: 'claro' }, { pecas }).dark, false);
+  assert.equal(T.resolve({ preset: 'minimal-white', fundo: 'escuro' }, { pecas }).dark, true);
+  // Uma cor: o texto se ajusta a ela.
+  const cor = T.resolve({ preset: 'dark-premium', fundo: 'cor', fundoCor: '#f5efe8' }, { pecas });
+  assert.equal(cor.bg, '#f5efe8');
+  assert.ok(T.contraste(cor.bg, cor.text) >= 4.5);
+  // O ajuste à mão do Avançado continua com a palavra final.
+  assert.equal(T.resolve({ preset: 'dark-premium', overrides: { bg: '#123456' } }, { pecas }).bg, '#123456');
+});

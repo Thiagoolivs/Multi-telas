@@ -10,6 +10,7 @@ import { SoundPanel } from './SoundPanel.jsx';
 import { CamposDoHorario, HORARIO_PADRAO } from '../tela/HorarioDaTela.jsx';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
+import { FUNDOS_TV, corDoFundo } from '../../lib/fundoDaTV.js';
 
 /*
  * AJUSTES DA TELA, POR TAREFA (EXECUTOR §2c, item 33).
@@ -90,6 +91,13 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas }) {
   const { data: brandData } = useAsync(brand.get);
   const coresMarca = ((brandData && brandData.kit && brandData.kit.cores) || []).filter(Boolean);
   const temCores = coresMarca.length > 0;
+  // Trocar o fundo apaga o fundo pintado à mão no Avançado: senão a escolha não teria efeito nenhum.
+  function escolherFundo(fundo) {
+    const n = { ...ov };
+    delete n.bg; delete n.bg2;
+    setTheme({ fundo, overrides: n, ...(fundo === 'cor' && !theme.fundoCor ? { fundoCor: '#f5efe8' } : {}) });
+  }
+
   function escolherTema(preset) {
     const patch = { preset };
     if (preset === 'marca' || theme.aplicarMarca) patch.marca = coresMarca;
@@ -213,6 +221,30 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas }) {
                 </Select>
                 <p className="mt-1 text-2xs text-ink-3">Cadastre as cores da empresa em <b className="text-ink-2">Marca</b> e a tela passa a poder usá-las.</p>
               </>
+            )}
+          </div>
+
+          {/* O fundo da TV (item 41): o que fica atrás das peças, e o cabeçalho e o rodapé automáticos. */}
+          <div>
+            <div className="mb-1 text-sm font-semibold text-ink">Fundo da TV</div>
+            <p className="mb-2 text-xs text-ink-3">O que fica atrás das peças. O cabeçalho e o rodapé automáticos acompanham.</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {FUNDOS_TV.map(([id, nome, desc]) => {
+                const sel = (theme.fundo || 'pecas') === id;
+                const c = corDoFundo(theme, zonas, id);
+                return (
+                  <button key={id} type="button" aria-pressed={sel} onClick={() => escolherFundo(id)}
+                    className={cn('flex flex-col gap-1.5 rounded-lg border p-2 text-left transition', sel ? 'border-accent bg-accent-soft/40' : 'border-line hover:border-accent/50')}>
+                    <span className="flex h-10 items-center justify-center rounded-md border border-line text-2xs font-semibold"
+                      style={c ? { background: 'linear-gradient(135deg, ' + c.bg + ', ' + c.bg2 + ')', color: c.text } : undefined}>Aa</span>
+                    <span className="flex items-center gap-1 text-2xs font-medium leading-tight text-ink">{sel && <Check size={11} className="shrink-0 text-accent" />}{nome}</span>
+                    <span className="text-2xs leading-tight text-ink-3">{id === 'pecas' && c && !c.temPecas ? 'Sem peça na TV ainda: fica o tema.' : desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {(theme.fundo || 'pecas') === 'cor' && (
+              <div className="mt-2 max-w-xs"><Swatch value={theme.fundoCor} fallback="#f5efe8" onChange={(v) => setTheme({ fundoCor: v })} onClear={() => setTheme({ fundoCor: '' })} /></div>
             )}
           </div>
 

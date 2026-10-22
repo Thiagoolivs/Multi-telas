@@ -256,10 +256,78 @@
     };
   }
 
+  /* ---------------- O fundo da TV ----------------
+   * EXECUTOR §2d, item 41. O dono: "não ficar um tema claro e um background
+   * escuro". As peças saem com as cores da marca, muitas vezes claras, e o
+   * palco seguia o tema da tela (por padrão, escuro): cartão creme sobre
+   * azul-marinho. `theme.fundo` decide:
+   *   'pecas'  (padrão) → o palco usa o fundo das peças que estão na TV, pela
+   *            MESMA conta delas (js/tokens.js). Sem peça, fica o tema.
+   *   'claro' / 'escuro' → o tema na versão clara ou escura, da cor da marca.
+   *   'cor'    → uma cor escolhida (`theme.fundoCor`).
+   * Cabeçalho e rodapé automáticos leem as mesmas variáveis e vão junto.
+   */
+  const FUNDOS = ['pecas', 'claro', 'escuro', 'cor'];
+
+  // O clima (texto, vidro, borda, sombra) que combina com um fundo.
+  function climaDe(t, bg, bg2, text, textDim) {
+    const claro = luminance(bg) > 0.45;
+    return Object.assign({}, t, {
+      dark: !claro, bg, bg2, text, textDim,
+      surface: rgbTriple(claro ? mix(bg, '#ffffff', 0.55) : mix(bg, '#ffffff', 0.06)),
+      glass: claro ? 0.72 : 0.55,
+      border: claro ? 'rgba(20,25,40,.10)' : 'rgba(255,255,255,.09)',
+      shadow: claro ? '0 14px 40px rgba(20,25,40,.14)' : '0 18px 50px rgba(0,0,0,.45)',
+      accent: acentoSobre(bg, t.brand),
+    });
+  }
+
+  /*
+   * As peças que mandam no fundo: as em HTML das zonas, pela marca e pelo
+   * modo. Vale o par mais frequente — uma peça escura no meio de cinco
+   * claras não escurece a tela.
+   */
+  function pecasDaConfig(cfg) {
+    const conta = new Map();
+    Object.values((cfg && cfg.zonas) || {}).forEach((z) => {
+      ((z && z.items) || []).forEach((it) => {
+        if (!it || it.type !== 'peca-html' || !it.marca || !Array.isArray(it.marca.cores) || !it.marca.cores.length) return;
+        const k = (it.modo || '') + '|' + it.marca.cores.join(',');
+        const atual = conta.get(k) || { n: 0, cores: it.marca.cores, modo: it.modo };
+        atual.n += 1;
+        conta.set(k, atual);
+      });
+    });
+    let melhor = null;
+    conta.forEach((v) => { if (!melhor || v.n > melhor.n) melhor = v; });
+    return melhor ? { cores: melhor.cores, modo: melhor.modo } : null;
+  }
+
+  function aplicarFundo(t, theme, ctx) {
+    const modo = FUNDOS.indexOf(theme.fundo) >= 0 ? theme.fundo : 'pecas';
+    if (modo === 'cor') {
+      const bg = okHex(theme.fundoCor);
+      if (!bg) return t;
+      const bg2 = mix(bg, luminance(bg) > 0.45 ? '#000000' : '#ffffff', 0.07);
+      const tx = textoSobre(bg, t.brand);
+      return climaDe(t, bg, bg2, tx, mix(tx, bg, 0.38));
+    }
+    if (modo === 'claro' || modo === 'escuro') {
+      if (!t.dark === (modo === 'claro')) return t;
+      const d = derivar([t.brand, t.brand2], { claro: modo === 'claro' });
+      return d ? Object.assign({}, t, d, { label: t.label }) : t;
+    }
+    const p = ctx && ctx.pecas;
+    const Tk = global.MTTokens || (typeof require === 'function' ? require('./tokens.js') : null);
+    if (!p || !Tk) return t;
+    const k = Tk.daMarca({ cores: p.cores }, p.modo).cores;
+    return climaDe(t, k.fundo, k.fundo2, k.texto, k.textoSuave);
+  }
+
   /* ---------------- Composição do tema ---------------- */
   // Um "tema" = preset base + ajustes manuais (overrides). Só as chaves
   // presentes em overrides sobrescrevem o preset.
-  function resolve(theme) {
+  function resolve(theme, ctx) {
     theme = theme || {};
     /*
      * A marca entra ANTES dos overrides: o ajuste manual continua sendo a
@@ -271,6 +339,8 @@
     } else if (theme.aplicarMarca) {
       base = tingir(base, theme.marca);
     }
+    // O fundo da TV antes dos ajustes manuais, que continuam com a palavra final.
+    base = aplicarFundo(base, theme, ctx);
     const t = Object.assign({}, base);
     // Ajustes manuais possíveis do editor.
     const ov = theme.overrides || {};
@@ -292,9 +362,9 @@
 
   // Aplica os tokens no elemento raiz informado (document.documentElement
   // no player; um container isolado poderia ser usado em previews).
-  function apply(theme, root) {
+  function apply(theme, root, ctx) {
     root = root || document.documentElement;
-    const t = resolve(theme);
+    const t = resolve(theme, ctx);
     const s = root.style;
     s.setProperty('--on-brand', onColor(t.brand));
     s.setProperty('--on-accent', onColor(t.accent));
@@ -337,7 +407,7 @@
 
   global.MTTheme = {
     PRESETS, FONTS, DEFAULT_PRESET, FAMILIAS_PECA, familiaPeca,
-    resolve, apply, preview, listPresets, listFonts, ensureFont,
+    resolve, apply, preview, listPresets, listFonts, ensureFont, FUNDOS, pecasDaConfig,
     // Expostos para o painel prever a cor sem duplicar a matemática.
     derivar, tingir, textoSobre, acentoSobre, contraste, mix, girarMatiz, rgba,
   };
