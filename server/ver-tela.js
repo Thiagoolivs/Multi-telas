@@ -35,6 +35,8 @@ function conferirEstado(bruto, configTexto) {
     const salva = zonasSalvas[id] || {};
     const saida = {};
     if (z.relogio) saida.relogio = true;
+    // Zona sem conteúdo, preta e pulsando (EXECUTOR §2d, item 39).
+    if (z.esperando) saida.esperando = true;
     // Cabeçalho e rodapé desenhados por peça (PLANO §4.7).
     if (z.peca && salva.peca) saida.peca = salva.peca;
     // As mensagens do letreiro: só as que estão salvas.

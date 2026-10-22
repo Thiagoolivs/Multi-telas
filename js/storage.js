@@ -37,7 +37,9 @@
         cor: '#2F6FEB',   // (legado) cor de destaque — migrada para theme.overrides.brand
         fundo: '#0a1128', // (legado) fundo — migrado para theme.overrides.bg
         logoUrl: '',
-        titulo: 'Raft Embalagens',
+        // Vazio: o cabeçalho usa o nome. Era 'Raft Embalagens', e o normalize
+        // gravava isso em TODA tela de cliente (EXECUTOR §2d, item 39).
+        titulo: '',
         cidadeClima: 'São Paulo',
         transicao: 'cinematic', // cinematic | fade | slide | zoom | none
         // Decoração animada sobre a tela: none | auto | snow | lights |
@@ -74,7 +76,7 @@
   function sampleConfig() {
     return {
       version: SCHEMA_VERSION,
-      settings: Object.assign(settingsPadrao(), { nome: 'Raft Embalagens' }),
+      settings: Object.assign(settingsPadrao(), { nome: 'Raft Embalagens', titulo: 'Raft Embalagens' }),
       zonas: {
         principal: {
           items: [
@@ -190,6 +192,8 @@
 
     // Garante um objeto de tema e migra configs antigas (cor/fundo → tema).
     out.settings.theme = migrateTheme(out.settings, (cfg.settings || {}).theme);
+    // O título de exemplo que vazou para as telas de cliente (ver settingsPadrao).
+    if (out.settings.titulo === 'Raft Embalagens' && out.settings.nome !== 'Raft Embalagens') out.settings.titulo = '';
     out.settings.audio = normalizeAudio(out.settings.audio);
 
     // Preserva zonas de outros templates (trocar de layout não apaga conteúdo).

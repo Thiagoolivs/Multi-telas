@@ -743,6 +743,11 @@
   function iniciarZona(zoneEl, zone, cfg) {
     const data = cfg.zonas[zone.id] || {};
     if (temPecaFixa(zone, data)) return startPecaFixa(zoneEl, zone, data);
+    if (zone.type === 'ticker' && rodapeEsperando(data)) {
+      const espera = esperaDeZona();
+      zoneEl.appendChild(espera.el);
+      return { stop: espera.parar, atual: () => ({ esperando: true }) };
+    }
     if (zone.type === 'ticker') return startTicker(zoneEl, data, cfg);
     if (zone.type === 'header') return startHeader(zoneEl, cfg);
     return startPlaylist(zoneEl, data.items || [], cfg, zone.id);
@@ -1552,6 +1557,30 @@
     return { el: el, parar: () => clearInterval(t) };
   }
 
+  /*
+   * A ZONA ESPERANDO (EXECUTOR §2d, item 39). O dono: "se só tem uma coisa
+   * publicada, o resto deve ficar preto e pulsando, como se estivesse
+   * esperando algo". Antes a zona vazia virava relógio, e o rodapé nunca
+   * configurado, o letreiro de exemplo — a TV parecia pronta com o que
+   * ninguém pôs nela. O relógio continua para a zona que TEM conteúdo, todo
+   * fora do horário agendado.
+   */
+  function esperaDeZona() {
+    const el = document.createElement('div');
+    el.className = 'mt-slide mt-espera mt-active';
+    const pulso = document.createElement('div');
+    pulso.className = 'mt-espera-pulso';
+    el.appendChild(pulso);
+    return { el: el, parar: function () {} };
+  }
+
+  // Rodapé sem mensagem e sem fonte de notícia: só teria a data de enchimento.
+  function rodapeEsperando(data) {
+    const temMensagem = (data.messages || []).some((m) => m && String(m).trim());
+    if (temMensagem) return false;
+    return lerModo(data).conteudo === 'mensagens' || fontesDe(data).length === 0;
+  }
+
   /* ---------------- Zona: Playlist rotativa ---------------- */
 
   function startPlaylist(zoneEl, items, cfg, zonaId) {
@@ -1575,9 +1604,9 @@
      * o aviso de zona vazia continua no painel, que é onde o dono olha.
      */
     if (!items.length) {
-      const relogio = relogioDeZona();
-      zoneEl.appendChild(relogio.el);
-      return { stop: relogio.parar, atual: () => ({ relogio: true }) };
+      const espera = esperaDeZona();
+      zoneEl.appendChild(espera.el);
+      return { stop: espera.parar, atual: () => ({ esperando: true }) };
     }
 
     function advance() {
