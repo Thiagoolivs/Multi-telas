@@ -106,16 +106,34 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 function googleEnabled() { return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET); }
 
 /*
- * URL pública desta instalação. Usada nos links de e-mail e no redirect do
- * OAuth. Prefere APP_URL (fixa e confiável); senão monta a partir do request,
- * respeitando os headers do proxy do Railway.
+ * URL pública desta instalação. Usada nos links de e-mail (confirmar, trocar
+ * a senha), no redirect do OAuth e no retorno do checkout.
+ *
+ * Prefere APP_URL, fixa. Sem ela, a URL era montada com o X-Forwarded-Host do
+ * pedido — um cabeçalho que QUEM PEDE escreve. Um "esqueci a senha" com o
+ * e-mail da vítima e X-Forwarded-Host apontando para outro site fazia NÓS
+ * mandarmos à vítima um e-mail verdadeiro com o token de troca de senha
+ * indo para o site do atacante (EXECUTOR D0.2). Agora o host do pedido só
+ * vale se estiver na lista; fora dela, vale o domínio público que o Railway
+ * define, ou a própria máquina.
  */
+function hostConfiavel(host) {
+  const h = String(host || '').toLowerCase();
+  if (/^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(h)) return true;
+  if (/^([a-z0-9-]+\.)*multitelas\.net\.br$/.test(h)) return true;
+  const extras = [process.env.RAILWAY_PUBLIC_DOMAIN].concat(String(process.env.MT_HOSTS || '').split(','))
+    .map((x) => String(x || '').trim().toLowerCase()).filter(Boolean);
+  return extras.includes(h);
+}
 function baseUrl(req) {
   const fixed = (process.env.APP_URL || '').replace(/\/$/, '');
   if (fixed) return fixed;
   const proto = isSecureRequest(req) ? 'https' : 'http';
-  const host = req.headers['x-forwarded-host'] || req.headers.host || ('localhost:' + PORT);
-  return proto + '://' + host;
+  const pedido = String(req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  if (pedido && hostConfiavel(pedido)) return proto + '://' + pedido;
+  const publico = String(process.env.RAILWAY_PUBLIC_DOMAIN || '').trim();
+  if (publico) return 'https://' + publico;
+  return 'http://localhost:' + PORT;
 }
 // Papéis: owner (dono) > admin > member. Gestão de equipe: owner e admin.
 function canManageTeam(role) { return role === 'owner' || role === 'admin'; }
@@ -199,12 +217,10 @@ async function avisarTelas(tenantId, event, payload) {
   } catch (e) { erros.registrar(e, { onde: 'aviso às telas', tenant: tenantId }); }
 }
 function validEmail(e) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e || '')); }
-// Base absoluta da requisição (para montar URLs de checkout/portal).
-function reqOrigin(req) {
-  const proto = (req.headers['x-forwarded-proto'] || '').split(',')[0].trim() || (req.socket && req.socket.encrypted ? 'https' : 'http');
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost';
-  return proto + '://' + host;
-}
+// Base absoluta para o retorno do checkout: a mesma regra dos e-mails
+// (baseUrl), para que o host do pedido nunca escolha para onde o cliente
+// volta depois de pagar.
+function reqOrigin(req) { return baseUrl(req); }
 // Corpo bruto (sem parse) — necessário para validar a assinatura do webhook.
 function readRawBody(req) {
   return new Promise((resolve) => {
@@ -2505,6 +2521,13 @@ db.init()
     } else if (process.env.SKIP_VERIFY === '1') {
       log.aviso('cadastro.sem-verificacao', {
         aviso: 'SKIP_VERIFY=1 — o cadastro cria a conta sem confirmar o e-mail.',
+      });
+    }
+    // Produção sem APP_URL: os links de e-mail caem na lista de hosts
+    // confiáveis (baseUrl). Funciona, mas o endereço certo é dito, não deduzido.
+    if (billing.emProducao() && !process.env.APP_URL) {
+      log.aviso('links.sem-app-url', {
+        aviso: 'Produção sem APP_URL — defina https://app.multitelas.net.br para os links de e-mail e do checkout.',
       });
     }
     // Produção sem Asaas: a compra fica fechada (server/billing.js,
