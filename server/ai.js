@@ -514,8 +514,10 @@ async function generateImage(prompt, opts) {
   for (const model of list) {
     try {
       const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent';
+      // Prazo e corpo que pode não ser JSON: a mesma regra das chamadas de texto (motores.js).
       const res = await fetch(url, {
         method: 'POST', headers: { 'x-goog-api-key': GEMINI_KEY, 'content-type': 'application/json' },
+        signal: AbortSignal.timeout(Number(process.env.MT_PRAZO_IA_MS) || 120000),
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [
             ...referencias.map((r) => ({ inline_data: { mime_type: r.mime || 'image/jpeg', data: r.data } })),
@@ -524,8 +526,8 @@ async function generateImage(prompt, opts) {
           generationConfig: { responseModalities: ['TEXT', 'IMAGE'] },
         }),
       });
-      const data = await res.json();
-      if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
         const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
         const img = parts.find((p) => p.inline_data || p.inlineData);
         const inl = img && (img.inline_data || img.inlineData);
@@ -533,10 +535,15 @@ async function generateImage(prompt, opts) {
         lastErr = new Error('sem imagem na resposta'); continue;
       }
       const msg = (data && data.error && data.error.message) || ('Gemini HTTP ' + res.status);
-      lastErr = new Error(msg); if (!geminiRetryable(msg)) throw lastErr;
-    } catch (e) { lastErr = e; if (!geminiRetryable(e.message)) throw e; }
+      lastErr = motores.erroIA(msg, res.status, 'gemini');
+      // Teto de gasto ou chave: os outros modelos são da mesma conta e cairiam igual.
+      if (!geminiRetryable(msg) || lastErr.tipo === 'cota' || lastErr.tipo === 'chave') throw lastErr;
+    } catch (e) {
+      lastErr = e.tipo ? e : motores.erroIA(e && e.name === 'TimeoutError' ? 'gemini: sem resposta' : e.message, 0, 'gemini');
+      if (lastErr.tipo === 'cota' || lastErr.tipo === 'chave' || !geminiRetryable(lastErr.message)) throw lastErr;
+    }
   }
-  throw lastErr || new Error('geração de imagem falhou');
+  throw lastErr || motores.erroIA('geração de imagem falhou', 0, 'gemini');
 }
 
 /*
@@ -833,26 +840,17 @@ module.exports = { analyzeVisual, mode, __clamp: clampComposition, callLLM, pars
 async function analyzeVisual(imageB64) {
   const provider = mode();
   if (provider === 'dev') return { nota: 9, analise: '(Modo dev) A peça parece bem equilibrada.' };
-  if (provider !== 'gemini') throw new Error('A visão computacional requer um modelo multimodal do Gemini (GEMINI_API_KEY).');
   const system = 'Você é um diretor de arte avaliando uma peça visual pronta para digital signage. Avalie a composição, o contraste e a diagramação. Aponte problemas de legibilidade ou respiro se houver. Seja direto e conciso. Responda apenas com um JSON: { "nota": <inteiro 0 a 10>, "analise": "<texto>" }';
-  
-  const m = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + m + ':generateContent';
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'x-goog-api-key': process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [
-        { text: 'Avalie a imagem desta peça de digital signage.' },
-        { inlineData: { mimeType: 'image/jpeg', data: imageB64 } }
-      ]}],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 1024, responseMimeType: 'application/json' }
-    })
+  /*
+   * Pelo motor, como todo o resto: medido, com prazo, com a lista de modelos
+   * atual e com reserva. Era um fetch próprio preso ao gemini-2.5-flash, que
+   * o Google desligou para contas novas, e só funcionava com AI_PROVIDER=gemini,
+   * embora os três provedores enxerguem imagem.
+   */
+  const r = await motores.chamar({
+    sistema: system, usuario: 'Avalie a imagem desta peça de digital signage.',
+    imagens: [{ mime: 'image/jpeg', data: imageB64 }], json: true, maxTokens: 1024, temperatura: 0.7,
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error((data.error && data.error.message) || 'Gemini Vision falhou');
-  const txt = data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0].text;
-  if (!txt) throw new Error('Retorno vazio');
-  return parseAiJson(txt);
+  if (!r.texto) throw motores.erroIA('Retorno vazio', 0, '');
+  return parseAiJson(r.texto);
 }

@@ -40,7 +40,7 @@ const chave = {
 const MOTORES = {
   gemini: {
     provedor: 'gemini', rotulo: 'Gemini Flash',
-    modelo: () => process.env.GEMINI_MODEL || 'gemini-3.6-flash',
+    modelo: () => process.env.GEMINI_MODEL || 'gemini-3.8-flash',
     preco: { entrada: 0.3, saida: 2.5, cacheLida: 0.075, cacheEscrita: 0 },
   },
   'claude-sonnet': {
@@ -77,6 +77,73 @@ function motorPadrao() {
   return 'dev';
 }
 
+/* ---------------- Erros e prazo ---------------- */
+
+/*
+ * O que deu errado, numa categoria que decide o que fazer em seguida.
+ *
+ * Antes era um regex só ("tenta outro modelo?") que casava 'rate' dentro de
+ * "generateContent" e tratava o teto de gasto estourado como falha
+ * passageira: o 429 de "exceeded its monthly spending cap" descia a cascata
+ * de seis modelos (até o Pro, cobrado a preço de Flash) para voltar com uma
+ * frase em inglês que nenhuma rota sabia ler. No teste de uso de 23/10 a
+ * pessoa viu "Não consegui pensar nisso agora" e ninguém soube por quê.
+ *
+ *   cota        o provedor recusa por dinheiro (teto, saldo): não adianta insistir
+ *   chave       chave inválida ou sem permissão: idem
+ *   modelo      o modelo não existe mais para esta conta: tenta o próximo e lembra
+ *   passageira  limite por minuto, sobrecarga, 5xx, prazo: tenta o próximo
+ *   outro       pedido inválido: não insiste
+ */
+function tipoDoErro(msg, status) {
+  const m = String(msg || '');
+  if (/spending cap|billing|credit balance|insufficient.{0,20}(credit|funds|balance)|payment required/i.test(m) || status === 402) return 'cota';
+  if (status === 401 || status === 403 || /api key not valid|invalid.{0,10}(api.?)?key|permission denied|unauthori[sz]ed|authentication/i.test(m)) return 'chave';
+  if (status === 404 || /no longer available|not available|not found|is not supported|unsupported model|does not exist/i.test(m)) return 'modelo';
+  if (status === 429 || status >= 500 || /overloaded|unavailable|\brate.?limit|resource.?exhausted|quota|timed? ?out|sem resposta|aborted|deadline|vazio|fetch failed|ECONNRESET|ENOTFOUND|EAI_AGAIN/i.test(m)) return 'passageira';
+  return 'outro';
+}
+function erroIA(msg, status, provedor) {
+  const e = new Error(String(msg || 'falha da IA'));
+  e.status = status || 0;
+  e.provedor = provedor || '';
+  e.tipo = tipoDoErro(msg, status);
+  return e;
+}
+// Compatível com quem já usava (server/ai.js, imagens): vale tentar outro modelo?
+const geminiTentaOutro = (msg) => ['modelo', 'passageira'].includes(tipoDoErro(msg));
+
+/*
+ * O que a pessoa lê. Nunca a mensagem crua do provedor, que vem em inglês e
+ * às vezes com detalhe de conta.
+ */
+function fraseDoErro(e) {
+  const tipo = e && e.tipo ? e.tipo : tipoDoErro(e && e.message);
+  if (tipo === 'cota' || tipo === 'chave') return 'A IA está fora do ar agora. O que você já fez está salvo: tente de novo daqui a pouco.';
+  if (tipo === 'passageira' || tipo === 'modelo') return 'A IA demorou para responder. Tente de novo.';
+  return 'A IA não conseguiu responder agora. Tente de novo.';
+}
+const iaIndisponivel = (e) => !!e && (e.tipo === 'cota' || e.tipo === 'chave');
+
+/*
+ * Prazo em toda chamada. Sem ele o fetch espera o padrão do Node (~5 min), e
+ * uma campanha de 24 peças × candidatos × tentativas virava horas presa numa
+ * vaga de trabalho. Dois minutos cabem uma peça inteira de 8 mil tokens.
+ */
+const PRAZO_MS = () => Number(process.env.MT_PRAZO_IA_MS) || 120000;
+async function postar(provedor, url, headers, corpo) {
+  let res;
+  try {
+    res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(corpo), signal: AbortSignal.timeout(PRAZO_MS()) });
+  } catch (e) {
+    const prazo = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    throw erroIA(provedor + ': ' + (prazo ? 'sem resposta em ' + Math.round(PRAZO_MS() / 1000) + ' s' : (e && e.message) || 'falha de rede'), 0, provedor);
+  }
+  // Página de erro em HTML (502 do proxy) não é JSON: vira erro classificado, não SyntaxError.
+  const data = await res.json().catch(() => null);
+  return { res, data };
+}
+
 /* ---------------- Provedores ---------------- */
 
 /*
@@ -91,13 +158,9 @@ async function anthropic(o) {
   content.push({ type: 'text', text: o.usuario || '' });
   const body = { model: o.modelo, max_tokens: o.maxTokens, system, messages: [{ role: 'user', content }] };
   if (o.temperatura != null) body.temperature = o.temperatura;
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': chave.anthropic(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Anthropic HTTP ' + res.status));
+  const { res, data } = await postar('anthropic', 'https://api.anthropic.com/v1/messages',
+    { 'x-api-key': chave.anthropic(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body);
+  if (!res.ok || !data) throw erroIA((data && data.error && data.error.message) || ('Anthropic HTTP ' + res.status), res.status, 'anthropic');
   const u = data.usage || {};
   return {
     texto: (data.content || []).map((b) => b.text || '').join('').trim(),
@@ -115,8 +178,16 @@ async function anthropic(o) {
  * é implícito (prefixo igual entre chamadas) e aparece em
  * cachedContentTokenCount — por isso o fixo vai na frente do sistema.
  */
-const GEMINI_CANDIDATOS = ['gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-pro-latest'];
-const geminiTentaOutro = (msg) => /no longer available|not available|not found|is not supported|unsupported|does not exist|vazio|overloaded|unavailable|internal|quota|rate|429|500|503|404/i.test(msg || '');
+/*
+ * Só a família Flash, do mais novo ao mais velho. O 2.5 e o 2.0 saíram: o
+ * Google os desligou para contas novas (404 "use gemini-3.8-flash"). O
+ * gemini-pro-latest saiu também: custa bem mais e era cobrado no extrato a
+ * preço de Flash.
+ */
+const GEMINI_CANDIDATOS = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.5-flash'];
+// Modelo que respondeu 404 é lembrado por umas horas: cada chamada pagava o 404 de novo antes de acertar.
+const geminiMortos = new Map();
+const MORTO_MS = 6 * 60 * 60 * 1000;
 const pensarRecusado = (msg) => /thinking|unknown name|invalid.*(field|argument)|not supported/i.test(msg || '');
 
 async function geminiUmModelo(modelo, o) {
@@ -129,13 +200,9 @@ async function geminiUmModelo(modelo, o) {
   const configs = [{ ...base, thinkingConfig: { thinkingBudget: 0 } }, base];
   let motivo = '';
   for (const generationConfig of configs) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'x-goog-api-key': chave.gemini(), 'content-type': 'application/json' },
-      body: JSON.stringify({ system_instruction: { parts: [{ text: sistema }] }, contents: [{ role: 'user', parts }], generationConfig }),
-    });
-    const data = await res.json();
-    if (res.ok) {
+    const { res, data } = await postar('gemini', url, { 'x-goog-api-key': chave.gemini(), 'content-type': 'application/json' },
+      { system_instruction: { parts: [{ text: sistema }] }, contents: [{ role: 'user', parts }], generationConfig });
+    if (res.ok && data) {
       const cand = data.candidates && data.candidates[0];
       const texto = ((cand && cand.content && cand.content.parts) || []).map((p) => p.text || '').join('').trim();
       if (texto) {
@@ -152,35 +219,40 @@ async function geminiUmModelo(modelo, o) {
       continue;
     }
     const msg = (data && data.error && data.error.message) || ('Gemini HTTP ' + res.status);
-    if (generationConfig.thinkingConfig && pensarRecusado(msg)) continue;
-    throw new Error(msg);
+    if (generationConfig.thinkingConfig && pensarRecusado(msg) && res.status === 400) continue;
+    throw erroIA(msg, res.status, 'gemini');
   }
-  throw new Error('Gemini vazio (finishReason=' + motivo + ', modelo=' + modelo + ')');
+  throw erroIA('Gemini vazio (finishReason=' + motivo + ', modelo=' + modelo + ')', 0, 'gemini');
 }
 
 async function gemini(o) {
-  const lista = [o.modelo, ...GEMINI_CANDIDATOS].filter((m, i, a) => m && a.indexOf(m) === i);
+  const agora = Date.now();
+  const vivo = (m) => !((geminiMortos.get(m) || 0) > agora);
+  const lista = [o.modelo, ...GEMINI_CANDIDATOS].filter((m, i, a) => m && a.indexOf(m) === i && vivo(m));
   let ultimo;
   for (const modelo of lista) {
-    try { return await geminiUmModelo(modelo, o); } catch (e) { ultimo = e; if (!geminiTentaOutro(e.message)) throw e; }
+    try { return await geminiUmModelo(modelo, o); } catch (e) {
+      ultimo = e;
+      if (e.tipo === 'modelo') { geminiMortos.set(modelo, Date.now() + MORTO_MS); continue; }
+      if (e.tipo === 'passageira') continue;
+      throw e; // cota, chave, pedido inválido: outro modelo da mesma conta não muda nada
+    }
   }
-  throw new Error('Nenhum modelo Gemini retornou conteúdo. Detalhe: ' + (ultimo && ultimo.message));
+  const e = erroIA('Nenhum modelo Gemini retornou conteúdo. Detalhe: ' + (ultimo ? ultimo.message : 'todos indisponíveis'), ultimo && ultimo.status, 'gemini');
+  e.tipo = ultimo ? ultimo.tipo : 'modelo';
+  throw e;
 }
 
 // Groq — API compatível com OpenAI. Imagem vai como data URI.
 async function groq(o) {
   const content = (o.imagens || []).map((im) => ({ type: 'image_url', image_url: { url: 'data:' + im.mime + ';base64,' + im.data } }));
   content.push({ type: 'text', text: o.usuario || '' });
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + chave.groq(), 'content-type': 'application/json' },
-    body: JSON.stringify({
+  const { res, data } = await postar('groq', 'https://api.groq.com/openai/v1/chat/completions',
+    { Authorization: 'Bearer ' + chave.groq(), 'content-type': 'application/json' }, {
       model: o.modelo, max_tokens: o.maxTokens, temperature: o.temperatura != null ? o.temperatura : 0.7,
       messages: [{ role: 'system', content: [o.fixo, o.sistema].filter(Boolean).join('\n\n') }, { role: 'user', content: o.imagens && o.imagens.length ? content : (o.usuario || '') }],
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error((data && data.error && data.error.message) || ('Groq HTTP ' + res.status));
+    });
+  if (!res.ok || !data) throw erroIA((data && data.error && data.error.message) || ('Groq HTTP ' + res.status), res.status, 'groq');
   const u = data.usage || {};
   const cache = (u.prompt_tokens_details && u.prompt_tokens_details.cached_tokens) || 0;
   return {
@@ -252,9 +324,28 @@ function consumirMedicao() {
  *   imagens   [{ mime, data }] com data em base64
  *   maxTokens padrão 8192: cabe uma peça inteira
  */
+/*
+ * Reserva: o motor da vez caiu por dinheiro, chave ou instabilidade, e há
+ * chave de outro provedor? A chamada vai para ele, com o custo do motor que
+ * de fato respondeu. Fica de fora quem pede um motor de propósito para
+ * comparar (o experimento, §4.4): `semReserva: true`.
+ */
+const RESERVA = ['claude-sonnet', 'groq', 'gemini'];
 async function chamar(o) {
   const motor = MOTORES[o.motor] ? o.motor : motorPadrao();
-  if (motor === 'dev') throw new Error('modo dev: nenhum provedor de IA configurado');
+  if (motor === 'dev') throw erroIA('modo dev: nenhum provedor de IA configurado', 0, 'dev');
+  try {
+    return await chamarUm(motor, o);
+  } catch (e) {
+    if (o.semReserva || !['cota', 'chave', 'passageira', 'modelo'].includes(e.tipo)) throw e;
+    for (const outro of RESERVA) {
+      if (outro === motor || MOTORES[outro].provedor === MOTORES[motor].provedor || !chave[MOTORES[outro].provedor]()) continue;
+      try { return await chamarUm(outro, o); } catch (e2) { /* a reserva também caiu: segue para a próxima, e o erro que vale é o primeiro */ }
+    }
+    throw e;
+  }
+}
+async function chamarUm(motor, o) {
   const def = MOTORES[motor];
   const t0 = Date.now();
   const r = await PROVEDORES[def.provedor](Object.assign({}, o, { modelo: def.modelo(), maxTokens: o.maxTokens || 8192 }));
@@ -268,4 +359,4 @@ async function chamar(o) {
   return { texto: r.texto, uso };
 }
 
-module.exports = { MOTORES, GEMINI_CANDIDATOS, geminiTentaOutro, motorPadrao, chamar, custoCentavos, precos, medir, consumirMedicao };
+module.exports = { MOTORES, GEMINI_CANDIDATOS, geminiTentaOutro, tipoDoErro, erroIA, fraseDoErro, iaIndisponivel, motorPadrao, chamar, custoCentavos, precos, medir, consumirMedicao };

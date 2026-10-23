@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Send, Sparkles, Wand2, MessageSquare, RotateCcw, Zap } from 'lucide-react';
+import { Send, Sparkles, Wand2, MessageSquare, RotateCcw, Zap, CloudOff } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Spinner } from '../components/ui/Feedback.jsx';
@@ -267,9 +267,13 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
               <div className="space-y-2.5 p-3" aria-live="polite">
                 {mensagens.map((m, i) => (
                   <div key={i} className={m.papel === 'ia' ? 'flex gap-2' : 'flex justify-end'}>
-                    {m.papel === 'ia' && <Sparkles size={14} className="mt-1 shrink-0 text-accent" />}
+                    {m.papel === 'ia' && (m.falha
+                      ? <CloudOff size={14} className="mt-1 shrink-0 text-warn" aria-hidden />
+                      : <Sparkles size={14} className="mt-1 shrink-0 text-accent" />)}
+                    {/* Falha da IA (m.falha) parece aviso, não resposta: a pessoa vê que foi a IA que caiu. */}
                     <div className={cn('max-w-[85%] whitespace-pre-line rounded-lg px-3 py-2 text-sm',
-                      m.papel === 'ia' ? 'rounded-tl-sm bg-surface-2 text-ink' : 'rounded-tr-sm bg-accent text-accent-fg')}>{m.texto}</div>
+                      m.papel !== 'ia' ? 'rounded-tr-sm bg-accent text-accent-fg'
+                        : m.falha ? 'rounded-tl-sm border border-warn/40 bg-warn-soft text-ink' : 'rounded-tl-sm bg-surface-2 text-ink')}>{m.texto}</div>
                   </div>
                 ))}
                 {pensando && <div className="flex items-center gap-2 text-xs text-ink-3"><Spinner size={13} /> pensando…</div>}

@@ -255,3 +255,64 @@ test('a visão das trilhas antigas usa o Gemini quando há chave, e o motor padr
         await require('../server/ai.js').descreverEstilo([IMAGEM]);
         assert.match(pedidos[0].url, /generativelanguage/);
       })))));
+
+/* ---------------- Erro classificado e reserva (EXECUTOR D0.3) ---------------- */
+
+test('o teto de gasto estourado não desce a lista de modelos nem vira "passageira"', () =>
+  comEnv({ GEMINI_API_KEY: 'g', GEMINI_MODEL: null, ANTHROPIC_API_KEY: null, GROQ_API_KEY: null }, () =>
+    comFetch(() => ({ ok: false, status: 429, json: { error: { message: 'Your project has exceeded its monthly spending cap. Please go to AI Studio.' } } }), async (pedidos) => {
+      const e = await M.chamar({ motor: 'gemini', sistema: 's', usuario: 'u' }).then(() => null, (x) => x);
+      assert.ok(e, 'tinha de falhar');
+      assert.equal(e.tipo, 'cota');
+      assert.equal(pedidos.length, 1, 'uma chamada só: os outros modelos são da mesma conta');
+      assert.match(M.fraseDoErro(e), /fora do ar/);
+      assert.ok(!/spending|AI Studio/.test(M.fraseDoErro(e)), 'a pessoa nunca lê a mensagem crua do provedor');
+    })));
+
+test('classificação: "generateContent" não é "rate", 404 é modelo, 5xx é passageira', () => {
+  assert.equal(M.tipoDoErro('Invalid JSON payload received. Unknown name "foo" at generateContent', 400), 'outro');
+  assert.equal(M.tipoDoErro('This model models/gemini-2.5-flash is no longer available to new users', 404), 'modelo');
+  assert.equal(M.tipoDoErro('The model is overloaded', 503), 'passageira');
+  assert.equal(M.tipoDoErro('API key not valid. Please pass a valid API key.', 400), 'chave');
+  assert.equal(M.tipoDoErro('Your credit balance is too low to access the Anthropic API', 400), 'cota');
+  assert.ok(!M.GEMINI_CANDIDATOS.some((m) => /2\.5|2\.0|pro/.test(m)), 'modelos desligados ou caros saíram da lista');
+  assert.equal(M.GEMINI_CANDIDATOS[0], 'gemini-3.8-flash');
+});
+
+test('modelo morto é lembrado: a segunda chamada não paga o 404 de novo', () =>
+  comEnv({ GEMINI_API_KEY: 'g', GEMINI_MODEL: 'gemini-morto-para-teste' }, () =>
+    comFetch((url) => (/gemini-morto-para-teste/.test(url)
+      ? { ok: false, status: 404, json: { error: { message: 'model is no longer available' } } }
+      : { json: { candidates: [{ content: { parts: [{ text: '{}' }] } }], usageMetadata: {} } }), async (pedidos) => {
+      await M.chamar({ motor: 'gemini', sistema: 's', usuario: 'u' });
+      const antes = pedidos.length;
+      await M.chamar({ motor: 'gemini', sistema: 's', usuario: 'u' });
+      assert.equal(pedidos.length - antes, 1, 'foi direto ao modelo vivo');
+      assert.ok(!/gemini-morto-para-teste/.test(pedidos[pedidos.length - 1].url));
+    })));
+
+test('Gemini fora por dinheiro e chave do Claude presente: a chamada vai para a reserva, medida como Claude', () =>
+  comEnv({ GEMINI_API_KEY: 'g', GEMINI_MODEL: null, ANTHROPIC_API_KEY: 'k', GROQ_API_KEY: null, MT_COTACAO_DOLAR: '5' }, () =>
+    comFetch((url) => (/generativelanguage/.test(url)
+      ? { ok: false, status: 429, json: { error: { message: 'exceeded its monthly spending cap' } } }
+      : RESPOSTA_CLAUDE), async (pedidos) => {
+      const r = await M.chamar({ motor: 'gemini', sistema: 's', usuario: 'u' });
+      assert.equal(r.uso.motor, 'claude-sonnet');
+      assert.ok(r.uso.custoCentavos > 0, 'custo do motor que respondeu');
+      assert.match(pedidos[pedidos.length - 1].url, /anthropic/);
+      // Quem pede um motor de propósito (o experimento) não ganha reserva.
+      await assert.rejects(M.chamar({ motor: 'gemini', sistema: 's', usuario: 'u', semReserva: true }), (e) => e.tipo === 'cota');
+    })));
+
+test('toda chamada de IA tem prazo, e corpo que não é JSON vira erro classificado', async () => {
+  const fonte = semComentarios(fs.readFileSync(path.join(RAIZ, 'server', 'motores.js'), 'utf8'));
+  assert.match(fonte, /AbortSignal\.timeout\(PRAZO_MS\(\)\)/);
+  const semPostar = fonte.replace(/async function postar[\s\S]*?\r?\n}\r?\n/, '');
+  assert.ok(!/await fetch\(/.test(semPostar), 'só o postar() chama a rede');
+  const antes = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: false, status: 502, json: async () => { throw new SyntaxError('Unexpected token <'); } });
+  try {
+    await comEnv({ GROQ_API_KEY: 'q', ANTHROPIC_API_KEY: null, GEMINI_API_KEY: null }, () =>
+      assert.rejects(M.chamar({ motor: 'groq', sistema: 's', usuario: 'u' }), (e) => e.tipo === 'passageira' && e.status === 502));
+  } finally { globalThis.fetch = antes; }
+});

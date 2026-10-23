@@ -75,13 +75,19 @@ module.exports = function (ctx) {
         // O escopo do cartão (que a pessoa pode ter mudado à mão) vence o guardado.
         const escopo = b && b.escopo && typeof b.escopo === 'object' ? b.escopo : (atual && atual.escopo);
         const out = await conversa.conversar({ mensagens, escopo, ctx: c });
-        mensagens.push({ papel: 'ia', texto: out.resposta, sugestoes: out.sugestoes, em: Date.now() });
+        /*
+         * Na falha, a frase aparece para a pessoa mas é marcada: a próxima
+         * volta não a manda para a IA como se fosse fala dela (transcricao),
+         * o estado da conversa não anda e a memória não aprende nada.
+         */
+        const falhou = out.modo === 'falha';
+        mensagens.push({ papel: 'ia', texto: out.resposta, sugestoes: out.sugestoes, em: Date.now(), ...(falhou ? { falha: true } : {}) });
         const primeira = mensagens.find((m) => m.papel === 'pessoa');
         const dados = {
           titulo: out.escopo.nome || (atual && atual.titulo) || linha(primeira && primeira.texto, 60),
           mensagens: mensagens.slice(-MAX_MENSAGENS),
           escopo: out.escopo,
-          estado: out.pronto ? 'entendido' : 'conversando',
+          estado: falhou ? ((atual && atual.estado) || 'conversando') : (out.pronto ? 'entendido' : 'conversando'),
           campanhaId: (atual && atual.campanhaId) || '',
         };
         const salva = atual
@@ -92,13 +98,13 @@ module.exports = function (ctx) {
          * EMPRESA vai para a memória — a próxima conversa já começa sabendo.
          * Em segundo plano: ninguém espera por um ganho da próxima vez.
          */
-        if (out.pronto && (!atual || atual.estado !== 'entendido') && out.modo !== 'dev') {
+        if (out.pronto && !falhou && (!atual || atual.estado !== 'entendido') && out.modo !== 'dev') {
           memory.aprender(c.memoria, mensagens, { briefing: [out.escopo.objetivo, out.escopo.publico].filter(Boolean).join('. ') })
             .then((nova) => db.saveMemoria(sess.tenant_id, nova))
             .catch(() => { /* memória é ganho acumulado, não requisito */ });
         }
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.conversa');
-        return sendJson(res, 200, { conversa: salva, pronto: out.pronto, gerar: !!out.gerar, sugestoes: out.sugestoes, modo: out.modo });
+        return sendJson(res, 200, { conversa: salva, pronto: out.pronto, gerar: !!out.gerar, sugestoes: out.sugestoes, modo: out.modo, falha: out.falha || '' });
       } catch (e) {
         erros.registrar(e, { rota: '/api/ai/conversa' });
         return sendJson(res, 500, { error: 'não deu para continuar a conversa agora' });
