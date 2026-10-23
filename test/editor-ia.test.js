@@ -170,6 +170,13 @@ const AINDA_SINCRONAS = [
   'briefing',       // turno de conversa: a resposta é o próprio fio, sair já perde o contexto
   'diagnose',       // olha a tela e responde na hora; é ferramenta de suporte, não geração
   'director',       // monta o plano que as outras rotas executam depois
+  /*
+   * D20: o pedido dentro da peça devolve um remendo pequeno (texto, cor,
+   * fonte) em segundos, com a pessoa olhando a prévia. Não grava nada nem
+   * cobra crédito (só é medido) — perder a requisição não perde dinheiro, e
+   * um "acompanhe em Criando" para trocar a cor seria pior que esperar.
+   */
+  'ajustar-peca',
 ];
 
 test('toda rota de IA que GERA roda como trabalho — e as síncronas são só as declaradas', () => {

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { confirmar } from '../../lib/confirmar.js';
 import { aviso } from '../../lib/avisos.js';
-import { Check, AlertTriangle } from 'lucide-react';
+import { Check, AlertTriangle, Sparkles } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input } from '../ui/Field.jsx';
@@ -155,6 +155,10 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   const [modelos, setModelos] = useState(null);
   const [daConta, setDaConta] = useState(null);   // a marca principal: o "voltar para a marca"
   const [familias, setFamilias] = useState([]);
+  // D20: pedir à IA dentro da peça. Ela devolve só o que muda; "Desfazer" volta ao de antes do pedido.
+  const [pedido, setPedido] = useState('');
+  const [pedindo, setPedindo] = useState(false);
+  const [respostaIA, setRespostaIA] = useState(null);   // { texto, antes }
 
   // As marcas da conta (até três): só aparece a escolha quando há mais de uma.
   useEffect(() => {
@@ -196,6 +200,30 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   }, [atual]);
 
   const problemas = avisosDaConferencia(conferencia);
+
+  async function pedirIA() {
+    const antes = { campos, modo, marca, ocultos };
+    setPedindo(true);
+    try {
+      const r = await ai.ajustarPeca(atual, pedido.trim());
+      const m = (r && r.remendo) || {};
+      if (m.campos) setCampos((c) => ({ ...c, ...m.campos }));
+      if (m.modo) setModo(m.modo);
+      if (m.marca) setMarca({ ...marcaBase(), ...m.marca });
+      if (m.ocultos) setOcultos(m.ocultos);
+      const mudou = !!(r && r.mudou && r.mudou.length);
+      setRespostaIA({ texto: (r && r.resposta) || '', antes: mudou ? antes : null });
+      if (mudou) setPedido('');
+    } catch (e) {
+      setRespostaIA({ texto: e.message || 'A IA não respondeu agora. Tente de novo.', antes: null });
+    } finally { setPedindo(false); }
+  }
+  function desfazerIA() {
+    const a = respostaIA && respostaIA.antes;
+    if (!a) return;
+    setCampos(a.campos); setModo(a.modo); setMarca(a.marca); setOcultos(a.ocultos);
+    setRespostaIA(null);
+  }
 
   async function salvar() {
     if (problemas.length && !(await confirmar({ titulo: 'O texto não cabe em todos os formatos', texto: problemas.slice(0, 4).join('\n'), botao: 'Salvar assim mesmo' }))) return;
@@ -281,6 +309,21 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
         </div>
 
         <div className="min-w-0 space-y-3">
+          <div className="rounded-lg border border-accent/30 bg-accent-soft/40 p-2">
+            <form className="flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); if (pedido.trim() && !pedindo) pedirIA(); }}>
+              <Sparkles size={15} className="shrink-0 text-accent" />
+              <input value={pedido} onChange={(e) => setPedido(e.target.value)} maxLength={300} aria-label="Pedir à IA"
+                placeholder={'Peça à IA: "deixa vermelho", "tira o preço"…'}
+                className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-3 focus:outline-none" />
+              <Button size="sm" variant="primary" type="submit" disabled={!pedido.trim() || pedindo}>{pedindo ? 'Pedindo…' : 'Pedir'}</Button>
+            </form>
+            {respostaIA && (
+              <p className="mt-1.5 text-2xs leading-relaxed text-ink-2">
+                {respostaIA.texto}
+                {respostaIA.antes && <button type="button" onClick={desfazerIA} className="ml-1.5 font-semibold text-accent hover:underline">Desfazer</button>}
+              </p>
+            )}
+          </div>
           <div className="flex flex-wrap gap-1 rounded-lg border border-line bg-surface-2 p-1" role="tablist" aria-label="O que editar">
             {ABAS.map(([id, nome]) => (
               <button key={id} type="button" role="tab" aria-selected={aba === id} onClick={() => setAba(id)}

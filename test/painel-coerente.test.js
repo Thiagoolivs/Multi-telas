@@ -78,7 +78,8 @@ test('itens 30 e 31: a faixa é uma lista, as campanhas da TV se contam e se tir
   assert.equal(T.proporcaoDoLayout({ orientation: 'portrait' }), '9 / 16');
   // A página da TV usa as peças da faixa, o desenho e as campanhas.
   const tv = semComentarios(ler('web/src/pages/ContentEditorPage.jsx'));
-  assert.match(tv, /<MapaDaTela layout=\{layoutCanonico\} ativa=\{activeZone && activeZone\.id\} onEscolher=\{selectZone\} resumo=\{resumoDaZona\} \/>/);
+  // D20: o mapa mostra o que passa em cada zona (cfg) e tem o botão de IA dentro da zona.
+  assert.match(tv, /<MapaDaTela layout=\{layoutCanonico\} ativa=\{activeZone && activeZone\.id\} onEscolher=\{selectZone\} resumo=\{resumoDaZona\}\s+cfg=\{cfg\} onIA=\{onCriar \? \(z\) => onCriar\(papelDaZona\(z\)\) : undefined\} \/>/);
   assert.match(tv, /<CampanhasNaTela cfg=\{cfg\} onTirar=\{tirarCampanha\}/);
   assert.doesNotMatch(tv, /function PecaDaZona/, 'a peça única de antes saiu');
   const faixa = semComentarios(ler('web/src/components/tela/FaixaDaTela.jsx'));
@@ -215,7 +216,7 @@ test('item 40: Programação tem aba própria; Telas fica com o aparelho', async
   assert.match(app, /if \(r\.name === 'content'\) return '\/app\/\?ir=programacao';/);
   const p = semComentarios(ler('web/src/pages/ProgramacaoPage.jsx'));
   // Desde o D3 a parte tocada abre o editor JÁ nela (antes ignorava a zona).
-  assert.match(p, /<MapaDaTela layout=\{layout\} onEscolher=\{\(z\) => editar\(d, z && z\.id\)\} resumo=\{resumoDaZona\(cfg\)\} \/>/);
+  assert.match(p, /<MapaDaTela layout=\{layout\} onEscolher=\{\(z\) => editar\(d, z && z\.id\)\} resumo=\{resumoDaZona\(cfg\)\} cfg=\{cfg\} \/>/);
   assert.match(p, /onIr\('content', \{ device: d, \.\.\.\(zona \? \{ zona \} : \{\}\) \}\)/);
   assert.doesNotMatch(ler('js/seasons.js'), /Raft/, 'os pacotes de data não falam da empresa de exemplo');
 });

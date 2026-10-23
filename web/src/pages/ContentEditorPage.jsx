@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'react';
 import {
-  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info, CalendarClock, MessageSquare, LayoutTemplate } from 'lucide-react';
+  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info, CalendarClock, MessageSquare, LayoutTemplate, Pencil } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
@@ -9,6 +9,7 @@ import { temAgenda, resumoAgenda } from '../lib/agenda.js';
 import { emitir, aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { ItemForm } from '../components/content/ItemForm.jsx';
+import { EditarPeca } from '../components/content/EditarPeca.jsx';
 import { ItemPreview } from '../components/content/ItemPreview.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { TypePicker } from '../components/content/TypePicker.jsx';
@@ -18,7 +19,7 @@ import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
 import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
 import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
 import { FaixaDaTela, pecasDaFaixa, comPecas } from '../components/tela/FaixaDaTela.jsx';
-import { papelDaZona, campanhasDaConfig } from '../lib/tela.js';
+import { papelDaZona, campanhasDaConfig, tamanhosDasZonas } from '../lib/tela.js';
 import { CampanhasNaTela, semCampanha } from '../components/tela/CampanhasNaTela.jsx';
 import { criar } from '../api.js';
 // Editor visual (react-moveable) carregado sob demanda — não pesa o painel.
@@ -77,6 +78,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   const [selected, setSelected] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [compOpen, setCompOpen] = useState(false); // editor visual da composição
+  // D20: a peça em HTML da TV abre no editor de peça (textos, cor, fonte, elementos, desenho e o pedido à IA).
+  const [editandoPeca, setEditandoPeca] = useState(false);
   const [modeloAberto, setModeloAberto] = useState(false); // galeria de modelos
   const [picker, setPicker] = useState(false);
   const [campOpen, setCampOpen] = useState(false);
@@ -149,6 +152,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     const id = cfg && cfg.settings && cfg.settings.layoutId;
     return globalThis.MT_getLayout ? globalThis.MT_getLayout(id) : null;
   }, [cfg]);
+  // O tamanho real de cada zona (D20): onde a peça é desenhada e conferida ao editar.
+  const tamanhosTV = useMemo(() => tamanhosDasZonas(layoutCanonico), [layoutCanonico]);
 
   // O que gira em cada zona, em poucas palavras, para o desenho da TV.
   function resumoDaZona(z) {
@@ -604,7 +609,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
           <div className="mb-4 space-y-3">
             <CampanhasNaTela cfg={cfg} onTirar={tirarCampanha} onAbrir={onIr ? abrirCampanha : null} />
             {layoutCanonico && (
-              <MapaDaTela layout={layoutCanonico} ativa={activeZone && activeZone.id} onEscolher={selectZone} resumo={resumoDaZona} />
+              <MapaDaTela layout={layoutCanonico} ativa={activeZone && activeZone.id} onEscolher={selectZone} resumo={resumoDaZona}
+                cfg={cfg} onIA={onCriar ? (z) => onCriar(papelDaZona(z)) : undefined} />
             )}
           </div>
 
@@ -699,6 +705,12 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                       </div>
                       <div>
                         <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Conteúdo</div>
+                        {current.type === 'peca-html' && (
+                          <div className="mb-3">
+                            <Button variant="primary" icon={Pencil} className="w-full" onClick={() => setEditandoPeca(true)}>Editar a peça</Button>
+                            <p className="mt-1.5 text-2xs text-ink-3">Textos, cores, fonte, o que aparece, outro desenho — ou peça à IA o que mudar.</p>
+                          </div>
+                        )}
                         {current.type === 'composicao' && (
                           <Button variant="primary" icon={LayoutGrid} className="mb-3 w-full" onClick={() => setCompOpen(true)}>
                             Abrir editor visual ({(current.elementos && current.elementos.length) || 0} elemento(s))
@@ -757,6 +769,13 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
         </Suspense>
       )}
 
+      {/* A peça é conferida no tamanho da zona desta TV; salvar muda o rascunho (publica no "Publicar na TV"). */}
+      {editandoPeca && current && current.type === 'peca-html' && (
+        <EditarPeca item={current} label={itemSummary(current)}
+          lugar={activeZone && layoutCanonico ? { nome: activeZone.name.replace(/\s*\(.*\)$/, ''), tamanho: tamanhosTV[activeZone.id] || [1920, 1080] } : undefined}
+          onFechar={() => setEditandoPeca(false)}
+          onSalvar={async (novo) => { updateItem(selected, { ...current, ...novo }); setEditandoPeca(false); }} />
+      )}
       {compOpen && (novaPeca || (current && current.type === 'composicao')) && (
         <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90"><Spinner size={22} /></div>}>
           <CompositionEditor

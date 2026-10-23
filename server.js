@@ -41,6 +41,7 @@ const motores = require('./server/motores');
 const { AsyncResource } = require('node:async_hooks');
 const director = require('./server/ai-director');
 const compositor = require('./server/compositor');
+const ajustePeca = require('./server/ajuste-peca');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
 const banco = require('./server/banco.js');
@@ -637,6 +638,8 @@ async function handleApi(req, res, pathname, query) {
     guia: 'guia',
     // Redesenhar a peça que não coube (§4.10): texto, medido como a composição.
     'refazer-peca': 'gerar-composicao',
+    // Pedir à IA dentro da peça (D20): texto, só o remendo.
+    'ajustar-peca': 'ajuste-peca',
     // Os textos das redes (item 6): quatro chamadas de texto, um pedido por canal.
     redes: 'redes-sociais',
     // A conversa do Criar (item 21): uma chamada de texto por volta, sem limite de perguntas.
@@ -1919,6 +1922,31 @@ const negocioCache = new Map();
         if (!r.ok) throw new Error('a IA não conseguiu redesenhar a peça agora');
         return { item: Object.assign({}, r.item, { formato: b.item.formato || '16/9' }) };
       });
+    });
+  }
+
+  /*
+   * ----- IA: pedir dentro da peça (EXECUTOR D20) -----
+   * "Deixa vermelho", "título mais curto", "tira o preço": a IA devolve só o
+   * que muda (server/ajuste-peca.js) e o painel mostra antes de aceitar.
+   * Nada é gravado aqui — quem grava é a TV (ou a campanha) ao salvar.
+   */
+  if (parts[1] === 'ai' && parts[2] === 'ajustar-peca') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:ajustar-peca:' + sess.tenant_id, 60, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de pedidos por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      if (!b || !b.item || b.item.type !== 'peca-html') return sendJson(res, 400, { error: 'envie a peça em HTML' });
+      const pedido = String((b && b.pedido) || '').trim();
+      if (!pedido) return sendJson(res, 400, { error: 'diga o que mudar' });
+      try {
+        return sendJson(res, 200, await ajustePeca.ajustar(b.item, pedido.slice(0, 500)));
+      } catch (e) {
+        if (e.status === 400) return sendJson(res, 400, { error: e.message });
+        erros.registrar(e, { rota: '/api/ai/ajustar-peca' });
+        return sendJson(res, 502, { error: 'a IA não conseguiu agora; tente de novo' });
+      }
     });
   }
 

@@ -105,3 +105,34 @@ export function cabeNaZona(peca, zona) {
   const zonaEmPe = (zona && zona.formato === 'retrato') || alvo === 'lateral';
   return emPe === zonaEmPe ? 2 : 1;
 }
+
+/*
+ * O tamanho real de cada zona do layout, em pixels de TV (1080 no lado
+ * menor), medido com a mesma grade do player — fresta e margem de 1,1% da
+ * altura. É nesse tamanho que a prévia desenha a peça da zona (D20) e que o
+ * editor de peça confere o texto: menor, a peça cairia em outra regra de
+ * @container e mostraria outro desenho. Só no navegador (usa o DOM).
+ */
+export function tamanhosDasZonas(layout) {
+  if (!layout || !layout.grid || typeof document === 'undefined') return {};
+  const emPe = (layout.orientation || '') === 'portrait';
+  const W = emPe ? 1080 : 1920;
+  const H = emPe ? 1920 : 1080;
+  const px = (v) => String(v || '').replace(/(-?[\d.]+)v([hw])/g, (_, n, u) => (Number(n) * (u === 'h' ? H : W) / 100) + 'px');
+  const tv = document.createElement('div');
+  tv.style.cssText = 'position:fixed;left:-30000px;top:0;box-sizing:border-box;display:grid;width:' + W + 'px;height:' + H + 'px;gap:' + (0.011 * H) + 'px;padding:' + (0.011 * H) + 'px';
+  tv.style.gridTemplateColumns = px(layout.grid.columns);
+  tv.style.gridTemplateRows = px(layout.grid.rows);
+  tv.style.gridTemplateAreas = (layout.grid.areas || []).map((a) => '"' + a + '"').join(' ');
+  const caixas = layout.zones.map((z) => {
+    const c = document.createElement('div');
+    c.style.gridArea = z.area;
+    tv.appendChild(c);
+    return [z.id, c];
+  });
+  document.body.appendChild(tv);
+  const saida = {};
+  for (const [id, c] of caixas) saida[id] = [c.offsetWidth, c.offsetHeight];
+  tv.remove();
+  return saida;
+}

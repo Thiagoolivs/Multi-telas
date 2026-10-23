@@ -239,6 +239,8 @@ export const ai = {
   // Redesenha a peça em HTML que não coube; devolve { item }.
   refazerPeca: (item, problemas, onEtapa, sinal) =>
     rodar('/api/ai/refazer-peca', { item, problemas }, 'peca', onEtapa, sinal),
+  // Pedir à IA dentro da peça (D20): devolve { resposta, remendo, mudou } — só o que muda, sem gravar.
+  ajustarPeca: (item, pedido) => api('POST', '/api/ai/ajustar-peca', { item, pedido }),
 
   // Chat de briefing: uma pergunta por vez até a IA entender a campanha.
   // Continua síncrono: é uma conversa, e conversa que responde por polling
