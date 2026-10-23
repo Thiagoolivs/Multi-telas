@@ -5,11 +5,10 @@
  * e uma segunda cópia é como as duas acabariam divergindo: uma mandaria a
  * peça em pé para a lateral e a outra, para a principal.
  */
-import { deviceConfig } from '../api.js';
-import { primaryZoneKey, defaultConfig } from './contentTypes.js';
+import { primaryZoneKey } from './contentTypes.js';
 import { aplicarConteudo, distribuirPorZona, agendarPeca } from './aplicarConteudo.js';
 import { zonesOf } from './screenConfig.js';
-import { aplicarPeca, zonasPorPapel } from './rodar.js';
+import { aplicarPeca, zonasPorPapel, gravarNaTela } from './rodar.js';
 
 // Peça de cabeçalho ou de rodapé: vai para a lista da faixa, nunca para uma playlist.
 const ehFaixa = (p) => { const papel = (p.item && p.item.papel) || p.papel; return papel === 'cabecalho' || papel === 'rodape'; };
@@ -29,10 +28,14 @@ export async function publicarPecas({ alvos, pecas: todas, titulo, telas, dias =
   const faixas = todas.filter(ehFaixa);
   const pecas = todas.filter((p) => !ehFaixa(p));
   for (const id of alvos) {
-    const dev = (telas || []).find((s) => s.id === id);
-    let cfg = null;
-    try { cfg = await deviceConfig.get(id); } catch (e) { /* tela sem config ainda */ }
-    if (!cfg) cfg = defaultConfig(dev ? dev.name : 'Tela');
+    const dev = (telas || []).find((s) => s.id === id) || { id, name: 'Tela' };
+    // A mudança como função da programação: gravarNaTela lê com a versão, e
+    // relê e reaplica se a TV mudou no meio (D0.5). Falha ao ler não vira
+    // mais "TV vazia" gravada por cima da programação real.
+    await gravarNaTela(dev, (cfg) => montar(cfg));
+  }
+
+  function montar(cfg) {
     /*
      * Peça em pé vai para a zona em pé. Antes tudo caía na principal e a
      * lateral seguia com a cara de sempre enquanto a campanha rodava ao
@@ -64,6 +67,6 @@ export async function publicarPecas({ alvos, pecas: todas, titulo, telas, dias =
       }
       for (const p of faixas) novaCfg = aplicarPeca(novaCfg, { ...p, campanha: titulo });
     }
-    await deviceConfig.save(id, novaCfg);
+    return novaCfg;
   }
 }

@@ -660,7 +660,8 @@ async function deviceComToken(token, tenantId) {
 
 async function getDeviceByCode(code) { return q.deviceByCode.get(String(code || '').trim().toUpperCase()) || null; }
 async function claimDevice(id, tenantId, name) { q.claimDevice.run(tenantId, name || '', id); }
-async function setDeviceConfig(id, configJson, name) { q.setConfig.run(configJson, name || '', Date.now(), id); }
+// Devolve o instante gravado: é a versão da programação (routes/telas.js, D0.5).
+async function setDeviceConfig(id, configJson, name) { const agora = Date.now(); q.setConfig.run(configJson, name || '', agora, id); return agora; }
 async function renameDevice(id, name) { q.renameDevice.run(name, id); }
 async function setExpediente(id, json) { q.setExpediente.run(json, id); }
 async function setGrupoDaTela(id, grupo) { db.prepare('UPDATE devices SET grupo = ? WHERE id = ?').run(grupo || null, id); }

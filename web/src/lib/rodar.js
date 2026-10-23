@@ -137,9 +137,33 @@ export function tirarCampanha(cfg, entrada, nome) {
   return next;
 }
 
-async function configDa(tela) {
-  try { const c = await deviceConfig.get(tela.id); if (c) return c; } catch (e) { /* tela sem config ainda */ }
-  return defaultConfig(tela.name || 'Tela');
+/*
+ * A programação da TV, com a versão (D0.5). Falha ao ler ESTOURA: antes ela
+ * virava "TV sem programação" e a campanha era gravada sobre o padrão,
+ * apagando o que a TV tinha. Só a TV que de fato não tem programação
+ * (config null) começa do padrão.
+ */
+async function lerDaTela(tela) {
+  const { config, versao } = await deviceConfig.ler(tela.id);
+  return { cfg: config || defaultConfig(tela.name || 'Tela'), versao };
+}
+
+/*
+ * Grava a mudança `fazer(cfg)` na TV sem passar por cima de ninguém. Se a
+ * TV mudou depois da leitura (409 'config-mudou'), relê e aplica de novo a
+ * mesma mudança — ela é uma função da programação, então reaplicar sobre a
+ * versão nova preserva o que a outra pessoa fez.
+ */
+export async function gravarNaTela(tela, fazer, lida) {
+  let atual = lida || await lerDaTela(tela);
+  for (let i = 0; i < 3; i++) {
+    try { return await deviceConfig.save(tela.id, fazer(atual.cfg), atual.versao); }
+    catch (e) {
+      if (e.codigo !== 'config-mudou') throw e;
+      atual = await lerDaTela(tela);
+    }
+  }
+  throw new Error('A programação desta TV está mudando agora. Tente de novo em instantes.');
 }
 
 // O plano antes de rodar: que TV recebe, e quais trocariam de layout.
@@ -147,9 +171,10 @@ export async function planoDeRodar(resultado, telas) {
   const alvos = alvosDaCampanha(resultado, telas);
   const saida = [];
   for (const a of alvos) {
-    const cfg = await configDa(a.tela);
+    const lida = await lerDaTela(a.tela);
+    const cfg = lida.cfg;
     const faltam = zonasQueFaltam(cfg, a.entrada);
-    saida.push({ ...a, cfg, faltam, layoutAtual: (cfg.settings && cfg.settings.layoutId) || '', layoutNovo: faltam.length ? layoutPara(cfg) : '' });
+    saida.push({ ...a, cfg, versao: lida.versao, faltam, layoutAtual: (cfg.settings && cfg.settings.layoutId) || '', layoutNovo: faltam.length ? layoutPara(cfg) : '' });
   }
   return saida;
 }
@@ -157,7 +182,7 @@ export async function planoDeRodar(resultado, telas) {
 export async function rodarCampanha(plano, nome, { trocarLayout } = {}) {
   const ids = [];
   for (const p of plano) {
-    await deviceConfig.save(p.tela.id, aplicarCampanha(p.cfg, p.entrada, nome, { trocarLayout }));
+    await gravarNaTela(p.tela, (cfg) => aplicarCampanha(cfg, p.entrada, nome, { trocarLayout }), { cfg: p.cfg, versao: p.versao });
     ids.push(p.tela.id);
   }
   return ids;
@@ -177,15 +202,13 @@ export function entradaParaTvNova(resultado) {
 export async function porCampanhaNaTela(resultado, nome, tela) {
   const entrada = entradaParaTvNova(resultado);
   if (!entrada) throw new Error('Essa campanha não tem peças para TV.');
-  const cfg = await configDa(tela);
-  await deviceConfig.save(tela.id, aplicarCampanha(cfg, entrada, nome, { trocarLayout: true }));
+  await gravarNaTela(tela, (cfg) => aplicarCampanha(cfg, entrada, nome, { trocarLayout: true }));
 }
 
 export async function pausarCampanha(resultado, nome, telas, ids) {
   const alvos = alvosDaCampanha(resultado, telas).filter((a) => !ids || ids.includes(a.tela.id));
   for (const a of alvos) {
-    const cfg = await configDa(a.tela);
-    await deviceConfig.save(a.tela.id, tirarCampanha(cfg, a.entrada, nome));
+    await gravarNaTela(a.tela, (cfg) => tirarCampanha(cfg, a.entrada, nome));
   }
 }
 
@@ -220,7 +243,6 @@ export function aplicarPeca(cfg, peca) {
 export async function porPecaNasTelas(peca, ids, telas) {
   for (const id of ids) {
     const tela = (telas || []).find((t) => t.id === id) || { id, name: 'Tela' };
-    const cfg = await configDa(tela);
-    await deviceConfig.save(id, aplicarPeca(cfg, peca));
+    await gravarNaTela(tela, (cfg) => aplicarPeca(cfg, peca));
   }
 }

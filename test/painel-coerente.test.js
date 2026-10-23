@@ -229,9 +229,11 @@ test('item 42: Meus Designs publica faixa na faixa, pelo mesmo caminho das Peça
   const api = await import(pathToFileURL(path.join(RAIZ, 'web/src/api.js')).href);
   const P = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/publicar.js')).href);
   let salva = { settings: { layoutId: 'corporate' }, zonas: { principal: { items: [] }, cabecalho: { header: true } } };
-  const antes = { get: api.deviceConfig.get, save: api.deviceConfig.save };
+  // Desde o D0.5 a gravação lê com a versão (ler) e devolve a versão (save).
+  const antes = { get: api.deviceConfig.get, ler: api.deviceConfig.ler, save: api.deviceConfig.save };
   api.deviceConfig.get = async () => JSON.parse(JSON.stringify(salva));
-  api.deviceConfig.save = async (_id, c) => { salva = c; };
+  api.deviceConfig.ler = async () => ({ config: JSON.parse(JSON.stringify(salva)), versao: 1 });
+  api.deviceConfig.save = async (_id, c) => { salva = c; return { ok: true, updatedAt: 2 }; };
   try {
     const pecas = [
       { formato: '16/9', item: { type: 'peca-html', html: 'cartaz' } },

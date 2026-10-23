@@ -5,7 +5,7 @@
  * Mantido pequeno de propósito: uma função `api()` e helpers nomeados por
  * endpoint, para as telas não lidarem com fetch cru.
  */
-async function api(method, path, body) {
+async function api(method, path, body, opcoes) {
   const opt = { method, headers: {}, credentials: 'same-origin' };
   if (body !== undefined) {
     opt.headers['Content-Type'] = 'application/json';
@@ -40,7 +40,9 @@ async function api(method, path, body) {
     throw e;
   }
   window.dispatchEvent(new CustomEvent('mt:com-rede'));
-  if (res.status === 204) return null;
+  // `comCabecalhos`: quem precisa ler um cabeçalho (a versão da programação) recebe { data, headers }.
+  const embrulhar = (d) => (opcoes && opcoes.comCabecalhos ? { data: d, headers: res.headers } : d);
+  if (res.status === 204) return embrulhar(null);
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     /*
@@ -53,7 +55,7 @@ async function api(method, path, body) {
     e.codigo = data && (data.erro || data.code);
     throw e;
   }
-  return data;
+  return embrulhar(data);
 }
 
 export const auth = {
@@ -105,7 +107,18 @@ export const devices = {
 export const deviceConfig = {
   // GET retorna null quando a tela ainda não tem config (204 no servidor).
   get: (id) => api('GET', '/api/devices/' + id + '/config'),
-  save: (id, config) => api('PUT', '/api/devices/' + id + '/config', config),
+  /*
+   * A programação COM a versão (EXECUTOR D0.5): { config, versao }.
+   * `config` null = a TV ainda não tem programação. Falha de rede ou do
+   * servidor ESTOURA — nunca vira "TV vazia", que era como uma queda de
+   * rede fazia o painel gravar a programação padrão por cima da real.
+   */
+  ler: async (id) => {
+    const r = await api('GET', '/api/devices/' + id + '/config', undefined, { comCabecalhos: true });
+    return { config: r.data, versao: Number(r.headers.get('X-Config-Versao')) || 0 };
+  },
+  // `versao`: a que foi lida. O servidor recusa (409, code 'config-mudou') se alguém gravou no meio.
+  save: (id, config, versao) => api('PUT', '/api/devices/' + id + '/config' + (versao != null ? '?versao=' + encodeURIComponent(versao) : ''), config),
 };
 
 /*
