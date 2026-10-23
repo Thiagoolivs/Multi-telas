@@ -93,6 +93,13 @@ async function init() {
       aceitando BOOLEAN, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_murais_tenant ON murais(tenant_id);
+    -- O calendário da empresa (D23); ver db-sqlite.js.
+    CREATE TABLE IF NOT EXISTS calendario (
+      id TEXT PRIMARY KEY, tenant_id TEXT, data TEXT, titulo TEXT, tipo TEXT, detalhe TEXT,
+      antecedencia INTEGER, prioridade TEXT, alvo TEXT, item TEXT, telas TEXT, aplicado_em BIGINT,
+      created_at BIGINT, updated_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_calendario_tenant ON calendario(tenant_id, data);
     -- Coluna oculta em vez de DELETE: o botão de pânico precisa ser
     -- instantâneo e reversível. Apagar arquivo de storage no meio de um evento
     -- é irreversível e lento justamente quando a pressa é máxima.
@@ -822,6 +829,42 @@ async function numerosDaPlataforma(agora, vivaDesde, desde) {
 const mapMural = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo, aceitando: !!r.aceitando, createdAt: r.created_at } : null);
 const mapFoto = (r) => ({ id: r.id, url: r.url, autor: r.autor || '', mensagem: r.mensagem || '', oculta: !!r.oculta, createdAt: r.created_at });
 
+/* ---------------- Calendário da empresa (D23) ---------------- */
+const jsonCal = (s, padrao) => { try { return s ? JSON.parse(s) : padrao; } catch (e) { return padrao; } };
+const mapEvento = (r) => (r ? {
+  id: r.id, data: r.data, titulo: r.titulo, tipo: r.tipo, detalhe: r.detalhe || '', antecedencia: Number(r.antecedencia),
+  prioridade: r.prioridade, alvo: jsonCal(r.alvo, { tipo: 'todas' }), item: jsonCal(r.item, null), telas: jsonCal(r.telas, []),
+  aplicadoEm: r.aplicado_em ? Number(r.aplicado_em) : null, createdAt: Number(r.created_at), updatedAt: Number(r.updated_at),
+} : null);
+async function listarCalendario(tenantId) {
+  const r = await pool.query('SELECT * FROM calendario WHERE tenant_id = $1 ORDER BY data, created_at', [tenantId]);
+  return r.rows.map(mapEvento);
+}
+async function eventoDoCalendario(id, tenantId) {
+  const r = await pool.query('SELECT * FROM calendario WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapEvento(r.rows[0]);
+}
+async function salvarEvento(tenantId, ev, id) {
+  const agora = Date.now();
+  const antes = id ? (await pool.query('SELECT * FROM calendario WHERE id = $1 AND tenant_id = $2', [id, tenantId])).rows[0] : null;
+  const valores = [ev.data, ev.titulo, ev.tipo, ev.detalhe || '', ev.antecedencia, ev.prioridade, JSON.stringify(ev.alvo || { tipo: 'todas' }),
+    ev.item ? JSON.stringify(ev.item) : (antes ? antes.item : null), JSON.stringify(ev.telas || (antes ? jsonCal(antes.telas, []) : [])),
+    ev.aplicadoEm != null ? ev.aplicadoEm : (antes ? antes.aplicado_em : null)];
+  if (antes) {
+    await pool.query('UPDATE calendario SET data = $1, titulo = $2, tipo = $3, detalhe = $4, antecedencia = $5, prioridade = $6, alvo = $7, item = $8, telas = $9, aplicado_em = $10, updated_at = $11 WHERE id = $12 AND tenant_id = $13',
+      [...valores, agora, id, tenantId]);
+    return eventoDoCalendario(id, tenantId);
+  }
+  const novo = 'cal_' + rid(12);
+  await pool.query('INSERT INTO calendario (id, tenant_id, data, titulo, tipo, detalhe, antecedencia, prioridade, alvo, item, telas, aplicado_em, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+    [novo, tenantId, ...valores, agora, agora]);
+  return eventoDoCalendario(novo, tenantId);
+}
+async function removerEvento(id, tenantId) {
+  const r = await pool.query('DELETE FROM calendario WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return r.rowCount > 0;
+}
+
 async function criarMural(tenantId, codigo, titulo) {
   const id = 'mur_' + rid(12);
   await pool.query('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, created_at) VALUES ($1,$2,$3,$4,TRUE,$5)',
@@ -1467,6 +1510,7 @@ async function dadosDoTenant(tenantId) {
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
     // seria entregar uma cópia incompleta com cara de completa.
     murais: await varios('SELECT id, codigo, titulo, aceitando, created_at FROM murais WHERE tenant_id = $1'),
+    calendario: await varios('SELECT id, data, titulo, tipo, detalhe, antecedencia, prioridade, alvo, telas, aplicado_em, created_at FROM calendario WHERE tenant_id = $1'),
     fotosDoMural: await varios('SELECT id, mural_id, url, autor, mensagem, ip, oculta, created_at FROM muralfotos WHERE tenant_id = $1'),
     // O que nasceu depois da primeira versão desta exportação (D0.7).
     marcas: await varios('SELECT * FROM marcas WHERE tenant_id = $1'),
@@ -1519,7 +1563,7 @@ async function apagarTenant(tenantId) {
      * consultor; o prazo é do dono com o advogado).
      */
     for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
     await client.query("DELETE FROM banco WHERE tenant_id = $1 AND estado <> 'aprovada'", [tenantId]);
@@ -1679,6 +1723,7 @@ async function relatorioExibicoes(tenantId, de, ate, deviceId) {
 }
 
 module.exports = {
+  listarCalendario, eventoDoCalendario, salvarEvento, removerEvento,
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil, setAutomaticos,

@@ -18,6 +18,7 @@ export const PAGINAS = {
   alerts: 'Alertas',
   screens: 'Telas',
   programacao: 'Programação',
+  calendario: 'Calendário',
   criar: 'Criar',
   criando: 'Criando',
   campanhas: 'Campanhas',
@@ -48,7 +49,8 @@ export const PAGINAS = {
 export const GRUPOS = [
   { id: 'inicio', label: 'Início', paginas: ['overview', 'alerts'] },
   { id: 'telas', label: 'Telas', paginas: ['screens'] },
-  { id: 'programacao', label: 'Programação', paginas: ['programacao'], tambem: ['content'] },
+  // D23: o calendário da empresa vira programação com período — mora ao lado dela.
+  { id: 'programacao', label: 'Programação', paginas: ['programacao', 'calendario'], tambem: ['content'] },
   // "Criando" (D11): o que a IA está fazendo agora e o que terminou hoje.
   { id: 'criar', label: 'Criar', paginas: ['criar', 'criando', 'campanhas', 'designs'], tambem: ['studio', 'campaigns', 'images', 'rapida'] },
   // Mídias por propósito (item 34): o que está pronto para a TV primeiro, depois a matéria-prima.

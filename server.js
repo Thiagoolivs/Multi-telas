@@ -43,6 +43,7 @@ const director = require('./server/ai-director');
 const compositor = require('./server/compositor');
 const ajustePeca = require('./server/ajuste-peca');
 const quizIA = require('./server/quiz-ia');
+const calendario = require('./server/calendario');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
 const banco = require('./server/banco.js');
@@ -536,6 +537,8 @@ function montarCtx() {
     redes: redesRotas(ctx),
     conversas: require('./server/routes/conversas')(ctx),
     campanhas: require('./server/routes/campanhas')(ctx),
+    // O calendário da empresa (D23).
+    calendario: require('./server/routes/calendario')(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -643,6 +646,8 @@ async function handleApi(req, res, pathname, query) {
     'ajustar-peca': 'ajuste-peca',
     // As perguntas do quiz (D21): texto; saem para revisão.
     quiz: 'quiz',
+    // Ler o calendário colado (D23): texto, devolve os eventos para revisar.
+    calendario: 'calendario',
     // Os textos das redes (item 6): quatro chamadas de texto, um pedido por canal.
     redes: 'redes-sociais',
     // A conversa do Criar (item 21): uma chamada de texto por volta, sem limite de perguntas.
@@ -1954,6 +1959,28 @@ const negocioCache = new Map();
   }
 
   /*
+   * ----- IA: ler o calendário da empresa (EXECUTOR D23) -----
+   * O texto colado vira a lista de eventos, que a pessoa revisa antes de
+   * qualquer coisa ir para a TV. Nada é gravado aqui.
+   */
+  if (parts[1] === 'ai' && parts[2] === 'calendario') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:calendario:' + sess.tenant_id, 30, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de leituras por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const texto = String((b && b.texto) || '').trim();
+      if (!texto) return sendJson(res, 400, { error: 'cole o calendário' });
+      try {
+        return sendJson(res, 200, { eventos: await calendario.entender(texto.slice(0, 8000)) });
+      } catch (e) {
+        erros.registrar(e, { rota: '/api/ai/calendario' });
+        return sendJson(res, 502, { error: 'não deu para ler agora; tente de novo' });
+      }
+    });
+  }
+
+  /*
    * ----- IA: as perguntas do quiz (EXECUTOR D21) -----
    * Saem todas como NÃO conferidas: o painel pede a revisão de cada uma e o
    * PUT da config recusa quiz com pergunta pendente.
@@ -2171,6 +2198,7 @@ const negocioCache = new Map();
   if (await ctx.routes.redes(req, res, parts, query, sess)) return;
   if (await ctx.routes.conversas(req, res, parts, query, sess)) return;
   if (await ctx.routes.campanhas(req, res, parts, query, sess)) return;
+  if (await ctx.routes.calendario(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------

@@ -202,6 +202,14 @@ db.exec(`
     aceitando INTEGER, created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_murais_tenant ON murais(tenant_id);
+  -- O calendário da empresa (D23): cada data vira um evento, com a peça
+  -- dele e as TVs em que entrou. item é a peça (JSON) para editar depois.
+  CREATE TABLE IF NOT EXISTS calendario (
+    id TEXT PRIMARY KEY, tenant_id TEXT, data TEXT, titulo TEXT, tipo TEXT, detalhe TEXT,
+    antecedencia INTEGER, prioridade TEXT, alvo TEXT, item TEXT, telas TEXT, aplicado_em INTEGER,
+    created_at INTEGER, updated_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_calendario_tenant ON calendario(tenant_id, data);
   -- Coluna oculta em vez de DELETE: o botão de pânico precisa ser instantâneo e
   -- reversível. Apagar arquivo de storage no meio de um evento é irreversível
   -- e lento justamente quando a pressa é máxima.
@@ -1370,6 +1378,42 @@ async function numerosDaPlataforma(agora, vivaDesde, desde) {
   };
 }
 
+/* ---------------- Calendário da empresa (D23) ---------------- */
+const qCal = {
+  listar: db.prepare('SELECT * FROM calendario WHERE tenant_id = ? ORDER BY data, created_at'),
+  porId: db.prepare('SELECT * FROM calendario WHERE id = ? AND tenant_id = ?'),
+  criar: db.prepare('INSERT INTO calendario (id, tenant_id, data, titulo, tipo, detalhe, antecedencia, prioridade, alvo, item, telas, aplicado_em, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'),
+  atualizar: db.prepare('UPDATE calendario SET data = ?, titulo = ?, tipo = ?, detalhe = ?, antecedencia = ?, prioridade = ?, alvo = ?, item = ?, telas = ?, aplicado_em = ?, updated_at = ? WHERE id = ? AND tenant_id = ?'),
+  remover: db.prepare('DELETE FROM calendario WHERE id = ? AND tenant_id = ?'),
+};
+const json = (s, padrao) => { try { return s ? JSON.parse(s) : padrao; } catch (e) { return padrao; } };
+const mapEvento = (r) => (r ? {
+  id: r.id, data: r.data, titulo: r.titulo, tipo: r.tipo, detalhe: r.detalhe || '', antecedencia: r.antecedencia,
+  prioridade: r.prioridade, alvo: json(r.alvo, { tipo: 'todas' }), item: json(r.item, null), telas: json(r.telas, []),
+  aplicadoEm: r.aplicado_em || null, createdAt: r.created_at, updatedAt: r.updated_at,
+} : null);
+async function listarCalendario(tenantId) { return qCal.listar.all(tenantId).map(mapEvento); }
+async function eventoDoCalendario(id, tenantId) { return mapEvento(qCal.porId.get(id, tenantId)); }
+/*
+ * Grava um evento (novo, ou o mesmo id da conta). O que vem já passou pela
+ * regra (server/calendario.js); aqui só se guarda.
+ */
+async function salvarEvento(tenantId, ev, id) {
+  const agora = Date.now();
+  const antes = id ? qCal.porId.get(id, tenantId) : null;
+  const valores = [ev.data, ev.titulo, ev.tipo, ev.detalhe || '', ev.antecedencia, ev.prioridade, JSON.stringify(ev.alvo || { tipo: 'todas' }),
+    ev.item ? JSON.stringify(ev.item) : (antes ? antes.item : null), JSON.stringify(ev.telas || (antes ? json(antes.telas, []) : [])),
+    ev.aplicadoEm != null ? ev.aplicadoEm : (antes ? antes.aplicado_em : null)];
+  if (antes) {
+    qCal.atualizar.run(...valores, agora, id, tenantId);
+    return mapEvento(qCal.porId.get(id, tenantId));
+  }
+  const novo = 'cal_' + rid(12);
+  qCal.criar.run(novo, tenantId, ...valores, agora, agora);
+  return mapEvento(qCal.porId.get(novo, tenantId));
+}
+async function removerEvento(id, tenantId) { return qCal.remover.run(id, tenantId).changes > 0; }
+
 /* ---------------- Mural de fotos do público ---------------- */
 const qMural = {
   criar: db.prepare('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, created_at) VALUES (?, ?, ?, ?, 1, ?)'),
@@ -1486,6 +1530,7 @@ async function dadosDoTenant(tenantId) {
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
     // seria entregar uma cópia incompleta com cara de completa.
     murais: pega('SELECT id, codigo, titulo, aceitando, created_at FROM murais WHERE tenant_id = ?'),
+    calendario: pega('SELECT id, data, titulo, tipo, detalhe, antecedencia, prioridade, alvo, telas, aplicado_em, created_at FROM calendario WHERE tenant_id = ?'),
     fotosDoMural: pega('SELECT id, mural_id, url, autor, mensagem, ip, oculta, created_at FROM muralfotos WHERE tenant_id = ?'),
     // O que nasceu depois da primeira versão desta exportação (D0.7).
     marcas: pega('SELECT * FROM marcas WHERE tenant_id = ?'),
@@ -1539,7 +1584,7 @@ async function apagarTenant(tenantId) {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     // As tabelas novas ficavam para trás (D0.7); ver db-postgres.js.
     for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }
     db.prepare("DELETE FROM banco WHERE tenant_id = ? AND estado <> 'aprovada'").run(tenantId);
@@ -1710,6 +1755,7 @@ async function estornarPacote(paymentId) {
 }
 
 module.exports = {
+  listarCalendario, eventoDoCalendario, salvarEvento, removerEvento,
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil, setAutomaticos,
