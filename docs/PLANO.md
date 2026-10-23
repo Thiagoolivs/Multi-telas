@@ -928,7 +928,7 @@ estar escrito na página de preços.
 - [ ] **Alerta proativo de tela offline** por e-mail e WhatsApp, em minutos —
       o cliente sabe por nós antes de descobrir sozinho.
 - [x] Print remoto da tela para ver a parede sem ir à loja. *(Telas → olho "Ver a tela agora": a TV manda o ESTADO — layout e o item no ar em cada zona — e o painel desenha com o mesmo desenhista; um navegador não fotografa a própria tela. O servidor só deixa passar item que está salvo na programação (server/ver-tela.js); item que não bate vira "programação antiga, recarregue a TV".)*
-- [ ] Atualização remota do APK.
+- [x] Atualização remota do APK. *(D41: com a chave de release no CI, a main publica o Release `apk-v…`; o servidor confere o sha256 e serve /apk/ultimo.apk; a moldura baixa em segundo plano, avisa no canto e instala com um OK no controle; o painel mostra "App novo". Os boxes com o APK debug de antes reinstalam uma vez.)*
 - [ ] **Canal por tela (estável/beta):** recurso novo liga primeiro nas telas
       beta (o box do dono), e só depois na ótica. É assim que se congela um
       cliente sem congelar o desenvolvimento.
