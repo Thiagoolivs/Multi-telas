@@ -38,9 +38,15 @@ const Perfil = require('../js/perfil.js');
  * mensagem. "O chat se perde nos pedidos e na maioria das vezes regride."
  */
 const JANELA = 30;
-// As decisões da conversa: curtas, poucas, e as mais novas ficam.
-const MAX_DECISOES = 24;
+/*
+ * As decisões da conversa: curtas, poucas, e as mais novas ficam. Vão à IA
+ * em TODA volta, então têm teto de quantidade E de letras (nota do consultor
+ * no #280): uma conversa longa não encarece cada chamada nem bate no teto da
+ * conta. Passou, as mais antigas saem.
+ */
+const MAX_DECISOES = 20;
 const TAM_DECISAO = 160;
+const TETO_LETRAS_DECISOES = 2000;
 
 /*
  * NEM TUDO É CAMPANHA (EXECUTOR D5). A conversa montava campanha para tudo:
@@ -300,7 +306,10 @@ function mesclarDecisoes(atuais, novas, esquecer) {
   for (const d of (Array.isArray(novas) ? novas : []).map(limparDecisao)) {
     if (d && !lista.some((x) => x.toLowerCase() === d.toLowerCase())) lista.push(d);
   }
-  return lista.slice(-MAX_DECISOES);
+  const ultimas = lista.slice(-MAX_DECISOES);
+  let total = ultimas.reduce((s, d) => s + d.length, 0);
+  while (total > TETO_LETRAS_DECISOES && ultimas.length > 1) total -= ultimas.shift().length;
+  return ultimas;
 }
 function textoDasDecisoes(decisoes) {
   const l = mesclarDecisoes(decisoes, [], []);
@@ -553,4 +562,4 @@ async function conversar({ mensagens, escopo, decisoes, ctx } = {}) {
   };
 }
 
-module.exports = { conversar, contexto, conferirEscopo, mesclarEscopo, mesclarDecisoes, textoDasDecisoes, transcricao, pediuParaGerar, tipoDoPedido, ajudaPara, TIPOS, AJUDA, JANELA, SISTEMA };
+module.exports = { conversar, contexto, conferirEscopo, mesclarEscopo, mesclarDecisoes, textoDasDecisoes, MAX_DECISOES, TETO_LETRAS_DECISOES, transcricao, pediuParaGerar, tipoDoPedido, ajudaPara, TIPOS, AJUDA, JANELA, SISTEMA };

@@ -50,7 +50,11 @@ test('as decisões: só acrescenta e esquece (nunca reescreve), sem repetir, com
   assert.deepEqual(d, ['Preço: R$ 9,90', 'Sem foto de gente', 'Só a TV da recepção']);
   d = C.mesclarDecisoes(d, ['Preço: R$ 8,90'], ['preço: r$ 9,90']);
   assert.deepEqual(d, ['Sem foto de gente', 'Só a TV da recepção', 'Preço: R$ 8,90']);
-  assert.equal(C.mesclarDecisoes([], Array.from({ length: 40 }, (_, i) => 'decisão ' + i), []).length, 24);
+  assert.equal(C.mesclarDecisoes([], Array.from({ length: 40 }, (_, i) => 'decisão ' + i), []).length, C.MAX_DECISOES);
+  // Teto de letras (nota do consultor no #280): as mais antigas saem.
+  const longas = C.mesclarDecisoes([], Array.from({ length: 20 }, (_, i) => i + ' ' + 'x'.repeat(150)), []);
+  assert.ok(longas.reduce((s, d) => s + d.length, 0) <= C.TETO_LETRAS_DECISOES);
+  assert.match(longas[longas.length - 1], /^19 /, 'a mais nova saiu');
   assert.equal(C.mesclarDecisoes([], ['a\u0000b' + 'x'.repeat(300)], [])[0].length, 160);
   assert.match(C.textoDasDecisoes([]), /\(nada ainda\)/);
 });
@@ -84,6 +88,38 @@ test('30 voltas com a IA: a decisão da 2ª volta vale na 30ª, no prompt e no e
     assert.match(prompts[29], /O QUE JÁ FOI DECIDIDO[^\n]*\n- Preço: R\$ 9,90/, 'a 30ª volta não recebeu a decisão da 2ª');
     assert.ok(!/o pão de queijo é R\$ 9,90/.test(prompts[29].split('CONVERSA:')[1]), 'a mensagem da 2ª volta ainda estava na janela — o teste não provaria nada');
     assert.deepEqual([escopo.imagens, escopo.telas[0].alvo.id, escopo.nome], ['minhas', 'tv1', 'Promo 30'], 'o escopo regrediu');
+  } finally {
+    ai.mode = modoAntes;
+    ai.callLLM = llmAntes;
+  }
+});
+
+test('o prompt não cresce sem fim: 60 voltas decidindo coisas novas, o tamanho fica estável (nota do consultor no #280)', async () => {
+  const modoAntes = ai.mode;
+  const llmAntes = ai.callLLM;
+  const tamanhos = [];
+  let volta = 0;
+  ai.mode = () => 'gemini';
+  ai.callLLM = async (sistema, usuario) => {
+    volta += 1;
+    tamanhos.push(usuario.length);
+    return JSON.stringify({ tipo: 'campanha', resposta: 'Anotado, volta ' + volta + '.', escopo: {}, decisoes: ['Decisão número ' + volta + ': ' + 'detalhe '.repeat(15)] });
+  };
+  try {
+    let escopo = E.padrao();
+    let decisoes = [];
+    const mensagens = [];
+    for (let i = 1; i <= 60; i++) {
+      mensagens.push({ papel: 'pessoa', texto: 'mais um detalhe, volta ' + i });
+      const out = await C.conversar({ mensagens, escopo, decisoes, ctx: {} });
+      mensagens.push({ papel: 'ia', texto: out.resposta });
+      escopo = out.escopo;
+      decisoes = out.decisoes;
+    }
+    assert.ok(decisoes.reduce((s, d) => s + d.length, 0) <= C.TETO_LETRAS_DECISOES, 'as decisões passaram do teto');
+    const fim = tamanhos.slice(-15);
+    assert.ok(Math.max(...fim) - Math.min(...fim) < 300, 'o prompt continuou crescendo: ' + fim.join(', '));
+    assert.ok(tamanhos[59] < tamanhos[20] + 400, 'a volta 60 ficou muito maior que a 20');
   } finally {
     ai.mode = modoAntes;
     ai.callLLM = llmAntes;
