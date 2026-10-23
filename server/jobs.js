@@ -149,7 +149,12 @@ function criar(tenantId, tarefa, meta) {
     .then(() => tarefa(progresso))
     .then((r) => { job.resultado = r; job.estado = 'pronto'; })
     .catch((e) => {
-      job.erro = (e && e.message) || 'falhou';
+      /*
+       * Erro de IA chega classificado (motores.js): a pessoa lê a frase dele,
+       * em português, e não "Nenhum modelo Gemini retornou… Detalhe: 429
+       * Your project has exceeded…". Erro que já é frase nossa passa direto.
+       */
+      job.erro = (e && e.tipo) ? require('./motores.js').fraseDoErro(e) : ((e && e.message) || 'falhou');
       job.estado = 'erro';
       /*
        * O cliente vê a mensagem; quem opera precisa ver a PILHA.

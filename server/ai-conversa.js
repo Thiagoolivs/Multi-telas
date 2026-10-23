@@ -25,6 +25,7 @@
  * Nunca pergunta cor, fonte nem logo: a Marca já sabe.
  */
 const ai = require('./ai');
+const motores = require('./motores');
 const memoria = require('./ai-memoria');
 const E = require('../js/escopo.js');
 
@@ -142,7 +143,8 @@ function contexto(ctx) {
 }
 
 function transcricao(mensagens) {
-  const todas = Array.isArray(mensagens) ? mensagens : [];
+  // A frase de falha foi para a pessoa, não é fala da IA: não volta para ela.
+  const todas = (Array.isArray(mensagens) ? mensagens : []).filter((m) => !(m && m.falha));
   const janela = todas.slice(-JANELA);
   const cortadas = todas.length - janela.length;
   return (cortadas > 0 ? `(${cortadas} mensagens anteriores já estão resumidas no escopo)\n` : '')
@@ -281,10 +283,19 @@ async function conversar({ mensagens, escopo, ctx } = {}) {
      * A IA caiu no meio: a conversa não some. Volta uma resposta honesta, o
      * escopo como estava, e a pessoa pode tentar de novo ou gerar com o que
      * já tem.
+     *
+     * O motivo vai para os erros do operador. Antes o catch engolia tudo, e o
+     * teto de gasto estourado (23/10) aparecia só como "Não consegui pensar
+     * nisso agora", sem log nenhum. `falha` diz que tipo de falha foi: o
+     * painel mostra "IA fora do ar" diferente de "tente de novo".
      */
+    require('./erros.js').registrar(e, { onde: 'conversa do Criar', tipo: e && e.tipo });
+    const fora = motores.iaIndisponivel(e);
     return {
-      resposta: 'Não consegui pensar nisso agora. Tente mandar de novo, ou gere com o que já combinamos.',
-      sugestoes: [], escopo: atual, pronto: E.temOQueGerar(atual), modo: 'falha',
+      resposta: fora
+        ? 'A IA está fora do ar agora. A conversa está salva: tente de novo daqui a pouco, ou gere com o que já combinamos.'
+        : 'Não consegui responder agora. Tente mandar de novo, ou gere com o que já combinamos.',
+      sugestoes: [], escopo: atual, pronto: E.temOQueGerar(atual), modo: 'falha', falha: fora ? 'fora' : 'passageira',
     };
   }
   const resposta = String((r && r.resposta) || '').trim().slice(0, 900)

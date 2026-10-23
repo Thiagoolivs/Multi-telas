@@ -254,3 +254,25 @@ test('item 37: quando a pessoa manda gerar, a geração começa sem o clique', a
   assert.match(p, /if \(r\.gerar\) gerar\(\{ escopo: E\.normalizar\(r\.conversa\.escopo \|\| \{\}\), conversa: r\.conversa \}\);/);
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'server/routes/conversas.js'), 'utf8'), /gerar: !!out\.gerar/);
 });
+
+test('teto de gasto estourado: a pessoa lê "fora do ar", o operador vê o erro, e a falha não volta para a IA', async (t) => {
+  const motores = require('../server/motores.js');
+  const erros = require('../server/erros.js');
+  const e = motores.erroIA('Your project has exceeded its monthly spending cap.', 429, 'gemini');
+  comIA(t, e);
+  const antes = erros.listar().length;
+  const out = await C.conversar({ mensagens: [{ papel: 'pessoa', texto: 'aviso do banheiro' }], escopo: E.padrao(), ctx: {} });
+  assert.equal(out.modo, 'falha');
+  assert.equal(out.falha, 'fora');
+  assert.match(out.resposta, /fora do ar/);
+  assert.match(out.resposta, /salva/);
+  assert.ok(!/spending/.test(out.resposta));
+  assert.ok(erros.listar().length > antes || erros.listar().some((g) => /spending cap/.test(JSON.stringify(g))), 'o erro foi registrado para o operador');
+
+  const transcricao = C.transcricao([
+    { papel: 'pessoa', texto: 'oi' },
+    { papel: 'ia', texto: out.resposta, falha: true },
+    { papel: 'pessoa', texto: 'e agora?' },
+  ]);
+  assert.ok(!/fora do ar/.test(transcricao), 'a frase de falha não vira fala da IA na próxima volta');
+});
