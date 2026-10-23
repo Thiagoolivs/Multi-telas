@@ -13,6 +13,10 @@ import { lerJornada } from '../lib/jornada.js';
 import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { PaletasSugeridas } from '../components/content/PaletasSugeridas.jsx';
 import { LogoDaMarca } from '../components/content/LogoDaMarca.jsx';
+import { EsbocoDaTela } from '../components/criar/EsbocoDaTela.jsx';
+
+// A frase do letreiro no esboço da Marca, do jeito de cada negócio (D13 + D4).
+const FRASE_DO_PERFIL = { comercio: 'Aberto de segunda a sábado, das 8h às 18h', empresa: 'Reunião geral na sexta, às 9h, no auditório', saude: 'Chegue 15 minutos antes da consulta' };
 import { usePerfil } from '../lib/perfil.js';
 import { cn } from '../lib/cn.js';
 
@@ -360,6 +364,20 @@ export function BrandPage({ onIr }) {
         fonteTitulo={fonteTitulo} fonteApoio={fonteApoio}
         cores={cores} setCores={setCores}
         aplicar={aplicarPaleta} ocupado={busy} />
+
+      {/*
+        O esboço da TV com estas cores (D13): a planta da tela inteira —
+        cabeçalho, principal, lateral e letreiro — antes de qualquer peça.
+      */}
+      <Panel>
+        <PanelHeader title="Como fica na TV" description="Um esboço da tela inteira com as cores e a logo de agora. Muda junto quando você escolhe outra paleta." />
+        <div className="p-4">
+          <div className="mx-auto max-w-xl">
+            <EsbocoDaTela cores={cores} nome={nome && nome !== 'Marca principal' ? nome : (data && data.empresa)} logo={logo ? { url: logo.url, clara: logoClara ? logoClara.url : '', escura: logoEscura ? logoEscura.url : '' } : null}
+              zonas={{ cabecalho: { pecas: 1 }, principal: { pecas: 3 }, lateral: { pecas: 2 }, rodape: { pecas: 1, mensagens: [FRASE_DO_PERFIL[perfil.id] || FRASE_DO_PERFIL.comercio] } }} />
+          </div>
+        </div>
+      </Panel>
 
       {/* 3. Nome e jeito de falar. */}
       <Panel>

@@ -163,7 +163,8 @@ async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso } = {}) 
   const antes = JSON.parse(JSON.stringify(campanha.resultado));
   const r = JSON.parse(JSON.stringify(campanha.resultado));
   const escopo = E.normalizar(campanha.escopo);
-  const m = ctx.marca || {};
+  // As cores da campanha (D13) continuam valendo no ajuste: a peça refeita fala igual às outras.
+  const m = escopo.cores.length ? Object.assign({}, ctx.marca || {}, { cores: escopo.cores }) : (ctx.marca || {});
   const bases = (m.bases || []).filter((b) => b && b.url);
   const { identidade, modo, marcaDaPeca } = eco.identidadeDe(m, (r.identidade || {}).direcao, (r.identidade || {}).estilo);
   const comum = { escopo, ctx, marcaDaPeca, modo, ditos: numerar(r).map((x) => x.peca.label) };
