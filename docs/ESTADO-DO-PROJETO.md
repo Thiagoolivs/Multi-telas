@@ -6,10 +6,41 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **23/10/2026** · 1387 testes passando · Fase 1 do DNA novo
-completa (EXECUTOR §2f, D0.1–D17, PRs #201 a #236).
+Atualizado em: **23/10/2026** · 1419 testes passando · Fases 1 e 2 do DNA
+novo completas (EXECUTOR §2f, D0.1–D22, PRs #201 a #245).
 
 ---
+
+## Rodada 5b — o DNA novo, Fase 2: telas prontas e edição (23/10, PRs #238 a #245)
+
+A prioridade do dono: telas prontas para "só personalizar e publicar", e
+poder mexer em qualquer peça. O consultor revisou cada PR (notas viraram
+os PRs #241 e #244).
+
+- **Telas prontas** (D18): lote 1 com 20 telas no manifesto (8 Comércio, 6
+  Empresa, 6 Saúde; as 12 estruturas), em estado `proposta` até o dono
+  aprovar na bancada (`/bancada.html` › Tela completa › "Lote 1"). A
+  bancada confere a tela inteira com o detector do painel. No painel,
+  **Mídias › Telas prontas** mostra só as aprovadas, com a marca da conta;
+  "Trocar textos" confere no tamanho da zona; "Pôr na TV" grava com versão.
+  Nada da empresa de exemplo (nome, telefone, endereço, @, site) chega à TV
+  do cliente — testado em todas as telas do manifesto (#241).
+- **Editar qualquer peça** (D19): o editor de peça ganhou Cor e fonte,
+  Elementos (esconder; a porta guarda `ocultos` e o campo vai vazio para a
+  TV antiga) e Desenho (outra peça da família, com os textos).
+- **IA dentro da peça e zonas** (D20): "Peça à IA" devolve só o remendo
+  (`server/ajuste-peca.js`, nunca HTML); o editor da TV abre a peça em HTML;
+  o mapa da TV mostra o que passa em cada zona e tem o botão IA nela.
+- **Quiz com cronômetro** (D21, `js/quiz.js`): a IA escreve, a pessoa
+  confere; o servidor recusa publicar pergunta não conferida e a TV só
+  desenha a conferida. SW em v50.
+- **Planos** (D22): o pago de hoje se chama **Essencial** (id `pro`
+  mantido); **Pro** (IA integrada, R$ 179) aparece "em breve, ainda não
+  disponível" — o checkout recusa até a Fase 3 existir.
+
+**Esperando o dono**: aprovar o lote 1 na bancada (os lotes 2 a 4 saem
+depois disso), confirmar o preço do Essencial (R$ 149, anotado pelo
+consultor) e decidir o lançamento. **Próximo**: Fase 3 (D23–D29).
 
 ## Rodada 5 — o DNA novo, Fase 1 (23/10, PRs #201 a #236)
 
