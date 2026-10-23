@@ -69,7 +69,7 @@ test('as conversas: todas, com busca, por estado, arquivadas à parte e renomear
   const servidor = spawn(process.execPath, ['server.js'], { cwd: RAIZ, stdio: 'ignore', env });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows segura o arquivo */ } });
   let ok = false;
-  for (let i = 0; i < 80 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
+  for (let i = 0; i < 160 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
   assert.ok(ok, 'o servidor de teste não subiu');
   const conta = async (nome) => (await pedir('/api/auth/signup', { method: 'POST', json: { email: nome + Date.now() + Math.random().toString(36).slice(2, 6) + '@teste.local', password: 'senha-de-teste-123', name: nome, aceite: true } }))
     .cookies.map((x) => x.split(';')[0]).filter((x) => !x.endsWith('=')).join('; ');

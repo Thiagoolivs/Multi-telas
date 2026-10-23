@@ -8,6 +8,7 @@ import { CartaoEscopo, linhaDoCusto } from '../components/criar/CartaoEscopo.jsx
 import { ListaDeConversas } from '../components/criar/ListaDeConversas.jsx';
 import { Combinado } from '../components/criar/Combinado.jsx';
 import { BotaoAnexar, ReferenciasDoChat, imagensDoColar } from '../components/criar/ReferenciasDoChat.jsx';
+import { AprovarEsboco } from '../components/criar/AprovarEsboco.jsx';
 import { prepararFoto } from '../lib/subir.js';
 import { ai, criar, devices, seasons, brand } from '../api.js';
 import { ideiaDaData } from '../lib/ideiaDaData.js';
@@ -42,6 +43,10 @@ import { cn } from '../lib/cn.js';
  *   - a conversa que já virou campanha abre só para ler, com o caminho para
  *     ela em Criados (é lá que se edita, à mão ou com a IA).
  *
+ * SÓ GERA COM O ESBOÇO APROVADO (D42): "Gerar" (ou "pode gerar" na conversa)
+ * abre a planta de cada TV com o que vai em cada parte; "Aprovar e gerar"
+ * grava a aprovação DESTE escopo no servidor, que recusa gerar qualquer outro.
+ *
  * Os quatro passos de antes continuam em "Criação rápida", para quem já
  * sabe o que quer.
  */
@@ -65,7 +70,7 @@ function cartaoInicial(nome, objetivo, telaId, imagens, zona) {
   return E.normalizar({ ...base, nome, objetivo, imagens: imagens || base.imagens });
 }
 
-export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial, onIr }) {
+export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial, conversaInicial, aprovarInicial, onIr }) {
   const [conversa, setConversa] = useState(null);   // { id, mensagens, escopo, estado, titulo, campanhaId }
   const [mensagens, setMensagens] = useState([]);
   const perfil = usePerfil();
@@ -90,6 +95,9 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   const [versaoDaLista, setVersaoDaLista] = useState(0);
   const [verConversas, setVerConversas] = useState(false);
   const [enviandoImagem, setEnviandoImagem] = useState(false);
+  // D42: o esboço esperando a aprovação ({ escopo, conversa }) e o aprovar em andamento.
+  const [paraAprovar, setParaAprovar] = useState(null);
+  const [aprovando, setAprovando] = useState(false);
   const caixa = useRef(null);
   const fim = useRef(null);
   const salvarCartao = useRef(null);
@@ -117,8 +125,10 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       if (ideia && ideiaInicial === 'data') usarIdeia(ideia);
     }).catch(() => {});
     const id = lerGuarda();
+    // Vindo de Criando (D42): a conversa que espera a aprovação, já com o esboço aberto.
+    if (conversaInicial) abrir(conversaInicial, { aprovar: !!aprovarInicial });
     // Quem veio de "Criar para a data" quer a data, não a conversa de ontem por cima dela (D3).
-    if (id && !opcaoInicial && !telaInicial && !ideiaInicial) abrir(id, { sozinha: true });
+    else if (id && !opcaoInicial && !telaInicial && !ideiaInicial) abrir(id, { sozinha: true });
     // Uma geração que estava rodando quando a aba fechou: volta a acompanhar.
     const pendente = criar.pendente();
     if (pendente) acompanhar(pendente.id);
@@ -142,6 +152,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       setPronto(c.estado === 'entendido' || c.estado === 'gerado');
       setTexto('');
       guardar(c.estado === 'gerado' ? '' : c.id);
+      if (o && o.aprovar && c.estado !== 'gerado' && E.temOQueGerar(c.escopo || {})) setParaAprovar({ escopo: E.normalizar(c.escopo), conversa: c });
     } catch (e) {
       // Conversa que não existe mais é esquecida; falha de rede é dita (antes: silêncio, sem spinner).
       if (e && e.status === 404) guardar('');
@@ -163,8 +174,8 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       setPronto(!!r.pronto);
       guardar(r.conversa.id);
       if (!conversa) setVersaoDaLista((v) => v + 1);
-      // A pessoa mandou gerar: começa sem esperar o clique (EXECUTOR §2d, item 37).
-      if (r.gerar) gerar({ escopo: E.normalizar(r.conversa.escopo || {}), conversa: r.conversa });
+      // A pessoa mandou gerar (item 37): o esboço abre para ela aprovar — gerar só depois (D42).
+      if (r.gerar) setParaAprovar({ escopo: E.normalizar(r.conversa.escopo || {}), conversa: r.conversa });
     } catch (e) {
       setErro(e.message || 'A conversa falhou. Tente mandar de novo.');
       setMensagens((m) => m.slice(0, -1));
@@ -176,6 +187,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   function mudarCartao(novo) {
     setEscopo(novo);
     if (!conversa) return;
+    setConversa((c) => (c ? { ...c, esboco: null } : c));
     clearTimeout(salvarCartao.current);
     // O ajuste no cartão não pode se perder calado: falhou, a pessoa sabe (D3).
     salvarCartao.current = setTimeout(() => {
@@ -218,20 +230,45 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     if (onIr) onIr('campanhas', { campanha: c.id });
   }
 
-  // Do botão, usa o estado da tela; da conversa (a pessoa mandou gerar), o que acabou de voltar.
+  // "Gerar": primeiro o esboço (D42). O texto que ficou na caixa vale como pedido, como antes.
+  function pedirAprovacao() {
+    if (!E.temOQueGerar(escopo) || gerando || criada) return;
+    const extra = texto.trim();
+    const pedido = extra && !escopo.objetivo ? { ...escopo, objetivo: extra.slice(0, 300) } : escopo;
+    setParaAprovar({ escopo: E.normalizar(pedido), conversa });
+  }
+  // "Aprovar e gerar": grava a aprovação deste escopo e começa.
+  async function aprovarEGerar() {
+    if (!paraAprovar || aprovando) return;
+    setAprovando(true); setErro('');
+    try {
+      const r = await criar.aprovarEsboco(paraAprovar.conversa && paraAprovar.conversa.id, paraAprovar.escopo);
+      setConversa(r.conversa);
+      guardar(r.conversa.id);
+      if (!paraAprovar.conversa) setVersaoDaLista((v) => v + 1);
+      const esc = paraAprovar.escopo;
+      setParaAprovar(null);
+      gerar({ escopo: esc, conversa: r.conversa });
+    } catch (e) { setErro(e.message || 'Não deu para aprovar o esboço. Tente de novo.'); setParaAprovar(null); }
+    finally { setAprovando(false); }
+  }
+
+  // Só com o esboço aprovado (D42): o escopo e a conversa que acabaram de ser aprovados.
   async function gerar(daConversa) {
     const esc = (daConversa && daConversa.escopo) || escopo;
     const conv = (daConversa && daConversa.conversa) || conversa;
     if (!E.temOQueGerar(esc) || gerando || criada) return;
     setErro('');
-    // O texto que ficou na caixa vale como pedido, mesmo sem ter sido enviado.
-    const extra = daConversa ? '' : texto.trim();
-    const pedido = extra && !esc.objetivo ? { ...esc, objetivo: extra.slice(0, 300) } : esc;
+    const pedido = esc;
     setGerando({ etapa: 'começando', segundos: 0 });
     try {
       const r = await criar.gerar({ conversaId: conv ? conv.id : undefined, escopo: pedido }, setGerando);
       if (r && r.campanha) terminou(r.campanha);
-    } catch (e) { setErro(e.message || 'Não deu para criar agora. Tente de novo em instantes.'); }
+    } catch (e) {
+      // O esboço mudou (ou não foi aprovado) entre o aprovar e o gerar: mostra de novo.
+      if (e.codigo === 'esboco-nao-aprovado') setParaAprovar({ escopo: E.normalizar(pedido), conversa: conv });
+      else setErro(e.message || 'Não deu para criar agora. Tente de novo em instantes.');
+    }
     finally { setGerando(null); }
   }
 
@@ -292,11 +329,11 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
   const botaoGerar = (
     <div className="space-y-1.5">
-      <Button variant={pronto || !conversando ? 'primary' : 'secondary'} size="lg" icon={pronto ? Wand2 : Zap} disabled={!podeGerar || !!gerando} onClick={() => gerar()} className="w-full justify-center">
+      <Button variant={pronto || !conversando ? 'primary' : 'secondary'} size="lg" icon={pronto ? Wand2 : Zap} disabled={!podeGerar || !!gerando} onClick={pedirAprovacao} className="w-full justify-center">
         {pronto || !conversando ? 'Gerar' : 'Gerar já'}
       </Button>
       <p className="text-center text-2xs text-ink-3">
-        {podeGerar ? linhaDoCusto(escopo) + '. Conversar não gasta nada.' : 'Conte o que você quer mostrar, ou toque numa ideia.'}
+        {podeGerar ? linhaDoCusto(escopo) + '. Antes de gerar, você confere o esboço.' : 'Conte o que você quer mostrar, ou toque numa ideia.'}
       </p>
     </div>
   );
@@ -365,6 +402,8 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     <div className="mx-auto max-w-7xl xl:grid xl:grid-cols-[15rem_minmax(0,1fr)] xl:items-start xl:gap-6">
       {/* No computador, as conversas ficam sempre à mão (D47). */}
       <aside className="hidden xl:sticky xl:top-4 xl:block xl:h-[calc(100vh-9rem)]" aria-label="Conversas">{lista}</aside>
+      <AprovarEsboco aberto={!!paraAprovar} escopo={paraAprovar && paraAprovar.escopo} marca={marca} telas={telas} decisoes={decisoes}
+        ocupado={aprovando} onAprovar={aprovarEGerar} onFechar={() => setParaAprovar(null)} />
       <Dialog open={verConversas} onClose={() => setVerConversas(false)} title="Conversas" description="Continue de onde parou, ou veja as que viraram campanha.">
         <div className="h-[60vh]">{lista}</div>
       </Dialog>

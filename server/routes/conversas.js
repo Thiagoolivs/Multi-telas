@@ -10,6 +10,8 @@
  *   PUT  /api/conversas/:id      { titulo } renomeia; { arquivada } arquiva (D49);
  *                                 { decisoes } corrige o que foi decidido (D48);
  *                                 { referencias } muda o uso ou tira uma imagem (D45);
+ *   POST /api/conversas/esboco   { id?, escopo }: APROVA o esboço deste escopo (D42) — sem
+ *                                 aprovação do escopo exato, o gerador não roda
  *   POST /api/conversas/referencia?uso=estilo|produto        imagem nova numa conversa nova (D45)
  *   POST /api/conversas/:id/referencia?uso=estilo|produto    imagem nova nesta conversa
  *     o corpo são os bytes da imagem (PNG, JPEG ou WEBP, conferidos pelos bytes)
@@ -30,6 +32,7 @@ const memory = require('../ai-memoria');
 const E = require('../../js/escopo.js');
 const paleta = require('../paleta.js');
 const refs = require('../referencias.js');
+const esboco = require('../esboco.js');
 
 // O que a conversa guarda. Mais que isso, as mais antigas saem: o escopo já as resume.
 const MAX_MENSAGENS = 200;
@@ -123,6 +126,8 @@ module.exports = function (ctx) {
           escopo: out.escopo,
           decisoes: out.decisoes || (atual && atual.decisoes) || [],
           referencias: (atual && atual.referencias) || [],
+          // D42: a aprovação vale só para o escopo aprovado; a conversa mudou o escopo, cai.
+          esboco: atual && esboco.valeParaEste(atual.esboco, out.escopo) ? atual.esboco : null,
           estado: manter ? ((atual && atual.estado) || 'conversando') : (out.pronto ? 'entendido' : 'conversando'),
           campanhaId: (atual && atual.campanhaId) || '',
         };
@@ -166,6 +171,28 @@ module.exports = function (ctx) {
      * Todas as conversas (D49), não só as 20 últimas: busca pelo título,
      * `estado` = andamento | criadas, arquivadas à parte e páginas de 30.
      */
+    /*
+     * APROVAR O ESBOÇO (D42): a pessoa viu a planta da TV com o que vai em
+     * cada parte e disse "pode". Grava a chave DESTE escopo; o gerador confere.
+     * Sem conversa ainda (o "Gerar" direto de uma ideia), ela nasce aqui.
+     */
+    if (parts.length === 3 && parts[2] === 'esboco') {
+      if (req.method !== 'POST') { sendJson(res, 405, { error: 'método inválido' }); return true; }
+      readBody(req, res, async (b) => {
+        const c = await contexto(sess.tenant_id);
+        const escopo = conversa.conferirEscopo(b && b.escopo, c);
+        if (!E.temOQueGerar(escopo)) return sendJson(res, 400, { error: 'ainda não tem nada para aprovar: diga o que quer mostrar' });
+        const id = b && typeof b.id === 'string' ? b.id : '';
+        const atual = id ? await db.lerConversa(sess.tenant_id, id) : null;
+        if (id && (!atual || atual.tipo === 'edicao')) return sendJson(res, 404, { error: 'conversa não encontrada' });
+        if (atual && atual.estado === 'gerado') return sendJson(res, 409, { error: 'esta conversa já virou campanha: edite em Criados', code: 'ja-gerada' });
+        const base = atual || await db.criarConversa(sess.tenant_id, sess.user_id, { titulo: escopo.nome || 'Nova conversa', mensagens: [], escopo, estado: 'entendido', campanhaId: '', decisoes: [], referencias: [] });
+        const salva = await db.salvarConversa(sess.tenant_id, base.id, { ...base, escopo, esboco: esboco.aprovar(escopo) });
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'criar.esboco-aprovado');
+        return sendJson(res, 200, { conversa: salva });
+      });
+      return true;
+    }
     if (parts.length === 3 && parts[2] === 'referencia') {
       if (req.method !== 'POST') { sendJson(res, 405, { error: 'método inválido' }); return true; }
       await receberReferencia(req, res, sess, query, null);
@@ -216,7 +243,9 @@ module.exports = function (ctx) {
           if (!b || !b.escopo || typeof b.escopo !== 'object') return sendJson(res, 400, { error: 'envie o escopo' });
           const c = await contexto(sess.tenant_id);
           const escopo = conversa.conferirEscopo(b.escopo, c);
-          const salva = await db.salvarConversa(sess.tenant_id, id, { ...atual, escopo, titulo: escopo.nome || atual.titulo });
+          // O cartão mudado à mão também derruba a aprovação do esboço (D42).
+          const aprovado = esboco.valeParaEste(atual.esboco, escopo) ? atual.esboco : null;
+          const salva = await db.salvarConversa(sess.tenant_id, id, { ...atual, escopo, esboco: aprovado, titulo: escopo.nome || atual.titulo });
           return sendJson(res, 200, { conversa: salva, custo: E.custo(escopo) });
         });
         return true;

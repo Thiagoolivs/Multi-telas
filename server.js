@@ -1847,6 +1847,14 @@ const negocioCache = new Map();
     return readBody(req, res, async (b) => {
       const brief = b && b.brief;
       if (!brief || !String(brief).trim()) return sendJson(res, 400, { error: 'descreva a campanha' });
+      /*
+       * D42: gerar só o que foi aprovado. Ou é o PLANO (apenasPlano, nenhum
+       * crédito sai) ou é a geração do plano que a pessoa aprovou na tela de
+       * confirmação. Chamar direto, sem plano aprovado, pulava a aprovação.
+       */
+      if (!(b && b.apenasPlano) && !(b && b.planoAprovado && typeof b.planoAprovado === 'object')) {
+        return sendJson(res, 409, { error: 'Aprove o rascunho antes de gerar.', code: 'plano-nao-aprovado' });
+      }
       try {
         // Identidade salva da empresa: o que o usuário mandar no pedido tem
         // prioridade, mas o resto vem da marca — sem isso a IA reinventa a

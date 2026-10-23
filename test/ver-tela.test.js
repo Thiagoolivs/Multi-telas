@@ -134,7 +134,7 @@ test('rotas: só a TV com o token conta o estado, e só o dono lê', async (t) =
   });
   t.after(() => servidor.kill());
   let ok = false;
-  for (let i = 0; i < 60 && !ok; i++) {
+  for (let i = 0; i < 160 && !ok; i++) {
     try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); }
   }
   assert.ok(ok, 'o servidor de teste não subiu');

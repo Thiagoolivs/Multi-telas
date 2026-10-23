@@ -27,6 +27,8 @@ const NOME = {
   campanha: ['A campanha', 'a'], 'campanha-simples': ['A campanha', 'a'], director: ['A campanha', 'a'],
   imagem: ['A imagem', 'a'], 'kit-de-marca': ['O kit de marca', 'o'], conteudo: ['O conteúdo', 'o'],
   quiz: ['O quiz', 'o'],
+  // Editar com a IA (D50): a campanha já existia; o que ficou pronto foi a edição.
+  edicao: ['A edição', 'a'],
 };
 export const nomeDoTipo = (t) => (NOME[t] || ['A criação'])[0];
 export const frasePronto = (t) => nomeDoTipo(t) + ' ficou pront' + ((NOME[t] || [0, 'a'])[1]) + '.';
@@ -43,7 +45,7 @@ export function destino(j) {
 }
 // O quiz é escrito com o editor da TV aberto, e ele mesmo mostra as perguntas: aviso seria ruído.
 // D47: a campanha pronta abre em Criados ("campanhas"), que já mostra o resultado.
-const quemJaAvisa = { campanha: ['criar', 'campanhas'], 'campanha-simples': ['designs'], director: ['designs', 'rapida'], imagem: ['designs'], quiz: ['content'] };
+const quemJaAvisa = { campanha: ['criar', 'campanhas'], edicao: ['campanhas'], 'campanha-simples': ['designs'], director: ['designs', 'rapida'], imagem: ['designs'], quiz: ['content'] };
 
 function emitirMudanca() { ouvintes.forEach((f) => f()); }
 

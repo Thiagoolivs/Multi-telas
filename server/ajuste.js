@@ -316,4 +316,19 @@ function desfazer(campanha) {
   return { resultado: a.resultado, escopo: a.escopo };
 }
 
-module.exports = { numerar, lerMudancas, semIA, entender, aplicar, desfazer, descreverMudanca, camposDeTexto, SISTEMA };
+/*
+ * As mudanças já lidas, de volta ao formato de quem pede (TV de 1 em diante,
+ * a imagem pelo número): para conferir de novo, contra a campanha de AGORA,
+ * o que ficou esperando o "pode fazer" (D42).
+ */
+function comoPedido(mudancas, refs) {
+  const l = Array.isArray(refs) ? refs : [];
+  return (Array.isArray(mudancas) ? mudancas : []).map((m) => {
+    const x = Object.assign({}, m);
+    if (Number.isInteger(x.tela)) x.tela += 1;
+    if (x.foto === 'usar') { x.ref = l.findIndex((r) => r && r.url === x.fotoUrl) + 1; delete x.fotoUrl; }
+    return x;
+  });
+}
+
+module.exports = { numerar, lerMudancas, semIA, entender, aplicar, desfazer, descreverMudanca, camposDeTexto, comoPedido, SISTEMA };

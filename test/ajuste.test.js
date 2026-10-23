@@ -178,19 +178,28 @@ test('rotas: ajustar, editar à mão e desfazer, presos à conta', async (t) => 
   });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows segura o arquivo */ } });
   let ok = false;
-  for (let i = 0; i < 60 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
+  for (let i = 0; i < 160 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
   assert.ok(ok, 'o servidor de teste não subiu');
   const marca = Date.now();
   const conta = (email, name) => pedir('/api/auth/signup', { method: 'POST', body: { email, password: 'senha-de-teste-123', name, aceite: true } });
   const cA = cookieDe(await conta('ajuste-a' + marca + '@teste.local', 'Padaria A'));
   const cB = cookieDe(await conta('ajuste-b' + marca + '@teste.local', 'Ótica B'));
 
-  const gerou = await esperarJob((await pedir('/api/ai/ecossistema', { method: 'POST', cookie: cA, body: { escopo: ESCOPO } })).json.id, cA);
+  // D42: gerar só com o esboço aprovado.
+  const aprovada = (await pedir('/api/conversas/esboco', { method: 'POST', cookie: cA, body: { escopo: ESCOPO } })).json.conversa;
+  const gerou = await esperarJob((await pedir('/api/ai/ecossistema', { method: 'POST', cookie: cA, body: { conversaId: aprovada.id, escopo: ESCOPO } })).json.id, cA);
   const c = gerou.resultado.campanha;
   const antes = A.numerar(c.resultado);
 
   assert.equal((await pedir('/api/ai/ajustar', { method: 'POST', cookie: cB, body: { campanhaId: c.id, texto: 'tira a peça 2' } })).status, 404, 'outra conta não ajusta');
-  const j = await esperarJob((await pedir('/api/ai/ajustar', { method: 'POST', cookie: cA, body: { campanhaId: c.id, texto: 'troca a foto da peça 2' } })).json.id, cA);
+  // D42: o ajuste de uma frase não gera mais nada (foto nova é no Editar com a IA, com o "pode fazer").
+  const velho = await esperarJob((await pedir('/api/ai/ajustar', { method: 'POST', cookie: cA, body: { campanhaId: c.id, texto: 'troca a foto da peça 2' } })).json.id, cA);
+  assert.deepEqual(velho.resultado.mudancas, []);
+  assert.match(velho.resultado.resposta, /Editar com a IA/);
+  const pede = await esperarJob((await pedir('/api/ai/editar', { method: 'POST', cookie: cA, body: { campanhaId: c.id, texto: 'troca a foto da peça 2' } })).json.id, cA);
+  assert.equal(pede.resultado.acao, 'confirmar');
+  assert.deepEqual(A.numerar(pede.resultado.campanha.resultado)[1].peca, antes[1].peca, 'gerou antes do "pode fazer"');
+  const j = await esperarJob((await pedir('/api/ai/editar', { method: 'POST', cookie: cA, body: { campanhaId: c.id, texto: 'Pode fazer' } })).json.id, cA);
   assert.equal(j.estado, 'pronto', j.erro);
   assert.deepEqual(j.resultado.mudancas.map((x) => x.tipo), ['refazer']);
   const ajustada = (await pedir('/api/campanhas/' + c.id, { cookie: cA })).json.campanha;

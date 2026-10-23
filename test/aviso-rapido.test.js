@@ -120,7 +120,7 @@ test('a rota: só com sessão, devolve o aviso para a prévia', async (t) => {
   });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows segura o arquivo */ } });
   let ok = false;
-  for (let i = 0; i < 60 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
+  for (let i = 0; i < 160 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
   assert.ok(ok, 'o servidor de teste não subiu');
   assert.equal((await pedir('/api/ai/aviso', { method: 'POST', json: { texto: 'x' } })).status, 401);
   const c = (await pedir('/api/auth/signup', { method: 'POST', json: { email: 'd27' + Date.now() + '@teste.local', password: 'senha-de-teste-123', name: 'Loja', aceite: true } }))

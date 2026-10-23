@@ -36,7 +36,8 @@ test('o esboço e os cartões de cor no Criar; o esboço na Marca', () => {
   assert.match(k, /<EsbocoDaTela key=\{ti\} zonas=\{t\.zonas\} cores=\{coresAtuais\}/);
   assert.match(k, /role="radiogroup" aria-label="Cores desta campanha"/);
   assert.match(k, /onClick=\{\(\) => mudar\(\(x\) => \{ x\.cores = o\.daMarca \? \[\] : o\.cores\.slice\(0, 3\); \}\)\}/);
-  assert.equal((ler('web/src/pages/CriarPage.jsx').match(/marca=\{marca\}/g) || []).length, 3, 'o cartão aparece em três lugares, os três com a prévia');
+  // O cartão em três lugares e, desde o D42, o esboço para aprovar — os quatro com a marca.
+  assert.equal((ler('web/src/pages/CriarPage.jsx').match(/marca=\{marca\}/g) || []).length, 4, 'o cartão e o esboço com a prévia da marca');
   const m = ler('web/src/pages/BrandPage.jsx');
   assert.match(m, /<PanelHeader title="Como fica na TV"/);
   assert.match(m, /<EsbocoDaTela cores=\{cores\}/);

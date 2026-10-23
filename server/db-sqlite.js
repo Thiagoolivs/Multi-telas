@@ -420,6 +420,8 @@ garantirColuna('conversas', 'decisoes TEXT');
 garantirColuna('conversas', 'tipo TEXT');
 // D45: as imagens de referência que a pessoa mandou no chat ([{ url, mediaId, uso }]).
 garantirColuna('conversas', 'referencias TEXT');
+// D42: o esboço aprovado ({ chave, em }) — a chave do escopo que a pessoa aprovou.
+garantirColuna('conversas', 'esboco TEXT');
 // Pessoas (D30): setor separado do cargo, e-mail (para o QR das fotos), de onde veio
 // (planilha | qr | manual; vazio = planilha, como eram todas) e quando mudou.
 garantirColuna('birthdays', 'setor TEXT');
@@ -1238,11 +1240,11 @@ async function limparJobs(antesDe) { qJobs.limpar.run(antesDe); }
  * Mensagens e escopo são JSON em texto, como o resultado dos trabalhos.
  */
 const qConv = {
-  inserir: db.prepare(`INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em, decisoes, tipo, referencias)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+  inserir: db.prepare(`INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em, decisoes, tipo, referencias, esboco)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
   deEdicao: db.prepare(`SELECT * FROM conversas WHERE tenant_id = ? AND campanha_id = ? AND tipo = 'edicao'
                         ORDER BY atualizado_em DESC LIMIT 1`),
-  salvar: db.prepare(`UPDATE conversas SET titulo = ?, mensagens = ?, escopo = ?, estado = ?, campanha_id = ?, atualizado_em = ?, decisoes = ?, referencias = ?
+  salvar: db.prepare(`UPDATE conversas SET titulo = ?, mensagens = ?, escopo = ?, estado = ?, campanha_id = ?, atualizado_em = ?, decisoes = ?, referencias = ?, esboco = ?
                       WHERE id = ? AND tenant_id = ?`),
   ler: db.prepare('SELECT * FROM conversas WHERE id = ? AND tenant_id = ?'),
   doTenant: db.prepare(`SELECT id, titulo, estado, campanha_id, criado_em, atualizado_em FROM conversas
@@ -1258,12 +1260,13 @@ const mapConv = (r) => r && ({
   decisoes: r.decisoes === undefined ? undefined : jsonOu(r.decisoes, []),
   tipo: r.tipo || '',
   referencias: r.referencias === undefined ? undefined : jsonOu(r.referencias, []),
+  esboco: r.esboco === undefined ? undefined : jsonOu(r.esboco, null),
 });
 async function criarConversa(tenantId, userId, c) {
   const id = 'conv_' + rid(14);
   const agora = Date.now();
   qConv.inserir.run(id, tenantId, userId || '', String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []),
-    JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora, JSON.stringify(c.decisoes || []), c.tipo || '', JSON.stringify(c.referencias || []));
+    JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora, JSON.stringify(c.decisoes || []), c.tipo || '', JSON.stringify(c.referencias || []), JSON.stringify(c.esboco || null));
   return lerConversa(tenantId, id);
 }
 async function lerConversa(tenantId, id) { return mapConv(qConv.ler.get(id, tenantId)) || null; }
@@ -1271,7 +1274,7 @@ async function lerConversa(tenantId, id) { return mapConv(qConv.ler.get(id, tena
 async function conversaDeEdicao(tenantId, campanhaId) { return mapConv(qConv.deEdicao.get(tenantId, String(campanhaId || ''))) || null; }
 async function salvarConversa(tenantId, id, c) {
   qConv.salvar.run(String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []), JSON.stringify(c.escopo || null),
-    c.estado || 'conversando', c.campanhaId || '', Date.now(), JSON.stringify(c.decisoes || []), JSON.stringify(c.referencias || []), id, tenantId);
+    c.estado || 'conversando', c.campanhaId || '', Date.now(), JSON.stringify(c.decisoes || []), JSON.stringify(c.referencias || []), JSON.stringify(c.esboco || null), id, tenantId);
   return lerConversa(tenantId, id);
 }
 /*

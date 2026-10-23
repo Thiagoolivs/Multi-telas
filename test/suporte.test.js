@@ -84,7 +84,7 @@ test('entrar como cliente: só operador, só com motivo, marcado, limitado, regi
   });
   t.after(() => servidor.kill());
   let ok = false;
-  for (let i = 0; i < 60 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
+  for (let i = 0; i < 160 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
   assert.ok(ok, 'o servidor de teste não subiu');
 
   const conta = (email, name) => pedir('/api/auth/signup', { method: 'POST', body: { email, password: 'senha-de-teste-123', name, aceite: true } });

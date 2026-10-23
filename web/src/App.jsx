@@ -236,7 +236,7 @@ export default function App() {
        * A chave remonta o Criar quando se chega de novo com outra opção (do
        * Início, ou de "Criar novo" numa tela) — senão ficaria no passo antigo.
        */
-      case 'criar': return <CriarPage key={(route.opcao || '') + (route.tela || '') + (route.zona || '') + (route.ideia || '')} opcaoInicial={route.opcao} telaInicial={route.tela} zonaInicial={route.zona} ideiaInicial={route.ideia} onIr={go} />;
+      case 'criar': return <CriarPage key={(route.opcao || '') + (route.tela || '') + (route.zona || '') + (route.ideia || '') + (route.conversa || '')} opcaoInicial={route.opcao} telaInicial={route.tela} zonaInicial={route.zona} ideiaInicial={route.ideia} conversaInicial={route.conversa} aprovarInicial={!!route.aprovar} onIr={go} />;
       case 'rapida': return <CriacaoRapidaPage key={(route.opcao || '') + (route.tela || '')} opcaoInicial={route.opcao} telaInicial={route.tela} onIr={go} />;
       case 'campanhas': return <CampanhasPage key={route.campanha || ''} campanhaInicial={route.campanha} onIr={go} />;
       case 'criando': return <CriandoPage onIr={go} />;
