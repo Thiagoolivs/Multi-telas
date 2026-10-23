@@ -1840,21 +1840,48 @@
     if (!a || (!a.aniversarios && !a.mural && !a.pedidoFoto) || zonaId !== zonaPrincipal(cfg)) return null;
     return a;
   }
+  /*
+   * A SEMANA DELE (EXECUTOR D32): de segunda a domingo da semana do
+   * aniversário. Quem faz no sábado aparece desde segunda (a TV da empresa
+   * costuma estar desligada no fim de semana); quem fez na terça continua até
+   * domingo. Antes eram "os próximos 7 dias" — e quem fez ontem sumia.
+   */
   function aniversariosDaSemana(agora) {
     const todos = Array.isArray(global.MT_BIRTHDAYS) ? global.MT_BIRTHDAYS : [];
-    const dias = {};
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + i);
-      dias[(d.getMonth() + 1) + '-' + d.getDate()] = i;
-    }
-    const semana = todos.filter((p) => ((+p.mes) + '-' + (+p.dia)) in dias);
-    return { tem: semana.length > 0, hoje: semana.some((p) => dias[(+p.mes) + '-' + (+p.dia)] === 0) };
+    const seg = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() - ((agora.getDay() + 6) % 7));
+    const dom = new Date(seg.getFullYear(), seg.getMonth(), seg.getDate() + 6, 23, 59);
+    const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).getTime();
+    const naSemana = [];
+    todos.forEach((p) => {
+      [seg.getFullYear(), dom.getFullYear()].some((ano) => {
+        const d = new Date(ano, +p.mes - 1, +p.dia);
+        if (d >= seg && d <= dom) { naSemana.push({ p: p, t: d.getTime() }); return true; }
+        return false;
+      });
+    });
+    naSemana.sort((a, b) => a.t - b.t || String(a.p.nome).localeCompare(String(b.p.nome)));
+    const deHoje = naSemana.filter((x) => x.t === hoje).map((x) => x.p);
+    return { tem: naSemana.length > 0, hoje: deHoje.length > 0, pessoas: naSemana.map((x) => x.p), deHoje: deHoje };
   }
   function comAutomaticos(lista, cfg, zonaId, agora) {
     const a = automaticosDaZona(cfg, zonaId);
     if (!a) return lista;
-    const b = a.aniversarios ? aniversariosDaSemana(agora || new Date()) : { tem: false };
-    const bolo = b.tem ? { type: 'birthdayauto', modo: 'auto', duracao: 12, _automatico: 'aniversarios' } : null;
+    const quando = agora || new Date();
+    const b = a.aniversarios ? aniversariosDaSemana(quando) : { tem: false };
+    /*
+     * D32: cada aniversariante tem o PRÓPRIO cartão na semana dele, um de
+     * cada vez (com a lista da semana como mais um da roda, se forem vários);
+     * no dia, só os de hoje, em dobro. A roda gira por minuto: a lista de
+     * ativos é refeita a cada troca, e assim todos passam mesmo com mais
+     * gente que vagas numa volta.
+     */
+    const roda = !b.tem ? [] : b.hoje
+      ? b.deHoje.map((p) => ({ type: 'birthdayauto', modo: 'pessoa', pessoa: p, duracao: 12, _automatico: 'aniversarios' }))
+      : (b.pessoas.length > 1 ? [{ type: 'birthdayauto', modo: 'semana', duracao: 12, _automatico: 'aniversarios' }] : [])
+        .concat(b.pessoas.map((p) => ({ type: 'birthdayauto', modo: 'pessoa', pessoa: p, duracao: 12, _automatico: 'aniversarios' })));
+    const giro = Math.floor(quando.getTime() / 60000);
+    let vez = 0;
+    const bolo = roda.length ? function () { return roda[(giro + vez++) % roda.length]; } : null;
     const mural = a.mural ? { type: 'mural', codigo: a.mural, titulo: 'Mural de fotos', duracao: 15, _automatico: 'mural' } : null;
     // D31b: no período do pedido do RH, o QR "mande sua foto" entra 1 a cada 6.
     const pf = a.pedidoFoto;
@@ -1864,12 +1891,12 @@
     const out = [];
     lista.forEach((it, i) => {
       out.push(it);
-      if (bolo && (i + 1) % cada === 0) out.push(bolo);
+      if (bolo && (i + 1) % cada === 0) out.push(bolo());
       if (mural && (i + 1) % 5 === 0) out.push(mural);
       if (pedido && (i + 1) % 6 === 0) out.push(pedido);
     });
     // Lista curta (ou vazia): entra pelo menos uma vez por volta.
-    if (bolo && out.indexOf(bolo) < 0) out.push(bolo);
+    if (bolo && !vez) out.push(bolo());
     if (mural && out.indexOf(mural) < 0) out.push(mural);
     if (pedido && out.indexOf(pedido) < 0) out.push(pedido);
     return out;

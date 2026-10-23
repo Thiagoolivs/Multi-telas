@@ -48,7 +48,7 @@ module.exports = function (ctx) {
     if (empresa && (!s.nome || s.nome === device.name)) { s.nome = empresa; mudou = true; }
     return mudou;
   }
-  // Aniversariantes de ontem a +9 dias, com só o que a TV desenha (D0.7).
+  // Aniversariantes de 7 dias atrás a +9 dias (a semana do aniversário é de segunda a domingo, D32), com só o que a TV desenha (D0.7).
   function aniversariosDaJanela(lista, agora) {
     const DIA = 24 * 60 * 60 * 1000;
     const hoje = new Date(agora);
@@ -56,7 +56,7 @@ module.exports = function (ctx) {
     const dentro = (dia, mes) => {
       for (const ano of [hoje.getUTCFullYear() - 1, hoje.getUTCFullYear(), hoje.getUTCFullYear() + 1]) {
         const d = (Date.UTC(ano, mes - 1, dia) - base) / DIA;
-        if (d >= -1 && d <= 9) return true;
+        if (d >= -7 && d <= 9) return true;
       }
       return false;
     };
@@ -471,7 +471,7 @@ module.exports = function (ctx) {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
         if (!device.tenant_id) return sendJson(res, 200, { birthdays: [] });
         /*
-         * Só o que a TV mostra: quem faz aniversário de ontem até daqui a nove
+         * Só o que a TV mostra: quem faz aniversário de 7 dias atrás até daqui a nove
          * dias (a "semana" do player, com folga de fuso e da atualização de
          * 6 h), e só nome, dia, mês, cargo e foto. Antes ia a lista INTEIRA
          * da empresa, com matrícula, para qualquer TV (D0.7).

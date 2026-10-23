@@ -786,6 +786,22 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-bday-name { font-size: clamp(15px, 3cqw, 34px); font-weight: 700; letter-spacing: -.01em; }
 .mt-bday-role { font-size: clamp(12px, 2cqw, 22px); color: var(--text-dim); }
 
+/* D32: o aniversariante sozinho — a foto grande ao lado do nome; em pé, um embaixo do outro. */
+.mt-bday.mt-bday-pessoa { flex-direction: row; align-items: center; justify-content: center; gap: 5cqw; padding: 5cqh 6cqw; }
+.mt-bday.mt-bday-pessoa > * { width: auto; }
+.mt-bday-pessoa .bc-avatar-xl { width: min(36cqw, 70cqh); max-width: none; flex-shrink: 0; box-shadow: 0 0 0 .6cqw color-mix(in srgb, var(--brand) 55%, transparent), var(--shadow); }
+.mt-bday-pessoa .bc-initials { font-size: min(12cqw, 22cqh); }
+.mt-bday-pessoa-txt { min-width: 0; display: flex; flex-direction: column; gap: 1.6cqh; }
+.mt-bday-kicker { font-size: min(2.8cqw, 5cqh); font-weight: 700; color: var(--accent); letter-spacing: .02em; }
+.mt-bday-pessoa .mt-bday-name { font-size: min(6.4cqw, 11cqh); line-height: 1.05; font-weight: 800; letter-spacing: -.02em; }
+.mt-bday-pessoa .mt-bday-role { font-size: min(2.8cqw, 5cqh); }
+.mt-bday-quando { margin-top: 1cqh; font-size: min(3cqw, 5.4cqh); font-weight: 700; color: var(--text); }
+.mt-bday-pessoa.is-hoje .mt-bday-quando { color: var(--brand); }
+@container (aspect-ratio < 1) {
+  .mt-bday.mt-bday-pessoa { flex-direction: column; text-align: center; gap: 3cqh; }
+  .mt-bday-pessoa .bc-avatar-xl { width: min(62cqw, 40cqh); }
+}
+
 /* SEMANA — lista */
 .mt-bday-list { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 1.4cqh; padding: 3cqh 5cqw 5cqh; }
 .mt-bday-row { display: flex; align-items: center; gap: 2.5cqw; padding: 1.4cqh 2cqw; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid var(--border); }
