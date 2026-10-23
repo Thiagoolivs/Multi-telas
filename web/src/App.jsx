@@ -182,6 +182,8 @@ export default function App() {
 
   async function logout() {
     desligarTrabalhos();
+    // Os rascunhos das TVs (D14) não ficam para a próxima pessoa no mesmo computador (revisão do #232).
+    try { Object.keys(localStorage).filter((k) => k.startsWith('mt.rascunho.')).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* sem acesso */ }
     await auth.logout();
     setSession(null);
     setRoute({ name: 'overview' });

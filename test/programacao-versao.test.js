@@ -153,7 +153,8 @@ test('o editor da TV: erro de leitura não semeia o padrão, salvar tenta de nov
    */
   assert.ok(!/const ESPERAS = \[/.test(s), 'o salvamento automático voltou');
   assert.match(s, />\s*\{publishing \? 'Publicando…' : 'Publicar na TV'\}/);
-  assert.match(s, /async function publicarPorCima\(\) \{\s*try \{\s*const r = await deviceConfig\.ler\(device\.id\);\s*versao\.current = \(r && r\.versao\) \|\| 0;/);
+  // Desde o #232 pergunta antes, dizendo o que some; a versão nova é relida e usada.
+  assert.match(s, /async function publicarPorCima\(\) \{\s*try \{\s*const r = await deviceConfig\.ler\(device\.id\);[\s\S]{0,1600}versao\.current = \(r && r\.versao\) \|\| 0;/);
   assert.match(s, />Publicar o meu por cima</);
   for (const arq of ['web/src/lib/publicar.js', 'web/src/lib/rodar.js']) {
     const f = fs.readFileSync(path.join(RAIZ, arq), 'utf8');

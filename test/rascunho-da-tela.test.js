@@ -38,7 +38,16 @@ test('o rascunho fica guardado, volta ao abrir e respeita a TV que mudou', () =>
 
 test('no conflito: o rascunho fica, e dá para publicar por cima da versão nova', () => {
   assert.match(S, /if \(e\.codigo === 'config-mudou'\) \{ setConflito\(true\); return false; \}/);
-  assert.match(S, /const r = await deviceConfig\.ler\(device\.id\);\s*versao\.current = \(r && r\.versao\) \|\| 0;\s*await publish\(\);/);
+  // Relê a versão nova antes de gravar por cima (e, desde o #232, pergunta antes).
+  assert.match(S, /const r = await deviceConfig\.ler\(device\.id\);[\s\S]{0,1400}versao\.current = \(r && r\.versao\) \|\| 0;\s*await publish\(\);/);
   assert.match(S, />Publicar o meu por cima</);
   assert.match(S, />Ver a versão nova</);
+});
+
+test('revisão do #232: o "por cima" diz o que some; rascunho velho e o de outra pessoa não ficam', () => {
+  assert.match(S, /const somem = campanhasDaConfig\(\(r && r\.config\) \|\| \{\}\)\.map\(\(c\) => c\.nome\)\.filter\(\(n\) => !meu\.has\(n\)\);/);
+  assert.match(S, /if \(!ok\) return;\s*versao\.current = \(r && r\.versao\) \|\| 0;/, 'publica por cima sem perguntar');
+  assert.match(S, /const VALIDADE_DO_RASCUNHO = 30 \* 24 \* 60 \* 60 \* 1000;/);
+  const app = fs.readFileSync(path.join(RAIZ, 'web/src/App.jsx'), 'utf8');
+  assert.match(app, /k\.startsWith\('mt\.rascunho\.'\)\)\.forEach\(\(k\) => localStorage\.removeItem\(k\)\)/, 'sair da conta deixa o rascunho para a próxima pessoa');
 });
