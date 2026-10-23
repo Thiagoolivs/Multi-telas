@@ -777,7 +777,31 @@ As cópias que o Criar fazia antes do item 29 somem da lista de Meus Designs
 O pacote da data (cores, decoração, conteúdo) volta como opção em
 Ajustes › Aparência, já que saiu do topo da TV no item 35.
 
+## 2f · Rodada 5 — o que sobrou aprovado no PLANO (madrugada de 23/10)
+
+### 45. Atualização remota do APK (PLANO §9, Operação)
+O app (`android/`) é só a casca do WebView: o conteúdo já se atualiza
+sozinho, mas a casca não. Hoje o APK sai como artefato do Actions, que
+expira.
+- O build `android.yml` publica o APK assinado num **Release** do GitHub
+  (tag `apk-v<versão>`), e o servidor o serve de `/apk/ultimo.apk` com um
+  `/apk/versao.json` (`versionCode`, `versionName`, tamanho, sha256). A TV
+  baixa só de nós, nunca de terceiros.
+- A TV conta a versão da casca (`Ponte.versao()`) no pulso; o painel mostra
+  em Telas › aparelho "app 1.2 · há uma versão nova".
+- Versão nova: a casca baixa em segundo plano, confere o sha256 e abre o
+  instalador do Android (`REQUEST_INSTALL_PACKAGES`). Sem toque na TV, ela
+  só avisa no canto, sem tapar conteúdo, e o painel diz "confirme no
+  controle remoto". Falhou: segue na versão antiga, nunca tela preta.
+- Nada de segredo novo: a chave de assinatura continua só no Actions.
+**Pronto quando:** um APK com `versionCode` maior no Release chega ao box de
+teste e instala com um OK no controle; com a internet cortada no meio, a TV
+continua passando o conteúdo.
+
 ## 3 · O consultor (issue #135)
+
+Como falar com ele e o que ele pode fazer: [`CONSULTOR.md`](CONSULTOR.md).
+
 
 Um Claude com o contexto todo do projeto fica de plantão na issue
 [#135](https://github.com/Thiagoolivs/Multi-telas/issues/135) e confere a
