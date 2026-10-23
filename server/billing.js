@@ -9,6 +9,7 @@
  */
 const crypto = require('crypto');
 const { plan, PLANS, mensalidadeCents, contratoDe } = require('./plans');
+const Documento = require('../js/documento.js');
 
 const ASAAS_KEY = process.env.ASAAS_API_KEY || '';
 const WEBHOOK_TOKEN = process.env.ASAAS_WEBHOOK_TOKEN || '';
@@ -100,7 +101,9 @@ async function asaasApi(path, params, method = 'GET') {
     const err = (data.errors && data.errors.length)
       ? data.errors.map((e) => e.description).join(', ')
       : 'Asaas HTTP ' + res.status;
-    throw new Error(err);
+    const e = new Error(err);
+    e.status = res.status;
+    throw e;
   }
   return data;
 }
@@ -114,11 +117,37 @@ async function asaasApi(path, params, method = 'GET') {
  * existia aqui: a próxima tentativa criava OUTRO cliente e OUTRA assinatura,
  * e o cartão passava duas vezes. Gravar antes torna a repetição inofensiva.
  */
-async function garantirCliente(tenant, user, aoCriarCliente) {
-  if (tenant.stripe_customer_id) return tenant.stripe_customer_id; // coluna antiga, mantida por compatibilidade
+/*
+ * O cliente no Asaas, COM CPF ou CNPJ.
+ *
+ * Era criado só com nome e e-mail, e o Asaas não emite assinatura nem
+ * cobrança sem documento: todo "Assinar" em produção respondia 502 (EXECUTOR
+ * D0.8). Agora:
+ *   - cliente novo nasce com o documento, ou nem nasce (precisaDocumento);
+ *   - cliente antigo sem documento recebe o documento numa atualização;
+ *   - o documento vai para o Asaas e não fica no nosso banco (js/documento.js).
+ */
+function faltaDocumento() {
+  const e = new Error('Para emitir a cobrança, falta o CPF ou CNPJ de quem paga.');
+  e.precisaDocumento = true;
+  e.status = 400;
+  return e;
+}
+async function garantirCliente(tenant, user, aoCriarCliente, documento) {
+  const doc = Documento.soDigitos(documento);
+  if (doc && !Documento.conferir(doc).ok) throw Object.assign(faltaDocumento(), { message: Documento.conferir(doc).erro });
+  const id = tenant.stripe_customer_id; // coluna antiga, mantida por compatibilidade
+  if (id) {
+    if (doc) { await asaasApi('/customers/' + encodeURIComponent(id), { cpfCnpj: doc }, 'POST'); return id; }
+    const c = await asaasApi('/customers/' + encodeURIComponent(id));
+    if (!c || !c.cpfCnpj) throw faltaDocumento();
+    return id;
+  }
+  if (!doc) throw faltaDocumento();
   const custRes = await asaasApi('/customers', {
     name: tenant.name || (user && user.name) || 'Cliente',
     email: user && user.email,
+    cpfCnpj: doc,
     externalReference: tenant.id,
   }, 'POST');
   if (aoCriarCliente) await aoCriarCliente(custRes.id);
@@ -132,13 +161,13 @@ async function garantirCliente(tenant, user, aoCriarCliente) {
  * pagamento de pacote de pagamento de assinatura. Sem essa separação, o
  * atraso ou o estorno de um pacote de R$ 39 derrubaria o plano da conta.
  */
-async function cobrarPacote(tenant, user, pac, origin, aoCriarCliente) {
+async function cobrarPacote(tenant, user, pac, origin, aoCriarCliente, documento) {
   if (!pac || !(pac.precoCents > 0)) throw new Error('pacote inválido');
   if (mode() === 'dev') {
     // Sem Asaas não há fatura: quem chama credita na hora (modo simulado).
     return { simulated: true };
   }
-  const customer = await garantirCliente(tenant, user, aoCriarCliente);
+  const customer = await garantirCliente(tenant, user, aoCriarCliente, documento);
   const vence = new Date(Date.now() + 3 * 864e5).toISOString().split('T')[0];
   const pag = await asaasApi('/payments', {
     customer,
@@ -173,7 +202,7 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
   }
 
   // Gravado assim que nasce — ver garantirCliente.
-  const customerId = await garantirCliente(tenant, user, o.aoCriarCliente);
+  const customerId = await garantirCliente(tenant, user, o.aoCriarCliente, o.documento);
 
   /*
    * ASSINATURA JÁ ABERTA É REAPROVEITADA.

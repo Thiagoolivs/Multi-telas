@@ -426,8 +426,9 @@ export const relatorio = {
 
 export const billing = {
   get: () => api('GET', '/api/billing'),
-  checkout: (plan) => api('POST', '/api/billing/checkout', { plan }),
-  pacote: (pacote) => api('POST', '/api/billing/pacote', { pacote }),
+  // documento: CPF/CNPJ de quem paga, só quando o servidor pede (code 'precisa-documento').
+  checkout: (plan, documento) => api('POST', '/api/billing/checkout', { plan, ...(documento ? { documento } : {}) }),
+  pacote: (pacote, documento) => api('POST', '/api/billing/pacote', { pacote, ...(documento ? { documento } : {}) }),
   // O "portal" não existia: devolvia uma URL que voltava para esta mesma tela.
   // A gestão é nossa — estado da assinatura, fatura em aberto e cancelamento.
   assinatura: () => api('GET', '/api/billing/assinatura'),

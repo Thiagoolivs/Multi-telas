@@ -7,6 +7,8 @@ import { Badge } from '../components/ui/Badge.jsx';
 import { Progress, Skeleton, ErrorState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { billing } from '../api.js';
+import { PedirDocumento } from '../components/content/PedirDocumento.jsx';
+import { aviso } from '../lib/avisos.js';
 
 /*
  * PLANO E COBRANÇA — em português de lojista (EXECUTOR, item 11).
@@ -43,29 +45,62 @@ export function BillingPage({ onFalarComVendas }) {
   // Depois de voltar do checkout, recarrega para refletir o novo plano.
   useEffect(() => { if (flash === 'success') reload(); }, [flash]); // eslint-disable-line
 
-  async function upgrade(planId) {
-    setBusy(planId); setErr('');
+  /*
+   * O que a pessoa estava fazendo quando o servidor pediu o CPF/CNPJ
+   * (code 'precisa-documento'): { tipo: 'plano'|'pacote', id }. O diálogo
+   * pergunta e refaz o mesmo pedido com o documento.
+   */
+  const [pedido, setPedido] = useState(null);
+  const [erroDoc, setErroDoc] = useState('');
+
+  /*
+   * A falha aparece onde a pessoa está olhando. O erro só ia para o topo da
+   * página, longe do botão "Assinar" (lá embaixo): o botão piscava "Abrindo…"
+   * e voltava, e parecia que nada tinha acontecido (EXECUTOR D0.8).
+   */
+  function falhou(e, padrao) {
+    const msg = (e && e.message) || padrao;
+    setErr(msg);
+    aviso.erro('cobranca', msg);
+  }
+
+  async function upgrade(planId, documento) {
+    setBusy(planId); setErr(''); setErroDoc('');
     try {
-      const { url } = await billing.checkout(planId);
+      const { url } = await billing.checkout(planId, documento);
       window.location.href = url; // fatura do Asaas, ou o checkout simulado
     } catch (e) {
-      setErr(e.message || 'Não foi possível iniciar o checkout.');
       setBusy('');
+      if (e.codigo === 'precisa-documento') { setPedido({ tipo: 'plano', id: planId }); if (documento) setErroDoc(e.message); return; }
+      setPedido(null);
+      falhou(e, 'Não foi possível abrir a cobrança.');
     }
   }
 
   // Pacote de criações: vai para a fatura do Asaas; em modo simulado entra na hora.
-  async function comprarPacote(id) {
-    setBusy(id); setErr('');
+  async function comprarPacote(id, documento) {
+    setBusy(id); setErr(''); setErroDoc('');
     try {
-      const r = await billing.pacote(id);
+      const r = await billing.pacote(id, documento);
       if (r.url) { window.location.href = r.url; return; }
-      reload(); setBusy('');
+      setPedido(null); reload(); setBusy('');
     } catch (e) {
-      setErr(e.message || 'Não foi possível abrir a compra.');
       setBusy('');
+      if (e.codigo === 'precisa-documento') { setPedido({ tipo: 'pacote', id }); if (documento) setErroDoc(e.message); return; }
+      setPedido(null);
+      falhou(e, 'Não foi possível abrir a compra.');
     }
   }
+
+  const dialogoDocumento = (
+    <PedirDocumento
+      open={!!pedido}
+      ocupado={!!busy}
+      erro={erroDoc}
+      onClose={() => { setPedido(null); setErroDoc(''); }}
+      onContinuar={(doc) => (pedido.tipo === 'pacote' ? comprarPacote(pedido.id, doc) : upgrade(pedido.id, doc))}
+    />
+  );
 
   if (loading) {
     return (
@@ -94,6 +129,7 @@ export function BillingPage({ onFalarComVendas }) {
 
   return (
     <div>
+      {dialogoDocumento}
       <PageHeader title="Plano e cobrança" subtitle="O que você paga, o que está incluído e as suas criações." />
 
       {flash === 'success' && (

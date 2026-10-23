@@ -21,6 +21,19 @@ module.exports = function (ctx) {
   const COBRANCA_FECHADA = 'A assinatura pelo painel está em manutenção agora. Fale com a gente pelo Suporte e ativamos o seu plano.';
   const cobrancaFechada = () => billing.mode() === 'dev' && !billing.simulacaoPermitida();
 
+  /*
+   * Falha ao abrir a cobrança. Antes devolvia só e.message ao navegador e
+   * nada ficava no log: o checkout respondia 502 em produção e ninguém sabia
+   * por quê (D0.8). Agora fica registrado, sem dado pessoal, e a falta de
+   * CPF/CNPJ volta como pedido (400, code 'precisa-documento') para o painel
+   * perguntar ali mesmo, junto do botão.
+   */
+  function falhaDeCobranca(res, e, onde) {
+    if (e && e.precisaDocumento) return sendJson(res, 400, { error: e.message, code: 'precisa-documento' });
+    log.aviso('cobranca.' + onde + '-falhou', { status: (e && e.status) || 0, erro: String((e && e.message) || '').slice(0, 300) });
+    return sendJson(res, 502, { error: 'O Asaas não aceitou a cobrança agora: ' + ((e && e.message) || 'tente de novo') + '. Se continuar, fale com a gente pelo Suporte.' });
+  }
+
   // Aplica um evento do Asaas ao plano do tenant.
   async function handleAsaasEvent(body) {
     const eventName = body.event;
@@ -290,14 +303,14 @@ module.exports = function (ctx) {
           try {
             const user = await db.getUserById(sess.user_id);
             const out = await billing.cobrarPacote(tenant, user, pac, reqOrigin(req),
-              (customerId) => db.setTenantBilling(tenant.id, { customerId }));
+              (customerId) => db.setTenantBilling(tenant.id, { customerId }), b && b.documento);
             if (out.simulated) {
               await db.creditarPacote('sim_' + db.rid(14), tenant.id, pac.id, pac.creditos);
               return sendJson(res, 200, { simulado: true, creditado: pac.creditos });
             }
             await db.registrarEvento(sess.tenant_id, sess.user_id, 'creditos.pacote');
             return sendJson(res, 200, { url: out.url });
-          } catch (e) { return sendJson(res, 502, { error: e.message }); }
+          } catch (e) { return falhaDeCobranca(res, e, 'pacote'); }
         });
       }
 
@@ -338,6 +351,7 @@ module.exports = function (ctx) {
                * vez de criar outro — e outra assinatura junto.
                */
               aoCriarCliente: (customerId) => db.setTenantBilling(tenant.id, { customerId }),
+              documento: b && b.documento,
             });
             if (out.customerId && out.customerId !== tenant.stripe_customer_id) await db.setTenantBilling(tenant.id, { customerId: out.customerId });
             // A assinatura nasceu (ou foi atualizada) cobrando estas telas; é o
@@ -350,7 +364,7 @@ module.exports = function (ctx) {
             if (e.subscriptionId) {
               await db.setTenantBilling(tenant.id, { customerId: e.customerId, subscriptionId: e.subscriptionId }).catch(() => {});
             }
-            return sendJson(res, 502, { error: e.message });
+            return falhaDeCobranca(res, e, 'checkout');
           }
         });
       }
@@ -367,7 +381,7 @@ module.exports = function (ctx) {
         // Leitura serve a qualquer membro: saber se a conta está em dia não é
         // privilégio de dono, e esconder isso só gera pergunta no suporte.
         try { return sendJson(res, 200, await billing.assinatura(tenant)); }
-        catch (e) { return sendJson(res, 502, { error: e.message }); }
+        catch (e) { return falhaDeCobranca(res, e, 'assinatura'); }
       }
       if (req.method === 'DELETE' && seg === 'assinatura') {
         if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono cancela o plano' });
@@ -387,7 +401,7 @@ module.exports = function (ctx) {
             });
           }
           return sendJson(res, 200, out);
-        } catch (e) { return sendJson(res, 502, { error: e.message }); }
+        } catch (e) { return falhaDeCobranca(res, e, 'cancelar'); }
       }
 
       // ----- Checkout simulado: só sem Asaas, e nunca em produção -----

@@ -851,6 +851,14 @@ IP e arquivos; a TV recebe só os aniversariantes da semana, sem
 matrícula; apagar mídia em uso pede confirmação. **Pronto quando:** o
 teste de exclusão não acha linha nenhuma da conta.
 
+**D0.8 Assinar abre a cobrança.** O dono: "quando clico no botão de assinar
+um plano, não abre nada". O consultor achou no log: todo checkout em
+produção respondia 502. O cliente ia ao Asaas sem CPF/CNPJ, e o erro
+aparecia no topo da página, longe do botão, sem registro no log. Pedir o
+documento (conferido pelos dígitos, não guardado no nosso banco), falha
+registrada e visível junto do botão. **Pronto quando:** conta nova clica
+em Assinar, digita o CNPJ e cai na fatura do Asaas.
+
 ### Fase 1 · Limpar e profissionalizar (depois dela, lança)
 
 **D1 Painel azul, escuro sério.** Primeiro, cartões de cor e esboços para
