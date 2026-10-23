@@ -3,7 +3,7 @@
 const paleta = require('../paleta.js');
 // Empresa, Comércio ou Saúde: decide os começos e os exemplos do painel (D4).
 const Perfil = require('../../js/perfil.js');
-function perfilValido(p) { return Perfil.PERFIS[p] ? p : null; }
+function perfilValido(p) { return Perfil.tem(p) ? p : null; }
 
 module.exports = function(ctx) {
   const { 

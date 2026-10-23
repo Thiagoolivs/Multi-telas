@@ -50,7 +50,7 @@ async function garantir(db, tenantId) {
  */
 async function perfilDaConta(db, tenantId, tenant) {
   const t = tenant || await db.getTenant(tenantId).catch(() => null);
-  if (t && Perfil.PERFIS[t.perfil]) return t.perfil;
+  if (t && Perfil.tem(t.perfil)) return t.perfil;
   return Perfil.deduzir(await ramoDaConta(db, tenantId));
 }
 
