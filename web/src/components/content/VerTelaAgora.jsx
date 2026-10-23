@@ -101,7 +101,8 @@ export function VerTelaAgora({ target, onClose }) {
  * no tamanho da zona COMO NA TV (base 1080p, js/render.js hostDaPeca) e
  * reduzida — senão cairia em outra regra de container e mostraria outro layout.
  */
-function Palco({ estado, em }) {
+// Exportado: as telas prontas (D18) desenham a prévia da tela inteira com o mesmo palco.
+export function Palco({ estado, em, alturaMaxima }) {
   const hora = em ? new Date(em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
   const caixa = useRef(null);
   const [largura, setLargura] = useState(0);
@@ -123,7 +124,7 @@ function Palco({ estado, em }) {
   }, []);
 
   // TV em pé não pode passar da altura da janela.
-  const maxAltura = typeof window !== 'undefined' ? window.innerHeight * 0.62 : 600;
+  const maxAltura = alturaMaxima || (typeof window !== 'undefined' ? window.innerHeight * 0.62 : 600);
   const escala = largura ? Math.min(largura / W, emPe ? maxAltura / H : Infinity) : 0;
   const layout = (globalThis.MT_getLayout && globalThis.MT_getLayout(estado.layoutId)) || null;
   const px = (v) => String(v || '').replace(/(-?[\d.]+)v([hw])/g, (_, n, u) => (Number(n) * (u === 'h' ? H : W) / 100 * escala).toFixed(2) + 'px');
@@ -174,7 +175,9 @@ function Zona({ zona, dados, escala, hora }) {
   const peca = dados.item && dados.item.type === 'peca-html' ? dados.item
     : dados.peca && dados.peca.type === 'peca-html' ? dados.peca : null;
   let corpo;
-  if (peca) corpo = tam && <PecaHtml item={peca} tamanho={tam} fitHeight className="!rounded-none !ring-0" />;
+  // A faixa em peça mostra as frases dela (o letreiro), como na TV.
+  const frases = (dados.mensagens || []).map((x) => (typeof x === 'string' ? x : (x && (x.text || x.texto)) || '')).filter(Boolean);
+  if (peca) corpo = tam && <PecaHtml item={peca} tamanho={tam} fitHeight mensagens={frases} className="!rounded-none !ring-0" />;
   else if (dados.esperando) {
     // A TV mostra a zona preta, pulsando: nada publicado ali (item 39).
     corpo = <div className="flex h-full w-full items-center justify-center bg-black"><span className="h-3 w-3 animate-pulse rounded-full bg-white/40" /></div>;

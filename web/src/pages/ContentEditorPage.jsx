@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'react';
 import {
-  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info, CalendarClock, MessageSquare } from 'lucide-react';
+  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info, CalendarClock, MessageSquare, LayoutTemplate } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
@@ -582,11 +582,12 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                 <div className="mt-1.5 text-sm font-semibold text-ink">Escolher um conteúdo pronto</div>
                 <div className="text-xs text-ink-3">Cardápio, promoção, aviso, foto, vídeo, clima, QR code…</div>
               </button>
-              <button type="button" onClick={() => setSettingsOpen(true)}
+              {/* D18: a tela inteira pronta, com a marca — o layout vem junto (mudar só o layout fica em "Ajustes da tela"). */}
+              <button type="button" onClick={() => onIr && onIr('telasprontas', { tela: device && device.id })}
                 className="rounded-lg border border-line p-3 text-left transition hover:bg-surface-2">
-                <Settings2 size={18} className="text-ink-2" />
-                <div className="mt-1.5 text-sm font-semibold text-ink">Mudar o layout</div>
-                <div className="text-xs text-ink-3">Tela cheia, com lateral, vertical… e o tema com as cores da empresa.</div>
+                <LayoutTemplate size={18} className="text-ink-2" />
+                <div className="mt-1.5 text-sm font-semibold text-ink">Usar uma tela pronta</div>
+                <div className="text-xs text-ink-3">A tela inteira já montada, com a sua marca: é só trocar os textos.</div>
               </button>
             </div>
           </div>
