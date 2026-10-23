@@ -818,9 +818,10 @@ export function MyDesignsPage({ onIr }) {
                       <div key={it.id} className="space-y-2 rounded-lg border border-line bg-surface p-2">
                         <DesignThumb item={it.item} />
                         <div className="truncate px-0.5 text-2xs font-medium text-ink-2">{it.label}</div>
-                        <div className="flex items-center gap-1">
+                        {/* No celular (cartão de ~114 px) "Publicar" ocupa a linha de cima e os ícones vão embaixo: na mesma linha estouravam para fora (D3). */}
+                        <div className="flex flex-wrap items-center gap-1">
                           <button onClick={() => abrirPublicar(it.label || camp, [{ item: it.item, formato: it.formato || '16/9', label: it.label }])}
-                            className="flex flex-1 items-center justify-center gap-1 rounded-md bg-surface-2 px-2 py-1.5 text-2xs font-semibold text-ink-2 transition hover:bg-accent hover:text-white">
+                            className="flex min-w-full flex-1 items-center justify-center gap-1 rounded-md bg-surface-2 px-2 py-1.5 text-2xs font-semibold text-ink-2 transition hover:bg-accent hover:text-white sm:min-w-0">
                             <Send size={12} /> Publicar
                           </button>
                           {/* A peça em HTML edita textos e foto (EditarPeca); o PNG ainda só sabe a composição antiga. */}

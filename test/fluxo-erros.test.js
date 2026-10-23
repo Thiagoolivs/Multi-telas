@@ -104,3 +104,25 @@ test('desfazer "tirar a campanha" devolve também a TV à lista da campanha', ()
   const f = c.slice(c.indexOf('async function tirarCampanha'), c.indexOf('async function abrirCampanha'));
   assert.match(f, /criar\.marcar\(c\.id, listaAntes\.estado, listaAntes\.telas\)/);
 });
+
+/* ---------------- D3c: celular e controles ---------------- */
+
+test('som da TV: "offline" só quando está; o volume segue o dedo e manda uma ordem só', () => {
+  const s = ler('components/content/SoundRemote.jsx');
+  assert.match(s, /if \(!lido\) return/);
+  assert.match(s, /Não deu para ver o som desta TV agora/);
+  assert.match(s, /onChange=\{\(ev\) => mudarVolume\(Number\(ev\.target\.value\)\)\}/);
+  assert.match(s, /clearTimeout\(tVolume\.current\);/);
+  assert.ok(!/catch \(e\) \{\}/.test(s), 'comando que falha some');
+});
+
+test('editor no celular: formato e pedido à IA ficam à mão', () => {
+  const e = ler('components/content/CompositionEditor.jsx');
+  assert.match(e, /<label className="md:hidden">[\s\S]{0,200}Formato da peça/);
+  assert.match(e, /<span className="md:hidden"><IconBtn title="Pedir à IA"/);
+});
+
+test('cartão de design no celular não estoura; a prévia do aviso escreve o rótulo com acento', () => {
+  assert.match(ler('pages/MyDesignsPage.jsx'), /flex min-w-full flex-1 items-center justify-center gap-1 rounded-md bg-surface-2/);
+  assert.match(ler('components/content/ItemPreview.jsx'), /manutencao: 'Manutenção programada'/);
+});
