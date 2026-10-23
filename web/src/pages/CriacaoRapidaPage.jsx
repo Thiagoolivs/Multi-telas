@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Tag, Sparkles, Megaphone, Camera, Cake, QrCode, FileText, UserPlus, TrendingUp, HardHat, HeartPulse, Stethoscope, ShieldCheck, ArrowLeft, Check, Rocket, SlidersHorizontal, MonitorPlay, RefreshCw, ImagePlus, Share2,
+  Tag, Sparkles, Megaphone, Camera, Cake, QrCode, FileText, UserPlus, TrendingUp, HardHat, HeartPulse, Stethoscope, ShieldCheck,
+  UtensilsCrossed, Clock, CalendarDays, MessageSquareQuote, CreditCard, Wifi, Briefcase, Target, HeartHandshake, BadgeCheck, ArrowLeft, Check, Rocket, SlidersHorizontal, MonitorPlay, RefreshCw, ImagePlus, Share2,
 } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -84,6 +85,40 @@ export const OPCOES = [
   { id: 'prevencao', titulo: 'Campanha de prevenção', icone: ShieldCheck, pedido: 'Campanha de prevenção',
     dica: 'A campanha e o que a pessoa deve fazer.',
     exemplos: ['Outubro Rosa: faça seu exame', 'Novembro Azul: cuide da sua saúde', 'Vacina da gripe disponível'] },
+  /*
+   * D17: o dono quer "pelo menos 10 opções" de começo rápido. Cada perfil
+   * passa a ter de 10 a 12 (js/perfil.js), com estas somadas às de cima.
+   */
+  { id: 'cardapio', titulo: 'Cardápio do dia', icone: UtensilsCrossed, pedido: 'Cardápio do dia',
+    dica: 'Os pratos (ou produtos) e os preços.',
+    exemplos: ['Prato do dia: feijoada R$ 29', 'Café, pão na chapa e suco por R$ 15', 'Açaí 300 ml R$ 14 · 500 ml R$ 19'] },
+  { id: 'horario', titulo: 'Horário de funcionamento', icone: Clock, pedido: 'Horário de funcionamento',
+    dica: 'Os dias e os horários, como você diria.',
+    exemplos: ['Segunda a sexta, 8h às 18h · sábado, 8h às 12h', 'Aberto todos os dias, das 7h às 22h', 'Plantão no domingo, das 9h às 13h'] },
+  { id: 'evento', titulo: 'Evento ou data', icone: CalendarDays, pedido: 'Divulgar um evento',
+    dica: 'O que é, o dia e a hora.',
+    exemplos: ['Festa junina dia 22, a partir das 18h', 'Black Friday: sexta, 27/11', 'Palestra de saúde no dia 10, às 15h'] },
+  { id: 'depoimento', titulo: 'Depoimento de cliente', icone: MessageSquareQuote, pedido: 'Depoimento de cliente',
+    dica: 'A frase do cliente e o nome (ou só o primeiro nome).',
+    exemplos: ['"Atendimento nota 10!" — Carla', '"Melhor pão da região" — seu João', '"Me senti acolhida desde a recepção" — Marta'] },
+  { id: 'pagamento', titulo: 'Formas de pagamento', icone: CreditCard, pedido: 'Formas de pagamento',
+    dica: 'Como dá para pagar e se tem parcelamento.',
+    exemplos: ['Aceitamos Pix, débito e crédito', 'Em até 10x sem juros no cartão', 'Pix com 5% de desconto'] },
+  { id: 'wifi', titulo: 'Wi-Fi para clientes', icone: Wifi, pedido: 'Wi-Fi para clientes',
+    dica: 'O nome da rede e a senha.',
+    exemplos: ['Rede: Padaria-Clientes · senha: paoquente', 'Wi-Fi grátis: peça a senha no caixa', 'Rede Clínica-Visitantes, senha 2026'] },
+  { id: 'vaga', titulo: 'Vaga aberta', icone: Briefcase, pedido: 'Vaga aberta na empresa',
+    dica: 'O cargo e como se candidatar.',
+    exemplos: ['Vaga: operador de empilhadeira · fale com o RH', 'Indique um amigo para a vaga de vendas', 'Estágio em administração, inscrições até sexta'] },
+  { id: 'valores', titulo: 'Missão e valores', icone: Target, pedido: 'Missão e valores da empresa',
+    dica: 'A missão ou os valores, curtos.',
+    exemplos: ['Segurança em primeiro lugar, sempre', 'Respeito, qualidade e prazo', 'Nossa missão: cuidar de quem cuida'] },
+  { id: 'agradecimento', titulo: 'Agradecimento', icone: HeartHandshake, pedido: 'Agradecimento à equipe',
+    dica: 'A quem agradecer e por quê.',
+    exemplos: ['Obrigado, turno da noite, pela meta batida!', 'Parabéns à equipe de vendas pelo recorde', '10 anos de casa: obrigado, Seu Antônio!'] },
+  { id: 'convenios', titulo: 'Convênios aceitos', icone: BadgeCheck, pedido: 'Convênios aceitos',
+    dica: 'Os convênios, um por linha ou separados por vírgula.',
+    exemplos: ['Unimed, Bradesco Saúde, SulAmérica', 'Atendemos particular e convênios', 'Novo convênio: Amil'] },
 ];
 
 /*
@@ -143,14 +178,15 @@ const FOTOS = [
 export function OpcoesDeCriar({ onEscolher, compacto }) {
   const perfil = usePerfil();
   return (
-    <div className={cn('grid grid-cols-2 gap-2.5', compacto ? 'sm:grid-cols-3 lg:grid-cols-6' : 'sm:grid-cols-3')}>
+    // D17: de 10 a 12 começos; no Início, três por linha já no celular, para caber sem rolar demais.
+    <div className={cn('grid gap-2.5', compacto ? 'grid-cols-3 sm:grid-cols-4 lg:grid-cols-6' : 'grid-cols-2 sm:grid-cols-3')}>
       {opcoesDoPerfil(perfil.id).map((o) => {
         const Icone = o.icone;
         return (
           <button key={o.id} type="button" onClick={() => onEscolher(o.id)}
-            className="flex min-h-[5.5rem] flex-col items-start justify-between gap-2 rounded-xl border border-line bg-surface p-3 text-left transition hover:border-accent/60 hover:bg-surface-2 active:scale-[0.98]">
+            className={cn('flex flex-col items-start justify-between gap-2 rounded-xl border border-line bg-surface text-left transition hover:border-accent/60 hover:bg-surface-2 active:scale-[0.98]', compacto ? 'min-h-[4.75rem] p-2.5' : 'min-h-[5.5rem] p-3')}>
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft"><Icone size={18} className="text-accent" /></span>
-            <span className="text-sm font-semibold leading-tight text-ink">{o.titulo}</span>
+            <span className={cn('font-semibold leading-tight text-ink', compacto ? 'text-xs sm:text-sm' : 'text-sm')}>{o.titulo}</span>
           </button>
         );
       })}
