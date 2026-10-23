@@ -479,6 +479,10 @@ export const birthdays = {
   list: () => api('GET', '/api/birthdays'),
   import: (rows) => api('POST', '/api/birthdays/import', { rows }),
   clear: () => api('DELETE', '/api/birthdays'),
+  // Uma pessoa (D30): à mão no painel, editar, tirar.
+  criar: (pessoa) => api('POST', '/api/birthdays', { pessoa }),
+  atualizar: (id, pessoa) => api('PUT', '/api/birthdays/' + encodeURIComponent(id), { pessoa }),
+  remover: (id) => api('DELETE', '/api/birthdays/' + encodeURIComponent(id)),
 };
 
 /* Estado do sistema (só o dono). */

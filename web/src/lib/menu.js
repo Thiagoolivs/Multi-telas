@@ -30,7 +30,7 @@ export const PAGINAS = {
   ia: 'Da IA',
   banco: 'Banco de Imagens',
   brand: 'Marca',
-  birthdays: 'Aniversariantes',
+  birthdays: 'Pessoas',
   mural: 'Mural de fotos',
   relatorio: 'Relatório de exibição',
   billing: 'Plano',

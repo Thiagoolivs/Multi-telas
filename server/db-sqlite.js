@@ -385,6 +385,12 @@ garantirColuna('marcas', 'localizacao TEXT');
 garantirColuna('campanhas', 'capa TEXT');
 // Arquivada desde quando (0 = não). Sai da lista, não do banco (D10).
 garantirColuna('campanhas', 'arquivada INTEGER');
+// Pessoas (D30): setor separado do cargo, e-mail (para o QR das fotos), de onde veio
+// (planilha | qr | manual; vazio = planilha, como eram todas) e quando mudou.
+garantirColuna('birthdays', 'setor TEXT');
+garantirColuna('birthdays', 'email TEXT');
+garantirColuna('birthdays', 'origem TEXT');
+garantirColuna('birthdays', 'updated_at INTEGER');
 
 function migrarBrandkit() {
   const antigos = db.prepare(`SELECT b.* FROM brandkit b
@@ -577,7 +583,11 @@ const q = {
   bancoApagarDoTenant: db.prepare('DELETE FROM banco WHERE tenant_id = ?'),
   bancoApagarDaMedia: db.prepare('DELETE FROM banco WHERE media_id = ? AND tenant_id = ?'),
   insertBirthday: db.prepare('INSERT INTO birthdays (id, tenant_id, nome, matricula, dia, mes, cargo, foto, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'),
-  birthdaysByTenant: db.prepare('SELECT id, nome, matricula, dia, mes, cargo, foto FROM birthdays WHERE tenant_id = ? ORDER BY mes, dia, nome'),
+  birthdaysByTenant: db.prepare("SELECT id, nome, matricula, dia, mes, cargo, foto, COALESCE(setor, '') AS setor, COALESCE(email, '') AS email, COALESCE(origem, 'planilha') AS origem FROM birthdays WHERE tenant_id = ? ORDER BY mes, dia, nome"),
+  pessoaInserir: db.prepare('INSERT INTO birthdays (id, tenant_id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'),
+  pessoaAtualizar: db.prepare('UPDATE birthdays SET nome = ?, matricula = ?, dia = ?, mes = ?, cargo = ?, setor = ?, email = ?, foto = ?, origem = ?, updated_at = ? WHERE id = ? AND tenant_id = ?'),
+  pessoaRemover: db.prepare('DELETE FROM birthdays WHERE id = ? AND tenant_id = ?'),
+  pessoaPorId: db.prepare("SELECT id, nome, matricula, dia, mes, cargo, foto, COALESCE(setor, '') AS setor, COALESCE(email, '') AS email, COALESCE(origem, 'planilha') AS origem FROM birthdays WHERE id = ? AND tenant_id = ?"),
   deleteBirthdays: db.prepare('DELETE FROM birthdays WHERE tenant_id = ?'),
   setBirthdayPhoto: db.prepare('UPDATE birthdays SET foto = ? WHERE tenant_id = ? AND matricula = ?'),
   countBirthdays: db.prepare('SELECT COUNT(*) AS n FROM birthdays WHERE tenant_id = ?'),
@@ -932,6 +942,32 @@ async function replaceBirthdays(tenantId, rows) {
 }
 async function listBirthdays(tenantId) { return q.birthdaysByTenant.all(tenantId); }
 async function clearBirthdays(tenantId) { q.deleteBirthdays.run(tenantId); }
+
+/*
+ * Pessoas (D30). A importação aplica o plano de js/pessoas.js numa
+ * transação só: quem saiu da planilha sai, quem continua é atualizado, quem
+ * é novo entra — e quem veio do QR ou de à mão fica.
+ */
+const pessoaParams = (p) => [p.nome, p.matricula || '', p.dia, p.mes, p.cargo || '', p.setor || '', p.email || '', p.foto || ''];
+async function importarPessoas(tenantId, plano) {
+  const agora = Date.now();
+  db.exec('BEGIN');
+  try {
+    for (const id of plano.saem) q.pessoaRemover.run(id, tenantId);
+    for (const u of plano.atualizam) q.pessoaAtualizar.run(...pessoaParams(u.pessoa), u.pessoa.origem || 'planilha', agora, u.id, tenantId);
+    for (const p of plano.entram) q.pessoaInserir.run(rid(14), tenantId, ...pessoaParams(p), p.origem || 'planilha', agora, agora);
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+}
+async function criarPessoa(tenantId, p, origem) {
+  const id = rid(14);
+  const agora = Date.now();
+  q.pessoaInserir.run(id, tenantId, ...pessoaParams(p), origem || 'manual', agora, agora);
+  return id;
+}
+async function atualizarPessoa(tenantId, id, p) { return q.pessoaAtualizar.run(...pessoaParams(p), p.origem || 'planilha', Date.now(), id, tenantId).changes; }
+async function removerPessoa(tenantId, id) { return q.pessoaRemover.run(id, tenantId).changes; }
+async function pessoaDoTenant(tenantId, id) { return q.pessoaPorId.get(String(id), tenantId) || null; }
 async function setBirthdayPhoto(tenantId, matricula, url) { return q.setBirthdayPhoto.run(url, tenantId, String(matricula)).changes; }
 async function countBirthdays(tenantId) { return Number(q.countBirthdays.get(tenantId).n); }
 
@@ -1551,7 +1587,7 @@ async function dadosDoTenant(tenantId) {
     biblioteca: pega('SELECT id, campaign, canal, formato, label, item, created_at FROM library WHERE tenant_id = ?'),
     marca: db.prepare('SELECT * FROM brandkit WHERE tenant_id = ?').get(tenantId) || null,
     imagensDaMarca: pega('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = ?'),
-    aniversariantes: pega('SELECT id, nome, matricula, dia, mes, cargo, foto, created_at FROM birthdays WHERE tenant_id = ?'),
+    aniversariantes: pega('SELECT id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, created_at, updated_at FROM birthdays WHERE tenant_id = ?'),
     midias: pega('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ?'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
     // seria entregar uma cópia incompleta com cara de completa.
@@ -1799,6 +1835,7 @@ module.exports = {
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
+  importarPessoas, criarPessoa, atualizarPessoa, removerPessoa, pessoaDoTenant,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
   listCampaign, renameCampaign, deleteCampaign,
   registrarAceite, listarAceites, dadosDoTenant, apagarTenant,

@@ -60,7 +60,8 @@ module.exports = function (ctx) {
       return false;
     };
     return (lista || []).filter((p) => p && dentro(Number(p.dia), Number(p.mes)))
-      .map((p) => ({ nome: p.nome, dia: p.dia, mes: p.mes, cargo: p.cargo || '', foto: p.foto || '' }));
+      // Sem cargo, o setor (D30) — o cartão mostra uma linha só embaixo do nome.
+      .map((p) => ({ nome: p.nome, dia: p.dia, mes: p.mes, cargo: p.cargo || p.setor || '', foto: p.foto || '' }));
   }
   async function empresaDa(tenantId) {
     if (!tenantId) return '';
