@@ -929,7 +929,10 @@ no chat do Criar (antes de gastar) e na Marca.
 
 **D14 Publicar só quando pronto.** Hoje cada tecla publica e a TV
 redesenha a tela inteira enquanto a pessoa digita, e escolher "Aviso"
-publica um aviso vazio. Rascunho, e a TV só recebe ao salvar.
+publica um aviso vazio. Rascunho, e a TV só recebe ao salvar. Revisão do
+consultor no D0.5: no conflito ("esta TV mudou em outro lugar"), guardar o
+que a pessoa editou e oferecer aplicar por cima da versão nova, em vez de
+jogar fora.
 
 **D15 Aniversário e mural entram na TV.** O dono: "tem que ser do jeito
 que eu falei; me fale uma forma melhor, mas na mesma base". O jeito dele:

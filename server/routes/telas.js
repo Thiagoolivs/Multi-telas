@@ -264,7 +264,15 @@ module.exports = function (ctx) {
            * virava "Metalúrgica Andrade" na primeira publicação (teste de 23/10).
            */
           cfg.settings.nome = (cfg.settings && cfg.settings.nome) || device.name;
-          const updatedAt = await db.setDeviceConfig(id, JSON.stringify(cfg), device.name || cfg.settings.nome);
+          const comVersao = versaoPedida != null && Number.isFinite(versaoPedida) ? versaoPedida : null;
+          const updatedAt = await db.setDeviceConfig(id, JSON.stringify(cfg), device.name || cfg.settings.nome, comVersao);
+          // Alguém gravou entre a conferência lá em cima e aqui (o corpo leva tempo para chegar).
+          if (updatedAt == null) {
+            return sendJson(res, 409, {
+              error: 'Esta TV foi mudada em outro lugar enquanto você editava. Recarregue para ver a programação atual.',
+              code: 'config-mudou',
+            });
+          }
           broadcast(id, 'config', { updatedAt });
           return sendJson(res, 200, { ok: true, updatedAt });
         });

@@ -500,6 +500,7 @@ const q = {
   deviceByCode: db.prepare('SELECT * FROM devices WHERE code = ?'),
   claimDevice: db.prepare('UPDATE devices SET tenant_id = ?, name = ? WHERE id = ?'),
   setConfig: db.prepare('UPDATE devices SET config = ?, name = ?, updated_at = ? WHERE id = ?'),
+  setConfigSeVersao: db.prepare('UPDATE devices SET config = ?, name = ?, updated_at = ? WHERE id = ? AND COALESCE(updated_at, 0) = ?'),
   renameDevice: db.prepare('UPDATE devices SET name = ? WHERE id = ?'),
   setExpediente: db.prepare('UPDATE devices SET expediente = ? WHERE id = ?'),
   deleteDevice: db.prepare('DELETE FROM devices WHERE id = ?'),
@@ -660,8 +661,13 @@ async function deviceComToken(token, tenantId) {
 
 async function getDeviceByCode(code) { return q.deviceByCode.get(String(code || '').trim().toUpperCase()) || null; }
 async function claimDevice(id, tenantId, name) { q.claimDevice.run(tenantId, name || '', id); }
-// Devolve o instante gravado: é a versão da programação (routes/telas.js, D0.5).
-async function setDeviceConfig(id, configJson, name) { const agora = Date.now(); q.setConfig.run(configJson, name || '', agora, id); return agora; }
+// Devolve o instante gravado (a versão), ou null se `versaoEsperada` já mudou (ver db-postgres.js).
+async function setDeviceConfig(id, configJson, name, versaoEsperada) {
+  const agora = Date.now();
+  if (versaoEsperada != null) return q.setConfigSeVersao.run(configJson, name || '', agora, id, versaoEsperada).changes ? agora : null;
+  q.setConfig.run(configJson, name || '', agora, id);
+  return agora;
+}
 async function renameDevice(id, name) { q.renameDevice.run(name, id); }
 async function setExpediente(id, json) { q.setExpediente.run(json, id); }
 async function setGrupoDaTela(id, grupo) { db.prepare('UPDATE devices SET grupo = ? WHERE id = ?').run(grupo || null, id); }

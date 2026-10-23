@@ -951,9 +951,19 @@ async function getDeviceByCode(code) {
 async function claimDevice(id, tenantId, name) {
   await pool.query('UPDATE devices SET tenant_id = $1, name = $2 WHERE id = $3', [tenantId, name || '', id]);
 }
-// Devolve o instante gravado: é a versão da programação (routes/telas.js, D0.5).
-async function setDeviceConfig(id, configJson, name) {
+/*
+ * Devolve o instante gravado: é a versão da programação (routes/telas.js,
+ * D0.5). Com `versaoEsperada`, compara e grava no MESMO UPDATE: dois
+ * gravando no mesmo instante não passam os dois (revisão do consultor).
+ * Devolve null quando a versão já não é a esperada.
+ */
+async function setDeviceConfig(id, configJson, name, versaoEsperada) {
   const agora = Date.now();
+  if (versaoEsperada != null) {
+    const r = await pool.query('UPDATE devices SET config = $1, name = $2, updated_at = $3 WHERE id = $4 AND COALESCE(updated_at, 0) = $5',
+      [configJson, name || '', agora, id, versaoEsperada]);
+    return r.rowCount ? agora : null;
+  }
   await pool.query('UPDATE devices SET config = $1, name = $2, updated_at = $3 WHERE id = $4', [configJson, name || '', agora, id]);
   return agora;
 }

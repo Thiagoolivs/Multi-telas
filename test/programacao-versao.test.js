@@ -163,5 +163,18 @@ test('publicar não troca o nome da TV pelo nome do cabeçalho', () => {
   const s = fs.readFileSync(path.join(RAIZ, 'server/routes/telas.js'), 'utf8');
   assert.ok(!/setDeviceConfig\(id, JSON\.stringify\(cfg\), name\)/.test(s));
   assert.ok(!/setDeviceConfig\(id, JSON\.stringify\(cfg\), cfg\.settings\.nome \|\| device\.name\)/.test(s));
-  assert.equal((s.match(/setDeviceConfig\(id, JSON\.stringify\(cfg\), device\.name \|\| cfg\.settings\.nome\)/g) || []).length, 2);
+  assert.equal((s.match(/setDeviceConfig\(id, JSON\.stringify\(cfg\), device\.name \|\| cfg\.settings\.nome(, comVersao)?\)/g) || []).length, 2);
+});
+
+test('comparar e gravar é um UPDATE só: a versão velha não grava nem chegando ao mesmo tempo', async () => {
+  const db = require('../server/db-sqlite.js');
+  const { tenantId } = await db.createAccount('cas' + Date.now() + '@teste.local', 'x', 'Loja', 'Dono');
+  const id = 'dev_cas_' + Date.now();
+  await db.createDevice(id, 'C' + Date.now().toString(36).slice(-5).toUpperCase(), 'tok_' + Date.now());
+  if (db.claimDevice) await db.claimDevice(id, tenantId, 'TV');
+  const v1 = await db.setDeviceConfig(id, '{"a":1}', 'TV');
+  await new Promise((r) => setTimeout(r, 3));
+  const v2 = await db.setDeviceConfig(id, '{"a":2}', 'TV', v1);
+  assert.ok(v2, 'com a versão certa, grava');
+  assert.equal(await db.setDeviceConfig(id, '{"a":3}', 'TV', v1), null, 'com a versão velha, não grava');
 });
