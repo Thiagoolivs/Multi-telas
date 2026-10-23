@@ -21,7 +21,7 @@ const semComentarios = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/
 const MARCA = semComentarios(ler('web/src/pages/BrandPage.jsx'));
 
 test('a ordem: logo, cores, nome e tom, site, fotos, avançado', () => {
-  const ordem = ['<PanelHeader title="Logo"', '<PaletasSugeridas ', 'title="Nome e jeito de falar"', 'title="Site da marca"', 'title="Fotos da empresa"', 'Avançado</span>']
+  const ordem = ['<LogoDaMarca ', '<PaletasSugeridas ', 'title="Nome e jeito de falar"', 'title="Site da marca"', 'title="Fotos da empresa"', 'Avançado</span>']
     .map((s) => MARCA.indexOf(s));
   assert.ok(ordem.every((i) => i > 0), 'sumiu uma seção: ' + ordem.join(', '));
   assert.deepEqual([...ordem].sort((a, b) => a - b), ordem, 'a ordem mudou');

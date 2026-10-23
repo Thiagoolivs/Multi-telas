@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { confirmar, perguntar } from '../lib/confirmar.js';
-import { Palette, Sparkles, Trash2, Check, Plus, Info, Brain, Building2, X, Globe, Search, ChevronDown, Images, UploadCloud, CloudOff, SlidersHorizontal } from 'lucide-react';
+import { Sparkles, Check, Plus, Info, Brain, Building2, X, Globe, Search, ChevronDown, Images, CloudOff, SlidersHorizontal } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -12,6 +12,7 @@ import { aviso } from '../lib/avisos.js';
 import { lerJornada } from '../lib/jornada.js';
 import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { PaletasSugeridas } from '../components/content/PaletasSugeridas.jsx';
+import { LogoDaMarca } from '../components/content/LogoDaMarca.jsx';
 import { usePerfil } from '../lib/perfil.js';
 import { cn } from '../lib/cn.js';
 
@@ -71,6 +72,8 @@ export function BrandPage({ onIr }) {
   const marcas = (data && data.marcas) || [];
   const limiteMarcas = (data && data.limiteMarcas) || 3;
   const logo = assets.find((a) => a.kind === 'logo');
+  const logoClara = assets.find((a) => a.kind === 'logo-clara');
+  const logoEscura = assets.find((a) => a.kind === 'logo-escura');
   const fotos = assets.filter((a) => a.kind === 'base');
   const referencias = assets.filter((a) => a.kind === 'referencia');
 
@@ -343,34 +346,9 @@ export function BrandPage({ onIr }) {
         </Panel>
       )}
 
-      {/* 1. A logo, primeiro: é a cara da marca e vai em todas as peças. */}
-      <Panel>
-        <PanelHeader title="Logo"
-          description="Vai no mesmo canto de todas as peças geradas. PNG com fundo transparente fica melhor."
-          actions={(
-            <label className={cn('flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition',
-              logo ? 'border-line bg-surface text-ink-2 hover:bg-surface-2' : 'border-accent bg-accent text-accent-fg hover:opacity-90', busy && 'pointer-events-none opacity-60')}>
-              <UploadCloud size={14} /> {logo ? 'Trocar logo' : 'Enviar logo'}
-              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => subir('logo', e)} />
-            </label>
-          )} />
-        {logo ? (
-          <div className="flex flex-wrap items-center gap-4 p-4">
-            <div className="grid grid-cols-2 overflow-hidden rounded-md border border-line">
-              {/* No claro e no escuro: a logo precisa ler nos dois fundos da TV. */}
-              <div className="flex h-24 w-36 items-center justify-center bg-white p-3"><img src={logo.url} alt="Logo no fundo claro" className="max-h-full max-w-full object-contain" /></div>
-              <div className="flex h-24 w-36 items-center justify-center bg-[#0b1220] p-3"><img src={logo.url} alt="Logo no fundo escuro" className="max-h-full max-w-full object-contain" /></div>
-            </div>
-            <button type="button" onClick={() => apagar(logo, 'a logo')} className="flex items-center gap-1 text-xs text-ink-3 hover:text-danger">
-              <Trash2 size={12} /> Tirar a logo
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2 p-4 text-sm text-ink-3">
-            <Palette size={15} /> Sem logo ainda. Envie a logo para ela aparecer nas peças.
-          </div>
-        )}
-      </Panel>
+      {/* 1. A logo, primeiro: é a cara da marca e vai em todas as peças (análise e correção: D7). */}
+      <LogoDaMarca logo={logo} logoClara={logoClara} logoEscura={logoEscura} busy={busy}
+        onSubir={(e) => subir('logo', e)} onTirar={() => apagar(logo, 'a logo')} onTrocou={() => { reload(); conferirJornada(); }} />
 
       {/* 2. As cores: paletas prontas primeiro, cor livre em "avançado". */}
       <PaletasSugeridas kit={kit} ramoDaConta={data && data.ramo} empresa={nome && nome !== 'Marca principal' ? nome : (data && data.empresa)}
