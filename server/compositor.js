@@ -289,12 +289,19 @@ function cortarNome(s, max) {
   return out.replace(/\s+(e|da|de|do|das|dos|&)$/i, '');
 }
 
+/*
+ * Cortado no meio de uma frase, o fim não pode ficar pendurado num "até",
+ * "de", "nas" — "30% off até" no cabeçalho, visto no teste do dono no
+ * navegador. Sai o conector (e a pontuação que sobrar antes dele).
+ */
+const CONECTOR_NO_FIM = /(?:[\s,;:·—-]+(?:e|ou|de|da|do|das|dos|na|no|nas|nos|em|até|com|para|pra|por|pelo|pela|a|o|as|os|um|uma|que|sem|à|ao|às|aos))+[\s,;:·—-]*$/i;
 function cortarNaPalavra(s, max) {
   const t = String(s || '').replace(/\s+/g, ' ').trim();
   if (t.length <= max) return t;
   const c = t.slice(0, max + 1);
   const i = c.lastIndexOf(' ');
-  return (i > max * 0.5 ? c.slice(0, i) : t.slice(0, max)).replace(/[,;:·—-]+$/, '').trim();
+  const cortado = (i > max * 0.5 ? c.slice(0, i) : t.slice(0, max)).replace(/[,;:·—-]+$/, '').trim();
+  return cortado.replace(CONECTOR_NO_FIM, '').trim() || cortado;
 }
 
 function preencherPapel(o) {

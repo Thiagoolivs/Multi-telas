@@ -111,6 +111,39 @@ function semIA(texto, mensagens, resultado, referencias) {
     if (pendente.tipo === 'texto') return textoNa(n, pendente.campo, pendente.valor, resultado);
     if (pendente.tipo === 'usar') return fazer([{ tipo: 'refazer', peca: n, foto: 'usar', ref: pendente.ref }], resultado, imagens);
   }
+  /*
+   * "muda o texto da peça 2" sem dizer o texto novo: conversa até entender,
+   * um passo por vez — qual texto (o título ou o de baixo), em qual peça e
+   * o que escrever. Visto no teste do dono no navegador: sem a IA, a
+   * resposta era uma lista de exemplos, e a pessoa ficava sem saber o que
+   * fazer. A resposta que é um pedido novo ("tira a peça 5") não vira texto.
+   */
+  const pedidoNovo = /^\s*(?:mud|troc|tir|p[õo]e|coloc|acrescent|adicion|mais\s+uma|us[ae]\b|faz|refaz|apag)/i.test(String(texto || ''));
+  const campoDaResposta = (s) => (/t[ií]tulo|cima|grande|chamada|principal/i.test(s) ? 'titulo'
+    : /baixo|apoio|menor|pequen|descri|detalhe|subt/i.test(s) ? 'apoio' : '');
+  const pedirValor = (peca, campo) => ({
+    acao: 'perguntar', resposta: 'O que eu escrevo ' + (campo === 'titulo' ? 'no título' : 'no texto de baixo') + ' da peça ' + peca + '?',
+    sugestoes: [], mudancas: [], pendente: { tipo: 'texto-valor', peca, campo },
+  });
+  const pedirPeca = (campo) => ({ acao: 'perguntar', resposta: 'Em qual peça?', sugestoes: sugestoesDePeca, mudancas: [], pendente: { tipo: 'texto-peca', campo } });
+  if (pendente && pendente.tipo === 'texto-qual' && !pedidoNovo) {
+    const campo = campoDaResposta(t);
+    if (campo) return pendente.peca ? pedirValor(pendente.peca, campo) : pecas.length === 1 ? pedirValor(1, campo) : pedirPeca(campo);
+  }
+  if (pendente && pendente.tipo === 'texto-peca' && n && soAPeca) return pedirValor(n, pendente.campo);
+  if (pendente && pendente.tipo === 'texto-valor' && !pedidoNovo && String(texto || '').trim()) {
+    return textoNa(pendente.peca, pendente.campo, String(texto).trim().replace(/^["“']|["”']$/g, '').slice(0, 200), resultado);
+  }
+  const textoSemValor = /(?:mud|troc|alter|edit|corrig)\w*\s+(?:o\s+|a\s+)?(t[ií]tulo|texto|frase|chamada|escrita)/i.exec(String(texto || ''));
+  if (textoSemValor && !/\s(?:para|por)\s*:?\s*\S/i.test(String(texto || '').slice(textoSemValor.index + textoSemValor[0].length))) {
+    const campo = /t[ií]tulo|chamada/i.test(textoSemValor[1]) ? 'titulo' : '';
+    const peca = n || (pecas.length === 1 ? 1 : null);
+    if (!campo) {
+      return { acao: 'perguntar', resposta: 'Qual texto' + (peca ? ' da peça ' + peca : '') + ': o título ou o de baixo?',
+        sugestoes: ['O título', 'O texto de baixo'], mudancas: [], pendente: { tipo: 'texto-qual', peca } };
+    }
+    return peca ? pedirValor(peca, campo) : pedirPeca(campo);
+  }
   // "usa a foto que eu mandei" (D45): a última imagem do produto (ou a última que veio).
   if (imagens.length && /(us[ae]|p[õo]e|coloc\w*)\s+(a |essa |esta |minha )?(foto|imagem)/.test(t)) {
     const k = imagens.map((r, i) => (r.uso === 'produto' ? i + 1 : 0)).filter(Boolean).pop() || imagens.length;
