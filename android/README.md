@@ -58,7 +58,13 @@ pelo pendrive".
 1. Copie o `.apk` para um pendrive (ou use o app "Send files to TV").
 2. No box: **Configurações › Segurança › Fontes desconhecidas** (ou "Instalar
    apps desconhecidos" para o gerenciador de arquivos) — permitir.
-3. Abra o `.apk` pelo gerenciador de arquivos e instale.
+3. Abra o `.apk` pelo gerenciador de arquivos e instale. **Box com o app de
+   antes da chave de release** (o box de teste está no 1.0.55): desinstale
+   o antigo primeiro — a assinatura é outra e o Android recusa por cima.
+   Uma vez só; daí em diante ele se atualiza sozinho.
+   **Android 8 ou mais novo:** na primeira atualização remota o box pede,
+   uma vez, "permitir instalar apps desta fonte" para o MultiTelas TV.
+   Permita (ou já deixe permitido aqui, na instalação).
 4. **Faça o app abrir sozinho quando o box liga.** No Android 10+ (Google
    TV incluso) isso exige UMA destas duas coisas:
    - **Permitir "Sobrepor a outros apps"** — o app abre essa tela na primeira
