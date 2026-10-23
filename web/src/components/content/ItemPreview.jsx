@@ -15,6 +15,11 @@ const ANN_COLOR = {
   comunicado: '#3b82f6', urgente: '#ef4444', evento: '#8b5cf6', rh: '#14b8a6',
   seguranca: '#f59e0b', manutencao: '#64748b', conquista: '#22c55e', treinamento: '#6366f1', saude: '#ec4899',
 };
+// O rótulo que a TV escreve (js/render.js): a prévia mostrava o id cru, "MANUTENCAO", sem acento (D3).
+const ANN_ROTULO = {
+  comunicado: 'Comunicado', urgente: 'Urgente', evento: 'Evento', rh: 'Recursos Humanos', seguranca: 'Segurança',
+  manutencao: 'Manutenção programada', conquista: 'Conquista', treinamento: 'Treinamento', saude: 'Saúde e bem-estar',
+};
 
 export function ItemPreview({ item, className }) {
   // A peça em HTML tem prévia fiel: o mesmo desenhista da TV.
@@ -46,7 +51,7 @@ export function Body({ item }) {
         <div className="flex h-full w-full flex-col items-center justify-center gap-1.5"
              style={{ background: `radial-gradient(80% 80% at 80% 10%, ${c}44, transparent 60%), #0a1128` }}>
           <span className="rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-                style={{ color: c, borderColor: c + '88' }}>{item.etiqueta || item.tipo}</span>
+                style={{ color: c, borderColor: c + '88' }}>{item.etiqueta || ANN_ROTULO[item.tipo] || item.tipo}</span>
           <div className="text-base font-semibold leading-tight">{item.titulo || 'Aviso'}</div>
           {item.corpo && <div className="line-clamp-2 text-xs opacity-80">{item.corpo}</div>}
         </div>

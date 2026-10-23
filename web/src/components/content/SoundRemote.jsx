@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { aviso } from '../../lib/avisos.js';
 import { Play, Pause, SkipForward, SkipBack, Volume2, VolumeX } from 'lucide-react';
 import { som as somApi } from '../../api.js';
 import { IconButton } from '../ui/Button.jsx';
@@ -14,9 +15,21 @@ import { IconButton } from '../ui/Button.jsx';
 export function SoundRemote({ deviceId, compacto }) {
   const [info, setInfo] = useState(null);
   const [ocupado, setOcupado] = useState(false);
+  /*
+   * undefined = ainda lendo; null = não deu para ler. Antes os dois viravam
+   * "A tela está offline" — mentira enquanto carregava ou quando a rede do
+   * PAINEL caía (D3).
+   */
+  const [lido, setLido] = useState(false);
+  const [falhou, setFalhou] = useState(false);
+  // O volume acompanha o dedo; a ordem vai à TV só quando ele para de mexer.
+  const [volumeLocal, setVolumeLocal] = useState(null);
+  const tVolume = useRef(null);
 
   async function ler() {
-    try { setInfo(await somApi.estado(deviceId)); } catch (e) { setInfo(null); }
+    try { setInfo(await somApi.estado(deviceId)); setFalhou(false); }
+    catch (e) { setFalhou(true); }
+    finally { setLido(true); }
   }
   useEffect(() => {
     ler();
@@ -26,7 +39,8 @@ export function SoundRemote({ deviceId, compacto }) {
 
   async function mandar(acao, valor) {
     setOcupado(true);
-    try { await somApi.comando(deviceId, acao, valor); } catch (e) {}
+    try { await somApi.comando(deviceId, acao, valor); }
+    catch (e) { aviso.erro('som', 'O comando não chegou à TV: ' + (e.message || 'falha de conexão') + '.'); }
     // A TV responde em menos de um segundo; reler antes disso mostraria o
     // estado velho e o botão pareceria não ter funcionado.
     setTimeout(() => { ler(); setOcupado(false); }, 900);
@@ -35,6 +49,25 @@ export function SoundRemote({ deviceId, compacto }) {
   const e = (info && info.estado) || null;
   const online = info && info.online;
 
+  /*
+   * Arrastar o volume mandava uma ordem a cada pixel e o controle voltava ao
+   * valor velho até a TV responder (D3). Agora o controle segue o dedo, e só
+   * a última posição vai, 300 ms depois de parar.
+   */
+  function mudarVolume(v) {
+    setVolumeLocal(v);
+    clearTimeout(tVolume.current);
+    tVolume.current = setTimeout(() => {
+      somApi.comando(deviceId, 'volume', v)
+        .catch((err) => aviso.erro('som', 'O volume não chegou à TV: ' + (err.message || 'falha de conexão') + '.'))
+        .finally(() => setTimeout(() => { ler(); setVolumeLocal(null); }, 900));
+    }, 300);
+  }
+
+  if (!lido) return <p className="text-xs text-ink-3">Vendo o som da TV…</p>;
+  if (falhou && !info) {
+    return <p className="text-xs text-ink-3">Não deu para ver o som desta TV agora. <button type="button" className="text-accent hover:underline" onClick={ler}>Tentar de novo</button></p>;
+  }
   if (!online) {
     return (
       <p className="text-xs text-ink-3">
@@ -61,8 +94,8 @@ export function SoundRemote({ deviceId, compacto }) {
           {e && e.volume === 0 ? <VolumeX size={14} className="text-ink-3" /> : <Volume2 size={14} className="text-ink-3" />}
           <input
             type="range" min="0" max="100"
-            value={e ? e.volume : 60}
-            onChange={(ev) => mandar('volume', Number(ev.target.value))}
+            value={volumeLocal != null ? volumeLocal : (e ? e.volume : 60)}
+            onChange={(ev) => mudarVolume(Number(ev.target.value))}
             className="w-full accent-accent"
             aria-label="Volume"
           />

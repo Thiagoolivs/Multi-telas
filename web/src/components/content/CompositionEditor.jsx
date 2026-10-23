@@ -957,6 +957,19 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <Button size="sm" variant="secondary" icon={Shapes} className="hidden md:inline-flex" onClick={addShape}>Forma</Button>
         <Button size="sm" variant="secondary" icon={Star} className="hidden md:inline-flex" onClick={addIcon}>Ícone</Button>
         <span className="md:hidden"><IconBtn title="Remover (Delete)" icon={Trash2} disabled={!sel.length} onClick={remover} /></span>
+        {/*
+          No celular o formato (deitada, em pé, quadrada) e o pedido à IA
+          sumiam com o resto da barra: não dava para fazer uma peça em pé pelo
+          telefone (D3). Um seletor pequeno e um botão cabem na mesma linha.
+        */}
+        <label className="md:hidden">
+          <span className="sr-only">Formato da peça</span>
+          <select value={aspect} onChange={(ev) => editar((d) => ({ ...d, aspect: ev.target.value }))}
+            className="h-8 rounded-md border border-line bg-surface px-1.5 text-xs text-ink">
+            {ASPECTS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+          </select>
+        </label>
+        <span className="md:hidden"><IconBtn title="Pedir à IA" icon={Sparkles} onClick={() => setAiOpen((o) => !o)} /></span>
         <div className="relative hidden md:block">
           <Button size="sm" variant="secondary" icon={Sticker} onClick={() => setBibliotecaAberta((v) => !v)}>Elementos</Button>
           {bibliotecaAberta && (
