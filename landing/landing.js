@@ -78,6 +78,9 @@
     }
     var pro = (dados.planos || []).filter(function (p) { return p.id === 'pro'; })[0];
     if (pro && pro.precoTelaCents) texto('[data-preco-mensal]', reais(pro.precoTelaCents));
+    // D22: o Pro (IA integrada) ainda em breve — o preço vem do catálogo, como o do Essencial.
+    var integrada = (dados.planos || []).filter(function (p) { return p.id === 'integrada'; })[0];
+    if (integrada && integrada.precoTelaCents) texto('[data-preco-pro]', reais(integrada.precoTelaCents));
     var faixas = dados.faixasAnual || [];
     if (faixas.length) {
       texto('[data-preco-anual]', reais(faixas[0].precoTelaCents));

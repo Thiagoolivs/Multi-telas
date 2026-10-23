@@ -58,7 +58,7 @@ export function RelatorioPage({ onIrParaPlano }) {
 
       {loading && <SkeletonRows rows={6} cols={4} />}
       {bloqueado && (
-        <EmptyState icon={BarChart3} title="Relatório de exibição é do plano Pro"
+        <EmptyState icon={BarChart3} title="Relatório de exibição é dos planos pagos"
           description={error.message}
           action={onIrParaPlano && <Button size="sm" variant="primary" onClick={onIrParaPlano}>Ver planos</Button>} />
       )}

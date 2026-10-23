@@ -78,7 +78,7 @@ export function QuizField({ item, onChange }) {
         <p className="flex items-start gap-1.5 rounded-lg border border-warn/40 bg-warn/10 px-2.5 py-2 text-xs text-ink">
           <AlertTriangle size={14} className="mt-px shrink-0 text-warn" />
           {pendentes === 1 ? '1 pergunta escrita pela IA ainda não foi conferida.' : pendentes + ' perguntas escritas pela IA ainda não foram conferidas.'}
-          {' '}Fato errado na TV é pior que nenhum: leia e toque em “Conferi” — antes disso ela não vai ao ar.
+          {' '}A pergunta vai para a TV com a sua marca, e conferir é com você: leia e toque em “Conferi” — antes disso ela não vai ao ar.
         </p>
       )}
 

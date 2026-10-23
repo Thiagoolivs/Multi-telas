@@ -29,11 +29,20 @@ const PLANS = {
     stripePrice: null,
   },
   pro: {
-    id: 'pro', name: 'Pro',
+    /*
+     * D22: o plano pago de hoje se chama ESSENCIAL — a IA básica (a franquia
+     * de criações, os textos, o ajuste da peça, o quiz) com as telas e peças
+     * prontas. O id continua 'pro': as assinaturas no Asaas guardam
+     * "conta|pro" e a cortesia e o webhook usam esse id. Trocar o id seria
+     * migrar dinheiro; trocar o nome não é.
+     *
+     * 'pro' = Essencial (id histórico, não renomear: Asaas e cortesias).
+     */
+    id: 'pro', name: 'Essencial',
     // O preço do MENSAL, sem contrato. O anual sai de FAIXAS_ANUAL.
     precoTelaCents: 14900, telasMax: 49,
     gbPorTela: 10,
-    blurb: 'Tudo incluso: IA com a sua marca, relatório de exibição, mural, som e equipe.',
+    blurb: 'IA com a sua marca, telas e peças prontas, relatório de exibição, mural, som e equipe.',
     /*
      * Só o que EXISTE. 'sso' e 'marca-branca' já estiveram no Enterprise e a
      * landing os anunciava sem nenhuma linha de código por trás — vender
@@ -43,6 +52,27 @@ const PLANS = {
      */
     recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe', 'relatorio'],
     stripePrice: process.env.STRIPE_PRICE_PRO || null,
+  },
+  /*
+   * D22: o PRO é a IA integrada em tudo (decisão do dono: R$ 179 por tela),
+   * e só pode ser vendido quando existir — "nada vendido antes de existir".
+   * Até a Fase 3 (programação inteligente) ele aparece como EM BREVE: o
+   * painel e a landing mostram o que vem, e o checkout recusa. Ninguém tem
+   * este plano; quando ele abrir, sai o `emBreve` e entra o preço no anual.
+   */
+  integrada: {
+    id: 'integrada', name: 'Pro',
+    precoTelaCents: 17900, telasMax: 49,
+    gbPorTela: 10,
+    blurb: 'IA integrada em tudo: a programação se monta sozinha, com o calendário da empresa.',
+    recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe', 'relatorio', 'ia-integrada'],
+    emBreve: true,
+    vem: [
+      'Programação inteligente: prioridade, validade e TVs em cada peça',
+      'O calendário da empresa em texto vira conteúdo e cronograma prontos',
+      'IA em todo lugar, com mais criações por tela',
+    ],
+    stripePrice: null,
   },
   /*
    * Enterprise não tem preço de tabela de propósito: ele é cotado pela
@@ -71,7 +101,7 @@ const PLANS = {
  * grátis continua sendo a porta de entrada, que é o que trazia gente para o
  * Essencial de qualquer jeito.
  */
-const ORDER = ['free', 'pro', 'enterprise'];
+const ORDER = ['free', 'pro', 'integrada', 'enterprise'];
 
 /*
  * MENSAL E ANUAL (PLANO §6.1).
@@ -180,6 +210,8 @@ function multaCancelamentoCents(o) {
 
 function screenLimit(id) { return plan(id).telasMax; }
 function isPaid(id) { const p = plan(id); return p.precoTelaCents > 0 || p.sobConsulta === true; }
+// Plano que ainda não existe de verdade (D22): aparece, não se assina.
+function assinavel(id) { const p = PLANS[id]; return !!p && p.precoTelaCents > 0 && !p.emBreve; }
 function temRecurso(id, recurso) { return plan(id).recursos.indexOf(recurso) >= 0; }
 
 /*
@@ -390,7 +422,7 @@ function faixasAnual() {
 }
 
 module.exports = {
-  PLANS, ORDER, CONTRATOS, FAIXAS_ANUAL, PISO_NEGOCIADO_CENTS, TELAS_NEGOCIADAS, MESES_DO_CONTRATO, MULTA,
+  PLANS, ORDER, CONTRATOS, FAIXAS_ANUAL, PISO_NEGOCIADO_CENTS, TELAS_NEGOCIADAS, MESES_DO_CONTRATO, MULTA, assinavel,
   TETO_IA, CRIACOES_DO_TESTE, ATRASO, SELO,
   DIAS_DE_TESTE, fimDoTeste, diasDeTesteRestantes, testeAtivo, podeParear,
   CARENCIA_ATRASO_DIAS, situacaoAtraso, bloqueioPorAtraso, textoDoSelo, exibeSelo,

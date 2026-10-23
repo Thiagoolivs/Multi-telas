@@ -54,7 +54,7 @@ module.exports = function (ctx) {
     const libera = plans.temRecurso((tenant && tenant.plan) || 'free', 'relatorio') || plans.testeAtivo(tenant);
     if (!libera) {
       return sendJson(res, 402, {
-        error: 'O relatório de exibição faz parte do plano Pro. Suas telas continuam contando: assinando, o histórico aparece aqui.',
+        error: 'O relatório de exibição faz parte dos planos pagos. Suas telas continuam contando: assinando, o histórico aparece aqui.',
         code: 'plano_sem_relatorio',
       });
     }
