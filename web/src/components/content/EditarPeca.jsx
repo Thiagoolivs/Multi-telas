@@ -50,8 +50,8 @@ const limite = (exemplo) => Math.max(12, Math.ceil(String(exemplo || '').length 
 // "TV em pé: "Título" passa da borda" — o que o detector achou, na língua de quem usa.
 export function avisosDaConferencia(conferencia) {
   return Object.entries(conferencia || {}).flatMap(([f, r]) => [
-    ...r.fora.map((n) => NOME_DO_FORMATO[f] + ': "' + rotulo(n) + '" passa da borda'),
-    ...r.juntos.map((par) => NOME_DO_FORMATO[f] + ': ' + par.split(' × ').map(rotulo).join(' e ') + ' ficam um sobre o outro'),
+    ...r.fora.map((n) => (NOME_DO_FORMATO[f] || f) + ': "' + rotulo(n) + '" passa da borda'),
+    ...r.juntos.map((par) => (NOME_DO_FORMATO[f] || f) + ': ' + par.split(' × ').map(rotulo).join(' e ') + ' ficam um sobre o outro'),
   ]);
 }
 
@@ -110,7 +110,12 @@ export function AvisoDeEncaixe({ item, onTrocar, auto }) {
   );
 }
 
-export function EditarPeca({ item, label, onFechar, onSalvar }) {
+/*
+ * `lugar` ({ nome, tamanho }): a peça já tem lugar certo numa tela (as
+ * telas prontas, D18). Aí ela é desenhada e conferida no tamanho daquela
+ * zona — "cabe na principal" —, e não nos três formatos soltos.
+ */
+export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   const [definicao, setDefinicao] = useState(null);
   const [campos, setCampos] = useState(() => ({ ...(item.campos || {}) }));
   const [fotoAberta, setFotoAberta] = useState(null);
@@ -137,7 +142,7 @@ export function EditarPeca({ item, label, onFechar, onSalvar }) {
     let vivo = true;
     setConferencia(null);
     const t = setTimeout(() => {
-      conferirNosFormatos(atual).then((r) => { if (vivo) setConferencia(r); }).catch(() => {});
+      conferirNosFormatos(atual, lugar ? { [lugar.nome]: lugar.tamanho } : undefined).then((r) => { if (vivo) setConferencia(r); }).catch(() => {});
     }, 500);
     return () => { vivo = false; clearTimeout(t); };
   }, [atual]);
@@ -158,16 +163,17 @@ export function EditarPeca({ item, label, onFechar, onSalvar }) {
 
   return (
     <Dialog open onClose={onFechar} className="max-w-3xl" title={'Editar · ' + (label || 'peça')}
-      description="Troque os textos, a foto e o estilo. A peça é conferida na TV deitada, em pé e na quadrada enquanto você digita."
+      description={lugar ? 'Troque os textos, a foto e o estilo. A peça é conferida no tamanho dela na TV (' + lugar.nome.toLowerCase() + ') enquanto você digita.'
+        : 'Troque os textos, a foto e o estilo. A peça é conferida na TV deitada, em pé e na quadrada enquanto você digita.'}
       footer={<>
         <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
         <Button variant="primary" icon={Check} disabled={salvando || !definicao} onClick={salvar}>{salvando ? 'Salvando…' : 'Salvar'}</Button>
       </>}>
       <div className="grid gap-4 md:grid-cols-[1.4fr_1fr]">
         <div className="space-y-2">
-          <PecaHtml item={atual} formato={item.formato || '16/9'} />
+          <PecaHtml item={atual} formato={item.formato || '16/9'} tamanho={lugar && lugar.tamanho} />
           {conferencia == null
-            ? <p className="text-2xs text-ink-3">Conferindo nos três formatos…</p>
+            ? <p className="text-2xs text-ink-3">{lugar ? 'Conferindo…' : 'Conferindo nos três formatos…'}</p>
             : problemas.length
               ? (
                 <div className="rounded-lg border border-warn/40 bg-warn/10 p-2 text-2xs leading-relaxed text-ink">
@@ -176,7 +182,7 @@ export function EditarPeca({ item, label, onFechar, onSalvar }) {
                   <div className="mt-1 text-ink-3">Encurte o texto até o aviso sumir.</div>
                 </div>
               )
-              : <p className="flex items-center gap-1.5 text-2xs text-ok"><Check size={13} /> Cabe na TV deitada, em pé e na quadrada.</p>}
+              : <p className="flex items-center gap-1.5 text-2xs text-ok"><Check size={13} /> {lugar ? 'Cabe no lugar dela na TV (' + lugar.nome.toLowerCase() + ').' : 'Cabe na TV deitada, em pé e na quadrada.'}</p>}
         </div>
         <div className="space-y-3">
           <div>

@@ -46,6 +46,9 @@ export const NOME_DO_FORMATO = { '16/9': 'TV deitada', '9/16': 'TV em pé', '1/1
  * A peça cabe nos três formatos? A mesma peça vai para TV deitada e em pé,
  * então o texto que o cliente digita é conferido nos três, em tamanho real,
  * fora da vista — com o mesmo detector da bancada (js/peca-conferir.js).
+ *
+ * `formatos`: os nomes de TAMANHO_REAL, ou { nome: [largura, altura] } —
+ * a zona de uma tela pronta (D18), onde a peça vai de fato.
  */
 export async function conferirNosFormatos(item, formatos) {
   const R = await carregarDesenhista();
@@ -54,8 +57,9 @@ export async function conferirNosFormatos(item, formatos) {
   document.body.appendChild(caixa);
   const saida = {};
   try {
-    for (const f of formatos || Object.keys(NOME_DO_FORMATO)) {
-      const [w, h] = TAMANHO_REAL[f];
+    const medidas = formatos && !Array.isArray(formatos) ? Object.entries(formatos)
+      : (formatos || Object.keys(NOME_DO_FORMATO)).map((f) => [f, TAMANHO_REAL[f]]);
+    for (const [f, [w, h]] of medidas) {
       const host = document.createElement('div');
       host.style.cssText = 'position:absolute;left:0;top:0;width:' + w + 'px;height:' + h + 'px;container-type:size';
       caixa.appendChild(host);

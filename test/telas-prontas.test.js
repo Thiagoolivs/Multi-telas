@@ -76,3 +76,80 @@ test('o painel não mostra tela que o dono ainda não aprovou', () => {
   const s = fs.readFileSync(path.join(RAIZ, 'web/src/lib/modelosOuro.js'), 'utf8');
   assert.ok(!/\.telas\b/.test(s) || /estado === 'aprovada'/.test(s));
 });
+
+/* ---------------- Parte 2: a galeria do cliente ---------------- */
+
+const { pathToFileURL } = require('node:url');
+const PH = require('../js/peca-html.js');
+const lib = () => import(pathToFileURL(path.join(RAIZ, 'web/src/lib/telasProntas.js')).href);
+const modelos = new Map(M.pecas.map((p) => [p.id, { ...p, arq: PH.doArquivo(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', p.id + '.html'), 'utf8')) }]));
+const MARCA = { nome: 'Padaria Real', cores: ['#7a2e0e', '#f2c14e'], fonteTitulo: 'serif', fonteApoio: 'sans' };
+
+test('o cliente só vê tela aprovada; tela sem perfil vale pela marca de exemplo', async () => {
+  const L = await lib();
+  const ids = L.aprovadas(M).map((t) => t.id);
+  assert.ok(ids.every((id) => M.telas.find((t) => t.id === id).estado === 'aprovada'));
+  assert.ok(!ids.some((id) => M.telas.find((t) => t.id === id).estado === 'proposta'));
+  assert.equal(L.perfilDaTela({ marca: 'rotasul' }), 'empresa');
+  assert.equal(L.perfilDaTela({ marca: 'clinica' }), 'saude');
+  assert.equal(L.perfilDaTela({ marca: 'otica', perfil: 'saude' }), 'saude');
+});
+
+test('a tela vem com a marca da conta: nome no lugar do da empresa de exemplo, ano de fundação em branco', async () => {
+  const L = await lib();
+  const tela = M.telas.find((t) => t.id === 'l1-empresa-seguranca');
+  const t = L.montarTela(tela, modelos, MARCA);
+  const cab = t.grupos.cabecalho[0];
+  assert.equal(cab.campos.marca, 'Padaria Real');
+  assert.equal(cab.campos.desde, '', 'o "Desde 2001" da Rota Sul foi para a TV do cliente');
+  assert.equal(cab.campos.status, 'Turno da manhã');
+  assert.deepEqual(cab.marca.cores, MARCA.cores);
+  assert.equal(cab.modo, 'escuro', 'o modo da zona se perdeu');
+  assert.equal(t.grupos.principal.length, 3);
+  assert.deepEqual(t.mensagens, tela.mensagens);
+});
+
+test('pôr na TV: o layout da tela, as peças dela no lugar das antigas, e o que é da TV fica', async () => {
+  const L = await lib();
+  const tela = M.telas.find((t) => t.id === 'l1-saude-espera');
+  const t = L.montarTela(tela, modelos, MARCA);
+  const antes = {
+    version: 1,
+    settings: { nome: 'Recepção', layoutId: 'corporate', theme: { preset: 'marca' } },
+    zonas: {
+      principal: { items: [{ type: 'image', src: '/velha.jpg' }], transicao: 'fade' },
+      rodape: { messages: ['frase velha'], velocidade: 3, peca: { type: 'peca-html', html: '<div></div>' } },
+    },
+  };
+  const cfg = L.aplicarTelaPronta(antes, t);
+  assert.equal(cfg.settings.layoutId, 'sidebar-right');
+  assert.equal(cfg.settings.nome, 'Recepção');
+  assert.deepEqual(cfg.settings.theme, { preset: 'marca' });
+  assert.equal(cfg.zonas.principal.items.length, 3);
+  assert.ok(cfg.zonas.principal.items.every((i) => i.type === 'peca-html' && i.duracao > 0 && i.origem.tela === tela.id));
+  assert.equal(cfg.zonas.principal.transicao, 'fade', 'a transição da zona se perdeu');
+  assert.equal(cfg.zonas.lateral.items.length, 2);
+  assert.deepEqual(cfg.zonas.rodape.messages, tela.mensagens);
+  assert.equal(cfg.zonas.rodape.velocidade, 3);
+  assert.equal(cfg.zonas.rodape.peca.origem.base, 'rodape-selo');
+  assert.equal(antes.zonas.principal.items.length, 1, 'mexeu na config recebida');
+  // A prévia desenha a primeira peça de cada zona, e o letreiro no rodapé.
+  const e = L.estadoDaPrevia(t);
+  assert.equal(e.zonas.principal.item.origem.base, 'servico-passos');
+  assert.deepEqual(e.zonas.rodape.mensagens, tela.mensagens);
+  assert.deepEqual(e.tela, { w: 1920, h: 1080 });
+});
+
+test('a galeria: grava com versão, confere na zona, só põe em TV do mesmo jeito (deitada/em pé)', () => {
+  const p = fs.readFileSync(path.join(RAIZ, 'web/src/pages/TelasProntasPage.jsx'), 'utf8');
+  assert.match(p, /await gravarNaTela\(tv, \(cfg\) => aplicarTelaPronta\(cfg, escolhida\)\);/);
+  assert.match(p, /const naoCabe = pe != null && pe !== emPe\(escolhida\.layout\);/);
+  assert.match(p, /lugar=\{zonas\[editando\.grupo\]\}/);
+  const e = fs.readFileSync(path.join(RAIZ, 'web/src/components/content/EditarPeca.jsx'), 'utf8');
+  assert.match(e, /conferirNosFormatos\(atual, lugar \? \{ \[lugar\.nome\]: lugar\.tamanho \} : undefined\)/);
+  const h = fs.readFileSync(path.join(RAIZ, 'web/src/lib/pecaHtml.js'), 'utf8');
+  assert.match(h, /const medidas = formatos && !Array\.isArray\(formatos\) \? Object\.entries\(formatos\)/);
+  // A TV vazia oferece a tela pronta como começo.
+  const ed = fs.readFileSync(path.join(RAIZ, 'web/src/pages/ContentEditorPage.jsx'), 'utf8');
+  assert.match(ed, /onIr\('telasprontas', \{ tela: device && device\.id \}\)/);
+});
