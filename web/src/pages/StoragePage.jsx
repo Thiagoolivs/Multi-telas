@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { confirmar } from '../lib/confirmar.js';
-import { UploadCloud, Trash2, Film, Image as ImageIcon, Share2, Check, Clock, X, Music, FileText, Sparkles } from 'lucide-react';
+import { UploadCloud, Trash2, Film, Image as ImageIcon, Share2, Check, Clock, X, Music, FileText, Sparkles, Tag } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Skeleton, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
-import { media, bancoImagens } from '../api.js';
+import { media, bancoImagens, brand } from '../api.js';
+import { cn } from '../lib/cn.js';
 import { formatBytes, formatPercent, relativeTime } from '../lib/format.js';
 import { avaliarVideo, ehVideo } from '../lib/subir.js';
 
@@ -29,6 +30,26 @@ function useEstadoNoBanco(itens) {
   return [porMedia, setPorMedia];
 }
 
+/*
+ * As fotos "da marca" (EXECUTOR D6): eram as "Imagens base", escondidas no
+ * fim da página da Marca. Foto é mídia, e mora aqui; a etiqueta diz à IA
+ * quais são da empresa (produto, equipe, o lugar) para usar antes de inventar.
+ * Por baixo continua o mesmo registro (brand asset 'base'), indexado pelo
+ * endereço da mídia.
+ */
+function useFotosDaMarca(ativo) {
+  const [porUrl, setPorUrl] = useState({});
+  useEffect(() => {
+    if (!ativo) return undefined;
+    let vivo = true;
+    brand.get()
+      .then((r) => { if (vivo) setPorUrl(Object.fromEntries(((r && r.assets) || []).filter((a) => a.kind === 'base').map((a) => [a.url, a]))); })
+      .catch(() => {});
+    return () => { vivo = false; };
+  }, [ativo]);
+  return [porUrl, setPorUrl];
+}
+
 const ROTULO = {
   pendente: { texto: 'Em conferência', Icone: Clock, classe: 'text-warn' },
   aprovada: { texto: 'No banco', Icone: Check, classe: 'text-ok' },
@@ -46,7 +67,7 @@ const ROTULO = {
 const RECORTES = {
   fotos: {
     titulo: 'Fotos e vídeos', vazio: 'Sem fotos nem vídeos ainda', enviar: 'Enviar fotos ou vídeos',
-    subtitulo: 'O que você enviou: fotos, vídeos e apresentações para pôr nas TVs.',
+    subtitulo: 'O que você enviou: fotos, vídeos e apresentações para pôr nas TVs. Marque “da marca” nas fotos da empresa: a IA usa estas antes de inventar.',
     accept: 'image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation',
     pertence: (m) => m.origem !== 'ia' && !/^audio\//.test(m.mime || ''),
   },
@@ -75,6 +96,33 @@ export function StoragePage({ filtro = 'fotos' }) {
   const todos = data ? data.items : [];
   const items = todos.filter(recorte.pertence);
   const [noBanco, setNoBanco] = useEstadoNoBanco(todos);
+  const etiquetaDaMarca = filtro === 'fotos';
+  const [daMarca, setDaMarca] = useFotosDaMarca(etiquetaDaMarca);
+  const [soDaMarca, setSoDaMarca] = useState(false);
+  const nDaMarca = items.filter((m) => daMarca[m.url]).length;
+  const visiveis = soDaMarca ? items.filter((m) => daMarca[m.url]) : items;
+
+  async function alternarDaMarca(m) {
+    const a = daMarca[m.url];
+    try {
+      if (a) {
+        await brand.removeAsset(a.id);
+        setDaMarca((x) => { const y = { ...x }; delete y[m.url]; return y; });
+      } else {
+        // Sem rótulo de propósito: "IMG_2843.jpg" não descreve nada, e a IA olha a foto sozinha.
+        const novo = await brand.addAsset('base', m.url, '');
+        setDaMarca((x) => ({ ...x, [m.url]: novo }));
+      }
+    } catch (e) { setMsg(e.message || 'Não deu para mudar a etiqueta.'); }
+  }
+
+  // A descrição salva ao sair do campo: é por ela que a IA escolhe a foto.
+  async function descrever(a, texto) {
+    const novo = texto.trim().slice(0, 160);
+    if (novo === (a.label || '')) return;
+    try { await brand.labelAsset(a.id, novo); a.label = novo; }
+    catch (e) { setMsg(e.message || 'Não deu para salvar a descrição.'); }
+  }
   const usage = data ? data.usage : { used: 0, quota: 1 };
   const frac = usage.quota ? usage.used / usage.quota : 0;
 
@@ -153,7 +201,15 @@ export function StoragePage({ filtro = 'fotos' }) {
       {msg && <div className="mb-4 rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">{msg}</div>}
 
       <Panel>
-        <PanelHeader title={recorte.titulo} description={items.length ? `${items.length} arquivo(s)` : undefined} />
+        <PanelHeader title={recorte.titulo} description={items.length ? `${items.length} arquivo(s)` : undefined}
+          actions={etiquetaDaMarca && items.length > 0 && (
+            <div className="flex gap-1" role="group" aria-label="Filtrar">
+              {[[false, 'Todas'], [true, 'Da marca (' + nDaMarca + ')']].map(([v, rotulo]) => (
+                <button key={rotulo} type="button" aria-pressed={soDaMarca === v} onClick={() => setSoDaMarca(v)}
+                  className={cn('rounded-full border px-2.5 py-1 text-xs transition', soDaMarca === v ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-accent/50')}>{rotulo}</button>
+              ))}
+            </div>
+          )} />
         {loading ? (
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-video rounded-lg" />)}
@@ -165,7 +221,10 @@ export function StoragePage({ filtro = 'fotos' }) {
             action={recorte.enviar && <Button size="sm" variant="primary" icon={UploadCloud} onClick={() => inputRef.current && inputRef.current.click()}>{recorte.enviar}</Button>} />
         ) : (
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
-            {items.map((m) => (
+            {visiveis.length === 0 && (
+              <p className="col-span-full text-sm text-ink-3">Nenhuma foto com a etiqueta “da marca” ainda. Toque em “da marca” embaixo das fotos de produto, da equipe ou do lugar.</p>
+            )}
+            {visiveis.map((m) => (
               <div key={m.id} className="group overflow-hidden rounded-lg border border-line bg-surface-2">
                 <div className="relative aspect-video bg-[#0a1128]">
                   {String(m.mime).startsWith('video/')
@@ -186,6 +245,24 @@ export function StoragePage({ filtro = 'fotos' }) {
                     <span className="tnum">{formatBytes(m.size)}</span>
                     <span>{relativeTime(m.created_at)}</span>
                   </div>
+                  {etiquetaDaMarca && String(m.mime).startsWith('image/') && (() => {
+                    const a = daMarca[m.url];
+                    return (
+                      <div className="mt-1.5 space-y-1 border-t border-line pt-1.5">
+                        <button type="button" aria-pressed={!!a} onClick={() => alternarDaMarca(m)}
+                          title={a ? 'Tirar a etiqueta' : 'A IA usa as fotos da marca antes de inventar uma imagem'}
+                          className={cn('flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs transition',
+                            a ? 'border-accent bg-accent/10 font-semibold text-accent' : 'border-line text-ink-3 hover:border-accent/50 hover:text-ink-2')}>
+                          {a ? <Check size={11} /> : <Tag size={11} />} da marca
+                        </button>
+                        {a && (
+                          <input defaultValue={a.label} placeholder="o que a foto mostra" aria-label="O que a foto mostra"
+                            onBlur={(e) => descrever(a, e.target.value)}
+                            className="w-full rounded border border-line bg-surface px-1.5 py-0.5 text-2xs text-ink-2 placeholder:text-ink-3 focus:border-accent focus:outline-none" />
+                        )}
+                      </div>
+                    );
+                  })()}
                   {/*
                     Compartilhar só aparece no que a IA gerou. Arquivo enviado
                     pode ter pessoa, produto ou marca de terceiro — o servidor
