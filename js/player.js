@@ -568,6 +568,10 @@
     girar: 1,             // conferirGiro: recarrega a página, não a zona
     margemSegura: 1,      // aplicarMargem: uma variável CSS no <html>
     expediente: 1,        // aplicarExpediente: uma camada por cima, nada a refazer
+    // D29: trocar o layout é do PALCO (reorganizarPalco), que reaproveita as
+    // zonas que continuam. O que o layout muda no desenho de uma zona (o tipo,
+    // o formato, se há cabeçalho, o relógio de cima) vai em contextoDaZona.
+    layoutId: 1,
     // layoutAuto e layoutAutoSeconds NÃO entram aqui: eles ligam um
     // temporizador no nível do palco, e vão na assinatura do palco logo
     // abaixo. Se ficassem aqui, ligar o layout dinâmico não faria nada.
@@ -587,7 +591,18 @@
     ]);
   }
   function assinaturaZona(cfg, zoneId, ajustes) {
-    return fingerprint([cfg.zonas[zoneId] || null, ajustes]);
+    return fingerprint([cfg.zonas[zoneId] || null, ajustes, contextoDaZona(cfg, zoneId)]);
+  }
+  /*
+   * O que vem do LAYOUT e muda o desenho da zona: o tipo e o formato dela, se
+   * a tela tem cabeçalho (a peça não repete a marca) e, no rodapé, se o
+   * relógio já está em cima (D12). Igual nos dois layouts, a zona continua
+   * no ar na troca; diferente, ela é refeita.
+   */
+  function contextoDaZona(cfg, zoneId) {
+    const l = MT_getLayout(cfg.settings.layoutId);
+    const z = l.zones.find((x) => x.id === zoneId) || {};
+    return [z.type || '', z.formato || '', l.zones.some((x) => x.type === 'header'), z.type === 'ticker' ? relogioNoCabecalho(cfg, l) : null];
   }
 
   // O palco no ar: elemento e controlador de cada zona, com a assinatura do
@@ -721,20 +736,18 @@
     aplicarMargem(cfg);
     aplicarExpediente(cfg);
     if (!palco || palco.chave !== assinaturaPalco(cfg)) {
-      teardownZones();
+      /*
+       * D29: trocar o layout não derruba a tela. As zonas que continuam ficam
+       * no ar e deslizam para o lugar novo; só o palco que se move sozinho
+       * (layout dinâmico) é remontado — e aí a tela velha esmaece por cima da
+       * nova, sem quadro preto no meio.
+       */
+      if (podeReorganizar(cfg)) { reorganizarPalco(cfg); return; }
+      teardownZones({ cruzar: !!palco });
       buildStage(cfg);
       return;
     }
-    // Mesmo palco: os ajustes de fora da zona são baratos e vão sempre.
-    const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme, null, { pecas: MTTheme.pecasDaConfig && MTTheme.pecasDaConfig(cfg) })) || null;
-    global.MT_THEME = resolved;
-    contextoDaPeca(cfg);
-    if (global.MTAdaptive) {
-      MTAdaptive.enabled = cfg.settings.coresAdaptativas !== false;
-      if (resolved) MTAdaptive.setBase({ accent: resolved.accent, glow: resolved.glow });
-    }
-    smartLayout = cfg.settings.layoutInteligente !== false;
-    buildDecoration(cfg);
+    ajustesDoPalco(cfg);
 
     const ajustes = assinaturaAjustes(cfg.settings);
     const layout = MT_getLayout(cfg.settings.layoutId);
@@ -747,16 +760,166 @@
     }
   }
 
+  // Os ajustes de fora da zona são baratos e vão sempre (mesmo palco ou palco reorganizado).
+  function ajustesDoPalco(cfg) {
+    const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme, null, { pecas: MTTheme.pecasDaConfig && MTTheme.pecasDaConfig(cfg) })) || null;
+    global.MT_THEME = resolved;
+    contextoDaPeca(cfg);
+    if (global.MTAdaptive) {
+      MTAdaptive.enabled = cfg.settings.coresAdaptativas !== false;
+      if (resolved) MTAdaptive.setBase({ accent: resolved.accent, glow: resolved.glow });
+    }
+    smartLayout = cfg.settings.layoutInteligente !== false;
+    buildDecoration(cfg);
+  }
+
+  // TV fraca (modo leve): troca seca, sem animação por cima — sem engasgo.
+  function palcoLeve() { return document.documentElement.classList.contains('mt-perf'); }
+
+  // Esmaece (a transição é do CSS) e tira do palco. setTimeout e não
+  // requestAnimationFrame: com a aba em segundo plano este não roda, e o
+  // velho ficaria por cima para sempre.
+  function esmaecerESumir(el, ms) {
+    setTimeout(() => { el.style.opacity = '0'; }, 30);
+    setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, ms + 120);
+  }
+
   // Refaz UMA zona, sem tocar nas vizinhas. Um vídeo tocando na principal não
   // pode reiniciar porque alguém corrigiu o rodapé.
   function trocarZona(viva, zone, cfg, assinatura) {
     try { viva.ctrl && viva.ctrl.stop && viva.ctrl.stop(); } catch (e) {}
     const i = zoneControllers.indexOf(viva.ctrl);
     if (i >= 0) zoneControllers.splice(i, 1);
-    viva.el.innerHTML = '';
+    /*
+     * D29: a zona não pisca vazia. O que estava no ar fica por cima, parado,
+     * e esmaece enquanto o novo entra por baixo.
+     */
+    if (viva.el.firstChild && !palcoLeve()) {
+      const saindo = document.createElement('div');
+      saindo.className = 'mt-zona-saindo';
+      saindo.setAttribute('aria-hidden', 'true');
+      while (viva.el.firstChild) saindo.appendChild(viva.el.firstChild);
+      viva.el.appendChild(saindo);
+      esmaecerESumir(saindo, 500);
+    } else {
+      viva.el.innerHTML = '';
+    }
     viva.ctrl = iniciarZona(viva.el, zone, cfg);
     viva.assinatura = assinatura;
     zoneControllers.push(viva.ctrl);
+  }
+
+  /*
+   * TROCAR DE LAYOUT SEM REMONTAR (EXECUTOR D29).
+   *
+   * Era `teardownZones()` + `buildStage()`: a tela inteira sumia, o vídeo da
+   * principal voltava ao zero e as zonas refaziam a entrada. Agora:
+   *   - a zona que existe nos dois layouts (mesmo id, tipo e formato) fica no
+   *     ar e DESLIZA para o lugar novo — FLIP, só transform e opacity;
+   *   - a que só existe no novo entra esmaecendo;
+   *   - a que sai esmaece no lugar onde estava, fora da grade.
+   * O conteúdo da zona que continua só é refeito se o que ela mostra mudou
+   * (assinaturaZona, com o contexto do layout).
+   */
+  function podeReorganizar(cfg) {
+    if (!palco || palco.movel) return false;
+    const l = MT_getLayout(cfg.settings.layoutId);
+    if (l.dynamic) return false;
+    return !(cfg.settings.layoutAuto === true && computeArrangements(l).length > 1);
+  }
+
+  function reorganizarPalco(cfg) {
+    const layout = MT_getLayout(cfg.settings.layoutId);
+    const leve = palcoLeve();
+    const caixa = stage.getBoundingClientRect();
+    const antes = {};
+    Object.keys(palco.zonas).forEach((id) => { antes[id] = palco.zonas[id].el.getBoundingClientRect(); });
+
+    clearTakeover();
+    ajustesDoPalco(cfg);
+    stage.style.gridTemplateColumns = layout.grid.columns;
+    stage.style.gridTemplateRows = layout.grid.rows;
+    stage.style.gridTemplateAreas = layout.grid.areas.map((row) => '"' + row + '"').join(' ');
+
+    const ajustes = assinaturaAjustes(cfg.settings);
+    const velhas = palco.zonas;
+    const novas = {};
+    const ficam = [];
+    const entram = [];
+    layout.zones.forEach((zone) => {
+      const viva = velhas[zone.id];
+      if (viva && viva.tipo === zone.type && viva.formato === (zone.formato || '')) {
+        delete velhas[zone.id];
+        // Só a área muda: mover o elemento no DOM recarregaria iframe e live.
+        viva.el.style.gridArea = zone.area;
+        const nova = assinaturaZona(cfg, zone.id, ajustes);
+        if (nova !== viva.assinatura) trocarZona(viva, zone, cfg, nova);
+        novas[zone.id] = viva;
+        ficam.push({ el: viva.el, f: antes[zone.id] });
+        return;
+      }
+      const el = document.createElement('div');
+      el.className = 'mt-zone mt-zone-' + zone.type;
+      el.style.gridArea = zone.area;
+      stage.appendChild(el);
+      const ctrl = iniciarZona(el, zone, cfg);
+      zoneControllers.push(ctrl);
+      novas[zone.id] = { el, ctrl, assinatura: assinaturaZona(cfg, zone.id, ajustes), tipo: zone.type, formato: zone.formato || '' };
+      entram.push(el);
+    });
+
+    // As que saem param já, e esmaecem onde estavam (fora da grade, por cima de nada).
+    Object.keys(velhas).forEach((id) => {
+      const v = velhas[id];
+      try { v.ctrl && v.ctrl.stop && v.ctrl.stop(); } catch (e) {}
+      const i = zoneControllers.indexOf(v.ctrl);
+      if (i >= 0) zoneControllers.splice(i, 1);
+      if (leve) { v.el.remove(); return; }
+      const r = antes[id];
+      v.el.style.position = 'absolute';
+      v.el.style.left = (r.left - caixa.left) + 'px';
+      v.el.style.top = (r.top - caixa.top) + 'px';
+      v.el.style.width = r.width + 'px';
+      v.el.style.height = r.height + 'px';
+      v.el.style.gridArea = 'auto';
+      v.el.style.pointerEvents = 'none';
+      v.el.style.transition = 'opacity .45s ease';
+      esmaecerESumir(v.el, 450);
+    });
+    palco = { chave: assinaturaPalco(cfg), zonas: novas, movel: false };
+    if (leve) return;
+
+    // FLIP: cada zona que ficou começa onde estava e desliza até o lugar novo.
+    const dur = 750;
+    const mexidas = [];
+    ficam.forEach((z) => {
+      const last = z.el.getBoundingClientRect();
+      const f = z.f;
+      const dx = f.left - last.left, dy = f.top - last.top;
+      const sx = last.width ? f.width / last.width : 1;
+      const sy = last.height ? f.height / last.height : 1;
+      if (Math.abs(dx) < 1 && Math.abs(dy) < 1 && Math.abs(sx - 1) < 0.01 && Math.abs(sy - 1) < 0.01) return;
+      z.el.style.transformOrigin = 'top left';
+      z.el.style.transition = 'none';
+      z.el.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + sx + ',' + sy + ')';
+      mexidas.push(z.el);
+    });
+    entram.forEach((el) => { el.style.transition = 'none'; el.style.opacity = '0'; });
+    void stage.offsetWidth; // o ponto de partida precisa ser pintado antes de a transição começar
+    // Sem trocar conteúdo em cima do movimento (as duas animações brigariam pela opacidade).
+    formatBusyUntil = nowMs() + dur + 400;
+    // O texto (cqw/cqh) reencaixa de uma vez no tamanho novo: some durante o movimento, como no layout dinâmico.
+    const slides = mexidas.length && HAS_GSAP ? mexidas.reduce((a, el) => a.concat(Array.prototype.slice.call(el.querySelectorAll('.mt-slide'))), []) : [];
+    if (slides.length) {
+      GSAP.killTweensOf(slides);
+      GSAP.to(slides, { opacity: 0.16, duration: 0.25, ease: 'sine.out' });
+      GSAP.to(slides, { opacity: 1, duration: 0.45, delay: dur / 1000 + 0.1, ease: 'sine.inOut' });
+    }
+    setTimeout(() => {
+      mexidas.forEach((el) => { el.style.transition = 'transform ' + dur + 'ms cubic-bezier(.22,.61,.36,1)'; el.style.transform = ''; });
+      entram.forEach((el) => { el.style.transition = 'opacity ' + Math.round(dur * 0.7) + 'ms ease ' + Math.round(dur * 0.35) + 'ms'; el.style.opacity = ''; });
+      setTimeout(() => mexidas.concat(entram).forEach((el) => { el.style.transition = ''; el.style.transformOrigin = ''; }), dur * 1.1 + 120);
+    }, 20);
   }
 
   function iniciarZona(zoneEl, zone, cfg) {
@@ -898,11 +1061,28 @@
 
   /* ---------------- Montagem do palco ---------------- */
 
-  function teardownZones() {
+  function teardownZones(opcoes) {
     zoneControllers.forEach((c) => c.stop && c.stop());
     zoneControllers.length = 0;
     clearTakeover();
-    stage.innerHTML = '';
+    /*
+     * D29 (`cruzar`): a tela velha, parada, vai para uma camada por cima com a
+     * mesma grade e esmaece enquanto a nova entra por baixo — sem o quadro
+     * preto entre uma e outra.
+     */
+    if (opcoes && opcoes.cruzar && stage.firstChild && !palcoLeve()) {
+      const velha = document.createElement('div');
+      velha.className = 'mt-palco-saindo';
+      velha.setAttribute('aria-hidden', 'true');
+      velha.style.gridTemplateColumns = stage.style.gridTemplateColumns;
+      velha.style.gridTemplateRows = stage.style.gridTemplateRows;
+      velha.style.gridTemplateAreas = stage.style.gridTemplateAreas;
+      while (stage.firstChild) velha.appendChild(stage.firstChild);
+      stage.appendChild(velha);
+      esmaecerESumir(velha, 600);
+    } else {
+      stage.innerHTML = '';
+    }
     palco = null;   // o registro morre junto com os elementos que ele apontava
   }
 
@@ -1077,7 +1257,8 @@
     // Registro do que está no ar, para a próxima publicação poder comparar em
     // vez de recomeçar (ver aplicarNoPalco).
     const ajustes = assinaturaAjustes(cfg.settings);
-    palco = { chave: assinaturaPalco(cfg), zonas: {} };
+    // `movel`: o palco que se rearranja sozinho não é reorganizado na troca (D29), é remontado.
+    palco = { chave: assinaturaPalco(cfg), zonas: {}, movel: (auto && arrangements.length > 1) || !!layout.dynamic };
     layout.zones.forEach((zone, i) => {
       const zoneEl = document.createElement('div');
       zoneEl.className = 'mt-zone mt-zone-' + zone.type;
@@ -1094,7 +1275,7 @@
 
       const ctrl = iniciarZona(zoneEl, zone, cfg);
       zoneControllers.push(ctrl);
-      palco.zonas[zone.id] = { el: zoneEl, ctrl, assinatura: assinaturaZona(cfg, zone.id, ajustes) };
+      palco.zonas[zone.id] = { el: zoneEl, ctrl, assinatura: assinaturaZona(cfg, zone.id, ajustes), tipo: zone.type, formato: zone.formato || '' };
     });
 
     if (hasGsap && zoneEls.length) {
