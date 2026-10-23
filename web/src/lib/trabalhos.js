@@ -42,7 +42,8 @@ export function destino(j) {
   return ['designs', {}];
 }
 // O quiz é escrito com o editor da TV aberto, e ele mesmo mostra as perguntas: aviso seria ruído.
-const quemJaAvisa = { campanha: ['criar'], 'campanha-simples': ['designs'], director: ['designs', 'rapida'], imagem: ['designs'], quiz: ['content'] };
+// D47: a campanha pronta abre em Criados ("campanhas"), que já mostra o resultado.
+const quemJaAvisa = { campanha: ['criar', 'campanhas'], 'campanha-simples': ['designs'], director: ['designs', 'rapida'], imagem: ['designs'], quiz: ['content'] };
 
 function emitirMudanca() { ouvintes.forEach((f) => f()); }
 

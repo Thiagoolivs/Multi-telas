@@ -86,7 +86,7 @@ test('o cartão mostra só o combinado, e só aparece quando há o que criar', (
   assert.match(k, /\{tudo && \(\s*<div className="flex flex-wrap gap-1\.5">\s*\{E\.RECORTES\.map/, 'os recortes aparecem antes de ajustar');
   assert.match(k, /'Ajustar tudo'/);
   const c = ler('web/src/pages/CriarPage.jsx');
-  assert.match(c, /\{podeGerar && \(\s*<div className="space-y-2 lg:hidden">/);
+  assert.match(c, /\{podeGerar && conversando && \(\s*<div className="space-y-2 lg:hidden">/);
   assert.match(c, /\{conversando && podeGerar && \(\s*<aside/);
 });
 

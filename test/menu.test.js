@@ -25,7 +25,8 @@ test('os 9 grupos, na ordem do PLANO (Programação desde o item 40)', async () 
   const de = (id) => M.GRUPOS.find((g) => g.id === id).paginas;
   assert.deepStrictEqual(de('inicio'), ['overview', 'alerts']);
   // Item 34: Mídias por propósito, com o que está pronto primeiro (D18: as telas inteiras, depois as peças).
-  assert.deepStrictEqual(de('midias'), ['telasprontas', 'pecas', 'storage', 'musicas', 'ia', 'banco']);
+  // D47: Meus Designs (a biblioteca de peças soltas) entra depois das peças prontas.
+  assert.deepStrictEqual(de('midias'), ['telasprontas', 'pecas', 'designs', 'storage', 'musicas', 'ia', 'banco']);
   assert.deepStrictEqual(de('automaticos'), ['birthdays', 'mural']);
   assert.deepStrictEqual(de('conta'), ['billing', 'team', 'settings', 'support']);
   assert.deepStrictEqual(M.BARRA_INFERIOR, ['inicio', 'programacao', 'criar', 'midias'], 'a barra de baixo: Início · Programação · Criar · Mídias (+ Mais)');
@@ -82,7 +83,11 @@ test('o grupo aceso é o da página; abas nos grupos de mais de uma página; bar
   const M = await menu();
   assert.equal(M.grupoDa('birthdays').id, 'automaticos');
   assert.equal(M.grupoDa('content').id, 'programacao', 'o editor de uma tela acende Programação');
-  assert.equal(M.grupoDa('studio').id, 'criar');
+  // D47: Meus Designs (e os endereços antigos dela) foi para Mídias; o Criar é Criar · Criando · Criados.
+  assert.equal(M.grupoDa('studio').id, 'midias');
+  assert.deepStrictEqual(M.GRUPOS.find((g) => g.id === 'criar').paginas, ['criar', 'criando', 'campanhas']);
+  assert.equal(M.PAGINAS.campanhas, 'Criados');
+  assert.equal(M.paginaDoIr('criados'), 'campanhas');
   assert.equal(M.grupoDa('platform'), null);
   const side = ler('web/src/components/layout/Sidebar.jsx');
   assert.match(side, /GRUPOS\.map\(\(g\) => \(\{ id: g\.id, label: g\.label, icon: ICONES\[g\.id\], destino: g\.paginas\[0\] \}\)\)/);

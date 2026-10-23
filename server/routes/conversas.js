@@ -4,9 +4,11 @@
  *   POST /api/ai/conversa       { id?, texto, escopo? }
  *     uma volta: guarda a fala da pessoa, pergunta à IA, guarda a resposta
  *     → { conversa, pronto, sugestoes }
- *   GET  /api/conversas          as recentes da conta (sem as mensagens)
+ *   GET  /api/conversas          as da conta (sem as mensagens), com ?q=, ?estado=
+ *                                 andamento|criadas, ?arquivadas=1 e ?pular= (D49)
  *   GET  /api/conversas/:id      uma, inteira
- *   PUT  /api/conversas/:id      { escopo }: o que a pessoa mudou à mão no
+ *   PUT  /api/conversas/:id      { titulo } renomeia; { arquivada } arquiva (D49);
+ *                                 { escopo }: o que a pessoa mudou à mão no
  *                                 cartão "O que vou criar". Não chama a IA.
  *
  * Tudo preso à conta (`sess.tenant_id`): o id de uma conversa de outra conta
@@ -131,8 +133,17 @@ module.exports = function (ctx) {
       return true;
     }
 
+    /*
+     * Todas as conversas (D49), não só as 20 últimas: busca pelo título,
+     * `estado` = andamento | criadas, arquivadas à parte e páginas de 30.
+     */
     if (parts.length === 2 && req.method === 'GET') {
-      sendJson(res, 200, { conversas: await db.listarConversas(sess.tenant_id, 20) });
+      const POR_PAGINA = 30;
+      const estado = query.estado === 'criadas' || query.estado === 'andamento' ? query.estado : '';
+      const lista = await db.listarConversas(sess.tenant_id, POR_PAGINA + 1, {
+        q: query.q, estado, arquivadas: query.arquivadas === '1', pular: Number(query.pular) || 0,
+      });
+      sendJson(res, 200, { conversas: lista.slice(0, POR_PAGINA), mais: lista.length > POR_PAGINA });
       return true;
     }
     const id = parts[2];
@@ -142,6 +153,15 @@ module.exports = function (ctx) {
       if (req.method === 'GET') { sendJson(res, 200, { conversa: atual }); return true; }
       if (req.method === 'PUT') {
         readBody(req, res, async (b) => {
+          // D49: renomear e arquivar, sem tocar no escopo nem nas mensagens.
+          if (b && typeof b.titulo === 'string') {
+            const titulo = linha(b.titulo, 80);
+            if (!titulo) return sendJson(res, 400, { error: 'dê um nome à conversa' });
+            return sendJson(res, 200, { conversa: await db.renomearConversa(sess.tenant_id, id, titulo) });
+          }
+          if (b && typeof b.arquivada === 'boolean') {
+            return sendJson(res, 200, { conversa: await db.arquivarConversa(sess.tenant_id, id, b.arquivada) });
+          }
           if (!b || !b.escopo || typeof b.escopo !== 'object') return sendJson(res, 400, { error: 'envie o escopo' });
           const c = await contexto(sess.tenant_id);
           const escopo = conversa.conferirEscopo(b.escopo, c);

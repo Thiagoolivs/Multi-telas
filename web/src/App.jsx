@@ -41,8 +41,8 @@ const META = {
   criar: { title: 'Criar' },
   // Os quatro passos de antes do chat (item 24): continuam, em Meus Designs › Mais.
   rapida: { title: 'Criação rápida', nav: 'criar' },
-  // A campanha do Criar como unidade (item 29).
-  campanhas: { title: 'Campanhas' },
+  // A campanha do Criar como unidade (item 29); a aba Criados desde o D47.
+  campanhas: { title: 'Criados' },
   criando: { title: 'Criando' },
   screens: { title: 'Telas' },
   // O que passa em cada TV, com aba própria (item 40).

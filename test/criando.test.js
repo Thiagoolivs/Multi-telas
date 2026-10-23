@@ -31,7 +31,7 @@ test('a lista leve não leva a campanha inteira: só o id e o nome', () => {
 
 test('o painel: aba Criando com o número, observador global e aviso ao terminar', () => {
   const menu = ler('web/src/lib/menu.js');
-  assert.match(menu, /paginas: \['criar', 'criando', 'campanhas', 'designs'\]/);
+  assert.match(menu, /paginas: \['criar', 'criando', 'campanhas'\]/);
   const t = ler('web/src/lib/trabalhos.js');
   // Pergunta rápido só com trabalho rodando e a aba à vista.
   assert.match(t, /timer = setTimeout\(perguntar, rodando && !escondida \? 3000 : 30000\);/);

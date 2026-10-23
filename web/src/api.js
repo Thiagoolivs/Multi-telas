@@ -324,7 +324,19 @@ export const ai = {
  */
 export const criar = {
   conversar: (id, texto, escopo) => api('POST', '/api/ai/conversa', { id: id || undefined, texto, escopo }),
-  conversas: () => api('GET', '/api/conversas'),
+  // D49: todas, com busca, estado (andamento|criadas), arquivadas e páginas: { conversas, mais }.
+  conversas: (o) => {
+    const p = o || {};
+    const q = new URLSearchParams();
+    if (p.q) q.set('q', p.q);
+    if (p.estado) q.set('estado', p.estado);
+    if (p.arquivadas) q.set('arquivadas', '1');
+    if (p.pular) q.set('pular', String(p.pular));
+    const s = q.toString();
+    return api('GET', '/api/conversas' + (s ? '?' + s : ''));
+  },
+  renomearConversa: (id, titulo) => api('PUT', '/api/conversas/' + id, { titulo }),
+  arquivarConversa: (id, arquivada) => api('PUT', '/api/conversas/' + id, { arquivada }),
   conversa: (id) => api('GET', '/api/conversas/' + id),
   salvarEscopo: (id, escopo) => api('PUT', '/api/conversas/' + id, { escopo }),
   async gerar(payload, onEtapa, sinal) {

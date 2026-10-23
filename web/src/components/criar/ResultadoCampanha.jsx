@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, FolderOpen, Pencil, Send, Undo2, Sparkles, MessageSquare, X } from 'lucide-react';
+import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, Pencil, Send, Undo2, Sparkles, MessageSquare, X } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Spinner } from '../ui/Feedback.jsx';
 import { PecaHtml } from '../content/PecaHtml.jsx';
@@ -219,7 +219,7 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
           <div className="text-xs text-ink-2">
             {r.contagem ? r.contagem.pecas + (r.contagem.pecas === 1 ? ' peça' : ' peças') : ''}
             {r.contagem && r.contagem.fotosGeradas ? ' · ' + r.contagem.fotosGeradas + (r.contagem.fotosGeradas === 1 ? ' foto gerada' : ' fotos geradas') : ''}
-            {' · salva em Campanhas'}
+            {' · salva em Criados'}
           </div>
         </div>
       </div>
@@ -265,8 +265,8 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
       )}
 
       <div className="flex flex-wrap gap-2">
+        {/* Só existe em Criados (D47), que já tem o "voltar" no topo. */}
         {onNova && <Button icon={Plus} onClick={onNova}>Criar outra</Button>}
-        {onIr && <Button variant="ghost" icon={FolderOpen} onClick={() => onIr('campanhas')}>Ver todas as campanhas</Button>}
       </div>
 
       {redesDe && <RedesSociais item={redesDe.item} label={redesDe.label} onFechar={() => setRedesDe(null)} />}

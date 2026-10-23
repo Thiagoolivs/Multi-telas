@@ -412,6 +412,8 @@ garantirColuna('marcas', 'localizacao TEXT');
 garantirColuna('campanhas', 'capa TEXT');
 // Arquivada desde quando (0 = não). Sai da lista, não do banco (D10).
 garantirColuna('campanhas', 'arquivada INTEGER');
+// D49: as conversas do Criar se arquivam como as campanhas.
+garantirColuna('conversas', 'arquivada INTEGER');
 // Pessoas (D30): setor separado do cargo, e-mail (para o QR das fotos), de onde veio
 // (planilha | qr | manual; vazio = planilha, como eram todas) e quando mudou.
 garantirColuna('birthdays', 'setor TEXT');
@@ -1244,6 +1246,7 @@ const mapConv = (r) => r && ({
   mensagens: r.mensagens === undefined ? undefined : jsonOu(r.mensagens, []),
   escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
+  arquivada: Number(r.arquivada) || 0,
 });
 async function criarConversa(tenantId, userId, c) {
   const id = 'conv_' + rid(14);
@@ -1258,7 +1261,33 @@ async function salvarConversa(tenantId, id, c) {
     c.estado || 'conversando', c.campanhaId || '', Date.now(), id, tenantId);
   return lerConversa(tenantId, id);
 }
-async function listarConversas(tenantId, limite) { return qConv.doTenant.all(tenantId, limite || 20).map(mapConv); }
+/*
+ * As conversas da conta (D49): todas, com busca pelo título, arquivadas à
+ * parte e por estado — 'andamento' (ainda não geraram) ou 'criadas'.
+ */
+async function listarConversas(tenantId, limite, o) {
+  const op = o || {};
+  const onde = ['tenant_id = ?'];
+  const args = [tenantId];
+  if (op.arquivadas === true) onde.push('COALESCE(arquivada, 0) > 0');
+  else if (op.arquivadas !== 'todas') onde.push('COALESCE(arquivada, 0) = 0');
+  if (op.estado === 'criadas') onde.push("estado = 'gerado'");
+  else if (op.estado === 'andamento') onde.push("COALESCE(estado, '') <> 'gerado'");
+  const q = String(op.q || '').trim().toLowerCase().slice(0, 60);
+  if (q) { onde.push("LOWER(COALESCE(titulo, '')) LIKE ? ESCAPE '\\'"); args.push('%' + q.replace(/[\\%_]/g, (c) => '\\' + c) + '%'); }
+  args.push(Math.min(200, limite || 20), Math.max(0, Number(op.pular) || 0));
+  return db.prepare(`SELECT id, titulo, estado, campanha_id, criado_em, atualizado_em, arquivada FROM conversas
+    WHERE ${onde.join(' AND ')} ORDER BY atualizado_em DESC LIMIT ? OFFSET ?`).all(...args).map(mapConv);
+}
+// Arquivar e renomear não mexem em atualizado_em: a conversa não pula para o topo.
+async function arquivarConversa(tenantId, id, sim) {
+  db.prepare('UPDATE conversas SET arquivada = ? WHERE id = ? AND tenant_id = ?').run(sim ? Date.now() : 0, id, tenantId);
+  return lerConversa(tenantId, id);
+}
+async function renomearConversa(tenantId, id, titulo) {
+  db.prepare('UPDATE conversas SET titulo = ? WHERE id = ? AND tenant_id = ?').run(String(titulo || '').slice(0, 80), id, tenantId);
+  return lerConversa(tenantId, id);
+}
 
 /* ---------------- Campanhas do Criar ---------------- */
 /*
@@ -1992,7 +2021,7 @@ module.exports = {
   fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
-  criarConversa, lerConversa, salvarConversa, listarConversas,
+  criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa,
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
