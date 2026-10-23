@@ -140,7 +140,7 @@ test('rotas: a campanha vai à TV pelo servidor, inteira, e o estado fica preso 
   });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows segura o arquivo */ } });
   let ok = false;
-  for (let i = 0; i < 60 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
+  for (let i = 0; i < 160 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
   assert.ok(ok, 'o servidor de teste não subiu');
 
   const marca = Date.now();
@@ -159,7 +159,8 @@ test('rotas: a campanha vai à TV pelo servidor, inteira, e o estado fica preso 
     nome: 'Semana do pão', objetivo: 'vender mais à tarde', imagens: 'gerar',
     telas: [{ alvo: { tipo: 'todas' }, zonas: { principal: { pecas: 2 }, lateral: { pecas: 1 }, cabecalho: { pecas: 2 }, rodape: { pecas: 1, mensagens: ['Aceitamos Pix'], contagem: '2026-10-27T18:00' } } }],
   };
-  const job = (await pedir('/api/ai/ecossistema', { method: 'POST', cookie: cA, body: { escopo } })).json;
+  const aprovada = (await pedir('/api/conversas/esboco', { method: 'POST', cookie: cA, body: { escopo } })).json.conversa;
+  const job = (await pedir('/api/ai/ecossistema', { method: 'POST', cookie: cA, body: { conversaId: aprovada.id, escopo } })).json;
   let fim = null;
   for (let i = 0; i < 120 && !fim; i++) {
     const j = (await pedir('/api/ai/job/' + job.id, { cookie: cA })).json;

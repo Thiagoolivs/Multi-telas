@@ -1,9 +1,10 @@
-import React from 'react';
-import { Loader2, Check, AlertTriangle, Plus, Sparkles, ArrowRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Loader2, Check, AlertTriangle, Plus, Sparkles, ArrowRight, ClipboardCheck } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
 import { useTrabalhos, nomeDoTipo, frasePronto, destino } from '../lib/trabalhos.js';
+import { criar } from '../api.js';
 import { cn } from '../lib/cn.js';
 
 /*
@@ -13,6 +14,10 @@ import { cn } from '../lib/cn.js';
  * pessoa ela tinha sumido. Daqui dá para acompanhar e abrir o que ficou
  * pronto; o aviso de "ficou pronta" aparece em qualquer página
  * (lib/trabalhos.js).
+ *
+ * ESPERANDO A SUA APROVAÇÃO (D42): a conversa que a IA já entendeu fica aqui
+ * até a pessoa conferir o esboço — nada é gerado antes disso. "Ver o esboço"
+ * abre o Criar nela, com a planta da TV na frente.
  */
 
 const quando = (ms) => {
@@ -25,7 +30,28 @@ const ROTULO_ABRIR = { campanhas: 'Abrir a campanha', ia: 'Ver a imagem', design
 
 export function CriandoPage({ onIr }) {
   const lista = useTrabalhos();
+  const [esperando, setEsperando] = useState([]);
+  useEffect(() => {
+    criar.conversas({ estado: 'andamento' })
+      .then((r) => setEsperando(((r && r.conversas) || []).filter((c) => c.estado === 'entendido')))
+      .catch(() => setEsperando([]));
+  }, []);
   if (lista === null) return <div className="flex justify-center py-16"><Spinner size={20} /></div>;
+
+  const aprovar = esperando.length > 0 && (
+    <Panel>
+      <PanelHeader title={'Esperando a sua aprovação (' + esperando.length + ')'} description="A IA já entendeu o pedido. Confira o esboço da TV para gerar." />
+      <ul className="divide-y divide-line">
+        {esperando.map((c) => (
+          <li key={c.id} className="flex items-center gap-3 px-4 py-3">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent"><ClipboardCheck size={14} /></span>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{c.titulo || 'Sem título'}</span>
+            {onIr && <Button size="sm" variant="primary" onClick={() => onIr('criar', { conversa: c.id, aprovar: true })}>Ver o esboço</Button>}
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
 
   const rodando = lista.filter((j) => j.estado === 'rodando');
   const feitos = lista.filter((j) => j.estado !== 'rodando');
@@ -36,6 +62,8 @@ export function CriandoPage({ onIr }) {
         <h1 className="text-xl font-semibold tracking-tight text-ink">Criando</h1>
         <p className="mt-1 text-sm text-ink-2">O que a IA está fazendo agora e o que terminou hoje. Pode sair desta tela: a criação continua, e você é avisado quando terminar.</p>
       </div>
+
+      {aprovar}
 
       {!lista.length ? (
         <Panel>

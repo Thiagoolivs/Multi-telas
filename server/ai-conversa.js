@@ -193,8 +193,9 @@ Responda APENAS JSON:
 "pronto" é true quando você já entendeu o bastante para gerar bem. Aí a
 resposta resume em uma frase o que vai ser criado e pergunta se pode gerar.
 "gerar" é true quando a ÚLTIMA fala da pessoa pede para começar agora ("pode
-gerar", "manda ver", "pode criar", "sim, pode"). A geração começa sozinha:
-a resposta diz que começou, e não pergunta de novo.
+gerar", "manda ver", "pode criar", "sim, pode"). O painel mostra o ESBOÇO da TV
+para ela aprovar antes de gerar: a resposta diz isso ("Confira o esboço e
+aprove para eu gerar"), e não pergunta de novo.
 As sugestões (2 a 4, curtas) são respostas na voz DELA, que ela toca em vez
 de digitar: "Pode gerar", "Só para a TV", "Use as minhas fotos".`;
 
@@ -446,7 +447,8 @@ function roteiro(mensagens, escopo) {
     },
   ];
   if (etapa > 0 && pediuParaGerar(ultima) && E.temOQueGerar(e)) {
-    return { tipo: 'campanha', resposta: 'Começando! Vou criar tudo o que combinamos.', sugestoes: [], escopo: e, pronto: true, gerar: true };
+    // D42: gerar passa pelo esboço aprovado — o painel o abre.
+    return { tipo: 'campanha', resposta: 'Combinado! Confira o esboço da TV e aprove para eu gerar.', sugestoes: [], escopo: e, pronto: true, gerar: true };
   }
   // Pedido pequeno (aviso, uma peça) não volta às perguntas de campanha: ajusta e confirma.
   const pecasNasTvs = e.telas.reduce((s, t) => s + E.ZONAS.reduce((n, z) => n + t.zonas[z].pecas, 0), 0);

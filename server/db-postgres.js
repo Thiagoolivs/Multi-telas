@@ -362,6 +362,7 @@ async function init() {
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS decisoes TEXT;
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS tipo TEXT;
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS referencias TEXT;
+    ALTER TABLE conversas ADD COLUMN IF NOT EXISTS esboco TEXT;
   `);
 }
 
@@ -648,15 +649,16 @@ const mapConv = (r) => r && ({
   decisoes: r.decisoes === undefined ? undefined : jsonOu(r.decisoes, []),
   tipo: r.tipo || '',
   referencias: r.referencias === undefined ? undefined : jsonOu(r.referencias, []),
+  esboco: r.esboco === undefined ? undefined : jsonOu(r.esboco, null),
 });
 async function criarConversa(tenantId, userId, c) {
   const id = 'conv_' + rid(14);
   const agora = Date.now();
   await pool.query(
-    `INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em, decisoes, tipo, referencias)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+    `INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em, decisoes, tipo, referencias, esboco)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
     [id, tenantId, userId || '', String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []),
-      JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora, JSON.stringify(c.decisoes || []), c.tipo || '', JSON.stringify(c.referencias || [])]
+      JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora, JSON.stringify(c.decisoes || []), c.tipo || '', JSON.stringify(c.referencias || []), JSON.stringify(c.esboco || null)]
   );
   return lerConversa(tenantId, id);
 }
@@ -671,10 +673,10 @@ async function conversaDeEdicao(tenantId, campanhaId) {
 }
 async function salvarConversa(tenantId, id, c) {
   await pool.query(
-    `UPDATE conversas SET titulo = $1, mensagens = $2, escopo = $3, estado = $4, campanha_id = $5, atualizado_em = $6, decisoes = $9, referencias = $10
+    `UPDATE conversas SET titulo = $1, mensagens = $2, escopo = $3, estado = $4, campanha_id = $5, atualizado_em = $6, decisoes = $9, referencias = $10, esboco = $11
      WHERE id = $7 AND tenant_id = $8`,
     [String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []), JSON.stringify(c.escopo || null),
-      c.estado || 'conversando', c.campanhaId || '', Date.now(), id, tenantId, JSON.stringify(c.decisoes || []), JSON.stringify(c.referencias || [])]
+      c.estado || 'conversando', c.campanhaId || '', Date.now(), id, tenantId, JSON.stringify(c.decisoes || []), JSON.stringify(c.referencias || []), JSON.stringify(c.esboco || null)]
   );
   return lerConversa(tenantId, id);
 }

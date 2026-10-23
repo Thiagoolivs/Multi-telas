@@ -339,6 +339,8 @@ export const criar = {
   arquivarConversa: (id, arquivada) => api('PUT', '/api/conversas/' + id, { arquivada }),
   // D48: o que foi combinado na conversa, corrigido pela pessoa.
   salvarDecisoes: (id, decisoes) => api('PUT', '/api/conversas/' + id, { decisoes }),
+  // D42: aprovar o esboço deste escopo (sem id, nasce a conversa). Só depois o gerador roda.
+  aprovarEsboco: (id, escopo) => api('POST', '/api/conversas/esboco', { id: id || undefined, escopo }),
   // D45: imagem de referência no chat (bytes crus; o servidor confere o tipo). Sem id, nasce uma conversa.
   referencia: (id, file, uso) => enviarBytes('/api/conversas/' + (id ? id + '/' : '') + 'referencia?uso=' + encodeURIComponent(uso || 'estilo'), file),
   salvarReferencias: (id, referencias) => api('PUT', '/api/conversas/' + id, { referencias }),

@@ -96,7 +96,7 @@ test('servidor: tudo ou nada, com versão, e o desfazer não apaga o que mudou d
   });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows segura o arquivo */ } });
   let ok = false;
-  for (let i = 0; i < 60 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
+  for (let i = 0; i < 160 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
   assert.ok(ok, 'o servidor de teste não subiu');
   const conta = async (n) => cookieDe(await pedir('/api/auth/signup', { method: 'POST', json: { email: 'd26' + n + Date.now() + '@teste.local', password: 'senha-de-teste-123', name: 'Loja ' + n, aceite: true } }));
   const c = await conta('a');

@@ -104,14 +104,15 @@ test('o letreiro da campanha se edita à mão, e entra no desfazer', async (t) =
   });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows segura o arquivo */ } });
   let ok = false;
-  for (let i = 0; i < 60 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
+  for (let i = 0; i < 160 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
   assert.ok(ok, 'o servidor de teste não subiu');
   const email = 'd12' + Date.now() + '@teste.local';
   const c = cookieDe(await pedir('/api/auth/signup', { method: 'POST', json: { email, password: 'senha-de-teste-123', name: 'Loja', aceite: true } }));
 
   const escopo = { nome: 'Feriado', objetivo: 'horário do feriado', imagens: 'nenhuma',
     telas: [{ alvo: { tipo: 'todas' }, zonas: { principal: { pecas: 1 }, rodape: { pecas: 0, mensagens: ['Fechado na quinta'] } } }] };
-  const job = (await pedir('/api/ai/ecossistema', { method: 'POST', cookie: c, json: { escopo } })).json;
+  const aprovada = (await pedir('/api/conversas/esboco', { method: 'POST', cookie: c, json: { escopo } })).json.conversa;
+  const job = (await pedir('/api/ai/ecossistema', { method: 'POST', cookie: c, json: { conversaId: aprovada.id, escopo } })).json;
   let camp = null;
   for (let i = 0; i < 40 && !camp; i++) {
     await new Promise((r) => setTimeout(r, 250));

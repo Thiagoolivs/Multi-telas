@@ -116,6 +116,11 @@ export function EditarComIA({ campanha, onMudou }) {
               <div className={cn('max-w-[88%] rounded-lg px-2.5 py-1.5 text-xs',
                 m.papel !== 'ia' ? 'rounded-tr-sm bg-accent text-accent-fg' : 'rounded-tl-sm bg-surface-2 text-ink')}>
                 <div className="whitespace-pre-line">{m.texto}</div>
+                {(m.planejado || []).length > 0 && (
+                  <ul className="mt-1 space-y-0.5" aria-label="O que eu vou fazer">
+                    {m.planejado.map((f) => <li key={f} className="text-2xs text-ink-2">→ {f}</li>)}
+                  </ul>
+                )}
                 {(m.feito || []).length > 0 && (
                   <ul className="mt-1 space-y-0.5">
                     {m.feito.map((f) => <li key={f} className="flex items-center gap-1 text-2xs text-ok"><Check size={11} /> {f}</li>)}

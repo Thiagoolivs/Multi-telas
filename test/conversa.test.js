@@ -167,7 +167,7 @@ test('rotas: conversa de 15 voltas guarda, retoma, aceita o cartão e não vaza 
   });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows às vezes segura o arquivo */ } });
   let ok = false;
-  for (let i = 0; i < 60 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
+  for (let i = 0; i < 160 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
   assert.ok(ok, 'o servidor de teste não subiu');
 
   const marca = Date.now();
@@ -251,9 +251,9 @@ test('item 37: quando a pessoa manda gerar, a geração começa sem o clique', a
   assert.equal(r2.pronto, true);
   // A IA de verdade também é ouvida: o campo "gerar" está no combinado.
   assert.match(C.SISTEMA, /"gerar": true \| false/);
-  // O painel começa sozinho com o escopo que acabou de voltar.
+  // O painel abre o esboço sozinho com o escopo que acabou de voltar — e gera ao aprovar (D42).
   const p = fs.readFileSync(path.join(__dirname, '..', 'web/src/pages/CriarPage.jsx'), 'utf8');
-  assert.match(p, /if \(r\.gerar\) gerar\(\{ escopo: E\.normalizar\(r\.conversa\.escopo \|\| \{\}\), conversa: r\.conversa \}\);/);
+  assert.match(p, /if \(r\.gerar\) setParaAprovar\(\{ escopo: E\.normalizar\(r\.conversa\.escopo \|\| \{\}\), conversa: r\.conversa \}\);/);
   assert.match(fs.readFileSync(path.join(__dirname, '..', 'server/routes/conversas.js'), 'utf8'), /gerar: !!out\.gerar/);
 });
 

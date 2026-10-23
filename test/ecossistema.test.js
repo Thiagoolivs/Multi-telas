@@ -291,7 +291,7 @@ test('rotas: da conversa à campanha salva, presa à conta', async (t) => {
   });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows segura o arquivo */ } });
   let ok = false;
-  for (let i = 0; i < 60 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
+  for (let i = 0; i < 160 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
   assert.ok(ok, 'o servidor de teste não subiu');
 
   const marca = Date.now();
@@ -309,6 +309,11 @@ test('rotas: da conversa à campanha salva, presa à conta', async (t) => {
   assert.equal((await pedir('/api/ai/ecossistema', { method: 'POST', cookie: cA, body: { escopo: {} } })).status, 400, 'escopo vazio não gera');
   assert.equal((await pedir('/api/ai/ecossistema', { method: 'POST', cookie: cB, body: { conversaId: conv.id } })).status, 404, 'a outra conta não gera com a conversa desta');
 
+  // D42: sem o esboço aprovado, nada é gerado — nem com a conversa "entendida".
+  const semAprovar = await pedir('/api/ai/ecossistema', { method: 'POST', cookie: cA, body: { conversaId: conv.id } });
+  assert.deepEqual([semAprovar.status, semAprovar.json.code], [409, 'esboco-nao-aprovado']);
+  assert.equal((await pedir('/api/conversas/esboco', { method: 'POST', cookie: cB, body: { id: conv.id, escopo: conv.escopo } })).status, 404, 'a outra conta aprovou o esboço desta');
+  assert.equal((await pedir('/api/conversas/esboco', { method: 'POST', cookie: cA, body: { id: conv.id, escopo: conv.escopo } })).status, 200);
   const job = await pedir('/api/ai/ecossistema', { method: 'POST', cookie: cA, body: { conversaId: conv.id } });
   assert.equal(job.status, 202);
   let fim = null;

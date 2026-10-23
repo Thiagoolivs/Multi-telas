@@ -24,6 +24,7 @@ const Pal = require('../../js/paletas.js');
 const eco = require('../ecossistema');
 const edicao = require('../edicao');
 const refs = require('../referencias');
+const esboco = require('../esboco');
 const conversa = require('../ai-conversa');
 const ajuste = require('../ajuste');
 const paleta = require('../paleta.js');
@@ -80,6 +81,13 @@ module.exports = function (ctx) {
       // O alvo é conferido contra as TVs desta conta, como na conversa.
       const escopo = conversa.conferirEscopo(b && b.escopo && typeof b.escopo === 'object' ? b.escopo : (conv && conv.escopo), ctxConta);
       if (!E.temOQueGerar(escopo)) return sendJson(res, 400, { error: 'ainda não tem nada para criar: diga o que quer mostrar' });
+      /*
+       * D42: só gera o que foi APROVADO no esboço — o escopo exato. Sem conversa,
+       * sem aprovação ou com o escopo mudado depois dela: 409, e nada é gasto.
+       */
+      if (!conv || !esboco.valeParaEste(conv.esboco, escopo)) {
+        return sendJson(res, 409, { error: 'Aprove o esboço antes de gerar: é ele que mostra o que vai em cada parte da TV.', code: 'esboco-nao-aprovado' });
+      }
       await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.ecossistema');
       return emTrabalho(res, sess, 'campanha', { brief: (escopo.nome || 'Campanha').slice(0, 200) }, async (progresso) => {
         const resultado = await eco.gerar(escopo, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso, onLerReferencias: estiloDasReferencias });
@@ -129,10 +137,14 @@ module.exports = function (ctx) {
       const id = b && typeof b.campanhaId === 'string' ? b.campanhaId : '';
       const c = id ? await db.lerCampanha(sess.tenant_id, id) : null;
       if (!c || !c.resultado) return sendJson(res, 404, { error: 'campanha não encontrada' });
-      return emTrabalho(res, sess, 'campanha', { brief: ('Ajuste: ' + texto).slice(0, 200) }, async (progresso) => {
+      return emTrabalho(res, sess, 'edicao', { brief: ('Ajuste: ' + texto).slice(0, 200) }, async (progresso) => {
         progresso('entendendo o ajuste', texto.slice(0, 80));
         const { resposta, mudancas } = await ajuste.entender(texto, c);
         if (!mudancas.length) return { campanha: c, resposta, mudancas };
+        // D42: o que GERA (redesenhar, foto nova, peça nova) só com o "pode fazer" — no Editar com a IA.
+        if (esboco.geraAlgo(mudancas)) {
+          return { campanha: c, resposta: 'Para redesenhar ou acrescentar peças, use o Editar com a IA: eu mostro o que vou fazer e você aprova.', mudancas: [] };
+        }
         const ctxConta = await contextoDaConta(sess.tenant_id);
         const feito = await ajuste.aplicar(c, mudancas, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
         const salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo, capa: capaDe(feito.resultado) });
@@ -164,11 +176,38 @@ module.exports = function (ctx) {
       const id = b && typeof b.campanhaId === 'string' ? b.campanhaId : '';
       const c = id ? await db.lerCampanha(sess.tenant_id, id) : null;
       if (!c || !c.resultado) return sendJson(res, 404, { error: 'campanha não encontrada' });
-      return emTrabalho(res, sess, 'campanha', { brief: ('Edição: ' + texto).slice(0, 200) }, async (progresso) => {
+      return emTrabalho(res, sess, 'edicao', { brief: ('Edição: ' + texto).slice(0, 200) }, async (progresso) => {
         progresso('entendendo o pedido', texto.slice(0, 80));
         const conv = await conversaDaEdicao(sess, c);
         const mensagens = (conv.mensagens || []).concat({ papel: 'pessoa', texto, em: Date.now() });
-        const out = await edicao.conversar({ texto, mensagens, decisoes: conv.decisoes || [], campanha: c, referencias: conv.referencias || [] });
+        /*
+         * D42 na edição: o que GERA (redesenhar uma peça, foto nova, peça nova)
+         * espera o "pode fazer". A mudança fica guardada na mensagem da IA
+         * (aguardando) e só a resposta afirmativa a aplica — sem perguntar à
+         * IA de novo, para não mudar o que a pessoa aprovou.
+         */
+        const ultimaIa = [...(conv.mensagens || [])].reverse().find((m) => m && m.papel === 'ia');
+        const esperando = ultimaIa && Array.isArray(ultimaIa.aguardando) ? ultimaIa.aguardando : null;
+        let out;
+        if (esperando && esboco.confirmou(texto)) {
+          // Conferido de novo contra a campanha de agora: o que sumiu (peça tirada no meio) não entra.
+          const mud = ajuste.lerMudancas(ajuste.comoPedido(esperando, conv.referencias || []), c.resultado, { refs: conv.referencias || [] });
+          out = mud.length
+            ? { acao: 'fazer', resposta: 'Feito: ' + mud.map(ajuste.descreverMudanca).join('; ') + '.', sugestoes: [], mudancas: mud, decisoes: conv.decisoes || [], aprovado: true }
+            : { acao: 'responder', resposta: 'A campanha mudou desde a pergunta. Me diga de novo o que fazer.', sugestoes: [], mudancas: [], decisoes: conv.decisoes || [] };
+        } else if (esperando && esboco.recusou(texto)) {
+          out = { acao: 'responder', resposta: 'Tudo bem, não mudei nada.', sugestoes: [], mudancas: [], decisoes: conv.decisoes || [] };
+        } else {
+          out = await edicao.conversar({ texto, mensagens, decisoes: conv.decisoes || [], campanha: c, referencias: conv.referencias || [] });
+        }
+        // O que gera e ainda não foi aprovado: mostra o que vai fazer e pergunta.
+        if (out.acao === 'fazer' && !out.aprovado && esboco.geraAlgo(out.mudancas)) {
+          out = Object.assign({}, out, {
+            acao: 'confirmar', aguardando: out.mudancas, mudancas: [],
+            resposta: 'Vou fazer: ' + out.mudancas.map(ajuste.descreverMudanca).join('; ') + '. Posso?',
+            sugestoes: ['Pode fazer', 'Não, deixa como está'],
+          });
+        }
         let salva = c;
         let refeitas = 0;
         if (out.acao === 'fazer' && out.mudancas.length) {
@@ -179,7 +218,8 @@ module.exports = function (ctx) {
         }
         mensagens.push(Object.assign({ papel: 'ia', texto: out.resposta, sugestoes: out.sugestoes || [], em: Date.now() },
           out.acao === 'fazer' && out.mudancas.length ? { feito: out.mudancas.map(ajuste.descreverMudanca) } : {},
-          out.pendente ? { pendente: out.pendente } : {}, out.modo === 'falha' ? { falha: true } : {}));
+          out.pendente ? { pendente: out.pendente } : {}, out.modo === 'falha' ? { falha: true } : {},
+          out.aguardando ? { aguardando: out.aguardando, planejado: out.aguardando.map(ajuste.descreverMudanca) } : {}));
         const guardada = await db.salvarConversa(sess.tenant_id, conv.id, { ...conv, mensagens: mensagens.slice(-200), decisoes: out.decisoes || conv.decisoes || [] });
         return { campanha: salva, resposta: out.resposta, sugestoes: out.sugestoes || [], acao: out.acao, mudancas: out.mudancas, refeitas, conversa: guardada };
       });
