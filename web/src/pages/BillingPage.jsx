@@ -70,11 +70,29 @@ export function BillingPage({ onFalarComVendas }) {
     catch (e) { aviso.erro('interesse', e.message || 'Não deu agora. Tente de novo.'); }
   };
 
+  /*
+   * A FATURA ABRE, OU O LINK FICA NA TELA (EXECUTOR D46). "Assinar continua
+   * sem abrir": quando a navegação não sai do painel (app instalado, navegador
+   * que segura), o botão ficava em "Abrindo…" para sempre e a pessoa não via
+   * nada. Agora o diálogo fecha, o link da fatura fica no topo e num aviso
+   * com botão, e resposta sem link é erro dito.
+   */
+  const [fatura, setFatura] = useState('');
+  function abrirFatura(url) {
+    if (!url || (!/^https?:\/\//.test(String(url)) && !String(url).startsWith('/'))) {
+      throw new Error('O Asaas não devolveu o link da fatura. Tente de novo em instantes.');
+    }
+    setFatura(url); setPedido(null); setBusy('');
+    aviso.pronto('cobranca', 'Abrindo a fatura do Asaas…', 'Se ela não abrir sozinha, toque em Abrir.',
+      { rotulo: 'Abrir', on: () => window.open(url, '_blank', 'noopener') });
+    window.location.assign(url); // fatura do Asaas, ou o checkout simulado
+  }
+
   async function upgrade(planId, documento) {
-    setBusy(planId); setErr(''); setErroDoc('');
+    setBusy(planId); setErr(''); setErroDoc(''); setFatura('');
     try {
       const { url } = await billing.checkout(planId, documento);
-      window.location.href = url; // fatura do Asaas, ou o checkout simulado
+      abrirFatura(url);
     } catch (e) {
       setBusy('');
       if (e.codigo === 'precisa-documento') { setPedido({ tipo: 'plano', id: planId }); if (documento) setErroDoc(e.message); return; }
@@ -85,10 +103,10 @@ export function BillingPage({ onFalarComVendas }) {
 
   // Pacote de criações: vai para a fatura do Asaas; em modo simulado entra na hora.
   async function comprarPacote(id, documento) {
-    setBusy(id); setErr(''); setErroDoc('');
+    setBusy(id); setErr(''); setErroDoc(''); setFatura('');
     try {
       const r = await billing.pacote(id, documento);
-      if (r.url) { window.location.href = r.url; return; }
+      if (r.url) { abrirFatura(r.url); return; }
       setPedido(null); reload(); setBusy('');
     } catch (e) {
       setBusy('');
@@ -147,6 +165,15 @@ export function BillingPage({ onFalarComVendas }) {
         <div className="mb-4 rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">Checkout cancelado — nada foi cobrado.</div>
       )}
       {err && <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">{err}</div>}
+      {fatura && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-accent/30 bg-accent-soft px-3 py-2 text-sm text-ink" role="status">
+          <span className="min-w-0 flex-1">Abrindo a fatura do Asaas… Se ela não abrir sozinha, use o botão.</span>
+          <a href={fatura} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg hover:opacity-90">
+            <ExternalLink size={13} /> Abrir a fatura
+          </a>
+        </div>
+      )}
 
       {/*
         Fatura em atraso (PLANO §6.6). Avisa desde o primeiro dia, com o que

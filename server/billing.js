@@ -260,13 +260,14 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
   /*
    * A fatura da assinatura recém-criada pode não existir ainda: são dois
    * registros diferentes no Asaas, e o segundo aparece um instante depois.
-   * Três tentativas curtas resolvem sem pendurar o cliente esperando.
+   * Cinco tentativas (até ~6 s): em produção o Asaas às vezes passa dos 2 s
+   * que as três de antes esperavam, e o "Assinar" voltava erro (D46).
    */
   let invoiceUrl = '';
-  for (let tentativa = 1; tentativa <= 3 && !invoiceUrl; tentativa++) {
+  for (let tentativa = 1; tentativa <= 5 && !invoiceUrl; tentativa++) {
     const pagamentos = await asaasApi('/payments', { subscription: sub.id, limit: 1 });
     invoiceUrl = (pagamentos.data && pagamentos.data[0] && pagamentos.data[0].invoiceUrl) || '';
-    if (!invoiceUrl && tentativa < 3) await new Promise((r) => setTimeout(r, 600 * tentativa));
+    if (!invoiceUrl && tentativa < 5) await new Promise((r) => setTimeout(r, 600 * tentativa));
   }
 
   /*
