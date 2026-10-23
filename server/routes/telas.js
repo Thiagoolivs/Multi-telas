@@ -745,11 +745,12 @@ module.exports = function (ctx) {
         const prontos = [];
         const conflitos = [];
         const problemas = [];
-        const vistos = new Set();
+        // A mesma TV duas vezes no envio: qual das duas valeria? Recusa em vez de adivinhar.
+        const ids = itens.map((it) => String((it && it.id) || '')).filter(Boolean);
+        if (new Set(ids).size !== ids.length) return sendJson(res, 400, { error: 'A mesma TV veio duas vezes no envio. Nada foi enviado.', code: 'tv-repetida' });
         for (const it of itens) {
           const id = String((it && it.id) || '');
-          if (!id || vistos.has(id)) continue;
-          vistos.add(id);
+          if (!id) continue;
           const device = await db.getDevice(id);
           if (!device || device.tenant_id !== sess.tenant_id) { problemas.push({ id, error: 'TV não encontrada nesta conta' }); continue; }
           const versao = it.versao != null && it.versao !== '' ? Number(it.versao) : null;

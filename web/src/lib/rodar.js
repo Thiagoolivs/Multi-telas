@@ -179,7 +179,8 @@ export async function gravarNaTela(tela, fazer, lida) {
  * "Desfazer" desfaz.
  */
 export async function gravarEmLote(telas, fazer, descricao) {
-  const lista = (telas || []).filter(Boolean);
+  // Uma TV só uma vez (o servidor recusa a repetida).
+  const lista = (telas || []).filter((tv, i, todas) => tv && todas.findIndex((x) => x && x.id === tv.id) === i);
   if (!lista.length) return { lote: null, ids: [] };
   for (let tentativa = 0; tentativa < 3; tentativa++) {
     const lidas = await Promise.all(lista.map((tv) => lerDaTela(tv)));
