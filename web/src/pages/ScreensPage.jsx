@@ -348,7 +348,7 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
       <Dialog open={open} onClose={onClose} title="Tela conectada"
         footer={mandada === 'ok' ? <Button variant="primary" onClick={onClose}>Pronto</Button> : <>
           <Button variant="ghost" onClick={onClose}>Depois</Button>
-          {onCriar && <Button variant={campanha ? 'secondary' : 'primary'} icon={Wand2} onClick={() => onCriar(pareada)}>Criar para esta TV</Button>}
+          {onCriar && <Button variant={campanha ? 'secondary' : 'primary'} icon={Plus} onClick={() => onCriar(pareada)}>Criar para esta TV</Button>}
           {campanha
             ? <Button variant="primary" icon={Check} disabled={mandada === 'indo'} onClick={mandarCampanha}>{mandada === 'indo' ? 'Pondo…' : 'Pôr a campanha'}</Button>
             : !onCriar && <Button variant="primary" icon={LayoutTemplate} onClick={() => onConteudo && onConteudo(pareada)}>Colocar conteúdo agora</Button>}

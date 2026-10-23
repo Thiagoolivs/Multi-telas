@@ -269,7 +269,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
                   <div key={i} className={m.papel === 'ia' ? 'flex gap-2' : 'flex justify-end'}>
                     {m.papel === 'ia' && (m.falha
                       ? <CloudOff size={14} className="mt-1 shrink-0 text-warn" aria-hidden />
-                      : <Sparkles size={14} className="mt-1 shrink-0 text-accent" />)}
+                      : <MessageSquare size={14} className="mt-1 shrink-0 text-ink-3" />)}
                     {/* Falha da IA (m.falha) parece aviso, não resposta: a pessoa vê que foi a IA que caiu. */}
                     <div className={cn('max-w-[85%] whitespace-pre-line rounded-lg px-3 py-2 text-sm',
                       m.papel !== 'ia' ? 'rounded-tr-sm bg-accent text-accent-fg'

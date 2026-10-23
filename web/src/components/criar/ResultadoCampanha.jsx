@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, FolderOpen, Pencil, Send, Undo2, Sparkles } from 'lucide-react';
+import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, FolderOpen, Pencil, Send, Undo2, Sparkles, MessageSquare } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Spinner } from '../ui/Feedback.jsx';
 import { PecaHtml } from '../content/PecaHtml.jsx';
@@ -112,7 +112,7 @@ function Ajustar({ campanha, onMudou }) {
 
   return (
     <section className="space-y-2 rounded-lg border border-line bg-surface p-3">
-      <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><Sparkles size={15} className="text-accent" /> Ajustar</h3>
+      <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><MessageSquare size={15} className="text-accent" /> Ajustar</h3>
       <p className="text-xs text-ink-3">Diga o que mudar: "troca a foto da peça 2", "mais uma peça na lateral", "tira o Facebook". Só o que você pedir é refeito.</p>
       <div className="flex items-end gap-2">
         <textarea rows={2} value={texto} onChange={(e) => setTexto(e.target.value)} aria-label="O que mudar"
@@ -124,7 +124,7 @@ function Ajustar({ campanha, onMudou }) {
         </Button>
       </div>
       {etapa && <div className="flex items-center gap-2 text-xs text-ink-3"><Spinner size={13} /> {etapa.etapa || 'ajustando'}{etapa.detalhe ? ' · ' + etapa.detalhe : ''}</div>}
-      {resposta && !etapa && <div className="flex gap-2 rounded-md bg-surface-2 px-3 py-2 text-sm text-ink"><Sparkles size={14} className="mt-0.5 shrink-0 text-accent" /> {resposta}</div>}
+      {resposta && !etapa && <div className="flex gap-2 rounded-md bg-surface-2 px-3 py-2 text-sm text-ink"><MessageSquare size={14} className="mt-0.5 shrink-0 text-ink-3" /> {resposta}</div>}
       {erro && <p className="text-xs text-danger" role="alert">{erro}</p>}
       {temAnterior && !etapa && (
         <button type="button" onClick={desfazer} className="flex items-center gap-1 text-xs text-ink-2 hover:text-ink"><Undo2 size={12} /> Desfazer o último ajuste</button>

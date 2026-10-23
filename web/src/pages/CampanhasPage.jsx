@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Wand2, MonitorPlay, Megaphone } from 'lucide-react';
+import { ArrowLeft, Wand2, MonitorPlay, Megaphone, Plus } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
@@ -82,14 +82,14 @@ export function CampanhasPage({ campanhaInicial, onIr }) {
           <h1 className="text-xl font-semibold tracking-tight text-ink">Campanhas</h1>
           <p className="mt-1 text-sm text-ink-2">O que o Criar fez, com o que está no ar em cada TV.</p>
         </div>
-        <Button variant="primary" icon={Wand2} onClick={() => onIr && onIr('criar')}>Criar campanha</Button>
+        <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar campanha</Button>
       </div>
       {erro && <div className="mb-3 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{erro}</div>}
       {lista === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : lista.length === 0 ? (
         <Panel>
           <EmptyState icon={Megaphone} title="Nenhuma campanha ainda"
             description="Conte no Criar o que você quer mostrar: a IA monta as TVs, a programação e as redes, e a campanha aparece aqui."
-            action={<Button variant="primary" icon={Wand2} onClick={() => onIr && onIr('criar')}>Criar a primeira</Button>} />
+            action={<Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar a primeira</Button>} />
         </Panel>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

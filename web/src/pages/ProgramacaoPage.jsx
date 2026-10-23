@@ -54,7 +54,7 @@ export function ProgramacaoPage({ onIr }) {
           <h1 className="text-xl font-semibold tracking-tight text-ink">Programação</h1>
           <p className="mt-1 text-sm text-ink-2">O que está passando em cada TV. Toque numa TV, ou numa parte dela, para mudar.</p>
         </div>
-        <Button variant="primary" icon={Wand2} onClick={() => onIr && onIr('criar')}>Criar</Button>
+        <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
       </div>
 
       {telas === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : telas.length === 0 ? (
@@ -91,7 +91,7 @@ export function ProgramacaoPage({ onIr }) {
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   <Button size="sm" variant="primary" icon={Pencil} onClick={() => editar(d)}>Editar programação</Button>
-                  <Button size="sm" icon={Wand2} onClick={() => onIr && onIr('criar', { tela: d.id })}>Criar para esta TV</Button>
+                  <Button size="sm" icon={Plus} onClick={() => onIr && onIr('criar', { tela: d.id })}>Criar para esta TV</Button>
                 </div>
               </div>
             );

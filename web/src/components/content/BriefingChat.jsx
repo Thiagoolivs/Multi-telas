@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Sparkles, Check, SkipForward } from 'lucide-react';
+import { Send, Sparkles, Check, SkipForward, MessageSquare } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Spinner } from '../ui/Feedback.jsx';
 import { ai } from '../../api.js';
@@ -68,7 +68,7 @@ export function BriefingChat({ empresa, segmento, primeiraFala, onPronto, onPula
           <div key={i} className={m.papel === 'ia' ? 'flex gap-2' : 'flex justify-end'}>
             {m.papel === 'ia' ? (
               <>
-                <Sparkles size={14} className="mt-1 shrink-0 text-accent" />
+                <MessageSquare size={14} className="mt-1 shrink-0 text-ink-3" />
                 <div className="max-w-[85%] rounded-lg rounded-tl-sm bg-surface-2 px-3 py-2 text-sm text-ink">{m.texto}</div>
               </>
             ) : (

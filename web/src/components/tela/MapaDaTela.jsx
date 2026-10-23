@@ -23,7 +23,7 @@ export function MapaDaTela({ layout, ativa, onEscolher, resumo }) {
   return (
     <div className={cn('mx-auto w-full', emPe ? 'max-w-[13rem]' : 'max-w-xl')}>
       <div role="group" aria-label="As zonas desta TV"
-        className="grid gap-1 rounded-lg border-4 border-ink/80 bg-ink/80 p-1 shadow-sm"
+        className="grid gap-1 rounded-lg border-4 border-[#2a313c] bg-[#2a313c] p-1 shadow-sm"
         style={{ aspectRatio: proporcaoDoLayout(layout), ...gradeDaMiniatura(layout) }}>
         {layout.zones.map((z) => {
           const sel = ativa === z.id;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Check, X } from 'lucide-react';
+import { Sparkles, Check, X, CalendarDays } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { useAsync } from '../../lib/useAsync.js';
 import { seasons } from '../../api.js';
@@ -40,7 +40,7 @@ export function SeasonBanner({ zonas, onAplicar }) {
         </div>
       </div>
       {!aplicado && (
-        <Button size="sm" variant="primary" icon={Sparkles}
+        <Button size="sm" variant="primary" icon={CalendarDays}
           onClick={() => { onAplicar(hoje, programa); setAplicado(true); }}>
           Vestir a tela
         </Button>

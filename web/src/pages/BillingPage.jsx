@@ -326,7 +326,7 @@ export function BillingPage({ onFalarComVendas }) {
             return (
               <div key={p.id} className={`relative flex flex-col rounded-xl border p-4 ${isCurrent ? 'border-accent bg-accent-soft/30' : 'border-line bg-surface-2'}`}>
                 {p.id === 'pro' && !isCurrent && (
-                  <span className="absolute -top-2 right-3 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold text-accent-fg"><Sparkles size={11} /> Popular</span>
+                  <span className="absolute -top-2 right-3 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold text-accent-fg">Popular</span>
                 )}
                 <div className="text-sm font-semibold text-ink">{gratis ? 'Teste' : p.name}</div>
                 <div className="mt-1 text-2xl font-bold tnum text-ink">
@@ -343,7 +343,7 @@ export function BillingPage({ onFalarComVendas }) {
                     {p.sobConsulta ? 'Telas sem limite' : p.telasMax === 1 ? '1 tela' : <>Até <b className="text-ink">{p.telasMax}</b> telas</>}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Sparkles size={15} className="shrink-0 text-ink-3" />
+                    <ImageIcon size={15} className="shrink-0 text-ink-3" />
                     {gratis
                       ? <><b className="text-ink">{teste ? teste.criacoes : 20}</b>&nbsp;criações com IA no teste</>
                       : <span><b className="text-ink">{ia.ate3Telas}</b> criações por mês até 3 telas, mais com mais telas (até {ia.maximo})</span>}
