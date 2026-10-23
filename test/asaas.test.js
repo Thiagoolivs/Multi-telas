@@ -81,7 +81,7 @@ test('a mensalidade cobrada é a da CONTA, não a de uma tela', async () => {
    */
   const plans = require('../server/plans.js');
   await comAsaasFalso(respostasPadrao(true), async (billing, chamadas) => {
-    await billing.createCheckout(TENANT, USER, 'pro', 'https://app.test', { telas: 10 });
+    await billing.createCheckout(TENANT, USER, 'pro', 'https://app.test', { telas: 10, documento: '11.222.333/0001-81' });
     const criacao = chamadas.find((c) => c.url.includes('/subscriptions') && c.metodo === 'POST');
     assert.ok(criacao, 'não criou assinatura');
     assert.equal(criacao.corpo.value, plans.mensalidadeCents('pro', 10) / 100);
@@ -104,7 +104,7 @@ test('o cliente é gravado ANTES da assinatura, não no retorno', async () => {
     const gravados = [];
     await assert.rejects(
       () => billing.createCheckout(TENANT, USER, 'pro', 'https://app.test',
-        { telas: 1, aoCriarCliente: (id) => { gravados.push(id); } }),
+        { telas: 1, documento: '11.222.333/0001-81', aoCriarCliente: (id) => { gravados.push(id); } }),
       /ainda não gerou a fatura/,
     );
     assert.deepStrictEqual(gravados, ['cus_1'], 'o cliente não foi gravado antes de falhar');
@@ -132,7 +132,7 @@ test('assinatura já aberta é ATUALIZADA em vez de virar a segunda', async () =
   }, async (billing, chamadas) => {
     // De propósito num plano DIFERENTE do que está aberto: é a troca de plano.
     const out = await billing.createCheckout(
-      { ...TENANT, stripe_customer_id: 'cus_1' }, USER, 'pro', 'https://app.test', { telas: 1 });
+      { ...TENANT, stripe_customer_id: 'cus_1' }, USER, 'pro', 'https://app.test', { telas: 1, documento: '11.222.333/0001-81' });
     assert.equal(out.id, 'sub_ja_existe');
 
     const criacoes = chamadas.filter((c) => c.metodo === 'POST' && /\/subscriptions$/.test(c.url));
