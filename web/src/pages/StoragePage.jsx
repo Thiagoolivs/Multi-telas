@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { confirmar } from '../lib/confirmar.js';
 import { UploadCloud, Trash2, Film, Image as ImageIcon, Share2, Check, Clock, X, Music, FileText, Sparkles } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -123,7 +124,7 @@ export function StoragePage({ filtro = 'fotos' }) {
       await media.remove(m.id);
     } catch (e) {
       if (e.codigo !== 'midia-em-uso') { setMsg(e.message || 'Não deu para apagar.'); return; }
-      if (!window.confirm(e.message + ' Apagar mesmo assim? Esses lugares ficam sem ela.')) return;
+      if (!(await confirmar({ titulo: 'Esta mídia está em uso', texto: (e.usos || []).length ? 'Ela aparece ' + e.usos.join(', ') + '. Apagando, esses lugares ficam sem ela.' : e.message, botao: 'Apagar mesmo assim', perigo: true }))) return;
       try { await media.remove(m.id, true); } catch (e2) { setMsg(e2.message || 'Não deu para apagar.'); return; }
     }
     reload();

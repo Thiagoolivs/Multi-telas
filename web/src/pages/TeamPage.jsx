@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { aviso } from '../lib/avisos.js';
+import { confirmar } from '../lib/confirmar.js';
 import { UserPlus, Trash2, Copy, Check, Users2 } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -43,9 +45,18 @@ export function TeamPage({ me, onLeft }) {
     try { await team.setRole(m.id, role); await reload(); } finally { setBusyId(null); }
   }
   async function revogar(inv) { await team.revokeInvite(inv.id); reload(); }
+  /*
+   * Remover e sair pedem confirmação (EXECUTOR D2): agiam no primeiro clique,
+   * e "Sair da empresa" desloga na hora. A recusa do servidor aparece.
+   */
   async function removeMember(m) {
+    const ok = m.isMe
+      ? await confirmar({ titulo: 'Sair da empresa?', texto: 'Você perde o acesso a este painel. Para voltar, precisa de um convite novo.', botao: 'Sair', perigo: true })
+      : await confirmar({ titulo: 'Remover ' + (m.name || m.email) + '?', texto: 'A pessoa perde o acesso ao painel na hora.', botao: 'Remover', perigo: true });
+    if (!ok) return;
     setBusyId(m.id);
     try { await team.remove(m.id); if (m.isMe) return onLeft(); await reload(); }
+    catch (e) { aviso.erro('equipe', e.message || 'Não deu para remover.'); }
     finally { setBusyId(null); }
   }
 

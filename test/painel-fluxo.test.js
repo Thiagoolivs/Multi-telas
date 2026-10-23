@@ -297,7 +297,8 @@ test('apagar e descartar sem querer têm volta', () => {
   assert.match(pagina, /next\.zonas\[zona\]/, 'o desfazer precisa voltar para a zona de origem, não a aberta agora');
   const editor = soCodigo(ler('web', 'src', 'components', 'content', 'CompositionEditor.jsx'));
   assert.match(editor, /onClick=\{cancelar\}>Cancelar/);
-  assert.match(editor, /podeDesfazer\(hist\) && !window\.confirm\(/);
+  // Desde o D2 a pergunta é o diálogo do painel (lib/confirmar.js), não o window.confirm.
+  assert.match(editor, /podeDesfazer\(hist\) && !\(await confirmar\(/);
   assert.match(editor, /addEventListener\('popstate', aoVoltar\)/, 'voltar com o editor aberto sai da página');
   assert.match(editor, /!vivo\.current && !saiuPeloVoltar\.current/, 'sem esta guarda o StrictMode fecha o editor recém-aberto');
   const avisos = ler('web', 'src', 'lib', 'avisos.js');

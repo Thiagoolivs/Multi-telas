@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { confirmar } from '../../lib/confirmar.js';
 import { Check, AlertTriangle } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
@@ -143,7 +144,7 @@ export function EditarPeca({ item, label, onFechar, onSalvar }) {
   const problemas = avisosDaConferencia(conferencia);
 
   async function salvar() {
-    if (problemas.length && !window.confirm('O texto não cabe em todos os formatos:\n\n' + problemas.slice(0, 4).join('\n') + '\n\nSalvar assim mesmo?')) return;
+    if (problemas.length && !(await confirmar({ titulo: 'O texto não cabe em todos os formatos', texto: problemas.slice(0, 4).join('\n'), botao: 'Salvar assim mesmo' }))) return;
     setSalvando(true);
     try { await onSalvar(atual); } finally { setSalvando(false); }
   }

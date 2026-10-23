@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { confirmar, perguntar } from '../lib/confirmar.js';
 import { Palette, Type, ImageUp, Sparkles, Trash2, Check, Plus, Info, Brain, Building2, X, Globe, Search } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -158,7 +159,7 @@ export function BrandPage({ onIr }) {
   }
 
   async function esquecer() {
-    if (!window.confirm('Apagar tudo que a IA aprendeu sobre a sua empresa? As próximas campanhas voltam a começar do zero.')) return;
+    if (!(await confirmar({ titulo: 'Apagar o que a IA aprendeu?', texto: 'As próximas criações voltam a começar do zero.', botao: 'Apagar', perigo: true }))) return;
     setBusy(true);
     try { await brand.esquecer(); reload(); setMsg('Memória apagada.'); }
     catch (e) { setErr(e.message || 'Não foi possível apagar.'); }
@@ -209,7 +210,7 @@ export function BrandPage({ onIr }) {
   }
 
   async function novaMarca() {
-    const n = window.prompt('Nome da marca nova (ex.: o nome do cliente):', '');
+    const n = await perguntar({ titulo: 'Marca nova', rotulo: 'Nome da marca', placeholder: 'Ex.: o nome do cliente', botao: 'Criar marca' });
     if (n === null) return;
     if (!n.trim()) return;
     setBusy(true); setErr('');
@@ -224,7 +225,7 @@ export function BrandPage({ onIr }) {
   async function apagarMarca(m) {
     // O que some junto precisa estar dito ANTES: cores, fontes e regras da
     // marca vão com ela, e não há como trazer de volta.
-    if (!window.confirm('Apagar a marca “' + m.nome + '”? Cores, fontes, regras e imagens dela somem junto. Os designs já salvos ficam.')) return;
+    if (!(await confirmar({ titulo: 'Apagar a marca “' + m.nome + '”?', texto: 'Cores, fontes, regras e imagens dela somem junto. Os designs já salvos ficam.', botao: 'Apagar a marca', perigo: true }))) return;
     setBusy(true); setErr('');
     try { await brand.removerMarca(m.id); reload(); }
     catch (e) { setErr(e.message || 'Não foi possível apagar.'); }

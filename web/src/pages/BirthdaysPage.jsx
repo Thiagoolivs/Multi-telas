@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { confirmar } from '../lib/confirmar.js';
 import { UploadCloud, Trash2, Cake, FileSpreadsheet, ImagePlus, Check } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -118,7 +119,7 @@ export function BirthdaysPage() {
   }
 
   async function clearAll() {
-    if (!window.confirm('Apagar toda a lista de aniversariantes?')) return;
+    if (!(await confirmar({ titulo: 'Apagar toda a lista?', texto: 'Todos os aniversariantes saem do painel e da TV.', botao: 'Apagar a lista', perigo: true }))) return;
     await birthdays.clear();
     reload();
   }
