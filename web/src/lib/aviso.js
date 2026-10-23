@@ -10,10 +10,39 @@
  * urgente toma a tela — D24/D25) e até quando vale; marcado com `_aviso`
  * para sair inteiro depois.
  */
+import '../../../js/templates.js';
 import { itemDoModelo } from './modelosOuro.js';
-import { zonasPorPapel } from './rodar.js';
 
 const hojeIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+/*
+ * Quanto da tela cada parte da grade ocupa (0–100), pela trilha do layout:
+ * "1fr 11vh" = a linha fixa leva 11, as frações dividem o resto.
+ */
+function partes(trilha) {
+  const t = String(trilha || '1fr').trim().split(/\s+/);
+  const fixo = t.reduce((s, x) => s + (/v[hw]$/.test(x) ? parseFloat(x) : 0), 0);
+  const fr = t.reduce((s, x) => s + (/fr$/.test(x) ? parseFloat(x) : 0), 0) || 1;
+  return t.map((x) => (/v[hw]$/.test(x) ? parseFloat(x) : (/fr$/.test(x) ? parseFloat(x) / fr * Math.max(0, 100 - fixo) : 0)));
+}
+
+/*
+ * A zona do aviso (nota do consultor no D27): a principal; sem ela, a MAIOR
+ * lista em área — nunca o cabeçalho nem o rodapé, onde o aviso não cabe e
+ * vazaria. null = esta TV não tem onde mostrar.
+ */
+export function zonaDoAviso(cfg) {
+  const layout = globalThis.MT_getLayout && globalThis.MT_getLayout(cfg && cfg.settings && cfg.settings.layoutId);
+  const listas = ((layout && layout.zones) || []).filter((z) => z.type === 'playlist');
+  const principal = listas.find((z) => /^(principal|video|z1)$/.test(z.id));
+  if (principal) return principal.id;
+  const g = (layout && layout.grid) || {};
+  const linhas = partes(g.rows);
+  const colunas = partes(g.columns);
+  const area = (z) => (g.areas || []).reduce((s, linha, i) => s + linha.trim().split(/\s+/).reduce((u, nome, j) => u + (nome === z.area ? (linhas[i] || 0) * (colunas[j] || 0) : 0), 0), 0);
+  const maior = listas.slice().sort((a, b) => area(b) - area(a))[0];
+  return maior ? maior.id : null;
+}
 
 export function pecaDoAviso(aviso, modelos, marca) {
   const modelo = modelos.get('servico-alerta');
@@ -33,7 +62,8 @@ export function pecaDoAviso(aviso, modelos, marca) {
 export function aplicarAviso(cfg, item, aviso, id) {
   const next = JSON.parse(JSON.stringify(cfg || {}));
   if (!next.zonas) next.zonas = {};
-  const z = zonasPorPapel(next).principal || 'principal';
+  const z = zonaDoAviso(next);
+  if (!z) throw new Error('esta TV não tem onde mostrar o aviso');
   const zona = next.zonas[z] && Array.isArray(next.zonas[z].items) ? next.zonas[z] : { ...(next.zonas[z] || {}), items: [] };
   const resto = zona.items.filter((it) => !(it && it._aviso === id));
   const novo = {
