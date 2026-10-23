@@ -706,59 +706,42 @@ export function MyDesignsPage({ onIr }) {
   const groupNames = Object.keys(groups);
 
   /*
-   * "Mais" (PLANO §5.1): continua tudo aqui, só fora do caminho principal.
-   * Criar começa em Criar; Meus Designs é a biblioteca do que já foi feito.
+   * DOIS jeitos de criar, e não cinco (EXECUTOR D2: "tirar coisas que
+   * confundam"). Com a IA, no Criar; ou na mão, no editor. Gerar só uma
+   * imagem e importar do Canva continuam aqui, como atalhos pequenos embaixo
+   * do "na mão" — são jeitos de começar uma peça na mão. A Criação rápida
+   * mora no Criar (D17).
    */
-  const MAIS = [
-    /*
-     * 'Campanha completa com IA' saiu daqui (EXECUTOR item 28): o Criar faz a
-     * campanha inteira, conversando. O diálogo fica no código por 30 dias, e
-     * uma campanha dele que ainda estava gerando volta sozinha (jobPendente).
-     */
-    // Os quatro passos de antes do chat (item 24), para quem já sabe o que quer.
-    { key: 'rapida', title: 'Criação rápida', desc: 'Uma frase, o rascunho e publicar.', icon: Rocket, on: () => onIr && onIr('rapida') },
-    { key: 'mao', title: 'Criar na mão', desc: 'Editor visual: fundo, texto, formas e imagens.', icon: Plus, on: novoNaMao },
-    { key: 'img', title: 'Gerar imagem IA', desc: 'Uma imagem por descrição, para arte ou fundo.', icon: ImagePlus, on: () => setImgOpen(true) },
-    { key: 'imp', title: 'Importar arquivo', desc: 'Design do Canva (PNG/JPG) ou PDF.', icon: Upload, on: null },
-  ];
-
   return (
     <div>
       <PageHeader title="Meus Designs" subtitle="Tudo o que você já criou, pronto para reaproveitar e publicar." />
 
-      <div className="mb-5 grid gap-3 lg:grid-cols-[1.3fr_1fr]">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
         <button type="button" onClick={() => onIr && onIr('criar')}
           className="flex items-center gap-4 rounded-xl border border-accent/40 bg-surface p-5 text-left transition hover:border-accent hover:bg-surface-2">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-soft"><Wand2 size={24} className="text-accent" /></div>
           <div>
-            <div className="text-base font-semibold text-ink">Criar</div>
-            <div className="mt-0.5 text-xs leading-snug text-ink-3">Conte o que você quer mostrar. A IA conversa, sugere e cria tudo: as TVs, a programação e as redes.</div>
+            <div className="text-base font-semibold text-ink">Criar com a IA</div>
+            <div className="mt-0.5 text-xs leading-snug text-ink-3">Conte o que você quer mostrar. A IA conversa, sugere e cria.</div>
           </div>
         </button>
         <div className="rounded-xl border border-line bg-surface">
-          <div className="border-b border-line px-4 py-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Mais</div>
-          <div className="grid grid-cols-2 gap-px bg-line">
-            {MAIS.map((c) => {
-              const Icon = c.icon;
-              const inner = (
-                <>
-                  <Icon size={16} className="mt-0.5 shrink-0 text-ink-3" />
-                  <span className="min-w-0">
-                    <span className="block text-xs font-semibold text-ink">{c.title}</span>
-                    <span className="block text-2xs leading-snug text-ink-3">{c.desc}</span>
-                  </span>
-                </>
-              );
-              const base = 'flex items-start gap-2 bg-surface p-3 text-left transition hover:bg-surface-2';
-              return c.on ? (
-                <button key={c.key} type="button" onClick={c.on} className={base}>{inner}</button>
-              ) : (
-                <label key={c.key} className={'cursor-pointer ' + base}>
-                  {inner}
-                  <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={onImport} />
-                </label>
-              );
-            })}
+          <button type="button" onClick={novoNaMao}
+            className="flex w-full items-center gap-4 rounded-t-xl p-5 text-left transition hover:bg-surface-2">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-2"><Plus size={24} className="text-ink-2" /></div>
+            <div>
+              <div className="text-base font-semibold text-ink">Criar na mão</div>
+              <div className="mt-0.5 text-xs leading-snug text-ink-3">Editor: fundo, texto, formas e imagens.</div>
+            </div>
+          </button>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-5 py-2 text-xs">
+            <button type="button" className="inline-flex items-center gap-1 text-accent hover:underline" onClick={() => setImgOpen(true)}>
+              <ImagePlus size={13} /> Gerar só uma imagem
+            </button>
+            <label className="inline-flex cursor-pointer items-center gap-1 text-accent hover:underline">
+              <Upload size={13} /> Importar do Canva (PNG ou PDF)
+              <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={onImport} />
+            </label>
           </div>
         </div>
       </div>

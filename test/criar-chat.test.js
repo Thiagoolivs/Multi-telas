@@ -90,7 +90,8 @@ test('nada some: os quatro passos viraram Criação rápida, com endereço e lug
   assert.match(app, /rapida: \{ title: 'Criação rápida', nav: 'criar' \}/);
   const M = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
   assert.equal(M.grupoDa('rapida').id, 'criar');
-  assert.match(ler('web/src/pages/MyDesignsPage.jsx'), /title: 'Criação rápida'/);
+  // Desde o D2 (dois jeitos de criar) a Criação rápida mora no Criar, não em Meus Designs.
+  assert.match(ler('web/src/pages/CriarPage.jsx'), /Criação rápida/);
   assert.match(ler('web/src/pages/DashboardPage.jsx'), /import \{ OpcoesDeCriar \} from '\.\/CriacaoRapidaPage\.jsx';/);
   // As entradas do Início abrem o chat com o começo de frase e o cartão montado.
   const c = ler('web/src/pages/CriarPage.jsx');
