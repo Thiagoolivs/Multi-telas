@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronUp, ChevronDown, Trash2, Plus, X, Clock, Newspaper, Layers } from 'lucide-react';
 import { Button, IconButton } from '../ui/Button.jsx';
+import { Checkbox } from '../ui/Field.jsx';
 import { PecaHtml } from '../content/PecaHtml.jsx';
 import { TickerEditor } from '../content/TickerEditor.jsx';
 import { emitir } from '../../lib/avisos.js';
@@ -91,6 +92,8 @@ function ListaDePecas({ pecas, formato, mensagens, contagem, onChange }) {
   );
 }
 
+const mostrarOuNao = (z, chave, mostrar) => { const n = { ...z }; if (mostrar) delete n[chave]; else n[chave] = false; return n; };
+
 export function FaixaDaTela({ tipo, zona, onChange, onAdicionar, onAjustes }) {
   const z = zona || {};
   const pecas = pecasDaFaixa(z);
@@ -107,6 +110,11 @@ export function FaixaDaTela({ tipo, zona, onChange, onAdicionar, onAjustes }) {
           <div className="rounded-md border border-dashed border-line p-4 text-sm text-ink-2">
             <b className="text-ink">Cabeçalho automático:</b> logo, nome, relógio e clima, nas cores da tela.
             {onAjustes && <> O nome e o tema ficam em <button type="button" className="font-medium text-accent hover:underline" onClick={onAjustes}>Ajustes da tela</button>.</>}
+            {/* D28: o relógio e o clima podem sair (sem a chave, ficam). */}
+            <div className="mt-3 flex flex-wrap gap-4">
+              <Checkbox label="Relógio" checked={z.relogio !== false} onChange={(e) => onChange(mostrarOuNao(z, 'relogio', e.target.checked))} />
+              <Checkbox label="Clima" checked={z.clima !== false} onChange={(e) => onChange(mostrarOuNao(z, 'clima', e.target.checked))} />
+            </div>
           </div>
         )}
         {onAdicionar && <Button size="sm" icon={Plus} onClick={onAdicionar}>{pecas.length ? 'Outro estilo de cabeçalho' : 'Pôr uma peça no cabeçalho'}</Button>}

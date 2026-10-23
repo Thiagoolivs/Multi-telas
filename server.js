@@ -45,6 +45,7 @@ const ajustePeca = require('./server/ajuste-peca');
 const quizIA = require('./server/quiz-ia');
 const calendario = require('./server/calendario');
 const avisoRapido = require('./server/aviso-rapido');
+const ajusteTela = require('./server/ajuste-tela');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
 const banco = require('./server/banco.js');
@@ -651,6 +652,8 @@ async function handleApi(req, res, pathname, query) {
     calendario: 'calendario',
     // O aviso numa frase (D27): texto, devolve o aviso arrumado para a prévia.
     aviso: 'aviso-rapido',
+    // Layout e tema numa frase (D28): texto, devolve as mudanças para a prévia.
+    tela: 'ajuste-tela',
     // Os textos das redes (item 6): quatro chamadas de texto, um pedido por canal.
     redes: 'redes-sociais',
     // A conversa do Criar (item 21): uma chamada de texto por volta, sem limite de perguntas.
@@ -1981,6 +1984,35 @@ const negocioCache = new Map();
       } catch (e) {
         erros.registrar(e, { rota: '/api/ai/aviso' });
         return sendJson(res, 502, { error: 'não deu para montar agora; tente de novo' });
+      }
+    });
+  }
+
+  /*
+   * ----- IA: mudar layout e tema numa frase (EXECUTOR D28) -----
+   * "Lateral do outro lado, tema claro, sem relógio" vira a lista de
+   * mudanças, conferida contra os layouts que cabem nesta TV e os temas que
+   * existem. Nada é gravado aqui: o painel aplica no rascunho e mostra antes
+   * e depois.
+   */
+  if (parts[1] === 'ai' && parts[2] === 'tela') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:tela:' + sess.tenant_id, 60, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de pedidos por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const texto = String((b && b.texto) || '').trim();
+      if (!texto) return sendJson(res, 400, { error: 'diga o que mudar' });
+      const atual = {
+        layoutId: String((b && b.layoutId) || 'dashboard').slice(0, 40),
+        orientacao: ['landscape', 'portrait', 'square'].includes(b && b.orientacao) ? b.orientacao : 'landscape',
+        tema: String((b && b.tema) || '').slice(0, 40),
+      };
+      try {
+        return sendJson(res, 200, await ajusteTela.entender(texto.slice(0, 400), atual));
+      } catch (e) {
+        erros.registrar(e, { rota: '/api/ai/tela' });
+        return sendJson(res, 502, { error: 'não deu para entender agora; tente de novo' });
       }
     });
   }

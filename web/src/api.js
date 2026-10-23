@@ -261,6 +261,8 @@ export const ai = {
   quiz: (payload, onEtapa, sinal) => rodar('/api/ai/quiz', payload, 'quiz', onEtapa, sinal),
   // Pedir à IA dentro da peça (D20): devolve { resposta, remendo, mudou } — só o que muda, sem gravar.
   ajustarPeca: (item, pedido) => api('POST', '/api/ai/ajustar-peca', { item, pedido }),
+  // Mudar layout e tema numa frase (D28): devolve { mudancas, notas } — o painel aplica no rascunho, com prévia.
+  tela: (texto, atual) => api('POST', '/api/ai/tela', { texto, ...atual }),
 
   // Chat de briefing: uma pergunta por vez até a IA entender a campanha.
   // Continua síncrono: é uma conversa, e conversa que responde por polling

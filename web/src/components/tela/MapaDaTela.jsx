@@ -26,13 +26,13 @@ import { PecaHtml } from '../content/PecaHtml.jsx';
  * resumo(zona) diz o que gira ali, em poucas palavras ("3 peças", "letreiro").
  * `ativa` é a zona aberta embaixo.
  */
-function primeiroDa(cfg, z) {
+export function primeiroDa(cfg, z) {
   const d = (cfg && cfg.zonas && cfg.zonas[z.id]) || {};
   if (z.type === 'header' || z.type === 'ticker') return pecasDaFaixa(d)[0] || null;
   return (Array.isArray(d.items) ? d.items : [])[0] || null;
 }
 
-function Conteudo({ item, tamanho }) {
+export function Conteudo({ item, tamanho }) {
   if (!item) return null;
   if (item.type === 'peca-html' && tamanho) {
     return <PecaHtml item={item} tamanho={tamanho} className="!h-full !w-full !rounded-none !ring-0" />;

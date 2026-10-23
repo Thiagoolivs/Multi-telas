@@ -168,6 +168,34 @@
       radius: 20, blur: 24, shadow: '0 18px 52px rgba(20,6,50,.55)', fx: 0.95,
       glow: 'rgba(168,85,247,.5)',
     },
+    /*
+     * Temas novos (EXECUTOR D28): faltava tema CLARO além do Minimal White —
+     * clínica e escritório pedem tela clara — e um quente para o comércio.
+     */
+    'clinica-suave': {
+      label: 'Clínica Suave', dark: false,
+      bg: '#f3f8f7', bg2: '#e0efeb', brand: '#0f766e', brand2: '#115e59', accent: '#0f766e',
+      surface: '255,255,255', glass: 0.82, border: 'rgba(15,60,55,.12)',
+      text: '#0f2a28', textDim: 'rgba(15,42,40,.62)',
+      radius: 18, blur: 16, shadow: '0 14px 40px rgba(15,60,55,.12)', fx: 0.55,
+      glow: 'rgba(13,148,136,.3)',
+    },
+    'corporativo-claro': {
+      label: 'Corporativo Claro', dark: false,
+      bg: '#f5f7fb', bg2: '#e4e9f2', brand: '#1d4ed8', brand2: '#1e40af', accent: '#1d4ed8',
+      surface: '255,255,255', glass: 0.86, border: 'rgba(15,23,42,.10)',
+      text: '#0f172a', textDim: 'rgba(15,23,42,.6)',
+      radius: 14, blur: 14, shadow: '0 12px 32px rgba(15,23,42,.12)', fx: 0.5,
+      glow: 'rgba(37,99,235,.25)',
+    },
+    'varejo-quente': {
+      label: 'Varejo Quente', dark: true,
+      bg: '#1a0b06', bg2: '#3d170b', brand: '#f97316', brand2: '#ea580c', accent: '#fbbf24',
+      surface: '52,24,12', glass: 0.55, border: 'rgba(249,115,22,.26)',
+      text: '#fff7ed', textDim: 'rgba(255,237,213,.66)',
+      radius: 18, blur: 20, shadow: '0 18px 50px rgba(0,0,0,.5)', fx: 0.9,
+      glow: 'rgba(249,115,22,.45)',
+    },
   };
 
   const DEFAULT_PRESET = 'dark-premium';
@@ -411,4 +439,6 @@
     // Expostos para o painel prever a cor sem duplicar a matemática.
     derivar, tingir, textoSobre, acentoSobre, contraste, mix, girarMatiz, rgba,
   };
-})(window);
+  // Módulo duplo (D28): o servidor confere os temas que a IA propõe pela mesma lista.
+  if (typeof module !== 'undefined' && module.exports) module.exports = global.MTTheme;
+})(typeof window !== 'undefined' ? window : globalThis);

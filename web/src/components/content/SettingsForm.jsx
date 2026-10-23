@@ -11,6 +11,7 @@ import { CamposDoHorario, HORARIO_PADRAO } from '../tela/HorarioDaTela.jsx';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
 import { FUNDOS_TV, corDoFundo } from '../../lib/fundoDaTV.js';
+import { zonasQueSaem } from '../../lib/ajusteTela.js';
 import { usePerfil } from '../../lib/perfil.js';
 
 /*
@@ -60,14 +61,8 @@ function MiniLayout({ id }) {
   );
 }
 
-// O que some ao trocar de layout: zona com conteúdo que o layout novo não tem.
-export function zonasQueSaem(zonasAtuais, idNovo) {
-  const novo = getLayout(idNovo);
-  const ids = new Set(novo.zones.map((z) => z.id));
-  return Object.entries(zonasAtuais || {})
-    .filter(([id, z]) => !ids.has(id) && z && ((Array.isArray(z.items) && z.items.length) || z.peca || (Array.isArray(z.pecas) && z.pecas.length)))
-    .map(([id]) => id);
-}
+// O que some ao trocar de layout (mora em lib/ajusteTela.js: a IA da tela usa a mesma conta).
+export { zonasQueSaem };
 
 // Edita cfg.settings por tarefa. `device` traz o horário (expediente), que tem rota própria.
 export function SettingsForm({ settings, onChange, deviceId, device, zonas, dataDeHoje }) {

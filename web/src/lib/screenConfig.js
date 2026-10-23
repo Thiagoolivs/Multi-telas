@@ -108,6 +108,9 @@ export const THEME_PRESETS = [
   { value: 'elegant-black', label: 'Elegant Black' },
   { value: 'energy-green', label: 'Energy Green' },
   { value: 'modern-purple', label: 'Modern Purple' },
+  { value: 'clinica-suave', label: 'Clínica Suave (claro)' },
+  { value: 'corporativo-claro', label: 'Corporativo Claro' },
+  { value: 'varejo-quente', label: 'Varejo Quente' },
 ];
 
 export const FONTS = [

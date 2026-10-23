@@ -182,6 +182,8 @@ const AINDA_SINCRONAS = [
   'calendario',
   // D27: o aviso numa frase também — a pessoa espera a prévia para dar o ok; nada é gravado.
   'aviso',
+  // D28: mudar layout e tema devolve a lista de mudanças para a prévia; nada é gravado.
+  'tela',
 ];
 
 test('toda rota de IA que GERA roda como trabalho — e as síncronas são só as declaradas', () => {
