@@ -7,6 +7,7 @@ import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { QuandoMostrar } from '../components/content/QuandoMostrar.jsx';
 import { temAgenda, resumoAgenda } from '../lib/agenda.js';
 import { emitir, aviso } from '../lib/avisos.js';
+import { confirmar } from '../lib/confirmar.js';
 import { ItemForm } from '../components/content/ItemForm.jsx';
 import { ItemPreview } from '../components/content/ItemPreview.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
@@ -34,6 +35,24 @@ import { zonesOf, ensureZone, formatoDoLayout } from '../lib/screenConfig.js';
 import { cn } from '../lib/cn.js';
 
 // Zona inicial: prefere a "principal" (o destaque), senão a 1ª playlist.
+/*
+ * O RASCUNHO da tela (EXECUTOR D14). Antes cada tecla publicava: a TV
+ * redesenhava a tela inteira enquanto a pessoa digitava, e escolher "Aviso"
+ * punha um aviso vazio na parede. Agora o que se edita fica aqui (e no
+ * navegador, para não se perder ao sair), e a TV só recebe no "Publicar".
+ */
+const chaveDoRascunho = (id) => 'mt.rascunho.' + id;
+function lerRascunho(id) {
+  try { return JSON.parse(localStorage.getItem(chaveDoRascunho(id)) || 'null'); } catch (e) { return null; }
+}
+function guardarRascunho(id, cfg, versao) {
+  try { localStorage.setItem(chaveDoRascunho(id), JSON.stringify({ cfg, versao, em: Date.now() })); } catch (e) { /* sem espaço: segue só na tela */ }
+}
+function apagarRascunho(id) {
+  try { localStorage.removeItem(chaveDoRascunho(id)); } catch (e) { /* nada */ }
+}
+const hora = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
 function defaultZone(zones) {
   const z = zones.find((x) => x.id === 'principal') || zones.find((x) => x.type === 'playlist') || zones[0];
   return z ? z.id : null;
@@ -63,6 +82,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   const [publishedAt, setPublishedAt] = useState(null);
   const [publishError, setPublishError] = useState('');
   const saveTimer = useRef(null);
+  // { em, mudouNaTV, cfg? }: o rascunho que voltou ao abrir (D14).
+  const [avisoRascunho, setAvisoRascunho] = useState(null);
 
   /*
    * Semeia o config de trabalho quando chega (config null = TV sem
@@ -79,10 +100,24 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     if (error || !data) { setCfg(null); return; }
     const seeded = data.config || defaultConfig(device.name);
     versao.current = data.versao || 0;
-    setCfg(seeded);
-    setDirty(false);
     setConflito(false);
     setTentativa(0);
+    /*
+     * Rascunho guardado (D14): o que a pessoa editou e não publicou volta.
+     * Se a TV mudou depois dele (outra aba, outra pessoa, uma campanha), não
+     * entra sozinho por cima: a pessoa escolhe abrir o rascunho ou descartar.
+     */
+    const r = lerRascunho(device.id);
+    if (r && r.cfg && JSON.stringify(r.cfg) !== JSON.stringify(seeded)) {
+      if (r.versao === versao.current) {
+        setCfg(r.cfg); setDirty(true); setAvisoRascunho({ em: r.em, mudouNaTV: false });
+      } else {
+        setCfg(seeded); setDirty(false); setAvisoRascunho({ em: r.em, mudouNaTV: true, cfg: r.cfg });
+      }
+    } else {
+      if (r) apagarRascunho(device.id);
+      setCfg(seeded); setDirty(false); setAvisoRascunho(null);
+    }
     // Tocou numa parte da TV em Programação: abre nela (D3; antes ignorava e abria a principal).
     const zs = zonesOf(seeded);
     setZoneId(zonaInicial && zs.some((z) => z.id === zonaInicial) ? zonaInicial : defaultZone(zs));
@@ -128,7 +163,15 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   }
   async function tirarCampanha(nome) {
     const antes = cfg;
-    patchCfg((next) => { const sem = semCampanha(next, nome); next.zonas = sem.zonas; });
+    /*
+     * Tirar uma campanha é ação explícita, e a campanha também sai da lista
+     * desta TV no servidor: publica já (D14), senão a campanha diria "fora"
+     * enquanto a TV ainda a mostra.
+     */
+    const novo = structuredClone(cfg);
+    novo.zonas = semCampanha(novo, nome).zonas;
+    setCfg(novo);
+    if (!(await publish(novo))) setDirty(true);
     const c = await campanhaPeloNome(nome);
     const listaAntes = c ? { estado: c.estado, telas: (c.telas || []).slice() } : null;
     /*
@@ -141,7 +184,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
       acao: {
         rotulo: 'Desfazer',
         on: () => {
-          setCfg(antes); setDirty(true);
+          setCfg(antes); publish(antes).then((ok) => { if (!ok) setDirty(true); });
           if (c && listaAntes) criar.marcar(c.id, listaAntes.estado, listaAntes.telas).catch((e) => aviso.erro('campanha', e.message || 'A campanha não voltou a listar esta TV.'));
         },
       },
@@ -328,68 +371,75 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     finally { setAiBusy(false); }
   }
 
-  async function publish() {
-    if (conflito) return;
+  /*
+   * PUBLICAR (D14): a TV só recebe aqui. `qual` é a programação a publicar
+   * (a da tela, por padrão — ou a que uma ação explícita acabou de montar).
+   */
+  async function publish(qual) {
+    const alvo = qual || cfg;
+    if (!alvo) return false;
     setPublishing(true); setPublishError('');
     try {
-      const r = await deviceConfig.save(device.id, cfg, versao.current);
+      const r = await deviceConfig.save(device.id, alvo, versao.current);
       if (r && r.updatedAt) versao.current = r.updatedAt;
-      setDirty(false); setPublishedAt(Date.now()); setTentativa(0);
+      setDirty(false); setPublishedAt(Date.now()); setTentativa(0); setConflito(false); setAvisoRascunho(null);
+      apagarRascunho(device.id);
+      return true;
     } catch (e) {
-      // Outra aba, outra pessoa ou uma campanha gravou no meio: não passa por cima.
-      if (e.codigo === 'config-mudou') { setConflito(true); return; }
-      setPublishError(e.message || 'Não deu para salvar.');
-      setTentativa((n) => n + 1);
+      // Outra aba, outra pessoa ou uma campanha gravou no meio: não passa por cima — e não joga fora o rascunho.
+      if (e.codigo === 'config-mudou') { setConflito(true); return false; }
+      setPublishError(e.message || 'Não deu para publicar.');
+      return false;
     } finally { setPublishing(false); }
   }
 
   /*
-   * Salvamento automático: publica sozinho ~1s depois da última alteração.
-   *
-   * E TENTA DE NOVO quando falha. Antes a falha deixava o selo "Salvando…"
-   * girando para sempre (dirty continuava true e nada disparava outra vez),
-   * e a pessoa achava que a TV estava recebendo. Agora espera 3, 10, 30 e
-   * depois 60 s, e o selo diz que não salvou, com "tentar agora".
+   * O conflito não joga o trabalho fora (revisão do consultor no D0.5): a
+   * pessoa escolhe pôr o rascunho por cima da versão nova, ou ver a nova.
    */
-  const ESPERAS = [1000, 3000, 10000, 30000, 60000];
+  async function publicarPorCima() {
+    try {
+      const r = await deviceConfig.ler(device.id);
+      versao.current = (r && r.versao) || 0;
+      await publish();
+    } catch (e) { setPublishError(e.message || 'Não deu para ler a versão nova.'); }
+  }
+  async function descartarRascunho() {
+    apagarRascunho(device.id);
+    setAvisoRascunho(null); setConflito(false); setDirty(false);
+    reload();
+  }
+
+  // O rascunho fica guardado no navegador enquanto não é publicado: sair e voltar não perde nada.
   useEffect(() => {
-    if (!dirty || !cfg || conflito) return;
+    if (!cfg) return undefined;
+    if (!dirty) return undefined;
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => { publish(); }, ESPERAS[Math.min(tentativa, ESPERAS.length - 1)]);
+    saveTimer.current = setTimeout(() => guardarRascunho(device.id, cfg, versao.current), 400);
     return () => clearTimeout(saveTimer.current);
-  }, [cfg, dirty, tentativa, conflito]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cfg, dirty, device.id]);
 
   /*
-   * Saiu antes do segundo de espera: salva mesmo assim.
-   *
-   * O temporizador acima é cancelado quando a página desmonta, então a última
-   * alteração feita logo antes de voltar (seta, menu ou o gesto de voltar do
-   * celular) se perdia em silêncio — com "Salvando…" na tela um instante
-   * antes. Fechar a aba também: ali vai com keepalive, que o navegador
-   * termina de enviar depois que a página já foi embora.
+   * Saiu com rascunho: ele fica guardado (não vai para a TV sozinho) e a
+   * pessoa é avisada. Antes, sair publicava o que estivesse no meio.
    */
   const pendente = useRef(null);
   useEffect(() => { pendente.current = dirty && cfg ? cfg : null; }, [cfg, dirty]);
+  useEffect(() => () => {
+    const c = pendente.current;
+    if (!c) return;
+    guardarRascunho(device.id, c, versao.current);
+    aviso.ok('O rascunho de "' + (device.name || 'TV') + '" ficou guardado. Ele ainda não está na TV.');
+  }, [device.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ctrl/⌘+S publica.
   useEffect(() => {
-    const aoFechar = () => {
-      const c = pendente.current;
-      if (!c) return;
-      pendente.current = null;
-      try {
-        fetch('/api/devices/' + device.id + '/config?versao=' + encodeURIComponent(versao.current), {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c),
-          credentials: 'same-origin', keepalive: true,
-        }).catch(() => {});
-      } catch (e) { /* acima de 64 KB o keepalive recusa; não há mais o que fazer */ }
+    const atalho = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); if (dirty && !publishing) publish(); }
     };
-    window.addEventListener('pagehide', aoFechar);
-    return () => {
-      window.removeEventListener('pagehide', aoFechar);
-      const c = pendente.current;
-      pendente.current = null;
-      if (c) deviceConfig.save(device.id, c, versao.current).catch(() => {});
-    };
-  }, [device.id]);
+    window.addEventListener('keydown', atalho);
+    return () => window.removeEventListener('keydown', atalho);
+  });
 
   // Aplica uma campanha da IA (tela inteira) ao config: substitui as zonas
   // geradas e, se veio, a cor da marca.
@@ -422,25 +472,28 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
           <div>
             {/* O nome da TV (o da lista de Telas). settings.nome é o do cabeçalho: desde o item 39, o da conta. */}
             <h1 className="text-xl font-semibold tracking-tight text-ink">{device.name || (cfg && cfg.settings && cfg.settings.nome) || 'Tela'}</h1>
-            <p className="text-sm text-ink-3">O que aparece nesta tela · salva e publica sozinho</p>
+            <p className="text-sm text-ink-3">O que aparece nesta tela · edite à vontade: a TV só muda quando você publica</p>
           </div>
         </div>
-        {/* No celular os três dividem uma linha sem quebrar texto: "Tudo salvo"
-            e "Campanha com IA" em duas linhas cada pareciam botões quebrados. */}
+        {/* No celular os botões dividem uma linha sem quebrar texto. */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {/* Estado do salvamento automático */}
-          {conflito ? (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-warn">Mudou em outro lugar</span>
-          ) : publishError && !publishing ? (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-danger">
-              Não salvou ·
-              <button type="button" className="font-medium underline" onClick={() => { clearTimeout(saveTimer.current); publish(); }}>tentar agora</button>
-            </span>
+          {/* O estado do rascunho (D14): a TV só recebe no Publicar. */}
+          {dirty ? (
+            <>
+              <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-warn">
+                <span className="h-2 w-2 rounded-full bg-warn" aria-hidden /> Rascunho · ainda não está na TV
+              </span>
+              <Button variant="ghost" className="whitespace-nowrap" disabled={publishing}
+                onClick={async () => { if (await confirmar({ titulo: 'Descartar o rascunho?', texto: 'A tela volta a ser o que está na TV agora.', botao: 'Descartar', perigo: true })) descartarRascunho(); }}>
+                Descartar
+              </Button>
+              <Button variant="primary" icon={Check} className="whitespace-nowrap" disabled={publishing || conflito} onClick={() => publish()}>
+                {publishing ? 'Publicando…' : 'Publicar na TV'}
+              </Button>
+            </>
           ) : (
-            <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-xs', publishing || dirty ? 'text-ink-3' : 'text-emerald-500')}>
-              {publishing || dirty
-                ? <><Spinner size={12} /> Salvando…</>
-                : <><Check size={13} /> {publishedAt ? 'Salvo' : 'Tudo salvo'}</>}
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-emerald-500">
+              <Check size={13} /> {publishedAt ? 'Publicado agora' : 'Igual ao que está na TV'}
             </span>
           )}
           {/*
@@ -455,11 +508,29 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
 
       {conflito && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-sm text-ink">
-          <span>Esta TV foi mudada em outro lugar (outra aba, outra pessoa ou uma campanha). Para não apagar o que mudou, nada daqui foi gravado.</span>
-          <Button variant="secondary" size="sm" onClick={() => { setConflito(false); setDirty(false); reload(); }}>Ver a programação atual</Button>
+          <span>Esta TV foi mudada em outro lugar (outra aba, outra pessoa ou uma campanha) enquanto você editava. Seu rascunho está guardado.</span>
+          <span className="flex flex-wrap gap-2">
+            <Button variant="ghost" size="sm" onClick={async () => { if (await confirmar({ titulo: 'Ver a versão nova?', texto: 'O seu rascunho é descartado.', botao: 'Ver a nova', perigo: true })) descartarRascunho(); }}>Ver a versão nova</Button>
+            <Button variant="primary" size="sm" disabled={publishing} onClick={publicarPorCima}>Publicar o meu por cima</Button>
+          </span>
         </div>
       )}
-      {publishError && !conflito && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError} Tentamos de novo sozinhos; a TV continua com a última programação salva.</div>}
+      {avisoRascunho && !conflito && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-sm text-ink">
+          <span>{avisoRascunho.mudouNaTV
+            ? 'Você tem um rascunho de ' + hora(avisoRascunho.em) + ', mas a TV mudou depois dele.'
+            : 'Rascunho de ' + hora(avisoRascunho.em) + ' aberto: ele ainda não está na TV.'}</span>
+          {avisoRascunho.mudouNaTV ? (
+            <span className="flex flex-wrap gap-2">
+              <Button variant="ghost" size="sm" onClick={() => { apagarRascunho(device.id); setAvisoRascunho(null); }}>Descartar o rascunho</Button>
+              <Button variant="secondary" size="sm" onClick={() => { setCfg(avisoRascunho.cfg); setDirty(true); setAvisoRascunho({ em: avisoRascunho.em, mudouNaTV: false }); }}>Abrir o rascunho</Button>
+            </span>
+          ) : (
+            <button type="button" className="text-xs text-ink-3 hover:text-ink" onClick={() => setAvisoRascunho(null)}>Entendi</button>
+          )}
+        </div>
+      )}
+      {publishError && !conflito && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError} A TV continua com o que estava; o rascunho está guardado — toque em Publicar de novo.</div>}
 
       {/*
         A data comemorativa saiu daqui (EXECUTOR §2c, item 35): virou ideia no

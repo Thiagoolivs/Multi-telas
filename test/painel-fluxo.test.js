@@ -265,10 +265,14 @@ test('a última edição antes de sair da tela não se perde', () => {
    * silêncio. Reproduzido no navegador (celular, gesto de voltar).
    */
   const src = soCodigo(ler('web', 'src', 'pages', 'ContentEditorPage.jsx'));
-  // Com a versão lida (D0.5): a edição pendente não passa por cima de quem gravou no meio.
-  assert.match(src, /if \(c\) deviceConfig\.save\(device\.id, c, versao\.current\)/, 'desmontar não salva o que estava pendente');
-  assert.match(src, /addEventListener\('pagehide'/, 'fechar a aba perde a edição pendente');
-  assert.match(src, /keepalive: true/, 'sem keepalive o envio morre junto com a página');
+  /*
+   * Desde o D14 a edição é RASCUNHO: sair não publica (publicar o que estava
+   * no meio era justamente o defeito), guarda no navegador — e volta ao abrir.
+   */
+  assert.match(src, /saveTimer\.current = setTimeout\(\(\) => guardarRascunho\(device\.id, cfg, versao\.current\), 400\);/, 'o rascunho não fica guardado');
+  assert.match(src, /guardarRascunho\(device\.id, c, versao\.current\);/, 'desmontar perde o rascunho');
+  assert.match(src, /const r = lerRascunho\(device\.id\);/, 'o rascunho não volta ao abrir');
+  assert.ok(!/keepalive: true/.test(src), 'sair voltou a publicar sozinho');
 });
 
 test('editor visual no celular: palco em cima, textos da peça como campos', () => {
