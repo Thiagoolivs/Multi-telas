@@ -44,7 +44,7 @@ test('o painel manda todas de uma vez; se uma TV mudou no meio, relê todas e re
     return envios === 1 ? { status: 409, json: { error: 'mudou', code: 'config-mudou' } } : { status: 200, json: { ok: true, lote: 'lot_1' } };
   });
   t.after(a.devolver);
-  const r = await R.gravarEmLote([{ id: 'dev_a' }, { id: 'dev_b' }], (cfg, tv) => ({ ...cfg, marca: tv.id }), 'teste');
+  const r = await R.gravarEmLote([{ id: 'dev_a' }, { id: 'dev_b' }, { id: 'dev_a' }], (cfg, tv) => ({ ...cfg, marca: tv.id }), 'teste');
   assert.deepEqual(r, { lote: 'lot_1', ids: ['dev_a', 'dev_b'] });
   const posts = a.pedidos.filter((p) => p.metodo === 'POST');
   assert.equal(posts.length, 2, 'não tentou de novo depois do conflito');
@@ -129,6 +129,12 @@ test('servidor: tudo ou nada, com versão, e o desfazer não apaga o que mudou d
   const velha = await pedir('/api/lote', { method: 'POST', cookie: c, json: { itens: [{ id: a, config: cfg('novo A'), versao: await versao(a) }, { id: b, config: cfg('novo B'), versao: 1 }] } });
   assert.equal(velha.status, 409);
   assert.equal(velha.json.code, 'config-mudou');
+  assert.equal(await titulo(a), 'antes A');
+
+  // A mesma TV duas vezes (nota do consultor): recusada, nada muda.
+  const repetida = await pedir('/api/lote', { method: 'POST', cookie: c, json: { itens: [{ id: a, config: cfg('novo A') }, { id: a, config: cfg('outro A') }] } });
+  assert.equal(repetida.status, 400);
+  assert.equal(repetida.json.code, 'tv-repetida');
   assert.equal(await titulo(a), 'antes A');
 
   // TV de outra conta: recusada (e nada muda).
