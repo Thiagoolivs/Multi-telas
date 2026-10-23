@@ -8,7 +8,9 @@
  *   GET  /api/campanhas         as recentes da conta (sem o resultado)
  *   GET  /api/campanhas/:id     uma, inteira
  *   POST /api/ai/editar          { campanhaId, texto } — uma volta de Editar com a IA (D50)
- *   GET  /api/campanhas/:id/edicao   a conversa de edição dela (mensagens, decisões)
+ *   GET  /api/campanhas/:id/edicao   a conversa de edição dela (mensagens, decisões, imagens)
+ *   PUT  /api/campanhas/:id/edicao   { referencias } muda o uso ou tira uma imagem (D45)
+ *   POST /api/campanhas/:id/referencia?uso=estilo|produto   imagem nova na edição (bytes no corpo)
  *
  * O escopo vem da conversa (o que ela fechou) ou do pedido (o cartão mexido
  * à mão vence). A foto passa por `fotoDaConta`, a mesma da campanha de Meus
@@ -21,6 +23,7 @@ const E = require('../../js/escopo.js');
 const Pal = require('../../js/paletas.js');
 const eco = require('../ecossistema');
 const edicao = require('../edicao');
+const refs = require('../referencias');
 const conversa = require('../ai-conversa');
 const ajuste = require('../ajuste');
 const paleta = require('../paleta.js');
@@ -48,7 +51,18 @@ function configDe(d) {
 }
 
 module.exports = function (ctx) {
-  const { db, sendJson, readBody, rateLimit, emTrabalho, marcaDaConta, fotoDaConta, estiloDasReferencias } = ctx;
+  const { db, sendJson, readBody, rateLimit, emTrabalho, marcaDaConta, fotoDaConta, estiloDasReferencias, midia, plans } = ctx;
+
+  // A conversa de edição da campanha (D50), criada na primeira vez com o combinado da original (D48).
+  async function conversaDaEdicao(sess, c) {
+    const ja = await db.conversaDeEdicao(sess.tenant_id, c.id);
+    if (ja) return ja;
+    const original = c.conversaId ? await db.lerConversa(sess.tenant_id, c.conversaId).catch(() => null) : null;
+    return db.criarConversa(sess.tenant_id, sess.user_id, {
+      titulo: ('Edição: ' + (c.nome || 'campanha')).slice(0, 80), mensagens: [], escopo: null, estado: 'conversando',
+      campanhaId: c.id, decisoes: (original && original.decisoes) || [], tipo: 'edicao', referencias: [],
+    });
+  }
 
   async function gerar(req, res, sess) {
     // Várias chamadas de modelo e fotos: o mesmo teto da campanha de Meus Designs.
@@ -61,6 +75,8 @@ module.exports = function (ctx) {
       const ctxConta = await contextoDaConta(sess.tenant_id);
       // D48: o que a pessoa decidiu na conversa (preço, frase exata, o que não quer) vai ao gerador.
       if (conv && Array.isArray(conv.decisoes)) ctxConta.combinado = conv.decisoes;
+      // D45: as imagens da conversa — estilo guia o desenho; a do produto vai como foto da empresa.
+      if (conv && (conv.referencias || []).length) ctxConta.marca = refs.naMarca(ctxConta.marca, conv.referencias);
       // O alvo é conferido contra as TVs desta conta, como na conversa.
       const escopo = conversa.conferirEscopo(b && b.escopo && typeof b.escopo === 'object' ? b.escopo : (conv && conv.escopo), ctxConta);
       if (!E.temOQueGerar(escopo)) return sendJson(res, 400, { error: 'ainda não tem nada para criar: diga o que quer mostrar' });
@@ -150,17 +166,9 @@ module.exports = function (ctx) {
       if (!c || !c.resultado) return sendJson(res, 404, { error: 'campanha não encontrada' });
       return emTrabalho(res, sess, 'campanha', { brief: ('Edição: ' + texto).slice(0, 200) }, async (progresso) => {
         progresso('entendendo o pedido', texto.slice(0, 80));
-        let conv = await db.conversaDeEdicao(sess.tenant_id, c.id);
-        if (!conv) {
-          // Nasce com o que foi decidido na conversa que criou a campanha (D48).
-          const original = c.conversaId ? await db.lerConversa(sess.tenant_id, c.conversaId).catch(() => null) : null;
-          conv = await db.criarConversa(sess.tenant_id, sess.user_id, {
-            titulo: ('Edição: ' + (c.nome || 'campanha')).slice(0, 80), mensagens: [], escopo: null, estado: 'conversando',
-            campanhaId: c.id, decisoes: (original && original.decisoes) || [], tipo: 'edicao',
-          });
-        }
+        const conv = await conversaDaEdicao(sess, c);
         const mensagens = (conv.mensagens || []).concat({ papel: 'pessoa', texto, em: Date.now() });
-        const out = await edicao.conversar({ texto, mensagens, decisoes: conv.decisoes || [], campanha: c });
+        const out = await edicao.conversar({ texto, mensagens, decisoes: conv.decisoes || [], campanha: c, referencias: conv.referencias || [] });
         let salva = c;
         let refeitas = 0;
         if (out.acao === 'fazer' && out.mudancas.length) {
@@ -190,12 +198,36 @@ module.exports = function (ctx) {
       return true;
     }
     // A conversa de edição de uma campanha (D50): para o painel mostrar a história ao abrir.
-    if (parts.length === 4 && /^camp_[a-z0-9]{6,40}$/i.test(parts[2] || '') && parts[3] === 'edicao') {
-      if (req.method !== 'GET') { sendJson(res, 405, { error: 'método inválido' }); return true; }
+    if (parts.length === 4 && /^camp_[a-z0-9]{6,40}$/i.test(parts[2] || '') && parts[3] === 'edicao' && req.method === 'GET') {
       const c = await db.lerCampanha(sess.tenant_id, parts[2]);
       if (!c) { sendJson(res, 404, { error: 'campanha não encontrada' }); return true; }
       const conv = await db.conversaDeEdicao(sess.tenant_id, c.id);
-      sendJson(res, 200, { conversa: conv ? { id: conv.id, mensagens: conv.mensagens || [], decisoes: conv.decisoes || [] } : null });
+      sendJson(res, 200, { conversa: conv ? { id: conv.id, mensagens: conv.mensagens || [], decisoes: conv.decisoes || [], referencias: conv.referencias || [] } : null });
+      return true;
+    }
+    // As imagens da edição (D45): mudar o uso / tirar (PUT) e mandar uma nova (POST, bytes no corpo).
+    if (parts.length === 4 && /^camp_[a-z0-9]{6,40}$/i.test(parts[2] || '') && (parts[3] === 'referencia' || (parts[3] === 'edicao' && req.method === 'PUT'))) {
+      const c = await db.lerCampanha(sess.tenant_id, parts[2]);
+      if (!c) { req.resume(); sendJson(res, 404, { error: 'campanha não encontrada' }); return true; }
+      if (parts[3] === 'edicao') {
+        readBody(req, res, async (b) => {
+          if (!b || !Array.isArray(b.referencias)) return sendJson(res, 400, { error: 'envie as imagens' });
+          const conv = await conversaDaEdicao(sess, c);
+          const salva = await db.salvarConversa(sess.tenant_id, conv.id, { ...conv, referencias: refs.conferirLista(b.referencias, conv.referencias) });
+          return sendJson(res, 200, { conversa: { id: salva.id, mensagens: salva.mensagens || [], decisoes: salva.decisoes || [], referencias: salva.referencias || [] } });
+        });
+        return true;
+      }
+      if (req.method !== 'POST') { req.resume(); sendJson(res, 405, { error: 'método inválido' }); return true; }
+      const rl = rateLimit('ref:' + sess.tenant_id, 60, 60 * 60 * 1000);
+      if (!rl.ok) { req.resume(); sendJson(res, 429, { error: 'muitas imagens nesta hora. Espere um pouco.' }, { 'Retry-After': String(rl.retryAfter) }); return true; }
+      const conv = await conversaDaEdicao(sess, c);
+      if ((conv.referencias || []).length >= refs.MAX_POR_CONVERSA) { req.resume(); sendJson(res, 400, { error: 'até ' + refs.MAX_POR_CONVERSA + ' imagens por conversa' }); return true; }
+      const [usado, telas, tenant] = await Promise.all([db.sumMediaBytes(sess.tenant_id), db.countDevices(sess.tenant_id), db.getTenant(sess.tenant_id)]);
+      const r = await refs.receber({ db, midia, tenantId: sess.tenant_id, req, uso: query.uso, cota: plans.cotaBytes(tenant && tenant.plan, Math.max(1, telas)), usado });
+      if (r.erro) { sendJson(res, r.status, { error: r.erro }); return true; }
+      const salva = await db.salvarConversa(sess.tenant_id, conv.id, { ...conv, referencias: (conv.referencias || []).concat(r.referencia) });
+      sendJson(res, 201, { referencia: r.referencia, conversa: { id: salva.id, mensagens: salva.mensagens || [], decisoes: salva.decisoes || [], referencias: salva.referencias || [] } });
       return true;
     }
     /*

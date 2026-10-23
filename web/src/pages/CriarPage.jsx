@@ -7,6 +7,8 @@ import { Dialog } from '../components/ui/Dialog.jsx';
 import { CartaoEscopo, linhaDoCusto } from '../components/criar/CartaoEscopo.jsx';
 import { ListaDeConversas } from '../components/criar/ListaDeConversas.jsx';
 import { Combinado } from '../components/criar/Combinado.jsx';
+import { BotaoAnexar, ReferenciasDoChat, imagensDoColar } from '../components/criar/ReferenciasDoChat.jsx';
+import { prepararFoto } from '../lib/subir.js';
 import { ai, criar, devices, seasons, brand } from '../api.js';
 import { ideiaDaData } from '../lib/ideiaDaData.js';
 import E from '../lib/escopo.js';
@@ -87,6 +89,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   // D47: a lista de conversas se refaz quando uma muda; no celular ela abre num diálogo.
   const [versaoDaLista, setVersaoDaLista] = useState(0);
   const [verConversas, setVerConversas] = useState(false);
+  const [enviandoImagem, setEnviandoImagem] = useState(false);
   const caixa = useRef(null);
   const fim = useRef(null);
   const salvarCartao = useRef(null);
@@ -250,6 +253,36 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     catch (e) { setConversa(conversa); aviso.erro('criar', 'Não deu para tirar: ' + (e.message || 'falha de conexão') + '.'); }
   }
   const combinado = <Combinado decisoes={decisoes} onTirar={criada ? null : tirarDecisao} />;
+  const referencias = (conversa && conversa.referencias) || [];
+
+  /*
+   * D45: imagem de referência — anexar (o clipe) ou colar. Sem conversa ainda,
+   * a primeira imagem cria uma. Grande demais encolhe antes de subir (a
+   * mesma régua das fotos); o tipo quem confere é o servidor, pelos bytes.
+   */
+  async function anexar(arquivos) {
+    if (criada || enviandoImagem) return;
+    setEnviandoImagem(true); setErro('');
+    let atual = conversa;
+    try {
+      for (const f of arquivos.slice(0, 10 - referencias.length)) {
+        const envio = await prepararFoto(f).then((p) => { URL.revokeObjectURL(p.previa); return p.envio; }).catch(() => f);
+        const r = await criar.referencia(atual && atual.id, envio, 'estilo');
+        if (!atual) setVersaoDaLista((v) => v + 1);
+        atual = r.conversa;
+        setConversa(r.conversa);
+        guardar(r.conversa.id);
+      }
+    } catch (e) { setErro('A imagem não foi: ' + (e.message || 'falha de conexão') + '.'); }
+    finally { setEnviandoImagem(false); }
+  }
+  async function mudarReferencias(lista) {
+    if (!conversa) return;
+    const antes = conversa;
+    setConversa({ ...conversa, referencias: lista });
+    try { const r = await criar.salvarReferencias(conversa.id, lista); setConversa(r.conversa); }
+    catch (e) { setConversa(antes); aviso.erro('criar', 'Não deu para mudar a imagem: ' + (e.message || 'falha de conexão') + '.'); }
+  }
   const ultimaIa = [...mensagens].reverse().find((m) => m.papel === 'ia');
 
   const lista = (
@@ -280,8 +313,13 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       )}
     </div>
   ) : (
+    <div className="space-y-2">
+    {/* D45: as imagens de referência desta conversa, com o uso de cada uma. */}
+    <ReferenciasDoChat lista={referencias} onMudar={mudarReferencias} />
     <div className="flex items-end gap-2">
+      <BotaoAnexar onArquivos={anexar} enviando={enviandoImagem} />
       <textarea ref={caixa} rows={conversando ? 2 : 3} value={texto} onChange={(e) => setTexto(e.target.value)}
+        onPaste={(e) => { const imgs = imagensDoColar(e); if (imgs.length) { e.preventDefault(); anexar(imgs); } }}
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
         placeholder={conversando ? 'Responda, peça uma mudança ou diga "pode gerar"' : perfil.exemplo}
         aria-label="O que você quer mostrar"
@@ -289,6 +327,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       <Button variant="primary" icon={Send} disabled={pensando || !texto.trim()} onClick={() => enviar()} aria-label="Enviar">
         <span className="hidden sm:inline">Enviar</span>
       </Button>
+    </div>
     </div>
   );
 

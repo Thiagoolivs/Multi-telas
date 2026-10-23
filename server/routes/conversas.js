@@ -9,6 +9,10 @@
  *   GET  /api/conversas/:id      uma, inteira
  *   PUT  /api/conversas/:id      { titulo } renomeia; { arquivada } arquiva (D49);
  *                                 { decisoes } corrige o que foi decidido (D48);
+ *                                 { referencias } muda o uso ou tira uma imagem (D45);
+ *   POST /api/conversas/referencia?uso=estilo|produto        imagem nova numa conversa nova (D45)
+ *   POST /api/conversas/:id/referencia?uso=estilo|produto    imagem nova nesta conversa
+ *     o corpo são os bytes da imagem (PNG, JPEG ou WEBP, conferidos pelos bytes)
  *                                 { escopo }: o que a pessoa mudou à mão no
  *                                 cartão "O que vou criar". Não chama a IA.
  *
@@ -25,6 +29,7 @@ const conversa = require('../ai-conversa');
 const memory = require('../ai-memoria');
 const E = require('../../js/escopo.js');
 const paleta = require('../paleta.js');
+const refs = require('../referencias.js');
 
 // O que a conversa guarda. Mais que isso, as mais antigas saem: o escopo já as resume.
 const MAX_MENSAGENS = 200;
@@ -37,7 +42,25 @@ function configDe(d) {
 }
 
 module.exports = function (ctx) {
-  const { db, sendJson, readBody, rateLimit, erros } = ctx;
+  const { db, sendJson, readBody, rateLimit, erros, midia, plans } = ctx;
+
+  /*
+   * A imagem de referência do chat (D45): mídia da conta, conferida pelos
+   * bytes, presa à conversa. Sem conversa ainda, ela nasce aqui (a pessoa
+   * pode mandar a imagem antes da primeira frase).
+   */
+  async function receberReferencia(req, res, sess, query, atual) {
+    const rl = rateLimit('ref:' + sess.tenant_id, 60, 60 * 60 * 1000);
+    if (!rl.ok) { req.resume(); return sendJson(res, 429, { error: 'muitas imagens nesta hora. Espere um pouco.' }, { 'Retry-After': String(rl.retryAfter) }); }
+    if (atual && (atual.referencias || []).length >= refs.MAX_POR_CONVERSA) { req.resume(); return sendJson(res, 400, { error: 'até ' + refs.MAX_POR_CONVERSA + ' imagens por conversa' }); }
+    const [usado, telas, tenant] = await Promise.all([db.sumMediaBytes(sess.tenant_id), db.countDevices(sess.tenant_id), db.getTenant(sess.tenant_id)]);
+    const cota = plans.cotaBytes(tenant && tenant.plan, Math.max(1, telas));
+    const r = await refs.receber({ db, midia, tenantId: sess.tenant_id, req, uso: query.uso, cota, usado });
+    if (r.erro) return sendJson(res, r.status, { error: r.erro });
+    const base = atual || await db.criarConversa(sess.tenant_id, sess.user_id, { titulo: 'Nova conversa', mensagens: [], escopo: null, estado: 'conversando', campanhaId: '', decisoes: [], referencias: [] });
+    const salva = await db.salvarConversa(sess.tenant_id, base.id, { ...base, referencias: (base.referencias || []).concat(r.referencia) });
+    return sendJson(res, 201, { referencia: r.referencia, conversa: salva });
+  }
 
   // O que a IA precisa saber da conta: a marca (para não perguntar), a memória e as TVs.
   async function contexto(tenantId) {
@@ -76,6 +99,7 @@ module.exports = function (ctx) {
         const atual = id ? await db.lerConversa(sess.tenant_id, id) : null;
         if (id && !atual) return sendJson(res, 404, { error: 'conversa não encontrada' });
         const c = await contexto(sess.tenant_id);
+        c.referencias = (atual && atual.referencias) || [];
         const mensagens = ((atual && atual.mensagens) || []).concat({ papel: 'pessoa', texto, em: Date.now() });
         // O escopo do cartão (que a pessoa pode ter mudado à mão) vence o guardado.
         const escopo = b && b.escopo && typeof b.escopo === 'object' ? b.escopo : (atual && atual.escopo);
@@ -93,10 +117,12 @@ module.exports = function (ctx) {
         mensagens.push({ papel: 'ia', texto: out.resposta, sugestoes: out.sugestoes, em: Date.now(), ...(falhou ? { falha: true } : {}) });
         const primeira = mensagens.find((m) => m.papel === 'pessoa');
         const dados = {
-          titulo: out.escopo.nome || (atual && atual.titulo) || linha(primeira && primeira.texto, 60),
+          // "Nova conversa" é o nome provisório de quem mandou a imagem antes da primeira frase (D45).
+          titulo: out.escopo.nome || (atual && atual.titulo !== 'Nova conversa' && atual.titulo) || linha(primeira && primeira.texto, 60),
           mensagens: mensagens.slice(-MAX_MENSAGENS),
           escopo: out.escopo,
           decisoes: out.decisoes || (atual && atual.decisoes) || [],
+          referencias: (atual && atual.referencias) || [],
           estado: manter ? ((atual && atual.estado) || 'conversando') : (out.pronto ? 'entendido' : 'conversando'),
           campanhaId: (atual && atual.campanhaId) || '',
         };
@@ -140,6 +166,18 @@ module.exports = function (ctx) {
      * Todas as conversas (D49), não só as 20 últimas: busca pelo título,
      * `estado` = andamento | criadas, arquivadas à parte e páginas de 30.
      */
+    if (parts.length === 3 && parts[2] === 'referencia') {
+      if (req.method !== 'POST') { sendJson(res, 405, { error: 'método inválido' }); return true; }
+      await receberReferencia(req, res, sess, query, null);
+      return true;
+    }
+    if (parts.length === 4 && parts[3] === 'referencia' && /^conv_[a-z0-9]{6,40}$/i.test(parts[2] || '')) {
+      if (req.method !== 'POST') { sendJson(res, 405, { error: 'método inválido' }); return true; }
+      const atual = await db.lerConversa(sess.tenant_id, parts[2]);
+      if (!atual || atual.tipo === 'edicao') { req.resume(); sendJson(res, 404, { error: 'conversa não encontrada' }); return true; }
+      await receberReferencia(req, res, sess, query, atual);
+      return true;
+    }
     if (parts.length === 2 && req.method === 'GET') {
       const POR_PAGINA = 30;
       const estado = query.estado === 'criadas' || query.estado === 'andamento' ? query.estado : '';
@@ -166,6 +204,11 @@ module.exports = function (ctx) {
             return sendJson(res, 200, { conversa: await db.arquivarConversa(sess.tenant_id, id, b.arquivada) });
           }
           // D48: a pessoa tira (ou corrige) o que foi decidido, no cartão. Passa pela mesma peneira da IA.
+          // D45: mudar o uso (estilo / produto) ou tirar uma imagem; só as que já eram desta conversa.
+          if (b && Array.isArray(b.referencias)) {
+            const referencias = refs.conferirLista(b.referencias, atual.referencias);
+            return sendJson(res, 200, { conversa: await db.salvarConversa(sess.tenant_id, id, { ...atual, referencias }) });
+          }
           if (b && Array.isArray(b.decisoes)) {
             const decisoes = conversa.mesclarDecisoes(b.decisoes, [], []);
             return sendJson(res, 200, { conversa: await db.salvarConversa(sess.tenant_id, id, { ...atual, decisoes }) });

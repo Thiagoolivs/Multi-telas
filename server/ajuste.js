@@ -80,7 +80,9 @@ const corta = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().s
 const inteiro = (v) => (Number.isInteger(v) ? v : Math.round(Number(v)));
 
 // A peneira: o que a IA devolve vira mudança só se apontar para o que existe.
-function lerMudancas(lista, resultado) {
+// `opcoes.refs` (D45): as imagens que a pessoa mandou no chat — "usar" aponta para uma delas pelo número.
+function lerMudancas(lista, resultado, opcoes) {
+  const refs = (opcoes && Array.isArray(opcoes.refs)) ? opcoes.refs : [];
   const pecas = numerar(resultado);
   const nTelas = ((resultado && resultado.telas) || []).length;
   const saida = [];
@@ -95,6 +97,13 @@ function lerMudancas(lista, resultado) {
         const campo = String(m.campo || '');
         const valor = corta(m.valor, 200);
         if (camposDeTexto(pecas[n - 1].peca).includes(campo) && valor) saida.push({ tipo: 'texto', peca: n, campo, valor });
+        continue;
+      }
+      // "usar": a imagem K que a pessoa mandou (D45). Sem uma imagem K de verdade, a mudança não entra.
+      if (m.foto === 'usar') {
+        const ref = refs[inteiro(m.ref) - 1];
+        if (!ref || !ref.url) continue;
+        saida.push({ tipo: 'refazer', peca: n, texto: corta(m.texto, 300), foto: 'usar', fotoUrl: ref.url, descricaoFoto: '' });
         continue;
       }
       saida.push({ tipo: 'refazer', peca: n, texto: corta(m.texto, 300),
@@ -150,7 +159,7 @@ function semIA(texto, resultado) {
 
 function descreverMudanca(m) {
   if (m.tipo === 'texto') return 'texto novo na peça ' + m.peca;
-  if (m.tipo === 'refazer') return (m.foto === 'trocar' ? 'foto nova na peça ' : m.foto === 'tirar' ? 'sem foto na peça ' : 'texto novo na peça ') + m.peca;
+  if (m.tipo === 'refazer') return (m.foto === 'trocar' ? 'foto nova na peça ' : m.foto === 'usar' ? 'a sua foto na peça ' : m.foto === 'tirar' ? 'sem foto na peça ' : 'texto novo na peça ') + m.peca;
   if (m.tipo === 'tirar') return 'tirar a peça ' + m.peca;
   if (m.tipo === 'acrescentar') return (m.quantidade === 1 ? 'mais uma peça' : 'mais ' + m.quantidade + ' peças') + ' em ' + E.NOME_ZONA[m.zona].toLowerCase();
   if (m.tipo === 'redes') return (m.ligado ? 'pôr ' : 'tirar ') + E.NOME_REDE[m.canal];
@@ -227,6 +236,8 @@ async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso } = {}) 
       if (mu.texto) t = (await eco.escreverTextos(escopo, [v], ctx, bases, mu.texto)).vagas[v.id];
       let f = p.item.campos.foto || null;
       if (mu.foto === 'tirar') f = null;
+      // A foto que a pessoa mandou no chat (D45): é dela, vai como está e não gasta criação.
+      if (mu.foto === 'usar' && mu.fotoUrl) f = mu.fotoUrl;
       if (mu.foto === 'trocar' && eco.levaFoto(v)) f = (await foto(mu.descricaoFoto || ('Outra foto para: ' + t.titulo), p.formato, p.vaga)) || f;
       const nova = await eco.comporVaga(v, t, f, comum);
       const zona = lugar(alvo.tela, alvo.zona);

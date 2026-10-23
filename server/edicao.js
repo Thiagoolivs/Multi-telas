@@ -23,6 +23,7 @@
 const ai = require('./ai');
 const ajuste = require('./ajuste');
 const conversa = require('./ai-conversa');
+const refs = require('./referencias');
 const E = require('../js/escopo.js');
 
 const JANELA = 20;
@@ -50,6 +51,8 @@ AS MUDANÇAS POSSÍVEIS (os números são os da lista de peças):
   esta sempre que o pedido for de texto.
 - {"tipo":"refazer","peca":N,"texto":"o que muda no texto, ou vazio","foto":"manter"|"trocar"|"tirar","descricaoFoto":"a cena nova, só se trocar"}
   Redesenha a peça (foto nova, outra ideia). Foto nova gasta uma criação do plano.
+- {"tipo":"refazer","peca":N,"foto":"usar","ref":K}
+  Põe na peça a IMAGEM K que a pessoa mandou nesta conversa (lista abaixo). É dela: não gasta criação.
 - {"tipo":"acrescentar","tela":T,"zona":"principal"|"lateral"|"cabecalho"|"rodape","quantidade":1,"pedido":"o que a peça nova mostra"}
 - {"tipo":"tirar","peca":N}
 - {"tipo":"redes","canal":"instagramPost"|"instagramStory"|"whatsappStatus"|"whatsappMensagem"|"facebook"|"google","ligado":true|false}
@@ -90,7 +93,8 @@ function transcricao(mensagens) {
 const numeroDa = (t) => { const m = /pe[cç]a\s*(\d+)/i.exec(String(t || '')) || /^\s*(\d+)\s*[.!]?\s*$/.exec(String(t || '')); return m ? Number(m[1]) : 0; };
 function precoDe(t) { const m = /r\$\s*\d+(?:[.,]\d{1,2})?/i.exec(String(t || '')); return m ? m[0].replace(/\s+/g, ' ').replace(/^r\$/i, 'R$') : ''; }
 
-function semIA(texto, mensagens, resultado) {
+function semIA(texto, mensagens, resultado, referencias) {
+  const imagens = Array.isArray(referencias) ? referencias : [];
   const t = String(texto || '').toLowerCase();
   const pecas = ajuste.numerar(resultado);
   const ultimaIa = [...(mensagens || [])].reverse().find((m) => m && m.papel === 'ia');
@@ -105,6 +109,14 @@ function semIA(texto, mensagens, resultado) {
     if (pendente.tipo === 'foto') return fazer([{ tipo: 'refazer', peca: n, foto: 'trocar', texto: '' }], resultado);
     if (pendente.tipo === 'preco') return precoNa(n, pendente.valor, resultado);
     if (pendente.tipo === 'texto') return textoNa(n, pendente.campo, pendente.valor, resultado);
+    if (pendente.tipo === 'usar') return fazer([{ tipo: 'refazer', peca: n, foto: 'usar', ref: pendente.ref }], resultado, imagens);
+  }
+  // "usa a foto que eu mandei" (D45): a última imagem do produto (ou a última que veio).
+  if (imagens.length && /(us[ae]|p[õo]e|coloc\w*)\s+(a |essa |esta |minha )?(foto|imagem)/.test(t)) {
+    const k = imagens.map((r, i) => (r.uso === 'produto' ? i + 1 : 0)).filter(Boolean).pop() || imagens.length;
+    if (n) return fazer([{ tipo: 'refazer', peca: n, foto: 'usar', ref: k }], resultado, imagens);
+    if (pecas.length === 1) return fazer([{ tipo: 'refazer', peca: 1, foto: 'usar', ref: k }], resultado, imagens);
+    return { acao: 'perguntar', resposta: 'Ponho a sua foto em qual peça?', sugestoes: sugestoesDePeca, mudancas: [], pendente: { tipo: 'usar', ref: k } };
   }
   // "muda o texto de baixo para: …", "troca o título por …": só aquele texto.
   const pedidoDeTexto = /(?:mud|troc|coloc|p[õo]e)\w*\s+(?:o\s+|a\s+)?(t[ií]tulo|texto|frase|chamada)[^:]*?(?:para|por)\s*:?\s*(.{2,200})$/i.exec(String(texto || '').trim());
@@ -133,8 +145,8 @@ function semIA(texto, mensagens, resultado) {
   if (r.mudancas.length) return { acao: 'fazer', resposta: r.resposta, sugestoes: [], mudancas: r.mudancas };
   return { acao: 'responder', resposta: r.resposta, sugestoes: ['Troca a foto da peça 1', 'Mais uma peça na lateral'], mudancas: [] };
 }
-function fazer(mudancas, resultado) {
-  const lidas = ajuste.lerMudancas(mudancas, resultado);
+function fazer(mudancas, resultado, imagens) {
+  const lidas = ajuste.lerMudancas(mudancas, resultado, { refs: imagens || [] });
   if (!lidas.length) return { acao: 'responder', resposta: 'Essa peça não existe. Diga o número que aparece ao lado dela.', sugestoes: [], mudancas: [] };
   return { acao: 'fazer', resposta: 'Feito: ' + lidas.map(ajuste.descreverMudanca).join('; ') + '.', sugestoes: [], mudancas: lidas };
 }
@@ -160,11 +172,11 @@ function precoNa(n, preco, resultado) {
  * Uma volta da edição. `mensagens` já inclui a fala nova da pessoa.
  * Devolve { acao, resposta, sugestoes, mudancas, decisoes, pendente?, modo }.
  */
-async function conversar({ texto, mensagens, decisoes, campanha } = {}) {
+async function conversar({ texto, mensagens, decisoes, campanha, referencias } = {}) {
   const resultado = (campanha && campanha.resultado) || { telas: [] };
   const antes = conversa.mesclarDecisoes(decisoes, [], []);
   if (ai.mode() === 'dev') {
-    const r = semIA(texto, (mensagens || []).slice(0, -1), resultado);
+    const r = semIA(texto, (mensagens || []).slice(0, -1), resultado, referencias);
     return Object.assign({ decisoes: antes, modo: 'dev' }, r);
   }
   const usuario = [
@@ -173,6 +185,7 @@ async function conversar({ texto, mensagens, decisoes, campanha } = {}) {
     pecasParaIA(resultado) || '(nenhuma peça)',
     '',
     conversa.textoDasDecisoes(antes),
+    refs.paraIA(referencias),
     '',
     'CONVERSA DA EDIÇÃO:',
     transcricao(mensagens) || '(nada ainda)',
@@ -182,10 +195,10 @@ async function conversar({ texto, mensagens, decisoes, campanha } = {}) {
     r = ai.parseAiJson(await ai.callLLM(SISTEMA, usuario));
   } catch (e) {
     // A IA caiu: as frases comuns ainda funcionam, e a conversa não some.
-    const dev = semIA(texto, (mensagens || []).slice(0, -1), resultado);
+    const dev = semIA(texto, (mensagens || []).slice(0, -1), resultado, referencias);
     return Object.assign({ decisoes: antes, modo: 'falha' }, dev);
   }
-  const mudancas = ajuste.lerMudancas(r && r.mudancas, resultado);
+  const mudancas = ajuste.lerMudancas(r && r.mudancas, resultado, { refs: referencias });
   // "fazer" sem nenhuma mudança que existe vira pergunta: nunca diz que fez o que não fez.
   let acao = ACOES.includes(r && r.acao) ? r.acao : (mudancas.length ? 'fazer' : 'responder');
   if (acao === 'fazer' && !mudancas.length) acao = 'perguntar';
