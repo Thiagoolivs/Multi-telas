@@ -777,6 +777,247 @@ As cópias que o Criar fazia antes do item 29 somem da lista de Meus Designs
 O pacote da data (cores, decoração, conteúdo) volta como opção em
 Ajustes › Aparência, já que saiu do topo da TV no item 35.
 
+## 2f · Rodada 5 — o DNA novo (aprovado pelo dono em 23/10)
+
+O dono, depois de usar: "não está tão intuitivo e fácil de usar quanto
+deveria", "a intenção é a facilidade", "tirar coisas que confundam o
+usuário". O teste de uso de 23/10 (conta nova de metalúrgica + ótica com
+dados, 2 passadas no navegador, 3 varreduras de código) achou ~120
+defeitos; eles estão distribuídos nos itens abaixo. O dono aprovou
+**todos os itens**, com os comentários dele citados entre aspas.
+
+Numeração própria, com **D** na frente (D0.1 … D40), para não confundir
+com os itens 1–44 das rodadas anteriores.
+
+**Trabalho em dois PCs.** Este PC executa; uma conta do dono no Claude na
+nuvem é o **testador**: lê a issue de testes, testa cada item em produção
+com contas de teste e responde na issue
+[#198](https://github.com/Thiagoolivs/Multi-telas/issues/198) com ✅, 🔴 (bloqueia: conserte antes do
+próximo item) ou 🟡 (conserte no fim da fase). Roteiro dele em
+[`TESTADOR.md`](TESTADOR.md). Ao fazer o merge de cada item, comente na
+#198: `[executor] D<n> no ar, PR #X — testar: <roteiro curto>`.
+
+Decisões que valem para a rodada inteira:
+- **Público:** empresas e comércio, um produto só, com **perfil da conta**
+  (Empresa, Comércio, Saúde) que muda atalhos, ideias, textos e peças.
+- **Lançar depois da Fase 1.**
+- **Billing:** Essencial (modelos prontos + IA básica) e Pro "IA em tudo"
+  (R$ 179/tela) quando a Fase 3 existir. Nunca vender antes de existir.
+- **A IA programa, a TV executa.** Nada de IA decidindo ao vivo na TV:
+  ela escreve regras e dados; o player executa offline. Mudança grande
+  (layout, tema) sempre com prévia e ok.
+
+### Fase 0 · Urgente, antes de tudo
+
+**D0.1 Cobrança não libera plano grátis.** Sem `ASAAS_API_KEY`, o
+`dev-activate` ativa plano pago e pacotes de graça
+(`server/routes/billing.js`). Em produção ele só existe com chave de
+simulação explícita; o boot avisa o que falta. O dono: "já adicionei as
+chaves, talvez falte algo" — peça ao consultor para conferir no Railway.
+**Pronto quando:** sem a chave, ativar plano pago em produção é recusado.
+
+**D0.2 Link de senha seguro.** Sem `APP_URL`, os links de redefinição e
+confirmação usam o `X-Forwarded-Host` do pedido. Em produção, `APP_URL` é
+obrigatório e o boot reclama. **Pronto quando:** um pedido com host
+forjado não muda o link do e-mail.
+
+**D0.3 IA de volta, com erro claro.** Lista de modelos atualizada
+(`gemini-3.8-flash`; sai o 2.5, que o Google desligou), modelo morto
+memorizado, 429 de teto tratado como "IA fora" (sem cascata), troca de
+provedor quando há outra chave, prazo em toda chamada, e o painel diz
+"A IA está fora do ar agora; sua conversa está salva". Erro sempre vai
+para `erros.registrar`. **Pronto quando:** com a chave estourada, o chat
+mostra a frase clara e o painel do operador mostra o erro.
+
+**D0.4 Teto de gasto da IA.** Medir os tokens reais (hoje grava 5
+centavos fixos), anotar chamada que falhou, teto em R$ por conta e global
+com alarme no painel do operador, IA de texto respeitando plano e teste
+vencido, débito de créditos atômico. **Pronto quando:** uma conta passa
+do teto e para, e o operador vê o alarme.
+
+**D0.5 Nunca perder programação.** Config que não carregou não vira
+"tela vazia" editável; salvamento automático que falha tenta de novo e
+avisa; gravação com versão (a última escrita não apaga a de outra aba).
+**Pronto quando:** derrubar a rede no meio da edição não muda a TV.
+
+**D0.6 TV sem travar.** Vídeo pausado fora do expediente volta quando a
+loja abre; parar a zona chama a saída do slide (sem timers sobrando);
+sino de urgente não toca com a tela apagada. **Pronto quando:** a TV
+atravessa o fim e o começo do expediente com vídeo tocando.
+
+**D0.7 LGPD sem sobras.** Excluir a conta apaga conversas, campanhas,
+marcas, jobs e o resto; exportar inclui tudo; apagar mural apaga fotos,
+IP e arquivos; a TV recebe só os aniversariantes da semana, sem
+matrícula; apagar mídia em uso pede confirmação. **Pronto quando:** o
+teste de exclusão não acha linha nenhuma da conta.
+
+### Fase 1 · Limpar e profissionalizar (depois dela, lança)
+
+**D1 Painel azul, escuro sério.** Primeiro, cartões de cor e esboços para
+o dono aprovar (na issue). Depois: azul corporativo no lugar do índigo
+nos dois modos, escuro mais sóbrio, a maioria dos ícones de brilho fora.
+
+**D2 Cortar o que confunde.** Selo "Sistema operacional" (fixo, e em
+português soa como Windows), "Visão geral" 3×, "Alertas" 2×, cartões
+zerados na conta vazia, busca do topo que não faz nada, jargão (frota,
+pareie, dispositivo, player, relação), "Refinar conversando" e "Campanha
+completa com IA" (não existem mais), 5 jeitos de criar viram 2,
+`prompt()`/`confirm()` do navegador viram diálogos nossos.
+
+**D3 Fluxo sem becos.** Os ~35 defeitos do painel da varredura de 23/10:
+erro de rede não aparece como lista vazia, erro dentro do diálogo
+aberto, pânico do mural sempre responde, Equipe confirma antes de
+remover, páginas que recarregam no lugar certo, ações escondidas no
+celular, termos iguais para a mesma coisa.
+
+**D4 Perfil Empresa, Comércio, Saúde.** Escolhido no cadastro (deduzido,
+editável em Ajustes). Muda os atalhos do Início, as ideias e o exemplo do
+Criar, os textos ("loja" × "empresa"), a prévia das paletas e as peças
+sugeridas.
+
+**D5 Nem tudo é campanha.** A conversa aceita um aviso, uma peça ou uma
+dúvida sem montar campanha. O cartão "O que vou criar" mostra só o que a
+conversa decidiu (hoje: 22 botões antes de qualquer conversa).
+
+**D6 Imagens base saem da Marca.** Viram etiqueta "da marca" em Mídias ›
+Fotos. Marca reordenada: logo primeiro, depois cores, nome e tom, site e
+o avançado (fontes, direção, várias marcas). Tudo salva sozinho.
+
+**D7 Logo analisada e corrigida.** Aceita SVG e PNG. A IA analisa (fundo,
+resolução, cores, leitura no claro e no escuro); a ferramenta recorta
+fundo sólido, vetoriza logo simples e gera as versões clara e escura. O
+dono vê antes e depois e aprova. Nunca troca calado.
+
+**D8 Logo aparece na TV.** O cabeçalho usa a logo (`settings.logoUrl`
+nunca era preenchido) e as peças que têm lugar de logo também.
+
+**D9 Referência de estilo útil.** O Criar lê as imagens de referência
+(hoje só o diretor antigo lê); o site baixa o CSS externo e as cores lidas
+viram paleta sugerida; a og:image entra no acervo.
+
+**D10 Campanhas em pastas.** Cartão-pasta com capa, estado, TVs e as
+peças dentro; renomear, arquivar, excluir e buscar; sem o corte
+silencioso de 20. "Campanha" com um sentido só: a pasta de Meus Designs
+vira a mesma coisa.
+
+**D11 Aba "Criando".** Gerações em andamento no Criar, com progresso e
+aviso quando termina.
+
+**D12 Rodapé legível e bonito.** O dono: "mais editável, e garantir que o
+pedido da zona não vaze no rodapé; ele deve fazer sentido". Rolagem que
+mostra o fim da frase, sem cortar g/p/j, cores escolhidas respeitadas,
+mensagens com espaço, zona vazia elegante (hoje: faixa preta com uma
+bolinha), sem dois relógios.
+
+**D13 Prévia visual antes de gerar.** Cartões de cor e esboço de cada tela
+no chat do Criar (antes de gastar) e na Marca.
+
+**D14 Publicar só quando pronto.** Hoje cada tecla publica e a TV
+redesenha a tela inteira enquanto a pessoa digita, e escolher "Aviso"
+publica um aviso vazio. Rascunho, e a TV só recebe ao salvar.
+
+**D15 Aniversário e mural entram na TV.** O dono: "tem que ser do jeito
+que eu falei; me fale uma forma melhor, mas na mesma base". O jeito dele:
+o aniversariante aparece na **semana do aniversário**, e o sistema
+administra a convivência com as datas sazonais. Proposta na mesma base:
+salvar a lista oferece "mostrar nas TVs" (todas ou um grupo); na semana
+certa o player encaixa sozinho um cartão de aniversário no rodízio (sem
+ninguém pôr item na zona) e, no dia, um destaque; em semana sem
+aniversário, nada aparece. O mural idem: criar o mural oferece as TVs, e
+"1 na tela" só aparece quando a foto está mesmo na TV. Descreva a
+proposta na issue para o dono aprovar.
+
+**D16 Os 43 modelos já visíveis.** Cliente novo vê em Peças prontas as
+peças-ouro que já existem, preenchidas com a marca dele.
+
+**D17 Criação rápida em destaque.** O dono: "facilita muito a vida de quem
+quer criar; precisa ter pelo menos 10 opções". Dez ou mais pontos de
+partida rápidos, visíveis no Início e no Criar.
+
+### Fase 2 · Telas prontas (a prioridade do dono)
+
+**D18 80 telas prontas adaptáveis.** Doze estruturas com variações, por
+perfil, em lotes de 20 que o dono aprova na bancada. Todas com tokens,
+mudando com tema e cores.
+
+**D19 Editar qualquer peça.** Trocar fonte, cor e tela de peça feita pela
+IA; o dono: "trocar elementos e a visualização no geral também".
+
+**D20 Pedir à IA dentro da peça.** A IA muda só o pedido (patch), e o
+botão de IA volta para dentro da zona. O dono: "melhore as zonas também,
+hoje está uma visualização um pouco amadora".
+
+**D21 Quiz com cronômetro.** Pergunta, alternativas, tempo correndo,
+resposta e explicação. Conteúdo gerado passa por revisão antes de ir ao
+ar (fato errado na parede é pior que nenhum).
+
+**D22 Planos: IA básica × integrada.** Essencial e Pro como decidido;
+nada vendido antes de existir.
+
+### Fase 3 · Programação inteligente (o DNA)
+
+**D23 Prioridade, validade e alvo.** Toda peça ganha tipo, prioridade,
+validade, TVs e zona. O dono: "a empresa poderá adicionar um calendário
+da empresa, importando texto, e a IA cria todo o conteúdo e o cronograma
+de avisos, programado e editável".
+
+**D24 A TV distribui o tempo.** Peso por prioridade; aniversário, data
+comemorativa, campanha e aviso convivem por regra, no player, offline.
+
+**D25 Urgente toma a tela.** Qualquer peça pode; campo de prioridade no
+painel.
+
+**D26 Mandar para todas as TVs.** Envio em lote no servidor, grupos de
+verdade e desfazer (hoje é o navegador, TV por TV, e falha no meio mente).
+
+**D27 IA encaixa o aviso.** "Adicione aviso da peça quebrada no banheiro":
+a IA cria, acha o espaço, mostra a prévia e, com o ok, a frota recebe.
+
+**D28 IA troca layout e tema.** Lado da lateral, tema, fundo, relógio,
+clima e temas novos, sempre com prévia.
+
+**D29 Transições profissionais.** Sem piscar, sem remontar a tela inteira
+ao trocar layout, reorganização animada só com transform e opacity.
+
+### Fase 4 · Pessoas e RH
+
+**D30 Cadastro de pessoas.** Planilha do RH (Excel ou CSV), setor,
+nascimento e foto ligada a cada pessoa; importar não apaga quem chegou
+pelo QR.
+
+**D31 Foto pelo QR, o RH aprova.** O dono: "a pessoa lê um QR code na tela
+pedindo as fotos, isso envia alguma forma de autenticação e a pessoa
+envia as fotos; isso acontece semanas antes dos eventos ou quando o RH
+programar". Autenticação por código no celular ou e-mail cadastrado (CPF
+mais data não prova identidade); fila de aprovação com a prévia da TV.
+
+**D32 Aniversariante na semana dele**, sozinho, convivendo com as datas.
+
+**D33 Datas com fotos da equipe.** Mães, pais, mulheres (falta hoje),
+crianças, Natal e as outras.
+
+**D34 O RH vê tudo fácil.** Pessoas, pendentes e próximos aniversários.
+
+**D35 LGPD por pessoa.** Consentimento, prazo de guarda e excluir uma
+pessoa só. Revisão jurídica com o dono.
+
+### Fase 5 · Dados
+
+**D36 KPIs da empresa na TV.** O dono: "conexão configurável via endpoint
+também, para APIs como as do TOTVS Protheus". Conector genérico (a
+empresa envia para nós, ou buscamos um endereço configurável com
+autenticação, sempre por `server/site.js`) e peça de KPI com destaque.
+
+**D37 Banco de imagens externo: Pixabay** (decisão do dono), com o
+crédito automático.
+
+### Depois, não agora
+
+**D38 Postar nas redes.** O dono: "já deixa no esquema, ou pelo menos
+direciona para o link de postagem das redes". Agora: o botão abre a
+página de postar de cada rede com a imagem e o texto prontos.
+**D39 Senhas e clínicas.** **D40 Escala** (várias instâncias).
+
 ## 3 · O consultor (issue #135)
 
 Um Claude com o contexto todo do projeto fica de plantão na issue
