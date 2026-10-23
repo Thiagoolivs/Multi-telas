@@ -178,6 +178,8 @@ test('o CI publica o Release só da main e só assinado; a TV conta o versionCod
   assert.match(W, /printf '\{"versionCode":%s,"versionName":"%s","tamanho":%s,"sha256":"%s"\}\\n'/);
   assert.match(W, /gh release create "apk-v\$NOME" publicar\/multitelas-tv\.apk publicar\/versao\.json/);
   assert.match(W, /permissions:\n\s+contents: write/);
+  // Sem a chave: avisa e segue (nota do consultor), sem derrubar o build.
+  assert.match(W, /if: \$\{\{ env\.TEM_CHAVE != 'true' && github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request' \}\}\n\s+run: echo "::warning title=Sem Release para as TVs::/);
   assert.match(ler('js/cloud.js'), /appCodigo: \(global\.MTApp && typeof global\.MTApp\.codigo === 'function' && Number\(global\.MTApp\.codigo\(\)\)\) \|\| undefined,/);
   assert.match(ler('server.js'), /appCodigo: num\(b\.appCodigo\) \};/);
   assert.match(ler('server/routes/telas.js'), /appNovo: apk\.versaoNovaPara\(info\),/);

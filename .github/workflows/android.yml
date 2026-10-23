@@ -88,6 +88,10 @@ jobs:
         continue-on-error: true
         run: gradle lintDebug --no-daemon
 
+      - name: Sem a chave, sem Release (D41)
+        if: ${{ env.TEM_CHAVE != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        run: echo "::warning title=Sem Release para as TVs::Sem os secrets MT_KEYSTORE_* o APK sai só em debug e as TVs não se atualizam sozinhas (android/README.md)."
+
       - name: Publicar a versão para as TVs (Release, D41)
         if: ${{ env.TEM_CHAVE == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
         env:

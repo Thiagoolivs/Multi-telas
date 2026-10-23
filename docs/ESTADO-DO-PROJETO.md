@@ -6,11 +6,33 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **23/10/2026** · 1488 testes passando · Fases 1 a 5 do
-DNA novo completas, e a parte de "agora" do D38 (EXECUTOR §2f, D0.1–D38,
-PRs #201 a #268).
+Atualizado em: **23/10/2026** · 1498 testes passando · Fases 1 a 5 do
+DNA novo completas, a parte de "agora" do D38 e o D41 (EXECUTOR §2f,
+D0.1–D41, PRs #201 a #275).
 
 ---
+
+## Depois da rodada 5 — notas do consultor e o APK remoto (23/10, PRs #270 a #275)
+
+- **Notas fechadas** (#270–#274): foto de gente em uso numa peça ou campanha
+  não é apagada (prazo, exclusão de pessoa, recusar); 'constructor' não vira
+  tipo de negócio; a troca de layout que falha no meio remonta a TV do zero;
+  o QR do pedido e o mural da data somem pelo relógio da TV sem internet;
+  cidade do clima escrita certa ("Santa Bárbara d'Oeste").
+- **Atualização remota do APK** (D41): o CI publica o APK **assinado** num
+  Release; o servidor confere o sha256 e serve em `/apk/ultimo.apk`; o app
+  baixa em segundo plano, mostra um aviso pequeno no canto e instala com um
+  **OK no controle**. O cartão da tela no painel diz "App novo".
+
+**Para o dono (D41)**:
+1. **Gerar a chave de release** com o `keytool` do `android/README.md`,
+   guardar uma cópia fora do PC (cofre de senhas) e pôr os 4 secrets no
+   GitHub (`MT_KEYSTORE_BASE64`, `MT_KEYSTORE_PASSWORD`, `MT_KEY_ALIAS`,
+   `MT_KEY_PASSWORD`). Perder a chave é nunca mais atualizar as TVs. Sem
+   ela, o CI avisa e não publica o Release.
+2. **O box de teste** (MultiTelasTV/1.0.55) foi instalado com APK de debug:
+   precisa de **uma** reinstalação manual (desinstalar e instalar o primeiro
+   APK assinado, do Release). Depois disso, as atualizações são remotas.
 
 ## Rodada 5e — o DNA novo, Fase 5: dados (23/10, PRs #266 a #268)
 
@@ -31,7 +53,7 @@ PRs #201 a #268).
 **Para o ar (pedido ao consultor, que tem o Railway)**: `MT_CHAVE_SEGREDOS`
 (32 bytes em base64; sem ela, o "Buscar" funciona só sem autenticação) e
 `PIXABAY_API_KEY` (sem ela, a aba do banco de imagens não aparece).
-**Depois**: D39 (senhas e clínicas), D40 (escala), D41 (APK remoto).
+**Depois**: D39 (senhas e clínicas), D40 (escala).
 
 ## Rodada 5d — o DNA novo, Fase 4: pessoas e RH (23/10, PRs #257 a #264)
 
