@@ -5,6 +5,7 @@ import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Skeleton, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { bancoImagens } from '../api.js';
+import { aviso } from '../lib/avisos.js';
 
 /*
  * O Banco de Imagens MultiTelas — a prateleira que a conta encontra cheia.
@@ -37,6 +38,11 @@ export function BancoImagensPage({ onUsar }) {
   const [itens, setItens] = useState(null);
   const [erro, setErro] = useState(null);
   const [usada, setUsada] = useState({});
+  /*
+   * "Tentar de novo" gravava o mesmo valor da busca e nada recarregava: o
+   * botão estava morto. Um contador de tentativas força a nova leitura (D3).
+   */
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
     let vivo = true;
@@ -45,7 +51,7 @@ export function BancoImagensPage({ onUsar }) {
       .then((r) => { if (vivo) setItens(r.itens || []); })
       .catch((e) => { if (vivo) setErro(e); });
     return () => { vivo = false; };
-  }, [busca, formato]);
+  }, [busca, formato, tentativa]);
 
   async function usar(item) {
     try {
@@ -59,7 +65,8 @@ export function BancoImagensPage({ onUsar }) {
       if (onUsar) onUsar({ url: r.item.url, formato: r.item.formato, corDeOrigem: r.item.cor });
       else await navigator.clipboard.writeText(new URL(r.item.url, window.location.origin).toString()).catch(() => {});
     } catch (e) {
-      setErro(e);
+      // Falha ao USAR uma imagem não é falha do banco: a galeria fica, e o aviso diz o que houve.
+      aviso.erro('banco', e.message || 'Não deu para usar esta imagem.');
     }
   }
 
@@ -97,7 +104,7 @@ export function BancoImagensPage({ onUsar }) {
       <Panel>
         <PanelHeader title="Acervo" description={itens ? `${itens.length} imagem(ns)` : undefined} />
         {erro ? (
-          <ErrorState description="Não foi possível carregar o banco." onRetry={() => setBusca((b) => b)} />
+          <ErrorState description="Não foi possível carregar o banco." onRetry={() => setTentativa((n) => n + 1)} />
         ) : itens === null ? (
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-video rounded-lg" />)}

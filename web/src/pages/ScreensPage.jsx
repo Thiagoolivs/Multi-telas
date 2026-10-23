@@ -17,6 +17,8 @@ import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
 import { VerTelaAgora } from '../components/content/VerTelaAgora.jsx';
 import { esquecerParear } from '../lib/parearPendente.js';
+import { aviso } from '../lib/avisos.js';
+import { confirmar } from '../lib/confirmar.js';
 import { CamposDoHorario } from '../components/tela/HorarioDaTela.jsx';
 import '../../../js/aparelho.js';
 
@@ -542,7 +544,8 @@ function RenameDialog({ target, grupos, onClose, onDone }) {
       await devices.rename(target.id, name);
       if ((target.grupo || '') !== grupo.trim()) await devices.grupo(target.id, grupo.trim());
       onDone(); onClose();
-    } finally { setBusy(false); }
+    } catch (e) { aviso.erro('telas', e.message || 'Não deu para salvar o nome.'); }
+    finally { setBusy(false); }
   }
 
   return (
@@ -575,6 +578,7 @@ function RemoveDialog({ target, onClose, onDone }) {
   async function submit() {
     setBusy(true);
     try { await devices.remove(target.id); onDone(); onClose(); }
+    catch (e) { aviso.erro('telas', e.message || 'Não deu para remover a TV.'); }
     finally { setBusy(false); }
   }
   return (
@@ -644,6 +648,7 @@ function BackupDialog({ target, screens, onClose, onDone }) {
       // Aceita o arquivo do backup e também uma config "crua".
       const cfg = parsed && parsed.config ? parsed.config : parsed;
       if (!cfg || !cfg.zonas) { setErr('Arquivo não parece um backup do MultiTelas.'); return; }
+      if (!(await confirmar({ titulo: 'Trocar a programação desta TV?', texto: 'Tudo o que está nela hoje é substituído pelo arquivo. Não dá para desfazer.', botao: 'Trocar', perigo: true }))) return;
       await deviceConfig.save(target.id, comNomeDoDestino(cfg, target));
       setMsg('Exibição restaurada nesta tela.');
       onDone();
@@ -657,6 +662,7 @@ function BackupDialog({ target, screens, onClose, onDone }) {
     try {
       const cfg = await deviceConfig.get(from);
       if (!cfg) { setErr('A tela escolhida não tem configuração.'); return; }
+      if (!(await confirmar({ titulo: 'Copiar por cima desta TV?', texto: 'Tudo o que está nela hoje é substituído pela programação da outra. Não dá para desfazer.', botao: 'Copiar', perigo: true }))) return;
       await deviceConfig.save(target.id, comNomeDoDestino(cfg, target));
       setMsg('Exibição copiada para esta tela.');
       onDone();

@@ -376,11 +376,20 @@ export function MyDesignsPage({ onIr }) {
   }
 
   // Editor salvou: peça existente atualiza; nova vai para o diálogo de salvar.
-  function onEditorSave(item) {
+  /*
+   * O editor só fecha DEPOIS de salvar (D3): fechava antes, e uma falha de
+   * rede jogava a edição fora sem aviso. Falhou, ele continua aberto.
+   */
+  async function onEditorSave(item) {
     if (editing && editing.id) {
       setBusy(true);
-      library.update(editing.id, item, editing.label || '').then(() => { reload(); setMsg('Design atualizado.'); }).finally(() => setBusy(false));
-      setEditing(null);
+      try {
+        await library.update(editing.id, item, editing.label || '');
+        setEditing(null);
+        reload();
+        aviso.ok('Design atualizado.');
+      } catch (e) { aviso.erro('designs', 'Não salvou: ' + (e.message || 'falha de conexão') + '. A edição continua aberta.'); }
+      finally { setBusy(false); }
     } else {
       setEditing(null);
       setSaveItem({ item, nome: '', pasta: '' });
@@ -397,7 +406,7 @@ export function MyDesignsPage({ onIr }) {
       setSaveItem(null);
       aviso.ok(nova ? 'Pasta “' + pasta + '” criada com “' + nome + '” dentro.' : '“' + nome + '” salvo em “' + pasta + '”.');
       reload();
-    } catch (e) { setMsg(e.message || 'Falha ao salvar'); }
+    } catch (e) { aviso.erro('designs', e.message || 'Não deu para salvar.'); }
     setBusy(false);
   }
 
@@ -430,7 +439,7 @@ export function MyDesignsPage({ onIr }) {
       const nTelas = alvos.length;
       setMsg(`${pecasElegiveis.length} peça(s) ${substituir ? 'substituíram a playlist de' : 'publicadas em'} ${nTelas} tela(s).`);
       setPub(null);
-    } catch (e) { setMsg(e.message || 'Falha ao publicar'); }
+    } catch (e) { aviso.erro('designs', e.message || 'Não deu para publicar.'); }
     setBusy(false);
   }
 

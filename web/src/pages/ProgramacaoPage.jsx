@@ -3,7 +3,7 @@ import { MonitorPlay, Pencil, Wand2, Plus, Megaphone } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
-import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
+import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
 import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
@@ -34,16 +34,24 @@ function resumoDaZona(cfg) {
 export function ProgramacaoPage({ onIr }) {
   const [telas, setTelas] = useState(null);
   const [cfgs, setCfgs] = useState({});
+  /*
+   * Erro de rede não é "nenhuma TV" (D3): a lista que falhava virava "Nenhuma
+   * TV ainda — Parear uma TV", e a programação que não carregava virava "Nada
+   * publicado". A pessoa podia parear de novo uma TV que já tinha.
+   */
+  const [erro, setErro] = useState('');
+  const [tentativa, setTentativa] = useState(0);
 
   useEffect(() => {
+    setErro(''); setTelas(null);
     devices.list().then((r) => {
       const lista = (r && r.devices) || [];
       setTelas(lista);
       for (const d of lista) {
-        deviceConfig.get(d.id).then((c) => setCfgs((m) => ({ ...m, [d.id]: c || null }))).catch(() => setCfgs((m) => ({ ...m, [d.id]: null })));
+        deviceConfig.get(d.id).then((c) => setCfgs((m) => ({ ...m, [d.id]: c || null }))).catch(() => setCfgs((m) => ({ ...m, [d.id]: 'erro' })));
       }
-    }).catch(() => setTelas([]));
-  }, []);
+    }).catch((e) => setErro(e.message || 'Não deu para carregar as TVs.'));
+  }, [tentativa]);
 
   const editar = (d) => onIr && onIr('content', { device: d });
 
@@ -57,7 +65,9 @@ export function ProgramacaoPage({ onIr }) {
         <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
       </div>
 
-      {telas === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : telas.length === 0 ? (
+      {erro ? (
+        <Panel><ErrorState description={erro} onRetry={() => setTentativa((n) => n + 1)} /></Panel>
+      ) : telas === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : telas.length === 0 ? (
         <Panel>
           <EmptyState icon={MonitorPlay} title="Nenhuma TV ainda" description="Ligue a primeira TV e a programação dela aparece aqui."
             action={<Button variant="primary" icon={Plus} onClick={() => onIr && onIr('screens', { abrirParear: true })}>Parear uma TV</Button>} />
@@ -65,7 +75,8 @@ export function ProgramacaoPage({ onIr }) {
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {telas.map((d) => {
-            const cfg = cfgs[d.id];
+            const falhou = cfgs[d.id] === 'erro';
+            const cfg = falhou ? null : cfgs[d.id];
             const layout = cfg && globalThis.MT_getLayout ? globalThis.MT_getLayout(cfg.settings && cfg.settings.layoutId) : null;
             const st = deviceStatus(d.lastSeen);
             const campanhas = cfg ? campanhasDaConfig(cfg) : [];
@@ -77,7 +88,12 @@ export function ProgramacaoPage({ onIr }) {
                   <span className="flex shrink-0 items-center gap-1.5 text-2xs text-ink-3"><StatusDot tone={st.tone} pulse={st.pulse} /> {st.label}</span>
                 </div>
                 {cfg === undefined ? <div className="flex h-40 items-center justify-center"><Spinner size={16} /></div>
-                  : layout ? <MapaDaTela layout={layout} onEscolher={() => editar(d)} resumo={resumoDaZona(cfg)} />
+                  : falhou ? (
+                    <button type="button" onClick={() => setTentativa((n) => n + 1)}
+                      className="flex h-40 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-warn/50 text-sm text-ink-2">
+                      Não deu para ler o que está nesta TV.<span className="text-xs text-accent">Tentar de novo</span>
+                    </button>
+                  ) : layout ? <MapaDaTela layout={layout} onEscolher={() => editar(d)} resumo={resumoDaZona(cfg)} />
                     : (
                       <button type="button" onClick={() => editar(d)}
                         className="flex h-40 items-center justify-center rounded-lg border border-dashed border-line text-sm text-ink-3 hover:border-accent/60">

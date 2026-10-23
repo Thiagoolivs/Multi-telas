@@ -59,7 +59,12 @@ async function api(method, path, body, opcoes) {
 }
 
 export const auth = {
-  me: () => api('GET', '/api/auth/me').catch(() => null),
+  /*
+   * Só "não autenticado" (401) é "sem sessão". Antes qualquer erro virava
+   * null, e quem abria o app sem internet, logado, caía na tela de login
+   * (D3). Sem rede, estoura: o App mostra "sem conexão" e tenta de novo.
+   */
+  me: () => api('GET', '/api/auth/me').catch((e) => { if (e && e.status === 401) return null; throw e; }),
   signup: (payload) => api('POST', '/api/auth/signup', payload),
   login: (email, password) => api('POST', '/api/auth/login', { email, password }),
   logout: () => api('POST', '/api/auth/logout'),

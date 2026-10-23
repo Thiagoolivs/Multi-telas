@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { QrCode, Printer, ShieldAlert, EyeOff, Eye, Trash2, Plus, RefreshCw } from 'lucide-react';
 import { murais as api } from '../api.js';
+import { aviso } from '../lib/avisos.js';
 import { Panel, PanelHeader, PanelBody } from '../components/ui/Panel.jsx';
 import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Input } from '../components/ui/Field.jsx';
@@ -34,10 +35,17 @@ export function MuralPage() {
     } catch (e) { setErro(e.message); }
   }
 
+  // Um clique, um mural: o segundo clique antes da resposta criava outro (D3).
+  const [criando, setCriando] = useState(false);
   async function criar() {
-    const m = await api.create('Mural de fotos');
-    await carregar();
-    setAtivo(m.id);
+    if (criando) return;
+    setCriando(true);
+    try {
+      const m = await api.create('Mural de fotos');
+      await carregar();
+      setAtivo(m.id);
+    } catch (e) { aviso.erro('mural', e.message || 'Não deu para criar o mural.'); }
+    finally { setCriando(false); }
   }
 
   if (erro && lista === null) return <ErrorState description={erro} onRetry={carregar} />;
@@ -49,7 +57,7 @@ export function MuralPage() {
         icon={QrCode}
         title="Nenhum mural ainda"
         description="Um mural gera um QR. Quem apontar a câmera manda uma foto — e ela aparece na TV em segundos. Serve para evento de Dia dos Pais, confraternização, festa junina, aniversário da empresa."
-        action={<Button variant="primary" icon={Plus} onClick={criar}>Criar meu primeiro mural</Button>}
+        action={<Button variant="primary" icon={Plus} onClick={criar} disabled={criando}>{criando ? 'Criando…' : 'Criar meu primeiro mural'}</Button>}
       />
     );
   }
@@ -93,31 +101,48 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
     return () => clearInterval(t);
   }, [mural.id]);
 
+  /*
+   * Toda ação do mural diz quando falha (EXECUTOR D3). Antes: o pânico ficava
+   * preso em "Tirando…" sem aviso — no pior momento, nada acontecia; "tirar
+   * da tela" marcava a foto como fora antes da resposta e não desfazia; e a
+   * lista que não carregava ficava em "carregando…" para sempre.
+   */
+  const [erroFotos, setErroFotos] = useState('');
   async function carregar() {
-    try { const r = await api.fotos(mural.id); setFotos(r.fotos || []); } catch (e) {}
+    try { const r = await api.fotos(mural.id); setFotos(r.fotos || []); setErroFotos(''); }
+    catch (e) { setErroFotos(e.message || 'Não deu para carregar as fotos.'); setFotos((f) => f || []); }
   }
 
   async function alternarAceite() {
     setOcupado(true);
-    await api.update(mural.id, titulo, !mural.aceitando);
-    await onMudou(); setOcupado(false);
+    try { await api.update(mural.id, titulo, !mural.aceitando); await onMudou(); }
+    catch (e) { aviso.erro('mural', e.message || 'Não deu para mudar o mural.'); }
+    finally { setOcupado(false); }
   }
   async function salvarTitulo() {
     if (titulo === mural.titulo) return;
-    await api.update(mural.id, titulo, mural.aceitando);
-    onMudou();
+    try { await api.update(mural.id, titulo, mural.aceitando); onMudou(); }
+    catch (e) { aviso.erro('mural', e.message || 'Não deu para salvar o nome.'); setTitulo(mural.titulo); }
   }
   async function panico() {
     setOcupado(true);
-    await api.limpar(mural.id);
-    setConfirmar(false);
-    await Promise.all([carregar(), onMudou()]);
-    setOcupado(false);
+    try {
+      await api.limpar(mural.id);
+      setConfirmar(false);
+      await Promise.all([carregar(), onMudou()]);
+    } catch (e) {
+      // O pânico NÃO pode falhar calado: a pessoa precisa saber que a TV ainda mostra as fotos.
+      aviso.erro('mural', 'As fotos NÃO saíram da TV: ' + (e.message || 'falha de conexão') + '. Tente de novo.');
+    } finally { setOcupado(false); }
   }
   async function esconder(f) {
-    // Otimista: a TV já foi avisada pelo servidor; a lista não pode ficar para trás.
+    // Otimista, mas desfaz se o servidor recusar: o painel não pode dizer "fora da tela" com a foto na TV.
     setFotos((atual) => atual.map((x) => (x.id === f.id ? { ...x, oculta: !x.oculta } : x)));
-    if (f.oculta) await api.mostrarFoto(f.id); else await api.ocultarFoto(f.id);
+    try { if (f.oculta) await api.mostrarFoto(f.id); else await api.ocultarFoto(f.id); }
+    catch (e) {
+      setFotos((atual) => atual.map((x) => (x.id === f.id ? { ...x, oculta: f.oculta } : x)));
+      aviso.erro('mural', 'A foto continua ' + (f.oculta ? 'fora da' : 'na') + ' TV: ' + (e.message || 'falha de conexão') + '.');
+    }
     carregar();
   }
 
@@ -182,7 +207,7 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
       <Panel>
         <PanelHeader
           title="Fotos recebidas"
-          description={fotos === null ? 'carregando…' : `${visiveis} na tela · ${fotos.length} no total`}
+          description={erroFotos ? erroFotos : fotos === null ? 'carregando…' : `${visiveis} na tela · ${fotos.length} no total`}
           actions={
             <div className="flex gap-2">
               <IconButton icon={RefreshCw} label="Atualizar" onClick={carregar} />

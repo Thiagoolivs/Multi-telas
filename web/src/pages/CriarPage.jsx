@@ -92,7 +92,8 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       if (ideia && ideiaInicial === 'data') usarIdeia(ideia);
     }).catch(() => {});
     const id = lerGuarda();
-    if (id && !opcaoInicial && !telaInicial) abrir(id);
+    // Quem veio de "Criar para a data" quer a data, não a conversa de ontem por cima dela (D3).
+    if (id && !opcaoInicial && !telaInicial && !ideiaInicial) abrir(id);
     // Uma geração que estava rodando quando a aba fechou: volta a acompanhar.
     const pendente = criar.pendente();
     if (pendente) acompanhar(pendente.id);
@@ -111,7 +112,11 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
         const k = await criar.campanha(c.campanhaId).catch(() => null);
         if (k && k.campanha) setCampanha(k.campanha);
       }
-    } catch (e) { guardar(''); }
+    } catch (e) {
+      // Conversa que não existe mais é esquecida; falha de rede é dita (antes: silêncio, sem spinner).
+      if (e && e.status === 404) guardar('');
+      else aviso.erro('criar', 'Não deu para abrir a conversa: ' + (e.message || 'falha de conexão') + '.');
+    }
   }
 
   async function enviar(t) {
@@ -141,7 +146,10 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     setEscopo(novo);
     if (!conversa) return;
     clearTimeout(salvarCartao.current);
-    salvarCartao.current = setTimeout(() => { criar.salvarEscopo(conversa.id, novo).catch(() => {}); }, 600);
+    // O ajuste no cartão não pode se perder calado: falhou, a pessoa sabe (D3).
+    salvarCartao.current = setTimeout(() => {
+      criar.salvarEscopo(conversa.id, novo).catch((e) => aviso.erro('criar', 'O ajuste do cartão não foi salvo: ' + (e.message || 'falha de conexão') + '.'));
+    }, 600);
   }
 
   function usarIdeia(s) {
