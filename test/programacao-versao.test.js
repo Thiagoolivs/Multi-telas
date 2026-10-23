@@ -144,10 +144,17 @@ test('o editor da TV: erro de leitura não semeia o padrão, salvar tenta de nov
   const s = fs.readFileSync(path.join(RAIZ, 'web/src/pages/ContentEditorPage.jsx'), 'utf8');
   assert.match(s, /if \(error \|\| !data\) \{ setCfg\(null\); return; \}/);
   assert.ok(!/data \|\| defaultConfig\(device\.name\)/.test(s), 'voltou a semear o padrão quando a leitura falha');
-  assert.match(s, /deviceConfig\.save\(device\.id, cfg, versao\.current\)/);
+  assert.match(s, /deviceConfig\.save\(device\.id, alvo, versao\.current\)/);
   assert.match(s, /e\.codigo === 'config-mudou'/);
-  assert.match(s, /const ESPERAS = \[/, 'o salvamento que falha tenta de novo');
-  assert.match(s, /tentar agora/);
+  /*
+   * Desde o D14 nada publica sozinho (era o "cada tecla publica"): a falha
+   * deixa o rascunho guardado e o Publicar à mão. E o conflito oferece pôr o
+   * rascunho por cima da versão nova (revisão do consultor no D0.5).
+   */
+  assert.ok(!/const ESPERAS = \[/.test(s), 'o salvamento automático voltou');
+  assert.match(s, />\s*\{publishing \? 'Publicando…' : 'Publicar na TV'\}/);
+  assert.match(s, /async function publicarPorCima\(\) \{\s*try \{\s*const r = await deviceConfig\.ler\(device\.id\);\s*versao\.current = \(r && r\.versao\) \|\| 0;/);
+  assert.match(s, />Publicar o meu por cima</);
   for (const arq of ['web/src/lib/publicar.js', 'web/src/lib/rodar.js']) {
     const f = fs.readFileSync(path.join(RAIZ, arq), 'utf8');
     assert.ok(!/catch \(e\) \{ \/\* tela sem config ainda \*\/ \}/.test(f), arq + ' voltou a engolir a falha de leitura');
