@@ -396,7 +396,8 @@ function fotoDaConta(sess, b) {
     }
     const tipo = referencias ? 'campanha-peca-produto' : 'campanha-peca';
     const contaIA = await db.getTenant(sess.tenant_id);
-    const pode = await usoIA.conferir(db, contaIA, tipo, 1);
+    // Reserva antes de gerar (D0.4b): o crédito sai aqui, e volta se falhar.
+    const pode = await usoIA.reservar(db, contaIA, tipo, 1);
     if (!pode.ok) {
       const e = new Error(pode.resposta && pode.resposta.erro === 'pagamento_atrasado'
         ? 'pagamento em atraso — as peças seguintes saem sem foto'
@@ -409,14 +410,19 @@ function fotoDaConta(sess, b) {
      * Antes só o formato chegava aqui, e a foto vinha sem relação
      * nenhuma com a marca que o texto ia usar por cima.
      */
-    const img = await ai.generateImage(prompt, {
-      formato,
-      brand: (arte && arte.brand) || (b && b.brand) || '',
-      brand2: (arte && arte.brand2) || (b && b.brand2) || '',
-      direcao: (arte && arte.direcao) || '',
-      estilo: (arte && arte.estilo) || '',
-      referencias,
-    });
+    let img;
+    try {
+      img = await ai.generateImage(prompt, {
+        formato,
+        brand: (arte && arte.brand) || (b && b.brand) || '',
+        brand2: (arte && arte.brand2) || (b && b.brand2) || '',
+        direcao: (arte && arte.direcao) || '',
+        estilo: (arte && arte.estilo) || '',
+        referencias,
+      });
+    } catch (e) { await usoIA.devolver(db, contaIA, pode.reserva); throw e; }
+    // A foto de reserva (sem chave de imagem) não se cobra: o crédito volta.
+    if (img.reserva) await usoIA.devolver(db, contaIA, pode.reserva);
     // Registrada como qualquer outro arquivo: aparece no Armazenamento,
     // conta na cota e some junto com a conta.
     const saved = await midia.guardarBuffer(db, sess.tenant_id, Buffer.from(img.data, 'base64'), img.mime,
@@ -430,7 +436,7 @@ function fotoDaConta(sess, b) {
       });
     // Só depois do sucesso: falha não cobra, e a foto de reserva (sem chave) também não.
     if (!img.reserva) await usoIA.cobrar(db, contaIA, {
-      tipo, quantidade: 1, userId: sess.user_id, referencia: saved.id,
+      tipo, quantidade: 1, userId: sess.user_id, referencia: saved.id, reserva: pode.reserva,
     });
     return saved.url;
   };
@@ -1786,7 +1792,8 @@ const negocioCache = new Map();
        * existir seria pior ainda.
        */
       const tenantIA = await db.getTenant(sess.tenant_id);
-      const pode = await usoIA.conferir(db, tenantIA, 'gerar-imagem', 1);
+      // Reserva antes de gerar (D0.4b); a falha devolve dentro do trabalho.
+      const pode = await usoIA.reservar(db, tenantIA, 'gerar-imagem', 1);
       if (!pode.ok) return sendJson(res, 402, pode.resposta);
       /*
        * A de imagem é a que MAIS precisa ser trabalho: é a mais lenta e a
@@ -1796,9 +1803,13 @@ const negocioCache = new Map();
        */
       return emTrabalho(res, sess, 'imagem', { brief: String(prompt).slice(0, 200) }, async (progresso) => {
         progresso('desenhando a imagem', String(prompt).slice(0, 100));
-        const img = await ai.generateImage(prompt, {
-          formato: (b && b.formato) || '16/9', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '', estilo: (b && b.estilo) || '',
-        });
+        let img;
+        try {
+          img = await ai.generateImage(prompt, {
+            formato: (b && b.formato) || '16/9', brand: (b && b.brand) || '', brand2: (b && b.brand2) || '', estilo: (b && b.estilo) || '',
+          });
+        } catch (e) { await usoIA.devolver(db, tenantIA, pode.reserva); throw e; }
+        if (img.reserva) await usoIA.devolver(db, tenantIA, pode.reserva);
         progresso('guardando no armazenamento', '');
         const buf = Buffer.from(img.data, 'base64');
         const saved = await midia.guardarBuffer(db, sess.tenant_id, buf, img.mime,
@@ -1809,7 +1820,7 @@ const negocioCache = new Map();
             cor: (b && b.brand) || '',
           });
         // Só depois do sucesso: falha não cobra, e a foto de reserva (sem chave) também não.
-        if (!img.reserva) await usoIA.cobrar(db, tenantIA, { tipo: 'gerar-imagem', quantidade: 1, userId: sess.user_id, referencia: saved.id });
+        if (!img.reserva) await usoIA.cobrar(db, tenantIA, { tipo: 'gerar-imagem', quantidade: 1, userId: sess.user_id, referencia: saved.id, reserva: pode.reserva });
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
         return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' };
       });

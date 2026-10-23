@@ -1206,6 +1206,23 @@ async function gastoIAGlobal(desde) {
  * já soma no banco) ou outro trabalho da mesma conta no meio do caminho era
  * sobrescrito pelo valor velho (EXECUTOR D0.4).
  */
+/*
+ * Reserva ANTES de gerar (D0.4b): só tira se ainda houver saldo, no mesmo
+ * UPDATE. Duas fotos pedidas juntas com saldo para uma: a segunda não passa
+ * (rowCount 0). Devolver soma de volta quando a geração falha.
+ */
+async function reservarCreditos(tenantId, daFranquia, doComprado) {
+  const a = Math.max(0, Number(daFranquia) || 0), b = Math.max(0, Number(doComprado) || 0);
+  const r = await pool.query(
+    'UPDATE tenants SET creditos_franquia = COALESCE(creditos_franquia, 0) - $1, creditos_comprados = COALESCE(creditos_comprados, 0) - $2 WHERE id = $3 AND COALESCE(creditos_franquia, 0) >= $1 AND COALESCE(creditos_comprados, 0) >= $2',
+    [a, b, tenantId]);
+  return r.rowCount > 0;
+}
+async function devolverCreditos(tenantId, daFranquia, doComprado) {
+  await pool.query(
+    'UPDATE tenants SET creditos_franquia = COALESCE(creditos_franquia, 0) + $1, creditos_comprados = COALESCE(creditos_comprados, 0) + $2 WHERE id = $3',
+    [Math.max(0, Number(daFranquia) || 0), Math.max(0, Number(doComprado) || 0), tenantId]);
+}
 async function debitarCreditos(tenantId, daFranquia, doComprado) {
   await pool.query(
     'UPDATE tenants SET creditos_franquia = GREATEST(0, COALESCE(creditos_franquia, 0) - $1), creditos_comprados = GREATEST(0, COALESCE(creditos_comprados, 0) - $2) WHERE id = $3',
@@ -1641,7 +1658,7 @@ module.exports = {
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
   frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta, registrarAcessoSuporte, acessosSuporte,
-  registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, gastoIAGlobal, debitarCreditos, getCreditos, setCreditos,
+  registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, gastoIAGlobal, debitarCreditos, reservarCreditos, devolverCreditos, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,

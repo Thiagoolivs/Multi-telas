@@ -108,7 +108,7 @@ async function conferir(db, tenant, tipo, quantidade) {
  * estimativas de custo desta proposta por medição de verdade — e é o que
  * mostra, no fim do mês, se a franquia está calibrada.
  */
-async function cobrar(db, tenant, { tipo, quantidade, userId, referencia, medicao }) {
+async function cobrar(db, tenant, { tipo, quantidade, userId, referencia, medicao, reserva }) {
   const op = cred.operacao(tipo);
   const n = Math.max(1, Math.floor(Number(quantidade) || 1));
   const creditos = cred.creditosDe(tipo, n);
@@ -155,7 +155,8 @@ async function cobrar(db, tenant, { tipo, quantidade, userId, referencia, medica
     console.warn('[uso-ia] não consegui registrar o uso:', e.message);
   }
 
-  if (creditos > 0) {
+  // Já reservado antes de gerar (reservar): o crédito saiu lá, não sai de novo.
+  if (creditos > 0 && !reserva) {
     try {
       const conta = await garantirCiclo(db, tenant);
       const parte = cred.debitar(conta, creditos);
@@ -204,6 +205,34 @@ async function panorama(db, tenant) {
     renovaEm: conta.cicloEm + MES,
     usoDoCiclo: uso,
   };
+}
+
+/*
+ * Reserva o crédito ANTES de gerar (D0.4b). O conferir só lia o saldo: duas
+ * fotos pedidas ao mesmo tempo, com saldo para uma, passavam as duas, e a
+ * segunda saía de graça (o débito depois não deixava ficar negativo).
+ * Agora o saldo sai no mesmo UPDATE que confere. Devolve { ok, reserva } ou
+ * { ok: false, resposta } como o conferir; quem reservou chama devolver se a
+ * geração falhar e passa a reserva ao cobrar.
+ */
+async function reservar(db, tenant, tipo, quantidade) {
+  for (let tentativa = 0; tentativa < 2; tentativa++) {
+    const pode = await conferir(db, tenant, tipo, quantidade);
+    if (!pode.ok || !pode.precisa) return { ...pode, reserva: null };
+    const parte = cred.debitar(pode.conta, pode.precisa);
+    if (!parte) break;
+    if (await db.reservarCreditos(tenant.id, parte.daFranquia, parte.doComprado)) {
+      return { ok: true, precisa: pode.precisa, reserva: { daFranquia: parte.daFranquia, doComprado: parte.doComprado } };
+    }
+    // Outro pedido gastou no meio: lê o saldo de novo uma vez.
+  }
+  const conta = await garantirCiclo(db, tenant);
+  return { ok: false, precisa: cred.creditosDe(tipo, quantidade), resposta: cred.semSaldo(cred.creditosDe(tipo, quantidade), cred.saldo(conta).total) };
+}
+async function devolver(db, tenant, reserva) {
+  if (!reserva) return;
+  try { await db.devolverCreditos(tenant.id, reserva.daFranquia, reserva.doComprado); }
+  catch (e) { require('./erros.js').registrar(e, { onde: 'devolver crédito reservado', tenant: tenant.id }); }
 }
 
 /*
@@ -297,4 +326,4 @@ async function podeUsarTexto(db, tenant) {
   return { ok: true, gasto, teto };
 }
 
-module.exports = { garantirCiclo, renovarCiclo, conferir, cobrar, registrarMedicao, podeUsarTexto, tetoDaConta, tetoTextoOk, panorama, MES, MARGEM_TEXTO_CENTS, TETO_TESTE_CENTS };
+module.exports = { garantirCiclo, renovarCiclo, conferir, reservar, devolver, cobrar, registrarMedicao, podeUsarTexto, tetoDaConta, tetoTextoOk, panorama, MES, MARGEM_TEXTO_CENTS, TETO_TESTE_CENTS };
