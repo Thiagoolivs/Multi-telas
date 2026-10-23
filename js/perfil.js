@@ -45,9 +45,12 @@
   // Do ramo que js/paletas.js deduz para o perfil.
   var DO_RAMO = { corporativo: 'empresa', saude: 'saude' };
 
-  function normalizar(id) { return PERFIS[id] ? id : 'comercio'; }
-  function deduzir(ramo) { return DO_RAMO[ramo] || 'comercio'; }
+  // Só as chaves próprias: 'constructor' e '__proto__' vêm do protótipo e não são perfil (nota do consultor no #218).
+  var proprio = Object.prototype.hasOwnProperty;
+  function tem(id) { return typeof id === 'string' && proprio.call(PERFIS, id); }
+  function normalizar(id) { return tem(id) ? id : 'comercio'; }
+  function deduzir(ramo) { return typeof ramo === 'string' && proprio.call(DO_RAMO, ramo) ? DO_RAMO[ramo] : 'comercio'; }
   function de(id) { return PERFIS[normalizar(id)]; }
 
-  return { PERFIS: PERFIS, IDS: Object.keys(PERFIS), normalizar: normalizar, deduzir: deduzir, de: de };
+  return { PERFIS: PERFIS, IDS: Object.keys(PERFIS), tem: tem, normalizar: normalizar, deduzir: deduzir, de: de };
 });

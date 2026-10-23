@@ -156,7 +156,7 @@ const KICKERS = ['NOVIDADE', 'HOJE', 'APROVEITE', 'SÓ AQUI'];
  * só descreve a foto, que é pedida a outra IA.
  */
 function textosSemIA(escopo, vagas, perfil) {
-  const cta = CTA_DO_PERFIL[Perfil.normalizar(perfil)];
+  const cta = CTA_DO_PERFIL[Perfil.normalizar(perfil)] || '';
   const e = escopo;
   // Sem repetir: nome e objetivo iguais ("Promoção da semana" duas vezes) virariam o mesmo título em toda peça.
   const frases = [e.nome, e.objetivo].map((x) => String(x || '').trim()).filter((x, i, a) => x && a.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i);

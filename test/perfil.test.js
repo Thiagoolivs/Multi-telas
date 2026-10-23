@@ -28,6 +28,17 @@ test('o perfil sai do ramo: metalúrgica é Empresa, clínica é Saúde, padaria
   assert.equal(Perfil.normalizar('qualquer'), 'comercio');
 });
 
+test('chave do protótipo não é perfil: constructor, __proto__ e toString caem no Comércio', () => {
+  for (const p of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']) {
+    assert.equal(Perfil.tem(p), false, p);
+    assert.equal(Perfil.normalizar(p), 'comercio', p);
+    assert.equal(Perfil.de(p).paraIA, Perfil.PERFIS.comercio.paraIA, p);
+    assert.equal(Perfil.deduzir(p), 'comercio', p);
+  }
+  assert.equal(Perfil.tem('saude'), true);
+  assert.equal(Perfil.normalizar(['saude']), 'comercio', 'array virou chave');
+});
+
 test('cada perfil tem de 10 a 12 começos, todos existentes, e a Empresa não vê promoção nem foto de produto', () => {
   const src = ler('web/src/pages/CriacaoRapidaPage.jsx');
   for (const id of Perfil.IDS) {
@@ -116,6 +127,13 @@ test('cadastro grava o perfil, /me devolve (escolhido ou deduzido), Ajustes troc
   assert.equal(ruim.status, 400);
   me = (await pedir('/api/auth/me', { cookie: b })).json;
   assert.notEqual(me.user.name, 'Novo Nome', 'gravou metade antes de recusar');
+
+  // Chave do protótipo não é perfil (nota do consultor no #218): 400, e nada gravado.
+  for (const p of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    assert.equal((await pedir('/api/auth/profile', { method: 'POST', cookie: b, json: { perfil: p } })).status, 400, p + ' passou');
+  }
+  me = (await pedir('/api/auth/me', { cookie: b })).json;
+  assert.equal(me.tenant.perfil, 'empresa');
 
   assert.equal((await pedir('/api/auth/profile', { method: 'POST', cookie: b, json: { perfil: 'comercio' } })).status, 200);
   me = (await pedir('/api/auth/me', { cookie: b })).json;
