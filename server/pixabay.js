@@ -63,7 +63,8 @@ async function baixar(id) {
   let img = await rede.baixarImagem(h.largeImageURL || h.webformatURL);
   if (img.erro && h.webformatURL) img = await rede.baixarImagem(h.webformatURL);
   if (img.erro) return { erro: 'não deu para baixar a foto agora' };
-  return { bytes: img.bytes, mime: img.mime, credito: credito(h.user), autor: String(h.user || ''), pagina: h.pageURL };
+  return { bytes: img.bytes, mime: img.mime, credito: credito(h.user), autor: String(h.user || ''), pagina: h.pageURL,
+    largura: h.imageWidth, altura: h.imageHeight, tags: String(h.tags || '').slice(0, 120) };
 }
 
 module.exports = { configurado, buscar, baixar, credito, POR_PAGINA, CACHE_MS, _limpar: () => cache.clear(), _trocarRede: (r) => { rede = r; } };

@@ -134,6 +134,12 @@ function pedidoTexto(o) {
 function motorDoHtml() {
   const m = process.env.MT_MOTOR_HTML;
   if (m && motores.MOTORES[m]) return m;
+  /*
+   * AI_PROVIDER=dev é "sem IA de verdade" (o servidor local, os testes): vale
+   * aqui também. Antes a chave do Gemini no ambiente do PC passava por cima e
+   * a composição chamava o Gemini real no modo de teste.
+   */
+  if (String(process.env.AI_PROVIDER || '').toLowerCase() === 'dev') return 'dev';
   if (process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY) return 'gemini';
   return motores.motorPadrao();
 }

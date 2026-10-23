@@ -30,7 +30,8 @@ test('mural: pânico, tirar da tela, abrir/fechar e criar dizem quando falham', 
 test('banco de imagens: tentar de novo recarrega; erro ao usar não apaga a galeria', () => {
   const b = ler('pages/BancoImagensPage.jsx');
   assert.match(b, /onRetry=\{\(\) => setTentativa\(\(n\) => n \+ 1\)\}/);
-  assert.match(b, /\}, \[busca, formato, tentativa\]\);/);
+  // O segmento entrou no filtro do feed (o acervo comum por segmento, 23/10).
+  assert.match(b, /\}, \[busca, formato, segmento, tentativa\]\);/);
   const usar = b.slice(b.indexOf('async function usar'), b.indexOf('return (', b.indexOf('async function usar')));
   assert.ok(!/setErro\(e\)/.test(usar), 'a falha de usar troca a galeria pelo erro');
 });

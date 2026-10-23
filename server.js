@@ -58,6 +58,7 @@ const ajusteTela = require('./server/ajuste-tela');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
 const banco = require('./server/banco.js');
+const pixabay = require('./server/pixabay');
 const cortesia = require('./server/cortesia.js');
 const limites = require('./server/limites.js');
 const passes = require('./server/passes.js');
@@ -1485,6 +1486,32 @@ const negocioCache = new Map();
      * de UMA imagem errada aparecendo na parede de trinta clientes não é.
      */
     if (parts[2] === 'banco') {
+      /*
+       * A curadoria (pedido do dono, 23/10): o operador escolhe UMA foto da
+       * Pixabay e ela entra no banco comum, já aprovada, no segmento dito. A
+       * foto é baixada para o nosso armazenamento — a TV nunca depende da
+       * Pixabay — numa pasta da plataforma, fora da cota de qualquer conta.
+       */
+      if (req.method === 'POST' && parts[3] === 'pixabay') {
+        const rl = rateLimit('pixabay:curar:' + sess.email, 200, 60 * 60 * 1000);
+        if (!rl.ok) return sendJson(res, 429, { error: 'muitas fotos nesta hora — espere um pouco' }, { 'Retry-After': String(rl.retryAfter) });
+        return readBody(req, res, async (b) => {
+          if (!pixabay.configurado()) return sendJson(res, 503, { error: 'o banco de imagens da Pixabay não está ligado neste servidor (falta a chave)' });
+          const ja = await db.bancoPorMedia('pixabay:' + Number(b && b.id));
+          if (ja) return sendJson(res, 409, { error: 'esta foto já está no banco' });
+          const foto = await pixabay.baixar(b && b.id);
+          if (foto.erro) return sendJson(res, 502, { error: foto.erro });
+          let salvo;
+          try { salvo = await storage.saveBuffer('banco-plataforma', foto.bytes, foto.mime); }
+          catch (e) { erros.registrar(e, { onde: 'banco comum: guardar foto da Pixabay' }); return sendJson(res, 500, { error: 'não deu para guardar a foto' }); }
+          const r = await banco.curarDaPixabay(db, {
+            foto: Object.assign({ id: Number(b.id) }, foto), salvo, segmento: b && b.segmento, descricao: b && b.descricao,
+            operador: sess.email, confirmou: b && b.confirmou,
+          });
+          if (!r.ok) { storage.remove(salvo.key).catch(() => {}); return sendJson(res, r.status, { error: r.error }); }
+          return sendJson(res, 201, { item: banco.paraCliente(r.item) });
+        });
+      }
       if (req.method === 'GET') {
         const estado = ['pendente', 'aprovada', 'recusada', 'revogada'].includes(query && query.estado)
           ? query.estado : 'pendente';
@@ -2456,9 +2483,18 @@ const negocioCache = new Map();
     // O feed: aprovadas, com busca e filtro de proporção.
     if (req.method === 'GET' && !seg) {
       const itens = await banco.listar(db, {
-        termo: query && query.q, formato: query && query.formato, limite: query && query.limite,
+        termo: query && query.q, formato: query && query.formato, limite: query && query.limite, segmento: query && query.segmento,
       }, sess.tenant_id);
-      return sendJson(res, 200, { itens });
+      /*
+       * Junto do feed: os segmentos com os termos prontos (a busca na Pixabay
+       * começa por eles) e o segmento desta conta, para a página abrir nele.
+       */
+      const mem = await db.getMemoria(sess.tenant_id).catch(() => null);
+      return sendJson(res, 200, {
+        itens,
+        segmentos: banco.SEGMENTOS.map((s) => ({ id: s.id, nome: s.nome, termos: s.termos })),
+        daConta: banco.segmentoDaConta(mem && mem.segmento),
+      });
     }
 
     // O que ESTA conta ofereceu, em qualquer estado — inclusive o recusado.
@@ -2496,6 +2532,28 @@ const negocioCache = new Map();
       const r = await banco.revogar(db, sess.tenant_id, seg);
       if (!r.ok) return sendJson(res, r.status, { error: r.error });
       return sendJson(res, 200, { ok: true, estado: 'revogada' });
+    }
+
+    /*
+     * Pôr nas Mídias: uma CÓPIA da imagem do acervo na conta, com o crédito no
+     * nome. Cópia, e não a mesma chave: apagar a mídia apaga o arquivo, e o
+     * arquivo do acervo é de todo mundo. Entra na cota da conta, como upload.
+     */
+    if (req.method === 'POST' && seg && parts[3] === 'midias') {
+      const item = await db.bancoPorId(seg);
+      if (!item || item.estado !== 'aprovada') return sendJson(res, 404, { error: 'imagem indisponível' });
+      const [usado, telasCota, tenantCota] = await Promise.all([db.sumMediaBytes(sess.tenant_id), db.countDevices(sess.tenant_id), db.getTenant(sess.tenant_id)]);
+      if (usado + Number(item.size || 0) > plans.cotaBytes(tenantCota && tenantCota.plan, Math.max(1, telasCota))) return sendJson(res, 413, { error: 'cota de armazenamento cheia' });
+      try {
+        const buf = await storage.readBuffer(item.key);
+        const salvo = await midia.guardarBuffer(db, sess.tenant_id, buf, item.mime,
+          { nome: String(item.credito || item.descricao || 'Banco de Imagens').slice(0, 180), origem: item.origem === 'pixabay' ? 'pixabay' : 'banco' });
+        await db.bancoUsar(item.id);
+        return sendJson(res, 201, { url: salvo.url, credito: item.credito || null });
+      } catch (e) {
+        erros.registrar(e, { onde: 'banco: pôr nas mídias' });
+        return sendJson(res, 500, { error: 'não deu para copiar a imagem' });
+      }
     }
 
     // Usar uma imagem do feed: conta o uso e devolve a URL para a peça.

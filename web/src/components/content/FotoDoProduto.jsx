@@ -1,8 +1,8 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { UploadCloud, X, Search } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { useAsync } from '../../lib/useAsync.js';
-import { media, pixabay } from '../../api.js';
+import { media, pixabay, bancoImagens } from '../../api.js';
 
 /*
  * A foto REAL do produto (PLANO §4.11): a imagem gerada parte dela e mantém o
@@ -52,7 +52,8 @@ export function FotoDoProduto({ onEscolher, onFechar, aviso, botao, incluirIa })
           className="rounded p-0.5 text-ink-3 transition hover:text-ink"><X size={14} /></button>
       </div>
       {/* D37: fora da foto de produto (que tem de ser o produto de verdade), o banco de imagens. */}
-      {incluirIa && bancoLigado && (
+      {/* O acervo comum do segmento vale mesmo sem a Pixabay ligada; a busca na Pixabay só com ela. */}
+      {incluirIa && (
         <div className="mb-2 flex gap-1" role="tablist" aria-label="De onde vem a foto">
           {[['minhas', 'Minhas fotos'], ['banco', 'Banco de imagens']].map(([id, nome]) => (
             <button key={id} type="button" role="tab" aria-selected={aba === id} onClick={() => setAba(id)}
@@ -60,7 +61,7 @@ export function FotoDoProduto({ onEscolher, onFechar, aviso, botao, incluirIa })
           ))}
         </div>
       )}
-      {aba === 'banco' ? <BancoDeImagens onEscolher={onEscolher} /> : loading
+      {aba === 'banco' ? <BancoDeImagens onEscolher={onEscolher} pixabayLigada={bancoLigado} /> : loading
         ? <p className="text-xs text-ink-3">Carregando suas fotos…</p>
         : fotos.length
           ? (
@@ -87,23 +88,45 @@ export function FotoDoProduto({ onEscolher, onFechar, aviso, botao, incluirIa })
 }
 
 /*
- * O BANCO DE IMAGENS (EXECUTOR D37): Pixabay, pelo servidor. "Usar" baixa a
- * foto para as suas Mídias e devolve o crédito, que vai junto da peça e
- * aparece discreto no canto da TV.
+ * O BANCO DE IMAGENS. Primeiro o ACERVO COMUM do segmento da conta (as fotos
+ * que o operador escolheu para padaria, ótica…): sem procurar nada, já
+ * aparece o que serve. Depois a busca na Pixabay pelo servidor (EXECUTOR
+ * D37), que procura também no acervo. "Usar" uma da Pixabay baixa a foto
+ * para as suas Mídias e devolve o crédito, que vai junto da peça e aparece
+ * discreto no canto da TV.
  */
-function BancoDeImagens({ onEscolher }) {
+function BancoDeImagens({ onEscolher, pixabayLigada }) {
   const [termo, setTermo] = useState('');
   const [busca, setBusca] = useState(null);
   const [buscando, setBuscando] = useState(false);
   const [usando, setUsando] = useState(null);
   const [erro, setErro] = useState('');
+  const [acervo, setAcervo] = useState(null);
+
+  useEffect(() => {
+    let vivo = true;
+    bancoImagens.feed({ limite: 12 })
+      .then((r) => (r.daConta ? bancoImagens.feed({ segmento: r.daConta, limite: 12 }) : r))
+      .then((r) => { if (vivo) setAcervo(r.itens || []); })
+      .catch(() => { if (vivo) setAcervo([]); });
+    return () => { vivo = false; };
+  }, []);
+
   async function procurar(e) {
     if (e) e.preventDefault();
-    if (!termo.trim()) return;
+    const t = termo.trim();
+    if (!t) return;
     setBuscando(true); setErro('');
-    try { setBusca(await pixabay.buscar(termo.trim())); }
+    bancoImagens.feed({ q: t, limite: 12 }).then((r) => setAcervo(r.itens || [])).catch(() => {});
+    try { if (pixabayLigada) setBusca(await pixabay.buscar(t)); }
     catch (err) { setErro(err.message || 'A busca não respondeu.'); }
     finally { setBuscando(false); }
+  }
+  async function doAcervo(i) {
+    setUsando(i.id); setErro('');
+    try { const r = await bancoImagens.usar(i.id); onEscolher(r.item.url, r.item.credito ? { credito: r.item.credito } : undefined); }
+    catch (err) { setErro(err.message || 'Não deu para usar esta foto.'); }
+    finally { setUsando(null); }
   }
   async function usar(f) {
     setUsando(f.id); setErro('');
@@ -113,6 +136,20 @@ function BancoDeImagens({ onEscolher }) {
   }
   return (
     <div>
+      {acervo && acervo.length > 0 && (
+        <div className="mb-2.5">
+          <div className="mb-1 text-2xs font-semibold uppercase tracking-wider text-ink-3">Do acervo MultiTelas</div>
+          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+            {acervo.map((i) => (
+              <button key={i.id} type="button" onClick={() => doAcervo(i)} disabled={!!usando} title={i.descricao + (i.credito ? ' · ' + i.credito : '')}
+                className="relative aspect-square overflow-hidden rounded-md border border-line transition hover:border-accent disabled:opacity-60">
+                <img src={i.url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                {usando === i.id && <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-[10px] font-semibold text-white">Usando…</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <form onSubmit={procurar} className="mb-2 flex gap-2">
         <input value={termo} onChange={(e) => setTermo(e.target.value)} placeholder="Ex.: café, equipe, fábrica, Natal" aria-label="Procurar no banco de imagens"
           className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
@@ -129,7 +166,9 @@ function BancoDeImagens({ onEscolher }) {
           ))}
         </div>
       ) : <p className="text-xs text-ink-3">Nada encontrado. Tente outra palavra.</p>)}
-      <p className="mt-2 text-2xs text-ink-3">Fotos da Pixabay, livres para uso. A foto vai para as suas Mídias e o crédito do autor vai junto.</p>
+      <p className="mt-2 text-2xs text-ink-3">{pixabayLigada
+        ? 'Fotos do acervo e da Pixabay, livres para uso. A da Pixabay vai para as suas Mídias, com o crédito do autor.'
+        : 'Fotos do acervo MultiTelas, livres para uso.'}</p>
       {erro && <p className="mt-1.5 text-xs text-danger">{erro}</p>}
     </div>
   );

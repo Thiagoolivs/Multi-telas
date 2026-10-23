@@ -440,7 +440,8 @@ function kitPiece(fmt, d) {
  */
 async function geminiVision(system, userText, images) {
   const temGemini = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY);
-  const motor = temGemini ? 'gemini' : motores.motorPadrao();
+  // AI_PROVIDER=dev (servidor local, testes) não chama IA de verdade, nem com a chave no ambiente.
+  const motor = mode() === 'dev' ? 'dev' : temGemini ? 'gemini' : motores.motorPadrao();
   const r = await motores.chamar({ motor, sistema: system, usuario: userText, imagens: images, json: true, maxTokens: 2048, temperatura: 0.4 });
   return r.texto;
 }
