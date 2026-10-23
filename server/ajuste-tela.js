@@ -92,8 +92,16 @@ function doVerbo(s, verbo) {
   return out;
 }
 
+// "santa bárbara d'oeste" → "Santa Bárbara d'Oeste"; "embu-guaçu" → "Embu-Guaçu" (nota do consultor no #253).
 function capitalizar(t) {
-  return t.split(' ').map((w, i) => (i > 0 && /^(de|da|do|das|dos|e)$/i.test(w) ? w.toLowerCase() : w.charAt(0).toUpperCase() + w.slice(1))).join(' ');
+  const maiuscula = (w) => w.charAt(0).toUpperCase() + w.slice(1);
+  return t.split(' ').map((w, i) => {
+    if (i > 0 && /^(de|da|do|das|dos|e)$/i.test(w)) return w.toLowerCase();
+    const apostrofo = /^(d)'(.+)$/i.exec(w);
+    if (i > 0 && apostrofo) return "d'" + maiuscula(apostrofo[2]);
+    // "del-Rei", "Embu-Guaçu": partícula fica minúscula, o resto ganha maiúscula.
+    return w.split('-').map((x, j) => ((i > 0 || j > 0) && /^(de|da|do|das|dos|del)$/i.test(x) ? x.toLowerCase() : maiuscula(x))).join('-');
+  }).join(' ');
 }
 
 /*

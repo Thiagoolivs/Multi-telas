@@ -49,6 +49,11 @@ test('relógio e clima: um verbo, duas coisas; a cidade com acento; clima sem ca
   assert.deepEqual(regra('sem relógio e sem clima', 'corporate'), { relogio: false, clima: false });
   assert.deepEqual(regra('volta o relógio e tira o clima', 'corporate'), { relogio: true, clima: false });
   assert.deepEqual(regra('clima de São Paulo', 'corporate'), { cidadeClima: 'São Paulo', clima: true });
+  // Nota do consultor no #253: acento, espaço, hífen e apóstrofo.
+  for (const [pedido, cidade] of [['clima de embu-guaçu', 'Embu-Guaçu'], ["previsão do tempo de santa bárbara d'oeste", "Santa Bárbara d'Oeste"], ['clima em são joão del-rei', 'São João del-Rei'], ['clima de pau dos ferros', 'Pau dos Ferros']]) {
+    assert.equal(regra(pedido, 'corporate').cidadeClima, cidade, pedido);
+    assert.equal(A.normalizar({ cidadeClima: cidade }, { orientacao: 'landscape' }).cidadeClima, cidade, 'a IA não pode devolver ' + cidade);
+  }
   const r = A.completar({ clima: true }, [], { layoutId: 'full-ticker' });
   assert.equal(r.mudancas.layoutId, 'header-main-ticker');
   assert.deepEqual(r.notas, ['O clima aparece no cabeçalho: a tela ganha um.']);
