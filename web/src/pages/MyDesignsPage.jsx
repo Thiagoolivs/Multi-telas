@@ -361,6 +361,8 @@ export function MyDesignsPage({ onIr }) {
   const [iPrompt, setIPrompt] = useState('');
   const [iFormato, setIFormato] = useState('16/9');
   const [iEstilo, setIEstilo] = useState('fotográfico');
+  // D42b: o esboço da imagem esperando a aprovação ({ descricao, formato, estilo, chave }).
+  const [esbocoImg, setEsbocoImg] = useState(null);
 
   /*
    * "Criar na mão" passa por uma escolha antes do editor. A tela em branco
@@ -672,16 +674,25 @@ export function MyDesignsPage({ onIr }) {
    * pergunta "onde isto vai ficar?". É este o padrão para tudo que a conta
    * cria — avisar, mostrar, e só então perguntar onde guardar.
    */
-  function gerarImagem() {
+  // D42b: antes de gastar a criação, o esboço (descrição, formato, estilo) para aprovar.
+  async function verEsbocoDaImagem() {
     const prompt = iPrompt.trim();
     if (!prompt) return;
+    try { setEsbocoImg((await ai.esbocoDaImagem({ prompt, formato: iFormato, estilo: iEstilo })).esboco); }
+    catch (e) { setMsg(e.message || 'Não deu para montar o esboço.'); }
+  }
+
+  function gerarImagem() {
+    const prompt = iPrompt.trim();
+    if (!prompt || !esbocoImg) return;
     const formato = iFormato;
     const id = 'img:' + Date.now();
+    const chave = esbocoImg.chave;
 
-    setImgOpen(false); setIPrompt(''); setMsg('');
+    setImgOpen(false); setEsbocoImg(null); setIPrompt(''); setMsg('');
     aviso.trabalho(id, 'Gerando sua imagem…', 'Pode sair desta tela. Aviso aqui quando ficar pronta.');
 
-    ai.image({ prompt, formato, estilo: iEstilo })
+    ai.image({ prompt, formato, estilo: iEstilo, esboco: chave })
       .then((out) => avisarImagemPronta(id, out, prompt))
       .catch((e) => aviso.erro(id, 'A imagem não saiu.', e.message || 'Tente de novo em instantes.'));
   }
@@ -1279,8 +1290,25 @@ export function MyDesignsPage({ onIr }) {
       </Dialog>
 
       {/* Gerar imagem */}
-      <Dialog open={imgOpen} onClose={() => setImgOpen(false)} title="Gerar imagem com IA" description="A imagem gerada vira um design (você nomeia e salva)."
-        footer={<><Button variant="ghost" onClick={() => setImgOpen(false)}>Cancelar</Button><Button variant="primary" icon={ImagePlus} disabled={busy || !iPrompt.trim()} onClick={gerarImagem}>{busy ? 'Gerando…' : 'Gerar'}</Button></>}>
+      <Dialog open={imgOpen} onClose={() => { setImgOpen(false); setEsbocoImg(null); }} title={esbocoImg ? 'Confira o esboço da imagem' : 'Gerar imagem com IA'}
+        description={esbocoImg ? 'Nada foi gerado ainda. Aprovando, a imagem sai assim e gasta 1 criação do plano.' : 'A imagem gerada vira um design (você nomeia e salva).'}
+        footer={esbocoImg
+          ? <><Button variant="ghost" onClick={() => setEsbocoImg(null)}>Voltar e mudar</Button><Button variant="primary" icon={ImagePlus} disabled={busy} onClick={gerarImagem}>Aprovar e gerar</Button></>
+          : <><Button variant="ghost" onClick={() => setImgOpen(false)}>Cancelar</Button><Button variant="primary" icon={ImagePlus} disabled={busy || !iPrompt.trim()} onClick={verEsbocoDaImagem}>Ver o esboço</Button></>}>
+        {esbocoImg ? (
+          <div className="space-y-3">
+            {/* O quadro no formato, com a foto descrita no lugar: é o que vai ser gerado. */}
+            <div className="mx-auto flex max-h-72 w-full max-w-md items-center justify-center rounded-lg border-2 border-dashed border-accent/50 bg-surface-2 p-4 text-center"
+              style={{ aspectRatio: String(esbocoImg.formato || '16/9').replace('/', ' / ') }}>
+              <div>
+                <ImagePlus size={22} className="mx-auto text-accent" />
+                <div className="mt-1.5 text-xs font-semibold text-ink">foto: {esbocoImg.descricao}</div>
+                <div className="mt-1 text-2xs text-ink-3">{esbocoImg.estilo} · {esbocoImg.formato}</div>
+              </div>
+            </div>
+            <p className="text-center text-2xs text-ink-3">Gasta {esbocoImg.criacoes} criação do plano.</p>
+          </div>
+        ) : (
         <div className="grid gap-3">
           <Field label="Descrição"><Textarea rows={3} value={iPrompt} onChange={(e) => setIPrompt(e.target.value)} placeholder="Ex.: xícara de café fumegante, luz quente, fundo desfocado." /></Field>
           <div className="grid grid-cols-2 gap-3">
@@ -1296,6 +1324,7 @@ export function MyDesignsPage({ onIr }) {
             </Field>
           </div>
         </div>
+        )}
       </Dialog>
     </div>
   );

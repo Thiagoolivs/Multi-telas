@@ -46,4 +46,14 @@ function recusou(texto) {
   return /^(n[aã]o|deixa como est|cancela|melhor n[aã]o|espera)\b/.test(String(texto || '').toLowerCase().trim());
 }
 
-module.exports = { chave, valeParaEste, aprovar, geraAlgo, confirmou, recusou, QUE_GERAM };
+/*
+ * O esboço da IMAGEM de Meus Designs (D42b, proposta do consultor): o que
+ * gasta criação só sai aprovado. O esboço é a descrição, o formato e o
+ * estilo — a pessoa vê o quadro no formato com "foto: <descrição>" e aprova.
+ */
+const limpa = (s) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+function chaveDaImagem({ prompt, formato, estilo } = {}) {
+  return crypto.createHash('sha256').update(JSON.stringify([limpa(prompt).slice(0, 1000), limpa(formato) || '16/9', limpa(estilo)])).digest('hex').slice(0, 32);
+}
+
+module.exports = { chave, valeParaEste, aprovar, geraAlgo, confirmou, recusou, chaveDaImagem, QUE_GERAM };

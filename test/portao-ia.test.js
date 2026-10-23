@@ -54,6 +54,7 @@ test('toda rota /api/ai/* está no mapa TIPO_IA (o portão da medição) ou é e
   const mortas = [...mapa].filter((k) => !rotas.has(k));
   assert.deepEqual(mortas, [], 'TIPO_IA com rota que não existe: ' + mortas.join(', '));
   // A exceção da imagem cobra por dentro; as de leitura não são POST de IA.
-  assert.match(ler('server.js'), /parts\[2\] === 'generate-image'[\s\S]{0,1600}usoIA\.reservar\(/);
+  // (Desde o D42b a rota confere o esboço antes de reservar: a janela é maior.)
+  assert.match(ler('server.js'), /parts\[2\] === 'generate-image'[\s\S]{0,3200}usoIA\.reservar\(/);
   for (const k of Object.keys(EXCECOES)) assert.ok(!mapa.has(k), k + ' é exceção E está no mapa');
 });

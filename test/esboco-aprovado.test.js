@@ -127,8 +127,26 @@ test('a rota: sem aprovação nada é gerado; mudou o escopo, aprova de novo; a 
   const tx = await esperarJob((await pedir('/api/ai/editar', { method: 'POST', cookie: c, json: { campanhaId: camp.id, texto: 'muda o título da peça 1 para: Pão quentinho' } })).json.id, c);
   assert.equal(tx.acao, 'fazer');
 
+  // D42b: a imagem de Meus Designs (gasta criação) só com o esboço aprovado — o exato.
+  const img = { prompt: 'xícara de café fumegante', formato: '9/16', estilo: 'fotográfico' };
+  const semEsboco = await pedir('/api/ai/generate-image', { method: 'POST', cookie: c, json: img });
+  assert.deepEqual([semEsboco.status, semEsboco.json.code], [409, 'esboco-nao-aprovado']);
+  const esb = (await pedir('/api/ai/generate-image', { method: 'POST', cookie: c, json: Object.assign({ apenasEsboco: true }, img) })).json.esboco;
+  assert.deepEqual([esb.descricao, esb.formato, esb.estilo, esb.criacoes], [img.prompt, '9/16', 'fotográfico', 1]);
+  assert.equal((await pedir('/api/ai/generate-image', { method: 'POST', cookie: c, json: Object.assign({}, img, { formato: '16/9', esboco: esb.chave }) })).status, 409, 'outro formato com a chave do esboço');
+  assert.equal((await pedir('/api/ai/generate-image', { method: 'POST', cookie: c, json: Object.assign({}, img, { esboco: esb.chave }) })).status, 202);
+
   // O diretor (Meus Designs, Criação rápida): só o plano aprovado gera.
   const dir = await pedir('/api/ai/director', { method: 'POST', cookie: c, json: { brief: 'promoção de pão' } });
   assert.deepEqual([dir.status, dir.json.code], [409, 'plano-nao-aprovado']);
   assert.equal((await pedir('/api/ai/director', { method: 'POST', cookie: c, json: { brief: 'promoção de pão', apenasPlano: true } })).status, 202);
+});
+
+test('o painel de Meus Designs: Ver o esboço da imagem, depois Aprovar e gerar (com a chave)', () => {
+  const M = ler('web/src/pages/MyDesignsPage.jsx');
+  assert.match(M, /onClick=\{verEsbocoDaImagem\}>Ver o esboço</);
+  assert.match(M, /ai\.image\(\{ prompt, formato, estilo: iEstilo, esboco: chave \}\)/);
+  assert.match(M, /foto: \{esbocoImg\.descricao\}/);
+  const S = ler('server/esboco.js');
+  assert.match(S, /function chaveDaImagem\(/);
 });

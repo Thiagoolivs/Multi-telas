@@ -255,6 +255,8 @@ export const ai = {
     rodar('/api/ai/generate-kit', payload, 'kit-de-marca', onEtapa, sinal),
   image: (payload, onEtapa, sinal) =>
     rodar('/api/ai/generate-image', payload, 'imagem', onEtapa, sinal),
+  // D42b: o esboço da imagem (nada é gerado nem cobrado); a geração vai com a chave dele.
+  esbocoDaImagem: (payload) => api('POST', '/api/ai/generate-image', { ...payload, apenasEsboco: true }),
   // Redesenha a peça em HTML que não coube; devolve { item }.
   refazerPeca: (item, problemas, onEtapa, sinal) =>
     rodar('/api/ai/refazer-peca', { item, problemas }, 'peca', onEtapa, sinal),
