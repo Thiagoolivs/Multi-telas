@@ -464,7 +464,8 @@ export const bancoImagens = {
 
 export const media = {
   list: () => api('GET', '/api/media'),
-  remove: (id) => api('DELETE', '/api/media/' + id),
+  // forcar: a pessoa viu onde a mídia está em uso (409 'midia-em-uso') e confirmou.
+  remove: (id, forcar) => api('DELETE', '/api/media/' + id + (forcar ? '?forcar=1' : '')),
   // Upload de bytes crus (o navegador manda o File direto). Retorna { url, ... }.
   async upload(file) {
     const qs = '?name=' + encodeURIComponent(file.name || 'arquivo') + '&mime=' + encodeURIComponent(file.type || '');
