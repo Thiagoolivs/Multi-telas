@@ -33,6 +33,40 @@ const Perfil = require('../js/perfil.js');
 // Quantas mensagens a IA lê de cada vez. O resto vive no escopo.
 const JANELA = 16;
 
+/*
+ * NEM TUDO É CAMPANHA (EXECUTOR D5). A conversa montava campanha para tudo:
+ * "como ligo a TV?" virava escopo com quatro zonas e redes. Agora cada volta
+ * diz o TIPO do pedido, e o tamanho segue o tipo:
+ *   campanha  o fluxo de sempre (zonas, redes, horários);
+ *   peca      uma peça só, na principal, sem redes;
+ *   aviso     um aviso: uma peça (ou o letreiro do rodapé), sem redes nem horário;
+ *   duvida    pergunta sobre o sistema: responde e NÃO mexe no escopo.
+ */
+const TIPOS = ['campanha', 'peca', 'aviso', 'duvida'];
+
+/*
+ * As dúvidas mais comuns, com o caminho certo no painel. Vão para a IA (para
+ * ela não inventar menu) e respondem no modo demonstração.
+ */
+const AJUDA = [
+  { chaves: /(lig|pare|conect|coloc|instal)[a-zç]*.{0,20}(tv|tela|televis)|c[oó]digo da tv|qr da tv/,
+    resposta: 'Abra o MultiTelas no navegador da TV (ou do box). Aparece um código; no painel, vá em Telas › Ligar a TV e digite o código ou leia o QR com o celular.' },
+  { chaves: /(mud|troc|tir|edit|ver)[a-zç]*.{0,30}(passa|passando|programa[cç][aã]o|na tv)/,
+    resposta: 'Em Programação, toque na TV: dá para ver o que passa, trocar, tirar e mudar a ordem de cada parte da tela.' },
+  { chaves: /modelo|pe[cç]as? prontas?|template/,
+    resposta: 'Em Mídias › Peças prontas há modelos para só trocar o texto e publicar.' },
+  { chaves: /logo|cores? da (minha )?marca|fonte/,
+    resposta: 'Logo, cores e fontes ficam em Marca. Tudo o que eu crio já sai com elas.' },
+  { chaves: /plano|pagar|pagamento|assinatura|boleto|pix|pre[cç]o do (sistema|multitelas)|quanto custa/,
+    resposta: 'O plano e o pagamento ficam em Conta › Plano.' },
+  { chaves: /anivers[aá]ri/,
+    resposta: 'Em Automáticos › Aniversariantes você importa a planilha uma vez, e a TV parabeniza sozinha na semana de cada um.' },
+  { chaves: /cr[eé]dito|cria[cç][oõ]es (do|no) plano|quantas cria[cç]/,
+    resposta: 'Conversar não gasta nada. Só a foto gerada pela IA gasta uma criação do plano; o saldo aparece em Conta › Plano.' },
+  { chaves: /suporte|atendimento|falar com (algu[eé]m|humano|pessoa)/,
+    resposta: 'Em Conta › Suporte você fala com a gente, pelo WhatsApp ou e-mail.' },
+];
+
 const SISTEMA = `Você é a parceira de criação do MultiTelas, conversando com o dono de um
 pequeno negócio brasileiro. Ele quer mostrar alguma coisa nas TVs da loja e,
 se quiser, nas redes. Você entende o que ele quer, sugere, e monta junto com
@@ -74,6 +108,22 @@ O QUE ENTENDER, na ordem em que fizer sentido:
   principal e lateral", "só cabeçalho e rodapé", "3 peças para a principal",
   "2 estilos de cabeçalho". Respeite exatamente.
 
+NEM TUDO É CAMPANHA. Diga o "tipo" de cada volta:
+- "duvida": a pessoa pergunta como usar o sistema, ou algo que não é para
+  criar. Responda curto, com o caminho no painel (use a AJUDA abaixo; se não
+  souber, indique Conta › Suporte). NÃO mude o escopo.
+- "aviso": um aviso simples (horário, feriado, recado para a equipe ou para
+  os clientes). Proponha o MÍNIMO: 1 peça na principal (ou só a frase no
+  letreiro do rodapé, se for curtinho), sem redes, sem horários, sem foto.
+  Não pergunte de redes nem de horário. Já pode ficar pronto na 1ª resposta.
+- "peca": a pessoa quer uma peça só. 1 peça na principal, sem redes.
+  Pergunte no máximo o que falta para o texto.
+- "campanha": o resto — o fluxo completo acima.
+Na dúvida entre aviso e campanha, comece pequeno: crescer é um toque.
+
+AJUDA (caminhos do painel; nunca invente outro menu):
+${AJUDA.map((a) => '- ' + a.resposta).join('\n')}
+
 O ESCOPO que você devolve (JSON). Mude só o que a conversa decidiu; o resto
 fica como veio:
 {
@@ -102,6 +152,7 @@ por TV: uma entrada por TV, com o id da lista.
 
 Responda APENAS JSON:
 {
+  "tipo": "campanha" | "peca" | "aviso" | "duvida",
   "resposta": "o que você diz para a pessoa",
   "sugestoes": ["resposta pronta que ela pode tocar", "outra"],
   "escopo": { ...o escopo inteiro, atualizado... },
@@ -218,11 +269,66 @@ function pediuParaGerar(texto) {
   return /(^|[^a-z])(pode (gerar|criar|come[cç]ar|seguir)|ger[ae] (a[ií]|j[aá]|agora)|manda (ver|bala)|vai l[aá]|bora|pode sim|sim,? pode|ok,? pode|isso,? pode|^gera(r)?!*$|cri[ae] (a[ií]|j[aá]|agora))(?![a-z])/.test(t);
 }
 
+/*
+ * Que tipo de pedido é esta fala (modo demonstração e reserva da IA). Pergunta
+ * sem verbo de criar é dúvida; "avisar", "feriado", "fechado" é aviso.
+ */
+function tipoDoPedido(texto, emAndamento) {
+  const t = String(texto || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const cria = /\b(cri[ae]r?|fa[cç]a|fazer|gera[r]?|monta[r]?|divulgar|quero (mostrar|avisar|anunciar|divulgar)|preciso (de )?(uma|um)|como fa[cç]o (uma|um))\b/.test(t);
+  const pergunta = /\?$/.test(t) || /^(como|onde|cad[eê]|quanto|qual|quais|o que [eé]|posso|d[aá] (pra|para)|tem como|por que|porque)\b/.test(t);
+  // Com algo já combinado, pergunta sobre fotos, redes ou zonas é sobre ESTE pedido.
+  const doPedido = /foto|rede|instagram|whats|zona|rodap|cabe[cç]alho|lateral|principal|pe[cç]a|hor[aá]rio/.test(t);
+  if (pergunta && !cria && !(emAndamento && doPedido)) return 'duvida';
+  if (/s[oó] uma pe[cç]a|uma pe[cç]a s[oó]|^uma pe[cç]a/.test(t)) return 'peca';
+  if (/\b(avis[ao]r?|feriado|fechad[oa]|fecha mais cedo|comunicad[oa]|lembrete|recado|reuni[aã]o|n[aã]o haver[aá])/.test(t)) return 'aviso';
+  return 'campanha';
+}
+
+function ajudaPara(texto) {
+  const t = String(texto || '').toLowerCase();
+  const a = AJUDA.find((x) => x.chaves.test(t));
+  return a ? a.resposta : 'Aqui eu crio peças, avisos e campanhas para as TVs e as redes. Para outras dúvidas do sistema, a gente responde em Conta › Suporte.';
+}
+
+// O tamanho mínimo de um aviso ou de uma peça: 1 peça na principal, sem redes nem horários.
+function pequeno(e, texto, tipo) {
+  const pedido = String(texto || '').replace(/\s+/g, ' ').trim();
+  const x = E.recortar(e, 'uma-peca');
+  x.telas.forEach((t) => { if (!t.zonas.principal.pedido) t.zonas.principal.pedido = pedido.slice(0, 200); });
+  return E.normalizar({
+    ...x, horarios: [],
+    imagens: tipo === 'aviso' ? 'nenhuma' : x.imagens,
+    nome: x.nome || pedido.split(/[.!?\n]/)[0].slice(0, 60),
+    objetivo: x.objetivo || pedido.slice(0, 300),
+  });
+}
+
 function roteiro(mensagens, escopo) {
   const ditas = (mensagens || []).filter((m) => m && m.papel !== 'ia');
   const ultima = (ditas[ditas.length - 1] || {}).texto || '';
   const etapa = (mensagens || []).filter((m) => m && m.papel === 'ia').length;
   let e = E.normalizar(escopo);
+  const tipo = tipoDoPedido(ultima, E.temOQueGerar(e));
+  if (tipo === 'duvida') {
+    return { tipo, resposta: ajudaPara(ultima), sugestoes: E.temOQueGerar(e) ? ['Pode gerar'] : [], escopo: e, pronto: false };
+  }
+  if ((tipo === 'aviso' || tipo === 'peca') && !E.temOQueGerar(e)) {
+    e = pequeno(e, ultima, tipo);
+    return {
+      tipo,
+      resposta: tipo === 'aviso'
+        ? 'Faço 1 peça com esse aviso, na área principal das TVs, sem foto (não gasta criação). Posso gerar?'
+        : 'Faço 1 peça na área principal das TVs. Posso gerar?',
+      sugestoes: tipo === 'aviso' ? ['Pode gerar', 'Também no rodapé', 'Mande no WhatsApp também'] : ['Pode gerar', 'Use as minhas fotos', 'Sem foto'],
+      escopo: e, pronto: true,
+    };
+  }
+  if (etapa > 0 && /tamb[eé]m no rodap[eé]/i.test(ultima) && E.temOQueGerar(e)) {
+    e.telas.forEach((t) => { t.zonas.rodape.mensagens = t.zonas.rodape.mensagens.concat(E.normalizar(e).objetivo.slice(0, 120)).slice(0, 4); });
+    e = E.normalizar(e);
+    return { tipo: 'aviso', resposta: 'Pronto: o aviso também corre no letreiro do rodapé. Posso gerar?', sugestoes: ['Pode gerar'], escopo: e, pronto: true };
+  }
   if (etapa === 0) {
     const pedido = String(ultima).replace(/\s+/g, ' ').trim();
     if (!E.temOQueGerar(e)) e = E.normalizar({ ...E.padrao(), imagens: e.imagens, redes: { ...E.padrao().redes, ...falsos() } });
@@ -244,11 +350,17 @@ function roteiro(mensagens, escopo) {
     },
   ];
   if (etapa > 0 && pediuParaGerar(ultima) && E.temOQueGerar(e)) {
-    return { resposta: 'Começando! Vou criar tudo o que combinamos.', sugestoes: [], escopo: e, pronto: true, gerar: true };
+    return { tipo: 'campanha', resposta: 'Começando! Vou criar tudo o que combinamos.', sugestoes: [], escopo: e, pronto: true, gerar: true };
   }
-  if (etapa < perguntas.length) return { ...perguntas[etapa], escopo: e, pronto: false };
+  // Pedido pequeno (aviso, uma peça) não volta às perguntas de campanha: ajusta e confirma.
+  const pecasNasTvs = e.telas.reduce((s, t) => s + E.ZONAS.reduce((n, z) => n + t.zonas[z].pecas, 0), 0);
+  if (etapa > 0 && pecasNasTvs <= 1 && !e.horarios.length) {
+    return { tipo: 'peca', resposta: 'Certo, ajustei. Posso gerar?', sugestoes: ['Pode gerar'], escopo: e, pronto: true };
+  }
+  if (etapa < perguntas.length) return { ...perguntas[etapa], tipo: 'campanha', escopo: e, pronto: false };
   const resumo = E.descrever(e).map((l) => l.titulo + ': ' + l.itens.join('; ')).join(' · ');
   return {
+    tipo: 'campanha',
     resposta: 'Entendi! Vou criar: ' + resumo + '. Posso gerar?',
     sugestoes: ['Pode gerar', 'Só principal e lateral', '3 peças para a principal'],
     escopo: e,
@@ -303,10 +415,21 @@ async function conversar({ mensagens, escopo, ctx } = {}) {
   }
   const resposta = String((r && r.resposta) || '').trim().slice(0, 900)
     || 'Entendi. Quer que eu gere com o que combinamos?';
-  const escopoNovo = conferirEscopo(r && r.escopo && typeof r.escopo === 'object' ? r.escopo : atual, ctx);
   const ditas = (mensagens || []).filter((m) => m && m.papel !== 'ia');
-  const gerar = E.temOQueGerar(escopoNovo) && (r && r.gerar === true || pediuParaGerar((ditas[ditas.length - 1] || {}).texto));
+  const ultimaFala = (ditas[ditas.length - 1] || {}).texto;
+  // Sem tipo válido, a regra decide — a IA que esquece o campo não vira campanha à força.
+  const tipo = TIPOS.includes(r && r.tipo) ? r.tipo : tipoDoPedido(ultimaFala, E.temOQueGerar(atual));
+  /*
+   * Dúvida não mexe no combinado: mesmo que a IA devolva um escopo, vale o
+   * que estava (a pergunta "como ligo a TV?" não pode montar quatro zonas).
+   */
+  if (tipo === 'duvida') {
+    return { tipo, resposta, sugestoes: listaCurta(r && r.sugestoes, 4, 60), escopo: atual, pronto: false, gerar: false, modo: ai.mode() };
+  }
+  const escopoNovo = conferirEscopo(r && r.escopo && typeof r.escopo === 'object' ? r.escopo : atual, ctx);
+  const gerar = E.temOQueGerar(escopoNovo) && (r && r.gerar === true || pediuParaGerar(ultimaFala));
   return {
+    tipo,
     resposta,
     sugestoes: listaCurta(r && r.sugestoes, 4, 60),
     // Sem escopo na resposta, fica o que estava: a IA não apaga o combinado por omissão.
@@ -317,4 +440,4 @@ async function conversar({ mensagens, escopo, ctx } = {}) {
   };
 }
 
-module.exports = { conversar, contexto, conferirEscopo, transcricao, pediuParaGerar, JANELA, SISTEMA };
+module.exports = { conversar, contexto, conferirEscopo, transcricao, pediuParaGerar, tipoDoPedido, ajudaPara, TIPOS, AJUDA, JANELA, SISTEMA };

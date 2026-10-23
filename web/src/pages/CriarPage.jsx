@@ -264,13 +264,14 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       {!conversando && (
         <div className="mb-4">
           <h1 className="text-xl font-semibold tracking-tight text-ink">O que você quer mostrar hoje?</h1>
-          <p className="mt-1 text-sm text-ink-2">Conte o que você quer e para quê. Eu sugiro, você ajusta, e eu crio tudo: as TVs, a programação e as redes.</p>
+          <p className="mt-1 text-sm text-ink-2">Um aviso, uma peça ou uma campanha inteira: conte o que você quer, eu sugiro e crio. Também respondo dúvidas sobre o sistema.</p>
         </div>
       )}
 
       {erro && <div className="mb-3 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{erro}</div>}
 
-      <div className={cn(conversando && 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-4')}>
+      {/* O cartão só aparece quando a conversa decidiu alguma coisa (D5): uma dúvida não monta pedido. */}
+      <div className={cn(conversando && podeGerar && 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-4')}>
         <div className="space-y-3">
           {conversando && (
             <Panel>
@@ -302,7 +303,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
           )}
 
           {/* No celular, o cartão fica entre a conversa e a caixa, recolhido numa linha. */}
-          {(conversando || podeGerar) && (
+          {podeGerar && (
             <div className="space-y-2 lg:hidden">
               <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} recolhivel />
               {botaoGerar}
@@ -373,7 +374,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
           )}
         </div>
 
-        {conversando && (
+        {conversando && podeGerar && (
           <aside className="hidden space-y-2 lg:sticky lg:top-4 lg:block">
             <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} />
             {botaoGerar}
