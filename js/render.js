@@ -824,14 +824,52 @@
     return w;
   }
 
+  /*
+   * O ANIVERSARIANTE SOZINHO (EXECUTOR D32): na semana dele, cada pessoa
+   * ganha o próprio cartão — a foto grande (a do QR, D31), o nome, o cargo e
+   * quando: "hoje", "amanhã", "sábado, 25/10" ou "foi terça, 21/10".
+   */
+  function renderAniversariante(item) {
+    const p = item.pessoa || {};
+    const now = new Date();
+    const hoje = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let dia = new Date(now.getFullYear(), +p.mes - 1, +p.dia);
+    // A semana pode cruzar o ano (aniversário em 2/1 visto em 30/12).
+    if (dia - hoje > 180 * 864e5) dia = new Date(now.getFullYear() - 1, +p.mes - 1, +p.dia);
+    if (hoje - dia > 180 * 864e5) dia = new Date(now.getFullYear() + 1, +p.mes - 1, +p.dia);
+    const diff = Math.round((dia - hoje) / 864e5);
+    const data = String(p.dia).padStart(2, '0') + '/' + String(p.mes).padStart(2, '0');
+    const dds = WEEKDAYS[dia.getDay()];
+    const quando = diff === 0 ? 'Hoje!' : diff === 1 ? 'Amanhã, ' + data : diff === -1 ? 'Foi ontem, ' + data
+      : diff > 0 ? dds.charAt(0).toUpperCase() + dds.slice(1) + ', ' + data : 'Foi ' + dds + ', ' + data;
+    const el = div('mt-slide mt-surface mt-bday mt-bday-pessoa' + (diff === 0 ? ' is-hoje' : ''));
+    el.appendChild(bdayAvatar(p, 'bc-avatar-xl'));
+    const txt = div('mt-bday-pessoa-txt');
+    const k = div('mt-bday-kicker');
+    k.textContent = diff === 0 ? '🎉 Feliz aniversário' : diff > 0 ? '🎂 Aniversário chegando' : '🎈 Parabéns';
+    const nm = div('mt-bday-name');
+    nm.textContent = p.nome || '';
+    txt.appendChild(k);
+    txt.appendChild(nm);
+    if (p.cargo) { const cg = div('mt-bday-role'); cg.textContent = p.cargo; txt.appendChild(cg); }
+    const w = div('mt-bday-quando');
+    w.textContent = quando;
+    txt.appendChild(w);
+    el.appendChild(txt);
+    return { el, duration: item.duracao || 12 };
+  }
+
   function renderBirthdayAuto(item) {
+    if (item.modo === 'pessoa' && item.pessoa) return renderAniversariante(item);
     const modo = ['hoje', 'semana', 'auto'].includes(item.modo) ? item.modo : 'auto';
     const all = birthdayRoster();
     const now = new Date();
     const today = all.filter((p) => +p.dia === now.getDate() && +p.mes === now.getMonth() + 1);
-    // Próximos 7 dias (inclui hoje), preservando a ordem cronológica.
+    // A semana de segunda a domingo (D32), na ordem dos dias; quem já fez continua.
     const order = {};
-    for (let i = 0; i < 7; i++) { const dt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i); order[mmdd2(dt.getMonth() + 1, dt.getDate())] = i; }
+    const seg = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+    const hojeNaSemana = (now.getDay() + 6) % 7;
+    for (let i = 0; i < 7; i++) { const dt = new Date(seg.getFullYear(), seg.getMonth(), seg.getDate() + i); order[mmdd2(dt.getMonth() + 1, dt.getDate())] = i; }
     const week = all.filter((p) => mmdd2(+p.mes, +p.dia) in order)
       .sort((a, b) => order[mmdd2(+a.mes, +a.dia)] - order[mmdd2(+b.mes, +b.dia)] || String(a.nome).localeCompare(b.nome));
 
@@ -879,7 +917,7 @@
         row.appendChild(info);
         const when = div('mt-bday-when');
         const dt = new Date(now.getFullYear(), +p.mes - 1, +p.dia);
-        const isToday = order[mmdd2(+p.mes, +p.dia)] === 0;
+        const isToday = order[mmdd2(+p.mes, +p.dia)] === hojeNaSemana;
         when.innerHTML = '<span class="mt-bday-date">' + String(p.dia).padStart(2, '0') + '/' + String(p.mes).padStart(2, '0') +
           '</span><span class="mt-bday-wd">' + (isToday ? 'hoje' : WEEKDAYS[dt.getDay()]) + '</span>';
         if (isToday) when.classList.add('is-today');
