@@ -35,6 +35,8 @@ test('refazer: por peça-ouro, papel e defeito — um por defeito, nunca a frase
   // A peça que a IA compôs do zero é "ia"; nome estranho vira "outra" (o item vem do navegador).
   assert.deepEqual(Q.chavesDoRefazer({ papel: 'destaque', origem: { motor: 'html-gemini' } }, []), ['refazer|ia|destaque|outro']);
   assert.deepEqual(Q.chavesDoRefazer({ papel: '<x>', origem: { base: 'A B; DROP' } }, ['passa da borda']), ['refazer|outra|outra|vaza']);
+  // Lista fechada (nota do consultor no #291): id com cara de peça mas fora do manifesto não vira chave.
+  assert.deepEqual(Q.chavesDoRefazer({ papel: 'destaque', origem: { base: 'peca-inventada-1' } }, ['passa da borda']), ['refazer|outra|destaque|vaza']);
   for (const c of chaves) assert.doesNotMatch(c, /Título|Kicker|px/);
 });
 
@@ -43,6 +45,10 @@ test('edição à mão: o NOME dos campos que mudaram, e o estilo', () => {
   const depois = { modo: 'claro', campos: { titulo: 'Óculos de sol', preco: '189', apoio: 'x', cta: 'Reserve' } };
   assert.deepEqual(Q.chavesDaEdicao(antes, depois), ['editado|oferta-foto|titulo', 'editado|oferta-foto|cta', 'editado|oferta-foto|estilo']);
   assert.deepEqual(Q.chavesDaEdicao(antes, { modo: 'escuro', campos: antes.campos }), []);
+  // Campo que nenhuma peça-ouro declara vira "outro" — e mil campos inventados são uma chave só.
+  const inventados = {};
+  for (let i = 0; i < 1000; i++) inventados['campo-' + i] = 'x';
+  assert.deepEqual(Q.chavesDaEdicao({ origem: { base: 'oferta-foto' }, campos: {} }, { campos: inventados }), ['editado|oferta-foto|outro']);
 });
 
 test('pedido: o tipo da mudança, a pergunta da IA e o pedido que não mudou nada', () => {
@@ -51,6 +57,7 @@ test('pedido: o tipo da mudança, a pergunta da IA e o pedido que não mudou nad
   assert.deepEqual(Q.chavesDoPedido('editar', 'perguntar', []), ['pedido|editar|pergunta']);
   assert.deepEqual(Q.chavesDoPedido('editar', 'responder', []), ['pedido|editar|nada']);
   assert.deepEqual(Q.chavesDoPedido('editar', 'fazer', [{ tipo: 'refazer', foto: 'usar' }, { tipo: 'refazer' }]), ['pedido|editar|foto-minha', 'pedido|editar|redesenhar']);
+  assert.deepEqual(Q.chavesDoPedido('ajustar', 'fazer', [{ tipo: 'qualquer-coisa' }]), ['pedido|ajustar|outro']);
 });
 
 test('relatório: três listas ordenadas, com a participação de cada uma no seu grupo', () => {

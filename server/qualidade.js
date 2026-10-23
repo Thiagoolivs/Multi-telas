@@ -17,19 +17,42 @@
  * nem identifica cliente.
  */
 'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
 
-// Nome que vem do item (base, papel, campo) só entra se for um nome de verdade; o resto vira "outra".
-const nome = (s, max) => {
-  const t = String(s == null ? '' : s);
-  return new RegExp('^[a-z0-9-]{1,' + (max || 40) + '}$').test(t) ? t : 'outra';
-};
+/*
+ * As chaves só se formam com nomes de LISTAS FECHADAS (nota do consultor no
+ * #291): o item vem do navegador, e um cliente que inventasse ids de peça ou
+ * nomes de campo encheria a tabela de chaves. A peça tem de ser uma
+ * peça-ouro do manifesto; o campo, um dos que as peças-ouro declaram (e que
+ * passa no NOME_CAMPO da porta). O resto vira "outra"/"outro".
+ */
+const PASTA = path.join(__dirname, '..', 'pecas-ouro');
+const NOME_CAMPO = /^[a-z][a-z0-9-]{0,30}$/;
+let listas = null;
+function fechadas() {
+  if (listas) return listas;
+  const pecas = new Set();
+  const campos = new Set(['foto', 'logo', 'estilo']);
+  try {
+    const m = JSON.parse(fs.readFileSync(path.join(PASTA, 'manifesto.json'), 'utf8'));
+    for (const p of m.pecas || []) {
+      pecas.add(p.id);
+      const html = fs.readFileSync(path.join(PASTA, p.id + '.html'), 'utf8');
+      for (const x of html.matchAll(/data-campo(?:-img|-qr)?="([^"]+)"/g)) if (NOME_CAMPO.test(x[1])) campos.add(x[1]);
+    }
+  } catch (e) { /* sem a biblioteca, tudo vira "outra" — a contagem não derruba nada */ }
+  listas = { pecas, campos };
+  return listas;
+}
 
-// A peça-ouro em que a peça nasceu; a que a IA compôs do zero é "ia".
+// A peça-ouro em que a peça nasceu; a que a IA compôs do zero é "ia"; id fora do manifesto é "outra".
 function baseDa(item) {
   const o = (item && item.origem) || {};
-  if (o.base) return nome(o.base);
+  if (o.base) return fechadas().pecas.has(String(o.base)) ? String(o.base) : 'outra';
   return o.motor && o.motor !== 'ouro' ? 'ia' : 'outra';
 }
+const campoDe = (k) => (fechadas().campos.has(String(k)) ? String(k) : 'outro');
 
 /*
  * O defeito que o painel mediu, em uma palavra. As frases vêm de
@@ -69,16 +92,19 @@ function chavesDaEdicao(antes, depois) {
   const base = baseDa(antes || depois);
   const campos = [...new Set(Object.keys(a).concat(Object.keys(d)))]
     .filter((k) => String(a[k] == null ? '' : a[k]) !== String(d[k] == null ? '' : d[k]))
-    .map((k) => nome(k, 30));
+    .map(campoDe);
   if ((antes && antes.modo) !== (depois && depois.modo)) campos.push('estilo');
   return [...new Set(campos)].slice(0, 12).map((c) => ['editado', base, c].join('|'));
 }
+
+// Os tipos de server/ajuste.js (TIPOS) — lista fechada.
+const TIPOS_DE_PEDIDO = ['texto', 'acrescentar', 'tirar', 'redes', 'letreiro', 'contagem'];
 
 // O tipo do pedido, como server/ajuste.js entendeu. "refazer" se abre pelo que acontece com a foto.
 function tipoDaMudanca(m) {
   if (!m || !m.tipo) return 'outro';
   if (m.tipo === 'refazer') return m.foto === 'trocar' ? 'foto-nova' : m.foto === 'usar' ? 'foto-minha' : m.foto === 'tirar' ? 'sem-foto' : 'redesenhar';
-  return nome(m.tipo, 20);
+  return TIPOS_DE_PEDIDO.includes(m.tipo) ? m.tipo : 'outro';
 }
 
 /*
