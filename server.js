@@ -48,6 +48,8 @@ const avisoRapido = require('./server/aviso-rapido');
 const pessoas = require('./js/pessoas.js');
 const fotoQr = require('./server/foto-qr');
 const guarda = require('./server/guarda');
+const kpis = require('./server/kpis');
+const segredo = require('./server/segredo');
 const ajusteTela = require('./server/ajuste-tela');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
@@ -529,6 +531,8 @@ function montarCtx() {
     calendario: require('./server/routes/calendario')(ctx),
     // A foto da pessoa pelo QR, com o RH aprovando (D31).
     fotoqr: require('./server/routes/fotoqr')(ctx),
+    // Os indicadores da empresa (D36).
+    kpis: require('./server/routes/kpis')(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -2355,6 +2359,7 @@ const negocioCache = new Map();
   if (await ctx.routes.campanhas(req, res, parts, query, sess)) return;
   if (await ctx.routes.calendario(req, res, parts, query, sess)) return;
   if (await ctx.routes.fotoqr(req, res, parts, query, sess)) return;
+  if (await ctx.routes.kpis(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------
@@ -2996,5 +3001,21 @@ db.init()
       .catch((e) => erros.registrar(e, { onde: 'prazo de guarda' }));
     setTimeout(prazoDeGuarda, 3 * 60 * 1000).unref();
     setInterval(prazoDeGuarda, 24 * 60 * 60 * 1000).unref();
+    /*
+     * Os conectores que BUSCAM os indicadores (D36): a cada minuto, os que
+     * venceram o intervalo, no máximo 20 por volta. A próxima busca é marcada
+     * antes, para dois relógios não buscarem o mesmo.
+     */
+    const buscarIndicadores = async () => {
+      try {
+        const agora = Date.now();
+        for (const linha of (await db.conectoresParaBuscar(agora)).slice(0, 20)) {
+          await db.atualizarConector(linha.id, linha.tenant_id, { proxima: agora + 60000 });
+          const r = await kpis.buscarAgora(linha, { db, site, segredo, agora });
+          if (!r.erro) avisarTelas(linha.tenant_id, 'kpis', {}).catch(() => {});
+        }
+      } catch (e) { erros.registrar(e, { onde: 'conectores de indicadores' }); }
+    };
+    setInterval(buscarIndicadores, 60 * 1000).unref();
   }))
   .catch((e) => { log.erro('db.init-falhou', e); process.exit(1); });

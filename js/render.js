@@ -1154,13 +1154,58 @@
   }
 
   /* ---------- Indicador / KPI ---------- */
+  /*
+   * O indicador AO VIVO (EXECUTOR D36): `item.indicador` aponta a chave de um
+   * indicador da empresa (o conector do painel), e o número vem de
+   * global.MT_KPIS — que a TV busca de 5 em 5 minutos e guarda para quando
+   * cair a rede. Mostra a variação contra o valor anterior e a meta: a barra,
+   * e "Meta batida!" quando passa.
+   */
+  function formatarKpi(v, u) {
+    if (v == null || !isFinite(v)) return '—';
+    const abs = Math.abs(v);
+    const txt = abs >= 1e6 ? (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi'
+      : v.toLocaleString('pt-BR', { maximumFractionDigits: abs < 100 ? 2 : 0 });
+    const un = String(u || '').trim();
+    if (!un) return txt;
+    if (/^(R\$|US\$|\$|€)$/i.test(un)) return un + ' ' + txt;
+    return un === '%' ? txt + '%' : txt + ' ' + un;
+  }
+  function kpiAoVivo(item) {
+    const lista = Array.isArray(global.MT_KPIS) ? global.MT_KPIS : [];
+    const k = lista.find((x) => x && x.chave === item.indicador);
+    if (!k) return Object.assign({}, item, { valor: '—', detalhe: item.detalhe || 'Esperando o primeiro número' });
+    // O número grande e a unidade pequena ao lado ("1.910 peças" não pode quebrar em duas linhas gigantes).
+    const un = String(k.unidade || '').trim();
+    const out = { rotulo: item.rotulo || k.nome, valor: formatarKpi(k.valor, ''), duracao: item.duracao, bg: item.bg,
+      unidade: un ? { texto: un, antes: /^(R\$|US\$|\$|€)$/i.test(un) } : null };
+    if (k.anterior != null && k.anterior !== 0 && k.valor !== k.anterior) {
+      const pct = (k.valor - k.anterior) / Math.abs(k.anterior) * 100;
+      out.variacao = Math.abs(pct).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+      out.tendencia = pct > 0 ? 'subiu' : 'desceu';
+    }
+    if (k.meta) {
+      out.meta = { pct: k.valor / k.meta * 100, texto: formatarKpi(k.meta, k.unidade) };
+    }
+    const hora = k.em ? new Date(k.em) : null;
+    out.detalhe = item.detalhe || (hora ? 'Atualizado às ' + hora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
+    return out;
+  }
+
   function renderKpi(item) {
+    if (item.indicador) item = kpiAoVivo(item);
     const el = div('mt-slide mt-surface mt-kpi');
     if (item.bg) el.style.background = item.bg;
     const inner = div('mt-kpi-inner');
     if (item.rotulo) { const l = div('mt-kpi-label'); l.textContent = item.rotulo; inner.appendChild(l); }
     const valueWrap = div('mt-kpi-value-wrap');
     const v = div('mt-kpi-value'); v.textContent = item.valor || '—';
+    if (item.unidade && item.unidade.texto) {
+      const u = document.createElement('span');
+      u.className = 'mt-kpi-un';
+      u.textContent = item.unidade.texto;
+      if (item.unidade.antes) v.insertBefore(u, v.firstChild); else v.appendChild(u);
+    }
     valueWrap.appendChild(v);
     const trend = (item.tendencia || 'estavel');
     if (item.variacao) {
@@ -1170,6 +1215,22 @@
       valueWrap.appendChild(t);
     }
     inner.appendChild(valueWrap);
+    // A meta (D36): a barra até 100% e, passou, o destaque.
+    if (item.meta) {
+      const batida = item.meta.pct >= 100;
+      if (batida) el.classList.add('mt-kpi-batida');
+      const m = div('mt-kpi-meta');
+      const barra = div('mt-kpi-meta-barra');
+      const cheio = div('mt-kpi-meta-cheio');
+      cheio.style.width = Math.max(2, Math.min(100, item.meta.pct)).toFixed(1) + '%';
+      barra.appendChild(cheio);
+      const t = div('mt-kpi-meta-texto');
+      t.textContent = batida ? '🎉 Meta batida! ' + Math.round(item.meta.pct) + '% de ' + item.meta.texto
+        : Math.round(item.meta.pct) + '% da meta de ' + item.meta.texto;
+      m.appendChild(barra);
+      m.appendChild(t);
+      inner.appendChild(m);
+    }
     if (item.detalhe) { const d = div('mt-kpi-detail'); d.textContent = item.detalhe; inner.appendChild(d); }
     el.appendChild(inner);
     return { el, duration: item.duracao || 12 };

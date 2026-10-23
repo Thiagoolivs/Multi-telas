@@ -487,6 +487,16 @@ export const birthdays = {
   remover: (id) => api('DELETE', '/api/birthdays/' + encodeURIComponent(id)),
 };
 
+/* Os indicadores da empresa (D36): conectores (push com token, pull com autenticação) e os valores. */
+export const kpis = {
+  list: () => api('GET', '/api/kpis'),
+  criar: (c) => api('POST', '/api/kpis/conectores', c),
+  atualizar: (id, c) => api('PUT', '/api/kpis/conectores/' + encodeURIComponent(id), c),
+  remover: (id) => api('DELETE', '/api/kpis/conectores/' + encodeURIComponent(id)),
+  token: (id) => api('POST', '/api/kpis/conectores/' + encodeURIComponent(id) + '/token'),
+  testar: (id) => api('POST', '/api/kpis/conectores/' + encodeURIComponent(id) + '/testar'),
+};
+
 /* A foto da pessoa pelo QR, com o RH aprovando (D31). */
 export const fotoqr = {
   list: () => api('GET', '/api/fotoqr'),

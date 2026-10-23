@@ -134,7 +134,8 @@ export const CONTENT_TYPES = {
       DUR,
     ],
     make: () => ({ type: 'kpi', rotulo: 'Meta do mês', valor: '0', tendencia: 'estavel', duracao: 12 }),
-    summary: (i) => (i.rotulo ? i.rotulo + ': ' : '') + (i.valor || ''),
+    // D36: o cartão posto por Indicadores traz o número ao vivo (o valor digitado não vale).
+    summary: (i) => (i.indicador ? 'Ao vivo: ' + (i.rotulo || i.indicador) : (i.rotulo ? i.rotulo + ': ' : '') + (i.valor || '')),
   },
   social: {
     label: 'Redes Sociais', icon: Share2, group: 'Comercial',

@@ -104,6 +104,19 @@ async function init() {
       setor TEXT, email TEXT, url TEXT, chave TEXT, media_id TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_fotos_pessoa_tenant ON fotos_pessoa(tenant_id);
+    -- Indicadores da empresa (D36): o conector e o último valor de cada indicador.
+    CREATE TABLE IF NOT EXISTS conectores_kpi (
+      id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, modo TEXT, token_hash TEXT, url TEXT,
+      auth_tipo TEXT, auth_nome TEXT, auth_segredo TEXT, mapa TEXT, intervalo_min INTEGER,
+      ultimo_ok BIGINT, ultimo_erro TEXT, proxima BIGINT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_conectores_kpi_tenant ON conectores_kpi(tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_conectores_kpi_token ON conectores_kpi(token_hash);
+    CREATE TABLE IF NOT EXISTS indicadores (
+      id TEXT PRIMARY KEY, tenant_id TEXT, conector_id TEXT, chave TEXT, nome TEXT, valor DOUBLE PRECISION, unidade TEXT,
+      meta DOUBLE PRECISION, anterior DOUBLE PRECISION, atualizado_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_indicadores_tenant ON indicadores(tenant_id);
     ALTER TABLE fotos_pessoa ADD COLUMN IF NOT EXISTS aceite_em BIGINT;
     -- Fotos para uma data (D33): a data do pedido e a foto aprovada que fica no mural dela.
     ALTER TABLE pedidos_foto ADD COLUMN IF NOT EXISTS data_id TEXT;
@@ -919,6 +932,76 @@ async function removerEvento(id, tenantId) {
   return r.rowCount > 0;
 }
 
+/* ----- Indicadores da empresa (D36) ----- */
+const mapConector = (r) => {
+  if (!r) return null;
+  let mapa = {};
+  try { mapa = JSON.parse(r.mapa || '{}'); } catch (e) { mapa = {}; }
+  return {
+    id: r.id, tenantId: r.tenant_id, nome: r.nome || '', modo: r.modo || 'push', url: r.url || '',
+    authTipo: r.auth_tipo || 'nenhum', authNome: r.auth_nome || '', temSegredo: !!r.auth_segredo, mapa,
+    intervaloMin: Number(r.intervalo_min) || 15, ultimoOk: Number(r.ultimo_ok) || 0, ultimoErro: r.ultimo_erro || '',
+    proxima: Number(r.proxima) || 0, criadoEm: Number(r.created_at) || 0,
+  };
+};
+const mapIndicador = (r) => (r ? {
+  id: r.id, conectorId: r.conector_id, chave: r.chave, nome: r.nome || r.chave, valor: r.valor == null ? null : Number(r.valor),
+  unidade: r.unidade || '', meta: r.meta == null ? null : Number(r.meta), anterior: r.anterior == null ? null : Number(r.anterior),
+  atualizadoEm: Number(r.atualizado_em) || 0,
+} : null);
+async function criarConector(tenantId, c) {
+  const id = 'kc_' + rid(12);
+  const r = await pool.query("INSERT INTO conectores_kpi (id, tenant_id, nome, modo, token_hash, url, auth_tipo, auth_nome, auth_segredo, mapa, intervalo_min, ultimo_ok, ultimo_erro, proxima, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,'',0,$12) RETURNING *",
+    [id, tenantId, c.nome || '', c.modo || 'push', c.tokenHash || '', c.url || '', c.authTipo || 'nenhum', c.authNome || '', c.authSegredo || '', JSON.stringify(c.mapa || {}), Number(c.intervaloMin) || 15, Date.now()]);
+  return mapConector(r.rows[0]);
+}
+async function listarConectores(tenantId) { return (await pool.query('SELECT * FROM conectores_kpi WHERE tenant_id = $1 ORDER BY created_at', [tenantId])).rows.map(mapConector); }
+// Com o segredo cifrado e o hash do token: só para o servidor (nunca vai ao painel).
+async function conectorInterno(id, tenantId) { return (await pool.query('SELECT * FROM conectores_kpi WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rows[0] || null; }
+async function conectorPorToken(hash) { return mapConector((await pool.query("SELECT * FROM conectores_kpi WHERE token_hash = $1 AND modo = 'push'", [String(hash)])).rows[0]); }
+async function conectoresParaBuscar(agora) { return (await pool.query("SELECT * FROM conectores_kpi WHERE modo = 'pull' AND url <> '' AND proxima <= $1", [Number(agora)])).rows; }
+const CAMPOS_CONECTOR = { nome: 'nome', url: 'url', authTipo: 'auth_tipo', authNome: 'auth_nome', authSegredo: 'auth_segredo', tokenHash: 'token_hash', intervaloMin: 'intervalo_min', ultimoOk: 'ultimo_ok', ultimoErro: 'ultimo_erro', proxima: 'proxima' };
+async function atualizarConector(id, tenantId, campos) {
+  const sets = [];
+  const vals = [];
+  for (const k of Object.keys(campos || {})) {
+    if (k === 'mapa') { vals.push(JSON.stringify(campos.mapa || {})); sets.push('mapa = $' + vals.length); continue; }
+    if (CAMPOS_CONECTOR[k]) { vals.push(campos[k]); sets.push(CAMPOS_CONECTOR[k] + ' = $' + vals.length); }
+  }
+  if (!sets.length) return 0;
+  vals.push(String(id), tenantId);
+  return (await pool.query('UPDATE conectores_kpi SET ' + sets.join(', ') + ' WHERE id = $' + (vals.length - 1) + ' AND tenant_id = $' + vals.length, vals)).rowCount;
+}
+async function removerConector(id, tenantId) {
+  await pool.query('DELETE FROM indicadores WHERE conector_id = $1 AND tenant_id = $2', [String(id), tenantId]);
+  return (await pool.query('DELETE FROM conectores_kpi WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rowCount;
+}
+// O último valor de cada indicador; o de antes fica em `anterior` (a TV mostra se subiu ou desceu).
+async function gravarIndicadores(tenantId, conectorId, lista, agora) {
+  const quando = Number(agora) || Date.now();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const i of lista) {
+      const atual = (await client.query('SELECT id FROM indicadores WHERE tenant_id = $1 AND conector_id = $2 AND chave = $3', [tenantId, conectorId, i.chave])).rows[0];
+      if (atual) {
+        await client.query('UPDATE indicadores SET nome = $1, valor = $2, unidade = $3, meta = $4, anterior = CASE WHEN valor = $2 THEN anterior ELSE valor END, atualizado_em = $5 WHERE id = $6',
+          [i.nome, i.valor, i.unidade || '', i.meta, quando, atual.id]);
+      } else {
+        await client.query('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULL,$9)',
+          ['ki_' + rid(12), tenantId, conectorId, i.chave, i.nome, i.valor, i.unidade || '', i.meta, quando]);
+      }
+    }
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK'); throw e;
+  } finally {
+    client.release();
+  }
+  return lista.length;
+}
+async function listarIndicadores(tenantId) { return (await pool.query('SELECT * FROM indicadores WHERE tenant_id = $1 ORDER BY nome', [tenantId])).rows.map(mapIndicador); }
+
 /* ----- Fotos pelo QR (D31) ----- */
 const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, dataId: r.data_id || '', dataAlvo: r.data_alvo || '', guardarAte: r.guardar_ate || '', criadoEm: Number(r.created_at) || 0 } : null);
 const mapFotoPessoa = (r) => (r ? { id: r.id, tenantId: r.tenant_id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', aceiteEm: Number(r.aceite_em) || 0, aprovadaEm: Number(r.aprovada_em) || 0, criadoEm: Number(r.created_at) || 0 } : null);
@@ -1638,6 +1721,9 @@ async function dadosDoTenant(tenantId) {
     imagensDaMarca: await varios('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = $1'),
     aniversariantes: await varios('SELECT id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, consentimento_em, created_at, updated_at FROM birthdays WHERE tenant_id = $1'),
     pedidosDeFoto: await varios('SELECT id, codigo, titulo, tipo, inicio, fim, aceitando, data_id, data_alvo, guardar_ate, created_at FROM pedidos_foto WHERE tenant_id = $1'),
+    // Sem o segredo cifrado e sem o hash do token: são credenciais, não dados da conta.
+    conectoresDeIndicadores: await varios('SELECT id, nome, modo, url, auth_tipo, intervalo_min, ultimo_ok, ultimo_erro, created_at FROM conectores_kpi WHERE tenant_id = $1'),
+    indicadores: await varios('SELECT id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em FROM indicadores WHERE tenant_id = $1'),
     fotosParaAprovar: await varios('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, aceite_em, aprovada_em, created_at FROM fotos_pessoa WHERE tenant_id = $1'),
     midias: await varios('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
@@ -1698,7 +1784,7 @@ async function apagarTenant(tenantId) {
      */
     for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes',
-      'pedidos_foto', 'fotos_pessoa', 'users']) {
+      'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
     await client.query("DELETE FROM banco WHERE tenant_id = $1 AND estado <> 'aprovada'", [tenantId]);
@@ -1885,6 +1971,7 @@ module.exports = {
   criarPedidoFoto, listarPedidosFoto, pedidoFotoPorCodigo, pedidoFotoPorId, atualizarPedidoFoto, removerPedidoFoto,
   addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa, marcarConsentimento, aprovarFotoPessoa,
   pedidosFotoDeData, fotosPendentesAntigas, guardarPedidoFotoAte,
+  criarConector, listarConectores, conectorInterno, conectorPorToken, conectoresParaBuscar, atualizarConector, removerConector, gravarIndicadores, listarIndicadores, mapConector,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,

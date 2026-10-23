@@ -338,6 +338,24 @@
     // Relação de aniversariantes: carrega e refresca a cada 6h (muda pouco).
     loadBirthdays(dev.id);
     setInterval(function () { loadBirthdays(dev.id); }, 6 * 60 * 60 * 1000);
+    // Indicadores (D36): a cada 5 min e quando o servidor avisa que chegaram números novos.
+    loadKpis(dev.id);
+    setInterval(function () { loadKpis(dev.id); }, 5 * 60 * 1000);
+    document.addEventListener('mt:kpis-mudou', function () { loadKpis(dev.id); });
+  }
+
+  // Os valores dos indicadores (global.MT_KPIS), com cache para a TV sem rede mostrar o último número.
+  function loadKpis(id) {
+    try {
+      const cached = localStorage.getItem('mt.kpis');
+      if (cached && !global.MT_KPIS) global.MT_KPIS = JSON.parse(cached);
+    } catch (e) {}
+    if (!global.MTCloud || !MTCloud.fetchKpis) return;
+    MTCloud.fetchKpis(id).then(function (lista) {
+      global.MT_KPIS = lista || [];
+      try { localStorage.setItem('mt.kpis', JSON.stringify(global.MT_KPIS)); } catch (e) {}
+      try { document.dispatchEvent(new CustomEvent('mt:kpis')); } catch (e) {}
+    }).catch(function () { /* offline: mantém o cache */ });
   }
 
   // Busca a relação de aniversariantes e a expõe (global.MT_BIRTHDAYS) para o
