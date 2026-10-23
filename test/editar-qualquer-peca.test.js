@@ -70,5 +70,5 @@ test('desenho: a mesma mensagem em outra peça do mesmo lugar, com os textos que
 });
 
 test('o player recebe a versão nova do desenhista (cache da TV trocado)', () => {
-  assert.match(ler('sw.js'), /const SHELL_CACHE = 'mt-shell-v49';/);
+  assert.ok(Number((/const SHELL_CACHE = 'mt-shell-v(\d+)';/.exec(ler('sw.js')) || [])[1]) >= 49, 'o desenhista mudou e a TV não baixa de novo');
 });

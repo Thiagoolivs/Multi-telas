@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Plus, UtensilsCrossed, Wand2, Image as ImageIcon, Tag, Megaphone, Cake, Instagram, LayoutGrid, Layers, Upload, Film, MessageSquare } from 'lucide-react';
+import { Search, Plus, UtensilsCrossed, Wand2, Image as ImageIcon, Tag, Megaphone, Cake, Instagram, LayoutGrid, Layers, Upload, Film, MessageSquare, CircleHelp } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { CONTENT_TYPES, CONTENT_ORDER } from '../../lib/contentTypes.js';
 import { DesignThumb } from './DesignThumb.jsx';
@@ -18,6 +18,7 @@ const DESC = {
   promo: 'Produto, preço e chamada.',
   precos: 'Cardápio ou lista de preços: cole as linhas e a TV organiza em colunas.',
   kpi: 'Número grande com variação.',
+  quiz: 'Pergunta, alternativas e o tempo correndo; a resposta aparece no fim.',
   composicao: 'Editor livre: formas, texto e imagens.',
   social: 'Perfil e QR das redes.',
   image: 'Foto ou arte da sua mídia.',
@@ -58,6 +59,8 @@ const ENTRADAS = [
   { id: 'announce', label: 'Aviso', desc: 'Horário, recado, comunicado.', icon: Megaphone },
   { id: 'birthdayauto', label: 'Aniversariantes', desc: 'Os aniversariantes do dia, sozinhos.', icon: Cake },
   { id: 'social', label: 'Instagram ou QR', desc: 'O perfil e o QR para seguir vocês.', icon: Instagram },
+  // D21: o quiz prende o olho de quem passa (a IA escreve, a pessoa confere).
+  { id: 'quiz', label: 'Quiz', desc: 'Pergunta, alternativas e o tempo correndo.', icon: CircleHelp },
 ];
 
 const NOME_PAPEL = { cabecalho: 'cabeçalho', rodape: 'rodapé', principal: 'principal', lateral: 'lateral' };
@@ -255,7 +258,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona })
         </div>
       ) : tab === 'inicio' ? (
         <div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {ENTRADAS.filter((e) => e.id !== 'criar' && e.id !== 'midia').map((e) => {
               const Icon = e.icon;
               return (

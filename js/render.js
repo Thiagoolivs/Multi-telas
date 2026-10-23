@@ -1774,6 +1774,85 @@
   }
   RENDERERS['peca-html'] = renderPecaHtml;
 
+  /* ---------- Quiz com cronômetro (EXECUTOR D21) ----------
+   *
+   * Uma pergunta por vez: o enunciado, as alternativas, a barra do tempo
+   * esvaziando e os segundos; acabou o tempo, a certa acende, as outras
+   * apagam e a explicação aparece. Só entram as perguntas CONFERIDAS
+   * (js/quiz.js): a que a IA escreveu e ninguém revisou não vai à parede.
+   *
+   * O relógio é setTimeout/setInterval, não requestAnimationFrame: com a
+   * aba em segundo plano (TV com outra coisa na frente) o rAF para e o quiz
+   * travaria numa pergunta. A barra anima por transição de CSS.
+   */
+  function renderQuiz(item) {
+    const Q = global.MTQuiz;
+    const el = div('mt-slide mt-surface mt-quiz');
+    if (!Q) return { el, duration: 5 };
+    const q = Q.normalizar(item);
+    const perguntas = Q.prontas(item);
+    // Nenhuma conferida: o player pula o item (o mesmo caminho de um item que não desenha), em vez de 10s de tela vazia.
+    if (!perguntas.length) throw new Error('quiz sem pergunta conferida');
+    const timers = [];
+    const esperar = (ms, fn) => timers.push(setTimeout(fn, ms));
+
+    const topo = div('mt-quiz-topo');
+    topo.appendChild(divText('mt-quiz-selo', q.titulo));
+    const contador = divText('mt-quiz-n', '');
+    topo.appendChild(contador);
+    const enunciado = div('mt-quiz-pergunta');
+    const alts = div('mt-quiz-alts');
+    const tempo = div('mt-quiz-tempo');
+    let barra = div('mt-quiz-barra');
+    const segundos = divText('mt-quiz-seg', '');
+    tempo.appendChild(barra);
+    tempo.appendChild(segundos);
+    const explica = div('mt-quiz-explica');
+    [topo, enunciado, alts, tempo, explica].forEach((x) => el.appendChild(x));
+
+    function mostrar(i) {
+      const p = perguntas[i];
+      el.classList.remove('mt-quiz-revelado');
+      contador.textContent = perguntas.length > 1 ? 'Pergunta ' + (i + 1) + ' de ' + perguntas.length : '';
+      enunciado.textContent = p.pergunta;
+      alts.textContent = '';
+      alts.setAttribute('data-n', String(p.alternativas.length));
+      p.alternativas.forEach((a, j) => {
+        const alt = div('mt-quiz-alt' + (j === p.certa ? ' mt-quiz-certa' : ''));
+        alt.appendChild(divText('mt-quiz-letra', Q.LETRAS[j]));
+        alt.appendChild(divText('mt-quiz-texto', a));
+        alts.appendChild(alt);
+      });
+      explica.textContent = p.explicacao ? '✔ ' + p.explicacao : '';
+      /*
+       * Barra nova a cada pergunta, com animação de CSS no tempo dela: a
+       * animação começa quando o elemento aparece. Transição começava antes
+       * de o slide entrar na tela e a barra já nascia vazia.
+       */
+      const nova = div('mt-quiz-barra');
+      nova.style.animationDuration = q.tempo + 's';
+      tempo.replaceChild(nova, barra);
+      barra = nova;
+      let resta = q.tempo;
+      segundos.textContent = String(resta);
+      const tique = setInterval(() => { resta = Math.max(0, resta - 1); segundos.textContent = String(resta); }, 1000);
+      timers.push(tique);
+      esperar(q.tempo * 1000, () => {
+        clearInterval(tique);
+        segundos.textContent = '0';
+        el.classList.add('mt-quiz-revelado');
+        if (i + 1 < perguntas.length) esperar(q.revelar * 1000, () => mostrar(i + 1));
+      });
+    }
+    mostrar(0);
+    return {
+      el,
+      duration: perguntas.length * (q.tempo + q.revelar),
+      onLeave: () => timers.forEach((t) => { clearTimeout(t); clearInterval(t); }),
+    };
+  }
+  RENDERERS.quiz = renderQuiz;
+
   /* ---------- API pública ---------- */
   function renderItem(item) {
     const fn = RENDERERS[item.type];

@@ -2,6 +2,7 @@ import React from 'react';
 import { Field, Input, Select, Textarea, Checkbox } from '../ui/Field.jsx';
 import { MediaField } from './MediaField.jsx';
 import { MuralField } from './MuralField.jsx';
+import { QuizField } from './QuizField.jsx';
 import { CONTENT_TYPES } from '../../lib/contentTypes.js';
 
 // Formulário genérico dirigido pelo schema do tipo. Não conhece tipos
@@ -16,6 +17,8 @@ export function ItemForm({ item, onChange }) {
     <div className="space-y-3.5">
       {schema.fields.map((f) => {
         const value = item[f.key];
+        // O quiz mexe em mais de um campo (título, tempo, perguntas): o editor dele recebe o item inteiro.
+        if (f.kind === 'quiz') return <QuizField key={f.key} item={item} onChange={onChange} />;
         if (f.kind === 'bool') {
           return (
             <Checkbox key={f.key} label={f.label} checked={!!value} onChange={(e) => set(f.key, e.target.checked)} />

@@ -26,6 +26,7 @@ let paginaAtual = () => '';
 const NOME = {
   campanha: ['A campanha', 'a'], 'campanha-simples': ['A campanha', 'a'], director: ['A campanha', 'a'],
   imagem: ['A imagem', 'a'], 'kit-de-marca': ['O kit de marca', 'o'], conteudo: ['O conteúdo', 'o'],
+  quiz: ['O quiz', 'o'],
 };
 export const nomeDoTipo = (t) => (NOME[t] || ['A criação'])[0];
 export const frasePronto = (t) => nomeDoTipo(t) + ' ficou pront' + ((NOME[t] || [0, 'a'])[1]) + '.';
@@ -40,7 +41,8 @@ export function destino(j) {
   if (j.tipo === 'imagem') return ['ia', {}];
   return ['designs', {}];
 }
-const quemJaAvisa = { campanha: ['criar'], 'campanha-simples': ['designs'], director: ['designs', 'rapida'], imagem: ['designs'] };
+// O quiz é escrito com o editor da TV aberto, e ele mesmo mostra as perguntas: aviso seria ruído.
+const quemJaAvisa = { campanha: ['criar'], 'campanha-simples': ['designs'], director: ['designs', 'rapida'], imagem: ['designs'], quiz: ['content'] };
 
 function emitirMudanca() { ouvintes.forEach((f) => f()); }
 

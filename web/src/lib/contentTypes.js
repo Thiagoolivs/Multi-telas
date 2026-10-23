@@ -11,7 +11,7 @@
  */
 import {
   Megaphone, Type, Quote, Tag, BarChart3, Share2, Image as ImageIcon,
-  Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout, Airplay, Cast, Presentation, ReceiptText, Palette } from 'lucide-react';
+  Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout, Airplay, Cast, Presentation, ReceiptText, Palette, CircleHelp } from 'lucide-react';
 
 const GRUPO_PC = 'Com computador ligado à TV';
 
@@ -106,6 +106,21 @@ export const CONTENT_TYPES = {
     // TV da loja pode ter que ser honrado. Os exemplos ficam só como dica.
     make: () => ({ type: 'precos', titulo: 'CARDÁPIO', colunas: 'auto', duracao: 20, rodape: '', linhas: '' }),
     summary: (i) => (i.titulo || 'Tabela de preços') + ' · ' + String(i.linhas || '').split('\n').filter((l) => l.trim()).length + ' linha(s)',
+  },
+  /*
+   * Quiz com cronômetro (D21): pergunta, alternativas, o tempo correndo e a
+   * resposta com explicação. O que a IA escreve entra para conferir; a TV só
+   * mostra pergunta conferida (js/quiz.js).
+   */
+  quiz: {
+    label: 'Quiz com cronômetro', icon: CircleHelp, group: 'Mensagens',
+    fields: [{ key: 'perguntas', label: 'Perguntas', kind: 'quiz' }],
+    make: () => ({ type: 'quiz', titulo: 'Quiz', tempo: 10, revelar: 7, perguntas: [] }),
+    summary: (i) => {
+      const ps = Array.isArray(i.perguntas) ? i.perguntas : [];
+      const conferir = ps.filter((p) => p && p.revisada === false).length;
+      return (i.titulo || 'Quiz') + ' · ' + ps.length + (ps.length === 1 ? ' pergunta' : ' perguntas') + (conferir ? ' · ' + conferir + ' para conferir' : '');
+    },
   },
   kpi: {
     label: 'Indicador (KPI)', icon: BarChart3, group: 'Comercial',
@@ -287,7 +302,7 @@ export const CONTENT_TYPES = {
 
 // Captura de janela e entrada HDMI só existem com um computador ligado à TV;
 // num TV Box ficam pretas. Vão para o fim, num grupo que diz isso.
-export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'promo', 'precos', 'kpi', 'composicao', 'social', 'image', 'video', 'pptx', 'youtube', 'web', 'qrcode', 'mural', 'weatherpro', 'birthdayauto', 'screen', 'livesource'];
+export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'quiz', 'promo', 'precos', 'kpi', 'composicao', 'social', 'image', 'video', 'pptx', 'youtube', 'web', 'qrcode', 'mural', 'weatherpro', 'birthdayauto', 'screen', 'livesource'];
 
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;
