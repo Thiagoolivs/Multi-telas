@@ -6,10 +6,32 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **23/10/2026** · 1474 testes passando · Fases 1 a 4 do
-DNA novo completas (EXECUTOR §2f, D0.1–D35, PRs #201 a #264).
+Atualizado em: **23/10/2026** · 1488 testes passando · Fases 1 a 5 do
+DNA novo completas, e a parte de "agora" do D38 (EXECUTOR §2f, D0.1–D38,
+PRs #201 a #268).
 
 ---
+
+## Rodada 5e — o DNA novo, Fase 5: dados (23/10, PRs #266 a #268)
+
+- **Indicadores na TV** (D36, Relatórios › Indicadores): o dono pediu
+  "conexão configurável via endpoint, para APIs como as do TOTVS Protheus".
+  **Receber**: o sistema da empresa manda os números com um token (o caminho
+  do Protheus na rede interna). **Buscar**: um endereço JSON, com a
+  autenticação **cifrada** (`server/segredo.js`) e sempre por `site.js`
+  (a senha não segue redirecionamento para outro host). Na TV, o cartão KPI
+  ao vivo: número, variação, barra da meta e "Meta batida!".
+- **Banco de imagens Pixabay** (D37): busca pelo servidor (a chave nunca vai
+  ao navegador), cache de 24 h, "usar" baixa para as Mídias da conta com o
+  crédito, que aparece discreto no canto da TV.
+- **Postar nas redes** (D38, a parte de agora): no computador, "Abrir o
+  Instagram/WhatsApp/Facebook/Google" abre a página de postar (o WhatsApp
+  com o texto), baixa a imagem e copia o texto. SW em v60.
+
+**Para o ar (pedido ao consultor, que tem o Railway)**: `MT_CHAVE_SEGREDOS`
+(32 bytes em base64; sem ela, o "Buscar" funciona só sem autenticação) e
+`PIXABAY_API_KEY` (sem ela, a aba do banco de imagens não aparece).
+**Depois**: D39 (senhas e clínicas), D40 (escala), D41 (APK remoto).
 
 ## Rodada 5d — o DNA novo, Fase 4: pessoas e RH (23/10, PRs #257 a #264)
 
