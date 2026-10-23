@@ -100,6 +100,20 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 /* A troca de arranjo do layout dinâmico é animada via FLIP (transform) no
    player.js — cada zona desliza/redimensiona suavemente. */
+/* D29: o que sai esmaece POR CIMA do que entra (js/player.js, esmaecerESumir):
+   a zona que muda não pisca vazia, e o palco remontado não passa pelo preto. */
+.mt-zona-saindo {
+  position: absolute; inset: 0; z-index: 4;
+  pointer-events: none;
+  transition: opacity .5s ease;
+}
+.mt-palco-saindo {
+  position: absolute; inset: 0; z-index: 6;
+  display: grid;
+  padding: inherit; gap: inherit;
+  pointer-events: none;
+  transition: opacity .6s ease;
+}
 @keyframes mt-zone-in {
   from { opacity: 0; transform: translateY(2.4vh) scale(.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
