@@ -13,6 +13,14 @@ module.exports = function (ctx) {
     db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode, baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest, cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual, sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela,
   } = ctx;
 
+  /*
+   * Produção sem Asaas: nada de checkout simulado nem pacote creditado de
+   * graça. A pessoa recebe uma frase que diz o que fazer, e o boot avisa o
+   * operador (server.js, 'cobranca.sem-asaas').
+   */
+  const COBRANCA_FECHADA = 'A assinatura pelo painel está em manutenção agora. Fale com a gente pelo Suporte e ativamos o seu plano.';
+  const cobrancaFechada = () => billing.mode() === 'dev' && !billing.simulacaoPermitida();
+
   // Aplica um evento do Asaas ao plano do tenant.
   async function handleAsaasEvent(body) {
     const eventName = body.event;
@@ -200,7 +208,9 @@ module.exports = function (ctx) {
         const desde = Number(tenant && tenant.contrato_desde) || 0;
         const mesesUsados = desde ? Math.floor((Date.now() - desde) / (30 * 864e5)) : 0;
         return sendJson(res, 200, {
-          mode: billing.mode(),
+          // 'indisponivel': produção sem Asaas. O painel não oferece compra que
+          // não pode ser cobrada (ver billing.simulacaoPermitida).
+          mode: billing.mode() === 'dev' && !billing.simulacaoPermitida() ? 'indisponivel' : billing.mode(),
           plan: {
             id: curPlan.id, name: curPlan.name, telasMax: curPlan.telasMax,
             precoTelaCents: curPlan.precoTelaCents, sobConsulta: !!curPlan.sobConsulta,
@@ -273,6 +283,7 @@ module.exports = function (ctx) {
        */
       if (req.method === 'POST' && seg === 'pacote') {
         if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono compra criações' });
+        if (cobrancaFechada()) return sendJson(res, 503, { error: COBRANCA_FECHADA });
         return readBody(req, res, async (b) => {
           const pac = creditos.pacote(b && b.pacote);
           if (!pac) return sendJson(res, 400, { error: 'pacote inválido' });
@@ -293,6 +304,7 @@ module.exports = function (ctx) {
       // Iniciar checkout de upgrade (só dono).
       if (req.method === 'POST' && seg === 'checkout') {
         if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
+        if (cobrancaFechada()) return sendJson(res, 503, { error: COBRANCA_FECHADA });
         return readBody(req, res, async (b) => {
           const target = plans.plan(b && b.plan);
           if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
@@ -378,8 +390,8 @@ module.exports = function (ctx) {
         } catch (e) { return sendJson(res, 502, { error: e.message }); }
       }
 
-      // ----- Modo dev (checkout simulado): só existe sem Stripe configurado -----
-      if (billing.mode() === 'dev') {
+      // ----- Checkout simulado: só sem Asaas, e nunca em produção -----
+      if (billing.simulacaoPermitida()) {
         if (req.method === 'GET' && seg === 'dev-checkout') {
           const target = plans.plan(query.plan);
           // Um nonce por resposta: vale só para este HTML, e a política global

@@ -281,7 +281,7 @@ export function BillingPage({ onFalarComVendas }) {
 
       {/* Os planos */}
       <Panel>
-        <PanelHeader title="Planos" description={mode === 'dev' ? 'Cobrança em modo simulado — nada é cobrado de verdade (sem ASAAS_API_KEY).' : undefined} />
+        <PanelHeader title="Planos" description={mode === 'dev' ? 'Cobrança em modo simulado — nada é cobrado de verdade (sem ASAAS_API_KEY).' : mode === 'indisponivel' ? 'A assinatura pelo painel está em manutenção. Fale com a gente pelo Suporte e ativamos o seu plano.' : undefined} />
         <div className="grid gap-3 p-4 sm:grid-cols-3">
           {catalog.map((p) => {
             const isCurrent = p.id === plan.id;

@@ -2507,6 +2507,14 @@ db.init()
         aviso: 'SKIP_VERIFY=1 — o cadastro cria a conta sem confirmar o e-mail.',
       });
     }
+    // Produção sem Asaas: a compra fica fechada (server/billing.js,
+    // simulacaoPermitida). Dito alto, porque o sintoma é "ninguém assina".
+    if (billing.mode() === 'dev' && !billing.simulacaoPermitida()) {
+      log.aviso('cobranca.sem-asaas', {
+        aviso: 'Produção sem ASAAS_API_KEY — assinar e comprar criações pelo painel ficam fechados. '
+          + 'Para demonstrar com checkout simulado, defina MT_COBRANCA_SIMULADA=1.',
+      });
+    }
 
     /*
      * Eventos velhos saem sozinhos.
