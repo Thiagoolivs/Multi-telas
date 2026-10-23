@@ -60,7 +60,6 @@ test('site: folhas de estilo, rgb() e o tipo da imagem pelos bytes', () => {
   const s = ler('server.js');
   assert.match(s, /const img = await site\.baixarImagem\(dados\.imagem\)/);
   assert.match(s, /await db\.addBrandAsset\(sess\.tenant_id, 'base', salvo\.url, rotulo, parts\[3\]\);/);
-  assert.match(s, /if \(\/\^Do site: \/\.test\(a\.label \|\| ''\)/);
 });
 
 test('as cores do site viram a paleta "Do seu site"', () => {
@@ -69,4 +68,13 @@ test('as cores do site viram a paleta "Do seu site"', () => {
   assert.ok(doSite, 'sem paleta do site');
   assert.equal(doSite.nome, 'Do seu site');
   assert.match(ler('web/src/components/content/PaletasSugeridas.jsx'), /sugerir\(\{ ramo, cores: daEmpresa, doSite \}\)/);
+});
+
+test('a imagem do site anterior sai pela ORIGEM (não pelo rótulo) e com o arquivo (revisão do consultor)', () => {
+  const s = ler('server.js');
+  assert.match(s, /const antigas = \(await db\.listMedia\(sess\.tenant_id\)\)\.filter\(\(x\) => x\.origem === 'site'\);/);
+  assert.match(s, /for \(const x of antigas\) await midia\.apagar\(db, sess\.tenant_id, x\.id\)/);
+  assert.ok(!/\/\^Do site: \/\.test\(a\.label/.test(s), 'voltou a apagar pelo rótulo');
+  // Só a imagem do site DA MARCA vira mídia da conta: a rota é a do site da marca, e só ela chama baixarImagem.
+  assert.equal((s.match(/site\.baixarImagem\(/g) || []).length, 1);
 });

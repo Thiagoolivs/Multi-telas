@@ -251,7 +251,10 @@
    * fica como está.
    */
   function luminanciaHex(h) {
-    const n = parseInt(String(h || '').replace('#', '').slice(0, 6), 16);
+    let s = String(h || '').replace('#', '');
+    // '#fff' é '#ffffff' (revisão do consultor no D8): sem expandir, virava 0x000fff e lia como escuro.
+    if (/^[0-9a-f]{3,4}$/i.test(s)) s = s.slice(0, 3).split('').map((c) => c + c).join('');
+    const n = parseInt(s.slice(0, 6), 16);
     if (!Number.isFinite(n)) return null;
     const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
     return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];

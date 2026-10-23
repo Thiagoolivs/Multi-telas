@@ -25,7 +25,7 @@ test('player: cabeçalho com a logo na versão do fundo, sem repetir o nome', ()
   assert.match(p, /return \(l < 0\.35 \? logo\.clara : logo\.escura\) \|\| logo\.url;/);
   assert.match(p, /title\.textContent = cfg\.settings\.titulo \|\| \(\(logo && logo\.url\) \? '' : cfg\.settings\.nome\) \|\| '';/);
   assert.match(ler('js/render.js'), /logo: global\.MT_LOGO \|\| null,/);
-  assert.match(ler('sw.js'), /const SHELL_CACHE = 'mt-shell-v45';/, 'o player mudou: a TV precisa baixar de novo');
+  assert.match(ler('sw.js'), /const SHELL_CACHE = 'mt-shell-v4[5-9]';/, 'o player mudou: a TV precisa baixar de novo');
 });
 
 test('peça: o lugar de logo usa a da marca, na versão que lê no fundo da peça', () => {
@@ -89,4 +89,16 @@ test('a TV recebe a logo com a config; o painel não (e não grava de volta)', a
 
   const me = (await pedir('/api/auth/me', { cookie: c })).json;
   assert.equal(me.tenant.logo.url, '/media/x/logo.svg', 'o painel não sabe a logo para as prévias');
+});
+
+test('logo: hex curto lê certo, e as três versões vão para o cache da TV (revisão do consultor)', () => {
+  const r = ler('js/peca-render.js');
+  assert.match(r, /if \(\/\^\[0-9a-f\]\{3,4\}\$\/i\.test\(s\)\) s = s\.slice\(0, 3\)/);
+  // O pré-carregamento do player varre a config inteira: settings.logo (url, clara, escura) entra.
+  const p = ler('js/player.js');
+  assert.ok(p.includes('JSON.stringify(cfg).replace(/\\/media\\/[A-Za-z0-9_.\\/\\-]+/g'), 'o pré-carregamento não varre mais a config inteira');
+  const cfg = { settings: { logo: { url: '/media/t/a.svg', clara: '/media/t/a-clara.png', escura: '/media/t/a-escura.png' } } };
+  const achadas = [];
+  JSON.stringify(cfg).replace(/\/media\/[A-Za-z0-9_./-]+/g, (m) => { achadas.push(m); return m; });
+  assert.deepEqual(achadas, ['/media/t/a.svg', '/media/t/a-clara.png', '/media/t/a-escura.png']);
 });
