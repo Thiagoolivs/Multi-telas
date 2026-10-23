@@ -962,9 +962,10 @@ async function deviceComToken(token, tenantId) {
  * "_" da URL casando a mais só deixa a confirmação mais cautelosa.
  */
 async function ondeAparece(tenantId, texto) {
-  const p = '%' + String(texto || '') + '%';
-  const telas = (await pool.query('SELECT name FROM devices WHERE tenant_id = $1 AND config LIKE $2', [tenantId, p])).rows.map((r) => r.name || '');
-  const campanhas = (await pool.query('SELECT nome FROM campanhas WHERE tenant_id = $1 AND resultado LIKE $2', [tenantId, p])).rows.map((r) => r.nome || '');
+  const alvo = String(texto || '');
+  // position(), e não LIKE: um % ou _ na URL viraria curinga e daria falso "em uso".
+  const telas = (await pool.query("SELECT name FROM devices WHERE tenant_id = $1 AND position($2 in COALESCE(config, '')) > 0", [tenantId, alvo])).rows.map((r) => r.name || '');
+  const campanhas = (await pool.query("SELECT nome FROM campanhas WHERE tenant_id = $1 AND position($2 in COALESCE(resultado, '')) > 0", [tenantId, alvo])).rows.map((r) => r.nome || '');
   return { telas, campanhas };
 }
 async function getDevice(id) {
@@ -1461,8 +1462,13 @@ async function apagarTenant(tenantId) {
      * campanhas, jobs…) ficavam para trás: as conversas do Criar sobreviviam à
      * exclusão da conta (EXECUTOR D0.7). test/lgpd-sobras.test.js confere que
      * toda tabela com tenant_id está aqui.
+     *
+     * FICA de propósito: acessos_suporte, o registro de quem do suporte
+     * entrou na conta. É o que prova quem acessou dado pessoal (LGPD art. 37);
+     * apagar não tem volta, guardar e decidir o prazo depois tem (revisão do
+     * consultor; o prazo é do dono com o advogado).
      */
-    for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'acessos_suporte', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
+    for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }

@@ -648,10 +648,11 @@ async function createDevice(id, code, deviceToken) {
 async function getDevice(id) { return q.deviceById.get(id) || null; }
 // Onde a URL de uma mídia aparece (ver db-postgres.js, D0.7).
 async function ondeAparece(tenantId, texto) {
-  const p = '%' + String(texto || '') + '%';
+  // instr(), e não LIKE: um % ou _ na URL viraria curinga (ver db-postgres.js).
+  const alvo = String(texto || '');
   return {
-    telas: db.prepare('SELECT name FROM devices WHERE tenant_id = ? AND config LIKE ?').all(tenantId, p).map((r) => r.name || ''),
-    campanhas: db.prepare('SELECT nome FROM campanhas WHERE tenant_id = ? AND resultado LIKE ?').all(tenantId, p).map((r) => r.nome || ''),
+    telas: db.prepare("SELECT name FROM devices WHERE tenant_id = ? AND instr(COALESCE(config, ''), ?) > 0").all(tenantId, alvo).map((r) => r.name || ''),
+    campanhas: db.prepare("SELECT nome FROM campanhas WHERE tenant_id = ? AND instr(COALESCE(resultado, ''), ?) > 0").all(tenantId, alvo).map((r) => r.nome || ''),
   };
 }
 /*
@@ -1493,7 +1494,7 @@ async function apagarTenant(tenantId) {
   try {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     // As tabelas novas ficavam para trás (D0.7); ver db-postgres.js.
-    for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'acessos_suporte', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
+    for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }

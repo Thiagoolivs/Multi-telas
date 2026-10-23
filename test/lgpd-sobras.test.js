@@ -41,11 +41,32 @@ test('excluir a conta não deixa linha nenhuma dela, em NENHUMA tabela com tenan
   for (const t of tabelas) {
     const cols = s.prepare('PRAGMA table_info(' + t + ')').all().map((c) => c.name);
     if (!cols.includes('tenant_id') || t === 'banco') continue; // o banco de imagens aprovado perde o tenant, por regra
+    // Fica de propósito: prova de quem do suporte acessou a conta (LGPD art. 37; revisão do consultor).
+    if (t === 'acessos_suporte') continue;
     const n = s.prepare('SELECT COUNT(*) AS n FROM ' + t + ' WHERE tenant_id = ?').get(tenantId).n;
     if (n) sobras.push(t + ': ' + n);
   }
   assert.deepEqual(sobras, [], 'sobrou dado da conta apagada');
   assert.equal(s.prepare('SELECT COUNT(*) AS n FROM tenants WHERE id = ?').get(tenantId).n, 0);
+});
+
+test('o registro de acesso do suporte fica depois da exclusão (prova de quem acessou)', () => {
+  for (const arq of ['server/db-postgres.js', 'server/db-sqlite.js']) {
+    const s = fs.readFileSync(path.join(RAIZ, arq), 'utf8');
+    const i = s.indexOf('async function apagarTenant');
+    const lista = s.slice(i, s.indexOf("'users']", i));
+    assert.ok(!/'acessos_suporte'/.test(lista), arq + ' apaga o registro de acesso do suporte');
+  }
+});
+
+test('mídia em uso: a busca é por texto exato, sem % e _ virarem curinga', async () => {
+  const { tenantId } = await db.createAccount('curinga' + Date.now() + '@teste.local', 'x', 'Loja', 'Dono');
+  const id = 'dev_cur_' + Date.now();
+  await db.createDevice(id, 'K' + Date.now().toString(36).slice(-5).toUpperCase(), 'tok_' + Date.now());
+  await db.claimDevice(id, tenantId, 'TV da porta');
+  await db.setDeviceConfig(id, JSON.stringify({ zonas: { principal: { items: [{ url: '/media/t/aXb.png' }] } } }), 'TV da porta');
+  assert.deepEqual((await db.ondeAparece(tenantId, '/media/t/a_b.png')).telas, [], 'o _ casou com X como curinga');
+  assert.deepEqual((await db.ondeAparece(tenantId, '/media/t/aXb.png')).telas, ['TV da porta']);
 });
 
 test('a exportação leva também marcas, memória, conversas, campanhas, uso da IA e chamados', async () => {
