@@ -760,7 +760,15 @@
        * (layout dinâmico) é remontado — e aí a tela velha esmaece por cima da
        * nova, sem quadro preto no meio.
        */
-      if (podeReorganizar(cfg)) { reorganizarPalco(cfg); return; }
+      if (podeReorganizar(cfg)) {
+        /*
+         * Rede (nota do consultor no #255): se reorganizar lançar no meio
+         * (zona nova com dado estranho, WebView velho sem alguma API), a TV
+         * não fica com meio palco velho e meio novo — remonta do zero.
+         */
+        try { reorganizarPalco(cfg); return; }
+        catch (e) { console.warn('[player] reorganizar falhou, remontando o palco', e); }
+      }
       teardownZones({ cruzar: !!palco });
       buildStage(cfg);
       return;
@@ -1080,7 +1088,8 @@
   /* ---------------- Montagem do palco ---------------- */
 
   function teardownZones(opcoes) {
-    zoneControllers.forEach((c) => c.stop && c.stop());
+    // Um stop que lança não pode impedir a remontagem (é a rede do reorganizarPalco).
+    zoneControllers.forEach((c) => { try { c.stop && c.stop(); } catch (e) { /* segue */ } });
     zoneControllers.length = 0;
     clearTakeover();
     /*
