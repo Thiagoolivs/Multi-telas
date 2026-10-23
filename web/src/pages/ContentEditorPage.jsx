@@ -18,7 +18,7 @@ import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
 import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
 import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
 import { FaixaDaTela, pecasDaFaixa, comPecas } from '../components/tela/FaixaDaTela.jsx';
-import { papelDaZona } from '../lib/tela.js';
+import { papelDaZona, campanhasDaConfig } from '../lib/tela.js';
 import { CampanhasNaTela, semCampanha } from '../components/tela/CampanhasNaTela.jsx';
 import { criar } from '../api.js';
 // Editor visual (react-moveable) carregado sob demanda — não pesa o painel.
@@ -42,8 +42,14 @@ import { cn } from '../lib/cn.js';
  * navegador, para não se perder ao sair), e a TV só recebe no "Publicar".
  */
 const chaveDoRascunho = (id) => 'mt.rascunho.' + id;
+// Rascunho com mais de 30 dias não volta (revisão do consultor no #232): ninguém lembra do que era.
+const VALIDADE_DO_RASCUNHO = 30 * 24 * 60 * 60 * 1000;
 function lerRascunho(id) {
-  try { return JSON.parse(localStorage.getItem(chaveDoRascunho(id)) || 'null'); } catch (e) { return null; }
+  try {
+    const r = JSON.parse(localStorage.getItem(chaveDoRascunho(id)) || 'null');
+    if (r && Date.now() - (Number(r.em) || 0) > VALIDADE_DO_RASCUNHO) { localStorage.removeItem(chaveDoRascunho(id)); return null; }
+    return r;
+  } catch (e) { return null; }
 }
 function guardarRascunho(id, cfg, versao) {
   try { localStorage.setItem(chaveDoRascunho(id), JSON.stringify({ cfg, versao, em: Date.now() })); } catch (e) { /* sem espaço: segue só na tela */ }
@@ -400,6 +406,21 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   async function publicarPorCima() {
     try {
       const r = await deviceConfig.ler(device.id);
+      /*
+       * Diz o que vai sumir (revisão do #232): a versão nova pode ter uma
+       * campanha que alguém pôs na TV; "por cima" a tira. Quem confirma
+       * precisa saber disso antes.
+       */
+      const meu = new Set(campanhasDaConfig(cfg).map((c) => c.nome));
+      const somem = campanhasDaConfig((r && r.config) || {}).map((c) => c.nome).filter((n) => !meu.has(n));
+      const ok = await confirmar({
+        titulo: 'Publicar o seu por cima?',
+        texto: somem.length
+          ? 'A versão nova tem ' + (somem.length === 1 ? 'a campanha "' + somem[0] + '"' : 'as campanhas ' + somem.map((n) => '"' + n + '"').join(', ')) + ', que sai' + (somem.length === 1 ? '' : 'm') + ' desta TV. O resto da TV fica como no seu rascunho.'
+          : 'O que mudou na outra versão se perde: a TV fica como no seu rascunho.',
+        botao: 'Publicar por cima', perigo: somem.length > 0,
+      });
+      if (!ok) return;
       versao.current = (r && r.versao) || 0;
       await publish();
     } catch (e) { setPublishError(e.message || 'Não deu para ler a versão nova.'); }
