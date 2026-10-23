@@ -80,6 +80,11 @@ test('a rota: e-mail → código → passe → foto na fila; o RH aprova (foto n
 
   const hoje = new Date();
   const iso = (d) => d.toISOString().slice(0, 10);
+  // Sem fim, o pedido fecha sozinho em 30 dias (QR esquecido não vira porta aberta).
+  const semFim = (await pedir('/api/fotoqr', { method: 'POST', cookie: c, json: { titulo: 'Sem fim', inicio: '2026-10-01' } })).json.pedido;
+  assert.equal(semFim.fim, '2026-10-31');
+  assert.equal((await pedir('/api/fotoqr/' + semFim.id, { method: 'PUT', cookie: c, json: { fim: '' } })).json.pedido.fim, '2026-10-31', 'deu para tirar o fim');
+  await pedir('/api/fotoqr/' + semFim.id, { method: 'DELETE', cookie: c });
   const pedido = (await pedir('/api/fotoqr', { method: 'POST', cookie: c, json: { titulo: 'Sua foto', inicio: iso(new Date(hoje.getTime() - 86400000)), fim: iso(new Date(hoje.getTime() + 7 * 86400000)) } })).json.pedido;
   assert.match(pedido.codigo, /^[A-Z2-9]{6}$/);
   const pagina = await pedir('/f/' + pedido.codigo.toLowerCase());
@@ -99,13 +104,15 @@ test('a rota: e-mail → código → passe → foto na fila; o RH aprova (foto n
   const novo = (await pedir(base + '/entrar', { method: 'POST', json: { email: 'novo@x.com', codigo: r2.json.codigoDev } })).json;
   assert.equal(novo.pessoa, null);
 
-  const foto = (passe, q) => pedir(base + '/foto' + (q || ''), { method: 'POST', bytes: PNG, headers: { 'Content-Type': 'image/png', 'X-Passe': passe } });
+  const foto = (passe, q) => pedir(base + '/foto' + (q == null ? '?aceite=1' : q), { method: 'POST', bytes: PNG, headers: { 'Content-Type': 'image/png', 'X-Passe': passe } });
   assert.equal((await foto('passe-falso')).status, 401);
-  assert.equal((await pedir(base + '/foto', { method: 'POST', bytes: PNG, headers: { 'Content-Type': 'image/heic', 'X-Passe': ana.passe } })).status, 415);
+  assert.equal((await pedir(base + '/foto?aceite=1', { method: 'POST', bytes: PNG, headers: { 'Content-Type': 'image/heic', 'X-Passe': ana.passe } })).status, 415);
+  // Sem a autorização marcada, nada sobe (nota do consultor: consentimento explícito).
+  assert.equal((await foto(ana.passe, '')).status, 400);
   assert.equal((await foto(ana.passe)).status, 201);
   assert.equal((await foto(novo.passe)).status, 400, 'quem não está na lista precisa dizer nome e aniversário');
-  assert.equal((await foto(novo.passe, '?nome=Bruno%20Lima&nascimento=02%2F12&setor=Produ%C3%A7%C3%A3o')).status, 201);
-  assert.equal((await foto(novo.passe, '?nome=Bruno%20Lima&nascimento=02%2F12')).status, 201);
+  assert.equal((await foto(novo.passe, '?aceite=1&nome=Bruno%20Lima&nascimento=02%2F12&setor=Produ%C3%A7%C3%A3o')).status, 201);
+  assert.equal((await foto(novo.passe, '?aceite=1&nome=Bruno%20Lima&nascimento=02%2F12')).status, 201);
 
   let fila = (await pedir('/api/fotoqr', { cookie: c })).json;
   assert.equal(fila.emailPronto, true);
@@ -120,6 +127,14 @@ test('a rota: e-mail → código → passe → foto na fila; o RH aprova (foto n
   const lista = (await pedir('/api/birthdays', { cookie: c })).json.birthdays;
   assert.equal(lista.find((p) => p.nome === 'Ana Souza').foto, daAna.url);
   assert.deepEqual(['origem', 'setor', 'email'].map((k) => lista.find((p) => p.nome === 'Bruno Lima')[k]), ['qr', 'Produção', 'novo@x.com']);
+  // O aceite foi junto com a pessoa, com data e hora (vai na exportação).
+  const exportado = (await pedir('/api/privacidade/exportar', { cookie: c })).json.dados.aniversariantes;
+  for (const n of ['Ana Souza', 'Bruno Lima']) assert.ok(Number(exportado.find((p) => p.nome === n).consentimento_em) > Date.now() - 60000, n + ': sem o aceite');
+
+  // Foto de fora da conta: endereço que não baixa (aqui, rede interna) deixa a pessoa sem foto (D30).
+  const id = lista.find((p) => p.nome === 'Ana Souza').id;
+  assert.equal((await pedir('/api/birthdays/' + id, { method: 'PUT', cookie: c, json: { pessoa: { foto: 'https://127.0.0.1/rosto.jpg' } } })).status, 200);
+  assert.equal((await pedir('/api/birthdays', { cookie: c })).json.birthdays.find((p) => p.id === id).foto, '', 'foto de fora foi para a TV');
   // Recusar: a foto e o arquivo somem.
   assert.equal((await pedir('/api/fotoqr/fotos/' + doBruno[1].id + '/recusar', { method: 'POST', cookie: c })).status, 200);
   assert.equal((await pedir(doBruno[1].url)).status, 404, 'o arquivo recusado continua no ar');
@@ -167,6 +182,12 @@ test('a TV: o cartão "mande sua foto" com o QR entra 1 a cada 6 na principal, e
 test('o painel e a privacidade: fila só para dono/admin, tabelas novas na exclusão e na exportação', () => {
   const r = ler('server/routes/fotoqr.js');
   assert.match(r, /if \(!canManageTeam\(sess\.role\)\) \{ sendJson\(res, 403/);
+  // O código na resposta nunca em produção, mesmo com SKIP_VERIFY (nota do consultor).
+  assert.match(r, /const emDev = \(\) => process\.env\.SKIP_VERIFY === '1' && !mail\.configured\(\) && !ctx\.billing\.emProducao\(\);/);
+  assert.match(ler('server/foto-qr.js'), /<label class="aceite"><input type="checkbox" id="aceite">/, 'a autorização não é explícita');
+  assert.doesNotMatch(ler('server/foto-qr.js'), /id="aceite" checked/, 'a caixa veio marcada');
+  // A TV só recebe foto da própria conta.
+  assert.match(ler('server/routes/telas.js'), /\.map\(\(p\) => \(p\.foto && !p\.foto\.startsWith\(daConta\) \? Object\.assign\(\{\}, p, \{ foto: '' \}\) : p\)\);/);
   assert.match(r, /A mesma resposta com o e-mail na lista ou não/);
   for (const arq of ['server/db-sqlite.js', 'server/db-postgres.js']) {
     const s = ler(arq);

@@ -76,8 +76,10 @@ test('a imagem do site anterior sai pela ORIGEM (não pelo rótulo) e com o arqu
   // Desde o #227: apaga o arquivo antigo só se ninguém mais usa (teste abaixo).
   assert.match(s, /for \(const x of antigas\) \{/);
   assert.ok(!/\/\^Do site: \/\.test\(a\.label/.test(s), 'voltou a apagar pelo rótulo');
-  // Só a imagem do site DA MARCA vira mídia da conta: a rota é a do site da marca, e só ela chama baixarImagem.
-  assert.equal((s.match(/site\.baixarImagem\(/g) || []).length, 1);
+  // Duas rotas baixam imagem de fora para a conta: a do site DA MARCA e, desde a nota do consultor
+  // no D30, a foto do aniversariante que a planilha traz como endereço (fotoDaConta).
+  assert.equal((s.match(/site\.baixarImagem\(/g) || []).length, 2);
+  assert.match(s, /const fotoDaConta = async \(foto, nome\) => \{[\s\S]{0,400}site\.baixarImagem\(f\)/);
 });
 
 test('imagem do site: a nova é guardada antes de a antiga sair, e a antiga em uso fica (revisão do #227)', () => {

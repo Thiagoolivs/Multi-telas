@@ -88,17 +88,20 @@
     prev.src = URL.createObjectURL(arquivo);
     prev.style.display = 'block';
     $('alvo').style.display = 'none';
-    $('enviar').disabled = false;
+    pronto();
   });
+  // Só manda com a foto escolhida E a autorização marcada (a caixa vem desmarcada).
+  function pronto() { $('enviar').disabled = !(arquivo && $('aceite').checked); }
+  $('aceite').addEventListener('change', pronto);
 
   $('enviar').addEventListener('click', function () {
-    if (!arquivo) return;
-    var q = '';
+    if (!arquivo || !$('aceite').checked) return;
+    var q = '?aceite=1';
     if (novo) {
       var nome = $('nome').value.trim();
       var nasc = $('nascimento').value.trim();
       if (!nome || !/\d{1,2}\s*[\/\-.]\s*\d{1,2}/.test(nasc)) { erro('Diga seu nome e o aniversário (dia/mês).'); return; }
-      q = '?nome=' + encodeURIComponent(nome) + '&nascimento=' + encodeURIComponent(nasc.replace(/\s+/g, '')) + '&setor=' + encodeURIComponent($('setor').value.trim());
+      q += '&nome=' + encodeURIComponent(nome) + '&nascimento=' + encodeURIComponent(nasc.replace(/\s+/g, '')) + '&setor=' + encodeURIComponent($('setor').value.trim());
     }
     var btn = this;
     btn.disabled = true;
