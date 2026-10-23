@@ -344,7 +344,8 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, onLerReferencias, 
   if (!vagas.length && !escopo.telas.some((t) => t.zonas.rodape.mensagens.length)) {
     const e = new Error('o pedido ainda não tem nada para criar'); e.status = 400; throw e;
   }
-  const m = ctx.marca || {};
+  // As cores escolhidas na prévia (D13) valem para esta campanha; sem escolha, as da Marca.
+  const m = escopo.cores.length ? Object.assign({}, ctx.marca || {}, { cores: escopo.cores }) : (ctx.marca || {});
   const bases = (m.bases || []).filter((b) => b && b.url);
 
   /*

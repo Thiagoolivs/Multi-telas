@@ -7,7 +7,7 @@ import { CartaoEscopo, linhaDoCusto } from '../components/criar/CartaoEscopo.jsx
 import { ResultadoCampanha } from '../components/criar/ResultadoCampanha.jsx';
 import { PorPraRodar } from '../components/criar/PorPraRodar.jsx';
 import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
-import { ai, criar, devices, seasons } from '../api.js';
+import { ai, criar, devices, seasons, brand } from '../api.js';
 import { ideiaDaData } from '../lib/ideiaDaData.js';
 import E from '../lib/escopo.js';
 import { opcoesDoPerfil, opcaoDoPerfil } from './CriacaoRapidaPage.jsx';
@@ -73,6 +73,8 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   const [daData, setDaData] = useState(null);   // a data comemorativa de hoje, como ideia (item 35)
   const [recentes, setRecentes] = useState([]);
   const [telas, setTelas] = useState([]);
+  // A marca para a prévia (D13): cores, nome e logo, e o ramo para sugerir cores.
+  const [marca, setMarca] = useState(null);
   const [gerando, setGerando] = useState(null);     // etapa do trabalho
   const [campanha, setCampanha] = useState(null);
   const [erro, setErro] = useState('');
@@ -84,6 +86,11 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
   useEffect(() => {
     devices.list().then((r) => setTelas((r && r.devices) || [])).catch(() => setTelas([]));
+    brand.get().then((r) => {
+      const k = (r && r.kit) || {};
+      const de = (kind) => (((r && r.assets) || []).find((a) => a.kind === kind) || {}).url || '';
+      setMarca({ cores: k.cores || [], nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '', logo: de('logo') ? { url: de('logo'), clara: de('logo-clara'), escura: de('logo-escura') } : null, ramo: r && r.ramo });
+    }).catch(() => setMarca(null));
     criar.conversas().then((r) => setRecentes((r && r.conversas) || [])).catch(() => {});
     // As sugestões da conta. Sem IA, o guia devolve um cardápio genérico — e isso já basta.
     ai.guia({}).then((r) => setIdeias((r && r.sugestoes) || [])).catch(() => setIdeias([]));
@@ -307,7 +314,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
           {/* No celular, o cartão fica entre a conversa e a caixa, recolhido numa linha. */}
           {podeGerar && (
             <div className="space-y-2 lg:hidden">
-              <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} recolhivel />
+              <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} recolhivel />
               {botaoGerar}
             </div>
           )}
@@ -316,7 +323,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
           {!conversando && (
             <>
-              {podeGerar && <div className="hidden lg:block"><CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} />{<div className="mt-2">{botaoGerar}</div>}</div>}
+              {podeGerar && <div className="hidden lg:block"><CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} />{<div className="mt-2">{botaoGerar}</div>}</div>}
 
               <div>
                 <div className="mb-1.5 text-xs font-medium text-ink-3">Ideias para hoje</div>
@@ -378,7 +385,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
         {conversando && podeGerar && (
           <aside className="hidden space-y-2 lg:sticky lg:top-4 lg:block">
-            <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} />
+            <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} />
             {botaoGerar}
           </aside>
         )}

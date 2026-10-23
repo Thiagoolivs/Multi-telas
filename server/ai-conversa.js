@@ -431,6 +431,8 @@ async function conversar({ mensagens, escopo, ctx } = {}) {
     return { tipo, resposta, sugestoes: listaCurta(r && r.sugestoes, 4, 60), escopo: atual, pronto: false, gerar: false, modo: ai.mode() };
   }
   const escopoNovo = conferirEscopo(r && r.escopo && typeof r.escopo === 'object' ? r.escopo : atual, ctx);
+  // As cores da campanha saem do cartão (D13), não da conversa: a IA que esquece o campo não as apaga.
+  if (!escopoNovo.cores.length && atual.cores.length) escopoNovo.cores = atual.cores.slice();
   const gerar = E.temOQueGerar(escopoNovo) && (r && r.gerar === true || pediuParaGerar(ultimaFala));
   return {
     tipo,

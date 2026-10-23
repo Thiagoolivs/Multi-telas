@@ -148,6 +148,14 @@
       telas: lista(e.telas, TETO.telas, tela),
       redes: redes,
       horarios: lista(e.horarios, TETO.horarios, horario),
+      /*
+       * As cores DESTA campanha, escolhidas nos cartões de cor da prévia
+       * (D13). Vazio = as da Marca. Só #rrggbb, até três (principal, acento,
+       * apoio), na ordem em que vieram.
+       */
+      cores: (Array.isArray(e.cores) ? e.cores : [])
+        .map(function (c) { return String(c || '').trim().toLowerCase(); })
+        .filter(function (c) { return /^#[0-9a-f]{6}$/.test(c); }).slice(0, 3),
     };
     /*
      * O teto do escopo inteiro: corta da última tela para a primeira, e
