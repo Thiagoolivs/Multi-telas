@@ -38,7 +38,8 @@ test('item 29: Campanhas é a casa da campanha — uma vez, com estado, TVs e o 
   const app = ler('web/src/App.jsx');
   assert.match(app, /case 'campanhas': return <CampanhasPage key=\{route\.campanha \|\| ''\} campanhaInicial=\{route\.campanha\} onIr=\{go\} \/>;/);
   const p = semComentarios(ler('web/src/pages/CampanhasPage.jsx'));
-  assert.match(p, /criar\.campanhas\(\)/);
+  // Desde o D10, em páginas, com busca e as arquivadas à parte.
+  assert.match(p, /criar\.campanhas\(\{ q: busca\.trim\(\), arquivadas, pular \}\)/);
   assert.match(p, /<ResultadoCampanha campanha=\{aberta\}[\s\S]*acoes=\{<PorPraRodar campanha=\{aberta\} telas=\{telas\} onMudou=\{mudou\} \/>\}/, 'abrir é o mesmo resultado do Criar');
   for (const e of ['No ar', 'Pausada', 'Pronta']) assert.match(p, new RegExp("rotulo: '" + e + "'"));
   // A campanha não é mais copiada para Meus Designs, e a lista traz só a capa.

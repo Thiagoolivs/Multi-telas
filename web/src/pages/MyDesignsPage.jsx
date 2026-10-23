@@ -627,13 +627,17 @@ export function MyDesignsPage({ onIr }) {
     setBusy(false);
   }
 
-  /* ---------------- Ações de campanha inteira ---------------- */
+  /*
+   * Ações da pasta inteira. "Campanha" tem um sentido só (D10): a do Criar,
+   * em Criar › Campanhas. Aqui o agrupamento é PASTA — o mesmo dado de
+   * sempre (o nome guardado em cada peça), com o nome certo na tela.
+   */
 
   async function renomearCampanha(nome) {
     const novo = await perguntar({ titulo: 'Renomear', rotulo: 'Nome novo', valor: nome, botao: 'Renomear' });
     if (!novo || novo.trim() === nome) return;
     setBusy(true);
-    try { await library.renameCampaign(nome, novo.trim()); reload(); setMsg('Campanha renomeada.'); }
+    try { await library.renameCampaign(nome, novo.trim()); reload(); setMsg('Pasta renomeada.'); }
     catch (e) { setMsg(e.message || 'Falha ao renomear'); }
     setBusy(false);
   }
@@ -646,9 +650,9 @@ export function MyDesignsPage({ onIr }) {
   }
 
   async function excluirCampanha(nome, quantas) {
-    if (!(await confirmar({ titulo: `Excluir “${nome}”?`, texto: `As ${quantas} peça(s) dela saem também. Não dá para desfazer.`, botao: 'Excluir', perigo: true }))) return;
+    if (!(await confirmar({ titulo: `Excluir “${nome}”?`, texto: `A pasta e as ${quantas} peça(s) dela saem. Não dá para desfazer.`, botao: 'Excluir', perigo: true }))) return;
     setBusy(true);
-    try { await library.removeCampaign(nome); reload(); setMsg('Campanha excluída.'); }
+    try { await library.removeCampaign(nome); reload(); setMsg('Pasta excluída.'); }
     catch (e) { setMsg(e.message || 'Falha ao excluir'); }
     setBusy(false);
   }
@@ -778,7 +782,7 @@ export function MyDesignsPage({ onIr }) {
 
       {/* Acervo */}
       <Panel>
-        <PanelHeader title="Suas campanhas" description={saved.length ? `${saved.length} peça(s) em ${collections.length} campanha(s)` : undefined}
+        <PanelHeader title="Suas pastas" description={saved.length ? `${saved.length} peça(s) em ${collections.length} pasta(s)` : undefined}
           actions={saved.length ? (
             <div className="relative">
               <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
@@ -798,7 +802,7 @@ export function MyDesignsPage({ onIr }) {
               const doGrupo = groups[camp];
               return (
                 <div key={camp} className="rounded-xl border border-line">
-                  {/* Cabeçalho da pasta: a campanha inteira é gerenciada aqui */}
+                  {/* Cabeçalho da pasta: a pasta inteira é gerenciada aqui */}
                   <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
                     <FolderOpen size={15} className="text-ink-3" />
                     <span className="text-sm font-semibold text-ink">{camp}</span>
@@ -806,11 +810,11 @@ export function MyDesignsPage({ onIr }) {
                     <div className="flex-1" />
                     <button onClick={() => abrirPublicar(camp, doGrupo.map((it) => ({ item: it.item, formato: it.formato || '16/9', label: it.label })))}
                       className="flex items-center gap-1 rounded-md bg-accent px-2.5 py-1.5 text-2xs font-semibold text-white transition hover:opacity-90">
-                      <Rocket size={12} /> Publicar campanha
+                      <Rocket size={12} /> Publicar pasta
                     </button>
                     <button title="Renomear" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => renomearCampanha(camp)}><Type size={13} /></button>
-                    <button title="Duplicar campanha" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => duplicarCampanha(camp)}><Copy size={13} /></button>
-                    <button title="Excluir campanha" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-danger" onClick={() => excluirCampanha(camp, doGrupo.length)}><Trash2 size={13} /></button>
+                    <button title="Duplicar pasta" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => duplicarCampanha(camp)}><Copy size={13} /></button>
+                    <button title="Excluir pasta" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-danger" onClick={() => excluirCampanha(camp, doGrupo.length)}><Trash2 size={13} /></button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -890,7 +894,7 @@ export function MyDesignsPage({ onIr }) {
 
       {/* Publicar — uma peça ou a campanha inteira, em uma ou várias telas */}
       <Dialog open={!!pub} onClose={() => setPub(null)} className="max-w-3xl"
-        title={pub && pub.pecas.length > 1 ? 'Publicar campanha' : 'Publicar na tela'}
+        title={pub && pub.pecas.length > 1 ? 'Publicar ' + pub.pecas.length + ' peças' : 'Publicar na tela'}
         description={pub && pub.pecas.length > 1
           ? 'Escolha as telas e quais formatos entram. Uma peça vertical não deve ir para uma TV deitada.'
           : 'Escolha em qual tela este design entra ao vivo.'}

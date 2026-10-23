@@ -301,7 +301,19 @@ export const criar = {
   },
   acompanhar: (id, onEtapa, sinal) => acompanhar(id, 'ecossistema', onEtapa, sinal),
   pendente: () => pendenteDe('ecossistema'),
-  campanhas: () => api('GET', '/api/campanhas'),
+  // Em páginas, com busca e as arquivadas à parte (D10): { campanhas, mais }.
+  campanhas: (o) => {
+    const p = o || {};
+    const q = new URLSearchParams();
+    if (p.q) q.set('q', p.q);
+    if (p.arquivadas) q.set('arquivadas', '1');
+    if (p.pular) q.set('pular', String(p.pular));
+    const s = q.toString();
+    return api('GET', '/api/campanhas' + (s ? '?' + s : ''));
+  },
+  renomearCampanha: (id, nome) => api('PUT', '/api/campanhas/' + id, { nome }),
+  arquivarCampanha: (id, arquivada) => api('PUT', '/api/campanhas/' + id, { arquivada }),
+  excluirCampanha: (id, forcar) => api('DELETE', '/api/campanhas/' + id + (forcar ? '?forcar=1' : '')),
   // As peças prontas de todas as campanhas, com o papel de cada uma (item 32).
   pecasProntas: () => api('GET', '/api/campanhas/pecas'),
   campanha: (id) => api('GET', '/api/campanhas/' + id),

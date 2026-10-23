@@ -30,6 +30,10 @@ const compositor = require('./compositor');
 const redes = require('./redes');
 const memoria = require('./ai-memoria');
 const director = require('./ai-director');
+const Perfil = require('../js/perfil.js');
+
+// A chamada da peça sem IA, pelo tipo de negócio (D4): "Peça no balcão" não serve à clínica nem à fábrica.
+const CTA_DO_PERFIL = { comercio: 'Peça no balcão', saude: 'Fale com a recepção', empresa: '' };
 
 const PAPEL_DA_ZONA = { principal: 'destaque', lateral: 'lateral', cabecalho: 'cabecalho', rodape: 'rodape' };
 const ESTILOS = ['vibrante', 'sobrio', 'elegante', 'energetico'];
@@ -123,6 +127,7 @@ function pedidoDosTextos(escopo, vagas, ctx) {
   return [
     ctx.empresa ? `Empresa: ${ctx.empresa}` : '',
     ctx.segmento ? `Segmento: ${ctx.segmento}` : '',
+    ctx.perfil ? 'Tipo de negócio: ' + Perfil.de(ctx.perfil).paraIA : '',
     ctx.marca && ctx.marca.tom ? `Tom: ${ctx.marca.tom}` : '',
     ctx.marca && ctx.marca.observacoes ? `Regras da marca: ${ctx.marca.observacoes}` : '',
     ctx.estiloRef ? `Estilo das referências que o cliente gosta: ${ctx.estiloRef}` : '',
@@ -150,7 +155,8 @@ const KICKERS = ['NOVIDADE', 'HOJE', 'APROVEITE', 'SÓ AQUI'];
  * com mensagem de apoio…"), e a TV mostraria a ordem em vez da mensagem. Ele
  * só descreve a foto, que é pedida a outra IA.
  */
-function textosSemIA(escopo, vagas) {
+function textosSemIA(escopo, vagas, perfil) {
+  const cta = CTA_DO_PERFIL[Perfil.normalizar(perfil)];
   const e = escopo;
   // Sem repetir: nome e objetivo iguais ("Promoção da semana" duas vezes) virariam o mesmo título em toda peça.
   const frases = [e.nome, e.objetivo].map((x) => String(x || '').trim()).filter((x, i, a) => x && a.findIndex((y) => y.toLowerCase() === x.toLowerCase()) === i);
@@ -161,7 +167,7 @@ function textosSemIA(escopo, vagas) {
       kicker: v.zona === 'lateral' ? 'AQUI TEM' : KICKERS[v.indice % KICKERS.length],
       titulo: compositor.cortarNaPalavra(titulo, 48),
       apoio: v.zona === 'principal' || v.zona === 'redes' ? compositor.cortarNaPalavra(e.objetivo && e.objetivo !== titulo ? e.objetivo : '', 70) : '',
-      cta: v.zona === 'principal' ? 'Peça no balcão' : '',
+      cta: v.zona === 'principal' ? cta : '',
       foto: e.imagens === 'nenhuma' ? 'nenhuma' : e.imagens === 'minhas' ? 'minha' : 'gerar',
       base: null,
       descricaoFoto: v.pedido || titulo,
@@ -174,8 +180,8 @@ function textosSemIA(escopo, vagas) {
 
 const corta = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n);
 
-function lerTextos(r, escopo, vagas, bases) {
-  const reserva = textosSemIA(escopo, vagas);
+function lerTextos(r, escopo, vagas, bases, perfil) {
+  const reserva = textosSemIA(escopo, vagas, perfil);
   const x = r && typeof r === 'object' ? r : {};
   const vagasOut = {};
   for (const v of vagas) {
@@ -259,12 +265,12 @@ function agendamentoDe(h, periodo, hoje) {
  * escritas de novo.
  */
 async function escreverTextos(escopo, vagas, ctx, bases, ajuste) {
-  if (ai.mode() === 'dev') return lerTextos(textosSemIA(escopo, vagas), escopo, vagas, bases);
+  if (ai.mode() === 'dev') return lerTextos(textosSemIA(escopo, vagas, ctx.perfil), escopo, vagas, bases, ctx.perfil);
   const pedido = pedidoDosTextos(escopo, vagas, ctx)
     + (ajuste ? '\n\nAJUSTE PEDIDO PELO CLIENTE (escreva estas vagas de novo seguindo isto): ' + String(ajuste).slice(0, 400) : '');
   let r = null;
   try { r = ai.parseAiJson(await ai.callLLM(SISTEMA, pedido)); } catch (e) { r = null; }
-  return lerTextos(r, escopo, vagas, bases);
+  return lerTextos(r, escopo, vagas, bases, ctx.perfil);
 }
 
 // A identidade: a marca salva vence o modelo, como no diretor.

@@ -732,7 +732,7 @@ async function handleApi(req, res, pathname, query) {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     if (req.method === 'GET' && parts.length === 2) {
       // As cópias antigas das campanhas do Criar ficam de fora (item 43): a campanha mora em Campanhas.
-      const campanhas = await db.listarCampanhas(sess.tenant_id, 500).catch(() => []);
+      const campanhas = await db.listarCampanhas(sess.tenant_id, 500, { arquivadas: 'todas' }).catch(() => []);
       return sendJson(res, 200, { items: semCopiasDeCampanha(await db.listLibrary(sess.tenant_id), campanhas) });
     }
     if (req.method === 'POST' && parts.length === 2) {
