@@ -54,6 +54,17 @@ test('a TV: na semana da data, o mural com as fotos aprovadas entra no rodízio 
   const tipos = ctx.module.exports.comAutomaticos(pecas, cfg, 'principal', new Date(2026, 4, 5)).map((x) => (x.type === 'fotosdadata' ? 'G' : '.')).join('');
   assert.equal(tipos, '...G.....G', '1 a cada 5, fora do passo do mural (que entra na 5ª)');
   assert.equal(ctx.module.exports.comAutomaticos([], cfg, 'principal', new Date(2026, 4, 5)).length, 1, 'zona vazia ficou sem o mural da data');
+  // Nota do consultor no #259: a TV offline esconde o QR e o mural da data pelo relógio dela.
+  const comAte = { settings: { automaticos: {
+    pedidoFoto: { codigo: 'ABC234', titulo: 'Sua foto', link: 'https://x/f/ABC234', ate: '2026-05-10' },
+    dataComFotos: { titulo: 'Feliz Dia das Mães', fotos: [{ url: '/media/t/a.jpg', nome: 'Ana' }], ate: '2026-05-10' },
+  } } };
+  const tiposEm = (d) => ctx.module.exports.comAutomaticos([], comAte, 'principal', d).map((x) => x.type).sort().join(',');
+  assert.equal(tiposEm(new Date(2026, 4, 10, 23, 50)), 'fotosdadata,pedidofoto', 'sumiu antes do fim do último dia');
+  assert.equal(tiposEm(new Date(2026, 4, 11, 0, 5)), '', 'a TV offline continuou mostrando depois do fim');
+  const T0 = ler('server/routes/telas.js');
+  assert.match(T0, /link: baseUrl\(req\) \+ '\/f\/' \+ pedido\.codigo, ate: pedido\.fim \|\| '' \};/);
+  assert.match(T0, /auto\.dataComFotos = \{ titulo: fotoQr\.saudacaoDa\(daData\.dataId\), fotos, ate: daData\.dataAlvo \};/);
   const R = ler('js/render.js');
   assert.match(R, /fotosdadata: renderFotosDaData,/);
   assert.match(R, /const cols = fotos\.length <= 1 \? 1 : fotos\.length <= 4 \? 2 : 3;/);

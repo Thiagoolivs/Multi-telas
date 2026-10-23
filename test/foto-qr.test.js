@@ -154,7 +154,8 @@ test('a rota: e-mail → código → passe → foto na fila; o RH aprova (foto n
   assert.equal(cfg.settings.automaticos, undefined, 'sem os aniversários ligados, o QR não vai');
   await pedir('/api/automaticos', { method: 'PUT', cookie: c, json: { aniversarios: { ligado: true, telas: 'todas' } } });
   cfg = (await pedir('/api/devices/' + tv.id + '/config', { headers: daTv })).json;
-  assert.deepEqual(cfg.settings.automaticos.pedidoFoto, { codigo: pedido.codigo, titulo: 'Sua foto', link: 'http://127.0.0.1:' + PORTA + '/f/' + pedido.codigo });
+  assert.deepEqual(cfg.settings.automaticos.pedidoFoto, { codigo: pedido.codigo, titulo: 'Sua foto', link: 'http://127.0.0.1:' + PORTA + '/f/' + pedido.codigo, ate: pedido.fim });
+  assert.match(pedido.fim, /^\d{4}-\d{2}-\d{2}$/, 'o fim não foi junto: a TV offline mostraria o QR para sempre');
   assert.equal((await pedir('/api/devices/' + tv.id + '/config', { cookie: c })).json.settings.automaticos, undefined, 'o painel gravaria de volta na programação');
 
   // Pausado: a página, a rota e a TV fecham.

@@ -1910,12 +1910,18 @@
     let vez = 0;
     const bolo = roda.length ? function () { return roda[(giro + vez++) % roda.length]; } : null;
     const mural = a.mural ? { type: 'mural', codigo: a.mural, titulo: 'Mural de fotos', duracao: 15, _automatico: 'mural' } : null;
+    /*
+     * `ate` (nota do consultor no #259): a TV que ficou sem internet esconde
+     * o QR e o mural da data pelo relógio dela, sem esperar a config nova.
+     */
+    const hoje = quando.getFullYear() + '-' + String(quando.getMonth() + 1).padStart(2, '0') + '-' + String(quando.getDate()).padStart(2, '0');
+    const vale = (x) => !x.ate || hoje <= x.ate;
     // D31b: no período do pedido do RH, o QR "mande sua foto" entra 1 a cada 6.
     const pf = a.pedidoFoto;
-    const pedido = pf && pf.codigo ? { type: 'pedidofoto', codigo: pf.codigo, titulo: pf.titulo, link: pf.link, duracao: 15, _automatico: 'pedidofoto' } : null;
+    const pedido = pf && pf.codigo && vale(pf) ? { type: 'pedidofoto', codigo: pf.codigo, titulo: pf.titulo, link: pf.link, duracao: 15, _automatico: 'pedidofoto' } : null;
     // D33: na semana da data, o mural com as fotos da equipe entra 1 a cada 5 (fora do passo do mural).
     const dc = a.dataComFotos;
-    const galeria = dc && Array.isArray(dc.fotos) && dc.fotos.length ? { type: 'fotosdadata', titulo: dc.titulo, fotos: dc.fotos, duracao: 15, _automatico: 'dataComFotos' } : null;
+    const galeria = dc && Array.isArray(dc.fotos) && dc.fotos.length && vale(dc) ? { type: 'fotosdadata', titulo: dc.titulo, fotos: dc.fotos, duracao: 15, _automatico: 'dataComFotos' } : null;
     if (!bolo && !mural && !pedido && !galeria) return lista;
     const cada = b.hoje ? 2 : 4;
     const out = [];
