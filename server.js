@@ -808,6 +808,32 @@ async function handleApi(req, res, pathname, query) {
       const list = await db.listBirthdays(t);
       return sendJson(res, 200, { count: list.length, birthdays: list });
     }
+    /*
+     * O RH vê tudo fácil (D34): quantas pessoas, quem está sem foto ou sem
+     * e-mail (não recebe o código do QR), quantas fotos esperam aprovação e
+     * os próximos aniversários (30 dias). Só números e a lista curta — o
+     * detalhe da fila fica na página, para o dono e os admins.
+     */
+    if (req.method === 'GET' && parts[2] === 'resumo') {
+      const [lista, fotos, pedidos] = await Promise.all([db.listBirthdays(t), db.listarFotosPessoa(t), db.listarPedidosFoto(t)]);
+      const hoje = new Date();
+      const dia0 = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()).getTime();
+      const emDias = (p) => {
+        let d = new Date(hoje.getFullYear(), p.mes - 1, p.dia).getTime();
+        if (d < dia0) d = new Date(hoje.getFullYear() + 1, p.mes - 1, p.dia).getTime();
+        return Math.round((d - dia0) / 864e5);
+      };
+      const proximos = lista.map((p) => ({ id: p.id, nome: p.nome, dia: p.dia, mes: p.mes, foto: p.foto, setor: p.setor, cargo: p.cargo, em: emDias(p) }))
+        .filter((p) => p.em <= 30).sort((a, b) => a.em - b.em || String(a.nome).localeCompare(b.nome)).slice(0, 8);
+      return sendJson(res, 200, {
+        pessoas: lista.length,
+        semFoto: lista.filter((p) => !p.foto).length,
+        semEmail: lista.filter((p) => !p.email).length,
+        pendentes: fotos.filter((f) => !f.aprovadaEm).length,
+        pedidosAbertos: pedidos.filter((p) => fotoQr.noPeriodo(p)).length,
+        proximos,
+      });
+    }
     if (!canManageTeam(sess.role)) return sendJson(res, 403, { error: 'sem permissão' });
     /*
      * A foto do aniversariante é arquivo da PRÓPRIA conta (/media/<conta>/...):

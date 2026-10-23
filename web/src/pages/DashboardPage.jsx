@@ -15,6 +15,7 @@ import { devices as devicesApi, media as mediaApi, sistema, seasons } from '../a
 import { ideiaDaData } from '../lib/ideiaDaData.js';
 import { deviceStatus, ONLINE_WINDOW_MS } from '../lib/deviceStatus.js';
 import { formatBytes } from '../lib/format.js';
+import { ResumoDasPessoas } from '../components/pessoas/ResumoDasPessoas.jsx';
 
 const today = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
   .format(new Date()).replace(/^\w/, (c) => c.toUpperCase());
@@ -103,6 +104,8 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
           <ImagePlus size={17} className="text-accent" /> Pôr foto ou vídeo na TV
         </button>
       </section>
+      {/* D34: com equipe cadastrada, o RH vê pessoas, fotos para aprovar e próximos aniversários logo no Início. */}
+      <ResumoDasPessoas soComEquipe onIr={() => onIr && onIr('birthdays')} />
       {loading ? (
         <div className="flex justify-center py-24"><Spinner size={22} /></div>
       ) : error ? (

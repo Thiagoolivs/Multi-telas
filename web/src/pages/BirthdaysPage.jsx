@@ -13,6 +13,7 @@ import { lerPlanilha } from '../lib/planilha.js';
 import { birthdays, media } from '../api.js';
 import { MostrarNasTVs } from '../components/tela/MostrarNasTVs.jsx';
 import { FotosPeloQR } from '../components/pessoas/FotosPeloQR.jsx';
+import { ResumoDasPessoas } from '../components/pessoas/ResumoDasPessoas.jsx';
 import '../../../js/pessoas.js';
 
 /*
@@ -86,6 +87,8 @@ export function BirthdaysPage() {
   const [editando, setEditando] = useState(null);
   const [fotoPara, setFotoPara] = useState(null);
   const [busca, setBusca] = useState('');
+  // D34: quem está sem foto ou sem e-mail, num toque.
+  const [filtro, setFiltro] = useState('todos');
 
   const lista = (dados && dados.birthdays) || [];
 
@@ -164,7 +167,13 @@ export function BirthdaysPage() {
   }
 
   const q = slug(busca);
-  const visiveis = q ? lista.filter((p) => slug(p.nome + ' ' + p.setor + ' ' + p.cargo).includes(q)) : lista;
+  const FILTROS = { todos: () => true, semFoto: (p) => !p.foto, semEmail: (p) => !p.email };
+  const visiveis = lista.filter(FILTROS[filtro] || FILTROS.todos).filter((p) => !q || slug(p.nome + ' ' + p.setor + ' ' + p.cargo).includes(q));
+  const irPara = (onde) => {
+    if (onde === 'semFoto') setFiltro('semFoto');
+    const alvo = document.getElementById(onde === 'fotos' ? 'fotos-pelo-qr' : 'lista-pessoas');
+    if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <div>
@@ -177,6 +186,9 @@ export function BirthdaysPage() {
         </>}
       />
 
+      {/* D34: o RH vê tudo de uma vez — pessoas, fotos para aprovar e os próximos aniversários. */}
+      <ResumoDasPessoas onIr={irPara} recarregar={dados} />
+
       {/* Na TV, sozinho (D15): na semana do aniversário o cartão entra no rodízio; no dia, vira destaque. */}
       <div className="mb-4">
         <MostrarNasTVs qual="aniversarios" titulo="Mostrar nas TVs, na semana do aniversário"
@@ -184,7 +196,7 @@ export function BirthdaysPage() {
       </div>
 
       {/* D31: a pessoa manda a própria foto pelo QR; o RH aprova aqui. */}
-      <FotosPeloQR onAprovou={reload} />
+      <div id="fotos-pelo-qr" className="scroll-mt-20"><FotosPeloQR onAprovou={reload} /></div>
 
       <Panel className="mb-4">
         <PanelHeader title="Importar a planilha do RH"
@@ -221,7 +233,7 @@ export function BirthdaysPage() {
         </div>
       </Panel>
 
-      <Panel>
+      <Panel className="scroll-mt-20" id="lista-pessoas">
         <PanelHeader title="Quem está na lista" description={lista.length ? lista.length + (lista.length === 1 ? ' pessoa' : ' pessoas') : undefined}
           actions={lista.length > 12 ? (
             <label className="flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1 text-sm">
@@ -230,6 +242,14 @@ export function BirthdaysPage() {
             </label>
           ) : null} />
         <input ref={fotoDaLinhaRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={trocarFoto} />
+        {lista.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 border-b border-line px-4 py-2" role="group" aria-label="Filtrar a lista">
+            {[['todos', 'Todos', lista.length], ['semFoto', 'Sem foto', lista.filter((p) => !p.foto).length], ['semEmail', 'Sem e-mail', lista.filter((p) => !p.email).length]].map(([id, nome, n]) => (
+              <button key={id} type="button" aria-pressed={filtro === id} onClick={() => setFiltro(id)}
+                className={'rounded-full border px-2.5 py-1 text-xs ' + (filtro === id ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3')}>{nome} ({n})</button>
+            ))}
+          </div>
+        )}
         {loading ? (
           <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}</div>
         ) : error ? (
