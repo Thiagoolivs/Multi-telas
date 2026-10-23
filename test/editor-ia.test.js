@@ -180,6 +180,8 @@ const AINDA_SINCRONAS = [
   'ajustar-peca',
   // D23: ler o calendário colado é um turno curto (a pessoa espera a lista para revisar); nada é gravado nem cobrado em crédito.
   'calendario',
+  // D27: o aviso numa frase também — a pessoa espera a prévia para dar o ok; nada é gravado.
+  'aviso',
 ];
 
 test('toda rota de IA que GERA roda como trabalho — e as síncronas são só as declaradas', () => {

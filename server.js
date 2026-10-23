@@ -44,6 +44,7 @@ const compositor = require('./server/compositor');
 const ajustePeca = require('./server/ajuste-peca');
 const quizIA = require('./server/quiz-ia');
 const calendario = require('./server/calendario');
+const avisoRapido = require('./server/aviso-rapido');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
 const banco = require('./server/banco.js');
@@ -648,6 +649,8 @@ async function handleApi(req, res, pathname, query) {
     quiz: 'quiz',
     // Ler o calendário colado (D23): texto, devolve os eventos para revisar.
     calendario: 'calendario',
+    // O aviso numa frase (D27): texto, devolve o aviso arrumado para a prévia.
+    aviso: 'aviso-rapido',
     // Os textos das redes (item 6): quatro chamadas de texto, um pedido por canal.
     redes: 'redes-sociais',
     // A conversa do Criar (item 21): uma chamada de texto por volta, sem limite de perguntas.
@@ -1954,6 +1957,30 @@ const negocioCache = new Map();
         if (e.status === 400) return sendJson(res, 400, { error: e.message });
         erros.registrar(e, { rota: '/api/ai/ajustar-peca' });
         return sendJson(res, 502, { error: 'a IA não conseguiu agora; tente de novo' });
+      }
+    });
+  }
+
+  /*
+   * ----- IA: o aviso numa frase (EXECUTOR D27) -----
+   * "Adicione aviso da peça quebrada no banheiro" vira título, detalhe, até
+   * quando, prioridade e TVs (os grupos da conta). Nada é gravado aqui: o
+   * painel mostra a prévia e manda em lote com o ok.
+   */
+  if (parts[1] === 'ai' && parts[2] === 'aviso') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ai:aviso:' + sess.tenant_id, 60, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'limite de avisos por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const texto = String((b && b.texto) || '').trim();
+      if (!texto) return sendJson(res, 400, { error: 'escreva o aviso' });
+      const grupos = [...new Set(((await db.listDevices(sess.tenant_id)) || []).map((d) => d.grupo).filter(Boolean))];
+      try {
+        return sendJson(res, 200, { aviso: await avisoRapido.entender(texto.slice(0, 500), { grupos }) });
+      } catch (e) {
+        erros.registrar(e, { rota: '/api/ai/aviso' });
+        return sendJson(res, 502, { error: 'não deu para montar agora; tente de novo' });
       }
     });
   }

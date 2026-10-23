@@ -235,6 +235,9 @@ export const calendario = {
   ler: (texto) => api('POST', '/api/ai/calendario', { texto }),
 };
 
+// O aviso numa frase (D27): devolve { aviso: { titulo, detalhe, ate, prioridade, alvo } } para a prévia.
+export const avisoRapido = { montar: (texto) => api('POST', '/api/ai/aviso', { texto }) };
+
 export const ai = {
   /*
    * Cada uma destas devolve o resultado, como sempre devolveu — quem chama não

@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
 import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
+import { AvisoRapido } from '../components/tela/AvisoRapido.jsx';
 import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { campanhasDaConfig, pecasDaFaixa } from '../lib/tela.js';
@@ -33,6 +34,8 @@ function resumoDaZona(cfg) {
 
 export function ProgramacaoPage({ onIr }) {
   const [telas, setTelas] = useState(null);
+  // D27: o aviso numa frase, para todas as TVs (ou um grupo) de uma vez.
+  const [avisoAberto, setAvisoAberto] = useState(false);
   const [cfgs, setCfgs] = useState({});
   /*
    * Erro de rede não é "nenhuma TV" (D3): a lista que falhava virava "Nenhuma
@@ -62,8 +65,12 @@ export function ProgramacaoPage({ onIr }) {
           <h1 className="text-xl font-semibold tracking-tight text-ink">Programação</h1>
           <p className="mt-1 text-sm text-ink-2">O que está passando em cada TV. Toque numa TV, ou numa parte dela, para mudar.</p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" icon={Megaphone} onClick={() => setAvisoAberto(true)}>Aviso rápido</Button>
+          <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
+        </div>
       </div>
+      {avisoAberto && <AvisoRapido onFechar={() => setAvisoAberto(false)} />}
 
       {erro ? (
         <Panel><ErrorState description={erro} onRetry={() => setTentativa((n) => n + 1)} /></Panel>
