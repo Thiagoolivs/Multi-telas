@@ -88,7 +88,9 @@ test('o painel: aviso rápido na Programação, prévia antes, envio em lote com
   assert.match(d, /throw new Error\(\(tv\.name \|\| 'Uma TV'\) \+ ': ' \+ e\.message \+ '\. Nada foi enviado\.'\);/, 'TV sem lugar para o aviso não para o envio');
   assert.match(d, /avisarComDesfazer\(/);
   assert.match(d, /<PecaHtml item=\{item\} formato="16\/9" \/>/, 'sem prévia antes de mandar');
-  assert.match(ler('web/src/pages/ProgramacaoPage.jsx'), /onClick=\{\(\) => setAvisoAberto\(true\)\}>Aviso rápido</);
+  // D51: o aviso rápido mora dentro do "Pedir à IA" da Programação.
+  assert.match(ler('web/src/pages/ProgramacaoPage.jsx'), /onClick=\{\(\) => setAvisoAberto\(true\)\}>Pedir à IA</);
+  assert.match(ler('web/src/components/tela/PedirIA.jsx'), /<AvisoRapido avisoInicial=\{avisoPronto\}/);
   const s = ler('server.js');
   assert.match(s, /aviso: 'aviso-rapido',/);
   assert.match(s, /rateLimit\('ai:aviso:' \+ sess\.tenant_id, 60, 60 \* 60 \* 1000\)/);

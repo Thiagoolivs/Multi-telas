@@ -210,6 +210,7 @@ Devolva SÓ o que o pedido muda (o resto fica de fora):
 - cidadeClima: a cidade do clima, se o pedido disser.
 Para um tema que não existe ("tema de Natal"), use fundo "cor" com fundoCor e
 destaque que combinem. Não invente o que o pedido não disse.
+${require('./ia-pergunta').REGRA_DE_PERGUNTA}
 Responda APENAS JSON, por exemplo: { "layoutId": "sidebar-right", "fundo": "claro", "relogio": false }`;
 
 function normalizar(r, atual) {
@@ -229,9 +230,30 @@ function normalizar(r, atual) {
   return out;
 }
 
-async function entender(texto, atual) {
-  const base = semIA(texto, atual);
-  if (ai.mode() === 'dev') return completar(base.mudancas, base.notas, atual);
+/*
+ * D51: sem nada que dê para mudar, pergunta — "muda a cor" pergunta qual; o
+ * resto, o que mudar. A resposta completa o pedido ("muda o fundo" + "azul
+ * marinho").
+ */
+function perguntaDaTela(pedido, atual) {
+  const s = plano(corta(pedido, 400));
+  // "muda a cor" + "azul marinho": a cor dita sem "fundo" é o fundo (a resposta à pergunta).
+  const cor = Object.keys(CORES_DE_FUNDO).find((n) => new RegExp('(^|\\s)' + n + '($|[\\s,.;!?])').test(s));
+  if (cor) return completar({ fundo: 'cor', fundoCor: CORES_DE_FUNDO[cor] }, [], atual);
+  if (/\b(cor|cores|fundo)\b/.test(s)) {
+    return { pergunta: 'Qual cor?', sugestoes: ['Azul marinho', 'Preto', 'Verde escuro', 'As cores da marca'] };
+  }
+  return { pergunta: 'O que você quer mudar na tela?', sugestoes: ['Tema claro', 'Lateral do outro lado', 'Sem relógio', 'Fundo azul marinho'] };
+}
+const vazia = (r) => !r || !r.mudancas || !Object.keys(r.mudancas).length;
+
+// `historico` (D51): as falas anteriores. Devolve { mudancas, notas } ou { pergunta, sugestoes }.
+async function entender(texto, atual, historico) {
+  const P = require('./ia-pergunta');
+  const pedido = P.pedidoDaConversa(historico, texto, ' ');
+  const ditoAntes = semIA(pedido, atual);
+  const so = completar(ditoAntes.mudancas, ditoAntes.notas, atual);
+  if (ai.mode() === 'dev') return vazia(so) && !so.notas.length ? perguntaDaTela(pedido, atual) : so;
   try {
     const orient = (atual && atual.orientacao) || 'landscape';
     const layouts = L.LAYOUTS.filter((l) => cabe(l.id, orient)).map((l) => l.id + ': ' + l.name + ' (' + l.zones.map((z) => z.name.replace(/\s*\(.*\)$/, '')).join(', ') + ')');
@@ -240,14 +262,19 @@ async function entender(texto, atual) {
       'LAYOUTS:\n' + layouts.join('\n'),
       'TEMAS: ' + Object.keys(T.PRESETS).map((id) => id + ' (' + T.PRESETS[id].label + ')').join(', '),
       'FONTES: ' + Object.keys(T.FONTS).join(', '),
-      'PEDIDO: ' + corta(texto, 400),
+      'CONVERSA:\n' + P.transcricao(historico, texto),
     ].join('\n');
-    const m = normalizar(ai.parseAiJson(await ai.callLLM(SISTEMA, usuario)), atual);
-    if (!Object.keys(m).length) return completar(base.mudancas, base.notas, atual);
+    const r = ai.parseAiJson(await ai.callLLM(SISTEMA, usuario));
+    const m = normalizar(r, atual);
+    if (!Object.keys(m).length) {
+      const pergunta = P.lerPergunta(r);
+      if (pergunta) return pergunta;
+      return vazia(so) && !so.notas.length ? perguntaDaTela(pedido, atual) : so;
+    }
     return completar(m, [], atual);
   } catch (e) {
-    return completar(base.mudancas, base.notas, atual);
+    return vazia(so) && !so.notas.length ? perguntaDaTela(pedido, atual) : so;
   }
 }
 
-module.exports = { entender, semIA, normalizar, completar, CAMINHOS, CORES_DE_FUNDO, CORES_DE_DESTAQUE, SISTEMA };
+module.exports = { entender, semIA, normalizar, completar, perguntaDaTela, CAMINHOS, CORES_DE_FUNDO, CORES_DE_DESTAQUE, SISTEMA };

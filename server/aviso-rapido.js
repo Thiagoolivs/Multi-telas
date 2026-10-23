@@ -10,6 +10,7 @@
  * Sem IA (localhost e quando ela cai), uma regra entende as frases comuns.
  */
 const ai = require('./ai');
+const P = require('./ia-pergunta');
 
 const corta = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
 const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -90,6 +91,7 @@ Devolva:
 - prioridade: "urgente" só para segurança/emergência; senão "alta";
 - grupo: um dos GRUPOS da lista, se o pedido citar; senão "".
 Não invente telefone, local ou horário que não estejam no pedido.
+${P.REGRA_DE_PERGUNTA}
 Responda APENAS JSON: { "titulo": "...", "detalhe": "...", "ate": "", "prioridade": "alta", "grupo": "" }`;
 
 function normalizar(r, texto, hoje, grupos) {
@@ -106,15 +108,50 @@ function normalizar(r, texto, hoje, grupos) {
   };
 }
 
-async function entender(texto, { hoje, grupos } = {}) {
-  const agora = hoje || new Date();
-  if (ai.mode() === 'dev') return semIA(texto, agora, grupos);
-  try {
-    const usuario = ['HOJE: ' + iso(agora) + ' (' + SEMANA[agora.getDay()] + ')', 'GRUPOS: ' + ((grupos || []).join(', ') || '(nenhum)'), 'PEDIDO: ' + corta(texto, 500)].join('\n');
-    return normalizar(ai.parseAiJson(await ai.callLLM(SISTEMA, usuario)), texto, agora, grupos);
-  } catch (e) {
-    return semIA(texto, agora, grupos);
-  }
+/*
+ * D51: o pedido que não diz O QUE avisar ("quero um aviso", "faz um aviso pra
+ * amanhã") vira pergunta, em vez de um cartaz com "Um aviso" escrito.
+ */
+const SO_O_PEDIDO = /^(?:(?:quero|preciso|vou|pode|faz|fa[cç]a|cria|crie|p[õo]e|coloca|bota)\s+)*(?:(?:fazer|criar|p[ôo]r|colocar|mandar)\s+)?(?:um\s+|o\s+|uns\s+)?(?:aviso|recado|comunicado)s?(?:\s+(?:urgente|importante|r[aá]pido))?(?:\s+(?:para|pra|pras|para as|na|nas)\s+(?:amanh[ãa]|hoje|a semana|essa semana|todas as tvs|as tvs|tvs?|tv))?\s*[.!?]*$/i;
+function perguntaDoAviso(pedido, aviso) {
+  const vazio = !aviso || !aviso.titulo || aviso.titulo.length < 3 || SO_O_PEDIDO.test(corta(pedido, 200));
+  if (!vazio) return null;
+  return { pergunta: 'O que o aviso vai dizer? Uma frase basta.', sugestoes: ['Fechado no feriado', 'Reunião às 15h na sala 2', 'Piso molhado, cuidado'] };
 }
 
-module.exports = { entender, semIA, ateQuando, prioridadeDe, alvoDe, normalizar, SISTEMA };
+// `historico` (D51): as falas anteriores desta mini-conversa. Devolve o aviso, ou { pergunta, sugestoes }.
+async function entender(texto, { hoje, grupos, historico } = {}) {
+  const agora = hoje || new Date();
+  // A resposta à pergunta completa o pedido de antes ("quero um aviso" + "piso molhado").
+  const pedido = P.pedidoDaConversa(historico, texto, ', ').replace(SO_O_PEDIDO, '');
+  const comPedido = P.pedidoDaConversa(historico, texto, ', ');
+  if (ai.mode() === 'dev') {
+    const a = doPedido(comPedido, agora, grupos);
+    return perguntaDoAviso(pedido || comPedido, a) || a;
+  }
+  try {
+    const usuario = ['HOJE: ' + iso(agora) + ' (' + SEMANA[agora.getDay()] + ')', 'GRUPOS: ' + ((grupos || []).join(', ') || '(nenhum)'),
+      'CONVERSA:', P.transcricao(historico, texto)].join('\n');
+    const r = ai.parseAiJson(await ai.callLLM(SISTEMA, usuario));
+    const pergunta = P.lerPergunta(r);
+    if (pergunta && !(r && r.titulo)) return pergunta;
+    const a = normalizar(r, comPedido, agora, grupos);
+    return perguntaDoAviso(comPedido, a) || a;
+  } catch (e) {
+    const a = doPedido(comPedido, agora, grupos);
+    return perguntaDoAviso(comPedido, a) || a;
+  }
+}
+// O aviso da conversa inteira: o texto sai do que o aviso diz; a data e a urgência, de tudo o que foi dito.
+function doPedido(comPedido, agora, grupos) {
+  const a = semIA(limparPedido(comPedido), agora, grupos);
+  if (!a.ate) a.ate = ateQuando(comPedido, agora);
+  if (prioridadeDe(comPedido) === 'urgente') a.prioridade = 'urgente';
+  return a;
+}
+// O pedido sem os pedaços que são só "quero um aviso": fica o que o aviso diz.
+function limparPedido(p) {
+  return String(p || '').split(/,\s*/).filter((x) => !SO_O_PEDIDO.test(x.trim())).join(', ') || p;
+}
+
+module.exports = { entender, semIA, ateQuando, prioridadeDe, alvoDe, normalizar, perguntaDoAviso, SISTEMA };

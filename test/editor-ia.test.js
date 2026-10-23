@@ -184,6 +184,8 @@ const AINDA_SINCRONAS = [
   'aviso',
   // D28: mudar layout e tema devolve a lista de mudanças para a prévia; nada é gravado.
   'tela',
+  // D51: o "Pedir à IA" da Programação entende e devolve a prévia (aviso, tela ou o Criar); nada é gravado.
+  'pedir',
 ];
 
 test('toda rota de IA que GERA roda como trabalho — e as síncronas são só as declaradas', () => {

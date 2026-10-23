@@ -67,7 +67,7 @@ test('Telas: renomear e remover avisam a falha; restaurar e copiar perguntam ant
 
 test('Criar: a data não abre a conversa velha; abrir e ajustar o cartão avisam a falha', () => {
   const c = ler('pages/CriarPage.jsx');
-  assert.match(c, /if \(id && !opcaoInicial && !telaInicial && !ideiaInicial\) abrir\(id, \{ sozinha: true \}\);/);
+  assert.match(c, /if \(id && !opcaoInicial && !telaInicial && !ideiaInicial && !textoInicial\) abrir\(id, \{ sozinha: true \}\);/);
   assert.ok(!/criar\.salvarEscopo\(conversa\.id, novo\)\.catch\(\(\) => \{\}\)/.test(c));
   assert.match(c, /Não deu para abrir a conversa/);
 });

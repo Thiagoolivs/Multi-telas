@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { MonitorPlay, Pencil, Wand2, Plus, Megaphone } from 'lucide-react';
+import { MonitorPlay, Pencil, Wand2, Plus, Sparkles } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
 import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
-import { AvisoRapido } from '../components/tela/AvisoRapido.jsx';
+import { PedirIA } from '../components/tela/PedirIA.jsx';
 import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { campanhasDaConfig, pecasDaFaixa } from '../lib/tela.js';
@@ -17,6 +17,9 @@ import '../lib/screenConfig.js';
  * (parear, online, horário); aqui fica o que PASSA: cada TV desenhada com as
  * zonas, o que há em cada uma e as campanhas no ar. Tocar na TV — ou numa
  * zona dela — abre o editor.
+ *
+ * PEDIR À IA (D51): um lugar só para pedir mudanças — aviso, aparência de
+ * uma TV ou algo novo. O aviso rápido mora dentro dele.
  */
 function resumoDaZona(cfg) {
   return (z) => {
@@ -66,11 +69,11 @@ export function ProgramacaoPage({ onIr }) {
           <p className="mt-1 text-sm text-ink-2">O que está passando em cada TV. Toque numa TV, ou numa parte dela, para mudar.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" icon={Megaphone} onClick={() => setAvisoAberto(true)}>Aviso rápido</Button>
+          <Button variant="secondary" icon={Sparkles} onClick={() => setAvisoAberto(true)}>Pedir à IA</Button>
           <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
         </div>
       </div>
-      {avisoAberto && <AvisoRapido onFechar={() => setAvisoAberto(false)} />}
+      {avisoAberto && <PedirIA onFechar={() => setAvisoAberto(false)} onIr={onIr} />}
 
       {erro ? (
         <Panel><ErrorState description={erro} onRetry={() => setTentativa((n) => n + 1)} /></Panel>
