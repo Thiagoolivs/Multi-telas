@@ -112,7 +112,7 @@ async function conferir(alvo) {
  * endereço já conferido e a conexão vai onde mandamos. O nome continua indo no
  * Host e no SNI, então o certificado e o vhost do site continuam corretos.
  */
-function pedir(u, ip) {
+function pedir(u, ip, aceita) {
   return new Promise((resolve) => {
     const mod = u.protocol === 'https:' ? https : http;
     const req = mod.request({
@@ -129,7 +129,7 @@ function pedir(u, ip) {
       },
       headers: {
         'user-agent': 'MultiTelas/1.0 (+leitura de identidade visual)',
-        accept: 'text/html',
+        accept: aceita || 'text/html',
       },
       timeout: LIMITE_MS,
     }, (res) => {
@@ -142,17 +142,16 @@ function pedir(u, ip) {
         if (total <= LIMITE_BYTES) partes.push(c);
         else res.destroy();
       });
-      res.on('end', () => resolve({
-        status: res.statusCode,
-        headers: res.headers,
-        corpo: Buffer.concat(partes).toString('utf8').slice(0, LIMITE_BYTES),
-      }));
+      res.on('end', () => {
+        const bytes = Buffer.concat(partes);
+        // `cortado`: passou do limite. Texto cortado ainda serve; imagem cortada, não.
+        resolve({ status: res.statusCode, headers: res.headers, bytes, cortado: total > LIMITE_BYTES, corpo: bytes.toString('utf8').slice(0, LIMITE_BYTES) });
+      });
       res.on('error', () => resolve({ erro: 'o site cortou a resposta' }));
-      res.on('aborted', () => resolve({
-        status: res.statusCode,
-        headers: res.headers,
-        corpo: Buffer.concat(partes).toString('utf8').slice(0, LIMITE_BYTES),
-      }));
+      res.on('aborted', () => {
+        const bytes = Buffer.concat(partes);
+        resolve({ status: res.statusCode, headers: res.headers, bytes, cortado: true, corpo: bytes.toString('utf8').slice(0, LIMITE_BYTES) });
+      });
     });
     req.on('timeout', () => { req.destroy(); resolve({ erro: 'o site demorou demais' }); });
     req.on('error', () => resolve({ erro: 'o site não respondeu' }));
@@ -168,15 +167,16 @@ function pedir(u, ip) {
  * automaticamente entraria lá sem passar por `conferir` de novo. Cada salto
  * repete a checagem inteira.
  */
-async function buscar(alvo, politica) {
+const TIPO_PAGINA = /text\/html|application\/xhtml/i;
+async function buscar(alvo, politica, tipoAceito, aceita) {
   /*
    * `politica` é a checagem de endereço, injetável para o teste conseguir
    * exercitar redirecionamento contra um servidor local — que, por definição,
    * mora num IP que a política de produção recusa.
    *
-   * Só `analisar` chama isto, e ele NUNCA passa política: em produção a
-   * checagem é sempre `conferir`. Quem escrever um segundo chamador precisa
-   * fazer o mesmo.
+   * Os chamadores de produção (`analisar`, a folha de estilo e a imagem do
+   * site, D9) NUNCA passam política: a checagem é sempre `conferir`. Quem
+   * escrever outro chamador precisa fazer o mesmo.
    */
   const checar = politica || conferir;
   let atual = alvo;
@@ -184,7 +184,7 @@ async function buscar(alvo, politica) {
     const c = await checar(atual);
     if (c.erro) return { erro: c.erro };
 
-    const res = await pedir(c.url, c.ip);
+    const res = await pedir(c.url, c.ip, aceita);
     if (res.erro) return { erro: res.erro };
 
     if (res.status >= 300 && res.status < 400) {
@@ -196,9 +196,9 @@ async function buscar(alvo, politica) {
     if (res.status < 200 || res.status >= 300) return { erro: 'o site respondeu ' + res.status };
 
     const tipo = res.headers['content-type'] || '';
-    if (!/text\/html|application\/xhtml/i.test(tipo)) return { erro: 'esse endereço não é uma página' };
+    if (!(tipoAceito || TIPO_PAGINA).test(tipo)) return { erro: 'esse endereço não é uma página' };
 
-    return { html: res.corpo, url: c.url.href };
+    return { html: res.corpo, bytes: res.bytes, cortado: res.cortado, tipo, url: c.url.href };
   }
   return { erro: 'o site redirecionou vezes demais' };
 }
@@ -225,13 +225,19 @@ function meta(html, nome) {
  */
 function coresDe(html) {
   const conta = new Map();
+  const somar = (hex) => { if (!semGraca(hex)) conta.set(hex, (conta.get(hex) || 0) + 1); };
   const re = /#([0-9a-f]{6}|[0-9a-f]{3})\b/gi;
   let m;
   while ((m = re.exec(html))) {
     let hex = m[1].toLowerCase();
     if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-    if (semGraca(hex)) continue;
-    conta.set(hex, (conta.get(hex) || 0) + 1);
+    somar(hex);
+  }
+  // rgb(12, 34, 56) e rgb(12 34 56 / .5): a folha de estilo de hoje escreve assim.
+  const rgb = /rgba?\(\s*(\d{1,3})[\s,]+(\d{1,3})[\s,]+(\d{1,3})/gi;
+  while ((m = rgb.exec(html))) {
+    const v = [m[1], m[2], m[3]].map((x) => Math.min(255, Number(x)));
+    somar(v.map((x) => x.toString(16).padStart(2, '0')).join(''));
   }
   return [...conta.entries()]
     .sort((a, b) => b[1] - a[1])
@@ -268,6 +274,8 @@ function fontesDe(html) {
     const primeira = m[1].split(',')[0].replace(/["']/g, '').trim();
     if (!primeira || primeira.length > 40) continue;
     if (/^(inherit|initial|unset|var\(|-|serif|sans-serif|monospace|system-ui)$/i.test(primeira)) continue;
+    // Variável do CSS e fonte do sistema ("-apple-system") não dizem a fonte da marca.
+    if (/^var\(|^-/i.test(primeira)) continue;
     achadas.add(primeira);
   }
   // Google Fonts entrega a família no próprio endereço da folha, e essa é a
@@ -303,6 +311,55 @@ function resumir(d) {
   return linhas.join('\n').slice(0, 900);
 }
 
+/*
+ * As folhas de estilo da página (D9). As cores e as fontes de quase todo site
+ * moram num .css à parte, não no HTML: lendo só a página, a leitura achava
+ * pouco ou nada. Até três folhas, do próprio site ou de onde ele apontar,
+ * cada uma com a mesma checagem de endereço da página (SSRF).
+ */
+function folhasDe(html, base) {
+  const out = [];
+  const re = /<link\b[^>]*>/gi;
+  let m;
+  while ((m = re.exec(html)) && out.length < 3) {
+    const tag = m[0];
+    if (!/rel=["']?[^"'>]*stylesheet/i.test(tag)) continue;
+    const href = (tag.match(/href=["']([^"']+)["']/i) || [])[1];
+    // A do Google Fonts já é lida pelo endereço (fontesDe): baixar não traz cor.
+    if (!href || /fonts\.googleapis\.com/i.test(href)) continue;
+    try { out.push(new URL(href, base).href); } catch (e) { /* endereço inválido: pula */ }
+  }
+  return out;
+}
+async function cssDe(html, base) {
+  const folhas = folhasDe(html, base);
+  const lidas = await Promise.all(folhas.map((u) => buscar(u, undefined, /text\/css|text\/plain/i, 'text/css').catch(() => ({ erro: 'falhou' }))));
+  return lidas.filter((r) => r && !r.erro).map((r) => r.html).join('\n');
+}
+
+/*
+ * A imagem do site (og:image), BAIXADA para o acervo (D9). Antes ela entrava
+ * como endereço de fora: a TV não aceita foto de host que não declaramos, e a
+ * leitura das referências não lia. Só PNG, JPEG e WEBP, conferidos pelos
+ * bytes, e inteira — imagem cortada no limite não serve.
+ */
+async function baixarImagem(alvo) {
+  const r = await buscar(alvo, undefined, /^image\/(png|jpe?g|webp)/i, 'image/png,image/jpeg,image/webp');
+  if (r.erro) return { erro: r.erro };
+  if (r.cortado || !r.bytes || r.bytes.length < 100) return { erro: 'a imagem do site é grande demais' };
+  const mime = tipoDaImagem(r.bytes);
+  if (!mime) return { erro: 'a imagem do site não é PNG, JPEG nem WEBP' };
+  return { bytes: r.bytes, mime };
+}
+// O tipo pelos BYTES, não pelo cabeçalho: o servidor de fora pode dizer qualquer coisa.
+function tipoDaImagem(b) {
+  if (!b || b.length < 12) return '';
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png';
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg';
+  if (b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP') return 'image/webp';
+  return '';
+}
+
 async function analisar(alvo) {
   const bruto = String(alvo || '').trim();
   if (!bruto) return { erro: 'informe o endereço do site' };
@@ -322,17 +379,18 @@ async function analisar(alvo) {
   if (r.erro) return { erro: r.erro };
 
   const titulo = semTag((r.html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1]).slice(0, 120);
+  const css = await cssDe(r.html, r.url);
   const descricao = (meta(r.html, 'description') || meta(r.html, 'og:description')).slice(0, 300);
   const dados = {
     url: r.url,
     titulo,
     descricao,
-    cores: coresDe(r.html),
-    fontes: fontesDe(r.html),
+    cores: coresDe(r.html + '\n' + css),
+    fontes: fontesDe(r.html + '\n' + css),
     imagem: imagemDe(r.html, r.url),
   };
   dados.resumo = resumir(dados);
   return dados;
 }
 
-module.exports = { analisar, buscar, pedir, conferir, ipPrivado, coresDe, fontesDe, resumir, meta, LIMITE_BYTES, LIMITE_MS, MAX_SALTOS };
+module.exports = { analisar, buscar, pedir, conferir, ipPrivado, coresDe, fontesDe, folhasDe, baixarImagem, tipoDaImagem, resumir, meta, LIMITE_BYTES, LIMITE_MS, MAX_SALTOS };

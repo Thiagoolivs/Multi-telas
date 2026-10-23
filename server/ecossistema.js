@@ -125,6 +125,7 @@ function pedidoDosTextos(escopo, vagas, ctx) {
     ctx.segmento ? `Segmento: ${ctx.segmento}` : '',
     ctx.marca && ctx.marca.tom ? `Tom: ${ctx.marca.tom}` : '',
     ctx.marca && ctx.marca.observacoes ? `Regras da marca: ${ctx.marca.observacoes}` : '',
+    ctx.estiloRef ? `Estilo das referências que o cliente gosta: ${ctx.estiloRef}` : '',
     memoria.comoTexto(ctx.memoria),
     '',
     `Campanha: ${e.nome || '(sem nome)'}`,
@@ -290,6 +291,7 @@ async function comporVaga(v, t, foto, { escopo, ctx, marcaDaPeca, modo, ditos })
     pedido: [escopo.objetivo, v.pedido].filter(Boolean).join(' — ') || escopo.nome,
     empresa: ctx.empresa || '', segmento: ctx.segmento || '', marca: marcaDaPeca, modo,
     papel: v.papel, foto: foto || null, logo: m.logo || '', indice: v.indice,
+    estiloRef: ctx.estiloRef || '',
     // O que só a faixa tem: a contagem do rodapé e as chamadas do cabeçalho (item 22).
     contagem: v.zona === 'rodape' && tela ? tela.zonas.rodape.contagem : '',
     chamadas: v.zona === 'cabecalho' && tela ? tela.zonas.cabecalho.mensagens : [],
@@ -308,7 +310,7 @@ async function comporVaga(v, t, foto, { escopo, ctx, marcaDaPeca, modo, ditos })
 
 /* ---------------- O gerador ---------------- */
 
-async function gerar(escopoCru, ctx, { onImagem, onProgresso, agora } = {}) {
+async function gerar(escopoCru, ctx, { onImagem, onProgresso, onLerReferencias, agora } = {}) {
   ctx = ctx || {};
   const passo = (etapa, detalhe) => { try { onProgresso && onProgresso(etapa, detalhe || ''); } catch (e) { /* progresso não derruba */ } };
   const escopo = E.normalizar(escopoCru);
@@ -318,6 +320,17 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, agora } = {}) {
   }
   const m = ctx.marca || {};
   const bases = (m.bases || []).filter((b) => b && b.url);
+
+  /*
+   * 1. As referências de estilo (D9): as artes que o cliente subiu na Marca
+   * viram uma frase de direção, que vai para os textos, as peças e as fotos.
+   * Falhou a leitura, segue sem: referência é ganho, não requisito.
+   */
+  if (onLerReferencias && (m.referencias || []).length) {
+    passo('lendo suas referências', 'a direção visual das artes que você subiu');
+    try { ctx = Object.assign({}, ctx, { estiloRef: String((await onLerReferencias(m.referencias.slice(0, 3))) || '').slice(0, 240) }); }
+    catch (e) { /* sem a frase, a campanha sai como sairia */ }
+  }
 
   // 2. Os textos, de uma vez.
   passo('escrevendo a campanha', vagas.length + ' peças');
@@ -339,7 +352,9 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, agora } = {}) {
     passo('gerando as fotos', ++feitas + ' de ' + aGerar.length);
     if (!onImagem) { semFoto.push({ vaga: v.id, porque: 'sem gerador de fotos' }); continue; }
     try {
-      fotos[v.id] = await onImagem(d.descricao, v.formato, identidade);
+      // O clima das referências entra na foto também: a peça e a foto falam a mesma língua.
+      const pedidoDaFoto = ctx.estiloRef ? d.descricao + '. Clima visual: ' + ctx.estiloRef : d.descricao;
+      fotos[v.id] = await onImagem(pedidoDaFoto, v.formato, identidade);
     } catch (e) {
       // Sem a foto, a peça sai sem ela e o resto segue: derrubar tudo jogaria fora o que já foi pago.
       semFoto.push({ vaga: v.id, porque: String((e && e.message) || 'a foto não saiu') });

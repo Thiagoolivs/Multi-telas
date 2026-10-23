@@ -289,6 +289,12 @@
     const daEmpresa = aoRedor(p.cores);
     // Da empresa: no máximo duas, para sobrar lugar para o ramo.
     daEmpresa.slice(0, 2).forEach((x) => por(x, 'empresa'));
+    /*
+     * As cores que o SITE usa (D9), lidas na Marca: uma paleta própria, com
+     * o nome dizendo de onde veio. Pula se já é a mesma da empresa.
+     */
+    const doSite = aoRedor(p.doSite)[0];
+    if (doSite) por(Object.assign({}, doSite, { nome: 'Do seu site', porque: 'as cores que o seu site usa, acertadas para a TV' }), 'site');
     CURADAS[ramo].forEach((x) => por(x, 'ramo'));
     CURADAS[RAMO_PADRAO].forEach((x) => por(x, 'ramo'));
     return { ramo, nomeRamo: NOMES_RAMO[ramo], paletas: out };

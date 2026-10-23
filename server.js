@@ -332,6 +332,27 @@ function pubDevice(d) { return { id: d.id, name: d.name, code: d.code, paired: !
  * Pula o que não é URL de mídia nossa ou passa de 5 MB — então o chamador deve
  * conferir o tamanho do resultado quando a ORDEM importar.
  */
+/*
+ * A direção visual das referências da marca, numa frase (D9). Antes só o
+ * diretor antigo lia; o Criar ignorava as artes que o cliente subiu. Guarda
+ * a resposta por conjunto de imagens: as mesmas referências não pagam a
+ * leitura de novo a cada campanha.
+ */
+const estilosLidos = new Map();
+async function estiloDasReferencias(urls) {
+  const lista = (Array.isArray(urls) ? urls : []).filter(Boolean).slice(0, 3);
+  if (!lista.length) return '';
+  const chave = lista.join('|');
+  if (estilosLidos.has(chave)) return estilosLidos.get(chave);
+  const imgs = await lerImagens(lista);
+  const estilo = imgs.length ? await ai.descreverEstilo(imgs) : '';
+  if (estilo) {
+    if (estilosLidos.size > 300) estilosLidos.delete(estilosLidos.keys().next().value);
+    estilosLidos.set(chave, estilo);
+  }
+  return estilo;
+}
+
 async function lerImagens(urls) {
   const imgs = [];
   for (const u of urls || []) {
@@ -501,6 +522,8 @@ function montarCtx() {
     inviteCode,
     // A marca e a foto da campanha, uma função só para Meus Designs e o Criar (server/routes/campanhas.js).
     marcaDaConta, fotoDaConta,
+    // As referências de estilo da marca, lidas pela IA (D9): o Criar também usa.
+    estiloDasReferencias,
   };
   ctx.routes = {
     auth: require('./server/routes/auth')(ctx),
@@ -1473,12 +1496,28 @@ const negocioCache = new Map();
           const m = await db.salvarSiteDaMarca(parts[3], sess.tenant_id, dados.url, dados.resumo, dados.imagem);
           if (!m) return sendJson(res, 404, { error: 'marca não encontrada' });
           /*
-           * A imagem que o site publica como sua cara entra como REFERÊNCIA de
-           * estilo — é literalmente "a imagem do site". Fica junto das outras
-           * referências, então a IA a trata como sempre tratou.
+           * A imagem que o site publica como sua cara (D9). Antes entrava como
+           * endereço DE FORA: a TV não aceita foto de host que não declaramos,
+           * e a leitura das referências não a lia. Agora é baixada (mesma
+           * checagem de endereço da página), guardada em Mídias e entra no
+           * acervo ("da marca") e nas referências de estilo. Ler o site de novo
+           * troca a anterior, em vez de empilhar.
            */
           if (dados.imagem) {
-            await db.addBrandAsset(sess.tenant_id, 'referencia', dados.imagem, 'Do site: ' + (dados.titulo || dados.url).slice(0, 40), parts[3]);
+            const img = await site.baixarImagem(dados.imagem).catch(() => ({ erro: 'falhou' }));
+            if (!img.erro) {
+              try {
+                const salvo = await midia.guardarBuffer(db, sess.tenant_id, img.bytes, img.mime, { nome: 'Imagem do site', origem: 'site' });
+                for (const a of await db.listBrandAssets(sess.tenant_id)) {
+                  if (/^Do site: /.test(a.label || '') && (a.kind === 'base' || a.kind === 'referencia')) await db.removeBrandAsset(a.id, sess.tenant_id);
+                }
+                const rotulo = 'Do site: ' + (dados.titulo || dados.url).slice(0, 40);
+                await db.addBrandAsset(sess.tenant_id, 'base', salvo.url, rotulo, parts[3]);
+                await db.addBrandAsset(sess.tenant_id, 'referencia', salvo.url, rotulo, parts[3]);
+                dados.imagem = salvo.url;
+                await db.salvarSiteDaMarca(parts[3], sess.tenant_id, dados.url, dados.resumo, salvo.url);
+              } catch (e) { dados.imagem = ''; /* cota cheia ou storage fora: o resto da leitura vale */ }
+            } else dados.imagem = '';
           }
           return sendJson(res, 200, { marca: m, lido: dados });
         });
@@ -1721,10 +1760,7 @@ const negocioCache = new Map();
           onProgresso: progresso,
           // A geração de imagem fica aqui: o diretor não conhece storage nem tenant.
           // A IA olha as referências da marca e devolve a direção em 1 frase.
-          onLerReferencias: async (urls) => {
-            const imgs = await lerImagens(urls);
-            return imgs.length ? ai.descreverEstilo(imgs) : '';
-          },
+          onLerReferencias: estiloDasReferencias,
           // Catálogo do acervo: uma frase por foto sem rótulo, para o diretor
           // saber o que a empresa já tem antes de pagar por uma imagem nova.
           onCatalogar: async (urls) => {
