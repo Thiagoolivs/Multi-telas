@@ -198,7 +198,8 @@ test('cobrar grava os tokens medidos e troca a estimativa do texto pelo custo me
       assert.equal(gravados[0].custoCentavos, 29, 'o texto deixou de ser os 5 centavos fixos');
       assert.equal(gravados[0].tokens.entrada, 1200);
       assert.equal(gravados[0].tokens.cacheLida, 9000);
-      // Sem chamada medida, a estimativa do catálogo continua valendo.
+      // Sem chamada medida, a estimativa do catálogo continua valendo: nunca zero,
+      // senão o que escapasse da medição escaparia do teto (D0.4, revisão).
       const sem = await usoIA.cobrar(db, { id: 't1' }, { tipo: 'gerar-composicao', userId: 'u1' });
       assert.equal(sem.custoCentavos, 5);
       assert.equal(gravados[1].tokens, null);

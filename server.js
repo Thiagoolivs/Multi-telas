@@ -38,6 +38,7 @@ const billing = require('./server/billing');
 const ai = require('./server/ai');
 // Cada requisição da API é uma medição de IA: os tokens somam e o uso-ia.cobrar os grava.
 const motores = require('./server/motores');
+const { AsyncResource } = require('node:async_hooks');
 const director = require('./server/ai-director');
 const compositor = require('./server/compositor');
 const site = require('./server/site.js');
@@ -51,6 +52,8 @@ const admin = require('./server/admin.js');
 const suporte = require('./server/suporte.js');
 const ds = require('./server/design-system');
 const jobs = require('./server/jobs');
+// O texto que um trabalho em segundo plano gastou vira linha no uso_ia quando ele termina (D0.4).
+jobs.aoMedir = (job, medido) => usoIA.registrarMedicao(db, job.tenantId, { tipo: job.tipo, userId: job.userId, referencia: 'trabalho:' + job.id }, medido);
 const legal = require('./server/legal');
 const vigia = require('./server/vigia');
 const lembretes = require('./server/lembretes');
@@ -162,16 +165,24 @@ function sendJson(res, status, obj, extraHeaders) {
   res.writeHead(status, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, extraHeaders || {}));
   res.end(JSON.stringify(obj));
 }
+/*
+ * O fim do corpo chega num evento do stream, que roda no contexto assíncrono
+ * do SOCKET, e não no da requisição. Sem o bind, tudo o que o callback faz
+ * fica fora do motores.medir() aberto para esta requisição: as chamadas de
+ * IA eram anotadas em caderno nenhum, e o uso_ia gravava zero chamadas e a
+ * estimativa fixa — o custo real da IA nunca foi medido em produção
+ * (achado no teste de ponta a ponta do D0.4).
+ */
 function readBody(req, res, cb) {
   let data = '';
   req.on('data', (ch) => { data += ch; if (data.length > 2e6) req.destroy(); });
-  req.on('end', () => {
+  req.on('end', AsyncResource.bind(() => {
     let parsed; try { parsed = data ? JSON.parse(data) : {}; } catch (e) { parsed = null; }
     Promise.resolve(cb(parsed)).catch((e) => {
       erros.registrar(e, { rota: req.url, metodo: req.method, onde: 'corpo da requisição' });
       try { sendJson(res, 500, { error: 'erro interno' }); } catch (_) {}
     });
-  });
+  }));
 }
 /*
  * Toda geração de IA vira TRABALHO — devolve 202 com um id e o painel
@@ -590,12 +601,25 @@ async function handleApi(req, res, pathname, query) {
     try {
       const tenantTexto = await db.getTenant(sess.tenant_id);
       if (tenantTexto) {
-        if (!(await usoIA.tetoTextoOk(db, tenantTexto))) {
-          return sendJson(res, 429, { error: 'muitas chamadas de IA nesta conta hoje. Tente de novo mais tarde.' });
-        }
-        // Não bloqueia: texto é livre. Só registra, para a franquia poder ser
-        // calibrada com dado em vez de palpite.
-        await usoIA.cobrar(db, tenantTexto, { tipo: TIPO_IA[parts[2]], quantidade: 1, userId: sess.user_id, referencia: parts[2] });
+        // Atraso, teste vencido, teto em reais da conta e o global (uso-ia.js, D0.4).
+        const pode = await usoIA.podeUsarTexto(db, tenantTexto);
+        if (!pode.ok) return sendJson(res, pode.status, pode.corpo);
+        /*
+         * Registra quando a rota TERMINA, com o que ela gastou de verdade.
+         * Registrava na entrada, antes de qualquer chamada: a medição vinha
+         * vazia e ficava a estimativa de 5 centavos, muito abaixo do real.
+         * O caderno é guardado aqui porque o 'finish' roda fora dele.
+         */
+        const caderno = motores.medicaoAtual();
+        let registrado = false;
+        const registrar = () => {
+          if (registrado) return;
+          registrado = true;
+          usoIA.cobrar(db, tenantTexto, { tipo: TIPO_IA[parts[2]], quantidade: 1, userId: sess.user_id, referencia: parts[2], medicao: caderno })
+            .catch((e) => log.aviso('uso-ia.medicao-falhou', { motivo: e.message }));
+        };
+        res.once('finish', registrar);
+        res.once('close', registrar);
       }
     } catch (e) { log.aviso('uso-ia.medicao-falhou', { motivo: e.message }); }
   }

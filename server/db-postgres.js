@@ -270,6 +270,8 @@ async function init() {
       creditos INTEGER, custo_centavos INTEGER, referencia TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_uso_ia_tenant ON uso_ia(tenant_id, created_at);
+    -- O teto global da IA soma o gasto de todas as contas por data (uso-ia.js, D0.4).
+    CREATE INDEX IF NOT EXISTS idx_uso_ia_criado ON uso_ia(created_at);
     ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS modelo TEXT;
     ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS chamadas INTEGER;
     ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS tokens_entrada INTEGER;
@@ -1152,6 +1154,22 @@ async function contarUsoIA(tenantId, desde) {
   const r = await pool.query('SELECT COUNT(*) AS n FROM uso_ia WHERE tenant_id = $1 AND created_at > $2', [tenantId, desde || 0]);
   return Number((r.rows[0] || {}).n || 0);
 }
+// O gasto de TODAS as contas desde um instante: o teto global da IA (uso-ia.js).
+async function gastoIAGlobal(desde) {
+  const r = await pool.query('SELECT COALESCE(SUM(custo_centavos),0) AS centavos FROM uso_ia WHERE created_at > $1', [desde || 0]);
+  return Number((r.rows[0] || {}).centavos || 0);
+}
+/*
+ * Débito como SUBTRAÇÃO no banco, não como "grava o saldo que calculei".
+ * O ler-calcular-gravar perdia crédito: um pacote pago (creditarPacote, que
+ * já soma no banco) ou outro trabalho da mesma conta no meio do caminho era
+ * sobrescrito pelo valor velho (EXECUTOR D0.4).
+ */
+async function debitarCreditos(tenantId, daFranquia, doComprado) {
+  await pool.query(
+    'UPDATE tenants SET creditos_franquia = GREATEST(0, COALESCE(creditos_franquia, 0) - $1), creditos_comprados = GREATEST(0, COALESCE(creditos_comprados, 0) - $2) WHERE id = $3',
+    [Math.max(0, Number(daFranquia) || 0), Math.max(0, Number(doComprado) || 0), tenantId]);
+}
 async function getCreditos(tenantId) {
   const r = await pool.query('SELECT creditos_franquia, creditos_comprados, creditos_ciclo FROM tenants WHERE id = $1', [tenantId]);
   const x = r.rows[0];
@@ -1563,7 +1581,7 @@ module.exports = {
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
   frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta, registrarAcessoSuporte, acessosSuporte,
-  registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
+  registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, gastoIAGlobal, debitarCreditos, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,

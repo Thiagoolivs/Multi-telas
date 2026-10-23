@@ -145,8 +145,25 @@ function criar(tenantId, tarefa, meta) {
   };
 
   // Fire-and-forget de propósito: quem acompanha é o polling.
+  /*
+   * O trabalho mede o próprio gasto de IA num caderno só dele. Antes, o
+   * texto de uma campanha (dezenas de composições) era anotado no caderno da
+   * requisição que já tinha respondido, e ninguém o lia: o uso_ia guardava
+   * a estimativa fixa de 5 centavos (EXECUTOR D0.4). O que sobra no caderno
+   * no fim (a foto já se registra sozinha, em fotoDaConta) vai para
+   * aoMedir, que o server.js liga ao uso_ia.
+   */
+  const motores = require('./motores.js');
   job.pronto = Promise.resolve()
-    .then(() => tarefa(progresso))
+    .then(() => motores.medir(async () => {
+      try { return await tarefa(progresso); } finally {
+        const medido = motores.consumirMedicao();
+        if (medido.chamadas && typeof modulo.aoMedir === 'function') {
+          Promise.resolve().then(() => modulo.aoMedir(job, medido))
+            .catch((e) => require('./erros.js').registrar(e, { onde: 'medição do trabalho', tipo: job.tipo }));
+        }
+      }
+    }))
     .then((r) => { job.resultado = r; job.estado = 'pronto'; })
     .catch((e) => {
       /*
@@ -258,4 +275,5 @@ function panorama() {
   return { rodando, naMemoria: jobs.size };
 }
 
-module.exports = { criar, ler, publico, usarBanco, doTenant, fecharOrfaos, panorama, MAX_POR_TENANT };
+const modulo = { criar, ler, publico, usarBanco, doTenant, fecharOrfaos, panorama, MAX_POR_TENANT, aoMedir: null };
+module.exports = modulo;
