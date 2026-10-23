@@ -152,6 +152,8 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   const [marcas, setMarcas] = useState([]);
   const [aba, setAba] = useState('textos');
   const [ocultos, setOcultos] = useState(() => (item.ocultos || []).slice());
+  // D37: o crédito da foto do banco de imagens, por campo ("Foto: Fulano / Pixabay"); a TV mostra no canto.
+  const [creditos, setCreditos] = useState(() => ({ ...(item.creditos || {}) }));
   const [desenho, setDesenho] = useState(() => ({ html: item.html, css: item.css, base: (item.origem && item.origem.base) || '' }));
   const [modelos, setModelos] = useState(null);
   const [daConta, setDaConta] = useState(null);   // a marca principal: o "voltar para a marca"
@@ -191,13 +193,15 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
    * campo não viesse. Vazio, ela não mostra nada.
    */
   const atual = useMemo(() => {
-    const { ocultos: _o, guardados: _g, ...resto } = item; // eslint-disable-line no-unused-vars
+    const { ocultos: _o, guardados: _g, creditos: _c, ...resto } = item; // eslint-disable-line no-unused-vars
     const doDesenho = { html: desenho.html, css: desenho.css, origem: { ...(item.origem || {}), ...(desenho.base ? { base: desenho.base } : {}) } };
     const gravados = { ...campos };
     const guardados = {};
     ocultos.forEach((n) => { if (gravados[n]) guardados[n] = gravados[n]; gravados[n] = ''; });
-    return { ...resto, ...doDesenho, campos: gravados, modo, marca, ...(ocultos.length ? { ocultos } : {}), ...(Object.keys(guardados).length ? { guardados } : {}) };
-  }, [item, desenho, campos, modo, marca, ocultos]);
+    // Só o crédito de foto que continua na peça (e visível).
+    const vivos = Object.fromEntries(Object.entries(creditos).filter(([n]) => gravados[n]));
+    return { ...resto, ...doDesenho, campos: gravados, modo, marca, ...(ocultos.length ? { ocultos } : {}), ...(Object.keys(guardados).length ? { guardados } : {}), ...(Object.keys(vivos).length ? { creditos: vivos } : {}) };
+  }, [item, desenho, campos, modo, marca, ocultos, creditos]);
 
   // Confere meio segundo depois da última mudança (nos três formatos, ou no lugar da peça).
   useEffect(() => {
@@ -367,7 +371,14 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
                 {fotoAberta === c.nome && (
                   <FotoDoProduto incluirIa aviso="Escolha uma foto das suas Mídias ou envie outra." botao="Enviar foto"
                     onFechar={() => setFotoAberta(null)}
-                    onEscolher={(url) => { setCampos((x) => ({ ...x, [c.nome]: url })); setFotoAberta(null); }} />
+                    onEscolher={(url, extra) => {
+                      setCampos((x) => ({ ...x, [c.nome]: url }));
+                      setCreditos((x) => { const n = { ...x }; if (extra && extra.credito) n[c.nome] = extra.credito; else delete n[c.nome]; return n; });
+                      setFotoAberta(null);
+                    }} />
+                )}
+                {creditos[c.nome] && campos[c.nome] && (
+                  <p className="mt-1 text-2xs text-ink-3">{creditos[c.nome]} — aparece pequeno no canto da TV.</p>
                 )}
               </div>
             ))}

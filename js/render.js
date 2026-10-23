@@ -1937,7 +1937,21 @@
     const el = div('mt-slide mt-peca-html');
     if (!global.MTPecaRender) return { el, duration: item.duracao || 12 };
     const ctl = global.MTPecaRender.montar(hostDaPeca(el), item, opcoesDaPeca());
+    comCredito(el, item.creditos);
     return { el, duration: ctl.duracao, onLeave: ctl.parar };
+  }
+
+  /*
+   * O crédito da foto do banco de imagens (EXECUTOR D37): "Foto: Fulano /
+   * Pixabay", pequeno e discreto no canto, por cima da peça. Só texto
+   * (textContent), e só o que o painel pôs em `creditos`.
+   */
+  function comCredito(el, creditos) {
+    const textos = creditos && typeof creditos === 'object' ? Object.keys(creditos).map((k) => String(creditos[k] || '').slice(0, 80)).filter(Boolean) : [];
+    if (!textos.length) return;
+    const c = div('mt-credito');
+    c.textContent = textos.filter((t, i) => textos.indexOf(t) === i).join(' · ');
+    el.appendChild(c);
   }
   RENDERERS['peca-html'] = renderPecaHtml;
 
