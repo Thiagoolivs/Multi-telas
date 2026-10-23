@@ -11,9 +11,9 @@ import { deviceStatus } from '../../lib/deviceStatus.js';
 export function FleetTable({ screens }) {
   return (
     <Panel>
-      <PanelHeader title="Frota de telas" description="Estado em tempo real de cada dispositivo" />
+      <PanelHeader title="Suas TVs" description="Como cada uma está agora" />
       {screens.length === 0 ? (
-        <EmptyState icon={MonitorPlay} title="Nenhuma tela pareada" description="Pareie a primeira TV na aba Telas para começar a operar." />
+        <EmptyState icon={MonitorPlay} title="Nenhuma TV ainda" description="Ligue a primeira TV em Telas." />
       ) : (
         <>
           <Table>

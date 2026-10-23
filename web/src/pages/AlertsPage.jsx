@@ -34,7 +34,7 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling }) {
     alerts.push({
       id: 'off-' + d.id, tone: 'danger', Icon: MonitorX,
       title: `“${d.name || 'Tela sem nome'}” está offline`,
-      desc: `Sem resposta ${relativeTime(d.lastSeen)}. Verifique a energia, a internet e se o player está aberto na TV.`,
+      desc: `Sem resposta ${relativeTime(d.lastSeen)}. Verifique a energia, a internet e se o MultiTelas está aberto na TV.`,
       action: { label: 'Ver telas', on: onGoScreens },
     });
   }
@@ -45,7 +45,7 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling }) {
     alerts.push({
       id: 'never-' + d.id, tone: 'warn', Icon: MonitorPlay,
       title: `“${d.name || 'Tela sem nome'}” nunca conectou`,
-      desc: 'A tela foi pareada, mas o player ainda não abriu nela. Abra o player na TV para começar a exibir.',
+      desc: 'A TV foi ligada à conta, mas o MultiTelas ainda não abriu nela. Abra o MultiTelas na TV para começar a mostrar.',
       action: { label: 'Ver telas', on: onGoScreens },
     });
   }
@@ -70,7 +70,7 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling }) {
         id: 'storage', tone: pct >= 0.95 ? 'danger' : 'warn', Icon: HardDrive,
         title: `Armazenamento em ${Math.round(pct * 100)}% do limite`,
         desc: 'Apague mídias que não usa mais ou aumente o plano para continuar enviando arquivos.',
-        action: { label: 'Ver armazenamento', on: onGoStorage },
+        action: { label: 'Ver mídias', on: onGoStorage },
       });
     }
   }
@@ -104,7 +104,7 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling }) {
         {loadingDev ? (
           <div className="p-6"><Spinner size={20} /></div>
         ) : list.length === 0 ? (
-          <EmptyState icon={MonitorPlay} title="Nenhuma tela pareada"
+          <EmptyState icon={MonitorPlay} title="Nenhuma TV ainda"
             description="Assim que você parear uma TV, os avisos sobre ela aparecem aqui."
             action={<Button size="sm" variant="primary" onClick={onGoScreens}>Ir para Telas</Button>} />
         ) : alerts.length === 0 ? (

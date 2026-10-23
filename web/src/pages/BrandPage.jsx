@@ -389,8 +389,8 @@ export function BrandPage({ onIr }) {
         {!mem ? (
           <div className="flex items-start gap-2 p-4 text-sm text-ink-3">
             <Brain size={15} className="mt-0.5 shrink-0" />
-            Nada ainda. Ao criar uma campanha usando <b className="text-ink-2">Refinar conversando</b>, o
-            sistema guarda aqui o que descobrir do seu negócio — e a campanha seguinte já começa sabendo.
+            Nada ainda. Quando você conversa no Criar, o sistema guarda aqui o que descobrir do seu
+            negócio — e a próxima criação já começa sabendo.
           </div>
         ) : (
           <div className="grid gap-3 p-4 text-sm sm:grid-cols-2">

@@ -58,7 +58,7 @@ const META = {
   musicas: { title: 'Músicas' },
   ia: { title: 'Da IA' },
   banco: { title: 'Banco de Imagens', subtitle: 'Acervo compartilhado entre os clientes. Usar daqui não gasta criação.' },
-  birthdays: { title: 'Aniversariantes', subtitle: 'Importe a equipe e o player mostra sozinho.' },
+  birthdays: { title: 'Aniversariantes', subtitle: 'A lista da equipe, para mostrar na TV quem faz aniversário.' },
   billing: { title: 'Plano e cobrança' },
   system: { title: 'Estado do sistema', subtitle: 'O que está configurado, e o que vai doer se ficar como está.' },
   platform: { title: 'Plataforma' },

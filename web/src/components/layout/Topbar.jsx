@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, Menu, Sun, Moon, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut, ChevronDown } from 'lucide-react';
 import { IconButton } from '../ui/Button.jsx';
-import { StatusDot } from '../ui/Badge.jsx';
 
 const ROLE_LABEL = { owner: 'Dono', admin: 'Admin', member: 'Membro' };
 
@@ -9,23 +8,16 @@ export function Topbar({ title, onOpenMenu, theme, onToggleTheme, user, onLogout
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur">
       <IconButton icon={Menu} label="Menu" className="lg:hidden" onClick={onOpenMenu} />
-      <h1 className="text-sm font-semibold text-ink">{title}</h1>
-
-      <div className="relative ml-4 hidden max-w-md flex-1 md:block">
-        <Search size={15} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
-        <input
-          type="text"
-          placeholder="Buscar telas, campanhas, locais…"
-          className="h-8 w-full rounded-md border border-line bg-surface-2 pl-8 pr-16 text-sm text-ink placeholder:text-ink-3 focus:border-accent focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent/25"
-        />
-        <kbd className="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-line bg-surface px-1.5 py-0.5 text-2xs text-ink-3">⌘K</kbd>
-      </div>
+      {/*
+        O título só no celular: no computador a página já tem o dela, e o
+        topo repetia "Visão geral" pela terceira vez (teste de uso de 23/10).
+        Saíram também a busca, que não buscava nada, e o selo "Sistema
+        operacional", sempre verde e fixo no código — em português ele soa
+        como Windows (EXECUTOR D2).
+      */}
+      <h1 className="text-sm font-semibold text-ink lg:hidden">{title}</h1>
 
       <div className="ml-auto flex items-center gap-1.5">
-        <span className="hidden items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-2 sm:inline-flex">
-          <StatusDot tone="ok" pulse />
-          Sistema operacional
-        </span>
         <IconButton icon={theme === 'dark' ? Sun : Moon} label="Alternar tema" onClick={onToggleTheme} />
         <UserMenu user={user} onLogout={onLogout} />
       </div>

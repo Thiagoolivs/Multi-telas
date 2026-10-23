@@ -108,7 +108,7 @@ export function BancoImagensPage({ onUsar }) {
             title={busca || formato ? 'Nada com esse filtro' : 'O banco ainda está enchendo'}
             description={busca || formato
               ? 'Tente outra palavra ou tire o filtro de formato.'
-              : 'Toda imagem que a IA gera pode ser compartilhada aqui, em Armazenamento. Quanto mais gente compartilha, menos todo mundo gasta.'}
+              : 'Toda imagem que a IA gera pode ser compartilhada aqui, em Mídias. Quanto mais gente compartilha, menos todo mundo gasta.'}
           />
         ) : (
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">

@@ -56,8 +56,8 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
     <div>
       <PageHeader
         title="Telas"
-        subtitle="Dispositivos pareados à sua conta e o conteúdo que exibem."
-        actions={<>
+        subtitle="As TVs ligadas à sua conta."
+        actions={todas.length > 0 && <>
           {/* Abre uma TV nova NESTE aparelho (útil num computador ligado à TV,
               ou para testar). No celular só confundia: virava uma "tela" a mais. */}
           <Button variant="secondary" icon={MonitorPlay} className="hidden sm:inline-flex"
@@ -87,12 +87,21 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
 
         {loading && <SkeletonRows rows={5} cols={4} />}
         {error && <ErrorState description="Não foi possível carregar as telas." onRetry={reload} />}
-        {!loading && !error && list.length === 0 && (
+        {/* Filtro sem resultado não é conta sem TV ("Sem grupo" com zero mostrava "Ligar a primeira"). */}
+        {!loading && !error && todas.length > 0 && list.length === 0 && (
+          <p className="p-6 text-center text-sm text-ink-3">Nenhuma TV neste grupo.</p>
+        )}
+        {!loading && !error && todas.length === 0 && (
           <EmptyState
             icon={MonitorPlay}
-            title="Nenhuma tela pareada"
+            title="Nenhuma TV ainda"
             description="Ligue a TV no app MultiTelas TV (ou abra o endereço no navegador dela). Ela mostra um código e um QR: aponte o celular para o QR, ou toque abaixo e digite o código."
-            action={<Button size="sm" variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Parear a primeira</Button>}
+            action={<div className="flex flex-col items-center gap-2">
+              {/* Um caminho só na conta sem TV: o topo não repete o botão (D2). */}
+              <Button size="sm" variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Ligar a primeira TV</Button>
+              <button type="button" className="hidden text-xs text-accent hover:underline sm:block"
+                onClick={() => window.open('/player.html?cloud=1&pid=' + Math.random().toString(36).slice(2, 9), '_blank', 'noopener')}>ou usar este computador como TV</button>
+            </div>}
           />
         )}
 
@@ -436,7 +445,7 @@ function EnderecoDaTv() {
         </Button>
       </div>
       <div className="mt-1.5 text-xs text-ink-3">
-        A TV vai mostrar um código de 6 dígitos e um QR. Deixe essa tela aberta enquanto você pareia aqui.
+        A TV vai mostrar um código de 6 letras e números e um QR. Deixe essa tela aberta enquanto você pareia aqui.
       </div>
     </div>
   );
@@ -689,7 +698,7 @@ function BackupDialog({ target, screens, onClose, onDone }) {
               </Field>
               <Button size="sm" variant="secondary" icon={Copy} disabled={busy || !from} onClick={copiar}>Copiar</Button>
             </div>
-          ) : <p className="mt-2 text-xs text-ink-3">Você só tem esta tela — pareie outra para poder copiar.</p>}
+          ) : <p className="mt-2 text-xs text-ink-3">Você só tem esta TV — ligue outra para poder copiar.</p>}
         </div>
 
         <p className="text-2xs text-ink-3">O backup guarda a exibição, não o pareamento: a TV nova precisa ser pareada primeiro.</p>

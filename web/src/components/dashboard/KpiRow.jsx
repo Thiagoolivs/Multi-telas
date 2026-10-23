@@ -14,7 +14,7 @@ export function KpiRow({ kpis }) {
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Stat
         label="Telas online" value={kpis.online} unit={`/ ${kpis.total}`} icon={Wifi}
-        footer={<span className="inline-flex items-center gap-1.5 text-xs text-ink-3"><StatusDot tone="ok" pulse />{onlinePct}% da frota ativa</span>}
+        footer={<span className="inline-flex items-center gap-1.5 text-xs text-ink-3"><StatusDot tone="ok" pulse />{onlinePct}% das TVs no ar</span>}
       />
       <Stat
         label="Telas offline" value={kpis.offline} icon={WifiOff}
@@ -26,7 +26,7 @@ export function KpiRow({ kpis }) {
         footer={<span className="text-xs text-ink-3">{kpis.lastSeen ? 'Últ. atividade ' + relativeTime(kpis.lastSeen) : 'Sem atividade ainda'}</span>}
       />
       <Stat
-        label="Armazenamento" value={formatBytes(kpis.storageUsed)} icon={HardDrive}
+        label="Espaço usado" value={formatBytes(kpis.storageUsed)} icon={HardDrive}
         footer={
           <div>
             <Progress value={kpis.storageFrac * 100} tone={storeTone} className="h-1.5" />

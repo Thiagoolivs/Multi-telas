@@ -110,7 +110,7 @@ export function BirthdaysPage() {
     setBusy('salvar'); setMsg('');
     try {
       const res = await birthdays.import(merged);
-      setMsg(`Relação salva: ${res.imported} pessoa(s)${res.ignored ? `, ${res.ignored} ignorada(s)` : ''}.`);
+      setMsg(`Lista salva: ${res.imported} pessoa(s)${res.ignored ? `, ${res.ignored} ignorada(s)` : ''}.`);
       setRows(null); setPhotos({});
       reload();
     } catch (err) { setMsg(err.message || 'Falha ao salvar.'); }
@@ -118,7 +118,7 @@ export function BirthdaysPage() {
   }
 
   async function clearAll() {
-    if (!window.confirm('Apagar toda a relação de aniversariantes?')) return;
+    if (!window.confirm('Apagar toda a lista de aniversariantes?')) return;
     await birthdays.clear();
     reload();
   }
@@ -129,12 +129,12 @@ export function BirthdaysPage() {
     <div>
       <PageHeader
         title="Aniversariantes"
-        subtitle="Suba a planilha da equipe e as fotos — o player mostra sozinho quem faz aniversário."
+        subtitle="Suba a planilha da equipe e as fotos."
         actions={list.length ? <Button variant="ghost" icon={Trash2} onClick={clearAll}>Limpar</Button> : null}
       />
 
       <Panel className="mb-4">
-        <PanelHeader title="Importar relação" description="1) planilha CSV · 2) fotos (nomeadas pela matrícula) · 3) salvar" />
+        <PanelHeader title="Importar a equipe" description="1) planilha CSV · 2) fotos (nomeadas pela matrícula) · 3) salvar" />
         <div className="grid gap-3 p-4 md:grid-cols-3">
           {/* 1. Planilha */}
           <div className="rounded-lg border border-line bg-surface-2 p-4">
@@ -159,7 +159,7 @@ export function BirthdaysPage() {
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-ink"><Cake size={16} className="text-accent" /> 3. Salvar</div>
             <p className="mb-3 text-xs text-ink-3">{rows ? `${matched} de ${rows.length} com foto casada.` : 'Suba a planilha primeiro.'}</p>
             <Button size="sm" variant="primary" icon={Check} disabled={!rows || busy === 'salvar'} onClick={save}>
-              {busy === 'salvar' ? 'Salvando…' : 'Salvar relação'}
+              {busy === 'salvar' ? 'Salvando…' : 'Salvar a lista'}
             </Button>
           </div>
         </div>
@@ -167,7 +167,7 @@ export function BirthdaysPage() {
       </Panel>
 
       <Panel>
-        <PanelHeader title="Relação atual" description={list.length ? `${list.length} pessoa(s)` : undefined} />
+        <PanelHeader title="Quem está na lista" description={list.length ? `${list.length} pessoa(s)` : undefined} />
         {loading ? (
           <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}</div>
         ) : error ? (
