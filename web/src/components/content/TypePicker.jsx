@@ -57,7 +57,7 @@ const ENTRADAS = [
   { id: 'promo', label: 'Promoção com preço', desc: 'Produto, preço e chamada, já na cor da marca.', icon: Tag },
   { id: 'announce', label: 'Aviso', desc: 'Horário, recado, comunicado.', icon: Megaphone },
   { id: 'birthdayauto', label: 'Aniversariantes', desc: 'Os aniversariantes do dia, sozinhos.', icon: Cake },
-  { id: 'social', label: 'Instagram ou QR', desc: 'O perfil e o QR para seguir a loja.', icon: Instagram },
+  { id: 'social', label: 'Instagram ou QR', desc: 'O perfil e o QR para seguir vocês.', icon: Instagram },
 ];
 
 const NOME_PAPEL = { cabecalho: 'cabeçalho', rodape: 'rodapé', principal: 'principal', lateral: 'lateral' };

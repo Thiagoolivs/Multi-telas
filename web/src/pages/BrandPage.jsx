@@ -12,6 +12,7 @@ import { aviso } from '../lib/avisos.js';
 import { lerJornada } from '../lib/jornada.js';
 import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { PaletasSugeridas } from '../components/content/PaletasSugeridas.jsx';
+import { usePerfil } from '../lib/perfil.js';
 
 const FONTES = [
   { id: '', label: 'A IA escolhe' },
@@ -32,7 +33,7 @@ const DIRECOES = [
 // Grupos de imagem da marca, com o texto que explica para que serve cada um.
 const GRUPOS = [
   { kind: 'logo', titulo: 'Logo', desc: 'Entra no mesmo canto de todas as peças geradas.', unico: true },
-  { kind: 'base', titulo: 'Imagens base', desc: 'Fotos suas (produto, equipe, loja). A IA usa estas antes de inventar uma imagem — descreva cada uma para ela saber quando cabe.' },
+  { kind: 'base', titulo: 'Imagens base', desc: 'Fotos suas (produto, equipe, o lugar). A IA usa estas antes de inventar uma imagem — descreva cada uma para ela saber quando cabe.' },
   { kind: 'referencia', titulo: 'Referências de estilo', desc: 'Artes que você gosta. A IA olha e imita a direção — não copia o conteúdo.' },
 ];
 
@@ -52,6 +53,7 @@ function Ficha({ titulo, texto, itens }) {
 }
 
 export function BrandPage({ onIr }) {
+  const perfil = usePerfil();
   const { data, loading, reload } = useAsync(brand.get);
   const kit = (data && data.kit) || {};
   const assets = (data && data.assets) || [];
@@ -333,7 +335,7 @@ export function BrandPage({ onIr }) {
         bairro e da cidade, endereço ou link na mensagem do WhatsApp.
       */}
       <Panel>
-        <PanelHeader title="Onde fica a loja" description="Vai para as hashtags do bairro e da cidade e para a mensagem do WhatsApp. Salva junto com a identidade, lá embaixo." />
+        <PanelHeader title={'Onde fica a ' + perfil.lugar} description="Vai para as hashtags do bairro e da cidade e para a mensagem do WhatsApp. Salva junto com a identidade, lá embaixo." />
         <div className="grid gap-3 p-4 sm:grid-cols-2">
           <Field label="Endereço"><Input value={local.endereco} onChange={(e) => setLocal({ ...local, endereco: e.target.value })} placeholder="Rua das Flores, 120" /></Field>
           <Field label="Bairro"><Input value={local.bairro} onChange={(e) => setLocal({ ...local, bairro: e.target.value })} placeholder="Mooca" /></Field>

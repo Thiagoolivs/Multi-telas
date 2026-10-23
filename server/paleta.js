@@ -12,6 +12,7 @@
  * mesmo arquivo que o painel usa para sugerir: um lugar só decide.
  */
 const P = require('../js/paletas.js');
+const Perfil = require('../js/perfil.js');
 
 async function textosDaConta(db, tenantId, kit) {
   const [tenant, mem] = await Promise.all([
@@ -42,4 +43,15 @@ async function garantir(db, tenantId) {
   return Object.assign({}, kit, { cores });
 }
 
-module.exports = { garantir, ramoDaConta };
+/*
+ * Empresa, Comércio ou Saúde (js/perfil.js). O que a pessoa escolheu vale;
+ * sem escolha (contas de antes do D4, Google), sai do ramo — a metalúrgica
+ * vira Empresa sem precisar perguntar.
+ */
+async function perfilDaConta(db, tenantId, tenant) {
+  const t = tenant || await db.getTenant(tenantId).catch(() => null);
+  if (t && Perfil.PERFIS[t.perfil]) return t.perfil;
+  return Perfil.deduzir(await ramoDaConta(db, tenantId));
+}
+
+module.exports = { garantir, ramoDaConta, perfilDaConta };

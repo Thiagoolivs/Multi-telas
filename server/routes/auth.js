@@ -1,6 +1,9 @@
 
 // A conta nasce com a paleta do ramo dela, nunca com marca vazia (js/paletas.js).
 const paleta = require('../paleta.js');
+// Empresa, Comércio ou Saúde: decide os começos e os exemplos do painel (D4).
+const Perfil = require('../../js/perfil.js');
+function perfilValido(p) { return Perfil.PERFIS[p] ? p : null; }
 
 module.exports = function(ctx) {
   const { 
@@ -45,6 +48,7 @@ module.exports = function(ctx) {
 
             const payload = {
               email, passHash, name: b.name, inviteData,
+              perfil: perfilValido(b.perfil),
               ip: clientIp(req)
             };
 
@@ -60,6 +64,7 @@ module.exports = function(ctx) {
                 const resCreate = await db.createAccount(email, passHash, b.name, b.name);
                 userId = resCreate.userId;
                 tenantId = resCreate.tenantId;
+                if (payload.perfil) await db.setTenantPerfil(tenantId, payload.perfil);
                 await db.registrarAceite(tenantId, userId, email, legal.VERSAO, 'cadastro', clientIp(req));
                 await paleta.garantir(db, tenantId);
               }
@@ -135,6 +140,7 @@ module.exports = function(ctx) {
               const resCreate = await db.createAccount(p.email, p.passHash, p.name, p.name);
               userId = resCreate.userId;
               tenantId = resCreate.tenantId;
+              if (perfilValido(p.perfil)) await db.setTenantPerfil(tenantId, p.perfil);
               await db.registrarAceite(tenantId, userId, p.email, legal.VERSAO, 'cadastro', p.ip);
               await paleta.garantir(db, tenantId);
             }
@@ -339,12 +345,19 @@ module.exports = function(ctx) {
         if (req.method === 'POST' && action === 'profile') {
           if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
           return readBody(req, res, async (b) => {
+            // O tipo de negócio muda o painel de todos da conta: dono ou admin.
+            // Conferido antes de gravar qualquer coisa, para não salvar metade.
+            if (b && b.perfil !== undefined) {
+              if (sess.role !== 'owner' && sess.role !== 'admin') return sendJson(res, 403, { error: 'só o dono ou um admin muda o tipo de negócio' });
+              if (!perfilValido(b.perfil)) return sendJson(res, 400, { error: 'tipo de negócio inválido' });
+            }
             if (b && typeof b.name === 'string') await db.setUserName(sess.user_id, b.name.trim());
             // Só o dono muda o nome da empresa (aparece nas telas e nos e-mails).
             if (b && typeof b.empresa === 'string') {
               if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono pode mudar o nome da empresa' });
               await db.setTenantName(sess.tenant_id, b.empresa.trim());
             }
+            if (b && b.perfil !== undefined) await db.setTenantPerfil(sess.tenant_id, b.perfil);
             return sendJson(res, 200, { ok: true });
           });
         }
@@ -394,7 +407,15 @@ module.exports = function(ctx) {
            */
           const quem = await operadores.permissao(db, sess);
           return sendJson(res, 200, {
-            tenant: { id: sess.tenant_id, name: (t && t.name) || '' },
+            /*
+             * perfil: Empresa, Comércio ou Saúde (js/perfil.js). Sem escolha
+             * gravada, sai do ramo do nome — perfilEscolhido diz qual é o caso.
+             */
+            tenant: {
+              id: sess.tenant_id, name: (t && t.name) || '',
+              perfil: await paleta.perfilDaConta(db, sess.tenant_id, t),
+              perfilEscolhido: !!(t && perfilValido(t.perfil)),
+            },
             // hasPassword: conta criada pelo Google ainda não tem senha própria.
             user: { id: sess.user_id, email: sess.email, role: sess.role, name: sess.name, hasPassword: !!(u && u.pass_hash) },
             operador: quem.pode,

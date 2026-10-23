@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Tag, Sparkles, Megaphone, Camera, Cake, QrCode, ArrowLeft, Check, Rocket, SlidersHorizontal, MonitorPlay, RefreshCw, ImagePlus, Share2,
+  Tag, Sparkles, Megaphone, Camera, Cake, QrCode, FileText, UserPlus, TrendingUp, HardHat, HeartPulse, Stethoscope, ShieldCheck, ArrowLeft, Check, Rocket, SlidersHorizontal, MonitorPlay, RefreshCw, ImagePlus, Share2,
 } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -15,6 +15,7 @@ import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { publicarPecas } from '../lib/publicar.js';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
+import { usePerfil, perfilDe, perfilAtual } from '../lib/perfil.js';
 
 /*
  * CRIAÇÃO RÁPIDA. Era o Criar até 21/10. Desde o item 24 (EXECUTOR §2b), o
@@ -57,7 +58,69 @@ export const OPCOES = [
   { id: 'instagram', titulo: 'Instagram ou QR', icone: QrCode, pedido: 'Convite para seguir no Instagram',
     dica: 'O @ ou o link que o QR deve abrir.',
     exemplos: ['Siga @padariadobairro', 'Peça pelo WhatsApp: wa.me/5511999999999', 'Avalie a gente no Google'] },
+  /*
+   * Empresa e Saúde (D4). A metalúrgica abria o Início e via "Promoção com
+   * preço"; a clínica, "Foto do produto". Cada perfil mostra as seis que
+   * fazem sentido para ele (js/perfil.js, opcoes).
+   */
+  { id: 'comunicado', titulo: 'Comunicado', icone: FileText, pedido: 'Comunicado para a equipe',
+    dica: 'O assunto e o que muda para as pessoas.',
+    exemplos: ['Nova política de home office a partir de novembro', 'Reunião geral na sexta às 9h, no auditório', 'O plano de saúde muda de operadora em dezembro'] },
+  { id: 'boasvindas', titulo: 'Boas-vindas', icone: UserPlus, pedido: 'Boas-vindas a quem chegou',
+    dica: 'Quem chegou e em qual área.',
+    exemplos: ['Bem-vinda, Carla, ao time de Vendas!', 'Bem-vindos à turma de trainees 2026', 'Boas-vindas ao Rafael, novo supervisor da linha 2'] },
+  { id: 'indicador', titulo: 'Meta ou resultado', icone: TrendingUp, pedido: 'Meta e resultado da equipe',
+    dica: 'O número e o que ele quer dizer.',
+    exemplos: ['Batemos 98% da meta de produção em outubro', '120 dias sem acidente', 'Satisfação dos clientes subiu para 4,8'] },
+  { id: 'seguranca', titulo: 'Segurança do trabalho', icone: HardHat, pedido: 'Lembrete de segurança do trabalho',
+    dica: 'O cuidado, como você falaria no turno.',
+    exemplos: ['Use o protetor auricular na área de prensas', 'Mantenha a faixa de pedestre livre', 'SIPAT de 10 a 14 de novembro'] },
+  { id: 'dica', titulo: 'Dica de saúde', icone: HeartPulse, pedido: 'Dica de saúde para a sala de espera',
+    dica: 'A dica, curta e fácil de seguir.',
+    exemplos: ['Beba água: 2 litros por dia', 'Lave as mãos por 20 segundos', 'Durma de 7 a 8 horas por noite'] },
+  { id: 'servicos', titulo: 'Serviços', icone: Stethoscope, pedido: 'Nossos serviços e especialidades',
+    dica: 'O que vocês atendem e como marcar.',
+    exemplos: ['Agora temos pediatria às terças', 'Exames de sangue sem agendamento, das 7h às 10h', 'Atendemos os convênios Unimed e Bradesco'] },
+  { id: 'prevencao', titulo: 'Campanha de prevenção', icone: ShieldCheck, pedido: 'Campanha de prevenção',
+    dica: 'A campanha e o que a pessoa deve fazer.',
+    exemplos: ['Outubro Rosa: faça seu exame', 'Novembro Azul: cuide da sua saúde', 'Vacina da gripe disponível'] },
 ];
+
+/*
+ * O mesmo começo fala diferente em cada perfil: o aviso da loja é para o
+ * cliente no balcão; o da empresa, para a equipe; o da clínica, para quem
+ * espera ser chamado.
+ */
+const NO_PERFIL = {
+  empresa: {
+    aviso: { titulo: 'Aviso', pedido: 'Aviso para a equipe', dica: 'O aviso, curto, como você falaria na reunião.',
+      exemplos: ['O refeitório fecha às 13h30 na sexta', 'Ponto facultativo na segunda', 'Vacinação na empresa dia 20, das 8h às 12h'] },
+    aniversario: { exemplos: ['Parabéns, Ana, do RH! Dia 12', 'Aniversariantes de outubro: João, Marta e Pedro', 'Feliz aniversário, turno da manhã'] },
+  },
+  saude: {
+    aviso: { pedido: 'Aviso para os pacientes', dica: 'O aviso, curto, como a recepção falaria.',
+      exemplos: ['Chegue 15 minutos antes da consulta', 'Não atenderemos no feriado de quinta', 'Traga a carteirinha do convênio'] },
+    instagram: { exemplos: ['Siga @clinicavida', 'Marque pelo WhatsApp: wa.me/5511999999999', 'Avalie a gente no Google'] },
+  },
+};
+
+// As seis opções do perfil, já com o texto dele. Sem perfil: Comércio.
+export function opcoesDoPerfil(perfil) {
+  const p = perfilDe(perfil);
+  const ajustes = NO_PERFIL[p.id] || {};
+  return p.opcoes.map((id) => {
+    const o = OPCOES.find((x) => x.id === id);
+    return o && { ...o, ...(ajustes[id] || {}) };
+  }).filter(Boolean);
+}
+
+// Uma opção pelo id, no texto do perfil (vale também fora das seis dele).
+export function opcaoDoPerfil(id, perfil) {
+  const o = OPCOES.find((x) => x.id === id);
+  if (!o) return null;
+  const ajuste = (NO_PERFIL[perfilDe(perfil || perfilAtual()).id] || {})[id];
+  return { ...o, ...(ajuste || {}) };
+}
 
 const ONDE = [
   { id: '16/9', nome: 'TV deitada' },
@@ -78,9 +141,10 @@ const FOTOS = [
 
 // O passo 1: as seis opções grandes. Mora aqui e no Início.
 export function OpcoesDeCriar({ onEscolher, compacto }) {
+  const perfil = usePerfil();
   return (
     <div className={cn('grid grid-cols-2 gap-2.5', compacto ? 'sm:grid-cols-3 lg:grid-cols-6' : 'sm:grid-cols-3')}>
-      {OPCOES.map((o) => {
+      {opcoesDoPerfil(perfil.id).map((o) => {
         const Icone = o.icone;
         return (
           <button key={o.id} type="button" onClick={() => onEscolher(o.id)}
@@ -133,7 +197,8 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
   const [erro, setErro] = useState('');
   const [redesAberto, setRedesAberto] = useState(false);
 
-  const op = OPCOES.find((o) => o.id === opcao) || null;
+  const perfil = usePerfil();
+  const op = opcaoDoPerfil(opcao, perfil.id);
   const passo = pronto ? 5 : plano ? 3 : op ? 2 : 1;
 
   /*

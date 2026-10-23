@@ -5,6 +5,8 @@ import { auth } from '../api.js';
 import { Button } from '../components/ui/Button.jsx';
 import { Field, Input, Checkbox } from '../components/ui/Field.jsx';
 import { cn } from '../lib/cn.js';
+import { PERFIS, IDS as PERFIL_IDS, deduzir } from '../lib/perfil.js';
+import { detectarRamo } from '../lib/paletas.js';
 
 // Logotipo do Google no botão (SVG inline — nada externo carrega aqui).
 function GoogleMark() {
@@ -23,6 +25,12 @@ export function AuthScreen({ onAuthed }) {
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState({ email: '', password: '', name: '', inviteCode: '' });
   const [hasInvite, setHasInvite] = useState(false);
+  /*
+   * Empresa, Comércio ou Saúde (D4). Segue o nome digitado ("Metalúrgica
+   * Silva" → Empresa) até a pessoa tocar numa opção; daí vale a escolha.
+   */
+  const [perfilEscolhido, setPerfilEscolhido] = useState('');
+  const perfil = perfilEscolhido || deduzir(detectarRamo([form.name]));
   const [aceite, setAceite] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -102,6 +110,7 @@ export function AuthScreen({ onAuthed }) {
     try {
       if (mode === 'signup') {
         const payload = { email: form.email, password: form.password, name: form.name, aceite: true };
+        if (!hasInvite) payload.perfil = perfil;
         if (hasInvite && form.inviteCode.trim()) payload.inviteCode = form.inviteCode.trim().toUpperCase();
         const r = await auth.signup(payload);
         /*
@@ -200,6 +209,21 @@ export function AuthScreen({ onAuthed }) {
               <Field label={hasInvite ? 'Seu nome' : 'Nome da empresa'}>
                 <Input value={form.name} onChange={set('name')} placeholder={hasInvite ? 'Seu nome' : 'Minha Empresa'} autoComplete={hasInvite ? 'name' : 'organization'} />
               </Field>
+            )}
+            {mode === 'signup' && !hasInvite && (
+              <div role="radiogroup" aria-label="Tipo de negócio">
+                <div className="mb-1.5 text-xs font-medium text-ink-2">Tipo de negócio</div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {PERFIL_IDS.map((id) => (
+                    <button key={id} type="button" role="radio" aria-checked={perfil === id} onClick={() => setPerfilEscolhido(id)}
+                      className={cn('rounded-lg border px-2 py-2 text-sm font-medium transition',
+                        perfil === id ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink-2 hover:border-accent/60')}>
+                      {PERFIS[id].nome}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-2xs text-ink-3">{PERFIS[perfil].descricao} Dá para trocar depois em Ajustes.</p>
+              </div>
             )}
 
             {mode !== 'reset' && mode !== 'verify' && (

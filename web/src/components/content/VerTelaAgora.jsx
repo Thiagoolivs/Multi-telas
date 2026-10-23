@@ -200,7 +200,7 @@ function Zona({ zona, dados, escala, hora }) {
       <EmEscala tam={tam} escala={escala}>
         <div className="flex h-full items-center justify-between gap-2 bg-[#0a1128] px-3 font-semibold text-white" style={{ fontSize: tam[1] / ESCALA_DO_RESUMO * 0.3 }}>
           {/* O cabeçalho da TV é desenhado por ela (marca, clima, hora): aqui, só o que ele é. */}
-          <span className="truncate">Cabeçalho da loja</span><span className="tnum opacity-80">{hora}</span>
+          <span className="truncate">Cabeçalho</span><span className="tnum opacity-80">{hora}</span>
         </div>
       </EmEscala>
     );
