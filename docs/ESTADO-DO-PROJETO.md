@@ -6,10 +6,45 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **23/10/2026** · 1419 testes passando · Fases 1 e 2 do DNA
-novo completas (EXECUTOR §2f, D0.1–D22, PRs #201 a #245).
+Atualizado em: **23/10/2026** · 1450 testes passando · Fases 1, 2 e 3 do
+DNA novo completas (EXECUTOR §2f, D0.1–D29, PRs #201 a #255).
 
 ---
+
+## Rodada 5c — o DNA novo, Fase 3: programação inteligente (23/10, PRs #247 a #255)
+
+O dono: "a empresa poderá adicionar um calendário da empresa, importando
+texto, e a IA cria todo o conteúdo e o cronograma". O consultor revisou cada
+PR; as notas viraram os PRs #252 e #254.
+
+- **Calendário da empresa** (D23): colar o texto (Programação ›
+  Calendário) → a IA lê as datas (`server/calendario.js`, sem IA uma regra)
+  → a pessoa revisa → cada data vira peça dos modelos com a marca, com
+  validade (`agendamento`) e prioridade, marcada `_calendario`.
+- **A TV distribui o tempo** (D24, no player e offline): campanha,
+  calendário e peças avulsas se revezam; prioridade **alta** passa 2× por
+  volta, nunca duas seguidas. **Urgente** (D25) toma a tela com qualquer
+  peça, 3× por volta.
+- **Mandar para todas as TVs** (D26): `POST /api/lote` grava tudo ou nada
+  (versão de cada TV conferida antes), guarda o "antes" 30 dias e tem
+  **Desfazer**; atalhos "Todas"/grupo; campanha, calendário e telas prontas
+  vão num envio só. TV repetida no envio é recusada (#252).
+- **Aviso rápido** (D27): "Adicione aviso da peça quebrada no banheiro" →
+  a IA arruma título, detalhe, validade, prioridade e TVs → prévia do alerta
+  dos modelos (sem texto de exemplo) → frente da zona principal (ou da maior
+  lista, #254), em lote, com Desfazer. A validade sai da TV pelo relógio
+  dela, mesmo offline.
+- **IA troca layout e tema** (D28): no editor da TV, "lateral do outro
+  lado, tema claro, sem relógio" → mudanças conferidas (layouts que cabem
+  na TV, temas e fontes que existem) → **Agora × Como fica** → só muda o
+  rascunho com o ok. Relógio e clima do cabeçalho com liga/desliga; três
+  temas novos (Clínica Suave, Corporativo Claro, Varejo Quente).
+- **Transições** (D29): trocar o layout não remonta a TV — as zonas que
+  continuam deslizam (FLIP, só transform/opacity), vídeo não reinicia; a
+  zona que muda cruza em vez de piscar. SW em v55.
+
+**Esperando o dono**: o mesmo da Fase 2 (lote 1 na bancada, preço do
+Essencial, lançamento). **Próximo**: Fase 4 (D30–D35, pessoas e RH).
 
 ## Rodada 5b — o DNA novo, Fase 2: telas prontas e edição (23/10, PRs #238 a #245)
 
