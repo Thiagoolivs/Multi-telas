@@ -90,3 +90,13 @@ test('o painel: pedir no editor de peça (com desfazer), editar a peça da TV e 
   assert.match(m, /'pointer-events-none opacity-0 focus:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100'/);
   assert.match(ler('web/src/lib/tela.js'), /export function tamanhosDasZonas\(layout\)/);
 });
+
+test('revisão do #242: a peça DEPOIS do remendo passa pela porta de novo', () => {
+  const s = ler('server/ajuste-peca.js');
+  assert.match(s, /const depois = P\.validarItem\(comRemendo\(v\.item, remendo\)\);/);
+  assert.match(s, /if \(depois\.problemas\.length\) return \{ resposta: 'Não deu para aplicar: '/);
+  const c = A.comRemendo(v.item, { campos: { titulo: 'Novo' }, marca: { fonteTitulo: 'serifada' }, ocultos: ['kicker'] });
+  assert.equal(c.campos.titulo, 'Novo');
+  assert.deepEqual(c.marca.cores, ['#1b2a4a', '#c8a96e'], 'as cores da peça sumiram com o remendo de fonte');
+  assert.equal(P.validarItem(c).ok, true);
+});

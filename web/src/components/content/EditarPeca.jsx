@@ -142,7 +142,8 @@ const corValida = (c) => /^#[0-9a-f]{6}$/i.test(c || '');
 
 export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   const [definicao, setDefinicao] = useState(null);
-  const [campos, setCampos] = useState(() => ({ ...(item.campos || {}) }));
+  // O texto dos campos escondidos volta de `guardados` (ver `atual`): esconder e mostrar de novo não perde nada.
+  const [campos, setCampos] = useState(() => ({ ...(item.campos || {}), ...(item.guardados || {}) }));
   const [fotoAberta, setFotoAberta] = useState(null);
   const [conferencia, setConferencia] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -183,10 +184,19 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
     if (aba === 'desenho' && !modelos) carregarModelos().then(setModelos).catch(() => setModelos([]));
   }, [aba, modelos]);
 
+  /*
+   * O campo escondido vai VAZIO para a TV, e o texto dele fica em
+   * `guardados` (revisão do consultor no #240): a TV com o JS antigo no cache
+   * não conhece `ocultos` e mostraria o texto — ou o exemplo do desenho, se o
+   * campo não viesse. Vazio, ela não mostra nada.
+   */
   const atual = useMemo(() => {
-    const { ocultos: _o, ...resto } = item; // eslint-disable-line no-unused-vars
+    const { ocultos: _o, guardados: _g, ...resto } = item; // eslint-disable-line no-unused-vars
     const doDesenho = { html: desenho.html, css: desenho.css, origem: { ...(item.origem || {}), ...(desenho.base ? { base: desenho.base } : {}) } };
-    return { ...resto, ...doDesenho, campos, modo, marca, ...(ocultos.length ? { ocultos } : {}) };
+    const gravados = { ...campos };
+    const guardados = {};
+    ocultos.forEach((n) => { if (gravados[n]) guardados[n] = gravados[n]; gravados[n] = ''; });
+    return { ...resto, ...doDesenho, campos: gravados, modo, marca, ...(ocultos.length ? { ocultos } : {}), ...(Object.keys(guardados).length ? { guardados } : {}) };
   }, [item, desenho, campos, modo, marca, ocultos]);
 
   // Confere meio segundo depois da última mudança (nos três formatos, ou no lugar da peça).

@@ -770,6 +770,18 @@
       ok: problemas.length === 0,
     };
     if (ocultos.length) saida.item.ocultos = ocultos;
+    /*
+     * O texto de um campo escondido (o campo vai vazio para a TV antiga não
+     * mostrar): só dos escondidos, só texto, com o mesmo teto dos campos.
+     */
+    const guardados = {};
+    const entradaGuardada = it.guardados && typeof it.guardados === 'object' ? it.guardados : {};
+    ocultos.forEach((n) => {
+      if (porNome[n].tipo === 'texto' && entradaGuardada[n] != null) {
+        guardados[n] = String(entradaGuardada[n]).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '').slice(0, LIMITES.campo);
+      }
+    });
+    if (Object.keys(guardados).length) saida.item.guardados = guardados;
     return saida;
   }
 
