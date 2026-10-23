@@ -487,6 +487,13 @@ export const birthdays = {
   remover: (id) => api('DELETE', '/api/birthdays/' + encodeURIComponent(id)),
 };
 
+/* O banco de imagens externo (D37): a busca e o "usar" passam pelo servidor (a chave nunca vem ao navegador). */
+export const pixabay = {
+  estado: () => api('GET', '/api/pixabay/estado'),
+  buscar: (q, o) => api('GET', '/api/pixabay?q=' + encodeURIComponent(q) + (o && o.orientacao ? '&orientacao=' + o.orientacao : '') + (o && o.pagina ? '&pagina=' + o.pagina : '')),
+  usar: (id) => api('POST', '/api/pixabay/usar', { id }),
+};
+
 /* Os indicadores da empresa (D36): conectores (push com token, pull com autenticação) e os valores. */
 export const kpis = {
   list: () => api('GET', '/api/kpis'),

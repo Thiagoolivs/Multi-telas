@@ -357,6 +357,9 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
  * TV deitada quanto num painel lateral estreito, e as fotos não podem virar
  * selo num caso e estourar no outro.
  */
+/* D37: o crédito da foto do banco de imagens, discreto no canto. */
+.mt-credito { position: absolute; right: 1.2cqh; bottom: 1cqh; z-index: 5; padding: .3cqh 1cqh; border-radius: 99px; background: rgba(0,0,0,.42); color: rgba(255,255,255,.82); font-size: max(9px, 1.6cqh); line-height: 1.3; pointer-events: none; }
+
 /* D33: o mural da data — o título e a grade de fotos da equipe. */
 .mt-fdd { display: flex; flex-direction: column; gap: 2.4cqh; padding: 4cqh 4cqw; }
 .mt-fdd-h { flex: none; text-align: center; font-size: min(5cqw, 9cqh); font-weight: 800; letter-spacing: -.02em; color: var(--text); }

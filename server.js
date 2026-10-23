@@ -533,6 +533,8 @@ function montarCtx() {
     fotoqr: require('./server/routes/fotoqr')(ctx),
     // Os indicadores da empresa (D36).
     kpis: require('./server/routes/kpis')(ctx),
+    // O banco de imagens externo (D37).
+    pixabay: require('./server/routes/pixabay')(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -2360,6 +2362,7 @@ const negocioCache = new Map();
   if (await ctx.routes.calendario(req, res, parts, query, sess)) return;
   if (await ctx.routes.fotoqr(req, res, parts, query, sess)) return;
   if (await ctx.routes.kpis(req, res, parts, query, sess)) return;
+  if (await ctx.routes.pixabay(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------
