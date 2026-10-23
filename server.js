@@ -50,6 +50,7 @@ const fotoQr = require('./server/foto-qr');
 const guarda = require('./server/guarda');
 const apk = require('./server/apk');
 const pedirIA = require('./server/pedir-ia');
+const esbocoDoPedido = require('./server/esboco');
 const kpis = require('./server/kpis');
 const segredo = require('./server/segredo');
 const ajusteTela = require('./server/ajuste-tela');
@@ -1990,6 +1991,19 @@ const negocioCache = new Map();
     return readBody(req, res, async (b) => {
       const prompt = b && b.prompt;
       if (!prompt || !String(prompt).trim()) return sendJson(res, 400, { error: 'descreva a imagem' });
+      /*
+       * D42b: a imagem gasta criação, então só sai com o ESBOÇO aprovado — a
+       * descrição, o formato e o estilo. Primeiro o painel pede o esboço
+       * (apenasEsboco: nada é gerado nem cobrado); a pessoa vê e aprova; a
+       * geração vem com a chave dele. Mudou algo, outra chave: aprova de novo.
+       */
+      const pedidoImg = { prompt, formato: (b && b.formato) || '16/9', estilo: (b && b.estilo) || '' };
+      if (b && b.apenasEsboco) {
+        return sendJson(res, 200, { esboco: { descricao: String(prompt).replace(/\s+/g, ' ').trim().slice(0, 300), formato: pedidoImg.formato, estilo: pedidoImg.estilo, criacoes: 1, chave: esbocoDoPedido.chaveDaImagem(pedidoImg) } });
+      }
+      if (!(b && b.esboco === esbocoDoPedido.chaveDaImagem(pedidoImg))) {
+        return sendJson(res, 409, { error: 'Aprove o esboço da imagem antes de gerar.', code: 'esboco-nao-aprovado' });
+      }
       /*
        * Imagem é a ÚNICA coisa da IA que custa dinheiro de verdade, e é a
        * única que o saldo bloqueia. Confere antes de chamar: gerar primeiro e
