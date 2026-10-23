@@ -20,7 +20,7 @@ const TONE = {
  * Alertas: nada de fila de notificações fabricada. Aqui só entra o que está
  * de fato errado agora — lido do estado real da frota, da mídia e do plano.
  */
-export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling }) {
+export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling, onAbrirTela }) {
   const { data: devData, loading: loadingDev, error: erroDev, reload } = useAsync(devices.list);
   const { data: bill } = useAsync(billing.get);
   const { data: mediaData } = useAsync(media.list);
@@ -57,7 +57,8 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling }) {
       id: 'nocfg-' + d.id, tone: 'warn', Icon: LayoutTemplate,
       title: `“${d.name || 'Tela sem nome'}” está sem programação`,
       desc: 'Nada foi publicado nesta tela ainda. Adicione conteúdo para ela sair do ar em branco.',
-      action: { label: 'Ver telas', on: onGoScreens },
+      // Direto para a programação DESTA TV (D3): ir para a lista de Telas era um passo a mais, sem rumo.
+      action: { label: 'Pôr conteúdo', on: () => (onAbrirTela ? onAbrirTela(d) : onGoScreens()) },
     });
   }
 

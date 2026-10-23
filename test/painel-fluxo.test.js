@@ -234,7 +234,8 @@ test('VOLTAR do celular volta uma página do painel, não sai dele', () => {
   assert.match(app, /history\.pushState\(\{ mtRota: r \}/, 'navegar não entra mais no histórico');
   assert.match(app, /addEventListener\('popstate'/, 'ninguém escuta o voltar');
   // Voltar até a entrada do QR não pode reabrir o pareamento de um código já usado.
-  assert.match(app, /const \{ parear, \.\.\.resto \} = r;/);
+  // abrirParear (o atalho do "Ligar a TV") também não reabre ao voltar (D3).
+  assert.match(app, /const \{ parear, abrirParear, \.\.\.resto \} = r;/);
   // Quem limpa parâmetros da URL não pode apagar a rota guardada no histórico:
   // `replaceState({}, …)` fazia o voltar cair na visão geral.
   for (const f of ['ScreensPage.jsx', 'BillingPage.jsx']) {

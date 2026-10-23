@@ -210,8 +210,9 @@ test('item 40: Programação tem aba própria; Telas fica com o aparelho', async
   assert.match(app, /onBack=\{\(\) => go\('programacao'\)\}/, 'voltar do editor volta para a Programação');
   assert.match(app, /if \(r\.name === 'content'\) return '\/app\/\?ir=programacao';/);
   const p = semComentarios(ler('web/src/pages/ProgramacaoPage.jsx'));
-  assert.match(p, /<MapaDaTela layout=\{layout\} onEscolher=\{\(\) => editar\(d\)\} resumo=\{resumoDaZona\(cfg\)\} \/>/);
-  assert.match(p, /onIr\('content', \{ device: d \}\)/);
+  // Desde o D3 a parte tocada abre o editor JÁ nela (antes ignorava a zona).
+  assert.match(p, /<MapaDaTela layout=\{layout\} onEscolher=\{\(z\) => editar\(d, z && z\.id\)\} resumo=\{resumoDaZona\(cfg\)\} \/>/);
+  assert.match(p, /onIr\('content', \{ device: d, \.\.\.\(zona \? \{ zona \} : \{\}\) \}\)/);
   assert.doesNotMatch(ler('js/seasons.js'), /Raft/, 'os pacotes de data não falam da empresa de exemplo');
 });
 

@@ -53,7 +53,8 @@ test('Criar: as seis opções, a frase, o rascunho e publicar na tela já marcad
   // A Marca já sabe empresa, tom e público: o pedido não manda nada disso.
   assert.doesNotMatch(c.slice(c.indexOf('const pedido = ')), /^\s*(empresa|publico|tom):/m);
   // A origem na tela é a frase: com um nome fixo, cada criação tiraria a anterior do ar.
-  assert.match(c, /const titulo = frase\.trim\(\)\.split\('\\n'\)\[0\]\.slice\(0, 60\) \|\| op\.titulo;/);
+  // Desde o D3 o título também sobrevive a um publicar que falhou (feito.current).
+  assert.match(c, /const titulo = \(feito\.current && feito\.current\.titulo\) \|\| frase\.trim\(\)\.split\('\\n'\)\[0\]\.slice\(0, 60\) \|\| op\.titulo;/);
   // Publica pelo MESMO caminho de Meus Designs.
   assert.match(c, /publicarPecas\(\{ alvos, pecas, titulo, telas \}\)/);
   assert.match(soCodigo(ler('web/src/pages/MyDesignsPage.jsx')), /await publicarPecas\(/);

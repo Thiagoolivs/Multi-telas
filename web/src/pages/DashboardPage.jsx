@@ -146,7 +146,8 @@ function Body({ data, onIr }) {
   const kpis = {
     total: screens.length,
     online: online.length,
-    offline: offline.length + never.length,
+    // Quem nunca ligou está "aguardando" em todo o painel, não "offline" (D3).
+    offline: offline.length,
     storageUsed: data.storage.used,
     storageQuota: data.storage.quota,
     storageFrac: storeFrac,
@@ -169,7 +170,7 @@ function Body({ data, onIr }) {
     <>
       <KpiRow kpis={kpis} />
       <div className={'mt-4 grid gap-4' + (alerts.length ? ' xl:grid-cols-3' : '')}>
-        <div className={alerts.length ? 'xl:col-span-2' : ''}><FleetTable screens={screens} /></div>
+        <div className={alerts.length ? 'xl:col-span-2' : ''}><FleetTable screens={screens} onAbrir={(s) => onIr && onIr('content', { device: s })} /></div>
         {alerts.length > 0 && <div><AlertsPanel alerts={alerts} /></div>}
       </div>
     </>

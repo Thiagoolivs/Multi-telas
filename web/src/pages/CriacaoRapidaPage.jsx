@@ -151,7 +151,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
   }, [telaInicial]);
 
   function recomecar() {
-    setOpcao(null); setFrase(''); setFoto(null); setPlano(null); setPronto(null); setErro(''); setEtapa(null);
+    setOpcao(null); setFrase(''); setFoto(null); setPlano(null); setPronto(null); setErro(''); setEtapa(null); feito.current = null;
   }
 
   async function escolherFoto(e) {
@@ -197,22 +197,33 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
   }
 
   // Passo 4: gera a versão final, guarda em Meus Designs e publica nas telas marcadas.
+  /*
+   * O que já foi gerado e guardado nesta tentativa. Se só o PUBLICAR falhar,
+   * clicar de novo publica o mesmo — antes gerava tudo outra vez (gastando
+   * criação) e duplicava a pasta em Meus Designs (D3).
+   */
+  const feito = React.useRef(null);
   async function publicar() {
     setErro(''); setEtapa({ etapa: 'desenhando a peça', segundos: 0 });
     try {
-      const id = await ai.directorStart({ ...pedido(), planoAprovado: plano.plano });
-      const out = await ai.directorAcompanhar(id, setEtapa);
-      const pecas = ((out && out.pecas) || []).map((p) => ({ formato: p.formato, canal: p.canal, label: p.label, item: p.item, faixa: p.faixa }));
-      if (!pecas.length) throw new Error('A peça não saiu. Tente de novo em instantes.');
-      /*
-       * O nome é a frase, não o "Campanha" que o diretor devolve sem IA. Além
-       * de ser a pasta em Meus Designs, ele é a ORIGEM na tela: publicar troca
-       * o que veio da mesma origem — com um nome fixo, cada criação nova
-       * tiraria a anterior do ar.
-       */
-      const titulo = frase.trim().split('\n')[0].slice(0, 60) || op.titulo;
-      await library.save(titulo, pecas);
+      let pecas = feito.current && feito.current.pecas;
+      const titulo = (feito.current && feito.current.titulo) || frase.trim().split('\n')[0].slice(0, 60) || op.titulo;
+      if (!pecas) {
+        const id = await ai.directorStart({ ...pedido(), planoAprovado: plano.plano });
+        const out = await ai.directorAcompanhar(id, setEtapa);
+        pecas = ((out && out.pecas) || []).map((p) => ({ formato: p.formato, canal: p.canal, label: p.label, item: p.item, faixa: p.faixa }));
+        if (!pecas.length) throw new Error('A peça não saiu. Tente de novo em instantes.');
+        /*
+         * O nome é a frase, não o "Campanha" que o diretor devolve sem IA. Além
+         * de ser a pasta em Meus Designs, ele é a ORIGEM na tela: publicar troca
+         * o que veio da mesma origem — com um nome fixo, cada criação nova
+         * tiraria a anterior do ar.
+         */
+        await library.save(titulo, pecas);
+        feito.current = { pecas, titulo };
+      }
       if (alvos.length) await publicarPecas({ alvos, pecas, titulo, telas });
+      feito.current = null;
       setPronto({ pecas, nTelas: alvos.length, titulo });
       aviso.ok(alvos.length ? 'Publicado em ' + alvos.length + ' tela(s).' : 'Guardado em Meus Designs.');
     } catch (e) { setErro(e.message || 'Não deu para publicar. Tente de novo.'); }
@@ -402,7 +413,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
           <div className="space-y-4 p-4">
             {/* Sem TV ainda: o próximo passo é ligar uma (PLANO §5.3) — e a peça vai junto no pareamento. */}
             {!pronto.nTelas && (
-              <ProximoPasso feito="A peça está pronta." proximo="ligar a TV — ela já recebe esta peça." acao="Ligar a TV"
+              <ProximoPasso feito="A peça está pronta." proximo="ligar a TV; depois é só publicar esta peça nela, em Mídias › Peças prontas." acao="Ligar a TV"
                 onIr={() => onIr && onIr('screens', { abrirParear: true })} />
             )}
             <div className="flex items-center gap-2 text-sm text-ink">

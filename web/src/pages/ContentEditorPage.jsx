@@ -6,7 +6,7 @@ import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { QuandoMostrar } from '../components/content/QuandoMostrar.jsx';
 import { temAgenda, resumoAgenda } from '../lib/agenda.js';
-import { emitir } from '../lib/avisos.js';
+import { emitir, aviso } from '../lib/avisos.js';
 import { ItemForm } from '../components/content/ItemForm.jsx';
 import { ItemPreview } from '../components/content/ItemPreview.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
@@ -39,7 +39,7 @@ function defaultZone(zones) {
   return z ? z.id : null;
 }
 
-export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
+export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }) {
   // A programação COM a versão (D0.5): quem grava devolve a versão lida.
   const { data, loading, error, reload } = useAsync(() => deviceConfig.ler(device.id), [device.id]);
   const versao = useRef(0);
@@ -83,7 +83,9 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
     setDirty(false);
     setConflito(false);
     setTentativa(0);
-    setZoneId(defaultZone(zonesOf(seeded)));
+    // Tocou numa parte da TV em Programação: abre nela (D3; antes ignorava e abria a principal).
+    const zs = zonesOf(seeded);
+    setZoneId(zonaInicial && zs.some((z) => z.id === zonaInicial) ? zonaInicial : defaultZone(zs));
   }, [data, loading, error, device.name]);
 
   const zones = useMemo(() => (cfg ? zonesOf(cfg) : []), [cfg]);
@@ -127,11 +129,26 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
   async function tirarCampanha(nome) {
     const antes = cfg;
     patchCfg((next) => { const sem = semCampanha(next, nome); next.zonas = sem.zonas; });
-    emitir({ tom: 'desfazer', texto: 'A campanha "' + nome + '" saiu desta TV.', acao: { rotulo: 'Desfazer', on: () => { setCfg(antes); setDirty(true); } } });
     const c = await campanhaPeloNome(nome);
+    const listaAntes = c ? { estado: c.estado, telas: (c.telas || []).slice() } : null;
+    /*
+     * O "Desfazer" devolve a programação E a TV à lista da campanha (D3).
+     * Antes só a programação voltava: a campanha seguia sem esta TV, ou
+     * pausada, se era a última.
+     */
+    emitir({
+      tom: 'desfazer', texto: 'A campanha "' + nome + '" saiu desta TV.',
+      acao: {
+        rotulo: 'Desfazer',
+        on: () => {
+          setCfg(antes); setDirty(true);
+          if (c && listaAntes) criar.marcar(c.id, listaAntes.estado, listaAntes.telas).catch((e) => aviso.erro('campanha', e.message || 'A campanha não voltou a listar esta TV.'));
+        },
+      },
+    });
     if (c && (c.telas || []).includes(device.id)) {
       const resto = c.telas.filter((x) => x !== device.id);
-      criar.marcar(c.id, resto.length ? c.estado : 'pausada', resto).catch(() => {});
+      criar.marcar(c.id, resto.length ? c.estado : 'pausada', resto).catch((e) => aviso.erro('campanha', e.message || 'A campanha não foi atualizada.'));
     }
   }
   async function abrirCampanha(nome) {
