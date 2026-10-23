@@ -809,6 +809,25 @@ async function handleApi(req, res, pathname, query) {
       return sendJson(res, 200, { count: list.length, birthdays: list });
     }
     if (!canManageTeam(sess.role)) return sendJson(res, 403, { error: 'sem permissão' });
+    /*
+     * A foto do aniversariante é arquivo da PRÓPRIA conta (/media/<conta>/...):
+     * a TV offline não busca imagem em servidor de terceiros (nota do
+     * consultor no D30). Um endereço https da planilha é baixado como a
+     * og:image do D9 (tipo pelos bytes, teto de tamanho) e guardado; se não
+     * der, a pessoa fica sem foto. `restam` limita os downloads por pedido.
+     */
+    const daConta = storage.publicUrl(t + '/');
+    let restam = 40;
+    const fotoDaConta = async (foto, nome) => {
+      const f = String(foto || '');
+      if (!f || f.startsWith(daConta)) return f;
+      if (!/^https:\/\//.test(f) || restam <= 0) return '';
+      restam -= 1;
+      const img = await site.baixarImagem(f).catch(() => ({ erro: 'falhou' }));
+      if (img.erro) return '';
+      try { return (await midia.guardarBuffer(db, t, img.bytes, img.mime, { nome: 'Foto de ' + nome, origem: 'upload' })).url; }
+      catch (e) { return ''; }
+    };
     if (req.method === 'DELETE' && !parts[2]) {
       await db.clearBirthdays(t);
       return sendJson(res, 200, { ok: true });
@@ -819,6 +838,8 @@ async function handleApi(req, res, pathname, query) {
         if (!Array.isArray(raw) || !raw.length) return sendJson(res, 400, { error: 'envie as linhas (rows)' });
         const plano = pessoas.planoDeImportacao(await db.listBirthdays(t), raw.slice(0, pessoas.LIMITE * 2));
         if (!plano.entram.length && !plano.atualizam.length) return sendJson(res, 400, { error: 'nenhuma linha válida (precisa de nome e data)' });
+        for (const p of plano.entram) p.foto = await fotoDaConta(p.foto, p.nome);
+        for (const u of plano.atualizam) u.pessoa.foto = await fotoDaConta(u.pessoa.foto, u.pessoa.nome);
         await db.importarPessoas(t, plano);
         return sendJson(res, 200, {
           ok: true, entram: plano.entram.length, atualizam: plano.atualizam.length, saem: plano.saem.length, ficam: plano.ficam, ignoradas: plano.ignoradas,
@@ -832,6 +853,7 @@ async function handleApi(req, res, pathname, query) {
         const p = pessoas.normalizar(b && b.pessoa);
         if (!p) return sendJson(res, 400, { error: 'precisa do nome e do aniversário' });
         if ((await db.countBirthdays(t)) >= pessoas.LIMITE) return sendJson(res, 400, { error: 'a lista chegou ao limite de ' + pessoas.LIMITE + ' pessoas' });
+        p.foto = await fotoDaConta(p.foto, p.nome);
         return sendJson(res, 200, { ok: true, id: await db.criarPessoa(t, p, 'manual') });
       });
     }
@@ -844,6 +866,7 @@ async function handleApi(req, res, pathname, query) {
         if (b && b.pessoa && b.pessoa.nascimento) { delete mudou.dia; delete mudou.mes; }
         const p = pessoas.normalizar(mudou);
         if (!p) return sendJson(res, 400, { error: 'precisa do nome e do aniversário' });
+        p.foto = await fotoDaConta(p.foto, p.nome);
         await db.atualizarPessoa(t, atual.id, Object.assign(p, { origem: atual.origem }));
         return sendJson(res, 200, { ok: true });
       });

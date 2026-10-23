@@ -104,6 +104,7 @@ async function init() {
       setor TEXT, email TEXT, url TEXT, chave TEXT, media_id TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_fotos_pessoa_tenant ON fotos_pessoa(tenant_id);
+    ALTER TABLE fotos_pessoa ADD COLUMN IF NOT EXISTS aceite_em BIGINT;
     -- O calendário da empresa (D23); ver db-sqlite.js.
     CREATE TABLE IF NOT EXISTS calendario (
       id TEXT PRIMARY KEY, tenant_id TEXT, data TEXT, titulo TEXT, tipo TEXT, detalhe TEXT,
@@ -319,6 +320,8 @@ async function init() {
     ALTER TABLE birthdays ADD COLUMN IF NOT EXISTS email TEXT;
     ALTER TABLE birthdays ADD COLUMN IF NOT EXISTS origem TEXT;
     ALTER TABLE birthdays ADD COLUMN IF NOT EXISTS updated_at BIGINT;
+    -- Consentimento por pessoa (D31): quando ela autorizou, pela página do QR.
+    ALTER TABLE birthdays ADD COLUMN IF NOT EXISTS consentimento_em BIGINT;
     CREATE TABLE IF NOT EXISTS library (
       id TEXT PRIMARY KEY, tenant_id TEXT, campaign TEXT, canal TEXT, formato TEXT,
       label TEXT, item TEXT, created_at BIGINT
@@ -912,7 +915,7 @@ async function removerEvento(id, tenantId) {
 
 /* ----- Fotos pelo QR (D31) ----- */
 const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, criadoEm: Number(r.created_at) || 0 } : null);
-const mapFotoPessoa = (r) => (r ? { id: r.id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', criadoEm: Number(r.created_at) || 0 } : null);
+const mapFotoPessoa = (r) => (r ? { id: r.id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', aceiteEm: Number(r.aceite_em) || 0, criadoEm: Number(r.created_at) || 0 } : null);
 async function criarPedidoFoto(tenantId, p) {
   const id = 'pf_' + rid(12);
   const r = await pool.query('INSERT INTO pedidos_foto (id, tenant_id, codigo, titulo, tipo, inicio, fim, aceitando, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8) RETURNING *',
@@ -930,13 +933,14 @@ async function atualizarPedidoFoto(id, tenantId, p) {
 async function removerPedidoFoto(id, tenantId) { return (await pool.query('DELETE FROM pedidos_foto WHERE id = $1 AND tenant_id = $2', [id, tenantId])).rowCount; }
 async function addFotoPessoa(tenantId, f) {
   const id = 'fp_' + rid(14);
-  await pool.query('INSERT INTO fotos_pessoa (id, tenant_id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, chave, media_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',
-    [id, tenantId, f.pedidoId, f.pessoaId || null, f.nome || '', f.dia || null, f.mes || null, f.setor || '', f.email || '', f.url, f.chave || '', f.mediaId || '', Date.now()]);
+  await pool.query('INSERT INTO fotos_pessoa (id, tenant_id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, chave, media_id, aceite_em, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)',
+    [id, tenantId, f.pedidoId, f.pessoaId || null, f.nome || '', f.dia || null, f.mes || null, f.setor || '', f.email || '', f.url, f.chave || '', f.mediaId || '', f.aceiteEm || null, Date.now()]);
   return id;
 }
 async function listarFotosPessoa(tenantId) { return (await pool.query('SELECT * FROM fotos_pessoa WHERE tenant_id = $1 ORDER BY created_at', [tenantId])).rows.map(mapFotoPessoa); }
 async function fotoPessoaPorId(id, tenantId) { return mapFotoPessoa((await pool.query('SELECT * FROM fotos_pessoa WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rows[0]); }
 async function removerFotoPessoa(id, tenantId) { return (await pool.query('DELETE FROM fotos_pessoa WHERE id = $1 AND tenant_id = $2', [id, tenantId])).rowCount; }
+async function marcarConsentimento(tenantId, pessoaId, quando) { return (await pool.query('UPDATE birthdays SET consentimento_em = $1 WHERE id = $2 AND tenant_id = $3', [Number(quando) || Date.now(), String(pessoaId), tenantId])).rowCount; }
 
 async function criarMural(tenantId, codigo, titulo) {
   const id = 'mur_' + rid(12);
@@ -1621,9 +1625,9 @@ async function dadosDoTenant(tenantId) {
     biblioteca: await varios('SELECT id, campaign, canal, formato, label, item, created_at FROM library WHERE tenant_id = $1'),
     marca: await um('SELECT * FROM brandkit WHERE tenant_id = $1'),
     imagensDaMarca: await varios('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = $1'),
-    aniversariantes: await varios('SELECT id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, created_at, updated_at FROM birthdays WHERE tenant_id = $1'),
+    aniversariantes: await varios('SELECT id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, consentimento_em, created_at, updated_at FROM birthdays WHERE tenant_id = $1'),
     pedidosDeFoto: await varios('SELECT id, codigo, titulo, tipo, inicio, fim, aceitando, created_at FROM pedidos_foto WHERE tenant_id = $1'),
-    fotosParaAprovar: await varios('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, created_at FROM fotos_pessoa WHERE tenant_id = $1'),
+    fotosParaAprovar: await varios('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, aceite_em, created_at FROM fotos_pessoa WHERE tenant_id = $1'),
     midias: await varios('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
     // seria entregar uma cópia incompleta com cara de completa.
@@ -1868,7 +1872,7 @@ module.exports = {
   getMemoria, saveMemoria, clearMemoria,
   criarMural, listarMurais, muralPorCodigo, muralPorId, atualizarMural, removerMural,
   criarPedidoFoto, listarPedidosFoto, pedidoFotoPorCodigo, pedidoFotoPorId, atualizarPedidoFoto, removerPedidoFoto,
-  addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa,
+  addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa, marcarConsentimento,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,

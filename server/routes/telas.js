@@ -476,7 +476,10 @@ module.exports = function (ctx) {
          * 6 h), e só nome, dia, mês, cargo e foto. Antes ia a lista INTEIRA
          * da empresa, com matrícula, para qualquer TV (D0.7).
          */
-        const b = aniversariosDaJanela(await db.listBirthdays(device.tenant_id), Date.now());
+        // A foto só se for arquivo da própria conta: a TV não busca imagem de fora (D30).
+        const daConta = storage.publicUrl(device.tenant_id + '/');
+        const b = aniversariosDaJanela(await db.listBirthdays(device.tenant_id), Date.now())
+          .map((p) => (p.foto && !p.foto.startsWith(daConta) ? Object.assign({}, p, { foto: '' }) : p));
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
         return res.end(JSON.stringify({ birthdays: b }));
       }

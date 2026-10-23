@@ -22,8 +22,13 @@ module.exports = function (ctx) {
   // Abrir, pausar ou apagar o pedido muda o cartão do QR nas TVs (D31b): elas buscam a config de novo.
   const avisar = (t) => avisarTelas(t, 'config', {}).catch(() => {});
 
-  // Sem e-mail configurado o código não chega. Em desenvolvimento (SKIP_VERIFY) o código volta na resposta.
-  const emDev = () => process.env.SKIP_VERIFY === '1' && !mail.configured();
+  /*
+   * Sem e-mail configurado o código não chega. Só em desenvolvimento o código
+   * volta na resposta: SKIP_VERIFY sozinho não basta, porque ele também é a
+   * saída ensinada para subir SEM provedor em produção — e aí qualquer um
+   * pegaria o código de qualquer e-mail da lista (nota do consultor no D31).
+   */
+  const emDev = () => process.env.SKIP_VERIFY === '1' && !mail.configured() && !ctx.billing.emProducao();
   const emailPronto = () => mail.configured() || emDev();
   const emailDe = (e) => { const s = String(e || '').trim().toLowerCase().slice(0, 120); return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? s : ''; };
 
@@ -82,12 +87,14 @@ module.exports = function (ctx) {
       return sendJson(res, 415, { error: 'formato do iPhone (HEIC) não abre na TV — no iPhone, Ajustes › Câmera › Formatos › "Mais compatível", ou envie um print da foto' });
     }
     if (!/^image\/(jpeg|png|webp)$/.test(mime)) return sendJson(res, 415, { error: 'envie uma foto (JPG, PNG ou WEBP)' });
+    // O consentimento é explícito (caixa desmarcada na página) e fica gravado com data e hora.
+    if (query.aceite !== '1') return sendJson(res, 400, { error: 'marque a autorização para mandar a foto' });
     if (!F.gastarFoto(passe)) return sendJson(res, 429, { error: 'já recebemos ' + F.FOTOS_POR_PASSE + ' fotos suas — o RH vai conferir' });
     try {
       const salvo = await midia.guardarStream(db, pedido.tenantId, req, { mime, max: F.MAX_MB * 1024 * 1024 }, { nome: 'Foto de ' + quem.nome, origem: 'fotoqr' });
       await db.addFotoPessoa(pedido.tenantId, {
         pedidoId: pedido.id, pessoaId: quem.id, nome: quem.nome, dia: quem.dia, mes: quem.mes, setor: quem.setor || '',
-        email: dados.email, url: salvo.url, chave: salvo.key, mediaId: salvo.id,
+        email: dados.email, url: salvo.url, chave: salvo.key, mediaId: salvo.id, aceiteEm: Date.now(),
       });
       await db.registrarEvento(pedido.tenantId, null, 'fotoqr.recebida').catch(() => {});
       return sendJson(res, 201, { ok: true });
@@ -102,10 +109,12 @@ module.exports = function (ctx) {
   function pedidoDe(b, atual) {
     const a = atual || {};
     const inicio = b.inicio !== undefined ? (F.dataValida(b.inicio) ? b.inicio : '') : (a.inicio || '');
-    const fim = b.fim !== undefined ? (F.dataValida(b.fim) ? b.fim : '') : (a.fim || '');
+    let fim = b.fim !== undefined ? (F.dataValida(b.fim) ? b.fim : '') : (a.fim || '');
+    // Sem fim, 30 dias (prorrogável no painel): QR esquecido na parede não fica de porta aberta.
+    if (!fim) fim = F.somarDias(inicio || F.hojeIso(), F.PRAZO_PADRAO_DIAS);
     return {
       titulo: String(b.titulo !== undefined ? b.titulo : (a.titulo || '')).replace(/\s+/g, ' ').trim().slice(0, 80) || 'Mande sua foto',
-      inicio, fim: fim && inicio && fim < inicio ? inicio : fim,
+      inicio, fim: inicio && fim < inicio ? inicio : fim,
       aceitando: b.aceitando !== undefined ? b.aceitando !== false : a.aceitando !== false,
     };
   }
@@ -135,12 +144,15 @@ module.exports = function (ctx) {
       if (!f) return sendJson(res, 404, { error: 'foto não encontrada' });
       if (parts[4] === 'recusar') { await recusar(t, f); return sendJson(res, 200, { ok: true }); }
       const pessoa = f.pessoaId ? await db.pessoaDoTenant(t, f.pessoaId) : null;
+      let pessoaId = pessoa && pessoa.id;
       if (pessoa) await db.atualizarPessoa(t, pessoa.id, Object.assign({}, pessoa, { foto: f.url }));
       else {
         const p = P.normalizar({ nome: f.nome, dia: f.dia, mes: f.mes, setor: f.setor, email: f.email, foto: f.url });
         if (!p) return sendJson(res, 400, { error: 'a foto chegou sem nome ou aniversário' });
-        await db.criarPessoa(t, p, 'qr');
+        pessoaId = await db.criarPessoa(t, p, 'qr');
       }
+      // O aceite da página vai com a pessoa (D35 parte daqui: consentimento por pessoa).
+      if (f.aceiteEm) await db.marcarConsentimento(t, pessoaId, f.aceiteEm);
       await db.removerFotoPessoa(f.id, t);
       return sendJson(res, 200, { ok: true });
     }

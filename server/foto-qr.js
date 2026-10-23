@@ -86,6 +86,9 @@ function noPeriodo(pedido, hoje) {
   return (!pedido.inicio || h >= pedido.inicio) && (!pedido.fim || h <= pedido.fim);
 }
 const dataValida = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !isNaN(new Date(s + 'T12:00:00').getTime());
+// Pedido sem fim fecha sozinho em 30 dias (nota do consultor no D31); o painel prorroga.
+const PRAZO_PADRAO_DIAS = 30;
+function somarDias(iso, n) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return hojeIso(d); }
 
 function emailDoCodigo(codigo, empresa) {
   const de = empresa ? ' — ' + empresa : '';
@@ -102,6 +105,9 @@ input[type=email], input[type=tel], input.campo { width:100%; margin-top:.7rem; 
 .passo { display:none; } .passo.ativo { display:block; }
 .ola { font-weight:700; margin:.2rem 0 .6rem; }
 #novo { margin-bottom:.9rem; }
+label.aceite { display:flex; gap:.6rem; align-items:flex-start; margin-top:1rem; font-size:.84rem; line-height:1.4; color:#c3c9d4; cursor:pointer; }
+label.aceite input { width:1.2rem; height:1.2rem; margin-top:.1rem; flex-shrink:0; accent-color:#6366f1; }
+@media (prefers-color-scheme: light) { label.aceite { color:#3d434d; } }
 .dica { color:#9aa3b2; font-size:.82rem; margin-top:.5rem; }
 @media (prefers-color-scheme: light) { input[type=email], input[type=tel], input.campo { background:#fff; border-color:#d8dce4; color:#14161a; } }
 `;
@@ -150,6 +156,9 @@ function pagina(pedido, opts) {
       <span>de rosto, com boa luz</span>
     </label>
     <input type="file" id="f" accept="image/*">
+    <!-- O consentimento é explícito: a caixa vem desmarcada e o aceite fica gravado com data e hora. -->
+    <label class="aceite"><input type="checkbox" id="aceite">
+      <span>Autorizo ${empresa || 'a empresa'} a guardar meu nome, e-mail e foto para o mural e os aniversários. Posso pedir para sair quando quiser.</span></label>
     <button id="enviar" disabled>Mandar para o RH</button>
   </div>
 
@@ -164,7 +173,7 @@ function pagina(pedido, opts) {
 }
 
 module.exports = {
-  pedirCodigo, conferirCodigo, emitirPasse, lerPasse, gastarFoto, noPeriodo, hojeIso, dataValida, emailDoCodigo, pagina,
-  CODIGO_VIDA_MS, PASSE_VIDA_MS, FOTOS_POR_PASSE, TENTATIVAS, MAX_MB,
+  pedirCodigo, conferirCodigo, emitirPasse, lerPasse, gastarFoto, noPeriodo, hojeIso, dataValida, somarDias, emailDoCodigo, pagina,
+  CODIGO_VIDA_MS, PASSE_VIDA_MS, FOTOS_POR_PASSE, TENTATIVAS, MAX_MB, PRAZO_PADRAO_DIAS,
   _limpar: () => { codigos.clear(); passes.clear(); },
 };
