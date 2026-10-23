@@ -173,14 +173,31 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 /* Zona sem conteúdo = preta, pulsando, esperando (EXECUTOR §2d, item 39).
    Só transform e opacity: a TV Box fraca anima sem engasgar. */
-.mt-espera { position: absolute; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; container-type: size; }
-.mt-espera-pulso {
-  width: 9vw; width: min(22cqw, 22cqh, 160px); aspect-ratio: 1; border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,.7) 0%, rgba(255,255,255,.18) 40%, rgba(255,255,255,0) 70%);
-  animation: mt-espera 2.6s ease-in-out infinite;
+/*
+ * Zona vazia (D12): a marca em calma, sobre a cor dela escurecida. Era um
+ * bloco preto com uma bolinha pulsando, que na vitrine parecia TV quebrada.
+ * O véu escuro vem por cima (::before), porque color-mix não existe no
+ * navegador da TV barata.
+ */
+.mt-espera {
+  position: absolute; inset: 0; overflow: hidden;
+  background: #0b1220; background: linear-gradient(135deg, var(--brand), var(--brand-2));
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4cqh;
+  container-type: size; color: #fff;
 }
-@keyframes mt-espera { 0%, 100% { transform: scale(.6); opacity: .3; } 50% { transform: scale(1); opacity: .85; } }
-@media (prefers-reduced-motion: reduce) { .mt-espera-pulso { animation: none; opacity: .3; } }
+.mt-espera::before { content: ''; position: absolute; inset: 0; background: rgba(5, 8, 16, .62); }
+.mt-espera > * { position: relative; }
+.mt-espera-marca {
+  font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .92;
+  font-size: min(7cqw, 9cqh); max-width: 86cqw; text-align: center; line-height: 1.2;
+}
+.mt-espera-logo { display: block; max-width: min(56cqw, 420px); max-height: 34cqh; object-fit: contain; }
+.mt-espera-data { font-size: min(4.2cqw, 6cqh); opacity: .7; letter-spacing: .02em; }
+/* No rodapé, uma linha: a marca à esquerda, a data à direita. */
+.mt-espera-faixa { flex-direction: row; justify-content: space-between; padding: 0 2.4cqw; gap: 3cqw; }
+.mt-espera-faixa .mt-espera-marca { font-size: 30cqh; text-align: left; letter-spacing: .1em; }
+.mt-espera-faixa .mt-espera-logo { max-height: 62cqh; max-width: 30cqw; }
+.mt-espera-faixa .mt-espera-data { font-size: 26cqh; }
 
 /* Zona com conteúdo, todo fora do horário = relógio (ver startPlaylist). Unidades de contêiner: a zona
    lateral é estreita e a principal é larga, e os dois precisam caber. */
@@ -497,14 +514,21 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   from { opacity: 0; transform: translateY(40%); filter: blur(3px); }
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
+/*
+ * O corte do overflow levava a perna do g, do p e do j (D12): a caixa de
+ * line-height 1.05 é mais baixa que a letra. O respiro vai no padding (a
+ * caixa que corta cresce) e volta na margem negativa (o layout não muda).
+ */
 .mt-news-title {
   font-size: 30cqh; font-weight: 800; color: var(--text);
   line-height: 1.05; letter-spacing: -.01em;
+  padding: .06em 0 .16em; margin: -.06em 0 -.16em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .mt-news-desc {
   font-size: 18cqh; font-weight: 500; color: var(--text-dim);
   line-height: 1.1; margin-top: 1.4cqh;
+  padding: .05em 0 .16em; margin-bottom: -.16em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* Manchete que não cabe: desliza até o fim e volta, em vez de ser cortada com
@@ -546,6 +570,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   font-size: clamp(16px, 2.4vw, 36px);
   font-size: min(2.6cqw, 26cqh);
   font-weight: 600; padding: 0 1vw; padding: 0 1.4cqw; color: var(--on-brand);
+  /* "pre": os espaços em volta do • não se fundem num só (D12 — mensagens grudadas). */
+  white-space: pre; line-height: 1.35;
 }
 /*
  * Uma volta = uma cópia do texto, e não metade da faixa.

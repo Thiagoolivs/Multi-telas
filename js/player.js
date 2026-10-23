@@ -761,7 +761,7 @@
     const data = cfg.zonas[zone.id] || {};
     if (temPecaFixa(zone, data)) return startPecaFixa(zoneEl, zone, data);
     if (zone.type === 'ticker' && rodapeEsperando(data)) {
-      const espera = esperaDeZona();
+      const espera = esperaDeZona(true);
       zoneEl.appendChild(espera.el);
       return { stop: espera.parar, atual: () => ({ esperando: true }) };
     }
@@ -825,6 +825,7 @@
       if (ctl) ctl.parar();
       ctl = MTPecaRender.montar(alvo, lista[i], MTRender.opcoesDaPeca({
         marcaNaTela: false,
+        semRelogio: zone.type === 'ticker' && !!global.MT_RELOGIO_NO_CABECALHO,
         // As frases do rodapé, e as chamadas que giram no cabeçalho.
         mensagens: Array.isArray(data.messages) ? data.messages : [],
         contagem: data.contagem || '',
@@ -1584,13 +1585,37 @@
    * ninguém pôs nela. O relógio continua para a zona que TEM conteúdo, todo
    * fora do horário agendado.
    */
-  function esperaDeZona() {
+  /*
+   * Zona vazia (D12). Era um bloco preto com uma bolinha pulsando — na vitrine,
+   * parecia TV quebrada. Agora é a marca em calma: a logo (ou o nome) sobre a
+   * cor da marca, e a data. Nada de recado para o dono: quem passa lê.
+   */
+  function esperaDeZona(faixa) {
     const el = document.createElement('div');
-    el.className = 'mt-slide mt-espera mt-active';
-    const pulso = document.createElement('div');
-    pulso.className = 'mt-espera-pulso';
-    el.appendChild(pulso);
-    return { el: el, parar: function () {} };
+    el.className = 'mt-slide mt-espera mt-active' + (faixa ? ' mt-espera-faixa' : '');
+    const marca = document.createElement('div');
+    marca.className = 'mt-espera-marca';
+    const logo = global.MT_LOGO;
+    if (logo && logo.url) {
+      const img = document.createElement('img');
+      img.alt = '';
+      img.className = 'mt-espera-logo';
+      // O fundo é a cor da marca escurecida: vai a versão branca, se houver.
+      img.src = logo.clara || logo.url;
+      img.onerror = () => { img.remove(); marca.textContent = global.MT_NOME || ''; };
+      marca.appendChild(img);
+    } else {
+      marca.textContent = global.MT_NOME || '';
+    }
+    const dia = document.createElement('div');
+    dia.className = 'mt-espera-data';
+    const pintarDia = () => { const agora = new Date(); dia.textContent = relogioConfiavel(agora) ? dataPorExtenso(agora) : ''; };
+    pintarDia();
+    el.appendChild(marca);
+    el.appendChild(dia);
+    // A data vira à meia-noite.
+    const t = setInterval(pintarDia, 60 * 1000);
+    return { el: el, parar: function () { clearInterval(t); } };
   }
 
   // Rodapé sem mensagem e sem fonte de notícia: só teria a data de enchimento.
@@ -1873,6 +1898,8 @@
     }
     if (texto) {
       zoneEl.style.setProperty('--text', texto);
+      // O letreiro contínuo pinta o texto com --on-brand: sem isto a cor escolhida não valia nele (D12).
+      zoneEl.style.setProperty('--on-brand', texto);
       zoneEl.style.setProperty('--text-dim', global.MTTheme && fundo
         ? MTTheme.mix(texto, fundo, 0.35) : texto);
     }
@@ -1893,13 +1920,20 @@
     // Selo e relógio são opcionais: numa faixa fina os dois roubam a altura da
     // manchete, que é o que a pessoa realmente precisa ler.
     const mostrarSelo = data.mostrarSelo !== false;
-    const mostrarRelogio = data.mostrarRelogio !== false;
+    // Com relógio no cabeçalho, o do rodapé seria o segundo da tela (D12).
+    const mostrarRelogio = data.mostrarRelogio !== false && !global.MT_RELOGIO_NO_CABECALHO;
+    // Quem só quer as próprias mensagens não busca feed nenhum.
+    const sources = data.conteudo === 'mensagens' ? [] : fontesDe(data);
+    const usingFeed = sources.length > 0;
 
     const topline = document.createElement('div');
     topline.className = 'mt-news-topline';
     const tag = document.createElement('div');
     tag.className = 'mt-news-tag';
-    tag.textContent = data.titulo || 'ÚLTIMAS NOTÍCIAS';
+    // "Últimas notícias" só quando há notícia: avisos da empresa não são manchete de jornal (D12).
+    // O título padrão gravado na config (js/storage.js) não é escolha de ninguém: vale o automático.
+    const tituloProprio = data.titulo && data.titulo !== 'ÚLTIMAS NOTÍCIAS' ? data.titulo : '';
+    tag.textContent = tituloProprio || (usingFeed ? 'ÚLTIMAS NOTÍCIAS' : 'AVISOS');
     const clock = document.createElement('div');
     clock.className = 'mt-news-clock';
     clock.innerHTML = '<span class="nc-date"></span><span class="nc-sep"></span><span class="nc-time"></span>';
@@ -1948,30 +1982,45 @@
     const modoRolagem = data.rolagem === 'nunca' ? 'nunca' : 'auto';
     const velocidadeRolagem = Math.max(20, Number(data.velocidadeTexto) || 70); // px/s
 
+    // Devolve quantos segundos a rolagem leva (0 = cabe e fica parada).
     function ajustarRolagem(el) {
       el.classList.remove('mt-news-roll');
       el.style.removeProperty('--roll-dist');
       el.style.removeProperty('--roll-dur');
-      if (modoRolagem === 'nunca') return;
+      if (modoRolagem === 'nunca') return 0;
       // scrollWidth só passa de clientWidth quando o texto realmente não cabe.
       const excesso = el.scrollWidth - el.clientWidth;
-      if (excesso <= 2) return;
+      if (excesso <= 2) return 0;
       el.style.setProperty('--roll-dist', '-' + excesso + 'px');
       // Duração proporcional à distância: manchete longa não fica mais rápida
       // só por ser longa, senão vira ilegível justamente quando importa.
-      el.style.setProperty('--roll-dur', (excesso / velocidadeRolagem + 3).toFixed(1) + 's');
+      const dur = excesso / velocidadeRolagem + 3;
+      el.style.setProperty('--roll-dur', dur.toFixed(1) + 's');
       el.classList.add('mt-news-roll');
+      return dur;
+    }
+
+    /*
+     * Quanto tempo cada manchete fica (D12). Era um intervalo fixo de 8 s:
+     * frase longa trocava antes de a rolagem chegar ao fim, e o fim da frase
+     * nunca aparecia. Agora fica o intervalo OU o tempo de rolar até o fim e
+     * parar um instante — o que for maior.
+     */
+    const intervaloBase = Math.max(3, data.intervalo || 8);
+    let proxima = null;
+    function agendarProxima(durRolagem) {
+      clearTimeout(proxima);
+      // A animação anda de 12% a 88% da duração e para no fim: espera ela inteira.
+      const segundos = Math.max(intervaloBase, durRolagem ? durRolagem + 1.5 : 0);
+      proxima = setTimeout(() => { if (items.length !== 1) show(); else agendarProxima(0); }, segundos * 1000);
     }
 
     // Manchetes: manuais ("Título :: descrição") e/ou automáticas via RSS.
     let items = messages.map((m) => {
       const parts = m.split('::');
-      return { titulo: parts[0].trim(), desc: (parts[1] || '').trim() };
+      return { titulo: parts[0].trim(), desc: (parts[1] || '').trim(), manual: true };
     });
-    // Quem só quer as próprias mensagens não busca feed nenhum.
-    const sources = data.conteudo === 'mensagens' ? [] : fontesDe(data);
-    const usingFeed = sources.length > 0;
-    // E quem só quer notícias começa sem as mensagens manuais na roda.
+    // Quem só quer notícias começa sem as mensagens manuais na roda.
     if (data.conteudo === 'noticias' && usingFeed) items = [];
 
     let idx = 0;
@@ -1984,14 +2033,16 @@
        */
       if (!items.length) {
         const agora = new Date();
-        if (/not[ií]cias/i.test(tagPadrao)) tag.textContent = relogioConfiavel(agora) ? 'HOJE' : tagPadrao;
+        if (/not[ií]cias|avisos/i.test(tagPadrao)) tag.textContent = relogioConfiavel(agora) ? 'HOJE' : tagPadrao;
         title.textContent = relogioConfiavel(agora) ? dataPorExtenso(agora) : '';
         desc.textContent = '';
+        agendarProxima(0);
         return;
       }
-      tag.textContent = tagPadrao;
       const item = items[idx % items.length];
       idx++;
+      // O selo de cada manchete: aviso da empresa não é notícia de jornal (D12).
+      tag.textContent = tituloProprio || (item.manual ? 'AVISOS' : 'ÚLTIMAS NOTÍCIAS');
       headline.classList.remove('mt-news-in');
       void headline.offsetWidth; // reinicia a animação
       headline.classList.add('mt-news-in');
@@ -1999,9 +2050,10 @@
       desc.textContent = item.desc;
       /*
        * A medição precisa acontecer DEPOIS do layout, senão scrollWidth ainda
-       * reflete o texto anterior. Um quadro basta.
+       * reflete o texto anterior. setTimeout, e não requestAnimationFrame: este
+       * não roda com a página em segundo plano, e a próxima nunca viria.
        */
-      requestAnimationFrame(() => { ajustarRolagem(title); ajustarRolagem(desc); });
+      setTimeout(() => { agendarProxima(Math.max(ajustarRolagem(title), ajustarRolagem(desc))); }, 50);
     }
 
     // Busca automática de manchetes (G1, UOL, CNN…). Em caso de falha,
@@ -2015,7 +2067,7 @@
           // feed responde, que era o que acontecia antes.
           const manuais = data.conteudo === 'noticias' ? [] : messages.map((m) => {
             const parts = m.split('::');
-            return { titulo: parts[0].trim(), desc: (parts[1] || '').trim() };
+            return { titulo: parts[0].trim(), desc: (parts[1] || '').trim(), manual: true };
           });
           items = manuais.concat(feed);
           if (idx >= items.length) idx = 0;
@@ -2027,10 +2079,8 @@
     if (usingFeed) {
       loadFeed().then(() => { idx = 0; show(); });
     }
-    // Vazia também repinta: a data por extenso tem que virar à meia-noite.
-    const rotateTimer = setInterval(() => {
-      if (items.length !== 1) show();
-    }, Math.max(3, data.intervalo || 8) * 1000);
+    // Vazia também repinta (a data vira à meia-noite): o agendamento é do show().
+    const rotateTimer = null;
     const feedTimer = usingFeed ? setInterval(loadFeed, 10 * 60 * 1000) : null;
 
     // A TV pode mudar de layout (a zona muda de largura): o que cabia deixa de
@@ -2044,6 +2094,7 @@
       stop: () => {
         clockTimer && clearInterval(clockTimer);
         clearInterval(rotateTimer);
+        clearTimeout(proxima);
         feedTimer && clearInterval(feedTimer);
         ro && ro.disconnect();
       },
@@ -2198,6 +2249,22 @@
     global.MT_MARCA_NA_TELA = !!(layout && layout.zones.some((z) => z.type === 'header'));
     // A logo da marca (D8), que o servidor manda junto. logoUrl é o nome antigo.
     global.MT_LOGO = (s.logo && s.logo.url) ? s.logo : (s.logoUrl ? { url: s.logoUrl } : null);
+    global.MT_RELOGIO_NO_CABECALHO = relogioNoCabecalho(cfg, layout);
+    global.MT_NOME = s.nome || '';
+  }
+
+  /*
+   * Dois relógios na mesma tela (D12): o do cabeçalho e o do rodapé. O
+   * cabeçalho padrão sempre tem relógio; o de peça, só se a peça desenha um.
+   * Com relógio em cima, o de baixo some.
+   */
+  function relogioNoCabecalho(cfg, layout) {
+    const z = layout && layout.zones.find((x) => x.type === 'header');
+    if (!z) return false;
+    const d = (cfg.zonas && cfg.zonas[z.id]) || {};
+    const pecas = (Array.isArray(d.pecas) && d.pecas.length ? d.pecas : (d.peca ? [d.peca] : [])).filter((p) => p && p.type === 'peca-html');
+    if (!pecas.length) return true;
+    return pecas.some((p) => /data-vivo="(relogio|data)"/.test(p.html || ''));
   }
 
   /*

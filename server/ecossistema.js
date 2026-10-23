@@ -180,6 +180,25 @@ function textosSemIA(escopo, vagas, perfil) {
 
 const corta = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n);
 
+/*
+ * O letreiro diz o que o PÚBLICO lê (D12). O dono: "garantir que o pedido da
+ * zona não vaze no rodapé; ele deve fazer sentido". O pedido é instrução
+ * ("letreiro com os horários"), e a conversa às vezes o escrevia como se
+ * fosse a frase — ou copiava o exemplo do prompt ("aviso do letreiro"). Sai
+ * do letreiro o que é igual a um pedido de zona da campanha ou tem cara de
+ * ordem para quem monta a TV.
+ */
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+const CARA_DE_ORDEM = /^(letreiro|faixa|rodape|cabecalho|zona|mensage(m|ns)|chamadas?|aviso do letreiro|frase(s)? (do|para o) (letreiro|rodape)|coloque|colocar|escreva|escrever|mostre|mostrar)\b/;
+function letreiroLimpo(lista, escopo) {
+  const pedidos = new Set();
+  for (const t of (escopo && escopo.telas) || []) for (const z of Object.keys(t.zonas || {})) if (t.zonas[z].pedido) pedidos.add(norm(t.zonas[z].pedido));
+  return (lista || []).filter((m) => {
+    const n = norm(m);
+    return n && !pedidos.has(n) && !CARA_DE_ORDEM.test(n);
+  });
+}
+
 function lerTextos(r, escopo, vagas, bases, perfil) {
   const reserva = textosSemIA(escopo, vagas, perfil);
   const x = r && typeof r === 'object' ? r : {};
@@ -201,8 +220,9 @@ function lerTextos(r, escopo, vagas, bases, perfil) {
   const mensagens = {};
   escopo.telas.forEach((tela, i) => {
     // O que o cliente escreveu no letreiro vence a IA: ele mandou, ele quer.
-    const daIA = (x.mensagens && Array.isArray(x.mensagens[i]) ? x.mensagens[i] : []).map((m) => corta(m, 80)).filter(Boolean).slice(0, 8);
-    mensagens[i] = tela.zonas.rodape.mensagens.length ? tela.zonas.rodape.mensagens : (daIA.length ? daIA : reserva.mensagens[i]);
+    const daIA = letreiroLimpo((x.mensagens && Array.isArray(x.mensagens[i]) ? x.mensagens[i] : []).map((m) => corta(m, 80)).filter(Boolean), escopo).slice(0, 8);
+    const doCliente = letreiroLimpo(tela.zonas.rodape.mensagens, escopo);
+    mensagens[i] = doCliente.length ? doCliente : (daIA.length ? daIA : letreiroLimpo(reserva.mensagens[i], escopo));
   });
   return {
     nome: corta(escopo.nome, 60) || corta(x.nome, 60) || reserva.nome,
@@ -445,6 +465,7 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, onLerReferencias, 
 }
 
 module.exports = {
+  letreiroLimpo,
   gerar, vagasDoEscopo, decidirFoto, agendamentoDe, textosSemIA, lerTextos, pedidoDosTextos, SISTEMA, levaFoto,
   escreverTextos, identidadeDe, comporVaga, PAPEL_DA_ZONA,
 };

@@ -137,6 +137,31 @@ module.exports = function (ctx) {
       await (ehGerar ? gerar(req, res, sess) : ajustar(req, res, sess));
       return true;
     }
+    /*
+     * O letreiro editável (D12): o dono pediu o rodapé "mais editável". As
+     * frases do rodapé e as chamadas do cabeçalho de uma TV da campanha, à
+     * mão — o que a pessoa escreve vale como escreveu (até 8, 80 letras cada).
+     * Entra no "desfazer", como editar uma peça.
+     */
+    if (parts.length === 4 && /^camp_[a-z0-9]{6,40}$/i.test(parts[2] || '') && parts[3] === 'letreiro') {
+      if (req.method !== 'PUT') { sendJson(res, 405, { error: 'método inválido' }); return true; }
+      const c = await db.lerCampanha(sess.tenant_id, parts[2]);
+      if (!c || !c.resultado) { sendJson(res, 404, { error: 'campanha não encontrada' }); return true; }
+      readBody(req, res, async (b) => {
+        const ti = Number(b && b.tela);
+        const zona = b && (b.zona === 'cabecalho' || b.zona === 'rodape') ? b.zona : null;
+        const tela = Number.isInteger(ti) && c.resultado.telas ? c.resultado.telas[ti] : null;
+        if (!tela || !zona) return sendJson(res, 400, { error: 'diga qual TV e qual faixa' });
+        const mensagens = (Array.isArray(b.mensagens) ? b.mensagens : [])
+          .map((m) => String(m == null ? '' : m).replace(/\s+/g, ' ').trim().slice(0, 80)).filter(Boolean).slice(0, 8);
+        const r = JSON.parse(JSON.stringify(c.resultado));
+        r.telas[ti].zonas[zona].mensagens = mensagens;
+        const anterior = { ...c.resultado }; delete anterior.anterior;
+        r.anterior = { resultado: anterior, escopo: c.escopo };
+        return sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: r, capa: capaDe(r) }) });
+      });
+      return true;
+    }
     // Editar uma peça à mão (EditarPeca) e desfazer o último ajuste.
     if (parts.length === 4 && /^camp_[a-z0-9]{6,40}$/i.test(parts[2] || '') && (parts[3] === 'peca' || parts[3] === 'desfazer')) {
       if (req.method !== (parts[3] === 'peca' ? 'PUT' : 'POST')) { sendJson(res, 405, { error: 'método inválido' }); return true; }

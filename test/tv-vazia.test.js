@@ -49,7 +49,7 @@ test('nenhum recado para o dono vai ao ar na TV', () => {
   }
 });
 
-test('zona vazia fica preta, pulsando (item 39); o relógio é da zona toda fora do horário', () => {
+test('zona vazia mostra a marca em calma (D12; no item 39 era preta, pulsando); o relógio é da zona toda fora do horário', () => {
   const r = FONTE.slice(FONTE.indexOf('function relogioDeZona()'), FONTE.indexOf('function esperaDeZona()'));
   assert.match(r, /mt-empty-hora/);
   assert.match(r, /dataPorExtenso\(/);
@@ -61,8 +61,15 @@ test('zona vazia fica preta, pulsando (item 39); o relógio é da zona toda fora
   // O rodapé que ninguém configurou também espera, em vez do letreiro de exemplo.
   assert.match(FONTE, /if \(zone\.type === 'ticker' && rodapeEsperando\(data\)\) \{/);
   const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'player.css'), 'utf8');
-  assert.match(css, /\.mt-espera \{ position: absolute; inset: 0; background: #000;/);
-  assert.match(css, /@keyframes mt-espera/);
+  // D12: "faixa preta com uma bolinha" parecia TV quebrada. A marca (logo ou nome) e a data, sobre a cor dela.
+  assert.match(css, /background: #0b1220; background: linear-gradient\(135deg, var\(--brand\), var\(--brand-2\)\);/);
+  assert.match(css, /\.mt-espera::before \{ content: ''; position: absolute; inset: 0; background: rgba\(5, 8, 16, \.62\); \}/);
+  assert.ok(!/mt-espera-pulso/.test(FONTE), 'a bolinha pulsando voltou');
+  const e = FONTE.slice(FONTE.indexOf('function esperaDeZona(faixa)'), FONTE.indexOf('function rodapeEsperando('));
+  assert.match(e, /img\.src = logo\.clara \|\| logo\.url;/);
+  assert.match(e, /marca\.textContent = global\.MT_NOME \|\| '';/);
+  assert.match(e, /dataPorExtenso\(agora\)/);
+  assert.match(FONTE, /const espera = esperaDeZona\(true\);/, 'o rodapé vazio é a faixa, numa linha');
 });
 
 test('tudo fora do horário agendado: relógio, não recado', () => {

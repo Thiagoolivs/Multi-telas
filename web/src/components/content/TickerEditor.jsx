@@ -67,7 +67,7 @@ export function TickerEditor({ zone, onChange }) {
     <div className="grid gap-5 p-4 md:grid-cols-2">
       <div className="space-y-4">
         <Field label="Título da faixa">
-          <Input value={z.titulo || ''} onChange={(e) => set({ titulo: e.target.value })} placeholder="ÚLTIMAS NOTÍCIAS" />
+          <Input value={z.titulo || ''} onChange={(e) => set({ titulo: e.target.value })} placeholder="Automático: AVISOS ou ÚLTIMAS NOTÍCIAS" />
         </Field>
         {/*
           DUAS PERGUNTAS, DOIS CONTROLES.

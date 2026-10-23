@@ -106,7 +106,8 @@ function pedir(caminho, o = {}) {
       res.on('end', () => { let json = null; try { json = JSON.parse(corpo); } catch (e) { json = null; } resolve({ status: res.statusCode, json, cookies: [].concat(res.headers['set-cookie'] || []) }); });
     });
     req.on('error', reject);
-    req.setTimeout(15000, () => req.destroy(new Error('a rota ' + caminho + ' não respondeu')));
+    // 30 s: com a suíte inteira rodando em paralelo, 15 s estourava às vezes (o teste passa sozinho).
+    req.setTimeout(30000, () => req.destroy(new Error('a rota ' + caminho + ' não respondeu')));
     if (o.json) req.write(JSON.stringify(o.json));
     if (o.raw) req.write(o.raw);
     req.end();
