@@ -19,6 +19,7 @@ export const PAGINAS = {
   screens: 'Telas',
   programacao: 'Programação',
   criar: 'Criar',
+  criando: 'Criando',
   campanhas: 'Campanhas',
   designs: 'Meus Designs',
   pecas: 'Peças prontas',
@@ -47,7 +48,8 @@ export const GRUPOS = [
   { id: 'inicio', label: 'Início', paginas: ['overview', 'alerts'] },
   { id: 'telas', label: 'Telas', paginas: ['screens'] },
   { id: 'programacao', label: 'Programação', paginas: ['programacao'], tambem: ['content'] },
-  { id: 'criar', label: 'Criar', paginas: ['criar', 'campanhas', 'designs'], tambem: ['studio', 'campaigns', 'images', 'rapida'] },
+  // "Criando" (D11): o que a IA está fazendo agora e o que terminou hoje.
+  { id: 'criar', label: 'Criar', paginas: ['criar', 'criando', 'campanhas', 'designs'], tambem: ['studio', 'campaigns', 'images', 'rapida'] },
   // Mídias por propósito (item 34): o que está pronto para a TV primeiro, depois a matéria-prima.
   { id: 'midias', label: 'Mídias', paginas: ['pecas', 'storage', 'musicas', 'ia', 'banco'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },

@@ -1687,7 +1687,8 @@ const negocioCache = new Map();
   if (parts[1] === 'ai' && parts[2] === 'jobs' && req.method === 'GET') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     const lista = await jobs.doTenant(sess.tenant_id, 20);
-    return sendJson(res, 200, { itens: lista.map(jobs.publico) });
+    // ?leve=1 (a aba "Criando", D11): sem o resultado inteiro, que pesa.
+    return sendJson(res, 200, { itens: lista.map(query && query.leve === '1' ? jobs.resumir : jobs.publico) });
   }
 
   /* ----- IA: diretor de arte (campanha inteira, layout autoral) ----- */

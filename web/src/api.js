@@ -153,6 +153,11 @@ function lerPendentes() {
 function escrever(obj) {
   try { localStorage.setItem(PENDENTES, JSON.stringify(obj)); } catch (e) {}
 }
+// A aba "Criando" (lib/trabalhos.js) escuta: a lista anda já, sem esperar o próximo ciclo.
+function avisarQueComecou() {
+  try { window.dispatchEvent(new Event('mt:trabalho')); } catch (e) { /* fora do navegador */ }
+}
+
 function guardarPendente(tipo, job, pedido) {
   const t = lerPendentes();
   t[tipo] = { id: job.id, brief: (pedido && pedido.brief) || '', em: Date.now() };
@@ -211,6 +216,7 @@ async function acompanhar(id, tipo, onEtapa, sinal) {
 async function rodar(rota, payload, tipo, onEtapa, sinal) {
   const job = await api('POST', rota, payload);
   guardarPendente(tipo, job, payload);
+  avisarQueComecou();
   return acompanhar(job.id, tipo, onEtapa, sinal);
 }
 
@@ -267,12 +273,15 @@ export const ai = {
   },
   // Tudo o que a CONTA tem em andamento — inclusive o que outra aba começou.
   emAndamento: () => api('GET', '/api/ai/jobs'),
+  // A lista leve, para a aba "Criando" e o aviso de "ficou pronto" (D11).
+  trabalhos: () => api('GET', '/api/ai/jobs?leve=1'),
 
   /* ---- Campanha (o diretor) ---- */
 
   async directorStart(payload) {
     const job = await api('POST', '/api/ai/director', payload);
     guardarPendente('campanha', job, payload);
+    avisarQueComecou();
     return job.id;
   },
   jobPendente: () => pendenteDe('campanha'),
