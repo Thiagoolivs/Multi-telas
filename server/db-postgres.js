@@ -304,6 +304,8 @@ async function init() {
     ALTER TABLE marcas ADD COLUMN IF NOT EXISTS localizacao TEXT;
     -- A capa da campanha (item 29): a lista não carrega o resultado inteiro.
     ALTER TABLE campanhas ADD COLUMN IF NOT EXISTS capa TEXT;
+    -- Arquivada desde quando (0 = não). Sai da lista, não do banco (D10).
+    ALTER TABLE campanhas ADD COLUMN IF NOT EXISTS arquivada BIGINT;
   `);
 }
 
@@ -616,6 +618,7 @@ const mapCamp = (r) => r && ({
   resultado: r.resultado === undefined ? undefined : jsonOu(r.resultado, null),
   telas: jsonOu(r.telas, []), capa: jsonOu(r.capa, null),
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
+  arquivada: Number(r.arquivada) || 0,
 });
 async function criarCampanha(tenantId, userId, c) {
   const id = 'camp_' + rid(14);
@@ -642,11 +645,31 @@ async function salvarCampanha(tenantId, id, c) {
   );
   return lerCampanha(tenantId, id);
 }
-async function listarCampanhas(tenantId, limite) {
+// Ver a nota em db-sqlite.js (D10): busca, arquivadas à parte, páginas.
+async function listarCampanhas(tenantId, limite, o) {
+  const op = o || {};
+  const onde = ['tenant_id = $1'];
+  const args = [tenantId];
+  if (op.arquivadas === true) onde.push('COALESCE(arquivada, 0) > 0');
+  else if (op.arquivadas !== 'todas') onde.push('COALESCE(arquivada, 0) = 0');
+  const q = String(op.q || '').trim().toLowerCase().slice(0, 60);
+  if (q) { args.push('%' + q.replace(/[\\%_]/g, (c) => '\\' + c) + '%'); onde.push("LOWER(COALESCE(nome, '')) LIKE $" + args.length + " ESCAPE '\\'"); }
+  args.push(Math.min(500, limite || 20), Math.max(0, Number(op.pular) || 0));
   const r = await pool.query(
-    `SELECT id, nome, conversa_id, estado, telas, criado_em, atualizado_em, capa FROM campanhas
-     WHERE tenant_id = $1 ORDER BY atualizado_em DESC LIMIT $2`, [tenantId, limite || 20]);
+    `SELECT id, nome, conversa_id, estado, telas, criado_em, atualizado_em, capa, arquivada FROM campanhas
+     WHERE ${onde.join(' AND ')} ORDER BY atualizado_em DESC LIMIT $${args.length - 1} OFFSET $${args.length}`, args);
   return r.rows.map(mapCamp);
+}
+async function arquivarCampanha(tenantId, id, sim) {
+  await pool.query('UPDATE campanhas SET arquivada = $1 WHERE id = $2 AND tenant_id = $3', [sim ? Date.now() : 0, id, tenantId]);
+  return lerCampanha(tenantId, id);
+}
+async function salvarCapaDaCampanha(tenantId, id, capa) {
+  await pool.query('UPDATE campanhas SET capa = $1 WHERE id = $2 AND tenant_id = $3', [JSON.stringify(capa || null), id, tenantId]);
+}
+async function removerCampanha(tenantId, id) {
+  const r = await pool.query('DELETE FROM campanhas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return r.rowCount > 0;
 }
 async function listarConversas(tenantId, limite) {
   const r = await pool.query(
@@ -1680,7 +1703,7 @@ module.exports = {
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarConversa, lerConversa, salvarConversa, listarConversas,
-  criarCampanha, lerCampanha, salvarCampanha, listarCampanhas,
+  criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
   salvarLocalDaMarca,

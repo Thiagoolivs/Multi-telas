@@ -127,3 +127,16 @@ test('cadastro grava o perfil, /me devolve (escolhido ou deduzido), Ajustes troc
   const titulos = g.json.sugestoes.map((s) => s.titulo).join(' | ');
   assert.ok(!/Promoção/.test(titulos), 'a Empresa recebeu promoção: ' + titulos);
 });
+
+test('a campanha sem IA não diz "Peça no balcão" para clínica nem fábrica; a IA recebe o tipo', async () => {
+  const eco = require('../server/ecossistema.js');
+  const E = require('../js/escopo.js');
+  const escopo = E.normalizar({ nome: 'Vacina', objetivo: 'vacina da gripe chegou', imagens: 'nenhuma', telas: [{ alvo: { tipo: 'todas' }, zonas: { principal: { pecas: 1 } } }] });
+  const de = async (perfil) => JSON.stringify(await eco.gerar(escopo, { perfil, marca: {}, telas: [] }, {}));
+  assert.ok(!/balcão/i.test(await de('saude')));
+  assert.match(await de('saude'), /Fale com a recepção/);
+  assert.ok(!/balcão/i.test(await de('empresa')));
+  assert.match(await de('comercio'), /Peça no balcão/);
+  assert.match(ler('server/ecossistema.js'), /ctx\.perfil \? 'Tipo de negócio: ' \+ Perfil\.de\(ctx\.perfil\)\.paraIA : ''/);
+  assert.match(ler('server/routes/campanhas.js'), /perfil: await paleta\.perfilDaConta\(db, tenantId, tenant\),/);
+});

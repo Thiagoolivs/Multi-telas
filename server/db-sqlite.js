@@ -369,6 +369,8 @@ garantirColuna('brandassets', 'marca_id TEXT');
 garantirColuna('marcas', 'localizacao TEXT');
 // A capa da campanha (a primeira peça), para a lista de Campanhas não carregar o resultado inteiro (item 29).
 garantirColuna('campanhas', 'capa TEXT');
+// Arquivada desde quando (0 = não). Sai da lista, não do banco (D10).
+garantirColuna('campanhas', 'arquivada INTEGER');
 
 function migrarBrandkit() {
   const antigos = db.prepare(`SELECT b.* FROM brandkit b
@@ -1185,6 +1187,9 @@ const qCamp = {
   ler: db.prepare('SELECT * FROM campanhas WHERE id = ? AND tenant_id = ?'),
   doTenant: db.prepare(`SELECT id, nome, conversa_id, estado, telas, criado_em, atualizado_em, capa FROM campanhas
                         WHERE tenant_id = ? ORDER BY atualizado_em DESC LIMIT ?`),
+  arquivar: db.prepare('UPDATE campanhas SET arquivada = ? WHERE id = ? AND tenant_id = ?'),
+  capa: db.prepare('UPDATE campanhas SET capa = ? WHERE id = ? AND tenant_id = ?'),
+  remover: db.prepare('DELETE FROM campanhas WHERE id = ? AND tenant_id = ?'),
 };
 const mapCamp = (r) => r && ({
   id: r.id, nome: r.nome || '', conversaId: r.conversa_id || '', estado: r.estado || 'pronta',
@@ -1192,6 +1197,7 @@ const mapCamp = (r) => r && ({
   resultado: r.resultado === undefined ? undefined : jsonOu(r.resultado, null),
   telas: jsonOu(r.telas, []), capa: jsonOu(r.capa, null),
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
+  arquivada: Number(r.arquivada) || 0,
 });
 async function criarCampanha(tenantId, userId, c) {
   const id = 'camp_' + rid(14);
@@ -1207,7 +1213,28 @@ async function salvarCampanha(tenantId, id, c) {
     c.estado || 'pronta', JSON.stringify(c.telas || []), Date.now(), JSON.stringify(c.capa || null), id, tenantId);
   return lerCampanha(tenantId, id);
 }
-async function listarCampanhas(tenantId, limite) { return qCamp.doTenant.all(tenantId, limite || 20).map(mapCamp); }
+/*
+ * A lista das campanhas (D10). Era um corte calado de 20: a 21ª sumia sem
+ * aviso. Agora tem busca pelo nome, arquivadas à parte e páginas (`pular`).
+ * `o.arquivadas`: false (padrão) só as ativas; true só as arquivadas;
+ * 'todas' as duas (quem precisa do conjunto inteiro, como a biblioteca).
+ */
+async function listarCampanhas(tenantId, limite, o) {
+  const op = o || {};
+  const onde = ['tenant_id = ?'];
+  const args = [tenantId];
+  if (op.arquivadas === true) onde.push('COALESCE(arquivada, 0) > 0');
+  else if (op.arquivadas !== 'todas') onde.push('COALESCE(arquivada, 0) = 0');
+  const q = String(op.q || '').trim().toLowerCase().slice(0, 60);
+  if (q) { onde.push("LOWER(COALESCE(nome, '')) LIKE ? ESCAPE '\\'"); args.push('%' + q.replace(/[\\%_]/g, (c) => '\\' + c) + '%'); }
+  args.push(Math.min(500, limite || 20), Math.max(0, Number(op.pular) || 0));
+  return db.prepare(`SELECT id, nome, conversa_id, estado, telas, criado_em, atualizado_em, capa, arquivada FROM campanhas
+    WHERE ${onde.join(' AND ')} ORDER BY atualizado_em DESC LIMIT ? OFFSET ?`).all(...args).map(mapCamp);
+}
+// Arquivar não mexe em atualizado_em: desarquivar devolve a campanha ao lugar dela.
+async function arquivarCampanha(tenantId, id, sim) { qCamp.arquivar.run(sim ? Date.now() : 0, id, tenantId); return lerCampanha(tenantId, id); }
+async function salvarCapaDaCampanha(tenantId, id, capa) { qCamp.capa.run(JSON.stringify(capa || null), id, tenantId); }
+async function removerCampanha(tenantId, id) { return qCamp.remover.run(id, tenantId).changes > 0; }
 
 
 const qRec = {
@@ -1709,7 +1736,7 @@ module.exports = {
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarConversa, lerConversa, salvarConversa, listarConversas,
-  criarCampanha, lerCampanha, salvarCampanha, listarCampanhas,
+  criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
   salvarLocalDaMarca,

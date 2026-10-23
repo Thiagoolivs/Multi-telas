@@ -20,6 +20,7 @@ const Pal = require('../../js/paletas.js');
 const eco = require('../ecossistema');
 const conversa = require('../ai-conversa');
 const ajuste = require('../ajuste');
+const paleta = require('../paleta.js');
 const P = require('../../js/peca-html.js');
 
 /*
@@ -27,14 +28,16 @@ const P = require('../../js/peca-html.js');
  * que houver). É o que a lista de Campanhas mostra sem carregar o resultado.
  */
 function capaDe(r) {
+  // `n`: quantas peças a pasta tem (D10) — o cartão diz sem abrir a campanha.
+  const n = ajuste.numerar(r).length;
   const telas = (r && r.telas) || [];
-  for (const t of telas) if (t.zonas.principal[0]) return { item: t.zonas.principal[0].item, formato: t.zonas.principal[0].formato };
+  for (const t of telas) if (t.zonas.principal[0]) return { item: t.zonas.principal[0].item, formato: t.zonas.principal[0].formato, n };
   for (const t of telas) {
     const p = t.zonas.lateral[0] || t.zonas.cabecalho.pecas[0] || t.zonas.rodape.pecas[0];
-    if (p) return { item: p.item, formato: p.formato };
+    if (p) return { item: p.item, formato: p.formato, n };
   }
   const b = ((r && r.biblioteca) || [])[0];
-  return b ? { item: b.item, formato: b.formato } : null;
+  return b ? { item: b.item, formato: b.formato, n } : null;
 }
 
 function configDe(d) {
@@ -85,6 +88,8 @@ module.exports = function (ctx) {
       empresa: (k.nome && k.nome !== 'Marca principal' ? k.nome : '') || (tenant && tenant.name) || '',
       segmento: (lembrada && lembrada.segmento) || '', marca: marca || {}, memoria: lembrada, local: k.local || {},
       ramo: Pal.detectarRamo([tenant && tenant.name, k.nome, lembrada && lembrada.segmento, k.siteResumo]),
+      // Empresa, Comércio ou Saúde (D4): muda o que a campanha diz.
+      perfil: await paleta.perfilDaConta(db, tenantId, tenant),
       telas: (telasDb || []).map((d) => ({ id: d.id, nome: d.name || '', emPe: /^portrait/.test((configDe(d).settings || {}).layoutId || '') })),
     };
   }
@@ -169,7 +174,7 @@ module.exports = function (ctx) {
      * cada peça (cabeçalho, destaque, lateral, rodapé) para saber onde cabe.
      */
     if (parts.length === 3 && parts[2] === 'pecas' && req.method === 'GET') {
-      const lista = await db.listarCampanhas(sess.tenant_id, 20);
+      const lista = await db.listarCampanhas(sess.tenant_id, 60);
       const pecas = [];
       for (const c of lista) {
         const k = await db.lerCampanha(sess.tenant_id, c.id);
@@ -182,22 +187,52 @@ module.exports = function (ctx) {
       sendJson(res, 200, { pecas });
       return true;
     }
+    /*
+     * A lista (D10): era um corte calado de 20 — a 21ª campanha sumia sem
+     * aviso. Agora vem em páginas de 30 (`mais` diz se há outra), com busca
+     * pelo nome e as arquivadas à parte.
+     */
     if (parts.length === 2 && req.method === 'GET') {
-      const lista = await db.listarCampanhas(sess.tenant_id, 20);
-      // Campanha de antes da coluna capa: calcula na hora (sem gravar, para não mexer na ordem da lista).
-      for (const c of lista) {
-        if (c.capa) continue;
+      const POR_PAGINA = 30;
+      const q = query || {};
+      const lista = await db.listarCampanhas(sess.tenant_id, POR_PAGINA + 1, {
+        q: String(q.q || ''), arquivadas: q.arquivadas === '1', pular: Number(q.pular) || 0,
+      });
+      const mais = lista.length > POR_PAGINA;
+      const pagina = lista.slice(0, POR_PAGINA);
+      /*
+       * Campanha de antes da capa (ou da contagem de peças): calcula agora e
+       * GRAVA só a capa — sem mexer em atualizado_em, para não mudar a ordem.
+       */
+      for (const c of pagina) {
+        if (c.capa && c.capa.n != null) continue;
         const k = await db.lerCampanha(sess.tenant_id, c.id);
         c.capa = k && k.resultado ? capaDe(k.resultado) : null;
+        if (c.capa) await db.salvarCapaDaCampanha(sess.tenant_id, c.id, c.capa).catch(() => {});
       }
-      sendJson(res, 200, { campanhas: lista });
+      sendJson(res, 200, { campanhas: pagina, mais });
       return true;
     }
     const id = parts[2];
-    if (parts.length === 3 && /^camp_[a-z0-9]{6,40}$/i.test(id || '') && (req.method === 'GET' || req.method === 'PUT')) {
+    if (parts.length === 3 && /^camp_[a-z0-9]{6,40}$/i.test(id || '') && ['GET', 'PUT', 'DELETE'].includes(req.method)) {
       const c = await db.lerCampanha(sess.tenant_id, id);
       if (!c) { sendJson(res, 404, { error: 'campanha não encontrada' }); return true; }
       if (req.method === 'GET') { sendJson(res, 200, { campanha: c }); return true; }
+      /*
+       * Excluir (D10). A campanha no ar pergunta antes: as peças continuam nas
+       * TVs (a programação tem a cópia delas), e quem exclui achando que tira
+       * da TV precisa saber disso. Com ?forcar=1, exclui.
+       */
+      if (req.method === 'DELETE') {
+        if (c.estado === 'no_ar' && !(query && query.forcar === '1')) {
+          sendJson(res, 409, { error: 'esta campanha está no ar', code: 'campanha-no-ar', telas: (c.telas || []).length });
+          return true;
+        }
+        await db.removerCampanha(sess.tenant_id, id);
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'campanha.excluir');
+        sendJson(res, 200, { ok: true });
+        return true;
+      }
       /*
        * "Pôr pra rodar" e "Pausar" (item 25): quem põe as peças na TV é o
        * painel, pelo mesmo PUT da config de sempre (que passa pela porta).
@@ -205,6 +240,22 @@ module.exports = function (ctx) {
        * saber de onde sair. Só vale TV desta conta.
        */
       readBody(req, res, async (b) => {
+        /*
+         * Renomear e arquivar (D10) vêm pelo mesmo PUT, sozinhos ou juntos.
+         * Arquivar não mexe no estado nem na ordem; renomear não muda o resto.
+         */
+        const soNome = b && typeof b.nome === 'string' && b.estado === undefined;
+        const soArquivo = b && typeof b.arquivada === 'boolean' && b.estado === undefined;
+        if (soNome || soArquivo) {
+          let atual = c;
+          if (soNome) {
+            const nome = b.nome.replace(/\s+/g, ' ').trim().slice(0, 80);
+            if (!nome) return sendJson(res, 400, { error: 'dê um nome à campanha' });
+            atual = await db.salvarCampanha(sess.tenant_id, id, { ...c, nome });
+          }
+          if (soArquivo) atual = await db.arquivarCampanha(sess.tenant_id, id, b.arquivada);
+          return sendJson(res, 200, { campanha: atual });
+        }
         const estado = ['pronta', 'no_ar', 'pausada'].includes(b && b.estado) ? b.estado : null;
         if (!estado) return sendJson(res, 400, { error: 'estado inválido' });
         const daConta = new Set(((await db.listDevices(sess.tenant_id)) || []).map((d) => d.id));
