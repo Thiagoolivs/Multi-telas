@@ -56,3 +56,19 @@ test('no rodízio: primeiro distribuir, depois os automáticos (aniversário e m
   assert.match(ed, /\['alta', 'Alta', 'Passa duas vezes por volta, espalhada entre as outras\.'\]/);
   assert.match(ed, /meta: \{ \.\.\.\(current\.meta \|\| \{\}\), prioridade: id \}/);
 });
+
+/* ---------------- D25: urgente toma a tela ---------------- */
+
+test('urgente: qualquer peça toma a tela, três vezes por volta, mesmo com o layout inteligente desligado', () => {
+  const d = distribuir();
+  const U = { n: 'U', meta: { prioridade: 'urgente' } };
+  const r = nomes(d([U, { n: 'B' }, { n: 'C' }, { n: 'D' }]));
+  assert.equal(r.split('U').length - 1, 3, 'urgente passa três vezes: ' + r);
+  const corpo = PLAYER.slice(PLAYER.indexOf('  function maybeTakeover(item) {'), PLAYER.indexOf('  function showTakeover('));
+  assert.match(corpo, /const urgenteDoPainel = !!\(item && item\.meta && item\.meta\.prioridade === 'urgente'\);/);
+  assert.match(corpo, /if \(!smartLayout && !urgenteDoPainel\) return;/);
+  assert.match(PLAYER, /'peca-html': 1,/, 'a peça em HTML não toma a tela');
+  const ed = fs.readFileSync(path.join(RAIZ, 'web/src/pages/ContentEditorPage.jsx'), 'utf8');
+  assert.match(ed, /\['urgente', 'Urgente', 'Toma a tela inteira/);
+  assert.match(fs.readFileSync(path.join(RAIZ, 'web/src/pages/CalendarioPage.jsx'), 'utf8'), /<option value="urgente">Urgente \(toma a tela\)<\/option>/);
+});

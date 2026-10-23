@@ -43,6 +43,12 @@ function LinhaEditavel({ ev, onChange }) {
           <input type="number" min={0} max={60} value={ev.antecedencia} onChange={(e) => set('antecedencia', Number(e.target.value))} className={cn(campo, 'w-14 px-1.5 py-1')} aria-label="Dias antes" />
           dias antes
         </label>
+        {/* D24/D25: a mesma prioridade das peças — alta passa mais vezes; urgente toma a tela. */}
+        <select value={ev.prioridade || 'normal'} onChange={(e) => set('prioridade', e.target.value)} className={cn(campo, 'w-full')} aria-label="Prioridade">
+          <option value="normal">Prioridade normal</option>
+          <option value="alta">Prioridade alta</option>
+          <option value="urgente">Urgente (toma a tela)</option>
+        </select>
       </div>
     </div>
   );

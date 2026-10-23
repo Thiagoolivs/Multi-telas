@@ -1119,6 +1119,8 @@
   const TAKEOVER_TYPES = {
     announce: 1, text: 1, notice: 1, birthdaycard: 1, spotlight: 1,
     kpi: 1, promo: 1, quote: 1, image: 1, agenda: 1, social: 1,
+    // D25: a peça em HTML (quase tudo hoje) também pode tomar a tela.
+    'peca-html': 1,
   };
   const LEVEL_RANK = { destaque: 1, urgente: 2 };
 
@@ -1328,8 +1330,14 @@
   }
 
   function maybeTakeover(item) {
-    if (!smartLayout) return;
-    const level = item && item.prioridade;
+    /*
+     * D25: a prioridade "urgente" do painel (item.meta) toma a tela com
+     * qualquer peça — e mesmo com o layout inteligente desligado: foi a
+     * pessoa que pediu. O `prioridade` antigo (destaque/urgente) continua.
+     */
+    const urgenteDoPainel = !!(item && item.meta && item.meta.prioridade === 'urgente');
+    const level = urgenteDoPainel ? 'urgente' : (item && item.prioridade);
+    if (!smartLayout && !urgenteDoPainel) return;
     if (level !== 'destaque' && level !== 'urgente') return;
     if (!TAKEOVER_TYPES[item.type]) return;
     // Já há um takeover: só um mais forte (urgente) preempta.
@@ -1700,7 +1708,11 @@
     if (it && it._calendario) return 'calendario';
     return 'i:' + i;
   }
-  function pesoDe(it) { return it && it.meta && it.meta.prioridade === 'alta' ? 2 : 1; }
+  // Urgente (D25) passa três vezes por volta — e cada vez toma a tela (maybeTakeover).
+  function pesoDe(it) {
+    const p = it && it.meta && it.meta.prioridade;
+    return p === 'urgente' ? 3 : p === 'alta' ? 2 : 1;
+  }
   function distribuir(lista) {
     if (!lista || lista.length < 2) return lista || [];
     const grupos = [];

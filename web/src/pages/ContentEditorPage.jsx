@@ -63,6 +63,8 @@ const hora = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit',
 const PRIORIDADES = [
   ['normal', 'Normal', 'Passa uma vez por volta, revezando com as outras.'],
   ['alta', 'Alta', 'Passa duas vezes por volta, espalhada entre as outras.'],
+  // D25: qualquer peça pode tomar a tela.
+  ['urgente', 'Urgente', 'Toma a tela inteira com a faixa "Aviso importante" (e um sino, se o som estiver ligado), três vezes por volta. Use só no que não pode esperar.'],
 ];
 
 function defaultZone(zones) {
