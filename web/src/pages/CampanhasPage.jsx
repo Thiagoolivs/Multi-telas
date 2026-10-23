@@ -6,6 +6,7 @@ import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { ResultadoCampanha } from '../components/criar/ResultadoCampanha.jsx';
 import { PorPraRodar } from '../components/criar/PorPraRodar.jsx';
+import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { criar, devices } from '../api.js';
 import { confirmar, perguntar } from '../lib/confirmar.js';
 import { aviso } from '../lib/avisos.js';
@@ -25,6 +26,11 @@ import { cn } from '../lib/cn.js';
  * quantas peças tem dentro — que se renomeia, arquiva e exclui ali mesmo. A
  * lista não corta mais em 20 calada: busca pelo nome, páginas com "Ver mais"
  * e as arquivadas à parte.
+ *
+ * CRIADOS (D47, o dono em 23/10): "se ela estiver pronta, tem que ficar na
+ * aba criados, e se eu quiser editar, entro lá". Esta é a aba: o Criar
+ * termina aqui, com a campanha aberta — Pôr pra rodar, editar cada peça à
+ * mão e pedir mudanças à IA.
  */
 
 const ESTADO = {
@@ -141,9 +147,14 @@ export function CampanhasPage({ campanhaInicial, onIr }) {
     return (
       <div className="max-w-3xl space-y-3">
         <button type="button" onClick={() => { setAberta(null); carregar(); }} className="flex items-center gap-1.5 text-sm text-ink-2 hover:text-ink">
-          <ArrowLeft size={16} /> Todas as campanhas
+          <ArrowLeft size={16} /> Tudo o que foi criado
         </button>
-        <ResultadoCampanha campanha={aberta} telas={telas} onIr={onIr} onMudou={mudou}
+        {/* Pronta e sem TV na conta: o próximo passo é ligar a TV (vinha do resultado do Criar). */}
+        {!telas.length && (
+          <ProximoPasso feito="A campanha está pronta." proximo="ligar a TV — ela já recebe esta campanha." acao="Ligar a TV"
+            onIr={() => onIr && onIr('screens', { abrirParear: true })} />
+        )}
+        <ResultadoCampanha campanha={aberta} telas={telas} onIr={onIr} onMudou={mudou} onNova={onIr ? () => onIr('criar') : undefined}
           acoes={<PorPraRodar campanha={aberta} telas={telas} onMudou={mudou} />} />
       </div>
     );
@@ -155,10 +166,10 @@ export function CampanhasPage({ campanhaInicial, onIr }) {
     <div className="max-w-6xl">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">{arquivadas ? 'Campanhas arquivadas' : 'Campanhas'}</h1>
-          <p className="mt-1 text-sm text-ink-2">{arquivadas ? 'Fora da frente, mas guardadas. Desarquive para voltar.' : 'Cada campanha é uma pasta: as peças, as TVs e o que está no ar.'}</p>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">{arquivadas ? 'Arquivados' : 'Criados'}</h1>
+          <p className="mt-1 text-sm text-ink-2">{arquivadas ? 'Fora da frente, mas guardados. Desarquive para voltar.' : 'Tudo o que a IA criou e ficou pronto. Abra para pôr na TV, editar à mão ou pedir mudanças.'}</p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar campanha</Button>
+        <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">

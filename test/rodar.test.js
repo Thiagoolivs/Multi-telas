@@ -103,7 +103,9 @@ test('o painel: o bloco pergunta antes de trocar layout e marca o estado no serv
   assert.match(k, /const ids = await rodarCampanha\(plano, nome, \{ trocarLayout: trocar \}\);/);
   assert.match(k, /criar\.marcar\(campanha\.id, 'no_ar', ids\)/);
   assert.match(k, /await pausarCampanha\(r, nome, telas, campanha\.telas\);/);
-  assert.match(fs.readFileSync(path.join(RAIZ, 'web/src/pages/CriarPage.jsx'), 'utf8'), /acoes=\{<PorPraRodar campanha=\{campanha\} telas=\{telas\} onMudou=\{setCampanha\} \/>\}/);
+  // D47: pronta, a campanha abre em Criados — é lá que fica o Pôr pra rodar.
+  assert.match(fs.readFileSync(path.join(RAIZ, 'web/src/pages/CriarPage.jsx'), 'utf8'), /onIr\('campanhas', \{ campanha: c\.id \}\)/);
+  assert.match(fs.readFileSync(path.join(RAIZ, 'web/src/pages/CampanhasPage.jsx'), 'utf8'), /acoes=\{<PorPraRodar campanha=\{aberta\} telas=\{telas\} onMudou=\{mudou\} \/>\}/);
   assert.match(fs.readFileSync(path.join(RAIZ, 'web/src/pages/ContentEditorPage.jsx'), 'utf8'), /\{it\._campanha \? ' · campanha ' \+ it\._campanha : ''\}/, 'a tela mostra de qual campanha vem o item');
 });
 

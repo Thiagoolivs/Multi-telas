@@ -21,7 +21,8 @@ export const PAGINAS = {
   calendario: 'Calendário',
   criar: 'Criar',
   criando: 'Criando',
-  campanhas: 'Campanhas',
+  // D47: o que ficou pronto mora em Criados (o endereço continua ?ir=campanhas).
+  campanhas: 'Criados',
   designs: 'Meus Designs',
   telasprontas: 'Telas prontas',
   pecas: 'Peças prontas',
@@ -52,11 +53,16 @@ export const GRUPOS = [
   { id: 'telas', label: 'Telas', paginas: ['screens'] },
   // D23: o calendário da empresa vira programação com período — mora ao lado dela.
   { id: 'programacao', label: 'Programação', paginas: ['programacao', 'calendario'], tambem: ['content'] },
-  // "Criando" (D11): o que a IA está fazendo agora e o que terminou hoje.
-  { id: 'criar', label: 'Criar', paginas: ['criar', 'criando', 'campanhas', 'designs'], tambem: ['studio', 'campaigns', 'images', 'rapida'] },
+  /*
+   * D47 (o dono, 23/10): "tem que ter a aba criar, criando e criados". Criar
+   * é a conversa, sempre começando limpa; Criando, o que a IA está fazendo;
+   * Criados, o que ficou pronto (as campanhas). Meus Designs, a biblioteca
+   * de peças soltas, foi para Mídias — sem sumir.
+   */
+  { id: 'criar', label: 'Criar', paginas: ['criar', 'criando', 'campanhas'], tambem: ['rapida'] },
   // Mídias por propósito (item 34): o que está pronto para a TV primeiro, depois a matéria-prima.
   // D18: a tela inteira pronta vem antes da peça solta — é o caminho mais curto até a TV.
-  { id: 'midias', label: 'Mídias', paginas: ['telasprontas', 'pecas', 'storage', 'musicas', 'ia', 'banco'] },
+  { id: 'midias', label: 'Mídias', paginas: ['telasprontas', 'pecas', 'designs', 'storage', 'musicas', 'ia', 'banco'], tambem: ['studio', 'campaigns', 'images'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },
   { id: 'automaticos', label: 'Automáticos', paginas: ['birthdays', 'mural'] },
   { id: 'relatorios', label: 'Relatórios', paginas: ['relatorio', 'indicadores'] },
@@ -79,9 +85,13 @@ export function grupoDa(pagina) {
  * página dele). A lista é fechada de propósito: URL é coisa que qualquer um
  * escreve.
  */
+// Nomes novos para páginas que mantêm o endereço antigo.
+const APELIDOS = { criados: 'campanhas' };
+
 export function paginaDoIr(ir) {
   if (!ir) return null;
   if (PAGINAS[ir]) return ir;
+  if (APELIDOS[ir]) return APELIDOS[ir];
   const g = GRUPOS.find((x) => x.id === ir);
   return g ? g.paginas[0] : null;
 }

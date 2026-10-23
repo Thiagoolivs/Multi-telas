@@ -68,8 +68,8 @@ test('cada passo diz o próximo: Marca → Criar → Ligar a TV → a peça vai 
   const marca = ler('web/src/pages/BrandPage.jsx');
   assert.match(marca, /<ProximoPasso feito="A IA já usa a sua marca\." proximo="criar a primeira peça\." acao="Criar a primeira peça" onIr=\{\(\) => onIr\('criar'\)\} \/>/);
   assert.match(marca, /setProximo\(j\.marca && !j\.peca\)/);
-  // O Criar: peça pronta sem TV, aponta para ligar a TV, com o pareamento já aberto.
-  assert.match(ler('web/src/pages/CriarPage.jsx'), /onIr\('screens', \{ abrirParear: true \}\)/);
+  // Criados (D47): a campanha pronta sem TV aponta para ligar a TV, com o pareamento já aberto.
+  assert.match(ler('web/src/pages/CampanhasPage.jsx'), /onIr\('screens', \{ abrirParear: true \}\)/);
   assert.match(ler('web/src/App.jsx'), /abrirParear=\{!!route\.abrirParear\}/);
   // O pareamento: a peça que a conta fez vai para a TV com um toque.
   const telas = ler('web/src/pages/ScreensPage.jsx');

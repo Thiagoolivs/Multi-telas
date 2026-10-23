@@ -358,6 +358,7 @@ async function init() {
     ALTER TABLE campanhas ADD COLUMN IF NOT EXISTS capa TEXT;
     -- Arquivada desde quando (0 = não). Sai da lista, não do banco (D10).
     ALTER TABLE campanhas ADD COLUMN IF NOT EXISTS arquivada BIGINT;
+    ALTER TABLE conversas ADD COLUMN IF NOT EXISTS arquivada BIGINT;
   `);
 }
 
@@ -640,6 +641,7 @@ const mapConv = (r) => r && ({
   mensagens: r.mensagens === undefined ? undefined : jsonOu(r.mensagens, []),
   escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
+  arquivada: Number(r.arquivada) || 0,
 });
 async function criarConversa(tenantId, userId, c) {
   const id = 'conv_' + rid(14);
@@ -726,11 +728,30 @@ async function removerCampanha(tenantId, id) {
   const r = await pool.query('DELETE FROM campanhas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   return r.rowCount > 0;
 }
-async function listarConversas(tenantId, limite) {
+// Ver a nota em db-sqlite.js (D49): busca, arquivadas à parte, por estado, páginas.
+async function listarConversas(tenantId, limite, o) {
+  const op = o || {};
+  const onde = ['tenant_id = $1'];
+  const args = [tenantId];
+  if (op.arquivadas === true) onde.push('COALESCE(arquivada, 0) > 0');
+  else if (op.arquivadas !== 'todas') onde.push('COALESCE(arquivada, 0) = 0');
+  if (op.estado === 'criadas') onde.push("estado = 'gerado'");
+  else if (op.estado === 'andamento') onde.push("COALESCE(estado, '') <> 'gerado'");
+  const q = String(op.q || '').trim().toLowerCase().slice(0, 60);
+  if (q) { args.push('%' + q.replace(/[\\%_]/g, (c) => '\\' + c) + '%'); onde.push("LOWER(COALESCE(titulo, '')) LIKE $" + args.length + " ESCAPE '\\'"); }
+  args.push(Math.min(200, limite || 20), Math.max(0, Number(op.pular) || 0));
   const r = await pool.query(
-    `SELECT id, titulo, estado, campanha_id, criado_em, atualizado_em FROM conversas
-     WHERE tenant_id = $1 ORDER BY atualizado_em DESC LIMIT $2`, [tenantId, limite || 20]);
+    `SELECT id, titulo, estado, campanha_id, criado_em, atualizado_em, arquivada FROM conversas
+     WHERE ${onde.join(' AND ')} ORDER BY atualizado_em DESC LIMIT $${args.length - 1} OFFSET $${args.length}`, args);
   return r.rows.map(mapConv);
+}
+async function arquivarConversa(tenantId, id, sim) {
+  await pool.query('UPDATE conversas SET arquivada = $1 WHERE id = $2 AND tenant_id = $3', [sim ? Date.now() : 0, id, tenantId]);
+  return lerConversa(tenantId, id);
+}
+async function renomearConversa(tenantId, id, titulo) {
+  await pool.query('UPDATE conversas SET titulo = $1 WHERE id = $2 AND tenant_id = $3', [String(titulo || '').slice(0, 80), id, tenantId]);
+  return lerConversa(tenantId, id);
 }
 
 
@@ -1979,7 +2000,7 @@ module.exports = {
   fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
-  criarConversa, lerConversa, salvarConversa, listarConversas,
+  criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa,
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,

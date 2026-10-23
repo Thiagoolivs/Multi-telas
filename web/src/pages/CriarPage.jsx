@@ -1,12 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Send, Sparkles, Wand2, MessageSquare, RotateCcw, Zap, CloudOff } from 'lucide-react';
+import { Send, Wand2, MessageSquare, Zap, CloudOff, Plus, MessagesSquare, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Spinner } from '../components/ui/Feedback.jsx';
+import { Dialog } from '../components/ui/Dialog.jsx';
 import { CartaoEscopo, linhaDoCusto } from '../components/criar/CartaoEscopo.jsx';
-import { ResultadoCampanha } from '../components/criar/ResultadoCampanha.jsx';
-import { PorPraRodar } from '../components/criar/PorPraRodar.jsx';
-import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
+import { ListaDeConversas } from '../components/criar/ListaDeConversas.jsx';
 import { ai, criar, devices, seasons, brand } from '../api.js';
 import { ideiaDaData } from '../lib/ideiaDaData.js';
 import E from '../lib/escopo.js';
@@ -27,13 +26,21 @@ import { cn } from '../lib/cn.js';
  *     cartão "O que vou criar" mostra, zona por zona, o que vai sair.
  *   - O cartão se mexe à mão (mais, menos, que TV, quais redes): é o pedido.
  *   - As SUGESTÕES são da conta (o guia lê a marca, o segmento e a data) e
- *     as entradas de sempre viram começos de frase: um toque põe o texto na
- *     caixa e já monta um cartão, e a pessoa muda o que quiser.
+ *     as entradas de sempre viram começos de frase.
  *   - "Gerar" acende quando a IA diz que entendeu; "Gerar já" é para quem
  *     não quer conversar.
  *
- * Os quatro passos de antes continuam em "Criação rápida" (Meus Designs ›
- * Mais), para quem já sabe o que quer.
+ * CRIAR · CRIANDO · CRIADOS (D47, o dono em 23/10): "aparece sempre a última
+ * campanha, mas se ela estiver pronta, tem que ficar na aba criados". Agora:
+ *   - o Criar começa limpo; só a conversa que ainda não gerou é retomada;
+ *   - todas as conversas ficam ao lado (no celular, num botão), com busca;
+ *   - terminou de gerar: vai para Criados, com a campanha aberta, e o Criar
+ *     volta limpo para a próxima;
+ *   - a conversa que já virou campanha abre só para ler, com o caminho para
+ *     ela em Criados (é lá que se edita, à mão ou com a IA).
+ *
+ * Os quatro passos de antes continuam em "Criação rápida", para quem já
+ * sabe o que quer.
  */
 
 // A conversa aberta, para quem recarrega o app voltar no mesmo ponto.
@@ -56,7 +63,7 @@ function cartaoInicial(nome, objetivo, telaId, imagens, zona) {
 }
 
 export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial, onIr }) {
-  const [conversa, setConversa] = useState(null);   // { id, mensagens, escopo, estado, titulo }
+  const [conversa, setConversa] = useState(null);   // { id, mensagens, escopo, estado, titulo, campanhaId }
   const [mensagens, setMensagens] = useState([]);
   const perfil = usePerfil();
   const [escopo, setEscopo] = useState(() => {
@@ -71,18 +78,24 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   const [pensando, setPensando] = useState(false);
   const [ideias, setIdeias] = useState(null);
   const [daData, setDaData] = useState(null);   // a data comemorativa de hoje, como ideia (item 35)
-  const [recentes, setRecentes] = useState([]);
   const [telas, setTelas] = useState([]);
   // A marca para a prévia (D13): cores, nome e logo, e o ramo para sugerir cores.
   const [marca, setMarca] = useState(null);
   const [gerando, setGerando] = useState(null);     // etapa do trabalho
-  const [campanha, setCampanha] = useState(null);
   const [erro, setErro] = useState('');
+  // D47: a lista de conversas se refaz quando uma muda; no celular ela abre num diálogo.
+  const [versaoDaLista, setVersaoDaLista] = useState(0);
+  const [verConversas, setVerConversas] = useState(false);
   const caixa = useRef(null);
   const fim = useRef(null);
   const salvarCartao = useRef(null);
+  // A geração continua no servidor se a pessoa sair: sem a página, nada de levar a Criados no meio de outra tela.
+  const montada = useRef(true);
+  useEffect(() => () => { montada.current = false; }, []);
 
   const conversando = mensagens.length > 0;
+  // A conversa que já virou campanha só se lê aqui: editar é em Criados (D47).
+  const criada = !!(conversa && conversa.estado === 'gerado');
 
   useEffect(() => {
     devices.list().then((r) => setTelas((r && r.devices) || [])).catch(() => setTelas([]));
@@ -91,7 +104,6 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       const de = (kind) => (((r && r.assets) || []).find((a) => a.kind === kind) || {}).url || '';
       setMarca({ cores: k.cores || [], nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '', logo: de('logo') ? { url: de('logo'), clara: de('logo-clara'), escura: de('logo-escura') } : null, ramo: r && r.ramo });
     }).catch(() => setMarca(null));
-    criar.conversas().then((r) => setRecentes((r && r.conversas) || [])).catch(() => {});
     // As sugestões da conta. Sem IA, o guia devolve um cardápio genérico — e isso já basta.
     ai.guia({}).then((r) => setIdeias((r && r.sugestoes) || [])).catch(() => setIdeias([]));
     seasons.list().then((r) => {
@@ -102,7 +114,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     }).catch(() => {});
     const id = lerGuarda();
     // Quem veio de "Criar para a data" quer a data, não a conversa de ontem por cima dela (D3).
-    if (id && !opcaoInicial && !telaInicial && !ideiaInicial) abrir(id);
+    if (id && !opcaoInicial && !telaInicial && !ideiaInicial) abrir(id, { sozinha: true });
     // Uma geração que estava rodando quando a aba fechou: volta a acompanhar.
     const pendente = criar.pendente();
     if (pendente) acompanhar(pendente.id);
@@ -110,17 +122,22 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
   useEffect(() => { if (fim.current && conversando) fim.current.scrollIntoView({ block: 'end', behavior: 'instant' }); }, [mensagens, pensando]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function abrir(id) {
+  /*
+   * `sozinha`: o Criar abrindo a conversa guardada, sem a pessoa pedir. Se ela
+   * já virou campanha, não abre: o Criar começa limpo e a campanha está em
+   * Criados (D47).
+   */
+  async function abrir(id, o) {
+    setVerConversas(false);
     try {
       const r = await criar.conversa(id);
       const c = r.conversa;
+      if (o && o.sozinha && c.estado === 'gerado') { guardar(''); return; }
+      setErro('');
       setConversa(c); setMensagens(c.mensagens || []); setEscopo(E.normalizar(c.escopo || {}));
       setPronto(c.estado === 'entendido' || c.estado === 'gerado');
-      guardar(c.id);
-      if (c.campanhaId) {
-        const k = await criar.campanha(c.campanhaId).catch(() => null);
-        if (k && k.campanha) setCampanha(k.campanha);
-      }
+      setTexto('');
+      guardar(c.estado === 'gerado' ? '' : c.id);
     } catch (e) {
       // Conversa que não existe mais é esquecida; falha de rede é dita (antes: silêncio, sem spinner).
       if (e && e.status === 404) guardar('');
@@ -130,8 +147,8 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
   async function enviar(t) {
     const frase = String(t == null ? texto : t).trim();
-    if (!frase || pensando) return;
-    setErro(''); setTexto(''); setCampanha(null);
+    if (!frase || pensando || criada) return;
+    setErro(''); setTexto('');
     setMensagens((m) => m.concat({ papel: 'pessoa', texto: frase }));
     setPensando(true);
     try {
@@ -141,6 +158,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       setEscopo(E.normalizar(r.conversa.escopo || {}));
       setPronto(!!r.pronto);
       guardar(r.conversa.id);
+      if (!conversa) setVersaoDaLista((v) => v + 1);
       // A pessoa mandou gerar: começa sem esperar o clique (EXECUTOR §2d, item 37).
       if (r.gerar) gerar({ escopo: E.normalizar(r.conversa.escopo || {}), conversa: r.conversa });
     } catch (e) {
@@ -182,17 +200,25 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     finally { setGerando(null); }
   }
 
+  /*
+   * Pronta: vai para Criados com ela aberta (Pôr pra rodar, editar), e o
+   * Criar fica limpo para a próxima (D47). Se a pessoa saiu da página, o
+   * aviso de "ficou pronta" (lib/trabalhos.js) é quem leva.
+   */
   function terminou(c) {
-    setCampanha(c);
-    criar.conversas().then((r) => setRecentes((r && r.conversas) || [])).catch(() => {});
-    aviso.ok('Pronta e salva em Campanhas.');
+    guardar('');
+    setVersaoDaLista((v) => v + 1);
+    if (!montada.current) return;
+    nova();
+    aviso.ok('Pronta e salva em Criados.');
+    if (onIr) onIr('campanhas', { campanha: c.id });
   }
 
   // Do botão, usa o estado da tela; da conversa (a pessoa mandou gerar), o que acabou de voltar.
   async function gerar(daConversa) {
     const esc = (daConversa && daConversa.escopo) || escopo;
     const conv = (daConversa && daConversa.conversa) || conversa;
-    if (!E.temOQueGerar(esc) || gerando) return;
+    if (!E.temOQueGerar(esc) || gerando || criada) return;
     setErro('');
     // O texto que ficou na caixa vale como pedido, mesmo sem ter sido enviado.
     const extra = daConversa ? '' : texto.trim();
@@ -207,11 +233,17 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
   function nova() {
     guardar('');
-    setConversa(null); setMensagens([]); setEscopo(E.vazio()); setPronto(false); setCampanha(null); setTexto(''); setErro('');
+    setVerConversas(false);
+    setConversa(null); setMensagens([]); setEscopo(E.vazio()); setPronto(false); setTexto(''); setErro('');
   }
 
-  const podeGerar = E.temOQueGerar(escopo);
+  const podeGerar = E.temOQueGerar(escopo) && !criada;
   const ultimaIa = [...mensagens].reverse().find((m) => m.papel === 'ia');
+
+  const lista = (
+    <ListaDeConversas atual={conversa && conversa.id} versao={versaoDaLista}
+      onAbrir={(c) => abrir(c.id)} onNova={nova} className="h-full" />
+  );
 
   const botaoGerar = (
     <div className="space-y-1.5">
@@ -224,7 +256,18 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     </div>
   );
 
-  const entrada = (
+  const entrada = criada ? (
+    // A conversa que virou campanha não continua aqui: mudar é em Criados (D47).
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-ok/30 bg-ok-soft px-3 py-2.5 text-sm text-ink">
+      <CheckCircle2 size={16} className="shrink-0 text-ok" />
+      <span className="min-w-0 flex-1">Esta conversa virou uma campanha. Para mudar alguma coisa, abra em Criados.</span>
+      {conversa.campanhaId && onIr && (
+        <Button size="sm" variant="primary" onClick={() => onIr('campanhas', { campanha: conversa.campanhaId })}>
+          Abrir em Criados <ArrowRight size={14} className="ml-1" />
+        </Button>
+      )}
+    </div>
+  ) : (
     <div className="flex items-end gap-2">
       <textarea ref={caixa} rows={conversando ? 2 : 3} value={texto} onChange={(e) => setTexto(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
@@ -237,6 +280,19 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     </div>
   );
 
+  // A barra de cima da conversa: o nome, as conversas (celular) e começar outra.
+  const barra = (
+    <div className="mb-3 flex items-center gap-2">
+      <div className="min-w-0 flex-1">
+        {conversando
+          ? <h1 className="truncate text-base font-semibold text-ink">{(conversa && conversa.titulo) || 'Nova conversa'}</h1>
+          : <h1 className="text-xl font-semibold tracking-tight text-ink">O que você quer mostrar hoje?</h1>}
+      </div>
+      <Button size="sm" variant="secondary" icon={MessagesSquare} className="xl:hidden" onClick={() => setVerConversas(true)}>Conversas</Button>
+      {conversando && <Button size="sm" variant="secondary" icon={Plus} onClick={nova}>Nova</Button>}
+    </div>
+  );
+
   if (gerando) {
     return (
       <div className="mx-auto max-w-3xl">
@@ -245,7 +301,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
             <Spinner size={26} />
             <div className="text-sm font-semibold text-ink">{gerando.etapa || 'criando'}</div>
             {gerando.detalhe && <div className="text-xs text-ink-3">{gerando.detalhe}</div>}
-            <div className="tnum text-2xs text-ink-3">{gerando.segundos || 0}s · pode sair desta tela: a criação continua e fica salva.</div>
+            <div className="tnum text-2xs text-ink-3">{gerando.segundos || 0}s · pode sair desta tela: a criação continua e fica salva em Criados.</div>
             {/* D11: o andamento também fica em Criando, e o aviso chega em qualquer página. */}
             {onIr && <button type="button" onClick={() => onIr('criando')} className="text-xs font-medium text-accent hover:underline">Acompanhar em Criando e seguir usando o painel</button>}
           </div>
@@ -254,141 +310,112 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     );
   }
 
-  if (campanha) {
-    return (
-      <div className="mx-auto max-w-3xl space-y-3">
-        {!telas.length && (
-          <ProximoPasso feito="A campanha está pronta." proximo="ligar a TV — ela já recebe esta campanha." acao="Ligar a TV"
-            onIr={() => onIr && onIr('screens', { abrirParear: true })} />
-        )}
-        <ResultadoCampanha campanha={campanha} telas={telas} onIr={onIr}
-          acoes={<PorPraRodar campanha={campanha} telas={telas} onMudou={setCampanha} />}
-          onMudou={setCampanha} onNova={nova} />
-      </div>
-    );
-  }
-
   return (
-    <div className={cn('mx-auto', conversando ? 'max-w-5xl' : 'max-w-3xl')}>
-      {!conversando && (
-        <div className="mb-4">
-          <h1 className="text-xl font-semibold tracking-tight text-ink">O que você quer mostrar hoje?</h1>
-          <p className="mt-1 text-sm text-ink-2">Um aviso, uma peça ou uma campanha inteira: conte o que você quer, eu sugiro e crio. Também respondo dúvidas sobre o sistema.</p>
-        </div>
-      )}
+    <div className="mx-auto max-w-7xl xl:grid xl:grid-cols-[15rem_minmax(0,1fr)] xl:items-start xl:gap-6">
+      {/* No computador, as conversas ficam sempre à mão (D47). */}
+      <aside className="hidden xl:sticky xl:top-4 xl:block xl:h-[calc(100vh-9rem)]" aria-label="Conversas">{lista}</aside>
+      <Dialog open={verConversas} onClose={() => setVerConversas(false)} title="Conversas" description="Continue de onde parou, ou veja as que viraram campanha.">
+        <div className="h-[60vh]">{lista}</div>
+      </Dialog>
 
-      {erro && <div className="mb-3 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{erro}</div>}
+      <div className={cn('mx-auto w-full', conversando ? 'max-w-5xl' : 'max-w-3xl')}>
+        {barra}
+        {!conversando && (
+          <p className="-mt-1 mb-4 text-sm text-ink-2">Um aviso, uma peça ou uma campanha inteira: conte o que você quer, eu sugiro e crio. Também respondo dúvidas sobre o sistema.</p>
+        )}
 
-      {/* O cartão só aparece quando a conversa decidiu alguma coisa (D5): uma dúvida não monta pedido. */}
-      <div className={cn(conversando && podeGerar && 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-4')}>
-        <div className="space-y-3">
-          {conversando && (
-            <Panel>
-              <div className="space-y-2.5 p-3" aria-live="polite">
-                {mensagens.map((m, i) => (
-                  <div key={i} className={m.papel === 'ia' ? 'flex gap-2' : 'flex justify-end'}>
-                    {m.papel === 'ia' && (m.falha
-                      ? <CloudOff size={14} className="mt-1 shrink-0 text-warn" aria-hidden />
-                      : <MessageSquare size={14} className="mt-1 shrink-0 text-ink-3" />)}
-                    {/* Falha da IA (m.falha) parece aviso, não resposta: a pessoa vê que foi a IA que caiu. */}
-                    <div className={cn('max-w-[85%] whitespace-pre-line rounded-lg px-3 py-2 text-sm',
-                      m.papel !== 'ia' ? 'rounded-tr-sm bg-accent text-accent-fg'
-                        : m.falha ? 'rounded-tl-sm border border-warn/40 bg-warn-soft text-ink' : 'rounded-tl-sm bg-surface-2 text-ink')}>{m.texto}</div>
-                  </div>
-                ))}
-                {pensando && <div className="flex items-center gap-2 text-xs text-ink-3"><Spinner size={13} /> pensando…</div>}
-                {/* As respostas prontas da última fala da IA: na voz da pessoa, um toque manda. */}
-                {!pensando && ultimaIa && (ultimaIa.sugestoes || []).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pl-6">
-                    {ultimaIa.sugestoes.map((s) => (
-                      <button key={s} type="button" onClick={() => enviar(s)}
-                        className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-2 transition hover:border-accent hover:text-accent">{s}</button>
-                    ))}
-                  </div>
-                )}
-                <div ref={fim} />
+        {erro && <div className="mb-3 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{erro}</div>}
+
+        {/* O cartão só aparece quando a conversa decidiu alguma coisa (D5): uma dúvida não monta pedido. */}
+        <div className={cn(conversando && podeGerar && 'lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-4')}>
+          <div className="space-y-3">
+            {conversando && (
+              <Panel>
+                <div className="space-y-2.5 p-3" aria-live="polite">
+                  {mensagens.map((m, i) => (
+                    <div key={i} className={m.papel === 'ia' ? 'flex gap-2' : 'flex justify-end'}>
+                      {m.papel === 'ia' && (m.falha
+                        ? <CloudOff size={14} className="mt-1 shrink-0 text-warn" aria-hidden />
+                        : <MessageSquare size={14} className="mt-1 shrink-0 text-ink-3" />)}
+                      {/* Falha da IA (m.falha) parece aviso, não resposta: a pessoa vê que foi a IA que caiu. */}
+                      <div className={cn('max-w-[85%] whitespace-pre-line rounded-lg px-3 py-2 text-sm',
+                        m.papel !== 'ia' ? 'rounded-tr-sm bg-accent text-accent-fg'
+                          : m.falha ? 'rounded-tl-sm border border-warn/40 bg-warn-soft text-ink' : 'rounded-tl-sm bg-surface-2 text-ink')}>{m.texto}</div>
+                    </div>
+                  ))}
+                  {pensando && <div className="flex items-center gap-2 text-xs text-ink-3"><Spinner size={13} /> pensando…</div>}
+                  {/* As respostas prontas da última fala da IA: na voz da pessoa, um toque manda. */}
+                  {!pensando && !criada && ultimaIa && (ultimaIa.sugestoes || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pl-6">
+                      {ultimaIa.sugestoes.map((s) => (
+                        <button key={s} type="button" onClick={() => enviar(s)}
+                          className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-2 transition hover:border-accent hover:text-accent">{s}</button>
+                      ))}
+                    </div>
+                  )}
+                  <div ref={fim} />
+                </div>
+              </Panel>
+            )}
+
+            {/* No celular, o cartão fica entre a conversa e a caixa, recolhido numa linha. */}
+            {podeGerar && conversando && (
+              <div className="space-y-2 lg:hidden">
+                <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} recolhivel />
+                {botaoGerar}
               </div>
-            </Panel>
-          )}
+            )}
 
-          {/* No celular, o cartão fica entre a conversa e a caixa, recolhido numa linha. */}
-          {podeGerar && (
-            <div className="space-y-2 lg:hidden">
-              <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} recolhivel />
-              {botaoGerar}
-            </div>
-          )}
+            {entrada}
 
-          {entrada}
+            {!conversando && (
+              <>
+                {podeGerar && <div><CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} />{<div className="mt-2">{botaoGerar}</div>}</div>}
 
-          {!conversando && (
-            <>
-              {podeGerar && <div className="hidden lg:block"><CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} />{<div className="mt-2">{botaoGerar}</div>}</div>}
+                <div>
+                  <div className="mb-1.5 text-xs font-medium text-ink-3">Ideias para hoje</div>
+                  {ideias === null ? <Spinner size={16} /> : (
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {(daData ? [daData, ...ideias] : ideias).slice(0, 3).map((s, i) => (
+                        <button key={i} type="button" onClick={() => usarIdeia(s)}
+                          className={cn('rounded-lg border p-3 text-left transition hover:border-accent/60', s.daData ? 'border-accent/40 bg-accent-soft/40' : 'border-line bg-surface')}>
+                          <div className="text-sm font-semibold text-ink">{s.titulo}</div>
+                          {s.porque && <div className="mt-0.5 line-clamp-2 text-xs text-ink-3">{s.porque}</div>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-              <div>
-                <div className="mb-1.5 text-xs font-medium text-ink-3">Ideias para hoje</div>
-                {ideias === null ? <Spinner size={16} /> : (
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {(daData ? [daData, ...ideias] : ideias).slice(0, 3).map((s, i) => (
-                      <button key={i} type="button" onClick={() => usarIdeia(s)}
-                        className={cn('rounded-lg border p-3 text-left transition hover:border-accent/60', s.daData ? 'border-accent/40 bg-accent-soft/40' : 'border-line bg-surface')}>
-                        <div className="text-sm font-semibold text-ink">{s.titulo}</div>
-                        {s.porque && <div className="mt-0.5 line-clamp-2 text-xs text-ink-3">{s.porque}</div>}
+                <div>
+                  <div className="mb-1.5 text-xs font-medium text-ink-3">Ou comece por</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {opcoesDoPerfil(perfil.id).map((op) => (
+                      <button key={op.id} type="button" onClick={() => usarComeco(op)}
+                        className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-ink-2 hover:border-accent/60 hover:text-ink">
+                        <op.icone size={13} /> {op.titulo}
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-
-              <div>
-                <div className="mb-1.5 text-xs font-medium text-ink-3">Ou comece por</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {opcoesDoPerfil(perfil.id).map((op) => (
-                    <button key={op.id} type="button" onClick={() => usarComeco(op)}
-                      className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-ink-2 hover:border-accent/60 hover:text-ink">
-                      <op.icone size={13} /> {op.titulo}
-                    </button>
-                  ))}
                 </div>
-              </div>
 
-              {recentes.length > 0 && (
-                <div>
-                  <div className="mb-1.5 text-xs font-medium text-ink-3">Continuar uma conversa</div>
-                  <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
-                    {recentes.slice(0, 5).map((c) => (
-                      <li key={c.id}>
-                        <button type="button" onClick={() => abrir(c.id)} className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-surface-2">
-                          <MessageSquare size={14} className="shrink-0 text-ink-3" />
-                          <span className="min-w-0 flex-1 truncate text-sm text-ink">{c.titulo || 'Sem título'}</span>
-                          <span className="shrink-0 text-2xs text-ink-3">{c.estado === 'gerado' ? 'criada' : c.estado === 'entendido' ? 'pronta para gerar' : 'conversando'}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                <p className="text-xs text-ink-3">
+                  Já sabe o que quer e prefere ir direto? Use a{' '}
+                  <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('rapida')}>Criação rápida</button>.
+                  {' '}O que ficou pronto está em{' '}
+                  <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('campanhas')}>Criados</button>.
+                </p>
+              </>
+            )}
+          </div>
 
-              <p className="text-xs text-ink-3">
-                Já sabe o que quer e prefere ir direto? Use a{' '}
-                <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('rapida')}>Criação rápida</button>.
-              </p>
-            </>
-          )}
-
-          {conversando && (
-            <button type="button" onClick={nova} className="flex items-center gap-1 text-xs text-ink-3 hover:text-ink-2">
-              <RotateCcw size={12} /> Começar outra conversa
-            </button>
+          {conversando && podeGerar && (
+            <aside className="hidden space-y-2 lg:sticky lg:top-4 lg:block">
+              <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} />
+              {botaoGerar}
+            </aside>
           )}
         </div>
-
-        {conversando && podeGerar && (
-          <aside className="hidden space-y-2 lg:sticky lg:top-4 lg:block">
-            <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} />
-            {botaoGerar}
-          </aside>
-        )}
       </div>
     </div>
   );
