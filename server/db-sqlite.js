@@ -202,6 +202,19 @@ db.exec(`
     aceitando INTEGER, created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_murais_tenant ON murais(tenant_id);
+  -- Fotos pelo QR (D31): o RH abre o pedido por um período; quem manda prova
+  -- o e-mail com um código; a foto espera o RH em fotos_pessoa (pessoa_id
+  -- vazio = quem não estava na lista e entra ao aprovar).
+  CREATE TABLE IF NOT EXISTS pedidos_foto (
+    id TEXT PRIMARY KEY, tenant_id TEXT, codigo TEXT UNIQUE, titulo TEXT, tipo TEXT,
+    inicio TEXT, fim TEXT, aceitando INTEGER, created_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_pedidos_foto_tenant ON pedidos_foto(tenant_id);
+  CREATE TABLE IF NOT EXISTS fotos_pessoa (
+    id TEXT PRIMARY KEY, tenant_id TEXT, pedido_id TEXT, pessoa_id TEXT, nome TEXT, dia INTEGER, mes INTEGER,
+    setor TEXT, email TEXT, url TEXT, chave TEXT, media_id TEXT, created_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_fotos_pessoa_tenant ON fotos_pessoa(tenant_id);
   -- O calendário da empresa (D23): cada data vira um evento, com a peça
   -- dele e as TVs em que entrou. item é a peça (JSON) para editar depois.
   CREATE TABLE IF NOT EXISTS calendario (
@@ -1477,6 +1490,33 @@ async function salvarEvento(tenantId, ev, id) {
 async function removerEvento(id, tenantId) { return qCal.remover.run(id, tenantId).changes > 0; }
 
 /* ---------------- Mural de fotos do público ---------------- */
+/* ----- Fotos pelo QR (D31) ----- */
+const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, criadoEm: Number(r.created_at) || 0 } : null);
+const mapFotoPessoa = (r) => (r ? { id: r.id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', criadoEm: Number(r.created_at) || 0 } : null);
+async function criarPedidoFoto(tenantId, p) {
+  const id = 'pf_' + rid(12);
+  db.prepare('INSERT INTO pedidos_foto (id, tenant_id, codigo, titulo, tipo, inicio, fim, aceitando, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)')
+    .run(id, tenantId, p.codigo, p.titulo || '', p.tipo || 'perfil', p.inicio || '', p.fim || '', Date.now());
+  return mapPedidoFoto(db.prepare('SELECT * FROM pedidos_foto WHERE id = ?').get(id));
+}
+async function listarPedidosFoto(tenantId) { return db.prepare('SELECT * FROM pedidos_foto WHERE tenant_id = ? ORDER BY created_at DESC').all(tenantId).map(mapPedidoFoto); }
+async function pedidoFotoPorCodigo(codigo) { return mapPedidoFoto(db.prepare('SELECT * FROM pedidos_foto WHERE codigo = ?').get(String(codigo))); }
+async function pedidoFotoPorId(id, tenantId) { return mapPedidoFoto(db.prepare('SELECT * FROM pedidos_foto WHERE id = ? AND tenant_id = ?').get(String(id), tenantId)); }
+async function atualizarPedidoFoto(id, tenantId, p) {
+  return db.prepare('UPDATE pedidos_foto SET titulo = ?, inicio = ?, fim = ?, aceitando = ? WHERE id = ? AND tenant_id = ?')
+    .run(p.titulo || '', p.inicio || '', p.fim || '', p.aceitando ? 1 : 0, id, tenantId).changes;
+}
+async function removerPedidoFoto(id, tenantId) { return db.prepare('DELETE FROM pedidos_foto WHERE id = ? AND tenant_id = ?').run(id, tenantId).changes; }
+async function addFotoPessoa(tenantId, f) {
+  const id = 'fp_' + rid(14);
+  db.prepare('INSERT INTO fotos_pessoa (id, tenant_id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, chave, media_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(id, tenantId, f.pedidoId, f.pessoaId || null, f.nome || '', f.dia || null, f.mes || null, f.setor || '', f.email || '', f.url, f.chave || '', f.mediaId || '', Date.now());
+  return id;
+}
+async function listarFotosPessoa(tenantId) { return db.prepare('SELECT * FROM fotos_pessoa WHERE tenant_id = ? ORDER BY created_at').all(tenantId).map(mapFotoPessoa); }
+async function fotoPessoaPorId(id, tenantId) { return mapFotoPessoa(db.prepare('SELECT * FROM fotos_pessoa WHERE id = ? AND tenant_id = ?').get(String(id), tenantId)); }
+async function removerFotoPessoa(id, tenantId) { return db.prepare('DELETE FROM fotos_pessoa WHERE id = ? AND tenant_id = ?').run(id, tenantId).changes; }
+
 const qMural = {
   criar: db.prepare('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, created_at) VALUES (?, ?, ?, ?, 1, ?)'),
   porTenant: db.prepare('SELECT * FROM murais WHERE tenant_id = ? ORDER BY created_at DESC'),
@@ -1588,6 +1628,8 @@ async function dadosDoTenant(tenantId) {
     marca: db.prepare('SELECT * FROM brandkit WHERE tenant_id = ?').get(tenantId) || null,
     imagensDaMarca: pega('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = ?'),
     aniversariantes: pega('SELECT id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, created_at, updated_at FROM birthdays WHERE tenant_id = ?'),
+    pedidosDeFoto: pega('SELECT id, codigo, titulo, tipo, inicio, fim, aceitando, created_at FROM pedidos_foto WHERE tenant_id = ?'),
+    fotosParaAprovar: pega('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, created_at FROM fotos_pessoa WHERE tenant_id = ?'),
     midias: pega('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ?'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
     // seria entregar uma cópia incompleta com cara de completa.
@@ -1639,6 +1681,7 @@ async function apagarTenant(tenantId) {
   const chaves = [
     ...db.prepare('SELECT key FROM media WHERE tenant_id = ?').all(tenantId).map((r) => r.key),
     ...db.prepare('SELECT chave FROM muralfotos WHERE tenant_id = ?').all(tenantId).map((r) => r.chave),
+    ...db.prepare('SELECT chave FROM fotos_pessoa WHERE tenant_id = ?').all(tenantId).map((r) => r.chave),
   ].filter(Boolean).filter((k) => !guardadas.has(k));
   const usuarios = db.prepare('SELECT id FROM users WHERE tenant_id = ?').all(tenantId).map((r) => r.id);
   db.exec('BEGIN');
@@ -1646,7 +1689,8 @@ async function apagarTenant(tenantId) {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     // As tabelas novas ficavam para trás (D0.7); ver db-postgres.js.
     for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes',
+      'pedidos_foto', 'fotos_pessoa', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }
     db.prepare("DELETE FROM banco WHERE tenant_id = ? AND estado <> 'aprovada'").run(tenantId);
@@ -1841,6 +1885,8 @@ module.exports = {
   registrarAceite, listarAceites, dadosDoTenant, apagarTenant,
   getMemoria, saveMemoria, clearMemoria,
   criarMural, listarMurais, muralPorCodigo, muralPorId, atualizarMural, removerMural,
+  criarPedidoFoto, listarPedidosFoto, pedidoFotoPorCodigo, pedidoFotoPorId, atualizarPedidoFoto, removerPedidoFoto,
+  addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,

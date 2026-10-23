@@ -126,4 +126,4 @@ function paginaFechada(titulo, motivo) {
 </div></div></body></html>`;
 }
 
-module.exports = { pagina, paginaFechada, novoCodigo, MAX_MB };
+module.exports = { pagina, paginaFechada, novoCodigo, MAX_MB, CSS, esc };

@@ -46,6 +46,7 @@ const quizIA = require('./server/quiz-ia');
 const calendario = require('./server/calendario');
 const avisoRapido = require('./server/aviso-rapido');
 const pessoas = require('./js/pessoas.js');
+const fotoQr = require('./server/foto-qr');
 const ajusteTela = require('./server/ajuste-tela');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
@@ -525,6 +526,8 @@ function montarCtx() {
     campanhas: require('./server/routes/campanhas')(ctx),
     // O calendário da empresa (D23).
     calendario: require('./server/routes/calendario')(ctx),
+    // A foto da pessoa pelo QR, com o RH aprovando (D31).
+    fotoqr: require('./server/routes/fotoqr')(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -2275,6 +2278,7 @@ const negocioCache = new Map();
   if (await ctx.routes.conversas(req, res, parts, query, sess)) return;
   if (await ctx.routes.campanhas(req, res, parts, query, sess)) return;
   if (await ctx.routes.calendario(req, res, parts, query, sess)) return;
+  if (await ctx.routes.fotoqr(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------
@@ -2615,6 +2619,22 @@ async function handleStatic(req, res, urlPath) {
    * evento lotado. Mural inexistente ou fechado responde com página honesta em
    * vez de um formulário que não vai funcionar.
    */
+  /*
+   * Foto pelo QR (D31): a página do pedido do RH. Fora do período ou
+   * pausado, a página diz isso em vez de um formulário que não vai funcionar.
+   */
+  const rotaFotoQr = urlPath.match(/^\/f\/([A-Za-z0-9]{4,12})\/?$/);
+  if (rotaFotoQr) {
+    const pedido = await db.pedidoFotoPorCodigo(rotaFotoQr[1].toUpperCase()).catch(() => null);
+    const html = !pedido
+      ? muralLib.paginaFechada('Pedido não encontrado', 'Confira o código do cartaz — ele pode ter mudado.')
+      : !fotoQr.noPeriodo(pedido)
+        ? muralLib.paginaFechada(pedido.titulo || 'Mande sua foto', 'O envio de fotos está fechado agora. O RH avisa quando abrir.')
+        : fotoQr.pagina(pedido, { empresa: (await db.getTenant(pedido.tenantId).catch(() => null) || {}).name || '' });
+    res.writeHead(pedido ? 200 : 404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+    return res.end(html);
+  }
+
   const rotaMural = urlPath.match(/^\/m\/([A-Za-z0-9]{4,12})\/?$/);
   if (rotaMural) {
     const mural = await db.muralPorCodigo(rotaMural[1].toUpperCase()).catch(() => null);

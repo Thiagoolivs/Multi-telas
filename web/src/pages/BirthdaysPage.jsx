@@ -12,6 +12,7 @@ import { aviso } from '../lib/avisos.js';
 import { lerPlanilha } from '../lib/planilha.js';
 import { birthdays, media } from '../api.js';
 import { MostrarNasTVs } from '../components/tela/MostrarNasTVs.jsx';
+import { FotosPeloQR } from '../components/pessoas/FotosPeloQR.jsx';
 import '../../../js/pessoas.js';
 
 /*
@@ -181,6 +182,9 @@ export function BirthdaysPage() {
         <MostrarNasTVs qual="aniversarios" titulo="Mostrar nas TVs, na semana do aniversário"
           explicacao="Na semana, um cartão com os aniversariantes entra no rodízio da área principal; no dia, vira o destaque. Semana sem aniversário: nada aparece. As datas comemorativas continuam e se intercalam." />
       </div>
+
+      {/* D31: a pessoa manda a própria foto pelo QR; o RH aprova aqui. */}
+      <FotosPeloQR onAprovou={reload} />
 
       <Panel className="mb-4">
         <PanelHeader title="Importar a planilha do RH"

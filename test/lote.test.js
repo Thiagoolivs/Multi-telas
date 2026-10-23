@@ -166,7 +166,7 @@ test('servidor: tudo ou nada, com versão, e o desfazer não apaga o que mudou d
 test('LGPD: o histórico de envios sai com a conta, nos dois bancos', () => {
   for (const f of ['server/db-sqlite.js', 'server/db-postgres.js']) {
     const s = ler(f);
-    assert.match(s, /'calendario', 'lotes', 'users'\]/, f);
+    assert.match(s, /'calendario', 'lotes',[\s\S]{0,80}'users'\]\) \{/, f);
     assert.match(s, /CREATE TABLE IF NOT EXISTS lotes/);
   }
 });

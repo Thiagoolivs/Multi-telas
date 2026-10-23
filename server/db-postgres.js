@@ -93,6 +93,17 @@ async function init() {
       aceitando BOOLEAN, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_murais_tenant ON murais(tenant_id);
+    -- Fotos pelo QR (D31): o pedido do RH, com período, e as fotos esperando a aprovação.
+    CREATE TABLE IF NOT EXISTS pedidos_foto (
+      id TEXT PRIMARY KEY, tenant_id TEXT, codigo TEXT UNIQUE, titulo TEXT, tipo TEXT,
+      inicio TEXT, fim TEXT, aceitando BOOLEAN, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_pedidos_foto_tenant ON pedidos_foto(tenant_id);
+    CREATE TABLE IF NOT EXISTS fotos_pessoa (
+      id TEXT PRIMARY KEY, tenant_id TEXT, pedido_id TEXT, pessoa_id TEXT, nome TEXT, dia INTEGER, mes INTEGER,
+      setor TEXT, email TEXT, url TEXT, chave TEXT, media_id TEXT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_fotos_pessoa_tenant ON fotos_pessoa(tenant_id);
     -- O calendário da empresa (D23); ver db-sqlite.js.
     CREATE TABLE IF NOT EXISTS calendario (
       id TEXT PRIMARY KEY, tenant_id TEXT, data TEXT, titulo TEXT, tipo TEXT, detalhe TEXT,
@@ -899,6 +910,34 @@ async function removerEvento(id, tenantId) {
   return r.rowCount > 0;
 }
 
+/* ----- Fotos pelo QR (D31) ----- */
+const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, criadoEm: Number(r.created_at) || 0 } : null);
+const mapFotoPessoa = (r) => (r ? { id: r.id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', criadoEm: Number(r.created_at) || 0 } : null);
+async function criarPedidoFoto(tenantId, p) {
+  const id = 'pf_' + rid(12);
+  const r = await pool.query('INSERT INTO pedidos_foto (id, tenant_id, codigo, titulo, tipo, inicio, fim, aceitando, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,$8) RETURNING *',
+    [id, tenantId, p.codigo, p.titulo || '', p.tipo || 'perfil', p.inicio || '', p.fim || '', Date.now()]);
+  return mapPedidoFoto(r.rows[0]);
+}
+async function listarPedidosFoto(tenantId) { return (await pool.query('SELECT * FROM pedidos_foto WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId])).rows.map(mapPedidoFoto); }
+async function pedidoFotoPorCodigo(codigo) { return mapPedidoFoto((await pool.query('SELECT * FROM pedidos_foto WHERE codigo = $1', [String(codigo)])).rows[0]); }
+async function pedidoFotoPorId(id, tenantId) { return mapPedidoFoto((await pool.query('SELECT * FROM pedidos_foto WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rows[0]); }
+async function atualizarPedidoFoto(id, tenantId, p) {
+  const r = await pool.query('UPDATE pedidos_foto SET titulo = $1, inicio = $2, fim = $3, aceitando = $4 WHERE id = $5 AND tenant_id = $6',
+    [p.titulo || '', p.inicio || '', p.fim || '', !!p.aceitando, id, tenantId]);
+  return r.rowCount;
+}
+async function removerPedidoFoto(id, tenantId) { return (await pool.query('DELETE FROM pedidos_foto WHERE id = $1 AND tenant_id = $2', [id, tenantId])).rowCount; }
+async function addFotoPessoa(tenantId, f) {
+  const id = 'fp_' + rid(14);
+  await pool.query('INSERT INTO fotos_pessoa (id, tenant_id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, chave, media_id, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',
+    [id, tenantId, f.pedidoId, f.pessoaId || null, f.nome || '', f.dia || null, f.mes || null, f.setor || '', f.email || '', f.url, f.chave || '', f.mediaId || '', Date.now()]);
+  return id;
+}
+async function listarFotosPessoa(tenantId) { return (await pool.query('SELECT * FROM fotos_pessoa WHERE tenant_id = $1 ORDER BY created_at', [tenantId])).rows.map(mapFotoPessoa); }
+async function fotoPessoaPorId(id, tenantId) { return mapFotoPessoa((await pool.query('SELECT * FROM fotos_pessoa WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rows[0]); }
+async function removerFotoPessoa(id, tenantId) { return (await pool.query('DELETE FROM fotos_pessoa WHERE id = $1 AND tenant_id = $2', [id, tenantId])).rowCount; }
+
 async function criarMural(tenantId, codigo, titulo) {
   const id = 'mur_' + rid(12);
   await pool.query('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, created_at) VALUES ($1,$2,$3,$4,TRUE,$5)',
@@ -1583,6 +1622,8 @@ async function dadosDoTenant(tenantId) {
     marca: await um('SELECT * FROM brandkit WHERE tenant_id = $1'),
     imagensDaMarca: await varios('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = $1'),
     aniversariantes: await varios('SELECT id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, created_at, updated_at FROM birthdays WHERE tenant_id = $1'),
+    pedidosDeFoto: await varios('SELECT id, codigo, titulo, tipo, inicio, fim, aceitando, created_at FROM pedidos_foto WHERE tenant_id = $1'),
+    fotosParaAprovar: await varios('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, created_at FROM fotos_pessoa WHERE tenant_id = $1'),
     midias: await varios('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
     // seria entregar uma cópia incompleta com cara de completa.
@@ -1623,6 +1664,7 @@ async function apagarTenant(tenantId) {
   const chaves = [
     ...(await pool.query('SELECT key FROM media WHERE tenant_id = $1', [tenantId])).rows.map((r) => r.key),
     ...(await pool.query('SELECT chave FROM muralfotos WHERE tenant_id = $1', [tenantId])).rows.map((r) => r.chave),
+    ...(await pool.query('SELECT chave FROM fotos_pessoa WHERE tenant_id = $1', [tenantId])).rows.map((r) => r.chave),
   ].filter(Boolean).filter((k) => !guardadas.has(k));
   const client = await pool.connect();
   try {
@@ -1640,7 +1682,8 @@ async function apagarTenant(tenantId) {
      * consultor; o prazo é do dono com o advogado).
      */
     for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes',
+      'pedidos_foto', 'fotos_pessoa', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
     await client.query("DELETE FROM banco WHERE tenant_id = $1 AND estado <> 'aprovada'", [tenantId]);
@@ -1824,6 +1867,8 @@ module.exports = {
   registrarAceite, listarAceites, dadosDoTenant, apagarTenant,
   getMemoria, saveMemoria, clearMemoria,
   criarMural, listarMurais, muralPorCodigo, muralPorId, atualizarMural, removerMural,
+  criarPedidoFoto, listarPedidosFoto, pedidoFotoPorCodigo, pedidoFotoPorId, atualizarPedidoFoto, removerPedidoFoto,
+  addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,

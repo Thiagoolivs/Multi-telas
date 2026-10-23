@@ -485,6 +485,16 @@ export const birthdays = {
   remover: (id) => api('DELETE', '/api/birthdays/' + encodeURIComponent(id)),
 };
 
+/* A foto da pessoa pelo QR, com o RH aprovando (D31). */
+export const fotoqr = {
+  list: () => api('GET', '/api/fotoqr'),
+  criar: (p) => api('POST', '/api/fotoqr', p),
+  atualizar: (id, p) => api('PUT', '/api/fotoqr/' + encodeURIComponent(id), p),
+  remover: (id) => api('DELETE', '/api/fotoqr/' + encodeURIComponent(id)),
+  aprovar: (id) => api('POST', '/api/fotoqr/fotos/' + encodeURIComponent(id) + '/aprovar'),
+  recusar: (id) => api('POST', '/api/fotoqr/fotos/' + encodeURIComponent(id) + '/recusar'),
+};
+
 /* Estado do sistema (só o dono). */
 export const sistema = {
   diagnostico: () => api('GET', '/api/diagnostico'),
