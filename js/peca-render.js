@@ -129,7 +129,9 @@
     + '.mt-peca [data-vivo="mensagens"]{display:inline-block;white-space:nowrap}'
     + '.mt-peca[data-marca-na-tela] [data-repete="marca"]{display:none!important}'
     // Rodapé numa tela que já tem relógio no cabeçalho: o segundo relógio some (D12).
-    + '.mt-peca[data-sem-relogio] [data-vivo="relogio"]{display:none!important}';
+    + '.mt-peca[data-sem-relogio] [data-vivo="relogio"]{display:none!important}'
+    // O elemento que a pessoa escondeu no editor (D19).
+    + '.mt-peca [data-oculto]{display:none!important}';
 
   // As variáveis da marca, num bloco do palco.
   function cssDosTokens(tokens) {
@@ -270,6 +272,23 @@
     return (l < 0.35 ? daMarca.clara : daMarca.escura) || daMarca.url;
   }
 
+  /*
+   * Esconde o elemento e o enfeite que só existe por causa dele: o traço
+   * antes da chamada ("— FUNCIONAMENTO") é um <i aria-hidden> irmão do
+   * texto. Sobe enquanto o pai só tem o elemento e enfeites; para no
+   * primeiro pai que tem outra coisa (ou na própria peça).
+   */
+  function esconder(el, peca) {
+    let alvo = el;
+    while (alvo.parentElement && alvo.parentElement !== peca) {
+      const pai = alvo.parentElement;
+      const so = Array.prototype.every.call(pai.children, (c) => c === alvo || c.getAttribute('aria-hidden') === 'true');
+      if (!so || (pai.textContent || '').trim() !== (alvo.textContent || '').trim()) break;
+      alvo = pai;
+    }
+    alvo.setAttribute('data-oculto', '');
+  }
+
   function montar(host, item, opts) {
     const o = opts || {};
     garantirFontes(host.ownerDocument);
@@ -297,6 +316,10 @@
     sombra.querySelectorAll('[data-campo]').forEach((el) => {
       const valor = it.campos[el.getAttribute('data-campo')];
       if (valor != null) el.textContent = valor;
+    });
+    // Os nomes já vieram conferidos pela porta (só campos que a peça declara).
+    (it.ocultos || []).forEach((n) => {
+      sombra.querySelectorAll('[data-campo="' + n + '"],[data-campo-qr="' + n + '"]').forEach((el) => esconder(el, peca));
     });
     sombra.querySelectorAll('img[data-campo-img],img[data-campo-qr]').forEach((el) => {
       const qr = el.hasAttribute('data-campo-qr');

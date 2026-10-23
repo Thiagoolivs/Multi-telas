@@ -740,7 +740,16 @@
     const origem = it.origem && typeof it.origem === 'object' ? it.origem : {};
     const curto = (v, n) => String(v == null ? '' : v).slice(0, n);
     const duracao = Number(it.duracao);
-    return {
+    /*
+     * Os elementos que a pessoa escondeu (D19: "trocar elementos"): só nomes
+     * de campo de texto ou QR que a peça declara. O desenho fica; o elemento
+     * some na TV e no painel.
+     */
+    const ocultos = Array.from(new Set((Array.isArray(it.ocultos) ? it.ocultos : [])
+      .filter((n) => porNome[n] && porNome[n].tipo !== 'img'))).slice(0, 30);
+    // A peça-ouro de onde a peça veio: é por ela que o editor oferece outros desenhos da mesma família.
+    const base = /^[a-z0-9-]{1,60}$/.test(String(origem.base || '')) ? String(origem.base) : '';
+    const saida = {
       item: {
         type: 'peca-html',
         versao: 1,
@@ -753,13 +762,15 @@
         modo: T.MODOS.indexOf(it.modo) >= 0 ? it.modo : T.MODO_PADRAO,
         duracao: isFinite(duracao) && duracao >= 4 ? Math.min(120, duracao) : 12,
         formatos: formatos.length ? Array.from(new Set(formatos)) : ['16/9'],
-        origem: { motor: curto(origem.motor, 40), modelo: curto(origem.modelo, 60), pedido: curto(origem.pedido, 400) },
+        origem: Object.assign({ motor: curto(origem.motor, 40), modelo: curto(origem.modelo, 60), pedido: curto(origem.pedido, 400) }, base ? { base: base } : {}),
       },
       campos: h.campos,
       problemas,
       avisos: h.avisos,
       ok: problemas.length === 0,
     };
+    if (ocultos.length) saida.item.ocultos = ocultos;
+    return saida;
   }
 
   /*
