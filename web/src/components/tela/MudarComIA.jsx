@@ -7,12 +7,16 @@ import { ai, brand } from '../../api.js';
 import { useAsync } from '../../lib/useAsync.js';
 import { emitir, aviso } from '../../lib/avisos.js';
 import { aplicarMudancas, descrever, orientacaoDaTela, temMudanca } from '../../lib/ajusteTela.js';
+import { MiniConversa, comPergunta } from './MiniConversa.jsx';
 
 /*
  * MUDAR A TELA COM A IA (EXECUTOR D28). "Lateral do outro lado", "tema
  * claro", "fundo azul", "tira o relógio", "clima de Curitiba": a IA diz o
  * que muda, o painel mostra a TV agora e como fica, e só com o "Usar assim"
  * vira o rascunho — que vai para a TV no Publicar, como o resto do editor.
+ *
+ * D51: sem o que mudar ("muda a cor"), a IA pergunta ("Qual cor?"), com
+ * respostas prontas; a resposta completa o pedido.
  */
 const EXEMPLOS = ['lateral do outro lado', 'tema claro', 'fundo azul marinho', 'sem relógio', 'clima de Curitiba'];
 
@@ -21,20 +25,25 @@ export function MudarComIA({ cfg, onAplicar }) {
   const [busy, setBusy] = useState(false);
   const [proposta, setProposta] = useState(null);
   const [sobra, setSobra] = useState('');
+  const [historico, setHistorico] = useState([]);
   const { data: brandData } = useAsync(brand.get);
   const coresMarca = ((brandData && brandData.kit && brandData.kit.cores) || []).filter(Boolean);
 
-  async function ver(e) {
+  async function ver(e, t) {
     if (e) e.preventDefault();
-    if (!texto.trim() || busy) return;
+    const frase = String(t == null ? texto : t).trim();
+    if (!frase || busy) return;
     setBusy(true); setSobra('');
     try {
       const s = (cfg && cfg.settings) || {};
-      const r = await ai.tela(texto.trim(), { layoutId: s.layoutId || 'dashboard', orientacao: orientacaoDaTela(cfg), tema: (s.theme && s.theme.preset) || '' });
+      const r = await ai.tela(frase, { layoutId: s.layoutId || 'dashboard', orientacao: orientacaoDaTela(cfg), tema: (s.theme && s.theme.preset) || '' }, historico);
+      // A IA perguntou (D51): entra na conversa, e a caixa fica para a resposta.
+      if (r && r.pergunta) { setHistorico((h) => comPergunta(h, frase, r)); setTexto(''); return; }
       const m = (r && r.mudancas) || {};
       const notas = (r && r.notas) || [];
       if (!temMudanca(m)) { setSobra(notas[0] || 'Não entendi o que mudar. Tente: ' + EXEMPLOS.slice(0, 3).map((x) => '"' + x + '"').join(', ') + '.'); return; }
       setProposta({ m, notas, depois: aplicarMudancas(cfg, m, { coresMarca }), linhas: descrever(cfg, m, { coresMarca }) });
+      setHistorico([]);
     } catch (err) { aviso.erro('mudar-tela', err.message || 'Não deu para entender agora.'); }
     finally { setBusy(false); }
   }
@@ -56,6 +65,7 @@ export function MudarComIA({ cfg, onAplicar }) {
         <Button type="submit" icon={Sparkles} disabled={!texto.trim() || busy}>{busy ? 'Vendo…' : 'Ver como fica'}</Button>
       </form>
       {sobra && <p className="mt-1.5 text-xs text-ink-3" role="status">{sobra}</p>}
+      <MiniConversa historico={historico} onResponder={(s) => ver(null, s)} ocupado={busy} className="mt-2" />
 
       {proposta && (
         <Dialog open onClose={() => setProposta(null)} className="max-w-3xl" title="Mudar a tela"

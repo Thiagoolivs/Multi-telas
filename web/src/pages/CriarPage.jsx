@@ -70,7 +70,7 @@ function cartaoInicial(nome, objetivo, telaId, imagens, zona) {
   return E.normalizar({ ...base, nome, objetivo, imagens: imagens || base.imagens });
 }
 
-export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial, conversaInicial, aprovarInicial, onIr }) {
+export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial, conversaInicial, aprovarInicial, textoInicial, onIr }) {
   const [conversa, setConversa] = useState(null);   // { id, mensagens, escopo, estado, titulo, campanhaId }
   const [mensagens, setMensagens] = useState([]);
   const perfil = usePerfil();
@@ -80,7 +80,8 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   });
   const [texto, setTexto] = useState(() => {
     const op = opcaoDoPerfil(opcaoInicial, perfil.id);
-    return op ? op.pedido + ': ' : '';
+    // Do "Pedir à IA" da Programação (D51): o pedido já vem escrito.
+    return op ? op.pedido + ': ' : (textoInicial || '');
   });
   const [pronto, setPronto] = useState(false);
   const [pensando, setPensando] = useState(false);
@@ -128,7 +129,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     // Vindo de Criando (D42): a conversa que espera a aprovação, já com o esboço aberto.
     if (conversaInicial) abrir(conversaInicial, { aprovar: !!aprovarInicial });
     // Quem veio de "Criar para a data" quer a data, não a conversa de ontem por cima dela (D3).
-    else if (id && !opcaoInicial && !telaInicial && !ideiaInicial) abrir(id, { sozinha: true });
+    else if (id && !opcaoInicial && !telaInicial && !ideiaInicial && !textoInicial) abrir(id, { sozinha: true });
     // Uma geração que estava rodando quando a aba fechou: volta a acompanhar.
     const pendente = criar.pendente();
     if (pendente) acompanhar(pendente.id);

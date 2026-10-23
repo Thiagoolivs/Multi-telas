@@ -9,19 +9,25 @@ import { gravarEmLote, avisarComDesfazer } from '../../lib/rodar.js';
 import { pecaDoAviso, aplicarAviso, telasDoAviso } from '../../lib/aviso.js';
 import { aviso as avisos } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
+import { MiniConversa, comPergunta } from './MiniConversa.jsx';
 
 /*
  * AVISO RÁPIDO (EXECUTOR D27). "Adicione aviso da peça quebrada no
  * banheiro": a IA arruma o aviso (título, detalhe, até quando, prioridade,
  * TVs), o painel monta a peça e mostra a prévia, a pessoa ajusta se quiser
  * e, com o ok, a frota recebe num envio só, com Desfazer.
+ *
+ * D51: sem o essencial ("quero um aviso"), a IA pergunta, com respostas
+ * prontas; a resposta completa o pedido. Vindo do "Pedir à IA", o aviso já
+ * chega montado (avisoInicial).
  */
 const campo = 'w-full rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink';
 
-export function AvisoRapido({ onFechar }) {
+export function AvisoRapido({ onFechar, avisoInicial }) {
   const [texto, setTexto] = useState('');
   const [montando, setMontando] = useState(false);
-  const [aviso, setAviso] = useState(null);
+  const [aviso, setAviso] = useState(avisoInicial || null);
+  const [historico, setHistorico] = useState([]);
   const [tvs, setTvs] = useState([]);
   const [modelos, setModelos] = useState(null);
   const [marca, setMarca] = useState(null);
@@ -41,9 +47,16 @@ export function AvisoRapido({ onFechar }) {
   const alvos = aviso ? telasDoAviso(aviso, tvs) : [];
   const set = (k, v) => setAviso((a) => ({ ...a, [k]: v }));
 
-  async function montar() {
+  async function montar(t) {
+    const frase = String(t == null ? texto : t).trim();
+    if (!frase || montando) return;
     setMontando(true);
-    try { setAviso((await avisoRapido.montar(texto)).aviso); }
+    try {
+      const r = await avisoRapido.montar(frase, historico);
+      // A IA perguntou (D51): a pergunta entra na conversa e a caixa fica para a resposta.
+      if (r.pergunta) { setHistorico((h) => comPergunta(h, frase, r)); setTexto(''); return; }
+      setAviso(r.aviso);
+    }
     catch (e) { avisos.erro('aviso', e.message || 'Não deu para montar agora.'); }
     finally { setMontando(false); }
   }
@@ -68,17 +81,21 @@ export function AvisoRapido({ onFechar }) {
     <Dialog open onClose={onFechar} className="max-w-2xl" title="Aviso rápido"
       description="Escreva como você falaria. A IA arruma, você vê como fica e manda para as TVs."
       footer={aviso ? <>
-        <Button variant="ghost" onClick={() => setAviso(null)}>Escrever de novo</Button>
+        <Button variant="ghost" onClick={() => { setAviso(null); setHistorico([]); }}>Escrever de novo</Button>
         <Button variant="primary" icon={MonitorPlay} disabled={!alvos.length || enviando || !item || !aviso.titulo} onClick={enviar}>
           {enviando ? 'Enviando…' : alvos.length === 1 ? 'Pôr na TV' : 'Pôr em ' + alvos.length + ' TVs'}
         </Button>
       </> : <>
         <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
-        <Button variant="primary" icon={Sparkles} disabled={!texto.trim() || montando} onClick={montar}>{montando ? 'Montando…' : 'Montar o aviso'}</Button>
+        <Button variant="primary" icon={Sparkles} disabled={!texto.trim() || montando} onClick={() => montar()}>{montando ? 'Montando…' : historico.length ? 'Responder' : 'Montar o aviso'}</Button>
       </>}>
       {!aviso ? (
-        <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={3} maxLength={500} autoFocus aria-label="O aviso"
-          placeholder={'Ex.: banheiro do 2º andar interditado até amanhã, use o do térreo'} className={campo} />
+        <div className="space-y-2">
+          <MiniConversa historico={historico} onResponder={montar} ocupado={montando} />
+          <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={historico.length ? 2 : 3} maxLength={500} autoFocus aria-label="O aviso"
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); montar(); } }}
+            placeholder={historico.length ? 'Responda aqui' : 'Ex.: banheiro do 2º andar interditado até amanhã, use o do térreo'} className={campo} />
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
           <div>{item ? <PecaHtml item={item} formato="16/9" /> : <div className="text-xs text-ink-3">Montando a prévia…</div>}</div>

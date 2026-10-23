@@ -99,5 +99,5 @@ test('nada some: os quatro passos viraram Criação rápida, com endereço e lug
   // As entradas do Início abrem o chat com o começo de frase e o cartão montado.
   const c = ler('web/src/pages/CriarPage.jsx');
   assert.match(c, /return op \? cartaoInicial\(op\.titulo, op\.pedido, telaInicial\)/);
-  assert.match(c, /return op \? op\.pedido \+ ': ' : '';/);
+  assert.match(c, /return op \? op\.pedido \+ ': ' : \(textoInicial \|\| ''\);/);
 });

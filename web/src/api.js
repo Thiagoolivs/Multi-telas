@@ -236,7 +236,8 @@ export const calendario = {
 };
 
 // O aviso numa frase (D27): devolve { aviso: { titulo, detalhe, ate, prioridade, alvo } } para a prévia.
-export const avisoRapido = { montar: (texto) => api('POST', '/api/ai/aviso', { texto }) };
+// D51: `historico` — as falas da mini-conversa; a resposta pode ser { pergunta, sugestoes }.
+export const avisoRapido = { montar: (texto, historico) => api('POST', '/api/ai/aviso', { texto, historico }) };
 
 export const ai = {
   /*
@@ -262,7 +263,9 @@ export const ai = {
   // Pedir à IA dentro da peça (D20): devolve { resposta, remendo, mudou } — só o que muda, sem gravar.
   ajustarPeca: (item, pedido) => api('POST', '/api/ai/ajustar-peca', { item, pedido }),
   // Mudar layout e tema numa frase (D28): devolve { mudancas, notas } — o painel aplica no rascunho, com prévia.
-  tela: (texto, atual) => api('POST', '/api/ai/tela', { texto, ...atual }),
+  tela: (texto, atual, historico) => api('POST', '/api/ai/tela', { texto, ...atual, historico }),
+  // Um lugar só para pedir à IA, na Programação (D51): { pergunta } ou { destino, ... }.
+  pedir: (texto, historico) => api('POST', '/api/ai/pedir', { texto, historico }),
 
   // Chat de briefing: uma pergunta por vez até a IA entender a campanha.
   // Continua síncrono: é uma conversa, e conversa que responde por polling
