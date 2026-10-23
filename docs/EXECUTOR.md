@@ -1018,7 +1018,23 @@ direciona para o link de postagem das redes". Agora: o botão abre a
 página de postar de cada rede com a imagem e o texto prontos.
 **D39 Senhas e clínicas.** **D40 Escala** (várias instâncias).
 
+### Depois da rodada 5
+
+**D41 Atualização remota do APK** (PLANO §9, Operação). O app (`android/`)
+é só a casca do WebView: o conteúdo se atualiza sozinho, a casca não, e o
+APK do Actions expira. O `android.yml` publica o APK assinado num Release
+(tag `apk-v<versão>`); o servidor serve `/apk/ultimo.apk` e
+`/apk/versao.json` (`versionCode`, `versionName`, tamanho, sha256) — a TV
+baixa só de nós. A TV conta a versão da casca (`Ponte.versao()`) no pulso e
+o painel mostra "há uma versão nova" no aparelho. A casca baixa em segundo
+plano, confere o sha256 e abre o instalador (`REQUEST_INSTALL_PACKAGES`);
+o aviso fica no canto, sem tapar conteúdo. Falhou: segue na versão antiga,
+nunca tela preta. **Pronto quando:** um APK com `versionCode` maior chega
+ao box de teste e instala com um OK no controle.
+
 ## 3 · O consultor (issue #135)
+
+Como falar com ele e o que ele pode fazer: [`CONSULTOR.md`](CONSULTOR.md).
 
 Um Claude com o contexto todo do projeto fica de plantão na issue
 [#135](https://github.com/Thiagoolivs/Multi-telas/issues/135) e confere a
