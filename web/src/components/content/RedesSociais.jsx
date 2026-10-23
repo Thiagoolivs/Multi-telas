@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Share2, Download, Copy, Check, Instagram, MessageCircle, Facebook, MapPin, CalendarClock, AlertTriangle } from 'lucide-react';
+import { Share2, Download, Copy, Check, Instagram, MessageCircle, Facebook, MapPin, CalendarClock, AlertTriangle, ExternalLink } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Input } from '../ui/Field.jsx';
@@ -54,6 +54,21 @@ function baixar(blob, nome) {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
+
+/*
+ * POSTAR NO COMPUTADOR (EXECUTOR D38): o dono — "já deixa no esquema, ou
+ * pelo menos direciona para o link de postagem das redes". Onde o navegador
+ * não compartilha arquivo, um clique abre a página de postar da rede (o
+ * WhatsApp já com o texto escrito), baixa a imagem e copia o texto: é só
+ * escolher a imagem e colar. Sem API da Meta e sem login de rede guardado
+ * aqui.
+ */
+const POSTAR = {
+  instagram: { nome: 'Instagram', url: () => 'https://www.instagram.com/', dica: 'No Instagram: toque em Criar, escolha a imagem baixada e cole o texto.' },
+  whatsapp: { nome: 'WhatsApp', url: (t) => 'https://wa.me/?text=' + encodeURIComponent(t || ''), dica: 'No WhatsApp o texto já vai escrito: escolha o contato e anexe a imagem baixada.' },
+  facebook: { nome: 'Facebook', url: () => 'https://business.facebook.com/latest/composer', dica: 'No Facebook: o criador de post da sua página abre; escolha a imagem baixada e cole o texto.' },
+  google: { nome: 'Google', url: () => 'https://business.google.com/', dica: 'No Perfil da Empresa no Google: Adicionar atualização, escolha a imagem baixada e cole o texto.' },
+};
 
 async function copiar(texto) {
   try { await navigator.clipboard.writeText(texto); aviso.ok('Texto copiado.'); }
@@ -168,7 +183,15 @@ export function RedesSociais({ item, label, onFechar }) {
   const legendaIg = ig ? ig.legenda + '\n\n' + ig.hashtags.join(' ') : '';
   const nome = label || 'peça';
 
-  function Acoes({ blob, sufixo, texto, erro }) {
+  function Acoes({ blob, sufixo, texto, erro, rede }) {
+    const postar = POSTAR[rede];
+    // A janela abre primeiro, ainda no clique (senão o navegador bloqueia); depois baixa e copia.
+    const abrirRede = () => {
+      window.open(postar.url(texto), '_blank', 'noopener');
+      if (blob) baixar(blob, nomeArquivo(nome, sufixo));
+      if (texto) navigator.clipboard.writeText(texto).catch(() => {});
+      aviso.ok((blob ? 'Imagem baixada' : 'Pronto') + (texto ? ' e texto copiado. ' : '. ') + postar.dica);
+    };
     // Sem a imagem neste aparelho: compartilha só o texto (ou copia), sem botão morto.
     if (!blob && erro) {
       return (
@@ -177,6 +200,7 @@ export function RedesSociais({ item, label, onFechar }) {
             if (navigator.share) { try { await navigator.share({ text: texto }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
             copiar(texto);
           }}>Compartilhar o texto</Button>}
+          {postar && texto && <Button variant="secondary" icon={ExternalLink} onClick={abrirRede}>Abrir o {postar.nome}</Button>}
           {texto && <Button variant="secondary" icon={Copy} onClick={() => copiar(texto)}>Copiar texto</Button>}
         </div>
       );
@@ -187,6 +211,7 @@ export function RedesSociais({ item, label, onFechar }) {
           const ok = await compartilhar(blob, nomeArquivo(nome, sufixo), texto);
           if (!ok) { baixar(blob, nomeArquivo(nome, sufixo)); aviso.ok('Imagem baixada e texto copiado: é só postar.'); }
         }}>Compartilhar</Button>
+        {postar && <Button variant="secondary" icon={ExternalLink} onClick={abrirRede}>Abrir o {postar.nome}</Button>}
         <Button variant="secondary" icon={Download} disabled={!blob} onClick={() => baixar(blob, nomeArquivo(nome, sufixo))}>Baixar</Button>
         {texto && <Button variant="secondary" icon={Copy} onClick={() => copiar(texto)}>Copiar texto</Button>}
       </div>
@@ -240,7 +265,7 @@ export function RedesSociais({ item, label, onFechar }) {
             <Imagem blob={imgs.story} erro={imgs.storyErro} rotulo="Story 9:16 (1080×1920)" proporcao="9 / 16" />
           </div>
           <Texto>{legendaIg}</Texto>
-          <Acoes blob={imgs.post} erro={imgs.postErro} sufixo="post" texto={legendaIg} />
+          <Acoes blob={imgs.post} erro={imgs.postErro} sufixo="post" texto={legendaIg} rede="instagram" />
           {!imgs.storyErro && (
             <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3 text-xs text-ink-3">
               Story: <Button size="sm" variant="secondary" icon={Share2} disabled={!imgs.story}
@@ -257,7 +282,7 @@ export function RedesSociais({ item, label, onFechar }) {
               <Texto>{textos.whatsapp.mensagem}</Texto>
             </div>
           </div>
-          <Acoes blob={imgs.story} erro={imgs.storyErro} sufixo="status" texto={textos.whatsapp.mensagem} />
+          <Acoes blob={imgs.story} erro={imgs.storyErro} sufixo="status" texto={textos.whatsapp.mensagem} rede="whatsapp" />
         </div>
       ) : textos && aba === 'facebook' ? (
         <div className="space-y-3">
@@ -265,7 +290,7 @@ export function RedesSociais({ item, label, onFechar }) {
             <Imagem blob={imgs.post} erro={imgs.postErro} rotulo="Post 4:5" proporcao="4 / 5" />
             <Texto>{textos.facebook.texto}</Texto>
           </div>
-          <Acoes blob={imgs.post} erro={imgs.postErro} sufixo="facebook" texto={textos.facebook.texto} />
+          <Acoes blob={imgs.post} erro={imgs.postErro} sufixo="facebook" texto={textos.facebook.texto} rede="facebook" />
         </div>
       ) : textos && aba === 'google' ? (
         <div className="space-y-3">
@@ -276,7 +301,7 @@ export function RedesSociais({ item, label, onFechar }) {
               <p className="text-xs text-ink-3">Botão sugerido: <b className="text-ink">{textos.google.botao}</b>. No Perfil da Empresa: Adicionar atualização → Oferta ou Novidade.</p>
             </div>
           </div>
-          <Acoes blob={imgs.quadrado} erro={imgs.quadradoErro} sufixo="google" texto={textos.google.texto} />
+          <Acoes blob={imgs.quadrado} erro={imgs.quadradoErro} sufixo="google" texto={textos.google.texto} rede="google" />
         </div>
       ) : textos ? (
         <ul className="divide-y divide-line rounded-lg border border-line">
