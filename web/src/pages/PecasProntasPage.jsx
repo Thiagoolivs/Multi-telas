@@ -3,7 +3,7 @@ import { Layers, MonitorPlay, Share2, Wand2, Search, Check, Plus } from 'lucide-
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
-import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
+import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { RedesSociais } from '../components/content/RedesSociais.jsx';
@@ -33,6 +33,8 @@ function ondeCabe(p) {
 
 export function PecasProntasPage({ onIr }) {
   const [pecas, setPecas] = useState(null);
+  const [erroPecas, setErroPecas] = useState('');
+  const [tentativa, setTentativa] = useState(0);
   const [telas, setTelas] = useState([]);
   const [filtro, setFiltro] = useState('todas');
   const [q, setQ] = useState('');
@@ -42,9 +44,11 @@ export function PecasProntasPage({ onIr }) {
   const [redesDe, setRedesDe] = useState(null);
 
   useEffect(() => {
+    setErroPecas(''); setPecas(null);
     Promise.all([
-      criar.pecasProntas().then((r) => (r && r.pecas) || []).catch(() => []),
-      library.list().then((r) => (r && r.items) || []).catch(() => []),
+      // Erro de rede não vira "Nenhuma peça pronta ainda" (D3): a falha aparece, com tentar de novo.
+      criar.pecasProntas().then((r) => (r && r.pecas) || []),
+      library.list().then((r) => (r && r.items) || []),
     ]).then(([camp, lib]) => {
       // A mesma peça vinda da biblioteca antiga e da campanha aparece uma vez só.
       const vistas = new Set();
@@ -58,9 +62,9 @@ export function PecasProntasPage({ onIr }) {
         return true;
       });
       setPecas(todas);
-    });
+    }).catch((e) => setErroPecas(e.message || 'Não deu para carregar as peças.'));
     devices.list().then((r) => setTelas((r && r.devices) || [])).catch(() => setTelas([]));
-  }, []);
+  }, [tentativa]);
 
   const visiveis = useMemo(() => (pecas || []).filter((p) => {
     const faixa = p.papel === 'cabecalho' || p.papel === 'rodape';
@@ -105,7 +109,9 @@ export function PecasProntasPage({ onIr }) {
         </div>
       </div>
 
-      {pecas === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : visiveis.length === 0 ? (
+      {erroPecas ? (
+        <ErrorState description={erroPecas} onRetry={() => setTentativa((n) => n + 1)} />
+      ) : pecas === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : visiveis.length === 0 ? (
         <Panel>
           <EmptyState icon={Layers} title={pecas.length ? 'Nenhuma peça neste filtro' : 'Nenhuma peça pronta ainda'}
             description={pecas.length ? 'Troque o filtro ou a busca.' : 'As peças que o Criar faz aparecem aqui, prontas para qualquer TV.'}

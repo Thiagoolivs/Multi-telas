@@ -169,6 +169,7 @@ export function BrandPage({ onIr }) {
   async function apagar(id) {
     setBusy(true);
     try { await brand.removeAsset(id); reload(); }
+    catch (e) { setErr(e.message || 'Não deu para apagar a imagem.'); }
     finally { setBusy(false); }
   }
 

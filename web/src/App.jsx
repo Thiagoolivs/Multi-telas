@@ -134,7 +134,10 @@ export default function App() {
   const [route, setRoute] = useState(rotaDaUrl);
   const [theme, toggleTheme] = useTheme();
 
-  const refresh = () => auth.me().then((me) => setSession(me || null));
+  const [semRede, setSemRede] = useState(false);
+  const refresh = () => auth.me()
+    .then((me) => { setSemRede(false); setSession(me || null); })
+    .catch(() => setSemRede(true));
   useEffect(() => { refresh(); }, []);
 
   const go = (name, params) => {
@@ -161,6 +164,15 @@ export default function App() {
     setRoute({ name: 'overview' });
   }
 
+  if (session === undefined && semRede) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-canvas px-6 text-center">
+        <p className="text-sm font-semibold text-ink">Sem conexão com o MultiTelas</p>
+        <p className="max-w-xs text-xs text-ink-3">Suas TVs continuam mostrando a última programação. Assim que a internet voltar, o painel abre.</p>
+        <button type="button" className="text-sm font-semibold text-accent hover:underline" onClick={refresh}>Tentar de novo</button>
+      </div>
+    );
+  }
   if (session === undefined) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas">

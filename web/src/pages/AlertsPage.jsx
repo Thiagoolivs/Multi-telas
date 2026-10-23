@@ -3,7 +3,7 @@ import { Bell, MonitorPlay, MonitorX, HardDrive, LayoutTemplate, CheckCircle2, A
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
-import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
+import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { devices, billing, media } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
@@ -21,7 +21,7 @@ const TONE = {
  * de fato errado agora — lido do estado real da frota, da mídia e do plano.
  */
 export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling }) {
-  const { data: devData, loading: loadingDev, reload } = useAsync(devices.list);
+  const { data: devData, loading: loadingDev, error: erroDev, reload } = useAsync(devices.list);
   const { data: bill } = useAsync(billing.get);
   const { data: mediaData } = useAsync(media.list);
   const list = (devData && devData.devices) || [];
@@ -101,7 +101,9 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling }) {
             : alerts.length ? `${alerts.length} ${alerts.length === 1 ? 'alerta' : 'alertas'}${criticos ? ` · ${criticos} crítico${criticos > 1 ? 's' : ''}` : ''}`
             : `${list.length} ${list.length === 1 ? 'tela' : 'telas'} · tudo certo`} />
 
-        {loadingDev ? (
+        {erroDev ? (
+          <ErrorState description="Não deu para ver as TVs agora. Nada mudou nelas." onRetry={reload} />
+        ) : loadingDev ? (
           <div className="p-6"><Spinner size={20} /></div>
         ) : list.length === 0 ? (
           <EmptyState icon={MonitorPlay} title="Nenhuma TV ainda"

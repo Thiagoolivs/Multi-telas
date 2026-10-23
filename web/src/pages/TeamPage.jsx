@@ -42,9 +42,14 @@ export function TeamPage({ me, onLeft }) {
   async function changeRole(m, role) {
     if (role === m.role) return;
     setBusyId(m.id);
-    try { await team.setRole(m.id, role); await reload(); } finally { setBusyId(null); }
+    try { await team.setRole(m.id, role); await reload(); }
+    catch (e) { aviso.erro('equipe', e.message || 'Não deu para mudar o papel.'); }
+    finally { setBusyId(null); }
   }
-  async function revogar(inv) { await team.revokeInvite(inv.id); reload(); }
+  async function revogar(inv) {
+    try { await team.revokeInvite(inv.id); reload(); }
+    catch (e) { aviso.erro('equipe', e.message || 'Não deu para cancelar o convite.'); }
+  }
   /*
    * Remover e sair pedem confirmação (EXECUTOR D2): agiam no primeiro clique,
    * e "Sair da empresa" desloga na hora. A recusa do servidor aparece.

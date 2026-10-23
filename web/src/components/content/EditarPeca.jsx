@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { confirmar } from '../../lib/confirmar.js';
+import { aviso } from '../../lib/avisos.js';
 import { Check, AlertTriangle } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
@@ -146,7 +147,10 @@ export function EditarPeca({ item, label, onFechar, onSalvar }) {
   async function salvar() {
     if (problemas.length && !(await confirmar({ titulo: 'O texto não cabe em todos os formatos', texto: problemas.slice(0, 4).join('\n'), botao: 'Salvar assim mesmo' }))) return;
     setSalvando(true);
-    try { await onSalvar(atual); } finally { setSalvando(false); }
+    // A falha vinha de quem chamou (Resultado, Meus Designs) e ninguém mostrava (D3).
+    try { await onSalvar(atual); }
+    catch (e) { aviso.erro('peca', 'Não salvou: ' + (e.message || 'falha de conexão') + '. A edição continua aberta.'); }
+    finally { setSalvando(false); }
   }
 
   const textos = (definicao || []).filter((c) => c.tipo === 'texto' || c.tipo === 'qr');

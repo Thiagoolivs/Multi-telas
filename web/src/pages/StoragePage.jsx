@@ -176,7 +176,7 @@ export function StoragePage({ filtro = 'fotos' }) {
                         ? <img src={m.url} alt="" className="h-full w-full object-cover" />
                         : <div className="flex h-full items-center justify-center text-white/70"><FileText size={26} /></div>}
                   <button type="button" onClick={() => remove(m)} aria-label="Remover"
-                    className="absolute right-1.5 top-1.5 rounded-md bg-ink/60 p-1 text-white opacity-0 transition hover:bg-danger group-hover:opacity-100">
+                    className="absolute right-1.5 top-1.5 rounded-md bg-ink/60 p-1 text-white transition hover:bg-danger sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100">
                     <Trash2 size={14} />
                   </button>
                 </div>

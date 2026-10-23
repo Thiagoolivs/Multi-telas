@@ -24,7 +24,9 @@ export function PorPraRodar({ campanha, telas, onMudou }) {
   useEffect(() => {
     let vivo = true;
     if (!telas.length) { setPlano([]); return undefined; }
-    planoDeRodar(r, telas).then((p) => { if (vivo) setPlano(p); }).catch(() => { if (vivo) setPlano([]); });
+    // Falha ao ler as TVs (rede) não é "nenhuma TV ligada": aparece, e nada é gravado (D3, D0.5).
+    planoDeRodar(r, telas).then((p) => { if (vivo) setPlano(p); })
+      .catch((e) => { if (vivo) { setPlano(null); setErro('Não deu para ler as TVs agora: ' + (e.message || 'falha de conexão') + '. Tente de novo.'); } });
     return () => { vivo = false; };
   }, [campanha.id, telas.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -69,7 +71,7 @@ export function PorPraRodar({ campanha, telas, onMudou }) {
         {noAr && <span className="rounded-full bg-ok/15 px-2 py-0.5 text-2xs font-semibold text-ok">rodando</span>}
       </div>
 
-      {plano === null ? <Spinner size={16} /> : plano.length === 0 ? (
+      {plano === null ? (erro ? null : <Spinner size={16} />) : plano.length === 0 ? (
         <p className="text-xs text-ink-2">Nenhuma das TVs desta campanha está ligada. Ligue a TV, ou escolha outra no cartão.</p>
       ) : (
         <ul className="space-y-1">
