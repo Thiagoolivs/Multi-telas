@@ -21,6 +21,7 @@
 const conversa = require('../ai-conversa');
 const memory = require('../ai-memoria');
 const E = require('../../js/escopo.js');
+const paleta = require('../paleta.js');
 
 // O que a conversa guarda. Mais que isso, as mais antigas saem: o escopo já as resume.
 const MAX_MENSAGENS = 200;
@@ -46,6 +47,7 @@ module.exports = function (ctx) {
     return {
       empresa: (k.nome && k.nome !== 'Marca principal' ? k.nome : '') || (tenant && tenant.name) || '',
       segmento: (lembrada && lembrada.segmento) || '',
+      perfil: await paleta.perfilDaConta(db, tenantId, tenant),
       marca: {
         tom: k.tom || '', observacoes: k.observacoes || '', siteResumo: k.siteResumo || '',
         bases: (assets || []).filter((a) => a.kind === 'base').map((a) => ({ url: a.url, label: a.label || '' })),

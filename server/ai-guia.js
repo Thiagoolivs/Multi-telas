@@ -26,6 +26,7 @@
 'use strict';
 
 const ai = require('./ai');
+const Perfil = require('../js/perfil.js');
 
 /*
  * Os eixos. São o contrato com o resto do sistema: `formatos` e `imagens`
@@ -96,6 +97,7 @@ function contexto(ctx) {
   const linhas = [
     c.empresa ? 'Negócio: ' + c.empresa : '',
     c.segmento ? 'Ramo: ' + c.segmento : '',
+    c.perfil ? 'Tipo de negócio: ' + Perfil.de(c.perfil).paraIA : '',
     m.tom ? 'Tom da marca: ' + m.tom : '',
     (m.cores && m.cores.length) ? 'Cores da marca já cadastradas.' : '',
     /*
@@ -148,22 +150,53 @@ function sanear(s) {
  * e é o que faz o fluxo inteiro ser percorrível em desenvolvimento e no eval.
  * Genérico de propósito — fingir especificidade que não existe seria pior.
  */
+/*
+ * Uma metalúrgica recebia "Promoção da semana" e "a pergunta mais repetida
+ * no balcão" (D4): o cardápio fixo agora segue o tipo de negócio.
+ */
+function ideiasSemIA(perfil, temAcervo) {
+  const foto = temAcervo ? 'acervo' : 'nenhuma';
+  if (perfil === 'empresa') return [
+    { titulo: 'Aviso da semana', porque: 'o que todo mundo precisa saber, onde todo mundo passa',
+      brief: 'aviso importante da semana para a equipe', formatos: ['16/9'], quantidade: 1,
+      imagens: 'nenhuma', entrada: 'aparecer', continua: '' },
+    { titulo: 'Segurança em primeiro lugar', porque: 'lembrete visto todo dia vira hábito',
+      brief: 'lembrete de segurança do trabalho: use o EPI', formatos: ['16/9'], quantidade: 2,
+      imagens: 'nenhuma', entrada: 'subir', continua: '' },
+    { titulo: 'Aniversariantes do mês', porque: 'a equipe vê e comenta',
+      brief: 'parabéns aos aniversariantes do mês', formatos: ['16/9'], quantidade: 1,
+      imagens: 'nenhuma', entrada: 'crescer', continua: 'flutuar' },
+  ];
+  if (perfil === 'saude') return [
+    { titulo: 'Dica de saúde', porque: 'a sala de espera tem tempo para ler',
+      brief: 'dica de saúde simples para quem está esperando', formatos: ['16/9'], quantidade: 2,
+      imagens: 'nenhuma', entrada: 'aparecer', continua: '' },
+    { titulo: 'Nossos serviços', porque: 'muita gente não sabe tudo o que vocês fazem',
+      brief: 'os serviços e especialidades que atendemos', formatos: ['16/9'], quantidade: 1,
+      imagens: foto, entrada: 'subir', continua: '' },
+    { titulo: 'Campanha de prevenção', porque: 'o mês tem uma cor e um cuidado',
+      brief: 'campanha de prevenção do mês', formatos: ['16/9'], quantidade: 1,
+      imagens: 'nenhuma', entrada: 'crescer', continua: '' },
+  ];
+  return [
+    { titulo: 'Promoção da semana', porque: 'quem passa na frente decide na hora',
+      brief: 'promoção da semana', formatos: ['16/9'], quantidade: 2,
+      imagens: foto, entrada: 'subir', continua: '' },
+    { titulo: 'Horário de funcionamento', porque: 'a pergunta mais repetida no balcão',
+      brief: 'nosso horário de funcionamento', formatos: ['16/9'], quantidade: 1,
+      imagens: 'nenhuma', entrada: 'aparecer', continua: '' },
+    { titulo: 'Aniversariantes do mês', porque: 'a equipe vê e comenta',
+      brief: 'parabéns aos aniversariantes do mês', formatos: ['16/9'], quantidade: 1,
+      imagens: 'nenhuma', entrada: 'crescer', continua: 'flutuar' },
+  ];
+}
+
 function semIA(ctx) {
   const nome = (ctx && ctx.empresa) || 'seu negócio';
   const temAcervo = !!(ctx && ctx.marca && ctx.marca.bases && ctx.marca.bases.length);
   return {
     abertura: `Algumas ideias para ${nome}. Escolha uma e ajuste como quiser.`,
-    sugestoes: [
-      { titulo: 'Promoção da semana', porque: 'quem passa na frente decide na hora',
-        brief: 'promoção da semana', formatos: ['16/9'], quantidade: 2,
-        imagens: temAcervo ? 'acervo' : 'nenhuma', entrada: 'subir', continua: '' },
-      { titulo: 'Horário de funcionamento', porque: 'a pergunta mais repetida no balcão',
-        brief: 'nosso horário de funcionamento', formatos: ['16/9'], quantidade: 1,
-        imagens: 'nenhuma', entrada: 'aparecer', continua: '' },
-      { titulo: 'Aniversariantes do mês', porque: 'a equipe vê e comenta',
-        brief: 'parabéns aos aniversariantes do mês', formatos: ['16/9'], quantidade: 1,
-        imagens: 'nenhuma', entrada: 'crescer', continua: 'flutuar' },
-    ],
+    sugestoes: ideiasSemIA(ctx && ctx.perfil, temAcervo),
     modo: 'dev',
   };
 }

@@ -6,6 +6,7 @@ import { Field, Input, Select } from '../ui/Field.jsx';
 import { PecaHtml } from './PecaHtml.jsx';
 import { carregarDesenhista } from '../../lib/pecaHtml.js';
 import { RAMOS, NOMES_RAMO, sugerir, aoRedor, avisos, mesmaPaleta, ehCurada, coresDoTexto, coresDoLogo } from '../../lib/paletas.js';
+import { usePerfil } from '../../lib/perfil.js';
 
 /*
  * Paletas sugeridas na Marca (docs/EXECUTOR.md, item 2).
@@ -20,19 +21,26 @@ import { RAMOS, NOMES_RAMO, sugerir, aoRedor, avisos, mesmaPaleta, ehCurada, cor
  * arquivo que dá a paleta com que a conta nasce, no servidor).
  */
 
-// A peça da amostra: o selo de oferta mostra as três cores de uma vez —
-// o fundo é a principal, o selo e o kicker são o acento, o texto é o apoio.
-const AMOSTRA = 'oferta-selo';
-let amostra = null;
-function carregarAmostra() {
-  if (!amostra) {
-    amostra = carregarDesenhista()
-      .then(() => fetch('/pecas-ouro/' + AMOSTRA + '.html'))
+/*
+ * A peça da amostra: o selo de oferta mostra as três cores de uma vez —
+ * o fundo é a principal, o selo e o kicker são o acento, o texto é o apoio.
+ *
+ * Só que oferta é coisa de loja. A metalúrgica escolhia cor em cima de
+ * "Campanha com desconto" (D4): a Empresa vê um comunicado interno, a Saúde
+ * um aviso de clínica — as peças-ouro já trazem esse texto.
+ */
+const AMOSTRA = { comercio: 'oferta-selo', empresa: 'gente-comunicado', saude: 'servico-comunicado' };
+const amostras = {};
+function carregarAmostra(perfil) {
+  const nome = AMOSTRA[perfil] || AMOSTRA.comercio;
+  if (!amostras[nome]) {
+    amostras[nome] = carregarDesenhista()
+      .then(() => fetch('/pecas-ouro/' + nome + '.html'))
       .then((r) => { if (!r.ok) throw new Error('amostra'); return r.text(); })
       .then((t) => window.MTPecaHtml.doArquivo(t))
-      .catch((e) => { amostra = null; throw e; });
+      .catch((e) => { delete amostras[nome]; throw e; });
   }
-  return amostra;
+  return amostras[nome];
 }
 
 /*
@@ -66,7 +74,8 @@ export function PaletasSugeridas({ kit, empresa, ramoDaConta, logoUrl, fonteTitu
   const [avancado, setAvancado] = useState(false);
 
   useEffect(() => { setRamo(ramoDaConta || 'geral'); }, [ramoDaConta]);
-  useEffect(() => { carregarAmostra().then(setArq).catch(() => setArq(null)); }, []);
+  const perfil = usePerfil();
+  useEffect(() => { carregarAmostra(perfil.id).then(setArq).catch(() => setArq(null)); }, [perfil.id]);
   useEffect(() => { coresDoLogo(logoUrl).then(setDoLogo); }, [logoUrl]);
 
   /*
@@ -88,10 +97,13 @@ export function PaletasSugeridas({ kit, empresa, ramoDaConta, logoUrl, fonteTitu
 
   // A peça de amostra com as cores de uma paleta, no estilo "Cor da marca" — o cartaz.
   const [titulo, kicker] = TEXTO_DO_RAMO[ramo] || TEXTO_DO_RAMO.geral;
-  const campos = useMemo(() => ({
-    marca: empresa || (kit && kit.nome) || 'Sua empresa', titulo, titulo2: 'com desconto', kicker,
-    apoio: 'Aproveite: é por tempo limitado.', cta: 'Fale com a gente', nota: 'em toda a loja',
-  }), [empresa, kit && kit.nome, titulo, kicker]); // eslint-disable-line react-hooks/exhaustive-deps
+  const marcaNome = empresa || (kit && kit.nome) || 'Sua empresa';
+  const campos = useMemo(() => (
+    perfil.id === 'comercio' ? {
+      marca: marcaNome, titulo, titulo2: 'com desconto', kicker,
+      apoio: 'Aproveite: é por tempo limitado.', cta: 'Fale com a gente', nota: 'em toda a loja',
+    } : perfil.id === 'saude' ? { marca: marcaNome } : {}
+  ), [perfil.id, marcaNome, titulo, kicker]);
   const itemDe = (p) => arq && ({
     type: 'peca-html', papel: 'destaque', html: arq.html, css: arq.css, campos,
     modo: 'marca', marca: { cores: p.cores, fonteTitulo: fonteTitulo || '', fonteApoio: fonteApoio || '' },

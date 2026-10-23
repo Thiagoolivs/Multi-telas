@@ -47,8 +47,9 @@ test('as sugestões são da conta e só começam: o texto vai para a caixa, e o 
   assert.match(usar, /setTexto\(s\.brief \|\| s\.titulo \|\| ''\);/);
   assert.doesNotMatch(usar, /enviar\(/, 'a ideia não manda sozinha: a pessoa muda o que quiser');
   assert.match(usar, /if \(!E\.temOQueGerar\(escopo\)\) setEscopo\(cartaoInicial\(/, 'mas o cartão já monta, para dar para gerar em um toque');
-  // As seis entradas de antes viram começos de frase, não opções fixas.
-  assert.match(c, /OPCOES\.map\(\(op\) => \(\s*<button key=\{op\.id\} type="button" onClick=\{\(\) => usarComeco\(op\)\}/);
+  // As seis entradas de antes viram começos de frase, não opções fixas —
+  // as seis do perfil da conta (D4: a metalúrgica não vê "Promoção com preço").
+  assert.match(c, /opcoesDoPerfil\(perfil\.id\)\.map\(\(op\) => \(\s*<button key=\{op\.id\} type="button" onClick=\{\(\) => usarComeco\(op\)\}/);
   assert.match(c, /onIr\('rapida'\)/, 'quem quer ir direto acha a Criação rápida');
 });
 

@@ -11,6 +11,7 @@ import { CamposDoHorario, HORARIO_PADRAO } from '../tela/HorarioDaTela.jsx';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
 import { FUNDOS_TV, corDoFundo } from '../../lib/fundoDaTV.js';
+import { usePerfil } from '../../lib/perfil.js';
 
 /*
  * AJUSTES DA TELA, POR TAREFA (EXECUTOR §2c, item 33).
@@ -70,6 +71,7 @@ export function zonasQueSaem(zonasAtuais, idNovo) {
 
 // Edita cfg.settings por tarefa. `device` traz o horário (expediente), que tem rota própria.
 export function SettingsForm({ settings, onChange, deviceId, device, zonas, dataDeHoje }) {
+  const perfil = usePerfil();
   const s = settings || {};
   const theme = s.theme || { preset: 'dark-premium', font: 'system', overrides: {} };
   const set = (patch) => onChange({ ...s, ...patch });
@@ -296,7 +298,7 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
 
       {aba === 'horario' && (
         <div className="space-y-3">
-          <p className="text-xs text-ink-3">O horário da loja vale para duas coisas: o que a TV mostra fora dele e o aviso de queda por e-mail.</p>
+          <p className="text-xs text-ink-3">O horário {perfil.lugarDe} vale para duas coisas: o que a TV mostra fora dele e o aviso de queda por e-mail.</p>
           <CamposDoHorario exp={exp} setExp={setExp} />
           <Button variant="primary" onClick={salvarHorario} disabled={salvandoHorario || !exp.dias.length}>{salvandoHorario ? 'Salvando…' : 'Salvar horário'}</Button>
         </div>

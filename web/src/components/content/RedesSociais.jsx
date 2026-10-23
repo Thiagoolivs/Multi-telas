@@ -8,6 +8,7 @@ import { redes, brand } from '../../api.js';
 import { rasterizar } from '../../lib/rasterizar.js';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
+import { usePerfil } from '../../lib/perfil.js';
 
 /*
  * Postar nas redes (docs/EXECUTOR.md, item 6).
@@ -102,6 +103,7 @@ function Texto({ children }) {
 }
 
 export function RedesSociais({ item, label, onFechar }) {
+  const perfil = usePerfil();
   const [aba, setAba] = useState('instagram');
   const [textos, setTextos] = useState(null);
   const [erro, setErro] = useState('');
@@ -215,7 +217,7 @@ export function RedesSociais({ item, label, onFechar }) {
 
       {semLocal && (
         <div className="mb-3 rounded-lg border border-line p-3">
-          <div className="mb-2 text-xs font-medium text-ink">Onde fica a loja? <span className="font-normal text-ink-3">Vai para as hashtags e para a mensagem. Pergunto uma vez só.</span></div>
+          <div className="mb-2 text-xs font-medium text-ink">Onde fica a {perfil.lugar}? <span className="font-normal text-ink-3">Vai para as hashtags e para a mensagem. Pergunto uma vez só.</span></div>
           <div className="grid gap-2 sm:grid-cols-2">
             <Input value={local.bairro} onChange={(e) => setLocal({ ...local, bairro: e.target.value })} placeholder="Bairro (ex.: Mooca)" />
             <Input value={local.cidade} onChange={(e) => setLocal({ ...local, cidade: e.target.value })} placeholder="Cidade (ex.: São Paulo)" />

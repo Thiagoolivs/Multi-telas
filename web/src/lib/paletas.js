@@ -21,6 +21,7 @@ export const NOMES_RAMO = P.NOMES_RAMO;
 export const sugerir = P.sugerir;
 export const aoRedor = P.aoRedor;
 export const avisos = P.avisos;
+export const detectarRamo = P.detectarRamo;
 
 // Duas listas de cores são a mesma paleta se as duas primeiras batem.
 export const mesmaPaleta = (a, b) => !!a && !!b && a.length > 1 && b.length > 1

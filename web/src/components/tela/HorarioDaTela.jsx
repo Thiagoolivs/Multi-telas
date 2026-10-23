@@ -1,5 +1,6 @@
 import React from 'react';
 import { Field, Input } from '../ui/Field.jsx';
+import { usePerfil } from '../../lib/perfil.js';
 
 /*
  * O HORÁRIO DA TV (expediente): os dias e as horas em que a loja está
@@ -12,6 +13,7 @@ const DIAS = [['D', 0, 'domingo'], ['S', 1, 'segunda'], ['T', 2, 'terça'], ['Q'
 export const HORARIO_PADRAO = { alerta: true, dias: [1, 2, 3, 4, 5, 6], inicio: '07:00', fim: '22:00', foraDoHorario: 'ligada' };
 
 export function CamposDoHorario({ exp, setExp }) {
+  const perfil = usePerfil();
   const dia24 = exp.inicio === exp.fim;
   const alternarDia = (n) => setExp({ ...exp, dias: exp.dias.includes(n) ? exp.dias.filter((x) => x !== n) : [...exp.dias, n].sort() });
   return (
@@ -52,7 +54,7 @@ export function CamposDoHorario({ exp, setExp }) {
             </label>
           ))}
         </div>
-        <p className="mt-1 text-xs text-ink-3">Vale na hora: a TV muda sozinha quando a loja abre e fecha.</p>
+        <p className="mt-1 text-xs text-ink-3">Vale na hora: a TV muda sozinha quando a {perfil.lugar} abre e fecha.</p>
       </div>
 
       <div>

@@ -29,6 +29,7 @@ import { PecasProntasPage } from './pages/PecasProntasPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 import { parearGuardado } from './lib/parearPendente.js';
 import { paginaDoIr } from './lib/menu.js';
+import { definirPerfil } from './lib/perfil.js';
 
 const META = {
   overview: { title: 'Visão geral' },
@@ -137,7 +138,12 @@ export default function App() {
 
   const [semRede, setSemRede] = useState(false);
   const refresh = () => auth.me()
-    .then((me) => { setSemRede(false); setSession(me || null); })
+    .then((me) => {
+      setSemRede(false);
+      // Empresa, Comércio ou Saúde: as páginas leem com usePerfil() (D4).
+      if (me && me.tenant) definirPerfil(me.tenant.perfil);
+      setSession(me || null);
+    })
     .catch(() => setSemRede(true));
   useEffect(() => { refresh(); }, []);
 

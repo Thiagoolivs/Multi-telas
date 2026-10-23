@@ -1549,6 +1549,7 @@ const negocioCache = new Map();
         return sendJson(res, 200, await guia.sugerir({
           empresa: (b && b.empresa) || (conta && conta.name) || nomeDoKit || '',
           segmento: (b && b.segmento) || '',
+          perfil: await paletaInicial.perfilDaConta(db, sess.tenant_id, conta),
           marca, telas,
         }));
       } catch (e) { return sendJson(res, 502, { error: 'falha na IA: ' + e.message }); }

@@ -56,6 +56,8 @@ async function init() {
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS aviso_atraso BIGINT;
     -- Até quando o teste vale, quando o operador estendeu (server/plans.js, fimDoTeste).
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS teste_ate BIGINT;
+    -- Empresa, Comércio ou Saúde (js/perfil.js). Vazio = deduzido do ramo.
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS perfil TEXT;
     CREATE TABLE IF NOT EXISTS exibicoes (
       device_id TEXT, tenant_id TEXT, hora BIGINT, zona TEXT, chave TEXT,
       rotulo TEXT, tipo TEXT, vezes INTEGER, segundos INTEGER,
@@ -351,6 +353,9 @@ async function setUserName(id, name) {
 }
 async function setTenantName(id, name) {
   await pool.query('UPDATE tenants SET name = $1 WHERE id = $2', [String(name || '').slice(0, 80), id]);
+}
+async function setTenantPerfil(id, perfil) {
+  await pool.query('UPDATE tenants SET perfil = $1 WHERE id = $2', [perfil || null, id]);
 }
 // Reset de senha: token de uso único e validade curta.
 async function createReset(token, userId, expiresAt) {
@@ -1648,7 +1653,7 @@ async function relatorioExibicoes(tenantId, de, ate, deviceId) {
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
-  getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
+  getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil,
   createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote, registrarExibicoes, relatorioExibicoes,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,

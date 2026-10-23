@@ -10,7 +10,8 @@ import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { ai, criar, devices, seasons } from '../api.js';
 import { ideiaDaData } from '../lib/ideiaDaData.js';
 import E from '../lib/escopo.js';
-import { OPCOES } from './CriacaoRapidaPage.jsx';
+import { opcoesDoPerfil, opcaoDoPerfil } from './CriacaoRapidaPage.jsx';
+import { usePerfil } from '../lib/perfil.js';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 
@@ -57,12 +58,13 @@ function cartaoInicial(nome, objetivo, telaId, imagens, zona) {
 export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial, onIr }) {
   const [conversa, setConversa] = useState(null);   // { id, mensagens, escopo, estado, titulo }
   const [mensagens, setMensagens] = useState([]);
+  const perfil = usePerfil();
   const [escopo, setEscopo] = useState(() => {
-    const op = OPCOES.find((o) => o.id === opcaoInicial);
+    const op = opcaoDoPerfil(opcaoInicial, perfil.id);
     return op ? cartaoInicial(op.titulo, op.pedido, telaInicial) : (telaInicial ? cartaoInicial('', '', telaInicial, undefined, zonaInicial) : E.vazio());
   });
   const [texto, setTexto] = useState(() => {
-    const op = OPCOES.find((o) => o.id === opcaoInicial);
+    const op = opcaoDoPerfil(opcaoInicial, perfil.id);
     return op ? op.pedido + ': ' : '';
   });
   const [pronto, setPronto] = useState(false);
@@ -219,7 +221,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     <div className="flex items-end gap-2">
       <textarea ref={caixa} rows={conversando ? 2 : 3} value={texto} onChange={(e) => setTexto(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
-        placeholder={conversando ? 'Responda, peça uma mudança ou diga "pode gerar"' : 'Ex.: quero divulgar o pão de queijo em dobro à tarde, na TV e no Instagram'}
+        placeholder={conversando ? 'Responda, peça uma mudança ou diga "pode gerar"' : perfil.exemplo}
         aria-label="O que você quer mostrar"
         className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
       <Button variant="primary" icon={Send} disabled={pensando || !texto.trim()} onClick={() => enviar()} aria-label="Enviar">
@@ -331,7 +333,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
               <div>
                 <div className="mb-1.5 text-xs font-medium text-ink-3">Ou comece por</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {OPCOES.map((op) => (
+                  {opcoesDoPerfil(perfil.id).map((op) => (
                     <button key={op.id} type="button" onClick={() => usarComeco(op)}
                       className="flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-ink-2 hover:border-accent/60 hover:text-ink">
                       <op.icone size={13} /> {op.titulo}

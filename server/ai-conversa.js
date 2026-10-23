@@ -28,6 +28,7 @@ const ai = require('./ai');
 const motores = require('./motores');
 const memoria = require('./ai-memoria');
 const E = require('../js/escopo.js');
+const Perfil = require('../js/perfil.js');
 
 // Quantas mensagens a IA lê de cada vez. O resto vive no escopo.
 const JANELA = 16;
@@ -123,6 +124,8 @@ function contexto(ctx) {
     c.hoje ? `Hoje: ${c.hoje}${c.diaSemana ? ' (' + c.diaSemana + ')' : ''}` : '',
     c.empresa ? `Empresa: ${c.empresa}` : '',
     c.segmento ? `Segmento: ${c.segmento}` : '',
+    // Empresa, Comércio ou Saúde (js/perfil.js): muda o assunto inteiro.
+    c.perfil ? 'Tipo de negócio: ' + Perfil.de(c.perfil).paraIA : '',
     m.tom ? `Tom da empresa: ${m.tom}` : '',
     m.observacoes ? `Regras da marca: ${m.observacoes}` : '',
     'A Marca já tem cores, fontes e logo: não pergunte.',

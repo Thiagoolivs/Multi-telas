@@ -21,6 +21,7 @@ import { aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { CamposDoHorario } from '../components/tela/HorarioDaTela.jsx';
 import '../../../js/aparelho.js';
+import { usePerfil } from '../lib/perfil.js';
 
 export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrParaPlano }) {
   const { data, loading, error, reload } = useAsync(devices.list);
@@ -462,6 +463,7 @@ function EnderecoDaTv() {
  * avisa durante ele (server/vigia.js).
  */
 function ExpedienteDialog({ target, onClose, onDone }) {
+  const perfil = usePerfil();
   const [exp, setExp] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -483,7 +485,7 @@ function ExpedienteDialog({ target, onClose, onDone }) {
       open={!!target}
       onClose={onClose}
       title={'Horário e alerta · ' + ((target && target.name) || 'Tela')}
-      description="O horário da loja vale para duas coisas: o que a TV mostra fora dele e o aviso de queda por e-mail."
+      description={'O horário ' + perfil.lugarDe + ' vale para duas coisas: o que a TV mostra fora dele e o aviso de queda por e-mail.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>

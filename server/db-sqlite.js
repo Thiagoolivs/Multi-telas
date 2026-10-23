@@ -458,7 +458,9 @@ for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', '
   // aviso já saiu (o valor de atraso_desde), para não repetir.
   'plan_contrato TEXT', 'contrato_desde INTEGER', 'aviso_atraso INTEGER',
   // Até quando o teste vale, quando o operador estendeu (server/plans.js, fimDoTeste).
-  'teste_ate INTEGER']) {
+  'teste_ate INTEGER',
+  // Empresa, Comércio ou Saúde (js/perfil.js). Vazio = deduzido do ramo.
+  'perfil TEXT']) {
   garantirColuna('tenants', col);
 }
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
@@ -476,6 +478,7 @@ const q = {
   setUserRole: db.prepare('UPDATE users SET role = ? WHERE id = ? AND tenant_id = ?'),
   setUserName: db.prepare('UPDATE users SET name = ? WHERE id = ?'),
   setTenantName: db.prepare('UPDATE tenants SET name = ? WHERE id = ?'),
+  setTenantPerfil: db.prepare('UPDATE tenants SET perfil = ? WHERE id = ?'),
   deleteUser: db.prepare('DELETE FROM users WHERE id = ? AND tenant_id = ?'),
   countOwners: db.prepare("SELECT COUNT(*) AS n FROM users WHERE tenant_id = ? AND role = 'owner'"),
   userByGoogle: db.prepare('SELECT * FROM users WHERE google_sub = ?'),
@@ -594,6 +597,7 @@ async function setUserGoogle(id, sub) { q.setUserGoogle.run(sub, id); }
 async function setUserPassword(id, passHash) { q.setUserPass.run(passHash, id); }
 async function setUserName(id, name) { q.setUserName.run(String(name || '').slice(0, 80), id); }
 async function setTenantName(id, name) { q.setTenantName.run(String(name || '').slice(0, 80), id); }
+async function setTenantPerfil(id, perfil) { q.setTenantPerfil.run(perfil || null, id); }
 // Reset de senha: um token de uso único, com validade curta.
 async function createReset(token, userId, expiresAt) {
   q.purgeResets.run(userId); // invalida pedidos anteriores
@@ -1678,7 +1682,7 @@ async function estornarPacote(paymentId) {
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
-  getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName,
+  getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil,
   createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote, registrarExibicoes, relatorioExibicoes,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,

@@ -250,7 +250,7 @@ export function SupportPage({ me }) {
       </div>
 
       <p className="flex items-center gap-1.5 text-2xs text-ink-3">
-        <BookOpen size={12} /> Dica: tela fora do ar? Confira o Wi-Fi da loja e, se precisar, tire o aparelho da tomada e ligue de novo — ele volta sozinho com a programação.
+        <BookOpen size={12} /> Dica: tela fora do ar? Confira o Wi-Fi do lugar e, se precisar, tire o aparelho da tomada e ligue de novo — ele volta sozinho com a programação.
       </p>
     </div>
   );

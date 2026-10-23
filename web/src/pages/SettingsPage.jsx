@@ -9,6 +9,7 @@ import { Dialog } from '../components/ui/Dialog.jsx';
 import { PainelInstalar } from '../components/layout/PainelInstalar.jsx';
 import { auth, privacidade } from '../api.js';
 import { cn } from '../lib/cn.js';
+import { PERFIS, IDS as PERFIL_IDS } from '../lib/perfil.js';
 
 const ROLE_LABEL = { owner: 'Dono', admin: 'Administrador', member: 'Membro' };
 
@@ -16,9 +17,12 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged }) 
   const user = (me && me.user) || {};
   const tenant = (me && me.tenant) || {};
   const isOwner = user.role === 'owner';
+  // O tipo de negócio muda o painel de todos da conta: dono ou admin (D4).
+  const mudaPerfil = isOwner || user.role === 'admin';
 
   const [nome, setNome] = useState('');
   const [empresa, setEmpresa] = useState('');
+  const [perfil, setPerfil] = useState('comercio');
   const [salvandoPerfil, setSalvandoPerfil] = useState(false);
   const [msgPerfil, setMsgPerfil] = useState('');
   const [errPerfil, setErrPerfil] = useState('');
@@ -38,15 +42,18 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged }) 
   useEffect(() => {
     setNome(user.name || '');
     setEmpresa(tenant.name || '');
-  }, [user.name, tenant.name]);
+    setPerfil(tenant.perfil || 'comercio');
+  }, [user.name, tenant.name, tenant.perfil]);
 
-  const perfilMudou = nome !== (user.name || '') || (isOwner && empresa !== (tenant.name || ''));
+  const perfilMudou = nome !== (user.name || '') || (isOwner && empresa !== (tenant.name || ''))
+    || (mudaPerfil && perfil !== (tenant.perfil || 'comercio'));
 
   async function salvarPerfil() {
     setSalvandoPerfil(true); setMsgPerfil(''); setErrPerfil('');
     try {
       const payload = { name: nome };
       if (isOwner) payload.empresa = empresa;
+      if (mudaPerfil && perfil !== tenant.perfil) payload.perfil = perfil;
       await auth.updateProfile(payload);
       setMsgPerfil('Alterações salvas.');
       if (onChanged) onChanged();
@@ -102,6 +109,19 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged }) 
           <Field label="Nome da empresa"
             hint={isOwner ? 'Aparece nas telas e nos e-mails.' : 'Só o dono da conta pode alterar.'}>
             <Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Minha Empresa" disabled={!isOwner} />
+          </Field>
+          <Field label="Tipo de negócio"
+            hint={mudaPerfil ? PERFIS[perfil].descricao + ' Muda as sugestões do Início e do Criar.' : 'Só o dono ou um administrador pode alterar.'}>
+            <div role="radiogroup" aria-label="Tipo de negócio" className="grid grid-cols-3 gap-1.5">
+              {PERFIL_IDS.map((id) => (
+                <button key={id} type="button" role="radio" aria-checked={perfil === id} disabled={!mudaPerfil}
+                  onClick={() => setPerfil(id)}
+                  className={cn('h-9 rounded-lg border px-2 text-sm font-medium transition disabled:opacity-60',
+                    perfil === id ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink-2 hover:border-accent/60')}>
+                  {PERFIS[id].nome}
+                </button>
+              ))}
+            </div>
           </Field>
         </div>
         <div className="flex items-center gap-3 border-t border-line px-4 py-3">
