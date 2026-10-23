@@ -45,6 +45,7 @@ const ajustePeca = require('./server/ajuste-peca');
 const quizIA = require('./server/quiz-ia');
 const calendario = require('./server/calendario');
 const avisoRapido = require('./server/aviso-rapido');
+const pessoas = require('./js/pessoas.js');
 const ajusteTela = require('./server/ajuste-tela');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
@@ -146,26 +147,9 @@ function baseUrl(req) {
 // Papéis: owner (dono) > admin > member. Gestão de equipe: owner e admin.
 function canManageTeam(role) { return role === 'owner' || role === 'admin'; }
 
-// Normaliza uma linha da planilha de aniversariantes. Aceita dia/mes numéricos
-// ou um campo "nascimento" (DD/MM ou DD/MM/AAAA). Descarta linhas sem nome/data.
-function normBirthday(r) {
-  if (!r) return null;
-  const nome = String(r.nome || '').trim().slice(0, 80);
-  if (!nome) return null;
-  let dia = parseInt(r.dia, 10), mes = parseInt(r.mes, 10);
-  if ((!dia || !mes) && r.nascimento) {
-    const m = String(r.nascimento).match(/(\d{1,2})[\/\-.](\d{1,2})/);
-    if (m) { dia = parseInt(m[1], 10); mes = parseInt(m[2], 10); }
-  }
-  if (!(dia >= 1 && dia <= 31 && mes >= 1 && mes <= 12)) return null;
-  return {
-    nome,
-    matricula: String(r.matricula || '').trim().slice(0, 40),
-    cargo: String(r.cargo || '').trim().slice(0, 80),
-    foto: String(r.foto || '').trim().slice(0, 400),
-    dia, mes,
-  };
-}
+// Uma linha da planilha de pessoas vira pessoa (ou null): a regra é a de js/pessoas.js (D30),
+// a mesma que o painel usa para mostrar o que a importação vai fazer.
+function normBirthday(r) { return pessoas.normalizar(r); }
 function sendJson(res, status, obj, extraHeaders) {
   res.writeHead(status, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, extraHeaders || {}));
   res.end(JSON.stringify(obj));
@@ -809,30 +793,63 @@ async function handleApi(req, res, pathname, query) {
     return sendJson(res, 404, { error: 'rota da biblioteca não encontrada' });
   }
 
-  /* ----- Aniversariantes: importar planilha / listar / limpar ----- */
+  /*
+   * ----- Pessoas (aniversariantes): planilha, uma a uma, limpar (D30) -----
+   * A planilha SINCRONIZA só o que veio dela (js/pessoas.js): quem chegou
+   * pelo QR ou foi posto à mão fica. Mexer é do dono e dos admins.
+   */
   if (parts[1] === 'birthdays') {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
-    if (req.method === 'GET') {
-      const list = await db.listBirthdays(sess.tenant_id);
+    const t = sess.tenant_id;
+    if (req.method === 'GET' && !parts[2]) {
+      const list = await db.listBirthdays(t);
       return sendJson(res, 200, { count: list.length, birthdays: list });
     }
-    if (req.method === 'DELETE') {
-      if (!canManageTeam(sess.role)) return sendJson(res, 403, { error: 'sem permissão' });
-      await db.clearBirthdays(sess.tenant_id);
+    if (!canManageTeam(sess.role)) return sendJson(res, 403, { error: 'sem permissão' });
+    if (req.method === 'DELETE' && !parts[2]) {
+      await db.clearBirthdays(t);
       return sendJson(res, 200, { ok: true });
     }
     if (parts[2] === 'import' && req.method === 'POST') {
-      if (!canManageTeam(sess.role)) return sendJson(res, 403, { error: 'sem permissão' });
       return readBody(req, res, async (b) => {
         const raw = (b && b.rows) || [];
         if (!Array.isArray(raw) || !raw.length) return sendJson(res, 400, { error: 'envie as linhas (rows)' });
-        const rows = raw.map(normBirthday).filter(Boolean).slice(0, 2000);
-        if (!rows.length) return sendJson(res, 400, { error: 'nenhuma linha válida (precisa de nome e data)' });
-        const n = await db.replaceBirthdays(sess.tenant_id, rows);
-        return sendJson(res, 200, { ok: true, imported: n, ignored: raw.length - rows.length });
+        const plano = pessoas.planoDeImportacao(await db.listBirthdays(t), raw.slice(0, pessoas.LIMITE * 2));
+        if (!plano.entram.length && !plano.atualizam.length) return sendJson(res, 400, { error: 'nenhuma linha válida (precisa de nome e data)' });
+        await db.importarPessoas(t, plano);
+        return sendJson(res, 200, {
+          ok: true, entram: plano.entram.length, atualizam: plano.atualizam.length, saem: plano.saem.length, ficam: plano.ficam, ignoradas: plano.ignoradas,
+          // Nomes de antes, para o painel que ainda não atualizou.
+          imported: plano.entram.length + plano.atualizam.length, ignored: plano.ignoradas,
+        });
       });
     }
-    return sendJson(res, 404, { error: 'rota de aniversariantes não encontrada' });
+    if (!parts[2] && req.method === 'POST') {
+      return readBody(req, res, async (b) => {
+        const p = pessoas.normalizar(b && b.pessoa);
+        if (!p) return sendJson(res, 400, { error: 'precisa do nome e do aniversário' });
+        if ((await db.countBirthdays(t)) >= pessoas.LIMITE) return sendJson(res, 400, { error: 'a lista chegou ao limite de ' + pessoas.LIMITE + ' pessoas' });
+        return sendJson(res, 200, { ok: true, id: await db.criarPessoa(t, p, 'manual') });
+      });
+    }
+    if (parts[2] && parts[2] !== 'import' && req.method === 'PUT') {
+      const atual = await db.pessoaDoTenant(t, parts[2]);
+      if (!atual) return sendJson(res, 404, { error: 'pessoa não encontrada' });
+      return readBody(req, res, async (b) => {
+        const mudou = Object.assign({}, atual, (b && b.pessoa) || {});
+        // Aniversário novo por texto ("15/03") vale mais que o dia e o mês de antes.
+        if (b && b.pessoa && b.pessoa.nascimento) { delete mudou.dia; delete mudou.mes; }
+        const p = pessoas.normalizar(mudou);
+        if (!p) return sendJson(res, 400, { error: 'precisa do nome e do aniversário' });
+        await db.atualizarPessoa(t, atual.id, Object.assign(p, { origem: atual.origem }));
+        return sendJson(res, 200, { ok: true });
+      });
+    }
+    if (parts[2] && parts[2] !== 'import' && req.method === 'DELETE') {
+      if (!(await db.removerPessoa(t, parts[2]))) return sendJson(res, 404, { error: 'pessoa não encontrada' });
+      return sendJson(res, 200, { ok: true });
+    }
+    return sendJson(res, 404, { error: 'rota de pessoas não encontrada' });
   }
 
   /* ----- Mural: envio público por QR ----- */

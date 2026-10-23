@@ -303,6 +303,11 @@ async function init() {
       dia INTEGER, mes INTEGER, cargo TEXT, foto TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_birthdays_tenant ON birthdays(tenant_id);
+    -- Pessoas (D30): setor, e-mail, de onde veio (planilha | qr | manual) e quando mudou.
+    ALTER TABLE birthdays ADD COLUMN IF NOT EXISTS setor TEXT;
+    ALTER TABLE birthdays ADD COLUMN IF NOT EXISTS email TEXT;
+    ALTER TABLE birthdays ADD COLUMN IF NOT EXISTS origem TEXT;
+    ALTER TABLE birthdays ADD COLUMN IF NOT EXISTS updated_at BIGINT;
     CREATE TABLE IF NOT EXISTS library (
       id TEXT PRIMARY KEY, tenant_id TEXT, campaign TEXT, canal TEXT, formato TEXT,
       label TEXT, item TEXT, created_at BIGINT
@@ -1446,11 +1451,54 @@ async function replaceBirthdays(tenantId, rows) {
   }
   return rows.length;
 }
+const COLUNAS_PESSOA = "id, nome, matricula, dia, mes, cargo, foto, COALESCE(setor, '') AS setor, COALESCE(email, '') AS email, COALESCE(origem, 'planilha') AS origem";
 async function listBirthdays(tenantId) {
-  const r = await pool.query('SELECT id, nome, matricula, dia, mes, cargo, foto FROM birthdays WHERE tenant_id = $1 ORDER BY mes, dia, nome', [tenantId]);
+  const r = await pool.query('SELECT ' + COLUNAS_PESSOA + ' FROM birthdays WHERE tenant_id = $1 ORDER BY mes, dia, nome', [tenantId]);
   return r.rows;
 }
 async function clearBirthdays(tenantId) { await pool.query('DELETE FROM birthdays WHERE tenant_id = $1', [tenantId]); }
+
+/*
+ * Pessoas (D30). A importação aplica o plano de js/pessoas.js numa
+ * transação só: quem saiu da planilha sai, quem continua é atualizado, quem
+ * é novo entra — e quem veio do QR ou de à mão fica.
+ */
+const pessoaParams = (p) => [p.nome, p.matricula || '', p.dia, p.mes, p.cargo || '', p.setor || '', p.email || '', p.foto || ''];
+const SQL_PESSOA_INSERIR = 'INSERT INTO birthdays (id, tenant_id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)';
+const SQL_PESSOA_ATUALIZAR = 'UPDATE birthdays SET nome = $1, matricula = $2, dia = $3, mes = $4, cargo = $5, setor = $6, email = $7, foto = $8, origem = $9, updated_at = $10 WHERE id = $11 AND tenant_id = $12';
+async function importarPessoas(tenantId, plano) {
+  const agora = Date.now();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    for (const id of plano.saem) await client.query('DELETE FROM birthdays WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+    for (const u of plano.atualizam) await client.query(SQL_PESSOA_ATUALIZAR, [...pessoaParams(u.pessoa), u.pessoa.origem || 'planilha', agora, u.id, tenantId]);
+    for (const p of plano.entram) await client.query(SQL_PESSOA_INSERIR, [rid(14), tenantId, ...pessoaParams(p), p.origem || 'planilha', agora, agora]);
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK'); throw e;
+  } finally {
+    client.release();
+  }
+}
+async function criarPessoa(tenantId, p, origem) {
+  const id = rid(14);
+  const agora = Date.now();
+  await pool.query(SQL_PESSOA_INSERIR, [id, tenantId, ...pessoaParams(p), origem || 'manual', agora, agora]);
+  return id;
+}
+async function atualizarPessoa(tenantId, id, p) {
+  const r = await pool.query(SQL_PESSOA_ATUALIZAR, [...pessoaParams(p), p.origem || 'planilha', Date.now(), id, tenantId]);
+  return r.rowCount;
+}
+async function removerPessoa(tenantId, id) {
+  const r = await pool.query('DELETE FROM birthdays WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return r.rowCount;
+}
+async function pessoaDoTenant(tenantId, id) {
+  const r = await pool.query('SELECT ' + COLUNAS_PESSOA + ' FROM birthdays WHERE id = $1 AND tenant_id = $2', [String(id), tenantId]);
+  return r.rows[0] || null;
+}
 async function setBirthdayPhoto(tenantId, matricula, url) {
   const r = await pool.query('UPDATE birthdays SET foto = $1 WHERE tenant_id = $2 AND matricula = $3', [url, tenantId, String(matricula)]);
   return r.rowCount;
@@ -1534,7 +1582,7 @@ async function dadosDoTenant(tenantId) {
     biblioteca: await varios('SELECT id, campaign, canal, formato, label, item, created_at FROM library WHERE tenant_id = $1'),
     marca: await um('SELECT * FROM brandkit WHERE tenant_id = $1'),
     imagensDaMarca: await varios('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = $1'),
-    aniversariantes: await varios('SELECT id, nome, matricula, dia, mes, cargo, foto, created_at FROM birthdays WHERE tenant_id = $1'),
+    aniversariantes: await varios('SELECT id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, created_at, updated_at FROM birthdays WHERE tenant_id = $1'),
     midias: await varios('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
     // seria entregar uma cópia incompleta com cara de completa.
@@ -1770,6 +1818,7 @@ module.exports = {
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,
+  importarPessoas, criarPessoa, atualizarPessoa, removerPessoa, pessoaDoTenant,
   addLibrary, listLibrary, getLibraryItem, updateLibraryItem, deleteLibraryItem, rid,
   listCampaign, renameCampaign, deleteCampaign,
   registrarAceite, listarAceites, dadosDoTenant, apagarTenant,

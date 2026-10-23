@@ -1,221 +1,264 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { confirmar } from '../lib/confirmar.js';
-import { UploadCloud, Trash2, Cake, FileSpreadsheet, ImagePlus, Check } from 'lucide-react';
+import { UploadCloud, Trash2, Users, FileSpreadsheet, ImagePlus, Check, Plus, Pencil, Camera, Search } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
-import { Button } from '../components/ui/Button.jsx';
+import { Button, IconButton } from '../components/ui/Button.jsx';
+import { Dialog } from '../components/ui/Dialog.jsx';
+import { Field, Input } from '../components/ui/Field.jsx';
 import { Skeleton, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
+import { aviso } from '../lib/avisos.js';
+import { lerPlanilha } from '../lib/planilha.js';
 import { birthdays, media } from '../api.js';
 import { MostrarNasTVs } from '../components/tela/MostrarNasTVs.jsx';
+import '../../../js/pessoas.js';
 
-// tira acento + minúsculo, para casar cabeçalhos e nomes de coluna.
-const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+/*
+ * PESSOAS (EXECUTOR D30). Era "Aniversariantes": um CSV que, a cada
+ * importação, apagava a lista inteira e regravava. Agora:
+ *   - a planilha do RH em Excel (.xlsx) ou CSV, com setor separado do cargo;
+ *   - antes de gravar, o que vai acontecer (novas, atualizadas, quem sai,
+ *     quem fica) — pela mesma regra do servidor (js/pessoas.js);
+ *   - importar de novo SINCRONIZA só o que veio da planilha: quem chegou
+ *     pelo QR ou foi posto à mão fica, e a foto de quem continua não some;
+ *   - a foto ligada a cada pessoa (trocar na linha, ou em lote pelo nome do
+ *     arquivo), e pôr, editar ou tirar uma pessoa só.
+ */
+const P = globalThis.MTPessoas;
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const ORIGEM = { planilha: 'Planilha', qr: 'QR', manual: 'À mão' };
+const MARCAS = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+const slug = (s) => String(s || '').normalize('NFD').replace(MARCAS, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+// Matrícula sem zeros à esquerda (1023 = 01023).
+const semZeros = (s) => { const t = String(s || '').trim(); return t.replace(/^0+(?=.)/, ''); };
+const data = (p) => String(p.dia).padStart(2, '0') + '/' + String(p.mes).padStart(2, '0');
+const iniciais = (nome) => String(nome || '?').split(/\s+/).map((x) => x[0]).join('').slice(0, 2).toUpperCase();
 
-// Parser CSV simples: detecta separador (, ou ;), respeita aspas.
-function parseCsv(text) {
-  text = text.replace(/^﻿/, '');
-  const firstLine = (text.split(/\r?\n/)[0] || '');
-  const sep = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
-  const rows = [];
-  let field = '', row = [], inQ = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQ) {
-      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
-      else if (c === '"') inQ = false;
-      else field += c;
-    } else if (c === '"') inQ = true;
-    else if (c === sep) { row.push(field); field = ''; }
-    else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
-    else if (c === '\r') { /* ignora */ }
-    else field += c;
-  }
-  if (field.length || row.length) { row.push(field); rows.push(row); }
-  return rows.filter((r) => r.some((c) => String(c).trim()));
+function Rosto({ p, tamanho = 'h-9 w-9' }) {
+  return p.foto
+    ? <img src={p.foto} alt="" className={tamanho + ' rounded-full object-cover'} />
+    : <span className={tamanho + ' flex items-center justify-center rounded-full bg-surface-2 text-2xs font-semibold text-ink-3'}>{iniciais(p.nome)}</span>;
 }
 
-// Mapeia as colunas da planilha para nome/matrícula/dia/mês/cargo/foto.
-function mapRows(matrix) {
-  if (!matrix.length) return [];
-  const head = matrix[0].map(norm);
-  const idx = (names) => head.findIndex((h) => names.some((n) => h.includes(n)));
-  const iNome = idx(['nome']);
-  const iMat = idx(['matricula', 'registro', 'cracha', 'id']);
-  const iNasc = idx(['nascimento', 'aniversario', 'data']);
-  const iDia = idx(['dia']);
-  const iMes = idx(['mes']);
-  const iCargo = idx(['cargo', 'funcao', 'setor', 'departamento']);
-  const iFoto = idx(['foto', 'imagem']);
-  const out = [];
-  for (let r = 1; r < matrix.length; r++) {
-    const row = matrix[r];
-    const nome = (row[iNome] || '').trim();
-    if (!nome) continue;
-    const rec = { nome, matricula: (row[iMat] || '').trim(), cargo: (row[iCargo] || '').trim(), foto: (row[iFoto] || '').trim() };
-    if (iNasc >= 0 && row[iNasc]) rec.nascimento = String(row[iNasc]).trim();
-    if (iDia >= 0 && row[iDia]) rec.dia = parseInt(row[iDia], 10);
-    if (iMes >= 0 && row[iMes]) rec.mes = parseInt(row[iMes], 10);
-    out.push(rec);
+function EditarPessoa({ pessoa, onFechar, onSalvo }) {
+  const nova = !pessoa.id;
+  const [f, setF] = useState({ nome: pessoa.nome || '', setor: pessoa.setor || '', cargo: pessoa.cargo || '', nascimento: pessoa.dia ? data(pessoa) : '', matricula: pessoa.matricula || '', email: pessoa.email || '' });
+  const [salvando, setSalvando] = useState(false);
+  const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const valida = !!P.normalizar(f);
+  async function salvar() {
+    setSalvando(true);
+    try {
+      if (nova) await birthdays.criar(f); else await birthdays.atualizar(pessoa.id, f);
+      aviso.ok(nova ? 'Pessoa na lista.' : 'Salvo.');
+      onSalvo();
+    } catch (e) { aviso.erro('pessoa', e.message || 'Não deu para salvar.'); }
+    finally { setSalvando(false); }
   }
-  return out;
+  return (
+    <Dialog open onClose={onFechar} title={nova ? 'Pôr uma pessoa' : 'Editar ' + pessoa.nome} className="max-w-lg"
+      footer={<>
+        <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
+        <Button variant="primary" icon={Check} disabled={!valida || salvando} onClick={salvar}>{salvando ? 'Salvando…' : 'Salvar'}</Button>
+      </>}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Nome" className="sm:col-span-2"><Input value={f.nome} onChange={set('nome')} maxLength={80} autoFocus /></Field>
+        <Field label="Aniversário" hint="Dia e mês (DD/MM). O ano não é guardado."><Input value={f.nascimento} onChange={set('nascimento')} placeholder="15/03" maxLength={10} /></Field>
+        <Field label="Setor"><Input value={f.setor} onChange={set('setor')} maxLength={60} placeholder="Ex.: Produção" /></Field>
+        <Field label="Cargo"><Input value={f.cargo} onChange={set('cargo')} maxLength={80} /></Field>
+        <Field label="Matrícula"><Input value={f.matricula} onChange={set('matricula')} maxLength={40} /></Field>
+        <Field label="E-mail" hint="Opcional. Serve para a pessoa mandar a própria foto pelo QR." className="sm:col-span-2"><Input type="email" value={f.email} onChange={set('email')} maxLength={120} /></Field>
+      </div>
+    </Dialog>
+  );
 }
-
-// Chave de casamento por matrícula: ignora zeros à esquerda (1023 == 01023).
-function keyMat(s) { const t = String(s || '').trim(); return t.replace(/^0+/, '') || t; }
 
 export function BirthdaysPage() {
-  const { data, loading, error, reload } = useAsync(birthdays.list);
-  const csvRef = useRef(null);
-  const photoRef = useRef(null);
-  const [rows, setRows] = useState(null);       // linhas da planilha (staging)
-  const [photos, setPhotos] = useState({});     // matrícula -> url
+  const { data: dados, loading, error, reload } = useAsync(birthdays.list);
+  const planilhaRef = useRef(null);
+  const fotosRef = useRef(null);
+  const fotoDaLinhaRef = useRef(null);
+  const [linhas, setLinhas] = useState(null);   // a planilha lida, antes de gravar
+  const [fotos, setFotos] = useState({});        // chave do arquivo → url
   const [busy, setBusy] = useState('');
-  const [msg, setMsg] = useState('');
+  const [editando, setEditando] = useState(null);
+  const [fotoPara, setFotoPara] = useState(null);
+  const [busca, setBusca] = useState('');
 
-  const list = data ? data.birthdays : [];
+  const lista = (dados && dados.birthdays) || [];
 
-  async function onCsv(e) {
+  // A foto de cada linha: pelo nome do arquivo = matrícula ou = nome da pessoa.
+  const comFotos = useMemo(() => (linhas || []).map((l) => {
+    const url = fotos['m:' + semZeros(l.matricula)] || fotos['n:' + slug(l.nome)];
+    return url ? { ...l, foto: url } : l;
+  }), [linhas, fotos]);
+  const plano = useMemo(() => (linhas ? P.planoDeImportacao(lista, comFotos) : null), [linhas, comFotos, lista]);
+  const saem = plano ? lista.filter((p) => plano.saem.includes(p.id)) : [];
+  const casadas = linhas ? comFotos.filter((l, i) => l.foto && l.foto !== linhas[i].foto).length : 0;
+
+  async function abrirPlanilha(e) {
     const f = (e.target.files || [])[0]; e.target.value = '';
     if (!f) return;
-    setMsg('');
-    const text = await f.text();
-    const parsed = mapRows(parseCsv(text));
-    if (!parsed.length) { setMsg('Não encontrei linhas válidas (precisa de coluna "nome" e data).'); return; }
-    setRows(parsed);
+    try {
+      const l = P.linhasDaPlanilha(await lerPlanilha(f));
+      if (!l.length) { aviso.erro('planilha', 'Não achei pessoas nesta planilha: precisa de uma coluna "nome" e da data de nascimento.'); return; }
+      setLinhas(l); setFotos({});
+    } catch (err) { aviso.erro('planilha', err.message || 'Não deu para ler a planilha.'); }
   }
 
-  async function onPhotos(e) {
+  async function abrirFotos(e) {
     const files = Array.from(e.target.files || []); e.target.value = '';
     if (!files.length) return;
-    setBusy('fotos'); setMsg('');
-    const map = { ...photos };
-    let ok = 0, fail = 0;
+    setBusy('fotos');
+    const mapa = { ...fotos };
+    let falhas = 0;
     for (const f of files) {
-      const stem = keyMat((f.name || '').replace(/\.[^.]+$/, ''));
-      try { const up = await media.upload(f); map[stem] = up.url; ok++; }
-      catch (err) { fail++; }
+      const nome = (f.name || '').replace(/\.[^.]+$/, '');
+      try {
+        const up = await media.upload(f);
+        if (/^\d+$/.test(nome.trim())) mapa['m:' + semZeros(nome)] = up.url;
+        else mapa['n:' + slug(nome)] = up.url;
+      } catch (err) { falhas++; }
     }
-    setPhotos(map);
+    setFotos(mapa);
     setBusy('');
-    setMsg(`${ok} foto(s) enviada(s)${fail ? `, ${fail} falharam` : ''}.`);
+    if (falhas) aviso.erro('fotos', falhas + ' foto(s) não subiram.');
   }
 
-  // Junta fotos (por matrícula) às linhas e envia.
-  async function save() {
-    if (!rows || !rows.length) return;
-    const merged = rows.map((r) => {
-      const url = photos[keyMat(r.matricula)];
-      return url ? { ...r, foto: url } : r;
-    });
-    setBusy('salvar'); setMsg('');
+  async function importar() {
+    setBusy('importar');
     try {
-      const res = await birthdays.import(merged);
-      setMsg(`Lista salva: ${res.imported} pessoa(s)${res.ignored ? `, ${res.ignored} ignorada(s)` : ''}.`);
-      setRows(null); setPhotos({});
+      const r = await birthdays.import(comFotos);
+      aviso.ok('Lista atualizada: ' + [[r.entram, 'nova', 'novas'], [r.atualizam, 'atualizada', 'atualizadas'], [r.saem, 'saiu', 'saíram']].filter((x) => x[0]).map((x) => x[0] + ' ' + (x[0] === 1 ? x[1] : x[2])).join(', ') + '.');
+      setLinhas(null); setFotos({});
       reload();
-    } catch (err) { setMsg(err.message || 'Falha ao salvar.'); }
-    setBusy('');
+    } catch (err) { aviso.erro('importar', err.message || 'Não deu para importar.'); }
+    finally { setBusy(''); }
   }
 
-  async function clearAll() {
-    if (!(await confirmar({ titulo: 'Apagar toda a lista?', texto: 'Todos os aniversariantes saem do painel e da TV.', botao: 'Apagar a lista', perigo: true }))) return;
+  async function trocarFoto(e) {
+    const f = (e.target.files || [])[0]; e.target.value = '';
+    const p = fotoPara; setFotoPara(null);
+    if (!f || !p) return;
+    setBusy('foto:' + p.id);
+    try {
+      const up = await media.upload(f);
+      await birthdays.atualizar(p.id, { foto: up.url });
+      reload();
+    } catch (err) { aviso.erro('foto', err.message || 'Não deu para trocar a foto.'); }
+    finally { setBusy(''); }
+  }
+
+  async function tirar(p) {
+    if (!(await confirmar({ titulo: 'Tirar ' + p.nome + ' da lista?', texto: 'Sai do painel e da TV. Se estiver na planilha, volta na próxima importação.', botao: 'Tirar', perigo: true }))) return;
+    try { await birthdays.remover(p.id); reload(); }
+    catch (err) { aviso.erro('pessoa', err.message || 'Não deu para tirar.'); }
+  }
+
+  async function limparTudo() {
+    if (!(await confirmar({ titulo: 'Apagar toda a lista?', texto: 'Todas as pessoas saem do painel e da TV, inclusive as que vieram pelo QR.', botao: 'Apagar a lista', perigo: true }))) return;
     await birthdays.clear();
     reload();
   }
 
-  const matched = rows ? rows.filter((r) => photos[keyMat(r.matricula)]).length : 0;
+  const q = slug(busca);
+  const visiveis = q ? lista.filter((p) => slug(p.nome + ' ' + p.setor + ' ' + p.cargo).includes(q)) : lista;
 
   return (
     <div>
       <PageHeader
-        title="Aniversariantes"
-        subtitle="Suba a planilha da equipe e as fotos."
-        actions={list.length ? <Button variant="ghost" icon={Trash2} onClick={clearAll}>Limpar</Button> : null}
+        title="Pessoas"
+        subtitle="A equipe: setor, foto e o aniversário de cada um, que a TV mostra sozinha."
+        actions={<>
+          <Button variant="secondary" icon={Plus} onClick={() => setEditando({})}>Pôr uma pessoa</Button>
+          {lista.length ? <Button variant="ghost" icon={Trash2} onClick={limparTudo}>Limpar</Button> : null}
+        </>}
       />
 
-      {/*
-        Na TV, sozinho (D15): na semana do aniversário o cartão entra no
-        rodízio; no dia, vira destaque; semana sem aniversário, nada.
-      */}
+      {/* Na TV, sozinho (D15): na semana do aniversário o cartão entra no rodízio; no dia, vira destaque. */}
       <div className="mb-4">
         <MostrarNasTVs qual="aniversarios" titulo="Mostrar nas TVs, na semana do aniversário"
           explicacao="Na semana, um cartão com os aniversariantes entra no rodízio da área principal; no dia, vira o destaque. Semana sem aniversário: nada aparece. As datas comemorativas continuam e se intercalam." />
       </div>
 
       <Panel className="mb-4">
-        <PanelHeader title="Importar a equipe" description="1) planilha CSV · 2) fotos (nomeadas pela matrícula) · 3) salvar" />
-        <div className="grid gap-3 p-4 md:grid-cols-3">
-          {/* 1. Planilha */}
-          <div className="rounded-lg border border-line bg-surface-2 p-4">
-            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-ink"><FileSpreadsheet size={16} className="text-accent" /> 1. Planilha</div>
-            <p className="mb-3 text-xs text-ink-3">CSV com colunas <b>nome</b>, <b>matrícula</b>, <b>nascimento</b> (DD/MM) e <b>cargo</b>.</p>
-            <input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onCsv} />
-            <Button size="sm" variant="secondary" icon={UploadCloud} onClick={() => csvRef.current && csvRef.current.click()}>Escolher CSV</Button>
-            {rows && <div className="mt-2 text-xs text-ink-2"><Check size={12} className="mr-1 inline text-ok" />{rows.length} pessoa(s) na planilha</div>}
-          </div>
-          {/* 2. Fotos */}
-          <div className="rounded-lg border border-line bg-surface-2 p-4">
-            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-ink"><ImagePlus size={16} className="text-accent" /> 2. Fotos</div>
-            <p className="mb-3 text-xs text-ink-3">Selecione as fotos nomeadas pela <b>matrícula</b> (ex.: <code>1023.jpg</code>). Sem foto → iniciais.</p>
-            <input ref={photoRef} type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onPhotos} />
-            <Button size="sm" variant="secondary" icon={UploadCloud} disabled={busy === 'fotos'} onClick={() => photoRef.current && photoRef.current.click()}>
-              {busy === 'fotos' ? 'Enviando…' : 'Escolher fotos'}
-            </Button>
-            {Object.keys(photos).length > 0 && <div className="mt-2 text-xs text-ink-2"><Check size={12} className="mr-1 inline text-ok" />{Object.keys(photos).length} foto(s) enviada(s)</div>}
-          </div>
-          {/* 3. Salvar */}
-          <div className="rounded-lg border border-line bg-surface-2 p-4">
-            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-ink"><Cake size={16} className="text-accent" /> 3. Salvar</div>
-            <p className="mb-3 text-xs text-ink-3">{rows ? `${matched} de ${rows.length} com foto casada.` : 'Suba a planilha primeiro.'}</p>
-            <Button size="sm" variant="primary" icon={Check} disabled={!rows || busy === 'salvar'} onClick={save}>
-              {busy === 'salvar' ? 'Salvando…' : 'Salvar a lista'}
-            </Button>
-          </div>
+        <PanelHeader title="Importar a planilha do RH"
+          description="Excel (.xlsx) ou CSV com nome e nascimento; setor, cargo, matrícula, e-mail e foto, se tiver. Importar de novo atualiza: quem saiu da planilha sai, quem chegou pelo QR ou foi posto à mão fica." />
+        <div className="p-4">
+          <input ref={planilhaRef} type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={abrirPlanilha} />
+          <input ref={fotosRef} type="file" multiple accept="image/png,image/jpeg,image/webp" className="hidden" onChange={abrirFotos} />
+          {!plano ? (
+            <Button variant="secondary" icon={FileSpreadsheet} onClick={() => planilhaRef.current && planilhaRef.current.click()}>Escolher a planilha</Button>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2 text-xs" role="status">
+                {[[plano.entram.length, ['nova', 'novas'], 'bg-ok-soft text-ok'], [plano.atualizam.length, ['atualizada', 'atualizadas'], 'bg-accent-soft text-accent'],
+                  [plano.saem.length, ['sai da lista', 'saem da lista'], 'bg-warn-soft text-warn'], [plano.ficam, ['do QR ou à mão fica', 'do QR ou à mão ficam'], 'bg-surface-2 text-ink-2'],
+                  [plano.ignoradas, ['linha sem nome ou data', 'linhas sem nome ou data'], 'bg-surface-2 text-ink-3']].filter(([n]) => n > 0).map(([n, t, c]) => (
+                  <span key={t[0]} className={'rounded-full px-2.5 py-1 font-medium ' + c}>{n} {n === 1 ? t[0] : t[1]}</span>
+                ))}
+              </div>
+              {saem.length > 0 && (
+                <p className="text-xs text-ink-2">Não estão mais na planilha e saem: {saem.slice(0, 8).map((p) => p.nome).join(', ')}{saem.length > 8 ? ' e mais ' + (saem.length - 8) : ''}.</p>
+              )}
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface-2 p-3">
+                <ImagePlus size={16} className="text-accent" />
+                <span className="text-xs text-ink-2">Fotos (opcional): o nome do arquivo é a matrícula ou o nome da pessoa — <code>1023.jpg</code>, <code>ana-souza.jpg</code>.</span>
+                <Button size="sm" variant="secondary" icon={UploadCloud} disabled={busy === 'fotos'} onClick={() => fotosRef.current && fotosRef.current.click()}>{busy === 'fotos' ? 'Enviando…' : 'Escolher fotos'}</Button>
+                {Object.keys(fotos).length > 0 && <span className="text-xs text-ink-2"><Check size={12} className="mr-1 inline text-ok" />{casadas} de {Object.keys(fotos).length} casaram com alguém</span>}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="primary" icon={Check} disabled={busy === 'importar' || (!plano.entram.length && !plano.atualizam.length)} onClick={importar}>{busy === 'importar' ? 'Importando…' : 'Importar'}</Button>
+                <Button variant="ghost" onClick={() => { setLinhas(null); setFotos({}); }}>Cancelar</Button>
+              </div>
+            </div>
+          )}
         </div>
-        {msg && <div className="mx-4 mb-4 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink-2">{msg}</div>}
       </Panel>
 
       <Panel>
-        <PanelHeader title="Quem está na lista" description={list.length ? `${list.length} pessoa(s)` : undefined} />
+        <PanelHeader title="Quem está na lista" description={lista.length ? lista.length + (lista.length === 1 ? ' pessoa' : ' pessoas') : undefined}
+          actions={lista.length > 12 ? (
+            <label className="flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1 text-sm">
+              <Search size={14} className="text-ink-3" />
+              <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar nome ou setor" aria-label="Buscar pessoa" className="w-40 bg-transparent text-ink outline-none placeholder:text-ink-3" />
+            </label>
+          ) : null} />
+        <input ref={fotoDaLinhaRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={trocarFoto} />
         {loading ? (
           <div className="space-y-2 p-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 rounded-md" />)}</div>
         ) : error ? (
           <ErrorState description="Não foi possível carregar." onRetry={reload} />
-        ) : list.length === 0 ? (
-          <EmptyState icon={Cake} title="Nenhum aniversariante ainda" description="Importe a planilha da equipe para começar." />
+        ) : lista.length === 0 ? (
+          <EmptyState icon={Users} title="Ninguém na lista ainda" description="Importe a planilha do RH ou ponha uma pessoa à mão." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line text-left text-2xs uppercase tracking-wide text-ink-3">
-                  <th className="px-4 py-2 font-semibold">Foto</th>
-                  <th className="px-4 py-2 font-semibold">Nome</th>
-                  <th className="px-4 py-2 font-semibold">Data</th>
-                  <th className="px-4 py-2 font-semibold">Cargo</th>
-                  <th className="px-4 py-2 font-semibold">Matrícula</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((p) => (
-                  <tr key={p.id} className="border-b border-line/60">
-                    <td className="px-4 py-2">
-                      {p.foto
-                        ? <img src={p.foto} alt="" className="h-8 w-8 rounded-full object-cover" />
-                        : <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 text-2xs font-semibold text-ink-3">{(p.nome || '?').split(/\s+/).map((x) => x[0]).join('').slice(0, 2).toUpperCase()}</span>}
-                    </td>
-                    <td className="px-4 py-2 font-medium text-ink">{p.nome}</td>
-                    <td className="tnum px-4 py-2 text-ink-2">{String(p.dia).padStart(2, '0')}/{String(p.mes).padStart(2, '0')} <span className="text-ink-3">({MESES[(p.mes || 1) - 1]})</span></td>
-                    <td className="px-4 py-2 text-ink-2">{p.cargo || '—'}</td>
-                    <td className="tnum px-4 py-2 text-ink-3">{p.matricula || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="divide-y divide-line/60">
+            {visiveis.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 px-4 py-2">
+                <button type="button" onClick={() => { setFotoPara(p); fotoDaLinhaRef.current && fotoDaLinhaRef.current.click(); }}
+                  className="group relative shrink-0 rounded-full" aria-label={'Trocar a foto de ' + p.nome} disabled={busy === 'foto:' + p.id}>
+                  <Rosto p={p} />
+                  <span className="absolute inset-0 hidden items-center justify-center rounded-full bg-black/50 text-white group-hover:flex"><Camera size={14} /></span>
+                </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-sm font-medium text-ink">{p.nome}</span>
+                    {/* A planilha é o caminho de sempre; o selo marca só quem chegou por outro (e fica na próxima importação). */}
+                    {p.origem && p.origem !== 'planilha' && <span className="shrink-0 rounded-full bg-accent-soft px-1.5 py-px text-2xs font-medium text-accent">{ORIGEM[p.origem]}</span>}
+                  </div>
+                  <div className="truncate text-xs text-ink-3">{[p.setor, p.cargo].filter(Boolean).join(' · ') || '—'}</div>
+                </div>
+                <span className="tnum shrink-0 text-sm text-ink-2">{data(p)} <span className="text-ink-3">({MESES[(p.mes || 1) - 1]})</span></span>
+                <IconButton icon={Pencil} label={'Editar ' + p.nome} size={15} onClick={() => setEditando(p)} />
+                <IconButton icon={Trash2} label={'Tirar ' + p.nome} size={15} className="hover:text-danger" onClick={() => tirar(p)} />
+              </li>
+            ))}
+          </ul>
         )}
       </Panel>
+
+      {editando && <EditarPessoa pessoa={editando} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); reload(); }} />}
     </div>
   );
 }
