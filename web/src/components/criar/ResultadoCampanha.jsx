@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, FolderOpen, Pencil, Send, Undo2, Sparkles, MessageSquare } from 'lucide-react';
+import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, FolderOpen, Pencil, Send, Undo2, Sparkles, MessageSquare, X } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Spinner } from '../ui/Feedback.jsx';
 import { PecaHtml } from '../content/PecaHtml.jsx';
@@ -41,8 +41,62 @@ const Numero = ({ n }) => (
   <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-ink/80 px-1 text-2xs font-semibold text-canvas">{n}</span>
 );
 
-function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, onEditar }) {
-  if (!pecas.length && !(mensagens && mensagens.length)) return null;
+/*
+ * O letreiro editável (D12): as frases do rodapé e as chamadas do cabeçalho,
+ * à mão. Antes só se lia "Letreiro: a · b" — trocar uma palavra pedia uma
+ * conversa nova com a IA.
+ */
+function Letreiro({ rotulo, mensagens, onSalvar }) {
+  const [lista, setLista] = useState(null);   // null = só lendo
+  const [salvando, setSalvando] = useState(false);
+  if (lista === null) {
+    return (
+      <div className="flex items-center gap-2 rounded-md bg-surface-2 px-2.5 py-1.5 text-2xs text-ink-2">
+        <span className="min-w-0 flex-1 truncate">{rotulo}: {mensagens.length ? mensagens.join(' · ') : 'nenhuma frase ainda'}</span>
+        {onSalvar && (
+          <button type="button" onClick={() => setLista(mensagens.length ? mensagens.slice() : [''])}
+            className="flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 text-ink-2 hover:bg-surface hover:text-ink">
+            <Pencil size={10} /> Editar
+          </button>
+        )}
+      </div>
+    );
+  }
+  const mudar = (i, v) => setLista((l) => l.map((x, j) => (j === i ? v : x)));
+  async function salvar() {
+    setSalvando(true);
+    try { await onSalvar(lista.map((x) => x.trim()).filter(Boolean)); setLista(null); }
+    finally { setSalvando(false); }
+  }
+  return (
+    <div className="space-y-1.5 rounded-md border border-line p-2">
+      <div className="text-2xs font-semibold text-ink-2">{rotulo} <span className="font-normal text-ink-3">· como o público vai ler, até 80 letras cada</span></div>
+      {lista.map((m, i) => (
+        <div key={i} className="flex items-center gap-1">
+          <input value={m} maxLength={80} onChange={(e) => mudar(i, e.target.value)} aria-label={rotulo + ' ' + (i + 1)}
+            placeholder="Ex.: Aberto de segunda a sábado, das 8h às 18h"
+            className="h-8 min-w-0 flex-1 rounded border border-line bg-surface px-2 text-xs text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none" />
+          <button type="button" aria-label="Tirar esta frase" onClick={() => setLista((l) => l.filter((_, j) => j !== i))}
+            className="rounded p-1 text-ink-3 hover:text-danger"><X size={13} /></button>
+        </div>
+      ))}
+      <div className="flex flex-wrap items-center gap-2">
+        {lista.length < 8 && (
+          <button type="button" onClick={() => setLista((l) => l.concat(''))} className="flex items-center gap-1 text-2xs font-medium text-accent hover:underline">
+            <Plus size={11} /> Outra frase
+          </button>
+        )}
+        <span className="flex-1" />
+        <Button size="sm" variant="ghost" disabled={salvando} onClick={() => setLista(null)}>Cancelar</Button>
+        <Button size="sm" variant="primary" disabled={salvando} onClick={salvar}>{salvando ? 'Salvando…' : 'Salvar'}</Button>
+      </div>
+    </div>
+  );
+}
+
+function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, onEditar, onLetreiro }) {
+  if (!pecas.length && !(mensagens && mensagens.length) && !onLetreiro) return null;
+  if (faixa && !pecas.length && !(mensagens && mensagens.length)) return null;
   const legenda = (p) => (
     <div className="flex items-center gap-1 text-2xs text-ink-3">
       <Numero n={numeros[p.vaga]} />
@@ -66,9 +120,8 @@ function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, on
               {legenda(p)}
             </div>
           ))}
-          {!pecas.length && mensagens.length > 0 && (
-            <div className="truncate rounded-md bg-surface-2 px-2.5 py-1.5 text-2xs text-ink-2">Letreiro: {mensagens.join(' · ')}</div>
-          )}
+          <Letreiro rotulo={faixa === 'rodape' ? 'Frases do letreiro' : 'Chamadas'} mensagens={mensagens || []} onSalvar={onLetreiro} />
+          {/* A mesma regra da TV: com frase longa, a peça mostra a rolagem até o fim. */}
         </div>
       ) : (
         <div className={cn('grid gap-2', titulo === 'Lateral' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2')}>
@@ -148,6 +201,14 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
   const daRede = (r.social && todas.find((p) => p.vaga === r.social.peca)) || todas[0]
     || ((r.biblioteca || [])[0] && { item: r.biblioteca[0].item, label: r.biblioteca[0].label });
   const editar = onMudou ? setEditando : null;
+  // Salva o letreiro de uma TV (D12). No ar, a TV só muda ao pôr pra rodar de novo.
+  const letreiroDe = (ti, zona) => (onMudou ? async (mensagens) => {
+    try {
+      const r = await criar.editarLetreiro(campanha.id, ti, zona, mensagens);
+      onMudou(r.campanha);
+      aviso.ok(campanha.estado === 'no_ar' ? 'Salvo. Para valer na TV, ponha pra rodar de novo.' : 'Letreiro salvo.');
+    } catch (e) { aviso.erro('letreiro', 'O letreiro não foi salvo: ' + (e.message || 'falha de conexão') + '.'); throw e; }
+  } : null);
 
   return (
     <div className="space-y-3">
@@ -168,10 +229,10 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
       {(r.telas || []).map((t, i) => (
         <section key={i} className="space-y-3 rounded-lg border border-line bg-surface p-3">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><MonitorPlay size={15} className="text-accent" /> {nomeDaTela(t, i)}</h3>
-          <Zona titulo="Cabeçalho" pecas={t.zonas.cabecalho.pecas} faixa="cabecalho" mensagens={t.zonas.cabecalho.mensagens} numeros={numeros} onEditar={editar} />
+          <Zona titulo="Cabeçalho" pecas={t.zonas.cabecalho.pecas} faixa="cabecalho" mensagens={t.zonas.cabecalho.mensagens} numeros={numeros} onEditar={editar} onLetreiro={letreiroDe(i, 'cabecalho')} />
           <Zona titulo="Principal" pecas={t.zonas.principal} querFoto={querFoto} numeros={numeros} onEditar={editar} />
           <Zona titulo="Lateral" pecas={t.zonas.lateral} querFoto={querFoto} numeros={numeros} onEditar={editar} />
-          <Zona titulo="Rodapé" pecas={t.zonas.rodape.pecas} faixa="rodape" mensagens={t.zonas.rodape.mensagens} contagem={t.zonas.rodape.contagem} numeros={numeros} onEditar={editar} />
+          <Zona titulo="Rodapé" pecas={t.zonas.rodape.pecas} faixa="rodape" mensagens={t.zonas.rodape.mensagens} contagem={t.zonas.rodape.contagem} numeros={numeros} onEditar={editar} onLetreiro={letreiroDe(i, 'rodape')} />
         </section>
       ))}
 

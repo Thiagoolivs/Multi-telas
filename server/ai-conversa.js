@@ -139,14 +139,18 @@ fica como veio:
       "zonas": {
         "principal": { "pecas": 0-8, "pedido": "o que as peças mostram" },
         "lateral":   { "pecas": 0-8, "pedido": "..." },
-        "cabecalho": { "pecas": 0-4, "pedido": "...", "vivos": ["relogio","data","clima","logo"], "mensagens": ["chamada"] },
-        "rodape":    { "pecas": 0-4, "pedido": "...", "vivos": [], "mensagens": ["aviso do letreiro"], "contagem": "AAAA-MM-DDTHH:MM" }
+        "cabecalho": { "pecas": 0-4, "pedido": "...", "vivos": ["relogio","data","clima","logo"], "mensagens": [] },
+        "rodape":    { "pecas": 0-4, "pedido": "...", "vivos": [], "mensagens": [], "contagem": "AAAA-MM-DDTHH:MM" }
       }
     }
   ],
   "redes": { "instagramPost": bool, "instagramStory": bool, "whatsappStatus": bool, "whatsappMensagem": bool, "facebook": bool, "google": bool },
   "horarios": [ { "faixa": "manha"|"almoco"|"tarde"|"saida"|"dia", "foco": "..." } ou { "inicio": "HH:MM", "fim": "HH:MM", "foco": "..." } ]
 }
+"mensagens" do cabeçalho e do rodapé são as FRASES PRONTAS que o público vai ler
+(ex.: "Aberto até as 20h"), e só as que a pessoa ditou. Nunca a instrução
+("letreiro com os horários") nem um exemplo: na dúvida, deixe vazio — o
+gerador escreve.
 Uma TV só, ou todas iguais: uma entrada com alvo "todas". Conteúdo diferente
 por TV: uma entrada por TV, com o id da lista.
 

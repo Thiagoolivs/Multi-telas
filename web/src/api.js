@@ -334,6 +334,8 @@ export const criar = {
     return acompanhar(job.id, 'ajuste', onEtapa, sinal);
   },
   editarPeca: (id, vaga, item) => api('PUT', '/api/campanhas/' + id + '/peca', { vaga, item }),
+  // As frases do rodapé / chamadas do cabeçalho de uma TV da campanha (D12).
+  editarLetreiro: (id, tela, zona, mensagens) => api('PUT', '/api/campanhas/' + id + '/letreiro', { tela, zona, mensagens }),
   desfazer: (id) => api('POST', '/api/campanhas/' + id + '/desfazer'),
 };
 

@@ -127,7 +127,9 @@
     + '.mt-peca,.mt-peca *{font-variant-numeric:lining-nums!important}'
     + '.mt-peca img[data-sem-foto]{visibility:hidden}'
     + '.mt-peca [data-vivo="mensagens"]{display:inline-block;white-space:nowrap}'
-    + '.mt-peca[data-marca-na-tela] [data-repete="marca"]{display:none!important}';
+    + '.mt-peca[data-marca-na-tela] [data-repete="marca"]{display:none!important}'
+    // Rodapé numa tela que já tem relógio no cabeçalho: o segundo relógio some (D12).
+    + '.mt-peca[data-sem-relogio] [data-vivo="relogio"]{display:none!important}';
 
   // As variáveis da marca, num bloco do palco.
   function cssDosTokens(tokens) {
@@ -199,6 +201,7 @@
    *                o que a peça marcou com data-repete="marca"
    *   hostsMidia   hosts aceitos para foto além de /media/ (ver peca-html.js)
    *   logo         { url, clara, escura } da marca: preenche data-campo-img="logo"
+   *   semRelogio   true no rodapé de tela com relógio no cabeçalho: some o data-vivo="relogio"
    *   clima        () => Promise<string>, ex.: "27°"
    *   mensagens    frases do rodapé (e as chamadas do cabeçalho)
    *   contagem     "AAAA-MM-DDTHH:MM", o alvo de data-vivo="contagem"
@@ -288,6 +291,7 @@
     }
     // A tela já mostra a marca (no cabeçalho): a peça não repete.
     if (o.marcaNaTela && peca) peca.setAttribute('data-marca-na-tela', '');
+    if (o.semRelogio && peca) peca.setAttribute('data-sem-relogio', '');
 
     // Campos: TEXTO, sempre. O que o cliente digita nunca vira tag.
     sombra.querySelectorAll('[data-campo]').forEach((el) => {
