@@ -1514,17 +1514,25 @@ const negocioCache = new Map();
                  * ficava no storage contando na cota.
                  */
                 const antigas = (await db.listMedia(sess.tenant_id)).filter((x) => x.origem === 'site');
+                // A nova PRIMEIRO: se guardar falhar (cota cheia), a antiga continua (revisão do #227).
+                const salvo = await midia.guardarBuffer(db, sess.tenant_id, img.bytes, img.mime, { nome: 'Imagem do site', origem: 'site' });
                 const urlsAntigas = new Set(antigas.map((x) => x.url));
                 for (const a of await db.listBrandAssets(sess.tenant_id)) {
                   if (urlsAntigas.has(a.url) && (a.kind === 'base' || a.kind === 'referencia')) await db.removeBrandAsset(a.id, sess.tenant_id);
                 }
-                for (const x of antigas) await midia.apagar(db, sess.tenant_id, x.id).catch(() => {});
-                const salvo = await midia.guardarBuffer(db, sess.tenant_id, img.bytes, img.mime, { nome: 'Imagem do site', origem: 'site' });
                 const rotulo = 'Do site: ' + (dados.titulo || dados.url).slice(0, 40);
                 await db.addBrandAsset(sess.tenant_id, 'base', salvo.url, rotulo, parts[3]);
                 await db.addBrandAsset(sess.tenant_id, 'referencia', salvo.url, rotulo, parts[3]);
                 dados.imagem = salvo.url;
                 await db.salvarSiteDaMarca(parts[3], sess.tenant_id, dados.url, dados.resumo, salvo.url);
+                /*
+                 * O arquivo antigo só sai se ninguém mais usa: numa peça no ar ou
+                 * numa campanha, ele fica (a regra do #209) — o cliente apaga em
+                 * Mídias, com o aviso de onde aparece.
+                 */
+                for (const x of antigas) {
+                  if (!(await ondeEstaEmUso(sess.tenant_id, x.url)).length) await midia.apagar(db, sess.tenant_id, x.id).catch(() => {});
+                }
               } catch (e) { dados.imagem = ''; /* cota cheia ou storage fora: o resto da leitura vale */ }
             } else dados.imagem = '';
           }
