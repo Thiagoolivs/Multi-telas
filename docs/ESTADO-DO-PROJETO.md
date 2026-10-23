@@ -6,10 +6,44 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **23/10/2026** · 1450 testes passando · Fases 1, 2 e 3 do
-DNA novo completas (EXECUTOR §2f, D0.1–D29, PRs #201 a #255).
+Atualizado em: **23/10/2026** · 1474 testes passando · Fases 1 a 4 do
+DNA novo completas (EXECUTOR §2f, D0.1–D35, PRs #201 a #264).
 
 ---
+
+## Rodada 5d — o DNA novo, Fase 4: pessoas e RH (23/10, PRs #257 a #264)
+
+O dono: "a pessoa lê um QR code na tela pedindo as fotos, isso envia alguma
+forma de autenticação e a pessoa envia as fotos; isso acontece semanas antes
+dos eventos ou quando o RH programar". O consultor revisou cada PR (notas no
+#260).
+
+- **Pessoas** (D30, Automáticos › Pessoas, era Aniversariantes): planilha do
+  RH em **Excel ou CSV** (sem biblioteca), setor e e-mail, prévia do que a
+  importação faz (`js/pessoas.js`, a mesma regra no servidor). Importar de
+  novo só mexe no que veio da planilha: quem chegou pelo QR ou à mão fica, e
+  a foto não some. O ano do nascimento não é guardado. Foto é sempre arquivo
+  da própria conta (https é baixado, #260).
+- **Foto pelo QR, o RH aprova** (D31/D31b): pedido com período (fecha em 30
+  dias se não disser), página `/f/CODIGO` → **código no e-mail** → passe
+  curto → foto com **autorização explícita gravada** → fila do RH. Na TV, o
+  cartão "Mande sua foto" com o QR no período. O código nunca volta na
+  resposta em produção.
+- **Aniversariante na semana dele** (D32): um cartão por pessoa, com a foto
+  grande, de segunda a domingo da semana do aniversário; no dia, em dobro.
+- **Datas com fotos da equipe** (D33): Dia da Mulher entrou no catálogo; o
+  RH pede fotos para uma data (mães, pais, mulheres, crianças, Natal…) e as
+  aprovadas formam o **mural da data** na TV, na semana dela.
+- **O RH vê tudo** (D34): resumo de pessoas (sem foto, sem e-mail), fotos
+  para aprovar e próximos aniversários, em Pessoas e no Início.
+- **LGPD por pessoa** (D35): tirar a pessoa ou a foto apaga os arquivos; o
+  mural da data sai 30 dias depois (aviso, .zip, guardar mais); a fila não
+  decidida sai em 30 dias; o aceite aparece na pessoa. SW em v58.
+
+**Esperando o dono**: o texto da política de privacidade (setor, e-mail,
+QR e os prazos) com o advogado; os prazos de 30 dias (anotados pelo
+consultor); e o que já esperava (lote 1, preço, lançamento). **Próximo**:
+Fase 5 (D36 KPIs com endpoint/TOTVS, D37 Pixabay).
 
 ## Rodada 5c — o DNA novo, Fase 3: programação inteligente (23/10, PRs #247 a #255)
 
