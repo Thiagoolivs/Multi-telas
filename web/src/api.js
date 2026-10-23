@@ -477,6 +477,8 @@ export const automaticos = {
 
 export const birthdays = {
   list: () => api('GET', '/api/birthdays'),
+  // O resumo do RH (D34): números e os próximos aniversários.
+  resumo: () => api('GET', '/api/birthdays/resumo'),
   import: (rows) => api('POST', '/api/birthdays/import', { rows }),
   clear: () => api('DELETE', '/api/birthdays'),
   // Uma pessoa (D30): à mão no painel, editar, tirar.
