@@ -67,7 +67,7 @@ function Bolinhas({ cores, grande }) {
   );
 }
 
-export function PaletasSugeridas({ kit, empresa, ramoDaConta, logoUrl, fonteTitulo, fonteApoio, cores, setCores, nome, setNome, aplicar, ocupado }) {
+export function PaletasSugeridas({ kit, empresa, ramoDaConta, logoUrl, fonteTitulo, fonteApoio, cores, setCores, aplicar, ocupado }) {
   const [arq, setArq] = useState(null);
   const [ramo, setRamo] = useState(ramoDaConta || 'geral');
   const [doLogo, setDoLogo] = useState([]);
@@ -166,11 +166,6 @@ export function PaletasSugeridas({ kit, empresa, ramoDaConta, logoUrl, fonteTitu
           {avancado && (
             <div className="space-y-3 border-t border-line p-3">
               <div className="flex flex-wrap items-end gap-3">
-                <div className="w-44">
-                  <Field label="Nome da marca">
-                    <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Padaria Aurora" />
-                  </Field>
-                </div>
                 {cores.map((c, i) => (
                   <div key={i} className="w-40">
                     <Field label={i === 0 ? 'Principal' : i === 1 ? 'Acento' : 'Apoio ' + (i - 1)}>
