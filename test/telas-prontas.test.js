@@ -153,3 +153,50 @@ test('a galeria: grava com versão, confere na zona, só põe em TV do mesmo jei
   const ed = fs.readFileSync(path.join(RAIZ, 'web/src/pages/ContentEditorPage.jsx'), 'utf8');
   assert.match(ed, /onIr\('telasprontas', \{ tela: device && device\.id \}\)/);
 });
+
+/* ---------------- Nada da empresa de exemplo na TV do cliente (revisão do #239) ---------------- */
+
+test('nenhuma tela pronta leva nome, telefone, endereço, @ ou site da empresa de exemplo para a TV', async () => {
+  const L = await lib();
+  const exemplos = L.nomesDeExemplo(M.marcas);
+  const conta = { ...MARCA, site: '', endereco: '' };
+  const proibido = (txt) => {
+    const t = String(txt || '');
+    const c = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    return M.marcas.some((m) => t.toLowerCase().includes(m.nome.toLowerCase()))
+      || /rota ?sul/i.test(t)
+      || ['oticacentral', 'padariadobairro', 'studiobella', 'clinicavida', 'lanchonetedapraca', 'rotasul'].some((k) => c.includes(k))
+      || /\(\d{2}\)\s?\d{4,5}-\d{4}/.test(t) || /rua das flores|av\. brasil|rua augusta/i.test(t);
+  };
+  // Todas as telas, aprovadas ou não: a que o dono aprovar amanhã também não pode vazar.
+  for (const tela of M.telas) {
+    const cfg = L.aplicarTelaPronta({ settings: {}, zonas: {} }, L.montarTela(tela, modelos, conta, exemplos));
+    const json = JSON.stringify(cfg);
+    assert.ok(!/_pendentes/.test(json), tela.id + ': _pendentes foi para a TV');
+    for (const z of Object.values(cfg.zonas)) {
+      (z.messages || []).forEach((m) => assert.ok(!proibido(m), tela.id + ': frase do rodapé "' + m + '"'));
+      for (const it of [].concat(z.items || [], z.pecas || [])) {
+        // O que a TV MOSTRA: o campo gravado ou, sem ele, o exemplo do HTML da peça.
+        for (const d of PH.higienizar(it).campos) {
+          if (d.tipo === 'img') continue;
+          const v = it.campos[d.nome] != null ? it.campos[d.nome] : d.exemplo;
+          if (d.nome === 'marca') assert.equal(v, 'Padaria Real', tela.id + ': ' + it.origem.base + ' sem o nome da conta');
+          else assert.ok(!proibido(v), tela.id + ': ' + it.origem.base + '.' + d.nome + ' = "' + v + '"');
+        }
+      }
+    }
+  }
+});
+
+test('o que era da empresa de exemplo vira o da conta quando a conta tem (site, endereço, nome)', async () => {
+  const L = await lib();
+  const ex = L.nomesDeExemplo(M.marcas);
+  const conta = { nome: 'Padaria Real', site: 'padariareal.com.br', endereco: 'Rua Nova, 10' };
+  assert.equal(L.limparDoExemplo('https://wa.me/5511977770000', { tipo: 'qr' }, conta, ex), 'padariareal.com.br');
+  assert.equal(L.limparDoExemplo('(11) 97777-0000', { tipo: 'texto' }, conta, ex), '');
+  assert.equal(L.limparDoExemplo('@oticacentral', { tipo: 'texto' }, conta, ex), '');
+  assert.equal(L.limparDoExemplo('Rua das Flores, 120 · Centro', { tipo: 'texto' }, conta, ex), 'Rua Nova, 10');
+  assert.equal(L.limparDoExemplo('Quem faz a Rota Sul', { tipo: 'texto' }, conta, ex), 'Quem faz a Padaria Real');
+  assert.equal(L.limparDoExemplo('Agende pelo WhatsApp', { tipo: 'texto' }, conta, ex), 'Agende pelo WhatsApp', 'texto comum fica');
+  assert.equal(L.limparDoExemplo('Ramal do RH: 2040', { tipo: 'texto' }, conta, ex), 'Ramal do RH: 2040');
+});
