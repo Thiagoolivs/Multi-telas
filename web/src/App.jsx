@@ -29,6 +29,7 @@ import { CriandoPage } from './pages/CriandoPage.jsx';
 import { ligarTrabalhos, desligarTrabalhos } from './lib/trabalhos.js';
 import { PecasProntasPage } from './pages/PecasProntasPage.jsx';
 import { TelasProntasPage } from './pages/TelasProntasPage.jsx';
+import { CalendarioPage } from './pages/CalendarioPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 import { parearGuardado } from './lib/parearPendente.js';
 import { paginaDoIr } from './lib/menu.js';
@@ -60,6 +61,7 @@ const META = {
   // Mídias por propósito (item 34). 'storage' segue como endereço: é Fotos e vídeos.
   pecas: { title: 'Peças prontas' },
   telasprontas: { title: 'Telas prontas' },
+  calendario: { title: 'Calendário da empresa' },
   storage: { title: 'Fotos e vídeos' },
   musicas: { title: 'Músicas' },
   ia: { title: 'Da IA' },
@@ -100,7 +102,7 @@ function useTheme() {
  */
 // campanhas, pecas, musicas e ia entraram no D3: recarregar nessas páginas caía na Visão geral.
 const ATALHOS = ['criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
-  'team', 'storage', 'pecas', 'telasprontas', 'musicas', 'ia', 'banco', 'birthdays', 'support', 'settings'];
+  'team', 'storage', 'pecas', 'telasprontas', 'calendario', 'musicas', 'ia', 'banco', 'birthdays', 'support', 'settings'];
 
 /*
  * O painel no histórico do navegador.
@@ -223,6 +225,7 @@ export default function App() {
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'pecas': return <PecasProntasPage onIr={go} />;
       case 'telasprontas': return <TelasProntasPage onIr={go} telaAlvo={route.tela} />;
+      case 'calendario': return <CalendarioPage onIr={go} />;
       case 'storage': return <StoragePage filtro="fotos" />;
       case 'musicas': return <StoragePage key="musicas" filtro="musicas" />;
       case 'ia': return <StoragePage key="ia" filtro="ia" />;

@@ -92,6 +92,8 @@ const OPERACOES = {
   'ajuste-peca': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Ajuste de peça' },
   // As perguntas do quiz (D21): uma chamada de texto; saem para revisão.
   quiz: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Quiz' },
+  // Ler o calendário da empresa (D23): uma chamada de texto.
+  calendario: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Calendário da empresa' },
 };
 
 function operacao(tipo) { return OPERACOES[tipo] || null; }

@@ -220,6 +220,15 @@ async function rodar(rota, payload, tipo, onEtapa, sinal) {
   return acompanhar(job.id, tipo, onEtapa, sinal);
 }
 
+// O calendário da empresa (D23): os eventos guardados e a leitura do texto colado.
+export const calendario = {
+  listar: () => api('GET', '/api/calendario'),
+  salvar: (eventos) => api('POST', '/api/calendario', { eventos }),
+  atualizar: (id, evento) => api('PUT', '/api/calendario/' + encodeURIComponent(id), evento),
+  apagar: (id) => api('DELETE', '/api/calendario/' + encodeURIComponent(id)),
+  ler: (texto) => api('POST', '/api/ai/calendario', { texto }),
+};
+
 export const ai = {
   /*
    * Cada uma destas devolve o resultado, como sempre devolveu — quem chama não

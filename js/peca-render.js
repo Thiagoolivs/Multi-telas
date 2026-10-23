@@ -283,7 +283,10 @@
     while (alvo.parentElement && alvo.parentElement !== peca) {
       const pai = alvo.parentElement;
       const so = Array.prototype.every.call(pai.children, (c) => c === alvo || c.getAttribute('aria-hidden') === 'true');
-      if (!so || (pai.textContent || '').trim() !== (alvo.textContent || '').trim()) break;
+      // O texto do pai sem o dos enfeites: a seta "→" (aria-hidden) ao lado da chamada não conta como texto.
+      const proprio = Array.prototype.reduce.call(pai.childNodes, (s, c) => s
+        + (c.nodeType === 3 ? c.textContent : (c.getAttribute && c.getAttribute('aria-hidden') === 'true' ? '' : c.textContent)), '');
+      if (!so || proprio.trim() !== (alvo.textContent || '').trim()) break;
       alvo = pai;
     }
     alvo.setAttribute('data-oculto', '');

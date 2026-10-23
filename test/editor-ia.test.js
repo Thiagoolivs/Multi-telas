@@ -137,7 +137,8 @@ test('toda rota de IA aparece em algum lugar da contabilidade', () => {
    * (imagem, que é a cara). O que não vale é nenhum dos dois.
    */
   const SERVER = lerArquivo('server.js');
-  const mapa = SERVER.slice(SERVER.indexOf('const TIPO_IA'), SERVER.indexOf('const TIPO_IA') + 1400);
+  // O mapa inteiro, até o fecha-chaves dele (uma janela fixa de caracteres deixava de fora as rotas novas do fim).
+  const mapa = SERVER.slice(SERVER.indexOf('const TIPO_IA'), SERVER.indexOf('\n  };', SERVER.indexOf('const TIPO_IA')));
   const foraDaConta = [];
   for (const { nome, corpo } of rotasDeIA(SERVER)) {
     if (SO_LEEM_ESTADO.includes(nome)) continue;
@@ -177,6 +178,8 @@ const AINDA_SINCRONAS = [
    * um "acompanhe em Criando" para trocar a cor seria pior que esperar.
    */
   'ajustar-peca',
+  // D23: ler o calendário colado é um turno curto (a pessoa espera a lista para revisar); nada é gravado nem cobrado em crédito.
+  'calendario',
 ];
 
 test('toda rota de IA que GERA roda como trabalho — e as síncronas são só as declaradas', () => {
