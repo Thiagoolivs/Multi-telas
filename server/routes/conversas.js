@@ -8,6 +8,7 @@
  *                                 andamento|criadas, ?arquivadas=1 e ?pular= (D49)
  *   GET  /api/conversas/:id      uma, inteira
  *   PUT  /api/conversas/:id      { titulo } renomeia; { arquivada } arquiva (D49);
+ *                                 { decisoes } corrige o que foi decidido (D48);
  *                                 { escopo }: o que a pessoa mudou à mão no
  *                                 cartão "O que vou criar". Não chama a IA.
  *
@@ -78,7 +79,8 @@ module.exports = function (ctx) {
         const mensagens = ((atual && atual.mensagens) || []).concat({ papel: 'pessoa', texto, em: Date.now() });
         // O escopo do cartão (que a pessoa pode ter mudado à mão) vence o guardado.
         const escopo = b && b.escopo && typeof b.escopo === 'object' ? b.escopo : (atual && atual.escopo);
-        const out = await conversa.conversar({ mensagens, escopo, ctx: c });
+        // D48: as decisões das voltas anteriores vão junto, e voltam acrescidas (ou com o que a pessoa mudou fora).
+        const out = await conversa.conversar({ mensagens, escopo, decisoes: (atual && atual.decisoes) || [], ctx: c });
         /*
          * Na falha, a frase aparece para a pessoa mas é marcada: a próxima
          * volta não a manda para a IA como se fosse fala dela (transcricao),
@@ -94,6 +96,7 @@ module.exports = function (ctx) {
           titulo: out.escopo.nome || (atual && atual.titulo) || linha(primeira && primeira.texto, 60),
           mensagens: mensagens.slice(-MAX_MENSAGENS),
           escopo: out.escopo,
+          decisoes: out.decisoes || (atual && atual.decisoes) || [],
           estado: manter ? ((atual && atual.estado) || 'conversando') : (out.pronto ? 'entendido' : 'conversando'),
           campanhaId: (atual && atual.campanhaId) || '',
         };
@@ -161,6 +164,11 @@ module.exports = function (ctx) {
           }
           if (b && typeof b.arquivada === 'boolean') {
             return sendJson(res, 200, { conversa: await db.arquivarConversa(sess.tenant_id, id, b.arquivada) });
+          }
+          // D48: a pessoa tira (ou corrige) o que foi decidido, no cartão. Passa pela mesma peneira da IA.
+          if (b && Array.isArray(b.decisoes)) {
+            const decisoes = conversa.mesclarDecisoes(b.decisoes, [], []);
+            return sendJson(res, 200, { conversa: await db.salvarConversa(sess.tenant_id, id, { ...atual, decisoes }) });
           }
           if (!b || !b.escopo || typeof b.escopo !== 'object') return sendJson(res, 400, { error: 'envie o escopo' });
           const c = await contexto(sess.tenant_id);

@@ -30,8 +30,16 @@ const memoria = require('./ai-memoria');
 const E = require('../js/escopo.js');
 const Perfil = require('../js/perfil.js');
 
-// Quantas mensagens a IA lê de cada vez. O resto vive no escopo.
-const JANELA = 16;
+/*
+ * Quantas mensagens a IA lê de cada vez. O resto vive no escopo E nas
+ * DECISÕES (D48): eram 16 e só o escopo, e o que não cabe no escopo — o
+ * preço, a frase exata, "sem foto de gente" — se perdia depois da 16ª
+ * mensagem. "O chat se perde nos pedidos e na maioria das vezes regride."
+ */
+const JANELA = 30;
+// As decisões da conversa: curtas, poucas, e as mais novas ficam.
+const MAX_DECISOES = 24;
+const TAM_DECISAO = 160;
 
 /*
  * NEM TUDO É CAMPANHA (EXECUTOR D5). A conversa montava campanha para tudo:
@@ -124,8 +132,18 @@ Na dúvida entre aviso e campanha, comece pequeno: crescer é um toque.
 AJUDA (caminhos do painel; nunca invente outro menu):
 ${AJUDA.map((a) => '- ' + a.resposta).join('\n')}
 
-O ESCOPO que você devolve (JSON). Mude só o que a conversa decidiu; o resto
-fica como veio:
+MEMÓRIA DA CONVERSA (não regrida). Abaixo vem "O QUE JÁ FOI DECIDIDO": as
+decisões das voltas anteriores. Elas VALEM até a pessoa mudar. Nunca
+pergunte de novo o que está lá e nunca contradiga.
+- Toda vez que a pessoa decidir algo concreto (um preço, uma frase, uma data,
+  "sem foto de gente", "só a TV da recepção", "letra grande"), devolva em
+  "decisoes" a frase curta dessa decisão nova.
+- Se ela MUDAR uma decisão, devolva a antiga, igualzinha, em "esquecer", e a
+  nova em "decisoes".
+
+O ESCOPO que você devolve (JSON) é SÓ O QUE ESTA FALA MUDOU: o que você não
+mandar fica exatamente como está. Para tirar algo, mande o valor vazio
+explícito (pecas: 0, horarios: [], uma rede false). O formato completo:
 {
   "nome": "nome curto da campanha",
   "objetivo": "para que serve, 1 frase",
@@ -159,7 +177,9 @@ Responda APENAS JSON:
   "tipo": "campanha" | "peca" | "aviso" | "duvida",
   "resposta": "o que você diz para a pessoa",
   "sugestoes": ["resposta pronta que ela pode tocar", "outra"],
-  "escopo": { ...o escopo inteiro, atualizado... },
+  "escopo": { ...só os campos que esta fala mudou... },
+  "decisoes": ["decisão nova desta volta, curta"],
+  "esquecer": ["decisão antiga que a pessoa mudou, igual a como estava"],
   "pronto": true | false,
   "gerar": true | false
 }
@@ -205,7 +225,7 @@ function transcricao(mensagens) {
   const todas = (Array.isArray(mensagens) ? mensagens : []).filter((m) => !(m && m.falha));
   const janela = todas.slice(-JANELA);
   const cortadas = todas.length - janela.length;
-  return (cortadas > 0 ? `(${cortadas} mensagens anteriores já estão resumidas no escopo)\n` : '')
+  return (cortadas > 0 ? `(${cortadas} mensagens anteriores já estão resumidas no escopo e no que foi decidido)\n` : '')
     + janela.map((m) => `${m && m.papel === 'ia' ? 'Você' : 'Pessoa'}: ${String((m && m.texto) || '').slice(0, 800)}`).join('\n');
 }
 
@@ -222,6 +242,66 @@ function conferirEscopo(escopo, ctx) {
   const ids = new Set(((ctx && ctx.telas) || []).map((t) => t.id));
   e.telas.forEach((t) => { if (t.alvo.tipo === 'tela' && !ids.has(t.alvo.id)) t.alvo = { tipo: 'todas' }; });
   return e;
+}
+
+/*
+ * O ESCOPO COMO MUDANÇA, NÃO COMO SUBSTITUTO (D48).
+ *
+ * A IA devolvia o escopo inteiro a cada volta, e o que ela esquecia de
+ * repetir sumia: o "só a TV da recepção" da 3ª volta voltava a "todas" na
+ * 12ª. Agora o que ela manda é aplicado POR CIMA do atual — campo ausente
+ * fica como está; para tirar, ela manda o vazio explícito (pecas: 0,
+ * horarios: [], rede false). Texto vazio não apaga (a IA que não sabe o
+ * nome não zera o que a pessoa disse). As TVs se mesclam pela posição.
+ */
+const ehObj = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
+function mesclarEscopo(atual, parcial) {
+  const out = JSON.parse(JSON.stringify(E.normalizar(atual)));
+  if (!ehObj(parcial)) return E.normalizar(out);
+  for (const k of ['nome', 'objetivo', 'publico', 'imagens']) {
+    if (typeof parcial[k] === 'string' && parcial[k].trim()) out[k] = parcial[k];
+  }
+  if (ehObj(parcial.periodo)) out.periodo = Object.assign({}, out.periodo, parcial.periodo);
+  if (ehObj(parcial.redes)) out.redes = Object.assign({}, out.redes, parcial.redes);
+  if (Array.isArray(parcial.horarios)) out.horarios = parcial.horarios;
+  if (Array.isArray(parcial.cores) && parcial.cores.length) out.cores = parcial.cores;
+  if (Array.isArray(parcial.telas)) {
+    parcial.telas.forEach((t, i) => {
+      if (!ehObj(t)) return;
+      const tela = out.telas[i];
+      if (!tela) { out.telas.push(t); return; }
+      if (ehObj(t.alvo)) tela.alvo = t.alvo;
+      if (typeof t.nome === 'string' && t.nome.trim()) tela.nome = t.nome;
+      if (ehObj(t.zonas)) {
+        for (const z of Object.keys(t.zonas)) {
+          if (ehObj(t.zonas[z])) tela.zonas[z] = Object.assign({}, tela.zonas[z] || {}, t.zonas[z]);
+        }
+      }
+    });
+  }
+  return E.normalizar(out);
+}
+
+/*
+ * AS DECISÕES DA CONVERSA (D48): o que a pessoa decidiu e o escopo não
+ * guarda — o preço, a frase exata, o que ela não quer. Vão para a IA em toda
+ * volta, ficam salvas na conversa, aparecem no cartão (e a pessoa tira o que
+ * não vale mais) e vão para o gerador. A IA só ACRESCENTA (decisoes) e
+ * TIRA (esquecer); nunca reescreve a lista inteira.
+ */
+const limparDecisao = (s) => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, TAM_DECISAO);
+function mesclarDecisoes(atuais, novas, esquecer) {
+  const chave = (s) => limparDecisao(s).toLowerCase();
+  const fora = new Set((Array.isArray(esquecer) ? esquecer : []).map(chave).filter(Boolean));
+  const lista = (Array.isArray(atuais) ? atuais : []).map(limparDecisao).filter((d) => d && !fora.has(d.toLowerCase()));
+  for (const d of (Array.isArray(novas) ? novas : []).map(limparDecisao)) {
+    if (d && !lista.some((x) => x.toLowerCase() === d.toLowerCase())) lista.push(d);
+  }
+  return lista.slice(-MAX_DECISOES);
+}
+function textoDasDecisoes(decisoes) {
+  const l = mesclarDecisoes(decisoes, [], []);
+  return 'O QUE JÁ FOI DECIDIDO (vale até a pessoa mudar):\n' + (l.length ? l.map((d) => '- ' + d).join('\n') : '(nada ainda)');
 }
 
 /* ---------------- Modo demonstração ---------------- */
@@ -371,6 +451,22 @@ function roteiro(mensagens, escopo) {
     pronto: true,
   };
 }
+/*
+ * As decisões do roteiro (modo demonstração, D48): as escolhas que ele já
+ * entende viram frases, para o fluxo inteiro dar para testar sem chave.
+ */
+function decisoesDoRoteiro(texto) {
+  const t = String(texto || '').toLowerCase();
+  const d = [];
+  if (/minhas fotos|as minhas|use as minhas/.test(t)) d.push('Fotos: só as da empresa');
+  else if (/sem foto/.test(t)) d.push('Sem foto');
+  else if (/mistur/.test(t)) d.push('Fotos: as da empresa e as geradas');
+  else if (/pode gerar as fotos|gere as fotos|ia gera|gera as fotos/.test(t)) d.push('Fotos: a IA gera');
+  if (/s[oó] (para )?a tv|sem redes/.test(t)) d.push('Só para a TV, sem redes');
+  const preco = /r\$\s*\d+(?:[.,]\d{2})?/i.exec(String(texto || ''));
+  if (preco) d.push('Preço: ' + preco[0].replace(/\s+/g, ' '));
+  return d;
+}
 // O padrão liga quatro redes; no roteiro, quem liga é a resposta da pessoa.
 function falsos() { const r = {}; E.REDES.forEach((k) => { r[k] = false; }); return r; }
 
@@ -378,14 +474,20 @@ function falsos() { const r = {}; E.REDES.forEach((k) => { r[k] = false; }); ret
  * Uma volta da conversa. `mensagens` já inclui a fala nova da pessoa.
  * Devolve { resposta, sugestoes, escopo, pronto, modo }.
  */
-async function conversar({ mensagens, escopo, ctx } = {}) {
+async function conversar({ mensagens, escopo, decisoes, ctx } = {}) {
   const atual = E.normalizar(escopo);
+  // As decisões que já valiam (D48): só a IA (ou a pessoa, no cartão) acrescenta ou tira.
+  const antes = mesclarDecisoes(decisoes, [], []);
   if (ai.mode() === 'dev') {
     const r = roteiro(mensagens, atual);
-    return { ...r, escopo: conferirEscopo(r.escopo, ctx), modo: 'dev' };
+    const ditas = (mensagens || []).filter((m) => m && m.papel !== 'ia');
+    const novas = r.tipo === 'duvida' ? [] : decisoesDoRoteiro((ditas[ditas.length - 1] || {}).texto);
+    return { ...r, escopo: conferirEscopo(r.escopo, ctx), decisoes: mesclarDecisoes(antes, novas, []), modo: 'dev' };
   }
   const usuario = [
     contexto(ctx),
+    '',
+    textoDasDecisoes(antes),
     '',
     'ESCOPO ATUAL (o que já foi combinado, inclusive o que a pessoa mudou à mão no cartão):',
     JSON.stringify(atual),
@@ -414,7 +516,7 @@ async function conversar({ mensagens, escopo, ctx } = {}) {
       resposta: fora
         ? 'A IA está fora do ar agora. A conversa está salva: tente de novo daqui a pouco, ou gere com o que já combinamos.'
         : 'Não consegui responder agora. Tente mandar de novo, ou gere com o que já combinamos.',
-      sugestoes: [], escopo: atual, pronto: E.temOQueGerar(atual), modo: 'falha', falha: fora ? 'fora' : 'passageira',
+      sugestoes: [], escopo: atual, decisoes: antes, pronto: E.temOQueGerar(atual), modo: 'falha', falha: fora ? 'fora' : 'passageira',
     };
   }
   const resposta = String((r && r.resposta) || '').trim().slice(0, 900)
@@ -428,9 +530,10 @@ async function conversar({ mensagens, escopo, ctx } = {}) {
    * que estava (a pergunta "como ligo a TV?" não pode montar quatro zonas).
    */
   if (tipo === 'duvida') {
-    return { tipo, resposta, sugestoes: listaCurta(r && r.sugestoes, 4, 60), escopo: atual, pronto: false, gerar: false, modo: ai.mode() };
+    return { tipo, resposta, sugestoes: listaCurta(r && r.sugestoes, 4, 60), escopo: atual, decisoes: antes, pronto: false, gerar: false, modo: ai.mode() };
   }
-  const escopoNovo = conferirEscopo(r && r.escopo && typeof r.escopo === 'object' ? r.escopo : atual, ctx);
+  // O que a IA mandou entra POR CIMA do atual (D48): o que ela não repetiu continua valendo.
+  const escopoNovo = conferirEscopo(mesclarEscopo(atual, r && r.escopo), ctx);
   // As cores da campanha saem do cartão (D13), não da conversa: a IA que esquece o campo não as apaga.
   if (!escopoNovo.cores.length && atual.cores.length) escopoNovo.cores = atual.cores.slice();
   const gerar = E.temOQueGerar(escopoNovo) && (r && r.gerar === true || pediuParaGerar(ultimaFala));
@@ -440,10 +543,11 @@ async function conversar({ mensagens, escopo, ctx } = {}) {
     sugestoes: listaCurta(r && r.sugestoes, 4, 60),
     // Sem escopo na resposta, fica o que estava: a IA não apaga o combinado por omissão.
     escopo: escopoNovo,
+    decisoes: mesclarDecisoes(antes, r && r.decisoes, r && r.esquecer),
     pronto: !!(r && r.pronto === true) || gerar,
     gerar,
     modo: ai.mode(),
   };
 }
 
-module.exports = { conversar, contexto, conferirEscopo, transcricao, pediuParaGerar, tipoDoPedido, ajudaPara, TIPOS, AJUDA, JANELA, SISTEMA };
+module.exports = { conversar, contexto, conferirEscopo, mesclarEscopo, mesclarDecisoes, textoDasDecisoes, transcricao, pediuParaGerar, tipoDoPedido, ajudaPara, TIPOS, AJUDA, JANELA, SISTEMA };

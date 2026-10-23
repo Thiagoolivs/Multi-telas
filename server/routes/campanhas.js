@@ -56,6 +56,8 @@ module.exports = function (ctx) {
       const conv = conversaId ? await db.lerConversa(sess.tenant_id, conversaId) : null;
       if (conversaId && !conv) return sendJson(res, 404, { error: 'conversa não encontrada' });
       const ctxConta = await contextoDaConta(sess.tenant_id);
+      // D48: o que a pessoa decidiu na conversa (preço, frase exata, o que não quer) vai ao gerador.
+      if (conv && Array.isArray(conv.decisoes)) ctxConta.combinado = conv.decisoes;
       // O alvo é conferido contra as TVs desta conta, como na conversa.
       const escopo = conversa.conferirEscopo(b && b.escopo && typeof b.escopo === 'object' ? b.escopo : (conv && conv.escopo), ctxConta);
       if (!E.temOQueGerar(escopo)) return sendJson(res, 400, { error: 'ainda não tem nada para criar: diga o que quer mostrar' });

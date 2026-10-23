@@ -136,6 +136,8 @@ function pedidoDosTextos(escopo, vagas, ctx) {
     `Campanha: ${e.nome || '(sem nome)'}`,
     e.objetivo ? `Para que serve: ${e.objetivo}` : '',
     e.publico ? `Público: ${e.publico}` : '',
+    // D48: o combinado na conversa vale à risca — é o que o cliente disse e o escopo não guarda.
+    (ctx.combinado || []).length ? 'O QUE O CLIENTE COMBINOU NA CONVERSA (respeite à risca: preço, frase, o que ele não quer):\n' + ctx.combinado.slice(0, 24).map((d) => '- ' + String(d).slice(0, 160)).join('\n') : '',
     e.periodo.fim ? `Vale até: ${e.periodo.fim}` : '',
     e.horarios.length ? 'Horários: ' + e.horarios.map((h) => (h.faixa || h.inicio + '-' + h.fim) + (h.foco ? ' (' + h.foco + ')' : '')).join(', ') : '',
     REGRA_FOTO[e.imagens],

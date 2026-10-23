@@ -337,6 +337,8 @@ export const criar = {
   },
   renomearConversa: (id, titulo) => api('PUT', '/api/conversas/' + id, { titulo }),
   arquivarConversa: (id, arquivada) => api('PUT', '/api/conversas/' + id, { arquivada }),
+  // D48: o que foi combinado na conversa, corrigido pela pessoa.
+  salvarDecisoes: (id, decisoes) => api('PUT', '/api/conversas/' + id, { decisoes }),
   conversa: (id) => api('GET', '/api/conversas/' + id),
   salvarEscopo: (id, escopo) => api('PUT', '/api/conversas/' + id, { escopo }),
   async gerar(payload, onEtapa, sinal) {
