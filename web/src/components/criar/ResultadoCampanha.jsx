@@ -175,7 +175,7 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
           </div>
         </div>
         {onMudou && (
-          <a href="#editar-com-ia" className="flex items-center gap-1 self-center rounded-md border border-accent/40 px-2.5 py-1 text-xs font-medium text-accent lg:hidden">
+          <a href="#editar-com-ia" className="flex w-full items-center justify-center gap-1 rounded-md border border-accent/40 px-2.5 py-1.5 text-xs font-medium text-accent sm:w-auto sm:self-center lg:hidden">
             <Sparkles size={13} /> Editar com a IA
           </a>
         )}
