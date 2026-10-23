@@ -129,12 +129,39 @@ test('a rota: e-mail → código → passe → foto na fila; o RH aprova (foto n
   await pedir('/api/birthdays/import', { method: 'POST', cookie: c, json: { rows: [{ nome: 'Ana Souza', nascimento: '15/03', email: 'ana@x.com' }] } });
   assert.ok((await pedir('/api/birthdays', { cookie: c })).json.birthdays.some((p) => p.nome === 'Bruno Lima'));
 
-  // Pausado: a página e a rota fecham.
+  // D31b: no período, as TVs dos aniversários recebem o pedido (o QR vai na tela); o painel não.
+  const tv = (await pedir('/api/devices', { method: 'POST', json: {} })).json;
+  const daTv = { 'x-device-token': tv.deviceToken };
+  await pedir('/api/devices/' + tv.id + '/config', { headers: daTv });
+  assert.ok((await pedir('/api/pair', { method: 'POST', cookie: c, json: { code: tv.code } })).status < 300);
+  await pedir('/api/devices/' + tv.id + '/config', { method: 'PUT', cookie: c, json: { settings: { layoutId: 'full' }, zonas: {} } });
+  let cfg = (await pedir('/api/devices/' + tv.id + '/config', { headers: daTv })).json;
+  assert.equal(cfg.settings.automaticos, undefined, 'sem os aniversários ligados, o QR não vai');
+  await pedir('/api/automaticos', { method: 'PUT', cookie: c, json: { aniversarios: { ligado: true, telas: 'todas' } } });
+  cfg = (await pedir('/api/devices/' + tv.id + '/config', { headers: daTv })).json;
+  assert.deepEqual(cfg.settings.automaticos.pedidoFoto, { codigo: pedido.codigo, titulo: 'Sua foto', link: 'http://127.0.0.1:' + PORTA + '/f/' + pedido.codigo });
+  assert.equal((await pedir('/api/devices/' + tv.id + '/config', { cookie: c })).json.settings.automaticos, undefined, 'o painel gravaria de volta na programação');
+
+  // Pausado: a página, a rota e a TV fecham.
   assert.equal((await pedir('/api/fotoqr/' + pedido.id, { method: 'PUT', cookie: c, json: { aceitando: false } })).status, 200);
+  assert.equal((await pedir('/api/devices/' + tv.id + '/config', { headers: daTv })).json.settings.automaticos.pedidoFoto, undefined, 'pedido pausado continua na TV');
   assert.match((await pedir('/f/' + pedido.codigo)).txt, /O envio de fotos está fechado agora/);
   assert.equal((await pedir(base + '/codigo', { method: 'POST', json: { email: 'ana@x.com' } })).status, 403);
   assert.equal((await pedir('/api/fotoqr/' + pedido.id, { method: 'DELETE', cookie: c })).status, 200);
   assert.equal((await pedir('/f/' + pedido.codigo)).status, 404);
+});
+
+test('a TV: o cartão "mande sua foto" com o QR entra 1 a cada 6 na principal, e as TVs são avisadas', () => {
+  const P = ler('js/player.js');
+  assert.match(P, /if \(!a \|\| \(!a\.aniversarios && !a\.mural && !a\.pedidoFoto\) \|\| zonaId !== zonaPrincipal\(cfg\)\) return null;/);
+  assert.match(P, /if \(pedido && \(i \+ 1\) % 6 === 0\) out\.push\(pedido\);/);
+  assert.match(P, /if \(pedido && out\.indexOf\(pedido\) < 0\) out\.push\(pedido\);/, 'lista curta fica sem o QR');
+  const R = ler('js/render.js');
+  assert.match(R, /pedidofoto: renderPedidoFoto,/);
+  assert.match(R, /img\.onerror = function \(\) \{ q\.remove\(\); el\.classList\.add\('mt-pf-sem-qr'\); \};/, 'sem rede, o QR quebrado fica na tela');
+  assert.match(ler('css/player.css'), /\.mt-pedidofoto \{ display: grid;/);
+  assert.match(ler('server/routes/fotoqr.js'), /const avisar = \(t\) => avisarTelas\(t, 'config', \{\}\)/);
+  assert.match(ler('sw.js'), /mt-shell-v(5[6-9]|[6-9]\d)/);
 });
 
 test('o painel e a privacidade: fila só para dono/admin, tabelas novas na exclusão e na exportação', () => {

@@ -1837,7 +1837,7 @@
   }
   function automaticosDaZona(cfg, zonaId) {
     const a = cfg && cfg.settings && cfg.settings.automaticos;
-    if (!a || (!a.aniversarios && !a.mural) || zonaId !== zonaPrincipal(cfg)) return null;
+    if (!a || (!a.aniversarios && !a.mural && !a.pedidoFoto) || zonaId !== zonaPrincipal(cfg)) return null;
     return a;
   }
   function aniversariosDaSemana(agora) {
@@ -1856,17 +1856,22 @@
     const b = a.aniversarios ? aniversariosDaSemana(agora || new Date()) : { tem: false };
     const bolo = b.tem ? { type: 'birthdayauto', modo: 'auto', duracao: 12, _automatico: 'aniversarios' } : null;
     const mural = a.mural ? { type: 'mural', codigo: a.mural, titulo: 'Mural de fotos', duracao: 15, _automatico: 'mural' } : null;
-    if (!bolo && !mural) return lista;
+    // D31b: no período do pedido do RH, o QR "mande sua foto" entra 1 a cada 6.
+    const pf = a.pedidoFoto;
+    const pedido = pf && pf.codigo ? { type: 'pedidofoto', codigo: pf.codigo, titulo: pf.titulo, link: pf.link, duracao: 15, _automatico: 'pedidofoto' } : null;
+    if (!bolo && !mural && !pedido) return lista;
     const cada = b.hoje ? 2 : 4;
     const out = [];
     lista.forEach((it, i) => {
       out.push(it);
       if (bolo && (i + 1) % cada === 0) out.push(bolo);
       if (mural && (i + 1) % 5 === 0) out.push(mural);
+      if (pedido && (i + 1) % 6 === 0) out.push(pedido);
     });
     // Lista curta (ou vazia): entra pelo menos uma vez por volta.
     if (bolo && out.indexOf(bolo) < 0) out.push(bolo);
     if (mural && out.indexOf(mural) < 0) out.push(mural);
+    if (pedido && out.indexOf(pedido) < 0) out.push(pedido);
     return out;
   }
 

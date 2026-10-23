@@ -46,7 +46,7 @@ function Pedido({ p, onMudou }) {
           <Button size="sm" variant="secondary" icon={p.aceitando ? Pause : Play} onClick={() => mudar({ aceitando: !p.aceitando })}>{p.aceitando ? 'Pausar' : 'Abrir de novo'}</Button>
           <Button size="sm" variant="ghost" icon={Trash2} onClick={apagar}>Apagar</Button>
         </div>
-        <p className="text-2xs text-ink-3">Imprima o QR, mande no grupo da empresa ou ponha na TV. {p.inicio || p.fim ? 'Recebe ' + (p.inicio ? 'de ' + br(p.inicio) + ' ' : '') + (p.fim ? 'até ' + br(p.fim) : '') + '.' : ''}</p>
+        <p className="text-2xs text-ink-3">No período, o QR aparece sozinho nas TVs dos aniversários (acima). Dá também para imprimir ou mandar no grupo da empresa. {p.inicio || p.fim ? 'Recebe ' + (p.inicio ? 'de ' + br(p.inicio) + ' ' : '') + (p.fim ? 'até ' + br(p.fim) : '') + '.' : ''}</p>
       </div>
     </div>
   );
