@@ -768,7 +768,7 @@
       return { stop: espera.parar, atual: () => ({ esperando: true }) };
     }
     if (zone.type === 'ticker') return startTicker(zoneEl, data, cfg);
-    if (zone.type === 'header') return startHeader(zoneEl, cfg);
+    if (zone.type === 'header') return startHeader(zoneEl, cfg, data);
     return startPlaylist(zoneEl, data.items || [], cfg, zone.id);
   }
 
@@ -2397,7 +2397,7 @@
     if (!z) return false;
     const d = (cfg.zonas && cfg.zonas[z.id]) || {};
     const pecas = (Array.isArray(d.pecas) && d.pecas.length ? d.pecas : (d.peca ? [d.peca] : [])).filter((p) => p && p.type === 'peca-html');
-    if (!pecas.length) return true;
+    if (!pecas.length) return d.relogio !== false;
     return pecas.some((p) => /data-vivo="(relogio|data)"/.test(p.html || ''));
   }
 
@@ -2422,7 +2422,9 @@
 
   /* ---------------- Zona: Cabeçalho ---------------- */
 
-  function startHeader(zoneEl, cfg) {
+  // `dados.relogio === false` / `dados.clima === false`: o cabeçalho sem relógio ou sem clima (D28).
+  function startHeader(zoneEl, cfg, dados) {
+    const d = dados || {};
     zoneEl.classList.add('mt-header');
     const left = document.createElement('div');
     left.className = 'mt-header-left';
@@ -2450,8 +2452,8 @@
     clock.className = 'mt-header-clock';
     const weather = document.createElement('div');
     weather.className = 'mt-header-weather';
-    right.appendChild(weather);
-    right.appendChild(clock);
+    if (d.clima !== false) right.appendChild(weather);
+    if (d.relogio !== false) right.appendChild(clock);
 
     zoneEl.appendChild(left);
     zoneEl.appendChild(right);
@@ -2468,14 +2470,14 @@
         now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) +
         '</span>';
     }
-    tickClock();
-    const t = setInterval(tickClock, 1000 * 20);
+    let t = null;
+    if (d.relogio !== false) { tickClock(); t = setInterval(tickClock, 1000 * 20); }
 
     // Clima no cabeçalho (opcional). Quando chega, o nome tem menos espaço.
-    updateHeaderWeather(weather, cfg.settings.cidadeClima || 'São Paulo').then(() => caberNome(title));
+    if (d.clima !== false) updateHeaderWeather(weather, cfg.settings.cidadeClima || 'São Paulo').then(() => caberNome(title));
     caberNome(title);
 
-    return { stop: () => clearInterval(t) };
+    return { stop: () => { if (t) clearInterval(t); } };
   }
 
   async function updateHeaderWeather(el, cidade) {

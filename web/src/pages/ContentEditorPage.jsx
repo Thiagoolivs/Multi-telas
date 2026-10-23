@@ -18,6 +18,7 @@ import { aplicarConteudo } from '../lib/aplicarConteudo.js';
 import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
 import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
 import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
+import { MudarComIA } from '../components/tela/MudarComIA.jsx';
 import { FaixaDaTela, pecasDaFaixa, comPecas } from '../components/tela/FaixaDaTela.jsx';
 import { papelDaZona, campanhasDaConfig, tamanhosDasZonas } from '../lib/tela.js';
 import { CampanhasNaTela, semCampanha } from '../components/tela/CampanhasNaTela.jsx';
@@ -619,6 +620,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
               <MapaDaTela layout={layoutCanonico} ativa={activeZone && activeZone.id} onEscolher={selectZone} resumo={resumoDaZona}
                 cfg={cfg} onIA={onCriar ? (z) => onCriar(papelDaZona(z)) : undefined} />
             )}
+            {/* D28: layout e tema numa frase, com antes e depois; muda o rascunho. */}
+            <MudarComIA cfg={cfg} onAplicar={(novo) => { setCfg(novo); setDirty(true); }} />
           </div>
 
           {activeZone && (activeZone.type === 'ticker' || activeZone.type === 'header') ? (

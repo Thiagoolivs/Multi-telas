@@ -96,6 +96,8 @@ const OPERACOES = {
   calendario: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Calendário da empresa' },
   // O aviso numa frase (D27): uma chamada de texto.
   'aviso-rapido': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Aviso rápido' },
+  // Layout e tema numa frase (D28): uma chamada de texto.
+  'ajuste-tela': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Mudar a tela' },
 };
 
 function operacao(tipo) { return OPERACOES[tipo] || null; }

@@ -264,6 +264,9 @@
         if (existing.peca) out.zonas[zone.id].peca = existing.peca;
         // As chamadas que giram no cabeçalho (data-vivo="mensagens" na peça dele).
         if (Array.isArray(existing.messages) && existing.messages.length) out.zonas[zone.id].messages = existing.messages.slice(0, 20);
+        // O relógio e o clima do cabeçalho automático podem sair (D28); sem a chave, ficam.
+        if (existing.relogio === false) out.zonas[zone.id].relogio = false;
+        if (existing.clima === false) out.zonas[zone.id].clima = false;
         vivosDaFaixa(out.zonas[zone.id], existing);
       } else {
         out.zonas[zone.id] = {
