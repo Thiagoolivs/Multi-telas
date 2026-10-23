@@ -218,6 +218,14 @@ async function init() {
     );
     CREATE INDEX IF NOT EXISTS idx_eventos_quando ON eventos(created_at);
     CREATE INDEX IF NOT EXISTS idx_eventos_tenant ON eventos(tenant_id, created_at);
+    /*
+     * D43: a qualidade das gerações, só contagem por dia (server/qualidade.js):
+     * peça refeita por peça-ouro e defeito, campo editado à mão, tipo de
+     * pedido. Sem conta e sem pessoa — não identifica ninguém.
+     */
+    CREATE TABLE IF NOT EXISTS qualidade (
+      dia TEXT NOT NULL, chave TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (dia, chave)
+    );
     -- Reclamações e pedidos escritos pelo cliente. Antes não havia canal
     -- nenhum dentro do produto.
     CREATE TABLE IF NOT EXISTS reclamacoes (
@@ -600,6 +608,22 @@ async function pessoasAtivas(desde) {
 }
 async function limparEventos(antesDe) {
   await pool.query('DELETE FROM eventos WHERE created_at < $1', [antesDe]);
+}
+
+/* ---------------- Qualidade das gerações (D43): só contagem ---------------- */
+async function contarQualidade(chaves) {
+  const dia = new Date().toISOString().slice(0, 10);
+  for (const c of chaves || []) {
+    await pool.query('INSERT INTO qualidade (dia, chave, n) VALUES ($1, $2, 1) ON CONFLICT (dia, chave) DO UPDATE SET n = qualidade.n + 1',
+      [dia, String(c).slice(0, 80)]);
+  }
+}
+async function qualidadeDesde(dia) {
+  const r = await pool.query('SELECT chave, SUM(n)::int AS n FROM qualidade WHERE dia >= $1 GROUP BY chave ORDER BY n DESC LIMIT 500', [String(dia || '')]);
+  return r.rows.map((x) => ({ chave: x.chave, n: Number(x.n) }));
+}
+async function limparQualidade(antesDoDia) {
+  await pool.query('DELETE FROM qualidade WHERE dia < $1', [String(antesDoDia || '')]);
 }
 
 /* ---------------- Trabalhos de IA ---------------- */
@@ -2013,6 +2037,7 @@ module.exports = {
   listarOperadores, addOperador, removerOperador,
   fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
+  contarQualidade, qualidadeDesde, limparQualidade,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa, conversaDeEdicao,
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,

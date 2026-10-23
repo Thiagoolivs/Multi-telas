@@ -51,6 +51,7 @@ const guarda = require('./server/guarda');
 const apk = require('./server/apk');
 const pedirIA = require('./server/pedir-ia');
 const esbocoDoPedido = require('./server/esboco');
+const qualidade = require('./server/qualidade');
 const kpis = require('./server/kpis');
 const segredo = require('./server/segredo');
 const ajusteTela = require('./server/ajuste-tela');
@@ -1392,6 +1393,17 @@ const negocioCache = new Map();
      * primeiro sinal seria um cliente ligando para dizer que o painel dele
      * "dá erro".
      */
+    /*
+     * D43: a qualidade das gerações — o que volta para a IA, o que o
+     * cliente corrige à mão e o que mais pede. Só contagens agregadas
+     * (server/qualidade.js): nem conta, nem pessoa, nem texto.
+     */
+    if (req.method === 'GET' && parts[2] === 'qualidade') {
+      const dias = Math.min(180, Math.max(1, Number(query && query.dias) || 30));
+      const linhas = await db.qualidadeDesde(qualidade.diaDe(Date.now() - (dias - 1) * 24 * 60 * 60 * 1000));
+      return sendJson(res, 200, Object.assign({ dias }, qualidade.relatorio(linhas)));
+    }
+
     if (req.method === 'GET' && parts[2] === 'limites') {
       return sendJson(res, 200, limites.panorama());
     }
@@ -2064,6 +2076,8 @@ const negocioCache = new Map();
     if (!rl.ok) return sendJson(res, 429, { error: 'limite de redesenhos por hora atingido' }, { 'Retry-After': String(rl.retryAfter) });
     return readBody(req, res, async (b) => {
       if (!b || !b.item || b.item.type !== 'peca-html') return sendJson(res, 400, { error: 'envie a peça em HTML' });
+      // D43: a peça que voltou para a IA, por peça-ouro, papel e defeito (o relatório do operador).
+      qualidade.contar(db, qualidade.chavesDoRefazer(b.item, b.problemas));
       return emTrabalho(res, sess, 'peca', { brief: 'redesenhar a peça' }, async (progresso) => {
         progresso('redesenhando a peça', String((b.problemas || [])[0] || ''));
         const r = await compositor.refazerPeca({ item: b.item, problemas: b.problemas, motor: compositor.motorDoHtml() });
@@ -3045,8 +3059,11 @@ db.init()
     jobs.fecharOrfaos().catch((e) => erros.registrar(e, { onde: 'fechar trabalhos órfãos' }));
 
     const NOVENTA_DIAS = 90 * 24 * 60 * 60 * 1000;
-    const varrer = () => db.limparEventos(Date.now() - NOVENTA_DIAS)
-      .catch((e) => erros.registrar(e, { onde: 'limpeza de eventos' }));
+    const varrer = () => Promise.all([
+      db.limparEventos(Date.now() - NOVENTA_DIAS),
+      // A contagem da qualidade (D43) é agregada e sem ninguém: guarda seis meses, para ver a tendência.
+      db.limparQualidade(qualidade.diaDe(Date.now() - 2 * NOVENTA_DIAS)),
+    ]).catch((e) => erros.registrar(e, { onde: 'limpeza de eventos' }));
     varrer();
     const relogio = setInterval(varrer, 6 * 60 * 60 * 1000);
     if (relogio.unref) relogio.unref();

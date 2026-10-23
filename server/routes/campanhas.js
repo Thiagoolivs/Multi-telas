@@ -29,6 +29,7 @@ const conversa = require('../ai-conversa');
 const ajuste = require('../ajuste');
 const paleta = require('../paleta.js');
 const P = require('../../js/peca-html.js');
+const qualidade = require('../qualidade');
 
 /*
  * A capa da campanha (item 29): a primeira peça da principal (ou a primeira
@@ -140,6 +141,8 @@ module.exports = function (ctx) {
       return emTrabalho(res, sess, 'edicao', { brief: ('Ajuste: ' + texto).slice(0, 200) }, async (progresso) => {
         progresso('entendendo o ajuste', texto.slice(0, 80));
         const { resposta, mudancas } = await ajuste.entender(texto, c);
+        // D43: o tipo do pedido entra na contagem do operador (nunca a frase).
+        qualidade.contar(db, qualidade.chavesDoPedido('ajustar', mudancas.length ? 'fazer' : 'responder', mudancas));
         if (!mudancas.length) return { campanha: c, resposta, mudancas };
         // D42: o que GERA (redesenhar, foto nova, peça nova) só com o "pode fazer" — no Editar com a IA.
         if (esboco.geraAlgo(mudancas)) {
@@ -189,6 +192,7 @@ module.exports = function (ctx) {
         const ultimaIa = [...(conv.mensagens || [])].reverse().find((m) => m && m.papel === 'ia');
         const esperando = ultimaIa && Array.isArray(ultimaIa.aguardando) ? ultimaIa.aguardando : null;
         let out;
+        let pedidoNovo = false;
         if (esperando && esboco.confirmou(texto)) {
           // Conferido de novo contra a campanha de agora: o que sumiu (peça tirada no meio) não entra.
           const mud = ajuste.lerMudancas(ajuste.comoPedido(esperando, conv.referencias || []), c.resultado, { refs: conv.referencias || [] });
@@ -198,6 +202,7 @@ module.exports = function (ctx) {
         } else if (esperando && esboco.recusou(texto)) {
           out = { acao: 'responder', resposta: 'Tudo bem, não mudei nada.', sugestoes: [], mudancas: [], decisoes: conv.decisoes || [] };
         } else {
+          pedidoNovo = true;
           out = await edicao.conversar({ texto, mensagens, decisoes: conv.decisoes || [], campanha: c, referencias: conv.referencias || [] });
         }
         // O que gera e ainda não foi aprovado: mostra o que vai fazer e pergunta.
@@ -207,6 +212,11 @@ module.exports = function (ctx) {
             resposta: 'Vou fazer: ' + out.mudancas.map(ajuste.descreverMudanca).join('; ') + '. Posso?',
             sugestoes: ['Pode fazer', 'Não, deixa como está'],
           });
+        }
+        // D43: o tipo do pedido (o que espera o "pode fazer" conta pelo que vai ser feito).
+        if (pedidoNovo) {
+          const confirmar = out.acao === 'confirmar';
+          qualidade.contar(db, qualidade.chavesDoPedido('editar', confirmar ? 'fazer' : out.acao, confirmar ? out.aguardando : out.mudancas));
         }
         let salva = c;
         let refeitas = 0;
@@ -318,6 +328,8 @@ module.exports = function (ctx) {
         const lista = Array.isArray(z) ? z : z.pecas;
         const i = lista.findIndex((x) => x.vaga === vaga);
         const antes = lista[i];
+        // D43: o NOME dos campos que a pessoa mexeu à mão entra na contagem do operador.
+        qualidade.contar(db, qualidade.chavesDaEdicao(antes.item, v.item));
         lista[i] = { ...antes, item: { ...antes.item, ...v.item, formato: antes.formato, ...(antes.item.agendamento ? { agendamento: antes.item.agendamento } : {}) },
           label: String((b.item.campos && (b.item.campos.titulo || b.item.campos.chamada)) || antes.label).slice(0, 40) };
         const anterior = { ...c.resultado }; delete anterior.anterior;
