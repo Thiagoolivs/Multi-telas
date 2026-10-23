@@ -6,6 +6,7 @@ import { Spinner } from '../components/ui/Feedback.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { CartaoEscopo, linhaDoCusto } from '../components/criar/CartaoEscopo.jsx';
 import { ListaDeConversas } from '../components/criar/ListaDeConversas.jsx';
+import { Combinado } from '../components/criar/Combinado.jsx';
 import { ai, criar, devices, seasons, brand } from '../api.js';
 import { ideiaDaData } from '../lib/ideiaDaData.js';
 import E from '../lib/escopo.js';
@@ -238,6 +239,17 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   }
 
   const podeGerar = E.temOQueGerar(escopo) && !criada;
+  const decisoes = (conversa && conversa.decisoes) || [];
+
+  // D48: tirar uma decisão que não vale mais (a IA deixa de considerar na próxima volta).
+  async function tirarDecisao(d) {
+    if (!conversa) return;
+    const ficam = decisoes.filter((x) => x !== d);
+    setConversa({ ...conversa, decisoes: ficam });
+    try { const r = await criar.salvarDecisoes(conversa.id, ficam); setConversa(r.conversa); }
+    catch (e) { setConversa(conversa); aviso.erro('criar', 'Não deu para tirar: ' + (e.message || 'falha de conexão') + '.'); }
+  }
+  const combinado = <Combinado decisoes={decisoes} onTirar={criada ? null : tirarDecisao} />;
   const ultimaIa = [...mensagens].reverse().find((m) => m.papel === 'ia');
 
   const lista = (
@@ -361,6 +373,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
             {/* No celular, o cartão fica entre a conversa e a caixa, recolhido numa linha. */}
             {podeGerar && conversando && (
               <div className="space-y-2 lg:hidden">
+                {combinado}
                 <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} recolhivel />
                 {botaoGerar}
               </div>
@@ -411,6 +424,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
           {conversando && podeGerar && (
             <aside className="hidden space-y-2 lg:sticky lg:top-4 lg:block">
+              {combinado}
               <CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} />
               {botaoGerar}
             </aside>

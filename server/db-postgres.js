@@ -359,6 +359,7 @@ async function init() {
     -- Arquivada desde quando (0 = não). Sai da lista, não do banco (D10).
     ALTER TABLE campanhas ADD COLUMN IF NOT EXISTS arquivada BIGINT;
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS arquivada BIGINT;
+    ALTER TABLE conversas ADD COLUMN IF NOT EXISTS decisoes TEXT;
   `);
 }
 
@@ -642,15 +643,16 @@ const mapConv = (r) => r && ({
   escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
   arquivada: Number(r.arquivada) || 0,
+  decisoes: r.decisoes === undefined ? undefined : jsonOu(r.decisoes, []),
 });
 async function criarConversa(tenantId, userId, c) {
   const id = 'conv_' + rid(14);
   const agora = Date.now();
   await pool.query(
-    `INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    `INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em, decisoes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
     [id, tenantId, userId || '', String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []),
-      JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora]
+      JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora, JSON.stringify(c.decisoes || [])]
   );
   return lerConversa(tenantId, id);
 }
@@ -660,10 +662,10 @@ async function lerConversa(tenantId, id) {
 }
 async function salvarConversa(tenantId, id, c) {
   await pool.query(
-    `UPDATE conversas SET titulo = $1, mensagens = $2, escopo = $3, estado = $4, campanha_id = $5, atualizado_em = $6
+    `UPDATE conversas SET titulo = $1, mensagens = $2, escopo = $3, estado = $4, campanha_id = $5, atualizado_em = $6, decisoes = $9
      WHERE id = $7 AND tenant_id = $8`,
     [String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []), JSON.stringify(c.escopo || null),
-      c.estado || 'conversando', c.campanhaId || '', Date.now(), id, tenantId]
+      c.estado || 'conversando', c.campanhaId || '', Date.now(), id, tenantId, JSON.stringify(c.decisoes || [])]
   );
   return lerConversa(tenantId, id);
 }

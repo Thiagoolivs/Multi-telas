@@ -414,6 +414,8 @@ garantirColuna('campanhas', 'capa TEXT');
 garantirColuna('campanhas', 'arquivada INTEGER');
 // D49: as conversas do Criar se arquivam como as campanhas.
 garantirColuna('conversas', 'arquivada INTEGER');
+// D48: o que a pessoa decidiu na conversa (preço, frase, "sem foto de gente") — vai à IA em toda volta.
+garantirColuna('conversas', 'decisoes TEXT');
 // Pessoas (D30): setor separado do cargo, e-mail (para o QR das fotos), de onde veio
 // (planilha | qr | manual; vazio = planilha, como eram todas) e quando mudou.
 garantirColuna('birthdays', 'setor TEXT');
@@ -1232,9 +1234,9 @@ async function limparJobs(antesDe) { qJobs.limpar.run(antesDe); }
  * Mensagens e escopo são JSON em texto, como o resultado dos trabalhos.
  */
 const qConv = {
-  inserir: db.prepare(`INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
-  salvar: db.prepare(`UPDATE conversas SET titulo = ?, mensagens = ?, escopo = ?, estado = ?, campanha_id = ?, atualizado_em = ?
+  inserir: db.prepare(`INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em, decisoes)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+  salvar: db.prepare(`UPDATE conversas SET titulo = ?, mensagens = ?, escopo = ?, estado = ?, campanha_id = ?, atualizado_em = ?, decisoes = ?
                       WHERE id = ? AND tenant_id = ?`),
   ler: db.prepare('SELECT * FROM conversas WHERE id = ? AND tenant_id = ?'),
   doTenant: db.prepare(`SELECT id, titulo, estado, campanha_id, criado_em, atualizado_em FROM conversas
@@ -1247,18 +1249,19 @@ const mapConv = (r) => r && ({
   escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
   arquivada: Number(r.arquivada) || 0,
+  decisoes: r.decisoes === undefined ? undefined : jsonOu(r.decisoes, []),
 });
 async function criarConversa(tenantId, userId, c) {
   const id = 'conv_' + rid(14);
   const agora = Date.now();
   qConv.inserir.run(id, tenantId, userId || '', String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []),
-    JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora);
+    JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora, JSON.stringify(c.decisoes || []));
   return lerConversa(tenantId, id);
 }
 async function lerConversa(tenantId, id) { return mapConv(qConv.ler.get(id, tenantId)) || null; }
 async function salvarConversa(tenantId, id, c) {
   qConv.salvar.run(String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []), JSON.stringify(c.escopo || null),
-    c.estado || 'conversando', c.campanhaId || '', Date.now(), id, tenantId);
+    c.estado || 'conversando', c.campanhaId || '', Date.now(), JSON.stringify(c.decisoes || []), id, tenantId);
   return lerConversa(tenantId, id);
 }
 /*
