@@ -310,7 +310,8 @@ module.exports = function (ctx) {
             if (auto.aniversarios) {
               const pedidos = await db.listarPedidosFoto(device.tenant_id);
               const pedido = pedidos.find((p) => fotoQr.noPeriodo(p));
-              if (pedido) auto.pedidoFoto = { codigo: pedido.codigo, titulo: pedido.titulo, link: baseUrl(req) + '/f/' + pedido.codigo };
+              // `ate`: a TV sem internet esconde o QR pelo relógio dela quando o período acaba (nota do consultor no #259).
+              if (pedido) auto.pedidoFoto = { codigo: pedido.codigo, titulo: pedido.titulo, link: baseUrl(req) + '/f/' + pedido.codigo, ate: pedido.fim || '' };
               /*
                * Datas com fotos da equipe (D33): na semana da data, o mural
                * com as fotos aprovadas — da própria conta, e com o primeiro
@@ -322,7 +323,7 @@ module.exports = function (ctx) {
                 const fotos = (await db.listarFotosPessoa(device.tenant_id))
                   .filter((f) => f.pedidoId === daData.id && f.aprovadaEm && f.url.startsWith(daConta))
                   .slice(-12).map((f) => ({ url: f.url, nome: String(f.nome || '').split(' ')[0] }));
-                if (fotos.length) auto.dataComFotos = { titulo: fotoQr.saudacaoDa(daData.dataId), fotos };
+                if (fotos.length) auto.dataComFotos = { titulo: fotoQr.saudacaoDa(daData.dataId), fotos, ate: daData.dataAlvo };
               }
             }
             if (auto.aniversarios || auto.mural) { c.settings.automaticos = auto; mudou = true; }
