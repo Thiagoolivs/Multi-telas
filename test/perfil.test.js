@@ -28,11 +28,13 @@ test('o perfil sai do ramo: metalúrgica é Empresa, clínica é Saúde, padaria
   assert.equal(Perfil.normalizar('qualquer'), 'comercio');
 });
 
-test('cada perfil tem seis começos, todos existentes, e a Empresa não vê promoção nem foto de produto', () => {
+test('cada perfil tem de 10 a 12 começos, todos existentes, e a Empresa não vê promoção nem foto de produto', () => {
   const src = ler('web/src/pages/CriacaoRapidaPage.jsx');
   for (const id of Perfil.IDS) {
     const p = Perfil.PERFIS[id];
-    assert.equal(p.opcoes.length, 6, id + ' não tem seis começos');
+    // D17: o dono pediu pelo menos 10 começos rápidos.
+    assert.ok(p.opcoes.length >= 10 && p.opcoes.length <= 12, id + ' tem ' + p.opcoes.length + ' começos');
+    assert.equal(new Set(p.opcoes).size, p.opcoes.length, id + ' repete começo');
     for (const o of p.opcoes) assert.match(src, new RegExp("\\{ id: '" + o + "'"), id + ': o começo "' + o + '" não existe em OPCOES');
     for (const k of ['nome', 'descricao', 'lugar', 'lugarDe', 'exemplo', 'paraIA']) assert.ok(p[k], id + ' sem ' + k);
   }
