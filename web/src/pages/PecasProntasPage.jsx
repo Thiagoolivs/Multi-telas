@@ -7,7 +7,10 @@ import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { RedesSociais } from '../components/content/RedesSociais.jsx';
-import { criar, library, devices } from '../api.js';
+import { criar, library, devices, brand } from '../api.js';
+import { EditarPeca } from '../components/content/EditarPeca.jsx';
+import { carregarModelos, itemDoModelo, ordenarPorPerfil } from '../lib/modelosOuro.js';
+import { usePerfil } from '../lib/perfil.js';
 import { porPecaNasTelas } from '../lib/rodar.js';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
@@ -42,6 +45,14 @@ export function PecasProntasPage({ onIr }) {
   const [alvos, setAlvos] = useState([]);
   const [enviando, setEnviando] = useState(false);
   const [redesDe, setRedesDe] = useState(null);
+  /*
+   * Os modelos prontos (D16): as peças-ouro já com a marca da conta. Cliente
+   * novo deixa de ver "Nenhuma peça pronta ainda" com 43 modelos guardados.
+   */
+  const perfil = usePerfil();
+  const [modelos, setModelos] = useState(null);
+  const [marca, setMarca] = useState(null);
+  const [usando, setUsando] = useState(null);   // o modelo aberto no editor de texto
 
   useEffect(() => {
     setErroPecas(''); setPecas(null);
@@ -64,7 +75,28 @@ export function PecasProntasPage({ onIr }) {
       setPecas(todas);
     }).catch((e) => setErroPecas(e.message || 'Não deu para carregar as peças.'));
     devices.list().then((r) => setTelas((r && r.devices) || [])).catch(() => setTelas([]));
+    brand.get().then((r) => {
+      const k = (r && r.kit) || {};
+      setMarca({ cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '' });
+    }).catch(() => setMarca({}));
+    carregarModelos().then(setModelos).catch(() => setModelos([]));
   }, [tentativa]);
+
+  // Os modelos na marca da conta, na ordem do tipo de negócio, com o mesmo filtro e a mesma busca.
+  const modelosVisiveis = useMemo(() => {
+    if (!modelos || !marca) return [];
+    return ordenarPorPerfil(modelos, perfil.id).map((m) => {
+      const item = itemDoModelo(m, marca);
+      return { id: 'modelo-' + m.id, item, papel: item.papel, formato: item.formato, label: m.nome, origem: 'modelo · ' + m.familia, modelo: true };
+    }).filter((p) => {
+      const faixa = p.papel === 'cabecalho' || p.papel === 'rodape';
+      if (filtro === 'faixas' && !faixa) return false;
+      if (filtro === 'empe' && (faixa || !String(p.formato || '').startsWith('9/'))) return false;
+      if (filtro === 'deitada' && (faixa || String(p.formato || '').startsWith('9/'))) return false;
+      const t = q.trim().toLowerCase();
+      return !t || ((p.label || '') + ' ' + (p.origem || '')).toLowerCase().includes(t);
+    });
+  }, [modelos, marca, perfil.id, filtro, q]);
 
   const visiveis = useMemo(() => (pecas || []).filter((p) => {
     const faixa = p.papel === 'cabecalho' || p.papel === 'rodape';
@@ -90,7 +122,7 @@ export function PecasProntasPage({ onIr }) {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-ink">Peças prontas</h1>
-          <p className="mt-1 text-sm text-ink-2">O que já está pronto para a TV e para as redes, das suas campanhas e da biblioteca.</p>
+          <p className="mt-1 text-sm text-ink-2">O que já está pronto para a TV e para as redes: das suas campanhas, da biblioteca e os modelos com a sua marca.</p>
         </div>
         <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar novas</Button>
       </div>
@@ -111,7 +143,7 @@ export function PecasProntasPage({ onIr }) {
 
       {erroPecas ? (
         <ErrorState description={erroPecas} onRetry={() => setTentativa((n) => n + 1)} />
-      ) : pecas === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : visiveis.length === 0 ? (
+      ) : pecas === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : visiveis.length === 0 && modelosVisiveis.length > 0 ? null : visiveis.length === 0 ? (
         <Panel>
           <EmptyState icon={Layers} title={pecas.length ? 'Nenhuma peça neste filtro' : 'Nenhuma peça pronta ainda'}
             description={pecas.length ? 'Troque o filtro ou a busca.' : 'As peças que o Criar faz aparecem aqui, prontas para qualquer TV.'}
@@ -142,6 +174,51 @@ export function PecasProntasPage({ onIr }) {
             );
           })}
         </div>
+      )}
+
+      {/* Os modelos prontos, com a marca da conta (D16). */}
+      {modelos === null || marca === null ? (
+        pecas !== null && <div className="mt-6 flex justify-center py-6"><Spinner size={18} /></div>
+      ) : modelosVisiveis.length > 0 && (
+        <section className="mt-6 space-y-3">
+          <div>
+            <h2 className="text-base font-semibold text-ink">Modelos prontos, com a sua marca</h2>
+            <p className="text-sm text-ink-2">Toque em Usar, troque o texto e ponha na TV. Já saem nas suas cores, com o seu nome e a sua logo.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {modelosVisiveis.map((p) => {
+              const faixa = p.papel === 'cabecalho' || p.papel === 'rodape';
+              return (
+                <div key={p.id} className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface">
+                  <div className="flex h-44 items-center justify-center bg-surface-2 p-2">
+                    {faixa ? <div className="w-full"><PecaHtml item={p.item} formato={p.papel} /></div> : <DesignThumb item={p.item} fitHeight />}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-2 p-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-ink">{p.label}</div>
+                      <div className="truncate text-2xs text-ink-3">{ondeCabe(p)} · {p.origem.replace('modelo · ', '')}</div>
+                    </div>
+                    <div className="mt-auto flex flex-wrap gap-1.5">
+                      <Button size="sm" variant="primary" icon={Wand2} onClick={() => setUsando(p)}>Usar</Button>
+                      {!faixa && <Button size="sm" icon={Share2} onClick={() => setRedesDe(p)}>Redes</Button>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Usar um modelo: troca o texto e, ao salvar, escolhe as TVs. */}
+      {usando && (
+        <EditarPeca item={usando.item} label={usando.label} onFechar={() => setUsando(null)}
+          onSalvar={async (item) => {
+            const pronta = { ...usando, item: { ...usando.item, ...item, papel: usando.papel, formato: usando.formato } };
+            setUsando(null);
+            if (telas.length) { setPorNaTv(pronta); setAlvos(telas.map((t) => t.id)); }
+            else aviso.ok('Pronto. Ligue uma TV em Telas para pôr esta peça no ar.');
+          }} />
       )}
 
       {porNaTv && (
