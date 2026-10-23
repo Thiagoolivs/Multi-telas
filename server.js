@@ -47,6 +47,7 @@ const calendario = require('./server/calendario');
 const avisoRapido = require('./server/aviso-rapido');
 const pessoas = require('./js/pessoas.js');
 const fotoQr = require('./server/foto-qr');
+const guarda = require('./server/guarda');
 const ajusteTela = require('./server/ajuste-tela');
 const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
@@ -854,8 +855,30 @@ async function handleApi(req, res, pathname, query) {
       try { return (await midia.guardarBuffer(db, t, img.bytes, img.mime, { nome: 'Foto de ' + nome, origem: 'upload' })).url; }
       catch (e) { return ''; }
     };
+    /*
+     * LGPD por pessoa (D35): tirar alguém leva junto a foto dela (se não
+     * estiver em outro lugar da conta) e as fotos que ela mandou pelo QR.
+     * Trocar a foto apaga a de antes do mesmo jeito.
+     */
+    const apagarFotoSolta = async (url, outras) => {
+      if (!url || !url.startsWith(daConta) || (outras || []).some((p) => p.foto === url)) return false;
+      if ((await ondeEstaEmUso(t, url)).length) return false;
+      const m = (await db.listMedia(t)).find((x) => x.url === url);
+      return m ? midia.apagar(db, t, m.id).then(() => true).catch(() => false) : false;
+    };
+    const apagarFotosDoQr = async (pessoaIds) => {
+      let n = 0;
+      for (const f of (await db.listarFotosPessoa(t)).filter((x) => x.pessoaId && pessoaIds.includes(x.pessoaId))) {
+        if (f.mediaId) await midia.apagar(db, t, f.mediaId).catch(() => {});
+        n += await db.removerFotoPessoa(f.id, t);
+      }
+      return n;
+    };
     if (req.method === 'DELETE' && !parts[2]) {
+      const todas = await db.listBirthdays(t);
       await db.clearBirthdays(t);
+      for (const p of todas) await apagarFotoSolta(p.foto);
+      await apagarFotosDoQr(todas.map((p) => p.id));
       return sendJson(res, 200, { ok: true });
     }
     if (parts[2] === 'import' && req.method === 'POST') {
@@ -894,12 +917,16 @@ async function handleApi(req, res, pathname, query) {
         if (!p) return sendJson(res, 400, { error: 'precisa do nome e do aniversário' });
         p.foto = await fotoDaConta(p.foto, p.nome);
         await db.atualizarPessoa(t, atual.id, Object.assign(p, { origem: atual.origem }));
+        if (atual.foto && atual.foto !== p.foto) await apagarFotoSolta(atual.foto, await db.listBirthdays(t));
         return sendJson(res, 200, { ok: true });
       });
     }
     if (parts[2] && parts[2] !== 'import' && req.method === 'DELETE') {
-      if (!(await db.removerPessoa(t, parts[2]))) return sendJson(res, 404, { error: 'pessoa não encontrada' });
-      return sendJson(res, 200, { ok: true });
+      const pessoa = await db.pessoaDoTenant(t, parts[2]);
+      if (!pessoa || !(await db.removerPessoa(t, pessoa.id))) return sendJson(res, 404, { error: 'pessoa não encontrada' });
+      const foto = await apagarFotoSolta(pessoa.foto, await db.listBirthdays(t));
+      const fotosDoQr = await apagarFotosDoQr([pessoa.id]);
+      return sendJson(res, 200, { ok: true, fotoApagada: foto, fotosDoQr });
     }
     return sendJson(res, 404, { error: 'rota de pessoas não encontrada' });
   }
@@ -2963,5 +2990,11 @@ db.init()
       .catch((e) => erros.registrar(e, { onde: 'faxina diária' }));
     setTimeout(faxina, 2 * 60 * 1000).unref();
     setInterval(faxina, 24 * 60 * 60 * 1000).unref();
+    // O prazo de guarda das fotos de gente (D35, server/guarda.js): mural da data e fila do QR.
+    const prazoDeGuarda = () => guarda.varrer({ db, midia })
+      .then((r) => { if (r.fotos || r.muraisDeData) log.info('guarda', r); })
+      .catch((e) => erros.registrar(e, { onde: 'prazo de guarda' }));
+    setTimeout(prazoDeGuarda, 3 * 60 * 1000).unref();
+    setInterval(prazoDeGuarda, 24 * 60 * 60 * 1000).unref();
   }))
   .catch((e) => { log.erro('db.init-falhou', e); process.exit(1); });
