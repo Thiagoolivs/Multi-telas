@@ -121,6 +121,8 @@ function carregar(arquivo, servidor) {
     URL,
     TypeError,
     Promise,
+    setTimeout,
+    clearTimeout,
     console: { warn() {}, log() {} },
   };
   contexto.globalThis = contexto;
@@ -202,7 +204,7 @@ test('painel: a instalação guarda até o pacote que a página ainda não pediu
    */
   const w = carregar('web/public/sw.js', servidorPadrao);
   await w.instalar();
-  const guardados = [...w.caixas.get('mt-app-v1').keys()];
+  const guardados = [...w.caixas.get('mt-app-v2').keys()];
   assert.ok(guardados.includes('/app/'), 'sem o casco');
   assert.ok(guardados.includes('/app/assets/index-abc.js'), 'sem o pacote principal');
   assert.ok(guardados.includes('/app/assets/CompositionEditor-xyz.js'), 'sem o pacote do editor');
@@ -212,7 +214,7 @@ test('painel: sem a lista de ativos, a instalação ainda acontece', async () =>
   // Ficar sem worker nenhum é pior do que ficar com um worker incompleto.
   const w = carregar('web/public/sw.js', (c) => (c === '/app/ativos.json' ? null : servidorPadrao(c)));
   await w.instalar();
-  assert.ok([...w.caixas.get('mt-app-v1').keys()].includes('/app/'), 'a instalação abortou por causa da lista');
+  assert.ok([...w.caixas.get('mt-app-v2').keys()].includes('/app/'), 'a instalação abortou por causa da lista');
 });
 
 test('painel: sem rede, o app abre do cache', async () => {
@@ -223,6 +225,20 @@ test('painel: sem rede, o app abre do cache', async () => {
   const res = await caiu.pedir('/app/', { mode: 'navigate' });
   assert.ok(res, 'não respondeu à navegação');
   assert.match(await res.text(), /index-abc\.js/, 'não veio o casco guardado');
+});
+
+test('painel: com rede, a navegação traz o deploy novo na hora (D46)', async () => {
+  /*
+   * O casco guardado respondia primeiro e se atualizava por trás: cada deploy
+   * chegava uma abertura depois, e o "Assinar" de produção rodou o painel de
+   * antes do D0.8 (o 400 "falta o CPF/CNPJ" não abria o pedido).
+   */
+  const w = carregar('web/public/sw.js', servidorPadrao);
+  await w.instalar();
+  const novo = carregarNoMesmoCache(w, (c) => (c === '/app/' ? '<script type="module" src="/app/assets/index-novo.js"></script>' : servidorPadrao(c)));
+  const res = await novo.pedir('/app/?ir=billing', { mode: 'navigate' });
+  assert.match(await res.text(), /index-novo\.js/, 'abriu o pacote velho com a rede no ar');
+  assert.match(await (await novo.caixas.get('mt-app-v2').get('/app/')).text(), /index-novo\.js/, 'não guardou o casco novo');
 });
 
 test('painel: sem rede e sem casco, a página diz o que está acontecendo', async () => {

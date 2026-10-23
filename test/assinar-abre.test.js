@@ -58,3 +58,18 @@ test('o painel: a fatura abre, ou o link fica na tela; sem link é erro dito', (
   assert.match(B, /<a href=\{fatura\} target="_blank" rel="noopener noreferrer"/);
   assert.match(B, /Abrir a fatura/);
 });
+
+test('o 400 do checkout aparece junto do botão e no log (sem dado pessoal); o painel aberto avisa da versão nova', () => {
+  const B = ler('web/src/pages/BillingPage.jsx');
+  assert.match(B, /falhou\(e, 'Não foi possível abrir a cobrança\.', planId\);/);
+  assert.match(B, /\{erroNoBotao && erroNoBotao\.id === p\.id && \(/);
+  const R = ler('server/routes/billing.js');
+  assert.match(R, /log\.aviso\('cobranca\.' \+ onde \+ '-recusado', \{ code \}\);/);
+  assert.match(R, /return recusado\(res, 'checkout', 'plano-em-breve', EM_BREVE\);/);
+  assert.match(R, /if \(e && e\.precisaDocumento\) return recusado\(res, onde, 'precisa-documento', e\.message\);/);
+  const V = ler('web/src/lib/versao.js');
+  assert.match(V, /fetch\('\/app\/', \{ cache: 'no-store'/);
+  assert.match(V, /\{ rotulo: 'Recarregar', on: \(\) => location\.reload\(\) \}/);
+  assert.doesNotMatch(V.replace(/\/\*[\s\S]*?\*\//g, ''), /location\.reload\(\);\s*$/m, 'recarregar sozinho perde o que a pessoa escreve');
+  assert.match(ler('web/src/main.jsx'), /vigiarVersao\(\);/);
+});

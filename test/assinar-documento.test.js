@@ -119,7 +119,8 @@ test('documento inválido não chega ao Asaas', async (t) => {
 
 test('a falha da cobrança fica no log (sem dado pessoal) e o pedido de documento volta como código', () => {
   const rota = fs.readFileSync(path.join(RAIZ, 'server/routes/billing.js'), 'utf8');
-  assert.match(rota, /code: 'precisa-documento'/);
+  // D46: a recusa passa por recusado(), que também registra o código no log.
+  assert.match(rota, /recusado\(res, onde, 'precisa-documento', e\.message\)/);
   assert.match(rota, /log\.aviso\('cobranca\.' \+ onde \+ '-falhou'/);
   assert.ok(!/return sendJson\(res, 502, \{ error: e\.message \}\)/.test(rota), 'nenhuma falha de cobrança volta sem registro');
   assert.ok(!/documento/.test(fs.readFileSync(path.join(RAIZ, 'server/db-postgres.js'), 'utf8')), 'o documento não é guardado no nosso banco');
