@@ -59,9 +59,35 @@ test('trocar de layout não muda a assinatura da zona que continua igual; muda a
   assert.notEqual(a('corporate', 'rodape'), assinaturaZona(semRelogio, 'rodape', assinaturaAjustes(semRelogio.settings)));
 });
 
+test('se reorganizar lançar no meio, a TV remonta o palco do zero (nota do consultor no #255)', () => {
+  const rodar = (reorganizar) => {
+    const feito = [];
+    const ctx = {
+      palco: { chave: 'velha' }, console: { warn: () => feito.push('aviso') },
+      aplicarMargem() {}, aplicarExpediente() {},
+      assinaturaPalco: () => 'nova', podeReorganizar: () => true,
+      reorganizarPalco: () => { feito.push('reorganizar'); reorganizar(); },
+      teardownZones: (o) => feito.push('teardown:' + !!(o && o.cruzar)),
+      buildStage: () => feito.push('build'),
+    };
+    vm.runInNewContext(funcao('aplicarNoPalco') + '\naplicarNoPalco({ settings: {} });', ctx);
+    return feito;
+  };
+  assert.deepEqual(rodar(() => { throw new Error('WebView velho'); }), ['reorganizar', 'aviso', 'teardown:true', 'build'], 'meio palco velho, meio novo');
+  assert.deepEqual(rodar(() => {}), ['reorganizar'], 'remontou sem precisar');
+  // Um stop de zona que lança não trava a remontagem.
+  const paradas = [];
+  const ctx = {
+    zoneControllers: [{ stop: () => { throw new Error('quebrada'); } }, { stop: () => paradas.push('outra') }],
+    clearTakeover() {}, palcoLeve: () => true, palco: {}, stage: { firstChild: null, innerHTML: 'x' },
+  };
+  vm.runInNewContext(funcao('teardownZones') + '\nteardownZones({ cruzar: true });', ctx);
+  assert.deepEqual([paradas, ctx.zoneControllers.length, ctx.stage.innerHTML, ctx.palco], [['outra'], 0, '', null]);
+});
+
 test('a troca de layout reaproveita as zonas e anima só com transform e opacity', () => {
   const ap = funcao('aplicarNoPalco');
-  assert.match(ap, /if \(podeReorganizar\(cfg\)\) \{ reorganizarPalco\(cfg\); return; \}/);
+  assert.match(ap, /if \(podeReorganizar\(cfg\)\) \{[\s\S]{0,400}try \{ reorganizarPalco\(cfg\); return; \}/);
   assert.match(ap, /teardownZones\(\{ cruzar: !!palco \}\);/);
   const re = funcao('reorganizarPalco');
   assert.match(re, /viva\.tipo === zone\.type && viva\.formato === \(zone\.formato \|\| ''\)/, 'reaproveita zona de outro tipo/formato');
