@@ -636,6 +636,15 @@
     document.documentElement.classList.toggle('mt-fora-do-horario', fora);
     if (!fora) {
       if (foraEl) { foraEl.remove(); foraEl = null; }
+      /*
+       * A loja abriu: os vídeos que o HORÁRIO pausou voltam a tocar. Antes
+       * ninguém dava play: a zona com um vídeo só ficava congelada o dia
+       * inteiro, e o vídeo sem duração travava a playlist (EXECUTOR D0.6).
+       */
+      document.querySelectorAll('video[data-pausado-pelo-horario]').forEach((v) => {
+        v.removeAttribute('data-pausado-pelo-horario');
+        try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* segue */ }
+      });
       // A loja abriu: a música volta — se fomos NÓS que paramos, e não o dono.
       if (musicaPausadaPeloHorario) { musicaPausadaPeloHorario = false; try { trilha.comando({ acao: 'tocar' }); } catch (e) { /* sem trilha */ } }
       return;
@@ -649,8 +658,16 @@
       try {
         if (trilha.estado().tocando) { musicaPausadaPeloHorario = true; trilha.comando({ acao: 'pausar' }); }
       } catch (e) { /* sem trilha */ }
-      document.querySelectorAll('video').forEach((v) => { try { v.pause(); } catch (e) { /* segue */ } });
     }
+    /*
+     * A cada volta (20 s), e não só ao fechar: vídeo que ENTRA na playlist com
+     * a loja fechada também para — antes ele tocava com som atrás da tela
+     * preta. Marcado, para a abertura saber quais pausamos nós.
+     */
+    document.querySelectorAll('video').forEach((v) => {
+      if (v.paused) return;
+      try { v.pause(); v.setAttribute('data-pausado-pelo-horario', '1'); } catch (e) { /* segue */ }
+    });
     foraEl.classList.toggle('mt-fora-com-relogio', estado === 'relogio');
     if (estado === 'relogio') {
       // A hora da LOJA (o fuso do expediente): box de fábrica costuma vir em UTC.
@@ -1331,7 +1348,9 @@
       bar.textContent = (item.etiqueta || 'AVISO IMPORTANTE');
       layer.appendChild(bar);
       // Destaque reforçado (flash vermelho) + alerta sonoro, se habilitado.
-      if (!currentConfig || currentConfig.settings.somUrgente !== false) {
+      // Nunca com a loja fechada: o sino tocava atrás da tela preta, de madrugada.
+      const lojaFechada = document.documentElement.classList.contains('mt-fora-do-horario');
+      if (!lojaFechada && (!currentConfig || currentConfig.settings.somUrgente !== false)) {
         try { playUrgentChime(); } catch (e) {}
       }
     }
@@ -1711,6 +1730,15 @@
       stop: () => {
         stopped = true; clearTimeout(timer);
         if (currentSlide && currentSlide.parar) currentSlide.parar(); // relógio de fora do horário
+        /*
+         * A saída do slide no ar. Só o leaveSlide a chamava, e refazer a zona
+         * (toda publicação) não passa por ele: o clima seguia buscando a cada
+         * 15 min, o relógio da peça seguia contando e a cor adaptada à foto
+         * não voltava. A cada publicação, mais um conjunto de timers (D0.6).
+         */
+        if (currentSlide && currentSlide.onLeave && currentSlide.onLeave !== currentSlide.parar) {
+          try { currentSlide.onLeave(); } catch (e) { /* segue */ }
+        }
         // A zona está sendo refeita: o slide que estava no ar termina aqui,
         // senão a exibição dele some do relatório.
         if (currentSlide && currentSlide.exib) { currentSlide.exib.terminar(); exibicoesAbertas.delete(currentSlide.exib); }
