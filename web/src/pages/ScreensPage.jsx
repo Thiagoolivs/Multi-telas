@@ -206,6 +206,14 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
             {recarregando === 'ok' ? 'Recarregando a TV…' : recarregando === 'erro' ? 'Não consegui mandar o comando'
               : <>{st.label}{st.seen ? ' · ' + st.seen : ''}{descreverAparelho(d.info)}</>}
           </div>
+          {/* D41: a casca Android está atrás da publicada. A de antes do D41 não se atualiza: reinstala uma vez. */}
+          {d.appNovo && (
+            <div className="truncate text-2xs text-warn" title={'App ' + d.appNovo + ' publicado'}>
+              {d.info && d.info.appCodigo
+                ? 'App novo (' + d.appNovo + '): aperte OK no controle da TV'
+                : 'App novo (' + d.appNovo + '): instale uma vez pelo pendrive'}
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-1">
           <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent} className="mr-auto">Conteúdo</Button>

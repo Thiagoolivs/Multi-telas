@@ -28,6 +28,7 @@ module.exports = function (ctx) {
   const pecaHtml = require('../../js/peca-html.js');
   const quiz = require('../../js/quiz.js');
   const paleta = require('../paleta.js');
+  const apk = require('../apk.js');
   const fotoQr = require('../foto-qr.js');
   const automaticos = require('../automaticos.js');
   const hostsMidia = (() => {
@@ -229,12 +230,17 @@ module.exports = function (ctx) {
     if (req.method === 'GET' && parts[1] === 'devices' && parts.length === 2) {
       if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
       const rows = await db.listDevices(sess.tenant_id);
-      const list = rows.map((d) => ({
-        id: d.id, name: d.name, code: d.code, hasConfig: !!d.has_config, updatedAt: d.updated_at, lastSeen: d.last_seen,
-        expediente: vigia.normalizarExpediente(d.expediente),
-        grupo: d.grupo || '',
-        info: (() => { try { return d.info ? JSON.parse(d.info) : null; } catch (_) { return null; } })(),
-      }));
+      const list = rows.map((d) => {
+        const info = (() => { try { return d.info ? JSON.parse(d.info) : null; } catch (_) { return null; } })();
+        return {
+          id: d.id, name: d.name, code: d.code, hasConfig: !!d.has_config, updatedAt: d.updated_at, lastSeen: d.last_seen,
+          expediente: vigia.normalizarExpediente(d.expediente),
+          grupo: d.grupo || '',
+          info,
+          // D41: a casca Android desta TV está atrás da publicada (o nome da nova; vazio se não).
+          appNovo: apk.versaoNovaPara(info),
+        };
+      });
       return sendJson(res, 200, { devices: list });
     }
 

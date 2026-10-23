@@ -75,6 +75,7 @@ public class MainActivity extends Activity {
 
     private WebView web;
     private FrameLayout raiz;
+    private Atualizador atualizador;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private int falhasDoVigia = 0;
     private int voltasSeguidas = 0;
@@ -98,6 +99,9 @@ public class MainActivity extends Activity {
         criarWebView();
         carregar();
         handler.postDelayed(vigia, VIGIA_MS);
+        // D41: a moldura confere se há versão nova dela mesma (aviso no canto, OK instala).
+        atualizador = new Atualizador(this, raiz);
+        atualizador.comecar();
     }
 
     /* ---------------- WebView ---------------- */
@@ -155,7 +159,8 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
-        raiz.addView(web);
+        // Sempre por baixo: o aviso de atualização (D41) fica por cima mesmo quando o WebView é recriado.
+        raiz.addView(web, 0);
         esconderBarras();
     }
 
@@ -204,6 +209,21 @@ public class MainActivity extends Activity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) esconderBarras();
+    }
+
+    /*
+     * Com a atualização pronta (o aviso no canto), o OK do controle instala.
+     * Sem ela, o OK segue para o player como sempre.
+     */
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        int k = event.getKeyCode();
+        if (atualizador != null && atualizador.temPronto()
+                && (k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER || k == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+            if (event.getAction() == KeyEvent.ACTION_UP) atualizador.instalar();
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     @Override
@@ -314,6 +334,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         handler.removeCallbacksAndMessages(null);
+        if (atualizador != null) atualizador.parar();
         if (web != null) web.destroy();
         super.onDestroy();
     }

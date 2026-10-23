@@ -14,13 +14,44 @@ comum não tem:
 ## Onde baixar
 
 Cada push em `android/` compila no GitHub Actions (workflow **App Android**).
-O `.apk` fica em **Actions › App Android › (a execução) › Artifacts**.
+O `.apk` fica em **Actions › App Android › (a execução) › Artifacts**. Com a
+chave de release configurada, o APK assinado da `main` fica também em
+**Releases** (`apk-v…`) e em `<servidor>/apk/ultimo.apk` — esse não expira.
 
 O endereço do servidor entra no build pela variável do repositório `MT_URL`
 (**Settings › Secrets and variables › Actions › Variables**), por exemplo
 `https://tv.multitelas.net.br`. Sem ela, o padrão do `app/build.gradle`, que
 já é `https://tv.multitelas.net.br`.
 Trocou a variável? **Actions › App Android › Run workflow** gera o APK novo.
+
+## Atualização remota (D41)
+
+O player se atualiza sozinho a cada publicação; o app (esta moldura) também,
+desde que o APK seja **assinado sempre com a mesma chave** — o Android só
+aceita atualização com a mesma assinatura.
+
+1. Com os secrets da chave (ver **Play Store**, abaixo), cada push na `main`
+   que mexe em `android/` publica um Release `apk-v<versão>` com o
+   `multitelas-tv.apk` assinado e o `versao.json` (versionCode, versionName,
+   tamanho, sha256).
+2. O servidor busca o Release mais novo (a cada 30 min), confere o sha256 e
+   serve em `/apk/versao.json` e `/apk/ultimo.apk` — a TV baixa só de nós.
+   `MT_APK_REPO=desligado` no servidor tira isso do ar.
+3. O app confere 3 min depois de abrir e de 6 em 6 horas. Versão nova:
+   baixa em segundo plano, confere tamanho, sha256, pacote e versão, e mostra
+   um aviso pequeno no canto de cima ("aperte OK para instalar"). O OK do
+   controle abre o instalador do Android; mais um OK instala. No Android 8+
+   a primeira vez pede "permitir instalar apps" para o MultiTelas TV.
+4. O painel mostra no cartão da tela "App novo (1.0.N)".
+
+Falhou (sem rede, sem espaço, assinatura diferente): a TV segue na versão
+de agora, exibindo normalmente, e não insiste nessa versão.
+
+**Uma vez só:** os APKs de antes da chave foram assinados com a chave de
+debug do runner, que muda a cada execução. Esses boxes precisam de UMA
+reinstalação manual (desinstalar e instalar o primeiro APK assinado, do
+Release). Daí em diante, atualizam sozinhos. O painel avisa: "instale uma vez
+pelo pendrive".
 
 ## Instalar num TV Box (sideload)
 

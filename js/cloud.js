@@ -202,6 +202,8 @@
         versao: global.MT_VERSAO || '',
         // No app Android, `versao` é método (ponte Java); em outro lugar, nada.
         app: (global.MTApp && (typeof global.MTApp.versao === 'function' ? global.MTApp.versao() : global.MTApp.versao)) || '',
+        // D41: o versionCode da casca (as de antes não têm; o servidor tira do nome "1.0.N").
+        appCodigo: (global.MTApp && typeof global.MTApp.codigo === 'function' && Number(global.MTApp.codigo())) || undefined,
       };
     } catch (e) { return undefined; }
   }

@@ -113,7 +113,9 @@ async function conferir(alvo) {
  * Host e no SNI, então o certificado e o vhost do site continuam corretos.
  */
 // `cabecalhos`: extras do chamador (a autenticação do conector de indicadores, D36).
-function pedir(u, ip, aceita, cabecalhos) {
+// `limite`: bytes no máximo (o APK da TV, D41, passa do 1,5 MB de uma página).
+function pedir(u, ip, aceita, cabecalhos, limite) {
+  const max = limite || LIMITE_BYTES;
   return new Promise((resolve) => {
     const mod = u.protocol === 'https:' ? https : http;
     const req = mod.request({
@@ -140,13 +142,13 @@ function pedir(u, ip, aceita, cabecalhos) {
         total += c.length;
         // Corta na hora: uma página que nunca termina não pode nos segurar, e
         // HTML de 50 MB não tem nada de útil a mais.
-        if (total <= LIMITE_BYTES) partes.push(c);
+        if (total <= max) partes.push(c);
         else res.destroy();
       });
       res.on('end', () => {
         const bytes = Buffer.concat(partes);
         // `cortado`: passou do limite. Texto cortado ainda serve; imagem cortada, não.
-        resolve({ status: res.statusCode, headers: res.headers, bytes, cortado: total > LIMITE_BYTES, corpo: bytes.toString('utf8').slice(0, LIMITE_BYTES) });
+        resolve({ status: res.statusCode, headers: res.headers, bytes, cortado: total > max, corpo: bytes.toString('utf8').slice(0, LIMITE_BYTES) });
       });
       res.on('error', () => resolve({ erro: 'o site cortou a resposta' }));
       res.on('aborted', () => {
@@ -169,7 +171,7 @@ function pedir(u, ip, aceita, cabecalhos) {
  * repete a checagem inteira.
  */
 const TIPO_PAGINA = /text\/html|application\/xhtml/i;
-async function buscar(alvo, politica, tipoAceito, aceita, cabecalhos) {
+async function buscar(alvo, politica, tipoAceito, aceita, cabecalhos, limite) {
   /*
    * `politica` é a checagem de endereço, injetável para o teste conseguir
    * exercitar redirecionamento contra um servidor local — que, por definição,
@@ -187,7 +189,7 @@ async function buscar(alvo, politica, tipoAceito, aceita, cabecalhos) {
     const c = await checar(atual);
     if (c.erro) return { erro: c.erro };
 
-    const res = await pedir(c.url, c.ip, aceita, c.url.origin === origem ? cabecalhos : null);
+    const res = await pedir(c.url, c.ip, aceita, c.url.origin === origem ? cabecalhos : null, limite);
     if (res.erro) return { erro: res.erro };
 
     if (res.status >= 300 && res.status < 400) {
