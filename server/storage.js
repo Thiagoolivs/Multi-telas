@@ -239,6 +239,36 @@ function toTempFile(req, max) {
   });
 }
 
+/*
+ * SVG perigoso é recusado na entrada (revisão do consultor no D7).
+ *
+ * O CSP com sandbox e o "attachment" (extrasDeSeguranca, abaixo) já impedem
+ * o script de rodar quando o arquivo é servido daqui. Mas o SVG sai do nosso
+ * controle quando o cliente baixa ou reusa em outro lugar — então a segunda
+ * camada é não guardar o que só serve para atacar: script, foreignObject,
+ * atributo on*=, link que não seja âncora interna (#id) ou imagem embutida
+ * (data:image), entidade XML e CSS que busca coisa de fora. Logo de verdade
+ * (e o vetor que o D7 gera, só <path>) não usa nada disso.
+ */
+function problemaNoSvg(texto) {
+  const t = String(texto || '');
+  if (/<script[\s>]/i.test(t)) return 'tem script';
+  if (/<foreignObject[\s>]/i.test(t)) return 'tem foreignObject';
+  if (/<!ENTITY/i.test(t)) return 'tem entidade XML';
+  if (/\son[a-z]+\s*=/i.test(t)) return 'tem atributo de evento (on…=)';
+  const links = t.match(/\s(?:xlink:)?href\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi) || [];
+  for (const l of links) {
+    const v = l.replace(/^\s(?:xlink:)?href\s*=\s*/i, '').replace(/^["']|["']$/g, '').trim();
+    if (!/^#[\w.:-]+$/.test(v) && !/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(v)) return 'tem link para fora';
+  }
+  if (/@import|url\(\s*["']?\s*(?!#|data:image\/)[a-z]+:/i.test(t)) return 'tem estilo que busca arquivo de fora';
+  return null;
+}
+function conferirSvg(texto) {
+  const p = problemaNoSvg(texto);
+  if (p) throw httpErr(400, 'Este SVG não foi aceito (' + p + '). Exporte de novo como SVG simples, ou envie em PNG.');
+}
+
 async function saveStream(tenantId, req, { mime, max }) {
   const ext = extFor(mime);
   if (!ext) throw httpErr(415, 'tipo de arquivo não suportado');
@@ -248,6 +278,7 @@ async function saveStream(tenantId, req, { mime, max }) {
 
   const { tmp, size, sha256 } = await toTempFile(req, max);
   try {
+    if (/svg/.test(m)) conferirSvg(await fs.promises.readFile(tmp, 'utf8'));
     if (DRIVER === 's3') {
       await s3Put(key, Readable.toWeb(fs.createReadStream(tmp)), m, sha256, size);
     } else {
@@ -267,6 +298,7 @@ async function saveBuffer(tenantId, buf, mime) {
   const ext = extFor(mime);
   if (!ext) throw httpErr(415, 'tipo de arquivo não suportado');
   if (buf.length > MAX_FILE_BYTES) throw httpErr(413, 'arquivo excede o limite');
+  if (/svg/i.test(String(mime))) conferirSvg(buf.toString('utf8'));
   const id = rid(20);
   const key = tenantId + '/' + id + '.' + ext;
   const m = String(mime).toLowerCase();
@@ -397,6 +429,6 @@ module.exports = {
   DRIVER, MAX_FILE_BYTES, QUOTA_BYTES, MIME_EXT, MEDIA_DIR, extrasDeSeguranca, aplicarExtras, CSP_DA_MIDIA,
   // Diagnóstico da configuração do bucket (aparece no boot).
   s3Info: () => (DRIVER === 's3' ? { endpoint: S3.endpoint, bucket: S3.bucket, region: S3.region, pathStyle: S3.pathStyle } : null),
-  extFor, saveStream, saveBuffer, remove, publicUrl, resolveLocal,
+  extFor, saveStream, saveBuffer, remove, publicUrl, resolveLocal, problemaNoSvg,
   readBuffer, serve, validKey, ephemeralWarning,
 };
