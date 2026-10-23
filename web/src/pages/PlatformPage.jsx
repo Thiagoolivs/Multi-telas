@@ -16,6 +16,7 @@ import { plataforma } from '../api.js';
 import { formatBytes, formatNumber, relativeTime } from '../lib/format.js';
 import { aviso } from '../lib/avisos.js';
 import { Negocio } from '../components/platform/Negocio.jsx';
+import { Qualidade } from '../components/platform/Qualidade.jsx';
 
 /*
  * O painel de quem opera a plataforma — não de quem usa uma conta.
@@ -105,6 +106,9 @@ export function PlatformPage() {
         <FuncoesMaisUsadas funcoes={data.funcoes} />
         <UsoPorDia dias={data.porDia} />
       </div>
+
+      {/* D43: onde a IA entrega fraco — o que volta, o que o cliente corrige e o que ele pede. */}
+      <Qualidade dias={dias} />
 
       <Freios />
 

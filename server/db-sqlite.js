@@ -347,6 +347,14 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_eventos_quando ON eventos(created_at);
   CREATE INDEX IF NOT EXISTS idx_eventos_tenant ON eventos(tenant_id, created_at);
   /*
+   * D43: a qualidade das gerações, só contagem por dia (server/qualidade.js):
+   * peça refeita por peça-ouro e defeito, campo editado à mão, tipo de
+   * pedido. Sem conta e sem pessoa — não identifica ninguém.
+   */
+  CREATE TABLE IF NOT EXISTS qualidade (
+    dia TEXT NOT NULL, chave TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (dia, chave)
+  );
+  /*
    * Reclamações e pedidos, escritos pelo cliente. Antes não existia canal
    * nenhum: a página de Suporte era só perguntas frequentes, e quem tinha um
    * problema não tinha para onde escrever dentro do produto.
@@ -1200,6 +1208,19 @@ async function contasAtivas(desde) { return Number(qEv.contasAtivas.get(desde ||
 async function pessoasAtivas(desde) { return Number(qEv.pessoasAtivas.get(desde || 0).n); }
 async function limparEventos(antesDe) { qEv.limpar.run(antesDe); }
 
+/* ---------------- Qualidade das gerações (D43): só contagem ---------------- */
+const qQual = {
+  mais: db.prepare('INSERT INTO qualidade (dia, chave, n) VALUES (?, ?, 1) ON CONFLICT(dia, chave) DO UPDATE SET n = n + 1'),
+  desde: db.prepare('SELECT chave, SUM(n) AS n FROM qualidade WHERE dia >= ? GROUP BY chave ORDER BY n DESC LIMIT 500'),
+  limpar: db.prepare('DELETE FROM qualidade WHERE dia < ?'),
+};
+async function contarQualidade(chaves) {
+  const dia = new Date().toISOString().slice(0, 10);
+  for (const c of chaves || []) qQual.mais.run(dia, String(c).slice(0, 80));
+}
+async function qualidadeDesde(dia) { return qQual.desde.all(String(dia || '')).map((r) => ({ chave: r.chave, n: Number(r.n) })); }
+async function limparQualidade(antesDoDia) { qQual.limpar.run(String(antesDoDia || '')); }
+
 /* ---------------- Trabalhos de IA ---------------- */
 /*
  * O trabalho vive na memória enquanto roda (é lá que a função async está) e
@@ -2037,6 +2058,7 @@ module.exports = {
   listarOperadores, addOperador, removerOperador,
   fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
+  contarQualidade, qualidadeDesde, limparQualidade,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
   criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa, conversaDeEdicao,
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,

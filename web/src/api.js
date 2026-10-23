@@ -450,6 +450,8 @@ export const plataforma = {
   metricas: (dias) => api('GET', '/api/plataforma/metricas' + (dias ? '?dias=' + dias : '')),
   // Frota, clientes, receita, funil, custo de IA e saúde (server/admin.js).
   negocio: (dias) => api('GET', '/api/plataforma/negocio' + (dias ? '?dias=' + dias : '')),
+  // D43: a qualidade das gerações — só contagens (server/qualidade.js).
+  qualidade: (dias) => api('GET', '/api/plataforma/qualidade' + (dias ? '?dias=' + dias : '')),
   // As ações do operador (EXECUTOR item 13): cada uma fica no registro da conta.
   recarregarTela: (id) => api('POST', '/api/plataforma/telas/' + id + '/recarregar'),
   estenderTeste: (id, dias) => api('POST', '/api/plataforma/contas/' + id + '/estender', { dias }),
