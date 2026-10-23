@@ -60,7 +60,9 @@ test('o cartão é o escopo do servidor: o mesmo arquivo, os recortes, os tetos 
   assert.match(k, /E\.RECORTES\.map\(\(r\) => \(\s*<Chip key=\{r\.id\} onClick=\{\(\) => onChange\(E\.recortar\(e, r\.id\)\)\}/);
   assert.match(k, /<Passo valor=\{dados\.pecas\} max=\{E\.TETO_ZONA\[z\]\}/);
   assert.match(k, /const c = E\.custo\(escopo\);/);
-  assert.match(k, /E\.REDES\.map\(\(r\) => \(/);
+  // D5: só as redes combinadas; "Ajustar tudo" mostra as seis.
+  assert.match(k, /const redesVisiveis = tudo \? E\.REDES : E\.REDES\.filter\(\(r\) => e\.redes\[r\]\);/);
+  assert.match(k, /redesVisiveis\.map\(\(r\) => \(/);
   assert.match(k, /type="datetime-local"/, 'a data da contagem regressiva');
   assert.match(k, /onChange\(E\.normalizar\(novo\)\)/, 'todo toque passa pela peneira');
 });

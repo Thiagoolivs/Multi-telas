@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Minus, Plus, ChevronDown, MonitorPlay, Share2, Clock, Image as ImageIcon, X, Trash2 } from 'lucide-react';
+import { Minus, Plus, ChevronDown, MonitorPlay, Share2, Clock, Image as ImageIcon, X, Trash2, SlidersHorizontal } from 'lucide-react';
 import E from '../../lib/escopo.js';
 import { cn } from '../../lib/cn.js';
 
@@ -11,7 +11,15 @@ import { cn } from '../../lib/cn.js';
  * ou menos peças por zona, que TV recebe, quais redes, as fotos. Cada toque
  * só muda o escopo, sem gastar token; a conversa recebe o cartão como está
  * na próxima mensagem. No celular ele recolhe num resumo de uma linha.
+ *
+ * NEM TUDO É CAMPANHA (D5): o cartão mostrava 22 botões antes de qualquer
+ * conversa — quatro zonas, seis redes, quatro horários, quatro fotos. Agora
+ * mostra só o que a conversa decidiu; "Ajustar tudo" abre o resto.
  */
+
+// A zona entra no pedido? Peças, avisos do letreiro ou relógio/clima.
+const decidida = (d) => d.pecas > 0 || (d.mensagens || []).length > 0 || (d.vivos || []).length > 0;
+const FOTOS = [['minhas', 'Só as minhas'], ['mistura', 'As minhas e a IA'], ['gerar', 'A IA gera'], ['nenhuma', 'Sem foto']];
 
 const FAIXAS = [
   { id: 'manha', nome: 'Manhã' }, { id: 'almoco', nome: 'Almoço' },
@@ -54,7 +62,11 @@ export function linhaDoCusto(escopo) {
 
 export function CartaoEscopo({ escopo, onChange, telas = [], recolhivel = false }) {
   const [aberto, setAberto] = useState(!recolhivel);
+  const [tudo, setTudo] = useState(false);
   const e = E.normalizar(escopo);
+  const custo = E.custo(e);
+  const redesVisiveis = tudo ? E.REDES : E.REDES.filter((r) => e.redes[r]);
+  const faixasVisiveis = tudo ? FAIXAS : FAIXAS.filter((f) => e.horarios.some((h) => h.faixa === f.id));
   const mudar = (f) => { const novo = JSON.parse(JSON.stringify(e)); f(novo); onChange(E.normalizar(novo)); };
   const zona = (ti, z) => e.telas[ti].zonas[z];
 
@@ -72,13 +84,18 @@ export function CartaoEscopo({ escopo, onChange, telas = [], recolhivel = false 
       {aberto && (
         <div className="space-y-3 border-t border-line px-3 py-3">
           {/* Os recortes: o tamanho do pedido em um toque. */}
-          <div className="flex flex-wrap gap-1.5">
-            {E.RECORTES.map((r) => (
-              <Chip key={r.id} onClick={() => onChange(E.recortar(e, r.id))}>{r.nome}</Chip>
-            ))}
-          </div>
+          {tudo && (
+            <div className="flex flex-wrap gap-1.5">
+              {E.RECORTES.map((r) => (
+                <Chip key={r.id} onClick={() => onChange(E.recortar(e, r.id))}>{r.nome}</Chip>
+              ))}
+            </div>
+          )}
 
-          {e.telas.map((t, ti) => (
+          {e.telas.map((t, ti) => {
+            const zonas = E.ZONAS.filter((z) => tudo || decidida(zona(ti, z)));
+            if (!zonas.length) return null;
+            return (
             <div key={ti} className="rounded-md border border-line">
               <div className="flex items-center gap-2 border-b border-line px-2.5 py-2">
                 <MonitorPlay size={14} className="shrink-0 text-accent" />
@@ -98,7 +115,7 @@ export function CartaoEscopo({ escopo, onChange, telas = [], recolhivel = false 
                 )}
               </div>
               <div className="divide-y divide-line">
-                {E.ZONAS.map((z) => {
+                {zonas.map((z) => {
                   const dados = zona(ti, z);
                   const faixa = z === 'cabecalho' || z === 'rodape';
                   return (
@@ -147,10 +164,11 @@ export function CartaoEscopo({ escopo, onChange, telas = [], recolhivel = false 
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
 
           {/* Mais uma TV com conteúdo diferente (com várias TVs na conta). */}
-          {(telas.length > 1 || !e.telas.length) && e.telas.length < E.TETO.telas && (
+          {tudo && (telas.length > 1 || !e.telas.length) && e.telas.length < E.TETO.telas && (
             <button type="button"
               onClick={() => mudar((x) => {
                 const usadas = new Set(x.telas.filter((t) => t.alvo.tipo === 'tela').map((t) => t.alvo.id));
@@ -162,21 +180,24 @@ export function CartaoEscopo({ escopo, onChange, telas = [], recolhivel = false 
             </button>
           )}
 
+          {redesVisiveis.length > 0 && (
           <div>
             <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-ink"><Share2 size={13} className="text-accent" /> Redes</div>
             <div className="flex flex-wrap gap-1">
-              {E.REDES.map((r) => (
+              {redesVisiveis.map((r) => (
                 <Chip key={r} className="py-0.5 text-2xs" ativo={e.redes[r]} onClick={() => mudar((x) => { x.redes[r] = !x.redes[r]; })}>
                   {E.NOME_REDE[r]}
                 </Chip>
               ))}
             </div>
           </div>
+          )}
 
+          {(tudo || e.horarios.length > 0) && (
           <div>
             <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-ink"><Clock size={13} className="text-accent" /> Horários</div>
             <div className="flex flex-wrap gap-1">
-              {FAIXAS.map((f) => {
+              {faixasVisiveis.map((f) => {
                 const ativo = e.horarios.some((h) => h.faixa === f.id);
                 return (
                   <Chip key={f.id} className="py-0.5 text-2xs" ativo={ativo}
@@ -194,16 +215,28 @@ export function CartaoEscopo({ escopo, onChange, telas = [], recolhivel = false 
               </ul>
             )}
           </div>
+          )}
 
-          <div>
-            <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-ink"><ImageIcon size={13} className="text-accent" /> Fotos</div>
-            <div className="flex flex-wrap gap-1">
-              {[['minhas', 'Só as minhas'], ['mistura', 'As minhas e a IA'], ['gerar', 'A IA gera'], ['nenhuma', 'Sem foto']].map(([id, nome]) => (
-                <Chip key={id} className="py-0.5 text-2xs" ativo={e.imagens === id} onClick={() => mudar((x) => { x.imagens = id; })}>{nome}</Chip>
-              ))}
+          {tudo ? (
+            <div>
+              <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-ink"><ImageIcon size={13} className="text-accent" /> Fotos</div>
+              <div className="flex flex-wrap gap-1">
+                {FOTOS.map(([id, nome]) => (
+                  <Chip key={id} className="py-0.5 text-2xs" ativo={e.imagens === id} onClick={() => mudar((x) => { x.imagens = id; })}>{nome}</Chip>
+                ))}
+              </div>
+              <p className="mt-1 text-2xs text-ink-3">Foto gerada pela IA gasta uma criação do plano. As suas fotos não gastam nada.</p>
             </div>
-            <p className="mt-1 text-2xs text-ink-3">Foto gerada pela IA gasta uma criação do plano. As suas fotos não gastam nada.</p>
-          </div>
+          ) : custo.pecas > 0 && (
+            <div className="flex items-center gap-1.5 text-xs text-ink-2">
+              <ImageIcon size={13} className="text-accent" /> Fotos: {(FOTOS.find(([id]) => id === e.imagens) || FOTOS[1])[1]}
+            </div>
+          )}
+
+          <button type="button" onClick={() => setTudo((v) => !v)} aria-expanded={tudo}
+            className="flex items-center gap-1.5 text-xs font-medium text-accent hover:underline">
+            <SlidersHorizontal size={13} /> {tudo ? 'Mostrar só o combinado' : 'Ajustar tudo'}
+          </button>
         </div>
       )}
     </div>

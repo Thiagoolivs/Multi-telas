@@ -83,13 +83,16 @@ module.exports = function (ctx) {
          * o estado da conversa não anda e a memória não aprende nada.
          */
         const falhou = out.modo === 'falha';
+        // Dúvida (D5) também não anda o estado: "pronta para gerar" continua pronta.
+        const manter = falhou || out.tipo === 'duvida';
+        const prontoAntes = !!(atual && (atual.estado === 'entendido' || atual.estado === 'gerado'));
         mensagens.push({ papel: 'ia', texto: out.resposta, sugestoes: out.sugestoes, em: Date.now(), ...(falhou ? { falha: true } : {}) });
         const primeira = mensagens.find((m) => m.papel === 'pessoa');
         const dados = {
           titulo: out.escopo.nome || (atual && atual.titulo) || linha(primeira && primeira.texto, 60),
           mensagens: mensagens.slice(-MAX_MENSAGENS),
           escopo: out.escopo,
-          estado: falhou ? ((atual && atual.estado) || 'conversando') : (out.pronto ? 'entendido' : 'conversando'),
+          estado: manter ? ((atual && atual.estado) || 'conversando') : (out.pronto ? 'entendido' : 'conversando'),
           campanhaId: (atual && atual.campanhaId) || '',
         };
         const salva = atual
@@ -106,7 +109,10 @@ module.exports = function (ctx) {
             .catch(() => { /* memória é ganho acumulado, não requisito */ });
         }
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.conversa');
-        return sendJson(res, 200, { conversa: salva, pronto: out.pronto, gerar: !!out.gerar, sugestoes: out.sugestoes, modo: out.modo, falha: out.falha || '' });
+        return sendJson(res, 200, {
+          conversa: salva, pronto: out.tipo === 'duvida' ? prontoAntes : out.pronto, gerar: !!out.gerar,
+          sugestoes: out.sugestoes, modo: out.modo, falha: out.falha || '', tipo: out.tipo || '',
+        });
       } catch (e) {
         erros.registrar(e, { rota: '/api/ai/conversa' });
         return sendJson(res, 500, { error: 'não deu para continuar a conversa agora' });
