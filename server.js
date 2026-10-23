@@ -660,6 +660,8 @@ async function handleApi(req, res, pathname, query) {
     ecossistema: 'ecossistema',
     // Ajustar a campanha depois de gerada (item 26): entender o pedido é texto; a foto nova cobra em fotoDaConta.
     ajustar: 'ajuste',
+    // Editar com a IA (D50): uma volta da conversa de edição — texto, medido como o ajuste.
+    editar: 'ajuste',
   };
   if (parts[1] === 'ai' && sess && TIPO_IA[parts[2]] && req.method === 'POST') {
     /*
