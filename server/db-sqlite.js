@@ -411,6 +411,8 @@ garantirColuna('fotos_pessoa', 'aceite_em INTEGER');
 garantirColuna('pedidos_foto', 'data_id TEXT');
 garantirColuna('pedidos_foto', 'data_alvo TEXT');
 garantirColuna('fotos_pessoa', 'aprovada_em INTEGER');
+// Prazo de guarda (D35): o RH pode guardar o mural da data por mais tempo (AAAA-MM-DD).
+garantirColuna('pedidos_foto', 'guardar_ate TEXT');
 
 function migrarBrandkit() {
   const antigos = db.prepare(`SELECT b.* FROM brandkit b
@@ -603,7 +605,7 @@ const q = {
   bancoApagarDoTenant: db.prepare('DELETE FROM banco WHERE tenant_id = ?'),
   bancoApagarDaMedia: db.prepare('DELETE FROM banco WHERE media_id = ? AND tenant_id = ?'),
   insertBirthday: db.prepare('INSERT INTO birthdays (id, tenant_id, nome, matricula, dia, mes, cargo, foto, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'),
-  birthdaysByTenant: db.prepare("SELECT id, nome, matricula, dia, mes, cargo, foto, COALESCE(setor, '') AS setor, COALESCE(email, '') AS email, COALESCE(origem, 'planilha') AS origem FROM birthdays WHERE tenant_id = ? ORDER BY mes, dia, nome"),
+  birthdaysByTenant: db.prepare("SELECT id, nome, matricula, dia, mes, cargo, foto, COALESCE(setor, '') AS setor, COALESCE(email, '') AS email, COALESCE(origem, 'planilha') AS origem, COALESCE(consentimento_em, 0) AS consentimento_em FROM birthdays WHERE tenant_id = ? ORDER BY mes, dia, nome"),
   pessoaInserir: db.prepare('INSERT INTO birthdays (id, tenant_id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'),
   pessoaAtualizar: db.prepare('UPDATE birthdays SET nome = ?, matricula = ?, dia = ?, mes = ?, cargo = ?, setor = ?, email = ?, foto = ?, origem = ?, updated_at = ? WHERE id = ? AND tenant_id = ?'),
   pessoaRemover: db.prepare('DELETE FROM birthdays WHERE id = ? AND tenant_id = ?'),
@@ -1498,8 +1500,8 @@ async function removerEvento(id, tenantId) { return qCal.remover.run(id, tenantI
 
 /* ---------------- Mural de fotos do público ---------------- */
 /* ----- Fotos pelo QR (D31) ----- */
-const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, dataId: r.data_id || '', dataAlvo: r.data_alvo || '', criadoEm: Number(r.created_at) || 0 } : null);
-const mapFotoPessoa = (r) => (r ? { id: r.id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', aceiteEm: Number(r.aceite_em) || 0, aprovadaEm: Number(r.aprovada_em) || 0, criadoEm: Number(r.created_at) || 0 } : null);
+const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, dataId: r.data_id || '', dataAlvo: r.data_alvo || '', guardarAte: r.guardar_ate || '', criadoEm: Number(r.created_at) || 0 } : null);
+const mapFotoPessoa = (r) => (r ? { id: r.id, tenantId: r.tenant_id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', aceiteEm: Number(r.aceite_em) || 0, aprovadaEm: Number(r.aprovada_em) || 0, criadoEm: Number(r.created_at) || 0 } : null);
 async function criarPedidoFoto(tenantId, p) {
   const id = 'pf_' + rid(12);
   db.prepare('INSERT INTO pedidos_foto (id, tenant_id, codigo, titulo, tipo, inicio, fim, aceitando, data_id, data_alvo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)')
@@ -1523,6 +1525,10 @@ async function addFotoPessoa(tenantId, f) {
 async function listarFotosPessoa(tenantId) { return db.prepare('SELECT * FROM fotos_pessoa WHERE tenant_id = ? ORDER BY created_at').all(tenantId).map(mapFotoPessoa); }
 async function fotoPessoaPorId(id, tenantId) { return mapFotoPessoa(db.prepare('SELECT * FROM fotos_pessoa WHERE id = ? AND tenant_id = ?').get(String(id), tenantId)); }
 async function removerFotoPessoa(id, tenantId) { return db.prepare('DELETE FROM fotos_pessoa WHERE id = ? AND tenant_id = ?').run(id, tenantId).changes; }
+// Varredura do prazo de guarda (D35), entre contas: os pedidos de data e as fotos que ninguém decidiu.
+async function pedidosFotoDeData() { return db.prepare("SELECT * FROM pedidos_foto WHERE tipo = 'data'").all().map(mapPedidoFoto); }
+async function fotosPendentesAntigas(antesDe) { return db.prepare('SELECT * FROM fotos_pessoa WHERE (aprovada_em IS NULL OR aprovada_em = 0) AND created_at < ?').all(Number(antesDe)).map(mapFotoPessoa); }
+async function guardarPedidoFotoAte(id, tenantId, ate) { return db.prepare('UPDATE pedidos_foto SET guardar_ate = ? WHERE id = ? AND tenant_id = ?').run(String(ate), id, tenantId).changes; }
 async function aprovarFotoPessoa(id, tenantId, quando) { return db.prepare('UPDATE fotos_pessoa SET aprovada_em = ? WHERE id = ? AND tenant_id = ?').run(Number(quando) || Date.now(), String(id), tenantId).changes; }
 async function marcarConsentimento(tenantId, pessoaId, quando) { return db.prepare('UPDATE birthdays SET consentimento_em = ? WHERE id = ? AND tenant_id = ?').run(Number(quando) || Date.now(), String(pessoaId), tenantId).changes; }
 
@@ -1637,7 +1643,7 @@ async function dadosDoTenant(tenantId) {
     marca: db.prepare('SELECT * FROM brandkit WHERE tenant_id = ?').get(tenantId) || null,
     imagensDaMarca: pega('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = ?'),
     aniversariantes: pega('SELECT id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, consentimento_em, created_at, updated_at FROM birthdays WHERE tenant_id = ?'),
-    pedidosDeFoto: pega('SELECT id, codigo, titulo, tipo, inicio, fim, aceitando, data_id, data_alvo, created_at FROM pedidos_foto WHERE tenant_id = ?'),
+    pedidosDeFoto: pega('SELECT id, codigo, titulo, tipo, inicio, fim, aceitando, data_id, data_alvo, guardar_ate, created_at FROM pedidos_foto WHERE tenant_id = ?'),
     fotosParaAprovar: pega('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, aceite_em, aprovada_em, created_at FROM fotos_pessoa WHERE tenant_id = ?'),
     midias: pega('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ?'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
@@ -1896,6 +1902,7 @@ module.exports = {
   criarMural, listarMurais, muralPorCodigo, muralPorId, atualizarMural, removerMural,
   criarPedidoFoto, listarPedidosFoto, pedidoFotoPorCodigo, pedidoFotoPorId, atualizarPedidoFoto, removerPedidoFoto,
   addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa, marcarConsentimento, aprovarFotoPessoa,
+  pedidosFotoDeData, fotosPendentesAntigas, guardarPedidoFotoAte,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,

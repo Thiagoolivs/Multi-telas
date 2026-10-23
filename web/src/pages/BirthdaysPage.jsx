@@ -58,6 +58,13 @@ function EditarPessoa({ pessoa, onFechar, onSalvo }) {
     } catch (e) { aviso.erro('pessoa', e.message || 'Não deu para salvar.'); }
     finally { setSalvando(false); }
   }
+  async function tirarFoto() {
+    if (!(await confirmar({ titulo: 'Tirar a foto de ' + pessoa.nome + '?', texto: 'A foto sai do painel e da TV, e o arquivo é apagado.', botao: 'Tirar a foto', perigo: true }))) return;
+    setSalvando(true);
+    try { await birthdays.atualizar(pessoa.id, { foto: '' }); aviso.ok('Foto tirada.'); onSalvo(); }
+    catch (e) { aviso.erro('pessoa', e.message || 'Não deu para tirar.'); }
+    finally { setSalvando(false); }
+  }
   return (
     <Dialog open onClose={onFechar} title={nova ? 'Pôr uma pessoa' : 'Editar ' + pessoa.nome} className="max-w-lg"
       footer={<>
@@ -72,8 +79,25 @@ function EditarPessoa({ pessoa, onFechar, onSalvo }) {
         <Field label="Matrícula"><Input value={f.matricula} onChange={set('matricula')} maxLength={40} /></Field>
         <Field label="E-mail" hint="Opcional. Serve para a pessoa mandar a própria foto pelo QR." className="sm:col-span-2"><Input type="email" value={f.email} onChange={set('email')} maxLength={120} /></Field>
       </div>
+      {/* D35: de onde veio, a autorização (com data e hora) e tirar a foto — o pedido de quem quer sair. */}
+      {!nova && (
+        <div className="mt-4 space-y-2 rounded-md border border-line bg-surface-2 p-3 text-xs text-ink-2">
+          <div>{origemDe(pessoa)}</div>
+          {pessoa.foto && (
+            <Button size="sm" variant="ghost" icon={Trash2} disabled={salvando} onClick={tirarFoto}>Tirar a foto (o arquivo é apagado)</Button>
+          )}
+        </div>
+      )}
     </Dialog>
   );
+}
+
+// De onde a pessoa veio e o que ela autorizou (D35).
+function origemDe(p) {
+  const quando = Number(p.consentimento_em) ? new Date(Number(p.consentimento_em)) : null;
+  const aceite = quando ? 'Autorizou nome, e-mail e foto pelo QR em ' + quando.toLocaleDateString('pt-BR') + ', às ' + quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.' : '';
+  const veio = p.origem === 'qr' ? 'Entrou pelo QR.' : p.origem === 'manual' ? 'Posta à mão no painel.' : 'Veio da planilha do RH.';
+  return [veio, aceite].filter(Boolean).join(' ');
 }
 
 export function BirthdaysPage() {
@@ -155,13 +179,13 @@ export function BirthdaysPage() {
   }
 
   async function tirar(p) {
-    if (!(await confirmar({ titulo: 'Tirar ' + p.nome + ' da lista?', texto: 'Sai do painel e da TV. Se estiver na planilha, volta na próxima importação.', botao: 'Tirar', perigo: true }))) return;
+    if (!(await confirmar({ titulo: 'Tirar ' + p.nome + ' da lista?', texto: 'Sai do painel e da TV, com a foto e as fotos que mandou pelo QR — os arquivos são apagados. Se estiver na planilha, volta na próxima importação (sem a foto).', botao: 'Tirar', perigo: true }))) return;
     try { await birthdays.remover(p.id); reload(); }
     catch (err) { aviso.erro('pessoa', err.message || 'Não deu para tirar.'); }
   }
 
   async function limparTudo() {
-    if (!(await confirmar({ titulo: 'Apagar toda a lista?', texto: 'Todas as pessoas saem do painel e da TV, inclusive as que vieram pelo QR.', botao: 'Apagar a lista', perigo: true }))) return;
+    if (!(await confirmar({ titulo: 'Apagar toda a lista?', texto: 'Todas as pessoas saem do painel e da TV, inclusive as que vieram pelo QR, com as fotos (os arquivos são apagados).', botao: 'Apagar a lista', perigo: true }))) return;
     await birthdays.clear();
     reload();
   }

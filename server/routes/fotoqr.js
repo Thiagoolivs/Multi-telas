@@ -16,9 +16,10 @@
 const F = require('../foto-qr');
 const P = require('../../js/pessoas.js');
 const muralLib = require('../mural');
+const guarda = require('../guarda');
 
 module.exports = function (ctx) {
-  const { db, sendJson, readBody, rateLimit, clientIp, midia, mail, erros, canManageTeam, avisarTelas } = ctx;
+  const { db, sendJson, readBody, rateLimit, clientIp, midia, mail, erros, canManageTeam, avisarTelas, storage } = ctx;
   // Abrir, pausar ou apagar o pedido muda o cartão do QR nas TVs (D31b): elas buscam a config de novo.
   const avisar = (t) => avisarTelas(t, 'config', {}).catch(() => {});
 
@@ -133,7 +134,9 @@ module.exports = function (ctx) {
   async function painel(req, res, parts, sess) {
     const t = sess.tenant_id;
     if (!parts[2] && req.method === 'GET') {
-      return sendJson(res, 200, { pedidos: await db.listarPedidosFoto(t), fotos: await db.listarFotosPessoa(t), emailPronto: emailPronto(), datas: F.datasParaFotos() });
+      // D35: quando o mural da data sai, e se já é hora de avisar (7 dias).
+      const pedidos = (await db.listarPedidosFoto(t)).map((p) => Object.assign(p, { apagaEm: guarda.apagaEm(p), saiEm: guarda.diasParaSair(p) }));
+      return sendJson(res, 200, { pedidos, fotos: await db.listarFotosPessoa(t), emailPronto: emailPronto(), datas: F.datasParaFotos() });
     }
     if (!parts[2] && req.method === 'POST') {
       return readBody(req, res, async (b) => {
@@ -180,8 +183,28 @@ module.exports = function (ctx) {
       return sendJson(res, 200, { ok: true });
     }
     const pedido = parts[2] && parts[2] !== 'fotos' ? await db.pedidoFotoPorId(parts[2], t) : null;
+    // Baixar o mural da data antes de ele sair (D35): as fotos aprovadas num .zip.
+    if (pedido && req.method === 'GET' && parts[3] === 'baixar') {
+      const fotos = (await db.listarFotosPessoa(t)).filter((x) => x.pedidoId === pedido.id && x.aprovadaEm);
+      const arquivos = [];
+      for (const [i, x] of fotos.entries()) {
+        const chave = String(x.url || '').split('/media/')[1] || '';
+        const bytes = chave ? await storage.readBuffer(chave).catch(() => null) : null;
+        const nome = String(x.nome || '').replace(/[^\p{L}\p{N} ._-]+/gu, '').trim().slice(0, 40) || 'foto';
+        if (bytes) arquivos.push({ nome: String(i + 1).padStart(2, '0') + '-' + nome + '.' + (chave.split('.').pop() || 'jpg'), bytes });
+      }
+      res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="fotos-' + (pedido.dataId || 'pedido') + '.zip"', 'Cache-Control': 'no-store' });
+      return res.end(guarda.zip(arquivos));
+    }
     if (pedido && req.method === 'PUT') {
       return readBody(req, res, async (b) => {
+        // "Guardar por mais 30 dias" (D35): empurra a saída do mural da data.
+        if (b && b.guardarMais === true && pedido.tipo === 'data') {
+          const base = guarda.apagaEm(pedido) > F.hojeIso() ? guarda.apagaEm(pedido) : F.hojeIso();
+          await db.guardarPedidoFotoAte(pedido.id, t, F.somarDias(base, guarda.PRAZO_DATA_DIAS));
+          const p = await db.pedidoFotoPorId(pedido.id, t);
+          return sendJson(res, 200, { pedido: Object.assign(p, { apagaEm: guarda.apagaEm(p), saiEm: guarda.diasParaSair(p) }) });
+        }
         await db.atualizarPedidoFoto(pedido.id, t, pedidoDe(b || {}, pedido));
         avisar(t);
         return sendJson(res, 200, { pedido: await db.pedidoFotoPorId(pedido.id, t) });

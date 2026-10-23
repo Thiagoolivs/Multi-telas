@@ -49,7 +49,16 @@ function Pedido({ p, onMudou, aprovadas = [], onTirar }) {
         {/* D33: o pedido de uma data junta as fotos aprovadas no mural dela. */}
         {p.tipo === 'data' && (
           <div className="space-y-1.5">
-            <div className="text-xs text-ink-2">Mural da data, {br(p.dataAlvo)}: {aprovadas.length ? aprovadas.length + (aprovadas.length === 1 ? ' foto aprovada' : ' fotos aprovadas') : 'nenhuma foto aprovada ainda'}. Na semana da data, ele passa nas TVs dos aniversários.</div>
+            <div className="text-xs text-ink-2">Mural da data, {br(p.dataAlvo)}: {aprovadas.length ? aprovadas.length + (aprovadas.length === 1 ? ' foto aprovada' : ' fotos aprovadas') : 'nenhuma foto aprovada ainda'}. Na semana da data, ele passa nas TVs dos aniversários. As fotos ficam até {br(p.apagaEm)} e saem sozinhas.</div>
+            {/* D35: 7 dias antes de sair, o aviso — baixe se quiser guardar, ou guarde por mais 30 dias. */}
+            {p.saiEm != null && aprovadas.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-xs text-ink">
+                <AlertTriangle size={14} className="shrink-0 text-warn" />
+                <span className="min-w-0 flex-1">As fotos saem {p.saiEm === 0 ? 'hoje' : p.saiEm === 1 ? 'amanhã' : 'em ' + p.saiEm + ' dias'} ({br(p.apagaEm)}). Baixe se quiser guardar.</span>
+                <a href={'/api/fotoqr/' + encodeURIComponent(p.id) + '/baixar'} className="font-semibold text-accent hover:underline">Baixar as fotos (.zip)</a>
+                <Button size="sm" variant="ghost" onClick={() => mudar({ guardarMais: true })}>Guardar por mais 30 dias</Button>
+              </div>
+            )}
             {aprovadas.length > 0 && (
               <ul className="flex flex-wrap gap-1.5">
                 {aprovadas.slice(0, 12).map((a) => (
