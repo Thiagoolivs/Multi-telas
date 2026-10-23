@@ -142,7 +142,8 @@ test('toda rota de IA aparece em algum lugar da contabilidade', () => {
   for (const { nome, corpo } of rotasDeIA(SERVER)) {
     if (SO_LEEM_ESTADO.includes(nome)) continue;
     const noMapa = mapa.includes("'" + nome + "':") || new RegExp('\\b' + nome + ':').test(mapa);
-    const cobraDireto = /usoIA\.conferir\(/.test(corpo) && /usoIA\.cobrar\(/.test(corpo);
+    // Reservar (D0.4b) é conferir e tirar o saldo no mesmo passo.
+    const cobraDireto = /usoIA\.(conferir|reservar)\(/.test(corpo) && /usoIA\.cobrar\(/.test(corpo);
     if (!noMapa && !cobraDireto) foraDaConta.push(nome);
   }
   assert.deepStrictEqual(foraDaConta, [],

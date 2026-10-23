@@ -173,3 +173,29 @@ test('o corpo do pedido é lido DENTRO da medição da requisição', async () =
   });
   assert.equal(await medir(true), 1, 'com o bind, a chamada entra no caderno da requisição');
 });
+
+test('D0.4b: duas fotos ao mesmo tempo com saldo para uma — uma sai, a outra não; a falha devolve', async () => {
+  const db = require('../server/db-sqlite.js');
+  const { tenantId: id } = await db.createAccount('reserva' + Date.now() + '@teste.local', 'x', 'Loja da reserva', 'Dono');
+  const tenant = { ...(await db.getTenant(id)), plan: 'pro', plan_status: 'active' };
+  await db.setCreditos(id, { franquiaRestante: 1, creditosComprados: 0, cicloEm: Date.now() });
+  const [a, b] = await Promise.all([usoIA.reservar(db, tenant, 'gerar-imagem', 1), usoIA.reservar(db, tenant, 'gerar-imagem', 1)]);
+  assert.equal([a.ok, b.ok].filter(Boolean).length, 1, 'só uma passa');
+  const quem = a.ok ? a : b;
+  assert.equal((await db.getCreditos(id)).franquiaRestante, 0);
+  // A geração falhou: o crédito volta.
+  await usoIA.devolver(db, tenant, quem.reserva);
+  assert.equal((await db.getCreditos(id)).franquiaRestante, 1);
+  // Reservou e deu certo: o cobrar registra e NÃO debita de novo.
+  const r = await usoIA.reservar(db, tenant, 'gerar-imagem', 1);
+  assert.ok(r.ok);
+  await usoIA.cobrar(db, tenant, { tipo: 'gerar-imagem', quantidade: 1, userId: 'u', referencia: 'x', reserva: r.reserva });
+  assert.equal((await db.getCreditos(id)).franquiaRestante, 0, 'debitou duas vezes');
+});
+
+test('D0.4b: as duas portas de foto reservam antes e devolvem na falha', () => {
+  const s = fs.readFileSync(path.join(RAIZ, 'server.js'), 'utf8');
+  assert.equal((s.match(/usoIA\.reservar\(db, /g) || []).length, 2);
+  assert.ok(!/usoIA\.conferir\(db, (contaIA|tenantIA)/.test(s), 'voltou a só conferir o saldo');
+  assert.ok((s.match(/usoIA\.devolver\(db, /g) || []).length >= 4);
+});
