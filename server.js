@@ -48,6 +48,7 @@ const avisoRapido = require('./server/aviso-rapido');
 const pessoas = require('./js/pessoas.js');
 const fotoQr = require('./server/foto-qr');
 const guarda = require('./server/guarda');
+const apk = require('./server/apk');
 const kpis = require('./server/kpis');
 const segredo = require('./server/segredo');
 const ajusteTela = require('./server/ajuste-tela');
@@ -311,7 +312,8 @@ function infoDaTela(b) {
   if (!b || typeof b !== 'object') return null;
   const txt = (v, n) => (typeof v === 'string' ? v.slice(0, n) : undefined);
   const num = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);
-  const info = { ua: txt(b.ua, 300), w: num(b.w), h: num(b.h), dpr: Number(b.dpr) || undefined, versao: txt(b.versao, 40), app: txt(b.app, 40) };
+  // appCodigo: o versionCode da casca Android (D41), para o painel dizer "há uma versão nova".
+  const info = { ua: txt(b.ua, 300), w: num(b.w), h: num(b.h), dpr: Number(b.dpr) || undefined, versao: txt(b.versao, 40), app: txt(b.app, 40), appCodigo: num(b.appCodigo) };
   return Object.values(info).some((v) => v !== undefined) ? info : null;
 }
 
@@ -2706,6 +2708,27 @@ async function handleStatic(req, res, urlPath) {
    * evento lotado. Mural inexistente ou fechado responde com página honesta em
    * vez de um formulário que não vai funcionar.
    */
+  /*
+   * A casca Android se atualiza por aqui (D41, server/apk.js): a TV pergunta
+   * a versão e baixa o APK só de nós. Sem Release publicado, 404 e nada muda.
+   */
+  if (urlPath === '/apk/versao.json' || urlPath === '/apk/ultimo.apk') {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return sendJson(res, 405, { error: 'só GET' });
+    const rl = rateLimit('apk:' + urlPath + ':' + clientIp(req), urlPath.endsWith('.apk') ? 30 : 120, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'muitos pedidos — espere um pouco' }, { 'Retry-After': String(rl.retryAfter) });
+    const pub = await apk.obter().catch(() => null);
+    if (!pub) return sendJson(res, 404, { error: 'nenhuma versão do app publicada' });
+    if (urlPath === '/apk/versao.json') return sendJson(res, 200, pub.versao, { 'Cache-Control': 'no-store' });
+    res.writeHead(200, {
+      'Content-Type': 'application/vnd.android.package-archive',
+      'Content-Length': String(pub.bytes.length),
+      'Content-Disposition': 'attachment; filename="multitelas-tv-' + pub.versao.versionName + '.apk"',
+      ETag: '"' + pub.versao.sha256 + '"',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return res.end(req.method === 'HEAD' ? undefined : pub.bytes);
+  }
   /*
    * Foto pelo QR (D31): a página do pedido do RH. Fora do período ou
    * pausado, a página diz isso em vez de um formulário que não vai funcionar.

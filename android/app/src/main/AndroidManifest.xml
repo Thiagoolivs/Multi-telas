@@ -11,6 +11,8 @@
       tela inicial. O app pede uma vez; quem instala concede.
     -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- D41: a moldura instala a própria atualização (baixada do nosso servidor, com o OK de quem está na TV). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Roda em TV sem tela de toque e em aparelho sem leanback: nada disto é obrigatório. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -66,5 +68,10 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <!-- A resposta do instalador à atualização da moldura (D41). Só o próprio app manda. -->
+        <receiver
+            android:name=".ResultadoDaInstalacao"
+            android:exported="false" />
     </application>
 </manifest>

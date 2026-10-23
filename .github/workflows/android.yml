@@ -10,6 +10,13 @@
 # Release assinado (Play Store): secrets MT_KEYSTORE_BASE64,
 # MT_KEYSTORE_PASSWORD, MT_KEY_ALIAS, MT_KEY_PASSWORD. Sem eles, sai só o
 # debug — instalável por sideload, que é como TV Box recebe app na prática.
+#
+# Atualização remota (D41): com a chave, cada push na main publica um Release
+# `apk-v<versão>` com o APK assinado (multitelas-tv.apk) e o versao.json
+# (versionCode, versionName, tamanho, sha256). O servidor busca o mais novo e
+# serve em /apk/ultimo.apk; as TVs com o app instalam com um OK no controle.
+# Sem a chave não há Release: o Android só aceita atualização com a MESMA
+# assinatura, e o debug do runner muda de chave a cada execução.
 
 name: App Android
 
@@ -30,6 +37,9 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Publicar o Release (D41) precisa escrever no repositório.
+    permissions:
+      contents: write
     # `secrets` não pode ir direto num `if`; passa por aqui.
     env:
       TEM_CHAVE: ${{ secrets.MT_KEYSTORE_BASE64 != '' }}
@@ -77,6 +87,30 @@ jobs:
         working-directory: android
         continue-on-error: true
         run: gradle lintDebug --no-daemon
+
+      - name: Sem a chave, sem Release (D41)
+        if: ${{ env.TEM_CHAVE != 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        run: echo "::warning title=Sem Release para as TVs::Sem os secrets MT_KEYSTORE_* o APK sai só em debug e as TVs não se atualizam sozinhas (android/README.md)."
+
+      - name: Publicar a versão para as TVs (Release, D41)
+        if: ${{ env.TEM_CHAVE == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NOME: ${{ steps.versao.outputs.nome }}
+          CODIGO: ${{ steps.versao.outputs.codigo }}
+        run: |
+          set -euo pipefail
+          APK=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          mkdir -p publicar
+          cp "$APK" publicar/multitelas-tv.apk
+          TAMANHO=$(stat -c%s publicar/multitelas-tv.apk)
+          SHA=$(sha256sum publicar/multitelas-tv.apk | cut -d' ' -f1)
+          printf '{"versionCode":%s,"versionName":"%s","tamanho":%s,"sha256":"%s"}\n' "$CODIGO" "$NOME" "$TAMANHO" "$SHA" > publicar/versao.json
+          cat publicar/versao.json
+          gh release create "apk-v$NOME" publicar/multitelas-tv.apk publicar/versao.json \
+            --target "$GITHUB_SHA" \
+            --title "App da TV $NOME" \
+            --notes "APK assinado da moldura Android. O servidor serve em /apk/ultimo.apk; as TVs com o app instalam com um OK no controle."
 
       - uses: actions/upload-artifact@v4
         with:
