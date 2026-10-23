@@ -11,6 +11,7 @@ import { carregarDesenhista, conferirNosFormatos, NOME_DO_FORMATO } from '../../
 import { ai, brand } from '../../api.js';
 import { carregarModelos } from '../../lib/modelosOuro.js';
 import { CURADAS } from '../../lib/paletas.js';
+import { MiniConversa, comPergunta } from '../tela/MiniConversa.jsx';
 
 /*
  * Editar os textos e a foto de uma peça em HTML (PLANO §4.5, "Campos"; PR 14).
@@ -162,6 +163,8 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   const [pedido, setPedido] = useState('');
   const [pedindo, setPedindo] = useState(false);
   const [respostaIA, setRespostaIA] = useState(null);   // { texto, antes }
+  // D51: a mini-conversa — a IA pergunta quando não entende ("Qual cor?").
+  const [historicoIA, setHistoricoIA] = useState([]);
 
   // As marcas da conta (até três): só aparece a escolha quando há mais de uma.
   useEffect(() => {
@@ -215,11 +218,15 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
 
   const problemas = avisosDaConferencia(conferencia);
 
-  async function pedirIA() {
+  async function pedirIA(t) {
+    const frase = String(t == null ? pedido : t).trim();
+    if (!frase || pedindo) return;
     const antes = { campos, modo, marca, ocultos };
     setPedindo(true);
     try {
-      const r = await ai.ajustarPeca(atual, pedido.trim());
+      const r = await ai.ajustarPeca(atual, frase, historicoIA);
+      if (r && r.pergunta) { setHistoricoIA((h) => comPergunta(h, frase, r)); setRespostaIA(null); setPedido(''); return; }
+      setHistoricoIA([]);
       const m = (r && r.remendo) || {};
       if (m.campos) setCampos((c) => ({ ...c, ...m.campos }));
       if (m.modo) setModo(m.modo);
@@ -324,6 +331,7 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
 
         <div className="min-w-0 space-y-3">
           <div className="rounded-lg border border-accent/30 bg-accent-soft/40 p-2">
+            <MiniConversa historico={historicoIA} onResponder={pedirIA} ocupado={pedindo} className="mb-2" />
             <form className="flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); if (pedido.trim() && !pedindo) pedirIA(); }}>
               <Sparkles size={15} className="shrink-0 text-accent" />
               <input value={pedido} onChange={(e) => setPedido(e.target.value)} maxLength={300} aria-label="Pedir à IA"

@@ -2075,7 +2075,7 @@ const negocioCache = new Map();
       const pedido = String((b && b.pedido) || '').trim();
       if (!pedido) return sendJson(res, 400, { error: 'diga o que mudar' });
       try {
-        return sendJson(res, 200, await ajustePeca.ajustar(b.item, pedido.slice(0, 500)));
+        return sendJson(res, 200, await ajustePeca.ajustar(b.item, pedido.slice(0, 500), b.historico));
       } catch (e) {
         if (e.status === 400) return sendJson(res, 400, { error: e.message });
         erros.registrar(e, { rota: '/api/ai/ajustar-peca' });
