@@ -59,6 +59,11 @@ function apagarRascunho(id) {
   try { localStorage.removeItem(chaveDoRascunho(id)); } catch (e) { /* nada */ }
 }
 const hora = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+// A prioridade da peça (D24): o nome e o que ela faz na TV.
+const PRIORIDADES = [
+  ['normal', 'Normal', 'Passa uma vez por volta, revezando com as outras.'],
+  ['alta', 'Alta', 'Passa duas vezes por volta, espalhada entre as outras.'],
+];
 
 function defaultZone(zones) {
   const z = zones.find((x) => x.id === 'principal') || zones.find((x) => x.type === 'playlist') || zones[0];
@@ -668,6 +673,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                               {typeLabel(it.type)} · {it.duracao === 0 ? 'fixo' : (it.duracao || 0) + 's'}
                               {/* De qual campanha veio (item 25): é ela que "Pausar" tira daqui. */}
                               {it._campanha ? ' · campanha ' + it._campanha : ''}
+                              {it._calendario ? ' · calendário' : ''}
+                              {it.meta && it.meta.prioridade === 'alta' ? ' · prioridade alta' : ''}
                             </span>
                             {temAgenda(it) && (
                               <span className="mt-0.5 flex items-center gap-1 truncate text-2xs text-accent" title={resumoAgenda(it.agendamento)}>
@@ -720,6 +727,23 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                         <div className="mt-4">
                           <QuandoMostrar agendamento={current.agendamento}
                             onChange={(ag) => updateItem(selected, { ...current, agendamento: ag })} />
+                        </div>
+                        {/* D24: a TV dá mais tempo à peça de prioridade alta (passa duas vezes por volta). */}
+                        <div className="mt-4">
+                          <span className="mb-1.5 block text-xs font-medium text-ink-2">Prioridade</span>
+                          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Prioridade">
+                            {PRIORIDADES.map(([id, nome]) => {
+                              const atual = ((current.meta && current.meta.prioridade) || 'normal') === id;
+                              return (
+                                <button key={id} type="button" role="radio" aria-checked={atual}
+                                  onClick={() => updateItem(selected, { ...current, meta: { ...(current.meta || {}), prioridade: id } })}
+                                  className={cn('rounded-md border px-2.5 py-1 text-xs', atual ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3')}>
+                                  {nome}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="mt-1 text-2xs text-ink-3">{(PRIORIDADES.find(([id]) => id === ((current.meta && current.meta.prioridade) || 'normal')) || PRIORIDADES[0])[2]}</p>
                         </div>
                       </div>
                     </div>
