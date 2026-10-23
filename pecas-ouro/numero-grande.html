@@ -22,7 +22,7 @@ h1 { font: 400 4.6cqw/1.02 var(--mt-fonte-titulo); text-transform: uppercase; ma
 @container (aspect-ratio < 1.25) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: 2cqw; }
   .numero { left: 7cqw; right: 8cqw; width: auto; top: 13cqh; transform: none; }
-  .numero > span { font-size: 46cqw; }
+  .numero > span { font-size: calc(46cqw * var(--mt-escala-titulo, 1)); }
   .numero small { font-size: 3cqw; margin-top: 2.6cqw; }
   .texto { left: 8cqw; right: 8cqw; top: auto; bottom: 14cqh; transform: none; padding: 4cqw 0 0; border-left: 0; border-top: .2cqw solid var(--mt-linha); }
   .kicker { font-size: 2cqw; }

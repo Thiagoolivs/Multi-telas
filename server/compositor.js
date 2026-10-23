@@ -21,6 +21,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const P = require('../js/peca-html.js');
 const T = require('../js/tokens.js');
+const regrasDoPapel = require('../js/regras-composicao.js');
 const motores = require('./motores');
 
 const PASTA = path.join(__dirname, '..', 'pecas-ouro');
@@ -76,6 +77,9 @@ function fixo(papel) {
     'Você escreve peças de digital signage em HTML+CSS, para TVs de comércio. Estas são as REGRAS e a BIBLIOTECA-OURO — o padrão de qualidade que o dono aprovou. Imite o vocabulário dela; não copie o texto.',
     '',
     regras(),
+    '',
+    // D44: as regras de composição em número, as mesmas que o detector confere na peça montada.
+    regrasDoPapel.paraIA(papel),
     '',
     '## BIBLIOTECA-OURO (papel: ' + papel + ')',
     '',
@@ -245,7 +249,9 @@ const OURO_PAPEL = {
   ],
   cabecalho: [
     { id: 'cabecalho-classico', campos: (t, e) => ({ marca: e, chamada: t.titulo }) },
-    { id: 'cabecalho-chamada', campos: (t, e) => ({ marca: e, chamada: t.titulo, quando: t.apoio || t.cta }) },
+    // O "quando" é a letrinha ao lado da chamada: o apoio inteiro (até 90 letras) passava por cima do relógio.
+    // Só entra se couber inteiro (16 letras): cortado, ficava "Reserve pelo".
+    { id: 'cabecalho-chamada', campos: (t, e) => ({ marca: e, chamada: t.titulo, quando: [t.cta, t.apoio].find((x) => x && x.length <= 16) || '' }) },
     { id: 'cabecalho-centro', campos: (t, e) => ({ marca: e, sub: t.titulo }) },
   ],
   rodape: [
@@ -263,6 +269,25 @@ const OURO_VIVO = {
 };
 // Faixa fina e coluna estreita: texto curto, cortado na palavra.
 const CABE_NO_PAPEL = { kicker: 22, titulo: 38, apoio: 90, cta: 36 };
+
+/*
+ * O nome da empresa na faixa (D44): palavras inteiras até o teto, sem "e",
+ * "da", "de" pendurados no fim. Medido na bancada: com mais de 18 letras o
+ * nome empurrava o relógio para fora no cabeçalho em pé ("Ótica e
+ * Relojoaria São Bento"). Com logo, a peça mostra o logo e o nome nem entra.
+ */
+const NOME_NA_FAIXA = 18;
+function cortarNome(s, max) {
+  const palavras = String(s || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  let out = '';
+  for (const p of palavras) {
+    const prox = out ? out + ' ' + p : p;
+    if (prox.length > max) break;
+    out = prox;
+  }
+  if (!out) return cortarNaPalavra(s, max);
+  return out.replace(/\s+(e|da|de|do|das|dos|&)$/i, '');
+}
 
 function cortarNaPalavra(s, max) {
   const t = String(s || '').replace(/\s+/g, ' ').trim();
@@ -284,7 +309,7 @@ function preencherPapel(o) {
   const h = P.higienizar(arquivo);
   const t = {};
   for (const k of Object.keys(CABE_NO_PAPEL)) t[k] = cortarNaPalavra((o.textos || {})[k], CABE_NO_PAPEL[k]);
-  const campos = escolha.campos(t, cortarNaPalavra(o.empresa, 28));
+  const campos = escolha.campos(t, papel === 'cabecalho' ? cortarNome(o.empresa, NOME_NA_FAIXA) : cortarNaPalavra(o.empresa, 28));
   for (const k of Object.keys(campos)) campos[k] = String(campos[k] || '');
   if (o.logo && h.campos.some((c) => c.nome === 'logo' && c.tipo === 'img')) campos.logo = o.logo;
   return {
@@ -384,7 +409,8 @@ async function refazerPeca(o) {
     anterior: '<style>' + it.css + '</style>\n' + it.html,
     critica: 'A peça abaixo foi desenhada e MEDIDA na tela, e tem estes problemas:\n- ' + (problemas.join('\n- ') || 'texto que não cabe')
       + '\nRedesenhe para que tudo caiba na TV deitada (1920×1080), em pé (1080×1920) e na quadrada (1080×1080): '
-      + 'letra menor onde precisar, quebra de linha decidida, outra organização se for o caso. Nada pode sair da peça nem ficar por cima de outro texto.',
+      + 'letra menor onde precisar (sem passar do mínimo), quebra de linha decidida, véu mais forte onde o texto passa sobre a foto, outra organização se for o caso. '
+      + 'Nada pode sair da peça, ficar por cima de outro texto nem quebrar as REGRAS DE COMPOSIÇÃO.',
   });
 }
 
@@ -479,4 +505,4 @@ async function comporTelaInteira(o) {
   return { zonas, falhas };
 }
 
-module.exports = { comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO };
+module.exports = { comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, cortarNome, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO };

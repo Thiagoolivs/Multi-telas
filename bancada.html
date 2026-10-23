@@ -31,6 +31,9 @@
        estreita esconde o apoio abaixo de 700px). */
     .real { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
     figcaption.ruim { color: #ff9b9b; }
+    /* D44: o que a peça quebra das regras de composição, um por linha. */
+    .regras { margin-top: 4px; max-width: 440px; color: #ffc98b; font-size: 11px; }
+    .regras ul { margin: 0; padding-left: 14px; }
     .so-tela { display: none; }
     .modo-tela .so-tela { display: flex; }
     .modo-tela .so-peca { display: none; }
@@ -54,6 +57,7 @@
     <label class="so-tela">Layout <select id="layout"></select></label>
     <label>Tamanho <select id="tamanho"></select></label>
     <button id="rodar" type="button">Rodar a entrada de novo</button>
+    <button id="biblioteca" type="button">Conferir a biblioteca</button>
   </header>
   <main>
     <p class="info" id="info"></p>
@@ -67,6 +71,7 @@
   <script src="/js/tokens.js"></script>
   <script src="/js/peca-html.js"></script>
   <script src="/js/peca-render.js"></script>
+  <script src="/js/regras-composicao.js"></script>
   <script src="/js/peca-conferir.js"></script>
   <script src="/js/bancada.js"></script>
 </body>

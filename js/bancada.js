@@ -76,9 +76,11 @@
   /*
    * Vazamento e texto sobre texto: o detector mora em js/peca-conferir.js,
    * o mesmo que o painel usa ao editar e ao revisar a campanha. Aqui as
-   * entradas animam, então ele espera antes de medir.
+   * entradas animam, então ele espera antes de medir. O papel diz que
+   * regras de composição valem (D44: margem, QR, letra mínima).
    */
-  const vazamentos = (host) => MTPecaConferir.conferir(host, { esperar: 2500 });
+  const vazamentos = (host, papel) => MTPecaConferir.conferir(host, { esperar: 2500, papel });
+  const regrasEmTexto = (d) => (d.regras || []).map((r) => r.campo + ': ' + r.texto);
 
   /*
    * Uma peça de tela pode ser só o id ou { id, campos }: os campos da tela
@@ -94,6 +96,7 @@
       modo: modo === 'rascunho' ? 'escuro' : modo, marca: marcaDoItem(marca),
     }, {
       rascunho: modo === 'rascunho',
+      leve: !!x.leve,
       marcaNaTela: !!x.marcaNaTela,
       clima: () => Promise.resolve('27°'),
       mensagens: x.mensagens || [],
@@ -166,11 +169,15 @@
           montarPeca(m.real, arq, def, papel, marca, modo, { mensagens: mensagensDaMarca(marca.id) });
           const legenda = document.createElement('figcaption');
           legenda.textContent = modo;
-          vazamentos(m.real).then((d) => {
+          vazamentos(m.real, papel).then((d) => {
             const ruim = (d.fora.length ? ' · VAZA: ' + d.fora.join(', ') : '') + (d.juntos.length ? ' · SOBREPÕE: ' + d.juntos.join(', ') : '');
-            if (!ruim) return;
-            legenda.textContent = modo + ruim;
-            legenda.classList.add('ruim');
+            if (ruim) {
+              legenda.textContent = modo + ruim;
+              legenda.classList.add('ruim');
+            }
+            // D44: fora da régua não é "não coube" — vai embaixo, em outra cor.
+            const regras = regrasEmTexto(d);
+            if (regras.length) legenda.insertAdjacentHTML('beforeend', lista('', regras, 'regras'));
           });
           fig.appendChild(m.caixa);
           fig.appendChild(legenda);
@@ -270,14 +277,75 @@
       tv.appendChild(host);
       montarPeca(host, await lerPeca(e.id), defDe(e.id), papel, marca, grupo.modo,
         { campos: e.campos, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
-      const d = await vazamentos(host);
+      const d = await vazamentos(host, papel);
       host.remove();
-      return (d.fora.length ? nome + ' · ' + e.id + ' · VAZA: ' + d.fora.join(', ') : '')
-        + (d.juntos.length ? nome + ' · ' + e.id + ' · SOBREPÕE: ' + d.juntos.join(', ') : '');
+      return {
+        coube: (d.fora.length ? nome + ' · ' + e.id + ' · VAZA: ' + d.fora.join(', ') : '')
+          + (d.juntos.length ? nome + ' · ' + e.id + ' · SOBREPÕE: ' + d.juntos.join(', ') : ''),
+        regras: regrasEmTexto(d).map((t) => nome + ' · ' + e.id + ' · ' + t),
+      };
     })));
     if (rodada !== rodadaDaTela) return;
-    $('problemas').insertAdjacentHTML('beforeend', lista('Não coube:', achados.filter(Boolean), 'problemas'));
+    $('problemas').insertAdjacentHTML('beforeend', lista('Não coube:', achados.map((a) => a.coube).filter(Boolean), 'problemas')
+      + lista('Fora da régua de composição:', achados.flatMap((a) => a.regras), 'problemas'));
     document.body.dataset.conferida = 'sim';
+  }
+
+  /*
+   * D44: a biblioteca inteira de uma vez — cada peça, em cada zona do papel
+   * dela, nas marcas todas, clara e escura — contra o detector e as regras
+   * de composição. A peça-ouro é o exemplo que a IA imita: defeito aqui
+   * vira defeito em toda geração. Desenha parado (leve) e fora da vista; o
+   * que acha vai agrupado por peça, zona, campo e regra.
+   */
+  async function conferirBiblioteca() {
+    const botao = $('biblioteca');
+    botao.disabled = true;
+    document.body.dataset.biblioteca = 'conferindo';
+    const tarefas = [];
+    for (const def of manifesto.pecas) {
+      for (const papel of def.papeis) {
+        for (const zona of ZONAS[papel] || []) {
+          for (const marca of manifesto.marcas) for (const modo of ['claro', 'escuro']) tarefas.push({ def, papel, zona, marca, modo });
+        }
+      }
+    }
+    const caixa = document.createElement('div');
+    caixa.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;overflow:visible;opacity:0;pointer-events:none;z-index:-1';
+    document.body.appendChild(caixa);
+    const grupos = new Map();
+    const anotar = (t, campo, texto) => {
+      const k = t.def.id + ' · ' + t.zona.nome + ' · ' + campo + ': ' + texto.replace(/\(.*\)$/, '').trim();
+      const g = grupos.get(k) || { exemplo: texto, onde: [] };
+      g.onde.push(t.marca.nome + ' ' + t.modo);
+      grupos.set(k, g);
+    };
+    try {
+      for (let i = 0; i < tarefas.length; i++) {
+        const t = tarefas[i];
+        if (i % 25 === 0) botao.textContent = 'Conferindo… ' + i + ' de ' + tarefas.length;
+        const host = document.createElement('div');
+        host.style.cssText = 'position:absolute;left:0;top:0;width:' + t.zona.w + 'px;height:' + t.zona.h + 'px;container-type:size';
+        caixa.appendChild(host);
+        const ctl = montarPeca(host, await lerPeca(t.def.id), t.def, t.papel, t.marca, t.modo, { leve: true, mensagens: mensagensDaMarca(t.marca.id) });
+        const d = await MTPecaConferir.conferir(host, { papel: t.papel });
+        if (ctl && ctl.parar) ctl.parar();
+        host.remove();
+        d.fora.forEach((n) => anotar(t, n, 'passa da borda'));
+        d.juntos.forEach((par) => anotar(t, par, 'um sobre o outro'));
+        (d.regras || []).forEach((r) => anotar(t, r.campo, r.texto));
+      }
+    } finally {
+      caixa.remove();
+      botao.disabled = false;
+      botao.textContent = 'Conferir a biblioteca';
+    }
+    const linhas = [...grupos.entries()].map(([k, g]) => k.replace(/: .*$/, '') + ': ' + g.exemplo + ' — em ' + g.onde.length + ' de ' + (manifesto.marcas.length * 2) + ' (' + g.onde.slice(0, 3).join(', ') + (g.onde.length > 3 ? '…' : '') + ')');
+    $('problemas').innerHTML = linhas.length
+      ? lista('A biblioteca tem ' + linhas.length + ' defeito(s) em ' + tarefas.length + ' montagens:', linhas, 'problemas')
+      : '<div class="info"><b>Biblioteca conferida:</b> ' + tarefas.length + ' montagens (' + manifesto.pecas.length + ' peças × zonas × marcas × claro/escuro), nada vaza, nada se sobrepõe e as regras de composição passam.</div>';
+    window.MTBibliotecaConferida = { montagens: tarefas.length, defeitos: linhas };
+    document.body.dataset.biblioteca = 'conferida';
   }
 
   function desenhar() {
@@ -328,6 +396,7 @@
       desenhar();
     }));
     $('rodar').addEventListener('click', desenhar);
+    $('biblioteca').addEventListener('click', () => { conferirBiblioteca(); });
     desenhar();
   }
 

@@ -1991,6 +1991,27 @@
     const explica = div('mt-quiz-explica');
     [topo, enunciado, alts, tempo, explica].forEach((x) => el.appendChild(x));
 
+    /*
+     * D44: a pergunta CABE na zona. O quiz aceita pergunta de 140 letras, 4
+     * alternativas de 60 e explicação de 180 — no máximo disso não cabia em
+     * zona nenhuma (na lateral, 1040px de conteúdo para 832; o fim sumia).
+     * O quiz inteiro encolhe junto (--qz) até caber, sem passar de 55%: no
+     * mínimo, a alternativa da lateral fica em 14px, o piso de
+     * js/regras-composicao.js. O slide só mede depois de entrar na zona.
+     */
+    function encaixar(vezes) {
+      if (!el.isConnected || !el.clientHeight) {
+        if (vezes < 40) esperar(50, () => encaixar(vezes + 1));
+        return;
+      }
+      let qz = 1;
+      el.style.setProperty('--qz', '1');
+      while (el.scrollHeight > el.clientHeight + 1 && qz > 0.55) {
+        qz = Math.max(0.55, Math.round((qz - 0.05) * 100) / 100);
+        el.style.setProperty('--qz', String(qz));
+      }
+    }
+
     function mostrar(i) {
       const p = perguntas[i];
       el.classList.remove('mt-quiz-revelado');
@@ -2005,6 +2026,7 @@
         alts.appendChild(alt);
       });
       explica.textContent = p.explicacao ? '✔ ' + p.explicacao : '';
+      encaixar(0);
       /*
        * Barra nova a cada pergunta, com animação de CSS no tempo dela: a
        * animação começa quando o elemento aparece. Transição começava antes

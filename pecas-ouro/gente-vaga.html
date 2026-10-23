@@ -53,6 +53,8 @@ h1 { margin-top: 5cqmin; font: 600 11cqmin/1.02 var(--mt-fonte-titulo); letter-s
   .pedido, .pedido small { font-size: 3cqmin; }
 }
 @container (max-width: 700px) {
+  /* D44: o QR da lateral tinha 115px — pequeno demais para o celular ler de onde a pessoa está. */
+  .qr { width: 42cqmin; height: 42cqmin; }
   .requisitos li:nth-child(3) { display: none; }
   .pedido small { display: none; }
 }

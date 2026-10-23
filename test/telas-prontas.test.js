@@ -68,7 +68,9 @@ test('a bancada confere a tela inteira e agrupa por lote e perfil', () => {
   // Cada peça de cada zona, no tamanho real da zona — girando, só se via uma por vez.
   assert.match(b, /medir\.flatMap\(\(\{ caixa, grupo, papel, nome \}\) => grupo\.pecas\.map\(entradaDe\)/);
   assert.match(b, /host\.style\.width = caixa\.offsetWidth \+ 'px';/);
-  assert.match(b, /lista\('Não coube:', achados\.filter\(Boolean\), 'problemas'\)/);
+  assert.match(b, /lista\('Não coube:', achados\.map\(\(a\) => a\.coube\)\.filter\(Boolean\), 'problemas'\)/);
+  // D44: o que quebra as regras de composição vai numa lista à parte.
+  assert.match(b, /lista\('Fora da régua de composição:', achados\.flatMap\(\(a\) => a\.regras\), 'problemas'\)/);
   assert.match(b, /'Lote ' \+ t\.lote \+ ' · ' \+ \(NOME_DO_PERFIL\[t\.perfil\] \|\| t\.perfil\)/);
 });
 

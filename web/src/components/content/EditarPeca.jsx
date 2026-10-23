@@ -55,6 +55,8 @@ export function avisosDaConferencia(conferencia) {
   return Object.entries(conferencia || {}).flatMap(([f, r]) => [
     ...r.fora.map((n) => (NOME_DO_FORMATO[f] || f) + ': "' + rotulo(n) + '" passa da borda'),
     ...r.juntos.map((par) => (NOME_DO_FORMATO[f] || f) + ': ' + par.split(' × ').map(rotulo).join(' e ') + ' ficam um sobre o outro'),
+    // D44: as regras de composição (letra mínima, margem, véu sobre a foto, QR, o preço maior).
+    ...(r.regras || []).map((a) => (NOME_DO_FORMATO[f] || f) + ': "' + rotulo(a.campo) + '" ' + a.texto),
   ]);
 }
 

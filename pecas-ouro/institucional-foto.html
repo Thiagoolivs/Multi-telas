@@ -9,7 +9,8 @@
 <style>
 .mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
 .foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; }
-.veu { position: absolute; inset: 0; background: linear-gradient(0deg, var(--mt-fundo) 6%, var(--mt-fundo-0) 62%); }
+/* D44: o kicker fica a um terço da altura, em cor de destaque: o véu sobe até ele (antes, 1,6:1 com foto clara). */
+.veu { position: absolute; inset: 0; background: linear-gradient(0deg, var(--mt-fundo) 30%, var(--mt-fundo-0) 74%); }
 .pe { position: absolute; left: 6cqw; right: 6cqw; bottom: 8cqh; display: flex; align-items: flex-end; justify-content: space-between; gap: 6cqw; }
 .kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
 .kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
@@ -23,7 +24,7 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
 .foto[data-sem-foto] + .veu { display: none; }
 @container (aspect-ratio < 0.8) {
   .foto { object-position: 50% 38%; }
-  .veu { background: linear-gradient(0deg, var(--mt-fundo) 18%, var(--mt-fundo-0) 58%); }
+  .veu { background: linear-gradient(0deg, var(--mt-fundo) 34%, var(--mt-fundo-0) 70%); }
   .pe { left: 8cqw; right: 8cqw; bottom: 6cqh; flex-direction: column; align-items: flex-start; gap: 5cqw; }
   .kicker { font-size: 2.4cqw; }
   .kicker i { width: 6cqw; height: .28cqw; }
@@ -33,7 +34,7 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
   .assina small { font-size: 2.2cqw; margin-top: 1.4cqw; }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .veu { background: linear-gradient(0deg, var(--mt-fundo) 20%, var(--mt-fundo-0) 68%); }
+  .veu { background: linear-gradient(0deg, var(--mt-fundo) 32%, var(--mt-fundo-0) 74%); }
   .pe { left: 7cqw; right: 7cqw; bottom: 7cqh; flex-direction: column; align-items: flex-start; gap: 3.4cqw; }
   .kicker { font-size: 1.9cqw; }
   .kicker i { width: 5cqw; height: .2cqw; }

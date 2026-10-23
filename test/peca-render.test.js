@@ -306,7 +306,8 @@ test('a bancada acusa texto sobre texto, não só texto fora da peça', () => {
   assert.match(c, /function sobrepostos\(caixas\)/);
   assert.match(c, /if \(a\.el\.contains\(b\.el\) \|\| b\.el\.contains\(a\.el\)\) continue/);
   const b = semComentarios(ler('js', 'bancada.js'));
-  assert.match(b, /MTPecaConferir\.conferir\(host, \{ esperar: 2500 \}\)/);
+  // D44: com o papel, a bancada mede também as regras de composição.
+  assert.match(b, /MTPecaConferir\.conferir\(host, \{ esperar: 2500, papel \}\)/);
   assert.match(b, /' · SOBREPÕE: '/);
   assert.match(ler('bancada.html'), /<script src="\/js\/peca-conferir\.js"><\/script>\s*<script src="\/js\/bancada\.js">/);
 });
