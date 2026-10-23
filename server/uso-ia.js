@@ -236,6 +236,27 @@ async function devolver(db, tenant, reserva) {
 }
 
 /*
+ * Uma reserva acaba de UM jeito só: cobrada ou devolvida (D0.4c).
+ *
+ * O consultor achou o furo do D0.4b: a falha da IA devolvia, mas se a foto
+ * saía e o guardarBuffer falhava depois (cota cheia, storage fora), a
+ * exceção passava sem devolver — o crédito sumia sem linha no uso_ia. Com
+ * este controle, quem gera chama `fechar()` num finally: devolve se
+ * ninguém cobrou nem devolveu, e não faz nada (nem devolve duas vezes) se
+ * já acabou.
+ */
+function controleDaReserva(db, tenant, reserva) {
+  let acabou = false;
+  return {
+    async devolver() { if (acabou) return; acabou = true; await devolver(db, tenant, reserva); },
+    // Marca ANTES de cobrar: a imagem existe e foi guardada; se o registro
+    // falhar, o crédito foi gasto de verdade e não volta.
+    cobrada() { acabou = true; },
+    fechar() { return this.devolver(); },
+  };
+}
+
+/*
  * O que um trabalho em segundo plano gastou de texto (jobs.aoMedir), numa
  * linha própria do uso_ia. Sem crédito: texto não consome criação.
  */
@@ -326,4 +347,4 @@ async function podeUsarTexto(db, tenant) {
   return { ok: true, gasto, teto };
 }
 
-module.exports = { garantirCiclo, renovarCiclo, conferir, reservar, devolver, cobrar, registrarMedicao, podeUsarTexto, tetoDaConta, tetoTextoOk, panorama, MES, MARGEM_TEXTO_CENTS, TETO_TESTE_CENTS };
+module.exports = { garantirCiclo, renovarCiclo, conferir, reservar, devolver, controleDaReserva, cobrar, registrarMedicao, podeUsarTexto, tetoDaConta, tetoTextoOk, panorama, MES, MARGEM_TEXTO_CENTS, TETO_TESTE_CENTS };
