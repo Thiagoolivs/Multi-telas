@@ -75,3 +75,32 @@ test('Criar: a data não abre a conversa velha; abrir e ajustar o cartão avisam
 test('Mídias: a lixeira aparece no celular (não só com o mouse em cima)', () => {
   assert.match(ler('pages/StoragePage.jsx'), /sm:opacity-0 sm:group-hover:opacity-100/);
 });
+
+/* ---------------- D3b: caminhos que levam ao lugar certo ---------------- */
+
+test('recarregar em Campanhas, Peças prontas, Músicas e Da IA não cai na Visão geral', () => {
+  const app = ler('App.jsx');
+  const lista = app.slice(app.indexOf('const ATALHOS = ['), app.indexOf('];', app.indexOf('const ATALHOS = [')));
+  for (const p of ['campanhas', 'pecas', 'musicas', 'ia']) assert.ok(lista.includes("'" + p + "'"), p);
+});
+
+test('Criação rápida: publicar de novo depois de falhar não gera tudo outra vez', () => {
+  const c = ler('pages/CriacaoRapidaPage.jsx');
+  const pub = c.slice(c.indexOf('async function publicar'), c.indexOf('const rascunhos'));
+  assert.match(pub, /let pecas = feito\.current && feito\.current\.pecas;/);
+  assert.ok(pub.indexOf('if (!pecas) {') < pub.indexOf('ai.directorStart('), 'gera de novo mesmo com as peças prontas');
+  assert.ok(!/ela já recebe esta peça/.test(c), 'promete que a TV pareada recebe a peça');
+});
+
+test('a parte tocada da TV abre o editor nela; alerta e linha do Início levam à TV certa', () => {
+  assert.match(ler('pages/ContentEditorPage.jsx'), /zonaInicial && zs\.some\(\(z\) => z\.id === zonaInicial\)/);
+  assert.match(ler('pages/AlertsPage.jsx'), /label: 'Pôr conteúdo', on: \(\) => \(onAbrirTela \? onAbrirTela\(d\) : onGoScreens\(\)\)/);
+  assert.match(ler('components/dashboard/FleetTable.jsx'), /onClick=\{onAbrir \? \(\) => onAbrir\(s\) : undefined\}/);
+  assert.match(ler('pages/DashboardPage.jsx'), /offline: offline\.length,/);
+});
+
+test('desfazer "tirar a campanha" devolve também a TV à lista da campanha', () => {
+  const c = ler('pages/ContentEditorPage.jsx');
+  const f = c.slice(c.indexOf('async function tirarCampanha'), c.indexOf('async function abrirCampanha'));
+  assert.match(f, /criar\.marcar\(c\.id, listaAntes\.estado, listaAntes\.telas\)/);
+});

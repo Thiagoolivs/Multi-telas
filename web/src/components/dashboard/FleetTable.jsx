@@ -8,7 +8,7 @@ import { relativeTime } from '../../lib/format.js';
 import { deviceStatus } from '../../lib/deviceStatus.js';
 
 // Frota real: uma linha por dispositivo, status via heartbeat.
-export function FleetTable({ screens }) {
+export function FleetTable({ screens, onAbrir }) {
   return (
     <Panel>
       <PanelHeader title="Suas TVs" description="Como cada uma está agora" />
@@ -27,7 +27,8 @@ export function FleetTable({ screens }) {
               {screens.map((s) => {
                 const st = deviceStatus(s.lastSeen);
                 return (
-                  <TR key={s.id}>
+                  <TR key={s.id} className={onAbrir ? 'cursor-pointer' : undefined} onClick={onAbrir ? () => onAbrir(s) : undefined}
+                    title={onAbrir ? 'Abrir a programação desta TV' : undefined}>
                     <TD className="font-medium text-ink">{s.name || 'Tela sem nome'}</TD>
                     <TD>
                       <span className="inline-flex items-center gap-1.5">

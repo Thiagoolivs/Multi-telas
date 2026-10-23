@@ -92,8 +92,9 @@ function useTheme() {
  * A lista de destinos é fechada de propósito: `?ir=` vem da URL, e URL é coisa
  * que qualquer um escreve.
  */
-const ATALHOS = ['criar', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
-  'team', 'storage', 'banco', 'birthdays', 'support', 'settings'];
+// campanhas, pecas, musicas e ia entraram no D3: recarregar nessas páginas caía na Visão geral.
+const ATALHOS = ['criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
+  'team', 'storage', 'pecas', 'musicas', 'ia', 'banco', 'birthdays', 'support', 'settings'];
 
 /*
  * O painel no histórico do navegador.
@@ -151,7 +152,7 @@ export default function App() {
       const r = e.state && e.state.mtRota;
       if (!r) { setRoute(rotaDaUrl()); return; }
       // Voltar não reabre o pareamento: aquele código já foi usado.
-      const { parear, ...resto } = r;
+      const { parear, abrirParear, ...resto } = r;
       setRoute(resto);
     };
     window.addEventListener('popstate', voltar);
@@ -192,7 +193,7 @@ export default function App() {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
       case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onCriar={(device) => go('criar', { tela: device.id })} onIrParaPlano={() => go('billing')} />;
       case 'programacao': return <ProgramacaoPage onIr={go} />;
-      case 'content': return <ContentEditorPage device={route.device} onBack={() => go('programacao')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
+      case 'content': return <ContentEditorPage device={route.device} zonaInicial={route.zona} onBack={() => go('programacao')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'pecas': return <PecasProntasPage onIr={go} />;
       case 'storage': return <StoragePage filtro="fotos" />;
@@ -214,7 +215,7 @@ export default function App() {
       case 'billing': return <BillingPage onFalarComVendas={() => go('support')} />;
       case 'system': return <SystemPage />;
       case 'platform': return <PlatformPage />;
-      case 'alerts': return <AlertsPage onGoScreens={() => go('screens')} onGoStorage={() => go('storage')} onGoBilling={() => go('billing')} />;
+      case 'alerts': return <AlertsPage onGoScreens={() => go('screens')} onGoStorage={() => go('storage')} onGoBilling={() => go('billing')} onAbrirTela={(d) => go('content', { device: d })} />;
       case 'support': return <SupportPage me={session} />;
       case 'settings': return (
         <SettingsPage me={session} theme={theme} onToggleTheme={toggleTheme} onLogout={logout} onChanged={refresh} />
