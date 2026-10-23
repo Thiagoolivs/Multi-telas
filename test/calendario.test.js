@@ -93,7 +93,7 @@ test('LGPD: o calendário sai na exportação e é apagado com a conta, nos dois
   for (const f of ['server/db-sqlite.js', 'server/db-postgres.js']) {
     const s = ler(f);
     assert.match(s, /calendario: (await varios|pega)\('SELECT id, data, titulo/, f + ': fora da exportação');
-    assert.match(s, /'pacotes_pagos', 'calendario', 'users'\]/, f + ': fica para trás ao apagar a conta');
+    assert.match(s, /'pacotes_pagos', 'calendario', [^\]]*'users'\]/, f + ': fica para trás ao apagar a conta');
     assert.match(s, /CREATE TABLE IF NOT EXISTS calendario/);
   }
 });

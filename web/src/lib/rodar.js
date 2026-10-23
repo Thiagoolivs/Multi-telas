@@ -11,7 +11,8 @@
  * Tudo entra marcado com `_campanha` (o mesmo de aplicarConteudo): publicar
  * de novo troca só o que é dela, e pausar tira só o que é dela.
  */
-import { deviceConfig } from '../api.js';
+import { deviceConfig, lote as loteApi } from '../api.js';
+import { aviso, emitir } from './avisos.js';
 import { defaultConfig } from './contentTypes.js';
 import { aplicarConteudo, removerOrigem } from './aplicarConteudo.js';
 import { zonesOf, getLayout } from './screenConfig.js';
@@ -166,6 +167,56 @@ export async function gravarNaTela(tela, fazer, lida) {
   throw new Error('A programação desta TV está mudando agora. Tente de novo em instantes.');
 }
 
+/*
+ * ENVIO EM LOTE (EXECUTOR D26): a mesma mudança em várias TVs, gravada pelo
+ * SERVIDOR de uma vez — tudo ou nada. Antes era um laço aqui, TV por TV: a
+ * terceira falhava, as duas primeiras ficavam mudadas e o aviso dizia que
+ * tinha dado certo.
+ *
+ * `fazer(cfg, tela)` devolve a programação nova de cada TV (a mudança como
+ * função, igual ao gravarNaTela). Se alguma TV mudou no meio, relê todas e
+ * reaplica — até três vezes. Devolve { lote, ids }: o lote é o que o
+ * "Desfazer" desfaz.
+ */
+export async function gravarEmLote(telas, fazer, descricao) {
+  const lista = (telas || []).filter(Boolean);
+  if (!lista.length) return { lote: null, ids: [] };
+  for (let tentativa = 0; tentativa < 3; tentativa++) {
+    const lidas = await Promise.all(lista.map((tv) => lerDaTela(tv)));
+    const itens = lista.map((tv, i) => ({ id: tv.id, config: fazer(lidas[i].cfg, tv), versao: lidas[i].versao }));
+    try {
+      const r = await loteApi.enviar(itens, descricao);
+      return { lote: (r && r.lote) || null, ids: lista.map((tv) => tv.id) };
+    } catch (e) {
+      if (e.codigo !== 'config-mudou') throw e;
+    }
+  }
+  throw new Error('A programação dessas TVs está mudando agora. Nada foi enviado; tente de novo em instantes.');
+}
+
+/*
+ * O aviso de "foi para a TV" com o Desfazer do lote: volta cada TV ao que
+ * era — menos a que alguém mudou depois, que fica como está (e o aviso diz).
+ */
+export function avisarComDesfazer(texto, idLote) {
+  if (!idLote) { aviso.ok(texto); return; }
+  emitir({
+    tom: 'desfazer', texto,
+    acao: {
+      rotulo: 'Desfazer',
+      on: async () => {
+        try {
+          const r = await loteApi.desfazer(idLote);
+          const mudaram = (r && r.mudaram) || [];
+          aviso.ok(mudaram.length
+            ? 'Desfeito. ' + mudaram.map((t) => t.nome || 'Uma TV').join(', ') + (mudaram.length === 1 ? ' foi mudada' : ' foram mudadas') + ' depois e ficou como está.'
+            : 'Desfeito: as TVs voltaram ao que eram.');
+        } catch (e) { aviso.erro('lote', e.message || 'Não deu para desfazer.'); }
+      },
+    },
+  });
+}
+
 // O plano antes de rodar: que TV recebe, e quais trocariam de layout.
 export async function planoDeRodar(resultado, telas) {
   const alvos = alvosDaCampanha(resultado, telas);
@@ -179,12 +230,12 @@ export async function planoDeRodar(resultado, telas) {
   return saida;
 }
 
+// D26: todas as TVs do plano de uma vez (tudo ou nada). Devolve os ids; `ids.lote` é o envio.
 export async function rodarCampanha(plano, nome, { trocarLayout } = {}) {
-  const ids = [];
-  for (const p of plano) {
-    await gravarNaTela(p.tela, (cfg) => aplicarCampanha(cfg, p.entrada, nome, { trocarLayout }), { cfg: p.cfg, versao: p.versao });
-    ids.push(p.tela.id);
-  }
+  const r = await gravarEmLote(plano.map((p) => p.tela),
+    (cfg, tv) => aplicarCampanha(cfg, plano.find((p) => p.tela.id === tv.id).entrada, nome, { trocarLayout }), 'Campanha: ' + nome);
+  const ids = r.ids.slice();
+  ids.lote = r.lote;
   return ids;
 }
 
@@ -207,9 +258,9 @@ export async function porCampanhaNaTela(resultado, nome, tela) {
 
 export async function pausarCampanha(resultado, nome, telas, ids) {
   const alvos = alvosDaCampanha(resultado, telas).filter((a) => !ids || ids.includes(a.tela.id));
-  for (const a of alvos) {
-    await gravarNaTela(a.tela, (cfg) => tirarCampanha(cfg, a.entrada, nome));
-  }
+  const r = await gravarEmLote(alvos.map((a) => a.tela),
+    (cfg, tv) => tirarCampanha(cfg, alvos.find((a) => a.tela.id === tv.id).entrada, nome), 'Pausar: ' + nome);
+  return r.lote;
 }
 
 /*
@@ -240,9 +291,8 @@ export function aplicarPeca(cfg, peca) {
   return next;
 }
 
+// D26: todas de uma vez; devolve { lote, ids } para o Desfazer.
 export async function porPecaNasTelas(peca, ids, telas) {
-  for (const id of ids) {
-    const tela = (telas || []).find((t) => t.id === id) || { id, name: 'Tela' };
-    await gravarNaTela(tela, (cfg) => aplicarPeca(cfg, peca));
-  }
+  const tvs = ids.map((id) => (telas || []).find((t) => t.id === id) || { id, name: 'Tela' });
+  return gravarEmLote(tvs, (cfg) => aplicarPeca(cfg, peca), 'Peça: ' + ((peca && peca.label) || 'peça pronta'));
 }

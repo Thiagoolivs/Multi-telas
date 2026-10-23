@@ -9,7 +9,8 @@ import { EditarPeca } from '../components/content/EditarPeca.jsx';
 import { Palco } from '../components/content/VerTelaAgora.jsx';
 import { brand, devices } from '../api.js';
 import { usePerfil } from '../lib/perfil.js';
-import { gravarNaTela } from '../lib/rodar.js';
+import { gravarEmLote, avisarComDesfazer } from '../lib/rodar.js';
+import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 import {
@@ -87,11 +88,10 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
   async function enviar() {
     setEnviando(true);
     try {
-      for (const id of alvos) {
-        const tv = tvs.find((d) => d.id === id) || { id, name: 'Tela' };
-        await gravarNaTela(tv, (cfg) => aplicarTelaPronta(cfg, escolhida));
-      }
-      aviso.ok('“' + escolhida.nome + '” na TV: ' + alvos.length + (alvos.length === 1 ? ' tela.' : ' telas.'));
+      // D26: todas as TVs de uma vez (tudo ou nada), com Desfazer.
+      const r = await gravarEmLote(alvos.map((id) => tvs.find((d) => d.id === id) || { id, name: 'Tela' }),
+        (cfg) => aplicarTelaPronta(cfg, escolhida), 'Tela pronta: ' + escolhida.nome);
+      avisarComDesfazer('“' + escolhida.nome + '” na TV: ' + alvos.length + (alvos.length === 1 ? ' tela.' : ' telas.'), r.lote);
       setPorNaTv(false);
     } catch (e) { aviso.erro('tela-pronta', e.message || 'Não deu para pôr na TV.'); }
     finally { setEnviando(false); }
@@ -212,6 +212,7 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
               </div>
             ) : (
               <div className="space-y-1.5">
+                <AtalhosDeGrupo telas={tvs} alvos={alvos} onEscolher={setAlvos} podeIr={(d) => tvEmPe(d) == null || tvEmPe(d) === emPe(escolhida.layout)} />
                 {tvs.map((d) => {
                   const pe = tvEmPe(d);
                   const naoCabe = pe != null && pe !== emPe(escolhida.layout);

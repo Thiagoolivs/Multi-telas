@@ -8,7 +8,7 @@
 import { primaryZoneKey } from './contentTypes.js';
 import { aplicarConteudo, distribuirPorZona, agendarPeca } from './aplicarConteudo.js';
 import { zonesOf } from './screenConfig.js';
-import { aplicarPeca, zonasPorPapel, gravarNaTela } from './rodar.js';
+import { aplicarPeca, zonasPorPapel, gravarEmLote } from './rodar.js';
 
 // Peça de cabeçalho ou de rodapé: vai para a lista da faixa, nunca para uma playlist.
 const ehFaixa = (p) => { const papel = (p.item && p.item.papel) || p.papel; return papel === 'cabecalho' || papel === 'rodape'; };
@@ -27,13 +27,14 @@ export async function publicarPecas({ alvos, pecas: todas, titulo, telas, dias =
    */
   const faixas = todas.filter(ehFaixa);
   const pecas = todas.filter((p) => !ehFaixa(p));
-  for (const id of alvos) {
-    const dev = (telas || []).find((s) => s.id === id) || { id, name: 'Tela' };
-    // A mudança como função da programação: gravarNaTela lê com a versão, e
-    // relê e reaplica se a TV mudou no meio (D0.5). Falha ao ler não vira
-    // mais "TV vazia" gravada por cima da programação real.
-    await gravarNaTela(dev, (cfg) => montar(cfg));
-  }
+  /*
+   * A mudança como função da programação, para todas as TVs de uma vez
+   * (D26, tudo ou nada): o lote lê com a versão e relê e reaplica se alguma
+   * mudou no meio (D0.5). Falha ao ler não vira "TV vazia" gravada por cima.
+   */
+  const devs = alvos.map((id) => (telas || []).find((s) => s.id === id) || { id, name: 'Tela' });
+  // (montar, logo abaixo, é declaração de função: vale aqui.)
+  return gravarEmLote(devs, (cfg) => montar(cfg), titulo || 'Publicar');
 
   function montar(cfg) {
     /*

@@ -142,7 +142,9 @@ test('pôr na TV: o layout da tela, as peças dela no lugar das antigas, e o que
 
 test('a galeria: grava com versão, confere na zona, só põe em TV do mesmo jeito (deitada/em pé)', () => {
   const p = fs.readFileSync(path.join(RAIZ, 'web/src/pages/TelasProntasPage.jsx'), 'utf8');
-  assert.match(p, /await gravarNaTela\(tv, \(cfg\) => aplicarTelaPronta\(cfg, escolhida\)\);/);
+  // D26: todas as TVs num envio só (tudo ou nada), com versão e Desfazer.
+  assert.match(p, /\(cfg\) => aplicarTelaPronta\(cfg, escolhida\), 'Tela pronta: ' \+ escolhida\.nome\);/);
+  assert.match(p, /const r = await gravarEmLote\(/);
   assert.match(p, /const naoCabe = pe != null && pe !== emPe\(escolhida\.layout\);/);
   assert.match(p, /lugar=\{zonas\[editando\.grupo\]\}/);
   const e = fs.readFileSync(path.join(RAIZ, 'web/src/components/content/EditarPeca.jsx'), 'utf8');
