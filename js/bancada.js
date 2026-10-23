@@ -35,6 +35,7 @@
   };
   const TETO = { w: 440, h: 330 };
   // Layouts que a tela completa sabe montar, e qual grupo de peças vai em cada zona.
+  const NOME_DO_PERFIL = { comercio: 'Comércio', empresa: 'Empresa', saude: 'Saúde' };
   const LAYOUTS_DA_TELA = ['corporate', 'sidebar-right', 'header-main-ticker', 'full-ticker', 'portrait-stack'];
   const GRUPO_DA_ZONA = { cabecalho: 'cabecalho', principal: 'principal', video: 'principal', lateral: 'lateral',
     info: 'lateral', secundaria: 'lateral', rodape: 'rodape' };
@@ -186,7 +187,10 @@
   // Converte a grade do layout (que mede em vh da TV) para pixels da tela real.
   const emPx = (trilha, altura) => String(trilha).replace(/(\d+(?:\.\d+)?)vh/g, (m, n) => (Number(n) * altura / 100) + 'px');
 
+  let rodadaDaTela = 0;
   async function desenharTela() {
+    rodadaDaTela++;
+    document.body.dataset.conferida = 'nao';
     const tela = manifesto.telas.find((t) => t.id === $('tela').value) || manifesto.telas[0];
     const layout = MT_getLayout($('layout').value || tela.layout);
     const emPe = layout.orientation === 'portrait';
@@ -205,8 +209,10 @@
     // Layout com cabeçalho já mostra a marca — mesma regra do player.
     const marcaNaTela = layout.zones.some((z) => z.type === 'header');
     $('problemas').innerHTML = lista('A porta recusou:', problemas, 'problemas');
-    $('info').innerHTML = '<b>' + escapar(tela.nome) + '</b> · ' + tela.estado + ' · layout ' + escapar(layout.name)
-      + ' · as peças de cada zona se revezam a cada ' + GIRO_MS / 1000 + 's';
+    $('info').innerHTML = '<b>' + escapar(tela.nome) + '</b> · ' + tela.estado
+      + (tela.estrutura ? ' · ' + escapar(tela.estrutura) : '') + ' · layout ' + escapar(layout.name)
+      + ' · as peças de cada zona se revezam a cada ' + GIRO_MS / 1000 + 's'
+      + (tela.sobre ? '<br>' + escapar(tela.sobre) : '');
 
     const palco = $('palco');
     palco.textContent = '';
@@ -222,6 +228,7 @@
     tv.style.gap = fresta;
     tv.style.padding = fresta;
 
+    const medir = [];
     for (const zona of layout.zones) {
       const grupo = tela.zonas[GRUPO_DA_ZONA[zona.id]];
       const caixa = document.createElement('div');
@@ -232,6 +239,7 @@
 
       const papel = zona.type === 'header' ? 'cabecalho' : zona.type === 'ticker' ? 'rodape'
         : GRUPO_DA_ZONA[zona.id] === 'lateral' ? 'lateral' : 'destaque';
+      medir.push({ caixa, grupo, papel, nome: zona.name });
       let i = 0;
       const mostrar = async () => {
         const e = entradaDe(grupo.pecas[i % grupo.pecas.length]);
@@ -247,6 +255,29 @@
       if (grupo.pecas.length > 1) giros.push(setInterval(mostrar, GIRO_MS));
     }
     palco.appendChild(m.caixa);
+
+    /*
+     * D18: a tela é conferida inteira de uma vez — cada peça de cada zona,
+     * no tamanho real da zona, fora da vista. Girando, só se vê uma peça
+     * por vez, e o que vazava na terceira passava sem ninguém notar.
+     */
+    const rodada = rodadaDaTela;
+    const achados = await Promise.all(medir.flatMap(({ caixa, grupo, papel, nome }) => grupo.pecas.map(entradaDe).map(async (e) => {
+      const host = document.createElement('div');
+      host.className = 'host medida';
+      host.style.width = caixa.offsetWidth + 'px';
+      host.style.height = caixa.offsetHeight + 'px';
+      tv.appendChild(host);
+      montarPeca(host, await lerPeca(e.id), defDe(e.id), papel, marca, grupo.modo,
+        { campos: e.campos, marcaNaTela: marcaNaTela && papel !== 'cabecalho' && papel !== 'rodape', mensagens: tela.mensagens || [] });
+      const d = await vazamentos(host);
+      host.remove();
+      return (d.fora.length ? nome + ' · ' + e.id + ' · VAZA: ' + d.fora.join(', ') : '')
+        + (d.juntos.length ? nome + ' · ' + e.id + ' · SOBREPÕE: ' + d.juntos.join(', ') : '');
+    })));
+    if (rodada !== rodadaDaTela) return;
+    $('problemas').insertAdjacentHTML('beforeend', lista('Não coube:', achados.filter(Boolean), 'problemas'));
+    document.body.dataset.conferida = 'sim';
   }
 
   function desenhar() {
@@ -265,7 +296,18 @@
     manifesto.marcas.forEach((m) => opcao($('marca'), m.id, m.nome));
     opcao($('modo'), 'todos', 'Os quatro');
     MTTokens.MODOS.forEach((m) => opcao($('modo'), m, m));
-    (manifesto.telas || []).forEach((t) => opcao($('tela'), t.id, t.nome + (t.estado === 'aprovada' ? ' ✓' : '')));
+    // D18: as telas prontas chegam em lotes, por perfil; agrupadas, o dono revê um lote de uma vez.
+    const grupos = new Map();
+    (manifesto.telas || []).forEach((t) => {
+      const g = t.lote ? 'Lote ' + t.lote + ' · ' + (NOME_DO_PERFIL[t.perfil] || t.perfil) : 'Telas de exemplo';
+      if (!grupos.has(g)) {
+        const og = document.createElement('optgroup');
+        og.label = g;
+        grupos.set(g, og);
+        $('tela').appendChild(og);
+      }
+      opcao(grupos.get(g), t.id, t.nome + (t.estado === 'aprovada' ? ' ✓' : t.estado === 'proposta' ? ' · proposta' : ''));
+    });
     LAYOUTS_DA_TELA.forEach((id) => opcao($('layout'), id, MT_getLayout(id).name));
     opcao($('tamanho'), 'caber', 'Caber na janela');
     opcao($('tamanho'), 'real', 'Real (1:1)');
