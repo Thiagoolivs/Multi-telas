@@ -45,8 +45,8 @@ test('item 29: Campanhas é a casa da campanha — uma vez, com estado, TVs e o 
   // A campanha não é mais copiada para Meus Designs, e a lista traz só a capa.
   const rota = semComentarios(ler('server/routes/campanhas.js'));
   assert.doesNotMatch(rota, /addLibrary/);
-  // 5 desde o D12 (o letreiro editável também grava o resultado).
-  assert.equal((rota.match(/capa: capaDe\(/g) || []).length, 5, 'toda gravação de resultado atualiza a capa');
+  // 5 desde o D12 (o letreiro editável também grava o resultado); 6 desde o D50 (Editar com a IA).
+  assert.equal((rota.match(/capa: capaDe\(/g) || []).length, 6, 'toda gravação de resultado atualiza a capa');
   for (const f of ['server/db-sqlite.js', 'server/db-postgres.js']) assert.match(ler(f), /capa/, f);
 });
 

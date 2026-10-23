@@ -22,7 +22,22 @@ const ai = require('./ai');
 const eco = require('./ecossistema');
 const redes = require('./redes');
 
-const TIPOS = ['refazer', 'acrescentar', 'tirar', 'redes', 'letreiro', 'contagem'];
+// 'texto' (D50): troca SÓ um texto da peça (preço, data, frase), sem refazer nada — a edição mais comum e a que não pode regredir.
+const TIPOS = ['refazer', 'texto', 'acrescentar', 'tirar', 'redes', 'letreiro', 'contagem'];
+
+/*
+ * Os textos que a pessoa vê numa peça (os campos de texto do item): é por
+ * eles que a IA da edição sabe o que "o preço" ou "a frase de baixo" é.
+ * Imagem, logo e QR ficam de fora. O campo de texto VAZIO entra: o modelo
+ * tem o lugar (a frase de apoio, o "quando") e a pessoa pode querer
+ * preenchê-lo.
+ */
+const CAMPOS_QUE_NAO_SAO_TEXTO = ['foto', 'logo', 'qr', 'imagem', 'fundo', 'marca'];
+function camposDeTexto(peca) {
+  const c = (peca && peca.item && peca.item.campos) || {};
+  return Object.keys(c).filter((k) => typeof c[k] === 'string'
+    && !CAMPOS_QUE_NAO_SAO_TEXTO.includes(k) && !/^(\/|https?:|data:)/.test(c[k].trim()));
+}
 const FAIXAS = ['cabecalho', 'rodape'];
 
 /*
@@ -71,10 +86,17 @@ function lerMudancas(lista, resultado) {
   const saida = [];
   for (const m of (Array.isArray(lista) ? lista : []).slice(0, 12)) {
     if (!m || !TIPOS.includes(m.tipo)) continue;
-    if (m.tipo === 'refazer' || m.tipo === 'tirar') {
+    if (m.tipo === 'refazer' || m.tipo === 'tirar' || m.tipo === 'texto') {
       const n = inteiro(m.peca);
       if (!(n >= 1 && n <= pecas.length)) continue;
       if (m.tipo === 'tirar') { saida.push({ tipo: 'tirar', peca: n }); continue; }
+      // Só um campo de texto que a peça TEM, e texto de verdade (curto, sem controle).
+      if (m.tipo === 'texto') {
+        const campo = String(m.campo || '');
+        const valor = corta(m.valor, 200);
+        if (camposDeTexto(pecas[n - 1].peca).includes(campo) && valor) saida.push({ tipo: 'texto', peca: n, campo, valor });
+        continue;
+      }
       saida.push({ tipo: 'refazer', peca: n, texto: corta(m.texto, 300),
         foto: ['manter', 'trocar', 'tirar'].includes(m.foto) ? m.foto : 'manter', descricaoFoto: corta(m.descricaoFoto, 400) });
     } else if (m.tipo === 'redes') {
@@ -127,6 +149,7 @@ function semIA(texto, resultado) {
 }
 
 function descreverMudanca(m) {
+  if (m.tipo === 'texto') return 'texto novo na peça ' + m.peca;
   if (m.tipo === 'refazer') return (m.foto === 'trocar' ? 'foto nova na peça ' : m.foto === 'tirar' ? 'sem foto na peça ' : 'texto novo na peça ') + m.peca;
   if (m.tipo === 'tirar') return 'tirar a peça ' + m.peca;
   if (m.tipo === 'acrescentar') return (m.quantidade === 1 ? 'mais uma peça' : 'mais ' + m.quantidade + ' peças') + ' em ' + E.NOME_ZONA[m.zona].toLowerCase();
@@ -182,6 +205,18 @@ async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso } = {}) 
   // Tirar por último e do fim para o começo, para os números das outras não andarem.
   const ordem = mudancas.filter((x) => x.tipo !== 'tirar').concat(mudancas.filter((x) => x.tipo === 'tirar').sort((a, b) => b.peca - a.peca));
   for (const mu of ordem) {
+    if (mu.tipo === 'texto') {
+      // Só o texto pedido muda: a foto, o desenho e os outros textos ficam (D50).
+      const alvo = numeradas[mu.peca - 1];
+      const zona = lugar(alvo.tela, alvo.zona);
+      const i = zona.findIndex((x) => x.vaga === alvo.peca.vaga);
+      if (i >= 0) {
+        const p = zona[i];
+        zona[i] = { ...p, label: mu.campo === 'titulo' ? mu.valor.slice(0, 40) : p.label,
+          item: { ...p.item, campos: { ...p.item.campos, [mu.campo]: mu.valor } } };
+      }
+      continue;
+    }
     if (mu.tipo === 'refazer') {
       const alvo = numeradas[mu.peca - 1];
       const p = alvo.peca;
@@ -270,4 +305,4 @@ function desfazer(campanha) {
   return { resultado: a.resultado, escopo: a.escopo };
 }
 
-module.exports = { numerar, lerMudancas, semIA, entender, aplicar, desfazer, descreverMudanca, SISTEMA };
+module.exports = { numerar, lerMudancas, semIA, entender, aplicar, desfazer, descreverMudanca, camposDeTexto, SISTEMA };
