@@ -54,7 +54,9 @@ test('zona vazia mostra a marca em calma (D12; no item 39 era preta, pulsando); 
   assert.match(r, /mt-empty-hora/);
   assert.match(r, /dataPorExtenso\(/);
   assert.match(r, /parar: \(\) => clearInterval\(t\)/);
-  const i = FONTE.indexOf('if (!items.length) {', FONTE.indexOf('function startPlaylist('));
+  // Desde o D15 a zona com automáticos (aniversário, mural) não espera: o rodízio cuida dela.
+  const i = FONTE.indexOf('if (!items.length && !auto) {', FONTE.indexOf('function startPlaylist('));
+  assert.ok(i > 0, 'a zona vazia mudou de regra');
   const bloco = FONTE.slice(i, FONTE.indexOf('function advance()', i));
   assert.match(bloco, /esperaDeZona\(\)/);
   assert.match(bloco, /stop: espera\.parar/);

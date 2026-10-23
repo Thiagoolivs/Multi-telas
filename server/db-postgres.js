@@ -58,6 +58,8 @@ async function init() {
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS teste_ate BIGINT;
     -- Empresa, Comércio ou Saúde (js/perfil.js). Vazio = deduzido do ramo.
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS perfil TEXT;
+    -- Aniversários e mural nas TVs, sozinhos (server/automaticos.js, D15).
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS automaticos TEXT;
     CREATE TABLE IF NOT EXISTS exibicoes (
       device_id TEXT, tenant_id TEXT, hora BIGINT, zona TEXT, chave TEXT,
       rotulo TEXT, tipo TEXT, vezes INTEGER, segundos INTEGER,
@@ -355,6 +357,9 @@ async function setUserName(id, name) {
 }
 async function setTenantName(id, name) {
   await pool.query('UPDATE tenants SET name = $1 WHERE id = $2', [String(name || '').slice(0, 80), id]);
+}
+async function setAutomaticos(id, automaticos) {
+  await pool.query('UPDATE tenants SET automaticos = $1 WHERE id = $2', [JSON.stringify(automaticos || null), id]);
 }
 async function setTenantPerfil(id, perfil) {
   await pool.query('UPDATE tenants SET perfil = $1 WHERE id = $2', [perfil || null, id]);
@@ -1676,7 +1681,7 @@ async function relatorioExibicoes(tenantId, de, ate, deviceId) {
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
-  getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil,
+  getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil, setAutomaticos,
   createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote, registrarExibicoes, relatorioExibicoes,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,

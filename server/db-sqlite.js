@@ -462,7 +462,9 @@ for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', '
   // Até quando o teste vale, quando o operador estendeu (server/plans.js, fimDoTeste).
   'teste_ate INTEGER',
   // Empresa, Comércio ou Saúde (js/perfil.js). Vazio = deduzido do ramo.
-  'perfil TEXT']) {
+  'perfil TEXT',
+  // Aniversários e mural nas TVs, sozinhos (server/automaticos.js, D15).
+  'automaticos TEXT']) {
   garantirColuna('tenants', col);
 }
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
@@ -600,6 +602,7 @@ async function setUserPassword(id, passHash) { q.setUserPass.run(passHash, id); 
 async function setUserName(id, name) { q.setUserName.run(String(name || '').slice(0, 80), id); }
 async function setTenantName(id, name) { q.setTenantName.run(String(name || '').slice(0, 80), id); }
 async function setTenantPerfil(id, perfil) { q.setTenantPerfil.run(perfil || null, id); }
+async function setAutomaticos(id, automaticos) { db.prepare('UPDATE tenants SET automaticos = ? WHERE id = ?').run(JSON.stringify(automaticos || null), id); }
 // Reset de senha: um token de uso único, com validade curta.
 async function createReset(token, userId, expiresAt) {
   q.purgeResets.run(userId); // invalida pedidos anteriores
@@ -1709,7 +1712,7 @@ async function estornarPacote(paymentId) {
 module.exports = {
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
-  getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil,
+  getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil, setAutomaticos,
   createReset, getReset, consumeReset, createVerification, getVerification, consumeVerification, limparVencidos, creditarPacote, estornarPacote, registrarExibicoes, relatorioExibicoes,
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,

@@ -27,6 +27,7 @@ module.exports = function (ctx) {
   // quando há um. Relativo (disco), só /media/.
   const pecaHtml = require('../../js/peca-html.js');
   const paleta = require('../paleta.js');
+  const automaticos = require('../automaticos.js');
   const hostsMidia = (() => {
     try { return [new URL(storage.publicUrl('x')).host]; } catch (e) { return []; }
   })();
@@ -226,6 +227,14 @@ module.exports = function (ctx) {
           if (dtOk && c && c.settings) {
             const logo = await paleta.logoDaConta(db, device.tenant_id);
             if (logo) { c.settings.logo = logo; mudou = true; }
+            /*
+             * Aniversários e mural "nas TVs" (D15): a escolha é da conta, e
+             * esta TV recebe só o que a alcança. Calculado agora, como a logo:
+             * o painel não grava isto de volta na programação.
+             */
+            const conta = await db.getTenant(device.tenant_id).catch(() => null);
+            const auto = automaticos.paraATela(conta && conta.automaticos, device);
+            if (auto.aniversarios || auto.mural) { c.settings.automaticos = auto; mudou = true; }
           }
           if (mudou) corpo = JSON.stringify(c);
         } catch (e) { /* config ilegível: vai como está, e a TV se vira */ }
@@ -646,7 +655,44 @@ module.exports = function (ctx) {
     return sendJson(res, 404, { error: 'rota de grupos inválida' });
   }
 
+  /*
+   * /api/automaticos (D15): "mostrar nas TVs" dos aniversários e do mural.
+   * GET devolve a escolha e onde cada mural aparece de verdade — o "na tela"
+   * do painel passa a ser verdade, e não um número otimista.
+   */
+  async function rotaAutomaticos(req, res, sess) {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const [conta, telas, murais] = await Promise.all([
+      db.getTenant(sess.tenant_id), db.listDevices(sess.tenant_id), db.listarMurais(sess.tenant_id),
+    ]);
+    const idsDaConta = (telas || []).map((d) => d.id);
+    const codigosDeMural = (murais || []).map((m) => String(m.codigo || '').toUpperCase());
+    const atual = automaticos.normalizar(conta && conta.automaticos, { idsDaConta, codigosDeMural });
+    if (req.method === 'GET') {
+      // Onde cada mural está: pelo "mostrar nas TVs" ou por um item posto à mão numa zona.
+      const muralNasTelas = {};
+      for (const cod of codigosDeMural) {
+        // Item de mural posto à mão numa zona (a config é JSON compacto: sem espaço depois dos dois-pontos).
+        const naZona = (await db.ondeAparece(sess.tenant_id, '"codigo":"' + cod + '"')).telas;
+        const viaConta = (telas || []).filter((d) => automaticos.paraATela(atual, d).mural === cod).map((d) => d.name || 'TV');
+        const nomes = [...new Set(naZona.concat(viaConta))];
+        if (nomes.length) muralNasTelas[cod] = nomes;
+      }
+      return sendJson(res, 200, { automaticos: atual, muralNasTelas, telas: (telas || []).map((d) => ({ id: d.id, nome: d.name || 'TV', grupo: d.grupo || '' })) });
+    }
+    if (req.method === 'PUT') {
+      return readBody(req, res, async (b) => {
+        const novo = automaticos.normalizar(Object.assign({}, atual, b || {}), { idsDaConta, codigosDeMural });
+        await db.setAutomaticos(sess.tenant_id, novo);
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'automaticos.salvar');
+        return sendJson(res, 200, { automaticos: novo });
+      });
+    }
+    return sendJson(res, 405, { error: 'método inválido' });
+  }
+
   return async function (req, res, parts, query, sess) {
+    if (parts[1] === 'automaticos' && parts.length === 2) { await rotaAutomaticos(req, res, sess); return true; }
     if (parts[1] === 'grupos') { await grupos(req, res, parts, query, sess); return true; }
     if (parts[1] !== 'devices' && parts[1] !== 'pair') return false;
     const r = await tratar(req, res, parts, query, sess);

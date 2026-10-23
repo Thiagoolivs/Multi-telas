@@ -8,6 +8,7 @@ import { Input } from '../components/ui/Field.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 import { EmptyState, ErrorState, Spinner } from '../components/ui/Feedback.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
+import { MostrarNasTVs, useMuralNasTelas } from '../components/tela/MostrarNasTVs.jsx';
 
 /*
  * Mural: o painel de quem está no evento com o celular na mão.
@@ -93,6 +94,9 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
   const [confirmar, setConfirmar] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const link = base + '/m/' + mural.codigo;
+  // Em quais TVs este mural está DE VERDADE (D15): o "na tela" só vale com TV.
+  const nasTelas = useMuralNasTelas();
+  const ondeEsta = nasTelas ? (nasTelas[String(mural.codigo).toUpperCase()] || []) : null;
 
   useEffect(() => { setTitulo(mural.titulo); setFotos(null); carregar(); }, [mural.id]);
   // Sem recarregar, a moderação chega tarde: aqui o atraso é o problema.
@@ -170,6 +174,8 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
           <PanelBody className="space-y-3">
             <label className="block text-xs font-medium text-ink-2">Nome do mural</label>
             <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} onBlur={salvarTitulo} />
+            <MostrarNasTVs qual="mural" codigo={String(mural.codigo).toUpperCase()} titulo="Mostrar nas TVs"
+              explicacao="As fotos aprovadas entram sozinhas no rodízio da área principal (1 a cada 5 peças)." />
             <div className="flex items-center justify-between rounded-md border border-line bg-surface-2 px-3 py-2">
               <div className="text-sm">
                 <div className="font-medium text-ink">{mural.aceitando ? 'Aberto' : 'Fechado'}</div>
@@ -207,7 +213,9 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
       <Panel>
         <PanelHeader
           title="Fotos recebidas"
-          description={erroFotos ? erroFotos : fotos === null ? 'carregando…' : `${visiveis} na tela · ${fotos.length} no total`}
+          description={erroFotos ? erroFotos : fotos === null ? 'carregando…'
+            // "na tela" só quando o mural está mesmo numa TV (D15); antes dizia isso sem estar.
+            : (ondeEsta && ondeEsta.length ? `${visiveis} na tela (${ondeEsta.join(', ')})` : `${visiveis} aprovadas · em nenhuma TV ainda`) + ` · ${fotos.length} no total`}
           actions={
             <div className="flex gap-2">
               <IconButton icon={RefreshCw} label="Atualizar" onClick={carregar} />
