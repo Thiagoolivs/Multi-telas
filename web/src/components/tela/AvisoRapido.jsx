@@ -52,7 +52,12 @@ export function AvisoRapido({ onFechar }) {
     setEnviando(true);
     try {
       const id = 'avs_' + Date.now().toString(36);
-      const r = await gravarEmLote(alvos, (cfg) => aplicarAviso(cfg, item, aviso, id), 'Aviso: ' + aviso.titulo);
+      // A TV sem zona que caiba o aviso pára o envio inteiro, dizendo qual (nada vai pela metade).
+      const naTela = (cfg, tv) => {
+        try { return aplicarAviso(cfg, item, aviso, id); }
+        catch (e) { throw new Error((tv.name || 'Uma TV') + ': ' + e.message + '. Nada foi enviado.'); }
+      };
+      const r = await gravarEmLote(alvos, naTela, 'Aviso: ' + aviso.titulo);
       avisarComDesfazer('Aviso no ar em ' + alvos.length + (alvos.length === 1 ? ' TV.' : ' TVs.'), r.lote);
       onFechar();
     } catch (e) { avisos.erro('aviso', e.message || 'Não deu para pôr nas TVs.'); }

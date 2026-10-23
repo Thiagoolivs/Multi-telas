@@ -68,12 +68,24 @@ test('a peça: o alerta dos modelos, com a marca, sem nada do texto de exemplo; 
   c = L.aplicarAviso(c, it, { ...aviso, ate: '' }, 'avs_1');
   assert.equal(c.zonas.principal.items.filter((i) => i._aviso).length, 1, 'aplicar de novo empilhou');
   assert.equal(c.zonas.principal.items[0].agendamento, undefined, 'sem data: até alguém tirar');
+  // Sem principal: a MAIOR lista, nunca cabeçalho/rodapé; sem lista nenhuma, não envia (nota do consultor).
+  const real = globalThis.MT_getLayout;
+  try {
+    globalThis.MT_getLayout = () => ({ zones: [{ id: 'topo', type: 'header', area: 'topo' }, { id: 'a', type: 'playlist', area: 'a' }, { id: 'b', type: 'playlist', area: 'b' }, { id: 'pe', type: 'ticker', area: 'pe' }],
+      grid: { columns: '1fr 3fr', rows: '12vh 1fr 10vh', areas: ['topo topo', 'a b', 'pe pe'] } });
+    assert.equal(L.zonaDoAviso({}), 'b');
+    globalThis.MT_getLayout = () => ({ zones: [{ id: 'topo', type: 'header', area: 'topo' }], grid: { columns: '1fr', rows: '1fr', areas: ['topo'] } });
+    assert.equal(L.zonaDoAviso({}), null);
+    assert.throws(() => L.aplicarAviso({}, it, aviso, 'avs_2'), /não tem onde mostrar o aviso/);
+  } finally { globalThis.MT_getLayout = real; }
+  assert.equal(L.zonaDoAviso({ settings: { layoutId: 'video-dynamic' } }), 'video');
   assert.deepEqual(L.telasDoAviso({ alvo: { tipo: 'grupo', nome: 'Fábrica' } }, [{ id: 'a', grupo: 'Fábrica' }, { id: 'b' }]).map((t) => t.id), ['a']);
 });
 
 test('o painel: aviso rápido na Programação, prévia antes, envio em lote com Desfazer', () => {
   const d = ler('web/src/components/tela/AvisoRapido.jsx');
-  assert.match(d, /const r = await gravarEmLote\(alvos, \(cfg\) => aplicarAviso\(cfg, item, aviso, id\), 'Aviso: ' \+ aviso\.titulo\);/);
+  assert.match(d, /const r = await gravarEmLote\(alvos, naTela, 'Aviso: ' \+ aviso\.titulo\);/);
+  assert.match(d, /throw new Error\(\(tv\.name \|\| 'Uma TV'\) \+ ': ' \+ e\.message \+ '\. Nada foi enviado\.'\);/, 'TV sem lugar para o aviso não para o envio');
   assert.match(d, /avisarComDesfazer\(/);
   assert.match(d, /<PecaHtml item=\{item\} formato="16\/9" \/>/, 'sem prévia antes de mandar');
   assert.match(ler('web/src/pages/ProgramacaoPage.jsx'), /onClick=\{\(\) => setAvisoAberto\(true\)\}>Aviso rápido</);
