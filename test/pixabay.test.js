@@ -90,7 +90,10 @@ test('a rota: só com sessão; sem a chave no servidor, o painel esconde a aba e
 
 test('o painel e a TV: a aba só fora da foto de produto, o crédito por campo na peça e no canto da TV', () => {
   const F = ler('web/src/components/content/FotoDoProduto.jsx');
-  assert.match(F, /\{incluirIa && bancoLigado && \(/, 'o banco de imagens apareceu para a foto de PRODUTO (que tem de ser o de verdade)');
+  // A aba só fora da foto de produto; o acervo comum vale sem a Pixabay, a busca na Pixabay só com ela.
+  assert.match(F, /\{incluirIa && \(\s*<div className="mb-2 flex gap-1" role="tablist"/, 'o banco de imagens apareceu para a foto de PRODUTO (que tem de ser o de verdade)');
+  assert.match(F, /if \(pixabayLigada\) setBusca\(await pixabay\.buscar\(t\)\)/);
+  assert.match(F, /onEscolher\(r\.item\.url, r\.item\.credito \? \{ credito: r\.item\.credito \} : undefined\)/);
   assert.match(F, /onEscolher\(r\.url, \{ credito: r\.credito \}\)/);
   const E = ler('web/src/components/content/EditarPeca.jsx');
   assert.match(E, /const vivos = Object\.fromEntries\(Object\.entries\(creditos\)\.filter\(\(\[n\]\) => gravados\[n\]\)\);/, 'crédito de foto que saiu continua na TV');

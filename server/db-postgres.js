@@ -316,6 +316,10 @@ async function init() {
     );
     CREATE INDEX IF NOT EXISTS idx_banco_estado ON banco(estado);
     CREATE INDEX IF NOT EXISTS idx_banco_tenant ON banco(tenant_id);
+    -- O banco comum com fotos da Pixabay escolhidas pelo operador: de onde veio, o crédito e o link.
+    ALTER TABLE banco ADD COLUMN IF NOT EXISTS origem TEXT;
+    ALTER TABLE banco ADD COLUMN IF NOT EXISTS credito TEXT;
+    ALTER TABLE banco ADD COLUMN IF NOT EXISTS fonte TEXT;
     /*
      * Uso de IA: toda chamada entra aqui, cobrando crédito ou não. Medir
      * antes de cobrar é a fatia 1 de docs/BILLING.md.
@@ -1573,9 +1577,9 @@ async function sumMediaBytes(tenantId) {
 /* ---------------- Banco de Imagens MultiTelas ---------------- */
 async function bancoOferecer(r) {
   await pool.query(
-    'INSERT INTO banco (id, media_id, tenant_id, key, url, mime, size, formato, cor, segmento, descricao, estado, usos, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,0,$13)',
+    'INSERT INTO banco (id, media_id, tenant_id, key, url, mime, size, formato, cor, segmento, descricao, estado, usos, created_at, origem, credito, fonte) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,0,$13,$14,$15,$16)',
     [r.id, r.mediaId, r.tenantId, r.key, r.url, r.mime, r.size, r.formato || null, r.cor || null,
-      r.segmento || null, r.descricao || null, r.estado, Date.now()]);
+      r.segmento || null, r.descricao || null, r.estado, Date.now(), r.origem || 'ia', r.credito || null, r.fonte || null]);
   return r;
 }
 async function bancoPorId(id) {
@@ -1610,10 +1614,11 @@ async function bancoApagarDaMedia(mediaId, tenantId) {
  * combináveis; cada pedaço continua parametrizado — nada de texto do cliente
  * dentro da consulta.
  */
-async function bancoBuscar({ estado, formato, termo, limite } = {}) {
+async function bancoBuscar({ estado, formato, termo, limite, segmento } = {}) {
   const onde = ['estado = $1'];
   const vals = [estado || 'aprovada'];
   if (formato) { vals.push(String(formato)); onde.push('formato = $' + vals.length); }
+  if (segmento) { vals.push(String(segmento)); onde.push('segmento = $' + vals.length); }
   if (termo) {
     const like = '%' + String(termo).toLowerCase() + '%';
     vals.push(like);

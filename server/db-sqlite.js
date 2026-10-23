@@ -416,6 +416,10 @@ function garantirColuna(tabela, definicao) {
 garantirColuna('brandassets', 'marca_id TEXT');
 // Onde a loja fica (endereço, bairro, cidade, link), em JSON: as redes pedem.
 garantirColuna('marcas', 'localizacao TEXT');
+// O banco comum com fotos da Pixabay escolhidas pelo operador: de onde veio, o crédito e o link.
+garantirColuna('banco', 'origem TEXT');
+garantirColuna('banco', 'credito TEXT');
+garantirColuna('banco', 'fonte TEXT');
 // A capa da campanha (a primeira peça), para a lista de Campanhas não carregar o resultado inteiro (item 29).
 garantirColuna('campanhas', 'capa TEXT');
 // Arquivada desde quando (0 = não). Sai da lista, não do banco (D10).
@@ -627,7 +631,7 @@ const q = {
   mediaById: db.prepare('SELECT * FROM media WHERE id = ?'),
   deleteMedia: db.prepare('DELETE FROM media WHERE id = ? AND tenant_id = ?'),
   sumMedia: db.prepare('SELECT COALESCE(SUM(size),0) AS n FROM media WHERE tenant_id = ?'),
-  insertBanco: db.prepare('INSERT INTO banco (id, media_id, tenant_id, key, url, mime, size, formato, cor, segmento, descricao, estado, usos, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)'),
+  insertBanco: db.prepare('INSERT INTO banco (id, media_id, tenant_id, key, url, mime, size, formato, cor, segmento, descricao, estado, usos, created_at, origem, credito, fonte) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)'),
   bancoPorId: db.prepare('SELECT * FROM banco WHERE id = ?'),
   bancoPorMedia: db.prepare('SELECT * FROM banco WHERE media_id = ?'),
   bancoDoTenant: db.prepare('SELECT * FROM banco WHERE tenant_id = ? ORDER BY created_at DESC'),
@@ -953,7 +957,8 @@ async function sumMediaBytes(tenantId) { return Number(q.sumMedia.get(tenantId).
 /* ---------------- Banco de Imagens MultiTelas ---------------- */
 async function bancoOferecer(r) {
   q.insertBanco.run(r.id, r.mediaId, r.tenantId, r.key, r.url, r.mime, r.size,
-    r.formato || null, r.cor || null, r.segmento || null, r.descricao || null, r.estado, Date.now());
+    r.formato || null, r.cor || null, r.segmento || null, r.descricao || null, r.estado, Date.now(),
+    r.origem || 'ia', r.credito || null, r.fonte || null);
   return r;
 }
 async function bancoPorId(id) { return q.bancoPorId.get(id) || null; }
@@ -968,10 +973,11 @@ async function bancoApagarDaMedia(mediaId, tenantId) { q.bancoApagarDaMedia.run(
  * cada pedaço continua parametrizado — nada de texto do cliente dentro da
  * consulta.
  */
-async function bancoBuscar({ estado, formato, termo, limite } = {}) {
+async function bancoBuscar({ estado, formato, termo, limite, segmento } = {}) {
   const onde = ['estado = ?'];
   const vals = [estado || 'aprovada'];
   if (formato) { onde.push('formato = ?'); vals.push(String(formato)); }
+  if (segmento) { onde.push('segmento = ?'); vals.push(String(segmento)); }
   if (termo) {
     onde.push('(LOWER(COALESCE(descricao, \'\')) LIKE ? OR LOWER(COALESCE(segmento, \'\')) LIKE ?)');
     const like = '%' + String(termo).toLowerCase() + '%';

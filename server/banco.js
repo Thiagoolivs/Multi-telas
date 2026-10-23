@@ -43,6 +43,61 @@
 const ESTADOS = ['pendente', 'aprovada', 'recusada', 'revogada'];
 
 /*
+ * Os segmentos do banco e os termos prontos de cada um (pedido do dono, 23/10:
+ * "formar um banco de imagens para uso comum no MultiTelas"). O operador
+ * enche a prateleira de cada segmento escolhendo fotos da Pixabay, uma a uma;
+ * o cliente encontra primeiro as do segmento dele. Os sinônimos ligam o
+ * segmento que a conta escreveu na marca ("panificadora", "metalúrgica") ao
+ * segmento do banco.
+ */
+const SEGMENTOS = [
+  { id: 'padaria', nome: 'Padaria e confeitaria', sinonimos: ['padaria', 'confeitaria', 'panific', 'doceria', 'bolo'],
+    termos: ['pão francês', 'pão de queijo', 'café da manhã', 'bolo', 'croissant', 'café coado', 'padeiro', 'doces'] },
+  { id: 'restaurante', nome: 'Restaurante e lanchonete', sinonimos: ['restaurante', 'lanchonete', 'hamburg', 'pizzaria', 'bar', 'cafeteria', 'comida', 'marmit'],
+    termos: ['prato feito', 'hambúrguer', 'pizza', 'salada', 'suco natural', 'sobremesa', 'cafeteria', 'churrasco'] },
+  { id: 'mercado', nome: 'Mercado e hortifrúti', sinonimos: ['mercado', 'hortifr', 'mercearia', 'açougue', 'acougue', 'empório', 'emporio'],
+    termos: ['frutas', 'legumes', 'verduras', 'carrinho de compras', 'carne', 'prateleira de mercado', 'cesta de compras'] },
+  { id: 'otica', nome: 'Ótica', sinonimos: ['ótica', 'otica', 'óculos', 'oculos'],
+    termos: ['óculos de sol', 'armação de óculos', 'lentes', 'óculos de grau', 'exame de vista'] },
+  { id: 'saude', nome: 'Clínica, saúde e farmácia', sinonimos: ['clínica', 'clinica', 'saúde', 'saude', 'médic', 'medic', 'odonto', 'dentista', 'farmácia', 'farmacia', 'laborat', 'fisioter', 'hospital'],
+    termos: ['consultório', 'estetoscópio', 'consultório odontológico', 'farmácia', 'alimentação saudável', 'copo de água', 'caminhada'] },
+  { id: 'beleza', nome: 'Salão e estética', sinonimos: ['salão', 'salao', 'estética', 'estetica', 'beleza', 'barbearia', 'manicure', 'cabelei'],
+    termos: ['salão de beleza', 'manicure', 'barbearia', 'maquiagem', 'cabelo', 'spa', 'cuidados com a pele'] },
+  { id: 'academia', nome: 'Academia e esporte', sinonimos: ['academia', 'fitness', 'crossfit', 'esporte', 'pilates', 'yoga'],
+    termos: ['academia', 'halteres', 'corrida', 'pilates', 'yoga', 'bicicleta'] },
+  { id: 'pet', nome: 'Pet shop e veterinária', sinonimos: ['pet', 'veterin', 'animal'],
+    termos: ['cachorro', 'gato', 'banho e tosa', 'ração', 'veterinário'] },
+  { id: 'moda', nome: 'Loja e moda', sinonimos: ['moda', 'roupa', 'loja', 'calçad', 'calcad', 'boutique', 'vestu'],
+    termos: ['roupas', 'vitrine', 'sapatos', 'bolsa', 'liquidação', 'cabide'] },
+  { id: 'educacao', nome: 'Escola e cursos', sinonimos: ['escola', 'curso', 'educa', 'faculdade', 'colégio', 'colegio'],
+    termos: ['sala de aula', 'livros', 'estudante', 'material escolar', 'formatura'] },
+  { id: 'empresa', nome: 'Empresa e escritório', sinonimos: ['empresa', 'escritório', 'escritorio', 'corporativ', 'consultoria', 'contabil', 'advoca'],
+    termos: ['escritório', 'reunião', 'equipe de trabalho', 'notebook', 'café no escritório', 'bolo de aniversário'] },
+  { id: 'industria', nome: 'Indústria e logística', sinonimos: ['indústria', 'industria', 'fábrica', 'fabrica', 'metal', 'logíst', 'logist', 'transporte', 'construç', 'construc'],
+    termos: ['fábrica', 'capacete de segurança', 'equipamento de proteção', 'armazém', 'caminhão', 'solda'] },
+  { id: 'datas', nome: 'Datas e estações', sinonimos: [],
+    termos: ['Natal', 'Páscoa', 'Dia das Mães', 'Dia dos Pais', 'Outubro Rosa', 'Black Friday', 'verão', 'festa junina'] },
+];
+const ID_DO_SEGMENTO = SEGMENTOS.map((s) => s.id);
+const sem = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+// O segmento do banco que corresponde ao que a conta escreveu na marca ("Panificadora do Zé" → padaria).
+function segmentoDaConta(texto) {
+  const t = sem(texto);
+  if (!t) return null;
+  const s = SEGMENTOS.find((x) => x.sinonimos.some((p) => t.includes(sem(p))));
+  return s ? s.id : null;
+}
+
+// A proporção da foto, na mais próxima das que a TV usa.
+function formatoDe(largura, altura) {
+  const r = Number(largura) / Number(altura);
+  if (!isFinite(r) || r <= 0) return null;
+  const opcoes = [['16/9', 16 / 9], ['9/16', 9 / 16], ['1/1', 1], ['21/9', 21 / 9]];
+  return opcoes.reduce((m, o) => (Math.abs(Math.log(r / o[1])) < Math.abs(Math.log(r / m[1])) ? o : m))[0];
+}
+
+/*
  * Regra 1, sozinha e testável. Devolve motivo em vez de booleano porque a
  * mensagem vai direto para a tela de quem tentou — "não pode" sem porquê é a
  * forma mais rápida de gerar um chamado de suporte.
@@ -166,6 +221,10 @@ function paraCliente(r, tenantId) {
     cor: r.cor || null,
     descricao: r.descricao || '',
     segmento: r.segmento || null,
+    // A foto da Pixabay leva o crédito do autor e o link de onde veio (D37: a TV mostra o crédito).
+    origem: r.origem || 'ia',
+    credito: r.credito || null,
+    fonte: r.fonte || null,
     usos: Number(r.usos || 0),
     estado: r.estado,
     minha,
@@ -173,10 +232,55 @@ function paraCliente(r, tenantId) {
   };
 }
 
-/* O feed: só aprovadas, com busca por texto e filtro de proporção. */
-async function listar(db, { termo, formato, limite } = {}, tenantId) {
-  const linhas = await db.bancoBuscar({ estado: 'aprovada', termo: limpar(termo, 60), formato: limpar(formato, 12), limite });
+/* O feed: só aprovadas, com busca por texto, filtro de proporção e de segmento. */
+async function listar(db, { termo, formato, limite, segmento } = {}, tenantId) {
+  const seg = ID_DO_SEGMENTO.includes(segmento) ? segmento : null;
+  const linhas = await db.bancoBuscar({ estado: 'aprovada', termo: limpar(termo, 60), formato: limpar(formato, 12), limite, segmento: seg });
   return linhas.map((r) => paraCliente(r, tenantId));
+}
+
+/*
+ * A curadoria do operador (pedido do dono, 23/10): a foto que uma PESSOA
+ * escolheu na Pixabay entra no banco comum já aprovada — quem escolheu é a
+ * moderação. Os termos da Pixabay (20/10/2026) proíbem "systematic mass
+ * downloads": por isso é uma foto por pedido, escolhida por alguém, nunca um
+ * robô enchendo a prateleira. E pedem cuidado com marca à vista e com pessoa
+ * reconhecível em contexto de doença ou remédio — o operador confirma as duas
+ * coisas antes (`confirmou`).
+ *
+ * `foto` é o que server/pixabay.js baixou; `salvo`, o arquivo já guardado no
+ * nosso armazenamento (a TV nunca depende do servidor da Pixabay). A linha
+ * não tem conta dona: a foto é da plataforma.
+ */
+async function curarDaPixabay(db, { foto, salvo, segmento, descricao, operador, confirmou } = {}) {
+  if (!ID_DO_SEGMENTO.includes(segmento)) return { ok: false, status: 400, error: 'escolha o segmento' };
+  const c = confirmou || {};
+  if (c.semMarca !== true || c.semPessoaDoente !== true) {
+    return { ok: false, status: 400, error: 'confirme que a foto não tem marca à vista nem pessoa reconhecível doente ou tomando remédio' };
+  }
+  if (!foto || !Number.isInteger(Number(foto.id)) || !salvo) return { ok: false, status: 400, error: 'foto inválida' };
+  const mediaId = 'pixabay:' + Number(foto.id);
+  if (await db.bancoPorMedia(mediaId)) return { ok: false, status: 409, error: 'esta foto já está no banco' };
+  const item = {
+    id: 'bk_' + db.rid(14),
+    mediaId,
+    tenantId: null,
+    key: salvo.key,
+    url: salvo.url,
+    mime: salvo.mime,
+    size: salvo.size,
+    formato: formatoDe(foto.largura, foto.altura),
+    cor: null,
+    segmento,
+    descricao: limpar(descricao || foto.tags, 180) || 'foto',
+    estado: 'aprovada',
+    origem: 'pixabay',
+    credito: limpar(foto.credito, 120),
+    fonte: /^https:\/\/pixabay\.com\//.test(String(foto.pagina || '')) ? String(foto.pagina).slice(0, 300) : null,
+  };
+  await db.bancoOferecer(item);
+  await db.bancoDecidir(item.id, 'aprovada', operador || null);
+  return { ok: true, status: 201, item: { ...item, usos: 0 } };
 }
 
 /*
@@ -191,4 +295,4 @@ async function usar(db, tenantId, id) {
   return { ok: true, status: 200, item: paraCliente({ ...item, usos: Number(item.usos || 0) + 1 }, tenantId) };
 }
 
-module.exports = { ESTADOS, podeOferecer, descricaoDe, oferecer, revogar, moderar, listar, usar, paraCliente };
+module.exports = { ESTADOS, SEGMENTOS, podeOferecer, descricaoDe, oferecer, revogar, moderar, listar, usar, paraCliente, curarDaPixabay, segmentoDaConta, formatoDe };

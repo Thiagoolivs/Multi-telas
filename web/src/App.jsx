@@ -231,7 +231,7 @@ export default function App() {
       case 'storage': return <StoragePage filtro="fotos" />;
       case 'musicas': return <StoragePage key="musicas" filtro="musicas" />;
       case 'ia': return <StoragePage key="ia" filtro="ia" />;
-      case 'banco': return <BancoImagensPage />;
+      case 'banco': return <BancoImagensPage operador={!!session.operador} />;
       /*
        * A chave remonta o Criar quando se chega de novo com outra opção (do
        * Início, ou de "Criar novo" numa tela) — senão ficaria no passo antigo.

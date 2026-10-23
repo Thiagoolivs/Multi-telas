@@ -587,6 +587,10 @@ export const bancoImagens = {
   compartilhar: (mediaId) => api('POST', '/api/banco/' + mediaId + '/compartilhar', { aceito: true }),
   descompartilhar: (mediaId) => api('DELETE', '/api/banco/' + mediaId + '/compartilhar'),
   usar: (id) => api('POST', '/api/banco/' + id + '/usar', {}),
+  // Uma cópia da imagem do acervo nas Mídias da conta, com o crédito no nome.
+  paraMidias: (id) => api('POST', '/api/banco/' + id + '/midias', {}),
+  // Só o operador: uma foto da Pixabay no acervo comum, no segmento dito (pedido do dono, 23/10).
+  curarPixabay: (b) => api('POST', '/api/plataforma/banco/pixabay', b),
 };
 
 // Bytes crus para uma rota (a imagem de referência do chat, D45): o erro do servidor vira a mensagem.
