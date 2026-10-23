@@ -88,6 +88,8 @@ const OPERACOES = {
   ecossistema: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Campanha do Criar' },
   // Ajustar a campanha do Criar (item 26). A foto nova cobra à parte, como campanha-peca.
   ajuste: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Ajuste de campanha' },
+  // Pedir à IA dentro da peça (D20): uma chamada de texto que devolve só o que muda.
+  'ajuste-peca': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Ajuste de peça' },
 };
 
 function operacao(tipo) { return OPERACOES[tipo] || null; }

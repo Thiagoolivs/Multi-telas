@@ -93,7 +93,7 @@ export function ProgramacaoPage({ onIr }) {
                       className="flex h-40 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-warn/50 text-sm text-ink-2">
                       Não deu para ler o que está nesta TV.<span className="text-xs text-accent">Tentar de novo</span>
                     </button>
-                  ) : layout ? <MapaDaTela layout={layout} onEscolher={(z) => editar(d, z && z.id)} resumo={resumoDaZona(cfg)} />
+                  ) : layout ? <MapaDaTela layout={layout} onEscolher={(z) => editar(d, z && z.id)} resumo={resumoDaZona(cfg)} cfg={cfg} />
                     : (
                       <button type="button" onClick={() => editar(d)}
                         className="flex h-40 items-center justify-center rounded-lg border border-dashed border-line text-sm text-ink-3 hover:border-accent/60">
