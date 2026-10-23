@@ -53,7 +53,10 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
     carregarTelasProntas().then(setDados).catch((e) => setErro(e.message || 'Não deu para abrir as telas prontas.'));
     brand.get().then((r) => {
       const k = (r && r.kit) || {};
-      setMarca({ cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '' });
+      const local = k.local || {};
+      // O site e o endereço da Marca entram onde a tela de exemplo tinha os dela.
+      setMarca({ cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '',
+        site: k.site || '', endereco: [local.endereco, local.bairro].filter(Boolean).join(' · ') });
     }).catch(() => setMarca({}));
     devices.list().then((r) => setTvs((r && r.devices) || [])).catch(() => setTvs([]));
   }, [tentativa]);
@@ -64,7 +67,7 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
     const doPerfil = (t) => perfilDaTela(t) === perfil.id;
     return dados.telas.filter((t) => todas || doPerfil(t))
       .sort((a, b) => Number(doPerfil(b)) - Number(doPerfil(a)))
-      .map((t) => ({ tela: t, montada: montarTela(t, dados.modelos, marca) }));
+      .map((t) => ({ tela: t, montada: montarTela(t, dados.modelos, marca, dados.exemplos) }));
   }, [dados, marca, perfil.id, todas]);
 
   const zonas = useMemo(() => (escolhida ? medirZonas(escolhida.layout) : {}), [escolhida && escolhida.layout]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -101,6 +104,8 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
   if (escolhida) {
     const grupos = ORDEM.filter((g) => (escolhida.grupos[g] || []).length || (g === 'rodape' && zonas.rodape));
     const faltam = ORDEM.reduce((n, g) => n + (escolhida.grupos[g] || []).filter((_, i) => !editadas.has(g + i)).length, 0);
+    // As peças em que a limpeza do exemplo deixou um contato vazio (telas prontas: nada da empresa de exemplo na TV).
+    const completar = ORDEM.reduce((n, g) => n + (escolhida.grupos[g] || []).filter((p, i) => !editadas.has(g + i) && p._pendentes && p._pendentes.length).length, 0);
     const pecaEmEdicao = editando && escolhida.grupos[editando.grupo][editando.indice];
     const nomeDaPeca = (p) => ((dados.modelos.get(p.origem && p.origem.base) || {}).nome) || 'Peça';
     const trocarFrase = (i, v) => setEscolhida((t) => ({ ...t, mensagens: t.mensagens.map((m, j) => (j === i ? v : m)) }));
@@ -123,8 +128,9 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
             <Palco estado={estadoDaPrevia(escolhida)} alturaMaxima={560} />
             {faltam > 0 && (
               <p className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs leading-relaxed text-ink">
-                Os textos vieram de uma empresa de exemplo. Troque endereço, telefone, preços e nomes antes de pôr na TV
+                Os textos vieram de uma empresa de exemplo. Troque preços, nomes e horários pelos seus antes de pôr na TV
                 {' '}({faltam === 1 ? 'falta 1 peça' : 'faltam ' + faltam + ' peças'}).
+                {completar > 0 && ' Telefone, endereço e link do QR do exemplo já saíram: complete os seus em ' + (completar === 1 ? '1 peça.' : completar + ' peças.')}
               </p>
             )}
           </div>
@@ -183,7 +189,8 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
             onFechar={() => setEditando(null)}
             onSalvar={async (novo) => {
               const { grupo, indice } = editando;
-              setEscolhida((t) => ({ ...t, grupos: { ...t.grupos, [grupo]: t.grupos[grupo].map((p, i) => (i === indice ? { ...p, ...novo } : p)) } }));
+              const { _pendentes, ...editado } = novo; // eslint-disable-line no-unused-vars
+              setEscolhida((t) => ({ ...t, grupos: { ...t.grupos, [grupo]: t.grupos[grupo].map((p, i) => (i === indice ? editado : p)) } }));
               setEditadas((s) => new Set(s).add(grupo + indice));
               setEditando(null);
             }} />

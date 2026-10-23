@@ -32,7 +32,7 @@ export function carregarTelasProntas() {
     cache = Promise.all([
       fetch('/pecas-ouro/manifesto.json').then((r) => { if (!r.ok) throw new Error('não deu para abrir as telas prontas'); return r.json(); }),
       carregarModelos(),
-    ]).then(([m, modelos]) => ({ telas: aprovadas(m), modelos: new Map(modelos.map((x) => [x.id, x])) }))
+    ]).then(([m, modelos]) => ({ telas: aprovadas(m), modelos: new Map(modelos.map((x) => [x.id, x])), exemplos: nomesDeExemplo(m.marcas) }))
       .catch((e) => { cache = null; throw e; });
   }
   return cache;
@@ -45,29 +45,85 @@ export function carregarTelasProntas() {
  */
 const DO_EXEMPLO = ['desde'];
 
+/*
+ * NADA DA EMPRESA DE EXEMPLO CHEGA À TV DO CLIENTE (revisão do consultor
+ * no #239, regra do #189). As telas da bancada foram escritas para marcas
+ * de mentira — a Ótica Central, a Rota Sul —, com telefone, endereço, @ e
+ * site delas. Na conta do cliente:
+ *
+ *   contato (telefone, @, site, link de QR)  → o site da conta, ou vazio;
+ *   endereço ("Rua das Flores, 120")         → o endereço da Marca, ou vazio;
+ *   o nome de uma marca de exemplo no texto  → o nome da conta.
+ *
+ * Vale também para o texto que a peça traz no próprio HTML (o exemplo),
+ * que a TV mostraria se o campo ficasse sem valor.
+ */
+const APELIDOS = { rotasul: ['Rota Sul', 'RotaSul'] };
+const semAcento = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+const compacto = (s) => semAcento(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// Os nomes das marcas de exemplo (do manifesto), com os apelidos e a forma de @/site ("rotasul").
+export function nomesDeExemplo(marcas) {
+  const nomes = [];
+  (marcas || []).forEach((m) => { if (m.nome) nomes.push(m.nome); (APELIDOS[m.id] || []).forEach((a) => nomes.push(a)); });
+  return { nomes: nomes.sort((a, b) => b.length - a.length), compactos: (marcas || []).map((m) => compacto(m.nome)).concat((marcas || []).map((m) => m.id)) };
+}
+
+const EH_CONTATO = /@[\w.]{2,}|https?:\/\/|\bwww\.|\b[\w-]+\.(com|net|org)(\.br)?\b|\(?\b\d{2}\)?\s?\d{4,5}-\d{4}\b/i;
+const EH_ENDERECO = /^\s*(rua|r\.|av\.|avenida|alameda|travessa|rodovia|praça|praca|estrada)\s/i;
+
+export function limparDoExemplo(valor, def, conta, exemplos) {
+  const v = String(valor == null ? '' : valor);
+  if (!v || !exemplos) return v;
+  const c = conta || {};
+  if (def && def.tipo === 'qr') return EH_CONTATO.test(v) ? (c.site || '') : v;
+  if (EH_CONTATO.test(v)) return /https?:\/\/|\bwww\.|\.(com|net|org)\b/i.test(v) && !/@/.test(v) ? (c.site || '') : '';
+  if (EH_ENDERECO.test(v)) return c.endereco || '';
+  let saida = v;
+  for (const n of exemplos.nomes) {
+    const re = new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    saida = saida.replace(re, c.nome || '');
+  }
+  if (saida !== v) return saida.replace(/\s{2,}/g, ' ').replace(/^[\s·,-]+|[\s·,-]+$/g, '');
+  // Sobrou um pedaço da marca de exemplo grudado ("RotaSul-Visitas" já foi; "oticacentral" num texto solto):
+  return exemplos.compactos.some((k) => k.length > 4 && compacto(v).includes(k)) ? '' : v;
+}
+
 // A peça de uma zona da tela, pronta para desenhar e para ir à TV.
-export function itemDaTela(modelo, entrada, modo, papel, marca) {
+export function itemDaTela(modelo, entrada, modo, papel, marca, exemplos) {
   const base = itemDoModelo(modelo, marca);
   const campos = { ...(entrada.campos || {}) };
   DO_EXEMPLO.forEach((c) => { if (c in campos) campos[c] = ''; });
+  const defs = globalThis.MTPecaHtml ? globalThis.MTPecaHtml.higienizar(modelo.arq).campos : [];
+  const pendentes = [];
+  for (const d of defs) {
+    if (d.tipo === 'img' || d.nome === 'marca' || DO_EXEMPLO.includes(d.nome)) continue;
+    const antes = d.nome in campos ? campos[d.nome] : d.exemplo;
+    const limpo = limparDoExemplo(antes, d, marca, exemplos);
+    if (limpo === antes) continue;
+    campos[d.nome] = limpo;
+    if (!limpo) pendentes.push(d.nome);
+  }
   if (base.campos.marca) campos.marca = base.campos.marca;
   else delete campos.marca;
-  return { ...base, papel, modo: modo || 'marca', campos };
+  return { ...base, papel, modo: modo || 'marca', campos, ...(pendentes.length ? { _pendentes: pendentes } : {}) };
 }
 
 /*
  * A tela pronta com a marca da conta: por grupo, as peças (itens) e as
  * frases do rodapé. Peça que não abriu fica de fora (não derruba a tela).
  */
-export function montarTela(tela, modelos, marca) {
+export function montarTela(tela, modelos, marca, exemplos) {
   const PAPEL = { cabecalho: 'cabecalho', principal: 'destaque', lateral: 'lateral', rodape: 'rodape' };
   const grupos = {};
   for (const [g, z] of Object.entries(tela.zonas || {})) {
     grupos[g] = (z.pecas || []).map((e) => (typeof e === 'string' ? { id: e } : e))
       .filter((e) => modelos.has(e.id))
-      .map((e) => itemDaTela(modelos.get(e.id), e, z.modo, PAPEL[g], marca));
+      .map((e) => itemDaTela(modelos.get(e.id), e, z.modo, PAPEL[g], marca, exemplos));
   }
-  return { id: tela.id, nome: tela.nome, layout: tela.layout, grupos, mensagens: (tela.mensagens || []).slice() };
+  // As frases do rodapé passam pela mesma limpeza (um telefone de exemplo no letreiro também não vai).
+  const mensagens = (tela.mensagens || []).map((m) => limparDoExemplo(m, null, marca, exemplos)).filter(Boolean);
+  return { id: tela.id, nome: tela.nome, layout: tela.layout, grupos, mensagens };
 }
 
 /*
@@ -99,7 +155,8 @@ export function aplicarTelaPronta(cfg, montada) {
   const antes = next.zonas || {};
   next.zonas = {};
   for (const z of getLayout(montada.layout).zones) {
-    const pecas = (montada.grupos[grupoDaZona(z)] || []).map((p) => ({ duracao: p.duracao || 20, ...p, origem: { ...(p.origem || {}), pedido: 'tela pronta', tela: montada.id } }));
+    // _pendentes é só do painel (o que ficou para a pessoa completar): não vai para a TV.
+    const pecas = (montada.grupos[grupoDaZona(z)] || []).map(({ _pendentes, ...p }) => ({ duracao: p.duracao || 20, ...p, origem: { ...(p.origem || {}), pedido: 'tela pronta', tela: montada.id } })); // eslint-disable-line no-unused-vars
     // A zona mantém o que é dela (transição, notícias, velocidade); o conteúdo passa a ser o da tela.
     const anterior = antes[z.id] && typeof antes[z.id] === 'object' ? antes[z.id] : {};
     const { items: _i, peca: _pe, pecas: _ps, messages: _m, ...resto } = anterior; // eslint-disable-line no-unused-vars
