@@ -58,9 +58,12 @@ export function BillingPage({ onFalarComVendas }) {
    * página, longe do botão "Assinar" (lá embaixo): o botão piscava "Abrindo…"
    * e voltava, e parecia que nada tinha acontecido (EXECUTOR D0.8).
    */
-  function falhou(e, padrao) {
+  // `onde`: o id do plano ou pacote clicado — a frase aparece também logo abaixo do botão (D46).
+  const [erroNoBotao, setErroNoBotao] = useState(null);
+  function falhou(e, padrao, onde) {
     const msg = (e && e.message) || padrao;
     setErr(msg);
+    setErroNoBotao(onde ? { id: onde, msg } : null);
     aviso.erro('cobranca', msg);
   }
 
@@ -89,7 +92,7 @@ export function BillingPage({ onFalarComVendas }) {
   }
 
   async function upgrade(planId, documento) {
-    setBusy(planId); setErr(''); setErroDoc(''); setFatura('');
+    setBusy(planId); setErr(''); setErroDoc(''); setFatura(''); setErroNoBotao(null);
     try {
       const { url } = await billing.checkout(planId, documento);
       abrirFatura(url);
@@ -97,13 +100,13 @@ export function BillingPage({ onFalarComVendas }) {
       setBusy('');
       if (e.codigo === 'precisa-documento') { setPedido({ tipo: 'plano', id: planId }); if (documento) setErroDoc(e.message); return; }
       setPedido(null);
-      falhou(e, 'Não foi possível abrir a cobrança.');
+      falhou(e, 'Não foi possível abrir a cobrança.', planId);
     }
   }
 
   // Pacote de criações: vai para a fatura do Asaas; em modo simulado entra na hora.
   async function comprarPacote(id, documento) {
-    setBusy(id); setErr(''); setErroDoc(''); setFatura('');
+    setBusy(id); setErr(''); setErroDoc(''); setFatura(''); setErroNoBotao(null);
     try {
       const r = await billing.pacote(id, documento);
       if (r.url) { abrirFatura(r.url); return; }
@@ -112,7 +115,7 @@ export function BillingPage({ onFalarComVendas }) {
       setBusy('');
       if (e.codigo === 'precisa-documento') { setPedido({ tipo: 'pacote', id }); if (documento) setErroDoc(e.message); return; }
       setPedido(null);
-      falhou(e, 'Não foi possível abrir a compra.');
+      falhou(e, 'Não foi possível abrir a compra.', id);
     }
   }
 
@@ -299,6 +302,9 @@ export function BillingPage({ onFalarComVendas }) {
                   </Button>
                 ))}
               </div>
+              {erroNoBotao && pacotes.some((p) => p.id === erroNoBotao.id) && (
+                <p className="mt-1.5 text-2xs text-danger" role="alert">{erroNoBotao.msg}</p>
+              )}
             </div>
           )}
         </Panel>
@@ -418,6 +424,9 @@ export function BillingPage({ onFalarComVendas }) {
                   </Button>
                 ) : (
                   <Button variant="ghost" size="sm" disabled className="w-full justify-center">Incluído</Button>
+                )}
+                {erroNoBotao && erroNoBotao.id === p.id && (
+                  <p className="mt-1.5 text-2xs text-danger" role="alert">{erroNoBotao.msg}</p>
                 )}
               </div>
             );

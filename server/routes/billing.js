@@ -31,8 +31,14 @@ module.exports = function (ctx) {
    * CPF/CNPJ volta como pedido (400, code 'precisa-documento') para o painel
    * perguntar ali mesmo, junto do botão.
    */
+  // Recusa antes de falar com o Asaas: só o código vai ao log (nada de documento, e-mail ou nome).
+  function recusado(res, onde, code, error) {
+    log.aviso('cobranca.' + onde + '-recusado', { code });
+    return sendJson(res, 400, { error, code });
+  }
+
   function falhaDeCobranca(res, e, onde) {
-    if (e && e.precisaDocumento) return sendJson(res, 400, { error: e.message, code: 'precisa-documento' });
+    if (e && e.precisaDocumento) return recusado(res, onde, 'precisa-documento', e.message);
     log.aviso('cobranca.' + onde + '-falhou', { status: (e && e.status) || 0, erro: String((e && e.message) || '').slice(0, 300) });
     return sendJson(res, 502, { error: 'O Asaas não aceitou a cobrança agora: ' + ((e && e.message) || 'tente de novo') + '. Se continuar, fale com a gente pelo Suporte.' });
   }
@@ -336,8 +342,8 @@ module.exports = function (ctx) {
         if (cobrancaFechada()) return sendJson(res, 503, { error: COBRANCA_FECHADA });
         return readBody(req, res, async (b) => {
           const target = plans.plan(b && b.plan);
-          if (PLANS_EM_BREVE(b)) return sendJson(res, 400, { error: EM_BREVE, code: 'plano-em-breve' });
-          if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
+          if (PLANS_EM_BREVE(b)) return recusado(res, 'checkout', 'plano-em-breve', EM_BREVE);
+          if (!target || !(target.precoTelaCents > 0)) return recusado(res, 'checkout', 'plano-invalido', 'plano inválido');
           try {
             /*
              * `getUserById`, e não `getUser` — que nunca existiu.

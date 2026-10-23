@@ -7,10 +7,11 @@
  *
  * ---- A regra que decide tudo ----
  *
- *     O CASCO ABRE DO CACHE. O CONTEÚDO, NUNCA.
+ *     O CASCO ABRE DO CACHE SÓ SEM REDE. O CONTEÚDO, NUNCA.
  *
- * Quer dizer: HTML, JavaScript, CSS e fontes podem sair do cache, porque são
- * a mesma coisa hoje e amanhã. Já `/api/*` passa DIRETO para a rede, sempre,
+ * Quer dizer: JavaScript, CSS e fontes podem sair do cache, porque têm hash
+ * no nome e são a mesma coisa hoje e amanhã. O HTML (que diz QUAIS pacotes
+ * carregar) vem da rede sempre que ela responde — ver a navegação, abaixo. Já `/api/*` passa DIRETO para a rede, sempre,
  * sem cópia e sem tentativa de adivinhar.
  *
  * Isso não é preciosismo. Um painel de sinalização é um lugar onde a pessoa
@@ -26,7 +27,10 @@
  * — que é a verdade — em vez de mostrar um retrato antigo com cara de atual.
  */
 
-const CASCO = 'mt-app-v1';
+// v2 (D46): a navegação passou a ir à rede primeiro. Trocar o nome limpa o casco velho.
+const CASCO = 'mt-app-v2';
+// Quanto a navegação espera a rede antes de abrir o casco guardado.
+const ESPERA_REDE_MS = 4000;
 
 // A única página do SPA. Todo caminho de cliente (/app/qualquer-coisa) é
 // servido por ela.
@@ -143,16 +147,29 @@ self.addEventListener('fetch', (e) => {
    */
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/media/')) return;
 
-  // Navegação (abrir o app, recarregar, voltar): o casco responde na hora e
-  // se atualiza por trás.
+  /*
+   * Navegação (abrir o app, recarregar, voltar): A REDE PRIMEIRO (D46).
+   *
+   * Era o contrário: o casco guardado respondia na hora e se atualizava por
+   * trás. Parecia inofensivo, mas quer dizer que todo deploy chegava UMA
+   * ABERTURA DEPOIS — e quem recarregava uma vez continuava com o pacote
+   * velho. Foi assim que o "Assinar" ficou mudo em produção: o painel de antes
+   * do D0.8 recebia o 400 "falta o CPF/CNPJ" e não abria o pedido. Agora o
+   * HTML vem da rede; só se ela não responder em 4 s (ou
+   * cair), o casco guardado abre — e, sem casco, a página honesta.
+   */
   if (req.mode === 'navigate') {
     e.respondWith((async () => {
       const cache = await caches.open(CASCO);
-      const guardado = await cache.match(INDICE);
       const rede = fetch(req)
         .then((r) => { if (r.ok) cache.put(INDICE, r.clone()); return r; })
         .catch(() => null);
-      return guardado || (await rede) || respostaSemRede();
+      let relogio;
+      const espera = new Promise((ok) => { relogio = setTimeout(() => ok(null), ESPERA_REDE_MS); });
+      const daRede = await Promise.race([rede, espera]);
+      clearTimeout(relogio);
+      if (daRede) return daRede;
+      return (await cache.match(INDICE)) || (await rede) || respostaSemRede();
     })());
     return;
   }
