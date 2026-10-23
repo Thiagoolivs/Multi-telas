@@ -55,9 +55,16 @@ test('trocar um texto não refaz a peça: só aquele campo muda (foto, desenho e
     onImagem: async () => { throw new Error('trocar texto não pode gerar foto'); },
   });
   const nova = A.numerar(feito.resultado)[1].peca;
-  assert.equal(nova.item.campos.titulo, 'Pão de queijo R$ 8,90');
+  /*
+   * A peça divide o título em duas linhas (titulo + titulo2): o texto novo é
+   * repartido nas duas — a segunda linha do título antigo não fica (visto no
+   * teste do dono no navegador).
+   */
+  const duas = Object.prototype.hasOwnProperty.call(p2.item.campos, 'titulo2');
+  assert.equal(duas ? nova.item.campos.titulo + ' ' + nova.item.campos.titulo2 : nova.item.campos.titulo, 'Pão de queijo R$ 8,90');
+  if (duas) assert.ok(nova.item.campos.titulo2, 'a segunda linha ficou vazia');
   assert.equal(nova.label, 'Pão de queijo R$ 8,90');
-  for (const k of Object.keys(p2.item.campos)) if (k !== 'titulo') assert.deepEqual(nova.item.campos[k], p2.item.campos[k], k + ' mudou junto');
+  for (const k of Object.keys(p2.item.campos)) if (k !== 'titulo' && k !== 'titulo2') assert.deepEqual(nova.item.campos[k], p2.item.campos[k], k + ' mudou junto');
   assert.equal(nova.item.html, p2.item.html, 'o desenho foi refeito');
   // As outras peças nem foram tocadas.
   A.numerar(c.resultado).forEach((x, i) => { if (i !== 1) assert.deepEqual(A.numerar(feito.resultado)[i].peca, x.peca); });
@@ -89,6 +96,31 @@ test('sem IA: pedido ambíguo vira pergunta, e a resposta completa o pedido', as
   // Pedido novo com número, depois de uma pergunta, não é a resposta dela.
   assert.deepEqual(Ed.semIA('tira a peça 5', [{ papel: 'ia', texto: r1.resposta, pendente: r1.pendente }], c.resultado).mudancas, [{ tipo: 'tirar', peca: 5 }]);
 });
+
+test('sem IA: "muda o texto da peça 2" conversa até entender — qual texto, qual peça, o que escrever', async (t) => {
+  const c = await campanha(t);
+  const passo = (texto, ant) => Ed.semIA(texto, ant ? [{ papel: 'ia', texto: ant.resposta, pendente: ant.pendente }] : [], c.resultado);
+  // Visto no teste do dono: antes, a resposta era uma lista de exemplos.
+  const q1 = passo('muda o texto da peça 2');
+  assert.equal(q1.acao, 'perguntar');
+  assert.equal(q1.resposta, 'Qual texto da peça 2: o título ou o de baixo?');
+  assert.deepEqual(q1.sugestoes, ['O título', 'O texto de baixo']);
+  const q2 = passo('O título', q1);
+  assert.equal(q2.resposta, 'O que eu escrevo no título da peça 2?');
+  const feito = passo('Óculos com 30% só até sábado', q2);
+  assert.equal(feito.acao, 'fazer');
+  assert.deepEqual(feito.mudancas.map((m) => [m.tipo, m.peca, m.valor]), [['texto', 2, 'Óculos com 30% só até sábado']]);
+  // Sem a peça: pergunta qual, depois o texto.
+  const p1 = passo('troca o título');
+  assert.equal(p1.resposta, 'Em qual peça?');
+  const p2 = passo('A peça 3', p1);
+  assert.equal(p2.resposta, 'O que eu escrevo no título da peça 3?');
+  // No meio da conversa, um pedido novo não vira o texto da peça.
+  assert.deepEqual(passo('tira a peça 5', q2).mudancas, [{ tipo: 'tirar', peca: 5 }]);
+  // Com o texto junto, faz direto como antes.
+  assert.equal(passo('muda o título da peça 2 para: Leve 3, pague 2').acao, 'fazer');
+});
+
 
 test('com IA: ela lê as peças com os textos e o combinado; "fazer" sem mudança que existe vira pergunta', async (t) => {
   const c = await campanha(t);

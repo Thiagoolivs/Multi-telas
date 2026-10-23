@@ -388,6 +388,21 @@ function ajudaPara(texto) {
   return a ? a.resposta : 'Aqui eu crio peças, avisos e campanhas para as TVs e as redes. Para outras dúvidas do sistema, a gente responde em Conta › Suporte.';
 }
 
+/*
+ * O nome da campanha (e o título da conversa): a primeira frase do pedido,
+ * até 60 letras, cortada na palavra e sem conector pendurado. Cortado na
+ * letra, "nas TVs da loja" virava "nas TVs da lo" no Criados e no letreiro
+ * (visto no teste do dono no navegador).
+ */
+function nomeDoPedido(pedido) {
+  const frase = String(pedido || '').split(/[.!?\n]/)[0].replace(/\s+/g, ' ').trim();
+  if (frase.length <= 60) return frase;
+  const c = frase.slice(0, 61);
+  const i = c.lastIndexOf(' ');
+  const cortado = (i > 30 ? c.slice(0, i) : frase.slice(0, 60)).replace(/[,;:·—-]+$/, '').trim();
+  return cortado.replace(/(?:[\s,;:·—-]+(?:e|ou|de|da|do|das|dos|na|no|nas|nos|em|até|com|para|pra|por|pelo|pela|a|o|as|os|um|uma|que|sem|à|ao|às|aos))+[\s,;:·—-]*$/i, '').trim() || cortado;
+}
+
 // O tamanho mínimo de um aviso ou de uma peça: 1 peça na principal, sem redes nem horários.
 function pequeno(e, texto, tipo) {
   const pedido = String(texto || '').replace(/\s+/g, ' ').trim();
@@ -396,7 +411,7 @@ function pequeno(e, texto, tipo) {
   return E.normalizar({
     ...x, horarios: [],
     imagens: tipo === 'aviso' ? 'nenhuma' : x.imagens,
-    nome: x.nome || pedido.split(/[.!?\n]/)[0].slice(0, 60),
+    nome: x.nome || nomeDoPedido(pedido),
     objetivo: x.objetivo || pedido.slice(0, 300),
   });
 }
@@ -429,7 +444,7 @@ function roteiro(mensagens, escopo) {
   if (etapa === 0) {
     const pedido = String(ultima).replace(/\s+/g, ' ').trim();
     if (!E.temOQueGerar(e)) e = E.normalizar({ ...E.padrao(), imagens: e.imagens, redes: { ...E.padrao().redes, ...falsos() } });
-    e = { ...e, nome: e.nome || pedido.split(/[.!?\n]/)[0].slice(0, 60), objetivo: e.objetivo || pedido.slice(0, 300) };
+    e = { ...e, nome: e.nome || nomeDoPedido(pedido), objetivo: e.objetivo || pedido.slice(0, 300) };
   }
   e = aplicarPalavras(e, ultima);
   const perguntas = [
@@ -564,4 +579,4 @@ async function conversar({ mensagens, escopo, decisoes, ctx } = {}) {
   };
 }
 
-module.exports = { conversar, contexto, conferirEscopo, mesclarEscopo, mesclarDecisoes, textoDasDecisoes, MAX_DECISOES, TETO_LETRAS_DECISOES, transcricao, pediuParaGerar, tipoDoPedido, ajudaPara, TIPOS, AJUDA, JANELA, SISTEMA };
+module.exports = { conversar, contexto, nomeDoPedido, conferirEscopo, mesclarEscopo, mesclarDecisoes, textoDasDecisoes, MAX_DECISOES, TETO_LETRAS_DECISOES, transcricao, pediuParaGerar, tipoDoPedido, ajudaPara, TIPOS, AJUDA, JANELA, SISTEMA };

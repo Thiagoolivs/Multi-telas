@@ -21,6 +21,7 @@ const E = require('../js/escopo.js');
 const ai = require('./ai');
 const eco = require('./ecossistema');
 const redes = require('./redes');
+const { partirTitulo } = require('./compositor');
 
 // 'texto' (D50): troca SÓ um texto da peça (preço, data, frase), sem refazer nada — a edição mais comum e a que não pode regredir.
 const TIPOS = ['refazer', 'texto', 'acrescentar', 'tirar', 'redes', 'letreiro', 'contagem'];
@@ -221,8 +222,18 @@ async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso } = {}) 
       const i = zona.findIndex((x) => x.vaga === alvo.peca.vaga);
       if (i >= 0) {
         const p = zona[i];
+        /*
+         * A peça que divide o título em duas linhas (titulo + titulo2, a
+         * segunda colorida): o título novo é repartido nas duas. Trocando só
+         * a primeira, a segunda linha do título antigo ficava ("ÓCULOS COM
+         * 30% SÓ ATÉ SÁBADO / SOL: 30% OFF ATÉ SÁBADO" — visto no teste do
+         * dono no navegador).
+         */
+        const novos = mu.campo === 'titulo' && Object.prototype.hasOwnProperty.call(p.item.campos || {}, 'titulo2')
+          ? (([a, b]) => ({ titulo: a, titulo2: b }))(partirTitulo(mu.valor))
+          : { [mu.campo]: mu.valor };
         zona[i] = { ...p, label: mu.campo === 'titulo' ? mu.valor.slice(0, 40) : p.label,
-          item: { ...p.item, campos: { ...p.item.campos, [mu.campo]: mu.valor } } };
+          item: { ...p.item, campos: { ...p.item.campos, ...novos } } };
       }
       continue;
     }
