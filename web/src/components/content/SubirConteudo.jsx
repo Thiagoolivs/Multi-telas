@@ -156,7 +156,7 @@ export function SubirConteudo() {
       const pecas = prontos.map((x) => ({ formato: '16/9', item: itemDaMidia({ url: x.url, fundo: x.fundo, video: x.video }) }));
       if (alvos.length) await publicarPecas({ alvos, pecas, titulo, telas });
       setFeito({ n: prontos.length, telas: alvos.length });
-      aviso.ok(alvos.length ? 'Na TV: ' + prontos.length + (prontos.length === 1 ? ' arquivo.' : ' arquivos.') : 'Guardado em Armazenamento.');
+      aviso.ok(alvos.length ? 'Na TV: ' + prontos.length + (prontos.length === 1 ? ' arquivo.' : ' arquivos.') : 'Guardado em Mídias.');
     } catch (e) { aviso.erro('subir', e.message || 'Não deu para pôr na TV.'); }
     finally { setPublicando(false); }
   }
@@ -246,7 +246,7 @@ export function SubirConteudo() {
               </div>
             )}
             {telas && telas.length === 0 && (
-              <p className="text-xs text-ink-3">Nenhuma TV conectada ainda: o arquivo fica guardado em Armazenamento.</p>
+              <p className="text-xs text-ink-3">Nenhuma TV conectada ainda: o arquivo fica guardado em Mídias.</p>
             )}
           </div>
         )}

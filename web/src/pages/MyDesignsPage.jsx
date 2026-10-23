@@ -999,7 +999,7 @@ export function MyDesignsPage({ onIr }) {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-lg border border-dashed border-line p-4 text-sm text-ink-3">Nenhuma tela pareada. Pareie uma TV em <b>Telas</b> e volte aqui — a campanha continua salva.</div>
+                <div className="rounded-lg border border-dashed border-line p-4 text-sm text-ink-3">Nenhuma TV ainda. Ligue uma TV em <b>Telas</b> e volte aqui — a campanha continua salva.</div>
               )}
             </div>
           </div>

@@ -82,7 +82,7 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
     <div>
       <PageHeader
         title="Visão geral"
-        subtitle={`${today} · operação da rede em tempo real`}
+        subtitle={today}
         actions={<Button variant="secondary" icon={RefreshCw} onClick={reload}>Atualizar</Button>}
       />
       <AvisoDoSistema onAbrir={onGoSystem} operador={operador} />
@@ -159,12 +159,18 @@ function Body({ data, onIr }) {
   if (storeFrac >= 0.8) alerts.push({ id: 'store', severity: 'warning', title: `Armazenamento em ${Math.round(storeFrac * 100)}% (${formatBytes(data.storage.used)})`, ts: now });
   if (never.length) alerts.push({ id: 'never', severity: 'info', title: `${never.length} tela(s) aguardando primeira conexão`, ts: now });
 
+  /*
+   * Conta sem TV: nada de quatro cartões zerados e "Frota de telas" vazia —
+   * o "Comece por aqui" acima já diz o próximo passo. E os alertas moram na
+   * aba Alertas; aqui só aparecem quando há algum (D2).
+   */
+  if (!screens.length) return null;
   return (
     <>
       <KpiRow kpis={kpis} />
-      <div className="mt-4 grid gap-4 xl:grid-cols-3">
-        <div className="xl:col-span-2"><FleetTable screens={screens} /></div>
-        <div><AlertsPanel alerts={alerts} /></div>
+      <div className={'mt-4 grid gap-4' + (alerts.length ? ' xl:grid-cols-3' : '')}>
+        <div className={alerts.length ? 'xl:col-span-2' : ''}><FleetTable screens={screens} /></div>
+        {alerts.length > 0 && <div><AlertsPanel alerts={alerts} /></div>}
       </div>
     </>
   );

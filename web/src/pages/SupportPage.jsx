@@ -16,15 +16,15 @@ const EMAIL_PADRAO = 'thiago.olivs.coelho@gmail.com';
 const FAQ = [
   {
     q: 'Como coloco uma TV para funcionar?',
-    a: 'Na TV, abra o site e toque em "Player (TV)". Ela mostra um código de 6 dígitos. No painel, vá em Telas → Parear tela e digite esse código. Pronto: o que você publicar aparece nela na hora.',
+    a: 'Na TV, abra tv.multitelas.net.br (ou o app MultiTelas TV). Ela mostra um código e um QR. Aponte a câmera do celular para o QR, ou vá em Telas › Parear tela e digite o código. Pronto: o que você publicar aparece nela na hora.',
   },
   {
     q: 'A TV está mostrando a tela errada (ou repetindo uma antiga)',
-    a: 'O navegador guarda qual TV é aquela para sobreviver a recargas. Para começar do zero, use "Player — tela nova" na página inicial, ou o botão "Gerar outro código (tela nova)" na própria tela de pareamento. Os dois geram um código novo.',
+    a: 'O navegador guarda qual TV é aquela para sobreviver a recargas. Para começar do zero, toque em "Gerar outro código (tela nova)" na própria tela de pareamento da TV.',
   },
   {
     q: 'O painel diz que a tela está offline. E agora?',
-    a: 'A tela é considerada offline após 90 segundos sem responder. Verifique a energia, a internet e se o player continua aberto na TV (não pode estar minimizado nem em outra aba). Depois disso ela volta sozinha.',
+    a: 'A tela é considerada offline após 90 segundos sem responder. Verifique a energia, a internet e se o MultiTelas continua aberto na TV (não pode estar minimizado nem em outra aba). Depois disso ela volta sozinha.',
   },
   {
     q: 'Preciso clicar em salvar depois de mudar o conteúdo?',
@@ -40,7 +40,7 @@ const FAQ = [
   },
   {
     q: 'A internet caiu. A tela apaga?',
-    a: 'Não. O player guarda a última programação e as mídias já baixadas, e continua exibindo offline. Quando a rede volta, ele se atualiza sozinho.',
+    a: 'Não. A TV guarda a última programação e as mídias já baixadas, e continua exibindo offline. Quando a rede volta, ele se atualiza sozinho.',
   },
   {
     q: 'Esqueci minha senha',
