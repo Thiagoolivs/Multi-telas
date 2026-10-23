@@ -127,7 +127,9 @@ module.exports = function (ctx) {
   }
 
   async function recusar(t, f) {
-    if (f.mediaId) await midia.apagar(db, t, f.mediaId).catch(() => {});
+    // Foto do mural que o RH já pôs numa peça ou campanha: o arquivo fica (nota do consultor no D35).
+    const usos = f.url ? await ctx.ondeEstaEmUso(t, f.url).catch(() => []) : [];
+    if (f.mediaId && !usos.length) await midia.apagar(db, t, f.mediaId).catch(() => {});
     await db.removerFotoPessoa(f.id, t);
   }
 

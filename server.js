@@ -517,6 +517,8 @@ function montarCtx() {
     marcaDaConta, fotoDaConta,
     // As referências de estilo da marca, lidas pela IA (D9): o Criar também usa.
     estiloDasReferencias,
+    // Onde uma mídia aparece (TVs, campanhas, marca): foto de gente em uso não é apagada (nota do consultor no D35).
+    ondeEstaEmUso,
   };
   ctx.routes = {
     auth: require('./server/routes/auth')(ctx),
@@ -875,7 +877,8 @@ async function handleApi(req, res, pathname, query) {
     const apagarFotosDoQr = async (pessoaIds) => {
       let n = 0;
       for (const f of (await db.listarFotosPessoa(t)).filter((x) => x.pessoaId && pessoaIds.includes(x.pessoaId))) {
-        if (f.mediaId) await midia.apagar(db, t, f.mediaId).catch(() => {});
+        // Em uso numa peça ou campanha, o arquivo fica (vira do cliente, em Mídias); sai só a linha.
+        if (f.mediaId && !(await ondeEstaEmUso(t, f.url)).length) await midia.apagar(db, t, f.mediaId).catch(() => {});
         n += await db.removerFotoPessoa(f.id, t);
       }
       return n;
@@ -2999,7 +3002,7 @@ db.init()
     setTimeout(faxina, 2 * 60 * 1000).unref();
     setInterval(faxina, 24 * 60 * 60 * 1000).unref();
     // O prazo de guarda das fotos de gente (D35, server/guarda.js): mural da data e fila do QR.
-    const prazoDeGuarda = () => guarda.varrer({ db, midia })
+    const prazoDeGuarda = () => guarda.varrer({ db, midia, emUso: ondeEstaEmUso })
       .then((r) => { if (r.fotos || r.muraisDeData) log.info('guarda', r); })
       .catch((e) => erros.registrar(e, { onde: 'prazo de guarda' }));
     setTimeout(prazoDeGuarda, 3 * 60 * 1000).unref();

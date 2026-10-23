@@ -101,3 +101,15 @@ test('o painel e a TV: a aba só fora da foto de produto, o crédito por campo n
   assert.doesNotMatch(ler('web/src/api.js'), /pixabay\.com\/api/, 'o navegador chamando a Pixabay direto (com a chave)');
   assert.match(ler('sw.js'), /mt-shell-v(6\d)/);
 });
+
+test('a chave vai na query da Pixabay: nenhum log do caminho grava a URL (nota do consultor no D37)', () => {
+  // pixabay.js e site.js não registram nada; os erros de site.js são frases fixas, sem a URL.
+  for (const f of ['server/pixabay.js', 'server/site.js']) {
+    assert.doesNotMatch(ler(f), /\b(erros\.registrar|log\.(aviso|info|erro)|console\.(log|warn|error))\(/, f + ' passou a registrar algo');
+  }
+  for (const m of ler('server/site.js').matchAll(/\{ erro: ([^}]+) \}/g)) assert.doesNotMatch(m[1].replace(/'[^']*'/g, ''), /\b(url|u|alvo|destino|href)\b/, 'erro com a URL: ' + m[1]);
+  // A rota só registra a falha ao guardar (sem a URL) e nunca devolve a chave.
+  const R = ler('server/routes/pixabay.js');
+  assert.deepEqual([...R.matchAll(/erros\.registrar\(([^)]*)\)/g)].map((m) => m[1]), ["e, { onde: 'banco de imagens' }"]);
+  assert.doesNotMatch(R, /PIXABAY_API_KEY|\.key\b/);
+});

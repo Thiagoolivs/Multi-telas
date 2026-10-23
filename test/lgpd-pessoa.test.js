@@ -53,6 +53,27 @@ test('a varredura: mural vencido sai (fotos e pedido), o do prazo fica; a foto q
   assert.deepEqual(chamadas.midia.sort(), ['t1:m1', 't2:m3'], 'o arquivo ficou no storage');
 });
 
+test('foto do mural que o RH pôs numa peça ou campanha: sai do mural, mas o arquivo fica (nota do consultor no D35)', async () => {
+  const chamadas = { midia: [], fotos: [] };
+  const db = {
+    pedidosFotoDeData: async () => [{ id: 'velho', tenantId: 't1', tipo: 'data', dataAlvo: '2027-05-09' }],
+    listarFotosPessoa: async () => [{ id: 'f1', tenantId: 't1', pedidoId: 'velho', mediaId: 'm1', url: '/media/t1/usada.jpg' }, { id: 'f2', tenantId: 't1', pedidoId: 'velho', mediaId: 'm2', url: '/media/t1/solta.jpg' }],
+    fotosPendentesAntigas: async () => [],
+    removerFotoPessoa: async (id) => { chamadas.fotos.push(id); return 1; },
+    removerPedidoFoto: async () => 1,
+  };
+  const midia = { apagar: async (_db, t, id) => { chamadas.midia.push(id); return true; } };
+  const emUso = async (t, url) => (url.endsWith('usada.jpg') ? ['na campanha "Dia das Mães"'] : []);
+  await G.varrer({ db, midia, emUso, agora: new Date('2027-07-01T12:00:00').getTime() });
+  assert.deepEqual(chamadas.fotos.sort(), ['f1', 'f2'], 'a foto em uso ficou no mural');
+  assert.deepEqual(chamadas.midia, ['m2'], 'apagou o arquivo que está na TV');
+  // A exclusão de pessoa e o recusar/remover do mural conferem o mesmo.
+  const S = ler('server.js');
+  assert.match(S, /if \(f\.mediaId && !\(await ondeEstaEmUso\(t, f\.url\)\)\.length\) await midia\.apagar/);
+  assert.match(S, /\n    ondeEstaEmUso,\r?\n  \};/);
+  assert.match(ler('server/routes/fotoqr.js'), /const usos = f\.url \? await ctx\.ondeEstaEmUso\(t, f\.url\)[^\n]*\r?\n    if \(f\.mediaId && !usos\.length\) await midia\.apagar/);
+});
+
 test('o .zip abre (CRC certo) com os nomes e os bytes', async () => {
   assert.equal(G.crc32(Buffer.from('123456789')).toString(16), 'cbf43926');
   const L = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/planilha.js')).href);
@@ -153,5 +174,5 @@ test('o painel: a origem e o aceite na pessoa, tirar a foto, e o aviso de saída
   const Q = ler('web/src/components/pessoas/FotosPeloQR.jsx');
   assert.match(Q, /href=\{'\/api\/fotoqr\/' \+ encodeURIComponent\(p\.id\) \+ '\/baixar'\}/);
   assert.match(Q, /onClick=\{\(\) => mudar\(\{ guardarMais: true \}\)\}/);
-  assert.match(ler('server.js'), /const prazoDeGuarda = \(\) => guarda\.varrer\(\{ db, midia \}\)/);
+  assert.match(ler('server.js'), /const prazoDeGuarda = \(\) => guarda\.varrer\(\{ db, midia, emUso: ondeEstaEmUso \}\)/);
 });
