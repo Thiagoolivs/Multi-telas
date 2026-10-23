@@ -11,7 +11,8 @@ import { criar, library, devices, brand } from '../api.js';
 import { EditarPeca } from '../components/content/EditarPeca.jsx';
 import { carregarModelos, itemDoModelo, ordenarPorPerfil } from '../lib/modelosOuro.js';
 import { usePerfil } from '../lib/perfil.js';
-import { porPecaNasTelas } from '../lib/rodar.js';
+import { porPecaNasTelas, avisarComDesfazer } from '../lib/rodar.js';
+import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 
@@ -110,8 +111,8 @@ export function PecasProntasPage({ onIr }) {
   async function enviar() {
     setEnviando(true);
     try {
-      await porPecaNasTelas(porNaTv, alvos, telas);
-      aviso.ok('Na TV: ' + alvos.length + (alvos.length === 1 ? ' tela.' : ' telas.'));
+      const r = await porPecaNasTelas(porNaTv, alvos, telas);
+      avisarComDesfazer('Na TV: ' + alvos.length + (alvos.length === 1 ? ' tela.' : ' telas.'), r.lote);
       setPorNaTv(null);
     } catch (e) { aviso.erro('peca', e.message || 'Não deu para pôr na TV.'); }
     finally { setEnviando(false); }
@@ -228,6 +229,7 @@ export function PecasProntasPage({ onIr }) {
             <Button variant="ghost" onClick={() => setPorNaTv(null)}>Cancelar</Button>
             <Button variant="primary" icon={MonitorPlay} disabled={!alvos.length || enviando} onClick={enviar}>{enviando ? 'Enviando…' : 'Pôr na TV'}</Button>
           </>}>
+          <AtalhosDeGrupo telas={telas} alvos={alvos} onEscolher={setAlvos} />
           <div className="space-y-1.5">
             {telas.map((t) => {
               const sel = alvos.includes(t.id);

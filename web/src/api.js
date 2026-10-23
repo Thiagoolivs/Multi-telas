@@ -220,6 +220,12 @@ async function rodar(rota, payload, tipo, onEtapa, sinal) {
   return acompanhar(job.id, tipo, onEtapa, sinal);
 }
 
+// O envio em lote (D26): a mesma mudança em várias TVs, gravada pelo servidor de uma vez, e o desfazer.
+export const lote = {
+  enviar: (itens, descricao) => api('POST', '/api/lote', { itens, descricao }),
+  desfazer: (id) => api('POST', '/api/lote/' + encodeURIComponent(id) + '/desfazer'),
+};
+
 // O calendário da empresa (D23): os eventos guardados e a leitura do texto colado.
 export const calendario = {
   listar: () => api('GET', '/api/calendario'),

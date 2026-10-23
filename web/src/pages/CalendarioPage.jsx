@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/Badge.jsx';
 import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { calendario, devices, brand } from '../api.js';
 import { carregarModelos } from '../lib/modelosOuro.js';
-import { gravarNaTela } from '../lib/rodar.js';
+import { gravarEmLote } from '../lib/rodar.js';
 import { pecaDoEvento, aplicarCalendario, tirarDoCalendario, telasDoEvento, periodoDoEvento, partesDaData, NOME_DO_TIPO } from '../lib/calendario.js';
 import { aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
@@ -106,12 +106,10 @@ export function CalendarioPage({ onIr }) {
     try {
       const comPeca = lista.map((e) => ({ ...e, item: pecaDoEvento(e, modelos, marca) }));
       const salvos = ((await calendario.salvar(comPeca)) || {}).eventos || [];
-      for (const tv of tvs) {
-        const dela = salvos.filter((e) => telasDoEvento(e, tvs).some((t) => t.id === tv.id));
-        const fora = salvos.filter((e) => !dela.includes(e) && (e.telas || []).includes(tv.id)).map((e) => e.id);
-        if (!dela.length && !fora.length) continue;
-        await gravarNaTela(tv, (cfg) => aplicarCalendario(cfg, dela, fora));
-      }
+      // D26: todas as TVs de uma vez (tudo ou nada); cada uma com as datas dela.
+      const dela = (tv) => salvos.filter((e) => telasDoEvento(e, tvs).some((t) => t.id === tv.id));
+      const fora = (tv) => salvos.filter((e) => !dela(tv).includes(e) && (e.telas || []).includes(tv.id)).map((e) => e.id);
+      await gravarEmLote(tvs.filter((tv) => dela(tv).length || fora(tv).length), (cfg, tv) => aplicarCalendario(cfg, dela(tv), fora(tv)), 'Calendário');
       for (const e of salvos) await calendario.atualizar(e.id, { ...e, telas: telasDoEvento(e, tvs).map((t) => t.id), aplicado: true });
       aviso.ok(salvos.length === 1 ? '“' + salvos[0].titulo + '” está na programação.' : salvos.length + ' datas na programação.');
       setLidos(null); setTexto(''); setEditando(null);
@@ -123,10 +121,7 @@ export function CalendarioPage({ onIr }) {
   async function apagar(ev) {
     if (!(await confirmar({ titulo: 'Tirar “' + ev.titulo + '”?', texto: 'Sai do calendário e das TVs em que estava.', botao: 'Tirar' }))) return;
     try {
-      for (const id of ev.telas || []) {
-        const tv = tvs.find((t) => t.id === id);
-        if (tv) await gravarNaTela(tv, (cfg) => tirarDoCalendario(cfg, ev.id));
-      }
+      await gravarEmLote((ev.telas || []).map((id) => tvs.find((t) => t.id === id)).filter(Boolean), (cfg) => tirarDoCalendario(cfg, ev.id), 'Tirar: ' + ev.titulo);
       await calendario.apagar(ev.id);
       setTentativa((n) => n + 1);
     } catch (e) { aviso.erro('calendario', e.message || 'Não deu para tirar.'); }

@@ -240,6 +240,9 @@ test('item 42: Meus Designs publica faixa na faixa, pelo mesmo caminho das Peça
   api.deviceConfig.get = async () => JSON.parse(JSON.stringify(salva));
   api.deviceConfig.ler = async () => ({ config: JSON.parse(JSON.stringify(salva)), versao: 1 });
   api.deviceConfig.save = async (_id, c) => { salva = c; return { ok: true, updatedAt: 2 }; };
+  // D26: várias TVs vão num envio só (POST /api/lote); aqui, a única TV do envio.
+  const enviarAntes = api.lote.enviar;
+  api.lote.enviar = async (itens) => { salva = itens[0].config; return { ok: true, lote: 'lot_teste' }; };
   try {
     const pecas = [
       { formato: '16/9', item: { type: 'peca-html', html: 'cartaz' } },
@@ -253,7 +256,7 @@ test('item 42: Meus Designs publica faixa na faixa, pelo mesmo caminho das Peça
     await P.publicarPecas({ alvos: ['tv1'], pecas, titulo: 'Pão', telas: [{ id: 'tv1', name: 'TV' }] });
     assert.equal(salva.zonas.cabecalho.pecas.length, 1);
     assert.equal(salva.zonas.principal.items.length, 1);
-  } finally { Object.assign(api.deviceConfig, antes); }
+  } finally { Object.assign(api.deviceConfig, antes); api.lote.enviar = enviarAntes; }
 });
 
 test('item 43: as cópias antigas das campanhas do Criar saem de Meus Designs (escondidas, não apagadas)', () => {

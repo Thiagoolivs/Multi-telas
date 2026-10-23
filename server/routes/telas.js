@@ -67,6 +67,72 @@ module.exports = function (ctx) {
     try { const t = await db.getTenant(tenantId); return (t && t.name && t.name !== 'Empresa') ? t.name : ''; } catch (e) { return ''; }
   }
 
+  /*
+   * A config que vai para a TV, pronta: normalizada, com as peças pela porta,
+   * o quiz conferido, os hosts de mídia, o nome da conta e o horário da tela.
+   * Devolve { cfg } ou { status, corpo } com o motivo. O PUT de uma TV e o
+   * envio em lote (D26) passam pelo mesmo lugar.
+   */
+  async function prepararConfig(device, b) {
+    const falha = (status, corpo) => ({ status, corpo });
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return falha(400, { error: 'config inválida' });
+    /*
+     * Normaliza ANTES de gravar. Antes daqui a config ia crua para o banco
+     * e crua para a TV: painel e player concordavam por convenção, e todo
+     * campo novo dependia de os dois lados terem sido editados juntos.
+     *
+     * O mesmo arquivo (js/storage.js) define o formato nas duas pontas.
+     */
+    let cfg;
+    try { cfg = schema.normalize(b); }
+    catch (e) { return falha(400, { error: 'config inválida: ' + e.message }); }
+    /*
+     * Peça em HTML passa pela porta (js/peca-html.js) antes de gravar.
+     * A TV confere de novo ao exibir; aqui é a primeira barreira, e a
+     * que RECUSA: peça com problema não vai para o banco, volta com a
+     * lista do que corrigir.
+     */
+    const pecas = pecaHtml.conferirConfig(cfg, { hostsMidia });
+    if (pecas.problemas.length) {
+      return falha(400, { error: 'peça em HTML recusada', problemas: pecas.problemas.slice(0, 20) });
+    }
+    /*
+     * Quiz (D21): o que a IA escreveu e ninguém conferiu não vai para a
+     * TV — fato errado na parede é pior que nenhum. O quiz entra
+     * normalizado (perguntas, tempo) e o resto do item (agenda) fica.
+     */
+    for (const z of Object.values(cfg.zonas || {})) {
+      if (!z || !Array.isArray(z.items)) continue;
+      for (let i = 0; i < z.items.length; i++) {
+        const it = z.items[i];
+        if (!it || it.type !== 'quiz') continue;
+        if (quiz.pendentes(it) > 0) {
+          return falha(400, { error: 'Confira as perguntas do quiz antes de publicar: a IA escreveu e ninguém conferiu ainda.', code: 'quiz-sem-revisao' });
+        }
+        z.items[i] = Object.assign({}, it, quiz.normalizar(it));
+      }
+    }
+    // De onde a TV aceita foto de peça: quem declara é o servidor, sempre.
+    cfg.settings.hostsMidia = hostsMidia;
+    nomeDaConta(cfg, device, await empresaDa(device.tenant_id));
+    /*
+     * O horário da loja vai na config que a TV lê (item 8 do EXECUTOR:
+     * fora dele, tela preta ou só o relógio). Quem manda é a coluna da
+     * tela, gravada em "Horário e alerta" — o painel não decide isto ao
+     * salvar o conteúdo, senão uma aba velha desfaria o horário novo.
+     */
+    if (device.expediente) cfg.settings.expediente = vigia.normalizarExpediente(device.expediente);
+    else delete cfg.settings.expediente;
+    /*
+     * settings.nome é o nome do CABEÇALHO (desde o item 39, o da empresa);
+     * o nome da TV é o da lista de Telas, e só muda em "Renomear". Este
+     * PUT gravava um no lugar do outro: a TV pareada como "Refeitório"
+     * virava "Metalúrgica Andrade" na primeira publicação (teste de 23/10).
+     */
+    cfg.settings.nome = (cfg.settings && cfg.settings.nome) || device.name;
+    return { cfg };
+  }
+
   async function tratar(req, res, parts, query, sess) {
     /* ----- Criar device (a TV chama, sem auth) ----- */
     if (req.method === 'POST' && parts[1] === 'devices' && parts.length === 2) {
@@ -259,63 +325,9 @@ module.exports = function (ctx) {
           });
         }
         return readBody(req, res, async (b) => {
-          if (!b || typeof b !== 'object' || Array.isArray(b)) {
-            return sendJson(res, 400, { error: 'config inválida' });
-          }
-          /*
-           * Normaliza ANTES de gravar. Antes daqui a config ia crua para o banco
-           * e crua para a TV: painel e player concordavam por convenção, e todo
-           * campo novo dependia de os dois lados terem sido editados juntos.
-           *
-           * O mesmo arquivo (js/storage.js) define o formato nas duas pontas.
-           */
-          let cfg;
-          try { cfg = schema.normalize(b); }
-          catch (e) { return sendJson(res, 400, { error: 'config inválida: ' + e.message }); }
-          /*
-           * Peça em HTML passa pela porta (js/peca-html.js) antes de gravar.
-           * A TV confere de novo ao exibir; aqui é a primeira barreira, e a
-           * que RECUSA: peça com problema não vai para o banco, volta com a
-           * lista do que corrigir.
-           */
-          const pecas = pecaHtml.conferirConfig(cfg, { hostsMidia });
-          if (pecas.problemas.length) {
-            return sendJson(res, 400, { error: 'peça em HTML recusada', problemas: pecas.problemas.slice(0, 20) });
-          }
-          /*
-           * Quiz (D21): o que a IA escreveu e ninguém conferiu não vai para a
-           * TV — fato errado na parede é pior que nenhum. O quiz entra
-           * normalizado (perguntas, tempo) e o resto do item (agenda) fica.
-           */
-          for (const z of Object.values(cfg.zonas || {})) {
-            if (!z || !Array.isArray(z.items)) continue;
-            for (let i = 0; i < z.items.length; i++) {
-              const it = z.items[i];
-              if (!it || it.type !== 'quiz') continue;
-              if (quiz.pendentes(it) > 0) {
-                return sendJson(res, 400, { error: 'Confira as perguntas do quiz antes de publicar: a IA escreveu e ninguém conferiu ainda.', code: 'quiz-sem-revisao' });
-              }
-              z.items[i] = Object.assign({}, it, quiz.normalizar(it));
-            }
-          }
-          // De onde a TV aceita foto de peça: quem declara é o servidor, sempre.
-          cfg.settings.hostsMidia = hostsMidia;
-          nomeDaConta(cfg, device, await empresaDa(device.tenant_id));
-          /*
-           * O horário da loja vai na config que a TV lê (item 8 do EXECUTOR:
-           * fora dele, tela preta ou só o relógio). Quem manda é a coluna da
-           * tela, gravada em "Horário e alerta" — o painel não decide isto ao
-           * salvar o conteúdo, senão uma aba velha desfaria o horário novo.
-           */
-          if (device.expediente) cfg.settings.expediente = vigia.normalizarExpediente(device.expediente);
-          else delete cfg.settings.expediente;
-          /*
-           * settings.nome é o nome do CABEÇALHO (desde o item 39, o da empresa);
-           * o nome da TV é o da lista de Telas, e só muda em "Renomear". Este
-           * PUT gravava um no lugar do outro: a TV pareada como "Refeitório"
-           * virava "Metalúrgica Andrade" na primeira publicação (teste de 23/10).
-           */
-          cfg.settings.nome = (cfg.settings && cfg.settings.nome) || device.name;
+          const pronta = await prepararConfig(device, b);
+          if (pronta.corpo) return sendJson(res, pronta.status, pronta.corpo);
+          const cfg = pronta.cfg;
           const comVersao = versaoPedida != null && Number.isFinite(versaoPedida) ? versaoPedida : null;
           const updatedAt = await db.setDeviceConfig(id, JSON.stringify(cfg), device.name || cfg.settings.nome, comVersao);
           // Alguém gravou entre a conferência lá em cima e aqui (o corpo leva tempo para chegar).
@@ -708,7 +720,97 @@ module.exports = function (ctx) {
     return sendJson(res, 405, { error: 'método inválido' });
   }
 
+  /*
+   * ENVIO EM LOTE (EXECUTOR D26): a mesma mudança em várias TVs, no
+   * servidor. Antes era o navegador, uma TV por vez: falhou na terceira, as
+   * duas primeiras ficavam mudadas e o aviso dizia que deu certo.
+   *
+   *   POST /api/lote              { itens: [{ id, config, versao }], descricao }
+   *   POST /api/lote/:id/desfazer volta cada TV ao que era (se ninguém mexeu depois)
+   *   GET  /api/lote              os últimos envios da conta
+   *
+   * Tudo ou nada: posse, versão e a porta (prepararConfig) de TODAS antes
+   * de gravar a primeira; se uma gravação falhar no meio (alguém salvou
+   * naquele instante), as já gravadas voltam. O "antes" de cada TV fica 30
+   * dias para o Desfazer.
+   */
+  async function rotaLote(req, res, parts, sess) {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    const idLote = parts[2];
+    if (!idLote && req.method === 'GET') return sendJson(res, 200, { lotes: await db.listarLotes(sess.tenant_id, 10) });
+    if (!idLote && req.method === 'POST') {
+      return readBody(req, res, async (b) => {
+        const itens = Array.isArray(b && b.itens) ? b.itens.slice(0, 200) : [];
+        if (!itens.length) return sendJson(res, 400, { error: 'escolha pelo menos uma TV' });
+        const prontos = [];
+        const conflitos = [];
+        const problemas = [];
+        const vistos = new Set();
+        for (const it of itens) {
+          const id = String((it && it.id) || '');
+          if (!id || vistos.has(id)) continue;
+          vistos.add(id);
+          const device = await db.getDevice(id);
+          if (!device || device.tenant_id !== sess.tenant_id) { problemas.push({ id, error: 'TV não encontrada nesta conta' }); continue; }
+          const versao = it.versao != null && it.versao !== '' ? Number(it.versao) : null;
+          if (versao != null && versao !== (Number(device.updated_at) || 0)) { conflitos.push({ id, nome: device.name, versao: Number(device.updated_at) || 0 }); continue; }
+          const p = await prepararConfig(device, it.config);
+          if (p.corpo) { problemas.push(Object.assign({ id, nome: device.name }, p.corpo)); continue; }
+          prontos.push({ device, cfg: p.cfg, versao: Number(device.updated_at) || 0 });
+        }
+        if (conflitos.length) {
+          return sendJson(res, 409, { error: 'Algumas TVs foram mudadas em outro lugar enquanto você enviava. Nada foi enviado.', code: 'config-mudou', telas: conflitos });
+        }
+        if (problemas.length) {
+          return sendJson(res, 400, { error: (problemas[0].nome ? problemas[0].nome + ': ' : '') + (problemas[0].error || 'programação recusada') + '. Nada foi enviado.', code: problemas[0].code, problemas: problemas.slice(0, 20) });
+        }
+        const feitos = [];
+        for (const p of prontos) {
+          const updatedAt = await db.setDeviceConfig(p.device.id, JSON.stringify(p.cfg), p.device.name || p.cfg.settings.nome, p.versao);
+          if (updatedAt == null) {
+            // Alguém gravou nesta TV agora mesmo: as que já foram voltam ao que eram.
+            for (const f of feitos.reverse()) {
+              const volta = await db.setDeviceConfig(f.device.id, f.device.config || null, f.device.name, f.updatedAt);
+              if (volta != null) broadcast(f.device.id, 'config', { updatedAt: volta });
+            }
+            return sendJson(res, 409, { error: 'Uma TV foi mudada em outro lugar enquanto você enviava. Nada foi enviado.', code: 'config-mudou', telas: [{ id: p.device.id, nome: p.device.name }] });
+          }
+          feitos.push({ device: p.device, updatedAt });
+        }
+        const lote = await db.salvarLote(sess.tenant_id, {
+          descricao: String((b && b.descricao) || '').slice(0, 120),
+          telas: feitos.map((f) => ({ id: f.device.id, nome: f.device.name || '', antes: f.device.config || null, versaoAntes: Number(f.device.updated_at) || 0, versaoDepois: f.updatedAt })),
+        });
+        feitos.forEach((f) => broadcast(f.device.id, 'config', { updatedAt: f.updatedAt }));
+        await db.registrarEvento(sess.tenant_id, sess.user_id, 'lote.enviar');
+        return sendJson(res, 200, { ok: true, lote, telas: feitos.map((f) => ({ id: f.device.id, updatedAt: f.updatedAt })) });
+      });
+    }
+    if (idLote && parts[3] === 'desfazer' && req.method === 'POST') {
+      const lote = await db.loteDaConta(idLote, sess.tenant_id);
+      if (!lote) return sendJson(res, 404, { error: 'envio não encontrado' });
+      if (lote.desfeitoEm) return sendJson(res, 409, { error: 'este envio já foi desfeito', code: 'ja-desfeito' });
+      const voltaram = [];
+      const mudaram = [];
+      for (const t of lote.telas) {
+        const device = await db.getDevice(t.id);
+        if (!device || device.tenant_id !== sess.tenant_id) continue;
+        // A TV mudou depois do envio: o que a pessoa fez depois não é apagado.
+        if ((Number(device.updated_at) || 0) !== t.versaoDepois) { mudaram.push({ id: t.id, nome: device.name }); continue; }
+        const updatedAt = await db.setDeviceConfig(t.id, t.antes, device.name, t.versaoDepois);
+        if (updatedAt == null) { mudaram.push({ id: t.id, nome: device.name }); continue; }
+        broadcast(t.id, 'config', { updatedAt });
+        voltaram.push({ id: t.id, nome: device.name });
+      }
+      await db.marcarLoteDesfeito(idLote, sess.tenant_id);
+      await db.registrarEvento(sess.tenant_id, sess.user_id, 'lote.desfazer');
+      return sendJson(res, 200, { voltaram, mudaram });
+    }
+    return sendJson(res, 405, { error: 'método inválido' });
+  }
+
   return async function (req, res, parts, query, sess) {
+    if (parts[1] === 'lote') { await rotaLote(req, res, parts, sess); return true; }
     if (parts[1] === 'automaticos' && parts.length === 2) { await rotaAutomaticos(req, res, sess); return true; }
     if (parts[1] === 'grupos') { await grupos(req, res, parts, query, sess); return true; }
     if (parts[1] !== 'devices' && parts[1] !== 'pair') return false;

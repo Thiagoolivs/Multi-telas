@@ -210,6 +210,12 @@ db.exec(`
     created_at INTEGER, updated_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_calendario_tenant ON calendario(tenant_id, data);
+  -- O envio em lote (D26): a programação de antes de cada TV, para desfazer.
+  -- Guarda os últimos 30 dias da conta.
+  CREATE TABLE IF NOT EXISTS lotes (
+    id TEXT PRIMARY KEY, tenant_id TEXT, descricao TEXT, telas TEXT, created_at INTEGER, desfeito_em INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_lotes_tenant ON lotes(tenant_id, created_at);
   -- Coluna oculta em vez de DELETE: o botão de pânico precisa ser instantâneo e
   -- reversível. Apagar arquivo de storage no meio de um evento é irreversível
   -- e lento justamente quando a pressa é máxima.
@@ -1378,6 +1384,26 @@ async function numerosDaPlataforma(agora, vivaDesde, desde) {
   };
 }
 
+/* ---------------- Envio em lote (D26) ---------------- */
+const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
+const mapLote = (r, comAntes) => (r ? {
+  id: r.id, descricao: r.descricao || '', createdAt: r.created_at, desfeitoEm: r.desfeito_em || null,
+  telas: (() => { try { const t = JSON.parse(r.telas || '[]'); return comAntes ? t : t.map(({ antes, ...x }) => x); } catch (e) { return []; } })(), // eslint-disable-line no-unused-vars
+} : null);
+async function salvarLote(tenantId, lote) {
+  const id = 'lot_' + rid(12);
+  const agora = Date.now();
+  db.prepare('DELETE FROM lotes WHERE tenant_id = ? AND created_at < ?').run(tenantId, agora - TRINTA_DIAS);
+  db.prepare('INSERT INTO lotes (id, tenant_id, descricao, telas, created_at, desfeito_em) VALUES (?, ?, ?, ?, ?, NULL)')
+    .run(id, tenantId, String(lote.descricao || '').slice(0, 120), JSON.stringify(lote.telas || []), agora);
+  return id;
+}
+async function loteDaConta(id, tenantId) { return mapLote(db.prepare('SELECT * FROM lotes WHERE id = ? AND tenant_id = ?').get(id, tenantId), true); }
+async function marcarLoteDesfeito(id, tenantId) { db.prepare('UPDATE lotes SET desfeito_em = ? WHERE id = ? AND tenant_id = ?').run(Date.now(), id, tenantId); }
+async function listarLotes(tenantId, n) {
+  return db.prepare('SELECT * FROM lotes WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?').all(tenantId, n || 10).map((r) => mapLote(r, false));
+}
+
 /* ---------------- Calendário da empresa (D23) ---------------- */
 const qCal = {
   listar: db.prepare('SELECT * FROM calendario WHERE tenant_id = ? ORDER BY data, created_at'),
@@ -1584,7 +1610,7 @@ async function apagarTenant(tenantId) {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     // As tabelas novas ficavam para trás (D0.7); ver db-postgres.js.
     for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }
     db.prepare("DELETE FROM banco WHERE tenant_id = ? AND estado <> 'aprovada'").run(tenantId);
@@ -1756,6 +1782,7 @@ async function estornarPacote(paymentId) {
 
 module.exports = {
   listarCalendario, eventoDoCalendario, salvarEvento, removerEvento,
+  salvarLote, loteDaConta, marcarLoteDesfeito, listarLotes,
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil, setAutomaticos,

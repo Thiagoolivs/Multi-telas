@@ -100,6 +100,11 @@ async function init() {
       created_at BIGINT, updated_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_calendario_tenant ON calendario(tenant_id, data);
+    -- O envio em lote (D26); ver db-sqlite.js.
+    CREATE TABLE IF NOT EXISTS lotes (
+      id TEXT PRIMARY KEY, tenant_id TEXT, descricao TEXT, telas TEXT, created_at BIGINT, desfeito_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_lotes_tenant ON lotes(tenant_id, created_at);
     -- Coluna oculta em vez de DELETE: o botão de pânico precisa ser
     -- instantâneo e reversível. Apagar arquivo de storage no meio de um evento
     -- é irreversível e lento justamente quando a pressa é máxima.
@@ -828,6 +833,30 @@ async function numerosDaPlataforma(agora, vivaDesde, desde) {
 // a foto é identificado pelo mural, e é do mural que vem a empresa dona dela.
 const mapMural = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo, aceitando: !!r.aceitando, createdAt: r.created_at } : null);
 const mapFoto = (r) => ({ id: r.id, url: r.url, autor: r.autor || '', mensagem: r.mensagem || '', oculta: !!r.oculta, createdAt: r.created_at });
+
+/* ---------------- Envio em lote (D26) ---------------- */
+const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
+const mapLote = (r, comAntes) => (r ? {
+  id: r.id, descricao: r.descricao || '', createdAt: Number(r.created_at), desfeitoEm: r.desfeito_em ? Number(r.desfeito_em) : null,
+  telas: (() => { try { const t = JSON.parse(r.telas || '[]'); return comAntes ? t : t.map(({ antes, ...x }) => x); } catch (e) { return []; } })(), // eslint-disable-line no-unused-vars
+} : null);
+async function salvarLote(tenantId, lote) {
+  const id = 'lot_' + rid(12);
+  const agora = Date.now();
+  await pool.query('DELETE FROM lotes WHERE tenant_id = $1 AND created_at < $2', [tenantId, agora - TRINTA_DIAS]);
+  await pool.query('INSERT INTO lotes (id, tenant_id, descricao, telas, created_at, desfeito_em) VALUES ($1,$2,$3,$4,$5,NULL)',
+    [id, tenantId, String(lote.descricao || '').slice(0, 120), JSON.stringify(lote.telas || []), agora]);
+  return id;
+}
+async function loteDaConta(id, tenantId) {
+  const r = await pool.query('SELECT * FROM lotes WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapLote(r.rows[0], true);
+}
+async function marcarLoteDesfeito(id, tenantId) { await pool.query('UPDATE lotes SET desfeito_em = $1 WHERE id = $2 AND tenant_id = $3', [Date.now(), id, tenantId]); }
+async function listarLotes(tenantId, n) {
+  const r = await pool.query('SELECT * FROM lotes WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT $2', [tenantId, n || 10]);
+  return r.rows.map((x) => mapLote(x, false));
+}
 
 /* ---------------- Calendário da empresa (D23) ---------------- */
 const jsonCal = (s, padrao) => { try { return s ? JSON.parse(s) : padrao; } catch (e) { return padrao; } };
@@ -1563,7 +1592,7 @@ async function apagarTenant(tenantId) {
      * consultor; o prazo é do dono com o advogado).
      */
     for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'users']) {
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
     await client.query("DELETE FROM banco WHERE tenant_id = $1 AND estado <> 'aprovada'", [tenantId]);
@@ -1724,6 +1753,7 @@ async function relatorioExibicoes(tenantId, de, ate, deviceId) {
 
 module.exports = {
   listarCalendario, eventoDoCalendario, salvarEvento, removerEvento,
+  salvarLote, loteDaConta, marcarLoteDesfeito, listarLotes,
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil, setAutomaticos,
