@@ -94,6 +94,8 @@ const OPERACOES = {
   quiz: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Quiz' },
   // Ler o calendário da empresa (D23): uma chamada de texto.
   calendario: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Calendário da empresa' },
+  // O aviso numa frase (D27): uma chamada de texto.
+  'aviso-rapido': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Aviso rápido' },
 };
 
 function operacao(tipo) { return OPERACOES[tipo] || null; }
