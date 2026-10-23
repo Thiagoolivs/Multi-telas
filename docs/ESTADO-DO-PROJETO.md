@@ -6,11 +6,50 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **23/10/2026** · 1498 testes passando · Fases 1 a 5 do
-DNA novo completas, a parte de "agora" do D38 e o D41 (EXECUTOR §2f,
-D0.1–D41, PRs #201 a #275).
+Atualizado em: **23/10/2026** · 1551 testes passando · Fases 1 a 5 do
+DNA novo completas, o D41 e a rodada 6 inteira (EXECUTOR §2f e §2g,
+D0.1–D51, PRs #201 a #291).
 
 ---
+
+## Rodada 6 — Criar, Criando, Criados e a IA que conversa (23/10, PRs #276 a #291)
+
+O dono pediu: "assinar" que não abria, o chat que regredia, chats antigos,
+a IA conversando até entender (também nos ajustes), como a IA mexe na
+programação, e o Criar revisto em três abas. O consultor somou D42–D45.
+
+- **Assinar abre** (D46, #277/#278): o painel velho em cache mandava o
+  pedido antigo (400 calado). Service worker do painel com a rede primeiro
+  e aviso "O painel foi atualizado · Recarregar"; o erro aparece no botão.
+- **Criar · Criando · Criados** (D47/D49, #279): o que fica pronto vai para
+  Criados; Criar abre conversa nova ou uma antiga (lista com busca, estado,
+  arquivar e renomear).
+- **A conversa não regride** (D48, #280/#284): o que foi DECIDIDO fica
+  guardado à parte (até 20 decisões) e vai à IA a cada mensagem.
+- **Editar com a IA** (D50, #281/#282): em Criados, um chat ligado à
+  campanha, com memória, que pergunta quando não entende e tem Desfazer.
+- **Imagens de referência** (D45, #283): anexar ou colar no chat, para
+  estilo ou para usar na peça.
+- **Esboço aprovado antes de gastar** (D42/D42b, #285/#288): campanha e
+  imagem de Meus Designs só geram com o esboço aprovado (409 sem ele).
+- **Um lugar só para pedir à IA** (D51, #286/#287): aviso, ajuste da tela e
+  ajuste da peça conversam até entender; "Pedir à IA" na Programação.
+- **Regras de composição** (D44, #290): letra mínima, margem, véu sobre a
+  foto (pior caso), QR, o preço maior e o orçamento da faixa — em número
+  (`js/regras-composicao.js`). O detector mede; o compositor recebe no
+  prompt; o painel avisa e manda ao refazer. A bancada tem "Conferir a
+  biblioteca" (2004 montagens). Consertou o kicker sobre os óculos da
+  oferta-foto, o relógio empurrado no cabeçalho em pé, o quiz que não
+  cabia em zona nenhuma, QR pequeno e letra de 13px.
+- **Relatório de qualidade** (D43, #291): Plataforma › Qualidade das
+  gerações — peça refeita por defeito, campo corrigido à mão, tipo de
+  pedido. Só contagem, sem conta e sem pessoa.
+
+**Esperando decisão (consultor/dono, #135):** o ajuste do prompt da foto
+("cara de banco de imagem", `server/direcao-arte.js`); o contraste do
+kicker pequeno em cor de destaque (3,6–4,4:1 em quatro marcas — o contrato
+dos tokens dá 3:1); o experimento com a IA de verdade (gasta na chave do
+dono).
 
 ## Depois da rodada 5 — notas do consultor e o APK remoto (23/10, PRs #270 a #275)
 
