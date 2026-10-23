@@ -246,7 +246,7 @@ async function ondeEstaEmUso(tenantId, url) {
   } catch (e) { /* segue */ }
   try {
     for (const a of await db.listBrandAssets(tenantId)) {
-      if (a.url === url) usos.push(a.kind === 'logo' ? 'na logo da marca' : 'nas imagens da marca');
+      if (a.url === url) usos.push(/^logo/.test(a.kind) ? 'na logo da marca' : 'nas imagens da marca');
     }
   } catch (e) { /* segue */ }
   return [...new Set(usos)].slice(0, 8);
@@ -364,6 +364,9 @@ async function marcaDaConta(tenantId) {
     direcao: k.direcao || '', tom: k.tom || '', observacoes: k.observacoes || '',
     nome: k.nome || '', site: k.site || '', siteResumo: k.siteResumo || '',
     logo: (assets.find((a) => a.kind === 'logo') || {}).url || '',
+    // As versões de uma cor só (D7): a peça de fundo escuro usa a clara, e vice-versa.
+    logoClara: (assets.find((a) => a.kind === 'logo-clara') || {}).url || '',
+    logoEscura: (assets.find((a) => a.kind === 'logo-escura') || {}).url || '',
     // As bases levam o rótulo junto: é por ele que o diretor escolhe qual
     // foto do acervo entra em cada peça.
     bases: assets.filter((a) => a.kind === 'base').map((a) => ({ url: a.url, label: a.label || '' })),
@@ -1372,13 +1375,19 @@ const negocioCache = new Map();
     if (parts[2] === 'assets') {
       if (req.method === 'POST' && parts.length === 3) {
         return readBody(req, res, async (b) => {
-          const kind = ['logo', 'base', 'referencia'].includes(b && b.kind) ? b.kind : 'base';
+          /*
+           * logo-clara / logo-escura (D7): as versões de uma cor só, para o
+           * fundo escuro e o claro da TV, geradas na página da Marca depois
+           * que a pessoa aprova o "antes e depois".
+           */
+          const kind = ['logo', 'logo-clara', 'logo-escura', 'base', 'referencia'].includes(b && b.kind) ? b.kind : 'base';
           const url = String((b && b.url) || '').trim();
           if (!url) return sendJson(res, 400, { error: 'informe a imagem' });
-          // Só uma logo por empresa: a nova substitui a anterior.
-          if (kind === 'logo') {
+          // Só uma de cada logo por empresa: a nova substitui a anterior. Logo
+          // nova leva junto as versões clara e escura da antiga (seriam de outra logo).
+          if (/^logo/.test(kind)) {
             for (const a of await db.listBrandAssets(sess.tenant_id)) {
-              if (a.kind === 'logo') await db.removeBrandAsset(a.id, sess.tenant_id);
+              if (a.kind === kind || (kind === 'logo' && /^logo-/.test(a.kind))) await db.removeBrandAsset(a.id, sess.tenant_id);
             }
           }
           const a = await db.addBrandAsset(sess.tenant_id, kind, url, (b && b.label) || '');
