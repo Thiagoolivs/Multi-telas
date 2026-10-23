@@ -37,7 +37,8 @@ Regras:
 - Só nomes de campo da lista. O texto novo respeita o limite de cada campo.
 - Não invente preço, telefone, endereço, data ou nome que o cliente não deu.
 - Se o pedido não dá para fazer só com isso (outra foto, outro desenho), não
-  mude nada e diga na resposta o que dá para pedir.`;
+  mude nada e diga na resposta o que dá para pedir.
+${require('./ia-pergunta').REGRA_DE_PERGUNTA}`;
 
 function pedidoParaIA(v, pedido) {
   const it = v.item;
@@ -50,6 +51,18 @@ function pedidoParaIA(v, pedido) {
     'ESTILO ATUAL: ' + it.modo + ' · CORES: ' + ((it.marca && it.marca.cores) || []).join(', ')
       + ' · FONTES: título ' + ((it.marca && it.marca.fonteTitulo) || 'da marca') + ', texto ' + ((it.marca && it.marca.fonteApoio) || 'da marca'),
     'FONTES DISPONÍVEIS: ' + fontes, '', 'PEDIDO DO CLIENTE: ' + corta(pedido, 500)].join('\n');
+}
+
+/*
+ * D51: o pedido sem o que mudar ("muda a cor", "muda o título") vira
+ * pergunta, com respostas prontas — em vez de "não achei o que mudar".
+ */
+function perguntaDaPeca(pedido) {
+  const t = String(pedido || '').toLowerCase();
+  if (/\b(cor|cores)\b/.test(t)) return { pergunta: 'Qual cor?', sugestoes: ['Deixa vermelho', 'Deixa azul', 'Deixa verde', 'Deixa preto'] };
+  if (/t[íi]tulo/.test(t)) return { pergunta: 'Qual o título novo? Escreva como quer que apareça.', sugestoes: [] };
+  if (/\b(fonte|letra)\b/.test(t)) return { pergunta: 'Que tipo de letra?', sugestoes: ['Fonte mais elegante', 'Fonte mais moderna', 'Fonte chamativa'] };
+  return { pergunta: 'O que você quer mudar nesta peça?', sugestoes: ['Deixa vermelho', 'Fundo claro', 'Fonte mais elegante', 'Tira o preço'] };
 }
 
 /*
@@ -142,18 +155,23 @@ const AJUDA = 'Dá para pedir, por exemplo: "muda o título para Promoção de i
  * Entende o pedido e devolve { resposta, remendo, mudou }. A peça que chega
  * passa pela porta antes de qualquer coisa.
  */
-async function ajustar(item, pedido) {
+// `historico` (D51): as falas desta mini-conversa; a resposta completa o pedido ("muda a cor" + "deixa azul").
+async function ajustar(item, pedido, historico) {
   const v = P.validarItem(item);
   if (v.problemas.length) { const e = new Error('peça inválida: ' + v.problemas[0]); e.status = 400; throw e; }
+  const IP = require('./ia-pergunta');
+  const todo = IP.pedidoDaConversa(historico, pedido, ' ');
   let bruto = null;
   let resposta = '';
   if (ai.mode() !== 'dev') {
     try {
-      bruto = ai.parseAiJson(await ai.callLLM(SISTEMA, pedidoParaIA(v, pedido)));
+      bruto = ai.parseAiJson(await ai.callLLM(SISTEMA, pedidoParaIA(v, pedido) + '\nCONVERSA:\n' + IP.transcricao(historico, pedido)));
       resposta = corta(bruto && bruto.resposta, 300);
+      const pergunta = IP.lerPergunta(bruto);
+      if (pergunta && !lerRemendo(bruto, v).mudou.length) return Object.assign({ remendo: {}, mudou: [] }, pergunta);
     } catch (e) { bruto = null; }
   }
-  if (!bruto) bruto = semIA(pedido, v);
+  if (!bruto) bruto = semIA(todo, v);
   const { remendo, mudou } = lerRemendo(bruto, v);
   /*
    * A peça DEPOIS do remendo passa pela porta de novo (revisão do consultor
@@ -163,9 +181,13 @@ async function ajustar(item, pedido) {
     const depois = P.validarItem(comRemendo(v.item, remendo));
     if (depois.problemas.length) return { resposta: 'Não deu para aplicar: ' + depois.problemas[0] + '. ' + AJUDA, remendo: {}, mudou: [] };
   }
-  if (!mudou.length) return { resposta: resposta && !/mud|troc/i.test(resposta) ? resposta + ' ' + AJUDA : 'Não achei o que mudar. ' + AJUDA, remendo: {}, mudou };
+  if (!mudou.length) {
+    // Explicação da IA ("isso pede outra foto") vale como resposta; sem ela, a pergunta (D51).
+    if (resposta && !/mud|troc/i.test(resposta)) return { resposta: resposta + ' ' + AJUDA, remendo: {}, mudou };
+    return Object.assign({ remendo: {}, mudou }, perguntaDaPeca(todo));
+  }
   const frase = mudou.map((m) => FRASE[m]).join(', ');
   return { resposta: resposta || ('Pronto: ' + frase + '.'), remendo, mudou };
 }
 
-module.exports = { ajustar, lerRemendo, comRemendo, semIA, pedidoParaIA, SISTEMA };
+module.exports = { ajustar, lerRemendo, comRemendo, semIA, pedidoParaIA, perguntaDaPeca, SISTEMA };

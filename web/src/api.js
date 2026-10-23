@@ -261,7 +261,7 @@ export const ai = {
   // As perguntas do quiz (D21): devolve { perguntas } — todas para conferir (revisada: false).
   quiz: (payload, onEtapa, sinal) => rodar('/api/ai/quiz', payload, 'quiz', onEtapa, sinal),
   // Pedir à IA dentro da peça (D20): devolve { resposta, remendo, mudou } — só o que muda, sem gravar.
-  ajustarPeca: (item, pedido) => api('POST', '/api/ai/ajustar-peca', { item, pedido }),
+  ajustarPeca: (item, pedido, historico) => api('POST', '/api/ai/ajustar-peca', { item, pedido, historico }),
   // Mudar layout e tema numa frase (D28): devolve { mudancas, notas } — o painel aplica no rascunho, com prévia.
   tela: (texto, atual, historico) => api('POST', '/api/ai/tela', { texto, ...atual, historico }),
   // Um lugar só para pedir à IA, na Programação (D51): { pergunta } ou { destino, ... }.

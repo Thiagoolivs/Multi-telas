@@ -56,9 +56,16 @@ test('sem IA (localhost, e quando a IA cai): as frases comuns funcionam; o resto
   assert.equal((await pede('muda o título para Inverno quente')).remendo.campos.titulo, 'Inverno quente');
   assert.equal((await pede('fonte mais elegante')).remendo.marca.fonteTitulo, 'serifada');
   assert.equal((await pede('fundo claro')).remendo.modo, 'claro');
+  // D51: sem o que mudar, a IA PERGUNTA (com respostas prontas) em vez de "não achei".
   const nada = await pede('faz um vídeo');
   assert.deepEqual(nada.remendo, {});
-  assert.match(nada.resposta, /Dá para pedir/);
+  assert.match(nada.pergunta, /O que você quer mudar nesta peça/);
+  assert.ok(nada.sugestoes.length >= 2);
+  const cor = await pede('muda a cor');
+  assert.equal(cor.pergunta, 'Qual cor?');
+  // A resposta completa o pedido de antes.
+  const azul = await A.ajustar(ITEM, 'Deixa azul', [{ papel: 'pessoa', texto: 'muda a cor' }, { papel: 'ia', texto: 'Qual cor?' }]);
+  assert.equal(azul.remendo.marca.cores.length, 2);
   await assert.rejects(A.ajustar({ type: 'peca-html', html: '<script></script>', css: '' }, 'oi'), /peça inválida/);
 });
 
@@ -77,7 +84,7 @@ test('a rota: medida e com teto (mapa TIPO_IA), limite por hora, só com sessão
 
 test('o painel: pedir no editor de peça (com desfazer), editar a peça da TV e o mapa com a IA na zona', () => {
   const e = ler('web/src/components/content/EditarPeca.jsx');
-  assert.match(e, /const r = await ai\.ajustarPeca\(atual, pedido\.trim\(\)\);/);
+  assert.match(e, /const r = await ai\.ajustarPeca\(atual, frase, historicoIA\);/);
   assert.match(e, /setCampos\(a\.campos\); setModo\(a\.modo\); setMarca\(a\.marca\); setOcultos\(a\.ocultos\);/);
   const tv = ler('web/src/pages/ContentEditorPage.jsx');
   assert.match(tv, /\{current\.type === 'peca-html' && \(/);
