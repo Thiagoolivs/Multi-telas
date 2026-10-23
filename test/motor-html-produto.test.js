@@ -271,7 +271,8 @@ test('sem o motor HTML, o plano não traz rascunho', async () => {
 test('editar a peça troca estilo e marca sem chamar a IA', () => {
   const ed = fs.readFileSync(path.join(RAIZ, 'web/src/components/content/EditarPeca.jsx'), 'utf8');
   // D19: o desenho (html/css) também pode trocar, e os elementos escondidos vão junto.
-  assert.match(ed, /\{ \.\.\.resto, \.\.\.doDesenho, campos, modo, marca, \.\.\.\(ocultos\.length \? \{ ocultos \} : \{\}\) \}/);
+  // (#240: o campo escondido vai vazio e o texto dele em `guardados`.)
+  assert.match(ed, /\{ \.\.\.resto, \.\.\.doDesenho, campos: gravados, modo, marca, \.\.\.\(ocultos\.length \? \{ ocultos \} : \{\}\)/);
   assert.match(ed, /brand\.marcas\(\)/);
   for (const m of ['escuro', 'claro', 'marca']) assert.match(ed, new RegExp("id: '" + m + "'"));
 });

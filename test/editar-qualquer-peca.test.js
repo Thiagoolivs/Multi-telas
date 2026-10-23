@@ -72,3 +72,16 @@ test('desenho: a mesma mensagem em outra peça do mesmo lugar, com os textos que
 test('o player recebe a versão nova do desenhista (cache da TV trocado)', () => {
   assert.ok(Number((/const SHELL_CACHE = 'mt-shell-v(\d+)';/.exec(ler('sw.js')) || [])[1]) >= 49, 'o desenhista mudou e a TV não baixa de novo');
 });
+
+test('revisão do #240: o campo escondido vai VAZIO para a TV (a antiga não conhece ocultos), e o texto volta ao mostrar', () => {
+  const v = P.validarItem({
+    type: 'peca-html', html: oferta.html, css: oferta.css,
+    campos: { kicker: '' }, ocultos: ['kicker'], guardados: { kicker: 'Só esta semana', titulo: 'não está escondido', foto: '/media/x.jpg' },
+  });
+  assert.deepEqual(v.item.guardados, { kicker: 'Só esta semana' }, 'guardou campo que não está escondido (ou imagem)');
+  assert.equal(P.validarItem({ type: 'peca-html', html: oferta.html, css: oferta.css, guardados: { kicker: 'x' } }).item.guardados, undefined);
+  const e = ler('web/src/components/content/EditarPeca.jsx');
+  assert.match(e, /ocultos\.forEach\(\(n\) => \{ if \(gravados\[n\]\) guardados\[n\] = gravados\[n\]; gravados\[n\] = ''; \}\);/);
+  assert.match(e, /useState\(\(\) => \(\{ \.\.\.\(item\.campos \|\| \{\}\), \.\.\.\(item\.guardados \|\| \{\}\) \}\)\)/);
+  assert.ok(!/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(ler('js/peca-html.js')), 'caractere de controle literal no código da porta');
+});

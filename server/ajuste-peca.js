@@ -126,6 +126,15 @@ function semIA(pedido, v) {
   return r;
 }
 
+// A peça com o remendo, como o painel vai montar (as cores da peça ficam se o remendo não trouxer).
+function comRemendo(it, r) {
+  const novo = Object.assign({}, it, { campos: Object.assign({}, it.campos, r.campos || {}) });
+  if (r.modo) novo.modo = r.modo;
+  if (r.marca) novo.marca = Object.assign({}, it.marca || {}, r.marca);
+  if (r.ocultos) novo.ocultos = r.ocultos;
+  return novo;
+}
+
 const FRASE = { texto: 'troquei o texto', estilo: 'mudei o estilo', cores: 'troquei as cores', fonte: 'troquei a fonte', elementos: 'mudei o que aparece' };
 const AJUDA = 'Dá para pedir, por exemplo: "muda o título para Promoção de inverno", "deixa vermelho", "fonte mais elegante" ou "tira o preço".';
 
@@ -146,9 +155,17 @@ async function ajustar(item, pedido) {
   }
   if (!bruto) bruto = semIA(pedido, v);
   const { remendo, mudou } = lerRemendo(bruto, v);
+  /*
+   * A peça DEPOIS do remendo passa pela porta de novo (revisão do consultor
+   * no #242): a peneira confere cada mudança, e a porta confere o conjunto.
+   */
+  if (mudou.length) {
+    const depois = P.validarItem(comRemendo(v.item, remendo));
+    if (depois.problemas.length) return { resposta: 'Não deu para aplicar: ' + depois.problemas[0] + '. ' + AJUDA, remendo: {}, mudou: [] };
+  }
   if (!mudou.length) return { resposta: resposta && !/mud|troc/i.test(resposta) ? resposta + ' ' + AJUDA : 'Não achei o que mudar. ' + AJUDA, remendo: {}, mudou };
   const frase = mudou.map((m) => FRASE[m]).join(', ');
   return { resposta: resposta || ('Pronto: ' + frase + '.'), remendo, mudou };
 }
 
-module.exports = { ajustar, lerRemendo, semIA, pedidoParaIA, SISTEMA };
+module.exports = { ajustar, lerRemendo, comRemendo, semIA, pedidoParaIA, SISTEMA };
