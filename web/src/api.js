@@ -339,6 +339,11 @@ export const criar = {
   arquivarConversa: (id, arquivada) => api('PUT', '/api/conversas/' + id, { arquivada }),
   // D48: o que foi combinado na conversa, corrigido pela pessoa.
   salvarDecisoes: (id, decisoes) => api('PUT', '/api/conversas/' + id, { decisoes }),
+  // D45: imagem de referência no chat (bytes crus; o servidor confere o tipo). Sem id, nasce uma conversa.
+  referencia: (id, file, uso) => enviarBytes('/api/conversas/' + (id ? id + '/' : '') + 'referencia?uso=' + encodeURIComponent(uso || 'estilo'), file),
+  salvarReferencias: (id, referencias) => api('PUT', '/api/conversas/' + id, { referencias }),
+  referenciaDaEdicao: (campanhaId, file, uso) => enviarBytes('/api/campanhas/' + campanhaId + '/referencia?uso=' + encodeURIComponent(uso || 'estilo'), file),
+  salvarReferenciasDaEdicao: (campanhaId, referencias) => api('PUT', '/api/campanhas/' + campanhaId + '/edicao', { referencias }),
   conversa: (id) => api('GET', '/api/conversas/' + id),
   salvarEscopo: (id, escopo) => api('PUT', '/api/conversas/' + id, { escopo }),
   async gerar(payload, onEtapa, sinal) {
@@ -574,6 +579,14 @@ export const bancoImagens = {
   descompartilhar: (mediaId) => api('DELETE', '/api/banco/' + mediaId + '/compartilhar'),
   usar: (id) => api('POST', '/api/banco/' + id + '/usar', {}),
 };
+
+// Bytes crus para uma rota (a imagem de referência do chat, D45): o erro do servidor vira a mensagem.
+async function enviarBytes(caminho, file) {
+  const res = await fetch(caminho, { method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': file.type || 'application/octet-stream' } });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) { const e = new Error((data && data.error) || ('HTTP ' + res.status)); e.status = res.status; throw e; }
+  return data;
+}
 
 export const media = {
   list: () => api('GET', '/api/media'),

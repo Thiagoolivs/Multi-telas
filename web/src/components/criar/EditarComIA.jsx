@@ -3,6 +3,8 @@ import { Send, Sparkles, MessageSquare, Undo2, Check, CloudOff } from 'lucide-re
 import { Button } from '../ui/Button.jsx';
 import { Spinner } from '../ui/Feedback.jsx';
 import { criar } from '../../api.js';
+import { BotaoAnexar, ReferenciasDoChat, imagensDoColar } from './ReferenciasDoChat.jsx';
+import { prepararFoto } from '../../lib/subir.js';
 import { cn } from '../../lib/cn.js';
 
 /*
@@ -18,19 +20,23 @@ import { cn } from '../../lib/cn.js';
  *   - só o que foi pedido muda — trocar um texto não refaz a peça;
  *   - a conversa fica guardada: abrir de novo mostra o que já foi pedido;
  *   - "Desfazer" volta o último passo.
+ *   - imagens de referência (D45): anexar ou colar; "usa a foto que eu
+ *     mandei na peça 2" põe a foto do cliente na peça, sem gastar criação.
  */
 export function EditarComIA({ campanha, onMudou }) {
   const [mensagens, setMensagens] = useState(null);   // null = carregando
   const [texto, setTexto] = useState('');
   const [etapa, setEtapa] = useState(null);
   const [erro, setErro] = useState('');
+  const [referencias, setReferencias] = useState([]);
+  const [enviandoImagem, setEnviandoImagem] = useState(false);
   const fim = useRef(null);
   const temAnterior = !!(campanha.resultado && campanha.resultado.anterior);
 
   useEffect(() => {
     let vivo = true;
     criar.edicao(campanha.id)
-      .then((r) => { if (vivo) setMensagens((r && r.conversa && r.conversa.mensagens) || []); })
+      .then((r) => { if (vivo) { setMensagens((r && r.conversa && r.conversa.mensagens) || []); setReferencias((r && r.conversa && r.conversa.referencias) || []); } })
       .catch(() => { if (vivo) setMensagens([]); });
     return () => { vivo = false; };
   }, [campanha.id]);
@@ -54,6 +60,26 @@ export function EditarComIA({ campanha, onMudou }) {
     } finally { setEtapa(null); }
   }
 
+  // D45: a imagem que a pessoa manda (clipe ou colar) fica na conversa da edição.
+  async function anexar(arquivos) {
+    if (enviandoImagem) return;
+    setEnviandoImagem(true); setErro('');
+    try {
+      for (const f of arquivos.slice(0, 10 - referencias.length)) {
+        const envio = await prepararFoto(f).then((p) => { URL.revokeObjectURL(p.previa); return p.envio; }).catch(() => f);
+        const r = await criar.referenciaDaEdicao(campanha.id, envio, 'estilo');
+        setReferencias((r.conversa && r.conversa.referencias) || []);
+      }
+    } catch (e) { setErro('A imagem não foi: ' + (e.message || 'falha de conexão') + '.'); }
+    finally { setEnviandoImagem(false); }
+  }
+  async function mudarReferencias(lista) {
+    const antes = referencias;
+    setReferencias(lista);
+    try { const r = await criar.salvarReferenciasDaEdicao(campanha.id, lista); setReferencias((r.conversa && r.conversa.referencias) || []); }
+    catch (e) { setReferencias(antes); setErro('Não deu para mudar a imagem: ' + (e.message || 'falha de conexão') + '.'); }
+  }
+
   async function desfazer() {
     setErro('');
     try {
@@ -69,7 +95,7 @@ export function EditarComIA({ campanha, onMudou }) {
     <section id="editar-com-ia" className="flex max-h-[80vh] flex-col rounded-lg border border-accent/30 bg-surface">
       <div className="border-b border-line px-3 py-2.5">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><Sparkles size={15} className="text-accent" /> Editar com a IA</h3>
-        <p className="mt-0.5 text-2xs text-ink-3">Diga o que mudar. Se eu não entender, pergunto. Só o que você pedir muda. Para mexer à mão, toque em Editar na peça.</p>
+        <p className="mt-0.5 text-2xs text-ink-3">Diga o que mudar. Se eu não entender, pergunto. Só o que você pedir muda. Pode mandar ou colar uma imagem de referência. Para mexer à mão, toque em Editar na peça.</p>
       </div>
 
       <div className="min-h-[8rem] flex-1 space-y-2 overflow-y-auto p-3" aria-live="polite">
@@ -113,8 +139,11 @@ export function EditarComIA({ campanha, onMudou }) {
 
       <div className="space-y-1.5 border-t border-line p-2.5">
         {erro && <p className="text-xs text-danger" role="alert">{erro}</p>}
+        <ReferenciasDoChat lista={referencias} onMudar={mudarReferencias} compacta />
         <div className="flex items-end gap-2">
+          <BotaoAnexar onArquivos={anexar} enviando={enviandoImagem} />
           <textarea rows={2} value={texto} onChange={(e) => setTexto(e.target.value)} aria-label="O que mudar"
+            onPaste={(e) => { const imgs = imagensDoColar(e); if (imgs.length) { e.preventDefault(); anexar(imgs); } }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
             placeholder="O que você quer mudar?"
             className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
