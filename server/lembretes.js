@@ -69,7 +69,7 @@ function mensagem(tipo, conta, appUrl, agora) {
     assunto = 'Seu teste do MultiTelas acaba ' + quando;
     titulo = 'Seu teste acaba ' + quando;
     paragrafos = [
-      'Sua' + (telas > 1 ? 's ' + telas + ' telas estão' : ' tela está') + ' no ar. Para continuar do jeito que está, assine o Pro: ' + preco + ' por tela, por mês.',
+      'Sua' + (telas > 1 ? 's ' + telas + ' telas estão' : ' tela está') + ' no ar. Para continuar do jeito que está, assine o Essencial: ' + preco + ' por tela, por mês.',
       'Se não assinar, nada apaga: a tela segue exibindo o que já está programado, com o selo "versão gratuita" no canto, e parear tela nova passa a pedir assinatura.',
     ];
     botao = 'Ver o plano';
@@ -79,9 +79,9 @@ function mensagem(tipo, conta, appUrl, agora) {
     titulo = 'Seu teste acabou. A TV continua no ar.';
     paragrafos = [
       'A programação segue exibindo, agora com o selo "versão gratuita" no canto da tela.',
-      'Assinando o Pro (' + preco + ' por tela, por mês), o selo sai na hora, e voltam a IA com a sua marca, o relatório de exibição e o pareamento de telas novas.',
+      'Assinando o Essencial (' + preco + ' por tela, por mês), o selo sai na hora, e voltam a IA com a sua marca, o relatório de exibição e o pareamento de telas novas.',
     ];
-    botao = 'Assinar o Pro';
+    botao = 'Assinar o Essencial';
     destino = '/app/?ir=billing';
   }
 

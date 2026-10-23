@@ -64,6 +64,12 @@ export function BillingPage({ onFalarComVendas }) {
     aviso.erro('cobranca', msg);
   }
 
+  // D22: só registra o interesse no Pro (IA integrada); nada é cobrado.
+  const avisarQuandoLancar = async (p) => {
+    try { await billing.interesse(p.id); aviso.ok('Combinado: avisamos quando o ' + p.name + ' chegar.'); }
+    catch (e) { aviso.erro('interesse', e.message || 'Não deu agora. Tente de novo.'); }
+  };
+
   async function upgrade(planId, documento) {
     setBusy(planId); setErr(''); setErroDoc('');
     try {
@@ -284,7 +290,7 @@ export function BillingPage({ onFalarComVendas }) {
             <div className={'rounded-xl border p-4 ' + (pago && contrato !== 'anual' ? 'border-accent bg-accent-soft/30' : 'border-line bg-surface-2')}>
               <div className="text-sm font-semibold text-ink">Mensal</div>
               <div className="mt-1 text-2xl font-bold tnum text-ink">{brl(anual.mensalCents)}<span className="text-sm font-medium text-ink-3">/mês</span></div>
-              <p className="mt-1 text-xs text-ink-3">R$ 149 por tela. Sem contrato: cancela quando quiser.</p>
+              <p className="mt-1 text-xs text-ink-3">{brl(((catalog.find((x) => x.id === 'pro') || {}).precoTelaCents) || 0)} por tela. Sem contrato: cancela quando quiser.</p>
             </div>
             <div className={'rounded-xl border p-4 ' + (contrato === 'anual' ? 'border-accent bg-accent-soft/30' : 'border-line bg-surface-2')}>
               <div className="flex items-center gap-2 text-sm font-semibold text-ink">Anual <Badge tone="accent">contrato de {anual.meses} meses</Badge></div>
@@ -318,15 +324,18 @@ export function BillingPage({ onFalarComVendas }) {
       {/* Os planos */}
       <Panel>
         <PanelHeader title="Planos" description={mode === 'dev' ? 'Cobrança em modo simulado — nada é cobrado de verdade (sem ASAAS_API_KEY).' : mode === 'indisponivel' ? 'A assinatura pelo painel está em manutenção. Fale com a gente pelo Suporte e ativamos o seu plano.' : undefined} />
-        <div className="grid gap-3 p-4 sm:grid-cols-3">
+        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
           {catalog.map((p) => {
             const isCurrent = p.id === plan.id;
-            const isUpgrade = p.sobConsulta || (p.precoTelaCents || 0) > (plan.precoTelaCents || 0);
+            const isUpgrade = !p.emBreve && (p.sobConsulta || (p.precoTelaCents || 0) > (plan.precoTelaCents || 0));
             const gratis = !p.sobConsulta && !p.precoTelaCents;
             return (
-              <div key={p.id} className={`relative flex flex-col rounded-xl border p-4 ${isCurrent ? 'border-accent bg-accent-soft/30' : 'border-line bg-surface-2'}`}>
+              <div key={p.id} className={`relative flex flex-col rounded-xl border p-4 ${isCurrent ? 'border-accent bg-accent-soft/30' : p.emBreve ? 'border-dashed border-line bg-surface-2/60' : 'border-line bg-surface-2'}`}>
                 {p.id === 'pro' && !isCurrent && (
                   <span className="absolute -top-2 right-3 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-2xs font-semibold text-accent-fg">Popular</span>
+                )}
+                {p.emBreve && (
+                  <span className="absolute -top-2 right-3 inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-ink px-2 py-0.5 text-2xs font-semibold text-surface">Em breve</span>
                 )}
                 <div className="text-sm font-semibold text-ink">{gratis ? 'Teste' : p.name}</div>
                 <div className="mt-1 text-2xl font-bold tnum text-ink">
@@ -337,6 +346,15 @@ export function BillingPage({ onFalarComVendas }) {
                   )}
                 </div>
                 <p className="mt-1 text-xs text-ink-3">{gratis ? 'Grátis, sem cartão. Depois, a tela segue no ar com um selo.' : p.blurb}</p>
+                {/* D22: o que o Pro traz — e que ainda não existe, por isso não se assina. */}
+                {p.emBreve && <p className="mt-1 text-2xs font-semibold text-ink-2">Ainda não disponível para assinar.</p>}
+                {p.emBreve ? (
+                  <ul className="mt-3 space-y-1.5 text-sm text-ink-2">
+                    {(p.vem || []).map((v) => (
+                      <li key={v} className="flex items-start gap-1.5"><Sparkles size={15} className="mt-0.5 shrink-0 text-accent" /> {v}</li>
+                    ))}
+                  </ul>
+                ) : (
                 <div className="mt-3 space-y-1.5 text-sm text-ink-2">
                   <div className="flex items-center gap-1.5">
                     <MonitorPlay size={15} className="shrink-0 text-ink-3" />
@@ -353,8 +371,13 @@ export function BillingPage({ onFalarComVendas }) {
                     <span><b className="text-ink">{String(p.gbPorTela).replace('.', ',')} GB</b> para fotos e vídeos{gratis ? '' : ', por tela'}</span>
                   </div>
                 </div>
+                )}
                 <div className="mt-4 flex-1" />
-                {isCurrent ? (
+                {p.emBreve ? (
+                  <Button variant="secondary" size="sm" className="w-full justify-center" onClick={() => avisarQuandoLancar(p)}>
+                    Me avise quando lançar
+                  </Button>
+                ) : isCurrent ? (
                   <Button variant="secondary" size="sm" disabled className="w-full justify-center">Seu plano</Button>
                 ) : p.sobConsulta ? (
                   // Sem preço de tabela: o checkout recusaria. Preço "a combinar" se resolve conversando.

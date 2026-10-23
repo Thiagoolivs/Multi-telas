@@ -479,6 +479,8 @@ export const billing = {
   get: () => api('GET', '/api/billing'),
   // documento: CPF/CNPJ de quem paga, só quando o servidor pede (code 'precisa-documento').
   checkout: (plan, documento) => api('POST', '/api/billing/checkout', { plan, ...(documento ? { documento } : {}) }),
+  // D22: "me avise quando o Pro chegar" — só registra o interesse.
+  interesse: (plan) => api('POST', '/api/billing/interesse', { plan }),
   pacote: (pacote, documento) => api('POST', '/api/billing/pacote', { pacote, ...(documento ? { documento } : {}) }),
   // O "portal" não existia: devolvia uma URL que voltava para esta mesma tela.
   // A gestão é nossa — estado da assinatura, fatura em aberto e cancelamento.

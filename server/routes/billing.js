@@ -19,6 +19,9 @@ module.exports = function (ctx) {
    * operador (server.js, 'cobranca.sem-asaas').
    */
   const COBRANCA_FECHADA = 'A assinatura pelo painel está em manutenção agora. Fale com a gente pelo Suporte e ativamos o seu plano.';
+  // D22: o Pro (IA integrada) aparece mas ainda não se assina — nada vendido antes de existir.
+  const EM_BREVE = 'O Pro chega com a programação inteligente. Por enquanto, assine o Essencial: avisamos quando o Pro abrir.';
+  const PLANS_EM_BREVE = (b) => { const p = plans.PLANS[String((b && b.plan) || '')]; return !!(p && p.emBreve); };
   const cobrancaFechada = () => billing.mode() === 'dev' && !billing.simulacaoPermitida();
 
   /*
@@ -314,12 +317,26 @@ module.exports = function (ctx) {
         });
       }
 
+      /*
+       * "Me avise quando o Pro chegar" (D22): só registra o interesse. Nada
+       * é cobrado e nada muda na conta.
+       */
+      if (req.method === 'POST' && seg === 'interesse') {
+        return readBody(req, res, async (b) => {
+          const id = String((b && b.plan) || '');
+          if (!(plans.PLANS[id] && plans.PLANS[id].emBreve)) return sendJson(res, 400, { error: 'plano inválido' });
+          await db.registrarEvento(sess.tenant_id, sess.user_id, 'interesse.' + id);
+          return sendJson(res, 200, { ok: true });
+        });
+      }
+
       // Iniciar checkout de upgrade (só dono).
       if (req.method === 'POST' && seg === 'checkout') {
         if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
         if (cobrancaFechada()) return sendJson(res, 503, { error: COBRANCA_FECHADA });
         return readBody(req, res, async (b) => {
           const target = plans.plan(b && b.plan);
+          if (PLANS_EM_BREVE(b)) return sendJson(res, 400, { error: EM_BREVE, code: 'plano-em-breve' });
           if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
           try {
             /*
@@ -423,6 +440,7 @@ module.exports = function (ctx) {
           if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono gerencia o plano' });
           return readBody(req, res, async (b) => {
             const target = plans.plan(b && b.plan);
+            if (PLANS_EM_BREVE(b)) return sendJson(res, 400, { error: EM_BREVE, code: 'plano-em-breve' });
             if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
             await db.setTenantBilling(sess.tenant_id, {
               plan: target.id, status: 'active',
