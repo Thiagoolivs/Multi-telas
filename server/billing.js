@@ -38,6 +38,29 @@ const PRAZO_MS = 30000;
 
 function mode() { return ASAAS_KEY ? 'asaas' : 'dev'; }
 
+/*
+ * Onde a cobrança simulada pode existir.
+ *
+ * Sem ASAAS_API_KEY o modo é 'dev', e o modo dev tem um checkout de mentira
+ * que ATIVA o plano pago na hora e credita pacote sem fatura. Na máquina e na
+ * suíte é exatamente o que se quer. Em produção é dar o produto de graça:
+ * bastava a chave faltar (variável apagada, serviço novo, deploy de outra
+ * branch) para qualquer dono virar Pro com um clique, e nada avisava.
+ *
+ * Produção é reconhecida pelo próprio Railway, que define RAILWAY_* em todo
+ * serviço (NODE_ENV não: este projeto não o define em lugar nenhum, ver a
+ * sandbox acima). Quem PRECISA simular num servidor de
+ * verdade (uma demonstração) diz isso com MT_COBRANCA_SIMULADA=1: escolha
+ * explícita, nunca o efeito de uma chave esquecida.
+ */
+function emProducao() {
+  return !!(process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_ENVIRONMENT_NAME || process.env.RAILWAY_PROJECT_ID);
+}
+function simulacaoPermitida() {
+  if (mode() !== 'dev') return false;
+  return process.env.MT_COBRANCA_SIMULADA === '1' || !emProducao();
+}
+
 /* ---------------- Asaas REST ---------------- */
 async function asaasApi(path, params, method = 'GET') {
   const options = {
@@ -360,4 +383,4 @@ function planIdFromPrice(priceId) {
   return null; 
 }
 
-module.exports = { mode, createCheckout, cobrarPacote, faturasVencidas, garantirCliente, assinatura, cancelarAssinatura, atualizarValor, verifyWebhook, planIdFromPrice, asaasApi };
+module.exports = { mode, emProducao, simulacaoPermitida, createCheckout, cobrarPacote, faturasVencidas, garantirCliente, assinatura, cancelarAssinatura, atualizarValor, verifyWebhook, planIdFromPrice, asaasApi };
