@@ -41,7 +41,11 @@ function defaultZone(zones) {
 }
 
 export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
-  const { data, loading, error, reload } = useAsync(() => deviceConfig.get(device.id), [device.id]);
+  // A programação COM a versão (D0.5): quem grava devolve a versão lida.
+  const { data, loading, error, reload } = useAsync(() => deviceConfig.ler(device.id), [device.id]);
+  const versao = useRef(0);
+  const [conflito, setConflito] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
 
   const [cfg, setCfg] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -61,14 +65,27 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
   const [publishError, setPublishError] = useState('');
   const saveTimer = useRef(null);
 
-  // Semeia o config de trabalho quando chega (null = sem config ainda).
+  /*
+   * Semeia o config de trabalho quando chega (config null = TV sem
+   * programação ainda).
+   *
+   * FALHA AO CARREGAR NÃO É TELA VAZIA. Antes, `data || defaultConfig`
+   * semeava a programação padrão também quando a leitura falhava (rede,
+   * servidor): a tela aparecia "vazia", editável, e o primeiro toque salvava
+   * o padrão POR CIMA da programação real da TV (EXECUTOR D0.5). Agora o
+   * erro fica no lugar do editor, com "tentar de novo".
+   */
   useEffect(() => {
     if (loading) return;
-    const seeded = data || defaultConfig(device.name);
+    if (error || !data) { setCfg(null); return; }
+    const seeded = data.config || defaultConfig(device.name);
+    versao.current = data.versao || 0;
     setCfg(seeded);
     setDirty(false);
+    setConflito(false);
+    setTentativa(0);
     setZoneId(defaultZone(zonesOf(seeded)));
-  }, [data, loading, device.name]);
+  }, [data, loading, error, device.name]);
 
   const zones = useMemo(() => (cfg ? zonesOf(cfg) : []), [cfg]);
   const telaVazia = useMemo(() => !!cfg && zones.filter((z) => z.type === 'playlist')
@@ -296,19 +313,35 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
   }
 
   async function publish() {
+    if (conflito) return;
     setPublishing(true); setPublishError('');
-    try { await deviceConfig.save(device.id, cfg); setDirty(false); setPublishedAt(Date.now()); }
-    catch (e) { setPublishError(e.message || 'Falha ao publicar.'); }
-    finally { setPublishing(false); }
+    try {
+      const r = await deviceConfig.save(device.id, cfg, versao.current);
+      if (r && r.updatedAt) versao.current = r.updatedAt;
+      setDirty(false); setPublishedAt(Date.now()); setTentativa(0);
+    } catch (e) {
+      // Outra aba, outra pessoa ou uma campanha gravou no meio: não passa por cima.
+      if (e.codigo === 'config-mudou') { setConflito(true); return; }
+      setPublishError(e.message || 'Não deu para salvar.');
+      setTentativa((n) => n + 1);
+    } finally { setPublishing(false); }
   }
 
-  // Salvamento automático: publica sozinho ~1s depois da última alteração.
+  /*
+   * Salvamento automático: publica sozinho ~1s depois da última alteração.
+   *
+   * E TENTA DE NOVO quando falha. Antes a falha deixava o selo "Salvando…"
+   * girando para sempre (dirty continuava true e nada disparava outra vez),
+   * e a pessoa achava que a TV estava recebendo. Agora espera 3, 10, 30 e
+   * depois 60 s, e o selo diz que não salvou, com "tentar agora".
+   */
+  const ESPERAS = [1000, 3000, 10000, 30000, 60000];
   useEffect(() => {
-    if (!dirty || !cfg) return;
+    if (!dirty || !cfg || conflito) return;
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => { publish(); }, 1000);
+    saveTimer.current = setTimeout(() => { publish(); }, ESPERAS[Math.min(tentativa, ESPERAS.length - 1)]);
     return () => clearTimeout(saveTimer.current);
-  }, [cfg, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cfg, dirty, tentativa, conflito]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /*
    * Saiu antes do segundo de espera: salva mesmo assim.
@@ -327,7 +360,7 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
       if (!c) return;
       pendente.current = null;
       try {
-        fetch('/api/devices/' + device.id + '/config', {
+        fetch('/api/devices/' + device.id + '/config?versao=' + encodeURIComponent(versao.current), {
           method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c),
           credentials: 'same-origin', keepalive: true,
         }).catch(() => {});
@@ -338,7 +371,7 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
       window.removeEventListener('pagehide', aoFechar);
       const c = pendente.current;
       pendente.current = null;
-      if (c) deviceConfig.save(device.id, c).catch(() => {});
+      if (c) deviceConfig.save(device.id, c, versao.current).catch(() => {});
     };
   }, [device.id]);
 
@@ -380,11 +413,20 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
             e "Campanha com IA" em duas linhas cada pareciam botões quebrados. */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Estado do salvamento automático */}
-          <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-xs', publishing || dirty ? 'text-ink-3' : 'text-emerald-500')}>
-            {publishing || dirty
-              ? <><Spinner size={12} /> Salvando…</>
-              : <><Check size={13} /> {publishedAt ? 'Salvo' : 'Tudo salvo'}</>}
-          </span>
+          {conflito ? (
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-warn">Mudou em outro lugar</span>
+          ) : publishError && !publishing ? (
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-danger">
+              Não salvou ·
+              <button type="button" className="font-medium underline" onClick={() => { clearTimeout(saveTimer.current); publish(); }}>tentar agora</button>
+            </span>
+          ) : (
+            <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-xs', publishing || dirty ? 'text-ink-3' : 'text-emerald-500')}>
+              {publishing || dirty
+                ? <><Spinner size={12} /> Salvando…</>
+                : <><Check size={13} /> {publishedAt ? 'Salvo' : 'Tudo salvo'}</>}
+            </span>
+          )}
           {/*
             Um caminho de IA só (EXECUTOR item 28): "Campanha com IA" abria o
             formulário antigo, sem conversa nem escopo. Agora leva ao Criar com
@@ -395,7 +437,13 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
         </div>
       </div>
 
-      {publishError && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError}</div>}
+      {conflito && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-sm text-ink">
+          <span>Esta TV foi mudada em outro lugar (outra aba, outra pessoa ou uma campanha). Para não apagar o que mudou, nada daqui foi gravado.</span>
+          <Button variant="secondary" size="sm" onClick={() => { setConflito(false); setDirty(false); reload(); }}>Ver a programação atual</Button>
+        </div>
+      )}
+      {publishError && !conflito && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError} Tentamos de novo sozinhos; a TV continua com a última programação salva.</div>}
 
       {/*
         A data comemorativa saiu daqui (EXECUTOR §2c, item 35): virou ideia no
@@ -438,10 +486,10 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
       )}
       {cfg && <ScreenSummary cfg={cfg} />}
 
-      {loading || !cfg ? (
+      {error && !loading ? (
+        <Panel><ErrorState description="Não deu para carregar a programação desta TV. Nada foi mudado nela." onRetry={reload} /></Panel>
+      ) : loading || !cfg ? (
         <div className="flex justify-center py-20"><Spinner size={22} /></div>
-      ) : error ? (
-        <Panel><ErrorState description="Não foi possível carregar o conteúdo da tela." onRetry={reload} /></Panel>
       ) : (
         <>
           <div className="mb-4 space-y-3">

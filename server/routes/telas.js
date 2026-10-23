@@ -191,7 +191,12 @@ module.exports = function (ctx) {
       if (req.method === 'GET' && sub === 'config') {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
         if (!device.config) return sendJson(res, 204, {});
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+        /*
+         * A versão da programação (o updated_at da última gravação) vai no
+         * cabeçalho: o corpo continua a config pura, que a TV lê como sempre.
+         * O painel devolve a versão ao gravar (D0.5).
+         */
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) });
         // A config gravada antes do item 39 traz o título de exemplo e o nome da TV no cabeçalho.
         let corpo = device.config;
         try {
@@ -203,6 +208,20 @@ module.exports = function (ctx) {
       // Dono publica config (requer login + posse)
       if (req.method === 'PUT' && sub === 'config') {
         if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
+        /*
+         * Gravação com versão (EXECUTOR D0.5). Quem leu a programação na
+         * versão N e grava com ?versao=N só grava se ninguém gravou no meio:
+         * outra aba, outra pessoa da equipe, o "Pôr pra rodar" de uma
+         * campanha. Antes a última escrita vencia e apagava a anterior sem
+         * aviso. Sem ?versao, grava como sempre (TV nova, cópia de tela).
+         */
+        const versaoPedida = query && query.versao != null && query.versao !== '' ? Number(query.versao) : null;
+        if (versaoPedida != null && Number.isFinite(versaoPedida) && versaoPedida !== (Number(device.updated_at) || 0)) {
+          return sendJson(res, 409, {
+            error: 'Esta TV foi mudada em outro lugar enquanto você editava. Recarregue para ver a programação atual.',
+            code: 'config-mudou', versao: Number(device.updated_at) || 0,
+          });
+        }
         return readBody(req, res, async (b) => {
           if (!b || typeof b !== 'object' || Array.isArray(b)) {
             return sendJson(res, 400, { error: 'config inválida' });
@@ -238,10 +257,22 @@ module.exports = function (ctx) {
            */
           if (device.expediente) cfg.settings.expediente = vigia.normalizarExpediente(device.expediente);
           else delete cfg.settings.expediente;
-          const name = (cfg.settings && cfg.settings.nome) || device.name;
-          cfg.settings.nome = name;
-          const updatedAt = Date.now();
-          await db.setDeviceConfig(id, JSON.stringify(cfg), name);
+          /*
+           * settings.nome é o nome do CABEÇALHO (desde o item 39, o da empresa);
+           * o nome da TV é o da lista de Telas, e só muda em "Renomear". Este
+           * PUT gravava um no lugar do outro: a TV pareada como "Refeitório"
+           * virava "Metalúrgica Andrade" na primeira publicação (teste de 23/10).
+           */
+          cfg.settings.nome = (cfg.settings && cfg.settings.nome) || device.name;
+          const comVersao = versaoPedida != null && Number.isFinite(versaoPedida) ? versaoPedida : null;
+          const updatedAt = await db.setDeviceConfig(id, JSON.stringify(cfg), device.name || cfg.settings.nome, comVersao);
+          // Alguém gravou entre a conferência lá em cima e aqui (o corpo leva tempo para chegar).
+          if (updatedAt == null) {
+            return sendJson(res, 409, {
+              error: 'Esta TV foi mudada em outro lugar enquanto você editava. Recarregue para ver a programação atual.',
+              code: 'config-mudou',
+            });
+          }
           broadcast(id, 'config', { updatedAt });
           return sendJson(res, 200, { ok: true, updatedAt });
         });
@@ -310,7 +341,7 @@ module.exports = function (ctx) {
               const cfg = JSON.parse(device.config);
               cfg.settings = cfg.settings || {};
               cfg.settings.expediente = exp;
-              await db.setDeviceConfig(id, JSON.stringify(cfg), cfg.settings.nome || device.name);
+              await db.setDeviceConfig(id, JSON.stringify(cfg), device.name || cfg.settings.nome);
               broadcast(id, 'config', { updatedAt: Date.now() });
             } catch (e) { /* config ilegível: o horário vale para o alerta e entra na próxima publicação */ }
           }

@@ -264,7 +264,8 @@ test('a última edição antes de sair da tela não se perde', () => {
    * silêncio. Reproduzido no navegador (celular, gesto de voltar).
    */
   const src = soCodigo(ler('web', 'src', 'pages', 'ContentEditorPage.jsx'));
-  assert.match(src, /if \(c\) deviceConfig\.save\(device\.id, c\)/, 'desmontar não salva o que estava pendente');
+  // Com a versão lida (D0.5): a edição pendente não passa por cima de quem gravou no meio.
+  assert.match(src, /if \(c\) deviceConfig\.save\(device\.id, c, versao\.current\)/, 'desmontar não salva o que estava pendente');
   assert.match(src, /addEventListener\('pagehide'/, 'fechar a aba perde a edição pendente');
   assert.match(src, /keepalive: true/, 'sem keepalive o envio morre junto com a página');
 });
