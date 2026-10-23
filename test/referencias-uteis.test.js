@@ -73,8 +73,17 @@ test('as cores do site viram a paleta "Do seu site"', () => {
 test('a imagem do site anterior sai pela ORIGEM (não pelo rótulo) e com o arquivo (revisão do consultor)', () => {
   const s = ler('server.js');
   assert.match(s, /const antigas = \(await db\.listMedia\(sess\.tenant_id\)\)\.filter\(\(x\) => x\.origem === 'site'\);/);
-  assert.match(s, /for \(const x of antigas\) await midia\.apagar\(db, sess\.tenant_id, x\.id\)/);
+  // Desde o #227: apaga o arquivo antigo só se ninguém mais usa (teste abaixo).
+  assert.match(s, /for \(const x of antigas\) \{/);
   assert.ok(!/\/\^Do site: \/\.test\(a\.label/.test(s), 'voltou a apagar pelo rótulo');
   // Só a imagem do site DA MARCA vira mídia da conta: a rota é a do site da marca, e só ela chama baixarImagem.
   assert.equal((s.match(/site\.baixarImagem\(/g) || []).length, 1);
+});
+
+test('imagem do site: a nova é guardada antes de a antiga sair, e a antiga em uso fica (revisão do #227)', () => {
+  const s = ler('server.js');
+  const i = s.indexOf("const antigas = (await db.listMedia(sess.tenant_id)).filter((x) => x.origem === 'site');");
+  const bloco = s.slice(i, i + 2500);
+  assert.ok(bloco.indexOf('midia.guardarBuffer(') < bloco.indexOf('db.removeBrandAsset('), 'apaga a antiga antes de guardar a nova');
+  assert.ok(bloco.includes('if (!(await ondeEstaEmUso(sess.tenant_id, x.url)).length) await midia.apagar('), 'apaga a antiga mesmo em uso');
 });
