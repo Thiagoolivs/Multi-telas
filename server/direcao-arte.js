@@ -149,7 +149,20 @@ function promptDeFoto(pedido, opcoes) {
     'NENHUM TEXTO, LETRA, NÚMERO, LOGOTIPO OU MARCA D\'ÁGUA NA IMAGEM. '
       + 'O texto é escrito depois, por fora. Se aparecer qualquer palavra, a imagem é inútil.'
       + (produto ? ' A única exceção é o que já vem impresso no próprio produto (rótulo, etiqueta), que fica como está.' : ''),
-    'Fotografia profissional, pessoas brasileiras reais quando houver pessoas, sem aparência de banco de imagens genérico.',
+    /*
+     * D43 (e), aprovado pelo dono em 23/10: "sem aparência de banco de
+     * imagens" era só uma negativa, e o modelo seguia entregando o sorriso
+     * posado para a lente. Agora diz o que É uma foto de verdade (momento,
+     * gente fazendo algo, olhar fora da câmera) e nomeia os clichês a
+     * evitar. Vem por último e cede à direção de arte acima: o espaço vazio,
+     * a cor e a luz mandam.
+     */
+    'Fotografia de momento real, como se tirada no próprio estabelecimento. '
+      + 'Quando houver pessoas: brasileiras de verdade, idades e tons de pele variados, fazendo algo '
+      + '(atendendo, preparando, escolhendo), olhar fora da câmera, roupa do dia a dia, pele com textura real. '
+      + 'Lente de 35 a 50mm. Evite: sorriso posado para a lente, polegar para cima, aperto de mão, '
+      + 'fone de call center, fundo branco infinito, grupo alinhado olhando para a câmera. '
+      + 'A direção de arte acima (o espaço vazio, a cor, a luz) vem antes disto.',
   ];
   return linhas.filter((l) => l !== '').join('\n');
 }
