@@ -445,6 +445,12 @@ export const murais = {
   qr: (link) => '/api/qr.svg?d=' + encodeURIComponent(link),
 };
 
+// Aniversários e mural nas TVs, sozinhos (D15).
+export const automaticos = {
+  ler: () => api('GET', '/api/automaticos'),
+  salvar: (dados) => api('PUT', '/api/automaticos', dados),
+};
+
 export const birthdays = {
   list: () => api('GET', '/api/birthdays'),
   import: (rows) => api('POST', '/api/birthdays/import', { rows }),

@@ -351,6 +351,8 @@
     MTCloud.fetchBirthdays(id).then(function (list) {
       global.MT_BIRTHDAYS = list || [];
       try { localStorage.setItem('mt.birthdays', JSON.stringify(global.MT_BIRTHDAYS)); } catch (e) {}
+      // A zona principal com aniversário automático (D15) reage na hora.
+      try { global.dispatchEvent(new Event('mt:aniversarios')); } catch (e) {}
     }).catch(function () { /* offline: mantém o cache */ });
   }
 
@@ -1627,6 +1629,58 @@
 
   /* ---------------- Zona: Playlist rotativa ---------------- */
 
+  /*
+   * AUTOMÁTICOS (EXECUTOR D15). O dono: o aniversariante aparece na SEMANA
+   * do aniversário, sozinho, convivendo com as datas sazonais. Com
+   * "mostrar nas TVs" ligado na conta (settings.automaticos, que o servidor
+   * manda), a zona principal ganha no rodízio:
+   *   - o cartão de aniversário, 1 a cada 4 peças na semana e 1 a cada 2 no
+   *     dia (aí ele vira o destaque "Feliz aniversário");
+   *   - o mural, 1 a cada 5.
+   * Semana sem aniversário: nada. As peças da data sazonal continuam e se
+   * intercalam — o aniversário nunca as substitui.
+   */
+  function zonaPrincipal(cfg) {
+    const layout = global.MT_getLayout ? MT_getLayout(cfg && cfg.settings && cfg.settings.layoutId) : null;
+    const zs = layout ? layout.zones.filter((z) => z.type === 'playlist') : [];
+    const p = zs.find((z) => z.id === 'principal') || zs[0];
+    return p ? p.id : 'principal';
+  }
+  function automaticosDaZona(cfg, zonaId) {
+    const a = cfg && cfg.settings && cfg.settings.automaticos;
+    if (!a || (!a.aniversarios && !a.mural) || zonaId !== zonaPrincipal(cfg)) return null;
+    return a;
+  }
+  function aniversariosDaSemana(agora) {
+    const todos = Array.isArray(global.MT_BIRTHDAYS) ? global.MT_BIRTHDAYS : [];
+    const dias = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + i);
+      dias[(d.getMonth() + 1) + '-' + d.getDate()] = i;
+    }
+    const semana = todos.filter((p) => ((+p.mes) + '-' + (+p.dia)) in dias);
+    return { tem: semana.length > 0, hoje: semana.some((p) => dias[(+p.mes) + '-' + (+p.dia)] === 0) };
+  }
+  function comAutomaticos(lista, cfg, zonaId, agora) {
+    const a = automaticosDaZona(cfg, zonaId);
+    if (!a) return lista;
+    const b = a.aniversarios ? aniversariosDaSemana(agora || new Date()) : { tem: false };
+    const bolo = b.tem ? { type: 'birthdayauto', modo: 'auto', duracao: 12, _automatico: 'aniversarios' } : null;
+    const mural = a.mural ? { type: 'mural', codigo: a.mural, titulo: 'Mural de fotos', duracao: 15, _automatico: 'mural' } : null;
+    if (!bolo && !mural) return lista;
+    const cada = b.hoje ? 2 : 4;
+    const out = [];
+    lista.forEach((it, i) => {
+      out.push(it);
+      if (bolo && (i + 1) % cada === 0) out.push(bolo);
+      if (mural && (i + 1) % 5 === 0) out.push(mural);
+    });
+    // Lista curta (ou vazia): entra pelo menos uma vez por volta.
+    if (bolo && out.indexOf(bolo) < 0) out.push(bolo);
+    if (mural && out.indexOf(mural) < 0) out.push(mural);
+    return out;
+  }
+
   function startPlaylist(zoneEl, items, cfg, zonaId) {
     let index = 0;
     // O que está no ar agora, para o "Ver a tela agora" do painel (coletarEstado).
@@ -1636,7 +1690,9 @@
     let stopped = false;
     // Zona com um único item, sem agendamento, fica estática (essencial para
     // lives do YouTube: re-renderizar recarregaria a transmissão).
-    const single = items.length === 1 && !hasAgenda(items[0]);
+    // Com automáticos na zona (D15), o rodízio pode crescer na semana do aniversário: nunca é "estática".
+    const auto = automaticosDaZona(cfg, zonaId);
+    const single = items.length === 1 && !hasAgenda(items[0]) && !auto;
     const agendado = items.some(hasAgenda);
 
     /*
@@ -1647,7 +1703,7 @@
      * principal. Hora e data são úteis para quem passa e não denunciam nada;
      * o aviso de zona vazia continua no painel, que é onde o dono olha.
      */
-    if (!items.length) {
+    if (!items.length && !auto) {
       const espera = esperaDeZona();
       zoneEl.appendChild(espera.el);
       return { stop: espera.parar, atual: () => ({ esperando: true }) };
@@ -1662,7 +1718,7 @@
       if (wait > 0) return schedule(wait / 1000 + 0.08);
 
       // Filtra pelos conteúdos agendados para agora.
-      const ativos = agendado ? items.filter(agendadoAgora) : items;
+      const ativos = comAutomaticos(agendado ? items.filter(agendadoAgora) : items, cfg, zonaId);
       if (!ativos.length) {
         // Antes: "Nenhum conteúdo agendado agora", escrito para o público.
         mostrarRelogio();
@@ -1749,11 +1805,24 @@
       if (prev) leaveSlide(prev);
     }
 
+    /*
+     * A lista de aniversariantes chega depois da zona (é buscada à parte):
+     * com a zona mostrando o relógio por falta de conteúdo, o cartão entra
+     * assim que ela chega, e não 30 s depois.
+     */
+    const aoChegarAniversarios = () => {
+      if (stopped || !auto || !(noAr && noAr.relogio)) return;
+      clearTimeout(timer);
+      advance();
+    };
+    if (auto) global.addEventListener('mt:aniversarios', aoChegarAniversarios);
+
     advance();
     return {
       atual: () => noAr,
       stop: () => {
         stopped = true; clearTimeout(timer);
+        if (auto) global.removeEventListener('mt:aniversarios', aoChegarAniversarios);
         if (currentSlide && currentSlide.parar) currentSlide.parar(); // relógio de fora do horário
         /*
          * A saída do slide no ar. Só o leaveSlide a chamava, e refazer a zona

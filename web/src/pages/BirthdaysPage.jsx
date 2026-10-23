@@ -7,6 +7,7 @@ import { Button } from '../components/ui/Button.jsx';
 import { Skeleton, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { birthdays, media } from '../api.js';
+import { MostrarNasTVs } from '../components/tela/MostrarNasTVs.jsx';
 
 // tira acento + minúsculo, para casar cabeçalhos e nomes de coluna.
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
@@ -133,6 +134,15 @@ export function BirthdaysPage() {
         subtitle="Suba a planilha da equipe e as fotos."
         actions={list.length ? <Button variant="ghost" icon={Trash2} onClick={clearAll}>Limpar</Button> : null}
       />
+
+      {/*
+        Na TV, sozinho (D15): na semana do aniversário o cartão entra no
+        rodízio; no dia, vira destaque; semana sem aniversário, nada.
+      */}
+      <div className="mb-4">
+        <MostrarNasTVs qual="aniversarios" titulo="Mostrar nas TVs, na semana do aniversário"
+          explicacao="Na semana, um cartão com os aniversariantes entra no rodízio da área principal; no dia, vira o destaque. Semana sem aniversário: nada aparece. As datas comemorativas continuam e se intercalam." />
+      </div>
 
       <Panel className="mb-4">
         <PanelHeader title="Importar a equipe" description="1) planilha CSV · 2) fotos (nomeadas pela matrícula) · 3) salvar" />
