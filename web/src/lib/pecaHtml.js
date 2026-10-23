@@ -7,7 +7,7 @@
  * e a parede outra. Os scripts são do próprio servidor, então a CSP
  * (script-src 'self') aceita.
  */
-const SCRIPTS = ['/js/cor.js', '/js/fontes.js', '/js/animacao.js', '/js/tokens.js', '/js/peca-html.js', '/js/peca-render.js', '/js/peca-conferir.js'];
+const SCRIPTS = ['/js/cor.js', '/js/fontes.js', '/js/animacao.js', '/js/tokens.js', '/js/peca-html.js', '/js/peca-render.js', '/js/regras-composicao.js', '/js/peca-conferir.js'];
 
 let carregando = null;
 

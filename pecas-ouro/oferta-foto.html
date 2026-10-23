@@ -32,7 +32,8 @@ h1 em { display: block; font-style: normal; font-size: calc(2.6em * var(--mt-esc
 .cta { position: absolute; left: 6cqw; bottom: 6cqh; font: 600 1.2cqw/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
 @container (aspect-ratio < 1) {
   .foto { inset: 0 0 auto 0; width: 100%; height: 56%; object-position: 50% 18%; }
-  .veu { background: linear-gradient(0deg, var(--mt-fundo) 46%, var(--mt-fundo-0) 60%); }
+  /* D44: a marca fica no alto, sobre a foto — o véu de cima é o que a deixa ler com qualquer foto. */
+  .veu { background: linear-gradient(180deg, var(--mt-fundo) 0%, var(--mt-fundo-0) 14%), linear-gradient(0deg, var(--mt-fundo) 46%, var(--mt-fundo-0) 60%); }
   .marca-nome { left: 8cqw; top: 4cqh; font-size: 2.6cqw; }
   .bloco { display: block; left: 8cqw; right: 8cqw; width: auto; top: auto; bottom: 11cqh; transform: none; }
   .kicker { font-size: 2.6cqw; }
@@ -47,8 +48,8 @@ h1 em { display: block; font-style: normal; font-size: calc(2.6em * var(--mt-esc
 }
 /* Quase quadrada (1:1, o destaque da Vertical em pilha): foto em cima, texto embaixo. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .foto { inset: 0 0 auto 0; width: 100%; height: 52%; object-position: 50% 24%; }
-  .veu { background: linear-gradient(0deg, var(--mt-fundo) 48%, var(--mt-fundo-0) 64%); }
+  .foto { inset: 0 0 auto 0; width: 100%; height: 44%; object-position: 50% 40%; }
+  .veu { background: linear-gradient(180deg, var(--mt-fundo) 0%, var(--mt-fundo-0) 16%), linear-gradient(0deg, var(--mt-fundo) 60%, var(--mt-fundo-0) 72%); }
   .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
   .bloco { display: block; left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 12cqh; transform: none; }
   .kicker { font-size: 1.9cqw; }
@@ -66,6 +67,13 @@ h1 em { display: block; font-style: normal; font-size: calc(2.6em * var(--mt-esc
  * da parede — a mesma letra da tela cheia some lá de longe.
  */
 @container (max-width: 700px) {
+  /*
+   * D44: aqui o "30% OFF" em duas linhas sobe até um terço da altura, e
+   * passava por cima dos óculos da foto (o detector mediu 1,2:1). A foto
+   * fica com o terço de cima e o véu cobre o resto.
+   */
+  .foto { height: 38%; object-position: 50% 36%; }
+  .veu { background: linear-gradient(180deg, var(--mt-fundo) 0%, var(--mt-fundo-0) 12%), linear-gradient(0deg, var(--mt-fundo) 64%, var(--mt-fundo-0) 74%); }
   .apoio, .parc { display: none; }
   .marca-nome { font-size: 3.2cqw; letter-spacing: .32em; }
   .kicker { font-size: 3.4cqw; letter-spacing: .22em; }

@@ -18,7 +18,7 @@
 .logo { height: 60cqh; width: auto; max-width: 30cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { font: italic 400 48cqh/.95 var(--mt-fonte-titulo); letter-spacing: .01em; white-space: nowrap; }
+.nome { font: italic 400 calc(48cqh * var(--mt-escala-titulo, 1))/.95 var(--mt-fonte-titulo); letter-spacing: .01em; white-space: nowrap; }
 .nome b { font-weight: inherit; color: var(--mt-destaque); }
 .sub { font: 600 11cqh/1 var(--mt-fonte-texto); letter-spacing: .5em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
 .hora { font: 400 46cqh/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
@@ -26,7 +26,8 @@
 @container (aspect-ratio < 9) {
   .mt-peca { gap: 5cqh; }
   .info, .sub { display: none; }
-  .nome { font-size: 38cqh; }
+  /* D44: o nome no meio, entre a data e a hora — com a fonte larga da marca ele empurrava a hora para fora. */
+  .nome { font-size: calc(38cqh * var(--mt-escala-titulo, 1)); }
   .hora { font-size: 38cqh; }
 }
 </style>

@@ -23,7 +23,8 @@
   .mt-peca { gap: 5cqh; }
   .nome { font-size: 12cqh; letter-spacing: .14em; }
   .chamada { margin: 18cqh 0; }
-  .chamada span { font-size: calc(30cqh * var(--mt-escala-titulo, 1)); }
+  /* D44: em pé a faixa é estreita — a chamada quebra em duas linhas em vez de passar por cima do relógio. */
+  .chamada span { font-size: calc(30cqh * var(--mt-escala-titulo, 1)); white-space: normal; text-wrap: balance; text-align: center; padding: 0 3cqh; }
   .chamada small { display: none; }
   .hora { font-size: 38cqh; }
 }
