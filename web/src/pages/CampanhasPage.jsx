@@ -145,7 +145,7 @@ export function CampanhasPage({ campanhaInicial, onIr }) {
 
   if (aberta) {
     return (
-      <div className="max-w-3xl space-y-3">
+      <div className="max-w-6xl space-y-3">
         <button type="button" onClick={() => { setAberta(null); carregar(); }} className="flex items-center gap-1.5 text-sm text-ink-2 hover:text-ink">
           <ArrowLeft size={16} /> Tudo o que foi criado
         </button>

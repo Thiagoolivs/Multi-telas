@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, Pencil, Send, Undo2, Sparkles, MessageSquare, X } from 'lucide-react';
+import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, Pencil, Sparkles, X } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
-import { Spinner } from '../ui/Feedback.jsx';
 import { PecaHtml } from '../content/PecaHtml.jsx';
 import { DesignThumb } from '../content/DesignThumb.jsx';
 import { RedesSociais } from '../content/RedesSociais.jsx';
 import { EditarPeca } from '../content/EditarPeca.jsx';
+import { EditarComIA } from './EditarComIA.jsx';
 import { criar } from '../../api.js';
 import { aviso } from '../../lib/avisos.js';
 import E from '../../lib/escopo.js';
@@ -18,8 +18,10 @@ import { cn } from '../../lib/cn.js';
  * tamanho de faixa, com o letreiro e a contagem de verdade.
  *
  * Ajustar depois (item 26): cada peça tem um número — o mesmo que a IA usa
- * em "troca a foto da peça 2" — e um Editar à mão. A caixa de ajuste refaz só
- * o que o pedido aponta, e "Desfazer" volta o último passo.
+ * em "troca a foto da peça 2" — e um Editar à mão. Desde o D50, o ajuste é
+ * uma CONVERSA ao lado das peças (EditarComIA): pergunta quando não entende,
+ * muda só o que foi pedido, lembra o que já foi dito, e "Desfazer" volta o
+ * último passo.
  */
 
 const FAIXA = { manha: 'Manhã', almoco: 'Almoço', tarde: 'Tarde', saida: 'Fim do dia', dia: 'O dia todo' };
@@ -138,57 +140,6 @@ function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, on
 }
 
 // A caixa de ajuste: o chat continua depois de gerar.
-function Ajustar({ campanha, onMudou }) {
-  const [texto, setTexto] = useState('');
-  const [etapa, setEtapa] = useState(null);
-  const [resposta, setResposta] = useState('');
-  const [erro, setErro] = useState('');
-  const temAnterior = !!(campanha.resultado && campanha.resultado.anterior);
-
-  async function enviar() {
-    const t = texto.trim();
-    if (!t || etapa) return;
-    setErro(''); setResposta(''); setEtapa({ etapa: 'entendendo o ajuste' });
-    try {
-      const r = await criar.ajustar(campanha.id, t, setEtapa);
-      setResposta(r.resposta || '');
-      if (r.mudancas && r.mudancas.length) { onMudou(r.campanha); setTexto(''); }
-    } catch (e) { setErro(e.message || 'Não deu para ajustar agora.'); }
-    finally { setEtapa(null); }
-  }
-
-  async function desfazer() {
-    setErro('');
-    try { const r = await criar.desfazer(campanha.id); onMudou(r.campanha); setResposta('Voltei ao que era antes do último ajuste.'); }
-    catch (e) { setErro(e.message || 'Não deu para desfazer.'); }
-  }
-
-  return (
-    <section className="space-y-2 rounded-lg border border-line bg-surface p-3">
-      <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><MessageSquare size={15} className="text-accent" /> Ajustar</h3>
-      <p className="text-xs text-ink-3">Diga o que mudar: "troca a foto da peça 2", "mais uma peça na lateral", "tira o Facebook". Só o que você pedir é refeito.</p>
-      <div className="flex items-end gap-2">
-        <textarea rows={2} value={texto} onChange={(e) => setTexto(e.target.value)} aria-label="O que mudar"
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
-          placeholder="O que você quer mudar?"
-          className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
-        <Button variant="primary" icon={Send} disabled={!texto.trim() || !!etapa} onClick={enviar} aria-label="Ajustar">
-          <span className="hidden sm:inline">Ajustar</span>
-        </Button>
-      </div>
-      {etapa && <div className="flex items-center gap-2 text-xs text-ink-3"><Spinner size={13} /> {etapa.etapa || 'ajustando'}{etapa.detalhe ? ' · ' + etapa.detalhe : ''}</div>}
-      {resposta && !etapa && <div className="flex gap-2 rounded-md bg-surface-2 px-3 py-2 text-sm text-ink"><MessageSquare size={14} className="mt-0.5 shrink-0 text-ink-3" /> {resposta}</div>}
-      {erro && <p className="text-xs text-danger" role="alert">{erro}</p>}
-      {temAnterior && !etapa && (
-        <button type="button" onClick={desfazer} className="flex items-center gap-1 text-xs text-ink-2 hover:text-ink"><Undo2 size={12} /> Desfazer o último ajuste</button>
-      )}
-      {campanha.estado === 'no_ar' && temAnterior && (
-        <p className="text-2xs text-ink-3">A campanha mudou. Use "Mandar de novo", lá em cima, para as TVs receberem a versão nova.</p>
-      )}
-    </section>
-  );
-}
-
 export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, onMudou }) {
   const [redesDe, setRedesDe] = useState(null);
   const [editando, setEditando] = useState(null);
@@ -211,6 +162,7 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
   } : null);
 
   return (
+    <div className={cn(onMudou && 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-4')}>
     <div className="space-y-3">
       <div className="flex flex-wrap items-start gap-3 rounded-lg border border-ok/40 bg-ok/5 px-4 py-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ok/15 text-ok"><Check size={16} /></span>
@@ -222,6 +174,11 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
             {' · salva em Criados'}
           </div>
         </div>
+        {onMudou && (
+          <a href="#editar-com-ia" className="flex items-center gap-1 self-center rounded-md border border-accent/40 px-2.5 py-1 text-xs font-medium text-accent lg:hidden">
+            <Sparkles size={13} /> Editar com a IA
+          </a>
+        )}
       </div>
 
       {acoes}
@@ -236,7 +193,6 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
         </section>
       ))}
 
-      {onMudou && <Ajustar campanha={campanha} onMudou={onMudou} />}
 
       {r.social && (
         <section className="space-y-2 rounded-lg border border-line bg-surface p-3">
@@ -269,6 +225,12 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
         {onNova && <Button icon={Plus} onClick={onNova}>Criar outra</Button>}
       </div>
 
+    </div>
+      {onMudou && (
+        <aside className="mt-3 lg:sticky lg:top-4 lg:mt-0">
+          <EditarComIA campanha={campanha} onMudou={onMudou} />
+        </aside>
+      )}
       {redesDe && <RedesSociais item={redesDe.item} label={redesDe.label} onFechar={() => setRedesDe(null)} />}
       {editando && (
         <EditarPeca item={editando.item} label={editando.label} onFechar={() => setEditando(null)}

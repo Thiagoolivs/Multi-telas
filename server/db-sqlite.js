@@ -416,6 +416,8 @@ garantirColuna('campanhas', 'arquivada INTEGER');
 garantirColuna('conversas', 'arquivada INTEGER');
 // D48: o que a pessoa decidiu na conversa (preço, frase, "sem foto de gente") — vai à IA em toda volta.
 garantirColuna('conversas', 'decisoes TEXT');
+// D50: 'edicao' é a conversa de Editar com a IA, ligada à campanha (campanha_id); vazio é a do Criar.
+garantirColuna('conversas', 'tipo TEXT');
 // Pessoas (D30): setor separado do cargo, e-mail (para o QR das fotos), de onde veio
 // (planilha | qr | manual; vazio = planilha, como eram todas) e quando mudou.
 garantirColuna('birthdays', 'setor TEXT');
@@ -1234,8 +1236,10 @@ async function limparJobs(antesDe) { qJobs.limpar.run(antesDe); }
  * Mensagens e escopo são JSON em texto, como o resultado dos trabalhos.
  */
 const qConv = {
-  inserir: db.prepare(`INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em, decisoes)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+  inserir: db.prepare(`INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em, decisoes, tipo)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+  deEdicao: db.prepare(`SELECT * FROM conversas WHERE tenant_id = ? AND campanha_id = ? AND tipo = 'edicao'
+                        ORDER BY atualizado_em DESC LIMIT 1`),
   salvar: db.prepare(`UPDATE conversas SET titulo = ?, mensagens = ?, escopo = ?, estado = ?, campanha_id = ?, atualizado_em = ?, decisoes = ?
                       WHERE id = ? AND tenant_id = ?`),
   ler: db.prepare('SELECT * FROM conversas WHERE id = ? AND tenant_id = ?'),
@@ -1250,15 +1254,18 @@ const mapConv = (r) => r && ({
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
   arquivada: Number(r.arquivada) || 0,
   decisoes: r.decisoes === undefined ? undefined : jsonOu(r.decisoes, []),
+  tipo: r.tipo || '',
 });
 async function criarConversa(tenantId, userId, c) {
   const id = 'conv_' + rid(14);
   const agora = Date.now();
   qConv.inserir.run(id, tenantId, userId || '', String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []),
-    JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora, JSON.stringify(c.decisoes || []));
+    JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora, JSON.stringify(c.decisoes || []), c.tipo || '');
   return lerConversa(tenantId, id);
 }
 async function lerConversa(tenantId, id) { return mapConv(qConv.ler.get(id, tenantId)) || null; }
+// A conversa de Editar com a IA de uma campanha (D50), ou null.
+async function conversaDeEdicao(tenantId, campanhaId) { return mapConv(qConv.deEdicao.get(tenantId, String(campanhaId || ''))) || null; }
 async function salvarConversa(tenantId, id, c) {
   qConv.salvar.run(String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []), JSON.stringify(c.escopo || null),
     c.estado || 'conversando', c.campanhaId || '', Date.now(), JSON.stringify(c.decisoes || []), id, tenantId);
@@ -1274,6 +1281,7 @@ async function listarConversas(tenantId, limite, o) {
   const args = [tenantId];
   if (op.arquivadas === true) onde.push('COALESCE(arquivada, 0) > 0');
   else if (op.arquivadas !== 'todas') onde.push('COALESCE(arquivada, 0) = 0');
+  onde.push("COALESCE(tipo, '') <> 'edicao'");
   if (op.estado === 'criadas') onde.push("estado = 'gerado'");
   else if (op.estado === 'andamento') onde.push("COALESCE(estado, '') <> 'gerado'");
   const q = String(op.q || '').trim().toLowerCase().slice(0, 60);
@@ -2024,7 +2032,7 @@ module.exports = {
   fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
-  criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa,
+  criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa, conversaDeEdicao,
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,

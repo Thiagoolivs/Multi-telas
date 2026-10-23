@@ -7,6 +7,8 @@
  *     resultado é { campanha } — já salva, sem a pessoa apertar nada.
  *   GET  /api/campanhas         as recentes da conta (sem o resultado)
  *   GET  /api/campanhas/:id     uma, inteira
+ *   POST /api/ai/editar          { campanhaId, texto } — uma volta de Editar com a IA (D50)
+ *   GET  /api/campanhas/:id/edicao   a conversa de edição dela (mensagens, decisões)
  *
  * O escopo vem da conversa (o que ela fechou) ou do pedido (o cartão mexido
  * à mão vence). A foto passa por `fotoDaConta`, a mesma da campanha de Meus
@@ -18,6 +20,7 @@
 const E = require('../../js/escopo.js');
 const Pal = require('../../js/paletas.js');
 const eco = require('../ecossistema');
+const edicao = require('../edicao');
 const conversa = require('../ai-conversa');
 const ajuste = require('../ajuste');
 const paleta = require('../paleta.js');
@@ -129,14 +132,70 @@ module.exports = function (ctx) {
     });
   }
 
+  /*
+   * EDITAR COM A IA (D50): uma volta da conversa de edição da campanha. Roda
+   * como trabalho, como o ajuste (pode ter foto nova). Pergunta quando não
+   * entendeu; quando entende, aplica só o que foi pedido (server/ajuste.js),
+   * com "Desfazer". A conversa fica guardada (tipo 'edicao'), com as decisões
+   * da conversa que criou a campanha.
+   */
+  async function editar(req, res, sess) {
+    const rl = rateLimit('ai:editar:' + sess.tenant_id, 60, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'muitas mensagens nesta hora. Espere um pouco.' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const texto = String((b && b.texto) || '').replace(/\s+/g, ' ').trim().slice(0, 1000);
+      if (!texto) return sendJson(res, 400, { error: 'diga o que mudar' });
+      const id = b && typeof b.campanhaId === 'string' ? b.campanhaId : '';
+      const c = id ? await db.lerCampanha(sess.tenant_id, id) : null;
+      if (!c || !c.resultado) return sendJson(res, 404, { error: 'campanha não encontrada' });
+      return emTrabalho(res, sess, 'campanha', { brief: ('Edição: ' + texto).slice(0, 200) }, async (progresso) => {
+        progresso('entendendo o pedido', texto.slice(0, 80));
+        let conv = await db.conversaDeEdicao(sess.tenant_id, c.id);
+        if (!conv) {
+          // Nasce com o que foi decidido na conversa que criou a campanha (D48).
+          const original = c.conversaId ? await db.lerConversa(sess.tenant_id, c.conversaId).catch(() => null) : null;
+          conv = await db.criarConversa(sess.tenant_id, sess.user_id, {
+            titulo: ('Edição: ' + (c.nome || 'campanha')).slice(0, 80), mensagens: [], escopo: null, estado: 'conversando',
+            campanhaId: c.id, decisoes: (original && original.decisoes) || [], tipo: 'edicao',
+          });
+        }
+        const mensagens = (conv.mensagens || []).concat({ papel: 'pessoa', texto, em: Date.now() });
+        const out = await edicao.conversar({ texto, mensagens, decisoes: conv.decisoes || [], campanha: c });
+        let salva = c;
+        let refeitas = 0;
+        if (out.acao === 'fazer' && out.mudancas.length) {
+          const ctxConta = await contextoDaConta(sess.tenant_id);
+          const feito = await ajuste.aplicar(c, out.mudancas, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
+          salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo, capa: capaDe(feito.resultado) });
+          refeitas = feito.refeitas;
+        }
+        mensagens.push(Object.assign({ papel: 'ia', texto: out.resposta, sugestoes: out.sugestoes || [], em: Date.now() },
+          out.acao === 'fazer' && out.mudancas.length ? { feito: out.mudancas.map(ajuste.descreverMudanca) } : {},
+          out.pendente ? { pendente: out.pendente } : {}, out.modo === 'falha' ? { falha: true } : {}));
+        const guardada = await db.salvarConversa(sess.tenant_id, conv.id, { ...conv, mensagens: mensagens.slice(-200), decisoes: out.decisoes || conv.decisoes || [] });
+        return { campanha: salva, resposta: out.resposta, sugestoes: out.sugestoes || [], acao: out.acao, mudancas: out.mudancas, refeitas, conversa: guardada };
+      });
+    });
+  }
+
   async function tratar(req, res, parts, query, sess) {
     const ehGerar = parts[1] === 'ai' && parts[2] === 'ecossistema';
     const ehAjustar = parts[1] === 'ai' && parts[2] === 'ajustar';
-    if (!ehGerar && !ehAjustar && parts[1] !== 'campanhas') return false;
+    const ehEditar = parts[1] === 'ai' && parts[2] === 'editar';
+    if (!ehGerar && !ehAjustar && !ehEditar && parts[1] !== 'campanhas') return false;
     if (!sess) { sendJson(res, 401, { error: 'não autenticado' }); return true; }
-    if (ehGerar || ehAjustar) {
+    if (ehGerar || ehAjustar || ehEditar) {
       if (req.method !== 'POST') { sendJson(res, 405, { error: 'método inválido' }); return true; }
-      await (ehGerar ? gerar(req, res, sess) : ajustar(req, res, sess));
+      await (ehGerar ? gerar(req, res, sess) : ehAjustar ? ajustar(req, res, sess) : editar(req, res, sess));
+      return true;
+    }
+    // A conversa de edição de uma campanha (D50): para o painel mostrar a história ao abrir.
+    if (parts.length === 4 && /^camp_[a-z0-9]{6,40}$/i.test(parts[2] || '') && parts[3] === 'edicao') {
+      if (req.method !== 'GET') { sendJson(res, 405, { error: 'método inválido' }); return true; }
+      const c = await db.lerCampanha(sess.tenant_id, parts[2]);
+      if (!c) { sendJson(res, 404, { error: 'campanha não encontrada' }); return true; }
+      const conv = await db.conversaDeEdicao(sess.tenant_id, c.id);
+      sendJson(res, 200, { conversa: conv ? { id: conv.id, mensagens: conv.mensagens || [], decisoes: conv.decisoes || [] } : null });
       return true;
     }
     /*

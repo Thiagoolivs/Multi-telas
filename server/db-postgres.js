@@ -360,6 +360,7 @@ async function init() {
     ALTER TABLE campanhas ADD COLUMN IF NOT EXISTS arquivada BIGINT;
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS arquivada BIGINT;
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS decisoes TEXT;
+    ALTER TABLE conversas ADD COLUMN IF NOT EXISTS tipo TEXT;
   `);
 }
 
@@ -644,20 +645,26 @@ const mapConv = (r) => r && ({
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
   arquivada: Number(r.arquivada) || 0,
   decisoes: r.decisoes === undefined ? undefined : jsonOu(r.decisoes, []),
+  tipo: r.tipo || '',
 });
 async function criarConversa(tenantId, userId, c) {
   const id = 'conv_' + rid(14);
   const agora = Date.now();
   await pool.query(
-    `INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em, decisoes)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+    `INSERT INTO conversas (id, tenant_id, user_id, titulo, mensagens, escopo, estado, campanha_id, criado_em, atualizado_em, decisoes, tipo)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
     [id, tenantId, userId || '', String(c.titulo || '').slice(0, 80), JSON.stringify(c.mensagens || []),
-      JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora, JSON.stringify(c.decisoes || [])]
+      JSON.stringify(c.escopo || null), c.estado || 'conversando', c.campanhaId || '', agora, agora, JSON.stringify(c.decisoes || []), c.tipo || '']
   );
   return lerConversa(tenantId, id);
 }
 async function lerConversa(tenantId, id) {
   const r = await pool.query('SELECT * FROM conversas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapConv(r.rows[0]) || null;
+}
+// A conversa de Editar com a IA de uma campanha (D50), ou null.
+async function conversaDeEdicao(tenantId, campanhaId) {
+  const r = await pool.query("SELECT * FROM conversas WHERE tenant_id = $1 AND campanha_id = $2 AND tipo = 'edicao' ORDER BY atualizado_em DESC LIMIT 1", [tenantId, String(campanhaId || '')]);
   return mapConv(r.rows[0]) || null;
 }
 async function salvarConversa(tenantId, id, c) {
@@ -737,6 +744,7 @@ async function listarConversas(tenantId, limite, o) {
   const args = [tenantId];
   if (op.arquivadas === true) onde.push('COALESCE(arquivada, 0) > 0');
   else if (op.arquivadas !== 'todas') onde.push('COALESCE(arquivada, 0) = 0');
+  onde.push("COALESCE(tipo, '') <> 'edicao'");
   if (op.estado === 'criadas') onde.push("estado = 'gerado'");
   else if (op.estado === 'andamento') onde.push("COALESCE(estado, '') <> 'gerado'");
   const q = String(op.q || '').trim().toLowerCase().slice(0, 60);
@@ -2002,7 +2010,7 @@ module.exports = {
   fichaDaConta, buscarContas,
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
-  criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa,
+  criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa, conversaDeEdicao,
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,

@@ -371,6 +371,12 @@ export const criar = {
     const job = await api('POST', '/api/ai/ajustar', { campanhaId, texto });
     return acompanhar(job.id, 'ajuste', onEtapa, sinal);
   },
+  // Editar com a IA (D50): uma volta da conversa de edição; trabalho, porque pode ter foto nova.
+  async editarComIA(campanhaId, texto, onEtapa, sinal) {
+    const job = await api('POST', '/api/ai/editar', { campanhaId, texto });
+    return acompanhar(job.id, 'edicao', onEtapa, sinal);
+  },
+  edicao: (id) => api('GET', '/api/campanhas/' + id + '/edicao'),
   editarPeca: (id, vaga, item) => api('PUT', '/api/campanhas/' + id + '/peca', { vaga, item }),
   // As frases do rodapé / chamadas do cabeçalho de uma TV da campanha (D12).
   editarLetreiro: (id, tela, zona, mensagens) => api('PUT', '/api/campanhas/' + id + '/letreiro', { tela, zona, mensagens }),
