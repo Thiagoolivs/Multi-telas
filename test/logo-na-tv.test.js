@@ -25,7 +25,8 @@ test('player: cabeçalho com a logo na versão do fundo, sem repetir o nome', ()
   assert.match(p, /return \(l < 0\.35 \? logo\.clara : logo\.escura\) \|\| logo\.url;/);
   assert.match(p, /title\.textContent = cfg\.settings\.titulo \|\| \(\(logo && logo\.url\) \? '' : cfg\.settings\.nome\) \|\| '';/);
   assert.match(ler('js/render.js'), /logo: global\.MT_LOGO \|\| null,/);
-  assert.match(ler('sw.js'), /const SHELL_CACHE = 'mt-shell-v4[5-9]';/, 'o player mudou: a TV precisa baixar de novo');
+  // A versão só sobe: cada mudança do player depois desta (D19 v49, D21 v50) troca de novo.
+  assert.ok(Number((/const SHELL_CACHE = 'mt-shell-v(\d+)';/.exec(ler('sw.js')) || [])[1]) >= 45, 'o player mudou: a TV precisa baixar de novo');
 });
 
 test('peça: o lugar de logo usa a da marca, na versão que lê no fundo da peça', () => {

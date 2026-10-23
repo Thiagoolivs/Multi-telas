@@ -1381,3 +1381,60 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
  * O vidro da zona continua por trás só para a borda arredondada. */
 .mt-zona-peca { padding: 0; }
 .mt-peca-fixa { position: absolute; inset: 0; }
+
+/* ---------- Quiz com cronômetro (D21) ----------
+   Uma pergunta por vez. As alternativas em grade (2×2 deitada; uma coluna
+   em zona estreita/em pé), a barra do tempo esvaziando e, no fim, a certa
+   acende e a explicação sobe. Cores do tema: troca a marca, troca o quiz. */
+/* O .mt-slide centraliza os filhos; o quiz ocupa a largura toda (a barra do tempo precisa dela). */
+.mt-quiz { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 2.4cqh; padding: 5cqh 5cqw; text-align: left; }
+.mt-quiz-topo { display: flex; align-items: center; justify-content: space-between; gap: 2cqw; }
+.mt-quiz-selo {
+  font-size: 2.6cqw; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+  padding: .8cqh 1.8cqw; border-radius: 100px; color: var(--bg); background: var(--accent);
+}
+.mt-quiz-n { font-size: 2.4cqw; font-weight: 600; color: var(--text-dim); }
+.mt-quiz-pergunta { font-size: 5.2cqw; font-weight: 800; line-height: 1.12; letter-spacing: -.01em; }
+.mt-quiz-alts { display: grid; grid-template-columns: 1fr 1fr; gap: 1.8cqh 2cqw; flex: 1; align-content: center; }
+.mt-quiz-alt {
+  display: flex; align-items: center; gap: 1.6cqw; min-width: 0;
+  padding: 2cqh 2cqw; border-radius: 1.6cqw;
+  background: color-mix(in srgb, var(--text) 9%, transparent);
+  border: .25cqw solid color-mix(in srgb, var(--text) 14%, transparent);
+  transition: opacity .5s ease, background .5s ease, border-color .5s ease, transform .5s ease;
+}
+.mt-quiz-letra {
+  flex: none; display: grid; place-items: center; width: 5.4cqw; height: 5.4cqw; border-radius: 50%;
+  font-size: 2.8cqw; font-weight: 800; color: var(--bg); background: var(--accent);
+}
+.mt-quiz-texto { font-size: 3.2cqw; font-weight: 600; line-height: 1.15; overflow-wrap: anywhere; }
+.mt-quiz-tempo { position: relative; display: flex; align-items: center; gap: 2cqw; }
+.mt-quiz-barra {
+  flex: 1; height: 1.4cqh; border-radius: 100px; background: var(--accent);
+  transform-origin: left center; animation: mt-quiz-tempo 10s linear forwards;
+}
+@keyframes mt-quiz-tempo { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.mt-quiz-seg { flex: none; min-width: 6cqw; text-align: right; font-size: 3.6cqw; font-weight: 800; font-variant-numeric: tabular-nums; }
+.mt-quiz-explica {
+  min-height: 0; font-size: 3cqw; font-weight: 600; line-height: 1.25; color: var(--text);
+  opacity: 0; transform: translateY(1.5cqh); transition: opacity .6s ease, transform .6s ease;
+}
+/* A resposta: a certa acende, as outras apagam, a explicação sobe e o tempo some. */
+.mt-quiz-revelado .mt-quiz-alt { opacity: .28; }
+.mt-quiz-revelado .mt-quiz-alt.mt-quiz-certa {
+  opacity: 1; transform: scale(1.03);
+  background: color-mix(in srgb, #22c55e 26%, transparent); border-color: #22c55e;
+}
+.mt-quiz-revelado .mt-quiz-certa .mt-quiz-letra { background: #22c55e; color: #fff; }
+.mt-quiz-revelado .mt-quiz-explica { opacity: 1; transform: none; }
+.mt-quiz-revelado .mt-quiz-tempo { opacity: 0; }
+/* Zona em pé ou estreita: uma coluna, letra maior em proporção. */
+@container (max-aspect-ratio: 1/1) {
+  .mt-quiz-alts { grid-template-columns: 1fr; }
+  .mt-quiz-pergunta { font-size: 7.4cqw; }
+  .mt-quiz-texto { font-size: 5cqw; }
+  .mt-quiz-letra { width: 8cqw; height: 8cqw; font-size: 4.2cqw; }
+  .mt-quiz-selo, .mt-quiz-n { font-size: 3.6cqw; }
+  .mt-quiz-explica { font-size: 4.4cqw; }
+  .mt-quiz-seg { font-size: 5.4cqw; }
+}

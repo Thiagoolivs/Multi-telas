@@ -97,7 +97,8 @@ test('o grupo aceso é o da página; abas nos grupos de mais de uma página; bar
 test('Adicionar conteúdo pergunta antes: 6 entradas grandes; todos os tipos em "Mais tipos", com busca', () => {
   const p = ler('web/src/components/content/TypePicker.jsx');
   const ids = [...p.slice(p.indexOf('const ENTRADAS = ['), p.indexOf('];', p.indexOf('const ENTRADAS = ['))).matchAll(/id: '([a-z]+)'/g)].map((m) => m[1]);
-  assert.deepStrictEqual(ids, ['criar', 'midia', 'promo', 'announce', 'birthdayauto', 'social']);
+  // D21: o quiz entrou entre os tipos prontos que quase todo mundo usa.
+  assert.deepStrictEqual(ids, ['criar', 'midia', 'promo', 'announce', 'birthdayauto', 'social', 'quiz']);
   // Item 32: abre no que já existe (peças prontas que cabem na zona), nunca na grade de tipos.
   assert.match(p, /useState\('prontas'\)/, 'abre nas peças prontas, não na grade');
   assert.match(p, /placeholder=\{tab === 'prontas' \? 'Buscar nas peças…' : 'Buscar um tipo: clima, vídeo, QR…'\}/);

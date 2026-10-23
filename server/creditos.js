@@ -90,6 +90,8 @@ const OPERACOES = {
   ajuste: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Ajuste de campanha' },
   // Pedir à IA dentro da peça (D20): uma chamada de texto que devolve só o que muda.
   'ajuste-peca': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Ajuste de peça' },
+  // As perguntas do quiz (D21): uma chamada de texto; saem para revisão.
+  quiz: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Quiz' },
 };
 
 function operacao(tipo) { return OPERACOES[tipo] || null; }

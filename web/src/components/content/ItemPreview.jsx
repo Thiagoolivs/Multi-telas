@@ -95,6 +95,22 @@ export function Body({ item }) {
         </div>
       );
     }
+    case 'quiz': {
+      const p = (Array.isArray(item.perguntas) ? item.perguntas : [])[0];
+      return (
+        <div className="flex h-full w-full flex-col justify-center gap-1 text-left">
+          <div className="text-[10px] font-bold uppercase tracking-wide opacity-60">{item.titulo || 'Quiz'}</div>
+          <div className="text-sm font-bold leading-tight">{p ? p.pergunta : 'Escreva a primeira pergunta'}</div>
+          {p && (
+            <div className="grid grid-cols-2 gap-1 text-[10px]">
+              {(p.alternativas || []).filter(Boolean).slice(0, 4).map((a, j) => (
+                <div key={j} className="truncate rounded bg-white/10 px-1 py-0.5"><b>{'ABCD'[j]}</b> {a}</div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
     case 'kpi':
       return (
         <div className="flex h-full flex-col items-center justify-center gap-0.5">

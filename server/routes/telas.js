@@ -26,6 +26,7 @@ module.exports = function (ctx) {
   // De onde a TV aceita foto de peça em HTML: o host público do storage (R2),
   // quando há um. Relativo (disco), só /media/.
   const pecaHtml = require('../../js/peca-html.js');
+  const quiz = require('../../js/quiz.js');
   const paleta = require('../paleta.js');
   const automaticos = require('../automaticos.js');
   const hostsMidia = (() => {
@@ -280,6 +281,22 @@ module.exports = function (ctx) {
           const pecas = pecaHtml.conferirConfig(cfg, { hostsMidia });
           if (pecas.problemas.length) {
             return sendJson(res, 400, { error: 'peça em HTML recusada', problemas: pecas.problemas.slice(0, 20) });
+          }
+          /*
+           * Quiz (D21): o que a IA escreveu e ninguém conferiu não vai para a
+           * TV — fato errado na parede é pior que nenhum. O quiz entra
+           * normalizado (perguntas, tempo) e o resto do item (agenda) fica.
+           */
+          for (const z of Object.values(cfg.zonas || {})) {
+            if (!z || !Array.isArray(z.items)) continue;
+            for (let i = 0; i < z.items.length; i++) {
+              const it = z.items[i];
+              if (!it || it.type !== 'quiz') continue;
+              if (quiz.pendentes(it) > 0) {
+                return sendJson(res, 400, { error: 'Confira as perguntas do quiz antes de publicar: a IA escreveu e ninguém conferiu ainda.', code: 'quiz-sem-revisao' });
+              }
+              z.items[i] = Object.assign({}, it, quiz.normalizar(it));
+            }
           }
           // De onde a TV aceita foto de peça: quem declara é o servidor, sempre.
           cfg.settings.hostsMidia = hostsMidia;
