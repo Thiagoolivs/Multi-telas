@@ -197,5 +197,38 @@ test('D0.4b: as duas portas de foto reservam antes e devolvem na falha', () => {
   const s = fs.readFileSync(path.join(RAIZ, 'server.js'), 'utf8');
   assert.equal((s.match(/usoIA\.reservar\(db, /g) || []).length, 2);
   assert.ok(!/usoIA\.conferir\(db, (contaIA|tenantIA)/.test(s), 'voltou a só conferir o saldo');
-  assert.ok((s.match(/usoIA\.devolver\(db, /g) || []).length >= 4);
+  // Desde o D0.4c a devolução é do controle da reserva, fechado num finally.
+  assert.equal((s.match(/usoIA\.controleDaReserva\(db, /g) || []).length, 2);
+  assert.equal((s.match(/\} finally \{ await reserva\.fechar\(\); \}/g) || []).length, 2);
+});
+
+test('D0.4c: a foto saiu mas guardar falhou (cota cheia) — o crédito volta, uma vez só', async () => {
+  const db = require('../server/db-sqlite.js');
+  const { tenantId: id } = await db.createAccount('guardar' + Date.now() + '@teste.local', 'x', 'Loja do guardar', 'Dono');
+  const tenant = { ...(await db.getTenant(id)), plan: 'pro', plan_status: 'active' };
+  await db.setCreditos(id, { franquiaRestante: 2, creditosComprados: 0, cicloEm: Date.now() });
+  const saldo = async () => (await db.getCreditos(id)).franquiaRestante;
+
+  // O mesmo desenho das duas portas de foto em server.js.
+  async function gerar(guardar) {
+    const pode = await usoIA.reservar(db, tenant, 'gerar-imagem', 1);
+    const reserva = usoIA.controleDaReserva(db, tenant, pode.reserva);
+    try {
+      const salvo = await guardar();
+      reserva.cobrada();
+      await usoIA.cobrar(db, tenant, { tipo: 'gerar-imagem', quantidade: 1, userId: 'u', referencia: salvo, reserva: pode.reserva });
+    } finally { await reserva.fechar(); }
+  }
+
+  await assert.rejects(gerar(async () => { throw new Error('cota de armazenamento cheia'); }), /cota/);
+  assert.equal(await saldo(), 2, 'o crédito sumiu quando guardar falhou');
+
+  await gerar(async () => 'midia-1');
+  assert.equal(await saldo(), 1, 'cobrou e o finally devolveu mesmo assim');
+
+  // Devolver e depois fechar não devolve duas vezes.
+  const pode = await usoIA.reservar(db, tenant, 'gerar-imagem', 1);
+  const r = usoIA.controleDaReserva(db, tenant, pode.reserva);
+  await r.devolver(); await r.fechar(); await r.devolver();
+  assert.equal(await saldo(), 1, 'devolveu mais de uma vez');
 });

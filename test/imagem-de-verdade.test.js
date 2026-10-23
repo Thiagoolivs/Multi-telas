@@ -107,7 +107,8 @@ test('IA de texto sem a chave de imagem: erro com motivo, não um degradê cobra
 
 test('foto de reserva não se cobra, nem na campanha nem na imagem solta', () => {
   const s = ler('server.js');
-  assert.equal((s.match(/if \(!img\.reserva\) await usoIA\.cobrar\(/g) || []).length, 2);
+  // Desde o D0.4c a cobrança marca a reserva antes (reserva.cobrada()), num bloco.
+  assert.equal((s.match(/if \(!img\.reserva\) \{\s*reserva\.cobrada\(\);\s*await usoIA\.cobrar\(/g) || []).length, 2);
 });
 
 test('o Criar deixa escolher a foto, e o padrão é a IA gerar', () => {
