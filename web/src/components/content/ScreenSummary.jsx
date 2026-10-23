@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Palette, Sparkles, Clock, AlertTriangle, Lightbulb, Check } from 'lucide-react';
+import { ChevronDown, ChevronRight, Palette, Sparkles, Clock, AlertTriangle, Lightbulb, Check, Info } from 'lucide-react';
 import { digest, formatarTempo } from '../../lib/screenDigest.js';
 import { cn } from '../../lib/cn.js';
 
@@ -83,7 +83,7 @@ export function ScreenSummary({ cfg }) {
               </div>
               {d.decoracao && (
                 <div className="flex items-start gap-1.5 text-ink-2">
-                  <Sparkles size={13} className="mt-0.5 shrink-0 text-ink-3" />
+                  <Info size={13} className="mt-0.5 shrink-0 text-ink-3" />
                   <span>Decoração animada: {d.decoracao}</span>
                 </div>
               )}

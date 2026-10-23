@@ -11,8 +11,7 @@
  */
 import {
   Megaphone, Type, Quote, Tag, BarChart3, Share2, Image as ImageIcon,
-  Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout, Airplay, Cast, Presentation, ReceiptText,
-} from 'lucide-react';
+  Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout, Airplay, Cast, Presentation, ReceiptText, Palette } from 'lucide-react';
 
 const GRUPO_PC = 'Com computador ligado à TV';
 
@@ -218,7 +217,7 @@ export const CONTENT_TYPES = {
     summary: (i) => i.cidade || 'Clima',
   },
   poster: {
-    label: 'Arte / Poster', icon: Sparkles, group: 'Mensagens',
+    label: 'Arte / Poster', icon: Palette, group: 'Mensagens',
     fields: [
       { key: 'variant', label: 'Estilo', kind: 'select', options: [
         { value: 'bold', label: 'Cheio (cor da marca)' }, { value: 'aurora', label: 'Aurora' },

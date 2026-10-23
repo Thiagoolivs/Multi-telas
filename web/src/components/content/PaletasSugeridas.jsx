@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, SlidersHorizontal, AlertTriangle, Wand2, Plus } from 'lucide-react';
+import { Check, SlidersHorizontal, AlertTriangle, Wand2, Plus, Palette } from 'lucide-react';
 import { Panel, PanelHeader } from '../ui/Panel.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
@@ -187,7 +187,7 @@ export function PaletasSugeridas({ kit, empresa, ramoDaConta, logoUrl, fonteTitu
                 <div className="rounded-md border border-warn/40 bg-warn/10 p-3 text-xs text-ink-2">
                   <div className="mb-1 flex items-center gap-1.5 font-semibold text-ink"><AlertTriangle size={13} className="text-warn" /> Estas cores podem ficar difíceis de ler na TV</div>
                   <ul className="space-y-0.5">{problemas.map((t) => <li key={t}>· {t}</li>)}</ul>
-                  <Button size="sm" variant="secondary" icon={Wand2} className="mt-2" disabled={ocupado}
+                  <Button size="sm" variant="secondary" icon={Palette} className="mt-2" disabled={ocupado}
                     onClick={() => { const p = aoRedor(cores)[0]; if (p) aplicar(p.cores); }}>
                     Ajustar para uma paleta legível
                   </Button>

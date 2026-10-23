@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus, Sparkles } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus, Sparkles, CalendarDays } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Panel } from '../components/ui/Panel.jsx';
@@ -130,7 +130,7 @@ function IdeiaDeHoje({ onIr }) {
         <div className="text-sm font-semibold text-ink">Hoje: {ideia.titulo}</div>
         <div className="text-xs text-ink-3">{ideia.porque}</div>
       </div>
-      <span className="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-accent"><Sparkles size={15} /> Criar para a data</span>
+      <span className="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-accent"><CalendarDays size={15} /> Criar para a data</span>
     </button>
   );
 }

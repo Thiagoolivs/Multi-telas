@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Layers, MonitorPlay, Share2, Wand2, Search, Check } from 'lucide-react';
+import { Layers, MonitorPlay, Share2, Wand2, Search, Check, Plus } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
@@ -88,7 +88,7 @@ export function PecasProntasPage({ onIr }) {
           <h1 className="text-xl font-semibold tracking-tight text-ink">Peças prontas</h1>
           <p className="mt-1 text-sm text-ink-2">O que já está pronto para a TV e para as redes, das suas campanhas e da biblioteca.</p>
         </div>
-        <Button variant="primary" icon={Wand2} onClick={() => onIr && onIr('criar')}>Criar novas</Button>
+        <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar novas</Button>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -109,7 +109,7 @@ export function PecasProntasPage({ onIr }) {
         <Panel>
           <EmptyState icon={Layers} title={pecas.length ? 'Nenhuma peça neste filtro' : 'Nenhuma peça pronta ainda'}
             description={pecas.length ? 'Troque o filtro ou a busca.' : 'As peças que o Criar faz aparecem aqui, prontas para qualquer TV.'}
-            action={!pecas.length && <Button variant="primary" icon={Wand2} onClick={() => onIr && onIr('criar')}>Criar</Button>} />
+            action={!pecas.length && <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>} />
         </Panel>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

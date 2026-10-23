@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'react';
 import {
-  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info, CalendarClock,
-} from 'lucide-react';
+  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info, CalendarClock, MessageSquare } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
@@ -432,7 +431,7 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
             formulário antigo, sem conversa nem escopo. Agora leva ao Criar com
             esta TV marcada. O CampaignDialog fica no código, sem botão, por 30 dias.
           */}
-          {onCriar && <Button variant="secondary" icon={Wand2} className="whitespace-nowrap" onClick={onCriar}>Criar para esta TV</Button>}
+          {onCriar && <Button variant="secondary" icon={Plus} className="whitespace-nowrap" onClick={onCriar}>Criar para esta TV</Button>}
           <Button variant="secondary" icon={Settings2} className="whitespace-nowrap" onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>
         </div>
       </div>
@@ -464,7 +463,7 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <button type="button" onClick={() => onCriar && onCriar()}
                 className="rounded-lg border border-accent bg-accent-soft p-3 text-left transition hover:brightness-95">
-                <Wand2 size={18} className="text-accent" />
+                <MessageSquare size={18} className="text-accent" />
                 <div className="mt-1.5 text-sm font-semibold text-ink">Criar com a IA</div>
                 <div className="text-xs text-ink-3">Conte o que quer mostrar; a IA conversa e monta a tela inteira com a sua marca.</div>
               </button>
@@ -519,7 +518,7 @@ export function ContentEditorPage({ device, onBack, onCriar, onIr }) {
                       tela marcada. A caixa antiga fica escondida por 30 dias.
                     */}
                     {onCriar
-                      ? <Button size="sm" variant="secondary" icon={Wand2} onClick={() => onCriar(papelDaZona(activeZone))}>Criar</Button>
+                      ? <Button size="sm" variant="secondary" icon={Plus} onClick={() => onCriar(papelDaZona(activeZone))}>Criar</Button>
                       : <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>}
                     <Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
                   </>} />

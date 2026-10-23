@@ -2,8 +2,7 @@ import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
 import { confirmar, perguntar } from '../lib/confirmar.js';
 import {
   Plus, Wand2, ImagePlus, Upload, Pencil, Download, Send, Trash2, Sparkles, Check,
-  MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket, MessagesSquare, Share2,
-} from 'lucide-react';
+  MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket, MessagesSquare, Share2, MessageSquare } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -719,7 +718,7 @@ export function MyDesignsPage({ onIr }) {
       <div className="mb-5 grid gap-3 sm:grid-cols-2">
         <button type="button" onClick={() => onIr && onIr('criar')}
           className="flex items-center gap-4 rounded-xl border border-accent/40 bg-surface p-5 text-left transition hover:border-accent hover:bg-surface-2">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-soft"><Wand2 size={24} className="text-accent" /></div>
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-soft"><MessageSquare size={24} className="text-accent" /></div>
           <div>
             <div className="text-base font-semibold text-ink">Criar com a IA</div>
             <div className="mt-0.5 text-xs leading-snug text-ink-3">Conte o que você quer mostrar. A IA conversa, sugere e cria.</div>
@@ -780,7 +779,7 @@ export function MyDesignsPage({ onIr }) {
         {loading ? (
           <div className="p-6"><Spinner size={20} /></div>
         ) : saved.length === 0 ? (
-          <EmptyState icon={Sparkles} title="Nada por aqui ainda"
+          <EmptyState icon={FolderOpen} title="Nada por aqui ainda"
             description="Comece por “Criar”: uma frase e a peça sai pronta para a TV, com a sua marca." />
         ) : groupNames.length === 0 ? (
           <EmptyState icon={Search} title="Nenhum resultado" description="Tente outro termo de busca." />
@@ -1168,7 +1167,7 @@ export function MyDesignsPage({ onIr }) {
                 prometer para baixo e cobrar mais seria pior ainda.
               */}
               <div className="mt-2.5 flex items-start gap-1.5 border-t border-line pt-2.5 text-2xs leading-snug text-ink-2">
-                <Sparkles size={13} className="mt-0.5 shrink-0 text-accent" />
+                <MessageSquare size={13} className="mt-0.5 shrink-0 text-ink-3" />
                 <span>
                   {imagens === 'gerar' ? (
                     <>Vai usar <b className="text-ink">até {quantas} {quantas > 1 ? 'criações' : 'criação'}</b> com IA —

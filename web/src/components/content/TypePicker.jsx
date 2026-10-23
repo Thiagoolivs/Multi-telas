@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Plus, UtensilsCrossed, Wand2, Image as ImageIcon, Tag, Megaphone, Cake, Instagram, LayoutGrid, Layers, Upload, Film } from 'lucide-react';
+import { Search, Plus, UtensilsCrossed, Wand2, Image as ImageIcon, Tag, Megaphone, Cake, Instagram, LayoutGrid, Layers, Upload, Film, MessageSquare } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { CONTENT_TYPES, CONTENT_ORDER } from '../../lib/contentTypes.js';
 import { DesignThumb } from './DesignThumb.jsx';
@@ -52,7 +52,7 @@ const ATALHOS = {
  * quase todo mundo usa.
  */
 const ENTRADAS = [
-  { id: 'criar', label: 'Criar com IA', desc: 'Promoção, novidade, aviso… com a sua marca.', icon: Wand2 },
+  { id: 'criar', label: 'Criar com IA', desc: 'Promoção, novidade, aviso… com a sua marca.', icon: MessageSquare },
   { id: 'midia', label: 'Foto ou vídeo', desc: 'Da galeria do celular ou do computador: entra inteira.', icon: ImageIcon },
   { id: 'promo', label: 'Promoção com preço', desc: 'Produto, preço e chamada, já na cor da marca.', icon: Tag },
   { id: 'announce', label: 'Aviso', desc: 'Horário, recado, comunicado.', icon: Megaphone },
@@ -164,7 +164,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona })
       {onCriar && (
         <button type="button" onClick={() => escolher('criar')}
           className="mb-4 flex w-full items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 p-3 text-left transition hover:border-accent">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft"><Wand2 size={18} className="text-accent" /></span>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent-soft"><MessageSquare size={18} className="text-accent" /></span>
           <span className="min-w-0">
             <span className="block text-sm font-semibold text-ink">Criar novo com a IA</span>
             <span className="block text-xs text-ink-3">Conte o que quer mostrar {zona ? 'no ' + NOME_PAPEL[papel] : ''}: a IA conversa e cria com a sua marca.</span>

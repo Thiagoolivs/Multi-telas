@@ -15,19 +15,25 @@
  * Tokens do design system MultiTelas. Tema claro por padrão (operacional,
  * Stripe/Linear/Cloudflare). O tema escuro é uma troca de variáveis — os
  * componentes usam só os tokens semânticos (surface, ink, line, accent…).
+ *
+ * AZUL CORPORATIVO (EXECUTOR D1, opção A dos cartões de cor de 23/10). O
+ * índigo lia como roxo, e o dono pediu "mais sério": azul firme só onde a
+ * pessoa toca, e um escuro quase preto e neutro, com os cartões pouco acima
+ * do fundo. Contraste conferido: texto de apoio (ink-3) ≥ 4,5:1 no cartão
+ * nos dois modos; o azul de ação ≥ 4,5:1 com o texto do botão.
  */
 :root {
-  --c-canvas: 247 248 250;      /* #F7F8FA */
+  --c-canvas: 245 247 250;      /* #F5F7FA */
   --c-surface: 255 255 255;     /* #FFFFFF */
-  --c-surface-2: 246 247 249;   /* #F6F7F9 */
-  --c-line: 232 234 238;        /* #E8EAEE */
-  --c-line-strong: 218 221 227; /* #DADDE3 */
-  --c-ink: 21 25 33;            /* #151921 */
-  --c-ink-2: 82 91 106;         /* #525B6A */
-  --c-ink-3: 139 147 161;       /* #8B93A1 */
-  --c-accent: 79 70 229;        /* #4F46E5 indigo contido */
+  --c-surface-2: 243 245 248;   /* #F3F5F8 */
+  --c-line: 227 231 237;        /* #E3E7ED */
+  --c-line-strong: 211 217 226; /* #D3D9E2 */
+  --c-ink: 17 24 39;            /* #111827 */
+  --c-ink-2: 75 85 99;          /* #4B5563 */
+  --c-ink-3: 107 114 128;       /* #6B7280 */
+  --c-accent: 29 78 216;        /* #1D4ED8 azul corporativo */
   --c-accent-fg: 255 255 255;
-  --c-accent-soft: 238 238 252; /* #EEEEFC */
+  --c-accent-soft: 232 239 253; /* #E8EFFD */
   --c-ok: 21 128 61;            /* #15803D */
   --c-ok-soft: 231 246 236;     /* #E7F6EC */
   --c-warn: 180 83 9;           /* #B45309 */
@@ -37,17 +43,17 @@
 }
 
 :root[data-theme='dark'] {
-  --c-canvas: 12 14 18;         /* #0C0E12 */
-  --c-surface: 22 25 31;        /* #16191F */
-  --c-surface-2: 30 34 42;      /* #1E222A */
-  --c-line: 39 44 54;           /* #272C36 */
-  --c-line-strong: 52 58 70;    /* #343A46 */
-  --c-ink: 233 236 242;         /* #E9ECF2 */
-  --c-ink-2: 156 164 178;       /* #9CA4B2 */
-  --c-ink-3: 110 118 132;       /* #6E7684 */
-  --c-accent: 129 122 255;      /* #817AFF */
-  --c-accent-fg: 12 14 18;
-  --c-accent-soft: 32 32 56;    /* #202038 */
+  --c-canvas: 7 9 13;           /* #07090D */
+  --c-surface: 16 20 26;        /* #10141A */
+  --c-surface-2: 22 27 35;      /* #161B23 */
+  --c-line: 28 34 43;           /* #1C222B */
+  --c-line-strong: 42 49 60;    /* #2A313C */
+  --c-ink: 232 236 242;         /* #E8ECF2 */
+  --c-ink-2: 163 173 188;       /* #A3ADBC */
+  --c-ink-3: 122 132 148;       /* #7A8494 */
+  --c-accent: 59 130 246;       /* #3B82F6 */
+  --c-accent-fg: 7 9 13;        /* texto escuro no azul: 5,6:1 */
+  --c-accent-soft: 15 30 56;    /* #0F1E38 */
   --c-ok: 74 201 126;
   --c-ok-soft: 18 38 28;
   --c-warn: 220 158 76;
