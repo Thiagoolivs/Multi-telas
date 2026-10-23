@@ -6,13 +6,52 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **21/10/2026** · 1254 testes passando (três vezes seguidas, sem
-teste instável) · `server.js` com ~2.570 linhas (cobrança, telas, redes,
-conversas e campanhas em `server/routes/`).
+Atualizado em: **23/10/2026** · 1387 testes passando · Fase 1 do DNA novo
+completa (EXECUTOR §2f, D0.1–D17, PRs #201 a #236).
 
 ---
 
-## Onde paramos (leia isto primeiro)
+## Rodada 5 — o DNA novo, Fase 1 (23/10, PRs #201 a #236)
+
+O dono: "a intenção é a facilidade; tirar coisas que confundam o usuário".
+Público: Empresas, Comércio e Saúde num núcleo só (**perfil da conta**); IA
+como orquestradora; modelos prontos; lançamento depois desta fase. Dois PCs:
+executor (aqui) e testador (issue #198); consultor na #135, que revisou cada
+PR sensível depois do merge (as notas viraram PRs próprios).
+
+**Fase 0 — o que estava quebrado** (D0.1–D0.8): chaves e fallback de modelo
+do Gemini (`server/motores.js`), assinar plano pedindo CPF/CNPJ e erro claro
+do Asaas, custo de IA medido de verdade (`readBody` fora do contexto) e teto
+global por dia, crédito reservado antes de gerar e devolvido em qualquer
+falha (inclusive ao guardar), gravação da programação com versão (409), TV
+que não trava (timers e expediente), LGPD sem sobras.
+
+**Fase 1 — facilidade**
+- **Perfil da conta** (D4, `js/perfil.js`): Empresa/Comércio/Saúde muda os
+  começos, os exemplos, "loja/empresa/clínica", a amostra de paleta, o que a
+  IA ouve e o texto padrão das campanhas.
+- **Criar**: dúvida, aviso, peça ou campanha (D5); cartão "O que vou criar"
+  só com o combinado; **esboço da TV e cartões de cor antes de gastar** (D13,
+  `escopo.cores`); referências de estilo lidas no Criar (D9); aba **Criando**
+  com aviso "ficou pronta" em qualquer página (D11, `web/src/lib/trabalhos.js`);
+  10 a 12 começos rápidos por perfil (D17).
+- **Marca** (D6–D9): logo primeiro, tudo salva sozinho; logo analisada e
+  corrigida com antes/depois (vetoriza, tira fundo, versões clara/escura,
+  `web/src/lib/logo.js`); SVG sanitizado; a logo vai à TV e às peças (D8);
+  site lido com CSS e og:image no acervo; fotos "da marca" em Mídias.
+- **Campanhas em pastas** (D10): busca, arquivar, renomear, excluir, sem o
+  corte de 20; "pasta" em Meus Designs.
+- **Programação** (D14): rascunho — a TV só muda no "Publicar"; conflito
+  guarda o rascunho e oferece publicar por cima, dizendo o que some.
+- **TV**: rodapé legível (um relógio só, AVISOS, frase até o fim, g/p/j,
+  zona vazia com a marca, letreiro editável na campanha — D12); aniversário
+  na semana e mural sozinhos (D15, `server/automaticos.js`); 43 modelos-ouro
+  com a marca em Peças prontas (D16). SW em v48.
+
+**Esperando o dono**: aprovar a proposta do D15 (#135) e decidir o
+lançamento. **Próximo**: Fase 2 (D18–D22).
+
+## Onde paramos — rodadas anteriores
 
 A rodada de 21/10 (PRs #137 a #167) foi a fila do
 [`EXECUTOR.md`](EXECUTOR.md), itens 1 a 18: um PR por item, com o consultor
