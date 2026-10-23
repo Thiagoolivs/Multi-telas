@@ -1729,6 +1729,7 @@
       marca: t.brand ? { cores: [t.brand, t.brand2].filter(Boolean) } : null,
       leve: document.documentElement.classList.contains('mt-perf'),
       marcaNaTela: !!global.MT_MARCA_NA_TELA,
+      logo: global.MT_LOGO || null,
       hostsMidia: global.MT_HOSTS_MIDIA || [],
       clima: climaDaPeca,
     }, extra || {});

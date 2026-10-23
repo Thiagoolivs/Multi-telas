@@ -196,7 +196,9 @@ test('item 39: o exemplo "Raft Embalagens" não vai mais para a TV de cliente', 
   const t = ler('server/routes/telas.js');
   assert.match(t, /if \(empresa && \(!s\.nome \|\| s\.nome === device\.name\)\) \{ s\.nome = empresa; mudou = true; \}/);
   assert.match(t, /nomeDaConta\(cfg, device, await empresaDa\(device\.tenant_id\)\);/, 'ao gravar');
-  assert.match(t, /if \(c && c\.settings && nomeDaConta\(c, device, await empresaDa\(device\.tenant_id\)\)\) corpo = JSON\.stringify\(c\);/, 'ao entregar à TV');
+  // Desde o D8 a entrega também leva a logo: o nome da conta continua passando por aqui.
+  assert.match(t, /let mudou = !!\(c && c\.settings && nomeDaConta\(c, device, await empresaDa\(device\.tenant_id\)\)\);/, 'ao entregar à TV');
+  assert.match(t, /if \(mudou\) corpo = JSON\.stringify\(c\);/);
 });
 
 test('item 40: Programação tem aba própria; Telas fica com o aparelho', async () => {

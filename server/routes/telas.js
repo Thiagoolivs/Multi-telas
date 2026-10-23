@@ -26,6 +26,7 @@ module.exports = function (ctx) {
   // De onde a TV aceita foto de peça em HTML: o host público do storage (R2),
   // quando há um. Relativo (disco), só /media/.
   const pecaHtml = require('../../js/peca-html.js');
+  const paleta = require('../paleta.js');
   const hostsMidia = (() => {
     try { return [new URL(storage.publicUrl('x')).host]; } catch (e) { return []; }
   })();
@@ -216,7 +217,17 @@ module.exports = function (ctx) {
         let corpo = device.config;
         try {
           const c = JSON.parse(device.config);
-          if (c && c.settings && nomeDaConta(c, device, await empresaDa(device.tenant_id))) corpo = JSON.stringify(c);
+          let mudou = !!(c && c.settings && nomeDaConta(c, device, await empresaDa(device.tenant_id)));
+          /*
+           * A logo da marca (D8): `settings.logoUrl` nunca era preenchido, e a
+           * TV mostrava o nome em texto. Vai só para a TV (token), calculada
+           * agora: o painel lê a mesma rota e gravaria a logo velha de volta.
+           */
+          if (dtOk && c && c.settings) {
+            const logo = await paleta.logoDaConta(db, device.tenant_id);
+            if (logo) { c.settings.logo = logo; mudou = true; }
+          }
+          if (mudou) corpo = JSON.stringify(c);
         } catch (e) { /* config ilegível: vai como está, e a TV se vira */ }
         return res.end(corpo);
       }

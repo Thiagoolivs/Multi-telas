@@ -74,6 +74,10 @@ export function BrandPage({ onIr }) {
   const logo = assets.find((a) => a.kind === 'logo');
   const logoClara = assets.find((a) => a.kind === 'logo-clara');
   const logoEscura = assets.find((a) => a.kind === 'logo-escura');
+  // A logo trocada vale já nas prévias das peças (o App só lê no login).
+  useEffect(() => {
+    if (data) globalThis.MT_LOGO = logo ? { url: logo.url, clara: (logoClara && logoClara.url) || '', escura: (logoEscura && logoEscura.url) || '' } : null;
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
   const fotos = assets.filter((a) => a.kind === 'base');
   const referencias = assets.filter((a) => a.kind === 'referencia');
 

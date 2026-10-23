@@ -142,6 +142,8 @@ export default function App() {
       setSemRede(false);
       // Empresa, Comércio ou Saúde: as páginas leem com usePerfil() (D4).
       if (me && me.tenant) definirPerfil(me.tenant.perfil);
+      // A logo da marca: as prévias das peças desenham com ela, como a TV (D8).
+      globalThis.MT_LOGO = (me && me.tenant && me.tenant.logo) || null;
       setSession(me || null);
     })
     .catch(() => setSemRede(true));

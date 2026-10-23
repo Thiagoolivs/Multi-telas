@@ -54,4 +54,16 @@ async function perfilDaConta(db, tenantId, tenant) {
   return Perfil.deduzir(await ramoDaConta(db, tenantId));
 }
 
-module.exports = { garantir, ramoDaConta, perfilDaConta };
+/*
+ * A logo da marca ativa, nas três versões (D7): a original, a branca (para
+ * fundo escuro) e a escura (para fundo claro). Quem desenha escolhe pelo
+ * fundo; sem versão, vai a original. Null quando não há logo.
+ */
+async function logoDaConta(db, tenantId) {
+  const assets = await db.listBrandAssets(tenantId).catch(() => []);
+  const de = (k) => ((assets || []).find((a) => a.kind === k) || {}).url || '';
+  const url = de('logo');
+  return url ? { url, clara: de('logo-clara'), escura: de('logo-escura') } : null;
+}
+
+module.exports = { garantir, ramoDaConta, perfilDaConta, logoDaConta };
