@@ -532,6 +532,8 @@ const q = {
   usoIAPorTenant: db.prepare('SELECT id, tipo, creditos, custo_centavos, referencia, created_at FROM uso_ia WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?'),
   usoIAResumo: db.prepare('SELECT COALESCE(SUM(creditos),0) AS creditos, COALESCE(SUM(custo_centavos),0) AS centavos, COUNT(*) AS n FROM uso_ia WHERE tenant_id = ? AND created_at > ?'),
   usoIADesde: db.prepare('SELECT COUNT(*) AS n FROM uso_ia WHERE tenant_id = ? AND created_at > ?'),
+  gastoIAGlobal: db.prepare('SELECT COALESCE(SUM(custo_centavos),0) AS centavos FROM uso_ia WHERE created_at > ?'),
+  debitarCreditos: db.prepare('UPDATE tenants SET creditos_franquia = MAX(0, COALESCE(creditos_franquia, 0) - ?), creditos_comprados = MAX(0, COALESCE(creditos_comprados, 0) - ?) WHERE id = ?'),
   creditosDo: db.prepare('SELECT creditos_franquia, creditos_comprados, creditos_ciclo FROM tenants WHERE id = ?'),
   setCreditos: db.prepare('UPDATE tenants SET creditos_franquia = ?, creditos_comprados = ?, creditos_ciclo = ? WHERE id = ?'),
   apagarUsoIA: db.prepare('DELETE FROM uso_ia WHERE tenant_id = ?'),
@@ -703,6 +705,11 @@ async function resumoUsoIA(tenantId, desde) {
   return { creditos: Number(r.creditos), custoCentavos: Number(r.centavos), chamadas: Number(r.n) };
 }
 async function contarUsoIA(tenantId, desde) { return Number(q.usoIADesde.get(tenantId, desde || 0).n); }
+// O gasto de todas as contas (teto global, uso-ia.js) e o débito como subtração (ver db-postgres.js).
+async function gastoIAGlobal(desde) { return Number(q.gastoIAGlobal.get(desde || 0).centavos); }
+async function debitarCreditos(tenantId, daFranquia, doComprado) {
+  q.debitarCreditos.run(Math.max(0, Number(daFranquia) || 0), Math.max(0, Number(doComprado) || 0), tenantId);
+}
 
 async function getCreditos(tenantId) {
   const r = q.creditosDo.get(tenantId);
@@ -1634,7 +1641,7 @@ module.exports = {
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
   frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta, registrarAcessoSuporte, acessosSuporte,
-  registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, getCreditos, setCreditos,
+  registrarUsoIA, listarUsoIA, resumoUsoIA, contarUsoIA, gastoIAGlobal, debitarCreditos, getCreditos, setCreditos,
   createMedia, listMedia, getMedia, removeMedia, sumMediaBytes,
   bancoOferecer, bancoPorId, bancoPorMedia, bancoDoTenant, bancoPorEstado, bancoDecidir, bancoUsar, bancoBuscar, bancoApagarDaMedia,
   replaceBirthdays, listBirthdays, clearBirthdays, setBirthdayPhoto, countBirthdays,

@@ -216,6 +216,18 @@ async function geminiUmModelo(modelo, o) {
         };
       }
       motivo = (cand && cand.finishReason) || (data.promptFeedback && data.promptFeedback.blockReason) || '?';
+      /*
+       * Resposta vazia é cobrada: o modelo gastou a saída "pensando". Antes
+       * ela sumia da conta e o custo do mês saía menor que a fatura do Google.
+       */
+      const u = data.usageMetadata || {};
+      if (u.promptTokenCount || u.candidatesTokenCount || u.thoughtsTokenCount) {
+        const cache = u.cachedContentTokenCount || 0;
+        const uso = { motor: 'gemini', provedor: 'gemini', modelo, entrada: Math.max(0, (u.promptTokenCount || 0) - cache),
+          saida: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0), cacheLida: cache, cacheEscrita: 0, ms: 0, vazia: true };
+        uso.custoCentavos = custoCentavos(uso);
+        anotar(uso);
+      }
       continue;
     }
     const msg = (data && data.error && data.error.message) || ('Gemini HTTP ' + res.status);
@@ -300,10 +312,18 @@ const medidor = new AsyncLocalStorage();
 function medir(fn) { return medidor.run({ chamadas: [] }, fn); }
 function anotar(uso) { const s = medidor.getStore(); if (s) s.chamadas.push(uso); }
 
+/*
+ * O caderno da requisição, para ser lido DEPOIS dela. A rota responde e a
+ * conta da IA ainda não acabou (o trabalho em segundo plano continua
+ * anotando no mesmo caderno); quem registra no fim guarda a referência e
+ * consome com consumirDe (server.js, rotas de IA; server/jobs.js).
+ */
+function medicaoAtual() { return medidor.getStore() || null; }
+
 // Soma o que foi medido até aqui na requisição e zera, para não contar duas vezes.
-function consumirMedicao() {
-  const s = medidor.getStore();
-  const chamadas = s ? s.chamadas.splice(0) : [];
+function consumirMedicao() { return consumirDe(medidor.getStore()); }
+function consumirDe(s) {
+  const chamadas = s && s.chamadas ? s.chamadas.splice(0) : [];
   const soma = { chamadas: chamadas.length, entrada: 0, saida: 0, cacheLida: 0, cacheEscrita: 0, custoCentavos: 0, modelos: '' };
   for (const c of chamadas) {
     soma.entrada += c.entrada; soma.saida += c.saida; soma.cacheLida += c.cacheLida; soma.cacheEscrita += c.cacheEscrita;
@@ -359,4 +379,4 @@ async function chamarUm(motor, o) {
   return { texto: r.texto, uso };
 }
 
-module.exports = { MOTORES, GEMINI_CANDIDATOS, geminiTentaOutro, tipoDoErro, erroIA, fraseDoErro, iaIndisponivel, motorPadrao, chamar, custoCentavos, precos, medir, consumirMedicao };
+module.exports = { MOTORES, GEMINI_CANDIDATOS, geminiTentaOutro, tipoDoErro, erroIA, fraseDoErro, iaIndisponivel, motorPadrao, chamar, custoCentavos, precos, medir, medicaoAtual, consumirMedicao, consumirDe };

@@ -108,7 +108,7 @@ async function conferir(db, tenant, tipo, quantidade) {
  * estimativas de custo desta proposta por medição de verdade — e é o que
  * mostra, no fim do mês, se a franquia está calibrada.
  */
-async function cobrar(db, tenant, { tipo, quantidade, userId, referencia }) {
+async function cobrar(db, tenant, { tipo, quantidade, userId, referencia, medicao }) {
   const op = cred.operacao(tipo);
   const n = Math.max(1, Math.floor(Number(quantidade) || 1));
   const creditos = cred.creditosDe(tipo, n);
@@ -119,11 +119,18 @@ async function cobrar(db, tenant, { tipo, quantidade, userId, referencia }) {
    * imagem continua estimada — o provedor de imagem não devolve tokens — e
    * soma o texto medido da mesma requisição.
    */
-  const medido = motores.consumirMedicao();
+  // `medicao`: o caderno guardado na entrada da rota, lido quando ela termina (server.js).
+  const medido = medicao ? motores.consumirDe(medicao) : motores.consumirMedicao();
   const estimado = op ? op.custoCentavos * n : 0;
+  /*
+   * Sem chamada medida, texto custa ZERO, e não a estimativa de 5 centavos:
+   * a requisição não chamou a IA (modo dev, pedido inválido, trabalho que
+   * ainda vai rodar — esse se registra sozinho no fim, jobs.aoMedir). Só a
+   * imagem, que o provedor não mede, continua estimada.
+   */
   const custoCentavos = medido.chamadas
     ? Math.round((creditos > 0 ? estimado : 0) + medido.custoCentavos)
-    : estimado;
+    : (creditos > 0 ? estimado : 0);
 
   /*
    * REGISTRA ANTES DE DEBITAR, e a ordem não é gosto.
@@ -159,11 +166,9 @@ async function cobrar(db, tenant, { tipo, quantidade, userId, referencia }) {
        */
       const daFranquia = parte ? parte.daFranquia : Math.min(conta.franquiaRestante, creditos);
       const doComprado = parte ? parte.doComprado : Math.min(conta.creditosComprados, creditos - daFranquia);
-      await db.setCreditos(tenant.id, {
-        franquiaRestante: conta.franquiaRestante - daFranquia,
-        creditosComprados: conta.creditosComprados - doComprado,
-        cicloEm: conta.cicloEm,
-      });
+      // Subtração no banco (db.debitarCreditos): um pacote pago ou outro
+      // trabalho da conta no meio do caminho não é sobrescrito.
+      await db.debitarCreditos(tenant.id, daFranquia, doComprado);
     } catch (e) {
       console.warn('[uso-ia] não consegui debitar:', e.message);
     }
@@ -200,4 +205,95 @@ async function panorama(db, tenant) {
   };
 }
 
-module.exports = { garantirCiclo, renovarCiclo, conferir, cobrar, tetoTextoOk, panorama, MES };
+/*
+ * O que um trabalho em segundo plano gastou de texto (jobs.aoMedir), numa
+ * linha própria do uso_ia. Sem crédito: texto não consome criação.
+ */
+async function registrarMedicao(db, tenantId, { tipo, userId, referencia }, medido) {
+  if (!medido || !medido.chamadas) return null;
+  return db.registrarUsoIA(tenantId, {
+    userId: userId || '', tipo: tipo || 'trabalho', creditos: 0,
+    custoCentavos: Math.round(medido.custoCentavos), referencia: referencia || '', tokens: medido,
+  });
+}
+
+/* ---------------- O teto em reais (EXECUTOR D0.4) ---------------- */
+
+/*
+ * O único teto do texto era a CONTAGEM de chamadas (400/dia, 80/h), e uma
+ * "chamada" de campanha faz dezenas de composições de 8 mil tokens. Não havia
+ * teto em reais, nem por conta nem no total, nem alarme — e o Gemini bateu o
+ * teto de gasto do mês sem ninguém ver antes (23/10).
+ *
+ * Por conta, por ciclo: as criações do plano (plans.tetoIaCents, que já paga
+ * as imagens) mais uma margem para o texto. No teste, um valor fixo. Global,
+ * por dia: MT_TETO_IA_DIA_CENTAVOS, a última rede antes da fatura do provedor.
+ * Passou: a IA para com uma frase que diz que as telas continuam no ar, e o
+ * operador vê o alarme em Erros, no painel da plataforma.
+ */
+const MARGEM_TEXTO_CENTS = 2000;
+const TETO_TESTE_CENTS = 1500;
+const tetoGlobalDia = () => Number(process.env.MT_TETO_IA_DIA_CENTAVOS) || 30000;
+
+function tetoDaConta(tenant, telas) {
+  return plans.isPaid(tenant.plan) ? plans.tetoIaCents(telas) + MARGEM_TEXTO_CENTS : TETO_TESTE_CENTS;
+}
+
+const avisados = new Map(); // chave → até quando não avisar de novo
+function alarme(chave, mensagem, contexto, porMs) {
+  const agora = Date.now();
+  if ((avisados.get(chave) || 0) > agora) return;
+  avisados.set(chave, agora + porMs);
+  require('./erros.js').registrar(new Error(mensagem), contexto);
+}
+
+// Um minuto de cache por banco: a soma de todas as contas não roda a cada mensagem do chat.
+const cacheGlobal = new WeakMap();
+async function gastoGlobal(db) {
+  const c = cacheGlobal.get(db);
+  if (c && Date.now() - c.em < 60 * 1000) return c.centavos;
+  const centavos = typeof db.gastoIAGlobal === 'function' ? await db.gastoIAGlobal(Date.now() - 24 * 60 * 60 * 1000) : 0;
+  cacheGlobal.set(db, { em: Date.now(), centavos });
+  return centavos;
+}
+
+function dataCurta(ms) {
+  const d = new Date(ms);
+  return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+/*
+ * Pode chamar a IA de texto agora? { ok } ou { ok: false, status, corpo }.
+ * A ordem é a do que a pessoa consegue resolver: pagar, assinar, esperar.
+ */
+async function podeUsarTexto(db, tenant) {
+  if (plans.bloqueioPorAtraso(tenant)) return { ok: false, status: 402, corpo: cred.pagamentoAtrasado() };
+  if (!plans.isPaid(tenant.plan) && !plans.testeAtivo(tenant)) return { ok: false, status: 402, corpo: cred.testeAcabou() };
+  if (!(await tetoTextoOk(db, tenant))) {
+    return { ok: false, status: 429, corpo: { error: 'Muitas chamadas de IA nesta conta hoje. Tente de novo mais tarde.' } };
+  }
+  const global = await gastoGlobal(db);
+  if (global >= tetoGlobalDia()) {
+    alarme('global', 'IA: teto global do dia atingido', { gastoCentavos: global, teto: tetoGlobalDia() }, 60 * 60 * 1000);
+    return { ok: false, status: 503, corpo: { error: 'A IA está em pausa por um tempo. O que você já fez está salvo, e as suas telas continuam no ar.' } };
+  }
+  const conta = await garantirCiclo(db, tenant);
+  const telas = await db.countDevices(tenant.id);
+  const gasto = (await db.resumoUsoIA(tenant.id, conta.cicloEm)).custoCentavos;
+  const teto = tetoDaConta(tenant, Math.max(1, telas));
+  if (gasto >= teto) {
+    alarme('conta:' + tenant.id + ':' + conta.cicloEm, 'IA: conta passou do teto de gasto do ciclo', { tenant: tenant.id, gastoCentavos: gasto, teto }, MES);
+    return {
+      ok: false, status: 402,
+      corpo: {
+        erro: 'teto_ia', titulo: 'A IA desta conta chegou ao limite do mês',
+        mensagem: 'Suas telas continuam no ar, e os modelos prontos e as suas fotos seguem liberados. '
+          + 'A IA volta em ' + dataCurta(conta.cicloEm + MES) + '. Precisa antes? Fale com a gente pelo Suporte.',
+        saidas: ['usar-biblioteca'],
+      },
+    };
+  }
+  return { ok: true, gasto, teto };
+}
+
+module.exports = { garantirCiclo, renovarCiclo, conferir, cobrar, registrarMedicao, podeUsarTexto, tetoDaConta, tetoTextoOk, panorama, MES, MARGEM_TEXTO_CENTS, TETO_TESTE_CENTS };
