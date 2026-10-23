@@ -34,12 +34,14 @@ function diasParaSair(pedido, hoje) {
   return dias <= AVISO_DIAS ? Math.max(0, dias) : null;
 }
 
-async function varrer({ db, midia, agora }) {
+// `emUso(tenantId, url)`: onde a mídia aparece (TVs, campanhas, marca). Em uso, o arquivo fica e sai só a linha.
+async function varrer({ db, midia, agora, emUso }) {
   const quando = agora ? new Date(agora) : new Date();
   const hoje = F.hojeIso(quando);
   const r = { muraisDeData: 0, fotos: 0 };
   const apagar = async (f) => {
-    if (f.mediaId) await midia.apagar(db, f.tenantId, f.mediaId).catch(() => {});
+    const usos = emUso && f.url ? await emUso(f.tenantId, f.url).catch(() => []) : [];
+    if (f.mediaId && !usos.length) await midia.apagar(db, f.tenantId, f.mediaId).catch(() => {});
     await db.removerFotoPessoa(f.id, f.tenantId);
     r.fotos += 1;
   };
