@@ -1,5 +1,5 @@
 {
-  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens).",
+  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens). Telas prontas (D18): lotes de 20, por perfil ('perfil') e estrutura ('estrutura'), em estado 'proposta' até o dono aprovar na bancada.",
   "marcas": [
     {
       "id": "otica",
@@ -817,7 +817,7 @@
               "campos": {
                 "kicker": "Pelo celular",
                 "titulo": "Mamografia",
-                "titulo2": "com hora marcada",
+                "titulo2": "agendada",
                 "meta": "Pedido médico e documento com foto",
                 "preco": "180",
                 "centavos": ",00",
@@ -989,6 +989,1937 @@
         "Ramal do RH: 2040"
       ],
       "sobre": "Comunicação interna: o cabeçalho diz que é o mural; o destaque fala de gente (aniversário, quem chegou) e do recado da empresa; a lateral, a lista do mês e a vaga com QR para indicar; o rodapé, os avisos do dia a dia."
+    },
+    {
+      "id": "l1-comercio-vitrine",
+      "nome": "Vitrine de ofertas",
+      "perfil": "comercio",
+      "estrutura": "E1 vitrine",
+      "marca": "otica",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cabecalho-classico",
+              "campos": {
+                "marca": "Ótica Central",
+                "chamada": "Ofertas da semana"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "oferta-foto",
+              "campos": {
+                "marca": "Ótica Central",
+                "kicker": "Só esta semana",
+                "titulo": "Óculos de sol",
+                "oferta": "30% off",
+                "apoio": "Em todas as armações da vitrine, com proteção UV400.",
+                "preco-rotulo": "a partir de",
+                "parcelas": "10x de",
+                "preco": "29",
+                "centavos": ",90",
+                "cta": "Experimente na loja"
+              }
+            },
+            {
+              "id": "oferta-lista",
+              "campos": {
+                "marca": "Ótica Central",
+                "kicker": "Mais pedidos",
+                "titulo": "Escolha o seu",
+                "apoio": "Preços à vista no Pix",
+                "item1-nome": "Armação de grau",
+                "item1-detalhe": "acetato, várias cores",
+                "item1-preco": "R$ 199",
+                "item2-nome": "Lentes antirreflexo",
+                "item2-detalhe": "com garantia de 1 ano",
+                "item2-preco": "R$ 249",
+                "item3-nome": "Lente de contato",
+                "item3-detalhe": "caixa com 6",
+                "item3-preco": "R$ 129",
+                "cta": "Fale com a gente"
+              }
+            },
+            {
+              "id": "numero-grande",
+              "campos": {
+                "marca": "Ótica Central",
+                "numero": "10",
+                "unidade": "x",
+                "kicker": "Sem juros",
+                "titulo": "no cartão",
+                "apoio": "Em toda a loja, sem valor mínimo.",
+                "endereco": "Rua das Flores, 120"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "lateral-prazo",
+              "campos": {
+                "kicker": "Termina",
+                "pre": "no",
+                "dia": "sábado",
+                "data": "31/10",
+                "apoio": "Enquanto durar o estoque",
+                "cta": "Aproveite"
+              }
+            },
+            {
+              "id": "lateral-qr",
+              "campos": {
+                "kicker": "Peça pelo WhatsApp",
+                "titulo": "Aponte a câmera",
+                "apoio": "A gente responde em minutos",
+                "contato": "(11) 97777-0000",
+                "link": "https://wa.me/5511977770000"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "10x sem juros no cartão",
+        "Exame de vista com hora marcada",
+        "Aberto de segunda a sábado, até 19h"
+      ],
+      "sobre": "A loja inteira numa tela: a oferta com foto na principal, o prazo e o QR do WhatsApp do lado, os avisos embaixo.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-comercio-cardapio",
+      "nome": "Cardápio do dia",
+      "perfil": "comercio",
+      "estrutura": "E2 cardápio",
+      "marca": "padaria",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-status",
+              "campos": {
+                "desde": "Desde 1987",
+                "marca": "Padaria do Bairro",
+                "status": "Aberto agora",
+                "horario": "até as 20h"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cardapio-colunas",
+              "campos": {
+                "marca": "Padaria do Bairro",
+                "kicker": "Hoje",
+                "titulo": "Café da manhã",
+                "apoio": "Feito na hora",
+                "item1-nome": "Pão na chapa",
+                "item1-preco": "6",
+                "item1-centavos": ",50",
+                "item1-medida": "un",
+                "item2-nome": "Pão de queijo",
+                "item2-preco": "4",
+                "item2-centavos": ",00",
+                "item2-medida": "un",
+                "item3-nome": "Misto quente",
+                "item3-preco": "12",
+                "item3-centavos": ",00",
+                "item3-medida": "un",
+                "item4-nome": "Café coado",
+                "item4-preco": "5",
+                "item4-centavos": ",00",
+                "item4-medida": "200 ml",
+                "item5-nome": "Suco de laranja",
+                "item5-preco": "9",
+                "item5-centavos": ",00",
+                "item5-medida": "300 ml",
+                "item6-nome": "Bolo do dia",
+                "item6-preco": "8",
+                "item6-centavos": ",00",
+                "item6-medida": "fatia",
+                "cta": "Peça no balcão"
+              }
+            },
+            {
+              "id": "cardapio-combo",
+              "campos": {
+                "marca": "Padaria do Bairro",
+                "kicker": "Até as 10h",
+                "titulo": "Combo",
+                "titulo2": "da manhã",
+                "item1": "Café coado",
+                "item1-detalhe": "200 ml",
+                "item2": "Pão na chapa",
+                "item2-detalhe": "com manteiga",
+                "item3": "Suco de laranja",
+                "item3-detalhe": "300 ml",
+                "preco-rotulo": "tudo por",
+                "preco": "17",
+                "centavos": ",90",
+                "nota": "De segunda a sexta"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "cardapio-bebidas",
+              "campos": {
+                "kicker": "Bebidas",
+                "titulo": "Para acompanhar",
+                "tam1": "P",
+                "tam2": "M",
+                "tam3": "G",
+                "bebida1": "Café",
+                "b1-p1": "4",
+                "b1-p2": "5",
+                "b1-p3": "6",
+                "bebida2": "Cappuccino",
+                "b2-p1": "7",
+                "b2-p2": "9",
+                "b2-p3": "11",
+                "bebida3": "Chocolate",
+                "b3-p1": "7",
+                "b3-p2": "9",
+                "b3-p3": "11",
+                "bebida4": "Suco",
+                "b4-p1": "7",
+                "b4-p2": "9",
+                "b4-p3": "11"
+              }
+            },
+            {
+              "id": "social-instagram",
+              "campos": {
+                "kicker": "Siga a gente",
+                "arroba": "@padariadobairro",
+                "apoio": "Fornada nova todo dia nos stories",
+                "link": "https://instagram.com/padariadobairro"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Pagamento",
+                "pagamento1": "Pix",
+                "pagamento2": "Débito",
+                "pagamento3": "Crédito",
+                "pagamento4": "VR e VA"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Pão quentinho às 7h, 11h e 16h",
+        "Encomendas de bolo com 2 dias",
+        "Aceitamos Pix, cartão, VR e VA"
+      ],
+      "sobre": "Para quem vende comida: o cardápio com preço na principal, o combo do horário e as bebidas do lado.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-comercio-relampago",
+      "nome": "Promoção relâmpago",
+      "perfil": "comercio",
+      "estrutura": "E3 relâmpago",
+      "marca": "salao",
+      "layout": "header-main-ticker",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-chamada",
+              "campos": {
+                "marca": "Studio Bella",
+                "chamada": "Promoção relâmpago",
+                "quando": "só hoje"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "oferta-selo",
+              "campos": {
+                "marca": "Studio Bella",
+                "kicker": "Toda terça",
+                "titulo": "Coloração",
+                "titulo2": "com desconto",
+                "apoio": "Agende pelo WhatsApp e garanta o horário.",
+                "cta": "Agende já",
+                "desconto": "20",
+                "off": "% off",
+                "nota": "Válido até as 18h"
+              }
+            },
+            {
+              "id": "oferta-parcelado",
+              "campos": {
+                "marca": "Studio Bella",
+                "kicker": "Pacote completo",
+                "titulo": "Dia da noiva",
+                "item1": "Cabelo",
+                "item2": "Maquiagem",
+                "item3": "Unhas",
+                "vezes": "6x",
+                "de": "de",
+                "parcela": "89",
+                "centavos": ",90",
+                "total": "Total R$ 539,40"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-contagem",
+              "campos": {
+                "rotulo": "A promoção termina em"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Agende pelo WhatsApp",
+        "Estacionamento conveniado na esquina",
+        "Parcelamos em até 6x sem juros"
+      ],
+      "sobre": "Urgência: o cabeçalho chama, a oferta tem selo de desconto e o rodapé conta o tempo que falta.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-comercio-institucional",
+      "nome": "Quem somos (loja)",
+      "perfil": "comercio",
+      "estrutura": "E9 institucional",
+      "marca": "otica",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "cabecalho-centro",
+              "campos": {
+                "marca": "Ótica Central",
+                "sub": "Desde 1998 no centro"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "institucional-foto",
+              "campos": {
+                "marca": "Ótica Central",
+                "kicker": "Feito para você",
+                "titulo": "Enxergar bem",
+                "titulo2": "com estilo",
+                "endereco": "Rua das Flores, 120 · Centro"
+              }
+            },
+            {
+              "id": "institucional-valores",
+              "campos": {
+                "marca": "Ótica Central",
+                "kicker": "O que nos move",
+                "titulo": "Sua visão",
+                "titulo2": "em boas mãos",
+                "valor1": "Exame",
+                "valor1-texto": "Com optometrista",
+                "valor2": "Ajuste",
+                "valor2-texto": "Grátis, para sempre",
+                "valor3": "Garantia",
+                "valor3-texto": "1 ano nas lentes"
+              }
+            },
+            {
+              "id": "manifesto",
+              "campos": {
+                "marca": "Ótica Central",
+                "kicker": "Nossa história",
+                "linha1": "Uma bancada,",
+                "linha2": "um cliente por vez.",
+                "linha3": "Desde 1998.",
+                "assinatura": "Família Souza"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "social-instagram",
+              "campos": {
+                "kicker": "Siga a gente",
+                "arroba": "@oticacentral",
+                "apoio": "Lançamentos e dicas nos stories",
+                "link": "https://instagram.com/oticacentral"
+              }
+            },
+            {
+              "id": "lateral-qr",
+              "campos": {
+                "kicker": "Fale com a gente",
+                "titulo": "Aponte a câmera",
+                "apoio": "Agende o exame de vista",
+                "contato": "(11) 97777-0000",
+                "link": "https://wa.me/5511977770000"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Venha nos ver",
+                "rotulo1": "Endereço",
+                "contato1": "Rua das Flores, 120",
+                "rotulo2": "Horário",
+                "contato2": "Seg a sáb, 9h às 19h",
+                "rotulo3": "Pagamento",
+                "contato3": "Em até 10x sem juros"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ajuste de armação grátis",
+        "Lentes prontas em 3 dias",
+        "Exame de vista com hora marcada"
+      ],
+      "sobre": "A tela que conta quem é a loja: foto do lugar, valores, a história e onde achar nas redes.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-comercio-lancamento",
+      "nome": "Lançamento de coleção",
+      "perfil": "comercio",
+      "estrutura": "E10 lançamento",
+      "marca": "otica",
+      "layout": "full-ticker",
+      "zonas": {
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "institucional-lancamento",
+              "campos": {
+                "marca": "Ótica Central",
+                "selo": "Lançamento",
+                "titulo": "Coleção",
+                "titulo2": "Verão 2027",
+                "apoio": "Armações leves, cores do mar e lentes polarizadas.",
+                "quando": "A partir de 05/11"
+              }
+            },
+            {
+              "id": "oferta-foto",
+              "campos": {
+                "marca": "Ótica Central",
+                "kicker": "Pré-venda",
+                "titulo": "Reserve já",
+                "oferta": "15% off",
+                "apoio": "Na reserva até o dia do lançamento.",
+                "preco-rotulo": "a partir de",
+                "parcelas": "10x de",
+                "preco": "39",
+                "centavos": ",90",
+                "cta": "Reserve na loja"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-contagem",
+              "campos": {
+                "rotulo": "Lançamento em"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Reserve com 15% de desconto",
+        "Lentes polarizadas em todas as armações",
+        "Coleção nova na vitrine em novembro"
+      ],
+      "sobre": "Tela cheia para um lançamento: a novidade em destaque e a contagem regressiva embaixo.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-comercio-totem",
+      "nome": "Totem de oferta (em pé)",
+      "perfil": "comercio",
+      "estrutura": "E11 totem",
+      "marca": "lanchonete",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Lanchonete da Praça"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cardapio-dia-foto",
+              "campos": {
+                "marca": "Lanchonete da Praça",
+                "kicker": "Prato do dia",
+                "titulo": "Churrasco",
+                "titulo2": "com milho",
+                "acompanha": "Linguiça, frango e alcatra com arroz e feijão",
+                "quando": "Hoje, no almoço",
+                "preco": "29",
+                "centavos": ",90"
+              }
+            },
+            {
+              "id": "oferta-selo",
+              "campos": {
+                "marca": "Lanchonete da Praça",
+                "kicker": "Hoje",
+                "titulo": "Burger",
+                "titulo2": "em dobro",
+                "apoio": "O segundo sai pela metade do preço.",
+                "cta": "Peça no balcão",
+                "desconto": "50",
+                "off": "% off",
+                "nota": "No segundo burger"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "servico-horario",
+              "campos": {
+                "kicker": "Funcionamento",
+                "titulo": "Abertos",
+                "titulo2": "todo dia",
+                "dia1": "Seg a sex",
+                "hora1": "11h – 22h",
+                "dia2": "Sábado",
+                "hora2": "11h – 23h",
+                "dia3": "Domingo",
+                "hora3": "12h – 20h",
+                "nota": "Delivery até as 21h30"
+              }
+            },
+            {
+              "id": "social-avaliacao",
+              "campos": {
+                "kicker": "Avalie a gente",
+                "nota": "4,8",
+                "total": "1.240 avaliações",
+                "titulo": "Gostou?",
+                "titulo2": "Conta pra gente",
+                "link": "https://g.page/r/lanchonete",
+                "pedido": "Aponte a câmera"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Débito",
+                "pagamento3": "Crédito",
+                "pagamento4": "VR"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Delivery pelo WhatsApp",
+        "Wi-Fi grátis: peça a senha no caixa",
+        "Peça no app e retire no balcão"
+      ],
+      "sobre": "Para TV em pé, na entrada: o prato do dia em cima, a oferta embaixo, horário e avaliação.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-comercio-redes",
+      "nome": "Redes e avaliações",
+      "perfil": "comercio",
+      "estrutura": "E12 redes",
+      "marca": "salao",
+      "layout": "sidebar-right",
+      "zonas": {
+        "principal": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "social-mural",
+              "campos": {
+                "legenda": "O look da semana",
+                "quando": "Esta semana",
+                "kicker": "No nosso Instagram",
+                "titulo": "Clientes que viraram vitrine",
+                "apoio": "Marque a gente e apareça aqui.",
+                "link": "https://instagram.com/studiobella",
+                "pedido": "Siga @studiobella"
+              }
+            },
+            {
+              "id": "social-avaliacao",
+              "campos": {
+                "kicker": "No Google",
+                "nota": "4,9",
+                "total": "860 avaliações",
+                "titulo": "Gostou?",
+                "titulo2": "Avalie a gente",
+                "link": "https://g.page/r/studiobella",
+                "pedido": "Aponte a câmera"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "social-depoimento",
+              "campos": {
+                "frase": "Saí de lá me sentindo outra pessoa. Atendimento impecável!",
+                "nome": "Carla M.",
+                "quem": "cliente desde 2021"
+              }
+            },
+            {
+              "id": "lateral-chamada",
+              "campos": {
+                "kicker": "Marque a gente",
+                "titulo": "Sua foto nesta TV",
+                "apoio": "Poste com a nossa marcação",
+                "cta": "A gente reposta"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Agende",
+                "rotulo1": "WhatsApp",
+                "contato1": "(11) 96666-0000",
+                "rotulo2": "Endereço",
+                "contato2": "Rua Augusta, 500",
+                "rotulo3": "Horário",
+                "contato3": "Ter a sáb, 9h às 19h"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Agende pelo WhatsApp",
+        "Marque @studiobella e apareça na TV",
+        "Toda terça, coloração com desconto"
+      ],
+      "sobre": "Prova social: o que os clientes dizem, a nota no Google e o QR para seguir.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-empresa-mural",
+      "nome": "Mural da equipe",
+      "perfil": "empresa",
+      "estrutura": "E4 mural da equipe",
+      "marca": "rotasul",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-classico",
+              "campos": {
+                "marca": "Rota Sul",
+                "chamada": "Mural da equipe"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "gente-aniversariante",
+              "campos": {
+                "kicker": "Parabéns!",
+                "iniciais": "AS",
+                "nome": "Ana Souza",
+                "setor": "Recursos Humanos",
+                "recado": "Muitas felicidades, Ana! Da equipe toda."
+              }
+            },
+            {
+              "id": "gente-boas-vindas",
+              "campos": {
+                "marca": "Rota Sul",
+                "iniciais": "RL",
+                "kicker": "Chegou na equipe",
+                "titulo": "Bem-vindo!",
+                "nome": "Rafael Lima",
+                "cargo": "Supervisor da linha 2",
+                "curioso-rotulo": "Curiosidade",
+                "curioso": "Corre maratonas e cozinha para a família aos domingos."
+              }
+            },
+            {
+              "id": "gente-comunicado",
+              "campos": {
+                "rotulo": "Comunicado",
+                "de": "De: Recursos Humanos",
+                "para": "Para: toda a equipe",
+                "assunto": "Vacinação contra a gripe na sexta, aqui na empresa",
+                "texto": "A equipe de saúde atende no refeitório das 9h às 16h. Traga um documento com foto.",
+                "assinatura": "Equipe de RH",
+                "data": "publicado em 20 de outubro"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "gente-mes",
+              "campos": {
+                "kicker": "Aniversariantes",
+                "titulo": "de outubro",
+                "mes": "out",
+                "dia1": "03",
+                "nome1": "João Pereira",
+                "setor1": "Logística",
+                "dia2": "12",
+                "nome2": "Marta Lima",
+                "setor2": "Financeiro",
+                "dia3": "18",
+                "nome3": "Pedro Alves",
+                "setor3": "Produção",
+                "dia4": "23",
+                "nome4": "Carla Nunes",
+                "setor4": "Qualidade",
+                "dia5": "27",
+                "nome5": "Lucas Rocha",
+                "setor5": "Comercial",
+                "dia6": "30",
+                "nome6": "Bia Santos",
+                "setor6": "TI"
+              }
+            },
+            {
+              "id": "gente-vaga",
+              "campos": {
+                "selo": "Vaga aberta",
+                "cargo": "Operador de empilhadeira",
+                "setor": "Logística · turno da manhã",
+                "req1": "Curso de operador",
+                "req2": "Experiência de 6 meses",
+                "req3": "Disponibilidade aos sábados",
+                "link": "https://rotasul.com.br/vagas",
+                "pedido": "Indique alguém",
+                "pedido-apoio": "Fale com o RH ou aponte a câmera"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Refeitório: cardápio novo a partir de segunda",
+        "Use o crachá em todas as áreas",
+        "Ramal do RH: 2040"
+      ],
+      "sobre": "Comunicação interna: quem faz aniversário, quem chegou, o recado da empresa e as vagas.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-empresa-seguranca",
+      "nome": "Segurança e metas",
+      "perfil": "empresa",
+      "estrutura": "E5 segurança e metas",
+      "marca": "rotasul",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cabecalho-status",
+              "campos": {
+                "desde": "Desde 2001",
+                "marca": "Rota Sul",
+                "status": "Turno da manhã",
+                "horario": "6h às 14h"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "numero-grande",
+              "campos": {
+                "marca": "Rota Sul",
+                "numero": "120",
+                "unidade": "dias",
+                "kicker": "Sem acidente",
+                "titulo": "com afastamento",
+                "apoio": "Nosso recorde é 180. Vamos juntos.",
+                "endereco": "Fábrica Rota Sul · Unidade 1"
+              }
+            },
+            {
+              "id": "servico-alerta",
+              "campos": {
+                "kicker": "Atenção",
+                "titulo": "Use o protetor auricular na área de prensas",
+                "apoio": "Ruído acima de 85 dB. EPI é obrigatório, sempre."
+              }
+            },
+            {
+              "id": "institucional-valores",
+              "campos": {
+                "marca": "Rota Sul",
+                "kicker": "Como trabalhamos",
+                "titulo": "Segurança",
+                "titulo2": "em primeiro lugar",
+                "valor1": "Cuidado",
+                "valor1-texto": "Com você e com o colega",
+                "valor2": "Atenção",
+                "valor2-texto": "Viu risco, avise",
+                "valor3": "Respeito",
+                "valor3-texto": "Às regras e às pessoas"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "lateral-chamada",
+              "campos": {
+                "kicker": "Meta do mês",
+                "titulo": "98% da produção",
+                "apoio": "Faltam 2%. Bora!",
+                "cta": "Obrigado, equipe"
+              }
+            },
+            {
+              "id": "servico-alerta",
+              "campos": {
+                "kicker": "SIPAT",
+                "titulo": "De 10 a 14 de novembro",
+                "apoio": "Palestras no refeitório, às 15h."
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Viu risco? Avise o seu líder",
+        "Faixa de pedestre livre, sempre",
+        "Ginástica laboral às 15h"
+      ],
+      "sobre": "Para o chão de fábrica: o placar de dias sem acidente, o alerta do EPI, os valores e a meta.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-empresa-comunicado",
+      "nome": "Comunicado oficial",
+      "perfil": "empresa",
+      "estrutura": "E6 comunicado",
+      "marca": "rotasul",
+      "layout": "header-main-ticker",
+      "zonas": {
+        "cabecalho": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "cabecalho-centro",
+              "campos": {
+                "marca": "Rota Sul",
+                "sub": "Comunicação interna"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "gente-comunicado",
+              "campos": {
+                "rotulo": "Comunicado",
+                "de": "De: Diretoria",
+                "para": "Para: todos os colaboradores",
+                "assunto": "Novo plano de saúde a partir de dezembro",
+                "texto": "A troca de operadora não muda a cobertura. As carteirinhas novas chegam pelo RH até 30/11.",
+                "assinatura": "Diretoria de Pessoas",
+                "data": "publicado em 21 de outubro"
+              }
+            },
+            {
+              "id": "servico-comunicado",
+              "campos": {
+                "marca": "Rota Sul",
+                "mes": "Novembro",
+                "dia": "02",
+                "semana": "Segunda-feira",
+                "kicker": "Feriado",
+                "titulo": "Não haverá expediente",
+                "apoio": "A portaria funciona em regime de plantão. Emergências: ramal 2000.",
+                "volta": "Voltamos na terça, 03, às 6h."
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Dúvidas sobre o plano: RH, ramal 2040",
+        "Reunião geral na sexta, às 9h, no auditório",
+        "Vacinação contra a gripe na sexta"
+      ],
+      "sobre": "O recado oficial em letra grande, com o feriado logo depois; o rodapé repete o essencial.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-empresa-institucional",
+      "nome": "Quem somos (empresa)",
+      "perfil": "empresa",
+      "estrutura": "E9 institucional",
+      "marca": "rotasul",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-centro",
+              "campos": {
+                "marca": "Rota Sul",
+                "sub": "Há 25 anos movendo o Sul"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "manifesto",
+              "campos": {
+                "marca": "Rota Sul",
+                "kicker": "Nossa missão",
+                "linha1": "Levar o que importa",
+                "linha2": "a quem precisa,",
+                "linha3": "no prazo combinado.",
+                "assinatura": "Distribuidora Rota Sul"
+              }
+            },
+            {
+              "id": "institucional-valores",
+              "campos": {
+                "marca": "Rota Sul",
+                "kicker": "Nossos valores",
+                "titulo": "O que nos",
+                "titulo2": "move",
+                "valor1": "Pontualidade",
+                "valor1-texto": "Prazo é compromisso",
+                "valor2": "Segurança",
+                "valor2-texto": "Ninguém se machuca",
+                "valor3": "Gente",
+                "valor3-texto": "Quem faz a Rota Sul"
+              }
+            },
+            {
+              "id": "numero-grande",
+              "campos": {
+                "marca": "Rota Sul",
+                "numero": "98",
+                "unidade": "%",
+                "kicker": "No prazo",
+                "titulo": "das entregas",
+                "apoio": "São 1.200 entregas por dia.",
+                "endereco": "Dados de outubro"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "lateral-chamada",
+              "campos": {
+                "kicker": "Onde estamos",
+                "titulo": "PR, SC e RS",
+                "apoio": "4 centros de distribuição",
+                "cta": "Orgulho de fazer parte"
+              }
+            },
+            {
+              "id": "lateral-qr",
+              "campos": {
+                "kicker": "Trabalhe conosco",
+                "titulo": "Aponte a câmera",
+                "apoio": "Vagas abertas no site",
+                "contato": "rotasul.com.br/vagas",
+                "link": "https://rotasul.com.br/vagas"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Rota Sul",
+                "rotulo1": "Site",
+                "contato1": "rotasul.com.br",
+                "rotulo2": "RH",
+                "contato2": "ramal 2040",
+                "rotulo3": "Ouvidoria",
+                "contato3": "ramal 2099"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Indique um amigo para as vagas abertas",
+        "Ouvidoria: ramal 2099, sigiloso",
+        "Visitantes: crachá na portaria"
+      ],
+      "sobre": "Para a recepção e áreas comuns: quem é a empresa, a missão, os números e as vagas.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-empresa-lancamento",
+      "nome": "Lançamento interno",
+      "perfil": "empresa",
+      "estrutura": "E10 lançamento",
+      "marca": "rotasul",
+      "layout": "full-ticker",
+      "zonas": {
+        "principal": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "institucional-lancamento",
+              "campos": {
+                "marca": "Rota Sul",
+                "selo": "Novidade",
+                "titulo": "Novo sistema",
+                "titulo2": "de ponto",
+                "apoio": "Bata o ponto pelo celular, com o crachá ou pela digital.",
+                "quando": "A partir de 01/11"
+              }
+            },
+            {
+              "id": "servico-passos",
+              "campos": {
+                "marca": "Rota Sul",
+                "kicker": "Passo a passo",
+                "titulo": "Como usar",
+                "titulo2": "o ponto novo",
+                "passo1": "Baixe o app",
+                "passo1-detalhe": "Link no e-mail do RH",
+                "passo2": "Entre com a matrícula",
+                "passo2-detalhe": "E a senha que chegou por SMS",
+                "passo3": "Bata o ponto",
+                "passo3-detalhe": "Na entrada e na saída",
+                "cta": "Dúvidas: ramal 2040"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-contagem",
+              "campos": {
+                "rotulo": "O ponto novo começa em"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Treinamento do ponto novo: quarta, às 14h",
+        "Dúvidas: RH, ramal 2040",
+        "O ponto antigo vale até 31/10"
+      ],
+      "sobre": "Para anunciar uma mudança: o que muda, como fazer em três passos e quanto falta.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-empresa-totem",
+      "nome": "Totem da recepção (em pé)",
+      "perfil": "empresa",
+      "estrutura": "E11 totem",
+      "marca": "rotasul",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Rota Sul"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "gente-boas-vindas",
+              "campos": {
+                "marca": "Rota Sul",
+                "iniciais": "CV",
+                "kicker": "Visita de hoje",
+                "titulo": "Bem-vindos!",
+                "nome": "Comitiva Grupo Vale",
+                "cargo": "Visita técnica · 10h",
+                "curioso-rotulo": "Roteiro",
+                "curioso": "Centro de distribuição, frota e área de qualidade."
+              }
+            },
+            {
+              "id": "institucional-valores",
+              "campos": {
+                "marca": "Rota Sul",
+                "kicker": "Nossos valores",
+                "titulo": "O que nos",
+                "titulo2": "move",
+                "valor1": "Pontualidade",
+                "valor1-texto": "Prazo é compromisso",
+                "valor2": "Segurança",
+                "valor2-texto": "Ninguém se machuca",
+                "valor3": "Gente",
+                "valor3-texto": "Quem faz a Rota Sul"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "servico-horario",
+              "campos": {
+                "kicker": "Recepção",
+                "titulo": "Horário de",
+                "titulo2": "atendimento",
+                "dia1": "Seg a sex",
+                "hora1": "7h – 18h",
+                "dia2": "Sábado",
+                "hora2": "8h – 12h",
+                "dia3": "Domingo",
+                "hora3": "Fechado",
+                "nota": "Visitas com agendamento"
+              }
+            },
+            {
+              "id": "lateral-qr",
+              "campos": {
+                "kicker": "Wi-Fi visitantes",
+                "titulo": "Aponte a câmera",
+                "apoio": "Rede: RotaSul-Visitas",
+                "contato": "Peça a senha na recepção",
+                "link": "https://rotasul.com.br"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Bem-vindo"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Use o crachá de visitante",
+        "Siga a faixa amarela nas áreas de carga",
+        "Recepção: ramal 2000"
+      ],
+      "sobre": "Para a recepção, em pé: boas-vindas à visita, os valores, o horário e o Wi-Fi.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-saude-espera",
+      "nome": "Sala de espera",
+      "perfil": "saude",
+      "estrutura": "E7 sala de espera",
+      "marca": "clinica",
+      "layout": "sidebar-right",
+      "zonas": {
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "servico-passos",
+              "campos": {
+                "marca": "Clínica Vida",
+                "kicker": "Primeira consulta?",
+                "titulo": "É simples",
+                "titulo2": "assim",
+                "passo1": "Recepção",
+                "passo1-detalhe": "Documento e carteirinha",
+                "passo2": "Triagem",
+                "passo2-detalhe": "Pressão e peso, rapidinho",
+                "passo3": "Consulta",
+                "passo3-detalhe": "O médico chama pelo nome",
+                "cta": "Dúvidas? Fale na recepção"
+              }
+            },
+            {
+              "id": "social-depoimento",
+              "campos": {
+                "frase": "Fui atendida na hora marcada e saí com tudo explicado. Recomendo!",
+                "nome": "Marta S.",
+                "quem": "paciente"
+              }
+            },
+            {
+              "id": "institucional-valores",
+              "campos": {
+                "marca": "Clínica Vida",
+                "kicker": "Nosso cuidado",
+                "titulo": "Para cuidar",
+                "titulo2": "de você",
+                "valor1": "Acolhimento",
+                "valor1-texto": "Desde a recepção",
+                "valor2": "Pontualidade",
+                "valor2-texto": "Seu tempo importa",
+                "valor3": "Clareza",
+                "valor3-texto": "Tudo bem explicado"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "servico-horario",
+              "campos": {
+                "kicker": "Atendimento",
+                "titulo": "Horários",
+                "titulo2": "da clínica",
+                "dia1": "Seg a sex",
+                "hora1": "7h – 19h",
+                "dia2": "Sábado",
+                "hora2": "8h – 12h",
+                "dia3": "Domingo",
+                "hora3": "Fechado",
+                "nota": "Exames de sangue até as 10h"
+              }
+            },
+            {
+              "id": "social-avaliacao",
+              "campos": {
+                "kicker": "No Google",
+                "nota": "4,9",
+                "total": "1.020 avaliações",
+                "titulo": "Gostou?",
+                "titulo2": "Avalie a gente",
+                "link": "https://g.page/r/clinicavida",
+                "pedido": "Aponte a câmera"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Chegue 15 minutos antes da consulta",
+        "Traga a carteirinha do convênio",
+        "Resultados de exame pelo WhatsApp"
+      ],
+      "sobre": "Para quem espera: como funciona a consulta, o que dizem os pacientes, horários e a nota.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-saude-prevencao",
+      "nome": "Campanha de prevenção",
+      "perfil": "saude",
+      "estrutura": "E8 prevenção",
+      "marca": "clinica",
+      "layout": "sidebar-right",
+      "zonas": {
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "social-data",
+              "campos": {
+                "marca": "Clínica Vida",
+                "numero": "31",
+                "kicker": "Outubro Rosa",
+                "titulo": "Previna-se",
+                "titulo2": "hoje",
+                "apoio": "O exame de mamografia é rápido e salva vidas.",
+                "cta": "Agende na recepção"
+              }
+            },
+            {
+              "id": "servico-comunicado",
+              "campos": {
+                "marca": "Clínica Vida",
+                "mes": "Outubro",
+                "dia": "25",
+                "semana": "Sábado",
+                "kicker": "Mutirão",
+                "titulo": "Mamografia sem fila",
+                "apoio": "Das 8h às 12h, por ordem de chegada. Traga o pedido médico.",
+                "volta": "Vagas limitadas a 40 exames."
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "servico-agenda",
+              "campos": {
+                "kicker": "Pelo celular",
+                "titulo": "Mamografia",
+                "titulo2": "agendada",
+                "meta": "Pedido médico e documento com foto",
+                "preco": "180",
+                "centavos": ",00",
+                "link": "https://wa.me/5511977770000",
+                "pedido": "Agende pelo QR",
+                "pedido-apoio": "Abre a conversa com a recepção"
+              }
+            },
+            {
+              "id": "servico-alerta",
+              "campos": {
+                "kicker": "Lembrete",
+                "titulo": "Mulheres acima de 40: exame todo ano",
+                "apoio": "Fale com seu médico."
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Saúde"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Outubro Rosa: faça seu exame",
+        "Atendemos os principais convênios",
+        "Estacionamento gratuito para pacientes"
+      ],
+      "sobre": "A campanha do mês com a data, o mutirão, o agendamento por QR e o lembrete.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-saude-institucional",
+      "nome": "Quem somos (clínica)",
+      "perfil": "saude",
+      "estrutura": "E9 institucional",
+      "marca": "clinica",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "cabecalho-centro",
+              "campos": {
+                "marca": "Clínica Vida",
+                "sub": "Cuidando de você desde 2010"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "numero-grande",
+              "campos": {
+                "marca": "Clínica Vida",
+                "numero": "15",
+                "unidade": "anos",
+                "kicker": "Cuidando",
+                "titulo": "de você",
+                "apoio": "Mais de 40 mil pacientes atendidos.",
+                "endereco": "Av. Brasil, 900 · 2º andar"
+              }
+            },
+            {
+              "id": "institucional-valores",
+              "campos": {
+                "marca": "Clínica Vida",
+                "kicker": "Nossas especialidades",
+                "titulo": "Para toda",
+                "titulo2": "a família",
+                "valor1": "Pediatria",
+                "valor1-texto": "Às terças e quintas",
+                "valor2": "Cardiologia",
+                "valor2-texto": "Com exames no local",
+                "valor3": "Ginecologia",
+                "valor3-texto": "Com mamografia"
+              }
+            },
+            {
+              "id": "manifesto",
+              "campos": {
+                "marca": "Clínica Vida",
+                "kicker": "Nosso jeito",
+                "linha1": "Ouvir com calma,",
+                "linha2": "explicar com clareza,",
+                "linha3": "cuidar de verdade.",
+                "assinatura": "Clínica Vida"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "servico-horario",
+              "campos": {
+                "kicker": "Atendimento",
+                "titulo": "Horários",
+                "titulo2": "da clínica",
+                "dia1": "Seg a sex",
+                "hora1": "7h – 19h",
+                "dia2": "Sábado",
+                "hora2": "8h – 12h",
+                "dia3": "Domingo",
+                "hora3": "Fechado",
+                "nota": "Plantão por telefone"
+              }
+            },
+            {
+              "id": "lateral-qr",
+              "campos": {
+                "kicker": "Agende",
+                "titulo": "Aponte a câmera",
+                "apoio": "Consultas e exames pelo WhatsApp",
+                "contato": "(11) 97777-0000",
+                "link": "https://wa.me/5511977770000"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Fale com a gente",
+                "rotulo1": "Telefone",
+                "contato1": "(11) 3333-0000",
+                "rotulo2": "Convênios",
+                "contato2": "Unimed, Bradesco, SulAmérica",
+                "rotulo3": "Endereço",
+                "contato3": "Av. Brasil, 900"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Atendemos os principais convênios",
+        "Resultados de exame pelo WhatsApp",
+        "Chegue 15 minutos antes da consulta"
+      ],
+      "sobre": "Para a recepção: a estrutura, as especialidades, o jeito da clínica, horários e agendamento.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-saude-totem",
+      "nome": "Totem da recepção (em pé)",
+      "perfil": "saude",
+      "estrutura": "E11 totem",
+      "marca": "clinica",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Clínica Vida"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "servico-passos",
+              "campos": {
+                "marca": "Clínica Vida",
+                "kicker": "Chegou agora?",
+                "titulo": "Seu",
+                "titulo2": "atendimento",
+                "passo1": "Pegue a senha",
+                "passo1-detalhe": "No totem ao lado",
+                "passo2": "Aguarde a chamada",
+                "passo2-detalhe": "A TV mostra a sua senha",
+                "passo3": "Recepção",
+                "passo3-detalhe": "Documento e carteirinha",
+                "cta": "Prioridade: idosos e gestantes"
+              }
+            },
+            {
+              "id": "servico-alerta",
+              "campos": {
+                "kicker": "Importante",
+                "titulo": "Use máscara se estiver gripado",
+                "apoio": "Temos máscaras na recepção."
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "servico-horario",
+              "campos": {
+                "kicker": "Coleta de exames",
+                "titulo": "Horário",
+                "titulo2": "da coleta",
+                "dia1": "Seg a sex",
+                "hora1": "7h – 10h",
+                "dia2": "Sábado",
+                "hora2": "7h – 9h",
+                "dia3": "Domingo",
+                "hora3": "Fechado",
+                "nota": "Jejum de 8 horas"
+              }
+            },
+            {
+              "id": "social-instagram",
+              "campos": {
+                "kicker": "Dicas de saúde",
+                "arroba": "@clinicavida",
+                "apoio": "Toda semana no Instagram",
+                "link": "https://instagram.com/clinicavida"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Prioridade para idosos, gestantes e pessoas com deficiência",
+        "Chegue 15 minutos antes",
+        "Resultados de exame pelo WhatsApp"
+      ],
+      "sobre": "Para a TV em pé da entrada: como é o atendimento, o alerta do dia, a coleta e as dicas.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-saude-depoimentos",
+      "nome": "Pacientes e avaliações",
+      "perfil": "saude",
+      "estrutura": "E12 redes",
+      "marca": "clinica",
+      "layout": "sidebar-right",
+      "zonas": {
+        "principal": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "social-depoimento",
+              "campos": {
+                "frase": "A pediatra teve uma paciência enorme com o meu filho. Voltaremos sempre.",
+                "nome": "Juliana R.",
+                "quem": "mãe do Pedro, 4 anos"
+              }
+            },
+            {
+              "id": "social-depoimento",
+              "campos": {
+                "frase": "Exame e resultado no mesmo dia, pelo WhatsApp. Prático demais.",
+                "nome": "Seu Carlos",
+                "quem": "paciente desde 2015"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "social-avaliacao",
+              "campos": {
+                "kicker": "No Google",
+                "nota": "4,9",
+                "total": "1.020 avaliações",
+                "titulo": "Gostou?",
+                "titulo2": "Avalie a gente",
+                "link": "https://g.page/r/clinicavida",
+                "pedido": "Aponte a câmera"
+              }
+            },
+            {
+              "id": "social-instagram",
+              "campos": {
+                "kicker": "Siga",
+                "arroba": "@clinicavida",
+                "apoio": "Dicas de saúde toda semana",
+                "link": "https://instagram.com/clinicavida"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Agende",
+                "rotulo1": "WhatsApp",
+                "contato1": "(11) 97777-0000",
+                "rotulo2": "Telefone",
+                "contato2": "(11) 3333-0000",
+                "rotulo3": "Site",
+                "contato3": "clinicavida.com.br"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Sua opinião ajuda outros pacientes",
+        "Resultados de exame pelo WhatsApp",
+        "Atendemos os principais convênios"
+      ],
+      "sobre": "Confiança: o que os pacientes dizem, a nota no Google e onde acompanhar.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-saude-avisos",
+      "nome": "Avisos e horários",
+      "perfil": "saude",
+      "estrutura": "E6 comunicado",
+      "marca": "clinica",
+      "layout": "header-main-ticker",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-chamada",
+              "campos": {
+                "marca": "Clínica Vida",
+                "chamada": "Avisos da clínica",
+                "quando": "esta semana"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "servico-comunicado",
+              "campos": {
+                "marca": "Clínica Vida",
+                "mes": "Novembro",
+                "dia": "15",
+                "semana": "Sábado",
+                "kicker": "Feriado",
+                "titulo": "Não haverá atendimento",
+                "apoio": "Resultados de exame continuam saindo pelo WhatsApp. Em urgência, procure o pronto-socorro.",
+                "volta": "Voltamos na segunda, 17, às 7h."
+              }
+            },
+            {
+              "id": "servico-horario",
+              "campos": {
+                "kicker": "Atendimento",
+                "titulo": "Horários",
+                "titulo2": "da clínica",
+                "dia1": "Seg a sex",
+                "hora1": "7h – 19h",
+                "dia2": "Sábado",
+                "hora2": "8h – 12h",
+                "dia3": "Domingo",
+                "hora3": "Fechado",
+                "nota": "Coleta de exames até as 10h"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Vacina da gripe disponível",
+        "Traga a carteirinha do convênio",
+        "Resultados de exame pelo WhatsApp"
+      ],
+      "sobre": "O aviso da semana em letra grande e o horário logo depois.",
+      "estado": "proposta",
+      "lote": 1
+    },
+    {
+      "id": "l1-comercio-avisos",
+      "nome": "Avisos e horário (loja)",
+      "perfil": "comercio",
+      "estrutura": "E6 comunicado",
+      "marca": "padaria",
+      "layout": "header-main-ticker",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-chamada",
+              "campos": {
+                "marca": "Padaria do Bairro",
+                "chamada": "Fique sabendo",
+                "quando": "esta semana"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "servico-comunicado",
+              "campos": {
+                "marca": "Padaria do Bairro",
+                "mes": "Novembro",
+                "dia": "02",
+                "semana": "Segunda-feira",
+                "kicker": "Feriado",
+                "titulo": "Abrimos meio período",
+                "apoio": "Das 7h às 13h, com pão quentinho às 7h e às 11h.",
+                "volta": "Na terça, horário normal."
+              }
+            },
+            {
+              "id": "servico-horario",
+              "campos": {
+                "kicker": "Funcionamento",
+                "titulo": "Abertos",
+                "titulo2": "todo dia",
+                "dia1": "Seg a sáb",
+                "hora1": "6h – 20h",
+                "dia2": "Domingo",
+                "hora2": "7h – 13h",
+                "dia3": "Feriados",
+                "hora3": "7h – 13h",
+                "nota": "Fornadas às 7h, 11h e 16h"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Pagamento",
+                "pagamento1": "Pix",
+                "pagamento2": "Débito",
+                "pagamento3": "Crédito",
+                "pagamento4": "VR e VA"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Encomendas de bolo com 2 dias",
+        "Aceitamos Pix, cartão, VR e VA",
+        "Pão quentinho às 7h, 11h e 16h"
+      ],
+      "sobre": "O aviso da semana (feriado, mudança) e o horário, com as formas de pagamento embaixo.",
+      "estado": "proposta",
+      "lote": 1
     }
   ]
 }

@@ -39,6 +39,8 @@
     .zona { position: relative; overflow: hidden; border-radius: 20px; border: 1px solid rgba(255,255,255,.09); background: rgba(22,32,60,.55); }
     .zona.vazia { display: grid; place-items: center; color: var(--suave); font-size: 28px; }
     .host { position: absolute; inset: 0; }
+    /* Onde a tela confere todas as peças de uma zona, uma a uma, fora da vista. */
+    .host.medida { inset: auto; left: -30000px; top: 0; }
   </style>
 </head>
 <body>
