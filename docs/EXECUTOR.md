@@ -835,6 +835,13 @@ com alarme no painel do operador, IA de texto respeitando plano e teste
 vencido, débito de créditos atômico. **Pronto quando:** uma conta passa
 do teto e para, e o operador vê o alarme.
 
+**D0.4b Crédito reservado antes de gerar.** Revisão do consultor no D0.4:
+duas gerações ao mesmo tempo, com saldo para uma só, passam no conferir e a
+segunda sai de graça. Reservar o crédito no conferir (UPDATE … WHERE saldo
+>= custo, conferindo as linhas afetadas) e devolver se a geração falhar.
+**Pronto quando:** duas fotos pedidas juntas com saldo para uma: uma sai,
+a outra diz que o saldo acabou.
+
 **D0.5 Nunca perder programação.** Config que não carregou não vira
 "tela vazia" editável; salvamento automático que falha tenta de novo e
 avisa; gravação com versão (a última escrita não apaga a de outra aba).

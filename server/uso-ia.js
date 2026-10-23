@@ -123,14 +123,15 @@ async function cobrar(db, tenant, { tipo, quantidade, userId, referencia, medica
   const medido = medicao ? motores.consumirDe(medicao) : motores.consumirMedicao();
   const estimado = op ? op.custoCentavos * n : 0;
   /*
-   * Sem chamada medida, texto custa ZERO, e não a estimativa de 5 centavos:
-   * a requisição não chamou a IA (modo dev, pedido inválido, trabalho que
-   * ainda vai rodar — esse se registra sozinho no fim, jobs.aoMedir). Só a
-   * imagem, que o provedor não mede, continua estimada.
+   * Sem chamada medida, fica a estimativa do catálogo, e nunca zero: um
+   * caminho que escapasse da medição escaparia também do teto da conta
+   * (revisão do consultor, D0.4). O trabalho em segundo plano soma a linha
+   * medida dele no fim (jobs.aoMedir); a sobra de alguns centavos erra para
+   * o lado seguro.
    */
   const custoCentavos = medido.chamadas
     ? Math.round((creditos > 0 ? estimado : 0) + medido.custoCentavos)
-    : (creditos > 0 ? estimado : 0);
+    : estimado;
 
   /*
    * REGISTRA ANTES DE DEBITAR, e a ordem não é gosto.

@@ -270,6 +270,8 @@ async function init() {
       creditos INTEGER, custo_centavos INTEGER, referencia TEXT, created_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_uso_ia_tenant ON uso_ia(tenant_id, created_at);
+    -- O teto global da IA soma o gasto de todas as contas por data (uso-ia.js, D0.4).
+    CREATE INDEX IF NOT EXISTS idx_uso_ia_criado ON uso_ia(created_at);
     ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS modelo TEXT;
     ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS chamadas INTEGER;
     ALTER TABLE uso_ia ADD COLUMN IF NOT EXISTS tokens_entrada INTEGER;

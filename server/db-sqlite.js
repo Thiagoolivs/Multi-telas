@@ -184,6 +184,7 @@ db.exec(`
     creditos INTEGER, custo_centavos INTEGER, referencia TEXT, created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_uso_ia_tenant ON uso_ia(tenant_id, created_at);
+  CREATE INDEX IF NOT EXISTS idx_uso_ia_criado ON uso_ia(created_at);
   CREATE TABLE IF NOT EXISTS birthdays (
     id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, matricula TEXT,
     dia INTEGER, mes INTEGER, cargo TEXT, foto TEXT, created_at INTEGER
