@@ -77,7 +77,8 @@ function cliente(porta) {
 const cookieDe = (r) => r.cookies.map((c) => c.split(';')[0]).filter((c) => !c.endsWith('=')).join('; ');
 
 async function subir(t, envExtra) {
-  const porta = 4180 + Math.floor(Math.random() * 400);
+  // Faixa própria: 4180–4208 são do rodar e do ajuste, que sobem servidor ao mesmo tempo.
+  const porta = 5100 + Math.floor(Math.random() * 300);
   const dados = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-cobranca-'));
   const env = { ...process.env, PORT: String(porta), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '', DATA_DIR: dados, AI_PROVIDER: 'dev', ASAAS_API_KEY: '', ...envExtra };
   for (const k of ['RAILWAY_ENVIRONMENT', 'RAILWAY_ENVIRONMENT_NAME', 'RAILWAY_PROJECT_ID', 'NODE_ENV', 'MT_COBRANCA_SIMULADA']) if (!(k in envExtra)) delete env[k];

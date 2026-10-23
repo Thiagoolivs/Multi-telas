@@ -232,6 +232,25 @@ function validEmail(e) { return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(e || ''
 // (baseUrl), para que o host do pedido nunca escolha para onde o cliente
 // volta depois de pagar.
 function reqOrigin(req) { return baseUrl(req); }
+/*
+ * Onde uma mídia aparece (D0.7): TVs, a marca e as campanhas. Procura a URL
+ * no JSON guardado — a mídia é referida sempre pela URL, nunca por id.
+ */
+async function ondeEstaEmUso(tenantId, url) {
+  if (!url) return [];
+  const usos = [];
+  try {
+    const onde = await db.ondeAparece(tenantId, url);
+    for (const n of onde.telas) usos.push('na TV "' + (n || 'sem nome') + '"');
+    for (const n of onde.campanhas) usos.push('na campanha "' + (n || 'sem nome') + '"');
+  } catch (e) { /* segue */ }
+  try {
+    for (const a of await db.listBrandAssets(tenantId)) {
+      if (a.url === url) usos.push(a.kind === 'logo' ? 'na logo da marca' : 'nas imagens da marca');
+    }
+  } catch (e) { /* segue */ }
+  return [...new Set(usos)].slice(0, 8);
+}
 // Corpo bruto (sem parse) — necessário para validar a assinatura do webhook.
 function readRawBody(req) {
   return new Promise((resolve) => {
@@ -907,8 +926,10 @@ async function handleApi(req, res, pathname, query) {
         return sendJson(res, 200, { ok: true, ocultadas: n, fechado: true });
       }
       if (req.method === 'DELETE') {
-        await db.removerMural(m.id, sess.tenant_id);
-        return sendJson(res, 200, { ok: true });
+        const chaves = await db.removerMural(m.id, sess.tenant_id);
+        for (const k of chaves || []) { try { await storage.remove(k); } catch (e) { /* já não existia */ } }
+        avisarTelas(sess.tenant_id, 'mural', {});
+        return sendJson(res, 200, { ok: true, fotosApagadas: (chaves || []).length });
       }
     }
     return sendJson(res, 404, { error: 'rota de mural não encontrada' });
@@ -2118,6 +2139,17 @@ const negocioCache = new Map();
     }
     // Remover
     if (req.method === 'DELETE' && parts[2]) {
+      /*
+       * Mídia em uso pede confirmação (D0.7). Apagar a foto que está numa TV,
+       * na logo ou numa campanha deixava a tela com um buraco e a logo
+       * quebrada, sem aviso nenhum. Com ?forcar=1 (a pessoa leu onde está e
+       * confirmou), apaga.
+       */
+      if (query.forcar !== '1') {
+        const m = (await db.listMedia(sess.tenant_id)).find((x) => x.id === parts[2]);
+        const usos = m ? await ondeEstaEmUso(sess.tenant_id, m.url) : [];
+        if (usos.length) return sendJson(res, 409, { error: 'Esta mídia está em uso: ' + usos.join(', ') + '.', code: 'midia-em-uso', usos });
+      }
       const ok = await midia.apagar(db, sess.tenant_id, parts[2]);
       if (!ok) return sendJson(res, 404, { error: 'mídia não encontrada' });
       return sendJson(res, 200, { ok: true });

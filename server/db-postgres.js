@@ -811,8 +811,24 @@ async function atualizarMural(id, tenantId, titulo, aceitando) {
   await pool.query('UPDATE murais SET titulo = $1, aceitando = $2 WHERE id = $3 AND tenant_id = $4',
     [titulo || 'Mural', !!aceitando, id, tenantId]);
 }
+/*
+ * Apagar o mural apaga as fotos dele: a linha (com o IP de quem mandou), a
+ * mídia e — quem chamou, com as chaves devolvidas — o arquivo. Antes só o
+ * mural sumia, e o resto ficava órfão, contra o que os Termos prometem
+ * (server/legal.js, D0.7).
+ */
 async function removerMural(id, tenantId) {
-  await pool.query('DELETE FROM murais WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  const fotos = (await pool.query('SELECT chave FROM muralfotos WHERE mural_id = $1 AND tenant_id = $2', [id, tenantId])).rows;
+  const chaves = fotos.map((f) => f.chave).filter(Boolean);
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    if (chaves.length) await c.query('DELETE FROM media WHERE tenant_id = $1 AND key = ANY($2)', [tenantId, chaves]);
+    await c.query('DELETE FROM muralfotos WHERE mural_id = $1 AND tenant_id = $2', [id, tenantId]);
+    await c.query('DELETE FROM murais WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+    await c.query('COMMIT');
+  } catch (e) { await c.query('ROLLBACK').catch(() => {}); throw e; } finally { c.release(); }
+  return chaves;
 }
 async function addFotoMural(muralId, tenantId, foto) {
   const id = 'mf_' + rid(14);
@@ -940,6 +956,18 @@ async function deviceComToken(token, tenantId) {
   return r.rows[0] || null;
 }
 
+/*
+ * Onde um texto (a URL de uma mídia) aparece na programação das TVs e nas
+ * campanhas da conta (server.js, ondeEstaEmUso; D0.7). LIKE simples: um
+ * "_" da URL casando a mais só deixa a confirmação mais cautelosa.
+ */
+async function ondeAparece(tenantId, texto) {
+  const alvo = String(texto || '');
+  // position(), e não LIKE: um % ou _ na URL viraria curinga e daria falso "em uso".
+  const telas = (await pool.query("SELECT name FROM devices WHERE tenant_id = $1 AND position($2 in COALESCE(config, '')) > 0", [tenantId, alvo])).rows.map((r) => r.name || '');
+  const campanhas = (await pool.query("SELECT nome FROM campanhas WHERE tenant_id = $1 AND position($2 in COALESCE(resultado, '')) > 0", [tenantId, alvo])).rows.map((r) => r.nome || '');
+  return { telas, campanhas };
+}
 async function getDevice(id) {
   const r = await pool.query('SELECT * FROM devices WHERE id = $1', [id]);
   return r.rows[0] || null;
@@ -1390,6 +1418,14 @@ async function dadosDoTenant(tenantId) {
     // seria entregar uma cópia incompleta com cara de completa.
     murais: await varios('SELECT id, codigo, titulo, aceitando, created_at FROM murais WHERE tenant_id = $1'),
     fotosDoMural: await varios('SELECT id, mural_id, url, autor, mensagem, ip, oculta, created_at FROM muralfotos WHERE tenant_id = $1'),
+    // O que nasceu depois da primeira versão desta exportação (D0.7).
+    marcas: await varios('SELECT * FROM marcas WHERE tenant_id = $1'),
+    memoriaDaIA: await um('SELECT * FROM brandmemoria WHERE tenant_id = $1'),
+    conversas: await varios('SELECT * FROM conversas WHERE tenant_id = $1'),
+    campanhas: await varios('SELECT * FROM campanhas WHERE tenant_id = $1'),
+    usoDaIA: await varios('SELECT tipo, creditos, custo_centavos, referencia, created_at FROM uso_ia WHERE tenant_id = $1'),
+    chamados: await varios('SELECT * FROM reclamacoes WHERE tenant_id = $1'),
+    acessosDoSuporte: await varios('SELECT * FROM acessos_suporte WHERE tenant_id = $1'),
   };
 }
 
@@ -1421,7 +1457,18 @@ async function apagarTenant(tenantId) {
   try {
     await client.query('BEGIN');
     await client.query('DELETE FROM resets WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1)', [tenantId]);
-    for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
+    /*
+     * As tabelas que nasceram depois desta lista (marcas, conversas,
+     * campanhas, jobs…) ficavam para trás: as conversas do Criar sobreviviam à
+     * exclusão da conta (EXECUTOR D0.7). test/lgpd-sobras.test.js confere que
+     * toda tabela com tenant_id está aqui.
+     *
+     * FICA de propósito: acessos_suporte, o registro de quem do suporte
+     * entrou na conta. É o que prova quem acessou dado pessoal (LGPD art. 37);
+     * apagar não tem volta, guardar e decidir o prazo depois tem (revisão do
+     * consultor; o prazo é do dono com o advogado).
+     */
+    for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
@@ -1589,7 +1636,7 @@ module.exports = {
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
-  createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
+  createDevice, getDevice, ondeAparece, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,

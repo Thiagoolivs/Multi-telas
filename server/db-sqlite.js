@@ -646,6 +646,15 @@ async function createDevice(id, code, deviceToken) {
   return { id, code };
 }
 async function getDevice(id) { return q.deviceById.get(id) || null; }
+// Onde a URL de uma mídia aparece (ver db-postgres.js, D0.7).
+async function ondeAparece(tenantId, texto) {
+  // instr(), e não LIKE: um % ou _ na URL viraria curinga (ver db-postgres.js).
+  const alvo = String(texto || '');
+  return {
+    telas: db.prepare("SELECT name FROM devices WHERE tenant_id = ? AND instr(COALESCE(config, ''), ?) > 0").all(tenantId, alvo).map((r) => r.name || ''),
+    campanhas: db.prepare("SELECT nome FROM campanhas WHERE tenant_id = ? AND instr(COALESCE(resultado, ''), ?) > 0").all(tenantId, alvo).map((r) => r.nome || ''),
+  };
+}
 /*
  * A TV existe, é deste inquilino e apresentou o token certo?
  *
@@ -1346,7 +1355,18 @@ async function listarMurais(tenantId) { return qMural.porTenant.all(tenantId).ma
 async function muralPorCodigo(codigo) { return mapMural(qMural.porCodigo.get(codigo)); }
 async function muralPorId(id, tenantId) { return mapMural(qMural.porId.get(id, tenantId)); }
 async function atualizarMural(id, tenantId, titulo, aceitando) { qMural.atualizar.run(titulo || 'Mural', aceitando ? 1 : 0, id, tenantId); }
-async function removerMural(id, tenantId) { qMural.remover.run(id, tenantId); }
+// Apaga o mural COM as fotos e devolve as chaves dos arquivos (ver db-postgres.js, D0.7).
+async function removerMural(id, tenantId) {
+  const chaves = db.prepare('SELECT chave FROM muralfotos WHERE mural_id = ? AND tenant_id = ?').all(id, tenantId).map((f) => f.chave).filter(Boolean);
+  db.exec('BEGIN');
+  try {
+    for (const k of chaves) db.prepare('DELETE FROM media WHERE tenant_id = ? AND key = ?').run(tenantId, k);
+    db.prepare('DELETE FROM muralfotos WHERE mural_id = ? AND tenant_id = ?').run(id, tenantId);
+    qMural.remover.run(id, tenantId);
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  return chaves;
+}
 async function addFotoMural(muralId, tenantId, foto) {
   const id = 'mf_' + rid(14);
   qMural.addFoto.run(id, muralId, tenantId, foto.url, foto.chave || '', foto.autor || '', foto.mensagem || '', foto.ip || '', Date.now());
@@ -1423,6 +1443,14 @@ async function dadosDoTenant(tenantId) {
     // seria entregar uma cópia incompleta com cara de completa.
     murais: pega('SELECT id, codigo, titulo, aceitando, created_at FROM murais WHERE tenant_id = ?'),
     fotosDoMural: pega('SELECT id, mural_id, url, autor, mensagem, ip, oculta, created_at FROM muralfotos WHERE tenant_id = ?'),
+    // O que nasceu depois da primeira versão desta exportação (D0.7).
+    marcas: pega('SELECT * FROM marcas WHERE tenant_id = ?'),
+    memoriaDaIA: db.prepare('SELECT * FROM brandmemoria WHERE tenant_id = ?').get(tenantId) || null,
+    conversas: pega('SELECT * FROM conversas WHERE tenant_id = ?'),
+    campanhas: pega('SELECT * FROM campanhas WHERE tenant_id = ?'),
+    usoDaIA: pega('SELECT tipo, creditos, custo_centavos, referencia, created_at FROM uso_ia WHERE tenant_id = ?'),
+    chamados: pega('SELECT * FROM reclamacoes WHERE tenant_id = ?'),
+    acessosDoSuporte: pega('SELECT * FROM acessos_suporte WHERE tenant_id = ?'),
   };
 }
 
@@ -1465,7 +1493,8 @@ async function apagarTenant(tenantId) {
   db.exec('BEGIN');
   try {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
-    for (const tabela of ['sessions', 'aceites', 'invites', 'devices', 'library',
+    // As tabelas novas ficavam para trás (D0.7); ver db-postgres.js.
+    for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }
@@ -1644,7 +1673,7 @@ module.exports = {
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
-  createDevice, getDevice, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
+  createDevice, getDevice, ondeAparece, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,

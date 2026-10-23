@@ -114,9 +114,18 @@ export function StoragePage({ filtro = 'fotos' }) {
     } catch (e) { setMsg(e.message || 'Não foi possível descompartilhar.'); }
   }
 
+  /*
+   * O servidor diz ONDE a mídia está em uso (TV, logo, campanha) e só apaga
+   * com a confirmação. Antes o aviso era genérico e o erro de rede sumia.
+   */
   async function remove(m) {
-    if (!window.confirm(`Remover "${m.name}"? Telas que usam este arquivo ficarão sem ele.`)) return;
-    await media.remove(m.id);
+    try {
+      await media.remove(m.id);
+    } catch (e) {
+      if (e.codigo !== 'midia-em-uso') { setMsg(e.message || 'Não deu para apagar.'); return; }
+      if (!window.confirm(e.message + ' Apagar mesmo assim? Esses lugares ficam sem ela.')) return;
+      try { await media.remove(m.id, true); } catch (e2) { setMsg(e2.message || 'Não deu para apagar.'); return; }
+    }
     reload();
   }
 

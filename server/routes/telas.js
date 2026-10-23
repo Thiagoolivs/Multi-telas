@@ -44,6 +44,21 @@ module.exports = function (ctx) {
     if (empresa && (!s.nome || s.nome === device.name)) { s.nome = empresa; mudou = true; }
     return mudou;
   }
+  // Aniversariantes de ontem a +9 dias, com só o que a TV desenha (D0.7).
+  function aniversariosDaJanela(lista, agora) {
+    const DIA = 24 * 60 * 60 * 1000;
+    const hoje = new Date(agora);
+    const base = Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate());
+    const dentro = (dia, mes) => {
+      for (const ano of [hoje.getUTCFullYear() - 1, hoje.getUTCFullYear(), hoje.getUTCFullYear() + 1]) {
+        const d = (Date.UTC(ano, mes - 1, dia) - base) / DIA;
+        if (d >= -1 && d <= 9) return true;
+      }
+      return false;
+    };
+    return (lista || []).filter((p) => p && dentro(Number(p.dia), Number(p.mes)))
+      .map((p) => ({ nome: p.nome, dia: p.dia, mes: p.mes, cargo: p.cargo || '', foto: p.foto || '' }));
+  }
   async function empresaDa(tenantId) {
     if (!tenantId) return '';
     try { const t = await db.getTenant(tenantId); return (t && t.name && t.name !== 'Empresa') ? t.name : ''; } catch (e) { return ''; }
@@ -396,7 +411,13 @@ module.exports = function (ctx) {
       if (req.method === 'GET' && sub === 'birthdays') {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
         if (!device.tenant_id) return sendJson(res, 200, { birthdays: [] });
-        const b = await db.listBirthdays(device.tenant_id);
+        /*
+         * Só o que a TV mostra: quem faz aniversário de ontem até daqui a nove
+         * dias (a "semana" do player, com folga de fuso e da atualização de
+         * 6 h), e só nome, dia, mês, cargo e foto. Antes ia a lista INTEIRA
+         * da empresa, com matrícula, para qualquer TV (D0.7).
+         */
+        const b = aniversariosDaJanela(await db.listBirthdays(device.tenant_id), Date.now());
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
         return res.end(JSON.stringify({ birthdays: b }));
       }
