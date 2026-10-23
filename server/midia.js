@@ -48,7 +48,7 @@ async function registrar(db, tenantId, salvo, meta) {
     size: salvo.size,
     key: salvo.key,
     url: salvo.url,
-    // 'upload' (a pessoa enviou), 'ia' (foi gerada), 'mural' (veio do público).
+    // 'upload' (a pessoa enviou), 'ia' (foi gerada), 'mural' (veio do público), 'site' (a imagem do site da marca, D9).
     origem: m.origem || 'upload',
     /*
      * Só a imagem da IA traz estes dois. Ficam na mídia porque o Banco de

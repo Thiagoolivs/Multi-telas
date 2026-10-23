@@ -1507,10 +1507,19 @@ const negocioCache = new Map();
             const img = await site.baixarImagem(dados.imagem).catch(() => ({ erro: 'falhou' }));
             if (!img.erro) {
               try {
-                const salvo = await midia.guardarBuffer(db, sess.tenant_id, img.bytes, img.mime, { nome: 'Imagem do site', origem: 'site' });
+                /*
+                 * A anterior sai inteira (revisão do consultor no D9): marcada
+                 * pela ORIGEM da mídia ('site'), não pelo rótulo — que a pessoa
+                 * pode ter escrito à mão — e com o arquivo apagado, que senão
+                 * ficava no storage contando na cota.
+                 */
+                const antigas = (await db.listMedia(sess.tenant_id)).filter((x) => x.origem === 'site');
+                const urlsAntigas = new Set(antigas.map((x) => x.url));
                 for (const a of await db.listBrandAssets(sess.tenant_id)) {
-                  if (/^Do site: /.test(a.label || '') && (a.kind === 'base' || a.kind === 'referencia')) await db.removeBrandAsset(a.id, sess.tenant_id);
+                  if (urlsAntigas.has(a.url) && (a.kind === 'base' || a.kind === 'referencia')) await db.removeBrandAsset(a.id, sess.tenant_id);
                 }
+                for (const x of antigas) await midia.apagar(db, sess.tenant_id, x.id).catch(() => {});
+                const salvo = await midia.guardarBuffer(db, sess.tenant_id, img.bytes, img.mime, { nome: 'Imagem do site', origem: 'site' });
                 const rotulo = 'Do site: ' + (dados.titulo || dados.url).slice(0, 40);
                 await db.addBrandAsset(sess.tenant_id, 'base', salvo.url, rotulo, parts[3]);
                 await db.addBrandAsset(sess.tenant_id, 'referencia', salvo.url, rotulo, parts[3]);
