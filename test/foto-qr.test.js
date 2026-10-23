@@ -191,7 +191,7 @@ test('o painel e a privacidade: fila só para dono/admin, tabelas novas na exclu
   assert.match(r, /A mesma resposta com o e-mail na lista ou não/);
   for (const arq of ['server/db-sqlite.js', 'server/db-postgres.js']) {
     const s = ler(arq);
-    assert.match(s, /'pedidos_foto', 'fotos_pessoa', 'users'\]\)/, arq + ': exclusão da conta');
+    assert.match(s, /'pedidos_foto', 'fotos_pessoa',[\s\S]{0,80}'users'\]\)/, arq + ': exclusão da conta');
     assert.match(s, /SELECT chave FROM fotos_pessoa WHERE tenant_id/, arq + ': arquivos das fotos na exclusão');
     assert.match(s, /fotosParaAprovar: /, arq + ': exportação');
   }

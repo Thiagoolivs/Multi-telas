@@ -22,6 +22,7 @@ import { SystemPage } from './pages/SystemPage.jsx';
 import { PlatformPage } from './pages/PlatformPage.jsx';
 import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
 import { RelatorioPage } from './pages/RelatorioPage.jsx';
+import { IndicadoresPage } from './pages/IndicadoresPage.jsx';
 import { CriarPage } from './pages/CriarPage.jsx';
 import { CriacaoRapidaPage } from './pages/CriacaoRapidaPage.jsx';
 import { CampanhasPage } from './pages/CampanhasPage.jsx';
@@ -57,6 +58,7 @@ const META = {
   content: { title: 'Programação', nav: 'programacao' },
   alerts: { title: 'Alertas', subtitle: 'O que precisa da sua atenção agora.' },
   relatorio: { title: 'Relatório de exibição', subtitle: 'O que passou, quantas vezes e em qual tela — contado pela própria TV.' },
+  indicadores: { title: 'Indicadores', subtitle: 'Os números da empresa na TV, sempre atualizados.' },
   support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
   // Mídias por propósito (item 34). 'storage' segue como endereço: é Fotos e vídeos.
   pecas: { title: 'Peças prontas' },
@@ -101,7 +103,7 @@ function useTheme() {
  * que qualquer um escreve.
  */
 // campanhas, pecas, musicas e ia entraram no D3: recarregar nessas páginas caía na Visão geral.
-const ATALHOS = ['criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio',
+const ATALHOS = ['criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio', 'indicadores',
   'team', 'storage', 'pecas', 'telasprontas', 'calendario', 'musicas', 'ia', 'banco', 'birthdays', 'support', 'settings'];
 
 /*
@@ -243,6 +245,7 @@ export default function App() {
       case 'mural': return <MuralPage />;
       case 'birthdays': return <BirthdaysPage />;
       case 'relatorio': return <RelatorioPage onIrParaPlano={() => go('billing')} />;
+      case 'indicadores': return <IndicadoresPage />;
       case 'billing': return <BillingPage onFalarComVendas={() => go('support')} />;
       case 'system': return <SystemPage />;
       case 'platform': return <PlatformPage />;

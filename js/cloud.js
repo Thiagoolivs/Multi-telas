@@ -111,6 +111,7 @@
     try {
       localStorage.removeItem('mt.lastConfig'); // não herda a exibição da tela antiga
       localStorage.removeItem('mt.birthdays');
+      localStorage.removeItem('mt.kpis');
     } catch (e) {}
   }
 
@@ -181,6 +182,11 @@
   async function fetchBirthdays(id) {
     const r = await api('GET', '/api/devices/' + id + '/birthdays', undefined, dtHeader());
     return (r && r.birthdays) || [];
+  }
+  // Os indicadores da empresa (D36): o último valor de cada um, para o cartão KPI.
+  async function fetchKpis(id) {
+    const r = await api('GET', '/api/devices/' + id + '/kpis', undefined, dtHeader());
+    return (r && r.indicadores) || [];
   }
   /*
    * O que a TV conta de si no pulso: é a primeira pergunta de todo suporte
@@ -318,6 +324,10 @@
         try { dado = JSON.parse(ev.data || '{}'); } catch (e) {}
         document.dispatchEvent(new CustomEvent('mt:mural', { detail: dado }));
       });
+      // Indicadores novos (D36): a TV busca os valores de novo, sem recarregar a tela.
+      es.addEventListener('kpis', () => {
+        document.dispatchEvent(new CustomEvent('mt:kpis-mudou'));
+      });
       /*
        * O EventSource reconecta sozinho em queda de rede — mas DESISTE de vez
        * quando o servidor responde não-2xx, o que acontece num deploy no meio
@@ -353,7 +363,7 @@
     // credencial da TV: o código do cartaz autoriza ENVIAR foto, e não listar
     // o que os outros mandaram.
     dtHeader, deviceToken,
-    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, subscribe, heartbeat, reportAudio, enviarExibicoes, enviarEstado,
+    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, fetchKpis, subscribe, heartbeat, reportAudio, enviarExibicoes, enviarEstado,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);

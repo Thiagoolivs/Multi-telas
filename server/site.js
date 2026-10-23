@@ -112,7 +112,8 @@ async function conferir(alvo) {
  * endereço já conferido e a conexão vai onde mandamos. O nome continua indo no
  * Host e no SNI, então o certificado e o vhost do site continuam corretos.
  */
-function pedir(u, ip, aceita) {
+// `cabecalhos`: extras do chamador (a autenticação do conector de indicadores, D36).
+function pedir(u, ip, aceita, cabecalhos) {
   return new Promise((resolve) => {
     const mod = u.protocol === 'https:' ? https : http;
     const req = mod.request({
@@ -127,10 +128,10 @@ function pedir(u, ip, aceita) {
         if (opcoes && opcoes.all) return cb(null, [{ address: ip, family: familia }]);
         return cb(null, ip, familia);
       },
-      headers: {
+      headers: Object.assign({}, cabecalhos || {}, {
         'user-agent': 'MultiTelas/1.0 (+leitura de identidade visual)',
         accept: aceita || 'text/html',
-      },
+      }),
       timeout: LIMITE_MS,
     }, (res) => {
       const partes = [];
@@ -168,7 +169,7 @@ function pedir(u, ip, aceita) {
  * repete a checagem inteira.
  */
 const TIPO_PAGINA = /text\/html|application\/xhtml/i;
-async function buscar(alvo, politica, tipoAceito, aceita) {
+async function buscar(alvo, politica, tipoAceito, aceita, cabecalhos) {
   /*
    * `politica` é a checagem de endereço, injetável para o teste conseguir
    * exercitar redirecionamento contra um servidor local — que, por definição,
@@ -180,11 +181,13 @@ async function buscar(alvo, politica, tipoAceito, aceita) {
    */
   const checar = politica || conferir;
   let atual = alvo;
+  // A autenticação só vai para a origem que o dono configurou: redirecionamento para outro host segue sem ela.
+  const origem = (() => { try { return new URL(alvo).origin; } catch (e) { return ''; } })();
   for (let salto = 0; salto <= MAX_SALTOS; salto++) {
     const c = await checar(atual);
     if (c.erro) return { erro: c.erro };
 
-    const res = await pedir(c.url, c.ip, aceita);
+    const res = await pedir(c.url, c.ip, aceita, c.url.origin === origem ? cabecalhos : null);
     if (res.erro) return { erro: res.erro };
 
     if (res.status >= 300 && res.status < 400) {
@@ -343,6 +346,18 @@ async function cssDe(html, base) {
  * leitura das referências não lia. Só PNG, JPEG e WEBP, conferidos pelos
  * bytes, e inteira — imagem cortada no limite não serve.
  */
+/*
+ * Um endereço que responde JSON (o conector de indicadores, D36), com os
+ * cabeçalhos de autenticação do dono. Mesma porta de sempre: IP público
+ * conferido em cada salto, limite de tamanho e de tempo.
+ */
+async function buscarJson(alvo, cabecalhos, politica) {
+  const r = await buscar(alvo, politica, /json|text\/plain/i, 'application/json', cabecalhos);
+  if (r.erro) return { erro: r.erro.replace('esse endereço não é uma página', 'esse endereço não respondeu JSON') };
+  if (r.cortado) return { erro: 'a resposta passou de ' + Math.round(LIMITE_BYTES / 1024) + ' KB' };
+  try { return { json: JSON.parse(r.html) }; } catch (e) { return { erro: 'a resposta não é um JSON válido' }; }
+}
+
 async function baixarImagem(alvo) {
   const r = await buscar(alvo, undefined, /^image\/(png|jpe?g|webp)/i, 'image/png,image/jpeg,image/webp');
   if (r.erro) return { erro: r.erro };
@@ -393,4 +408,4 @@ async function analisar(alvo) {
   return dados;
 }
 
-module.exports = { analisar, buscar, pedir, conferir, ipPrivado, coresDe, fontesDe, folhasDe, baixarImagem, tipoDaImagem, resumir, meta, LIMITE_BYTES, LIMITE_MS, MAX_SALTOS };
+module.exports = { analisar, buscar, buscarJson, pedir, conferir, ipPrivado, coresDe, fontesDe, folhasDe, baixarImagem, tipoDaImagem, resumir, meta, LIMITE_BYTES, LIMITE_MS, MAX_SALTOS };

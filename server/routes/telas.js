@@ -481,6 +481,15 @@ module.exports = function (ctx) {
         return sendJson(res, 200, { ok: true });
       }
       // Aniversariantes do tenant desta tela (player lê com device token).
+      // Os indicadores da empresa (D36): o último valor de cada um, para o cartão KPI da TV.
+      if (req.method === 'GET' && sub === 'kpis') {
+        if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
+        if (!device.tenant_id) return sendJson(res, 200, { indicadores: [] });
+        const lista = (await db.listarIndicadores(device.tenant_id))
+          .map((i) => ({ chave: i.chave, nome: i.nome, valor: i.valor, unidade: i.unidade, meta: i.meta, anterior: i.anterior, em: i.atualizadoEm }));
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+        return res.end(JSON.stringify({ indicadores: lista }));
+      }
       if (req.method === 'GET' && sub === 'birthdays') {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
         if (!device.tenant_id) return sendJson(res, 200, { birthdays: [] });

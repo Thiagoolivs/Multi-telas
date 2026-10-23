@@ -33,6 +33,7 @@ export const PAGINAS = {
   birthdays: 'Pessoas',
   mural: 'Mural de fotos',
   relatorio: 'Relatório de exibição',
+  indicadores: 'Indicadores',
   billing: 'Plano',
   team: 'Equipe',
   settings: 'Ajustes',
@@ -58,7 +59,7 @@ export const GRUPOS = [
   { id: 'midias', label: 'Mídias', paginas: ['telasprontas', 'pecas', 'storage', 'musicas', 'ia', 'banco'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },
   { id: 'automaticos', label: 'Automáticos', paginas: ['birthdays', 'mural'] },
-  { id: 'relatorios', label: 'Relatórios', paginas: ['relatorio'] },
+  { id: 'relatorios', label: 'Relatórios', paginas: ['relatorio', 'indicadores'] },
   { id: 'conta', label: 'Conta', paginas: ['billing', 'team', 'settings', 'support'] },
 ];
 

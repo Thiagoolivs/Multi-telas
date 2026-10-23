@@ -916,6 +916,14 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-kpi-desceu { color: #dc2626; background: color-mix(in srgb, #ef4444 18%, transparent); }
 .mt-kpi-estavel { color: var(--text-dim); background: color-mix(in srgb, var(--text) 12%, transparent); }
 .mt-kpi-detail { font-size: 3.4cqw; color: var(--text-dim); margin-top: 2cqh; }
+/* D36: a meta — a barra até 100% e, batida, o número em destaque com o brilho da marca. */
+.mt-kpi-un { font-size: .32em; font-weight: 700; margin: 0 .25em; opacity: .85; letter-spacing: 0; }
+.mt-kpi-meta { width: min(70cqw, 120cqh); margin: 3cqh auto 0; }
+.mt-kpi-meta-barra { height: 2.2cqh; border-radius: 99px; background: color-mix(in srgb, var(--text) 12%, transparent); overflow: hidden; }
+.mt-kpi-meta-cheio { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--brand), var(--accent)); }
+.mt-kpi-meta-texto { margin-top: 1.2cqh; font-size: min(3.2cqw, 5cqh); font-weight: 600; color: var(--text); }
+.mt-kpi-batida .mt-kpi-value { color: var(--accent); text-shadow: 0 0 4cqh color-mix(in srgb, var(--accent) 45%, transparent); }
+.mt-kpi-batida .mt-kpi-meta-cheio { background: linear-gradient(90deg, #22c55e, #a3e635); }
 
 /* ---------- Superfície de conteúdo (linguagem premium adaptativa) ----------
    Fundo em gradiente derivado das cores do tema (accent + brand + fundo),

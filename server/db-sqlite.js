@@ -215,6 +215,20 @@ db.exec(`
     setor TEXT, email TEXT, url TEXT, chave TEXT, media_id TEXT, created_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_fotos_pessoa_tenant ON fotos_pessoa(tenant_id);
+  -- Indicadores da empresa (D36): o conector (push com token, ou pull de um
+  -- endereço com a autenticação CIFRADA) e o último valor de cada indicador.
+  CREATE TABLE IF NOT EXISTS conectores_kpi (
+    id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, modo TEXT, token_hash TEXT, url TEXT,
+    auth_tipo TEXT, auth_nome TEXT, auth_segredo TEXT, mapa TEXT, intervalo_min INTEGER,
+    ultimo_ok INTEGER, ultimo_erro TEXT, proxima INTEGER, created_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_conectores_kpi_tenant ON conectores_kpi(tenant_id);
+  CREATE INDEX IF NOT EXISTS idx_conectores_kpi_token ON conectores_kpi(token_hash);
+  CREATE TABLE IF NOT EXISTS indicadores (
+    id TEXT PRIMARY KEY, tenant_id TEXT, conector_id TEXT, chave TEXT, nome TEXT, valor REAL, unidade TEXT,
+    meta REAL, anterior REAL, atualizado_em INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_indicadores_tenant ON indicadores(tenant_id);
   -- O calendário da empresa (D23): cada data vira um evento, com a peça
   -- dele e as TVs em que entrou. item é a peça (JSON) para editar depois.
   CREATE TABLE IF NOT EXISTS calendario (
@@ -1499,6 +1513,70 @@ async function salvarEvento(tenantId, ev, id) {
 async function removerEvento(id, tenantId) { return qCal.remover.run(id, tenantId).changes > 0; }
 
 /* ---------------- Mural de fotos do público ---------------- */
+/* ----- Indicadores da empresa (D36) ----- */
+const mapConector = (r) => {
+  if (!r) return null;
+  let mapa = {};
+  try { mapa = JSON.parse(r.mapa || '{}'); } catch (e) { mapa = {}; }
+  return {
+    id: r.id, tenantId: r.tenant_id, nome: r.nome || '', modo: r.modo || 'push', url: r.url || '',
+    authTipo: r.auth_tipo || 'nenhum', authNome: r.auth_nome || '', temSegredo: !!r.auth_segredo, mapa,
+    intervaloMin: Number(r.intervalo_min) || 15, ultimoOk: Number(r.ultimo_ok) || 0, ultimoErro: r.ultimo_erro || '',
+    proxima: Number(r.proxima) || 0, criadoEm: Number(r.created_at) || 0,
+  };
+};
+const mapIndicador = (r) => (r ? {
+  id: r.id, conectorId: r.conector_id, chave: r.chave, nome: r.nome || r.chave, valor: r.valor == null ? null : Number(r.valor),
+  unidade: r.unidade || '', meta: r.meta == null ? null : Number(r.meta), anterior: r.anterior == null ? null : Number(r.anterior),
+  atualizadoEm: Number(r.atualizado_em) || 0,
+} : null);
+async function criarConector(tenantId, c) {
+  const id = 'kc_' + rid(12);
+  db.prepare('INSERT INTO conectores_kpi (id, tenant_id, nome, modo, token_hash, url, auth_tipo, auth_nome, auth_segredo, mapa, intervalo_min, ultimo_ok, ultimo_erro, proxima, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, \'\', 0, ?)')
+    .run(id, tenantId, c.nome || '', c.modo || 'push', c.tokenHash || '', c.url || '', c.authTipo || 'nenhum', c.authNome || '', c.authSegredo || '', JSON.stringify(c.mapa || {}), Number(c.intervaloMin) || 15, Date.now());
+  return mapConector(db.prepare('SELECT * FROM conectores_kpi WHERE id = ?').get(id));
+}
+async function listarConectores(tenantId) { return db.prepare('SELECT * FROM conectores_kpi WHERE tenant_id = ? ORDER BY created_at').all(tenantId).map(mapConector); }
+// Com o segredo cifrado e o hash do token: só para o servidor (nunca vai ao painel).
+async function conectorInterno(id, tenantId) { return db.prepare('SELECT * FROM conectores_kpi WHERE id = ? AND tenant_id = ?').get(String(id), tenantId) || null; }
+async function conectorPorToken(hash) { return mapConector(db.prepare("SELECT * FROM conectores_kpi WHERE token_hash = ? AND modo = 'push'").get(String(hash))); }
+async function conectoresParaBuscar(agora) { return db.prepare("SELECT * FROM conectores_kpi WHERE modo = 'pull' AND url <> '' AND proxima <= ?").all(Number(agora)); }
+const CAMPOS_CONECTOR = { nome: 'nome', url: 'url', authTipo: 'auth_tipo', authNome: 'auth_nome', authSegredo: 'auth_segredo', tokenHash: 'token_hash', intervaloMin: 'intervalo_min', ultimoOk: 'ultimo_ok', ultimoErro: 'ultimo_erro', proxima: 'proxima' };
+async function atualizarConector(id, tenantId, campos) {
+  const sets = [];
+  const vals = [];
+  for (const k of Object.keys(campos || {})) {
+    if (k === 'mapa') { sets.push('mapa = ?'); vals.push(JSON.stringify(campos.mapa || {})); continue; }
+    if (CAMPOS_CONECTOR[k]) { sets.push(CAMPOS_CONECTOR[k] + ' = ?'); vals.push(campos[k]); }
+  }
+  if (!sets.length) return 0;
+  return db.prepare('UPDATE conectores_kpi SET ' + sets.join(', ') + ' WHERE id = ? AND tenant_id = ?').run(...vals, String(id), tenantId).changes;
+}
+async function removerConector(id, tenantId) {
+  db.prepare('DELETE FROM indicadores WHERE conector_id = ? AND tenant_id = ?').run(String(id), tenantId);
+  return db.prepare('DELETE FROM conectores_kpi WHERE id = ? AND tenant_id = ?').run(String(id), tenantId).changes;
+}
+// O último valor de cada indicador; o de antes fica em `anterior` (a TV mostra se subiu ou desceu).
+async function gravarIndicadores(tenantId, conectorId, lista, agora) {
+  const quando = Number(agora) || Date.now();
+  db.exec('BEGIN');
+  try {
+    for (const i of lista) {
+      const atual = db.prepare('SELECT id, valor FROM indicadores WHERE tenant_id = ? AND conector_id = ? AND chave = ?').get(tenantId, conectorId, i.chave);
+      if (atual) {
+        db.prepare('UPDATE indicadores SET nome = ?, valor = ?, unidade = ?, meta = ?, anterior = CASE WHEN valor = ? THEN anterior ELSE valor END, atualizado_em = ? WHERE id = ?')
+          .run(i.nome, i.valor, i.unidade || '', i.meta, i.valor, quando, atual.id);
+      } else {
+        db.prepare('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)')
+          .run('ki_' + rid(12), tenantId, conectorId, i.chave, i.nome, i.valor, i.unidade || '', i.meta, quando);
+      }
+    }
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  return lista.length;
+}
+async function listarIndicadores(tenantId) { return db.prepare('SELECT * FROM indicadores WHERE tenant_id = ? ORDER BY nome').all(tenantId).map(mapIndicador); }
+
 /* ----- Fotos pelo QR (D31) ----- */
 const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, dataId: r.data_id || '', dataAlvo: r.data_alvo || '', guardarAte: r.guardar_ate || '', criadoEm: Number(r.created_at) || 0 } : null);
 const mapFotoPessoa = (r) => (r ? { id: r.id, tenantId: r.tenant_id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', aceiteEm: Number(r.aceite_em) || 0, aprovadaEm: Number(r.aprovada_em) || 0, criadoEm: Number(r.created_at) || 0 } : null);
@@ -1644,6 +1722,9 @@ async function dadosDoTenant(tenantId) {
     imagensDaMarca: pega('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = ?'),
     aniversariantes: pega('SELECT id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, consentimento_em, created_at, updated_at FROM birthdays WHERE tenant_id = ?'),
     pedidosDeFoto: pega('SELECT id, codigo, titulo, tipo, inicio, fim, aceitando, data_id, data_alvo, guardar_ate, created_at FROM pedidos_foto WHERE tenant_id = ?'),
+    // Sem o segredo cifrado e sem o hash do token: são credenciais, não dados da conta.
+    conectoresDeIndicadores: pega('SELECT id, nome, modo, url, auth_tipo, intervalo_min, ultimo_ok, ultimo_erro, created_at FROM conectores_kpi WHERE tenant_id = ?'),
+    indicadores: pega('SELECT id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em FROM indicadores WHERE tenant_id = ?'),
     fotosParaAprovar: pega('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, aceite_em, aprovada_em, created_at FROM fotos_pessoa WHERE tenant_id = ?'),
     midias: pega('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ?'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
@@ -1705,7 +1786,7 @@ async function apagarTenant(tenantId) {
     // As tabelas novas ficavam para trás (D0.7); ver db-postgres.js.
     for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes',
-      'pedidos_foto', 'fotos_pessoa', 'users']) {
+      'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }
     db.prepare("DELETE FROM banco WHERE tenant_id = ? AND estado <> 'aprovada'").run(tenantId);
@@ -1903,6 +1984,7 @@ module.exports = {
   criarPedidoFoto, listarPedidosFoto, pedidoFotoPorCodigo, pedidoFotoPorId, atualizarPedidoFoto, removerPedidoFoto,
   addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa, marcarConsentimento, aprovarFotoPessoa,
   pedidosFotoDeData, fotosPendentesAntigas, guardarPedidoFotoAte,
+  criarConector, listarConectores, conectorInterno, conectorPorToken, conectoresParaBuscar, atualizarConector, removerConector, gravarIndicadores, listarIndicadores, mapConector,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,
