@@ -109,6 +109,8 @@ function pedidoTexto(o) {
      */
     aprovados.length ? 'Textos aprovados pelo cliente — use exatamente estes, sem trocar palavra nem acrescentar frase: '
       + aprovados.join('; ') + '. O título pode ser quebrado em duas linhas.' : '',
+    // As referências do cliente (D9): o desenho segue o que ele mostrou que gosta.
+    o.estiloRef ? 'Direção visual das referências do cliente (siga no desenho, não copie conteúdo): ' + String(o.estiloRef).slice(0, 240) + '.' : '',
     'Escreva ' + (PAPEL_TXT[o.papel] || PAPEL_TXT.destaque) + '.',
     o.foto ? 'Há uma foto para a peça (campo "foto"): use <img data-campo-img="foto">, com véu.' : 'NÃO há foto: a peça é só tipografia e forma — não use data-campo-img.',
   ];

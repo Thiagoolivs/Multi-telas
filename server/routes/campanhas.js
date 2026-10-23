@@ -42,7 +42,7 @@ function configDe(d) {
 }
 
 module.exports = function (ctx) {
-  const { db, sendJson, readBody, rateLimit, emTrabalho, marcaDaConta, fotoDaConta } = ctx;
+  const { db, sendJson, readBody, rateLimit, emTrabalho, marcaDaConta, fotoDaConta, estiloDasReferencias } = ctx;
 
   async function gerar(req, res, sess) {
     // Várias chamadas de modelo e fotos: o mesmo teto da campanha de Meus Designs.
@@ -58,7 +58,7 @@ module.exports = function (ctx) {
       if (!E.temOQueGerar(escopo)) return sendJson(res, 400, { error: 'ainda não tem nada para criar: diga o que quer mostrar' });
       await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.ecossistema');
       return emTrabalho(res, sess, 'campanha', { brief: (escopo.nome || 'Campanha').slice(0, 200) }, async (progresso) => {
-        const resultado = await eco.gerar(escopo, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
+        const resultado = await eco.gerar(escopo, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso, onLerReferencias: estiloDasReferencias });
         progresso('guardando a campanha', '');
         const campanha = await db.criarCampanha(sess.tenant_id, sess.user_id, {
           nome: resultado.nome, conversaId: conv ? conv.id : '', escopo, resultado, estado: 'pronta', telas: [], capa: capaDe(resultado),

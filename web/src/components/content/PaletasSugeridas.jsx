@@ -90,7 +90,9 @@ export function PaletasSugeridas({ kit, empresa, ramoDaConta, logoUrl, fonteTitu
     return coresDoTexto(kit && kit.siteResumo);
   }, [salvas.join(','), doLogo.join(','), kit && kit.siteResumo]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { paletas } = useMemo(() => sugerir({ ramo, cores: daEmpresa }), [ramo, daEmpresa]);
+  // As cores lidas do site viram uma paleta própria, "Do seu site" (D9).
+  const doSite = useMemo(() => coresDoTexto(kit && kit.siteResumo), [kit && kit.siteResumo]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { paletas } = useMemo(() => sugerir({ ramo, cores: daEmpresa, doSite }), [ramo, daEmpresa, doSite]);
   const problemas = useMemo(() => avisos(cores), [cores.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
   const salvasNaLista = paletas.some((p) => mesmaPaleta(p.cores, salvas));
   const setCor = (i, v) => setCores((c) => c.map((x, j) => (j === i ? v : x)));
