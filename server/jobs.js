@@ -249,6 +249,20 @@ function publico(j) {
 }
 
 /*
+ * A versão LEVE, para a aba "Criando" (D11): sem o resultado inteiro (uma
+ * campanha pronta traz todas as peças, em HTML), só o que a lista precisa
+ * para dizer o que ficou pronto e levar até lá.
+ */
+function resumir(j) {
+  const p = publico(j);
+  const r = j.estado === 'pronto' ? j.resultado : null;
+  p.resultado = null;
+  if (r && r.campanha && r.campanha.id) p.campanha = { id: r.campanha.id, nome: r.campanha.nome || '' };
+  if (r && typeof r.url === 'string') p.url = r.url;
+  return p;
+}
+
+/*
  * No boot: fecha os trabalhos que o reinício deixou órfãos.
  *
  * Sem isto, um trabalho que estava `rodando` quando o processo caiu ficaria
@@ -275,5 +289,5 @@ function panorama() {
   return { rodando, naMemoria: jobs.size };
 }
 
-const modulo = { criar, ler, publico, usarBanco, doTenant, fecharOrfaos, panorama, MAX_POR_TENANT, aoMedir: null };
+const modulo = { criar, ler, publico, resumir, usarBanco, doTenant, fecharOrfaos, panorama, MAX_POR_TENANT, aoMedir: null };
 module.exports = modulo;

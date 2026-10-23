@@ -239,6 +239,8 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
             <div className="text-sm font-semibold text-ink">{gerando.etapa || 'criando'}</div>
             {gerando.detalhe && <div className="text-xs text-ink-3">{gerando.detalhe}</div>}
             <div className="tnum text-2xs text-ink-3">{gerando.segundos || 0}s · pode sair desta tela: a criação continua e fica salva.</div>
+            {/* D11: o andamento também fica em Criando, e o aviso chega em qualquer página. */}
+            {onIr && <button type="button" onClick={() => onIr('criando')} className="text-xs font-medium text-accent hover:underline">Acompanhar em Criando e seguir usando o painel</button>}
           </div>
         </Panel>
       </div>

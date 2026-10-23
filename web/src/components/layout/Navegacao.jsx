@@ -3,6 +3,7 @@ import { Menu } from 'lucide-react';
 import { cn } from '../../lib/cn.js';
 import { GRUPOS, PAGINAS, BARRA_INFERIOR, grupoDa } from '../../lib/menu.js';
 import { ICONE_DO_GRUPO } from './Sidebar.jsx';
+import { useTrabalhos } from '../../lib/trabalhos.js';
 
 /*
  * As ABAS do grupo (PLANO §5.1): Mídias mostra Armazenamento e Banco de
@@ -12,6 +13,8 @@ import { ICONE_DO_GRUPO } from './Sidebar.jsx';
  */
 export function AbasDoGrupo({ active, onNavigate }) {
   const grupo = grupoDa(active);
+  // Quantas gerações estão rodando: o número fica na aba "Criando" (D11).
+  const rodando = (useTrabalhos() || []).filter((j) => j.estado === 'rodando').length;
   if (!grupo || grupo.paginas.length < 2 || !grupo.paginas.includes(active)) return null;
   return (
     <div className="-mx-4 mb-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="tablist" aria-label={grupo.label}>
@@ -21,6 +24,9 @@ export function AbasDoGrupo({ active, onNavigate }) {
             className={cn('rounded-md px-3 py-1.5 text-sm font-medium transition',
               active === p ? 'bg-surface text-ink shadow-xs' : 'text-ink-3 hover:text-ink-2')}>
             {PAGINAS[p]}
+            {p === 'criando' && rodando > 0 && (
+              <span className="ml-1.5 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-accent px-1 text-2xs font-semibold text-accent-fg" aria-label={rodando + ' em andamento'}>{rodando}</span>
+            )}
           </button>
         ))}
       </div>

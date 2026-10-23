@@ -91,3 +91,8 @@
   ::-webkit-scrollbar-thumb { background: rgb(var(--c-line-strong)); border-radius: 6px; border: 2px solid rgb(var(--c-canvas)); }
   ::-webkit-scrollbar-track { background: transparent; }
 }
+
+/* A barra de "criando" (D11): anda sem prometer porcentagem — a IA não sabe quanto falta. */
+@keyframes mt-andando { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+.mt-andando { animation: mt-andando 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mt-andando { animation: none; width: 100%; opacity: .5; } }

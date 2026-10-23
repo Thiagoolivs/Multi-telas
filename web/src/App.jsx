@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { auth } from './api.js';
 import { AppShell } from './components/layout/AppShell.jsx';
 import { LimiteDeErro } from './components/layout/LimiteDeErro.jsx';
@@ -25,6 +25,8 @@ import { RelatorioPage } from './pages/RelatorioPage.jsx';
 import { CriarPage } from './pages/CriarPage.jsx';
 import { CriacaoRapidaPage } from './pages/CriacaoRapidaPage.jsx';
 import { CampanhasPage } from './pages/CampanhasPage.jsx';
+import { CriandoPage } from './pages/CriandoPage.jsx';
+import { ligarTrabalhos, desligarTrabalhos } from './lib/trabalhos.js';
 import { PecasProntasPage } from './pages/PecasProntasPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 import { parearGuardado } from './lib/parearPendente.js';
@@ -38,6 +40,7 @@ const META = {
   rapida: { title: 'Criação rápida', nav: 'criar' },
   // A campanha do Criar como unidade (item 29).
   campanhas: { title: 'Campanhas' },
+  criando: { title: 'Criando' },
   screens: { title: 'Telas' },
   // O que passa em cada TV, com aba própria (item 40).
   programacao: { title: 'Programação' },
@@ -167,7 +170,18 @@ export default function App() {
     return () => window.removeEventListener('popstate', voltar);
   }, []);
 
+  /*
+   * O observador das gerações (D11): avisa "ficou pronta" em qualquer página.
+   * A página atual vai por referência: o Criar já mostra o próprio resultado.
+   */
+  const rotaAtual = useRef(route.name);
+  rotaAtual.current = route.name;
+  useEffect(() => {
+    if (session) ligarTrabalhos(go, () => rotaAtual.current);
+  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function logout() {
+    desligarTrabalhos();
     await auth.logout();
     setSession(null);
     setRoute({ name: 'overview' });
@@ -215,6 +229,7 @@ export default function App() {
       case 'criar': return <CriarPage key={(route.opcao || '') + (route.tela || '') + (route.zona || '') + (route.ideia || '')} opcaoInicial={route.opcao} telaInicial={route.tela} zonaInicial={route.zona} ideiaInicial={route.ideia} onIr={go} />;
       case 'rapida': return <CriacaoRapidaPage key={(route.opcao || '') + (route.tela || '')} opcaoInicial={route.opcao} telaInicial={route.tela} onIr={go} />;
       case 'campanhas': return <CampanhasPage key={route.campanha || ''} campanhaInicial={route.campanha} onIr={go} />;
+      case 'criando': return <CriandoPage onIr={go} />;
       case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage onIr={go} />;
       case 'brand': return <BrandPage onIr={go} />;
       case 'mural': return <MuralPage />;

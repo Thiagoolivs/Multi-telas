@@ -33,7 +33,7 @@ test('item 28: um caminho de IA só — a TV leva ao Criar, sem o formulário an
 test('item 29: Campanhas é a casa da campanha — uma vez, com estado, TVs e o mesmo resultado do Criar', async () => {
   const { pathToFileURL } = require('node:url');
   const M = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
-  assert.deepEqual(M.GRUPOS.find((g) => g.id === 'criar').paginas, ['criar', 'campanhas', 'designs']);
+  assert.deepEqual(M.GRUPOS.find((g) => g.id === 'criar').paginas, ['criar', 'criando', 'campanhas', 'designs']);
   assert.equal(M.paginaDoIr('campanhas'), 'campanhas');
   const app = ler('web/src/App.jsx');
   assert.match(app, /case 'campanhas': return <CampanhasPage key=\{route\.campanha \|\| ''\} campanhaInicial=\{route\.campanha\} onIr=\{go\} \/>;/);
