@@ -97,7 +97,7 @@ export async function rasterizar(item, formato, tipo) {
   document.body.appendChild(caixa);
   let ctl = null;
   try {
-    ctl = R.montar(caixa, item, { leve: true, marcaNaTela: false, clima: () => Promise.resolve('') });
+    ctl = R.montar(caixa, item, { leve: true, marcaNaTela: false, logo: globalThis.MT_LOGO || null, clima: () => Promise.resolve('') });
     const sombra = caixa.shadowRoot;
     await esperarImagens(sombra);
     if (document.fonts && document.fonts.ready) await document.fonts.ready;

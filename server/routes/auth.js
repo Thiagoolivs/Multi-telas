@@ -415,6 +415,7 @@ module.exports = function(ctx) {
               id: sess.tenant_id, name: (t && t.name) || '',
               perfil: await paleta.perfilDaConta(db, sess.tenant_id, t),
               perfilEscolhido: !!(t && perfilValido(t.perfil)),
+              logo: await paleta.logoDaConta(db, sess.tenant_id),
             },
             // hasPassword: conta criada pelo Google ainda não tem senha própria.
             user: { id: sess.user_id, email: sess.email, role: sess.role, name: sess.name, hasPassword: !!(u && u.pass_hash) },

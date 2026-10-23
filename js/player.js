@@ -2196,6 +2196,27 @@
     // Layout com cabeçalho já mostra a marca: a peça não precisa repetir.
     const layout = global.MT_getLayout ? MT_getLayout(s.layoutId) : null;
     global.MT_MARCA_NA_TELA = !!(layout && layout.zones.some((z) => z.type === 'header'));
+    // A logo da marca (D8), que o servidor manda junto. logoUrl é o nome antigo.
+    global.MT_LOGO = (s.logo && s.logo.url) ? s.logo : (s.logoUrl ? { url: s.logoUrl } : null);
+  }
+
+  /*
+   * Qual versão da logo vai num fundo: a branca no escuro, a escura no claro,
+   * a original quando não há versão (ou o fundo não se deixa ler).
+   */
+  function luminanciaCss(cor) {
+    const m = String(cor || '').match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/);
+    if (!m || (m[4] != null && Number(m[4]) < 0.5)) return null;
+    const c = [m[1], m[2], m[3]].map((v) => { v = Number(v) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function logoNoFundo(logo, el) {
+    if (!logo || !logo.url) return '';
+    let l = null;
+    for (let x = el; x && l == null; x = x.parentElement) l = luminanciaCss(getComputedStyle(x).backgroundColor);
+    if (l == null) l = luminanciaCss(getComputedStyle(document.body).backgroundColor);
+    if (l == null) return logo.url;
+    return (l < 0.35 ? logo.clara : logo.escura) || logo.url;
   }
 
   /* ---------------- Zona: Cabeçalho ---------------- */
@@ -2204,15 +2225,22 @@
     zoneEl.classList.add('mt-header');
     const left = document.createElement('div');
     left.className = 'mt-header-left';
-    if (cfg.settings.logoUrl) {
+    const logo = global.MT_LOGO;
+    if (logo && logo.url) {
       const img = document.createElement('img');
       img.className = 'mt-header-logo';
-      img.src = cfg.settings.logoUrl;
+      img.alt = '';
+      // Logo que não carrega some, e o nome volta no lugar dela.
+      img.onerror = () => { img.remove(); if (!title.textContent) title.textContent = cfg.settings.nome || ''; };
       left.appendChild(img);
+      // O fundo do cabeçalho só existe depois de a zona entrar na página (setTimeout, não
+      // requestAnimationFrame: este não roda com a aba em segundo plano, e a logo nunca vinha).
+      setTimeout(() => { img.src = logoNoFundo(logo, zoneEl); }, 0);
     }
     const title = document.createElement('div');
     title.className = 'mt-header-title';
-    title.textContent = cfg.settings.titulo || cfg.settings.nome || '';
+    // Com logo, o nome da empresa seria repetido: fica só o título que a pessoa escreveu.
+    title.textContent = cfg.settings.titulo || ((logo && logo.url) ? '' : cfg.settings.nome) || '';
     left.appendChild(title);
 
     const right = document.createElement('div');

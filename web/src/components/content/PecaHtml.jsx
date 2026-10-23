@@ -50,7 +50,7 @@ export function PecaHtml({ item, formato, tamanho, fitHeight, className, rascunh
     carregarDesenhista()
       .then((R) => {
         if (!vivo || !palco.current) return;
-        ctl = R.montar(palco.current, item, { leve: true, rascunho: !!rascunho, marcaNaTela: false, clima: () => Promise.resolve(''), mensagens: mensagens || [], contagem: contagem || '' });
+        ctl = R.montar(palco.current, item, { leve: true, rascunho: !!rascunho, marcaNaTela: false, logo: globalThis.MT_LOGO || null, clima: () => Promise.resolve(''), mensagens: mensagens || [], contagem: contagem || '' });
         setErro('');
       })
       .catch((e) => { if (vivo) setErro(e.message || 'não desenhou'); });

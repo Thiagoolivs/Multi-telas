@@ -198,6 +198,7 @@
    *   marcaNaTela  true quando a tela já mostra a marca (há cabeçalho): some
    *                o que a peça marcou com data-repete="marca"
    *   hostsMidia   hosts aceitos para foto além de /media/ (ver peca-html.js)
+   *   logo         { url, clara, escura } da marca: preenche data-campo-img="logo"
    *   clima        () => Promise<string>, ex.: "27°"
    *   mensagens    frases do rodapé (e as chamadas do cabeçalho)
    *   contagem     "AAAA-MM-DDTHH:MM", o alvo de data-vivo="contagem"
@@ -243,6 +244,26 @@
       + ref[0] + 'px;height:' + ref[1] + 'px;transform:scale(' + k.toFixed(5) + ');transform-origin:0 0';
   }
 
+  /*
+   * O lugar de logo da peça (D8). Peça sem logo própria usa a da marca; e a
+   * logo da marca vai na versão que lê no fundo DA PEÇA: a branca no fundo
+   * escuro, a escura no claro (D7). Logo de outra marca, gravada na peça,
+   * fica como está.
+   */
+  function luminanciaHex(h) {
+    const n = parseInt(String(h || '').replace('#', '').slice(0, 6), 16);
+    if (!Number.isFinite(n)) return null;
+    const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function logoDaPeca(propria, daMarca, tokens) {
+    if (propria && (!daMarca || propria !== daMarca.url)) return propria;
+    if (!daMarca || !daMarca.url) return propria || '';
+    const l = luminanciaHex(tokens && tokens.cores && tokens.cores.fundo);
+    if (l == null) return daMarca.url;
+    return (l < 0.35 ? daMarca.clara : daMarca.escura) || daMarca.url;
+  }
+
   function montar(host, item, opts) {
     const o = opts || {};
     garantirFontes(host.ownerDocument);
@@ -272,7 +293,8 @@
     });
     sombra.querySelectorAll('img[data-campo-img],img[data-campo-qr]').forEach((el) => {
       const qr = el.hasAttribute('data-campo-qr');
-      const valor = it.campos[el.getAttribute(qr ? 'data-campo-qr' : 'data-campo-img')];
+      const campo = el.getAttribute(qr ? 'data-campo-qr' : 'data-campo-img');
+      const valor = campo === 'logo' && !qr ? logoDaPeca(it.campos.logo, o.logo, tokens) : it.campos[campo];
       // Foto que não carrega some, em vez do ícone de imagem quebrada na parede.
       el.onerror = () => el.setAttribute('data-sem-foto', '');
       if (o.rascunho && !qr) el.src = silhueta(tokens);
