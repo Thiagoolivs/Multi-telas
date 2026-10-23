@@ -76,6 +76,12 @@ module.exports = function (ctx) {
     if (dados.pessoaId) {
       quem = await db.pessoaDoTenant(pedido.tenantId, dados.pessoaId);
     }
+    if (!quem && pedido.tipo === 'data') {
+      // Foto para o mural de uma data (D33): basta o nome — a pessoa não entra na lista por isso.
+      const nome = String(query.nome || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+      if (!nome) return sendJson(res, 400, { error: 'diga seu nome' });
+      quem = { id: null, nome, dia: null, mes: null, setor: String(query.setor || '').replace(/\s+/g, ' ').trim().slice(0, 60) };
+    }
     if (!quem) {
       // Quem não está na lista diz quem é; o RH confere ao aprovar.
       const p = P.normalizar({ nome: query.nome, nascimento: query.nascimento, setor: query.setor, email: dados.email });
@@ -127,14 +133,24 @@ module.exports = function (ctx) {
   async function painel(req, res, parts, sess) {
     const t = sess.tenant_id;
     if (!parts[2] && req.method === 'GET') {
-      return sendJson(res, 200, { pedidos: await db.listarPedidosFoto(t), fotos: await db.listarFotosPessoa(t), emailPronto: emailPronto() });
+      return sendJson(res, 200, { pedidos: await db.listarPedidosFoto(t), fotos: await db.listarFotosPessoa(t), emailPronto: emailPronto(), datas: F.datasParaFotos() });
     }
     if (!parts[2] && req.method === 'POST') {
       return readBody(req, res, async (b) => {
-        const p = pedidoDe(b || {});
+        /*
+         * Pedido de uma data (D33): a data do catálogo decide o texto, o dia
+         * (a próxima vez que ela cai) e o fim do recebimento (o próprio dia).
+         */
+        const dataId = b && typeof b.dataId === 'string' && F.PEDIDOS_DE_DATA[b.dataId] ? b.dataId : '';
+        const dataAlvo = dataId ? F.proximaData(dataId) : '';
+        if (dataId && !dataAlvo) return sendJson(res, 400, { error: 'data não encontrada' });
+        // "Semanas antes dos eventos": recebe das 3 semanas antes até o dia (o RH muda se quiser).
+        const tresSemanasAntes = dataAlvo ? F.somarDias(dataAlvo, -21) : '';
+        const inicioDaData = tresSemanasAntes > F.hojeIso() ? tresSemanasAntes : F.hojeIso();
+        const p = pedidoDe(Object.assign({}, dataId ? { titulo: F.PEDIDOS_DE_DATA[dataId], inicio: inicioDaData, fim: dataAlvo } : {}, b || {}));
         let codigo = muralLib.novoCodigo(6);
         for (let i = 0; i < 5 && (await db.pedidoFotoPorCodigo(codigo)); i++) codigo = muralLib.novoCodigo(6);
-        const pedido = await db.criarPedidoFoto(t, Object.assign(p, { codigo, tipo: 'perfil' }));
+        const pedido = await db.criarPedidoFoto(t, Object.assign(p, { codigo, tipo: dataId ? 'data' : 'perfil', dataId, dataAlvo }));
         avisar(t);
         return sendJson(res, 200, { pedido });
       });
@@ -142,7 +158,14 @@ module.exports = function (ctx) {
     if (parts[2] === 'fotos' && parts[3] && req.method === 'POST' && (parts[4] === 'aprovar' || parts[4] === 'recusar')) {
       const f = await db.fotoPessoaPorId(parts[3], t);
       if (!f) return sendJson(res, 404, { error: 'foto não encontrada' });
-      if (parts[4] === 'recusar') { await recusar(t, f); return sendJson(res, 200, { ok: true }); }
+      if (parts[4] === 'recusar') { await recusar(t, f); avisar(t); return sendJson(res, 200, { ok: true }); }
+      // Foto de uma data (D33): fica, aprovada, no mural da data — não vira a foto da pessoa.
+      const doPedido = await db.pedidoFotoPorId(f.pedidoId, t);
+      if (doPedido && doPedido.tipo === 'data') {
+        await db.aprovarFotoPessoa(f.id, t);
+        avisar(t);
+        return sendJson(res, 200, { ok: true });
+      }
       const pessoa = f.pessoaId ? await db.pessoaDoTenant(t, f.pessoaId) : null;
       let pessoaId = pessoa && pessoa.id;
       if (pessoa) await db.atualizarPessoa(t, pessoa.id, Object.assign({}, pessoa, { foto: f.url }));

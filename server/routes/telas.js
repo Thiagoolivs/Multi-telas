@@ -308,8 +308,22 @@ module.exports = function (ctx) {
              * mostram o QR — "a pessoa lê um QR code na tela pedindo as fotos".
              */
             if (auto.aniversarios) {
-              const pedido = (await db.listarPedidosFoto(device.tenant_id)).find((p) => fotoQr.noPeriodo(p));
+              const pedidos = await db.listarPedidosFoto(device.tenant_id);
+              const pedido = pedidos.find((p) => fotoQr.noPeriodo(p));
               if (pedido) auto.pedidoFoto = { codigo: pedido.codigo, titulo: pedido.titulo, link: baseUrl(req) + '/f/' + pedido.codigo };
+              /*
+               * Datas com fotos da equipe (D33): na semana da data, o mural
+               * com as fotos aprovadas — da própria conta, e com o primeiro
+               * nome só (é a parede da empresa).
+               */
+              const daData = pedidos.find((p) => p.tipo === 'data' && fotoQr.semanaDaData(p.dataAlvo));
+              if (daData) {
+                const daConta = storage.publicUrl(device.tenant_id + '/');
+                const fotos = (await db.listarFotosPessoa(device.tenant_id))
+                  .filter((f) => f.pedidoId === daData.id && f.aprovadaEm && f.url.startsWith(daConta))
+                  .slice(-12).map((f) => ({ url: f.url, nome: String(f.nome || '').split(' ')[0] }));
+                if (fotos.length) auto.dataComFotos = { titulo: fotoQr.saudacaoDa(daData.dataId), fotos };
+              }
             }
             if (auto.aniversarios || auto.mural) { c.settings.automaticos = auto; mudou = true; }
           }

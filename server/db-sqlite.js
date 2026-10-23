@@ -407,6 +407,10 @@ garantirColuna('birthdays', 'updated_at INTEGER');
 // Consentimento por pessoa (D31, nota do consultor): quando ela autorizou, pela página do QR.
 garantirColuna('birthdays', 'consentimento_em INTEGER');
 garantirColuna('fotos_pessoa', 'aceite_em INTEGER');
+// Fotos para uma data (D33): o pedido aponta a data (Dia das Mães...) e a foto aprovada fica, formando o mural dela.
+garantirColuna('pedidos_foto', 'data_id TEXT');
+garantirColuna('pedidos_foto', 'data_alvo TEXT');
+garantirColuna('fotos_pessoa', 'aprovada_em INTEGER');
 
 function migrarBrandkit() {
   const antigos = db.prepare(`SELECT b.* FROM brandkit b
@@ -1494,12 +1498,12 @@ async function removerEvento(id, tenantId) { return qCal.remover.run(id, tenantI
 
 /* ---------------- Mural de fotos do público ---------------- */
 /* ----- Fotos pelo QR (D31) ----- */
-const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, criadoEm: Number(r.created_at) || 0 } : null);
-const mapFotoPessoa = (r) => (r ? { id: r.id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', aceiteEm: Number(r.aceite_em) || 0, criadoEm: Number(r.created_at) || 0 } : null);
+const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, dataId: r.data_id || '', dataAlvo: r.data_alvo || '', criadoEm: Number(r.created_at) || 0 } : null);
+const mapFotoPessoa = (r) => (r ? { id: r.id, pedidoId: r.pedido_id, pessoaId: r.pessoa_id || null, nome: r.nome || '', dia: r.dia, mes: r.mes, setor: r.setor || '', email: r.email || '', url: r.url || '', mediaId: r.media_id || '', aceiteEm: Number(r.aceite_em) || 0, aprovadaEm: Number(r.aprovada_em) || 0, criadoEm: Number(r.created_at) || 0 } : null);
 async function criarPedidoFoto(tenantId, p) {
   const id = 'pf_' + rid(12);
-  db.prepare('INSERT INTO pedidos_foto (id, tenant_id, codigo, titulo, tipo, inicio, fim, aceitando, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)')
-    .run(id, tenantId, p.codigo, p.titulo || '', p.tipo || 'perfil', p.inicio || '', p.fim || '', Date.now());
+  db.prepare('INSERT INTO pedidos_foto (id, tenant_id, codigo, titulo, tipo, inicio, fim, aceitando, data_id, data_alvo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)')
+    .run(id, tenantId, p.codigo, p.titulo || '', p.tipo || 'perfil', p.inicio || '', p.fim || '', p.dataId || '', p.dataAlvo || '', Date.now());
   return mapPedidoFoto(db.prepare('SELECT * FROM pedidos_foto WHERE id = ?').get(id));
 }
 async function listarPedidosFoto(tenantId) { return db.prepare('SELECT * FROM pedidos_foto WHERE tenant_id = ? ORDER BY created_at DESC').all(tenantId).map(mapPedidoFoto); }
@@ -1519,6 +1523,7 @@ async function addFotoPessoa(tenantId, f) {
 async function listarFotosPessoa(tenantId) { return db.prepare('SELECT * FROM fotos_pessoa WHERE tenant_id = ? ORDER BY created_at').all(tenantId).map(mapFotoPessoa); }
 async function fotoPessoaPorId(id, tenantId) { return mapFotoPessoa(db.prepare('SELECT * FROM fotos_pessoa WHERE id = ? AND tenant_id = ?').get(String(id), tenantId)); }
 async function removerFotoPessoa(id, tenantId) { return db.prepare('DELETE FROM fotos_pessoa WHERE id = ? AND tenant_id = ?').run(id, tenantId).changes; }
+async function aprovarFotoPessoa(id, tenantId, quando) { return db.prepare('UPDATE fotos_pessoa SET aprovada_em = ? WHERE id = ? AND tenant_id = ?').run(Number(quando) || Date.now(), String(id), tenantId).changes; }
 async function marcarConsentimento(tenantId, pessoaId, quando) { return db.prepare('UPDATE birthdays SET consentimento_em = ? WHERE id = ? AND tenant_id = ?').run(Number(quando) || Date.now(), String(pessoaId), tenantId).changes; }
 
 const qMural = {
@@ -1632,8 +1637,8 @@ async function dadosDoTenant(tenantId) {
     marca: db.prepare('SELECT * FROM brandkit WHERE tenant_id = ?').get(tenantId) || null,
     imagensDaMarca: pega('SELECT id, kind, url, label, created_at FROM brandassets WHERE tenant_id = ?'),
     aniversariantes: pega('SELECT id, nome, matricula, dia, mes, cargo, setor, email, foto, origem, consentimento_em, created_at, updated_at FROM birthdays WHERE tenant_id = ?'),
-    pedidosDeFoto: pega('SELECT id, codigo, titulo, tipo, inicio, fim, aceitando, created_at FROM pedidos_foto WHERE tenant_id = ?'),
-    fotosParaAprovar: pega('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, aceite_em, created_at FROM fotos_pessoa WHERE tenant_id = ?'),
+    pedidosDeFoto: pega('SELECT id, codigo, titulo, tipo, inicio, fim, aceitando, data_id, data_alvo, created_at FROM pedidos_foto WHERE tenant_id = ?'),
+    fotosParaAprovar: pega('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, aceite_em, aprovada_em, created_at FROM fotos_pessoa WHERE tenant_id = ?'),
     midias: pega('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ?'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
     // seria entregar uma cópia incompleta com cara de completa.
@@ -1890,7 +1895,7 @@ module.exports = {
   getMemoria, saveMemoria, clearMemoria,
   criarMural, listarMurais, muralPorCodigo, muralPorId, atualizarMural, removerMural,
   criarPedidoFoto, listarPedidosFoto, pedidoFotoPorCodigo, pedidoFotoPorId, atualizarPedidoFoto, removerPedidoFoto,
-  addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa, marcarConsentimento,
+  addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa, marcarConsentimento, aprovarFotoPessoa,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,

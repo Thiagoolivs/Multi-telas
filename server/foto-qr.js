@@ -90,6 +90,52 @@ const dataValida = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && !isNaN(
 const PRAZO_PADRAO_DIAS = 30;
 function somarDias(iso, n) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return hojeIso(d); }
 
+/*
+ * FOTOS PARA UMA DATA (EXECUTOR D33): "mães, pais, mulheres, crianças, Natal
+ * e as outras". O pedido aponta a data do catálogo (js/seasons.js); as fotos
+ * aprovadas formam o mural dela, que a TV mostra na semana da data. Campanha
+ * de mês (Outubro Rosa) e de vendas (Black Friday) não pedem foto da equipe.
+ */
+const S = require('../js/seasons.js');
+const PEDIDOS_DE_DATA = {
+  'dia-mulher': 'Mulheres da equipe: mandem sua foto para o mural do Dia da Mulher',
+  carnaval: 'Mande sua foto de Carnaval para o mural da equipe',
+  pascoa: 'Mande uma foto da sua Páscoa para o mural da equipe',
+  'dia-trabalho': 'Mande uma foto sua no trabalho para o Dia do Trabalho',
+  'dia-maes': 'Mande uma foto com a sua mãe para o mural do Dia das Mães',
+  'festa-junina': 'Mande sua foto caipira para o mural do arraiá',
+  'dia-pais': 'Mande uma foto com o seu pai para o mural do Dia dos Pais',
+  'dia-criancas': 'Mande uma foto sua de criança (ou dos seus filhos) para o Dia das Crianças',
+  natal: 'Mande a foto do seu Natal para o mural da equipe',
+  'ano-novo': 'Mande sua foto da virada para o mural da equipe',
+};
+// A próxima vez que a data cai (hoje conta), em AAAA-MM-DD.
+function proximaData(id, hoje) {
+  const s = S.getSeason(id);
+  if (!s || !PEDIDOS_DE_DATA[id]) return '';
+  const h = hoje || hojeIso();
+  const ano = Number(h.slice(0, 4));
+  for (const a of [ano, ano + 1]) {
+    const d = S.dataDe(s, a);
+    if (d && hojeIso(d) >= h) return hojeIso(d);
+  }
+  return '';
+}
+// As datas que pedem foto, da mais próxima à mais distante (o painel oferece).
+function datasParaFotos(hoje) {
+  return Object.keys(PEDIDOS_DE_DATA).map((id) => {
+    const s = S.getSeason(id);
+    return { id, label: s.label, emoji: s.emoji, data: proximaData(id, hoje), titulo: PEDIDOS_DE_DATA[id] };
+  }).filter((d) => d.data).sort((a, b) => (a.data < b.data ? -1 : 1));
+}
+// A semana do mural da data na TV: os 6 dias antes e o dia (como o pacote da data).
+function semanaDaData(dataAlvo, hoje) {
+  if (!dataValida(dataAlvo)) return false;
+  const h = hoje || hojeIso();
+  return h >= somarDias(dataAlvo, -6) && h <= dataAlvo;
+}
+const saudacaoDa = (id) => { const s = S.getSeason(id); return (s && s.greeting && s.greeting.titulo) || (s ? s.label : ''); };
+
 function emailDoCodigo(codigo, empresa) {
   const de = empresa ? ' — ' + empresa : '';
   return {
@@ -117,12 +163,16 @@ function pagina(pedido, opts) {
   const esc = muralLib.esc;
   const titulo = esc(pedido.titulo || 'Mande sua foto');
   const empresa = esc(o.empresa || '');
+  // Pedido de uma data (D33): a foto vai para o mural dela, e quem não está na lista diz só o nome.
+  const daData = pedido.tipo === 'data';
+  const data = daData && S.getSeason(pedido.dataId);
+  const mural = daData ? 'o mural ' + (data ? (/^(Páscoa|Festa)/.test(data.label) ? 'da ' : 'do ') + esc(data.label) : 'da data') : 'o mural e os aniversários';
   return `<!doctype html><html lang="pt-BR"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>${titulo}</title><style>${muralLib.CSS}${CSS_EXTRA}</style></head>
-<body><div class="card" id="dados" data-codigo="${esc(pedido.codigo)}" data-max-mb="${MAX_MB}">
+<body><div class="card" id="dados" data-codigo="${esc(pedido.codigo)}" data-max-mb="${MAX_MB}" data-tipo="${daData ? 'data' : 'perfil'}">
   <h1>${titulo}</h1>
   <p class="sub">${empresa ? 'A foto vai para as TVs d' + (/^[AaEeIiOoUu]/.test(empresa) ? 'a ' : 'e ') + empresa + ' depois que o RH conferir.' : 'A foto vai para as TVs depois que o RH conferir.'}</p>
 
@@ -143,7 +193,7 @@ function pagina(pedido, opts) {
     <div id="novo" style="display:none">
       <p class="sub">Você ainda não está na lista do RH. Diga quem é:</p>
       <input class="campo" type="text" id="nome" placeholder="Seu nome" maxlength="80" autocomplete="name">
-      <input class="campo" type="text" id="nascimento" placeholder="Aniversário (dia/mês, ex.: 15/03)" maxlength="10">
+      ${daData ? '' : '<input class="campo" type="text" id="nascimento" placeholder="Aniversário (dia/mês, ex.: 15/03)" maxlength="10">'}
       <input class="campo" type="text" id="setor" placeholder="Setor (opcional)" maxlength="60">
     </div>
     <img id="preview" alt="">
@@ -158,7 +208,7 @@ function pagina(pedido, opts) {
     <input type="file" id="f" accept="image/*">
     <!-- O consentimento é explícito: a caixa vem desmarcada e o aceite fica gravado com data e hora. -->
     <label class="aceite"><input type="checkbox" id="aceite">
-      <span>Autorizo ${empresa || 'a empresa'} a guardar meu nome, e-mail e foto para o mural e os aniversários. Posso pedir para sair quando quiser.</span></label>
+      <span>Autorizo ${empresa || 'a empresa'} a guardar meu nome, e-mail e foto para ${mural}. Posso pedir para sair quando quiser.</span></label>
     <button id="enviar" disabled>Mandar para o RH</button>
   </div>
 
@@ -174,6 +224,7 @@ function pagina(pedido, opts) {
 
 module.exports = {
   pedirCodigo, conferirCodigo, emitirPasse, lerPasse, gastarFoto, noPeriodo, hojeIso, dataValida, somarDias, emailDoCodigo, pagina,
+  PEDIDOS_DE_DATA, proximaData, datasParaFotos, semanaDaData, saudacaoDa,
   CODIGO_VIDA_MS, PASSE_VIDA_MS, FOTOS_POR_PASSE, TENTATIVAS, MAX_MB, PRAZO_PADRAO_DIAS,
   _limpar: () => { codigos.clear(); passes.clear(); },
 };

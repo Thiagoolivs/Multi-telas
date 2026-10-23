@@ -357,6 +357,14 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
  * TV deitada quanto num painel lateral estreito, e as fotos não podem virar
  * selo num caso e estourar no outro.
  */
+/* D33: o mural da data — o título e a grade de fotos da equipe. */
+.mt-fdd { display: flex; flex-direction: column; gap: 2.4cqh; padding: 4cqh 4cqw; }
+.mt-fdd-h { flex: none; text-align: center; font-size: min(5cqw, 9cqh); font-weight: 800; letter-spacing: -.02em; color: var(--text); }
+.mt-fdd-grade { flex: 1; min-height: 0; display: grid; gap: 1.6cqh; }
+.mt-fdd-foto { position: relative; min-height: 0; overflow: hidden; border-radius: 2cqh; background: color-mix(in srgb, var(--brand) 14%, transparent); box-shadow: var(--shadow); }
+.mt-fdd-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mt-fdd-nome { position: absolute; left: 1.2cqh; bottom: 1.2cqh; padding: .5cqh 1.4cqh; border-radius: 99px; background: rgba(0,0,0,.6); color: #fff; font-size: min(2cqw, 3.4cqh); font-weight: 700; }
+
 /* D31b: o pedido de fotos do RH — o convite à esquerda, o QR grande à direita. */
 .mt-pedidofoto { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: center; gap: 5cqw; padding: 6cqh 6cqw; }
 .mt-pf-kicker { font-size: min(2.6cqw, 4cqh); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
