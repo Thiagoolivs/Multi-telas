@@ -7,6 +7,7 @@ import { FaixaOffline } from './FaixaOffline.jsx';
 import { FaixaSuporte } from './FaixaSuporte.jsx';
 import { FaixaTeste } from './FaixaTeste.jsx';
 import { Avisos } from './Avisos.jsx';
+import { PedidosHost } from '../ui/PedidosHost.jsx';
 import { SubirConteudo } from '../content/SubirConteudo.jsx';
 import { ConviteInstalar } from './ConviteInstalar.jsx';
 
@@ -59,6 +60,7 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
 
       {/* Fora do <main>: o aviso não rola com a página nem some ao trocar de menu. */}
       <Avisos />
+      <PedidosHost />
       {/* Subir foto ou vídeo: do Início, arrastando em qualquer página ou pelo compartilhar do celular. */}
       <SubirConteudo />
       <ConviteInstalar />

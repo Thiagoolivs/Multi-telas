@@ -1,4 +1,5 @@
 import React, { useRef, useState, useCallback, useEffect, useMemo, useLayoutEffect } from 'react';
+import { confirmar } from '../../lib/confirmar.js';
 import Moveable from 'react-moveable';
 import {
   ScanSearch, ImagePlus, Type, Trash2, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical,
@@ -749,8 +750,8 @@ export function CompositionEditor({ value, onClose, onSave }) {
     }), null);
   }
 
-  function pedirModelo() {
-    if (els.length && !window.confirm('Começar de um modelo substitui o que está no palco. Continuar?')) return;
+  async function pedirModelo() {
+    if (els.length && !(await confirmar({ titulo: 'Começar de um modelo?', texto: 'O modelo substitui o que está no palco.', botao: 'Usar o modelo' }))) return;
     setModeloAberto(true);
   }
 
@@ -889,7 +890,17 @@ export function CompositionEditor({ value, onClose, onSave }) {
     const empurrar = () => { try { window.history.pushState({ ...(window.history.state || {}), mtEditor: true }, ''); } catch (e) { /* sem histórico */ } };
     if (!nossa()) empurrar();
     const aoVoltar = () => {
-      if (podeDesfazer(histAtual.current) && !window.confirm('Descartar as alterações desta peça?')) { empurrar(); return; }
+      /*
+       * Com alteração: fica no editor (devolve a entrada do histórico) e
+       * pergunta. Descartando, fecha, e a limpeza abaixo tira a entrada
+       * devolvida — nada sobra no "voltar" do celular.
+       */
+      if (podeDesfazer(histAtual.current)) {
+        empurrar();
+        confirmar({ titulo: 'Descartar as alterações?', texto: 'O que você mudou nesta peça não fica salvo.', botao: 'Descartar', perigo: true })
+          .then((sim) => { if (sim) fecharAtual.current(); });
+        return;
+      }
       saiuPeloVoltar.current = true;
       fecharAtual.current();
     };
@@ -907,8 +918,8 @@ export function CompositionEditor({ value, onClose, onSave }) {
    * Cancelar com alteração pergunta antes. Era um clique para jogar fora
    * meia hora de cardápio — e "Cancelar" fica colado em "Salvar".
    */
-  function cancelar() {
-    if (podeDesfazer(hist) && !window.confirm('Descartar as alterações desta peça?')) return;
+  async function cancelar() {
+    if (podeDesfazer(hist) && !(await confirmar({ titulo: 'Descartar as alterações?', texto: 'O que você mudou nesta peça não fica salvo.', botao: 'Descartar', perigo: true }))) return;
     onClose();
   }
 

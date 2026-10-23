@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
+import { confirmar, perguntar } from '../lib/confirmar.js';
 import {
   Plus, Wand2, ImagePlus, Upload, Pencil, Download, Send, Trash2, Sparkles, Check,
   MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket, MessagesSquare, Share2,
@@ -621,7 +622,7 @@ export function MyDesignsPage({ onIr }) {
   /* ---------------- Ações de campanha inteira ---------------- */
 
   async function renomearCampanha(nome) {
-    const novo = window.prompt('Novo nome da campanha:', nome);
+    const novo = await perguntar({ titulo: 'Renomear', rotulo: 'Nome novo', valor: nome, botao: 'Renomear' });
     if (!novo || novo.trim() === nome) return;
     setBusy(true);
     try { await library.renameCampaign(nome, novo.trim()); reload(); setMsg('Campanha renomeada.'); }
@@ -637,7 +638,7 @@ export function MyDesignsPage({ onIr }) {
   }
 
   async function excluirCampanha(nome, quantas) {
-    if (!window.confirm(`Excluir a campanha “${nome}” e suas ${quantas} peça(s)? Isso não pode ser desfeito.`)) return;
+    if (!(await confirmar({ titulo: `Excluir “${nome}”?`, texto: `As ${quantas} peça(s) dela saem também. Não dá para desfazer.`, botao: 'Excluir', perigo: true }))) return;
     setBusy(true);
     try { await library.removeCampaign(nome); reload(); setMsg('Campanha excluída.'); }
     catch (e) { setMsg(e.message || 'Falha ao excluir'); }
@@ -843,7 +844,10 @@ export function MyDesignsPage({ onIr }) {
                                 <button title="Baixar PNG" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => downloadComposition(it.item, it.formato, it.label)}><Download size={13} /></button>
                               </>
                             )}
-                          <button title="Excluir" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-danger" onClick={async () => { if (window.confirm('Excluir este design?')) { await library.remove(it.id); reload(); } }}><Trash2 size={13} /></button>
+                          <button title="Excluir" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-danger" onClick={async () => {
+                            if (!(await confirmar({ titulo: 'Excluir este design?', texto: 'Não dá para desfazer.', botao: 'Excluir', perigo: true }))) return;
+                            try { await library.remove(it.id); reload(); } catch (e) { setMsg(e.message || 'Não deu para excluir.'); }
+                          }}><Trash2 size={13} /></button>
                         </div>
                       </div>
                     ))}
