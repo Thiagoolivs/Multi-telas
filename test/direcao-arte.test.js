@@ -41,6 +41,20 @@ test('o prompt PROÍBE texto na imagem', () => {
   assert.match(p, /LOGOTIPO|MARCA D'ÁGUA/);
 });
 
+test('a foto pede momento real e nomeia os clichês de banco de imagem (D43 e, aprovado pelo dono)', () => {
+  for (const produto of [false, true]) {
+    const p = arte.promptDeFoto('um padeiro segurando um pão', { formato: '16/9', direcao: 'suave', brand: '#c2410c', produto });
+    assert.match(p, /Fotografia de momento real, como se tirada no próprio estabelecimento\./);
+    assert.match(p, /Quando houver pessoas: brasileiras de verdade, idades e tons de pele variados, fazendo algo/);
+    assert.match(p, /olhar fora da câmera/);
+    assert.match(p, /Evite: sorriso posado para a lente, polegar para cima, aperto de mão, fone de call center, fundo branco infinito, grupo alinhado olhando para a câmera\./);
+    // Vem por último e não passa por cima da direção de arte: o espaço vazio e a proibição de texto continuam antes.
+    assert.ok(p.indexOf('fica VAZIA') < p.indexOf('momento real'));
+    assert.ok(p.indexOf('NENHUM TEXTO') < p.indexOf('momento real'));
+    assert.doesNotMatch(p, /sem aparência de banco de imagens genérico/);
+  }
+});
+
 test('o prompt diz QUAL lado fica vazio, e por quê', () => {
   const p = arte.promptDeFoto('uma atendente', { formato: '16/9' });
   assert.match(p, /metade esquerda/i);
