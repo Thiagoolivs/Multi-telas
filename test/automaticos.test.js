@@ -69,7 +69,8 @@ test('o player encaixa o cartão na semana; no dia, mais vezes; sem aniversário
   const r = semana.comAutomaticos(sazonais, cfg, 'principal', agora);
   assert.equal(r.filter((x) => x._campanha === 'Natal').length, 2);
   assert.match(PLAYER, /const single = items\.length === 1 && !hasAgenda\(items\[0\]\) && !auto;/);
-  assert.match(PLAYER, /const ativos = comAutomaticos\(agendado \? items\.filter\(agendadoAgora\) : items, cfg, zonaId\);/);
+  // D24: a lista passa antes pelo distribuir (fontes e prioridade).
+  assert.match(PLAYER, /const ativos = comAutomaticos\(distribuir\(agendado \? items\.filter\(agendadoAgora\) : items\), cfg, zonaId\);/);
 });
 
 /* ---------------- servidor de verdade ---------------- */

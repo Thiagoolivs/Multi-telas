@@ -1681,6 +1681,58 @@
     return out;
   }
 
+  /*
+   * A TV DISTRIBUI O TEMPO (EXECUTOR D24), no player e sem rede.
+   *
+   *   1. As FONTES se revezam: as peças de uma campanha (ou as datas do
+   *      calendário) não passam todas em fila, uma atrás da outra — entra
+   *      uma de cada fonte por vez, na ordem em que aparecem na zona. Uma
+   *      campanha de seis peças não toma seis minutos seguidos da parede.
+   *   2. PRIORIDADE: a peça "alta" passa duas vezes por volta, espalhada pelo
+   *      round-robin ponderado suave (o do nginx): nunca duas seguidas
+   *      quando há outra peça entre elas.
+   *
+   * O aniversário e o mural entram depois, com a regra deles (comAutomaticos).
+   * A "urgente" é outra coisa: toma a tela (D25).
+   */
+  function fonteDe(it, i) {
+    if (it && it._campanha) return 'c:' + it._campanha;
+    if (it && it._calendario) return 'calendario';
+    return 'i:' + i;
+  }
+  function pesoDe(it) { return it && it.meta && it.meta.prioridade === 'alta' ? 2 : 1; }
+  function distribuir(lista) {
+    if (!lista || lista.length < 2) return lista || [];
+    const grupos = [];
+    const porFonte = {};
+    lista.forEach((it, i) => {
+      const f = fonteDe(it, i);
+      if (!porFonte[f]) { porFonte[f] = []; grupos.push(porFonte[f]); }
+      porFonte[f].push(it);
+    });
+    const base = [];
+    for (let r = 0; base.length < lista.length; r++) grupos.forEach((g) => { if (r < g.length) base.push(g[r]); });
+    const total = base.reduce((s, it) => s + pesoDe(it), 0);
+    if (total === base.length) return base;
+    const atual = base.map(() => 0);
+    const saida = [];
+    for (let k = 0; k < total; k++) {
+      let melhor = 0;
+      base.forEach((it, i) => { atual[i] += pesoDe(it); if (atual[i] > atual[melhor]) melhor = i; });
+      atual[melhor] -= total;
+      saida.push(base[melhor]);
+    }
+    // A volta seguinte começa onde esta terminou: a mesma peça no fim e no começo passaria duas vezes seguidas.
+    if (saida.length > 3 && saida[0] === saida[saida.length - 1]) {
+      const it = saida.pop();
+      for (let p = 1; p < saida.length; p++) {
+        if (saida[p - 1] !== it && saida[p] !== it) { saida.splice(p, 0, it); return saida; }
+      }
+      saida.push(it);
+    }
+    return saida;
+  }
+
   function startPlaylist(zoneEl, items, cfg, zonaId) {
     let index = 0;
     // O que está no ar agora, para o "Ver a tela agora" do painel (coletarEstado).
@@ -1718,7 +1770,8 @@
       if (wait > 0) return schedule(wait / 1000 + 0.08);
 
       // Filtra pelos conteúdos agendados para agora.
-      const ativos = comAutomaticos(agendado ? items.filter(agendadoAgora) : items, cfg, zonaId);
+      // D24: as fontes se revezam e a prioridade pesa; depois entram os automáticos.
+      const ativos = comAutomaticos(distribuir(agendado ? items.filter(agendadoAgora) : items), cfg, zonaId);
       if (!ativos.length) {
         // Antes: "Nenhum conteúdo agendado agora", escrito para o público.
         mostrarRelogio();
