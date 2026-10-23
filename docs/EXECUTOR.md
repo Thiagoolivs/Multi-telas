@@ -1050,6 +1050,90 @@ o aviso fica no canto, sem tapar conteúdo. Falhou: segue na versão antiga,
 nunca tela preta. **Pronto quando:** um APK com `versionCode` maior chega
 ao box de teste e instala com um OK no controle.
 
+## 2g · Rodada 6 — Criar, Criando, Criados e a IA que conversa (23/10, tarde)
+
+O dono, testando (resumo fiel):
+
+1. "assinar continua sem abrir";
+2. "o chat se perde nos pedidos e na maioria das vezes regride, acho que é
+   necessário armazenar contexto";
+3. "ter acesso aos chats antigos, ter um melhor fluxo de pedidos pra IA, e
+   até nos ajustes, ela conversar até entender o que tem que fazer";
+4. "não entendi como a IA altera as programações";
+5. "essa aba criar tem que passar por uma revisão de fluxo, UX e UI […] os
+   chats antigos não estão acessíveis, aparece sempre a última campanha, mas
+   se ela tiver pronta, tem que ficar na aba criados, e se eu quiser editar,
+   entro lá, edito na mão, ou abro um chat de edição com contexto e memória
+   para não regredir, além de poder subir mídias de referência";
+6. "então tem que ter a aba criar, criando e criados […] faça quantas
+   revisões for preciso para acertar tudo".
+
+E, pelo consultor (#135), D42 a D45: gerar só depois do esboço aprovado,
+reajustar gerações, regras de composição por tipo e imagem de referência no
+chat. A ordem abaixo é do executor; cada item tem PR, teste e print.
+
+**D46 Assinar abre.** Achar por que "Assinar" não abre em produção (logs
+`cobranca.*` com o consultor) e fechar o caminho: a fatura abre na mesma
+aba; se o navegador ou o app instalado não sair do painel, um botão "Abrir a
+fatura" fica na tela; resposta sem link é erro dito, nunca silêncio.
+
+**D47 Criar · Criando · Criados.** Três abas, uma pergunta cada:
+- **Criar**: sempre começa limpo ("O que você quer mostrar hoje?"), com as
+  conversas em andamento ao lado (todas, com busca — não só as 5 últimas).
+  Campanha pronta não fica aqui.
+- **Criando**: o que a IA está fazendo e o que espera a aprovação do esboço
+  (D42).
+- **Criados**: tudo o que ficou pronto (as campanhas, com as pastas do D10).
+  Abrir mostra o resultado com Pôr pra rodar, Editar à mão e Editar com a IA.
+  Meus Designs vai para Mídias (a biblioteca de peças soltas), sem sumir.
+  Ao terminar uma geração, o Criar diz "pronta em Criados" e volta limpo.
+
+**D48 A conversa não regride.** A conversa guarda o que foi DECIDIDO (uma
+lista curta de decisões — preço, texto, "sem foto de gente", "só a TV da
+recepção" — que a IA mantém e a pessoa vê e corrige no cartão) e manda
+isso em toda volta, além das mensagens. O escopo que volta da IA entra como
+MUDANÇA sobre o atual (o que ela não mencionou fica), não como substituto.
+Teste: uma conversa de 30 voltas em que a decisão da 2ª volta continua
+valendo na 30ª.
+
+**D49 Conversas antigas.** Lista completa (busca, estado: conversando,
+esperando o esboço, criada), abrir qualquer uma e continuar; a criada leva
+ao resultado em Criados. Renomear e arquivar.
+
+**D50 Editar com a IA.** Em Criados, "Editar com a IA" abre um chat ligado
+à campanha: a IA lê as peças (textos, zona, número), as decisões da
+conversa original e o histórico de ajustes; pergunta quando o pedido é
+ambíguo ("qual das 3 peças?"); muda só o que foi apontado; cada passo tem
+Desfazer. Aceita imagens de referência (D45).
+
+**D45 Imagens de referência no chat** (consultor). Anexar e colar (Ctrl+V,
+colar do celular) no Criar e no Editar com a IA. Vira mídia da conta (tipo
+conferido pelos bytes), marcada como referência de estilo ou foto do
+produto; conta na cota.
+
+**D42 Gerar só com o esboço aprovado** (consultor). Nenhuma geração final
+sem o esboço (o desenho da TV com o que vai em cada zona) aprovado; mudou o
+pedido depois, aprova de novo. Vale para o Criar, o ajuste e a tela pronta;
+o servidor recusa sem aprovação. Teste para cada caminho.
+
+**D51 Ajustes que conversam, e um lugar só para pedir à IA.** O aviso
+rápido, o "Mudar com IA" da tela e o "Pedir à IA" da peça passam a
+perguntar quando não entenderam (com sugestões prontas), em vez de chutar.
+Na Programação, um "Pedir à IA" único: "o que você quer mudar nas TVs?" —
+põe um aviso, troca layout/tema/relógio de uma TV ou leva ao Criar. Responde
+o item 4: hoje cada ajuste mora num canto diferente.
+
+**D43 Reajustar gerações** (consultor). Propor na #135, com prints da
+bancada, a lista do que sai fraco, antes de mexer.
+
+**D44 Regras de composição por tipo** (consultor). Quiz, post, perguntas,
+QR: o que entra, hierarquia, tamanho mínimo, onde fica o QR, margem segura,
+por zona e formato; usadas pelo gerador e conferidas pelo detector.
+
+**Revisões.** Depois de D47–D51, rodadas de revisão do Criar inteiro no
+navegador embutido (computador e celular), com prints na #135, até o fluxo
+ficar óbvio para quem nunca viu.
+
 ## 3 · O consultor (issue #135)
 
 Como falar com ele e o que ele pode fazer: [`CONSULTOR.md`](CONSULTOR.md).
