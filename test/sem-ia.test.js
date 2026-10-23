@@ -17,7 +17,7 @@ const RAIZ = path.join(__dirname, '..');
 test('o npm test roda com AI_PROVIDER=dev (e quem precisa de outro provedor diz qual)', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(RAIZ, 'package.json'), 'utf8'));
   assert.match(pkg.scripts.test, /--env-file-if-exists=test\/sem-ia\.env/);
-  assert.match(fs.readFileSync(path.join(RAIZ, 'test', 'sem-ia.env'), 'utf8'), /^AI_PROVIDER=dev$/m);
+  assert.match(fs.readFileSync(path.join(RAIZ, 'test', 'sem-ia.env'), 'utf8'), /^AI_PROVIDER=dev\r?$/m);
 });
 
 test('AI_PROVIDER=dev vale na composição e na visão, mesmo com a chave do Gemini no ambiente', () => {
