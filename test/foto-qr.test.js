@@ -168,7 +168,7 @@ test('a rota: e-mail → código → passe → foto na fila; o RH aprova (foto n
 
 test('a TV: o cartão "mande sua foto" com o QR entra 1 a cada 6 na principal, e as TVs são avisadas', () => {
   const P = ler('js/player.js');
-  assert.match(P, /if \(!a \|\| \(!a\.aniversarios && !a\.mural && !a\.pedidoFoto\) \|\| zonaId !== zonaPrincipal\(cfg\)\) return null;/);
+  assert.match(P, /if \(!a \|\| \(!a\.aniversarios && !a\.mural && !a\.pedidoFoto[^)]*\) \|\| zonaId !== zonaPrincipal\(cfg\)\) return null;/);
   assert.match(P, /if \(pedido && \(i \+ 1\) % 6 === 0\) out\.push\(pedido\);/);
   assert.match(P, /if \(pedido && out\.indexOf\(pedido\) < 0\) out\.push\(pedido\);/, 'lista curta fica sem o QR');
   const R = ler('js/render.js');

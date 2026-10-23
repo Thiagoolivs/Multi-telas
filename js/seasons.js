@@ -47,6 +47,14 @@
       greeting: { type: 'text', titulo: 'Bom Carnaval!', corpo: 'Aproveite com alegria e responsabilidade.', bg: '#6d28d9', cor: '#ffffff', duracao: 12 },
     },
     {
+      // Faltava (D33): o dono listou "mães, pais, mulheres, crianças, Natal".
+      id: 'dia-mulher', label: 'Dia da Mulher', emoji: '🌷',
+      quando: { tipo: 'fixo', mes: 3, dia: 8 }, antes: 6, depois: 0,
+      decoracao: 'petals',
+      theme: { preset: 'modern-purple', overrides: { bg: '#24102e', bg2: '#4a1d5a', brand: '#c084fc', accent: '#f0abfc' } },
+      greeting: { type: 'text', titulo: 'Feliz Dia da Mulher', corpo: 'Uma homenagem a todas as mulheres da nossa equipe.', bg: '#6b21a8', cor: '#ffffff', duracao: 12 },
+    },
+    {
       id: 'pascoa', label: 'Páscoa', emoji: '🐰',
       quando: { tipo: 'pascoa', desloc: 0 }, antes: 10, depois: 1,
       decoracao: 'petals',
@@ -184,6 +192,7 @@
     natal: ['Boas festas a todos', 'Que 2027 comece leve', 'Obrigado por mais um ano juntos'],
     'ano-novo': ['Ano novo, ciclo novo', 'Que venham as próximas conquistas', 'Comece com o pé direito'],
     carnaval: ['Aproveite com responsabilidade', 'Descanse e volte com energia', 'Bom feriado'],
+    'dia-mulher': ['Às mulheres do nosso time', 'Respeito e reconhecimento todos os dias', 'Feliz Dia da Mulher'],
     pascoa: ['Tempo de renovar', 'Boa Páscoa para você e sua família', 'Aproveite os dias com quem ama'],
     'dia-trabalho': ['Nosso time faz acontecer', 'Orgulho de trabalhar aqui', 'Obrigado por cada dia de dedicação'],
     'dia-maes': ['Obrigado por tudo, mãe', 'Às mães do nosso time', 'Sua força inspira a gente'],

@@ -12,6 +12,7 @@
   if (!raiz) return;
   var CODIGO = raiz.getAttribute('data-codigo') || '';
   var MAX_MB = Number(raiz.getAttribute('data-max-mb')) || 12;
+  var TIPO = raiz.getAttribute('data-tipo') || 'perfil';
   var BASE = '/api/fotoqr/' + encodeURIComponent(CODIGO);
   var $ = function (id) { return document.getElementById(id); };
   var err = $('erro');
@@ -99,8 +100,10 @@
     var q = '?aceite=1';
     if (novo) {
       var nome = $('nome').value.trim();
-      var nasc = $('nascimento').value.trim();
-      if (!nome || !/\d{1,2}\s*[\/\-.]\s*\d{1,2}/.test(nasc)) { erro('Diga seu nome e o aniversário (dia/mês).'); return; }
+      // Foto para uma data (D33): basta o nome. Para o aniversário, o dia e o mês também.
+      var nasc = TIPO === 'data' ? '' : $('nascimento').value.trim();
+      if (!nome) { erro('Diga seu nome.'); return; }
+      if (TIPO !== 'data' && !/\d{1,2}\s*[\/\-.]\s*\d{1,2}/.test(nasc)) { erro('Diga seu nome e o aniversário (dia/mês).'); return; }
       q += '&nome=' + encodeURIComponent(nome) + '&nascimento=' + encodeURIComponent(nasc.replace(/\s+/g, '')) + '&setor=' + encodeURIComponent($('setor').value.trim());
     }
     var btn = this;

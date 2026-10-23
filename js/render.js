@@ -142,6 +142,7 @@
     qrcode: renderQr,
     mural: renderMural,
     pedidofoto: renderPedidoFoto,
+    fotosdadata: renderFotosDaData,
   };
 
   function renderText(item) {
@@ -1600,6 +1601,34 @@
     }
     el.appendChild(inner);
     return { el, duration: item.duracao || 12 };
+  }
+
+  /*
+   * O MURAL DA DATA (EXECUTOR D33): "Feliz Dia das Mães" com as fotos que a
+   * equipe mandou pelo QR e o RH aprovou. A grade sai do número de fotos
+   * (uma, duas, quatro, seis ou nove), cada uma com o primeiro nome.
+   */
+  function renderFotosDaData(item) {
+    const el = div('mt-slide mt-surface mt-fdd');
+    const h = div('mt-fdd-h');
+    h.textContent = item.titulo || 'A nossa equipe';
+    el.appendChild(h);
+    const fotos = (item.fotos || []).slice(0, 9);
+    const cols = fotos.length <= 1 ? 1 : fotos.length <= 4 ? 2 : 3;
+    const grade = div('mt-fdd-grade');
+    grade.style.gridTemplateColumns = 'repeat(' + cols + ', minmax(0, 1fr))';
+    grade.style.gridTemplateRows = 'repeat(' + Math.ceil(fotos.length / cols) + ', minmax(0, 1fr))';
+    fotos.forEach((f) => {
+      const c = div('mt-fdd-foto');
+      const img = document.createElement('img');
+      img.alt = '';
+      img.src = f.url;
+      c.appendChild(img);
+      if (f.nome) { const n = div('mt-fdd-nome'); n.textContent = f.nome; c.appendChild(n); }
+      grade.appendChild(c);
+    });
+    el.appendChild(grade);
+    return { el, duration: item.duracao || 15 };
   }
 
   /*
