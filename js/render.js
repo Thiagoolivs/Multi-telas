@@ -141,6 +141,7 @@
     web: renderWeb,
     qrcode: renderQr,
     mural: renderMural,
+    pedidofoto: renderPedidoFoto,
   };
 
   function renderText(item) {
@@ -1561,6 +1562,44 @@
     }
     el.appendChild(inner);
     return { el, duration: item.duracao || 12 };
+  }
+
+  /*
+   * O PEDIDO DE FOTOS DO RH (EXECUTOR D31b): "a pessoa lê um QR code na
+   * tela pedindo as fotos". Diferente do mural (onde a TV mostra só as fotos
+   * e o QR é do cartaz), aqui o convite É o conteúdo: o QR grande, o que
+   * fazer, e o endereço curto para quem não tem leitor. Sem rede para o
+   * desenho do QR, fica o endereço.
+   */
+  function renderPedidoFoto(item) {
+    const el = div('mt-slide mt-surface mt-pedidofoto');
+    const texto = div('mt-pf-texto');
+    const k = div('mt-pf-kicker');
+    k.textContent = 'Fotos da equipe';
+    const h = div('mt-pf-h');
+    h.textContent = item.titulo || 'Mande sua foto';
+    const s = div('mt-pf-sub');
+    s.textContent = 'Aponte a câmera do celular para o código. O RH confere antes de ir para a TV.';
+    texto.appendChild(k);
+    texto.appendChild(h);
+    texto.appendChild(s);
+    const link = String(item.link || '');
+    if (link) {
+      const l = div('mt-pf-link');
+      l.textContent = link.replace(/^https?:\/\//, '');
+      texto.appendChild(l);
+    }
+    el.appendChild(texto);
+    if (link) {
+      const q = div('mt-pf-qr');
+      const img = document.createElement('img');
+      img.alt = '';
+      img.onerror = function () { q.remove(); el.classList.add('mt-pf-sem-qr'); };
+      img.src = urlQr(link);
+      q.appendChild(img);
+      el.appendChild(q);
+    }
+    return { el, duration: item.duracao || 15 };
   }
 
   /*

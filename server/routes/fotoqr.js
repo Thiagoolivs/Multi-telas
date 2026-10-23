@@ -18,7 +18,9 @@ const P = require('../../js/pessoas.js');
 const muralLib = require('../mural');
 
 module.exports = function (ctx) {
-  const { db, sendJson, readBody, rateLimit, clientIp, midia, mail, erros, canManageTeam } = ctx;
+  const { db, sendJson, readBody, rateLimit, clientIp, midia, mail, erros, canManageTeam, avisarTelas } = ctx;
+  // Abrir, pausar ou apagar o pedido muda o cartão do QR nas TVs (D31b): elas buscam a config de novo.
+  const avisar = (t) => avisarTelas(t, 'config', {}).catch(() => {});
 
   // Sem e-mail configurado o código não chega. Em desenvolvimento (SKIP_VERIFY) o código volta na resposta.
   const emDev = () => process.env.SKIP_VERIFY === '1' && !mail.configured();
@@ -124,6 +126,7 @@ module.exports = function (ctx) {
         let codigo = muralLib.novoCodigo(6);
         for (let i = 0; i < 5 && (await db.pedidoFotoPorCodigo(codigo)); i++) codigo = muralLib.novoCodigo(6);
         const pedido = await db.criarPedidoFoto(t, Object.assign(p, { codigo, tipo: 'perfil' }));
+        avisar(t);
         return sendJson(res, 200, { pedido });
       });
     }
@@ -145,12 +148,14 @@ module.exports = function (ctx) {
     if (pedido && req.method === 'PUT') {
       return readBody(req, res, async (b) => {
         await db.atualizarPedidoFoto(pedido.id, t, pedidoDe(b || {}, pedido));
+        avisar(t);
         return sendJson(res, 200, { pedido: await db.pedidoFotoPorId(pedido.id, t) });
       });
     }
     if (pedido && req.method === 'DELETE') {
       for (const f of (await db.listarFotosPessoa(t)).filter((x) => x.pedidoId === pedido.id)) await recusar(t, f);
       await db.removerPedidoFoto(pedido.id, t);
+      avisar(t);
       return sendJson(res, 200, { ok: true });
     }
     return sendJson(res, 404, { error: 'não encontrado' });

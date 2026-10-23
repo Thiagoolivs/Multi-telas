@@ -357,6 +357,21 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
  * TV deitada quanto num painel lateral estreito, e as fotos não podem virar
  * selo num caso e estourar no outro.
  */
+/* D31b: o pedido de fotos do RH — o convite à esquerda, o QR grande à direita. */
+.mt-pedidofoto { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); align-items: center; gap: 5cqw; padding: 6cqh 6cqw; }
+.mt-pf-kicker { font-size: min(2.6cqw, 4cqh); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+.mt-pf-h { margin-top: 1.4cqh; font-size: min(6cqw, 10cqh); font-weight: 800; line-height: 1.04; letter-spacing: -.02em; color: var(--text); }
+.mt-pf-sub { margin-top: 2.4cqh; font-size: min(2.4cqw, 4cqh); line-height: 1.35; color: var(--text-dim); max-width: 36ch; }
+.mt-pf-link { margin-top: 3cqh; font-size: min(2.6cqw, 4.2cqh); font-weight: 700; color: var(--text); }
+.mt-pf-qr { justify-self: center; background: #fff; border-radius: 3cqh; padding: 3cqh; box-shadow: var(--shadow); }
+.mt-pf-qr img { display: block; width: min(34cqw, 66cqh); height: auto; }
+.mt-pedidofoto.mt-pf-sem-qr { grid-template-columns: 1fr; }
+/* Zona em pé (lateral, totem): um embaixo do outro. */
+@container (aspect-ratio < 1) {
+  .mt-pedidofoto { grid-template-columns: 1fr; text-align: center; gap: 4cqh; }
+  .mt-pf-sub { margin-inline: auto; }
+  .mt-pf-qr img { width: min(60cqw, 36cqh); }
+}
 .mt-mural { display: flex; flex-direction: column; gap: 2cqh; padding: 3cqh 3cqw; }
 .mt-mural-head { flex: none; }
 .mt-mural-h { font-size: clamp(18px, 4.4cqw, 64px); font-weight: 700; line-height: 1.1; letter-spacing: -.02em; }

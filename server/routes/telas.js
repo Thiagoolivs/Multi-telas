@@ -28,6 +28,7 @@ module.exports = function (ctx) {
   const pecaHtml = require('../../js/peca-html.js');
   const quiz = require('../../js/quiz.js');
   const paleta = require('../paleta.js');
+  const fotoQr = require('../foto-qr.js');
   const automaticos = require('../automaticos.js');
   const hostsMidia = (() => {
     try { return [new URL(storage.publicUrl('x')).host]; } catch (e) { return []; }
@@ -302,6 +303,14 @@ module.exports = function (ctx) {
              */
             const conta = await db.getTenant(device.tenant_id).catch(() => null);
             const auto = automaticos.paraATela(conta && conta.automaticos, device);
+            /*
+             * O pedido de fotos do RH (D31): no período, as TVs dos aniversários
+             * mostram o QR — "a pessoa lê um QR code na tela pedindo as fotos".
+             */
+            if (auto.aniversarios) {
+              const pedido = (await db.listarPedidosFoto(device.tenant_id)).find((p) => fotoQr.noPeriodo(p));
+              if (pedido) auto.pedidoFoto = { codigo: pedido.codigo, titulo: pedido.titulo, link: baseUrl(req) + '/f/' + pedido.codigo };
+            }
             if (auto.aniversarios || auto.mural) { c.settings.automaticos = auto; mudou = true; }
           }
           if (mudou) corpo = JSON.stringify(c);
