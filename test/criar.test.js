@@ -73,10 +73,15 @@ test('uma entrada só: Criar no menu e no Início; o resto em "Mais"', () => {
   assert.match(app, /const ATALHOS = \['criar',/);
   assert.match(ler('web/src/pages/DashboardPage.jsx'), /<OpcoesDeCriar compacto onEscolher=\{\(opcao\) => onIr && onIr\('criar', \{ opcao \}\)\}/);
   const md = ler('web/src/pages/MyDesignsPage.jsx');
-  for (const t of ['Criar na mão', 'Gerar imagem IA', 'Importar arquivo', 'Criação rápida']) assert.ok(md.includes("title: '" + t + "'"), t);
+  /*
+   * Dois jeitos de criar, e não cinco (EXECUTOR D2, "tirar coisas que
+   * confundam"): com a IA ou na mão. Gerar só uma imagem e importar do Canva
+   * ficam como atalhos embaixo do "na mão"; nada sumiu.
+   */
+  for (const t of ['Criar com a IA', 'Criar na mão', 'Gerar só uma imagem', 'Importar do Canva']) assert.ok(md.includes(t), t);
+  assert.ok(!/const MAIS = \[/.test(md), 'voltou o menu "Mais" com cinco jeitos de criar');
   // Um caminho de IA só (item 28): a campanha pela IA é o Criar.
-  assert.ok(!md.includes("title: 'Campanha completa com IA'"), 'a campanha antiga voltou para o Mais');
-  assert.match(md, /const MAIS = \[/);
+  assert.ok(!md.includes("title: 'Campanha completa com IA'"), 'a campanha antiga voltou');
   // A tela recebe e organiza: "Criar com IA" é a primeira entrada do Adicionar conteúdo.
   assert.match(ler('web/src/components/content/TypePicker.jsx'), /\{ id: 'criar', label: 'Criar com IA'/);
   // Desde o item 32 o Criar da TV leva também a zona.
