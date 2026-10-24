@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Search, X, MessageSquare, Plus, Pencil, Archive, ArchiveRestore, CheckCircle2 } from 'lucide-react';
+import { Search, X, MessageSquare, Plus, Pencil, Archive, ArchiveRestore, CheckCircle2, Trash2 } from 'lucide-react';
 import { Spinner } from '../ui/Feedback.jsx';
 import { criar } from '../../api.js';
-import { perguntar } from '../../lib/confirmar.js';
+import { perguntar, confirmar } from '../../lib/confirmar.js';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
 
@@ -31,7 +31,7 @@ const quando = (ms) => {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 };
 
-export function ListaDeConversas({ atual, onAbrir, onNova, versao, className }) {
+export function ListaDeConversas({ atual, onAbrir, onNova, onExcluiu, versao, className }) {
   const [filtro, setFiltro] = useState('andamento');   // andamento | criadas
   const [arquivadas, setArquivadas] = useState(false);
   const [busca, setBusca] = useState('');
@@ -71,6 +71,28 @@ export function ListaDeConversas({ atual, onAbrir, onNova, versao, className }) 
       const r = await criar.renomearConversa(c.id, titulo.trim());
       setLista((l) => (l || []).map((x) => (x.id === c.id ? { ...x, titulo: r.conversa.titulo } : x)));
     } catch (e) { aviso.erro('conversas', 'Não deu para renomear: ' + (e.message || 'falha de conexão') + '.'); }
+  }
+
+  /*
+   * Excluir com confirmação (pedido do dono, 24/10: "tem que ter confirmação
+   * para não apagar sem querer"). A caixa diz o nome da conversa, que não dá
+   * para desfazer, e o que NÃO some (a campanha que ela criou).
+   */
+  async function excluir(c) {
+    const nome = c.titulo || 'esta conversa';
+    const ok = await confirmar({
+      titulo: 'Excluir a conversa?',
+      texto: '"' + nome + '" e tudo o que foi combinado nela vão ser apagados. Não dá para desfazer.'
+        + (c.estado === 'gerado' ? ' A campanha que ela criou continua em Criados.' : ' Se quiser só tirar da lista, use Arquivar.'),
+      botao: 'Excluir', perigo: true,
+    });
+    if (!ok) return;
+    try {
+      await criar.excluirConversa(c.id);
+      setLista((l) => (l || []).filter((x) => x.id !== c.id));
+      aviso.ok('Conversa excluída.');
+      if (onExcluiu) onExcluiu(c.id);
+    } catch (e) { aviso.erro('conversas', 'Não deu para excluir: ' + (e.message || 'falha de conexão') + '.'); }
   }
 
   async function arquivar(c, sim) {
@@ -141,6 +163,8 @@ export function ListaDeConversas({ atual, onAbrir, onNova, versao, className }) 
                       onClick={() => arquivar(c, !arquivadas)} className="rounded p-1 text-ink-3 hover:bg-surface hover:text-ink">
                       {arquivadas ? <ArchiveRestore size={12} /> : <Archive size={12} />}
                     </button>
+                    <button type="button" title="Excluir" aria-label={'Excluir ' + (c.titulo || 'a conversa')} onClick={() => excluir(c)}
+                      className="rounded p-1 text-ink-3 hover:bg-danger/10 hover:text-danger"><Trash2 size={12} /></button>
                   </span>
                 </li>
               );

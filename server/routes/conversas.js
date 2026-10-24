@@ -7,6 +7,7 @@
  *   GET  /api/conversas          as da conta (sem as mensagens), com ?q=, ?estado=
  *                                 andamento|criadas, ?arquivadas=1 e ?pular= (D49)
  *   GET  /api/conversas/:id      uma, inteira
+ *   DELETE /api/conversas/:id    exclui (o painel pede confirmação antes; a campanha criada fica);
  *   PUT  /api/conversas/:id      { titulo } renomeia; { arquivada } arquiva (D49);
  *                                 { decisoes } corrige o que foi decidido (D48);
  *                                 { referencias } muda o uso ou tira uma imagem (D45);
@@ -219,6 +220,17 @@ module.exports = function (ctx) {
       const atual = await db.lerConversa(sess.tenant_id, id);
       if (!atual) { sendJson(res, 404, { error: 'conversa não encontrada' }); return true; }
       if (req.method === 'GET') { sendJson(res, 200, { conversa: atual }); return true; }
+      /*
+       * Excluir (pedido do dono, 24/10). Some a conversa — as mensagens e o
+       * que foi combinado. A campanha que ela criou continua em Criados (a
+       * edição dela tem a própria conversa), e as imagens de referência
+       * continuam nas Mídias. O painel pede confirmação antes.
+       */
+      if (req.method === 'DELETE') {
+        await db.removerConversa(sess.tenant_id, id);
+        sendJson(res, 200, { ok: true });
+        return true;
+      }
       if (req.method === 'PUT') {
         readBody(req, res, async (b) => {
           // D49: renomear e arquivar, sem tocar no escopo nem nas mensagens.

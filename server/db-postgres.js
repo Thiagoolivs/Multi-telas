@@ -791,6 +791,11 @@ async function arquivarConversa(tenantId, id, sim) {
   await pool.query('UPDATE conversas SET arquivada = $1 WHERE id = $2 AND tenant_id = $3', [sim ? Date.now() : 0, id, tenantId]);
   return lerConversa(tenantId, id);
 }
+// Excluir (pedido do dono, 24/10): some a conversa; a campanha que ela criou fica em Criados.
+async function removerConversa(tenantId, id) {
+  const r = await pool.query('DELETE FROM conversas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return r.rowCount > 0;
+}
 async function renomearConversa(tenantId, id, titulo) {
   await pool.query('UPDATE conversas SET titulo = $1 WHERE id = $2 AND tenant_id = $3', [String(titulo || '').slice(0, 80), id, tenantId]);
   return lerConversa(tenantId, id);
@@ -2044,7 +2049,7 @@ module.exports = {
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   contarQualidade, qualidadeDesde, limparQualidade,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
-  criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa, conversaDeEdicao,
+  criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa, removerConversa, conversaDeEdicao,
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,

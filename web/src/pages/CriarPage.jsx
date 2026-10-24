@@ -325,7 +325,9 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
   const lista = (
     <ListaDeConversas atual={conversa && conversa.id} versao={versaoDaLista}
-      onAbrir={(c) => abrir(c.id)} onNova={nova} className="h-full" />
+      onAbrir={(c) => abrir(c.id)} onNova={nova}
+      // Excluiu a conversa que está aberta: o Criar volta para uma conversa nova.
+      onExcluiu={(id) => { if (conversa && conversa.id === id) nova(); }} className="h-full" />
   );
 
   const botaoGerar = (
