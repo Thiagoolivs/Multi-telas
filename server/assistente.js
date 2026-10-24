@@ -53,6 +53,10 @@ const INTENCAO = {
 /* ---------------- As ferramentas ---------------- */
 
 const texto = (descricao) => ({ type: 'string', description: descricao });
+// Dois pedidos numa fala (revisão do consultor, #299): a ferramenta faz o primeiro e DIZ que viu o segundo.
+const OUTRO = texto('Só quando a fala traz um SEGUNDO pedido (ex.: "faz um quiz sobre café e um aviso de que fechamos às 18h"): o segundo pedido, nas palavras dela ("um aviso de que fechamos às 18h"). Senão vazio.');
+// Quiz bom na TV tem poucas perguntas: cada uma passa em ~17 s (10 para responder, 7 para a resposta).
+const MAX_PERGUNTAS = 5;
 const FERRAMENTAS = [
   {
     nome: 'criar_quiz',
@@ -61,9 +65,10 @@ const FERRAMENTAS = [
       type: 'object',
       properties: {
         tema: texto('O assunto das perguntas, nas palavras da pessoa (ex.: "curiosidades de pão e confeitaria"). Vazio se ela não disse.'),
-        quantidade: { type: 'integer', description: 'Quantas perguntas (de 1 a 6). "duas" = 2, "três" = 3. Se ela não disse, 3.' },
+        quantidade: { type: 'integer', description: 'Quantas perguntas ela pediu, o número que ela disse ("duas" = 2, "três" = 3), mesmo se for mais de ' + MAX_PERGUNTAS + '. Se ela não disse, 3.' },
         zona: { type: 'string', enum: ['principal', 'lateral'], description: 'Onde o quiz passa na TV. "lateral" quando ela fala de lateral, tela lateral, coluna do lado. Senão "principal".' },
-        tv: texto('O nome EXATO de uma TV da lista, quando ela fala de uma TV só. Vazio = todas as TVs.'),
+        tv: texto('O nome EXATO de uma TV da lista, quando ela fala de uma TV só (uma que não está na lista: o nome como ela disse). Vazio = todas as TVs.'),
+        outro_pedido: OUTRO,
       },
       required: ['tema', 'quantidade', 'zona', 'tv'],
     },
@@ -73,7 +78,7 @@ const FERRAMENTAS = [
     descricao: 'Pôr um AVISO curto nas TVs: horário, feriado, loja fechada, piso molhado, reunião, recado para a equipe ou para os clientes. Não é promoção.',
     parametros: {
       type: 'object',
-      properties: { pedido: texto('O aviso inteiro nas palavras da pessoa, juntando o que ela disse na conversa (ex.: "amanhã a loja abre às 10h").') },
+      properties: { pedido: texto('O aviso inteiro nas palavras da pessoa, juntando o que ela disse na conversa (ex.: "amanhã a loja abre às 10h").'), outro_pedido: OUTRO },
       required: ['pedido'],
     },
   },
@@ -83,8 +88,9 @@ const FERRAMENTAS = [
     parametros: {
       type: 'object',
       properties: {
-        tv: texto('O nome EXATO da TV da lista. Vazio se ela não disse qual.'),
+        tv: texto('O nome EXATO da TV da lista (uma que não está na lista: o nome como ela disse). Vazio se ela não disse qual.'),
         pedido: texto('A mudança nas palavras da pessoa (ex.: "fundo azul", "tirar o relógio").'),
+        outro_pedido: OUTRO,
       },
       required: ['tv', 'pedido'],
     },
@@ -94,7 +100,7 @@ const FERRAMENTAS = [
     descricao: 'Criar conteúdo NOVO de divulgação para as TVs (e, se ela quiser, para as redes): promoção, produto, lançamento, data comemorativa, peças. Também continuar a campanha que está sendo combinada nesta conversa (fotos, redes, horários, quantas peças, "pode gerar").',
     parametros: {
       type: 'object',
-      properties: { pedido: texto('O que ela quer divulgar, nas palavras dela.') },
+      properties: { pedido: texto('O que ela quer divulgar, nas palavras dela.'), outro_pedido: OUTRO },
       required: ['pedido'],
     },
   },
@@ -106,6 +112,7 @@ const FERRAMENTAS = [
       properties: {
         campanha: texto('O nome da campanha que ela citou, como na lista de CAMPANHAS CRIADAS. Vazio se ela não disse qual.'),
         pedido: texto('O que mudar, nas palavras dela.'),
+        outro_pedido: OUTRO,
       },
       required: ['campanha', 'pedido'],
     },
@@ -156,14 +163,19 @@ COMO ESCOLHER:
    - mudar o que já foi criado ou já está passando → editar_campanha
    - pergunta sobre como usar o sistema → tirar_duvida
    - não dá para saber ("oi", "tudo bem?") → perguntar
-4. Dois pedidos numa fala só: escolha o primeiro (o outro a pessoa pede em seguida).
+4. Dois pedidos numa fala só: escolha o primeiro e ponha o segundo em
+   outro_pedido (a ferramenta avisa que viu e faz em seguida).
 5. "Deixa pra lá", "esquece", "cancela": perguntar o que ela quer agora, sem
    mandar gerar nada.
+6. Correção que muda a TV ou o lugar ("não, na TV da entrada", "põe na
+   lateral") continua na MESMA ferramenta, com o argumento novo.
 
 ARGUMENTOS:
 - Nunca invente preço, data, nome, horário ou TV que a pessoa não disse.
-- TV: só nomes da lista de TVs; vazio = todas.
-- Quantidade do quiz: o número que ela disse ("duas" = 2); sem número, 3.
+- TV: o nome da lista que ela citou; vazio = todas. Se ela citar uma TV que
+  NÃO está na lista, ponha o nome como ela disse (a ferramenta avisa).
+- Quantidade do quiz: o número que ela disse ("duas" = 2), mesmo que seja
+  muito; sem número, 3. A ferramenta conversa se passar de ${MAX_PERGUNTAS}.
 - Zona do quiz: "lateral" se ela falou de lateral (ou "tela lateral", "coluna
   do lado"); senão "principal".`;
 
@@ -189,8 +201,15 @@ function quantidadeDe(t) {
   const s = plano(t);
   const m = /(\d+|uma?|dois|duas|tres|quatro|cinco|seis)\s+(?:\w+\s+)?pergunta/.exec(s) || /pergunta\w*\s*(?:de\s+)?(\d+)/.exec(s);
   if (!m) return null;
+  // O número que ela disse, mesmo grande: o especialista do quiz é quem conversa acima do teto.
   const n = /^\d+$/.test(m[1]) ? Number(m[1]) : NUMEROS[m[1]];
-  return n ? Math.max(1, Math.min(6, n)) : null;
+  return n ? Math.max(1, Math.min(99, n)) : null;
+}
+// "faz um quiz sobre café e um aviso de que fechamos às 18h" → [o primeiro, o segundo].
+const SEGUNDO = /\s+e\s+(?:tamb[eé]m\s+)?(?=(?:um|uma)\s+(?:aviso|recado|quiz|quis|promo[cç][aã]o|campanha|post)\b)/i;
+function partirPedidos(t) {
+  const m = SEGUNDO.exec(String(t || ''));
+  return m ? [t.slice(0, m.index).trim(), corta(t.slice(m.index + m[0].length), 200)] : [t, ''];
 }
 function tvDe(t, telas) {
   const s = plano(t);
@@ -200,7 +219,12 @@ function tvDe(t, telas) {
 const zonaDe = (t) => (/\b(lateral|coluna|do lado)\b/.test(plano(t)) ? 'lateral' : /\bprincipal\b/.test(plano(t)) ? 'principal' : null);
 function temaDe(t) {
   const m = /\bsobre\s+(.+)$/i.exec(String(t || ''));
-  return m ? corta(m[1].replace(/\s+(na|para a|pra)\s+(tela\s+)?(lateral|principal).*$/i, '').replace(/[.!?]+$/, ''), 120) : '';
+  return m ? corta(m[1].replace(/\s+(na|para a|pra)\s+(tela\s+)?(lateral|principal).*$/i, '').replace(/\s+(na|para a|pra)\s+tv\b.*$/i, '').replace(/[.!?]+$/, ''), 120) : '';
+}
+// "na TV da entrada": a TV que a pessoa disse, mesmo que não seja da conta (o especialista confere e pergunta).
+function tvDitaDe(t) {
+  const m = /\b(?:na|para a|pra)\s+(tv\s+(?:d[aoe]s?\s+)?[^\s,.;!?]+)/i.exec(String(t || ''));
+  return m ? corta(m[1], 60) : '';
 }
 
 const QUIZ = /\bqui[sz]\b|perguntas? e respostas?|teste de conhecimento/;
@@ -220,11 +244,19 @@ function argsDoQuiz(t, antes, telas) {
     tema: temaDe(t) || a.tema || '',
     quantidade: quantidadeDe(t) || a.quantidade || 3,
     zona: zonaDe(t) || a.zona || 'principal',
-    tv: tv ? tv.nome : (a.tv || ''),
+    tv: tv ? tv.nome : (tvDitaDe(t) || a.tv || ''),
   };
 }
 
+// As ferramentas que fazem uma coisa e podem dizer "o outro pedido eu faço em seguida".
+const FAZEM = ['criar_quiz', 'criar_aviso', 'mudar_tela', 'campanha', 'editar_campanha'];
 function escolherPorRegra(textoFala, tarefa, ctx) {
+  const [primeiro, outro] = partirPedidos(textoFala);
+  const e = escolherUm(primeiro, tarefa, ctx);
+  return outro && FAZEM.includes(e.nome) ? { ...e, args: { ...e.args, outro_pedido: outro } } : e;
+}
+
+function escolherUm(textoFala, tarefa, ctx) {
   const s = plano(textoFala).replace(/\s+/g, ' ').trim();
   const telas = (ctx && ctx.telas) || [];
   const mudouDeIdeia = /\bna verdade\b|\bagora\b.{0,20}\b(quero|faz|muda)/.test(s) && COISA_NOVA.test(s);
@@ -268,29 +300,34 @@ function usuarioDoMaestro({ mensagens, tarefa, ctx }) {
 }
 
 // A ferramenta que a IA chamou (ou null). Sem chamada nativa, aceita o JSON { ferramenta, argumentos }.
-function lerChamada(r) {
-  const c = r && Array.isArray(r.chamadas) ? r.chamadas.find((x) => x && NOMES.includes(x.nome)) : null;
+function lerChamada(r, nomes) {
+  const validos = nomes || NOMES;
+  const c = r && Array.isArray(r.chamadas) ? r.chamadas.find((x) => x && validos.includes(x.nome)) : null;
   if (c) return { nome: c.nome, args: c.args && typeof c.args === 'object' ? c.args : {} };
   try {
     const j = ai.parseAiJson(r && r.texto);
-    if (j && NOMES.includes(j.ferramenta)) return { nome: j.ferramenta, args: j.argumentos && typeof j.argumentos === 'object' ? j.argumentos : {} };
+    if (j && validos.includes(j.ferramenta)) return { nome: j.ferramenta, args: j.argumentos && typeof j.argumentos === 'object' ? j.argumentos : {} };
   } catch (e) { /* sem JSON: a regra decide */ }
   return null;
 }
 
-async function escolher({ mensagens, tarefa, ctx }) {
+/*
+ * `ferramentas`, `sistema` e `regra`: o "Pedir à IA" da Programação usa o
+ * mesmo maestro com menos ferramentas (pedirNaProgramacao, abaixo).
+ */
+async function escolher({ mensagens, tarefa, ctx, ferramentas = FERRAMENTAS, sistema = SISTEMA, regra = escolherPorRegra }) {
   const falas = falasDaPessoa(mensagens);
   const ultima = falas[falas.length - 1] || '';
-  if (ai.mode() === 'dev') return { ...escolherPorRegra(ultima, tarefa, ctx), por: 'regra' };
+  if (ai.mode() === 'dev') return { ...regra(ultima, tarefa, ctx), por: 'regra' };
   try {
-    const r = await motores.chamar({ sistema: SISTEMA, usuario: usuarioDoMaestro({ mensagens, tarefa, ctx }), ferramentas: FERRAMENTAS, maxTokens: 1024, temperatura: 0.2 });
-    const c = lerChamada(r);
+    const r = await motores.chamar({ sistema, usuario: usuarioDoMaestro({ mensagens, tarefa, ctx }), ferramentas, maxTokens: 1024, temperatura: 0.2 });
+    const c = lerChamada(r, ferramentas.map((f) => f.nome));
     if (c) return { ...c, por: 'ia' };
   } catch (e) {
     // A IA caiu: a regra escolhe a ferramenta, e a conversa segue (o especialista avisa se também precisar da IA).
     require('./erros.js').registrar(e, { onde: 'assistente: maestro', tipo: e && e.tipo });
   }
-  return { ...escolherPorRegra(ultima, tarefa, ctx), por: 'regra' };
+  return { ...regra(ultima, tarefa, ctx), por: 'regra' };
 }
 
 /* ---------------- Os especialistas ---------------- */
@@ -308,11 +345,32 @@ function tituloDoQuiz(tema) {
   return r.length <= 28 ? r : 'Quiz';
 }
 
+/*
+ * Os argumentos que a IA preenche são conferidos contra listas fechadas antes
+ * de fazer (revisão do consultor, #299): a zona é principal ou lateral, a TV
+ * é uma da conta, e a quantidade vai de 1 a MAX_PERGUNTAS — "quiz de 50
+ * perguntas" volta como pergunta, com a proposta já nos argumentos ("sim" faz 5).
+ */
 async function fazerQuiz(args, tarefa, ctx) {
-  const n = Math.max(1, Math.min(6, Math.round(Number(args.quantidade) || 3)));
+  const pedidas = Math.max(1, Math.round(Number(args.quantidade) || 3));
   const tema = corta(args.tema, 120);
   const zona = args.zona === 'lateral' ? 'lateral' : 'principal';
   const tv = tvPorNome(args.tv, ctx.telas);
+  if (pedidas > MAX_PERGUNTAS) {
+    return {
+      resposta: 'Na TV, quiz bom tem até ' + MAX_PERGUNTAS + ' perguntas: cada uma passa em uns 17 segundos, e mais que isso ninguém acompanha. Faço com ' + MAX_PERGUNTAS + '?',
+      sugestoes: ['Sim, ' + MAX_PERGUNTAS + ' perguntas', '3 perguntas'], pergunta: true, acao: null,
+      args: { ...args, quantidade: MAX_PERGUNTAS },
+    };
+  }
+  if (corta(args.tv, 60) && !tv) {
+    const nomes = (ctx.telas || []).map((t) => t.nome).filter(Boolean);
+    return {
+      resposta: nomes.length ? 'Não achei a TV “' + corta(args.tv, 60) + '”. Em qual delas?' : 'Você ainda não tem TV ligada. Faço o quiz para pôr quando ligar?',
+      sugestoes: nomes.length ? nomes.slice(0, 3).concat('Todas as TVs') : ['Sim'], pergunta: true, acao: null, args: { ...args, tv: '' },
+    };
+  }
+  const n = pedidas;
   // A pessoa só mudou o lugar (ou só confirmou): as perguntas que ela já viu ficam — sem gastar de novo.
   const antes = tarefa && tarefa.ferramenta === 'criar_quiz' && tarefa.acao && tarefa.acao.quiz;
   const mesmas = antes && plano(tarefa.args.tema) === plano(tema) && Number(tarefa.args.quantidade) === n;
@@ -321,7 +379,7 @@ async function fazerQuiz(args, tarefa, ctx) {
   return {
     resposta: (mesmas ? 'Isso: ' : 'Fiz ') + 'um quiz de ' + n + (n === 1 ? ' pergunta' : ' perguntas') + (tema ? ' sobre ' + tema : '') + ', ' + onde
       + '. Confira as perguntas e as respostas certas e ponha na TV.',
-    sugestoes: [zona === 'lateral' ? 'Na área principal' : 'Na lateral', n < 6 ? (n + 1) + ' perguntas' : '', 'Outro tema'].filter(Boolean),
+    sugestoes: [zona === 'lateral' ? 'Na área principal' : 'Na lateral', n < MAX_PERGUNTAS ? (n + 1) + ' perguntas' : '', 'Outro tema'].filter(Boolean),
     acao: { tipo: 'quiz', zona, quantidade: n, tema, tv: tv ? { id: tv.id, nome: tv.nome } : null,
       quiz: { titulo: tituloDoQuiz(tema), tempo: 10, revelar: 7, perguntas } },
   };
@@ -341,8 +399,12 @@ async function fazerAviso(args, ctx) {
 async function fazerTela(args, ctx) {
   const telas = ctx.telas || [];
   if (!telas.length) return { resposta: 'Você ainda não tem TV ligada. Ligue uma em Telas e me peça de novo.', sugestoes: [], acao: null };
-  const tv = tvPorNome(args.tv, telas) || tvDe(args.pedido, telas) || (telas.length === 1 ? telas[0] : null);
-  if (!tv) return { resposta: 'Em qual TV?', sugestoes: telas.slice(0, 4).map((t) => t.nome).filter(Boolean), pergunta: true, acao: null };
+  // Uma TV dita que não é da conta não vira "a única que tem": pergunta (lista fechada, #299).
+  const dita = corta(args.tv, 60);
+  const tv = tvPorNome(dita, telas) || tvDe(args.pedido, telas) || (!dita && telas.length === 1 ? telas[0] : null);
+  if (!tv) {
+    return { resposta: dita ? 'Não achei a TV “' + dita + '”. Em qual delas?' : 'Em qual TV?', sugestoes: telas.slice(0, 4).map((t) => t.nome).filter(Boolean), pergunta: true, acao: null, args: { ...args, tv: '' } };
+  }
   const atual = { layoutId: tv.layout || 'dashboard', orientacao: tv.emPe ? 'portrait' : 'landscape', tema: tv.tema || '' };
   const r = await ajusteTela.entender(corta(args.pedido, 400), atual, []);
   if (r.pergunta) return { resposta: r.pergunta, sugestoes: r.sugestoes || [], pergunta: true, acao: null };
@@ -387,42 +449,134 @@ async function responder({ mensagens, escopo, decisoes, ctx } = {}) {
   const modo = ai.mode() === 'dev' ? 'dev' : escolha.por === 'regra' ? 'regra' : ai.mode();
   const base = { escopo: atual, decisoes: conversa.mesclarDecisoes(decisoes, [], []), pronto: false, gerar: false, modo };
 
-  let out;
-  try {
-    if (nome === 'campanha') {
-      const r = await conversa.conversar({ mensagens, escopo: atual, decisoes, ctx: c });
-      out = { ...r, intencao: 'campanha', acao: null, args: { pedido: corta(args.pedido, 400) } };
-    } else if (nome === 'criar_quiz') {
-      out = { ...base, ...(await fazerQuiz(args, tarefa, c)), args };
-    } else if (nome === 'criar_aviso') {
-      out = { ...base, ...(await fazerAviso(args, c)), args };
-    } else if (nome === 'mudar_tela') {
-      out = { ...base, ...(await fazerTela(args, c)), args };
-    } else if (nome === 'editar_campanha') {
-      out = { ...base, ...fazerEditar(args, c), args };
-    } else if (nome === 'tirar_duvida') {
-      out = { ...base, resposta: corta(args.resposta, 600) || conversa.ajudaPara(falasDaPessoa(mensagens).pop()), sugestoes: [], acao: null, args: {} };
-    } else {
-      out = { ...base, resposta: corta(args.pergunta, 300) || 'O que você quer mostrar nas TVs?', sugestoes: lista(args.sugestoes, 4, 50), acao: null, pergunta: true, args: {} };
-    }
-  } catch (e) {
-    require('./erros.js').registrar(e, { onde: 'assistente: ' + nome, tipo: e && e.tipo });
-    const fora = motores.iaIndisponivel(e);
-    out = { ...base, resposta: fora ? 'A IA está fora do ar agora. A conversa está salva: tente de novo daqui a pouco.' : (e && e.status && e.status < 500 && e.message) || 'Não consegui fazer isso agora. Tente de novo.', sugestoes: [], acao: null, falha: fora ? 'fora' : 'passageira', modo: 'falha', args };
-  }
+  let out = await fazer(nome, args, { mensagens, escopo: atual, decisoes, tarefa, ctx: c, base });
+  // A campanha volta com o escopo e o roteiro dela; as outras, com o resto do Criar como estava.
+  if (nome !== 'campanha') out = { ...base, ...out };
+  out = comOOutroPedido(out, args);
+  const argsFinais = out.args || {};
 
   const intencao = out.intencao || INTENCAO[nome];
-  const sugestoes = lista(out.sugestoes, 4, 50);
+  const sugestoes = out.sugestoes;
   const mensagem = {
-    papel: 'ia', texto: out.resposta, sugestoes, em: Date.now(), intencao, ferramenta: nome, args,
+    papel: 'ia', texto: out.resposta, sugestoes, em: Date.now(), intencao, ferramenta: nome, args: argsFinais,
     ...(out.acao ? { acao: out.acao } : {}), ...(out.pergunta ? { pergunta: true } : {}), ...(out.modo === 'falha' ? { falha: true } : {}),
   };
   return {
-    ...out, intencao, ferramenta: nome, args, sugestoes,
+    ...out, intencao, ferramenta: nome, args: argsFinais, sugestoes,
     // A rota guarda o tipo para não andar o estado do cartão: o que não é campanha não mexe nele.
     tipo: nome === 'campanha' ? out.tipo : (intencao === 'duvida' ? 'duvida' : intencao),
     mensagem,
   };
 }
 
-module.exports = { responder, escolherPorRegra, tarefaDe, lerChamada, usuarioDoMaestro, FERRAMENTAS, SISTEMA, INTENCAO, quantidadeDe, temaDe, zonaDe };
+// O especialista da ferramenta. Devolve { resposta, sugestoes, acao, pergunta?, args? } (a campanha: o que a conversa devolve).
+async function fazer(nome, args, { mensagens, escopo, decisoes, tarefa, ctx, base }) {
+  try {
+    if (nome === 'campanha') {
+      const r = await conversa.conversar({ mensagens, escopo, decisoes, ctx });
+      return { ...r, intencao: 'campanha', acao: null, args: { pedido: corta(args.pedido, 400), outro_pedido: args.outro_pedido || '' } };
+    }
+    // Os argumentos de antes; o especialista pode devolver os seus (a proposta que ele fez, a TV que não existia).
+    if (nome === 'criar_quiz') return { args, ...(await fazerQuiz(args, tarefa, ctx)) };
+    if (nome === 'criar_aviso') return { args, ...(await fazerAviso(args, ctx)) };
+    if (nome === 'mudar_tela') return { args, ...(await fazerTela(args, ctx)) };
+    if (nome === 'editar_campanha') return { args, ...fazerEditar(args, ctx) };
+    if (nome === 'tirar_duvida') return { resposta: corta(args.resposta, 600) || conversa.ajudaPara(falasDaPessoa(mensagens).pop()), sugestoes: [], acao: null, args: {} };
+    return { resposta: corta(args.pergunta, 300) || 'O que você quer mostrar nas TVs?', sugestoes: lista(args.sugestoes, 4, 50), acao: null, pergunta: true, args: {} };
+  } catch (e) {
+    require('./erros.js').registrar(e, { onde: 'assistente: ' + nome, tipo: e && e.tipo });
+    const fora = motores.iaIndisponivel(e);
+    return { ...base, resposta: fora ? 'A IA está fora do ar agora. A conversa está salva: tente de novo daqui a pouco.' : (e && e.status && e.status < 500 && e.message) || 'Não consegui fazer isso agora. Tente de novo.', sugestoes: [], acao: null, falha: fora ? 'fora' : 'passageira', modo: 'falha', args };
+  }
+}
+
+/*
+ * O segundo pedido da fala (#299): a resposta diz que viu, e ele vira a
+ * primeira resposta pronta — um toque e a pessoa pede. Não vai quando a
+ * ferramenta ainda está perguntando (uma coisa de cada vez).
+ */
+function comOOutroPedido(out, args) {
+  const outro = corta(args && args.outro_pedido, 80);
+  const sugestoes = lista(out.sugestoes, 4, 50);
+  if (!outro || out.pergunta || out.modo === 'falha') return { ...out, sugestoes };
+  return {
+    ...out,
+    resposta: out.resposta + ' O outro pedido (“' + outro + '”) eu faço em seguida: é só tocar nele aí embaixo.',
+    sugestoes: [outro].concat(sugestoes.filter((s) => s !== outro)).slice(0, 4),
+  };
+}
+
+/* ---------------- O "Pedir à IA" da Programação ---------------- */
+
+/*
+ * O MESMO maestro, para a caixa "o que você quer nas TVs?" da Programação
+ * (o consultor, #299: "dois cérebros diferentes vão divergir"). Restrito:
+ * aviso, quiz, aparência da TV e editar uma campanha; conteúdo novo continua
+ * no Criar (o painel leva para lá com o pedido escrito). Quando o painel diz
+ * a TV (`tvFixa`, a que está aberta), ela vem do contexto, não da IA.
+ *
+ * `historico`: a mini-conversa do painel ([{ papel, texto, ferramenta?, args? }]).
+ * Devolve o que o painel do Pedir à IA entende: { pergunta, sugestoes, ferramenta, args }
+ * ou { destino: 'aviso' | 'tela' | 'quiz' | 'editar' | 'criar' | 'nenhuma-tv', ... }.
+ */
+const DA_PROGRAMACAO = ['criar_aviso', 'criar_quiz', 'mudar_tela', 'editar_campanha', 'campanha', 'perguntar'];
+const PERGUNTA_DO_TIPO = { pergunta: 'O que você quer fazer nas TVs?', sugestoes: ['Pôr um aviso', 'Mudar a aparência de uma TV', 'Criar algo novo'] };
+
+function ferramentasDaProgramacao(tvFixa) {
+  return FERRAMENTAS.filter((f) => DA_PROGRAMACAO.includes(f.nome)).map((f) => {
+    if (!tvFixa || !f.parametros.properties.tv) return f;
+    const { tv, ...props } = f.parametros.properties;
+    return { ...f, parametros: { ...f.parametros, properties: props, required: f.parametros.required.filter((x) => x !== 'tv') } };
+  });
+}
+
+function sistemaDaProgramacao(tvFixa) {
+  return SISTEMA + `
+
+AQUI É A PROGRAMAÇÃO (não o Criar): só as ferramentas da lista. Conteúdo
+novo de divulgação (promoção, produto, peças, campanha) → campanha: o painel
+leva ao Criar com o pedido. Dúvida sobre o sistema → perguntar, com o caminho.`
+    + (tvFixa ? '\nA TV já está escolhida: “' + tvFixa.nome + '”. Não pergunte qual TV.' : '');
+}
+
+// Sem IA: a regra do Criar; o que ela mandaria para a campanha (ou dúvida) só vai ao Criar se o pedido for mesmo de conteúdo novo.
+function regraDaProgramacao(textoFala, tarefa, ctx) {
+  const e = escolherPorRegra(textoFala, tarefa, ctx);
+  if (DA_PROGRAMACAO.includes(e.nome) && e.nome !== 'campanha') return e;
+  const s = plano(textoFala);
+  if (TELA.test(s) || /\b(claro|escuro|cabecalho|rodape|lateral do outro lado)\b/.test(s)) return { nome: 'mudar_tela', args: { tv: '', pedido: corta(textoFala, 400) } };
+  if (/\b(cri[ae]r?|promoc\w*|campanha|divulg\w*|peca|post|anunci\w*|novidade|lancamento|algo novo)\b/.test(s)) return { nome: 'campanha', args: { pedido: textoFala } };
+  if (e.nome === 'tirar_duvida') return { nome: 'perguntar', args: { pergunta: e.args.resposta, sugestoes: PERGUNTA_DO_TIPO.sugestoes } };
+  return { nome: 'perguntar', args: { ...PERGUNTA_DO_TIPO } };
+}
+
+async function pedirNaProgramacao({ texto, historico, ctx, tvFixa } = {}) {
+  const c = { ...(ctx || {}) };
+  const fixa = tvFixa ? (c.telas || []).find((t) => t.id === tvFixa) || null : null;
+  const mensagens = limparHistorico(historico).concat({ papel: 'pessoa', texto: corta(texto, 500) });
+  const tarefa = tarefaDe(mensagens, null);
+  const escolha = await escolher({ mensagens, tarefa, ctx: c, ferramentas: ferramentasDaProgramacao(fixa), sistema: sistemaDaProgramacao(fixa), regra: regraDaProgramacao });
+  const nome = DA_PROGRAMACAO.includes(escolha.nome) ? escolha.nome : 'perguntar';
+  const args = { ...(escolha.args || {}), ...(fixa && (nome === 'criar_quiz' || nome === 'mudar_tela') ? { tv: fixa.nome } : {}) };
+
+  if (nome === 'campanha') return { destino: 'criar', texto: corta(falasDaPessoa(mensagens).join(', '), 400) };
+  if (nome === 'mudar_tela' && !(c.telas || []).length) return { destino: 'nenhuma-tv' };
+  const out = await fazer(nome, args, { mensagens, escopo: null, decisoes: [], tarefa, ctx: c, base: {} });
+  if (out.modo === 'falha') { const e = new Error(out.resposta); e.status = out.falha === 'fora' ? 503 : 502; throw e; }
+  const a = out.acao;
+  if (!a) return { pergunta: out.resposta, sugestoes: lista(out.sugestoes, 4, 50), ferramenta: nome, args: out.args || args };
+  if (a.tipo === 'aviso') return { destino: 'aviso', aviso: a.aviso };
+  if (a.tipo === 'tela') return { destino: 'tela', tv: a.tv, mudancas: a.mudancas, notas: a.notas };
+  if (a.tipo === 'quiz') return { destino: 'quiz', quiz: a };
+  return { destino: 'editar', campanha: a.campanha, pedido: a.pedido };
+}
+
+// A mini-conversa que vem do painel: só papel, texto e a ferramenta/argumentos que o servidor mesmo devolveu.
+function limparHistorico(h) {
+  return (Array.isArray(h) ? h : []).slice(-12).filter((m) => m && (m.papel === 'pessoa' || m.papel === 'ia')).map((m) => ({
+    papel: m.papel, texto: corta(m.texto, 400),
+    ...(m.papel === 'ia' && NOMES.includes(m.ferramenta) ? { ferramenta: m.ferramenta, args: m.args && typeof m.args === 'object' && !Array.isArray(m.args) ? m.args : {}, pergunta: true } : {}),
+  })).filter((m) => m.texto);
+}
+
+module.exports = { responder, pedirNaProgramacao, escolherPorRegra, partirPedidos, tarefaDe, lerChamada, usuarioDoMaestro, FERRAMENTAS, SISTEMA, INTENCAO, MAX_PERGUNTAS, PERGUNTA_DO_TIPO, quantidadeDe, temaDe, zonaDe };

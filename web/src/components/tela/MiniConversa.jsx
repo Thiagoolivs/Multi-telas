@@ -11,9 +11,10 @@ import { cn } from '../../lib/cn.js';
  * (um toque responde). O histórico volta ao servidor, que junta tudo.
  */
 
-// A fala da pessoa e a pergunta da IA, para guardar e mandar de volta.
+// A fala da pessoa e a pergunta da IA, para guardar e mandar de volta (com a ferramenta, quando o maestro diz qual: 24/10).
 export function comPergunta(historico, texto, r) {
-  return (historico || []).concat({ papel: 'pessoa', texto }, { papel: 'ia', texto: r.pergunta, sugestoes: r.sugestoes || [] });
+  return (historico || []).concat({ papel: 'pessoa', texto },
+    { papel: 'ia', texto: r.pergunta, sugestoes: r.sugestoes || [], ...(r.ferramenta ? { ferramenta: r.ferramenta, args: r.args || {} } : {}) });
 }
 
 export function MiniConversa({ historico, onResponder, ocupado, className }) {

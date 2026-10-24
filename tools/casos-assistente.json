@@ -1,5 +1,5 @@
 {
-  "sobre": "Conversas difíceis para medir se a IA do Criar entende o pedido (pedido do dono, 24/10/2026). Cada caso: as falas da pessoa, em ordem; o que se espera da ÚLTIMA volta. intencao: campanha | quiz | aviso | tela | editar | duvida | perguntar. 'aceita' lista outras intenções também corretas. 'zona', 'quantidade', 'tv' e 'sem' (assuntos que NÃO podem aparecer na resposta) são conferidos quando existem.",
+  "sobre": "Conversas difíceis para medir se a IA do Criar entende o pedido (pedido do dono, 24/10/2026). Cada caso: as falas da pessoa, em ordem; o que se espera da ÚLTIMA volta. intencao: campanha | quiz | aviso | tela | editar | duvida | perguntar. 'aceita' lista outras intenções também corretas. 'zona', 'quantidade', 'tv', 'sem' (assuntos que NÃO podem aparecer na resposta) e 'tem' (o que a resposta PRECISA dizer) são conferidos quando existem.",
   "tvs": ["TV da recepção", "TV do balcão"],
   "casos": [
     { "id": "print-dono-1", "falas": ["quero que crie um quiz de duas perguntas para a tela lateral, sobre curiosidades de pão, padaria, confeitaria, etc."], "intencao": "quiz", "zona": "lateral", "quantidade": 2, "sem": ["redes", "instagram", "fotos"] },
@@ -29,11 +29,14 @@
     { "id": "editar-preco", "falas": ["troca o preço da peça 2 para 8,90"], "intencao": "editar" },
     { "id": "oi", "falas": ["oi"], "intencao": "perguntar" },
     { "id": "desistir", "falas": ["promoção de café a 5 reais", "deixa pra lá"], "intencao": "perguntar", "aceita": ["campanha"], "gerar": false },
-    { "id": "dois-pedidos", "falas": ["faz um quiz sobre café e um aviso de que fechamos às 18h"], "intencao": "quiz", "aceita": ["aviso", "perguntar"] },
+    { "id": "dois-pedidos", "falas": ["faz um quiz sobre café e um aviso de que fechamos às 18h"], "intencao": "quiz", "aceita": ["aviso", "perguntar"], "tem": ["18h"] },
     { "id": "mudanca-de-ideia", "falas": ["quero uma campanha de dia das crianças", "na verdade quero só um aviso de que abrimos no feriado"], "intencao": "aviso" },
     { "id": "pode-gerar-quiz", "falas": ["quiz de 3 perguntas sobre pão na lateral", "pode gerar"], "intencao": "quiz", "zona": "lateral", "quantidade": 3 },
     { "id": "na-verdade-lugar", "falas": ["quiz de duas perguntas sobre café para a tela lateral", "na verdade põe na área principal"], "intencao": "quiz", "zona": "principal", "quantidade": 2 },
     { "id": "na-verdade-outra", "falas": ["quiz de duas perguntas sobre café para a tela lateral", "na verdade quero uma promoção do pão de queijo"], "intencao": "campanha" },
-    { "id": "aviso-avisa-que", "falas": ["avisa que o piso do corredor está molhado"], "intencao": "aviso", "sem": ["Avisa que"] }
+    { "id": "aviso-avisa-que", "falas": ["avisa que o piso do corredor está molhado"], "intencao": "aviso", "sem": ["Avisa que"] },
+    { "id": "correcao-tv", "falas": ["quiz de 2 perguntas sobre pão na tv do balcão", "não, na tv da recepção"], "intencao": "quiz", "tv": "TV da recepção", "quantidade": 2 },
+    { "id": "quiz-demais", "falas": ["quiz de 50 perguntas sobre café"], "intencao": "quiz", "tem": ["5 perguntas"] },
+    { "id": "tv-que-nao-existe", "falas": ["quiz de 3 perguntas sobre café na tv da entrada"], "intencao": "quiz", "tem": ["entrada"] }
   ]
 }

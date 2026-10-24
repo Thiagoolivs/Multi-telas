@@ -49,7 +49,6 @@ const pessoas = require('./js/pessoas.js');
 const fotoQr = require('./server/foto-qr');
 const guarda = require('./server/guarda');
 const apk = require('./server/apk');
-const pedirIA = require('./server/pedir-ia');
 const esbocoDoPedido = require('./server/esboco');
 const qualidade = require('./server/qualidade');
 const kpis = require('./server/kpis');
@@ -656,7 +655,7 @@ async function handleApi(req, res, pathname, query) {
     aviso: 'aviso-rapido',
     // Layout e tema numa frase (D28): texto, devolve as mudanças para a prévia.
     tela: 'ajuste-tela',
-    // Um lugar só para pedir à IA, na Programação (D51): entende e leva ao aviso, à tela ou ao Criar.
+    // Um lugar só para pedir à IA, na Programação (D51): desde 24/10 o maestro do assistente, com menos ferramentas.
     pedir: 'pedir-ia',
     // Os textos das redes (item 6): quatro chamadas de texto, um pedido por canal.
     redes: 'redes-sociais',
@@ -2165,35 +2164,7 @@ const negocioCache = new Map();
     });
   }
 
-  /*
-   * ----- IA: um lugar só para pedir, na Programação (EXECUTOR D51) -----
-   * "O que você quer mudar nas TVs?": entende se é aviso, aparência de uma TV
-   * ou conteúdo novo, pergunta o que faltar e devolve o que o painel mostra
-   * na prévia. Nada é gravado aqui.
-   */
-  if (parts[1] === 'ai' && parts[2] === 'pedir') {
-    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
-    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
-    const rl = rateLimit('ai:pedir:' + sess.tenant_id, 60, 60 * 60 * 1000);
-    if (!rl.ok) return sendJson(res, 429, { error: 'muitos pedidos nesta hora. Espere um pouco.' }, { 'Retry-After': String(rl.retryAfter) });
-    return readBody(req, res, async (b) => {
-      const texto = String((b && b.texto) || '').trim();
-      if (!texto) return sendJson(res, 400, { error: 'diga o que você quer' });
-      const lista = (await db.listDevices(sess.tenant_id)) || [];
-      const grupos = [...new Set(lista.map((d) => d.grupo).filter(Boolean))];
-      const tvs = lista.map((d) => {
-        let s = {};
-        try { s = (typeof d.config === 'string' ? JSON.parse(d.config || '{}') : (d.config || {})).settings || {}; } catch (e) { s = {}; }
-        return { id: d.id, nome: d.name || 'TV', layoutId: s.layoutId || 'dashboard', orientacao: /^portrait/.test(s.layoutId || '') ? 'portrait' : 'landscape', tema: (s.theme && s.theme.preset) || '' };
-      });
-      try {
-        return sendJson(res, 200, await pedirIA.entender(texto.slice(0, 500), { historico: b && b.historico, tvs, grupos }));
-      } catch (e) {
-        erros.registrar(e, { rota: '/api/ai/pedir' });
-        return sendJson(res, 502, { error: 'não deu para entender agora; tente de novo' });
-      }
-    });
-  }
+  // O "Pedir à IA" da Programação (D51) mora em server/routes/conversas.js desde 24/10: o mesmo maestro do Criar.
 
   /*
    * ----- IA: mudar layout e tema numa frase (EXECUTOR D28) -----

@@ -130,7 +130,8 @@ test('a rota guarda as decisões, a pessoa corrige no cartão, e o gerador receb
   const R = ler('server/routes/conversas.js');
   // Desde o assistente (24/10), a rota passa pelo maestro, que leva as decisões à conversa da campanha.
   assert.match(R, /assistente\.responder\(\{ mensagens, escopo, decisoes: \(atual && atual\.decisoes\) \|\| \[\], ctx: c \}\)/);
-  assert.match(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'server', 'assistente.js'), 'utf8'), /conversa\.conversar\(\{ mensagens, escopo: atual, decisoes, ctx: c \}\)/);
+  assert.match(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'server', 'assistente.js'), 'utf8'), /conversa\.conversar\(\{ mensagens, escopo, decisoes, ctx \}\)/);
+  assert.match(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'server', 'assistente.js'), 'utf8'), /await fazer\(nome, args, \{ mensagens, escopo: atual, decisoes, tarefa, ctx: c, base \}\)/);
   assert.match(R, /decisoes: out\.decisoes \|\| \(atual && atual\.decisoes\) \|\| \[\],/);
   assert.match(R, /const decisoes = conversa\.mesclarDecisoes\(b\.decisoes, \[\], \[\]\);/);
   assert.match(ler('server/routes/campanhas.js'), /if \(conv && Array\.isArray\(conv\.decisoes\)\) ctxConta\.combinado = conv\.decisoes;/);
