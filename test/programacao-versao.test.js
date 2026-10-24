@@ -60,6 +60,20 @@ test('servidor: a programação tem versão, e gravar sobre uma versão velha é
   assert.ok((await pedir('/api/pair', { method: 'POST', cookie: c, body: { code: tv.code } })).status < 300);
 
   const cfg = (titulo) => ({ settings: { layoutId: 'full' }, zonas: { principal: { items: [{ type: 'text', titulo }] } } });
+  /*
+   * TV recém-pareada, sem programação (visto no teste do dono, 24/10): a
+   * leitura é 204 COM a versão, e o painel que manda "versão 0" (li vazia)
+   * grava — antes era 409 "mudada em outro lugar" para sempre, no editor e
+   * no "Pôr na TV".
+   */
+  const vazia = await pedir('/api/devices/' + tv.id + '/config', { cookie: c });
+  assert.equal(vazia.status, 204);
+  assert.ok(Number(vazia.headers['x-config-versao']) > 0, 'a TV vazia não disse a versão');
+  const comZero = await pedir('/api/devices/' + tv.id + '/config?versao=0', { method: 'PUT', cookie: c, body: cfg('primeira vez') });
+  assert.equal(comZero.status, 200, 'TV vazia com versão 0 foi recusada');
+  // Com programação, versão 0 volta a ser versão velha.
+  assert.equal((await pedir('/api/devices/' + tv.id + '/config?versao=0', { method: 'PUT', cookie: c, body: cfg('por cima') })).status, 409);
+
   // Sem versão: grava como sempre (TV nova, cópia de tela).
   const primeira = await pedir('/api/devices/' + tv.id + '/config', { method: 'PUT', cookie: c, body: cfg('um') });
   assert.equal(primeira.status, 200);
@@ -185,4 +199,11 @@ test('comparar e gravar é um UPDATE só: a versão velha não grava nem chegand
   const v2 = await db.setDeviceConfig(id, '{"a":2}', 'TV', v1);
   assert.ok(v2, 'com a versão certa, grava');
   assert.equal(await db.setDeviceConfig(id, '{"a":3}', 'TV', v1), null, 'com a versão velha, não grava');
+});
+
+test('o envio em lote também aceita "versão 0" numa TV ainda vazia (o "Pôr na TV" da TV nova)', () => {
+  const t = fs.readFileSync(path.join(RAIZ, 'server', 'routes', 'telas.js'), 'utf8');
+  const lote = t.slice(t.indexOf('async function rotaLote'));
+  assert.match(lote, /const vaziaLidaVazia = !device\.config && versao === 0;/);
+  assert.match(lote, /if \(versao != null && !vaziaLidaVazia && versao !== \(Number\(device\.updated_at\) \|\| 0\)\)/);
 });
