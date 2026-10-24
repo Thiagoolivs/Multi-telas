@@ -282,7 +282,16 @@ module.exports = function (ctx) {
       // Player lê a própria config (com device token)
       if (req.method === 'GET' && sub === 'config') {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
-        if (!device.config) return sendJson(res, 204, {});
+        /*
+         * TV sem programação: 204, mas COM a versão. Sem o cabeçalho o painel
+         * lia "versão 0", o servidor comparava com a data do pareamento e
+         * recusava toda gravação ("mudada em outro lugar") — a TV nova nunca
+         * recebia nada (visto no teste do dono, 24/10).
+         */
+        if (!device.config) {
+          res.writeHead(204, { 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) });
+          return res.end();
+        }
         /*
          * A versão da programação (o updated_at da última gravação) vai no
          * cabeçalho: o corpo continua a config pura, que a TV lê como sempre.
@@ -349,7 +358,9 @@ module.exports = function (ctx) {
          * aviso. Sem ?versao, grava como sempre (TV nova, cópia de tela).
          */
         const versaoPedida = query && query.versao != null && query.versao !== '' ? Number(query.versao) : null;
-        if (versaoPedida != null && Number.isFinite(versaoPedida) && versaoPedida !== (Number(device.updated_at) || 0)) {
+        // "Versão 0" numa TV que ainda não tem programação é "li vazia": não há o que sobrescrever (painel antigo, 24/10).
+        const vaziaLidaVazia = !device.config && versaoPedida === 0;
+        if (versaoPedida != null && Number.isFinite(versaoPedida) && !vaziaLidaVazia && versaoPedida !== (Number(device.updated_at) || 0)) {
           return sendJson(res, 409, {
             error: 'Esta TV foi mudada em outro lugar enquanto você editava. Recarregue para ver a programação atual.',
             code: 'config-mudou', versao: Number(device.updated_at) || 0,
@@ -359,7 +370,9 @@ module.exports = function (ctx) {
           const pronta = await prepararConfig(device, b);
           if (pronta.corpo) return sendJson(res, pronta.status, pronta.corpo);
           const cfg = pronta.cfg;
-          const comVersao = versaoPedida != null && Number.isFinite(versaoPedida) ? versaoPedida : null;
+          // TV vazia lida vazia: a gravação confere contra a versão de agora (duas primeiras gravações juntas ainda não se atropelam).
+          const comVersao = vaziaLidaVazia ? (Number(device.updated_at) || 0)
+            : versaoPedida != null && Number.isFinite(versaoPedida) ? versaoPedida : null;
           const updatedAt = await db.setDeviceConfig(id, JSON.stringify(cfg), device.name || cfg.settings.nome, comVersao);
           // Alguém gravou entre a conferência lá em cima e aqui (o corpo leva tempo para chegar).
           if (updatedAt == null) {
@@ -797,7 +810,9 @@ module.exports = function (ctx) {
           const device = await db.getDevice(id);
           if (!device || device.tenant_id !== sess.tenant_id) { problemas.push({ id, error: 'TV não encontrada nesta conta' }); continue; }
           const versao = it.versao != null && it.versao !== '' ? Number(it.versao) : null;
-          if (versao != null && versao !== (Number(device.updated_at) || 0)) { conflitos.push({ id, nome: device.name, versao: Number(device.updated_at) || 0 }); continue; }
+          // "Versão 0" numa TV ainda sem programação é "li vazia" (ver o PUT da config).
+          const vaziaLidaVazia = !device.config && versao === 0;
+          if (versao != null && !vaziaLidaVazia && versao !== (Number(device.updated_at) || 0)) { conflitos.push({ id, nome: device.name, versao: Number(device.updated_at) || 0 }); continue; }
           const p = await prepararConfig(device, it.config);
           if (p.corpo) { problemas.push(Object.assign({ id, nome: device.name }, p.corpo)); continue; }
           prontos.push({ device, cfg: p.cfg, versao: Number(device.updated_at) || 0 });

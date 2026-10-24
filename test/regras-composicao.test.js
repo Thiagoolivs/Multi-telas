@@ -216,3 +216,7 @@ test('o painel mostra (e manda ao refazer) o que as regras acharam; a bancada co
   assert.match(b, /MTPecaConferir\.conferir\(host, \{ papel: t\.papel \}\)/);
   assert.match(ler('server', 'compositor.js'), /nem quebrar as REGRAS DE COMPOSIÇÃO/);
 });
+
+test('QR sem link some com a moldura (não fica um quadrado vazio na peça)', () => {
+  assert.ok(ler('js', 'peca-render.js').includes(".mt-peca :has(> img[data-campo-qr][data-sem-foto]):not(.mt-peca){display:none!important}"));
+});

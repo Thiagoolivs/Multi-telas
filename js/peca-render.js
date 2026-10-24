@@ -126,6 +126,8 @@
     + ':where(.mt-peca) :where(img){display:block}'
     + '.mt-peca,.mt-peca *{font-variant-numeric:lining-nums!important}'
     + '.mt-peca img[data-sem-foto]{visibility:hidden}'
+    // QR sem link: some a moldura dele também, não só a imagem — sobrava um quadrado vazio na lateral (visto no teste do dono, 24/10).
+    + '.mt-peca :has(> img[data-campo-qr][data-sem-foto]):not(.mt-peca){display:none!important}'
     + '.mt-peca [data-vivo="mensagens"]{display:inline-block;white-space:nowrap}'
     + '.mt-peca[data-marca-na-tela] [data-repete="marca"]{display:none!important}'
     // Rodapé numa tela que já tem relógio no cabeçalho: o segundo relógio some (D12).
