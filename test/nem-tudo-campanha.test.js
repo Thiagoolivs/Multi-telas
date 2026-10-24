@@ -128,14 +128,21 @@ test('a rota: a dúvida no meio não tira o "pronto para gerar"', async (t) => {
   assert.equal(E.temOQueGerar(d.json.conversa.escopo), false);
 
   const id = d.json.conversa.id;
+  /*
+   * Desde o assistente (24/10), o aviso não vira "campanha de 1 peça": vai
+   * direto para a ferramenta de aviso — a prévia e o envio com Desfazer, sem
+   * gerar nada. O cartão da campanha fica como estava.
+   */
   const a = await pedir('/api/ai/conversa', { method: 'POST', cookie: c, json: { id, texto: 'quero avisar que fecha mais cedo na sexta' } });
   assert.equal(a.json.tipo, 'aviso');
-  assert.equal(a.json.pronto, true);
-  assert.equal(a.json.conversa.estado, 'entendido');
+  assert.equal(a.json.acao.tipo, 'aviso');
+  assert.ok(a.json.acao.aviso.titulo, 'o aviso veio sem texto');
+  assert.equal(a.json.conversa.estado, 'conversando');
+  assert.equal(E.temOQueGerar(a.json.conversa.escopo), false, 'o aviso montou uma campanha');
 
   const de = await pedir('/api/ai/conversa', { method: 'POST', cookie: c, json: { id, texto: 'onde mudo o logo?' } });
   assert.equal(de.json.tipo, 'duvida');
-  assert.equal(de.json.pronto, true, 'a dúvida tirou o pronto');
-  assert.equal(de.json.conversa.estado, 'entendido');
-  assert.equal(E.custo(de.json.conversa.escopo).pecas, 1, 'a dúvida mexeu no aviso combinado');
+  assert.equal(de.json.conversa.estado, 'conversando');
+  // O aviso montado continua na conversa (o cartão dele no chat).
+  assert.ok(de.json.conversa.mensagens.some((m) => m.acao && m.acao.tipo === 'aviso'), 'a dúvida apagou o aviso');
 });

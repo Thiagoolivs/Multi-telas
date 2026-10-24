@@ -23,9 +23,9 @@ import { cn } from '../../lib/cn.js';
  *   - imagens de referência (D45): anexar ou colar; "usa a foto que eu
  *     mandei na peça 2" põe a foto do cliente na peça, sem gastar criação.
  */
-export function EditarComIA({ campanha, onMudou }) {
+export function EditarComIA({ campanha, onMudou, textoInicial }) {
   const [mensagens, setMensagens] = useState(null);   // null = carregando
-  const [texto, setTexto] = useState('');
+  const [texto, setTexto] = useState(textoInicial || '');
   const [etapa, setEtapa] = useState(null);
   const [erro, setErro] = useState('');
   const [referencias, setReferencias] = useState([]);

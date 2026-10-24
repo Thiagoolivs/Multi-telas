@@ -1,13 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { Sparkles, Check, TriangleAlert, Send } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, Send } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
-import { PreviaDaTela } from './PreviaDaTela.jsx';
 import { AvisoRapido } from './AvisoRapido.jsx';
+import { MudarAparencia } from './MudarAparencia.jsx';
 import { MiniConversa, comPergunta } from './MiniConversa.jsx';
-import { ai, brand, devices, deviceConfig } from '../../api.js';
-import { aplicarMudancas, descrever } from '../../lib/ajusteTela.js';
-import { gravarEmLote, avisarComDesfazer } from '../../lib/rodar.js';
+import { ai } from '../../api.js';
 import { aviso } from '../../lib/avisos.js';
 
 /*
@@ -30,15 +28,7 @@ export function PedirIA({ onFechar, onIr }) {
   const [historico, setHistorico] = useState([]);
   const [ocupado, setOcupado] = useState(false);
   const [avisoPronto, setAvisoPronto] = useState(null);
-  const [tela, setTela] = useState(null);   // { tv, cfg, depois, linhas, notas, m }
-  const [aplicando, setAplicando] = useState(false);
-  const [tvs, setTvs] = useState([]);
-  const [coresMarca, setCoresMarca] = useState([]);
-
-  useEffect(() => {
-    devices.list().then((r) => setTvs((r && r.devices) || [])).catch(() => setTvs([]));
-    brand.get().then((r) => setCoresMarca(((r && r.kit && r.kit.cores) || []).filter(Boolean))).catch(() => setCoresMarca([]));
-  }, []);
+  const [tela, setTela] = useState(null);   // { tv, mudancas, notas }: o diálogo MudarAparencia confere e aplica
 
   async function pedir(t) {
     const frase = String(t == null ? texto : t).trim();
@@ -50,54 +40,15 @@ export function PedirIA({ onFechar, onIr }) {
       if (r.destino === 'aviso') { setAvisoPronto(r.aviso); return; }
       if (r.destino === 'criar') { onFechar(); if (onIr) onIr('criar', { texto: r.texto }); return; }
       if (r.destino === 'nenhuma-tv') { aviso.erro('pedir', 'Você ainda não tem TV ligada. Pareie uma em Telas.'); return; }
-      if (r.destino === 'tela') {
-        const cfg = await deviceConfig.get(r.tv.id);
-        if (!cfg) { aviso.erro('pedir', 'Esta TV ainda não tem programação para mudar.'); return; }
-        setTela({ tv: r.tv, cfg, m: r.mudancas, notas: r.notas || [],
-          depois: aplicarMudancas(cfg, r.mudancas, { coresMarca }), linhas: descrever(cfg, r.mudancas, { coresMarca }) });
-      }
+      if (r.destino === 'tela') setTela({ tv: r.tv, mudancas: r.mudancas, notas: r.notas || [] });
     } catch (e) { aviso.erro('pedir', e.message || 'Não deu para entender agora.'); }
     finally { setOcupado(false); }
-  }
-
-  async function aplicar() {
-    const alvo = tvs.find((t) => t.id === tela.tv.id);
-    if (!alvo) return;
-    setAplicando(true);
-    try {
-      const r = await gravarEmLote([alvo], (cfg) => aplicarMudancas(cfg, tela.m, { coresMarca }), 'IA na TV ' + (tela.tv.nome || ''));
-      avisarComDesfazer('Mudou na TV “' + (tela.tv.nome || 'TV') + '”.', r.lote);
-      onFechar();
-    } catch (e) { aviso.erro('pedir', e.message || 'Não deu para aplicar na TV.'); }
-    finally { setAplicando(false); }
   }
 
   // O aviso já montado segue no Aviso rápido: a prévia, os ajustes e o envio com Desfazer.
   if (avisoPronto) return <AvisoRapido avisoInicial={avisoPronto} onFechar={onFechar} />;
 
-  if (tela) {
-    return (
-      <Dialog open onClose={onFechar} className="max-w-3xl" title={'Mudar a aparência: ' + (tela.tv.nome || 'TV')}
-        description="Confira antes: a TV agora e como fica. Muda na TV quando você aplicar (e dá para desfazer)."
-        footer={<>
-          <Button variant="ghost" onClick={() => setTela(null)}>Voltar</Button>
-          <Button variant="primary" icon={Check} disabled={aplicando} onClick={aplicar}>{aplicando ? 'Aplicando…' : 'Aplicar na TV'}</Button>
-        </>}>
-        <div className="grid grid-cols-2 gap-3">
-          <PreviaDaTela cfg={tela.cfg} rotulo="Agora" />
-          <PreviaDaTela cfg={tela.depois} rotulo="Como fica" />
-        </div>
-        <ul className="mt-4 space-y-1 text-sm">
-          {tela.linhas.map((l, i) => (
-            <li key={i} className={l.aviso ? 'flex items-start gap-1.5 text-warn' : 'flex items-start gap-1.5 text-ink'}>
-              {l.aviso ? <TriangleAlert size={14} className="mt-0.5 shrink-0" /> : <Check size={14} className="mt-0.5 shrink-0 text-accent" />}{l.texto}
-            </li>
-          ))}
-          {tela.notas.map((n, i) => <li key={'n' + i} className="pl-5 text-xs text-ink-3">{n}</li>)}
-        </ul>
-      </Dialog>
-    );
-  }
+  if (tela) return <MudarAparencia tv={tela.tv} mudancas={tela.mudancas} notas={tela.notas} onFechar={onFechar} onVoltar={() => setTela(null)} />;
 
   return (
     <Dialog open onClose={onFechar} className="max-w-xl" title="Pedir à IA"

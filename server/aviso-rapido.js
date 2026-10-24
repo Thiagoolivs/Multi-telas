@@ -62,6 +62,7 @@ function semIA(texto, hoje, grupos) {
   let t = corta(texto, 400);
   t = t.replace(/^(por favor,?\s*)?(adicion[ae]|coloc[ae]|p[õo]e|bota|crie|cria|fa[çc]a|publi(que|ca))\s+(um\s+|o\s+)?(aviso|recado|comunicado)\s*(de|da|do|que|sobre|:)?\s*/i, '');
   t = t.replace(/^(aviso|recado|comunicado)(\s+(urgente|importante))?\s*[:\-–—]\s*/i, '');
+  t = t.replace(/^(quero |preciso |pode |tem que |vamos )?(avis[ae]r?|informa[r]?|comunica[r]?)\s+(a todos |o pessoal |todo mundo |os clientes |a equipe )?(que\s+|:\s*)?/i, '');
   t = t.replace(/\s*(em )?(todas as tvs|na[s]? tv[s]?)\s*/i, ' ').trim();
   // O grupo citado ("na Loja Centro") vai para o alvo, não para o cartaz.
   const grupo = alvoDe(texto, grupos);

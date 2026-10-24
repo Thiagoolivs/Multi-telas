@@ -140,7 +140,7 @@ function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, on
 }
 
 // A caixa de ajuste: o chat continua depois de gerar.
-export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, onMudou }) {
+export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, onMudou, pedidoInicial }) {
   const [redesDe, setRedesDe] = useState(null);
   const [editando, setEditando] = useState(null);
   const r = (campanha && campanha.resultado) || {};
@@ -228,7 +228,7 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
     </div>
       {onMudou && (
         <aside className="mt-3 lg:sticky lg:top-4 lg:mt-0">
-          <EditarComIA campanha={campanha} onMudou={onMudou} />
+          <EditarComIA campanha={campanha} onMudou={onMudou} textoInicial={pedidoInicial} />
         </aside>
       )}
       {redesDe && <RedesSociais item={redesDe.item} label={redesDe.label} onFechar={() => setRedesDe(null)} />}

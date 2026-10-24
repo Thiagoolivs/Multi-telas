@@ -138,8 +138,8 @@ function semIA(texto, atual) {
   // Tema e fundo
   const corFundo = new RegExp('fundo\\s+(?:todo\\s+|toda\\s+)?(?:na cor\\s+|em\\s+|de\\s+|cor\\s+)?(#[0-9a-f]{6}|' + nomesDe(CORES_DE_FUNDO) + ')\\b').exec(s);
   if (corFundo) { m.fundo = 'cor'; m.fundoCor = corFundo[1].startsWith('#') ? corFundo[1] : CORES_DE_FUNDO[corFundo[1]]; }
-  else if (/(fundo|tema|tela|versao|modo|tudo)\s+(mais\s+)?(claro|clara)\b|mais clar[oa]\b|modo light/.test(s)) m.fundo = 'claro';
-  else if (/(fundo|tema|tela|versao|modo|tudo)\s+(mais\s+)?(escuro|escura)\b|mais escur[oa]\b|modo dark/.test(s)) m.fundo = 'escuro';
+  else if (/(fundo|tema|tela|versao|modo|tudo)\s+(mais\s+)?(claro|clara)\b|mais clar[oa]\b|modo light|\b(fundo|tema|modo)\b.{0,40}\b(para|pra)\s+(o\s+)?(claro|clara)\b/.test(s)) m.fundo = 'claro';
+  else if (/(fundo|tema|tela|versao|modo|tudo)\s+(mais\s+)?(escuro|escura)\b|mais escur[oa]\b|modo dark|\b(fundo|tema|modo)\b.{0,40}\b(para|pra)\s+(o\s+)?(escuro|escura)\b/.test(s)) m.fundo = 'escuro';
   else if (/(fundo|combina\w*)\s+(das|com as|igual (as|a das))\s+pecas/.test(s)) m.fundo = 'pecas';
 
   if (/(cores?|tema|cara|visual)\s+da\s+(minha\s+|nossa\s+)?(marca|empresa)|cores da empresa/.test(s)) m.tema = 'marca';

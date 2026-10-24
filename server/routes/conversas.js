@@ -29,6 +29,7 @@
 'use strict';
 
 const conversa = require('../ai-conversa');
+const assistente = require('../assistente');
 const memory = require('../ai-memoria');
 const E = require('../../js/escopo.js');
 const paleta = require('../paleta.js');
@@ -85,8 +86,11 @@ module.exports = function (ctx) {
       memoria: lembrada,
       telas: (telas || []).map((d) => {
         const s = configDe(d).settings || {};
-        return { id: d.id, nome: d.name || '', layout: s.layoutId || '', emPe: /^portrait/.test(s.layoutId || '') };
+        return { id: d.id, nome: d.name || '', layout: s.layoutId || '', emPe: /^portrait/.test(s.layoutId || ''), tema: (s.theme && s.theme.preset) || '', grupo: d.grupo || '' };
       }),
+      // O assistente (24/10): os grupos de TVs (para o aviso) e as campanhas criadas (para "muda a campanha X").
+      grupos: [...new Set((telas || []).map((d) => d.grupo).filter(Boolean))],
+      campanhas: ((await db.listarCampanhas(tenantId, 20).catch(() => [])) || []).map((x) => ({ id: x.id, nome: x.nome || '' })).filter((x) => x.nome),
       hoje: agora.toISOString().slice(0, 10),
       diaSemana: DIAS[agora.getDay()],
     };
@@ -107,18 +111,24 @@ module.exports = function (ctx) {
         const mensagens = ((atual && atual.mensagens) || []).concat({ papel: 'pessoa', texto, em: Date.now() });
         // O escopo do cartão (que a pessoa pode ter mudado à mão) vence o guardado.
         const escopo = b && b.escopo && typeof b.escopo === 'object' ? b.escopo : (atual && atual.escopo);
-        // D48: as decisões das voltas anteriores vão junto, e voltam acrescidas (ou com o que a pessoa mudou fora).
-        const out = await conversa.conversar({ mensagens, escopo, decisoes: (atual && atual.decisoes) || [], ctx: c });
+        /*
+         * O ASSISTENTE (24/10): o maestro escolhe a ferramenta — quiz, aviso,
+         * aparência da TV, campanha, editar uma campanha, dúvida — e o
+         * especialista faz. A campanha continua sendo a conversa de sempre
+         * (server/ai-conversa.js), com as decisões (D48) indo e voltando.
+         */
+        const out = await assistente.responder({ mensagens, escopo, decisoes: (atual && atual.decisoes) || [], ctx: c });
         /*
          * Na falha, a frase aparece para a pessoa mas é marcada: a próxima
          * volta não a manda para a IA como se fosse fala dela (transcricao),
          * o estado da conversa não anda e a memória não aprende nada.
          */
         const falhou = out.modo === 'falha';
-        // Dúvida (D5) também não anda o estado: "pronta para gerar" continua pronta.
-        const manter = falhou || out.tipo === 'duvida';
+        // Dúvida (D5) também não anda o estado: "pronta para gerar" continua pronta. Nem o quiz, o aviso ou a TV, que não são o cartão.
+        const manter = falhou || out.tipo === 'duvida' || out.intencao !== 'campanha';
         const prontoAntes = !!(atual && (atual.estado === 'entendido' || atual.estado === 'gerado'));
-        mensagens.push({ papel: 'ia', texto: out.resposta, sugestoes: out.sugestoes, em: Date.now(), ...(falhou ? { falha: true } : {}) });
+        // A mensagem da IA guarda a ferramenta e o resultado (o quiz, o aviso): é a tarefa em andamento da próxima volta, e o cartão do painel.
+        mensagens.push(out.mensagem || { papel: 'ia', texto: out.resposta, sugestoes: out.sugestoes, em: Date.now(), ...(falhou ? { falha: true } : {}) });
         const primeira = mensagens.find((m) => m.papel === 'pessoa');
         const dados = {
           // "Nova conversa" é o nome provisório de quem mandou a imagem antes da primeira frase (D45).
@@ -149,6 +159,7 @@ module.exports = function (ctx) {
         return sendJson(res, 200, {
           conversa: salva, pronto: out.tipo === 'duvida' ? prontoAntes : out.pronto, gerar: !!out.gerar,
           sugestoes: out.sugestoes, modo: out.modo, falha: out.falha || '', tipo: out.tipo || '',
+          intencao: out.intencao || '', acao: out.acao || null,
         });
       } catch (e) {
         erros.registrar(e, { rota: '/api/ai/conversa' });
