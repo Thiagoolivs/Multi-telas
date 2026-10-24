@@ -93,7 +93,9 @@ test('o painel: Pedir à IA na Programação; o aviso e o "Mudar com IA" com a m
   const I = ler('web/src/components/tela/PedirIA.jsx');
   assert.match(I, /if \(r\.destino === 'criar'\) \{ onFechar\(\); if \(onIr\) onIr\('criar', \{ texto: r\.texto \}\); return; \}/);
   assert.match(I, /if \(avisoPronto\) return <AvisoRapido avisoInicial=\{avisoPronto\} onFechar=\{onFechar\} \/>;/);
-  assert.match(I, /gravarEmLote\(\[alvo\], \(cfg\) => aplicarMudancas\(cfg, tela\.m, \{ coresMarca \}\)/, 'mudou a TV sem o lote (sem Desfazer)');
+  // Desde 24/10 o conferir e aplicar mora no MudarAparencia, o mesmo do assistente do Criar.
+  assert.match(I, /if \(tela\) return <MudarAparencia tv=\{tela\.tv\} mudancas=\{tela\.mudancas\}/);
+  assert.match(ler('web/src/components/tela/MudarAparencia.jsx'), /gravarEmLote\(\[estado\.alvo\], \(cfg\) => aplicarMudancas\(cfg, mudancas, \{ coresMarca: estado\.coresMarca \}\)/, 'mudou a TV sem o lote (sem Desfazer)');
   for (const f of ['web/src/components/tela/AvisoRapido.jsx', 'web/src/components/tela/MudarComIA.jsx']) {
     assert.match(ler(f), /<MiniConversa historico=\{historico\}/, f);
     assert.match(ler(f), /comPergunta\(h, frase, r\)/, f);

@@ -152,7 +152,9 @@ test('com IA: ela lê as peças com os textos e o combinado; "fazer" sem mudanç
 test('o painel: a conversa ao lado das peças, com histórico, sugestões e desfazer', () => {
   const R = ler('web/src/components/criar/ResultadoCampanha.jsx');
   assert.doesNotMatch(R, /function Ajustar\(/, 'a caixa de uma frase voltou');
-  assert.match(R, /<EditarComIA campanha=\{campanha\} onMudou=\{onMudou\} \/>/);
+  // O pedido vindo do assistente do Criar ("muda a campanha X") chega escrito (24/10).
+  assert.match(R, /<EditarComIA campanha=\{campanha\} onMudou=\{onMudou\} textoInicial=\{pedidoInicial\} \/>/);
+  assert.match(ler('web/src/components/criar/EditarComIA.jsx'), /useState\(textoInicial \|\| ''\)/);
   assert.match(R, /lg:grid lg:grid-cols-\[minmax\(0,1fr\)_22rem\]/);
   const C = ler('web/src/components/criar/EditarComIA.jsx');
   assert.match(C, /criar\.edicao\(campanha\.id\)/, 'abrir não mostra o que já foi pedido');

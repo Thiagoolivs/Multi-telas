@@ -36,7 +36,7 @@ test('item 29: Campanhas é a casa da campanha — uma vez, com estado, TVs e o 
   assert.deepEqual(M.GRUPOS.find((g) => g.id === 'criar').paginas, ['criar', 'criando', 'campanhas']);
   assert.equal(M.paginaDoIr('campanhas'), 'campanhas');
   const app = ler('web/src/App.jsx');
-  assert.match(app, /case 'campanhas': return <CampanhasPage key=\{route\.campanha \|\| ''\} campanhaInicial=\{route\.campanha\} onIr=\{go\} \/>;/);
+  assert.match(app, /case 'campanhas': return <CampanhasPage key=\{route\.campanha \|\| ''\} campanhaInicial=\{route\.campanha\} pedidoInicial=\{route\.pedido\} onIr=\{go\} \/>;/);
   const p = semComentarios(ler('web/src/pages/CampanhasPage.jsx'));
   // Desde o D10, em páginas, com busca e as arquivadas à parte.
   assert.match(p, /criar\.campanhas\(\{ q: busca\.trim\(\), arquivadas, pular \}\)/);

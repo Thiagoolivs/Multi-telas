@@ -53,7 +53,7 @@ function Acao({ titulo, icone: Icone, onClick, perigo }) {
   );
 }
 
-export function CampanhasPage({ campanhaInicial, onIr }) {
+export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
   const [lista, setLista] = useState(null);
   const [mais, setMais] = useState(false);
   const [carregandoMais, setCarregandoMais] = useState(false);
@@ -154,7 +154,9 @@ export function CampanhasPage({ campanhaInicial, onIr }) {
           <ProximoPasso feito="A campanha está pronta." proximo="ligar a TV — ela já recebe esta campanha." acao="Ligar a TV"
             onIr={() => onIr && onIr('screens', { abrirParear: true })} />
         )}
+        {/* O assistente do Criar ("muda a campanha X") abre aqui com o pedido já escrito no Editar com a IA. */}
         <ResultadoCampanha campanha={aberta} telas={telas} onIr={onIr} onMudou={mudou} onNova={onIr ? () => onIr('criar') : undefined}
+          pedidoInicial={aberta.id === campanhaInicial ? pedidoInicial : ''}
           acoes={<PorPraRodar campanha={aberta} telas={telas} onMudou={mudou} />} />
       </div>
     );

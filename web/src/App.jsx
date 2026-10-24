@@ -238,7 +238,7 @@ export default function App() {
        */
       case 'criar': return <CriarPage key={(route.opcao || '') + (route.tela || '') + (route.zona || '') + (route.ideia || '') + (route.conversa || '') + (route.texto || '')} opcaoInicial={route.opcao} telaInicial={route.tela} zonaInicial={route.zona} ideiaInicial={route.ideia} conversaInicial={route.conversa} aprovarInicial={!!route.aprovar} textoInicial={route.texto} onIr={go} />;
       case 'rapida': return <CriacaoRapidaPage key={(route.opcao || '') + (route.tela || '')} opcaoInicial={route.opcao} telaInicial={route.tela} onIr={go} />;
-      case 'campanhas': return <CampanhasPage key={route.campanha || ''} campanhaInicial={route.campanha} onIr={go} />;
+      case 'campanhas': return <CampanhasPage key={route.campanha || ''} campanhaInicial={route.campanha} pedidoInicial={route.pedido} onIr={go} />;
       case 'criando': return <CriandoPage onIr={go} />;
       case 'designs': case 'studio': case 'campaigns': case 'images': return <MyDesignsPage onIr={go} />;
       case 'brand': return <BrandPage onIr={go} />;

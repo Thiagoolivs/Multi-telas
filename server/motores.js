@@ -158,12 +158,17 @@ async function anthropic(o) {
   content.push({ type: 'text', text: o.usuario || '' });
   const body = { model: o.modelo, max_tokens: o.maxTokens, system, messages: [{ role: 'user', content }] };
   if (o.temperatura != null) body.temperature = o.temperatura;
+  if (Array.isArray(o.ferramentas) && o.ferramentas.length) {
+    body.tools = o.ferramentas.map((f) => ({ name: f.nome, description: f.descricao, input_schema: f.parametros }));
+    body.tool_choice = { type: 'any' };
+  }
   const { res, data } = await postar('anthropic', 'https://api.anthropic.com/v1/messages',
     { 'x-api-key': chave.anthropic(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, body);
   if (!res.ok || !data) throw erroIA((data && data.error && data.error.message) || ('Anthropic HTTP ' + res.status), res.status, 'anthropic');
   const u = data.usage || {};
   return {
     texto: (data.content || []).map((b) => b.text || '').join('').trim(),
+    chamadas: (data.content || []).filter((b) => b.type === 'tool_use' && b.name).map((b) => ({ nome: b.name, args: b.input || {} })),
     modelo: data.model || o.modelo,
     entrada: u.input_tokens || 0,
     saida: u.output_tokens || 0,
@@ -190,26 +195,53 @@ const geminiMortos = new Map();
 const MORTO_MS = 6 * 60 * 60 * 1000;
 const pensarRecusado = (msg) => /thinking|unknown name|invalid.*(field|argument)|not supported/i.test(msg || '');
 
+/*
+ * Ferramentas (chamada de função): cada uma é { nome, descricao, parametros },
+ * com os parâmetros em JSON Schema simples (type, description, enum,
+ * properties, required, items). Cada provedor recebe no dialeto dele e
+ * devolve `chamadas: [{ nome, args }]`.
+ */
+function esquemaGemini(s) {
+  if (!s || typeof s !== 'object') return s;
+  const out = {};
+  if (s.type) out.type = String(s.type).toUpperCase();
+  if (s.description) out.description = s.description;
+  if (Array.isArray(s.enum)) out.enum = s.enum;
+  if (s.properties) out.properties = Object.fromEntries(Object.entries(s.properties).map(([k, v]) => [k, esquemaGemini(v)]));
+  if (Array.isArray(s.required)) out.required = s.required;
+  if (s.items) out.items = esquemaGemini(s.items);
+  return out;
+}
+
 async function geminiUmModelo(modelo, o) {
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(modelo) + ':generateContent';
   const sistema = [o.fixo, o.sistema].filter(Boolean).join('\n\n');
   const parts = [{ text: o.usuario || '' }].concat((o.imagens || []).map((im) => ({ inline_data: { mime_type: im.mime, data: im.data } })));
   const base = { temperature: o.temperatura != null ? o.temperatura : 0.7, maxOutputTokens: o.maxTokens };
-  if (o.json) base.responseMimeType = 'application/json';
+  const comFerramentas = Array.isArray(o.ferramentas) && o.ferramentas.length > 0;
+  if (o.json && !comFerramentas) base.responseMimeType = 'application/json';
   // Primeiro sem "pensar" (o flash gasta o orçamento pensando e volta vazio); depois sem o campo.
   const configs = [{ ...base, thinkingConfig: { thinkingBudget: 0 } }, base];
   let motivo = '';
   for (const generationConfig of configs) {
-    const { res, data } = await postar('gemini', url, { 'x-goog-api-key': chave.gemini(), 'content-type': 'application/json' },
-      { system_instruction: { parts: [{ text: sistema }] }, contents: [{ role: 'user', parts }], generationConfig });
+    const corpo = { system_instruction: { parts: [{ text: sistema }] }, contents: [{ role: 'user', parts }], generationConfig };
+    if (comFerramentas) {
+      // Ferramentas (o assistente do Criar): o modelo TEM de chamar uma (mode ANY), com os argumentos no formato declarado.
+      corpo.tools = [{ functionDeclarations: o.ferramentas.map((f) => ({ name: f.nome, description: f.descricao, parameters: esquemaGemini(f.parametros) })) }];
+      corpo.toolConfig = { functionCallingConfig: { mode: 'ANY' } };
+    }
+    const { res, data } = await postar('gemini', url, { 'x-goog-api-key': chave.gemini(), 'content-type': 'application/json' }, corpo);
     if (res.ok && data) {
       const cand = data.candidates && data.candidates[0];
-      const texto = ((cand && cand.content && cand.content.parts) || []).map((p) => p.text || '').join('').trim();
-      if (texto) {
+      const pedacos = (cand && cand.content && cand.content.parts) || [];
+      const texto = pedacos.map((p) => p.text || '').join('').trim();
+      const chamadas = pedacos.filter((p) => p.functionCall && p.functionCall.name)
+        .map((p) => ({ nome: p.functionCall.name, args: p.functionCall.args || {} }));
+      if (texto || chamadas.length) {
         const u = data.usageMetadata || {};
         const cache = u.cachedContentTokenCount || 0;
         return {
-          texto, modelo,
+          texto, chamadas, modelo,
           entrada: Math.max(0, (u.promptTokenCount || 0) - cache),
           saida: (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0),
           cacheLida: cache, cacheEscrita: 0,
@@ -263,12 +295,19 @@ async function groq(o) {
     { Authorization: 'Bearer ' + chave.groq(), 'content-type': 'application/json' }, {
       model: o.modelo, max_tokens: o.maxTokens, temperature: o.temperatura != null ? o.temperatura : 0.7,
       messages: [{ role: 'system', content: [o.fixo, o.sistema].filter(Boolean).join('\n\n') }, { role: 'user', content: o.imagens && o.imagens.length ? content : (o.usuario || '') }],
+      ...(Array.isArray(o.ferramentas) && o.ferramentas.length ? {
+        tools: o.ferramentas.map((f) => ({ type: 'function', function: { name: f.nome, description: f.descricao, parameters: f.parametros } })),
+        tool_choice: 'required',
+      } : {}),
     });
   if (!res.ok || !data) throw erroIA((data && data.error && data.error.message) || ('Groq HTTP ' + res.status), res.status, 'groq');
   const u = data.usage || {};
   const cache = (u.prompt_tokens_details && u.prompt_tokens_details.cached_tokens) || 0;
   return {
     texto: ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim(),
+    chamadas: ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.tool_calls) || [])
+      .filter((c) => c && c.function && c.function.name)
+      .map((c) => { let args = {}; try { args = JSON.parse(c.function.arguments || '{}'); } catch (e) { args = {}; } return { nome: c.function.name, args }; }),
     modelo: data.model || o.modelo,
     entrada: Math.max(0, (u.prompt_tokens || 0) - cache),
     saida: u.completion_tokens || 0,
@@ -376,7 +415,7 @@ async function chamarUm(motor, o) {
   };
   uso.custoCentavos = custoCentavos(uso);
   anotar(uso);
-  return { texto: r.texto, uso };
+  return { texto: r.texto, chamadas: r.chamadas || [], uso };
 }
 
 module.exports = { MOTORES, GEMINI_CANDIDATOS, geminiTentaOutro, tipoDoErro, erroIA, fraseDoErro, iaIndisponivel, motorPadrao, chamar, custoCentavos, precos, medir, medicaoAtual, consumirMedicao, consumirDe };

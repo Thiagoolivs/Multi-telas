@@ -9,6 +9,7 @@ import { ListaDeConversas } from '../components/criar/ListaDeConversas.jsx';
 import { Combinado } from '../components/criar/Combinado.jsx';
 import { BotaoAnexar, ReferenciasDoChat, imagensDoColar } from '../components/criar/ReferenciasDoChat.jsx';
 import { AprovarEsboco } from '../components/criar/AprovarEsboco.jsx';
+import { AcaoDaIA } from '../components/criar/AcaoDaIA.jsx';
 import { prepararFoto } from '../lib/subir.js';
 import { ai, criar, devices, seasons, brand } from '../api.js';
 import { ideiaDaData } from '../lib/ideiaDaData.js';
@@ -88,6 +89,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   const [ideias, setIdeias] = useState(null);
   const [daData, setDaData] = useState(null);   // a data comemorativa de hoje, como ideia (item 35)
   const [telas, setTelas] = useState([]);
+  const [modo, setModo] = useState('');   // 'dev': o servidor está sem IA (só regras) — o teste local avisa
   // A marca para a prévia (D13): cores, nome e logo, e o ramo para sugerir cores.
   const [marca, setMarca] = useState(null);
   const [gerando, setGerando] = useState(null);     // etapa do trabalho
@@ -173,6 +175,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
       setMensagens(r.conversa.mensagens || []);
       setEscopo(E.normalizar(r.conversa.escopo || {}));
       setPronto(!!r.pronto);
+      setModo(r.modo || '');
       guardar(r.conversa.id);
       if (!conversa) setVersaoDaLista((v) => v + 1);
       // A pessoa mandou gerar (item 37): o esboço abre para ela aprovar — gerar só depois (D42).
@@ -322,6 +325,9 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     catch (e) { setConversa(antes); aviso.erro('criar', 'Não deu para mudar a imagem: ' + (e.message || 'falha de conexão') + '.'); }
   }
   const ultimaIa = [...mensagens].reverse().find((m) => m.papel === 'ia');
+  // O cartão do assistente com botão é o mais novo de cada tipo: o quiz corrigido substitui o de antes.
+  const acaoAtiva = {};
+  mensagens.forEach((m, i) => { if (m.acao && m.acao.tipo) acaoAtiva[m.acao.tipo] = i; });
 
   const lista = (
     <ListaDeConversas atual={conversa && conversa.id} versao={versaoDaLista}
@@ -426,7 +432,8 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
               <Panel>
                 <div className="space-y-2.5 p-3" aria-live="polite">
                   {mensagens.map((m, i) => (
-                    <div key={i} className={m.papel === 'ia' ? 'flex gap-2' : 'flex justify-end'}>
+                    <React.Fragment key={i}>
+                    <div className={m.papel === 'ia' ? 'flex gap-2' : 'flex justify-end'}>
                       {m.papel === 'ia' && (m.falha
                         ? <CloudOff size={14} className="mt-1 shrink-0 text-warn" aria-hidden />
                         : <MessageSquare size={14} className="mt-1 shrink-0 text-ink-3" />)}
@@ -435,7 +442,12 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
                         m.papel !== 'ia' ? 'rounded-tr-sm bg-accent text-accent-fg'
                           : m.falha ? 'rounded-tl-sm border border-warn/40 bg-warn-soft text-ink' : 'rounded-tl-sm bg-surface-2 text-ink')}>{m.texto}</div>
                     </div>
+                    {m.papel === 'ia' && m.acao && (
+                      <AcaoDaIA acao={m.acao} id={(conversa && conversa.id ? conversa.id : 'c') + ':' + i} telas={telas} onIr={onIr} ativa={acaoAtiva[m.acao.tipo] === i && !criada} />
+                    )}
+                    </React.Fragment>
                   ))}
+                  {modo === 'dev' && <p className="pl-6 text-2xs text-ink-3">Modo de teste: o servidor está sem IA, respondo por regras simples.</p>}
                   {pensando && <div className="flex items-center gap-2 text-xs text-ink-3"><Spinner size={13} /> pensando…</div>}
                   {/* As respostas prontas da última fala da IA: na voz da pessoa, um toque manda. */}
                   {!pensando && !criada && ultimaIa && (ultimaIa.sugestoes || []).length > 0 && (

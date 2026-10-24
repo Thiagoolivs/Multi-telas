@@ -416,6 +416,38 @@ function pequeno(e, texto, tipo) {
   });
 }
 
+/*
+ * Uma zona só, dita no pedido ("na lateral põe uma promoção de café"): a
+ * campanha fica nela. Antes o roteiro montava as quatro zonas e ainda falava
+ * do cabeçalho e do rodapé (visto no teste do dono, 24/10).
+ */
+const ZONA_DITA = { lateral: /\b(na|para a|pra|so a|só a|só na|so na) (tela )?lateral\b/, principal: /\b(na|para a|pra|só a|so a|só na|so na) (área |area )?principal\b/ };
+function soAZonaDita(e, texto) {
+  const t = String(texto || '').toLowerCase();
+  const ditas = Object.keys(ZONA_DITA).filter((z) => ZONA_DITA[z].test(t));
+  if (ditas.length !== 1 || /cabe[cç]alho|rodap[eé]/.test(t)) return e;
+  const z = ditas[0];
+  e.telas.forEach((tela) => E.ZONAS.forEach((id) => {
+    const zona = tela.zonas[id];
+    if (id === z) { if (!zona.pecas) zona.pecas = z === 'lateral' ? 2 : 3; return; }
+    zona.pecas = 0;
+    if (zona.mensagens) { zona.mensagens = []; zona.vivos = []; zona.contagem = ''; }
+  }));
+  return E.normalizar(e);
+}
+
+// O que o roteiro vai criar, numa frase ("2 peças na lateral", "o rodapé com os avisos").
+function oQueVaiCriar(e) {
+  const z = { principal: 0, lateral: 0, cabecalho: 0, rodape: 0 };
+  e.telas.forEach((t) => E.ZONAS.forEach((id) => { z[id] = Math.max(z[id], t.zonas[id].pecas || 0); }));
+  const partes = [];
+  if (z.principal) partes.push(z.principal + (z.principal === 1 ? ' peça' : ' peças') + ' na principal');
+  if (z.lateral) partes.push(z.lateral + (z.lateral === 1 ? ' peça' : ' peças') + ' na lateral');
+  if (z.cabecalho) partes.push('o cabeçalho com relógio e clima');
+  if (z.rodape) partes.push('o rodapé com os avisos');
+  return partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] : (partes[0] || 'as peças');
+}
+
 function roteiro(mensagens, escopo) {
   const ditas = (mensagens || []).filter((m) => m && m.papel !== 'ia');
   const ultima = (ditas[ditas.length - 1] || {}).texto || '';
@@ -445,11 +477,12 @@ function roteiro(mensagens, escopo) {
     const pedido = String(ultima).replace(/\s+/g, ' ').trim();
     if (!E.temOQueGerar(e)) e = E.normalizar({ ...E.padrao(), imagens: e.imagens, redes: { ...E.padrao().redes, ...falsos() } });
     e = { ...e, nome: e.nome || nomeDoPedido(pedido), objetivo: e.objetivo || pedido.slice(0, 300) };
+    e = soAZonaDita(E.normalizar(e), pedido);
   }
   e = aplicarPalavras(e, ultima);
   const perguntas = [
     {
-      resposta: 'Boa! Sugiro 3 peças na principal, 2 na lateral, o cabeçalho com relógio e clima, e o rodapé com os avisos. E as fotos: uso as suas, eu gero (gasta criação do plano), ou misturo?',
+      resposta: 'Boa! Sugiro ' + oQueVaiCriar(e) + '. E as fotos: uso as suas, eu gero (gasta criação do plano), ou misturo?',
       sugestoes: ['Use as minhas fotos', 'Pode gerar as fotos', 'Misture as duas', 'Sem foto'],
     },
     {
