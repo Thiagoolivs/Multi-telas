@@ -168,7 +168,39 @@ module.exports = function (ctx) {
     });
   }
 
+  /*
+   * ----- O "Pedir à IA" da Programação (D51; pelo maestro desde 24/10) -----
+   * "O que você quer nas TVs?": o mesmo assistente do Criar, com menos
+   * ferramentas (aviso, quiz, aparência da TV, editar campanha). Conteúdo
+   * novo vai para o Criar. `tv` (opcional): a TV aberta no painel — fixa,
+   * a IA não escolhe outra. Nada é gravado aqui: o painel mostra a prévia.
+   */
+  async function pedirNaProgramacao(req, res, sess) {
+    const rl = rateLimit('ai:pedir:' + sess.tenant_id, 60, 60 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { error: 'muitos pedidos nesta hora. Espere um pouco.' }, { 'Retry-After': String(rl.retryAfter) });
+    return readBody(req, res, async (b) => {
+      const texto = String((b && b.texto) || '').trim();
+      if (!texto) return sendJson(res, 400, { error: 'diga o que você quer' });
+      try {
+        const c = await contexto(sess.tenant_id);
+        const tvFixa = b && typeof b.tv === 'string' && c.telas.some((t) => t.id === b.tv) ? b.tv : null;
+        return sendJson(res, 200, await assistente.pedirNaProgramacao({ texto: texto.slice(0, 500), historico: b && b.historico, ctx: c, tvFixa }));
+      } catch (e) {
+        if (e.status === 503) return sendJson(res, 503, { error: 'A IA está fora do ar agora. Tente de novo daqui a pouco.' });
+        erros.registrar(e, { rota: '/api/ai/pedir' });
+        return sendJson(res, 502, { error: 'não deu para entender agora; tente de novo' });
+      }
+    });
+  }
+
   async function tratar(req, res, parts, query, sess) {
+    const ehPedir = parts[1] === 'ai' && parts[2] === 'pedir';
+    if (ehPedir) {
+      if (!sess) { sendJson(res, 401, { error: 'não autenticado' }); return true; }
+      if (req.method !== 'POST') { sendJson(res, 405, { error: 'método inválido' }); return true; }
+      await pedirNaProgramacao(req, res, sess);
+      return true;
+    }
     const ehVolta = parts[1] === 'ai' && parts[2] === 'conversa';
     if (!ehVolta && parts[1] !== 'conversas') return false;
     if (!sess) { sendJson(res, 401, { error: 'não autenticado' }); return true; }

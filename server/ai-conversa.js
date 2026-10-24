@@ -595,7 +595,9 @@ async function conversar({ mensagens, escopo, decisoes, ctx } = {}) {
     return { tipo, resposta, sugestoes: listaCurta(r && r.sugestoes, 4, 60), escopo: atual, decisoes: antes, pronto: false, gerar: false, modo: ai.mode() };
   }
   // O que a IA mandou entra POR CIMA do atual (D48): o que ela não repetiu continua valendo.
-  const escopoNovo = conferirEscopo(mesclarEscopo(atual, r && r.escopo), ctx);
+  let escopoNovo = conferirEscopo(mesclarEscopo(atual, r && r.escopo), ctx);
+  // "Na lateral põe uma promoção": no primeiro desenho, a zona dita vale sobre a IA (ela às vezes monta as quatro).
+  if (!E.temOQueGerar(atual)) escopoNovo = soAZonaDita(escopoNovo, ultimaFala);
   // As cores da campanha saem do cartão (D13), não da conversa: a IA que esquece o campo não as apaga.
   if (!escopoNovo.cores.length && atual.cores.length) escopoNovo.cores = atual.cores.slice();
   const gerar = E.temOQueGerar(escopoNovo) && (r && r.gerar === true || pediuParaGerar(ultimaFala));

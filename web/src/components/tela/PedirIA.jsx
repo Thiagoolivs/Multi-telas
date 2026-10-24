@@ -4,6 +4,7 @@ import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { AvisoRapido } from './AvisoRapido.jsx';
 import { MudarAparencia } from './MudarAparencia.jsx';
+import { PorQuizNaTv } from '../criar/AcaoDaIA.jsx';
 import { MiniConversa, comPergunta } from './MiniConversa.jsx';
 import { ai } from '../../api.js';
 import { aviso } from '../../lib/avisos.js';
@@ -18,29 +19,35 @@ import { aviso } from '../../lib/avisos.js';
  * e leva ao caminho certo:
  *   - aviso: o aviso montado, com a prévia e o envio em lote (Desfazer);
  *   - aparência de uma TV: a TV agora e como fica, e "Aplicar na TV" (Desfazer);
+ *   - quiz: as perguntas para conferir e pôr na TV (Desfazer);
+ *   - mudar uma campanha: Criados, com o pedido no Editar com a IA;
  *   - conteúdo novo: o Criar, com o pedido já escrito.
- * Nada muda nas TVs sem o "ok" de quem pediu.
+ * Nada muda nas TVs sem o "ok" de quem pediu. Desde 24/10 quem entende é o
+ * maestro do assistente do Criar (server/assistente.js), com menos ferramentas.
  */
-const EXEMPLOS = ['Aviso: piso molhado no corredor', 'Tema claro na TV da recepção', 'Criar uma promoção de café'];
+const EXEMPLOS = ['Aviso: piso molhado no corredor', 'Quiz de 3 perguntas sobre segurança', 'Tema claro na TV da recepção', 'Criar uma promoção de café'];
 
-export function PedirIA({ onFechar, onIr }) {
+export function PedirIA({ onFechar, onIr, tv }) {
   const [texto, setTexto] = useState('');
   const [historico, setHistorico] = useState([]);
   const [ocupado, setOcupado] = useState(false);
   const [avisoPronto, setAvisoPronto] = useState(null);
   const [tela, setTela] = useState(null);   // { tv, mudancas, notas }: o diálogo MudarAparencia confere e aplica
+  const [quiz, setQuiz] = useState(null);   // a ação do quiz: o PorQuizNaTv mostra as perguntas e põe na TV
 
   async function pedir(t) {
     const frase = String(t == null ? texto : t).trim();
     if (!frase || ocupado) return;
     setOcupado(true);
     try {
-      const r = await ai.pedir(frase, historico);
+      const r = await ai.pedir(frase, historico, tv && tv.id);
       if (r.pergunta) { setHistorico((h) => comPergunta(h, frase, r)); setTexto(''); return; }
       if (r.destino === 'aviso') { setAvisoPronto(r.aviso); return; }
       if (r.destino === 'criar') { onFechar(); if (onIr) onIr('criar', { texto: r.texto }); return; }
       if (r.destino === 'nenhuma-tv') { aviso.erro('pedir', 'Você ainda não tem TV ligada. Pareie uma em Telas.'); return; }
       if (r.destino === 'tela') setTela({ tv: r.tv, mudancas: r.mudancas, notas: r.notas || [] });
+      if (r.destino === 'quiz') setQuiz(r.quiz);
+      if (r.destino === 'editar') { onFechar(); if (onIr) onIr('campanhas', { campanha: r.campanha.id, pedido: r.pedido || '' }); }
     } catch (e) { aviso.erro('pedir', e.message || 'Não deu para entender agora.'); }
     finally { setOcupado(false); }
   }
@@ -50,9 +57,11 @@ export function PedirIA({ onFechar, onIr }) {
 
   if (tela) return <MudarAparencia tv={tela.tv} mudancas={tela.mudancas} notas={tela.notas} onFechar={onFechar} onVoltar={() => setTela(null)} />;
 
+  if (quiz) return <PorQuizNaTv acao={quiz} id={'pedir:' + Date.now()} onFechar={onFechar} />;
+
   return (
     <Dialog open onClose={onFechar} className="max-w-xl" title="Pedir à IA"
-      description="O que você quer nas TVs? Um aviso, mudar a aparência de uma TV ou algo novo. Se eu não entender, pergunto."
+      description="O que você quer nas TVs? Um aviso, um quiz, mudar a aparência de uma TV ou algo novo. Se eu não entender, pergunto."
       footer={<>
         <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
         <Button variant="primary" icon={historico.length ? Send : Sparkles} disabled={!texto.trim() || ocupado} onClick={() => pedir()}>

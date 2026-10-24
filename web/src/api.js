@@ -267,7 +267,8 @@ export const ai = {
   // Mudar layout e tema numa frase (D28): devolve { mudancas, notas } — o painel aplica no rascunho, com prévia.
   tela: (texto, atual, historico) => api('POST', '/api/ai/tela', { texto, ...atual, historico }),
   // Um lugar só para pedir à IA, na Programação (D51): { pergunta } ou { destino, ... }.
-  pedir: (texto, historico) => api('POST', '/api/ai/pedir', { texto, historico }),
+  // `tv` (24/10): a TV aberta no painel, fixa — o maestro não escolhe outra.
+  pedir: (texto, historico, tv) => api('POST', '/api/ai/pedir', { texto, historico, ...(tv ? { tv } : {}) }),
 
   // Chat de briefing: uma pergunta por vez até a IA entender a campanha.
   // Continua síncrono: é uma conversa, e conversa que responde por polling

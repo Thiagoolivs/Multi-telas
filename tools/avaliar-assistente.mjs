@@ -85,6 +85,8 @@ function conferir(caso, saida) {
   if (caso.quantidade && saida.intencao === caso.intencao && Number(saida.quantidade) !== caso.quantidade) falhas.push('quantidade ' + saida.quantidade + ' (esperada ' + caso.quantidade + ')');
   if (caso.tv && saida.intencao === caso.intencao && sem(saida.tv) !== sem(caso.tv)) falhas.push('TV "' + (saida.tv || '') + '" (esperada ' + caso.tv + ')');
   for (const s of caso.sem || []) if (sem(saida.resposta).includes(sem(s))) falhas.push('falou de "' + s + '"');
+  // 'tem': o que a resposta PRECISA dizer (ex.: que viu o segundo pedido, que a TV não existe).
+  for (const s of caso.tem || []) if (!sem(saida.resposta).includes(sem(s))) falhas.push('não disse "' + s + '"');
   if (caso.gerar === false && saida.gerar) falhas.push('mandou gerar');
   return falhas;
 }
@@ -136,5 +138,6 @@ const md = [
   '',
 ].join('\n');
 const arquivo = path.join(RAIZ, 'docs', 'AVALIACAO-ASSISTENTE-' + sistema + '-' + (comIA ? 'ia' : 'sem-ia') + '.md');
-fs.writeFileSync(arquivo, md);
-console.log('\nNota: ' + acertos + '/' + resultados.length + ' (' + nota + '%) · IA decidiu ' + daIA + '/' + voltas.length + ' voltas' + (comIA ? ' · custo R$ ' + (custo / 100).toFixed(2) : '') + ' → ' + path.relative(RAIZ, arquivo));
+// Com --so (só alguns casos), o relatório do docs/ fica como estava: ele é o da rodada inteira.
+if (!so) fs.writeFileSync(arquivo, md);
+console.log('\nNota: ' + acertos + '/' + resultados.length + ' (' + nota + '%) · IA decidiu ' + daIA + '/' + voltas.length + ' voltas' + (comIA ? ' · custo R$ ' + (custo / 100).toFixed(2) : '') + (so ? ' (--so: relatório não gravado)' : ' → ' + path.relative(RAIZ, arquivo)));
