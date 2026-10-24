@@ -1328,6 +1328,10 @@ async function arquivarConversa(tenantId, id, sim) {
   db.prepare('UPDATE conversas SET arquivada = ? WHERE id = ? AND tenant_id = ?').run(sim ? Date.now() : 0, id, tenantId);
   return lerConversa(tenantId, id);
 }
+// Excluir (pedido do dono, 24/10): some a conversa; a campanha que ela criou fica em Criados.
+async function removerConversa(tenantId, id) {
+  return Number(db.prepare('DELETE FROM conversas WHERE id = ? AND tenant_id = ?').run(id, tenantId).changes) > 0;
+}
 async function renomearConversa(tenantId, id, titulo) {
   db.prepare('UPDATE conversas SET titulo = ? WHERE id = ? AND tenant_id = ?').run(String(titulo || '').slice(0, 80), id, tenantId);
   return lerConversa(tenantId, id);
@@ -2066,7 +2070,7 @@ module.exports = {
   registrarEvento, eventosPorAcao, eventosParaSessoes, eventosPorDia, contasAtivas, pessoasAtivas, limparEventos,
   contarQualidade, qualidadeDesde, limparQualidade,
   salvarJob, atualizarJob, lerJob, listarJobs, interromperJobs, limparJobs,
-  criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa, conversaDeEdicao,
+  criarConversa, lerConversa, salvarConversa, listarConversas, arquivarConversa, renomearConversa, removerConversa, conversaDeEdicao,
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,

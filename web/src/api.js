@@ -342,6 +342,8 @@ export const criar = {
   },
   renomearConversa: (id, titulo) => api('PUT', '/api/conversas/' + id, { titulo }),
   arquivarConversa: (id, arquivada) => api('PUT', '/api/conversas/' + id, { arquivada }),
+  // Excluir de vez (o painel confirma antes). A campanha que a conversa criou fica em Criados.
+  excluirConversa: (id) => api('DELETE', '/api/conversas/' + id),
   // D48: o que foi combinado na conversa, corrigido pela pessoa.
   salvarDecisoes: (id, decisoes) => api('PUT', '/api/conversas/' + id, { decisoes }),
   // D42: aprovar o esboço deste escopo (sem id, nasce a conversa). Só depois o gerador roda.
