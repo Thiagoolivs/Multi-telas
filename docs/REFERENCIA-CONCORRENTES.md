@@ -45,3 +45,5 @@ Legenda: ✅ temos · 🔄 parcial · ⬜ falta
 - **PlayTVi — página de planos**: https://playtvi.com.br/play/planos.html
   Anúncio do Google Ads em campanha de pesquisa para leads (visto em 26/10/2026).
   Avaliar planos, preço por tela e o que entra em cada faixa contra a nossa tabela.
+- **TVPlayer — página "TV indoor"**: https://www.tvplayer.com.br/pt/tv-indoor
+  Avaliar posicionamento, recursos destacados e preço contra o nosso site.
