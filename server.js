@@ -2987,6 +2987,62 @@ function servirPublico(res, urlPath) {
   });
 }
 
+/* ---------------- Buscadores: robots, sitemap e noindex ----------------
+ *
+ * O Google indexa SÓ a landing. Painel, login, API, player e as páginas dos
+ * QR (mural e foto) são de cliente ou de TV: nada ali serve a quem busca.
+ *
+ * O noindex vai pelo cabeçalho e é a regra, não a exceção: toda resposta
+ * sai com X-Robots-Tag, menos a landing e o que ela carrega para desenhar
+ * (imagens da galeria e ícone, que aparecem na prévia do link). Página nova
+ * nasce fora do Google, que é o padrão certo — a mesma ideia da lista de
+ * arquivos públicos lá em cima.
+ *
+ * O robots.txt diz o mesmo para quem só lê o robots, e deixa a landing ser
+ * desenhada por inteiro: os preços vêm de /api/planos.
+ */
+const SITE_PUBLICO = 'https://app.multitelas.net.br';
+const PUBLICADO_EM = new Date().toISOString().slice(0, 10); // o processo nasce no deploy
+const ROBOTS_TXT = [
+  'User-agent: *',
+  'Allow: /$',
+  'Allow: /index.html',
+  'Allow: /landing.js',
+  'Allow: /vendor/',
+  'Allow: /icons/',
+  'Allow: /api/planos',
+  'Disallow: /app',
+  'Disallow: /api/',
+  'Disallow: /media/',
+  'Disallow: /tv',
+  'Disallow: /player.html',
+  'Disallow: /entrar',
+  'Disallow: /legacy',
+  'Disallow: /admin.html',
+  'Disallow: /m/',
+  'Disallow: /f/',
+  'Disallow: /apk/',
+  'Disallow: /bancada.html',
+  'Disallow: /experimento.html',
+  'Disallow: /pecas-ouro/',
+  '',
+  'Sitemap: ' + SITE_PUBLICO + '/sitemap.xml',
+  '',
+].join('\n');
+// No domínio da TV não há nada para buscar: a raiz ali já é o player.
+const ROBOTS_TXT_TV = 'User-agent: *\nDisallow: /\n';
+const SITEMAP_XML = '<?xml version="1.0" encoding="UTF-8"?>\n'
+  + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+  + '  <url><loc>' + SITE_PUBLICO + '/</loc><lastmod>' + PUBLICADO_EM + '</lastmod></url>\n'
+  + '</urlset>\n';
+
+function indexavel(req, pathname) {
+  if (hostDoPedido(req).startsWith('tv.')) return false;
+  return pathname === '/' || pathname === '/index.html'
+    || pathname === '/robots.txt' || pathname === '/sitemap.xml'
+    || pathname.startsWith('/vendor/') || pathname.startsWith('/icons/');
+}
+
 const server = http.createServer((req, res) => {
   const parsed = url.parse(req.url || '/', true);
   const pathname = decodeURIComponent(parsed.pathname || '/');
@@ -2998,6 +3054,16 @@ const server = http.createServer((req, res) => {
    */
   const seg = security.cabecalhosSeguranca(security.isSecureRequest(req));
   for (const k in seg) res.setHeader(k, seg[k]);
+  if (!indexavel(req, pathname)) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  // Antes de qualquer rota, sessão ou fallback do painel.
+  if (pathname === '/robots.txt') {
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+    return res.end(hostDoPedido(req).startsWith('tv.') ? ROBOTS_TXT_TV : ROBOTS_TXT);
+  }
+  if (pathname === '/sitemap.xml') {
+    res.writeHead(200, { 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
+    return res.end(SITEMAP_XML);
+  }
   if (pathname === '/api' || pathname.startsWith('/api/')) {
     return motores.medir(() => handleApi(req, res, pathname, parsed.query || {}))
       .catch((e) => {

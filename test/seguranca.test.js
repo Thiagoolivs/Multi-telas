@@ -118,7 +118,8 @@ test('nenhuma página tem script embutido', async () => {
   const raiz = path.join(__dirname, '..');
   for (const arquivo of ['player.html', 'web/index.html', 'landing/index.html']) {
     const html = fs.readFileSync(path.join(raiz, arquivo), 'utf8');
-    const embutidos = html.match(/<script(?![^>]*\ssrc=)[^>]*>/gi) || [];
+    // Dados estruturados (application/ld+json) não executam; o resto não roda sob a CSP.
+    const embutidos = html.match(/<script(?![^>]*\ssrc=)(?![^>]*type="application\/ld\+json")[^>]*>/gi) || [];
     assert.equal(embutidos.length, 0, arquivo + ' tem script embutido: ' + embutidos.join(', '));
     assert.ok(!/\son(click|change|input|load|error|submit)=/i.test(html), arquivo + ' tem manipulador embutido no HTML');
   }
