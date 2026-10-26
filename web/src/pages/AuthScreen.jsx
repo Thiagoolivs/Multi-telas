@@ -6,6 +6,7 @@ import { auth } from '../api.js';
 import { Button } from '../components/ui/Button.jsx';
 import { Field, Input, Checkbox } from '../components/ui/Field.jsx';
 import { cn } from '../lib/cn.js';
+import { cadastroConcluido } from '../lib/analytics.js';
 import { PERFIS, IDS as PERFIL_IDS, deduzir } from '../lib/perfil.js';
 import { detectarRamo } from '../lib/paletas.js';
 
@@ -83,6 +84,9 @@ export function AuthScreen({ onAuthed }) {
     setError(''); setInfo(''); setBusy(true);
     try {
       await auth.verify(token);
+      // A conta nasce aqui, no clique do e-mail: é a conversão. O link é de
+      // uso único (409/404 na segunda vez), então não conta duas vezes.
+      cadastroConcluido('email');
       limparUrl();
       onAuthed();
     } catch (err) {
@@ -128,6 +132,9 @@ export function AuthScreen({ onAuthed }) {
           setInfo('Enviamos um link para ' + form.email + '. Abra o e-mail para terminar o cadastro — confira também o spam.');
           return;
         }
+        // Sem confirmação de e-mail a conta já nasceu. Convite é alguém
+        // entrando numa empresa que já existe: não é cliente novo.
+        if (!hasInvite) cadastroConcluido('email');
         onAuthed();
       } else if (mode === 'verify') {
         await confirmar(verifyToken);

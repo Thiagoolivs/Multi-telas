@@ -309,6 +309,7 @@ module.exports = function(ctx) {
             const email = String(info.email).trim().toLowerCase();
     
             let u = await db.getUserByGoogle(info.sub);
+            let contaNova = false;
             if (!u) {
               u = await db.getUserByEmail(email);
               if (u) {
@@ -324,6 +325,7 @@ module.exports = function(ctx) {
                 await db.registrarAceite(tenantId, userId, email, legal.VERSAO, 'google', clientIp(req));
                 await paleta.garantir(db, tenantId);
                 u = { id: userId, tenant_id: tenantId };
+                contaNova = true;
               }
             }
             // Entrar pelo Google é entrada de conta como qualquer outra: a lista
@@ -333,7 +335,9 @@ module.exports = function(ctx) {
             await auth.startSession(res, u.id, u.tenant_id, req);
             // Limpa o cookie de state e entra no painel.
             res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), 'mt_oauth=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'].flat().filter(Boolean));
-            res.writeHead(302, { Location: '/app/', 'Cache-Control': 'no-store' });
+            // ?cadastro=google: o painel conta a conversão uma vez e tira o
+            // parâmetro da barra (web/src/lib/analytics.js).
+            res.writeHead(302, { Location: contaNova ? '/app/?cadastro=google' : '/app/', 'Cache-Control': 'no-store' });
             return res.end();
           } catch (e) {
             erros.registrar(e, { onde: 'login com Google' });

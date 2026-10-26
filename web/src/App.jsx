@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { auth } from './api.js';
+import { cadastroPeloGoogle } from './lib/analytics.js';
 import { AppShell } from './components/layout/AppShell.jsx';
 import { LimiteDeErro } from './components/layout/LimiteDeErro.jsx';
 import { AuthScreen } from './pages/AuthScreen.jsx';
@@ -156,7 +157,7 @@ export default function App() {
       setSession(me || null);
     })
     .catch(() => setSemRede(true));
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => { cadastroPeloGoogle(); refresh(); }, []);
 
   const go = (name, params) => {
     const r = { name, ...params };

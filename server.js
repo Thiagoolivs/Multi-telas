@@ -2626,24 +2626,26 @@ function handleApp(req, res, urlPath) {
     return res.end();
   }
   if (rest === '/') rest = '/index.html';
+  // O index passa sempre pelo serveAppIndex: é ali que entra a Google tag.
+  if (rest === '/index.html') return serveAppIndex(req, res);
   const filePath = path.normalize(path.join(APP_DIR, rest));
   if (filePath !== APP_DIR && !filePath.startsWith(APP_DIR + path.sep)) { res.writeHead(403); return res.end('Acesso negado'); }
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      if (!path.extname(rest)) return serveAppIndex(res); // rota de cliente
+      if (!path.extname(rest)) return serveAppIndex(req, res); // rota de cliente
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       return res.end('Não encontrado: ' + urlPath);
     }
     sendFile(res, filePath, data);
   });
 }
-function serveAppIndex(res) {
+function serveAppIndex(req, res) {
   fs.readFile(path.join(APP_DIR, 'index.html'), (err, data) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       return res.end('Painel não compilado. Rode: cd web && npm install && npm run build');
     }
-    sendFile(res, 'index.html', data);
+    sendFile(res, 'index.html', Buffer.from(comGoogleTag(req, res, data)));
   });
 }
 
@@ -2729,6 +2731,31 @@ function hostDoPedido(req) {
   return String(h).split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
 }
 
+/*
+ * Google tag (GA4) para medir a campanha do Google Ads.
+ *
+ * Só em produção: NODE_ENV=production ou o ambiente "production" do Railway
+ * (este projeto não define NODE_ENV lá; ver server/billing.js). E nunca no
+ * domínio da TV: o player roda 24h numa parede, e cada página vista ali seria
+ * uma "visita" falsa na campanha.
+ *
+ * Vai como arquivos e não como bloco embutido porque a CSP é
+ * `script-src 'self'` (landing/ga-init.js). O ID mora em GA_MEASUREMENT_ID.
+ */
+const GA_ID = String(process.env.GA_MEASUREMENT_ID || 'G-WXZ71V7E8D').trim();
+const GA_LIGADO = /^G-[A-Z0-9]+$/.test(GA_ID)
+  && (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT_NAME === 'production');
+function comGoogleTag(req, res, html, extra) {
+  const s = String(html);
+  if (!GA_LIGADO || hostDoPedido(req).startsWith('tv.') || !s.includes('</head>')) return s;
+  // Só esta resposta abre a CSP para o googletagmanager (server/security.js).
+  res.setHeader('Content-Security-Policy', security.CSP_COM_GOOGLE);
+  const tag = '<!-- Google tag (gtag.js) -->\n'
+    + '<script async src="https://www.googletagmanager.com/gtag/js?id=' + GA_ID + '"></script>\n'
+    + '<script src="/ga-init.js" data-id="' + GA_ID + '"></script>\n' + (extra || '');
+  return s.replace('</head>', tag + '</head>');
+}
+
 // Abre o player já em modo nuvem (sem digitar ?cloud=1).
 function abrirTv(req, res) {
   // ?new=1 passa adiante: o player esquece a TV salva e gera outra.
@@ -2758,8 +2785,10 @@ async function handleStatic(req, res, urlPath) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(HOME_HTML);
       }
+      // A tag entra antes do writeHead: ela ajusta a CSP desta resposta.
+      const html = comGoogleTag(req, res, data, '<script src="/analytics.js" defer></script>\n');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
-      res.end(data);
+      res.end(html);
     });
   }
   /*
@@ -2770,10 +2799,11 @@ async function handleStatic(req, res, urlPath) {
    * executava nada: a página abria estática, sem TV, sem galeria, sem preço —
    * e sem erro visível para quem não abrisse o console.
    */
-  if (urlPath === '/landing.js') {
-    return fs.readFile(path.join(LANDING_DIR, 'landing.js'), (err, data) => {
+  if (urlPath === '/landing.js' || urlPath === '/ga-init.js' || urlPath === '/analytics.js') {
+    const arquivo = path.join(LANDING_DIR, urlPath.slice(1));
+    return fs.readFile(arquivo, (err, data) => {
       if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('não encontrado'); }
-      sendFile(res, path.join(LANDING_DIR, 'landing.js'), data);
+      sendFile(res, arquivo, data);
     });
   }
   if (urlPath.startsWith('/vendor/')) {
