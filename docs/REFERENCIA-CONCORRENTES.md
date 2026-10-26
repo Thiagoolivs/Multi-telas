@@ -49,3 +49,5 @@ Legenda: ✅ temos · 🔄 parcial · ⬜ falta
   Avaliar posicionamento, recursos destacados e preço contra o nosso site.
 - **TV Corporativa**: https://www.tvcorporativa.com.br/
   Avaliar posicionamento, recursos e preço contra o nosso site.
+- **SuaTV — página "Mídia indoor"**: https://www.suatv.com.br/midia-indoor/
+  Avaliar posicionamento, recursos e preço contra o nosso site.
