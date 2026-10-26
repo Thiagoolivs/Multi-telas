@@ -51,3 +51,5 @@ Legenda: ✅ temos · 🔄 parcial · ⬜ falta
   Avaliar posicionamento, recursos e preço contra o nosso site.
 - **SuaTV — página "Mídia indoor"**: https://www.suatv.com.br/midia-indoor/
   Avaliar posicionamento, recursos e preço contra o nosso site.
+- **Infymedia — página "TV indoor"**: https://infymedia.com.br/solucoes/tv-indoor/
+  Avaliar posicionamento, recursos e preço contra o nosso site.
