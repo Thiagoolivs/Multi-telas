@@ -36,3 +36,9 @@ Legenda: ✅ temos · 🔄 parcial · ⬜ falta
 3. **Reinício/reload automático** — estabilidade das telas (barato).
 4. **Retrato de verdade** + **modo quiosque** — amplia casos de uso.
 5. **Integrações de ficheiros** (Drive/Dropbox) e **social** (IG/FB).
+
+## Para avaliar depois
+
+- **B2 Mídia — landing "TV corporativa"**: https://lps.b2midia.com.br/tv-corporativa
+  Anúncio do Google Ads no termo "tv corporativa" (visto em 26/10/2026). Avaliar
+  proposta, preço, chamadas e o que eles destacam contra o nosso site e os nossos anúncios.
