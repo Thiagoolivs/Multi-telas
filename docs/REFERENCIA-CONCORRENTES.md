@@ -36,3 +36,24 @@ Legenda: ✅ temos · 🔄 parcial · ⬜ falta
 3. **Reinício/reload automático** — estabilidade das telas (barato).
 4. **Retrato de verdade** + **modo quiosque** — amplia casos de uso.
 5. **Integrações de ficheiros** (Drive/Dropbox) e **social** (IG/FB).
+
+## Para avaliar depois
+
+- **B2 Mídia — landing "TV corporativa"**: https://lps.b2midia.com.br/tv-corporativa
+  Anúncio do Google Ads no termo "tv corporativa" (visto em 26/10/2026). Avaliar
+  proposta, preço, chamadas e o que eles destacam contra o nosso site e os nossos anúncios.
+- **PlayTVi — página de planos**: https://playtvi.com.br/play/planos.html
+  Anúncio do Google Ads em campanha de pesquisa para leads (visto em 26/10/2026).
+  Avaliar planos, preço por tela e o que entra em cada faixa contra a nossa tabela.
+- **TVPlayer — página "TV indoor"**: https://www.tvplayer.com.br/pt/tv-indoor
+  Avaliar posicionamento, recursos destacados e preço contra o nosso site.
+- **TV Corporativa**: https://www.tvcorporativa.com.br/
+  Avaliar posicionamento, recursos e preço contra o nosso site.
+- **SuaTV — página "Mídia indoor"**: https://www.suatv.com.br/midia-indoor/
+  Avaliar posicionamento, recursos e preço contra o nosso site.
+- **Infymedia — página "TV indoor"**: https://infymedia.com.br/solucoes/tv-indoor/
+  Avaliar posicionamento, recursos e preço contra o nosso site.
+- **Attractive Mídia Indoor**: https://www.attractivemidiaindoor.com.br/
+  Avaliar posicionamento, recursos e preço contra o nosso site.
+- **Yeloo**: https://www.yeloo.com.br/
+  Avaliar posicionamento, recursos e preço contra o nosso site.
