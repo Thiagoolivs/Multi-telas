@@ -25,52 +25,46 @@ import { fileURLToPath } from 'node:url';
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DESTINO = path.join(RAIZ, 'icons');
 
-const AZUL = '#2f6feb';
-const CLARO = '#56ccf2';
+// Marca de 10/2026: fundo quase preto, zonas em branco e o ponto vivo em lima.
+const TINTA = '#0E0B1F';
+const LIMA = '#C6F432';
+const RODAPE = '#86858F'; // branco a 50% sobre a tinta, já misturado
 
 /*
- * O símbolo: uma tela com um traço de base, que é o que a marca já usa na
- * navegação da landing. Desenhado com caminho e não com fonte de ícone — o
- * arquivo tem que se bastar.
+ * O símbolo: as três zonas da TV (principal, lateral e rodapé) — o que o
+ * produto faz, desenhado. A lateral em lima é o "no ar". Caminho e não fonte
+ * de ícone: o arquivo tem que se bastar.
  */
-function tela(cor) {
+function zonas() {
   return `
-    <rect x="14" y="20" width="72" height="50" rx="7" fill="none" stroke="${cor}" stroke-width="7"/>
-    <path d="M38 80 h24" stroke="${cor}" stroke-width="7" stroke-linecap="round"/>
-    <path d="M50 70 v10" stroke="${cor}" stroke-width="7"/>
-    <path d="M28 34 h30" stroke="${cor}" stroke-width="6" stroke-linecap="round" opacity=".95"/>
-    <path d="M28 47 h44" stroke="${cor}" stroke-width="6" stroke-linecap="round" opacity=".6"/>
-    <path d="M28 58 h20" stroke="${cor}" stroke-width="6" stroke-linecap="round" opacity=".35"/>`;
+    <rect x="0" y="0" width="88" height="88" rx="12" fill="#ffffff"/>
+    <rect x="96" y="0" width="40" height="88" rx="12" fill="${LIMA}"/>
+    <rect x="0" y="96" width="136" height="40" rx="12" fill="${RODAPE}"/>`;
 }
 
 /*
- * `escala` encolhe o símbolo dentro do quadro. No mascarável ele fica em 0.62
+ * `escala` é quanto do quadro o símbolo ocupa. No mascarável ele fica menor
  * para caber na zona segura mesmo quando o sistema recorta um círculo.
  * `raio` é o canto: 0 no mascarável, porque quem arredonda ali é o Android.
  */
-function svg({ escala, raio, fundo }) {
-  const desloc = (100 - 100 * escala) / 2;
+function svg({ escala, raio }) {
+  const lado = 100 * escala;
+  const desloc = (100 - lado) / 2;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="${CLARO}"/>
-      <stop offset="1" stop-color="${AZUL}"/>
-    </linearGradient>
-  </defs>
-  <rect width="100" height="100" rx="${raio}" fill="${fundo === 'gradiente' ? 'url(#g)' : AZUL}"/>
-  <g transform="translate(${desloc} ${desloc}) scale(${escala})">${tela('#ffffff')}</g>
+  <rect width="100" height="100" rx="${raio}" fill="${TINTA}"/>
+  <g transform="translate(${+desloc.toFixed(2)} ${+desloc.toFixed(2)}) scale(${+(lado / 136).toFixed(4)})">${zonas()}</g>
 </svg>`;
 }
 
 const PECAS = [
-  { arquivo: 'icone-192.png', tamanho: 192, escala: 0.78, raio: 22, fundo: 'gradiente' },
-  { arquivo: 'icone-512.png', tamanho: 512, escala: 0.78, raio: 22, fundo: 'gradiente' },
+  { arquivo: 'icone-192.png', tamanho: 192, escala: 0.57, raio: 23 },
+  { arquivo: 'icone-512.png', tamanho: 512, escala: 0.57, raio: 23 },
   // Mascaráveis: sem canto próprio e com o símbolo dentro da zona segura.
-  { arquivo: 'icone-mascara-192.png', tamanho: 192, escala: 0.62, raio: 0, fundo: 'gradiente' },
-  { arquivo: 'icone-mascara-512.png', tamanho: 512, escala: 0.62, raio: 0, fundo: 'gradiente' },
+  { arquivo: 'icone-mascara-192.png', tamanho: 192, escala: 0.46, raio: 0 },
+  { arquivo: 'icone-mascara-512.png', tamanho: 512, escala: 0.46, raio: 0 },
   // iOS ignora o manifesto e usa esta: sem transparência e sem canto (o
   // próprio sistema arredonda).
-  { arquivo: 'apple-touch-icon.png', tamanho: 180, escala: 0.74, raio: 0, fundo: 'solido' },
+  { arquivo: 'apple-touch-icon.png', tamanho: 180, escala: 0.57, raio: 0 },
 ];
 
 const navegador = await chromium.launch();
@@ -90,7 +84,7 @@ for (const p of PECAS) {
 
 // O favicon vetorial, que é o único lugar onde SVG é melhor: nítido em
 // qualquer tamanho de aba e pesa 600 bytes.
-await writeFile(path.join(DESTINO, 'icone.svg'), svg({ escala: 0.78, raio: 22, fundo: 'gradiente' }));
+await writeFile(path.join(DESTINO, 'icone.svg'), svg({ escala: 0.57, raio: 23 }));
 console.log('icone.svg');
 
 await navegador.close();

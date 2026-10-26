@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { parearGuardado } from '../lib/parearPendente.js';
-import { MonitorPlay, ArrowLeft, MailCheck } from 'lucide-react';
+import { ArrowLeft, MailCheck } from 'lucide-react';
+import SimboloMarca from '../components/layout/SimboloMarca.jsx';
 import { auth } from '../api.js';
 import { Button } from '../components/ui/Button.jsx';
 import { Field, Input, Checkbox } from '../components/ui/Field.jsx';
@@ -167,9 +168,7 @@ export function AuthScreen({ onAuthed }) {
     <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-accent-fg">
-            <MonitorPlay size={17} strokeWidth={2.5} />
-          </div>
+          <SimboloMarca className="h-8 w-8" />
           <span className="text-lg font-semibold tracking-tight text-ink">MultiTelas</span>
         </div>
 

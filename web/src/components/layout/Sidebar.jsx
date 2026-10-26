@@ -4,6 +4,7 @@ import {
   LayoutDashboard, PlusSquare, MonitorPlay, LifeBuoy, Brush, Activity, Gauge, Images, BarChart3, Repeat, UserRound, Clapperboard,
 } from 'lucide-react';
 import { GRUPOS, grupoDa } from '../../lib/menu.js';
+import SimboloMarca from './SimboloMarca.jsx';
 
 /*
  * O MENU: os 8 grupos de web/src/lib/menu.js (PLANO §5.1), na ordem em que o
@@ -78,9 +79,7 @@ export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
     <aside className="flex h-full w-60 shrink-0 flex-col border-r border-line bg-surface">
       {/* Marca + seletor de ambiente */}
       <div className="flex h-14 items-center gap-2.5 border-b border-line px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-accent-fg">
-          <MonitorPlay size={16} strokeWidth={2.5} />
-        </div>
+        <SimboloMarca className="h-7 w-7" />
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-ink">MultiTelas</div>
           {/* O nome da empresa do cliente — "Rede corporativa" fixo não dizia
