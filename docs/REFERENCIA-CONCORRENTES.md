@@ -47,3 +47,5 @@ Legenda: ✅ temos · 🔄 parcial · ⬜ falta
   Avaliar planos, preço por tela e o que entra em cada faixa contra a nossa tabela.
 - **TVPlayer — página "TV indoor"**: https://www.tvplayer.com.br/pt/tv-indoor
   Avaliar posicionamento, recursos destacados e preço contra o nosso site.
+- **TV Corporativa**: https://www.tvcorporativa.com.br/
+  Avaliar posicionamento, recursos e preço contra o nosso site.
