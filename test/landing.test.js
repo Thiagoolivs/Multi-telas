@@ -50,7 +50,8 @@ test('menos de 500 KB, contando tudo o que a página pede', () => {
 });
 
 test('nada de terceiros, nada de biblioteca pesada, nada de script embutido', () => {
-  assert.doesNotMatch(html, /<(script|link)[^>]+(src|href)="https?:\/\//, 'a página pede arquivo de outro domínio');
+  // O canonical não baixa nada: é o endereço da própria página para o Google.
+  assert.doesNotMatch(html, /<(script|link)(?![^>]*rel="canonical")[^>]+(src|href)="https?:\/\//, 'a página pede arquivo de outro domínio');
   for (const velho of ['three.min.js', 'gsap', 'ScrollTrigger', 'fa/all.min.css', 'fa-solid']) {
     assert.ok(!html.includes(velho), 'voltou ' + velho);
     assert.ok(!fs.existsSync(path.join(LAND, 'vendor', velho)) || velho === 'gsap', velho + ' voltou para a pasta');
