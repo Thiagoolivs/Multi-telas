@@ -108,6 +108,14 @@ const CSP = [
 ].join('; ');
 
 /*
+ * A mesma política, com o Google tag (GA4) liberado. Vale SÓ nas páginas que
+ * recebem a tag — a landing e o painel em produção (server.js, comGoogleTag);
+ * o player e o resto seguem com `script-src 'self'` puro. O envio dos dados já
+ * passa por connect/img `https:`.
+ */
+const CSP_COM_GOOGLE = CSP.replace("script-src 'self'", "script-src 'self' https://www.googletagmanager.com");
+
+/*
  * `seguro` liga o HSTS, que promete ao navegador "daqui em diante só https".
  * É uma promessa de um ano e não dá para voltar atrás com facilidade: ligá-la
  * num ambiente que ainda atende http trancaria o próprio dono para fora.
@@ -127,5 +135,5 @@ function cabecalhosSeguranca(seguro) {
   return h;
 }
 
-module.exports = { rateLimit, clientIp, safeEqual, isSecureRequest, cabecalhosSeguranca, CSP };
+module.exports = { rateLimit, clientIp, safeEqual, isSecureRequest, cabecalhosSeguranca, CSP, CSP_COM_GOOGLE };
 
