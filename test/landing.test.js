@@ -57,13 +57,18 @@ test('nada de terceiros, nada de biblioteca pesada, nada de script embutido', ()
     assert.ok(!fs.existsSync(path.join(LAND, 'vendor', velho)) || velho === 'gsap', velho + ' voltou para a pasta');
   }
   assert.ok(!fs.existsSync(path.join(LAND, 'vendor', 'three.min.js')));
-  assert.equal((html.match(/<script(?![^>]*\ssrc=)[^>]*>/gi) || []).length, 0);
+  // Dados estruturados (application/ld+json) não executam: a CSP não os alcança.
+  assert.equal((html.match(/<script(?![^>]*\ssrc=)(?![^>]*type="application\/ld\+json")[^>]*>/gi) || []).length, 0);
   // Sem JavaScript a página aparece inteira: só esconde para animar quando o script está de pé.
   assert.match(html, /\.js \.surge \{ opacity: 0;/);
   assert.match(js, /document\.documentElement\.classList\.add\('js'\)/);
 });
 
 test('os números do HTML são os do plano, e o script confirma com /api/planos', () => {
+  // O preço dos dados estruturados (o que o Google mostra) também é o do plano.
+  const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+  const app = ld['@graph'].find((n) => n['@type'] === 'SoftwareApplication');
+  assert.equal(app.offers.price, (plans.PLANS.pro.precoTelaCents / 100).toFixed(2), 'o preço do JSON-LD não é o do plano');
   const real = (c) => 'R$ ' + (c / 100).toLocaleString('pt-BR');
   assert.ok(html.includes(real(plans.PLANS.pro.precoTelaCents)), 'o mensal do HTML não é o do plano');
   for (const f of plans.faixasAnual().filter((x) => !x.negociado)) {
