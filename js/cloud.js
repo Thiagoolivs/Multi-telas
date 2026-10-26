@@ -286,6 +286,7 @@
       if (!passe) { setTimeout(connect, 15000); return; }
 
       es = new EventSource(API + '/api/devices/' + id + '/events?passe=' + encodeURIComponent(passe));
+      const abertoEm = Date.now();
       /*
        * Acabou de ser pareada. Chega uma vez, e serve para a TV sair do
        * código de pareamento SEM esperar a primeira publicação — que pode
@@ -336,12 +337,23 @@
        * da conexão. Sem isto, a TV ficava com a config velha para sempre e o
        * heartbeat continuava dizendo que ela estava online.
        */
+      /*
+       * E não dá para deixar o EventSource reconectar sozinho: ele volta para
+       * o MESMO endereço, com o passe que já foi gasto, e leva 403. O proxy do
+       * Railway corta toda conexão aos 15 minutos, então isso acontecia a cada
+       * 15 minutos em toda TV: 403, mais 15 s de espera, ~18 s surda.
+       *
+       * Qualquer erro fecha na hora e reconecta com passe novo. Rápido se a
+       * conexão vinha de longe (o corte normal); 15 s se caiu logo depois de
+       * abrir, para uma TV com defeito não martelar o servidor.
+       */
+      const fechada = es;
       es.onerror = () => {
-        if (es.readyState !== 2) return;      // 2 = fechado de vez
-        setTimeout(function () {
-          try { es.close(); } catch (e) {}
-          connect();
-        }, 15000);
+        if (es !== fechada) return;           // já reconectando
+        try { fechada.close(); } catch (e) {}
+        es = null;
+        const durou = Date.now() - abertoEm;
+        setTimeout(connect, durou > 60000 ? 2000 : 15000);
       };
     }
     connect();
