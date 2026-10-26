@@ -55,3 +55,5 @@ Legenda: ✅ temos · 🔄 parcial · ⬜ falta
   Avaliar posicionamento, recursos e preço contra o nosso site.
 - **Attractive Mídia Indoor**: https://www.attractivemidiaindoor.com.br/
   Avaliar posicionamento, recursos e preço contra o nosso site.
+- **Yeloo**: https://www.yeloo.com.br/
+  Avaliar posicionamento, recursos e preço contra o nosso site.
