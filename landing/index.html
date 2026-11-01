@@ -87,6 +87,9 @@
   .tv img { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 6px; object-fit: cover; }
   .tv .troca { position: absolute; inset: 7px; width: calc(100% - 14px); opacity: 0; transition: opacity .9s ease; }
   .tv .troca.no-ar { opacity: 1; }
+  /* Aviso de cookies aberto: o WhatsApp sobe para não brigar pelo canto (landing/analytics.js). */
+  .com-aviso-cookies #whats-flutuante { bottom: 132px; }
+  @media (min-width: 640px) { .com-aviso-cookies #whats-flutuante { bottom: 96px; } }
   .balao { position: absolute; top: 5%; right: 4%; background: #fab914; color: #1f2937; font: 700 .8rem/1 'Poppins', sans-serif;
     padding: .55rem .85rem; border-radius: 14px 14px 14px 3px; box-shadow: 0 8px 18px rgba(31,41,55,.18); }
 
@@ -198,6 +201,24 @@
   </div>
 </header>
 
+<!-- ============ Várias TVs, um painel ============ -->
+<section id="telas" class="palco-escuro">
+  <div class="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 lg:grid-cols-[1fr_1.15fr] lg:px-6">
+    <div>
+      <p class="surge vivo mb-4 text-xs font-bold uppercase tracking-widest">Uma loja ou uma rede</p>
+      <h2 class="surge text-[clamp(1.8rem,4vw,2.6rem)] font-bold leading-[1.1] tracking-tight">Todas as TVs. Um só painel.</h2>
+      <p class="surge mt-4 max-w-md text-lg leading-relaxed text-white/75">Cada TV com o seu conteúdo, ou todas com o mesmo. Publique do celular e veja de onde estiver o que está passando em cada uma.</p>
+      <a href="/app" data-track="trial" class="surge titulo botao-lima mt-8 inline-block rounded-xl px-7 py-3.5 text-base font-semibold transition">Testar 14 dias grátis</a>
+    </div>
+    <div class="pilha surge" aria-hidden="true">
+      <div class="tv"><img src="vendor/galeria/salao.webp" width="1200" height="675" loading="lazy" alt="" /></div>
+      <div class="tv"><img src="vendor/galeria/clinica.webp" width="1200" height="675" loading="lazy" alt="" /></div>
+      <div class="tv"><img src="vendor/galeria/empresa.webp" width="1200" height="675" loading="lazy" alt="" /></div>
+    </div>
+  </div>
+</section>
+
+
 <!-- ============ Como funciona ============ -->
 <section id="como" class="border-y border-mt-linha bg-mt-creme">
   <div class="mx-auto max-w-6xl px-4 py-20 lg:px-6">
@@ -244,23 +265,6 @@
     <div class="lg:col-span-2" aria-live="polite">
       <h3 id="exemplo-titulo" class="text-xl font-semibold">Vitrine da semana</h3>
       <p id="exemplo-texto" class="mt-2 leading-relaxed text-mt-cinza">Três modelos com preço, na cor da ótica. Troca o produto ou o preço, a TV acompanha.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ============ Várias TVs, um painel ============ -->
-<section id="telas" class="palco-escuro">
-  <div class="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 lg:grid-cols-[1fr_1.15fr] lg:px-6">
-    <div>
-      <p class="surge vivo mb-4 text-xs font-bold uppercase tracking-widest">Uma loja ou uma rede</p>
-      <h2 class="surge text-[clamp(1.8rem,4vw,2.6rem)] font-bold leading-[1.1] tracking-tight">Todas as TVs. Um só painel.</h2>
-      <p class="surge mt-4 max-w-md text-lg leading-relaxed text-white/75">Cada TV com o seu conteúdo, ou todas com o mesmo. Publique do celular e veja de onde estiver o que está passando em cada uma.</p>
-      <a href="/app" data-track="trial" class="surge titulo botao-lima mt-8 inline-block rounded-xl px-7 py-3.5 text-base font-semibold transition">Testar 14 dias grátis</a>
-    </div>
-    <div class="pilha surge" aria-hidden="true">
-      <div class="tv"><img src="vendor/galeria/salao.webp" width="1200" height="675" loading="lazy" alt="" /></div>
-      <div class="tv"><img src="vendor/galeria/clinica.webp" width="1200" height="675" loading="lazy" alt="" /></div>
-      <div class="tv"><img src="vendor/galeria/empresa.webp" width="1200" height="675" loading="lazy" alt="" /></div>
     </div>
   </div>
 </section>

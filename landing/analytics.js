@@ -66,18 +66,28 @@
     recusar.addEventListener('click', function () {
       window.gtag('consent', 'update', { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied' });
       guardar('recusado');
-      caixa.remove();
+      fechar();
     });
     ok.addEventListener('click', function () {
       guardar('aceito');
-      caixa.remove();
+      fechar();
     });
 
     botoes.appendChild(recusar);
     botoes.appendChild(ok);
     caixa.appendChild(texto);
     caixa.appendChild(botoes);
+    /*
+     * Enquanto o aviso está aberto, o botão do WhatsApp sobe (QA de 26/10:
+     * os dois disputavam o canto de baixo no celular). A classe no <html> é
+     * lida pelo CSS da landing.
+     */
+    function fechar() {
+      caixa.remove();
+      document.documentElement.classList.remove('com-aviso-cookies');
+    }
     document.body.appendChild(caixa);
+    document.documentElement.classList.add('com-aviso-cookies');
   }
 
   if (document.body) montar();
