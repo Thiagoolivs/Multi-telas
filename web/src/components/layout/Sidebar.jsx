@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, PlusSquare, MonitorPlay, LifeBuoy, Brush, Activity, Gauge, Images, BarChart3, Repeat, UserRound, Clapperboard,
+  LayoutDashboard, PlusSquare, MonitorPlay, LifeBuoy, Brush, Activity, Gauge, Images, Repeat, UserRound, Clapperboard,
 } from 'lucide-react';
 import { GRUPOS, grupoDa } from '../../lib/menu.js';
 import SimboloMarca from './SimboloMarca.jsx';
@@ -19,8 +19,7 @@ const ICONES = {
   criar: PlusSquare,
   midias: Images,
   marca: Brush,
-  automaticos: Repeat,
-  relatorios: BarChart3,
+  extras: Repeat,
   conta: UserRound,
 };
 export const ICONE_DO_GRUPO = ICONES;

@@ -170,7 +170,8 @@ test('a TV e o painel: o cartão ao vivo (número, variação, meta), a busca de
   assert.match(P, /document\.addEventListener\('mt:kpis-mudou', function \(\) \{ loadKpis\(dev\.id\); \}\);/);
   assert.match(ler('js/cloud.js'), /es\.addEventListener\('kpis', \(\) => \{/);
   assert.match(ler('js/cloud.js'), /localStorage\.removeItem\('mt\.kpis'\);/, 'a TV reiniciada herda os números da conta antiga');
-  assert.match(ler('web/src/lib/menu.js'), /paginas: \['relatorio', 'indicadores'\]/);
+  // Desde o QA de 26/10 os Indicadores moram em Recursos extras (o relatório de exibição foi para Telas).
+  assert.match(ler('web/src/lib/menu.js'), /paginas: \['birthdays', 'mural', 'indicadores'\]/);
   assert.match(ler('web/src/pages/IndicadoresPage.jsx'), /const item = \{ type: 'kpi', indicador: indicador\.chave, rotulo: indicador\.nome, duracao: 12 \};/);
   assert.match(ler('sw.js'), /mt-shell-v(59|[6-9]\d)/);
 });

@@ -95,7 +95,8 @@ test('nada some: os quatro passos viraram Criação rápida, com endereço e lug
   assert.equal(M.grupoDa('rapida').id, 'criar');
   // Desde o D2 (dois jeitos de criar) a Criação rápida mora no Criar, não em Meus Designs.
   assert.match(ler('web/src/pages/CriarPage.jsx'), /Criação rápida/);
-  assert.match(ler('web/src/pages/DashboardPage.jsx'), /import \{ OpcoesDeCriar \} from '\.\/CriacaoRapidaPage\.jsx';/);
+  // Desde o QA de 26/10 o Início não repete a grade do Criar: um botão leva até lá.
+  assert.match(ler('web/src/pages/DashboardPage.jsx'), /onClick=\{\(\) => onIr && onIr\('criar'\)\}/);
   // As entradas do Início abrem o chat com o começo de frase e o cartão montado.
   const c = ler('web/src/pages/CriarPage.jsx');
   assert.match(c, /return op \? cartaoInicial\(op\.titulo, op\.pedido, telaInicial\)/);

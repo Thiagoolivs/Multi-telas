@@ -1,14 +1,12 @@
 import React from 'react';
-import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus, Sparkles, CalendarDays } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus, Sparkles, CalendarDays, Repeat } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Panel } from '../components/ui/Panel.jsx';
 import { ErrorState, Spinner } from '../components/ui/Feedback.jsx';
-import { KpiRow } from '../components/dashboard/KpiRow.jsx';
-import { FleetTable } from '../components/dashboard/FleetTable.jsx';
-import { AlertsPanel } from '../components/dashboard/AlertsPanel.jsx';
+import { StatusDot } from '../components/ui/Badge.jsx';
+import { MiniaturaDaTela } from '../components/tela/MiniaturaDaTela.jsx';
 import { PrimeirosPassos } from '../components/dashboard/PrimeirosPassos.jsx';
-import { OpcoesDeCriar } from './CriacaoRapidaPage.jsx';
 import { abrirSubir } from '../lib/subir.js';
 import { useAsync } from '../lib/useAsync.js';
 import { devices as devicesApi, media as mediaApi, sistema, seasons } from '../api.js';
@@ -79,49 +77,50 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
     return { devices: d.devices || [], storage: m.usage || { used: 0, quota: 1 } };
   });
 
+  /*
+   * O Início mostra o que está passando agora em cada TV (QA de 26/10: "a
+   * home é um checklist de boas-vindas e atalhos"). O título não repete a
+   * aba ("Visão geral" em cima de "Visão geral"), e a grade de doze atalhos,
+   * que era a mesma da página Criar, deu lugar a um botão que leva até lá.
+   */
   return (
     <div>
       <PageHeader
-        title="Visão geral"
+        title="Suas TVs agora"
         subtitle={today}
         actions={<Button variant="secondary" icon={RefreshCw} onClick={reload}>Atualizar</Button>}
       />
       <AvisoDoSistema onAbrir={onGoSystem} operador={operador} />
       {/* Conta nova: o caminho até a primeira peça na TV vem ANTES de tudo (PLANO §5.3). Some quando termina. */}
       {data && <PrimeirosPassos devices={data.devices} onIr={onIr} />}
-      {/*
-        O passo 1 do Criar, aqui no Início: quem abre o app e quer pôr algo
-        na TV toca numa opção e cai direto na frase. É o que faz "criar com
-        IA e publicar" caber em três toques (opção → rascunho → publicar).
-      */}
+      {loading ? (
+        <div className="flex justify-center py-16"><Spinner size={22} /></div>
+      ) : error ? (
+        <Panel><ErrorState description="Não foi possível carregar as suas TVs." onRetry={reload} /></Panel>
+      ) : (
+        <TvsAoVivo data={data} onIr={onIr} />
+      )}
       <section className="mb-4">
-        <h2 className="mb-2 text-sm font-semibold text-ink">O que você quer mostrar hoje?</h2>
+        <h2 className="mb-2 text-base font-semibold text-ink">O que você quer mostrar hoje?</h2>
         <IdeiaDeHoje onIr={onIr} />
-        <OpcoesDeCriar compacto onEscolher={(opcao) => onIr && onIr('criar', { opcao })} />
-        {/* A foto que já existe vai direto, sem passar pela IA: três toques até a TV. */}
-        <button type="button" onClick={() => abrirSubir()}
-          className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent/60 hover:bg-surface-2">
-          <ImagePlus size={17} className="text-accent" /> Pôr foto ou vídeo na TV
-        </button>
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          <button type="button" onClick={() => onIr && onIr('criar')}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg transition hover:brightness-110">
+            <Sparkles size={17} /> Criar com a IA
+          </button>
+          {/* A foto que já existe vai direto, sem passar pela IA: três toques até a TV. */}
+          <button type="button" onClick={() => abrirSubir()}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-surface px-4 py-3 text-sm font-semibold text-ink transition hover:border-accent/60 hover:bg-surface-2">
+            <ImagePlus size={17} className="text-accent" /> Pôr foto ou vídeo na TV
+          </button>
+        </div>
       </section>
       {/* D34: com equipe cadastrada, o RH vê pessoas, fotos para aprovar e próximos aniversários logo no Início. */}
       <ResumoDasPessoas soComEquipe onIr={() => onIr && onIr('birthdays')} />
-      {loading ? (
-        <div className="flex justify-center py-24"><Spinner size={22} /></div>
-      ) : error ? (
-        <Panel><ErrorState description="Não foi possível carregar a operação." onRetry={reload} /></Panel>
-      ) : (
-        <Body data={data} onIr={onIr} />
-      )}
     </div>
   );
 }
 
-/*
- * A data comemorativa de hoje, como ideia (EXECUTOR §2c, item 35). Antes ela
- * aparecia no topo da página da TV e vestia a tela por fora do Criar; agora
- * leva ao Criar, que já começa a conversa nela.
- */
 function IdeiaDeHoje({ onIr }) {
   const [ideia, setIdeia] = React.useState(null);
   React.useEffect(() => { seasons.list().then((r) => setIdeia(ideiaDaData(r && r.hoje))).catch(() => {}); }, []);
@@ -138,44 +137,70 @@ function IdeiaDeHoje({ onIr }) {
   );
 }
 
-function Body({ data, onIr }) {
+const MAX_NO_INICIO = 6;
+
+/*
+ * Cada TV em miniatura, com o que está passando, o estado em palavras e
+ * "Trocar agora" — que abre a programação daquela TV. Os avisos (TV fora do
+ * ar, armazenamento quase cheio, TV esperando a primeira conexão) vêm em
+ * cima, em uma linha cada, só quando existem.
+ */
+function TvsAoVivo({ data, onIr }) {
   const now = Date.now();
   const screens = data.devices;
-  const online = screens.filter((d) => d.lastSeen && now - d.lastSeen < ONLINE_WINDOW_MS);
   const offline = screens.filter((d) => d.lastSeen && now - d.lastSeen >= ONLINE_WINDOW_MS);
   const never = screens.filter((d) => !d.lastSeen);
   const storeFrac = data.storage.quota ? data.storage.used / data.storage.quota : 0;
-
-  const kpis = {
-    total: screens.length,
-    online: online.length,
-    // Quem nunca ligou está "aguardando" em todo o painel, não "offline" (D3).
-    offline: offline.length,
-    storageUsed: data.storage.used,
-    storageQuota: data.storage.quota,
-    storageFrac: storeFrac,
-    lastSeen: screens.reduce((m, d) => Math.max(m, d.lastSeen || 0), 0) || null,
-  };
-
-  // Alertas derivados do estado real.
-  const alerts = [];
-  offline.forEach((d) => alerts.push({ id: 'off_' + d.id, severity: 'critical', title: `${d.name || 'Tela'} offline`, ts: d.lastSeen }));
-  if (storeFrac >= 0.8) alerts.push({ id: 'store', severity: 'warning', title: `Armazenamento em ${Math.round(storeFrac * 100)}% (${formatBytes(data.storage.used)})`, ts: now });
-  if (never.length) alerts.push({ id: 'never', severity: 'info', title: `${never.length} tela(s) aguardando primeira conexão`, ts: now });
-
-  /*
-   * Conta sem TV: nada de quatro cartões zerados e "Frota de telas" vazia —
-   * o "Comece por aqui" acima já diz o próximo passo. E os alertas moram na
-   * aba Alertas; aqui só aparecem quando há algum (D2).
-   */
   if (!screens.length) return null;
+
+  const avisos = [];
+  offline.forEach((d) => avisos.push({ id: 'off_' + d.id, tom: 'danger', texto: (d.name || 'Uma TV') + ' está fora do ar' + (deviceStatus(d.lastSeen).seen ? ' (último sinal ' + deviceStatus(d.lastSeen).seen + ')' : ''), acao: 'Ver', on: () => onIr && onIr('screens') }));
+  if (never.length) avisos.push({ id: 'never', tom: 'neutral', texto: never.length + (never.length === 1 ? ' TV esperando' : ' TVs esperando') + ' a primeira conexão', acao: 'Ver', on: () => onIr && onIr('screens') });
+  if (storeFrac >= 0.8) avisos.push({ id: 'store', tom: 'warn', texto: 'Armazenamento em ' + Math.round(storeFrac * 100) + '% (' + formatBytes(data.storage.used) + ')', acao: 'Ver', on: () => onIr && onIr('storage') });
+  const resumo = { total: screens.length, offline: offline.length };
+
   return (
-    <>
-      <KpiRow kpis={kpis} />
-      <div className={'mt-4 grid gap-4' + (alerts.length ? ' xl:grid-cols-3' : '')}>
-        <div className={alerts.length ? 'xl:col-span-2' : ''}><FleetTable screens={screens} onAbrir={(s) => onIr && onIr('content', { device: s })} /></div>
-        {alerts.length > 0 && <div><AlertsPanel alerts={alerts} /></div>}
+    <section className="mb-5" aria-label="Suas TVs">
+      {avisos.length > 0 && (
+        <ul className="mb-3 space-y-1.5">
+          {avisos.map((a) => (
+            <li key={a.id} className={'flex items-center gap-3 rounded-lg border px-3 py-2 text-sm ' + (a.tom === 'danger' ? 'border-danger/30 bg-danger-soft text-ink' : a.tom === 'warn' ? 'border-warn/30 bg-warn-soft text-ink' : 'border-line bg-surface-2 text-ink-2')}>
+              <span className="min-w-0 flex-1">{a.texto}</span>
+              <button type="button" onClick={a.on} className="shrink-0 font-semibold text-accent hover:underline">{a.acao}</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {screens.slice(0, MAX_NO_INICIO).map((d) => {
+          const st = deviceStatus(d.lastSeen, now);
+          const online = st.tone === 'ok';
+          return (
+            <div key={d.id} className="overflow-hidden rounded-xl border border-line bg-surface">
+              <div className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-line bg-gradient-to-br from-surface-2 to-accent-soft/40">
+                <MiniaturaDaTela d={d} online={online} vazia={!d.hasConfig} />
+                <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-2 py-0.5 text-xs font-medium text-ink backdrop-blur">
+                  <StatusDot tone={st.tone} pulse={st.pulse} />{st.label}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 p-3">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-ink">{d.name || 'Tela sem nome'}</div>
+                  <div className="truncate text-xs text-ink-3">{online ? 'Deu sinal ' + (st.seen || 'agora') : st.seen ? 'Último sinal ' + st.seen : 'Ainda não deu sinal'}</div>
+                </div>
+                <Button size="sm" variant="primary" icon={Repeat} onClick={() => onIr && onIr('content', { device: d })}>
+                  {d.hasConfig ? 'Trocar agora' : 'Pôr conteúdo'}
+                </Button>
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </>
+      {screens.length > MAX_NO_INICIO && (
+        <button type="button" onClick={() => onIr && onIr('screens')} className="mt-2 text-sm font-semibold text-accent hover:underline">
+          Ver as {resumo.total} TVs
+        </button>
+      )}
+    </section>
   );
 }

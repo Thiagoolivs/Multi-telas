@@ -35,7 +35,7 @@ const ProgramacaoPage = pagina(() => import('./pages/ProgramacaoPage.jsx'), 'Pro
 const ScreensPage = pagina(() => import('./pages/ScreensPage.jsx'), 'ScreensPage');
 const ContentEditorPage = pagina(() => import('./pages/ContentEditorPage.jsx'), 'ContentEditorPage');
 const TeamPage = pagina(() => import('./pages/TeamPage.jsx'), 'TeamPage');
-const StoragePage = pagina(() => import('./pages/StoragePage.jsx'), 'StoragePage');
+const ArquivosPage = pagina(() => import('./pages/ArquivosPage.jsx'), 'ArquivosPage');
 const BancoImagensPage = pagina(() => import('./pages/BancoImagensPage.jsx'), 'BancoImagensPage');
 const BirthdaysPage = pagina(() => import('./pages/BirthdaysPage.jsx'), 'BirthdaysPage');
 const MyDesignsPage = pagina(() => import('./pages/MyDesignsPage.jsx'), 'MyDesignsPage');
@@ -59,7 +59,7 @@ const TelasProntasPage = pagina(() => import('./pages/TelasProntasPage.jsx'), 'T
 const CalendarioPage = pagina(() => import('./pages/CalendarioPage.jsx'), 'CalendarioPage');
 
 const META = {
-  overview: { title: 'Visão geral' },
+  overview: { title: 'Início' },
   criar: { title: 'Criar' },
   // Os quatro passos de antes do chat (item 24): continuam, em Meus Designs › Mais.
   rapida: { title: 'Criação rápida', nav: 'criar' },
@@ -86,9 +86,10 @@ const META = {
   pecas: { title: 'Peças prontas' },
   telasprontas: { title: 'Telas prontas' },
   calendario: { title: 'Calendário da empresa' },
-  storage: { title: 'Fotos e vídeos' },
-  musicas: { title: 'Músicas' },
-  ia: { title: 'Da IA' },
+  storage: { title: 'Arquivos' },
+  // Viraram filtros de Arquivos (QA de 26/10); o endereço continua e acende a aba Arquivos.
+  musicas: { title: 'Arquivos', nav: 'storage' },
+  ia: { title: 'Arquivos', nav: 'storage' },
   banco: { title: 'Banco de Imagens', subtitle: 'Acervo compartilhado entre os clientes. Usar daqui não gasta criação.' },
   birthdays: { title: 'Pessoas', subtitle: 'A equipe: setor, foto e aniversário, que a TV mostra sozinha.' },
   billing: { title: 'Plano e cobrança' },
@@ -250,9 +251,9 @@ export default function App() {
       case 'pecas': return <PecasProntasPage onIr={go} />;
       case 'telasprontas': return <TelasProntasPage onIr={go} telaAlvo={route.tela} />;
       case 'calendario': return <CalendarioPage onIr={go} />;
-      case 'storage': return <StoragePage filtro="fotos" />;
-      case 'musicas': return <StoragePage key="musicas" filtro="musicas" />;
-      case 'ia': return <StoragePage key="ia" filtro="ia" />;
+      case 'storage': return <ArquivosPage filtro="fotos" onIr={go} />;
+      case 'musicas': return <ArquivosPage filtro="musicas" onIr={go} />;
+      case 'ia': return <ArquivosPage filtro="ia" onIr={go} />;
       case 'banco': return <BancoImagensPage operador={!!session.operador} />;
       /*
        * A chave remonta o Criar quando se chega de novo com outra opção (do

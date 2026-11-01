@@ -19,15 +19,17 @@ const RAIZ = path.join(__dirname, '..');
 const ler = (...p) => fs.readFileSync(path.join(RAIZ, ...p), 'utf8');
 const menu = () => import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
 
-test('os 9 grupos, na ordem do PLANO (Programação desde o item 40)', async () => {
+test('os 8 grupos (QA de 26/10: Biblioteca no lugar de Mídias, extras num lugar só)', async () => {
   const M = await menu();
-  assert.deepStrictEqual(M.GRUPOS.map((g) => g.label), ['Início', 'Telas', 'Programação', 'Criar', 'Mídias', 'Marca', 'Automáticos', 'Relatórios', 'Conta']);
+  assert.deepStrictEqual(M.GRUPOS.map((g) => g.label), ['Início', 'Telas', 'Programação', 'Criar', 'Biblioteca', 'Marca', 'Recursos extras', 'Conta']);
   const de = (id) => M.GRUPOS.find((g) => g.id === id).paginas;
   assert.deepStrictEqual(de('inicio'), ['overview', 'alerts']);
   // Item 34: Mídias por propósito, com o que está pronto primeiro (D18: as telas inteiras, depois as peças).
   // D47: Meus Designs (a biblioteca de peças soltas) entra depois das peças prontas.
-  assert.deepStrictEqual(de('midias'), ['telasprontas', 'pecas', 'designs', 'storage', 'musicas', 'ia', 'banco']);
-  assert.deepStrictEqual(de('automaticos'), ['birthdays', 'mural']);
+  // QA de 26/10: Fotos e vídeos, Músicas e Da IA são uma aba só (Arquivos), com filtro.
+  assert.deepStrictEqual(de('midias'), ['telasprontas', 'pecas', 'designs', 'storage', 'banco']);
+  assert.deepStrictEqual(de('telas'), ['screens', 'relatorio'], 'o relatório de exibição é o "passou mesmo?" de cada TV');
+  assert.deepStrictEqual(de('extras'), ['birthdays', 'mural', 'indicadores']);
   assert.deepStrictEqual(de('conta'), ['billing', 'team', 'settings', 'support']);
   assert.deepStrictEqual(M.BARRA_INFERIOR, ['inicio', 'programacao', 'criar', 'midias'], 'a barra de baixo: Início · Programação · Criar · Mídias (+ Mais)');
 });
@@ -66,7 +68,11 @@ test('nenhum link antigo quebra; os novos (por grupo) funcionam', async () => {
   assert.equal(M.paginaDoIr('midias'), 'telasprontas');
   assert.equal(M.paginaDoIr('pecas'), 'pecas');
   assert.equal(M.paginaDoIr('storage'), 'storage', 'o endereço antigo continua: é Fotos e vídeos');
+  // Grupos que mudaram de nome continuam abrindo o mesmo lugar.
   assert.equal(M.paginaDoIr('automaticos'), 'birthdays');
+  assert.equal(M.paginaDoIr('relatorios'), 'relatorio');
+  assert.equal(M.paginaDoIr('musicas'), 'musicas');
+  assert.equal(M.paginaDoIr('ia'), 'ia');
   assert.equal(M.paginaDoIr('conta'), 'billing');
   assert.equal(M.paginaDoIr('inicio'), 'overview');
   // A lista é fechada: URL é coisa que qualquer um escreve.
@@ -81,7 +87,8 @@ test('nenhum link antigo quebra; os novos (por grupo) funcionam', async () => {
 
 test('o grupo aceso é o da página; abas nos grupos de mais de uma página; barra de baixo no celular', async () => {
   const M = await menu();
-  assert.equal(M.grupoDa('birthdays').id, 'automaticos');
+  assert.equal(M.grupoDa('birthdays').id, 'extras');
+  assert.equal(M.grupoDa('musicas').id, 'midias');
   assert.equal(M.grupoDa('content').id, 'programacao', 'o editor de uma tela acende Programação');
   // D47: Meus Designs (e os endereços antigos dela) foi para Mídias; o Criar é Criar · Criando · Criados.
   assert.equal(M.grupoDa('studio').id, 'midias');

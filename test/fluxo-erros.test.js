@@ -96,8 +96,9 @@ test('Criação rápida: publicar de novo depois de falhar não gera tudo outra 
 test('a parte tocada da TV abre o editor nela; alerta e linha do Início levam à TV certa', () => {
   assert.match(ler('pages/ContentEditorPage.jsx'), /zonaInicial && zs\.some\(\(z\) => z\.id === zonaInicial\)/);
   assert.match(ler('pages/AlertsPage.jsx'), /label: 'Pôr conteúdo', on: \(\) => \(onAbrirTela \? onAbrirTela\(d\) : onGoScreens\(\)\)/);
-  assert.match(ler('components/dashboard/FleetTable.jsx'), /onClick=\{onAbrir \? \(\) => onAbrir\(s\) : undefined\}/);
-  assert.match(ler('pages/DashboardPage.jsx'), /offline: offline\.length,/);
+  // Desde o QA de 26/10 a linha do Início é o cartão da TV ao vivo: "Trocar agora" abre a programação dela.
+  assert.match(ler('pages/DashboardPage.jsx'), /onClick=\{\(\) => onIr && onIr\('content', \{ device: d \}\)\}/);
+  assert.match(ler('pages/DashboardPage.jsx'), /offline: offline\.length \}/);
 });
 
 test('desfazer "tirar a campanha" devolve também a TV à lista da campanha', () => {

@@ -14,7 +14,8 @@
 
 // O nome de cada página, como aparece na aba do grupo.
 export const PAGINAS = {
-  overview: 'Visão geral',
+  // QA de 26/10: a aba não repete o título da página ("Visão geral" sobre "Visão geral").
+  overview: 'Agora',
   alerts: 'Alertas',
   screens: 'Telas',
   programacao: 'Programação',
@@ -26,7 +27,8 @@ export const PAGINAS = {
   designs: 'Meus Designs',
   telasprontas: 'Telas prontas',
   pecas: 'Peças prontas',
-  storage: 'Fotos e vídeos',
+  // Fotos e vídeos, Músicas e Da IA viraram uma aba só, com filtro (QA de 26/10).
+  storage: 'Arquivos',
   musicas: 'Músicas',
   ia: 'Da IA',
   banco: 'Banco de Imagens',
@@ -50,7 +52,7 @@ export const PAGINAS = {
  */
 export const GRUPOS = [
   { id: 'inicio', label: 'Início', paginas: ['overview', 'alerts'] },
-  { id: 'telas', label: 'Telas', paginas: ['screens'] },
+  { id: 'telas', label: 'Telas', paginas: ['screens', 'relatorio'] },
   // D23: o calendário da empresa vira programação com período — mora ao lado dela.
   { id: 'programacao', label: 'Programação', paginas: ['programacao', 'calendario'], tambem: ['content'] },
   /*
@@ -60,12 +62,22 @@ export const GRUPOS = [
    * de peças soltas, foi para Mídias — sem sumir.
    */
   { id: 'criar', label: 'Criar', paginas: ['criar', 'criando', 'campanhas'], tambem: ['rapida'] },
-  // Mídias por propósito (item 34): o que está pronto para a TV primeiro, depois a matéria-prima.
-  // D18: a tela inteira pronta vem antes da peça solta — é o caminho mais curto até a TV.
-  { id: 'midias', label: 'Mídias', paginas: ['telasprontas', 'pecas', 'designs', 'storage', 'musicas', 'ia', 'banco'], tambem: ['studio', 'campaigns', 'images'] },
+  /*
+   * Biblioteca (era "Mídias"; QA de 26/10: "sete abas para 'coisas que posso
+   * pôr na TV', e no celular as abas são cortadas"). O que está pronto para a
+   * TV primeiro, depois a matéria-prima; Fotos e vídeos, Músicas e Da IA são
+   * uma aba só (Arquivos), com filtro. O id fica 'midias': é o que os
+   * endereços antigos e a barra de baixo usam.
+   */
+  { id: 'midias', label: 'Biblioteca', paginas: ['telasprontas', 'pecas', 'designs', 'storage', 'banco'], tambem: ['studio', 'campaigns', 'images', 'musicas', 'ia'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },
-  { id: 'automaticos', label: 'Automáticos', paginas: ['birthdays', 'mural'] },
-  { id: 'relatorios', label: 'Relatórios', paginas: ['relatorio', 'indicadores'] },
+  /*
+   * Recursos extras: o que não é o dia a dia de quem tem loja (QA de 26/10:
+   * "recursos de nicho, que aumentam o menu e o suporte"). Continuam todos
+   * aqui, num lugar só, no fim do menu. O relatório de exibição foi para
+   * Telas: é o "passou mesmo?" de cada TV.
+   */
+  { id: 'extras', label: 'Recursos extras', paginas: ['birthdays', 'mural', 'indicadores'] },
   { id: 'conta', label: 'Conta', paginas: ['billing', 'team', 'settings', 'support'] },
 ];
 
@@ -85,8 +97,8 @@ export function grupoDa(pagina) {
  * página dele). A lista é fechada de propósito: URL é coisa que qualquer um
  * escreve.
  */
-// Nomes novos para páginas que mantêm o endereço antigo.
-const APELIDOS = { criados: 'campanhas' };
+// Nomes novos para páginas que mantêm o endereço antigo, e grupos que mudaram de nome.
+const APELIDOS = { criados: 'campanhas', automaticos: 'birthdays', relatorios: 'relatorio', biblioteca: 'telasprontas' };
 
 export function paginaDoIr(ir) {
   if (!ir) return null;
