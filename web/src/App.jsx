@@ -1,41 +1,62 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { auth } from './api.js';
 import { cadastroPeloGoogle } from './lib/analytics.js';
 import { AppShell } from './components/layout/AppShell.jsx';
 import { LimiteDeErro } from './components/layout/LimiteDeErro.jsx';
 import { AuthScreen } from './pages/AuthScreen.jsx';
-import { DashboardPage } from './pages/DashboardPage.jsx';
-import { ProgramacaoPage } from './pages/ProgramacaoPage.jsx';
-import { ScreensPage } from './pages/ScreensPage.jsx';
-import { ContentEditorPage } from './pages/ContentEditorPage.jsx';
-import { TeamPage } from './pages/TeamPage.jsx';
-import { StoragePage } from './pages/StoragePage.jsx';
-import { BancoImagensPage } from './pages/BancoImagensPage.jsx';
-import { BirthdaysPage } from './pages/BirthdaysPage.jsx';
-import { MyDesignsPage } from './pages/MyDesignsPage.jsx';
-import { BrandPage } from './pages/BrandPage.jsx';
-import { MuralPage } from './pages/MuralPage.jsx';
-import { SettingsPage } from './pages/SettingsPage.jsx';
-import { AlertsPage } from './pages/AlertsPage.jsx';
-import { SupportPage } from './pages/SupportPage.jsx';
-import { BillingPage } from './pages/BillingPage.jsx';
-import { SystemPage } from './pages/SystemPage.jsx';
-import { PlatformPage } from './pages/PlatformPage.jsx';
-import { PlaceholderPage } from './pages/PlaceholderPage.jsx';
-import { RelatorioPage } from './pages/RelatorioPage.jsx';
-import { IndicadoresPage } from './pages/IndicadoresPage.jsx';
-import { CriarPage } from './pages/CriarPage.jsx';
-import { CriacaoRapidaPage } from './pages/CriacaoRapidaPage.jsx';
-import { CampanhasPage } from './pages/CampanhasPage.jsx';
-import { CriandoPage } from './pages/CriandoPage.jsx';
 import { ligarTrabalhos, desligarTrabalhos } from './lib/trabalhos.js';
-import { PecasProntasPage } from './pages/PecasProntasPage.jsx';
-import { TelasProntasPage } from './pages/TelasProntasPage.jsx';
-import { CalendarioPage } from './pages/CalendarioPage.jsx';
 import { Spinner } from './components/ui/Feedback.jsx';
 import { parearGuardado } from './lib/parearPendente.js';
 import { paginaDoIr } from './lib/menu.js';
 import { definirPerfil } from './lib/perfil.js';
+
+/*
+ * Cada página num pacote próprio (QA de 26/10). O painel vinha num arquivo
+ * só de 965 KB: quem abria para ver se a TV estava ligada baixava também o
+ * editor, o banco de imagens, a cobrança e o painel da plataforma. Agora o
+ * Início chega com o essencial e o resto vem quando a pessoa abre.
+ *
+ * Se o pacote falhar (deploy novo trocou o hash, rede caiu no meio), uma
+ * recarga resolve: o service worker do painel busca a lista nova.
+ */
+function pagina(carregar, nome) {
+  return lazy(() => carregar().then((m) => {
+    try { sessionStorage.removeItem('mt.recarregou'); } catch (x) { /* idem */ }
+    return { default: m[nome] };
+  }).catch((e) => {
+    try {
+      if (!sessionStorage.getItem('mt.recarregou')) { sessionStorage.setItem('mt.recarregou', '1'); window.location.reload(); }
+    } catch (x) { /* sem sessionStorage: cai no limite de erro */ }
+    throw e;
+  }));
+}
+const DashboardPage = pagina(() => import('./pages/DashboardPage.jsx'), 'DashboardPage');
+const ProgramacaoPage = pagina(() => import('./pages/ProgramacaoPage.jsx'), 'ProgramacaoPage');
+const ScreensPage = pagina(() => import('./pages/ScreensPage.jsx'), 'ScreensPage');
+const ContentEditorPage = pagina(() => import('./pages/ContentEditorPage.jsx'), 'ContentEditorPage');
+const TeamPage = pagina(() => import('./pages/TeamPage.jsx'), 'TeamPage');
+const StoragePage = pagina(() => import('./pages/StoragePage.jsx'), 'StoragePage');
+const BancoImagensPage = pagina(() => import('./pages/BancoImagensPage.jsx'), 'BancoImagensPage');
+const BirthdaysPage = pagina(() => import('./pages/BirthdaysPage.jsx'), 'BirthdaysPage');
+const MyDesignsPage = pagina(() => import('./pages/MyDesignsPage.jsx'), 'MyDesignsPage');
+const BrandPage = pagina(() => import('./pages/BrandPage.jsx'), 'BrandPage');
+const MuralPage = pagina(() => import('./pages/MuralPage.jsx'), 'MuralPage');
+const SettingsPage = pagina(() => import('./pages/SettingsPage.jsx'), 'SettingsPage');
+const AlertsPage = pagina(() => import('./pages/AlertsPage.jsx'), 'AlertsPage');
+const SupportPage = pagina(() => import('./pages/SupportPage.jsx'), 'SupportPage');
+const BillingPage = pagina(() => import('./pages/BillingPage.jsx'), 'BillingPage');
+const SystemPage = pagina(() => import('./pages/SystemPage.jsx'), 'SystemPage');
+const PlatformPage = pagina(() => import('./pages/PlatformPage.jsx'), 'PlatformPage');
+const PlaceholderPage = pagina(() => import('./pages/PlaceholderPage.jsx'), 'PlaceholderPage');
+const RelatorioPage = pagina(() => import('./pages/RelatorioPage.jsx'), 'RelatorioPage');
+const IndicadoresPage = pagina(() => import('./pages/IndicadoresPage.jsx'), 'IndicadoresPage');
+const CriarPage = pagina(() => import('./pages/CriarPage.jsx'), 'CriarPage');
+const CriacaoRapidaPage = pagina(() => import('./pages/CriacaoRapidaPage.jsx'), 'CriacaoRapidaPage');
+const CampanhasPage = pagina(() => import('./pages/CampanhasPage.jsx'), 'CampanhasPage');
+const CriandoPage = pagina(() => import('./pages/CriandoPage.jsx'), 'CriandoPage');
+const PecasProntasPage = pagina(() => import('./pages/PecasProntasPage.jsx'), 'PecasProntasPage');
+const TelasProntasPage = pagina(() => import('./pages/TelasProntasPage.jsx'), 'TelasProntasPage');
+const CalendarioPage = pagina(() => import('./pages/CalendarioPage.jsx'), 'CalendarioPage');
 
 const META = {
   overview: { title: 'Visão geral' },
@@ -278,7 +299,9 @@ export default function App() {
         e a pessoa teria que recarregar mesmo para ir a outro lugar.
       */}
       <LimiteDeErro key={route.name}>
-        {renderPage()}
+        <Suspense fallback={<div className="flex justify-center py-16"><Spinner size={22} /></div>}>
+          {renderPage()}
+        </Suspense>
       </LimiteDeErro>
     </AppShell>
   );
