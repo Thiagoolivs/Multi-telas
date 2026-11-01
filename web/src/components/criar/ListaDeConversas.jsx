@@ -139,6 +139,12 @@ export function ListaDeConversas({ atual, onAbrir, onNova, onExcluiu, versao, cl
             {busca.trim() ? 'Nenhuma conversa com “' + busca.trim() + '”.'
               : arquivadas ? 'Nenhuma conversa arquivada.'
                 : filtro === 'criadas' ? 'Nenhuma conversa virou campanha ainda.' : 'Nenhuma conversa em andamento.'}
+            {/* Estado vazio que aponta o próximo passo (QA de 26/10), e não só diz que não há nada. */}
+            {!busca.trim() && !arquivadas && filtro === 'andamento' && onNova && (
+              <button type="button" onClick={onNova} className="mt-2 block w-full font-medium text-accent hover:underline">
+                Começar uma conversa: diga o que quer mostrar na TV
+              </button>
+            )}
           </p>
         ) : (
           <ul className="space-y-0.5">

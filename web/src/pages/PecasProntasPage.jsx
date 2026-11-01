@@ -129,7 +129,7 @@ export function PecasProntasPage({ onIr }) {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="flex max-w-full gap-1 overflow-x-auto rounded-lg border border-line bg-surface-2 p-1">
+        <div className="rolagem-lateral flex max-w-full gap-1 overflow-x-auto rounded-lg border border-line bg-surface-2 p-1">
           {FILTROS.map(([id, nome]) => (
             <button key={id} type="button" onClick={() => setFiltro(id)} aria-pressed={filtro === id}
               className={cn('whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition', filtro === id ? 'bg-surface text-ink shadow-xs' : 'text-ink-3 hover:text-ink-2')}>{nome}</button>

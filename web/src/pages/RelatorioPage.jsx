@@ -36,13 +36,13 @@ export function RelatorioPage({ onIrParaPlano }) {
     <div>
       {/* Filtros numa linha só, acima de tudo que eles filtram. */}
       <div className="mb-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
-        <div className="min-w-0 sm:w-44"><Select value={dias} onChange={(e) => setDias(Number(e.target.value))}>
+        <div className="min-w-0 sm:w-44"><Select aria-label="Período do relatório" value={dias} onChange={(e) => setDias(Number(e.target.value))}>
           <option value={1}>Últimas 24 horas</option>
           <option value={7}>Últimos 7 dias</option>
           <option value={30}>Últimos 30 dias</option>
           <option value={90}>Últimos 90 dias</option>
         </Select></div>
-        <div className="min-w-0 sm:w-52"><Select value={tela} onChange={(e) => setTela(e.target.value)}>
+        <div className="min-w-0 sm:w-52"><Select aria-label="Qual tela" value={tela} onChange={(e) => setTela(e.target.value)}>
           <option value="">Todas as telas</option>
           {telas.map((t) => <option key={t.id} value={t.id}>{t.name || 'Tela sem nome'}</option>)}
         </Select></div>

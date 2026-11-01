@@ -5,11 +5,12 @@ import { relativeTime } from './format.js';
 export const ONLINE_WINDOW_MS = 90 * 1000;
 
 export function deviceStatus(lastSeen, now = Date.now()) {
-  if (!lastSeen) return { tone: 'neutral', label: 'Nunca conectou', pulse: false, seen: null };
+  // Em palavras de quem tem loja, e não de quem programa (QA de 26/10): "No ar", "Fora do ar".
+  if (!lastSeen) return { tone: 'neutral', label: 'Nunca ligou', pulse: false, seen: null };
   const online = now - lastSeen < ONLINE_WINDOW_MS;
   return {
     tone: online ? 'ok' : 'danger',
-    label: online ? 'Online' : 'Offline',
+    label: online ? 'No ar' : 'Fora do ar',
     pulse: online,
     seen: relativeTime(lastSeen, now),
   };

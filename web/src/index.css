@@ -23,6 +23,9 @@
  * nos dois modos; o violeta de ação ≥ 4,5:1 com o texto do botão.
  */
 :root {
+  /* Tamanhos de letra que mudam com a tela (tailwind.config.js, text-2xs e text-xs). */
+  --fs-2xs: 0.6875rem; --lh-2xs: 1rem;
+  --fs-xs: 0.75rem; --lh-xs: 1.1rem;
   --c-canvas: 245 247 250;      /* #F5F7FA */
   --c-surface: 255 255 255;     /* #FFFFFF */
   --c-surface-2: 243 245 248;   /* #F3F5F8 */
@@ -76,6 +79,41 @@
   --c-accent-fg: 12 14 18;
   --c-accent-soft: 17 42 40;    /* #112A28 */
 }
+
+@media (max-width: 639px) {
+  :root { --fs-2xs: 0.8125rem; --lh-2xs: 1.15rem; --fs-xs: 0.8125rem; --lh-xs: 1.2rem; }
+  /*
+   * Alvo de toque de 44 px no celular, para tudo que se toca (QA de 26/10:
+   * 75 alvos menores que 32 px em Peças prontas, 19 no Banco de Imagens, 15
+   * no Criar). Uma regra só, em vez de caçar cada filtro e cada chip — e o
+   * componente novo já nasce certo. Quem precisa ser pequeno de propósito
+   * (dentro de uma miniatura, por exemplo) marca data-compacto.
+   */
+  button:not([data-compacto]),
+  [role='tab']:not([data-compacto]),
+  select:not([data-compacto]),
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='hidden']):not([data-compacto]) {
+    min-height: 44px;
+  }
+}
+
+/*
+ * Abas que rolam para o lado: uma sombra na borda diz "tem mais para lá" (QA
+ * de 26/10: no celular, "Fo…" e "Cabeçalho e ro…" sumiam na borda sem sinal).
+ * Só CSS: as capas (local) andam com o conteúdo e escondem a sombra (scroll)
+ * quando se chega à ponta.
+ */
+.rolagem-lateral {
+  --rolagem-fundo: rgb(var(--c-surface-2));
+  background:
+    linear-gradient(to right, var(--rolagem-fundo) 45%, rgb(var(--c-surface-2) / 0)) left center / 32px 100% no-repeat local,
+    linear-gradient(to left, var(--rolagem-fundo) 45%, rgb(var(--c-surface-2) / 0)) right center / 32px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgb(var(--c-ink) / .28), transparent) left center / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgb(var(--c-ink) / .28), transparent) right center / 14px 100% no-repeat scroll,
+    var(--rolagem-fundo);
+  scrollbar-width: none;
+}
+.rolagem-lateral::-webkit-scrollbar { display: none; }
 
 @layer base {
   * { border-color: rgb(var(--c-line)); }

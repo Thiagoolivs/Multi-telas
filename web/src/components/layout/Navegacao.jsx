@@ -17,11 +17,11 @@ export function AbasDoGrupo({ active, onNavigate }) {
   const rodando = (useTrabalhos() || []).filter((j) => j.estado === 'rodando').length;
   if (!grupo || grupo.paginas.length < 2 || !grupo.paginas.includes(active)) return null;
   return (
-    <div className="-mx-4 mb-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="tablist" aria-label={grupo.label}>
-      <div className="inline-flex min-w-max gap-1 rounded-lg border border-line bg-surface-2 p-1">
+    <div className="mb-4" role="tablist" aria-label={grupo.label}>
+      <div className="rolagem-lateral flex max-w-full gap-1 overflow-x-auto rounded-lg border border-line bg-surface-2 p-1 sm:inline-flex">
         {grupo.paginas.map((p) => (
           <button key={p} type="button" role="tab" aria-selected={active === p} onClick={() => onNavigate(p)}
-            className={cn('rounded-md px-3 py-1.5 text-sm font-medium transition',
+            className={cn('shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition max-sm:min-h-11',
               active === p ? 'bg-surface text-ink shadow-xs' : 'text-ink-3 hover:text-ink-2')}>
             {PAGINAS[p]}
             {p === 'criando' && rodando > 0 && (
@@ -52,14 +52,14 @@ export function BarraInferior({ active, onNavigate, onMais }) {
           const aceso = grupo && grupo.id === g.id;
           return (
             <button key={g.id} type="button" onClick={() => onNavigate(g.paginas[0])} aria-current={aceso ? 'page' : undefined}
-              className={cn('flex flex-col items-center gap-0.5 py-2 text-2xs font-medium', aceso ? 'text-accent' : 'text-ink-3')}>
+              className={cn('flex min-h-[52px] flex-col items-center justify-center gap-0.5 py-2 text-[12px] font-medium', aceso ? 'text-accent' : 'text-ink-3')}>
               <Icon size={20} strokeWidth={aceso ? 2.4 : 2} />
               {g.label}
             </button>
           );
         })}
         <button type="button" onClick={onMais}
-          className={cn('flex flex-col items-center gap-0.5 py-2 text-2xs font-medium', outro ? 'text-accent' : 'text-ink-3')}>
+          className={cn('flex min-h-[52px] flex-col items-center justify-center gap-0.5 py-2 text-[12px] font-medium', outro ? 'text-accent' : 'text-ink-3')}>
           <Menu size={20} strokeWidth={outro ? 2.4 : 2} />
           Mais
         </button>
