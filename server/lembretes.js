@@ -95,7 +95,7 @@ function montar({ assunto, titulo, paragrafos, botao, destino }, appUrl) {
   const html = '<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0f172a">' +
     '<h1 style="font-size:18px;margin:0 0 12px">' + escapar(titulo) + '</h1>' +
     paragrafos.map((p) => '<p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#334155">' + escapar(p) + '</p>').join('') +
-    (link ? '<p style="margin:8px 0 0"><a href="' + escapar(link) + '" style="display:inline-block;background:#2f6feb;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 20px;border-radius:8px">' + escapar(botao) + '</a></p>' : '') +
+    (link ? '<p style="margin:8px 0 0"><a href="' + escapar(link) + '" style="display:inline-block;background:#5B2EFF;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 20px;border-radius:8px">' + escapar(botao) + '</a></p>' : '') +
     '</div>';
   return { subject: assunto, text, html };
 }

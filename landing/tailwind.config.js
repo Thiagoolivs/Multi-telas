@@ -7,8 +7,9 @@
  * pronto, com só as classes usadas.
  *
  * Visual claro (22/10, decisão do dono): direção "varejo brasileiro, próximo",
- * com a loja de verdade no topo. Papel quente, tinta grafite, azul de ação e o
- * amarelo da marca como grifo. Poppins nos títulos, Nunito Sans no texto.
+ * com a loja de verdade no topo. O papel quente fica; desde o QA de 26/10 as
+ * cores e a letra são as da marca (docs/MARCA.md): tinta, violeta de ação,
+ * lima como grifo, e Outfit em tudo.
  */
 module.exports = {
   // O landing.js também monta classes (simulador, contato): entra na varredura.
@@ -16,19 +17,19 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Nunito Sans"', 'system-ui', 'sans-serif'],
-        display: ['Poppins', 'system-ui', 'sans-serif'],
+        sans: ['Outfit', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'system-ui', 'sans-serif'],
       },
       colors: {
         mt: {
           papel: '#fffdf8',
           creme: '#fff4e5',
           linha: '#f1e6d3',
-          tinta: '#1f2937',
-          cinza: '#5f6673',
-          azul: '#2265ff',
-          'azul-escuro': '#1a4fd6',
-          sol: '#fab914',
+          tinta: '#0E0B1F',
+          cinza: '#5c5a6b',
+          violeta: '#5B2EFF',
+          'violeta-escuro': '#4A22E0',
+          lima: '#C6F432',
           zap: '#1f9d55',
         },
       },

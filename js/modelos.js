@@ -85,7 +85,7 @@
   /* Paleta a partir da marca, com o mínimo de suposição. */
   function paleta(cores) {
     var c = Array.isArray(cores) ? cores.filter(Boolean) : [];
-    var marca = c[0] || '#2f6feb';
+    var marca = c[0] || '#5B2EFF'; // sem marca: o violeta do MultiTelas (docs/MARCA.md)
     var apoio = c[1] || marca;
     return {
       marca: marca,

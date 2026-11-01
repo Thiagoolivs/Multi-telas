@@ -70,7 +70,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-stage-fx {
   position: absolute; inset: -22%;
   z-index: -2; pointer-events: none;
-  background: radial-gradient(36% 42% at 80% 18%, var(--accent) 0%, transparent 66%);
+  background: radial-gradient(36% 42% at 80% 18%, var(--halo, var(--accent)) 0%, transparent 66%);
   opacity: calc(.13 * var(--fx));
   filter: blur(76px) saturate(1.04);
 }
@@ -935,9 +935,9 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-surface {
   color: var(--text);
   background:
-    radial-gradient(90% 95% at 84% 8%, color-mix(in srgb, var(--accent) 30%, transparent) 0%, transparent 56%),
+    radial-gradient(90% 95% at 84% 8%, color-mix(in srgb, var(--halo, var(--accent)) 30%, transparent) 0%, transparent 56%),
     radial-gradient(80% 85% at 4% 96%, color-mix(in srgb, var(--brand) 24%, transparent) 0%, transparent 54%),
-    linear-gradient(155deg, color-mix(in srgb, var(--bg-2) 86%, var(--accent) 8%) 0%, var(--bg) 74%);
+    linear-gradient(155deg, color-mix(in srgb, var(--bg-2) 86%, var(--halo, var(--accent)) 8%) 0%, var(--bg) 74%);
 }
 .mt-surface::after {
   content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;

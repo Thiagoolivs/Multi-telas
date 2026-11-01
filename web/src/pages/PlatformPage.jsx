@@ -659,7 +659,7 @@ function FilaDoBanco() {
         <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
           {itens.map((i) => (
             <div key={i.id} className="overflow-hidden rounded-lg border border-line bg-surface-2">
-              <div className="aspect-video bg-[#0a1128]">
+              <div className="aspect-video bg-[#0E0B1F]">
                 <img src={i.url} alt="" className="h-full w-full object-cover" loading="lazy"
                   onError={(ev) => { ev.currentTarget.style.display = 'none'; }} />
               </div>

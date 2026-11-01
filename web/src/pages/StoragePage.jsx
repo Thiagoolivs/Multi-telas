@@ -226,7 +226,7 @@ export function StoragePage({ filtro = 'fotos' }) {
             )}
             {visiveis.map((m) => (
               <div key={m.id} className="group overflow-hidden rounded-lg border border-line bg-surface-2">
-                <div className="relative aspect-video bg-[#0a1128]">
+                <div className="relative aspect-video bg-[#0E0B1F]">
                   {String(m.mime).startsWith('video/')
                     ? <div className="flex h-full items-center justify-center text-white/70"><Film size={26} /></div>
                     : String(m.mime).startsWith('audio/')

@@ -204,7 +204,7 @@ test('o quiz encaixa na zona: a letra encolhe junto (--qz) até caber, sem passa
   // Na lateral, a alternativa (5cqw de 515px) no mínimo da escala fica no piso das regras.
   assert.ok(5 * 5.15 * 0.55 >= R.REGRAS.letraMin);
   // Arquivo da TV mudou: o cache da TV sobe de versão.
-  assert.match(ler('sw.js'), /const SHELL_CACHE = 'mt-shell-v6[4-9]'/);
+  assert.ok(Number(/const SHELL_CACHE = 'mt-shell-v(\d+)'/.exec(ler('sw.js'))[1]) >= 64, 'o player mudou e a TV não baixa de novo');
 });
 
 test('o painel mostra (e manda ao refazer) o que as regras acharam; a bancada confere a biblioteca inteira', () => {

@@ -186,7 +186,7 @@ function Zona({ zona, dados, escala, hora }) {
   } else if (dados.item) {
     corpo = tam && (
       <EmEscala tam={tam} escala={escala}>
-        <div className="flex h-full w-full flex-col items-center justify-center overflow-hidden bg-[#0a1128] p-2 text-center text-white">
+        <div className="flex h-full w-full flex-col items-center justify-center overflow-hidden bg-[#0E0B1F] p-2 text-center text-white">
           <Body item={dados.item} />
         </div>
       </EmEscala>
@@ -195,13 +195,13 @@ function Zona({ zona, dados, escala, hora }) {
     const texto = (dados.mensagens || []).map((x) => (typeof x === 'string' ? x : (x && (x.text || x.texto)) || '')).filter(Boolean).join('  •  ');
     corpo = tam && (
       <EmEscala tam={tam} escala={escala}>
-        <div className="flex h-full items-center overflow-hidden whitespace-nowrap bg-[#0a1128] px-3 font-semibold text-white/85" style={{ fontSize: tam[1] / ESCALA_DO_RESUMO * 0.32 }}>{texto || 'Faixa de notícias e data'}</div>
+        <div className="flex h-full items-center overflow-hidden whitespace-nowrap bg-[#0E0B1F] px-3 font-semibold text-white/85" style={{ fontSize: tam[1] / ESCALA_DO_RESUMO * 0.32 }}>{texto || 'Faixa de notícias e data'}</div>
       </EmEscala>
     );
   } else if (zona.type === 'header') {
     corpo = tam && (
       <EmEscala tam={tam} escala={escala}>
-        <div className="flex h-full items-center justify-between gap-2 bg-[#0a1128] px-3 font-semibold text-white" style={{ fontSize: tam[1] / ESCALA_DO_RESUMO * 0.3 }}>
+        <div className="flex h-full items-center justify-between gap-2 bg-[#0E0B1F] px-3 font-semibold text-white" style={{ fontSize: tam[1] / ESCALA_DO_RESUMO * 0.3 }}>
           {/* O cabeçalho da TV é desenhado por ela (marca, clima, hora): aqui, só o que ele é. */}
           <span className="truncate">Cabeçalho</span><span className="tnum opacity-80">{hora}</span>
         </div>
@@ -240,5 +240,5 @@ function EmEscala({ tam, escala, children }) {
 }
 
 function Aviso({ children }) {
-  return <div className="flex h-full w-full flex-col items-center justify-center bg-[#0a1128] p-2 text-center text-[10px] leading-snug text-white/70">{children}</div>;
+  return <div className="flex h-full w-full flex-col items-center justify-center bg-[#0E0B1F] p-2 text-center text-[10px] leading-snug text-white/70">{children}</div>;
 }

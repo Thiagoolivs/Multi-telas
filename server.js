@@ -2660,7 +2660,7 @@ function sendFile(res, filePath, data) {
    * importa numa TV — sem isto, cada recarga do player rebaixa 1,5 MB de
    * woff2 numa rede que já é o gargalo.
    */
-  const hashed = /\/assets\//.test(filePath) || /\/fonts\/arquivos\//.test(filePath);
+  const hashed = /\/assets\//.test(filePath) || /\/fonts\/(arquivos|marca)\//.test(filePath);
   const revalidate = !hashed && (ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json');
   // player.html e sw.js nunca do cache: é por aí que a TV "voltava" antiga.
   const noStore = /player\.html$|sw\.js$/.test(filePath);

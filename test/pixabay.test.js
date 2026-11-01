@@ -102,7 +102,7 @@ test('o painel e a TV: a aba só fora da foto de produto, o crédito por campo n
   assert.match(R, /c\.textContent = textos/, 'o crédito precisa entrar como texto');
   assert.match(ler('css/player.css'), /\.mt-credito \{ position: absolute; right: 1\.2cqh; bottom: 1cqh;/);
   assert.doesNotMatch(ler('web/src/api.js'), /pixabay\.com\/api/, 'o navegador chamando a Pixabay direto (com a chave)');
-  assert.match(ler('sw.js'), /mt-shell-v(6\d)/);
+  assert.ok(Number(/mt-shell-v(\d+)/.exec(ler('sw.js'))[1]) >= 60, 'o player mudou e a TV não baixa de novo');
 });
 
 test('a chave vai na query da Pixabay: nenhum log do caminho grava a URL (nota do consultor no D37)', () => {

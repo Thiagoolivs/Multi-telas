@@ -22,6 +22,12 @@
  * do fundo. Contraste conferido: texto de apoio (ink-3) ≥ 4,5:1 no cartão
  * nos dois modos; o violeta de ação ≥ 4,5:1 com o texto do botão.
  */
+/* Outfit, a letra da marca (docs/MARCA.md), do próprio domínio. */
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/marca/outfit-400-normal-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/marca/outfit-500-normal-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/marca/outfit-600-normal-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/marca/outfit-700-normal-latin.woff2') format('woff2'); }
+
 :root {
   /* Tamanhos de letra que mudam com a tela (tailwind.config.js, text-2xs e text-xs). */
   --fs-2xs: 0.6875rem; --lh-2xs: 1rem;
@@ -31,7 +37,7 @@
   --c-surface-2: 243 245 248;   /* #F3F5F8 */
   --c-line: 227 231 237;        /* #E3E7ED */
   --c-line-strong: 211 217 226; /* #D3D9E2 */
-  --c-ink: 17 24 39;            /* #111827 */
+  --c-ink: 14 11 31;            /* #0E0B1F tinta da marca (docs/MARCA.md) */
   --c-ink-2: 75 85 99;          /* #4B5563 */
   --c-ink-3: 107 114 128;       /* #6B7280 */
   --c-accent: 91 46 255;        /* #5B2EFF violeta da marca (10/2026): 6,4:1 com o branco */

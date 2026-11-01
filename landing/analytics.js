@@ -43,7 +43,7 @@
     caixa.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:60;margin:0 auto;max-width:560px;'
       + 'display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:12px 14px;border-radius:14px;'
       + 'background:#fffdf8;border:1px solid #f1e6d3;box-shadow:0 8px 24px rgba(31,41,55,.14);'
-      + "font:15px/1.4 'Nunito Sans',system-ui,sans-serif;color:#1f2937;";
+      + "font:15px/1.4 'Outfit',system-ui,sans-serif;color:#0E0B1F;";
 
     var texto = document.createElement('p');
     texto.textContent = 'Usamos cookies para medir o desempenho do site.';
@@ -56,8 +56,8 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.textContent = rotulo;
-      b.style.cssText = "cursor:pointer;border-radius:10px;padding:8px 16px;font:600 14px/1 'Poppins',system-ui,sans-serif;"
-        + (primario ? 'background:#2265ff;color:#fff;border:1px solid #2265ff;' : 'background:#fff;color:#1f2937;border:1px solid #f1e6d3;');
+      b.style.cssText = "cursor:pointer;border-radius:10px;padding:8px 16px;font:600 14px/1 'Outfit',system-ui,sans-serif;"
+        + (primario ? 'background:#5B2EFF;color:#fff;border:1px solid #5B2EFF;' : 'background:#fff;color:#0E0B1F;border:1px solid #f1e6d3;');
       return b;
     }
     var recusar = botao('Recusar', false);

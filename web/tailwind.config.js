@@ -26,7 +26,8 @@ export default {
         'danger-soft': 'rgb(var(--c-danger-soft) / <alpha-value>)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        // Outfit, a letra da marca (docs/MARCA.md). Antes: 'Inter', que o painel nunca carregava — saía a do sistema.
+        sans: ['Outfit', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       fontSize: {
