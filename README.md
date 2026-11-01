@@ -90,6 +90,17 @@ npm run lint:nomes     # nome indefinido no servidor (roda no CI)
 
 ---
 
+## Documentação
+
+[`docs/README.md`](docs/README.md) é o mapa: o que é vivo, o que é
+referência e o que foi para o arquivo. O retrato atual do produto é
+[`docs/ESTADO-DO-PROJETO.md`](docs/ESTADO-DO-PROJETO.md); a marca,
+[`docs/MARCA.md`](docs/MARCA.md); a operação no Railway,
+[`docs/OPERACAO.md`](docs/OPERACAO.md); o estudo da rede de anúncios,
+[`docs/ads/`](docs/ads/README.md).
+
+---
+
 ## Hospedando no Railway
 
 `railway.json` já traz build e start. O que falta é configuração, e ela está
