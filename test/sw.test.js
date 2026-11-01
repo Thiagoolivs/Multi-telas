@@ -379,11 +379,24 @@ test('TV: o casco declarado é o que o player.html carrega de verdade', async ()
    */
   const fonte = fs.readFileSync(path.join(RAIZ, 'sw.js'), 'utf8');
   const lista = fonte.slice(fonte.indexOf('SHELL_ASSETS = ['), fonte.indexOf('];', fonte.indexOf('SHELL_ASSETS = [')));
-  const html = fs.readFileSync(path.join(RAIZ, 'player.html'), 'utf8');
-
-  const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]);
+  // A página que a TV recebe é a SERVIDA: os scripts do corpo num pacote só (server/pacote-tv.js).
+  const P = require('../server/pacote-tv.js');
+  const servido = P.pacote(RAIZ);
+  assert.ok(servido, 'o pacote do player não montou');
+  const scripts = [...servido.html.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(scripts, ['js/perf.js', 'js/tv.pacote.js']);
   for (const s of scripts) {
     assert.ok(lista.includes("'/" + s.replace(/^\//, '') + "'"), 'player.html carrega ' + s + ' e o casco não guarda');
+  }
+  // E o pacote leva TODO script do corpo do player.html, na ordem.
+  const html = fs.readFileSync(path.join(RAIZ, 'player.html'), 'utf8');
+  const doCorpo = P.scriptsDoCorpo(html);
+  assert.ok(doCorpo.length >= 20, 'não achei os scripts do corpo: ' + doCorpo.length);
+  let ultimo = -1;
+  for (const s of doCorpo) {
+    const pos = servido.js.indexOf('/* ==== ' + s + ' ==== */');
+    assert.ok(pos > ultimo, s + ' fora do pacote, ou fora de ordem');
+    ultimo = pos;
   }
 });
 

@@ -191,12 +191,15 @@ test('o service worker pré-cacheia TODO arquivo que o player.html carrega', () 
    * nasceu, e nenhum teste reclamou.
    */
   const raiz = path.join(__dirname, '..');
-  const html = fs.readFileSync(path.join(raiz, 'player.html'), 'utf8');
+  // O player.html que a TV recebe é o servido, com os scripts do corpo num pacote (server/pacote-tv.js).
+  const servido = require('../server/pacote-tv.js').pacote(raiz);
+  assert.ok(servido, 'o pacote do player não montou');
+  const html = servido.html;
   const sw = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
 
   const usados = [...html.matchAll(/(?:src|href)="((?:\/|js\/|css\/)[^"]+\.(?:js|css))"/g)]
     .map((m) => (m[1].startsWith('/') ? m[1] : '/' + m[1]));
-  assert.ok(usados.length >= 10, 'não achei os scripts do player.html: ' + usados.length);
+  assert.ok(usados.length >= 4, 'não achei os arquivos do player.html: ' + usados.length);
 
   const cacheados = new Set([...sw.matchAll(/'(\/[^']+\.(?:js|css|html))'/g)].map((m) => m[1]));
   const fora = usados.filter((u) => !cacheados.has(u));

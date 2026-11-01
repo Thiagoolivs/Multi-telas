@@ -86,6 +86,7 @@ const redesRotas = require('./server/routes/redes');
 
 const { semCopiasDeCampanha } = require('./server/copias-de-campanha.js');
 const compressao = require('./server/compressao.js');
+const pacoteTv = require('./server/pacote-tv.js');
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
 
@@ -2974,6 +2975,11 @@ function servirPublico(res, urlPath) {
   if (!caminhoLimpo(urlPath) || !ehPublico(urlPath)) {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('Não encontrado: ' + urlPath);
+  }
+  // O player com os scripts num pacote só (server/pacote-tv.js). Falhou ao montar: sai o de sempre.
+  if (urlPath === '/player.html' || urlPath === pacoteTv.URL_PACOTE) {
+    const p = pacoteTv.pacote(ROOT);
+    if (p) return sendFile(res, path.join(ROOT, urlPath), Buffer.from(urlPath === '/player.html' ? p.html : p.js));
   }
   const filePath = path.normalize(path.join(ROOT, urlPath));
   // Cinto além da lista: mesmo limpo, o caminho final não sai da raiz.
