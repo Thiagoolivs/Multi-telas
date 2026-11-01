@@ -87,6 +87,7 @@ const redesRotas = require('./server/routes/redes');
 const { semCopiasDeCampanha } = require('./server/copias-de-campanha.js');
 const compressao = require('./server/compressao.js');
 const pacoteTv = require('./server/pacote-tv.js');
+const saude = require('./server/saude.js');
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
 
@@ -3065,6 +3066,10 @@ const server = http.createServer((req, res) => {
   compressao.ligar(req, res);
   if (!indexavel(req, pathname)) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   // Antes de qualquer rota, sessão ou fallback do painel.
+  // O Railway espera esta rota antes de trocar a versão (server/saude.js, railway.json).
+  if (pathname === '/saude') {
+    return saude.verificar(db).then((r) => sendJson(res, r.status, r.corpo));
+  }
   if (pathname === '/robots.txt') {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=3600' });
     return res.end(hostDoPedido(req).startsWith('tv.') ? ROBOTS_TXT_TV : ROBOTS_TXT);
@@ -3124,6 +3129,8 @@ db.init()
     // próximo deploy. Melhor avisar alto do que descobrir com o cliente.
     const aviso = storage.ephemeralWarning();
     if (aviso) log.aviso('storage.disco-efemero', { aviso });
+    // "Versão no ar", no webhook dos alertas: o deploy que não avisa é o que não subiu.
+    saude.avisarNoAr();
 
     if (!operadores.configurado()) {
       // Dito alto de propósito: sem ADMIN_EMAILS o painel da plataforma
