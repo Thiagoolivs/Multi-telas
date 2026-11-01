@@ -293,7 +293,7 @@ test('o player carrega o catálogo, e o service worker guarda', () => {
   const PLAYER = fs.readFileSync(path.join(__dirname, '..', 'player.html'), 'utf8');
   const SW = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
   assert.match(PLAYER, /js\/animacao\.js/, 'o player não carrega o catálogo');
-  assert.match(SW, /'\/js\/animacao\.js'/, 'sem rede, a TV ficaria sem o catálogo');
+  assert.ok(require('./offline.js').guardadoOffline('js/animacao.js'), 'sem rede, a TV ficaria sem o catálogo');
   assert.match(SW, /'\/css\/animacao\.css'/, 'sem rede, a TV ficaria sem as keyframes');
 });
 

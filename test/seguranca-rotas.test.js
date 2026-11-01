@@ -186,7 +186,11 @@ test('o destino de /tv é uma página de verdade', async () => {
   // continua respondendo certo e a TV mostra uma tela em branco.
   const r = await pedir('/player.html?cloud=1');
   assert.equal(r.status, 200);
-  assert.match(r.corpo, /js\/player\.js/, 'o player não carrega o próprio motor');
+  // O motor vem no pacote dos scripts (server/pacote-tv.js).
+  assert.match(r.corpo, /js\/tv\.pacote\.js/, 'o player não carrega o pacote');
+  const pacote = await pedir('/js/tv.pacote.js');
+  assert.equal(pacote.status, 200);
+  assert.match(pacote.corpo, /\/\* ==== js\/player\.js ==== \*\//, 'o player não carrega o próprio motor');
 });
 
 test('diretório irmão de mesmo prefixo não vaza', async () => {
