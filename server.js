@@ -85,6 +85,7 @@ const paletaInicial = require('./server/paleta');
 const redesRotas = require('./server/routes/redes');
 
 const { semCopiasDeCampanha } = require('./server/copias-de-campanha.js');
+const compressao = require('./server/compressao.js');
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
 
@@ -3054,6 +3055,8 @@ const server = http.createServer((req, res) => {
    */
   const seg = security.cabecalhosSeguranca(security.isSecureRequest(req));
   for (const k in seg) res.setHeader(k, seg[k]);
+  // gzip/brotli no mesmo ponto e pelo mesmo motivo (server/compressao.js).
+  compressao.ligar(req, res);
   if (!indexavel(req, pathname)) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   // Antes de qualquer rota, sessão ou fallback do painel.
   if (pathname === '/robots.txt') {
