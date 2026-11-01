@@ -10,8 +10,9 @@ import { Dialog } from '../components/ui/Dialog.jsx';
 import { SkeletonRows, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
-import { devices, deviceConfig, criar } from '../api.js';
-import { porCampanhaNaTela } from '../lib/rodar.js';
+import { devices, deviceConfig, criar, brand } from '../api.js';
+import { porCampanhaNaTela, gravarEmLote } from '../lib/rodar.js';
+import { carregarTelasProntas, telaParaComecar, aplicarTelaPronta, marcaDaConta } from '../lib/telasProntas.js';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
@@ -21,7 +22,7 @@ import { aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { CamposDoHorario } from '../components/tela/HorarioDaTela.jsx';
 import '../../../js/aparelho.js';
-import { usePerfil } from '../lib/perfil.js';
+import { usePerfil, perfilAtual } from '../lib/perfil.js';
 
 export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrParaPlano }) {
   const { data, loading, error, reload } = useAsync(devices.list);
@@ -318,7 +319,9 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
    */
   const [campanha, setCampanha] = useState(null);
   const [mandada, setMandada] = useState('');
-  React.useEffect(() => { if (open) { setPareada(null); setError(''); setErroDePlano(false); setMandada(''); } }, [open]);
+  // A tela pronta com que a TV nova começou (nome), para o diálogo contar.
+  const [comecou, setComecou] = useState('');
+  React.useEffect(() => { if (open) { setPareada(null); setError(''); setErroDePlano(false); setMandada(''); setComecou(''); } }, [open]);
   React.useEffect(() => {
     if (!pareada) return;
     criar.campanhas().then((r) => {
@@ -345,6 +348,21 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
       const dev = await devices.pair(code, name);
       esquecerParear(); // o código guardado do QR já foi usado
       setCode(''); setName('');
+      /*
+       * TV sem nada para mostrar: começa com uma tela pronta do ramo, com a
+       * marca da conta (QA de 26/10). Se falhar, a TV fica na espera como
+       * antes — parear já deu certo, e isto é bônus.
+       */
+      if (dev && dev.semConteudo) {
+        try {
+          const [dados, r] = await Promise.all([carregarTelasProntas(), brand.get()]);
+          const tela = telaParaComecar(dados, marcaDaConta(r), perfilAtual().id, null);
+          if (tela) {
+            await gravarEmLote([{ id: dev.id, name: dev.name }], (cfg) => aplicarTelaPronta(cfg, tela), 'Tela pronta: ' + tela.nome);
+            setComecou(tela.nome);
+          }
+        } catch (e) { /* segue na espera */ }
+      }
       setPareada(dev);
       onDone();
     } catch (err) {
@@ -367,8 +385,10 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><Check size={20} /></div>
           <div className="text-sm text-ink-2">
-            <b className="text-ink">{pareada.name || 'A TV'}</b> já é sua: ela mostra "Tudo certo" e fica esperando.
-            O que você publicar aparece nela na hora — um modelo pronto, uma data comemorativa ou uma campanha feita pela IA.
+            {comecou
+              ? <><b className="text-ink">{pareada.name || 'A TV'}</b> já é sua e está mostrando “{comecou}”, uma tela pronta com a sua marca. Troque quando quiser: o que você publicar aparece nela na hora.</>
+              : <><b className="text-ink">{pareada.name || 'A TV'}</b> já é sua: ela mostra "Tudo certo" e fica esperando.
+                O que você publicar aparece nela na hora — um modelo pronto, uma data comemorativa ou uma campanha feita pela IA.</>}
             {mandada === 'ok' && <div className="mt-2 font-medium text-ok">A campanha foi para a TV, com cabeçalho e rodapé. Olhe para ela!</div>}
             {error && <div className="mt-2 text-danger">{error}</div>}
           </div>

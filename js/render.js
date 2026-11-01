@@ -617,19 +617,18 @@
     el.appendChild(time);
     el.appendChild(date);
     let timer = null;
+    // Só toca no DOM quando o texto muda: o relógio mostra minutos, e repintar a cada segundo era CPU à toa.
     function tick() {
       const now = new Date();
-      time.textContent = now.toLocaleTimeString('pt-BR', {
-        hour: '2-digit', minute: '2-digit',
-      });
-      date.textContent = now.toLocaleDateString('pt-BR', {
-        weekday: 'long', day: '2-digit', month: 'long',
-      });
+      const h = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const d = now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+      if (time.textContent !== h) time.textContent = h;
+      if (date.textContent !== d) date.textContent = d;
     }
     return {
       el,
       duration: item.duracao || 10,
-      onEnter: () => { tick(); timer = setInterval(tick, 1000); },
+      onEnter: () => { tick(); timer = setInterval(tick, 5000); },
       onLeave: () => timer && clearInterval(timer),
     };
   }
@@ -640,9 +639,11 @@
     const inner = div('mt-weather-inner');
     inner.textContent = 'Carregando clima…';
     el.appendChild(inner);
+    let relogio = null;
     return {
       el,
       duration: item.duracao || 10,
+      onLeave: () => { if (relogio) { clearInterval(relogio); relogio = null; } },
       onEnter: async () => {
         try {
           const w = await fetchWeather(item.cidade || 'São Paulo');
@@ -653,8 +654,10 @@
         } catch (e) {
           inner.innerHTML = weatherFallbackHtml(item.cidade || 'São Paulo');
           const t = inner.querySelector('[data-clock]');
-          const upd = () => { if (t) t.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
-          upd(); setInterval(upd, 1000);
+          // Só quando o minuto muda; e um relógio só, não um a mais a cada volta da playlist.
+          const upd = () => { const h = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); if (t && t.textContent !== h) t.textContent = h; };
+          if (relogio) clearInterval(relogio);
+          upd(); relogio = setInterval(upd, 5000);
         }
       },
     };
@@ -685,9 +688,10 @@
       if (clock) return;
       const upd = () => {
         const t = inner.querySelector('[data-clock]');
-        if (t) t.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const h = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        if (t && t.textContent !== h) t.textContent = h;
       };
-      upd(); clock = setInterval(upd, 1000);
+      upd(); clock = setInterval(upd, 5000);
     }
 
     async function load() {

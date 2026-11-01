@@ -2339,18 +2339,27 @@
     content.appendChild(headline);
     zoneEl.appendChild(content);
 
-    // Relógio ao vivo (com segundos), como numa emissora.
+    /*
+     * Relógio da faixa: horas e minutos. Tinha segundos, e repintar a cada
+     * segundo era CPU que ninguém via — a três metros os segundos não se leem
+     * (QA de 26/10: 37% de CPU com a tela parada). Confere a cada 5 s e só
+     * toca no DOM quando o texto muda.
+     */
     const MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    const elData = clock.querySelector('.nc-date');
+    const elHora = clock.querySelector('.nc-time');
     function tick() {
       const now = new Date();
       // Hora de fábrica (box sem bateria, sem rede ainda): relógio em branco.
-      clock.style.visibility = relogioConfiavel(now) ? '' : 'hidden';
-      clock.querySelector('.nc-date').textContent =
-        String(now.getDate()).padStart(2, '0') + ' ' + MESES[now.getMonth()];
-      clock.querySelector('.nc-time').textContent = now.toLocaleTimeString('pt-BR');
+      const vis = relogioConfiavel(now) ? '' : 'hidden';
+      if (clock.style.visibility !== vis) clock.style.visibility = vis;
+      const data = String(now.getDate()).padStart(2, '0') + ' ' + MESES[now.getMonth()];
+      const hora = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      if (elData.textContent !== data) elData.textContent = data;
+      if (elHora.textContent !== hora) elHora.textContent = hora;
     }
     tick();
-    const clockTimer = mostrarRelogio ? setInterval(tick, 1000) : null;
+    const clockTimer = mostrarRelogio ? setInterval(tick, 5000) : null;
 
     /*
      * Rolagem de manchete longa.

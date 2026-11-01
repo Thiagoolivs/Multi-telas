@@ -214,3 +214,10 @@ test('a mediana é de janelas, não de quadros soltos', () => {
   assert.equal(j.MTPerf.mediana([12, 60, 11, 12, 58]), 12);
   assert.equal(j.MTPerf.mediana([60, 59, 58, 8, 60]), 59);
 });
+
+test('48 quadros com a tela parada já é aparelho no limite: vai para o leve (QA de 26/10)', () => {
+  const j = navegador({ ua: 'Mozilla/5.0 (Linux) AppleWebKit/537.36 Chrome/120 Safari/537.36' });
+  j.MTPerf.medir(() => {});
+  j.__rodar(48);
+  assert.ok(leve(j), 'a TV do QA (48 fps, 37% de CPU) seguia com o pacote completo');
+});

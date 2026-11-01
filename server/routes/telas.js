@@ -202,7 +202,13 @@ module.exports = function (ctx) {
             });
           }
         }
-        await db.claimDevice(d.id, sess.tenant_id, b.name || d.name || 'TV');
+        /*
+         * O nome padrão era "TV" — e a TV recém-pareada dizia "Tudo certo, TV"
+         * (QA de 26/10). Numerada pela conta, a segunda tela não fica com o
+         * mesmo nome da primeira na lista.
+         */
+        const nome = String(b.name || '').trim().slice(0, 60) || d.name || ('TV ' + ((await db.countDevices(sess.tenant_id)) + (d.tenant_id ? 0 : 1)));
+        await db.claimDevice(d.id, sess.tenant_id, nome);
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.parear');
         // Tela nova na conta = mensalidade nova. Sem esperar o Asaas: o
         // pareamento já aconteceu, e a conciliação refaz se falhar agora.
@@ -221,8 +227,9 @@ module.exports = function (ctx) {
          * e agora ela tem um erro de cobrança num produto que ela ainda nem viu
          * funcionar.
          */
-        broadcast(d.id, 'pareada', { nome: b.name || d.name || 'TV', em: Date.now() });
-        return sendJson(res, 200, { id: d.id, name: b.name || d.name || 'TV' });
+        broadcast(d.id, 'pareada', { nome, em: Date.now() });
+        // semConteudo: o painel põe uma tela pronta do ramo, para a TV não nascer vazia.
+        return sendJson(res, 200, { id: d.id, name: nome, semConteudo: !d.config });
       });
     }
 

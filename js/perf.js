@@ -88,8 +88,8 @@
   /*
    * Conta quadros e rebaixa a tela que não estiver entregando.
    *
-   * O limite é 40 por segundo: acima disso o olho não vê engasgo; abaixo, vê e
-   * muito.
+   * O limite é 50 por segundo (ver LIMITE): acima disso o aparelho tem folga;
+   * abaixo, está no limite e o engasgo aparece.
    *
    * A medição é por JANELAS DE UM SEGUNDO, e quem decide é a MEDIANA delas.
    *
@@ -105,7 +105,13 @@
    * MAIOR PARTE do tempo, que é o tempo em que alguém está olhando para ela.
    */
   var JANELAS = 5;
-  var LIMITE = 40;   // quadros por segundo abaixo dos quais o olho vê o engasgo
+  /*
+   * 50, e não 40 (QA de 26/10): a TV de teste andava a 48 quadros com 37% de
+   * CPU parada em dois slides de texto — passava na régua antiga e seguia com
+   * o pacote completo, esquentando o box. Abaixo de 50 de mediana o aparelho
+   * já está no limite; o modo leve tira o que custa e o olho não perde nada.
+   */
+  var LIMITE = 50;
   var medindo = false;
   function mediana(v) {
     var s = v.slice().sort(function (a, b) { return a - b; });
