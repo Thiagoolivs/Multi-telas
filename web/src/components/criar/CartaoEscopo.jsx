@@ -57,10 +57,10 @@ function Passo({ valor, max, onChange, rotulo }) {
   return (
     <div className="flex items-center gap-1" role="group" aria-label={rotulo}>
       <button type="button" aria-label={'Menos: ' + rotulo} disabled={valor <= 0} onClick={() => onChange(valor - 1)}
-        className="flex h-7 w-7 items-center justify-center rounded-md border border-line text-ink-2 hover:bg-surface-2 disabled:opacity-40"><Minus size={13} /></button>
+        className="flex h-7 w-7 max-sm:h-11 max-sm:w-11 items-center justify-center rounded-md border border-line text-ink-2 hover:bg-surface-2 disabled:opacity-40"><Minus size={13} /></button>
       <span className="tnum w-5 text-center text-sm font-semibold text-ink">{valor}</span>
       <button type="button" aria-label={'Mais: ' + rotulo} disabled={valor >= max} onClick={() => onChange(valor + 1)}
-        className="flex h-7 w-7 items-center justify-center rounded-md border border-line text-ink-2 hover:bg-surface-2 disabled:opacity-40"><Plus size={13} /></button>
+        className="flex h-7 w-7 max-sm:h-11 max-sm:w-11 items-center justify-center rounded-md border border-line text-ink-2 hover:bg-surface-2 disabled:opacity-40"><Plus size={13} /></button>
     </div>
   );
 }

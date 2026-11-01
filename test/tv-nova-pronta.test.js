@@ -57,7 +57,7 @@ function pedir(caminho, o = {}) {
 }
 const cookieDe = (r) => r.cookies.map((c) => c.split(';')[0]).filter((c) => !c.endsWith('=')).join('; ');
 
-test('servidor: nome padrão numerado ("TV 1", "TV 2") e semConteudo só para a TV sem programação', async (t) => {
+test('servidor: nome padrão numerado (o menor "TV n" livre) e semConteudo só para a TV sem programação', async (t) => {
   const dados = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-tvnova-'));
   const servidor = spawn(process.execPath, ['server.js'], {
     cwd: RAIZ, stdio: 'ignore',
@@ -81,7 +81,8 @@ test('servidor: nome padrão numerado ("TV 1", "TV 2") e semConteudo só para a 
   assert.equal(p2.json.name, 'Recepção', 'o nome dado vale, sem os espaços');
 
   const tv3 = (await pedir('/api/devices', { method: 'POST', json: {} })).json;
-  assert.equal((await pedir('/api/pair', { method: 'POST', cookie: c, json: { code: tv3.code } })).json.name, 'TV 3');
+  // O menor número livre: "TV 1" e "Recepção" já existem, então a terceira é "TV 2".
+  assert.equal((await pedir('/api/pair', { method: 'POST', cookie: c, json: { code: tv3.code } })).json.name, 'TV 2');
 
   // Com programação, parear de novo (a mesma conta) não pede tela pronta e mantém o nome.
   const cfg = { settings: { layoutId: 'full' }, zonas: { principal: { items: [{ type: 'text', titulo: 'Oi' }] } } };
@@ -89,4 +90,9 @@ test('servidor: nome padrão numerado ("TV 1", "TV 2") e semConteudo só para a 
   const de1 = await pedir('/api/pair', { method: 'POST', cookie: c, json: { code: tv1.code } });
   assert.equal(de1.json.semConteudo, false);
   assert.equal(de1.json.name, 'TV 1');
+
+  // Tirou a "TV 1": a próxima sem nome reaproveita o número, em vez de repetir um nome que já existe.
+  assert.ok((await pedir('/api/devices/' + tv1.id, { method: 'DELETE', cookie: c })).status < 300);
+  const tv4 = (await pedir('/api/devices', { method: 'POST', json: {} })).json;
+  assert.equal((await pedir('/api/pair', { method: 'POST', cookie: c, json: { code: tv4.code } })).json.name, 'TV 1');
 });

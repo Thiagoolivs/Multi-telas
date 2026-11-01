@@ -50,17 +50,19 @@ function versao(env) {
 async function avisarNoAr(env) {
   const e = env || process.env;
   const url = e.ALERTA_WEBHOOK_URL;
-  if (!url || !e.RAILWAY_ENVIRONMENT) return false;
+  // As duas: o Railway novo define RAILWAY_ENVIRONMENT_NAME; o antigo, RAILWAY_ENVIRONMENT (como em server/billing.js).
+  const ambiente = e.RAILWAY_ENVIRONMENT_NAME || e.RAILWAY_ENVIRONMENT;
+  if (!url || !ambiente) return false;
   const regiao = e.RAILWAY_REPLICA_REGION || '';
   const texto = '🟢 MultiTelas no ar: versão ' + versao(e) + (regiao ? ' (' + regiao + ')' : '')
-    + (e.RAILWAY_ENVIRONMENT !== 'production' ? ' · ambiente ' + e.RAILWAY_ENVIRONMENT : '');
+    + (ambiente !== 'production' ? ' · ambiente ' + ambiente : '');
   try {
     const ac = new AbortController();
     const corta = setTimeout(() => ac.abort(), 5000);
     await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: texto, deploy: { versao: versao(e), regiao, ambiente: e.RAILWAY_ENVIRONMENT } }),
+      body: JSON.stringify({ text: texto, deploy: { versao: versao(e), regiao, ambiente } }),
       signal: ac.signal,
     }).finally(() => clearTimeout(corta));
     return true;

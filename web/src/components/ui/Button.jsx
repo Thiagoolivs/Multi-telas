@@ -23,7 +23,7 @@ export function Button({ variant = 'secondary', size = 'md', className, icon: Ic
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap font-medium select-none transition',
+        'inline-flex items-center justify-center font-medium select-none transition',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
         'disabled:opacity-50 disabled:pointer-events-none',
         VARIANTS[variant],

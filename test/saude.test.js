@@ -38,6 +38,9 @@ test('"versão no ar" só sai em produção e com o webhook; o texto diz versão
   assert.equal(await S.avisarNoAr({ ALERTA_WEBHOOK_URL: 'https://hook.exemplo/x', RAILWAY_ENVIRONMENT: 'staging', RAILWAY_GIT_COMMIT_SHA: '1234567890', RAILWAY_REPLICA_REGION: 'us-east4' }), true);
   assert.equal(enviados.length, 1);
   assert.match(enviados[0].corpo.text, /no ar: versão 1234567 \(us-east4\) · ambiente staging/);
+  // O Railway novo só define RAILWAY_ENVIRONMENT_NAME: também vale.
+  assert.equal(await S.avisarNoAr({ ALERTA_WEBHOOK_URL: 'https://hook.exemplo/x', RAILWAY_ENVIRONMENT_NAME: 'production' }), true);
+  assert.doesNotMatch(enviados[1].corpo.text, /ambiente/, 'produção não precisa dizer o ambiente');
   globalThis.fetch = async () => { throw new Error('rede'); };
   assert.equal(await S.avisarNoAr({ ALERTA_WEBHOOK_URL: 'https://hook.exemplo/x', RAILWAY_ENVIRONMENT: 'production' }), false, 'falha do aviso não sobe');
 });

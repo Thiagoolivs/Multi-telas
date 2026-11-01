@@ -61,3 +61,28 @@ test('relatório: os filtros têm nome para o leitor de tela', () => {
   assert.match(r, /<Select aria-label="Período do relatório"/);
   assert.match(r, /<Select aria-label="Qual tela"/);
 });
+
+test('botão de tamanho fixo cresce junto no celular (ou é pequeno de propósito): a regra dos 44 px não o estica', () => {
+  // Revisão do PR #305: os dias da semana (h-8 w-8) viravam ovais de 32×44 no celular.
+  const glob = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? glob(path.join(dir, e.name)) : e.name.endsWith('.jsx') ? [path.join(dir, e.name)] : []));
+  const ruins = [];
+  for (const f of glob(path.join(__dirname, '..', 'web/src'))) {
+    const s = fs.readFileSync(f, 'utf8');
+    for (const m of s.matchAll(/<button\b/g)) {
+      const trecho = s.slice(m.index, m.index + 600);
+      const tag = trecho.slice(0, trecho.search(/>\s*[{<\w]/) + 1 || 600);
+      if (/data-compacto/.test(tag)) continue;
+      const fixo = /(?<![\w:-])h-([1-9]|10)(?![\d.])[^'"]*?(?<![\w:-])w-([1-9]|10)(?![\d.])|(?<![\w:-])w-([1-9]|10)(?![\d.])[^'"]*?(?<![\w:-])h-([1-9]|10)(?![\d.])/.exec(tag);
+      if (fixo && !/max-sm:h-11/.test(tag)) ruins.push(path.relative(path.join(__dirname, '..'), f) + ': ' + fixo[0]);
+    }
+  }
+  assert.deepEqual(ruins, []);
+});
+
+test('miniatura ao vivo: a mesma TV não é perguntada de novo em 2 minutos, e no máximo 8 por minuto', async () => {
+  const src = ler('web/src/components/tela/MiniaturaDaTela.jsx');
+  assert.match(src, /const JA_PEDIU_MS = 2 \* 60 \* 1000;/);
+  assert.match(src, /const MAX_POR_MINUTO = 8;/);
+  assert.match(src, /\|\| !podePedir\(d\.id\)\) \{ setPerguntando\(false\); return; \}/);
+  assert.match(src, /'Última imagem · ' \+ quando/, 'TV fora do ar mostra a imagem velha como se fosse agora');
+});

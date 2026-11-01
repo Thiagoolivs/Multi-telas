@@ -42,7 +42,14 @@ function scriptsDoCorpo(html) {
 function montarJs(raiz, lista) {
   const partes = ['/* MultiTelas · pacote do player (server/pacote-tv.js). A fonte é o player.html. */'];
   for (const s of lista) {
-    const src = fs.readFileSync(path.join(raiz, s), 'utf8');
+    /*
+     * Arquivo que falta é o que um <script> com 404 seria: os outros rodam. Se
+     * o pacote inteiro caísse, o service worker da TV, que guarda só o pacote,
+     * não instalaria a versão nova (revisão do PR #305).
+     */
+    let src;
+    try { src = fs.readFileSync(path.join(raiz, s), 'utf8'); }
+    catch (e) { partes.push('/* ==== ' + s + ' ==== (não encontrado) */\nsetTimeout(function () { throw new Error(' + JSON.stringify('pacote da TV: ' + s + ' não encontrado') + '); });'); continue; }
     partes.push('/* ==== ' + s + ' ==== */\ntry {\n' + src + '\n} catch (e) { setTimeout(function () { throw e; }); }');
   }
   return partes.join('\n');
@@ -71,7 +78,7 @@ function pacote(raiz) {
     const lista = scriptsDoCorpo(html);
     if (!lista.length) return null;
     const chave = [htmlPath].concat(lista.map((s) => path.join(raiz, s)))
-      .map((f) => { const st = fs.statSync(f); return st.size + ':' + st.mtimeMs; }).join('|');
+      .map((f) => { try { const st = fs.statSync(f); return st.size + ':' + st.mtimeMs; } catch (e) { return '-'; } }).join('|');
     if (guardado && guardado.chave === chave) return guardado;
     guardado = { chave, html: montarHtml(html, lista), js: montarJs(raiz, lista), lista };
     return guardado;

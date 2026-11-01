@@ -64,7 +64,7 @@ function Pedido({ p, onMudou, aprovadas = [], onTirar }) {
                 {aprovadas.slice(0, 12).map((a) => (
                   <li key={a.id} className="group relative">
                     <img src={a.url} alt={'Foto de ' + a.nome} title={a.nome} className="h-12 w-12 rounded-md object-cover" />
-                    <button type="button" aria-label={'Tirar a foto de ' + a.nome} onClick={() => onTirar(a)}
+                    <button type="button" data-compacto aria-label={'Tirar a foto de ' + a.nome} onClick={() => onTirar(a)}
                       className="absolute -right-1 -top-1 hidden h-5 w-5 items-center justify-center rounded-full bg-danger text-white group-hover:flex"><X size={12} /></button>
                   </li>
                 ))}

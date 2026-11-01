@@ -113,10 +113,15 @@ test('setHeader sem writeHead também comprime; end(cb) e writeHead encadeado fu
   s.close();
 });
 
-test('arquivo grande comprime uma vez e fica guardado', async () => {
+test('arquivo grande (marcado) comprime uma vez e fica guardado; resposta dinâmica não entra no cache', async () => {
   const corpo = 'const x = 1;\n'.repeat(5000);
   let n = 0;
-  const s = await abrir((req, res) => { n++; res.writeHead(200, { 'Content-Type': 'text/javascript' }); res.end(corpo); });
+  const s = await abrir((req, res) => {
+    n++;
+    res.writeHead(200, { 'Content-Type': req.url === '/api' ? 'application/json' : 'text/javascript' });
+    if (req.url !== '/api') C.guardarComprimido(res);
+    res.end(req.url === '/api' ? JSON.stringify({ n, lista: corpo }) : corpo);
+  });
   const porta = s.address().port;
   const antes = C._cache.size;
   const a = await pedir(porta, '/', { 'accept-encoding': 'br' });
@@ -124,6 +129,11 @@ test('arquivo grande comprime uma vez e fica guardado', async () => {
   assert.equal(n, 2);
   assert.equal(C._cache.size, antes + 1);
   assert.deepEqual(a.corpo, b.corpo);
+  // JSON grande da API: comprimido, mas cada resposta é única e não ocupa o cache.
+  const api = await pedir(porta, '/api', { 'accept-encoding': 'br' });
+  await pedir(porta, '/api', { 'accept-encoding': 'br' });
+  assert.equal(api.headers['content-encoding'], 'br');
+  assert.equal(C._cache.size, antes + 1, 'resposta dinâmica entrou no cache');
   s.close();
 });
 

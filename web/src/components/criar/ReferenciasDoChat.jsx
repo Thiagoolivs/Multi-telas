@@ -29,7 +29,7 @@ export function BotaoAnexar({ onArquivos, disabled, enviando }) {
     <>
       <button type="button" onClick={() => input.current && input.current.click()} disabled={disabled || enviando}
         aria-label="Anexar imagem de referência" title="Anexar imagem (ou cole com Ctrl+V)"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line text-ink-2 transition hover:border-accent hover:text-accent disabled:opacity-50">
+        className="flex h-9 w-9 max-sm:h-11 max-sm:w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink-2 transition hover:border-accent hover:text-accent disabled:opacity-50">
         {enviando ? <Spinner size={14} /> : <Paperclip size={15} />}
       </button>
       <input ref={input} type="file" accept={TIPOS_ACEITOS} multiple className="hidden"

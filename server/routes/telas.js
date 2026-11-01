@@ -138,6 +138,18 @@ module.exports = function (ctx) {
 
   async function tratar(req, res, parts, query, sess) {
     /* ----- Criar device (a TV chama, sem auth) ----- */
+    /*
+     * "TV 1", "TV 2"…: o menor número que nenhuma tela da conta usa. Contar as
+     * telas repetia nome depois de remover uma (tira a TV 1 de duas, a nova
+     * virava a segunda "TV 2").
+     */
+    async function proximoNomeDeTv(tenantId) {
+      const usados = new Set((await db.listDevices(tenantId)).map((x) => String(x.name || '').trim().toLowerCase()));
+      let n = 1;
+      while (usados.has('tv ' + n)) n++;
+      return 'TV ' + n;
+    }
+
     if (req.method === 'POST' && parts[1] === 'devices' && parts.length === 2) {
       /*
        * A rota é pública (a TV ainda não tem dono), e não tinha limite: um laço
@@ -207,7 +219,7 @@ module.exports = function (ctx) {
          * (QA de 26/10). Numerada pela conta, a segunda tela não fica com o
          * mesmo nome da primeira na lista.
          */
-        const nome = String(b.name || '').trim().slice(0, 60) || d.name || ('TV ' + ((await db.countDevices(sess.tenant_id)) + (d.tenant_id ? 0 : 1)));
+        const nome = String(b.name || '').trim().slice(0, 60) || d.name || (await proximoNomeDeTv(sess.tenant_id));
         await db.claimDevice(d.id, sess.tenant_id, nome);
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.parear');
         // Tela nova na conta = mensalidade nova. Sem esperar o Asaas: o

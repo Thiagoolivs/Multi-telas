@@ -51,6 +51,21 @@ test('um arquivo que quebra ao carregar não impede os outros, e o erro ainda ch
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+test('arquivo que falta não derruba o pacote: vira o erro que um <script> 404 seria', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-pacote-'));
+  fs.mkdirSync(path.join(dir, 'js'));
+  fs.writeFileSync(path.join(dir, 'js/a.js'), '(function (g) { g.ordem.push("a"); })(this);');
+  fs.writeFileSync(path.join(dir, 'player.html'), '<html><head></head><body><script src="js/a.js"></script><script src="js/sumiu.js"></script></body></html>');
+  const p = P.pacote(dir);
+  assert.ok(p, 'o pacote caiu por causa de um arquivo');
+  const erros = [];
+  const ctx = { ordem: [], setTimeout: (fn) => { try { fn(); } catch (e) { erros.push(e.message); } } };
+  vm.runInNewContext(p.js, ctx);
+  assert.deepEqual(ctx.ordem, ['a']);
+  assert.match(erros[0], /js\/sumiu\.js não encontrado/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test('o pacote de verdade roda inteiro num contexto vazio sem lançar no carregamento', () => {
   const p = P.pacote(RAIZ);
   assert.ok(p);

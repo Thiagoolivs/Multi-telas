@@ -33,6 +33,10 @@ const CACHE_MAX_BYTES = 24 * 1024 * 1024;
 const COMPRIMIVEL = /^(text\/|application\/(json|javascript|manifest\+json|xml|ld\+json)|image\/svg\+xml)/i;
 
 const cache = new Map(); // chave -> Buffer (ordem de inserção = LRU simples)
+const GUARDAR = Symbol('mt.compressao.guardar');
+
+/* Marca a resposta como arquivo estático: comprime melhor e guarda o resultado (server.js, sendFile). */
+function guardarComprimido(res) { res[GUARDAR] = true; }
 let cacheBytes = 0;
 
 /* Qual codificação o cliente aceita, respeitando q=0. Brotli primeiro. */
@@ -54,27 +58,35 @@ function escolher(acceptEncoding) {
   return null;
 }
 
-function comprimirAgora(corpo, enc) {
+/*
+ * Duas intensidades. Arquivo estático (marcado com guardarComprimido) é o
+ * mesmo para todo mundo: compressão melhor, uma vez, e guardado. Resposta
+ * dinâmica (JSON da API) é diferente a cada vez: compressão leve, sem guardar
+ * — guardar encheria o cache com respostas que não voltam, e a compressão
+ * forte, síncrona, seguraria o servidor de todas as TVs a cada lista grande
+ * (revisão do PR #305).
+ */
+function comprimirAgora(corpo, enc, forte) {
   if (enc === 'br') {
     return zlib.brotliCompressSync(corpo, {
       params: {
-        [zlib.constants.BROTLI_PARAM_QUALITY]: 5,
+        [zlib.constants.BROTLI_PARAM_QUALITY]: forte ? 5 : 3,
         [zlib.constants.BROTLI_PARAM_SIZE_HINT]: corpo.length,
       },
     });
   }
-  return zlib.gzipSync(corpo, { level: 6 });
+  return zlib.gzipSync(corpo, { level: forte ? 6 : 4 });
 }
 
-function comprimir(corpo, enc) {
-  if (corpo.length < CACHE_A_PARTIR) return comprimirAgora(corpo, enc);
+function comprimir(corpo, enc, guardar) {
+  if (!guardar || corpo.length < CACHE_A_PARTIR) return comprimirAgora(corpo, enc, guardar);
   const chave = enc + ':' + crypto.createHash('sha1').update(corpo).digest('base64');
   const visto = cache.get(chave);
   if (visto) {
     cache.delete(chave); cache.set(chave, visto); // volta para o fim da fila
     return visto;
   }
-  const pronto = comprimirAgora(corpo, enc);
+  const pronto = comprimirAgora(corpo, enc, true);
   cache.set(chave, pronto);
   cacheBytes += pronto.length;
   while (cacheBytes > CACHE_MAX_BYTES && cache.size) {
@@ -140,7 +152,7 @@ function ligar(req, res) {
     }
 
     let saida;
-    try { saida = comprimir(corpo, enc); }
+    try { saida = comprimir(corpo, enc, res[GUARDAR] === true); }
     catch (e) { soltar(); return endOriginal.call(res, corpo, cb); }
     if (saida.length >= corpo.length) { soltar(); return endOriginal.call(res, corpo, cb); }
 
@@ -172,4 +184,4 @@ function ligar(req, res) {
   };
 }
 
-module.exports = { ligar, escolher, MIN_BYTES, _cache: cache };
+module.exports = { ligar, escolher, guardarComprimido, MIN_BYTES, _cache: cache };

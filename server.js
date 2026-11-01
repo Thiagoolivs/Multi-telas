@@ -2669,6 +2669,7 @@ function sendFile(res, filePath, data) {
     'Content-Type': MIME[ext] || 'application/octet-stream',
     'Cache-Control': noStore ? 'no-store' : hashed ? 'public, max-age=31536000, immutable' : (revalidate ? 'no-cache' : 'public, max-age=3600'),
   });
+  compressao.guardarComprimido(res); // arquivo: igual para todos, comprime uma vez e guarda
   res.end(data);
 }
 // Página inicial: dois caminhos claros — administrar (celular/PC) ou virar TV.

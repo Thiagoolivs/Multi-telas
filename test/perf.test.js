@@ -224,3 +224,10 @@ test('48 quadros com a tela parada já é aparelho no limite: vai para o leve (Q
   j.__rodar(48);
   assert.ok(leve(j), 'a TV do QA (48 fps, 37% de CPU) seguia com o pacote completo');
 });
+
+test('tela de 50 Hz (50 quadros cravados) não é lenta: fica o pacote completo', () => {
+  const j = navegador({ ua: 'Mozilla/5.0 (Linux) AppleWebKit/537.36 Chrome/120 Safari/537.36' });
+  j.MTPerf.medir(() => {});
+  j.__rodar(49.6);
+  assert.ok(!leve(j), 'uma tela de 50 Hz que anda no teto perdeu o vidro');
+});
