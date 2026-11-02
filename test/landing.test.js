@@ -32,7 +32,8 @@ test('menos de 500 KB, contando tudo o que a página pede', () => {
   let m;
   while ((m = re.exec(html))) {
     const u = m[1];
-    if (/^(https?:|mailto:|\/app|\/termos|\/privacidade|#)/.test(u) || u === '/') continue;
+    // Páginas (o painel, os textos legais e as landings das frentes) não são peso desta página.
+    if (/^(https?:|mailto:|\/app|\/termos|\/privacidade|\/(empresas|saude|comercio)$|#)/.test(u) || u === '/') continue;
     pedidos.add(u);
   }
   // As imagens que as abas trocam (landing.js) também contam.

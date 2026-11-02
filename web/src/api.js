@@ -459,6 +459,8 @@ export const plataforma = {
   recarregarTela: (id) => api('POST', '/api/plataforma/telas/' + id + '/recarregar'),
   estenderTeste: (id, dias) => api('POST', '/api/plataforma/contas/' + id + '/estender', { dias }),
   contrato: (id, contrato, desde) => api('POST', '/api/plataforma/contas/' + id + '/contrato', { contrato, desde }),
+  // A frente da conta (Empresas, Saúde, Comércio): só o operador troca (docs/FRENTES.md).
+  frente: (id, frente) => api('POST', '/api/plataforma/contas/' + id + '/frente', { frente }),
   entrar: (id, motivo) => api('POST', '/api/plataforma/contas/' + id + '/entrar', { motivo }),
   reclamacoes: () => api('GET', '/api/plataforma/reclamacoes'),
   resolver: (id, status, resposta) => api('POST', '/api/plataforma/reclamacoes/' + id, { status, resposta }),

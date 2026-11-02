@@ -15,6 +15,7 @@ import { useAsync } from '../lib/useAsync.js';
 import { plataforma } from '../api.js';
 import { formatBytes, formatNumber, relativeTime } from '../lib/format.js';
 import { aviso } from '../lib/avisos.js';
+import { PERFIS, IDS as PERFIL_IDS } from '../lib/perfil.js';
 import { Negocio } from '../components/platform/Negocio.jsx';
 import { Qualidade } from '../components/platform/Qualidade.jsx';
 
@@ -439,6 +440,7 @@ function AcoesDaConta({ conta, onMudou }) {
   const [desde, setDesde] = useState(conta.contratoDesde ? new Date(conta.contratoDesde).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
   const [motivo, setMotivo] = useState('');
   const [busy, setBusy] = useState('');
+  const [frente, setFrente] = useState(conta.frente || '');
   const pago = conta.plano !== 'free';
 
   async function fazer(qual, fn, ok) {
@@ -469,6 +471,22 @@ function AcoesDaConta({ conta, onMudou }) {
             </Button>
           </div>
         )}
+        {/*
+          * A FRENTE da conta (docs/FRENTES.md). O cliente escolhe no cadastro;
+          * depois, quem troca é a equipe, acompanhando (decisão do dono, 02/11).
+          */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Layers size={13} className="text-ink-3" />
+          <span className="text-ink-2">Frente</span>
+          <select aria-label="Frente da conta" value={frente} onChange={(e) => setFrente(e.target.value)} className="rounded border border-line bg-surface px-1.5 py-1">
+            {!conta.frente && <option value="">Não escolhida</option>}
+            {PERFIL_IDS.map((id) => <option key={id} value={id}>{PERFIS[id].marca}</option>)}
+          </select>
+          <Button size="sm" variant="secondary" className="ml-auto" disabled={!!busy || !frente || frente === conta.frente}
+            onClick={() => fazer('frente', () => plataforma.frente(conta.id, frente), 'Frente trocada para ' + PERFIS[frente].marca + '.')}>
+            Trocar frente
+          </Button>
+        </div>
         {pago && !conta.cortesia && (
           <div className="flex flex-wrap items-center gap-2">
             <FileSignature size={13} className="text-ink-3" />

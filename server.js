@@ -88,6 +88,8 @@ const { semCopiasDeCampanha } = require('./server/copias-de-campanha.js');
 const compressao = require('./server/compressao.js');
 const pacoteTv = require('./server/pacote-tv.js');
 const saude = require('./server/saude.js');
+const Perfil = require('./js/perfil.js');
+const landingFrentes = require('./server/landing-frentes.js');
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
 
@@ -1302,6 +1304,8 @@ const negocioCache = new Map();
         contrato: plans.contratoDe(t && t.plan_contrato),
         contratoDesde: Number(t && t.contrato_desde) || 0,
         acessos: await db.acessosSuporte(ficha.id, 10),
+        // A frente (docs/FRENTES.md): o operador é quem troca.
+        frente: (t && Perfil.tem(t.perfil)) ? t.perfil : null,
       });
     }
 
@@ -1336,6 +1340,19 @@ const negocioCache = new Map();
          * mais tarde. Nunca encurta (plans.fimDoTeste) e tem teto, para um
          * clique errado não virar um ano grátis.
          */
+        /*
+         * Trocar a FRENTE da conta (Empresas, Saúde, Comércio). Só por aqui:
+         * o cliente escolhe no cadastro e, depois, quem troca é a equipe,
+         * acompanhando (decisão do dono, 02/11; docs/FRENTES.md).
+         */
+        if (parts[4] === 'frente') {
+          if (!Perfil.tem(corpo.frente)) return sendJson(res, 400, { error: 'frente inválida: empresa, saude ou comercio' });
+          const antes = Perfil.tem(tenant.perfil) ? tenant.perfil : null;
+          await db.setTenantPerfil(tenant.id, corpo.frente);
+          await registrarAcao(tenant.id, 'trocou-frente', { de: antes, para: corpo.frente });
+          return sendJson(res, 200, { ok: true, frente: corpo.frente });
+        }
+
         if (parts[4] === 'estender') {
           if (plans.isPaid(tenant.plan || 'free')) return sendJson(res, 400, { error: 'a conta já paga: não há teste para estender' });
           const dias = Math.floor(Number(corpo.dias) || 0);
@@ -2781,7 +2798,13 @@ async function handleStatic(req, res, urlPath) {
    * Exceção: no domínio da TV (tv.…) a raiz já é o player. Na TV se digita
    * só o domínio, com o controle remoto; a landing ali não serve a ninguém.
    */
-  if (urlPath === '/' || urlPath === '/index.html') {
+  /*
+   * A landing de cada frente (/empresas, /saude, /comercio): o mesmo HTML com
+   * o herói, o título e o cadastro da frente (server/landing-frentes.js,
+   * docs/FRENTES.md). Com ou sem a barra no fim.
+   */
+  const frenteDaLanding = landingFrentes.SLUGS.find((f) => urlPath === '/' + f || urlPath === '/' + f + '/');
+  if (urlPath === '/' || urlPath === '/index.html' || frenteDaLanding) {
     if (hostDoPedido(req).startsWith('tv.')) return abrirTv(req, res);
     return fs.readFile(path.join(LANDING_DIR, 'index.html'), (err, data) => {
       if (err) {
@@ -2789,8 +2812,9 @@ async function handleStatic(req, res, urlPath) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(HOME_HTML);
       }
+      const pagina = frenteDaLanding ? (landingFrentes.montar(data, frenteDaLanding) || data) : data;
       // A tag entra antes do writeHead: ela ajusta a CSP desta resposta.
-      const html = comGoogleTag(req, res, data, '<script src="/analytics.js" defer></script>\n');
+      const html = comGoogleTag(req, res, pagina, '<script src="/analytics.js" defer></script>\n');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
       res.end(html);
     });
@@ -3043,11 +3067,14 @@ const ROBOTS_TXT_TV = 'User-agent: *\nDisallow: /\n';
 const SITEMAP_XML = '<?xml version="1.0" encoding="UTF-8"?>\n'
   + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
   + '  <url><loc>' + SITE_PUBLICO + '/</loc><lastmod>' + PUBLICADO_EM + '</lastmod></url>\n'
+  // As landings das frentes (docs/FRENTES.md).
+  + landingFrentes.SLUGS.map((f) => '  <url><loc>' + SITE_PUBLICO + '/' + f + '</loc><lastmod>' + PUBLICADO_EM + '</lastmod></url>\n').join('')
   + '</urlset>\n';
 
 function indexavel(req, pathname) {
   if (hostDoPedido(req).startsWith('tv.')) return false;
   return pathname === '/' || pathname === '/index.html'
+    || landingFrentes.SLUGS.some((f) => pathname === '/' + f || pathname === '/' + f + '/')
     || pathname === '/robots.txt' || pathname === '/sitemap.xml'
     || pathname.startsWith('/vendor/') || pathname.startsWith('/icons/');
 }
@@ -3068,7 +3095,8 @@ const server = http.createServer((req, res) => {
   if (!indexavel(req, pathname)) res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   // Antes de qualquer rota, sessão ou fallback do painel.
   // O Railway espera esta rota antes de trocar a versão (server/saude.js, railway.json).
-  if (pathname === '/saude') {
+  // /healthz, e não /saude: /saude é a landing do MultiTelas Saúde (docs/FRENTES.md).
+  if (pathname === '/healthz') {
     return saude.verificar(db).then((r) => sendJson(res, r.status, r.corpo));
   }
   if (pathname === '/robots.txt') {

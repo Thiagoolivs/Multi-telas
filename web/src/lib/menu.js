@@ -12,6 +12,10 @@
  * Sidebar.
  */
 
+import '../../../js/perfil.js';
+
+const P = globalThis.MTPerfil;
+
 // O nome de cada página, como aparece na aba do grupo.
 export const PAGINAS = {
   // QA de 26/10: a aba não repete o título da página ("Visão geral" sobre "Visão geral").
@@ -80,6 +84,23 @@ export const GRUPOS = [
   { id: 'extras', label: 'Recursos extras', paginas: ['birthdays', 'mural', 'indicadores'] },
   { id: 'conta', label: 'Conta', paginas: ['billing', 'team', 'settings', 'support'] },
 ];
+
+/*
+ * O menu DA FRENTE (docs/FRENTES.md). As páginas e os endereços são os
+ * mesmos nas três; muda o que está à mão. No MultiTelas Empresas, Pessoas,
+ * Mural e Indicadores são o dia a dia de RH e gestão: o grupo sobe para
+ * depois da Biblioteca e se chama "Pessoas e indicadores". No Saúde e no
+ * Comércio, fica no fim, como "Recursos extras". O nome e a posição vêm do
+ * registro das frentes (js/perfil.js, campo `extras`).
+ */
+export function gruposDa(frente) {
+  const f = P.de(frente);
+  const extras = GRUPOS.find((g) => g.id === 'extras');
+  const resto = GRUPOS.filter((g) => g.id !== 'extras');
+  const i = resto.findIndex((g) => g.id === f.extras.depoisDe);
+  resto.splice(i < 0 ? resto.length : i + 1, 0, { ...extras, label: f.extras.rotulo });
+  return resto;
+}
 
 // No celular: a barra de baixo. O resto fica em "Mais" (o menu inteiro).
 // A Programação entra no lugar de Telas: mudar o que passa é o uso de todo dia;

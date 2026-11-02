@@ -97,7 +97,8 @@ test('o grupo aceso é o da página; abas nos grupos de mais de uma página; bar
   assert.equal(M.paginaDoIr('criados'), 'campanhas');
   assert.equal(M.grupoDa('platform'), null);
   const side = ler('web/src/components/layout/Sidebar.jsx');
-  assert.match(side, /GRUPOS\.map\(\(g\) => \(\{ id: g\.id, label: g\.label, icon: ICONES\[g\.id\], destino: g\.paginas\[0\] \}\)\)/);
+  // Desde as três frentes (docs/FRENTES.md), o menu é o da frente da conta.
+  assert.match(side, /gruposDa\(frente\)\.map\(\(g\) => \(\{ id: g\.id, label: g\.label, icon: ICONES\[g\.id\], destino: g\.paginas\[0\] \}\)\)/);
   const shell = ler('web/src/components/layout/AppShell.jsx');
   assert.match(shell, /<AbasDoGrupo active=\{active\} onNavigate=\{navigate\} \/>/);
   assert.match(shell, /<BarraInferior active=\{active\} onNavigate=\{navigate\} onMais=\{\(\) => setDrawer\(true\)\} \/>/);

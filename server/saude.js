@@ -4,7 +4,7 @@
  * O QA de 26/10 viu quatro merges direto em produção num dia e um deploy que
  * falhou em silêncio ("só foi visto porque alguém olhou"). Duas peças aqui:
  *
- *   1. GET /saude — responde 200 quando o processo atende E o banco responde;
+ *   1. GET /healthz — responde 200 quando o processo atende E o banco responde;
  *      503 quando o banco não responde. O railway.json manda o Railway esperar
  *      esta rota antes de trocar a versão: um deploy que sobe mas não fala com
  *      o banco não substitui o que está no ar, e o Railway marca a falha.

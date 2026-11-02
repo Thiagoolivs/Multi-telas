@@ -135,14 +135,23 @@ test('cadastro grava o perfil, /me devolve (escolhido ou deduzido), Ajustes troc
   me = (await pedir('/api/auth/me', { cookie: b })).json;
   assert.equal(me.tenant.perfil, 'empresa');
 
+  // A conta que nunca escolheu (deduzida do nome) escolhe uma vez...
   assert.equal((await pedir('/api/auth/profile', { method: 'POST', cookie: b, json: { perfil: 'comercio' } })).status, 200);
   me = (await pedir('/api/auth/me', { cookie: b })).json;
   assert.equal(me.tenant.perfil, 'comercio');
   assert.equal(me.tenant.perfilEscolhido, true);
+  // ...e depois a frente só muda pelo operador (docs/FRENTES.md). Mandar a mesma não é troca.
+  const troca = await pedir('/api/auth/profile', { method: 'POST', cookie: b, json: { perfil: 'empresa' } });
+  assert.equal(troca.status, 403);
+  assert.equal(troca.json.code, 'frente_pelo_suporte');
+  assert.equal((await pedir('/api/auth/profile', { method: 'POST', cookie: b, json: { perfil: 'comercio', name: 'Ana' } })).status, 200);
+  me = (await pedir('/api/auth/me', { cookie: b })).json;
+  assert.equal(me.tenant.perfil, 'comercio', 'a frente mudou sem o operador');
+  assert.equal((await pedir('/api/auth/profile', { method: 'POST', cookie: a, json: { perfil: 'empresa' } })).status, 403, 'quem escolheu no cadastro também não troca sozinho');
 
   // O guia sem chave segue o perfil.
-  assert.equal((await pedir('/api/auth/profile', { method: 'POST', cookie: b, json: { perfil: 'empresa' } })).status, 200);
-  const g = await pedir('/api/ai/guia', { method: 'POST', cookie: b, json: {} });
+  const e = cookieDe(await cadastrar('Metalúrgica Silva', 'empresa'));
+  const g = await pedir('/api/ai/guia', { method: 'POST', cookie: e, json: {} });
   assert.equal(g.status, 200);
   const titulos = g.json.sugestoes.map((s) => s.titulo).join(' | ');
   assert.ok(!/Promoção/.test(titulos), 'a Empresa recebeu promoção: ' + titulos);

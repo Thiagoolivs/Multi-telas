@@ -13,12 +13,18 @@ import { PERFIS, IDS as PERFIL_IDS } from '../lib/perfil.js';
 
 const ROLE_LABEL = { owner: 'Dono', admin: 'Administrador', member: 'Membro' };
 
-export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged }) {
+export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, onFalarComSuporte }) {
   const user = (me && me.user) || {};
   const tenant = (me && me.tenant) || {};
   const isOwner = user.role === 'owner';
-  // O tipo de negócio muda o painel de todos da conta: dono ou admin (D4).
-  const mudaPerfil = isOwner || user.role === 'admin';
+  /*
+   * A FRENTE (MultiTelas Empresas, Saúde ou Comércio; docs/FRENTES.md) muda
+   * o painel de todos da conta. Escolhida no cadastro, depois só muda pelo
+   * suporte (decisão do dono, 02/11). A conta antiga que nunca escolheu
+   * escolhe aqui, uma vez — dono ou admin (D4).
+   */
+  const jaEscolheu = !!tenant.perfilEscolhido;
+  const mudaPerfil = !jaEscolheu && (isOwner || user.role === 'admin');
 
   const [nome, setNome] = useState('');
   const [empresa, setEmpresa] = useState('');
@@ -110,19 +116,29 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged }) 
             hint={isOwner ? 'Aparece nas telas e nos e-mails.' : 'Só o dono da conta pode alterar.'}>
             <Input value={empresa} onChange={(e) => setEmpresa(e.target.value)} placeholder="Minha Empresa" disabled={!isOwner} />
           </Field>
-          <Field label="Tipo de negócio"
-            hint={mudaPerfil ? PERFIS[perfil].descricao + ' Muda as sugestões do Início e do Criar.' : 'Só o dono ou um administrador pode alterar.'}>
-            <div role="radiogroup" aria-label="Tipo de negócio" className="grid grid-cols-3 gap-1.5">
-              {PERFIL_IDS.map((id) => (
-                <button key={id} type="button" role="radio" aria-checked={perfil === id} disabled={!mudaPerfil}
-                  onClick={() => setPerfil(id)}
-                  className={cn('h-9 rounded-lg border px-2 text-sm font-medium transition disabled:opacity-60',
-                    perfil === id ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink-2 hover:border-accent/60')}>
-                  {PERFIS[id].nome}
-                </button>
-              ))}
-            </div>
-          </Field>
+          {jaEscolheu ? (
+            <Field label="Frente" hint={PERFIS[perfil].descricao}>
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2">
+                <span className="text-sm font-semibold text-ink">{PERFIS[perfil].marca}</span>
+                <span className="text-xs text-ink-3">Para trocar, fale com o suporte: a troca muda o painel inteiro e a gente acompanha com você.</span>
+                {onFalarComSuporte && <button type="button" onClick={onFalarComSuporte} className="text-xs font-semibold text-accent hover:underline">Falar com o suporte</button>}
+              </div>
+            </Field>
+          ) : (
+            <Field label="Frente"
+              hint={mudaPerfil ? PERFIS[perfil].descricao + ' Escolha uma vez: depois, a troca é pelo suporte.' : 'Só o dono ou um administrador escolhe.'}>
+              <div role="radiogroup" aria-label="Frente" className="grid grid-cols-3 gap-1.5">
+                {PERFIL_IDS.map((id) => (
+                  <button key={id} type="button" role="radio" aria-checked={perfil === id} disabled={!mudaPerfil}
+                    onClick={() => setPerfil(id)}
+                    className={cn('h-9 rounded-lg border px-2 text-sm font-medium transition disabled:opacity-60',
+                      perfil === id ? 'border-accent bg-accent-soft text-ink' : 'border-line text-ink-2 hover:border-accent/60')}>
+                    {PERFIS[id].nome}
+                  </button>
+                ))}
+              </div>
+            </Field>
+          )}
         </div>
         <div className="flex items-center gap-3 border-t border-line px-4 py-3">
           <Button variant="primary" icon={Check} disabled={salvandoPerfil || !perfilMudou} onClick={salvarPerfil}>

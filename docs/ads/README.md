@@ -34,7 +34,7 @@ um cliente pagante pediu* — por isso o roteiro começa sem código.
 | Quem são os locais | **Clientes da assinatura** (não locais recrutados só para a rede) | Dono, 02/11 |
 | Região inicial | **Centro** | Dono, 02/11 |
 | Peça do anunciante | **A IA do produto produz** (o Criar), incluída no pacote | Dono, 02/11 |
-| Frentes que recebem anúncio | **Comércio e Saúde** (público de clientes e de sala de espera). Empresas não: a TV fala com quem trabalha lá | Proposta, alinhada às três frentes |
+| Frentes que recebem anúncio | **Comércio e Saúde** (público de clientes e de sala de espera). Empresas não: a TV fala com quem trabalha lá ([`FRENTES.md`](../FRENTES.md), `recebeAnuncios`) | Proposta, alinhada às três frentes |
 
 ## Pergunta em aberto
 

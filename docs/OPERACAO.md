@@ -1,7 +1,7 @@
 # Operação — o que fazer no Railway
 
 Os itens de operação do QA de 26/10 que dependem de clicar no Railway, e não
-de código. O que era código já está no repositório (`/saude`,
+de código. O que era código já está no repositório (`/healthz`,
 `healthcheckPath`, aviso de "versão no ar", compressão).
 
 ## 1. Região: da Holanda para os EUA (leste)
@@ -21,13 +21,13 @@ América do Sul).
 4. No serviço do MultiTelas: *Settings › Region* → `us-east4`, e troque a
    variável `DATABASE_URL` para a referência do Postgres novo
    (`${{Postgres-novo.DATABASE_URL}}`).
-5. O deploy só troca de versão quando `/saude` responder (o banco novo
-   precisa estar de pé). Confira: `curl https://app.multitelas.net.br/saude`
+5. O deploy só troca de versão quando `/healthz` responder (o banco novo
+   precisa estar de pé). Confira: `curl https://app.multitelas.net.br/healthz`
    → `{"ok":true,"banco":"ok"}`.
 6. Deixe o Postgres antigo parado uma semana antes de apagar.
 
 **Como medir:** a resposta da API a partir do Brasil deve cair abaixo de
-200 ms (`curl -w '%{time_total}\n' -o /dev/null -s https://app.multitelas.net.br/saude`).
+200 ms (`curl -w '%{time_total}\n' -o /dev/null -s https://app.multitelas.net.br/healthz`).
 
 ## 2. Homologação (staging) com uma TV de teste ligada 24 h
 
@@ -52,7 +52,7 @@ mexendo na reconexão de todas as TVs.
 
 O código já faz duas coisas:
 
-- **`/saude` + `healthcheckPath`** (`railway.json`): um deploy que sobe mas
+- **`/healthz` + `healthcheckPath`** (`railway.json`): um deploy que sobe mas
   não fala com o banco não substitui o que está no ar, e o Railway marca a
   falha.
 - **"🟢 MultiTelas no ar: versão abc1234"** no mesmo webhook dos erros

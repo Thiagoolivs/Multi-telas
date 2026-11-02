@@ -9,6 +9,7 @@ passadas) e o que foi para o **arquivo**.
 | Documento | Para quê |
 |---|---|
 | [`ESTADO-DO-PROJETO.md`](ESTADO-DO-PROJETO.md) | **O retrato atual**: o que existe, o que mudou em cada rodada, o que falta |
+| [`FRENTES.md`](FRENTES.md) | **As três frentes** (Empresas, Saúde, Comércio): o que muda, o que é igual, quem troca |
 | [`MARCA.md`](MARCA.md) | Cores, letra e forma da marca (uma página) |
 | [`OPERACAO.md`](OPERACAO.md) | O que fazer no Railway: região, homologação, alerta de deploy |
 | [`LANCAMENTO.md`](LANCAMENTO.md) | O que precisa estar configurado antes de vender |

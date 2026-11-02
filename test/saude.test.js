@@ -1,5 +1,5 @@
 /*
- * /saude e o aviso de "versão no ar" (server/saude.js). QA de 26/10: um
+ * /healthz e o aviso de "versão no ar" (server/saude.js). QA de 26/10: um
  * deploy falhou em silêncio e só foi visto porque alguém olhou.
  */
 'use strict';
@@ -45,14 +45,14 @@ test('"versão no ar" só sai em produção e com o webhook; o texto diz versão
   assert.equal(await S.avisarNoAr({ ALERTA_WEBHOOK_URL: 'https://hook.exemplo/x', RAILWAY_ENVIRONMENT: 'production' }), false, 'falha do aviso não sobe');
 });
 
-test('o Railway espera /saude antes de trocar a versão', () => {
+test('o Railway espera /healthz antes de trocar a versão', () => {
   const r = JSON.parse(fs.readFileSync(path.join(RAIZ, 'railway.json'), 'utf8'));
-  assert.equal(r.deploy.healthcheckPath, '/saude');
+  assert.equal(r.deploy.healthcheckPath, '/healthz');
   assert.ok(r.deploy.healthcheckTimeout >= 60);
   assert.match(fs.readFileSync(path.join(RAIZ, 'server.js'), 'utf8'), /saude\.avisarNoAr\(\);/);
 });
 
-test('o servidor de verdade responde /saude sem login', async () => {
+test('o servidor de verdade responde /healthz sem login', async () => {
   const PORTA = 7700 + Math.floor(Math.random() * 90);
   const srv = spawn(process.execPath, ['server.js'], { cwd: RAIZ, stdio: 'ignore',
     env: { ...process.env, PORT: String(PORTA), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '' } });
@@ -64,7 +64,7 @@ test('o servidor de verdade responde /saude sem login', async () => {
   });
   try {
     let r = null;
-    for (let i = 0; i < 60 && !r; i++) { try { r = await pedir('/saude'); } catch (e) { await new Promise((x) => setTimeout(x, 250)); } }
+    for (let i = 0; i < 60 && !r; i++) { try { r = await pedir('/healthz'); } catch (e) { await new Promise((x) => setTimeout(x, 250)); } }
     assert.equal(r.status, 200);
     assert.deepEqual(JSON.parse(r.corpo), { ok: true, banco: 'ok' });
     assert.equal(r.headers['cache-control'], 'no-store');

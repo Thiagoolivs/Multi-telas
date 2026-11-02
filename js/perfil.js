@@ -1,5 +1,15 @@
 /*
- * js/perfil.js — o perfil da conta: Empresa, Comércio ou Saúde.
+ * js/perfil.js — as TRÊS FRENTES do produto: MultiTelas Empresas, Saúde e
+ * Comércio (docs/FRENTES.md). É o registro central: tudo o que muda de uma
+ * frente para outra mora aqui, como dado; o resto do código lê daqui em vez
+ * de perguntar "se for clínica…". O nome do arquivo e o campo `perfil` da
+ * conta ficam por compatibilidade (o banco e dezenas de lugares já leem).
+ *
+ * Desde 02/11 (decisão do dono) a frente é escolhida no cadastro e só muda
+ * pelo operador da plataforma: são três produtos para o cliente, e trocar
+ * sozinho no meio do caminho mexe no menu, nas sugestões e na IA de uma vez.
+ *
+ * Histórico — o perfil da conta: Empresa, Comércio ou Saúde.
  *
  * O dono: um produto só, com as nuances de cada nicho (EXECUTOR D4). No
  * teste de uso de 23/10 uma metalúrgica abriu o painel e viu "Promoção com
@@ -21,6 +31,11 @@
   var PERFIS = {
     empresa: {
       id: 'empresa', nome: 'Empresa', descricao: 'Comunicação interna: avisos, RH, indicadores.',
+      marca: 'MultiTelas Empresas', slug: 'empresas', publico: 'quem trabalha aqui',
+      // A TV fala com a equipe: anúncio de terceiros não cabe (docs/ads/README.md).
+      recebeAnuncios: false,
+      // Pessoas, mural e indicadores são o dia a dia de RH e gestão: sobem no menu.
+      extras: { rotulo: 'Pessoas e indicadores', depoisDe: 'midias' },
       lugar: 'empresa', lugarDe: 'da empresa',
       opcoes: ['aviso', 'comunicado', 'aniversario', 'boasvindas', 'indicador', 'seguranca', 'evento', 'vaga', 'agradecimento', 'valores', 'horario', 'cardapio'],
       exemplo: 'Ex.: avisar que o refeitório fecha mais cedo na sexta, na TV do refeitório',
@@ -28,6 +43,9 @@
     },
     comercio: {
       id: 'comercio', nome: 'Comércio', descricao: 'Loja, restaurante, serviço: ofertas e novidades.',
+      marca: 'MultiTelas Comércio', slug: 'comercio', publico: 'clientes',
+      recebeAnuncios: true,
+      extras: { rotulo: 'Recursos extras', depoisDe: 'marca' },
       lugar: 'loja', lugarDe: 'da loja',
       opcoes: ['promocao', 'novidade', 'cardapio', 'foto', 'horario', 'aviso', 'evento', 'instagram', 'depoimento', 'pagamento', 'wifi', 'aniversario'],
       exemplo: 'Ex.: quero divulgar o pão de queijo em dobro à tarde, na TV e no Instagram',
@@ -35,6 +53,9 @@
     },
     saude: {
       id: 'saude', nome: 'Saúde', descricao: 'Clínica, consultório, farmácia: orientação e serviços.',
+      marca: 'MultiTelas Saúde', slug: 'saude', publico: 'pacientes na sala de espera',
+      recebeAnuncios: true,
+      extras: { rotulo: 'Recursos extras', depoisDe: 'marca' },
       lugar: 'clínica', lugarDe: 'da clínica',
       opcoes: ['aviso', 'dica', 'servicos', 'prevencao', 'horario', 'convenios', 'evento', 'depoimento', 'instagram', 'wifi', 'aniversario'],
       exemplo: 'Ex.: lembrar que a vacina da gripe chegou, na TV da recepção',
@@ -51,6 +72,11 @@
   function normalizar(id) { return tem(id) ? id : 'comercio'; }
   function deduzir(ramo) { return typeof ramo === 'string' && proprio.call(DO_RAMO, ramo) ? DO_RAMO[ramo] : 'comercio'; }
   function de(id) { return PERFIS[normalizar(id)]; }
+  // A frente pelo endereço da landing (/empresas, /saude, /comercio), ou null.
+  function doSlug(slug) {
+    for (var k in PERFIS) if (proprio.call(PERFIS, k) && PERFIS[k].slug === slug) return PERFIS[k];
+    return null;
+  }
 
-  return { PERFIS: PERFIS, IDS: Object.keys(PERFIS), tem: tem, normalizar: normalizar, deduzir: deduzir, de: de };
+  return { PERFIS: PERFIS, IDS: Object.keys(PERFIS), tem: tem, normalizar: normalizar, deduzir: deduzir, de: de, doSlug: doSlug };
 });

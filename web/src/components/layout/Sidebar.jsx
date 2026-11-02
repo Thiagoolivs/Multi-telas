@@ -3,7 +3,8 @@ import { cn } from '../../lib/cn.js';
 import {
   LayoutDashboard, PlusSquare, MonitorPlay, LifeBuoy, Brush, Activity, Gauge, Images, Repeat, UserRound, Clapperboard,
 } from 'lucide-react';
-import { GRUPOS, grupoDa } from '../../lib/menu.js';
+import { gruposDa, grupoDa } from '../../lib/menu.js';
+import { usePerfil } from '../../lib/perfil.js';
 import SimboloMarca from './SimboloMarca.jsx';
 
 /*
@@ -24,8 +25,9 @@ const ICONES = {
 };
 export const ICONE_DO_GRUPO = ICONES;
 
-const NAV = [
-  { section: 'Painel', items: GRUPOS.map((g) => ({ id: g.id, label: g.label, icon: ICONES[g.id], destino: g.paginas[0] })) },
+// O menu da frente da conta (docs/FRENTES.md): mesma lista de grupos, ordem e nome do grupo de extras de cada uma.
+const navDa = (frente) => [
+  { section: 'Painel', items: gruposDa(frente).map((g) => ({ id: g.id, label: g.label, icon: ICONES[g.id], destino: g.paginas[0] })) },
   /*
    * A seção da PLATAFORMA só existe para quem opera o MultiTelas inteiro — e
    * são coisas diferentes: "Estado do sistema" responde "a minha conta está
@@ -69,7 +71,8 @@ export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
   // O grupo da página aberta fica aceso: Aniversariantes acende Automáticos.
   const grupo = grupoDa(active);
   const aceso = (item) => (grupo ? grupo.id === item.id : active === item.id);
-  const secoes = NAV
+  const frente = usePerfil();
+  const secoes = navDa(frente.id)
     .filter((s) => !s.operador || operador)
     .map((s) => ({ ...s, items: s.items.filter((i) => !i.dono || ehDono) }))
     .filter((s) => s.items.length);
@@ -80,7 +83,8 @@ export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
       <div className="flex h-14 items-center gap-2.5 border-b border-line px-4">
         <SimboloMarca className="h-7 w-7" />
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-ink">MultiTelas</div>
+          {/* A frente: MultiTelas Empresas, Saúde ou Comércio (docs/FRENTES.md). */}
+          <div className="truncate text-sm font-semibold text-ink">{frente.marca}</div>
           {/* O nome da empresa do cliente — "Rede corporativa" fixo não dizia
               nada a uma padaria, e quem cuida de duas contas precisa saber em
               qual está. */}

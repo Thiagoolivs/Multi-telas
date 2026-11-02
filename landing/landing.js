@@ -40,6 +40,9 @@
   todos('.aba').forEach(function (b) {
     b.addEventListener('click', function () { mostrarExemplo(b.getAttribute('data-ramo')); });
   });
+  // Na landing de uma frente (/saude, /empresas…), o exemplo dela abre primeiro (server/landing-frentes.js).
+  var exemploDaFrente = document.body && document.body.getAttribute('data-exemplo');
+  if (exemploDaFrente && exemploDaFrente !== 'otica') mostrarExemplo(exemploDaFrente);
 
   /* ---------- A TV do herói troca de peça ----------
    * As outras peças só são baixadas quando o navegador fica livre depois do

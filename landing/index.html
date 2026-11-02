@@ -89,6 +89,9 @@
   .tv .troca.no-ar { opacity: 1; }
   /* Aviso de cookies aberto: o WhatsApp sobe para não brigar pelo canto (landing/analytics.js). */
   .com-aviso-cookies #whats-flutuante { bottom: 132px; }
+  /* A frente da página: server/landing-frentes.js marca o cartão e o body. */
+  .frente-card[aria-current="page"] { border-color: #5B2EFF; box-shadow: 0 0 0 1px #5B2EFF; }
+  body[data-frente="empresas"] .loja .pao, body[data-frente="saude"] .loja .pao { display: none; }
   @media (min-width: 640px) { .com-aviso-cookies #whats-flutuante { bottom: 96px; } }
   .balao { position: absolute; top: 5%; right: 4%; background: #C6F432; color: #0E0B1F; font: 700 .8rem/1 'Outfit', sans-serif;
     padding: .55rem .85rem; border-radius: 14px 14px 14px 3px; box-shadow: 0 8px 18px rgba(31,41,55,.18); }
@@ -152,12 +155,13 @@
 <header id="topo" class="relative overflow-hidden">
   <div class="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-10 lg:grid-cols-[1.05fr_1fr] lg:px-6 lg:pb-24 lg:pt-16">
     <div>
-      <p class="mb-4 text-xs font-bold uppercase tracking-widest text-mt-violeta">TV corporativa e mídia indoor</p>
-      <h1 class="text-[clamp(2.1rem,5.4vw,3.6rem)] font-bold leading-[1.08] tracking-tight">A TV da sua loja vendendo <span class="grifo">todo dia</span>, sem você mexer.</h1>
-      <p class="mt-5 max-w-xl text-lg leading-relaxed text-mt-cinza">
+      <!-- Os trechos marcados com "frente:" mudam em /empresas, /saude e /comercio (server/landing-frentes.js). -->
+      <p class="mb-4 text-xs font-bold uppercase tracking-widest text-mt-violeta"><!--frente:kicker-->TV corporativa e mídia indoor<!--/frente--></p>
+      <h1 class="text-[clamp(2.1rem,5.4vw,3.6rem)] font-bold leading-[1.08] tracking-tight"><!--frente:titulo-->A TV da sua loja vendendo <span class="grifo">todo dia</span>, sem você mexer.<!--/frente--></h1>
+      <p class="mt-5 max-w-xl text-lg leading-relaxed text-mt-cinza"><!--frente:texto-->
         Você fala o que quer mostrar, tipo “pão de queijo em dobro à tarde”. A IA monta a peça com a sua marca
         e a TV muda na hora. Na TV ou no box que você já tem.
-      </p>
+      <!--/frente--></p>
       <div class="mt-8 flex flex-col gap-3 sm:flex-row">
         <a href="/app" data-track="trial" class="titulo rounded-xl bg-mt-violeta px-7 py-3.5 text-center text-base font-semibold text-white shadow-quente transition hover:bg-mt-violeta-escuro">Testar 14 dias grátis</a>
         <a id="heroi-precos" href="#precos" class="titulo rounded-xl border border-mt-linha bg-white px-7 py-3.5 text-center text-base font-semibold text-mt-tinta transition hover:border-mt-violeta">Ver preços</a>
@@ -167,14 +171,14 @@
         </a>
       </div>
       <p class="mt-4 text-sm text-mt-cinza">Sem cartão · <span data-criacoes-teste>20</span> criações com IA no teste · a TV segue no ar depois</p>
-      <div class="mt-6 flex flex-wrap gap-2 text-sm">
+      <div class="mt-6 flex flex-wrap gap-2 text-sm"><!--frente:chips-->
         <span class="rounded-full border border-mt-linha bg-white px-3 py-1">Padaria</span>
         <span class="rounded-full border border-mt-linha bg-white px-3 py-1">Ótica</span>
         <span class="rounded-full border border-mt-linha bg-white px-3 py-1">Academia</span>
         <span class="rounded-full border border-mt-linha bg-white px-3 py-1">Clínica</span>
         <span class="rounded-full border border-mt-linha bg-white px-3 py-1">Salão</span>
         <span class="rounded-full border border-mt-linha bg-white px-3 py-1">Lanchonete</span>
-      </div>
+      <!--/frente--></div>
     </div>
     <!--
       FALTA FOTO REAL (avisado na issue #135): o PLANO pede foto de TV instalada
@@ -200,6 +204,28 @@
     </div>
   </div>
 </header>
+
+<!-- ============ Para quem é: as três frentes (docs/FRENTES.md) ============ -->
+<section id="para-quem" class="mx-auto max-w-6xl px-4 pb-16 lg:px-6" aria-labelledby="para-quem-titulo">
+  <h2 id="para-quem-titulo" class="text-[clamp(1.5rem,3.2vw,2.1rem)] font-bold tracking-tight">Um MultiTelas para cada lugar</h2>
+  <div class="mt-6 grid gap-4 md:grid-cols-3">
+    <a href="/empresas" data-frente-card="empresas" class="frente-card block rounded-2xl border border-mt-linha bg-white p-6 transition hover:border-mt-violeta">
+      <p class="titulo text-lg font-bold">MultiTelas Empresas</p>
+      <p class="mt-2 text-sm leading-relaxed text-mt-cinza">Comunicação interna: avisos, RH, aniversariantes, metas e segurança nas TVs da equipe.</p>
+      <span class="mt-4 inline-block text-sm font-semibold text-mt-violeta">Conhecer →</span>
+    </a>
+    <a href="/saude" data-frente-card="saude" class="frente-card block rounded-2xl border border-mt-linha bg-white p-6 transition hover:border-mt-violeta">
+      <p class="titulo text-lg font-bold">MultiTelas Saúde</p>
+      <p class="mt-2 text-sm leading-relaxed text-mt-cinza">Sala de espera de clínica e consultório: orientação, serviços, prevenção e convênios.</p>
+      <span class="mt-4 inline-block text-sm font-semibold text-mt-violeta">Conhecer →</span>
+    </a>
+    <a href="/comercio" data-frente-card="comercio" class="frente-card block rounded-2xl border border-mt-linha bg-white p-6 transition hover:border-mt-violeta">
+      <p class="titulo text-lg font-bold">MultiTelas Comércio</p>
+      <p class="mt-2 text-sm leading-relaxed text-mt-cinza">Loja, restaurante e serviço: ofertas, cardápio, novidades e redes sociais na vitrine.</p>
+      <span class="mt-4 inline-block text-sm font-semibold text-mt-violeta">Conhecer →</span>
+    </a>
+  </div>
+</section>
 
 <!-- ============ Várias TVs, um painel ============ -->
 <section id="telas" class="palco-escuro">

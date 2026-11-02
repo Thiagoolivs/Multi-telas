@@ -1,7 +1,8 @@
 import React from 'react';
 import { Menu } from 'lucide-react';
 import { cn } from '../../lib/cn.js';
-import { GRUPOS, PAGINAS, BARRA_INFERIOR, grupoDa } from '../../lib/menu.js';
+import { gruposDa, PAGINAS, BARRA_INFERIOR, grupoDa } from '../../lib/menu.js';
+import { usePerfil } from '../../lib/perfil.js';
 import { ICONE_DO_GRUPO } from './Sidebar.jsx';
 import { useTrabalhos } from '../../lib/trabalhos.js';
 
@@ -12,7 +13,10 @@ import { useTrabalhos } from '../../lib/trabalhos.js';
  * só (Marca, Relatórios) não tem aba; a programação de uma tela também não.
  */
 export function AbasDoGrupo({ active, onNavigate }) {
-  const grupo = grupoDa(active);
+  const frente = usePerfil();
+  // O nome do grupo é o da frente ("Pessoas e indicadores" no Empresas, "Recursos extras" nos outros).
+  const base = grupoDa(active);
+  const grupo = base && gruposDa(frente.id).find((g) => g.id === base.id);
   // Quantas gerações estão rodando: o número fica na aba "Criando" (D11).
   const rodando = (useTrabalhos() || []).filter((j) => j.estado === 'rodando').length;
   if (!grupo || grupo.paginas.length < 2 || !grupo.paginas.includes(active)) return null;
@@ -40,8 +44,9 @@ export function AbasDoGrupo({ active, onNavigate }) {
  * outro, com uma mão. "Mais" abre o menu inteiro (os outros quatro grupos).
  */
 export function BarraInferior({ active, onNavigate, onMais }) {
+  const frente = usePerfil();
   const grupo = grupoDa(active);
-  const itens = BARRA_INFERIOR.map((id) => GRUPOS.find((g) => g.id === id));
+  const itens = BARRA_INFERIOR.map((id) => gruposDa(frente.id).find((g) => g.id === id));
   const outro = !grupo || !BARRA_INFERIOR.includes(grupo.id);
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"

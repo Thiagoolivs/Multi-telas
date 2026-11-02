@@ -275,7 +275,7 @@ export default function App() {
       case 'alerts': return <AlertsPage onGoScreens={() => go('screens')} onGoStorage={() => go('storage')} onGoBilling={() => go('billing')} onAbrirTela={(d) => go('content', { device: d })} />;
       case 'support': return <SupportPage me={session} />;
       case 'settings': return (
-        <SettingsPage me={session} theme={theme} onToggleTheme={toggleTheme} onLogout={logout} onChanged={refresh} />
+        <SettingsPage me={session} theme={theme} onToggleTheme={toggleTheme} onLogout={logout} onChanged={refresh} onFalarComSuporte={() => go('support')} />
       );
       default: return <PlaceholderPage title={meta.title} subtitle={meta.subtitle} />;
     }

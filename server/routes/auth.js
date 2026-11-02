@@ -354,6 +354,17 @@ module.exports = function(ctx) {
             if (b && b.perfil !== undefined) {
               if (sess.role !== 'owner' && sess.role !== 'admin') return sendJson(res, 403, { error: 'só o dono ou um admin muda o tipo de negócio' });
               if (!perfilValido(b.perfil)) return sendJson(res, 400, { error: 'tipo de negócio inválido' });
+              /*
+               * A FRENTE (Empresas, Saúde, Comércio) muda só pelo operador
+               * (decisão do dono, 02/11; docs/FRENTES.md): menu, sugestões e
+               * IA mudam de uma vez, e o cliente que trocasse sozinho se
+               * perderia. A conta antiga que nunca escolheu (perfil deduzido
+               * do nome) escolhe uma vez; mandar a mesma de novo não é troca.
+               */
+              const t = await db.getTenant(sess.tenant_id);
+              if (t && perfilValido(t.perfil) && t.perfil !== b.perfil) {
+                return sendJson(res, 403, { error: 'Para trocar a frente da conta, fale com o suporte: a troca muda o painel inteiro e a gente acompanha com você.', code: 'frente_pelo_suporte' });
+              }
             }
             if (b && typeof b.name === 'string') await db.setUserName(sess.user_id, b.name.trim());
             // Só o dono muda o nome da empresa (aparece nas telas e nos e-mails).

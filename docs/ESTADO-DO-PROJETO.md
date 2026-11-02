@@ -38,11 +38,17 @@ mudou, item a item:
 - **Início e menu.** Início com as TVs ao vivo e "Trocar agora"; menu de 9
   para 8 grupos; Biblioteca (era Mídias) de 7 para 5 abas; relatório de
   exibição em Telas; Pessoas, Mural e Indicadores em "Recursos extras".
-- **Operação.** `/saude` + `healthcheckPath` no Railway, aviso de "versão no
+- **Operação.** `/healthz` + `healthcheckPath` no Railway, aviso de "versão no
   ar" no webhook; [`OPERACAO.md`](OPERACAO.md) com região, homologação e
   alerta de deploy.
 - **Ads.** Planejamento do Multi Telas Ads em [`ads/`](ads/README.md) — só
-  documento, nada implementado.
+  documento, nada implementado. Decidido: locais da assinatura, Centro, peça
+  pela IA.
+- **Três frentes** ([`FRENTES.md`](FRENTES.md)): MultiTelas Empresas, Saúde e
+  Comércio num app só, com o registro em `js/perfil.js` — nome na barra,
+  menu da frente, landing própria (`/empresas`, `/saude`, `/comercio`),
+  cadastro já na frente. A frente só muda pelo operador (Plataforma › ficha
+  da conta). A verificação do Railway passou de `/saude` para `/healthz`.
 
 **Do QA, ficou para depois (e por quê):**
 
