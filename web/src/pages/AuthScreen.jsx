@@ -202,7 +202,7 @@ export function AuthScreen({ onAuthed }) {
           {/* Google: só aparece se o servidor tiver as credenciais. */}
           {caps.google && (mode === 'login' || mode === 'signup') && (
             <>
-              <a href="/api/auth/google"
+              <a href={'/api/auth/google' + (mode === 'signup' && perfilEscolhido ? '?frente=' + perfilEscolhido : '')}
                 className="mt-4 flex w-full items-center justify-center gap-2.5 rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-2">
                 <GoogleMark /> Continuar com Google
               </a>

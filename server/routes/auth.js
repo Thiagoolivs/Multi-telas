@@ -269,11 +269,15 @@ module.exports = function(ctx) {
             state,
             prompt: 'select_account',
           });
+          const seguro = isSecureRequest(req) ? '; Secure' : '';
+          // A frente escolhida no cadastro (docs/FRENTES.md) atravessa o Google num cookie curto, como o state.
+          const frente = perfilValido(new URL(req.url, baseUrl(req)).searchParams.get('frente'));
           res.writeHead(302, {
             Location: url,
             'Cache-Control': 'no-store',
             // state em cookie curto: confere na volta (proteção CSRF).
-            'Set-Cookie': 'mt_oauth=' + state + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + (isSecureRequest(req) ? '; Secure' : ''),
+            'Set-Cookie': ['mt_oauth=' + state + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + seguro]
+              .concat(frente ? ['mt_frente=' + frente + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + seguro] : []),
           });
           return res.end();
         }
@@ -323,6 +327,9 @@ module.exports = function(ctx) {
                 // mostra os dois links. Registrado com origem própria para ficar
                 // claro que não veio de caixinha marcada.
                 await db.registrarAceite(tenantId, userId, email, legal.VERSAO, 'google', clientIp(req));
+                // A frente que a pessoa escolheu antes de ir ao Google (cookie mt_frente).
+                const frente = perfilValido(((req.headers.cookie || '').match(/mt_frente=([^;]+)/) || [])[1]);
+                if (frente) await db.setTenantPerfil(tenantId, frente);
                 await paleta.garantir(db, tenantId);
                 u = { id: userId, tenant_id: tenantId };
                 contaNova = true;
@@ -334,7 +341,7 @@ module.exports = function(ctx) {
             await cortesia.sincronizar(db, u.tenant_id, email);
             await auth.startSession(res, u.id, u.tenant_id, req);
             // Limpa o cookie de state e entra no painel.
-            res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), 'mt_oauth=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'].flat().filter(Boolean));
+            res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), 'mt_oauth=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0', 'mt_frente=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'].flat().filter(Boolean));
             // ?cadastro=google: o painel conta a conversão uma vez e tira o
             // parâmetro da barra (web/src/lib/analytics.js).
             res.writeHead(302, { Location: contaNova ? '/app/?cadastro=google' : '/app/', 'Cache-Control': 'no-store' });

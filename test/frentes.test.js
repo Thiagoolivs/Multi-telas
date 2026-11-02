@@ -102,7 +102,7 @@ test('servidor: landings indexáveis e no sitemap; só o operador troca a frente
   const op = 'op' + Date.now() + '@teste.local';
   const servidor = spawn(process.execPath, ['server.js'], {
     cwd: RAIZ, stdio: 'ignore',
-    env: { ...process.env, PORT: String(PORTA), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '', DATA_DIR: dados, MEDIA_DIR: dados, AI_PROVIDER: 'dev', ADMIN_EMAILS: op },
+    env: { ...process.env, PORT: String(PORTA), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '', DATA_DIR: dados, MEDIA_DIR: dados, AI_PROVIDER: 'dev', ADMIN_EMAILS: op, GOOGLE_CLIENT_ID: 'teste', GOOGLE_CLIENT_SECRET: 'teste' },
   });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* idem */ } });
   let ok = false;
@@ -118,6 +118,16 @@ test('servidor: landings indexáveis e no sitemap; só o operador troca a frente
   }
   assert.match((await pedir('/sitemap.xml')).corpo, /<loc>https:\/\/app\.multitelas\.net\.br\/saude<\/loc>/);
   assert.equal((await pedir('/healthz')).status, 200, 'a verificação do Railway mudou para /healthz');
+
+  // Cadastro pelo Google: a frente escolhida atravessa o Google num cookie curto (só se for frente de verdade).
+  const g = await pedir('/api/auth/google?frente=saude');
+  assert.equal(g.status, 302);
+  assert.ok(g.cookies.some((c) => /^mt_frente=saude;.*HttpOnly/.test(c)), 'a frente não foi junto para o Google');
+  for (const ruim of ['constructor', 'x%3Bdomain%3Devil']) {
+    const r = await pedir('/api/auth/google?frente=' + ruim);
+    assert.ok(!r.cookies.some((c) => /^mt_frente=/.test(c)), ruim + ' virou cookie');
+  }
+  assert.match(ler('server/routes/auth.js'), /const frente = perfilValido\(\(\(req\.headers\.cookie \|\| ''\)\.match\(\/mt_frente=\(\[\^;\]\+\)\/\) \|\| \[\]\)\[1\]\);/);
 
   const cadastrar = (email, name, perfil) => pedir('/api/auth/signup', { method: 'POST', json: { email, password: 'senha-de-teste-123', name, aceite: true, perfil } });
   const cop = cookieDe(await cadastrar(op, 'Operação', 'comercio'));
