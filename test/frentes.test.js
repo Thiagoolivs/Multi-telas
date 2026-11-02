@@ -72,6 +72,9 @@ test('a landing de cada frente: título, canônico, herói, exemplo, cartão ace
     assert.match(s, new RegExp('<a href="/app/\\?frente=' + slug + '" data-track="trial"'));
     assert.match(s, /<!--frente:kicker-->[^<]*/);
   }
+  // Nenhuma frente repete o título da página principal (conteúdo duplicado para o Google).
+  const h1 = (s) => /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(s)[1];
+  for (const slug of L.SLUGS) assert.notEqual(h1(L.montar(html, slug)), h1(html), slug + ' repete o herói da principal');
   const saude = L.montar(html, 'saude');
   assert.match(saude, /vendor\/galeria\/clinica\.webp" width="1200"/);
   assert.doesNotMatch(saude, /class="troca"/, 'a padaria e a lanchonete trocando na TV da clínica');
@@ -125,7 +128,8 @@ test('servidor: landings indexáveis e no sitemap; só o operador troca a frente
   assert.ok(g.cookies.some((c) => /^mt_frente=saude;.*HttpOnly/.test(c)), 'a frente não foi junto para o Google');
   for (const ruim of ['constructor', 'x%3Bdomain%3Devil']) {
     const r = await pedir('/api/auth/google?frente=' + ruim);
-    assert.ok(!r.cookies.some((c) => /^mt_frente=/.test(c)), ruim + ' virou cookie');
+    assert.ok(!r.cookies.some((c) => /^mt_frente=[a-z]/.test(c)), ruim + ' virou cookie');
+    assert.ok(r.cookies.some((c) => /^mt_frente=;.*Max-Age=0/.test(c)), 'a frente de uma tentativa anterior ficou');
   }
   assert.match(ler('server/routes/auth.js'), /const frente = perfilValido\(\(\(req\.headers\.cookie \|\| ''\)\.match\(\/mt_frente=\(\[\^;\]\+\)\/\) \|\| \[\]\)\[1\]\);/);
 

@@ -276,8 +276,9 @@ module.exports = function(ctx) {
             Location: url,
             'Cache-Control': 'no-store',
             // state em cookie curto: confere na volta (proteção CSRF).
-            'Set-Cookie': ['mt_oauth=' + state + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + seguro]
-              .concat(frente ? ['mt_frente=' + frente + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + seguro] : []),
+            // Sem frente, apaga a de uma tentativa anterior abandonada (senão a conta nova nasceria nela).
+            'Set-Cookie': ['mt_oauth=' + state + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + seguro,
+              frente ? 'mt_frente=' + frente + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + seguro : 'mt_frente=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'],
           });
           return res.end();
         }

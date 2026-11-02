@@ -30,7 +30,7 @@ const TEXTOS = {
     descricao: 'TV corporativa para comunicação interna: avisos, RH, aniversariantes, metas e segurança nas TVs da equipe. A IA cria as peças com a marca da empresa. Teste 14 dias grátis.',
     kicker: 'MultiTelas Empresas · comunicação interna',
     h1: 'A comunicação interna <span class="grifo">na parede</span>, sem depender do e-mail.',
-    texto: '\n        Você fala o que quer mostrar, tipo “o refeitório fecha mais cedo na sexta”. A IA monta a peça com a marca\n        da empresa e as TVs do refeitório, da fábrica e da recepção mudam na hora. Aniversariantes e indicadores entram sozinhos.\n      ',
+    texto: '\n        Você fala o que quer mostrar, tipo “o refeitório fecha mais cedo na sexta”. A IA monta a peça com a marca\n        da empresa e as TVs do refeitório, da fábrica e da recepção mudam na hora. Os aniversariantes entram sozinhos, e os\n        indicadores vêm do seu sistema.\n      ',
     chips: ramos(['Indústria', 'Escritório', 'Logística', 'Centro de distribuição', 'Call center', 'Construção']),
     exemplo: 'empresa',
     heroi: { src: 'vendor/galeria/empresa.webp', alt: 'TV corporativa de uma empresa mostrando um comunicado interno à equipe' },
@@ -49,9 +49,9 @@ const TEXTOS = {
     titulo: 'TV para loja e restaurante com IA | MultiTelas Comércio',
     descricao: 'TV para loja, restaurante e serviço: ofertas, cardápio, novidades e redes sociais na vitrine. A IA cria a peça com a sua marca e a TV muda na hora. Teste 14 dias grátis.',
     kicker: 'MultiTelas Comércio · loja, restaurante e serviço',
-    // O herói de comércio é o da página principal (a loja de verdade no topo).
-    h1: null,
-    texto: null,
+    // A loja de verdade no topo, como a página principal, com texto próprio (não duplicar a principal para o Google).
+    h1: 'A vitrine que <span class="grifo">vende sozinha</span>: oferta, cardápio e novidade na TV.',
+    texto: '\n        Você fala o que quer mostrar, tipo “pão de queijo em dobro à tarde” ou “o prato do dia é feijoada”. A IA\n        monta a peça com a sua marca, posta nas redes se você quiser, e a TV da loja muda na hora.\n      ',
     chips: ramos(['Padaria', 'Restaurante', 'Ótica', 'Academia', 'Salão', 'Lanchonete']),
     exemplo: 'padaria',
     heroi: null, // a TV da padaria e as trocas da página principal
