@@ -69,12 +69,11 @@ estabelecimento se importar (ver os números em
 (Asaas, que já está integrado), **adiantado por mês** (mídia vende
 pré-pago). Contrato de 1, 3 ou 6 meses, com desconto nos mais longos.
 
-**Peças publicitárias.** Três caminhos, nesta ordem de preferência:
-1. o anunciante manda a peça (imagem ou vídeo de 10–15 s, 16:9) e a
-   plataforma confere formato e regras;
-2. a plataforma produz com a IA do produto (incluso no pacote básico, 1 peça
-   por mês);
-3. produção sob medida, cobrada à parte (receita extra).
+**Peças publicitárias (decidido: a IA produz).** A peça sai do Criar do
+próprio produto, feita pela equipe a partir do briefing do anunciante,
+incluída no pacote (1 peça por mês). Se o anunciante já tiver a dele
+(imagem ou vídeo de 10–15 s, 16:9), a plataforma só confere formato e
+regras. Produção sob medida, fora da IA, fica como receita extra opcional.
 
 **Aprovação.** Duas camadas: (1) a plataforma confere a peça contra regras
 gerais (lei, categorias proibidas, legibilidade); (2) **o estabelecimento

@@ -7,9 +7,12 @@ tem critério para seguir — e para parar.
 
 **O que é:** vender anúncio à mão para os primeiros locais.
 
-- Escolher **uma região** (bairro ou cidade pequena).
-- Oferecer a 15–20 locais que já são (ou vão ser) clientes do SaaS: "cede 1
-  minuto a cada 5 e recebe parte do que vendermos".
+- Região: **Centro** (decidido).
+- Locais: **clientes da assinatura** das frentes Comércio e Saúde no Centro
+  (decidido). Oferta: "cede 1 minuto a cada 5 e recebe parte do que
+  vendermos".
+- Peça: **feita pela IA do produto** (decidido), no Criar, a partir do
+  briefing do anunciante.
 - Montar 1 pacote ("Centro: N TVs, 1 cota, 30 dias") e oferecer a 10
   anunciantes locais.
 - Operar com o que já existe: o operador entra na conta do local (acesso de
@@ -80,9 +83,9 @@ Etapa 0 (sem código)
 
 ## O que fazer na segunda-feira
 
-1. Responder as perguntas em aberto do [README](README.md) (região, quem
-   produz a peça, preço).
-2. Conversar com 5 anunciantes do bairro escolhido com uma proposta de uma
+1. Vender a assinatura no Centro até ter 8–10 locais de Comércio e Saúde —
+   eles são a oferta da rede.
+2. Conversar com 5 anunciantes do Centro com uma proposta de uma
    página (pacote, frequência, preço, relatório de exemplo — o CSV do
    relatório de exibição já serve).
 3. Só então abrir a etapa 1.

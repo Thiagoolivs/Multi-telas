@@ -28,19 +28,17 @@ um cliente pagante pediu* — por isso o roteiro começa sem código.
 | Base de clientes hoje | Nenhum pagante ainda; alguns encaminhados | Dono, 01/11 |
 | Estabelecimento recebe | **Repasse em dinheiro** (não desconto na mensalidade) | Dono, 01/11 |
 | Quem vende anúncio | O dono, por enquanto; marketing contratado depois | Dono, 01/11 |
-| Modelo para começar | **Intermediado** (a equipe vende e opera) — recomendado | A confirmar |
-| Unidade de venda | **Cota de intervalo comercial** por tela e período — recomendado | A confirmar |
-| Divisão da receita | Ponto de partida 60% plataforma / 40% estabelecimento — recomendado | A confirmar |
+| Modelo para começar | **Intermediado** (a equipe vende e opera) | Dono, 02/11 |
+| Unidade de venda | **Cota de intervalo comercial** por tela e período | Dono, 02/11 |
+| Divisão da receita | Ponto de partida 60% plataforma / 40% estabelecimento | Dono, 02/11 |
+| Quem são os locais | **Clientes da assinatura** (não locais recrutados só para a rede) | Dono, 02/11 |
+| Região inicial | **Centro** | Dono, 02/11 |
+| Peça do anunciante | **A IA do produto produz** (o Criar), incluída no pacote | Dono, 02/11 |
+| Frentes que recebem anúncio | **Comércio e Saúde** (público de clientes e de sala de espera). Empresas não: a TV fala com quem trabalha lá | Proposta, alinhada às três frentes |
 
-## Perguntas em aberto (as que mudam o plano)
+## Pergunta em aberto
 
-1. Os primeiros estabelecimentos serão clientes do SaaS (que já pagam a
-   assinatura) ou locais recrutados só para a rede, com TV e software por
-   nossa conta?
-2. Qual cidade/bairro concentra a rede? Anunciante local compra *bairro*,
-   não tela solta.
-3. Quem produz a peça do anunciante que não tem uma: a IA do produto, a
-   equipe, ou o anunciante paga à parte?
-4. Os cenários de preço (R$ 40–90 por cota/tela/mês) batem com o que os
-   anunciantes que você conhece pagariam? Uma conversa com 5 deles vale mais
-   que qualquer planilha.
+Os cenários de preço (R$ 40–90 por cota/tela/mês) batem com o que os
+anunciantes do Centro pagariam? Uma conversa com 5 deles vale mais que
+qualquer planilha — é o primeiro passo da etapa 0
+([08-mvp-e-roteiro.md](08-mvp-e-roteiro.md)).
