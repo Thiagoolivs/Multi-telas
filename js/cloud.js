@@ -248,6 +248,12 @@
         // O texto diz qual selo (teste acabado ou fatura em atraso); sem ele, o de sempre.
         document.dispatchEvent(new CustomEvent('mt:selo', { detail: r.selo ? (r.seloTexto || 'MultiTelas · versão gratuita') : false }));
       }
+      // TV pausada (conta no grátis com mais TVs que o grátis, ou atraso de
+      // 20 dias): também de carona no pulso. Servidor antigo não manda o
+      // campo, e a TV segue como estava.
+      if (r && typeof r.pausada === 'boolean') {
+        document.dispatchEvent(new CustomEvent('mt:pausada', { detail: r.pausada ? (r.pausadaTexto || 'Esta TV está pausada: reative o plano em app.multitelas.net.br') : '' }));
+      }
       return (r && r.configEm) || 0;
     } catch (e) { return 0; /* offline: tenta de novo no próximo ciclo */ }
   }

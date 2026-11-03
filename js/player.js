@@ -659,6 +659,8 @@
   let foraEl = null;
   let expTimer = null;
   let musicaPausadaPeloHorario = false;
+  // O texto da TV pausada (mt:pausada, logo abaixo), ou '' se ela está no ar.
+  let pausaTexto = '';
   function aplicarExpediente(cfg) {
     expediente = (cfg && cfg.settings && cfg.settings.expediente) || null;
     conferirExpediente();
@@ -666,7 +668,8 @@
   }
   function conferirExpediente() {
     const E = global.MTExpediente;
-    const estado = E ? E.estadoDaTela(Date.now(), expediente) : 'normal';
+    // A pausa vem antes do horário: TV pausada fica pausada também no expediente.
+    const estado = pausaTexto ? 'pausada' : E ? E.estadoDaTela(Date.now(), expediente) : 'normal';
     const fora = estado !== 'normal';
     document.documentElement.classList.toggle('mt-fora-do-horario', fora);
     if (!fora) {
@@ -687,7 +690,7 @@
     if (!foraEl) {
       foraEl = document.createElement('div');
       foraEl.className = 'mt-fora';
-      foraEl.innerHTML = '<div class="mt-fora-relogio"><div class="mt-fora-hora"></div><div class="mt-fora-dia"></div></div>';
+      foraEl.innerHTML = '<div class="mt-fora-relogio"><div class="mt-fora-hora"></div><div class="mt-fora-dia"></div></div><div class="mt-fora-pausa"></div>';
       document.body.appendChild(foraEl);
       // Sem som e sem vídeo enquanto a loja está fechada.
       try {
@@ -704,6 +707,9 @@
       try { v.pause(); v.setAttribute('data-pausado-pelo-horario', '1'); } catch (e) { /* segue */ }
     });
     foraEl.classList.toggle('mt-fora-com-relogio', estado === 'relogio');
+    foraEl.classList.toggle('mt-fora-pausada', estado === 'pausada');
+    const pausaEl = foraEl.querySelector('.mt-fora-pausa');
+    if (pausaEl && pausaEl.textContent !== pausaTexto) pausaEl.textContent = pausaTexto;
     if (estado === 'relogio') {
       // A hora da LOJA (o fuso do expediente): box de fábrica costuma vir em UTC.
       const agora = new Date();
@@ -716,6 +722,23 @@
       foraEl.style.setProperty('--mt-fora-y', (passo < 3 ? -1 : 1) * 6 + 'vh');
     }
   }
+
+  /*
+   * TV PAUSADA (QA de lançamento, 03/11 — decisão do dono). Conta que caiu
+   * para o grátis (cancelou, estornou, teste acabou) ou com fatura há mais de
+   * 20 dias: só uma TV segue no ar, com o selo; as outras mostram este aviso
+   * por cima da programação, que continua montada e volta sozinha quando o
+   * plano é reativado. O estado chega no pulso (MTCloud.heartbeat), e a
+   * camada é a mesma do expediente: sem vídeo e sem música por baixo.
+   */
+  document.addEventListener('mt:pausada', function (ev) {
+    const novo = typeof ev.detail === 'string' ? ev.detail : '';
+    if (novo === pausaTexto) return;
+    pausaTexto = novo;
+    document.documentElement.classList.toggle('mt-tv-pausada', !!pausaTexto);
+    conferirExpediente();
+    if (!expTimer) expTimer = setInterval(conferirExpediente, 20000);
+  });
 
   /*
    * "VER A TELA AGORA" (EXECUTOR, item 9): o que esta TV está mostrando, zona
