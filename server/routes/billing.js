@@ -8,9 +8,23 @@
  */
 'use strict';
 
-module.exports = function (ctx) {
+/*
+ * Um mês depois, sem transbordar: 31/01 vira 28/02 (ou 29), e não 03/03.
+ * O setUTCMonth puro somava os dias que faltam ao mês seguinte, e o
+ * cancelamento mantinha o plano uns dias a mais (revisão de 03/11).
+ */
+function maisUmMes(d) {
+  const dia = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  const ultimo = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(dia, ultimo));
+  return d;
+}
+
+const rota = function (ctx) {
   const {
-    db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode, baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest, cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual, sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela, esquecerSelo, pausaDaConta,
+    db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode, baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest, cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual, sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela, pausaDaConta,
   } = ctx;
 
   /*
@@ -128,7 +142,7 @@ module.exports = function (ctx) {
          * então ele é o vencimento mais um mês (a assinatura é mensal). O
          * evento de assinatura já traz o próximo vencimento.
          */
-        if (payment) d.setUTCMonth(d.getUTCMonth() + 1);
+        if (payment) maisUmMes(d);
         renewsAt = d.getTime();
       }
     }
@@ -141,9 +155,8 @@ module.exports = function (ctx) {
     const outrasVencidas = pago && tenant.plan_status === 'past_due' ? await billing.faturasVencidas(subId) : 0;
     const patch = cobranca.efeitoDoEvento(eventName, { tenant, customerId, subId, planId, renewsAt, outrasVencidas });
     if (!patch) return;
+    // A TV vê o plano novo no pulso seguinte: setTenantBilling já derruba o cache do selo e da pausa (server.js).
     await db.setTenantBilling(tenant.id, patch);
-    // A TV vê o plano novo no pulso seguinte, e não daqui a cinco minutos (selo e pausa).
-    if (esquecerSelo) esquecerSelo(tenant.id);
     if (patch.status === plans.CANCELANDO || patch.status === 'canceled') {
       await db.registrarEvento(tenant.id, '', patch.status === 'canceled' ? 'plano.rebaixado' : 'plano.cancelando').catch(() => {});
     }
@@ -237,7 +250,7 @@ module.exports = function (ctx) {
       let tenant = await db.getTenant(sess.tenant_id);
       if (tenant) {
         const lido = await cobranca.rebaixarSeVenceu(db, tenant);
-        if (lido !== tenant) { tenant = lido; if (esquecerSelo) esquecerSelo(sess.tenant_id); }
+        if (lido !== tenant) tenant = lido;
       }
       // O preço é o da frente da conta (QA de lançamento, 03/11).
       const frente = await cobranca.frenteDaConta(db, tenant);
@@ -400,11 +413,20 @@ module.exports = function (ctx) {
              */
             const user = await db.getUserById(sess.user_id);
             const telasDaConta = await db.countDevices(sess.tenant_id);
+            /*
+             * A frente que decide o preço fica GRAVADA ao assinar. Conta sem
+             * frente escolhida (antiga) tinha a frente deduzida do ramo da
+             * marca a cada cobrança: mudar o ramo mudava o preço, e a
+             * Plataforma (que lê a frente gravada) mostrava outro valor
+             * (revisão de 03/11). Depois daqui, só o operador troca.
+             */
+            const frente = await cobranca.frenteDaConta(db, tenant);
+            if (tenant.perfil !== frente) { await db.setTenantPerfil(tenant.id, frente); tenant.perfil = frente; }
             const out = await billing.createCheckout(tenant, user, target.id, reqOrigin(req), {
               // A mensalidade é da CONTA: o valor sai de plans.mensalidadeCents,
               // que aplica as faixas de desconto sobre o número de telas.
               telas: Math.max(1, telasDaConta),
-              frente: await cobranca.frenteDaConta(db, tenant),
+              frente,
               // Cancelou e voltou antes do fim do período pago: não paga o mesmo mês duas vezes.
               pagoAte: tenant.plan_status === plans.CANCELANDO ? tenant.plan_renews_at : null,
               /*
@@ -412,7 +434,8 @@ module.exports = function (ctx) {
                * equipe, com o termo assinado (EXECUTOR item 11; o termo ainda
                * não está nos Termos de Uso). Daqui não se escolhe anual.
                */
-              contrato: tenant.plan_contrato,
+              // Quem cancelou e volta começa no mensal (o anual é compromisso).
+              contrato: tenant.plan_status === plans.CANCELANDO ? null : tenant.plan_contrato,
               /*
                * Gravado assim que o cliente existe, e não no retorno. Se o resto
                * do fluxo falhar, a próxima tentativa reencontra este cliente em
@@ -424,7 +447,18 @@ module.exports = function (ctx) {
             if (out.customerId && out.customerId !== tenant.stripe_customer_id) await db.setTenantBilling(tenant.id, { customerId: out.customerId });
             // A assinatura nasceu (ou foi atualizada) cobrando estas telas; é o
             // ponto de partida da conciliação.
-            if (out.id) await db.setTenantBilling(tenant.id, { subscriptionId: out.id, telasCobradas: telasDaConta });
+            if (out.id) {
+              const patch = { subscriptionId: out.id, telasCobradas: telasDaConta };
+              /*
+               * Cancelou e assinou de novo antes do fim do período: a conta
+               * volta a ser ativa. Sem isso ela seguia "cancelando", o painel
+               * dizia "nada mais será cobrado" com a assinatura nova aberta, e
+               * a varredura a rebaixava no fim do período, apagando o id da
+               * assinatura que o cliente estava pagando (revisão de 03/11).
+               */
+              if (tenant.plan_status === plans.CANCELANDO) Object.assign(patch, { status: 'active', contrato: null, contratoDesde: null });
+              await db.setTenantBilling(tenant.id, patch);
+            }
             return sendJson(res, 200, out);
           } catch (e) {
             // A assinatura pode ter sido criada mesmo com erro na fatura. Guardar
@@ -485,7 +519,6 @@ module.exports = function (ctx) {
              */
             const patch = cobranca.efeitoDoCancelamento(tenant, null);
             await db.setTenantBilling(sess.tenant_id, patch);
-            if (esquecerSelo) esquecerSelo(sess.tenant_id);
             return sendJson(res, 200, { ...out, ate: patch.status === plans.CANCELANDO ? patch.renewsAt : null, multa: multa && multa.cents > 0 ? multa : null });
           } catch (e) { return falhaDeCobranca(res, e, 'cancelar'); }
         });
@@ -518,7 +551,6 @@ module.exports = function (ctx) {
               plan: target.id, status: 'active',
               renewsAt: Math.max(pagoAte, Date.now()) + 30 * 864e5,
             });
-            if (esquecerSelo) esquecerSelo(sess.tenant_id);
             // O mesmo que o pagamento de verdade faz (ver handleAsaasEvent).
             if (!plans.isPaid(tenant && tenant.plan)) await usoIA.renovarCiclo(db, sess.tenant_id);
             return sendJson(res, 200, { ok: true, plan: target.id });
@@ -535,3 +567,6 @@ module.exports = function (ctx) {
     return true;
   };
 };
+
+rota.maisUmMes = maisUmMes;
+module.exports = rota;

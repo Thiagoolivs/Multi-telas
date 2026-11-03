@@ -499,6 +499,20 @@ escolhe quais. Apagar tela de cliente por causa de downgrade não tem desfazer.
 
 ---
 
+## 14 · Antes de mudar um preço (revisão de 03/11)
+
+- **Quem já assina é repreçado.** A assinatura no Asaas é recalculada pela
+  tabela de `server/plans.js` toda vez que o número de TVs muda
+  (`cobranca.sincronizarTelas`). Hoje não há clientes pagantes, então isso não
+  afeta ninguém. Antes de mudar um preço com clientes na base, é preciso
+  guardar o preço por TV de cada conta na assinatura e usá-lo na conciliação
+  (manter o preço antigo de quem já assina).
+- **A frente que decide o preço fica gravada ao assinar** (`checkout`). Depois
+  disso, só o operador troca (Plataforma › conta › Frente; `POST /api/plataforma/contas/:id/frente`).
+- **`plan_renews_at` é o fim do período pago** (o vencimento da fatura paga
+  mais um mês). Uma conta paga antes desta versão guarda o vencimento, e não o
+  fim: se houver alguma, acerte a data à mão antes de ela cancelar.
+
 ## Resumo
 
 De cada R$ 100 faturados entram R$ 86, e o piso de infraestrutura é R$ 400 por

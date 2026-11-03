@@ -1326,6 +1326,8 @@ async function setDeviceConfig(id, configJson, name, versaoEsperada) {
   return agora;
 }
 async function renameDevice(id, name) { await pool.query('UPDATE devices SET name = $1 WHERE id = $2', [name, id]); }
+// Reconectar: a TV nova herda a idade da antiga (a mais antiga é a que fica no ar no grátis).
+async function herdarIdadeDaTela(novaId, antigaId) { await pool.query('UPDATE devices SET created_at = (SELECT created_at FROM devices WHERE id = $1) WHERE id = $2', [antigaId, novaId]); }
 async function setGrupoDaTela(id, grupo) { await pool.query('UPDATE devices SET grupo = $1 WHERE id = $2', [grupo || null, id]); }
 async function renomearGrupo(tenantId, de, para) {
   const r = await pool.query('UPDATE devices SET grupo = $1 WHERE tenant_id = $2 AND grupo = $3', [para || null, tenantId, de]);
@@ -2039,7 +2041,7 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, ondeAparece, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
-  renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
+  renameDevice, setExpediente, setGrupoDaTela, herdarIdadeDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
   frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta, registrarAcessoSuporte, acessosSuporte,

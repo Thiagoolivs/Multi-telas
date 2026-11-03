@@ -7,7 +7,8 @@
  *   - cancelar mantém o plano até o fim do período; depois, só a TV mais
  *     antiga fica no ar e as outras recebem "pausada" no pulso; reativando,
  *     voltam;
- *   - cancelar o anual exige aceitar a multa, que fica registrada.
+ *   - cancelar o anual exige aceitar a multa, que fica registrada; o contrato
+ *     segue até o fim do período pago e sai quando a conta cai para o grátis.
  *
  * O "passar o tempo" é feito no banco (o arquivo SQLite do DATA_DIR), como
  * o QA fez à mão.
@@ -141,13 +142,27 @@ test('cancelar: plano até o fim do período; depois, só a TV mais antiga no ar
   assert.match(p2.pausadaTexto, /Esta TV está pausada: reative o plano em app\.multitelas\.net\.br/);
   assert.ok(sql().prepare("SELECT 1 FROM devices WHERE id = ?").get(segunda.id), 'a TV pausada não some');
 
+  /*
+   * Reconectar a TV que está no ar (ela voltou mostrando um código): a nova
+   * herda a idade e o lugar no ar, na hora; a outra segue pausada.
+   */
+  const tvNova = (await pedir('/api/devices', { method: 'POST' })).json;
+  const dtNova = { 'x-device-token': tvNova.deviceToken };
+  await pedir('/api/devices/' + tvNova.id + '/heartbeat', { method: 'POST', headers: dtNova });
+  const rec = await pedir('/api/devices/' + primeira.id + '/reconectar', { method: 'POST', cookie, body: { code: tvNova.code } });
+  assert.equal(rec.status, 200, JSON.stringify(rec.json));
+  const pNova = (await pedir('/api/devices/' + tvNova.id + '/heartbeat', { method: 'POST', headers: dtNova })).json;
+  assert.equal(pNova.pausada, false, 'a reconectada fica no ar, sem esperar o cache');
+  assert.equal((await segunda.pulso()).pausada, true, 'e a outra TV não toma o lugar dela');
+  assert.deepStrictEqual((await pedir('/api/billing', { cookie })).json.pausa.noAr, ['Recepção']);
+
   // Reativou: as duas voltam no pulso seguinte.
   assert.equal((await pedir('/api/billing/dev-activate', { method: 'POST', cookie, body: { plan: 'pro' } })).status, 200);
   assert.equal((await segunda.pulso()).pausada, false);
-  assert.equal((await primeira.pulso()).selo, false);
+  assert.equal((await pedir('/api/devices/' + tvNova.id + '/heartbeat', { method: 'POST', headers: dtNova })).json.selo, false);
 });
 
-test('cancelar o anual exige aceitar a multa, que fica registrada, e o contrato sai', async (t) => {
+test('cancelar o anual exige aceitar a multa, que fica registrada, e o contrato sai no fim do período', async (t) => {
   const { pedir, sql } = await subir(t);
   const cookie = await contaPaga(pedir, 'comercio');
   await parear(pedir, cookie, 'Caixa');
@@ -170,10 +185,17 @@ test('cancelar o anual exige aceitar a multa, que fica registrada, e o contrato 
   const ok = await pedir('/api/billing/assinatura', { method: 'DELETE', cookie, body: { aceitoMultaCents: esperada } });
   assert.equal(ok.status, 200);
   assert.ok(sql().prepare('SELECT 1 FROM eventos WHERE acao = ?').get('plano.multa.' + esperada), 'a multa devida ficou num evento da conta');
-  const conta = sql().prepare("SELECT plan_contrato, contrato_desde, plan_status FROM tenants WHERE plan = 'pro'").get();
-  assert.equal(conta.plan_contrato, null, 'quem assina de novo não herda o anual');
-  assert.equal(conta.contrato_desde, null);
+  const conta = sql().prepare("SELECT id, plan_contrato, contrato_desde, plan_status FROM tenants WHERE plan = 'pro'").get();
   assert.equal(conta.plan_status, 'cancelando');
+  // O resto do período foi pago no preço do anual: o contrato fica até o fim dele.
+  assert.equal(conta.plan_contrato, 'anual', 'até o fim do período, o contrato segue o que foi pago');
+
+  // Passou o fim do período: cai para o grátis, e o contrato sai junto.
+  sql().prepare('UPDATE tenants SET plan_renews_at = ? WHERE id = ?').run(Date.now() - 1000, conta.id);
+  assert.equal((await pedir('/api/billing', { cookie })).json.plan.id, 'free');
+  const depois = sql().prepare('SELECT plan_contrato, contrato_desde FROM tenants WHERE id = ?').get(conta.id);
+  assert.equal(depois.plan_contrato, null, 'quem assina de novo não herda o anual');
+  assert.equal(depois.contrato_desde, null);
 });
 
 test('excluir a conta cancela a assinatura no Asaas ANTES de apagar, e o diálogo avisa', () => {
@@ -198,4 +220,18 @@ test('a TV pausada: camada própria por cima, sem selo, e o estado chega pelo pu
   const css = ler('css/player.css');
   assert.match(css, /\.mt-fora-pausada \.mt-fora-pausa \{/);
   assert.match(css, /\.mt-tv-pausada \.mt-selo \{ display: none; \}/);
+});
+
+test('fim do período pago: um mês depois sem transbordar; assinar de novo reativa a conta que cancelou', () => {
+  const { maisUmMes } = require('../server/routes/billing.js');
+  const iso = (d) => maisUmMes(new Date(d + 'T03:00:00Z')).toISOString().slice(0, 10);
+  assert.equal(iso('2026-01-31'), '2026-02-28', '31/01 + 1 mês não pode virar 03/03');
+  assert.equal(iso('2028-01-31'), '2028-02-29');
+  assert.equal(iso('2026-03-15'), '2026-04-15');
+  assert.equal(iso('2026-12-31'), '2027-01-31');
+  // Cancelou e assinou de novo antes do fim: a conta volta a ativa, no mensal, com a frente gravada.
+  const s = fs.readFileSync(path.join(RAIZ, 'server', 'routes', 'billing.js'), 'utf8');
+  assert.match(s, /if \(tenant\.plan_status === plans\.CANCELANDO\) Object\.assign\(patch, \{ status: 'active', contrato: null, contratoDesde: null \}\);/);
+  assert.match(s, /contrato: tenant\.plan_status === plans\.CANCELANDO \? null : tenant\.plan_contrato,/);
+  assert.match(s, /if \(tenant\.perfil !== frente\) \{ await db\.setTenantPerfil\(tenant\.id, frente\);/);
 });

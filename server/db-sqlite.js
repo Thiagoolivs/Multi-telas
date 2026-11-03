@@ -781,6 +781,8 @@ async function setDeviceConfig(id, configJson, name, versaoEsperada) {
 }
 async function renameDevice(id, name) { q.renameDevice.run(name, id); }
 async function setExpediente(id, json) { q.setExpediente.run(json, id); }
+// Reconectar: a TV nova herda a idade da antiga (a mais antiga é a que fica no ar no grátis).
+async function herdarIdadeDaTela(novaId, antigaId) { db.prepare('UPDATE devices SET created_at = (SELECT created_at FROM devices WHERE id = ?) WHERE id = ?').run(antigaId, novaId); }
 async function setGrupoDaTela(id, grupo) { db.prepare('UPDATE devices SET grupo = ? WHERE id = ?').run(grupo || null, id); }
 async function renomearGrupo(tenantId, de, para) {
   return Number(db.prepare('UPDATE devices SET grupo = ? WHERE tenant_id = ? AND grupo = ?').run(para || null, tenantId, de).changes) || 0;
@@ -2067,7 +2069,7 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, ondeAparece, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
-  renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
+  renameDevice, setExpediente, setGrupoDaTela, herdarIdadeDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
   frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta, registrarAcessoSuporte, acessosSuporte,

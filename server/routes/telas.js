@@ -10,7 +10,7 @@
 
 module.exports = function (ctx) {
   const {
-    db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode, baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest, cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual, sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela, pausaDaTela,
+    db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode, baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest, cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual, sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela, pausaDaTela, esquecerSelo,
   } = ctx;
 
   const NAO_TRATEI = Symbol('nao-tratei');
@@ -310,6 +310,7 @@ module.exports = function (ctx) {
          */
         const nome = String(b.name || '').trim().slice(0, 60) || d.name || (await proximoNomeDeTv(sess.tenant_id));
         await db.claimDevice(d.id, sess.tenant_id, nome);
+        esquecerSelo(sess.tenant_id); // quem fica no ar se conta pelas TVs da conta
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.parear');
         // Tela nova na conta = mensalidade nova. Sem esperar o Asaas: o
         // pareamento já aconteceu, e a conciliação refaz se falhar agora.
@@ -604,6 +605,7 @@ module.exports = function (ctx) {
         // Tirar uma TV muda a mensalidade e deixa a TV sem conta na parede (matriz de papéis, no topo).
         if (!canManageTeam(sess.role)) return sendJson(res, 403, { error: 'Só o dono ou um administrador da conta pode remover uma TV: ela sai da mensalidade.', code: 'papel' });
         await db.removeDevice(id);
+        esquecerSelo(sess.tenant_id);
         sincronizarCobranca(sess.tenant_id);
         return sendJson(res, 200, { ok: true });
       }
@@ -854,7 +856,15 @@ module.exports = function (ctx) {
     if (antiga.grupo) await db.setGrupoDaTela(nova.id, antiga.grupo);
     if (antiga.expediente) await db.setExpediente(nova.id, antiga.expediente);
     if (!nova.info && antiga.info) await db.touchDevice(nova.id, antiga.info);
+    /*
+     * A idade também (revisão de 03/11): no grátis só a TV mais antiga fica
+     * no ar. Sem herdar, a reconectada virava a mais nova e ficava pausada,
+     * e outra TV, de outra sala, assumia o lugar dela.
+     */
+    await db.herdarIdadeDaTela(nova.id, antiga.id);
     await db.removeDevice(antiga.id);
+    // A lista de quem fica no ar mudou de id: a TV sabe no pulso seguinte, e não em 5 min.
+    esquecerSelo(sess.tenant_id);
     if (jaEraDaConta) sincronizarCobranca(sess.tenant_id);
     await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.reconectar').catch(() => {});
     // A TV sai do código na hora: com programação, busca a config; sem, mostra "Tudo certo".

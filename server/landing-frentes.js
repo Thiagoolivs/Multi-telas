@@ -33,18 +33,20 @@ const SITE = 'https://app.multitelas.net.br';
 
 /*
  * O preço de cada frente, por TV, para quem abre a página SEM JavaScript (e
- * para o Google). Quem cobra é server/plans.js; com JavaScript, landing.js
- * troca estes números pelos de /api/planos?frente=<id>. Decisão do dono em
- * 03/11: Comércio R$ 79, Saúde R$ 139, Empresas R$ 159. O anual por faixa
- * guarda a proporção das faixas de antes (R$ 149 → 120 / 108 / 96).
+ * para o Google). Sai de server/plans.js, o mesmo que cobra: uma tabela só,
+ * para a página nunca anunciar um preço e o checkout cobrar outro (revisão
+ * de 03/11). Com JavaScript, landing.js confere em /api/planos?frente=<id>.
  */
-const PRECO_MENSAL_CENTS = { comercio: 7900, saude: 13900, empresas: 15900 };
-const PROPORCAO_ANUAL = [120 / 149, 108 / 149, 96 / 149];
-const FAIXAS = [{ de: 1, ate: 3 }, { de: 4, ate: 10 }, { de: 11, ate: 25 }];
+const plans = require('./plans.js');
+const frenteDoSlug = (slug) => { const f = Perfil.doSlug(slug); return f ? plans.frenteDe(f.id) : null; };
+const PRECO_MENSAL_CENTS = Object.freeze(Object.fromEntries(
+  Perfil.IDS.map((id) => [Perfil.de(id).slug, plans.precoMensalCents('pro', plans.frenteDe(id))])));
+// As faixas do anual com preço de tabela (26 TVs ou mais é a combinar).
+const faixasDe = (slug) => plans.faixasAnual(frenteDoSlug(slug)).filter((f) => !f.negociado && f.ate);
 function precosDe(slug) {
   const mensal = PRECO_MENSAL_CENTS[slug];
   if (!mensal) return null;
-  return { mensal, anual: PROPORCAO_ANUAL.map((r) => Math.round((mensal * r) / 100) * 100) };
+  return { mensal, anual: faixasDe(slug).map((f) => f.precoTelaCents) };
 }
 const reais = (cents) => 'R$ ' + (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: cents % 100 ? 2 : 0, maximumFractionDigits: 2 });
 
@@ -316,8 +318,8 @@ function jsonLd(slug, t, p) {
 function contaDe3(p) {
   return '\n      <p class="text-sm text-mt-cinza">Com 3 TVs: ' + reais(p.mensal * 3) + ' por mês no mensal, ou ' + reais(p.anual[0] * 3) + ' por mês no anual.</p>\n    ';
 }
-function faixasHtml(p) {
-  return FAIXAS.map((f, i) => '\n        <li>✓ ' + (f.de === 1 ? 'até ' + f.ate + ' TVs' : 'da ' + f.de + 'ª à ' + f.ate + 'ª') + ': ' + reais(p.anual[i]) + ' cada</li>').join('')
+function faixasHtml(p, slug) {
+  return faixasDe(slug).map((f, i) => '\n        <li>✓ ' + (f.de === 1 ? 'até ' + f.ate + ' TVs' : 'da ' + f.de + 'ª à ' + f.ate + 'ª') + ': ' + reais(p.anual[i]) + ' cada</li>').join('')
     + '\n        <li>✓ 26 TVs ou mais: a combinar</li>\n      ';
 }
 
@@ -376,7 +378,7 @@ function montar(html, slug, env) {
   // O preço desta frente (sem JavaScript; com ele, landing.js confirma pelo catálogo da frente).
   s = trocarMarcado(s, 'preco-mensal', reais(p.mensal));
   s = trocarMarcado(s, 'preco-anual', reais(p.anual[p.anual.length - 1]));
-  s = trocarMarcado(s, 'faixas', faixasHtml(p));
+  s = trocarMarcado(s, 'faixas', faixasHtml(p, slug));
   s = trocarMarcado(s, 'lugar', t.lugar);
   s = trocarMarcado(s, 'calc', contaDe3(p));
 

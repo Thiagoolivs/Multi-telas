@@ -43,19 +43,22 @@ async function frenteDaConta(db, tenant) {
  * O patch do CANCELAMENTO (QA de lançamento, 03/11 — decisão do dono): o
  * plano pago fica até o fim do período já pago, e só então a conta cai para
  * o grátis (plans.cancelamentoVenceu, varrerCancelamentos). O contrato anual
- * é apagado JÁ: quem assina de novo começa no mensal, e não herda o preço do
- * anual sem o compromisso (o furo R5 do relatório de regras).
+ * fica até lá (o período restante foi pago no preço do anual, e o painel o
+ * mostra assim); é apagado quando a conta cai para o grátis, e quem assina de
+ * novo começa no mensal, sem herdar o preço do anual sem o compromisso (o
+ * furo R5 do relatório de regras; ver o checkout).
  *
  * Sem período pago pela frente (fatura em atraso, conta que nunca pagou,
  * data desconhecida), rebaixa na hora, como antes.
  */
+const SEM_CONTRATO = { contrato: null, contratoDesde: null };
 function efeitoDoCancelamento(t, fimInformado, agora) {
   const quando = agora || Date.now();
-  const limpar = { subscriptionId: null, atrasoDesde: null, telasCobradas: null, contrato: null, contratoDesde: null };
+  const limpar = { subscriptionId: null, atrasoDesde: null, telasCobradas: null };
   const fim = Number(t && t.plan_renews_at) || Number(fimInformado) || 0;
   const emDia = t && plans.isPaid(t.plan || 'free') && t.plan_status !== 'past_due';
   if (emDia && fim > quando) return { ...limpar, status: plans.CANCELANDO, renewsAt: fim };
-  return { ...limpar, plan: 'free', status: 'canceled', renewsAt: null };
+  return { ...limpar, ...SEM_CONTRATO, plan: 'free', status: 'canceled', renewsAt: null };
 }
 
 /*
@@ -215,10 +218,10 @@ async function conciliar(db, billing, registrarErro) {
  */
 async function rebaixarSeVenceu(db, tenant, agora) {
   if (!plans.cancelamentoVenceu(tenant, agora)) return tenant;
-  const patch = { plan: 'free', status: 'canceled', renewsAt: null, subscriptionId: null };
+  const patch = { plan: 'free', status: 'canceled', renewsAt: null, subscriptionId: null, ...SEM_CONTRATO };
   await db.setTenantBilling(tenant.id, patch);
   if (db.registrarEvento) await db.registrarEvento(tenant.id, '', 'plano.rebaixado').catch(() => {});
-  return { ...tenant, plan: 'free', plan_status: 'canceled', plan_renews_at: null, stripe_subscription_id: null };
+  return { ...tenant, plan: 'free', plan_status: 'canceled', plan_renews_at: null, stripe_subscription_id: null, plan_contrato: null, contrato_desde: null };
 }
 
 /* Varre as contas pagas e rebaixa as que passaram do fim do período cancelado. */

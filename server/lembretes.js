@@ -66,12 +66,14 @@ function enderecoDaTv(appUrl) {
   return (host || 'app.multitelas.net.br') + '/tv';
 }
 
-function mensagem(tipo, conta, appUrl, agora) {
-  // A frente da conta (QA de lançamento, 03/11): `conta.frente` vem resolvida
-  // da varredura; sem ela, o perfil gravado. Conta antiga sem nenhum dos
-  // dois: o texto neutro, sem nome de frente, e o preço da frente padrão.
-  const idFrente = conta && Perfil.tem(conta.frente) ? conta.frente : (conta && Perfil.tem(conta.perfil) ? conta.perfil : null);
-  const preco = reais(plans.precoMensalCents('pro', idFrente || conta.frente));
+function mensagem(tipo, contaRecebida, appUrl, agora) {
+  const conta = contaRecebida || {};
+  // A frente da conta (QA de lançamento, 03/11): `conta.frente` é a ESCOLHIDA
+  // (a varredura passa só essa); sem ela, o perfil gravado. Conta sem frente
+  // escolhida: o texto neutro, sem nome de frente, e o preço que a cobrança
+  // usaria (`frentePreco`, deduzida do ramo; ou a padrão).
+  const idFrente = Perfil.tem(conta.frente) ? conta.frente : (Perfil.tem(conta.perfil) ? conta.perfil : null);
+  const preco = reais(plans.precoMensalCents('pro', idFrente || conta.frentePreco));
   const frente = idFrente ? Perfil.de(idFrente) : null;
   const produto = frente ? frente.marca : 'MultiTelas';
   const modelos = frente ? MODELOS_DA_FRENTE[frente.id] : 'um aviso, uma oferta';
@@ -181,8 +183,15 @@ async function varrer({ db, mail, appUrl, agora }) {
   for (const conta of contas) {
     const tipo = decidir(conta, t0);
     if (!tipo) continue;
-    const frente = await cobranca.frenteDaConta(db, conta);
-    const { subject, text, html } = mensagem(tipo, { ...conta, frente }, appUrl, t0);
+    /*
+     * A marca da frente só para quem escolheu uma (revisão de 03/11): sem
+     * escolha, frenteDaConta cai em Comércio, e um escritório recebia
+     * "MultiTelas Comércio" com exemplos de cardápio.
+     */
+    const inteira = await db.getTenant(conta.id).catch(() => null);
+    const escolhida = inteira && Perfil.tem(inteira.perfil) ? inteira.perfil : null;
+    const frentePreco = await cobranca.frenteDaConta(db, inteira || conta);
+    const { subject, text, html } = mensagem(tipo, { ...conta, frente: escolhida, frentePreco }, appUrl, t0);
     try {
       await mail.send({ to: conta.email, subject, html, text });
       await db.marcarLembreteTeste(conta.id, tipo);
