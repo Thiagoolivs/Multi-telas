@@ -144,7 +144,15 @@ export function PecasProntasPage({ onIr }) {
 
       {erroPecas ? (
         <ErrorState description={erroPecas} onRetry={() => setTentativa((n) => n + 1)} />
-      ) : pecas === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : visiveis.length === 0 && modelosVisiveis.length > 0 ? null : visiveis.length === 0 ? (
+      ) : pecas === null || (visiveis.length === 0 && (modelos === null || marca === null)) ? (
+        /*
+         * Carregando é carregando (QA de lançamento, 03/11): com as peças da
+         * conta já vazias e os modelos ainda a caminho, a página dizia
+         * "Nenhuma peça pronta ainda" + Criar — um vazio falso, na rede lenta,
+         * por cima de 43 modelos que chegavam logo depois.
+         */
+        <div role="status" className="flex flex-col items-center gap-2 py-16 text-sm text-ink-3"><Spinner size={20} />Carregando as peças…</div>
+      ) : visiveis.length === 0 && modelosVisiveis.length > 0 ? null : visiveis.length === 0 ? (
         <Panel>
           <EmptyState icon={Layers} title={pecas.length ? 'Nenhuma peça neste filtro' : 'Nenhuma peça pronta ainda'}
             description={pecas.length ? 'Troque o filtro ou a busca.' : 'As peças que o Criar faz aparecem aqui, prontas para qualquer TV.'}
@@ -179,7 +187,7 @@ export function PecasProntasPage({ onIr }) {
 
       {/* Os modelos prontos, com a marca da conta (D16). */}
       {modelos === null || marca === null ? (
-        pecas !== null && <div className="mt-6 flex justify-center py-6"><Spinner size={18} /></div>
+        pecas !== null && visiveis.length > 0 && <div className="mt-6 flex justify-center py-6"><Spinner size={18} /></div>
       ) : modelosVisiveis.length > 0 && (
         <section className="mt-6 space-y-3">
           <div>

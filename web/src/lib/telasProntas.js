@@ -17,7 +17,36 @@ const getLayout = (id) => (globalThis.MT_getLayout && globalThis.MT_getLayout(id
 const PERFIL_DA_MARCA = { otica: 'comercio', padaria: 'comercio', salao: 'comercio', lanchonete: 'comercio', clinica: 'saude', rotasul: 'empresa' };
 export const perfilDaTela = (t) => t.perfil || PERFIL_DA_MARCA[t.marca] || 'comercio';
 
-export const aprovadas = (manifesto) => ((manifesto && manifesto.telas) || []).filter((t) => t.estado === 'aprovada');
+export const aprovadas = (manifesto) => ((manifesto && manifesto.telas) || []).filter((t) => t.estado === 'aprovada').map(paraOCliente);
+
+/*
+ * O que da tela do manifesto chega ao cliente (QA de lançamento, 03/11).
+ *
+ * O manifesto é a ficha da bancada: o `sobre` é a nota de quem desenhou a
+ * tela ("Cada zona diz uma coisa (PLANO §4.7)…"), e o painel mostrava isso
+ * no cartão de Telas prontas, para o cliente. A nota continua no manifesto
+ * (é dela que a bancada precisa); aqui só passam os campos de que a tela
+ * precisa para montar, e a descrição vira texto de cliente:
+ *   - `paraCliente`, se o dono escreveu um;
+ *   - senão o `sobre`, se não tiver cara de nota interna (referência ao
+ *     plano, à bancada, "zona", ou comprido demais para um cartão — as
+ *     notas de desenho passam de 140 letras; as de cliente, não);
+ *   - senão uma frase feita do próprio layout ("Com cabeçalho, destaque…").
+ */
+const NOTA_INTERNA = /PLANO|§|docs\/|bancada|EXECUTOR|\bD\d+\b|\bzonas?\b|\blote\b/i;
+const NOME_NO_CARTAO = { cabecalho: 'cabeçalho', principal: 'destaque', lateral: 'lateral', rodape: 'faixa de avisos embaixo' };
+export function descricaoDaTela(t) {
+  if (t.paraCliente) return String(t.paraCliente);
+  if (t.sobre && String(t.sobre).length <= 140 && !NOTA_INTERNA.test(t.sobre)) return String(t.sobre);
+  const partes = ['cabecalho', 'principal', 'lateral', 'rodape'].filter((g) => t.zonas && t.zonas[g]).map((g) => NOME_NO_CARTAO[g]);
+  if (!partes.length) return '';
+  const lista = partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] : partes[0];
+  return 'Tela inteira, com ' + lista + '. Troque os textos e ponha na TV.';
+}
+export function paraOCliente(t) {
+  const { id, nome, marca, perfil, layout, zonas, mensagens, estado } = t;
+  return { id, nome, marca, perfil, layout, zonas, mensagens, estado, descricao: descricaoDaTela(t) };
+}
 
 export const emPe = (layoutId) => /^portrait/.test(layoutId || '');
 
