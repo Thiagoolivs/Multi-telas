@@ -1,7 +1,7 @@
 # O caminho até 10/10
 
-Hoje, pelo QA de 03/11, o produto está em **6/10** ([RESULTADO.md](RESULTADO.md)).
-As correções em andamento levam a cerca de **8/10**. Os últimos pontos não são
+No QA de 03/11 o produto estava em **6/10** ([RESULTADO.md](RESULTADO.md)); depois das
+correções e do reteste, está em **7,5/10** ([RETESTE.md](RETESTE.md)). Os últimos pontos não são
 de código: dependem de conteúdo, prova, operação e jurídico. Esta é a lista
 completa, área por área, do que falta para cada nota chegar perto de 10.
 
@@ -22,7 +22,7 @@ completa, área por área, do que falta para cada nota chegar perto de 10.
 
 | # | O quê | Por que pesa | Ganho |
 |---|---|---|---|
-| 1 | **Aprovar na bancada** (`/bancada.html`) as telas prontas de cada frente — há 19 por frente esperando | A primeira impressão de toda TV nova e a vitrine do painel | Conteúdo pronto 3 → 8; Visual +1 |
+| 1 | **Aprovar na bancada** (`/bancada.html`) as telas prontas de cada frente — há 19 por frente esperando — e dizer qual de cada frente serve de **estreia** da TV nova (sem data e boa para qualquer negócio da frente; vira `paraComecar: true` no manifesto) | A primeira impressão de toda TV nova e a vitrine do painel | Conteúdo pronto 3 → 8; Visual +1 |
 | 2 | **Dados da empresa** (razão social, CNPJ, endereço, e-mail do encarregado de dados) nas variáveis de ambiente | Sem isso não se pode cobrar de ninguém com segurança | Jurídico +1,5 |
 | 3 | **Advogado revisa** Termos e Privacidade; depois `LEGAL_REVISADO=true` | Tira o aviso de rascunho; protege a cobrança | Jurídico até 9 |
 | 4 | **E-mail de suporte** do domínio (ex.: suporte@multitelas.net.br) e WhatsApp comercial | Gmail pessoal tira confiança | Profissionalismo +0,5 |

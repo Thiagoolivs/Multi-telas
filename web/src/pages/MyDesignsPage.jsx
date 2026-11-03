@@ -27,6 +27,7 @@ import { aviso } from '../lib/avisos.js';
 import { publicarPecas } from '../lib/publicar.js';
 import { guardar as guardarNaBandeja, inscrever as inscreverBandeja, limpar as limparBandeja } from '../lib/bandeja.js';
 import { EscolherArquivo } from '../components/ui/EscolherArquivo.jsx';
+import { Conferencia } from '../components/criar/ResultadoCampanha.jsx';
 
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
@@ -346,6 +347,10 @@ export function MyDesignsPage({ onIr }) {
   const [tom, setTom] = useState('');
   const [oferta, setOferta] = useState('');
   const [gen, setGen] = useState(null);
+  // Só o que está NAS PEÇAS barra guardar e publicar; a legenda barrada some da tela (não dá para copiar).
+  const bloqueiosDoGen = (gen && gen.conferencia && gen.conferencia.bloqueios) || [];
+  const barrada = bloqueiosDoGen.some((x) => x.peca);
+  const redesBarradas = bloqueiosDoGen.some((x) => !x.peca);
   const [aiColl, setAiColl] = useState('');
   const [etapa, setEtapa] = useState(null); // progresso do trabalho em andamento
   const [conversando, setConversando] = useState(false); // chat de briefing aberto
@@ -1036,8 +1041,8 @@ export function MyDesignsPage({ onIr }) {
         footer={gen
           ? (<>
             <Button variant="ghost" onClick={() => setGen(null)}>Voltar</Button>
-            <Button variant="secondary" icon={Check} disabled={busy} onClick={() => salvarCampanha(false)}>{busy ? 'Salvando…' : 'Só salvar'}</Button>
-            <Button variant="primary" icon={Rocket} disabled={busy} onClick={() => salvarCampanha(true)}>Salvar e publicar</Button>
+            <Button variant="secondary" icon={Check} disabled={busy || barrada} onClick={() => salvarCampanha(false)}>{busy ? 'Salvando…' : 'Só salvar'}</Button>
+            <Button variant="primary" icon={Rocket} disabled={busy || barrada} onClick={() => salvarCampanha(true)}>Salvar e publicar</Button>
           </>)
           : guiando
             // O cardápio traz os próprios caminhos ("escolher" e "escrever").
@@ -1223,6 +1228,10 @@ export function MyDesignsPage({ onIr }) {
               </div>
             )}
 
+            {/* A régua de conteúdo (reteste de 03/11): o que a lei barra não é salvo nem vai para a TV. */}
+            <Conferencia conferencia={gen.conferencia} rodape={barrada
+              ? 'Peça de novo com outras palavras: assim estas peças não podem ser guardadas nem ir para a TV.'
+              : 'As legendas das redes ficaram de fora por isso; as peças podem ser guardadas.'} />
             <div>
               <div className="mb-1.5 flex items-center gap-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">
                 Peças
@@ -1261,7 +1270,7 @@ export function MyDesignsPage({ onIr }) {
               </div>
             </div>
 
-            {gen.social && (gen.social.instagram || gen.social.whatsapp) && (
+            {gen.social && !redesBarradas && (gen.social.instagram || gen.social.whatsapp) && (
               <div className="grid gap-2 sm:grid-cols-2">
                 {['instagram', 'whatsapp', 'linkedin'].filter((k) => gen.social[k]).map((k) => (
                   <div key={k} className="rounded-lg border border-line p-2.5">

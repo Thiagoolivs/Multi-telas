@@ -424,7 +424,7 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
            */
           const [dados, r, lista] = await Promise.all([carregarTelasProntas(), brand.get(), devices.list().catch(() => null)]);
           const daLista = ((lista && lista.devices) || []).find((x) => x.id === dev.id);
-          const tela = telaParaComecar(dados, marcaDaConta(r), perfilAtual().id, tvEmPe(daLista));
+          const tela = telaParaComecar(dados, marcaDaConta(r), perfilAtual(), tvEmPe(daLista));
           if (tela) {
             await gravarEmLote([{ id: dev.id, name: dev.name }], (cfg) => aplicarTelaPronta(cfg, tela), 'Tela pronta: ' + tela.nome);
             setComecou(tela.nome);

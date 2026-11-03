@@ -14,7 +14,7 @@ impressão** (toda TV nova estreia com uma oferta vencida de ótica), as
 furos de fluxo e de regra de negócio. A maior parte é código pequeno; uma
 parte é decisão sua.
 
-**Nota geral: 6 / 10.**
+**Nota geral: 6 / 10.** Depois das correções e do reteste: **7,5 / 10** ([RETESTE.md](RETESTE.md)).
 
 ## Notas por área
 

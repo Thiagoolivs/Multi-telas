@@ -47,7 +47,7 @@ function numerar(r) {
  * pedido; o dia da semana errado; o conselho do dentista) só pede para
  * conferir: "Confira: R$ 189,90 não estava no seu pedido".
  */
-function Conferencia({ conferencia }) {
+export function Conferencia({ conferencia, rodape }) {
   const b = (conferencia && conferencia.bloqueios) || [];
   const a = (conferencia && conferencia.avisos) || [];
   if (!b.length && !a.length) return null;
@@ -62,7 +62,7 @@ function Conferencia({ conferencia }) {
               <li key={i}><b className="text-ink">{onde(x)}:</b> “{x.trecho}” {x.motivo}.{x.sugestao ? <> Sugestão: “{x.sugestao}”.</> : null}</li>
             ))}
           </ul>
-          <p className="mt-1.5 text-2xs text-ink-3">Troque no lápis da peça ou peça ao Editar com a IA. Enquanto isso, a campanha fica guardada, fora da TV.</p>
+          <p className="mt-1.5 text-2xs text-ink-3">{rodape || 'Troque no lápis da peça ou peça ao Editar com a IA. Enquanto isso, a campanha fica guardada, fora da TV.'}</p>
         </div>
       )}
       {a.length > 0 && (

@@ -172,17 +172,23 @@ module.exports = function (ctx) {
   const temTempoReal = (id) => !!(subscribers[id] && subscribers[id].size);
   const ERROS_DE_CODIGO = 15;
   const JANELA_DE_CODIGO = 10 * 60 * 1000;
-  // Devolve a resposta 429 já enviada, ou null quando ainda pode tentar.
+  // Travado: envia o 429 e devolve true (quem chama para). Livre: null.
   function codigoTravado(req, res, sess) {
     const porIp = security.rateLimitConsultar('pair:' + clientIp(req), ERROS_DE_CODIGO);
     const porConta = security.rateLimitConsultar('pair:conta:' + sess.tenant_id, ERROS_DE_CODIGO);
     if (porIp.ok && porConta.ok) return null;
     const espera = Math.max(porIp.ok ? 0 : porIp.retryAfter, porConta.ok ? 0 : porConta.retryAfter);
-    return sendJson(res, 429, {
+    sendJson(res, 429, {
       error: 'Muitos códigos errados em pouco tempo. Espere ' + security.esperaEmPalavras(espera)
         + ' e tente de novo, conferindo o código que aparece na TV.',
       code: 'muitas-tentativas', esperarSegundos: espera,
     }, { 'Retry-After': String(espera) });
+    /*
+     * `true`, e não o retorno de sendJson (undefined): quem chama faz
+     * `if (travado) return travado`, e com undefined o pedido seguia depois
+     * do 429 — a TV entrava na conta mesmo travada (reteste de 03/11).
+     */
+    return true;
   }
   function errouCodigo(req, res, sess, status, error) {
     rateLimit('pair:' + clientIp(req), ERROS_DE_CODIGO, JANELA_DE_CODIGO);

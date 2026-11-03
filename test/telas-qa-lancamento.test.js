@@ -224,4 +224,14 @@ test('papéis, limite de pareamento, reconectar sem duplicar e o aviso às TVs',
   // Mandar outro X-Forwarded-For não dá balde novo (o servidor não está atrás de proxy aqui).
   const pulo = await pedir('/api/pair', { method: 'POST', cookie: dono, json: { code: 'ZZZZZZ' }, headers: { 'X-Forwarded-For': '203.0.113.' + (marca % 200) } });
   assert.equal(pulo.status, 429, 'trocar o X-Forwarded-For pulou o limite');
+  // Travado é travado: o código CERTO também leva 429, e a TV NÃO entra na conta (reteste de 03/11).
+  const certa = await tvNova();
+  const total = (await pedir('/api/devices', { cookie: dono })).json.devices.length;
+  const travada = await parear(dono, certa.code, { nova: true });
+  assert.equal(travada.status, 429);
+  await new Promise((r2) => setTimeout(r2, 200));
+  assert.equal((await pedir('/api/devices', { cookie: dono })).json.devices.length, total, 'a TV entrou na conta depois do 429');
+  assert.equal((await pedir('/api/devices/' + volta.id + '/reconectar', { method: 'POST', cookie: dono, json: { code: certa.code } })).status, 429);
+  await new Promise((r2) => setTimeout(r2, 200));
+  assert.ok((await pedir('/api/devices', { cookie: dono })).json.devices.find((d) => d.id === volta.id), 'reconectar seguiu depois do 429');
 });

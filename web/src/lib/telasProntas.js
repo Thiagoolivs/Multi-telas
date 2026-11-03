@@ -44,8 +44,8 @@ export function descricaoDaTela(t) {
   return 'Tela inteira, com ' + lista + '. Troque os textos e ponha na TV.';
 }
 export function paraOCliente(t) {
-  const { id, nome, marca, perfil, layout, zonas, mensagens, estado } = t;
-  return { id, nome, marca, perfil, layout, zonas, mensagens, estado, descricao: descricaoDaTela(t) };
+  const { id, nome, marca, perfil, layout, zonas, mensagens, estado, paraComecar } = t;
+  return { id, nome, marca, perfil, layout, zonas, mensagens, estado, paraComecar: paraComecar === true, descricao: descricaoDaTela(t) };
 }
 
 export const emPe = (layoutId) => /^portrait/.test(layoutId || '');
@@ -217,6 +217,12 @@ export function marcaDaConta(r) {
  * cliente no cabeçalho. Agora, sem tela da frente que caiba, devolve null e
  * a TV fica na espera ("Tudo certo"), que é neutra.
  *
+ * SÓ A MARCADA PARA COMEÇAR (reteste de 03/11): a tela aprovada da ótica
+ * ("Semana do Sol", oferta "até sábado, 25 de outubro") virava a estreia de
+ * toda TV de Comércio, da padaria ao salão, com data vencida. A tela de
+ * estreia tem de servir a qualquer cliente da frente e não ter data: só entra
+ * a que tem `paraComecar: true` no manifesto (pecas-ouro/manifesto.json).
+ *
  * NA ORIENTAÇÃO DA TV (mesmo QA): o painel passava sempre null, e a TV em pé
  * recebia uma tela deitada espremida. `tvEmPe` é o que a TV contou de si
  * (tvEmPe(d) abaixo); null quando ela ainda não disse — aí, deitada, que é o
@@ -225,7 +231,7 @@ export function marcaDaConta(r) {
 export function telaParaComecar(dados, marca, perfilId, tvEmPe) {
   const telas = (dados && dados.telas) || [];
   const cabe = (t) => (tvEmPe == null ? !emPe(t.layout) : emPe(t.layout) === tvEmPe);
-  const t = telas.find((x) => perfilDaTela(x) === perfilId && cabe(x));
+  const t = telas.find((x) => x.paraComecar && perfilDaTela(x) === perfilId && cabe(x));
   return t ? montarTela(t, dados.modelos, marca || {}, dados.exemplos) : null;
 }
 

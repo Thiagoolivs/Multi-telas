@@ -55,7 +55,7 @@
   --c-accent: 91 46 255;        /* #5B2EFF violeta da marca (10/2026): 6,4:1 com o branco */
   --c-accent-fg: 255 255 255;
   --c-accent-soft: 238 234 255; /* #EEEAFF */
-  --c-ok: 21 128 61;            /* #15803D */
+  --c-ok: 21 122 58;            /* #157A3A (era #15803D: 4,49:1 no ok-soft, reteste de 03/11) */
   --c-ok-soft: 231 246 236;     /* #E7F6EC */
   --c-warn: 180 83 9;           /* #B45309 */
   --c-warn-soft: 254 243 218;   /* #FEF3DA */

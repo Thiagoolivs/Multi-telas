@@ -109,10 +109,51 @@ function lugaresDeTexto(resultado) {
  * o motivo e (no bloqueio) a sugestão do que pôr no lugar.
  */
 function conferirCampanha(resultado, o) {
+  return conferirLugares(lugaresDeTexto(resultado), o);
+}
+
+/*
+ * O texto de uma peça solta (Criação rápida, Meus Designs, a biblioteca):
+ * os campos e o HTML (textosDaPeca) e, no motor antigo, os elementos de
+ * texto desenhados por coordenada.
+ */
+function textoDaPecaSolta(item) {
+  const it = item && typeof item === 'object' ? item : {};
+  const partes = Object.values(textosDaPeca(it));
+  for (const e of Array.isArray(it.elementos) ? it.elementos : []) if (e && e.tipo === 'texto' && e.text) partes.push(String(e.text));
+  return partes.join(' \n ');
+}
+
+/*
+ * As peças soltas e as legendas do diretor (reteste de 03/11): a campanha do
+ * Criar passava pela régua, mas a Criação rápida e a campanha de Meus Designs
+ * (/api/ai/director) não — "cura a gripe em 1 dia" saía na peça e nas três
+ * legendas sem aviso. `social` é o do diretor: { instagram, whatsapp, linkedin }.
+ */
+function conferirPecasSoltas(pecas, social, o) {
+  /*
+   * A mesma peça em 16:9, 9:16 e 1:1 tem o mesmo texto: conta uma vez, com o
+   * número da primeira. Senão um "cura" vira "peça 1 (e mais 2 trechos)".
+   */
+  const vistos = new Set();
+  const lugares = [];
+  (pecas || []).forEach((p, i) => {
+    const texto = textoDaPecaSolta(p && p.item);
+    if (!texto || vistos.has(texto)) return;
+    vistos.add(texto);
+    lugares.push({ onde: 'peça ' + (i + 1), peca: i + 1, texto });
+  });
+  const sx = social && typeof social === 'object' ? social : null;
+  const legendas = sx ? ['instagram', 'whatsapp', 'linkedin', 'facebook'].map((c) => (typeof sx[c] === 'string' ? sx[c] : '')).filter(Boolean) : [];
+  if (legendas.length) lugares.push({ onde: 'textos das redes', rede: true, texto: legendas.join(' \n ') });
+  return conferirLugares(lugares, o);
+}
+
+function conferirLugares(lista, o) {
   const op = o || {};
   const permitidos = op.permitidos || RC.permitidosDe([]);
   const bloqueios = [], avisos = [];
-  for (const l of lugaresDeTexto(resultado)) {
+  for (const l of lista) {
     const regra = RC.conferir(l.texto, { perfil: op.perfil || '', contexto: op.contexto || '' });
     const base = { onde: l.onde };
     if (l.peca) base.peca = l.peca;
@@ -155,13 +196,36 @@ function estadoDepois(estadoAtual, conferencia) {
   return conferencia && conferencia.bloqueios && conferencia.bloqueios.length ? 'revisar' : 'pronta';
 }
 
-// A frase para quem tenta pôr no ar a campanha barrada.
-function porQueNaoRoda(conferencia) {
+// A frase para quem tenta pôr no ar a campanha barrada. `inicio` troca o começo ("Não deu para guardar").
+function porQueNaoRoda(conferencia, inicio) {
   const b = (conferencia && conferencia.bloqueios) || [];
   if (!b.length) return '';
   const x = b[0];
-  return 'Antes de pôr no ar, troque o texto da ' + x.onde + ': ' + RC.explicar(x)
+  return (inicio || 'Antes de pôr no ar') + ', troque o texto da ' + x.onde + ': ' + RC.explicar(x)
     + (b.length > 1 ? ' (e mais ' + (b.length - 1) + ' trecho' + (b.length > 2 ? 's' : '') + ')' : '');
 }
 
-module.exports = { permitidosDe, conferirCampanha, reconferir, opcoesDaConta, estadoDepois, porQueNaoRoda, lugaresDeTexto };
+/*
+ * A régua das peças soltas para uma conta: a frente e o contexto lidos da
+ * conta, e o que ela já disse (marca, memória, pedido) como permitido. Usada
+ * pela biblioteca e pelo diretor, para as duas portas medirem igual.
+ */
+async function conferirDaConta(db, tenantId, pecas, social, extras) {
+  const x = extras || {};
+  const paleta = require('./paleta');
+  const conta = await db.getTenant(tenantId).catch(() => null);
+  const perfil = await paleta.perfilDaConta(db, tenantId, conta).catch(() => '');
+  const m = x.marca || {};
+  const local = m.local || {};
+  const ditos = [...(x.ditos || []), conta && conta.name, m.nome, m.observacoes, m.tom, local.endereco, local.bairro, local.cidade,
+    x.memoria && typeof x.memoria === 'object' ? JSON.stringify(x.memoria) : ''].filter(Boolean).map(String);
+  return conferirPecasSoltas(pecas, social, {
+    permitidos: RC.permitidosDe(ditos), hoje: new Date(),
+    ...opcoesDaConta({ perfil, empresa: x.empresa || (conta && conta.name) || '', segmento: x.segmento || '' }, { nome: x.nome || '', objetivo: x.objetivo || '' }),
+  });
+}
+
+// Só o que está NAS PEÇAS barra guardar ou publicar; a legenda barrada é dita e não sai das redes (o painel a esconde).
+const barraAsPecas = (c) => !!(c && (c.bloqueios || []).some((b) => b.peca));
+
+module.exports = { permitidosDe, conferirCampanha, conferirDaConta, barraAsPecas, conferirPecasSoltas, textoDaPecaSolta, reconferir, opcoesDaConta, estadoDepois, porQueNaoRoda, lugaresDeTexto };

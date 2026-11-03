@@ -82,6 +82,7 @@ const memory = require('./server/ai-memoria');
 const muralLib = require('./server/mural');
 const qrcode = require('./server/qr');
 const paletaInicial = require('./server/paleta');
+const conferencia = require('./server/conferencia');
 const redesRotas = require('./server/routes/redes');
 
 const { semCopiasDeCampanha } = require('./server/copias-de-campanha.js');
@@ -168,6 +169,10 @@ function canManageTeam(role) { return role === 'owner' || role === 'admin'; }
 // Uma linha da planilha de pessoas vira pessoa (ou null): a regra é a de js/pessoas.js (D30),
 // a mesma que o painel usa para mostrar o que a importação vai fazer.
 function normBirthday(r) { return pessoas.normalizar(r); }
+// O que a lei barra não entra na biblioteca (server/conferencia.js): 422 com o porquê.
+function conteudoBarrado(res, regra) {
+  return sendJson(res, 422, { error: conferencia.porQueNaoRoda(regra, 'Não deu para guardar'), code: 'conteudo-barrado', bloqueios: regra.bloqueios });
+}
 function sendJson(res, status, obj, extraHeaders) {
   res.writeHead(status, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, extraHeaders || {}));
   res.end(JSON.stringify(obj));
@@ -843,6 +848,14 @@ async function handleApi(req, res, pathname, query) {
       return readBody(req, res, async (b) => {
         const pieces = (b && b.pieces) || [];
         if (!Array.isArray(pieces) || !pieces.length) return sendJson(res, 400, { error: 'sem peças para salvar' });
+        /*
+         * O que a lei barra não entra na biblioteca (reteste de 03/11): é por
+         * aqui que a Criação rápida e Meus Designs guardam antes de pôr na TV.
+         * Só os bloqueios (promessa de cura em Saúde, remédio com promessa);
+         * preço e data ficam com quem escreveu.
+         */
+        const regra = await conferencia.conferirDaConta(db, sess.tenant_id, pieces.slice(0, 30), null, { nome: (b && b.campaign) || '' });
+        if (regra.bloqueios.length) return conteudoBarrado(res, regra);
         const n = await db.addLibrary(sess.tenant_id, (b && b.campaign) || 'Campanha', pieces.slice(0, 30));
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'peca.salvar');
         return sendJson(res, 201, { ok: true, saved: n });
@@ -883,6 +896,9 @@ async function handleApi(req, res, pathname, query) {
     if (parts[2]) {
       if (req.method === 'PUT') {
         return readBody(req, res, async (b) => {
+          // A edição à mão passa pela mesma régua de quando a peça foi guardada.
+          const regra = await conferencia.conferirDaConta(db, sess.tenant_id, [{ item: (b && b.item) || {} }], null, {});
+          if (regra.bloqueios.length) return conteudoBarrado(res, regra);
           const changed = await db.updateLibraryItem(parts[2], sess.tenant_id, (b && b.item) || {}, (b && b.label) || '');
           if (!changed) return sendJson(res, 404, { error: 'peça não encontrada' });
           return sendJson(res, 200, { ok: true });
@@ -2109,7 +2125,20 @@ const negocioCache = new Map();
            * imagem não coube jogaria fora as quatro já pagas.
            */
           onImagem: fotoDaConta(sess, b),
-        }).then((out) => ({ mode: ai.mode(), ...out })), { tipo: 'campanha', pedido: { brief: String(brief).slice(0, 200) }, userId: sess.user_id });
+        }).then(async (out) => {
+          /*
+           * A régua de conteúdo (reteste de 03/11): a mesma da campanha do
+           * Criar. Bloqueio volta no resultado e a biblioteca recusa salvar
+           * (POST /api/library); preço ou data que ninguém disse vira aviso.
+           */
+          if (out && Array.isArray(out.pecas) && out.pecas.length) {
+            out.conferencia = await conferencia.conferirDaConta(db, sess.tenant_id, out.pecas, out.social, {
+              ditos: [brief, b && b.oferta, b && b.empresa, b && b.publico, b && b.segmento, b && b.briefingPronto ? JSON.stringify(b.briefingPronto) : ''],
+              marca, memoria: lembrada, empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '', objetivo: String(brief),
+            });
+          }
+          return { mode: ai.mode(), ...out };
+        }), { tipo: 'campanha', pedido: { brief: String(brief).slice(0, 200) }, userId: sess.user_id });
         return sendJson(res, 202, jobs.publico(job));
       } catch (e) { return sendJson(res, e.status || 502, { error: e.message }); }
     });

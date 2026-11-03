@@ -38,8 +38,23 @@ const pilha = [];
  * Liga o foco preso em `caixa`. `inicial` (opcional) escolhe onde o foco
  * começa; devolve a função que desliga e devolve o foco a quem abriu.
  */
+/*
+ * O último elemento que teve o foco FORA de um diálogo. Quando o diálogo
+ * liga o foco preso (no efeito, depois de montar), o campo com autoFocus já
+ * pegou o foco, e "quem abriu" virava o próprio campo: ao fechar, o foco ia
+ * para o <main> e não para o botão (reteste de 03/11, "Parear tela").
+ */
+let ultimoFora = null;
+if (typeof document !== 'undefined') {
+  document.addEventListener('focusin', (e) => {
+    const el = e.target;
+    if (el && el.closest && !el.closest('[aria-modal="true"]')) ultimoFora = el;
+  }, true);
+}
+
 export function prenderFoco(caixa, { aoFechar, inicial } = {}) {
-  const quemAbriu = document.activeElement;
+  const ativo = document.activeElement;
+  const quemAbriu = ativo && caixa.contains(ativo) ? ultimoFora : ativo;
   const eu = {};
   pilha.push(eu);
   const noTopo = () => pilha[pilha.length - 1] === eu;
