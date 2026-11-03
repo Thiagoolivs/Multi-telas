@@ -64,12 +64,17 @@ function UserMenu({ user, onLogout }) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="true"
-        // O nome do botão contém o texto que se vê (nome e papel), como pede o axe (label-content-name-mismatch).
-        aria-label={'Conta: ' + name + (role ? ', ' + role : '')}
         className="ml-1 flex items-center gap-2 rounded-md py-0.5 pl-0.5 pr-1.5 transition hover:bg-surface-2 max-sm:min-h-11 max-sm:min-w-11 max-sm:justify-center max-sm:p-0"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-2xs font-semibold text-accent max-sm:h-9 max-sm:w-9">{initials(name)}</span>
-        <span className="hidden text-left leading-tight sm:block">
+        {/*
+          O nome do botão é o texto que se vê (QA de 03/11, axe
+          label-content-name-mismatch: o aria-label "Conta: …" não tinha o
+          papel nem as iniciais). As iniciais são enfeite; no celular o nome
+          e o papel ficam só para o leitor de tela.
+        */}
+        <span aria-hidden="true" className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-2xs font-semibold text-accent max-sm:h-9 max-sm:w-9">{initials(name)}</span>
+        <span className="sr-only">Conta: </span>
+        <span className="sr-only text-left leading-tight sm:not-sr-only sm:block">
           <span className="block max-w-[10rem] truncate text-xs font-medium text-ink">{name}</span>
           <span className="block text-2xs text-ink-3">{role}</span>
         </span>

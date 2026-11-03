@@ -66,10 +66,11 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
       {/*
         "Pular para o conteúdo" (QA de lançamento, 03/11): eram 11 paradas de
         Tab (menu, tema, conta) antes do conteúdo em todas as páginas. É o
-        primeiro Tab da página; só aparece quando recebe o foco.
+        primeiro Tab da página; fica fora da tela (com o tamanho de um alvo
+        de toque) e desce quando recebe o foco.
       */}
       <a href="#conteudo" onClick={pularParaConteudo}
-        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-md focus:bg-accent focus:px-4 focus:py-2.5 focus:text-sm focus:font-semibold focus:text-accent-fg focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-2 focus:ring-offset-surface">
+        className="fixed left-3 top-3 z-[60] inline-flex min-h-11 -translate-y-[200%] items-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-fg transition-transform focus:translate-y-0 focus:outline-none focus:ring-2 focus:ring-ink focus:ring-offset-2 focus:ring-offset-surface">
         Pular para o conteúdo
       </a>
       {/* Sidebar desktop */}

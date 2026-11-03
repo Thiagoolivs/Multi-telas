@@ -154,3 +154,14 @@ test('"Pular para o conteúdo" e o título da aba por página', () => {
   assert.match(app, /document\.title = tituloDaPagina \+ ' · ' \+ perfil\.marca/);
   assert.match(ler('web/src/pages/AuthScreen.jsx'), /document\.title = titulo \+ ' · MultiTelas'/);
 });
+
+test('árvore de acessibilidade limpa: miniaturas fora dela, <main> no login, menu da conta com estado', () => {
+  // axe: 2 a 7 "h1" por página vinham do texto das miniaturas; label-content-name-mismatch no botão da conta.
+  assert.match(ler('web/src/components/content/PecaHtml.jsx'), /<div ref=\{caixa\} aria-hidden="true"/);
+  assert.match(ler('web/src/components/content/DesignThumb.jsx'), /<div aria-hidden="true" className=\{'relative overflow-hidden/);
+  assert.match(ler('web/src/pages/AuthScreen.jsx'), /<main className="flex min-h-screen/);
+  const t = ler('web/src/components/layout/Topbar.jsx');
+  assert.match(t, /aria-expanded=\{open\}/);
+  assert.match(t, /e\.key !== 'Escape'/);
+  assert.doesNotMatch(t, /aria-label=\{'Conta: ' \+ name\}/);
+});

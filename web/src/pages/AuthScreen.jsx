@@ -203,7 +203,8 @@ export function AuthScreen({ onAuthed }) {
   useEffect(() => { document.title = titulo + ' · MultiTelas'; }, [titulo]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
+    // <main>: a tela de entrar também tem o seu ponto de referência (QA de 03/11, axe landmark-one-main).
+    <main className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-2.5">
           <SimboloMarca className="h-8 w-8" />
@@ -340,6 +341,6 @@ export function AuthScreen({ onAuthed }) {
           <a href="/privacidade" target="_blank" rel="noreferrer" className="hover:text-ink-2 hover:underline">Política de Privacidade</a>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

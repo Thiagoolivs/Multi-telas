@@ -256,7 +256,7 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
               <div className="flex flex-1 flex-col gap-2 p-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="truncate text-sm font-semibold text-ink">{tela.nome}</h3>
+                    <h2 className="truncate text-sm font-semibold text-ink">{tela.nome}</h2>
                     {emPe(tela.layout) && <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-2xs text-ink-3">TV em pé</span>}
                   </div>
                   {/* A descrição de cliente (lib/telasProntas.js, paraOCliente), nunca a nota interna do manifesto. */}
