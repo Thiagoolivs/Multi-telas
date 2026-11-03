@@ -106,11 +106,11 @@ paga, o que trava e como cancelar.
 | 4 | Parear 2ª TV pago | Pareia; "R$ 298 por mês · 2 telas, R$ 149 cada em média"; "Mais uma tela: + R$ 149". | fin-06 |
 | 5 | Pacote "+25 criações · R$ 39" | Em modo simulado credita na hora (110 = 85 + 25, "25 delas não vencem"), sem confirmação nem aviso. | fin-06 |
 | 6 | Atraso 4 / 11 / 21 dias (data forçada no banco) | Faixa do painel certa em cada fase ("Em 6 dias… selo; em 16… pausados" / "estão mostrando um selo" / "estão pausados"). 4 e 11 dias: pareia. 21 dias: 402 "Há uma fatura em atraso há mais de 20 dias…" e o Aviso rápido responde 402 "Pagamento em atraso". | fin-07-* |
-| 7 | Selo na TV | Teste vencido: "MultiTelas · versão gratuita" no canto, 17 px. Pareamento bloqueado: "Seu teste de 14 dias terminou. Escolha um plano para ligar sua tela." Assinando, o selo **continua até 5 min** (cache `seloDaConta`, `server.js:282`). Atraso de 11 dias: ver resultado abaixo. | fin-09, fin-12 |
+| 7 | Selo na TV | Teste vencido: "MultiTelas · versão gratuita" no canto, 17 px. Pareamento bloqueado: "Seu teste de 14 dias terminou. Escolha um plano para ligar sua tela." Assinando, o selo **continua até 5 min** (cache `seloDaConta`, `server.js:282`). Atraso de 11 dias, passado o cache: "MultiTelas" (certo). | fin-09, fin-12 |
 | 8 | Anual (contrato marcado no banco, 4 meses de uso, 2 telas) | "Contrato anual · R$ 240 por mês · R$ 120 cada"; ao cancelar: "faltam 8 meses: pelo contrato, a multa fica em R$ 576. A equipe confirma o valor com você antes de cobrar." Conta certa (30% × 240 × 8 = 576 > (298−240)×4 = 232). | fin-14 |
 | 9 | Cancelar (mensal) | Texto: "Suas telas continuam no ar **até o fim do período já pago**, e depois a conta volta para a versão gratuita". Na prática o plano cai para grátis **na hora** ("Cancelado", "2 de 1 tela · acima do limite"). Com Asaas, o webhook `SUBSCRIPTION_DELETED` faz o mesmo (`server/cobranca.js`, caso `SUBSCRIPTION_DELETED`). | fin-15 |
 | 10 | Números landing × `/api/planos` × painel × e-mail | **Batem**: 149 mensal; anual 120/108/96 por faixa (5 telas R$ 576; 12 telas R$ 1.308); 26+ a combinar; 20 criações no teste; 85 até 3 telas, 228 no máximo; Pro R$ 179 em breve; e-mails dizem "R$ 149,00 por tela, por mês". | fin-13 |
-| 11 | Cortesia (`CONTAS_CORTESIA`) | ver abaixo | fin-16 |
+| 11 | Cortesia (`CONTAS_CORTESIA`) | Selo "Cortesia", "sem cobrança e sem prazo"; ainda mostra preço da próxima tela e "Cancelar assinatura" (ver seção da cortesia). | fin-16 |
 
 **E-mails (lidos de `server/lembretes.js`, gerados pela função):**
 - *2 dias, sem TV:* "Abra… o endereço **/tv** no navegador da Smart TV… e escolha um modelo pronto — **o cardápio, uma promoção**." Sem domínio e com exemplo de comércio para todas as frentes.
@@ -174,6 +174,7 @@ configurar a emissão automática no painel do Asaas. Não verificável daqui.
 | 30 | Polimento | Layout padrão da TV Empresas | Pôr uma peça | Lateral e rodapé repetem nome da empresa + data (duas vezes cada); poderia ser relógio/indicador/aniversário. | rh-21 |
 | 31 | Polimento | `/app/?frente=empresas` | Clicar "Testar 14 dias grátis" | Abrir já em "Criar conta". | rh-02 |
 | 32 | Polimento | Plano | Comprar pacote (simulado) | Confirmação antes e aviso depois ("+25 criações entraram"). Selo "Popular"/"Mais escolhido" antes de ter clientes. | fin-06 |
+| 34 | Polimento | `BillingPage.jsx` com `cortesia` | Conta de cortesia → Plano | Esconder "Mais uma tela: + R$ 149" e "Cancelar assinatura" (cancelar rebaixa e o login seguinte promove de novo). | fin-16 |
 | 33 | Polimento | `docs/BILLING.md`, comentário em `server/plans.js` ("O Essencial saiu") | Ler | Documentação diz que o Essencial saiu e que a carência é de 7 dias; o código tem Essencial e régua 3/10/20. | — |
 
 ## O que está bom
@@ -185,9 +186,17 @@ configurar a emissão automática no painel do Asaas. Não verificável daqui.
 - **Cobrança:** os números batem em landing, `/api/planos`, painel e e-mails; anual por faixa sem "degrau"; multa mostrada em reais antes do clique; régua de atraso dita desde o 1º dia e igual no painel, na landing e no e-mail; "nunca desligamos sua tela" é cumprido (selo, nunca tela preta); cancelar é possível pelo painel.
 - Painel sem erro de console, sem rolagem lateral no celular.
 
-## Resultados que dependeram de espera
+## Selo do atraso e cortesia (testes com espera / reinício)
 
-(atualizado ao fim do teste — ver seção "Selo do atraso e cortesia")
+- **Selo com o cache vencido** (TV reaberta 5 min depois de mudar a conta no banco):
+  conta paga em dia → sem selo; paga com 11 dias de atraso → selo "MultiTelas"
+  (sem "versão gratuita"), como `plans.textoDoSelo` manda. Antes dos 5 min a TV
+  seguia com o selo anterior (problema 19). Prints: fin-12-tv-selo-*.
+- **Cortesia** (`CONTAS_CORTESIA=cortesia@parceiro.local`, servidor reiniciado):
+  a conta nasce "Plano Essencial · **Cortesia** · Acesso liberado para teste —
+  sem cobrança e sem prazo", 85 criações, sem faixa de mensal/anual — bom. Mas
+  mostra "Mais uma tela: + R$ 149 por mês" e "Cancelar assinatura"; cancelar
+  rebaixa para grátis e o próximo login devolve a cortesia (problema 34). Print: fin-16.
 
 ---
 
