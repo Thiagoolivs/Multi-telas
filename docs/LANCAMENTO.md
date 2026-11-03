@@ -17,7 +17,8 @@ no seu navegador, está em [`PROMPT-COWORK.md`](PROMPT-COWORK.md).
 
 | | O que | Por que trava |
 |---|---|---|
-| 🔴 | **Revisão jurídica dos Termos** e depois `LEGAL_REVISADO=true` + `LEGAL_NOME` | Enquanto não, toda página legal mostra aviso de rascunho. Vender com Termos marcados como rascunho é vender sem Termos. |
+| 🔴 | **Revisão jurídica dos Termos** e depois `LEGAL_REVISADO=true` | Enquanto não, /sistema mostra o alerta e as páginas legais mostram ao cliente uma nota de que o texto vale como está e está em revisão (QA de 03/11: o "não use como peça contratual" saiu da vista do cliente). |
+| 🔴 | **Quem vende:** `RAZAO_SOCIAL`, `CNPJ`, `ENDERECO` (e `ENCARREGADO_NOME`, `EMAIL_DPO` para o encarregado de dados) | Aparecem nos Termos, na Política e no rodapé do site (Decreto 7.962/2013; LGPD art. 41). Sem elas, /sistema avisa e as páginas saem sem identificação. |
 | 🔴 | **`STORAGE=s3` + as chaves do R2** | Sem isso a mídia grava no disco do contêiner e **some no próximo deploy**. |
 | 🔴 | **`RESEND_API_KEY` + `MAIL_FROM` do domínio verificado** | O cadastro só termina no link do e-mail. Sem provedor, ninguém entra. O alerta de tela caída também depende dele. |
 | 🔴 | **`ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`** e o webhook com os **7 eventos** (`PAYMENT_RECEIVED`, `PAYMENT_CONFIRMED`, `PAYMENT_OVERDUE`, `PAYMENT_REFUNDED`, `PAYMENT_CHARGEBACK_REQUESTED`, `PAYMENT_CHARGEBACK_DISPUTE`, `SUBSCRIPTION_DELETED`) | Sem chave o checkout é simulado; sem os eventos, pagamento não libera plano e estorno não tira. Testar antes com `ASAAS_AMBIENTE=sandbox`. |

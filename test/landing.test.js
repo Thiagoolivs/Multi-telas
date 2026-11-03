@@ -33,11 +33,14 @@ test('menos de 500 KB, contando tudo o que a página pede', () => {
   while ((m = re.exec(html))) {
     const u = m[1];
     // Páginas (o painel, os textos legais e as landings das frentes) não são peso desta página.
-    if (/^(https?:|mailto:|\/app|\/termos|\/privacidade|\/(empresas|saude|comercio)$|#)/.test(u) || u === '/') continue;
+    if (/^(https?:|mailto:|\/app|\/termos|\/privacidade|\/(empresas|saude|comercio)(#\w+)?$|#)/.test(u) || u === '/') continue;
     pedidos.add(u);
   }
-  // As imagens que as abas trocam (landing.js) também contam.
-  for (const ramo of ['otica', 'padaria', 'salao', 'clinica', 'lanchonete', 'empresa']) pedidos.add('vendor/galeria/' + ramo + '.webp');
+  // As imagens que as abas trocam (landing.js) também contam — as de todas as frentes, para valer na pior página.
+  const frentes = require('../server/landing-frentes.js');
+  for (const pagina of [html, ...frentes.SLUGS.map((f) => frentes.montar(html, f))]) {
+    for (const m of pagina.matchAll(/data-ramo="([a-z-]+)"/g)) pedidos.add('vendor/galeria/' + m[1] + '.webp');
+  }
   let total = Buffer.byteLength(html) + Buffer.byteLength(js);
   for (const u of pedidos) {
     const arq = /^\/(icons|fonts)\//.test(u) ? path.join(RAIZ, u) : path.join(LAND, u.replace(/^\//, ''));
@@ -72,30 +75,103 @@ test('nada de terceiros, nada de biblioteca pesada, nada de script embutido', ()
 });
 
 /*
- * QA de lançamento, 03/11: o preço passou a ser POR FRENTE (server/plans.js,
- * PRECO_DA_FRENTE_CENTS) e o HTML da landing ainda traz os R$ 149 de antes.
- * A landing é de outra frente de correção, que vai ler /api/planos?frente=
- * (e o apartirDeCents da landing geral). Até lá, este teste fica como TODO:
- * ele roda e mostra a divergência, sem travar a suíte. Quem atualizar a
- * landing tira o `todo`.
+ * QA de lançamento, 03/11 — DECISÃO DO DONO: cada frente tem o seu preço
+ * (Comércio R$ 79, Saúde R$ 139, Empresas R$ 159 por TV/mês) e as frentes não
+ * aparecem lado a lado. Este teste antes comparava o HTML com o R$ 149 único
+ * de server/plans.js; agora garante que:
+ *   - a principal não mostra tabela nem preço único (nem no JSON-LD);
+ *   - cada frente mostra SÓ o preço dela, no herói e na tabela, sem JavaScript;
+ *   - o script pede o catálogo da frente (/api/planos?frente=<id>), que é o
+ *     contrato com quem cobra: com JavaScript, vale o número do servidor.
+ * (O preço por frente mora em server/plans.js, mudado em outra correção: ao
+ * juntar as duas, confira que PRECO_MENSAL_CENTS bate com o catálogo.)
  */
-test('os números do HTML são os do plano, e o script confirma com /api/planos', { todo: 'a landing ainda mostra o preço antigo (R$ 149); o preço agora é por frente' }, () => {
-  // O preço dos dados estruturados (o que o Google mostra) também é o do plano.
-  const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
-  const app = ld['@graph'].find((n) => n['@type'] === 'SoftwareApplication');
-  assert.equal(app.offers.price, (plans.PLANS.pro.precoTelaCents / 100).toFixed(2), 'o preço do JSON-LD não é o do plano');
-  const real = (c) => 'R$ ' + (c / 100).toLocaleString('pt-BR');
-  assert.ok(html.includes(real(plans.PLANS.pro.precoTelaCents)), 'o mensal do HTML não é o do plano');
-  for (const f of plans.faixasAnual().filter((x) => !x.negociado)) {
-    assert.ok(html.includes(real(f.precoTelaCents)), 'faixa do anual fora do HTML: ' + real(f.precoTelaCents));
+test('cada frente com o seu preço; a principal sem preço único', () => {
+  const frentes = require('../server/landing-frentes.js');
+  const raiz = frentes.raiz(html);
+  const reais = frentes.reais;
+  assert.deepEqual(frentes.PRECO_MENSAL_CENTS, { comercio: 7900, saude: 13900, empresas: 15900 });
+  // A principal: nenhuma tabela, nenhum preço em reais, só o caminho para o preço de cada frente.
+  assert.doesNotMatch(raiz, /R\$ \d/, 'a principal mostra um preço');
+  assert.doesNotMatch(raiz, /id="calc-range"|data-preco-mensal/);
+  for (const f of frentes.SLUGS) assert.match(raiz, new RegExp('href="/' + f + '#precos"'));
+  // O Google também não vê um preço único na principal: o menor e o maior das frentes.
+  const ldRaiz = JSON.parse(raiz.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+  const ofertas = ldRaiz['@graph'].find((n) => n['@type'] === 'SoftwareApplication').offers;
+  assert.equal(ofertas['@type'], 'AggregateOffer');
+  const precos = Object.values(frentes.PRECO_MENSAL_CENTS);
+  assert.equal(ofertas.lowPrice, (Math.min(...precos) / 100).toFixed(2));
+  assert.equal(ofertas.highPrice, (Math.max(...precos) / 100).toFixed(2));
+  assert.equal(ofertas.offerCount, 3);
+
+  for (const slug of frentes.SLUGS) {
+    const s = frentes.montar(html, slug);
+    const p = frentes.precosDe(slug);
+    const outras = frentes.SLUGS.filter((x) => x !== slug).map((x) => reais(frentes.PRECO_MENSAL_CENTS[x]));
+    // O preço dela no herói (primeira tela do celular) e na tabela.
+    assert.match(s, new RegExp('data-preco-heroi><b><span data-preco-mensal>' + reais(p.mensal).replace('$', '\\$') + '</span> por TV, por mês'));
+    assert.match(s, new RegExp('<span data-preco-mensal><!--frente:preco-mensal-->' + reais(p.mensal).replace('$', '\\$') + '<'));
+    // O anual na proporção das faixas de antes (149 → 120/108/96).
+    for (const c of p.anual) assert.ok(s.includes(reais(c) + ' cada'), slug + ': faixa do anual ' + reais(c));
+    // Nenhum preço de outra frente na página dela, nem o R$ 149 antigo.
+    for (const o of outras.concat('R$ 149')) assert.ok(!s.includes(o + '<') && !s.includes(o + ' '), slug + ' mostra ' + o);
+    // JSON-LD da frente: o endereço e o preço dela.
+    const ld = JSON.parse(s.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+    const app = ld['@graph'].find((n) => n['@type'] === 'SoftwareApplication');
+    assert.equal(app.url, 'https://app.multitelas.net.br/' + slug);
+    assert.equal(app.offers.price, (p.mensal / 100).toFixed(2));
+    // A multa do anual na vitrine, junto do anual (CDC art. 6º III e 31).
+    assert.match(s, /id="multa-anual"><b class="text-mt-tinta">Multa:<\/b> cancelar antes dos 12 meses custa 30% das mensalidades que faltam\. Com os 12 meses cumpridos, não há multa\./);
+    // O simulador sem JavaScript não fica vazio.
+    assert.match(s, /<div id="calc-saida"[^>]*><!--frente:calc-->\s*<p class="text-sm text-mt-cinza">Com 3 TVs: R\$/);
   }
+  // Os números do teste e das criações continuam os do plano.
   assert.ok(html.includes('>' + plans.DIAS_DE_TESTE + '<'), 'os dias de teste');
   assert.ok(html.includes('>' + plans.CRIACOES_DO_TESTE + '<'), 'as criações do teste');
   assert.ok(html.includes('>' + plans.franquiaCreditos('pro', 3) + '<'), 'as criações do plano');
   assert.ok(html.includes('>' + plans.franquiaCreditos('pro', 1000) + '<'), 'o teto de criações');
-  assert.match(js, /fetch\('\/api\/planos'/);
+  // O script pede o catálogo DA FRENTE, e o simulador usa a tabela pronta do servidor.
+  assert.match(js, /fetch\('\/api\/planos' \+ \(frenteId \? '\?frente=' \+ encodeURIComponent\(frenteId\) : ''\)/);
+  assert.match(js, /getAttribute\('data-frente-id'\)/);
   assert.match(js, /dados\.faixasAnual/);
   assert.match(js, /linha\[c\]/, 'o simulador usa a tabela pronta do servidor (mensal e anual)');
+});
+
+test('sem selo de prova social inventada', () => {
+  // QA de 03/11: "Mais escolhido" sem nenhum cliente pagante é publicidade enganosa (CDC art. 37 §1º).
+  assert.doesNotMatch(html, /Mais escolhido|mais vendido|preferido dos clientes/i);
+});
+
+test('SEO: as quatro páginas com texto próprio, título e descrição no tamanho que o Google mostra', () => {
+  const frentes = require('../server/landing-frentes.js');
+  const paginas = { raiz: frentes.raiz(html) };
+  for (const f of frentes.SLUGS) paginas[f] = frentes.montar(html, f);
+  // O texto visível (sem tags, comentários, script e estilo), frase por frase.
+  const frases = (s) => new Set(s.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/g, ' ')
+    .replace(/<[^>]+>/g, '\n').split(/\n|(?<=[.!?])\s+/).map((x) => x.replace(/\s+/g, ' ').trim()).filter((x) => x.length > 25));
+  const nomes = Object.keys(paginas);
+  for (let i = 0; i < nomes.length; i++) {
+    for (let j = i + 1; j < nomes.length; j++) {
+      const a = frases(paginas[nomes[i]]); const b = frases(paginas[nomes[j]]);
+      const iguais = [...a].filter((x) => b.has(x)).length;
+      const parte = iguais / Math.min(a.size, b.size);
+      // Antes: 93% igual. As perguntas comuns (cancelar, atraso, dados) e o teste continuam iguais de propósito.
+      assert.ok(parte < 0.5, nomes[i] + ' e ' + nomes[j] + ' têm ' + Math.round(parte * 100) + '% do texto igual');
+    }
+  }
+  for (const [nome, s] of Object.entries(paginas)) {
+    const titulo = s.match(/<title>([^<]*)<\/title>/)[1];
+    const desc = s.match(/<meta name="description" content="([^"]*)"/)[1];
+    assert.ok(titulo.length <= 60, nome + ': título com ' + titulo.length + ' caracteres');
+    assert.ok(desc.length <= 158, nome + ': descrição com ' + desc.length + ' caracteres');
+    // Toda imagem com alt (vazio só nas decorativas, dentro de aria-hidden).
+    for (const img of s.match(/<img [^>]*>/g)) assert.match(img, /\balt="/, nome + ': imagem sem alt');
+    // Empresas e Saúde não falam de loja (fora o cartão do Comércio em "Um MultiTelas para cada lugar").
+    if (nome === 'empresas' || nome === 'saude') {
+      const texto = s.replace(/<section id="para-quem"[\s\S]*?<\/section>|<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<!--[\s\S]*?-->/g, ' ').replace(/<[^>]+>/g, ' ');
+      assert.doesNotMatch(texto, /\bloja/i, nome + ' ainda fala de loja');
+    }
+  }
 });
 
 test('nenhuma promessa sem código por trás', () => {
@@ -103,6 +179,15 @@ test('nenhuma promessa sem código por trás', () => {
   const PROMESSAS = [
     ['Funciona sem internet', () => /SHELL_CACHE/.test(ler('sw.js'))],
     ['Horário da loja', () => existe('js', 'expediente.js')],
+    ['Horário de atendimento', () => existe('js', 'expediente.js')],
+    ['Se uma TV cair no horário, você recebe um e-mail', () => /expediente/i.test(ler('server', 'vigia.js'))],
+    ['Foto da equipe pelo QR', () => existe('server', 'foto-qr.js') && /PRAZO_FILA_DIAS = 30/.test(ler('server', 'guarda.js'))],
+    ['Calendário da empresa', () => existe('server', 'calendario.js')],
+    ['Segurança do trabalho', () => /SEGURANÇA DO TRABALHO/.test(ler('js', 'render.js'))],
+    ['depois de uma pessoa conferir a resposta', () => existe('js', 'quiz.js')],
+    ['Metas e indicadores', () => existe('server', 'kpis.js')],
+    ['Datas do comércio', () => /black-friday/.test(ler('js', 'seasons.js'))],
+    ['mostra quem faz aniversário na semana', () => /SEMANA do aniversário/.test(ler('server', 'automaticos.js'))],
     ['Ver a tela agora', () => existe('server', 'ver-tela.js')],
     ['Foto e vídeo do celular', () => /share_target/.test(ler('web', 'public', 'manifest.webmanifest'))],
     ['A mesma peça nas redes', () => existe('server', 'redes.js')],
@@ -114,10 +199,17 @@ test('nenhuma promessa sem código por trás', () => {
     ['Cancela quando quiser, pelo próprio painel', () => /Cancelar assinatura/.test(ler('web', 'src', 'pages', 'BillingPage.jsx'))],
     ['você baixa tudo ou pede a exclusão', () => /parts\[2\] === 'exportar'/.test(ler('server.js'))],
   ];
+  // As quatro páginas: cada frente tem a sua lista (server/landing-frentes.js).
+  const frentes = require('../server/landing-frentes.js');
+  const todas = [frentes.raiz(html), ...frentes.SLUGS.map((f) => frentes.montar(html, f))].join('\n');
   for (const [frase, prova] of PROMESSAS) {
-    assert.ok(html.includes(frase), 'a frase sumiu da página (ou mudou): ' + frase);
+    assert.ok(todas.includes(frase), 'a frase sumiu das páginas (ou mudou): ' + frase);
     assert.ok(prova(), 'a página promete "' + frase + '" e o código não tem');
   }
+  // QA de 03/11: o produto deixa o post pronto; quem posta é a pessoa.
+  assert.doesNotMatch(todas, /posta nas redes/i);
+  // O aniversariante aparece na SEMANA do aniversário (server/automaticos.js), não "no dia certo".
+  assert.doesNotMatch(todas, /parabeniza no dia certo/);
   // O que não existe não aparece.
   // Palavra inteira: 'SLA' mora dentro de 'translateY' no CSS.
   for (const nao of [/instalamos tudo/i, /\bSLA\b/, /marca branca/i, /domínio próprio/i]) {

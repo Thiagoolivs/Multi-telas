@@ -875,7 +875,8 @@ async function setTenantBilling(id, fields) {
  */
 /* Contas no plano grátis nascidas depois de `desde`, com o e-mail do dono e quantas telas têm. */
 async function contasEmTeste(desde) {
-  return db.prepare(`SELECT t.id, t.name, t.plan, t.created_at, t.lembrete_teste,
+  // t.perfil: o e-mail do teste fala a língua da frente (server/lembretes.js, QA de 03/11).
+  return db.prepare(`SELECT t.id, t.name, t.plan, t.perfil, t.created_at, t.lembrete_teste,
       (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
       (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas
     FROM tenants t

@@ -196,7 +196,8 @@ function mensagem(aviso, appUrl) {
   const text = titulo + '.\n\n' + linhas.join('\n') + '\n\n' + causas +
     '\n\nVocê não precisa fazer nada no MultiTelas: assim que a tela voltar a ' +
     'ter internet, ela volta a exibir sozinha o que já estava programado.\n\n' +
-    (appUrl ? 'Ver a frota: ' + appUrl + '/app\n\n' : '') +
+    // QA de 03/11: "frota" é palavra de operador; o cliente tem TVs.
+    (appUrl ? 'Ver minhas TVs: ' + appUrl + '/app/?ir=screens\n\n' : '') +
     'Este aviso é enviado uma vez por queda.';
 
   const itens = nomeadas.map((t) =>
@@ -211,7 +212,7 @@ function mensagem(aviso, appUrl) {
     '<ul style="font-size:14px;line-height:1.6;margin:0 0 20px;padding-left:20px;color:#334155">' + itens + extra + '</ul>' +
     '<p style="font-size:14px;line-height:1.6;margin:0 0 20px;color:#334155">' + causas + '</p>' +
     '<p style="font-size:14px;line-height:1.6;margin:0 0 20px;color:#334155">Você não precisa fazer nada aqui: quando a tela voltar a ter internet, ela volta a exibir sozinha o que já estava programado.</p>' +
-    (appUrl ? '<p style="margin:0 0 24px"><a href="' + appUrl + '/app" style="display:inline-block;background:#5B2EFF;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 20px;border-radius:8px">Ver a frota</a></p>' : '') +
+    (appUrl ? '<p style="margin:0 0 24px"><a href="' + appUrl + '/app/?ir=screens" style="display:inline-block;background:#5B2EFF;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 20px;border-radius:8px">Ver minhas TVs</a></p>' : '') +
     '<p style="font-size:12px;line-height:1.6;color:#64748b;margin:0">Este aviso é enviado uma vez por queda.</p>' +
     '</div>';
 
