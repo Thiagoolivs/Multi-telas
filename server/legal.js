@@ -137,9 +137,9 @@ function termos(env) {
 
 <h2>6. Cancelamento</h2>
 <ul>
-  <li><b>Mensal:</b> cancele quando quiser, pelo painel, em Plano. Nenhuma cobrança nova é feita, e o plano continua valendo <b>até o fim do período já pago</b>. Depois, a conta volta ao modo gratuito: a TV segue no ar com o selo. Fora o direito de arrependimento (item 5) e os casos em que a lei exigir, não há reembolso proporcional do mês em curso.</li>
+  <li><b>Mensal:</b> cancele quando quiser, pelo painel, em Plano. Nenhuma cobrança nova é feita, e o plano continua valendo <b>até o fim do período já pago</b>. Depois, a conta volta ao modo gratuito: uma TV (a mais antiga) segue no ar com o selo, e as outras mostram que estão pausadas até a reativação. Fora o direito de arrependimento (item 5) e os casos em que a lei exigir, não há reembolso proporcional do mês em curso.</li>
   <li><b>Anual:</b> é um contrato de 12 meses, cobrado mês a mês com preço menor por TV. Cancelar antes de completar os 12 meses tem <b>multa de 30% da soma das mensalidades que faltam</b>. Exemplo: com uma mensalidade de R$ 200 e 4 meses por pagar, a multa é 30% de R$ 800, ou R$ 240. <b>Com os 12 meses cumpridos, não há multa.</b> O acesso também vai até o fim do período já pago.</li>
-  <li>Se você tiver uma assinatura ativa e quiser excluir a conta, cancele a assinatura em Plano antes (ou peça ao suporte), para que nenhuma cobrança nova seja gerada.</li>
+  <li>Excluir a conta com uma assinatura ativa cancela a assinatura antes de apagar os dados: nenhuma cobrança nova é gerada.</li>
 </ul>
 
 <h2>7. O conteúdo é seu</h2>

@@ -195,7 +195,9 @@ test('nenhuma promessa sem código por trás', () => {
     ['Mural de fotos por QR', () => existe('server', 'mural.js') && /ocultarFoto/.test(ler('web', 'src', 'pages', 'MuralPage.jsx'))],
     ['Aniversariantes', () => existe('web', 'src', 'pages', 'BirthdaysPage.jsx')],
     ['Relatório de exibição', () => existe('server', 'routes', 'relatorio.js')],
-    ['Nunca desligamos sua tela por causa de fatura', () => plans.textoDoSelo({ plan: 'pro', plan_status: 'past_due', atraso_desde: Date.now() - 400 * 864e5 }) === 'MultiTelas'],
+    // Desde o QA de lançamento (03/11), depois de 20 dias de atraso só a primeira TV segue no ar;
+    // as outras mostram que estão pausadas (nenhuma apaga sem explicação).
+    ['Sua TV não apaga de surpresa', () => plans.textoDoSelo({ plan: 'pro', plan_status: 'past_due', atraso_desde: Date.now() - 400 * 864e5 }) === 'MultiTelas' && /Esta TV está pausada/.test(ler('js', 'player.js') + ler('js', 'cloud.js'))],
     ['Cancela quando quiser, pelo próprio painel', () => /Cancelar assinatura/.test(ler('web', 'src', 'pages', 'BillingPage.jsx'))],
     ['você baixa tudo ou pede a exclusão', () => /parts\[2\] === 'exportar'/.test(ler('server.js'))],
   ];
