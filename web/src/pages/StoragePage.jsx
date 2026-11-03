@@ -258,7 +258,7 @@ export function StoragePage({ filtro = 'fotos' }) {
                         {a && (
                           <input defaultValue={a.label} placeholder="o que a foto mostra" aria-label="O que a foto mostra"
                             onBlur={(e) => descrever(a, e.target.value)}
-                            className="w-full rounded border border-line bg-surface px-1.5 py-0.5 text-2xs text-ink-2 placeholder:text-ink-3 focus:border-accent focus:outline-none" />
+                            className="w-full rounded border border-line bg-surface px-1.5 py-0.5 text-2xs text-ink-2 placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none" />
                         )}
                       </div>
                     );

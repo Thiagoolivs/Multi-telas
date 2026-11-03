@@ -12,7 +12,8 @@ import { StatusDot } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { devices, deviceConfig, criar, brand } from '../api.js';
 import { porCampanhaNaTela, gravarEmLote } from '../lib/rodar.js';
-import { carregarTelasProntas, telaParaComecar, aplicarTelaPronta, marcaDaConta } from '../lib/telasProntas.js';
+import { carregarTelasProntas, telaParaComecar, aplicarTelaPronta, marcaDaConta, tvEmPe } from '../lib/telasProntas.js';
+import { paraGente, codigoDaTv } from '../lib/erros.js';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
@@ -24,6 +25,7 @@ import { confirmar } from '../lib/confirmar.js';
 import { CamposDoHorario } from '../components/tela/HorarioDaTela.jsx';
 import '../../../js/aparelho.js';
 import { usePerfil, perfilAtual } from '../lib/perfil.js';
+import { EscolherArquivo } from '../components/ui/EscolherArquivo.jsx';
 
 export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrParaPlano }) {
   const { data, loading, error, reload } = useAsync(devices.list);
@@ -284,12 +286,14 @@ function ReconnectDialog({ target, onClose, onDone }) {
   const [error, setError] = useState('');
   React.useEffect(() => { setCode(''); setError(''); }, [target]);
 
-  async function submit() {
+  async function submit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (busy || code.length < 4) return;
     setBusy(true); setError('');
     try {
       await devices.reconectar(target.id, code);
       onDone(); onClose();
-    } catch (err) { setError(err.message || 'Não foi possível reconectar.'); }
+    } catch (err) { setError(paraGente(err, 'parear')); }
     finally { setBusy(false); }
   }
 
@@ -302,23 +306,26 @@ function ReconnectDialog({ target, onClose, onDone }) {
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" icon={RefreshCw} onClick={submit} disabled={busy || code.trim().length < 4}>
+          <Button type="submit" form="form-reconectar" variant="primary" icon={RefreshCw} disabled={busy || code.length < 4}>
             {busy ? 'Reconectando…' : 'Reconectar'}
           </Button>
         </>
       }
     >
-      <div className="space-y-3.5">
+      {/* Mesmo cuidado do Parear (QA de 03/11): Enter envia, espaço e traço não contam, erro anunciado. */}
+      <form id="form-reconectar" onSubmit={submit} className="space-y-3.5">
         <p className="text-sm text-ink-2">
           A TV perdeu o vínculo quando o navegador dela foi fechado — acontece com
           alguns modelos. Digite o código que ela está mostrando agora: o nome e a
           programação desta tela passam para ela, sem gastar outra vaga do plano.
         </p>
         <Field label="Código que aparece na TV">
-          <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="CÓDIGO" maxLength={6} className="tracking-[0.3em]" autoFocus />
+          <Input value={code} onChange={(e) => setCode(codigoDaTv(e.target.value))} placeholder="CÓDIGO" maxLength={12} autoComplete="off" spellCheck={false} className="tracking-[0.3em]" autoFocus />
         </Field>
-        {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
-      </div>
+        <div role="alert" aria-live="assertive">
+          {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
+        </div>
+      </form>
     </Dialog>
   );
 }
@@ -334,9 +341,10 @@ function ReconnectDialog({ target, onClose, onDone }) {
  * vem com o botão que resolve — só o texto mandava a pessoa procurar.
  */
 function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar, onIrParaPlano }) {
-  const [code, setCode] = useState(codigoInicial || '');
+  const [code, setCode] = useState(codigoDaTv(codigoInicial));
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const campoCodigo = React.useRef(null);
   const [error, setError] = useState('');
   const [erroDePlano, setErroDePlano] = useState(false);
   const [pareada, setPareada] = useState(null);
@@ -371,7 +379,10 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
     } catch (e) { setMandada(''); setError(e.message || 'Não deu para pôr a campanha na TV.'); }
   }
 
-  async function submit() {
+  async function submit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    // Enter num campo vazio não manda nada (o botão também fica apagado).
+    if (busy || code.length < 4) return;
     setBusy(true); setError(''); setErroDePlano(false);
     try {
       const dev = await devices.pair(code, name);
@@ -384,8 +395,15 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
        */
       if (dev && dev.semConteudo) {
         try {
-          const [dados, r] = await Promise.all([carregarTelasProntas(), brand.get()]);
-          const tela = telaParaComecar(dados, marcaDaConta(r), perfilAtual().id, null);
+          /*
+           * A orientação de verdade (QA de lançamento, 03/11): a TV em pé
+           * recebia uma tela deitada espremida, porque aqui ia sempre null.
+           * A TV conta largura e altura no sinal (info.w/h); se ainda não
+           * contou, null — e aí vai deitada, o caso comum.
+           */
+          const [dados, r, lista] = await Promise.all([carregarTelasProntas(), brand.get(), devices.list().catch(() => null)]);
+          const daLista = ((lista && lista.devices) || []).find((x) => x.id === dev.id);
+          const tela = telaParaComecar(dados, marcaDaConta(r), perfilAtual().id, tvEmPe(daLista));
           if (tela) {
             await gravarEmLote([{ id: dev.id, name: dev.name }], (cfg) => aplicarTelaPronta(cfg, tela), 'Tela pronta: ' + tela.nome);
             setComecou(tela.nome);
@@ -395,8 +413,10 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
       setPareada(dev);
       onDone();
     } catch (err) {
-      setError(err.message || 'Não foi possível parear.');
+      // Com o que fazer (QA de 03/11): "código não encontrado" vira "Não achamos esse código. Confira na TV…".
+      setError(paraGente(err, 'parear'));
       setErroDePlano(err.status === 402);
+      if (campoCodigo.current && err.status !== 402) campoCodigo.current.focus();
     }
     finally { setBusy(false); }
   }
@@ -446,30 +466,41 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" icon={RadioTower} onClick={submit} disabled={busy || code.trim().length < 4}>
+          {/* type=submit do formulário de cima: Enter em qualquer campo pareia (QA de 03/11). */}
+          <Button type="submit" form="form-parear" variant="primary" icon={RadioTower} disabled={busy || code.length < 4}>
             {busy ? 'Pareando…' : 'Parear'}
           </Button>
         </>
       }
     >
-      <div className="space-y-3.5">
+      <form id="form-parear" onSubmit={submit} className="space-y-3.5">
         {/* Veio do QR: a TV já está com o código na tela; o passo 1 só confundiria. */}
         {!codigoInicial && <EnderecoDaTv />}
-        <Field label="Código de pareamento">
-          <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="CÓDIGO" maxLength={6} className="tracking-[0.3em]" />
+        {/*
+          O código como a pessoa fala: "BWC DQZ", "bwc-dqz" (QA de lançamento,
+          03/11). O limite de 6 contava o espaço e cortava a última letra; agora
+          espaço e traço saem antes, e o campo aceita o que se cola.
+        */}
+        <Field label="Código que aparece na TV" hint="6 letras e números. Espaços e traços não contam.">
+          <Input ref={campoCodigo} value={code} onChange={(e) => setCode(codigoDaTv(e.target.value))} placeholder="CÓDIGO" maxLength={12} autoFocus={!codigoInicial}
+            autoComplete="off" autoCapitalize="characters" spellCheck={false} className="tracking-[0.3em]"
+            aria-invalid={error && !erroDePlano ? 'true' : undefined} />
         </Field>
         <Field label="Nome da tela" hint="Ex.: Recepção, Vitrine, Refeitório.">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recepção" autoFocus={!!codigoInicial} />
         </Field>
-        {error && (
-          <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">
-            {error}
-            {erroDePlano && onIrParaPlano && (
-              <div className="mt-2"><Button size="sm" variant="primary" onClick={() => { onClose(); onIrParaPlano(); }}>Ver planos</Button></div>
-            )}
-          </div>
-        )}
-      </div>
+        {/* A região existe antes do erro, para o leitor de tela anunciar quando ele chega. */}
+        <div role="alert" aria-live="assertive">
+          {error && (
+            <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">
+              {error}
+              {erroDePlano && onIrParaPlano && (
+                <div className="mt-2"><Button size="sm" variant="primary" onClick={() => { onClose(); onIrParaPlano(); }}>Ver planos</Button></div>
+              )}
+            </div>
+          )}
+        </div>
+      </form>
     </Dialog>
   );
 }
@@ -744,10 +775,10 @@ function BackupDialog({ target, screens, onClose, onDone }) {
         <div className="rounded-lg border border-line p-3">
           <div className="text-sm font-semibold text-ink">Restaurar de um arquivo</div>
           <p className="mt-0.5 text-xs text-ink-3">Use o backup de uma tela antiga para reconstruir esta aqui.</p>
-          <label className="mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink-2 transition hover:bg-surface-2">
+          <EscolherArquivo accept="application/json,.json" onChange={restaurar} disabled={busy}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-sm text-ink-2 transition hover:bg-surface-2">
             <Upload size={14} /> Escolher arquivo
-            <input type="file" accept="application/json,.json" className="hidden" onChange={restaurar} disabled={busy} />
-          </label>
+          </EscolherArquivo>
         </div>
 
         <div className="rounded-lg border border-line p-3">

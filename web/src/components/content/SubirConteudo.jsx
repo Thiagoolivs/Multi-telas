@@ -6,6 +6,7 @@ import { devices } from '../../api.js';
 import { publicarPecas } from '../../lib/publicar.js';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
+import { EscolherArquivo } from '../ui/EscolherArquivo.jsx';
 import {
   ehVideo, ehImagem, prepararFoto, prepararVideo, avaliarVideo, enviarComProgresso, itemDaMidia, EVENTO_SUBIR, lerCompartilhados,
 } from '../../lib/subir.js';
@@ -192,14 +193,15 @@ export function SubirConteudo() {
         ) : (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
-              <label className="flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-line p-4 text-center text-sm font-semibold text-ink transition hover:border-accent/60 hover:bg-surface-2">
+              {/* Botões de verdade (QA de 03/11): o <label> com o input escondido não abria pelo teclado. */}
+              <EscolherArquivo accept={ACEITA} multiple onChange={(e) => { adicionar(e.target.files); e.target.value = ''; }}
+                className="flex flex-col items-center gap-1.5 rounded-xl border border-line p-4 text-center text-sm font-semibold text-ink transition hover:border-accent/60 hover:bg-surface-2">
                 <Images size={22} className="text-accent" /> Galeria
-                <input type="file" accept={ACEITA} multiple className="hidden" onChange={(e) => { adicionar(e.target.files); e.target.value = ''; }} />
-              </label>
-              <label className="flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-line p-4 text-center text-sm font-semibold text-ink transition hover:border-accent/60 hover:bg-surface-2">
+              </EscolherArquivo>
+              <EscolherArquivo accept="image/*" capture="environment" onChange={(e) => { adicionar(e.target.files); e.target.value = ''; }}
+                className="flex flex-col items-center gap-1.5 rounded-xl border border-line p-4 text-center text-sm font-semibold text-ink transition hover:border-accent/60 hover:bg-surface-2">
                 <Camera size={22} className="text-accent" /> Câmera
-                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { adicionar(e.target.files); e.target.value = ''; }} />
-              </label>
+              </EscolherArquivo>
             </div>
             <p className="hidden text-center text-2xs text-ink-3 sm:block">ou arraste os arquivos para qualquer lugar do painel</p>
 

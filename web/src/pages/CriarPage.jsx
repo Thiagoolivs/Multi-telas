@@ -369,7 +369,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
         placeholder={conversando ? 'Responda, peça uma mudança ou diga "pode gerar"' : perfil.exemplo}
         aria-label="O que você quer mostrar"
-        className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
+        className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent" />
       <Button variant="primary" icon={Send} disabled={pensando || !texto.trim()} onClick={() => enviar()} aria-label="Enviar">
         <span className="hidden sm:inline">Enviar</span>
       </Button>

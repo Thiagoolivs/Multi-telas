@@ -14,7 +14,7 @@ import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 import {
-  carregarTelasProntas, montarTela, estadoDaPrevia, aplicarTelaPronta, medirZonas, perfilDaTela, emPe, marcaDaConta,
+  carregarTelasProntas, montarTela, estadoDaPrevia, aplicarTelaPronta, medirZonas, perfilDaTela, emPe, marcaDaConta, tvEmPe,
 } from '../lib/telasProntas.js';
 
 /*
@@ -28,11 +28,6 @@ const ORDEM = ['cabecalho', 'principal', 'lateral', 'rodape'];
 const NOME_DO_GRUPO = { cabecalho: 'Cabeçalho', principal: 'Principal', lateral: 'Lateral', rodape: 'Rodapé' };
 const MAX_FRASES = 8;
 
-// A TV está em pé? Pelo que ela contou de si (largura e altura); sem isso, não se sabe.
-function tvEmPe(d) {
-  const i = d && d.info;
-  return i && i.w > 0 && i.h > 0 ? i.h > i.w : null;
-}
 
 export function TelasProntasPage({ onIr, telaAlvo }) {
   const perfil = usePerfil();

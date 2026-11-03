@@ -16,7 +16,14 @@ const { spawn } = require('node:child_process');
 const RAIZ = path.join(__dirname, '..');
 const ler = (...p) => fs.readFileSync(path.join(RAIZ, ...p), 'utf8');
 
-test('telaParaComecar: a do ramo da conta, deitada; em pé só se a TV disse que está em pé', async () => {
+/*
+ * QA de lançamento, 03/11 (bloqueador B1): sem tela da frente, a TV caía na
+ * primeira aprovada de QUALQUER frente — a da ótica — e toda TV nova, da
+ * metalúrgica à clínica, estreava vendendo óculos. A regra mudou de propósito:
+ * só a tela da frente; sem ela, null (a TV fica na espera). E a TV em pé
+ * recebe a tela em pé, pelo que ela contou de si (info.w/h).
+ */
+test('telaParaComecar: só a da frente da conta, na orientação da TV; sem ela, a espera', async () => {
   const T = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/telasProntas.js')).href);
   const telas = [
     { id: 'saude-pe', nome: 'Clínica em pé', layout: 'portrait-split', perfil: 'saude', zonas: {} },
@@ -26,7 +33,14 @@ test('telaParaComecar: a do ramo da conta, deitada; em pé só se a TV disse que
   const dados = { telas, modelos: new Map(), exemplos: { nomes: [], compactos: [] } };
   assert.equal(T.telaParaComecar(dados, {}, 'saude', null).id, 'saude');
   assert.equal(T.telaParaComecar(dados, {}, 'saude', true).id, 'saude-pe');
-  assert.equal(T.telaParaComecar(dados, {}, 'empresa', null).id, 'saude', 'sem tela do ramo: a primeira que cabe');
+  assert.equal(T.telaParaComecar(dados, {}, 'empresa', null), null, 'sem tela da frente: nenhuma (nada de cair na de outra frente)');
+  assert.equal(T.telaParaComecar(dados, {}, 'comercio', true), null, 'TV em pé sem tela em pé da frente: a espera, não a deitada espremida');
+  assert.equal(T.telaParaComecar(dados, {}, 'comercio', false).id, 'loja');
+  // A orientação vem do que a TV contou de si; sem isso, não se sabe.
+  assert.equal(T.tvEmPe({ info: { w: 1080, h: 1920 } }), true);
+  assert.equal(T.tvEmPe({ info: { w: 1920, h: 1080 } }), false);
+  assert.equal(T.tvEmPe({ info: null }), null);
+  assert.equal(T.tvEmPe(undefined), null);
   assert.equal(T.telaParaComecar({ telas: [], modelos: new Map() }, {}, 'saude', null), null);
   assert.deepEqual(T.marcaDaConta({ empresa: 'Padaria Sol', kit: { nome: 'Marca principal', site: 'sol.com.br', local: { endereco: 'Rua A, 1', bairro: 'Centro' } } }),
     { cores: [], fonteTitulo: '', fonteApoio: '', nome: 'Padaria Sol', site: 'sol.com.br', endereco: 'Rua A, 1 · Centro' });
@@ -35,7 +49,8 @@ test('telaParaComecar: a do ramo da conta, deitada; em pé só se a TV disse que
 test('o diálogo de parear põe a tela pronta quando a TV não tem conteúdo, e conta qual', () => {
   const s = ler('web/src/pages/ScreensPage.jsx');
   assert.match(s, /if \(dev && dev\.semConteudo\) \{/);
-  assert.match(s, /telaParaComecar\(dados, marcaDaConta\(r\), perfilAtual\(\)\.id, null\)/);
+  // A orientação real da TV (o pulso dela, na lista), e não mais null fixo.
+  assert.match(s, /telaParaComecar\(dados, marcaDaConta\(r\), perfilAtual\(\)\.id, tvEmPe\(daLista\)\)/);
   assert.match(s, /gravarEmLote\(\[\{ id: dev\.id, name: dev\.name \}\], \(cfg\) => aplicarTelaPronta\(cfg, tela\)/);
   assert.match(s, /está mostrando “\{comecou\}”/);
 });

@@ -179,15 +179,31 @@ export function marcaDaConta(r) {
 /*
  * A tela com que uma TV recém-pareada começa (QA de 26/10): ela ficava na
  * espera dizendo "Tudo certo, TV" até alguém publicar, e as telas prontas,
- * que são o melhor do produto, só apareciam para quem fosse procurar. A do
- * ramo da conta primeiro; deitada, a não ser que a TV tenha contado que está
- * em pé. Nula se não houver nenhuma que sirva.
+ * que são o melhor do produto, só apareciam para quem fosse procurar.
+ *
+ * SÓ DA FRENTE DA CONTA (QA de lançamento, 03/11, bloqueador B1): sem tela
+ * da frente, caía em `telas.find(cabe)` — a primeira aprovada de qualquer
+ * frente, que era a da ótica. Toda TV nova, da metalúrgica à clínica,
+ * estreava com "Óculos de sol 30% OFF" e uma oferta vencida com o nome do
+ * cliente no cabeçalho. Agora, sem tela da frente que caiba, devolve null e
+ * a TV fica na espera ("Tudo certo"), que é neutra.
+ *
+ * NA ORIENTAÇÃO DA TV (mesmo QA): o painel passava sempre null, e a TV em pé
+ * recebia uma tela deitada espremida. `tvEmPe` é o que a TV contou de si
+ * (tvEmPe(d) abaixo); null quando ela ainda não disse — aí, deitada, que é o
+ * caso comum.
  */
 export function telaParaComecar(dados, marca, perfilId, tvEmPe) {
   const telas = (dados && dados.telas) || [];
   const cabe = (t) => (tvEmPe == null ? !emPe(t.layout) : emPe(t.layout) === tvEmPe);
-  const t = telas.find((x) => perfilDaTela(x) === perfilId && cabe(x)) || telas.find(cabe);
+  const t = telas.find((x) => perfilDaTela(x) === perfilId && cabe(x));
   return t ? montarTela(t, dados.modelos, marca || {}, dados.exemplos) : null;
+}
+
+// A TV está em pé? Pelo que ela contou de si (largura e altura); sem isso, não se sabe (null).
+export function tvEmPe(d) {
+  const i = d && d.info;
+  return i && i.w > 0 && i.h > 0 ? i.h > i.w : null;
 }
 
 /*

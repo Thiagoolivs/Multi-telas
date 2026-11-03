@@ -19,6 +19,7 @@ import { EsbocoDaTela } from '../components/criar/EsbocoDaTela.jsx';
 const FRASE_DO_PERFIL = { comercio: 'Aberto de segunda a sábado, das 8h às 18h', empresa: 'Reunião geral na sexta, às 9h, no auditório', saude: 'Chegue 15 minutos antes da consulta' };
 import { usePerfil } from '../lib/perfil.js';
 import { cn } from '../lib/cn.js';
+import { EscolherArquivo } from '../components/ui/EscolherArquivo.jsx';
 
 const FONTES = [
   { id: '', label: 'A IA escolhe' },
@@ -516,10 +517,10 @@ export function BrandPage({ onIr }) {
                   <div className="text-xs font-semibold text-ink">Referências de estilo</div>
                   <div className="text-2xs text-ink-3">Artes que você gosta. A IA imita a direção (tipografia, cor, composição), não copia o conteúdo.</div>
                 </div>
-                <label className={cn('flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 py-1 text-xs text-ink-2 transition hover:bg-surface-2', busy && 'pointer-events-none opacity-60')}>
+                <EscolherArquivo accept="image/png,image/jpeg,image/webp" onChange={(e) => subir('referencia', e)} disabled={busy} rotulo="Enviar uma referência de estilo"
+                  className="flex shrink-0 items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 py-1 text-xs text-ink-2 transition hover:bg-surface-2">
                   <Plus size={12} /> Enviar
-                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => subir('referencia', e)} />
-                </label>
+                </EscolherArquivo>
               </div>
               {referencias.length ? (
                 <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">

@@ -26,6 +26,7 @@ import { TAMANHO_REAL } from '../lib/pecaHtml.js';
 import { aviso } from '../lib/avisos.js';
 import { publicarPecas } from '../lib/publicar.js';
 import { guardar as guardarNaBandeja, inscrever as inscreverBandeja, limpar as limparBandeja } from '../lib/bandeja.js';
+import { EscolherArquivo } from '../components/ui/EscolherArquivo.jsx';
 
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
@@ -761,10 +762,10 @@ export function MyDesignsPage({ onIr }) {
             <button type="button" className="inline-flex items-center gap-1 text-accent hover:underline" onClick={() => setImgOpen(true)}>
               <ImagePlus size={13} /> Gerar só uma imagem
             </button>
-            <label className="inline-flex cursor-pointer items-center gap-1 text-accent hover:underline">
+            <EscolherArquivo accept="image/png,image/jpeg,image/webp,application/pdf" onChange={onImport}
+              className="inline-flex items-center gap-1 text-accent hover:underline">
               <Upload size={13} /> Importar do Canva (PNG ou PDF)
-              <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden" onChange={onImport} />
-            </label>
+            </EscolherArquivo>
           </div>
         </div>
       </div>

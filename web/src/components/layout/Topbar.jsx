@@ -18,7 +18,8 @@ export function Topbar({ title, onOpenMenu, theme, onToggleTheme, user, onLogout
       <h1 className="text-sm font-semibold text-ink lg:hidden">{title}</h1>
 
       <div className="ml-auto flex items-center gap-1.5">
-        <IconButton icon={theme === 'dark' ? Sun : Moon} label="Alternar tema" onClick={onToggleTheme} />
+        {/* O nome diz o que o botão faz agora (QA de 03/11), e não só "alternar". */}
+        <IconButton icon={theme === 'dark' ? Sun : Moon} label={theme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'} onClick={onToggleTheme} />
         <UserMenu user={user} onLogout={onLogout} />
       </div>
     </header>
@@ -32,8 +33,26 @@ function UserMenu({ user, onLogout }) {
   useEffect(() => {
     if (!open) return;
     const onClick = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
+    /*
+     * Esc fecha e devolve o foco ao botão (QA de lançamento, 03/11): só fechava
+     * com clique fora, e pelo teclado o menu ficava aberto com o foco seguindo
+     * pela página. Sair do menu com Tab também fecha.
+     */
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      const b = ref.current && ref.current.querySelector('button');
+      if (b) b.focus();
+    };
+    const onFoco = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
     document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('focusin', onFoco);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('focusin', onFoco);
+    };
   }, [open]);
 
   const name = user?.name || user?.email || 'Conta';
@@ -43,7 +62,10 @@ function UserMenu({ user, onLogout }) {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-label={'Conta: ' + name}
+        aria-expanded={open}
+        aria-haspopup="true"
+        // O nome do botão contém o texto que se vê (nome e papel), como pede o axe (label-content-name-mismatch).
+        aria-label={'Conta: ' + name + (role ? ', ' + role : '')}
         className="ml-1 flex items-center gap-2 rounded-md py-0.5 pl-0.5 pr-1.5 transition hover:bg-surface-2 max-sm:min-h-11 max-sm:min-w-11 max-sm:justify-center max-sm:p-0"
       >
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-soft text-2xs font-semibold text-accent max-sm:h-9 max-sm:w-9">{initials(name)}</span>

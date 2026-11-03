@@ -2214,7 +2214,7 @@ function Num({ rotulo, valor, onChange }) {
       <span className="text-2xs text-ink-3">{rotulo}</span>
       <input type="number" step="0.5" value={Math.round((Number(valor) || 0) * 10) / 10}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="tnum w-full rounded border border-line bg-surface px-1.5 py-1 text-xs text-ink outline-none focus:border-accent" />
+        className="tnum w-full rounded border border-line bg-surface px-1.5 py-1 text-xs text-ink outline-none focus:border-accent focus:ring-1 focus:ring-accent" />
     </label>
   );
 }

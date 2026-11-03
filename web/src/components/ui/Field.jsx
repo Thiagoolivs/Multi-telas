@@ -1,32 +1,35 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { cn } from '../../lib/cn.js';
 
 const baseInput =
   'h-9 w-full rounded-md border border-line bg-surface px-3 text-sm text-ink placeholder:text-ink-3 ' +
-  'transition focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 ' +
+  // Foco: borda e anel no violeta cheio (QA de 03/11: o anel a 25% sumia; a borda accent sozinha já dá ≥ 5:1).
+  'transition focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent ' +
   'disabled:opacity-60 disabled:pointer-events-none';
 
-export function Input({ className, ...props }) {
-  return <input className={cn(baseInput, className)} {...props} />;
-}
+// Com ref (QA de 03/11): o cadastro põe o foco no campo que falta.
+export const Input = forwardRef(function Input({ className, ...props }, ref) {
+  return <input ref={ref} className={cn(baseInput, className)} {...props} />;
+});
 
-export function Select({ className, children, ...props }) {
+export const Select = forwardRef(function Select({ className, children, ...props }, ref) {
   return (
-    <select className={cn(baseInput, 'cursor-pointer pr-8', className)} {...props}>
+    <select ref={ref} className={cn(baseInput, 'cursor-pointer pr-8', className)} {...props}>
       {children}
     </select>
   );
-}
+});
 
-export function Textarea({ className, rows = 3, ...props }) {
+export const Textarea = forwardRef(function Textarea({ className, rows = 3, ...props }, ref) {
   return (
     <textarea
+      ref={ref}
       rows={rows}
       className={cn(baseInput.replace('h-9 ', ''), 'min-h-[64px] resize-y py-2 leading-snug', className)}
       {...props}
     />
   );
-}
+});
 
 // Rótulo + controle + mensagem de ajuda/erro opcional.
 export function Field({ label, hint, error, children, className }) {
