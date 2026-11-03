@@ -66,21 +66,34 @@ test('a landing de cada frente: título, canônico, herói, exemplo, cartão ace
     const f = P.doSlug(slug);
     assert.match(s, new RegExp('<title>[^<]*' + f.marca + '</title>'));
     assert.match(s, new RegExp('<link rel="canonical" href="https://app\\.multitelas\\.net\\.br/' + slug + '" />'));
-    assert.match(s, new RegExp('<body class="[^"]*" data-frente="' + slug + '" data-exemplo="[a-z]+">'));
+    // QA de 03/11: o <body> diz a frente (o catálogo que landing.js pede) e a marca (a mensagem do WhatsApp).
+    assert.match(s, new RegExp('<body class="[^"]*" data-frente="' + slug + '" data-frente-id="' + f.id + '" data-marca="' + f.marca + '">'));
     assert.match(s, new RegExp('data-frente-card="' + slug + '" aria-current="page"'));
-    assert.doesNotMatch(s, /<a href="\/app" data-track="trial"/, slug + ': um "Testar grátis" não leva à frente');
-    assert.match(s, new RegExp('<a href="/app/\\?frente=' + slug + '" data-track="trial"'));
+    assert.doesNotMatch(s, /<a href="\/app(\/\?cadastro=1[^"]*)?" data-track="trial"/, slug + ': um "Testar grátis" não leva à frente');
+    // QA de 03/11: todo botão de teste (inclusive "Começar o teste" e "Assinar") abre o CADASTRO na frente.
+    const testes = [...s.matchAll(/<a href="([^"]*)" data-track="trial"/g)].map((m) => m[1]);
+    assert.ok(testes.length >= 5, slug + ': botões de teste sumiram');
+    for (const h of testes) assert.match(h, new RegExp('^/app/\\?frente=' + slug + '&amp;cadastro=1(&amp;ir=billing)?$'), slug + ': ' + h);
     assert.match(s, /<!--frente:kicker-->[^<]*/);
+    // Nada da principal (o "o preço depende") e nenhum marcador de bloco sobrando.
+    assert.doesNotMatch(s, /O preço depende do seu/);
+    assert.doesNotMatch(s, /<!--\/?so-(raiz|frente)-->/);
   }
   // Nenhuma frente repete o título da página principal (conteúdo duplicado para o Google).
   const h1 = (s) => /<h1[^>]*>([\s\S]*?)<\/h1>/.exec(s)[1];
   for (const slug of L.SLUGS) assert.notEqual(h1(L.montar(html, slug)), h1(html), slug + ' repete o herói da principal');
   const saude = L.montar(html, 'saude');
-  assert.match(saude, /vendor\/galeria\/clinica\.webp" width="1200"/);
+  // QA de 03/11: a TV da clínica não mostra mais "pacote em parcelas" (preço em publicidade de saúde).
+  assert.match(saude, /vendor\/galeria\/saude-gripe\.webp" width="1200"/);
+  assert.doesNotMatch(saude, /parcel/i);
   assert.doesNotMatch(saude, /class="troca"/, 'a padaria e a lanchonete trocando na TV da clínica');
   assert.doesNotMatch(saude, /pão de queijo/);
-  // A página principal continua a mesma, com os três caminhos.
-  for (const slug of L.SLUGS) assert.match(html, new RegExp('<a href="/' + slug + '" data-frente-card="' + slug + '"'));
+  // A página principal continua com os três caminhos, e o cadastro sem frente marcada.
+  const raiz = L.raiz(html);
+  for (const slug of L.SLUGS) assert.match(raiz, new RegExp('<a href="/' + slug + '" data-frente-card="' + slug + '"'));
+  assert.doesNotMatch(raiz, /<a href="\/app" data-track="trial"/);
+  assert.match(raiz, /<a href="\/app\/\?cadastro=1" data-track="trial"/);
+  assert.doesNotMatch(raiz, /<!--\/?so-(raiz|frente)-->/);
 });
 
 const PORTA = 7900 + Math.floor(Math.random() * 90);

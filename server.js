@@ -2665,7 +2665,14 @@ function serveAppIndex(req, res) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       return res.end('Painel não compilado. Rode: cd web && npm install && npm run build');
     }
-    sendFile(res, 'index.html', Buffer.from(comGoogleTag(req, res, data)));
+    /*
+     * QA de lançamento, 03/11: o painel carregava a Google tag com o
+     * consentimento já concedido e sem aviso nenhum. A medição da campanha
+     * fica só na landing, que tem o aviso e começa recusada (landing/ga-init.js).
+     * O "sign_up" do painel (web/src/lib/analytics.js) vira nada sem `gtag`;
+     * a conversão que sobra é o "begin_checkout" do botão de teste na landing.
+     */
+    sendFile(res, 'index.html', data);
   });
 }
 
@@ -2755,6 +2762,7 @@ function hostDoPedido(req) {
 /*
  * Google tag (GA4) para medir a campanha do Google Ads.
  *
+ * Só na landing (não no painel desde o QA de 03/11: lá não havia aviso).
  * Só em produção: NODE_ENV=production ou o ambiente "production" do Railway
  * (este projeto não define NODE_ENV lá; ver server/billing.js). E nunca no
  * domínio da TV: o player roda 24h numa parede, e cada página vista ali seria
@@ -2812,7 +2820,8 @@ async function handleStatic(req, res, urlPath) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(HOME_HTML);
       }
-      const pagina = frenteDaLanding ? (landingFrentes.montar(data, frenteDaLanding) || data) : data;
+      // A principal sem a tabela de preço de uma frente; a frente com o preço dela (QA de 03/11).
+      const pagina = frenteDaLanding ? (landingFrentes.montar(data, frenteDaLanding) || landingFrentes.raiz(data)) : landingFrentes.raiz(data);
       // A tag entra antes do writeHead: ela ajusta a CSP desta resposta.
       const html = comGoogleTag(req, res, pagina, '<script src="/analytics.js" defer></script>\n');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -3044,6 +3053,8 @@ const ROBOTS_TXT = [
   'Allow: /vendor/',
   'Allow: /icons/',
   'Allow: /api/planos',
+  'Allow: /termos',
+  'Allow: /privacidade',
   'Disallow: /app',
   'Disallow: /api/',
   'Disallow: /media/',
@@ -3069,12 +3080,15 @@ const SITEMAP_XML = '<?xml version="1.0" encoding="UTF-8"?>\n'
   + '  <url><loc>' + SITE_PUBLICO + '/</loc><lastmod>' + PUBLICADO_EM + '</lastmod></url>\n'
   // As landings das frentes (docs/FRENTES.md).
   + landingFrentes.SLUGS.map((f) => '  <url><loc>' + SITE_PUBLICO + '/' + f + '</loc><lastmod>' + PUBLICADO_EM + '</lastmod></url>\n').join('')
+  + ['termos', 'privacidade'].map((f) => '  <url><loc>' + SITE_PUBLICO + '/' + f + '</loc><lastmod>' + PUBLICADO_EM + '</lastmod></url>\n').join('')
   + '</urlset>\n';
 
 function indexavel(req, pathname) {
   if (hostDoPedido(req).startsWith('tv.')) return false;
   return pathname === '/' || pathname === '/index.html'
     || landingFrentes.SLUGS.some((f) => pathname === '/' + f || pathname === '/' + f + '/')
+    // As páginas legais também (QA de 03/11): quem procura a empresa acha os termos.
+    || pathname === '/termos' || pathname === '/privacidade'
     || pathname === '/robots.txt' || pathname === '/sitemap.xml'
     || pathname.startsWith('/vendor/') || pathname.startsWith('/icons/');
 }

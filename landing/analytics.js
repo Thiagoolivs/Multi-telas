@@ -26,11 +26,24 @@
     }
   });
 
-  /* ---------- Aviso de cookies (LGPD) ---------- */
+  /* ---------- Aviso de cookies (LGPD) ----------
+   * QA de lançamento, 03/11: o aviso dizia só "medir o desempenho", sem falar
+   * do Google nem da publicidade, sem link para a política, e o consentimento
+   * já começava concedido. Agora: diz o que é, leva à política, nada é gravado
+   * pelo Google até "Aceitar" (landing/ga-init.js começa recusado), e o link
+   * "Cookies" do rodapé reabre a escolha.
+   */
   var CHAVE = 'mt_cookies';
   var escolha = null;
   try { escolha = window.localStorage.getItem(CHAVE); } catch (e) { /* sem storage: mostra o aviso */ }
-  if (escolha) return;
+
+  // O link "Cookies" do rodapé: só aparece com a medição ligada, e reabre o aviso.
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('[data-cookies]');
+    if (!el) return;
+    e.preventDefault();
+    if (!document.querySelector('[data-aviso-cookies]')) montar();
+  });
 
   function guardar(v) {
     try { window.localStorage.setItem(CHAVE, v); } catch (e) { /* a escolha vale só nesta visita */ }
@@ -38,6 +51,7 @@
 
   function montar() {
     var caixa = document.createElement('div');
+    caixa.setAttribute('data-aviso-cookies', '');
     caixa.setAttribute('role', 'region');
     caixa.setAttribute('aria-label', 'Aviso de cookies');
     caixa.style.cssText = 'position:fixed;left:12px;right:12px;bottom:12px;z-index:60;margin:0 auto;max-width:560px;'
@@ -46,8 +60,13 @@
       + "font:15px/1.4 'Outfit',system-ui,sans-serif;color:#0E0B1F;";
 
     var texto = document.createElement('p');
-    texto.textContent = 'Usamos cookies para medir o desempenho do site.';
     texto.style.cssText = 'margin:0;flex:1 1 220px;';
+    texto.appendChild(document.createTextNode('Com a sua permissão, usamos cookies do Google Analytics e do Google Ads para medir as visitas e os anúncios. '));
+    var saiba = document.createElement('a');
+    saiba.href = '/privacidade#cookies';
+    saiba.textContent = 'Saiba mais';
+    saiba.style.cssText = 'color:#5B2EFF;text-decoration:underline;';
+    texto.appendChild(saiba);
 
     var botoes = document.createElement('div');
     botoes.style.cssText = 'display:flex;gap:8px;margin-left:auto;';
@@ -61,7 +80,7 @@
       return b;
     }
     var recusar = botao('Recusar', false);
-    var ok = botao('Ok', true);
+    var ok = botao('Aceitar', true);
 
     recusar.addEventListener('click', function () {
       window.gtag('consent', 'update', { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied' });
@@ -69,6 +88,7 @@
       fechar();
     });
     ok.addEventListener('click', function () {
+      window.gtag('consent', 'update', { analytics_storage: 'granted', ad_storage: 'granted', ad_user_data: 'granted' });
       guardar('aceito');
       fechar();
     });
@@ -90,6 +110,13 @@
     document.documentElement.classList.add('com-aviso-cookies');
   }
 
-  if (document.body) montar();
-  else document.addEventListener('DOMContentLoaded', montar);
+  function quandoPronto(fn) {
+    if (document.body) fn();
+    else document.addEventListener('DOMContentLoaded', fn);
+  }
+  // O link do rodapé só faz sentido com a medição ligada.
+  quandoPronto(function () {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-cookies]'), function (a) { a.hidden = false; });
+  });
+  if (!escolha) quandoPronto(montar);
 })();
