@@ -20,6 +20,7 @@
  * por falha do provedor é chato; um que nunca sai é pior.
  */
 const plans = require('./plans');
+const cobranca = require('./cobranca');
 const { log } = require('./log.js');
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -49,7 +50,9 @@ function escapar(s) {
 }
 
 function mensagem(tipo, conta, appUrl, agora) {
-  const preco = reais(plans.PLANS.pro.precoTelaCents);
+  // O preço da frente da conta (QA de lançamento, 03/11): `conta.frente`
+  // vem resolvida da varredura; sem ela, a frente padrão.
+  const preco = reais(plans.precoMensalCents('pro', conta.frente));
   const telas = Number(conta.telas) || 0;
   const restam = plans.diasDeTesteRestantes(conta, agora);
   const quando = restam <= 1 ? 'amanhã' : 'em ' + restam + ' dias';
@@ -120,10 +123,10 @@ function mensagemAtraso(conta, appUrl, agora) {
     assunto: 'Fatura do MultiTelas em atraso — suas telas continuam no ar',
     titulo: 'Há uma fatura em atraso há ' + dias(s.diasEmAtraso),
     paragrafos: [
-      'Suas telas continuam no ar, do jeito que estão. Nunca desligamos uma tela por causa de fatura.',
+      'Suas telas continuam no ar, do jeito que estão, por enquanto. Nada é apagado por causa de fatura.',
       'Se a fatura não for paga: ' + (s.diasAteSelo > 0 ? 'em ' + dias(s.diasAteSelo) + ' as TVs passam a mostrar um pequeno selo do MultiTelas no canto, e ' : '')
-        + 'em ' + dias(s.diasAteBloquear) + ' criar com IA e ligar telas novas ficam pausados até o pagamento.',
-      'A fatura em aberto está no painel, em Plano. Pagou, tudo volta na hora.',
+        + 'em ' + dias(s.diasAteBloquear) + ' criar com IA e ligar telas novas ficam pausados até o pagamento, e só a TV mais antiga da conta segue no ar — as outras mostram um aviso de pausa.',
+      'A fatura em aberto está no painel, em Plano. Pagou, tudo volta na hora, inclusive as TVs pausadas.',
     ],
     botao: 'Ver a fatura',
     destino: '/app/?ir=billing',
@@ -156,7 +159,8 @@ async function varrer({ db, mail, appUrl, agora }) {
   for (const conta of contas) {
     const tipo = decidir(conta, t0);
     if (!tipo) continue;
-    const { subject, text, html } = mensagem(tipo, conta, appUrl, t0);
+    const frente = await cobranca.frenteDaConta(db, conta);
+    const { subject, text, html } = mensagem(tipo, { ...conta, frente }, appUrl, t0);
     try {
       await mail.send({ to: conta.email, subject, html, text });
       await db.marcarLembreteTeste(conta.id, tipo);

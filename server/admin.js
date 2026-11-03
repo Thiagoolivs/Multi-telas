@@ -71,7 +71,9 @@ function clientes(linhas, agora, statusCortesia) {
     const telas = Math.max(0, Number(c.telas) || 0);
     const contrato = plans.contratoDe(c.plan_contrato);
     const cortesia = c.plan_status === statusCortesia;
-    const mensal = cortesia ? 0 : plans.mensalidadeCents(c.plan, Math.max(1, telas), contrato);
+    // O preço é o da frente da conta (QA de lançamento, 03/11); sem frente gravada, a padrão.
+    const frente = plans.frenteDe(c.perfil);
+    const mensal = cortesia ? 0 : plans.mensalidadeCents(c.plan, Math.max(1, telas), contrato, frente);
     const desde = Number(c.contrato_desde) || 0;
     const mesesUsados = desde ? Math.floor((t - desde) / (30 * DIA)) : 0;
     const atraso = plans.situacaoAtraso({ plan: c.plan, plan_status: c.plan_status, atraso_desde: c.atraso_desde }, t);
@@ -86,7 +88,8 @@ function clientes(linhas, agora, statusCortesia) {
       contrato,
       contratoDesde: desde,
       fidelidadeAte: contrato === 'anual' && desde ? desde + plans.MESES_DO_CONTRATO * 30 * DIA : 0,
-      multaHojeCents: contrato === 'anual' && desde ? plans.multaCancelamentoCents({ telas: Math.max(1, telas), mesesUsados }).cents : 0,
+      frente,
+      multaHojeCents: contrato === 'anual' && desde ? plans.multaCancelamentoCents({ telas: Math.max(1, telas), mesesUsados, frente }).cents : 0,
       mensalidadeCents: mensal,
       renovaEm: Number(c.plan_renews_at) || 0,
       atraso: atraso ? { dias: atraso.diasEmAtraso, selo: atraso.selo, bloqueado: atraso.bloqueado } : null,
@@ -152,7 +155,7 @@ function custoIa(linhas, statusCortesia) {
     const telas = Math.max(1, Number(r.telas) || 0);
     const cortesia = r.plan_status === statusCortesia;
     const pagando = plans.isPaid(r.plan || 'free') && !cortesia;
-    const mensal = pagando ? plans.mensalidadeCents(r.plan, telas, r.plan_contrato) : 0;
+    const mensal = pagando ? plans.mensalidadeCents(r.plan, telas, r.plan_contrato, plans.frenteDe(r.perfil)) : 0;
     const custo = Number(r.centavos) || 0;
     return {
       id: r.tenant_id,

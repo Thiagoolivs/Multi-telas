@@ -10,7 +10,7 @@
 
 module.exports = function (ctx) {
   const {
-    db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode, baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest, cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual, sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela,
+    db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode, baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest, cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual, sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela, pausaDaTela,
   } = ctx;
 
   const NAO_TRATEI = Symbol('nao-tratei');
@@ -669,8 +669,11 @@ module.exports = function (ctx) {
          */
         // `selo` continua booleano para as TVs com o casco antigo; o texto vai à parte.
         const seloTexto = await seloDaConta(device.tenant_id);
+        // TV pausada (QA de lançamento, 03/11): no grátis só a TV mais antiga segue no ar.
+        const pausadaTexto = await pausaDaTela(device.tenant_id, id);
         return sendJson(res, 200, {
           ok: true, at: Date.now(), configEm: device.updated_at || 0, selo: !!seloTexto, seloTexto,
+          pausada: !!pausadaTexto, ...(pausadaTexto ? { pausadaTexto } : {}),
           // Comando que o SSE pode não ter entregue (stream caído): vai no pulso.
           comando: comando || undefined,
         });

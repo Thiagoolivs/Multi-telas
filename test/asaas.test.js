@@ -227,7 +227,8 @@ test('existe um caminho de cancelamento que não volta para a mesma tela', () =>
   const tela = soCodigo(lerFonte('web', 'src', 'pages', 'BillingPage.jsx'))
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, ' ');
   assert.ok(!/mode === 'stripe'/.test(tela), 'o cancelamento voltou a exigir Stripe');
-  assert.match(tela, /billing\.cancelar\(\)/, 'a tela não chama o cancelamento');
+  // No anual o aceite da multa vai junto (QA de lançamento, 03/11): billing.cancelar(valor).
+  assert.match(tela, /billing\.cancelar\(/, 'a tela não chama o cancelamento');
   assert.match(tela, /Confirmar cancelamento/, 'sumiu a confirmação antes de cancelar');
 
   const server = soCodigo(require('./fonte-servidor.js').fonteDoServidor());

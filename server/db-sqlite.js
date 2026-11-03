@@ -902,7 +902,7 @@ async function frotaDaPlataforma(limite) {
 /* As contas que não estão no grátis, com o e-mail do dono e quantas telas têm. */
 async function contasPagas() {
   return db.prepare(`SELECT t.id, t.name, t.plan, t.plan_status, t.plan_contrato, t.contrato_desde, t.plan_telas,
-      t.atraso_desde, t.plan_renews_at, t.created_at,
+      t.atraso_desde, t.plan_renews_at, t.created_at, t.perfil,
       (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
       (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = t.id) AS telas
     FROM tenants t WHERE COALESCE(t.plan, 'free') <> 'free' ORDER BY t.name`).all();
@@ -915,12 +915,12 @@ async function cadastrosDesde(desde) {
 }
 /* Custo de IA por conta na janela (medido em uso_ia), das que mais gastam. */
 async function custoIaPorConta(desde, limite) {
-  return db.prepare(`SELECT u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato,
+  return db.prepare(`SELECT u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato, t.perfil,
       SUM(u.custo_centavos) AS centavos, SUM(u.creditos) AS criacoes, COUNT(*) AS chamadas,
       (SELECT COUNT(*) FROM devices d WHERE d.tenant_id = u.tenant_id) AS telas
     FROM uso_ia u LEFT JOIN tenants t ON t.id = u.tenant_id
     WHERE u.created_at >= ?
-    GROUP BY u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato
+    GROUP BY u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato, t.perfil
     ORDER BY centavos DESC LIMIT ?`).all(desde, limite || 50);
 }
 

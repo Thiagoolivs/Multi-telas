@@ -179,8 +179,9 @@ function pagamentoAtrasado() {
   return {
     erro: 'pagamento_atrasado',
     titulo: 'Pagamento em atraso',
-    mensagem: 'Suas telas continuam no ar, e o editor continua inteiro. '
-      + 'Criar com IA volta assim que a fatura em aberto for paga.',
+    // QA de lançamento, 03/11: com 20 dias de atraso só a TV mais antiga segue no ar (plans.telasNoAr).
+    mensagem: 'Nada foi apagado: a TV mais antiga da conta e o editor continuam no ar. '
+      + 'Criar com IA e as outras TVs voltam assim que a fatura em aberto for paga.',
     saidas: ['pagar-fatura'],
   };
 }
