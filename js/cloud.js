@@ -121,8 +121,36 @@
     const res = await fetch(API + path, opt);
     if (res.status === 204) return null;
     const data = await res.json().catch(() => null);
-    if (!res.ok) { const e = new Error((data && data.error) || ('HTTP ' + res.status)); e.status = res.status; throw e; }
+    if (!res.ok) {
+      const e = new Error((data && data.error) || ('HTTP ' + res.status));
+      e.status = res.status;
+      // Resposta do NOSSO servidor (JSON com `error`), e não a página de erro de um proxy no caminho.
+      e.doServidor = !!(data && typeof data.error === 'string');
+      throw e;
+    }
     return data;
+  }
+
+  /*
+   * A TV FOI TIRADA DA CONTA (QA de lançamento, 03/11).
+   *
+   * Removida no painel (ou trocada por outra no Reconectar), a TV levava 404
+   * no pulso, tratava como "sem internet" e seguia dizendo "Esta TV está
+   * conectada à sua conta" para sempre — ninguém conseguia parear de novo sem
+   * ir até ela e abrir /tv?new=1.
+   *
+   * Só conta como "perdeu a conta" o que o SERVIDOR disse (JSON com o erro),
+   * com status de identidade (401, 403, 404, 410) — nunca falha de rede, 5xx
+   * de deploy ou a página de erro de um proxy. E confere uma segunda vez pela
+   * rota da própria TV antes de esquecer a identidade: esquecer à toa
+   * transformaria um tropeço numa tela órfã no painel.
+   */
+  function perdeuAConta(e) {
+    return !!e && !!e.doServidor && [401, 403, 404, 410].indexOf(e.status) >= 0;
+  }
+  async function identidadeRecusada(id) {
+    try { await api('GET', '/api/devices/' + id, undefined, dtHeader()); return false; }
+    catch (e) { return perdeuAConta(e); }
   }
 
   /* ---------------- Autenticação (lado celular) ---------------- */
@@ -249,7 +277,13 @@
         document.dispatchEvent(new CustomEvent('mt:selo', { detail: r.selo ? (r.seloTexto || 'MultiTelas · versão gratuita') : false }));
       }
       return (r && r.configEm) || 0;
-    } catch (e) { return 0; /* offline: tenta de novo no próximo ciclo */ }
+    } catch (e) {
+      // A conta não reconhece mais esta TV: o player volta ao pareamento (js/player.js, mt:sem-conta).
+      if (perdeuAConta(e) && await identidadeRecusada(id)) {
+        document.dispatchEvent(new CustomEvent('mt:sem-conta', { detail: { status: e.status } }));
+      }
+      return 0; /* offline: tenta de novo no próximo ciclo */
+    }
   }
   // A TV conta ao servidor o que está tocando, para o painel mostrar de verdade
   // em vez de adivinhar pelo último comando enviado.

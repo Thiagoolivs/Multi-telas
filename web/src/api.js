@@ -53,6 +53,8 @@ async function api(method, path, body, opcoes) {
     const e = new Error((data && (data.error || data.mensagem)) || 'HTTP ' + res.status);
     e.status = res.status;
     e.codigo = data && (data.erro || data.code);
+    // As telas que podem ser a TV que voltou com código (parear: 409 "parece-reconectar" e 402 no limite).
+    if (data && Array.isArray(data.telas)) e.telas = data.telas;
     throw e;
   }
   return embrulhar(data);
@@ -95,7 +97,8 @@ export const team = {
 
 export const devices = {
   list: () => api('GET', '/api/devices'),
-  pair: (code, name) => api('POST', '/api/pair', { code: String(code || '').trim().toUpperCase(), name }),
+  // `extra`: { reconectar: id } ("é a TV X que caiu") ou { nova: true } ("não, é outra TV") — QA de 03/11.
+  pair: (code, name, extra) => api('POST', '/api/pair', Object.assign({ code: String(code || '').trim().toUpperCase(), name }, extra || {})),
   rename: (id, name) => api('POST', '/api/devices/' + id + '/rename', { name }),
   expediente: (id, exp) => api('POST', '/api/devices/' + id + '/expediente', exp),
   comando: (id, acao) => api('POST', '/api/devices/' + id + '/comando', { acao }),

@@ -237,7 +237,8 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
           <OpcaoDaTela icon={semAlerta ? BellOff : Bell} titulo="Horário e aviso de queda"
             texto={semAlerta ? 'O aviso por e-mail está desligado.' : 'Quando a loja abre e o e-mail se a TV cair.'} onClick={fechar(onAlerta)} />
           <OpcaoDaTela icon={Archive} titulo="Backup e cópia" texto="Guardar, restaurar ou copiar de outra TV." onClick={fechar(onBackup)} />
-          {!online && <OpcaoDaTela icon={RefreshCw} titulo="Reconectar" texto="A TV voltou mostrando um código." onClick={fechar(onReconnect)} />}
+          {/* Sempre à mão (QA de 03/11): a TV que perdeu o vínculo mostra o código na hora, e o painel só a diz "fora do ar" depois de 90 s. */}
+          <OpcaoDaTela icon={RefreshCw} titulo="Reconectar" texto="A TV voltou mostrando um código." onClick={fechar(onReconnect)} />
           <OpcaoDaTela icon={Trash2} titulo="Remover a TV" texto="Desliga esta TV da sua conta." perigo onClick={fechar(onRemove)} />
         </div>
       </Dialog>
@@ -371,10 +372,21 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
     } catch (e) { setMandada(''); setError(e.message || 'Não deu para pôr a campanha na TV.'); }
   }
 
-  async function submit() {
+  /*
+   * "É a TV X que caiu?" (QA de 03/11): o servidor reconhece a TV que voltou
+   * com código novo (o mesmo aparelho de uma tela que parou de dar sinal) e
+   * pergunta, em vez de criar uma segunda tela cobrada. `talvez` são as telas.
+   */
+  const [talvez, setTalvez] = useState(null);
+  React.useEffect(() => { if (open) setTalvez(null); }, [open]);
+
+  async function submit(extra) {
     setBusy(true); setError(''); setErroDePlano(false);
     try {
-      const dev = await devices.pair(code, name);
+      const dev = await devices.pair(code, name, extra);
+      setTalvez(null);
+      // Reconectou: a TV já leva a programação da tela antiga; não põe tela pronta por cima.
+      if (dev && dev.reconectada) { esquecerParear(); setCode(''); setName(''); setPareada(dev); onDone(); return; }
       esquecerParear(); // o código guardado do QR já foi usado
       setCode(''); setName('');
       /*
@@ -397,6 +409,7 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
     } catch (err) {
       setError(err.message || 'Não foi possível parear.');
       setErroDePlano(err.status === 402);
+      setTalvez(err.telas && err.telas.length ? { telas: err.telas, pergunta: err.codigo === 'parece-reconectar' } : null);
     }
     finally { setBusy(false); }
   }
@@ -414,7 +427,9 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><Check size={20} /></div>
           <div className="text-sm text-ink-2">
-            {comecou
+            {pareada.reconectada
+              ? <><b className="text-ink">{pareada.name || 'A TV'}</b> voltou: está com o nome, a programação, o grupo e o horário de antes, sem ocupar outra vaga.</>
+              : comecou
               ? <><b className="text-ink">{pareada.name || 'A TV'}</b> já é sua e está mostrando “{comecou}”, uma tela pronta com a sua marca. Troque quando quiser: o que você publicar aparece nela na hora.</>
               : <><b className="text-ink">{pareada.name || 'A TV'}</b> já é sua: ela mostra "Tudo certo" e fica esperando.
                 O que você publicar aparece nela na hora — um modelo pronto, uma data comemorativa ou uma campanha feita pela IA.</>}
@@ -446,7 +461,7 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" icon={RadioTower} onClick={submit} disabled={busy || code.trim().length < 4}>
+          <Button variant="primary" icon={RadioTower} onClick={() => submit()} disabled={busy || code.trim().length < 4}>
             {busy ? 'Pareando…' : 'Parear'}
           </Button>
         </>
@@ -464,6 +479,16 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
         {error && (
           <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">
             {error}
+            {talvez && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {talvez.telas.slice(0, 3).map((t) => (
+                  <Button key={t.id} size="sm" variant="primary" icon={RefreshCw} disabled={busy} onClick={() => submit({ reconectar: t.id })}>
+                    {'Sim, é a ' + t.nome}
+                  </Button>
+                ))}
+                {talvez.pergunta && <Button size="sm" variant="secondary" disabled={busy} onClick={() => submit({ nova: true })}>Não, é outra TV</Button>}
+              </div>
+            )}
             {erroDePlano && onIrParaPlano && (
               <div className="mt-2"><Button size="sm" variant="primary" onClick={() => { onClose(); onIrParaPlano(); }}>Ver planos</Button></div>
             )}

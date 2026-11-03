@@ -32,10 +32,66 @@ const sweep = setInterval(() => {
 }, 60000);
 if (sweep.unref) sweep.unref();
 
+/*
+ * Só CONFERE o balde, sem contar. Para os limites que contam só o que deu
+ * errado (o pareamento, QA de lançamento, 03/11): pergunta antes, e quem conta
+ * é o `rateLimit` depois, se a tentativa falhou.
+ */
+function rateLimitConsultar(key, max) {
+  const now = Date.now();
+  const b = buckets.get(key);
+  if (!b || now > b.reset) return { ok: true, remaining: max, retryAfter: 0 };
+  return { ok: b.count < max, remaining: Math.max(0, max - b.count), retryAfter: Math.max(1, Math.ceil((b.reset - now) / 1000)) };
+}
+
+/* "3 minutos", "1 minuto", "40 segundos": o 429 diz quanto esperar, em palavras. */
+function esperaEmPalavras(segundos) {
+  const s = Math.max(1, Math.ceil(Number(segundos) || 0));
+  if (s < 60) return s + (s === 1 ? ' segundo' : ' segundos');
+  const m = Math.ceil(s / 60);
+  return m + (m === 1 ? ' minuto' : ' minutos');
+}
+
+/*
+ * QUANTOS PROXIES DE CONFIANÇA estão na frente deste servidor.
+ *
+ * O IP do cliente vinha do PRIMEIRO item do X-Forwarded-For, que é
+ * justamente o que o próprio cliente escreve: qualquer um mandava o cabeçalho
+ * com um IP inventado e pulava todo limite por IP (login, cadastro,
+ * pareamento). O QA de lançamento (03/11) fez exatamente isso para continuar
+ * o teste depois de um 429.
+ *
+ * Proxy que repassa ACRESCENTA ao FIM da lista o endereço de quem falou com
+ * ele. Então, com N proxies nossos na frente, o IP verdadeiro é o N-ésimo a
+ * contar do fim; o que vem antes disso foi escrito por quem fez o pedido e
+ * não vale nada.
+ *
+ *   TRUST_PROXY=0      ninguém na frente: vale o IP da conexão (o cabeçalho é ignorado)
+ *   TRUST_PROXY=N      N proxies de confiança (o N-ésimo do fim)
+ *   sem TRUST_PROXY    no Railway (RAILWAY_ENVIRONMENT definido) 1: a borda
+ *                      do Railway é o único proxy e põe o IP de quem a
+ *                      chamou no fim da lista (o ÚLTIMO item); fora dele, 0.
+ *
+ * Atrás de mais uma camada (Cloudflare na frente do Railway, por exemplo),
+ * defina TRUST_PROXY=2 — senão o "cliente" vira o IP do Cloudflare e todo
+ * mundo divide o mesmo balde.
+ */
+function proxiesDeConfianca() {
+  const v = process.env.TRUST_PROXY;
+  if (v != null && String(v).trim() !== '') {
+    const n = Math.floor(Number(v));
+    return Number.isFinite(n) && n > 0 ? Math.min(n, 10) : 0;
+  }
+  return process.env.RAILWAY_ENVIRONMENT ? 1 : 0;
+}
+
 function clientIp(req) {
-  const xf = req.headers['x-forwarded-for'];
-  if (xf) return String(xf).split(',')[0].trim();
-  return (req.socket && req.socket.remoteAddress) || 'unknown';
+  const direto = (req.socket && req.socket.remoteAddress) || 'unknown';
+  const saltos = proxiesDeConfianca();
+  if (!saltos) return direto;
+  const lista = String(req.headers['x-forwarded-for'] || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (!lista.length) return direto;
+  return lista[Math.max(0, lista.length - saltos)];
 }
 
 function safeEqual(a, b) {
@@ -135,5 +191,34 @@ function cabecalhosSeguranca(seguro) {
   return h;
 }
 
-module.exports = { rateLimit, clientIp, safeEqual, isSecureRequest, cabecalhosSeguranca, CSP, CSP_COM_GOOGLE };
+/*
+ * DEFESA DE CSRF EM PROFUNDIDADE (QA de lançamento, 03/11, relatório 17).
+ *
+ * Quem protegia era só o `SameSite=Lax` do cookie — que os navegadores atuais
+ * respeitam, mas que é UMA trava. Esta é a segunda: o pedido que muda estado
+ * e chega com o cabeçalho Origin de outro site é recusado. O navegador põe o
+ * Origin sozinho em todo POST/PUT/DELETE e a página não consegue falsificar.
+ *
+ * Sem Origin, passa: curl, o ERP do cliente, o webhook e as TVs antigas não
+ * mandam, e não são navegador de vítima. "null" (iframe isolado, redirect
+ * entre sites) conta como outro site.
+ *
+ * `daCasa(host)` diz se o host do Origin é nosso; o host do próprio pedido é
+ * sempre da casa. Devolve true quando o pedido deve ser RECUSADO.
+ */
+function origemDeFora(req, daCasa) {
+  const metodo = String(req.method || 'GET').toUpperCase();
+  if (metodo === 'GET' || metodo === 'HEAD' || metodo === 'OPTIONS') return false;
+  const origem = req.headers.origin;
+  if (origem == null || origem === '') return false;
+  let host = '';
+  try { host = new URL(String(origem)).host.toLowerCase(); } catch (e) { return true; }
+  if (!host) return true;
+  const doPedido = [req.headers.host, String(req.headers['x-forwarded-host'] || '').split(',')[0]]
+    .map((h) => String(h || '').trim().toLowerCase()).filter(Boolean);
+  if (doPedido.includes(host)) return false;
+  return !(typeof daCasa === 'function' && daCasa(host));
+}
+
+module.exports = { rateLimit, rateLimitConsultar, esperaEmPalavras, proxiesDeConfianca, clientIp, origemDeFora, safeEqual, isSecureRequest, cabecalhosSeguranca, CSP, CSP_COM_GOOGLE };
 

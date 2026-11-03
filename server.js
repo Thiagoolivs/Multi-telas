@@ -147,6 +147,11 @@ function hostConfiavel(host) {
     .map((x) => String(x || '').trim().toLowerCase()).filter(Boolean);
   return extras.includes(h);
 }
+// O Origin de um pedido do navegador é nosso? Os hosts confiáveis e o de APP_URL (a checagem de CSRF, server/security.js).
+function hostDaCasa(host) {
+  if (hostConfiavel(host)) return true;
+  try { return !!process.env.APP_URL && new URL(process.env.APP_URL).host.toLowerCase() === String(host || '').toLowerCase(); } catch (e) { return false; }
+}
 function baseUrl(req) {
   const fixed = (process.env.APP_URL || '').replace(/\/$/, '');
   if (fixed) return fixed;
@@ -589,6 +594,18 @@ async function handleApi(req, res, pathname, query) {
         error: 'muitas requisições desta conta em pouco tempo. Espere um instante e tente de novo.',
       }, { 'Retry-After': String(v.retryAfter) });
     }
+  }
+
+  /*
+   * CSRF, segunda trava (QA de lançamento, 03/11): pedido que muda estado com
+   * a sessão do cookie, vindo de OUTRO site, é recusado aqui em cima — além do
+   * SameSite=Lax. Vale para quem tem sessão e para o login/cadastro (entrar a
+   * vítima na conta do atacante). Fica de fora a TV, que se identifica pelo
+   * token e não pelo cookie, e quem não manda Origin (curl, ERP, webhook).
+   * Regra em server/security.js (origemDeFora).
+   */
+  if ((sess || parts[1] === 'auth') && !req.headers['x-device-token'] && security.origemDeFora(req, hostDaCasa)) {
+    return sendJson(res, 403, { error: 'Pedido recusado: ele veio de outro site. Abra o MultiTelas pelo endereço de sempre e tente de novo.', code: 'origem' });
   }
 
   /*

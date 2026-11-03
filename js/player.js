@@ -261,6 +261,8 @@
       hidePairing();
       applyConfig(newCfg);
       saveCachedConfig(newCfg);
+      // Ligaram os aniversários nas TVs (D15): a lista vem agora, e não na volta de 6 h.
+      if (meta && meta.automaticos) loadBirthdays(dev.id);
       // Marca o carimbo para o pulso não achar que o SSE falhou.
       if (meta && meta.updatedAt) configEm = Math.max(configEm, meta.updatedAt);
     }, function (dados) {
@@ -316,6 +318,26 @@
         return;
       }
       if (el && el.textContent !== texto) el.textContent = texto;
+    });
+    /*
+     * Tirada da conta (removida no painel, ou trocada no Reconectar): esquece
+     * a identidade e recomeça como TV nova, mostrando um código para parear de
+     * novo. Antes ela dizia "conectada à sua conta" para sempre (QA de 03/11).
+     * A última programação sai junto (resetDevice): a TV não é mais de
+     * ninguém, e não deve seguir anunciando a loja de quem a tirou.
+     */
+    let semConta = false;
+    document.addEventListener('mt:sem-conta', function () {
+      if (semConta) return;
+      semConta = true;
+      console.warn('[player] esta TV saiu da conta — voltando ao pareamento com um código novo');
+      if (MTCloud.resetDevice) MTCloud.resetDevice();
+      try {
+        const u = new URL(global.location.href);
+        u.searchParams.set('cloud', '1');
+        u.searchParams.delete('new');
+        global.location.replace(u.toString());
+      } catch (e) { global.location.reload(); }
     });
     async function pulsar() {
       const carimbo = await MTCloud.heartbeat(dev.id);
