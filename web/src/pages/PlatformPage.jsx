@@ -78,15 +78,9 @@ export function PlatformPage() {
           pareada há seis meses e desligada desde então continua na tabela,
           mas não está mostrando nada para ninguém.
         */}
-        {/*
-          QA de lançamento, 03/11: este cartão dizia "20 de 20 pareadas"
-          enquanto a Frota, logo acima, dizia "14 de 14". Os dois números
-          daqui contam TODO aparelho que já abriu /tv, inclusive o que ainda
-          mostra o código e não é de conta nenhuma — então são "aparelhos",
-          e a frota pareada é a do cartão Frota.
-        */}
-        <Stat label="Aparelhos com sinal agora" value={formatNumber(data.telasVivas)} icon={MonitorPlay}
-          hint={`de ${formatNumber(data.telas)} aparelhos, pareados ou não`} />
+        {/* QA de 03/11: contava também aparelho só com o código, sem conta; agora só TVs pareadas, como a Frota. */}
+        <Stat label="TVs pareadas no ar" value={formatNumber(data.telasVivas)} icon={MonitorPlay}
+          hint={`de ${formatNumber(data.telas)} TVs pareadas`} />
         <Stat label="Contas" value={formatNumber(data.contas)} icon={Building2}
           hint={`${formatNumber(data.contasNovas)} novas em ${data.dias} dias`} />
         <Stat label="Pagantes" value={formatNumber(pagantes)} icon={ShieldCheck}

@@ -1447,8 +1447,9 @@ const qPlat = {
   contas: db.prepare('SELECT COUNT(*) AS n FROM tenants'),
   contasNovas: db.prepare('SELECT COUNT(*) AS n FROM tenants WHERE created_at >= ?'),
   pessoas: db.prepare('SELECT COUNT(*) AS n FROM users'),
-  telas: db.prepare('SELECT COUNT(*) AS n FROM devices'),
-  telasVivas: db.prepare('SELECT COUNT(*) AS n FROM devices WHERE last_seen >= ?'),
+  // Só TV pareada (com conta): a TV que mostra o código ainda não é de ninguém (QA de 03/11: "14 de 14" contra "20 de 20").
+  telas: db.prepare('SELECT COUNT(*) AS n FROM devices WHERE tenant_id IS NOT NULL'),
+  telasVivas: db.prepare('SELECT COUNT(*) AS n FROM devices WHERE tenant_id IS NOT NULL AND last_seen >= ?'),
   porPlano: db.prepare("SELECT COALESCE(plan, 'free') AS plano, COUNT(*) AS n FROM tenants GROUP BY plano"),
   midiaBytes: db.prepare('SELECT COALESCE(SUM(size), 0) AS b FROM media'),
   pecas: db.prepare('SELECT COUNT(*) AS n FROM library'),

@@ -911,8 +911,9 @@ async function numerosDaPlataforma(agora, vivaDesde, desde) {
     um('SELECT COUNT(*)::int AS n FROM tenants'),
     um('SELECT COUNT(*)::int AS n FROM tenants WHERE created_at >= $1', [desde]),
     um('SELECT COUNT(*)::int AS n FROM users'),
-    um('SELECT COUNT(*)::int AS n FROM devices'),
-    um('SELECT COUNT(*)::int AS n FROM devices WHERE last_seen >= $1', [vivaDesde]),
+    // Só TV pareada (com conta): a TV que mostra o código ainda não é de ninguém (QA de 03/11).
+    um('SELECT COUNT(*)::int AS n FROM devices WHERE tenant_id IS NOT NULL'),
+    um('SELECT COUNT(*)::int AS n FROM devices WHERE tenant_id IS NOT NULL AND last_seen >= $1', [vivaDesde]),
     um('SELECT COALESCE(SUM(size), 0)::bigint AS b FROM media'),
     um('SELECT COUNT(*)::int AS n FROM library'),
     um('SELECT COALESCE(SUM(creditos),0)::int AS c, COALESCE(SUM(custo_centavos),0)::int AS centavos, COUNT(*)::int AS n FROM uso_ia WHERE created_at >= $1', [desde]),

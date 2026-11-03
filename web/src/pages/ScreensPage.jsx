@@ -27,7 +27,9 @@ import '../../../js/aparelho.js';
 import { usePerfil, perfilAtual } from '../lib/perfil.js';
 import { EscolherArquivo } from '../components/ui/EscolherArquivo.jsx';
 
-export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrParaPlano }) {
+export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrParaPlano, papel }) {
+  // Membro não liga TV nova nem remove (entra/sai da mensalidade): o servidor recusa; aqui nem aparece.
+  const podeGerir = papel !== 'member';
   const { data, loading, error, reload } = useAsync(devices.list);
   const todas = data ? data.devices || [] : [];
   /*
@@ -43,7 +45,7 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
 
   // Vindo do QR da TV, o diálogo já abre com o código.
   // Do Início ou do Criar ("Ligar a TV"), o pareamento já abre.
-  const [pairOpen, setPairOpen] = useState(!!parear || !!abrirParear);
+  const [pairOpen, setPairOpen] = useState(!!parear || (!!abrirParear && podeGerir));
   React.useEffect(() => {
     if (!parear) return;
     const u = new URL(window.location.href);
@@ -70,7 +72,7 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
           <Button variant="secondary" icon={MonitorPlay} className="hidden sm:inline-flex"
             title="Abre a tela da TV numa aba nova deste computador"
             onClick={() => window.open('/player.html?cloud=1&pid=' + Math.random().toString(36).slice(2, 9), '_blank', 'noopener')}>Usar este computador como TV</Button>
-          <Button variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Parear tela</Button>
+          {podeGerir && <Button variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Parear tela</Button>}
         </>}
       />
 
@@ -102,8 +104,10 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
           <EmptyState
             icon={MonitorPlay}
             title="Nenhuma TV ainda"
-            description="Ligue a TV no app MultiTelas TV (ou abra o endereço no navegador dela). Ela mostra um código e um QR: aponte o celular para o QR, ou toque abaixo e digite o código."
-            action={<div className="flex flex-col items-center gap-2">
+            description={podeGerir
+              ? 'Ligue a TV no app MultiTelas TV (ou abra o endereço no navegador dela). Ela mostra um código e um QR: aponte o celular para o QR, ou toque abaixo e digite o código.'
+              : 'Quem liga uma TV nova é o dono ou um administrador da conta (ela entra na mensalidade). Peça a eles; depois ela aparece aqui.'}
+            action={podeGerir && <div className="flex flex-col items-center gap-2">
               {/* Um caminho só na conta sem TV: o topo não repete o botão (D2). */}
               <Button size="sm" variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Ligar a primeira TV</Button>
               <button type="button" className="hidden text-xs text-accent hover:underline sm:block"
@@ -124,7 +128,7 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
                   onReconnect={() => setReconnectTarget(d)}
                   onBackup={() => setBackupTarget(d)}
                   onAlerta={() => setAlertaTarget(d)}
-                  onRemove={() => setRemoveTarget(d)} />
+                  onRemove={podeGerir ? () => setRemoveTarget(d) : null} />
               ))}
             </div>
             <PanelFooter><span>{list.length} {list.length === 1 ? 'tela' : 'telas'}</span></PanelFooter>
@@ -241,7 +245,7 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
           <OpcaoDaTela icon={Archive} titulo="Backup e cópia" texto="Guardar, restaurar ou copiar de outra TV." onClick={fechar(onBackup)} />
           {/* Sempre à mão (QA de 03/11): a TV que perdeu o vínculo mostra o código na hora, e o painel só a diz "fora do ar" depois de 90 s. */}
           <OpcaoDaTela icon={RefreshCw} titulo="Reconectar" texto="A TV voltou mostrando um código." onClick={fechar(onReconnect)} />
-          <OpcaoDaTela icon={Trash2} titulo="Remover a TV" texto="Desliga esta TV da sua conta." perigo onClick={fechar(onRemove)} />
+          {onRemove && <OpcaoDaTela icon={Trash2} titulo="Remover a TV" texto="Desliga esta TV da sua conta." perigo onClick={fechar(onRemove)} />}
         </div>
       </Dialog>
     </div>

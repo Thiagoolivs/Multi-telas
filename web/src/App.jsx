@@ -265,7 +265,7 @@ export default function App() {
   function renderPage() {
     switch (route.name) {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
-      case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onCriar={(device) => go('criar', { tela: device.id })} onIrParaPlano={() => go('billing')} />;
+      case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onCriar={(device) => go('criar', { tela: device.id })} onIrParaPlano={() => go('billing')} papel={user.role} />;
       case 'programacao': return <ProgramacaoPage onIr={go} />;
       case 'content': return <ContentEditorPage device={route.device} zonaInicial={route.zona} onBack={() => go('programacao')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
