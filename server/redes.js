@@ -26,6 +26,8 @@
  */
 const ai = require('./ai');
 const P = require('../js/paletas.js');
+const Perfil = require('../js/perfil.js');
+const RC = require('../js/regras-de-conteudo.js');
 
 const LIMITE = { instagram: 1500, whatsapp: 320, facebook: 1200, google: 750 };
 
@@ -269,8 +271,43 @@ function descricao(o) {
   ].filter(Boolean).join('\n');
 }
 
-async function pedir(canal, o) {
-  return ai.parseAiJson(await ai.callLLM(PEDIDOS[canal], descricao(o)));
+/*
+ * QA de lançamento, 03/11: o CONTEXTO acima é de comércio de bairro, e a
+ * legenda da farmácia saiu "Remédio X: cura a gripe em 1 dia". Agora a regra
+ * da frente (js/perfil.js, a mesma que a peça recebe) vai no pedido de cada
+ * canal, por cima do contexto geral. `correcao`: o motivo da recusa da
+ * regra de conteúdo, quando o canal é pedido de novo.
+ */
+function sistemaDe(canal, o) {
+  return PEDIDOS[canal] + (o.perfil ? '\n\nREGRA DESTE TIPO DE NEGÓCIO (vale acima do que está escrito antes): ' + Perfil.de(o.perfil).paraIA : '');
+}
+
+async function pedir(canal, o, correcao) {
+  return ai.parseAiJson(await ai.callLLM(sistemaDe(canal, o), descricao(o) + (correcao ? '\n\n' + correcao : '')));
+}
+
+/* ---------------- A regra de conteúdo (js/regras-de-conteudo.js) ---------------- */
+
+const opcoesDaRegra = (o) => ({ perfil: o.perfil || '', contexto: [o.empresa, o.ramo, o.pedido].filter(Boolean).join(' ') });
+
+function textoDoCanal(canal, t) {
+  if (!t) return '';
+  if (canal === 'instagram') return [t.legenda].concat((t.hashtags || []).map((h) => String(h).replace(/^#/, ''))).join(' ');
+  return canal === 'whatsapp' ? t.mensagem : t.texto;
+}
+
+/*
+ * O pedido que vai à IA (e à reserva), sem o que a lei barra: o objetivo
+ * "remédio X que cura gripe em 1 dia" não vira "Pedido do lojista" — era
+ * dali que a legenda copiava. O título barrado vira a sugestão permitida.
+ */
+function semProibido(o) {
+  const x = Object.assign({}, o);
+  for (const k of ['headline', 'sub', 'cta', 'kicker', 'pedido']) {
+    const a = RC.conferir(x[k], opcoesDaRegra(o));
+    if (a.bloqueios.length) x[k] = k === 'headline' ? (a.bloqueios.find((b) => b.sugestao) || {}).sugestao || '' : '';
+  }
+  return x;
 }
 
 /*
@@ -300,16 +337,45 @@ function normalizar(canal, r, reserva, o) {
  * endereco, bairro, cidade, link, tom }. Devolve
  * { instagram, whatsapp, facebook, google, quando, motor }.
  */
+/*
+ * `o.perfil` (empresa, comercio, saude): a frente da conta. Cada canal passa
+ * pela regra de conteúdo; o que ela barra é pedido de novo com o motivo e,
+ * se o modelo insistir, o canal sai do modelo sem IA feito com o pedido já
+ * limpo. Nada barrado chega à pessoa calado: `conteudo` diz o que foi
+ * trocado e por quê, e os avisos (o conselho do dentista) vão junto.
+ */
 async function gerar(o, agora) {
   const base = Object.assign({}, o, { ramo: o.ramo || P.detectarRamo([o.empresa, o.pedido, o.headline]) });
-  const reserva = semIa(base);
+  const limpo = semProibido(base);
+  const reserva = semIa(limpo);
   const quando = quandoPostar(base.ramo, agora);
-  if (ai.mode() === 'dev') return Object.assign({}, reserva, { quando, motor: 'modelo' });
   const canais = ['instagram', 'whatsapp', 'facebook', 'google'];
-  const respostas = await Promise.all(canais.map((c) => pedir(c, base).catch(() => null)));
-  const out = { quando, motor: 'ia' };
-  canais.forEach((c, i) => { out[c] = normalizar(c, respostas[i], reserva, base); });
+  const out = { quando, motor: ai.mode() === 'dev' ? 'modelo' : 'ia' };
+  if (ai.mode() === 'dev') canais.forEach((c) => { out[c] = reserva[c]; });
+  else {
+    const respostas = await Promise.all(canais.map((c) => pedir(c, limpo).catch(() => null)));
+    canais.forEach((c, i) => { out[c] = normalizar(c, respostas[i], reserva, limpo); });
+  }
+  // O que a peça ou o pedido traziam e não foi para nenhum canal: a pessoa precisa saber que foi tirado.
+  const bloqueios = ['headline', 'sub', 'cta', 'kicker', 'pedido'].reduce((l, k) => l.concat(RC.conferir(base[k], opcoesDaRegra(base)).bloqueios), [])
+    .map((b) => Object.assign({ canal: 'todos' }, b));
+  const avisos = [], trocados = [];
+  await Promise.all(canais.map(async (c) => {
+    let a = RC.conferir(textoDoCanal(c, out[c]), opcoesDaRegra(base));
+    if (!a.bloqueios.length) return;
+    bloqueios.push(...a.bloqueios.map((b) => Object.assign({ canal: c }, b)));
+    if (ai.mode() !== 'dev') {
+      const r = await pedir(c, limpo, RC.paraCorrecao(a.bloqueios)).catch(() => null);
+      const novo = normalizar(c, r, reserva, limpo);
+      a = RC.conferir(textoDoCanal(c, novo), opcoesDaRegra(base));
+      if (!a.bloqueios.length) { out[c] = novo; return; }
+    }
+    out[c] = reserva[c];
+    trocados.push(c);
+  }));
+  for (const c of canais) avisos.push(...RC.conferir(textoDoCanal(c, out[c]), opcoesDaRegra(base)).avisos.map((x) => Object.assign({ canal: c }, x)));
+  if (bloqueios.length || avisos.length) out.conteudo = { bloqueios: RC.unicos(bloqueios), avisos: RC.unicos(avisos), trocados };
   return out;
 }
 
-module.exports = { gerar, semIa, normalizar, hashtags, quandoPostar, PEDIDOS, GENERICAS, TAGS_DO_RAMO, LIMITE };
+module.exports = { gerar, semIa, semProibido, textoDoCanal, normalizar, hashtags, quandoPostar, PEDIDOS, GENERICAS, TAGS_DO_RAMO, LIMITE };

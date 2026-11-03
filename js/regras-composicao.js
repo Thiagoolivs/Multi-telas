@@ -273,7 +273,7 @@
     var lados = margem[0], topo = margem[1];
 
     (m.textos || []).forEach(function (t) {
-      if (t.px < REGRAS.letraMin - 0.5) acusar('letra', t.nome, 'letra de ' + px(t.px) + ' (o mínimo é ' + REGRAS.letraMin + 'px)');
+      if (t.px < REGRAS.letraMin - 1) acusar('letra', t.nome, 'letra de ' + px(t.px) + ' (o mínimo é ' + REGRAS.letraMin + 'px)');
       (t.linhas || []).forEach(function (l) {
         var dl = Math.min(l.left, m.w - l.right), dv = Math.min(l.top, m.h - l.bottom);
         // Fora da peça é vazamento — o detector já acusa; aqui é o texto que ficou dentro, mas colado.
@@ -311,7 +311,212 @@
     return achados;
   }
 
+  /* ---------------- letra mínima, lida no CSS (sem navegador) ---------------- */
+
+  /*
+   * QA de lançamento, 03/11: o detector acima mede a peça MONTADA, e por isso
+   * só roda no navegador (bancada e painel). O ecossistema salvava "pronta"
+   * sem medir, e passou uma nota de 0,62cqw (~9px na zona de destaque). Aqui
+   * a mesma regra (REGRAS.letraMin) é lida direto do CSS da peça, no
+   * servidor: cada font-size em cq vira px no tamanho de cada formato em que
+   * o papel aparece. O que não dá para resolver sem montar (em, %, herança)
+   * fica para o detector do navegador — aqui só acusa o que é certo.
+   */
+  var FORMATOS_DO_PAPEL = {
+    destaque: [['deitada', 1405, 832], ['em pé', 1080, 1920], ['quadrada', 1080, 1080]],
+    lateral: [['lateral', 515, 832]],
+    cabecalho: [['deitada', 1920, 130], ['em pé', 1080, 130]],
+    rodape: [['deitada', 1920, 119], ['em pé', 1080, 119]],
+  };
+
+  // "a b, c d" → ["a b", "c d"], respeitando parênteses.
+  function separar(s, sep) {
+    var partes = [], fundo = 0, ini = 0;
+    for (var i = 0; i < s.length; i++) {
+      var ch = s[i];
+      if (ch === '(') fundo++;
+      else if (ch === ')') fundo--;
+      else if (ch === sep && !fundo) { partes.push(s.slice(ini, i)); ini = i + 1; }
+    }
+    partes.push(s.slice(ini));
+    return partes.map(function (p) { return p.trim(); }).filter(Boolean);
+  }
+
+  // As regras do CSS em ordem, cada uma com a condição de @container que a envolve ('' = sempre).
+  function regrasDoCss(css) {
+    var s = String(css || '').replace(/\/\*[\s\S]*?\*\//g, '');
+    var saida = [];
+    function ler(trecho, cond) {
+      var i = 0;
+      while (i < trecho.length) {
+        var abre = trecho.indexOf('{', i);
+        if (abre < 0) break;
+        var cabeca = trecho.slice(i, abre).trim();
+        var fundo = 1, j = abre + 1;
+        while (j < trecho.length && fundo) { if (trecho[j] === '{') fundo++; else if (trecho[j] === '}') fundo--; j++; }
+        var corpo = trecho.slice(abre + 1, j - 1);
+        var c = /^@container\b\s*(.*)$/i.exec(cabeca);
+        if (c) ler(corpo, cond ? cond + ' and ' + c[1] : c[1]);
+        else if (cabeca && cabeca[0] !== '@') saida.push({ seletores: separar(cabeca, ','), cond: cond, corpo: corpo });
+        i = j;
+      }
+    }
+    ler(s, '');
+    return saida;
+  }
+
+  // A condição de @container vale neste tamanho? Só aspect-ratio e width/height em px (o que a porta deixa).
+  function condicaoVale(cond, w, h) {
+    if (!cond) return true;
+    var ok = true;
+    var partes = cond.replace(/[()]/g, ' ').split(/\band\b/i);
+    partes.forEach(function (p) {
+      var m = /(aspect-ratio|width|height|max-width|min-width|max-height|min-height)\s*(<=|>=|<|>|:|=)\s*([\d.]+)\s*(?:\/\s*([\d.]+))?/i.exec(p);
+      if (!m) return;
+      var nome = m[1].toLowerCase(), op = m[2], v = Number(m[3]) / (m[4] ? Number(m[4]) : 1);
+      var atual = /aspect/.test(nome) ? w / h : /width/.test(nome) ? w : h;
+      if (/^max-/.test(nome)) op = '<=';
+      else if (/^min-/.test(nome)) op = '>=';
+      var vale = op === '<' ? atual < v : op === '<=' ? atual <= v : op === '>' ? atual > v : op === '>=' ? atual >= v : Math.abs(atual - v) < 1e-6;
+      ok = ok && vale;
+    });
+    return ok;
+  }
+
+  /*
+   * O valor de um tamanho em px no tamanho (w, h), ou null se depende do que
+   * só a página montada sabe (em, %, rem, var sem reserva).
+   */
+  function emPx(valor, w, h) {
+    var v = String(valor || '').trim().replace(/var\(\s*--[\w-]+\s*,\s*([^()]+)\)/g, '$1');
+    if (/var\(|%|\bem\b|rem\b|\d(em|rem|ex|ch|vw|vh)\b/.test(v)) return null;
+    var un = { cqw: w / 100, cqh: h / 100, cqmin: Math.min(w, h) / 100, cqmax: Math.max(w, h) / 100, px: 1 };
+    var pos = 0;
+    var t = v.replace(/\s+/g, ' ');
+    function espaco() { while (t[pos] === ' ') pos++; }
+    function expr() {
+      var a = termo();
+      for (;;) { espaco(); var op = t[pos]; if (op !== '+' && op !== '-') return a; pos++; var b = termo(); a = a == null || b == null ? null : op === '+' ? a + b : a - b; }
+    }
+    function termo() {
+      var a = fator();
+      for (;;) { espaco(); var op = t[pos]; if (op !== '*' && op !== '/') return a; pos++; var b = fator(); a = a == null || b == null ? null : op === '*' ? a * b : (b ? a / b : null); }
+    }
+    function fator() {
+      espaco();
+      var f = /^(calc|min|max|clamp)?\(/i.exec(t.slice(pos));
+      if (f) {
+        pos += f[0].length;
+        var args = [expr()];
+        espaco();
+        while (t[pos] === ',') { pos++; args.push(expr()); espaco(); }
+        if (t[pos] !== ')') throw new Error('parêntese');
+        pos++;
+        if (args.some(function (x) { return x == null; })) return null;
+        var nome = (f[1] || '').toLowerCase();
+        if (nome === 'min') return Math.min.apply(null, args);
+        if (nome === 'max') return Math.max.apply(null, args);
+        if (nome === 'clamp') return Math.max(args[0], Math.min(args[1], args[2]));
+        return args[0];
+      }
+      var n = /^(-?[\d.]+)([a-z]*)/i.exec(t.slice(pos));
+      if (!n) throw new Error('valor');
+      pos += n[0].length;
+      if (!n[2]) return Number(n[1]);
+      return un[n[2].toLowerCase()] ? Number(n[1]) * un[n[2].toLowerCase()] : null;
+    }
+    try {
+      var r = expr();
+      espaco();
+      return pos === t.length && r != null && isFinite(r) ? r : null;
+    } catch (e) { return null; }
+  }
+
+  // O tamanho dentro do atalho `font: 600 1.25cqw/1 var(--fonte)`: o primeiro valor com medida, sem a entrelinha.
+  function tamanhoDoFont(valor) {
+    var partes = separar(String(valor || ''), ' ');
+    for (var i = 0; i < partes.length; i++) {
+      var p = separar(partes[i], '/')[0];
+      if (/^(calc|min|max|clamp)\(|^-?[\d.]+(cqw|cqh|cqmin|cqmax|px|em|rem|%)$/i.test(p)) return p;
+    }
+    return null;
+  }
+
+  /*
+   * Os textos com letra abaixo do mínimo, formato por formato. Vale a última
+   * declaração que se aplica ao formato (a peça escreve a base e depois o
+   * @container); o seletor sem o ".mt-peca" do começo é o mesmo elemento.
+   * Elemento escondido no formato (display: none) não conta.
+   *
+   * O piso aqui é 1px abaixo do da régua, como no detector: o CSS lido sem
+   * montar não sabe da herança nem da fonte real. Abaixo de 13px é certo que
+   * o texto ficou pequeno. Com o `html`, o enfeite (aria-hidden, sem campo —
+   * os talheres do cardápio, desenhados em em) não conta como texto.
+   * Calibrado na biblioteca-ouro inteira: nenhuma peça aprovada cai aqui.
+   */
+  /*
+   * O que o HTML tem: as classes, as tags e os data-campo de cada elemento,
+   * e as classes de ENFEITE (aria-hidden, sem campo — os talheres desenhados
+   * em em têm font-size e não são texto). A regra de CSS para um elemento que
+   * a peça não tem (a ".nota" de um molde sem nota) não é letra nenhuma.
+   */
+  function doHtml(html) {
+    var o = { classes: {}, tags: {}, campos: {}, enfeite: {} }, re = /<([a-z0-9]+)\b([^>]*)>/gi, m;
+    while ((m = re.exec(String(html || '')))) {
+      o.tags[m[1].toLowerCase()] = true;
+      var attrs = m[2];
+      var c = /\bclass="([^"]*)"/.exec(attrs);
+      var campo = /\bdata-campo="([^"]*)"/.exec(attrs);
+      if (campo) o.campos[campo[1]] = true;
+      var enfeite = /\baria-hidden="true"/.test(attrs) && !campo;
+      if (c) c[1].split(/\s+/).forEach(function (k) { if (k) { o.classes[k] = true; if (enfeite) o.enfeite[k] = true; } });
+    }
+    return o;
+  }
+
+  function letrasPequenas(css, papel, html) {
+    var formatos = FORMATOS_DO_PAPEL[papel] || FORMATOS_DO_PAPEL.destaque;
+    var regras = regrasDoCss(css);
+    var h = html ? doHtml(html) : null;
+    // Fica de fora o seletor cujo alvo (a última parte) é enfeite ou não existe na peça.
+    var foraDaConta = function (sel) {
+      if (!h) return false;
+      var ultimo = sel.split(/[\s>+~]+/).pop() || '';
+      var classes = (ultimo.match(/\.[\w-]+/g) || []).map(function (c) { return c.slice(1); });
+      if (classes.some(function (c) { return h.enfeite[c] || !h.classes[c]; })) return true;
+      var tag = /^[a-z][a-z0-9]*/i.exec(ultimo);
+      if (tag && !h.tags[tag[0].toLowerCase()]) return true;
+      var campo = /\[data-campo="?([\w-]+)"?\]/.exec(ultimo);
+      return !!(campo && !h.campos[campo[1]]);
+    };
+    var achados = [];
+    formatos.forEach(function (f) {
+      var tam = {}, some = {};
+      regras.forEach(function (r) {
+        if (!condicaoVale(r.cond, f[1], f[2])) return;
+        separar(r.corpo, ';').forEach(function (d) {
+          var k = d.indexOf(':');
+          if (k < 0) return;
+          var prop = d.slice(0, k).trim().toLowerCase(), val = d.slice(k + 1).trim();
+          r.seletores.forEach(function (sel) {
+            var chave = sel.replace(/^\.mt-peca\s+/, '').replace(/\s+/g, ' ');
+            if (prop === 'font-size') tam[chave] = val;
+            else if (prop === 'font') { var t = tamanhoDoFont(val); if (t) tam[chave] = t; }
+            else if (prop === 'display') some[chave] = /^none\b/i.test(val);
+          });
+        });
+      });
+      Object.keys(tam).forEach(function (sel) {
+        if (some[sel] || foraDaConta(sel)) return;
+        var px = emPx(tam[sel], f[1], f[2]);
+        if (px != null && px > 0 && px < REGRAS.letraMin - 1) achados.push({ seletor: sel, formato: f[0], px: Math.round(px * 10) / 10 });
+      });
+    });
+    return achados;
+  }
+
   return {
+    letrasPequenas: letrasPequenas, emPx: emPx, FORMATOS_DO_PAPEL: FORMATOS_DO_PAPEL,
     REGRAS: REGRAS, ZONA: ZONA, paraIA: paraIA, avaliar: avaliar,
     sobre: sobre, contraste: contraste, luminancia: luminancia,
     lerGradientes: lerGradientes, corNoGradiente: corNoGradiente, fundos: fundos, piorContraste: piorContraste,

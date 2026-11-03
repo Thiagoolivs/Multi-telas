@@ -11,13 +11,16 @@
  * continuam inteiros. Um cliente sem crédito não fica sem produto, fica sem o
  * atalho.
  *
- * Um crédito ≈ uma imagem gerada, porque a imagem é a única coisa da IA que
- * custa dinheiro de verdade (~R$ 0,35). Uma campanha inteira de TEXTO custa
- * cerca de cinco centavos — menos que a taxa fixa do Stripe na transação que
- * cobraria por ela. Medir o texto adicionaria contabilidade, tela de saldo,
- * mensagem de bloqueio e suporte para recuperar um valor que não paga o
- * próprio processamento. Por isso texto é livre, com teto por hora só para
- * não virar buraco.
+ * Um crédito ≈ uma imagem gerada, porque a imagem é a coisa da IA que mais
+ * custa (~R$ 0,35). O TEXTO de um pedido do Criar custa de R$ 0,11 a 0,26
+ * sem cache (medido no QA de lançamento, 03/11, com os prompts reais), e a
+ * campanha "padrão" de 7 peças, ~R$ 0,46 a 0,75. Quem pesa é a composição
+ * (85 a 90%): cada peça de destaque leva a biblioteca-ouro inteira como
+ * exemplo. Ainda assim é pouco perto da foto e do plano, e cobrar o texto
+ * adicionaria contabilidade, tela de saldo, mensagem de bloqueio e suporte
+ * para um valor pequeno. Por isso texto é livre, MEDIDO de verdade (uso-ia.js
+ * troca a estimativa abaixo pelo custo dos tokens), com teto em reais por
+ * conta e por dia.
  */
 
 'use strict';
@@ -37,6 +40,24 @@
  */
 const CUSTO_IMAGEM_CENTAVOS = 35;
 const CUSTO_TEXTO_CENTAVOS = 5;
+/*
+ * QA de lançamento, 03/11 — o tamanho real dos prompts (Gemini Flash,
+ * US$ 0,30 / 2,50 por milhão, US$ 1 = R$ 5,50, sem cache):
+ *
+ *   uma peça (destaque)  ~39 mil tokens de entrada (a biblioteca-ouro, já
+ *                        sem os comentários: eram ~44 mil) + ~1,5 mil de
+ *                        saída ≈ R$ 0,085. Com o cache implícito do Gemini
+ *                        acertando o prefixo, ~R$ 0,04. Uma recusa da porta
+ *                        dobra.
+ *   uma volta de conversa  maestro + especialista, ~5 mil tokens ≈ R$ 0,014
+ *
+ * A estimativa só vale quando a rota não teve chamada medida (uso-ia.js). Nas
+ * rotas que abrem um TRABALHO (ecossistema, ajustar, editar), o trabalho
+ * registra o custo medido dele à parte (jobs.aoMedir); por isso elas ficam no
+ * valor genérico — subir aqui contaria o mesmo gasto duas vezes.
+ */
+const CUSTO_PECA_CENTAVOS = 9;
+const CUSTO_CONVERSA_CENTAVOS = 2;
 
 /*
  * O que cada operação cobra.
@@ -58,7 +79,7 @@ const OPERACOES = {
   briefing: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Briefing' },
   'gerar-conteudo': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Conteúdo por IA' },
   'gerar-campanha': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Plano de campanha' },
-  'gerar-composicao': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Composição por IA' },
+  'gerar-composicao': { creditos: 0, custoCentavos: CUSTO_PECA_CENTAVOS, rotulo: 'Composição por IA' },
   'gerar-kit': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Kit de marca' },
   'gerar-sazonal': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Pacote de data' },
   'gerar-faixas': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Faixas do dia' },
@@ -83,7 +104,7 @@ const OPERACOES = {
   guia: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Sugestões do guia' },
   diretor: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Diretor de arte' },
   // Uma volta da conversa do Criar (EXECUTOR item 21): texto, livre, medido. Sem limite de perguntas.
-  conversa: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Conversa do Criar' },
+  conversa: { creditos: 0, custoCentavos: CUSTO_CONVERSA_CENTAVOS, rotulo: 'Conversa do Criar' },
   // O texto da campanha inteira do Criar (item 23). Cada foto gerada cobra à parte, como campanha-peca.
   ecossistema: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Campanha do Criar' },
   // Ajustar a campanha do Criar (item 26). A foto nova cobra à parte, como campanha-peca.
@@ -218,7 +239,7 @@ function franquiaDoCiclo(plans, planId, telas) {
 }
 
 module.exports = {
-  OPERACOES, CUSTO_IMAGEM_CENTAVOS, CUSTO_TEXTO_CENTAVOS,
+  OPERACOES, CUSTO_IMAGEM_CENTAVOS, CUSTO_TEXTO_CENTAVOS, CUSTO_PECA_CENTAVOS, CUSTO_CONVERSA_CENTAVOS,
   TETO_TEXTO_DIA, TETO_TEXTO_HORA,
   operacao, custaCredito, creditosDe, saldo, debitar, semSaldo, pagamentoAtrasado, testeAcabou, franquiaDoCiclo,
   PACOTES, pacote,

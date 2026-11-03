@@ -31,6 +31,8 @@ const redes = require('./redes');
 const memoria = require('./ai-memoria');
 const director = require('./ai-director');
 const Perfil = require('../js/perfil.js');
+const RC = require('../js/regras-de-conteudo.js');
+const conferencia = require('./conferencia');
 
 // A chamada da peça sem IA, pelo tipo de negócio (D4): "Peça no balcão" não serve à clínica nem à fábrica.
 const CTA_DO_PERFIL = { comercio: 'Peça no balcão', saude: 'Fale com a recepção', empresa: '' };
@@ -292,7 +294,35 @@ async function escreverTextos(escopo, vagas, ctx, bases, ajuste) {
     + (ajuste ? '\n\nAJUSTE PEDIDO PELO CLIENTE (escreva estas vagas de novo seguindo isto): ' + String(ajuste).slice(0, 400) : '');
   let r = null;
   try { r = ai.parseAiJson(await ai.callLLM(SISTEMA, pedido)); } catch (e) { r = null; }
-  return lerTextos(r, escopo, vagas, bases, ctx.perfil);
+  let textos = lerTextos(r, escopo, vagas, bases, ctx.perfil);
+  /*
+   * QA de lançamento, 03/11: o modelo que obedece ("Cura a gripe em 1 dia")
+   * passava daqui para a peça. A regra de conteúdo confere os textos de
+   * todas as vagas e o letreiro; o que ela barra volta ao modelo uma vez,
+   * com o motivo, como a porta faz com a cor fixa. Se ele insistir, segue —
+   * a conferência do fim (server/conferencia.js) não deixa a campanha
+   * ficar "pronta" assim.
+   */
+  const barrado = conteudoBarrado(textos, ctx, escopo);
+  if (barrado.length) {
+    try {
+      const r2 = ai.parseAiJson(await ai.callLLM(SISTEMA, pedido + '\n\n' + RC.paraCorrecao(barrado)));
+      const de_novo = lerTextos(r2, escopo, vagas, bases, ctx.perfil);
+      if (conteudoBarrado(de_novo, ctx, escopo).length < barrado.length) textos = de_novo;
+    } catch (e) { /* fica a primeira; a conferência do fim avisa */ }
+  }
+  return textos;
+}
+
+// O que a regra de conteúdo barra nos textos de todas as vagas e nos letreiros.
+function conteudoBarrado(textos, ctx, escopo) {
+  const lista = [];
+  for (const id of Object.keys(textos.vagas || {})) {
+    const t = textos.vagas[id];
+    lista.push(t.kicker, t.titulo, t.apoio, t.cta);
+  }
+  for (const k of Object.keys(textos.mensagens || {})) lista.push(...(textos.mensagens[k] || []));
+  return RC.conferir(lista.filter(Boolean), { perfil: ctx.perfil || '', contexto: [ctx.empresa, ctx.segmento, escopo && escopo.objetivo].filter(Boolean).join(' ') }).bloqueios;
 }
 
 // A identidade: a marca salva vence o modelo, como no diretor.
@@ -312,9 +342,15 @@ function identidadeDe(m, direcaoDoModelo, estilo) {
  * IA), a peça-ouro daquele papel. `ditos` são os títulos que já saíram,
  * para a peça nova não repetir.
  */
-async function comporVaga(v, t, foto, { escopo, ctx, marcaDaPeca, modo, ditos }) {
+/*
+ * `refazer` (server/ajuste.js): a peça que está sendo REFEITA — os textos
+ * dela campo a campo (`textosCampos`, para a IA manter os nomes e o preço),
+ * o desenho anterior e o que a pessoa pediu para mudar nele (`ajusteDesenho`).
+ */
+async function comporVaga(v, t, foto, { escopo, ctx, marcaDaPeca, modo, ditos }, refazer) {
   const m = ctx.marca || {};
   const tela = escopo.telas[v.tela];
+  const rf = refazer || {};
   const base = {
     pedido: [escopo.objetivo, v.pedido].filter(Boolean).join(' — ') || escopo.nome,
     empresa: ctx.empresa || '', segmento: ctx.segmento || '', marca: marcaDaPeca, modo,
@@ -325,13 +361,22 @@ async function comporVaga(v, t, foto, { escopo, ctx, marcaDaPeca, modo, ditos })
     chamadas: v.zona === 'cabecalho' && tela ? tela.zonas.cabecalho.mensagens : [],
     textos: { kicker: t.kicker, titulo: t.titulo, apoio: t.apoio, cta: t.cta },
     evitar: (ditos || []).slice(0, 20),
+    // A regra da frente vale também na porta da peça (texto proibido é recusado e pedido de novo).
+    perfil: ctx.perfil || '',
   };
+  if (rf.textosCampos && Object.keys(rf.textosCampos).length) { base.textosCampos = rf.textosCampos; base.textos = null; }
+  if (rf.ajusteDesenho) base.ajusteDesenho = rf.ajusteDesenho;
+  if (rf.anterior) {
+    base.anterior = rf.anterior;
+    base.critica = 'Esta é a peça de antes. Mantenha a ideia, os nomes dos campos e os textos; mude o que o cliente pediu'
+      + (rf.ajusteDesenho ? ': "' + String(rf.ajusteDesenho).slice(0, 300) + '".' : '.');
+  }
   let r = null;
   if (ai.mode() !== 'dev') {
     try { r = await compositor.comporPeca(Object.assign({ motor: compositor.motorDoHtml() }, base)); }
     catch (e) { r = null; }
   }
-  const item = r && r.ok ? r.item : compositor.preencherPapel(base);
+  const item = r && r.ok ? r.item : compositor.preencherPapel(Object.assign({}, base, { textos: { kicker: t.kicker, titulo: t.titulo, apoio: t.apoio, cta: t.cta } }));
   return { vaga: v.id, zona: v.zona, papel: v.papel, formato: v.formato, label: t.titulo.slice(0, 40),
     item: Object.assign({}, item, { formato: v.formato }), motor: r && r.ok ? 'html' : 'ouro', comFoto: !!foto };
 }
@@ -444,7 +489,7 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, onLerReferencias, 
     try {
       textosRedes = await redes.gerar({
         headline: t.titulo, sub: t.apoio, cta: t.cta, kicker: t.kicker, pedido: escopo.objetivo,
-        empresa: ctx.empresa || '', tom: m.tom || '', ramo: ctx.ramo || '',
+        empresa: ctx.empresa || '', tom: m.tom || '', ramo: ctx.ramo || '', perfil: ctx.perfil || '',
         endereco: (ctx.local && ctx.local.endereco) || '', bairro: (ctx.local && ctx.local.bairro) || '',
         cidade: (ctx.local && ctx.local.cidade) || '', link: (ctx.local && ctx.local.link) || '',
       }, hoje);
@@ -452,7 +497,7 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, onLerReferencias, 
     social = { canais, peca: base ? base.vaga : null, textos: textosRedes };
   }
 
-  return {
+  const resultado = {
     versao: 1,
     nome: textos.nome,
     identidade,
@@ -465,10 +510,19 @@ async function gerar(escopoCru, ctx, { onImagem, onProgresso, onLerReferencias, 
     // Só o que a biblioteca mostra bem: as peças da principal, da lateral e das redes.
     biblioteca: vagas.filter(levaFoto).map((v) => ({ formato: v.formato, canal: v.zona === 'redes' ? 'Feed' : 'TV', label: pecas[v.id].label, item: pecas[v.id].item })),
   };
+  /*
+   * QA de lançamento, 03/11: a conferência do conteúdo antes de salvar
+   * (server/conferencia.js). Bloqueio deixa a campanha em "revisar"; preço,
+   * data e horário que ninguém disse viram aviso no resultado.
+   */
+  passo('conferindo os textos', '');
+  resultado.conferencia = conferencia.conferirCampanha(resultado, Object.assign(
+    { permitidos: conferencia.permitidosDe(escopo, ctx), hoje }, conferencia.opcoesDaConta(ctx, escopo)));
+  return resultado;
 }
 
 module.exports = {
   letreiroLimpo,
   gerar, vagasDoEscopo, decidirFoto, agendamentoDe, textosSemIA, lerTextos, pedidoDosTextos, SISTEMA, levaFoto,
-  escreverTextos, identidadeDe, comporVaga, PAPEL_DA_ZONA,
+  escreverTextos, identidadeDe, comporVaga, PAPEL_DA_ZONA, conteudoBarrado,
 };

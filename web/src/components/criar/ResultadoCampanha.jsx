@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, Pencil, Sparkles, X } from 'lucide-react';
+import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, Pencil, Sparkles, X, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { PecaHtml } from '../content/PecaHtml.jsx';
 import { DesignThumb } from '../content/DesignThumb.jsx';
@@ -37,6 +37,47 @@ function numerar(r) {
     }
   });
   return n;
+}
+
+/*
+ * QA de lançamento, 03/11: a conferência do servidor (server/conferencia.js).
+ * O bloqueio (o que a lei barra: "cura a gripe" numa farmácia) diz onde
+ * está, por quê e o que pôr no lugar — e a campanha não vai para a TV
+ * enquanto ele existir. O aviso (preço, data ou horário que não estavam no
+ * pedido; o dia da semana errado; o conselho do dentista) só pede para
+ * conferir: "Confira: R$ 189,90 não estava no seu pedido".
+ */
+function Conferencia({ conferencia }) {
+  const b = (conferencia && conferencia.bloqueios) || [];
+  const a = (conferencia && conferencia.avisos) || [];
+  if (!b.length && !a.length) return null;
+  const onde = (x) => x.onde.charAt(0).toUpperCase() + x.onde.slice(1);
+  return (
+    <section className="space-y-2" aria-label="Conferência dos textos">
+      {b.length > 0 && (
+        <div role="alert" className="rounded-lg border border-danger/40 bg-danger/5 px-3 py-2.5">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-ink"><AlertTriangle size={15} className="text-danger" /> Antes de ir para a TV, troque {b.length === 1 ? 'este texto' : 'estes textos'}</div>
+          <ul className="mt-1 space-y-1 text-xs text-ink-2">
+            {b.map((x, i) => (
+              <li key={i}><b className="text-ink">{onde(x)}:</b> “{x.trecho}” {x.motivo}.{x.sugestao ? <> Sugestão: “{x.sugestao}”.</> : null}</li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-2xs text-ink-3">Troque no lápis da peça ou peça ao Editar com a IA. Enquanto isso, a campanha fica guardada, fora da TV.</p>
+        </div>
+      )}
+      {a.length > 0 && (
+        <div className="rounded-lg border border-warn/40 bg-warn/5 px-3 py-2.5">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-ink"><AlertTriangle size={15} className="text-warn" /> Confira antes de pôr no ar</div>
+          <ul className="mt-1 space-y-1 text-xs text-ink-2">
+            {a.slice(0, 8).map((x, i) => (
+              <li key={i}><b className="text-ink">{onde(x)}:</b> {x.tipo === 'conselho' ? <>“{x.trecho}” {x.motivo}.{x.sugestao ? ' Pode ser: “' + x.sugestao + '”.' : ''}</> : x.tipo === 'semana' ? <>“{x.trecho}”: {x.motivo}.</> : <>{x.motivo.charAt(0).toUpperCase() + x.motivo.slice(1)}.</>}</li>
+            ))}
+            {a.length > 8 && <li className="text-ink-3">e mais {a.length - 8}.</li>}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
 }
 
 const Numero = ({ n }) => (
@@ -152,6 +193,8 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
   const daRede = (r.social && todas.find((p) => p.vaga === r.social.peca)) || todas[0]
     || ((r.biblioteca || [])[0] && { item: r.biblioteca[0].item, label: r.biblioteca[0].label });
   const editar = onMudou ? setEditando : null;
+  // QA de lançamento, 03/11: com texto que a lei barra, a campanha não está "pronta" (server/conferencia.js).
+  const barrada = ((r.conferencia && r.conferencia.bloqueios) || []).length > 0;
   // Salva o letreiro de uma TV (D12). No ar, a TV só muda ao pôr pra rodar de novo.
   const letreiroDe = (ti, zona) => (onMudou ? async (mensagens) => {
     try {
@@ -164,10 +207,10 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
   return (
     <div className={cn(onMudou && 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-4')}>
     <div className="space-y-3">
-      <div className="flex flex-wrap items-start gap-3 rounded-lg border border-ok/40 bg-ok/5 px-4 py-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ok/15 text-ok"><Check size={16} /></span>
+      <div className={cn('flex flex-wrap items-start gap-3 rounded-lg border px-4 py-3', barrada ? 'border-line bg-surface' : 'border-ok/40 bg-ok/5')}>
+        <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full', barrada ? 'bg-danger/10 text-danger' : 'bg-ok/15 text-ok')}>{barrada ? <AlertTriangle size={16} /> : <Check size={16} />}</span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-ink">{r.nome || campanha.nome} está pronta e salva.</div>
+          <div className="text-sm font-semibold text-ink">{r.nome || campanha.nome} {barrada ? 'está salva, mas precisa de uma troca de texto.' : 'está pronta e salva.'}</div>
           <div className="text-xs text-ink-2">
             {r.contagem ? r.contagem.pecas + (r.contagem.pecas === 1 ? ' peça' : ' peças') : ''}
             {r.contagem && r.contagem.fotosGeradas ? ' · ' + r.contagem.fotosGeradas + (r.contagem.fotosGeradas === 1 ? ' foto gerada' : ' fotos geradas') : ''}
@@ -180,6 +223,8 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
           </a>
         )}
       </div>
+
+      <Conferencia conferencia={r.conferencia} />
 
       {acoes}
 

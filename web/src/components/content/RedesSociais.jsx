@@ -32,6 +32,31 @@ const CANAIS = [
 ];
 
 // O texto da peça, lido dos campos que a peça declara.
+/*
+ * A regra de conteúdo (js/regras-de-conteudo.js) nos textos das redes: o
+ * bloqueio já saiu trocado pela versão permitida; aqui a pessoa vê o que foi
+ * e por quê. O aviso (dentista com "grátis") não troca nada: ela decide.
+ */
+function ConteudoConferido({ conteudo }) {
+  const b = conteudo.bloqueios || [];
+  const a = conteudo.avisos || [];
+  if (!b.length && !a.length) return null;
+  const frase = (x) => '"' + x.trecho + '" ' + x.motivo + '.';
+  return (
+    <div className="mb-3 space-y-1 rounded-md border border-warn/40 bg-warn/10 p-2 text-xs text-ink-2">
+      {b.length > 0 && (
+        <p className="flex items-start gap-1.5"><AlertTriangle size={13} className="mt-px shrink-0 text-warn" />
+          <span>Tirei dos textos o que não pode ir para uma propaganda: {b.map(frase).join(' ')}
+            {b[0].sugestao ? ' No lugar, algo como "' + b[0].sugestao + '".' : ''}</span></p>
+      )}
+      {a.length > 0 && (
+        <p className="flex items-start gap-1.5"><AlertTriangle size={13} className="mt-px shrink-0 text-warn" />
+          <span>Confira antes de postar: {a.map(frase).join(' ')}</span></p>
+      )}
+    </div>
+  );
+}
+
 function textosDaPeca(item, label) {
   const c = (item && item.campos) || {};
   const titulo = [c.titulo, c.titulo2].filter(Boolean).join(' ') || c.nome || c.manchete || label || '';
@@ -256,6 +281,8 @@ export function RedesSociais({ item, label, onFechar }) {
       )}
 
       {erro && <p className="mb-3 text-sm text-danger">{erro}</p>}
+      {/* QA de lançamento, 03/11: o que a regra da frente tirou dos textos (e o aviso do conselho) aparece, não some calado. */}
+      {textos && textos.conteudo && <ConteudoConferido conteudo={textos.conteudo} />}
       {!textos && !erro ? (
         <div className="flex items-center gap-2 py-8 text-sm text-ink-3"><Spinner size={16} /> Escrevendo os textos de cada rede…</div>
       ) : textos && aba === 'instagram' ? (
