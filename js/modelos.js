@@ -516,10 +516,51 @@
   }
 
   /*
-   * Monta a peça. `duracao` fica em 12s, que é o tempo em que alguém de pé
-   * numa recepção lê um recado curto sem correr.
+   * O texto de exemplo na língua da frente (QA de lançamento, 03/11).
+   *
+   * Os modelos nasceram para comunicação interna, e a padaria e a clínica
+   * abriam "Criar na mão" e viam "O refeitório funciona em horário
+   * estendido", "Use o crachá · Bata o ponto · Fale com o RH" e "Dias sem
+   * acidentes". O desenho é o mesmo nas três frentes (docs/FRENTES.md: a
+   * separação é de configuração); só o exemplo escrito muda. A chave é o
+   * texto da Empresa, que continua sendo o padrão.
    */
-  function montar(id, formato, cores) {
+  var TROCAS = {
+    comercio: {
+      'COMUNICADO': 'AVISO',
+      'O refeitório funciona\nem horário estendido': 'Fechamos mais cedo\nno sábado',
+      'Segunda a sexta, das 8h às 18h': 'Sábado, das 8h às 14h',
+      'ANTES DE COMEÇAR': 'COMO FUNCIONA',
+      'Use o crachá': 'Escolha', 'Bata o ponto': 'Pague no caixa', 'Fale com o RH': 'Retire no balcão',
+      'DIAS SEM ACIDENTES': 'CLIENTES ATENDIDOS NO MÊS', '127': '1.250', 'Nosso recorde é 180. Falta pouco.': 'Obrigado pela preferência!',
+      'CONFRATERNIZAÇÃO': 'BLACK FRIDAY', '20 de dezembro · 19h': '27 de novembro · o dia todo', 'Salão de eventos · 3º andar': 'Na loja e pelo WhatsApp',
+    },
+    saude: {
+      'COMUNICADO': 'AVISO',
+      'O refeitório funciona\nem horário estendido': 'Chegue 15 minutos\nantes da consulta',
+      'Segunda a sexta, das 8h às 18h': 'Traga documento e a carteirinha do convênio',
+      'ANTES DE COMEÇAR': 'ANTES DA CONSULTA',
+      'Use o crachá': 'Traga a carteirinha', 'Bata o ponto': 'Chegue 15 min antes', 'Fale com o RH': 'Avise na recepção',
+      'DIAS SEM ACIDENTES': 'PACIENTES ATENDIDOS NO MÊS', '127': '1.250', 'Nosso recorde é 180. Falta pouco.': 'Obrigado pela confiança.',
+      'CONFRATERNIZAÇÃO': 'VACINAÇÃO DA GRIPE', '20 de dezembro · 19h': '25 de novembro · das 8h às 12h', 'Salão de eventos · 3º andar': 'Na recepção, sem agendamento',
+      'OFERTA DA SEMANA': 'NOVIDADE', 'R$ 19,90': 'Pediatria', 'PEÇA NO BALCÃO': 'ÀS TERÇAS',
+      'NOSSA NOVA LOJA': 'NOSSA NOVA UNIDADE',
+    },
+  };
+  function naFrente(elementos, frente) {
+    var t = frente && Object.prototype.hasOwnProperty.call(TROCAS, frente) ? TROCAS[frente] : null;
+    if (!t) return elementos;
+    return elementos.map(function (e) {
+      return e.tipo === 'texto' && Object.prototype.hasOwnProperty.call(t, e.text) ? Object.assign({}, e, { text: t[e.text] }) : e;
+    });
+  }
+
+  /*
+   * Monta a peça. `duracao` fica em 12s, que é o tempo em que alguém de pé
+   * numa recepção lê um recado curto sem correr. `frente` (empresa, saude,
+   * comercio; opcional) escolhe o texto de exemplo — sem ela, o da Empresa.
+   */
+  function montar(id, formato, cores, frente) {
     var m = MODELOS.find(function (x) { return x.id === id; });
     if (!m) return null;
     z = 0;
@@ -529,10 +570,10 @@
       formato: formato || '16/9',
       duracao: 12,
       bg: fora.bg,
-      elementos: igualarCorpos(ajustarTextos(fora.elementos, formato || '16/9')),
+      elementos: igualarCorpos(ajustarTextos(naFrente(fora.elementos, frente), formato || '16/9')),
       dica: fora.dica || '',
     };
   }
 
-  return { listar: listar, montar: montar, MODELOS: MODELOS, paleta: paleta, razao: razao, escala: escala, margem: margem, ajustarTextos: ajustarTextos, linhasDe: linhasDe };
+  return { listar: listar, montar: montar, TROCAS: TROCAS, MODELOS: MODELOS, paleta: paleta, razao: razao, escala: escala, margem: margem, ajustarTextos: ajustarTextos, linhasDe: linhasDe };
 });

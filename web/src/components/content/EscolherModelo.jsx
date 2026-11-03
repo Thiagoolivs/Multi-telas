@@ -5,6 +5,7 @@ import { Button } from '../ui/Button.jsx';
 import { DesignThumb } from './DesignThumb.jsx';
 import { brand as brandApi } from '../../api.js';
 import '../../../../js/modelos.js';
+import { usePerfil } from '../../lib/perfil.js';
 
 const M = globalThis.MTModelos;
 
@@ -50,6 +51,8 @@ export function EscolherModelo({ aberto, onFechar, onEscolher, formatoSugerido }
   }, [aberto]);
 
   const lista = M.listar();
+  // O texto de exemplo é da frente (QA de 03/11: crachá e "Fale com o RH" na padaria).
+  const perfil = usePerfil();
 
   return (
     <Dialog
@@ -89,7 +92,7 @@ export function EscolherModelo({ aberto, onFechar, onEscolher, formatoSugerido }
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {lista.map((m) => {
-              const peca = M.montar(m.id, formato, cores);
+              const peca = M.montar(m.id, formato, cores, perfil.id);
               return (
                 <button
                   key={m.id} type="button"

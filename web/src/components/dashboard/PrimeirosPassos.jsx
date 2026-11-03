@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check, MonitorPlay, Wand2, Brush, ArrowRight } from 'lucide-react';
 import { lerJornada } from '../../lib/jornada.js';
+import { usePerfil } from '../../lib/perfil.js';
 
 /*
  * "Comece por aqui": do cadastro à primeira peça na TV em menos de 10
@@ -23,6 +24,7 @@ import { lerJornada } from '../../lib/jornada.js';
 const DISPENSADO = 'mt.primeirosPassos.dispensado';
 
 export function PrimeirosPassos({ devices, onIr }) {
+  const perfil = usePerfil();
   const [jornada, setJornada] = useState(null);
   const [dispensado, setDispensado] = useState(() => {
     try { return localStorage.getItem(DISPENSADO) === '1'; } catch (e) { return false; }
@@ -37,7 +39,8 @@ export function PrimeirosPassos({ devices, onIr }) {
     {
       id: 'marca',
       icone: Brush,
-      titulo: 'Diga quem é a empresa',
+      // "a empresa", "a clínica", "a loja" (QA de 03/11).
+      titulo: 'Diga quem é a ' + perfil.lugar,
       texto: 'Cole o endereço do site: a IA tira de lá as cores e as letras. Sem site, escolha a paleta sugerida para o seu ramo.',
       acao: 'Abrir a Marca',
       destino: 'brand',
@@ -95,7 +98,8 @@ export function PrimeirosPassos({ devices, onIr }) {
               {!p.feito && (
                 <button type="button" onClick={() => onIr(p.destino, p.params)}
                   className={'ml-9 flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:ml-0 '
-                    + (agora ? 'bg-accent text-accent-fg hover:brightness-110' : 'border border-line text-ink hover:border-accent/50 hover:text-accent')}>
+                    // O passo da vez em destaque, mas contornado: o único botão cheio do Início é "Criar com a IA" (QA de 03/11, MARCA.md).
+                    + (agora ? 'border border-accent text-accent hover:bg-accent-soft' : 'border border-line text-ink hover:border-accent/50 hover:text-accent')}>
                   <Icone size={14} />
                   {p.acao}
                   {agora && <ArrowRight size={13} />}

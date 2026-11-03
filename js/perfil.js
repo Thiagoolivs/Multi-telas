@@ -40,6 +40,13 @@
       opcoes: ['aviso', 'comunicado', 'aniversario', 'boasvindas', 'indicador', 'seguranca', 'evento', 'vaga', 'agradecimento', 'valores', 'horario', 'cardapio'],
       exemplo: 'Ex.: avisar que o refeitório fecha mais cedo na sexta, na TV do refeitório',
       paraIA: 'Empresa: comunicação interna, para quem trabalha lá (avisos, RH, segurança, metas). Não fale de preço, oferta ou cliente comprando, a menos que peçam.',
+      // Os exemplos e as frases fixas do painel que mudam de frente (QA de lançamento, 03/11: SIPAT, RH e Protheus apareciam na padaria e na clínica).
+      textos: {
+        datas: '10/11 SIPAT — palestras às 15h no refeitório\n15/11 Feriado — não haverá expediente\n28/11 Confraternização às 18h',
+        deOndeVemAsDatas: 'a lista do RH, um e-mail, a agenda',
+        planilha: 'a planilha do RH', sistema: 'do Protheus ou de qualquer sistema', nomesDeTv: 'Recepção, Refeitório, Portaria',
+        pedidoDeExemplo: 'Ex.: avisar que o refeitório fecha às 14h na sexta', festas: 'o aniversário da empresa, a confraternização',
+      },
     },
     comercio: {
       id: 'comercio', nome: 'Comércio', descricao: 'Loja, restaurante, serviço: ofertas e novidades.',
@@ -50,6 +57,12 @@
       opcoes: ['promocao', 'novidade', 'cardapio', 'foto', 'horario', 'aviso', 'evento', 'instagram', 'depoimento', 'pagamento', 'wifi', 'aniversario'],
       exemplo: 'Ex.: quero divulgar o pão de queijo em dobro à tarde, na TV e no Instagram',
       paraIA: 'Comércio: fala com clientes (ofertas, novidades, horário, redes sociais).',
+      textos: {
+        datas: '27/11 Black Friday — descontos o dia todo\n08/12 Feriado — abrimos das 9h às 13h\n24/12 Fechamos às 14h',
+        deOndeVemAsDatas: 'a agenda da loja, um e-mail, a lista de feriados',
+        planilha: 'a planilha da equipe', sistema: 'do sistema que vocês já usam (o caixa, uma planilha, o ERP)', nomesDeTv: 'Vitrine, Balcão, Caixa',
+        pedidoDeExemplo: 'Ex.: avisar que a loja fecha às 14h no sábado', festas: 'o aniversário da loja, uma inauguração',
+      },
     },
     saude: {
       id: 'saude', nome: 'Saúde', descricao: 'Clínica, consultório, farmácia: orientação e serviços.',
@@ -60,6 +73,12 @@
       opcoes: ['aviso', 'dica', 'servicos', 'prevencao', 'horario', 'convenios', 'evento', 'depoimento', 'instagram', 'wifi', 'aniversario'],
       exemplo: 'Ex.: lembrar que a vacina da gripe chegou, na TV da recepção',
       paraIA: 'Saúde: fala com pacientes na sala de espera (orientação, serviços, prevenção). Sem promessa de cura, sem desconto agressivo, tom acolhedor.',
+      textos: {
+        datas: '25/11 Mutirão de vacinação — das 8h às 12h\n08/12 Feriado — não haverá atendimento\n24/12 Atendimento só até as 12h',
+        deOndeVemAsDatas: 'a agenda da clínica, um e-mail, a lista de feriados',
+        planilha: 'a planilha da equipe', sistema: 'do sistema que vocês já usam (a agenda, uma planilha, o ERP)', nomesDeTv: 'Recepção, Sala de espera, Corredor',
+        pedidoDeExemplo: 'Ex.: avisar que a clínica não abre no feriado de quinta', festas: 'o aniversário da clínica, uma campanha de vacinação',
+      },
     },
   };
 

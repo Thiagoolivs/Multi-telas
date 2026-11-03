@@ -341,6 +341,7 @@ function ReconnectDialog({ target, onClose, onDone }) {
  * vem com o botão que resolve — só o texto mandava a pessoa procurar.
  */
 function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar, onIrParaPlano }) {
+  const perfil = usePerfil();
   const [code, setCode] = useState(codigoDaTv(codigoInicial));
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -486,7 +487,7 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
             autoComplete="off" autoCapitalize="characters" spellCheck={false} className="tracking-[0.3em]"
             aria-invalid={error && !erroDePlano ? 'true' : undefined} />
         </Field>
-        <Field label="Nome da tela" hint="Ex.: Recepção, Vitrine, Refeitório.">
+        <Field label="Nome da tela" hint={'Ex.: ' + perfil.textos.nomesDeTv + '.'}>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Recepção" autoFocus={!!codigoInicial} />
         </Field>
         {/* A região existe antes do erro, para o leitor de tela anunciar quando ele chega. */}
