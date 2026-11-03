@@ -375,6 +375,10 @@ async function init() {
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS tipo TEXT;
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS referencias TEXT;
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS esboco TEXT;
+    -- Mural com aprovação e indicador "menor é melhor" (QA de 03/11); ver db-sqlite.js.
+    ALTER TABLE murais ADD COLUMN IF NOT EXISTS aprovar BOOLEAN;
+    ALTER TABLE muralfotos ADD COLUMN IF NOT EXISTS pendente BOOLEAN;
+    ALTER TABLE indicadores ADD COLUMN IF NOT EXISTS sentido TEXT;
   `);
 }
 
@@ -937,8 +941,8 @@ async function numerosDaPlataforma(agora, vivaDesde, desde) {
 /* ---------------- Mural de fotos do público ---------------- */
 // `tenantId` sai daqui porque a rota pública do QR não tem sessão: quem manda
 // a foto é identificado pelo mural, e é do mural que vem a empresa dona dela.
-const mapMural = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo, aceitando: !!r.aceitando, createdAt: r.created_at } : null);
-const mapFoto = (r) => ({ id: r.id, url: r.url, autor: r.autor || '', mensagem: r.mensagem || '', oculta: !!r.oculta, createdAt: r.created_at });
+const mapMural = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo, aceitando: !!r.aceitando, aprovar: r.aprovar == null ? true : !!r.aprovar, createdAt: r.created_at } : null);
+const mapFoto = (r) => ({ id: r.id, url: r.url, autor: r.autor || '', mensagem: r.mensagem || '', oculta: !!r.oculta, pendente: !!r.pendente, createdAt: r.created_at });
 
 /* ---------------- Envio em lote (D26) ---------------- */
 const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
@@ -1015,7 +1019,7 @@ const mapConector = (r) => {
 const mapIndicador = (r) => (r ? {
   id: r.id, conectorId: r.conector_id, chave: r.chave, nome: r.nome || r.chave, valor: r.valor == null ? null : Number(r.valor),
   unidade: r.unidade || '', meta: r.meta == null ? null : Number(r.meta), anterior: r.anterior == null ? null : Number(r.anterior),
-  atualizadoEm: Number(r.atualizado_em) || 0,
+  sentido: r.sentido || '', atualizadoEm: Number(r.atualizado_em) || 0,
 } : null);
 async function criarConector(tenantId, c) {
   const id = 'kc_' + rid(12);
@@ -1052,12 +1056,18 @@ async function gravarIndicadores(tenantId, conectorId, lista, agora) {
     await client.query('BEGIN');
     for (const i of lista) {
       const atual = (await client.query('SELECT id FROM indicadores WHERE tenant_id = $1 AND conector_id = $2 AND chave = $3', [tenantId, conectorId, i.chave])).rows[0];
+      // Só muda o campo que veio (server/kpis.js): o formato simples não apaga nome, unidade, meta nem sentido.
+      const tem = (k) => i[k] !== undefined;
       if (atual) {
-        await client.query('UPDATE indicadores SET nome = $1, valor = $2, unidade = $3, meta = $4, anterior = CASE WHEN valor = $2 THEN anterior ELSE valor END, atualizado_em = $5 WHERE id = $6',
-          [i.nome, i.valor, i.unidade || '', i.meta, quando, atual.id]);
+        await client.query('UPDATE indicadores SET nome = CASE WHEN $1::boolean THEN $2::text ELSE nome END, valor = $3, '
+          + 'unidade = CASE WHEN $4::boolean THEN $5::text ELSE unidade END, meta = CASE WHEN $6::boolean THEN $7::double precision ELSE meta END, '
+          + 'sentido = CASE WHEN $8::boolean THEN $9::text ELSE sentido END, '
+          + 'anterior = CASE WHEN valor = $3 THEN anterior ELSE valor END, atualizado_em = $10 WHERE id = $11',
+          [tem('nome'), i.nome == null ? null : i.nome, i.valor, tem('unidade'), i.unidade || '', tem('meta'), i.meta == null ? null : i.meta,
+            tem('sentido'), i.sentido || '', quando, atual.id]);
       } else {
-        await client.query('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULL,$9)',
-          ['ki_' + rid(12), tenantId, conectorId, i.chave, i.nome, i.valor, i.unidade || '', i.meta, quando]);
+        await client.query('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, sentido, anterior, atualizado_em) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10)',
+          ['ki_' + rid(12), tenantId, conectorId, i.chave, i.nome || i.nomeNovo || i.chave, i.valor, i.unidade || '', i.meta == null ? null : i.meta, i.sentido || '', quando]);
       }
     }
     await client.query('COMMIT');
@@ -1106,9 +1116,9 @@ async function marcarConsentimento(tenantId, pessoaId, quando) { return (await p
 
 async function criarMural(tenantId, codigo, titulo) {
   const id = 'mur_' + rid(12);
-  await pool.query('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, created_at) VALUES ($1,$2,$3,$4,TRUE,$5)',
+  await pool.query('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, aprovar, created_at) VALUES ($1,$2,$3,$4,TRUE,TRUE,$5)',
     [id, tenantId, codigo, titulo || 'Mural', Date.now()]);
-  return { id, codigo, titulo: titulo || 'Mural', aceitando: true };
+  return { id, codigo, titulo: titulo || 'Mural', aceitando: true, aprovar: true };
 }
 async function listarMurais(tenantId) {
   const r = await pool.query('SELECT * FROM murais WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
@@ -1122,9 +1132,11 @@ async function muralPorId(id, tenantId) {
   const r = await pool.query('SELECT * FROM murais WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   return mapMural(r.rows[0]);
 }
-async function atualizarMural(id, tenantId, titulo, aceitando) {
+// `aprovar` só muda quando vem (undefined = fica como está).
+async function atualizarMural(id, tenantId, titulo, aceitando, aprovar) {
   await pool.query('UPDATE murais SET titulo = $1, aceitando = $2 WHERE id = $3 AND tenant_id = $4',
     [titulo || 'Mural', !!aceitando, id, tenantId]);
+  if (aprovar !== undefined) await pool.query('UPDATE murais SET aprovar = $1 WHERE id = $2 AND tenant_id = $3', [!!aprovar, id, tenantId]);
 }
 /*
  * Apagar o mural apaga as fotos dele: a linha (com o IP de quem mandou), a
@@ -1147,8 +1159,9 @@ async function removerMural(id, tenantId) {
 }
 async function addFotoMural(muralId, tenantId, foto) {
   const id = 'mf_' + rid(14);
-  await pool.query('INSERT INTO muralfotos (id, mural_id, tenant_id, url, chave, autor, mensagem, ip, oculta, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,FALSE,$9)',
-    [id, muralId, tenantId, foto.url, foto.chave || '', foto.autor || '', foto.mensagem || '', foto.ip || '', Date.now()]);
+  // Pendente (o mural pede aprovação) entra também oculta: a TV só lê as não ocultas.
+  await pool.query('INSERT INTO muralfotos (id, mural_id, tenant_id, url, chave, autor, mensagem, ip, oculta, pendente, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,$10)',
+    [id, muralId, tenantId, foto.url, foto.chave || '', foto.autor || '', foto.mensagem || '', foto.ip || '', !!foto.pendente, Date.now()]);
   return { id, ...foto };
 }
 async function listarFotosMural(muralId, limite) {
@@ -1160,7 +1173,8 @@ async function fotosVisiveis(muralId, limite) {
   return r.rows.map(mapFoto);
 }
 async function ocultarFoto(id, tenantId, oculta) {
-  await pool.query('UPDATE muralfotos SET oculta = $1 WHERE id = $2 AND tenant_id = $3', [!!oculta, id, tenantId]);
+  // Devolver à tela é também aprovar: a foto pendente deixa de ser pendente.
+  await pool.query('UPDATE muralfotos SET oculta = $1, pendente = CASE WHEN $1 THEN pendente ELSE FALSE END WHERE id = $2 AND tenant_id = $3', [!!oculta, id, tenantId]);
 }
 async function ocultarTodasFotos(muralId, tenantId) {
   const r = await pool.query('UPDATE muralfotos SET oculta = TRUE WHERE mural_id = $1 AND tenant_id = $2', [muralId, tenantId]);

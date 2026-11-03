@@ -24,36 +24,139 @@ const corta = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().s
 const MARCAS = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
 const chaveDe = (s) => String(s == null ? '' : s).normalize('NFD').replace(MARCAS, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
 
-// Número como o ERP manda: 1234.5, "1234,50", "1.234,50", "R$ 1.234,50", "87%".
-function numero(v) {
-  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+/*
+ * Número como o ERP manda: 1234.5, "1234,50", "1.234,50", "R$ 1.234,50", "87%".
+ *
+ * E o padrão americano, que o QA de lançamento (03/11) viu virar um número
+ * mil vezes menor em silêncio: "1,234.56" era lido como 1,23456. Com vírgula
+ * E ponto, o ÚLTIMO separador é o decimal ("1.234,56" e "1,234.56" dão o
+ * mesmo número); só vírgulas em grupos de três ("1,234,567") é milhar
+ * americano. O que não dá para ler sem chutar é RECUSADO, com o motivo em
+ * `aviso` — número errado na TV da fábrica é pior que número nenhum.
+ * Devolve { valor, aviso }; `valor` é null quando não deu.
+ */
+const AMBIGUO = 'não deu para ler o número sem adivinhar — mande como 1234.56 (ponto decimal, sem separador de milhar)';
+function lerNumero(v) {
+  if (typeof v === 'number') return { valor: Number.isFinite(v) ? v : null, aviso: Number.isFinite(v) ? '' : 'número inválido' };
   let s = String(v == null ? '' : v).replace(/[^\d,.-]/g, '');
-  if (!s || !/\d/.test(s)) return null;
-  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
-  // Só pontos em grupos de três ("1.500", "1.234.567"): é o milhar brasileiro.
-  else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, '');
+  if (!s || !/\d/.test(s)) return { valor: null, aviso: v == null || v === '' ? 'sem valor' : 'o valor não é um número' };
+  const virgulas = (s.match(/,/g) || []).length;
+  const pontos = (s.match(/\./g) || []).length;
+  let aviso = '';
+  if (virgulas && pontos) {
+    if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+      // Brasileiro: "1.234,56".
+      if (!/^-?\d{1,3}(\.\d{3})+,\d+$/.test(s)) return { valor: null, aviso: AMBIGUO };
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else {
+      // Americano: "1,234.56".
+      if (!/^-?\d{1,3}(,\d{3})+\.\d+$/.test(s)) return { valor: null, aviso: AMBIGUO };
+      s = s.replace(/,/g, '');
+      aviso = 'lido no padrão americano (1,234.56 = 1.234,56)';
+    }
+  } else if (virgulas > 1) {
+    // "1,234,567": só pode ser milhar americano.
+    if (!/^-?\d{1,3}(,\d{3})+$/.test(s)) return { valor: null, aviso: AMBIGUO };
+    s = s.replace(/,/g, '');
+    aviso = 'lido no padrão americano (1,234,567 = 1.234.567)';
+  } else if (virgulas) {
+    s = s.replace(',', '.');
+  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
+    // Só pontos em grupos de três ("1.500", "1.234.567"): é o milhar brasileiro.
+    s = s.replace(/\./g, '');
+  } else if (pontos > 1) {
+    return { valor: null, aviso: AMBIGUO };
+  }
   const n = Number(s);
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(n) ? { valor: n, aviso } : { valor: null, aviso: 'o valor não é um número' };
+}
+function numero(v) { return lerNumero(v).valor; }
+
+/*
+ * "QUANTO MENOS, MELHOR" (QA de lançamento, 03/11): refugo de 2,6% com meta
+ * de 2% aparecia como "🎉 Meta batida! 130%". O ERP pode dizer (`sentido`:
+ * "menor" ou "maior", ou `menorMelhor: true`); sem isso, o nome decide —
+ * refugo, perda, acidente, falta, atraso… —, e "dias SEM acidente" continua
+ * sendo mais é melhor.
+ */
+function sentidoDaEntrada(r) {
+  if (r.menorMelhor === true || r.menor_melhor === true) return 'menor';
+  if (r.menorMelhor === false || r.menor_melhor === false) return 'maior';
+  const t = String(r.sentido == null ? '' : r.sentido).trim().toLowerCase();
+  if (!t) return undefined;
+  if (/^(menor|menos|baixo|down|min|menor[-_ ]?(e|é)?[-_ ]?melhor)/.test(t)) return 'menor';
+  if (/^(maior|mais|alto|up|max)/.test(t)) return 'maior';
+  return undefined;
+}
+const MENOR_E_MELHOR = /refugo|perda|defeito|acidente|falta|absente|atraso|reclama|retrabalho|devolu|sucata|desperd|incidente|scrap|rotatividade|turnover|espera|parada|quebra|avaria|multa|inadimpl/;
+function sentidoDe(i) {
+  if (i && (i.sentido === 'menor' || i.sentido === 'maior')) return i.sentido;
+  const t = (String((i && i.nome) || '') + ' ' + String((i && i.chave) || '')).normalize('NFD').replace(MARCAS, '').toLowerCase();
+  if (/\bsem\b/.test(t)) return 'maior';
+  return MENOR_E_MELHOR.test(t) ? 'menor' : 'maior';
 }
 
-function normalizar(r) {
-  if (!r || typeof r !== 'object') return null;
-  const nome = corta(r.nome != null ? r.nome : r.chave, 60);
-  const chave = chaveDe(r.chave != null && r.chave !== '' ? r.chave : nome);
-  const valor = numero(r.valor);
-  if (!chave || valor == null) return null;
-  const meta = numero(r.meta);
-  return { chave, nome: nome || chave, valor, unidade: corta(r.unidade, 12), meta: meta == null ? null : meta };
+/*
+ * Um indicador da entrada. Só leva o campo que VEIO: o formato simples
+ * ({"producao": 10250}) não traz nome, unidade nem meta, e apagava os que o
+ * dono tinha configurado (QA de 03/11). Campo ausente fica como estava no
+ * banco; `null` de propósito limpa. `nomeNovo` é o nome para quando o
+ * indicador ainda não existe.
+ */
+function normalizarComAviso(r) {
+  if (!r || typeof r !== 'object') return { item: null, aviso: 'indicador vazio' };
+  const temNome = r.nome != null && String(r.nome).trim() !== '';
+  const nome = temNome ? corta(r.nome, 60) : undefined;
+  const chave = chaveDe(r.chave != null && r.chave !== '' ? r.chave : (temNome ? r.nome : r.nomeNovo));
+  if (!chave) return { item: null, aviso: 'falta a chave ou o nome' };
+  const lido = lerNumero(r.valor);
+  if (lido.valor == null) return { item: null, chave, aviso: lido.aviso };
+  const item = { chave, valor: lido.valor };
+  if (nome !== undefined) item.nome = nome;
+  else if (r.nomeNovo != null) item.nomeNovo = corta(r.nomeNovo, 60);
+  if (r.unidade !== undefined) item.unidade = corta(r.unidade, 12);
+  const avisos = lido.aviso ? [lido.aviso] : [];
+  if (r.meta !== undefined) {
+    const m = r.meta === null || r.meta === '' ? { valor: null, aviso: '' } : lerNumero(r.meta);
+    if (m.valor == null && m.aviso) avisos.push('meta: ' + m.aviso);
+    else { item.meta = m.valor; if (m.aviso) avisos.push('meta ' + m.aviso); }
+  }
+  const sentido = sentidoDaEntrada(r);
+  if (sentido) item.sentido = sentido;
+  return { item, chave, aviso: avisos.join('; ') };
 }
+function normalizar(r) { return normalizarComAviso(r).item; }
 
-// A entrada do PUSH: { indicadores: [...] }, a lista direto, ou um objeto plano { "vendas-dia": 1234 }.
-function daEntrada(corpo) {
-  let lista = [];
-  if (Array.isArray(corpo)) lista = corpo;
-  else if (corpo && Array.isArray(corpo.indicadores)) lista = corpo.indicadores;
-  else if (corpo && typeof corpo === 'object') lista = Object.keys(corpo).map((k) => ({ chave: k, nome: k, valor: corpo[k] }));
-  return unicos(lista.map(normalizar).filter(Boolean));
+/*
+ * A entrada do PUSH: { indicadores: [...] }, a lista direto, ou um objeto
+ * plano { "vendas-dia": 1234 }. `comAvisos` devolve também o que foi
+ * recusado ou lido com cuidado — o ERP fica sabendo, em vez de o número
+ * sumir em silêncio.
+ */
+function listaDaEntrada(corpo) {
+  if (Array.isArray(corpo)) return corpo;
+  if (corpo && Array.isArray(corpo.indicadores)) return corpo.indicadores;
+  if (corpo && typeof corpo === 'object') return Object.keys(corpo).map((k) => ({ chave: k, nomeNovo: k, valor: corpo[k] }));
+  return [];
 }
+function comAvisos(brutos) {
+  const avisos = [];
+  const lista = [];
+  const vistos = {};
+  for (const r of brutos) {
+    const n = normalizarComAviso(r);
+    const rotulo = n.chave || (r && (r.chave || r.nome)) || '?';
+    if (!n.item) { avisos.push({ chave: rotulo, aviso: 'ignorado: ' + n.aviso }); continue; }
+    if (vistos[n.item.chave]) { avisos.push({ chave: rotulo, aviso: 'ignorado: chave repetida no mesmo envio' }); continue; }
+    vistos[n.item.chave] = true;
+    if (lista.length >= MAX_INDICADORES) { avisos.push({ chave: rotulo, aviso: 'ignorado: no máximo ' + MAX_INDICADORES + ' indicadores por envio' }); continue; }
+    lista.push(n.item);
+    if (n.aviso) avisos.push({ chave: rotulo, aviso: n.aviso });
+  }
+  return { lista, avisos: avisos.slice(0, 60) };
+}
+function daEntradaComAvisos(corpo) { return comAvisos(listaDaEntrada(corpo)); }
+function daEntrada(corpo) { return daEntradaComAvisos(corpo).lista; }
 function unicos(lista) {
   const vistos = {};
   return lista.filter((x) => (vistos[x.chave] ? false : (vistos[x.chave] = true))).slice(0, MAX_INDICADORES);
@@ -77,7 +180,8 @@ function daResposta(json, mapa) {
   if (Array.isArray(alvo)) {
     return unicos(alvo.map((it) => normalizar({
       chave: caminho(it, m.chave || 'chave'), nome: caminho(it, m.nome || 'nome'), valor: caminho(it, m.valor || 'valor'),
-      unidade: m.unidade ? caminho(it, m.unidade) : '', meta: m.meta ? caminho(it, m.meta) : null,
+      // Campo que o mapa não aponta não vem: fica o que já estava (meta e unidade não somem).
+      unidade: m.unidade ? caminho(it, m.unidade) : undefined, meta: m.meta ? caminho(it, m.meta) : undefined,
     })).filter(Boolean));
   }
   if (alvo && typeof alvo === 'object') return daEntrada(alvo);
@@ -124,4 +228,4 @@ async function buscarAgora(linha, { db, site, segredo, agora, politica }) {
   return { lista };
 }
 
-module.exports = { normalizar, daEntrada, daResposta, caminho, numero, chaveDe, mapaLimpo, cabecalhosDe, buscarAgora, MAX_INDICADORES, INTERVALO_MIN, AUTH };
+module.exports = { normalizar, normalizarComAviso, daEntrada, daEntradaComAvisos, lerNumero, sentidoDe, daResposta, caminho, numero, chaveDe, mapaLimpo, cabecalhosDe, buscarAgora, MAX_INDICADORES, INTERVALO_MIN, AUTH };

@@ -55,6 +55,8 @@ async function api(method, path, body, opcoes) {
     e.codigo = data && (data.erro || data.code);
     // O corpo inteiro, para quem precisa de mais que a frase (a multa do anual no 409).
     e.dados = data;
+    // As telas que podem ser a TV que voltou com código (parear: 409 "parece-reconectar" e 402 no limite).
+    if (data && Array.isArray(data.telas)) e.telas = data.telas;
     throw e;
   }
   return embrulhar(data);
@@ -97,7 +99,8 @@ export const team = {
 
 export const devices = {
   list: () => api('GET', '/api/devices'),
-  pair: (code, name) => api('POST', '/api/pair', { code: String(code || '').trim().toUpperCase(), name }),
+  // `extra`: { reconectar: id } ("é a TV X que caiu") ou { nova: true } ("não, é outra TV") — QA de 03/11.
+  pair: (code, name, extra) => api('POST', '/api/pair', Object.assign({ code: String(code || '').trim().toUpperCase(), name }, extra || {})),
   rename: (id, name) => api('POST', '/api/devices/' + id + '/rename', { name }),
   expediente: (id, exp) => api('POST', '/api/devices/' + id + '/expediente', exp),
   comando: (id, acao) => api('POST', '/api/devices/' + id + '/comando', { acao }),
@@ -499,7 +502,8 @@ export const library = {
 export const murais = {
   list: () => api('GET', '/api/murais'),
   create: (titulo) => api('POST', '/api/murais', { titulo }),
-  update: (id, titulo, aceitando) => api('PUT', '/api/murais/' + id, { titulo, aceitando }),
+  // `aprovar` (a foto do público espera aprovação antes da TV) só vai quando muda.
+  update: (id, titulo, aceitando, aprovar) => api('PUT', '/api/murais/' + id, aprovar === undefined ? { titulo, aceitando } : { titulo, aceitando, aprovar }),
   remove: (id) => api('DELETE', '/api/murais/' + id),
   fotos: (id) => api('GET', '/api/murais/' + id + '/fotos'),
   ocultarFoto: (fotoId) => api('DELETE', '/api/murais/fotos/' + fotoId),

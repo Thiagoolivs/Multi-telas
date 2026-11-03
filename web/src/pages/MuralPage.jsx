@@ -123,6 +123,13 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
     catch (e) { aviso.erro('mural', e.message || 'Não deu para mudar o mural.'); }
     finally { setOcupado(false); }
   }
+  // Aprovar antes de ir para a TV (QA de 03/11): o padrão é ligado, para foto ofensiva não ir ao ar sozinha.
+  async function alternarAprovar() {
+    setOcupado(true);
+    try { await api.update(mural.id, titulo, mural.aceitando, mural.aprovar === false); await onMudou(); }
+    catch (e) { aviso.erro('mural', e.message || 'Não deu para mudar o mural.'); }
+    finally { setOcupado(false); }
+  }
   async function salvarTitulo() {
     if (titulo === mural.titulo) return;
     try { await api.update(mural.id, titulo, mural.aceitando); onMudou(); }
@@ -141,7 +148,7 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
   }
   async function esconder(f) {
     // Otimista, mas desfaz se o servidor recusar: o painel não pode dizer "fora da tela" com a foto na TV.
-    setFotos((atual) => atual.map((x) => (x.id === f.id ? { ...x, oculta: !x.oculta } : x)));
+    setFotos((atual) => atual.map((x) => (x.id === f.id ? { ...x, oculta: !x.oculta, pendente: false } : x)));
     try { if (f.oculta) await api.mostrarFoto(f.id); else await api.ocultarFoto(f.id); }
     catch (e) {
       setFotos((atual) => atual.map((x) => (x.id === f.id ? { ...x, oculta: f.oculta } : x)));
@@ -151,6 +158,7 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
   }
 
   const visiveis = (fotos || []).filter((f) => !f.oculta).length;
+  const pendentes = (fotos || []).filter((f) => f.pendente).length;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
@@ -187,6 +195,17 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
                 {mural.aceitando ? 'Fechar' : 'Abrir'}
               </Button>
             </div>
+            <div className="flex items-center justify-between rounded-md border border-line bg-surface-2 px-3 py-2">
+              <div className="text-sm">
+                <div className="font-medium text-ink">{mural.aprovar === false ? 'Vai direto para a TV' : 'Você aprova antes'}</div>
+                <div className="text-xs text-ink-3">
+                  {mural.aprovar === false ? 'a foto aparece na hora, sem ninguém ver antes' : 'a foto só vai para a TV quando você tocar em Aprovar'}
+                </div>
+              </div>
+              <Button size="sm" className="shrink-0 whitespace-nowrap" onClick={alternarAprovar} disabled={ocupado}>
+                {mural.aprovar === false ? 'Pedir aprovação' : 'Ir direto'}
+              </Button>
+            </div>
 
             {/*
               O botão de pânico. Fica à vista e diz o que faz — inclusive que
@@ -215,7 +234,7 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
           title="Fotos recebidas"
           description={erroFotos ? erroFotos : fotos === null ? 'carregando…'
             // "na tela" só quando o mural está mesmo numa TV (D15); antes dizia isso sem estar.
-            : (ondeEsta && ondeEsta.length ? `${visiveis} na tela (${ondeEsta.join(', ')})` : `${visiveis} aprovadas · em nenhuma TV ainda`) + ` · ${fotos.length} no total`}
+            : (ondeEsta && ondeEsta.length ? `${visiveis} na tela (${ondeEsta.join(', ')})` : `${visiveis} aprovadas · em nenhuma TV ainda`) + (pendentes ? ` · ${pendentes} esperando aprovação` : '') + ` · ${fotos.length} no total`}
           actions={
             <div className="flex gap-2">
               <IconButton icon={RefreshCw} label="Atualizar" onClick={carregar} />
@@ -241,14 +260,14 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
                   <div className="relative aspect-square">
                     <img src={f.url} alt="" className={'h-full w-full object-cover ' + (f.oculta ? 'opacity-30 grayscale' : '')} />
                     {f.oculta && (
-                      <span className="absolute left-2 top-2"><Badge tone="neutral">fora da tela</Badge></span>
+                      <span className="absolute left-2 top-2"><Badge tone={f.pendente ? 'warn' : 'neutral'}>{f.pendente ? 'esperando aprovação' : 'fora da tela'}</Badge></span>
                     )}
                   </div>
                   <figcaption className="space-y-1.5 p-2">
                     {f.mensagem && <p className="line-clamp-2 text-xs text-ink-2">{f.mensagem}</p>}
                     <p className="text-[11px] text-ink-3">{f.autor || 'sem nome'} · {hora(f.createdAt)}</p>
                     <Button size="sm" className="w-full" icon={f.oculta ? Eye : EyeOff} onClick={() => esconder(f)}>
-                      {f.oculta ? 'Devolver à tela' : 'Tirar da tela'}
+                      {f.pendente ? 'Aprovar' : f.oculta ? 'Devolver à tela' : 'Tirar da tela'}
                     </Button>
                   </figcaption>
                 </figure>

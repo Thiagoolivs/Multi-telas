@@ -33,6 +33,26 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
   const [msgPerfil, setMsgPerfil] = useState('');
   const [errPerfil, setErrPerfil] = useState('');
 
+  const [exportando, setExportando] = useState(false);
+  const [errExportar, setErrExportar] = useState('');
+  // Baixa pelo fetch para poder dizer o que deu errado (a navegação direta falhava em silêncio).
+  async function exportar() {
+    setExportando(true); setErrExportar('');
+    try {
+      const r = await fetch('/api/privacidade/exportar', { credentials: 'same-origin' });
+      if (!r.ok) {
+        const d = await r.json().catch(() => null);
+        throw new Error((d && d.error) || 'Não deu para exportar agora. Tente de novo.');
+      }
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement('a');
+      a.href = url; a.download = 'multitelas-meus-dados.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (e) {
+      setErrExportar(e && e.message && e.message !== 'Failed to fetch' ? e.message : 'Sem conexão. Tente de novo quando a internet voltar.');
+    } finally { setExportando(false); }
+  }
   const [excluirAberto, setExcluirAberto] = useState(false);
   const [confirmacao, setConfirmacao] = useState('');
   const [excluindo, setExcluindo] = useState(false);
@@ -205,7 +225,13 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
               <div className="font-medium text-ink">Exportar meus dados</div>
               <div className="text-ink-3">Baixa um arquivo com sua conta, telas, campanhas, marca e aniversariantes. Senhas e sessões ficam de fora por segurança.</div>
             </div>
-            <Button variant="secondary" icon={Download} onClick={() => { window.location.href = '/api/privacidade/exportar'; }}>Baixar</Button>
+            {/* Não falha calado (QA de 03/11): membro e suporte veem o porquê, e o erro do servidor aparece. */}
+            {isOwner && !(me && me.suporte) ? (
+              <Button variant="secondary" icon={Download} onClick={exportar} disabled={exportando}>{exportando ? 'Preparando…' : 'Baixar'}</Button>
+            ) : (
+              <span className="text-xs text-ink-3">{me && me.suporte ? 'No acesso de suporte, a exportação fica com o dono da conta.' : 'Só o dono da conta pode exportar os dados.'}</span>
+            )}
+            {errExportar && <div className="w-full text-sm text-danger">{errExportar}</div>}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">

@@ -685,9 +685,20 @@
       el.textContent = linha + linha;
       if (!o.leve) el.style.animation = 'mt-pr-rolar ' + Math.max(12, linha.length * RITMO.rolagem).toFixed(1) + 's linear infinite';
     });
+    /*
+     * O CLIMA NUNCA É INVENTADO (QA de lançamento, 03/11). O "27°" é o texto
+     * de exemplo do molde; com o serviço de clima fora do ar (firewall de
+     * empresa, TV sem internet), ele ficava na parede como se fosse a
+     * temperatura de agora. Quem desenha na TV (`o.clima`) esconde o campo
+     * até a temperatura chegar, e, se ela não chegar, deixa vazio — o relógio
+     * e a cidade seguem. Sem `o.clima` (editor, bancada), o exemplo fica.
+     */
     const clima = vivos.filter((el) => el.getAttribute('data-vivo') === 'clima');
     if (clima.length && o.clima) {
-      Promise.resolve().then(o.clima).then((t) => { clima.forEach((el) => { el.textContent = t || ''; }); }, () => {});
+      clima.forEach((el) => { el.style.visibility = 'hidden'; });
+      Promise.resolve().then(o.clima).then((t) => {
+        clima.forEach((el) => { el.textContent = t || ''; el.style.visibility = t ? '' : 'hidden'; });
+      }, () => { clima.forEach((el) => { el.textContent = ''; }); });
     }
 
     // A entrada que a peça declarou. No modo leve, nada se mexe.

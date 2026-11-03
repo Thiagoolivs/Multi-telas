@@ -22,6 +22,9 @@ module.exports = function (ctx) {
   const novoToken = () => 'mtk_' + crypto.randomBytes(24).toString('base64url');
   const corta = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n);
   const avisar = (t) => avisarTelas(t, 'kpis', {}).catch(() => {});
+  const ENVIOS_POR_MINUTO = 20;
+  // "Menor é melhor" (refugo, acidentes): o que o ERP disse ou o que o nome indica (server/kpis.js).
+  const comSentido = (lista) => (lista || []).map((i) => Object.assign({}, i, { sentido: K.sentidoDe(i) }));
 
   // O que o painel pode mudar num conector (o segredo, cifrado, só se vier um novo).
   function camposDe(b, modo) {
@@ -52,16 +55,28 @@ module.exports = function (ctx) {
     const bruto = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '') || String(req.headers['x-token'] || '');
     const conector = bruto ? await db.conectorPorToken(hash(bruto.trim())) : null;
     if (!conector) return sendJson(res, 401, { error: 'token inválido' });
-    const rl = rateLimit('kpi:push:' + conector.id, 240, 60 * 60 * 1000);
-    if (!rl.ok) return sendJson(res, 429, { error: 'muitos envios — no máximo 4 por minuto' }, { 'Retry-After': String(rl.retryAfter) });
+    /*
+     * A regra e a frase são a MESMA (QA de lançamento, 03/11): o 429 dizia
+     * "no máximo 4 por minuto" e a regra era 240 por hora — o 241º envio
+     * deixava a TV 54 minutos sem número. Agora é por minuto de verdade, com
+     * folga para o ERP que manda um indicador por pedido, e a espera é de
+     * segundos.
+     */
+    const rl = rateLimit('kpi:push:' + conector.id, ENVIOS_POR_MINUTO, 60 * 1000);
+    if (!rl.ok) {
+      return sendJson(res, 429, { error: 'Muitos envios: no máximo ' + ENVIOS_POR_MINUTO + ' por minuto. Espere ' + rl.retryAfter + ' segundos e mande de novo.' },
+        { 'Retry-After': String(rl.retryAfter) });
+    }
     return readBody(req, res, async (b) => {
-      const lista = K.daEntrada(b);
-      if (!lista.length) return sendJson(res, 400, { error: 'nenhum indicador (cada um precisa de chave ou nome, e valor)' });
+      if (b == null) return sendJson(res, 400, { error: 'O corpo não é um JSON válido. Exemplo: {"indicadores":[{"chave":"producao","valor":1234}]}' });
+      const { lista, avisos } = K.daEntradaComAvisos(b);
+      if (!lista.length) return sendJson(res, 400, { error: 'nenhum indicador (cada um precisa de chave ou nome, e valor)', avisos });
       const agora = Date.now();
       await db.gravarIndicadores(conector.tenantId, conector.id, lista, agora);
       await db.atualizarConector(conector.id, conector.tenantId, { ultimoOk: agora, ultimoErro: '' });
       avisar(conector.tenantId);
-      return sendJson(res, 200, { ok: true, recebidos: lista.length });
+      // `avisos`: o que foi ignorado (e por quê) ou lido com cuidado, como "1,234.56" no padrão americano.
+      return sendJson(res, 200, Object.assign({ ok: true, recebidos: lista.length }, avisos.length ? { avisos } : {}));
     });
   }
 
@@ -69,7 +84,7 @@ module.exports = function (ctx) {
     const t = sess.tenant_id;
     if (parts.length === 2 && req.method === 'GET') {
       return sendJson(res, 200, {
-        conectores: await db.listarConectores(t), indicadores: await db.listarIndicadores(t),
+        conectores: await db.listarConectores(t), indicadores: comSentido(await db.listarIndicadores(t)),
         segredosProntos: segredo.disponivel(), entrada: baseUrl(req) + '/api/kpis/entrada',
       });
     }

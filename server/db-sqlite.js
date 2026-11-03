@@ -414,6 +414,15 @@ function garantirColuna(tabela, definicao) {
 }
 
 garantirColuna('brandassets', 'marca_id TEXT');
+/*
+ * Mural com aprovação (QA de lançamento, 03/11): `aprovar` no mural (vazio =
+ * sim, o padrão) e `pendente` na foto — a foto do público chega oculta e
+ * pendente, e só vai para a TV quando alguém da conta aprova.
+ */
+garantirColuna('murais', 'aprovar INTEGER');
+garantirColuna('muralfotos', 'pendente INTEGER');
+// Indicadores (QA de 03/11): "menor é melhor" (refugo, acidentes) — 'menor', 'maior' ou vazio (a TV deduz pelo nome).
+garantirColuna('indicadores', 'sentido TEXT');
 // Onde a loja fica (endereço, bairro, cidade, link), em JSON: as redes pedem.
 garantirColuna('marcas', 'localizacao TEXT');
 // O banco comum com fotos da Pixabay escolhidas pelo operador: de onde veio, o crédito e o link.
@@ -1605,7 +1614,7 @@ const mapConector = (r) => {
 const mapIndicador = (r) => (r ? {
   id: r.id, conectorId: r.conector_id, chave: r.chave, nome: r.nome || r.chave, valor: r.valor == null ? null : Number(r.valor),
   unidade: r.unidade || '', meta: r.meta == null ? null : Number(r.meta), anterior: r.anterior == null ? null : Number(r.anterior),
-  atualizadoEm: Number(r.atualizado_em) || 0,
+  sentido: r.sentido || '', atualizadoEm: Number(r.atualizado_em) || 0,
 } : null);
 async function criarConector(tenantId, c) {
   const id = 'kc_' + rid(12);
@@ -1640,12 +1649,17 @@ async function gravarIndicadores(tenantId, conectorId, lista, agora) {
   try {
     for (const i of lista) {
       const atual = db.prepare('SELECT id, valor FROM indicadores WHERE tenant_id = ? AND conector_id = ? AND chave = ?').get(tenantId, conectorId, i.chave);
+      // Só muda o campo que veio (server/kpis.js): o formato simples não apaga nome, unidade, meta nem sentido.
+      const tem = (k) => (i[k] !== undefined ? 1 : 0);
       if (atual) {
-        db.prepare('UPDATE indicadores SET nome = ?, valor = ?, unidade = ?, meta = ?, anterior = CASE WHEN valor = ? THEN anterior ELSE valor END, atualizado_em = ? WHERE id = ?')
-          .run(i.nome, i.valor, i.unidade || '', i.meta, i.valor, quando, atual.id);
+        db.prepare('UPDATE indicadores SET nome = CASE WHEN ? = 1 THEN ? ELSE nome END, valor = ?, unidade = CASE WHEN ? = 1 THEN ? ELSE unidade END, '
+          + 'meta = CASE WHEN ? = 1 THEN ? ELSE meta END, sentido = CASE WHEN ? = 1 THEN ? ELSE sentido END, '
+          + 'anterior = CASE WHEN valor = ? THEN anterior ELSE valor END, atualizado_em = ? WHERE id = ?')
+          .run(tem('nome'), i.nome == null ? null : i.nome, i.valor, tem('unidade'), i.unidade || '', tem('meta'), i.meta == null ? null : i.meta,
+            tem('sentido'), i.sentido || '', i.valor, quando, atual.id);
       } else {
-        db.prepare('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)')
-          .run('ki_' + rid(12), tenantId, conectorId, i.chave, i.nome, i.valor, i.unidade || '', i.meta, quando);
+        db.prepare('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, sentido, anterior, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)')
+          .run('ki_' + rid(12), tenantId, conectorId, i.chave, i.nome || i.nomeNovo || i.chave, i.valor, i.unidade || '', i.meta == null ? null : i.meta, i.sentido || '', quando);
       }
     }
     db.exec('COMMIT');
@@ -1688,33 +1702,39 @@ async function aprovarFotoPessoa(id, tenantId, quando) { return db.prepare('UPDA
 async function marcarConsentimento(tenantId, pessoaId, quando) { return db.prepare('UPDATE birthdays SET consentimento_em = ? WHERE id = ? AND tenant_id = ?').run(Number(quando) || Date.now(), String(pessoaId), tenantId).changes; }
 
 const qMural = {
-  criar: db.prepare('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, created_at) VALUES (?, ?, ?, ?, 1, ?)'),
+  criar: db.prepare('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, aprovar, created_at) VALUES (?, ?, ?, ?, 1, 1, ?)'),
   porTenant: db.prepare('SELECT * FROM murais WHERE tenant_id = ? ORDER BY created_at DESC'),
   porCodigo: db.prepare('SELECT * FROM murais WHERE codigo = ?'),
   porId: db.prepare('SELECT * FROM murais WHERE id = ? AND tenant_id = ?'),
   atualizar: db.prepare('UPDATE murais SET titulo = ?, aceitando = ? WHERE id = ? AND tenant_id = ?'),
+  aprovar: db.prepare('UPDATE murais SET aprovar = ? WHERE id = ? AND tenant_id = ?'),
   remover: db.prepare('DELETE FROM murais WHERE id = ? AND tenant_id = ?'),
-  addFoto: db.prepare('INSERT INTO muralfotos (id, mural_id, tenant_id, url, chave, autor, mensagem, ip, oculta, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)'),
+  addFoto: db.prepare('INSERT INTO muralfotos (id, mural_id, tenant_id, url, chave, autor, mensagem, ip, oculta, pendente, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'),
   fotos: db.prepare('SELECT * FROM muralfotos WHERE mural_id = ? ORDER BY created_at DESC LIMIT ?'),
   visiveis: db.prepare('SELECT id, url, autor, mensagem, created_at FROM muralfotos WHERE mural_id = ? AND oculta = 0 ORDER BY created_at DESC LIMIT ?'),
-  ocultar: db.prepare('UPDATE muralfotos SET oculta = ? WHERE id = ? AND tenant_id = ?'),
+  // Devolver à tela é também aprovar: a foto pendente deixa de ser pendente.
+  ocultar: db.prepare('UPDATE muralfotos SET oculta = ?, pendente = CASE WHEN ? = 0 THEN 0 ELSE pendente END WHERE id = ? AND tenant_id = ?'),
   ocultarTodas: db.prepare('UPDATE muralfotos SET oculta = 1 WHERE mural_id = ? AND tenant_id = ?'),
   contarRecentes: db.prepare('SELECT COUNT(*) AS n FROM muralfotos WHERE mural_id = ? AND created_at > ?'),
 };
 // `tenantId` sai daqui porque a rota pública do QR não tem sessão: quem manda
 // a foto é identificado pelo mural, e é do mural que vem a empresa dona dela.
-const mapMural = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo, aceitando: !!r.aceitando, createdAt: r.created_at } : null);
-const mapFoto = (r) => ({ id: r.id, url: r.url, autor: r.autor || '', mensagem: r.mensagem || '', oculta: !!r.oculta, createdAt: r.created_at });
+const mapMural = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo, aceitando: !!r.aceitando, aprovar: r.aprovar == null ? true : !!r.aprovar, createdAt: r.created_at } : null);
+const mapFoto = (r) => ({ id: r.id, url: r.url, autor: r.autor || '', mensagem: r.mensagem || '', oculta: !!r.oculta, pendente: !!r.pendente, createdAt: r.created_at });
 
 async function criarMural(tenantId, codigo, titulo) {
   const id = 'mur_' + rid(12);
   qMural.criar.run(id, tenantId, codigo, titulo || 'Mural', Date.now());
-  return { id, codigo, titulo: titulo || 'Mural', aceitando: true };
+  return { id, codigo, titulo: titulo || 'Mural', aceitando: true, aprovar: true };
 }
 async function listarMurais(tenantId) { return qMural.porTenant.all(tenantId).map(mapMural); }
 async function muralPorCodigo(codigo) { return mapMural(qMural.porCodigo.get(codigo)); }
 async function muralPorId(id, tenantId) { return mapMural(qMural.porId.get(id, tenantId)); }
-async function atualizarMural(id, tenantId, titulo, aceitando) { qMural.atualizar.run(titulo || 'Mural', aceitando ? 1 : 0, id, tenantId); }
+// `aprovar` só muda quando vem (undefined = fica como está).
+async function atualizarMural(id, tenantId, titulo, aceitando, aprovar) {
+  qMural.atualizar.run(titulo || 'Mural', aceitando ? 1 : 0, id, tenantId);
+  if (aprovar !== undefined) qMural.aprovar.run(aprovar ? 1 : 0, id, tenantId);
+}
 // Apaga o mural COM as fotos e devolve as chaves dos arquivos (ver db-postgres.js, D0.7).
 async function removerMural(id, tenantId) {
   const chaves = db.prepare('SELECT chave FROM muralfotos WHERE mural_id = ? AND tenant_id = ?').all(id, tenantId).map((f) => f.chave).filter(Boolean);
@@ -1729,12 +1749,13 @@ async function removerMural(id, tenantId) {
 }
 async function addFotoMural(muralId, tenantId, foto) {
   const id = 'mf_' + rid(14);
-  qMural.addFoto.run(id, muralId, tenantId, foto.url, foto.chave || '', foto.autor || '', foto.mensagem || '', foto.ip || '', Date.now());
+  const pendente = foto.pendente ? 1 : 0;
+  qMural.addFoto.run(id, muralId, tenantId, foto.url, foto.chave || '', foto.autor || '', foto.mensagem || '', foto.ip || '', pendente, pendente, Date.now());
   return { id, ...foto };
 }
 async function listarFotosMural(muralId, limite) { return qMural.fotos.all(muralId, limite || 200).map(mapFoto); }
 async function fotosVisiveis(muralId, limite) { return qMural.visiveis.all(muralId, limite || 60).map(mapFoto); }
-async function ocultarFoto(id, tenantId, oculta) { qMural.ocultar.run(oculta ? 1 : 0, id, tenantId); }
+async function ocultarFoto(id, tenantId, oculta) { qMural.ocultar.run(oculta ? 1 : 0, oculta ? 1 : 0, id, tenantId); }
 async function ocultarTodasFotos(muralId, tenantId) { return qMural.ocultarTodas.run(muralId, tenantId).changes; }
 async function contarFotosRecentes(muralId, desde) { return qMural.contarRecentes.get(muralId, desde).n; }
 

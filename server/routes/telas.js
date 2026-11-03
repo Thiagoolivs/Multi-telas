@@ -31,6 +31,7 @@ module.exports = function (ctx) {
   const apk = require('../apk.js');
   const fotoQr = require('../foto-qr.js');
   const automaticos = require('../automaticos.js');
+  const kpis = require('../kpis.js');
   const hostsMidia = (() => {
     try { return [new URL(storage.publicUrl('x')).host]; } catch (e) { return []; }
   })();
@@ -136,6 +137,59 @@ module.exports = function (ctx) {
     return { cfg };
   }
 
+  /*
+   * QUEM FAZ O QUÊ NAS TELAS (QA de lançamento, 03/11: o membro removia TV,
+   * mudando a fatura e deixando a TV órfã na parede).
+   *
+   *   Ação                                          dono  admin  membro
+   *   Ver telas, ver a tela agora, som, recarregar   sim   sim    sim
+   *   Publicar conteúdo (config, lote, desfazer,
+   *     restaurar/copiar backup, "mostrar nas TVs")  sim   sim    sim
+   *   Nome da TV, grupo, renomear grupo              sim   sim    sim
+   *   Horário de funcionamento                       sim   sim    sim
+   *   Desligar o aviso de queda por e-mail           sim   sim    NÃO
+   *   Reconectar (a TV que voltou com código)        sim   sim    sim
+   *   Ligar uma TV NOVA (entra na mensalidade)       sim   sim    NÃO
+   *   Remover a TV (sai da mensalidade)              sim   sim    NÃO
+   *
+   * A linha é a fatura e a vigilância: o membro opera as TVs que existem,
+   * mas não põe nem tira tela da cobrança, e não cala o aviso que o dono
+   * conta receber quando uma TV cai. Reconectar fica com todos porque não
+   * muda a conta (entra uma, sai a mesma) e é o conserto de quem está de pé
+   * na frente da TV. Cobrança, equipe e dados da conta têm as próprias
+   * travas (server/routes/billing.js, team.js, server.js).
+   */
+
+  /*
+   * O LIMITE DO PAREAMENTO conta só o código que FALHA (QA de lançamento,
+   * 03/11). Contava todo pareamento, e a 16ª TV de quem instala uma frota em
+   * dez minutos levava 429 — com o código certo. Força bruta é chute errado;
+   * pareamento certo não ajuda ninguém a adivinhar o próximo código.
+   * Quinze erros em dez minutos por endereço E por conta (a conta logada
+   * trocando de rede não ganha balde novo).
+   */
+  // A tela está com o tempo real aberto agora? (o Set fica vazio, e não some, quando a conexão fecha)
+  const temTempoReal = (id) => !!(subscribers[id] && subscribers[id].size);
+  const ERROS_DE_CODIGO = 15;
+  const JANELA_DE_CODIGO = 10 * 60 * 1000;
+  // Devolve a resposta 429 já enviada, ou null quando ainda pode tentar.
+  function codigoTravado(req, res, sess) {
+    const porIp = security.rateLimitConsultar('pair:' + clientIp(req), ERROS_DE_CODIGO);
+    const porConta = security.rateLimitConsultar('pair:conta:' + sess.tenant_id, ERROS_DE_CODIGO);
+    if (porIp.ok && porConta.ok) return null;
+    const espera = Math.max(porIp.ok ? 0 : porIp.retryAfter, porConta.ok ? 0 : porConta.retryAfter);
+    return sendJson(res, 429, {
+      error: 'Muitos códigos errados em pouco tempo. Espere ' + security.esperaEmPalavras(espera)
+        + ' e tente de novo, conferindo o código que aparece na TV.',
+      code: 'muitas-tentativas', esperarSegundos: espera,
+    }, { 'Retry-After': String(espera) });
+  }
+  function errouCodigo(req, res, sess, status, error) {
+    rateLimit('pair:' + clientIp(req), ERROS_DE_CODIGO, JANELA_DE_CODIGO);
+    rateLimit('pair:conta:' + sess.tenant_id, ERROS_DE_CODIGO, JANELA_DE_CODIGO);
+    return sendJson(res, status, { error });
+  }
+
   async function tratar(req, res, parts, query, sess) {
     /* ----- Criar device (a TV chama, sem auth) ----- */
     /*
@@ -168,18 +222,46 @@ module.exports = function (ctx) {
     /* ----- Parear (requer login): reivindica o device para a empresa ----- */
     if (req.method === 'POST' && parts[1] === 'pair') {
       if (!sess) return sendJson(res, 401, { error: 'faça login para parear' });
-      // Trava força-bruta de códigos (por IP e por conta).
-      const prl = rateLimit('pair:' + clientIp(req), 15, 10 * 60 * 1000);
-      if (!prl.ok) return sendJson(res, 429, { error: 'muitas tentativas de pareamento' }, { 'Retry-After': String(prl.retryAfter) });
+      const travado = codigoTravado(req, res, sess);
+      if (travado) return travado;
       return readBody(req, res, async (b) => {
         if (!b) return sendJson(res, 400, { error: 'json inválido' });
         const d = await db.getDeviceByCode(b.code);
-        if (!d) return sendJson(res, 404, { error: 'código não encontrado' });
+        if (!d) return errouCodigo(req, res, sess, 404, 'código não encontrado');
         if (d.tenant_id && d.tenant_id !== sess.tenant_id)
-          return sendJson(res, 409, { error: 'este dispositivo já pertence a outra conta' });
+          return errouCodigo(req, res, sess, 409, 'este dispositivo já pertence a outra conta');
         // Primeira reivindicação só vale se a TV está viva (código na tela agora).
         if (!d.tenant_id && (!d.last_seen || Date.now() - d.last_seen > PAIR_ONLINE_MS))
-          return sendJson(res, 410, { error: 'código expirado — reinicie a TV para gerar um novo' });
+          return errouCodigo(req, res, sess, 410, 'código expirado — reinicie a TV para gerar um novo');
+        /*
+         * "Sim, é a TV X": o mesmo pedido de parear vira reconectar (a TV
+         * que voltou com código novo assume o nome, a programação, o grupo e
+         * o horário da tela antiga, sem tela nova na fatura).
+         */
+        if (b.reconectar) {
+          const antiga = await db.getDevice(String(b.reconectar));
+          const nao = reconectar.impedimento(antiga, d, sess.tenant_id, Date.now(), PAIR_ONLINE_MS);
+          if (nao) return sendJson(res, nao.status, { error: nao.error });
+          return sendJson(res, 200, await reconectarTela(antiga, d, sess));
+        }
+        // Ligar uma TV NOVA muda a mensalidade: é do dono e do admin (matriz de papéis, lá embaixo).
+        if (!d.tenant_id && !canManageTeam(sess.role)) {
+          return sendJson(res, 403, { error: 'Só o dono ou um administrador da conta liga uma TV nova (ela entra na mensalidade). Se esta TV já era da conta e voltou com um código, use Reconectar nela.', code: 'papel' });
+        }
+        /*
+         * É a TV X que caiu? (server/reconectar.js, candidatas). Se uma tela
+         * da conta parou de pulsar e é o mesmo aparelho, PERGUNTA antes de
+         * criar a segunda — `nova: true` é a resposta "não, é outra TV".
+         */
+        if (!d.tenant_id && b.nova !== true) {
+          const parecidas = reconectar.candidatas(await db.listDevices(sess.tenant_id), d, { aoVivo: temTempoReal });
+          if (parecidas.length) {
+            return sendJson(res, 409, {
+              error: 'Esta TV parece ser a "' + parecidas[0].nome + '", que parou de dar sinal. É ela? Se for, ela volta com o nome, a programação e o horário de antes, sem mais uma tela na mensalidade.',
+              code: 'parece-reconectar', telas: parecidas,
+            });
+          }
+        }
         /*
          * Pode ligar mais uma tela? (só na 1ª reivindicação)
          *
@@ -208,9 +290,16 @@ module.exports = function (ctx) {
           }
           if (!veredito.ok) {
             const limite = veredito.limite;
+            /*
+             * No limite, a TV que voltou com código novo quase sempre é uma
+             * das que já estão na conta: oferece reconectar (`telas`) em vez
+             * de só mandar assinar.
+             */
+            const paradas = reconectar.candidatas(await db.listDevices(sess.tenant_id), d, { aoVivo: temTempoReal, todas: true });
             return sendJson(res, 402, {
-              error: 'limite do plano atingido (' + limite + (limite === 1 ? ' tela' : ' telas') + '). Faça upgrade para adicionar mais.',
-              code: 'plan_limit',
+              error: 'limite do plano atingido (' + limite + (limite === 1 ? ' tela' : ' telas') + '). Faça upgrade para adicionar mais.'
+                + (paradas.length ? ' Se esta é a "' + paradas[0].nome + '", que parou de dar sinal, toque em Reconectar: ela volta sem ocupar outra vaga.' : ''),
+              code: 'plan_limit', telas: paradas,
             });
           }
         }
@@ -426,24 +515,17 @@ module.exports = function (ctx) {
        */
       if (req.method === 'POST' && sub === 'reconectar') {
         if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
-        const rrl = rateLimit('pair:' + clientIp(req), 15, 10 * 60 * 1000);
-        if (!rrl.ok) return sendJson(res, 429, { error: 'muitas tentativas' }, { 'Retry-After': String(rrl.retryAfter) });
+        const travado = codigoTravado(req, res, sess);
+        if (travado) return travado;
         return readBody(req, res, async (b) => {
           const nova = await db.getDeviceByCode(b && b.code);
           const nao = reconectar.impedimento(device, nova, sess.tenant_id, Date.now(), PAIR_ONLINE_MS);
-          if (nao) return sendJson(res, nao.status, { error: nao.error });
-
-          /*
-           * Sem cobrar vaga do plano: entra uma tela e sai outra, o saldo é
-           * zero. Cobrar aqui puniria o cliente justamente pelo defeito que ele
-           * está consertando.
-           */
-          const nome = device.name || 'TV';
-          await db.claimDevice(nova.id, sess.tenant_id, nome);
-          if (device.config) await db.setDeviceConfig(nova.id, device.config, nome);
-          await db.removeDevice(id);
-          broadcast(nova.id, 'config', { updatedAt: Date.now() });
-          return sendJson(res, 200, { id: nova.id, name: nome, herdouConfig: !!device.config });
+          if (nao) {
+            // Código que não existe ou de outra conta é o que a força-bruta produz: conta no limite.
+            if (nao.status === 404 || nao.status === 409 || nao.status === 410) return errouCodigo(req, res, sess, nao.status, nao.error);
+            return sendJson(res, nao.status, { error: nao.error });
+          }
+          return sendJson(res, 200, await reconectarTela(device, nova, sess));
         });
       }
 
@@ -457,6 +539,10 @@ module.exports = function (ctx) {
         if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
         return readBody(req, res, async (b) => {
           const exp = vigia.normalizarExpediente(b || {});
+          // O membro muda o horário, mas não cala o aviso que o dono conta receber (matriz de papéis, no topo).
+          if (!exp.alerta && vigia.normalizarExpediente(device.expediente).alerta && !canManageTeam(sess.role)) {
+            return sendJson(res, 403, { error: 'Só o dono ou um administrador da conta pode desligar o aviso de queda por e-mail. O horário pode mudar; deixe o aviso ligado.', code: 'papel' });
+          }
           await db.setExpediente(id, JSON.stringify(exp));
           /*
            * E a TV fica sabendo na hora: o horário vai para a config dela
@@ -515,6 +601,8 @@ module.exports = function (ctx) {
       }
       if (req.method === 'DELETE' && !sub) {
         if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
+        // Tirar uma TV muda a mensalidade e deixa a TV sem conta na parede (matriz de papéis, no topo).
+        if (!canManageTeam(sess.role)) return sendJson(res, 403, { error: 'Só o dono ou um administrador da conta pode remover uma TV: ela sai da mensalidade.', code: 'papel' });
         await db.removeDevice(id);
         sincronizarCobranca(sess.tenant_id);
         return sendJson(res, 200, { ok: true });
@@ -525,7 +613,8 @@ module.exports = function (ctx) {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
         if (!device.tenant_id) return sendJson(res, 200, { indicadores: [] });
         const lista = (await db.listarIndicadores(device.tenant_id))
-          .map((i) => ({ chave: i.chave, nome: i.nome, valor: i.valor, unidade: i.unidade, meta: i.meta, anterior: i.anterior, em: i.atualizadoEm }));
+          // `sentido` (QA de 03/11): no refugo, passar da meta é ruim — a TV não comemora.
+          .map((i) => ({ chave: i.chave, nome: i.nome, valor: i.valor, unidade: i.unidade, meta: i.meta, sentido: kpis.sentidoDe(i), anterior: i.anterior, em: i.atualizadoEm }));
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
         return res.end(JSON.stringify({ indicadores: lista }));
       }
@@ -747,6 +836,33 @@ module.exports = function (ctx) {
     return NAO_TRATEI;
   }
 
+  /*
+   * Reconectar: a TV `nova` (que voltou mostrando código) vira a tela
+   * `antiga` do painel. Leva TUDO o que o cliente chama de "minha tela": nome,
+   * programação, grupo e horário/aviso de queda — o QA de 03/11 viu o grupo
+   * sumir e o horário voltar ao padrão, e a publicação seguinte apagava o
+   * horário da config também (prepararConfig lê a coluna). O que a TV contou
+   * de si (info) fica o da nova, que é o aparelho de verdade; sem ele, o da
+   * antiga até o primeiro pulso.
+   */
+  async function reconectarTela(antiga, nova, sess) {
+    const nome = antiga.name || 'TV';
+    // Já tinha sido pareada como tela nova: tirar a antiga diminui a conta, e a cobrança acompanha.
+    const jaEraDaConta = nova.tenant_id === sess.tenant_id;
+    await db.claimDevice(nova.id, sess.tenant_id, nome);
+    if (antiga.config) await db.setDeviceConfig(nova.id, antiga.config, nome);
+    if (antiga.grupo) await db.setGrupoDaTela(nova.id, antiga.grupo);
+    if (antiga.expediente) await db.setExpediente(nova.id, antiga.expediente);
+    if (!nova.info && antiga.info) await db.touchDevice(nova.id, antiga.info);
+    await db.removeDevice(antiga.id);
+    if (jaEraDaConta) sincronizarCobranca(sess.tenant_id);
+    await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.reconectar').catch(() => {});
+    // A TV sai do código na hora: com programação, busca a config; sem, mostra "Tudo certo".
+    if (antiga.config || nova.config) broadcast(nova.id, 'config', { updatedAt: Date.now() });
+    else broadcast(nova.id, 'pareada', { nome, em: Date.now() });
+    return { id: nova.id, name: nome, herdouConfig: !!antiga.config, reconectada: true };
+  }
+
   /* Renomear (ou desfazer, com `para` vazio) um grupo inteiro de uma vez. */
   async function grupos(req, res, parts, query, sess) {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
@@ -792,6 +908,14 @@ module.exports = function (ctx) {
         const novo = automaticos.normalizar(Object.assign({}, atual, b || {}), { idsDaConta, codigosDeMural });
         await db.setAutomaticos(sess.tenant_id, novo);
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'automaticos.salvar');
+        /*
+         * As TVs abertas ficam sabendo NA HORA (QA de lançamento, 03/11): o
+         * painel dizia "Pronto: as TVs mostram sozinhas" e a TV só via na
+         * volta de 60 s. O "mostrar nas TVs" mora fora da programação (é
+         * calculado no GET da config), então o aviso é o de config nova — a
+         * TV busca de novo e já vem com os aniversários e o mural.
+         */
+        avisarTelas(sess.tenant_id, 'config', { updatedAt: Date.now(), automaticos: true }).catch(() => {});
         return sendJson(res, 200, { automaticos: novo });
       });
     }

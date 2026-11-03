@@ -147,6 +147,11 @@ function hostConfiavel(host) {
     .map((x) => String(x || '').trim().toLowerCase()).filter(Boolean);
   return extras.includes(h);
 }
+// O Origin de um pedido do navegador é nosso? Os hosts confiáveis e o de APP_URL (a checagem de CSRF, server/security.js).
+function hostDaCasa(host) {
+  if (hostConfiavel(host)) return true;
+  try { return !!process.env.APP_URL && new URL(process.env.APP_URL).host.toLowerCase() === String(host || '').toLowerCase(); } catch (e) { return false; }
+}
 function baseUrl(req) {
   const fixed = (process.env.APP_URL || '').replace(/\/$/, '');
   if (fixed) return fixed;
@@ -323,6 +328,31 @@ async function pausaDaConta(tenantId) {
 }
 // O plano mudou (pagou, cancelou, rebaixou): a TV sabe no pulso seguinte.
 function esquecerSelo(tenantId) { seloCache.delete(tenantId); }
+/*
+ * O SELO SAI NA HORA (QA de lançamento, 03/11): o e-mail e o painel dizem
+ * que o selo some ao assinar, e ele levava até 5 minutos (o cache acima) mais
+ * o pulso. Toda mudança de cobrança da conta passa por db.setTenantBilling —
+ * o webhook do Asaas, o simulado, a cortesia, o operador estendendo o teste —,
+ * então é ali que o cache cai e as TVs abertas recebem o selo novo pelo
+ * tempo real. Embrulhado aqui, e não em cada chamador, para nenhum caminho
+ * novo de cobrança esquecer.
+ */
+async function seloPodeTerMudado(tenantId) {
+  if (!tenantId) return;
+  const antes = seloCache.get(tenantId);
+  seloCache.delete(tenantId);
+  const agora = await seloDaConta(tenantId);
+  if (antes && antes.selo === agora) return;
+  await avisarTelas(tenantId, 'selo', { texto: agora });
+}
+{
+  const gravarCobranca = db.setTenantBilling;
+  db.setTenantBilling = async function (tenantId) {
+    const r = await gravarCobranca.apply(this, arguments);
+    seloPodeTerMudado(tenantId).catch((e) => erros.registrar(e, { onde: 'selo depois da cobrança', tenant: tenantId }));
+    return r;
+  };
+}
 /*
  * Comandos à espera de a TV buscar no pulso. Em memória, como o SSE: um
  * restart perde o comando, e a pessoa clica de novo — é "recarregar", não
@@ -624,6 +654,18 @@ async function handleApi(req, res, pathname, query) {
         error: 'muitas requisições desta conta em pouco tempo. Espere um instante e tente de novo.',
       }, { 'Retry-After': String(v.retryAfter) });
     }
+  }
+
+  /*
+   * CSRF, segunda trava (QA de lançamento, 03/11): pedido que muda estado com
+   * a sessão do cookie, vindo de OUTRO site, é recusado aqui em cima — além do
+   * SameSite=Lax. Vale para quem tem sessão e para o login/cadastro (entrar a
+   * vítima na conta do atacante). Fica de fora a TV, que se identifica pelo
+   * token e não pelo cookie, e quem não manda Origin (curl, ERP, webhook).
+   * Regra em server/security.js (origemDeFora).
+   */
+  if ((sess || parts[1] === 'auth') && !req.headers['x-device-token'] && security.origemDeFora(req, hostDaCasa)) {
+    return sendJson(res, 403, { error: 'Pedido recusado: ele veio de outro site. Abra o MultiTelas pelo endereço de sempre e tente de novo.', code: 'origem' });
   }
 
   /*
@@ -1028,15 +1070,25 @@ async function handleApi(req, res, pathname, query) {
       const salvo = await midia.guardarStream(db, mural.tenantId, req,
         { mime, max: muralLib.MAX_MB * 1024 * 1024 },
         { nome: 'Mural ' + mural.codigo, origem: 'mural' });
+      /*
+       * APROVAR ANTES DE IR PARA A TV (QA de lançamento, 03/11). Qualquer um
+       * com o QR mandava foto e recado, e iam ao ar na hora — numa TV de
+       * fábrica ou de loja, a ofensiva ficava na parede até alguém ver. Agora,
+       * com o mural pedindo aprovação (o padrão), a foto entra pendente e
+       * oculta, e só aparece quando alguém da conta toca em "Aprovar" no
+       * painel. Quem quer o tempo real de um evento desliga a aprovação.
+       */
+      const pendente = mural.aprovar !== false;
       const foto = await db.addFotoMural(mural.id, mural.tenantId, {
         url: salvo.url, chave: salvo.key,
         autor: String(query.autor || '').slice(0, 40),
         mensagem: String(query.mensagem || '').slice(0, 120),
         ip: clientIp(req),
+        pendente,
       });
-      // Avisa as TVs na hora: é o "tempo real" que o usuário pediu.
-      await avisarTelas(mural.tenantId, 'mural', { mural: mural.codigo });
-      return sendJson(res, 201, { ok: true, id: foto.id });
+      // Sem aprovação, avisa as TVs na hora: é o "tempo real" que o usuário pediu.
+      if (!pendente) await avisarTelas(mural.tenantId, 'mural', { mural: mural.codigo });
+      return sendJson(res, 201, { ok: true, id: foto.id, pendente });
     } catch (e) {
       if (e.status === 413) return sendJson(res, 413, { error: 'essa foto passa de ' + muralLib.MAX_MB + ' MB — tente outra' });
       if (e.status === 415) return sendJson(res, 415, { error: 'esse tipo de arquivo não abre na TV' });
@@ -1113,8 +1165,10 @@ async function handleApi(req, res, pathname, query) {
       }
       if (req.method === 'PUT') {
         return readBody(req, res, async (b) => {
-          await db.atualizarMural(m.id, sess.tenant_id, String((b && b.titulo) || m.titulo).slice(0, 60), !!(b && b.aceitando));
-          return sendJson(res, 200, { ok: true });
+          // `aprovar` (foto do público espera aprovação) só muda quando vem no corpo.
+          const aprovar = b && typeof b.aprovar === 'boolean' ? b.aprovar : undefined;
+          await db.atualizarMural(m.id, sess.tenant_id, String((b && b.titulo) || m.titulo).slice(0, 60), !!(b && b.aceitando), aprovar);
+          return sendJson(res, 200, { ok: true, aprovar: aprovar === undefined ? m.aprovar : aprovar });
         });
       }
       /*
