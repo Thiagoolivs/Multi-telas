@@ -78,7 +78,8 @@ test('a TV: camada por cima, sem remontar as zonas, som e vídeo parados, músic
   const p = ler('js/player.js');
   assert.match(p, /expediente: 1, +\/\/ aplicarExpediente/);
   assert.match(p, /aplicarMargem\(cfg\);\s+aplicarExpediente\(cfg\);/);
-  assert.match(p, /const estado = E \? E\.estadoDaTela\(Date\.now\(\), expediente\) : 'normal';/);
+  // QA de lançamento, 03/11: a TV pausada (conta no grátis) usa a mesma camada, e vem antes do horário.
+  assert.match(p, /const estado = pausaTexto \? 'pausada' : E \? E\.estadoDaTela\(Date\.now\(\), expediente\) : 'normal';/);
   assert.match(p, /if \(trilha\.estado\(\)\.tocando\) \{ musicaPausadaPeloHorario = true; trilha\.comando\(\{ acao: 'pausar' \}\); \}/);
   assert.match(p, /if \(musicaPausadaPeloHorario\) \{ musicaPausadaPeloHorario = false;/);
   assert.match(p, /toLocaleTimeString\('pt-BR', \{ timeZone: fuso/);

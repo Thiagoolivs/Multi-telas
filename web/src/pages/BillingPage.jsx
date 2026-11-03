@@ -140,7 +140,9 @@ export function BillingPage({ onFalarComVendas }) {
   }
   if (error) return <ErrorState description="Não foi possível carregar o plano." onRetry={reload} />;
 
-  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, cortesia, atraso, pacotes, teste, contrato, anual, ia } = d;
+  const { plan, usage, catalog, status, renewsAt, canManage, mode, creditos, cortesia, atraso, pacotes, teste, contrato, anual, ia, pausa } = d;
+  // Cancelada, mas ainda no período pago (QA de lançamento, 03/11): o plano segue até `renewsAt`.
+  const cancelando = status === 'cancelando';
   const pago = plan.precoTelaCents > 0 || plan.sobConsulta;
   const frac = usage.limit ? usage.screens / usage.limit : 0;
   // Usar todas as telas do plano é o uso normal; vermelho só quando passa do limite.
@@ -151,7 +153,7 @@ export function BillingPage({ onFalarComVendas }) {
    */
   const statusLabel = cortesia
     ? 'Cortesia'
-    : ({ active: 'Em dia', free: teste && !teste.ativo ? 'Versão gratuita' : 'Teste', canceled: 'Cancelado', past_due: 'Fatura em atraso', estornado: 'Estornado', chargeback: 'Contestado' }[status] || status);
+    : ({ active: 'Em dia', cancelando: 'Cancelado', free: teste && !teste.ativo ? 'Versão gratuita' : 'Teste', canceled: 'Cancelado', past_due: 'Fatura em atraso', estornado: 'Estornado', chargeback: 'Contestado' }[status] || status);
   const anualMenor = anual && anual.anualCents < anual.mensalCents;
 
   return (
@@ -188,11 +190,25 @@ export function BillingPage({ onFalarComVendas }) {
           : 'border-warn/30 bg-warn-soft text-warn')}>
           <b>Há uma fatura em atraso{atraso.diasEmAtraso > 0 ? ' há ' + plural(atraso.diasEmAtraso, 'dia', 'dias') : ''}.</b> Suas telas continuam no ar.{' '}
           {atraso.bloqueado
-            ? 'Criar com IA e ligar telas novas estão pausados até o pagamento, e as TVs mostram o selo do MultiTelas no canto.'
+            ? 'Criar com IA e ligar telas novas estão pausados até o pagamento, e só a TV mais antiga segue no ar, com o selo do MultiTelas; as outras mostram que estão pausadas.'
             : atraso.selo
-              ? `As TVs estão mostrando um pequeno selo do MultiTelas no canto. Em ${plural(atraso.diasAteBloquear, 'dia', 'dias')}, criar com IA e ligar telas novas ficam pausados.`
-              : `Em ${plural(atraso.diasAteSelo, 'dia', 'dias')}, as TVs passam a mostrar um pequeno selo do MultiTelas no canto; em ${plural(atraso.diasAteBloquear, 'dia', 'dias')}, criar com IA e ligar telas novas ficam pausados.`}
+              ? `As TVs estão mostrando um pequeno selo do MultiTelas no canto. Em ${plural(atraso.diasAteBloquear, 'dia', 'dias')}, criar com IA e ligar telas novas ficam pausados, e só a TV mais antiga segue no ar.`
+              : `Em ${plural(atraso.diasAteSelo, 'dia', 'dias')}, as TVs passam a mostrar um pequeno selo do MultiTelas no canto; em ${plural(atraso.diasAteBloquear, 'dia', 'dias')}, criar com IA e ligar telas novas ficam pausados, e só a TV mais antiga segue no ar.`}
           {' '}Pagou, tudo volta na hora. A fatura está em "Sua assinatura", logo abaixo.
+        </div>
+      )}
+
+      {/*
+        TVs PAUSADAS (QA de lançamento, 03/11 — decisão do dono): sem plano
+        (ou com a fatura suspensa), só a TV mais antiga segue no ar. Dito aqui
+        com o nome dela, e que as outras voltam sozinhas.
+      */}
+      {pausa && pausa.pausadas > 0 && (
+        <div className="mb-4 rounded-md border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-warn" role="status">
+          <b>{pausa.pausadas === 1 ? '1 TV está pausada.' : pausa.pausadas + ' TVs estão pausadas.'}</b>{' '}
+          {atraso && atraso.bloqueado ? 'Com a fatura em atraso' : 'Sem plano'}, só {pausa.noAr.length === 1 ? 'a TV mais antiga' : 'as TVs mais antigas'}
+          {pausa.noAr.length ? ' (' + pausa.noAr.join(', ') + ')' : ''} segue no ar; as outras mostram “Esta TV está pausada”.
+          Nada foi apagado: {atraso && atraso.bloqueado ? 'pagando a fatura' : 'assinando'}, elas voltam sozinhas.
         </div>
       )}
 
@@ -203,21 +219,25 @@ export function BillingPage({ onFalarComVendas }) {
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-semibold text-ink">{pago ? 'Plano ' + plan.name : 'Teste grátis'}</span>
-              <Badge tone={cortesia ? 'accent' : status === 'active' ? 'ok' : status === 'canceled' || status === 'past_due' ? 'danger' : 'neutral'}>{statusLabel}</Badge>
+              <Badge tone={cortesia ? 'accent' : status === 'active' ? 'ok' : cancelando ? 'warn' : status === 'canceled' || status === 'past_due' ? 'danger' : 'neutral'}>{statusLabel}</Badge>
               {pago && !plan.sobConsulta && !cortesia && <Badge tone="neutral">{contrato === 'anual' ? 'Contrato anual' : 'Mensal, sem contrato'}</Badge>}
             </div>
             <div className="mt-0.5 text-xs text-ink-3">
               {cortesia ? 'Acesso liberado para teste — sem cobrança e sem prazo'
                 : plan.sobConsulta ? 'Contrato — preço combinado'
                 : usage.mensalidadeCents > 0
-                  ? `Você paga ${brl(usage.mensalidadeCents)} por mês · ${plural(Math.max(1, usage.screens), 'tela', 'telas')}${usage.screens > 1 ? ', ' + brl(usage.precoTelaCents) + ' cada em média' : ''}`
+                  ? `Você paga ${brl(usage.mensalidadeCents)} por mês · ${plural(Math.max(1, usage.screens), 'tela', 'telas')}${usage.screens > 1 ? ', ' + brl(usage.precoTelaCents) + ' cada' + (contrato === 'anual' ? ' em média' : '') : ''}`
                   /* O plano grátis é o TESTE de 14 dias: dizer "sem custo" escondia o prazo. */
                   : teste && teste.ativo
                     ? `${teste.restam === 1 ? 'Último dia' : 'Faltam ' + teste.restam + ' dias'} de teste · sem cartão`
                     : teste
                       ? 'O teste acabou · a tela segue no ar com o selo "versão gratuita"'
                       : 'Sem custo'}
-              {renewsAt ? ` · próxima cobrança em ${new Date(renewsAt).toLocaleDateString('pt-BR')}` : ''}
+              {renewsAt
+                ? cancelando
+                  ? ` · o plano segue até ${new Date(renewsAt).toLocaleDateString('pt-BR')}, e depois a conta volta para a versão gratuita`
+                  : ` · próxima cobrança em ${new Date(renewsAt).toLocaleDateString('pt-BR')}`
+                : ''}
             </div>
           </div>
           <div className="w-full sm:w-56">
@@ -342,7 +362,7 @@ export function BillingPage({ onFalarComVendas }) {
                 ))}
               </ul>
               <p className="mt-2 text-2xs text-ink-3">
-                Cancelar antes dos 12 meses tem multa: 30% do que falta pagar, ou o desconto que você recebeu, o que for maior.
+                Cancelar antes dos 12 meses tem multa de 30% das mensalidades que faltam. Ela diminui a cada mês, e com os 12 meses cumpridos não há multa.
               </p>
               {contrato !== 'anual' && (
                 <Button size="sm" variant="secondary" className="mt-3 w-full justify-center" onClick={() => onFalarComVendas && onFalarComVendas()}>
@@ -439,9 +459,9 @@ export function BillingPage({ onFalarComVendas }) {
         <div className="grid gap-3 p-4 text-xs text-ink-2 sm:grid-cols-2">
           <div className="flex items-start gap-2">
             <ShieldCheck size={16} className="mt-0.5 shrink-0 text-ok" />
-            <span><b className="text-ink">Nunca desligamos sua tela por causa de fatura.</b> Atrasou: avisamos com 3 dias;
+            <span><b className="text-ink">Nada é apagado por causa de fatura.</b> Atrasou: avisamos com 3 dias;
               com 10, as TVs mostram um pequeno selo do MultiTelas no canto; com 20, criar com IA e ligar telas novas
-              ficam pausados. Pagou, tudo volta na hora.</span>
+              ficam pausados e só a TV mais antiga segue no ar. Pagou, tudo volta na hora.</span>
           </div>
           <div className="flex items-start gap-2">
             <CalendarCheck size={16} className="mt-0.5 shrink-0 text-ink-3" />
@@ -455,25 +475,39 @@ export function BillingPage({ onFalarComVendas }) {
         GESTÃO DA ASSINATURA — o Asaas não tem portal hospedado, então a
         gestão é nossa (cancelar tem que ser possível daqui: CDC).
       */}
-      {plan.precoTelaCents > 0 && <GestaoDaAssinatura canManage={canManage} onMudou={reload} contrato={contrato} multa={anual && anual.multa} />}
+      {plan.precoTelaCents > 0 && (
+        <GestaoDaAssinatura canManage={canManage} onMudou={reload} contrato={contrato} multa={anual && anual.multa}
+          cancelando={cancelando} renewsAt={renewsAt} />
+      )}
     </div>
   );
 }
 
-function GestaoDaAssinatura({ canManage, onMudou, contrato, multa }) {
+function GestaoDaAssinatura({ canManage, onMudou, contrato, multa: multaDoPlano, cancelando, renewsAt }) {
   const { data: d, loading, error } = useAsync(billing.assinatura);
   const [confirmando, setConfirmando] = useState(false);
   const [busy, setBusy] = useState(false);
   const [erro, setErro] = useState('');
+  // A multa que o servidor calculou (no 409 ele manda a de agora, se mudou).
+  const [multaAgora, setMultaAgora] = useState(null);
+  const [aceitouMulta, setAceitouMulta] = useState(false);
 
   if (loading || error || !d) return null;
   const { assinatura, fatura, simulado } = d;
+  const multa = multaAgora || multaDoPlano;
+  const temMulta = contrato === 'anual' && multa && multa.cents > 0;
+  const ate = renewsAt ? new Date(renewsAt).toLocaleDateString('pt-BR') : '';
 
   async function cancelar() {
     setBusy(true); setErro('');
-    try { await billing.cancelar(); setConfirmando(false); onMudou(); }
-    catch (e) { setErro(e.message || 'Não foi possível cancelar agora.'); }
-    finally { setBusy(false); }
+    try {
+      await billing.cancelar(temMulta && aceitouMulta ? multa.cents : undefined);
+      setConfirmando(false); onMudou();
+    } catch (e) {
+      // O valor mudou desde que a página abriu: mostra o novo e pede o aceite de novo.
+      if (e.codigo === 'confirmar-multa' && e.dados && e.dados.multa) { setMultaAgora(e.dados.multa); setAceitouMulta(false); }
+      setErro(e.message || 'Não foi possível cancelar agora.');
+    } finally { setBusy(false); }
   }
 
   return (
@@ -489,12 +523,13 @@ function GestaoDaAssinatura({ canManage, onMudou, contrato, multa }) {
           </div>
         )}
 
-        {/* "Paguei e não liberou" quase sempre é "gerei o boleto e não paguei": o link resolve. */}
+        {/* "Paguei e não liberou" quase sempre é "gerei o boleto e não paguei": o link resolve.
+            A vencida vem primeiro (QA de lançamento, 03/11): é a de quem está em atraso. */}
         {fatura && (
           <a href={fatura.url} target="_blank" rel="noreferrer"
             className="flex items-center gap-2 rounded-md border border-warn/40 bg-warn/5 px-3 py-2 text-sm text-ink">
             <ExternalLink size={14} className="text-warn" />
-            Há uma fatura em aberto de <b>{brl(Math.round(fatura.valor * 100))}</b> — clique para pagar.
+            Há uma fatura {fatura.vencida ? 'vencida' : 'em aberto'} de <b>{brl(Math.round(fatura.valor * 100))}</b> — clique para pagar.
           </a>
         )}
 
@@ -504,7 +539,12 @@ function GestaoDaAssinatura({ canManage, onMudou, contrato, multa }) {
 
         {erro && <div className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger">{erro}</div>}
 
-        {!canManage ? (
+        {cancelando ? (
+          <p className="text-sm text-ink-2">
+            Assinatura cancelada: nada mais será cobrado. {ate ? <>O plano segue até <b className="text-ink">{ate}</b>; depois,</> : 'Ao fim do período pago,'} a
+            conta volta para a versão gratuita. Quer continuar? Assine de novo em Planos, acima.
+          </p>
+        ) : !canManage ? (
           <p className="text-xs text-ink-3">Só o dono da conta pode cancelar.</p>
         ) : confirmando ? (
           /*
@@ -514,17 +554,24 @@ function GestaoDaAssinatura({ canManage, onMudou, contrato, multa }) {
           */
           <div className="rounded-md border border-line bg-surface-2 p-3">
             <p className="text-sm text-ink">
-              Cancelar encerra a renovação. Suas telas continuam no ar até o fim do período já pago,
-              e depois a conta volta para a versão gratuita, com o selo — nada é apagado.
+              Cancelar encerra a renovação. O plano continua{ate ? <> até <b>{ate}</b></> : ' até o fim do período já pago'}, sem
+              nova cobrança. Depois, a conta volta para a versão gratuita: a TV mais antiga segue no ar, com o selo, e as
+              outras ficam pausadas — nada é apagado, e assinando de novo elas voltam.
             </p>
-            {contrato === 'anual' && multa && multa.cents > 0 && (
-              <p className="mt-2 text-sm text-ink">
-                Seu contrato é anual e faltam {plural(multa.faltam, 'mês', 'meses')}: pelo contrato, a multa fica em <b>{brl(multa.cents)}</b>.
-                A equipe confirma o valor com você antes de cobrar.
-              </p>
+            {temMulta && (
+              <div className="mt-2 rounded-md border border-danger/30 bg-danger-soft p-2.5 text-sm text-ink">
+                <p>
+                  Seu contrato é anual e faltam {plural(multa.faltam, 'mês', 'meses')}: a multa de cancelamento é de <b>{brl(multa.cents)}</b> (30% das mensalidades que faltam).
+                  A equipe entra em contato para combinar o pagamento.
+                </p>
+                <label className="mt-2 flex items-start gap-2 text-sm">
+                  <input type="checkbox" className="mt-0.5" checked={aceitouMulta} onChange={(e) => setAceitouMulta(e.target.checked)} />
+                  <span>Entendo e aceito a multa de {brl(multa.cents)}.</span>
+                </label>
+              </div>
             )}
             <div className="mt-3 flex gap-2">
-              <Button size="sm" variant="danger" disabled={busy} onClick={cancelar}>
+              <Button size="sm" variant="danger" disabled={busy || (temMulta && !aceitouMulta)} onClick={cancelar}>
                 {busy ? 'Cancelando…' : 'Confirmar cancelamento'}
               </Button>
               <Button size="sm" variant="ghost" disabled={busy} onClick={() => setConfirmando(false)}>Voltar</Button>

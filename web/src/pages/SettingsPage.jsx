@@ -260,7 +260,8 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
           <div className="rounded-lg border border-danger-soft bg-danger-soft p-3 text-sm text-danger">
             Serão apagados: sua conta e a da empresa, os usuários, as telas pareadas e suas configurações,
             todas as campanhas, a identidade da marca, os aniversariantes e os arquivos enviados.
-            As TVs pareadas param de receber conteúdo novo.
+            As TVs pareadas param de receber conteúdo novo. Se houver assinatura, ela é cancelada no Asaas
+            antes, e nada mais é cobrado.
           </div>
           <Field label={'Digite ' + (user.email || 'seu e-mail') + ' para confirmar'}>
             <Input value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} placeholder={user.email} autoComplete="off" />

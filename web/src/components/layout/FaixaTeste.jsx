@@ -51,7 +51,8 @@ export function FaixaTeste({ onIrParaPlano }) {
         */}
         <span className="font-normal opacity-90">
           {acabou
-            ? 'As telas já ligadas continuam exibindo, com o selo "versão gratuita" num canto. Assinando, o selo sai.'
+            /* QA de lançamento, 03/11: na versão gratuita só a TV mais antiga segue no ar (plans.telasNoAr). */
+            ? 'A TV mais antiga continua exibindo, com o selo "versão gratuita" num canto, e as outras ficam pausadas. Assinando, tudo volta.'
             : 'Depois disso, a tela continua no ar com o selo "versão gratuita", e ligar uma tela nova pede um plano.'}
         </span>
       </span>

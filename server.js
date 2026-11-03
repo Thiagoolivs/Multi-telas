@@ -278,18 +278,51 @@ function sincronizarCobranca(tenantId) {
  * minutos de memória bastam: quem acabou de assinar vê o selo sumir no
  * próximo pulso depois disso, e o selo não é cobrança, é lembrete.
  */
+/*
+ * E, no mesmo cache, QUAIS TVs seguem no ar (QA de lançamento, 03/11 —
+ * decisão do dono): no grátis ou com a fatura suspensa, só a TV mais antiga
+ * da conta (plans.telasNoAr); as outras recebem "pausada" no pulso. `noAr`
+ * null = todas no ar. A mais antiga é estável: não muda de um pulso para o
+ * outro, e é a que o cliente ligou primeiro.
+ */
 const seloCache = new Map();
-async function seloDaConta(tenantId) {
-  if (!tenantId) return '';
+async function estadoDaConta(tenantId) {
+  if (!tenantId) return { selo: '', noAr: null };
   const c = seloCache.get(tenantId);
-  if (c && Date.now() - c.em < 5 * 60 * 1000) return c.selo;
-  let selo = '';
-  try { selo = plans.textoDoSelo(await db.getTenant(tenantId)); }
-  catch (e) { selo = c ? c.selo : ''; }
-  seloCache.set(tenantId, { selo, em: Date.now() });
+  if (c && Date.now() - c.em < 5 * 60 * 1000) return c;
+  let estado = { selo: '', noAr: null };
+  try {
+    const tenant = await db.getTenant(tenantId);
+    const limite = plans.telasNoAr(tenant);
+    let noAr = null;
+    if (limite != null) {
+      // listDevices vem da mais nova para a mais antiga.
+      const lista = await db.listDevices(tenantId);
+      if (lista.length > limite) noAr = lista.slice(-limite).map((d) => d.id);
+    }
+    estado = { selo: plans.textoDoSelo(tenant), noAr };
+  } catch (e) { estado = c ? { selo: c.selo, noAr: c.noAr } : estado; }
+  const guardado = { ...estado, em: Date.now() };
+  seloCache.set(tenantId, guardado);
   if (seloCache.size > 5000) seloCache.delete(seloCache.keys().next().value);
-  return selo;
+  return guardado;
 }
+async function seloDaConta(tenantId) { return (await estadoDaConta(tenantId)).selo; }
+// O texto da pausa para esta TV, ou '' se ela segue no ar.
+async function pausaDaTela(tenantId, deviceId) {
+  const e = await estadoDaConta(tenantId);
+  return e.noAr && !e.noAr.includes(deviceId) ? plans.PAUSA.texto : '';
+}
+// Para o painel: quantas TVs estão pausadas e qual segue no ar (null = nenhuma pausada).
+async function pausaDaConta(tenantId) {
+  const e = await estadoDaConta(tenantId);
+  if (!e.noAr) return null;
+  const lista = await db.listDevices(tenantId).catch(() => []);
+  const noAr = lista.filter((d) => e.noAr.includes(d.id)).map((d) => d.name || 'TV');
+  return { noAr, pausadas: Math.max(0, lista.length - noAr.length), texto: plans.PAUSA.texto };
+}
+// O plano mudou (pagou, cancelou, rebaixou): a TV sabe no pulso seguinte.
+function esquecerSelo(tenantId) { seloCache.delete(tenantId); }
 /*
  * Comandos à espera de a TV buscar no pulso. Em memória, como o SSE: um
  * restart perde o comando, e a pessoa clica de novo — é "recarregar", não
@@ -520,6 +553,8 @@ function montarCtx() {
     // Cobrança e telas (server/routes/billing.js e telas.js).
     cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual,
     sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela,
+    // TV pausada no grátis e o cache do selo (QA de lançamento, 03/11).
+    pausaDaTela, pausaDaConta, esquecerSelo,
     // Convite de equipe (server/routes/team.js). Ficou para trás na extração da
     // rota: convidar alguém respondia "erro interno" com ReferenceError.
     inviteCode,
@@ -1168,6 +1203,23 @@ async function handleApi(req, res, pathname, query) {
         const confirmacao = String((b && b.confirmacao) || '').trim().toLowerCase();
         if (confirmacao !== String(sess.email || '').toLowerCase()) {
           return sendJson(res, 400, { error: 'digite seu e-mail para confirmar' });
+        }
+        /*
+         * A ASSINATURA SAI ANTES DA CONTA (QA de lançamento, 03/11). Excluir
+         * apagava a conta e deixava a assinatura viva no Asaas: o cliente que se
+         * excluía seguia sendo cobrado todo mês, e o id da assinatura sumia com
+         * a conta. Se o Asaas não cancelar agora, nada é apagado: a pessoa tenta
+         * de novo, em vez de ficar sem conta e com cobrança.
+         */
+        const conta = await db.getTenant(sess.tenant_id);
+        if (conta && conta.stripe_subscription_id) {
+          try {
+            await billing.cancelarAssinatura(conta);
+            log.info('conta.excluir-cancelou-assinatura', { tenant: sess.tenant_id, contrato: plans.contratoDe(conta.plan_contrato) });
+          } catch (e) {
+            log.aviso('conta.excluir-assinatura-falhou', { tenant: sess.tenant_id, erro: String(e.message || '').slice(0, 200) });
+            return sendJson(res, 502, { error: 'Não conseguimos cancelar a sua assinatura no Asaas agora, então nada foi apagado. Tente de novo em instantes ou fale com a gente pelo Suporte.' });
+          }
         }
         const chaves = await db.apagarTenant(sess.tenant_id);
         // Os arquivos saem depois do banco: se o storage falhar, a conta já foi
@@ -2378,11 +2430,22 @@ const negocioCache = new Map();
    * Não exige login: é informação de vitrine, e ela já está impressa na
    * página de preços de qualquer produto.
    */
+  /*
+   * QA de lançamento, 03/11 (decisão do dono): o preço é POR FRENTE, e cada
+   * landing vê só o da sua. `?frente=empresa|saude|comercio` (ou o endereço:
+   * empresas) devolve o catálogo daquela frente, no mesmo formato. Sem
+   * frente, o de Comércio, e `apartirDeCents` (o menor preço por TV) para a
+   * landing geral dizer "a partir de" sem pôr as três tabelas lado a lado.
+   */
   if (parts[1] === 'planos' && req.method === 'GET') {
+    const pediuFrente = String((query && query.frente) || '').trim();
+    const frente = plans.frenteDe(pediuFrente);
     return sendJson(res, 200, {
-      planos: plans.catalog(),
+      frente,
+      ...(pediuFrente ? {} : { apartirDeCents: plans.apartirDeCents() }),
+      planos: plans.catalog(frente),
       // O anual por faixa (PLANO §6.1) e as criações: do teste e do plano, por conta.
-      faixasAnual: plans.faixasAnual(),
+      faixasAnual: plans.faixasAnual(frente),
       criacoesDoTeste: plans.CRIACOES_DO_TESTE,
       criacoesDoPlano: { ate3Telas: plans.franquiaCreditos('pro', plans.TETO_IA.ateTelas), maximo: plans.franquiaCreditos('pro', 1000) },
       // A landing anuncia o prazo do teste; ele sai daqui para não virar um
@@ -2412,13 +2475,13 @@ const negocioCache = new Map();
         const telas = i + 1;
         const linha = { telas };
         for (const contrato of plans.CONTRATOS) {
-          const porTela = plans.precoTelaCents('pro', telas, contrato);
+          const porTela = plans.precoTelaCents('pro', telas, contrato, frente);
           linha[contrato] = {
-            totalCents: plans.mensalidadeCents('pro', telas, contrato),
+            totalCents: plans.mensalidadeCents('pro', telas, contrato, frente),
             porTelaCents: porTela,
             // O desconto que a pessoa de fato sente: quanto a média por tela
             // caiu em relação ao mensal.
-            desconto: 1 - porTela / plans.PLANS.pro.precoTelaCents,
+            desconto: 1 - porTela / plans.precoMensalCents('pro', frente),
             // Da 26ª tela em diante o anual é negociado: a vitrine diz isso.
             negociado: contrato === 'anual' && telas >= plans.TELAS_NEGOCIADAS,
           };

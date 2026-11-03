@@ -1290,6 +1290,15 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-fora-hora { font-size: 12vmin; font-weight: 300; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
 .mt-fora-dia { margin-top: 2vmin; font-size: 3vmin; opacity: .7; }
 .mt-fora-do-horario .mt-stage { visibility: hidden; }
+/* TV pausada (js/player.js, mt:pausada): o aviso no meio, grande e calmo.
+   Sem o selo por cima: quem está no ar é a outra TV. */
+.mt-fora-pausa { display: none; }
+.mt-fora-pausada .mt-fora-pausa {
+  display: flex; align-items: center; justify-content: center; height: 100%;
+  padding: 0 8vw; text-align: center; color: #e8eaf0;
+  font: 600 clamp(20px, 4vmin, 56px)/1.35 system-ui, sans-serif;
+}
+.mt-tv-pausada .mt-selo { display: none; }
 
 /*
  * A LETRA E A COR DA MARCA (docs/MARCA.md) nas telas que são do produto, não

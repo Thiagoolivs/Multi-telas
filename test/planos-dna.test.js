@@ -24,10 +24,19 @@ test('o plano pago de hoje é o Essencial (mesmo id, mesmo preço); o Pro aparec
   const ess = plans.PLANS.pro;
   assert.equal(ess.id, 'pro', 'trocar o id migraria as assinaturas do Asaas');
   assert.equal(ess.name, 'Essencial');
-  assert.equal(ess.precoTelaCents, 14900, 'quem já paga não pode mudar de preço sem aviso');
+  /*
+   * QA de lançamento, 03/11: o preço mudou por DECISÃO DO DONO (por frente:
+   * Comércio R$ 79, Saúde R$ 139, Empresas R$ 159), antes de haver pagante.
+   * O teste segue guardando que o número só muda de propósito: o padrão é o
+   * de Comércio, e cada frente tem o seu.
+   */
+  assert.equal(ess.precoTelaCents, 7900, 'o preço do Essencial só muda por decisão do dono');
+  assert.deepStrictEqual(plans.PRECO_DA_FRENTE_CENTS, { comercio: 7900, saude: 13900, empresa: 15900 });
   const pro = plans.PLANS.integrada;
   assert.equal(pro.name, 'Pro');
-  assert.equal(pro.precoTelaCents, 17900);
+  // O Pro mantém a proporção de antes (179/149) sobre o Essencial da frente.
+  assert.equal(pro.precoTelaCents, 9500);
+  assert.equal(plans.precoMensalCents('integrada', 'empresa'), 19100);
   assert.equal(pro.emBreve, true);
   assert.ok(pro.vem.length >= 2);
   assert.deepEqual(plans.ORDER, ['free', 'pro', 'integrada', 'enterprise']);

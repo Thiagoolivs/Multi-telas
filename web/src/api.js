@@ -53,6 +53,8 @@ async function api(method, path, body, opcoes) {
     const e = new Error((data && (data.error || data.mensagem)) || 'HTTP ' + res.status);
     e.status = res.status;
     e.codigo = data && (data.erro || data.code);
+    // O corpo inteiro, para quem precisa de mais que a frase (a multa do anual no 409).
+    e.dados = data;
     throw e;
   }
   return embrulhar(data);
@@ -577,7 +579,8 @@ export const billing = {
   // O "portal" não existia: devolvia uma URL que voltava para esta mesma tela.
   // A gestão é nossa — estado da assinatura, fatura em aberto e cancelamento.
   assinatura: () => api('GET', '/api/billing/assinatura'),
-  cancelar: () => api('DELETE', '/api/billing/assinatura'),
+  // No anual, o aceite da multa vai junto, com o valor que a pessoa viu (QA de lançamento, 03/11).
+  cancelar: (aceitoMultaCents) => api('DELETE', '/api/billing/assinatura', aceitoMultaCents ? { aceitoMultaCents } : undefined),
 };
 
 /*
