@@ -20,6 +20,7 @@
  * por falha do provedor é chato; um que nunca sai é pior.
  */
 const plans = require('./plans');
+const Perfil = require('../js/perfil.js');
 const { log } = require('./log.js');
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -48,25 +49,45 @@ function escapar(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
+/*
+ * QA de lançamento, 03/11: o e-mail dizia "o cardápio, uma promoção" também
+ * para clínica e indústria, e "o endereço /tv" sem domínio (ninguém digita
+ * isso na TV). Os exemplos agora são da frente da conta (js/perfil.js), e o
+ * endereço é o completo, do APP_URL.
+ */
+const MODELOS_DA_FRENTE = {
+  empresa: 'um comunicado, os aniversariantes da semana',
+  saude: 'o horário de atendimento, uma dica de prevenção',
+  comercio: 'o cardápio, uma promoção',
+};
+function enderecoDaTv(appUrl) {
+  const host = String(appUrl || '').replace(/^https?:\/\//, '').replace(/\/+$/, '');
+  return (host || 'app.multitelas.net.br') + '/tv';
+}
+
 function mensagem(tipo, conta, appUrl, agora) {
   const preco = reais(plans.PLANS.pro.precoTelaCents);
+  // Conta antiga sem frente gravada: o texto neutro, sem nome de frente.
+  const frente = conta && Perfil.tem(conta.perfil) ? Perfil.de(conta.perfil) : null;
+  const produto = frente ? frente.marca : 'MultiTelas';
+  const modelos = frente ? MODELOS_DA_FRENTE[frente.id] : 'um aviso, uma oferta';
   const telas = Number(conta.telas) || 0;
   const restam = plans.diasDeTesteRestantes(conta, agora);
   const quando = restam <= 1 ? 'amanhã' : 'em ' + restam + ' dias';
   let assunto; let titulo; let paragrafos; let botao; let destino;
 
   if (tipo === '2d' && !telas) {
-    assunto = 'Seu teste do MultiTelas acaba ' + quando + ' — e a TV ainda não foi ligada';
+    assunto = 'Seu teste do ' + produto + ' acaba ' + quando + ' — e a TV ainda não foi ligada';
     titulo = 'Falta ligar a primeira TV';
     paragrafos = [
       'Seu teste grátis acaba ' + quando + ', e nenhuma tela foi pareada ainda. Leva uns cinco minutos:',
-      'Abra o app MultiTelas TV no aparelho da TV (ou o endereço /tv no navegador da Smart TV), aponte o celular para o QR que aparecer, e escolha um modelo pronto — o cardápio, uma promoção.',
+      'Abra o app MultiTelas TV no aparelho da TV (ou o endereço ' + enderecoDaTv(appUrl) + ' no navegador da Smart TV), aponte o celular para o QR que aparecer, e escolha um modelo pronto — ' + modelos + '.',
       'Ver funcionando na sua parede é o que ajuda a decidir.',
     ];
     botao = 'Parear minha TV';
     destino = '/app/?ir=screens';
   } else if (tipo === '2d') {
-    assunto = 'Seu teste do MultiTelas acaba ' + quando;
+    assunto = 'Seu teste do ' + produto + ' acaba ' + quando;
     titulo = 'Seu teste acaba ' + quando;
     paragrafos = [
       'Sua' + (telas > 1 ? 's ' + telas + ' telas estão' : ' tela está') + ' no ar. Para continuar do jeito que está, assine o Essencial: ' + preco + ' por tela, por mês.',
@@ -75,7 +96,7 @@ function mensagem(tipo, conta, appUrl, agora) {
     botao = 'Ver o plano';
     destino = '/app/?ir=billing';
   } else {
-    assunto = 'Seu teste do MultiTelas acabou — a TV continua no ar';
+    assunto = 'Seu teste do ' + produto + ' acabou — a TV continua no ar';
     titulo = 'Seu teste acabou. A TV continua no ar.';
     paragrafos = [
       'A programação segue exibindo, agora com o selo "versão gratuita" no canto da tela.',

@@ -1395,7 +1395,8 @@ async function setTenantBilling(id, fields) {
  * assinatura cobra. É a lista da conciliação periódica (server/cobranca.js).
  */
 async function contasEmTeste(desde) {
-  const r = await pool.query(`SELECT t.id, t.name, t.plan, t.created_at, t.lembrete_teste,
+  // t.perfil: o e-mail do teste fala a língua da frente (server/lembretes.js, QA de 03/11).
+  const r = await pool.query(`SELECT t.id, t.name, t.plan, t.perfil, t.created_at, t.lembrete_teste,
       (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
       (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = t.id) AS telas
     FROM tenants t

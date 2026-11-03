@@ -106,6 +106,13 @@ test('o assunto nomeia a tela quando é uma só', () => {
   assert.match(m.text, /há 30 minutos/);
 });
 
+test('o botão leva às TVs do cliente, com palavra de cliente (QA de 03/11: "Ver a frota")', () => {
+  const m = V.mensagem(V.decidir([tela()], AGORA)[0], 'https://app.multitelas.net.br');
+  assert.doesNotMatch(m.text + m.html, /frota/i);
+  assert.match(m.text, /Ver minhas TVs: https:\/\/app\.multitelas\.net\.br\/app\/\?ir=screens/);
+  assert.match(m.html, />Ver minhas TVs</);
+});
+
 test('com várias telas o assunto conta quantas', () => {
   const telas = ['a', 'b'].map((id) => tela({ id, name: 'Tela ' + id }));
   const m = V.mensagem(V.decidir(telas, AGORA)[0], '');
