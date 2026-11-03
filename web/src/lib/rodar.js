@@ -196,25 +196,28 @@ export async function gravarEmLote(telas, fazer, descricao) {
 }
 
 /*
- * O aviso de "foi para a TV" com o Desfazer do lote: volta cada TV ao que
+ * Desfaz um envio em lote e conta o que aconteceu: volta cada TV ao que
  * era — menos a que alguém mudou depois, que fica como está (e o aviso diz).
+ * Do aviso de 9 s e da lista "Últimos envios" da Programação. Devolve true
+ * se desfez.
  */
+export async function desfazerLote(idLote) {
+  try {
+    const r = await loteApi.desfazer(idLote);
+    const mudaram = (r && r.mudaram) || [];
+    aviso.ok(mudaram.length
+      ? 'Desfeito. ' + mudaram.map((t) => t.nome || 'Uma TV').join(', ') + (mudaram.length === 1 ? ' foi mudada' : ' foram mudadas') + ' depois e ficou como está.'
+      : 'Desfeito: as TVs voltaram ao que eram.');
+    return true;
+  } catch (e) { aviso.erro('lote', 'Não deu para desfazer.', e.message || ''); return false; }
+}
+
+// O aviso de "foi para a TV" com o Desfazer do lote.
 export function avisarComDesfazer(texto, idLote) {
   if (!idLote) { aviso.ok(texto); return; }
   emitir({
     tom: 'desfazer', texto,
-    acao: {
-      rotulo: 'Desfazer',
-      on: async () => {
-        try {
-          const r = await loteApi.desfazer(idLote);
-          const mudaram = (r && r.mudaram) || [];
-          aviso.ok(mudaram.length
-            ? 'Desfeito. ' + mudaram.map((t) => t.nome || 'Uma TV').join(', ') + (mudaram.length === 1 ? ' foi mudada' : ' foram mudadas') + ' depois e ficou como está.'
-            : 'Desfeito: as TVs voltaram ao que eram.');
-        } catch (e) { aviso.erro('lote', e.message || 'Não deu para desfazer.'); }
-      },
-    },
+    acao: { rotulo: 'Desfazer', on: () => desfazerLote(idLote) },
   });
 }
 
