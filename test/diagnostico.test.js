@@ -149,6 +149,9 @@ test('produção bem configurada não inventa problema', () => {
     // chave do Asaas NÃO é "bem configurada": o checkout roda simulado e
     // libera o plano de graça — este cenário só falhou porque estava certo.
     ASAAS_API_KEY: 'a', ASAAS_WEBHOOK_TOKEN: 'w',
+    // QA de lançamento, 03/11: quem vende entrou no diagnóstico (Decreto
+    // 7.962/2013). Produção sem razão social, CNPJ e endereço não está pronta.
+    RAZAO_SOCIAL: 'MultiTelas Tecnologia Ltda', CNPJ: '00.000.000/0001-00', ENDERECO: 'Rua Exemplo, 100 — São Paulo/SP',
   });
   assert.equal(r.nivel, 'ok');
   assert.equal(r.criticos, 0);
@@ -208,4 +211,24 @@ test('a cobrança entra na lista geral, não só como função solta', () => {
   // impressão de que está coberta.
   assert.ok(D.diagnosticar({}).itens.some((i) => i.id === 'pagamento'),
     'a cobrança não aparece no diagnóstico');
+});
+
+/* ---------------- Quem vende (QA de lançamento, 03/11) ---------------- */
+
+test('sem razão social, CNPJ, endereço ou e-mail, o operador vê o que falta e o que fazer', () => {
+  const r = D.fornecedor({});
+  assert.equal(r.nivel, 'atencao');
+  for (const v of ['RAZAO_SOCIAL', 'CNPJ', 'ENDERECO', 'SUPPORT_EMAIL']) assert.match(r.resolver, new RegExp(v));
+  assert.match(r.consequencia, /lei/i);
+  const parcial = D.fornecedor({ RAZAO_SOCIAL: 'X Ltda', CNPJ: '1', ENDERECO: 'Rua' });
+  assert.match(parcial.estado, /SUPPORT_EMAIL/);
+  assert.doesNotMatch(parcial.estado, /CNPJ \(CNPJ\)/);
+  assert.equal(D.fornecedor({ RAZAO_SOCIAL: 'X Ltda', CNPJ: '1', ENDERECO: 'Rua', SUPPORT_EMAIL: 'a@b.com' }).nivel, 'ok');
+  assert.ok(D.diagnosticar({}).itens.some((i) => i.id === 'fornecedor'), 'o fornecedor não entrou na lista');
+});
+
+test('o alerta de rascunho é do operador: diz o que o cliente vê e como resolver', () => {
+  const j = D.juridico({});
+  assert.match(j.estado, /rascunho/i);
+  assert.match(j.resolver, /LEGAL_REVISADO=true/);
 });

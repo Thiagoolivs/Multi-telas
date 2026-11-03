@@ -249,10 +249,16 @@ function juridico(env) {
   if (env.LEGAL_REVISADO !== 'true') {
     return {
       id: 'juridico', nivel: 'atencao', titulo: 'Termos e Privacidade',
-      estado: 'Os textos ainda não passaram por revisão jurídica.',
-      consequencia: 'As páginas exibem um aviso de que são um rascunho — e o cliente vê esse aviso '
-        + 'na hora de aceitar, que é o pior momento para ele desconfiar.',
-      resolver: 'Depois da revisão de um advogado, defina LEGAL_REVISADO=true.',
+      estado: 'Os textos ainda não passaram por revisão jurídica: são um rascunho técnico (server/legal.js).',
+      /*
+       * QA de lançamento, 03/11: o aviso "rascunho, não use como peça
+       * contratual" saía para o CLIENTE, na hora de aceitar. Agora o alerta
+       * inteiro é daqui, do operador; o cliente vê só uma nota de que o texto
+       * vale como está e está em revisão.
+       */
+      consequencia: 'Na hora de aceitar, o cliente lê um texto que nenhum advogado conferiu (direito de arrependimento, multa do anual, '
+        + 'cookies, fotos de pessoas). As páginas mostram ao cliente uma nota de que o texto está em revisão.',
+      resolver: 'Peça a revisão de um advogado; depois, defina LEGAL_REVISADO=true (e suba a VERSAO em server/legal.js se o texto mudar).',
     };
   }
   if (!env.SUPPORT_EMAIL) {
@@ -271,7 +277,34 @@ function juridico(env) {
   };
 }
 
-const VERIFICACOES = [armazenamento, banco, ia, email, pagamento, endereco, juridico];
+/*
+ * Quem vende (QA de lançamento, 03/11): a lei pede razão social, CNPJ,
+ * endereço e um contato na página de quem vende pela internet (Decreto
+ * 7.962/2013, art. 2º) e o contato do encarregado de dados (LGPD, art. 41).
+ * Sem as variáveis, os Termos, a Política e o rodapé mostram só o que existe
+ * — e o contato vira "a página Suporte do painel", nunca um e-mail pessoal.
+ */
+const FORNECEDOR = [['RAZAO_SOCIAL', 'razão social'], ['CNPJ', 'CNPJ'], ['ENDERECO', 'endereço'], ['SUPPORT_EMAIL', 'e-mail de contato']];
+function fornecedor(env) {
+  const faltam = FORNECEDOR.filter(([k]) => !String(env[k] || '').trim());
+  if (faltam.length) {
+    return {
+      id: 'fornecedor', nivel: 'atencao', titulo: 'Quem vende (Termos e rodapé)',
+      estado: 'Falta' + (faltam.length > 1 ? 'm' : '') + ': ' + faltam.map((f) => f[1] + ' (' + f[0] + ')').join(', ') + '.',
+      consequencia: 'A lei pede a identificação de quem vende pela internet. Sem ela, os Termos, a Política e o rodapé do site '
+        + 'saem sem razão social, CNPJ ou endereço, e o contato vira "a página Suporte do painel".',
+      resolver: 'Defina ' + faltam.map((f) => f[0]).join(', ') + ' (e, se quiser, ENCARREGADO_NOME e EMAIL_DPO para o encarregado de dados).',
+    };
+  }
+  return {
+    id: 'fornecedor', nivel: 'ok', titulo: 'Quem vende (Termos e rodapé)',
+    estado: String(env.RAZAO_SOCIAL).trim() + ', CNPJ ' + String(env.CNPJ).trim() + '.',
+    consequencia: 'Termos, Política e rodapé do site identificam quem vende.',
+    resolver: '',
+  };
+}
+
+const VERIFICACOES = [armazenamento, banco, ia, email, pagamento, endereco, juridico, fornecedor];
 
 /*
  * Ordem: o que dói primeiro aparece primeiro. Quem abre esta tela quer saber
@@ -298,4 +331,4 @@ function diagnosticar(env) {
   };
 }
 
-module.exports = { diagnosticar, armazenamento, banco, ia, email, pagamento, endereco, juridico, naNuvem };
+module.exports = { diagnosticar, armazenamento, banco, ia, email, pagamento, endereco, juridico, fornecedor, naNuvem };
