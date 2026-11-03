@@ -3,6 +3,7 @@ import { Users, Camera, Cake, ArrowRight } from 'lucide-react';
 import { useAsync } from '../../lib/useAsync.js';
 import { birthdays } from '../../api.js';
 import { cn } from '../../lib/cn.js';
+import { usePerfil } from '../../lib/perfil.js';
 
 /*
  * O RH VÊ TUDO FÁCIL (EXECUTOR D34): três cartões — as pessoas (e quem está
@@ -34,6 +35,7 @@ function Cartao({ icone: Icone, titulo, numero, children, acao, onAcao, destaque
 }
 
 export function ResumoDasPessoas({ onIr, recarregar, soComEquipe }) {
+  const perfil = usePerfil(); // "planilha do RH" só na frente Empresas (QA de 03/11)
   const { data } = useAsync(birthdays.resumo, [recarregar]);
   if (!data) return null;
   if (soComEquipe && !data.pessoas && !data.pendentes) return null;
@@ -46,7 +48,7 @@ export function ResumoDasPessoas({ onIr, recarregar, soComEquipe }) {
             {data.semFoto ? data.semFoto + (data.semFoto === 1 ? ' sem foto' : ' sem foto') : 'Todo mundo com foto'}
             {data.semEmail ? ' · ' + data.semEmail + ' sem e-mail (não recebe o código do QR)' : ''}
           </>
-        ) : 'Importe a planilha do RH ou ponha as pessoas à mão.'}
+        ) : 'Importe ' + perfil.textos.planilha + ' ou ponha as pessoas à mão.'}
       </Cartao>
       <Cartao icone={Camera} titulo="Fotos para aprovar" numero={data.pendentes} destaque={data.pendentes > 0}
         acao={data.pendentes ? 'Conferir' : null} onAcao={() => onIr && onIr('fotos')}>

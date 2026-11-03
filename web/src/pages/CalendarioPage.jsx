@@ -11,6 +11,7 @@ import { pecaDoEvento, aplicarCalendario, tirarDoCalendario, telasDoEvento, peri
 import { aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { cn } from '../lib/cn.js';
+import { usePerfil } from '../lib/perfil.js';
 
 /*
  * PROGRAMAÇÃO › CALENDÁRIO (EXECUTOR D23).
@@ -22,7 +23,6 @@ import { cn } from '../lib/cn.js';
  * sai depois do dia. Editar ou apagar a data muda a TV junto.
  */
 const TIPOS = Object.keys(NOME_DO_TIPO);
-const EXEMPLO = '10/11 SIPAT — palestras às 15h no refeitório\n15/11 Feriado — não haverá expediente\n28/11 Confraternização às 18h';
 const hojeIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const campo = 'rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink';
 
@@ -55,6 +55,11 @@ function LinhaEditavel({ ev, onChange }) {
 }
 
 export function CalendarioPage({ onIr }) {
+  /*
+   * O exemplo e o texto são da frente (QA de lançamento, 03/11): SIPAT no
+   * refeitório e "a lista do RH" apareciam na padaria e na clínica.
+   */
+  const perfil = usePerfil();
   const [eventos, setEventos] = useState(null);
   const [erro, setErro] = useState('');
   const [tentativa, setTentativa] = useState(0);
@@ -175,15 +180,15 @@ export function CalendarioPage({ onIr }) {
   return (
     <div className="max-w-4xl space-y-5">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Calendário da empresa</h1>
-        <p className="mt-1 text-sm text-ink-2">Cole as datas (a lista do RH, um e-mail, a agenda). Cada uma vira um aviso com a sua marca, que aparece na TV alguns dias antes e sai depois do dia.</p>
+        <h1 className="text-xl font-semibold tracking-tight text-ink">Calendário {perfil.lugarDe}</h1>
+        <p className="mt-1 text-sm text-ink-2">Cole as datas ({perfil.textos.deOndeVemAsDatas}). Cada uma vira um aviso com a sua marca, que aparece na TV alguns dias antes e sai depois do dia.</p>
       </div>
 
       <Panel>
         <PanelHeader title="Colar o calendário" description="A IA lê as datas; nada vai para a TV antes de você revisar." />
         <div className="space-y-2 p-4">
           <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={5} maxLength={8000} aria-label="Calendário em texto"
-            placeholder={EXEMPLO} className={cn(campo, 'w-full font-mono text-xs leading-relaxed')} />
+            placeholder={perfil.textos.datas} className={cn(campo, 'w-full font-mono text-xs leading-relaxed')} />
           <div className="flex justify-end">
             <Button variant="primary" icon={Sparkles} disabled={!texto.trim() || lendo} onClick={ler}>{lendo ? 'Lendo…' : 'Ler as datas'}</Button>
           </div>

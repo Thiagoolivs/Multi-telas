@@ -61,7 +61,7 @@ export function MudarComIA({ cfg, onAplicar }) {
         <label className="sr-only" htmlFor="mudar-tela">Mudar a tela com a IA</label>
         <input id="mudar-tela" value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={300}
           placeholder={'Mudar a tela: ' + EXEMPLOS.slice(0, 3).join(', ') + '…'}
-          className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
+          className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent" />
         <Button type="submit" icon={Sparkles} disabled={!texto.trim() || busy}>{busy ? 'Vendo…' : 'Ver como fica'}</Button>
       </form>
       {sobra && <p className="mt-1.5 text-xs text-ink-3" role="status">{sobra}</p>}

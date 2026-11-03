@@ -9,6 +9,7 @@ import { Badge } from '../components/ui/Badge.jsx';
 import { EmptyState, ErrorState, Spinner } from '../components/ui/Feedback.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { MostrarNasTVs, useMuralNasTelas } from '../components/tela/MostrarNasTVs.jsx';
+import { usePerfil } from '../lib/perfil.js';
 
 /*
  * Mural: o painel de quem está no evento com o celular na mão.
@@ -19,6 +20,7 @@ import { MostrarNasTVs, useMuralNasTelas } from '../components/tela/MostrarNasTV
  * que ele faz está escrito antes de ser apertado.
  */
 export function MuralPage() {
+  const perfil = usePerfil(); // os exemplos de festa são da frente (QA de 03/11)
   const [lista, setLista] = useState(null);
   const [base, setBase] = useState('');
   const [erro, setErro] = useState('');
@@ -57,7 +59,7 @@ export function MuralPage() {
       <EmptyState
         icon={QrCode}
         title="Nenhum mural ainda"
-        description="Um mural gera um QR. Quem apontar a câmera manda uma foto — e ela aparece na TV em segundos. Serve para evento de Dia dos Pais, confraternização, festa junina, aniversário da empresa."
+        description={'Um mural gera um QR. Quem apontar a câmera manda uma foto — e ela aparece na TV em segundos. Serve para Dia dos Pais, festa junina, ' + perfil.textos.festas + '.'}
         action={<Button variant="primary" icon={Plus} onClick={criar} disabled={criando}>{criando ? 'Criando…' : 'Criar meu primeiro mural'}</Button>}
       />
     );

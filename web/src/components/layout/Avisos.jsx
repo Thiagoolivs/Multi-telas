@@ -34,12 +34,15 @@ export function Avisos() {
   const [lista, setLista] = useState([]);
   useEffect(() => inscrever(setLista), []);
 
-  if (!lista.length) return null;
-
+  /*
+   * A região existe sempre, mesmo vazia (QA de lançamento, 03/11): montada só
+   * com o primeiro aviso, o leitor de tela podia não anunciar nada. Erro é
+   * "alert" (interrompe); o resto, "status" (espera a pessoa terminar).
+   */
   return (
-    <div className="pointer-events-none fixed bottom-[4.75rem] right-4 z-[60] lg:bottom-4 flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2">
+    <div aria-live="polite" className="pointer-events-none fixed bottom-[4.75rem] right-4 z-[60] lg:bottom-4 flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2">
       {lista.map((a) => (
-        <div key={a.id} role="status"
+        <div key={a.id} role={a.tom === 'erro' ? 'alert' : 'status'}
           className={'pointer-events-auto flex items-start gap-2.5 rounded-xl border p-3 shadow-pop backdrop-blur ' + (CORES[a.tom] || CORES.ok)}>
           <div className="mt-0.5 shrink-0"><Icone tom={a.tom} /></div>
           <div className="min-w-0 flex-1">

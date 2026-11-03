@@ -8,7 +8,7 @@ import { ligarTrabalhos, desligarTrabalhos } from './lib/trabalhos.js';
 import { Spinner } from './components/ui/Feedback.jsx';
 import { parearGuardado } from './lib/parearPendente.js';
 import { paginaDoIr } from './lib/menu.js';
-import { definirPerfil } from './lib/perfil.js';
+import { definirPerfil, usePerfil } from './lib/perfil.js';
 
 /*
  * Cada página num pacote próprio (QA de 26/10). O painel vinha num arquivo
@@ -98,6 +98,16 @@ const META = {
   settings: { title: 'Ajustes', subtitle: 'Conta, integrações e preferências.' },
 };
 
+/*
+ * O título que muda com a frente: o calendário é "da empresa", "da clínica"
+ * ou "da loja" (QA de lançamento, 03/11: "Calendário da empresa" aparecia
+ * numa padaria). O resto vem do META.
+ */
+function tituloDe(nome, perfil) {
+  if (nome === 'calendario') return 'Calendário ' + perfil.lugarDe;
+  return (META[nome] || META.overview).title;
+}
+
 // A cor da barra do sistema no app instalado. Precisa casar com --c-canvas de
 // cada tema: instalado, o app pinta a barra de status com este valor, e uma
 // barra escura em cima de um painel claro parece defeito de renderização.
@@ -167,6 +177,7 @@ export default function App() {
   const [session, setSession] = useState(undefined); // undefined = carregando
   const [route, setRoute] = useState(rotaDaUrl);
   const [theme, toggleTheme] = useTheme();
+  const perfil = usePerfil();
 
   const [semRede, setSemRede] = useState(false);
   const refresh = () => auth.me()
@@ -218,6 +229,16 @@ export default function App() {
     setRoute({ name: 'overview' });
   }
 
+  /*
+   * O título da aba muda por página (QA de lançamento, 03/11): era sempre
+   * "MultiTelas — Painel", e quem tem várias abas, ou ouve o leitor de tela
+   * ao trocar de página, não sabia onde estava. A tela de entrar põe o seu.
+   */
+  const tituloDaPagina = session ? tituloDe(route.name, perfil) : '';
+  useEffect(() => {
+    if (tituloDaPagina) document.title = tituloDaPagina + ' · ' + perfil.marca;
+  }, [tituloDaPagina, perfil.marca]);
+
   if (session === undefined && semRede) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-canvas px-6 text-center">
@@ -238,7 +259,7 @@ export default function App() {
   if (!session) return <AuthScreen onAuthed={refresh} />;
 
   const user = session.user || {};
-  const meta = META[route.name] || META.overview;
+  const meta = { ...(META[route.name] || META.overview), title: tituloDaPagina || (META[route.name] || META.overview).title };
   const navActive = meta.nav || route.name; // qual item da sidebar destacar
 
   function renderPage() {

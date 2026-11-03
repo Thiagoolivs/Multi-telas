@@ -118,7 +118,7 @@ function Letreiro({ rotulo, mensagens, onSalvar }) {
         <div key={i} className="flex items-center gap-1">
           <input value={m} maxLength={80} onChange={(e) => mudar(i, e.target.value)} aria-label={rotulo + ' ' + (i + 1)}
             placeholder="Ex.: Aberto de segunda a sábado, das 8h às 18h"
-            className="h-8 min-w-0 flex-1 rounded border border-line bg-surface px-2 text-xs text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none" />
+            className="h-8 min-w-0 flex-1 rounded border border-line bg-surface px-2 text-xs text-ink placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none" />
           <button type="button" aria-label="Tirar esta frase" onClick={() => setLista((l) => l.filter((_, j) => j !== i))}
             className="rounded p-1 text-ink-3 hover:text-danger"><X size={13} /></button>
         </div>

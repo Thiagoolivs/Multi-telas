@@ -7,6 +7,7 @@ import { brand, media } from '../../api.js';
 import { aviso } from '../../lib/avisos.js';
 import { analisar, propor, CLARO, ESCURO } from '../../lib/logo.js';
 import { cn } from '../../lib/cn.js';
+import { EscolherArquivo } from '../ui/EscolherArquivo.jsx';
 
 /*
  * A LOGO DA MARCA, analisada e corrigida (EXECUTOR D7).
@@ -93,11 +94,11 @@ export function LogoDaMarca({ logo, logoClara, logoEscura, busy, onSubir, onTira
       <PanelHeader title="Logo"
         description="Vai no mesmo canto de todas as peças. Aceita PNG e SVG; a análise mostra se ela lê bem na TV."
         actions={(
-          <label className={cn('flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition',
-            logo ? 'border-line bg-surface text-ink-2 hover:bg-surface-2' : 'border-accent bg-accent text-accent-fg hover:opacity-90', (busy || trabalhando) && 'pointer-events-none opacity-60')}>
+          <EscolherArquivo accept="image/png,image/svg+xml,image/webp,image/jpeg" onChange={onSubir} disabled={busy || trabalhando}
+            className={cn('flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition',
+              logo ? 'border-line bg-surface text-ink-2 hover:bg-surface-2' : 'border-accent bg-accent text-accent-fg hover:opacity-90')}>
             <UploadCloud size={14} /> {logo ? 'Trocar logo' : 'Enviar logo'}
-            <input type="file" accept="image/png,image/svg+xml,image/webp,image/jpeg" className="hidden" onChange={onSubir} />
-          </label>
+          </EscolherArquivo>
         )} />
       {!logo ? (
         <div className="flex items-center gap-2 p-4 text-sm text-ink-3">

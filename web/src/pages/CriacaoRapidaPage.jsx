@@ -17,6 +17,7 @@ import { publicarPecas } from '../lib/publicar.js';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 import { usePerfil, perfilDe, perfilAtual } from '../lib/perfil.js';
+import { EscolherArquivo } from '../components/ui/EscolherArquivo.jsx';
 
 /*
  * CRIAÇÃO RÁPIDA. Era o Criar até 21/10. Desde o item 24 (EXECUTOR §2b), o
@@ -380,10 +381,10 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
                 {foto
                   ? <img src={foto.url} alt="" className="h-20 w-20 rounded-lg border border-line object-cover" />
                   : <span className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-line text-ink-3"><ImagePlus size={22} /></span>}
-                <label className={cn('cursor-pointer rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2', subindo && 'pointer-events-none opacity-60')}>
+                <EscolherArquivo accept="image/png,image/jpeg,image/webp" capture="environment" onChange={escolherFoto} disabled={subindo}
+                  className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2">
                   {subindo ? 'Enviando…' : foto ? 'Trocar a foto' : 'Tirar ou escolher a foto'}
-                  <input type="file" accept="image/png,image/jpeg,image/webp" capture="environment" className="hidden" onChange={escolherFoto} />
-                </label>
+                </EscolherArquivo>
               </div>
             )}
             <div>

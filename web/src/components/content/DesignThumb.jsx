@@ -57,7 +57,8 @@ export function DesignThumb({ item, fitHeight }) {
      * largura da JANELA — e a miniatura desenhava letras gigantes, cortadas,
      * que não pareciam nem de longe a peça que a pessoa tinha feito.
      */
-    <div className={'relative overflow-hidden rounded-md border border-line ' + (fitHeight ? '' : 'w-full')}
+    // Miniatura: fora da árvore de acessibilidade, como a PecaHtml (QA de 03/11).
+    <div aria-hidden="true" className={'relative overflow-hidden rounded-md border border-line ' + (fitHeight ? '' : 'w-full')}
       style={{ ...ar, ...bg, containerType: 'inline-size' }}>
       {els.map((e, i) => (
         <div key={i} style={{ position: 'absolute', left: e.x + '%', top: e.y + '%', width: e.w + '%', height: e.h + '%', transform: `rotate(${e.rot || 0}deg)`, overflow: 'hidden', ...((tintaImagem(e.tint) || {}).pai || {}) }}>

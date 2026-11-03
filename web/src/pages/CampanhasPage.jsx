@@ -182,7 +182,7 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
           <span className="sr-only">Buscar campanha</span>
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
           <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar pelo nome"
-            className="h-9 w-full rounded-md border border-line bg-surface pl-8 pr-8 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
+            className="h-9 w-full rounded-md border border-line bg-surface pl-8 pr-8 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent" />
           {busca && (
             <button type="button" aria-label="Limpar a busca" onClick={() => setBusca('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"><X size={14} /></button>
           )}

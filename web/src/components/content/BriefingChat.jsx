@@ -106,7 +106,7 @@ export function BriefingChat({ empresa, segmento, primeiraFala, onPronto, onPula
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); responder(texto); } }}
           placeholder={busy ? 'aguarde…' : 'Responda aqui — Enter envia'}
           disabled={busy}
-          className="flex-1 resize-none rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent disabled:opacity-60"
+          className="flex-1 resize-none rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-60"
         />
         <Button variant="primary" icon={Send} disabled={busy || !texto.trim()} onClick={() => responder(texto)}>Responder</Button>
       </div>

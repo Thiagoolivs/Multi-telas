@@ -68,7 +68,8 @@ test('o item enviado é contain + fundo, e vai para a zona DEITADA', async () =>
 test('galeria e câmera, progresso, e as telas já marcadas', () => {
   const c = ler('web/src/components/content/SubirConteudo.jsx');
   assert.match(c, /capture="environment"/);
-  assert.match(c, /type="file" accept=\{ACEITA\} multiple/);
+  // Pelo botão que abre o seletor (QA de 03/11: o <label> com input escondido não abria pelo teclado).
+  assert.match(c, /<EscolherArquivo accept=\{ACEITA\} multiple/);
   assert.match(c, /role="progressbar"/);
   assert.match(c, /setAlvos\(lista\.map\(\(t\) => t\.id\)\)/);
   const s = ler('web/src/lib/subir.js');

@@ -9,6 +9,8 @@ import { cn } from '../lib/cn.js';
 import { cadastroConcluido } from '../lib/analytics.js';
 import { PERFIS, IDS as PERFIL_IDS, deduzir, frenteDoSlug } from '../lib/perfil.js';
 import { detectarRamo } from '../lib/paletas.js';
+import { paraGente } from '../lib/erros.js';
+import { modoInicial } from '../lib/entrada.js';
 
 // Logotipo do Google no botão (SVG inline — nada externo carrega aqui).
 function GoogleMark() {
@@ -24,7 +26,7 @@ function GoogleMark() {
 
 export function AuthScreen({ onAuthed }) {
   // login | signup | forgot | reset | verify
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState(() => modoInicial(window.location.search));
   const [form, setForm] = useState({ email: '', password: '', name: '', inviteCode: '' });
   const [hasInvite, setHasInvite] = useState(false);
   /*
@@ -45,6 +47,8 @@ export function AuthScreen({ onAuthed }) {
   const [resetToken, setResetToken] = useState('');
   const [verifyToken, setVerifyToken] = useState('');
   const confirmando = useRef(false);
+  const caixaAceite = useRef(null);
+  const campoNome = useRef(null);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -115,7 +119,26 @@ export function AuthScreen({ onAuthed }) {
 
   async function submit(e) {
     e.preventDefault();
-    setError(''); setInfo(''); setBusy(true);
+    setError(''); setInfo('');
+    /*
+     * O que falta, dito por extenso (QA de lançamento, 03/11): o botão
+     * "Criar conta" ficava cinza, fora do Tab, e nada explicava que faltava
+     * marcar os Termos; e a conta nascia sem nome da empresa. Agora o botão
+     * segue tocável e responde dizendo o que fazer, com o foco no lugar.
+     */
+    if (mode === 'signup') {
+      if (!form.name.trim()) {
+        setError(hasInvite ? 'Escreva o seu nome para a equipe saber quem é você.' : 'Escreva o nome da empresa: é ele que aparece no painel e nas TVs.');
+        if (campoNome.current) campoNome.current.focus();
+        return;
+      }
+      if (!aceite) {
+        setError('Para criar a conta, marque a caixinha “Li e aceito os Termos de Uso e a Política de Privacidade”.');
+        if (caixaAceite.current) caixaAceite.current.focus();
+        return;
+      }
+    }
+    setBusy(true);
     try {
       if (mode === 'signup') {
         const payload = { email: form.email, password: form.password, name: form.name, aceite: true };
@@ -157,7 +180,7 @@ export function AuthScreen({ onAuthed }) {
         onAuthed();
       }
     } catch (err) {
-      setError(err.message || 'Não deu certo. Tente de novo.');
+      setError(paraGente(err));
     } finally {
       setBusy(false);
     }
@@ -168,15 +191,20 @@ export function AuthScreen({ onAuthed }) {
     : mode === 'forgot' ? 'Recuperar acesso'
     : mode === 'verify' ? 'Confirmando seu e-mail'
     : 'Criar uma nova senha';
-  const subtitulo = mode === 'forgot' ? 'Enviamos um link para o seu e-mail.'
+  // "Enviamos" só depois de enviar (QA de 03/11): antes de tocar em Enviar, é o que VAI acontecer.
+  const subtitulo = mode === 'forgot' ? 'Digite o seu e-mail e vamos mandar um link para criar uma senha nova.'
     : mode === 'reset' ? 'Escolha a senha que você vai usar a partir de agora.'
     : mode === 'verify' ? 'Um instante: sua conta está sendo criada.'
     // Chegou pelo QR da TV: dizer que a TV não foi esquecida no meio do cadastro.
     : parearGuardado() ? 'Entre ou crie sua conta — a TV que mostrou o QR é conectada logo em seguida.'
     : 'Gerencie a rede de telas de qualquer lugar.';
 
+  // O título da aba diz onde se está (QA de 03/11; o App põe o das páginas do painel).
+  useEffect(() => { document.title = titulo + ' · MultiTelas'; }, [titulo]);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
+    // <main>: a tela de entrar também tem o seu ponto de referência (QA de 03/11, axe landmark-one-main).
+    <main className="flex min-h-screen items-center justify-center bg-canvas px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex items-center gap-2.5">
           <SimboloMarca className="h-8 w-8" />
@@ -190,7 +218,7 @@ export function AuthScreen({ onAuthed }) {
           {(mode === 'login' || mode === 'signup') && (
             <div className="mt-5 grid grid-cols-2 gap-1 rounded-lg border border-line bg-surface-2 p-1">
               {['login', 'signup'].map((m) => (
-                <button key={m} type="button" onClick={() => { setMode(m); setError(''); setInfo(''); }}
+                <button key={m} type="button" aria-pressed={mode === m} onClick={() => { setMode(m); setError(''); setInfo(''); }}
                   className={cn('rounded-md py-1.5 text-sm font-medium transition',
                     mode === m ? 'bg-surface text-ink shadow-xs' : 'text-ink-3 hover:text-ink-2')}>
                   {m === 'login' ? 'Entrar' : 'Criar conta'}
@@ -217,7 +245,7 @@ export function AuthScreen({ onAuthed }) {
           <form onSubmit={submit} className={cn('space-y-3.5', caps.google && (mode === 'login' || mode === 'signup') ? '' : 'mt-5')}>
             {mode === 'signup' && (
               <Field label={hasInvite ? 'Seu nome' : 'Nome da empresa'}>
-                <Input value={form.name} onChange={set('name')} placeholder={hasInvite ? 'Seu nome' : 'Minha Empresa'} autoComplete={hasInvite ? 'name' : 'organization'} />
+                <Input ref={campoNome} value={form.name} onChange={set('name')} placeholder={hasInvite ? 'Seu nome' : 'Minha Empresa'} autoComplete={hasInvite ? 'name' : 'organization'} aria-required="true" />
               </Field>
             )}
             {mode === 'signup' && !hasInvite && (
@@ -267,7 +295,7 @@ export function AuthScreen({ onAuthed }) {
                   leu, e é o primeiro ponto que uma fiscalização derruba.
                 */}
                 <label className="flex cursor-pointer items-start gap-2 text-xs leading-snug text-ink-2">
-                  <input type="checkbox" checked={aceite} onChange={(e) => setAceite(e.target.checked)} className="mt-0.5 shrink-0" />
+                  <input ref={caixaAceite} type="checkbox" checked={aceite} onChange={(e) => { setAceite(e.target.checked); if (e.target.checked) setError(''); }} className="mt-0.5 shrink-0" />
                   <span>
                     Li e aceito os <a href="/termos" target="_blank" rel="noreferrer" className="text-accent hover:underline">Termos de Uso</a>
                     {' '}e a <a href="/privacidade" target="_blank" rel="noreferrer" className="text-accent hover:underline">Política de Privacidade</a>.
@@ -276,15 +304,21 @@ export function AuthScreen({ onAuthed }) {
               </>
             )}
 
-            {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{error}</div>}
+            {/* A região do aviso existe antes da mensagem: assim o leitor de tela anuncia quando ela chega. */}
+            <div role="alert" aria-live="assertive">
+              {error && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{error}</div>}
+            </div>
             {info && (
-              <div className="flex gap-2 rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">
+              <div role="status" className="flex gap-2 rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">
                 <MailCheck size={15} className="mt-0.5 shrink-0 text-accent" />
                 <span className="break-all">{info}</span>
               </div>
             )}
 
-            <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy || (mode === 'signup' && !aceite)}>
+            {mode === 'signup' && !aceite && !error && (
+              <p className="text-xs text-ink-2">Para criar a conta, marque a caixinha dos Termos acima.</p>
+            )}
+            <Button type="submit" variant="primary" size="lg" className="w-full" disabled={busy}>
               {busy ? 'Aguarde…'
                 : mode === 'login' ? 'Entrar'
                 : mode === 'signup' ? 'Criar conta'
@@ -307,6 +341,6 @@ export function AuthScreen({ onAuthed }) {
           <a href="/privacidade" target="_blank" rel="noreferrer" className="hover:text-ink-2 hover:underline">Política de Privacidade</a>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

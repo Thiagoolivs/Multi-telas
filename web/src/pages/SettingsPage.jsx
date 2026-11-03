@@ -10,6 +10,7 @@ import { PainelInstalar } from '../components/layout/PainelInstalar.jsx';
 import { auth, privacidade } from '../api.js';
 import { cn } from '../lib/cn.js';
 import { PERFIS, IDS as PERFIL_IDS } from '../lib/perfil.js';
+import { paraGente } from '../lib/erros.js';
 
 const ROLE_LABEL = { owner: 'Dono', admin: 'Administrador', member: 'Membro' };
 
@@ -83,7 +84,7 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
       await auth.updateProfile(payload);
       setMsgPerfil('Alterações salvas.');
       if (onChanged) onChanged();
-    } catch (e) { setErrPerfil(e.message || 'Não foi possível salvar.'); }
+    } catch (e) { setErrPerfil(e.message ? paraGente(e) : 'Não foi possível salvar.'); }
     finally { setSalvandoPerfil(false); }
   }
 
@@ -97,7 +98,7 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
       setAtual(''); setNova(''); setConfirma('');
       setMsgSenha('Senha atualizada.');
       if (onChanged) onChanged();
-    } catch (e) { setErrSenha(e.message || 'Não foi possível trocar a senha.'); }
+    } catch (e) { setErrSenha(e.message ? paraGente(e) : 'Não foi possível trocar a senha.'); } // "senha atual incorreta" vira frase com o que fazer (QA de 03/11)
     finally { setSalvandoSenha(false); }
   }
 
@@ -109,7 +110,7 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
       // a raiz, que é a única coisa que ainda faz sentido.
       window.location.href = '/';
     } catch (e) {
-      setErrExcluir(e.message || 'Não foi possível excluir a conta.');
+      setErrExcluir(e.message ? paraGente(e) : 'Não foi possível excluir a conta.');
       setExcluindo(false);
     }
   }
@@ -203,7 +204,8 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
         <div className="p-4">
           <div className="inline-flex gap-1 rounded-lg border border-line bg-surface-2 p-1">
             {[['light', 'Claro'], ['dark', 'Escuro']].map(([id, label]) => (
-              <button key={id} onClick={() => { if (theme !== id) onToggleTheme(); }}
+              // aria-pressed: o leitor de tela diz qual está ativo (QA de 03/11).
+              <button key={id} type="button" aria-pressed={theme === id} onClick={() => { if (theme !== id) onToggleTheme(); }}
                 className={cn('inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition',
                   theme === id ? 'bg-surface text-ink shadow-xs' : 'text-ink-3 hover:text-ink-2')}>
                 <Palette size={14} /> {label}

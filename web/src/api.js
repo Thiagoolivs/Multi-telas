@@ -229,6 +229,8 @@ async function rodar(rota, payload, tipo, onEtapa, sinal) {
 export const lote = {
   enviar: (itens, descricao) => api('POST', '/api/lote', { itens, descricao }),
   desfazer: (id) => api('POST', '/api/lote/' + encodeURIComponent(id) + '/desfazer'),
+  // Os últimos envios da conta (o servidor guarda 30 dias), para desfazer depois que o aviso some.
+  listar: () => api('GET', '/api/lote'),
 };
 
 // O calendário da empresa (D23): os eventos guardados e a leitura do texto colado.

@@ -15,6 +15,8 @@
  * pessoa vai querer fazer enquanto espera.
  */
 
+import { paraGente } from './erros.js';
+
 let seq = 1;
 let avisos = [];
 const ouvintes = new Set();
@@ -72,11 +74,17 @@ export function limpar() {
   avisar();
 }
 
-/* Atalhos, para o chamador não ter que lembrar do formato. */
+/*
+ * Atalhos, para o chamador não ter que lembrar do formato.
+ *
+ * O detalhe do erro passa por paraGente (QA de lançamento, 03/11): quase
+ * todo chamador manda `e.message`, que é o texto cru do servidor — "código
+ * não encontrado", "sem permissão" — em minúscula e sem o que fazer.
+ */
 export const aviso = {
   trabalho: (id, texto, detalhe) => emitir({ id, tom: 'trabalho', texto, detalhe }),
   pronto: (id, texto, detalhe, acao) => emitir({ id, tom: 'pronto', texto, detalhe, acao }),
-  erro: (id, texto, detalhe) => emitir({ id, tom: 'erro', texto, detalhe }),
+  erro: (id, texto, detalhe) => emitir({ id, tom: 'erro', texto, detalhe: detalhe ? paraGente(detalhe) : detalhe }),
   ok: (texto) => emitir({ tom: 'ok', texto }),
   fechar,
 };

@@ -8,6 +8,7 @@ import { PorQuizNaTv } from '../criar/AcaoDaIA.jsx';
 import { MiniConversa, comPergunta } from './MiniConversa.jsx';
 import { ai } from '../../api.js';
 import { aviso } from '../../lib/avisos.js';
+import { usePerfil } from '../../lib/perfil.js';
 
 /*
  * PEDIR À IA, NA PROGRAMAÇÃO (EXECUTOR D51).
@@ -28,6 +29,7 @@ import { aviso } from '../../lib/avisos.js';
 const EXEMPLOS = ['Aviso: piso molhado no corredor', 'Quiz de 3 perguntas sobre segurança', 'Tema claro na TV da recepção', 'Criar uma promoção de café'];
 
 export function PedirIA({ onFechar, onIr, tv }) {
+  const perfil = usePerfil(); // o exemplo da caixa é da frente (o refeitório era para todo mundo; QA de 03/11)
   const [texto, setTexto] = useState('');
   const [historico, setHistorico] = useState([]);
   const [ocupado, setOcupado] = useState(false);
@@ -72,8 +74,8 @@ export function PedirIA({ onFechar, onIr, tv }) {
         <MiniConversa historico={historico} onResponder={pedir} ocupado={ocupado} />
         <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={historico.length ? 2 : 3} maxLength={500} autoFocus aria-label="O que você quer nas TVs"
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); pedir(); } }}
-          placeholder={historico.length ? 'Responda aqui' : 'Ex.: avisar que o refeitório fecha às 14h na sexta'}
-          className="w-full resize-none rounded-md border border-line bg-surface px-2.5 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
+          placeholder={historico.length ? 'Responda aqui' : perfil.textos.pedidoDeExemplo}
+          className="w-full resize-none rounded-md border border-line bg-surface px-2.5 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent" />
         {!historico.length && (
           <div className="flex flex-wrap gap-1.5">
             {EXEMPLOS.map((s) => (
