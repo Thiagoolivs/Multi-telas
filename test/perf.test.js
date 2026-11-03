@@ -87,6 +87,13 @@ test('os aparelhos de sala que se identificam entram no modo leve', () => {
     Chromecast: 'Mozilla/5.0 (X11; Linux) AppleWebKit/537.36 CrKey/1.56 Safari/537.36',
     'Fire TV': 'Mozilla/5.0 (Linux; Android 9; AFTM) AppleWebKit/537.36 Safari/537.36',
     'Smart TV genérica': 'Mozilla/5.0 (SmartTV; Linux) AppleWebKit/537.36 Safari/537.36',
+    // QA de lançamento, 03/11: estes passavam como computador e pintavam a primeira tela no modo caro.
+    'Fire TV 4K Max': 'Mozilla/5.0 (Linux; Android 9; AFTKA Build/PS7633.3445N; wv) AppleWebKit/537.36 Chrome/112.0 Mobile Safari/537.36',
+    'Fire TV 4K': 'Mozilla/5.0 (Linux; Android 7.1.2; AFTMM Build/NS6265; wv) AppleWebKit/537.36 Chrome/70.0 Mobile Safari/537.36',
+    'Fire TV Cube': 'Mozilla/5.0 (Linux; Android 9; AFTR Build/PS7624; wv) AppleWebKit/537.36 Chrome/108.0 Mobile Safari/537.36',
+    'Mi Box': 'Mozilla/5.0 (Linux; Android 9; MIBOX4 Build/PI; wv) AppleWebKit/537.36 Chrome/101.0 Mobile Safari/537.36',
+    'o app MultiTelas TV': 'Mozilla/5.0 (Linux; Android 10; X96Q; wv) AppleWebKit/537.36 Chrome/96.0 Mobile Safari/537.36 MultiTelasTV/1.0.60',
+    'Chromecast com Google TV': 'Mozilla/5.0 (Linux; Android 12; Chromecast) AppleWebKit/537.36 Chrome/110.0 Safari/537.36',
   };
   for (const [nome, ua] of Object.entries(uas)) {
     assert.ok(navegador({ ua }).MTPerf.ehTv(ua), nome + ' passou como computador');
@@ -98,6 +105,8 @@ test('celular e computador NÃO perdem o vidro por engano', () => {
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17 Safari/605.1.15',
     'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+    // A sigla do Fire TV é maiúscula: "after" num UA qualquer não vira TV.
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120 Safari/537.36 aftershock/2',
     'Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36',
   ];
   for (const ua of uas) {

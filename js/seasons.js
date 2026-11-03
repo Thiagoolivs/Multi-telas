@@ -231,17 +231,19 @@
     const bg = g.bg || null;
 
     const principal = [];
-    if (season.greeting) principal.push({ ...season.greeting });
+    /*
+     * Object.assign, e não `{ ...x }`: espalhar objeto é sintaxe do Chromium
+     * 60, e erro de sintaxe derruba o pacote inteiro da TV (QA de lançamento,
+     * 03/11 — Samsung 2018 / LG 2019 ficavam em "Iniciando exibição").
+     */
+    if (season.greeting) principal.push(Object.assign({}, season.greeting));
     /*
      * As frases entram como "quote": tipografia grande e centrada, feita para
      * ser lida de longe. Duração escalonada evita que tudo troque junto e a
      * tela pareça piscar.
      */
     frases.slice(0, 3).forEach((texto, i) => {
-      principal.push({
-        type: 'quote', texto, autor: '', duracao: 10 + i * 2,
-        ...(bg ? { bg } : {}), cor,
-      });
+      principal.push(Object.assign({ type: 'quote', texto, autor: '', duracao: 10 + i * 2 }, bg ? { bg } : {}, { cor }));
     });
 
     // Lateral: o que é útil o dia inteiro sem ninguém mexer.
@@ -257,7 +259,7 @@
     if (zonas.includes('lateral')) {
       lateral.push({ type: 'clock', duracao: 12 });
       lateral.push({ type: 'weatherpro', cidade: o.cidade || 'São Paulo', duracao: 16 });
-      if (frases[0]) lateral.push({ type: 'quote', texto: frases[0], autor: '', duracao: 10, ...(bg ? { bg } : {}), cor });
+      if (frases[0]) lateral.push(Object.assign({ type: 'quote', texto: frases[0], autor: '', duracao: 10 }, bg ? { bg } : {}, { cor }));
     }
 
     // Rodapé: avisos da data, ou a saudação virando aviso.

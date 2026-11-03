@@ -50,7 +50,8 @@ test('as sobras pintam com o fundo da marca, e o desenhista acompanha a zona que
   assert.match(R.BASE, /\.mt-faixas\{position:absolute;inset:0;background:var\(--mt-fundo\);visibility:hidden\}/);
   assert.match(R.cssDosTokens(require('../js/tokens.js').gerar({})), /^:host,\.mt-palco\{--mt-fundo:/);
   const src = ler('js/peca-render.js');
-  assert.match(src, /new ResizeObserver\(\(\) => enquadrar\(host, palcoEl\)\)/);
+  // O observador também remede a peça no navegador sem container query (QA de lançamento, 03/11: remedir).
+  assert.match(src, /new ResizeObserver\(\(\) => \{ enquadrar\(host, palcoEl\); remedir\(\); \}\)/);
   assert.match(src, /if \(observador\) observador\.disconnect\(\);/, 'o observador sai com a peça');
 });
 

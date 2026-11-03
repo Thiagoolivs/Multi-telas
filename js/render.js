@@ -1931,7 +1931,8 @@
     const k = escalaDaTela();
     const host = document.createElement('div');
     host.className = 'mt-peca-escala';
-    host.style.cssText = Math.abs(k - 1) < 0.01 ? 'position:absolute;inset:0'
+    // left/top/width/height, e não `inset`: antes do Chromium 87 o `inset` é ignorado e a peça ficava 0×0 (QA de lançamento, 03/11).
+    host.style.cssText = Math.abs(k - 1) < 0.01 ? 'position:absolute;left:0;top:0;width:100%;height:100%'
       : 'position:absolute;left:0;top:0;width:' + (100 / k) + '%;height:' + (100 / k) + '%;transform:scale(' + k + ');transform-origin:0 0';
     el.appendChild(host);
     return host;
