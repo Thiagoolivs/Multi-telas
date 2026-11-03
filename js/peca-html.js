@@ -266,8 +266,31 @@
   }
   const semAspas = (s) => s.replace(/"[^"]*"|'[^']*'/g, '""');
 
-  // Números com unidade, sem confundir com pedaço de nome (fundo-2, translate3d).
-  const NUMERO = /(?<![A-Za-z0-9_-])(-?(?:\d+\.?\d*|\.\d+))([A-Za-z%]*)/g;
+  /*
+   * Números com unidade, sem confundir com pedaço de nome (fundo-2, translate3d).
+   *
+   * QA de lançamento, 03/11: era um lookbehind, `(?<![A-Za-z0-9_-])`, que só
+   * existe do Chromium 62 em diante. Este arquivo vai no pacote da TV
+   * (server/pacote-tv.js), e erro de SINTAXE num arquivo derruba o pacote
+   * inteiro — numa Samsung de 2018 a TV ficava para sempre em "Iniciando
+   * exibição". `semPrefixo` faz a mesma conta à mão: acha o casamento e, se o
+   * caractere de antes é de nome, recomeça uma posição adiante — exatamente o
+   * que o motor faz com o lookbehind. O teste compara os dois.
+   */
+  const NUMERO = /(-?(?:\d+\.?\d*|\.\d+))([A-Za-z%]*)/g;
+  const NOME_SOLTO = /[A-Za-z][A-Za-z-]*(?![A-Za-z0-9_(-])/g;
+  const DE_NOME = /[A-Za-z0-9_-]/;
+  function semPrefixo(re, s) {
+    const achados = [];
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(s))) {
+      if (m.index > 0 && DE_NOME.test(s[m.index - 1])) { re.lastIndex = m.index + 1; continue; }
+      achados.push(m);
+      if (!m[0].length) re.lastIndex++;
+    }
+    return achados;
+  }
 
   function conferirFonte(prop, valor) {
     const v = valor;
@@ -298,10 +321,7 @@
     const sombras = dividir(valor, ',');
     if (sombras.length > 2) return 'no máximo 2 sombras por elemento';
     for (const s of sombras) {
-      const medidas = [];
-      let m;
-      NUMERO.lastIndex = 0;
-      while ((m = NUMERO.exec(s))) medidas.push(Number(m[1]));
+      const medidas = semPrefixo(NUMERO, s).map((m) => Number(m[1]));
       if (medidas.length >= 3 && Math.abs(medidas[2]) > 3) return 'sombra grande demais (desfoque acima de 3cqw)';
     }
     return null;
@@ -318,7 +338,7 @@
     if (/#[0-9a-f]{3,8}\b/i.test(v) || /\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix|light-dark)\s*\(/i.test(v)) {
       return 'cor só por token: var(--mt-fundo), var(--mt-destaque)…';
     }
-    const nomes = v.match(/(?<![A-Za-z0-9_-])[A-Za-z][A-Za-z-]*(?![A-Za-z0-9_(-])/g) || [];
+    const nomes = semPrefixo(NOME_SOLTO, v).map((m) => m[0]);
     const corNomeada = nomes.find((x) => CORES_POR_NOME.has(x.toLowerCase()));
     if (corNomeada) return `cor por nome (${corNomeada}): use um token, var(--mt-…)`;
 
@@ -329,9 +349,7 @@
       return nome.startsWith('--mt-') ? `token desconhecido (${nome})` : `variável não declarada nesta peça (${nome})`;
     }
 
-    let m;
-    NUMERO.lastIndex = 0;
-    while ((m = NUMERO.exec(v))) {
+    for (const m of semPrefixo(NUMERO, v)) {
       const u = m[2].toLowerCase();
       if (!u || UNIDADES.has(u)) continue;
       if (u === 'e') continue; // notação científica (1e3) — não é unidade
@@ -557,6 +575,19 @@
 
   /* ======================= HTML: a porta ======================= */
 
+  /*
+   * "Tem letra ou número?" em qualquer alfabeto. QA de lançamento, 03/11: o
+   * `/[\p{L}\p{N}]/u` escrito direto é erro de SINTAXE antes do Chromium 64 e
+   * derrubava o pacote da TV. Montada em tempo de execução, a expressão falha
+   * só aqui, e o navegador antigo usa a aproximação (latim, grego, cirílico e
+   * o resto do plano básico, sem pontuação nem espaço) — serve para o aviso
+   * de "texto fixo fora de campo", que é só um aviso.
+   */
+  const LETRA_OU_NUMERO = (function () {
+    try { return new RegExp('[\\p{L}\\p{N}]', 'u'); }
+    catch (e) { return /[0-9A-Za-z\u00AA\u00B5\u00BA\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u1FFF\u2C00-\uD7FF\uF900-\uFDFF\uFE70-\uFEFF\uFF10-\uFFDC]/; }
+  })();
+
   function higienizarHtml(html, problemas, avisos) {
     let s = String(html || '');
     if (s.length > LIMITES.html) { problemas.push(`HTML maior que ${LIMITES.html / 1024} KB`); s = s.slice(0, LIMITES.html); }
@@ -570,7 +601,7 @@
 
     function visitar(no, prof, emCampo) {
       if (no.texto != null) {
-        if (!emCampo && /[\p{L}\p{N}]/u.test(no.texto) && avisosTexto < 3) {
+        if (!emCampo && LETRA_OU_NUMERO.test(no.texto) && avisosTexto < 3) {
           avisosTexto++;
           avisos.push(`texto fixo fora de campo: "${no.texto.trim().slice(0, 30)}" — o cliente não consegue editar`);
         }
@@ -860,5 +891,7 @@
   return {
     LIMITES, PAPEIS, FORMATOS, VIVOS,
     higienizar, validarItem, ehMidia, doArquivo, conferirConfig, fotosDoItem,
+    // Para o teste comparar com o lookbehind de antes (QA de lançamento, 03/11).
+    _semLookbehind: { semPrefixo, NUMERO, NOME_SOLTO },
   };
 });

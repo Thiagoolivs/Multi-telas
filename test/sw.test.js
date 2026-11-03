@@ -384,7 +384,8 @@ test('TV: o casco declarado é o que o player.html carrega de verdade', async ()
   const servido = P.pacote(RAIZ);
   assert.ok(servido, 'o pacote do player não montou');
   const scripts = [...servido.html.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(scripts, ['js/perf.js', 'js/tv.pacote.js']);
+  // O compat.js fica no <head>, fora do pacote: é ele que avisa quando o pacote não compila (QA de lançamento, 03/11).
+  assert.deepEqual(scripts, ['js/compat.js', 'js/perf.js', 'js/tv.pacote.js']);
   for (const s of scripts) {
     assert.ok(lista.includes("'/" + s.replace(/^\//, '') + "'"), 'player.html carrega ' + s + ' e o casco não guarda');
   }
