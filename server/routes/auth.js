@@ -269,11 +269,16 @@ module.exports = function(ctx) {
             state,
             prompt: 'select_account',
           });
+          const seguro = isSecureRequest(req) ? '; Secure' : '';
+          // A frente escolhida no cadastro (docs/FRENTES.md) atravessa o Google num cookie curto, como o state.
+          const frente = perfilValido(new URL(req.url, baseUrl(req)).searchParams.get('frente'));
           res.writeHead(302, {
             Location: url,
             'Cache-Control': 'no-store',
             // state em cookie curto: confere na volta (proteção CSRF).
-            'Set-Cookie': 'mt_oauth=' + state + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + (isSecureRequest(req) ? '; Secure' : ''),
+            // Sem frente, apaga a de uma tentativa anterior abandonada (senão a conta nova nasceria nela).
+            'Set-Cookie': ['mt_oauth=' + state + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + seguro,
+              frente ? 'mt_frente=' + frente + '; HttpOnly; Path=/; SameSite=Lax; Max-Age=600' + seguro : 'mt_frente=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'],
           });
           return res.end();
         }
@@ -323,6 +328,9 @@ module.exports = function(ctx) {
                 // mostra os dois links. Registrado com origem própria para ficar
                 // claro que não veio de caixinha marcada.
                 await db.registrarAceite(tenantId, userId, email, legal.VERSAO, 'google', clientIp(req));
+                // A frente que a pessoa escolheu antes de ir ao Google (cookie mt_frente).
+                const frente = perfilValido(((req.headers.cookie || '').match(/mt_frente=([^;]+)/) || [])[1]);
+                if (frente) await db.setTenantPerfil(tenantId, frente);
                 await paleta.garantir(db, tenantId);
                 u = { id: userId, tenant_id: tenantId };
                 contaNova = true;
@@ -334,7 +342,7 @@ module.exports = function(ctx) {
             await cortesia.sincronizar(db, u.tenant_id, email);
             await auth.startSession(res, u.id, u.tenant_id, req);
             // Limpa o cookie de state e entra no painel.
-            res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), 'mt_oauth=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'].flat().filter(Boolean));
+            res.setHeader('Set-Cookie', [res.getHeader('Set-Cookie'), 'mt_oauth=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0', 'mt_frente=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0'].flat().filter(Boolean));
             // ?cadastro=google: o painel conta a conversão uma vez e tira o
             // parâmetro da barra (web/src/lib/analytics.js).
             res.writeHead(302, { Location: contaNova ? '/app/?cadastro=google' : '/app/', 'Cache-Control': 'no-store' });
@@ -354,6 +362,17 @@ module.exports = function(ctx) {
             if (b && b.perfil !== undefined) {
               if (sess.role !== 'owner' && sess.role !== 'admin') return sendJson(res, 403, { error: 'só o dono ou um admin muda o tipo de negócio' });
               if (!perfilValido(b.perfil)) return sendJson(res, 400, { error: 'tipo de negócio inválido' });
+              /*
+               * A FRENTE (Empresas, Saúde, Comércio) muda só pelo operador
+               * (decisão do dono, 02/11; docs/FRENTES.md): menu, sugestões e
+               * IA mudam de uma vez, e o cliente que trocasse sozinho se
+               * perderia. A conta antiga que nunca escolheu (perfil deduzido
+               * do nome) escolhe uma vez; mandar a mesma de novo não é troca.
+               */
+              const t = await db.getTenant(sess.tenant_id);
+              if (t && perfilValido(t.perfil) && t.perfil !== b.perfil) {
+                return sendJson(res, 403, { error: 'Para trocar a frente da conta, fale com o suporte: a troca muda o painel inteiro e a gente acompanha com você.', code: 'frente_pelo_suporte' });
+              }
             }
             if (b && typeof b.name === 'string') await db.setUserName(sess.user_id, b.name.trim());
             // Só o dono muda o nome da empresa (aparece nas telas e nos e-mails).

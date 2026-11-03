@@ -96,13 +96,19 @@
    *   glow          → cor do brilho de destaque (rgba) — usado em neon/gold
    */
   const PRESETS = {
+    /*
+     * O tema padrão é a cor da marca (docs/MARCA.md): tinta no fundo, violeta
+     * na marca e lima no destaque. Era um azul-marinho de template — a TV
+     * nova parecia outro produto (QA de 26/10). O id fica: é o que as telas
+     * salvas guardam.
+     */
     'dark-premium': {
-      label: 'Dark Premium', dark: true,
-      bg: '#0a1020', bg2: '#131f3e', brand: '#3b82f6', brand2: '#2563eb', accent: '#60a5fa',
-      surface: '22,32,60', glass: 0.55, border: 'rgba(255,255,255,.09)',
-      text: '#f2f6ff', textDim: 'rgba(226,235,255,.62)',
+      label: 'MultiTelas (padrão)', dark: true,
+      bg: '#0E0B1F', bg2: '#1E1748', brand: '#7B5CFF', brand2: '#5B2EFF', accent: '#C6F432',
+      surface: '30,24,64', glass: 0.55, border: 'rgba(255,255,255,.09)',
+      text: '#F6F4FF', textDim: 'rgba(234,230,255,.64)',
       radius: 20, blur: 22, shadow: '0 18px 50px rgba(0,0,0,.45)', fx: 0.9,
-      glow: 'rgba(59,130,246,.45)',
+      glow: 'rgba(91,46,255,.45)', halo: '#9277FF',
     },
     'corporate-blue': {
       label: 'Corporate Blue', dark: true,
@@ -401,6 +407,8 @@
     s.setProperty('--brand', t.brand);
     s.setProperty('--brand-2', t.brand2);
     s.setProperty('--accent', t.accent);
+    // O halo de fundo: a cor de destaque, a não ser que o tema diga outra (o lima da marca vira oliva quando desfocado).
+    s.setProperty('--halo', t.halo || t.accent);
     s.setProperty('--surface-rgb', t.surface);
     s.setProperty('--glass', String(t.glass));
     s.setProperty('--surface', 'rgba(' + t.surface + ',' + t.glass + ')');

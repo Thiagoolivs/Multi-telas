@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button.jsx';
 import { Field, Input, Checkbox } from '../components/ui/Field.jsx';
 import { cn } from '../lib/cn.js';
 import { cadastroConcluido } from '../lib/analytics.js';
-import { PERFIS, IDS as PERFIL_IDS, deduzir } from '../lib/perfil.js';
+import { PERFIS, IDS as PERFIL_IDS, deduzir, frenteDoSlug } from '../lib/perfil.js';
 import { detectarRamo } from '../lib/paletas.js';
 
 // Logotipo do Google no botão (SVG inline — nada externo carrega aqui).
@@ -31,7 +31,11 @@ export function AuthScreen({ onAuthed }) {
    * Empresa, Comércio ou Saúde (D4). Segue o nome digitado ("Metalúrgica
    * Silva" → Empresa) até a pessoa tocar numa opção; daí vale a escolha.
    */
-  const [perfilEscolhido, setPerfilEscolhido] = useState('');
+  // Veio da landing de uma frente (/saude → /app/?frente=saude): já começa nela (docs/FRENTES.md).
+  const [perfilEscolhido, setPerfilEscolhido] = useState(() => {
+    try { const f = frenteDoSlug(new URLSearchParams(window.location.search).get('frente')); return f ? f.id : ''; }
+    catch (e) { return ''; }
+  });
   const perfil = perfilEscolhido || deduzir(detectarRamo([form.name]));
   const [aceite, setAceite] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -198,7 +202,7 @@ export function AuthScreen({ onAuthed }) {
           {/* Google: só aparece se o servidor tiver as credenciais. */}
           {caps.google && (mode === 'login' || mode === 'signup') && (
             <>
-              <a href="/api/auth/google"
+              <a href={'/api/auth/google' + (mode === 'signup' && perfilEscolhido ? '?frente=' + perfilEscolhido : '')}
                 className="mt-4 flex w-full items-center justify-center gap-2.5 rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition hover:bg-surface-2">
                 <GoogleMark /> Continuar com Google
               </a>
@@ -217,8 +221,8 @@ export function AuthScreen({ onAuthed }) {
               </Field>
             )}
             {mode === 'signup' && !hasInvite && (
-              <div role="radiogroup" aria-label="Tipo de negócio">
-                <div className="mb-1.5 text-xs font-medium text-ink-2">Tipo de negócio</div>
+              <div role="radiogroup" aria-label="Frente">
+                <div className="mb-1.5 text-xs font-medium text-ink-2">Para quem é a TV</div>
                 <div className="grid grid-cols-3 gap-1.5">
                   {PERFIL_IDS.map((id) => (
                     <button key={id} type="button" role="radio" aria-checked={perfil === id} onClick={() => setPerfilEscolhido(id)}
@@ -228,7 +232,7 @@ export function AuthScreen({ onAuthed }) {
                     </button>
                   ))}
                 </div>
-                <p className="mt-1 text-2xs text-ink-3">{PERFIS[perfil].descricao} Dá para trocar depois em Ajustes.</p>
+                <p className="mt-1 text-2xs text-ink-3"><b className="font-semibold text-ink-2">{PERFIS[perfil].marca}</b>: {PERFIS[perfil].descricao} Depois, a troca é pelo suporte.</p>
               </div>
             )}
 

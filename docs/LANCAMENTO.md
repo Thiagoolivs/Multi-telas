@@ -78,8 +78,8 @@ e build do painel, a cada push.
 - 🟡 **App Android de quiosque** para TV Box (abre sozinho ao ligar, tela
   sempre acesa, reabre se travar). Ver "TV Box" em
   [`ESTADO-DO-PROJETO.md`](ESTADO-DO-PROJETO.md).
-- 🟢 **Relatório de exibição (proof-of-play)** — saiu do plano Pro até existir.
-- 🟢 **Grupos de telas**, orientação da tela no pareamento.
+- ✅ **Relatório de exibição (proof-of-play)** — existe (`server/routes/relatorio.js`) e voltou ao plano pago; desde o QA de 26/10 mora em Telas.
+- ✅ **Grupos de telas** — existem (rótulo por tela, filtro em Telas).
 - 🟢 **SSE, limites e comandos em Redis** — hoje em memória, o que prende o
   produto a uma instância.
 - 🟢 Continuar tirando rotas do `server.js` (cobrança e telas já saíram).

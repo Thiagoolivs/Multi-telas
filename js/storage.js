@@ -34,8 +34,11 @@
         remoteConfigUrl: '',
         // De quanto em quanto tempo o player recarrega a config (segundos).
         refreshSeconds: 60,
-        cor: '#2F6FEB',   // (legado) cor de destaque — migrada para theme.overrides.brand
-        fundo: '#0a1128', // (legado) fundo — migrado para theme.overrides.bg
+        // (legado) cor de destaque e fundo — migrados para theme.overrides.
+        // Na cor da marca (docs/MARCA.md): config sem tema herdava daqui um
+        // azul e um azul-marinho por cima do tema padrão.
+        cor: '#5B2EFF',
+        fundo: '#0E0B1F',
         logoUrl: '',
         // Vazio: o cabeçalho usa o nome. Era 'Raft Embalagens', e o normalize
         // gravava isso em TODA tela de cliente (EXECUTOR §2d, item 39).

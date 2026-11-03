@@ -14,7 +14,7 @@ import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 import {
-  carregarTelasProntas, montarTela, estadoDaPrevia, aplicarTelaPronta, medirZonas, perfilDaTela, emPe,
+  carregarTelasProntas, montarTela, estadoDaPrevia, aplicarTelaPronta, medirZonas, perfilDaTela, emPe, marcaDaConta,
 } from '../lib/telasProntas.js';
 
 /*
@@ -52,13 +52,7 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
   useEffect(() => {
     setErro(''); setDados(null);
     carregarTelasProntas().then(setDados).catch((e) => setErro(e.message || 'Não deu para abrir as telas prontas.'));
-    brand.get().then((r) => {
-      const k = (r && r.kit) || {};
-      const local = k.local || {};
-      // O site e o endereço da Marca entram onde a tela de exemplo tinha os dela.
-      setMarca({ cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '',
-        site: k.site || '', endereco: [local.endereco, local.bairro].filter(Boolean).join(' · ') });
-    }).catch(() => setMarca({}));
+    brand.get().then((r) => setMarca(marcaDaConta(r))).catch(() => setMarca({}));
     devices.list().then((r) => setTvs((r && r.devices) || [])).catch(() => setTvs([]));
   }, [tentativa]);
 

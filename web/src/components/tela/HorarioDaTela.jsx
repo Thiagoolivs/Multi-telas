@@ -23,7 +23,7 @@ export function CamposDoHorario({ exp, setExp }) {
         <div className="mt-1.5 flex gap-1.5">
           {DIAS.map(([letra, n, nome]) => (
             <button key={n} type="button" title={nome} aria-pressed={exp.dias.includes(n)} onClick={() => alternarDia(n)}
-              className={'h-8 w-8 rounded-full border text-xs font-semibold ' + (exp.dias.includes(n)
+              className={'h-8 w-8 max-sm:h-11 max-sm:w-auto max-sm:flex-1 rounded-full border text-xs font-semibold ' + (exp.dias.includes(n)
                 ? 'border-accent bg-accent text-white' : 'border-line bg-surface text-ink-3')}>
               {letra}
             </button>

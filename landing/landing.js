@@ -40,20 +40,41 @@
   todos('.aba').forEach(function (b) {
     b.addEventListener('click', function () { mostrarExemplo(b.getAttribute('data-ramo')); });
   });
+  // Na landing de uma frente (/saude, /empresas…), o exemplo dela abre primeiro (server/landing-frentes.js).
+  var exemploDaFrente = document.body && document.body.getAttribute('data-exemplo');
+  if (exemploDaFrente && exemploDaFrente !== 'otica') mostrarExemplo(exemploDaFrente);
 
-  /* ---------- A TV do herói troca de peça ---------- */
-  // As outras peças só são baixadas depois que a página carregou: a primeira
-  // pintura leva uma imagem só.
-  window.addEventListener('load', function () {
+  /* ---------- A TV do herói troca de peça ----------
+   * As outras peças só são baixadas quando o navegador fica livre depois do
+   * load: a primeira pintura leva uma imagem só, e decodificar as outras não
+   * disputa o primeiro toque (QA de 26/10: 426 ms de bloqueio no celular).
+   * E a troca só roda com o herói na tela e a aba visível — rolou para baixo,
+   * para de gastar.
+   */
+  var depoisDoLoad = function (fn) {
+    var ocioso = window.requestIdleCallback || function (f) { return setTimeout(f, 1200); };
+    window.addEventListener('load', function () { ocioso(fn, { timeout: 3000 }); });
+  };
+  depoisDoLoad(function () {
     var trocas = todos('#tv-heroi .troca');
     if (!trocas.length || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    trocas.forEach(function (img) { img.src = img.getAttribute('data-src'); });
-    var i = -1;
-    setInterval(function () {
+    trocas.forEach(function (img) { img.decoding = 'async'; img.src = img.getAttribute('data-src'); });
+    var i = -1, timer = null, visivel = true;
+    function passo() {
       trocas.forEach(function (img) { img.classList.remove('no-ar'); });
       i = (i + 1) % (trocas.length + 1);
       if (i < trocas.length) trocas[i].classList.add('no-ar');
-    }, 4500);
+    }
+    function conferir() {
+      var deve = visivel && !document.hidden;
+      if (deve && !timer) timer = setInterval(passo, 4500);
+      if (!deve && timer) { clearInterval(timer); timer = null; }
+    }
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(function (es) { visivel = es[0].isIntersecting; conferir(); }).observe(document.getElementById('tv-heroi'));
+    }
+    document.addEventListener('visibilitychange', conferir);
+    conferir();
   });
 
   /* ---------- Aparecer ao rolar (sem biblioteca) ---------- */
@@ -95,8 +116,17 @@
         });
       }
     }
-    simulador(dados.simulacao || []);
+    // O simulador só é montado quando a seção de preços aparece: quem não rola até lá não paga por ele.
+    quandoAparecer(document.getElementById('precos'), function () { simulador(dados.simulacao || []); });
     contato(dados.contato || {});
+  }
+
+  function quandoAparecer(el, fn) {
+    if (!el || !('IntersectionObserver' in window)) { fn(); return; }
+    var o = new IntersectionObserver(function (es) {
+      if (es.some(function (e) { return e.isIntersecting; })) { o.disconnect(); fn(); }
+    }, { rootMargin: '300px 0px' });
+    o.observe(el);
   }
 
   function simulador(linhas) {

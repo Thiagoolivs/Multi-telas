@@ -1,8 +1,7 @@
 /* Fontes servidas pelo próprio domínio: sem depender da Google, e sem o
    salto de layout de quem espera a fonte chegar de outro servidor.
-   Poppins nos títulos, Nunito Sans no texto (landing clara, 22/10). */
-@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 600; font-display: swap; src: url('./poppins-latin-600-normal.woff2') format('woff2'); }
-@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 700; font-display: swap; src: url('./poppins-latin-700-normal.woff2') format('woff2'); }
-@font-face { font-family: 'Nunito Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('./nunito-sans-latin-400-normal.woff2') format('woff2'); }
-@font-face { font-family: 'Nunito Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('./nunito-sans-latin-600-normal.woff2') format('woff2'); }
-@font-face { font-family: 'Nunito Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('./nunito-sans-latin-700-normal.woff2') format('woff2'); }
+   Outfit, a letra da marca (docs/MARCA.md), em tudo — os arquivos moram em
+   /fonts/marca/, os mesmos do painel. */
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/marca/outfit-400-normal-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/marca/outfit-600-normal-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/marca/outfit-700-normal-latin.woff2') format('woff2'); }

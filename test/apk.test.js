@@ -186,7 +186,7 @@ test('o CI publica o Release só da main e só assinado; a TV conta o versionCod
   const S = ler('web/src/pages/ScreensPage.jsx');
   assert.match(S, /'App novo \(' \+ d\.appNovo \+ '\): aperte OK no controle da TV'/);
   assert.match(S, /'App novo \(' \+ d\.appNovo \+ '\): instale uma vez pelo pendrive'/);
-  assert.match(ler('sw.js'), /mt-shell-v(6[3-9]|[7-9]\d)/);
+  assert.ok(Number(/mt-shell-v(\d+)/.exec(ler('sw.js'))[1]) >= 63);
 });
 
 /* ---------------- servidor de verdade ---------------- */

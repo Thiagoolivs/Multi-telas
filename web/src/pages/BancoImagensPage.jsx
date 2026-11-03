@@ -165,7 +165,7 @@ export function BancoImagensPage({ onUsar, operador }) {
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
             {itens.map((i) => (
               <div key={i.id} className="group overflow-hidden rounded-lg border border-line bg-surface-2">
-                <div className="relative aspect-video bg-[#0a1128]">
+                <div className="relative aspect-video bg-[#0E0B1F]">
                   {/*
                     Imagem quebrada some em vez de virar caixa cinza com texto
                     alternativo por cima. O arquivo do banco vive fora da conta
@@ -275,7 +275,7 @@ function DaPixabay({ busca, operador, segmentos, segmento, onCurou }) {
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-5">
             {fotos.map((f) => (
               <div key={f.id} className="overflow-hidden rounded-lg border border-line bg-surface-2">
-                <div className="relative aspect-video bg-[#0a1128]">
+                <div className="relative aspect-video bg-[#0E0B1F]">
                   <img src={f.previa} alt={f.tags} loading="lazy" className="h-full w-full object-cover" />
                   {fazendo === f.id && <span className="absolute inset-0 flex items-center justify-center bg-black/55 text-2xs font-semibold text-white">Baixando…</span>}
                 </div>

@@ -148,10 +148,11 @@ test('Aniversariantes é operação, não conta', () => {
    * Estava em "Conta", junto de armazenamento, equipe e cobrança — coisas que
    * se mexe uma vez e esquece. A lista alimenta o que a TV mostra e muda toda
    * semana; quem cuida dela é quem cuida do conteúdo. No menu novo (PLANO
-   * §5.1) ela mora em Automáticos, junto do Mural.
+   * §5.1) ela morava em Automáticos, junto do Mural; desde o QA de 26/10, em
+   * Recursos extras (com o Mural e os Indicadores).
    */
   const menu = ler('web', 'src', 'lib', 'menu.js');
-  assert.match(menu, /\{ id: 'automaticos', label: 'Automáticos', paginas: \['birthdays', 'mural'\] \}/);
+  assert.match(menu, /\{ id: 'extras', label: 'Recursos extras', paginas: \['birthdays', 'mural', 'indicadores'\] \}/);
   const conta = menu.slice(menu.indexOf("{ id: 'conta'"));
   assert.ok(!/birthdays/.test(conta.slice(0, conta.indexOf('}'))), 'Aniversariantes voltou para Conta');
 });

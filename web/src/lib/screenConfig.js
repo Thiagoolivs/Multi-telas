@@ -99,7 +99,7 @@ export const THEME_PRESETS = [
   // Primeiro da lista de propósito: o tema que veste a tela com a identidade da
   // empresa deve ser o caminho óbvio, não uma opção escondida no fim.
   { value: 'marca', label: 'Minha marca (cores da empresa)' },
-  { value: 'dark-premium', label: 'Dark Premium' },
+  { value: 'dark-premium', label: 'MultiTelas (padrão)' },
   { value: 'corporate-blue', label: 'Corporate Blue' },
   { value: 'luxury-gold', label: 'Luxury Gold' },
   { value: 'neon-cyber', label: 'Neon Cyber' },

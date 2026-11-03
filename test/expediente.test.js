@@ -88,7 +88,7 @@ test('a TV: camada por cima, sem remontar as zonas, som e vídeo parados, músic
   // O módulo carrega antes do player, e vai para o cache da TV (offline).
   const html = ler('player.html');
   assert.ok(html.indexOf('js/expediente.js') > 0 && html.indexOf('js/expediente.js') < html.indexOf('js/player.js'));
-  assert.match(ler('sw.js'), /'\/js\/expediente\.js',/);
+  assert.ok(require('./offline.js').guardadoOffline('js/expediente.js'));
 });
 
 test('no painel: o horário fica sempre editável, e a escolha do que a TV mostra é explícita', () => {

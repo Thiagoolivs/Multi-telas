@@ -78,6 +78,7 @@ test('cada passo diz o próximo: Marca → Criar → Ligar a TV → a peça vai 
   assert.match(telas, /await porCampanhaNaTela\(c && c\.resultado, c\.nome, pareada\);/);
   // No Início, o caminho vem antes de tudo.
   const inicio = ler('web/src/pages/DashboardPage.jsx');
-  assert.ok(inicio.indexOf('<PrimeirosPassos') > 0 && inicio.indexOf('<PrimeirosPassos') < inicio.indexOf('<OpcoesDeCriar'),
-    'o "Comece por aqui" ficou abaixo das opções e saiu da tela no celular');
+  assert.ok(inicio.indexOf('<PrimeirosPassos') > 0 && inicio.indexOf('<PrimeirosPassos') < inicio.indexOf('<TvsAoVivo')
+    && inicio.indexOf('<TvsAoVivo') < inicio.indexOf('O que você quer mostrar hoje?'),
+    'o "Comece por aqui" ficou abaixo das TVs ou das opções e saiu da tela no celular');
 });

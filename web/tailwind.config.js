@@ -26,12 +26,18 @@ export default {
         'danger-soft': 'rgb(var(--c-danger-soft) / <alpha-value>)',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        // Outfit, a letra da marca (docs/MARCA.md). Antes: 'Inter', que o painel nunca carregava — saía a do sistema.
+        sans: ['Outfit', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       fontSize: {
-        '2xs': ['0.6875rem', { lineHeight: '1rem' }],   // 11
-        xs: ['0.75rem', { lineHeight: '1.1rem' }],       // 12
+        /*
+         * As duas menores crescem no celular (index.css, --fs-2xs/--fs-xs):
+         * 11 e 12 px no computador; 13 px no celular (QA de 26/10: "para o
+         * dono de loja, no celular, 13 px deveria ser o mínimo").
+         */
+        '2xs': ['var(--fs-2xs)', { lineHeight: 'var(--lh-2xs)' }],   // 11 · 13 no celular
+        xs: ['var(--fs-xs)', { lineHeight: 'var(--lh-xs)' }],        // 12 · 13 no celular
         sm: ['0.8125rem', { lineHeight: '1.25rem' }],    // 13
         base: ['0.875rem', { lineHeight: '1.375rem' }],  // 14 (base de dashboard)
         md: ['0.9375rem', { lineHeight: '1.5rem' }],     // 15

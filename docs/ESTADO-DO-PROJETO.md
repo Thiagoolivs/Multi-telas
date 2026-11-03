@@ -6,9 +6,64 @@ histórico nenhum. A intenção declarada do produto é **qualidade com facilida
 arte de agência para quem não tem agência. Este documento avalia o sistema contra
 essa régua, não contra uma lista de recursos.
 
-Atualizado em: **23/10/2026** · 1551 testes passando · Fases 1 a 5 do
-DNA novo completas, o D41 e a rodada 6 inteira (EXECUTOR §2f e §2g,
-D0.1–D51, PRs #201 a #291).
+Atualizado em: **01/11/2026** · 1.600+ testes passando · rodada 7 (o QA
+completo de 26/10, PR #305) sobre as fases 1 a 5 do DNA novo, o D41 e a
+rodada 6 (EXECUTOR §2f e §2g, D0.1–D51, PRs #201 a #291).
+
+Mapa de toda a documentação: [`README.md`](README.md) desta pasta.
+
+---
+
+## Rodada 7 — o QA completo de 26/10 (01/11, PR #305)
+
+O QA mediu site, painel e TV em 4G lento e CPU de aparelho fraco. O que
+mudou, item a item:
+
+- **Peso e velocidade.** Compressão gzip/brotli no servidor
+  (`server/compressao.js`); painel carregado por página (pacote principal de
+  965 KB → 305 KB, 99 KB comprimido); os 25 scripts da TV num pacote só
+  montado pelo servidor (`server/pacote-tv.js`, o `player.html` segue a
+  fonte); landing com a troca de peças e o simulador sob demanda.
+- **TV.** Relógios sem segundos e sem repintar à toa; modo leve abaixo de 50
+  fps (era 40); vazamento de `setInterval` no relógio do clima offline. TV
+  nova: nome numerado ("TV 1") e já começa com uma tela pronta do ramo.
+- **Telas, mais clara.** Cartão com a TV em miniatura ao vivo, estado em
+  palavras ("No ar", "Fora do ar"), o que fazer quando cai, duas ações com
+  nome e "Mais opções" com tudo escrito.
+- **Celular.** 44 px para tudo que se toca, 13 px de letra mínima, abas que
+  mostram que rolam. Medido nas 24 páginas: zero alvo pequeno, zero rolagem
+  lateral, zero erro de console.
+- **Uma marca só** ([`MARCA.md`](MARCA.md)): tinta, violeta, lima e Outfit no
+  painel, na landing, no tema padrão da TV e nos e-mails.
+- **Início e menu.** Início com as TVs ao vivo e "Trocar agora"; menu de 9
+  para 8 grupos; Biblioteca (era Mídias) de 7 para 5 abas; relatório de
+  exibição em Telas; Pessoas, Mural e Indicadores em "Recursos extras".
+- **Operação.** `/healthz` + `healthcheckPath` no Railway, aviso de "versão no
+  ar" no webhook; [`OPERACAO.md`](OPERACAO.md) com região, homologação e
+  alerta de deploy.
+- **Ads.** Planejamento do Multi Telas Ads em [`ads/`](ads/README.md) — só
+  documento, nada implementado. Decidido: locais da assinatura, Centro, peça
+  pela IA.
+- **Três frentes** ([`FRENTES.md`](FRENTES.md)): MultiTelas Empresas, Saúde e
+  Comércio num app só, com o registro em `js/perfil.js` — nome na barra,
+  menu da frente, landing própria (`/empresas`, `/saude`, `/comercio`),
+  cadastro já na frente. A frente só muda pelo operador (Plataforma › ficha
+  da conta). A verificação do Railway passou de `/saude` para `/healthz`.
+
+**Do QA, ficou para depois (e por quê):**
+
+- **Criar único** (Criar, Criando e Criados numa página): o dono pediu as
+  três abas em 23/10 (D47). O QA recomenda juntar. Decisão do dono.
+- **Agenda única** (Programação + Calendário + datas): refatoração grande do
+  editor; o QA põe no mês 2.
+- **Tipos antigos de conteúdo → peças** e **Postgres em todo lugar**: o QA
+  põe no mês 3. Postgres em todo lugar é pré-requisito das tabelas de
+  dinheiro do Ads ([`ads/05-arquitetura.md`](ads/05-arquitetura.md)).
+- **Região, homologação, notificação de deploy**: dependem de clicar no
+  Railway — passo a passo em [`OPERACAO.md`](OPERACAO.md).
+- **Galeria de peças prontas com variedade de cor**: hoje todas saem na
+  paleta da conta; mostrar as cores originais e aplicar a marca só na
+  prévia é uma decisão de produto.
 
 ---
 
@@ -448,7 +503,7 @@ homologado (Xiaomi TV Box S). Comodato de hardware, não (ver
 - **Prints de PR** vão para a branch órfã `prints` e entram no PR como
   `https://github.com/Thiagoolivs/Multi-telas/blob/prints/<caminho>?raw=true`.
 - Outro agente mexendo aqui ao mesmo tempo:
-  [`TAREFAS-ANTIGRAVITY.md`](TAREFAS-ANTIGRAVITY.md).
+  [`arquivo/TAREFAS-ANTIGRAVITY.md`](arquivo/TAREFAS-ANTIGRAVITY.md).
 
 ## Como o sistema está montado
 

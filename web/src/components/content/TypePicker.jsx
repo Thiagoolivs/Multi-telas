@@ -176,7 +176,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona })
       )}
 
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="inline-flex max-w-full gap-1 overflow-x-auto whitespace-nowrap rounded-lg border border-line bg-surface-2 p-1">
+        <div className="rolagem-lateral inline-flex max-w-full gap-1 overflow-x-auto whitespace-nowrap rounded-lg border border-line bg-surface-2 p-1">
           {TABS.map(([id, label, Icon]) => (
             <button key={id} onClick={() => setTab(id)}
               className={cn('inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition',

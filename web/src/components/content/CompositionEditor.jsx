@@ -1012,7 +1012,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <div className="mx-1 h-5 w-px bg-line" />
         {ASPECTS.map((a) => (
           <button key={a.id} onClick={() => editar((d) => ({ ...d, aspect: a.id }))} title={a.label}
-            className={'flex h-8 w-8 items-center justify-center rounded-md border ' + (aspect === a.id ? 'border-accent text-accent' : 'border-line text-ink-3 hover:text-ink')}>
+            className={'flex h-8 w-8 max-sm:h-11 max-sm:w-11 items-center justify-center rounded-md border ' + (aspect === a.id ? 'border-accent text-accent' : 'border-line text-ink-3 hover:text-ink')}>
             <a.icon size={16} />
           </button>
         ))}
@@ -2190,7 +2190,7 @@ function PainelAnimacao({ el, onChange, onPrevia }) {
 function IconBtn({ icon: Icone, title, onClick, disabled, ativo }) {
   return (
     <button type="button" title={title} onClick={onClick} disabled={disabled} aria-pressed={ativo ? 'true' : undefined}
-      className={'flex h-8 w-8 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-35 '
+      className={'flex h-8 w-8 max-sm:h-11 max-sm:w-11 items-center justify-center rounded-md border transition disabled:cursor-not-allowed disabled:opacity-35 '
         + (ativo ? 'border-accent text-accent' : 'border-line text-ink-2 hover:text-ink')}>
       <Icone size={15} />
     </button>

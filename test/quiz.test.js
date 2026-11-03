@@ -62,7 +62,7 @@ test('a TV desenha só as conferidas, com relógio que não depende de requestAn
   assert.match(corpo, /nova\.style\.animationDuration = q\.tempo \+ 's';/);
   assert.match(ler('css/player.css'), /@keyframes mt-quiz-tempo/);
   assert.match(ler('player.html'), /<script src="js\/quiz\.js"><\/script>\s*<script src="js\/render\.js">/);
-  assert.match(ler('sw.js'), /'\/js\/quiz\.js'/);
+  assert.ok(require('./offline.js').guardadoOffline('js/quiz.js'));
   assert.ok(Number((/const SHELL_CACHE = 'mt-shell-v(\d+)';/.exec(ler('sw.js')) || [])[1]) >= 50, 'o player mudou e a TV não baixa de novo');
   for (const f of ['js/quiz.js', 'js/render.js']) assert.ok(!/\{\s*\.\.\./.test(ler(f)), f + ' com spread de objeto (TV antiga)');
 });

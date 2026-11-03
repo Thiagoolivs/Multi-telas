@@ -1,27 +1,29 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw, Eye, Wand2 } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw, Eye, MoreHorizontal } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
-import { Button, IconButton } from '../components/ui/Button.jsx';
+import { Button } from '../components/ui/Button.jsx';
 import { Field, Input, Select } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { SkeletonRows, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
 import { useAsync } from '../lib/useAsync.js';
-import { devices, deviceConfig, criar } from '../api.js';
-import { porCampanhaNaTela } from '../lib/rodar.js';
+import { devices, deviceConfig, criar, brand } from '../api.js';
+import { porCampanhaNaTela, gravarEmLote } from '../lib/rodar.js';
+import { carregarTelasProntas, telaParaComecar, aplicarTelaPronta, marcaDaConta } from '../lib/telasProntas.js';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { SoundRemote } from '../components/content/SoundRemote.jsx';
 import { VerTelaAgora } from '../components/content/VerTelaAgora.jsx';
+import { MiniaturaDaTela } from '../components/tela/MiniaturaDaTela.jsx';
 import { esquecerParear } from '../lib/parearPendente.js';
 import { aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { CamposDoHorario } from '../components/tela/HorarioDaTela.jsx';
 import '../../../js/aparelho.js';
-import { usePerfil } from '../lib/perfil.js';
+import { usePerfil, perfilAtual } from '../lib/perfil.js';
 
 export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrParaPlano }) {
   const { data, loading, error, reload } = useAsync(devices.list);
@@ -151,10 +153,21 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
   );
 }
 
-// Mini "tela" da frota: status + programação (não é espelho ao vivo).
+/*
+ * O cartão de uma TV. Pensado para o dono da loja, no celular (QA de 26/10:
+ * "o cartão da TV tem seis ícones sem rótulo; ninguém sabe o que é o sino").
+ *
+ *   - Em cima, a TV em miniatura com o que ela está mostrando agora.
+ *   - O estado em palavras: "No ar", "Fora do ar há 2 h" — e, fora do ar, o
+ *     que fazer, com o botão que resolve.
+ *   - Duas ações com nome: mudar o que passa e ver a TV agora. O resto
+ *     (nome, recarregar, som, horário, backup, remover) mora em "Mais
+ *     opções", cada uma com o nome escrito.
+ */
 function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup, onAlerta, onRemove }) {
   const st = deviceStatus(d.lastSeen);
   const online = st.tone === 'ok';
+  const [mais, setMais] = useState(false);
   /*
    * Recarregar a TV daqui: o "desliga e liga" que resolve metade dos
    * chamados, sem ninguém ir até ela. Chega na hora pelo tempo real, ou em
@@ -167,65 +180,82 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
     catch (e) { setRecarregando('erro'); }
     setTimeout(() => setRecarregando(''), 4000);
   }
+  const fechar = (fn) => () => { setMais(false); fn(); };
+  const semAlerta = d.expediente && d.expediente.alerta === false;
   return (
     <div className="overflow-hidden rounded-xl border border-line bg-surface transition hover:border-line-strong">
       <div className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-line bg-gradient-to-br from-surface-2 to-accent-soft/40">
-        <div className="absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-surface/80 px-2 py-0.5 text-2xs backdrop-blur">
-          <StatusDot tone={st.tone} pulse={st.pulse} /><span className="text-ink-2">{st.label}</span>
+        <MiniaturaDaTela d={d} online={online} vazia={!d.hasConfig} />
+        <div className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-2 py-0.5 text-xs font-medium backdrop-blur">
+          <StatusDot tone={st.tone} pulse={st.pulse} /><span className="text-ink">{st.label}</span>
         </div>
-        <div className="flex flex-col items-center gap-1.5 text-center">
-          <MonitorPlay size={26} className={online ? 'text-accent' : 'text-ink-3'} />
-          <span className="text-xs font-medium text-ink-2">{d.hasConfig ? 'Programação ativa' : 'Sem programação'}</span>
-          {/*
-            * Tela offline quase sempre é a TV que voltou sem o vínculo — o
-            * navegador dela limpou o armazenamento ao fechar. O caminho de
-            * volta precisa estar aqui, onde o cliente vê o problema, e não
-            * escondido atrás de um ícone.
-            */}
-          {!online && (
-            <Button size="sm" variant="secondary" icon={RefreshCw} onClick={onReconnect} className="mt-1">
-              Reconectar
-            </Button>
-          )}
-        </div>
-        <span className="tnum absolute bottom-2 left-2 rounded border border-line bg-surface/80 px-1.5 py-0.5 text-2xs tracking-widest text-ink-3 backdrop-blur">{d.code}</span>
       </div>
-      {/* Duas linhas: nome e estado em cima, ações embaixo. Numa linha só, as
-          sete ações empurravam o nome para largura zero e cortavam o remover. */}
-      <div className="space-y-2 p-3">
+      <div className="space-y-2.5 p-3">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-sm font-semibold text-ink">{d.name || 'Tela sem nome'}</span>
-            {d.grupo && <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-px text-2xs text-ink-3">{d.grupo}</span>}
-            <span className="ml-auto flex shrink-0 items-center">
-              <IconButton icon={Pencil} label="Nome e grupo" size={14} onClick={onRename} />
-              <IconButton icon={Trash2} label="Remover" size={14} className="hover:text-danger" onClick={onRemove} />
-            </span>
+            <span className="truncate text-base font-semibold text-ink">{d.name || 'Tela sem nome'}</span>
+            {d.grupo && <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-xs text-ink-3">{d.grupo}</span>}
           </div>
-          <div className="truncate text-2xs text-ink-3">
+          <div className="truncate text-xs text-ink-3">
             {recarregando === 'ok' ? 'Recarregando a TV…' : recarregando === 'erro' ? 'Não consegui mandar o comando'
-              : <>{st.label}{st.seen ? ' · ' + st.seen : ''}{descreverAparelho(d.info)}</>}
+              : <>{online ? 'Deu sinal ' + (st.seen || 'agora') : st.seen ? 'Último sinal ' + st.seen : 'Ainda não deu sinal'}{descreverAparelho(d.info)}</>}
           </div>
           {/* D41: a casca Android está atrás da publicada. A de antes do D41 não se atualiza: reinstala uma vez. */}
           {d.appNovo && (
-            <div className="truncate text-2xs text-warn" title={'App ' + d.appNovo + ' publicado'}>
+            <div className="truncate text-xs text-warn" title={'App ' + d.appNovo + ' publicado'}>
               {d.info && d.info.appCodigo
                 ? 'App novo (' + d.appNovo + '): aperte OK no controle da TV'
                 : 'App novo (' + d.appNovo + '): instale uma vez pelo pendrive'}
             </div>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-1">
-          <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={onContent} className="mr-auto">Conteúdo</Button>
-          <IconButton icon={Eye} label="Ver a tela agora" size={14} onClick={onVer} />
-          <IconButton icon={RotateCw} label="Recarregar a TV" size={14} onClick={recarregar} disabled={!!recarregando} />
-          <IconButton icon={Music} label="Som ao vivo" size={14} onClick={onSom} />
-          <IconButton icon={d.expediente && d.expediente.alerta === false ? BellOff : Bell}
-            label="Horário e alerta de queda" size={14} onClick={onAlerta} />
-          <IconButton icon={Archive} label="Backup / restaurar" size={14} onClick={onBackup} />
+        {/*
+          * Tela fora do ar quase sempre é a TV que voltou sem o vínculo — o
+          * navegador dela limpou o armazenamento ao fechar. O caminho de
+          * volta fica aqui, onde o cliente vê o problema, com o que fazer
+          * escrito, e não escondido atrás de um ícone.
+          */}
+        {!online && d.lastSeen && (
+          <div className="rounded-lg border border-warn-soft bg-warn-soft px-3 py-2 text-xs text-ink-2">
+            Confira se a TV está ligada e com internet. Se ela estiver mostrando um código, toque em <b>Reconectar</b>.
+            <div className="mt-2"><Button size="sm" variant="secondary" icon={RefreshCw} onClick={onReconnect}>Reconectar</Button></div>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="primary" icon={LayoutTemplate} onClick={onContent} className="col-span-2">{d.hasConfig ? 'Mudar o que passa' : 'Pôr conteúdo nesta TV'}</Button>
+          <Button variant="secondary" icon={Eye} onClick={onVer} title="Ver a tela agora">Ver agora</Button>
+          <Button variant="secondary" icon={MoreHorizontal} onClick={() => setMais(true)} aria-label={'Mais opções da TV ' + (d.name || '')}>Mais opções</Button>
         </div>
       </div>
+
+      <Dialog open={mais} onClose={() => setMais(false)} title={d.name || 'Tela sem nome'}
+        description={'Código da TV: ' + (d.code || '—') + (d.grupo ? ' · Grupo ' + d.grupo : '')}>
+        <div className="-mx-1 flex flex-col">
+          <OpcaoDaTela icon={Pencil} titulo="Nome e grupo" texto="Ex.: Recepção, Loja Centro." onClick={fechar(onRename)} />
+          <OpcaoDaTela icon={RotateCw} titulo="Recarregar a TV" texto="O “desliga e liga”, sem ir até ela." onClick={fechar(recarregar)} disabled={!!recarregando} />
+          <OpcaoDaTela icon={Music} titulo="Som ao vivo" texto="Volume e música, na hora." onClick={fechar(onSom)} />
+          <OpcaoDaTela icon={semAlerta ? BellOff : Bell} titulo="Horário e aviso de queda"
+            texto={semAlerta ? 'O aviso por e-mail está desligado.' : 'Quando a loja abre e o e-mail se a TV cair.'} onClick={fechar(onAlerta)} />
+          <OpcaoDaTela icon={Archive} titulo="Backup e cópia" texto="Guardar, restaurar ou copiar de outra TV." onClick={fechar(onBackup)} />
+          {!online && <OpcaoDaTela icon={RefreshCw} titulo="Reconectar" texto="A TV voltou mostrando um código." onClick={fechar(onReconnect)} />}
+          <OpcaoDaTela icon={Trash2} titulo="Remover a TV" texto="Desliga esta TV da sua conta." perigo onClick={fechar(onRemove)} />
+        </div>
+      </Dialog>
     </div>
+  );
+}
+
+// Uma linha do "Mais opções": ícone, nome e o que faz. Alta o bastante para o dedo (44 px).
+function OpcaoDaTela({ icon: Icon, titulo, texto, onClick, perigo, disabled }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      className={'flex min-h-[52px] w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-surface-2 disabled:opacity-50 ' + (perigo ? 'text-danger' : 'text-ink')}>
+      <Icon size={18} className="shrink-0" />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium">{titulo}</span>
+        <span className="block text-xs text-ink-3">{texto}</span>
+      </span>
+    </button>
   );
 }
 
@@ -318,7 +348,9 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
    */
   const [campanha, setCampanha] = useState(null);
   const [mandada, setMandada] = useState('');
-  React.useEffect(() => { if (open) { setPareada(null); setError(''); setErroDePlano(false); setMandada(''); } }, [open]);
+  // A tela pronta com que a TV nova começou (nome), para o diálogo contar.
+  const [comecou, setComecou] = useState('');
+  React.useEffect(() => { if (open) { setPareada(null); setError(''); setErroDePlano(false); setMandada(''); setComecou(''); } }, [open]);
   React.useEffect(() => {
     if (!pareada) return;
     criar.campanhas().then((r) => {
@@ -345,6 +377,21 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
       const dev = await devices.pair(code, name);
       esquecerParear(); // o código guardado do QR já foi usado
       setCode(''); setName('');
+      /*
+       * TV sem nada para mostrar: começa com uma tela pronta do ramo, com a
+       * marca da conta (QA de 26/10). Se falhar, a TV fica na espera como
+       * antes — parear já deu certo, e isto é bônus.
+       */
+      if (dev && dev.semConteudo) {
+        try {
+          const [dados, r] = await Promise.all([carregarTelasProntas(), brand.get()]);
+          const tela = telaParaComecar(dados, marcaDaConta(r), perfilAtual().id, null);
+          if (tela) {
+            await gravarEmLote([{ id: dev.id, name: dev.name }], (cfg) => aplicarTelaPronta(cfg, tela), 'Tela pronta: ' + tela.nome);
+            setComecou(tela.nome);
+          }
+        } catch (e) { /* segue na espera */ }
+      }
       setPareada(dev);
       onDone();
     } catch (err) {
@@ -367,8 +414,10 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
         <div className="flex items-start gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ok-soft text-ok"><Check size={20} /></div>
           <div className="text-sm text-ink-2">
-            <b className="text-ink">{pareada.name || 'A TV'}</b> já é sua: ela mostra "Tudo certo" e fica esperando.
-            O que você publicar aparece nela na hora — um modelo pronto, uma data comemorativa ou uma campanha feita pela IA.
+            {comecou
+              ? <><b className="text-ink">{pareada.name || 'A TV'}</b> já é sua e está mostrando “{comecou}”, uma tela pronta com a sua marca. Troque quando quiser: o que você publicar aparece nela na hora.</>
+              : <><b className="text-ink">{pareada.name || 'A TV'}</b> já é sua: ela mostra "Tudo certo" e fica esperando.
+                O que você publicar aparece nela na hora — um modelo pronto, uma data comemorativa ou uma campanha feita pela IA.</>}
             {mandada === 'ok' && <div className="mt-2 font-medium text-ok">A campanha foi para a TV, com cabeçalho e rodapé. Olhe para ela!</div>}
             {error && <div className="mt-2 text-danger">{error}</div>}
           </div>

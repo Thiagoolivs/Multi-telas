@@ -167,6 +167,29 @@ export function aplicarTelaPronta(cfg, montada) {
   return next;
 }
 
+/* A marca da conta no formato que as telas prontas usam (a partir do que brand.get devolve). */
+export function marcaDaConta(r) {
+  const k = (r && r.kit) || {};
+  const local = k.local || {};
+  // O site e o endereço da Marca entram onde a tela de exemplo tinha os dela.
+  return { cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '',
+    site: k.site || '', endereco: [local.endereco, local.bairro].filter(Boolean).join(' · ') };
+}
+
+/*
+ * A tela com que uma TV recém-pareada começa (QA de 26/10): ela ficava na
+ * espera dizendo "Tudo certo, TV" até alguém publicar, e as telas prontas,
+ * que são o melhor do produto, só apareciam para quem fosse procurar. A do
+ * ramo da conta primeiro; deitada, a não ser que a TV tenha contado que está
+ * em pé. Nula se não houver nenhuma que sirva.
+ */
+export function telaParaComecar(dados, marca, perfilId, tvEmPe) {
+  const telas = (dados && dados.telas) || [];
+  const cabe = (t) => (tvEmPe == null ? !emPe(t.layout) : emPe(t.layout) === tvEmPe);
+  const t = telas.find((x) => perfilDaTela(x) === perfilId && cabe(x)) || telas.find(cabe);
+  return t ? montarTela(t, dados.modelos, marca || {}, dados.exemplos) : null;
+}
+
 /*
  * O tamanho real de cada zona do layout (1080p no lado menor), medido com a
  * mesma grade da TV: é nele que a peça é conferida quando o cliente troca o

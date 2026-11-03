@@ -68,7 +68,7 @@ test('a TV conhece o tipo, carrega o módulo e o guarda para rodar offline', () 
   const render = fs.readFileSync(path.join(RAIZ, 'js', 'render.js'), 'utf8');
   assert.match(render, /precos: renderPrecos,/);
   assert.match(fs.readFileSync(path.join(RAIZ, 'player.html'), 'utf8'), /<script src="js\/precos\.js"><\/script>/);
-  assert.match(fs.readFileSync(path.join(RAIZ, 'sw.js'), 'utf8'), /'\/js\/precos\.js'/);
+  assert.ok(require('./offline.js').guardadoOffline('js/precos.js'));
   // A lista que encolhe para caber também vale para a tabela.
   assert.match(fs.readFileSync(path.join(RAIZ, 'js', 'player.js'), 'utf8'), /:scope > \.mt-precos-inner/);
 });

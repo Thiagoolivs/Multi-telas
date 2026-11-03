@@ -46,7 +46,7 @@ export function QuandoMostrar({ agendamento, onChange }) {
               <button
                 key={d.n} type="button" title={d.nome} aria-pressed={dias.includes(d.n)}
                 onClick={() => alternarDia(d.n)}
-                className={cn('h-8 w-8 rounded-md border text-xs font-semibold transition',
+                className={cn('h-8 w-8 max-sm:h-11 max-sm:w-auto max-sm:flex-1 rounded-md border text-xs font-semibold transition',
                   dias.includes(d.n) ? 'border-accent bg-accent-soft text-accent' : 'border-line text-ink-3 hover:text-ink')}
               >
                 {d.curto}

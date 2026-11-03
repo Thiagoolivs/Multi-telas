@@ -26,7 +26,7 @@ export function ItemPreview({ item, className }) {
   if (item && item.type === 'peca-html') return <PecaHtml item={item} formato="16/9" className={className} />;
   return (
     <div className={'aspect-video w-full overflow-hidden rounded-lg border border-line ' + (className || '')}>
-      <div className="flex h-full w-full flex-col items-center justify-center bg-[#0a1128] p-4 text-center text-white">
+      <div className="flex h-full w-full flex-col items-center justify-center bg-[#0E0B1F] p-4 text-center text-white">
         <Body item={item} />
       </div>
     </div>
@@ -49,7 +49,7 @@ export function Body({ item }) {
       const c = ANN_COLOR[item.tipo] || ANN_COLOR.comunicado;
       return (
         <div className="flex h-full w-full flex-col items-center justify-center gap-1.5"
-             style={{ background: `radial-gradient(80% 80% at 80% 10%, ${c}44, transparent 60%), #0a1128` }}>
+             style={{ background: `radial-gradient(80% 80% at 80% 10%, ${c}44, transparent 60%), #0E0B1F` }}>
           <span className="rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
                 style={{ color: c, borderColor: c + '88' }}>{item.etiqueta || ANN_ROTULO[item.tipo] || item.tipo}</span>
           <div className="text-base font-semibold leading-tight">{item.titulo || 'Aviso'}</div>

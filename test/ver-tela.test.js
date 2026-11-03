@@ -101,7 +101,9 @@ test('"ver" não apaga um "recarregar" que ainda não chegou na TV', () => {
 
 test('no painel: o botão no cartão da tela, e a peça desenhada no tamanho da zona', () => {
   const s = ler('web/src/pages/ScreensPage.jsx');
-  assert.match(s, /<IconButton icon=\{Eye\} label="Ver a tela agora" size=\{14\} onClick=\{onVer\} \/>/);
+  // Desde o QA de 26/10, com o nome escrito ("Ver agora"), e a miniatura do cartão usa a mesma resposta.
+  assert.match(s, /<Button variant="secondary" icon=\{Eye\} onClick=\{onVer\} title="Ver a tela agora">Ver agora<\/Button>/);
+  assert.match(ler('web/src/components/tela/MiniaturaDaTela.jsx'), /telaAgora\.ler\(d\.id\)/);
   assert.match(s, /<VerTelaAgora target=\{verTarget\} onClose=\{\(\) => setVerTarget\(null\)\} \/>/);
   const v = ler('web/src/components/content/VerTelaAgora.jsx');
   assert.match(v, /<PecaHtml item=\{peca\} tamanho=\{tam\} fitHeight/);

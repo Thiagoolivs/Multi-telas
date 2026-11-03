@@ -32,20 +32,27 @@ test('menos de 500 KB, contando tudo o que a página pede', () => {
   let m;
   while ((m = re.exec(html))) {
     const u = m[1];
-    if (/^(https?:|mailto:|\/app|\/termos|\/privacidade|#)/.test(u) || u === '/') continue;
+    // Páginas (o painel, os textos legais e as landings das frentes) não são peso desta página.
+    if (/^(https?:|mailto:|\/app|\/termos|\/privacidade|\/(empresas|saude|comercio)$|#)/.test(u) || u === '/') continue;
     pedidos.add(u);
   }
   // As imagens que as abas trocam (landing.js) também contam.
   for (const ramo of ['otica', 'padaria', 'salao', 'clinica', 'lanchonete', 'empresa']) pedidos.add('vendor/galeria/' + ramo + '.webp');
   let total = Buffer.byteLength(html) + Buffer.byteLength(js);
   for (const u of pedidos) {
-    const arq = u.startsWith('/icons/') ? path.join(RAIZ, u) : path.join(LAND, u.replace(/^\//, ''));
+    const arq = /^\/(icons|fonts)\//.test(u) ? path.join(RAIZ, u) : path.join(LAND, u.replace(/^\//, ''));
     assert.ok(fs.existsSync(arq), 'a página pede ' + u + ', que não existe');
     total += fs.statSync(arq).size;
   }
   // As fontes da folha de fontes.
-  const fontes = ler('landing', 'vendor', 'fontes', 'fontes.css').match(/url\('\.\/([^']+)'\)/g).map((x) => x.slice(7, -2));
-  for (const f of fontes) total += fs.statSync(path.join(LAND, 'vendor', 'fontes', f)).size;
+  // Desde a marca única (docs/MARCA.md) os arquivos são os de /fonts/marca/, os mesmos do painel.
+  const fontes = [...ler('landing', 'vendor', 'fontes', 'fontes.css').matchAll(/url\('([^']+)'\)/g)].map((x) => x[1]);
+  assert.ok(fontes.length >= 2, 'a folha de fontes da landing ficou vazia');
+  for (const f of fontes) {
+    const arq = f.startsWith('/') ? path.join(RAIZ, f) : path.join(LAND, 'vendor', 'fontes', f);
+    assert.ok(fs.existsSync(arq), 'a folha pede ' + f + ', que não existe');
+    if (!html.includes(f)) total += fs.statSync(arq).size; // o preload já contou
+  }
   assert.ok(total < 500 * 1024, 'a landing pesa ' + Math.round(total / 1024) + ' KB');
 });
 

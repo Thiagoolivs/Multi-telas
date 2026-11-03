@@ -7,7 +7,7 @@
  * config que a TV consome.
  *
  * Fatia 1: tipos que não dependem de upload de mídia (imagens/vídeos por URL).
- * O upload real entra com o pipeline de object storage (ver docs/AUDITORIA.md).
+ * O upload real entra com o pipeline de object storage (ver docs/arquivo/AUDITORIA.md).
  */
 import {
   Megaphone, Type, Quote, Tag, BarChart3, Share2, Image as ImageIcon,

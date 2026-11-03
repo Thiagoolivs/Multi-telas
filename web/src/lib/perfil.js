@@ -16,6 +16,8 @@ export const PERFIS = P.PERFIS;
 export const IDS = P.IDS;
 export const deduzir = P.deduzir;
 export const perfilDe = P.de;
+// A frente pelo endereço da landing (/empresas, /saude, /comercio), ou null (docs/FRENTES.md).
+export const frenteDoSlug = P.doSlug;
 
 let atual = 'comercio';
 const ouvintes = new Set();
