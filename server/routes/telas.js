@@ -31,6 +31,7 @@ module.exports = function (ctx) {
   const apk = require('../apk.js');
   const fotoQr = require('../foto-qr.js');
   const automaticos = require('../automaticos.js');
+  const kpis = require('../kpis.js');
   const hostsMidia = (() => {
     try { return [new URL(storage.publicUrl('x')).host]; } catch (e) { return []; }
   })();
@@ -612,7 +613,8 @@ module.exports = function (ctx) {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
         if (!device.tenant_id) return sendJson(res, 200, { indicadores: [] });
         const lista = (await db.listarIndicadores(device.tenant_id))
-          .map((i) => ({ chave: i.chave, nome: i.nome, valor: i.valor, unidade: i.unidade, meta: i.meta, anterior: i.anterior, em: i.atualizadoEm }));
+          // `sentido` (QA de 03/11): no refugo, passar da meta é ruim — a TV não comemora.
+          .map((i) => ({ chave: i.chave, nome: i.nome, valor: i.valor, unidade: i.unidade, meta: i.meta, sentido: kpis.sentidoDe(i), anterior: i.anterior, em: i.atualizadoEm }));
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
         return res.end(JSON.stringify({ indicadores: lista }));
       }

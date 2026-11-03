@@ -500,7 +500,8 @@ export const library = {
 export const murais = {
   list: () => api('GET', '/api/murais'),
   create: (titulo) => api('POST', '/api/murais', { titulo }),
-  update: (id, titulo, aceitando) => api('PUT', '/api/murais/' + id, { titulo, aceitando }),
+  // `aprovar` (a foto do público espera aprovação antes da TV) só vai quando muda.
+  update: (id, titulo, aceitando, aprovar) => api('PUT', '/api/murais/' + id, aprovar === undefined ? { titulo, aceitando } : { titulo, aceitando, aprovar }),
   remove: (id) => api('DELETE', '/api/murais/' + id),
   fotos: (id) => api('GET', '/api/murais/' + id + '/fotos'),
   ocultarFoto: (fotoId) => api('DELETE', '/api/murais/fotos/' + fotoId),

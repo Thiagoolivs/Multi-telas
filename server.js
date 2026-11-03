@@ -296,6 +296,31 @@ async function seloDaConta(tenantId) {
   return selo;
 }
 /*
+ * O SELO SAI NA HORA (QA de lançamento, 03/11): o e-mail e o painel dizem
+ * que o selo some ao assinar, e ele levava até 5 minutos (o cache acima) mais
+ * o pulso. Toda mudança de cobrança da conta passa por db.setTenantBilling —
+ * o webhook do Asaas, o simulado, a cortesia, o operador estendendo o teste —,
+ * então é ali que o cache cai e as TVs abertas recebem o selo novo pelo
+ * tempo real. Embrulhado aqui, e não em cada chamador, para nenhum caminho
+ * novo de cobrança esquecer.
+ */
+async function seloPodeTerMudado(tenantId) {
+  if (!tenantId) return;
+  const antes = seloCache.get(tenantId);
+  seloCache.delete(tenantId);
+  const agora = await seloDaConta(tenantId);
+  if (antes && antes.selo === agora) return;
+  await avisarTelas(tenantId, 'selo', { texto: agora });
+}
+{
+  const gravarCobranca = db.setTenantBilling;
+  db.setTenantBilling = async function (tenantId) {
+    const r = await gravarCobranca.apply(this, arguments);
+    seloPodeTerMudado(tenantId).catch((e) => erros.registrar(e, { onde: 'selo depois da cobrança', tenant: tenantId }));
+    return r;
+  };
+}
+/*
  * Comandos à espera de a TV buscar no pulso. Em memória, como o SSE: um
  * restart perde o comando, e a pessoa clica de novo — é "recarregar", não
  * dinheiro. Um por tela; o mais novo vence.
@@ -1010,15 +1035,25 @@ async function handleApi(req, res, pathname, query) {
       const salvo = await midia.guardarStream(db, mural.tenantId, req,
         { mime, max: muralLib.MAX_MB * 1024 * 1024 },
         { nome: 'Mural ' + mural.codigo, origem: 'mural' });
+      /*
+       * APROVAR ANTES DE IR PARA A TV (QA de lançamento, 03/11). Qualquer um
+       * com o QR mandava foto e recado, e iam ao ar na hora — numa TV de
+       * fábrica ou de loja, a ofensiva ficava na parede até alguém ver. Agora,
+       * com o mural pedindo aprovação (o padrão), a foto entra pendente e
+       * oculta, e só aparece quando alguém da conta toca em "Aprovar" no
+       * painel. Quem quer o tempo real de um evento desliga a aprovação.
+       */
+      const pendente = mural.aprovar !== false;
       const foto = await db.addFotoMural(mural.id, mural.tenantId, {
         url: salvo.url, chave: salvo.key,
         autor: String(query.autor || '').slice(0, 40),
         mensagem: String(query.mensagem || '').slice(0, 120),
         ip: clientIp(req),
+        pendente,
       });
-      // Avisa as TVs na hora: é o "tempo real" que o usuário pediu.
-      await avisarTelas(mural.tenantId, 'mural', { mural: mural.codigo });
-      return sendJson(res, 201, { ok: true, id: foto.id });
+      // Sem aprovação, avisa as TVs na hora: é o "tempo real" que o usuário pediu.
+      if (!pendente) await avisarTelas(mural.tenantId, 'mural', { mural: mural.codigo });
+      return sendJson(res, 201, { ok: true, id: foto.id, pendente });
     } catch (e) {
       if (e.status === 413) return sendJson(res, 413, { error: 'essa foto passa de ' + muralLib.MAX_MB + ' MB — tente outra' });
       if (e.status === 415) return sendJson(res, 415, { error: 'esse tipo de arquivo não abre na TV' });
@@ -1095,8 +1130,10 @@ async function handleApi(req, res, pathname, query) {
       }
       if (req.method === 'PUT') {
         return readBody(req, res, async (b) => {
-          await db.atualizarMural(m.id, sess.tenant_id, String((b && b.titulo) || m.titulo).slice(0, 60), !!(b && b.aceitando));
-          return sendJson(res, 200, { ok: true });
+          // `aprovar` (foto do público espera aprovação) só muda quando vem no corpo.
+          const aprovar = b && typeof b.aprovar === 'boolean' ? b.aprovar : undefined;
+          await db.atualizarMural(m.id, sess.tenant_id, String((b && b.titulo) || m.titulo).slice(0, 60), !!(b && b.aceitando), aprovar);
+          return sendJson(res, 200, { ok: true, aprovar: aprovar === undefined ? m.aprovar : aprovar });
         });
       }
       /*

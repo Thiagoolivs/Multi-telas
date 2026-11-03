@@ -906,7 +906,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   font-size: 4cqw; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
   color: var(--text-dim);
 }
-.mt-kpi-value-wrap { display: flex; align-items: baseline; justify-content: center; gap: 3cqw; margin-top: 1cqh; }
+/* flex-wrap: se o número grande não deixar lugar, a pílula da variação desce em vez de sair cortada (QA de 03/11). */
+.mt-kpi-value-wrap { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 1cqh 3cqw; margin-top: 1cqh; max-width: 100%; }
 .mt-kpi-value {
   font-size: 22cqw; font-weight: 800; line-height: 1; letter-spacing: -.03em;
   background: linear-gradient(160deg, var(--text), var(--accent));
@@ -927,6 +928,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-kpi-meta-texto { margin-top: 1.2cqh; font-size: min(3.2cqw, 5cqh); font-weight: 600; color: var(--text); }
 .mt-kpi-batida .mt-kpi-value { color: var(--accent); text-shadow: 0 0 4cqh color-mix(in srgb, var(--accent) 45%, transparent); }
 .mt-kpi-batida .mt-kpi-meta-cheio { background: linear-gradient(90deg, #22c55e, #a3e635); }
+/* "Menor é melhor" acima da meta (refugo de 2,6% com meta de 2%): a barra avisa, sem comemorar. */
+.mt-kpi-acima .mt-kpi-meta-cheio { background: linear-gradient(90deg, #f97316, #dc2626); }
 
 /* ---------- Superfície de conteúdo (linguagem premium adaptativa) ----------
    Fundo em gradiente derivado das cores do tema (accent + brand + fundo),

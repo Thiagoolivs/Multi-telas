@@ -361,6 +361,16 @@
         try { dado = JSON.parse(ev.data || '{}'); } catch (e) {}
         document.dispatchEvent(new CustomEvent('mt:mural', { detail: dado }));
       });
+      /*
+       * O selo do plano mudou (assinou, pagou a fatura, o teste foi
+       * estendido): chega na hora, em vez de esperar o pulso e o cache de 5
+       * minutos do servidor (QA de lançamento, 03/11). Texto vazio = sem selo.
+       */
+      es.addEventListener('selo', (ev) => {
+        let dado = {};
+        try { dado = JSON.parse(ev.data || '{}'); } catch (e) {}
+        document.dispatchEvent(new CustomEvent('mt:selo', { detail: dado && dado.texto ? String(dado.texto) : false }));
+      });
       // Indicadores novos (D36): a TV busca os valores de novo, sem recarregar a tela.
       es.addEventListener('kpis', () => {
         document.dispatchEvent(new CustomEvent('mt:kpis-mudou'));

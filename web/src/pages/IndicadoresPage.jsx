@@ -214,14 +214,19 @@ export function IndicadoresPage() {
           <ul className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
             {indicadores.map((i) => {
               const pct = i.meta ? Math.round(i.valor / i.meta * 100) : null;
+              // "Menor é melhor" (refugo, acidentes; QA de 03/11): bate a meta quem fica ABAIXO dela.
+              const menor = i.sentido === 'menor';
+              const batida = pct != null && (menor ? i.valor <= i.meta : pct >= 100);
               return (
                 <li key={i.id} className="flex flex-col rounded-lg border border-line p-3">
                   <div className="truncate text-xs text-ink-3">{i.nome} · {nomeDo(i.conectorId)}</div>
                   <div className="tnum mt-1 text-2xl font-bold text-ink">{formatar(i.valor, i.unidade)}</div>
                   {pct != null && (
                     <div className="mt-1.5">
-                      <div className="h-1.5 overflow-hidden rounded-full bg-surface-2"><div className={'h-full rounded-full ' + (pct >= 100 ? 'bg-ok' : 'bg-accent')} style={{ width: Math.min(100, pct) + '%' }} /></div>
-                      <div className="mt-1 text-2xs text-ink-2">{pct >= 100 ? 'Meta batida: ' : ''}{pct}% da meta de {formatar(i.meta, i.unidade)}</div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-surface-2"><div className={'h-full rounded-full ' + (batida ? 'bg-ok' : menor ? 'bg-danger' : 'bg-accent')} style={{ width: Math.min(100, pct) + '%' }} /></div>
+                      <div className="mt-1 text-2xs text-ink-2">{menor
+                        ? (batida ? 'Dentro da meta (até ' : 'Acima da meta (até ') + formatar(i.meta, i.unidade) + ')'
+                        : (batida ? 'Meta batida: ' : '') + pct + '% da meta de ' + formatar(i.meta, i.unidade)}</div>
                     </div>
                   )}
                   <div className="mt-2 flex items-center justify-between gap-2 text-2xs text-ink-3">
