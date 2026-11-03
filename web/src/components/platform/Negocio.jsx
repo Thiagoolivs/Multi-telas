@@ -13,6 +13,7 @@ import { useAsync } from '../../lib/useAsync.js';
 import { plataforma } from '../../api.js';
 import { formatNumber, relativeTime } from '../../lib/format.js';
 import { aviso } from '../../lib/avisos.js';
+import { nomeDoPlano } from '../../lib/nomes.js';
 
 /*
  * O NEGÓCIO, no painel do operador (PLANO §7.2, EXECUTOR item 13).
@@ -127,7 +128,8 @@ function Clientes({ clientes }) {
             {clientes.map((c) => (
               <TR key={c.id}>
                 <TD><div className="font-medium text-ink">{c.nome}</div><div className="text-2xs text-ink-3">{c.email}</div></TD>
-                <TD className="capitalize">{c.plano}</TD>
+                {/* O nome que o cliente vê ("Essencial"), não o id ("pro") — QA de 03/11. */}
+                <TD>{nomeDoPlano(c.plano)}</TD>
                 <TD align="right" className="tnum">{c.telas}</TD>
                 <TD className="whitespace-nowrap">
                   {c.contrato === 'anual'
@@ -265,7 +267,7 @@ function CustoIa({ itens }) {
             {itens.map((c) => (
               <TR key={c.id}>
                 <TD className="font-medium text-ink">{c.nome}</TD>
-                <TD className="capitalize">{c.cortesia ? 'cortesia' : c.plano}</TD>
+                <TD>{c.cortesia ? 'Cortesia' : nomeDoPlano(c.plano)}</TD>
                 <TD align="right" className="tnum">{c.criacoes}</TD>
                 <TD align="right" className="tnum">{formatNumber(c.chamadas)}</TD>
                 <TD align="right" className="tnum">{(c.custoCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</TD>

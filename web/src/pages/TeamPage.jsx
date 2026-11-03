@@ -41,6 +41,16 @@ export function TeamPage({ me, onLeft }) {
 
   async function changeRole(m, role) {
     if (role === m.role) return;
+    /*
+     * Promover a Dono pede confirmação (QA de lançamento, 03/11): era um
+     * toque no seletor, e o novo dono pode remover quem o promoveu, mudar o
+     * plano e cancelar a assinatura.
+     */
+    if (role === 'owner' && !(await confirmar({
+      titulo: 'Tornar ' + (m.name || m.email) + ' dono da conta?',
+      texto: 'Um dono pode tudo: mudar o plano, cancelar a assinatura, convidar e remover pessoas — inclusive você.',
+      botao: 'Tornar dono', perigo: true,
+    }))) return;
     setBusyId(m.id);
     try { await team.setRole(m.id, role); await reload(); }
     catch (e) { aviso.erro('equipe', e.message || 'Não deu para mudar o papel.'); }
