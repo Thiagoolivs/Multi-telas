@@ -21,7 +21,8 @@ const E = require('../js/escopo.js');
 const ai = require('./ai');
 const eco = require('./ecossistema');
 const redes = require('./redes');
-const { partirTitulo } = require('./compositor');
+const { partirTitulo, textosDaPeca } = require('./compositor');
+const conferencia = require('./conferencia');
 
 // 'texto' (D50): troca SÓ um texto da peça (preço, data, frase), sem refazer nada — a edição mais comum e a que não pode regredir.
 const TIPOS = ['refazer', 'texto', 'acrescentar', 'tirar', 'redes', 'letreiro', 'contagem'];
@@ -34,10 +35,34 @@ const TIPOS = ['refazer', 'texto', 'acrescentar', 'tirar', 'redes', 'letreiro', 
  * preenchê-lo.
  */
 const CAMPOS_QUE_NAO_SAO_TEXTO = ['foto', 'logo', 'qr', 'imagem', 'fundo', 'marca'];
-function camposDeTexto(peca) {
-  const c = (peca && peca.item && peca.item.campos) || {};
-  return Object.keys(c).filter((k) => typeof c[k] === 'string'
-    && !CAMPOS_QUE_NAO_SAO_TEXTO.includes(k) && !/^(\/|https?:|data:)/.test(c[k].trim()));
+/*
+ * QA de lançamento, 03/11: na peça feita pela IA os textos moram no HTML
+ * (`campos` só tem a foto), e a lista saía vazia — a IA da edição via só o
+ * rótulo, e "troca a foto" refazia a peça sem o preço. Agora vem de
+ * `textosDaPeca`, que lê o HTML com o que foi editado por cima.
+ */
+function textosDe(peca) {
+  const t = textosDaPeca(peca && peca.item);
+  for (const k of Object.keys(t)) if (CAMPOS_QUE_NAO_SAO_TEXTO.includes(k)) delete t[k];
+  return t;
+}
+function camposDeTexto(peca) { return Object.keys(textosDe(peca)); }
+
+/*
+ * Os textos de uma peça no formato das vagas (kicker, título, apoio,
+ * chamada), para a peça de reserva: o título em duas linhas volta a ser um
+ * só, e o preço, que a reserva não tem onde pôr, vai junto do apoio.
+ */
+function textosDaVaga(textos, label) {
+  const x = textos || {};
+  const valor = x.preco ? (/r\$/i.test(x.preco) ? x.preco : 'R$ ' + x.preco) + (x.centavos || '') : '';
+  const preco = [x['preco-rotulo'], x.parcelas, valor, x.unidade].filter(Boolean).join(' ');
+  return {
+    kicker: x.kicker || x.selo || x.rotulo || '',
+    titulo: [x.titulo, x.titulo2].filter(Boolean).join(' ') || label || '',
+    apoio: [preco, x.apoio || x.sub || ''].filter(Boolean).join(' · '),
+    cta: x.cta || x.chamada || x.quando || x.endereco || '',
+  };
 }
 const FAIXAS = ['cabecalho', 'rodape'];
 
@@ -61,7 +86,8 @@ O cliente pediu uma mudança. Diga QUAIS mudanças fazer, e só elas — nada qu
 ele não pediu muda.
 
 As mudanças possíveis (use os números das peças e das TVs da lista):
-- {"tipo":"refazer","peca":N,"texto":"o que muda no texto, ou vazio","foto":"manter"|"trocar"|"tirar","descricaoFoto":"a cena nova, só se trocar"}
+- {"tipo":"refazer","peca":N,"texto":"o que muda no texto, ou vazio","desenho":"o que muda no desenho (tamanho, destaque, posição: 'preço maior'), ou vazio","foto":"manter"|"trocar"|"tirar","descricaoFoto":"a cena nova, só se trocar"}
+  Pedido de tamanho ou destaque ("deixa o preço maior") vai em "desenho", nunca em "texto".
 - {"tipo":"acrescentar","tela":T,"zona":"principal"|"lateral"|"cabecalho"|"rodape","quantidade":1,"pedido":"o que a peça nova mostra"}
 - {"tipo":"tirar","peca":N}
 - {"tipo":"redes","canal":"instagramPost"|"instagramStory"|"whatsappStatus"|"whatsappMensagem"|"facebook"|"google","ligado":true|false}
@@ -107,8 +133,13 @@ function lerMudancas(lista, resultado, opcoes) {
         saida.push({ tipo: 'refazer', peca: n, texto: corta(m.texto, 300), foto: 'usar', fotoUrl: ref.url, descricaoFoto: '' });
         continue;
       }
-      saida.push({ tipo: 'refazer', peca: n, texto: corta(m.texto, 300),
-        foto: ['manter', 'trocar', 'tirar'].includes(m.foto) ? m.foto : 'manter', descricaoFoto: corta(m.descricaoFoto, 400) });
+      const r = { tipo: 'refazer', peca: n, texto: corta(m.texto, 300),
+        foto: ['manter', 'trocar', 'tirar'].includes(m.foto) ? m.foto : 'manter', descricaoFoto: corta(m.descricaoFoto, 400) };
+      // O pedido de desenho (tamanho, destaque) vai para quem desenha, não para quem escreve.
+      if (corta(m.desenho, 300)) r.desenho = corta(m.desenho, 300);
+      // O modelo que pôs "preço maior" em "texto": é desenho (reescrever o texto não muda tamanho nenhum).
+      else if (pedidoDeDesenho(r.texto)) { r.desenho = r.texto; r.texto = ''; }
+      saida.push(r);
     } else if (m.tipo === 'redes') {
       if (E.REDES.includes(m.canal)) saida.push({ tipo: 'redes', canal: m.canal, ligado: m.ligado === true });
     } else {
@@ -137,6 +168,12 @@ function semIA(texto, resultado) {
   const mudancas = [];
   const foto = num(/troca (?:a )?foto (?:da |na )?(?:peça |tela )?(\d+)/);
   if (foto) mudancas.push({ tipo: 'refazer', peca: foto, foto: 'trocar', texto: '' });
+  // "deixa o preço maior (na peça 1)": é desenho, não texto.
+  const desenho = pedidoDeDesenho(texto);
+  if (desenho) {
+    const n = num(/pe[cç]a (\d+)/) || pecaDoDesenho(desenho, resultado);
+    if (n) mudancas.push({ tipo: 'refazer', peca: n, foto: 'manter', texto: '', desenho });
+  }
   const refaz = num(/refa[zç]a? (?:a )?(?:peça )?(\d+)/);
   if (refaz) mudancas.push({ tipo: 'refazer', peca: refaz, foto: 'manter', texto: texto });
   const tira = num(/tira (?:a )?(?:peça )?(\d+)/);
@@ -158,8 +195,34 @@ function semIA(texto, resultado) {
   };
 }
 
+/*
+ * "deixa o preço maior", "o título mais destacado", "aumenta a letra": o
+ * pedido de TAMANHO ou ÊNFASE. Devolve a frase (vai inteira para quem
+ * desenha) ou ''. QA de lançamento, 03/11: ele virava "texto novo na peça 1".
+ */
+const ALVO_DO_DESENHO = '(pre[cç]o|t[ií]tulo|n[uú]mero|valor|letra|texto|chamada|nome|logo|foto|data|desconto)';
+const TAMANHO = '(maior|menor|grande|pequen[oa]|destacad[oa]|em destaque|chamativ[oa]|vis[ií]vel|forte|gross[oa])';
+const RE_DESENHO = new RegExp('(deix|p[õo]e|coloc|fa[zç]|aument|diminu|destac|real[cç]|ressalt)\\S*\\s+(?:o |a |os |as )?' + ALVO_DO_DESENHO
+  + '[^.!?]{0,20}?\\b(mais\\s+)?' + TAMANHO + '|(aument|diminu|amplia|destac|real[cç]|ressalt)\\S*\\s+(?:o |a )?(tamanho d[oa] )?' + ALVO_DO_DESENHO);
+function pedidoDeDesenho(texto) {
+  return RE_DESENHO.test(String(texto || '').toLowerCase()) ? String(texto).trim().slice(0, 300) : '';
+}
+
+// A peça de que o pedido de desenho fala, quando ele não diz o número: a única, ou a única com preço.
+function pecaDoDesenho(desenho, resultado) {
+  const pecas = numerar(resultado);
+  if (pecas.length === 1) return 1;
+  if (/pre[cç]o|valor|n[uú]mero|desconto/i.test(desenho)) {
+    const comPreco = pecas.filter((x) => camposDeTexto(x.peca).includes('preco') || Object.values(textosDe(x.peca)).some((v) => /r\$|\d+,\d{2}/i.test(v)));
+    if (comPreco.length === 1) return comPreco[0].n;
+  }
+  return 0;
+}
+
 function descreverMudanca(m) {
   if (m.tipo === 'texto') return 'texto novo na peça ' + m.peca;
+  if (m.tipo === 'refazer' && m.foto === 'manter' && m.desenho) return 'redesenhar a peça ' + m.peca + ' (' + m.desenho.slice(0, 80) + ')';
+  if (m.tipo === 'refazer' && m.foto === 'manter' && !m.texto) return 'refazer a peça ' + m.peca;
   if (m.tipo === 'refazer') return (m.foto === 'trocar' ? 'foto nova na peça ' : m.foto === 'usar' ? 'a sua foto na peça ' : m.foto === 'tirar' ? 'sem foto na peça ' : 'texto novo na peça ') + m.peca;
   if (m.tipo === 'tirar') return 'tirar a peça ' + m.peca;
   if (m.tipo === 'acrescentar') return (m.quantidade === 1 ? 'mais uma peça' : 'mais ' + m.quantidade + ' peças') + ' em ' + E.NOME_ZONA[m.zona].toLowerCase();
@@ -190,7 +253,7 @@ function semAnterior(r) { const c = { ...r }; delete c.anterior; return c; }
  * Aplica as mudanças. Devolve { resultado, escopo, refeitas, fotosGeradas }.
  * Nada é refeito além do que as mudanças apontam.
  */
-async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso } = {}) {
+async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso, pedido } = {}) {
   ctx = ctx || {};
   const passo = (e, d) => { try { onProgresso && onProgresso(e, d || ''); } catch (x) { /* progresso não derruba */ } };
   const antes = JSON.parse(JSON.stringify(campanha.resultado));
@@ -204,6 +267,8 @@ async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso } = {}) 
   const numeradas = numerar(r);
   let refeitas = 0, fotosGeradas = 0;
   const semFoto = [];
+  // O que o pedido queria e não deu para fazer: a resposta diz, em vez de "Feito".
+  const naoFeito = [];
 
   const lugar = (tela, zona) => (FAIXAS.includes(zona) ? r.telas[tela].zonas[zona].pecas : r.telas[tela].zonas[zona]);
   const foto = async (descricao, formato, vaga) => {
@@ -229,7 +294,7 @@ async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso } = {}) 
          * 30% SÓ ATÉ SÁBADO / SOL: 30% OFF ATÉ SÁBADO" — visto no teste do
          * dono no navegador).
          */
-        const novos = mu.campo === 'titulo' && Object.prototype.hasOwnProperty.call(p.item.campos || {}, 'titulo2')
+        const novos = mu.campo === 'titulo' && Object.prototype.hasOwnProperty.call(textosDe(p), 'titulo2')
           ? (([a, b]) => ({ titulo: a, titulo2: b }))(partirTitulo(mu.valor))
           : { [mu.campo]: mu.valor };
         zona[i] = { ...p, label: mu.campo === 'titulo' ? mu.valor.slice(0, 40) : p.label,
@@ -242,17 +307,59 @@ async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso } = {}) 
       const p = alvo.peca;
       passo('refazendo a peça ' + mu.peca, p.label);
       const v = { id: p.vaga, tela: alvo.tela, zona: alvo.zona, papel: p.papel, formato: p.formato, indice: 0, pedido: '' };
-      // Texto: só reescreve se o pedido falou de texto. Senão, os de antes.
-      let t = { kicker: p.item.campos.kicker || '', titulo: p.label, apoio: p.item.campos.apoio || '', cta: p.item.campos.cta || '' };
+      /*
+       * Texto: só reescreve se o pedido falou de texto. Senão, os de antes —
+       * TODOS, lidos da peça (QA de lançamento, 03/11: na peça da IA o
+       * kicker, o apoio, a chamada e o preço moram no HTML, e "troca a foto"
+       * refazia a peça só com o título).
+       */
+      const antesTextos = textosDe(p);
+      let t = textosDaVaga(antesTextos, p.label);
       if (mu.texto) t = (await eco.escreverTextos(escopo, [v], ctx, bases, mu.texto)).vagas[v.id];
-      let f = p.item.campos.foto || null;
+      const fotoAntes = p.item.campos.foto || null;
+      let f = fotoAntes;
       if (mu.foto === 'tirar') f = null;
       // A foto que a pessoa mandou no chat (D45): é dela, vai como está e não gasta criação.
       if (mu.foto === 'usar' && mu.fotoUrl) f = mu.fotoUrl;
       if (mu.foto === 'trocar' && eco.levaFoto(v)) f = (await foto(mu.descricaoFoto || ('Outra foto para: ' + t.titulo), p.formato, p.vaga)) || f;
-      const nova = await eco.comporVaga(v, t, f, comum);
       const zona = lugar(alvo.tela, alvo.zona);
       const i = zona.findIndex((x) => x.vaga === p.vaga);
+      const soAFoto = !mu.texto && !mu.desenho && (mu.foto === 'trocar' || mu.foto === 'usar');
+      if (soAFoto && f === fotoAntes) {
+        naoFeito.push('A foto nova da peça ' + mu.peca + ' não saiu, e a peça ficou como estava.');
+        continue;
+      }
+      /*
+       * Só a foto muda e a peça tem o lugar dela: troca a foto e pronto. O
+       * desenho que a pessoa aprovou olhando continua o mesmo, com os mesmos
+       * textos — e sem gastar uma composição.
+       */
+      const temLugarDeFoto = p.item.type === 'peca-html' && /data-campo-img="foto"/.test(String(p.item.html || ''));
+      if (soAFoto && temLugarDeFoto) {
+        zona[i] = { ...p, comFoto: true, item: { ...p.item, campos: { ...p.item.campos, foto: f } } };
+        refeitas++;
+        continue;
+      }
+      const refazer = {};
+      // Sem texto novo, a IA recebe os textos da peça campo a campo, com os nomes: nada some.
+      if (!mu.texto) refazer.textosCampos = antesTextos;
+      if (mu.desenho) {
+        refazer.ajusteDesenho = mu.desenho;
+        if (p.item.type === 'peca-html') refazer.anterior = '<style>' + (p.item.css || '') + '</style>\n' + (p.item.html || '');
+      }
+      // A peça não repete as OUTRAS zonas — o título dela mesma ela pode (e deve) manter.
+      const outras = { ...comum, ditos: comum.ditos.filter((d) => d !== p.label) };
+      const nova = await eco.comporVaga(v, t, f, outras, refazer);
+      /*
+       * QA de lançamento, 03/11: "deixa o preço maior" respondia "Deixei
+       * maior" sem mudar nada. Sem a IA de desenho (ou com ela recusada), a
+       * peça de reserva não sabe fazer o pedido: a peça fica como estava, e a
+       * resposta diz isso.
+       */
+      if (mu.desenho && nova.motor !== 'html') {
+        naoFeito.push('Não consegui redesenhar a peça ' + mu.peca + ' agora ("' + mu.desenho.slice(0, 60) + '"), e ela ficou como estava. Tente de novo daqui a pouco, ou mude o texto à mão no lápis da peça.');
+        continue;
+      }
       // O horário que a peça tinha continua: ajustar a foto não muda a programação.
       zona[i] = { ...nova, horario: p.horario || null, item: p.item.agendamento ? { ...nova.item, agendamento: p.item.agendamento } : nova.item };
       refeitas++;
@@ -297,8 +404,9 @@ async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso } = {}) 
         let textos = null;
         if (base) {
           try {
-            textos = await redes.gerar({ headline: base.peca.label, sub: base.peca.item.campos.apoio || '', cta: base.peca.item.campos.cta || '',
-              pedido: escopo.objetivo, empresa: ctx.empresa || '', tom: m.tom || '', ramo: ctx.ramo || '' });
+            const tb = textosDaVaga(textosDe(base.peca), base.peca.label);
+            textos = await redes.gerar({ headline: base.peca.label, sub: tb.apoio, cta: tb.cta,
+              pedido: escopo.objetivo, empresa: ctx.empresa || '', tom: m.tom || '', ramo: ctx.ramo || '', perfil: ctx.perfil || '' });
           } catch (e) { textos = null; }
         }
         r.social = { canais, peca: base ? base.peca.vaga : null, textos };
@@ -317,7 +425,15 @@ async function aplicar(campanha, mudancas, ctx, { onImagem, onProgresso } = {}) 
   r.biblioteca = numerar(r).filter((x) => x.zona === 'principal' || x.zona === 'lateral')
     .map((x) => ({ formato: x.peca.formato, canal: 'TV', label: x.peca.label, item: x.peca.item }));
   r.anterior = { resultado: semAnterior(antes), escopo: E.normalizar(campanha.escopo) };
-  return { resultado: r, escopo: E.normalizar(escopo), refeitas, fotosGeradas };
+  /*
+   * A conferência de novo (server/conferencia.js), com a régua guardada e o
+   * que a pessoa disse agora: o texto que ela mandou pôr é dela. Campanha de
+   * antes da conferência, sem régua guardada: a régua sai do escopo e da conta.
+   */
+  const ditosAgora = [pedido || ''].concat(mudancas.map((x) => x.valor || x.texto || ''), ...mudancas.map((x) => x.mensagens || []));
+  if (!(r.conferencia && r.conferencia.permitidos)) r.conferencia = { permitidos: conferencia.permitidosDe(escopo, ctx) };
+  r.conferencia = conferencia.reconferir(r, Object.assign({ hoje: new Date() }, conferencia.opcoesDaConta(ctx, escopo)), ditosAgora);
+  return { resultado: r, escopo: E.normalizar(escopo), refeitas, fotosGeradas, naoFeito };
 }
 
 // Desfazer: volta o passo guardado. Sem passo guardado, nada.
@@ -342,4 +458,4 @@ function comoPedido(mudancas, refs) {
   });
 }
 
-module.exports = { numerar, lerMudancas, semIA, entender, aplicar, desfazer, descreverMudanca, camposDeTexto, comoPedido, SISTEMA };
+module.exports = { numerar, lerMudancas, semIA, entender, aplicar, desfazer, descreverMudanca, camposDeTexto, textosDe, textosDaVaga, pedidoDeDesenho, pecaDoDesenho, comoPedido, SISTEMA };
