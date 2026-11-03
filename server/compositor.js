@@ -22,6 +22,7 @@ const path = require('node:path');
 const P = require('../js/peca-html.js');
 const T = require('../js/tokens.js');
 const regrasDoPapel = require('../js/regras-composicao.js');
+const RC = require('../js/regras-de-conteudo.js');
 const motores = require('./motores');
 
 const PASTA = path.join(__dirname, '..', 'pecas-ouro');
@@ -63,13 +64,37 @@ function regras() {
   ].join('\n');
 }
 
+/*
+ * O exemplo como a IA precisa ler: sem os comentários de quem desenhou e sem
+ * o espaço de alinhamento. QA de lançamento, 03/11: a biblioteca do destaque
+ * ia com 155 mil caracteres (~44 mil tokens) em TODA peça — 85 a 90% do custo
+ * de texto de um pedido. O código das peças é o mesmo, letra por letra; só
+ * sai o que o navegador também ignora. Medido: −13% no destaque (155 → 135
+ * mil caracteres) e no resto dos papéis. O nome e a família de cada peça
+ * continuam no título do exemplo.
+ */
+function enxuto(html) {
+  return String(html || '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/^ /gm, '')
+    .replace(/\n{2,}/g, '\n')
+    .trim();
+}
+
 // A biblioteca no papel pedido, em ordem fixa — o fixo precisa ser igual entre chamadas para o cache valer.
+const BIBLIOTECA = {};
 function biblioteca(papel) {
+  if (BIBLIOTECA[papel]) return BIBLIOTECA[papel];
   const m = JSON.parse(fs.readFileSync(path.join(PASTA, 'manifesto.json'), 'utf8'));
-  return m.pecas
+  const lista = m.pecas
     .filter((p) => p.papeis.includes(papel))
     .sort((a, b) => a.id.localeCompare(b.id))
-    .map((p) => '### ' + p.nome + ' (' + p.familia + ')\n' + fs.readFileSync(path.join(PASTA, p.id + '.html'), 'utf8').trim());
+    .map((p) => '### ' + p.nome + ' (' + p.familia + ')\n' + enxuto(fs.readFileSync(path.join(PASTA, p.id + '.html'), 'utf8')));
+  // Em teste a biblioteca muda no disco entre um caso e outro: só guarda fora dele.
+  if (process.env.NODE_ENV === 'production') BIBLIOTECA[papel] = lista;
+  return lista;
 }
 
 function fixo(papel) {
@@ -123,6 +148,12 @@ function pedidoTexto(o) {
       + Object.keys(o.textosCampos).map((k) => k + ' "' + String(o.textosCampos[k]).slice(0, 160) + '"').join('; ') + '.');
   }
   if (o.evitar && o.evitar.length) linhas.push('As outras zonas da tela já dizem: ' + o.evitar.map((x) => '"' + x + '"').join(', ') + '. Não repita nenhum desses textos.');
+  /*
+   * QA de lançamento, 03/11: "deixa o preço maior" no Editar com a IA chegava
+   * só à chamada dos textos, e a peça saía com o preço do mesmo tamanho. O
+   * pedido de DESENHO vem aqui, por último, onde a IA mais presta atenção.
+   */
+  if (o.ajusteDesenho) linhas.push('O CLIENTE PEDIU ESTA MUDANÇA NO DESENHO — é o que tem de mudar desta vez, de forma visível; o resto fica como estava: "' + String(o.ajusteDesenho).slice(0, 300) + '".');
   linhas.push('Responda só com o arquivo da peça.');
   return linhas.filter(Boolean).join('\n');
 }
@@ -372,6 +403,28 @@ async function comporPeca(o) {
     if (o.foto && !h.campos.some((c) => c.nome === 'foto' && c.tipo === 'img')) {
       h.problemas = h.problemas.concat('a peça tem foto e não tem onde pô-la: use <img data-campo-img="foto" alt="">, com véu');
     }
+    /*
+     * QA de lançamento, 03/11: a porta conferia a FORMA e deixava passar o
+     * conteúdo. Agora ela recusa também (e pede de novo, com o motivo):
+     *   - a letra abaixo do mínimo, lida no CSS (o detector da tela só roda
+     *     no navegador, e a peça de 12px foi salva "pronta");
+     *   - o que a lei barra no texto (js/regras-de-conteudo.js): promessa de
+     *     cura em Saúde, medicamento com promessa em qualquer frente.
+     */
+    if (!h.problemas.length) {
+      const pequenas = regrasDoPapel.letrasPequenas(h.css, papel, h.html);
+      if (pequenas.length) {
+        h.problemas = h.problemas.concat(pequenas.slice(0, 3).map((x) => 'letra pequena demais: "' + x.seletor + '" fica com ' + x.px + 'px na TV ' + x.formato
+          + ' (o mínimo é ' + regrasDoPapel.REGRAS.letraMin + 'px — veja a "Letra mínima" das REGRAS DE COMPOSIÇÃO)'));
+      }
+      const textos = h.campos.filter((c) => c.tipo === 'texto')
+        .map((c) => (o.camposDe && typeof o.camposDe[c.nome] === 'string' ? o.camposDe[c.nome] : c.exemplo));
+      const conteudo = RC.conferir(textos, { perfil: o.perfil || '', contexto: [o.empresa, o.segmento, o.pedido].filter(Boolean).join(' ') });
+      if (conteudo.bloqueios.length) {
+        h.problemas = h.problemas.concat(conteudo.bloqueios.map((b) => 'texto proibido: "' + b.trecho + '" ' + b.motivo
+          + (b.sugestao ? ' — escreva algo como "' + b.sugestao + '"' : '') + '. Isso vale mesmo que o pedido ou os textos aprovados o tragam.'));
+      }
+    }
     ultimo = { arquivo, h };
     if (!h.problemas.length) {
       return {
@@ -391,6 +444,29 @@ async function comporPeca(o) {
       + '\n\nA resposta anterior era:\n' + arquivo.slice(0, 12000) + '\n\nCorrija e responda com o arquivo inteiro.';
   }
   return { ok: false, item: null, tentativas: max, passouDePrimeira: false, problemas: ultimo.h.problemas, uso: somar(usos), ms: Date.now() - t0 };
+}
+
+/*
+ * Os textos que a pessoa VÊ numa peça, campo por campo: o que a peça traz
+ * no HTML (a peça da IA guarda o texto lá, e `campos` só tem a foto) com o
+ * que foi editado por cima. Campo escondido não conta. QA de lançamento,
+ * 03/11: sem isto, "troca a foto" refazia a peça só com o título e o preço
+ * sumia, e a IA da edição via só o rótulo da peça.
+ */
+function textosDaPeca(item) {
+  const it = item && typeof item === 'object' ? item : {};
+  const campos = it.campos && typeof it.campos === 'object' ? it.campos : {};
+  const ocultos = Array.isArray(it.ocultos) ? it.ocultos : [];
+  const out = {};
+  if (it.type !== 'peca-html' || !it.html) {
+    for (const k of Object.keys(campos)) if (typeof campos[k] === 'string' && !/^(\/|https?:|data:)/.test(campos[k].trim()) && !ocultos.includes(k)) out[k] = campos[k];
+    return out;
+  }
+  for (const c of P.higienizar({ html: it.html, css: '' }).campos) {
+    if (c.tipo !== 'texto' || ocultos.includes(c.nome)) continue;
+    out[c.nome] = typeof campos[c.nome] === 'string' ? campos[c.nome] : c.exemplo;
+  }
+  return out;
 }
 
 function camposQueExistem(campos, def) {
@@ -518,4 +594,4 @@ async function comporTelaInteira(o) {
   return { zonas, falhas };
 }
 
-module.exports = { comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, cortarNome, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO };
+module.exports = { textosDaPeca, enxuto, comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, cortarNome, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO };

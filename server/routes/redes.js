@@ -15,6 +15,7 @@
 
 const redes = require('../redes');
 const P = require('../../js/paletas.js');
+const paleta = require('../paleta.js');
 
 // Texto de formulário: uma linha, sem controle, no tamanho certo.
 const linha = (s, n) => String(s || '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
@@ -60,6 +61,8 @@ module.exports = function (ctx) {
           pedido: linha(b.pedido, 200), empresa, tom: k.tom || '',
           ramo: P.detectarRamo([tenant && tenant.name, k.nome, mem && mem.segmento, k.siteResumo]),
           endereco: local.endereco, bairro: local.bairro, cidade: local.cidade, link: local.link,
+          // QA de lançamento, 03/11: a frente da conta (a regra da Saúde) vai às legendas, como vai à peça.
+          perfil: await paleta.perfilDaConta(db, sess.tenant_id, tenant),
         });
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.redes');
         return sendJson(res, 200, Object.assign(out, { local }));

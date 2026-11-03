@@ -354,7 +354,8 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
   React.useEffect(() => {
     if (!pareada) return;
     criar.campanhas().then((r) => {
-      const lista = ((r && r.campanhas) || []).filter((c) => c.capa);
+      // A campanha com texto barrado (estado "revisar", QA de 03/11) não é oferecida para a TV nova.
+      const lista = ((r && r.campanhas) || []).filter((c) => c.capa && c.estado !== 'revisar');
       setCampanha(lista.find((c) => c.estado === 'no_ar') || lista[0] || null);
     }).catch(() => setCampanha(null));
   }, [pareada]);

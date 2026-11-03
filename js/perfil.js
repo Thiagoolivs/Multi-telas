@@ -59,7 +59,18 @@
       lugar: 'clínica', lugarDe: 'da clínica',
       opcoes: ['aviso', 'dica', 'servicos', 'prevencao', 'horario', 'convenios', 'evento', 'depoimento', 'instagram', 'wifi', 'aniversario'],
       exemplo: 'Ex.: lembrar que a vacina da gripe chegou, na TV da recepção',
-      paraIA: 'Saúde: fala com pacientes na sala de espera (orientação, serviços, prevenção). Sem promessa de cura, sem desconto agressivo, tom acolhedor.',
+      /*
+       * QA de lançamento, 03/11: "cura a gripe em 1 dia" saiu na peça e na
+       * legenda, e o dentista anunciou "6x sem juros" e "avaliação grátis".
+       * A regra diz os termos que js/regras-de-conteudo.js barra (o código
+       * confere depois; aqui é para a IA nem escrever) e a orientação
+       * conservadora dos conselhos para clínica odontológica e médica.
+       */
+      paraIA: 'Saúde: fala com pacientes na sala de espera (orientação, serviços, prevenção), tom acolhedor. '
+        + 'PROIBIDO em qualquer texto (peça, legenda, mensagem): promessa de cura ou de resultado — "cura", "curar", "elimina", "100%", "garantido", "sem efeitos colaterais", "milagre", "acaba com a dor" — e "antes e depois". '
+        + 'Medicamento: nunca prometa efeito; diga "alívio dos sintomas" e "fale com o farmacêutico". '
+        + 'Clínica odontológica ou médica (dentista, consultório): sem preço promocional, sem desconto, sem parcelamento ("6x", "sem juros") e sem "grátis" como chamariz — o código de ética do conselho (CFO/CFM) costuma vetar; prefira "agende a sua avaliação". '
+        + 'Se o cliente pedir uma dessas coisas, escreva a versão permitida.',
     },
   };
 
