@@ -32,16 +32,24 @@ test('o registro: as três frentes têm nome comercial, endereço, público, ext
   assert.equal(P.doSlug(''), null);
 });
 
-test('o menu da frente: Empresas sobe Pessoas e indicadores; Saúde e Comércio deixam os extras no fim', async () => {
+test('o menu da frente: Empresas tem Pessoas no menu; Saúde e Comércio, os Apps na Biblioteca', async () => {
   const M = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
   const labels = (f) => M.gruposDa(f).map((g) => g.label);
-  assert.deepEqual(labels('empresa'), ['Início', 'Telas', 'Programação', 'Criar', 'Biblioteca', 'Pessoas e indicadores', 'Marca', 'Conta']);
-  for (const f of ['saude', 'comercio']) assert.deepEqual(labels(f), ['Início', 'Telas', 'Programação', 'Criar', 'Biblioteca', 'Marca', 'Recursos extras', 'Conta']);
-  // As mesmas páginas nas três: nada some, só muda de lugar e de nome.
-  const paginas = (f) => M.gruposDa(f).flatMap((g) => g.paginas).sort();
+  // Fase 7: o botão Criar e 5 itens (6 na Empresas); a conta mora no avatar, e nos outros os extras são os Apps da Biblioteca.
+  const itens = (f) => M.itensDoMenu(f).map((g) => g.label);
+  assert.deepEqual(itens('empresa'), ['Início', 'Telas', 'Agenda', 'Biblioteca', 'Marca', 'Pessoas']);
+  for (const f of ['saude', 'comercio']) {
+    assert.deepEqual(itens(f), ['Início', 'Telas', 'Agenda', 'Biblioteca', 'Marca']);
+    assert.deepEqual(M.gruposDa(f).find((g) => g.id === 'midias').paginas, ['prontos', 'seus', 'storage', 'apps']);
+    assert.equal(M.grupoNaFrente('birthdays', f).id, 'midias', 'os Apps acendem a Biblioteca');
+  }
+  assert.equal(M.grupoNaFrente('birthdays', 'empresa').id, 'extras');
+  void labels;
+  // As mesmas páginas nas três (abas ou partes): nada some, só muda de lugar e de nome.
+  const paginas = (f) => [...new Set(M.gruposDa(f).flatMap((g) => g.paginas.concat(g.tambem || [])))].sort();
   assert.deepEqual(paginas('empresa'), paginas('saude'));
-  assert.deepEqual(paginas('empresa'), M.GRUPOS.flatMap((g) => g.paginas).sort());
-  assert.match(ler('web/src/components/layout/Sidebar.jsx'), /gruposDa\(frente\)/);
+  assert.deepEqual(paginas('empresa'), [...new Set(M.GRUPOS.flatMap((g) => g.paginas.concat(g.tambem || [])))].sort());
+  assert.match(ler('web/src/components/layout/Sidebar.jsx'), /itensDoMenu\(frente\)/);
   assert.match(ler('web/src/components/layout/Sidebar.jsx'), /\{frente\.marca\}/);
 });
 

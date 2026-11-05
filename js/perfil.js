@@ -35,7 +35,7 @@
       // A TV fala com a equipe: anúncio de terceiros não cabe (docs/ads/README.md).
       recebeAnuncios: false,
       // Pessoas, mural e indicadores são o dia a dia de RH e gestão: sobem no menu.
-      extras: { rotulo: 'Pessoas e indicadores', depoisDe: 'midias' },
+      extras: { rotulo: 'Pessoas', depoisDe: 'midias' },
       lugar: 'empresa', lugarDe: 'da empresa',
       opcoes: ['aviso', 'comunicado', 'aniversario', 'boasvindas', 'indicador', 'seguranca', 'evento', 'vaga', 'agradecimento', 'valores', 'horario', 'cardapio'],
       exemplo: 'Ex.: avisar que o refeitório fecha mais cedo na sexta, na TV do refeitório',
@@ -52,7 +52,7 @@
       id: 'comercio', nome: 'Comércio', descricao: 'Loja, restaurante, serviço: ofertas e novidades.',
       marca: 'MultiTelas Comércio', slug: 'comercio', publico: 'clientes',
       recebeAnuncios: true,
-      extras: { rotulo: 'Recursos extras', depoisDe: 'marca' },
+      extras: { rotulo: 'Apps', depoisDe: 'midias', noMenu: true },
       lugar: 'loja', lugarDe: 'da loja',
       opcoes: ['promocao', 'novidade', 'cardapio', 'foto', 'horario', 'aviso', 'evento', 'instagram', 'depoimento', 'pagamento', 'wifi', 'aniversario'],
       exemplo: 'Ex.: quero divulgar o pão de queijo em dobro à tarde, na TV e no Instagram',
@@ -68,7 +68,7 @@
       id: 'saude', nome: 'Saúde', descricao: 'Clínica, consultório, farmácia: orientação e serviços.',
       marca: 'MultiTelas Saúde', slug: 'saude', publico: 'pacientes na sala de espera',
       recebeAnuncios: true,
-      extras: { rotulo: 'Recursos extras', depoisDe: 'marca' },
+      extras: { rotulo: 'Apps', depoisDe: 'midias', noMenu: true },
       lugar: 'clínica', lugarDe: 'da clínica',
       opcoes: ['aviso', 'dica', 'servicos', 'prevencao', 'horario', 'convenios', 'evento', 'depoimento', 'instagram', 'wifi', 'aniversario'],
       exemplo: 'Ex.: lembrar que a vacina da gripe chegou, na TV da recepção',

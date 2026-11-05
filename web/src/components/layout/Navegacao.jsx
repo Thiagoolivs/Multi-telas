@@ -1,7 +1,7 @@
 import React from 'react';
-import { Menu } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { cn } from '../../lib/cn.js';
-import { gruposDa, PAGINAS, BARRA_INFERIOR, grupoDa } from '../../lib/menu.js';
+import { gruposDa, PAGINAS, BARRA_INFERIOR, grupoNaFrente } from '../../lib/menu.js';
 import { usePerfil } from '../../lib/perfil.js';
 import { ICONE_DO_GRUPO } from './Sidebar.jsx';
 import { useTrabalhos } from '../../lib/trabalhos.js';
@@ -15,8 +15,7 @@ import { useTrabalhos } from '../../lib/trabalhos.js';
 export function AbasDoGrupo({ active, onNavigate }) {
   const frente = usePerfil();
   // O nome do grupo é o da frente ("Pessoas e indicadores" no Empresas, "Recursos extras" nos outros).
-  const base = grupoDa(active);
-  const grupo = base && gruposDa(frente.id).find((g) => g.id === base.id);
+  const grupo = grupoNaFrente(active, frente.id);
   // Quantas gerações estão rodando: o número fica na aba "Criando" (D11).
   const rodando = (useTrabalhos() || []).filter((j) => j.estado === 'rodando').length;
   if (!grupo || grupo.paginas.length < 2 || !grupo.paginas.includes(active)) return null;
@@ -39,22 +38,30 @@ export function AbasDoGrupo({ active, onNavigate }) {
 }
 
 /*
- * A BARRA DE BAIXO, no celular: Início · Telas · Criar · Mídias · Mais. É
- * onde o polegar alcança — o dono da loja usa o painel entre um atendimento e
- * outro, com uma mão. "Mais" abre o menu inteiro (os outros quatro grupos).
+ * A BARRA DE BAIXO, no celular (fase 7): Início · Telas · [Criar] · Agenda ·
+ * Biblioteca, com o Criar no meio, onde o polegar alcança. Marca, Pessoas e
+ * a conta ficam no menu de cima (o ☰ da barra do topo).
  */
-export function BarraInferior({ active, onNavigate, onMais }) {
+export function BarraInferior({ active, onNavigate }) {
   const frente = usePerfil();
-  const grupo = grupoDa(active);
+  const grupo = grupoNaFrente(active, frente.id);
   const itens = BARRA_INFERIOR.map((id) => gruposDa(frente.id).find((g) => g.id === id));
-  const outro = !grupo || !BARRA_INFERIOR.includes(grupo.id);
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
       aria-label="Menu principal">
       <div className="mx-auto grid max-w-md grid-cols-5">
         {itens.map((g) => {
-          const Icon = ICONE_DO_GRUPO[g.id];
           const aceso = grupo && grupo.id === g.id;
+          if (g.id === 'criar') {
+            return (
+              <button key={g.id} type="button" onClick={() => onNavigate(g.paginas[0])} aria-current={aceso ? 'page' : undefined}
+                className="flex min-h-[52px] flex-col items-center justify-center gap-0.5 py-1.5 text-[12px] font-semibold text-accent">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-accent-fg shadow-xs"><Plus size={18} strokeWidth={2.6} /></span>
+                {g.label}
+              </button>
+            );
+          }
+          const Icon = ICONE_DO_GRUPO[g.id];
           return (
             <button key={g.id} type="button" onClick={() => onNavigate(g.paginas[0])} aria-current={aceso ? 'page' : undefined}
               className={cn('flex min-h-[52px] flex-col items-center justify-center gap-0.5 py-2 text-[12px] font-medium', aceso ? 'text-accent' : 'text-ink-3')}>
@@ -63,11 +70,6 @@ export function BarraInferior({ active, onNavigate, onMais }) {
             </button>
           );
         })}
-        <button type="button" onClick={onMais}
-          className={cn('flex min-h-[52px] flex-col items-center justify-center gap-0.5 py-2 text-[12px] font-medium', outro ? 'text-accent' : 'text-ink-3')}>
-          <Menu size={20} strokeWidth={outro ? 2.4 : 2} />
-          Mais
-        </button>
       </div>
     </nav>
   );

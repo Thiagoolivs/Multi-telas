@@ -33,7 +33,8 @@ test('item 28: um caminho de IA só — a TV leva ao Criar, sem o formulário an
 test('item 29: Campanhas é a casa da campanha — uma vez, com estado, TVs e o mesmo resultado do Criar', async () => {
   const { pathToFileURL } = require('node:url');
   const M = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
-  assert.deepEqual(M.GRUPOS.find((g) => g.id === 'criar').paginas, ['criar', 'criando', 'campanhas']);
+  // Fase 7: Criados é a parte "Campanhas" de Seus conteúdos, na Biblioteca única.
+  assert.equal(M.grupoDa('campanhas').id, 'midias');
   assert.equal(M.paginaDoIr('campanhas'), 'campanhas');
   const app = ler('web/src/App.jsx');
   assert.match(app, /case 'campanhas': return <CampanhasPage key=\{route\.campanha \|\| ''\} campanhaInicial=\{route\.campanha\} pedidoInicial=\{route\.pedido\} onIr=\{go\} \/>;/);
@@ -204,11 +205,11 @@ test('item 39: o exemplo "Raft Embalagens" não vai mais para a TV de cliente', 
   assert.match(t, /if \(mudou\) corpo = JSON\.stringify\(c\);/);
 });
 
-test('item 40: Programação tem aba própria; Telas fica com o aparelho', async () => {
+test('item 40 (fase 7): a Programação mora em Telas; cada TV abre a página dela', async () => {
   const { pathToFileURL } = require('node:url');
   const M = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
-  const ids = M.GRUPOS.map((g) => g.id);
-  assert.equal(ids.indexOf('programacao'), ids.indexOf('telas') + 1, 'entre Telas e Criar');
+  // Fase 7: a Programação mora em Telas (o menu tem 5 itens); cada TV abre a página dela.
+  assert.equal(M.grupoDa('programacao').id, 'telas');
   assert.equal(M.paginaDoIr('programacao'), 'programacao');
   const app = ler('web/src/App.jsx');
   assert.match(app, /case 'programacao': return <ProgramacaoPage onIr=\{go\} \/>;/);

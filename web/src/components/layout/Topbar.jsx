@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Sun, Moon, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut, ChevronDown, CreditCard, Users, Settings, LifeBuoy } from 'lucide-react';
 import { IconButton } from '../ui/Button.jsx';
 
 const ROLE_LABEL = { owner: 'Dono', admin: 'Admin', member: 'Membro' };
 
-export function Topbar({ title, onOpenMenu, theme, onToggleTheme, user, onLogout }) {
+export function Topbar({ title, onOpenMenu, theme, onToggleTheme, user, onLogout, onNavigate }) {
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur">
       <IconButton icon={Menu} label="Menu" className="lg:hidden" onClick={onOpenMenu} />
@@ -20,13 +20,13 @@ export function Topbar({ title, onOpenMenu, theme, onToggleTheme, user, onLogout
       <div className="ml-auto flex items-center gap-1.5">
         {/* O nome diz o que o botão faz agora (QA de 03/11), e não só "alternar". */}
         <IconButton icon={theme === 'dark' ? Sun : Moon} label={theme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'} onClick={onToggleTheme} />
-        <UserMenu user={user} onLogout={onLogout} />
+        <UserMenu user={user} onLogout={onLogout} onNavigate={onNavigate} />
       </div>
     </header>
   );
 }
 
-function UserMenu({ user, onLogout }) {
+function UserMenu({ user, onLogout, onNavigate }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -87,6 +87,14 @@ function UserMenu({ user, onLogout }) {
             <div className="truncate text-sm font-medium text-ink">{user?.name || 'Conta'}</div>
             <div className="truncate text-xs text-ink-3">{user?.email}</div>
           </div>
+          {/* A conta mora aqui desde a fase 7: Plano, Equipe, Ajustes e Ajuda. */}
+          {onNavigate && [['billing', 'Plano', CreditCard], ['team', 'Equipe', Users], ['settings', 'Ajustes', Settings], ['support', 'Ajuda', LifeBuoy]].map(([id, nome, Icone]) => (
+            <button key={id} type="button" onClick={() => { setOpen(false); onNavigate(id); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-ink-2 transition hover:bg-surface-2 hover:text-ink">
+              <Icone size={15} strokeWidth={2} className="text-ink-3" />
+              {nome}
+            </button>
+          ))}
           <button
             onClick={() => { setOpen(false); onLogout(); }}
             className="flex w-full items-center gap-2 px-3 py-2 text-sm text-ink-2 transition hover:bg-surface-2 hover:text-ink"

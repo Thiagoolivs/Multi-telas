@@ -31,7 +31,8 @@ test('a lista leve não leva a campanha inteira: só o id e o nome', () => {
 
 test('o painel: aba Criando com o número, observador global e aviso ao terminar', () => {
   const menu = ler('web/src/lib/menu.js');
-  assert.match(menu, /paginas: \['criar', 'criando', 'campanhas'\]/);
+  // Fase 7: o Criar é o botão de cima; Criando acende ele, e Criados mora na Biblioteca (Seus conteúdos).
+  assert.match(menu, /\{ id: 'criar', label: 'Criar', botao: true, paginas: \['criar'\], tambem: \['criando', 'rapida'\] \}/);
   const t = ler('web/src/lib/trabalhos.js');
   // Pergunta rápido só com trabalho rodando e a aba à vista.
   assert.match(t, /timer = setTimeout\(perguntar, rodando && !escondida \? 3000 : 30000\);/);
@@ -42,7 +43,7 @@ test('o painel: aba Criando com o número, observador global e aviso ao terminar
   assert.match(t, /if \(\(quemJaAvisa\[j\.tipo\] \|\| \[\]\)\.includes\(paginaAtual\(\)\)\) return;/);
   assert.match(ler('web/src/App.jsx'), /if \(session\) ligarTrabalhos\(go, \(\) => rotaAtual\.current\);/);
   assert.match(ler('web/src/App.jsx'), /case 'criando': return <CriandoPage onIr=\{go\} \/>;/);
-  assert.match(ler('web/src/components/layout/Navegacao.jsx'), /p === 'criando' && rodando > 0/);
+  assert.match(ler('web/src/components/layout/Navegacao.jsx'), /p === 'criando' && rodando > 0/, 'o número continua na aba, quando ela aparece');
   // Começar uma geração acorda a lista na hora.
   assert.equal((ler('web/src/api.js').match(/avisarQueComecou\(\);/g) || []).length, 2);
 });
