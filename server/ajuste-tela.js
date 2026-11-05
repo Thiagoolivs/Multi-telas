@@ -117,7 +117,8 @@ function semIA(texto, atual) {
 
   // Layout
   if (/tela (toda|inteira|cheia)/.test(s)) m.layoutId = /com (o )?(rodape|noticias|letreiro)/.test(s) ? 'full-ticker' : 'full';
-  else if (/mosaico|2x2|quatro (partes|zonas)/.test(s)) m.layoutId = 'quad';
+  // O mosaico 2x2 saiu do seletor (fase 1, 05/11): "partes iguais" vira os Dois quadrados.
+  else if (/mosaico|2x2|quatro (partes|zonas)|dois quadrados|duas (metades|partes iguais)|metade e metade/.test(s)) m.layoutId = 'duo';
   else if (/(lateral|barra)/.test(s) && /(outro lado|inverte|inverter|espelha|troca(r)? (ela )?de lado|muda(r)? (ela )?de lado)/.test(s)) m.layoutId = caminho('outroLado');
   else if (/(lateral|barra)[^,.;]*\besquerda\b|\besquerda\b[^,.;]*(lateral|barra)/.test(s)) m.layoutId = caminho('esquerda') || (lay === 'dashboard' ? '' : null);
   else if (/(lateral|barra)[^,.;]*\bdireita\b|\bdireita\b[^,.;]*(lateral|barra)/.test(s)) m.layoutId = caminho('direita') || (/^(sidebar-right|corporate|video-dynamic)$/.test(lay) ? '' : null);

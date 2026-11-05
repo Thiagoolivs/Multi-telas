@@ -158,7 +158,8 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
             )}
             <div className="space-y-3">
               {LAYOUT_GROUPS.map((g) => {
-                const items = LAYOUTS.filter((l) => (l.orientation || 'landscape') === g.orient);
+                // Os layouts que saíram (fase 1) só aparecem para a TV que ainda usa um deles.
+                const items = LAYOUTS.filter((l) => (l.orientation || 'landscape') === g.orient && (!l.oculto || (s.layoutId || 'dashboard') === l.id));
                 if (!items.length) return null;
                 return (
                   <div key={g.orient}>

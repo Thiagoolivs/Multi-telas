@@ -115,7 +115,7 @@ test('Adicionar conteúdo pergunta antes: 6 entradas grandes; todos os tipos em 
   // Item 32: abre no que já existe (peças prontas que cabem na zona), nunca na grade de tipos.
   assert.match(p, /useState\('prontas'\)/, 'abre nas peças prontas, não na grade');
   assert.match(p, /placeholder=\{tab === 'prontas' \? 'Buscar nas peças…' : 'Buscar um tipo: clima, vídeo, QR…'\}/);
-  assert.match(p, /CONTENT_ORDER\.filter\(bate\)/, 'a busca filtra os tipos prontos');
+  assert.match(p, /catalogo\.principais\.filter\(bate\)/, 'a busca filtra os tipos prontos (o catálogo da frente, fase 1)');
   // Foto ou vídeo entra pelo mesmo caminho do "Pôr na TV": inteira, com o fundo borrado.
   assert.match(p, /onPickItem\(itemDaMidia\(\{ url: r\.url, fundo: prep\.fundo, video \}\)\)/);
 });

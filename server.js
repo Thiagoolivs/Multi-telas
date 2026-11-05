@@ -811,7 +811,8 @@ async function handleApi(req, res, pathname, query) {
        * papel de cada uma. Sem IA (modo dev) ou se nenhuma zona sair, segue a
        * campanha antiga — a tela nunca fica sem nada.
        */
-      const html = process.env.MT_MOTOR_CAMPANHA !== 'coordenadas' && ai.mode() !== 'dev' && zones.length;
+      // O motor antigo, de coordenadas, saiu (fase 1 do plano, 05/11): só o HTML.
+      const html = ai.mode() !== 'dev' && zones.length;
       const kit = html ? await paletaInicial.garantir(db, sess.tenant_id) : null;
       return emTrabalho(res, sess, 'campanha-simples', { brief: String(answers.objetivo).slice(0, 200) }, async (progresso) => {
         if (html) {
@@ -2101,10 +2102,11 @@ const negocioCache = new Map();
           // O que já sabemos da empresa de conversas anteriores.
           memoria: lembrada,
           /*
-           * O motor HTML, escolhido pelo experimento (PLANO §4.4: 4,65 contra
-           * 1,40). MT_MOTOR_CAMPANHA=coordenadas volta ao antigo sem deploy.
+           * O motor HTML, sempre (fase 1 do plano, 05/11). O antigo, de
+           * coordenadas (MT_MOTOR_CAMPANHA=coordenadas), saiu: perdia no
+           * experimento (PLANO §4.4: 4,65 contra 1,40) e ninguém o ligava.
            */
-          motorHtml: process.env.MT_MOTOR_CAMPANHA !== 'coordenadas',
+          motorHtml: true,
         }, {
           /*
            * Primeira chamada: planeja e PARA, sem gerar imagem nenhuma. O
