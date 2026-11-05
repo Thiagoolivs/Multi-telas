@@ -169,6 +169,14 @@ function canManageTeam(role) { return role === 'owner' || role === 'admin'; }
 // Uma linha da planilha de pessoas vira pessoa (ou null): a regra é a de js/pessoas.js (D30),
 // a mesma que o painel usa para mostrar o que a importação vai fazer.
 function normBirthday(r) { return pessoas.normalizar(r); }
+// O erro que o painel mandou (web/src/lib/avisarErro.js): a pilha é a do navegador, para agrupar por arquivo do pacote.
+class ErroDoPainel extends Error {
+  constructor(mensagem, pilhaDoNavegador) {
+    super(mensagem);
+    this.name = 'ErroDoPainel';
+    this.stack = 'ErroDoPainel: ' + mensagem + '\n' + String(pilhaDoNavegador || '').split('\n').filter((l) => !l.startsWith(mensagem)).join('\n');
+  }
+}
 // O que a lei barra não entra na biblioteca (server/conferencia.js): 422 com o porquê.
 function conteudoBarrado(res, regra) {
   return sendJson(res, 422, { error: conferencia.porQueNaoRoda(regra, 'Não deu para guardar'), code: 'conteudo-barrado', bloqueios: regra.bloqueios });
@@ -2571,6 +2579,29 @@ const negocioCache = new Map();
         }
         return linha;
       }),
+    });
+  }
+
+  /*
+   * O PAINEL AVISA QUANDO UMA TELA QUEBRA (05/11; web/src/lib/avisarErro.js).
+   * Vai para o mesmo lugar dos erros do servidor (server/erros.js): agrupado,
+   * com alerta no primeiro de cada tipo e na Plataforma. Sem login também
+   * (o cadastro e o login podem quebrar), com limite por IP. Nada de corpo de
+   * tela nem de endereço com parâmetros: só mensagem, pilha e a página.
+   */
+  if (parts[1] === 'erros' && parts[2] === 'painel' && req.method === 'POST') {
+    const rl = rateLimit('erro-painel:' + clientIp(req), 30, 10 * 60 * 1000);
+    if (!rl.ok) return sendJson(res, 429, { ok: false });
+    return readBody(req, res, async (b) => {
+      const mensagem = String((b && b.mensagem) || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+      if (!mensagem) return sendJson(res, 400, { error: 'sem mensagem' });
+      const e = new ErroDoPainel(mensagem, String((b && b.pilha) || '').slice(0, 3000));
+      erros.registrar(e, {
+        onde: 'painel', tipo: String((b && b.tipo) || 'tela').slice(0, 20),
+        pagina: String((b && b.pagina) || '').split('#')[0].slice(0, 80),
+        tenant: sess ? sess.tenant_id : '', navegador: String(req.headers['user-agent'] || '').slice(0, 120),
+      });
+      return sendJson(res, 202, { ok: true });
     });
   }
 

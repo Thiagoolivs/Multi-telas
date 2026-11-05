@@ -1,6 +1,7 @@
 import React from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
+import { avisarErro, ehPacoteVelho } from '../../lib/avisarErro.js';
 
 /*
  * A rede embaixo do trapézio.
@@ -32,12 +33,20 @@ export class LimiteDeErro extends React.Component {
 
   componentDidCatch(erro) {
     console.warn('[painel] tela não carregou:', erro && erro.message);
+    // O defeito de verdade chega ao servidor (lib/avisarErro.js); o pacote velho, não.
+    avisarErro(erro, 'tela');
   }
 
   render() {
     if (!this.state.erro) return this.props.children;
 
     const semRede = navigator.onLine === false;
+    /*
+     * A frase certa para cada caso (05/11): "versão nova publicada" só quando
+     * é mesmo o pacote velho. Num defeito, dizer isso fazia a pessoa
+     * recarregar em vão, e a equipe nem sabia.
+     */
+    const pacoteVelho = ehPacoteVelho(this.state.erro);
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
         <div>
@@ -47,7 +56,9 @@ export class LimiteDeErro extends React.Component {
           <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-ink-2">
             {semRede
               ? 'O editor ainda não tinha sido baixado neste aparelho. Assim que a conexão voltar, ele abre normalmente.'
-              : 'Costuma ser uma versão nova publicada enquanto esta aba estava aberta. Recarregar resolve.'}
+              : pacoteVelho
+                ? 'Saiu uma versão nova enquanto esta aba estava aberta. Recarregar resolve.'
+                : 'Deu um erro do nosso lado, e a equipe já foi avisada. Tente recarregar; se voltar, fale com o Suporte.'}
             {' '}
             <span className="font-medium text-ink">Nada do que você publicou foi perdido</span> — e as telas
             continuam exibindo.
