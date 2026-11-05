@@ -110,7 +110,7 @@ export function AvisoRapido({ onFechar, avisoInicial }) {
               <label className="block text-xs font-medium text-ink-2">Até quando
                 <input type="date" value={aviso.ate || ''} onChange={(e) => set('ate', e.target.value)} className={cn(campo, 'mt-1')} />
               </label>
-              <label className="block text-xs font-medium text-ink-2">Prioridade
+              <label className="block text-xs font-medium text-ink-2">Importância
                 <select value={aviso.prioridade} onChange={(e) => set('prioridade', e.target.value)} className={cn(campo, 'mt-1')}>
                   <option value="alta">Alta (passa mais vezes)</option>
                   <option value="urgente">Urgente (toma a tela)</option>

@@ -69,7 +69,7 @@ export function MudarComIA({ cfg, onAplicar }) {
 
       {proposta && (
         <Dialog open onClose={() => setProposta(null)} className="max-w-3xl" title="Mudar a tela"
-          description="Confira antes: muda só o rascunho, e vai para a TV no Publicar."
+          description="Confira antes: muda só o rascunho, e vai para a TV no “Pôr na TV”."
           footer={<>
             <Button variant="ghost" onClick={() => setProposta(null)}>Deixar como está</Button>
             <Button variant="primary" icon={Check} onClick={usar}>Usar assim</Button>

@@ -68,13 +68,13 @@ export function RelatorioPage({ onIrParaPlano, telaFixa }) {
       {data && !loading && (data.totais.vezes === 0 ? (
         <Panel>
           <EmptyState icon={BarChart3} title="Nada exibido neste período"
-            description="As TVs mandam o que exibiram a cada poucos minutos, agrupado por hora. Uma tela recém-pareada aparece aqui na hora seguinte." />
+            description="As TVs mandam o que exibiram a cada poucos minutos, agrupado por hora. Uma TV recém-ligada aparece aqui na hora seguinte." />
         </Panel>
       ) : (
         <>
           <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat label="Exibições" value={nfmt(data.totais.vezes)} icon={PlayCircle} />
-            <Stat label="Tempo no ar" value={horas(data.totais.segundos)} icon={Clock} hint="soma de todas as zonas" />
+            <Stat label="Tempo no ar" value={horas(data.totais.segundos)} icon={Clock} hint="soma de todas as partes da TV" />
             <Stat label="Conteúdos diferentes" value={nfmt(data.totais.conteudos)} icon={BarChart3} />
             <Stat label="Telas" value={nfmt(data.totais.telas)} icon={MonitorPlay} />
           </div>

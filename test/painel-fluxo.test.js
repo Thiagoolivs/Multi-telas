@@ -168,6 +168,9 @@ test('a TV manda o cliente abrir um menu que EXISTE', () => {
   const player = ler('player.html');
   assert.ok(!/Controlar TV/.test(player), 'a TV voltou a citar um menu que não existe');
   assert.match(player, /Telas/, 'a instrução da TV precisa citar o menu real');
+  // Fase 8: o botão do painel é "Ligar uma TV" (era "Parear tela").
+  assert.match(player, /<strong>Telas<\/strong> &rsaquo; <strong>Ligar uma TV<\/strong>/);
+  assert.match(ler('web/src/pages/ScreensPage.jsx'), />Ligar uma TV<\/Button>/);
 });
 
 /* ---------------- A TV depois de pareada ---------------- */

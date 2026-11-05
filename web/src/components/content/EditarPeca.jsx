@@ -379,7 +379,7 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
                   </Button>
                 </div>
                 {fotoAberta === c.nome && (
-                  <FotoDoProduto incluirIa aviso="Escolha uma foto das suas Mídias ou envie outra." botao="Enviar foto"
+                  <FotoDoProduto incluirIa aviso="Escolha uma foto da sua Biblioteca ou envie outra." botao="Enviar foto"
                     onFechar={() => setFotoAberta(null)}
                     onEscolher={(url, extra) => {
                       setCampos((x) => ({ ...x, [c.nome]: url }));

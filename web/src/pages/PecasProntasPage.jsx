@@ -220,7 +220,7 @@ export function PecasProntasPage({ onIr }) {
 
       {porNaTv && (
         <PorNaTV peca={porNaTv} telas={telas} onFechar={() => setPorNaTv(null)}
-          descricao={'Entra ' + (porNaTv.papel === 'cabecalho' || porNaTv.papel === 'rodape' ? 'no ' + ONDE[porNaTv.papel] : 'na zona que combina com ela (' + ondeCabe(porNaTv) + ')') + ', no fim do que já está lá.'} />
+          descricao={'Entra ' + (porNaTv.papel === 'cabecalho' || porNaTv.papel === 'rodape' ? 'no ' + ONDE[porNaTv.papel] : 'na parte da TV que combina com ela (' + ondeCabe(porNaTv) + ')') + ', no fim do que já está lá.'} />
       )}
       {redesDe && <RedesSociais item={redesDe.item} label={redesDe.label} onFechar={() => setRedesDe(null)} />}
     </div>

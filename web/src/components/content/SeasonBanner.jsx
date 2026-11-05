@@ -35,8 +35,8 @@ export function SeasonBanner({ zonas, onAplicar }) {
         </div>
         <div className="text-xs leading-snug text-ink-3">
           {aplicado
-            ? 'Cores, decoração, conteúdo em todas as zonas e os avisos do rodapé já entraram. Dá para editar tudo normalmente.'
-            : `Programação pronta: cores da data, decoração, ${quantos} conteúdos nas zonas e os avisos do rodapé — o bastante para rodar o dia inteiro.`}
+            ? 'Cores, decoração, conteúdo em todas as partes da TV e os avisos do rodapé já entraram. Dá para editar tudo normalmente.'
+            : `Programação pronta: cores da data, decoração, ${quantos} conteúdos nas partes da TV e os avisos do rodapé — o bastante para rodar o dia inteiro.`}
         </div>
       </div>
       {!aplicado && (

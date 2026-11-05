@@ -18,11 +18,11 @@ const EMAIL_PADRAO = 'thiago.olivs.coelho@gmail.com';
 const FAQ = [
   {
     q: 'Como coloco uma TV para funcionar?',
-    a: 'Na TV, abra tv.multitelas.net.br (ou o app MultiTelas TV). Ela mostra um código e um QR. Aponte a câmera do celular para o QR, ou vá em Telas › Parear tela e digite o código. Pronto: o que você publicar aparece nela na hora.',
+    a: 'Na TV, abra tv.multitelas.net.br (ou o app MultiTelas TV). Ela mostra um código e um QR. Aponte a câmera do celular para o QR, ou vá em Telas › Ligar uma TV e digite o código. Pronto: o que você puser nela aparece na hora.',
   },
   {
     q: 'A TV está mostrando a tela errada (ou repetindo uma antiga)',
-    a: 'O navegador guarda qual TV é aquela para sobreviver a recargas. Para começar do zero, toque em "Gerar outro código (tela nova)" na própria tela de pareamento da TV.',
+    a: 'O navegador guarda qual TV é aquela para sobreviver a recargas. Para começar do zero, toque em "Gerar outro código (tela nova)" na própria tela do código, na TV.',
   },
   {
     q: 'O painel diz que a tela está offline. E agora?',
@@ -34,15 +34,15 @@ const FAQ = [
   },
   {
     q: 'Como reaproveito um design em várias telas?',
-    a: 'Tudo que você cria fica em Meus Designs. Ao adicionar conteúdo em uma tela, o painel abre justamente na sua biblioteca, com busca — é só clicar no design para inseri-lo.',
+    a: 'Tudo que você cria fica na Biblioteca, em Seus conteúdos. Ao adicionar conteúdo em uma tela, o painel abre justamente na sua biblioteca, com busca — é só clicar no design para inseri-lo.',
   },
   {
     q: 'A TV foi trocada ou apagada. Perco a programação?',
-    a: 'Não. Em Telas, o ícone de arquivo abre Backup e restauração: baixe o JSON da tela antiga e, na TV nova (depois de pareada), restaure o arquivo. Também dá para copiar a exibição de outra tela que já funciona.',
+    a: 'Não. Em Telas, o ícone de arquivo abre Backup e restauração: baixe o JSON da tela antiga e, na TV nova (depois de ligada), restaure o arquivo. Também dá para copiar a exibição de outra tela que já funciona.',
   },
   {
     q: 'A internet caiu. A tela apaga?',
-    a: 'Não. A TV guarda a última programação e as mídias já baixadas, e continua exibindo offline. Quando a rede volta, ele se atualiza sozinho.',
+    a: 'Não. A TV guarda a última programação e as fotos e vídeos já baixados, e continua exibindo offline. Quando a rede volta, ele se atualiza sozinho.',
   },
   {
     q: 'Esqueci minha senha',

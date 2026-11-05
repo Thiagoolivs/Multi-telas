@@ -197,7 +197,7 @@ export function OpcoesDeCriar({ onEscolher, compacto }) {
 }
 
 function Passos({ atual }) {
-  const nomes = ['O quê', 'A frase', 'Rascunho', 'Publicar'];
+  const nomes = ['O quê', 'A frase', 'Rascunho', 'Pôr na TV'];
   return (
     <ol className="mb-4 flex items-center gap-1.5 text-2xs font-medium">
       {nomes.map((n, i) => {
@@ -339,8 +339,8 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
       if (alvos.length) await publicarPecas({ alvos, pecas, titulo, telas });
       feito.current = null;
       setPronto({ pecas, nTelas: alvos.length, titulo, conferencia: conferida.current });
-      aviso.ok(alvos.length ? 'Publicado em ' + alvos.length + ' tela(s).' : 'Guardado em Meus Designs.');
-    } catch (e) { setErro(e.message || 'Não deu para publicar. Tente de novo.'); }
+      aviso.ok(alvos.length ? 'Na TV: ' + alvos.length + (alvos.length === 1 ? ' tela.' : ' telas.') : 'Guardado na Biblioteca.');
+    } catch (e) { setErro(e.message || 'Não deu para pôr na TV. Tente de novo.'); }
     finally { setEtapa(null); }
   }
 
@@ -381,8 +381,8 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
             em "Mais", em Meus Designs.
           */}
           <p className="mt-4 text-xs text-ink-3">
-            Quer desenhar do zero, gerar uma imagem ou trazer um arquivo? Está em{' '}
-            <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('designs')}>Meus Designs › Mais</button>.
+            Quer desenhar do zero, gerar uma imagem ou trazer um arquivo? Está na Biblioteca, em{' '}
+            <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('designs')}>Peças guardadas</button>.
           </p>
         </>
       ) : passo === 2 ? (
@@ -492,7 +492,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
             <div className="space-y-3 p-4">
               {telas === null ? <Spinner size={16} /> : telas.length ? (
                 <div>
-                  <div className="mb-1.5 text-xs font-medium text-ink-2">Publicar em</div>
+                  <div className="mb-1.5 text-xs font-medium text-ink-2">Em qual TV</div>
                   <div className="flex flex-wrap gap-1.5">
                     {telas.map((t) => {
                       const ativo = alvos.includes(t.id);
@@ -516,7 +516,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs text-ink-3">{custo ? custo + (custo === 1 ? ' criação com foto' : ' criações com foto') : 'Sem foto gerada · não usa criação'}</span>
                 <Button variant="primary" size="lg" icon={Rocket} onClick={publicar}>
-                  {alvos.length ? 'Publicar' : 'Guardar'}
+                  {alvos.length ? 'Pôr na TV' : 'Guardar'}
                 </Button>
               </div>
             </div>
@@ -527,12 +527,12 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
           <div className="space-y-4 p-4">
             {/* Sem TV ainda: o próximo passo é ligar uma (PLANO §5.3) — e a peça vai junto no pareamento. */}
             {!pronto.nTelas && (
-              <ProximoPasso feito="A peça está pronta." proximo="ligar a TV; depois é só publicar esta peça nela, em Mídias › Peças prontas." acao="Ligar a TV"
+              <ProximoPasso feito="A peça está pronta." proximo="ligar a TV; depois é só pôr esta peça nela, pela Biblioteca › Seus conteúdos." acao="Ligar a TV"
                 onIr={() => onIr && onIr('screens', { abrirParear: true })} />
             )}
             <div className="flex items-center gap-2 text-sm text-ink">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ok/15 text-ok"><Check size={16} /></span>
-              {pronto.nTelas ? 'No ar em ' + pronto.nTelas + (pronto.nTelas === 1 ? ' tela.' : ' telas.') : 'Guardado em Meus Designs.'}
+              {pronto.nTelas ? 'No ar em ' + pronto.nTelas + (pronto.nTelas === 1 ? ' tela.' : ' telas.') : 'Guardado na Biblioteca.'}
             </div>
             <Conferencia conferencia={pronto.conferencia} />
             <div className="grid gap-3 sm:grid-cols-2">
@@ -544,7 +544,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
               {/* A mesma peça, nas redes: post, Story, Status e o texto de cada uma. */}
               <Button variant="primary" icon={Share2} onClick={() => setRedesAberto(true)}>Postar nas redes</Button>
               <Button variant="secondary" icon={RefreshCw} onClick={recomecar}>Criar outra</Button>
-              <Button variant="secondary" onClick={() => onIr && onIr('designs')}>Ver em Meus Designs</Button>
+              <Button variant="secondary" onClick={() => onIr && onIr('designs')}>Ver na Biblioteca</Button>
             </div>
           </div>
         </Panel>

@@ -56,7 +56,7 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling, onAbrirTela 
     alerts.push({
       id: 'nocfg-' + d.id, tone: 'warn', Icon: LayoutTemplate,
       title: `“${d.name || 'Tela sem nome'}” está sem programação`,
-      desc: 'Nada foi publicado nesta tela ainda. Adicione conteúdo para ela sair do ar em branco.',
+      desc: 'Nada foi posto nesta TV ainda. Ponha um conteúdo para ela não ficar em branco.',
       // Direto para a programação DESTA TV (D3): ir para a lista de Telas era um passo a mais, sem rumo.
       action: { label: 'Pôr conteúdo', on: () => (onAbrirTela ? onAbrirTela(d) : onGoScreens()) },
     });
@@ -70,8 +70,8 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling, onAbrirTela 
       alerts.push({
         id: 'storage', tone: pct >= 0.95 ? 'danger' : 'warn', Icon: HardDrive,
         title: `Armazenamento em ${Math.round(pct * 100)}% do limite`,
-        desc: 'Apague mídias que não usa mais ou aumente o plano para continuar enviando arquivos.',
-        action: { label: 'Ver mídias', on: onGoStorage },
+        desc: 'Apague fotos e vídeos que não usa mais ou aumente o plano para continuar enviando arquivos.',
+        action: { label: 'Ver fotos e vídeos', on: onGoStorage },
       });
     }
   }
@@ -82,7 +82,7 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling, onAbrirTela 
     alerts.push({
       id: 'plan', tone: 'info', Icon: MonitorPlay,
       title: `Você usou ${limiteTelas === 1 ? 'a única tela' : `as ${limiteTelas} telas`} do seu plano`,
-      desc: 'Para parear mais telas, é preciso mudar de plano.',
+      desc: 'Para ligar mais TVs, é preciso mudar de plano.',
       action: { label: 'Ver planos', on: onGoBilling },
     });
   }
@@ -108,7 +108,7 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling, onAbrirTela 
           <div className="p-6"><Spinner size={20} /></div>
         ) : list.length === 0 ? (
           <EmptyState icon={MonitorPlay} exemplo title="Nenhuma TV ainda"
-            description="Assim que você parear uma TV, os avisos sobre ela aparecem aqui."
+            description="Assim que você ligar uma TV, os avisos sobre ela aparecem aqui."
             action={<Button size="sm" variant="primary" onClick={onGoScreens}>Ir para Telas</Button>} />
         ) : alerts.length === 0 ? (
           <EmptyState icon={CheckCircle2} title="Nenhum alerta"

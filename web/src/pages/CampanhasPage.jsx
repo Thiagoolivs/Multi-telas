@@ -171,7 +171,7 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
     <div className="max-w-6xl">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">{arquivadas ? 'Arquivados' : 'Criados'}</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">{arquivadas ? 'Arquivadas' : 'Campanhas'}</h1>
           <p className="mt-1 text-sm text-ink-2">{arquivadas ? 'Fora da frente, mas guardados. Desarquive para voltar.' : 'Tudo o que a IA criou e ficou pronto. Abra para pôr na TV, editar à mão ou pedir mudanças.'}</p>
         </div>
         {/* O Criar do menu é o violeta; aqui é o atalho. */}

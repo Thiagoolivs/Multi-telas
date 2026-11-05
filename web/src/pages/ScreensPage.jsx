@@ -72,12 +72,12 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
           <Button variant="secondary" icon={MonitorPlay} className="hidden sm:inline-flex"
             title="Abre a tela da TV numa aba nova deste computador"
             onClick={() => window.open('/player.html?cloud=1&pid=' + Math.random().toString(36).slice(2, 9), '_blank', 'noopener')}>Usar este computador como TV</Button>
-          {podeGerir && <Button variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Parear tela</Button>}
+          {podeGerir && <Button variant="primary" icon={Plus} onClick={() => setPairOpen(true)}>Ligar uma TV</Button>}
         </>}
       />
 
       <Panel>
-        <PanelHeader title="Suas telas" description="Cada tela recebe as publicações na hora que você salva." />
+        <PanelHeader title="Suas telas" description="O que você põe numa TV aparece nela na hora." />
         {grupos.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-4 py-2.5">
             {[['', 'Todas', todas.length], ...grupos.map((g) => [g, g, todas.filter((d) => d.grupo === g).length]),
@@ -308,7 +308,7 @@ function ReconnectDialog({ target, onClose, onDone }) {
       open={!!target}
       onClose={onClose}
       title={'Reconectar · ' + ((target && target.name) || 'Tela')}
-      description="Use quando a TV voltou mostrando um código de pareamento em vez do conteúdo."
+      description="Use quando a TV voltou mostrando um código em vez do conteúdo."
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
@@ -460,7 +460,7 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
             {pareada.reconectada
               ? <><b className="text-ink">{pareada.name || 'A TV'}</b> voltou: está com o nome, a programação, o grupo e o horário de antes, sem ocupar outra vaga.</>
               : comecou
-              ? <><b className="text-ink">{pareada.name || 'A TV'}</b> já é sua e está mostrando “{comecou}”, uma tela pronta com a sua marca. Troque quando quiser: o que você publicar aparece nela na hora.</>
+              ? <><b className="text-ink">{pareada.name || 'A TV'}</b> já é sua e está mostrando “{comecou}”, uma tela pronta com a sua marca. Troque quando quiser: o que você puser na TV aparece nela na hora.</>
               : <><b className="text-ink">{pareada.name || 'A TV'}</b> já é sua: ela mostra "Tudo certo" e fica esperando.
                 O que você publicar aparece nela na hora — um modelo pronto, uma data comemorativa ou uma campanha feita pela IA.</>}
             {mandada === 'ok' && <div className="mt-2 font-medium text-ok">A campanha foi para a TV, com cabeçalho e rodapé. Olhe para ela!</div>}
@@ -484,16 +484,16 @@ function PairDialog({ open, onClose, onDone, codigoInicial, onConteudo, onCriar,
     <Dialog
       open={open}
       onClose={onClose}
-      title="Parear uma tela"
+      title="Ligar uma TV"
       description={codigoInicial
-        ? 'O código veio da TV. Dê um nome para ela e toque em Parear.'
+        ? 'O código veio da TV. Dê um nome para ela e toque em Ligar.'
         : 'Ligue a TV no MultiTelas e digite aqui o código que ela mostrar — ou aponte o celular para o QR dela.'}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           {/* type=submit do formulário de cima: Enter em qualquer campo pareia (QA de 03/11). */}
           <Button type="submit" form="form-parear" variant="primary" icon={RadioTower} disabled={busy || code.length < 4}>
-            {busy ? 'Pareando…' : 'Parear'}
+            {busy ? 'Ligando…' : 'Ligar'}
           </Button>
         </>
       }
@@ -689,7 +689,7 @@ function RenameDialog({ target, grupos, onClose, onDone }) {
         <Field label="Nome da tela">
           <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         </Field>
-        <Field label="Grupo" hint="Ex.: Loja Centro. Na hora de publicar, dá para marcar o grupo inteiro de uma vez.">
+        <Field label="Grupo" hint="Ex.: Loja Centro. Na hora de pôr na TV, dá para marcar o grupo inteiro de uma vez.">
           <Input value={grupo} onChange={(e) => setGrupo(e.target.value)} list="grupos-de-telas" placeholder="Sem grupo" />
           <datalist id="grupos-de-telas">{(grupos || []).map((g) => <option key={g} value={g} />)}</datalist>
         </Field>
@@ -719,7 +719,7 @@ function RemoveDialog({ target, onClose, onDone }) {
         </>
       }
     >
-      <p className="text-sm text-ink-2">Essa ação não pode ser desfeita. A TV precisará ser pareada de novo para voltar a ser controlada.</p>
+      <p className="text-sm text-ink-2">Essa ação não pode ser desfeita. A TV precisará ser ligada de novo para voltar a ser controlada.</p>
     </Dialog>
   );
 }
@@ -832,7 +832,7 @@ function BackupDialog({ target, screens, onClose, onDone }) {
           ) : <p className="mt-2 text-xs text-ink-3">Você só tem esta TV — ligue outra para poder copiar.</p>}
         </div>
 
-        <p className="text-2xs text-ink-3">O backup guarda a exibição, não o pareamento: a TV nova precisa ser pareada primeiro.</p>
+        <p className="text-2xs text-ink-3">O backup guarda o que passa, não a ligação: a TV nova precisa ser ligada primeiro.</p>
         {msg && <div className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-ink-2">{msg}</div>}
         {err && <div className="rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{err}</div>}
       </div>

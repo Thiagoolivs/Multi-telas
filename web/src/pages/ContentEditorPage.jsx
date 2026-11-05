@@ -433,7 +433,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     } catch (e) {
       // Outra aba, outra pessoa ou uma campanha gravou no meio: não passa por cima — e não joga fora o rascunho.
       if (e.codigo === 'config-mudou') { setConflito(true); return false; }
-      setPublishError(e.message || 'Não deu para publicar.');
+      setPublishError(e.message || 'Não deu para pôr na TV.');
       return false;
     } finally { setPublishing(false); }
   }
@@ -699,7 +699,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
             <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
               {/* Sequência */}
               <Panel className="flex flex-col">
-                <PanelHeader title="Sequência" description={items.length ? `${items.length} ${items.length === 1 ? 'conteúdo' : 'conteúdos'}` : undefined}
+                <PanelHeader title="O que passa" description={items.length ? `${items.length} ${items.length === 1 ? 'conteúdo' : 'conteúdos'}` : undefined}
                   actions={<>
                     {/*
                       "IA" aqui gerava texto solto numa caixa à parte. Criar é
@@ -743,7 +743,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                               {/* De qual campanha veio (item 25): é ela que "Pausar" tira daqui. */}
                               {it._campanha ? ' · campanha ' + it._campanha : ''}
                               {it._calendario ? ' · calendário' : ''}
-                              {it.meta && it.meta.prioridade === 'alta' ? ' · prioridade alta' : ''}
+                              {it.meta && it.meta.prioridade === 'alta' ? ' · importância alta' : ''}
                               {it.meta && it.meta.prioridade === 'urgente' ? <b className="text-danger"> · urgente</b> : null}
                               {/* Fase 5: por que a peça tem esta importância (js/importancia.js); troca com um toque no editor. */}
                               {it.meta && it.meta.porque ? ' · ' + it.meta.porque : ''}
@@ -852,7 +852,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                 <><span className="h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden /><span className="text-ink">Rascunho · ainda não está na TV</span></>
               ) : (
                 <><Check size={15} className="shrink-0 text-emerald-500" />
-                  <span className="text-ink-2">{publishedAt ? (desfeito ? 'A TV voltou ao que estava' : 'Na TV desde ' + hora(publishedAt)) : 'Igual ao que está na TV'}</span></>
+                  <span className="text-ink-2">{publishedAt ? (desfeito ? 'A TV voltou ao que estava' : 'Na TV desde ' + hora(publishedAt)) : 'No ar · nada novo para pôr'}</span></>
               )}
             </span>
             <span className="flex flex-wrap items-center gap-2">
@@ -982,7 +982,7 @@ function CampaignDialog({ open, onClose, empresa, tema, zones, onApply }) {
           </Field>
         )}
         {err && <p className="text-xs text-danger">{err}</p>}
-        <p className="text-2xs text-ink-3">Vai substituir o conteúdo das zonas desta tela. Você ajusta e publica depois.</p>
+        <p className="text-2xs text-ink-3">Vai substituir o conteúdo das partes desta TV. Você ajusta e põe na TV depois.</p>
       </div>
     </Dialog>
   );

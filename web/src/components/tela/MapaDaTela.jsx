@@ -49,7 +49,7 @@ export function MapaDaTela({ layout, ativa, onEscolher, resumo, cfg, onIA }) {
   const emPe = (layout.orientation || '') === 'portrait';
   return (
     <div className={cn('mx-auto w-full', emPe ? 'max-w-[15rem]' : 'max-w-2xl')}>
-      <div role="group" aria-label="As zonas desta TV"
+      <div role="group" aria-label="As partes desta TV"
         className="grid gap-[3px] rounded-xl bg-[#0b0f17] p-[5px] shadow-md ring-1 ring-black/40"
         style={{ aspectRatio: proporcaoDoLayout(layout), ...gradeDaMiniatura(layout) }}>
         {layout.zones.map((z) => {

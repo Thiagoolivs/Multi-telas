@@ -44,9 +44,9 @@ function LinhaEditavel({ ev, onChange }) {
           dias antes
         </label>
         {/* D24/D25: a mesma prioridade das peças — alta passa mais vezes; urgente toma a tela. */}
-        <select value={ev.prioridade || 'normal'} onChange={(e) => set('prioridade', e.target.value)} className={cn(campo, 'w-full')} aria-label="Prioridade">
-          <option value="normal">Prioridade normal</option>
-          <option value="alta">Prioridade alta</option>
+        <select value={ev.prioridade || 'normal'} onChange={(e) => set('prioridade', e.target.value)} className={cn(campo, 'w-full')} aria-label="Importância">
+          <option value="normal">Importância normal</option>
+          <option value="alta">Importância alta</option>
           <option value="urgente">Urgente (toma a tela)</option>
         </select>
       </div>

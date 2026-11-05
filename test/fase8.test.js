@@ -53,3 +53,36 @@ test('o vazio mostra o que vai aparecer ali: uma TV desenhada com a peça de exe
   // Apps ganhou o título da página (o axe acusava a página sem h1).
   assert.match(ler('web/src/pages/BibliotecaPage.jsx'), /<PageHeader title="Apps"/);
 });
+
+/*
+ * Parte B: um verbo e um glossário (BLOCO-8 §2.4). "Pôr na TV" para pôr,
+ * "Biblioteca" em todo lugar, e nada de "zona", "prioridade", "parear",
+ * "Mídias", "Meus Designs" ou "Criados" na frente do cliente.
+ */
+test('o glossário: nenhum termo velho nos textos que o cliente lê', () => {
+  const glob = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? glob(path.join(dir, e.name)) : /\.(jsx?|mjs)$/.test(e.name) ? [path.join(dir, e.name)] : []));
+  // Telas só do operador (a Plataforma) podem falar a língua de quem opera.
+  const DO_OPERADOR = /pages\/(PlatformPage|SystemPage)\.jsx|components\/platform\//;
+  const VELHOS = [/\bMídias\b/, /\bMeus Designs\b/, /\bCriados\b/, /\bParear\b/, /\bPareie\b/, /\bPublicar\b/, /Prioridade (normal|alta)/, /\bzonas? (desta|única|sem conteúdo|independentes)/i, /Duração \(s\)/];
+  const ruins = [];
+  for (const f of glob(path.join(RAIZ, 'web/src'))) {
+    if (DO_OPERADOR.test(f)) continue;
+    // Só o que vira texto na tela: strings e texto de JSX, sem os comentários.
+    const s = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
+    const textos = s.match(/'[^'\n]*'|"[^"\n]*"|`[^`]*`|>[^<>{}\n]+</g) || [];
+    for (const t of textos) for (const v of VELHOS) if (v.test(t) && !/import |from '|aria-hidden/.test(t)) ruins.push(path.relative(RAIZ, f) + ': ' + t.slice(0, 80));
+  }
+  assert.deepEqual(ruins, []);
+});
+
+test('os nomes novos: Ligar uma TV, O que passa, Importância, Tempo na tela, Campanhas, Peças guardadas', () => {
+  assert.match(ler('web/src/pages/ScreensPage.jsx'), /title="Ligar uma TV"/);
+  assert.match(ler('web/src/pages/ContentEditorPage.jsx'), /<PanelHeader title="O que passa"/);
+  assert.match(ler('web/src/pages/ContentEditorPage.jsx'), /'No ar · nada novo para pôr'/);
+  assert.match(ler('web/src/lib/contentTypes.js'), /label: 'Tempo na tela \(segundos\)'/);
+  assert.match(ler('web/src/lib/menu.js'), /campanhas: 'Campanhas',/);
+  assert.match(ler('web/src/lib/menu.js'), /designs: 'Peças guardadas',/);
+  assert.match(ler('web/src/pages/CalendarioPage.jsx'), /aria-label="Importância"/);
+  // A TV aponta para o botão que existe no painel.
+  assert.match(ler('player.html'), /<strong>Ligar uma TV<\/strong>/);
+});

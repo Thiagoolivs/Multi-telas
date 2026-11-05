@@ -72,16 +72,16 @@ const META = {
   // Os quatro passos de antes do chat (item 24): continuam, em Meus Designs › Mais.
   rapida: { title: 'Criação rápida', nav: 'criar' },
   // A campanha do Criar como unidade (item 29); a aba Criados desde o D47.
-  campanhas: { title: 'Criados' },
+  campanhas: { title: 'Campanhas' },
   criando: { title: 'Criando' },
   screens: { title: 'Telas' },
   // O que passa em cada TV, com aba própria (item 40).
   programacao: { title: 'Programação' },
-  designs: { title: 'Meus Designs', subtitle: 'Crie, guarde e reaproveite todos os seus designs.' },
+  designs: { title: 'Peças guardadas', subtitle: 'O que você guardou, pronto para reaproveitar e pôr na TV.' },
   // Endereços antigos que abrem Meus Designs.
-  studio: { title: 'Meus Designs', nav: 'designs' },
-  campaigns: { title: 'Meus Designs', nav: 'designs' },
-  images: { title: 'Meus Designs', nav: 'designs' },
+  studio: { title: 'Peças guardadas', nav: 'designs' },
+  campaigns: { title: 'Peças guardadas', nav: 'designs' },
+  images: { title: 'Peças guardadas', nav: 'designs' },
   team: { title: 'Equipe' },
   brand: { title: 'Marca', subtitle: 'Cores, fontes e imagens que a IA usa para criar.' },
   mural: { title: 'Mural de fotos', subtitle: 'O público manda foto pelo QR e ela aparece na TV.' },

@@ -58,7 +58,7 @@ export function ScreenSummary({ cfg }) {
           <div className="grid gap-4 md:grid-cols-2">
             {/* Zonas */}
             <div>
-              <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Zonas</div>
+              <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Partes da TV</div>
               <div className="space-y-1.5">
                 {d.zonas.map((z) => (
                   <div key={z.id} className="flex items-baseline gap-2 text-xs">

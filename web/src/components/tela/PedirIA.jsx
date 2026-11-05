@@ -46,7 +46,7 @@ export function PedirIA({ onFechar, onIr, tv }) {
       if (r.pergunta) { setHistorico((h) => comPergunta(h, frase, r)); setTexto(''); return; }
       if (r.destino === 'aviso') { setAvisoPronto(r.aviso); return; }
       if (r.destino === 'criar') { onFechar(); if (onIr) onIr('criar', { texto: r.texto }); return; }
-      if (r.destino === 'nenhuma-tv') { aviso.erro('pedir', 'Você ainda não tem TV ligada. Pareie uma em Telas.'); return; }
+      if (r.destino === 'nenhuma-tv') { aviso.erro('pedir', 'Você ainda não tem TV ligada. Ligue uma em Telas.'); return; }
       if (r.destino === 'tela') setTela({ tv: r.tv, mudancas: r.mudancas, notas: r.notas || [] });
       if (r.destino === 'quiz') setQuiz(r.quiz);
       if (r.destino === 'editar') { onFechar(); if (onIr) onIr('campanhas', { campanha: r.campanha.id, pedido: r.pedido || '' }); }

@@ -26,7 +26,7 @@ const quando = (ms) => {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 };
 const duracao = (s) => (s >= 60 ? Math.floor(s / 60) + ' min ' + (s % 60) + ' s' : (s || 0) + ' s');
-const ROTULO_ABRIR = { campanhas: 'Abrir a campanha', ia: 'Ver a imagem', designs: 'Abrir em Meus Designs' };
+const ROTULO_ABRIR = { campanhas: 'Abrir a campanha', ia: 'Ver a imagem', designs: 'Abrir na Biblioteca' };
 
 export function CriandoPage({ onIr }) {
   const lista = useTrabalhos();

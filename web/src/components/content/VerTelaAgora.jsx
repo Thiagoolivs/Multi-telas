@@ -208,7 +208,7 @@ function Zona({ zona, dados, escala, hora }) {
       </EmEscala>
     );
   } else {
-    corpo = <Aviso><Clock size={14} className="mx-auto mb-1 opacity-70" />Relógio (zona sem conteúdo)</Aviso>;
+    corpo = <Aviso><Clock size={14} className="mx-auto mb-1 opacity-70" />Relógio (parte sem conteúdo)</Aviso>;
   }
 
   return (
