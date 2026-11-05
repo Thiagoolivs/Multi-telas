@@ -40,20 +40,22 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
   .apoio { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); max-width: none; }
   .cta { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); margin-top: 5cqw; border-bottom-width: .25cqw; }
 }
-/* Quase quadrada: o selo no canto de cima, o texto embaixo à esquerda. */
+/* Quase quadrada: o selo no canto de cima, o texto embaixo à esquerda. Com a letra da TV o texto subia até o selo: o título vai numa linha só (quebra entre as duas partes se não couber), o apoio usa a largura toda e os respiros encurtaram. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
-  .selo { right: 7cqw; top: 7cqh; width: 40cqw; height: 40cqw; margin-top: 0; }
-  .selo::before { inset: 1.8cqw; border-width: .2cqw; }
+  .marca-nome { left: 7cqw; top: 6cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .24em; }
+  .selo { right: 7cqw; top: 6cqh; width: 38cqw; height: 38cqw; margin-top: 0; }
+  .selo::before { inset: 1.7cqw; border-width: .2cqw; }
   .pct { font-size: max(var(--mt-piso, 0cqw), 15cqw); }
   .off { font-size: max(var(--mt-piso, 0cqw), 2.4cqw); margin-top: 1.6cqw; }
   .nota { display: none; }
-  .bloco { left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 8cqh; transform: none; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
+  .bloco { left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 6cqh; transform: none; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .16em; }
   .kicker i { width: 5cqw; height: .2cqw; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 9cqw); margin: 3cqw 0 3cqw; }
-  .apoio { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); max-width: 64cqw; }
-  .cta { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); margin-top: 3.6cqw; border-bottom-width: .2cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 9cqw); margin: 2.8cqw 0 2.4cqw; }
+  h1 span { display: inline; margin-right: .22em; }
+  h1 em { display: inline-block; }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); line-height: 1.35; max-width: none; text-wrap: pretty; }
+  .cta { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); margin-top: 2.8cqw; border-bottom-width: .2cqw; }
 }
 </style>
 <section class="mt-peca oferta-selo">
