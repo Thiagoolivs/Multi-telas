@@ -425,6 +425,8 @@ garantirColuna('muralfotos', 'pendente INTEGER');
 garantirColuna('indicadores', 'sentido TEXT');
 // Onde a loja fica (endereço, bairro, cidade, link), em JSON: as redes pedem.
 garantirColuna('marcas', 'localizacao TEXT');
+// Fase 4: a marca nas TVs (o tema da TV sai dela). Ligada por padrão; a pessoa desliga na Marca.
+garantirColuna('marcas', 'nas_tvs INTEGER');
 // O banco comum com fotos da Pixabay escolhidas pelo operador: de onde veio, o crédito e o link.
 garantirColuna('banco', 'origem TEXT');
 garantirColuna('banco', 'credito TEXT');
@@ -1096,6 +1098,8 @@ function mapMarca(r) {
     site: r.site || '', siteResumo: r.site_resumo || '', siteShot: r.site_shot || '', siteEm: r.site_em || 0,
     ativa: !!r.ativa, updatedAt: r.updated_at,
     local: lerLocal(r.localizacao),
+    // Ligada por padrão: só o 0 gravado desliga.
+    nasTvs: !(r.nas_tvs === 0 || r.nas_tvs === '0' || r.nas_tvs === false),
   };
 }
 
@@ -2099,6 +2103,7 @@ module.exports = {
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
+  salvarNasTvsDaMarca,
   salvarLocalDaMarca,
 };
 
@@ -2115,5 +2120,9 @@ function lerLocal(texto) {
 async function salvarLocalDaMarca(id, tenantId, local) {
   db.prepare('UPDATE marcas SET localizacao = ?, updated_at = ? WHERE id = ? AND tenant_id = ?')
     .run(JSON.stringify(local || {}), Date.now(), id, tenantId);
+  return mapMarca(qMarca.porId.get(id, tenantId));
+}
+async function salvarNasTvsDaMarca(id, tenantId, ligado) {
+  db.prepare('UPDATE marcas SET nas_tvs = ?, updated_at = ? WHERE id = ? AND tenant_id = ?').run(ligado ? 1 : 0, Date.now(), id, tenantId);
   return mapMarca(qMarca.porId.get(id, tenantId));
 }

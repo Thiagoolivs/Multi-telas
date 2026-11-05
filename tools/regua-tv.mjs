@@ -70,6 +70,16 @@ const CASOS = {
   },
 };
 const TVS = { deitada: [1920, 1080], 'em pé': [1080, 1920], quadrada: [1080, 1080] };
+// O que o "Adicionar" punha antes da fase 4 (web/src/lib/contentTypes.js, make): nada disso pode aparecer na TV.
+const PADROES = [
+  { type: 'text', titulo: 'Novo comunicado', corpo: '', align: 'center', duracao: 60 },
+  { type: 'announce', tipo: 'comunicado', titulo: 'Aviso importante', corpo: '', duracao: 60 },
+  { type: 'promo', titulo: 'Produto', precoPor: '', duracao: 60 },
+  { type: 'kpi', rotulo: 'Meta do mês', valor: '0', tendencia: 'estavel', duracao: 60 },
+  { type: 'social', rede: 'instagram', titulo: 'Siga-nos', handle: '', qr: false, duracao: 60 },
+  { type: 'announce', tipo: 'evento', titulo: 'Degustação no sábado', corpo: 'Exemplo marcado', meta: { exemplo: true }, duracao: 60 },
+];
+const TEXTO_PADRAO = /^(novo comunicado|aviso importante|produto|meta do mês|siga-nos|exemplo marcado|degustação no sábado)$/i;
 /*
  * [layout por TV, zona, nome, bloqueia?]. Tela cheia é a régua; as zonas são
  * a meta da fase 3 (85% da lateral e do bloco). Cada TV usa o layout que o
@@ -227,6 +237,7 @@ async function main() {
   const parar = await subirServidor();
   const navegador = await chromium.launch();
   const fotos = [];
+  const padroes = [];
   let pecas = [];
   try {
     for (const [frente, tipos] of Object.entries(CASOS)) {
@@ -260,6 +271,9 @@ async function main() {
               m = await tv.p.evaluate(medir, zona);
             }
             if (SAIDA) await tv.p.screenshot({ path: path.join(SAIDA, id + '.png') });
+            // Fase 4: a marca entra sozinha — a TV de uma conta com marca sai com a cor dela.
+            const corDaTv = await tv.p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--brand').trim().toLowerCase());
+            const comMarca = corDaTv === c.cores[0].toLowerCase();
             const piso = PISO_DA_FRENTE[frente] || PISO;
             const pequenas = m.textos.filter((x) => x.letra < piso - 0.005);
             const fora = m.textos.filter((x) => x.fora);
@@ -268,9 +282,18 @@ async function main() {
             fotos.push({ id, frente, tipo, layout, zona, arranjo: nomeArranjo, orient, bloqueia, piso, zonaPx: m.zonaPx,
               menorLetra: m.textos.length ? Math.min(...m.textos.map((x) => x.letra)) : null,
               pequenas: pequenas.map((x) => x.t + ' (' + x.letra + '%)'), fora: fora.map((x) => x.t),
-              erros: tv.erros.splice(0), sumiu, passa: !pequenas.length && !fora.length && !sumiu });
+              erros: tv.erros.splice(0), sumiu, comMarca, corDaTv, passa: !pequenas.length && !fora.length && !sumiu });
           }));
         }
+      }
+      // Fase 4: o padrão antigo do "Adicionar" nunca vai ao ar.
+      const tv = tvs.deitada;
+      for (const item of PADROES) {
+        await api.put(BASE + '/api/devices/' + tv.id + '/config', { data: { settings: { layoutId: 'full', nome: c.nome }, zonas: { principal: { items: [item] } } } });
+        await espera(2500);
+        const textos = (await tv.p.evaluate(medir, 'principal')).textos.map((x) => x.t);
+        const visto = textos.filter((t) => TEXTO_PADRAO.test(t));
+        padroes.push({ frente, tipo: item.type, visto });
       }
       await painel.close();
       for (const tv of Object.values(tvs)) await tv.p.context().close();
@@ -318,6 +341,14 @@ async function main() {
     for (const x of l.filter((y) => y.cedeu < 1)) console.log('  · ' + x.id + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%');
     if (ok / l.length < META_ZONAS) { console.log('  ✗ abaixo da meta de ' + Math.round(META_ZONAS * 100) + '%'); reprova = true; }
   }
+  const semMarca = fotos.filter((f) => f.bloqueia && !f.comMarca);
+  console.log('\nCom a cor da marca (tela cheia): ' + (fotos.filter((f) => f.bloqueia).length - semMarca.length) + ' de ' + fotos.filter((f) => f.bloqueia).length);
+  for (const f of semMarca.slice(0, 5)) console.log('  ✗ ' + f.id + ': a TV está com ' + (f.corDaTv || 'nada') + ' (a marca é outra)');
+  if (semMarca.length) reprova = true;
+  const comPadrao = padroes.filter((x) => x.visto.length);
+  console.log('Texto padrão do "Adicionar" na TV: ' + comPadrao.length + ' de ' + padroes.length);
+  for (const x of comPadrao) console.log('  ✗ ' + x.frente + ' · ' + x.tipo + ': ' + x.visto.join(', '));
+  if (comPadrao.length) reprova = true;
   const comErro = fotos.filter((f) => f.erros.length);
   for (const f of comErro) console.log('  erro na TV em ' + f.id + ': ' + f.erros[0]);
   if (comErro.length) reprova = true;

@@ -66,4 +66,33 @@ async function logoDaConta(db, tenantId) {
   return url ? { url, clara: de('logo-clara'), escura: de('logo-escura') } : null;
 }
 
-module.exports = { garantir, ramoDaConta, perfilDaConta, logoDaConta };
+/*
+ * Fase 4: a marca entra sozinha na TV. Com "Usar nas minhas TVs" ligado na
+ * Marca (padrão) e a marca com cores, a TV que não escolheu outro tema sai
+ * com o tema da marca — e a cor acompanha a marca quando ela muda. Escolheu
+ * outro tema é: marcou um tema pronto no painel (escolhido), um tema que
+ * não é o padrão, a marca só nos destaques ou ajustes de cor à mão — essa
+ * escolha nunca é desfeita aqui. Devolve o tema novo, ou null para manter.
+ */
+// O que toda config nova herda (js/storage.js, settingsPadrao: cor e fundo legados, migrados para overrides): não é escolha de ninguém.
+const HERDADO = { brand: '#5b2eff', bg: '#0e0b1f' };
+function escolheuTema(t) {
+  const ov = (t && t.overrides) || {};
+  const mexeu = (k) => ov[k] !== undefined && ov[k] !== null && ov[k] !== '' && String(ov[k]).toLowerCase() !== HERDADO[k];
+  return !!t && (t.escolhido === true || t.aplicarMarca === true
+    || (!!t.preset && t.preset !== 'dark-premium' && t.preset !== 'marca')
+    || Object.keys(ov).some(mexeu));
+}
+function temaDaTv(theme, kit) {
+  const cores = (kit && Array.isArray(kit.cores) ? kit.cores : []).filter(Boolean);
+  if (!kit || kit.nasTvs === false || !cores.length) return null;
+  const t = theme && typeof theme === 'object' ? theme : {};
+  if (escolheuTema(t)) return null;
+  if (t.preset === 'marca' && JSON.stringify(t.marca || []) === JSON.stringify(cores)) return null;
+  // Os ajustes herdados saem junto: eles pintariam a TV de roxo por cima da marca.
+  const overrides = Object.assign({}, t.overrides || {});
+  Object.keys(HERDADO).forEach((k) => { if (String(overrides[k] || '').toLowerCase() === HERDADO[k]) delete overrides[k]; });
+  return Object.assign({}, t, { preset: 'marca', marca: cores, overrides });
+}
+
+module.exports = { garantir, ramoDaConta, perfilDaConta, logoDaConta, temaDaTv, escolheuTema };

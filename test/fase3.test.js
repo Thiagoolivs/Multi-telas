@@ -42,7 +42,7 @@ test('a TV usa o layout com as zonas vazias juntadas, e o rodapé sem mensagem s
   const P = ler('js/player.js');
   assert.match(P, /function layoutDaTela\(cfg\)/);
   assert.match(P, /return z\.type === 'ticker' && comCabecalho && rodapeEsperando\(d\);/, 'sem cabeçalho, o rodapé é o lugar da marca');
-  assert.match(P, /if \(z\.type === 'playlist'\) return !\(d\.items \|\| \[\]\)\.length && !automaticosDaZona\(cfg, z\.id\);/);
+  assert.match(P, /if \(z\.type === 'playlist'\) return !\(d\.items \|\| \[\]\)\.some\(\(it\) => it && !ehExemplo\(it\)\) && !automaticosDaZona\(cfg, z\.id\);/);
   assert.match(P, /function buildStage\(cfg\) \{\n    const layout = layoutDaTela\(cfg\);/);
   assert.match(P, /function assinaturaPalco\(cfg\) \{\n    const l = layoutDaTela\(cfg\);/, 'zona que ganha conteúdo refaz o palco');
 });

@@ -118,6 +118,21 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** as contas com marca saem com a marca nas 165 fotos, e nenhuma foto tem texto padrão.
 
+**Andamento (05/11):**
+- [x] A marca entra sozinha. Com a marca preenchida e "Usar nas minhas TVs" ligado na Marca (o padrão), a TV que não escolheu outro tema sai com o da marca (`server/paleta.js`, `temaDaTv`).
+  - A cor acompanha quando a marca muda.
+  - A TV e a prévia do painel recebem o mesmo tema.
+  - Quem escolheu um tema pronto, a marca só nos destaques ou uma cor à mão continua com o que escolheu.
+- [x] A cor padrão que toda configuração nova herdava (`#5B2EFF`) não conta mais como escolha. Era ela que deixava as 165 fotos roxas.
+- [x] O aviso usa a cor da marca. Urgente e segurança ficam com a cor deles, porque ali a cor é o recado.
+- [x] O "Adicionar" entra com um exemplo bom da frente, marcado como exemplo. O painel mostra "exemplo: troque o texto para ir ao ar".
+  - A TV não mostra o exemplo nem o padrão antigo ("Novo comunicado" sem texto, "Produto" sem preço).
+  - O item deixa de ser exemplo quando a pessoa mexe no conteúdo.
+- [x] O indicador com tendência "alta" mostrava um traço vermelho. Agora sobe verde.
+- [x] O robô confere a cor da marca e o texto padrão em toda foto de tela cheia.
+  - Com a marca: **42 de 42** (antes: 0).
+  - Texto padrão na TV: **0 de 18**.
+
 ### Fase 5: a programação pensa sozinha (3–4 dias)
 **Objetivo:** o cliente leigo põe as coisas e a TV se organiza.
 - **Importância automática.** A IA sugere o nível pela natureza da peça (segurança ou urgente; prazo curto; oferta; institucional). O cliente vê o porquê ("Urgente · fala de segurança · sai às 16h") e troca com um toque.
@@ -205,7 +220,7 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [x] Fase 1: limpar antes de construir (tipos e layouts; as páginas juntam na fase 7)
 - [x] Fase 2: a régua no código
 - [x] Fase 3: zonas que se adaptam
-- [ ] Fase 4: a marca entra sozinha, e nada de texto de exemplo
+- [x] Fase 4: a marca entra sozinha, e nada de texto de exemplo
 - [ ] Fase 5: a programação pensa sozinha
 - [ ] Fase 6: a IA no nível de marca
 - [ ] Fase 7: o painel novo, a estrutura

@@ -377,6 +377,29 @@ export function BrandPage({ onIr }) {
             <EsbocoDaTela cores={cores} nome={nome && nome !== 'Marca principal' ? nome : (data && data.empresa)} logo={logo ? { url: logo.url, clara: logoClara ? logoClara.url : '', escura: logoEscura ? logoEscura.url : '' } : null}
               zonas={{ cabecalho: { pecas: 1 }, principal: { pecas: 3 }, lateral: { pecas: 2 }, rodape: { pecas: 1, mensagens: [FRASE_DO_PERFIL[perfil.id] || FRASE_DO_PERFIL.comercio] } }} />
           </div>
+          {/*
+            Fase 4: a marca entra sozinha. Ligado (o padrão), toda TV que não
+            escolheu outro tema nos Ajustes sai com estas cores, e acompanha
+            quando elas mudam (server/paleta.js, temaDaTv).
+          */}
+          <label className="mx-auto mt-4 flex max-w-xl items-start gap-2 text-sm text-ink">
+            <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[rgb(var(--c-accent))]" checked={kit.nasTvs !== false} disabled={busy}
+              onChange={async (e) => {
+                const nasTvs = e.target.checked;
+                setBusy(true); setErr('');
+                try {
+                  await salvarAgora();
+                  await brand.save({ ...campos, cores, nasTvs });
+                  aviso.ok(nasTvs ? 'As TVs passam a usar as cores da marca.' : 'As TVs voltam ao tema de cada uma.');
+                  reload();
+                } catch (er) { setErr(er.message || 'Não foi possível salvar.'); }
+                finally { setBusy(false); }
+              }} />
+            <span>
+              <b>Usar nas minhas TVs</b>
+              <span className="block text-xs text-ink-3">A TV sai com as cores da marca. Quem escolher outro tema nos ajustes de uma TV continua com o dele.</span>
+            </span>
+          </label>
         </div>
       </Panel>
 

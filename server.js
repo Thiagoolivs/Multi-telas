@@ -1896,6 +1896,11 @@ const negocioCache = new Map();
           const ativa = await db.getBrandKit(sess.tenant_id);
           if (ativa) await db.salvarLocalDaMarca(ativa.id, sess.tenant_id, redesRotas.localLimpo(b.local));
         }
+        // "Usar nas minhas TVs" (fase 4): só quando a tela manda o booleano.
+        if (b && typeof b.nasTvs === 'boolean') {
+          const ativa = await db.getBrandKit(sess.tenant_id);
+          if (ativa) await db.salvarNasTvsDaMarca(ativa.id, sess.tenant_id, b.nasTvs);
+        }
         return sendJson(res, 200, { ok: true });
       });
     }

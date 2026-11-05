@@ -40,7 +40,8 @@ test('a TV: tipo desconhecido não vai ao ar; agenda no fuso da loja; urgente co
   assert.match(render, /if \(!fn\) throw new Error\('tipo de conteúdo desconhecido: '/);
   assert.doesNotMatch(render, /'Tipo de conteúdo desconhecido: '/, 'o texto interno saía na TV do cliente');
   const player = ler('js/player.js');
-  assert.match(player, /const conhecidos = items\.filter\(\(it\) => it && \(!MTRender\.conhece \|\| MTRender\.conhece\(it\.type\)\)/);
+  // Fase 4 pôs o exemplo do "Adicionar" no mesmo filtro (ehExemplo).
+  assert.match(player, /const conhecidos = items\.filter\(\(it\) => it && !ehExemplo\(it\) && \(!MTRender\.conhece \|\| MTRender\.conhece\(it\.type\)\)/);
   assert.match(player, /agoraMs > Number\(it\.meta\.expiraEm\)/, 'o urgente vencido continuava no ar');
   assert.match(player, /function agoraNaLoja\(\)/);
   assert.match(player, /const loja = agoraNaLoja\(\);/, 'o agendamento seguia o relógio da TV (UTC no box)');
