@@ -269,7 +269,8 @@
       return ref ? 0.045 * 1080 : 0;
     }
     if (!grande) return 0;
-    const lado = janela ? Math.min(janela.innerWidth, janela.innerHeight) : 1080;
+    // Fora da TV (bancada, editor) a janela não é a TV: vale a TV de 1080 linhas, a mesma conta da miniatura.
+    const lado = naTv && janela ? Math.min(janela.innerWidth, janela.innerHeight) : 1080;
     return 0.045 * lado / (k || 1);
   }
   function enquadrar(host, palco) {
@@ -800,6 +801,11 @@
     tick();
     // Com os textos no lugar, o piso da régua confere de novo (a peça pode ter ganho texto agora).
     enquadrar(host, palcoEl);
+    // E quando a fonte da marca chega: medida com a fonte de reserva (mais larga), o piso cedia sem precisar.
+    const fontes = host.ownerDocument && host.ownerDocument.fonts;
+    if (fontes && fontes.ready && typeof fontes.ready.then === 'function') {
+      fontes.ready.then(() => { if (host.isConnected !== false) enquadrar(host, palcoEl); }).catch(() => {});
+    }
     let relogio = null;
     /*
      * A contagem anda de segundo em segundo; o relógio, a cada 20 s. É troca

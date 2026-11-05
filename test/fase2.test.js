@@ -71,6 +71,10 @@ test('a peça da IA ganha o piso na TV: o player aplica em qualquer peça, a IA 
   assert.match(PR, /if \(!piorou\(antes, encaixe\(palco\)\)\) return piso;/);
   assert.match(PR, /palco\.setAttribute\('data-mt-piso-cedeu'/);
   assert.match(PR, /pisoQueCabe\(palco, pisoDaZona\(host, k, ref\)\)/);
+  // Medido com a fonte de reserva (mais larga), o piso cedia sem precisar: confere de novo quando a fonte chega.
+  assert.match(PR, /fontes\.ready\.then\(\(\) => \{ if \(host\.isConnected !== false\) enquadrar\(host, palcoEl\); \}\)/);
+  // Fora da TV (bancada, editor) a janela do navegador não é a TV: a conta é a da TV de 1080 linhas.
+  assert.match(PR, /const lado = naTv && janela \? Math\.min\(janela\.innerWidth, janela\.innerHeight\) : 1080;/);
 });
 
 test('a biblioteca-ouro vai para a IA sem o envoltório do piso: o mesmo exemplo, sem pagar por ele', () => {
@@ -98,4 +102,7 @@ test('o robô da régua roda no CI, num job à parte, e guarda as fotos', () => 
   const robo = ler('tools/regua-tv.mjs');
   assert.match(robo, /const PISO = 4\.5;/);
   assert.match(robo, /\['full', 'principal', true\]/, 'tela cheia bloqueia');
+  // As peças-ouro também: em tela cheia, o piso que cede reprova (fora da lista de pendentes).
+  assert.match(robo, /const FORMATOS_CHEIOS = \['Tela cheia 16:9', 'Vertical 9:16', 'Quadrada 1:1'\];/);
+  assert.match(robo, /if \(!pendente\) reprova = true;/);
 });
