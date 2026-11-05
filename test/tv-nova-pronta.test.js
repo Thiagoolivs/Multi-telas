@@ -46,7 +46,7 @@ test('telaParaComecar: só a da frente da conta, na orientação da TV; sem ela,
   assert.equal(T.tvEmPe(undefined), null);
   assert.equal(T.telaParaComecar({ telas: [], modelos: new Map() }, {}, 'saude', null), null);
   assert.deepEqual(T.marcaDaConta({ empresa: 'Padaria Sol', kit: { nome: 'Marca principal', site: 'sol.com.br', local: { endereco: 'Rua A, 1', bairro: 'Centro' } } }),
-    { cores: [], fonteTitulo: '', fonteApoio: '', nome: 'Padaria Sol', site: 'sol.com.br', endereco: 'Rua A, 1 · Centro' });
+    { cores: [], fonteTitulo: '', fonteApoio: '', nome: 'Padaria Sol', site: 'sol.com.br', endereco: 'Rua A, 1 · Centro', ramo: '' });
 });
 
 test('o diálogo de parear põe a tela pronta quando a TV não tem conteúdo, e conta qual', () => {

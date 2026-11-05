@@ -268,7 +268,9 @@ test('as marcas de teste da bancada são válidas e todas fictícias', () => {
     for (const modo of T.MODOS) assert.deepEqual(T.conferir(T.daMarca(m, modo)), [], m.nome + ' ' + modo);
   }
   assert.deepEqual(MANIFESTO.marcas.map((m) => m.nome).sort(),
-    ['Clínica Vida', 'Distribuidora Rota Sul', 'Lanchonete da Praça', 'Padaria do Bairro', 'Studio Bella', 'Ótica Central'].sort());
+    // Fase 9: as marcas de exemplo dos pacotes por negócio (restaurante, dentista, farmácia, escritório, indústria).
+    ['Clínica Vida', 'Distribuidora Rota Sul', 'Lanchonete da Praça', 'Padaria do Bairro', 'Studio Bella', 'Ótica Central',
+      'Cantina da Nona', 'Sorriso Odontologia', 'Farmácia Bem Estar', 'Vértice Contabilidade', 'Metalúrgica Andrade'].sort());
 });
 
 test('toda peça diz em que marca nasceu, e a bancada abre nela', () => {

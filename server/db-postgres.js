@@ -316,6 +316,12 @@ async function init() {
     );
     CREATE INDEX IF NOT EXISTS idx_banco_estado ON banco(estado);
     CREATE INDEX IF NOT EXISTS idx_banco_tenant ON banco(tenant_id);
+    -- Fase 9: a decisão do operador sobre cada tela e peça do manifesto (a galeria do conteúdo pronto).
+    CREATE TABLE IF NOT EXISTS conteudo_pronto (
+      tipo TEXT NOT NULL, id TEXT NOT NULL, estado TEXT NOT NULL,
+      decidido_por TEXT, decidido_em BIGINT,
+      PRIMARY KEY (tipo, id)
+    );
     -- O banco comum com fotos da Pixabay escolhidas pelo operador: de onde veio, o crédito e o link.
     ALTER TABLE banco ADD COLUMN IF NOT EXISTS origem TEXT;
     ALTER TABLE banco ADD COLUMN IF NOT EXISTS credito TEXT;
@@ -2034,7 +2040,18 @@ async function relatorioExibicoes(tenantId, de, ate, deviceId) {
   return { porConteudo, porTela, porHora };
 }
 
+// Fase 9: as decisões da galeria do conteúdo pronto.
+async function decisoesDoConteudo() {
+  return (await pool.query('SELECT tipo, id, estado, decidido_por, decidido_em FROM conteudo_pronto')).rows;
+}
+async function decidirConteudo(tipo, id, estado, por) {
+  await pool.query(`INSERT INTO conteudo_pronto (tipo, id, estado, decidido_por, decidido_em) VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (tipo, id) DO UPDATE SET estado = EXCLUDED.estado, decidido_por = EXCLUDED.decidido_por, decidido_em = EXCLUDED.decidido_em`,
+  [tipo, id, estado, por || '', Date.now()]);
+}
+
 module.exports = {
+  decisoesDoConteudo, decidirConteudo,
   listarCalendario, eventoDoCalendario, salvarEvento, removerEvento,
   salvarLote, loteDaConta, marcarLoteDesfeito, listarLotes,
   init,

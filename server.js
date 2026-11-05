@@ -29,6 +29,7 @@ const usoIA = require('./server/uso-ia');
 const creditos = require('./server/creditos');
 const security = require('./server/security');
 const { log } = require('./server/log.js');
+const conteudoPronto = require('./server/conteudoPronto.js');
 const erros = require('./server/erros.js');
 const diagnostico = require('./server/diagnostico');
 const { rateLimit, clientIp, safeEqual, isSecureRequest } = security;
@@ -1355,6 +1356,31 @@ const negocioCache = new Map();
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     const quem = await operadores.permissao(db, sess);
     if (!quem.pode) return sendJson(res, 404, { error: 'rota não encontrada' });
+
+    /*
+     * Fase 9: a GALERIA do conteúdo pronto (server/conteudoPronto.js). O
+     * operador aprova ou recusa cada tela pronta e cada peça-ouro, e a
+     * decisão vale na hora para todas as contas (o manifesto servido já sai
+     * com ela). Cada decisão fica no log, com quem decidiu.
+     */
+    if (parts[2] === 'conteudo') {
+      let base;
+      try { base = conteudoPronto.lerManifesto(ROOT); } catch (e) { return sendJson(res, 500, { error: 'não deu para ler o manifesto do conteúdo pronto' }); }
+      if (req.method === 'GET' && !parts[3]) return sendJson(res, 200, conteudoPronto.aplicarDecisoes(base, await db.decisoesDoConteudo()));
+      if (req.method === 'POST' && parts[3] && parts[4] && !parts[5]) {
+        return readBody(req, res, async (b) => {
+          const tipo = parts[3];
+          const id = decodeURIComponent(parts[4]);
+          const estado = b && b.estado;
+          const erro = conteudoPronto.conferirDecisao(base, tipo, id, estado);
+          if (erro) return sendJson(res, 400, { error: erro });
+          await db.decidirConteudo(tipo, id, estado, sess.email);
+          log.info('conteudo.decidir', { tipo, id, estado, por: sess.email });
+          return sendJson(res, 200, { ok: true, tipo, id, estado });
+        });
+      }
+      return sendJson(res, 404, { error: 'rota não encontrada' });
+    }
 
     if (req.method === 'GET' && parts[2] === 'metricas') {
       const agora = Date.now();
@@ -3205,6 +3231,16 @@ function servirPublico(res, urlPath) {
   if (!caminhoLimpo(urlPath) || !ehPublico(urlPath)) {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('Não encontrado: ' + urlPath);
+  }
+  /*
+   * Fase 9: o manifesto do conteúdo pronto sai com as decisões da galeria
+   * do operador por cima (server/conteudoPronto.js). Sem banco, o arquivo.
+   */
+  if (urlPath === '/pecas-ouro/manifesto.json') {
+    return Promise.resolve().then(() => db.decisoesDoConteudo()).catch(() => []).then((decisoes) => {
+      try { sendJson(res, 200, conteudoPronto.aplicarDecisoes(conteudoPronto.lerManifesto(ROOT), decisoes)); }
+      catch (e) { res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Manifesto ilegível'); }
+    });
   }
   // O player com os scripts num pacote só (server/pacote-tv.js). Falhou ao montar: sai o de sempre.
   if (urlPath === '/player.html' || urlPath === pacoteTv.URL_PACOTE) {
