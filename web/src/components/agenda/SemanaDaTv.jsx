@@ -126,17 +126,24 @@ export function SemanaDaTv({ onIr }) {
 
 function Celula({ c, onAbrir, onPor }) {
   if (c.fechado) return <div className="flex h-full min-h-16 items-center justify-center rounded-md bg-surface-2/60 text-2xs text-ink-3">fechado</div>;
-  const mostra = c.pecas.slice(0, 2);
-  const resto = c.pecas.length - mostra.length;
+  /*
+   * O mesmo nome uma vez só, com quantas são (reteste da fase 10: "Imagem,
+   * Imagem, +8 outras" não dizia nada). Duas linhas por célula, e o resto
+   * contado.
+   */
+  const unicas = [];
+  c.pecas.forEach((p) => { const ja = unicas.find((u) => u.titulo === p.titulo); if (ja) ja.vezes++; else unicas.push({ ...p, vezes: 1 }); });
+  const mostra = unicas.slice(0, 2);
+  const resto = unicas.length - mostra.length;
   return (
     <div className={cn('min-h-16 space-y-1 rounded-md border p-1', c.vazio ? 'border-warn/40 bg-warn-soft' : 'border-line bg-surface')}>
       {mostra.map((p, j) => (
         <button key={j} type="button" onClick={() => onAbrir(p.zona)} title={p.titulo + (p.ate ? ' · até ' + curta(p.ate) : '')}
-          className={cn('flex w-full min-w-0 items-start gap-1 rounded px-1.5 py-1 text-left text-2xs leading-tight transition hover:bg-surface-2',
+          className={cn('flex w-full min-w-0 items-start gap-1 rounded px-1.5 py-1 text-left text-xs leading-tight transition hover:bg-surface-2',
             p.urgente ? 'text-danger' : 'text-ink')}>
           {p.urgente ? <AlertTriangle size={11} className="mt-px shrink-0 self-start" /> : p.campanha ? <Megaphone size={11} className="mt-px shrink-0 self-start text-accent" /> : p.calendario ? <CalendarDays size={11} className="mt-px shrink-0 self-start text-accent" /> : null}
           <span className="min-w-0">
-            <span className="line-clamp-2">{p.titulo}</span>
+            <span className="line-clamp-2">{p.titulo}{p.vezes > 1 ? ' (' + p.vezes + ')' : ''}</span>
             {p.ate && <span className="block text-ink-3">até {curta(p.ate)}</span>}
           </span>
         </button>

@@ -40,7 +40,7 @@ export function PorPraRodar({ campanha, telas, onMudou }) {
   if (barrada && campanha.estado !== 'no_ar') {
     return (
       <section className="rounded-lg border border-line bg-surface p-3 text-xs text-ink-2">
-        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-ink"><Rocket size={15} className="text-ink-3" /> Pôr pra rodar</h3>
+        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-ink"><Rocket size={15} className="text-ink-3" /> Pôr na TV</h3>
         Troque o texto marcado acima e a campanha fica pronta para ir para a TV.
       </section>
     );
@@ -80,9 +80,10 @@ export function PorPraRodar({ campanha, telas, onMudou }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink">
           <Rocket size={15} className="text-accent" />
-          {noAr ? 'No ar em ' + campanha.telas.length + (campanha.telas.length === 1 ? ' TV' : ' TVs') : pausada ? 'Pausada' : 'Pôr pra rodar'}
+          {noAr ? 'No ar em ' + campanha.telas.length + (campanha.telas.length === 1 ? ' TV' : ' TVs') : pausada ? 'Pausada' : 'Pôr na TV'}
         </h3>
-        {noAr && <span className="rounded-full bg-ok/15 px-2 py-0.5 text-2xs font-semibold text-ok">rodando</span>}
+        {/* bg-ok-soft: o verde a 15% sobre o branco não dava 4,5:1 (axe, reteste da fase 10). */}
+        {noAr && <span className="rounded-full bg-ok-soft px-2 py-0.5 text-2xs font-semibold text-ok">rodando</span>}
       </div>
 
       {plano === null ? (erro ? null : <Spinner size={16} />) : plano.length === 0 ? (
@@ -114,7 +115,7 @@ export function PorPraRodar({ campanha, telas, onMudou }) {
       <div className="flex flex-wrap gap-2">
         {!noAr && (
           <Button variant="primary" size="lg" icon={pausada ? Play : Rocket} disabled={ocupado || !plano || !plano.length} onClick={rodar}>
-            {ocupado ? 'Enviando…' : pausada ? 'Retomar' : 'Pôr pra rodar'}
+            {ocupado ? 'Pondo na TV…' : pausada ? 'Retomar' : 'Pôr na TV'}
           </Button>
         )}
         {noAr && (

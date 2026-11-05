@@ -496,7 +496,7 @@ export function BrandPage({ onIr }) {
         ) : (
           <div className="flex items-start gap-2 p-4 text-sm text-ink-3">
             <Images size={15} className="mt-0.5 shrink-0" />
-            Nenhuma ainda. Em Mídias › Fotos, toque em “da marca” nas fotos de produto, da equipe ou do lugar.
+            Nenhuma ainda. Em Biblioteca › Fotos e vídeos, toque em “da marca” nas fotos de produto, da equipe ou do lugar.
           </div>
         )}
       </Panel>
