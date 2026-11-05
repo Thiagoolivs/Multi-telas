@@ -28,7 +28,8 @@ h1 span + span { color: var(--mt-destaque); }
  */
 @container (aspect-ratio >= 1.25) {
   .cabeca { left: 6cqw; right: auto; width: 40cqw; top: 50%; transform: translateY(-56%); }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 3cqmin); letter-spacing: .12em; }
+  .kicker { gap: 2cqmin; font-size: max(var(--mt-piso, 0cqw), 3cqmin); letter-spacing: .08em; }
+  .kicker i { width: 4.4cqmin; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(11cqmin * var(--mt-escala-titulo, 1))); }
   .dias { left: 50cqw; right: 6cqw; top: 50%; bottom: auto; transform: translateY(-50%); }
   .dias li { padding: 2.2cqmin 0 2.6cqmin; }
@@ -43,7 +44,6 @@ h1 span + span { color: var(--mt-destaque); }
  */
 @container (aspect-ratio >= 1.25) and (aspect-ratio < 1.65) {
   .cabeca { width: 38cqw; }
-  .kicker { letter-spacing: .08em; }
   .dias { left: 47cqw; }
   .dia { font-size: max(var(--mt-piso, 0cqw), 2.8cqmin); letter-spacing: .08em; }
   .hora { font-size: max(var(--mt-piso, 0cqw), calc(10.4cqmin * var(--mt-escala-titulo, 1))); }

@@ -31,47 +31,48 @@ h1 span { display: block; }
 .valor sup { font-size: max(var(--mt-piso, 0cqw), .32em); vertical-align: 1.5em; }
 .nota { position: absolute; left: 6cqw; bottom: 6cqh; font: 500 max(var(--mt-piso, 0cqw), 1.15cqw)/1 var(--mt-fonte-texto); letter-spacing: .22em; text-transform: uppercase; color: var(--mt-texto-suave); text-wrap: balance; }
 /* Em pé: título, a soma em coluna e o preço embaixo. */
+/* Em pé e quase quadrada a soma vira lista; o + não ganha linha própria: vai para a ponta do item que ele soma. */
+@container (aspect-ratio < 1.25) {
+  .cabeca { width: auto; }
+  .soma { bottom: auto; flex-direction: column; align-items: stretch; }
+  .soma .mais { display: none; }
+  .soma .mais + li::before { content: '+'; position: absolute; right: 0; top: 1.2cqw; font: 300 max(var(--mt-piso, 0cqw), 5cqw)/.8 var(--mt-fonte-texto); color: var(--mt-destaque); }
+  .nota { line-height: 1.1; }
+}
 @container (aspect-ratio < 0.8) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); }
-  .cabeca { left: 8cqw; right: 8cqw; width: auto; top: 12cqh; }
+  .cabeca { left: 8cqw; right: 8cqw; top: 12cqh; }
   .kicker { font-size: max(var(--mt-piso, 0cqw), 2cqw); letter-spacing: .06em; }
   .kicker i { width: 4.4cqw; height: .22cqw; }
   h1 { font-size: max(var(--mt-piso, 0cqw), 13.5cqw); margin-top: 3cqw; }
   .mt-peca::before { width: 110cqw; height: 110cqw; right: -50cqw; top: -46cqw; border-width: .25cqw; }
   .mt-peca::after { width: 80cqw; height: 80cqw; right: -36cqw; top: -30cqw; border-width: .25cqw; }
-  .soma { left: 8cqw; right: 8cqw; top: 35cqh; bottom: auto; flex-direction: column; align-items: stretch; gap: 3cqw; }
+  .soma { left: 8cqw; right: 8cqw; top: 35cqh; gap: 3cqw; }
   .soma li { padding-top: 2.6cqw; border-top-width: .25cqw; }
-  /* Em coluna o + não ganha linha própria: vai para a ponta do item que ele soma. */
-  .soma .mais { display: none; }
-  .soma .mais + li::before { content: '+'; position: absolute; right: 0; top: 2.4cqw; font: 300 max(var(--mt-piso, 0cqw), 8cqw)/.8 var(--mt-fonte-texto); color: var(--mt-destaque); }
-  .soma small { max-width: none; }
+  .soma .mais + li::before { top: 2.4cqw; font-size: max(var(--mt-piso, 0cqw), 8cqw); }
   .soma b { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
   .soma small { font-size: max(var(--mt-piso, 0cqw), 2.6cqw); margin-top: 1.6cqw; }
   .preco { left: 8cqw; right: 8cqw; top: auto; bottom: 16cqh; text-align: left; padding-top: 4cqw; border-top: .25cqw solid var(--mt-linha); }
   .rotulo { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); }
   .valor { font-size: max(var(--mt-piso, 0cqw), 24cqw); margin-top: 2.4cqw; }
-  .nota { left: 8cqw; right: 8cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); letter-spacing: .12em; line-height: 1.15; }
+  .nota { left: 8cqw; right: 8cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); letter-spacing: .12em; }
 }
 /* Quase quadrada: o preço sobe para o lado do título e a soma vira lista, como em pé —
    com a letra da TV, três colunas de detalhe não cabem na largura. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .3em; }
-  .cabeca { left: 7cqw; right: 7cqw; width: auto; top: 12cqh; }
+  .cabeca { left: 7cqw; right: 7cqw; top: 12cqh; }
   .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .08em; }
   .kicker i { width: 3.4cqw; height: .2cqw; }
   h1 { font-size: max(var(--mt-piso, 0cqw), 10cqw); margin-top: 2.6cqw; }
-  .mt-peca::before { width: 70cqw; height: 70cqw; right: -22cqw; top: -8cqw; }
-  .mt-peca::after { width: 50cqw; height: 50cqw; right: -12cqw; top: 2cqw; }
-  .soma { left: 7cqw; right: 7cqw; bottom: auto; top: 43cqh; flex-direction: column; align-items: stretch; gap: .6cqw; }
+  .soma { left: 7cqw; right: 7cqw; top: 43cqh; gap: .6cqw; }
   .soma li { padding-top: 1.4cqw; border-top-width: .2cqw; }
-  .soma .mais { display: none; }
-  .soma .mais + li::before { content: '+'; position: absolute; right: 0; top: 1.2cqw; font: 300 max(var(--mt-piso, 0cqw), 5cqw)/.8 var(--mt-fonte-texto); color: var(--mt-destaque); }
   .soma b { font-size: max(var(--mt-piso, 0cqw), 3.6cqw); padding-right: 6cqw; }
   .soma small { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); margin-top: 1cqw; }
   .preco { right: 7cqw; top: 19.2cqh; }
   .rotulo { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
   .valor { font-size: max(var(--mt-piso, 0cqw), 18cqw); }
-  .nota { left: 7cqw; right: 7cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.7cqw); letter-spacing: .08em; line-height: 1.1; }
+  .nota { left: 7cqw; right: 7cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.7cqw); letter-spacing: .08em; }
 }
 </style>
 <section class="mt-peca cardapio-combo">
