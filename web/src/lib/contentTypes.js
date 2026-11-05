@@ -389,6 +389,16 @@ export function novoItem(type, frente) {
 }
 // Mexeu no conteúdo (não só na duração, no agendamento ou na prioridade): deixa de ser exemplo.
 const FORA_DO_CONTEUDO = { meta: 1, duracao: 1, agendamento: 1 };
+/*
+ * O que o editor muda além do campo (fases 4 e 5): o exemplo deixa de ser
+ * exemplo quando a pessoa mexe no conteúdo, e o tempo posto à mão vale
+ * (meta.duracaoManual) — sem ele, a TV dá 1 s por palavra (js/rodizio.js).
+ */
+export function ajustesDoEditor(antes, depois) {
+  let d = semExemplo(antes, depois);
+  if (antes && d && antes.duracao !== d.duracao && !(d.meta && d.meta.duracaoManual)) d = { ...d, meta: { ...(d.meta || {}), duracaoManual: true } };
+  return d;
+}
 export function semExemplo(antes, depois) {
   if (!depois || !depois.meta || !depois.meta.exemplo || !antes) return depois;
   const mudou = Object.keys({ ...antes, ...depois }).some((k) => !FORA_DO_CONTEUDO[k] && JSON.stringify(antes[k]) !== JSON.stringify(depois[k]));

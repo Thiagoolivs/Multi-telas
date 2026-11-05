@@ -74,7 +74,7 @@ test('o "Adicionar" entra com um exemplo da frente, marcado, e a TV não mostra 
   assert.match(P2, /text: \(it\) => it\.titulo === 'Novo comunicado' && !String\(it\.corpo \|\| ''\)\.trim\(\)/, 'o padrão antigo também não vai ao ar');
   const E = ler('web/src/pages/ContentEditorPage.jsx');
   assert.match(E, /arr\.push\(novoItem\(type, perfilAtual\(\)\)\)/);
-  assert.match(E, /arr\[idx\] = semExemplo\(arr\[idx\], item\)/);
+  assert.match(E, /arr\[idx\] = ajustesDoEditor\(arr\[idx\], item\)/);
   assert.match(E, /exemplo: troque o texto para ir ao ar/);
 });
 

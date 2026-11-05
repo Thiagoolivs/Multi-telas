@@ -6,7 +6,7 @@
  * peça em pé para a lateral e a outra, para a principal.
  */
 import { primaryZoneKey } from './contentTypes.js';
-import { aplicarConteudo, distribuirPorZona, agendarPeca } from './aplicarConteudo.js';
+import { aplicarConteudo, distribuirPorZona, agendarPeca, cobrirODia } from './aplicarConteudo.js';
 import { zonesOf } from './screenConfig.js';
 import { aplicarPeca, zonasPorPapel, gravarEmLote } from './rodar.js';
 
@@ -45,7 +45,7 @@ export async function publicarPecas({ alvos, pecas: todas, titulo, telas, dias =
     const zonas = zonesOf(cfg).filter((z) => z.type === 'playlist');
     let blocos = distribuirPorZona(pecas, zonas, dias);
     if (!Object.keys(blocos).length && pecas.length) {
-      blocos = { [primaryZoneKey(cfg)]: pecas.map((p) => agendarPeca(p.item, p.faixa, dias)) };
+      blocos = { [primaryZoneKey(cfg)]: cobrirODia(pecas.map((p) => agendarPeca(p.item, p.faixa, dias))) };
     }
     /*
      * 'trocar' substitui só o que veio DESTA campanha; 'limpar' esvazia a

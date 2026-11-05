@@ -97,7 +97,42 @@ export function distribuirPorZona(pecas, zonas, dias) {
     if (!saida[zona]) saida[zona] = [];
     saida[zona].push(agendarPeca(p.item, p.faixa, dias));
   }
+  Object.keys(saida).forEach((z) => { saida[z] = cobrirODia(saida[z]); });
   return saida;
+}
+
+/*
+ * Fase 5: sem buraco no dia. A IA reparte as peças pelas faixas (manhã,
+ * almoço, tarde, fim do dia), mas uma zona que fica sem peça numa faixa
+ * mostrava só o relógio ali — na padaria, 7 h por dia (BLOCO-3, cenário 1).
+ * Sem peça "o dia todo" na zona, cada faixa que tem peça estica até a
+ * próxima que tem: a primeira começa à meia-noite e a última vai até o fim
+ * do dia. O que cada peça diz continua na hora dela; o vão some.
+ */
+const ORDEM = ['manha', 'almoco', 'tarde', 'saida'];
+const menosUmMinuto = (hm) => {
+  const [h, m] = hm.split(':').map(Number);
+  const t = h * 60 + m - 1;
+  return doisDigitos(Math.floor(t / 60)) + ':' + doisDigitos(t % 60);
+};
+export function cobrirODia(lista) {
+  const itens = lista || [];
+  const faixaDe = (it) => {
+    const a = it && it.agendamento;
+    if (!a || !a.ativo || (!a.horaInicio && !a.horaFim)) return 'dia';
+    const f = ORDEM.find((k) => FAIXAS[k].horaInicio === a.horaInicio && FAIXAS[k].horaFim === a.horaFim);
+    return f || 'outra';
+  };
+  const faixas = itens.map(faixaDe);
+  // Peça no dia todo, ou um horário que não é uma faixa (a pessoa escolheu): a zona já se resolve.
+  if (!itens.length || faixas.some((f) => f === 'dia' || f === 'outra')) return itens;
+  const presentes = ORDEM.filter((k) => faixas.includes(k));
+  const janela = {};
+  presentes.forEach((k, i) => {
+    const proxima = presentes[i + 1];
+    janela[k] = { horaInicio: i === 0 ? '00:00' : FAIXAS[k].horaInicio, horaFim: proxima ? menosUmMinuto(FAIXAS[proxima].horaInicio) : '23:59' };
+  });
+  return itens.map((it, i) => ({ ...it, agendamento: { ...it.agendamento, ...janela[faixas[i]] } }));
 }
 
 /*

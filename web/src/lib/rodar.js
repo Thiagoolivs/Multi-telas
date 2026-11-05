@@ -11,6 +11,7 @@
  * Tudo entra marcado com `_campanha` (o mesmo de aplicarConteudo): publicar
  * de novo troca só o que é dela, e pausar tira só o que é dela.
  */
+import '../../../js/importancia.js';
 import { deviceConfig, lote as loteApi } from '../api.js';
 import { aviso, emitir } from './avisos.js';
 import { defaultConfig } from './contentTypes.js';
@@ -87,8 +88,10 @@ export function aplicarCampanha(cfg, entrada, nome, { trocarLayout } = {}) {
   const z = zonasPorPapel(next);
   const origem = { chave: '_campanha', valor: nome };
   // Sem lateral na TV, a lateral vai para a principal: nada do que foi pago se perde.
-  const principal = entrada.zonas.principal.map((p) => p.item);
-  const lateral = entrada.zonas.lateral.map((p) => p.item);
+  // Fase 5: cada peça entra com a importância pela natureza dela, e o porquê (js/importancia.js).
+  const imp = (it) => (globalThis.MTImportancia ? globalThis.MTImportancia.comImportancia(it) : it);
+  const principal = entrada.zonas.principal.map((p) => imp(p.item));
+  const lateral = entrada.zonas.lateral.map((p) => imp(p.item));
   const blocos = {};
   if (z.principal) blocos[z.principal] = z.lateral ? principal : principal.concat(lateral);
   if (z.lateral && lateral.length) blocos[z.lateral] = lateral;

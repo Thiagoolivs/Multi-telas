@@ -40,8 +40,8 @@
     cinematic: { opacity: 0, scale: 1.03, yPercent: 1.1 },
     none: { opacity: 1 },
   };
-  // Um pouco mais longas: dá tempo da curva macia respirar (premium > apressado).
-  const TRANS_DUR = { fade: 0.95, slide: 0.95, zoom: 1.05, cinematic: 1.2, none: 0 };
+  // Fase 5: a régua do QA pede de 0,4 a 0,7 s (REFERENCIAS): mais que isso, a peça demora a ficar legível.
+  const TRANS_DUR = { fade: 0.6, slide: 0.6, zoom: 0.65, cinematic: 0.7, none: 0 };
   // Curva suave e orgânica (desaceleração longa) — nada de freada seca.
   const EASE_IN = 'power2.out';
 
@@ -2144,41 +2144,17 @@
     if (it && it._calendario) return 'calendario';
     return 'i:' + i;
   }
-  // Urgente (D25) passa três vezes por volta — e cada vez toma a tela (maybeTakeover).
-  function pesoDe(it) {
-    const p = it && it.meta && it.meta.prioridade;
-    return p === 'urgente' ? 3 : p === 'alta' ? 2 : 1;
-  }
+  /*
+   * Fase 5: quantas vezes e por quanto tempo vêm de js/rodizio.js — o mesmo
+   * código que a semana simulada mede (test/semana-simulada.test.js). Tetos
+   * por tempo (urgente 25%, Alta 40%), prazo nas últimas 24 h vale Alta,
+   * 1 s por palavra. A "urgente" continua tomando a tela (D25).
+   */
+  const R = global.MTRodizio;
+  function durDe(it) { return R ? R.duracaoDe(it, it && it.duracao) : (Number(it && it.duracao) || 10); }
   function distribuir(lista) {
-    if (!lista || lista.length < 2) return lista || [];
-    const grupos = [];
-    const porFonte = {};
-    lista.forEach((it, i) => {
-      const f = fonteDe(it, i);
-      if (!porFonte[f]) { porFonte[f] = []; grupos.push(porFonte[f]); }
-      porFonte[f].push(it);
-    });
-    const base = [];
-    for (let r = 0; base.length < lista.length; r++) grupos.forEach((g) => { if (r < g.length) base.push(g[r]); });
-    const total = base.reduce((s, it) => s + pesoDe(it), 0);
-    if (total === base.length) return base;
-    const atual = base.map(() => 0);
-    const saida = [];
-    for (let k = 0; k < total; k++) {
-      let melhor = 0;
-      base.forEach((it, i) => { atual[i] += pesoDe(it); if (atual[i] > atual[melhor]) melhor = i; });
-      atual[melhor] -= total;
-      saida.push(base[melhor]);
-    }
-    // A volta seguinte começa onde esta terminou: a mesma peça no fim e no começo passaria duas vezes seguidas.
-    if (saida.length > 3 && saida[0] === saida[saida.length - 1]) {
-      const it = saida.pop();
-      for (let p = 1; p < saida.length; p++) {
-        if (saida[p - 1] !== it && saida[p] !== it) { saida.splice(p, 0, it); return saida; }
-      }
-      saida.push(it);
-    }
-    return saida;
+    if (!R) return lista || [];
+    return R.distribuir(lista, { agoraMs: Date.now(), hoje: agoraNaLoja().data }, durDe);
   }
 
   function startPlaylist(zoneEl, items, cfg, zonaId) {
@@ -2231,7 +2207,23 @@
         mostrarRelogio();
         return schedule(30); // reavalia periodicamente
       }
-      const item = ativos[index % ativos.length];
+      let item = ativos[index % ativos.length];
+      // A lista mudou (outra hora, outra faixa) e a primeira da nova é a que está no ar: pula para a seguinte.
+      if (noAr && item === noAr.item && ativos.length > 1 && ativos[(index - 1 + ativos.length) % ativos.length] !== item) {
+        index++;
+        item = ativos[index % ativos.length];
+      }
+      /*
+       * A mesma peça de novo (a única no horário, ou a que o teto do urgente
+       * pede por mais tempo): fica no ar, sem entrar de novo. Antes ela
+       * reentrava a cada 12 s, por horas — 882 vezes numa semana do balcão.
+       */
+      if (currentSlide && noAr && noAr.item === item && currentSlide.el && currentSlide.el.isConnected) {
+        noAr = { item, posicao: (index % ativos.length) + 1, total: ativos.length };
+        index++;
+        const fica = durDe(item);
+        return schedule(fica > 0 ? fica : 10);
+      }
       noAr = { item, posicao: (index % ativos.length) + 1, total: ativos.length };
       index++;
 
@@ -2286,7 +2278,8 @@
       // Conteúdo prioritário toma a tela (layout inteligente).
       try { maybeTakeover(item); } catch (e) {}
 
-      const dur = rendered.duration;
+      // Fase 5: 1 s por palavra, de 6 a 25 s, a não ser que a pessoa tenha posto o tempo à mão.
+      const dur = R ? R.duracaoDe(item, rendered.duration) : rendered.duration;
       if (single) return; // estática — só o próprio item avança (ex.: vídeo ao terminar)
       if (dur && dur > 0) schedule(dur);
       else if (rendered.onEnter) {
@@ -2377,22 +2370,9 @@
     }
   }
 
+  // A janela agendada, na hora da loja: a conta mora em js/rodizio.js (a mesma da semana simulada).
   function agendadoAgora(item) {
-    const a = item && item.agendamento;
-    if (!a || !a.ativo) return true;
-    const loja = agoraNaLoja();
-    const today = loja.data;
-    if (a.dataInicio && today < a.dataInicio) return false;
-    if (a.dataFim && today > a.dataFim) return false;
-    if (Array.isArray(a.dias) && a.dias.length && a.dias.indexOf(loja.dia) === -1) return false;
-    if (a.horaInicio || a.horaFim) {
-      const hm = loja.hm;
-      const ini = a.horaInicio || '00:00';
-      const fim = a.horaFim || '23:59';
-      if (ini <= fim) { if (hm < ini || hm > fim) return false; }
-      else { if (hm < ini && hm > fim) return false; } // janela que cruza a meia-noite
-    }
-    return true;
+    return R ? R.naJanela(item, agoraNaLoja()) : true;
   }
 
   /* ---------------- Zona: Faixa de notícias / avisos ---------------- */

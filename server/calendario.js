@@ -104,6 +104,44 @@ function lerSemIA(texto, hoje) {
   return saida.sort((a, b) => a.data.localeCompare(b.data));
 }
 
+/*
+ * Fase 5: datas sem data escrita. "Black Friday e Natal" dava "Não achei
+ * nenhuma data no texto" (BLOCO-3, cenário 5), e o produto sabe calcular as
+ * duas (js/seasons.js). O nome da data no texto vira o evento na próxima
+ * vez que ela cai — o dia é o do calendário brasileiro, não um palpite.
+ */
+const Seasons = require('../js/seasons.js');
+const semAcento = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const APELIDOS = { 'dia-maes': ['dia das maes'], 'dia-pais': ['dia dos pais'], 'dia-criancas': ['dia das criancas'],
+  independencia: ['independencia', '7 de setembro', 'sete de setembro'], 'dia-trabalho': ['dia do trabalho', 'dia do trabalhador'],
+  'dia-mulher': ['dia da mulher', 'dia das mulheres'], 'ano-novo': ['ano novo', 'reveillon', 'virada do ano'] };
+const TIPO_DA_DATA = { 'black-friday': 'campanha', 'outubro-rosa': 'campanha', 'novembro-azul': 'campanha', independencia: 'feriado', 'dia-trabalho': 'feriado' };
+function datasPorNome(texto, hoje) {
+  const t = ' ' + semAcento(texto).replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ') + ' ';
+  const agora = hoje || new Date();
+  const hojeIso = iso(agora);
+  const saida = [];
+  (Seasons.SEASONS || []).forEach((sz) => {
+    const nomes = [semAcento(sz.label)].concat(APELIDOS[sz.id] || []);
+    if (!nomes.some((n) => t.indexOf(' ' + n + ' ') >= 0)) return;
+    let data = '';
+    for (const ano of [agora.getFullYear(), agora.getFullYear() + 1]) {
+      const d = Seasons.dataDe(sz, ano);
+      const dia = d ? new Date(d).toISOString().slice(0, 10) : '';
+      if (dia && dia >= hojeIso) { data = dia; break; }
+    }
+    const ev = data && normalizar({ data, titulo: sz.label, tipo: TIPO_DA_DATA[sz.id] || 'comemorativa' });
+    if (ev) saida.push(ev);
+  });
+  return saida;
+}
+// Junta as datas pelo nome às achadas pelo dia, sem repetir a mesma data.
+function comDatasPorNome(eventos, texto, hoje) {
+  const lista = (eventos || []).slice();
+  datasPorNome(texto, hoje).forEach((ev) => { if (!lista.some((x) => x.data === ev.data)) lista.push(ev); });
+  return lista.sort((a, b) => a.data.localeCompare(b.data));
+}
+
 const SISTEMA = `Você organiza o calendário de uma empresa para as TVs internas.
 A pessoa colou um texto (lista do RH, e-mail, agenda). Ache cada DATA com o
 que acontece nela e devolva um evento por data/acontecimento.
@@ -119,13 +157,13 @@ Ignore o que não tem data. Responda APENAS JSON:
 
 async function entender(texto, hoje) {
   const agora = hoje || new Date();
-  if (ai.mode() === 'dev') return lerSemIA(texto, agora);
+  if (ai.mode() === 'dev') return comDatasPorNome(lerSemIA(texto, agora), texto, agora);
   try {
     const r = ai.parseAiJson(await ai.callLLM(SISTEMA, 'HOJE: ' + iso(agora) + '\n\nTEXTO:\n' + String(texto || '').slice(0, 6000)));
     const eventos = (r && Array.isArray(r.eventos) ? r.eventos : []).map(normalizar).filter(Boolean).slice(0, 100);
-    if (eventos.length) return eventos.sort((a, b) => a.data.localeCompare(b.data));
+    if (eventos.length) return comDatasPorNome(eventos, texto, agora);
   } catch (e) { /* a IA caiu: a leitura por regra ainda funciona */ }
-  return lerSemIA(texto, agora);
+  return comDatasPorNome(lerSemIA(texto, agora), texto, agora);
 }
 
 // De quando a quando o evento passa na TV: N dias antes até o dia.
@@ -134,4 +172,4 @@ function periodo(ev) {
   return { dataInicio: iso(new Date(a, m - 1, d - ev.antecedencia)), dataFim: ev.data };
 }
 
-module.exports = { TIPOS, PRIORIDADES, ANTECEDENCIA, normalizar, lerSemIA, entender, tipoDoTexto, periodo, SISTEMA };
+module.exports = { TIPOS, PRIORIDADES, ANTECEDENCIA, normalizar, lerSemIA, entender, tipoDoTexto, periodo, SISTEMA, datasPorNome };
