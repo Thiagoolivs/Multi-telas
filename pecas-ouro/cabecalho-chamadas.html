@@ -13,18 +13,18 @@
 .logo { height: 56cqh; width: auto; max-width: 28cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { font: 700 21cqh/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; white-space: nowrap; }
+.nome { font: 700 max(var(--mt-piso, 0cqw), 21cqh)/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; white-space: nowrap; }
 .trilho { position: relative; flex: 1; min-width: 0; align-self: stretch; overflow: hidden; display: flex; align-items: center; }
-.trilho [data-vivo] { font: 600 25cqh/1 var(--mt-fonte-texto); letter-spacing: .06em; text-transform: uppercase; color: var(--mt-destaque); }
+.trilho [data-vivo] { font: 600 max(var(--mt-piso, 0cqw), 25cqh)/1 var(--mt-fonte-texto); letter-spacing: .06em; text-transform: uppercase; color: var(--mt-destaque); }
 .trilho::before, .trilho::after { content: ''; position: absolute; top: 0; bottom: 0; width: 6cqw; z-index: 1; }
 .trilho::before { left: 0; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
 .trilho::after { right: 0; background: linear-gradient(270deg, var(--mt-fundo), var(--mt-fundo-0)); }
 .hora { flex: none; font: 400 calc(46cqh * var(--mt-escala-titulo, 1))/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
 /* Faixa mais curta (TV em pé): a marca encolhe para a chamada ter onde passar. */
 @container (aspect-ratio < 9) {
-  .nome { font-size: 18cqh; letter-spacing: .24em; }
-  .trilho [data-vivo] { font-size: 22cqh; }
-  .hora { font-size: calc(40cqh * var(--mt-escala-titulo, 1)); }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 18cqh); letter-spacing: .24em; }
+  .trilho [data-vivo] { font-size: max(var(--mt-piso, 0cqw), 22cqh); }
+  .hora { font-size: max(var(--mt-piso, 0cqw), calc(40cqh * var(--mt-escala-titulo, 1))); }
 }
 </style>
 <section class="mt-peca cabecalho-chamadas">

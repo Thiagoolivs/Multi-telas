@@ -13,14 +13,14 @@
 .mt-peca::after { content: ''; position: absolute; width: 84cqmin; height: 84cqmin; right: -40cqmin; top: -16cqmin;
   border-radius: 50%; border: .5cqmin solid var(--mt-linha); }
 .bloco { position: absolute; left: 9cqmin; right: 9cqmin; top: 50%; transform: translateY(-50%); z-index: 1; }
-.kicker { font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .28em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), 3.6cqmin)/1 var(--mt-fonte-texto); letter-spacing: .28em; text-transform: uppercase; color: var(--mt-texto-suave); }
 .ate { margin-top: 6cqmin; }
-.pre { display: block; font: 400 8cqmin/1 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .06em; }
+.pre { display: block; font: 400 max(var(--mt-piso, 0cqw), 8cqmin)/1 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .06em; }
 .dia { display: block; font: 400 calc(25cqmin * var(--mt-escala-titulo, 1))/.86 var(--mt-fonte-titulo); text-transform: uppercase; color: var(--mt-destaque); letter-spacing: -.005em; }
 .data { display: flex; align-items: center; gap: 3cqmin; margin-top: 5cqmin; padding-top: 5cqmin; border-top: .5cqmin solid var(--mt-linha);
-  font: 600 5.2cqmin/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; }
-.apoio { margin-top: 5cqmin; font: 400 4.2cqmin/1.45 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
-.cta { position: absolute; left: 9cqmin; bottom: 8cqmin; z-index: 1; font: 600 3.8cqmin/1 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase;
+  font: 600 max(var(--mt-piso, 0cqw), 5.2cqmin)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; }
+.apoio { margin-top: 5cqmin; font: 400 max(var(--mt-piso, 0cqw), 4.2cqmin)/1.45 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.cta { position: absolute; left: 9cqmin; bottom: 8cqmin; z-index: 1; font: 600 max(var(--mt-piso, 0cqw), 3.8cqmin)/1 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase;
   padding-bottom: 1.6cqmin; border-bottom: .5cqmin solid var(--mt-destaque); }
 /* Deitada: o bloco vira duas colunas — o prazo à esquerda, o resto à direita. */
 @container (aspect-ratio >= 1.25) {

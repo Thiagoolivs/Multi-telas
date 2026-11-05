@@ -9,23 +9,23 @@
 .mt-peca { display: flex; align-items: stretch; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: var(--mt-fundo); border-top: 1.2cqh solid var(--mt-linha); }
 .agora { flex: none; display: flex; align-items: center; gap: 10cqh; padding: 0 9cqh 0 3cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); }
-.hora { font: 600 50cqh/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
-.data { display: flex; flex-direction: column; gap: 6cqh; font: 700 13cqh/1 var(--mt-fonte-texto); letter-spacing: .26em; text-transform: uppercase; white-space: nowrap; }
-.clima { font-weight: 500; letter-spacing: .06em; font-size: 17cqh; }
-.rotulo { flex: none; align-self: center; margin-left: 12cqh; padding-right: 12cqh; border-right: 1.2cqh solid var(--mt-linha); font: 700 14cqh/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
+.hora { font: 600 max(var(--mt-piso, 0cqw), 50cqh)/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
+.data { display: flex; flex-direction: column; gap: 6cqh; font: 700 max(var(--mt-piso, 0cqw), 13cqh)/1 var(--mt-fonte-texto); letter-spacing: .26em; text-transform: uppercase; white-space: nowrap; }
+.clima { font-weight: 500; letter-spacing: .06em; font-size: max(var(--mt-piso, 0cqw), 17cqh); }
+.rotulo { flex: none; align-self: center; margin-left: 12cqh; padding-right: 12cqh; border-right: 1.2cqh solid var(--mt-linha); font: 700 max(var(--mt-piso, 0cqw), 14cqh)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
 .rotulo:empty { display: none; }
 .trilho { position: relative; flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: center; padding-left: 6cqh; }
-.trilho [data-vivo] { font: 500 34cqh/1 var(--mt-fonte-texto); letter-spacing: .01em; }
+.trilho [data-vivo] { font: 500 max(var(--mt-piso, 0cqw), 34cqh)/1 var(--mt-fonte-texto); letter-spacing: .01em; }
 .trilho::before, .trilho::after { content: ''; position: absolute; top: 0; bottom: 0; width: 8cqw; z-index: 1; }
 .trilho::before { left: 0; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
 .trilho::after { right: 0; background: linear-gradient(270deg, var(--mt-fundo), var(--mt-fundo-0)); }
 @container (aspect-ratio < 9) {
   .agora { gap: 7cqh; padding-left: 3cqw; padding-right: 7cqh; }
-  .hora { font-size: 42cqh; }
+  .hora { font-size: max(var(--mt-piso, 0cqw), 42cqh); }
   .clima { display: none; }
-  .data { font-size: 11cqh; }
+  .data { font-size: max(var(--mt-piso, 0cqw), 11cqh); }
   .rotulo { display: none; }
-  .trilho [data-vivo] { font-size: 30cqh; }
+  .trilho [data-vivo] { font-size: max(var(--mt-piso, 0cqw), 30cqh); }
 }
 </style>
 <section class="mt-peca rodape-relogio">

@@ -55,7 +55,8 @@ function regras() {
     '',
     'A RÉGUA VISUAL (é isto que o cliente aprova):',
     '- Um elemento domina. O resto é menor e mais calmo.',
-    '- Kicker pequeno, espaçado, com filete; chamada como texto sublinhado, nunca botão gordo.',
+    '- Kicker discreto (espaçado, com filete), mas nunca abaixo da letra mínima: na TV ele também é lido a 4 m. Chamada como texto sublinhado, nunca botão gordo.',
+    '- Pouco texto: uma mensagem por peça, uns 15 palavras no máximo. Letra grande lê; letra pequena vira textura.',
     '- Preço com o R$ e os centavos pequenos; o número é o que se lê.',
     '- Quebra de linha DECIDIDA: título em duas linhas vira dois <span> (ou span + em) com display:block; nunca uma palavra sozinha na última linha.',
     '- Nada escrito sobre foto sem véu (gradiente de var(--mt-fundo) a var(--mt-fundo-0)).',
@@ -83,6 +84,28 @@ function enxuto(html) {
     .trim();
 }
 
+/*
+ * O piso da TV (fase 2, 05/11) envolve cada tamanho das peças-ouro em
+ * `max(var(--mt-piso, 0cqw), X)`. A IA não precisa dele: quem garante o piso
+ * na TV é o player (peca-render.js, aplicarPiso), em qualquer peça. Na
+ * biblioteca que vai no pedido fica só o X — o mesmo exemplo, sem pagar o
+ * envoltório em toda chamada.
+ */
+const PISO = 'max(var(--mt-piso, 0cqw), ';
+function semPiso(css) {
+  let s = String(css || '');
+  for (let i = s.indexOf(PISO); i !== -1; i = s.indexOf(PISO, i)) {
+    let fundo = 1, j = i + PISO.length;
+    for (; j < s.length && fundo; j++) {
+      if (s[j] === '(') fundo++;
+      else if (s[j] === ')') fundo--;
+    }
+    if (fundo) break; // parêntese sem par: deixa como está
+    s = s.slice(0, i) + s.slice(i + PISO.length, j - 1) + s.slice(j);
+  }
+  return s;
+}
+
 // A biblioteca no papel pedido, em ordem fixa — o fixo precisa ser igual entre chamadas para o cache valer.
 const BIBLIOTECA = {};
 function biblioteca(papel) {
@@ -91,7 +114,7 @@ function biblioteca(papel) {
   const lista = m.pecas
     .filter((p) => p.papeis.includes(papel))
     .sort((a, b) => a.id.localeCompare(b.id))
-    .map((p) => '### ' + p.nome + ' (' + p.familia + ')\n' + enxuto(fs.readFileSync(path.join(PASTA, p.id + '.html'), 'utf8')));
+    .map((p) => '### ' + p.nome + ' (' + p.familia + ')\n' + semPiso(enxuto(fs.readFileSync(path.join(PASTA, p.id + '.html'), 'utf8'))));
   // Em teste a biblioteca muda no disco entre um caso e outro: só guarda fora dele.
   if (process.env.NODE_ENV === 'production') BIBLIOTECA[papel] = lista;
   return lista;
@@ -415,7 +438,7 @@ async function comporPeca(o) {
       const pequenas = regrasDoPapel.letrasPequenas(h.css, papel, h.html);
       if (pequenas.length) {
         h.problemas = h.problemas.concat(pequenas.slice(0, 3).map((x) => 'letra pequena demais: "' + x.seletor + '" fica com ' + x.px + 'px na TV ' + x.formato
-          + ' (o mínimo é ' + regrasDoPapel.REGRAS.letraMin + 'px — veja a "Letra mínima" das REGRAS DE COMPOSIÇÃO)'));
+          + ' (o mínimo é ' + (x.minimo || regrasDoPapel.REGRAS.letraMin) + 'px — veja a "Letra mínima" das REGRAS DE COMPOSIÇÃO)'));
       }
       const textos = h.campos.filter((c) => c.tipo === 'texto')
         .map((c) => (o.camposDe && typeof o.camposDe[c.nome] === 'string' ? o.camposDe[c.nome] : c.exemplo));
@@ -594,4 +617,4 @@ async function comporTelaInteira(o) {
   return { zonas, falhas };
 }
 
-module.exports = { textosDaPeca, enxuto, comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, cortarNome, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO };
+module.exports = { textosDaPeca, enxuto, semPiso, comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, cortarNome, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO };

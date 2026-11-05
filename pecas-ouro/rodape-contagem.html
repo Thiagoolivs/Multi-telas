@@ -10,11 +10,11 @@
   background: var(--mt-fundo); border-top: 1.2cqh solid var(--mt-linha); }
 .conta { flex: none; display: flex; align-items: center; gap: 6cqh; padding: 0 30cqh 0 3cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque);
   clip-path: polygon(0 0, 100% 0, calc(100% - 22cqh) 100%, 0 100%); }
-.rotulo { font: 700 18cqh/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; white-space: nowrap; }
+.rotulo { font: 700 max(var(--mt-piso, 0cqw), 18cqh)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; white-space: nowrap; }
 /* Algarismos de largura fixa: a contagem muda a cada segundo, e o selo não pode pular junto. */
 .tempo { font: 400 calc(46cqh * var(--mt-escala-titulo, 1))/1 var(--mt-fonte-titulo); letter-spacing: .02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .trilho { position: relative; flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: center; padding-left: 4cqh; }
-.trilho [data-vivo] { font: 500 34cqh/1 var(--mt-fonte-texto); letter-spacing: .02em; }
+.trilho [data-vivo] { font: 500 max(var(--mt-piso, 0cqw), 34cqh)/1 var(--mt-fonte-texto); letter-spacing: .02em; }
 /* As mensagens somem nas pontas em vez de serem cortadas a seco. */
 .trilho::before, .trilho::after { content: ''; position: absolute; top: 0; bottom: 0; width: 8cqw; z-index: 1; }
 .trilho::before { left: 0; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
@@ -23,8 +23,8 @@
 @container (aspect-ratio < 9) {
   .rotulo { display: none; }
   .conta { padding-right: 24cqh; }
-  .tempo { font-size: calc(40cqh * var(--mt-escala-titulo, 1)); }
-  .trilho [data-vivo] { font-size: 30cqh; }
+  .tempo { font-size: max(var(--mt-piso, 0cqw), calc(40cqh * var(--mt-escala-titulo, 1))); }
+  .trilho [data-vivo] { font-size: max(var(--mt-piso, 0cqw), 30cqh); }
 }
 </style>
 <section class="mt-peca rodape-contagem">

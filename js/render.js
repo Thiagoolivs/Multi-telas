@@ -1055,6 +1055,8 @@
     const inner = div('ann-inner');
 
     const iconBox = div('ann-icon');
+    // Apoio: sem espaço para o texto no piso da TV, o ícone sai antes de a letra encolher (js/player.js caberNaCaixa).
+    iconBox.setAttribute('data-mt-apoio', '');
     iconBox.style.background = hexToRgba(cor, .16);
     iconBox.style.borderColor = hexToRgba(cor, .55);
     iconBox.style.boxShadow = '0 0 0 1.5cqh ' + hexToRgba(cor, .07);
@@ -1335,6 +1337,8 @@
     el.style.setProperty('--corpo', corpo(deitada));
     el.style.setProperty('--cols-pe', emPe.cols);
     el.style.setProperty('--corpo-pe', corpo(emPe));
+    // Colunas no automático: a TV pode pôr mais uma se a lista não couber com a letra mínima.
+    if (!(Number(item.colunas) >= 1 && Number(item.colunas) <= 3)) el.setAttribute('data-mt-colunas-auto', '');
     return { el, duration: item.duracao || 20 };
   }
 

@@ -16,3 +16,4 @@ test_out*.txt
 # Experimento do PLANO §4.4: resultados e fotos geradas ficam na máquina de quem roda
 experimento/
 pecas-ouro/fotos/experimento/
+regua-fotos/

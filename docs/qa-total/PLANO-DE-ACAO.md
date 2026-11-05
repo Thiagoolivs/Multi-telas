@@ -64,6 +64,18 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** 95% das fotos em tela cheia passam na régua.
 
+**Andamento (05/11):**
+- [x] Piso de 4,5% do lado menor da TV em toda letra do player, na zona grande (880×540 ou mais). A lista de preços, o aviso urgente e a tela fora do horário entram também.
+- [x] A TV só encolhe o que não cabe, nesta ordem: uma coluna a mais no preço, o título desce até 1,6× o piso, o ícone do aviso sai. Só então a caixa toda encolhe.
+- [x] A régua interna em 48 px no destaque (era 14), e a IA não pede mais letra pequena. A biblioteca vai sem o envoltório do piso, então o custo do pedido não sobe.
+- [x] O robô da régua (`npm run regua`, `tools/regua-tv.mjs`) num job próprio do CI, com as fotos guardadas.
+  - Tela cheia, tipos prontos: **42 de 42** (eram de 6 a 11 de 24).
+  - Principal com lateral: 15 de 42, a meta da fase 3.
+- [x] Na peça, entra o maior piso que cabe. O desenho nunca quebra (a bancada achava 371 defeitos com o piso inteiro), e a peça que cedeu fica marcada (`data-mt-piso-cedeu`).
+- [ ] Redesenhar as peças-ouro que ainda ficam abaixo de 48 px:
+  - em tela cheia, 12 de 43 (cardápios, oferta com foto, horário, data, Instagram, funcionário do mês, prazo, manifesto);
+  - no quadrado, no vertical e na principal da Empresas, 26 de 43.
+
 ### Fase 3: zonas que se adaptam (3–4 dias)
 **Objetivo:** bonito em qualquer formato, com o cliente escolhendo.
 - **Cinco formatos de zona:** larga, alta, quadrada, faixa e bloco. Cada tipo diz o que mostra em cada um (esconde o apoio, empilha, deixa só o número ou o preço) em vez de encolher.
