@@ -185,13 +185,32 @@
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(String(existing.contagem || ''))) zona.contagem = existing.contagem;
   }
 
+  /*
+   * O DADO ESTRAGADO NÃO DERRUBA NADA (QA total, 05/11). Dados de versões
+   * antigas chegavam com formas que ninguém esperava: a programação inteira
+   * como lista, `items` como texto, item `null`, aviso do letreiro como
+   * número. O painel quebrava ("Esta tela não abriu") e a TV travava em
+   * "Iniciando exibição". Aqui cada parte vira o que tem que ser, ou some.
+   */
+  const objeto = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
+  const frases = (lista) => (Array.isArray(lista) ? lista : [])
+    .filter((m) => m != null && typeof m !== 'object').map(String).filter((m) => m.trim());
+  const itensValidos = (lista) => (Array.isArray(lista) ? lista : [])
+    .filter((it) => objeto(it) && typeof it.type === 'string' && it.type);
+
   function normalize(cfg) {
-    if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) return sampleConfig();
+    /*
+     * Programação ilegível vira uma tela VAZIA, não o exemplo. O exemplo é
+     * de uma empresa inventada, e ia parar na TV do cliente (QA total, 05/11).
+     * O primeiro uso local, sem nada gravado, continua com o exemplo (load).
+     */
+    if (!objeto(cfg)) cfg = {};
     const out = {
       version: SCHEMA_VERSION,
-      settings: Object.assign(settingsPadrao(), cfg.settings || {}),
+      settings: Object.assign(settingsPadrao(), objeto(cfg.settings) ? cfg.settings : {}),
       zonas: {},
     };
+    if (!objeto(cfg.zonas)) cfg = Object.assign({}, cfg, { zonas: {} });
 
     // Garante um objeto de tema e migra configs antigas (cor/fundo → tema).
     out.settings.theme = migrateTheme(out.settings, (cfg.settings || {}).theme);
@@ -201,16 +220,21 @@
 
     // Preserva zonas de outros templates (trocar de layout não apaga conteúdo).
     Object.keys(cfg.zonas || {}).forEach((k) => {
-      out.zonas[k] = cfg.zonas[k];
+      const z = cfg.zonas[k];
+      if (!objeto(z)) return;
+      const copia = Object.assign({}, z);
+      if ('items' in z) copia.items = itensValidos(z.items);
+      if ('messages' in z) copia.messages = frases(z.messages);
+      out.zonas[k] = copia;
     });
 
     const layout = pegarLayout(out.settings.layoutId);
     // Garante que exista uma entrada para cada zona do layout escolhido.
     layout.zones.forEach((zone) => {
-      const existing = (cfg.zonas && cfg.zonas[zone.id]) || {};
+      const existing = objeto(cfg.zonas && cfg.zonas[zone.id]) ? cfg.zonas[zone.id] : {};
       if (zone.type === 'ticker') {
         out.zonas[zone.id] = {
-          messages: Array.isArray(existing.messages) ? existing.messages : [],
+          messages: frases(existing.messages),
           velocidade: existing.velocidade || 60,
           titulo: existing.titulo != null ? existing.titulo : 'ÚLTIMAS NOTÍCIAS',
           /*
@@ -266,14 +290,14 @@
          */
         if (existing.peca) out.zonas[zone.id].peca = existing.peca;
         // As chamadas que giram no cabeçalho (data-vivo="mensagens" na peça dele).
-        if (Array.isArray(existing.messages) && existing.messages.length) out.zonas[zone.id].messages = existing.messages.slice(0, 20);
+        if (frases(existing.messages).length) out.zonas[zone.id].messages = frases(existing.messages).slice(0, 20);
         // O relógio e o clima do cabeçalho automático podem sair (D28); sem a chave, ficam.
         if (existing.relogio === false) out.zonas[zone.id].relogio = false;
         if (existing.clima === false) out.zonas[zone.id].clima = false;
         vivosDaFaixa(out.zonas[zone.id], existing);
       } else {
         out.zonas[zone.id] = {
-          items: Array.isArray(existing.items) ? existing.items : [],
+          items: itensValidos(existing.items),
         };
       }
     });
@@ -289,7 +313,8 @@
         save(c);
         return c;
       }
-      return normalize(JSON.parse(raw));
+      const lido = JSON.parse(raw);
+      return lido && typeof lido === 'object' && !Array.isArray(lido) ? normalize(lido) : sampleConfig();
     } catch (e) {
       console.warn('[storage] falha ao ler config, usando exemplo', e);
       return sampleConfig();

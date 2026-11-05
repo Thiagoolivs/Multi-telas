@@ -101,6 +101,19 @@ function mensagem(tipo, contaRecebida, appUrl, agora) {
     ];
     botao = 'Ver o plano';
     destino = '/app/?ir=billing';
+  } else if (!telas) {
+    /*
+     * Quem nunca ligou uma TV não tem "TV no ar" (QA total, 05/11: o e-mail
+     * prometia "a TV continua no ar" a uma conta sem TV nenhuma).
+     */
+    assunto = 'Seu teste do ' + produto + ' acabou antes de a TV ser ligada';
+    titulo = 'Seu teste acabou, e a TV ainda não foi ligada';
+    paragrafos = [
+      'Para ver o ' + produto + ' na sua parede, assine o Essencial (' + preco + ' por tela, por mês) e ligue a primeira TV: leva uns cinco minutos.',
+      'Abra o app MultiTelas TV no aparelho da TV (ou o endereço ' + enderecoDaTv(appUrl) + ' no navegador da Smart TV), aponte o celular para o QR e escolha um modelo pronto — ' + modelos + '.',
+    ];
+    botao = 'Assinar e ligar a TV';
+    destino = '/app/?ir=billing';
   } else {
     assunto = 'Seu teste do ' + produto + ' acabou — a TV continua no ar';
     titulo = 'Seu teste acabou. A TV continua no ar.';

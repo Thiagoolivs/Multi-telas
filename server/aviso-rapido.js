@@ -42,7 +42,8 @@ function ateQuando(t, hoje) {
 
 function prioridadeDe(t) {
   const s = String(t || '').toLowerCase();
-  if (/urgente|emergência|emergencia|evacua|incêndio|incendio|vazamento de gás|vazamento de gas/.test(s)) return 'urgente';
+  // "Por cima de tudo" e "agora" também são o cliente pedindo urgência (QA total, 05/11).
+  if (/urgente|emergência|emergencia|evacua|incêndio|incendio|vazamento de gás|vazamento de gas|por cima de tudo|acima de tudo/.test(s)) return 'urgente';
   return 'alta';
 }
 
@@ -66,6 +67,10 @@ function semIA(texto, hoje, grupos) {
   t = t.replace(/^(um|uma|o)\s+(aviso|recado|comunicado)\s+(de que|que|sobre|de|:)\s*/i, '');
   t = t.replace(/^(quero |preciso |pode |tem que |vamos )?(avis[ae]r?|informa[r]?|comunica[r]?)\s+(a todos |o pessoal |todo mundo |os clientes |a equipe )?(que\s+|:\s*)?/i, '');
   t = t.replace(/\s*(em )?(todas as tvs|na[s]? tv[s]?)\s*/i, ' ').trim();
+  // Tirada a TV, sobra o começo vazio ("Aviso para : o refeitório…", QA total 05/11): sai também.
+  t = t.replace(/^(aviso|recado|comunicado)?(\s+(urgente|importante))?\s*(para|pra|pras|para as|na|nas)?\s*[:\-–—]\s*/i, '').trim();
+  t = t.replace(/[,;]?\s*((coloca|coloque|p[õo]e|bota|deixa)\s+)?(isso\s+)?(por cima de tudo|acima de tudo)\s*[.!]?/gi, '').trim();
+  t = t.replace(/^(urgente|importante)\s*[:\-–—!]\s*/i, '').trim();
   // O grupo citado ("na Loja Centro") vai para o alvo, não para o cartaz.
   const grupo = alvoDe(texto, grupos);
   if (grupo.nome) t = t.replace(new RegExp('\\s*(na|no|em|para a|para o)?\\s*' + grupo.nome.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*', 'i'), ' ').trim().replace(/^que\s+/i, '');
@@ -91,7 +96,8 @@ Devolva:
   sem "adicione aviso de";
 - detalhe: o que a pessoa precisa saber ou fazer (até 140 letras), ou "";
 - ate: até quando vale, AAAA-MM-DD (a partir de HOJE), ou "" se não disse;
-- prioridade: "urgente" só para segurança/emergência; senão "alta";
+- prioridade: "urgente" para segurança/emergência OU quando a pessoa pedir
+  ("urgente", "por cima de tudo"); senão "alta";
 - grupo: um dos GRUPOS da lista, se o pedido citar; senão "".
 Não invente telefone, local ou horário que não estejam no pedido.
 ${P.REGRA_DE_PERGUNTA}
@@ -106,7 +112,8 @@ function normalizar(r, texto, hoje, grupos) {
     titulo: corta(r.titulo, 70) || base.titulo,
     detalhe: corta(r.detalhe, 160),
     ate,
-    prioridade: r.prioridade === 'urgente' ? 'urgente' : 'alta',
+    // As palavras do cliente valem: se ele escreveu "urgente", é urgente (QA total, 05/11).
+    prioridade: r.prioridade === 'urgente' || base.prioridade === 'urgente' ? 'urgente' : 'alta',
     alvo: grupo ? { tipo: 'grupo', nome: grupo } : base.alvo,
   };
 }

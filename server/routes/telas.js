@@ -412,12 +412,25 @@ module.exports = function (ctx) {
          * cabeçalho: o corpo continua a config pura, que a TV lê como sempre.
          * O painel devolve a versão ao gravar (D0.5).
          */
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) });
         // A config gravada antes do item 39 traz o título de exemplo e o nome da TV no cabeçalho.
         let corpo = device.config;
         try {
-          const c = JSON.parse(device.config);
-          let mudou = !!(c && c.settings && nomeDaConta(c, device, await empresaDa(device.tenant_id)));
+          let c = JSON.parse(device.config);
+          /*
+           * O PAINEL RECEBE A PROGRAMAÇÃO JÁ LIMPA (QA total, 05/11), pelo mesmo
+           * normalizador da TV (js/storage.js). Lida crua, uma programação de
+           * versão antiga (a lista em vez do objeto, `items` como texto, item
+           * nulo) derrubava a Programação e o editor. Ilegível de todo: o
+           * painel a vê como TV sem programação (204), e não quebra.
+           */
+          if (!dtOk) {
+            if (!c || typeof c !== 'object' || Array.isArray(c)) {
+              res.writeHead(204, { 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) });
+              return res.end();
+            }
+            c = schema.normalize(c);
+          }
+          let mudou = !dtOk || !!(c && c.settings && nomeDaConta(c, device, await empresaDa(device.tenant_id)));
           /*
            * A logo da marca (D8): `settings.logoUrl` nunca era preenchido, e a
            * TV mostrava o nome em texto. Vai só para a TV (token), calculada
@@ -459,7 +472,11 @@ module.exports = function (ctx) {
             if (auto.aniversarios || auto.mural) { c.settings.automaticos = auto; mudou = true; }
           }
           if (mudou) corpo = JSON.stringify(c);
-        } catch (e) { /* config ilegível: vai como está, e a TV se vira */ }
+        } catch (e) {
+          // Config ilegível: a TV se vira com ela; o painel a vê como TV sem programação.
+          if (!dtOk) { res.writeHead(204, { 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) }); return res.end(); }
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) });
         return res.end(corpo);
       }
       // Dono publica config (requer login + posse)

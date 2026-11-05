@@ -1614,7 +1614,15 @@
       // Destaque reforçado (flash vermelho) + alerta sonoro, se habilitado.
       // Nunca com a loja fechada: o sino tocava atrás da tela preta, de madrugada.
       const lojaFechada = document.documentElement.classList.contains('mt-fora-do-horario');
-      if (!lojaFechada && (!currentConfig || currentConfig.settings.somUrgente !== false)) {
+      /*
+       * O som toca na ENTRADA do aviso, não a cada volta (QA total, 05/11): com
+       * a sequência girando, o sino tocava a cada minuto, o dia inteiro. O
+       * mesmo aviso só toca de novo depois de 10 minutos.
+       */
+      const chave = String(item._aviso || item.titulo || '');
+      const ultimo = sinosTocados[chave] || 0;
+      if (!lojaFechada && Date.now() - ultimo > 10 * 60 * 1000 && (!currentConfig || currentConfig.settings.somUrgente !== false)) {
+        sinosTocados[chave] = Date.now();
         try { playUrgentChime(); } catch (e) {}
       }
     }
@@ -2079,7 +2087,12 @@
 
       // Filtra pelos conteúdos agendados para agora.
       // D24: as fontes se revezam e a prioridade pesa; depois entram os automáticos.
-      const ativos = comAutomaticos(distribuir(agendado ? items.filter(agendadoAgora) : items), cfg, zonaId);
+      // Só o que esta TV sabe mostrar (QA total, 05/11): o tipo desconhecido não vira texto interno no ar.
+      const agoraMs = Date.now();
+      const conhecidos = items.filter((it) => it && (!MTRender.conhece || MTRender.conhece(it.type))
+        // O urgente sem data sai na hora marcada (web/src/lib/aviso.js, QA total 05/11).
+        && !(it.meta && Number(it.meta.expiraEm) > 0 && agoraMs > Number(it.meta.expiraEm)));
+      const ativos = comAutomaticos(distribuir(agendado ? conhecidos.filter(agendadoAgora) : conhecidos), cfg, zonaId);
       if (!ativos.length) {
         // Antes: "Nenhum conteúdo agendado agora", escrito para o público.
         mostrarRelogio();
@@ -2206,18 +2219,41 @@
     return !!(item && item.agendamento && item.agendamento.ativo);
   }
   // Verifica se um item está dentro da sua janela agendada (data/dias/hora).
+  /*
+   * A data, o dia da semana e a hora NA LOJA (QA total, 05/11). O agendamento
+   * seguia o relógio da TV, e TV box vem de fábrica em UTC: no Brasil, tudo
+   * entrava 3 h antes (o café da manhã às 3h, o almoço às 9h). O fuso é o do
+   * horário de funcionamento, o mesmo que já decide quando a TV dorme.
+   */
+  const relogiosDaLoja = {};
+  // Quando cada aviso urgente tocou o sino pela última vez (takeover).
+  const sinosTocados = {};
+  function agoraNaLoja() {
+    const E = global.MTExpediente;
+    const fuso = (E && E.normalizar(expediente).fuso) || 'America/Sao_Paulo';
+    try {
+      if (!relogiosDaLoja[fuso]) {
+        relogiosDaLoja[fuso] = new Intl.DateTimeFormat('en-US', { timeZone: fuso, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+      }
+      const p = {};
+      relogiosDaLoja[fuso].formatToParts(new Date()).forEach((x) => { p[x.type] = x.value; });
+      return { data: p.year + '-' + p.month + '-' + p.day, dia: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(p.weekday), hm: p.hour + ':' + p.minute };
+    } catch (e) {
+      const now = new Date();
+      return { data: now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0'), dia: now.getDay(), hm: String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') };
+    }
+  }
+
   function agendadoAgora(item) {
     const a = item && item.agendamento;
     if (!a || !a.ativo) return true;
-    const now = new Date();
-    const y = now.getFullYear();
-    const today = y + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' +
-      String(now.getDate()).padStart(2, '0');
+    const loja = agoraNaLoja();
+    const today = loja.data;
     if (a.dataInicio && today < a.dataInicio) return false;
     if (a.dataFim && today > a.dataFim) return false;
-    if (Array.isArray(a.dias) && a.dias.length && a.dias.indexOf(now.getDay()) === -1) return false;
+    if (Array.isArray(a.dias) && a.dias.length && a.dias.indexOf(loja.dia) === -1) return false;
     if (a.horaInicio || a.horaFim) {
-      const hm = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+      const hm = loja.hm;
       const ini = a.horaInicio || '00:00';
       const fim = a.horaFim || '23:59';
       if (ini <= fim) { if (hm < ini || hm > fim) return false; }

@@ -117,6 +117,9 @@ export function AvisoRapido({ onFechar, avisoInicial }) {
                 </select>
               </label>
             </div>
+            {aviso.prioridade === 'urgente' && !aviso.ate && (
+              <p className="text-xs text-ink-2">O urgente sem data sai sozinho em 2 horas. Para durar mais, escolha até quando.</p>
+            )}
             <label className="block text-xs font-medium text-ink-2">Onde
               <select value={aviso.alvo && aviso.alvo.tipo === 'grupo' ? aviso.alvo.nome : ''} className={cn(campo, 'mt-1')}
                 onChange={(e) => set('alvo', e.target.value ? { tipo: 'grupo', nome: e.target.value } : { tipo: 'todas' })}>
