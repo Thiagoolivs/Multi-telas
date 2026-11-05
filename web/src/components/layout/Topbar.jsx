@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Sun, Moon, LogOut, ChevronDown, CreditCard, Users, Settings, LifeBuoy } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut, ChevronDown, CreditCard, Users, Settings, LifeBuoy, UserPlus } from 'lucide-react';
 import { IconButton } from '../ui/Button.jsx';
 
 const ROLE_LABEL = { owner: 'Dono', admin: 'Admin', member: 'Membro' };
@@ -87,9 +87,14 @@ function UserMenu({ user, onLogout, onNavigate }) {
             <div className="truncate text-sm font-medium text-ink">{user?.name || 'Conta'}</div>
             <div className="truncate text-xs text-ink-3">{user?.email}</div>
           </div>
-          {/* A conta mora aqui desde a fase 7: Plano, Equipe, Ajustes e Ajuda. */}
-          {onNavigate && [['billing', 'Plano', CreditCard], ['team', 'Equipe', Users], ['settings', 'Ajustes', Settings], ['support', 'Ajuda', LifeBuoy]].map(([id, nome, Icone]) => (
-            <button key={id} type="button" onClick={() => { setOpen(false); onNavigate(id); }}
+          {/*
+            A conta mora aqui desde a fase 7: Plano, Equipe, Ajustes e Ajuda. E
+            "Convidar alguém" (dono e admin) já abre o convite: três toques.
+          */}
+          {onNavigate && [['billing', 'Plano', CreditCard], ['team', 'Equipe', Users],
+            ...(user && (user.role === 'owner' || user.role === 'admin') ? [['team', 'Convidar alguém', UserPlus, { convidar: true }]] : []),
+            ['settings', 'Ajustes', Settings], ['support', 'Ajuda', LifeBuoy]].map(([id, nome, Icone, params]) => (
+            <button key={nome} type="button" onClick={() => { setOpen(false); onNavigate(id, params); }}
               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-ink-2 transition hover:bg-surface-2 hover:text-ink">
               <Icone size={15} strokeWidth={2} className="text-ink-3" />
               {nome}

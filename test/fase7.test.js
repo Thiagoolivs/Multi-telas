@@ -79,3 +79,91 @@ test('Telas abre a página da TV, e voltar volta para Telas', () => {
   const app = ler('web/src/App.jsx');
   assert.match(app, /case 'content': return <ContentEditorPage device=\{route\.device\} zonaInicial=\{route\.zona\} onBack=\{\(\) => go\('screens'\)\}/);
 });
+
+/*
+ * Parte C: um só Criar, que termina sempre em Onde → Quando → Pôr na TV, e
+ * os três níveis no formulário da peça.
+ */
+test('o "quando" em palavras vira o agendamento do player', async () => {
+  const { pathToFileURL } = require('node:url');
+  const Q = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/quando.js')).href);
+  const A = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/aplicarConteudo.js')).href);
+  const hoje = new Date(2026, 10, 5);
+  assert.equal(Q.diasAte('2026-11-05', hoje), 1, 'hoje conta como um dia');
+  assert.equal(Q.diasAte('2026-11-07', hoje), 3, 'até sábado');
+  assert.equal(Q.diasAte('2026-11-01', hoje), 1, 'data que passou vira só hoje');
+  assert.equal(Q.diasAte('', hoje), 0);
+  const item = { type: 'announce', titulo: 'Oi' };
+  assert.equal(Q.comQuando(item, { quando: 'sempre' }), item, 'sempre: nada a agendar');
+  const so = Q.comQuando(item, { quando: 'hoje' });
+  assert.equal(so.agendamento.dataInicio, so.agendamento.dataFim, 'só hoje: começa e acaba hoje');
+  const manha = Q.comQuando(item, { quando: 'hora', faixa: 'manha' });
+  assert.equal(manha.agendamento.horaInicio, '06:00');
+  assert.equal(manha.agendamento.escolhido, true);
+  // A hora que a pessoa escolheu não estica pelo dia (o cobrirODia da fase 5 só estica a das faixas da IA).
+  assert.equal(A.cobrirODia([manha])[0].agendamento.horaInicio, '06:00');
+  const daIA = A.agendarPeca(item, 'manha', 0);
+  assert.equal(A.cobrirODia([daIA])[0].agendamento.horaInicio, '00:00');
+  assert.equal(Q.frasesDoQuando({ quando: 'hora', faixa: 'almoco' }), 'todo dia, almoço');
+});
+
+test('Pôr na TV: onde, quando e Desfazer, nas Peças prontas, no Criar e no "Pôr foto ou vídeo"', () => {
+  const d = semComentarios(ler('web/src/components/tela/PorNaTV.jsx'));
+  assert.match(d, /aria-label="Onde"/);
+  assert.match(d, /<EscolherQuando valor=\{escolha\} onChange=\{setEscolha\} numero="2\. " \/>/);
+  assert.match(d, /const item = comQuando\(peca\.item, escolha\);/);
+  assert.match(d, /if \(telaInicial && telas\.some\(\(t\) => t\.id === telaInicial\)\) return \[telaInicial\];/, 'vindo de uma TV, só ela marcada');
+  assert.match(ler('web/src/pages/PecasProntasPage.jsx'), /<PorNaTV peca=\{porNaTv\} telas=\{telas\}/);
+  const c = semComentarios(ler('web/src/pages/CriarPage.jsx'));
+  assert.match(c, /<PorNaTV peca=\{porNaTv\} telaInicial=\{telaInicial\} alerta=\{porNaTv\.alerta\} onFechar=\{\(\) => setPorNaTv\(null\)\} \/>/);
+  // Modelo salvo sem mudar o texto: avisa antes (o preço de exemplo pode ter que ser honrado).
+  assert.match(c, /const igual = !!textosDoModelo\.current && textosDa\(it\) === textosDoModelo\.current;/);
+  const s = semComentarios(ler('web/src/components/content/SubirConteudo.jsx'));
+  assert.match(s, /<EscolherQuando valor=\{escolha\} onChange=\{setEscolha\} \/>/);
+  assert.match(ler('web/src/lib/subir.js'), /tela: \(opcoes && opcoes\.tela\) \|\| ''/);
+});
+
+test('um só Criar: três portas, o avançado recolhido, e a TV de onde veio já marcada', () => {
+  const c = semComentarios(ler('web/src/pages/CriarPage.jsx'));
+  for (const t of ['Pedir à IA', 'Escolher um modelo', 'Foto ou vídeo']) assert.ok(c.includes('titulo="' + t + '"'), t);
+  assert.match(c, /onClick=\{\(\) => abrirSubir\(null, \{ tela: telaInicial \}\)\}/);
+  assert.match(c, /setPorNaTv\(\{ item: it, formato: it\.formato, label: 'Modelo', alerta:/, 'o modelo vai ao ar sem perguntar onde e quando');
+  assert.match(c, /aria-expanded=\{avancado\}/);
+  assert.match(c, /Editor livre \(em branco\)/);
+  // A segunda porta para a mesma conversa saiu da Programação.
+  assert.doesNotMatch(ler('web/src/pages/ProgramacaoPage.jsx'), /Pedir à IA<\/Button>/);
+});
+
+test('os três níveis: o conteúdo à vista, aparência e tempo em "Mais ajustes"', async () => {
+  const { pathToFileURL } = require('node:url');
+  globalThis.localStorage = globalThis.localStorage || { getItem: () => null, setItem: () => {} };
+  let T;
+  try { T = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/contentTypes.js')).href); } catch (e) { T = null; }
+  const src = ler('web/src/lib/contentTypes.js');
+  assert.match(src, /const DUR = \{ key: 'duracao'[^}]*\.\.\.AV \};/, 'a duração voltou para cima');
+  for (const k of ['align', 'tamanho', 'colunas']) assert.match(src, new RegExp("key: '" + k + "'[^\\n]*\\.\\.\\.AV"), k);
+  assert.match(src, /key: 'bg', label: 'Cor de fundo', kind: 'color', optional: true, \.\.\.AV/);
+  if (T) {
+    const { simples, avancados } = T.camposPorNivel('text');
+    assert.deepEqual(simples.map((f) => f.key), ['titulo', 'corpo']);
+    assert.deepEqual(avancados.map((f) => f.key), ['align', 'tamanho', 'bg', 'cor', 'duracao']);
+    assert.deepEqual(T.camposPorNivel('promo').simples.map((f) => f.key), ['selo', 'titulo', 'precoDe', 'precoPor', 'cta', 'imagem']);
+  }
+  const f = semComentarios(ler('web/src/components/content/ItemForm.jsx'));
+  assert.match(f, /const \{ simples, avancados \} = camposPorNivel\(item\.type\);/);
+  assert.match(f, /aria-expanded=\{aberto\}/);
+  assert.match(f, /const CHAVE_MAIS = 'mt\.maisAjustes';/, 'o "Mais ajustes" não lembra a escolha');
+  // A importância (antes "Prioridade", sempre à vista) foi para o "Mais ajustes" da página da TV.
+  const e = semComentarios(ler('web/src/pages/ContentEditorPage.jsx'));
+  assert.match(e, /<ItemForm item=\{current\} onChange=\{\(it\) => updateItem\(selected, it\)\}\s*maisAjustes=\{\(/);
+  assert.match(e, /aria-label="Importância"/);
+});
+
+test('convidar em três toques: avatar › Convidar alguém › Gerar convite', () => {
+  const t = ler('web/src/components/layout/Topbar.jsx');
+  assert.match(t, /\['team', 'Convidar alguém', UserPlus, \{ convidar: true \}\]/);
+  assert.match(t, /user\.role === 'owner' \|\| user\.role === 'admin'/, 'membro não convida: o atalho não aparece para ele');
+  assert.match(ler('web/src/pages/TeamPage.jsx'), /useState\(!!abrirConvite && \(me\.role === 'owner' \|\| me\.role === 'admin'\)\)/);
+  assert.match(ler('web/src/App.jsx'), /abrirConvite=\{!!route\.convidar\}/);
+  assert.match(ler('web/src/App.jsx'), /onNavigate=\{\(name, params\) => go\(name, params\)\}/);
+});

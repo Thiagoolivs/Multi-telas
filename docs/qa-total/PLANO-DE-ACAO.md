@@ -186,6 +186,41 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** as 8 tarefas do bloco 8 saem em até 3 cliques, e um leigo faz os 12 cenários do bloco 3 sem travar.
 
+**Andamento (05/11):**
+- [x] **Menu de 5 itens:** Criar fixo em cima, Início, Telas, Agenda, Biblioteca e Marca, mais Pessoas na Empresas (no Comércio e na Saúde, os apps ficam na Biblioteca). Plano, Equipe, Ajustes e Ajuda foram para o avatar. No celular, a barra de baixo tem o Criar no meio.
+- [x] **Uma Biblioteca só:** Prontos para você (telas inteiras e peças soltas), Seus conteúdos (campanhas e peças guardadas), Fotos e vídeos, e Apps. Os endereços antigos continuam abrindo.
+- [x] **A página da TV:**
+  - a TV ao vivo no centro, e "como vai ficar" com o rascunho, no mesmo palco;
+  - as partes da TV ao lado, e a fila e a edição embaixo;
+  - três partes numa página: O que passa, Ajustes da TV e O que passou;
+  - a barra fixa "Pôr na TV" com Desfazer e Refazer, também no celular;
+  - Telas abre a página da TV, e voltar volta para Telas.
+- [x] **Um só Criar:**
+  - três portas: Pedir à IA, Escolher um modelo, e Foto ou vídeo;
+  - o avançado recolhido: editor livre e Criação rápida;
+  - todo caminho termina igual: a prévia, onde, quando e "Pôr na TV", com Desfazer;
+  - aberto de dentro de uma TV, só ela vem marcada;
+  - o "Pedir à IA" da Programação saiu, porque era uma segunda porta para a mesma conversa;
+  - modelo salvo sem mudar o texto avisa antes, por causa do preço de exemplo.
+- [x] **Os três níveis no formulário da peça:** o conteúdo e o "quando mostrar" à vista. Aparência, tempo e importância ficam em "Mais ajustes", que lembra a escolha de cada pessoa.
+- **Cliques por tarefa, contando o clique no menu:**
+
+  | Tarefa | Bloco 8 | Agora | Caminho |
+  |---|---|---|---|
+  | Mudar o que a TV mostra | 4 + rolagem | **3** | Telas › Abrir a TV › editar › Pôr na TV (a barra fica fixa, sem rolar) |
+  | Mudar a marca | 2 (+6 por TV) | **2** | Marca › paleta (a TV segue a marca desde a fase 4) |
+  | Adicionar uma TV | 3 | **3** | Telas › Parear tela › código e nome › Parear |
+  | Convidar alguém | 4 | **3** | avatar › Convidar alguém › Gerar convite |
+  | Ver o que está no ar | 0–2 | **0–2** | Início, ou Telas › Abrir a TV (grande, ao vivo) |
+  | Pôr uma foto na TV | 4 | 4 | Criar › Foto ou vídeo › Galeria e arquivo › Pôr na TV. Arrastando o arquivo para o painel, são 2 |
+  | Pôr uma peça pronta | 4 | 4 | Biblioteca › Peças soltas › Pôr na TV › Pôr na TV (agora com o "quando" junto) |
+  | Agendar uma peça | 8–9 | 1 (peça nova) e 6 (peça que já está na TV) | A peça nova tem o "quando" no fim de todo caminho. A que já está precisa da Agenda semanal (fase 8) |
+  | Criar com a IA e pôr no ar | 8–13 | 8–13 | Depende da IA (fase 6) |
+
+- Falta:
+  - 4 das 9 tarefas passam de 3 cliques. Duas ficam com 4, por causa do "Galeria" e do "Peças soltas". Agendar a peça que já está na TV espera a Agenda semanal (fase 8). Criar com a IA espera a fase 6.
+  - O leigo nos 12 cenários do bloco 3 vai para o reteste (fase 10).
+
 ### Fase 8: o painel novo, o acabamento (2–3 dias)
 **Objetivo:** parecer um produto que vale o preço.
 - **Letra do painel:** corpo de 15 px, título de seção 17 px e título de página 28 px. Um botão principal por tela.

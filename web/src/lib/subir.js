@@ -156,8 +156,9 @@ export function itemDaMidia({ url, fundo, video }) {
 // Abrir o "Subir" de qualquer lugar do painel (Início, arrastar e soltar, e
 // o compartilhar do celular, no item 5), com ou sem arquivos já escolhidos.
 export const EVENTO_SUBIR = 'mt:subir';
-export function abrirSubir(arquivos) {
-  window.dispatchEvent(new CustomEvent(EVENTO_SUBIR, { detail: { arquivos: arquivos ? Array.from(arquivos) : [] } }));
+// `opcoes.tela`: aberto do Criar de uma TV, só ela vem marcada (fase 7).
+export function abrirSubir(arquivos, opcoes) {
+  window.dispatchEvent(new CustomEvent(EVENTO_SUBIR, { detail: { arquivos: arquivos ? Array.from(arquivos) : [], tela: (opcoes && opcoes.tela) || '' } }));
 }
 
 /*

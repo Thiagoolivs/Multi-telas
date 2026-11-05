@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Send, Wand2, MessageSquare, Zap, CloudOff, Plus, MessagesSquare, CheckCircle2, ArrowRight } from 'lucide-react';
+import React, { useEffect, useRef, useState, Suspense, lazy } from 'react';
+import { Send, Wand2, MessageSquare, Zap, CloudOff, Plus, MessagesSquare, CheckCircle2, ArrowRight, LayoutTemplate, ImagePlus, ChevronRight } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Spinner } from '../components/ui/Feedback.jsx';
@@ -18,6 +18,12 @@ import { opcoesDoPerfil, opcaoDoPerfil } from './CriacaoRapidaPage.jsx';
 import { usePerfil } from '../lib/perfil.js';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
+import { abrirSubir } from '../lib/subir.js';
+import { CONTENT_TYPES } from '../lib/contentTypes.js';
+import { PorNaTV } from '../components/tela/PorNaTV.jsx';
+// Fase 7: os modelos e o editor livre também moram no Criar (sob demanda: não pesam a conversa).
+const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
+const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
 
 /*
  * CRIAR É A CONVERSA (EXECUTOR §2b, item 24).
@@ -50,6 +56,12 @@ import { cn } from '../lib/cn.js';
  *
  * Os quatro passos de antes continuam em "Criação rápida", para quem já
  * sabe o que quer.
+ *
+ * UM SÓ CRIAR (fase 7; BLOCO-8, wireframe C): três portas — pedir à IA (a
+ * conversa), escolher um modelo, pôr foto ou vídeo — e o avançado recolhido
+ * (editor livre, Criação rápida). Todo caminho termina igual: a prévia,
+ * onde, quando e "Pôr na TV" (components/tela/PorNaTV.jsx). Aberto de dentro
+ * de uma TV, ela já vem marcada.
  */
 
 // A conversa aberta, para quem recarrega o app voltar no mesmo ponto.
@@ -101,6 +113,13 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   // D42: o esboço esperando a aprovação ({ escopo, conversa }) e o aprovar em andamento.
   const [paraAprovar, setParaAprovar] = useState(null);
   const [aprovando, setAprovando] = useState(false);
+  // Fase 7: a galeria de modelos, a peça no editor e a peça pronta esperando o "Pôr na TV".
+  const [modeloAberto, setModeloAberto] = useState(false);
+  const [compondo, setCompondo] = useState(null);
+  const [porNaTv, setPorNaTv] = useState(null);
+  const [avancado, setAvancado] = useState(false);
+  // Os textos do modelo como vieram: salvar sem mudar nada levaria o preço de exemplo à TV.
+  const textosDoModelo = useRef(null);
   const caixa = useRef(null);
   const fim = useRef(null);
   const salvarCartao = useRef(null);
@@ -417,6 +436,30 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
         <div className="h-[60vh]">{lista}</div>
       </Dialog>
 
+      {/* Modelo → editor → Pôr na TV (onde e quando): nada vai ao ar antes do último toque. */}
+      {modeloAberto && (
+        <Suspense fallback={null}>
+          <EscolherModelo aberto onFechar={() => setModeloAberto(false)}
+            onEscolher={(peca, formato) => {
+              setModeloAberto(false);
+              const base = CONTENT_TYPES.composicao.make();
+              textosDoModelo.current = peca ? textosDa(peca) : null;
+              setCompondo(peca ? { ...base, ...peca } : { ...base, formato });
+            }} />
+        </Suspense>
+      )}
+      {compondo && (
+        <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90"><Spinner size={22} /></div>}>
+          <CompositionEditor value={compondo} onClose={() => setCompondo(null)}
+            onSave={(it) => {
+              setCompondo(null);
+              const igual = !!textosDoModelo.current && textosDa(it) === textosDoModelo.current;
+              setPorNaTv({ item: it, formato: it.formato, label: 'Modelo', alerta: igual ? 'Os textos ainda são os do modelo, com preço e data de exemplo. Confira antes: preço na TV pode ter que ser honrado.' : '' });
+            }} />
+        </Suspense>
+      )}
+      {porNaTv && <PorNaTV peca={porNaTv} telaInicial={telaInicial} alerta={porNaTv.alerta} onFechar={() => setPorNaTv(null)} />}
+
       <div className={cn('mx-auto w-full', conversando ? 'max-w-5xl' : 'max-w-3xl')}>
         {barra}
         {!conversando && (
@@ -474,6 +517,17 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
             {entrada}
 
+            {!conversando && !criada && (
+              <div className="grid gap-2 sm:grid-cols-3">
+                <Porta icone={MessageSquare} titulo="Pedir à IA" destaque
+                  texto="Escreva acima: ela conversa e monta tudo, com a sua marca." onClick={() => caixa.current && caixa.current.focus()} />
+                <Porta icone={LayoutTemplate} titulo="Escolher um modelo"
+                  texto="Pronto, com a sua marca: é só trocar o texto." onClick={() => setModeloAberto(true)} />
+                <Porta icone={ImagePlus} titulo="Foto ou vídeo"
+                  texto="Da galeria ou da câmera, direto para a TV." onClick={() => abrirSubir(null, { tela: telaInicial })} />
+              </div>
+            )}
+
             {!conversando && (
               <>
                 {podeGerar && <div><CartaoEscopo escopo={escopo} onChange={mudarCartao} telas={telas} marca={marca} />{<div className="mt-2">{botaoGerar}</div>}</div>}
@@ -505,10 +559,23 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
                   </div>
                 </div>
 
+                {/* O avançado, recolhido (os três níveis): o editor livre e os quatro passos. */}
+                <div className="rounded-lg border border-line">
+                  <button type="button" aria-expanded={avancado} onClick={() => setAvancado(!avancado)}
+                    className="flex min-h-11 w-full items-center gap-1.5 px-3 text-left text-sm font-medium text-ink-2 hover:text-ink">
+                    <ChevronRight size={15} className={cn('shrink-0 transition-transform', avancado && 'rotate-90')} /> Avançado
+                    <span className="truncate text-xs font-normal text-ink-3">· editor livre, passo a passo</span>
+                  </button>
+                  {avancado && (
+                    <div className="flex flex-wrap gap-2 border-t border-line p-3">
+                      <Button size="sm" variant="secondary" onClick={() => setCompondo({ ...CONTENT_TYPES.composicao.make(), formato: '16/9' })}>Editor livre (em branco)</Button>
+                      <Button size="sm" variant="secondary" onClick={() => onIr && onIr('rapida', telaInicial ? { tela: telaInicial } : undefined)}>Criação rápida (passo a passo)</Button>
+                    </div>
+                  )}
+                </div>
+
                 <p className="text-xs text-ink-3">
-                  Já sabe o que quer e prefere ir direto? Use a{' '}
-                  <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('rapida')}>Criação rápida</button>.
-                  {' '}O que ficou pronto está em{' '}
+                  O que ficou pronto está em{' '}
                   <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('campanhas')}>Criados</button>.
                 </p>
               </>
@@ -525,5 +592,21 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
         </div>
       </div>
     </div>
+  );
+}
+
+// Os textos de uma composição, para saber se a pessoa mudou algum.
+const textosDa = (it) => JSON.stringify(((it && it.elementos) || []).map((e) => e && (e.text || e.texto || '')).filter(Boolean));
+
+// Uma porta do Criar (fase 7): grande, com o que ela faz em uma linha.
+function Porta({ icone: Icone, titulo, texto, onClick, destaque }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={cn('rounded-lg border p-3 text-left transition hover:border-accent/60',
+        destaque ? 'border-accent/50 bg-accent-soft/40' : 'border-line bg-surface hover:bg-surface-2')}>
+      <Icone size={18} className={destaque ? 'text-accent' : 'text-ink-2'} />
+      <div className="mt-1.5 text-sm font-semibold text-ink">{titulo}</div>
+      <div className="text-xs text-ink-3">{texto}</div>
+    </button>
   );
 }

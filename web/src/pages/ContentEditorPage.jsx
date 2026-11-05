@@ -795,27 +795,32 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                             Abrir editor visual ({(current.elementos && current.elementos.length) || 0} elemento(s))
                           </Button>
                         )}
-                        <ItemForm item={current} onChange={(it) => updateItem(selected, it)} />
+                        {/*
+                          Fase 7, os três níveis: o conteúdo e o "quando mostrar" à vista;
+                          aparência, tempo e a importância (D24) em "Mais ajustes".
+                        */}
+                        <ItemForm item={current} onChange={(it) => updateItem(selected, it)}
+                          maisAjustes={(
+                            <div>
+                              <span className="mb-1.5 block text-xs font-medium text-ink-2">Importância</span>
+                              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Importância">
+                                {PRIORIDADES.map(([id, nome]) => {
+                                  const atual = ((current.meta && current.meta.prioridade) || 'normal') === id;
+                                  return (
+                                    <button key={id} type="button" role="radio" aria-checked={atual}
+                                      onClick={() => updateItem(selected, { ...current, meta: { ...(current.meta || {}), prioridade: id } })}
+                                      className={cn('rounded-md border px-2.5 py-1 text-xs max-sm:min-h-11', atual ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3')}>
+                                      {nome}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <p className="mt-1 text-2xs text-ink-3">{(PRIORIDADES.find(([id]) => id === ((current.meta && current.meta.prioridade) || 'normal')) || PRIORIDADES[0])[2]}</p>
+                            </div>
+                          )} />
                         <div className="mt-4">
                           <QuandoMostrar agendamento={current.agendamento}
                             onChange={(ag) => updateItem(selected, { ...current, agendamento: ag })} />
-                        </div>
-                        {/* D24: a TV dá mais tempo à peça de prioridade alta (passa duas vezes por volta). */}
-                        <div className="mt-4">
-                          <span className="mb-1.5 block text-xs font-medium text-ink-2">Prioridade</span>
-                          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Prioridade">
-                            {PRIORIDADES.map(([id, nome]) => {
-                              const atual = ((current.meta && current.meta.prioridade) || 'normal') === id;
-                              return (
-                                <button key={id} type="button" role="radio" aria-checked={atual}
-                                  onClick={() => updateItem(selected, { ...current, meta: { ...(current.meta || {}), prioridade: id } })}
-                                  className={cn('rounded-md border px-2.5 py-1 text-xs', atual ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3')}>
-                                  {nome}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          <p className="mt-1 text-2xs text-ink-3">{(PRIORIDADES.find(([id]) => id === ((current.meta && current.meta.prioridade) || 'normal')) || PRIORIDADES[0])[2]}</p>
                         </div>
                       </div>
                     </div>

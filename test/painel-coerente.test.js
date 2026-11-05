@@ -153,7 +153,8 @@ test('item 34: Mídias por propósito, com as peças prontas e o disco discreto'
   assert.match(s, /pertence: \(m\) => m\.origem === 'ia'/);
   assert.doesNotMatch(s, /<Progress/, 'o disco não é mais o destaque');
   const p = semComentarios(ler('web/src/pages/PecasProntasPage.jsx'));
-  assert.match(p, /await porPecaNasTelas\(porNaTv, alvos, telas\);/);
+  assert.match(p, /<PorNaTV peca=\{porNaTv\} telas=\{telas\}/);
+  assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /await porPecaNasTelas\(\{ \.\.\.peca, item \}, alvos, telas\);/);
   assert.match(p, /criar\.pecasProntas\(\)/);
 });
 

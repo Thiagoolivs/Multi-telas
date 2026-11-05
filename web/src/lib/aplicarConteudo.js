@@ -120,6 +120,8 @@ export function cobrirODia(lista) {
   const faixaDe = (it) => {
     const a = it && it.agendamento;
     if (!a || !a.ativo || (!a.horaInicio && !a.horaFim)) return 'dia';
+    // A hora que a pessoa escolheu no "Pôr na TV" (fase 7) vale como está.
+    if (a.escolhido) return 'outra';
     const f = ORDEM.find((k) => FAIXAS[k].horaInicio === a.horaInicio && FAIXAS[k].horaFim === a.horaFim);
     return f || 'outra';
   };

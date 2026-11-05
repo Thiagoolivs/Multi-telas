@@ -32,8 +32,8 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
     });
   }, [drawer]);
 
-  function navigate(id) {
-    onNavigate(id);
+  function navigate(id, params) {
+    onNavigate(id, params);
     setDrawer(false);
   }
 

@@ -7,6 +7,8 @@ import { publicarPecas } from '../../lib/publicar.js';
 import { aviso } from '../../lib/avisos.js';
 import { cn } from '../../lib/cn.js';
 import { EscolherArquivo } from '../ui/EscolherArquivo.jsx';
+import { EscolherQuando, QUANDO_INICIAL, faltaData } from '../tela/PorNaTV.jsx';
+import { comQuando } from '../../lib/quando.js';
 import {
   ehVideo, ehImagem, prepararFoto, prepararVideo, avaliarVideo, enviarComProgresso, itemDaMidia, EVENTO_SUBIR, lerCompartilhados,
 } from '../../lib/subir.js';
@@ -42,23 +44,27 @@ export function SubirConteudo() {
   const [publicando, setPublicando] = useState(false);
   const [feito, setFeito] = useState(null);
   const [arrastando, setArrastando] = useState(false);
+  // Fase 7: o fim igual de todo caminho — onde e QUANDO (components/tela/PorNaTV.jsx).
+  const [escolha, setEscolha] = useState(QUANDO_INICIAL);
   const seq = useRef(0);
 
-  function abrir(arquivos) {
+  // `tela`: aberto de dentro de uma TV (o Criar com ela marcada), só ela vem marcada.
+  function abrir(arquivos, tela) {
     setAberto(true); setFeito(null);
+    const marcar = (lista) => setAlvos(tela && lista.some((t) => t.id === tela) ? [tela] : lista.map((t) => t.id)); // a maioria tem uma ou duas
     if (telas === null) {
       devices.list().then((r) => {
         const lista = (r && r.devices) || [];
         setTelas(lista);
-        setAlvos(lista.map((t) => t.id)); // já marcadas: a maioria tem uma ou duas
+        marcar(lista);
       }).catch(() => setTelas([]));
-    }
+    } else if (tela) marcar(telas);
     if (arquivos && arquivos.length) adicionar(arquivos);
   }
 
   function fechar() {
     if (publicando) return;
-    setAberto(false); setEnvios([]); setFeito(null);
+    setAberto(false); setEnvios([]); setFeito(null); setEscolha(QUANDO_INICIAL);
   }
 
   const atualizar = (id, campos) => setEnvios((xs) => xs.map((x) => (x.id === id ? { ...x, ...campos } : x)));
@@ -114,7 +120,7 @@ export function SubirConteudo() {
 
   // Quem chama: o botão do Início, o arrastar-e-soltar e o compartilhar do celular.
   useEffect(() => {
-    const on = (e) => abrir((e.detail && e.detail.arquivos) || []);
+    const on = (e) => abrir((e.detail && e.detail.arquivos) || [], e.detail && e.detail.tela);
     window.addEventListener(EVENTO_SUBIR, on);
     return () => window.removeEventListener(EVENTO_SUBIR, on);
   }); // sem deps: `abrir` precisa ver o estado atual de `telas`
@@ -154,7 +160,7 @@ export function SubirConteudo() {
        * entra inteira, com o fundo borrado, em vez de ir para a lateral estreita.
        */
       const titulo = 'Enviado ' + new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const pecas = prontos.map((x) => ({ formato: '16/9', item: itemDaMidia({ url: x.url, fundo: x.fundo, video: x.video }) }));
+      const pecas = prontos.map((x) => ({ formato: '16/9', item: comQuando(itemDaMidia({ url: x.url, fundo: x.fundo, video: x.video }), escolha) }));
       if (alvos.length) await publicarPecas({ alvos, pecas, titulo, telas });
       setFeito({ n: prontos.length, telas: alvos.length });
       aviso.ok(alvos.length ? 'Na TV: ' + prontos.length + (prontos.length === 1 ? ' arquivo.' : ' arquivos.') : 'Guardado em Mídias.');
@@ -181,7 +187,7 @@ export function SubirConteudo() {
           </>
           : <>
             <Button variant="ghost" onClick={fechar} disabled={publicando}>Cancelar</Button>
-            <Button variant="primary" icon={Check} disabled={!prontos.length || enviando || publicando} onClick={publicar}>
+            <Button variant="primary" icon={Check} disabled={!prontos.length || enviando || publicando || (alvos.length > 0 && faltaData(escolha))} onClick={publicar}>
               {publicando ? 'Pondo na TV…' : enviando ? 'Enviando…' : alvos.length ? 'Pôr na TV' : 'Guardar'}
             </Button>
           </>}>
@@ -247,6 +253,7 @@ export function SubirConteudo() {
                 </div>
               </div>
             )}
+            {telas && telas.length > 0 && alvos.length > 0 && <EscolherQuando valor={escolha} onChange={setEscolha} />}
             {telas && telas.length === 0 && (
               <p className="text-xs text-ink-3">Nenhuma TV conectada ainda: o arquivo fica guardado em Mídias.</p>
             )}

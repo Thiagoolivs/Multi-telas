@@ -290,7 +290,7 @@ export default function App() {
       case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onCriar={(device) => go('criar', { tela: device.id })} onIrParaPlano={() => go('billing')} papel={user.role} />;
       case 'programacao': return <ProgramacaoPage onIr={go} />;
       case 'content': return <ContentEditorPage device={route.device} zonaInicial={route.zona} onBack={() => go('screens')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
-      case 'team': return <TeamPage me={user} onLeft={logout} />;
+      case 'team': return <TeamPage key={route.convidar ? 'convidar' : 'equipe'} me={user} onLeft={logout} abrirConvite={!!route.convidar} />;
       case 'prontos': return <ProntosPage key={route.parte || ''} parte={route.parte} telaAlvo={route.tela} onIr={go} />;
       case 'seus': return <SeusConteudosPage key={(route.parte || '') + (route.campanha || '')} parte={route.parte} campanha={route.campanha} pedido={route.pedido} onIr={go} />;
       case 'apps': return <AppsPage onIr={go} />;
@@ -330,7 +330,7 @@ export default function App() {
   return (
     <AppShell
       active={navActive}
-      onNavigate={(name) => go(name)}
+      onNavigate={(name, params) => go(name, params)}
       title={meta.title}
       theme={theme}
       onToggleTheme={toggleTheme}

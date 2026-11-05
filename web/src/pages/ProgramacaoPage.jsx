@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { MonitorPlay, Pencil, Wand2, Plus, Sparkles, Megaphone } from 'lucide-react';
+import { MonitorPlay, Pencil, Wand2, Plus, Megaphone } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
 import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
-import { PedirIA } from '../components/tela/PedirIA.jsx';
 import { UltimosEnvios } from '../components/tela/UltimosEnvios.jsx';
 import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
@@ -39,7 +38,6 @@ function resumoDaZona(cfg) {
 export function ProgramacaoPage({ onIr }) {
   const [telas, setTelas] = useState(null);
   // D27: o aviso numa frase, para todas as TVs (ou um grupo) de uma vez.
-  const [avisoAberto, setAvisoAberto] = useState(false);
   const [cfgs, setCfgs] = useState({});
   /*
    * Erro de rede não é "nenhuma TV" (D3): a lista que falhava virava "Nenhuma
@@ -69,12 +67,13 @@ export function ProgramacaoPage({ onIr }) {
           <h1 className="text-xl font-semibold tracking-tight text-ink">Programação</h1>
           <p className="mt-1 text-sm text-ink-2">O que está passando em cada TV. Toque numa TV, ou numa parte dela, para mudar.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" icon={Sparkles} onClick={() => setAvisoAberto(true)}>Pedir à IA</Button>
-          <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
-        </div>
+        {/*
+          Fase 7, um só Criar: o "Pedir à IA" daqui (aviso rápido e mudar a tela)
+          é a mesma conversa do Criar, que faz as duas coisas (AcaoDaIA). O
+          PedirIA fica no código, sem botão, por 30 dias.
+        */}
+        <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
       </div>
-      {avisoAberto && <PedirIA onFechar={() => setAvisoAberto(false)} onIr={onIr} />}
 
       {erro ? (
         <Panel><ErrorState description={erro} onRetry={() => setTentativa((n) => n + 1)} /></Panel>

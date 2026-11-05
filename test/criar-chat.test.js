@@ -50,7 +50,8 @@ test('as sugestões são da conta e só começam: o texto vai para a caixa, e o 
   // As seis entradas de antes viram começos de frase, não opções fixas —
   // as seis do perfil da conta (D4: a metalúrgica não vê "Promoção com preço").
   assert.match(c, /opcoesDoPerfil\(perfil\.id\)\.map\(\(op\) => \(\s*<button key=\{op\.id\} type="button" onClick=\{\(\) => usarComeco\(op\)\}/);
-  assert.match(c, /onIr\('rapida'\)/, 'quem quer ir direto acha a Criação rápida');
+  // Fase 7: a Criação rápida mora no "Avançado" do Criar (com a TV marcada, se veio de uma).
+  assert.match(c, /onIr\('rapida', telaInicial \? \{ tela: telaInicial \} : undefined\)/, 'quem quer ir direto acha a Criação rápida');
 });
 
 test('o cartão é o escopo do servidor: o mesmo arquivo, os recortes, os tetos e o custo', () => {

@@ -15,7 +15,15 @@ import {
 
 const GRUPO_PC = 'Com computador ligado à TV';
 
-const FIT = { key: 'fit', label: 'Ajuste da imagem', kind: 'select', options: [
+/*
+ * OS TRÊS NÍVEIS (fase 7; BLOCO-8 §4.3): o formulário mostra primeiro só o
+ * conteúdo (título, texto, preço, foto) e recolhe em "Mais ajustes" o que é
+ * de aparência ou de tempo — alinhamento, tamanho, cores, encaixe, duração.
+ * O campo marcado com `nivel: 'avancado'` vai para lá.
+ */
+const AV = { nivel: 'avancado' };
+
+const FIT = { key: 'fit', label: 'Ajuste da imagem', kind: 'select', ...AV, options: [
   { value: 'cover', label: 'Preencher (corta)' }, { value: 'contain', label: 'Inteira (sem cortar)' } ] };
 
 // Variantes do "Aviso Premium" (espelha ANN_VARIANTS em js/render.js).
@@ -31,7 +39,7 @@ export const ANNOUNCE_VARIANTS = [
   { value: 'saude', label: 'Saúde & Bem-estar' },
 ];
 
-const DUR = { key: 'duracao', label: 'Duração (s)', kind: 'number', min: 0, hint: '0 = fica fixo na tela' };
+const DUR = { key: 'duracao', label: 'Duração (s)', kind: 'number', min: 0, hint: '0 = fica fixo na tela', ...AV };
 
 // Cada tipo: label, ícone, grupo, campos, item padrão e resumo p/ a lista.
 export const CONTENT_TYPES = {
@@ -40,12 +48,12 @@ export const CONTENT_TYPES = {
     fields: [
       { key: 'titulo', label: 'Título', kind: 'text' },
       { key: 'corpo', label: 'Texto', kind: 'textarea' },
-      { key: 'align', label: 'Alinhamento', kind: 'select', options: [
+      { key: 'align', label: 'Alinhamento', kind: 'select', ...AV, options: [
         { value: 'center', label: 'Centro' }, { value: 'left', label: 'Esquerda' }, { value: 'right', label: 'Direita' } ] },
-      { key: 'tamanho', label: 'Tamanho do texto', kind: 'select', options: [
+      { key: 'tamanho', label: 'Tamanho do texto', kind: 'select', ...AV, options: [
         { value: 'pequeno', label: 'Pequeno' }, { value: 'medio', label: 'Médio' }, { value: 'grande', label: 'Grande' }, { value: 'gigante', label: 'Gigante' } ] },
-      { key: 'bg', label: 'Cor de fundo', kind: 'color', optional: true },
-      { key: 'cor', label: 'Cor do texto', kind: 'color', optional: true },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', optional: true, ...AV },
+      { key: 'cor', label: 'Cor do texto', kind: 'color', optional: true, ...AV },
       DUR,
     ],
     make: () => ({ type: 'text', titulo: 'Novo comunicado', corpo: '', align: 'center', duracao: 10 }),
@@ -69,7 +77,7 @@ export const CONTENT_TYPES = {
     fields: [
       { key: 'texto', label: 'Frase', kind: 'textarea' },
       { key: 'autor', label: 'Autor', kind: 'text' },
-      { key: 'bg', label: 'Cor de fundo', kind: 'color', optional: true },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', optional: true, ...AV },
       DUR,
     ],
     make: () => ({ type: 'quote', texto: '', autor: '', duracao: 12 }),
@@ -97,7 +105,7 @@ export const CONTENT_TYPES = {
         placeholder: 'Café expresso ; 6,00\nPão de queijo ; 4,50\nBEBIDAS\nSuco natural ; 10,00',
         hint: 'Uma linha por item: "Café expresso ; 6,00". Pode colar do WhatsApp ou da planilha. Linha sem preço vira título de seção (ex.: BEBIDAS).' },
       { key: 'rodape', label: 'Rodapé', kind: 'text', placeholder: 'Aceitamos Pix e cartão' },
-      { key: 'colunas', label: 'Colunas', kind: 'select', options: [
+      { key: 'colunas', label: 'Colunas', kind: 'select', ...AV, options: [
         { value: 'auto', label: 'Automático (pela quantidade de itens)' },
         { value: '1', label: '1 coluna' }, { value: '2', label: '2 colunas' }, { value: '3', label: '3 colunas' } ] },
       DUR,
@@ -157,7 +165,7 @@ export const CONTENT_TYPES = {
     label: 'Imagem', icon: ImageIcon, group: 'Mídia',
     fields: [
       { key: 'src', label: 'Imagem', kind: 'media', accept: 'image' },
-      { key: 'fit', label: 'Ajuste', kind: 'select', options: [
+      { key: 'fit', label: 'Ajuste', kind: 'select', ...AV, options: [
         { value: 'cover', label: 'Preencher (cover)' }, { value: 'contain', label: 'Conter (contain)' } ] },
       DUR,
     ],
@@ -168,11 +176,11 @@ export const CONTENT_TYPES = {
     label: 'Vídeo (MP4)', icon: Film, group: 'Mídia',
     fields: [
       { key: 'src', label: 'Vídeo', kind: 'media', accept: 'video' },
-      { key: 'loop', label: 'Repetir', kind: 'bool' },
+      { key: 'loop', label: 'Repetir', kind: 'bool', ...AV },
       { key: 'muted', label: 'Sem som', kind: 'bool' },
-      { key: 'fit', label: 'Ajuste', kind: 'select', options: [
+      { key: 'fit', label: 'Ajuste', kind: 'select', ...AV, options: [
         { value: 'contain', label: 'Conter (contain)' }, { value: 'cover', label: 'Preencher (cover)' } ] },
-      { key: 'duracao', label: 'Duração (s)', kind: 'number', min: 0, hint: '0 = toca o vídeo inteiro' },
+      { key: 'duracao', label: 'Duração (s)', kind: 'number', min: 0, hint: '0 = toca o vídeo inteiro', ...AV },
     ],
     make: () => ({ type: 'video', src: '', loop: false, muted: true, fit: 'contain', duracao: 0 }),
     summary: (i) => i.src ? 'Vídeo' : 'Vídeo (sem arquivo)',
@@ -181,8 +189,8 @@ export const CONTENT_TYPES = {
     label: 'YouTube / Ao vivo', icon: Youtube, group: 'Mídia',
     fields: [
       { key: 'videoId', label: 'ID ou URL do vídeo', kind: 'text' },
-      { key: 'channelId', label: 'ID do canal (transmissão ao vivo)', kind: 'text' },
-      { key: 'loop', label: 'Repetir', kind: 'bool' },
+      { key: 'channelId', label: 'ID do canal (transmissão ao vivo)', kind: 'text', ...AV },
+      { key: 'loop', label: 'Repetir', kind: 'bool', ...AV },
       DUR,
     ],
     make: () => ({ type: 'youtube', videoId: '', duracao: 20 }),
@@ -202,7 +210,7 @@ export const CONTENT_TYPES = {
     fields: [
       { key: 'data', label: 'Link ou texto', kind: 'text' },
       { key: 'caption', label: 'Legenda', kind: 'text' },
-      { key: 'bg', label: 'Cor de fundo', kind: 'color', optional: true },
+      { key: 'bg', label: 'Cor de fundo', kind: 'color', optional: true, ...AV },
       DUR,
     ],
     make: () => ({ type: 'qrcode', data: '', caption: '', duracao: 12 }),
@@ -242,7 +250,7 @@ export const CONTENT_TYPES = {
       { key: 'titulo', label: 'Título', kind: 'text' },
       { key: 'corpo', label: 'Texto', kind: 'textarea' },
       { key: 'cta', label: 'Chamada (botão)', kind: 'text' },
-      { key: 'cor', label: 'Cor (opcional — senão usa a marca)', kind: 'color', optional: true },
+      { key: 'cor', label: 'Cor (opcional — senão usa a marca)', kind: 'color', optional: true, ...AV },
       DUR,
     ],
     make: () => ({ type: 'poster', variant: 'bold', titulo: 'Novo poster', corpo: '', cta: '', duracao: 12 }),
@@ -394,6 +402,16 @@ const FORA_DO_CONTEUDO = { meta: 1, duracao: 1, agendamento: 1 };
  * exemplo quando a pessoa mexe no conteúdo, e o tempo posto à mão vale
  * (meta.duracaoManual) — sem ele, a TV dá 1 s por palavra (js/rodizio.js).
  */
+// Os campos do tipo nos dois blocos do formulário: o conteúdo e o "Mais ajustes".
+export function camposPorNivel(type) {
+  const t = CONTENT_TYPES[type];
+  const campos = (t && t.fields) || [];
+  return {
+    simples: campos.filter((f) => f.nivel !== 'avancado'),
+    avancados: campos.filter((f) => f.nivel === 'avancado'),
+  };
+}
+
 export function ajustesDoEditor(antes, depois) {
   let d = semExemplo(antes, depois);
   if (antes && d && antes.duracao !== d.duracao && !(d.meta && d.meta.duracaoManual)) d = { ...d, meta: { ...(d.meta || {}), duracaoManual: true } };

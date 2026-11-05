@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Layers, MonitorPlay, Share2, Wand2, Search, Check, Plus } from 'lucide-react';
+import { Layers, MonitorPlay, Share2, Wand2, Search, Plus } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
-import { Dialog } from '../components/ui/Dialog.jsx';
 import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
@@ -11,8 +10,7 @@ import { criar, library, devices, brand } from '../api.js';
 import { EditarPeca } from '../components/content/EditarPeca.jsx';
 import { carregarModelos, itemDoModelo, ordenarPorPerfil } from '../lib/modelosOuro.js';
 import { usePerfil } from '../lib/perfil.js';
-import { porPecaNasTelas, avisarComDesfazer } from '../lib/rodar.js';
-import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
+import { PorNaTV } from '../components/tela/PorNaTV.jsx';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 
@@ -42,9 +40,8 @@ export function PecasProntasPage({ onIr }) {
   const [telas, setTelas] = useState([]);
   const [filtro, setFiltro] = useState('todas');
   const [q, setQ] = useState('');
+  // A peça a pôr no ar: o fim igual de todo caminho (fase 7, components/tela/PorNaTV.jsx — onde, quando, Desfazer).
   const [porNaTv, setPorNaTv] = useState(null);
-  const [alvos, setAlvos] = useState([]);
-  const [enviando, setEnviando] = useState(false);
   const [redesDe, setRedesDe] = useState(null);
   /*
    * Os modelos prontos (D16): as peças-ouro já com a marca da conta. Cliente
@@ -108,15 +105,6 @@ export function PecasProntasPage({ onIr }) {
     return !t || ((p.label || '') + ' ' + (p.origem || '')).toLowerCase().includes(t);
   }), [pecas, filtro, q]);
 
-  async function enviar() {
-    setEnviando(true);
-    try {
-      const r = await porPecaNasTelas(porNaTv, alvos, telas);
-      avisarComDesfazer('Na TV: ' + alvos.length + (alvos.length === 1 ? ' tela.' : ' telas.'), r.lote);
-      setPorNaTv(null);
-    } catch (e) { aviso.erro('peca', e.message || 'Não deu para pôr na TV.'); }
-    finally { setEnviando(false); }
-  }
 
   return (
     <div className="max-w-6xl">
@@ -174,7 +162,7 @@ export function PecasProntasPage({ onIr }) {
                   </div>
                   <div className="mt-auto flex flex-wrap gap-1.5">
                     <Button size="sm" variant="primary" icon={MonitorPlay} disabled={!telas.length}
-                      onClick={() => { setPorNaTv(p); setAlvos(telas.map((t) => t.id)); }}>Pôr numa TV</Button>
+                      onClick={() => setPorNaTv(p)}>Pôr na TV</Button>
                     {!faixa && <Button size="sm" icon={Share2} onClick={() => setRedesDe(p)}>Redes</Button>}
                     {p.campanhaId && <Button size="sm" variant="ghost" onClick={() => onIr && onIr('campanhas', { campanha: p.campanhaId })}>Campanha</Button>}
                   </div>
@@ -225,31 +213,14 @@ export function PecasProntasPage({ onIr }) {
           onSalvar={async (item) => {
             const pronta = { ...usando, item: { ...usando.item, ...item, papel: usando.papel, formato: usando.formato } };
             setUsando(null);
-            if (telas.length) { setPorNaTv(pronta); setAlvos(telas.map((t) => t.id)); }
+            if (telas.length) setPorNaTv(pronta);
             else aviso.ok('Pronto. Ligue uma TV em Telas para pôr esta peça no ar.');
           }} />
       )}
 
       {porNaTv && (
-        <Dialog open onClose={() => setPorNaTv(null)} title="Pôr numa TV"
-          description={'Entra ' + (porNaTv.papel === 'cabecalho' || porNaTv.papel === 'rodape' ? 'no ' + ONDE[porNaTv.papel] : 'na zona que combina com ela (' + ondeCabe(porNaTv) + ')') + ', no fim do que já está lá.'}
-          footer={<>
-            <Button variant="ghost" onClick={() => setPorNaTv(null)}>Cancelar</Button>
-            <Button variant="primary" icon={MonitorPlay} disabled={!alvos.length || enviando} onClick={enviar}>{enviando ? 'Enviando…' : 'Pôr na TV'}</Button>
-          </>}>
-          <AtalhosDeGrupo telas={telas} alvos={alvos} onEscolher={setAlvos} />
-          <div className="space-y-1.5">
-            {telas.map((t) => {
-              const sel = alvos.includes(t.id);
-              return (
-                <button key={t.id} type="button" aria-pressed={sel} onClick={() => setAlvos((a) => (sel ? a.filter((x) => x !== t.id) : a.concat(t.id)))}
-                  className={cn('flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm', sel ? 'border-accent bg-accent-soft/40 text-ink' : 'border-line text-ink-2')}>
-                  {sel ? <Check size={14} className="text-accent" /> : <MonitorPlay size={14} className="text-ink-3" />} {t.name || 'TV'}
-                </button>
-              );
-            })}
-          </div>
-        </Dialog>
+        <PorNaTV peca={porNaTv} telas={telas} onFechar={() => setPorNaTv(null)}
+          descricao={'Entra ' + (porNaTv.papel === 'cabecalho' || porNaTv.papel === 'rodape' ? 'no ' + ONDE[porNaTv.papel] : 'na zona que combina com ela (' + ondeCabe(porNaTv) + ')') + ', no fim do que já está lá.'} />
       )}
       {redesDe && <RedesSociais item={redesDe.item} label={redesDe.label} onFechar={() => setRedesDe(null)} />}
     </div>
