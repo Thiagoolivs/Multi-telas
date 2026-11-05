@@ -213,8 +213,10 @@ test('item 40 (fase 7): a Programação mora em Telas; cada TV abre a página de
   assert.equal(M.paginaDoIr('programacao'), 'programacao');
   const app = ler('web/src/App.jsx');
   assert.match(app, /case 'programacao': return <ProgramacaoPage onIr=\{go\} \/>;/);
-  assert.match(app, /onBack=\{\(\) => go\('programacao'\)\}/, 'voltar do editor volta para a Programação');
-  assert.match(app, /if \(r\.name === 'content'\) return '\/app\/\?ir=programacao';/);
+  // Parte B: a página da TV volta para Telas (de onde ela abre) e a URL dela também.
+  assert.match(app, /onBack=\{\(\) => go\('screens'\)\}/, 'voltar da página da TV volta para Telas');
+  assert.match(app, /if \(r\.name === 'content'\) return '\/app\/\?ir=screens';/);
+  assert.match(app, /content: \{ title: 'Telas', nav: 'screens' \}/);
   const p = semComentarios(ler('web/src/pages/ProgramacaoPage.jsx'));
   // Desde o D3 a parte tocada abre o editor JÁ nela (antes ignorava a zona).
   assert.match(p, /<MapaDaTela layout=\{layout\} onEscolher=\{\(z\) => editar\(d, z && z\.id\)\} resumo=\{resumoDaZona\(cfg\)\} cfg=\{cfg\} \/>/);

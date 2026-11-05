@@ -39,8 +39,8 @@ test('o rascunho fica guardado, volta ao abrir e respeita a TV que mudou', () =>
 test('no conflito: o rascunho fica, e dá para publicar por cima da versão nova', () => {
   assert.match(S, /if \(e\.codigo === 'config-mudou'\) \{ setConflito\(true\); return false; \}/);
   // Relê a versão nova antes de gravar por cima (e, desde o #232, pergunta antes).
-  assert.match(S, /const r = await deviceConfig\.ler\(device\.id\);[\s\S]{0,1400}versao\.current = \(r && r\.versao\) \|\| 0;\s*await publish\(\);/);
-  assert.match(S, />Publicar o meu por cima</);
+  assert.match(S, /const r = await deviceConfig\.ler\(device\.id\);[\s\S]{0,1400}versao\.current = \(r && r\.versao\) \|\| 0;\s*naTV\.current = \(r && r\.config\) \|\| null;\s*await publish\(\);/);
+  assert.match(S, />Pôr o meu por cima</);
   assert.match(S, />Ver a versão nova</);
 });
 

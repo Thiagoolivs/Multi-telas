@@ -85,7 +85,7 @@ const META = {
   team: { title: 'Equipe' },
   brand: { title: 'Marca', subtitle: 'Cores, fontes e imagens que a IA usa para criar.' },
   mural: { title: 'Mural de fotos', subtitle: 'O público manda foto pelo QR e ela aparece na TV.' },
-  content: { title: 'Programação', nav: 'programacao' },
+  content: { title: 'Telas', nav: 'screens' },
   alerts: { title: 'Alertas', subtitle: 'O que precisa da sua atenção agora.' },
   relatorio: { title: 'Relatório de exibição', subtitle: 'O que passou, quantas vezes e em qual tela — contado pela própria TV.' },
   indicadores: { title: 'Indicadores', subtitle: 'Os números da empresa na TV, sempre atualizados.' },
@@ -172,7 +172,7 @@ function naBiblioteca(r) {
 }
 
 function enderecoDaRota(r) {
-  if (r.name === 'content') return '/app/?ir=programacao';
+  if (r.name === 'content') return '/app/?ir=screens';
   if (ATALHOS.includes(r.name)) return '/app/?ir=' + r.name;
   return '/app/';
 }
@@ -289,7 +289,7 @@ export default function App() {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
       case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onCriar={(device) => go('criar', { tela: device.id })} onIrParaPlano={() => go('billing')} papel={user.role} />;
       case 'programacao': return <ProgramacaoPage onIr={go} />;
-      case 'content': return <ContentEditorPage device={route.device} zonaInicial={route.zona} onBack={() => go('programacao')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
+      case 'content': return <ContentEditorPage device={route.device} zonaInicial={route.zona} onBack={() => go('screens')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
       case 'team': return <TeamPage me={user} onLeft={logout} />;
       case 'prontos': return <ProntosPage key={route.parte || ''} parte={route.parte} telaAlvo={route.tela} onIr={go} />;
       case 'seus': return <SeusConteudosPage key={(route.parte || '') + (route.campanha || '')} parte={route.parte} campanha={route.campanha} pedido={route.pedido} onIr={go} />;

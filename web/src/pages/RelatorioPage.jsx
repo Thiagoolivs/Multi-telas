@@ -22,12 +22,13 @@ function horas(seg) {
 }
 const nfmt = (n) => Number(n || 0).toLocaleString('pt-BR');
 
-export function RelatorioPage({ onIrParaPlano }) {
+// `telaFixa` (fase 7): na página da TV, o relatório é só dela, sem a escolha de tela.
+export function RelatorioPage({ onIrParaPlano, telaFixa }) {
   const [dias, setDias] = useState(7);
-  const [tela, setTela] = useState('');
+  const [tela, setTela] = useState(telaFixa || '');
   const carregar = useCallback(() => relatorio.get(dias, tela), [dias, tela]);
   const { data, loading, error, reload } = useAsync(carregar, [dias, tela]);
-  const lista = useAsync(devices.list);
+  const lista = useAsync(telaFixa ? async () => null : devices.list);
   const telas = (lista.data && lista.data.devices) || [];
 
   const bloqueado = error && error.status === 402;
@@ -42,10 +43,10 @@ export function RelatorioPage({ onIrParaPlano }) {
           <option value={30}>Últimos 30 dias</option>
           <option value={90}>Últimos 90 dias</option>
         </Select></div>
-        <div className="min-w-0 sm:w-52"><Select aria-label="Qual tela" value={tela} onChange={(e) => setTela(e.target.value)}>
+        {!telaFixa && <div className="min-w-0 sm:w-52"><Select aria-label="Qual tela" value={tela} onChange={(e) => setTela(e.target.value)}>
           <option value="">Todas as telas</option>
           {telas.map((t) => <option key={t.id} value={t.id}>{t.name || 'Tela sem nome'}</option>)}
-        </Select></div>
+        </Select></div>}
         <div className="col-span-2 sm:col-span-1 sm:ml-auto">
           {/* Planilha vazia não serve para nada: só baixa com exibição no período. */}
           <Button size="sm" variant="secondary" icon={Download} className="w-full justify-center sm:w-auto"

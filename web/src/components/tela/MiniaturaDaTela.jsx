@@ -26,8 +26,9 @@ const JA_PEDIU_MS = 2 * 60 * 1000;
 const MAX_POR_MINUTO = 8;
 const pedidos = new Map();
 let janela = [];
-export function podePedir(id, agora = Date.now()) {
-  if (agora - (pedidos.get(id) || 0) < JA_PEDIU_MS) return false;
+// `deNovo`: a pessoa acabou de pôr algo nesta TV (fase 7); a TV é perguntada outra vez, ainda dentro das 8 por minuto.
+export function podePedir(id, agora = Date.now(), deNovo = false) {
+  if (!deNovo && agora - (pedidos.get(id) || 0) < JA_PEDIU_MS) return false;
   janela = janela.filter((t) => agora - t < 60 * 1000);
   if (janela.length >= MAX_POR_MINUTO) return false;
   janela.push(agora);
@@ -35,7 +36,12 @@ export function podePedir(id, agora = Date.now()) {
   return true;
 }
 
-export function MiniaturaDaTela({ d, online, vazia, acao }) {
+/*
+ * `altura`: a altura máxima do palco (o cartão usa 220; a página da TV, mais).
+ * `pedirDeNovo`: muda quando a página da TV põe algo no ar — a miniatura
+ * espera a TV trocar e pergunta de novo, em vez de seguir com a imagem velha.
+ */
+export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeNovo = 0 }) {
   const [resposta, setResposta] = useState(null);
   // Começa "perguntando": até a primeira leitura voltar, a TV no ar está sendo consultada.
   const [perguntando, setPerguntando] = useState(online && !vazia);
@@ -47,8 +53,12 @@ export function MiniaturaDaTela({ d, online, vazia, acao }) {
       try { r = await telaAgora.ler(d.id); } catch (e) { r = null; }
       if (!vivo) return;
       if (r && r.estado) setResposta(r);
-      if (!online || vazia || (r && r.estado && Date.now() - r.em < VELHA_MS) || !podePedir(d.id)) { setPerguntando(false); return; }
+      const fresca = r && r.estado && Date.now() - r.em < VELHA_MS && !pedirDeNovo;
+      if (!online || vazia || fresca || !podePedir(d.id, Date.now(), !!pedirDeNovo)) { setPerguntando(false); return; }
       setPerguntando(true);
+      // A TV recebe a programação nova pelo tempo real em ~1 s: perguntar antes traria a de antes.
+      if (pedirDeNovo) await dormir(2500);
+      if (!vivo) return;
       try { await telaAgora.pedir(d.id); } catch (e) { if (vivo) setPerguntando(false); return; }
       const antes = (r && r.em) || 0;
       for (let i = 0; i < 4 && vivo; i++) {
@@ -60,7 +70,7 @@ export function MiniaturaDaTela({ d, online, vazia, acao }) {
       if (vivo) setPerguntando(false);
     })();
     return () => { vivo = false; };
-  }, [d.id, online, vazia, d.updatedAt]);
+  }, [d.id, online, vazia, d.updatedAt, pedirDeNovo]);
 
   if (resposta && resposta.estado && !vazia) {
     /*
@@ -73,7 +83,7 @@ export function MiniaturaDaTela({ d, online, vazia, acao }) {
     const selo = !online ? 'Última imagem · ' + quando : velha && quando ? 'Visto em ' + quando : '';
     return (
       <div className="pointer-events-none relative w-full" aria-label={(selo ? selo + ' · ' : 'O que está passando agora · ') + (d.name || '')}>
-        <div className={!online ? 'opacity-50 grayscale' : ''}><Palco estado={resposta.estado} alturaMaxima={220} /></div>
+        <div className={!online ? 'opacity-50 grayscale' : ''}><Palco estado={resposta.estado} alturaMaxima={altura} /></div>
         {selo && <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">{selo}</span>}
       </div>
     );

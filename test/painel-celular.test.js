@@ -42,7 +42,8 @@ test('o cartão da TV: miniatura, estado em palavras, ações com nome e "Mais o
   const s = ler('web/src/pages/ScreensPage.jsx');
   const card = s.slice(s.indexOf('function FleetCard('), s.indexOf('function OpcaoDaTela('));
   assert.match(card, /<MiniaturaDaTela d=\{d\} online=\{online\} vazia=\{!d\.hasConfig\} \/>/);
-  assert.match(card, /'Mudar o que passa' : 'Pôr conteúdo nesta TV'/);
+  // Fase 7: o cartão abre a página da TV (o que passa, os ajustes e o que passou).
+  assert.match(card, /'Abrir a TV' : 'Pôr conteúdo nesta TV'/);
   assert.match(card, />Ver agora<\/Button>/);
   assert.match(card, />Mais opções<\/Button>/);
   for (const o of ['Nome e grupo', 'Recarregar a TV', 'Som ao vivo', 'Horário e aviso de queda', 'Backup e cópia', 'Remover a TV']) {
@@ -83,6 +84,7 @@ test('miniatura ao vivo: a mesma TV não é perguntada de novo em 2 minutos, e n
   const src = ler('web/src/components/tela/MiniaturaDaTela.jsx');
   assert.match(src, /const JA_PEDIU_MS = 2 \* 60 \* 1000;/);
   assert.match(src, /const MAX_POR_MINUTO = 8;/);
-  assert.match(src, /\|\| !podePedir\(d\.id\)\) \{ setPerguntando\(false\); return; \}/);
+  // Fase 7: depois do "Pôr na TV" a página da TV pergunta de novo (sem o teto dos 2 min, com o de 8 por minuto).
+  assert.match(src, /\|\| !podePedir\(d\.id, Date\.now\(\), !!pedirDeNovo\)\) \{ setPerguntando\(false\); return; \}/);
   assert.match(src, /'Última imagem · ' \+ quando/, 'TV fora do ar mostra a imagem velha como se fosse agora');
 });
