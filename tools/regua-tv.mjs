@@ -32,6 +32,8 @@ const BASE = 'http://127.0.0.1:' + PORTA;
 const SAIDA = process.env.REGUA_SAIDA || '';
 // REGUA_SO=precos,quiz: só os tipos pedidos (para depurar um caso).
 const SO = (process.env.REGUA_SO || '').split(',').filter(Boolean);
+// REGUA_FONTE="DejaVu Sans": força a letra do sistema. A fonte muda de TV para TV, e uma mais larga é a que mais quebra linha.
+const FONTE = process.env.REGUA_FONTE || '';
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const IMG = { comercio: '/vendor/galeria/padaria.webp', saude: '/vendor/galeria/saude-prevencao.webp', empresa: '/vendor/galeria/empresa.webp' };
@@ -120,6 +122,13 @@ async function subirServidor() {
 async function parear(navegador, api, nome, [w, h]) {
   const ctx = await navegador.newContext({ viewport: { width: w, height: h } });
   const p = await ctx.newPage();
+  if (FONTE) {
+    await p.addInitScript((f) => document.addEventListener('DOMContentLoaded', () => {
+      const st = document.createElement('style');
+      st.textContent = ':root{--font:"' + f + '",sans-serif!important}body,.mt-slide{font-family:"' + f + '",sans-serif!important}';
+      document.head.appendChild(st);
+    }), FONTE);
+  }
   const erros = [];
   p.on('pageerror', (e) => erros.push(e.message));
   await p.goto(BASE + '/player.html?cloud=1&pid=regua' + Date.now() + Math.random().toString(36).slice(2, 6));

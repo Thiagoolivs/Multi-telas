@@ -47,9 +47,9 @@ test('a TV só encolhe o que não cabe, e a letra grande cede antes da pequena',
   const P = ler('js/player.js');
   assert.doesNotMatch(P, /Math\.min\(1, altura \/ h, largura \/ w\) \* 0\.97/, 'encolher sempre 3% punha a letra mínima abaixo do piso');
   assert.match(P, /if \(esc >= 1\) return;/);
-  // A ordem: mais uma coluna no preço, o título desce até 1,6× o piso, o ícone sai — e só então a caixa toda.
+  // A ordem: o respiro aperta, mais uma coluna no preço, o título desce até 1,6× o piso, o ícone sai — e só então a caixa toda.
   const corpo = P.slice(P.indexOf('function caberNaCaixa'), P.indexOf('function enterSlide'));
-  const ordem = ['lista.style.columnCount = String(c)', 'piso * 1.6', "[data-mt-apoio]').forEach((e) => { e.style.display = 'none'", "'scale('"];
+  const ordem = ["slide.classList.add('mt-compacto')", 'lista.style.columnCount = String(c)', 'piso * 1.6', "[data-mt-apoio]').forEach((e) => { e.style.display = 'none'", "'scale('"];
   let antes = -1;
   for (const passo of ordem) {
     const i = corpo.indexOf(passo, antes + 1);

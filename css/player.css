@@ -1522,6 +1522,14 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   font-size: max(var(--mt-piso, 0px), .7em); letter-spacing: .14em; text-transform: uppercase; padding: .7em 0 .2em;
 }
 .mt-precos-rodape { margin-top: 3cqh; color: var(--text-dim); font-size: max(var(--mt-piso, 0px), calc(var(--corpo) * .75)); }
+/* Compacto (js/player.js, caberNaCaixa): sem espaço para a letra mínima, o respiro aperta antes de a letra encolher. */
+.mt-precos.mt-compacto { padding: 3.5cqh 5cqw; }
+.mt-compacto .mt-precos-titulo { margin-bottom: 1.2cqh; }
+.mt-compacto .mt-precos-linha { padding: .12em 0; }
+.mt-compacto .mt-precos-secao { padding: .35em 0 .05em; }
+.mt-compacto .mt-precos-rodape { margin-top: 1.2cqh; }
+.mt-ann.mt-compacto .ann-inner { gap: 1.8cqh; padding: 2.5cqw; }
+.mt-compacto .mt-text-title { margin-bottom: .2em; }
 @container (orientation: portrait) {
   .mt-precos-lista { column-count: var(--cols-pe, 1); font-size: max(var(--mt-piso, 0px), var(--corpo-pe)); }
   .mt-precos-rodape { font-size: max(var(--mt-piso, 0px), calc(var(--corpo-pe) * .75)); }

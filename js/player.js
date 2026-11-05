@@ -95,30 +95,39 @@
     const medir = function () {
       // Volta ao desenho original: a fonte pode ter chegado e mudado tudo.
       miolo.style.transform = '';
+      slide.classList.remove('mt-compacto');
       if (lista) lista.style.columnCount = '';
       miolo.querySelectorAll('[data-mt-cabe]').forEach((e) => { e.style.fontSize = ''; e.removeAttribute('data-mt-cabe'); });
       miolo.querySelectorAll('[data-mt-apoio]').forEach((e) => { e.style.display = ''; });
-      const cs = getComputedStyle(slide);
-      const altura = slide.clientHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0);
-      const largura = slide.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
-      if (!miolo.scrollHeight || !miolo.scrollWidth || altura <= 0) return;
+      // A caixa é medida de novo a cada passo: o modo compacto muda o respiro da própria caixa.
+      const caixa = () => {
+        const cs = getComputedStyle(slide);
+        return [slide.clientHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0),
+          slide.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0)];
+      };
+      if (!miolo.scrollHeight || !miolo.scrollWidth || caixa()[0] <= 0) return;
       // Só encolhe o que passou mesmo (1 px de folga para arredondamento):
       // encolher sempre 3% deixava a letra mínima abaixo do piso da TV.
-      const sobra = () => Math.min(altura / Math.max(1, miolo.scrollHeight - 1), largura / Math.max(1, miolo.scrollWidth - 1));
+      const sobra = () => { const c = caixa(); return Math.min(c[0] / Math.max(1, miolo.scrollHeight - 1), c[1] / Math.max(1, miolo.scrollWidth - 1)); };
       let esc = sobra();
       if (esc >= 1) return;
       /*
        * Fase 2: na zona grande, a letra miúda (etiqueta, corpo, rodapé, item
        * do cardápio) já está no piso da TV, o mínimo que se lê a 4 m; encolher
        * a caixa toda a punha abaixo dele. Então, nesta ordem, até caber:
-       *   1. a lista de preços no automático ganha uma coluna;
-       *   2. o título desce, até o tamanho de corpo (1,6× o piso);
-       *   3. o apoio (o ícone do aviso) sai;
+       *   1. o respiro aperta (mt-compacto: entrelinha da lista, margens);
+       *   2. a lista de preços no automático ganha uma coluna;
+       *   3. o título desce, até o tamanho de corpo (1,6× o piso);
+       *   4. o apoio (o ícone do aviso) sai;
+       * A fonte muda de TV para TV (a do sistema): o que cabe com uma pode
+       * não caber com outra mais larga, e cada passo vale para as duas.
        * e só o que ainda não couber encolhe inteiro, como antes.
        */
       const piso = pisoEmPx(miolo);
       if (piso) {
-        if (lista) {
+        slide.classList.add('mt-compacto');
+        esc = sobra();
+        if (lista && esc < 1) {
           const base = parseInt(getComputedStyle(lista).columnCount, 10) || 1;
           for (let c = base + 1; c <= 3 && esc < 1; c++) {
             lista.style.columnCount = String(c);
