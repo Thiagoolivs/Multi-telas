@@ -170,6 +170,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_banco_estado ON banco(estado);
   CREATE INDEX IF NOT EXISTS idx_banco_tenant ON banco(tenant_id);
   /*
+   * A GALERIA DO CONTEÚDO PRONTO (fase 9): a decisão do operador sobre cada
+   * tela e peça do manifesto (pecas-ouro/manifesto.json). O arquivo é a
+   * proposta, que vem com o código; aqui fica o "aprovada" ou o "recusada"
+   * dado na galeria, que vale na hora, sem deploy.
+   */
+  CREATE TABLE IF NOT EXISTS conteudo_pronto (
+    tipo TEXT NOT NULL, id TEXT NOT NULL, estado TEXT NOT NULL,
+    decidido_por TEXT, decidido_em INTEGER,
+    PRIMARY KEY (tipo, id)
+  );
+  /*
    * Todo uso de IA passa por aqui, cobrando crédito ou não. Medir antes de
    * cobrar é a fatia 1 de docs/BILLING.md: duas a quatro semanas de dados
    * reais valem mais que qualquer estimativa de custo — inclusive as que
@@ -2062,7 +2073,18 @@ async function estornarPacote(paymentId) {
   } catch (e) { db.exec('ROLLBACK'); throw e; }
 }
 
+// Fase 9: as decisões da galeria do conteúdo pronto.
+async function decisoesDoConteudo() {
+  return db.prepare('SELECT tipo, id, estado, decidido_por, decidido_em FROM conteudo_pronto').all();
+}
+async function decidirConteudo(tipo, id, estado, por) {
+  db.prepare(`INSERT INTO conteudo_pronto (tipo, id, estado, decidido_por, decidido_em) VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(tipo, id) DO UPDATE SET estado = excluded.estado, decidido_por = excluded.decidido_por, decidido_em = excluded.decidido_em`)
+    .run(tipo, id, estado, por || '', Date.now());
+}
+
 module.exports = {
+  decisoesDoConteudo, decidirConteudo,
   listarCalendario, eventoDoCalendario, salvarEvento, removerEvento,
   salvarLote, loteDaConta, marcarLoteDesfeito, listarLotes,
   init,

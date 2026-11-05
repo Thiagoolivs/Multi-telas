@@ -482,6 +482,9 @@ export const plataforma = {
   operadores: () => api('GET', '/api/plataforma/operadores'),
   addOperador: (email, nome) => api('POST', '/api/plataforma/operadores', { email, nome }),
   removerOperador: (email) => api('DELETE', '/api/plataforma/operadores/' + encodeURIComponent(email)),
+  // Fase 9: a galeria do conteúdo pronto — o manifesto com as decisões, e aprovar/recusar.
+  conteudo: () => api('GET', '/api/plataforma/conteudo'),
+  decidirConteudo: (tipo, id, estado) => api('POST', '/api/plataforma/conteudo/' + tipo + '/' + encodeURIComponent(id), { estado }),
 };
 
 export const library = {
