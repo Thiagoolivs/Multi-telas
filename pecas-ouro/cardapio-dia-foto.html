@@ -23,10 +23,11 @@
 .faca::before { top: 0; bottom: 0; left: .3em; right: .3em; border-radius: 1.4em 1.4em .4em .4em / 6em 6em .4em .4em; }
 .marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
 .marca-nome b { font-weight: 800; }
-.bloco { position: absolute; left: 6cqw; top: 50%; transform: translateY(-50%); width: 34cqw; }
-.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+/* Centrado na faixa abaixo da marca, não no meio da peça: com a letra da TV e fonte larga o bloco cresce, e centrado no meio subia por cima da marca. */
+.bloco { position: absolute; left: 6cqw; top: 12cqh; bottom: 8cqh; width: 34cqw; display: flex; flex-direction: column; justify-content: center; justify-content: safe center; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1.15 var(--mt-fonte-texto); letter-spacing: .16em; text-transform: uppercase; color: var(--mt-destaque); }
 .kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
-h1 { margin-top: 2.2cqw; font: 400 max(var(--mt-piso, 0cqw), 6cqw)/.95 var(--mt-fonte-titulo); text-transform: uppercase; }
+h1 { margin-top: 1.8cqw; font: 400 max(var(--mt-piso, 0cqw), 5.6cqw)/.95 var(--mt-fonte-titulo); text-transform: uppercase; }
 /* Cada campo numa linha. Nome longo quebra dentro do bloco: sem nowrap, ele passaria por cima do garfo. */
 h1 span, h1 em { display: block; text-wrap: balance; }
 h1 em { font-style: normal; color: var(--mt-destaque); }
@@ -52,13 +53,14 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
   .valor { font-size: max(var(--mt-piso, 0cqw), 13cqw); }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .prato { right: 12cqw; top: 6cqh; width: 42cqw; height: 42cqw; margin: 0; }
-  .talher { top: calc(6cqh + 21cqw); font-size: max(var(--mt-piso, 0cqw), 1.2cqw); }
-  .garfo { right: 57cqw; }
+  .prato { right: 11cqw; top: 5cqh; width: 38cqw; height: 38cqw; margin: 0; }
+  .talher { top: calc(5cqh + 19cqw); font-size: max(var(--mt-piso, 0cqw), 1.2cqw); }
+  .garfo { right: 52cqw; }
   .faca { right: 5cqw; }
-  .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
+  /* Com a letra da TV, a marca e o rótulo passavam por cima da foto (1,3:1): o prato fica menor e mais alto, a marca à esquerda dele. */
+  .marca-nome { left: 7cqw; right: 48cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .2em; line-height: 1.15; }
   .bloco { left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 6cqh; transform: none; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .12em; }
   .kicker i { width: 5cqw; height: .2cqw; }
   h1 { font-size: max(var(--mt-piso, 0cqw), 8cqw); margin-top: 2.4cqw; }
   .acompanha { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); max-width: 70cqw; }

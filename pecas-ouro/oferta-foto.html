@@ -33,7 +33,8 @@ h1 em { display: block; font-style: normal; font-size: max(var(--mt-piso, 0cqw),
 @container (aspect-ratio < 1) {
   .foto { inset: 0 0 auto 0; width: 100%; height: 56%; object-position: 50% 18%; }
   /* D44: a marca fica no alto, sobre a foto — o véu de cima é o que a deixa ler com qualquer foto. */
-  .veu { background: linear-gradient(180deg, var(--mt-fundo) 0%, var(--mt-fundo-0) 14%), linear-gradient(0deg, var(--mt-fundo) 46%, var(--mt-fundo-0) 60%); }
+  /* Com a letra da TV o rótulo sobe até a borda da foto: o véu de baixo sobe junto. */
+  .veu { background: linear-gradient(180deg, var(--mt-fundo) 0%, var(--mt-fundo-0) 14%), linear-gradient(0deg, var(--mt-fundo) 54%, var(--mt-fundo-0) 66%); }
   .marca-nome { left: 8cqw; top: 4cqh; font-size: max(var(--mt-piso, 0cqw), 2.6cqw); }
   .bloco { display: block; left: 8cqw; right: 8cqw; width: auto; top: auto; bottom: 11cqh; transform: none; }
   .kicker { font-size: max(var(--mt-piso, 0cqw), 2.6cqw); }

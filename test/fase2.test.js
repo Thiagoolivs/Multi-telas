@@ -72,7 +72,9 @@ test('a peça da IA ganha o piso na TV: o player aplica em qualquer peça, a IA 
   assert.match(PR, /palco\.setAttribute\('data-mt-piso-cedeu'/);
   assert.match(PR, /pisoQueCabe\(palco, pisoDaZona\(host, k, ref\)\)/);
   // Medido com a fonte de reserva (mais larga), o piso cedia sem precisar: confere de novo quando a fonte chega.
-  assert.match(PR, /fontes\.ready\.then\(\(\) => \{ if \(host\.isConnected !== false\) enquadrar\(host, palcoEl\); \}\)/);
+  assert.match(PR, /fontes\.ready\.then\(aoChegarFonte\)/);
+  assert.match(PR, /fontes\.addEventListener\('loadingdone', aoChegarFonte\)/, 'o ready pode resolver antes de a fonte do título começar a baixar');
+  assert.match(PR, /fontes\.removeEventListener\('loadingdone', aoChegarFonte\)/, 'a peça que sai da tela para de ouvir');
   // Fora da TV (bancada, editor) a janela do navegador não é a TV: a conta é a da TV de 1080 linhas.
   assert.match(PR, /const lado = naTv && janela \? Math\.min\(janela\.innerWidth, janela\.innerHeight\) : 1080;/);
 });
