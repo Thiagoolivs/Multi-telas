@@ -310,8 +310,8 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [x] Fase 4: a marca entra sozinha, e nada de texto de exemplo
 - [x] Fase 5: a programação pensa sozinha
 - [ ] Fase 6: a IA no nível de marca
-- [x] Fase 7: o painel novo, a estrutura
-- [x] Fase 8: o painel novo, o acabamento
+- [x] Fase 7: o painel novo, a estrutura (4 das 9 tarefas ainda passam de 3 cliques; ver o andamento)
+- [x] Fase 8: o painel novo, o acabamento (a nota da interface sai no reteste, fase 10)
 - [ ] Fase 9: modelos com função e pacotes prontos
 - [ ] Fase 10: reteste completo e pilotos
 - [ ] Fase 11: dados vivos
