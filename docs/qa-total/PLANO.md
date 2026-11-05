@@ -7,18 +7,19 @@ corte: **7**. A prioridade é o que aparece na TV.
 ## 1. O mapa dos 100%
 
 Antes de testar, tudo vira uma linha numa planilha mestre
-(`docs/qa-total/ITENS.md`), tirada do código. O "100%" é esta lista, e a
+([`ITENS.md`](ITENS.md)), tirada do código. O "100%" é esta lista, e a
 cobertura é quantas linhas têm nota.
 
 | Grupo | Quantos (hoje) |
 |---|---|
 | Tipos de conteúdo do "Adicionar" | 22 |
-| Layouts (divisões da tela) | 40 |
+| Layouts (divisões da tela) | 14 |
 | Modelos de peça da IA (peças-ouro) | 43 |
 | Telas prontas | 26 |
-| Faixas da TV: cabeçalho, letreiro, relógio, clima | ~8 |
+| Modelos do editor | 9 |
+| Faixas da TV: cabeçalho, letreiro, relógio, clima, notícias, selo | 6 |
+| Efeitos de datas comemorativas | 22 |
 | Estados da TV: código, espera, pausada, sem internet, erro, navegador antigo | ~8 |
-| Datas comemorativas e automáticos (aniversariantes, mural, indicadores) | a contar |
 | Páginas do painel | 29 |
 | Rotas do servidor (grupos) | 22 |
 | Páginas do site: raiz, 3 frentes, legais, cadastro e login | ~10 |
