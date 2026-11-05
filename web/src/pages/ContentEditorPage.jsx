@@ -32,7 +32,7 @@ import { Sparkles, Wand2 } from 'lucide-react';
 import { Field, Input, Textarea } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { ai } from '../api.js';
-import { CONTENT_TYPES, typeLabel, itemSummary, defaultConfig } from '../lib/contentTypes.js';
+import { CONTENT_TYPES, typeLabel, itemSummary, defaultConfig, novoItem, semExemplo } from '../lib/contentTypes.js';
 import { zonesOf, ensureZone, formatoDoLayout } from '../lib/screenConfig.js';
 import { cn } from '../lib/cn.js';
 import { perfilAtual } from '../lib/perfil.js';
@@ -321,7 +321,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
       });
       return;
     }
-    mutateItems((arr) => { arr.push(CONTENT_TYPES[type].make()); return arr; });
+    // Fase 4: entra com um exemplo da frente, marcado; a TV só mostra depois que a pessoa trocar o texto.
+    mutateItems((arr) => { arr.push(novoItem(type, perfilAtual())); return arr; });
     setSelected(items.length);
   };
 
@@ -346,7 +347,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     mutateItems((arr) => { arr.push(structuredClone(item)); return arr; });
     setSelected(items.length);
   };
-  const updateItem = (idx, item) => mutateItems((arr) => { arr[idx] = item; return arr; });
+  const updateItem = (idx, item) => mutateItems((arr) => { arr[idx] = semExemplo(arr[idx], item); return arr; });
   const moveItem = (idx, dir) => {
     const j = idx + dir; if (j < 0 || j >= items.length) return;
     mutateItems((arr) => { const [x] = arr.splice(idx, 1); arr.splice(j, 0, x); return arr; });
@@ -681,6 +682,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                               {it._campanha ? ' · campanha ' + it._campanha : ''}
                               {it._calendario ? ' · calendário' : ''}
                               {it.meta && it.meta.prioridade === 'alta' ? ' · prioridade alta' : ''}
+                              {it.meta && it.meta.exemplo ? <b className="text-warn"> · exemplo: troque o texto para ir ao ar</b> : null}
                             </span>
                             {temAgenda(it) && (
                               <span className="mt-0.5 flex items-center gap-1 truncate text-2xs text-accent" title={resumoAgenda(it.agendamento)}>

@@ -710,6 +710,30 @@
   }
   // Identidade do palco: se isto muda, não há o que reaproveitar.
   /*
+   * Fase 4: nada de texto de exemplo na TV. O item marcado pelo "Adicionar"
+   * (meta.exemplo) e o que ficou igual ao padrão antigo do "Adicionar" — o
+   * "Novo comunicado" sem texto, o "Produto" sem preço — não vão ao ar. Na
+   * TV, sem ninguém para trocar, um texto de exemplo é pior que nada.
+   */
+  const PADRAO_ANTIGO = {
+    text: (it) => it.titulo === 'Novo comunicado' && !String(it.corpo || '').trim(),
+    announce: (it) => it.titulo === 'Aviso importante' && !String(it.corpo || '').trim(),
+    poster: (it) => it.titulo === 'Novo poster' && !String(it.corpo || '').trim(),
+    promo: (it) => it.titulo === 'Produto' && !String(it.precoPor || '').trim(),
+    precos: (it) => !String(it.linhas || '').trim(),
+    quiz: (it) => !(it.perguntas || []).length,
+    kpi: (it) => it.rotulo === 'Meta do mês' && String(it.valor) === '0',
+    social: (it) => it.titulo === 'Siga-nos' && !String(it.handle || '').trim(),
+    quote: (it) => !String(it.texto || '').trim(),
+  };
+  function ehExemplo(it) {
+    if (!it) return false;
+    if (it.meta && it.meta.exemplo) return true;
+    const p = PADRAO_ANTIGO[it.type];
+    return !!(p && p(it));
+  }
+
+  /*
    * Fase 3: o layout DESTA tela, com as zonas vazias absorvidas pela vizinha
    * com conteúdo (js/templates.js, MT_juntarZonasVazias). Vazia é a playlist
    * sem itens e sem automáticos; o rodapé sem mensagem só sai quando a tela
@@ -720,7 +744,8 @@
     const comCabecalho = layout.zones.some((z) => z.type === 'header');
     return layout.zones.filter((z) => {
       const d = (cfg.zonas && cfg.zonas[z.id]) || {};
-      if (z.type === 'playlist') return !(d.items || []).length && !automaticosDaZona(cfg, z.id);
+      // O exemplo do "Adicionar" não conta: ele não vai ao ar (fase 4).
+      if (z.type === 'playlist') return !(d.items || []).some((it) => it && !ehExemplo(it)) && !automaticosDaZona(cfg, z.id);
       return z.type === 'ticker' && comCabecalho && rodapeEsperando(d);
     }).map((z) => z.id);
   }
@@ -2196,7 +2221,8 @@
       // D24: as fontes se revezam e a prioridade pesa; depois entram os automáticos.
       // Só o que esta TV sabe mostrar (QA total, 05/11): o tipo desconhecido não vira texto interno no ar.
       const agoraMs = Date.now();
-      const conhecidos = items.filter((it) => it && (!MTRender.conhece || MTRender.conhece(it.type))
+      // Fase 4: o item que ainda é o exemplo do "Adicionar" (meta.exemplo, ou o padrão antigo) não vai ao ar.
+      const conhecidos = items.filter((it) => it && !ehExemplo(it) && (!MTRender.conhece || MTRender.conhece(it.type))
         // O urgente sem data sai na hora marcada (web/src/lib/aviso.js, QA total 05/11).
         && !(it.meta && Number(it.meta.expiraEm) > 0 && agoraMs > Number(it.meta.expiraEm)));
       const ativos = comAutomaticos(distribuir(agendado ? conhecidos.filter(agendadoAgora) : conhecidos), cfg, zonaId);
@@ -2833,6 +2859,9 @@
     global.MT_LOGO = (s.logo && s.logo.url) ? s.logo : (s.logoUrl ? { url: s.logoUrl } : null);
     global.MT_RELOGIO_NO_CABECALHO = relogioNoCabecalho(cfg, layout);
     global.MT_NOME = s.nome || '';
+    // Fase 4: com o tema da marca, o aviso usa a cor da marca (js/render.js, renderAnnounce).
+    const tema = s.theme || {};
+    global.MT_TEMA_DA_MARCA = tema.preset === 'marca' || tema.aplicarMarca === true;
   }
 
   /*

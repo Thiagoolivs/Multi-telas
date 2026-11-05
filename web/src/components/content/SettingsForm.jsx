@@ -106,6 +106,8 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
   function escolherTema(preset) {
     const patch = { preset };
     if (preset === 'marca' || theme.aplicarMarca) patch.marca = coresMarca;
+    // Fase 4: escolher um tema pronto é escolha desta TV; a marca (server/paleta.js, temaDaTv) não passa por cima.
+    patch.escolhido = preset !== 'marca';
     setTheme(patch);
   }
 
@@ -134,7 +136,13 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
     (s.refreshSeconds ?? 60) !== 60, s.coresAdaptativas === false, s.layoutInteligente === false,
     s.somUrgente === false, s.layoutAuto === true,
   ].filter(Boolean).length;
-  const usaMarca = theme.preset === 'marca';
+  // Sem tema escolhido e com a marca nas TVs ligada, a TV mostra a marca (server/paleta.js, temaDaTv): o painel mostra o mesmo.
+  const marcaNasTvs = !!(brandData && brandData.kit && brandData.kit.nasTvs !== false);
+  // Os ajustes herdados de toda config nova (cor e fundo padrão, js/storage.js) não são escolha (server/paleta.js, escolheuTema).
+  const HERDADO = { brand: '#5b2eff', bg: '#0e0b1f' };
+  const semEscolha = theme.escolhido !== true && !theme.aplicarMarca && (!theme.preset || theme.preset === 'dark-premium')
+    && !Object.keys(ov).some((k) => ov[k] !== undefined && ov[k] !== null && ov[k] !== '' && String(ov[k]).toLowerCase() !== HERDADO[k]);
+  const usaMarca = theme.preset === 'marca' || (temCores && marcaNasTvs && semEscolha);
   const margem = Number(s.margemSegura || 0);
   // Fase 3: onde a TV fica decide a letra mínima (js/player.js, LOCAIS). Sem escolha, vale a frente.
   const localDaFrente = LOCAL_DA_FRENTE[perfil.id] || 'balcao';

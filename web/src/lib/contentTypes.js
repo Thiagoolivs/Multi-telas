@@ -332,6 +332,72 @@ export function catalogoDaFrente(frente) {
   return { principais: todos.filter((t) => !AVANCADOS.includes(t)), avancados: todos.filter((t) => AVANCADOS.includes(t)) };
 }
 
+/*
+ * Fase 4: nada de texto de exemplo na TV. O "Adicionar" não publica mais
+ * "Novo comunicado": o item entra com um exemplo bom DA FRENTE (é mais fácil
+ * trocar um texto que escrever do zero) e marcado (meta.exemplo). A TV não
+ * mostra item marcado (js/player.js); a marca sai quando a pessoa mexe no
+ * conteúdo (ContentEditorPage, updateItem). Número e preço de exemplo nunca
+ * vão ao ar sem a pessoa conferir.
+ */
+const EXEMPLOS = {
+  announce: {
+    comercio: { tipo: 'evento', titulo: 'Degustação de pães no sábado', corpo: 'Das 9h às 12h, no balcão. Venha provar.' },
+    saude: { tipo: 'saude', titulo: 'A vacina da gripe chegou', corpo: 'Agende na recepção ou pelo WhatsApp.' },
+    empresa: { tipo: 'comunicado', titulo: 'Reunião geral na sexta, às 10h', corpo: 'No refeitório. A presença de todos é importante.' },
+  },
+  text: {
+    comercio: { titulo: 'Fechamos às 14h no feriado', corpo: 'Encomendas até a véspera.' },
+    saude: { titulo: 'Horário especial no feriado', corpo: 'Atendemos das 8h às 12h.' },
+    empresa: { titulo: 'Refeitório fecha às 13h30 na sexta', corpo: 'Por causa da manutenção da cozinha.' },
+  },
+  promo: {
+    comercio: { selo: 'OFERTA', titulo: 'Bolo de cenoura com chocolate', precoDe: '42,00', precoPor: '34,90', cta: 'Inteiro, 1 kg' },
+    saude: { selo: 'CONDIÇÃO ESPECIAL', titulo: 'Check-up completo', precoDe: '390,00', precoPor: '290,00', cta: 'Agende pelo WhatsApp' },
+  },
+  precos: {
+    comercio: { titulo: 'CAFÉ DA MANHÃ', linhas: 'Café expresso ; 6,00\nCafé com leite ; 7,50\nPão de queijo ; 4,50\nMisto quente ; 12,00', rodape: 'Aceitamos Pix e cartão' },
+    saude: { titulo: 'EXAMES', linhas: 'Hemograma ; 25,00\nGlicemia ; 15,00\nColesterol total ; 20,00', rodape: 'Convênios: consulte a recepção' },
+  },
+  quiz: {
+    empresa: { titulo: 'Quiz da semana', perguntas: [{ pergunta: 'Qual EPI protege contra ruído?', alternativas: ['Luva', 'Protetor auricular', 'Capacete', 'Óculos'], certa: 1 }] },
+  },
+  kpi: {
+    empresa: { rotulo: 'Produção do mês', valor: '18.450', variacao: '12%', tendencia: 'subiu', detalhe: 'Meta: 17.000 peças' },
+    comercio: { rotulo: 'Clientes atendidos hoje', valor: '230', tendencia: 'subiu', detalhe: 'Obrigado pela preferência' },
+    saude: { rotulo: 'Pacientes atendidos no mês', valor: '1.240', tendencia: 'subiu', detalhe: 'Obrigado pela confiança' },
+  },
+  social: {
+    comercio: { titulo: 'Siga a gente no Instagram', handle: '@sualoja' },
+    saude: { titulo: 'Dicas de saúde toda semana', handle: '@suaclinica' },
+    empresa: { rede: 'linkedin', titulo: 'Siga a empresa no LinkedIn', handle: 'Sua empresa' },
+  },
+  qrcode: {
+    comercio: { caption: 'Encomende pelo WhatsApp' },
+    saude: { caption: 'Avalie o seu atendimento' },
+    empresa: { caption: 'Mande a sua sugestão' },
+  },
+};
+export function novoItem(type, frente) {
+  const t = CONTENT_TYPES[type];
+  const base = t && t.make ? t.make() : null;
+  if (!base) return base;
+  const porFrente = EXEMPLOS[type];
+  if (!porFrente) return base;
+  const ex = porFrente[frente] || porFrente.comercio || porFrente[Object.keys(porFrente)[0]];
+  return { ...base, ...structuredClone(ex), meta: { ...(base.meta || {}), exemplo: true } };
+}
+// Mexeu no conteúdo (não só na duração, no agendamento ou na prioridade): deixa de ser exemplo.
+const FORA_DO_CONTEUDO = { meta: 1, duracao: 1, agendamento: 1 };
+export function semExemplo(antes, depois) {
+  if (!depois || !depois.meta || !depois.meta.exemplo || !antes) return depois;
+  const mudou = Object.keys({ ...antes, ...depois }).some((k) => !FORA_DO_CONTEUDO[k] && JSON.stringify(antes[k]) !== JSON.stringify(depois[k]));
+  if (!mudou) return depois;
+  const meta = { ...depois.meta };
+  delete meta.exemplo;
+  return { ...depois, meta };
+}
+
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;
 }

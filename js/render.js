@@ -1040,9 +1040,22 @@
     return '#' + ((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0');
   }
 
+  /*
+   * A cor do aviso (fase 4). Com o tema da marca, o destaque é a cor da
+   * marca — o aviso deixa de ser azul, roxo ou verde por tipo e passa a ser
+   * da empresa. Urgente e segurança ficam com a cor deles: ali a cor É o
+   * recado (vermelho para, amarelo atenção).
+   */
+  const ANN_COR_FIXA = { urgente: true, seguranca: true };
+  function corDoAviso(v) {
+    if (!global.MT_TEMA_DA_MARCA || ANN_COR_FIXA[v.id]) return v.cor;
+    const c = themeColor('accent', '') || themeColor('brand', '');
+    return /^#?[0-9a-f]{6}$/i.test(c) ? (c.charAt(0) === '#' ? c : '#' + c) : v.cor;
+  }
+
   function renderAnnounce(item) {
     const v = annVariant(item.tipo);
-    const cor = v.cor;
+    const cor = corDoAviso(v);
     const el = div('mt-slide mt-ann');
     // Banner sempre escuro (texto branco), mas com um tom do tema para não
     // destoar; a cor da categoria (cor) dá o destaque.
@@ -1224,7 +1237,8 @@
       if (item.unidade.antes) v.insertBefore(u, v.firstChild); else v.appendChild(u);
     }
     valueWrap.appendChild(v);
-    const trend = (item.tendencia || 'estavel');
+    // "alta"/"baixa" (a IA e o exemplo escrevem assim) são "subiu"/"desceu": antes viravam um traço vermelho.
+    const trend = ({ alta: 'subiu', baixa: 'desceu', sobe: 'subiu', desce: 'desceu' })[item.tendencia] || item.tendencia || 'estavel';
     const menor = item.sentido === 'menor';
     if (item.variacao) {
       // No "menor é melhor", subir é a má notícia: a seta é a mesma, a cor inverte.

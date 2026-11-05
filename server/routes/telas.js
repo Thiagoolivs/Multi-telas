@@ -436,6 +436,15 @@ module.exports = function (ctx) {
            * TV mostrava o nome em texto. Vai só para a TV (token), calculada
            * agora: o painel lê a mesma rota e gravaria a logo velha de volta.
            */
+          /*
+           * A marca entra sozinha (fase 4): a TV que não escolheu outro tema
+           * sai com o da marca. Vale para a TV e para o painel — a prévia mostra
+           * o que a TV mostra, e o que o painel gravar já vem com a marca.
+           */
+          if (c && c.settings) {
+            const tema = paleta.temaDaTv(c.settings.theme, await db.getBrandKit(device.tenant_id).catch(() => null));
+            if (tema) { c.settings.theme = tema; mudou = true; }
+          }
           if (dtOk && c && c.settings) {
             const logo = await paleta.logoDaConta(db, device.tenant_id);
             if (logo) { c.settings.logo = logo; mudou = true; }
