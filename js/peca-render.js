@@ -261,17 +261,24 @@
     const naTv = !!(doc && doc.querySelector && doc.querySelector('.mt-stage'));
     const w = host.clientWidth, h = host.clientHeight;
     const grande = w >= ZONA_GRANDE[0] && h >= ZONA_GRANDE[1];
-    if (!naTv && !grande) {
+    /*
+     * Na TV (fase 3) o piso vale em toda zona, e a fração é a do local da TV
+     * (--mt-piso-tv, js/player.js letraDoLocal: balcão .045, recepção .035,
+     * escritório .03). A bancada também pode dizer o local (o seletor
+     * "Local"): aí a zona pequena tem piso, como na TV.
+     */
+    const doLocal = janela && janela.getComputedStyle ? parseFloat(janela.getComputedStyle(host).getPropertyValue('--mt-piso-tv')) : 0;
+    if (!naTv && !grande && !doLocal) {
       // Miniatura (painel): ela não diz o tamanho da zona na TV. A peça
       // deitada ou quadrada é desenhada para a zona grande: o piso da tela
       // cheia, em pixel do palco (1080 linhas). A bancada desenha a zona no
       // tamanho de verdade e cai na conta de baixo.
       return ref ? 0.045 * 1080 : 0;
     }
-    if (!grande) return 0;
+    const frac = doLocal || 0.045;
     // Fora da TV (bancada, editor) a janela não é a TV: vale a TV de 1080 linhas, a mesma conta da miniatura.
     const lado = naTv && janela ? Math.min(janela.innerWidth, janela.innerHeight) : 1080;
-    return 0.045 * lado / (k || 1);
+    return frac * lado / (k || 1);
   }
   function enquadrar(host, palco) {
     const w = host.clientWidth, h = host.clientHeight;

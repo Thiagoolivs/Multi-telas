@@ -16,11 +16,11 @@ const ler = (f) => fs.readFileSync(path.join(RAIZ, f), 'utf8');
 const R = require('../js/regras-composicao.js');
 const compositor = require('../server/compositor');
 
-test('o piso da TV liga só na zona grande, e vale 4,5% do lado menor da tela', () => {
+test('o piso da TV vale em toda zona, no tamanho do local da TV (fase 3; na fase 2 era só a zona grande)', () => {
   const css = ler('css/player.css');
-  assert.match(css, /\.mt-zone \{ --mt-piso: 0px; \}/, 'zona pequena sem piso: a régua dela é a da fase 3');
-  assert.match(css, /@container \(min-width: 880px\) and \(min-height: 540px\) \{\s*\.mt-zone > \* \{ --mt-piso: 4\.5vmin; \}/);
-  assert.equal(R.REGRAS.pisoDaTv, 0.045);
+  assert.match(css, /\.mt-zone > \* \{ --mt-piso: calc\(var\(--mt-piso-tv, \.045\) \* 100vmin\); \}/);
+  assert.doesNotMatch(css, /@container \(min-width: 880px\) and \(min-height: 540px\)/);
+  assert.equal(R.REGRAS.pisoDaTv, 0.045, 'o balcão (4 m) continua 4,5%');
 });
 
 test('nenhuma letra do player num teto em pixel: cada tamanho de texto da zona tem o piso', () => {
@@ -49,7 +49,7 @@ test('a TV só encolhe o que não cabe, e a letra grande cede antes da pequena',
   assert.match(P, /if \(esc >= 1\) return;/);
   // A ordem: o respiro aperta, mais uma coluna no preço, o título desce até 1,6× o piso, o ícone sai — e só então a caixa toda.
   const corpo = P.slice(P.indexOf('function caberNaCaixa'), P.indexOf('function enterSlide'));
-  const ordem = ["slide.classList.add('mt-compacto')", 'lista.style.columnCount = String(c)', 'piso * 1.6', "[data-mt-apoio]').forEach((e) => { e.style.display = 'none'", "'scale('"];
+  const ordem = ["slide.classList.add('mt-compacto')", 'lista.style.columnCount = String(c)', 'piso * 1.6', "e.style.display = 'none'", "'scale('"];
   let antes = -1;
   for (const passo of ordem) {
     const i = corpo.indexOf(passo, antes + 1);
@@ -57,7 +57,8 @@ test('a TV só encolhe o que não cabe, e a letra grande cede antes da pequena',
     antes = i;
   }
   const render = ler('js/render.js');
-  assert.match(render, /iconBox\.setAttribute\('data-mt-apoio', ''\)/, 'o ícone do aviso é apoio');
+  assert.match(render, /iconBox\.setAttribute\('data-mt-apoio', '1'\)/, 'o ícone do aviso é o primeiro apoio a sair');
+  assert.match(render, /meta\.setAttribute\('data-mt-apoio', '2'\)/, 'o rótulo de endereço do aviso é o segundo');
   assert.match(render, /el\.setAttribute\('data-mt-colunas-auto', ''\)/, 'só a lista no automático ganha coluna');
 });
 
@@ -105,7 +106,7 @@ test('o robô da régua roda no CI, num job à parte, e guarda as fotos', () => 
   assert.match(ler('package.json'), /"regua": "node tools\/regua-tv\.mjs"/);
   const robo = ler('tools/regua-tv.mjs');
   assert.match(robo, /const PISO = 4\.5;/);
-  assert.match(robo, /\['full', 'principal', true\]/, 'tela cheia bloqueia');
+  assert.match(robo, /\[\{ deitada: 'full', 'em pé': 'full', quadrada: 'full' \}, 'principal', 'Tela cheia', true\]/, 'tela cheia bloqueia');
   // As peças-ouro também: em tela cheia, o piso que cede reprova (fora da lista de pendentes).
   assert.match(robo, /const FORMATOS_CHEIOS = \['Tela cheia 16:9', 'Vertical 9:16', 'Quadrada 1:1'\];/);
   assert.match(robo, /if \(!pendente\) reprova = true;/);

@@ -25,8 +25,12 @@ import { fileURLToPath } from 'node:url';
 
 // require, e não import: assim acha também o Playwright instalado fora do projeto (NODE_PATH).
 const { chromium } = createRequire(import.meta.url)('playwright');
+// Os layouts, para preencher as outras zonas (sem isso a zona vazia some e a medida vira outra: fase 3).
+const { getLayout } = createRequire(import.meta.url)('../js/templates.js');
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PISO = 4.5; // % do lado menor da TV
+const PISO = 4.5; // % do lado menor da TV, no balcão (4 m)
+// Fase 3: a letra mínima depende de onde a TV fica, e a frente dá o padrão (js/player.js, LOCAIS).
+const PISO_DA_FRENTE = { comercio: 4.5, saude: 3.5, empresa: 3 };
 const PORTA = 7700 + Math.floor(Math.random() * 200);
 const BASE = 'http://127.0.0.1:' + PORTA;
 const SAIDA = process.env.REGUA_SAIDA || '';
@@ -66,8 +70,19 @@ const CASOS = {
   },
 };
 const TVS = { deitada: [1920, 1080], 'em pé': [1080, 1920], quadrada: [1080, 1080] };
-// [layout, zona, bloqueia?]: tela cheia é a régua; a principal com lateral só é medida.
-const ARRANJOS = [['full', 'principal', true], ['corporate', 'principal', false]];
+/*
+ * [layout por TV, zona, nome, bloqueia?]. Tela cheia é a régua; as zonas são
+ * a meta da fase 3 (85% da lateral e do bloco). Cada TV usa o layout que o
+ * painel oferece para ela (js/templates.js, MT_layoutsByOrientation): a
+ * lateral só existe deitada; o bloco é a metade dos "Dois quadrados"
+ * deitada e a de baixo do "Em pé · duas zonas".
+ */
+const ARRANJOS = [
+  [{ deitada: 'full', 'em pé': 'full', quadrada: 'full' }, 'principal', 'Tela cheia', true],
+  [{ deitada: 'corporate' }, 'principal', 'Principal com lateral', false],
+  [{ deitada: 'corporate' }, 'lateral', 'Lateral', false],
+  [{ deitada: 'duo', 'em pé': 'portrait-duo' }, 'secundaria', 'Bloco', false],
+];
 
 // Roda dentro da página do player: cada texto visível da zona, com a letra que se VÊ.
 function medir(zona) {
@@ -174,12 +189,15 @@ async function esperarItem(p, item) {
  */
 const FORMATOS_CHEIOS = ['Tela cheia 16:9', 'Vertical 9:16', 'Quadrada 1:1'];
 const PENDENTES = new Set([]);
-async function conferirPecas(navegador) {
+// A meta da fase 3 para as zonas (lateral e bloco): 85% das fotos na régua.
+const META_ZONAS = 0.85;
+async function conferirPecas(navegador, local) {
   const manifesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', 'manifesto.json'), 'utf8'));
   const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
   const saida = [];
-  for (const peca of manifesto.pecas.filter((x) => x.papeis.includes('destaque'))) {
-    await p.goto(BASE + '/bancada.html?ver=peca&peca=' + peca.id + '&modo=todos&tamanho=caber');
+  // Sem local: as peças de destaque, na conta da tela cheia. Com local: também as da lateral (a zona pequena ganha piso).
+  for (const peca of manifesto.pecas.filter((x) => x.papeis.includes('destaque') || (local && x.papeis.includes('lateral')))) {
+    await p.goto(BASE + '/bancada.html?ver=peca&peca=' + peca.id + '&modo=todos&tamanho=caber' + (local ? '&local=' + local : ''));
     await p.evaluate(() => (document.fonts && document.fonts.ready) || null);
     await espera(1500);
     const porZona = await p.evaluate(() => {
@@ -195,7 +213,11 @@ async function conferirPecas(navegador) {
       });
       return out;
     });
-    for (const [zona, cedeu] of Object.entries(porZona)) saida.push({ id: peca.id, zona, cedeu, cheia: FORMATOS_CHEIOS.includes(zona) });
+    for (const [zona, cedeu] of Object.entries(porZona)) {
+      const cheia = FORMATOS_CHEIOS.includes(zona);
+      // Tela cheia sem local; as zonas com o local do escritório (a Empresas, onde elas moram).
+      if (local ? !cheia : cheia) saida.push({ id: peca.id, zona, cedeu, cheia, local: local || '' });
+    }
   }
   await p.close();
   return saida;
@@ -217,15 +239,20 @@ async function main() {
       await api.put(BASE + '/api/brand', { data: { nome: c.nome, cores: c.cores } });
       const tvs = {};
       for (const [nome, tam] of Object.entries(TVS)) tvs[nome] = await parear(navegador, api, nome, tam);
-      for (const [layout, zona, bloqueia] of ARRANJOS) {
+      for (const [layouts, zona, nomeArranjo, bloqueia] of ARRANJOS) {
         for (const [tipo, item] of Object.entries(tipos)) {
           if (SO.length && !SO.includes(tipo)) continue;
-          // As três TVs ao mesmo tempo: cada uma é uma página.
-          await Promise.all(Object.entries(tvs).map(async ([orient, tv]) => {
-            const cfg = { settings: { layoutId: layout, nome: c.nome }, zonas: { [zona]: { items: [item] } } };
+          // As três TVs ao mesmo tempo: cada uma é uma página (e só as que têm este arranjo).
+          await Promise.all(Object.entries(tvs).filter(([orient]) => layouts[orient]).map(async ([orient, tv]) => {
+            const layout = layouts[orient];
+            const zonas = { [zona]: { items: [item] } };
+            for (const z of getLayout(layout).zones) {
+              if (z.type === 'playlist' && z.id !== zona) zonas[z.id] = { items: [{ type: 'image', src: IMG[frente], fit: 'cover', duracao: 60 }] };
+            }
+            const cfg = { settings: { layoutId: layout, nome: c.nome }, zonas };
             await api.put(BASE + '/api/devices/' + tv.id + '/config', { data: cfg });
             await esperarItem(tv.p, item);
-            const id = frente + '-' + tipo + '__' + layout + '-' + orient.replace(' ', '-');
+            const id = frente + '-' + tipo + '__' + layout + '-' + zona + '-' + orient.replace(' ', '-');
             // A TV pode redesenhar a zona logo depois (a config e a marca chegam em dois avisos): sem texto à vista, espera e mede de novo.
             let m = await tv.p.evaluate(medir, zona);
             for (let k = 0; k < 3 && !m.textos.length && (item.titulo || item.rotulo || item.caption); k++) {
@@ -233,11 +260,12 @@ async function main() {
               m = await tv.p.evaluate(medir, zona);
             }
             if (SAIDA) await tv.p.screenshot({ path: path.join(SAIDA, id + '.png') });
-            const pequenas = m.textos.filter((x) => x.letra < PISO);
+            const piso = PISO_DA_FRENTE[frente] || PISO;
+            const pequenas = m.textos.filter((x) => x.letra < piso - 0.005);
             const fora = m.textos.filter((x) => x.fora);
             // Tipo com texto e nada escrito à vista: a TV mostrou outra coisa, ou nada.
             const sumiu = !!(item.titulo || item.rotulo || item.caption) && !m.textos.length;
-            fotos.push({ id, frente, tipo, layout, orient, bloqueia, zonaPx: m.zonaPx,
+            fotos.push({ id, frente, tipo, layout, zona, arranjo: nomeArranjo, orient, bloqueia, piso, zonaPx: m.zonaPx,
               menorLetra: m.textos.length ? Math.min(...m.textos.map((x) => x.letra)) : null,
               pequenas: pequenas.map((x) => x.t + ' (' + x.letra + '%)'), fora: fora.map((x) => x.t),
               erros: tv.erros.splice(0), sumiu, passa: !pequenas.length && !fora.length && !sumiu });
@@ -247,7 +275,7 @@ async function main() {
       await painel.close();
       for (const tv of Object.values(tvs)) await tv.p.context().close();
     }
-    pecas = await conferirPecas(navegador);
+    pecas = (await conferirPecas(navegador)).concat(await conferirPecas(navegador, 'escritorio'));
   } finally {
     await navegador.close();
     parar();
@@ -255,17 +283,21 @@ async function main() {
   if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas }, null, 1));
 
   let reprova = false;
-  for (const [layout, , bloqueia] of ARRANJOS) {
-    const doArranjo = fotos.filter((f) => f.layout === layout);
+  for (const [, , nome, bloqueia] of ARRANJOS) {
+    const doArranjo = fotos.filter((f) => f.arranjo === nome);
+    if (!doArranjo.length) continue;
     const ok = doArranjo.filter((f) => f.passa).length;
-    console.log('\n' + (bloqueia ? 'Tela cheia' : 'Principal com lateral (só medida, meta da fase 3)') + ': ' + ok + ' de ' + doArranjo.length + ' passam na régua');
+    const rotulo = bloqueia ? '' : (nome === 'Lateral' || nome === 'Bloco') ? ' (meta: 85%)' : ' (só medida)';
+    console.log('\n' + nome + rotulo + ': ' + ok + ' de ' + doArranjo.length + ' passam na régua (' + Math.round(ok / doArranjo.length * 100) + '%)');
     for (const f of doArranjo.filter((x) => !x.passa)) {
       console.log('  ' + (bloqueia ? '✗' : '·') + ' ' + f.id + ' (' + f.zonaPx + ')' +
-        (f.pequenas.length ? ' letra abaixo de ' + PISO + '%: ' + f.pequenas.slice(0, 3).join(', ') : '') +
+        (f.pequenas.length ? ' letra abaixo de ' + f.piso + '%: ' + f.pequenas.slice(0, 3).join(', ') : '') +
         (f.fora.length ? ' sai da zona: ' + f.fora.slice(0, 3).join(', ') : '') +
         (f.sumiu ? ' nenhum texto à vista' : ''));
     }
     if (bloqueia && ok < doArranjo.length) reprova = true;
+    // Fase 3: a lateral e o bloco passam em 85% ou mais (a meta da fase), e a mudança que baixar disso reprova.
+    if ((nome === 'Lateral' || nome === 'Bloco') && ok / doArranjo.length < META_ZONAS) { console.log('  ✗ abaixo da meta de ' + Math.round(META_ZONAS * 100) + '%'); reprova = true; }
   }
   const cheias = pecas.filter((x) => x.cheia);
   console.log('\nPeças-ouro em tela cheia (16:9, 9:16 e 1:1): ' + cheias.filter((x) => x.cedeu >= 1).length + ' de ' + cheias.length + ' com a letra inteira');
@@ -278,8 +310,14 @@ async function main() {
     const [id, zona] = k.split(' · ');
     if (cheias.some((x) => x.id === id && x.zona === zona && x.cedeu >= 1)) console.log('  ✓ ' + k + ' já cabe: tire de PENDENTES em tools/regua-tv.mjs');
   }
-  const corp = pecas.filter((x) => x.zona === 'Destaque · Corporativo');
-  if (corp.length) console.log('Peças-ouro na principal da Empresas (só medida, meta da fase 3): ' + corp.filter((x) => x.cedeu >= 1).length + ' de ' + corp.length);
+  for (const zona of ['Destaque · Corporativo', 'Lateral · Corporativo']) {
+    const l = pecas.filter((x) => x.zona === zona);
+    if (!l.length) continue;
+    const ok = l.filter((x) => x.cedeu >= 1).length;
+    console.log('Peças-ouro em ' + zona + ', no escritório (3%): ' + ok + ' de ' + l.length + ' com a letra inteira');
+    for (const x of l.filter((y) => y.cedeu < 1)) console.log('  · ' + x.id + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%');
+    if (ok / l.length < META_ZONAS) { console.log('  ✗ abaixo da meta de ' + Math.round(META_ZONAS * 100) + '%'); reprova = true; }
+  }
   const comErro = fotos.filter((f) => f.erros.length);
   for (const f of comErro) console.log('  erro na TV em ' + f.id + ': ' + f.erros[0]);
   if (comErro.length) reprova = true;

@@ -65,6 +65,14 @@ function MiniLayout({ id }) {
 export { zonasQueSaem };
 
 // Edita cfg.settings por tarefa. `device` traz o horário (expediente), que tem rota própria.
+// Onde a TV fica, com a distância de leitura (a mesma tabela de js/player.js, LOCAIS).
+const LOCAIS_NOME = {
+  balcao: 'Balcão ou vitrine (lida a uns 4 m)',
+  recepcao: 'Recepção ou sala de espera (uns 3 m)',
+  escritorio: 'Escritório ou corredor (2 a 3 m)',
+};
+const LOCAL_DA_FRENTE = { comercio: 'balcao', saude: 'recepcao', empresa: 'escritorio' };
+
 export function SettingsForm({ settings, onChange, deviceId, device, zonas, dataDeHoje }) {
   const perfil = usePerfil();
   const s = settings || {};
@@ -128,6 +136,10 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
   ].filter(Boolean).length;
   const usaMarca = theme.preset === 'marca';
   const margem = Number(s.margemSegura || 0);
+  // Fase 3: onde a TV fica decide a letra mínima (js/player.js, LOCAIS). Sem escolha, vale a frente.
+  const localDaFrente = LOCAL_DA_FRENTE[perfil.id] || 'balcao';
+  const local = s.local || localDaFrente;
+  const temLateral = layout.zones.some((z) => z.formato === 'retrato' && (layout.orientation || 'landscape') === 'landscape');
 
   return (
     <div className="space-y-4">
@@ -145,8 +157,19 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
       {aba === 'aparencia' && (
         <div className="space-y-5">
           <div>
-            <div className="mb-2 text-sm font-semibold text-ink">Layout</div>
+            <Field label="Onde fica a TV?" hint="Decide o tamanho mínimo da letra: quanto mais longe quem lê, maior a letra.">
+              <Select value={s.local || ''} onChange={(e) => set({ local: e.target.value })}>
+                <option value="">Padrão {perfil.lugarDe}: {LOCAIS_NOME[localDaFrente]}</option>
+                {Object.keys(LOCAIS_NOME).map((k) => <option key={k} value={k}>{LOCAIS_NOME[k]}</option>)}
+              </Select>
+            </Field>
+            <div className="mb-2 mt-4 text-sm font-semibold text-ink">Layout</div>
             <p className="mb-2 text-xs text-ink-3">Como a TV se divide: {layout.description}</p>
+            {local === 'balcao' && temLateral && (
+              <p className="mb-2 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-xs text-ink">
+                No balcão a letra precisa ser grande, e a lateral é estreita: nela cabe pouco (um preço, um número, um QR). Cardápio inteiro fica melhor em <b>Tela cheia</b> ou <b>Dois quadrados</b>.
+              </p>
+            )}
             {trocaPendente && (
               <div className="mb-3 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-xs text-ink">
                 O layout <b>{getLayout(trocaPendente.id).name}</b> não tem {trocaPendente.saem.join(', ')}. O que está lá fica guardado e volta se você voltar a este layout.

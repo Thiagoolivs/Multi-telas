@@ -43,14 +43,15 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
 }
 /* A coluna estreita: o dia e o nome; o setor fica, menor. O kicker sai — o título já diz. */
 @container (max-width: 700px) {
-  .cabeca { top: 7cqh; }
+  /* Seis pessoas na lateral, com a letra da TV: linhas mais justas, para a lista não subir no título. */
+  .cabeca { top: 6cqh; }
   .kicker { display: none; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(8.6cqw * var(--mt-escala-titulo, 1))); margin-top: 0; }
-  .lista { bottom: 6cqh; }
-  .lista li { grid-template-columns: 14cqw 1fr; padding: 2.6cqw 0; }
+  .lista { bottom: 5cqh; }
+  .lista li { grid-template-columns: 14cqw 1fr; padding: 1.3cqw 0; }
   .dia { font-size: max(var(--mt-piso, 0cqw), 8cqw); }
-  .lista b { font-size: max(var(--mt-piso, 0cqw), 5cqw); }
-  .lista small { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); margin-top: .6cqw; line-height: 1.3; }
+  .lista b { font-size: max(var(--mt-piso, 0cqw), 5cqw); line-height: 1.1; }
+  .lista small { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); margin-top: .2cqw; line-height: 1.15; }
 }
 </style>
 <section class="mt-peca gente-mes">

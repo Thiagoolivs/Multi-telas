@@ -91,6 +91,25 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** 85% das fotos de lateral e de bloco passam na régua, deitada, em pé e quadrada.
 
+**Andamento (05/11):**
+- [x] A letra mínima depende de onde a TV fica (campo "Onde fica a TV?" nos ajustes). A frente dá o padrão.
+  - Balcão (4 m): 4,5%. Recepção (3 m): 3,5%. Escritório (2–2,5 m): 3%.
+  - A conta sai da tabela de distância do QA (REFERENCIAS, 6.1 e 6.2).
+- [x] O piso vale em toda zona, não só na grande.
+- [x] Na zona pequena, cada tipo se recompõe antes de a letra encolher. Primeiro aperta o respiro; depois a lista ganha coluna; depois o título desce. Por último sai o apoio, por nível: o ícone, depois o rótulo de endereço.
+- [x] A zona vazia some: a vizinha com conteúdo ocupa o lugar dela.
+  - O rodapé sem mensagem sai quando a tela tem cabeçalho.
+  - Assim, a marca e a data deixam de aparecer três vezes na mesma tela.
+- [x] O painel avisa quando há lateral numa TV de balcão: ali cabe pouco.
+- [x] O robô mede a lateral e o bloco nos layouts que cada TV oferece de verdade. A lateral só existe deitada; o bloco é a metade de "Dois quadrados" ou de "Em pé · duas zonas". Menos de 85% reprova o CI.
+  - Tipos prontos na lateral: **13 de 14 (93%)**; no bloco, **28 de 28**; na principal com lateral, 14 de 14.
+  - Peças-ouro no escritório: principal da Empresas **32 de 32**, lateral **17 de 17**.
+  - O único que não passa é o cardápio de 9 itens na lateral de uma TV de balcão. É o caso que o painel desaconselha.
+- A TV quadrada não tem layout com zonas visível (os dois de antes saíram na fase 1). Não há lateral nem bloco para medir nela.
+- Ficam para as fases 5 e 7:
+  - quem decide o conteúdo de cada zona, por papel (principal, lateral de informação, faixa de avisos);
+  - a tela inteira vazia, na primeira vez. Ela ainda mostra a marca no cabeçalho e na zona de espera; a fase 4 cuida da primeira tela.
+
 ### Fase 4: a marca entra sozinha, e nada de texto de exemplo (2 dias)
 **Objetivo:** a TV é do cliente desde a primeira tela.
 - Com a marca preenchida, o tema padrão vira o da marca (`js/theme.js:207`). A Marca ganha "Usar nas minhas TVs", ligado (`BrandPage.jsx`, `SettingsForm.jsx:208`).
@@ -185,7 +204,7 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [x] Fase 0: nada quebra, nada mente
 - [x] Fase 1: limpar antes de construir (tipos e layouts; as páginas juntam na fase 7)
 - [x] Fase 2: a régua no código
-- [ ] Fase 3: zonas que se adaptam
+- [x] Fase 3: zonas que se adaptam
 - [ ] Fase 4: a marca entra sozinha, e nada de texto de exemplo
 - [ ] Fase 5: a programação pensa sozinha
 - [ ] Fase 6: a IA no nível de marca

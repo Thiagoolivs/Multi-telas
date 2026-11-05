@@ -146,10 +146,14 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
  * As zonas pequenas (lateral, faixa, mosaico) ficam como estavam: lá a peça
  * precisa mudar de composição, e não só crescer (fase 3).
  */
-.mt-zone { --mt-piso: 0px; }
-@container (min-width: 880px) and (min-height: 540px) {
-  .mt-zone > * { --mt-piso: 4.5vmin; }
-}
+/*
+ * Fase 3: o piso vale em TODA zona, e o tamanho é o do local da TV
+ * (--mt-piso-tv, posto por js/player.js: balcão .045, recepção .035,
+ * escritório .03 do lado menor). A zona pequena não encolhe mais a letra:
+ * cada tipo se recompõe nela (caberNaCaixa: aperta, ganha coluna, o título
+ * desce, o apoio sai) e só no fim a caixa toda encolhe.
+ */
+.mt-zone > * { --mt-piso: calc(var(--mt-piso-tv, .045) * 100vmin); }
 
 .mt-zone::after {
   content: "";

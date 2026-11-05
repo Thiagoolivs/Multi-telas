@@ -73,9 +73,10 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.92 var(--mt-fonte-titulo); tex
 /* A lateral: o nome e o preço; a medida e o apoio saem. */
 @container (max-width: 700px) {
   .apoio, .medida { display: none; }
-  .marca-nome { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .32em; }
-  .cabeca { top: 11cqh; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .22em; }
+  /* Com a letra da TV a marca espaçada quebrava e encostava no rótulo: menos espaço entre letras, e o cabeçalho desce. */
+  .marca-nome { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .14em; line-height: 1.15; right: 8cqw; }
+  .cabeca { top: 14cqh; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .12em; }
   h1 { font-size: max(var(--mt-piso, 0cqw), 13cqw); white-space: normal; }
   .itens { bottom: 11cqh; }
   .itens li { padding: 3.6cqw 0 3.2cqw; }
