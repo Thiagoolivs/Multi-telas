@@ -14,13 +14,10 @@ const vm = require('node:vm');
 const RAIZ = path.join(__dirname, '..');
 const PLAYER = fs.readFileSync(path.join(RAIZ, 'js/player.js'), 'utf8');
 
+// Fase 5: o rodízio saiu do player para js/rodizio.js (o mesmo que a TV carrega antes do player.js).
+const R = require('../js/rodizio.js');
 function distribuir() {
-  const ini = PLAYER.indexOf('  function fonteDe(it, i) {');
-  const fim = PLAYER.indexOf('  function startPlaylist(');
-  const ctx = { module: {} };
-  vm.createContext(ctx);
-  vm.runInContext(PLAYER.slice(ini, fim) + '\nmodule.exports = distribuir;', ctx);
-  return ctx.module.exports;
+  return (lista) => R.distribuir(lista, {}, () => 10);
 }
 const nomes = (l) => l.map((x) => x.n).join('');
 
@@ -35,25 +32,26 @@ test('as fontes se revezam: uma campanha de várias peças não toma a parede em
   assert.deepEqual(d([]), []);
 });
 
-test('prioridade alta passa duas vezes por volta, espalhada — e nunca duas seguidas, nem na virada da volta', () => {
+test('prioridade alta passa mais vezes, espalhada, até 40% da volta — e nunca duas seguidas, nem na virada', () => {
   const d = distribuir();
   const A = { n: 'A', meta: { prioridade: 'alta' } };
-  const r = nomes(d([A, { n: 'B' }, { n: 'C' }]));
-  assert.equal(r.length, 4);
-  assert.equal(r.split('A').length - 1, 2);
+  const tempoDe = (r, letra) => r.split(letra).length - 1;
+  // Com quatro normais, a Alta passa duas vezes (2 de 6 = 33%, abaixo do teto de 40%).
+  const r = nomes(d([A, { n: 'B' }, { n: 'C' }, { n: 'D' }, { n: 'E' }]));
+  assert.equal(tempoDe(r, 'A'), 2, r);
+  assert.ok(tempoDe(r, 'A') / r.length <= 0.4, r);
   const volta = r + r;
   for (let i = 1; i < volta.length; i++) assert.notEqual(volta[i], volta[i - 1], 'duas seguidas em ' + volta);
-  const muitas = nomes(d([A, { n: 'B' }, { n: 'C' }, { n: 'D' }, { n: 'E', meta: { prioridade: 'alta' } }]));
-  assert.equal(muitas.length, 7);
-  const v2 = muitas + muitas;
-  for (let i = 1; i < v2.length; i++) assert.notEqual(v2[i], v2[i - 1], 'duas seguidas em ' + v2);
+  // Com só dois normais, duas vezes passaria do teto (50%): a Alta fica em uma (fase 5, BLOCO-3).
+  const curta = nomes(d([A, { n: 'B' }, { n: 'C' }]));
+  assert.ok(tempoDe(curta, 'A') / curta.length <= 0.4, curta);
 });
 
 test('no rodízio: primeiro distribuir, depois os automáticos (aniversário e mural)', () => {
   assert.match(PLAYER, /const ativos = comAutomaticos\(distribuir\(agendado \? conhecidos\.filter\(agendadoAgora\) : conhecidos\), cfg, zonaId\);/);
   assert.ok(Number((/const SHELL_CACHE = 'mt-shell-v(\d+)';/.exec(fs.readFileSync(path.join(RAIZ, 'sw.js'), 'utf8')) || [])[1]) >= 52, 'o player mudou e a TV não baixa de novo');
   const ed = fs.readFileSync(path.join(RAIZ, 'web/src/pages/ContentEditorPage.jsx'), 'utf8');
-  assert.match(ed, /\['alta', 'Alta', 'Passa duas vezes por volta, espalhada entre as outras\.'\]/);
+  assert.match(ed, /\['alta', 'Alta', 'Passa mais vezes, espalhada entre as outras: até 40% do tempo da tela\.'\]/);
   assert.match(ed, /meta: \{ \.\.\.\(current\.meta \|\| \{\}\), prioridade: id \}/);
 });
 
@@ -62,8 +60,12 @@ test('no rodízio: primeiro distribuir, depois os automáticos (aniversário e m
 test('urgente: qualquer peça toma a tela, três vezes por volta, mesmo com o layout inteligente desligado', () => {
   const d = distribuir();
   const U = { n: 'U', meta: { prioridade: 'urgente' } };
+  // Fase 5: o urgente tem teto de 25% do tempo da volta (antes passava três vezes e ficava com 60% da tela).
   const r = nomes(d([U, { n: 'B' }, { n: 'C' }, { n: 'D' }]));
-  assert.equal(r.split('U').length - 1, 3, 'urgente passa três vezes: ' + r);
+  assert.ok(r.split('U').length - 1 >= 1, r);
+  assert.ok((r.split('U').length - 1) / r.length <= 0.25, 'urgente no teto: ' + r);
+  const muitos = nomes(d([U, { n: 'B' }, { n: 'C' }, { n: 'D' }, { n: 'E' }, { n: 'F' }, { n: 'G' }, { n: 'H' }, { n: 'I' }, { n: 'J' }, { n: 'K' }]));
+  assert.equal(muitos.split('U').length - 1, 3, 'com muita peça normal, o urgente passa três vezes: ' + muitos);
   const corpo = PLAYER.slice(PLAYER.indexOf('  function maybeTakeover(item) {'), PLAYER.indexOf('  function showTakeover('));
   assert.match(corpo, /const urgenteDoPainel = !!\(item && item\.meta && item\.meta\.prioridade === 'urgente'\);/);
   assert.match(corpo, /if \(!smartLayout && !urgenteDoPainel\) return;/);

@@ -144,6 +144,27 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** a semana simulada dos 12 cenários dá 0 buracos, 0 repetições seguidas, urgente dentro do teto e a sequência no tamanho certo.
 
+**Andamento (05/11):**
+- [x] O rodízio saiu do player para `js/rodizio.js`. É código puro: a TV usa o mesmo que a semana simulada mede.
+- [x] Tetos por tempo de tela: o urgente fica com até 25%, dividido entre todos os urgentes, e a Alta com até 40%. O teto é conferido depois de arredondar.
+- [x] A peça com prazo vale Alta nas últimas 24 h.
+- [x] A mesma peça não reentra: quando ela é a única do horário, ou o teto pede mais tempo para ela, fica no ar. Na troca de faixa, a primeira da lista nova não repete a que está no ar.
+- [x] O tempo é o da leitura: 1 s por palavra, de 6 a 25 s. O tempo posto à mão vale (`meta.duracaoManual`). As transições levam de 0,6 a 0,7 s (eram de 0,95 a 1,2).
+- [x] Importância automática (`js/importancia.js`), sem IA:
+  - Urgente: o texto pede ação já, ou fala de segurança.
+  - Alta: prazo de até 2 dias, ou oferta.
+  - Normal: o institucional.
+  - As peças das campanhas já entram com o nível e o porquê ("Urgente · fala de segurança"). A escolha da pessoa vale.
+- [x] Sem buraco no dia: a faixa que ficou sem peça é coberta pela vizinha (`cobrirODia`).
+- [x] O calendário entende "Black Friday", "Natal", "Dia das Mães" e outras datas sem o dia escrito.
+- [x] O painel calcula a volta como a TV e avisa quando ela foge do tamanho do lugar: balcão de 2 a 5 min, sala de espera de 8 a 12, escritório de 3 a 10.
+- [x] A semana simulada roda no CI (`test/semana-simulada.test.js`) com 7 cenários do BLOCO-3: 1, 2, 3, 4 e 6, 7, 10 e 11.
+  - **0** buracos, **0** repetições seguidas, **0** vencidas no ar.
+  - Urgente sempre até 25%, e Alta até 40%.
+- Falta, e fica para a fase 6 (a IA):
+  - a IA fazer pelo menos 3 peças por horário;
+  - a IA montar a volta no tamanho do lugar. Hoje, se ela não monta, o painel avisa.
+
 ### Fase 6: a IA no nível de marca (4–5 dias)
 **Objetivo:** pedir do jeito que o cliente fala e receber uma peça profissional.
 - **O plano guarda os fatos do pedido** (preço, data, hora, lugar, telefone), e a peça mostra só o que foi aprovado. Fato inventado bloqueia em vez de só avisar (`server/ai-director.js:136`, `server/compositor.js:395`).
@@ -221,7 +242,7 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [x] Fase 2: a régua no código
 - [x] Fase 3: zonas que se adaptam
 - [x] Fase 4: a marca entra sozinha, e nada de texto de exemplo
-- [ ] Fase 5: a programação pensa sozinha
+- [x] Fase 5: a programação pensa sozinha
 - [ ] Fase 6: a IA no nível de marca
 - [ ] Fase 7: o painel novo, a estrutura
 - [ ] Fase 8: o painel novo, o acabamento

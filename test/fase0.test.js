@@ -44,7 +44,8 @@ test('a TV: tipo desconhecido não vai ao ar; agenda no fuso da loja; urgente co
   assert.match(player, /const conhecidos = items\.filter\(\(it\) => it && !ehExemplo\(it\) && \(!MTRender\.conhece \|\| MTRender\.conhece\(it\.type\)\)/);
   assert.match(player, /agoraMs > Number\(it\.meta\.expiraEm\)/, 'o urgente vencido continuava no ar');
   assert.match(player, /function agoraNaLoja\(\)/);
-  assert.match(player, /const loja = agoraNaLoja\(\);/, 'o agendamento seguia o relógio da TV (UTC no box)');
+  // Fase 5: a conta da janela foi para js/rodizio.js (naJanela); a TV passa a hora DA LOJA.
+  assert.match(player, /return R \? R\.naJanela\(item, agoraNaLoja\(\)\) : true;/, 'o agendamento seguia o relógio da TV (UTC no box)');
   assert.match(player, /Date\.now\(\) - ultimo > 10 \* 60 \* 1000/, 'o sino tocava a cada volta');
 });
 

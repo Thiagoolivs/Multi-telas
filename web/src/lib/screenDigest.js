@@ -13,6 +13,11 @@
 import { zonesOf, getLayout, THEME_PRESETS } from './screenConfig.js';
 import { typeLabel } from './contentTypes.js';
 import { zonaSoComHorario } from './agenda.js';
+// Fase 5: a volta é a mesma conta da TV (js/rodizio.js: tetos, prazo, 1 s por palavra).
+import '../../../js/rodizio.js';
+const R = globalThis.MTRodizio;
+const LOCAL_DA_FRENTE = { comercio: 'balcao', saude: 'recepcao', empresa: 'escritorio' };
+const NOME_DO_LOCAL = { balcao: 'no balcão', recepcao: 'na sala de espera', escritorio: 'no escritório' };
 
 // Duração de um item na tela. 0 significa "fica fixo" — para efeito de ciclo,
 // um item fixo prende a zona e a rotação deixa de existir.
@@ -60,7 +65,7 @@ export function origemDoTema(settings) {
  * — só na TV, depois de instalada. Cada um existe por causa de um jeito
  * concreto de a tela decepcionar.
  */
-function problemasDaZona(zona, itens, ciclo) {
+function problemasDaZona(zona, itens, ciclo, local) {
   const p = [];
   if (!itens.length) {
     p.push({ nivel: 'aviso', texto: `${zona.name} está vazia — a TV mostra só um relógio nesse espaço` });
@@ -72,6 +77,15 @@ function problemasDaZona(zona, itens, ciclo) {
   const fixo = itens.find((i) => duracaoDe(i) === 0);
   if (fixo && itens.length > 1) {
     p.push({ nivel: 'aviso', texto: `${zona.name}: "${typeLabel(fixo.type)}" está com duração 0 (fica fixo) e trava os outros ${itens.length - 1}` });
+  } else if (!fixo && ciclo > 0 && local && R && R.VOLTA_DO_LOCAL[local]) {
+    /*
+     * Fase 5: a volta do tamanho do lugar — o tempo que a pessoa fica ali.
+     * Balcão de 2 a 5 min, sala de espera de 8 a 12. A sala de espera com
+     * volta de 72 s mostrava a mesma volta 10 vezes a quem esperava.
+     */
+    const [min, max] = R.VOLTA_DO_LOCAL[local];
+    if (ciclo < min) p.push({ nivel: 'dica', texto: `${zona.name} repete a cada ${formatarTempo(ciclo)}: ${NOME_DO_LOCAL[local]} a pessoa fica uns ${formatarTempo(min)} e vê a mesma coisa de novo. Ponha mais peças.` });
+    else if (ciclo > max) p.push({ nivel: 'dica', texto: `${zona.name} leva ${formatarTempo(ciclo)} para dar a volta: ${NOME_DO_LOCAL[local]} a pessoa fica uns ${formatarTempo(max)} e não vê tudo. Divida por horário ou tire peças.` });
   } else if (!fixo && ciclo > 0 && ciclo < 45) {
     p.push({ nivel: 'dica', texto: `${zona.name} repete a cada ${formatarTempo(ciclo)} — quem passa duas vezes vê o mesmo` });
   }
@@ -101,9 +115,11 @@ function problemasDaZona(zona, itens, ciclo) {
  * `ratios` é opcional: as proporções medidas de cada zona, quando a prévia já
  * as conhece. Sem elas, o aviso de formato incompatível simplesmente não sai.
  */
-export function digest(cfg, ratios) {
+export function digest(cfg, ratios, frente) {
   if (!cfg) return null;
   const settings = cfg.settings || {};
+  // Onde a TV fica (fase 3): o escolhido, ou o padrão da frente.
+  const local = settings.local || LOCAL_DA_FRENTE[frente || settings.frente] || '';
   const zonas = zonesOf(cfg).map((z) => ({ ...z, ratio: (ratios && ratios[z.id]) || null }));
   const layout = getLayout(settings.layoutId);
 
@@ -131,7 +147,10 @@ export function digest(cfg, ratios) {
       return;
     }
     const itens = (dados.items || []).filter(Boolean);
-    const ciclo = itens.reduce((s, i) => s + duracaoDe(i), 0);
+    // A volta como a TV roda (js/rodizio.js): as repetições da Alta e do urgente contam, e o tempo é o da leitura.
+    const durR = (i) => (R ? R.duracaoDe(i, i.duracao) : duracaoDe(i));
+    const noAr = itens.filter((i) => !(i.meta && i.meta.exemplo));
+    const ciclo = itens.some((i) => duracaoDe(i) === 0) ? 0 : (R ? R.tempoDaVolta(R.distribuir(noAr, { agoraMs: Date.now() }, durR), durR) : itens.reduce((s, i) => s + duracaoDe(i), 0));
     const daZona = { data: 0, campanha: 0, manual: 0 };
     itens.forEach((i) => { const o = origemDe(i); daZona[o]++; origens[o]++; });
     porZona.push({
@@ -139,7 +158,7 @@ export function digest(cfg, ratios) {
       resumo: `${itens.length} conteúdo(s)`,
       ciclo, itens: itens.length, origens: daZona,
     });
-    problemasDaZona(z, itens, ciclo).forEach((p) => problemas.push(p));
+    problemasDaZona(z, itens, ciclo, local).forEach((p) => problemas.push(p));
   });
 
   const tema = origemDoTema(settings);

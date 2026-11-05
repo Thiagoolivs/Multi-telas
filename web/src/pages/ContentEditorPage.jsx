@@ -32,7 +32,7 @@ import { Sparkles, Wand2 } from 'lucide-react';
 import { Field, Input, Textarea } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { ai } from '../api.js';
-import { CONTENT_TYPES, typeLabel, itemSummary, defaultConfig, novoItem, semExemplo } from '../lib/contentTypes.js';
+import { CONTENT_TYPES, typeLabel, itemSummary, defaultConfig, novoItem, ajustesDoEditor } from '../lib/contentTypes.js';
 import { zonesOf, ensureZone, formatoDoLayout } from '../lib/screenConfig.js';
 import { cn } from '../lib/cn.js';
 import { perfilAtual } from '../lib/perfil.js';
@@ -64,9 +64,9 @@ const hora = (ms) => new Date(ms).toLocaleTimeString('pt-BR', { hour: '2-digit',
 // A prioridade da peça (D24): o nome e o que ela faz na TV.
 const PRIORIDADES = [
   ['normal', 'Normal', 'Passa uma vez por volta, revezando com as outras.'],
-  ['alta', 'Alta', 'Passa duas vezes por volta, espalhada entre as outras.'],
+  ['alta', 'Alta', 'Passa mais vezes, espalhada entre as outras: até 40% do tempo da tela.'],
   // D25: qualquer peça pode tomar a tela.
-  ['urgente', 'Urgente', 'Toma a tela inteira com a faixa "Aviso importante" (e um sino, se o som estiver ligado), três vezes por volta. Use só no que não pode esperar.'],
+  ['urgente', 'Urgente', 'Toma a tela inteira com a faixa "Aviso importante" (e um sino, se o som estiver ligado), até 25% do tempo, dividido entre os urgentes. Use só no que não pode esperar.'],
 ];
 
 function defaultZone(zones) {
@@ -347,7 +347,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     mutateItems((arr) => { arr.push(structuredClone(item)); return arr; });
     setSelected(items.length);
   };
-  const updateItem = (idx, item) => mutateItems((arr) => { arr[idx] = semExemplo(arr[idx], item); return arr; });
+  const updateItem = (idx, item) => mutateItems((arr) => { arr[idx] = ajustesDoEditor(arr[idx], item); return arr; });
   const moveItem = (idx, dir) => {
     const j = idx + dir; if (j < 0 || j >= items.length) return;
     mutateItems((arr) => { const [x] = arr.splice(idx, 1); arr.splice(j, 0, x); return arr; });
@@ -682,6 +682,9 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                               {it._campanha ? ' · campanha ' + it._campanha : ''}
                               {it._calendario ? ' · calendário' : ''}
                               {it.meta && it.meta.prioridade === 'alta' ? ' · prioridade alta' : ''}
+                              {it.meta && it.meta.prioridade === 'urgente' ? <b className="text-danger"> · urgente</b> : null}
+                              {/* Fase 5: por que a peça tem esta importância (js/importancia.js); troca com um toque no editor. */}
+                              {it.meta && it.meta.porque ? ' · ' + it.meta.porque : ''}
                               {it.meta && it.meta.exemplo ? <b className="text-warn"> · exemplo: troque o texto para ir ao ar</b> : null}
                             </span>
                             {temAgenda(it) && (

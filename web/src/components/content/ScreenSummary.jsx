@@ -1,3 +1,4 @@
+import { usePerfil } from '../../lib/perfil.js';
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Palette, Sparkles, Clock, AlertTriangle, Lightbulb, Check, Info } from 'lucide-react';
 import { digest, formatarTempo } from '../../lib/screenDigest.js';
@@ -12,7 +13,9 @@ import { cn } from '../../lib/cn.js';
  */
 export function ScreenSummary({ cfg }) {
   const [aberto, setAberto] = useState(false);
-  const d = useMemo(() => digest(cfg), [cfg]);
+  const perfil = usePerfil();
+  // A frente dá o local padrão da TV (fase 3): a volta certa é a do lugar.
+  const d = useMemo(() => digest(cfg, null, perfil.id), [cfg, perfil.id]);
   if (!d) return null;
 
   const avisos = d.problemas.filter((p) => p.nivel === 'aviso');
