@@ -87,6 +87,34 @@ Nem todo critério vale para todo item: a planilha marca quais valem.
 4. **Mercado.** As telas e o fluxo de criar são comparados com o que os melhores entregam.
 5. **O que só você faz.** O roteiro numa TV de verdade e o reteste com a IA real (`GEMINI_API_KEY`).
 
+## 3b. Cada item em quatro estados de dados
+
+A Programação quebrava só nas contas com campanha no ar (05/11): numa conta
+vazia, o teste passava. Por isso, cada página e cada item da TV é testado em
+quatro contas montadas de propósito:
+
+| Conta | Como é |
+|---|---|
+| **Vazia** | Acabou de se cadastrar |
+| **Típica** | 2 TVs, uma campanha no ar, 10 peças, marca com logo |
+| **Cheia** | 25 TVs em 4 grupos, 6 campanhas, 300 peças, nomes longos, datas vencidas |
+| **Antiga ou estranha** | Dados de versões anteriores, campos faltando, a TV pareada antes das correções |
+
+Além disso, um lint que acusa nome usado e não definido roda em todo o
+painel e no servidor (`npm run lint:nomes`, também no CI). Foi ele que achou
+o bug da Programação e outro igual no editor livre.
+
+## 3c. O que nenhum teste automático alcança
+
+| O quê | Como cobrimos |
+|---|---|
+| TVs e boxes de verdade | O roteiro no aparelho (`docs/qa/ROTEIRO-APARELHO.md`), com você |
+| A IA real | O reteste com a `GEMINI_API_KEY` |
+| Cobrança e e-mail de verdade | O Asaas sandbox e uma caixa de teste |
+| O olho humano a 4 m | A galeria de cada bloco, para você aprovar |
+| Os dados da produção | As quatro contas acima, e o painel avisar o servidor quando uma tela quebra (proposta) |
+| Dias seguidos rodando | Uma TV de teste ligada 24 h na homologação |
+
 ## 4. A ordem: seis blocos
 
 Cada bloco termina com nota em todas as linhas dele e uma galeria. Só então

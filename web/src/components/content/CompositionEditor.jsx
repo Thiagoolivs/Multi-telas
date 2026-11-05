@@ -142,8 +142,8 @@ export function CompositionEditor({ value, onClose, onSave }) {
       setVisaoLoading(true);
       setVisaoResultado(null);
       try {
+        const { compositionToCanvas, dimsFor } = await import('../../lib/exportPng.js');
         const d = dimsFor(aspect);
-        const { compositionToCanvas } = await import('../../lib/exportPng.js');
         const canvas = await compositionToCanvas({ bg, elementos: sair(els), formato: aspect }, d.W, d.H);
         const b64 = canvas.toDataURL('image/jpeg', 0.85);
         const res = await ai.analiseVisual(b64);
