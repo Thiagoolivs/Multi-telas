@@ -121,7 +121,8 @@ test('o lote 2: nove negócios, três formatos cada, esperando a aprovação na 
   const m = JSON.parse(ler('pecas-ouro/manifesto.json'));
   const lote = m.telas.filter((t) => t.lote === 2);
   const NEGOCIOS = ['padaria', 'otica', 'restaurante', 'salao', 'clinica', 'dentista', 'farmacia', 'escritorio', 'industria'];
-  const LAYOUT = { deitada: 'corporate', 'em-pe': 'portrait-stack', quadrada: 'square-header' };
+  // Fase 10: a quadrada é square-hero (sem cabeçalho): a principal fica quase quadrada, o formato em que as peças cabem.
+  const LAYOUT = { deitada: 'corporate', 'em-pe': 'portrait-stack', quadrada: 'square-hero' };
   assert.equal(lote.length, NEGOCIOS.length * 3);
   for (const n of NEGOCIOS) {
     for (const [forma, layout] of Object.entries(LAYOUT)) {

@@ -57,7 +57,8 @@ test('as sobras pintam com o fundo da marca, e o desenhista acompanha a zona que
 
 test('no player a peça é desenhada no tamanho de 1080p e escalada (720p e 4K iguais)', () => {
   const r = ler('js/render.js');
-  assert.match(r, /const k = w >= h \? Math\.min\(w \/ 1920, h \/ 1080\) : Math\.min\(w \/ 1080, h \/ 1920\);/);
+  // Fase 10: 1080 no lado menor — a TV quadrada era tratada como 16:9 e a peça saía a 56% do piso.
+  assert.match(r, /const k = Math\.min\(w, h\) \/ 1080;/);
   assert.match(r, /'position:absolute;left:0;top:0;width:' \+ \(100 \/ k\) \+ '%;height:' \+ \(100 \/ k\) \+ '%;transform:scale\(' \+ k \+ '\)/);
   assert.match(r, /MTPecaRender\.montar\(hostDaPeca\(el\), item, opcoesDaPeca\(\)\)/);
   assert.match(ler('js/player.js'), /const alvo = MTRender\.hostDaPeca \? MTRender\.hostDaPeca\(host\) : host;/, 'a peça do cabeçalho e do rodapé também');

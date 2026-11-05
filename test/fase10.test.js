@@ -32,3 +32,33 @@ test('o roteiro do piloto: os 10 passos e quando o piloto passa', () => {
   for (let i = 1; i <= 10; i++) assert.match(r, new RegExp('^\\| ' + i + ' \\|', 'm'), 'passo ' + i);
   assert.match(r, /\*\*O piloto passa quando:\*\*/);
 });
+
+test('reteste do bloco 1: a TV quadrada no piso, e a bancada desenha a quadrada no tamanho dela', () => {
+  // 1080 no lado menor: a quadrada (1080×1080) dava 0,56 e a peça saía a 56% do piso.
+  assert.match(ler('js/render.js'), /const k = Math\.min\(w, h\) \/ 1080;/);
+  assert.match(ler('js/bancada.js'), /const W = emPe \|\| quadrada \? 1080 : 1920;/);
+  assert.match(ler('sw.js'), /mt-shell-v(8\d|9\d|\d{3})/, 'a TV não recebe o player novo');
+});
+
+test('reteste do bloco 1: o texto do cliente não some por conter uma palavra como "dentista"', async () => {
+  const { pathToFileURL } = require('node:url');
+  const T = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/telasProntas.js')).href);
+  const m = JSON.parse(ler('pecas-ouro/manifesto.json'));
+  const ex = T.nomesDeExemplo(m.marcas);
+  for (const palavra of ['dentista', 'clinica', 'farmacia', 'industria', 'escritorio', 'restaurante', 'otica', 'padaria', 'salao']) {
+    assert.ok(!ex.compactos.includes(palavra), 'o id "' + palavra + '" apagaria textos do cliente');
+  }
+  assert.equal(T.limparDoExemplo('Consulta com o dentista às 9h', null, { nome: 'Sorriso Bom' }, ex), 'Consulta com o dentista às 9h');
+  // O nome da marca de exemplo continua saindo.
+  assert.equal(T.limparDoExemplo('Venha à Padaria do Bairro', null, { nome: 'Pão Bom' }, ex), 'Venha à Pão Bom');
+  assert.ok(ex.compactos.includes('rotasul'), 'o apelido da Rota Sul (o @ e o site) ainda é reconhecido');
+});
+
+test('o pacote do dentista não anuncia preço, parcela, desconto nem "grátis" (CFO)', () => {
+  const m = JSON.parse(ler('pecas-ouro/manifesto.json'));
+  for (const t of m.telas.filter((x) => x.negocio === 'dentista')) {
+    const txt = JSON.stringify(t);
+    assert.doesNotMatch(txt, /R\$|"preco"|"parcela"|desconto|grátis|sem custo|não tem custo|% ?off/i, t.id);
+    assert.ok(!t.zonas.principal.pecas.some((p) => p.id === 'oferta-parcelado'), t.id);
+  }
+});
