@@ -91,7 +91,10 @@ MultiTelas TV › Forçar parada, e volte a tela inicial para a padrão.
 
 ## Aparelho
 
-Qualquer Android 5+ com WebView atualizado. Recomendado: **Android 9 ou mais
+Qualquer Android 5+ com WebView atualizado — **motor Chromium 56 ou mais
+novo**; abaixo disso a TV mostra o aviso "O WebView deste aparelho é antigo
+para o MultiTelas" (`js/compat.js`). A tabela completa, por aparelho, e o
+que muda em cada faixa está em `docs/APARELHOS.md`. Recomendado: **Android 9 ou mais
 novo, 2 GB de RAM**, rede cabeada quando der. Box de 1 GB roda, mas vídeo em
 1080p com transição engasga. Homologue um modelo e compre sempre o mesmo:
 lote de TV Box barato muda de hardware sem avisar.

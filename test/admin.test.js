@@ -49,9 +49,15 @@ test('clientes: contrato, fidelidade, multa de hoje e pagamento em uma linha', (
     conta({ id: 'cortesia', plan_status: 'cortesia' }),
   ], AGORA, 'cortesia');
   assert.equal(anual.contrato, 'anual');
-  assert.equal(anual.mensalidadeCents, 57600, '5 telas no anual = R$ 576 (PLANO §6.1)');
+  // QA de lançamento, 03/11: o preço é por frente. Sem frente gravada vale a
+  // padrão (Comércio, R$ 79 no mensal): 5 telas no anual = 3 × 64 + 2 × 57.
+  assert.equal(anual.mensalidadeCents, 30600, '5 telas no anual (Comércio) = R$ 306');
   assert.equal(anual.fidelidadeAte, anual.contratoDesde + 12 * 30 * DIA);
   assert.equal(anual.multaHojeCents, plans.multaCancelamentoCents({ telas: 5, mesesUsados: 4 }).cents);
+  // A conta de Empresas paga o preço de Empresas (R$ 159 no mensal).
+  const [empresa] = A.clientes([conta({ id: 'emp', telas: 2, perfil: 'empresa' })], AGORA, 'cortesia');
+  assert.equal(empresa.mensalidadeCents, 2 * 15900);
+  assert.equal(empresa.frente, 'empresa');
   assert.deepStrictEqual(atrasada.atraso, { dias: 12, selo: true, bloqueado: false });
   assert.equal(cortesia.cortesia, true);
   assert.equal(cortesia.mensalidadeCents, 0, 'cortesia não é receita');
@@ -69,13 +75,14 @@ test('receita: MRR de quem paga, inadimplentes, cancelamentos e o que vence na s
     conta({ id: 'h', plan_renews_at: AGORA + 20 * DIA }),
   ], AGORA, 'cortesia');
   const r = A.receita(lista, AGORA, 3);
-  assert.equal(r.mrrCents, 2 * 14900 + 57600 + 14900 + 14900 + 14900);
+  // Preço da frente padrão (Comércio, R$ 79; 5 telas no anual = R$ 306) — QA de lançamento, 03/11.
+  assert.equal(r.mrrCents, 2 * 7900 + 30600 + 7900 + 7900 + 7900);
   assert.equal(r.pagantes, 6, 'ativos e em atraso; sem cortesia nem cancelado');
   assert.equal(r.enterprise, 1);
   assert.equal(r.cortesias, 1);
   assert.equal(r.anuais, 1);
   assert.deepStrictEqual(r.inadimplentes.map((x) => [x.id, x.dias]), [['c', 25], ['d', 5]], 'o atraso mais velho primeiro');
-  assert.equal(r.devendoCents, 2 * 14900);
+  assert.equal(r.devendoCents, 2 * 7900);
   assert.equal(r.cancelamentos, 3);
   assert.deepStrictEqual(r.proximosVencimentos.map((x) => x.id), ['a']);
 });
@@ -100,7 +107,7 @@ test('custo de IA por conta contra o que ela paga, com o teto do plano', () => {
     { tenant_id: 'p', name: 'Padaria', plan: 'pro', plan_status: 'active', centavos: 1200, criacoes: 30, chamadas: 80, telas: 2 },
     { tenant_id: 'g', name: 'Teste', plan: 'free', centavos: '90', criacoes: '5', chamadas: '12', telas: 1 },
   ], 'cortesia');
-  assert.equal(pro.margemCents, 2 * 14900 - 1200);
+  assert.equal(pro.margemCents, 2 * 7900 - 1200, 'Comércio, a frente padrão (QA de lançamento, 03/11)');
   assert.equal(pro.tetoCents, 3000);
   assert.equal(gratis.mensalidadeCents, 0);
   assert.equal(gratis.custoCents, 90, 'número do Postgres vem como texto');

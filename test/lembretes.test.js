@@ -62,9 +62,40 @@ test('sem TV pareada, o aviso é sobre LIGAR a TV, não sobre assinar', () => {
   assert.match(m.text, /\?ir=screens/);
 });
 
+/*
+ * QA de lançamento, 03/11: "escolha um modelo pronto — o cardápio, uma
+ * promoção" ia também para clínica e indústria, e "o endereço /tv" não diz
+ * onde (ninguém adivinha o domínio com o controle remoto na mão).
+ */
+test('o e-mail fala a língua da frente e dá o endereço completo da TV', () => {
+  const de = (perfil) => L.mensagem('2d', conta(12, { telas: 0, perfil }), 'https://app.multitelas.net.br', AGORA);
+  const comercio = de('comercio');
+  assert.match(comercio.text, /o cardápio, uma promoção/);
+  assert.match(comercio.subject, /MultiTelas Comércio/);
+  for (const perfil of ['saude', 'empresa']) {
+    const m = de(perfil);
+    assert.doesNotMatch(m.text, /cardápio|promoção/, perfil + ' recebeu o exemplo de loja');
+    assert.match(m.subject, new RegExp(require('../js/perfil.js').de(perfil).marca));
+  }
+  assert.match(de('saude').text, /dica de prevenção/);
+  assert.match(de('empresa').text, /comunicado/);
+  for (const perfil of ['saude', 'empresa', 'comercio', undefined]) {
+    const m = de(perfil);
+    assert.match(m.text, /o endereço app\.multitelas\.net\.br\/tv no navegador/);
+    assert.doesNotMatch(m.text, /o endereço \/tv/);
+  }
+  // Conta sem frente gravada: texto neutro, sem nome de frente nem exemplo de loja.
+  const neutro = de(undefined);
+  assert.match(neutro.subject, /^Seu teste do MultiTelas acaba/);
+  assert.doesNotMatch(neutro.text, /cardápio/);
+  // Sem APP_URL configurado, o endereço de produção (nunca "/tv" solto).
+  assert.match(L.mensagem('2d', conta(12, { telas: 0 }), '', AGORA).text, /app\.multitelas\.net\.br\/tv/);
+});
+
 test('no banco: envia uma vez, marca, e a passada seguinte não repete', async () => {
   const db = require('../server/db-sqlite.js');
   const { tenantId } = await db.createAccount('lembrete@x.com', 'hash', 'Padaria', 'Dono');
+  await db.setTenantPerfil(tenantId, 'saude');
   // Nasceu há 12 dias e meio (faltam 2).
   const velho = AGORA - 12.5 * DIA;
   require('node:sqlite'); // garante o módulo carregado
@@ -77,6 +108,8 @@ test('no banco: envia uma vez, marca, e a passada seguinte não repete', async (
   const r1 = await L.varrer({ db, mail, appUrl: 'https://app.x', agora: AGORA });
   const meus = enviados.filter((m) => m.to === 'lembrete@x.com');
   assert.equal(meus.length, 1, 'devia mandar o "faltam 2 dias"');
+  // A frente vem do banco (contasEmTeste traz t.perfil).
+  assert.match(meus[0].subject, /MultiTelas Saúde/);
   assert.ok(r1.enviados >= 1);
   await L.varrer({ db, mail, appUrl: 'https://app.x', agora: AGORA + 6 * 60 * 60 * 1000 });
   assert.equal(enviados.filter((m) => m.to === 'lembrete@x.com').length, 1, 'mandou de novo');
@@ -101,4 +134,12 @@ test('provedor falhou: não marca, a próxima passada tenta de novo', async () =
   await L.varrer({ db, mail: { send: async (m) => { ok.push(m.to); return { ok: true }; } }, appUrl: '', agora: AGORA + 60000 });
   assert.equal(tentativas, 1);
   assert.ok(ok.includes('falha@x.com'), 'depois da falha, o aviso nunca saiu');
+});
+
+test('os e-mails de conta: o mesmo separador no assunto e "Confirmar e-mail" no botão (QA de 03/11)', () => {
+  const mail = require('../server/mail.js');
+  const v = mail.verifyEmail('https://app.x/confirmar?t=1');
+  assert.equal(v.subject, 'Confirme seu e-mail · MultiTelas');
+  assert.match(v.html, />Confirmar e-mail</);
+  assert.equal(mail.resetEmail('https://app.x/r').subject, 'Redefinir sua senha · MultiTelas');
 });

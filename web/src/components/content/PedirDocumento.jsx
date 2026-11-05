@@ -30,7 +30,12 @@ export function PedirDocumento({ open, onClose, onContinuar, ocupado, erro }) {
       open={open}
       onClose={onClose}
       title="CPF ou CNPJ de quem paga"
-      description="O Asaas precisa dele para emitir a cobrança e a nota. Fica no cadastro do Asaas, não no MultiTelas."
+      /*
+        QA de lançamento, 03/11: o texto prometia que o Asaas emitiria também a
+        nota, e não há emissão de nota pelo Asaas no código. O documento vai na cobrança; a
+        nota fiscal é emitida pela MultiTelas (decisão do dono).
+      */
+      description="Os dados vão na cobrança do Asaas e ficam no cadastro de lá, não no MultiTelas. A nota fiscal é emitida pela MultiTelas."
       footer={(
         <>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>

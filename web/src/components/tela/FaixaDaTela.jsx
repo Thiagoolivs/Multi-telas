@@ -50,7 +50,7 @@ function Mensagens({ titulo, dica, lista, onChange, exemplo }) {
       <div className="flex gap-2">
         <input value={nova} onChange={(e) => setNova(e.target.value)} placeholder={exemplo}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); acrescentar(); } }}
-          className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
+          className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent" />
         <Button size="sm" icon={Plus} disabled={!nova.trim()} onClick={acrescentar}>Pôr</Button>
       </div>
     </div>

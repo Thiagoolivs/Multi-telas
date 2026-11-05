@@ -14,7 +14,7 @@ import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 import {
-  carregarTelasProntas, montarTela, estadoDaPrevia, aplicarTelaPronta, medirZonas, perfilDaTela, emPe, marcaDaConta,
+  carregarTelasProntas, montarTela, estadoDaPrevia, aplicarTelaPronta, medirZonas, perfilDaTela, emPe, marcaDaConta, tvEmPe,
 } from '../lib/telasProntas.js';
 
 /*
@@ -28,11 +28,6 @@ const ORDEM = ['cabecalho', 'principal', 'lateral', 'rodape'];
 const NOME_DO_GRUPO = { cabecalho: 'Cabeçalho', principal: 'Principal', lateral: 'Lateral', rodape: 'Rodapé' };
 const MAX_FRASES = 8;
 
-// A TV está em pé? Pelo que ela contou de si (largura e altura); sem isso, não se sabe.
-function tvEmPe(d) {
-  const i = d && d.info;
-  return i && i.w > 0 && i.h > 0 ? i.h > i.w : null;
-}
 
 export function TelasProntasPage({ onIr, telaAlvo }) {
   const perfil = usePerfil();
@@ -261,10 +256,11 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
               <div className="flex flex-1 flex-col gap-2 p-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="truncate text-sm font-semibold text-ink">{tela.nome}</h3>
+                    <h2 className="truncate text-sm font-semibold text-ink">{tela.nome}</h2>
                     {emPe(tela.layout) && <span className="shrink-0 rounded bg-surface-2 px-1.5 py-0.5 text-2xs text-ink-3">TV em pé</span>}
                   </div>
-                  {tela.sobre && <p className="mt-0.5 line-clamp-2 text-xs text-ink-3">{tela.sobre}</p>}
+                  {/* A descrição de cliente (lib/telasProntas.js, paraOCliente), nunca a nota interna do manifesto. */}
+                  {tela.descricao && <p className="mt-0.5 line-clamp-2 text-xs text-ink-3">{tela.descricao}</p>}
                 </div>
                 <Button className="mt-auto" variant="secondary" onClick={() => usar(montada)}>Usar esta tela</Button>
               </div>

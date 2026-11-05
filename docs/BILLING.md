@@ -2,6 +2,47 @@
 > `docs/PLANO.md` §6 e em `server/plans.js` (EXECUTOR item 11). Este documento
 > guarda a conta aberta da versão anterior (franquia por tela).
 
+> **03/11 — o que vale hoje (QA de lançamento, decisões do dono).** A fonte
+> única continua sendo `server/plans.js`; isto é o resumo.
+>
+> - **Preço por TV, por frente** (Essencial, id `pro`): Comércio **R$ 79**,
+>   Saúde **R$ 139**, Empresas **R$ 159**, sem mínimo por conta. A frente é a
+>   da conta (`tenants.perfil`; sem ela, a deduzida por
+>   `server/paleta.js perfilDaConta`). Cada conta e cada landing vê só o da
+>   sua frente: `GET /api/planos?frente=empresa|saude|comercio` (ou
+>   `empresas`) devolve o catálogo daquela frente; sem frente, o de Comércio
+>   e `apartirDeCents` (o menor preço por TV).
+> - **Anual** na mesma proporção das faixas antigas (149 → 120/108/96, piso
+>   90), em reais inteiros: Comércio 64/57/51 (piso 48), Saúde 112/101/90
+>   (piso 84), Empresas 128/115/102 (piso 96). O Pro (em breve) mantém
+>   179/149 sobre o Essencial da frente: R$ 95 / 167 / 191.
+> - **Cancelamento no fim do período pago**: o painel, o simulado e o
+>   `SUBSCRIPTION_DELETED`/`SUBSCRIPTION_INACTIVATED` do Asaas deixam a conta
+>   no plano pago com status `cancelando` até `plan_renews_at` (o fim do mês
+>   pago = vencimento da fatura paga + 1 mês). Depois, a varredura de 10 em
+>   10 min (`cobranca.varrerCancelamentos`) e a leitura do plano rebaixam
+>   para o grátis. Ao cancelar, `plan_contrato`/`contrato_desde` são apagados.
+> - **Grátis = 1 TV no ar** (`plans.telasNoAr`): cancelou, estornou ou o
+>   teste acabou, só a TV mais antiga segue no ar, com o selo; as outras
+>   recebem `pausada` no pulso e mostram "Esta TV está pausada: reative o
+>   plano em app.multitelas.net.br". Nada é apagado; reativando, voltam
+>   sozinhas. Vale também para a fatura atrasada há 20 dias ou mais.
+> - **Régua de atraso**: 3 dias e-mail, 10 dias selo, 20 dias suspensão (IA,
+>   tela nova e, agora, as TVs além da mais antiga). A fatura vencida
+>   (`OVERDUE`) aparece no painel antes da pendente.
+> - **Multa do anual** = 30% das mensalidades que faltam, só isso: cai mês a
+>   mês e é zero com os 12 meses cumpridos. Visita e aparelho são custo à
+>   parte. Cancelar um anual pelo painel exige aceitar a multa (o servidor
+>   confere o valor) e grava o evento `plano.multa.<centavos>`. **A cobrança
+>   da multa ainda é manual** (o operador lê o evento).
+> - **Pacotes de criação** não travam no teto em reais da conta: o teto vale
+>   para a franquia; as imagens além dela foram pagas à parte e somam ao teto
+>   (`uso-ia.folgaDoComprado`). O teto global do dia continua.
+> - **Excluir a conta** cancela a assinatura no Asaas antes de apagar; se o
+>   Asaas falhar, nada é apagado.
+> - **Nota fiscal**: não há emissão pelo código. O painel diz que os dados vão
+>   na cobrança do Asaas e que a nota é emitida pela MultiTelas.
+
 # Proposta de cobrança — MultiTelas
 
 Segunda versão. A primeira calculava só o custo de IA sobre a receita e
@@ -25,9 +66,8 @@ editáveis.
 > - **Assinatura acompanha as telas** (`server/cobranca.js`): parear e remover
 >   atualizam o valor no Asaas (`updatePendingPayments`, sem proração no meio
 >   do ciclo); conciliação a cada 6h.
-> - **Atraso** (`plans.situacaoAtraso`): 7 dias de carência contados do
->   primeiro `PAYMENT_OVERDUE`; depois param crédito de IA, a reposição da
->   franquia e o pareamento de tela nova. A tela nunca para.
+> - **Atraso** (`plans.situacaoAtraso`): era 7 dias de carência; hoje vale a
+>   régua 3/10/20 dias do resumo de 03/11 acima.
 > - **Estorno e chargeback** da assinatura voltam a conta para o grátis. A
 >   assinatura no Asaas NÃO é cancelada automaticamente — pode ser acerto seu.
 > - **Pacotes avulsos** (§7): 25/100/500 créditos, cobrança avulsa no Asaas,
@@ -458,6 +498,20 @@ escolhe quais. Apagar tela de cliente por causa de downgrade não tem desfazer.
 - GB por tela — calibra a cota e o excedente.
 
 ---
+
+## 14 · Antes de mudar um preço (revisão de 03/11)
+
+- **Quem já assina é repreçado.** A assinatura no Asaas é recalculada pela
+  tabela de `server/plans.js` toda vez que o número de TVs muda
+  (`cobranca.sincronizarTelas`). Hoje não há clientes pagantes, então isso não
+  afeta ninguém. Antes de mudar um preço com clientes na base, é preciso
+  guardar o preço por TV de cada conta na assinatura e usá-lo na conciliação
+  (manter o preço antigo de quem já assina).
+- **A frente que decide o preço fica gravada ao assinar** (`checkout`). Depois
+  disso, só o operador troca (Plataforma › conta › Frente; `POST /api/plataforma/contas/:id/frente`).
+- **`plan_renews_at` é o fim do período pago** (o vencimento da fatura paga
+  mais um mês). Uma conta paga antes desta versão guarda o vencimento, e não o
+  fim: se houver alguma, acerte a data à mão antes de ela cancelar.
 
 ## Resumo
 

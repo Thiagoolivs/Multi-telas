@@ -49,8 +49,11 @@ AS MUDANÇAS POSSÍVEIS (os números são os da lista de peças):
 - {"tipo":"texto","peca":N,"campo":"nome do campo, como na lista","valor":"o texto novo, exato"}
   Troca SÓ aquele texto (preço, data, uma frase), sem refazer a peça. Prefira
   esta sempre que o pedido for de texto.
-- {"tipo":"refazer","peca":N,"texto":"o que muda no texto, ou vazio","foto":"manter"|"trocar"|"tirar","descricaoFoto":"a cena nova, só se trocar"}
+- {"tipo":"refazer","peca":N,"texto":"o que muda no texto, ou vazio","desenho":"o que muda no desenho, ou vazio","foto":"manter"|"trocar"|"tirar","descricaoFoto":"a cena nova, só se trocar"}
   Redesenha a peça (foto nova, outra ideia). Foto nova gasta uma criação do plano.
+  Pedido de TAMANHO ou DESTAQUE ("deixa o preço maior", "o título mais chamativo")
+  é "desenho" (com "foto":"manter" e "texto" vazio), nunca "texto": a frase da
+  pessoa vai inteira em "desenho". Só a troca de foto mantém o desenho e os textos.
 - {"tipo":"refazer","peca":N,"foto":"usar","ref":K}
   Põe na peça a IMAGEM K que a pessoa mandou nesta conversa (lista abaixo). É dela: não gasta criação.
 - {"tipo":"acrescentar","tela":T,"zona":"principal"|"lateral"|"cabecalho"|"rodape","quantidade":1,"pedido":"o que a peça nova mostra"}
@@ -70,10 +73,11 @@ Responda APENAS JSON:
 }`;
 
 // As peças como a pessoa vê, com os textos de cada uma: "o preço" vira "peça 2, campo preco".
+// QA de lançamento, 03/11: a peça da IA tem os textos no HTML; antes a edição via só o rótulo dela.
 function pecasParaIA(resultado) {
   return ajuste.numerar(resultado).map((x) => {
-    const c = x.peca.item && x.peca.item.campos ? x.peca.item.campos : {};
-    const textos = ajuste.camposDeTexto(x.peca).map((k) => k + ': "' + corta(c[k], 120) + '"');
+    const c = ajuste.textosDe(x.peca);
+    const textos = Object.keys(c).map((k) => k + ': "' + corta(c[k], 120) + '"');
     return `- peça ${x.n}: TV ${x.tela + 1}, ${E.NOME_ZONA[x.zona].toLowerCase()}${x.peca.comFoto ? ', com foto' : ', sem foto'} — ${textos.join('; ') || '"' + x.peca.label + '"'}`;
   }).join('\n');
 }
@@ -110,6 +114,7 @@ function semIA(texto, mensagens, resultado, referencias) {
     if (pendente.tipo === 'preco') return precoNa(n, pendente.valor, resultado);
     if (pendente.tipo === 'texto') return textoNa(n, pendente.campo, pendente.valor, resultado);
     if (pendente.tipo === 'usar') return fazer([{ tipo: 'refazer', peca: n, foto: 'usar', ref: pendente.ref }], resultado, imagens);
+    if (pendente.tipo === 'desenho') return fazer([{ tipo: 'refazer', peca: n, foto: 'manter', texto: '', desenho: pendente.desenho }], resultado);
   }
   /*
    * "muda o texto da peça 2" sem dizer o texto novo: conversa até entender,
@@ -164,10 +169,21 @@ function semIA(texto, mensagens, resultado, referencias) {
   const preco = precoDe(texto);
   if (preco && /pre[cç]o|valor|custa|por r\$/.test(t)) {
     if (n) return precoNa(n, preco, resultado);
-    const comPreco = pecas.filter((x) => ajuste.camposDeTexto(x.peca).some((k) => /r\$/i.test(x.peca.item.campos[k])));
+    const comPreco = pecas.filter((x) => Object.values(ajuste.textosDe(x.peca)).some((v) => /r\$/i.test(v)));
     if (comPreco.length === 1) return precoNa(comPreco[0].n, preco, resultado);
     if (pecas.length === 1) return precoNa(1, preco, resultado);
     return { acao: 'perguntar', resposta: 'Em qual peça vai o preço ' + preco + '?', sugestoes: sugestoesDePeca, mudancas: [], pendente: { tipo: 'preco', valor: preco } };
+  }
+  /*
+   * "deixa o preço maior": é DESENHO (QA de lançamento, 03/11 — virava
+   * "texto novo na peça 1"). Na peça dita, na única ou na única com preço;
+   * senão, pergunta qual.
+   */
+  const desenho = ajuste.pedidoDeDesenho(texto);
+  if (desenho) {
+    const qual = n || ajuste.pecaDoDesenho(desenho, resultado);
+    if (qual) return fazer([{ tipo: 'refazer', peca: qual, foto: 'manter', texto: '', desenho }], resultado);
+    return { acao: 'perguntar', resposta: 'Em qual peça?', sugestoes: sugestoesDePeca, mudancas: [], pendente: { tipo: 'desenho', desenho } };
   }
   // "troca a foto" sem dizer qual: com uma peça só, é ela; com várias, pergunta.
   if (/troc\w* (a |as )?fotos?/.test(t) && !n) {
@@ -195,8 +211,9 @@ function precoNa(n, preco, resultado) {
   if (!x) return fazer([], resultado);
   const campos = ajuste.camposDeTexto(x.peca);
   // O campo que já tem preço; senão o de apoio; senão o título.
-  const campo = campos.find((k) => /r\$/i.test(x.peca.item.campos[k])) || (campos.includes('preco') ? 'preco' : campos.includes('apoio') ? 'apoio' : 'titulo');
-  const atual = String(x.peca.item.campos[campo] || '');
+  const textos = ajuste.textosDe(x.peca);
+  const campo = campos.find((k) => /r\$/i.test(textos[k])) || (campos.includes('preco') ? 'preco' : campos.includes('apoio') ? 'apoio' : 'titulo');
+  const atual = String(textos[campo] || '');
   const valor = /r\$\s*\d+(?:[.,]\d{1,2})?/i.test(atual) ? atual.replace(/r\$\s*\d+(?:[.,]\d{1,2})?/i, preco) : preco;
   return fazer([{ tipo: 'texto', peca: n, campo, valor }], resultado);
 }

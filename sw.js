@@ -13,7 +13,7 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v70';
+const SHELL_CACHE = 'mt-shell-v73';
 const MEDIA_CACHE = 'mt-media-v1';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
@@ -24,7 +24,7 @@ const MEDIA_CACHE = 'mt-media-v1';
 // (js/cor.js estava de fora desde que nasceu; sem rede, o player ficava sem a
 // conta de cor inteira.)
 const SHELL_ASSETS = [
-  '/player.html', '/css/player.css', '/css/animacao.css', '/js/perf.js',
+  '/player.html', '/css/player.css', '/css/animacao.css', '/js/compat.js', '/js/perf.js',
   /*
    * Os scripts do corpo do player.html chegam num pacote só
    * (server/pacote-tv.js): o player.html SERVIDO carrega este arquivo, e é ele
@@ -45,6 +45,13 @@ const SHELL_ASSETS = [
    * Eles entram no cache sozinhos, na primeira vez que aparecem na peça.
    */
   '/fonts/fontes.css',
+  /*
+   * A letra da marca (Outfit) da tela de pareamento e do aviso de navegador
+   * antigo: 3 arquivos de ~14 KB. Sem eles, a TV que sobe sem rede mostra o
+   * código na letra do sistema — fora da marca justamente no primeiro
+   * contato (QA de lançamento, 03/11).
+   */
+  '/fonts/marca/outfit-400-normal-latin.woff2', '/fonts/marca/outfit-600-normal-latin.woff2', '/fonts/marca/outfit-700-normal-latin.woff2',
 ];
 
 self.addEventListener('install', (e) => {
@@ -94,8 +101,9 @@ self.addEventListener('fetch', (event) => {
    * Arquivo de fonte é imutável: o nome carrega peso, estilo e alfabeto, e
    * conteúdo novo vira nome novo (tools/baixar-fontes.mjs). Cache primeiro,
    * sem revalidar — a TV não gasta rede perguntando por algo que não muda.
+   * A Outfit da marca (fonts/marca/) segue a mesma regra de nome.
    */
-  if (url.pathname.startsWith('/fonts/arquivos/')) {
+  if (url.pathname.startsWith('/fonts/arquivos/') || url.pathname.startsWith('/fonts/marca/')) {
     event.respondWith(cacheFirst(req, SHELL_CACHE));
     return;
   }

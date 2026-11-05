@@ -7,6 +7,7 @@ import { useAsync } from '../../lib/useAsync.js';
 import { aviso } from '../../lib/avisos.js';
 import { confirmar } from '../../lib/confirmar.js';
 import { fotoqr } from '../../api.js';
+import { usePerfil } from '../../lib/perfil.js';
 
 /*
  * FOTOS PELO QR (EXECUTOR D31). O RH abre um pedido por um período ("semanas
@@ -92,6 +93,7 @@ function Cartao({ f }) {
 }
 
 export function FotosPeloQR({ onAprovou }) {
+  const perfil = usePerfil();
   const { data, reload } = useAsync(fotoqr.list);
   const [criando, setCriando] = useState(false);
   const [decidindo, setDecidindo] = useState('');
@@ -108,7 +110,7 @@ export function FotosPeloQR({ onAprovou }) {
     setCriando(true);
     const hoje = new Date();
     try {
-      await fotoqr.criar({ titulo: 'Mande sua foto para as TVs da empresa', inicio: iso(hoje), fim: iso(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 14)) });
+      await fotoqr.criar({ titulo: 'Mande sua foto para as TVs ' + perfil.lugarDe, inicio: iso(hoje), fim: iso(new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 14)) });
       reload();
     } catch (e) { aviso.erro('fotoqr', e.message || 'Não deu para abrir o pedido.'); }
     finally { setCriando(false); }

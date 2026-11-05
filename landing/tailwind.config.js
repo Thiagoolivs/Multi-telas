@@ -13,7 +13,8 @@
  */
 module.exports = {
   // O landing.js também monta classes (simulador, contato): entra na varredura.
-  content: ['./index.html', './landing.js'],
+  // E o texto de cada frente (server/landing-frentes.js), que entra no lugar dos marcadores.
+  content: ['./index.html', './landing.js', '../server/landing-frentes.js'],
   theme: {
     extend: {
       fontFamily: {

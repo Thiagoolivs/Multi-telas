@@ -9,6 +9,8 @@ import { suporte } from '../api.js';
 import { aviso } from '../lib/avisos.js';
 import { useAsync } from '../lib/useAsync.js';
 import { relativeTime } from '../lib/format.js';
+import { navegadorCurto } from '../lib/navegador.js';
+import { NOME_DO_PAPEL } from '../lib/nomes.js';
 
 // Contato do suporte quando o servidor não informa um (SUPPORT_EMAIL).
 const EMAIL_PADRAO = 'thiago.olivs.coelho@gmail.com';
@@ -90,15 +92,21 @@ export function SupportPage({ me }) {
   const user = (me && me.user) || {};
   const tenant = (me && me.tenant) || {};
 
-  // Informações técnicas ajudam a responder sem ficar perguntando o básico.
-  const contexto = [
-    'Conta: ' + (tenant.name || '—'),
-    'Usuário: ' + (user.email || '—') + ' (' + (user.role || '—') + ')',
-    'Navegador: ' + (typeof navigator !== 'undefined' ? navigator.userAgent : '—'),
-  ].join('\n');
+  /*
+   * Informações técnicas ajudam a responder sem ficar perguntando o básico.
+   * Na tela, em língua de gente (QA de lançamento, 03/11): era "(owner)" e o
+   * user-agent inteiro. O user-agent completo vai só no e-mail, embaixo.
+   */
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const linhas = [
+    ['Conta', tenant.name || '—'],
+    ['Você', (user.email || '—') + (NOME_DO_PAPEL[user.role] ? ' (' + NOME_DO_PAPEL[user.role] + ')' : '')],
+    ['Navegador', navegadorCurto(ua) || '—'],
+  ];
+  const contexto = linhas.map(([k, v]) => k + ': ' + v).join('\n');
 
   function abrirEmail() {
-    const corpo = mensagem.trim() + '\n\n---\n' + contexto;
+    const corpo = mensagem.trim() + '\n\n---\n' + contexto + (ua ? '\nDetalhe técnico: ' + ua : '');
     window.location.href = 'mailto:' + SUPPORT_EMAIL
       + '?subject=' + encodeURIComponent('[MultiTelas] ' + assunto)
       + '&body=' + encodeURIComponent(corpo);
@@ -241,10 +249,12 @@ export function SupportPage({ me }) {
           </Panel>
 
           <Panel>
-            <PanelHeader title="Dados da sua conta" description="Cole isto se pedirmos." />
-            <div className="p-4">
-              <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all rounded-md border border-line bg-surface-2 p-2.5 text-2xs leading-relaxed text-ink-3">{contexto}</pre>
-            </div>
+            <PanelHeader title="Dados da sua conta" description="Vão junto quando você escreve por e-mail ou WhatsApp." />
+            <dl className="space-y-1 p-4 text-sm">
+              {linhas.map(([k, v]) => (
+                <div key={k} className="flex gap-2"><dt className="w-20 shrink-0 text-ink-3">{k}</dt><dd className="min-w-0 break-words text-ink">{v}</dd></div>
+              ))}
+            </dl>
           </Panel>
         </div>
       </div>

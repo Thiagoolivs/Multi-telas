@@ -188,7 +188,8 @@ function TvsAoVivo({ data, onIr }) {
                   <div className="truncate text-sm font-semibold text-ink">{d.name || 'Tela sem nome'}</div>
                   <div className="truncate text-xs text-ink-3">{online ? 'Deu sinal ' + (st.seen || 'agora') : st.seen ? 'Último sinal ' + st.seen : 'Ainda não deu sinal'}</div>
                 </div>
-                <Button size="sm" variant="primary" icon={Repeat} onClick={() => onIr && onIr('content', { device: d })}>
+                {/* Secundário (QA de lançamento, 03/11): eram três botões violeta no Início; o principal é "Criar com a IA". */}
+                <Button size="sm" variant="secondary" icon={Repeat} onClick={() => onIr && onIr('content', { device: d })}>
                   {d.hasConfig ? 'Trocar agora' : 'Pôr conteúdo'}
                 </Button>
               </div>

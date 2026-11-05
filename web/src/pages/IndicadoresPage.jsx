@@ -12,6 +12,7 @@ import { confirmar } from '../lib/confirmar.js';
 import { kpis, devices } from '../api.js';
 import { gravarEmLote, avisarComDesfazer, zonasPorPapel } from '../lib/rodar.js';
 import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
+import { usePerfil } from '../lib/perfil.js';
 
 /*
  * INDICADORES (EXECUTOR D36). Os números da empresa na TV — vendas do dia,
@@ -49,11 +50,12 @@ function Copiar({ texto, rotulo }) {
 }
 
 function ExemploPush({ entrada, token }) {
+  const perfil = usePerfil();
   const corpo = '{"indicadores":[{"chave":"vendas-dia","nome":"Vendas do dia","valor":12300,"unidade":"R$","meta":20000}]}';
   const curl = 'curl -X POST ' + entrada + ' -H "Authorization: Bearer ' + (token || 'SEU_TOKEN') + '" -H "Content-Type: application/json" -d \'' + corpo + '\'';
   return (
     <div className="space-y-2 text-xs text-ink-2">
-      <div>O sistema da empresa (o agendamento do Protheus, uma planilha com script, qualquer programa) chama este endereço com os números:</div>
+      <div>O sistema {perfil.lugarDe} ({perfil.id === 'empresa' ? 'o agendamento do Protheus, ' : ''}uma planilha com script, qualquer programa) chama este endereço com os números:</div>
       <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-surface-2 p-2 font-mono text-[11px] text-ink">{curl}</pre>
       <Copiar texto={curl} rotulo="Copiar o exemplo" />
       <div>Também vale um objeto simples: <code>{'{"Vendas do dia": 12300, "Pedidos": 42}'}</code>. Até 50 indicadores, no máximo 4 envios por minuto.</div>
@@ -62,6 +64,8 @@ function ExemploPush({ entrada, token }) {
 }
 
 function EditarConector({ c, segredosProntos, onFechar, onSalvo }) {
+  const perfil = usePerfil();
+  const empresa = perfil.id === 'empresa';
   const pull = c.modo === 'pull';
   const [f, setF] = useState({ nome: c.nome || '', url: c.url || '', authTipo: c.authTipo || 'nenhum', authNome: c.authNome || '', segredo: '', intervaloMin: c.intervaloMin || 15, mapa: Object.assign({ lista: '', chave: '', nome: '', valor: '', unidade: '', meta: '' }, c.mapa || {}) });
   const [salvando, setSalvando] = useState(false);
@@ -84,16 +88,16 @@ function EditarConector({ c, segredosProntos, onFechar, onSalvo }) {
     catch (e) { setTeste({ erro: e.message || 'Não deu certo.' }); }
   });
   return (
-    <Dialog open onClose={onFechar} title={(pull ? 'Buscar de um endereço' : 'Receber do sistema da empresa') + ': ' + (c.nome || '')} className="max-w-2xl"
+    <Dialog open onClose={onFechar} title={(pull ? 'Buscar de um endereço' : 'Receber do sistema ' + perfil.lugarDe) + ': ' + (c.nome || '')} className="max-w-2xl"
       footer={<>
         {pull && <Button variant="secondary" icon={RefreshCw} disabled={salvando || !f.url} onClick={testar}>Salvar e testar agora</Button>}
         <Button variant="primary" icon={Check} disabled={salvando} onClick={() => salvar()}>{salvando ? 'Salvando…' : 'Salvar'}</Button>
       </>}>
       <div className="space-y-3">
-        <Field label="Nome"><Input value={f.nome} onChange={set('nome')} maxLength={60} placeholder="Ex.: Protheus — vendas" /></Field>
+        <Field label="Nome"><Input value={f.nome} onChange={set('nome')} maxLength={60} placeholder={empresa ? 'Ex.: Protheus — vendas' : 'Ex.: Vendas do dia'} /></Field>
         {pull && (
           <>
-            <Field label="Endereço (responde JSON)" hint="https://… — a API REST do Protheus ou de outro sistema, acessível da internet."><Input value={f.url} onChange={set('url')} maxLength={500} placeholder="https://erp.suaempresa.com.br/rest/indicadores" /></Field>
+            <Field label="Endereço (responde JSON)" hint={'https://… — o endereço ' + (empresa ? 'da API REST do Protheus ou de outro sistema' : 'do sistema que vocês usam') + ', acessível da internet.'}><Input value={f.url} onChange={set('url')} maxLength={500} placeholder="https://erp.suaempresa.com.br/rest/indicadores" /></Field>
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Autenticação">
                 <Select value={f.authTipo} onChange={set('authTipo')}>
@@ -172,6 +176,8 @@ function PorNaTv({ indicador, onFechar }) {
 }
 
 export function IndicadoresPage() {
+  // Protheus é de indústria (QA de lançamento, 03/11): na loja e na clínica, "o sistema que vocês já usam".
+  const perfil = usePerfil();
   const { data, reload } = useAsync(kpis.list);
   const [editando, setEditando] = useState(null);
   const [novoToken, setNovoToken] = useState(null);
@@ -182,14 +188,14 @@ export function IndicadoresPage() {
 
   async function criar(modo) {
     try {
-      const r = await kpis.criar({ modo, nome: modo === 'pull' ? 'Buscar do sistema' : 'Sistema da empresa' });
+      const r = await kpis.criar({ modo, nome: modo === 'pull' ? 'Buscar do sistema' : 'Sistema ' + perfil.lugarDe });
       reload();
       if (r.token) setNovoToken({ conector: r.conector, token: r.token });
       else setEditando(r.conector);
     } catch (e) { aviso.erro('kpis', e.message || 'Não deu para criar.'); }
   }
   async function trocarToken(c) {
-    if (!(await confirmar({ titulo: 'Gerar um token novo?', texto: 'O token de agora para de funcionar: o sistema da empresa precisa do novo.', botao: 'Gerar' }))) return;
+    if (!(await confirmar({ titulo: 'Gerar um token novo?', texto: 'O token de agora para de funcionar: o sistema ' + perfil.lugarDe + ' precisa do novo.', botao: 'Gerar' }))) return;
     try { const r = await kpis.token(c.id); setNovoToken({ conector: c, token: r.token }); }
     catch (e) { aviso.erro('kpis', e.message || 'Não deu certo.'); }
   }
@@ -200,7 +206,7 @@ export function IndicadoresPage() {
 
   return (
     <div>
-      <PageHeader title="Indicadores" subtitle="Os números da empresa na TV, sempre atualizados — do Protheus ou de qualquer sistema."
+      <PageHeader title="Indicadores" subtitle={'Os números ' + perfil.lugarDe + ' na TV, sempre atualizados — ' + perfil.textos.sistema + '.'}
         actions={<>
           <Button variant="secondary" icon={Upload} onClick={() => criar('push')}>Receber do sistema</Button>
           <Button variant="secondary" icon={Download} onClick={() => criar('pull')}>Buscar de um endereço</Button>
@@ -209,19 +215,24 @@ export function IndicadoresPage() {
       <Panel className="mb-4">
         <PanelHeader title="Os números" description={indicadores.length ? 'O último valor de cada um. Na TV, o cartão mostra o número, a variação e a meta.' : undefined} />
         {indicadores.length === 0 ? (
-          <EmptyState icon={Gauge} title="Nenhum número ainda" description="Crie um conector acima: o sistema da empresa manda os números, ou o MultiTelas busca num endereço." />
+          <EmptyState icon={Gauge} title="Nenhum número ainda" description={'Ligue um sistema acima: o sistema ' + perfil.lugarDe + ' manda os números, ou o MultiTelas busca num endereço.'} />
         ) : (
           <ul className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
             {indicadores.map((i) => {
               const pct = i.meta ? Math.round(i.valor / i.meta * 100) : null;
+              // "Menor é melhor" (refugo, acidentes; QA de 03/11): bate a meta quem fica ABAIXO dela.
+              const menor = i.sentido === 'menor';
+              const batida = pct != null && (menor ? i.valor <= i.meta : pct >= 100);
               return (
                 <li key={i.id} className="flex flex-col rounded-lg border border-line p-3">
                   <div className="truncate text-xs text-ink-3">{i.nome} · {nomeDo(i.conectorId)}</div>
                   <div className="tnum mt-1 text-2xl font-bold text-ink">{formatar(i.valor, i.unidade)}</div>
                   {pct != null && (
                     <div className="mt-1.5">
-                      <div className="h-1.5 overflow-hidden rounded-full bg-surface-2"><div className={'h-full rounded-full ' + (pct >= 100 ? 'bg-ok' : 'bg-accent')} style={{ width: Math.min(100, pct) + '%' }} /></div>
-                      <div className="mt-1 text-2xs text-ink-2">{pct >= 100 ? 'Meta batida: ' : ''}{pct}% da meta de {formatar(i.meta, i.unidade)}</div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-surface-2"><div className={'h-full rounded-full ' + (batida ? 'bg-ok' : menor ? 'bg-danger' : 'bg-accent')} style={{ width: Math.min(100, pct) + '%' }} /></div>
+                      <div className="mt-1 text-2xs text-ink-2">{menor
+                        ? (batida ? 'Dentro da meta (até ' : 'Acima da meta (até ') + formatar(i.meta, i.unidade) + ')'
+                        : (batida ? 'Meta batida: ' : '') + pct + '% da meta de ' + formatar(i.meta, i.unidade)}</div>
                     </div>
                   )}
                   <div className="mt-2 flex items-center justify-between gap-2 text-2xs text-ink-3">
@@ -236,7 +247,7 @@ export function IndicadoresPage() {
       </Panel>
 
       <Panel>
-        <PanelHeader title="Conectores" description="De onde os números vêm. Receber: o sistema da empresa manda (bom para o Protheus da rede interna). Buscar: o MultiTelas pega num endereço." />
+        <PanelHeader title="Conectores" description={'De onde os números vêm. Receber: o sistema ' + perfil.lugarDe + ' manda' + (perfil.id === 'empresa' ? ' (bom para o Protheus da rede interna)' : '') + '. Buscar: o MultiTelas pega num endereço.'} />
         {conectores.length === 0 ? (
           <p className="p-4 text-sm text-ink-3">Nenhum conector. Use os botões acima.</p>
         ) : (

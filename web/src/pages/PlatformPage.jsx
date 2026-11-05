@@ -18,6 +18,8 @@ import { aviso } from '../lib/avisos.js';
 import { PERFIS, IDS as PERFIL_IDS } from '../lib/perfil.js';
 import { Negocio } from '../components/platform/Negocio.jsx';
 import { Qualidade } from '../components/platform/Qualidade.jsx';
+import { confirmar } from '../lib/confirmar.js';
+import { nomeDoPlano, NOME_DO_PAPEL } from '../lib/nomes.js';
 
 /*
  * O painel de quem opera a plataforma — não de quem usa uma conta.
@@ -76,8 +78,9 @@ export function PlatformPage() {
           pareada há seis meses e desligada desde então continua na tabela,
           mas não está mostrando nada para ninguém.
         */}
-        <Stat label="Telas no ar agora" value={formatNumber(data.telasVivas)} icon={MonitorPlay}
-          hint={`de ${formatNumber(data.telas)} pareadas`} />
+        {/* QA de 03/11: contava também aparelho só com o código, sem conta; agora só TVs pareadas, como a Frota. */}
+        <Stat label="TVs pareadas no ar" value={formatNumber(data.telasVivas)} icon={MonitorPlay}
+          hint={`de ${formatNumber(data.telas)} TVs pareadas`} />
         <Stat label="Contas" value={formatNumber(data.contas)} icon={Building2}
           hint={`${formatNumber(data.contasNovas)} novas em ${data.dias} dias`} />
         <Stat label="Pagantes" value={formatNumber(pagantes)} icon={ShieldCheck}
@@ -204,7 +207,7 @@ function MaioresContas({ contas }) {
               <div className="text-2xs text-ink-3">desde {relativeTime(c.createdAt)}</div>
             </div>
             <span className={'rounded px-1.5 py-0.5 text-2xs ' + (c.plano === 'free' ? 'bg-line text-ink-3' : 'bg-accent/15 text-accent')}>
-              {c.plano}
+              {nomeDoPlano(c.plano)}
             </span>
             <span className="tnum w-20 text-right text-xs text-ink-2">{c.telas} tela(s)</span>
           </div>
@@ -327,7 +330,7 @@ function Contas({ dias }) {
                 conta está de fato usando o produto. */}
             <div className="shrink-0 text-right text-2xs text-ink-3">
               <div className="tnum text-ink-2">{c.vivas}/{c.telas} no ar</div>
-              <div>{c.plano}</div>
+              <div>{nomeDoPlano(c.plano)}</div>
             </div>
             {!!Object.keys(c.excessos || {}).length && (
               <GaugeIcon size={13} className="shrink-0 text-warn" title="esbarrou em algum teto" />
@@ -360,7 +363,8 @@ function FichaDaConta({ id, dias, onFechar }) {
         {data && (
           <div className="space-y-4 p-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Campo rotulo="Plano" valor={data.plano + (data.cortesia ? ' (cortesia)' : '')} />
+              {/* O nome que o cliente vê (Essencial), não o id ('pro', que se confunde com o plano Pro) — QA de 03/11. */}
+              <Campo rotulo="Plano" valor={nomeDoPlano(data.plano) + (data.cortesia ? ' (cortesia)' : '')} />
               <Campo rotulo="Telas no ar" valor={data.telas.filter((t) => Date.now() - t.ultimaVez < 5 * 60 * 1000).length + '/' + data.telas.length} />
               <Campo rotulo="Mídia" valor={formatBytes(data.midiaBytes)} />
               <Campo rotulo="Conexões agora" valor={formatNumber(data.conexoes)} />
@@ -404,7 +408,7 @@ function FichaDaConta({ id, dias, onFechar }) {
                 <div key={u.id} className="flex items-center gap-2 text-xs">
                   <Users size={12} className="text-ink-3" />
                   <span className="truncate text-ink-2">{u.email}</span>
-                  <span className="ml-auto shrink-0 text-2xs text-ink-3">{u.papel}</span>
+                  <span className="ml-auto shrink-0 text-2xs text-ink-3">{NOME_DO_PAPEL[u.papel] || u.papel}</span>
                 </div>
               ))}
             </Secao>
@@ -483,7 +487,18 @@ function AcoesDaConta({ conta, onMudou }) {
             {PERFIL_IDS.map((id) => <option key={id} value={id}>{PERFIS[id].marca}</option>)}
           </select>
           <Button size="sm" variant="secondary" className="ml-auto" disabled={!!busy || !frente || frente === conta.frente}
-            onClick={() => fazer('frente', () => plataforma.frente(conta.id, frente), 'Frente trocada para ' + PERFIS[frente].marca + '.')}>
+            onClick={async () => {
+              /*
+               * Trocar a frente muda, na hora, o menu, as sugestões e a IA do
+               * cliente (QA de lançamento, 03/11: era um clique, sem confirmar).
+               */
+              if (!(await confirmar({
+                titulo: 'Trocar ' + (conta.nome || 'a conta') + ' para ' + PERFIS[frente].marca + '?',
+                texto: 'Na hora, o painel do cliente muda de nome, de menu, de sugestões e de tom da IA. Combine com ele antes. Fica no registro da conta.',
+                botao: 'Trocar a frente',
+              }))) return;
+              fazer('frente', () => plataforma.frente(conta.id, frente), 'Frente trocada para ' + PERFIS[frente].marca + '.');
+            }}>
             Trocar frente
           </Button>
         </div>
@@ -501,7 +516,17 @@ function AcoesDaConta({ conta, onMudou }) {
               </label>
             )}
             <Button size="sm" variant="secondary" className="ml-auto" disabled={!!busy}
-              onClick={() => fazer('contrato', () => plataforma.contrato(conta.id, contrato, desde), 'Contrato salvo; a assinatura acompanha.')}>
+              onClick={async () => {
+                // A mensalidade do cliente muda na hora (QA de 03/11: 20 telas caíram de R$ 2.980 para R$ 2.076 num clique).
+                if (!(await confirmar({
+                  titulo: contrato === 'anual' ? 'Registrar contrato anual?' : 'Voltar para o mensal?',
+                  texto: contrato === 'anual'
+                    ? 'A partir de ' + new Date(desde + 'T12:00:00').toLocaleDateString('pt-BR') + ', a cobrança do cliente passa para o preço do anual, com fidelidade de 12 meses e multa se cancelar antes. A assinatura muda agora.'
+                    : 'A cobrança do cliente volta para o preço do mensal, sem fidelidade. A assinatura muda agora.',
+                  botao: 'Salvar contrato',
+                }))) return;
+                fazer('contrato', () => plataforma.contrato(conta.id, contrato, desde), 'Contrato salvo; a assinatura acompanha.');
+              }}>
               Salvar contrato
             </Button>
           </div>

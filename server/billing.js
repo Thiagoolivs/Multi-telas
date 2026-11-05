@@ -8,7 +8,7 @@
  *     painel testável sem chaves nem rede.
  */
 const crypto = require('crypto');
-const { plan, PLANS, mensalidadeCents, contratoDe } = require('./plans');
+const { plan, mensalidadeCents, contratoDe } = require('./plans');
 const Documento = require('../js/documento.js');
 
 const ASAAS_KEY = process.env.ASAAS_API_KEY || '';
@@ -200,6 +200,8 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
   if (mode() === 'dev') {
     return { url: origin + '/api/billing/dev-checkout?plan=' + encodeURIComponent(planId), simulated: true };
   }
+  // A frente da conta decide o preço por TV (QA de lançamento, 03/11).
+  const frente = o.frente;
 
   // Gravado assim que nasce — ver garantirCliente.
   const customerId = await garantirCliente(tenant, user, o.aoCriarCliente, o.documento);
@@ -216,8 +218,8 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
   const aberta = (jaTem.data || [])[0];
   // Mensal ou anual (PLANO §6.1): o anual tem o preço por faixa.
   const contrato = contratoDe(o.contrato);
-  const valor = mensalidadeCents(planId, Math.max(1, Number(o.telas) || 1), contrato) / 100;
-  const descricao = 'Assinatura do Plano ' + p.name + (contrato === 'anual' ? ' — contrato anual (12 meses)' : '');
+  const valor = mensalidadeCents(planId, Math.max(1, Number(o.telas) || 1), contrato, frente) / 100;
+  const descricao = descricaoDaAssinatura(p, contrato);
 
   /*
    * QUALQUER assinatura ativa é reaproveitada, não só a do mesmo plano.
@@ -251,7 +253,12 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
      * já aplica as faixas de desconto por volume — só não era chamada.
      */
     value: valor,
-    nextDueDate: new Date().toISOString().split('T')[0],
+    /*
+     * Quem cancelou e assina de novo antes do fim do período já pago não paga
+     * o mesmo mês duas vezes (QA de lançamento, 03/11): a primeira cobrança
+     * vence no fim do período, e não hoje.
+     */
+    nextDueDate: vencimentoInicial(o.pagoAte),
     cycle: 'MONTHLY',
     description: descricao,
     externalReference: tenant.id + '|' + planId,
@@ -285,6 +292,16 @@ async function createCheckout(tenant, user, planId, origin, opcoes) {
   return { url: invoiceUrl, id: sub.id, customerId, reaproveitada: !!aberta };
 }
 
+function descricaoDaAssinatura(p, contrato) {
+  return 'Assinatura do Plano ' + p.name + (contratoDe(contrato) === 'anual' ? ' — contrato anual (12 meses)' : '');
+}
+// AAAA-MM-DD do dia da primeira cobrança: hoje, ou o fim do período já pago.
+function vencimentoInicial(pagoAte, agora) {
+  const hoje = agora || Date.now();
+  const fim = Number(pagoAte) || 0;
+  return new Date(fim > hoje ? fim : hoje).toISOString().split('T')[0];
+}
+
 /*
  * O que a tela de gerenciamento precisa saber.
  *
@@ -313,12 +330,20 @@ async function assinatura(tenant) {
    * e não liberou" quase sempre é "gerei o boleto e não paguei". Com o link
    * aqui, a pessoa resolve sozinha em vez de escrever para você.
    */
+  /*
+   * VENCIDA PRIMEIRO (QA de lançamento, 03/11). Só se buscava a PENDING, e a
+   * fatura vencida no Asaas é OVERDUE: justo quem está em atraso — e lê no
+   * painel "a fatura está em Sua assinatura, logo abaixo" — não via o link.
+   * A vencida é a que conta para o atraso; sem ela, a do mês em aberto.
+   */
   let fatura = null;
-  try {
-    const pags = await asaasApi('/payments', { subscription: subId, status: 'PENDING', limit: 1 });
-    const p0 = (pags.data || [])[0];
-    if (p0) fatura = { url: p0.invoiceUrl, valor: p0.value, vence: p0.dueDate };
-  } catch (_) { /* a fatura é conveniência: sem ela a tela ainda serve */ }
+  for (const status of ['OVERDUE', 'PENDING']) {
+    try {
+      const pags = await asaasApi('/payments', { subscription: subId, status, limit: 1 });
+      const p0 = (pags.data || [])[0];
+      if (p0) { fatura = { url: p0.invoiceUrl, valor: p0.value, vence: p0.dueDate, vencida: status === 'OVERDUE' }; break; }
+    } catch (_) { /* a fatura é conveniência: sem ela a tela ainda serve */ }
+  }
 
   return {
     assinatura: {
@@ -360,13 +385,14 @@ async function cancelarAssinatura(tenant) {
  * seguinte acertaria. Não há proração no meio do ciclo — a tela nova entra na
  * próxima fatura, que é o que o cliente entende como "por mês".
  */
-async function atualizarValor(subId, planId, valor) {
+async function atualizarValor(subId, planId, valor, contrato) {
   if (mode() === 'dev') return { simulado: true };
   if (!subId) throw new Error('sem assinatura para atualizar');
   const p = plan(planId);
   return asaasApi('/subscriptions/' + encodeURIComponent(subId), {
     value: valor,
-    description: 'Assinatura do Plano ' + p.name,
+    // O "contrato anual" continua na fatura quando a tela muda (o relatório de regras, R11, viu sumir).
+    description: descricaoDaAssinatura(p, contrato),
     updatePendingPayments: true,
   }, 'POST');
 }
@@ -413,4 +439,4 @@ function planIdFromPrice(priceId) {
   return null; 
 }
 
-module.exports = { mode, emProducao, simulacaoPermitida, createCheckout, cobrarPacote, faturasVencidas, garantirCliente, assinatura, cancelarAssinatura, atualizarValor, verifyWebhook, planIdFromPrice, asaasApi };
+module.exports = { vencimentoInicial, mode, emProducao, simulacaoPermitida, createCheckout, cobrarPacote, faturasVencidas, garantirCliente, assinatura, cancelarAssinatura, atualizarValor, verifyWebhook, planIdFromPrice, asaasApi };

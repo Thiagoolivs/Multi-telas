@@ -29,9 +29,35 @@ perguntar "se for clínica…".
 | Landing | `/empresas` | `/saude` | `/comercio` (e a página principal) |
 | Menu | "Pessoas e indicadores" logo depois da Biblioteca | "Recursos extras" no fim | "Recursos extras" no fim |
 | Começos do Criar | aviso, comunicado, aniversário, indicador, segurança, vaga… | dica, serviços, prevenção, convênios… | promoção, novidade, cardápio, Instagram… |
-| IA | comunicação interna, sem preço nem oferta | acolhedora, sem promessa de cura | ofertas, novidades, redes |
+| IA | comunicação interna, sem preço nem oferta | acolhedora, sem promessa de cura; em clínica, sem preço, parcelamento nem "grátis" (ver abaixo) | ofertas, novidades, redes |
 | Telas prontas | as da frente primeiro | as da frente primeiro | as da frente primeiro |
 | Rede de anúncios | não (a TV é da equipe) | sim | sim |
+
+## O que a peça e a legenda não podem dizer (regra de conteúdo)
+
+Desde o QA de lançamento (03/11), o texto de toda peça, letreiro e legenda
+das redes passa por `js/regras-de-conteudo.js` antes de a campanha ficar
+"pronta" (`server/conferencia.js`), além da regra que a IA já recebe
+(`paraIA` de cada frente).
+
+| Nível | O quê | Frente | O que acontece |
+|---|---|---|---|
+| **Bloqueio** | promessa de cura ou resultado: "cura", "curar", "elimina", "100%", "garantido", "sem efeitos colaterais", "milagre", "acaba com a dor", "antes e depois" | Saúde | a IA é pedida de novo com o motivo; se insistir, a campanha fica **"Trocar texto"** (estado `revisar`), fora da TV, com o motivo e uma sugestão permitida. Nas redes, o canal sai na versão sem IA e o painel diz o que foi tirado |
+| **Bloqueio** | medicamento com promessa de efeito (Anvisa, RDC 96/2008); antibiótico sem receita; cigarro eletrônico (RDC 855/2024) | todas | o mesmo |
+| **Aviso** | "grátis" como chamariz, parcelamento ("6x", "sem juros"), preço e desconto | Saúde, quando é clínica ou consultório (não farmácia) | aparece no resultado e nas redes ("Confira antes de pôr no ar"); não bloqueia |
+| **Aviso** | preço, porcentagem, parcelas, data e horário que não estavam no pedido, no combinado nem na marca; data com o dia da semana errado | todas | aparece no resultado ("Confira: o preço R$ 189,90 não estava no seu pedido") |
+
+**Dentista e médico — por que é aviso e não bloqueio.** O Código de Ética
+Odontológica (CFO) veda anunciar preço, forma de pagamento e serviço
+gratuito como chamariz, e a publicidade médica (Res. CFM 2.336/2023) limita
+promoção e desconto. A redação exata e a interpretação variam (e mudam), e
+uma farmácia anuncia preço normalmente. Por isso a orientação conservadora
+está na regra da IA e o código **avisa**, sem barrar. **A conferir com o
+jurídico** antes de tratar como bloqueio.
+
+As listas são curtas de propósito: "curativo", "Elimine a água parada" e
+"queijo curado" passam (veja `test/regras-de-conteudo.test.js`). Para
+acrescentar um termo, mude a lista e o teste juntos.
 
 ## O que é igual nas três
 

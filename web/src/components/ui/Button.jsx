@@ -24,7 +24,8 @@ export function Button({ variant = 'secondary', size = 'md', className, icon: Ic
     <button
       className={cn(
         'inline-flex items-center justify-center font-medium select-none transition',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
+        // Anel no violeta cheio, ≥ 5:1 nos dois temas (QA de 03/11: a 40% dava 2:1). Ver index.css.
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
         'disabled:opacity-50 disabled:pointer-events-none',
         VARIANTS[variant],
         SIZES[size],
@@ -45,7 +46,7 @@ export function IconButton({ className, icon: Icon, size = 15, label, ...props }
       title={label}
       className={cn(
         'inline-flex h-8 w-8 max-sm:h-11 max-sm:w-11 shrink-0 items-center justify-center rounded-md text-ink-2 transition',
-        'hover:bg-surface-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40',
+        'hover:bg-surface-2 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
         className
       )}
       {...props}

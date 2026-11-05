@@ -290,6 +290,24 @@ function tetoDaConta(tenant, telas) {
   return plans.isPaid(tenant.plan) ? plans.tetoIaCents(telas) + MARGEM_TEXTO_CENTS : TETO_TESTE_CENTS;
 }
 
+/*
+ * PACOTE PAGO NÃO TRAVA NO TETO (QA de lançamento, 03/11 — decisão do dono).
+ *
+ * O teto em reais somava o custo de TODAS as imagens do ciclo, inclusive as
+ * pagas no pacote avulso: com 1 a 3 telas, ~57 imagens além da franquia
+ * travavam toda a IA de texto até o mês virar, com créditos comprados
+ * sobrando (o R14 do relatório de regras). O teto vale para a FRANQUIA; cada
+ * imagem além dela foi paga à parte e soma ao teto o custo dela. O teto
+ * global do dia (tetoGlobalDia) continua valendo para tudo.
+ *
+ * `imagensDoCiclo` é quantas criações a conta fez no ciclo (uso_ia).
+ */
+function folgaDoComprado(tenant, telas, imagensDoCiclo) {
+  const franquia = plans.isPaid(tenant.plan) ? plans.franquiaCreditos(tenant.plan, telas) : plans.CRIACOES_DO_TESTE;
+  const alem = Math.max(0, (Number(imagensDoCiclo) || 0) - franquia);
+  return alem * cred.CUSTO_IMAGEM_CENTAVOS;
+}
+
 const avisados = new Map(); // chave → até quando não avisar de novo
 function alarme(chave, mensagem, contexto, porMs) {
   const agora = Date.now();
@@ -330,8 +348,9 @@ async function podeUsarTexto(db, tenant) {
   }
   const conta = await garantirCiclo(db, tenant);
   const telas = await db.countDevices(tenant.id);
-  const gasto = (await db.resumoUsoIA(tenant.id, conta.cicloEm)).custoCentavos;
-  const teto = tetoDaConta(tenant, Math.max(1, telas));
+  const uso = await db.resumoUsoIA(tenant.id, conta.cicloEm);
+  const gasto = uso.custoCentavos;
+  const teto = tetoDaConta(tenant, Math.max(1, telas)) + folgaDoComprado(tenant, Math.max(1, telas), uso.creditos);
   if (gasto >= teto) {
     alarme('conta:' + tenant.id + ':' + conta.cicloEm, 'IA: conta passou do teto de gasto do ciclo', { tenant: tenant.id, gastoCentavos: gasto, teto }, MES);
     return {
@@ -347,4 +366,4 @@ async function podeUsarTexto(db, tenant) {
   return { ok: true, gasto, teto };
 }
 
-module.exports = { garantirCiclo, renovarCiclo, conferir, reservar, devolver, controleDaReserva, cobrar, registrarMedicao, podeUsarTexto, tetoDaConta, tetoTextoOk, panorama, MES, MARGEM_TEXTO_CENTS, TETO_TESTE_CENTS };
+module.exports = { garantirCiclo, renovarCiclo, conferir, reservar, devolver, controleDaReserva, cobrar, registrarMedicao, podeUsarTexto, tetoDaConta, folgaDoComprado, tetoTextoOk, panorama, MES, MARGEM_TEXTO_CENTS, TETO_TESTE_CENTS };

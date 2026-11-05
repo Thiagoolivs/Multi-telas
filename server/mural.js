@@ -77,7 +77,9 @@ function pagina(mural, opts) {
 <title>${titulo}</title><style>${CSS}</style></head>
 <body><div class="card" id="dados" data-codigo="${esc(mural.codigo)}" data-max-mb="${MAX_MB}">
   <h1>${titulo}</h1>
-  <p class="sub">${empresa ? 'Sua foto aparece na tela d' + (empresa.match(/^[AaEeIiOoUu]/) ? 'a ' : 'e ') + empresa + ' em segundos.' : 'Sua foto aparece na tela em segundos.'}</p>
+  <p class="sub">${mural.aprovar === false
+    ? (empresa ? 'Sua foto aparece na tela d' + (empresa.match(/^[AaEeIiOoUu]/) ? 'a ' : 'e ') + empresa + ' em segundos.' : 'Sua foto aparece na tela em segundos.')
+    : (empresa ? 'Sua foto vai para a tela d' + (empresa.match(/^[AaEeIiOoUu]/) ? 'a ' : 'e ') + empresa + ' assim que a organização aprovar.' : 'Sua foto vai para a tela assim que a organização aprovar.')}</p>
 
   <img id="preview" alt="">
   <label class="foto" id="alvo" for="f">

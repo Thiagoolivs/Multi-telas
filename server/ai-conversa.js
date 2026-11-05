@@ -359,9 +359,18 @@ function aplicarPalavras(e, texto) {
  * IA que esquece o campo e para o modo demonstração. "Pode gerar AS FOTOS" é
  * a escolha das imagens, não a ordem de começar.
  */
+/*
+ * QA de lançamento, 03/11: "Pode gerar a foto" — a resposta que a própria IA
+ * sugere à pergunta das fotos — abria o esboço por cima do "Posso gerar?".
+ * Gerar a foto (singular ou plural, "uma ilustração") é a ESCOLHA DA FOTO,
+ * não a ordem de começar.
+ */
+const ESCOLHA_DA_FOTO = /(((sim|ok|isso),? )?pode )?(gera(r)?|cri[ae]r?|fa[zç]a|fazer) (a |as |uma |umas |)(fotos?|image(m|ns)|ilustra[cç](ao|ões|oes))\b/g;
+const falouDaFoto = (t) => { ESCOLHA_DA_FOTO.lastIndex = 0; return ESCOLHA_DA_FOTO.test(String(t || '').toLowerCase()); };
 function pediuParaGerar(texto) {
-  const t = String(texto || '').toLowerCase().replace(/\s+/g, ' ').trim();
-  if (!t || /gera(r)? (as |umas )?(fotos|imagens)/.test(t)) return false;
+  // Sem a escolha da foto, o que sobra ainda manda começar? ("Pode gerar as fotos e pode começar" manda.)
+  const t = String(texto || '').toLowerCase().replace(/\s+/g, ' ').replace(ESCOLHA_DA_FOTO, ' ').replace(/\s+/g, ' ').trim();
+  if (!t) return false;
   if (/\b(n[aã]o|ainda n[aã]o|espera)\b/.test(t)) return false;
   return /(^|[^a-z])(pode (gerar|criar|come[cç]ar|seguir)|ger[ae] (a[ií]|j[aá]|agora)|manda (ver|bala)|vai l[aá]|bora|pode sim|sim,? pode|ok,? pode|isso,? pode|^gera(r)?!*$|cri[ae] (a[ií]|j[aá]|agora))(?![a-z])/.test(t);
 }
@@ -600,7 +609,9 @@ async function conversar({ mensagens, escopo, decisoes, ctx } = {}) {
   if (!E.temOQueGerar(atual)) escopoNovo = soAZonaDita(escopoNovo, ultimaFala);
   // As cores da campanha saem do cartão (D13), não da conversa: a IA que esquece o campo não as apaga.
   if (!escopoNovo.cores.length && atual.cores.length) escopoNovo.cores = atual.cores.slice();
-  const gerar = E.temOQueGerar(escopoNovo) && (r && r.gerar === true || pediuParaGerar(ultimaFala));
+  // A fala que só escolhe a foto ("Pode gerar a foto") não abre o esboço, nem se a IA marcar "gerar".
+  const soAFoto = falouDaFoto(ultimaFala) && !pediuParaGerar(ultimaFala);
+  const gerar = E.temOQueGerar(escopoNovo) && !soAFoto && (r && r.gerar === true || pediuParaGerar(ultimaFala));
   return {
     tipo,
     resposta,

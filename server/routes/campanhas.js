@@ -30,6 +30,8 @@ const ajuste = require('../ajuste');
 const paleta = require('../paleta.js');
 const P = require('../../js/peca-html.js');
 const qualidade = require('../qualidade');
+const conferencia = require('../conferencia');
+const compositor = require('../compositor');
 
 /*
  * A capa da campanha (item 29): a primeira peça da principal (ou a primeira
@@ -77,6 +79,8 @@ module.exports = function (ctx) {
       const ctxConta = await contextoDaConta(sess.tenant_id);
       // D48: o que a pessoa decidiu na conversa (preço, frase exata, o que não quer) vai ao gerador.
       if (conv && Array.isArray(conv.decisoes)) ctxConta.combinado = conv.decisoes;
+      // QA de lançamento, 03/11: o que a pessoa escreveu é a fonte dos fatos (preço, data, horário) que a peça pode trazer.
+      if (conv && Array.isArray(conv.mensagens)) ctxConta.falas = conv.mensagens.filter((m) => m && m.papel === 'pessoa').map((m) => String(m.texto || '').slice(0, 600)).slice(-40);
       // D45: as imagens da conversa — estilo guia o desenho; a do produto vai como foto da empresa.
       if (conv && (conv.referencias || []).length) ctxConta.marca = refs.naMarca(ctxConta.marca, conv.referencias);
       // O alvo é conferido contra as TVs desta conta, como na conversa.
@@ -94,7 +98,8 @@ module.exports = function (ctx) {
         const resultado = await eco.gerar(escopo, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso, onLerReferencias: estiloDasReferencias });
         progresso('guardando a campanha', '');
         const campanha = await db.criarCampanha(sess.tenant_id, sess.user_id, {
-          nome: resultado.nome, conversaId: conv ? conv.id : '', escopo, resultado, estado: 'pronta', telas: [], capa: capaDe(resultado),
+          // Com texto que a lei barra, a campanha fica "revisar" (server/conferencia.js): o painel diz o quê e não deixa pôr no ar.
+          nome: resultado.nome, conversaId: conv ? conv.id : '', escopo, resultado, estado: conferencia.estadoDepois('pronta', resultado.conferencia), telas: [], capa: capaDe(resultado),
         });
         /*
          * A campanha NÃO vai mais para a biblioteca (item 29): cada geração com o
@@ -150,7 +155,8 @@ module.exports = function (ctx) {
         }
         const ctxConta = await contextoDaConta(sess.tenant_id);
         const feito = await ajuste.aplicar(c, mudancas, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
-        const salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo, capa: capaDe(feito.resultado) });
+        const salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo, capa: capaDe(feito.resultado),
+          estado: conferencia.estadoDepois(c.estado, feito.resultado.conferencia) });
         if (c.conversaId) {
           const conv = await db.lerConversa(sess.tenant_id, c.conversaId);
           if (conv) {
@@ -158,7 +164,7 @@ module.exports = function (ctx) {
             await db.salvarConversa(sess.tenant_id, conv.id, { ...conv, mensagens, escopo: feito.escopo });
           }
         }
-        return { campanha: salva, resposta, mudancas, refeitas: feito.refeitas };
+        return { campanha: salva, resposta: (feito.naoFeito || []).length ? feito.naoFeito.join(' ') : resposta, mudancas, refeitas: feito.refeitas };
       });
     });
   }
@@ -222,9 +228,12 @@ module.exports = function (ctx) {
         let refeitas = 0;
         if (out.acao === 'fazer' && out.mudancas.length) {
           const ctxConta = await contextoDaConta(sess.tenant_id);
-          const feito = await ajuste.aplicar(c, out.mudancas, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
-          salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo, capa: capaDe(feito.resultado) });
+          const feito = await ajuste.aplicar(c, out.mudancas, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso, pedido: texto });
+          salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo, capa: capaDe(feito.resultado),
+            estado: conferencia.estadoDepois(c.estado, feito.resultado.conferencia) });
           refeitas = feito.refeitas;
+          // QA de lançamento, 03/11: o que o pedido queria e a peça não conseguiu mudar é dito, e não "Feito".
+          if ((feito.naoFeito || []).length) out = Object.assign({}, out, { resposta: feito.naoFeito.join(' ') });
         }
         mensagens.push(Object.assign({ papel: 'ia', texto: out.resposta, sugestoes: out.sugestoes || [], em: Date.now() },
           out.acao === 'fazer' && out.mudancas.length ? { feito: out.mudancas.map(ajuste.descreverMudanca) } : {},
@@ -301,7 +310,9 @@ module.exports = function (ctx) {
         r.telas[ti].zonas[zona].mensagens = mensagens;
         const anterior = { ...c.resultado }; delete anterior.anterior;
         r.anterior = { resultado: anterior, escopo: c.escopo };
-        return sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: r, capa: capaDe(r) }) });
+        // A conferência de novo: o que a pessoa escreveu à mão é dela (vale como fonte), e a regra da frente vale igual.
+        r.conferencia = conferencia.reconferir(r, Object.assign({ hoje: new Date() }, conferencia.opcoesDaConta(await contextoDaConta(sess.tenant_id), c.escopo)), mensagens);
+        return sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: r, capa: capaDe(r), estado: conferencia.estadoDepois(c.estado, r.conferencia) }) });
       });
       return true;
     }
@@ -334,7 +345,10 @@ module.exports = function (ctx) {
           label: String((b.item.campos && (b.item.campos.titulo || b.item.campos.chamada)) || antes.label).slice(0, 40) };
         const anterior = { ...c.resultado }; delete anterior.anterior;
         r.anterior = { resultado: anterior, escopo: c.escopo };
-        return sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: r, capa: capaDe(r) }) });
+        // A peça editada à mão foi conferida pela pessoa: os fatos dela passam a valer; a regra da frente, não muda.
+        r.conferencia = conferencia.reconferir(r, Object.assign({ hoje: new Date() }, conferencia.opcoesDaConta(await contextoDaConta(sess.tenant_id), c.escopo)),
+          Object.values(compositor.textosDaPeca(lista[i].item)));
+        return sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: r, capa: capaDe(r), estado: conferencia.estadoDepois(c.estado, r.conferencia) }) });
       });
       return true;
     }
@@ -428,6 +442,13 @@ module.exports = function (ctx) {
         }
         const estado = ['pronta', 'no_ar', 'pausada'].includes(b && b.estado) ? b.estado : null;
         if (!estado) return sendJson(res, 400, { error: 'estado inválido' });
+        /*
+         * QA de lançamento, 03/11: campanha com texto que a lei barra não vai
+         * para a TV (nem volta a "pronta" à mão). O painel já esconde o botão;
+         * aqui é a garantia.
+         */
+        const barrada = conferencia.porQueNaoRoda(c.resultado && c.resultado.conferencia);
+        if (barrada && estado !== 'pausada') return sendJson(res, 409, { error: barrada, code: 'conteudo-barrado' });
         const daConta = new Set(((await db.listDevices(sess.tenant_id)) || []).map((d) => d.id));
         const telas = (Array.isArray(b.telas) ? b.telas : c.telas).filter((t) => daConta.has(t)).slice(0, 50);
         const salva = await db.salvarCampanha(sess.tenant_id, id, { ...c, estado, telas });

@@ -6,6 +6,7 @@ import { StatusDot } from '../components/ui/Badge.jsx';
 import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
 import { PedirIA } from '../components/tela/PedirIA.jsx';
+import { UltimosEnvios } from '../components/tela/UltimosEnvios.jsx';
 import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { campanhasDaConfig, pecasDaFaixa } from '../lib/tela.js';
@@ -124,6 +125,8 @@ export function ProgramacaoPage({ onIr }) {
           })}
         </div>
       )}
+      {/* O Desfazer de depois que o aviso de 9 s some (QA de lançamento, 03/11). */}
+      {telas && telas.length > 0 && <UltimosEnvios onDesfeito={() => setTentativa((n) => n + 1)} />}
     </div>
   );
 }

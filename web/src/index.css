@@ -21,6 +21,18 @@
  * pessoa toca, e um escuro quase preto e neutro, com os cartões pouco acima
  * do fundo. Contraste conferido: texto de apoio (ink-3) ≥ 4,5:1 no cartão
  * nos dois modos; o violeta de ação ≥ 4,5:1 com o texto do botão.
+ *
+ * QA de lançamento, 03/11 (axe em 7 páginas): o "≥ 4,5:1" valia só sobre
+ * `surface`. Sobre `surface-2` (abas inativas, caixas de apoio) o ink-3 dava
+ * 4,43:1 e sobre `accent-soft` (cartões em destaque) 4,11:1 no claro e
+ * 4,49:1 no escuro. O ink-3 escureceu (claro) e clareou (escuro) o bastante
+ * para passar em TODOS os fundos do painel, conferido em
+ * test/painel-acessivel.test.js, que lê estes números daqui:
+ *   claro  #616875: canvas 5,22 · surface 5,61 · surface-2 5,13 · accent-soft 4,77
+ *   escuro #828C9C: canvas 5,86 · surface 5,44 · surface-2 5,09 · accent-soft 4,99
+ * O anel de foco passou a ser o violeta cheio (era violeta a 40%, 2,0:1 no
+ * claro e 1,9:1 no escuro): ≥ 5:1 contra canvas, surface, surface-2 e
+ * accent-soft nos dois temas — o mínimo do WCAG 2.4.11/1.4.11 é 3:1.
  */
 /* Outfit, a letra da marca (docs/MARCA.md), do próprio domínio. */
 @font-face { font-family: 'Outfit'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/marca/outfit-400-normal-latin.woff2') format('woff2'); }
@@ -39,11 +51,11 @@
   --c-line-strong: 211 217 226; /* #D3D9E2 */
   --c-ink: 14 11 31;            /* #0E0B1F tinta da marca (docs/MARCA.md) */
   --c-ink-2: 75 85 99;          /* #4B5563 */
-  --c-ink-3: 107 114 128;       /* #6B7280 */
+  --c-ink-3: 97 104 117;        /* #616875 (era #6B7280: 4,43:1 no surface-2, QA de 03/11) */
   --c-accent: 91 46 255;        /* #5B2EFF violeta da marca (10/2026): 6,4:1 com o branco */
   --c-accent-fg: 255 255 255;
   --c-accent-soft: 238 234 255; /* #EEEAFF */
-  --c-ok: 21 128 61;            /* #15803D */
+  --c-ok: 21 122 58;            /* #157A3A (era #15803D: 4,49:1 no ok-soft, reteste de 03/11) */
   --c-ok-soft: 231 246 236;     /* #E7F6EC */
   --c-warn: 180 83 9;           /* #B45309 */
   --c-warn-soft: 254 243 218;   /* #FEF3DA */
@@ -59,7 +71,7 @@
   --c-line-strong: 42 49 60;    /* #2A313C */
   --c-ink: 232 236 242;         /* #E8ECF2 */
   --c-ink-2: 163 173 188;       /* #A3ADBC */
-  --c-ink-3: 122 132 148;       /* #7A8494 */
+  --c-ink-3: 130 140 156;       /* #828C9C (era #7A8494: 4,49:1 no accent-soft, QA de 03/11) */
   --c-accent: 146 119 255;      /* #9277FF violeta da marca, clareado para o escuro */
   --c-accent-fg: 7 9 13;        /* texto escuro no violeta: 6,0:1 */
   --c-accent-soft: 28 22 64;    /* #1C1640 */
@@ -124,6 +136,14 @@
 @layer base {
   * { border-color: rgb(var(--c-line)); }
   html { -webkit-text-size-adjust: 100%; }
+  /*
+   * Um anel de foco só, forte, para tudo que recebe Tab (QA de lançamento,
+   * 03/11): os botões sem o componente Button usavam o contorno preto do
+   * Chromium e os com Button um lilás a 40% (2:1) — dois estilos, e um
+   * quase invisível. Quem desenha o próprio anel (ring) tira este com
+   * outline-none, e o dele também é o violeta cheio.
+   */
+  :focus-visible { outline: 2px solid rgb(var(--c-accent)); outline-offset: 2px; }
   body {
     @apply bg-canvas text-ink font-sans antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';

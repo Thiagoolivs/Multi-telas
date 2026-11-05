@@ -111,8 +111,15 @@ test('a resposta embrulhada em cerca de código é desembrulhada', () => {
   assert.equal(C.limparResposta('  <style></style>  '), '<style></style>');
 });
 
+/*
+ * QA de lançamento, 03/11: a porta passou a ler a letra mínima no CSS, por
+ * papel. A peça de destaque (BOA) respondida para o CABEÇALHO tem letra de
+ * 12px na faixa de 130px — e é recusada, como deve. Cada zona agora responde
+ * com uma peça-ouro do papel dela; o que o teste garante (o encadeamento do
+ * que já foi dito) é o mesmo.
+ */
 test('tela completa: cada zona sabe o que as anteriores disseram', () =>
-  comEnv({ ANTHROPIC_API_KEY: 'k' }, () => comFetch([BOA], async (pedidos) => {
+  comEnv({ ANTHROPIC_API_KEY: 'k' }, () => comFetch([ler('pecas-ouro', 'cabecalho-classico.html'), BOA, BOA, ler('pecas-ouro', 'rodape-selo.html')], async (pedidos) => {
     const r = await C.comporTela({ motor: 'claude-sonnet', pedido: 'óculos', empresa: 'Ótica Central' });
     assert.deepEqual(Object.keys(r), ['cabecalho', 'destaque', 'lateral', 'rodape']);
     const usuario = (i) => pedidos[i].corpo.messages[0].content.at(-1).text;

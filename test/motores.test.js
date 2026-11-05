@@ -201,7 +201,9 @@ test('cobrar grava os tokens medidos e troca a estimativa do texto pelo custo me
       // Sem chamada medida, a estimativa do catálogo continua valendo: nunca zero,
       // senão o que escapasse da medição escaparia do teto (D0.4, revisão).
       const sem = await usoIA.cobrar(db, { id: 't1' }, { tipo: 'gerar-composicao', userId: 'u1' });
-      assert.equal(sem.custoCentavos, 5);
+      // QA de lançamento, 03/11: a estimativa da composição subiu de 5 para o tamanho real do prompt (9).
+      assert.equal(sem.custoCentavos, require('../server/creditos.js').CUSTO_PECA_CENTAVOS);
+      assert.ok(sem.custoCentavos > 0);
       assert.equal(gravados[1].tokens, null);
     }))));
 

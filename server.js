@@ -82,6 +82,7 @@ const memory = require('./server/ai-memoria');
 const muralLib = require('./server/mural');
 const qrcode = require('./server/qr');
 const paletaInicial = require('./server/paleta');
+const conferencia = require('./server/conferencia');
 const redesRotas = require('./server/routes/redes');
 
 const { semCopiasDeCampanha } = require('./server/copias-de-campanha.js');
@@ -147,6 +148,11 @@ function hostConfiavel(host) {
     .map((x) => String(x || '').trim().toLowerCase()).filter(Boolean);
   return extras.includes(h);
 }
+// O Origin de um pedido do navegador é nosso? Os hosts confiáveis e o de APP_URL (a checagem de CSRF, server/security.js).
+function hostDaCasa(host) {
+  if (hostConfiavel(host)) return true;
+  try { return !!process.env.APP_URL && new URL(process.env.APP_URL).host.toLowerCase() === String(host || '').toLowerCase(); } catch (e) { return false; }
+}
 function baseUrl(req) {
   const fixed = (process.env.APP_URL || '').replace(/\/$/, '');
   if (fixed) return fixed;
@@ -163,6 +169,10 @@ function canManageTeam(role) { return role === 'owner' || role === 'admin'; }
 // Uma linha da planilha de pessoas vira pessoa (ou null): a regra é a de js/pessoas.js (D30),
 // a mesma que o painel usa para mostrar o que a importação vai fazer.
 function normBirthday(r) { return pessoas.normalizar(r); }
+// O que a lei barra não entra na biblioteca (server/conferencia.js): 422 com o porquê.
+function conteudoBarrado(res, regra) {
+  return sendJson(res, 422, { error: conferencia.porQueNaoRoda(regra, 'Não deu para guardar'), code: 'conteudo-barrado', bloqueios: regra.bloqueios });
+}
 function sendJson(res, status, obj, extraHeaders) {
   res.writeHead(status, Object.assign({ 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }, extraHeaders || {}));
   res.end(JSON.stringify(obj));
@@ -278,17 +288,75 @@ function sincronizarCobranca(tenantId) {
  * minutos de memória bastam: quem acabou de assinar vê o selo sumir no
  * próximo pulso depois disso, e o selo não é cobrança, é lembrete.
  */
+/*
+ * E, no mesmo cache, QUAIS TVs seguem no ar (QA de lançamento, 03/11 —
+ * decisão do dono): no grátis ou com a fatura suspensa, só a TV mais antiga
+ * da conta (plans.telasNoAr); as outras recebem "pausada" no pulso. `noAr`
+ * null = todas no ar. A mais antiga é estável: não muda de um pulso para o
+ * outro, e é a que o cliente ligou primeiro.
+ */
 const seloCache = new Map();
-async function seloDaConta(tenantId) {
-  if (!tenantId) return '';
+async function estadoDaConta(tenantId) {
+  if (!tenantId) return { selo: '', noAr: null };
   const c = seloCache.get(tenantId);
-  if (c && Date.now() - c.em < 5 * 60 * 1000) return c.selo;
-  let selo = '';
-  try { selo = plans.textoDoSelo(await db.getTenant(tenantId)); }
-  catch (e) { selo = c ? c.selo : ''; }
-  seloCache.set(tenantId, { selo, em: Date.now() });
+  if (c && Date.now() - c.em < 5 * 60 * 1000) return c;
+  let estado = { selo: '', noAr: null };
+  try {
+    const tenant = await db.getTenant(tenantId);
+    const limite = plans.telasNoAr(tenant);
+    let noAr = null;
+    if (limite != null) {
+      // listDevices vem da mais nova para a mais antiga.
+      const lista = await db.listDevices(tenantId);
+      if (lista.length > limite) noAr = lista.slice(-limite).map((d) => d.id);
+    }
+    estado = { selo: plans.textoDoSelo(tenant), noAr };
+  } catch (e) { estado = c ? { selo: c.selo, noAr: c.noAr } : estado; }
+  const guardado = { ...estado, em: Date.now() };
+  seloCache.set(tenantId, guardado);
   if (seloCache.size > 5000) seloCache.delete(seloCache.keys().next().value);
-  return selo;
+  return guardado;
+}
+async function seloDaConta(tenantId) { return (await estadoDaConta(tenantId)).selo; }
+// O texto da pausa para esta TV, ou '' se ela segue no ar.
+async function pausaDaTela(tenantId, deviceId) {
+  const e = await estadoDaConta(tenantId);
+  return e.noAr && !e.noAr.includes(deviceId) ? plans.PAUSA.texto : '';
+}
+// Para o painel: quantas TVs estão pausadas e qual segue no ar (null = nenhuma pausada).
+async function pausaDaConta(tenantId) {
+  const e = await estadoDaConta(tenantId);
+  if (!e.noAr) return null;
+  const lista = await db.listDevices(tenantId).catch(() => []);
+  const noAr = lista.filter((d) => e.noAr.includes(d.id)).map((d) => d.name || 'TV');
+  return { noAr, pausadas: Math.max(0, lista.length - noAr.length), texto: plans.PAUSA.texto };
+}
+// O plano mudou (pagou, cancelou, rebaixou): a TV sabe no pulso seguinte.
+function esquecerSelo(tenantId) { seloCache.delete(tenantId); }
+/*
+ * O SELO SAI NA HORA (QA de lançamento, 03/11): o e-mail e o painel dizem
+ * que o selo some ao assinar, e ele levava até 5 minutos (o cache acima) mais
+ * o pulso. Toda mudança de cobrança da conta passa por db.setTenantBilling —
+ * o webhook do Asaas, o simulado, a cortesia, o operador estendendo o teste —,
+ * então é ali que o cache cai e as TVs abertas recebem o selo novo pelo
+ * tempo real. Embrulhado aqui, e não em cada chamador, para nenhum caminho
+ * novo de cobrança esquecer.
+ */
+async function seloPodeTerMudado(tenantId) {
+  if (!tenantId) return;
+  const antes = seloCache.get(tenantId);
+  seloCache.delete(tenantId);
+  const agora = await seloDaConta(tenantId);
+  if (antes && antes.selo === agora) return;
+  await avisarTelas(tenantId, 'selo', { texto: agora });
+}
+{
+  const gravarCobranca = db.setTenantBilling;
+  db.setTenantBilling = async function (tenantId) {
+    const r = await gravarCobranca.apply(this, arguments);
+    seloPodeTerMudado(tenantId).catch((e) => erros.registrar(e, { onde: 'selo depois da cobrança', tenant: tenantId }));
+    return r;
+  };
 }
 /*
  * Comandos à espera de a TV buscar no pulso. Em memória, como o SSE: um
@@ -520,6 +588,8 @@ function montarCtx() {
     // Cobrança e telas (server/routes/billing.js e telas.js).
     cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual,
     sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela,
+    // TV pausada no grátis e o cache do selo (QA de lançamento, 03/11).
+    pausaDaTela, pausaDaConta, esquecerSelo,
     // Convite de equipe (server/routes/team.js). Ficou para trás na extração da
     // rota: convidar alguém respondia "erro interno" com ReferenceError.
     inviteCode,
@@ -589,6 +659,18 @@ async function handleApi(req, res, pathname, query) {
         error: 'muitas requisições desta conta em pouco tempo. Espere um instante e tente de novo.',
       }, { 'Retry-After': String(v.retryAfter) });
     }
+  }
+
+  /*
+   * CSRF, segunda trava (QA de lançamento, 03/11): pedido que muda estado com
+   * a sessão do cookie, vindo de OUTRO site, é recusado aqui em cima — além do
+   * SameSite=Lax. Vale para quem tem sessão e para o login/cadastro (entrar a
+   * vítima na conta do atacante). Fica de fora a TV, que se identifica pelo
+   * token e não pelo cookie, e quem não manda Origin (curl, ERP, webhook).
+   * Regra em server/security.js (origemDeFora).
+   */
+  if ((sess || parts[1] === 'auth') && !req.headers['x-device-token'] && security.origemDeFora(req, hostDaCasa)) {
+    return sendJson(res, 403, { error: 'Pedido recusado: ele veio de outro site. Abra o MultiTelas pelo endereço de sempre e tente de novo.', code: 'origem' });
   }
 
   /*
@@ -766,6 +848,14 @@ async function handleApi(req, res, pathname, query) {
       return readBody(req, res, async (b) => {
         const pieces = (b && b.pieces) || [];
         if (!Array.isArray(pieces) || !pieces.length) return sendJson(res, 400, { error: 'sem peças para salvar' });
+        /*
+         * O que a lei barra não entra na biblioteca (reteste de 03/11): é por
+         * aqui que a Criação rápida e Meus Designs guardam antes de pôr na TV.
+         * Só os bloqueios (promessa de cura em Saúde, remédio com promessa);
+         * preço e data ficam com quem escreveu.
+         */
+        const regra = await conferencia.conferirDaConta(db, sess.tenant_id, pieces.slice(0, 30), null, { nome: (b && b.campaign) || '' });
+        if (regra.bloqueios.length) return conteudoBarrado(res, regra);
         const n = await db.addLibrary(sess.tenant_id, (b && b.campaign) || 'Campanha', pieces.slice(0, 30));
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'peca.salvar');
         return sendJson(res, 201, { ok: true, saved: n });
@@ -806,6 +896,9 @@ async function handleApi(req, res, pathname, query) {
     if (parts[2]) {
       if (req.method === 'PUT') {
         return readBody(req, res, async (b) => {
+          // A edição à mão passa pela mesma régua de quando a peça foi guardada.
+          const regra = await conferencia.conferirDaConta(db, sess.tenant_id, [{ item: (b && b.item) || {} }], null, {});
+          if (regra.bloqueios.length) return conteudoBarrado(res, regra);
           const changed = await db.updateLibraryItem(parts[2], sess.tenant_id, (b && b.item) || {}, (b && b.label) || '');
           if (!changed) return sendJson(res, 404, { error: 'peça não encontrada' });
           return sendJson(res, 200, { ok: true });
@@ -993,15 +1086,25 @@ async function handleApi(req, res, pathname, query) {
       const salvo = await midia.guardarStream(db, mural.tenantId, req,
         { mime, max: muralLib.MAX_MB * 1024 * 1024 },
         { nome: 'Mural ' + mural.codigo, origem: 'mural' });
+      /*
+       * APROVAR ANTES DE IR PARA A TV (QA de lançamento, 03/11). Qualquer um
+       * com o QR mandava foto e recado, e iam ao ar na hora — numa TV de
+       * fábrica ou de loja, a ofensiva ficava na parede até alguém ver. Agora,
+       * com o mural pedindo aprovação (o padrão), a foto entra pendente e
+       * oculta, e só aparece quando alguém da conta toca em "Aprovar" no
+       * painel. Quem quer o tempo real de um evento desliga a aprovação.
+       */
+      const pendente = mural.aprovar !== false;
       const foto = await db.addFotoMural(mural.id, mural.tenantId, {
         url: salvo.url, chave: salvo.key,
         autor: String(query.autor || '').slice(0, 40),
         mensagem: String(query.mensagem || '').slice(0, 120),
         ip: clientIp(req),
+        pendente,
       });
-      // Avisa as TVs na hora: é o "tempo real" que o usuário pediu.
-      await avisarTelas(mural.tenantId, 'mural', { mural: mural.codigo });
-      return sendJson(res, 201, { ok: true, id: foto.id });
+      // Sem aprovação, avisa as TVs na hora: é o "tempo real" que o usuário pediu.
+      if (!pendente) await avisarTelas(mural.tenantId, 'mural', { mural: mural.codigo });
+      return sendJson(res, 201, { ok: true, id: foto.id, pendente });
     } catch (e) {
       if (e.status === 413) return sendJson(res, 413, { error: 'essa foto passa de ' + muralLib.MAX_MB + ' MB — tente outra' });
       if (e.status === 415) return sendJson(res, 415, { error: 'esse tipo de arquivo não abre na TV' });
@@ -1078,8 +1181,10 @@ async function handleApi(req, res, pathname, query) {
       }
       if (req.method === 'PUT') {
         return readBody(req, res, async (b) => {
-          await db.atualizarMural(m.id, sess.tenant_id, String((b && b.titulo) || m.titulo).slice(0, 60), !!(b && b.aceitando));
-          return sendJson(res, 200, { ok: true });
+          // `aprovar` (foto do público espera aprovação) só muda quando vem no corpo.
+          const aprovar = b && typeof b.aprovar === 'boolean' ? b.aprovar : undefined;
+          await db.atualizarMural(m.id, sess.tenant_id, String((b && b.titulo) || m.titulo).slice(0, 60), !!(b && b.aceitando), aprovar);
+          return sendJson(res, 200, { ok: true, aprovar: aprovar === undefined ? m.aprovar : aprovar });
         });
       }
       /*
@@ -1168,6 +1273,23 @@ async function handleApi(req, res, pathname, query) {
         const confirmacao = String((b && b.confirmacao) || '').trim().toLowerCase();
         if (confirmacao !== String(sess.email || '').toLowerCase()) {
           return sendJson(res, 400, { error: 'digite seu e-mail para confirmar' });
+        }
+        /*
+         * A ASSINATURA SAI ANTES DA CONTA (QA de lançamento, 03/11). Excluir
+         * apagava a conta e deixava a assinatura viva no Asaas: o cliente que se
+         * excluía seguia sendo cobrado todo mês, e o id da assinatura sumia com
+         * a conta. Se o Asaas não cancelar agora, nada é apagado: a pessoa tenta
+         * de novo, em vez de ficar sem conta e com cobrança.
+         */
+        const conta = await db.getTenant(sess.tenant_id);
+        if (conta && conta.stripe_subscription_id) {
+          try {
+            await billing.cancelarAssinatura(conta);
+            log.info('conta.excluir-cancelou-assinatura', { tenant: sess.tenant_id, contrato: plans.contratoDe(conta.plan_contrato) });
+          } catch (e) {
+            log.aviso('conta.excluir-assinatura-falhou', { tenant: sess.tenant_id, erro: String(e.message || '').slice(0, 200) });
+            return sendJson(res, 502, { error: 'Não conseguimos cancelar a sua assinatura no Asaas agora, então nada foi apagado. Tente de novo em instantes ou fale com a gente pelo Suporte.' });
+          }
         }
         const chaves = await db.apagarTenant(sess.tenant_id);
         // Os arquivos saem depois do banco: se o storage falhar, a conta já foi
@@ -2003,7 +2125,20 @@ const negocioCache = new Map();
            * imagem não coube jogaria fora as quatro já pagas.
            */
           onImagem: fotoDaConta(sess, b),
-        }).then((out) => ({ mode: ai.mode(), ...out })), { tipo: 'campanha', pedido: { brief: String(brief).slice(0, 200) }, userId: sess.user_id });
+        }).then(async (out) => {
+          /*
+           * A régua de conteúdo (reteste de 03/11): a mesma da campanha do
+           * Criar. Bloqueio volta no resultado e a biblioteca recusa salvar
+           * (POST /api/library); preço ou data que ninguém disse vira aviso.
+           */
+          if (out && Array.isArray(out.pecas) && out.pecas.length) {
+            out.conferencia = await conferencia.conferirDaConta(db, sess.tenant_id, out.pecas, out.social, {
+              ditos: [brief, b && b.oferta, b && b.empresa, b && b.publico, b && b.segmento, b && b.briefingPronto ? JSON.stringify(b.briefingPronto) : ''],
+              marca, memoria: lembrada, empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '', objetivo: String(brief),
+            });
+          }
+          return { mode: ai.mode(), ...out };
+        }), { tipo: 'campanha', pedido: { brief: String(brief).slice(0, 200) }, userId: sess.user_id });
         return sendJson(res, 202, jobs.publico(job));
       } catch (e) { return sendJson(res, e.status || 502, { error: e.message }); }
     });
@@ -2378,11 +2513,22 @@ const negocioCache = new Map();
    * Não exige login: é informação de vitrine, e ela já está impressa na
    * página de preços de qualquer produto.
    */
+  /*
+   * QA de lançamento, 03/11 (decisão do dono): o preço é POR FRENTE, e cada
+   * landing vê só o da sua. `?frente=empresa|saude|comercio` (ou o endereço:
+   * empresas) devolve o catálogo daquela frente, no mesmo formato. Sem
+   * frente, o de Comércio, e `apartirDeCents` (o menor preço por TV) para a
+   * landing geral dizer "a partir de" sem pôr as três tabelas lado a lado.
+   */
   if (parts[1] === 'planos' && req.method === 'GET') {
+    const pediuFrente = String((query && query.frente) || '').trim();
+    const frente = plans.frenteDe(pediuFrente);
     return sendJson(res, 200, {
-      planos: plans.catalog(),
+      frente,
+      ...(pediuFrente ? {} : { apartirDeCents: plans.apartirDeCents() }),
+      planos: plans.catalog(frente),
       // O anual por faixa (PLANO §6.1) e as criações: do teste e do plano, por conta.
-      faixasAnual: plans.faixasAnual(),
+      faixasAnual: plans.faixasAnual(frente),
       criacoesDoTeste: plans.CRIACOES_DO_TESTE,
       criacoesDoPlano: { ate3Telas: plans.franquiaCreditos('pro', plans.TETO_IA.ateTelas), maximo: plans.franquiaCreditos('pro', 1000) },
       // A landing anuncia o prazo do teste; ele sai daqui para não virar um
@@ -2412,13 +2558,13 @@ const negocioCache = new Map();
         const telas = i + 1;
         const linha = { telas };
         for (const contrato of plans.CONTRATOS) {
-          const porTela = plans.precoTelaCents('pro', telas, contrato);
+          const porTela = plans.precoTelaCents('pro', telas, contrato, frente);
           linha[contrato] = {
-            totalCents: plans.mensalidadeCents('pro', telas, contrato),
+            totalCents: plans.mensalidadeCents('pro', telas, contrato, frente),
             porTelaCents: porTela,
             // O desconto que a pessoa de fato sente: quanto a média por tela
             // caiu em relação ao mensal.
-            desconto: 1 - porTela / plans.PLANS.pro.precoTelaCents,
+            desconto: 1 - porTela / plans.precoMensalCents('pro', frente),
             // Da 26ª tela em diante o anual é negociado: a vitrine diz isso.
             negociado: contrato === 'anual' && telas >= plans.TELAS_NEGOCIADAS,
           };
@@ -2665,7 +2811,14 @@ function serveAppIndex(req, res) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       return res.end('Painel não compilado. Rode: cd web && npm install && npm run build');
     }
-    sendFile(res, 'index.html', Buffer.from(comGoogleTag(req, res, data)));
+    /*
+     * QA de lançamento, 03/11: o painel carregava a Google tag com o
+     * consentimento já concedido e sem aviso nenhum. A medição da campanha
+     * fica só na landing, que tem o aviso e começa recusada (landing/ga-init.js).
+     * O "sign_up" do painel (web/src/lib/analytics.js) vira nada sem `gtag`;
+     * a conversão que sobra é o "begin_checkout" do botão de teste na landing.
+     */
+    sendFile(res, 'index.html', data);
   });
 }
 
@@ -2755,6 +2908,7 @@ function hostDoPedido(req) {
 /*
  * Google tag (GA4) para medir a campanha do Google Ads.
  *
+ * Só na landing (não no painel desde o QA de 03/11: lá não havia aviso).
  * Só em produção: NODE_ENV=production ou o ambiente "production" do Railway
  * (este projeto não define NODE_ENV lá; ver server/billing.js). E nunca no
  * domínio da TV: o player roda 24h numa parede, e cada página vista ali seria
@@ -2812,7 +2966,8 @@ async function handleStatic(req, res, urlPath) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
         return res.end(HOME_HTML);
       }
-      const pagina = frenteDaLanding ? (landingFrentes.montar(data, frenteDaLanding) || data) : data;
+      // A principal sem a tabela de preço de uma frente; a frente com o preço dela (QA de 03/11).
+      const pagina = frenteDaLanding ? (landingFrentes.montar(data, frenteDaLanding) || landingFrentes.raiz(data)) : landingFrentes.raiz(data);
       // A tag entra antes do writeHead: ela ajusta a CSP desta resposta.
       const html = comGoogleTag(req, res, pagina, '<script src="/analytics.js" defer></script>\n');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' });
@@ -3044,6 +3199,8 @@ const ROBOTS_TXT = [
   'Allow: /vendor/',
   'Allow: /icons/',
   'Allow: /api/planos',
+  'Allow: /termos',
+  'Allow: /privacidade',
   'Disallow: /app',
   'Disallow: /api/',
   'Disallow: /media/',
@@ -3069,12 +3226,15 @@ const SITEMAP_XML = '<?xml version="1.0" encoding="UTF-8"?>\n'
   + '  <url><loc>' + SITE_PUBLICO + '/</loc><lastmod>' + PUBLICADO_EM + '</lastmod></url>\n'
   // As landings das frentes (docs/FRENTES.md).
   + landingFrentes.SLUGS.map((f) => '  <url><loc>' + SITE_PUBLICO + '/' + f + '</loc><lastmod>' + PUBLICADO_EM + '</lastmod></url>\n').join('')
+  + ['termos', 'privacidade'].map((f) => '  <url><loc>' + SITE_PUBLICO + '/' + f + '</loc><lastmod>' + PUBLICADO_EM + '</lastmod></url>\n').join('')
   + '</urlset>\n';
 
 function indexavel(req, pathname) {
   if (hostDoPedido(req).startsWith('tv.')) return false;
   return pathname === '/' || pathname === '/index.html'
     || landingFrentes.SLUGS.some((f) => pathname === '/' + f || pathname === '/' + f + '/')
+    // As páginas legais também (QA de 03/11): quem procura a empresa acha os termos.
+    || pathname === '/termos' || pathname === '/privacidade'
     || pathname === '/robots.txt' || pathname === '/sitemap.xml'
     || pathname.startsWith('/vendor/') || pathname.startsWith('/icons/');
 }

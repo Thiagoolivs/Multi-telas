@@ -18,6 +18,34 @@
  */
 
 const { CUSTO_IMAGEM_CENTAVOS } = require('./creditos');
+const Perfil = require('../js/perfil.js');
+
+/*
+ * PREÇO POR FRENTE (QA de lançamento, 03/11 — decisão do dono).
+ *
+ * R$ 149 por tela era o topo do mercado PME no Brasil e o mesmo número para
+ * a padaria de uma TV e para a indústria com o RH comprando por proposta
+ * (docs/qa/regras-de-negocio-e-mercado.md, §1.3 e §2). Agora cada frente
+ * tem o seu preço por TV no Essencial: Comércio R$ 79, Saúde R$ 139,
+ * Empresas R$ 159. Sem mínimo por conta.
+ *
+ * A frente é a da CONTA (tenants.perfil, ou deduzida como em
+ * server/paleta.js perfilDaConta). Sem frente — a landing geral, um teste
+ * antigo — vale a de Comércio, que é também a mais barata.
+ *
+ * Cada conta vê só o preço da sua frente: o catálogo é montado por frente
+ * (catalog(frente)) e nunca traz as três lado a lado.
+ */
+const PRECO_DA_FRENTE_CENTS = { comercio: 7900, saude: 13900, empresa: 15900 };
+const FRENTE_PADRAO = 'comercio';
+const FRENTES = Object.keys(PRECO_DA_FRENTE_CENTS);
+// O id ('empresa') ou o endereço da landing ('empresas'); o resto vira Comércio.
+function frenteDe(f) {
+  const v = String(f || '').trim().toLowerCase();
+  if (Perfil.tem(v)) return v;
+  const doSlug = Perfil.doSlug(v);
+  return doSlug ? doSlug.id : FRENTE_PADRAO;
+}
 
 const PLANS = {
   free: {
@@ -39,8 +67,13 @@ const PLANS = {
      * 'pro' = Essencial (id histórico, não renomear: Asaas e cortesias).
      */
     id: 'pro', name: 'Essencial',
-    // O preço do MENSAL, sem contrato. O anual sai de FAIXAS_ANUAL.
-    precoTelaCents: 14900, telasMax: 49,
+    /*
+     * O preço do MENSAL, sem contrato, da frente PADRÃO (Comércio). Cada
+     * frente tem o seu (PRECO_DA_FRENTE_CENTS): quem precisa do preço de uma
+     * conta pede planoDaFrente/mensalidadeCents com a frente. O anual sai das
+     * faixas, na mesma proporção.
+     */
+    precoTelaCents: PRECO_DA_FRENTE_CENTS[FRENTE_PADRAO], telasMax: 49,
     gbPorTela: 10,
     blurb: 'IA com a sua marca, telas e peças prontas, relatório de exibição, mural, som e equipe.',
     /*
@@ -62,7 +95,14 @@ const PLANS = {
    */
   integrada: {
     id: 'integrada', name: 'Pro',
-    precoTelaCents: 17900, telasMax: 49,
+    /*
+     * Era R$ 179 contra R$ 149 do Essencial. Com o preço por frente, o Pro
+     * mantém a MESMA proporção sobre o Essencial de cada frente (×179/149,
+     * em reais inteiros): Comércio R$ 95, Saúde R$ 167, Empresas R$ 191.
+     * Aqui, o da frente padrão; ver planoDaFrente.
+     */
+    precoTelaCents: 9500, telasMax: 49,
+    proporcaoDoEssencial: 17900 / 14900,
     gbPorTela: 10,
     blurb: 'IA integrada em tudo: a programação se monta sozinha, com o calendário da empresa.',
     recursos: ['player', 'editor', 'agendamento', 'datas', 'ia', 'mural', 'som', 'marca', 'equipe', 'relatorio', 'ia-integrada'],
@@ -106,22 +146,29 @@ const ORDER = ['free', 'pro', 'integrada', 'enterprise'];
 /*
  * MENSAL E ANUAL (PLANO §6.1).
  *
- * Mensal: R$ 149 por tela, sem contrato e SEM desconto por volume. Anual
- * (contrato de 12 meses, pago mês a mês): o preço cai por FAIXA, e o
- * desconto por volume mora só aqui — é ele que puxa o cliente para o
- * contrato.
+ * Mensal: o preço da frente por tela, sem contrato e SEM desconto por
+ * volume. Anual (contrato de 12 meses, pago mês a mês): o preço cai por
+ * FAIXA, e o desconto por volume mora só aqui — é ele que puxa o cliente
+ * para o contrato.
  *
  * Por faixa, como imposto de renda: só as telas DAQUELA faixa pagam o preço
- * dela. Cinco telas no anual = 3 × 120 + 2 × 108 = R$ 576. A primeira versão
+ * dela. Cinco telas no anual = 3 × faixa1 + 2 × faixa2. A primeira versão
  * do desconto (no mensal) aplicava a faixa a TODAS as telas, e o teste pegou
  * vinte telas custando menos que dezenove — o cliente teria vantagem em
  * desligar uma. Por faixa, cada tela a mais custa sempre um valor positivo.
  *
- * Da 26ª em diante o preço é NEGOCIADO, com piso de R$ 90. Até alguém
- * negociar, a conta segue o preço da faixa anterior (R$ 96): é o que sai sem
- * conversa, e nunca abaixo do piso.
+ * Da 26ª em diante o preço é NEGOCIADO, com piso. Até alguém negociar, a
+ * conta segue o preço da faixa anterior: é o que sai sem conversa, e nunca
+ * abaixo do piso.
+ *
+ * FAIXAS_ANUAL é a tabela de REFERÊNCIA, escrita sobre os R$ 149 de antes
+ * (120/108/96, piso 90). QA de lançamento, 03/11: com o preço por frente,
+ * cada frente aplica a MESMA razão ao seu mensal e arredonda para reais
+ * inteiros — Comércio (R$ 79): 64/57/51, piso 48; Saúde (R$ 139):
+ * 112/101/90, piso 84; Empresas (R$ 159): 128/115/102, piso 96.
  */
 const CONTRATOS = ['mensal', 'anual'];
+const REFERENCIA_CENTS = 14900;
 const FAIXAS_ANUAL = [
   { ate: 3, precoTelaCents: 12000 },
   { ate: 10, precoTelaCents: 10800 },
@@ -133,22 +180,54 @@ const MESES_DO_CONTRATO = 12;
 
 const contratoDe = (c) => (c === 'anual' ? 'anual' : 'mensal');
 const telasDe = (telas) => Math.max(1, Math.floor(Number(telas) || 1));
+const emReais = (cents) => Math.round(cents / 100) * 100;
+// A mesma razão da referência, sobre o mensal da frente, em reais inteiros.
+const naProporcao = (refCents, mensalCents) => emReais(mensalCents * refCents / REFERENCIA_CENTS);
 
 function plan(id) { return PLANS[id] || PLANS.free; }
+
+/*
+ * O preço por tela do MENSAL deste plano nesta frente (null sem tabela;
+ * 0 no grátis).
+ */
+function precoMensalCents(planId, frente) {
+  const p = plan(planId);
+  if (p.precoTelaCents == null || !p.precoTelaCents) return p.precoTelaCents;
+  const essencial = PRECO_DA_FRENTE_CENTS[frenteDe(frente)];
+  if (p.id === 'pro') return essencial;
+  if (p.proporcaoDoEssencial) return emReais(essencial * p.proporcaoDoEssencial);
+  return p.precoTelaCents;
+}
+
+/* As faixas do anual deste plano nesta frente (cada uma em reais inteiros). */
+function faixasDe(planId, frente) {
+  const mensal = precoMensalCents(planId, frente);
+  return FAIXAS_ANUAL.map((f) => ({ ...f, precoTelaCents: naProporcao(f.precoTelaCents, mensal) }));
+}
+function pisoNegociadoCents(frente) {
+  return naProporcao(PISO_NEGOCIADO_CENTS, precoMensalCents('pro', frente));
+}
+
+/* O plano como a conta daquela frente o vê: o mesmo objeto, com o preço dela. */
+function planoDaFrente(id, frente) {
+  const p = plan(id);
+  const preco = precoMensalCents(p.id, frente);
+  return preco === p.precoTelaCents ? p : { ...p, precoTelaCents: preco };
+}
 
 /*
  * Quanto custa a conta com N telas, por mês, em centavos. Enterprise não tem
  * tabela (null). O anual só existe para quem tem preço de tabela.
  */
-function mensalidadeCents(planId, telas, contrato) {
-  const p = plan(planId);
-  if (p.precoTelaCents == null) return null;
+function mensalidadeCents(planId, telas, contrato, frente) {
+  const mensal = precoMensalCents(planId, frente);
+  if (mensal == null) return null;
   const n = telasDe(telas);
-  if (!p.precoTelaCents || contratoDe(contrato) === 'mensal') return p.precoTelaCents * n;
+  if (!mensal || contratoDe(contrato) === 'mensal') return mensal * n;
 
   let total = 0;
   let cobradas = 0;
-  for (const f of FAIXAS_ANUAL) {
+  for (const f of faixasDe(planId, frente)) {
     if (cobradas >= n) break;
     const cabem = Math.min(n, f.ate) - cobradas;
     if (cabem <= 0) continue;
@@ -160,37 +239,41 @@ function mensalidadeCents(planId, telas, contrato) {
 
 /* Quanto custa ACRESCENTAR a próxima tela — o número que a pessoa quer ver
    antes de parear mais uma. */
-function precoProximaTelaCents(planId, telasAtuais, contrato) {
-  const p = plan(planId);
-  if (p.precoTelaCents == null) return null;
+function precoProximaTelaCents(planId, telasAtuais, contrato, frente) {
+  if (precoMensalCents(planId, frente) == null) return null;
   const n = Math.max(0, Math.floor(Number(telasAtuais) || 0));
-  return mensalidadeCents(planId, n + 1, contrato) - (n === 0 ? 0 : mensalidadeCents(planId, n, contrato));
+  return mensalidadeCents(planId, n + 1, contrato, frente) - (n === 0 ? 0 : mensalidadeCents(planId, n, contrato, frente));
 }
 
 /* Preço médio por tela com N telas — para a vitrine mostrar "sai por X cada". */
-function precoTelaCents(planId, telas, contrato) {
-  const p = plan(planId);
-  if (p.precoTelaCents == null) return null;
+function precoTelaCents(planId, telas, contrato, frente) {
+  if (precoMensalCents(planId, frente) == null) return null;
   const n = telasDe(telas);
-  return Math.round(mensalidadeCents(planId, n, contrato) / n);
+  return Math.round(mensalidadeCents(planId, n, contrato, frente) / n);
 }
 
 /* A partir de quantas telas o anual passa a ser negociado (26). */
 const TELAS_NEGOCIADAS = FAIXAS_ANUAL[FAIXAS_ANUAL.length - 2].ate + 1;
 
 /*
- * MULTA DE CANCELAMENTO DO ANUAL (PLANO §6.3): o MAIOR entre
+ * MULTA DE CANCELAMENTO DO ANUAL (PLANO §6.3).
  *
- *   (a) 30% das mensalidades que faltam; e
- *   (b) os custos não recuperados — o desconto do anual devolvido
- *       [(mensal − anual) × meses usados] + visita de retirada (R$ 150) +
- *       R$ 210 por aparelho nosso não devolvido.
+ * Era o MAIOR entre (a) 30% das mensalidades que faltam e (b) o desconto do
+ * anual devolvido [(mensal − anual) × meses usados] + visita + aparelho. A
+ * parte (b) CRESCIA com o tempo de uso: 5 telas pagavam R$ 1.382 no 4º mês,
+ * R$ 1.859 no 11º e R$ 2.028 com o contrato cumprido (issue #135). QA de
+ * lançamento, 03/11 (decisão do dono): multa que cresce perto do fim é
+ * desproporcional (CDC art. 51) e cobrar de quem cumpriu os 12 meses não
+ * tem base.
  *
- * Quem cancela cedo nunca deixa prejuízo. ATENÇÃO: o PLANO diz também que
- * "quem cancela perto do fim paga pouco", e a fórmula não faz isso — (b)
- * cresce com os meses usados (5 telas: R$ 1.382 no 4º mês, R$ 1.859 no 11º).
- * Está como escrito, com a pergunta feita ao dono (issue #135). Pura: quem
- * cobra decide depois (a cobrança da multa é da equipe, com o termo na mão).
+ * Agora: 30% das mensalidades que FALTAM, e só isso. Cai mês a mês e é zero
+ * com os 12 meses cumpridos. A visita de retirada (R$ 150) e o aparelho
+ * nosso não devolvido (R$ 210 cada) não são multa: são custo, e vêm à parte
+ * (`custosCents`), só quando existem.
+ *
+ * Pura: quem cobra decide depois. A cobrança automática da multa ainda não
+ * existe: o cancelamento registra o valor num evento da conta
+ * ('plano.multa.<centavos>') para o operador cobrar.
  */
 const MULTA = { fracaoDoQueFalta: 0.3, visitaRetiradaCents: 15000, aparelhoCents: 21000 };
 function multaCancelamentoCents(o) {
@@ -198,14 +281,12 @@ function multaCancelamentoCents(o) {
   const n = telasDe(x.telas);
   const usados = Math.max(0, Math.min(MESES_DO_CONTRATO, Math.floor(Number(x.mesesUsados) || 0)));
   const faltam = MESES_DO_CONTRATO - usados;
-  const anual = mensalidadeCents('pro', n, 'anual');
-  const mensal = mensalidadeCents('pro', n, 'mensal');
-  const a = Math.round(MULTA.fracaoDoQueFalta * anual * faltam);
+  const anual = mensalidadeCents('pro', n, 'anual', x.frente);
+  const cents = Math.round(MULTA.fracaoDoQueFalta * anual * faltam);
   const aparelhos = Math.max(0, Math.floor(Number(x.aparelhosNaoDevolvidos) || 0));
-  const b = (mensal - anual) * usados
-    + (x.visitaRetirada ? MULTA.visitaRetiradaCents : 0)
-    + aparelhos * MULTA.aparelhoCents;
-  return { cents: Math.max(a, b), a, b, faltam };
+  const custosCents = (x.visitaRetirada ? MULTA.visitaRetiradaCents : 0) + aparelhos * MULTA.aparelhoCents;
+  // `a` fica pelo nome antigo (a parte "30% do que falta"), que o painel do operador lê.
+  return { cents, a: cents, faltam, custosCents };
 }
 
 function screenLimit(id) { return plan(id).telasMax; }
@@ -405,16 +486,65 @@ function textoDoSelo(tenant, agora) {
 }
 function exibeSelo(tenant, agora) { return !!textoDoSelo(tenant, agora); }
 
-// Catálogo público (para o painel), na ordem de exibição.
-function catalog() { return ORDER.map((id) => PLANS[id]); }
+/* ---------------- Cancelamento no fim do período pago ----------------
+ *
+ * QA de lançamento, 03/11 (decisão do dono): o painel, a landing e os Termos
+ * prometem "suas telas continuam no ar até o fim do período já pago", e o
+ * código rebaixava NA HORA — quem pagou o mês perdia a IA, o relatório e as
+ * telas extras no dia do cancelamento.
+ *
+ * Agora o cancelamento (pelo painel, simulado, ou o SUBSCRIPTION_DELETED do
+ * Asaas) só AGENDA: a conta fica no plano pago com o status 'cancelando' e
+ * `plan_renews_at` = o fim do período pago. Passada a data, uma varredura
+ * (server/cobranca.js, varrerCancelamentos) e a leitura do plano no painel
+ * rebaixam para o grátis.
+ */
+const CANCELANDO = 'cancelando';
+function cancelamentoVenceu(tenant, agora) {
+  if (!tenant || tenant.plan_status !== CANCELANDO || !isPaid(tenant.plan || 'free')) return false;
+  const fim = Number(tenant.plan_renews_at) || 0;
+  return !fim || fim <= (agora || Date.now());
+}
+
+/*
+ * QUANTAS TVs ficam no ar (null = todas). QA de lançamento, 03/11 (decisão
+ * do dono): depois de cair para o grátis — cancelou, estornou, o teste
+ * acabou — ou com a fatura atrasada além da suspensão (20 dias), só UMA TV
+ * segue no ar, com o selo; as outras mostram "Esta TV está pausada". Antes
+ * o grátis ficava com todas as TVs que a conta tinha pareado enquanto pagava
+ * (assina um mês, pareia vinte, cancela: vinte TVs grátis para sempre).
+ *
+ * Nada é apagado e nada some do painel: reativando, as TVs voltam sozinhas
+ * no pulso seguinte. Qual fica no ar: a mais antiga (server.js,
+ * estadoDaConta), que é estável e é a que o cliente ligou primeiro.
+ */
+const PAUSA = { telasNoAr: 1, texto: 'Esta TV está pausada: reative o plano em app.multitelas.net.br' };
+function telasNoAr(tenant, agora) {
+  if (!tenant) return null;
+  if (isPaid(tenant.plan || 'free')) {
+    if (cancelamentoVenceu(tenant, agora)) return PAUSA.telasNoAr;
+    return bloqueioPorAtraso(tenant, agora) ? PAUSA.telasNoAr : null;
+  }
+  return Math.min(PAUSA.telasNoAr, screenLimit('free'));
+}
+
+// Catálogo público (para o painel e a landing), na ordem de exibição, com o
+// preço da frente pedida — uma frente por vez, nunca as três lado a lado.
+function catalog(frente) { return ORDER.map((id) => planoDaFrente(id, frente)); }
+
+/*
+ * O menor preço por TV entre as frentes (o mensal, sem contrato): a landing
+ * geral diz "a partir de", sem pôr as três tabelas lado a lado.
+ */
+function apartirDeCents() { return Math.min(...FRENTES.map((f) => precoMensalCents('pro', f))); }
 
 /*
  * O que o painel e a landing precisam para mostrar o anual: as faixas, em
  * números prontos (a mesma conta não é escrita duas vezes).
  */
-function faixasAnual() {
+function faixasAnual(frente) {
   let de = 1;
-  return FAIXAS_ANUAL.map((f) => {
+  return faixasDe('pro', frente).map((f) => {
     const linha = { de, ate: f.ate === Infinity ? null : f.ate, precoTelaCents: f.precoTelaCents, negociado: !!f.negociado };
     de = f.ate + 1;
     return linha;
@@ -423,9 +553,11 @@ function faixasAnual() {
 
 module.exports = {
   PLANS, ORDER, CONTRATOS, FAIXAS_ANUAL, PISO_NEGOCIADO_CENTS, TELAS_NEGOCIADAS, MESES_DO_CONTRATO, MULTA, assinavel,
+  PRECO_DA_FRENTE_CENTS, FRENTE_PADRAO, FRENTES, frenteDe, precoMensalCents, planoDaFrente, pisoNegociadoCents, apartirDeCents,
   TETO_IA, CRIACOES_DO_TESTE, ATRASO, SELO,
   DIAS_DE_TESTE, fimDoTeste, diasDeTesteRestantes, testeAtivo, podeParear,
   CARENCIA_ATRASO_DIAS, situacaoAtraso, bloqueioPorAtraso, textoDoSelo, exibeSelo,
+  CANCELANDO, cancelamentoVenceu, PAUSA, telasNoAr,
   plan, catalog, faixasAnual, contratoDe, screenLimit, isPaid, temRecurso,
   mensalidadeCents, precoTelaCents, precoProximaTelaCents, multaCancelamentoCents,
   cotaBytes, tetoIaCents, franquiaCreditos,

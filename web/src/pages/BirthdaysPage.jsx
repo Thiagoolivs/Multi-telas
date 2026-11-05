@@ -15,6 +15,7 @@ import { MostrarNasTVs } from '../components/tela/MostrarNasTVs.jsx';
 import { FotosPeloQR } from '../components/pessoas/FotosPeloQR.jsx';
 import { ResumoDasPessoas } from '../components/pessoas/ResumoDasPessoas.jsx';
 import '../../../js/pessoas.js';
+import { usePerfil } from '../lib/perfil.js';
 
 /*
  * PESSOAS (EXECUTOR D30). Era "Aniversariantes": um CSV que, a cada
@@ -44,6 +45,7 @@ function Rosto({ p, tamanho = 'h-9 w-9' }) {
 }
 
 function EditarPessoa({ pessoa, onFechar, onSalvo }) {
+  const perfil = usePerfil();
   const nova = !pessoa.id;
   const [f, setF] = useState({ nome: pessoa.nome || '', setor: pessoa.setor || '', cargo: pessoa.cargo || '', nascimento: pessoa.dia ? data(pessoa) : '', matricula: pessoa.matricula || '', email: pessoa.email || '' });
   const [salvando, setSalvando] = useState(false);
@@ -82,7 +84,7 @@ function EditarPessoa({ pessoa, onFechar, onSalvo }) {
       {/* D35: de onde veio, a autorização (com data e hora) e tirar a foto — o pedido de quem quer sair. */}
       {!nova && (
         <div className="mt-4 space-y-2 rounded-md border border-line bg-surface-2 p-3 text-xs text-ink-2">
-          <div>{origemDe(pessoa)}</div>
+          <div>{origemDe(pessoa, perfil.textos.planilha)}</div>
           {pessoa.foto && (
             <Button size="sm" variant="ghost" icon={Trash2} disabled={salvando} onClick={tirarFoto}>Tirar a foto (o arquivo é apagado)</Button>
           )}
@@ -93,14 +95,15 @@ function EditarPessoa({ pessoa, onFechar, onSalvo }) {
 }
 
 // De onde a pessoa veio e o que ela autorizou (D35).
-function origemDe(p) {
+function origemDe(p, planilha) {
   const quando = Number(p.consentimento_em) ? new Date(Number(p.consentimento_em)) : null;
   const aceite = quando ? 'Autorizou nome, e-mail e foto pelo QR em ' + quando.toLocaleDateString('pt-BR') + ', às ' + quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '.' : '';
-  const veio = p.origem === 'qr' ? 'Entrou pelo QR.' : p.origem === 'manual' ? 'Posta à mão no painel.' : 'Veio da planilha do RH.';
+  const veio = p.origem === 'qr' ? 'Entrou pelo QR.' : p.origem === 'manual' ? 'Posta à mão no painel.' : 'Veio d' + (planilha || 'a planilha') + '.'; // "da planilha do RH" só na Empresas
   return [veio, aceite].filter(Boolean).join(' ');
 }
 
 export function BirthdaysPage() {
+  const perfil = usePerfil(); // "planilha do RH" só na frente Empresas (QA de 03/11)
   const { data: dados, loading, error, reload } = useAsync(birthdays.list);
   const planilhaRef = useRef(null);
   const fotosRef = useRef(null);
@@ -223,7 +226,7 @@ export function BirthdaysPage() {
       <div id="fotos-pelo-qr" className="scroll-mt-20"><FotosPeloQR onAprovou={reload} /></div>
 
       <Panel className="mb-4">
-        <PanelHeader title="Importar a planilha do RH"
+        <PanelHeader title={'Importar ' + perfil.textos.planilha}
           description="Excel (.xlsx) ou CSV com nome e nascimento; setor, cargo, matrícula, e-mail e foto, se tiver. Importar de novo atualiza: quem saiu da planilha sai, quem chegou pelo QR ou foi posto à mão fica." />
         <div className="p-4">
           <input ref={planilhaRef} type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="hidden" onChange={abrirPlanilha} />
@@ -279,7 +282,7 @@ export function BirthdaysPage() {
         ) : error ? (
           <ErrorState description="Não foi possível carregar." onRetry={reload} />
         ) : lista.length === 0 ? (
-          <EmptyState icon={Users} title="Ninguém na lista ainda" description="Importe a planilha do RH ou ponha uma pessoa à mão." />
+          <EmptyState icon={Users} title="Ninguém na lista ainda" description={'Importe ' + perfil.textos.planilha + ' ou ponha uma pessoa à mão.'} />
         ) : (
           <ul className="divide-y divide-line/60">
             {visiveis.map((p) => (

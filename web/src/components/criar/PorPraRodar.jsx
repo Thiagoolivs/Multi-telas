@@ -31,6 +31,20 @@ export function PorPraRodar({ campanha, telas, onMudou }) {
   }, [campanha.id, telas.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!telas.length) return null;
+  /*
+   * QA de lançamento, 03/11: com texto que a lei barra (a conferência do
+   * servidor), não há botão de pôr no ar — o resultado logo acima diz o que
+   * trocar. O servidor também recusa marcar no ar.
+   */
+  const barrada = ((r.conferencia && r.conferencia.bloqueios) || []).length > 0;
+  if (barrada && campanha.estado !== 'no_ar') {
+    return (
+      <section className="rounded-lg border border-line bg-surface p-3 text-xs text-ink-2">
+        <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-ink"><Rocket size={15} className="text-ink-3" /> Pôr pra rodar</h3>
+        Troque o texto marcado acima e a campanha fica pronta para ir para a TV.
+      </section>
+    );
+  }
   const noAr = campanha.estado === 'no_ar';
   const pausada = campanha.estado === 'pausada';
   const trocam = (plano || []).filter((p) => p.faltam.length);

@@ -65,7 +65,13 @@ export function PecaHtml({ item, formato, tamanho, fitHeight, className, rascunh
    */
   const proporcao = { aspectRatio: w + ' / ' + h };
   return (
-    <div ref={caixa}
+    /*
+     * Miniatura é imagem para quem enxerga (QA de lançamento, 03/11): o h1 e
+     * os textos de dentro da peça entravam na árvore de acessibilidade — 2 a 7
+     * "h1" por página ("ÓCULOS DE SOL 30% OFF") para quem navega por títulos.
+     * O nome da peça já está escrito ao lado, fora da miniatura.
+     */
+    <div ref={caixa} aria-hidden="true"
       className={'relative overflow-hidden rounded-md ring-1 ring-line bg-[#0a1020] ' + (fitHeight ? '' : 'w-full ') + (className || '')}
       style={fitHeight ? { ...proporcao, height: '100%', width: 'auto', maxWidth: '100%' } : proporcao}>
       <div ref={palco}

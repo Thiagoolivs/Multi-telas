@@ -6,6 +6,11 @@
  * certos de hoje (quem abre sem JavaScript vê a página inteira); aqui eles
  * só são confirmados pelo servidor.
  *
+ * QA de lançamento, 03/11 (decisão do dono): cada frente tem o seu preço. Na
+ * página de uma frente (<body data-frente-id>), o catálogo pedido é o dela:
+ * /api/planos?frente=saude. A principal não mostra preço (só leva a cada
+ * frente), e pede o catálogo sem frente só pelos números do teste e o contato.
+ *
  * Sem biblioteca nenhuma: o orçamento da página inteira é 500 KB.
  */
 (function () {
@@ -18,31 +23,26 @@
   };
   var todos = function (sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); };
 
-  /* ---------- Exemplos por tipo de negócio ---------- */
-  var EXEMPLOS = {
-    otica: ['Vitrine da semana', 'Três modelos com preço, na cor da ótica. Troca o produto ou o preço, a TV acompanha.', 'Vitrine da semana de uma ótica, com três modelos e preços'],
-    padaria: ['Prato do dia', 'A foto do prato, o preço e o horário. Amanhã é outro prato: muda uma linha e publica.', 'Prato do dia de uma padaria, com foto e preço'],
-    salao: ['Promoção do dia da semana', 'Coloração com desconto toda terça, nas cores do salão — com o convite para agendar.', 'Promoção de coloração de um salão de beleza'],
-    clinica: ['Pacote em parcelas', 'Check-up anual com o parcelamento em destaque e o que está incluído.', 'Pacote de exames de uma clínica, em parcelas'],
-    lanchonete: ['Lançamento', 'Novidade no cardápio com selo de "novidade" e a data de estreia.', 'Lançamento de hambúrguer de uma lanchonete'],
-    empresa: ['Comunicado interno', 'Recado do RH para toda a equipe, na TV do refeitório.', 'Comunicado interno de uma empresa sobre vacinação'],
-  };
-  function mostrarExemplo(ramo) {
-    var e = EXEMPLOS[ramo];
-    if (!e) return;
+  /* ---------- Exemplos por tipo de negócio ----------
+   * O título, o texto e a descrição de cada peça moram na própria aba
+   * (data-titulo, data-texto, data-alt): cada frente traz as abas dela, já
+   * com o primeiro exemplo aberto (server/landing-frentes.js).
+   */
+  function mostrarExemplo(aba) {
+    var ramo = aba.getAttribute('data-ramo');
     var img = document.getElementById('exemplo-img');
     img.src = 'vendor/galeria/' + ramo + '.webp';
-    img.alt = e[2];
-    document.getElementById('exemplo-titulo').textContent = e[0];
-    document.getElementById('exemplo-texto').textContent = e[1];
-    todos('.aba').forEach(function (b) { b.setAttribute('aria-selected', b.getAttribute('data-ramo') === ramo ? 'true' : 'false'); });
+    img.alt = aba.getAttribute('data-alt') || '';
+    document.getElementById('exemplo-titulo').textContent = aba.getAttribute('data-titulo') || '';
+    document.getElementById('exemplo-texto').textContent = aba.getAttribute('data-texto') || '';
+    todos('.aba').forEach(function (b) { b.setAttribute('aria-selected', b === aba ? 'true' : 'false'); });
   }
   todos('.aba').forEach(function (b) {
-    b.addEventListener('click', function () { mostrarExemplo(b.getAttribute('data-ramo')); });
+    b.addEventListener('click', function () { mostrarExemplo(b); });
   });
-  // Na landing de uma frente (/saude, /empresas…), o exemplo dela abre primeiro (server/landing-frentes.js).
-  var exemploDaFrente = document.body && document.body.getAttribute('data-exemplo');
-  if (exemploDaFrente && exemploDaFrente !== 'otica') mostrarExemplo(exemploDaFrente);
+  var corpo = document.body;
+  var frenteId = (corpo && corpo.getAttribute('data-frente-id')) || '';
+  var marca = (corpo && corpo.getAttribute('data-marca')) || 'MultiTelas';
 
   /* ---------- A TV do herói troca de peça ----------
    * As outras peças só são baixadas quando o navegador fica livre depois do
@@ -101,17 +101,22 @@
     if (pro && pro.precoTelaCents) texto('[data-preco-mensal]', reais(pro.precoTelaCents));
     // D22: o Pro (IA integrada) ainda em breve — o preço vem do catálogo, como o do Essencial.
     var integrada = (dados.planos || []).filter(function (p) { return p.id === 'integrada'; })[0];
-    if (integrada && integrada.precoTelaCents) texto('[data-preco-pro]', reais(integrada.precoTelaCents));
+    if (integrada && integrada.precoTelaCents) {
+      texto('[data-preco-pro]', reais(integrada.precoTelaCents));
+      todos('[data-preco-pro-linha]').forEach(function (el) { el.hidden = false; });
+    }
     var faixas = dados.faixasAnual || [];
-    if (faixas.length) {
-      texto('[data-preco-anual]', reais(faixas[0].precoTelaCents));
+    // "a partir de": o menor preço por TV do anual (a faixa mais barata que não é negociada).
+    var comPreco = faixas.filter(function (f) { return !f.negociado && f.precoTelaCents; });
+    if (comPreco.length) {
+      texto('[data-preco-anual]', reais(Math.min.apply(null, comPreco.map(function (f) { return f.precoTelaCents; }))));
       var ul = document.getElementById('faixas-anual');
       if (ul) {
         ul.textContent = '';
         faixas.forEach(function (f) {
           var li = document.createElement('li');
-          li.textContent = '✓ ' + (f.negociado ? f.de + ' telas ou mais: a combinar'
-            : (f.de === 1 ? 'até ' + f.ate + ' telas' : 'da ' + f.de + 'ª à ' + f.ate + 'ª') + ': ' + reais(f.precoTelaCents) + ' cada');
+          li.textContent = '✓ ' + (f.negociado ? f.de + ' TVs ou mais: a combinar'
+            : (f.de === 1 ? 'até ' + f.ate + ' TVs' : 'da ' + f.de + 'ª à ' + f.ate + 'ª') + ': ' + reais(f.precoTelaCents) + ' cada');
           ul.appendChild(li);
         });
       }
@@ -156,11 +161,11 @@
         nota.className = 'mt-1 text-sm text-mt-cinza';
         if (v.negociado) {
           valor.textContent = 'A combinar';
-          nota.textContent = 'com ' + n + ' telas, o preço por tela é conversado';
+          nota.textContent = 'com ' + n + ' TVs, o preço por TV é conversado';
         } else {
           valor.textContent = reais(v.totalCents) + ' por mês';
           var economia = linha.mensal && c === 'anual' ? linha.mensal.totalCents - v.totalCents : 0;
-          nota.textContent = reais(v.porTelaCents) + ' por tela' + (economia > 0 ? ' · economia de ' + reais(economia) + ' por mês' : '');
+          nota.textContent = reais(v.porTelaCents) + ' por TV' + (economia > 0 ? ' · economia de ' + reais(economia) + ' por mês' : '');
         }
         caixa.appendChild(nome); caixa.appendChild(valor); caixa.appendChild(nota);
         saida.appendChild(caixa);
@@ -180,7 +185,8 @@
     var flutuante = document.getElementById('whats-flutuante');
     var email = document.getElementById('contato-email');
     if (c.whatsapp) {
-      var link = 'https://wa.me/' + c.whatsapp + '?text=' + encodeURIComponent('Olá! Vi o site do MultiTelas e quero saber mais.');
+      // A frente na mensagem (QA de 03/11): o comercial sabe de qual página a pessoa veio.
+      var link = 'https://wa.me/' + c.whatsapp + '?text=' + encodeURIComponent('Olá! Vi o site do ' + marca + ' e quero saber mais.');
       // No topo, o WhatsApp entra no lugar de "Ver preços" (a landing clara, 22/10).
       var heroi = document.getElementById('whats-heroi');
       var precos = document.getElementById('heroi-precos');
@@ -197,7 +203,7 @@
     }
   }
 
-  fetch('/api/planos', { headers: { Accept: 'application/json' } })
+  fetch('/api/planos' + (frenteId ? '?frente=' + encodeURIComponent(frenteId) : ''), { headers: { Accept: 'application/json' } })
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (d) { if (d) preencher(d); })
     .catch(function () { /* sem servidor, a página segue com os números do HTML */ });

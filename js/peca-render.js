@@ -239,12 +239,16 @@
    */
   const QUADRADA = [51 / 50, 22 / 15];
   const LARGA = [39 / 20, 4];
+  function referencia(w, h) {
+    if (!w || !h) return null;
+    const ar = w / h;
+    return ar >= QUADRADA[0] && ar <= QUADRADA[1] ? [1080, 1080]
+      : ar >= LARGA[0] && ar <= LARGA[1] ? [1920, 1080] : null;
+  }
   function enquadrar(host, palco) {
     const w = host.clientWidth, h = host.clientHeight;
     if (!w || !h || !palco) return;
-    const ar = w / h;
-    const ref = ar >= QUADRADA[0] && ar <= QUADRADA[1] ? [1080, 1080]
-      : ar >= LARGA[0] && ar <= LARGA[1] ? [1920, 1080] : null;
+    const ref = referencia(w, h);
     if (!ref) { palco.removeAttribute('style'); return; }
     const k = h / ref[1];
     palco.style.cssText = 'left:' + ((w - ref[0] * k) / 2).toFixed(2) + 'px;top:0;right:auto;bottom:auto;width:'
@@ -294,6 +298,287 @@
     alvo.setAttribute('data-oculto', '');
   }
 
+  /* ============ Navegador sem container queries (Chromium < 105) ============
+   *
+   * QA de lançamento, 03/11 (usuário 19): toda peça mede tudo em cqw/cqh e
+   * escolhe o desenho com @container. O navegador que não conhece isso joga
+   * fora as duas coisas: a tela pronta virava texto de 16 px empilhado no
+   * canto, com textos sobrepostos. É o navegador de quase toda Smart TV
+   * Samsung/LG anterior a 2024 e de muito TV box.
+   *
+   * O caminho escolhido: REESCREVER o CSS da peça em pixel, no tamanho em
+   * que ela está sendo desenhada. A peça tem um container só (o palco, do
+   * mesmo tamanho da .mt-peca; nenhuma peça declara outro), então a conta é
+   * exata: 10cqw num palco de 1920 px são 192 px. E o @container vira o que
+   * o navegador novo faria: a condição é conferida aqui, com a largura e a
+   * altura do palco; valeu, as regras ficam; não valeu, saem.
+   *
+   * Por que não variáveis CSS (--cqw) com calc: resolveriam as medidas, mas
+   * não as condições do @container, que trocam o desenho (coluna, em pé,
+   * faixa). E por que não só escalar: escalar resolve o tamanho de quem já
+   * sabe medir em cqw — este navegador não sabe.
+   *
+   * De carona, o que também não existe antes do Chromium 79–88 e a peça usa:
+   * clamp()/min()/max() (no tamanho fixo viram um número, e a conta é feita
+   * aqui), `inset` (vira top/right/bottom/left) e o `:where()` da BASE.
+   *
+   * Só roda quando o navegador NÃO tem container query: no navegador atual
+   * nada disto é chamado, e o desenho é o CSS de sempre.
+   */
+  const UNIDADE_CQ = /(-?(?:\d+\.?\d*|\.\d+))(cqmin|cqmax|cqw|cqh|cqi|cqb)(?![A-Za-z0-9_-])/gi;
+  const arred = (n, casas) => { const k = Math.pow(10, casas); return String(Math.round(n * k) / k); };
+
+  /* O `}` que fecha o `{` em `abre`, respeitando aspas. */
+  function fechaBloco(css, abre) {
+    let nivel = 0, aspa = '';
+    for (let i = abre; i < css.length; i++) {
+      const c = css[i];
+      if (aspa) { if (c === aspa && css[i - 1] !== '\\') aspa = ''; continue; }
+      if (c === '"' || c === "'") aspa = c;
+      else if (c === '{') nivel++;
+      else if (c === '}' && --nivel === 0) return i;
+    }
+    return css.length;
+  }
+
+  /* Um valor de condição: 700px, 1.25, 16/9, 40em. */
+  function valorCq(s) {
+    const t = String(s).trim();
+    let m = /^(\d+\.?\d*|\.\d+)\s*\/\s*(\d+\.?\d*|\.\d+)$/.exec(t);
+    if (m) return Number(m[1]) / Number(m[2]);
+    m = /^(-?(?:\d+\.?\d*|\.\d+))(px|r?em)?$/i.exec(t);
+    if (!m) return null;
+    return Number(m[1]) * (m[2] && /em/i.test(m[2]) ? 16 : 1);
+  }
+
+  function medidaCq(nome, w, h) {
+    if (nome === 'width' || nome === 'inline-size') return w;
+    if (nome === 'height' || nome === 'block-size') return h;
+    if (nome === 'aspect-ratio') return h ? w / h : 0;
+    return null;
+  }
+
+  function compara(a, op, b) {
+    const e = 1e-9;
+    if (op === '<') return a < b - e;
+    if (op === '<=') return a <= b + e;
+    if (op === '>') return a > b + e;
+    if (op === '>=') return a >= b - e;
+    if (op === '=') return Math.abs(a - b) <= e;
+    return false;
+  }
+  const INVERSO = { '<': '>', '<=': '>=', '>': '<', '>=': '<=', '=': '=' };
+
+  /* Uma condição, sem os parênteses: "aspect-ratio >= 1.25", "max-width: 700px", "orientation: portrait". */
+  function recursoCq(txt, w, h) {
+    const t = txt.trim().toLowerCase();
+    const m = /^(min-|max-)?([a-z-]+)\s*:\s*(.+)$/.exec(t);
+    if (m) {
+      if (!m[1] && m[2] === 'orientation') return m[3].trim() === (h >= w ? 'portrait' : 'landscape');
+      const real = medidaCq(m[2], w, h);
+      const v = valorCq(m[3]);
+      if (real == null || v == null) return false;
+      return compara(real, m[1] === 'min-' ? '>=' : m[1] === 'max-' ? '<=' : '=', v);
+    }
+    // Faixa: "nome >= v", "v < nome", "a < nome <= b".
+    const partes = t.split(/\s*(<=|>=|<|>|=)\s*/);
+    if (partes.length !== 3 && partes.length !== 5) return false;
+    for (let i = 0; i + 2 < partes.length; i += 2) {
+      const a = partes[i], op = partes[i + 1], b = partes[i + 2];
+      const ra = medidaCq(a, w, h), rb = medidaCq(b, w, h);
+      let ok = false;
+      if (ra != null && rb == null) { const v = valorCq(b); ok = v != null && compara(ra, op, v); }
+      else if (rb != null && ra == null) { const v = valorCq(a); ok = v != null && compara(rb, INVERSO[op], v); }
+      if (!ok) return false;
+    }
+    return true;
+  }
+
+  /*
+   * A condição inteira de um @container: nome opcional, "and", "or", "not" e
+   * parênteses. O que não se entende vale como falso — o navegador novo
+   * também descarta a condição que não entende.
+   */
+  function condicaoCq(cond, w, h) {
+    let s = String(cond || '').trim();
+    const nome = /^([A-Za-z_][\w-]*)\s+/.exec(s);
+    if (nome && !/^(not|and|or)$/i.test(nome[1])) s = s.slice(nome[0].length);
+    let i = 0;
+    const espaco = () => { while (i < s.length && /\s/.test(s[i])) i++; };
+    const palavra = (p) => {
+      espaco();
+      if (s.slice(i, i + p.length).toLowerCase() === p && !/[\w-]/.test(s[i + p.length] || '')) { i += p.length; return true; }
+      return false;
+    };
+    function primario() {
+      espaco();
+      if (palavra('not')) return !primario();
+      if (s[i] !== '(') { i = s.length; return false; }
+      const ini = i + 1;
+      let nivel = 0;
+      for (; i < s.length; i++) { if (s[i] === '(') nivel++; else if (s[i] === ')' && --nivel === 0) break; }
+      const dentro = s.slice(ini, i);
+      i++;
+      return /^\s*(\(|not\b)/i.test(dentro) ? condicaoCq(dentro, w, h) : recursoCq(dentro, w, h);
+    }
+    let v = primario();
+    for (;;) {
+      if (palavra('and')) { const b = primario(); v = v && b; }
+      else if (palavra('or')) { const b = primario(); v = v || b; }
+      else break;
+    }
+    espaco();
+    return i >= s.length ? v : false;
+  }
+
+  /* Os @container: a condição é conferida aqui; valeu, as regras ficam; não valeu, saem. */
+  function resolverContainers(css, w, h) {
+    let saida = '';
+    let i = 0;
+    for (;;) {
+      const k = css.indexOf('@container', i);
+      if (k < 0) return saida + css.slice(i);
+      const abre = css.indexOf('{', k);
+      if (abre < 0) return saida + css.slice(i, k);
+      const fecha = fechaBloco(css, abre);
+      saida += css.slice(i, k) + (condicaoCq(css.slice(k + 10, abre), w, h) ? resolverContainers(css.slice(abre + 1, fecha), w, h) : '');
+      i = fecha + 1;
+    }
+  }
+
+  /*
+   * Conta de pixel: "38.4px + 4px", "2 * 19.2px". Devolve { n, px }, ou null
+   * quando entra algo que não é pixel nem número (%, em, var…): aí a função
+   * fica como está, e só o navegador que não a entende perde aquela linha.
+   */
+  function contaPx(expr) {
+    const toks = String(expr).match(/(\d+\.?\d*|\.\d+)(e[+-]?\d+)?([a-z%]+)?|[-+*/]|\S/gi) || [];
+    let p = 0;
+    function fator() {
+      const t = toks[p++];
+      if (t === '-') { const f = fator(); return f && { n: -f.n, px: f.px }; }
+      if (t === '+') return fator();
+      const m = /^(\d+\.?\d*|\.\d+)(e[+-]?\d+)?([a-z%]+)?$/i.exec(t || '');
+      if (!m || (m[3] && m[3].toLowerCase() !== 'px')) return null;
+      return { n: Number(m[1] + (m[2] || '')), px: !!m[3] };
+    }
+    function termo() {
+      let a = fator();
+      while (a && (toks[p] === '*' || toks[p] === '/')) {
+        const op = toks[p++];
+        const b = fator();
+        if (!b) return null;
+        if (op === '*') { if (a.px && b.px) return null; a = { n: a.n * b.n, px: a.px || b.px }; }
+        else { if (b.px || !b.n) return null; a = { n: a.n / b.n, px: a.px }; }
+      }
+      return a;
+    }
+    let a = termo();
+    while (a && (toks[p] === '+' || toks[p] === '-')) {
+      const op = toks[p++];
+      const b = termo();
+      if (!b || b.px !== a.px) return null;
+      a = { n: op === '+' ? a.n + b.n : a.n - b.n, px: a.px };
+    }
+    return a && p === toks.length ? a : null;
+  }
+
+  /* calc/min/max/clamp só com pixel viram o número. A mais interna primeiro, até não sobrar conta. */
+  function resolverContas(css) {
+    const FUNCAO = /(^|[^A-Za-z0-9_-])(calc|min|max|clamp)\(([^()]*)\)/gi;
+    let antes;
+    do {
+      antes = css;
+      css = css.replace(FUNCAO, (tudo, pre, nome, args) => {
+        const vals = args.split(',').map(contaPx);
+        if (!vals.length || vals.some((v) => !v) || vals.some((v) => v.px !== vals[0].px)) return tudo;
+        const f = nome.toLowerCase();
+        let n;
+        if (f === 'calc') { if (vals.length !== 1) return tudo; n = vals[0].n; }
+        else if (f === 'min') n = Math.min.apply(null, vals.map((v) => v.n));
+        else if (f === 'max') n = Math.max.apply(null, vals.map((v) => v.n));
+        else { if (vals.length !== 3) return tudo; n = Math.max(vals[0].n, Math.min(vals[1].n, vals[2].n)); }
+        return pre + arred(n, 3) + (vals[0].px ? 'px' : '');
+      });
+    } while (css !== antes);
+    return css;
+  }
+
+  /* `inset: a b c d` → top/right/bottom/left (o Chromium < 87 não conhece `inset`). */
+  function expandirInset(css) {
+    return css.replace(/(^|[;{\s])inset\s*:\s*([^;}]+)/gi, (tudo, pre, valor) => {
+      const imp = /!\s*important\s*$/i.test(valor) ? '!important' : '';
+      const v = valor.replace(/!\s*important\s*$/i, '').trim();
+      const p = [];
+      let nivel = 0, atual = '';
+      for (let i = 0; i < v.length; i++) {
+        const c = v[i];
+        if (c === '(') nivel++;
+        if (c === ')') nivel--;
+        if (/\s/.test(c) && !nivel) { if (atual) p.push(atual); atual = ''; } else atual += c;
+      }
+      if (atual) p.push(atual);
+      if (!p.length || p.length > 4) return tudo;
+      const t = p[0], r = p[1] || t, b = p[2] || t, l = p[3] || r;
+      return pre + 'top:' + t + imp + ';right:' + r + imp + ';bottom:' + b + imp + ';left:' + l + imp;
+    });
+  }
+
+  /* O CSS para o navegador sem container query, no tamanho w×h do container. */
+  function cssSemCq(css, w, h) {
+    let s = resolverContainers(String(css || ''), w, h);
+    s = s.replace(UNIDADE_CQ, (tudo, n, u) => {
+      const k = u.toLowerCase();
+      const base = k === 'cqw' || k === 'cqi' ? w : k === 'cqh' || k === 'cqb' ? h : k === 'cqmin' ? Math.min(w, h) : Math.max(w, h);
+      return arred(Number(n) * base / 100, 3) + 'px';
+    });
+    s = s.replace(/(^|[;{\s])container(-type|-name)?\s*:[^;}]*;?/gi, '$1');
+    return expandirInset(resolverContas(s));
+  }
+
+  /*
+   * A BASE sem o que não existe antes do Chromium 88: o `:where()` vira o
+   * seletor mais leve que há (a tag), escrito ANTES da peça — a regra da
+   * peça para a mesma tag vem depois e vence, que é o que o `:where()`
+   * garantia. E a rolagem do rodapé anda por `transform`, que todo navegador
+   * conhece (a propriedade solta `translate` é do Chromium 104).
+   */
+  const BASE_SEM_CQ = BASE
+    .replace(':where(.mt-peca,.mt-peca *,.mt-peca *::before,.mt-peca *::after){box-sizing:border-box}', '*,*::before,*::after{box-sizing:border-box}')
+    .replace(':where(.mt-peca) :where(h1,h2,h3,h4,p,ul,ol,figure,figcaption){margin:0}', 'h1,h2,h3,h4,p,ul,ol,figure,figcaption{margin:0}')
+    .replace(':where(.mt-peca) :where(img){display:block}', 'img{display:block}');
+  const ROLAR_SEM_CQ = 'from{transform:translateX(0)}to{transform:translateX(-50%)}';
+
+  /*
+   * Tem container query? `window.MT_SEM_CQ = true` força o caminho de
+   * reserva: é como o teste prova, no Chromium atual, o que a TV antiga vê.
+   */
+  let suporteCq = null;
+  function temContainerQueries(janela) {
+    const g = janela || (typeof window !== 'undefined' ? window : null);
+    if (!g) return true;
+    if (g.MT_SEM_CQ === true) return false;
+    if (suporteCq == null) {
+      try { suporteCq = !!(g.CSS && g.CSS.supports && g.CSS.supports('container-type', 'inline-size')); }
+      catch (e) { suporteCq = false; }
+    }
+    return suporteCq;
+  }
+
+  /* O tamanho do host (as faixas medem ele) e do palco (a peça mede ele; ver enquadrar). */
+  function medidasSemCq(host) {
+    const w = host.clientWidth, h = host.clientHeight;
+    const ref = referencia(w, h);
+    return { hw: w, hh: h, pw: ref ? ref[0] : w, ph: ref ? ref[1] : h };
+  }
+
+  function cssCompletoSemCq(cssDaPeca, tokens, m) {
+    return cssSemCq(BASE_SEM_CQ, m.hw, m.hh)
+      + cssSemCq(cssDosTokens(tokens), m.pw, m.ph)
+      + keyframes().replace('@keyframes mt-pr-rolar{' + ROLAR + '}', '@keyframes mt-pr-rolar{' + ROLAR_SEM_CQ + '}')
+      + cssSemCq(cssDaPeca, m.pw, m.ph);
+  }
+
   function montar(host, item, opts) {
     const o = opts || {};
     garantirFontes(host.ownerDocument);
@@ -303,15 +588,48 @@
     const tokens = T.daMarca(it.marca || o.marca || null, modo);
 
     const sombra = host.shadowRoot || host.attachShadow({ mode: 'open' });
-    sombra.innerHTML = '<style>' + cssCompleto(it.css, tokens) + '</style><div class="mt-faixas"></div><div class="mt-palco">' + it.html + '</div>';
+    /*
+     * Sem container query (ver cssSemCq): o CSS sai em pixel, no tamanho da
+     * zona. A zona pode ainda não estar na tela (o slide entra depois): até
+     * ela ter tamanho, vale o 1920×1080 da TV comum, e a medida de verdade
+     * reescreve assim que existir.
+     */
+    const semCq = !temContainerQueries();
+    let medidaAtual = '';
+    const cssDeAgora = () => {
+      if (!semCq) return cssCompleto(it.css, tokens);
+      const m = medidasSemCq(host);
+      const usar = m.hw && m.hh ? m : { hw: 1920, hh: 1080, pw: 1920, ph: 1080 };
+      medidaAtual = m.hw && m.hh ? m.hw + 'x' + m.hh : '';
+      return cssCompletoSemCq(it.css, tokens, usar);
+    };
+    sombra.innerHTML = '<style>' + cssDeAgora() + '</style><div class="mt-faixas"></div><div class="mt-palco">' + it.html + '</div>';
     const peca = sombra.querySelector('.mt-peca');
     const palcoEl = sombra.querySelector('.mt-palco');
+    const estilo = sombra.querySelector('style');
+    // Devolve se já há medida de verdade (para a espera sem ResizeObserver parar).
+    const remedir = () => {
+      if (!semCq) return true;
+      const w = host.clientWidth, h = host.clientHeight;
+      if (!w || !h) return false;
+      if (w + 'x' + h !== medidaAtual) estilo.textContent = cssDeAgora();
+      return true;
+    };
     enquadrar(host, palcoEl);
     // A zona muda de tamanho (layout que "respira", tela girada): enquadra de novo.
     let observador = null;
+    let espera = null;
+    let aoRedimensionar = null;
     if (typeof ResizeObserver !== 'undefined') {
-      observador = new ResizeObserver(() => enquadrar(host, palcoEl));
+      observador = new ResizeObserver(() => { enquadrar(host, palcoEl); remedir(); });
       observador.observe(host);
+    } else if (semCq) {
+      // Chromium < 64: sem ResizeObserver. Confere até a zona ter tamanho, e a cada giro da janela.
+      let tentativas = 0;
+      const conferir = () => { espera = null; enquadrar(host, palcoEl); if (!remedir() && ++tentativas < 40) espera = setTimeout(conferir, 250); };
+      if (!remedir()) espera = setTimeout(conferir, 50);
+      aoRedimensionar = () => { enquadrar(host, palcoEl); remedir(); };
+      if (typeof window !== 'undefined') window.addEventListener('resize', aoRedimensionar);
     }
     // A tela já mostra a marca (no cabeçalho): a peça não repete.
     if (o.marcaNaTela && peca) peca.setAttribute('data-marca-na-tela', '');
@@ -367,9 +685,20 @@
       el.textContent = linha + linha;
       if (!o.leve) el.style.animation = 'mt-pr-rolar ' + Math.max(12, linha.length * RITMO.rolagem).toFixed(1) + 's linear infinite';
     });
+    /*
+     * O CLIMA NUNCA É INVENTADO (QA de lançamento, 03/11). O "27°" é o texto
+     * de exemplo do molde; com o serviço de clima fora do ar (firewall de
+     * empresa, TV sem internet), ele ficava na parede como se fosse a
+     * temperatura de agora. Quem desenha na TV (`o.clima`) esconde o campo
+     * até a temperatura chegar, e, se ela não chegar, deixa vazio — o relógio
+     * e a cidade seguem. Sem `o.clima` (editor, bancada), o exemplo fica.
+     */
     const clima = vivos.filter((el) => el.getAttribute('data-vivo') === 'clima');
     if (clima.length && o.clima) {
-      Promise.resolve().then(o.clima).then((t) => { clima.forEach((el) => { el.textContent = t || ''; }); }, () => {});
+      clima.forEach((el) => { el.style.visibility = 'hidden'; });
+      Promise.resolve().then(o.clima).then((t) => {
+        clima.forEach((el) => { el.textContent = t || ''; el.style.visibility = t ? '' : 'hidden'; });
+      }, () => { clima.forEach((el) => { el.textContent = ''; }); });
     }
 
     // A entrada que a peça declarou. No modo leve, nada se mexe.
@@ -396,9 +725,18 @@
       tokens,
       problemas: v.problemas,
       duracao: Number(item && item.duracao) || 12,
-      parar() { if (relogio) clearInterval(relogio); relogio = null; if (observador) observador.disconnect(); observador = null; },
+      parar() {
+        if (relogio) clearInterval(relogio); relogio = null;
+        if (observador) observador.disconnect(); observador = null;
+        if (espera) clearTimeout(espera); espera = null;
+        if (aoRedimensionar && typeof window !== 'undefined') window.removeEventListener('resize', aoRedimensionar);
+        aoRedimensionar = null;
+      },
     };
   }
 
-  return { ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA };
+  return {
+    ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA,
+    BASE_SEM_CQ, cssSemCq, cssCompletoSemCq, condicaoCq, temContainerQueries, referencia,
+  };
 });

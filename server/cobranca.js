@@ -21,6 +21,45 @@
 'use strict';
 
 const plans = require('./plans');
+const paleta = require('./paleta');
+
+/*
+ * A frente da conta, para o preço (QA de lançamento, 03/11: o preço por TV
+ * é por frente). A escolhida no cadastro vale; sem ela, o mesmo critério do
+ * resto do produto (server/paleta.js perfilDaConta). Qualquer falha cai na
+ * frente padrão em vez de derrubar a cobrança.
+ */
+async function frenteDaConta(db, tenant) {
+  if (tenant && plans.FRENTES.includes(tenant.perfil)) return tenant.perfil;
+  if (!tenant || !tenant.id) return plans.FRENTE_PADRAO;
+  // Linha de listagem sem a coluna `perfil` (contasEmTeste, contasPagas): a
+  // conta é relida, para não deduzir por cima do que a pessoa escolheu.
+  const inteira = Object.prototype.hasOwnProperty.call(tenant, 'perfil') ? tenant : null;
+  try { return plans.frenteDe(await paleta.perfilDaConta(db, tenant.id, inteira)); }
+  catch (e) { return plans.FRENTE_PADRAO; }
+}
+
+/*
+ * O patch do CANCELAMENTO (QA de lançamento, 03/11 — decisão do dono): o
+ * plano pago fica até o fim do período já pago, e só então a conta cai para
+ * o grátis (plans.cancelamentoVenceu, varrerCancelamentos). O contrato anual
+ * fica até lá (o período restante foi pago no preço do anual, e o painel o
+ * mostra assim); é apagado quando a conta cai para o grátis, e quem assina de
+ * novo começa no mensal, sem herdar o preço do anual sem o compromisso (o
+ * furo R5 do relatório de regras; ver o checkout).
+ *
+ * Sem período pago pela frente (fatura em atraso, conta que nunca pagou,
+ * data desconhecida), rebaixa na hora, como antes.
+ */
+const SEM_CONTRATO = { contrato: null, contratoDesde: null };
+function efeitoDoCancelamento(t, fimInformado, agora) {
+  const quando = agora || Date.now();
+  const limpar = { subscriptionId: null, atrasoDesde: null, telasCobradas: null };
+  const fim = Number(t && t.plan_renews_at) || Number(fimInformado) || 0;
+  const emDia = t && plans.isPaid(t.plan || 'free') && t.plan_status !== 'past_due';
+  if (emDia && fim > quando) return { ...limpar, status: plans.CANCELANDO, renewsAt: fim };
+  return { ...limpar, ...SEM_CONTRATO, plan: 'free', status: 'canceled', renewsAt: null };
+}
 
 /*
  * O que um evento do Asaas faz com a conta. PURO: recebe o evento e a conta,
@@ -59,7 +98,13 @@ function efeitoDoEvento(evento, ctx, agora) {
        */
       return { status: 'past_due', atrasoDesde: Number(t.atraso_desde) || quando };
     case 'SUBSCRIPTION_DELETED':
-      return { plan: 'free', status: 'canceled', subscriptionId: null, renewsAt: null, atrasoDesde: null, telasCobradas: null };
+    case 'SUBSCRIPTION_INACTIVATED':
+      /*
+       * O aviso de uma assinatura ANTIGA (a conta já assinou de novo) não
+       * cancela a nova: o Asaas pode reenviar eventos fora de ordem.
+       */
+      if (c.subId && t.stripe_subscription_id && c.subId !== t.stripe_subscription_id) return null;
+      return efeitoDoCancelamento(t, c.renewsAt, quando);
     case 'SUBSCRIPTION_CREATED':
       // Assinatura criada NÃO é pagamento recebido: só os identificadores.
       return { customerId: c.customerId, subscriptionId: c.subId };
@@ -105,8 +150,8 @@ function referenciaDePacote(ref) {
  * trabalha em reais). Zero tela cobra uma: a assinatura é a porta, e uma
  * conta paga sem tela nenhuma é quase sempre a véspera de parear a primeira.
  */
-function valorDaAssinatura(planId, telas, contrato) {
-  const cents = plans.mensalidadeCents(planId, Math.max(1, Number(telas) || 0), contrato);
+function valorDaAssinatura(planId, telas, contrato, frente) {
+  const cents = plans.mensalidadeCents(planId, Math.max(1, Number(telas) || 0), contrato, frente);
   return cents == null ? null : cents / 100;
 }
 
@@ -131,8 +176,9 @@ async function sincronizarTelas(db, billing, tenantId) {
    */
   if (!plans.isPaid(tenant.plan)) return { mudou: false, motivo: 'nao-pago' };
 
-  // O contrato da conta decide a tabela: mensal (R$ 149 cada) ou anual (por faixa).
-  const valor = valorDaAssinatura(tenant.plan, telas, tenant.plan_contrato);
+  // O contrato da conta decide a tabela (mensal ou anual por faixa), e a
+  // frente decide o preço (QA de lançamento, 03/11).
+  const valor = valorDaAssinatura(tenant.plan, telas, tenant.plan_contrato, await frenteDaConta(db, tenant));
   // Enterprise é contrato: o valor não sai da tabela. Só anota as telas para
   // a conciliação não voltar nesta conta a cada rodada.
   if (valor == null) {
@@ -140,7 +186,7 @@ async function sincronizarTelas(db, billing, tenantId) {
     return { mudou: false, motivo: 'sem-tabela' };
   }
   if (billing.mode() === 'asaas') {
-    await billing.atualizarValor(tenant.stripe_subscription_id, tenant.plan, valor);
+    await billing.atualizarValor(tenant.stripe_subscription_id, tenant.plan, valor, tenant.plan_contrato);
   }
   await db.setTenantBilling(tenantId, { telasCobradas: telas });
   return { mudou: true, telas, valor };
@@ -165,7 +211,37 @@ async function conciliar(db, billing, registrarErro) {
   return { verificadas: contas.length, acertadas };
 }
 
+/*
+ * Cancelamento que chegou ao fim do período pago: agora sim, o grátis.
+ * Devolve a conta como fica (a mesma, se nada mudou). Chamado na leitura do
+ * plano (GET /api/billing) e pela varredura abaixo.
+ */
+async function rebaixarSeVenceu(db, tenant, agora) {
+  if (!plans.cancelamentoVenceu(tenant, agora)) return tenant;
+  const patch = { plan: 'free', status: 'canceled', renewsAt: null, subscriptionId: null, ...SEM_CONTRATO };
+  await db.setTenantBilling(tenant.id, patch);
+  if (db.registrarEvento) await db.registrarEvento(tenant.id, '', 'plano.rebaixado').catch(() => {});
+  return { ...tenant, plan: 'free', plan_status: 'canceled', plan_renews_at: null, stripe_subscription_id: null, plan_contrato: null, contrato_desde: null };
+}
+
+/* Varre as contas pagas e rebaixa as que passaram do fim do período cancelado. */
+async function varrerCancelamentos(db, agora, registrarErro) {
+  if (!db.contasPagas) return 0;
+  let rebaixadas = 0;
+  for (const c of await db.contasPagas()) {
+    try {
+      const depois = await rebaixarSeVenceu(db, c, agora);
+      if (depois !== c) rebaixadas++;
+    } catch (e) {
+      if (registrarErro) registrarErro(e, { onde: 'fim do período cancelado', tenant: c.id });
+    }
+  }
+  return rebaixadas;
+}
+
 const INTERVALO_CONCILIACAO_MS = 6 * 60 * 60 * 1000;
+// O fim do período é uma data: dez minutos de folga não fazem diferença para ninguém.
+const INTERVALO_CANCELAMENTOS_MS = 10 * 60 * 1000;
 let timer = null;
 function ligarConciliacao(db, billing, registrarErro) {
   if (timer) return;
@@ -174,6 +250,13 @@ function ligarConciliacao(db, billing, registrarErro) {
   setTimeout(rodar, 60 * 1000).unref();
   timer = setInterval(rodar, INTERVALO_CONCILIACAO_MS);
   timer.unref();
+  const cancelamentos = () => varrerCancelamentos(db, Date.now(), registrarErro)
+    .catch((e) => registrarErro && registrarErro(e, { onde: 'fim do período cancelado' }));
+  setTimeout(cancelamentos, 90 * 1000).unref();
+  setInterval(cancelamentos, INTERVALO_CANCELAMENTOS_MS).unref();
 }
 
-module.exports = { efeitoDoEvento, efeitoDoPacote, referenciaDePacote, valorDaAssinatura, sincronizarTelas, conciliar, ligarConciliacao };
+module.exports = {
+  efeitoDoEvento, efeitoDoPacote, efeitoDoCancelamento, referenciaDePacote, valorDaAssinatura, sincronizarTelas, conciliar, ligarConciliacao,
+  frenteDaConta, rebaixarSeVenceu, varrerCancelamentos,
+};

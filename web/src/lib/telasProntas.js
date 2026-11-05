@@ -17,7 +17,36 @@ const getLayout = (id) => (globalThis.MT_getLayout && globalThis.MT_getLayout(id
 const PERFIL_DA_MARCA = { otica: 'comercio', padaria: 'comercio', salao: 'comercio', lanchonete: 'comercio', clinica: 'saude', rotasul: 'empresa' };
 export const perfilDaTela = (t) => t.perfil || PERFIL_DA_MARCA[t.marca] || 'comercio';
 
-export const aprovadas = (manifesto) => ((manifesto && manifesto.telas) || []).filter((t) => t.estado === 'aprovada');
+export const aprovadas = (manifesto) => ((manifesto && manifesto.telas) || []).filter((t) => t.estado === 'aprovada').map(paraOCliente);
+
+/*
+ * O que da tela do manifesto chega ao cliente (QA de lançamento, 03/11).
+ *
+ * O manifesto é a ficha da bancada: o `sobre` é a nota de quem desenhou a
+ * tela ("Cada zona diz uma coisa (PLANO §4.7)…"), e o painel mostrava isso
+ * no cartão de Telas prontas, para o cliente. A nota continua no manifesto
+ * (é dela que a bancada precisa); aqui só passam os campos de que a tela
+ * precisa para montar, e a descrição vira texto de cliente:
+ *   - `paraCliente`, se o dono escreveu um;
+ *   - senão o `sobre`, se não tiver cara de nota interna (referência ao
+ *     plano, à bancada, "zona", ou comprido demais para um cartão — as
+ *     notas de desenho passam de 140 letras; as de cliente, não);
+ *   - senão uma frase feita do próprio layout ("Com cabeçalho, destaque…").
+ */
+const NOTA_INTERNA = /PLANO|§|docs\/|bancada|EXECUTOR|\bD\d+\b|\bzonas?\b|\blote\b/i;
+const NOME_NO_CARTAO = { cabecalho: 'cabeçalho', principal: 'destaque', lateral: 'lateral', rodape: 'faixa de avisos embaixo' };
+export function descricaoDaTela(t) {
+  if (t.paraCliente) return String(t.paraCliente);
+  if (t.sobre && String(t.sobre).length <= 140 && !NOTA_INTERNA.test(t.sobre)) return String(t.sobre);
+  const partes = ['cabecalho', 'principal', 'lateral', 'rodape'].filter((g) => t.zonas && t.zonas[g]).map((g) => NOME_NO_CARTAO[g]);
+  if (!partes.length) return '';
+  const lista = partes.length > 1 ? partes.slice(0, -1).join(', ') + ' e ' + partes[partes.length - 1] : partes[0];
+  return 'Tela inteira, com ' + lista + '. Troque os textos e ponha na TV.';
+}
+export function paraOCliente(t) {
+  const { id, nome, marca, perfil, layout, zonas, mensagens, estado, paraComecar } = t;
+  return { id, nome, marca, perfil, layout, zonas, mensagens, estado, paraComecar: paraComecar === true, descricao: descricaoDaTela(t) };
+}
 
 export const emPe = (layoutId) => /^portrait/.test(layoutId || '');
 
@@ -179,15 +208,37 @@ export function marcaDaConta(r) {
 /*
  * A tela com que uma TV recém-pareada começa (QA de 26/10): ela ficava na
  * espera dizendo "Tudo certo, TV" até alguém publicar, e as telas prontas,
- * que são o melhor do produto, só apareciam para quem fosse procurar. A do
- * ramo da conta primeiro; deitada, a não ser que a TV tenha contado que está
- * em pé. Nula se não houver nenhuma que sirva.
+ * que são o melhor do produto, só apareciam para quem fosse procurar.
+ *
+ * SÓ DA FRENTE DA CONTA (QA de lançamento, 03/11, bloqueador B1): sem tela
+ * da frente, caía em `telas.find(cabe)` — a primeira aprovada de qualquer
+ * frente, que era a da ótica. Toda TV nova, da metalúrgica à clínica,
+ * estreava com "Óculos de sol 30% OFF" e uma oferta vencida com o nome do
+ * cliente no cabeçalho. Agora, sem tela da frente que caiba, devolve null e
+ * a TV fica na espera ("Tudo certo"), que é neutra.
+ *
+ * SÓ A MARCADA PARA COMEÇAR (reteste de 03/11): a tela aprovada da ótica
+ * ("Semana do Sol", oferta "até sábado, 25 de outubro") virava a estreia de
+ * toda TV de Comércio, da padaria ao salão, com data vencida. A tela de
+ * estreia tem de servir a qualquer cliente da frente e não ter data: só entra
+ * a que tem `paraComecar: true` no manifesto (pecas-ouro/manifesto.json).
+ *
+ * NA ORIENTAÇÃO DA TV (mesmo QA): o painel passava sempre null, e a TV em pé
+ * recebia uma tela deitada espremida. `tvEmPe` é o que a TV contou de si
+ * (tvEmPe(d) abaixo); null quando ela ainda não disse — aí, deitada, que é o
+ * caso comum.
  */
 export function telaParaComecar(dados, marca, perfilId, tvEmPe) {
   const telas = (dados && dados.telas) || [];
   const cabe = (t) => (tvEmPe == null ? !emPe(t.layout) : emPe(t.layout) === tvEmPe);
-  const t = telas.find((x) => perfilDaTela(x) === perfilId && cabe(x)) || telas.find(cabe);
+  const t = telas.find((x) => x.paraComecar && perfilDaTela(x) === perfilId && cabe(x));
   return t ? montarTela(t, dados.modelos, marca || {}, dados.exemplos) : null;
+}
+
+// A TV está em pé? Pelo que ela contou de si (largura e altura); sem isso, não se sabe (null).
+export function tvEmPe(d) {
+  const i = d && d.info;
+  return i && i.w > 0 && i.h > 0 ? i.h > i.w : null;
 }
 
 /*

@@ -29,7 +29,8 @@ test('o número como o ERP manda, a entrada do push e a resposta do pull pelo ma
   assert.equal(K.daEntrada(Array.from({ length: 80 }, (_, i) => ({ chave: 'k' + i, valor: i }))).length, K.MAX_INDICADORES);
   const protheus = { dados: { itens: [{ codigo: 'FAT', descricao: 'Faturamento', realizado: '1.500,50', meta: 2000 }, { codigo: 'PED', descricao: 'Pedidos', realizado: 31 }] } };
   assert.deepEqual(K.daResposta(protheus, { lista: 'dados.itens', chave: 'codigo', nome: 'descricao', valor: 'realizado', meta: 'meta' }).map((i) => [i.chave, i.valor, i.meta]),
-    [['fat', 1500.5, 2000], ['ped', 31, null]]);
+    // QA de lançamento (03/11): campo que não veio não é apagado — o "Pedidos" sem meta fica com a meta que já tinha (undefined = não mexe).
+    [['fat', 1500.5, 2000], ['ped', 31, undefined]]);
   assert.deepEqual(K.daResposta({ resumo: { vendas: 10 } }, { lista: 'resumo' }).map((i) => i.chave), ['vendas'], 'objeto simples no caminho');
   assert.deepEqual(K.mapaLimpo({ lista: 'a.b; DROP', valor: '<x>' }), { lista: 'a.bDROP', chave: '', nome: '', valor: 'x', unidade: '', meta: '' });
   assert.deepEqual(K.cabecalhosDe('basic', '', 'u:p'), { authorization: 'Basic dTpw' });

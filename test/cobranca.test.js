@@ -216,7 +216,13 @@ test('o e-mail de aviso sai com 3 dias, uma vez por atraso', () => {
   assert.equal(lemb.decidirAtraso({ ...conta(5), email: '' }, AGORA), false);
   const m = lemb.mensagemAtraso(conta(3), 'https://app.exemplo', AGORA);
   assert.match(m.subject, /continuam no ar/);
-  assert.match(m.text, /Nunca desligamos uma tela por causa de fatura/);
+  /*
+   * QA de lançamento, 03/11 (decisão do dono): com 20 dias de atraso só a TV
+   * mais antiga segue no ar e as outras mostram a pausa. "Nunca desligamos
+   * uma tela" deixou de ser verdade; o e-mail diz o que acontece.
+   */
+  assert.match(m.text, /Nada é apagado por causa de fatura/);
+  assert.match(m.text, /só a TV mais antiga da conta segue no ar/);
   assert.match(m.text, /em 7 dias as TVs passam a mostrar um pequeno selo/);
   assert.match(m.text, /em 17 dias criar com IA e ligar telas novas ficam pausados/);
   assert.match(m.text, /https:\/\/app\.exemplo\/app\/\?ir=billing/);

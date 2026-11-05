@@ -37,6 +37,8 @@ const ESTADO = {
   no_ar: { rotulo: 'No ar', classe: 'bg-ok/15 text-ok' },
   pausada: { rotulo: 'Pausada', classe: 'bg-warn/15 text-warn' },
   pronta: { rotulo: 'Pronta', classe: 'bg-surface-2 text-ink-2' },
+  // QA de lançamento, 03/11: texto que a lei barra (server/conferencia.js) — fica fora da TV até trocar.
+  revisar: { rotulo: 'Trocar texto', classe: 'bg-danger/10 text-danger' },
 };
 const quando = (ms) => {
   if (!ms) return '';
@@ -150,7 +152,8 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
           <ArrowLeft size={16} /> Tudo o que foi criado
         </button>
         {/* Pronta e sem TV na conta: o próximo passo é ligar a TV (vinha do resultado do Criar). */}
-        {!telas.length && (
+        {/* A campanha com texto barrado (QA de 03/11) não está pronta: o resultado diz o que trocar. */}
+        {!telas.length && aberta.estado !== 'revisar' && (
           <ProximoPasso feito="A campanha está pronta." proximo="ligar a TV — ela já recebe esta campanha." acao="Ligar a TV"
             onIr={() => onIr && onIr('screens', { abrirParear: true })} />
         )}
@@ -179,7 +182,7 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
           <span className="sr-only">Buscar campanha</span>
           <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
           <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar pelo nome"
-            className="h-9 w-full rounded-md border border-line bg-surface pl-8 pr-8 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
+            className="h-9 w-full rounded-md border border-line bg-surface pl-8 pr-8 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent" />
           {busca && (
             <button type="button" aria-label="Limpar a busca" onClick={() => setBusca('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"><X size={14} /></button>
           )}

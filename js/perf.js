@@ -39,9 +39,18 @@
    * Aparelhos que se anunciam como TV/set-top. A lista não precisa ser
    * completa — o que ela não pegar, a medição pega em três segundos.
    */
-  var TV = /\b(smart-?tv|smarttv|tizen|web0s|webos|netcast|hbbtv|viera|bravia|aquos|philipstv|googletv|android\s?tv|crkey|aft[bmst]|firetv|nettv|dtv|inettvbrowser|roku)\b/i;
+  var TV = /\b(smart-?tv|smarttv|tizen|web0s|webos|netcast|hbbtv|viera|bravia|aquos|philipstv|googletv|android\s?tv|crkey|aft[bmst]|firetv|nettv|dtv|inettvbrowser|roku|multitelastv|chromecast|mibox\d*|silk)\b/i;
+  /*
+   * QA de lançamento, 03/11: o `aft[bmst]` só pegava o Fire TV de sigla com 4
+   * letras; o 4K (AFTMM), o 4K Max (AFTKA) e o Cube (AFTR) passavam como
+   * computador e a primeira pintura saía no modo caro. A sigla do Fire TV é
+   * sempre MAIÚSCULA — e por isso fica numa expressão à parte, sem o /i, que
+   * senão pegaria "after" em qualquer texto. O próprio app (MultiTelasTV/),
+   * Chromecast, Mi Box e o navegador Silk da Amazon entram na lista acima.
+   */
+  var FIRE_TV = /\bAFT[A-Z]{1,4}\b/;
 
-  function ehTv(ua) { return TV.test(String(ua || '')); }
+  function ehTv(ua) { var s = String(ua || ''); return TV.test(s) || FIRE_TV.test(s); }
 
   function param(nome) {
     try { return new URLSearchParams(global.location.search).get(nome); }

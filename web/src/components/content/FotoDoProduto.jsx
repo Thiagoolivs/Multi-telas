@@ -152,7 +152,7 @@ function BancoDeImagens({ onEscolher, pixabayLigada }) {
       )}
       <form onSubmit={procurar} className="mb-2 flex gap-2">
         <input value={termo} onChange={(e) => setTermo(e.target.value)} placeholder="Ex.: café, equipe, fábrica, Natal" aria-label="Procurar no banco de imagens"
-          className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
+          className="min-w-0 flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent" />
         <Button type="submit" size="sm" icon={Search} disabled={!termo.trim() || buscando}>{buscando ? 'Procurando…' : 'Procurar'}</Button>
       </form>
       {busca && (busca.fotos.length ? (

@@ -11,12 +11,14 @@ import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { RedesSociais } from '../components/content/RedesSociais.jsx';
 import { TAMANHO_REAL } from '../lib/pecaHtml.js';
+import { Conferencia } from '../components/criar/ResultadoCampanha.jsx';
 import { ai, devices, library, media, brand } from '../api.js';
 import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { publicarPecas } from '../lib/publicar.js';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 import { usePerfil, perfilDe, perfilAtual } from '../lib/perfil.js';
+import { EscolherArquivo } from '../components/ui/EscolherArquivo.jsx';
 
 /*
  * CRIAÇÃO RÁPIDA. Era o Criar até 21/10. Desde o item 24 (EXECUTOR §2b), o
@@ -304,6 +306,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
    * criação) e duplicava a pasta em Meus Designs (D3).
    */
   const feito = React.useRef(null);
+  const conferida = React.useRef(null);
   async function publicar() {
     setErro(''); setEtapa({ etapa: 'desenhando a peça', segundos: 0 });
     try {
@@ -315,6 +318,16 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
         pecas = ((out && out.pecas) || []).map((p) => ({ formato: p.formato, canal: p.canal, label: p.label, item: p.item, faixa: p.faixa }));
         if (!pecas.length) throw new Error('A peça não saiu. Tente de novo em instantes.');
         /*
+         * A régua de conteúdo (reteste de 03/11): o que a lei barra não vai
+         * para a TV nem fica guardado. A pessoa lê o porquê e pede de novo;
+         * o preço ou a data que ela não disse aparece no fim, para conferir.
+         */
+        const conf = (out && out.conferencia) || null;
+        // Só o que está na peça barra (a Criação rápida não usa as legendas do diretor).
+        const barrado = conf && (conf.bloqueios || []).find((x) => x.peca);
+        if (barrado) throw new Error('Esta peça não pode ir para a TV: “' + barrado.trecho + '” ' + barrado.motivo + '.' + (barrado.sugestao ? ' Peça de novo com algo como “' + barrado.sugestao + '”.' : ' Peça de novo com outras palavras.'));
+        conferida.current = conf;
+        /*
          * O nome é a frase, não o "Campanha" que o diretor devolve sem IA. Além
          * de ser a pasta em Meus Designs, ele é a ORIGEM na tela: publicar troca
          * o que veio da mesma origem — com um nome fixo, cada criação nova
@@ -325,7 +338,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
       }
       if (alvos.length) await publicarPecas({ alvos, pecas, titulo, telas });
       feito.current = null;
-      setPronto({ pecas, nTelas: alvos.length, titulo });
+      setPronto({ pecas, nTelas: alvos.length, titulo, conferencia: conferida.current });
       aviso.ok(alvos.length ? 'Publicado em ' + alvos.length + ' tela(s).' : 'Guardado em Meus Designs.');
     } catch (e) { setErro(e.message || 'Não deu para publicar. Tente de novo.'); }
     finally { setEtapa(null); }
@@ -380,10 +393,10 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
                 {foto
                   ? <img src={foto.url} alt="" className="h-20 w-20 rounded-lg border border-line object-cover" />
                   : <span className="flex h-20 w-20 items-center justify-center rounded-lg border border-dashed border-line text-ink-3"><ImagePlus size={22} /></span>}
-                <label className={cn('cursor-pointer rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2', subindo && 'pointer-events-none opacity-60')}>
+                <EscolherArquivo accept="image/png,image/jpeg,image/webp" capture="environment" onChange={escolherFoto} disabled={subindo}
+                  className="rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink-2 hover:bg-surface-2">
                   {subindo ? 'Enviando…' : foto ? 'Trocar a foto' : 'Tirar ou escolher a foto'}
-                  <input type="file" accept="image/png,image/jpeg,image/webp" capture="environment" className="hidden" onChange={escolherFoto} />
-                </label>
+                </EscolherArquivo>
               </div>
             )}
             <div>
@@ -521,6 +534,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-ok/15 text-ok"><Check size={16} /></span>
               {pronto.nTelas ? 'No ar em ' + pronto.nTelas + (pronto.nTelas === 1 ? ' tela.' : ' telas.') : 'Guardado em Meus Designs.'}
             </div>
+            <Conferencia conferencia={pronto.conferencia} />
             <div className="grid gap-3 sm:grid-cols-2">
               {pronto.pecas.map((p, i) => (
                 <div key={i} className="overflow-hidden rounded-lg border border-line"><DesignThumb item={p.item} /></div>

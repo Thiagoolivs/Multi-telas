@@ -24,6 +24,10 @@
   var PRONTO = '<div class="card"><div class="ok"><div class="big">🎉</div>'
     + '<h2>Enviada!</h2><p class="sub">Olhe para a tela — ela aparece em instantes.</p>'
     + '<a class="mais" href="">Enviar outra</a></div></div>';
+  // Mural com aprovação (QA de 03/11): a foto espera alguém da empresa aprovar antes de ir para a tela.
+  var ESPERANDO = '<div class="card"><div class="ok"><div class="big">🎉</div>'
+    + '<h2>Enviada!</h2><p class="sub">Sua foto vai para a tela assim que a organização aprovar.</p>'
+    + '<a class="mais" href="">Enviar outra</a></div></div>';
 
   var input = document.getElementById('f');
   var prev = document.getElementById('preview');
@@ -104,7 +108,12 @@
         if (e.lengthComputable) btn.textContent = 'Enviando… ' + Math.round((e.loaded / e.total) * 100) + '%';
       };
       xhr.onload = function () {
-        if (xhr.status >= 200 && xhr.status < 300) { document.body.innerHTML = PRONTO; return; }
+        if (xhr.status >= 200 && xhr.status < 300) {
+          var pendente = false;
+          try { pendente = !!JSON.parse(xhr.responseText).pendente; } catch (e) {}
+          document.body.innerHTML = pendente ? ESPERANDO : PRONTO;
+          return;
+        }
         var m = 'Não deu para enviar. Tente de novo.';
         try { m = JSON.parse(xhr.responseText).error || m; } catch (e) {}
         err.textContent = m; err.style.display = 'block';

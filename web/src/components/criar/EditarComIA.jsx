@@ -151,7 +151,7 @@ export function EditarComIA({ campanha, onMudou, textoInicial }) {
             onPaste={(e) => { const imgs = imagensDoColar(e); if (imgs.length) { e.preventDefault(); anexar(imgs); } }}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
             placeholder="O que você quer mudar?"
-            className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent" />
+            className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent" />
           <Button variant="primary" icon={Send} disabled={!texto.trim() || !!etapa} onClick={() => enviar()} aria-label="Mandar" />
         </div>
         {temAnterior && !etapa && (

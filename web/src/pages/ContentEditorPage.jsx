@@ -35,6 +35,7 @@ import { ai } from '../api.js';
 import { CONTENT_TYPES, typeLabel, itemSummary, defaultConfig } from '../lib/contentTypes.js';
 import { zonesOf, ensureZone, formatoDoLayout } from '../lib/screenConfig.js';
 import { cn } from '../lib/cn.js';
+import { perfilAtual } from '../lib/perfil.js';
 
 // Zona inicial: prefere a "principal" (o destaque), senão a 1ª playlist.
 /*
@@ -315,7 +316,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     if (type.startsWith('modelo:')) {
       Promise.all([import('../../../js/modelos.js'), brandApi.get().catch(() => null)]).then(([, r]) => {
         const cores = (r && r.kit && r.kit.cores) || [];
-        const peca = globalThis.MTModelos && globalThis.MTModelos.montar(type.slice(7), formatoDaTela, cores);
+        const peca = globalThis.MTModelos && globalThis.MTModelos.montar(type.slice(7), formatoDaTela, cores, perfilAtual());
         comecarDe(peca, formatoDaTela);
       });
       return;

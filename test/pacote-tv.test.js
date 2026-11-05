@@ -92,7 +92,8 @@ test('o servidor serve o player com o pacote, e o pacote com cache revalidado', 
     const html = await pedir('/player.html');
     assert.equal(html.status, 200);
     assert.equal(html.headers['cache-control'], 'no-store');
-    assert.deepEqual([...html.corpo.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]), ['js/perf.js', 'js/tv.pacote.js']);
+    // compat.js no <head>, fora do pacote: o aviso de navegador antigo não pode cair com ele (QA de lançamento, 03/11).
+    assert.deepEqual([...html.corpo.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]), ['js/compat.js', 'js/perf.js', 'js/tv.pacote.js']);
     const js = await pedir('/js/tv.pacote.js');
     assert.equal(js.status, 200);
     assert.match(js.headers['content-type'], /javascript/);

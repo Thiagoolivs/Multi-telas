@@ -150,6 +150,10 @@ function comRemendo(it, r) {
 
 const FRASE = { texto: 'troquei o texto', estilo: 'mudei o estilo', cores: 'troquei as cores', fonte: 'troquei a fonte', elementos: 'mudei o que aparece' };
 const AJUDA = 'Dá para pedir, por exemplo: "muda o título para Promoção de inverno", "deixa vermelho", "fonte mais elegante" ou "tira o preço".';
+// A frase de quem diz que fez ("Deixei maior", "Pronto", "Troquei"): só vale se o remendo mudou algo.
+const DIZ_QUE_FEZ = /\b(mud|troc|deixei|fiz|aumentei|diminu[ií]|coloquei|pus|tirei|ajustei|apliquei|pronto|feito|ficou)/i;
+const TAMANHO = 'Não mudei nada: por aqui eu troco o texto, as cores, a fonte e o que aparece, mas não o tamanho de um elemento. '
+  + 'Para isso, peça no Editar com a IA da campanha (por exemplo: "deixa o preço maior na peça 1"): lá a peça é redesenhada.';
 
 /*
  * Entende o pedido e devolve { resposta, remendo, mudou }. A peça que chega
@@ -182,8 +186,15 @@ async function ajustar(item, pedido, historico) {
     if (depois.problemas.length) return { resposta: 'Não deu para aplicar: ' + depois.problemas[0] + '. ' + AJUDA, remendo: {}, mudou: [] };
   }
   if (!mudou.length) {
+    /*
+     * QA de lançamento, 03/11: "deixa o preço maior" voltava "Deixei o preço
+     * maior e mais chamativo" com o remendo vazio. O remendo não muda
+     * tamanho; aqui a resposta diz isso, e nunca repete a frase da IA que
+     * conta como feito o que não foi.
+     */
+    if (require('./ajuste').pedidoDeDesenho(todo)) return { resposta: TAMANHO, remendo: {}, mudou };
     // Explicação da IA ("isso pede outra foto") vale como resposta; sem ela, a pergunta (D51).
-    if (resposta && !/mud|troc/i.test(resposta)) return { resposta: resposta + ' ' + AJUDA, remendo: {}, mudou };
+    if (resposta && !DIZ_QUE_FEZ.test(resposta)) return { resposta: resposta + ' ' + AJUDA, remendo: {}, mudou };
     return Object.assign({ remendo: {}, mudou }, perguntaDaPeca(todo));
   }
   const frase = mudou.map((m) => FRASE[m]).join(', ');

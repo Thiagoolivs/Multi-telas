@@ -375,6 +375,10 @@ async function init() {
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS tipo TEXT;
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS referencias TEXT;
     ALTER TABLE conversas ADD COLUMN IF NOT EXISTS esboco TEXT;
+    -- Mural com aprovação e indicador "menor é melhor" (QA de 03/11); ver db-sqlite.js.
+    ALTER TABLE murais ADD COLUMN IF NOT EXISTS aprovar BOOLEAN;
+    ALTER TABLE muralfotos ADD COLUMN IF NOT EXISTS pendente BOOLEAN;
+    ALTER TABLE indicadores ADD COLUMN IF NOT EXISTS sentido TEXT;
   `);
 }
 
@@ -907,8 +911,9 @@ async function numerosDaPlataforma(agora, vivaDesde, desde) {
     um('SELECT COUNT(*)::int AS n FROM tenants'),
     um('SELECT COUNT(*)::int AS n FROM tenants WHERE created_at >= $1', [desde]),
     um('SELECT COUNT(*)::int AS n FROM users'),
-    um('SELECT COUNT(*)::int AS n FROM devices'),
-    um('SELECT COUNT(*)::int AS n FROM devices WHERE last_seen >= $1', [vivaDesde]),
+    // Só TV pareada (com conta): a TV que mostra o código ainda não é de ninguém (QA de 03/11).
+    um('SELECT COUNT(*)::int AS n FROM devices WHERE tenant_id IS NOT NULL'),
+    um('SELECT COUNT(*)::int AS n FROM devices WHERE tenant_id IS NOT NULL AND last_seen >= $1', [vivaDesde]),
     um('SELECT COALESCE(SUM(size), 0)::bigint AS b FROM media'),
     um('SELECT COUNT(*)::int AS n FROM library'),
     um('SELECT COALESCE(SUM(creditos),0)::int AS c, COALESCE(SUM(custo_centavos),0)::int AS centavos, COUNT(*)::int AS n FROM uso_ia WHERE created_at >= $1', [desde]),
@@ -937,8 +942,8 @@ async function numerosDaPlataforma(agora, vivaDesde, desde) {
 /* ---------------- Mural de fotos do público ---------------- */
 // `tenantId` sai daqui porque a rota pública do QR não tem sessão: quem manda
 // a foto é identificado pelo mural, e é do mural que vem a empresa dona dela.
-const mapMural = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo, aceitando: !!r.aceitando, createdAt: r.created_at } : null);
-const mapFoto = (r) => ({ id: r.id, url: r.url, autor: r.autor || '', mensagem: r.mensagem || '', oculta: !!r.oculta, createdAt: r.created_at });
+const mapMural = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo, aceitando: !!r.aceitando, aprovar: r.aprovar == null ? true : !!r.aprovar, createdAt: r.created_at } : null);
+const mapFoto = (r) => ({ id: r.id, url: r.url, autor: r.autor || '', mensagem: r.mensagem || '', oculta: !!r.oculta, pendente: !!r.pendente, createdAt: r.created_at });
 
 /* ---------------- Envio em lote (D26) ---------------- */
 const TRINTA_DIAS = 30 * 24 * 60 * 60 * 1000;
@@ -1015,7 +1020,7 @@ const mapConector = (r) => {
 const mapIndicador = (r) => (r ? {
   id: r.id, conectorId: r.conector_id, chave: r.chave, nome: r.nome || r.chave, valor: r.valor == null ? null : Number(r.valor),
   unidade: r.unidade || '', meta: r.meta == null ? null : Number(r.meta), anterior: r.anterior == null ? null : Number(r.anterior),
-  atualizadoEm: Number(r.atualizado_em) || 0,
+  sentido: r.sentido || '', atualizadoEm: Number(r.atualizado_em) || 0,
 } : null);
 async function criarConector(tenantId, c) {
   const id = 'kc_' + rid(12);
@@ -1052,12 +1057,18 @@ async function gravarIndicadores(tenantId, conectorId, lista, agora) {
     await client.query('BEGIN');
     for (const i of lista) {
       const atual = (await client.query('SELECT id FROM indicadores WHERE tenant_id = $1 AND conector_id = $2 AND chave = $3', [tenantId, conectorId, i.chave])).rows[0];
+      // Só muda o campo que veio (server/kpis.js): o formato simples não apaga nome, unidade, meta nem sentido.
+      const tem = (k) => i[k] !== undefined;
       if (atual) {
-        await client.query('UPDATE indicadores SET nome = $1, valor = $2, unidade = $3, meta = $4, anterior = CASE WHEN valor = $2 THEN anterior ELSE valor END, atualizado_em = $5 WHERE id = $6',
-          [i.nome, i.valor, i.unidade || '', i.meta, quando, atual.id]);
+        await client.query('UPDATE indicadores SET nome = CASE WHEN $1::boolean THEN $2::text ELSE nome END, valor = $3, '
+          + 'unidade = CASE WHEN $4::boolean THEN $5::text ELSE unidade END, meta = CASE WHEN $6::boolean THEN $7::double precision ELSE meta END, '
+          + 'sentido = CASE WHEN $8::boolean THEN $9::text ELSE sentido END, '
+          + 'anterior = CASE WHEN valor = $3 THEN anterior ELSE valor END, atualizado_em = $10 WHERE id = $11',
+          [tem('nome'), i.nome == null ? null : i.nome, i.valor, tem('unidade'), i.unidade || '', tem('meta'), i.meta == null ? null : i.meta,
+            tem('sentido'), i.sentido || '', quando, atual.id]);
       } else {
-        await client.query('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULL,$9)',
-          ['ki_' + rid(12), tenantId, conectorId, i.chave, i.nome, i.valor, i.unidade || '', i.meta, quando]);
+        await client.query('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, sentido, anterior, atualizado_em) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10)',
+          ['ki_' + rid(12), tenantId, conectorId, i.chave, i.nome || i.nomeNovo || i.chave, i.valor, i.unidade || '', i.meta == null ? null : i.meta, i.sentido || '', quando]);
       }
     }
     await client.query('COMMIT');
@@ -1106,9 +1117,9 @@ async function marcarConsentimento(tenantId, pessoaId, quando) { return (await p
 
 async function criarMural(tenantId, codigo, titulo) {
   const id = 'mur_' + rid(12);
-  await pool.query('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, created_at) VALUES ($1,$2,$3,$4,TRUE,$5)',
+  await pool.query('INSERT INTO murais (id, tenant_id, codigo, titulo, aceitando, aprovar, created_at) VALUES ($1,$2,$3,$4,TRUE,TRUE,$5)',
     [id, tenantId, codigo, titulo || 'Mural', Date.now()]);
-  return { id, codigo, titulo: titulo || 'Mural', aceitando: true };
+  return { id, codigo, titulo: titulo || 'Mural', aceitando: true, aprovar: true };
 }
 async function listarMurais(tenantId) {
   const r = await pool.query('SELECT * FROM murais WHERE tenant_id = $1 ORDER BY created_at DESC', [tenantId]);
@@ -1122,9 +1133,11 @@ async function muralPorId(id, tenantId) {
   const r = await pool.query('SELECT * FROM murais WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   return mapMural(r.rows[0]);
 }
-async function atualizarMural(id, tenantId, titulo, aceitando) {
+// `aprovar` só muda quando vem (undefined = fica como está).
+async function atualizarMural(id, tenantId, titulo, aceitando, aprovar) {
   await pool.query('UPDATE murais SET titulo = $1, aceitando = $2 WHERE id = $3 AND tenant_id = $4',
     [titulo || 'Mural', !!aceitando, id, tenantId]);
+  if (aprovar !== undefined) await pool.query('UPDATE murais SET aprovar = $1 WHERE id = $2 AND tenant_id = $3', [!!aprovar, id, tenantId]);
 }
 /*
  * Apagar o mural apaga as fotos dele: a linha (com o IP de quem mandou), a
@@ -1147,8 +1160,9 @@ async function removerMural(id, tenantId) {
 }
 async function addFotoMural(muralId, tenantId, foto) {
   const id = 'mf_' + rid(14);
-  await pool.query('INSERT INTO muralfotos (id, mural_id, tenant_id, url, chave, autor, mensagem, ip, oculta, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,FALSE,$9)',
-    [id, muralId, tenantId, foto.url, foto.chave || '', foto.autor || '', foto.mensagem || '', foto.ip || '', Date.now()]);
+  // Pendente (o mural pede aprovação) entra também oculta: a TV só lê as não ocultas.
+  await pool.query('INSERT INTO muralfotos (id, mural_id, tenant_id, url, chave, autor, mensagem, ip, oculta, pendente, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,$10)',
+    [id, muralId, tenantId, foto.url, foto.chave || '', foto.autor || '', foto.mensagem || '', foto.ip || '', !!foto.pendente, Date.now()]);
   return { id, ...foto };
 }
 async function listarFotosMural(muralId, limite) {
@@ -1160,7 +1174,8 @@ async function fotosVisiveis(muralId, limite) {
   return r.rows.map(mapFoto);
 }
 async function ocultarFoto(id, tenantId, oculta) {
-  await pool.query('UPDATE muralfotos SET oculta = $1 WHERE id = $2 AND tenant_id = $3', [!!oculta, id, tenantId]);
+  // Devolver à tela é também aprovar: a foto pendente deixa de ser pendente.
+  await pool.query('UPDATE muralfotos SET oculta = $1, pendente = CASE WHEN $1 THEN pendente ELSE FALSE END WHERE id = $2 AND tenant_id = $3', [!!oculta, id, tenantId]);
 }
 async function ocultarTodasFotos(muralId, tenantId) {
   const r = await pool.query('UPDATE muralfotos SET oculta = TRUE WHERE mural_id = $1 AND tenant_id = $2', [muralId, tenantId]);
@@ -1311,6 +1326,8 @@ async function setDeviceConfig(id, configJson, name, versaoEsperada) {
   return agora;
 }
 async function renameDevice(id, name) { await pool.query('UPDATE devices SET name = $1 WHERE id = $2', [name, id]); }
+// Reconectar: a TV nova herda a idade da antiga (a mais antiga é a que fica no ar no grátis).
+async function herdarIdadeDaTela(novaId, antigaId) { await pool.query('UPDATE devices SET created_at = (SELECT created_at FROM devices WHERE id = $1) WHERE id = $2', [antigaId, novaId]); }
 async function setGrupoDaTela(id, grupo) { await pool.query('UPDATE devices SET grupo = $1 WHERE id = $2', [grupo || null, id]); }
 async function renomearGrupo(tenantId, de, para) {
   const r = await pool.query('UPDATE devices SET grupo = $1 WHERE tenant_id = $2 AND grupo = $3', [para || null, tenantId, de]);
@@ -1395,7 +1412,8 @@ async function setTenantBilling(id, fields) {
  * assinatura cobra. É a lista da conciliação periódica (server/cobranca.js).
  */
 async function contasEmTeste(desde) {
-  const r = await pool.query(`SELECT t.id, t.name, t.plan, t.created_at, t.lembrete_teste,
+  // t.perfil: o e-mail do teste fala a língua da frente (server/lembretes.js, QA de 03/11).
+  const r = await pool.query(`SELECT t.id, t.name, t.plan, t.perfil, t.created_at, t.lembrete_teste,
       (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
       (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = t.id) AS telas
     FROM tenants t
@@ -1432,7 +1450,7 @@ async function frotaDaPlataforma(limite) {
 /* As contas que não estão no grátis, com o e-mail do dono e quantas telas têm. */
 async function contasPagas() {
   const r = await pool.query(`SELECT t.id, t.name, t.plan, t.plan_status, t.plan_contrato, t.contrato_desde, t.plan_telas,
-      t.atraso_desde, t.plan_renews_at, t.created_at,
+      t.atraso_desde, t.plan_renews_at, t.created_at, t.perfil,
       (SELECT u.email FROM users u WHERE u.tenant_id = t.id AND u.role = 'owner' ORDER BY u.created_at LIMIT 1) AS email,
       (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = t.id) AS telas
     FROM tenants t WHERE COALESCE(t.plan, 'free') <> 'free' ORDER BY t.name`);
@@ -1447,12 +1465,12 @@ async function cadastrosDesde(desde) {
 }
 /* Custo de IA por conta na janela (medido em uso_ia), das que mais gastam. */
 async function custoIaPorConta(desde, limite) {
-  const r = await pool.query(`SELECT u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato,
+  const r = await pool.query(`SELECT u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato, t.perfil,
       SUM(u.custo_centavos)::bigint AS centavos, SUM(u.creditos)::bigint AS criacoes, COUNT(*)::int AS chamadas,
       (SELECT COUNT(*)::int FROM devices d WHERE d.tenant_id = u.tenant_id) AS telas
     FROM uso_ia u LEFT JOIN tenants t ON t.id = u.tenant_id
     WHERE u.created_at >= $1
-    GROUP BY u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato
+    GROUP BY u.tenant_id, t.name, t.plan, t.plan_status, t.plan_contrato, t.perfil
     ORDER BY centavos DESC LIMIT $2`, [desde, limite || 50]);
   return r.rows;
 }
@@ -2023,7 +2041,7 @@ module.exports = {
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
   createDevice, getDevice, ondeAparece, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
-  renameDevice, setExpediente, setGrupoDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
+  renameDevice, setExpediente, setGrupoDaTela, herdarIdadeDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,
   frotaDaPlataforma, contasPagas, cadastrosDesde, custoIaPorConta, registrarAcessoSuporte, acessosSuporte,

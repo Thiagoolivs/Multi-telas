@@ -1168,7 +1168,8 @@
   function formatarKpi(v, u) {
     if (v == null || !isFinite(v)) return '—';
     const abs = Math.abs(v);
-    const txt = abs >= 1e6 ? (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi'
+    const txt = abs >= 1e9 ? (v / 1e9).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' bi'
+      : abs >= 1e6 ? (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi'
       : v.toLocaleString('pt-BR', { maximumFractionDigits: abs < 100 ? 2 : 0 });
     const un = String(u || '').trim();
     if (!un) return txt;
@@ -1188,8 +1189,16 @@
       out.variacao = Math.abs(pct).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
       out.tendencia = pct > 0 ? 'subiu' : 'desceu';
     }
+    /*
+     * "Quanto menos, melhor" (refugo, acidentes, faltas; QA de 03/11): o
+     * servidor diz o sentido (o que o ERP mandou, ou o que o nome indica), e
+     * a peça pode forçar (`item.sentido`). Refugo de 2,6% com meta de 2% não
+     * é "Meta batida!": é acima da meta, e subir é ruim.
+     */
+    out.sentido = item.sentido === 'menor' || item.sentido === 'maior' ? item.sentido : (k.sentido === 'menor' ? 'menor' : 'maior');
     if (k.meta) {
       out.meta = { pct: k.valor / k.meta * 100, texto: formatarKpi(k.meta, k.unidade) };
+      if (out.sentido === 'menor') out.meta.batida = k.valor <= k.meta;
     }
     const hora = k.em ? new Date(k.em) : null;
     out.detalhe = item.detalhe || (hora ? 'Atualizado às ' + hora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '');
@@ -1212,25 +1221,49 @@
     }
     valueWrap.appendChild(v);
     const trend = (item.tendencia || 'estavel');
+    const menor = item.sentido === 'menor';
     if (item.variacao) {
-      const t = div('mt-kpi-trend mt-kpi-' + trend);
+      // No "menor é melhor", subir é a má notícia: a seta é a mesma, a cor inverte.
+      const cor = trend === 'estavel' ? 'estavel' : (trend === 'subiu') !== menor ? 'subiu' : 'desceu';
+      const t = div('mt-kpi-trend mt-kpi-' + cor);
       const arrow = trend === 'subiu' ? '▲' : trend === 'desceu' ? '▼' : '▬';
       t.textContent = arrow + ' ' + item.variacao;
       valueWrap.appendChild(t);
     }
+    /*
+     * O NÚMERO CABE NA CAIXA (QA de 03/11): "10.300 pç" saía com o "1"
+     * cortado à esquerda e a variação cortada à direita — e produção e
+     * faturamento quase sempre têm 5 dígitos ou mais. A letra encolhe pelo
+     * tamanho do texto (dígito ~0,6 da letra; ponto e vírgula ~0,3; a unidade
+     * é 0,32 da letra), descontada a pílula da variação; e, se ainda faltar,
+     * a pílula desce para a linha de baixo em vez de sair da tela.
+     */
+    {
+      const txt = String(item.valor || '—');
+      const largos = txt.replace(/[.,\s]/g, '').length;
+      const estreitos = txt.length - largos;
+      const un = item.unidade && item.unidade.texto ? String(item.unidade.texto).length : 0;
+      const emPorLetra = largos * 0.62 + estreitos * 0.3 + (un ? un * 0.62 * 0.32 + 0.2 : 0);
+      const pilula = item.variacao ? 4.4 * 0.62 * (String(item.variacao).length + 2) + 4.8 + 3 : 0;
+      const cabe = Math.max(6, (90 - pilula) / Math.max(1, emPorLetra));
+      if (cabe < 22) v.style.fontSize = cabe.toFixed(2) + 'cqw';
+    }
     inner.appendChild(valueWrap);
     // A meta (D36): a barra até 100% e, passou, o destaque.
     if (item.meta) {
-      const batida = item.meta.pct >= 100;
+      const batida = item.meta.batida != null ? !!item.meta.batida : item.meta.pct >= 100;
       if (batida) el.classList.add('mt-kpi-batida');
+      if (menor && !batida) el.classList.add('mt-kpi-acima');
       const m = div('mt-kpi-meta');
       const barra = div('mt-kpi-meta-barra');
       const cheio = div('mt-kpi-meta-cheio');
       cheio.style.width = Math.max(2, Math.min(100, item.meta.pct)).toFixed(1) + '%';
       barra.appendChild(cheio);
       const t = div('mt-kpi-meta-texto');
-      t.textContent = batida ? '🎉 Meta batida! ' + Math.round(item.meta.pct) + '% de ' + item.meta.texto
-        : Math.round(item.meta.pct) + '% da meta de ' + item.meta.texto;
+      t.textContent = menor
+        ? (batida ? '✓ Dentro da meta (até ' + item.meta.texto + ')' : 'Acima da meta (até ' + item.meta.texto + ')')
+        : batida ? '🎉 Meta batida! ' + Math.round(item.meta.pct) + '% de ' + item.meta.texto
+          : Math.round(item.meta.pct) + '% da meta de ' + item.meta.texto;
       m.appendChild(barra);
       m.appendChild(t);
       inner.appendChild(m);
@@ -1931,7 +1964,8 @@
     const k = escalaDaTela();
     const host = document.createElement('div');
     host.className = 'mt-peca-escala';
-    host.style.cssText = Math.abs(k - 1) < 0.01 ? 'position:absolute;inset:0'
+    // left/top/width/height, e não `inset`: antes do Chromium 87 o `inset` é ignorado e a peça ficava 0×0 (QA de lançamento, 03/11).
+    host.style.cssText = Math.abs(k - 1) < 0.01 ? 'position:absolute;left:0;top:0;width:100%;height:100%'
       : 'position:absolute;left:0;top:0;width:' + (100 / k) + '%;height:' + (100 / k) + '%;transform:scale(' + k + ');transform-origin:0 0';
     el.appendChild(host);
     return host;

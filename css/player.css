@@ -906,7 +906,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   font-size: 4cqw; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
   color: var(--text-dim);
 }
-.mt-kpi-value-wrap { display: flex; align-items: baseline; justify-content: center; gap: 3cqw; margin-top: 1cqh; }
+/* flex-wrap: se o número grande não deixar lugar, a pílula da variação desce em vez de sair cortada (QA de 03/11). */
+.mt-kpi-value-wrap { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 1cqh 3cqw; margin-top: 1cqh; max-width: 100%; }
 .mt-kpi-value {
   font-size: 22cqw; font-weight: 800; line-height: 1; letter-spacing: -.03em;
   background: linear-gradient(160deg, var(--text), var(--accent));
@@ -927,6 +928,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-kpi-meta-texto { margin-top: 1.2cqh; font-size: min(3.2cqw, 5cqh); font-weight: 600; color: var(--text); }
 .mt-kpi-batida .mt-kpi-value { color: var(--accent); text-shadow: 0 0 4cqh color-mix(in srgb, var(--accent) 45%, transparent); }
 .mt-kpi-batida .mt-kpi-meta-cheio { background: linear-gradient(90deg, #22c55e, #a3e635); }
+/* "Menor é melhor" acima da meta (refugo de 2,6% com meta de 2%): a barra avisa, sem comemorar. */
+.mt-kpi-acima .mt-kpi-meta-cheio { background: linear-gradient(90deg, #f97316, #dc2626); }
 
 /* ---------- Superfície de conteúdo (linguagem premium adaptativa) ----------
    Fundo em gradiente derivado das cores do tema (accent + brand + fundo),
@@ -1290,38 +1293,103 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-fora-hora { font-size: 12vmin; font-weight: 300; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1; }
 .mt-fora-dia { margin-top: 2vmin; font-size: 3vmin; opacity: .7; }
 .mt-fora-do-horario .mt-stage { visibility: hidden; }
+/* TV pausada (js/player.js, mt:pausada): o aviso no meio, grande e calmo.
+   Sem o selo por cima: quem está no ar é a outra TV. */
+.mt-fora-pausa { display: none; }
+.mt-fora-pausada .mt-fora-pausa {
+  display: flex; align-items: center; justify-content: center; height: 100%;
+  padding: 0 8vw; text-align: center; color: #e8eaf0;
+  font: 600 clamp(20px, 4vmin, 56px)/1.35 system-ui, sans-serif;
+}
+.mt-tv-pausada .mt-selo { display: none; }
+
+/*
+ * A LETRA E A COR DA MARCA (docs/MARCA.md) nas telas que são do produto, não
+ * do cliente: o pareamento e o aviso de navegador antigo. QA de lançamento,
+ * 03/11: o pareamento saía no azul do tema padrão e na letra do sistema, sem
+ * logo — o primeiro contato do cliente com o MultiTelas não parecia o
+ * MultiTelas. Tinta no fundo, Outfit, o símbolo do logo e a lima só de
+ * tempero. As cores ficam fixas aqui de propósito: o tema da TV é do cliente.
+ *
+ * Escrito para navegador antigo também (o aviso existe justamente para ele):
+ * cada `clamp()`/`min()` vem com um valor simples antes, e nada de `inset`
+ * ou `gap`.
+ */
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/marca/outfit-400-normal-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/marca/outfit-600-normal-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/marca/outfit-700-normal-latin.woff2') format('woff2'); }
+.mt-marca {
+  display: inline-flex; align-items: center;
+  font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-weight: 600; letter-spacing: -.01em; color: #fff;
+  font-size: 28px; font-size: clamp(18px, 2.2vmax, 40px); line-height: 1;
+}
+.mt-marca-simbolo { display: block; width: 1.25em; height: 1.25em; margin-right: .5em; }
+.mt-marca-simbolo svg { display: block; }
 
 .mt-pairing {
-  position: fixed; inset: 0; z-index: 60;
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 60;
   display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(80% 80% at 50% 40%, var(--bg-2) 0%, var(--bg) 70%);
-  text-align: center; padding: min(6vw, 4vh);
+  /* Tinta, com um halo violeta discreto no alto — a mesma luz do painel. */
+  background: #0E0B1F;
+  background: radial-gradient(70% 55% at 50% 0%, rgba(91, 46, 255, .30) 0%, rgba(91, 46, 255, 0) 70%), #0E0B1F;
+  color: #fff;
+  font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  text-align: center; padding: 4vh; padding: min(6vw, 4vh);
 }
 .mt-pairing.hidden { display: none; }
-.mt-pairing-title { font-size: clamp(18px, 3vw, 40px); font-weight: 700; color: var(--text); }
+.mt-pairing .mt-marca { margin-bottom: 4vh; }
+.mt-pairing-title { font-size: 30px; font-size: clamp(18px, 3vw, 40px); font-weight: 600; letter-spacing: -.01em; color: #fff; }
 .mt-pairing-code {
   margin: .5em 0 .3em;
   /* Pela altura também: com o QR embaixo, 16vw estourava a caixa em 720p
      (a resolução de boa parte dos TV box) e cortava o título. */
-  font-size: clamp(48px, min(16vw, 20vh), 220px); font-weight: 800; letter-spacing: .12em;
-  line-height: 1; font-variant-numeric: tabular-nums;
-  background: linear-gradient(120deg, var(--text), var(--accent));
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+  font-size: 18vh; font-size: clamp(48px, min(16vw, 20vh), 220px); font-weight: 700; letter-spacing: .12em;
+  line-height: 1; font-variant-numeric: tabular-nums; color: #fff;
+}
+/* O traço lima embaixo do código: o "grifo" da marca, sobre a tinta (nunca sobre branco). */
+.mt-pairing-code::after {
+  content: ''; display: block; width: 1.1em; height: .045em; min-height: 4px;
+  margin: .2em auto 0; border-radius: 999px; background: #C6F432;
 }
 .mt-pairing-qr {
-  display: block; width: clamp(110px, min(16vw, 26vh), 260px); height: auto; aspect-ratio: 1;
-  margin: 0 auto 1em; padding: .6em; border-radius: 12px; background: #fff;
+  display: block; width: 22vh; width: clamp(110px, min(16vw, 26vh), 260px); height: auto; aspect-ratio: 1;
+  margin: 0 auto 1em; padding: .6em; border-radius: 14px; background: #fff;
 }
 .mt-pairing-qr[hidden] { display: none; }
-.mt-pairing-hint { font-size: clamp(13px, 1.8vw, 26px); color: var(--text-dim); max-width: 32em; margin: 0 auto; }
+.mt-pairing-hint { font-size: 20px; font-size: clamp(13px, 1.8vw, 26px); font-weight: 400; line-height: 1.4; color: #C9C7D4; max-width: 32em; margin: 0 auto; }
+.mt-pairing-hint strong { color: #fff; font-weight: 600; }
 /* Escape hatch: se este navegador já guardou uma TV, gera outra do zero. */
 .mt-pairing-reset {
   margin-top: 1.6em; padding: .6em 1.2em; font: inherit;
-  font-size: clamp(11px, 1.2vw, 16px); color: var(--text-dim);
+  font-size: 14px; font-size: clamp(11px, 1.2vw, 16px); color: #C9C7D4;
   background: transparent; border: 1px solid currentColor; border-radius: 999px;
   opacity: .55; cursor: pointer; transition: opacity .2s;
 }
 .mt-pairing-reset:hover, .mt-pairing-reset:focus { opacity: 1; }
+
+/*
+ * O aviso de navegador antigo (js/compat.js). Por cima de tudo, inclusive do
+ * splash. Só CSS que um Chrome de 2014 entende: px e vw, flex sem gap.
+ */
+.mt-antigo {
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  background: #0E0B1F; color: #fff; text-align: left; padding: 6vw;
+  font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+.mt-antigo-caixa { max-width: 1100px; width: 100%; border-left: 6px solid #C6F432; padding-left: 3.4vw; }
+.mt-antigo .mt-marca { font-size: 34px; font-size: 2.4vw; margin-bottom: 4vw; }
+.mt-antigo-titulo { font-size: 52px; font-size: 3.6vw; font-weight: 600; line-height: 1.15; letter-spacing: -.01em; margin: 0 0 1.4vw; }
+.mt-antigo-dica { font-size: 34px; font-size: 2.4vw; font-weight: 400; line-height: 1.35; color: #E4E2EE; margin: 0 0 3vw; }
+.mt-antigo-detalhe { font-size: 20px; font-size: 1.4vw; color: #A3A1B0; margin: 0; }
+/* Celular em pé (quem instala confere no telefone): a letra pela largura ficaria miúda. */
+@media (max-aspect-ratio: 1/1) {
+  .mt-antigo .mt-marca { font-size: 5vw; }
+  .mt-antigo-titulo { font-size: 7vw; }
+  .mt-antigo-dica { font-size: 5vw; }
+  .mt-antigo-detalhe { font-size: 3.4vw; }
+}
 
 /* ---------- Modo leve (.mt-perf) ----------
  *
@@ -1503,4 +1571,22 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   .mt-quiz-selo, .mt-quiz-n { font-size: calc(3.6cqw * var(--qz, 1)); }
   .mt-quiz-explica { font-size: calc(4.4cqw * var(--qz, 1)); }
   .mt-quiz-seg { font-size: calc(5.4cqw * var(--qz, 1)); }
+}
+
+/*
+ * NAVEGADOR SEM `inset` (Chromium < 87: Samsung Tizen 6/6.5, LG webOS 5/6,
+ * muito TV box). QA de lançamento, 03/11: lá o `inset: 0` é ignorado e toda
+ * camada absoluta do player — o slide, a peça, a transição, o splash —
+ * perde o tamanho e some. Os mesmos valores em top/right/bottom/left, só
+ * para quem não entende `inset` (o navegador atual nem lê este bloco). O
+ * teste confere que toda regra com `inset` aqui em cima está coberta.
+ */
+@supports not (inset: 0) {
+  .mt-stage::before, .mt-stage-fx { top: -22%; right: -22%; bottom: -22%; left: -22%; }
+  .mt-stage::after, .mt-zona-saindo, .mt-palco-saindo, .mt-slide, .mt-espera, .mt-espera::before,
+  .mt-com-fundo::before, .mt-live-msg, .mt-screen-overlay, .mt-text:not(.mt-surface)::after,
+  .mt-mural-foto::before, .mt-bday-empty, .mt-surface::after, .mt-promo-media::after, .mt-poster,
+  .mt-poster .mt-poster-fx, .mt-comp, .mt-comp::before, .mt-comp-palco, .mt-decor, .mt-takeover,
+  .mt-takeover-card .mt-slide, .mt-takeover-urgente::before, .mt-overlay, .mt-fora, .mt-peca-fixa { top: 0; right: 0; bottom: 0; left: 0; }
+  .mt-mural-legenda { top: auto; right: 0; bottom: 0; left: 0; }
 }

@@ -10,6 +10,7 @@ import { PainelInstalar } from '../components/layout/PainelInstalar.jsx';
 import { auth, privacidade } from '../api.js';
 import { cn } from '../lib/cn.js';
 import { PERFIS, IDS as PERFIL_IDS } from '../lib/perfil.js';
+import { paraGente } from '../lib/erros.js';
 
 const ROLE_LABEL = { owner: 'Dono', admin: 'Administrador', member: 'Membro' };
 
@@ -33,6 +34,26 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
   const [msgPerfil, setMsgPerfil] = useState('');
   const [errPerfil, setErrPerfil] = useState('');
 
+  const [exportando, setExportando] = useState(false);
+  const [errExportar, setErrExportar] = useState('');
+  // Baixa pelo fetch para poder dizer o que deu errado (a navegação direta falhava em silêncio).
+  async function exportar() {
+    setExportando(true); setErrExportar('');
+    try {
+      const r = await fetch('/api/privacidade/exportar', { credentials: 'same-origin' });
+      if (!r.ok) {
+        const d = await r.json().catch(() => null);
+        throw new Error((d && d.error) || 'Não deu para exportar agora. Tente de novo.');
+      }
+      const url = URL.createObjectURL(await r.blob());
+      const a = document.createElement('a');
+      a.href = url; a.download = 'multitelas-meus-dados.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (e) {
+      setErrExportar(e && e.message && e.message !== 'Failed to fetch' ? e.message : 'Sem conexão. Tente de novo quando a internet voltar.');
+    } finally { setExportando(false); }
+  }
   const [excluirAberto, setExcluirAberto] = useState(false);
   const [confirmacao, setConfirmacao] = useState('');
   const [excluindo, setExcluindo] = useState(false);
@@ -63,7 +84,7 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
       await auth.updateProfile(payload);
       setMsgPerfil('Alterações salvas.');
       if (onChanged) onChanged();
-    } catch (e) { setErrPerfil(e.message || 'Não foi possível salvar.'); }
+    } catch (e) { setErrPerfil(e.message ? paraGente(e) : 'Não foi possível salvar.'); }
     finally { setSalvandoPerfil(false); }
   }
 
@@ -77,7 +98,7 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
       setAtual(''); setNova(''); setConfirma('');
       setMsgSenha('Senha atualizada.');
       if (onChanged) onChanged();
-    } catch (e) { setErrSenha(e.message || 'Não foi possível trocar a senha.'); }
+    } catch (e) { setErrSenha(e.message ? paraGente(e) : 'Não foi possível trocar a senha.'); } // "senha atual incorreta" vira frase com o que fazer (QA de 03/11)
     finally { setSalvandoSenha(false); }
   }
 
@@ -89,7 +110,7 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
       // a raiz, que é a única coisa que ainda faz sentido.
       window.location.href = '/';
     } catch (e) {
-      setErrExcluir(e.message || 'Não foi possível excluir a conta.');
+      setErrExcluir(e.message ? paraGente(e) : 'Não foi possível excluir a conta.');
       setExcluindo(false);
     }
   }
@@ -183,7 +204,8 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
         <div className="p-4">
           <div className="inline-flex gap-1 rounded-lg border border-line bg-surface-2 p-1">
             {[['light', 'Claro'], ['dark', 'Escuro']].map(([id, label]) => (
-              <button key={id} onClick={() => { if (theme !== id) onToggleTheme(); }}
+              // aria-pressed: o leitor de tela diz qual está ativo (QA de 03/11).
+              <button key={id} type="button" aria-pressed={theme === id} onClick={() => { if (theme !== id) onToggleTheme(); }}
                 className={cn('inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition',
                   theme === id ? 'bg-surface text-ink shadow-xs' : 'text-ink-3 hover:text-ink-2')}>
                 <Palette size={14} /> {label}
@@ -205,7 +227,13 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
               <div className="font-medium text-ink">Exportar meus dados</div>
               <div className="text-ink-3">Baixa um arquivo com sua conta, telas, campanhas, marca e aniversariantes. Senhas e sessões ficam de fora por segurança.</div>
             </div>
-            <Button variant="secondary" icon={Download} onClick={() => { window.location.href = '/api/privacidade/exportar'; }}>Baixar</Button>
+            {/* Não falha calado (QA de 03/11): membro e suporte veem o porquê, e o erro do servidor aparece. */}
+            {isOwner && !(me && me.suporte) ? (
+              <Button variant="secondary" icon={Download} onClick={exportar} disabled={exportando}>{exportando ? 'Preparando…' : 'Baixar'}</Button>
+            ) : (
+              <span className="text-xs text-ink-3">{me && me.suporte ? 'No acesso de suporte, a exportação fica com o dono da conta.' : 'Só o dono da conta pode exportar os dados.'}</span>
+            )}
+            {errExportar && <div className="w-full text-sm text-danger">{errExportar}</div>}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 p-4">
@@ -260,7 +288,8 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
           <div className="rounded-lg border border-danger-soft bg-danger-soft p-3 text-sm text-danger">
             Serão apagados: sua conta e a da empresa, os usuários, as telas pareadas e suas configurações,
             todas as campanhas, a identidade da marca, os aniversariantes e os arquivos enviados.
-            As TVs pareadas param de receber conteúdo novo.
+            As TVs pareadas param de receber conteúdo novo. Se houver assinatura, ela é cancelada no Asaas
+            antes, e nada mais é cobrado.
           </div>
           <Field label={'Digite ' + (user.email || 'seu e-mail') + ' para confirmar'}>
             <Input value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} placeholder={user.email} autoComplete="off" />

@@ -26,10 +26,24 @@
   const CACHE_MS = 10 * 60 * 1000;
   const cache = {};
 
+  /*
+   * QA de lançamento, 03/11: AbortController só existe do Chromium 66 e
+   * `.finally` do 63. Numa TV mais velha a notícia quebrava aqui. Sem
+   * AbortController, o prazo vence pela corrida: a resposta que chegar
+   * depois é ignorada.
+   */
   function fetchWithTimeout(url, ms) {
+    const prazo = ms || 8000;
+    if (typeof AbortController === 'undefined') {
+      return Promise.race([
+        fetch(url),
+        new Promise((_, nao) => setTimeout(() => nao(new Error('tempo esgotado')), prazo)),
+      ]);
+    }
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), ms || 8000);
-    return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+    const t = setTimeout(() => ctrl.abort(), prazo);
+    const limpar = () => clearTimeout(t);
+    return fetch(url, { signal: ctrl.signal }).then((r) => { limpar(); return r; }, (e) => { limpar(); throw e; });
   }
 
   // Remove HTML e normaliza espaços com segurança (documento inerte).

@@ -8,9 +8,23 @@
  */
 'use strict';
 
-module.exports = function (ctx) {
+/*
+ * Um mês depois, sem transbordar: 31/01 vira 28/02 (ou 29), e não 03/03.
+ * O setUTCMonth puro somava os dias que faltam ao mês seguinte, e o
+ * cancelamento mantinha o plano uns dias a mais (revisão de 03/11).
+ */
+function maisUmMes(d) {
+  const dia = d.getUTCDate();
+  d.setUTCDate(1);
+  d.setUTCMonth(d.getUTCMonth() + 1);
+  const ultimo = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+  d.setUTCDate(Math.min(dia, ultimo));
+  return d;
+}
+
+const rota = function (ctx) {
   const {
-    db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode, baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest, cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual, sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela,
+    db, auth, storage, midia, reconectar, usoIA, creditos, security, log, erros, diagnostico, mail, plans, billing, ai, director, site, operadores, banco, cortesia, limites, passes, metricas, ds, jobs, legal, seasons, schema, briefing, memory, muralLib, qrcode, baseUrl, sendJson, readBody, emTrabalho, validEmail, reqOrigin, readRawBody, brl, googleEnabled, canManageTeam, normBirthday, lerImagens, avisarTelas, clientIp, rateLimit, crypto, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, isSecureRequest, cobranca, vigia, broadcast, subscribers, estadoSom, PAIR_ONLINE_MS, pairCode, pubDevice, safeEqual, sincronizarCobranca, seloDaConta, comandosPendentes, lerJsonCurto, infoDaTela, pausaDaConta,
   } = ctx;
 
   /*
@@ -41,6 +55,18 @@ module.exports = function (ctx) {
     if (e && e.precisaDocumento) return recusado(res, onde, 'precisa-documento', e.message);
     log.aviso('cobranca.' + onde + '-falhou', { status: (e && e.status) || 0, erro: String((e && e.message) || '').slice(0, 300) });
     return sendJson(res, 502, { error: 'O Asaas não aceitou a cobrança agora: ' + ((e && e.message) || 'tente de novo') + '. Se continuar, fale com a gente pelo Suporte.' });
+  }
+
+  // Meses usados do contrato anual (30 dias cada), para a multa.
+  function mesesDoContrato(tenant) {
+    const desde = Number(tenant && tenant.contrato_desde) || 0;
+    return desde ? Math.floor((Date.now() - desde) / (30 * 864e5)) : 0;
+  }
+  // A multa que cancelar HOJE custaria (null fora do anual), no preço da frente da conta.
+  async function multaDaConta(tenant) {
+    if (!tenant || plans.contratoDe(tenant.plan_contrato) !== 'anual' || !plans.isPaid(tenant.plan)) return null;
+    const telas = Math.max(1, await db.countDevices(tenant.id));
+    return plans.multaCancelamentoCents({ telas, mesesUsados: mesesDoContrato(tenant), frente: await cobranca.frenteDaConta(db, tenant) });
   }
 
   // Aplica um evento do Asaas ao plano do tenant.
@@ -108,7 +134,17 @@ module.exports = function (ctx) {
     let renewsAt = undefined;
     if (nextDueDate) {
       const d = new Date(nextDueDate);
-      if (!isNaN(d.getTime())) renewsAt = d.getTime();
+      if (!isNaN(d.getTime())) {
+        /*
+         * Num evento de PAGAMENTO a data é o vencimento da fatura paga — o
+         * COMEÇO do mês pago, e não o fim. QA de lançamento, 03/11: o fim do
+         * período pago é o que decide até quando o cancelamento mantém o plano,
+         * então ele é o vencimento mais um mês (a assinatura é mensal). O
+         * evento de assinatura já traz o próximo vencimento.
+         */
+        if (payment) maisUmMes(d);
+        renewsAt = d.getTime();
+      }
     }
 
     /*
@@ -119,7 +155,11 @@ module.exports = function (ctx) {
     const outrasVencidas = pago && tenant.plan_status === 'past_due' ? await billing.faturasVencidas(subId) : 0;
     const patch = cobranca.efeitoDoEvento(eventName, { tenant, customerId, subId, planId, renewsAt, outrasVencidas });
     if (!patch) return;
+    // A TV vê o plano novo no pulso seguinte: setTenantBilling já derruba o cache do selo e da pausa (server.js).
     await db.setTenantBilling(tenant.id, patch);
+    if (patch.status === plans.CANCELANDO || patch.status === 'canceled') {
+      await db.registrarEvento(tenant.id, '', patch.status === 'canceled' ? 'plano.rebaixado' : 'plano.cancelando').catch(() => {});
+    }
     // Passou a pagar agora: as criações do plano começam HOJE, e não na virada
     // do ciclo que nasceu com a conta (server/uso-ia.js, renovarCiclo).
     if (patch.plan && plans.isPaid(patch.plan) && !plans.isPaid(tenant.plan)) await usoIA.renovarCiclo(db, tenant.id);
@@ -149,6 +189,7 @@ module.exports = function (ctx) {
    * Um nonce por resposta resolve sem afrouxar a política global: vale para
    * ESTE HTML e para mais nada.
    */
+  // `p` já vem com o preço da frente da conta (plans.planoDaFrente).
   function devCheckoutPage(p, nonce) {
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -167,7 +208,7 @@ module.exports = function (ctx) {
     <span class="tag">PAGAMENTO SIMULADO — TESTE</span>
     <h1>Plano ${p.name}</h1>
     <p class="muted">${p.blurb || ''} Até ${p.telasMax} telas.</p>
-    <div class="price">${brl(p.precoTelaCents)}<small> /mês</small></div>
+    <div class="price">${brl(p.precoTelaCents)}<small> por tela, por mês</small></div>
     <button id="go">Confirmar assinatura</button>
     <a href="/app?billing=cancel">Cancelar</a>
   </div>
@@ -202,8 +243,18 @@ module.exports = function (ctx) {
 
       // Daqui pra baixo exige login.
       if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
-      const tenant = await db.getTenant(sess.tenant_id);
-      const curPlan = plans.plan(tenant && tenant.plan);
+      /*
+       * Cancelamento que chegou ao fim do período pago: rebaixa já na leitura,
+       * sem esperar a varredura (server/cobranca.js).
+       */
+      let tenant = await db.getTenant(sess.tenant_id);
+      if (tenant) {
+        const lido = await cobranca.rebaixarSeVenceu(db, tenant);
+        if (lido !== tenant) tenant = lido;
+      }
+      // O preço é o da frente da conta (QA de lançamento, 03/11).
+      const frente = await cobranca.frenteDaConta(db, tenant);
+      const curPlan = plans.planoDaFrente(tenant && tenant.plan, frente);
 
       /*
        * Extrato de uso de IA. O cliente precisa ver PARA ONDE foi o crédito
@@ -227,8 +278,9 @@ module.exports = function (ctx) {
         const contrato = plans.contratoDe(tenant && tenant.plan_contrato);
         const telas = Math.max(1, used);
         // Meses usados do contrato anual, para a multa que o cancelamento mostra.
-        const desde = Number(tenant && tenant.contrato_desde) || 0;
-        const mesesUsados = desde ? Math.floor((Date.now() - desde) / (30 * 864e5)) : 0;
+        const mesesUsados = mesesDoContrato(tenant);
+        // Quais TVs seguem no ar quando a conta está no grátis ou suspensa (plans.telasNoAr).
+        const pausa = pausaDaConta ? await pausaDaConta(sess.tenant_id) : null;
         return sendJson(res, 200, {
           // 'indisponivel': produção sem Asaas. O painel não oferece compra que
           // não pode ser cobrada (ver billing.simulacaoPermitida).
@@ -238,7 +290,10 @@ module.exports = function (ctx) {
             precoTelaCents: curPlan.precoTelaCents, sobConsulta: !!curPlan.sobConsulta,
           },
           contrato,
+          // A frente da conta: o preço desta página é o dela, e só o dela.
+          frente,
           status: (tenant && tenant.plan_status) || (curPlan.precoTelaCents ? 'active' : 'free'),
+          pausa,
           /*
            * Dito com todas as letras para o painel. Uma conta de cortesia tem
            * plano Pro de verdade, e sem esta bandeira a tela mostraria "Pro
@@ -268,9 +323,9 @@ module.exports = function (ctx) {
           },
           usage: {
             screens: used, limit: curPlan.telasMax,
-            mensalidadeCents: plans.mensalidadeCents(curPlan.id, telas, contrato),
-            precoTelaCents: plans.precoTelaCents(curPlan.id, telas, contrato),
-            proximaTelaCents: plans.precoProximaTelaCents(curPlan.id, used, contrato),
+            mensalidadeCents: plans.mensalidadeCents(curPlan.id, telas, contrato, frente),
+            precoTelaCents: plans.precoTelaCents(curPlan.id, telas, contrato, frente),
+            proximaTelaCents: plans.precoProximaTelaCents(curPlan.id, used, contrato, frente),
             cotaBytes: plans.cotaBytes(curPlan.id, telas),
           },
           creditos: pan,
@@ -279,12 +334,12 @@ module.exports = function (ctx) {
            * mostra a economia sem refazer a conta do preço (PLANO §6.1).
            */
           anual: {
-            faixas: plans.faixasAnual(),
+            faixas: plans.faixasAnual(frente),
             meses: plans.MESES_DO_CONTRATO,
             telasNegociadas: plans.TELAS_NEGOCIADAS,
-            mensalCents: plans.mensalidadeCents('pro', telas, 'mensal'),
-            anualCents: plans.mensalidadeCents('pro', telas, 'anual'),
-            multa: contrato === 'anual' ? plans.multaCancelamentoCents({ telas, mesesUsados }) : null,
+            mensalCents: plans.mensalidadeCents('pro', telas, 'mensal', frente),
+            anualCents: plans.mensalidadeCents('pro', telas, 'anual', frente),
+            multa: contrato === 'anual' ? plans.multaCancelamentoCents({ telas, mesesUsados, frente }) : null,
           },
           // As criações do plano pago para estas telas (teto por conta, PLANO §6.5).
           ia: {
@@ -292,7 +347,7 @@ module.exports = function (ctx) {
             ate3Telas: plans.franquiaCreditos('pro', plans.TETO_IA.ateTelas),
             maximo: plans.franquiaCreditos('pro', 1000),
           },
-          catalog: plans.catalog(),
+          catalog: plans.catalog(frente),
           pacotes: creditos.PACOTES,
           canManage: sess.role === 'owner',
         });
@@ -358,16 +413,29 @@ module.exports = function (ctx) {
              */
             const user = await db.getUserById(sess.user_id);
             const telasDaConta = await db.countDevices(sess.tenant_id);
+            /*
+             * A frente que decide o preço fica GRAVADA ao assinar. Conta sem
+             * frente escolhida (antiga) tinha a frente deduzida do ramo da
+             * marca a cada cobrança: mudar o ramo mudava o preço, e a
+             * Plataforma (que lê a frente gravada) mostrava outro valor
+             * (revisão de 03/11). Depois daqui, só o operador troca.
+             */
+            const frente = await cobranca.frenteDaConta(db, tenant);
+            if (tenant.perfil !== frente) { await db.setTenantPerfil(tenant.id, frente); tenant.perfil = frente; }
             const out = await billing.createCheckout(tenant, user, target.id, reqOrigin(req), {
               // A mensalidade é da CONTA: o valor sai de plans.mensalidadeCents,
               // que aplica as faixas de desconto sobre o número de telas.
               telas: Math.max(1, telasDaConta),
+              frente,
+              // Cancelou e voltou antes do fim do período pago: não paga o mesmo mês duas vezes.
+              pagoAte: tenant.plan_status === plans.CANCELANDO ? tenant.plan_renews_at : null,
               /*
                * O contrato é o da CONTA: o anual nasce numa conversa com a
                * equipe, com o termo assinado (EXECUTOR item 11; o termo ainda
                * não está nos Termos de Uso). Daqui não se escolhe anual.
                */
-              contrato: tenant.plan_contrato,
+              // Quem cancelou e volta começa no mensal (o anual é compromisso).
+              contrato: tenant.plan_status === plans.CANCELANDO ? null : tenant.plan_contrato,
               /*
                * Gravado assim que o cliente existe, e não no retorno. Se o resto
                * do fluxo falhar, a próxima tentativa reencontra este cliente em
@@ -379,7 +447,18 @@ module.exports = function (ctx) {
             if (out.customerId && out.customerId !== tenant.stripe_customer_id) await db.setTenantBilling(tenant.id, { customerId: out.customerId });
             // A assinatura nasceu (ou foi atualizada) cobrando estas telas; é o
             // ponto de partida da conciliação.
-            if (out.id) await db.setTenantBilling(tenant.id, { subscriptionId: out.id, telasCobradas: telasDaConta });
+            if (out.id) {
+              const patch = { subscriptionId: out.id, telasCobradas: telasDaConta };
+              /*
+               * Cancelou e assinou de novo antes do fim do período: a conta
+               * volta a ser ativa. Sem isso ela seguia "cancelando", o painel
+               * dizia "nada mais será cobrado" com a assinatura nova aberta, e
+               * a varredura a rebaixava no fim do período, apagando o id da
+               * assinatura que o cliente estava pagando (revisão de 03/11).
+               */
+              if (tenant.plan_status === plans.CANCELANDO) Object.assign(patch, { status: 'active', contrato: null, contratoDesde: null });
+              await db.setTenantBilling(tenant.id, patch);
+            }
             return sendJson(res, 200, out);
           } catch (e) {
             // A assinatura pode ter sido criada mesmo com erro na fatura. Guardar
@@ -408,29 +487,47 @@ module.exports = function (ctx) {
       }
       if (req.method === 'DELETE' && seg === 'assinatura') {
         if (sess.role !== 'owner') return sendJson(res, 403, { error: 'só o dono cancela o plano' });
-        try {
-          const out = await billing.cancelarAssinatura(tenant);
-          await db.registrarEvento(sess.tenant_id, sess.user_id, 'plano.cancelar');
+        return readBody(req, res, async (b) => {
           /*
-           * Em modo simulado não há webhook para rebaixar o plano depois, então
-           * o rebaixamento é feito aqui — é o único jeito de o fluxo inteiro ser
-           * testável sem chave. Com Asaas de verdade, quem rebaixa é o webhook
-           * SUBSCRIPTION_DELETED, e escrever o mesmo estado por duas portas é
-           * como ele fica inconsistente.
+           * ANUAL: a multa antes do clique, e com confirmação explícita (QA de
+           * lançamento, 03/11 — decisão do dono). O cliente anual cancelava
+           * sozinho pelo painel, a multa aparecia só como frase e ninguém
+           * ficava sabendo. Agora o servidor recusa o cancelamento sem o
+           * "aceito a multa" do valor que ele mesmo calcula, e registra a multa
+           * devida num evento da conta ('plano.multa.<centavos>') para o
+           * operador cobrar. A cobrança automática da multa ainda não existe.
            */
-          if (out.simulado) {
-            await db.setTenantBilling(sess.tenant_id, {
-              plan: 'free', status: 'canceled', subscriptionId: null, renewsAt: null,
+          const multa = await multaDaConta(tenant);
+          if (multa && multa.cents > 0 && Number(b && b.aceitoMultaCents) !== multa.cents) {
+            return sendJson(res, 409, {
+              error: 'Seu contrato é anual: cancelar agora tem multa de ' + brl(multa.cents) + '. Confirme a multa para cancelar.',
+              code: 'confirmar-multa', multa,
             });
           }
-          return sendJson(res, 200, out);
-        } catch (e) { return falhaDeCobranca(res, e, 'cancelar'); }
+          try {
+            const out = await billing.cancelarAssinatura(tenant);
+            await db.registrarEvento(sess.tenant_id, sess.user_id, 'plano.cancelar');
+            if (multa && multa.cents > 0) {
+              await db.registrarEvento(sess.tenant_id, sess.user_id, 'plano.multa.' + multa.cents);
+              log.aviso('cobranca.multa-devida', { tenant: sess.tenant_id, centavos: multa.cents, faltam: multa.faltam });
+            }
+            /*
+             * O mesmo patch do SUBSCRIPTION_DELETED (cobranca.efeitoDoCancelamento),
+             * gravado já aqui: no simulado não há webhook, e com o Asaas o painel
+             * mostra na hora até quando o plano vai. O webhook, quando chegar,
+             * grava a mesma coisa. O plano pago fica até o fim do período já pago.
+             */
+            const patch = cobranca.efeitoDoCancelamento(tenant, null);
+            await db.setTenantBilling(sess.tenant_id, patch);
+            return sendJson(res, 200, { ...out, ate: patch.status === plans.CANCELANDO ? patch.renewsAt : null, multa: multa && multa.cents > 0 ? multa : null });
+          } catch (e) { return falhaDeCobranca(res, e, 'cancelar'); }
+        });
       }
 
       // ----- Checkout simulado: só sem Asaas, e nunca em produção -----
       if (billing.simulacaoPermitida()) {
         if (req.method === 'GET' && seg === 'dev-checkout') {
-          const target = plans.plan(query.plan);
+          const target = plans.planoDaFrente(query.plan, await cobranca.frenteDaConta(db, tenant));
           // Um nonce por resposta: vale só para este HTML, e a política global
           // continua sem `unsafe-inline`.
           const nonce = crypto.randomBytes(16).toString('base64');
@@ -448,9 +545,11 @@ module.exports = function (ctx) {
             const target = plans.plan(b && b.plan);
             if (PLANS_EM_BREVE(b)) return sendJson(res, 400, { error: EM_BREVE, code: 'plano-em-breve' });
             if (!target || !(target.precoTelaCents > 0)) return sendJson(res, 400, { error: 'plano inválido' });
+            // Quem volta antes do fim de um período cancelado segue de onde estava.
+            const pagoAte = tenant && tenant.plan_status === plans.CANCELANDO ? Number(tenant.plan_renews_at) || 0 : 0;
             await db.setTenantBilling(sess.tenant_id, {
               plan: target.id, status: 'active',
-              renewsAt: Date.now() + 30 * 864e5,
+              renewsAt: Math.max(pagoAte, Date.now()) + 30 * 864e5,
             });
             // O mesmo que o pagamento de verdade faz (ver handleAsaasEvent).
             if (!plans.isPaid(tenant && tenant.plan)) await usoIA.renovarCiclo(db, sess.tenant_id);
@@ -468,3 +567,6 @@ module.exports = function (ctx) {
     return true;
   };
 };
+
+rota.maisUmMes = maisUmMes;
+module.exports = rota;
