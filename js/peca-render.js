@@ -245,14 +245,147 @@
     return ar >= QUADRADA[0] && ar <= QUADRADA[1] ? [1080, 1080]
       : ar >= LARGA[0] && ar <= LARGA[1] ? [1920, 1080] : null;
   }
+  /*
+   * A RÉGUA DA TV NA PEÇA (fase 2 do plano de ação, 05/11). Numa zona grande,
+   * nenhuma letra fica abaixo de 4,5% do lado menor da TV, o que se lê a 4 m
+   * (docs/qa-total/REFERENCIAS.md). O piso vai em pixel DO PALCO: a peça é
+   * desenhada em 1920×1080 (ou 1080×1080) e reduzida por `k`, então o piso
+   * da tela vira piso/k aqui dentro. Fora da TV (bancada, painel), a zona é
+   * desenhada no tamanho de uma TV de 1080 linhas. Zona pequena (lateral,
+   * faixa): sem piso, que lá a peça precisa mudar de composição (fase 3).
+   */
+  const ZONA_GRANDE = [880, 540];
+  function pisoDaZona(host, k, ref) {
+    const doc = host && host.ownerDocument;
+    const janela = doc && doc.defaultView;
+    const naTv = !!(doc && doc.querySelector && doc.querySelector('.mt-stage'));
+    const w = host.clientWidth, h = host.clientHeight;
+    const grande = w >= ZONA_GRANDE[0] && h >= ZONA_GRANDE[1];
+    if (!naTv && !grande) {
+      // Miniatura (painel): ela não diz o tamanho da zona na TV. A peça
+      // deitada ou quadrada é desenhada para a zona grande: o piso da tela
+      // cheia, em pixel do palco (1080 linhas). A bancada desenha a zona no
+      // tamanho de verdade e cai na conta de baixo.
+      return ref ? 0.045 * 1080 : 0;
+    }
+    if (!grande) return 0;
+    const lado = janela ? Math.min(janela.innerWidth, janela.innerHeight) : 1080;
+    return 0.045 * lado / (k || 1);
+  }
   function enquadrar(host, palco) {
     const w = host.clientWidth, h = host.clientHeight;
     if (!w || !h || !palco) return;
     const ref = referencia(w, h);
-    if (!ref) { palco.removeAttribute('style'); return; }
-    const k = h / ref[1];
-    palco.style.cssText = 'left:' + ((w - ref[0] * k) / 2).toFixed(2) + 'px;top:0;right:auto;bottom:auto;width:'
-      + ref[0] + 'px;height:' + ref[1] + 'px;transform:scale(' + k.toFixed(5) + ');transform-origin:0 0';
+    let k = 1;
+    if (!ref) palco.removeAttribute('style');
+    else {
+      k = h / ref[1];
+      palco.style.cssText = 'left:' + ((w - ref[0] * k) / 2).toFixed(2) + 'px;top:0;right:auto;bottom:auto;width:'
+        + ref[0] + 'px;height:' + ref[1] + 'px;transform:scale(' + k.toFixed(5) + ');transform-origin:0 0';
+    }
+    pisoQueCabe(palco, pisoDaZona(host, k, ref));
+  }
+
+  function porOPiso(palco, p) {
+    if (palco.style && palco.style.setProperty) palco.style.setProperty('--mt-piso', p.toFixed(2) + 'px');
+    aplicarPiso(palco, p);
+  }
+
+  /*
+   * Fase 2: o piso que CABE. A peça é desenhada em posição fixa: subir a
+   * letra miúda até o piso da TV pode empurrar um campo para fora ou por
+   * cima de outro (a bancada achou 371 defeitos assim, em 28 das 43
+   * peças-ouro). A peça nunca quebra por causa do piso: mede o desenho sem
+   * ele, põe o piso inteiro e, se algum campo novo sair da margem ou
+   * encostar em outro, procura (5 passos, ao meio) o maior piso que cabe.
+   * O que cedeu fica marcado em data-mt-piso-cedeu (a fração do piso que
+   * entrou), para a bancada e o robô da régua apontarem a peça que precisa
+   * de outro desenho.
+   */
+  function pisoQueCabe(palco, piso) {
+    palco.removeAttribute('data-mt-piso-cedeu');
+    const raiz = palco.parentNode;
+    const doc = palco.ownerDocument;
+    if (!piso || !raiz || !doc || !doc.createElement || typeof palco.getBoundingClientRect !== 'function' || typeof getComputedStyle !== 'function') {
+      porOPiso(palco, piso);
+      return piso;
+    }
+    // Medir sem as entradas no meio do caminho (uma letra entrando de lado parece fora da peça).
+    const parada = doc.createElement('style');
+    parada.textContent = '.mt-palco,.mt-palco *{animation:none!important;transition:none!important}';
+    raiz.appendChild(parada);
+    try {
+      porOPiso(palco, 0);
+      const antes = encaixe(palco);
+      porOPiso(palco, piso);
+      if (!piorou(antes, encaixe(palco))) return piso;
+      let cabe = 0, naoCabe = piso;
+      for (let i = 0; i < 5; i++) {
+        const meio = (cabe + naoCabe) / 2;
+        porOPiso(palco, meio);
+        if (piorou(antes, encaixe(palco))) naoCabe = meio; else cabe = meio;
+      }
+      porOPiso(palco, cabe);
+      palco.setAttribute('data-mt-piso-cedeu', (cabe / piso).toFixed(2));
+      return cabe;
+    } finally {
+      raiz.removeChild(parada);
+    }
+  }
+
+  // Onde está cada campo (as linhas do texto, não a caixa) e o que sai da margem ou encosta em outro.
+  function encaixe(palco) {
+    const P = palco.getBoundingClientRect();
+    const k = palco.offsetWidth ? P.width / palco.offsetWidth : 1;
+    const mx = 16 * k, my = (palco.offsetHeight <= 220 ? 6 : 16) * k, tol = 2 * k;
+    const doc = palco.ownerDocument;
+    const campos = Array.prototype.map.call(palco.querySelectorAll('[data-campo],[data-vivo],[data-campo-qr]'), (el) => {
+      let rs = [];
+      if (el.tagName !== 'IMG' && doc.createRange && String(el.textContent || '').trim()) {
+        const r = doc.createRange();
+        r.selectNodeContents(el);
+        rs = Array.prototype.slice.call(r.getClientRects());
+      }
+      if (!rs.length) rs = [el.getBoundingClientRect()];
+      return { el, rs: rs.filter((r) => r.width > 0 && r.height > 0) };
+    });
+    const fora = [], juntos = [];
+    campos.forEach((c, i) => {
+      if (!c.rs.length) return;
+      // A margem é a da régua (js/regras-composicao.js, REGRAS.margem), sem folga.
+      if (c.rs.some((r) => r.left < P.left + mx || r.top < P.top + my || r.right > P.right - mx || r.bottom > P.bottom - my)) fora.push(i);
+      for (let j = i + 1; j < campos.length; j++) {
+        const d = campos[j];
+        if (!d.rs.length || c.el.contains(d.el) || d.el.contains(c.el)) continue;
+        const cruza = c.rs.some((r) => d.rs.some((s) => Math.min(r.right, s.right) - Math.max(r.left, s.left) > tol && Math.min(r.bottom, s.bottom) - Math.max(r.top, s.top) > tol));
+        if (cruza) juntos.push(i + '-' + j);
+      }
+    });
+    return { fora, juntos };
+  }
+  // Só conta o que o piso criou: o que o desenho já tinha (de propósito ou não) não é culpa dele.
+  function piorou(antes, depois) {
+    return depois.fora.some((i) => antes.fora.indexOf(i) < 0) || depois.juntos.some((p) => antes.juntos.indexOf(p) < 0);
+  }
+  /*
+   * A peça que a IA escreveu com letra menor que o piso (sem usar
+   * var(--mt-piso)) sobe para o piso aqui. É a garantia: a régua vale mesmo
+   * quando o CSS da peça não a conhece. O que já foi subido e deixou de
+   * precisar (a zona cresceu) volta ao tamanho da peça.
+   */
+  function aplicarPiso(palco, piso) {
+    if (!palco || !palco.querySelectorAll || typeof getComputedStyle !== 'function') return;
+    const els = palco.querySelectorAll('*');
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i];
+      if (el.hasAttribute('data-mt-piso')) { el.style.removeProperty('font-size'); el.removeAttribute('data-mt-piso'); }
+      if (!piso) continue;
+      let temTexto = false;
+      for (let n = el.firstChild; n; n = n.nextSibling) if (n.nodeType === 3 && n.nodeValue.trim()) { temTexto = true; break; }
+      if (!temTexto) continue;
+      const fs = parseFloat(getComputedStyle(el).fontSize) || 0;
+      if (fs && fs < piso - 0.5) { el.style.setProperty('font-size', piso.toFixed(2) + 'px'); el.setAttribute('data-mt-piso', ''); }
+    }
   }
 
   /*
@@ -665,6 +798,8 @@
       else if (nome === 'contagem') el.textContent = contagem(o.contagem, agora());
     });
     tick();
+    // Com os textos no lugar, o piso da régua confere de novo (a peça pode ter ganho texto agora).
+    enquadrar(host, palcoEl);
     let relogio = null;
     /*
      * A contagem anda de segundo em segundo; o relógio, a cada 20 s. É troca

@@ -9,13 +9,13 @@
 .mt-peca { display: flex; align-items: stretch; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: var(--mt-fundo); border-top: 1.2cqh solid var(--mt-linha); }
 .pagar { flex: none; display: flex; align-items: center; gap: 9cqh; padding: 0 7cqh 0 3cqw; background: var(--mt-fundo-2); border-right: 1.2cqh solid var(--mt-linha); }
-.rotulo { font: 600 15cqh/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.rotulo { font: 600 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
 .formas { display: flex; align-items: center; gap: 5cqh; }
 .formas span { display: flex; align-items: center; height: 48cqh; padding: 0 9cqh; border-radius: 24cqh; border: 1.4cqh solid var(--mt-destaque);
-  font: 600 19cqh/1 var(--mt-fonte-texto); letter-spacing: .06em; white-space: nowrap; }
+  font: 600 max(var(--mt-piso, 0cqw), 19cqh)/1 var(--mt-fonte-texto); letter-spacing: .06em; white-space: nowrap; }
 .formas span:empty { display: none; }
 .trilho { position: relative; flex: 1; min-width: 0; overflow: hidden; display: flex; align-items: center; padding-left: 6cqh; }
-.trilho [data-vivo] { font: 500 34cqh/1 var(--mt-fonte-texto); letter-spacing: .02em; }
+.trilho [data-vivo] { font: 500 max(var(--mt-piso, 0cqw), 34cqh)/1 var(--mt-fonte-texto); letter-spacing: .02em; }
 /* As mensagens somem nas pontas em vez de serem cortadas a seco. */
 .trilho::before, .trilho::after { content: ''; position: absolute; top: 0; bottom: 0; width: 8cqw; z-index: 1; }
 .trilho::before { left: 0; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
@@ -25,8 +25,8 @@
   .rotulo { display: none; }
   .pagar { padding-left: 3cqw; }
   .formas { gap: 4cqh; }
-  .formas span { height: 42cqh; padding: 0 7cqh; font-size: 16cqh; }
-  .trilho [data-vivo] { font-size: 30cqh; }
+  .formas span { height: 42cqh; padding: 0 7cqh; font-size: max(var(--mt-piso, 0cqw), 16cqh); }
+  .trilho [data-vivo] { font-size: max(var(--mt-piso, 0cqw), 30cqh); }
 }
 </style>
 <section class="mt-peca rodape-pagamento">

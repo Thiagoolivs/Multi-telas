@@ -14,22 +14,22 @@
 .ponto { flex: none; width: 13cqh; height: 13cqh; border-radius: 50%; background: var(--mt-destaque);
   box-shadow: 0 0 0 4.5cqh var(--mt-fundo-2), 0 0 0 5.7cqh var(--mt-destaque); }
 .estado { display: flex; flex-direction: column; gap: 7cqh; min-width: 0; }
-.aberto { font: 700 17cqh/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
-.ate { font: 500 19cqh/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); white-space: nowrap; }
+.aberto { font: 700 max(var(--mt-piso, 0cqw), 17cqh)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
+.ate { font: 500 max(var(--mt-piso, 0cqw), 19cqh)/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); white-space: nowrap; }
 .marca { display: flex; flex-direction: column; align-items: center; gap: 8cqh; }
 .logo { height: 58cqh; width: auto; max-width: 30cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { font: 400 40cqh/.9 var(--mt-fonte-titulo); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+.nome { font: 400 max(var(--mt-piso, 0cqw), 40cqh)/.9 var(--mt-fonte-titulo); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
 .nome b { font-weight: inherit; color: var(--mt-destaque); }
-.desde { display: flex; align-items: center; gap: 4cqh; font: 600 11cqh/1 var(--mt-fonte-texto); letter-spacing: .5em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.desde { display: flex; align-items: center; gap: 4cqh; font: 600 max(var(--mt-piso, 0cqw), 11cqh)/1 var(--mt-fonte-texto); letter-spacing: .5em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
 .desde i { display: block; width: 18cqh; height: 1cqh; background: var(--mt-linha); }
 .agora { justify-self: end; display: flex; align-items: center; gap: 5cqh; }
-.clima { font: 500 26cqh/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.clima { font: 500 max(var(--mt-piso, 0cqw), 26cqh)/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 .sep { display: block; width: 1.2cqh; height: 44cqh; background: var(--mt-linha); }
 .tempo { display: flex; flex-direction: column; align-items: flex-end; gap: 4cqh; }
-.hora { font: 400 46cqh/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
-.data { font: 600 15cqh/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.hora { font: 400 max(var(--mt-piso, 0cqw), 46cqh)/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
+.data { font: 600 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
 /* Faixa mais curta (TV em pé): o "desde" e o clima saem; status, marca e hora ficam. */
 @container (aspect-ratio < 9) {
   .mt-peca { gap: 4cqh; }
@@ -37,10 +37,10 @@
   .status { gap: 7cqh; }
   .ponto { width: 10cqh; height: 10cqh; box-shadow: 0 0 0 3.5cqh var(--mt-fundo-2), 0 0 0 4.5cqh var(--mt-destaque); }
   .estado { gap: 6cqh; }
-  .aberto { font-size: 13cqh; letter-spacing: .2em; }
-  .ate { font-size: 15cqh; }
-  .nome { font-size: 30cqh; letter-spacing: .08em; }
-  .hora { font-size: 38cqh; }
+  .aberto { font-size: max(var(--mt-piso, 0cqw), 13cqh); letter-spacing: .2em; }
+  .ate { font-size: max(var(--mt-piso, 0cqw), 15cqh); }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 30cqh); letter-spacing: .08em; }
+  .hora { font-size: max(var(--mt-piso, 0cqw), 38cqh); }
 }
 </style>
 <section class="mt-peca cabecalho-status">

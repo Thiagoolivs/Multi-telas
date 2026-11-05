@@ -31,6 +31,16 @@
      */
     letraMin: 14,
     /*
+     * A RÉGUA PROFISSIONAL (fase 2 do plano de ação, 05/11): na zona grande
+     * (o destaque), nada abaixo de 4,5% do lado menor da TV, 48 px numa TV de
+     * 1080 linhas, o que se lê a 4 m (docs/qa-total/REFERENCIAS.md). A TV
+     * aplica esse piso sozinha (js/peca-render.js, --mt-piso); a regra aqui
+     * faz a peça já nascer desenhada para ele. A lateral e as faixas ficam
+     * nos 14 px até a fase 3, que muda a composição delas.
+     */
+    letraMinDoPapel: { destaque: 48, lateral: 14, cabecalho: 14, rodape: 14 },
+    pisoDaTv: 0.045,
+    /*
      * O piso do respiro do texto até a borda da peça, em px: [lados, topo e
      * base]. A TV corta um pouco da borda (overscan) e texto colado nela
      * parece cortado mesmo quando não está. É o PISO — o alvo da régua
@@ -87,7 +97,7 @@
     var menor = Math.min(z[0], z[1]);
     var linhas = [
       'REGRAS DE COMPOSIÇÃO DESTE PAPEL (o detector mede a peça montada; ' + z[0] + '×' + z[1] + ' é a zona de referência):',
-      '- Letra mínima: ' + um(REGRAS.letraMin / z[0] * 100) + 'cqw (' + REGRAS.letraMin + 'px na TV). Menor que isso ninguém lê da parede.',
+      '- Letra mínima: ' + um(letraMinDe(papel) / z[0] * 100) + 'cqw (' + letraMinDe(papel) + 'px na TV)' + ((papel || 'destaque') === 'destaque' ? ', também no kicker, no rótulo e no "de" riscado: é a letra que se lê a 4 m' : '') + '. Menor que isso ninguém lê da parede.',
       '- Nenhum texto a menos de ' + um(m[0] / z[0] * 100) + 'cqw das laterais nem de ' + um(m[1] / z[1] * 100) + 'cqh do topo e da base — mesmo com a fonte larga da marca.',
       '- Par de cores: texto e preço sobre os fundos; var(--mt-sobre-destaque) sobre var(--mt-destaque). Texto suave ou destaque sobre o destaque some.',
     ];
@@ -273,7 +283,8 @@
     var lados = margem[0], topo = margem[1];
 
     (m.textos || []).forEach(function (t) {
-      if (t.px < REGRAS.letraMin - 1) acusar('letra', t.nome, 'letra de ' + px(t.px) + ' (o mínimo é ' + REGRAS.letraMin + 'px)');
+      var minimo = letraMinDe(m.papel);
+      if (t.px < minimo - 1) acusar('letra', t.nome, 'letra de ' + px(t.px) + ' (o mínimo é ' + minimo + 'px)');
       (t.linhas || []).forEach(function (l) {
         var dl = Math.min(l.left, m.w - l.right), dv = Math.min(l.top, m.h - l.bottom);
         // Fora da peça é vazamento — o detector já acusa; aqui é o texto que ficou dentro, mas colado.
@@ -387,8 +398,10 @@
    * O valor de um tamanho em px no tamanho (w, h), ou null se depende do que
    * só a página montada sabe (em, %, rem, var sem reserva).
    */
-  function emPx(valor, w, h) {
-    var v = String(valor || '').trim().replace(/var\(\s*--[\w-]+\s*,\s*([^()]+)\)/g, '$1');
+  function emPx(valor, w, h, pisoPx) {
+    // O piso da TV (var(--mt-piso)) vale o que a TV vai pôr nesta zona.
+    var v = String(valor || '').trim().replace(/var\(\s*--mt-piso\s*(,[^()]*)?\)/g, (pisoPx || 0) + 'px')
+      .replace(/var\(\s*--[\w-]+\s*,\s*([^()]+)\)/g, '$1');
     if (/var\(|%|\bem\b|rem\b|\d(em|rem|ex|ch|vw|vh)\b/.test(v)) return null;
     var un = { cqw: w / 100, cqh: h / 100, cqmin: Math.min(w, h) / 100, cqmax: Math.max(w, h) / 100, px: 1 };
     var pos = 0;
@@ -474,8 +487,11 @@
     return o;
   }
 
+  function letraMinDe(papel) { return REGRAS.letraMinDoPapel[papel] || REGRAS.letraMin; }
   function letrasPequenas(css, papel, html) {
     var formatos = FORMATOS_DO_PAPEL[papel] || FORMATOS_DO_PAPEL.destaque;
+    var minimo = letraMinDe(papel);
+    var pisoPx = (papel || 'destaque') === 'destaque' ? REGRAS.pisoDaTv * 1080 : 0;
     var regras = regrasDoCss(css);
     var h = html ? doHtml(html) : null;
     // Fica de fora o seletor cujo alvo (a última parte) é enfeite ou não existe na peça.
@@ -508,15 +524,15 @@
       });
       Object.keys(tam).forEach(function (sel) {
         if (some[sel] || foraDaConta(sel)) return;
-        var px = emPx(tam[sel], f[1], f[2]);
-        if (px != null && px > 0 && px < REGRAS.letraMin - 1) achados.push({ seletor: sel, formato: f[0], px: Math.round(px * 10) / 10 });
+        var px = emPx(tam[sel], f[1], f[2], pisoPx);
+        if (px != null && px > 0 && px < minimo - 1) achados.push({ seletor: sel, formato: f[0], px: Math.round(px * 10) / 10, minimo: minimo });
       });
     });
     return achados;
   }
 
   return {
-    letrasPequenas: letrasPequenas, emPx: emPx, FORMATOS_DO_PAPEL: FORMATOS_DO_PAPEL,
+    letrasPequenas: letrasPequenas, letraMinDe: letraMinDe, emPx: emPx, FORMATOS_DO_PAPEL: FORMATOS_DO_PAPEL,
     REGRAS: REGRAS, ZONA: ZONA, paraIA: paraIA, avaliar: avaliar,
     sobre: sobre, contraste: contraste, luminancia: luminancia,
     lerGradientes: lerGradientes, corNoGradiente: corNoGradiente, fundos: fundos, piorContraste: piorContraste,

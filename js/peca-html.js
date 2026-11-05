@@ -237,7 +237,12 @@
   ];
 
   const TOKENS = new Set(Object.keys(T.NOMES).map((k) => T.NOMES[k]));
-  const CAMADA = new Set(['--x', '--y', '--w', '--h']);
+  /*
+   * Variáveis que a TV põe na peça e a peça pode LER (não redefinir):
+   * a camada (--x…) e o piso da letra (--mt-piso, js/peca-render.js: 4,5% do
+   * lado menor da TV na zona grande; 0 na pequena).
+   */
+  const CAMADA = new Set(['--x', '--y', '--w', '--h', '--mt-piso']);
 
   /*
    * Famílias do catálogo, tiradas das pilhas de js/fontes.js. Os nomes

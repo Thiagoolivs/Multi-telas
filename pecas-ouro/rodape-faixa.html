@@ -8,14 +8,14 @@
 <style>
 .mt-peca { display: flex; align-items: center; gap: 6cqh; padding: 0 3cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: var(--mt-fundo); border-top: 1.2cqh solid var(--mt-linha); }
-.chamada { flex: none; display: flex; align-items: center; gap: 8cqh; font: italic 400 40cqh/1 var(--mt-fonte-titulo); white-space: nowrap; }
+.chamada { flex: none; display: flex; align-items: center; gap: 8cqh; font: italic 400 max(var(--mt-piso, 0cqw), 40cqh)/1 var(--mt-fonte-titulo); white-space: nowrap; }
 .chamada::after { content: ''; display: block; width: 26cqh; height: 1.2cqh; background: var(--mt-destaque); }
 .contatos { flex: 1; min-width: 0; display: flex; justify-content: flex-end; gap: 16cqh; list-style: none; margin: 0; padding: 0; }
 .contatos li { display: flex; flex-direction: column; gap: 7cqh; white-space: nowrap; }
 .contatos li + li { padding-left: 16cqh; border-left: 1.2cqh solid var(--mt-linha); }
 .contatos li:has(> span:empty) { display: none; }
-.rotulo { font: 600 12cqh/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; color: var(--mt-destaque); }
-.contatos span { font: 500 24cqh/1 var(--mt-fonte-texto); letter-spacing: .02em; }
+.rotulo { font: 600 max(var(--mt-piso, 0cqw), 12cqh)/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; color: var(--mt-destaque); }
+.contatos span { font: 500 max(var(--mt-piso, 0cqw), 24cqh)/1 var(--mt-fonte-texto); letter-spacing: .02em; }
 /*
  * Faixa curta: o endereço sai, a chamada encolhe. Em pé (8:1) e também a
  * faixa do layout padrão, ao lado da lateral (1390×140, 10:1): ali a
@@ -23,13 +23,13 @@
  */
 @container (aspect-ratio < 12) {
   /* Com a fonte da marca, que pode ser mais larga que a condensada (--mt-escala-titulo). */
-  .chamada { font-size: calc(32cqh * var(--mt-escala-titulo, 1)); gap: 5cqh; }
+  .chamada { font-size: max(var(--mt-piso, 0cqw), calc(32cqh * var(--mt-escala-titulo, 1))); gap: 5cqh; }
   .chamada::after { width: 14cqh; }
   .contatos { gap: 10cqh; }
   .contatos li + li { padding-left: 10cqh; }
   .contatos li:last-child { display: none; }
-  .rotulo { font-size: 11cqh; }
-  .contatos span { font-size: 20cqh; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 11cqh); }
+  .contatos span { font-size: max(var(--mt-piso, 0cqw), 20cqh); }
 }
 </style>
 <section class="mt-peca rodape-faixa">

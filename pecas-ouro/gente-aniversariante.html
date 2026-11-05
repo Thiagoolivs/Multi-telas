@@ -18,14 +18,14 @@
 .confete i:nth-child(4) { right: 14%; top: 14%; }
 .confete i:nth-child(5) { right: 22%; top: 38%; rotate: 45deg; }
 .confete i:nth-child(6) { right: 9%; top: 62%; }
-.kicker { font: 700 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker { font: 700 max(var(--mt-piso, 0cqw), 3.6cqmin)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
 .avatar { position: relative; margin-top: 6cqmin; width: 40cqmin; height: 40cqmin; border-radius: 50%; overflow: hidden;
   background: var(--mt-superficie); box-shadow: 0 0 0 1cqmin var(--mt-fundo), 0 0 0 1.8cqmin var(--mt-destaque); }
 .avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.iniciais { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 600 16cqmin/1 var(--mt-fonte-titulo); color: var(--mt-destaque); }
-h1 { margin-top: 7cqmin; font: 600 11cqmin/1.02 var(--mt-fonte-titulo); letter-spacing: -.02em; text-wrap: balance; }
-.setor { margin-top: 3cqmin; font: 500 4.2cqmin/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
-.recado { margin-top: 5cqmin; font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; }
+.iniciais { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 600 max(var(--mt-piso, 0cqw), 16cqmin)/1 var(--mt-fonte-titulo); color: var(--mt-destaque); }
+h1 { margin-top: 7cqmin; font: 600 max(var(--mt-piso, 0cqw), 11cqmin)/1.02 var(--mt-fonte-titulo); letter-spacing: -.02em; text-wrap: balance; }
+.setor { margin-top: 3cqmin; font: 500 max(var(--mt-piso, 0cqw), 4.2cqmin)/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.recado { margin-top: 5cqmin; font: 600 max(var(--mt-piso, 0cqw), 3.6cqmin)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; }
 /* Deitada: o retrato à esquerda, o texto à direita. */
 @container (aspect-ratio >= 1.25) {
   .mt-peca { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto auto auto; column-gap: 7cqw; align-content: center; justify-content: center;
@@ -33,7 +33,7 @@ h1 { margin-top: 7cqmin; font: 600 11cqmin/1.02 var(--mt-fonte-titulo); letter-s
   .avatar { grid-column: 1; grid-row: 1 / 5; align-self: center; margin: 0; width: 50cqmin; height: 50cqmin; }
   .kicker, h1, .setor, .recado { grid-column: 2; }
   .kicker { align-self: end; }
-  h1 { margin-top: 4cqmin; font-size: 12cqmin; }
+  h1 { margin-top: 4cqmin; font-size: max(var(--mt-piso, 0cqw), 12cqmin); }
   .recado { margin-top: 5cqmin; }
   /* Confete só nas bordas: o miolo direito é do nome. */
   .confete i:nth-child(1) { left: 5%; top: 12%; }
@@ -44,22 +44,22 @@ h1 { margin-top: 7cqmin; font: 600 11cqmin/1.02 var(--mt-fonte-titulo); letter-s
   .confete i:nth-child(6) { right: 5%; top: 78%; }
 }
 @container (aspect-ratio < 0.8) and (min-width: 701px) {
-  .kicker { font-size: 4cqmin; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
   .avatar { width: 54cqmin; height: 54cqmin; margin-top: 8cqmin; }
-  .iniciais { font-size: 22cqmin; }
-  h1 { font-size: 13cqmin; margin-top: 9cqmin; }
-  .setor { font-size: 4.6cqmin; }
-  .recado { font-size: 4cqmin; margin-top: 7cqmin; }
+  .iniciais { font-size: max(var(--mt-piso, 0cqw), 22cqmin); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 13cqmin); margin-top: 9cqmin; }
+  .setor { font-size: max(var(--mt-piso, 0cqw), 4.6cqmin); }
+  .recado { font-size: max(var(--mt-piso, 0cqw), 4cqmin); margin-top: 7cqmin; }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .avatar { width: 32cqmin; height: 32cqmin; margin-top: 4.4cqmin; }
-  .iniciais { font-size: 13cqmin; }
-  h1 { font-size: 9cqmin; margin-top: 5cqmin; }
-  .setor { font-size: 3.6cqmin; }
-  .recado { font-size: 3.2cqmin; margin-top: 4cqmin; }
+  .iniciais { font-size: max(var(--mt-piso, 0cqw), 13cqmin); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 9cqmin); margin-top: 5cqmin; }
+  .setor { font-size: max(var(--mt-piso, 0cqw), 3.6cqmin); }
+  .recado { font-size: max(var(--mt-piso, 0cqw), 3.2cqmin); margin-top: 4cqmin; }
 }
 @container (max-width: 700px) {
-  .setor { font-size: 4.6cqmin; }
+  .setor { font-size: max(var(--mt-piso, 0cqw), 4.6cqmin); }
 }
 </style>
 <section class="mt-peca gente-aniversariante">

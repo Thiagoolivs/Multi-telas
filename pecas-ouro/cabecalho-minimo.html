@@ -12,15 +12,15 @@
 .logo { height: 54cqh; width: auto; max-width: 30cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { font: 600 30cqh/1 var(--mt-fonte-titulo); letter-spacing: -.01em; white-space: nowrap; }
+.nome { font: 600 max(var(--mt-piso, 0cqw), 30cqh)/1 var(--mt-fonte-titulo); letter-spacing: -.01em; white-space: nowrap; }
 .nome b { font-weight: 300; }
 .agora { display: flex; align-items: baseline; gap: 8cqh; white-space: nowrap; }
-.data { font: 500 17cqh/1 var(--mt-fonte-texto); letter-spacing: .04em; color: var(--mt-texto-suave); }
-.hora { font: 300 40cqh/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
+.data { font: 500 max(var(--mt-piso, 0cqw), 17cqh)/1 var(--mt-fonte-texto); letter-spacing: .04em; color: var(--mt-texto-suave); }
+.hora { font: 300 max(var(--mt-piso, 0cqw), 40cqh)/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
 @container (aspect-ratio < 9) {
   .data { display: none; }
-  .nome { font-size: 28cqh; }
-  .hora { font-size: 36cqh; }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 28cqh); }
+  .hora { font-size: max(var(--mt-piso, 0cqw), 36cqh); }
 }
 </style>
 <section class="mt-peca cabecalho-minimo">

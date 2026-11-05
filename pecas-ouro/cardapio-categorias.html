@@ -7,35 +7,35 @@
 -->
 <style>
 .mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
-.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 700 1.25cqw/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
+.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 700 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
 .cabeca { position: absolute; left: 6cqw; right: 6cqw; top: 12cqh; display: flex; align-items: baseline; justify-content: space-between; gap: 4cqw; }
-h1 { font: 400 6.4cqw/.95 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .01em; }
-.nota { font: 600 1.3cqw/1.3 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.95 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .01em; }
+.nota { font: 600 max(var(--mt-piso, 0cqw), 1.3cqw)/1.3 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
 .grupos { position: absolute; left: 6cqw; right: 6cqw; top: 30cqh; bottom: 9cqh; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 3.6cqw; }
 .grupo h2 { display: inline-block; padding: .8cqw 1.4cqw .7cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); border-radius: calc(var(--mt-raio) * .5);
-  font: 400 2.2cqw/1 var(--mt-fonte-titulo); letter-spacing: .06em; text-transform: uppercase; }
+  font: 400 max(var(--mt-piso, 0cqw), 2.2cqw)/1 var(--mt-fonte-titulo); letter-spacing: .06em; text-transform: uppercase; }
 .grupo ul { list-style: none; margin: 1.6cqw 0 0; padding: 0; }
 .grupo li { display: flex; align-items: baseline; justify-content: space-between; gap: 1.4cqw; padding: 1.25cqw 0; border-bottom: .12cqw solid var(--mt-linha); }
 .grupo li:has(> b > span:empty) { display: none; }
-.grupo b { font: 700 1.7cqw/1.2 var(--mt-fonte-texto); }
-.grupo b small { display: block; margin-top: .4cqw; font: 500 1.15cqw/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
-.preco { font: 400 2.6cqw/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
-.preco small { font-size: .5em; margin-right: .15em; vertical-align: .6em; }
+.grupo b { font: 700 max(var(--mt-piso, 0cqw), 1.7cqw)/1.2 var(--mt-fonte-texto); }
+.grupo b small { display: block; margin-top: .4cqw; font: 500 max(var(--mt-piso, 0cqw), 1.15cqw)/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.preco { font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.preco small { font-size: max(var(--mt-piso, 0cqw), .5em); margin-right: .15em; vertical-align: .6em; }
 /* Em pé: o cardápio de parede — uma categoria embaixo da outra, letra grande.
    As três categorias de três itens cabem medidas: título curto, nota à direita
    quebrando se precisar. */
 @container (aspect-ratio < 0.8) {
-  .marca-nome { left: 7cqw; top: 4cqh; font-size: 2.2cqw; }
+  .marca-nome { left: 7cqw; top: 4cqh; font-size: max(var(--mt-piso, 0cqw), 2.2cqw); }
   .cabeca { left: 7cqw; right: 7cqw; top: 7cqh; align-items: flex-end; }
-  h1 { font-size: 12cqw; }
-  .nota { font-size: 2cqw; white-space: normal; max-width: 38cqw; text-align: right; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 12cqw); }
+  .nota { font-size: max(var(--mt-piso, 0cqw), 2cqw); white-space: normal; max-width: 38cqw; text-align: right; }
   .grupos { left: 7cqw; right: 7cqw; top: 17cqh; bottom: 4cqh; grid-template-columns: 1fr; grid-auto-rows: min-content; row-gap: 2.2cqh; }
-  .grupo h2 { font-size: 4.2cqw; padding: 1.5cqw 2.4cqw 1.3cqw; }
+  .grupo h2 { font-size: max(var(--mt-piso, 0cqw), 4.2cqw); padding: 1.5cqw 2.4cqw 1.3cqw; }
   .grupo ul { margin-top: 1.6cqw; }
   .grupo li { padding: 1.45cqw 0; border-bottom-width: .25cqw; gap: 3cqw; }
-  .grupo b { font-size: 3.2cqw; }
-  .grupo b small { font-size: 2.1cqw; margin-top: .7cqw; }
-  .preco { font-size: 5.4cqw; }
+  .grupo b { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); }
+  .grupo b small { font-size: max(var(--mt-piso, 0cqw), 2.1cqw); margin-top: .7cqw; }
+  .preco { font-size: max(var(--mt-piso, 0cqw), 5.4cqw); }
 }
 /*
  * Em pé, mas menos alta que 9:16 — o destaque do layout "Vertical ·
@@ -44,25 +44,25 @@ h1 { font: 400 6.4cqw/.95 var(--mt-fonte-titulo); text-transform: uppercase; let
  */
 @container (aspect-ratio >= 0.58) and (aspect-ratio < 0.8) {
   .grupos { top: 16cqh; row-gap: 1.6cqh; }
-  .grupo h2 { font-size: 3.8cqw; }
+  .grupo h2 { font-size: max(var(--mt-piso, 0cqw), 3.8cqw); }
   .grupo ul { margin-top: 1.2cqw; }
   .grupo li { padding: 1.1cqw 0; }
-  .grupo b { font-size: 3cqw; }
-  .grupo b small { font-size: 1.9cqw; }
-  .preco { font-size: 4.9cqw; }
+  .grupo b { font-size: max(var(--mt-piso, 0cqw), 3cqw); }
+  .grupo b small { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
+  .preco { font-size: max(var(--mt-piso, 0cqw), 4.9cqw); }
 }
 /* Quase quadrada: três colunas não cabem — duas em cima, a terceira embaixo; o detalhe do item sai. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .marca-nome { left: 7cqw; top: 5cqh; font-size: 1.8cqw; }
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
   .cabeca { left: 7cqw; right: 7cqw; top: 10cqh; }
-  h1 { font-size: 9cqw; }
-  .nota { font-size: 1.7cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 9cqw); }
+  .nota { font-size: max(var(--mt-piso, 0cqw), 1.7cqw); }
   .grupos { left: 7cqw; right: 7cqw; top: 23cqh; bottom: 5cqh; grid-template-columns: repeat(2, 1fr); grid-auto-rows: min-content; column-gap: 5cqw; row-gap: 3.4cqh; }
-  .grupo h2 { font-size: 3cqw; padding: 1.1cqw 1.8cqw 1cqw; }
+  .grupo h2 { font-size: max(var(--mt-piso, 0cqw), 3cqw); padding: 1.1cqw 1.8cqw 1cqw; }
   .grupo li { padding: 1.7cqw 0; border-bottom-width: .2cqw; }
-  .grupo b { font-size: 2.4cqw; }
+  .grupo b { font-size: max(var(--mt-piso, 0cqw), 2.4cqw); }
   .grupo b small { display: none; }
-  .preco { font-size: 3.8cqw; }
+  .preco { font-size: max(var(--mt-piso, 0cqw), 3.8cqw); }
 }
 </style>
 <section class="mt-peca cardapio-categorias">

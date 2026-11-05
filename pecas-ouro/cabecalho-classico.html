@@ -12,21 +12,21 @@
 .logo { height: 56cqh; width: auto; max-width: 28cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { font: 600 21cqh/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; white-space: nowrap; }
+.nome { font: 600 max(var(--mt-piso, 0cqw), 21cqh)/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; white-space: nowrap; }
 .nome b { font-weight: 800; }
 .chamada { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4cqh; min-width: 0;
-  font: 600 19cqh/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
+  font: 600 max(var(--mt-piso, 0cqw), 19cqh)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
 .chamada i { display: block; width: 40cqh; height: 1.2cqh; background: var(--mt-destaque); }
 .agora { display: flex; align-items: center; gap: 5cqh; flex: none; margin-left: auto; }
-.clima { font: 500 26cqh/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.clima { font: 500 max(var(--mt-piso, 0cqw), 26cqh)/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 .sep { display: block; width: 1.2cqh; height: 44cqh; background: var(--mt-linha); }
 .tempo { display: flex; flex-direction: column; align-items: flex-end; gap: 4cqh; }
-.hora { font: 400 46cqh/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
-.data { font: 600 15cqh/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.hora { font: 400 max(var(--mt-piso, 0cqw), 46cqh)/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
+.data { font: 600 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
 /* Faixa mais curta (TV em pé): a chamada sai, marca e hora ficam. */
 @container (aspect-ratio < 9) {
   .chamada { display: none; }
-  .nome { font-size: 19cqh; letter-spacing: .32em; }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 19cqh); letter-spacing: .32em; }
 }
 </style>
 <section class="mt-peca cabecalho">

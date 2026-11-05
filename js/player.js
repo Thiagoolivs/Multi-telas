@@ -79,21 +79,82 @@
    * miolo — só `transform`, que a TV fraca anima sem engasgar. Mede de novo
    * quando as fontes chegam, porque a fonte certa muda a largura do texto.
    */
+  // O piso da letra nesta zona (css/player.css, --mt-piso), em px; 0 na zona pequena.
+  function pisoEmPx(el) {
+    const v = String(getComputedStyle(el).getPropertyValue('--mt-piso') || '').trim();
+    const n = parseFloat(v) || 0;
+    if (/vmin$/.test(v)) return n * Math.min(global.innerWidth, global.innerHeight) / 100;
+    return /px$/.test(v) ? n : 0;
+  }
+
   function caberNaCaixa(slide) {
     if (!slide || !slide.querySelector) return;
     const miolo = slide.querySelector(':scope > .mt-text-inner, :scope > .ann-inner, :scope > .mt-precos-inner');
     if (!miolo) return;
+    const lista = slide.hasAttribute('data-mt-colunas-auto') ? miolo.querySelector('.mt-precos-lista') : null;
     const medir = function () {
+      // Volta ao desenho original: a fonte pode ter chegado e mudado tudo.
       miolo.style.transform = '';
-      const cs = getComputedStyle(slide);
-      const altura = slide.clientHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0);
-      const largura = slide.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
-      const h = miolo.scrollHeight, w = miolo.scrollWidth;
-      if (!h || !w || altura <= 0) return;
-      const esc = Math.min(1, altura / h, largura / w) * 0.97;
-      if (esc < 0.99) {
+      slide.classList.remove('mt-compacto');
+      if (lista) lista.style.columnCount = '';
+      miolo.querySelectorAll('[data-mt-cabe]').forEach((e) => { e.style.fontSize = ''; e.removeAttribute('data-mt-cabe'); });
+      miolo.querySelectorAll('[data-mt-apoio]').forEach((e) => { e.style.display = ''; });
+      // A caixa é medida de novo a cada passo: o modo compacto muda o respiro da própria caixa.
+      const caixa = () => {
+        const cs = getComputedStyle(slide);
+        return [slide.clientHeight - parseFloat(cs.paddingTop || 0) - parseFloat(cs.paddingBottom || 0),
+          slide.clientWidth - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0)];
+      };
+      if (!miolo.scrollHeight || !miolo.scrollWidth || caixa()[0] <= 0) return;
+      // Só encolhe o que passou mesmo (1 px de folga para arredondamento):
+      // encolher sempre 3% deixava a letra mínima abaixo do piso da TV.
+      const sobra = () => { const c = caixa(); return Math.min(c[0] / Math.max(1, miolo.scrollHeight - 1), c[1] / Math.max(1, miolo.scrollWidth - 1)); };
+      let esc = sobra();
+      if (esc >= 1) return;
+      /*
+       * Fase 2: na zona grande, a letra miúda (etiqueta, corpo, rodapé, item
+       * do cardápio) já está no piso da TV, o mínimo que se lê a 4 m; encolher
+       * a caixa toda a punha abaixo dele. Então, nesta ordem, até caber:
+       *   1. o respiro aperta (mt-compacto: entrelinha da lista, margens);
+       *   2. a lista de preços no automático ganha uma coluna;
+       *   3. o título desce, até o tamanho de corpo (1,6× o piso);
+       *   4. o apoio (o ícone do aviso) sai;
+       * A fonte muda de TV para TV (a do sistema): o que cabe com uma pode
+       * não caber com outra mais larga, e cada passo vale para as duas.
+       * e só o que ainda não couber encolhe inteiro, como antes.
+       */
+      const piso = pisoEmPx(miolo);
+      if (piso) {
+        slide.classList.add('mt-compacto');
+        esc = sobra();
+        if (lista && esc < 1) {
+          const base = parseInt(getComputedStyle(lista).columnCount, 10) || 1;
+          for (let c = base + 1; c <= 3 && esc < 1; c++) {
+            lista.style.columnCount = String(c);
+            const agora = sobra();
+            if (agora <= esc) { lista.style.columnCount = c - 1 > base ? String(c - 1) : ''; break; }
+            esc = agora;
+          }
+        }
+        const grandes = Array.prototype.filter.call(miolo.querySelectorAll('*'), (e) =>
+          Array.prototype.some.call(e.childNodes, (n) => n.nodeType === 3 && n.textContent.trim()) &&
+          parseFloat(getComputedStyle(e).fontSize) > piso * 1.6);
+        for (let i = 0; i < 8 && esc < 1 && grandes.length; i++) {
+          grandes.forEach((e) => {
+            const atual = parseFloat(getComputedStyle(e).fontSize);
+            e.style.fontSize = Math.max(piso * 1.6, atual * Math.max(0.8, Math.sqrt(esc))).toFixed(1) + 'px';
+            e.setAttribute('data-mt-cabe', '');
+          });
+          esc = sobra();
+        }
+        if (esc < 1) {
+          miolo.querySelectorAll('[data-mt-apoio]').forEach((e) => { e.style.display = 'none'; });
+          esc = sobra();
+        }
+      }
+      if (esc < 1) {
         miolo.style.transformOrigin = 'center center';
-        miolo.style.transform = 'scale(' + Math.max(0.35, esc).toFixed(3) + ')';
+        miolo.style.transform = 'scale(' + Math.max(0.35, esc * 0.97).toFixed(3) + ')';
       }
     };
     afterPaint(medir);

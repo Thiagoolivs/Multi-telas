@@ -9,14 +9,14 @@
 .mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); text-align: center;
   background: radial-gradient(100% 70% at 50% 100%, var(--mt-fundo-2), var(--mt-fundo) 70%); }
 .bloco { position: absolute; left: 9cqmin; right: 9cqmin; top: 50%; transform: translateY(-52%); display: flex; flex-direction: column; align-items: center; }
-.kicker { display: flex; align-items: center; gap: 2.4cqmin; font: 600 3.6cqmin/1 var(--mt-fonte-texto); letter-spacing: .28em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker { display: flex; align-items: center; gap: 2.4cqmin; font: 600 max(var(--mt-piso, 0cqw), 3.6cqmin)/1 var(--mt-fonte-texto); letter-spacing: .28em; text-transform: uppercase; color: var(--mt-destaque); }
 .kicker i { display: block; width: 6cqmin; height: .5cqmin; background: var(--mt-destaque); }
-h1 { font: 400 10cqmin/1 var(--mt-fonte-titulo); text-transform: uppercase; margin: 4.4cqmin 0 6cqmin; text-wrap: balance; }
+h1 { font: 400 max(var(--mt-piso, 0cqw), 10cqmin)/1 var(--mt-fonte-titulo); text-transform: uppercase; margin: 4.4cqmin 0 6cqmin; text-wrap: balance; }
 .qr { margin: 0; width: 46cqmin; height: 46cqmin; padding: 1.6cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie);
   box-shadow: 0 0 0 .6cqmin var(--mt-destaque); }
 .qr img { width: 100%; height: 100%; border-radius: calc(var(--mt-raio) * .6); }
-.apoio { margin-top: 6cqmin; font: 400 4.2cqmin/1.45 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 70cqmin; }
-.contato { margin-top: 4cqmin; font: 600 5cqmin/1 var(--mt-fonte-texto); letter-spacing: .08em; }
+.apoio { margin-top: 6cqmin; font: 400 max(var(--mt-piso, 0cqw), 4.2cqmin)/1.45 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 70cqmin; }
+.contato { margin-top: 4cqmin; font: 600 max(var(--mt-piso, 0cqw), 5cqmin)/1 var(--mt-fonte-texto); letter-spacing: .08em; }
 /* Deitada: texto à esquerda, QR à direita. */
 @container (aspect-ratio >= 1.25) {
   .mt-peca { text-align: left; }
@@ -28,11 +28,11 @@ h1 { font: 400 10cqmin/1 var(--mt-fonte-titulo); text-transform: uppercase; marg
 }
 /* Quase quadrada: a coluna não cabe com o QR grande — ele e o título encolhem. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .kicker { font-size: 3cqmin; }
-  h1 { font-size: 8cqmin; margin: 3cqmin 0 4.4cqmin; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3cqmin); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 8cqmin); margin: 3cqmin 0 4.4cqmin; }
   .qr { width: 36cqmin; height: 36cqmin; }
-  .apoio { margin-top: 4.4cqmin; font-size: 3.4cqmin; }
-  .contato { margin-top: 3cqmin; font-size: 4cqmin; }
+  .apoio { margin-top: 4.4cqmin; font-size: max(var(--mt-piso, 0cqw), 3.4cqmin); }
+  .contato { margin-top: 3cqmin; font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
 }
 @container (max-width: 700px) {
   .apoio { display: none; }

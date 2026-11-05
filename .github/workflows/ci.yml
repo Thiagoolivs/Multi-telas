@@ -61,3 +61,42 @@ jobs:
 
       - name: Build do painel
         run: npm --prefix web run build
+
+  # A régua da TV (fase 2): o robô sobe o servidor, pareia três TVs de
+  # verdade (deitada, em pé e quadrada) e mede a letra que cada tipo de
+  # conteúdo desenha em tela cheia. Letra abaixo de 4,5% do lado menor da TV
+  # — o que se lê a 4 m — reprova. Job à parte: o navegador leva um minuto
+  # para instalar e não atrasa o retorno dos testes.
+  regua-tv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Dependências do servidor
+        run: npm install --no-audit --no-fund
+
+      # O painel não entra: a TV é servida do player.html e de js/.
+      - name: Navegador (Playwright com Chromium)
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.63.0
+          npx playwright install --with-deps chromium
+
+      - name: Régua da TV
+        run: npm run regua
+        env:
+          REGUA_SAIDA: regua-fotos
+
+      # As fotos ficam no resumo da execução: dá para ver o que reprovou.
+      - name: Fotos da régua
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regua-tv
+          path: regua-fotos
+          if-no-files-found: ignore
+          retention-days: 7

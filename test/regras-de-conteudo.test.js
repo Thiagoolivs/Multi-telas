@@ -97,7 +97,7 @@ test('fatos: o que não estava no pedido vira aviso; o dia da semana errado tamb
 test('letra mínima no CSS: a nota de 0,62cqw é acusada; a biblioteca-ouro inteira passa', () => {
   assert.equal(Math.round(R.emPx('calc(6.6cqw * var(--mt-escala-titulo, 1))', 1405, 832)), 93);
   assert.equal(R.emPx('1.2em', 1405, 832), null, 'em depende da página montada: não acusa');
-  const css = '.nota { font: 400 .62cqw/1.2 var(--mt-fonte-texto); } h1 { font-size: 6cqw; } @container (aspect-ratio < 0.8) { .nota { font-size: 2cqw; } }';
+  const css = '.nota { font: 400 .62cqw/1.2 var(--mt-fonte-texto); } h1 { font-size: 6cqw; } @container (aspect-ratio < 0.8) { .nota { font-size: 5cqw; } }';
   const r = R.letrasPequenas(css, 'destaque');
   assert.deepEqual(r.map((x) => x.seletor + ' ' + x.formato), ['.nota deitada', '.nota quadrada'], 'em pé o @container corrige');
   assert.ok(r[0].px < 13);

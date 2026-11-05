@@ -95,16 +95,17 @@ test('avaliar: letra mínima, margem e contraste', () => {
 
   const achados = R.avaliar(Object.assign({}, PECA, { textos: [
     { nome: 'de', px: 11, linhas: [linha(84, 600, 200, 612)], contraste: 9 },
-    { nome: 'cta', px: 20, linhas: [linha(10, 780, 300, 800)], contraste: 9 },
+    { nome: 'cta', px: 50, linhas: [linha(10, 780, 300, 800)], contraste: 9 },
     // Abaixo de 3:1 é o par de cores errado (os tokens garantem 3:1 ou mais).
-    { nome: 'apoio', px: 20, linhas: [linha(84, 400, 600, 420)], contraste: 2.1 },
+    { nome: 'apoio', px: 50, linhas: [linha(84, 400, 600, 420)], contraste: 2.1 },
     { nome: 'preco', px: 120, linhas: [linha(84, 450, 600, 570)], contraste: 3.4 },
-    { nome: 'kicker', px: 18, linhas: [linha(84, 100, 400, 118)], contraste: 1.4, sobreFoto: true },
+    { nome: 'kicker', px: 50, linhas: [linha(84, 100, 400, 118)], contraste: 1.4, sobreFoto: true },
     // Fora da peça é vazamento (outra régua): a margem não acusa de novo.
-    { nome: 'vazou', px: 30, linhas: [linha(-20, 300, 200, 330)], contraste: 9 },
+    { nome: 'vazou', px: 50, linhas: [linha(-20, 300, 200, 330)], contraste: 9 },
   ], qrs: [] }));
   assert.deepEqual(achados.map((a) => a.regra + ':' + a.campo), ['letra:de', 'margem:cta', 'contraste:apoio', 'foto:kicker']);
-  assert.match(achados[0].texto, /11px \(o mínimo é 14px\)/);
+  // A régua da TV (fase 2): no destaque o mínimo é 48 px, o que se lê a 4 m.
+  assert.match(achados[0].texto, /11px \(o mínimo é 48px\)/);
   assert.match(achados[1].texto, /encostado na borda \(10px dela\)/);
   assert.match(achados[3].texto, /sobre a foto sem véu/);
   // Faixa: em cima e embaixo o piso é menor (6px), dos lados é o mesmo.
@@ -140,7 +141,7 @@ test('avaliar: QR pequeno, cortado ou numa faixa; um achado por regra e campo', 
 
 test('paraIA: as regras chegam ao gerador em cq, por papel', () => {
   const d = R.paraIA('destaque');
-  assert.match(d, /Letra mínima: 1cqw \(14px na TV\)/);
+  assert.match(d, /Letra mínima: 3\.4cqw \(48px na TV\), também no kicker/);
   assert.match(d, /QR \(data-campo-qr\) com lado de pelo menos 19\.2cqmin \(160px na TV\)/);
   assert.match(d, /o número é o MAIOR texto da peça/);
   assert.match(R.paraIA('lateral'), /Letra mínima: 2\.7cqw/);
