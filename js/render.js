@@ -1056,7 +1056,7 @@
 
     const iconBox = div('ann-icon');
     // Apoio: sem espaço para o texto no piso da TV, o ícone sai antes de a letra encolher (js/player.js caberNaCaixa).
-    iconBox.setAttribute('data-mt-apoio', '');
+    iconBox.setAttribute('data-mt-apoio', '1');
     iconBox.style.background = hexToRgba(cor, .16);
     iconBox.style.borderColor = hexToRgba(cor, .55);
     iconBox.style.boxShadow = '0 0 0 1.5cqh ' + hexToRgba(cor, .07);
@@ -1077,6 +1077,8 @@
     if (item.info) {
       const meta = div('ann-meta');
       meta.textContent = item.info;
+      // Apoio de segundo nível (fase 3): na zona pequena, sai depois do ícone e antes de a letra encolher.
+      meta.setAttribute('data-mt-apoio', '2');
       inner.appendChild(meta);
     }
 

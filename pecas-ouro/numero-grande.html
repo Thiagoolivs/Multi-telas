@@ -48,7 +48,8 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1.02 var(--mt-fonte-titulo); te
   .numero small { font-size: max(var(--mt-piso, 0cqw), 4.4cqw); letter-spacing: .4em; }
   .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .22em; }
   h1 { font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
-  .assinatura { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); letter-spacing: .2em; }
+  /* Com a letra da TV, o endereço espaçado passava da margem na lateral: fica justo e pode quebrar. */
+  .assinatura { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); letter-spacing: .06em; left: 8cqw; right: 8cqw; line-height: 1.2; }
 }
 </style>
 <section class="mt-peca numero-grande">

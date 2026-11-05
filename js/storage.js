@@ -217,6 +217,8 @@
     // O título de exemplo que vazou para as telas de cliente (ver settingsPadrao).
     if (out.settings.titulo === 'Raft Embalagens' && out.settings.nome !== 'Raft Embalagens') out.settings.titulo = '';
     out.settings.audio = normalizeAudio(out.settings.audio);
+    // Onde a TV fica (fase 3): decide a letra mínima. Vazio = o padrão da frente (js/player.js, LOCAIS).
+    if (['balcao', 'recepcao', 'escritorio'].indexOf(out.settings.local) < 0) out.settings.local = '';
 
     // Preserva zonas de outros templates (trocar de layout não apaga conteúdo).
     Object.keys(cfg.zonas || {}).forEach((k) => {

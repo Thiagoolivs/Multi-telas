@@ -79,12 +79,33 @@
    * miolo — só `transform`, que a TV fraca anima sem engasgar. Mede de novo
    * quando as fontes chegam, porque a fonte certa muda a largura do texto.
    */
-  // O piso da letra nesta zona (css/player.css, --mt-piso), em px; 0 na zona pequena.
+  /*
+   * Fase 3: a letra mínima depende de onde a TV fica. A régua do QA
+   * (docs/qa-total/REFERENCIAS.md, 6.1 e 6.2) é 4,5% do lado menor para uma
+   * TV de 50" lida a 4 m, e a altura da letra cresce com a distância.
+   *   balcão, vitrine (4 m)        4,5%
+   *   recepção, sala de espera (3 m) 3,5%
+   *   escritório, corredor (2–2,5 m) 3%  — é onde as zonas fazem sentido
+   * Sem escolha, vale a frente da conta (o servidor manda settings.frente).
+   */
+  const LOCAIS = { balcao: 0.045, recepcao: 0.035, escritorio: 0.03 };
+  const LOCAL_DA_FRENTE = { comercio: 'balcao', saude: 'recepcao', empresa: 'escritorio' };
+  function localDaTv(settings) {
+    const s = settings || {};
+    return LOCAIS[s.local] ? s.local : (LOCAL_DA_FRENTE[s.frente] || 'balcao');
+  }
+  function letraDoLocal(cfg) {
+    const local = localDaTv(cfg && cfg.settings);
+    document.documentElement.style.setProperty('--mt-piso-tv', String(LOCAIS[local]));
+    document.documentElement.setAttribute('data-mt-local', local);
+  }
+
+  // O piso da letra nesta zona (css/player.css, --mt-piso), em px: a fração do local vezes o lado menor da TV.
   function pisoEmPx(el) {
     const v = String(getComputedStyle(el).getPropertyValue('--mt-piso') || '').trim();
-    const n = parseFloat(v) || 0;
-    if (/vmin$/.test(v)) return n * Math.min(global.innerWidth, global.innerHeight) / 100;
-    return /px$/.test(v) ? n : 0;
+    if (!v || v === '0px' || v === '0') return 0;
+    const frac = parseFloat(getComputedStyle(el).getPropertyValue('--mt-piso-tv')) || LOCAIS.balcao;
+    return frac * Math.min(global.innerWidth, global.innerHeight);
   }
 
   function caberNaCaixa(slide) {
@@ -147,8 +168,12 @@
           });
           esc = sobra();
         }
-        if (esc < 1) {
-          miolo.querySelectorAll('[data-mt-apoio]').forEach((e) => { e.style.display = 'none'; });
+        // O apoio sai por nível (data-mt-apoio="1" antes do "2"), e só o que for preciso.
+        const apoios = Array.prototype.slice.call(miolo.querySelectorAll('[data-mt-apoio]'));
+        const niveis = apoios.map((e) => Number(e.getAttribute('data-mt-apoio')) || 1)
+          .filter((n, i, a) => a.indexOf(n) === i).sort((a, b) => a - b);
+        for (let i = 0; i < niveis.length && esc < 1; i++) {
+          apoios.forEach((e) => { if ((Number(e.getAttribute('data-mt-apoio')) || 1) === niveis[i]) e.style.display = 'none'; });
           esc = sobra();
         }
       }
@@ -684,8 +709,27 @@
     return fingerprint(s);
   }
   // Identidade do palco: se isto muda, não há o que reaproveitar.
+  /*
+   * Fase 3: o layout DESTA tela, com as zonas vazias absorvidas pela vizinha
+   * com conteúdo (js/templates.js, MT_juntarZonasVazias). Vazia é a playlist
+   * sem itens e sem automáticos; o rodapé sem mensagem só sai quando a tela
+   * tem cabeçalho — sem cabeçalho, ele é o lugar da marca. Sem conteúdo
+   * nenhum, a tela fica como está (a espera com a marca).
+   */
+  function zonasVazias(cfg, layout) {
+    const comCabecalho = layout.zones.some((z) => z.type === 'header');
+    return layout.zones.filter((z) => {
+      const d = (cfg.zonas && cfg.zonas[z.id]) || {};
+      if (z.type === 'playlist') return !(d.items || []).length && !automaticosDaZona(cfg, z.id);
+      return z.type === 'ticker' && comCabecalho && rodapeEsperando(d);
+    }).map((z) => z.id);
+  }
+  function layoutDaTela(cfg) {
+    const base = MT_getLayout(cfg.settings.layoutId);
+    return global.MT_juntarZonasVazias ? global.MT_juntarZonasVazias(base, zonasVazias(cfg, base)) : base;
+  }
   function assinaturaPalco(cfg) {
-    const l = MT_getLayout(cfg.settings.layoutId);
+    const l = layoutDaTela(cfg);
     return fingerprint([
       cfg.settings.layoutId, l.grid, l.zones.map((z) => z.id + ':' + z.type),
       cfg.settings.layoutAuto, cfg.settings.layoutAutoSeconds,
@@ -882,7 +926,7 @@
     ajustesDoPalco(cfg);
 
     const ajustes = assinaturaAjustes(cfg.settings);
-    const layout = MT_getLayout(cfg.settings.layoutId);
+    const layout = layoutDaTela(cfg);
     for (const zone of layout.zones) {
       const viva = palco.zonas[zone.id];
       if (!viva) continue;
@@ -897,6 +941,7 @@
     const resolved = (global.MTTheme && MTTheme.apply(cfg.settings.theme, null, { pecas: MTTheme.pecasDaConfig && MTTheme.pecasDaConfig(cfg) })) || null;
     global.MT_THEME = resolved;
     contextoDaPeca(cfg);
+    letraDoLocal(cfg);
     if (global.MTAdaptive) {
       MTAdaptive.enabled = cfg.settings.coresAdaptativas !== false;
       if (resolved) MTAdaptive.setBase({ accent: resolved.accent, glow: resolved.glow });
@@ -961,7 +1006,7 @@
   }
 
   function reorganizarPalco(cfg) {
-    const layout = MT_getLayout(cfg.settings.layoutId);
+    const layout = layoutDaTela(cfg);
     const leve = palcoLeve();
     const caixa = stage.getBoundingClientRect();
     const antes = {};
@@ -1254,7 +1299,7 @@
   }
 
   function buildStage(cfg) {
-    const layout = MT_getLayout(cfg.settings.layoutId);
+    const layout = layoutDaTela(cfg);
     function setGrid(a) {
       stage.style.gridTemplateColumns = a.columns;
       stage.style.gridTemplateRows = a.rows;
@@ -1358,6 +1403,7 @@
     // tela coesa em vez de cores fixas espalhadas.
     global.MT_THEME = resolved;
     contextoDaPeca(cfg);
+    letraDoLocal(cfg);
     /*
      * Modo performance: desliga os efeitos caros (vidro, halos borrados,
      * partículas). Quem decide pelo APARELHO é o js/perf.js, no boot — antes

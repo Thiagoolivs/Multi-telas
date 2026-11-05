@@ -439,6 +439,9 @@ module.exports = function (ctx) {
           if (dtOk && c && c.settings) {
             const logo = await paleta.logoDaConta(db, device.tenant_id);
             if (logo) { c.settings.logo = logo; mudou = true; }
+            // A frente da conta (fase 3): sem "onde a TV fica" escolhido, a letra mínima é a da frente.
+            const frente = await paleta.perfilDaConta(db, device.tenant_id).catch(() => '');
+            if (frente) { c.settings.frente = frente; mudou = true; }
             /*
              * Aniversários e mural "nas TVs" (D15): a escolha é da conta, e
              * esta TV recebe só o que a alcança. Calculado agora, como a logo:

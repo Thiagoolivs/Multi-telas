@@ -65,6 +65,10 @@ h1 span + span { color: var(--mt-destaque); }
  * vão na mesma linha, a hora na ponta. O dia pode quebrar em duas linhas
  * ("Domingo e / feriado"); a hora nunca quebra.
  */
+/* A lateral (estreita): com a letra da TV, "Domingo e feriado" espaçado passava da margem. O dia quebra, sem o espaçamento largo. */
+@container (max-width: 700px) {
+  .dia { white-space: normal; letter-spacing: .08em; line-height: 1.15; }
+}
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .cabeca { left: 7cqmin; right: 7cqmin; top: 8cqmin; }
   .kicker { letter-spacing: .12em; }

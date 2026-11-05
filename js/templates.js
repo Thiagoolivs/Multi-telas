@@ -292,9 +292,73 @@
     return LAYOUTS.find((l) => l.id === id) || LAYOUTS[0];
   }
 
+  /*
+   * Fase 3: a zona vazia some. Uma zona sem nada a mostrar (a playlist sem
+   * itens, o rodapé sem mensagem) não vira enfeite com a marca e a data: a
+   * zona com conteúdo ao lado ocupa o lugar dela. Duas formas, nesta ordem:
+   *   1. a zona vazia ocupa linhas (ou colunas) inteiras da grade: elas
+   *      saem, e as outras crescem (o rodapé sem mensagem, a metade de
+   *      baixo do "Em pé · duas zonas");
+   *   2. senão, uma playlist vizinha com conteúdo absorve as células dela,
+   *      se o resultado continuar um retângulo (a lateral vazia do
+   *      Corporativo vira principal), a principal primeiro.
+   * O cabeçalho nunca sai. Sem nenhuma playlist com conteúdo, nada muda: a
+   * tela inteira espera (js/player.js, esperaDeZona). Pura e sem DOM, para
+   * a TV e para os testes.
+   */
+  function juntarZonasVazias(layout, vazias) {
+    const vaz = (vazias || []).filter((id) => layout.zones.some((z) => z.id === id && z.type !== 'header'));
+    const cheias = layout.zones.filter((z) => z.type === 'playlist' && vaz.indexOf(z.id) < 0);
+    if (!vaz.length || !cheias.length) return layout;
+    let areas = layout.grid.areas.map((r) => String(r).trim().split(/\s+/));
+    const trilhas = (t) => (typeof t === 'string' && t.indexOf('(') < 0 ? t.trim().split(/\s+/) : null);
+    let linhas = trilhas(layout.grid.rows);
+    let colunas = trilhas(layout.grid.columns);
+    const retangulo = (nome) => {
+      let a = Infinity, b = -1, c = Infinity, d = -1, n = 0;
+      areas.forEach((r, i) => r.forEach((x, j) => { if (x === nome) { a = Math.min(a, i); b = Math.max(b, i); c = Math.min(c, j); d = Math.max(d, j); n++; } }));
+      return n > 0 && n === (b - a + 1) * (d - c + 1);
+    };
+    const saiu = {};
+    vaz.forEach((id) => {
+      const z = layout.zones.find((x) => x.id === id);
+      // 1. Linhas inteiras dela saem da grade.
+      const soDela = (r) => r.every((x) => x === z.area);
+      if (linhas && linhas.length === areas.length && areas.some(soDela) && !areas.every(soDela)) {
+        linhas = linhas.filter((t, i) => !soDela(areas[i]));
+        areas = areas.filter((r) => !soDela(r));
+        if (!areas.some((r) => r.indexOf(z.area) >= 0)) { saiu[id] = true; return; }
+      }
+      // ... ou colunas inteiras.
+      const colunaDela = (j) => areas.every((r) => r[j] === z.area);
+      if (colunas && areas.length && colunas.length === areas[0].length) {
+        const fora = colunas.map((t, j) => colunaDela(j));
+        if (fora.some(Boolean) && !fora.every(Boolean)) {
+          colunas = colunas.filter((t, j) => !fora[j]);
+          areas = areas.map((r) => r.filter((x, j) => !fora[j]));
+          if (!areas.some((r) => r.indexOf(z.area) >= 0)) { saiu[id] = true; return; }
+        }
+      }
+      // 2. Uma playlist vizinha com conteúdo absorve (a principal primeiro).
+      const vizinhas = cheias.slice().sort((x, y) => (y.id === 'principal') - (x.id === 'principal'));
+      for (const v of vizinhas) {
+        const antes = areas;
+        areas = areas.map((r) => r.map((x) => (x === z.area ? v.area : x)));
+        if (retangulo(v.area)) { saiu[id] = true; return; }
+        areas = antes;
+      }
+    });
+    if (!Object.keys(saiu).length) return layout;
+    const grid = Object.assign({}, layout.grid, { areas: areas.map((r) => r.join(' ')) });
+    if (linhas) grid.rows = linhas.join(' ');
+    if (colunas) grid.columns = colunas.join(' ');
+    return Object.assign({}, layout, { grid, zones: layout.zones.filter((z) => !saiu[z.id]), juntadas: Object.keys(saiu) });
+  }
+
   global.MT_LAYOUTS = LAYOUTS;
   global.MT_getLayout = getLayout;
   global.MT_layoutsByOrientation = layoutsByOrientation;
+  global.MT_juntarZonasVazias = juntarZonasVazias;
 
   /*
    * Módulo duplo. O servidor precisa saber quais zonas um layout tem para
@@ -302,6 +366,6 @@
    * mesma armadilha da matemática de cor: uma envelhece.
    */
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { LAYOUTS, getLayout, layoutsByOrientation };
+    module.exports = { LAYOUTS, getLayout, layoutsByOrientation, juntarZonasVazias };
   }
 })(typeof window !== 'undefined' ? window : globalThis);

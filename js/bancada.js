@@ -379,13 +379,26 @@
     LAYOUTS_DA_TELA.forEach((id) => opcao($('layout'), id, MT_getLayout(id).name));
     opcao($('tamanho'), 'caber', 'Caber na janela');
     opcao($('tamanho'), 'real', 'Real (1:1)');
+    // Fase 3: onde a TV fica decide a letra mínima em TODA zona (js/player.js, LOCAIS). Sem local, só a zona grande tem piso.
+    opcao($('local'), '', 'Sem local (só a zona grande)');
+    opcao($('local'), 'balcao', 'Balcão (4,5%)');
+    opcao($('local'), 'recepcao', 'Recepção (3,5%)');
+    opcao($('local'), 'escritorio', 'Escritório (3%)');
+    const LOCAIS = { balcao: 0.045, recepcao: 0.035, escritorio: 0.03 };
+    const porLocal = () => {
+      const f = LOCAIS[$('local').value];
+      if (f) document.documentElement.style.setProperty('--mt-piso-tv', String(f));
+      else document.documentElement.style.removeProperty('--mt-piso-tv');
+    };
     const primeira = (manifesto.telas || [])[0];
     if (primeira) $('layout').value = primeira.layout;
 
     // A escolha fica na URL: dá para mandar o link de uma combinação.
-    const CHAVES = ['ver', 'peca', 'marca', 'modo', 'tela', 'layout', 'tamanho'];
+    const CHAVES = ['ver', 'peca', 'marca', 'modo', 'tela', 'layout', 'tamanho', 'local'];
     const q = new URLSearchParams(location.search);
     CHAVES.forEach((k) => { if (q.get(k)) $(k).value = q.get(k); });
+    porLocal();
+    $('local').addEventListener('change', porLocal);
     CHAVES.forEach((k) => $(k).addEventListener('change', () => {
       // Peça nova abre na marca em que nasceu; tela nova, no layout dela.
       if (k === 'peca' && defDe($('peca').value).marca) $('marca').value = defDe($('peca').value).marca;
