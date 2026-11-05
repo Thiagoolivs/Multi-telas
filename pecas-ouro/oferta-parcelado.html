@@ -41,17 +41,19 @@ h1 { font: 600 max(var(--mt-piso, 0cqw), 5.4cqw)/1.02 var(--mt-fonte-titulo); le
   .inclui li::before { width: 1.6cqw; height: 1.6cqw; }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
-  .parcela { right: 7cqw; top: 11cqh; transform: none; }
-  .vezes { font-size: max(var(--mt-piso, 0cqw), 26cqw); }
-  .de { font-size: max(var(--mt-piso, 0cqw), 1.7cqw); margin-top: 2.6cqw; }
-  .valor { font-size: max(var(--mt-piso, 0cqw), 6.6cqw); }
-  .total { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
-  .bloco { left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 7cqh; transform: none; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
+  /* Quadrada: o "10×" no canto de cima, à direita, um pouco menor; o texto embaixo com a largura toda. Com a letra da TV, o total encostava no título. */
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .24em; }
+  .parcela { right: 7cqw; top: 9cqh; transform: none; }
+  .vezes { font-size: max(var(--mt-piso, 0cqw), 20cqw); }
+  .de { font-size: max(var(--mt-piso, 0cqw), 1.7cqw); margin-top: 2.4cqw; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 7.4cqw); margin-top: 2cqw; }
+  .valor small, .valor sup { vertical-align: text-top; }
+  .total { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); margin-top: 1cqw; }
+  .bloco { left: 7cqw; right: 7cqw; width: auto; top: auto; bottom: 6cqh; transform: none; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .16em; }
   .kicker i { width: 5cqw; height: .2cqw; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 6.6cqw); margin: 2.6cqw 0 3cqw; }
-  .inclui li { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); padding: 1.6cqw 0; border-top-width: .2cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 6.6cqw); margin: 2.2cqw 0 2.4cqw; }
+  .inclui li { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); padding: 1.1cqw 0; border-top-width: .2cqw; }
   .inclui li:last-child { border-bottom-width: .2cqw; }
   .inclui li::before { width: 1.2cqw; height: 1.2cqw; }
 }

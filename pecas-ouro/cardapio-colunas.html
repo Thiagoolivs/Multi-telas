@@ -11,22 +11,24 @@
 .marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
 .marca-nome b { font-weight: 800; }
 .cabeca { position: absolute; left: 6cqw; right: 6cqw; top: 15cqh; display: flex; align-items: flex-end; justify-content: space-between; gap: 6cqw; }
-.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
-.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
-h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.92 var(--mt-fonte-titulo); text-transform: uppercase; margin-top: 2cqw; white-space: nowrap; }
-.apoio { font: 400 max(var(--mt-piso, 0cqw), 1.5cqw)/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 27cqw; text-align: right; padding-bottom: .6cqw; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .16em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { display: block; flex: none; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.92 var(--mt-fonte-titulo); text-transform: uppercase; margin-top: 1.4cqw; white-space: nowrap; }
+.apoio { font: 400 max(var(--mt-piso, 0cqw), 1.5cqw)/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 40cqw; text-align: right; text-wrap: balance; padding-bottom: .6cqw; }
 .itens { position: absolute; left: 6cqw; right: 6cqw; bottom: 15cqh; list-style: none; margin: 0; padding: 0;
   display: grid; grid-template-columns: 1fr 1fr; grid-auto-flow: column; grid-template-rows: repeat(3, auto); column-gap: 6cqw; }
-.itens li { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; column-gap: 1.2cqw; padding: 1.7cqw 0 1.5cqw; border-top: .12cqw solid var(--mt-linha); }
+.itens li { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; column-gap: 1.2cqw; padding: 1.8cqh 0 1.6cqh; border-top: .12cqw solid var(--mt-linha); }
 .itens li:nth-child(3), .itens li:nth-child(6) { border-bottom: .12cqw solid var(--mt-linha); }
-.nome { font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1.05 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .02em; white-space: nowrap; }
+.nome { font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1.05 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .02em; text-wrap: balance; }
 .pontos { align-self: end; margin-bottom: .9cqw; border-bottom: .2cqw dotted var(--mt-texto-suave); opacity: .55; }
+/* O R$ e os centavos encostam no topo da linha. Com a letra da TV eles crescem quase até o tamanho
+   do número; subir .95em do próprio tamanho os jogava para a linha de cima. */
 .valor { font: 400 max(var(--mt-piso, 0cqw), 3.2cqw)/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
-.valor small { font-size: max(var(--mt-piso, 0cqw), .4em); vertical-align: .95em; margin-right: .25em; }
-.valor sup { font-size: max(var(--mt-piso, 0cqw), .45em); vertical-align: .85em; }
-.medida { grid-column: 1 / -1; margin-top: .5cqw; font: 500 max(var(--mt-piso, 0cqw), 1.15cqw)/1 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.valor small { font-size: max(var(--mt-piso, 0cqw), .4em); vertical-align: top; margin-right: .25em; }
+.valor sup { font-size: max(var(--mt-piso, 0cqw), .45em); vertical-align: top; }
+.medida { grid-column: 1 / -1; margin-top: .9cqh; font: 500 max(var(--mt-piso, 0cqw), 1.15cqw)/1 var(--mt-fonte-texto); letter-spacing: .1em; text-transform: uppercase; color: var(--mt-texto-suave); }
 .medida:empty { display: none; }
-.cta { position: absolute; left: 6cqw; bottom: 6cqh; font: 600 max(var(--mt-piso, 0cqw), 1.2cqw)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
+.cta { position: absolute; left: 6cqw; bottom: 6cqh; font: 600 max(var(--mt-piso, 0cqw), 1.2cqw)/1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
 /* Em pé e quase quadrada: uma coluna, o título em cima. */
 @container (aspect-ratio < 1.25) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); }
@@ -43,26 +45,30 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.92 var(--mt-fonte-titulo); tex
   .pontos { margin-bottom: 1.4cqw; border-bottom-width: .35cqw; }
   .valor { font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
   .medida { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); margin-top: .9cqw; }
-  .cta { left: 8cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); border-bottom-width: .2cqw; }
+  .cta { left: 8cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); letter-spacing: .1em; border-bottom-width: .2cqw; }
 }
 /* Em pé numa tela inteira: a lista cresce para a altura que tem. */
 @container (aspect-ratio < 0.8) and (min-width: 701px) {
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
-  .itens li { padding: 3.4cqw 0 3.2cqw; }
+  .itens { bottom: 11cqh; }
+  .itens li { padding: 2.1cqw 0 1.9cqw; }
   .nome { font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
   .valor { font-size: max(var(--mt-piso, 0cqw), 7cqw); }
   .medida { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); margin-top: 1.1cqw; }
 }
-/* Quadrada: a altura é a da largura — título e lista encolhem para caber. */
+/* Quadrada: a altura é a da largura. Com a letra da TV, nome e medida em duas linhas não cabem
+   seis vezes: a medida vem para a linha do nome, em caixa baixa, e o pontilhado leva ao preço. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .cabeca { top: 13cqh; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 7.6cqw); margin-top: 2.2cqw; }
+  .cabeca { top: 12.5cqh; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 8cqw); margin-top: 2cqw; }
   .apoio { display: none; }
-  .itens { bottom: 11cqh; }
-  .itens li { padding: 1.7cqw 0 1.6cqw; }
+  .itens { bottom: 13cqh; }
+  .itens li { grid-template-columns: auto auto 1fr auto; column-gap: 1.6cqw; padding: 1.5cqw 0 1.4cqw; }
   .nome { font-size: max(var(--mt-piso, 0cqw), 3.6cqw); }
+  .medida { grid-column: auto; order: 1; margin-top: 0; font-size: max(var(--mt-piso, 0cqw), 1.9cqw); font-weight: 400; letter-spacing: 0; text-transform: none; line-height: 1.1; text-wrap: balance; }
+  .pontos, .valor { order: 2; }
+  .pontos { grid-column: 3; }
   .valor { font-size: max(var(--mt-piso, 0cqw), 4.4cqw); }
-  .medida { font-size: max(var(--mt-piso, 0cqw), 1.5cqw); margin-top: .6cqw; }
 }
 /* A lateral: o nome e o preço; a medida e o apoio saem. */
 @container (max-width: 700px) {

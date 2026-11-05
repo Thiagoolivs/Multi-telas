@@ -71,6 +71,12 @@ test('a peça da IA ganha o piso na TV: o player aplica em qualquer peça, a IA 
   assert.match(PR, /if \(!piorou\(antes, encaixe\(palco\)\)\) return piso;/);
   assert.match(PR, /palco\.setAttribute\('data-mt-piso-cedeu'/);
   assert.match(PR, /pisoQueCabe\(palco, pisoDaZona\(host, k, ref\)\)/);
+  // Medido com a fonte de reserva (mais larga), o piso cedia sem precisar: confere de novo quando a fonte chega.
+  assert.match(PR, /fontes\.ready\.then\(aoChegarFonte\)/);
+  assert.match(PR, /fontes\.addEventListener\('loadingdone', aoChegarFonte\)/, 'o ready pode resolver antes de a fonte do título começar a baixar');
+  assert.match(PR, /fontes\.removeEventListener\('loadingdone', aoChegarFonte\)/, 'a peça que sai da tela para de ouvir');
+  // Fora da TV (bancada, editor) a janela do navegador não é a TV: a conta é a da TV de 1080 linhas.
+  assert.match(PR, /const lado = naTv && janela \? Math\.min\(janela\.innerWidth, janela\.innerHeight\) : 1080;/);
 });
 
 test('a biblioteca-ouro vai para a IA sem o envoltório do piso: o mesmo exemplo, sem pagar por ele', () => {
@@ -78,6 +84,8 @@ test('a biblioteca-ouro vai para a IA sem o envoltório do piso: o mesmo exemplo
   assert.equal(compositor.semPiso('font: 700 max(var(--mt-piso, 0cqw), min(4cqw, 6cqh))/1 x;'), 'font: 700 min(4cqw, 6cqh)/1 x;', 'parêntese dentro do valor');
   assert.equal(compositor.semPiso('a max(var(--mt-piso, 0cqw), 2cqw) b max(var(--mt-piso, 0cqw), 3cqw)'), 'a 2cqw b 3cqw');
   assert.equal(compositor.semPiso('max(var(--mt-piso, 0cqw), min(1cqw'), 'max(var(--mt-piso, 0cqw), min(1cqw', 'sem par, fica como está');
+  // O CSS sem os espaços que o navegador ignora; o ":" e o texto do HTML ficam como estão.
+  assert.equal(compositor.cssJusto('<style>\n.a :hover , .b > c { color: red ; }\n</style><p>a , b ; c</p>'), '<style>.a :hover,.b>c{color: red}</style><p>a , b ; c</p>');
   for (const papel of ['destaque', 'lateral', 'cabecalho', 'rodape']) {
     assert.doesNotMatch(compositor.fixo(papel), /--mt-piso/, papel);
   }
@@ -98,4 +106,7 @@ test('o robô da régua roda no CI, num job à parte, e guarda as fotos', () => 
   const robo = ler('tools/regua-tv.mjs');
   assert.match(robo, /const PISO = 4\.5;/);
   assert.match(robo, /\['full', 'principal', true\]/, 'tela cheia bloqueia');
+  // As peças-ouro também: em tela cheia, o piso que cede reprova (fora da lista de pendentes).
+  assert.match(robo, /const FORMATOS_CHEIOS = \['Tela cheia 16:9', 'Vertical 9:16', 'Quadrada 1:1'\];/);
+  assert.match(robo, /if \(!pendente\) reprova = true;/);
 });

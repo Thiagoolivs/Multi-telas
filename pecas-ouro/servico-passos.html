@@ -23,6 +23,27 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
 .passos b { display: block; margin-top: 1.6cqw; font: 400 max(var(--mt-piso, 0cqw), 2.5cqw)/1.1 var(--mt-fonte-titulo); }
 .passos small { display: block; margin-top: 1cqw; font: 400 max(var(--mt-piso, 0cqw), 1.3cqw)/1.45 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 24cqw; }
 .cta { position: absolute; left: 6cqw; bottom: 6cqh; font: 600 max(var(--mt-piso, 0cqw), 1.2cqw)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
+/*
+ * O destaque do Corporativo (e as principais deitadas menos largas que a TV):
+ * com a letra mínima da TV, três colunas não cabem na altura. O título vai à
+ * esquerda, com o pedido embaixo; à direita, os passos um embaixo do outro,
+ * o número na frente — a coluna larga deixa o detalhe em duas linhas.
+ */
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.74) {
+  .marca-nome { top: 5cqh; letter-spacing: .1em; }
+  .cabeca { right: auto; width: 34cqw; top: 15cqh; }
+  .kicker { letter-spacing: .1em; line-height: 1.15; }
+  .kicker i { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 10cqh); margin-top: .36em; white-space: normal; }
+  h1 span, h1 em { display: block; }
+  .passos { left: 44cqw; right: 5cqw; top: 50%; bottom: auto; transform: translateY(-50%); grid-template-columns: 1fr; }
+  .passos li { display: grid; grid-template-columns: 5.4cqw 1fr; column-gap: 1.3cqw; align-items: baseline; padding: 1.6cqh 0; border-top-width: .2cqw; }
+  .passos li::before { top: -.5cqw; width: .9cqw; height: .9cqw; }
+  .num { grid-row: 1 / 3; font-size: max(var(--mt-piso, 0cqw), 9cqh); }
+  .passos b { margin: 0; }
+  .passos small { margin-top: 1.2cqh; line-height: 1.25; max-width: none; }
+  .cta { bottom: 5cqh; max-width: 34cqw; line-height: 1.2; letter-spacing: .1em; text-wrap: balance; }
+}
 /* Em pé e quase quadrada: os passos em coluna, número à esquerda. */
 @container (aspect-ratio < 1.25) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); }
@@ -39,15 +60,25 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
   .passos small { margin-top: 1.4cqw; font-size: max(var(--mt-piso, 0cqw), 2.8cqw); max-width: none; }
   .cta { left: 8cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2.2cqw); border-bottom-width: .25cqw; }
 }
+/*
+ * Quase quadrada: em coluna não cabe (nove linhas de passo mais o título).
+ * Os passos voltam lado a lado, como deitada, na largura toda; o título numa
+ * linha só. Os passos assentam sobre o pedido, longe do título.
+ */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .cabeca { top: 10cqh; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 7cqw); margin-top: 2.4cqw; }
-  .passos { bottom: 12cqh; }
-  .passos li { padding: 2.2cqw 0; grid-template-columns: 10cqw 1fr; }
+  .marca-nome { left: 5cqw; top: 5cqh; letter-spacing: .16em; }
+  .cabeca { left: 5cqw; right: 5cqw; top: 11.2cqh; }
+  .kicker { letter-spacing: .12em; }
+  .kicker i { width: 5cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 7cqw); margin-top: .36em; }
+  h1 span, h1 em { display: inline; white-space: normal; }
+  .passos { left: 5cqw; right: 5cqw; bottom: 13.4cqh; grid-template-columns: repeat(3, 1fr); column-gap: 2.4cqw; }
+  .passos li { display: block; padding: 2.2cqw 0 0; border-top-width: .2cqw; }
+  .passos li::before { top: -.7cqw; width: 1.4cqw; height: 1.4cqw; }
   .num { font-size: max(var(--mt-piso, 0cqw), 7cqw); }
-  .passos b { font-size: max(var(--mt-piso, 0cqw), 4cqw); }
-  .passos small { font-size: max(var(--mt-piso, 0cqw), 2.1cqw); margin-top: 1cqw; }
-  .cta { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
+  .passos b { margin-top: 1cqw; font-size: max(var(--mt-piso, 0cqw), 4cqw); text-wrap: balance; }
+  .passos small { margin-top: .8cqw; font-size: max(var(--mt-piso, 0cqw), 2.1cqw); line-height: 1.3; }
+  .cta { left: 5cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .1em; }
 }
 </style>
 <section class="mt-peca servico-passos">

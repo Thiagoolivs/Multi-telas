@@ -72,9 +72,15 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
   - Tela cheia, tipos prontos: **42 de 42** (eram de 6 a 11 de 24).
   - Principal com lateral: 15 de 42, a meta da fase 3.
 - [x] Na peça, entra o maior piso que cabe. O desenho nunca quebra (a bancada achava 371 defeitos com o piso inteiro), e a peça que cedeu fica marcada (`data-mt-piso-cedeu`).
-- [ ] Redesenhar as peças-ouro que ainda ficam abaixo de 48 px:
-  - em tela cheia, 12 de 43 (cardápios, oferta com foto, horário, data, Instagram, funcionário do mês, prazo, manifesto);
-  - no quadrado, no vertical e na principal da Empresas, 26 de 43.
+- [x] Redesenhei 21 peças-ouro para caber com a letra inteira. Em tela cheia (16:9, 9:16 e 1:1) são **96 de 96**, com as 6 marcas da bancada; eram 63.
+  - Cada peça cabe também com a fonte de reserva, antes de a fonte da marca chegar.
+  - Nenhum campo saiu.
+  - A peça mede de novo quando a fonte chega (`loadingdone`).
+  - Na bancada, o detector de "encostado" usa a altura da linha, a mesma conta do detector das peças.
+- [x] O robô confere também as peças-ouro em tela cheia. A peça que ceder reprova.
+- [x] A biblioteca vai à IA sem espaço sobrando no CSS: 131 mil caracteres, menos que antes do redesenho.
+- Fica para a fase 3: na principal da Empresas (1405×832), 22 de 32 peças cabem inteiras. Os cardápios de colunas e de categorias só caberiam escondendo o detalhe dos itens.
+- Defeitos na bancada: 154, eram 371 com o piso inteiro. Fora da principal da Empresas, sobra 1: a marca do cabeçalho centralizado encosta na borda, e esse defeito já existia antes da fase 2.
 
 ### Fase 3: zonas que se adaptam (3–4 dias)
 **Objetivo:** bonito em qualquer formato, com o cliente escolhendo.
@@ -178,7 +184,7 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 ### As fases
 - [x] Fase 0: nada quebra, nada mente
 - [x] Fase 1: limpar antes de construir (tipos e layouts; as páginas juntam na fase 7)
-- [ ] Fase 2: a régua no código
+- [x] Fase 2: a régua no código
 - [ ] Fase 3: zonas que se adaptam
 - [ ] Fase 4: a marca entra sozinha, e nada de texto de exemplo
 - [ ] Fase 5: a programação pensa sozinha

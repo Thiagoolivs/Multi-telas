@@ -164,10 +164,48 @@ async function esperarItem(p, item) {
   await espera(400);
 }
 
+/*
+ * As peças-ouro (as artes da IA) na bancada: em cada formato de tela cheia,
+ * o piso da letra entra inteiro? Quando não cabe, o player põe o maior que
+ * cabe e marca a peça (data-mt-piso-cedeu, js/peca-render.js) — a letra
+ * fica abaixo da régua. PENDENTES são as que ainda esperam redesenho; uma
+ * peça que não está na lista e cede reprova, e uma da lista que passou a
+ * caber é avisada para sair dela.
+ */
+const FORMATOS_CHEIOS = ['Tela cheia 16:9', 'Vertical 9:16', 'Quadrada 1:1'];
+const PENDENTES = new Set([]);
+async function conferirPecas(navegador) {
+  const manifesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', 'manifesto.json'), 'utf8'));
+  const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
+  const saida = [];
+  for (const peca of manifesto.pecas.filter((x) => x.papeis.includes('destaque'))) {
+    await p.goto(BASE + '/bancada.html?ver=peca&peca=' + peca.id + '&modo=todos&tamanho=caber');
+    await p.evaluate(() => (document.fonts && document.fonts.ready) || null);
+    await espera(1500);
+    const porZona = await p.evaluate(() => {
+      const out = {};
+      document.querySelectorAll('#palco section.linha').forEach((sec) => {
+        const nome = sec.querySelector('h2').textContent.split(' · ').slice(0, -1).join(' · ');
+        let menor = 1;
+        sec.querySelectorAll('*').forEach((el) => {
+          const pl = el.shadowRoot && el.shadowRoot.querySelector('.mt-palco');
+          if (pl && pl.hasAttribute('data-mt-piso-cedeu')) menor = Math.min(menor, parseFloat(pl.getAttribute('data-mt-piso-cedeu')));
+        });
+        out[nome] = menor;
+      });
+      return out;
+    });
+    for (const [zona, cedeu] of Object.entries(porZona)) saida.push({ id: peca.id, zona, cedeu, cheia: FORMATOS_CHEIOS.includes(zona) });
+  }
+  await p.close();
+  return saida;
+}
+
 async function main() {
   const parar = await subirServidor();
   const navegador = await chromium.launch();
   const fotos = [];
+  let pecas = [];
   try {
     for (const [frente, tipos] of Object.entries(CASOS)) {
       const painel = await navegador.newContext();
@@ -209,11 +247,12 @@ async function main() {
       await painel.close();
       for (const tv of Object.values(tvs)) await tv.p.context().close();
     }
+    pecas = await conferirPecas(navegador);
   } finally {
     await navegador.close();
     parar();
   }
-  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify(fotos, null, 1));
+  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas }, null, 1));
 
   let reprova = false;
   for (const [layout, , bloqueia] of ARRANJOS) {
@@ -228,6 +267,19 @@ async function main() {
     }
     if (bloqueia && ok < doArranjo.length) reprova = true;
   }
+  const cheias = pecas.filter((x) => x.cheia);
+  console.log('\nPeças-ouro em tela cheia (16:9, 9:16 e 1:1): ' + cheias.filter((x) => x.cedeu >= 1).length + ' de ' + cheias.length + ' com a letra inteira');
+  for (const x of cheias.filter((y) => y.cedeu < 1)) {
+    const pendente = PENDENTES.has(x.id + ' · ' + x.zona);
+    console.log('  ' + (pendente ? '· (pendente) ' : '✗ ') + x.id + ' · ' + x.zona + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%');
+    if (!pendente) reprova = true;
+  }
+  for (const k of PENDENTES) {
+    const [id, zona] = k.split(' · ');
+    if (cheias.some((x) => x.id === id && x.zona === zona && x.cedeu >= 1)) console.log('  ✓ ' + k + ' já cabe: tire de PENDENTES em tools/regua-tv.mjs');
+  }
+  const corp = pecas.filter((x) => x.zona === 'Destaque · Corporativo');
+  if (corp.length) console.log('Peças-ouro na principal da Empresas (só medida, meta da fase 3): ' + corp.filter((x) => x.cedeu >= 1).length + ' de ' + corp.length);
   const comErro = fotos.filter((f) => f.erros.length);
   for (const f of comErro) console.log('  erro na TV em ' + f.id + ': ' + f.erros[0]);
   if (comErro.length) reprova = true;

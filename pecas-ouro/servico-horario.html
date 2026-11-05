@@ -21,27 +21,33 @@ h1 span + span { color: var(--mt-destaque); }
 .dia { display: block; font: 600 max(var(--mt-piso, 0cqw), 3.4cqmin)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
 .hora { display: block; margin-top: 2.4cqmin; font: 400 calc(12cqmin * var(--mt-escala-titulo, 1))/.9 var(--mt-fonte-titulo); letter-spacing: .01em; white-space: nowrap; }
 .nota { position: absolute; left: 9cqmin; right: 9cqmin; bottom: 8cqmin; font: 500 max(var(--mt-piso, 0cqw), 3.8cqmin)/1.35 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
-/* Deitada: o título à esquerda; à direita, uma linha por dia, a hora alinhada na ponta. */
+/*
+ * Deitada: o título à esquerda; à direita, uma linha por dia — o dia em cima,
+ * a hora embaixo. Com a letra mínima da TV, dia e hora lado a lado não cabem
+ * na metade da tela (o "Domingo e feriado" sozinho passa de 600 px).
+ */
 @container (aspect-ratio >= 1.25) {
-  .cabeca { left: 6cqw; right: auto; width: 34cqw; top: 50%; transform: translateY(-56%); }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 3cqmin); }
+  .cabeca { left: 6cqw; right: auto; width: 40cqw; top: 50%; transform: translateY(-56%); }
+  .kicker { gap: 2cqmin; font-size: max(var(--mt-piso, 0cqw), 3cqmin); letter-spacing: .08em; }
+  .kicker i { width: 4.4cqmin; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(11cqmin * var(--mt-escala-titulo, 1))); }
-  .dias { left: 46cqw; right: 6cqw; top: 50%; bottom: auto; transform: translateY(-50%); }
-  .dias li { display: flex; align-items: center; justify-content: space-between; gap: 4cqw; padding: 4.4cqmin 0 4.8cqmin; }
-  .dia { font-size: max(var(--mt-piso, 0cqw), 3cqmin); }
-  .hora { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(11cqmin * var(--mt-escala-titulo, 1))); }
-  .nota { left: 6cqw; right: auto; bottom: 7cqh; font-size: max(var(--mt-piso, 0cqw), 3cqmin); }
+  .dias { left: 50cqw; right: 6cqw; top: 50%; bottom: auto; transform: translateY(-50%); }
+  .dias li { padding: 2.2cqmin 0 2.6cqmin; }
+  .dia { font-size: max(var(--mt-piso, 0cqw), 3cqmin); letter-spacing: .12em; }
+  /* Margem em em: a caixa da letra da hora passa da linha, e a folga acompanha o tamanho. */
+  .hora { margin-top: .3em; line-height: 1; font-size: max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1))); }
+  .nota { left: 6cqw; right: 52cqw; bottom: 7cqh; font-size: max(var(--mt-piso, 0cqw), 3cqmin); }
 }
 /*
  * Deitada, mas menos larga que a TV inteira (as principais com lateral, de
- * 1,46 a 1,65): a hora não cabe ao lado do dia — passava da borda. Cada dia
- * vira duas linhas, o dia em cima e a hora embaixo. O 16:9 e o destaque do
- * Corporativo (1,69) não mudam.
+ * 1,46 a 1,65): a coluna dos dias começa antes e a hora fica menor.
  */
 @container (aspect-ratio >= 1.25) and (aspect-ratio < 1.65) {
-  .dias li { display: block; padding: 2.6cqmin 0 3cqmin; }
-  .dia { font-size: max(var(--mt-piso, 0cqw), 2.8cqmin); }
-  .hora { margin-top: 1.6cqmin; font-size: max(var(--mt-piso, 0cqw), calc(9.6cqmin * var(--mt-escala-titulo, 1))); }
+  .cabeca { width: 38cqw; }
+  .dias { left: 47cqw; }
+  .dia { font-size: max(var(--mt-piso, 0cqw), 2.8cqmin); letter-spacing: .08em; }
+  .hora { font-size: max(var(--mt-piso, 0cqw), calc(10.4cqmin * var(--mt-escala-titulo, 1))); }
+  .nota { right: 55cqw; }
 }
 /* Em pé numa tela inteira (não na coluna): tudo maior, a hora domina de longe. */
 @container (aspect-ratio < 0.8) and (min-width: 701px) {
@@ -54,15 +60,20 @@ h1 span + span { color: var(--mt-destaque); }
   .hora { font-size: max(var(--mt-piso, 0cqw), calc(17cqmin * var(--mt-escala-titulo, 1))); margin-top: 3cqmin; }
   .nota { bottom: 10cqmin; font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
 }
-/* Quase quadrada: a lista em pé não cabe embaixo do título — o dia e a hora vão na mesma linha. */
+/*
+ * Quase quadrada: a lista em pé não cabe embaixo do título — o dia e a hora
+ * vão na mesma linha, a hora na ponta. O dia pode quebrar em duas linhas
+ * ("Domingo e / feriado"); a hora nunca quebra.
+ */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .cabeca { top: 8cqmin; }
+  .cabeca { left: 7cqmin; right: 7cqmin; top: 8cqmin; }
+  .kicker { letter-spacing: .12em; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(9cqmin * var(--mt-escala-titulo, 1))); }
-  .dias { bottom: 16cqmin; }
+  .dias { left: 7cqmin; right: 7cqmin; bottom: 16cqmin; }
   .dias li { display: flex; align-items: center; justify-content: space-between; gap: 4cqw; padding: 3cqmin 0 3.4cqmin; }
-  .dia { font-size: max(var(--mt-piso, 0cqw), 3cqmin); }
-  .hora { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(8.5cqmin * var(--mt-escala-titulo, 1))); }
-  .nota { bottom: 6.5cqmin; font-size: max(var(--mt-piso, 0cqw), 3.2cqmin); }
+  .dia { flex: 1 1 auto; min-width: 0; white-space: normal; line-height: 1.1; font-size: max(var(--mt-piso, 0cqw), 3cqmin); letter-spacing: .12em; }
+  .hora { flex: none; margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(8.5cqmin * var(--mt-escala-titulo, 1))); }
+  .nota { left: 7cqmin; right: 7cqmin; bottom: 6.5cqmin; font-size: max(var(--mt-piso, 0cqw), 3.2cqmin); }
 }
 </style>
 <section class="mt-peca servico-horario">

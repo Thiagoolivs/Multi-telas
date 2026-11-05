@@ -269,7 +269,8 @@
       return ref ? 0.045 * 1080 : 0;
     }
     if (!grande) return 0;
-    const lado = janela ? Math.min(janela.innerWidth, janela.innerHeight) : 1080;
+    // Fora da TV (bancada, editor) a janela não é a TV: vale a TV de 1080 linhas, a mesma conta da miniatura.
+    const lado = naTv && janela ? Math.min(janela.innerWidth, janela.innerHeight) : 1080;
     return 0.045 * lado / (k || 1);
   }
   function enquadrar(host, palco) {
@@ -344,11 +345,23 @@
       if (el.tagName !== 'IMG' && doc.createRange && String(el.textContent || '').trim()) {
         const r = doc.createRange();
         r.selectNodeContents(el);
-        rs = Array.prototype.slice.call(r.getClientRects());
+        // Cada linha vale a altura da LINHA, não a da fonte (a mesma conta de js/peca-conferir.js, linhasDoTexto):
+        // título de entrelinha justa numa fonte de ascendente alto não "encosta" no rótulo de cima.
+        const lh = (parseFloat(getComputedStyle(el).lineHeight) || 0) * k;
+        rs = Array.prototype.slice.call(r.getClientRects()).map((x) => {
+          const meio = (x.top + x.bottom) / 2, meia = lh && x.height > lh ? lh / 2 : x.height / 2;
+          return { left: x.left, right: x.right, top: meio - meia, bottom: meio + meia, width: x.width, height: meia * 2 };
+        });
       }
       if (!rs.length) rs = [el.getBoundingClientRect()];
       return { el, rs: rs.filter((r) => r.width > 0 && r.height > 0) };
     });
+    // Duas linhas se cobrem quando a área em comum passa de um quinto da menor (a regra do detector da bancada).
+    const area = (x) => (x.right - x.left) * (x.bottom - x.top);
+    const cobre = (a, b) => {
+      const w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+      return w > tol && h > tol && w * h > Math.min(area(a), area(b)) / 5;
+    };
     const fora = [], juntos = [];
     campos.forEach((c, i) => {
       if (!c.rs.length) return;
@@ -357,8 +370,7 @@
       for (let j = i + 1; j < campos.length; j++) {
         const d = campos[j];
         if (!d.rs.length || c.el.contains(d.el) || d.el.contains(c.el)) continue;
-        const cruza = c.rs.some((r) => d.rs.some((s) => Math.min(r.right, s.right) - Math.max(r.left, s.left) > tol && Math.min(r.bottom, s.bottom) - Math.max(r.top, s.top) > tol));
-        if (cruza) juntos.push(i + '-' + j);
+        if (c.rs.some((r) => d.rs.some((x) => cobre(r, x)))) juntos.push(i + '-' + j);
       }
     });
     return { fora, juntos };
@@ -800,6 +812,17 @@
     tick();
     // Com os textos no lugar, o piso da régua confere de novo (a peça pode ter ganho texto agora).
     enquadrar(host, palcoEl);
+    /*
+     * E quando a fonte da marca chega: medida com a fonte de reserva (mais
+     * larga), o piso cedia sem precisar. O fonts.ready sozinho não basta: a
+     * fonte do título só começa a baixar quando a peça já está montada, e o
+     * ready pode resolver antes disso. Então também a cada fonte que termina
+     * de chegar (loadingdone), enquanto a peça está na tela.
+     */
+    const fontes = host.ownerDocument && host.ownerDocument.fonts;
+    const aoChegarFonte = () => { if (host.isConnected !== false) enquadrar(host, palcoEl); };
+    if (fontes && fontes.ready && typeof fontes.ready.then === 'function') fontes.ready.then(aoChegarFonte).catch(() => {});
+    if (fontes && typeof fontes.addEventListener === 'function') fontes.addEventListener('loadingdone', aoChegarFonte);
     let relogio = null;
     /*
      * A contagem anda de segundo em segundo; o relógio, a cada 20 s. É troca
@@ -866,6 +889,7 @@
         if (espera) clearTimeout(espera); espera = null;
         if (aoRedimensionar && typeof window !== 'undefined') window.removeEventListener('resize', aoRedimensionar);
         aoRedimensionar = null;
+        if (fontes && typeof fontes.removeEventListener === 'function') fontes.removeEventListener('loadingdone', aoChegarFonte);
       },
     };
   }

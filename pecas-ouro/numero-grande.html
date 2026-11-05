@@ -31,6 +31,16 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1.02 var(--mt-fonte-titulo); te
   .apoio { font-size: max(var(--mt-piso, 0cqw), 2.7cqw); max-width: none; }
   .assinatura { left: 8cqw; right: auto; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
 }
+/* Quadrada: o número (menor, ~1/3 do lado) no canto de cima, à direita; a frase com a largura toda embaixo. Com a letra da TV, o número de 46% empurrava a frase para cima dele. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .marca-nome { letter-spacing: .24em; }
+  .numero { left: auto; top: 6cqh; text-align: right; }
+  .numero > span { font-size: max(var(--mt-piso, 0cqw), calc(32cqw * var(--mt-escala-titulo, 1))); }
+  .numero small { letter-spacing: .24em; margin-right: -.24em; }
+  .texto { bottom: 12cqh; padding-top: 3cqw; }
+  .apoio { line-height: 1.4; }
+  .assinatura { right: 8cqw; letter-spacing: .04em; }
+}
 /* A lateral: o número e a frase; o resto sai. */
 @container (max-width: 700px) {
   .apoio { display: none; }

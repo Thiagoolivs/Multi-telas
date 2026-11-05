@@ -35,11 +35,12 @@ h1 { font: 600 max(var(--mt-piso, 0cqw), 5.2cqw)/1.04 var(--mt-fonte-titulo); le
   .volta { font-size: max(var(--mt-piso, 0cqw), 3cqw); margin-top: 4.4cqw; padding-top: 3.6cqw; border-top-width: .25cqw; }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
-  .folha { left: 7cqw; top: 12cqh; transform: none; width: 34cqw; }
-  .mes { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); padding: 1.8cqw 0; }
-  .dia { font-size: max(var(--mt-piso, 0cqw), 18cqw); padding-top: 2.6cqw; }
-  .semana { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); padding-bottom: 2.6cqw; }
+  /* Quadrada: a folha no canto de cima, à direita; o texto ocupa a largura toda embaixo. Com a letra da TV, a folha à esquerda empurrava o texto para cima dela. */
+  .marca-nome { left: 7cqw; top: 6cqh; right: 50cqw; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .24em; line-height: 1.15; }
+  .folha { left: auto; right: 7cqw; top: 6cqh; transform: none; width: 40cqw; }
+  .mes { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); padding: 1.6cqw 0; letter-spacing: .2em; }
+  .dia { font-size: max(var(--mt-piso, 0cqw), 15cqw); padding-top: 2.2cqw; }
+  .semana { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); padding-bottom: 2.2cqw; letter-spacing: .1em; }
   .texto { left: 7cqw; right: 7cqw; top: auto; bottom: 8cqh; transform: none; }
   .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
   .kicker i { width: 5cqw; height: .2cqw; }
