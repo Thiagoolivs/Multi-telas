@@ -140,13 +140,69 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** todos os blocos ficam em 9 ou mais.
 
+### Fase 11: dados vivos (3–4 dias)
+**Objetivo:** o preço e o número na TV nunca ficam errados.
+- **Preço e cardápio vindos de uma planilha** (Google Planilhas ou CSV): o cliente edita a planilha e a TV muda. Na tela aparece "atualizado às".
+- **Indicadores vindos de uma planilha** (Empresas): o número com a meta e a tendência, atualizado sozinho.
+
+**Pronto quando:** mudar uma célula da planilha muda a TV em até 5 minutos, e a planilha com erro não quebra a tela.
+
+### Fase 12: Saúde, a chamada de senha (3 dias)
+**Objetivo:** o motivo número 1 de uma TV em sala de espera.
+- A recepção chama a próxima senha pelo celular ou pelo computador (senha, consultório ou guichê).
+- A TV mostra a senha atual em tamanho gigante, as 3 anteriores e um aviso sonoro opcional. Nunca o nome do paciente.
+
+**Pronto quando:** a chamada chega à TV em até 1 s e a tela segue a régua (o modelo `s1-senha` das telas de referência).
+
+### Fase 13: equipe e redes (3–4 dias)
+**Objetivo:** servir a empresa maior e a rede com várias lojas.
+- **Aprovação antes de ir ao ar.** O que a equipe cria espera o OK do dono ou do RH, que aprova pelo celular.
+- **Permissão por loja ou grupo.** O gerente da loja Centro só mexe nas TVs da loja Centro, e o relatório sai por loja.
+
+**Pronto quando:** um membro sem permissão não publica nem mexe em outra loja, e a peça aprovada vai ao ar sozinha.
+
+## Checklist
+
+### As fases
+- [x] Fase 0: nada quebra, nada mente
+- [ ] Fase 1: limpar antes de construir (a lista do que sai já foi aprovada)
+- [ ] Fase 2: a régua no código
+- [ ] Fase 3: zonas que se adaptam
+- [ ] Fase 4: a marca entra sozinha, e nada de texto de exemplo
+- [ ] Fase 5: a programação pensa sozinha
+- [ ] Fase 6: a IA no nível de marca
+- [ ] Fase 7: o painel novo, a estrutura
+- [ ] Fase 8: o painel novo, o acabamento
+- [ ] Fase 9: modelos com função e pacotes prontos
+- [ ] Fase 10: reteste completo e pilotos
+- [ ] Fase 11: dados vivos
+- [ ] Fase 12: Saúde, a chamada de senha
+- [ ] Fase 13: equipe e redes
+
+### Para valer o preço (aprovado em 05/11)
+- [ ] Preço e cardápio vindos de uma planilha (fase 11)
+- [ ] Indicadores vindos de uma planilha (fase 11)
+- [ ] Chamada de senha para Saúde (fase 12)
+- [ ] Aprovação antes de ir ao ar (fase 13)
+- [ ] Permissão por loja (fase 13)
+- [ ] Modo ambiente: arte calma da marca entre os avisos (fase 9)
+- [ ] Calendário de datas pronto para cada frente (fases 5 e 9)
+
+### Diferenciais para depois (aprovado em 05/11)
+- [ ] Multi Telas Ads (planejamento em [docs/ads/](../ads/README.md))
+- [ ] Pedir pelo WhatsApp: "acabou o pão de queijo" muda a TV
+- [ ] Vídeo curto feito pela IA (5 a 8 s de movimento de verdade)
+- [ ] Contagem de quem lê o QR de cada TV
+- [ ] Programação que muda com o clima
+- [ ] Videowall: várias TVs formando uma tela só
+
 ## A ordem e o porquê
 
-Fases 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10.
+Fases 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10, e depois 11 → 12 → 13. As fases 11 a 13 não dependem do painel novo e podem entrar antes, se um cliente piloto pedir.
 1. **Primeiro, o que quebra e o que mente** (fase 0).
 2. **Depois, a base da TV** (fases 2 a 4). A IA, os modelos e o painel dependem dela, então construir antes seria refazer depois.
 3. **A IA e a programação** (fases 5 e 6) vêm depois da régua, porque ela vai estar no código.
 4. **O painel novo** (fases 7 e 8) vem com a TV já bonita, porque ele mostra a TV ao vivo no centro.
 5. **Os pacotes prontos** (fase 9) vêm por último. Eles usam tudo o que veio antes, e por isso ficam bons de primeira.
 
-Somando, são de 30 a 40 dias de trabalho, que podem rodar em paralelo onde não dependem uma da outra.
+Somando, as fases 0 a 10 dão de 30 a 40 dias de trabalho, e as 11 a 13 mais uns 10. Onde uma fase não depende da outra, dá para fazer as duas em paralelo.

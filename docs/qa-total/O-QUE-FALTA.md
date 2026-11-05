@@ -16,11 +16,11 @@ São as coisas que os melhores do mercado têm e nós não temos, ou temos pela 
 | 5 | A página da TV com a tela ao vivo e Desfazer | O produto é a tela; hoje ela se esconde | 7 |
 | 6 | Um só Criar e uma só Biblioteca | Hoje são mais de 15 portas e 3 IAs | 7 |
 | 7 | 12 modelos com função por frente e pacotes por negócio | Conteúdo pronto está em 3 de 10 | 9 |
-| 8 | **Preço e cardápio vindos de uma planilha** (Google Planilhas ou CSV) | Preço digitado à mão erra. É o que McDonald's e Raydiant fazem com o caixa | nova |
-| 9 | **Indicador vindo de planilha** (Empresas), com "atualizado às" | Hoje o número é digitado | nova |
-| 10 | **Chamada de senha** (Saúde): a recepção chama pelo celular e a TV mostra a senha e o consultório | É o motivo número 1 de uma TV em sala de espera | nova |
-| 11 | **Aprovação antes de ir ao ar** (Empresas: o RH aprova o comunicado; o dono aprova o que a equipe criou) | É o que empresa maior pede | nova |
-| 12 | **Permissão por loja ou grupo,** e um relatório por loja | Rede com várias lojas não cabe numa conta só | nova |
+| 8 | **Preço e cardápio vindos de uma planilha** (Google Planilhas ou CSV) | Preço digitado à mão erra. É o que McDonald's e Raydiant fazem com o caixa | 11 |
+| 9 | **Indicador vindo de planilha** (Empresas), com "atualizado às" | Hoje o número é digitado | 11 |
+| 10 | **Chamada de senha** (Saúde): a recepção chama pelo celular e a TV mostra a senha e o consultório | É o motivo número 1 de uma TV em sala de espera | 12 |
+| 11 | **Aprovação antes de ir ao ar** (Empresas: o RH aprova o comunicado; o dono aprova o que a equipe criou) | É o que empresa maior pede | 13 |
+| 12 | **Permissão por loja ou grupo,** e um relatório por loja | Rede com várias lojas não cabe numa conta só | 13 |
 | 13 | **Modo ambiente:** arte calma da marca entre os avisos | Para sala de espera e recepção (Zoom London, hospital infantil) | 9 |
 | 14 | **Calendário de pautas pronto por frente:** Ministério da Saúde para Saúde, as datas do varejo para Comércio, SIPAT e afins para Empresas | O cliente não precisa lembrar | 5 e 9 |
 | 15 | **Fuso por loja** | Rede em mais de um estado | 0 |
