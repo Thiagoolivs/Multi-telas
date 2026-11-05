@@ -206,7 +206,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona })
           <div className="py-10 text-center text-sm text-ink-3">Carregando…</div>
         ) : visiveis.length === 0 ? (
           <div className="py-8 text-center">
-            <p className="text-sm text-ink-2">{faixa ? 'Ainda não há peça de ' + NOME_PAPEL[papel] + ' pronta.' : 'Nenhuma peça pronta para esta zona.'}</p>
+            <p className="text-sm text-ink-2">{faixa ? 'Ainda não há peça de ' + NOME_PAPEL[papel] + ' pronta.' : 'Nenhuma peça pronta para esta parte da TV.'}</p>
             <p className="mt-1 text-xs text-ink-3">{faixa ? 'Uma campanha do Criar com ' + NOME_PAPEL[papel] + ' traz as dela.' : 'O que você criar aparece aqui para pôr em qualquer TV.'}</p>
             {!todas && prontasDaZona.length > 0 && <button type="button" onClick={() => setTodas(true)} className="mt-3 text-xs font-medium text-accent hover:underline">Ver também as que cabem menos</button>}
             {!faixa && <button type="button" onClick={() => setTab('inicio')} className="mt-3 block w-full text-xs font-medium text-accent hover:underline">Ver os tipos prontos</button>}

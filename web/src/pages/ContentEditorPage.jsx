@@ -433,7 +433,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     } catch (e) {
       // Outra aba, outra pessoa ou uma campanha gravou no meio: não passa por cima — e não joga fora o rascunho.
       if (e.codigo === 'config-mudou') { setConflito(true); return false; }
-      setPublishError(e.message || 'Não deu para publicar.');
+      setPublishError(e.message || 'Não deu para pôr na TV.');
       return false;
     } finally { setPublishing(false); }
   }
@@ -663,7 +663,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                   <div className="inline-flex gap-1 rounded-full border border-line p-0.5" role="radiogroup" aria-label="O que o quadro mostra">
                     {[['agora', 'Agora'], ['rascunho', 'Como vai ficar']].map(([id, nome]) => (
                       <button key={id} type="button" role="radio" aria-checked={verComo === id} onClick={() => setVerComo(id)}
-                        className={cn('min-h-8 rounded-full px-3 text-xs font-medium max-sm:min-h-11', verComo === id ? 'bg-accent text-accent-fg' : 'text-ink-2 hover:bg-surface-2')}>
+                        className={cn('min-h-8 rounded-full px-3 text-xs font-medium max-sm:min-h-11', verComo === id ? 'bg-surface-2 font-semibold text-ink ring-1 ring-line-strong' : 'text-ink-2 hover:bg-surface-2')}>
                         {nome}
                       </button>
                     ))}
@@ -699,7 +699,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
             <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
               {/* Sequência */}
               <Panel className="flex flex-col">
-                <PanelHeader title="Sequência" description={items.length ? `${items.length} ${items.length === 1 ? 'conteúdo' : 'conteúdos'}` : undefined}
+                <PanelHeader title="O que passa" description={items.length ? `${items.length} ${items.length === 1 ? 'conteúdo' : 'conteúdos'}` : undefined}
                   actions={<>
                     {/*
                       "IA" aqui gerava texto solto numa caixa à parte. Criar é
@@ -709,7 +709,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                     {onCriar
                       ? <Button size="sm" variant="secondary" icon={Plus} onClick={() => onCriar(papelDaZona(activeZone))}>Criar</Button>
                       : <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>}
-                    <Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
+                    {/* Fase 8: o violeta da página é o "Pôr na TV". */}
+                    <Button size="sm" variant="secondary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
                   </>} />
                 {aiOpen && (
                   <div className="space-y-2 border-b border-line bg-surface-2/50 p-3">
@@ -725,7 +726,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                   </div>
                 )}
                 {items.length === 0 ? (
-                  <EmptyState icon={Plus} title="Sem conteúdo" description="Adicione o primeiro conteúdo para esta zona."
+                  <EmptyState icon={Plus} title="Nada nesta parte ainda" description="Ponha o primeiro: um aviso, uma oferta, uma foto." exemplo={['Novo', 'O que passa aqui', 'um depois do outro']}
                     action={<Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar conteúdo</Button>} />
                 ) : (
                   <ul className="divide-y divide-line">
@@ -742,7 +743,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                               {/* De qual campanha veio (item 25): é ela que "Pausar" tira daqui. */}
                               {it._campanha ? ' · campanha ' + it._campanha : ''}
                               {it._calendario ? ' · calendário' : ''}
-                              {it.meta && it.meta.prioridade === 'alta' ? ' · prioridade alta' : ''}
+                              {it.meta && it.meta.prioridade === 'alta' ? ' · importância alta' : ''}
                               {it.meta && it.meta.prioridade === 'urgente' ? <b className="text-danger"> · urgente</b> : null}
                               {/* Fase 5: por que a peça tem esta importância (js/importancia.js); troca com um toque no editor. */}
                               {it.meta && it.meta.porque ? ' · ' + it.meta.porque : ''}
@@ -851,7 +852,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                 <><span className="h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden /><span className="text-ink">Rascunho · ainda não está na TV</span></>
               ) : (
                 <><Check size={15} className="shrink-0 text-emerald-500" />
-                  <span className="text-ink-2">{publishedAt ? (desfeito ? 'A TV voltou ao que estava' : 'Na TV desde ' + hora(publishedAt)) : 'Igual ao que está na TV'}</span></>
+                  <span className="text-ink-2">{publishedAt ? (desfeito ? 'A TV voltou ao que estava' : 'Na TV desde ' + hora(publishedAt)) : 'No ar · nada novo para pôr'}</span></>
               )}
             </span>
             <span className="flex flex-wrap items-center gap-2">
@@ -981,7 +982,7 @@ function CampaignDialog({ open, onClose, empresa, tema, zones, onApply }) {
           </Field>
         )}
         {err && <p className="text-xs text-danger">{err}</p>}
-        <p className="text-2xs text-ink-3">Vai substituir o conteúdo das zonas desta tela. Você ajusta e publica depois.</p>
+        <p className="text-2xs text-ink-3">Vai substituir o conteúdo das partes desta TV. Você ajusta e põe na TV depois.</p>
       </div>
     </Dialog>
   );

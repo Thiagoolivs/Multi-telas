@@ -63,7 +63,7 @@ test('erro que não é conflito não é repetido; e os envios a várias TVs pass
     const corpo = rodarJs.slice(rodarJs.indexOf('export async function ' + f + '('), rodarJs.indexOf('\n}\n', rodarJs.indexOf('export async function ' + f + '(')));
     assert.match(corpo, /gravarEmLote\(/, f + ' ainda grava TV por TV');
   }
-  assert.match(ler('web/src/lib/publicar.js'), /return gravarEmLote\(devs, \(cfg\) => montar\(cfg\), titulo \|\| 'Publicar'\);/);
+  assert.match(ler('web/src/lib/publicar.js'), /return gravarEmLote\(devs, \(cfg\) => montar\(cfg\), titulo \|\| 'Pôr na TV'\);/);
   assert.match(ler('web/src/pages/TelasProntasPage.jsx'), /avisarComDesfazer\(/);
   // Fase 7: as Peças prontas (e o Criar) põem na TV pelo diálogo único, que avisa com Desfazer.
   assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /avisarComDesfazer\(/);

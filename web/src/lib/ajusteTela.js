@@ -80,7 +80,7 @@ export function descrever(cfg, m, { coresMarca = [] } = {}) {
     l.push({ texto: 'Layout: ' + atual.name + ' → ' + novo.name });
     for (const id of zonasQueSaem(cfg && cfg.zonas, m.layoutId)) {
       const z = atual.zones.find((x) => x.id === id);
-      l.push({ aviso: true, texto: 'A zona ' + (z ? z.name.replace(/\s*\(.*\)$/, '') : id) + ' sai da tela; o que está nela fica guardado.' });
+      l.push({ aviso: true, texto: 'A parte ' + (z ? z.name.replace(/\s*\(.*\)$/, '') : id) + ' sai da tela; o que está nela fica guardado.' });
     }
   }
   if (m.tema === 'marca') l.push(coresMarca.length ? { texto: 'Cores: as da sua marca' } : { aviso: true, texto: 'Para usar as cores da marca, cadastre-as em Marca.' });

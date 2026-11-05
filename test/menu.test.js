@@ -94,7 +94,7 @@ test('o grupo aceso é o da página; abas nos grupos de mais de uma página; bar
   assert.equal(M.grupoDa('studio').id, 'midias');
   assert.deepStrictEqual(M.GRUPOS.find((g) => g.id === 'criar').paginas, ['criar']);
   assert.equal(M.grupoDa('campanhas').id, 'midias', 'Criados é parte de Seus conteúdos');
-  assert.equal(M.PAGINAS.campanhas, 'Criados');
+  assert.equal(M.PAGINAS.campanhas, 'Campanhas', 'fase 8: o nome de Criados é Campanhas');
   assert.equal(M.paginaDoIr('criados'), 'campanhas');
   assert.equal(M.grupoDa('platform'), null);
   const side = ler('web/src/components/layout/Sidebar.jsx');

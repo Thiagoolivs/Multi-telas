@@ -21,7 +21,7 @@ test('o painel só exclui depois da confirmação, com o nome da conversa e o av
   assert.match(excluir, /if \(!ok\) return;/);
   assert.match(excluir, /Não dá para desfazer\./);
   assert.match(excluir, /botao: 'Excluir', perigo: true/);
-  assert.match(excluir, /A campanha que ela criou continua em Criados\./);
+  assert.match(excluir, /A campanha que ela criou continua em Seus conteúdos\./);
   assert.match(l, /aria-label=\{'Excluir ' \+ \(c\.titulo \|\| 'a conversa'\)\}/);
   // A conversa aberta que foi excluída: o Criar volta para uma nova.
   assert.match(ler('web', 'src', 'pages', 'CriarPage.jsx'), /onExcluiu=\{\(id\) => \{ if \(conversa && conversa\.id === id\) nova\(\); \}\}/);

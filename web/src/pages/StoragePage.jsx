@@ -186,7 +186,8 @@ export function StoragePage({ filtro = 'fotos' }) {
         actions={recorte.enviar && (
           <>
             <input ref={inputRef} type="file" multiple accept={recorte.accept} className="hidden" onChange={onFiles} />
-            <Button variant="primary" icon={UploadCloud} disabled={busy} onClick={() => inputRef.current && inputRef.current.click()}>
+            {/* Sem arquivo ainda, o violeta é o do quadro vazio, no meio da página. */}
+            <Button variant={!loading && items.length === 0 ? 'secondary' : 'primary'} icon={UploadCloud} disabled={busy} onClick={() => inputRef.current && inputRef.current.click()}>
               {busy ? 'Enviando…' : recorte.enviar}
             </Button>
           </>
@@ -217,7 +218,7 @@ export function StoragePage({ filtro = 'fotos' }) {
         ) : error ? (
           <ErrorState description="Não foi possível carregar a biblioteca." onRetry={reload} />
         ) : items.length === 0 ? (
-          <EmptyState icon={filtro === 'musicas' ? Music : filtro === 'ia' ? Sparkles : ImageIcon} title={recorte.vazio} description={recorte.subtitulo}
+          <EmptyState icon={filtro === 'musicas' ? Music : filtro === 'ia' ? Sparkles : ImageIcon} title={recorte.vazio} description={recorte.subtitulo} exemplo
             action={recorte.enviar && <Button size="sm" variant="primary" icon={UploadCloud} onClick={() => inputRef.current && inputRef.current.click()}>{recorte.enviar}</Button>} />
         ) : (
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">

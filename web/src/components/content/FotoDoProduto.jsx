@@ -74,7 +74,7 @@ export function FotoDoProduto({ onEscolher, onFechar, aviso, botao, incluirIa })
               ))}
             </div>
           )
-          : <p className="text-xs text-ink-3">Nenhuma foto sua em Mídias ainda.</p>}
+          : <p className="text-xs text-ink-3">Nenhuma foto sua na Biblioteca ainda.</p>}
       {aba !== 'banco' && <div className="mt-2">
         <input ref={entrada} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={enviar} />
         <Button type="button" size="sm" variant="secondary" icon={UploadCloud} disabled={enviando}
@@ -167,7 +167,7 @@ function BancoDeImagens({ onEscolher, pixabayLigada }) {
         </div>
       ) : <p className="text-xs text-ink-3">Nada encontrado. Tente outra palavra.</p>)}
       <p className="mt-2 text-2xs text-ink-3">{pixabayLigada
-        ? 'Fotos do acervo e da Pixabay, livres para uso. A da Pixabay vai para as suas Mídias, com o crédito do autor.'
+        ? 'Fotos do acervo e da Pixabay, livres para uso. A da Pixabay vai para a sua Biblioteca, com o crédito do autor.'
         : 'Fotos do acervo MultiTelas, livres para uso.'}</p>
       {erro && <p className="mt-1.5 text-xs text-danger">{erro}</p>}
     </div>

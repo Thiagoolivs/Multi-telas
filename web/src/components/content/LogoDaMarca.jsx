@@ -79,7 +79,7 @@ export function LogoDaMarca({ logo, logoClara, logoEscura, busy, onSubir, onTira
       await subir(proposta.principal, 'logo', 'logo corrigida');
       if (proposta.versoes.clara) await subir(proposta.versoes.clara, 'logo-clara', 'logo para fundo escuro');
       if (proposta.versoes.escura) await subir(proposta.versoes.escura, 'logo-escura', 'logo para fundo claro');
-      aviso.ok('Logo trocada. A original continua em Mídias, se quiser voltar.');
+      aviso.ok('Logo trocada. A original continua na Biblioteca, se quiser voltar.');
       setProposta(null);
       onTrocou && onTrocou();
     } catch (e) { aviso.erro('logo', 'A logo nova não foi salva: ' + (e.message || 'falha de conexão') + '.'); }

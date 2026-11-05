@@ -12,7 +12,7 @@ import '../../../js/templates.js';
 export const LAYOUTS = [
   { id: 'dashboard', name: 'Painel Notícias', description: 'Lateral + destaque grande + faixa de notícias.',
     zones: [ { id: 'lateral', name: 'Lateral', type: 'playlist' }, { id: 'principal', name: 'Principal', type: 'playlist' }, { id: 'rodape', name: 'Notícias', type: 'ticker' } ] },
-  { id: 'full', name: 'Tela Cheia', orientation: 'any', description: 'Uma zona única. Ideal para vídeos e campanhas.',
+  { id: 'full', name: 'Tela Cheia', orientation: 'any', description: 'A TV inteira para uma coisa só. Ideal para vídeos e campanhas.',
     zones: [ { id: 'principal', name: 'Principal', type: 'playlist' } ] },
   { id: 'full-ticker', name: 'Tela Cheia + Rodapé', orientation: 'any', description: 'Tela cheia com avisos rolando no rodapé.',
     zones: [ { id: 'principal', name: 'Principal', type: 'playlist' }, { id: 'rodape', name: 'Rodapé', type: 'ticker' } ] },
@@ -22,7 +22,7 @@ export const LAYOUTS = [
     zones: [ { id: 'principal', name: 'Principal', type: 'playlist' }, { id: 'lateral', name: 'Lateral', type: 'playlist' }, { id: 'rodape', name: 'Rodapé', type: 'ticker' } ] },
   { id: 'header-main-ticker', name: 'Cabeçalho + Principal + Rodapé', orientation: 'any', description: 'Faixa superior, conteúdo no meio, avisos no rodapé.',
     zones: [ { id: 'cabecalho', name: 'Cabeçalho', type: 'header' }, { id: 'principal', name: 'Principal', type: 'playlist' }, { id: 'rodape', name: 'Rodapé', type: 'ticker' } ] },
-  { id: 'quad', oculto: true, name: 'Mosaico 2x2', orientation: 'any', description: 'Quatro zonas independentes ao mesmo tempo.',
+  { id: 'quad', oculto: true, name: 'Mosaico 2x2', orientation: 'any', description: 'Quatro partes independentes ao mesmo tempo.',
     zones: [ { id: 'z1', name: 'Zona 1', type: 'playlist' }, { id: 'z2', name: 'Zona 2', type: 'playlist' }, { id: 'z3', name: 'Zona 3', type: 'playlist' }, { id: 'z4', name: 'Zona 4', type: 'playlist' } ] },
   { id: 'video-dynamic', oculto: true, name: 'Vídeo + Painel Dinâmico', description: 'Vídeo/live contínuo enquanto um painel ao lado respira.',
     zones: [ { id: 'video', name: 'Vídeo / Live', type: 'playlist' }, { id: 'info', name: 'Painel Dinâmico', type: 'playlist' }, { id: 'rodape', name: 'Notícias', type: 'ticker' } ] },
@@ -40,7 +40,7 @@ export const LAYOUTS = [
   // Quadrada (square)
   { id: 'square-hero', name: 'Quadrada · Destaque + Rodapé', orientation: 'square', description: 'Tela quadrada: destaque grande + avisos no rodapé.',
     zones: [ { id: 'principal', name: 'Principal', type: 'playlist' }, { id: 'rodape', name: 'Rodapé', type: 'ticker' } ] },
-  { id: 'square-split', oculto: true, name: 'Quadrada · Destaque + Dupla', orientation: 'square', description: 'Tela quadrada: destaque em cima e duas zonas embaixo.',
+  { id: 'square-split', oculto: true, name: 'Quadrada · Destaque + Dupla', orientation: 'square', description: 'Tela quadrada: destaque em cima e duas partes embaixo.',
     zones: [ { id: 'principal', name: 'Principal', type: 'playlist' }, { id: 'z2', name: 'Zona 2', type: 'playlist' }, { id: 'z3', name: 'Zona 3', type: 'playlist' } ] },
   { id: 'square-header', oculto: true, name: 'Quadrada · Cabeçalho + Principal + Rodapé', orientation: 'square', description: 'Tela quadrada: cabeçalho, destaque e rodapé.',
     zones: [ { id: 'cabecalho', name: 'Cabeçalho', type: 'header' }, { id: 'principal', name: 'Principal', type: 'playlist' }, { id: 'rodape', name: 'Rodapé', type: 'ticker' } ] },

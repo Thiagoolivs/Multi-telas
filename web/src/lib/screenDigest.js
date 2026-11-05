@@ -103,7 +103,7 @@ function problemasDaZona(zona, itens, ciclo, local) {
       const r = w / h;
       const desvio = Math.max(r / razaoZona, razaoZona / r);
       if (desvio > 2.2) {
-        p.push({ nivel: 'dica', texto: `${zona.name}: uma peça ${i.formato} nesta zona sobra muito fundo — o formato mais próximo renderia melhor` });
+        p.push({ nivel: 'dica', texto: `${zona.name}: uma peça ${i.formato} nesta parte sobra muito fundo — o formato mais próximo renderia melhor` });
       }
     });
   }
@@ -179,7 +179,7 @@ export function digest(cfg, ratios, frente) {
   if (settings.layoutAuto === true) {
     problemas.push({
       nivel: 'dica',
-      texto: 'as zonas trocam de proporção sozinhas a cada ' + (settings.layoutAutoSeconds || 20) + 's — as peças encolhem e crescem junto',
+      texto: 'as partes trocam de proporção sozinhas a cada ' + (settings.layoutAutoSeconds || 20) + 's — as peças encolhem e crescem junto',
     });
   }
 

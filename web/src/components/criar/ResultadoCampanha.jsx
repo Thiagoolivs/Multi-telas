@@ -214,7 +214,7 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
           <div className="text-xs text-ink-2">
             {r.contagem ? r.contagem.pecas + (r.contagem.pecas === 1 ? ' peça' : ' peças') : ''}
             {r.contagem && r.contagem.fotosGeradas ? ' · ' + r.contagem.fotosGeradas + (r.contagem.fotosGeradas === 1 ? ' foto gerada' : ' fotos geradas') : ''}
-            {' · salva em Criados'}
+            {' · salva em Seus conteúdos'}
           </div>
         </div>
         {onMudou && (

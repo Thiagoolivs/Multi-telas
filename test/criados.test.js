@@ -31,7 +31,8 @@ test('o Criar começa limpo e manda o que ficou pronto para Criados; a conversa 
   // Conversa criada: sem caixa de mandar, com o caminho para Criados.
   assert.match(C, /const entrada = criada \? \(/);
   assert.match(C, /if \(!frase \|\| pensando \|\| criada\) return;/);
-  assert.match(C, /Abrir em Criados/);
+  // Fase 8: "Criados" virou Campanhas, dentro de Biblioteca › Seus conteúdos.
+  assert.match(C, /Abrir a campanha <ArrowRight/);
   // Todas as conversas: coluna no computador, diálogo no celular.
   assert.match(C, /<aside className="hidden xl:sticky xl:top-4 xl:block[^"]*" aria-label="Conversas">\{lista\}<\/aside>/);
   assert.match(C, /<Dialog open=\{verConversas\}/);
@@ -40,7 +41,7 @@ test('o Criar começa limpo e manda o que ficou pronto para Criados; a conversa 
   assert.match(L, /\['andamento', 'Em andamento'\], \['criadas', 'Viraram campanha'\]/);
   // Criados: o título e o próximo passo (ligar a TV) que vinham do Criar.
   const K = ler('web/src/pages/CampanhasPage.jsx');
-  assert.match(K, /arquivadas \? 'Arquivados' : 'Criados'/);
+  assert.match(K, /arquivadas \? 'Arquivadas' : 'Campanhas'/);
   assert.match(K, /onNova=\{onIr \? \(\) => onIr\('criar'\) : undefined\}/);
 });
 

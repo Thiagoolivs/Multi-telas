@@ -39,7 +39,7 @@ export const ANNOUNCE_VARIANTS = [
   { value: 'saude', label: 'Saúde & Bem-estar' },
 ];
 
-const DUR = { key: 'duracao', label: 'Duração (s)', kind: 'number', min: 0, hint: '0 = fica fixo na tela', ...AV };
+const DUR = { key: 'duracao', label: 'Tempo na tela (segundos)', kind: 'number', min: 0, hint: '0 = fica fixo na tela', ...AV };
 
 // Cada tipo: label, ícone, grupo, campos, item padrão e resumo p/ a lista.
 export const CONTENT_TYPES = {
@@ -180,7 +180,7 @@ export const CONTENT_TYPES = {
       { key: 'muted', label: 'Sem som', kind: 'bool' },
       { key: 'fit', label: 'Ajuste', kind: 'select', ...AV, options: [
         { value: 'contain', label: 'Conter (contain)' }, { value: 'cover', label: 'Preencher (cover)' } ] },
-      { key: 'duracao', label: 'Duração (s)', kind: 'number', min: 0, hint: '0 = toca o vídeo inteiro', ...AV },
+      { key: 'duracao', label: 'Tempo na tela (segundos)', kind: 'number', min: 0, hint: '0 = toca o vídeo inteiro', ...AV },
     ],
     make: () => ({ type: 'video', src: '', loop: false, muted: true, fit: 'contain', duracao: 0 }),
     summary: (i) => i.src ? 'Vídeo' : 'Vídeo (sem arquivo)',

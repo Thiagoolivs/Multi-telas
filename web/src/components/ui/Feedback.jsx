@@ -28,14 +28,42 @@ export function Spinner({ size = 16, className }) {
 }
 
 /* ---------- Estado vazio ---------- */
-export function EmptyState({ icon: Icon = Inbox, title, description, action }) {
+/*
+ * FASE 8 (BLOCO-8 §4.5): o vazio mostra o que vai aparecer ali. Com
+ * `exemplo`, desenha uma TV com a peça de exemplo (as linhas: a etiqueta, o
+ * título e o apoio), nas cores da marca — "assim fica a sua TV". Sem ele, o
+ * quadro discreto de antes, para buscas sem resultado e telas técnicas.
+ */
+export function TvDeExemplo({ icon: Icon, linhas }) {
+  const [etiqueta, titulo, apoio] = linhas || [];
+  return (
+    <div aria-hidden="true" className="relative w-48 overflow-hidden rounded-lg bg-[#0E0B1F] p-1.5 shadow-md ring-1 ring-black/20">
+      <div className="flex aspect-video flex-col items-start justify-center gap-1 rounded-md bg-gradient-to-br from-[#0E0B1F] via-[#1d1450] to-[#3b1fb8] px-3 text-left">
+        {Icon && !titulo && <Icon size={26} strokeWidth={1.75} className="mx-auto text-[#C6F432]" />}
+        {etiqueta && <span className="rounded-sm bg-[#C6F432] px-1 text-[8px] font-bold uppercase tracking-wider text-[#0E0B1F]">{etiqueta}</span>}
+        {titulo && <span className="line-clamp-2 text-[13px] font-bold leading-tight text-white">{titulo}</span>}
+        {apoio && <span className="line-clamp-1 text-[9px] text-white/70">{apoio}</span>}
+      </div>
+      <div className="mx-auto mt-1 h-1 w-10 rounded-full bg-white/15" />
+    </div>
+  );
+}
+
+export function EmptyState({ icon: Icon = Inbox, title, description, action, exemplo }) {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-12 text-center">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-surface-2 text-ink-3">
-        <Icon size={18} strokeWidth={2} />
-      </div>
-      <h3 className="mt-3 text-sm font-semibold text-ink">{title}</h3>
-      {description && <p className="mt-1 max-w-sm text-xs text-ink-3">{description}</p>}
+      {exemplo ? (
+        Array.isArray(exemplo) || exemplo === true
+          ? <TvDeExemplo icon={Icon} linhas={exemplo === true ? null : exemplo} />
+          : exemplo
+      ) : (
+        <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-line bg-surface-2 text-ink-3">
+          <Icon size={20} strokeWidth={2} />
+        </div>
+      )}
+      {/* h2: o vazio é a seção da página (o axe acusava h3 logo depois do h1). */}
+      <h2 className="mt-4 text-lg font-semibold text-ink">{title}</h2>
+      {description && <p className="mt-1 max-w-md text-sm text-ink-2">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
@@ -48,8 +76,8 @@ export function ErrorState({ title = 'Não foi possível carregar', description,
       <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-danger-soft bg-danger-soft text-danger">
         <AlertTriangle size={18} strokeWidth={2} />
       </div>
-      <h3 className="mt-3 text-sm font-semibold text-ink">{title}</h3>
-      {description && <p className="mt-1 max-w-sm text-xs text-ink-3">{description}</p>}
+      <h2 className="mt-3 text-lg font-semibold text-ink">{title}</h2>
+      {description && <p className="mt-1 max-w-md text-sm text-ink-2">{description}</p>}
       {onRetry && (
         <Button size="sm" variant="secondary" icon={RefreshCw} className="mt-4" onClick={onRetry}>
           Tentar de novo

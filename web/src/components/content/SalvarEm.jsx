@@ -27,7 +27,7 @@ export function SalvarEm({
   descricao = 'Dê um nome e escolha onde ele fica.',
   nomeSugerido = '',
   pastaSugerida = '',
-  padraoNova = 'Meus Designs',
+  padraoNova = 'Peças guardadas',
 }) {
   const [nome, setNome] = useState('');
   const [modo, setModo] = useState('existente');   // 'existente' | 'nova'

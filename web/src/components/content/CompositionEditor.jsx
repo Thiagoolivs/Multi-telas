@@ -1803,7 +1803,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
             )}
 
             <div className="border-t border-line pt-4">
-              <Field label="Duração (s)" hint="0 = fica fixo">
+              <Field label="Tempo na tela (segundos)" hint="0 = fica fixo">
                 <Input type="number" value={dur} onChange={(e) => editar((d) => ({ ...d, dur: e.target.value }), 'duracao')} onBlur={fecharPasso} />
               </Field>
             </div>

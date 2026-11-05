@@ -12,6 +12,7 @@ import { aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { cn } from '../lib/cn.js';
 import { usePerfil } from '../lib/perfil.js';
+import { SemanaDaTv } from '../components/agenda/SemanaDaTv.jsx';
 
 /*
  * PROGRAMAÇÃO › CALENDÁRIO (EXECUTOR D23).
@@ -44,9 +45,9 @@ function LinhaEditavel({ ev, onChange }) {
           dias antes
         </label>
         {/* D24/D25: a mesma prioridade das peças — alta passa mais vezes; urgente toma a tela. */}
-        <select value={ev.prioridade || 'normal'} onChange={(e) => set('prioridade', e.target.value)} className={cn(campo, 'w-full')} aria-label="Prioridade">
-          <option value="normal">Prioridade normal</option>
-          <option value="alta">Prioridade alta</option>
+        <select value={ev.prioridade || 'normal'} onChange={(e) => set('prioridade', e.target.value)} className={cn(campo, 'w-full')} aria-label="Importância">
+          <option value="normal">Importância normal</option>
+          <option value="alta">Importância alta</option>
           <option value="urgente">Urgente (toma a tela)</option>
         </select>
       </div>
@@ -178,11 +179,14 @@ export function CalendarioPage({ onIr }) {
   }
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="max-w-6xl space-y-5">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">Calendário {perfil.lugarDe}</h1>
-        <p className="mt-1 text-sm text-ink-2">Cole as datas ({perfil.textos.deOndeVemAsDatas}). Cada uma vira um aviso com a sua marca, que aparece na TV alguns dias antes e sai depois do dia.</p>
+        <h1 className="text-xl font-semibold tracking-tight text-ink">Agenda</h1>
+        <p className="mt-1 text-sm text-ink-2">O que passa na TV em cada dia e hora, e as datas {perfil.lugarDe}. Cole as datas ({perfil.textos.deOndeVemAsDatas}): cada uma vira um aviso com a sua marca, que entra na TV alguns dias antes e sai depois do dia.</p>
       </div>
+
+      {/* Fase 8: a semana visual, com os buracos do dia à vista (BLOCO-8, wireframe D). */}
+      <SemanaDaTv onIr={onIr} />
 
       <Panel>
         <PanelHeader title="Colar o calendário" description="A IA lê as datas; nada vai para a TV antes de você revisar." />
@@ -231,11 +235,11 @@ export function CalendarioPage({ onIr }) {
       )}
 
       <Panel>
-        <PanelHeader title="Próximas datas" description={proximos.length ? undefined : 'Nenhuma data por vir.'} />
+        <PanelHeader title="Datas que vêm" description={proximos.length ? undefined : 'Nenhuma data por vir.'} />
         {proximos.length ? (
           <ul className="divide-y divide-line">{proximos.map((ev) => <Linha key={ev.id} ev={ev} />)}</ul>
         ) : (
-          <EmptyState icon={CalendarDays} title="Nenhuma data ainda"
+          <EmptyState icon={CalendarDays} title="Nenhuma data ainda" exemplo={['27/11', 'Black Friday', 'entra e sai da TV sozinha']}
             description="Cole o calendário acima: feriados, eventos, campanhas e avisos viram peças na TV, cada uma no seu período." />
         )}
       </Panel>
@@ -245,7 +249,6 @@ export function CalendarioPage({ onIr }) {
           <ul className="divide-y divide-line">{passados.map((ev) => <Linha key={ev.id} ev={ev} />)}</ul>
         </details>
       )}
-      {onIr && <p className="text-center text-2xs text-ink-3">As peças do calendário aparecem também na <button type="button" className="font-semibold text-accent hover:underline" onClick={() => onIr('programacao')}>Programação</button>, com o período de cada uma.</p>}
     </div>
   );
 }

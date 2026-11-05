@@ -41,7 +41,7 @@ test('Meus Designs: o editor só fecha depois de salvar; erros por cima da janel
   const salvar = d.slice(d.indexOf('async function onEditorSave'), d.indexOf('async function salvarDesign'));
   assert.ok(salvar.indexOf('await library.update(') < salvar.indexOf('setEditing(null)'), 'fecha antes de salvar');
   assert.match(salvar, /catch \(e\) \{ aviso\.erro\(/);
-  assert.match(d, /\} catch \(e\) \{ aviso\.erro\('designs', e\.message \|\| 'Não deu para publicar\.'\); \}/);
+  assert.match(d, /\} catch \(e\) \{ aviso\.erro\('designs', e\.message \|\| 'Não deu para pôr na TV\.'\); \}/);
 });
 
 test('falha de rede não vira lista vazia (Programação, Alertas, Peças prontas, Pôr pra rodar)', () => {

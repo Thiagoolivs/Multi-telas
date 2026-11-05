@@ -23,7 +23,8 @@ const ler = (f) => fs.readFileSync(path.join(RAIZ, f), 'utf8');
 test('Meus Designs chama o agrupamento de pasta; Campanha é só a do Criar', () => {
   const m = ler('web/src/pages/MyDesignsPage.jsx');
   assert.match(m, /<PanelHeader title="Suas pastas"/);
-  assert.match(m, /<Rocket size=\{12\} \/> Publicar pasta/);
+  // Fase 8, o glossário: "Pôr na TV" para pôr.
+  assert.match(m, /<Rocket size=\{12\} \/> Pôr a pasta na TV/);
   assert.ok(!/title="Excluir campanha"|Suas campanhas/.test(m));
   const p = ler('web/src/pages/CampanhasPage.jsx');
   for (const s of ['titulo="Renomear"', 'titulo="Arquivar"', 'titulo="Desarquivar"', 'titulo="Excluir"', 'Ver mais campanhas', 'Buscar pelo nome']) assert.ok(p.includes(s), 'falta ' + s);

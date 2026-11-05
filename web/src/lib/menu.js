@@ -27,8 +27,8 @@ export const PAGINAS = {
   criar: 'Criar',
   criando: 'Criando',
   // D47: o que ficou pronto mora em Criados (o endereço continua ?ir=campanhas).
-  campanhas: 'Criados',
-  designs: 'Meus Designs',
+  campanhas: 'Campanhas',
+  designs: 'Peças guardadas',
   telasprontas: 'Telas prontas',
   pecas: 'Peças prontas',
   // Fase 7: a Biblioteca única — o que está pronto, o que é seu, os arquivos e os Apps.

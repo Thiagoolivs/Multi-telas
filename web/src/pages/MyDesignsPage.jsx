@@ -445,9 +445,9 @@ export function MyDesignsPage({ onIr }) {
     try {
       await publicarPecas({ alvos, pecas: pecasElegiveis, titulo: pub.titulo, telas: screens, dias, substituir });
       const nTelas = alvos.length;
-      setMsg(`${pecasElegiveis.length} peça(s) ${substituir ? 'substituíram a playlist de' : 'publicadas em'} ${nTelas} tela(s).`);
+      setMsg(`${pecasElegiveis.length} peça(s) ${substituir ? 'trocaram o que passava em' : 'na TV em'} ${nTelas} tela(s).`);
       setPub(null);
-    } catch (e) { aviso.erro('designs', e.message || 'Não deu para publicar.'); }
+    } catch (e) { aviso.erro('designs', e.message || 'Não deu para pôr na TV.'); }
     setBusy(false);
   }
 
@@ -743,7 +743,7 @@ export function MyDesignsPage({ onIr }) {
    */
   return (
     <div>
-      <PageHeader title="Meus Designs" subtitle="Tudo o que você já criou, pronto para reaproveitar e publicar." />
+      <PageHeader title="Peças guardadas" subtitle="Tudo o que você já guardou, pronto para reaproveitar e pôr na TV." />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2">
         <button type="button" onClick={() => onIr && onIr('criar')}
@@ -809,7 +809,7 @@ export function MyDesignsPage({ onIr }) {
         {loading ? (
           <div className="p-6"><Spinner size={20} /></div>
         ) : saved.length === 0 ? (
-          <EmptyState icon={FolderOpen} title="Nada por aqui ainda"
+          <EmptyState icon={FolderOpen} title="Nada por aqui ainda" exemplo={['Peça', 'Guardada para usar depois', 'na TV e nas redes']}
             description="Comece por “Criar”: uma frase e a peça sai pronta para a TV, com a sua marca." />
         ) : groupNames.length === 0 ? (
           <EmptyState icon={Search} title="Nenhum resultado" description="Tente outro termo de busca." />
@@ -827,7 +827,7 @@ export function MyDesignsPage({ onIr }) {
                     <div className="flex-1" />
                     <button onClick={() => abrirPublicar(camp, doGrupo.map((it) => ({ item: it.item, formato: it.formato || '16/9', label: it.label })))}
                       className="flex items-center gap-1 rounded-md bg-accent px-2.5 py-1.5 text-2xs font-semibold text-white transition hover:opacity-90">
-                      <Rocket size={12} /> Publicar pasta
+                      <Rocket size={12} /> Pôr a pasta na TV
                     </button>
                     <button title="Renomear" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => renomearCampanha(camp)}><Type size={13} /></button>
                     <button title="Duplicar pasta" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => duplicarCampanha(camp)}><Copy size={13} /></button>
@@ -843,7 +843,7 @@ export function MyDesignsPage({ onIr }) {
                         <div className="flex flex-wrap items-center gap-1">
                           <button onClick={() => abrirPublicar(it.label || camp, [{ item: it.item, formato: it.formato || '16/9', label: it.label }])}
                             className="flex min-w-full flex-1 items-center justify-center gap-1 rounded-md bg-surface-2 px-2 py-1.5 text-2xs font-semibold text-ink-2 transition hover:bg-accent hover:text-white sm:min-w-0">
-                            <Send size={12} /> Publicar
+                            <Send size={12} /> Pôr na TV
                           </button>
                           {/* A peça em HTML edita textos e foto (EditarPeca); o PNG ainda só sabe a composição antiga. */}
                           {it.item && it.item.type === 'peca-html'
@@ -911,13 +911,13 @@ export function MyDesignsPage({ onIr }) {
 
       {/* Publicar — uma peça ou a campanha inteira, em uma ou várias telas */}
       <Dialog open={!!pub} onClose={() => setPub(null)} className="max-w-3xl"
-        title={pub && pub.pecas.length > 1 ? 'Publicar ' + pub.pecas.length + ' peças' : 'Publicar na tela'}
+        title={pub && pub.pecas.length > 1 ? 'Pôr ' + pub.pecas.length + ' peças na TV' : 'Pôr na TV'}
         description={pub && pub.pecas.length > 1
           ? 'Escolha as telas e quais formatos entram. Uma peça vertical não deve ir para uma TV deitada.'
           : 'Escolha em qual tela este design entra ao vivo.'}
         footer={<><Button variant="ghost" onClick={() => setPub(null)}>Cancelar</Button>
           <Button variant="primary" icon={Rocket} disabled={busy || !alvos.length || !pecasElegiveis.length} onClick={publicar}>
-            {busy ? 'Publicando…' : `Publicar ${pecasElegiveis.length} peça(s)`}
+            {busy ? 'Pondo na TV…' : `Pôr ${pecasElegiveis.length} peça(s) na TV`}
           </Button></>}>
         {pub && (
           <div className="grid gap-4 sm:grid-cols-[1.1fr_1fr]">
@@ -925,7 +925,7 @@ export function MyDesignsPage({ onIr }) {
               {/* Formatos: só aparece quando há mais de um em jogo */}
               {Array.from(new Set(pub.pecas.map((p) => p.formato || '16/9'))).length > 1 && (
                 <div>
-                  <div className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-3">Formatos a publicar</div>
+                  <div className="mb-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-3">Formatos que vão para a TV</div>
                   <div className="flex flex-wrap gap-1.5">
                     {Array.from(new Set(pub.pecas.map((p) => p.formato || '16/9'))).map((f) => {
                       const on = fmts.includes(f);
@@ -1032,7 +1032,7 @@ export function MyDesignsPage({ onIr }) {
           ali, só três ideias para escolher.
         */
         description={gen
-          ? 'Confira as peças antes de salvar ou publicar.'
+          ? 'Confira as peças antes de guardar ou pôr na TV.'
           : guiando
           ? 'Escolha uma ideia para começar, ou escreva a sua. Nada é gerado antes de você confirmar.'
           : plano
@@ -1042,7 +1042,7 @@ export function MyDesignsPage({ onIr }) {
           ? (<>
             <Button variant="ghost" onClick={() => setGen(null)}>Voltar</Button>
             <Button variant="secondary" icon={Check} disabled={busy || barrada} onClick={() => salvarCampanha(false)}>{busy ? 'Salvando…' : 'Só salvar'}</Button>
-            <Button variant="primary" icon={Rocket} disabled={busy || barrada} onClick={() => salvarCampanha(true)}>Salvar e publicar</Button>
+            <Button variant="primary" icon={Rocket} disabled={busy || barrada} onClick={() => salvarCampanha(true)}>Guardar e pôr na TV</Button>
           </>)
           : guiando
             // O cardápio traz os próprios caminhos ("escolher" e "escrever").

@@ -221,7 +221,7 @@ export function BrandPage({ onIr }) {
   }
 
   async function apagar(a, oQue) {
-    if (oQue && !(await confirmar({ titulo: 'Tirar ' + oQue + '?', texto: 'O arquivo continua em Mídias.', botao: 'Tirar' }))) return;
+    if (oQue && !(await confirmar({ titulo: 'Tirar ' + oQue + '?', texto: 'O arquivo continua na Biblioteca.', botao: 'Tirar' }))) return;
     setBusy(true);
     try { await brand.removeAsset(a.id); reload(); }
     catch (e) { setErr(e.message || 'Não deu para tirar a imagem.'); }
@@ -482,7 +482,7 @@ export function BrandPage({ onIr }) {
       {/* As fotos da empresa moram em Mídias, com a etiqueta "da marca". */}
       <Panel>
         <PanelHeader title="Fotos da empresa"
-          description="Ficam em Mídias › Fotos, com a etiqueta “da marca”. A IA usa estas antes de inventar uma imagem."
+          description="Ficam na Biblioteca › Fotos e vídeos, com a etiqueta “da marca”. A IA usa estas antes de inventar uma imagem."
           actions={onIr && <Button size="sm" variant="secondary" icon={Images} onClick={() => onIr('storage')}>Abrir Fotos</Button>} />
         {fotos.length ? (
           <div className="flex flex-wrap items-center gap-2 p-4">

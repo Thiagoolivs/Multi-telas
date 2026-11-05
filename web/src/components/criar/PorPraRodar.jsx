@@ -105,7 +105,7 @@ export function PorPraRodar({ campanha, telas, onMudou }) {
       {trocam.length > 0 && !noAr && (
         <label className="flex items-center gap-2 text-xs text-ink-2">
           <input type="checkbox" checked={trocar} onChange={(e) => setTrocar(e.target.checked)} />
-          <LayoutTemplate size={13} className="text-ink-3" /> Trocar o layout quando faltar zona
+          <LayoutTemplate size={13} className="text-ink-3" /> Trocar o formato da TV quando faltar uma parte
         </label>
       )}
 

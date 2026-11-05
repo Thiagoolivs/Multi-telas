@@ -282,7 +282,7 @@ export function BirthdaysPage() {
         ) : error ? (
           <ErrorState description="Não foi possível carregar." onRetry={reload} />
         ) : lista.length === 0 ? (
-          <EmptyState icon={Users} title="Ninguém na lista ainda" description={'Importe ' + perfil.textos.planilha + ' ou ponha uma pessoa à mão.'} />
+          <EmptyState icon={Users} title="Ninguém na lista ainda" exemplo={['Aniversariantes', 'Ana, Bruno e Carla', 'na semana do aniversário']} description={'Importe ' + perfil.textos.planilha + ' ou ponha uma pessoa à mão.'} />
         ) : (
           <ul className="divide-y divide-line/60">
             {visiveis.map((p) => (

@@ -76,7 +76,7 @@ export function BancoImagensPage({ onUsar, operador }) {
       if (!onUsar) {
         await bancoImagens.paraMidias(item.id);
         setUsada((a) => ({ ...a, [item.id]: true }));
-        aviso.ok('Está nas suas Mídias' + (item.credito ? ', com o crédito do autor.' : '.'));
+        aviso.ok('Está na sua Biblioteca' + (item.credito ? ', com o crédito do autor.' : '.'));
         return;
       }
       const r = await bancoImagens.usar(item.id);
@@ -188,7 +188,7 @@ export function BancoImagensPage({ onUsar, operador }) {
                   </div>
                   <Button size="sm" variant={usada[i.id] ? 'ghost' : 'secondary'} className="mt-1.5 w-full"
                     icon={usada[i.id] ? Check : (onUsar ? Download : FolderPlus)} onClick={() => usar(i)}>
-                    {usada[i.id] ? (onUsar ? 'Usada' : 'Nas Mídias') : (onUsar ? 'Usar nesta peça' : 'Pôr nas Mídias')}
+                    {usada[i.id] ? (onUsar ? 'Usada' : 'Na Biblioteca') : (onUsar ? 'Usar nesta peça' : 'Pôr na Biblioteca')}
                   </Button>
                 </div>
               </div>
@@ -245,7 +245,7 @@ function DaPixabay({ busca, operador, segmentos, segmento, onCurou }) {
     try {
       await pixabay.usar(f.id);
       setFeitas((a) => ({ ...a, [f.id]: 'midias' }));
-      aviso.ok('Está nas suas Mídias, com o crédito do autor.');
+      aviso.ok('Está na sua Biblioteca, com o crédito do autor.');
     } catch (e) { aviso.erro('pixabay', e.message || 'Não deu para baixar a foto.'); }
     finally { setFazendo(null); }
   }
@@ -285,7 +285,7 @@ function DaPixabay({ busca, operador, segmentos, segmento, onCurou }) {
                   </a>
                   <Button size="sm" variant={feitas[f.id] === 'midias' ? 'ghost' : 'secondary'} className="w-full" disabled={!!fazendo}
                     icon={feitas[f.id] === 'midias' ? Check : FolderPlus} onClick={() => paraMidias(f)}>
-                    {feitas[f.id] === 'midias' ? 'Nas Mídias' : 'Pôr nas Mídias'}
+                    {feitas[f.id] === 'midias' ? 'Na Biblioteca' : 'Pôr na Biblioteca'}
                   </Button>
                   {operador && (
                     <Button size="sm" variant={feitas[f.id] === 'banco' ? 'ghost' : 'primary'} className="w-full" disabled={!!fazendo || feitas[f.id] === 'banco'}

@@ -34,7 +34,7 @@ export async function publicarPecas({ alvos, pecas: todas, titulo, telas, dias =
    */
   const devs = alvos.map((id) => (telas || []).find((s) => s.id === id) || { id, name: 'Tela' });
   // (montar, logo abaixo, é declaração de função: vale aqui.)
-  return gravarEmLote(devs, (cfg) => montar(cfg), titulo || 'Publicar');
+  return gravarEmLote(devs, (cfg) => montar(cfg), titulo || 'Pôr na TV');
 
   function montar(cfg) {
     /*
