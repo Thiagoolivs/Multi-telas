@@ -59,6 +59,9 @@ export function pecaDoAviso(aviso, modelos, marca) {
   return { ...base, campos, ...(ocultos.length ? { ocultos } : {}), duracao: 15, origem: { ...base.origem, pedido: 'aviso: ' + (aviso.titulo || '') } };
 }
 
+// Quanto tempo o urgente sem data fica no ar.
+export const URGENTE_DURA_MS = 2 * 60 * 60 * 1000;
+
 export function aplicarAviso(cfg, item, aviso, id) {
   const next = JSON.parse(JSON.stringify(cfg || {}));
   if (!next.zonas) next.zonas = {};
@@ -66,9 +69,15 @@ export function aplicarAviso(cfg, item, aviso, id) {
   if (!z) throw new Error('esta TV não tem onde mostrar o aviso');
   const zona = next.zonas[z] && Array.isArray(next.zonas[z].items) ? next.zonas[z] : { ...(next.zonas[z] || {}), items: [] };
   const resto = zona.items.filter((it) => !(it && it._aviso === id));
+  /*
+   * O URGENTE TEM FIM (QA total, 05/11). Sem data, ele ficava para sempre
+   * tomando a tela. Sem "até quando", sai sozinho em 2 horas; com data, vale
+   * o dia escolhido. A TV confere `expiraEm` a cada volta (js/player.js).
+   */
+  const urgenteSemData = (aviso.prioridade || 'alta') === 'urgente' && !aviso.ate;
   const novo = {
     ...item, _aviso: id,
-    meta: { tipo: 'aviso', prioridade: aviso.prioridade || 'alta' },
+    meta: { tipo: 'aviso', prioridade: aviso.prioridade || 'alta', ...(urgenteSemData ? { expiraEm: Date.now() + URGENTE_DURA_MS } : {}) },
     ...(aviso.ate ? { agendamento: { ativo: true, dias: [], dataInicio: hojeIso(), dataFim: aviso.ate } } : {}),
   };
   next.zonas[z] = { ...zona, items: [novo].concat(resto) };

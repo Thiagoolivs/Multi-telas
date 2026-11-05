@@ -126,6 +126,20 @@
       sugestao: 'Fale com a recepção sobre valores' },
   ];
 
+  /*
+   * Todas as frentes, AVISO: a comparação que precisa de prova (QA total,
+   * 05/11: "O mercado mais barato da cidade." foi para a TV palavra por
+   * palavra). "O mais barato", "o menor preço da região", "o melhor do
+   * bairro" são promessa verificável: sem prova, é publicidade enganosa
+   * (Código de Defesa do Consumidor, art. 37; CONAR). Avisa, e a pessoa
+   * decide: quem tem a prova pode manter.
+   */
+  var SUPERLATIVO = [
+    { id: 'superlativo', re: /\b(mais barat[oa]s?|menor(es)? preco(s)?|preco(s)? mais baixo(s)?|melhor(es)?)(\s+[a-z]+){0,2}?\s+(da|de|do|dos|das|na|no)\s+(cidade|regiao|bairro|brasil|mundo|praca|estado)\b|\bmenor preco garantido\b/g,
+      motivo: 'compara com os concorrentes e precisa de prova: sem ela, é publicidade enganosa (Código de Defesa do Consumidor, art. 37)',
+      sugestao: 'Preço baixo todo dia' },
+  ];
+
   var FARMACIA = /\b(farmacia|farmacias|drogaria|drogarias|drogas|manipulacao)\b/;
   var CLINICA = /\b(odonto\w*|dentist\w*|dente|dentes|clareament\w*|implante\w*|ortodon\w*|aparelho|canal|consultorio|clinica|medic[oa]s?|dermato\w*|estetica|fisioterap\w*|pediatr\w*|ginecolog\w*|oftalmo\w*)\b/;
 
@@ -156,6 +170,7 @@
       if (r.id === 'medicamento' && o.perfil === 'saude' && bloqueios.length) return;
       acharTodos(r.re, n, s, r, 'bloqueio', bloqueios);
     });
+    SUPERLATIVO.forEach(function (r) { acharTodos(r.re, n, s, r, 'aviso', avisos); });
     if (o.perfil === 'saude') {
       var ctx = normal(o.contexto || '') + ' ' + n;
       var ehFarmacia = FARMACIA.test(ctx) && !CLINICA.test(normal(o.contexto || ''));

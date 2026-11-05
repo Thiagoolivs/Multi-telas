@@ -50,7 +50,7 @@ test('prioridade alta passa duas vezes por volta, espalhada — e nunca duas seg
 });
 
 test('no rodízio: primeiro distribuir, depois os automáticos (aniversário e mural)', () => {
-  assert.match(PLAYER, /const ativos = comAutomaticos\(distribuir\(agendado \? items\.filter\(agendadoAgora\) : items\), cfg, zonaId\);/);
+  assert.match(PLAYER, /const ativos = comAutomaticos\(distribuir\(agendado \? conhecidos\.filter\(agendadoAgora\) : conhecidos\), cfg, zonaId\);/);
   assert.ok(Number((/const SHELL_CACHE = 'mt-shell-v(\d+)';/.exec(fs.readFileSync(path.join(RAIZ, 'sw.js'), 'utf8')) || [])[1]) >= 52, 'o player mudou e a TV não baixa de novo');
   const ed = fs.readFileSync(path.join(RAIZ, 'web/src/pages/ContentEditorPage.jsx'), 'utf8');
   assert.match(ed, /\['alta', 'Alta', 'Passa duas vezes por volta, espalhada entre as outras\.'\]/);

@@ -1442,7 +1442,7 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
       let feito = porManchete.get(chave);
       if (!feito) {
         const base = {
-          pedido: brief, empresa: ctx.empresa || '', segmento: ctx.segmento || '', marca: marcaDaPeca, modo,
+          pedido: brief, empresa: ctx.empresa || '', segmento: ctx.segmento || '', perfil: ctx.perfil || '', marca: marcaDaPeca, modo,
           foto: peca.bgImagem || null, papel: 'destaque',
           textos: { kicker: peca.kicker, titulo: peca.headline, apoio: peca.sub, cta: peca.cta },
         };

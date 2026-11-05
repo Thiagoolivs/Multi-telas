@@ -41,9 +41,13 @@ function capaDe(r) {
   // `n`: quantas peças a pasta tem (D10) — o cartão diz sem abrir a campanha.
   const n = ajuste.numerar(r).length;
   const telas = (r && r.telas) || [];
-  for (const t of telas) if (t.zonas.principal[0]) return { item: t.zonas.principal[0].item, formato: t.zonas.principal[0].formato, n };
+  // Formato antigo (sem cabeçalho ou rodapé): o que faltar conta como vazio (QA total, 05/11).
+  const zonasDe = (t) => (t && t.zonas) || {};
+  const primeira = (x) => (Array.isArray(x) ? x[0] : undefined);
+  for (const t of telas) { const p = primeira(zonasDe(t).principal); if (p) return { item: p.item, formato: p.formato, n }; }
   for (const t of telas) {
-    const p = t.zonas.lateral[0] || t.zonas.cabecalho.pecas[0] || t.zonas.rodape.pecas[0];
+    const z = zonasDe(t);
+    const p = primeira(z.lateral) || primeira((z.cabecalho || {}).pecas) || primeira((z.rodape || {}).pecas);
     if (p) return { item: p.item, formato: p.formato, n };
   }
   const b = ((r && r.biblioteca) || [])[0];

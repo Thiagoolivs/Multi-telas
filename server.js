@@ -2053,13 +2053,24 @@ const negocioCache = new Map();
         // identidade a cada briefing.
         const { marca, lembrada } = await marcaDaConta(sess.tenant_id);
         /*
+         * O NOME DA EMPRESA E A FRENTE DA CONTA (QA total, 05/11). A Criação
+         * rápida não mandava o nome: nenhuma peça mostrava a empresa e cinco
+         * saíram com "A EMPRESA". E a frente não chegava ao diretor: a régua
+         * de Saúde não valia ("continua garantido" passou numa clínica). O
+         * nome vem do pedido, senão da conta, senão da marca salva.
+         */
+        const contaDoPedido = await db.getTenant(sess.tenant_id).catch(() => null);
+        const nomeDaMarca = marca && marca.nome && marca.nome !== 'Marca principal' ? marca.nome : '';
+        const empresaDoPedido = String((b && b.empresa) || '').trim() || (contaDoPedido && contaDoPedido.name) || nomeDaMarca || '';
+        const perfilDoPedido = await paletaInicial.perfilDaConta(db, sess.tenant_id, contaDoPedido).catch(() => '');
+        /*
          * A campanha roda como TRABALHO, não como requisição. São várias
          * chamadas de modelo em sequência e isso passa fácil do tempo que um
          * proxy aguenta — o usuário veria erro numa campanha que ficou pronta.
          * Aqui devolvemos o id na hora e o painel acompanha o progresso.
          */
         const job = jobs.criar(sess.tenant_id, (progresso) => director.dirigir(String(brief), {
-          empresa: (b && b.empresa) || '', segmento: (b && b.segmento) || '',
+          empresa: empresaDoPedido, segmento: (b && b.segmento) || '', perfil: perfilDoPedido,
           publico: (b && b.publico) || '', tom: (b && b.tom) || '', oferta: (b && b.oferta) || '',
           brand: (b && b.brand) || '', brand2: (b && b.brand2) || '',
           formatos: Array.isArray(b && b.formatos) ? b.formatos : null,

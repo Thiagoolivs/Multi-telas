@@ -116,20 +116,30 @@ o bug da Programação e outro igual no editor livre.
 | Os dados da produção | As quatro contas acima, e o painel avisar o servidor quando uma tela quebra (proposta) |
 | Dias seguidos rodando | Uma TV de teste ligada 24 h na homologação |
 
-## 4. A ordem: seis blocos
+## 4. A ordem: sete blocos
 
 Cada bloco termina com nota em todas as linhas dele e uma galeria. Só então
 consertamos, do pior para o melhor, até tudo passar de 7 ou sair. Depois vem
-o bloco seguinte.
+o bloco seguinte. Os blocos 2 e 3 são os mais detalhados: é onde o produto
+precisa ser o melhor do mercado.
 
-| Bloco | O quê | Por quê nesta ordem |
+| Bloco | O quê | Detalhe |
 |---|---|---|
-| **1. A TV** | Tipos de conteúdo × frentes × orientações, layouts, telas prontas, peças-ouro, faixas, estados, movimento, horas rodando | É o produto |
-| **2. Criar com a IA** | Criação rápida, campanha do Criar, Meus Designs, ajustes, redes, telas prontas pela IA | É o que gera o que vai para a TV |
-| **3. Programação e Telas** | Sequência, calendário, agendamento, parear, reconectar, grupos, ver agora, som, aviso rápido | É como a TV é controlada |
-| **4. O resto do painel** | Início, Biblioteca, Marca, Pessoas e indicadores, Mural, Relatório, Equipe, Plano, Suporte, Plataforma | Apoio |
-| **5. Site e e-mails** | Raiz, 3 frentes, legais, cadastro, login, e-mails | Venda |
-| **6. A base** | Desempenho, confiabilidade, segurança, acessibilidade, compatibilidade, app Android | Já estão em 8–9; reconferir |
+| **1. A TV** | Tipos de conteúdo × frentes × orientações, layouts, telas prontas, peças-ouro, faixas, estados, movimento, horas rodando | [ITENS.md](ITENS.md) |
+| **2. Criações espontâneas da IA** | 60 pedidos variados, como um cliente de verdade pediria, mais os ajustes | [BLOCO-2-CRIACOES.md](BLOCO-2-CRIACOES.md) |
+| **3. Programação e agendamento com IA** | O cliente leigo montando a semana, a importância de cada peça, a organização, o movimento e uma semana simulada na TV | [BLOCO-3-PROGRAMACAO.md](BLOCO-3-PROGRAMACAO.md) |
+| **4. Telas e o editor à mão** | Parear, reconectar, grupos, ver agora, som, aviso rápido, e o editor da sequência sem IA | [ITENS.md](ITENS.md) |
+| **5. O resto do painel** | Início, Biblioteca, Marca, Pessoas e indicadores, Mural, Relatório, Equipe, Plano, Suporte, Plataforma | [ITENS.md](ITENS.md) |
+| **6. Site e e-mails** | Raiz, 3 frentes, legais, cadastro, login, os 8 e-mails | [ITENS.md](ITENS.md) |
+| **7. A base** | Desempenho, confiabilidade, segurança, acessibilidade, compatibilidade, app Android | Já estão em 8–9; reconferir |
+
+### Custo
+
+Os testes usam **um robô só**, reaproveitado em todos os blocos, que
+fotografa e mede, em vez de dezenas de agentes. Agentes entram só para
+olhar galerias grandes em paralelo. A IA real entra só nos blocos 2 e 3,
+com teto de cerca de **R$ 35 de geração**. A peça só com texto custa cerca
+de R$ 0,12, e com foto gerada, até R$ 0,89.
 
 ## 5. O que você recebe por bloco
 

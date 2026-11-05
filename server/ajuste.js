@@ -74,8 +74,10 @@ const FAIXAS = ['cabecalho', 'rodape'];
 function numerar(resultado) {
   const lista = [];
   ((resultado && resultado.telas) || []).forEach((t, ti) => {
-    const z = t.zonas;
-    const por = [['cabecalho', z.cabecalho.pecas], ['principal', z.principal], ['lateral', z.lateral], ['rodape', z.rodape.pecas]];
+    // Campanha de formato antigo (sem cabeçalho ou rodapé) não derruba a conta inteira (QA total, 05/11).
+    const z = (t && t.zonas) || {};
+    const lista_ = (x) => (Array.isArray(x) ? x : []);
+    const por = [['cabecalho', lista_((z.cabecalho || {}).pecas)], ['principal', lista_(z.principal)], ['lateral', lista_(z.lateral)], ['rodape', lista_((z.rodape || {}).pecas)]];
     for (const [zona, pecas] of por) (pecas || []).forEach((p) => lista.push({ n: lista.length + 1, tela: ti, zona, peca: p }));
   });
   return lista;

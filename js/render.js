@@ -2096,12 +2096,13 @@
 
   /* ---------- API pública ---------- */
   function renderItem(item) {
-    const fn = RENDERERS[item.type];
-    if (!fn) {
-      const el = div('mt-slide mt-text');
-      el.textContent = 'Tipo de conteúdo desconhecido: ' + item.type;
-      return { el, duration: 5 };
-    }
+    const fn = RENDERERS[item && item.type];
+    /*
+     * Tipo que esta TV não conhece (veio de uma versão nova, ou de um dado
+     * estragado): não vai ao ar. Antes saía "Tipo de conteúdo desconhecido:
+     * xyz" na TV do cliente (QA total, 05/11). Quem chama pula o item.
+     */
+    if (!fn) throw new Error('tipo de conteúdo desconhecido: ' + (item && item.type));
     return fn(item);
   }
 
@@ -2139,5 +2140,6 @@
     { type: 'mural', label: 'Mural de fotos (QR do público)', icon: 'qr' },
   ];
 
-  global.MTRender = { renderItem, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca, hostDaPeca };
+  const conhece = (tipo) => Object.prototype.hasOwnProperty.call(RENDERERS, tipo);
+  global.MTRender = { renderItem, conhece, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca, hostDaPeca };
 })(window);

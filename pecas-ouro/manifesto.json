@@ -625,12 +625,6 @@
           "modo": "marca",
           "pecas": [
             {
-              "id": "lateral-prazo",
-              "campos": {
-                "cta": "Aproveite"
-              }
-            },
-            {
               "id": "lateral-qr"
             }
           ]
