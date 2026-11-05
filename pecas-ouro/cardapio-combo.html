@@ -13,60 +13,65 @@
 .mt-peca::after { width: 40cqw; height: 40cqw; right: -4cqw; top: calc(19cqh - 14cqw); }
 .marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
 .marca-nome b { font-weight: 800; }
-.cabeca { position: absolute; left: 6cqw; top: 17cqh; width: 52cqw; }
-.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
-.kicker i { display: block; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
-h1 { font: 400 max(var(--mt-piso, 0cqw), 8cqw)/.88 var(--mt-fonte-titulo); text-transform: uppercase; margin-top: 2.2cqw; }
+.cabeca { position: absolute; left: 6cqw; top: 15cqh; width: 56cqw; }
+.kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .16em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker span { text-wrap: pretty; }
+.kicker i { display: block; flex: none; width: 3.6cqw; height: .14cqw; background: var(--mt-destaque); }
+h1 { font: 400 max(var(--mt-piso, 0cqw), 6.8cqw)/.88 var(--mt-fonte-titulo); text-transform: uppercase; margin-top: 1cqw; }
 h1 span { display: block; }
-.soma { position: absolute; left: 6cqw; right: 6cqw; bottom: 17cqh; display: flex; align-items: flex-start; gap: 2cqw; list-style: none; margin: 0; padding: 0; }
-.soma li { position: relative; flex: 1 1 auto; min-width: 0; padding-top: 1.8cqw; border-top: .14cqw solid var(--mt-destaque); }
+.soma { position: absolute; left: 6cqw; right: 6cqw; bottom: 13.5cqh; display: flex; align-items: flex-start; gap: 1.6cqw; list-style: none; margin: 0; padding: 0; }
+.soma li { position: relative; flex: 1 1 0; min-width: 0; padding-top: 1.1cqw; border-top: .14cqw solid var(--mt-destaque); }
 .soma .mais { flex: none; padding: 0; border: 0; font: 300 max(var(--mt-piso, 0cqw), 4cqw)/.6 var(--mt-fonte-texto); color: var(--mt-destaque); margin-top: 2.4cqw; }
 .soma b { display: block; font: 400 max(var(--mt-piso, 0cqw), 2.5cqw)/1.05 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .02em; text-wrap: balance; }
-.soma small { display: block; max-width: 20cqw; margin-top: .8cqw; font: 400 max(var(--mt-piso, 0cqw), 1.25cqw)/1.35 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.soma small { display: block; margin-top: 1.6cqh; font: 400 max(var(--mt-piso, 0cqw), 1.25cqw)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 .preco { position: absolute; right: 6cqw; top: 19cqh; text-align: right; }
 .rotulo { font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-texto-suave); }
 .valor { display: block; margin-top: 1.2cqw; font: 400 max(var(--mt-piso, 0cqw), 12cqw)/.78 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
 .valor small { font-size: max(var(--mt-piso, 0cqw), .26em); vertical-align: 1.9em; margin-right: .2em; }
 .valor sup { font-size: max(var(--mt-piso, 0cqw), .32em); vertical-align: 1.5em; }
-.nota { position: absolute; left: 6cqw; bottom: 6cqh; font: 500 max(var(--mt-piso, 0cqw), 1.15cqw)/1 var(--mt-fonte-texto); letter-spacing: .22em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.nota { position: absolute; left: 6cqw; bottom: 6cqh; font: 500 max(var(--mt-piso, 0cqw), 1.15cqw)/1 var(--mt-fonte-texto); letter-spacing: .22em; text-transform: uppercase; color: var(--mt-texto-suave); text-wrap: balance; }
 /* Em pé: título, a soma em coluna e o preço embaixo. */
 @container (aspect-ratio < 0.8) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); }
   .cabeca { left: 8cqw; right: 8cqw; width: auto; top: 12cqh; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 2cqw); }
-  .kicker i { width: 5.5cqw; height: .22cqw; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 15cqw); margin-top: 3.4cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 2cqw); letter-spacing: .06em; }
+  .kicker i { width: 4.4cqw; height: .22cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 13.5cqw); margin-top: 3cqw; }
   .mt-peca::before { width: 110cqw; height: 110cqw; right: -50cqw; top: -46cqw; border-width: .25cqw; }
   .mt-peca::after { width: 80cqw; height: 80cqw; right: -36cqw; top: -30cqw; border-width: .25cqw; }
-  .soma { left: 8cqw; right: 8cqw; top: 38cqh; bottom: auto; flex-direction: column; align-items: stretch; gap: 3cqw; }
+  .soma { left: 8cqw; right: 8cqw; top: 35cqh; bottom: auto; flex-direction: column; align-items: stretch; gap: 3cqw; }
   .soma li { padding-top: 2.6cqw; border-top-width: .25cqw; }
   /* Em coluna o + não ganha linha própria: vai para a ponta do item que ele soma. */
   .soma .mais { display: none; }
   .soma .mais + li::before { content: '+'; position: absolute; right: 0; top: 2.4cqw; font: 300 max(var(--mt-piso, 0cqw), 8cqw)/.8 var(--mt-fonte-texto); color: var(--mt-destaque); }
   .soma small { max-width: none; }
   .soma b { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
-  .soma small { font-size: max(var(--mt-piso, 0cqw), 2.6cqw); margin-top: 1.2cqw; }
-  .preco { left: 8cqw; right: 8cqw; top: auto; bottom: 12cqh; text-align: left; padding-top: 4cqw; border-top: .25cqw solid var(--mt-linha); }
+  .soma small { font-size: max(var(--mt-piso, 0cqw), 2.6cqw); margin-top: 1.6cqw; }
+  .preco { left: 8cqw; right: 8cqw; top: auto; bottom: 16cqh; text-align: left; padding-top: 4cqw; border-top: .25cqw solid var(--mt-linha); }
   .rotulo { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); }
-  .valor { font-size: max(var(--mt-piso, 0cqw), 26cqw); margin-top: 2.4cqw; }
-  .nota { left: 8cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 24cqw); margin-top: 2.4cqw; }
+  .nota { left: 8cqw; right: 8cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); letter-spacing: .12em; line-height: 1.15; }
 }
-/* Quase quadrada: a soma continua em linha, o preço vai para baixo dela. */
+/* Quase quadrada: o preço sobe para o lado do título e a soma vira lista, como em pé —
+   com a letra da TV, três colunas de detalhe não cabem na largura. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .3em; }
   .cabeca { left: 7cqw; right: 7cqw; width: auto; top: 12cqh; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
-  .kicker i { width: 5cqw; height: .2cqw; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 10.4cqw); margin-top: 2.6cqw; }
-  .soma { left: 7cqw; right: 7cqw; bottom: auto; top: 47cqh; gap: 2.4cqw; }
-  .soma li { border-top-width: .2cqw; }
-  .soma .mais { font-size: max(var(--mt-piso, 0cqw), 5cqw); margin-top: 3cqw; }
-  .soma b { font-size: max(var(--mt-piso, 0cqw), 3.6cqw); }
-  .soma small { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
-  .preco { right: 7cqw; top: auto; bottom: 12cqh; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .08em; }
+  .kicker i { width: 3.4cqw; height: .2cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 10cqw); margin-top: 2.6cqw; }
+  .mt-peca::before { width: 70cqw; height: 70cqw; right: -22cqw; top: -8cqw; }
+  .mt-peca::after { width: 50cqw; height: 50cqw; right: -12cqw; top: 2cqw; }
+  .soma { left: 7cqw; right: 7cqw; bottom: auto; top: 43cqh; flex-direction: column; align-items: stretch; gap: .6cqw; }
+  .soma li { padding-top: 1.4cqw; border-top-width: .2cqw; }
+  .soma .mais { display: none; }
+  .soma .mais + li::before { content: '+'; position: absolute; right: 0; top: 1.2cqw; font: 300 max(var(--mt-piso, 0cqw), 5cqw)/.8 var(--mt-fonte-texto); color: var(--mt-destaque); }
+  .soma b { font-size: max(var(--mt-piso, 0cqw), 3.6cqw); padding-right: 6cqw; }
+  .soma small { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); margin-top: 1cqw; }
+  .preco { right: 7cqw; top: 19.2cqh; }
   .rotulo { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
-  .valor { font-size: max(var(--mt-piso, 0cqw), 17cqw); }
-  .nota { left: 7cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.7cqw); }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 18cqw); }
+  .nota { left: 7cqw; right: 7cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.7cqw); letter-spacing: .08em; line-height: 1.1; }
 }
 </style>
 <section class="mt-peca cardapio-combo">

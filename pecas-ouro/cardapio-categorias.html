@@ -7,35 +7,40 @@
 -->
 <style>
 .mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
-.marca-nome { position: absolute; left: 6cqw; top: 6cqh; font: 700 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; }
-.cabeca { position: absolute; left: 6cqw; right: 6cqw; top: 12cqh; display: flex; align-items: baseline; justify-content: space-between; gap: 4cqw; }
-h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.95 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .01em; }
-.nota { font: 600 max(var(--mt-piso, 0cqw), 1.3cqw)/1.3 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
-.grupos { position: absolute; left: 6cqw; right: 6cqw; top: 30cqh; bottom: 9cqh; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 3.6cqw; }
-.grupo h2 { display: inline-block; padding: .8cqw 1.4cqw .7cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); border-radius: calc(var(--mt-raio) * .5);
+.marca-nome { position: absolute; left: 6cqw; top: 5.5cqh; font: 700 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; }
+.cabeca { position: absolute; left: 6cqw; right: 6cqw; top: 13.5cqh; display: flex; align-items: baseline; justify-content: space-between; gap: 4cqw; }
+h1 { font: 400 max(var(--mt-piso, 0cqw), 5.8cqw)/.95 var(--mt-fonte-titulo); text-transform: uppercase; letter-spacing: .01em; white-space: nowrap; }
+.nota { max-width: 46cqw; font: 600 max(var(--mt-piso, 0cqw), 1.3cqw)/1.2 var(--mt-fonte-texto); letter-spacing: .12em; text-transform: uppercase; color: var(--mt-texto-suave); text-align: right; text-wrap: balance; }
+.grupos { position: absolute; left: 6cqw; right: 6cqw; top: 27cqh; bottom: 6cqh; display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 3.6cqw; }
+.grupo h2 { display: inline-block; padding: .6cqw 1.2cqw .5cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); border-radius: calc(var(--mt-raio) * .5);
   font: 400 max(var(--mt-piso, 0cqw), 2.2cqw)/1 var(--mt-fonte-titulo); letter-spacing: .06em; text-transform: uppercase; }
-.grupo ul { list-style: none; margin: 1.6cqw 0 0; padding: 0; }
-.grupo li { display: flex; align-items: baseline; justify-content: space-between; gap: 1.4cqw; padding: 1.25cqw 0; border-bottom: .12cqw solid var(--mt-linha); }
+.grupo ul { list-style: none; margin: 1.2cqw 0 0; padding: 0; }
+/* O item é uma grade: nome e preço na linha de cima, o detalhe embaixo com a largura toda
+   (antes ele dividia a linha com o preço e, com a letra da TV, quebrava em três). */
+.grupo li { display: grid; grid-template-columns: 1fr auto; align-items: baseline; column-gap: 1.4cqw; padding: 1.1cqh 0 1.2cqh; border-bottom: .12cqw solid var(--mt-linha); }
 .grupo li:has(> b > span:empty) { display: none; }
-.grupo b { font: 700 max(var(--mt-piso, 0cqw), 1.7cqw)/1.2 var(--mt-fonte-texto); }
-.grupo b small { display: block; margin-top: .4cqw; font: 500 max(var(--mt-piso, 0cqw), 1.15cqw)/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
-.preco { font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
-.preco small { font-size: max(var(--mt-piso, 0cqw), .5em); margin-right: .15em; vertical-align: .6em; }
-/* Em pé: o cardápio de parede — uma categoria embaixo da outra, letra grande.
-   As três categorias de três itens cabem medidas: título curto, nota à direita
-   quebrando se precisar. */
+.grupo b { display: contents; font: 700 max(var(--mt-piso, 0cqw), 1.7cqw)/1.15 var(--mt-fonte-texto); }
+.grupo b > span { grid-column: 1; grid-row: 1; min-width: 0; text-wrap: balance; }
+.grupo b small { grid-column: 1 / -1; grid-row: 2; margin-top: .9cqh; font: 400 max(var(--mt-piso, 0cqw), 1.15cqw)/1.15 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+/* O R$ sobe até o topo do número; com a letra da TV ele fica quase do tamanho do número e subir
+   .6em do próprio tamanho abria a linha. --v é o tamanho do número. */
+.preco { --v: max(var(--mt-piso, 0cqw), 2.6cqw); grid-column: 2; grid-row: 1; font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.preco small { font-size: max(var(--mt-piso, 0cqw), .5em); margin-right: .15em; vertical-align: calc((var(--v) - 1em) * .66); }
+/* Em pé: o cardápio de parede — uma categoria embaixo da outra. Com a letra da TV, a
+   nota desce para baixo do título (ao lado ele a quebrava em três linhas) e o respiro
+   entre os itens aperta: nove itens com detalhe cabem medidos. */
 @container (aspect-ratio < 0.8) {
-  .marca-nome { left: 7cqw; top: 4cqh; font-size: max(var(--mt-piso, 0cqw), 2.2cqw); }
-  .cabeca { left: 7cqw; right: 7cqw; top: 7cqh; align-items: flex-end; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 12cqw); }
-  .nota { font-size: max(var(--mt-piso, 0cqw), 2cqw); white-space: normal; max-width: 38cqw; text-align: right; }
-  .grupos { left: 7cqw; right: 7cqw; top: 17cqh; bottom: 4cqh; grid-template-columns: 1fr; grid-auto-rows: min-content; row-gap: 2.2cqh; }
-  .grupo h2 { font-size: max(var(--mt-piso, 0cqw), 4.2cqw); padding: 1.5cqw 2.4cqw 1.3cqw; }
-  .grupo ul { margin-top: 1.6cqw; }
-  .grupo li { padding: 1.45cqw 0; border-bottom-width: .25cqw; gap: 3cqw; }
+  .marca-nome { left: 7cqw; top: 3.6cqh; font-size: max(var(--mt-piso, 0cqw), 2.2cqw); letter-spacing: .24em; }
+  .cabeca { left: 7cqw; right: 7cqw; top: 8.2cqh; display: block; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 10cqw); }
+  .nota { max-width: none; margin-top: 1.6cqw; font-size: max(var(--mt-piso, 0cqw), 2cqw); text-align: left; letter-spacing: .08em; }
+  .grupos { left: 7cqw; right: 7cqw; top: 18.6cqh; bottom: 3cqh; grid-template-columns: 1fr; grid-auto-rows: min-content; row-gap: 1cqh; }
+  .grupo h2 { font-size: max(var(--mt-piso, 0cqw), 4.2cqw); padding: .8cqw 2.2cqw .7cqw; }
+  .grupo ul { margin-top: .6cqw; }
+  .grupo li { padding: .5cqw 0 .6cqw; border-bottom-width: .25cqw; column-gap: 3cqw; }
   .grupo b { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); }
-  .grupo b small { font-size: max(var(--mt-piso, 0cqw), 2.1cqw); margin-top: .7cqw; }
-  .preco { font-size: max(var(--mt-piso, 0cqw), 5.4cqw); }
+  .grupo b small { font-size: max(var(--mt-piso, 0cqw), 2.1cqw); margin-top: .8cqw; }
+  .preco { --v: max(var(--mt-piso, 0cqw), 4.8cqw); font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
 }
 /*
  * Em pé, mas menos alta que 9:16 — o destaque do layout "Vertical ·
@@ -43,26 +48,34 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.95 var(--mt-fonte-titulo); tex
  * doces passava da borda. A lista aperta um pouco; o 9:16 não muda.
  */
 @container (aspect-ratio >= 0.58) and (aspect-ratio < 0.8) {
-  .grupos { top: 16cqh; row-gap: 1.6cqh; }
-  .grupo h2 { font-size: max(var(--mt-piso, 0cqw), 3.8cqw); }
-  .grupo ul { margin-top: 1.2cqw; }
-  .grupo li { padding: 1.1cqw 0; }
-  .grupo b { font-size: max(var(--mt-piso, 0cqw), 3cqw); }
-  .grupo b small { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
-  .preco { font-size: max(var(--mt-piso, 0cqw), 4.9cqw); }
+  .cabeca { top: 9.4cqh; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
+  .nota { letter-spacing: .02em; }
+  .grupos { top: 20.6cqh; bottom: 2.4cqh; row-gap: 1cqh; }
+  .grupo h2 { font-size: max(var(--mt-piso, 0cqw), 3.8cqw); padding: .7cqw 2cqw .6cqw; }
+  .grupo ul { margin-top: .6cqw; }
+  .grupo li { padding: .4cqw 0 .5cqw; }
+  .grupo b { font-size: max(var(--mt-piso, 0cqw), 3cqw); line-height: 1.1; }
+  .grupo b small { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); line-height: 1.1; }
+  .preco { --v: max(var(--mt-piso, 0cqw), 4.9cqw); font-size: max(var(--mt-piso, 0cqw), 4.9cqw); }
 }
-/* Quase quadrada: três colunas não cabem — duas em cima, a terceira embaixo; o detalhe do item sai. */
+/* Quase quadrada: três colunas não cabem — quatro quadrantes: o título no primeiro, as
+   categorias nos outros três, na ordem de leitura; o detalhe do item sai. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
-  .cabeca { left: 7cqw; right: 7cqw; top: 10cqh; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 9cqw); }
-  .nota { font-size: max(var(--mt-piso, 0cqw), 1.7cqw); }
-  .grupos { left: 7cqw; right: 7cqw; top: 23cqh; bottom: 5cqh; grid-template-columns: repeat(2, 1fr); grid-auto-rows: min-content; column-gap: 5cqw; row-gap: 3.4cqh; }
-  .grupo h2 { font-size: max(var(--mt-piso, 0cqw), 3cqw); padding: 1.1cqw 1.8cqw 1cqw; }
-  .grupo li { padding: 1.7cqw 0; border-bottom-width: .2cqw; }
+  .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .24em; }
+  .cabeca { left: 7cqw; right: auto; width: 40cqw; top: 13cqh; display: block; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 9.4cqw); }
+  .nota { max-width: none; margin-top: 2cqw; font-size: max(var(--mt-piso, 0cqw), 1.7cqw); text-align: left; letter-spacing: .08em; }
+  .grupos { left: 7cqw; right: 7cqw; top: 12.5cqh; bottom: 5cqh; grid-template-columns: repeat(2, 1fr); grid-template-rows: min-content min-content; column-gap: 5cqw; row-gap: 3cqh; }
+  .grupo:nth-child(1) { grid-column: 2; grid-row: 1; }
+  .grupo:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .grupo:nth-child(3) { grid-column: 2; grid-row: 2; }
+  .grupo h2 { font-size: max(var(--mt-piso, 0cqw), 3cqw); padding: 1cqw 1.8cqw .9cqw; }
+  .grupo ul { margin-top: 1.2cqw; }
+  .grupo li { padding: 1.2cqw 0 1.3cqw; border-bottom-width: .2cqw; column-gap: 2cqw; }
   .grupo b { font-size: max(var(--mt-piso, 0cqw), 2.4cqw); }
   .grupo b small { display: none; }
-  .preco { font-size: max(var(--mt-piso, 0cqw), 3.8cqw); }
+  .preco { --v: max(var(--mt-piso, 0cqw), 3.8cqw); font-size: max(var(--mt-piso, 0cqw), 3.8cqw); }
 }
 </style>
 <section class="mt-peca cardapio-categorias">

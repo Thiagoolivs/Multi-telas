@@ -13,7 +13,7 @@
 /* Sem foto: o recorte vira um vazio da cor da linha — o cartão continua de pé. */
 .cartao img[data-sem-foto] { visibility: visible; background: var(--mt-linha); }
 /* Texto sobre a superfície: o contrato de cor garante a leitura nos 4 modos (no escuro a superfície é escura). */
-.legenda { padding: 1.4cqw .4cqw 1.8cqw; font: 600 max(var(--mt-piso, 0cqw), 1.5cqw)/1.3 var(--mt-fonte-texto); color: var(--mt-texto); }
+.legenda { padding: 1.4cqw .4cqw 1.8cqw; font: 600 max(var(--mt-piso, 0cqw), 1.5cqw)/1.3 var(--mt-fonte-texto); color: var(--mt-texto); text-wrap: balance; }
 .legenda small { display: block; margin-top: .4cqw; font: 500 max(var(--mt-piso, 0cqw), 1.15cqw)/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 .bloco { position: absolute; left: 50cqw; right: 7cqw; top: 50%; transform: translateY(-50%); }
 .kicker { display: flex; align-items: center; gap: 1.1cqw; font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); }
@@ -25,31 +25,53 @@ h1 { margin-top: 2.2cqw; font: 400 max(var(--mt-piso, 0cqw), 5.6cqw)/.98 var(--m
 .qr img { width: 100%; height: 100%; }
 .qr:has(img[data-sem-foto]) { display: none; }
 .pedido { font: 600 max(var(--mt-piso, 0cqw), 1.25cqw)/1.35 var(--mt-fonte-texto); letter-spacing: .2em; text-transform: uppercase; }
-@container (aspect-ratio < 0.8) {
-  .cartao { left: 50%; top: 6cqh; width: 58cqw; padding: 2.4cqw 2.4cqw 0; translate: -50% 0; }
-  .legenda { padding: 2.6cqw .8cqw 3.2cqw; font-size: max(var(--mt-piso, 0cqw), 3cqw); }
-  .legenda small { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); margin-top: .8cqw; }
-  .bloco { left: 8cqw; right: 8cqw; top: auto; bottom: 6cqh; transform: none; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 2.4cqw); }
-  .kicker i { width: 6cqw; height: .28cqw; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 10cqw); margin-top: 3cqw; }
-  .apoio { font-size: max(var(--mt-piso, 0cqw), 3cqw); margin-top: 3cqw; }
-  .mande { gap: 4cqw; margin-top: 4cqw; }
-  .qr { width: 20cqw; height: 20cqw; padding: .9cqw; box-shadow: 0 0 0 .35cqw var(--mt-destaque); }
-  .pedido { font-size: max(var(--mt-piso, 0cqw), 2.4cqw); }
-}
-@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .cartao { left: 7cqw; top: 8cqh; width: 40cqw; translate: none; padding: 1.8cqw 1.8cqw 0; }
-  .legenda { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); padding: 1.8cqw .6cqw 2.2cqw; }
-  .legenda small { font-size: max(var(--mt-piso, 0cqw), 1.7cqw); }
-  .bloco { left: 54cqw; right: 6cqw; top: 9cqh; transform: none; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .22em; }
+/*
+ * O destaque do Corporativo (e as principais deitadas menos largas que a TV):
+ * a régua da TV pesa mais na altura menor. O cartão fica quadrado e mais
+ * baixo, a legenda cabe em duas linhas, o texto ganha a largura que sobra.
+ */
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.74) {
+  .cartao { left: 6cqw; width: 35cqw; padding: 1.2cqw 1.2cqw 0; }
+  .cartao img { aspect-ratio: 1; }
+  .legenda { padding: 1.2cqw .3cqw 1.6cqw; line-height: 1.25; }
+  .legenda small { margin-top: .3cqw; line-height: 1.25; }
+  .bloco { left: 47cqw; right: 6cqw; }
+  .kicker { letter-spacing: .1em; }
   .kicker i { display: none; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); margin-top: 2.6cqw; }
-  .apoio { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); }
-  .mande { flex-direction: column; align-items: flex-start; gap: 2cqw; margin-top: 3.4cqw; }
-  .qr { width: 18cqw; height: 18cqw; }
-  .pedido { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 10cqh); margin-top: .36em; }
+  .apoio { line-height: 1.4; }
+  .mande { margin-top: 2.2cqw; }
+  .qr { width: 21cqh; height: 21cqh; padding: .7cqh; }
+  .pedido { letter-spacing: .06em; text-wrap: balance; }
+}
+/* Em pé: o cartão em cima, quadrado; o texto embaixo, com o QR. */
+@container (aspect-ratio < 0.8) {
+  .cartao { left: 50%; top: 5cqh; width: 56cqw; padding: 2.2cqw 2.2cqw 0; translate: -50% 0; }
+  .cartao img { aspect-ratio: 1; }
+  .legenda { padding: 2.2cqw .6cqw 2.8cqw; font-size: max(var(--mt-piso, 0cqw), 3cqw); line-height: 1.25; }
+  .legenda small { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); margin-top: .8cqw; line-height: 1.25; }
+  .bloco { left: 8cqw; right: 8cqw; top: auto; bottom: 6cqh; transform: none; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 2.4cqw); letter-spacing: .16em; }
+  .kicker i { width: 6cqw; height: .28cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 9.6cqw); margin-top: .4em; }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 3cqw); margin-top: 3cqw; line-height: 1.4; }
+  .mande { gap: 4cqw; margin-top: 4cqw; }
+  .qr { width: 17cqw; height: 17cqw; padding: .9cqw; box-shadow: 0 0 0 .35cqw var(--mt-destaque); }
+  .pedido { font-size: max(var(--mt-piso, 0cqw), 2.4cqw); letter-spacing: .12em; }
+}
+/* Quase quadrada: o cartão estreito à esquerda; à direita o texto, e o QR com o pedido ao lado. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .cartao { left: 6cqw; width: 34cqw; padding: 1.6cqw 1.6cqw 0; }
+  .legenda { font-size: max(var(--mt-piso, 0cqw), 2.2cqw); padding: 1.6cqw .4cqw 2cqw; line-height: 1.25; }
+  .legenda small { font-size: max(var(--mt-piso, 0cqw), 1.7cqw); margin-top: .4cqw; line-height: 1.25; }
+  .bloco { left: 46cqw; right: 6cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .1em; }
+  .kicker i { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); margin-top: .4em; }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); margin-top: 2.4cqw; line-height: 1.4; }
+  .mande { gap: 2cqw; margin-top: 3.4cqw; }
+  .qr { width: 17cqw; height: 17cqw; padding: .8cqw; }
+  .pedido { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .06em; text-wrap: balance; }
 }
 </style>
 <section class="mt-peca social-mural">
