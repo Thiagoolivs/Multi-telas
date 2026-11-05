@@ -110,3 +110,56 @@ test('o painel filtra pela frente e põe o exemplo dela; o botão mostra os outr
   assert.match(p, /'Ver também os de outros negócios'/);
   void pathToFileURL;
 });
+
+/*
+ * Parte C: o lote 2 — um pacote por tipo de negócio, em deitado, em pé e
+ * quadrado, com os textos do próprio negócio. O lote 1 de Comércio era todo
+ * da ótica: a padaria via óculos de sol. Conferido na bancada: as 27 telas
+ * com a letra em pelo menos 85% do mínimo do lugar (a meta das partes).
+ */
+test('o lote 2: nove negócios, três formatos cada, esperando a aprovação na galeria', () => {
+  const m = JSON.parse(ler('pecas-ouro/manifesto.json'));
+  const lote = m.telas.filter((t) => t.lote === 2);
+  const NEGOCIOS = ['padaria', 'otica', 'restaurante', 'salao', 'clinica', 'dentista', 'farmacia', 'escritorio', 'industria'];
+  const LAYOUT = { deitada: 'corporate', 'em-pe': 'portrait-stack', quadrada: 'square-header' };
+  assert.equal(lote.length, NEGOCIOS.length * 3);
+  for (const n of NEGOCIOS) {
+    for (const [forma, layout] of Object.entries(LAYOUT)) {
+      const t = lote.find((x) => x.id === 'l2-' + n + '-' + forma);
+      assert.ok(t, n + ' ' + forma);
+      assert.equal(t.layout, layout);
+      assert.equal(t.negocio, n);
+      assert.equal(t.estado, 'proposta', 'só vai para as contas depois da galeria');
+      assert.ok(['comercio', 'saude', 'empresa'].includes(t.perfil));
+      assert.ok(t.ramos.length, n + ' sem ramo da Marca');
+      assert.ok(m.marcas.some((b) => b.id === t.marca), n + ': marca de exemplo');
+      // A quadrada não tem lado: o que é do lado entra na principal.
+      assert.equal('lateral' in t.zonas, forma !== 'quadrada', n + ' ' + forma);
+      for (const z of Object.values(t.zonas)) for (const p of z.pecas) {
+        const campos = new Set([...ler('pecas-ouro/' + p.id + '.html').matchAll(/data-campo(?:-img|-qr)?="([^"]+)"/g)].map((x) => x[1]));
+        for (const k of Object.keys(p.campos || {})) assert.ok(campos.has(k), t.id + ': ' + p.id + ' não tem o campo ' + k);
+      }
+    }
+  }
+  // O caso do QA: a padaria fala de pão, e nenhuma tela de Comércio do lote 2 é de ótica fora da ótica.
+  const pad = JSON.stringify(lote.find((t) => t.id === 'l2-padaria-deitada'));
+  assert.ok(!/[ÓóOo]culos/.test(pad));
+});
+
+test('as telas prontas: o pacote do negócio da conta primeiro, na orientação das TVs dela', async () => {
+  const { pathToFileURL } = require('node:url');
+  const T = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/telasProntas.js')).href);
+  const telas = [
+    { id: 'geral', layout: 'corporate' },
+    { id: 'otica-pe', layout: 'portrait-stack', negocio: 'otica', ramos: ['otica'] },
+    { id: 'padaria-pe', layout: 'portrait-stack', negocio: 'padaria', ramos: ['padaria'] },
+    { id: 'padaria', layout: 'corporate', negocio: 'padaria', ramos: ['padaria'] },
+  ];
+  assert.deepEqual(T.ordemDasTelas(telas, 'padaria', null).map((t) => t.id), ['padaria-pe', 'padaria', 'geral', 'otica-pe']);
+  assert.deepEqual(T.ordemDasTelas(telas, 'padaria', false).map((t) => t.id), ['padaria', 'padaria-pe', 'geral', 'otica-pe']);
+  assert.deepEqual(T.ordemDasTelas(telas, '', null).map((t) => t.id), ['geral', 'otica-pe', 'padaria-pe', 'padaria'], 'sem ramo: as gerais primeiro');
+  const c = T.paraOCliente({ id: 'x', zonas: {}, negocio: 'padaria', ramos: ['padaria'] });
+  assert.equal(c.negocio, 'padaria');
+  assert.deepEqual(c.ramos, ['padaria']);
+  assert.match(ler('web/src/pages/TelasProntasPage.jsx'), /return ordemDasTelas\(dados\.telas\.filter\(\(t\) => todas \|\| doPerfil\(t\)\), marca\.ramo, emPeAsTvs\)/);
+});

@@ -44,8 +44,10 @@ export function descricaoDaTela(t) {
   return 'Tela inteira, com ' + lista + '. Troque os textos e ponha na TV.';
 }
 export function paraOCliente(t) {
-  const { id, nome, marca, perfil, layout, zonas, mensagens, estado, paraComecar } = t;
-  return { id, nome, marca, perfil, layout, zonas, mensagens, estado, paraComecar: paraComecar === true, descricao: descricaoDaTela(t) };
+  const { id, nome, marca, perfil, layout, zonas, mensagens, estado, paraComecar, negocio, ramos } = t;
+  return { id, nome, marca, perfil, layout, zonas, mensagens, estado, paraComecar: paraComecar === true, descricao: descricaoDaTela(t),
+    // Fase 9: o pacote do tipo de negócio (padaria, ótica, clínica…) e os ramos da Marca a que ele serve (js/paletas.js).
+    negocio: negocio || '', ramos: Array.isArray(ramos) ? ramos : [] };
 }
 
 export const emPe = (layoutId) => /^portrait/.test(layoutId || '');
@@ -202,7 +204,21 @@ export function marcaDaConta(r) {
   const local = k.local || {};
   // O site e o endereço da Marca entram onde a tela de exemplo tinha os dela.
   return { cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '',
-    site: k.site || '', endereco: [local.endereco, local.bairro].filter(Boolean).join(' · ') };
+    site: k.site || '', endereco: [local.endereco, local.bairro].filter(Boolean).join(' · '),
+    // O ramo que a Marca deduziu (js/paletas.js, detectarRamo): põe o pacote do negócio da conta primeiro.
+    ramo: (r && r.ramo) || '' };
+}
+
+/*
+ * Fase 9: a ordem das telas prontas da frente — primeiro o pacote do
+ * negócio da conta (o ramo da Marca), depois as que servem a qualquer um
+ * (o lote 1), depois os pacotes de outros negócios. Dentro de cada grupo,
+ * a orientação das TVs da conta vem antes.
+ */
+export function ordemDasTelas(telas, ramo, tvsEmPe) {
+  const grupo = (t) => (ramo && (t.ramos || []).includes(ramo) ? 0 : !t.negocio ? 1 : 2);
+  const forma = (t) => (tvsEmPe == null ? 0 : emPe(t.layout) === tvsEmPe ? 0 : 1);
+  return telas.slice().sort((a, b) => grupo(a) - grupo(b) || forma(a) - forma(b));
 }
 
 /*

@@ -108,7 +108,7 @@ export function ConteudoPronto() {
                       </div>
                       <div className="truncate text-2xs text-ink-3">
                         {qual === 'tela'
-                          ? [frente && (NOME_DA_FRENTE[frente] || frente), x.lote ? 'lote ' + x.lote : '', emPe(x.layout) ? 'em pé' : 'deitada', 'exemplo: ' + (marcaDe(x.marca).nome || x.marca)].filter(Boolean).join(' · ')
+                          ? [frente && (NOME_DA_FRENTE[frente] || frente), x.lote ? 'lote ' + x.lote : '', emPe(x.layout) ? 'em pé' : /^square/.test(x.layout || '') ? 'quadrada' : 'deitada', x.negocio ? 'pacote ' + x.negocio : '', 'exemplo: ' + (marcaDe(x.marca).nome || x.marca)].filter(Boolean).join(' · ')
                           : [x.familia, (x.papeis || []).join(', '), 'exemplo: ' + (marcaDe(x.marca).nome || x.marca)].filter(Boolean).join(' · ')}
                       </div>
                     </div>

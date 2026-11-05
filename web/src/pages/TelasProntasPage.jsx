@@ -14,7 +14,7 @@ import { AtalhosDeGrupo } from '../components/tela/AtalhosDeGrupo.jsx';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
 import {
-  carregarTelasProntas, montarTela, estadoDaPrevia, aplicarTelaPronta, medirZonas, perfilDaTela, emPe, marcaDaConta, tvEmPe,
+  carregarTelasProntas, montarTela, estadoDaPrevia, aplicarTelaPronta, medirZonas, perfilDaTela, emPe, marcaDaConta, tvEmPe, ordemDasTelas,
 } from '../lib/telasProntas.js';
 
 /*
@@ -55,10 +55,12 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
   const lista = useMemo(() => {
     if (!dados || !marca) return [];
     const doPerfil = (t) => perfilDaTela(t) === perfil.id;
-    return dados.telas.filter((t) => todas || doPerfil(t))
+    // Fase 9: o pacote do negócio da conta primeiro, na orientação das TVs dela (lib/telasProntas.js).
+    const emPeAsTvs = tvs.length ? tvs.every((d) => tvEmPe(d) === true) : null;
+    return ordemDasTelas(dados.telas.filter((t) => todas || doPerfil(t)), marca.ramo, emPeAsTvs)
       .sort((a, b) => Number(doPerfil(b)) - Number(doPerfil(a)))
       .map((t) => ({ tela: t, montada: montarTela(t, dados.modelos, marca, dados.exemplos) }));
-  }, [dados, marca, perfil.id, todas]);
+  }, [dados, marca, perfil.id, todas, tvs]);
 
   const zonas = useMemo(() => (escolhida ? medirZonas(escolhida.layout) : {}), [escolhida && escolhida.layout]); // eslint-disable-line react-hooks/exhaustive-deps
 
