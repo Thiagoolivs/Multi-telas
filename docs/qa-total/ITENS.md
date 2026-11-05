@@ -113,21 +113,21 @@ Aviso, promoção, cardápio, boas-vindas, evento, número, frase, foto com faix
 | Conteúdo | Nada de texto padrão ("Novo comunicado"), data vencida, outra frente ou nome cortado |
 | Vazamento | Nada sai da zona nem fica por cima de outra coisa |
 
-## Bloco 2: Criar com a IA
+## Bloco 2: criações espontâneas da IA
 
-Criação rápida, a campanha do Criar, Meus Designs, os ajustes ("troca a
-foto", "preço maior"), as legendas das redes, a tela pronta pela IA, a
-régua de Saúde e o preço ou a data inventados. Precisa da chave da IA (veja
-o fim da resposta).
+Detalhado em [BLOCO-2-CRIACOES.md](BLOCO-2-CRIACOES.md).
 
-## Bloco 3: Programação e Telas
+## Bloco 3: programação e agendamento com IA
 
-Programação, Calendário, o editor da TV (sequência, duração, agenda,
-prioridade, prévia, publicar, desfazer), Pedir à IA, aviso rápido, parear,
-reconectar, grupos, ver a TV agora, som ao vivo, recarregar, horário e
-aviso de queda, backup e cópia.
+Detalhado em [BLOCO-3-PROGRAMACAO.md](BLOCO-3-PROGRAMACAO.md).
 
-## Bloco 4: o resto do painel (29 páginas)
+## Bloco 4: Telas e o editor à mão
+
+Parear, reconectar, grupos, ver a TV agora, som ao vivo, recarregar,
+horário e aviso de queda, backup e cópia, aviso rápido. E o editor da TV
+sem IA: sequência, duração, agenda, prioridade, prévia, publicar, desfazer.
+
+## Bloco 5: o resto do painel (29 páginas)
 
 Início, Telas, Programação, Calendário, Criar, Criação rápida, Criando,
 Campanhas, Meus Designs, Peças prontas, Telas prontas, Biblioteca,
@@ -135,7 +135,7 @@ Arquivos, Banco de imagens, Marca, Pessoas (aniversariantes), Indicadores,
 Mural, Relatório, Alertas, Equipe, Plano, Conta, Suporte, Sistema,
 Plataforma (operador), Cadastro e login, mais as telas de espera e de erro.
 
-## Bloco 5: site e e-mails
+## Bloco 6: site e e-mails
 
 A página principal, `/empresas`, `/saude`, `/comercio`, Termos,
 Privacidade, cookies e o cadastro vindo de cada frente. E os 8 e-mails:
@@ -146,7 +146,7 @@ Privacidade, cookies e o cadastro vindo de cada frente. E os 8 e-mails:
 - a TV fora do ar;
 - o código para mandar foto ao mural.
 
-## Bloco 6: a base
+## Bloco 7: a base
 
 Desempenho (4G, painel com 25 TVs, TV em CPU fraca), confiabilidade (sem
 internet, reinício, deploy), segurança (contas separadas, entrada
