@@ -85,6 +85,20 @@ function enxuto(html) {
 }
 
 /*
+ * O CSS da biblioteca sem os espaços que o navegador ignora em volta de
+ * { } ; , e > (e o último ; antes do }). Só dentro do <style>: no HTML o
+ * espaço é texto. O ":" fica como está — antes dele o espaço é seletor
+ * (".a :hover" não é ".a:hover"). Fase 2: o redesenho das peças para a
+ * letra da TV trouxe blocos novos de @container; isto devolve o tamanho.
+ */
+function cssJusto(html) {
+  return String(html || '').replace(/(<style[^>]*>)([\s\S]*?)(<\/style>)/g, (m, abre, css, fecha) => abre + css
+    .replace(/\s*([{};,>])\s*/g, '$1')
+    .replace(/;}/g, '}')
+    .trim() + fecha);
+}
+
+/*
  * O piso da TV (fase 2, 05/11) envolve cada tamanho das peças-ouro em
  * `max(var(--mt-piso, 0cqw), X)`. A IA não precisa dele: quem garante o piso
  * na TV é o player (peca-render.js, aplicarPiso), em qualquer peça. Na
@@ -114,7 +128,7 @@ function biblioteca(papel) {
   const lista = m.pecas
     .filter((p) => p.papeis.includes(papel))
     .sort((a, b) => a.id.localeCompare(b.id))
-    .map((p) => '### ' + p.nome + ' (' + p.familia + ')\n' + semPiso(enxuto(fs.readFileSync(path.join(PASTA, p.id + '.html'), 'utf8'))));
+    .map((p) => '### ' + p.nome + ' (' + p.familia + ')\n' + cssJusto(semPiso(enxuto(fs.readFileSync(path.join(PASTA, p.id + '.html'), 'utf8')))));
   // Em teste a biblioteca muda no disco entre um caso e outro: só guarda fora dele.
   if (process.env.NODE_ENV === 'production') BIBLIOTECA[papel] = lista;
   return lista;
@@ -617,4 +631,4 @@ async function comporTelaInteira(o) {
   return { zonas, falhas };
 }
 
-module.exports = { textosDaPeca, enxuto, semPiso, comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, cortarNome, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO };
+module.exports = { textosDaPeca, enxuto, semPiso, cssJusto, comporPeca, comporTela, comporTelaInteira, papeisDaTela, refazerPeca, regras, fixo, pedidoTexto, limparResposta, motorDoHtml, preencherOuro, preencherPapel, cortarNaPalavra, cortarNome, partirTitulo, OURO, OURO_PAPEL, OURO_VIVO };

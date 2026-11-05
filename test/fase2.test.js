@@ -82,6 +82,8 @@ test('a biblioteca-ouro vai para a IA sem o envoltório do piso: o mesmo exemplo
   assert.equal(compositor.semPiso('font: 700 max(var(--mt-piso, 0cqw), min(4cqw, 6cqh))/1 x;'), 'font: 700 min(4cqw, 6cqh)/1 x;', 'parêntese dentro do valor');
   assert.equal(compositor.semPiso('a max(var(--mt-piso, 0cqw), 2cqw) b max(var(--mt-piso, 0cqw), 3cqw)'), 'a 2cqw b 3cqw');
   assert.equal(compositor.semPiso('max(var(--mt-piso, 0cqw), min(1cqw'), 'max(var(--mt-piso, 0cqw), min(1cqw', 'sem par, fica como está');
+  // O CSS sem os espaços que o navegador ignora; o ":" e o texto do HTML ficam como estão.
+  assert.equal(compositor.cssJusto('<style>\n.a :hover , .b > c { color: red ; }\n</style><p>a , b ; c</p>'), '<style>.a :hover,.b>c{color: red}</style><p>a , b ; c</p>');
   for (const papel of ['destaque', 'lateral', 'cabecalho', 'rodape']) {
     assert.doesNotMatch(compositor.fixo(papel), /--mt-piso/, papel);
   }
