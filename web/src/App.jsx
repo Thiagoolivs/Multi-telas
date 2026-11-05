@@ -93,7 +93,7 @@ const META = {
   // Mídias por propósito (item 34). 'storage' segue como endereço: é Fotos e vídeos.
   pecas: { title: 'Peças prontas' },
   telasprontas: { title: 'Telas prontas' },
-  calendario: { title: 'Calendário da empresa' },
+  calendario: { title: 'Agenda' },
   storage: { title: 'Biblioteca', subtitle: 'Suas fotos, vídeos e músicas.' },
   // Viraram filtros de Arquivos (QA de 26/10); o endereço continua e acende a aba Arquivos.
   musicas: { title: 'Arquivos', nav: 'storage' },
@@ -112,7 +112,8 @@ const META = {
  * numa padaria). O resto vem do META.
  */
 function tituloDe(nome, perfil) {
-  if (nome === 'calendario') return 'Calendário ' + perfil.lugarDe;
+  // Fase 8: a página é a Agenda (a semana na TV e as datas), o nome do menu.
+  if (nome === 'calendario') return 'Agenda';
   return (META[nome] || META.overview).title;
 }
 

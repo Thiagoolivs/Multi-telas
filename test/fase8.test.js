@@ -86,3 +86,53 @@ test('os nomes novos: Ligar uma TV, O que passa, Importância, Tempo na tela, Ca
   // A TV aponta para o botão que existe no painel.
   assert.match(ler('player.html'), /<strong>Ligar uma TV<\/strong>/);
 });
+
+/*
+ * Parte C: a Agenda semanal (BLOCO-8, wireframe D). O bloco 3 achou três
+ * relógios no almoço que ninguém via; a semana mostra cada buraco.
+ */
+test('a semana da TV: o que passa em cada dia e hora, e o buraco com a loja aberta', async () => {
+  const { pathToFileURL } = require('node:url');
+  const S = await import(pathToFileURL(path.join(RAIZ, 'web/src/lib/semana.js')).href);
+  const R = require('../js/rodizio.js');
+  const layout = { zones: [{ id: 'principal', name: 'Principal', type: 'playlist' }, { id: 'lateral', name: 'Lateral', type: 'playlist' }, { id: 'rodape', type: 'ticker' }] };
+  const manha = { type: 'announce', titulo: 'Café da manhã', agendamento: { ativo: true, dataInicio: '', dataFim: '', dias: [], horaInicio: '06:00', horaFim: '11:29' } };
+  const oferta = { type: 'announce', titulo: 'Leve 3', _campanha: 'Semana', agendamento: { ativo: true, dataInicio: '2026-11-05', dataFim: '2026-11-07', dias: [], horaInicio: '', horaFim: '' } };
+  const cfg = { settings: { layoutId: 'x' }, zonas: { principal: { items: [manha, oferta] }, lateral: { items: [] } } };
+  const hoje = new Date(2026, 10, 5);   // quinta
+  const exp = { dias: [1, 2, 3, 4, 5, 6], inicio: '07:00', fim: '18:00' };
+  const s = S.semanaDaTv(cfg, layout, { hoje, expediente: exp, naJanela: R.naJanela });
+  assert.equal(s.dias.length, 7);
+  assert.equal(s.dias[0].rotulo, 'qui 05');
+  assert.deepEqual(s.partes, ['principal'], 'a lateral sem nada não conta como buraco');
+  const cel = (faixa, i) => s.linhas.find((l) => l.faixa === faixa).celulas[i];
+  assert.deepEqual(cel('manha', 0).pecas.map((p) => p.titulo), ['Café da manhã', 'Leve 3']);
+  assert.equal(cel('manha', 0).pecas[1].campanha, 'Semana');
+  assert.equal(cel('manha', 0).pecas[1].ate, '2026-11-07');
+  assert.equal(cel('almoco', 0).vazio, false, 'a oferta cobre o almoço de quinta');
+  assert.equal(cel('almoco', 4).vazio, true, 'segunda, sem a oferta, o almoço fica só com o relógio');
+  assert.equal(cel('almoco', 4).fechado, false);
+  assert.equal(cel('almoco', 3).vazio, false, 'domingo fechado não é buraco');
+  assert.equal(cel('manha', 3).fechado, true, 'domingo a loja não abre');
+  assert.equal(cel('saida', 0).fechado, true, 'às 19h30 a loja já fechou');
+  assert.ok(s.buracos > 0);
+  // Sem horário guardado, a TV mostra o dia inteiro: tudo conta como aberto.
+  assert.equal(S.abertoEm(null, 0, '03:00'), true);
+  assert.equal(S.abertoEm({ dias: [1], inicio: '22:00', fim: '02:00' }, 1, '01:00'), true, 'horário que vira a noite');
+});
+
+test('a Agenda abre na semana, com as datas que vêm embaixo', () => {
+  const c = ler('web/src/pages/CalendarioPage.jsx');
+  assert.match(c, /<h1 className="text-xl font-semibold tracking-tight text-ink">Agenda<\/h1>/);
+  assert.match(c, /<SemanaDaTv onIr=\{onIr\} \/>/);
+  assert.match(c, /title="Datas que vêm"/);
+  const k = ler('web/src/components/agenda/SemanaDaTv.jsx');
+  assert.match(k, /semanaDaTv\(cfg, layout, \{ expediente: tv && tv.expediente, nome: itemSummary \}\)/);
+  assert.match(k, /import '\.\.\/\.\.\/\.\.\/\.\.\/js\/rodizio\.js';/, 'a semana usa o mesmo naJanela da TV');
+  assert.match(k, /Vazio: só o relógio/);
+  // No celular, um dia por vez (os sete lado a lado não cabem); no computador, a semana inteira.
+  assert.match(k, /role="radiogroup" aria-label="Qual dia"/);
+  assert.match(k, /<Celula c=\{l\.celulas\[diaCel\]\}/);
+  assert.match(k, /className="hidden overflow-x-auto sm:block"/);
+  assert.match(ler('web/src/App.jsx'), /if \(nome === 'calendario'\) return 'Agenda';/);
+});
