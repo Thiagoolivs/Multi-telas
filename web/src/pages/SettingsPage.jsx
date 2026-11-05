@@ -190,7 +190,7 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
           </Field>
         </div>
         <div className="flex items-center gap-3 border-t border-line px-4 py-3">
-          <Button variant="primary" icon={KeyRound} disabled={salvandoSenha || !nova || !confirma} onClick={salvarSenha}>
+          <Button variant="secondary" icon={KeyRound} disabled={salvandoSenha || !nova || !confirma} onClick={salvarSenha}>
             {salvandoSenha ? 'Salvando…' : primeiraSenha ? 'Criar senha' : 'Trocar senha'}
           </Button>
           {msgSenha && <span className="text-sm text-emerald-500">{msgSenha}</span>}
@@ -282,7 +282,7 @@ export function SettingsPage({ me, theme, onToggleTheme, onLogout, onChanged, on
       <Dialog open={excluirAberto} onClose={() => setExcluirAberto(false)}
         title="Excluir minha conta" description="Isto apaga tudo permanentemente. Não há como recuperar depois."
         footer={<><Button variant="ghost" onClick={() => setExcluirAberto(false)}>Cancelar</Button>
-          <Button variant="primary" icon={Trash2} disabled={excluindo || confirmacao.trim().toLowerCase() !== String(user.email || '').toLowerCase()}
+          <Button variant="danger" icon={Trash2} disabled={excluindo || confirmacao.trim().toLowerCase() !== String(user.email || '').toLowerCase()}
             onClick={excluirConta}>{excluindo ? 'Excluindo…' : 'Excluir para sempre'}</Button></>}>
         <div className="space-y-3">
           <div className="rounded-lg border border-danger-soft bg-danger-soft p-3 text-sm text-danger">

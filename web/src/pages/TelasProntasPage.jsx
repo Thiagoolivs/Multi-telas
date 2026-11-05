@@ -241,7 +241,7 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
       </div>
 
       {!lista.length ? (
-        <EmptyState icon={LayoutTemplate} title="As telas prontas do seu tipo de negócio estão chegando"
+        <EmptyState icon={LayoutTemplate} title="As telas prontas do seu tipo de negócio estão chegando" exemplo={['Tela pronta', 'A TV inteira, com a sua marca', 'é só trocar o texto']}
           description={dados.telas.length ? 'Enquanto isso, veja as que já estão prontas para outros negócios.' : 'Enquanto isso, as peças prontas já estão com a sua marca.'}
           action={dados.telas.length
             ? <Button variant="secondary" onClick={() => setTodas(true)}>Ver todas</Button>

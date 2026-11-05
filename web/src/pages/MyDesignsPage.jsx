@@ -809,7 +809,7 @@ export function MyDesignsPage({ onIr }) {
         {loading ? (
           <div className="p-6"><Spinner size={20} /></div>
         ) : saved.length === 0 ? (
-          <EmptyState icon={FolderOpen} title="Nada por aqui ainda"
+          <EmptyState icon={FolderOpen} title="Nada por aqui ainda" exemplo={['Peça', 'Guardada para usar depois', 'na TV e nas redes']}
             description="Comece por “Criar”: uma frase e a peça sai pronta para a TV, com a sua marca." />
         ) : groupNames.length === 0 ? (
           <EmptyState icon={Search} title="Nenhum resultado" description="Tente outro termo de busca." />

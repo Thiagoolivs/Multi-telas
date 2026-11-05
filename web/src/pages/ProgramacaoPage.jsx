@@ -79,7 +79,7 @@ export function ProgramacaoPage({ onIr }) {
         <Panel><ErrorState description={erro} onRetry={() => setTentativa((n) => n + 1)} /></Panel>
       ) : telas === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : telas.length === 0 ? (
         <Panel>
-          <EmptyState icon={MonitorPlay} title="Nenhuma TV ainda" description="Ligue a primeira TV e a programação dela aparece aqui."
+          <EmptyState icon={MonitorPlay} exemplo title="Nenhuma TV ainda" description="Ligue a primeira TV e a programação dela aparece aqui."
             action={<Button variant="primary" icon={Plus} onClick={() => onIr && onIr('screens', { abrirParear: true })}>Parear uma TV</Button>} />
         </Panel>
       ) : (

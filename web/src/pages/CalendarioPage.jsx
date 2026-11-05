@@ -235,7 +235,7 @@ export function CalendarioPage({ onIr }) {
         {proximos.length ? (
           <ul className="divide-y divide-line">{proximos.map((ev) => <Linha key={ev.id} ev={ev} />)}</ul>
         ) : (
-          <EmptyState icon={CalendarDays} title="Nenhuma data ainda"
+          <EmptyState icon={CalendarDays} title="Nenhuma data ainda" exemplo={['27/11', 'Black Friday', 'entra e sai da TV sozinha']}
             description="Cole o calendário acima: feriados, eventos, campanhas e avisos viram peças na TV, cada uma no seu período." />
         )}
       </Panel>

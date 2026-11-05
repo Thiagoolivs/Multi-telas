@@ -663,7 +663,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                   <div className="inline-flex gap-1 rounded-full border border-line p-0.5" role="radiogroup" aria-label="O que o quadro mostra">
                     {[['agora', 'Agora'], ['rascunho', 'Como vai ficar']].map(([id, nome]) => (
                       <button key={id} type="button" role="radio" aria-checked={verComo === id} onClick={() => setVerComo(id)}
-                        className={cn('min-h-8 rounded-full px-3 text-xs font-medium max-sm:min-h-11', verComo === id ? 'bg-accent text-accent-fg' : 'text-ink-2 hover:bg-surface-2')}>
+                        className={cn('min-h-8 rounded-full px-3 text-xs font-medium max-sm:min-h-11', verComo === id ? 'bg-surface-2 font-semibold text-ink ring-1 ring-line-strong' : 'text-ink-2 hover:bg-surface-2')}>
                         {nome}
                       </button>
                     ))}
@@ -709,7 +709,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                     {onCriar
                       ? <Button size="sm" variant="secondary" icon={Plus} onClick={() => onCriar(papelDaZona(activeZone))}>Criar</Button>
                       : <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>}
-                    <Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
+                    {/* Fase 8: o violeta da página é o "Pôr na TV". */}
+                    <Button size="sm" variant="secondary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
                   </>} />
                 {aiOpen && (
                   <div className="space-y-2 border-b border-line bg-surface-2/50 p-3">
@@ -725,7 +726,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                   </div>
                 )}
                 {items.length === 0 ? (
-                  <EmptyState icon={Plus} title="Sem conteúdo" description="Adicione o primeiro conteúdo para esta zona."
+                  <EmptyState icon={Plus} title="Nada nesta parte ainda" description="Ponha o primeiro: um aviso, uma oferta, uma foto." exemplo={['Novo', 'O que passa aqui', 'um depois do outro']}
                     action={<Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar conteúdo</Button>} />
                 ) : (
                   <ul className="divide-y divide-line">

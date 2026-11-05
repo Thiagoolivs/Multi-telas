@@ -42,8 +42,9 @@
 
 :root {
   /* Tamanhos de letra que mudam com a tela (tailwind.config.js, text-2xs e text-xs). */
-  --fs-2xs: 0.6875rem; --lh-2xs: 1rem;
-  --fs-xs: 0.75rem; --lh-xs: 1.1rem;
+  --fs-2xs: 0.75rem; --lh-2xs: 1.05rem;
+  --fs-xs: 0.8125rem; --lh-xs: 1.2rem;
+  --fs-xl: 1.75rem; --lh-xl: 2.15rem;
   --c-canvas: 245 247 250;      /* #F5F7FA */
   --c-surface: 255 255 255;     /* #FFFFFF */
   --c-surface-2: 243 245 248;   /* #F3F5F8 */
@@ -99,7 +100,7 @@
 }
 
 @media (max-width: 639px) {
-  :root { --fs-2xs: 0.8125rem; --lh-2xs: 1.15rem; --fs-xs: 0.8125rem; --lh-xs: 1.2rem; }
+  :root { --fs-2xs: 0.8125rem; --lh-2xs: 1.15rem; --fs-xs: 0.8125rem; --lh-xs: 1.2rem; --fs-xl: 1.5rem; --lh-xl: 1.9rem; }
   /*
    * Alvo de toque de 44 px no celular, para tudo que se toca (QA de 26/10:
    * 75 alvos menores que 32 px em Peças prontas, 19 no Banco de Imagens, 15

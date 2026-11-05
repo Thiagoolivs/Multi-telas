@@ -27,7 +27,8 @@ test('letra: text-2xs e text-xs viram 13 px no celular', () => {
   assert.match(tw, /'2xs': \['var\(--fs-2xs\)'/);
   assert.match(tw, /xs: \['var\(--fs-xs\)'/);
   const css = ler('web/src/index.css');
-  assert.match(css, /--fs-2xs: 0\.6875rem;/);
+  // Fase 8: 12 px no computador (era 11), 13 no celular.
+  assert.match(css, /--fs-2xs: 0\.75rem;/);
   assert.match(css, /@media \(max-width: 639px\) \{\s*:root \{ --fs-2xs: 0\.8125rem;[^}]*--fs-xs: 0\.8125rem;/);
 });
 

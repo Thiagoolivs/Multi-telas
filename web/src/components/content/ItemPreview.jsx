@@ -75,7 +75,7 @@ export function Body({ item }) {
             {item.selo && <span className="rounded bg-white/15 px-1.5 py-0.5 text-[9px] font-bold uppercase">{item.selo}</span>}
             <div className="text-base font-semibold">{item.titulo || 'Produto'}</div>
             {item.precoDe && <div className="text-xs line-through opacity-50">{item.precoDe}</div>}
-            {item.precoPor && <div className="text-xl font-bold text-emerald-300">{item.precoPor}</div>}
+            {item.precoPor && <div className="text-lg font-bold text-emerald-300">{item.precoPor}</div>}
             {item.cta && <div className="mt-0.5 rounded bg-white/15 px-2 py-0.5 text-[10px]">{item.cta}</div>}
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useState } from 'react';
 import { Users, Images, BarChart3, ChevronRight } from 'lucide-react';
 import { Partes } from '../components/ui/Partes.jsx';
+import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { usePerfil } from '../lib/perfil.js';
 
 /*
@@ -60,6 +61,9 @@ const APPS = [
 export function AppsPage({ onIr }) {
   const frente = usePerfil();
   return (
+    <div>
+    {/* O título da página (o axe acusava a página sem h1). */}
+    <PageHeader title="Apps" subtitle="O que a TV mostra sozinha, depois de ligado uma vez." />
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {APPS.map(({ id, nome, texto, Icone }) => (
         <button key={id} type="button" onClick={() => onIr(id)}
@@ -72,6 +76,7 @@ export function AppsPage({ onIr }) {
           <ChevronRight size={16} className="mt-1 shrink-0 text-ink-3" />
         </button>
       ))}
+    </div>
     </div>
   );
 }

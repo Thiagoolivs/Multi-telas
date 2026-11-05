@@ -107,7 +107,7 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling, onAbrirTela 
         ) : loadingDev ? (
           <div className="p-6"><Spinner size={20} /></div>
         ) : list.length === 0 ? (
-          <EmptyState icon={MonitorPlay} title="Nenhuma TV ainda"
+          <EmptyState icon={MonitorPlay} exemplo title="Nenhuma TV ainda"
             description="Assim que você parear uma TV, os avisos sobre ela aparecem aqui."
             action={<Button size="sm" variant="primary" onClick={onGoScreens}>Ir para Telas</Button>} />
         ) : alerts.length === 0 ? (

@@ -32,18 +32,21 @@ export default {
       },
       fontSize: {
         /*
-         * As duas menores crescem no celular (index.css, --fs-2xs/--fs-xs):
-         * 11 e 12 px no computador; 13 px no celular (QA de 26/10: "para o
-         * dono de loja, no celular, 13 px deveria ser o mínimo").
+         * A ESCALA DA FASE 8 (BLOCO-8 §4.5): o painel era de ferramenta
+         * técnica (corpo de 13 px, título de seção também de 13, e a página
+         * pulando para 22), e tudo tinha o mesmo peso. Agora:
+         *   corpo 15 · título de seção 17 · título de página 28 (24 no
+         *   celular) · números grandes 32 · nada abaixo de 12 (13 no celular).
+         * As duas menores e o título de página mudam com a tela (index.css).
          */
-        '2xs': ['var(--fs-2xs)', { lineHeight: 'var(--lh-2xs)' }],   // 11 · 13 no celular
-        xs: ['var(--fs-xs)', { lineHeight: 'var(--lh-xs)' }],        // 12 · 13 no celular
-        sm: ['0.8125rem', { lineHeight: '1.25rem' }],    // 13
-        base: ['0.875rem', { lineHeight: '1.375rem' }],  // 14 (base de dashboard)
-        md: ['0.9375rem', { lineHeight: '1.5rem' }],     // 15
-        lg: ['1.0625rem', { lineHeight: '1.6rem' }],     // 17
-        xl: ['1.375rem', { lineHeight: '1.8rem' }],      // 22
-        '2xl': ['1.75rem', { lineHeight: '2.1rem' }],    // 28
+        '2xs': ['var(--fs-2xs)', { lineHeight: 'var(--lh-2xs)' }],   // 12 · 13 no celular
+        xs: ['var(--fs-xs)', { lineHeight: 'var(--lh-xs)' }],        // 13 · 13 no celular
+        sm: ['0.9375rem', { lineHeight: '1.4rem' }],     // 15: o corpo
+        base: ['1rem', { lineHeight: '1.5rem' }],        // 16
+        md: ['1rem', { lineHeight: '1.5rem' }],          // 16
+        lg: ['1.0625rem', { lineHeight: '1.55rem' }],    // 17: título de seção
+        xl: ['var(--fs-xl)', { lineHeight: 'var(--lh-xl)' }],        // 28: título de página · 24 no celular
+        '2xl': ['2rem', { lineHeight: '2.4rem' }],       // 32: números grandes
       },
       borderRadius: { sm: '5px', DEFAULT: '7px', md: '8px', lg: '10px', xl: '14px' },
       boxShadow: {

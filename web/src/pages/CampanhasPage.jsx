@@ -174,7 +174,8 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
           <h1 className="text-xl font-semibold tracking-tight text-ink">{arquivadas ? 'Arquivados' : 'Criados'}</h1>
           <p className="mt-1 text-sm text-ink-2">{arquivadas ? 'Fora da frente, mas guardados. Desarquive para voltar.' : 'Tudo o que a IA criou e ficou pronto. Abra para pôr na TV, editar à mão ou pedir mudanças.'}</p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
+        {/* O Criar do menu é o violeta; aqui é o atalho. */}
+        <Button variant="secondary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -202,7 +203,7 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
               title={procurando ? 'Nenhuma campanha com “' + busca.trim() + '”' : 'Nenhuma campanha arquivada'}
               description={procurando ? 'Confira o nome, ou procure nas ' + (arquivadas ? 'ativas' : 'arquivadas') + '.' : 'Arquive uma campanha para tirá-la da frente sem perder nada.'} />
           ) : (
-            <EmptyState icon={Megaphone} title="Nenhuma campanha ainda"
+            <EmptyState icon={Megaphone} title="Nenhuma campanha ainda" exemplo={['Campanha', 'Uma ideia vira a TV inteira', 'TV · Instagram · WhatsApp']}
               description="Conte no Criar o que você quer mostrar: a IA monta as TVs, a programação e as redes, e a campanha aparece aqui."
               action={<Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar a primeira</Button>} />
           )}

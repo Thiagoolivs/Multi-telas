@@ -102,7 +102,7 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
         )}
         {!loading && !error && todas.length === 0 && (
           <EmptyState
-            icon={MonitorPlay}
+            icon={MonitorPlay} exemplo={['Código da TV', 'A B 1 2', 'aparece na TV ao ligar']}
             title="Nenhuma TV ainda"
             description={podeGerir
               ? 'Ligue a TV no app MultiTelas TV (ou abra o endereço no navegador dela). Ela mostra um código e um QR: aponte o celular para o QR, ou toque abaixo e digite o código.'
@@ -228,7 +228,8 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
           </div>
         )}
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="primary" icon={LayoutTemplate} onClick={onContent} className="col-span-2">{d.hasConfig ? 'Abrir a TV' : 'Pôr conteúdo nesta TV'}</Button>
+          {/* Fase 8: com várias TVs, um violeta por cartão virava um mar violeta; o da página é o de ligar a TV. */}
+          <Button variant="secondary" icon={LayoutTemplate} onClick={onContent} className="col-span-2 border-accent/50 font-semibold">{d.hasConfig ? 'Abrir a TV' : 'Pôr conteúdo nesta TV'}</Button>
           <Button variant="secondary" icon={Eye} onClick={onVer} title="Ver a tela agora">Ver agora</Button>
           <Button variant="secondary" icon={MoreHorizontal} onClick={() => setMais(true)} aria-label={'Mais opções da TV ' + (d.name || '')}>Mais opções</Button>
         </div>

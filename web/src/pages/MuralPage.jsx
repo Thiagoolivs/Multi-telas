@@ -57,7 +57,7 @@ export function MuralPage() {
   if (!lista.length) {
     return (
       <EmptyState
-        icon={QrCode}
+        icon={QrCode} exemplo={['Mural', 'As fotos aparecem aqui', 'mande pelo QR']}
         title="Nenhum mural ainda"
         description={'Um mural gera um QR. Quem apontar a câmera manda uma foto — e ela aparece na TV em segundos. Serve para Dia dos Pais, festa junina, ' + perfil.textos.festas + '.'}
         action={<Button variant="primary" icon={Plus} onClick={criar} disabled={criando}>{criando ? 'Criando…' : 'Criar meu primeiro mural'}</Button>}

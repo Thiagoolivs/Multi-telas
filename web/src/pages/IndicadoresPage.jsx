@@ -215,7 +215,7 @@ export function IndicadoresPage() {
       <Panel className="mb-4">
         <PanelHeader title="Os números" description={indicadores.length ? 'O último valor de cada um. Na TV, o cartão mostra o número, a variação e a meta.' : undefined} />
         {indicadores.length === 0 ? (
-          <EmptyState icon={Gauge} title="Nenhum número ainda" description={'Ligue um sistema acima: o sistema ' + perfil.lugarDe + ' manda os números, ou o MultiTelas busca num endereço.'} />
+          <EmptyState icon={Gauge} title="Nenhum número ainda" exemplo={['Meta do mês', '1.250', 'atualiza sozinho']} description={'Ligue um sistema acima: o sistema ' + perfil.lugarDe + ' manda os números, ou o MultiTelas busca num endereço.'} />
         ) : (
           <ul className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
             {indicadores.map((i) => {
