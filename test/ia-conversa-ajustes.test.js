@@ -104,10 +104,11 @@ test('Pedir à IA: entende o tipo, pergunta a TV quando há várias, e leva ao C
   assert.equal(falsa.pergunta, As.PERGUNTA_DO_TIPO.pergunta, 'uma ferramenta inventada pelo painel virou tarefa');
 });
 
-test('o painel: Pedir à IA na Programação; o aviso e o "Mudar com IA" com a mini-conversa', () => {
+test('o painel: um só Criar (fase 7); o aviso e o "Mudar com IA" com a mini-conversa', () => {
   const P = ler('web/src/pages/ProgramacaoPage.jsx');
-  assert.match(P, /<Button variant="secondary" icon=\{Sparkles\} onClick=\{\(\) => setAvisoAberto\(true\)\}>Pedir à IA<\/Button>/);
-  assert.match(P, /<PedirIA onFechar=\{\(\) => setAvisoAberto\(false\)\} onIr=\{onIr\} \/>/);
+  // Fase 7: o "Pedir à IA" da Programação era uma segunda porta para a mesma conversa; agora é só o Criar.
+  assert.doesNotMatch(P, /<PedirIA /);
+  assert.match(P, /<Button variant="primary" icon=\{Plus\} onClick=\{\(\) => onIr && onIr\('criar'\)\}>Criar<\/Button>/);
   const I = ler('web/src/components/tela/PedirIA.jsx');
   assert.match(I, /if \(r\.destino === 'criar'\) \{ onFechar\(\); if \(onIr\) onIr\('criar', \{ texto: r\.texto \}\); return; \}/);
   assert.match(I, /if \(avisoPronto\) return <AvisoRapido avisoInicial=\{avisoPronto\} onFechar=\{onFechar\} \/>;/);

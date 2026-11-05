@@ -60,7 +60,8 @@ test('o item enviado é contain + fundo, e vai para a zona DEITADA', async () =>
   assert.ok(reguaDoFundo().test('data:image/jpeg;base64,AA=='));
   const c = ler('web/src/components/content/SubirConteudo.jsx');
   // Foto em pé na TV deitada entra inteira na principal, não espremida na lateral.
-  assert.match(c, /pecas = prontos\.map\(\(x\) => \(\{ formato: '16\/9', item: itemDaMidia/);
+  // Fase 7: com o "quando" escolhido (components/tela/PorNaTV.jsx, EscolherQuando).
+  assert.match(c, /pecas = prontos\.map\(\(x\) => \(\{ formato: '16\/9', item: comQuando\(itemDaMidia/);
   // Cada envio SOMA: a origem é única (data e hora), não troca a foto anterior.
   assert.match(c, /const titulo = 'Enviado ' \+ new Date\(\)/);
 });
@@ -71,7 +72,8 @@ test('galeria e câmera, progresso, e as telas já marcadas', () => {
   // Pelo botão que abre o seletor (QA de 03/11: o <label> com input escondido não abria pelo teclado).
   assert.match(c, /<EscolherArquivo accept=\{ACEITA\} multiple/);
   assert.match(c, /role="progressbar"/);
-  assert.match(c, /setAlvos\(lista\.map\(\(t\) => t\.id\)\)/);
+  // Todas marcadas; aberto do Criar de uma TV, só ela (fase 7).
+  assert.match(c, /setAlvos\(tela && lista\.some\(\(t\) => t\.id === tela\) \? \[tela\] : lista\.map\(\(t\) => t\.id\)\)/);
   const s = ler('web/src/lib/subir.js');
   assert.match(s, /x\.upload\.onprogress/, 'sem progresso real do envio');
   // A foto de celular é encolhida antes de subir (4G).

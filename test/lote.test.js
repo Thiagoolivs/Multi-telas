@@ -65,7 +65,8 @@ test('erro que não é conflito não é repetido; e os envios a várias TVs pass
   }
   assert.match(ler('web/src/lib/publicar.js'), /return gravarEmLote\(devs, \(cfg\) => montar\(cfg\), titulo \|\| 'Publicar'\);/);
   assert.match(ler('web/src/pages/TelasProntasPage.jsx'), /avisarComDesfazer\(/);
-  assert.match(ler('web/src/pages/PecasProntasPage.jsx'), /avisarComDesfazer\(/);
+  // Fase 7: as Peças prontas (e o Criar) põem na TV pelo diálogo único, que avisa com Desfazer.
+  assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /avisarComDesfazer\(/);
   assert.doesNotMatch(ler('web/src/pages/CalendarioPage.jsx'), /gravarNaTela/);
 });
 
@@ -175,7 +176,7 @@ test('mandar para um grupo: "Todas" e cada grupo marcam as TVs de uma vez nos en
   const g = ler('web/src/components/tela/AtalhosDeGrupo.jsx');
   assert.match(g, /atalho\('Todas', lista\.map\(\(t\) => t\.id\)\)/);
   assert.match(g, /grupos\.map\(\(g\) => atalho\(g, lista\.filter\(\(t\) => t\.grupo === g\)\.map\(\(t\) => t\.id\)\)\)/);
-  assert.match(ler('web/src/pages/PecasProntasPage.jsx'), /<AtalhosDeGrupo telas=\{telas\} alvos=\{alvos\} onEscolher=\{setAlvos\} \/>/);
+  assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /<AtalhosDeGrupo telas=\{telas\} alvos=\{alvos\} onEscolher=\{setAlvos\} \/>/);
   // Na tela pronta, o grupo só marca as TVs do mesmo jeito (em pé × deitada).
   assert.match(ler('web/src/pages/TelasProntasPage.jsx'), /<AtalhosDeGrupo telas=\{tvs\} alvos=\{alvos\} onEscolher=\{setAlvos\} podeIr=/);
 });

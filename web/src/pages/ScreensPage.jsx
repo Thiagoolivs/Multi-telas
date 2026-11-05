@@ -228,7 +228,7 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
           </div>
         )}
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="primary" icon={LayoutTemplate} onClick={onContent} className="col-span-2">{d.hasConfig ? 'Mudar o que passa' : 'Pôr conteúdo nesta TV'}</Button>
+          <Button variant="primary" icon={LayoutTemplate} onClick={onContent} className="col-span-2">{d.hasConfig ? 'Abrir a TV' : 'Pôr conteúdo nesta TV'}</Button>
           <Button variant="secondary" icon={Eye} onClick={onVer} title="Ver a tela agora">Ver agora</Button>
           <Button variant="secondary" icon={MoreHorizontal} onClick={() => setMais(true)} aria-label={'Mais opções da TV ' + (d.name || '')}>Mais opções</Button>
         </div>

@@ -31,8 +31,12 @@ export const PAGINAS = {
   designs: 'Meus Designs',
   telasprontas: 'Telas prontas',
   pecas: 'Peças prontas',
+  // Fase 7: a Biblioteca única — o que está pronto, o que é seu, os arquivos e os Apps.
+  prontos: 'Prontos para você',
+  seus: 'Seus conteúdos',
+  apps: 'Apps',
   // Fotos e vídeos, Músicas e Da IA viraram uma aba só, com filtro (QA de 26/10).
-  storage: 'Arquivos',
+  storage: 'Fotos e vídeos',
   musicas: 'Músicas',
   ia: 'Da IA',
   banco: 'Banco de Imagens',
@@ -48,68 +52,76 @@ export const PAGINAS = {
 };
 
 /*
- * Os grupos. A primeira página é para onde o clique no menu leva.
- * `content` (o editor de uma tela) não tem aba: abre de dentro da Programação.
- *
- * Programação é um grupo próprio desde o item 40 (EXECUTOR §2d): "dentro de
- * Telas está muito escondido". Telas é o aparelho; Programação é o que passa.
+ * O MENU NOVO (fase 7 do plano de ação; docs/qa-total/BLOCO-8-INTERFACE.md, 4.1).
+ * Eram 8 grupos, 22 abas e 3 níveis; o dono se perdia em "portas" demais.
+ * Agora: o botão Criar, fixo em cima, e 5 itens (6 na Empresas):
+ *   Início · Telas · Agenda · Biblioteca · Marca (· Pessoas, na Empresas).
+ * Plano, Equipe, Ajustes e Ajuda vão para o avatar (`menu: false`). Cada
+ * página antiga continua aberta pelo mesmo endereço; o que mudou foi onde
+ * ela mora. `tambem`: páginas que acendem o grupo sem ser aba dele.
  */
 export const GRUPOS = [
-  { id: 'inicio', label: 'Início', paginas: ['overview', 'alerts'] },
-  { id: 'telas', label: 'Telas', paginas: ['screens', 'relatorio'] },
-  // D23: o calendário da empresa vira programação com período — mora ao lado dela.
-  { id: 'programacao', label: 'Programação', paginas: ['programacao', 'calendario'], tambem: ['content'] },
+  // Criar é o botão de cima, sempre igual (`botao`). O que está sendo criado vira aviso no topo.
+  { id: 'criar', label: 'Criar', botao: true, paginas: ['criar'], tambem: ['criando', 'rapida'] },
+  // Os alertas viram uma faixa "Precisa de você" no Início (a página continua no endereço).
+  { id: 'inicio', label: 'Início', paginas: ['overview'], tambem: ['alerts'] },
   /*
-   * D47 (o dono, 23/10): "tem que ter a aba criar, criando e criados". Criar
-   * é a conversa, sempre começando limpa; Criando, o que a IA está fazendo;
-   * Criados, o que ficou pronto (as campanhas). Meus Designs, a biblioteca
-   * de peças soltas, foi para Mídias — sem sumir.
+   * Telas: as TVs; cada uma abre a página dela (o que passa, os ajustes e o
+   * que passou). A Programação deixou de ser item do menu: ela é a lista das
+   * TVs com o que passa em cada uma, dentro de Telas.
    */
-  { id: 'criar', label: 'Criar', paginas: ['criar', 'criando', 'campanhas'], tambem: ['rapida'] },
+  { id: 'telas', label: 'Telas', paginas: ['screens'], tambem: ['programacao', 'content', 'relatorio'] },
+  // Agenda: as datas e o que tem período (a semana visual é a fase 8).
+  { id: 'agenda', label: 'Agenda', paginas: ['calendario'] },
   /*
-   * Biblioteca (era "Mídias"; QA de 26/10: "sete abas para 'coisas que posso
-   * pôr na TV', e no celular as abas são cortadas"). O que está pronto para a
-   * TV primeiro, depois a matéria-prima; Fotos e vídeos, Músicas e Da IA são
-   * uma aba só (Arquivos), com filtro. O id fica 'midias': é o que os
-   * endereços antigos e a barra de baixo usam.
+   * Biblioteca: tudo que pode ir para a TV, uma vez só. Quatro abas no máximo:
+   * o que está pronto, o que é seu, as fotos e vídeos (com as músicas) e,
+   * no Comércio e na Saúde, os Apps (aniversários, mural e indicadores).
+   * As páginas de antes continuam como partes delas.
    */
-  { id: 'midias', label: 'Biblioteca', paginas: ['telasprontas', 'pecas', 'designs', 'storage', 'banco'], tambem: ['studio', 'campaigns', 'images', 'musicas', 'ia'] },
+  { id: 'midias', label: 'Biblioteca', paginas: ['prontos', 'seus', 'storage'],
+    tambem: ['apps', 'telasprontas', 'pecas', 'campanhas', 'designs', 'studio', 'campaigns', 'images', 'musicas', 'ia', 'banco'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },
-  /*
-   * Recursos extras: o que não é o dia a dia de quem tem loja (QA de 26/10:
-   * "recursos de nicho, que aumentam o menu e o suporte"). Continuam todos
-   * aqui, num lugar só, no fim do menu. O relatório de exibição foi para
-   * Telas: é o "passou mesmo?" de cada TV.
-   */
-  { id: 'extras', label: 'Recursos extras', paginas: ['birthdays', 'mural', 'indicadores'] },
-  { id: 'conta', label: 'Conta', paginas: ['billing', 'team', 'settings', 'support'] },
+  // Pessoas: item do menu na Empresas; no Comércio e na Saúde, os Apps da Biblioteca (gruposDa).
+  { id: 'extras', label: 'Pessoas', paginas: ['birthdays', 'mural', 'indicadores'] },
+  // A conta mora no avatar (Topbar): Plano, Equipe, Ajustes e Ajuda.
+  { id: 'conta', label: 'Conta', menu: false, paginas: ['billing', 'team', 'settings', 'support'] },
 ];
 
 /*
- * O menu DA FRENTE (docs/FRENTES.md). As páginas e os endereços são os
- * mesmos nas três; muda o que está à mão. No MultiTelas Empresas, Pessoas,
- * Mural e Indicadores são o dia a dia de RH e gestão: o grupo sobe para
- * depois da Biblioteca e se chama "Pessoas e indicadores". No Saúde e no
- * Comércio, fica no fim, como "Recursos extras". O nome e a posição vêm do
- * registro das frentes (js/perfil.js, campo `extras`).
+ * O menu DA FRENTE (docs/FRENTES.md). Na Empresas, Pessoas é o dia a dia de
+ * RH: item do menu, depois da Biblioteca. No Comércio e na Saúde, vira a aba
+ * Apps da Biblioteca ("conteúdos que se atualizam sozinhos") — o menu fica
+ * com 5 itens. O nome e o lugar vêm do registro das frentes (js/perfil.js).
  */
 export function gruposDa(frente) {
   const f = P.de(frente);
-  const extras = GRUPOS.find((g) => g.id === 'extras');
-  const resto = GRUPOS.filter((g) => g.id !== 'extras');
-  const i = resto.findIndex((g) => g.id === f.extras.depoisDe);
-  resto.splice(i < 0 ? resto.length : i + 1, 0, { ...extras, label: f.extras.rotulo });
-  return resto;
+  return GRUPOS.map((g) => {
+    if (g.id === 'extras') return f.extras.noMenu ? { ...g, menu: false } : { ...g, label: f.extras.rotulo };
+    if (g.id === 'midias' && f.extras.noMenu) return { ...g, paginas: g.paginas.concat('apps') };
+    return g;
+  });
+}
+// Os itens do menu (a lista de baixo do botão Criar), na ordem.
+export function itensDoMenu(frente) {
+  return gruposDa(frente).filter((g) => g.menu !== false && !g.botao);
 }
 
-// No celular: a barra de baixo. O resto fica em "Mais" (o menu inteiro).
-// A Programação entra no lugar de Telas: mudar o que passa é o uso de todo dia;
-// parear é uma vez só (e Telas segue em "Mais").
-export const BARRA_INFERIOR = ['inicio', 'programacao', 'criar', 'midias'];
+// No celular: a barra de baixo, com o Criar no meio. O resto (Marca, Pessoas, a conta) fica no menu de cima.
+export const BARRA_INFERIOR = ['inicio', 'telas', 'criar', 'agenda', 'midias'];
 
 /* O grupo de uma página (ou nulo, para as páginas de quem opera a plataforma). */
 export function grupoDa(pagina) {
   return GRUPOS.find((g) => g.paginas.includes(pagina) || (g.tambem || []).includes(pagina)) || null;
+}
+/*
+ * O grupo aceso NA FRENTE: no Comércio e na Saúde, Pessoas, Mural e
+ * Indicadores moram nos Apps da Biblioteca — é ela que acende.
+ */
+export function grupoNaFrente(pagina, frente) {
+  const g = grupoDa(pagina);
+  if (g && g.id === 'extras' && P.de(frente).extras.noMenu) return gruposDa(frente).find((x) => x.id === 'midias');
+  return g ? gruposDa(frente).find((x) => x.id === g.id) : null;
 }
 
 /*
@@ -119,7 +131,7 @@ export function grupoDa(pagina) {
  * escreve.
  */
 // Nomes novos para páginas que mantêm o endereço antigo, e grupos que mudaram de nome.
-const APELIDOS = { criados: 'campanhas', automaticos: 'birthdays', relatorios: 'relatorio', biblioteca: 'telasprontas' };
+const APELIDOS = { criados: 'campanhas', automaticos: 'birthdays', relatorios: 'relatorio', biblioteca: 'prontos', pessoas: 'birthdays' };
 
 export function paginaDoIr(ir) {
   if (!ir) return null;

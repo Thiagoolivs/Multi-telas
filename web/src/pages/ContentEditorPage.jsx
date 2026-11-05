@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'react';
 import {
-  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Settings2, Info, CalendarClock, MessageSquare, LayoutTemplate, Pencil } from 'lucide-react';
+  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Info, CalendarClock, MessageSquare, LayoutTemplate, Pencil, Undo2, Redo2 } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
@@ -20,11 +20,18 @@ import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
 import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
 import { MudarComIA } from '../components/tela/MudarComIA.jsx';
 import { FaixaDaTela, pecasDaFaixa, comPecas } from '../components/tela/FaixaDaTela.jsx';
-import { papelDaZona, campanhasDaConfig, tamanhosDasZonas } from '../lib/tela.js';
+import { papelDaZona, campanhasDaConfig, tamanhosDasZonas, estadoDoRascunho } from '../lib/tela.js';
 import { CampanhasNaTela, semCampanha } from '../components/tela/CampanhasNaTela.jsx';
+import { MiniaturaDaTela } from '../components/tela/MiniaturaDaTela.jsx';
+import { Palco } from '../components/content/VerTelaAgora.jsx';
+import { Partes } from '../components/ui/Partes.jsx';
+import { StatusDot } from '../components/ui/Badge.jsx';
+import { deviceStatus } from '../lib/deviceStatus.js';
 import { criar } from '../api.js';
 // Editor visual (react-moveable) carregado sob demanda — não pesa o painel.
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
+// O que passou nesta TV (fase 7): o relatório, só dela, numa aba da página.
+const RelatorioPage = lazy(() => import('./RelatorioPage.jsx').then((m) => ({ default: m.RelatorioPage })));
 const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
 import { useAsync } from '../lib/useAsync.js';
 import { deviceConfig, brand as brandApi } from '../api.js';
@@ -82,7 +89,22 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   const [tentativa, setTentativa] = useState(0);
 
   const [cfg, setCfg] = useState(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  /*
+   * A PÁGINA DA TV (fase 7): o que passa, os ajustes e o que passou numa
+   * página só. Antes eram quatro lugares (Telas, Programação, o diálogo de
+   * Ajustes e o Relatório), e a pessoa não sabia em qual estava a TV.
+   */
+  const [aba, setAba] = useState('passa');
+  // O palco mostra a TV agora ou, com rascunho, como ela vai ficar.
+  const [verComo, setVerComo] = useState('agora');
+  /*
+   * Desfazer o "Pôr na TV": `naTV` é a programação que está na TV (a lida ao
+   * abrir, ou a última posta daqui) e `anterior`, a que estava antes dela.
+   * Desfazer põe a anterior de volta; tocar de novo refaz.
+   */
+  const naTV = useRef(null);
+  const anterior = useRef(null);
+  const [desfeito, setDesfeito] = useState(false);
   const [zoneId, setZoneId] = useState(null);
   const [selected, setSelected] = useState(0);
   const [dirty, setDirty] = useState(false);
@@ -118,6 +140,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     if (error || !data) { setCfg(null); return; }
     const seeded = data.config || defaultConfig(device.name);
     versao.current = data.versao || 0;
+    naTV.current = data.config || null; anterior.current = null;
     setConflito(false);
     setTentativa(0);
     /*
@@ -403,7 +426,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     try {
       const r = await deviceConfig.save(device.id, alvo, versao.current);
       if (r && r.updatedAt) versao.current = r.updatedAt;
-      setDirty(false); setPublishedAt(Date.now()); setTentativa(0); setConflito(false); setAvisoRascunho(null);
+      anterior.current = naTV.current; naTV.current = alvo;
+      setDirty(false); setPublishedAt(Date.now()); setTentativa(0); setConflito(false); setAvisoRascunho(null); setDesfeito(false); setVerComo('agora');
       apagarRascunho(device.id);
       return true;
     } catch (e) {
@@ -429,16 +453,24 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
       const meu = new Set(campanhasDaConfig(cfg).map((c) => c.nome));
       const somem = campanhasDaConfig((r && r.config) || {}).map((c) => c.nome).filter((n) => !meu.has(n));
       const ok = await confirmar({
-        titulo: 'Publicar o seu por cima?',
+        titulo: 'Pôr o seu por cima?',
         texto: somem.length
           ? 'A versão nova tem ' + (somem.length === 1 ? 'a campanha "' + somem[0] + '"' : 'as campanhas ' + somem.map((n) => '"' + n + '"').join(', ')) + ', que sai' + (somem.length === 1 ? '' : 'm') + ' desta TV. O resto da TV fica como no seu rascunho.'
           : 'O que mudou na outra versão se perde: a TV fica como no seu rascunho.',
-        botao: 'Publicar por cima', perigo: somem.length > 0,
+        botao: 'Pôr por cima', perigo: somem.length > 0,
       });
       if (!ok) return;
       versao.current = (r && r.versao) || 0;
+      naTV.current = (r && r.config) || null;
       await publish();
     } catch (e) { setPublishError(e.message || 'Não deu para ler a versão nova.'); }
+  }
+  // Desfazer (e refazer) o último "Pôr na TV": a TV volta ao que estava, e a tela daqui também.
+  async function desfazer() {
+    const a = anterior.current;
+    if (!a) return;
+    const era = desfeito;
+    if (await publish(a)) { setCfg(a); setDesfeito(!era); }
   }
   async function descartarRascunho() {
     apagarRascunho(device.id);
@@ -498,56 +530,39 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   }
 
   const current = items[selected];
+  const status = deviceStatus(device.lastSeen);
+  const noAr = status.tone === 'ok';
 
   return (
     <div>
-      {/* Cabeçalho: voltar + publicar */}
+      {/* Cabeçalho: voltar, o nome da TV e se ela está no ar. O "Pôr na TV" mora na barra de baixo. */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <IconButton icon={ArrowLeft} label="Voltar" onClick={onBack} />
-          <div>
+        <div className="flex min-w-0 items-center gap-2">
+          <IconButton icon={ArrowLeft} label="Voltar para as telas" onClick={onBack} />
+          <div className="min-w-0">
             {/* O nome da TV (o da lista de Telas). settings.nome é o do cabeçalho: desde o item 39, o da conta. */}
-            <h1 className="text-xl font-semibold tracking-tight text-ink">{device.name || (cfg && cfg.settings && cfg.settings.nome) || 'Tela'}</h1>
-            <p className="text-sm text-ink-3">O que aparece nesta tela · edite à vontade: a TV só muda quando você publica</p>
+            <h1 className="truncate text-xl font-semibold tracking-tight text-ink">{device.name || (cfg && cfg.settings && cfg.settings.nome) || 'Tela'}</h1>
+            <p className="flex items-center gap-1.5 text-sm text-ink-3">
+              <StatusDot tone={status.tone} pulse={status.pulse} /> {status.label}{status.seen ? ' · sinal ' + status.seen : ''}
+            </p>
           </div>
         </div>
-        {/* No celular os botões dividem uma linha sem quebrar texto. */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {/* O estado do rascunho (D14): a TV só recebe no Publicar. */}
-          {dirty ? (
-            <>
-              <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-warn">
-                <span className="h-2 w-2 rounded-full bg-warn" aria-hidden /> Rascunho · ainda não está na TV
-              </span>
-              <Button variant="ghost" className="whitespace-nowrap" disabled={publishing}
-                onClick={async () => { if (await confirmar({ titulo: 'Descartar o rascunho?', texto: 'A tela volta a ser o que está na TV agora.', botao: 'Descartar', perigo: true })) descartarRascunho(); }}>
-                Descartar
-              </Button>
-              <Button variant="primary" icon={Check} className="whitespace-nowrap" disabled={publishing || conflito} onClick={() => publish()}>
-                {publishing ? 'Publicando…' : 'Publicar na TV'}
-              </Button>
-            </>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-emerald-500">
-              <Check size={13} /> {publishedAt ? 'Publicado agora' : 'Igual ao que está na TV'}
-            </span>
-          )}
-          {/*
-            Um caminho de IA só (EXECUTOR item 28): "Campanha com IA" abria o
-            formulário antigo, sem conversa nem escopo. Agora leva ao Criar com
-            esta TV marcada. O CampaignDialog fica no código, sem botão, por 30 dias.
-          */}
-          {onCriar && <Button variant="secondary" icon={Plus} className="whitespace-nowrap" onClick={onCriar}>Criar para esta TV</Button>}
-          <Button variant="secondary" icon={Settings2} className="whitespace-nowrap" onClick={() => setSettingsOpen(true)}>Ajustes da tela</Button>
-        </div>
+        {/*
+          Um caminho de IA só (EXECUTOR item 28): leva ao Criar com esta TV
+          marcada. O CampaignDialog fica no código, sem botão, por 30 dias.
+        */}
+        {onCriar && <Button variant="secondary" icon={Plus} className="self-start whitespace-nowrap sm:self-auto" onClick={onCriar}>Criar para esta TV</Button>}
       </div>
+
+      <Partes rotulo="Partes da página da TV" valor={aba} onChange={setAba}
+        opcoes={[['passa', 'O que passa'], ['ajustes', 'Ajustes da TV'], ['passou', 'O que passou']]} />
 
       {conflito && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-sm text-ink">
           <span>Esta TV foi mudada em outro lugar (outra aba, outra pessoa ou uma campanha) enquanto você editava. Seu rascunho está guardado.</span>
           <span className="flex flex-wrap gap-2">
             <Button variant="ghost" size="sm" onClick={async () => { if (await confirmar({ titulo: 'Ver a versão nova?', texto: 'O seu rascunho é descartado.', botao: 'Ver a nova', perigo: true })) descartarRascunho(); }}>Ver a versão nova</Button>
-            <Button variant="primary" size="sm" disabled={publishing} onClick={publicarPorCima}>Publicar o meu por cima</Button>
+            <Button variant="primary" size="sm" disabled={publishing} onClick={publicarPorCima}>Pôr o meu por cima</Button>
           </span>
         </div>
       )}
@@ -566,7 +581,6 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
           )}
         </div>
       )}
-      {publishError && !conflito && <div className="mb-4 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger">{publishError} A TV continua com o que estava; o rascunho está guardado — toque em Publicar de novo.</div>}
 
       {/*
         A data comemorativa saiu daqui (EXECUTOR §2c, item 35): virou ideia no
@@ -580,7 +594,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
         "por onde eu começo?" ficava sem resposta. Três caminhos, do mais
         automático ao mais manual; some sozinho no primeiro conteúdo.
       */}
-      {cfg && telaVazia && (
+      {aba === 'passa' && cfg && telaVazia && (
         <Panel className="mb-4">
           <div className="p-4">
             <div className="text-sm font-semibold text-ink">Esta tela ainda está vazia. Como você quer começar?</div>
@@ -608,30 +622,77 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
           </div>
         </Panel>
       )}
-      {cfg && <ScreenSummary cfg={cfg} />}
+      {aba === 'passa' && cfg && <ScreenSummary cfg={cfg} />}
 
-      {error && !loading ? (
+      {aba === 'ajustes' && cfg && (
+        <Panel>
+          <PanelHeader title="Ajustes da TV" description="Aparência, encaixe, som e horário. O horário salva no botão dele; o resto entra na TV no “Pôr na TV”." />
+          <div className="p-4">
+            <SettingsForm
+              settings={cfg.settings}
+              deviceId={device.id} device={device} zonas={cfg.zonas}
+              onChange={(settings) => patchCfg((next) => { next.settings = settings; })}
+              dataDeHoje={<SeasonBanner zonas={zones.map((z) => z.id)} onAplicar={aplicarSeason} />}
+            />
+          </div>
+        </Panel>
+      )}
+
+      {aba === 'passou' && (
+        <Suspense fallback={<div className="flex justify-center py-20"><Spinner size={22} /></div>}>
+          <RelatorioPage telaFixa={device.id} onIrParaPlano={onIr ? () => onIr('billing') : undefined} />
+        </Suspense>
+      )}
+
+      {aba !== 'passa' ? null : error && !loading ? (
         <Panel><ErrorState description="Não deu para carregar a programação desta TV. Nada foi mudado nela." onRetry={reload} /></Panel>
       ) : loading || !cfg ? (
         <div className="flex justify-center py-20"><Spinner size={22} /></div>
       ) : (
         <>
-          <div className="mb-4 space-y-3">
-            <CampanhasNaTela cfg={cfg} onTirar={tirarCampanha} onAbrir={onIr ? abrirCampanha : null} />
-            {layoutCanonico && (
-              <MapaDaTela layout={layoutCanonico} ativa={activeZone && activeZone.id} onEscolher={selectZone} resumo={resumoDaZona}
-                cfg={cfg} onIA={onCriar ? (z) => onCriar(papelDaZona(z)) : undefined} />
-            )}
-            {/* D28: layout e tema numa frase, com antes e depois; muda o rascunho. */}
-            <MudarComIA cfg={cfg} onAplicar={(novo) => { setCfg(novo); setDirty(true); }} />
+          {/*
+            A TV no centro (fase 7): o que ela mostra agora, ao vivo, e, com
+            rascunho, como vai ficar. Ao lado, as partes da TV: tocar numa
+            abre a fila dela embaixo.
+          */}
+          <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <Panel className="flex flex-col overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
+                <span className="text-sm font-semibold text-ink">{dirty && verComo === 'rascunho' ? 'Como vai ficar' : 'Na TV agora'}</span>
+                {dirty && (
+                  <div className="inline-flex gap-1 rounded-full border border-line p-0.5" role="radiogroup" aria-label="O que o quadro mostra">
+                    {[['agora', 'Agora'], ['rascunho', 'Como vai ficar']].map(([id, nome]) => (
+                      <button key={id} type="button" role="radio" aria-checked={verComo === id} onClick={() => setVerComo(id)}
+                        className={cn('min-h-8 rounded-full px-3 text-xs font-medium max-sm:min-h-11', verComo === id ? 'bg-accent text-accent-fg' : 'text-ink-2 hover:bg-surface-2')}>
+                        {nome}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex min-h-[200px] flex-1 items-center justify-center bg-gradient-to-br from-surface-2 to-accent-soft/40 p-3">
+                {dirty && verComo === 'rascunho' && layoutCanonico
+                  ? <div className="pointer-events-none w-full"><Palco estado={estadoDoRascunho(cfg, layoutCanonico, activeZone && { zona: activeZone.id, indice: selected })} alturaMaxima={340} /></div>
+                  : <MiniaturaDaTela d={device} online={noAr} vazia={!naTV.current} altura={340} pedirDeNovo={publishedAt || 0} />}
+              </div>
+            </Panel>
+            <div className="space-y-3">
+              {layoutCanonico && (
+                <MapaDaTela layout={layoutCanonico} ativa={activeZone && activeZone.id} onEscolher={selectZone} resumo={resumoDaZona}
+                  cfg={cfg} onIA={onCriar ? (z) => onCriar(papelDaZona(z)) : undefined} />
+              )}
+              {/* D28: layout e tema numa frase, com antes e depois; muda o rascunho. */}
+              <MudarComIA cfg={cfg} onAplicar={(novo) => { setCfg(novo); setDirty(true); }} />
+            </div>
           </div>
+          <div className="mb-4"><CampanhasNaTela cfg={cfg} onTirar={tirarCampanha} onAbrir={onIr ? abrirCampanha : null} /></div>
 
           {activeZone && (activeZone.type === 'ticker' || activeZone.type === 'header') ? (
             <Panel>
               <PanelHeader title={activeZone.type === 'header' ? 'Cabeçalho' : 'Rodapé'}
                 description={activeZone.type === 'header' ? 'A faixa de cima: a marca, a hora e as chamadas.' : 'A faixa de baixo: as peças e os avisos que passam, ou as notícias.'} />
               <FaixaDaTela key={activeZone.id} tipo={activeZone.type} zona={cfg.zonas[activeZone.id]}
-                onAjustes={() => setSettingsOpen(true)} onAdicionar={() => setPicker(true)}
+                onAjustes={() => setAba('ajustes')} onAdicionar={() => setPicker(true)}
                 onChange={(z) => patchCfg((next) => { next.zonas[activeZone.id] = z; })} />
             </Panel>
           ) : (
@@ -734,27 +795,32 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                             Abrir editor visual ({(current.elementos && current.elementos.length) || 0} elemento(s))
                           </Button>
                         )}
-                        <ItemForm item={current} onChange={(it) => updateItem(selected, it)} />
+                        {/*
+                          Fase 7, os três níveis: o conteúdo e o "quando mostrar" à vista;
+                          aparência, tempo e a importância (D24) em "Mais ajustes".
+                        */}
+                        <ItemForm item={current} onChange={(it) => updateItem(selected, it)}
+                          maisAjustes={(
+                            <div>
+                              <span className="mb-1.5 block text-xs font-medium text-ink-2">Importância</span>
+                              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Importância">
+                                {PRIORIDADES.map(([id, nome]) => {
+                                  const atual = ((current.meta && current.meta.prioridade) || 'normal') === id;
+                                  return (
+                                    <button key={id} type="button" role="radio" aria-checked={atual}
+                                      onClick={() => updateItem(selected, { ...current, meta: { ...(current.meta || {}), prioridade: id } })}
+                                      className={cn('rounded-md border px-2.5 py-1 text-xs max-sm:min-h-11', atual ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3')}>
+                                      {nome}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              <p className="mt-1 text-2xs text-ink-3">{(PRIORIDADES.find(([id]) => id === ((current.meta && current.meta.prioridade) || 'normal')) || PRIORIDADES[0])[2]}</p>
+                            </div>
+                          )} />
                         <div className="mt-4">
                           <QuandoMostrar agendamento={current.agendamento}
                             onChange={(ag) => updateItem(selected, { ...current, agendamento: ag })} />
-                        </div>
-                        {/* D24: a TV dá mais tempo à peça de prioridade alta (passa duas vezes por volta). */}
-                        <div className="mt-4">
-                          <span className="mb-1.5 block text-xs font-medium text-ink-2">Prioridade</span>
-                          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Prioridade">
-                            {PRIORIDADES.map(([id, nome]) => {
-                              const atual = ((current.meta && current.meta.prioridade) || 'normal') === id;
-                              return (
-                                <button key={id} type="button" role="radio" aria-checked={atual}
-                                  onClick={() => updateItem(selected, { ...current, meta: { ...(current.meta || {}), prioridade: id } })}
-                                  className={cn('rounded-md border px-2.5 py-1 text-xs', atual ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3')}>
-                                  {nome}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          <p className="mt-1 text-2xs text-ink-3">{(PRIORIDADES.find(([id]) => id === ((current.meta && current.meta.prioridade) || 'normal')) || PRIORIDADES[0])[2]}</p>
                         </div>
                       </div>
                     </div>
@@ -764,6 +830,49 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
             </div>
           )}
         </>
+      )}
+
+      {/*
+        A BARRA DO "PÔR NA TV" (fase 7): sempre no mesmo lugar, embaixo, em
+        toda parte da página que muda a TV. Diz em palavras se o que se vê é
+        o que está na TV, põe o rascunho no ar e, depois, desfaz.
+        No celular fica acima da barra de baixo do painel.
+      */}
+      {cfg && aba !== 'passou' && (
+        <div className="sticky bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 mt-4 lg:bottom-3">
+          <div className={cn('flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2.5 shadow-md backdrop-blur sm:px-4',
+            publishError ? 'border-danger/40 bg-danger-soft' : dirty ? 'border-warn/40 bg-surface/95' : 'border-line bg-surface/95')} role="status">
+            <span className="flex min-w-0 items-center gap-2 text-sm">
+              {publishError ? (
+                <span className="text-danger">{publishError} A TV continua com o que estava; o rascunho está guardado.</span>
+              ) : conflito ? (
+                <span className="text-ink">Esta TV mudou em outro lugar: escolha acima o que fazer.</span>
+              ) : dirty ? (
+                <><span className="h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden /><span className="text-ink">Rascunho · ainda não está na TV</span></>
+              ) : (
+                <><Check size={15} className="shrink-0 text-emerald-500" />
+                  <span className="text-ink-2">{publishedAt ? (desfeito ? 'A TV voltou ao que estava' : 'Na TV desde ' + hora(publishedAt)) : 'Igual ao que está na TV'}</span></>
+              )}
+            </span>
+            <span className="flex flex-wrap items-center gap-2">
+              {dirty ? (
+                <>
+                  <Button variant="ghost" className="whitespace-nowrap" disabled={publishing}
+                    onClick={async () => { if (await confirmar({ titulo: 'Descartar o rascunho?', texto: 'A tela volta a ser o que está na TV agora.', botao: 'Descartar', perigo: true })) descartarRascunho(); }}>
+                    Descartar
+                  </Button>
+                  <Button variant="primary" icon={Check} className="whitespace-nowrap" disabled={publishing || conflito} onClick={() => publish()}>
+                    {publishing ? 'Pondo na TV…' : 'Pôr na TV'}
+                  </Button>
+                </>
+              ) : publishedAt && anterior.current ? (
+                <Button variant="secondary" icon={desfeito ? Redo2 : Undo2} className="whitespace-nowrap" disabled={publishing} onClick={desfazer}>
+                  {desfeito ? 'Refazer' : 'Desfazer'}
+                </Button>
+              ) : null}
+            </span>
+          </div>
+        </div>
       )}
 
       {/*
@@ -779,20 +888,6 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
         }}
         onCriar={onCriar ? () => onCriar(papelDaZona(activeZone)) : null} />
 
-      {/* Ajustes da tela — fora do fluxo de conteúdo, sem roubar espaço */}
-      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} title="Ajustes da tela"
-        description="Aparência, encaixe, som e horário. Salva sozinho; o horário, no botão dele." className="max-w-3xl"
-        footer={<Button variant="primary" icon={Check} onClick={() => setSettingsOpen(false)}>Concluir</Button>}>
-        {cfg && (
-          <SettingsForm
-            settings={cfg.settings}
-            deviceId={device.id} device={device} zonas={cfg.zonas}
-            onChange={(settings) => patchCfg((next) => { next.settings = settings; })}
-            dataDeHoje={<SeasonBanner zonas={zones.map((z) => z.id)} onAplicar={aplicarSeason} />}
-          />
-        )}
-      </Dialog>
-
       {modeloAberto && (
         <Suspense fallback={null}>
           <EscolherModelo
@@ -804,7 +899,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
         </Suspense>
       )}
 
-      {/* A peça é conferida no tamanho da zona desta TV; salvar muda o rascunho (publica no "Publicar na TV"). */}
+      {/* A peça é conferida no tamanho da zona desta TV; salvar muda o rascunho (vai ao ar no "Pôr na TV"). */}
       {editandoPeca && current && current.type === 'peca-html' && (
         <EditarPeca item={current} label={itemSummary(current)}
           lugar={activeZone && layoutCanonico ? { nome: activeZone.name.replace(/\s*\(.*\)$/, ''), tamanho: tamanhosTV[activeZone.id] || [1920, 1080] } : undefined}

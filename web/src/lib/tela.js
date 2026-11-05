@@ -136,3 +136,28 @@ export function tamanhosDasZonas(layout) {
   tv.remove();
   return saida;
 }
+
+/*
+ * COMO VAI FICAR (fase 7): o rascunho no formato do "Ver a tela agora"
+ * (o mesmo palco que mostra a TV ao vivo), para pôr lado a lado o que
+ * está na TV e o que vai entrar. Em cada zona, a primeira peça, e na zona
+ * que se edita, a peça aberta (`foco`): mudar o texto aparece na hora.
+ */
+export function estadoDoRascunho(cfg, layout, foco) {
+  if (!cfg || !layout) return null;
+  const s = cfg.settings || {};
+  const zonas = {};
+  for (const z of layout.zones || []) {
+    const d = (cfg.zonas && cfg.zonas[z.id]) || {};
+    if (z.type === 'header' || z.type === 'ticker') {
+      const peca = pecasDaFaixa(d)[0];
+      zonas[z.id] = { ...(peca ? { peca } : {}), mensagens: z.type === 'ticker' ? (d.messages || []) : [] };
+      continue;
+    }
+    const itens = Array.isArray(d.items) ? d.items : [];
+    const i = foco && foco.zona === z.id && itens[foco.indice] ? foco.indice : 0;
+    if (itens[i]) zonas[z.id] = { item: itens[i], posicao: i + 1, total: itens.length };
+  }
+  const emPe = (layout.orientation || '') === 'portrait';
+  return { layoutId: s.layoutId, margem: Number(s.margemSegura) || 0, tela: emPe ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 }, zonas };
+}

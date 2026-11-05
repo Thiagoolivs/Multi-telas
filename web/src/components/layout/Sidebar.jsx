@@ -1,9 +1,9 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
 import {
-  LayoutDashboard, PlusSquare, MonitorPlay, LifeBuoy, Brush, Activity, Gauge, Images, Repeat, UserRound, Clapperboard,
+  LayoutDashboard, PlusSquare, MonitorPlay, LifeBuoy, Brush, Activity, Gauge, Images, Users, UserRound, CalendarDays, Plus,
 } from 'lucide-react';
-import { gruposDa, grupoDa } from '../../lib/menu.js';
+import { itensDoMenu, grupoNaFrente } from '../../lib/menu.js';
 import { usePerfil } from '../../lib/perfil.js';
 import SimboloMarca from './SimboloMarca.jsx';
 
@@ -16,18 +16,19 @@ import SimboloMarca from './SimboloMarca.jsx';
 const ICONES = {
   inicio: LayoutDashboard,
   telas: MonitorPlay,
-  programacao: Clapperboard,
+  agenda: CalendarDays,
   criar: PlusSquare,
   midias: Images,
   marca: Brush,
-  extras: Repeat,
+  extras: Users,
   conta: UserRound,
 };
 export const ICONE_DO_GRUPO = ICONES;
 
 // O menu da frente da conta (docs/FRENTES.md): mesma lista de grupos, ordem e nome do grupo de extras de cada uma.
 const navDa = (frente) => [
-  { section: 'Painel', items: gruposDa(frente).map((g) => ({ id: g.id, label: g.label, icon: ICONES[g.id], destino: g.paginas[0] })) },
+  // Fase 7: 5 itens (6 na Empresas) debaixo do botão Criar; a conta mora no avatar.
+  { section: 'Painel', items: itensDoMenu(frente).map((g) => ({ id: g.id, label: g.label, icon: ICONES[g.id], destino: g.paginas[0] })) },
   /*
    * A seção da PLATAFORMA só existe para quem opera o MultiTelas inteiro — e
    * são coisas diferentes: "Estado do sistema" responde "a minha conta está
@@ -69,9 +70,10 @@ function NavItem({ item, active, onClick }) {
 export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
   const ehDono = papel === 'owner';
   // O grupo da página aberta fica aceso: Aniversariantes acende Automáticos.
-  const grupo = grupoDa(active);
-  const aceso = (item) => (grupo ? grupo.id === item.id : active === item.id);
   const frente = usePerfil();
+  const grupo = grupoNaFrente(active, frente.id);
+  const aceso = (item) => (grupo ? grupo.id === item.id : active === item.id);
+  const criando = grupo && grupo.id === 'criar';
   const secoes = navDa(frente.id)
     .filter((s) => !s.operador || operador)
     .map((s) => ({ ...s, items: s.items.filter((i) => !i.dono || ehDono) }))
@@ -92,6 +94,14 @@ export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
         </div>
       </div>
 
+      {/* Criar: o botão de cima, sempre igual — a única porta para criar (fase 7). */}
+      <div className="px-2.5 pt-4">
+        <button type="button" onClick={() => onNavigate('criar')} aria-current={criando ? 'page' : undefined}
+          className={cn('flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold shadow-xs transition',
+            criando ? 'bg-accent text-accent-fg ring-2 ring-accent/30' : 'bg-accent text-accent-fg hover:brightness-110')}>
+          <Plus size={17} strokeWidth={2.4} /> Criar
+        </button>
+      </div>
       <nav className="flex-1 space-y-5 overflow-y-auto px-2.5 py-4">
         {secoes.map((group) => (
           <div key={group.section}>
@@ -105,7 +115,7 @@ export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
         ))}
       </nav>
 
-      {/* Suporte também está em Conta; aqui fica à mão, que é onde se procura ajuda. */}
+      {/* A Ajuda, um lugar só (o avatar leva à mesma página). */}
       <div className="border-t border-line p-2.5">
         <button
           type="button"
@@ -116,7 +126,7 @@ export function Sidebar({ active, onNavigate, papel, operador, empresa }) {
           )}
         >
           <LifeBuoy size={16} strokeWidth={2} className={active === 'support' ? 'text-accent' : 'text-ink-3'} />
-          Suporte
+          Ajuda
         </button>
       </div>
     </aside>

@@ -19,19 +19,19 @@ const RAIZ = path.join(__dirname, '..');
 const ler = (...p) => fs.readFileSync(path.join(RAIZ, ...p), 'utf8');
 const menu = () => import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
 
-test('os 8 grupos (QA de 26/10: Biblioteca no lugar de Mídias, extras num lugar só)', async () => {
+test('o menu da fase 7: o botão Criar e 5 itens (6 na Empresas); a conta no avatar; a Biblioteca em 4 abas', async () => {
   const M = await menu();
-  assert.deepStrictEqual(M.GRUPOS.map((g) => g.label), ['Início', 'Telas', 'Programação', 'Criar', 'Biblioteca', 'Marca', 'Recursos extras', 'Conta']);
+  assert.deepStrictEqual(M.GRUPOS.map((g) => g.label), ['Criar', 'Início', 'Telas', 'Agenda', 'Biblioteca', 'Marca', 'Pessoas', 'Conta']);
   const de = (id) => M.GRUPOS.find((g) => g.id === id).paginas;
-  assert.deepStrictEqual(de('inicio'), ['overview', 'alerts']);
-  // Item 34: Mídias por propósito, com o que está pronto primeiro (D18: as telas inteiras, depois as peças).
-  // D47: Meus Designs (a biblioteca de peças soltas) entra depois das peças prontas.
-  // QA de 26/10: Fotos e vídeos, Músicas e Da IA são uma aba só (Arquivos), com filtro.
-  assert.deepStrictEqual(de('midias'), ['telasprontas', 'pecas', 'designs', 'storage', 'banco']);
-  assert.deepStrictEqual(de('telas'), ['screens', 'relatorio'], 'o relatório de exibição é o "passou mesmo?" de cada TV');
+  assert.deepStrictEqual(de('criar'), ['criar']);
+  assert.deepStrictEqual(de('inicio'), ['overview']);
+  assert.deepStrictEqual(de('telas'), ['screens'], 'a TV abre a página dela; a Programação mora em Telas');
+  assert.deepStrictEqual(de('agenda'), ['calendario']);
+  assert.deepStrictEqual(de('midias'), ['prontos', 'seus', 'storage']);
   assert.deepStrictEqual(de('extras'), ['birthdays', 'mural', 'indicadores']);
   assert.deepStrictEqual(de('conta'), ['billing', 'team', 'settings', 'support']);
-  assert.deepStrictEqual(M.BARRA_INFERIOR, ['inicio', 'programacao', 'criar', 'midias'], 'a barra de baixo: Início · Programação · Criar · Mídias (+ Mais)');
+  assert.equal(M.GRUPOS.find((g) => g.id === 'conta').menu, false, 'a conta mora no avatar');
+  assert.deepStrictEqual(M.BARRA_INFERIOR, ['inicio', 'telas', 'criar', 'agenda', 'midias'], 'a barra de baixo, com o Criar no meio');
 });
 
 test('nenhuma página sumiu: cada uma mora em exatamente um grupo', async () => {
@@ -65,7 +65,7 @@ test('nenhum link antigo quebra; os novos (por grupo) funcionam', async () => {
     'team', 'storage', 'banco', 'birthdays', 'support', 'settings'];
   for (const ir of antigos) assert.equal(M.paginaDoIr(ir), ir, '?ir=' + ir + ' deixou de abrir a mesma página');
   // D18: Mídias abre nas telas prontas; ?ir=pecas continua abrindo as peças.
-  assert.equal(M.paginaDoIr('midias'), 'telasprontas');
+  assert.equal(M.paginaDoIr('midias'), 'prontos');
   assert.equal(M.paginaDoIr('pecas'), 'pecas');
   assert.equal(M.paginaDoIr('storage'), 'storage', 'o endereço antigo continua: é Fotos e vídeos');
   // Grupos que mudaram de nome continuam abrindo o mesmo lugar.
@@ -89,19 +89,20 @@ test('o grupo aceso é o da página; abas nos grupos de mais de uma página; bar
   const M = await menu();
   assert.equal(M.grupoDa('birthdays').id, 'extras');
   assert.equal(M.grupoDa('musicas').id, 'midias');
-  assert.equal(M.grupoDa('content').id, 'programacao', 'o editor de uma tela acende Programação');
+  assert.equal(M.grupoDa('content').id, 'telas', 'a página de uma TV acende Telas');
   // D47: Meus Designs (e os endereços antigos dela) foi para Mídias; o Criar é Criar · Criando · Criados.
   assert.equal(M.grupoDa('studio').id, 'midias');
-  assert.deepStrictEqual(M.GRUPOS.find((g) => g.id === 'criar').paginas, ['criar', 'criando', 'campanhas']);
+  assert.deepStrictEqual(M.GRUPOS.find((g) => g.id === 'criar').paginas, ['criar']);
+  assert.equal(M.grupoDa('campanhas').id, 'midias', 'Criados é parte de Seus conteúdos');
   assert.equal(M.PAGINAS.campanhas, 'Criados');
   assert.equal(M.paginaDoIr('criados'), 'campanhas');
   assert.equal(M.grupoDa('platform'), null);
   const side = ler('web/src/components/layout/Sidebar.jsx');
   // Desde as três frentes (docs/FRENTES.md), o menu é o da frente da conta.
-  assert.match(side, /gruposDa\(frente\)\.map\(\(g\) => \(\{ id: g\.id, label: g\.label, icon: ICONES\[g\.id\], destino: g\.paginas\[0\] \}\)\)/);
+  assert.match(side, /itensDoMenu\(frente\)\.map\(\(g\) => \(\{ id: g\.id, label: g\.label, icon: ICONES\[g\.id\], destino: g\.paginas\[0\] \}\)\)/);
   const shell = ler('web/src/components/layout/AppShell.jsx');
   assert.match(shell, /<AbasDoGrupo active=\{active\} onNavigate=\{navigate\} \/>/);
-  assert.match(shell, /<BarraInferior active=\{active\} onNavigate=\{navigate\} onMais=\{\(\) => setDrawer\(true\)\} \/>/);
+  assert.match(shell, /<BarraInferior active=\{active\} onNavigate=\{navigate\} \/>/);
   // A barra não cobre o fim da página no celular.
   assert.match(shell, /pb-24 pt-5 sm:px-6 sm:pt-6 lg:pb-6/);
   assert.match(ler('web/src/components/layout/Navegacao.jsx'), /lg:hidden/);

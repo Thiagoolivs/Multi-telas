@@ -43,5 +43,7 @@ test('Peças prontas mostra os modelos; com eles, a página nunca fica vazia', (
   assert.match(p, /visiveis\.length === 0 && modelosVisiveis\.length > 0 \? null :/);
   assert.match(p, /<Button size="sm" variant="primary" icon=\{Wand2\} onClick=\{\(\) => setUsando\(p\)\}>Usar<\/Button>/);
   assert.match(p, /<EditarPeca item=\{usando\.item\}/);
-  assert.match(p, /if \(telas\.length\) \{ setPorNaTv\(pronta\); setAlvos\(telas\.map\(\(t\) => t\.id\)\); \}/);
+  // Fase 7: o "Usar" termina no Pôr na TV único (onde e quando).
+  assert.match(p, /if \(telas\.length\) setPorNaTv\(pronta\);/);
+  assert.match(p, /<PorNaTV peca=\{porNaTv\} telas=\{telas\}/);
 });

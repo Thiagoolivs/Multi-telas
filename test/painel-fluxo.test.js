@@ -152,7 +152,8 @@ test('Aniversariantes é operação, não conta', () => {
    * Recursos extras (com o Mural e os Indicadores).
    */
   const menu = ler('web', 'src', 'lib', 'menu.js');
-  assert.match(menu, /\{ id: 'extras', label: 'Recursos extras', paginas: \['birthdays', 'mural', 'indicadores'\] \}/);
+  // Fase 7: Pessoas (item do menu na Empresas; Apps da Biblioteca nos outros).
+  assert.match(menu, /\{ id: 'extras', label: 'Pessoas', paginas: \['birthdays', 'mural', 'indicadores'\] \}/);
   const conta = menu.slice(menu.indexOf("{ id: 'conta'"));
   assert.ok(!/birthdays/.test(conta.slice(0, conta.indexOf('}'))), 'Aniversariantes voltou para Conta');
 });

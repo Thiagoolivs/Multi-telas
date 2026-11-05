@@ -57,9 +57,17 @@ const CriandoPage = pagina(() => import('./pages/CriandoPage.jsx'), 'CriandoPage
 const PecasProntasPage = pagina(() => import('./pages/PecasProntasPage.jsx'), 'PecasProntasPage');
 const TelasProntasPage = pagina(() => import('./pages/TelasProntasPage.jsx'), 'TelasProntasPage');
 const CalendarioPage = pagina(() => import('./pages/CalendarioPage.jsx'), 'CalendarioPage');
+// Fase 7: a Biblioteca única (as páginas de antes viraram partes destas).
+const ProntosPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'ProntosPage');
+const SeusConteudosPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'SeusConteudosPage');
+const AppsPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'AppsPage');
 
 const META = {
   overview: { title: 'Início' },
+  // Fase 7: a Biblioteca única, em quatro abas.
+  prontos: { title: 'Biblioteca', subtitle: 'Pronto para pôr na TV, já na sua marca.' },
+  seus: { title: 'Biblioteca', subtitle: 'O que a IA criou para você e as peças que você guardou.' },
+  apps: { title: 'Biblioteca', subtitle: 'Conteúdos que se atualizam sozinhos.' },
   criar: { title: 'Criar' },
   // Os quatro passos de antes do chat (item 24): continuam, em Meus Designs › Mais.
   rapida: { title: 'Criação rápida', nav: 'criar' },
@@ -77,7 +85,7 @@ const META = {
   team: { title: 'Equipe' },
   brand: { title: 'Marca', subtitle: 'Cores, fontes e imagens que a IA usa para criar.' },
   mural: { title: 'Mural de fotos', subtitle: 'O público manda foto pelo QR e ela aparece na TV.' },
-  content: { title: 'Programação', nav: 'programacao' },
+  content: { title: 'Telas', nav: 'screens' },
   alerts: { title: 'Alertas', subtitle: 'O que precisa da sua atenção agora.' },
   relatorio: { title: 'Relatório de exibição', subtitle: 'O que passou, quantas vezes e em qual tela — contado pela própria TV.' },
   indicadores: { title: 'Indicadores', subtitle: 'Os números da empresa na TV, sempre atualizados.' },
@@ -86,7 +94,7 @@ const META = {
   pecas: { title: 'Peças prontas' },
   telasprontas: { title: 'Telas prontas' },
   calendario: { title: 'Calendário da empresa' },
-  storage: { title: 'Arquivos' },
+  storage: { title: 'Biblioteca', subtitle: 'Suas fotos, vídeos e músicas.' },
   // Viraram filtros de Arquivos (QA de 26/10); o endereço continua e acende a aba Arquivos.
   musicas: { title: 'Arquivos', nav: 'storage' },
   ia: { title: 'Arquivos', nav: 'storage' },
@@ -136,7 +144,7 @@ function useTheme() {
  * que qualquer um escreve.
  */
 // campanhas, pecas, musicas e ia entraram no D3: recarregar nessas páginas caía na Visão geral.
-const ATALHOS = ['criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio', 'indicadores',
+const ATALHOS = ['prontos', 'seus', 'apps', 'criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio', 'indicadores',
   'team', 'storage', 'pecas', 'telasprontas', 'calendario', 'musicas', 'ia', 'banco', 'birthdays', 'support', 'settings'];
 
 /*
@@ -149,8 +157,22 @@ const ATALHOS = ['criar', 'campanhas', 'screens', 'programacao', 'designs', 'bra
  * sobreviver ao recarregar. O editor de uma tela recarrega em Telas: o
  * aparelho vem da lista, não do endereço.
  */
+/*
+ * Fase 7: os endereços de antes abrem a parte certa da Biblioteca única.
+ * Peças prontas e Telas prontas são "Prontos para você"; Criados e Meus
+ * Designs, "Seus conteúdos". O que vinha junto (a campanha, a TV) segue.
+ */
+const PARTE_DA_BIBLIOTECA = {
+  telasprontas: ['prontos', 'telas'], pecas: ['prontos', 'pecas'],
+  campanhas: ['seus', 'campanhas'], designs: ['seus', 'pecas'], studio: ['seus', 'pecas'], campaigns: ['seus', 'pecas'], images: ['seus', 'pecas'],
+};
+function naBiblioteca(r) {
+  const p = r && PARTE_DA_BIBLIOTECA[r.name];
+  return p ? { ...r, name: p[0], parte: p[1] } : r;
+}
+
 function enderecoDaRota(r) {
-  if (r.name === 'content') return '/app/?ir=programacao';
+  if (r.name === 'content') return '/app/?ir=screens';
   if (ATALHOS.includes(r.name)) return '/app/?ir=' + r.name;
   return '/app/';
 }
@@ -169,7 +191,7 @@ function rotaDaUrl() {
    * valendo) ou de um grupo do menu novo (`?ir=midias` abre a primeira aba).
    */
   const ir = paginaDoIr(q.get('ir'));
-  if (ir) return { name: ir };
+  if (ir) return naBiblioteca({ name: ir });
   return { name: 'overview' };
 }
 
@@ -193,7 +215,7 @@ export default function App() {
   useEffect(() => { cadastroPeloGoogle(); refresh(); }, []);
 
   const go = (name, params) => {
-    const r = { name, ...params };
+    const r = naBiblioteca({ name, ...params });
     setRoute(r);
     try { window.history.pushState({ mtRota: r }, '', enderecoDaRota(r)); } catch (e) { /* sem histórico: segue só com o estado */ }
   };
@@ -267,8 +289,11 @@ export default function App() {
       case 'overview': return <DashboardPage onGoSystem={() => go('system')} onIr={go} operador={!!session.operador} />;
       case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onCriar={(device) => go('criar', { tela: device.id })} onIrParaPlano={() => go('billing')} papel={user.role} />;
       case 'programacao': return <ProgramacaoPage onIr={go} />;
-      case 'content': return <ContentEditorPage device={route.device} zonaInicial={route.zona} onBack={() => go('programacao')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
-      case 'team': return <TeamPage me={user} onLeft={logout} />;
+      case 'content': return <ContentEditorPage device={route.device} zonaInicial={route.zona} onBack={() => go('screens')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
+      case 'team': return <TeamPage key={route.convidar ? 'convidar' : 'equipe'} me={user} onLeft={logout} abrirConvite={!!route.convidar} />;
+      case 'prontos': return <ProntosPage key={route.parte || ''} parte={route.parte} telaAlvo={route.tela} onIr={go} />;
+      case 'seus': return <SeusConteudosPage key={(route.parte || '') + (route.campanha || '')} parte={route.parte} campanha={route.campanha} pedido={route.pedido} onIr={go} />;
+      case 'apps': return <AppsPage onIr={go} />;
       case 'pecas': return <PecasProntasPage onIr={go} />;
       case 'telasprontas': return <TelasProntasPage onIr={go} telaAlvo={route.tela} />;
       case 'calendario': return <CalendarioPage onIr={go} />;
@@ -305,7 +330,7 @@ export default function App() {
   return (
     <AppShell
       active={navActive}
-      onNavigate={(name) => go(name)}
+      onNavigate={(name, params) => go(name, params)}
       title={meta.title}
       theme={theme}
       onToggleTheme={toggleTheme}

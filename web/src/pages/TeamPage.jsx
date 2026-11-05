@@ -19,9 +19,10 @@ const ROLE = {
   member: { label: 'Membro', tone: 'neutral' },
 };
 
-export function TeamPage({ me, onLeft }) {
+// `abrirConvite`: veio do "Convidar alguém" do avatar (fase 7), o convite já abre.
+export function TeamPage({ me, onLeft, abrirConvite }) {
   const { data, loading, error, reload } = useAsync(team.list);
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(!!abrirConvite && (me.role === 'owner' || me.role === 'admin'));
   const [busyId, setBusyId] = useState(null);
 
   const canManage = me.role === 'owner' || me.role === 'admin';
