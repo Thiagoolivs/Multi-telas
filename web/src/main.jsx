@@ -3,11 +3,14 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import { registrarWorker } from './lib/instalar.js';
 import { vigiarVersao } from './lib/versao.js';
+import { vigiarErros } from './lib/avisarErro.js';
 import './index.css';
 
 registrarWorker();
 // D46: o painel aberto há horas avisa quando há versão nova.
 vigiarVersao();
+// 05/11: a tela que quebra avisa o servidor (lib/avisarErro.js).
+vigiarErros();
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
