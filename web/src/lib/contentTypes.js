@@ -52,7 +52,7 @@ export const CONTENT_TYPES = {
     summary: (i) => i.titulo || i.corpo || 'Texto',
   },
   announce: {
-    label: 'Aviso Premium', icon: Megaphone, group: 'Mensagens',
+    label: 'Aviso', icon: Megaphone, group: 'Mensagens',
     fields: [
       { key: 'tipo', label: 'Tipo', kind: 'select', options: ANNOUNCE_VARIANTS },
       { key: 'etiqueta', label: 'Etiqueta (opcional)', kind: 'text' },
@@ -123,7 +123,7 @@ export const CONTENT_TYPES = {
     },
   },
   kpi: {
-    label: 'Indicador (KPI)', icon: BarChart3, group: 'Comercial',
+    label: 'Indicador (KPI)', icon: BarChart3, group: 'Dados',
     fields: [
       { key: 'rotulo', label: 'Rótulo', kind: 'text' },
       { key: 'valor', label: 'Valor', kind: 'text' },
@@ -138,7 +138,7 @@ export const CONTENT_TYPES = {
     summary: (i) => (i.indicador ? 'Ao vivo: ' + (i.rotulo || i.indicador) : (i.rotulo ? i.rotulo + ': ' : '') + (i.valor || '')),
   },
   social: {
-    label: 'Redes Sociais', icon: Share2, group: 'Comercial',
+    label: 'Redes Sociais', icon: Share2, group: 'Mídia',
     fields: [
       { key: 'rede', label: 'Rede', kind: 'select', options: [
         { value: 'instagram', label: 'Instagram' }, { value: 'facebook', label: 'Facebook' },
@@ -304,6 +304,33 @@ export const CONTENT_TYPES = {
 // Captura de janela e entrada HDMI só existem com um computador ligado à TV;
 // num TV Box ficam pretas. Vão para o fim, num grupo que diz isso.
 export const CONTENT_ORDER = ['text', 'announce', 'poster', 'quote', 'quiz', 'promo', 'precos', 'kpi', 'composicao', 'social', 'image', 'video', 'pptx', 'youtube', 'web', 'qrcode', 'mural', 'weatherpro', 'birthdayauto', 'screen', 'livesource'];
+
+/*
+ * O CATÁLOGO DO "ADICIONAR", POR FRENTE (fase 1 do plano de ação, 05/11).
+ *
+ * O que sai do catálogo continua existindo: a TV que já usa um item desses
+ * segue mostrando e o editor segue abrindo. Só não se oferece mais.
+ *   - Texto, Arte/Poster e Frase do Dia se juntam no "Aviso" (o Aviso
+ *     Premium, com as suas variações): três tipos que faziam a mesma coisa.
+ *   - Página Web e Captura de janela saem: ficam em branco na TV e não servem
+ *     para quem não é técnico.
+ *   - YouTube, Apresentação, Entrada HDMI/USB e o editor livre vão para
+ *     "Avançado": uso raro, e quebram a régua da TV.
+ *   - Promoção e Tabela de preços só no Comércio e na Saúde; o Quiz só na
+ *     Empresas.
+ */
+export const SAI_DO_CATALOGO = ['text', 'poster', 'quote', 'web', 'screen'];
+export const AVANCADOS = ['composicao', 'youtube', 'pptx', 'livesource'];
+const SO_NA_FRENTE = { promo: ['comercio', 'saude'], precos: ['comercio', 'saude'], quiz: ['empresa'] };
+export function tipoNaFrente(tipo, frente) {
+  if (SAI_DO_CATALOGO.includes(tipo)) return false;
+  const so = SO_NA_FRENTE[tipo];
+  return !so || !frente || so.includes(frente);
+}
+export function catalogoDaFrente(frente) {
+  const todos = CONTENT_ORDER.filter((t) => tipoNaFrente(t, frente));
+  return { principais: todos.filter((t) => !AVANCADOS.includes(t)), avancados: todos.filter((t) => AVANCADOS.includes(t)) };
+}
 
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;

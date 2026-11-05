@@ -165,7 +165,7 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 ### As fases
 - [x] Fase 0: nada quebra, nada mente
-- [ ] Fase 1: limpar antes de construir (a lista do que sai já foi aprovada)
+- [x] Fase 1: limpar antes de construir (tipos e layouts; as páginas juntam na fase 7)
 - [ ] Fase 2: a régua no código
 - [ ] Fase 3: zonas que se adaptam
 - [ ] Fase 4: a marca entra sozinha, e nada de texto de exemplo

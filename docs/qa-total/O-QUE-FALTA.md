@@ -38,7 +38,19 @@ Depois que o básico estiver em 9 ou mais:
 - **Integrações:** Instagram (publicar de verdade), Google Drive, sistema de senha e ERP para os indicadores.
 - **Relatório mensal automático para o dono:** o que passou, o que mais foi lido e as sugestões.
 
-## C. O que sai ou se junta (proposta; a decisão é sua)
+## C. O que sai ou se junta (aprovado em 05/11)
+
+**Feito na fase 1:**
+- **Tipos:**
+  - O "Adicionar" mostra só o catálogo de cada frente (`catalogoDaFrente` em `web/src/lib/contentTypes.js`).
+  - Texto, Arte/Poster e Frase do Dia saíram do catálogo, e o "Aviso" fica no lugar dos três.
+  - Página Web e Captura de janela saíram.
+  - O editor livre, o YouTube, a Apresentação e o HDMI/USB ficam em "Avançado".
+  - Promoção e Tabela de preços só aparecem no Comércio e na Saúde; o Quiz só na Empresas.
+- **Layouts:** os 5 que saíram não aparecem mais no seletor, e entrou o "Dois quadrados".
+- **O motor antigo da IA** saiu.
+
+A TV que já usa um item que saiu continua mostrando, e o editor continua abrindo esse item. As páginas do painel se juntam na fase 7, com o painel novo.
 
 **Tipos de conteúdo** (hoje 22):
 

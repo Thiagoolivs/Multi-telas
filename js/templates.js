@@ -59,6 +59,26 @@
         { id: 'rodape', area: 'rodape', name: 'Rodapé (avisos)', type: 'ticker' },
       ],
     },
+    /*
+     * DOIS QUADRADOS (fase 1 do plano, 05/11): a tela deitada dividida em
+     * duas metades iguais, como os menus da Starbucks na Índia. Um produto,
+     * uma foto e um preço em cada metade: cada uma é quase quadrada e lê
+     * melhor que uma lateral estreita.
+     */
+    {
+      id: 'duo',
+      name: 'Dois quadrados',
+      description: 'Duas metades iguais, lado a lado: um produto, uma foto e um preço em cada.',
+      grid: {
+        columns: '1fr 1fr',
+        rows: '1fr',
+        areas: ['principal secundaria'],
+      },
+      zones: [
+        { id: 'principal', area: 'principal', name: 'Esquerda', type: 'playlist' },
+        { id: 'secundaria', area: 'secundaria', name: 'Direita', type: 'playlist' },
+      ],
+    },
     {
       id: 'sidebar-right',
       name: 'Destaque + Barra Lateral',

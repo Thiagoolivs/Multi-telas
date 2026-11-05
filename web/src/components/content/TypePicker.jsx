@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Plus, UtensilsCrossed, Wand2, Image as ImageIcon, Tag, Megaphone, Cake, Instagram, LayoutGrid, Layers, Upload, Film, MessageSquare, CircleHelp } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
-import { CONTENT_TYPES, CONTENT_ORDER } from '../../lib/contentTypes.js';
+import { CONTENT_TYPES, catalogoDaFrente, tipoNaFrente } from '../../lib/contentTypes.js';
+import { usePerfil } from '../../lib/perfil.js';
 import { DesignThumb } from './DesignThumb.jsx';
 import { PecaHtml } from './PecaHtml.jsx';
 import { library, criar, media } from '../../api.js';
@@ -12,7 +13,7 @@ import { prepararFoto, prepararVideo, avaliarVideo, enviarComProgresso, itemDaMi
 // Descrição curta por tipo — deixa a escolha óbvia para quem chega agora.
 const DESC = {
   text: 'Título e texto simples.',
-  announce: 'Aviso com etiqueta e destaque.',
+  announce: 'Recado, comunicado, horário ou conquista, com etiqueta e destaque.',
   poster: 'Arte pronta com a cor da marca.',
   quote: 'Frase com autor.',
   promo: 'Produto, preço e chamada.',
@@ -42,7 +43,7 @@ const DESC = {
  * aparece com o nome que a pessoa usa, junto do que é comercial.
  */
 const ATALHOS = {
-  'modelo:cardapio': { label: 'Cardápio em arte', icon: UtensilsCrossed, group: 'Comercial',
+  'modelo:cardapio': { label: 'Cardápio em arte', icon: UtensilsCrossed, group: 'Comercial', frentes: ['comercio'],
     desc: 'Modelo pronto no editor visual, na cor da sua marca — para até oito itens.' },
 };
 
@@ -82,6 +83,8 @@ const NOME_PAPEL = { cabecalho: 'cabeçalho', rodape: 'rodapé', principal: 'pri
  * ou um vídeo; onCriar() vai ao Criar.
  */
 export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona }) {
+  const frente = (usePerfil() || {}).id;
+  const catalogo = catalogoDaFrente(frente);
   const papel = papelDaZona(zona);
   const faixa = papel === 'cabecalho' || papel === 'rodape';
   const [tab, setTab] = useState('prontas');
@@ -127,11 +130,15 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona })
     const info = CONTENT_TYPES[t] || ATALHOS[t] || {};
     return casa((info.label || '') + ' ' + (DESC[t] || info.desc || ''));
   };
-  CONTENT_ORDER.filter(bate).forEach((t) => {
+  // Só o catálogo da frente (fase 1); o que é raro fica no fim, em "Avançado".
+  catalogo.principais.filter(bate).forEach((t) => {
     const g = CONTENT_TYPES[t].group;
     (groups[g] = groups[g] || []).push(t);
   });
-  Object.keys(ATALHOS).filter(bate).forEach((t) => { (groups[ATALHOS[t].group] = groups[ATALHOS[t].group] || []).unshift(t); });
+  Object.keys(ATALHOS).filter((t) => !ATALHOS[t].frentes || !frente || ATALHOS[t].frentes.includes(frente)).filter(bate)
+    .forEach((t) => { (groups[ATALHOS[t].group] = groups[ATALHOS[t].group] || []).unshift(t); });
+  const avancados = catalogo.avancados.filter(bate);
+  if (avancados.length) groups['Avançado'] = avancados;
 
   const TABS = faixa
     ? [['prontas', 'Peças de ' + NOME_PAPEL[papel], Layers]]
@@ -259,7 +266,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona })
       ) : tab === 'inicio' ? (
         <div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {ENTRADAS.filter((e) => e.id !== 'criar' && e.id !== 'midia').map((e) => {
+            {ENTRADAS.filter((e) => e.id !== 'criar' && e.id !== 'midia' && tipoNaFrente(e.id, frente)).map((e) => {
               const Icon = e.icon;
               return (
                 <button key={e.id} type="button" onClick={() => escolher(e.id)}
@@ -272,7 +279,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona })
             })}
           </div>
           <button type="button" onClick={() => setTab('new')} className="mt-4 text-xs font-medium text-accent hover:underline">
-            Ver todos os tipos ({CONTENT_ORDER.length + Object.keys(ATALHOS).length}), com busca
+            Ver todos os tipos ({catalogo.principais.length + catalogo.avancados.length}), com busca
           </button>
         </div>
       ) : (

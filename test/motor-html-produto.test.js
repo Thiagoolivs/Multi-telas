@@ -153,7 +153,8 @@ test('tela completa: peças por zona, sem repetir texto, e uma zona que falha n�
 test('tela completa: o servidor usa o motor HTML e o painel aceita a peça no cabeçalho e no rodapé', () => {
   const server = fs.readFileSync(path.join(RAIZ, 'server.js'), 'utf8');
   assert.match(server, /compositor\.comporTelaInteira\(\{/);
-  assert.match(server, /process\.env\.MT_MOTOR_CAMPANHA !== 'coordenadas' && ai\.mode\(\) !== 'dev' && zones\.length/);
+  assert.match(server, /const html = ai\.mode\(\) !== 'dev' && zones\.length;/);
+  assert.doesNotMatch(server, /process\.env\.MT_MOTOR_CAMPANHA/, 'o motor antigo saiu (fase 1)');
   const tela = fs.readFileSync(path.join(RAIZ, 'web', 'src', 'pages', 'ContentEditorPage.jsx'), 'utf8');
   assert.match(tela, /if \(zdata\.peca\) next\.zonas\[zid\] = \{ \.\.\.\(next\.zonas\[zid\] \|\| \{\}\), peca: zdata\.peca \}/);
   // Desde o item 30 a faixa é uma lista (FaixaDaTela): tirar a última peça apaga `pecas` e `peca`.
@@ -239,7 +240,7 @@ test('sem a chave do servidor, a campanha segue no motor de coordenadas', async 
 
 test('o servidor liga o motor HTML na campanha, e dá para voltar sem deploy', () => {
   const server = fs.readFileSync(path.join(RAIZ, 'server.js'), 'utf8');
-  assert.match(server, /motorHtml: process\.env\.MT_MOTOR_CAMPANHA !== 'coordenadas'/);
+  assert.match(server, /motorHtml: true,/);
 });
 
 test('plano com o motor HTML: cada peça vem com o rascunho, foto como silhueta, sem gastar', async () => {

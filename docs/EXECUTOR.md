@@ -111,7 +111,7 @@ do merge, confira as que o seu PR toca. Na dúvida, pergunte ao consultor.
   segue o padrão da `/api/ai/refazer-peca`.
 - **A IA nunca deixa a tela vazia.** Falhou ou foi recusada: entra a
   peça-ouro preenchida (`compositor.preencherOuro`).
-- **O motor HTML desliga sem deploy,** com `MT_MOTOR_CAMPANHA=coordenadas`.
+- **O motor HTML é o único** desde a fase 1 do plano de ação (05/11): o antigo, de coordenadas (`MT_MOTOR_CAMPANHA=coordenadas`), saiu.
   O caminho antigo continua funcionando.
 
 **Segurança**
