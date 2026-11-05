@@ -68,6 +68,19 @@
       "papeis": [
         "cabecalho"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "chamada": "Campanha de vacinação · até sexta"
+        },
+        "empresa": {
+          "chamada": "Semana da segurança · até sexta"
+        }
+      },
       "estado": "aprovada",
       "marca": "otica",
       "aprovadaEm": "2026-10-20"
@@ -79,6 +92,9 @@
       "papeis": [
         "destaque",
         "lateral"
+      ],
+      "frentes": [
+        "comercio"
       ],
       "estado": "aprovada",
       "marca": "otica",
@@ -95,6 +111,9 @@
         "destaque",
         "lateral"
       ],
+      "frentes": [
+        "comercio"
+      ],
       "estado": "aprovada",
       "marca": "otica",
       "aprovadaEm": "2026-10-20"
@@ -107,6 +126,29 @@
         "destaque",
         "lateral"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "numero": "15",
+          "unidade": "anos",
+          "kicker": "Desde 2010",
+          "titulo": "Cuidando da saúde do bairro",
+          "apoio": "Consultas, exames e retorno no mesmo lugar, com hora marcada.",
+          "endereco": ""
+        },
+        "empresa": {
+          "numero": "98",
+          "unidade": "dias",
+          "kicker": "Sem acidente",
+          "titulo": "Nosso recorde de segurança",
+          "apoio": "Obrigado a cada um que usa o EPI e para a máquina antes de mexer.",
+          "endereco": ""
+        }
+      },
       "estado": "aprovada",
       "marca": "otica",
       "aprovadaEm": "2026-10-20"
@@ -118,6 +160,9 @@
       "papeis": [
         "lateral",
         "destaque"
+      ],
+      "frentes": [
+        "comercio"
       ],
       "estado": "aprovada",
       "marca": "otica",
@@ -131,6 +176,18 @@
         "lateral",
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Sem fila",
+          "titulo": "Agende pelo WhatsApp",
+          "apoio": "Escolha o dia e o horário pelo celular e chegue na hora.",
+          "contato": ""
+        }
+      },
       "estado": "aprovada",
       "marca": "otica",
       "campos": {
@@ -146,6 +203,9 @@
         "lateral",
         "destaque"
       ],
+      "frentes": [
+        "comercio"
+      ],
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "padaria"
@@ -156,6 +216,9 @@
       "familia": "rodapé",
       "papeis": [
         "rodape"
+      ],
+      "frentes": [
+        "comercio"
       ],
       "estado": "aprovada",
       "marca": "otica",
@@ -168,6 +231,17 @@
       "papeis": [
         "cabecalho"
       ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "status": "Atendendo agora",
+          "horario": "Hoje até as 18h",
+          "desde": ""
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "padaria"
@@ -178,6 +252,9 @@
       "familia": "cardápio",
       "papeis": [
         "destaque"
+      ],
+      "frentes": [
+        "comercio"
       ],
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
@@ -191,6 +268,9 @@
         "destaque",
         "lateral"
       ],
+      "frentes": [
+        "comercio"
+      ],
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "padaria"
@@ -202,6 +282,27 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Cuidado de perto",
+          "linha1": "Consulta de verdade",
+          "linha2": "leva tempo.",
+          "linha3": "A gente escuta.",
+          "assinatura": ""
+        },
+        "empresa": {
+          "kicker": "Nosso jeito",
+          "linha1": "Segurança primeiro",
+          "linha2": "em todo turno.",
+          "linha3": "Ninguém se machuca.",
+          "assinatura": ""
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "padaria"
@@ -214,6 +315,37 @@
         "lateral",
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Atendimento",
+          "titulo": "Horário",
+          "titulo2": "da recepção",
+          "dia1": "Segunda a sexta",
+          "hora1": "7h – 19h",
+          "dia2": "Sábado",
+          "hora2": "8h – 12h",
+          "dia3": "Domingo e feriado",
+          "hora3": "Fechado",
+          "nota": "Exames de sangue até as 10h"
+        },
+        "empresa": {
+          "kicker": "Refeitório",
+          "titulo": "Horário",
+          "titulo2": "das refeições",
+          "dia1": "Café",
+          "hora1": "6h – 7h30",
+          "dia2": "Almoço",
+          "hora2": "11h – 14h",
+          "dia3": "Jantar",
+          "hora3": "18h – 19h30",
+          "nota": "Cardápio da semana no mural"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "padaria"
@@ -226,6 +358,16 @@
         "lateral",
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "titulo": "Foi bem atendido?",
+          "titulo2": "Conta pra gente"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "padaria",
@@ -240,6 +382,9 @@
       "papeis": [
         "rodape"
       ],
+      "frentes": [
+        "comercio"
+      ],
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "padaria"
@@ -251,6 +396,19 @@
       "papeis": [
         "cabecalho"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "sub": "Clínica geral · exames · vacinas"
+        },
+        "empresa": {
+          "sub": "Comunicação interna"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "salao"
@@ -261,6 +419,9 @@
       "familia": "oferta",
       "papeis": [
         "destaque"
+      ],
+      "frentes": [
+        "comercio"
       ],
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
@@ -274,6 +435,22 @@
         "destaque",
         "lateral"
       ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Serviço da semana",
+          "titulo": "Vacina",
+          "titulo2": "da gripe",
+          "meta": "15 min · sem agendar",
+          "preco": "89",
+          "centavos": ",90",
+          "pedido": "Tire as dúvidas pelo QR",
+          "pedido-apoio": "Abre a conversa no WhatsApp"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "salao",
@@ -288,6 +465,24 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Primeira consulta?",
+          "titulo": "Seu atendimento",
+          "titulo2": "em três tempos",
+          "passo1": "Cadastro na recepção",
+          "passo1-detalhe": "Traga um documento com foto e a carteirinha do plano.",
+          "passo2": "Triagem",
+          "passo2-detalhe": "Pressão, peso e as perguntas que ajudam o médico.",
+          "passo3": "Consulta",
+          "passo3-detalhe": "Com tempo para tirar as dúvidas, sem pressa.",
+          "cta": "Chegue 15 minutos antes"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "salao"
@@ -300,6 +495,17 @@
         "lateral",
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "frase": "Fui atendida na hora e saí com tudo explicado. Voltei a confiar.",
+          "nome": "Maria L.",
+          "quem": "paciente desde 2018"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "salao"
@@ -312,6 +518,21 @@
         "lateral",
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "arroba": "@suaclinica",
+          "apoio": "Dicas de saúde e os avisos da clínica, toda semana."
+        },
+        "empresa": {
+          "arroba": "@suaempresa",
+          "apoio": "Os bastidores do time e as conquistas de cada mês."
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "salao",
@@ -326,6 +547,18 @@
       "papeis": [
         "rodape"
       ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "chamada": "Hora marcada, sem espera",
+          "contato1": "",
+          "contato2": "",
+          "contato3": ""
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "salao"
@@ -336,6 +569,11 @@
       "familia": "cabeçalho",
       "papeis": [
         "cabecalho"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
       ],
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
@@ -348,6 +586,29 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "comercio": {
+          "kicker": "Data da vez",
+          "titulo": "Black",
+          "titulo2": "Friday",
+          "numero": "27",
+          "apoio": "Descontos o dia todo na loja e no WhatsApp.",
+          "cta": "Pergunte no balcão"
+        },
+        "empresa": {
+          "kicker": "Campanha do mês",
+          "titulo": "Novembro",
+          "titulo2": "Azul",
+          "numero": "11",
+          "apoio": "Cuidar da saúde também é com você: o exame de rotina salva vidas.",
+          "cta": "Fale com o RH"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "clinica"
@@ -359,6 +620,24 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "comercio": {
+          "kicker": "Oferta da semana",
+          "titulo": "Kit café da manhã completo",
+          "item1": "Pães da casa",
+          "item2": "Frios fatiados na hora",
+          "item3": "Bolo do dia",
+          "vezes": "3",
+          "de": "sem juros, de",
+          "parcela": "29",
+          "centavos": ",90",
+          "total": "Total de R$ 89,70 no cartão"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "clinica"
@@ -370,6 +649,35 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "comercio": {
+          "kicker": "Como a gente atende",
+          "titulo": "Três promessas",
+          "titulo2": "para cada cliente",
+          "valor1": "Atenção",
+          "valor1-texto": "Quem chega é recebido pelo nome, não pela senha.",
+          "valor2": "Agilidade",
+          "valor2-texto": "Fila de mais de 5 minutos, a gente abre outro caixa.",
+          "valor3": "Garantia",
+          "valor3-texto": "Não gostou, a gente troca, sem pergunta."
+        },
+        "empresa": {
+          "kicker": "O que nos guia",
+          "titulo": "Três valores",
+          "titulo2": "para cada dia",
+          "valor1": "Segurança",
+          "valor1-texto": "Ninguém começa o turno sem o equipamento certo.",
+          "valor2": "Respeito",
+          "valor2-texto": "A opinião de cada um conta, em qualquer cargo.",
+          "valor3": "Resultado",
+          "valor3-texto": "A meta do mês no mural, para todo mundo ver."
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "clinica"
@@ -382,6 +690,21 @@
         "destaque",
         "lateral"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "comercio": {
+          "titulo": "Piso molhado",
+          "apoio": "Cuidado na entrada: a limpeza termina em 10 minutos."
+        },
+        "empresa": {
+          "titulo": "Área em manutenção",
+          "apoio": "Use o corredor B até as 16h. Obrigado pela paciência."
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "clinica"
@@ -393,6 +716,23 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "comercio": {
+          "titulo": "Fechado no feriado",
+          "apoio": "Os pedidos pelo WhatsApp continuam: entregamos no dia seguinte.",
+          "volta": "Voltamos no sábado, 16, às 7h."
+        },
+        "empresa": {
+          "titulo": "Não haverá expediente",
+          "apoio": "O plantão da portaria e da manutenção segue normal.",
+          "volta": "Voltamos na segunda, 18, às 7h."
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "clinica"
@@ -404,6 +744,19 @@
       "papeis": [
         "rodape"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "comercio": {
+          "rotulo": "Hoje"
+        },
+        "empresa": {
+          "rotulo": "Avisos"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "clinica"
@@ -415,6 +768,19 @@
       "papeis": [
         "rodape"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "rotulo": "Faltam"
+        },
+        "empresa": {
+          "rotulo": "Faltam"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "padaria"
@@ -425,6 +791,9 @@
       "familia": "cabeçalho",
       "papeis": [
         "cabecalho"
+      ],
+      "frentes": [
+        "comercio"
       ],
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
@@ -437,6 +806,11 @@
       "papeis": [
         "cabecalho"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "padaria"
@@ -447,6 +821,9 @@
       "familia": "cardápio",
       "papeis": [
         "destaque"
+      ],
+      "frentes": [
+        "comercio"
       ],
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
@@ -460,6 +837,9 @@
         "destaque",
         "lateral"
       ],
+      "frentes": [
+        "comercio"
+      ],
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "lanchonete"
@@ -471,6 +851,19 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "empresa"
+      ],
+      "textos": {
+        "empresa": {
+          "selo": "Novidade",
+          "titulo": "Novo",
+          "titulo2": "refeitório",
+          "apoio": "Mais mesas, ar-condicionado e o cardápio da semana no mural.",
+          "quando": "A partir de segunda, 18"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "lanchonete"
@@ -483,6 +876,15 @@
         "destaque",
         "lateral"
       ],
+      "frentes": [
+        "empresa",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "setor": "Enfermagem · 6 anos de casa"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "rotasul"
@@ -495,6 +897,20 @@
         "lateral",
         "destaque"
       ],
+      "frentes": [
+        "empresa",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "setor1": "Recepção",
+          "setor2": "Laboratório",
+          "setor3": "Enfermagem",
+          "setor4": "Enfermagem",
+          "setor5": "Faturamento",
+          "setor6": "Atendimento"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "rotasul"
@@ -506,6 +922,15 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "empresa",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "cargo": "Técnica de enfermagem · a partir desta segunda"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "rotasul"
@@ -518,6 +943,31 @@
         "destaque",
         "lateral"
       ],
+      "frentes": [
+        "empresa",
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "comercio": {
+          "cargo": "Atendente de balcão",
+          "setor": "Loja · turno da tarde",
+          "req1": "Gostar de gente",
+          "req2": "Experiência com caixa",
+          "req3": "Disponível aos sábados",
+          "pedido": "Fale no balcão",
+          "pedido-apoio": "Ou mande o currículo pelo WhatsApp"
+        },
+        "saude": {
+          "cargo": "Recepcionista",
+          "setor": "Recepção · turno da manhã",
+          "req1": "Ensino médio completo",
+          "req2": "Experiência com agenda",
+          "req3": "Boa comunicação",
+          "pedido": "Indique alguém",
+          "pedido-apoio": "Indicação contratada ganha bônus"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "rotasul",
@@ -532,6 +982,19 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "empresa",
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "de": "De: Coordenação",
+          "para": "Para: toda a equipe",
+          "assunto": "Treinamento de primeiros socorros na quinta, às 14h",
+          "texto": "Na sala de reuniões. Traga o crachá; a presença conta como hora de formação.",
+          "assinatura": "Coordenação de enfermagem"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "rotasul"
@@ -543,6 +1006,25 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Desde 2010",
+          "titulo": "Cuidar bem",
+          "titulo2": "muda tudo",
+          "endereco": ""
+        },
+        "empresa": {
+          "kicker": "Desde 1998",
+          "titulo": "Gente que",
+          "titulo2": "faz acontecer",
+          "endereco": ""
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "otica",
@@ -557,6 +1039,29 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "legenda": "Equipe da recepção",
+          "quando": "Turno da manhã",
+          "kicker": "Mural da clínica",
+          "titulo": "A próxima foto pode ser a sua",
+          "apoio": "Mande a sua foto com a equipe pelo QR e ela aparece aqui.",
+          "pedido": "Mande pelo QR"
+        },
+        "empresa": {
+          "legenda": "Time da expedição",
+          "quando": "Meta batida em outubro",
+          "kicker": "Mural da equipe",
+          "titulo": "A próxima foto pode ser a sua",
+          "apoio": "Mande a foto do seu time pelo QR e ela aparece aqui.",
+          "pedido": "Mande pelo QR"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "otica",
@@ -572,6 +1077,21 @@
       "papeis": [
         "destaque"
       ],
+      "frentes": [
+        "comercio",
+        "empresa"
+      ],
+      "textos": {
+        "empresa": {
+          "kicker": "Almoço de hoje · quinta",
+          "titulo": "Frango assado",
+          "titulo2": "com polenta",
+          "acompanha": "Arroz, feijão, salada e a fruta. Desconto em folha.",
+          "quando": "Das 11h às 14h",
+          "preco": "12",
+          "centavos": ",00"
+        }
+      },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
       "marca": "padaria",

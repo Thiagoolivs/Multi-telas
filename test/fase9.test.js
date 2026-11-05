@@ -71,3 +71,42 @@ test('o painel: a galeria na Plataforma, com a peça desenhada e Aprovar e Recus
   const api = ler('web/src/api.js');
   assert.match(api, /conteudo: \(\) => api\('GET', '\/api\/plataforma\/conteudo'\)/);
 });
+
+/*
+ * Parte B: cada peça diz as frentes que atende, com o exemplo na língua de
+ * cada uma. Antes a padaria via "Óculos de sol" e a fábrica, "Pão quente o
+ * dia todo" (a ordem mudava por frente, mas tudo aparecia para todos).
+ */
+test('cada peça tem as frentes que atende, e os textos de cada frente cabem nos campos dela', () => {
+  const m = JSON.parse(ler('pecas-ouro/manifesto.json'));
+  const FRENTES = ['comercio', 'saude', 'empresa'];
+  const DO_EXEMPLO = { otica: 'comercio', padaria: 'comercio', salao: 'comercio', lanchonete: 'comercio', clinica: 'saude', rotasul: 'empresa' };
+  for (const p of m.pecas) {
+    assert.ok(Array.isArray(p.frentes) && p.frentes.length, p.id + ' sem frentes');
+    for (const f of p.frentes) assert.ok(FRENTES.includes(f), p.id + ': frente ' + f);
+    assert.ok(p.frentes.includes(DO_EXEMPLO[p.marca]), p.id + ': não serve nem à frente do próprio exemplo');
+    const campos = new Set([...ler('pecas-ouro/' + p.id + '.html').matchAll(/data-campo="([^"]+)"/g)].map((x) => x[1]));
+    for (const [f, cs] of Object.entries(p.textos || {})) {
+      assert.ok(p.frentes.includes(f), p.id + ': texto de uma frente que ela não atende (' + f + ')');
+      for (const k of Object.keys(cs)) assert.ok(campos.has(k), p.id + ': o campo ' + k + ' não existe na peça');
+    }
+  }
+  const por = (id) => m.pecas.find((p) => p.id === id);
+  // Os casos do QA: pão na fábrica e aniversariante na loja.
+  assert.equal(por('servico-horario').textos.empresa.titulo, 'Horário');
+  assert.ok(!por('gente-aniversariante').frentes.includes('comercio'));
+  assert.deepEqual(por('cardapio-combo').frentes, ['comercio']);
+});
+
+test('o painel filtra pela frente e põe o exemplo dela; o botão mostra os outros', async () => {
+  const { pathToFileURL } = require('node:url');
+  globalThis.MTPecaHtml = globalThis.MTPecaHtml || {};
+  const src = ler('web/src/lib/modelosOuro.js');
+  assert.match(src, /export const daFrente = \(modelos, perfil\) => modelos\.filter\(\(m\) => !Array\.isArray\(m\.frentes\) \|\| !m\.frentes\.length \|\| m\.frentes\.includes\(perfil\)\);/);
+  assert.match(src, /const daFrente = \(frente && m\.textos && m\.textos\[frente\]\) \|\| \{\};/);
+  const p = ler('web/src/pages/PecasProntasPage.jsx');
+  assert.match(p, /ordenarPorPerfil\(deOutros \? modelos : daFrente\(modelos, perfil\.id\), perfil\.id\)/);
+  assert.match(p, /itemDoModelo\(m, marca, perfil\.id\)/);
+  assert.match(p, /'Ver também os de outros negócios'/);
+  void pathToFileURL;
+});

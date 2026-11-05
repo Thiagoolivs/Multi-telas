@@ -8,7 +8,7 @@ import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { RedesSociais } from '../components/content/RedesSociais.jsx';
 import { criar, library, devices, brand } from '../api.js';
 import { EditarPeca } from '../components/content/EditarPeca.jsx';
-import { carregarModelos, itemDoModelo, ordenarPorPerfil } from '../lib/modelosOuro.js';
+import { carregarModelos, itemDoModelo, ordenarPorPerfil, daFrente } from '../lib/modelosOuro.js';
 import { usePerfil } from '../lib/perfil.js';
 import { PorNaTV } from '../components/tela/PorNaTV.jsx';
 import { aviso } from '../lib/avisos.js';
@@ -40,6 +40,8 @@ export function PecasProntasPage({ onIr }) {
   const [telas, setTelas] = useState([]);
   const [filtro, setFiltro] = useState('todas');
   const [q, setQ] = useState('');
+  // Fase 9: só os modelos da frente da conta; o botão mostra os de outros negócios também.
+  const [deOutros, setDeOutros] = useState(false);
   // A peça a pôr no ar: o fim igual de todo caminho (fase 7, components/tela/PorNaTV.jsx — onde, quando, Desfazer).
   const [porNaTv, setPorNaTv] = useState(null);
   /*
@@ -89,8 +91,8 @@ export function PecasProntasPage({ onIr }) {
   // Os modelos na marca da conta, na ordem do tipo de negócio, com o mesmo filtro e a mesma busca.
   const modelosVisiveis = useMemo(() => {
     if (!modelos || !marca) return [];
-    return ordenarPorPerfil(modelos, perfil.id).map((m) => {
-      const item = itemDoModelo(m, marca);
+    return ordenarPorPerfil(deOutros ? modelos : daFrente(modelos, perfil.id), perfil.id).map((m) => {
+      const item = itemDoModelo(m, marca, perfil.id);
       return { id: 'modelo-' + m.id, item, papel: item.papel, formato: item.formato, label: m.nome, origem: 'modelo · ' + m.familia, modelo: true };
     }).filter((p) => {
       const faixa = p.papel === 'cabecalho' || p.papel === 'rodape';
@@ -100,7 +102,7 @@ export function PecasProntasPage({ onIr }) {
       const t = q.trim().toLowerCase();
       return !t || ((p.label || '') + ' ' + (p.origem || '')).toLowerCase().includes(t);
     });
-  }, [modelos, marca, perfil.id, filtro, q]);
+  }, [modelos, marca, perfil.id, filtro, q, deOutros]);
 
   const visiveis = useMemo(() => (pecas || []).filter((p) => {
     const faixa = p.papel === 'cabecalho' || p.papel === 'rodape';
@@ -189,6 +191,10 @@ export function PecasProntasPage({ onIr }) {
           <div>
             <h2 className="text-base font-semibold text-ink">Modelos prontos, com a sua marca</h2>
             <p className="text-sm text-ink-2">Toque em Usar, troque o texto e ponha na TV. Já saem nas suas cores, com o seu nome e a sua logo.</p>
+            <button type="button" onClick={() => setDeOutros(!deOutros)} aria-pressed={deOutros}
+              className="mt-1 text-xs font-medium text-accent hover:underline">
+              {deOutros ? 'Ver só os do meu tipo de negócio' : 'Ver também os de outros negócios'}
+            </button>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {modelosVisiveis.slice(0, qtModelos).map((p) => {

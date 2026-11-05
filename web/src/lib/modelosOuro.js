@@ -36,10 +36,16 @@ const FORMATO_DO_PAPEL = { destaque: '16/9', lateral: '9/16', cabecalho: '16/9',
  * marca", com as cores e as fontes da conta, e o nome dela onde o modelo
  * escreve a marca. A logo entra sozinha no lugar de logo (D8, MT_LOGO).
  */
-export function itemDoModelo(m, marca) {
+export function itemDoModelo(m, marca, frente) {
   const k = marca || {};
   const papel = (m.papeis && m.papeis[0]) || 'destaque';
-  const campos = k.nome && /data-campo="marca"/.test(m.arq.html) ? { marca: k.nome } : {};
+  /*
+   * Fase 9: o exemplo na língua da frente (`textos` no manifesto). A peça da
+   * clínica, na fábrica, fala de segurança e refeitório, não de mamografia;
+   * a da padaria, na clínica, de horário da recepção, não de pão quente.
+   */
+  const daFrente = (frente && m.textos && m.textos[frente]) || {};
+  const campos = { ...daFrente, ...(k.nome && /data-campo="marca"/.test(m.arq.html) ? { marca: k.nome } : {}) };
   return {
     type: 'peca-html', versao: 1, papel, html: m.arq.html, css: m.arq.css, campos,
     marca: { cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '' },
@@ -58,6 +64,14 @@ const ORDEM = {
   empresa: ['gente', 'serviço', 'institucional', 'social', 'oferta', 'cardápio', 'cabeçalho', 'rodapé'],
   saude: ['serviço', 'institucional', 'social', 'gente', 'oferta', 'cardápio', 'cabeçalho', 'rodapé'],
 };
+/*
+ * Fase 9: cada peça diz as frentes que ela atende (`frentes` no manifesto).
+ * A loja não vê o aniversariante da fábrica, e a fábrica não vê "Pão quente
+ * o dia todo" — antes a ordem mudava, mas tudo aparecia para todos. Peça sem
+ * `frentes` (as antigas) serve a todas.
+ */
+export const daFrente = (modelos, perfil) => modelos.filter((m) => !Array.isArray(m.frentes) || !m.frentes.length || m.frentes.includes(perfil));
+
 export function ordenarPorPerfil(modelos, perfil) {
   const ordem = ORDEM[perfil] || ORDEM.comercio;
   const pos = (f) => { const i = ordem.indexOf(f); return i < 0 ? 99 : i; };
