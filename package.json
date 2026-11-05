@@ -8,7 +8,8 @@
     "build": "npm --prefix web install --include=dev --no-audit --no-fund && npm --prefix web run build",
     "test": "node --env-file-if-exists=test/sem-ia.env --test test/*.test.js",
     "eval": "node tools/eval.mjs",
-    "lint:nomes": "npx --yes eslint@8 --no-eslintrc --env node,es2022 --parser-options=ecmaVersion:2022 --rule no-undef:error server.js 'server/*.js' 'server/routes/*.js'"
+    "lint:nomes": "npx --yes eslint@8 --no-eslintrc --env node,es2022 --parser-options=ecmaVersion:2022 --rule no-undef:error server.js 'server/*.js' 'server/routes/*.js' && npm run lint:nomes-painel",
+    "lint:nomes-painel": "npx --yes -p eslint@8 -p eslint-plugin-react@7 sh -c 'eslint --no-eslintrc --no-inline-config --resolve-plugins-relative-to \"$(dirname $(dirname $(command -v eslint)))\" --plugin react --env browser,es2022 --parser-options=ecmaVersion:2022,sourceType:module,ecmaFeatures:{jsx:true} --global globalThis --rule react/jsx-no-undef:error --rule no-undef:error --rule react/jsx-uses-vars:error \"web/src/**/*.{js,jsx}\"'"
   },
   "engines": {
     "node": ">=22"

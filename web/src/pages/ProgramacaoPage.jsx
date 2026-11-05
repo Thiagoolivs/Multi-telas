@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MonitorPlay, Pencil, Wand2, Plus, Sparkles } from 'lucide-react';
+import { MonitorPlay, Pencil, Wand2, Plus, Sparkles, Megaphone } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
