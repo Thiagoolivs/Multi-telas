@@ -41,7 +41,8 @@ test('Peças prontas mostra os modelos; com eles, a página nunca fica vazia', (
   const p = ler('web/src/pages/PecasProntasPage.jsx');
   assert.match(p, /Modelos prontos, com a sua marca/);
   assert.match(p, /visiveis\.length === 0 && modelosVisiveis\.length > 0 \? null :/);
-  assert.match(p, /<Button size="sm" variant="primary" icon=\{Wand2\} onClick=\{\(\) => setUsando\(p\)\}>Usar<\/Button>/);
+  // Fase 8: um violeta por tela — nos cartões, o botão é o de contorno.
+  assert.match(p, /<Button size="sm" variant="secondary" icon=\{Wand2\} className="border-accent\/50 font-semibold" onClick=\{\(\) => setUsando\(p\)\}>Usar<\/Button>/);
   assert.match(p, /<EditarPeca item=\{usando\.item\}/);
   // Fase 7: o "Usar" termina no Pôr na TV único (onde e quando).
   assert.match(p, /if \(telas\.length\) setPorNaTv\(pronta\);/);

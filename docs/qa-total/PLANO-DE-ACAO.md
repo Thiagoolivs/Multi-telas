@@ -231,6 +231,37 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** a nota da interface fica em 9 ou mais, e o axe não acha problema.
 
+**Andamento (05/11):**
+- [x] **Letra:**
+  - corpo 15 px, título de seção 17 e título de página 28 (24 no celular);
+  - números grandes 32, e nada abaixo de 12 px (13 no celular);
+  - medido em 70 telas: o texto em 15 px ou mais passou de 3% para 44%. O de 13 px (dicas e descrições) ficou com 46%, e o de 11 px sumiu.
+- [x] **Um violeta por tela:**
+  - a aba escolhida ficou neutra, e os botões de apoio e dos cartões viraram contorno;
+  - "Excluir a conta" usa o botão de perigo;
+  - no máximo 1 violeta em cada uma das 70 telas. Antes eram até 6, e Peças prontas tinha um por cartão.
+- [x] **Estados vazios com exemplo:** uma TV desenhada com a peça de exemplo (o código da TV, uma campanha, uma data, um aviso…).
+- [x] **Glossário:**
+  - "Pôr na TV" para pôr, e "Biblioteca" no lugar de Mídias;
+  - Campanhas e Peças guardadas no lugar de Criados e Meus Designs;
+  - parte da TV no lugar de zona, e Importância no lugar de Prioridade;
+  - "Ligar uma TV" no lugar de Parear, também na tela de código da TV;
+  - "O que passa" e "Tempo na tela" no editor;
+  - um teste varre os textos do painel e falha se um termo velho voltar.
+- [x] **Agenda semanal visual:**
+  - os próximos 7 dias por faixa do dia, com o mesmo `naJanela` da TV e o horário da loja;
+  - os horários abertos que ficam só com o relógio aparecem em amarelo, com "Pôr algo";
+  - no celular, um dia por vez.
+- [x] **Celular:**
+  - as abas que não cabem viram um seletor, e o topo da página ficou mais baixo;
+  - Peças prontas vem de 12 em 12: no celular, de 15.138 px para 4.356 px;
+  - a barra fixa "Pôr na TV" veio na fase 7.
+- [x] **axe:** 0 problemas nas 70 telas, em 2 frentes e 2 tamanhos. Antes eram 7.
+- Falta:
+  - a nota da interface sai no reteste (fase 10);
+  - os nomes das partes no mapa da TV ("Principal", "Lateral") continuam;
+  - as peças prontas de outro negócio (óculos na padaria, pão na empresa) ficam para a fase 9.
+
 ### Fase 9: modelos com função e pacotes prontos (5+ dias, em lotes)
 **Objetivo:** conteúdo pronto no nível das telas de referência, para cada negócio.
 - **12 modelos-mestre por frente,** cada um nos cinco formatos de zona:
@@ -279,8 +310,8 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [x] Fase 4: a marca entra sozinha, e nada de texto de exemplo
 - [x] Fase 5: a programação pensa sozinha
 - [ ] Fase 6: a IA no nível de marca
-- [ ] Fase 7: o painel novo, a estrutura
-- [ ] Fase 8: o painel novo, o acabamento
+- [x] Fase 7: o painel novo, a estrutura
+- [x] Fase 8: o painel novo, o acabamento
 - [ ] Fase 9: modelos com função e pacotes prontos
 - [ ] Fase 10: reteste completo e pilotos
 - [ ] Fase 11: dados vivos

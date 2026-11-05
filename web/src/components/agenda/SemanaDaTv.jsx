@@ -96,7 +96,7 @@ export function SemanaDaTv({ onIr }) {
             <caption className="sr-only">O que passa em {tv ? tv.name : 'esta TV'} nos próximos 7 dias, por hora do dia</caption>
             <thead>
               <tr>
-                <th scope="col" className="w-24 p-2" />
+                <th scope="col" className="w-24 p-2"><span className="sr-only">Hora do dia</span></th>
                 {s.dias.map((d) => (
                   <th key={d.iso} scope="col" className={cn('p-2 text-xs font-semibold', d.hoje ? 'text-accent' : 'text-ink-2')}>
                     {d.hoje ? 'Hoje' : d.rotulo}

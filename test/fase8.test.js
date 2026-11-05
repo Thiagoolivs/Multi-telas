@@ -136,3 +136,26 @@ test('a Agenda abre na semana, com as datas que vêm embaixo', () => {
   assert.match(k, /className="hidden overflow-x-auto sm:block"/);
   assert.match(ler('web/src/App.jsx'), /if \(nome === 'calendario'\) return 'Agenda';/);
 });
+
+/*
+ * Parte D: o celular de verdade (BLOCO-8 §2.9): as abas que não cabem viram
+ * um seletor, o topo da página fica mais baixo e as listas longas vêm aos
+ * poucos (Peças prontas tinha 15 mil pixels de rolagem no celular).
+ */
+test('celular: abas viram seletor, topo mais baixo, listas de 12 em 12', () => {
+  const n = ler('web/src/components/layout/Navegacao.jsx');
+  assert.match(n, /<div className="mb-3 sm:hidden">\s*<Select aria-label=\{grupo\.label\} value=\{active\} onChange=\{\(e\) => onNavigate\(e\.target\.value\)\}/);
+  assert.match(n, /<div className="mb-4 max-sm:hidden" role="tablist"/);
+  const h = ler('web/src/components/layout/PageHeader.jsx');
+  assert.match(h, /mb-4 flex flex-col gap-2 sm:mb-5/);
+  assert.match(h, /max-sm:line-clamp-2/);
+  const p = ler('web/src/pages/PecasProntasPage.jsx');
+  assert.match(p, /visiveis\.slice\(0, qtPecas\)\.map/);
+  assert.match(p, /modelosVisiveis\.slice\(0, qtModelos\)\.map/);
+  assert.match(p, /const POR_VEZ = 12;/);
+  assert.match(p, /Mostrar mais \(\{total - mostrando\}\)/);
+  // Nos cartões, o botão é o de contorno: era a página dos 49 violetas.
+  assert.doesNotMatch(p, /size="sm" variant="primary"/);
+  // A tabela da semana tem nome em toda coluna (o axe acusava o canto vazio).
+  assert.match(ler('web/src/components/agenda/SemanaDaTv.jsx'), /<span className="sr-only">Hora do dia<\/span>/);
+});

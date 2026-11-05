@@ -42,6 +42,12 @@ export function PecasProntasPage({ onIr }) {
   const [q, setQ] = useState('');
   // A peça a pôr no ar: o fim igual de todo caminho (fase 7, components/tela/PorNaTV.jsx — onde, quando, Desfazer).
   const [porNaTv, setPorNaTv] = useState(null);
+  /*
+   * Fase 8, o celular: de 12 em 12. Eram 15 mil pixels de rolagem no
+   * celular (BLOCO-8 §2.2), com dezenas de cartões de uma vez.
+   */
+  const [qtPecas, setQtPecas] = useState(POR_VEZ);
+  const [qtModelos, setQtModelos] = useState(POR_VEZ);
   const [redesDe, setRedesDe] = useState(null);
   /*
    * Os modelos prontos (D16): as peças-ouro já com a marca da conta. Cliente
@@ -113,7 +119,7 @@ export function PecasProntasPage({ onIr }) {
           <h1 className="text-xl font-semibold tracking-tight text-ink">Peças prontas</h1>
           <p className="mt-1 text-sm text-ink-2">O que já está pronto para a TV e para as redes: das suas campanhas, da biblioteca e os modelos com a sua marca.</p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar novas</Button>
+        <Button variant="secondary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar novas</Button>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -148,7 +154,7 @@ export function PecasProntasPage({ onIr }) {
         </Panel>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visiveis.map((p) => {
+          {visiveis.slice(0, qtPecas).map((p) => {
             const faixa = p.papel === 'cabecalho' || p.papel === 'rodape';
             return (
               <div key={p.id} className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface">
@@ -161,7 +167,8 @@ export function PecasProntasPage({ onIr }) {
                     <div className="truncate text-2xs text-ink-3">{ondeCabe(p)}{p.origem ? ' · ' + p.origem : ''}</div>
                   </div>
                   <div className="mt-auto flex flex-wrap gap-1.5">
-                    <Button size="sm" variant="primary" icon={MonitorPlay} disabled={!telas.length}
+                    {/* Fase 8: um violeta por tela; nos cartões, o botão é o de contorno. */}
+                    <Button size="sm" variant="secondary" icon={MonitorPlay} disabled={!telas.length} className="border-accent/50 font-semibold"
                       onClick={() => setPorNaTv(p)}>Pôr na TV</Button>
                     {!faixa && <Button size="sm" icon={Share2} onClick={() => setRedesDe(p)}>Redes</Button>}
                     {p.campanhaId && <Button size="sm" variant="ghost" onClick={() => onIr && onIr('campanhas', { campanha: p.campanhaId })}>Campanha</Button>}
@@ -170,6 +177,7 @@ export function PecasProntasPage({ onIr }) {
               </div>
             );
           })}
+          <MostrarMais total={visiveis.length} mostrando={qtPecas} onMais={() => setQtPecas((n) => n + POR_VEZ)} />
         </div>
       )}
 
@@ -183,7 +191,7 @@ export function PecasProntasPage({ onIr }) {
             <p className="text-sm text-ink-2">Toque em Usar, troque o texto e ponha na TV. Já saem nas suas cores, com o seu nome e a sua logo.</p>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {modelosVisiveis.map((p) => {
+            {modelosVisiveis.slice(0, qtModelos).map((p) => {
               const faixa = p.papel === 'cabecalho' || p.papel === 'rodape';
               return (
                 <div key={p.id} className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface">
@@ -196,13 +204,14 @@ export function PecasProntasPage({ onIr }) {
                       <div className="truncate text-2xs text-ink-3">{ondeCabe(p)} · {p.origem.replace('modelo · ', '')}</div>
                     </div>
                     <div className="mt-auto flex flex-wrap gap-1.5">
-                      <Button size="sm" variant="primary" icon={Wand2} onClick={() => setUsando(p)}>Usar</Button>
+                      <Button size="sm" variant="secondary" icon={Wand2} className="border-accent/50 font-semibold" onClick={() => setUsando(p)}>Usar</Button>
                       {!faixa && <Button size="sm" icon={Share2} onClick={() => setRedesDe(p)}>Redes</Button>}
                     </div>
                   </div>
                 </div>
               );
             })}
+            <MostrarMais total={modelosVisiveis.length} mostrando={qtModelos} onMais={() => setQtModelos((n) => n + POR_VEZ)} />
           </div>
         </section>
       )}
@@ -223,6 +232,17 @@ export function PecasProntasPage({ onIr }) {
           descricao={'Entra ' + (porNaTv.papel === 'cabecalho' || porNaTv.papel === 'rodape' ? 'no ' + ONDE[porNaTv.papel] : 'na parte da TV que combina com ela (' + ondeCabe(porNaTv) + ')') + ', no fim do que já está lá.'} />
       )}
       {redesDe && <RedesSociais item={redesDe.item} label={redesDe.label} onFechar={() => setRedesDe(null)} />}
+    </div>
+  );
+}
+
+const POR_VEZ = 12;
+// "Mostrar mais" no fim da grade: a lista longa vem aos poucos (fase 8, celular).
+function MostrarMais({ total, mostrando, onMais }) {
+  if (total <= mostrando) return null;
+  return (
+    <div className="col-span-full flex justify-center pt-1">
+      <Button variant="secondary" onClick={onMais}>Mostrar mais ({total - mostrando})</Button>
     </div>
   );
 }

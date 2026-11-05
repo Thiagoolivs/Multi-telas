@@ -5,6 +5,7 @@ import { gruposDa, PAGINAS, BARRA_INFERIOR, grupoNaFrente } from '../../lib/menu
 import { usePerfil } from '../../lib/perfil.js';
 import { ICONE_DO_GRUPO } from './Sidebar.jsx';
 import { useTrabalhos } from '../../lib/trabalhos.js';
+import { Select } from '../ui/Field.jsx';
 
 /*
  * As ABAS do grupo (PLANO §5.1): Mídias mostra Armazenamento e Banco de
@@ -20,7 +21,17 @@ export function AbasDoGrupo({ active, onNavigate }) {
   const rodando = (useTrabalhos() || []).filter((j) => j.estado === 'rodando').length;
   if (!grupo || grupo.paginas.length < 2 || !grupo.paginas.includes(active)) return null;
   return (
-    <div className="mb-4" role="tablist" aria-label={grupo.label}>
+    <>
+    {/*
+      Fase 8, o celular: as abas que não cabem viram um seletor (BLOCO-8 §2.9:
+      "Prontos para você | Seus conteúdos | Fotos e…" cortava no meio).
+    */}
+    <div className="mb-3 sm:hidden">
+      <Select aria-label={grupo.label} value={active} onChange={(e) => onNavigate(e.target.value)} className="font-semibold">
+        {grupo.paginas.map((p) => <option key={p} value={p}>{PAGINAS[p]}{p === 'criando' && rodando > 0 ? ' (' + rodando + ')' : ''}</option>)}
+      </Select>
+    </div>
+    <div className="mb-4 max-sm:hidden" role="tablist" aria-label={grupo.label}>
       <div className="rolagem-lateral flex max-w-full gap-1 overflow-x-auto rounded-lg border border-line bg-surface-2 p-1 sm:inline-flex">
         {grupo.paginas.map((p) => (
           <button key={p} type="button" role="tab" aria-selected={active === p} onClick={() => onNavigate(p)}
@@ -34,6 +45,7 @@ export function AbasDoGrupo({ active, onNavigate }) {
         ))}
       </div>
     </div>
+    </>
   );
 }
 
