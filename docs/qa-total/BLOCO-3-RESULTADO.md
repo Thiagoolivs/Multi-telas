@@ -6,7 +6,7 @@ que a tela mostrava. Depois, sete TVs rodaram uma semana inteira com o
 relógio adiantado (de quinta 05/11 a quarta 11/11, 2 minutos de TV por
 hora, 168 horas por TV).
 
-**Custo de IA do bloco: <<CUSTO>>** (teto: R$ 7). Quatro campanhas sem
+**Custo de IA do bloco: R$ 3,30** (teto: R$ 7). Quatro campanhas sem
 foto, uma leitura de calendário e 14 pedidos ao "Pedir à IA".
 
 ## Resumo
@@ -15,7 +15,7 @@ foto, uma leitura de calendário e 14 pedidos ao "Pedir à IA".
   monta peças bonitas e já divide por horário. Mas deixa buracos no dia:
   na padaria, no almoço e à noite a TV mostra três relógios.
 - **O urgente não tem freio.** Ele não sai sozinho, toca o sino a cada
-  passada e, com dois urgentes, toma quase metade da tela o dia todo.
+  passada e, com dois urgentes, fica com 60% do tempo da tela a semana toda.
 - **A importância já existe, mas pela metade.** O aviso rápido e o
   calendário sugerem a prioridade sozinhos. As campanhas, não. E a IA
   ignora quando o cliente escreve "urgente".
@@ -23,10 +23,12 @@ foto, uma leitura de calendário e 14 pedidos ao "Pedir à IA".
   passa às 3h e o happy hour às 15h.
 - **A sequência não respeita o tempo de espera.** Sala de espera com
   volta de 72 segundos (o certo é 8 a 12 minutos); balcão com 30 peças e
-  volta de 6 min 30 s (o certo é 2 a 5 minutos). Ninguém avisa.
+  volta de ~7 minutos (o certo é 2 a 5 minutos). Ninguém avisa.
 
-**Nota geral do bloco: <<NOTAGERAL>>.** A meta era 8 em todos os
-cenários. Nenhum chegou lá nas duas notas.
+**Nota geral do bloco: 5,9 de 10.** A meta era 8 em todos os
+cenários. Só os cenários 3 (oferta até sábado) e 8 (só na loja do Centro)
+chegaram lá. O que funciona bem: prazo dito numa frase, grupo de lojas,
+horário da loja e o Desfazer.
 
 ---
 
@@ -66,16 +68,16 @@ vezes mais).
 |---|---|---|---|---|---|---|---|
 | 1 | TV bonita a semana toda (conta vazia) | 13 | 3 min 36 s | 0 | 8 | 3 | **5** |
 | 2 | Café de manhã, almoço ao meio-dia, happy hour à noite | 8 | 1 min 51 s | 0 | 8 | 4 | **6** |
-| 3 | Oferta até sábado, entra e sai sozinha | 9 | 1 min 27 s | 0 | 8 | <<R3>> | **<<N3>>** |
+| 3 | Oferta até sábado, entra e sai sozinha | 9 | 1 min 27 s | 0 | 8 | 8 | **8** |
 | 4 | "Acabou o pão de queijo!" por cima de tudo | 6 | 31 s | 1 | 7 | 3 | **5** |
 | 5 | Black Friday e Natal sem lembrar | 6 | 56 s | 1 | 5 | 5 | **5** |
 | 6 | Duas campanhas juntas e dois urgentes juntos | 4 | 15 s | 0 | 9 | 3 | **6** |
 | 7 | 30 peças acumuladas | — | — | — | 6 | 3 | **4** |
-| 8 | 3 lojas: "só na loja do Centro" | 4 | 14 s | 0 | 9 | <<R8>> | **<<N8>>** |
+| 8 | 3 lojas: "só na loja do Centro" | 4 | 14 s | 0 | 9 | 9 | **9** |
 | 9 | Pedir à IA: tirar promoção, feriado, "mais animado" | 5 / 3 / 7 | 10–40 s | 1 | 7 | 5 | **6** |
 | 10 | Empresas: comunicado, aniversários, indicador, sistema fora do ar | 4 / 10 / — / 4 | — | 2 | 5 | 4 | **4,5** |
 | 11 | Saúde: 12 minutos sem repetir, prevenção, horário | 7 | 3 min 8 s | 0 | 8 | 2 | **5** |
-| 12 | Fora do horário | 7 | 29 s | 1 | 6 | <<R12>> | **<<N12>>** |
+| 12 | Fora do horário | 7 | 29 s | 1 | 6 | 8 | **7** |
 
 ### O que aconteceu em cada um
 
@@ -92,19 +94,23 @@ para esta TV" › frase › "Gostei, pode ser" › "Gerar" › "Aprovar e gerar"
 
 **2. Por parte do dia.** A IA disse "3 peças para cada horário", mas o
 cartão fez **3 peças no total**, uma por faixa. Resultado:
-- a mesma peça entra de novo a cada 12 s, por horas (só há uma no ar);
+- sozinha na faixa, a mesma peça entra de novo a cada 12 s, por horas
+  (o mesmo mecanismo deu 882 repetições na semana do S1 Balcão);
 - a tarde (14h–17h29) ficou sem nada: relógio;
 - a lateral e o rodapé do layout padrão ficaram vazios a semana toda.
 
 **3. Oferta até sábado.** O "Pedir à IA" mandou para o Criar com a frase
 pronta. A IA entendeu "até sábado (07/11)" e a peça saiu com fim em
-07/11. <<T3>>
+07/11. Na semana, a oferta passou de quinta a sábado e **sumiu no
+domingo** (0 vez vencida no ar). Ponto fraco: oferta fica 12 s (a régua
+pede ~8 s) e só na zona principal.
 
 **4. Pão de queijo.** O pedido dizia "por cima de tudo agora". A IA
 escolheu **Alta** ("passa mais vezes"). Precisei trocar para Urgente
 (1 travada). Entrou nas 3 TVs em **0,47 s**. Mas:
 - não sai sozinho: "até você tirar". A data de fim é só por dia;
-- sozinho na zona, ficou na tela sem parar (troca a cada 15 s) e o sino toca a cada passada;
+- com só a oferta junto na zona, o urgente ficou 30 s seguidos na tela
+  (sequência U N U U) e o sino toca a cada passada;
 - para tirar: Programação › Últimos envios › Desfazer (2 cliques, bom).
 
 **5. Black Friday e Natal.** O calendário pede para colar as datas.
@@ -116,17 +122,19 @@ alta, de 20/12 a 25/12. Sem oferta e sem lembrete antes.
 
 **6. Dois de cada.** Duas campanhas no mesmo horário se alternam bem
 (x1 y1 x2 y2 x3). Dois urgentes: os dois passam 3 vezes por volta, cada
-um toma a tela por 15 s, e juntos ocupam <<TK6>> do tempo da Loja Centro.
+um toma a tela por 15 s, e juntos ficam com 60% do tempo da zona
+principal da Loja Centro, a semana toda.
 Não há regra de desempate nem teto.
 
 **7. 30 peças.** O editor mostra "ciclo de 6min 30s" e nenhum alerta.
-Com as prioridades, a volta real passa disso. No balcão, a pessoa espera
-uns 2 minutos: vê menos de um terço das peças. Duas peças da mesma
+Com as prioridades, a volta real dá ~7 minutos. No balcão, a pessoa
+espera uns 2 minutos: vê 8 ou 9 das 31 peças. Duas peças da mesma
 campanha podem sair coladas (veja §5).
 
 **8. Só no Centro.** "Só na loja do Centro: o estacionamento está fechado
 até domingo". A IA escolheu o grupo Centro, prioridade alta e fim em
-08/11. <<T8>>
+08/11. Na semana, o aviso passou só na Loja Centro, de quinta a domingo,
+e nunca no Shopping nem no Bairro.
 
 **9. Pedir à IA.**
 - "Tira a promoção de sábado": pergunta qual campanha, leva a Criados, e
@@ -141,6 +149,7 @@ até domingo". A IA escolheu o grupo Centro, prioridade alta e fim em
 **10. Empresas.**
 - Comunicado com prazo: 4 passos, "até sexta" virou 06/11. Bom.
 - Aniversariantes: 10 passos. "Mostrar nas TVs" vem **desmarcado**.
+  Depois de marcado, cada um entrou na semana certa.
 - Indicador que se atualiza: pede "Endereço (responde JSON)", "Token
   (Bearer)", "Campo da chave". Sem TI, não dá (travada).
 - "Urgente: o sistema está fora do ar": a IA escolheu **Alta**, mesmo com
@@ -152,11 +161,81 @@ O horário de atendimento foi para o rodapé (bom). A lateral ficou vazia.
 
 **12. Fora do horário.** O horário mora em Telas › Mais opções ›
 "Horário e aviso de queda" (1 travada: quem está na Programação não acha).
-O padrão é "Continua mostrando a programação". <<T12>>
+O padrão é "Continua mostrando a programação". Com "Mostra só o relógio"
+(seg a sáb, 7h às 20h), a semana saiu certa: domingo inteiro e as
+madrugadas e noites com o relógio, das 8h às 19h a programação (18 de 18
+fotos conferidas). O sino do urgente não toca com a loja fechada.
 
 ---
 
-<<SEMANA>>
+## 3. A semana simulada
+
+**Como foi feito.** Sete TVs de verdade (o player.html no Chromium), cada
+uma com a programação montada nos cenários. O relógio do Playwright
+(`page.clock`) pulou de hora em hora, de quinta 05/11 0h a quarta 11/11
+23h. Em cada hora, a TV rodou 2 minutos e o robô anotou cada peça que
+entrou, cada vez que o urgente tomou a tela e as zonas que ficaram só com
+relógio. 1.032 horas de TV ao todo. Fotos em horas escolhidas.
+
+| TV | Montada nos cenários |
+|---|---|
+| S1 Balcão | Conta nova da padaria (cenário 1) |
+| Loja Centro | Cardápio por horário (2), oferta até sábado (3), pão de queijo urgente (4), Black Friday e Natal (5), piso molhado urgente (6), estacionamento só no Centro (8), feriado (9) |
+| Loja Bairro | O mesmo, sem o estacionamento, e com horário seg a sáb 7h–20h, relógio fora dele (12) |
+| Loja Shopping | 30 peças acumuladas (7) |
+| Refeitório | Empresas: vacinação até sexta, sistema fora do ar, 2 aniversariantes (10) |
+| Sala de espera | Saúde: a campanha de prevenção e horário (11) |
+| Centro em UTC | A mesma programação do Centro, num box com relógio em UTC |
+
+### As medidas contra o esperado
+
+| Medida | Esperado | Medido | |
+|---|---|---|---|
+| Peça vencida no ar | 0 | **0** nas 6 TVs com fuso certo. A oferta saiu no domingo; o estacionamento, na segunda; a vacinação, no sábado | ✅ |
+| Peça fora do horário | 0 | Na TV em UTC, **todas as faixas 3 h adiantadas**: café da manhã às 3h–4h, almoço às 10h, happy hour às 15h–16h (vistos no ar em 5 das 24 amostras) | ❌ |
+| Buraco (só relógio) no horário de loja | 0 | **S1 Balcão: 7 h por dia** entre 6h e 22h (almoço 11h30–14h e noite 17h30–22h); 98 h de relógio na semana | ❌ |
+| Fora do horário | O que o cliente escolheu | Loja Bairro: relógio no domingo e fora das 7h–20h, como pedido | ✅ |
+| Horário certo (manhã, almoço, noite) | 100% | 100% com o relógio da TV em São Paulo; errado em todas as faixas se o aparelho estiver em UTC | ⚠️ |
+| Tempo por importância | O prometido ± 10% | Pela contagem, cumpre. Pelo tempo, na Loja Centro: urgente **60%**, alta 31%, normal **9%** | ⚠️ |
+| A mesma peça duas vezes seguidas | 0 | **S1 Balcão: 882 vezes** (lateral 70 h e principal 28 h na semana, sempre com uma peça só na faixa). Nas outras TVs, 0 | ❌ |
+| A sequência inteira | Balcão ~2 min; sala de espera ~12 min | Shopping **~7 min**; Centro ~3 min (metade é urgente); sala de espera **72 s** (10 voltas iguais em 12 min) | ❌ |
+| Urgente entra em até 5 s | ≤ 5 s | **0,47 s** nas 3 TVs | ✅ |
+| Urgente sai na hora | Na hora marcada | Sem hora: só "até o fim do dia" ou "até você tirar". Pão de queijo e piso molhado ficaram a semana inteira | ❌ |
+| Cada TV só o que é dela | 100% | Estacionamento só no Centro; Black Friday e Natal ainda não entraram (certo: 20/11 e 20/12) | ✅ |
+
+### A grade de cada TV (o que a zona principal mostrou)
+
+**S1 Balcão (padaria, cenário 1)** — igual nos 7 dias:
+
+| Faixa | O que passou | Falha |
+|---|---|---|
+| 0h–5h59 | Relógio (×3: cabeçalho, principal, lateral) | Sem horário de loja: a TV fica ligada mostrando relógios |
+| 6h–11h29 | 2 peças de manhã na principal; 1 na lateral, repetindo | Lateral repete a mesma peça a cada 12 s |
+| 11h30–13h59 | **Relógio** | Buraco no almoço |
+| 14h–17h29 | 1 peça na principal ("café da manhã perfeito", marcada como tarde), repetindo; 1 na lateral, repetindo | Peça errada para a hora; repetição |
+| 17h30–23h59 | **Relógio** | Buraco à noite |
+| O dia todo | Letreiro com "café da manhã especial" | O letreiro não tem horário |
+
+**Loja Centro** — todos os dias, toda hora: o pão de queijo e o piso molhado
+tomam a tela 3 vezes por volta cada um. O feriado de 15/11 aparece desde
+05/11 (10 dias antes), duas vezes por volta. O cardápio da faixa certa
+aparece **uma vez a cada ~3 minutos**. Quinta a sábado entra a oferta;
+quinta a domingo, o estacionamento.
+
+**Loja Bairro** — o mesmo do Centro das 7h às 20h; fora disso e no domingo, só o relógio.
+
+**Loja Shopping** — volta de ~7 minutos. Em 2 minutos de amostra, a
+pessoa vê 8 a 9 das 31 peças. Nenhum buraco, nenhuma repetição seguida.
+
+**Refeitório** — quinta e sexta: vacinação, sistema fora do ar e o cartão
+de aniversário. De sábado em diante: **só "Sistema fora do ar" e o
+aniversário, um depois do outro, por 5 dias** (o aviso não tinha fim).
+O aniversário de Joana (06/11) e o de Carlos (10/11) entraram na semana certa.
+
+**Sala de espera** — 6 peças de 12 s, a mesma ordem a cada 72 s, o dia todo, todos os dias. A lateral ficou vazia.
+
+**Centro em UTC** — o café da manhã entra às 3h e some às 8h30; o almoço entra às 8h30; o happy hour, às 14h30 (hora de Brasília).
+
 
 ---
 
@@ -182,7 +261,15 @@ O padrão é "Continua mostrando a programação". <<T12>>
 número de passadas, mas o cliente sente tempo de tela. Na Loja Centro
 (2 urgentes, 2 altas, o resto normal), na semana:
 
-<<PRIO>>
+| Nível | Passadas por volta (promessa) | Parte das passadas (quinta, 10h) | Parte do tempo medida na semana |
+|---|---|---|---|
+| Urgente (2 peças) | 3 cada | 50% | **60%** (e toma a tela inteira em ~46% do tempo) |
+| Alta (2 peças) | 2 cada | 33% | 31% |
+| Normal (cardápio, oferta) | 1 cada | 17% | **9%** |
+
+Pela regra, o player cumpre o que diz. Mas o conteúdo que vende (o
+cardápio da hora) ficou com 9% da tela. E o cliente não tem como ver isso
+no painel.
 
 **Casos que quebram a regra** (simulados com o código do player, `js/player.js:2012`):
 
@@ -192,7 +279,7 @@ número de passadas, mas o cliente sente tempo de tela. Na Loja Centro
 | 1 normal + 1 urgente | U N U U | O urgente seguido de si mesmo; 75% das passadas |
 | 2 urgentes + 3 normais | U1 U2 N1 N2 U1 U2 N3 U1 U2 | 6 de 9 passadas são urgentes |
 | 3 da campanha + 2 soltas | c1 s1 s2 c2 c3 | Duas da mesma campanha coladas |
-| só 1 urgente | U U U… | Toma a tela sem parar, sino a cada 15 s |
+| só 1 urgente | U U U… | Pelo código, toma a tela sem parar e o sino toca a cada 15 s |
 
 ### A proposta: importância automática
 
@@ -256,7 +343,10 @@ Regras de tempo:
   20 palavras, ~20 s.
 - Com uma peça só na faixa, a mesma peça "entra de novo" a cada 12 s: a
   animação se repete por horas.
-- O urgente sozinho na zona troca por ele mesmo a cada 15 s, com sino.
+- O urgente sozinho na zona troca por ele mesmo a cada 15 s, com sino (pelo código).
+- A cada troca de peça da IA, o fundo aparece na hora e os textos chegam
+  aos poucos: por ~1 s a tela mostra o fundo com parte do texto. Numa
+  peça de 12 s, é quase 10% do tempo.
 
 **O quanto mexe.** As peças da IA não usam animação contínua (bom). O que
 cansa é o urgente: selo pulsando, vinheta e sino repetidos o dia inteiro.
@@ -266,17 +356,17 @@ cansa é o urgente: selo pulsando, vinheta e sino repetidos o dia inteiro.
 ## 6. Os 10 piores problemas
 
 **1. O urgente não tem teto nem fim.**
-Prova: Loja Centro com 2 urgentes: <<TK6>> do tempo tomado; sozinho, toma a tela sem parar e o sino toca a cada 15 s.
+Prova: Loja Centro com 2 urgentes: 60% do tempo da zona principal e a tela inteira tomada em ~46% do tempo, a semana toda; sozinho, pelo código, toma a tela sem parar e o sino toca a cada 15 s.
 Onde: `js/player.js:2010` (peso 3), `js/player.js:2141` e `:1585` (toda passada toma a tela), `js/player.js:1618` (sino toda vez), `web/src/lib/aviso.js:72` (sem "até quando", fica para sempre).
 Conserto: teto de 25% (15 s por minuto) dividido entre os urgentes; sino só na entrada; fim padrão de 2 h; peso de passada 1 (a frequência vem do teto, não do peso).
 
 **2. O horário das peças segue o relógio da TV, não o da loja.**
-Prova: TV com box em UTC: café da manhã às 3h–4h, almoço às 10h, happy hour às 15h–16h; e o café some depois das 8h.
+Prova: TV com box em UTC: café da manhã às 3h–4h, almoço às 10h, happy hour às 15h–16h; e o café some às 8h30.
 Onde: `js/player.js:2212` (`new Date()` local) — o horário da loja já usa o fuso certo em `js/expediente.js`.
 Conserto: `agendadoAgora` usar `MTExpediente.relogioLocal(t, fuso)` com o fuso da conta (America/Sao_Paulo por padrão).
 
 **3. A campanha deixa buracos no dia.**
-Prova: cenário 1 sem almoço nem noite; cenário 2 sem tarde. <<BURACOS>>
+Prova: cenário 1 sem almoço nem noite; cenário 2 sem tarde. Na semana: 98 horas de relógio no S1 Balcão, 7 delas por dia dentro do horário de uma padaria.
 Onde: `server/ai-director.js:202` (o prompt só pede para variar) e `:309` (o espalhamento só corre quando a IA esquece a faixa).
 Conserto: depois do plano, conferir a cobertura contra o horário da loja; faixa vazia ganha a peça-âncora ("dia") ou uma peça a mais.
 
@@ -286,7 +376,7 @@ Onde: `js/player.js:2013` (lista de 1 não reveza) e `:2055` (com horário, nunc
 Conserto: mínimo de 3 peças por faixa usada; o player deixa a peça parada quando é a única no ar; o cartão mostra "3 faixas × 3 peças".
 
 **5. A volta não respeita o tempo de espera.**
-Prova: sala de espera com volta de 72 s (régua: 8–12 min); balcão com 30 peças e 6 min 30 s (régua: 2–5 min). O painel só avisa volta curta (< 45 s).
+Prova: sala de espera com volta de 72 s (régua: 8–12 min); balcão com 31 peças e ~7 min (régua: 2–5 min; o painel diz "ciclo de 6min 30s", sem alerta). O painel só avisa volta curta (< 45 s).
 Onde: `web/src/lib/screenDigest.js:75`; o plano da IA não usa o tempo de espera da frente.
 Conserto: alvo por frente (Comércio 2–5 min, Saúde 8–12, Empresas 3–6). Volta longa: rodízio (cada volta mostra uma parte, a próxima mostra o resto). Saúde: a IA calcula quantas peças fazer.
 
@@ -339,11 +429,22 @@ Também vistos (menos graves):
 | Agendamento no fuso da tela ou da rede | Broadsign, ScreenCloud | Relógio do aparelho |
 | Tema travado, o cliente só edita campos | Appspace | Parcial (marca na peça) |
 
+Xibo, Yodeck e OptiSigns não estão em `REFERENCIAS.md`: conferir nas
+páginas deles antes de citar fora deste relatório.
+
 O que só nós temos e vale manter: a IA que entende "até sábado" e "só na
 loja do Centro" numa frase, o Desfazer de 30 dias, e o aviso que pergunta
 a data do feriado com sugestões certas.
 
 ---
+
+## Limites do teste
+
+- 2 minutos por hora de TV: a volta longa (Shopping) foi calculada pelas peças, não vista inteira.
+- As fotos foram tiradas com o relógio falso: as animações em CSS correm no tempo real, então algumas fotos pegam a peça no meio da entrada.
+- No Shopping, parte das 30 peças foi copiada de peças do calendário: a mistura de prioridades dele não vale para a análise de importância (só para o tamanho da volta).
+- Fotos geradas pela IA não foram testadas (teto de custo): todas as campanhas foram "Sem foto".
+- O indicador que se atualiza não foi ligado (precisa de um sistema com JSON).
 
 ## Arquivos
 
