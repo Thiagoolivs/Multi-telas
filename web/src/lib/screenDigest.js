@@ -85,7 +85,8 @@ function problemasDaZona(zona, itens, ciclo, local) {
      */
     const [min, max] = R.VOLTA_DO_LOCAL[local];
     if (ciclo < min) p.push({ nivel: 'dica', texto: `${zona.name} repete a cada ${formatarTempo(ciclo)}: ${NOME_DO_LOCAL[local]} a pessoa fica uns ${formatarTempo(min)} e vê a mesma coisa de novo. Ponha mais peças.` });
-    else if (ciclo > max) p.push({ nivel: 'dica', texto: `${zona.name} leva ${formatarTempo(ciclo)} para dar a volta: ${NOME_DO_LOCAL[local]} a pessoa fica uns ${formatarTempo(max)} e não vê tudo. Divida por horário ou tire peças.` });
+    // `volta`: o que o "Arrumar a volta" precisa (components/tela/ArrumarVolta.jsx).
+    else if (ciclo > max) p.push({ nivel: 'dica', texto: `${zona.name} leva ${formatarTempo(ciclo)} para dar a volta: ${NOME_DO_LOCAL[local]} a pessoa fica uns ${formatarTempo(max)} e não vê tudo. Divida por horário ou tire peças.`, volta: { zona: zona.id, nome: zona.name, ciclo, max, lugar: NOME_DO_LOCAL[local] } });
   } else if (!fixo && ciclo > 0 && ciclo < 45) {
     p.push({ nivel: 'dica', texto: `${zona.name} repete a cada ${formatarTempo(ciclo)} — quem passa duas vezes vê o mesmo` });
   }
