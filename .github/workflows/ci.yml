@@ -69,7 +69,9 @@ jobs:
   # para instalar e não atrasa o retorno dos testes.
   regua-tv:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # A régua mede ~8 min (58 peças de destaque e 43 de lateral no balcão, além da tela cheia);
+    # com folga para o dia em que o navegador leva mais para instalar (06/11: 9 min).
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
