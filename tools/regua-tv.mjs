@@ -205,7 +205,22 @@ async function analisarContraste([png, textos]) {
   });
 }
 
+/*
+ * Um texto abaixo da régua é medido de novo, até duas vezes: a TV pode
+ * estar redesenhando a zona bem na hora (a config e a marca chegam em dois
+ * avisos) e a foto pega o fundo de um botão que ainda não apareceu. O
+ * defeito de verdade continua lá na segunda e na terceira vez.
+ */
 async function medirContraste(p, zona) {
+  let r = await medirContrasteUmaVez(p, zona);
+  for (let k = 0; k < 2 && r.some((x) => x.k < CONTRASTE); k++) {
+    await espera(1500);
+    r = await medirContrasteUmaVez(p, zona);
+  }
+  return r;
+}
+
+async function medirContrasteUmaVez(p, zona) {
   /*
    * No meio de uma entrada ou saída a letra está meio transparente e o
    * contraste sai baixo sem ser defeito: espera as animações acabarem e,
@@ -213,7 +228,8 @@ async function medirContraste(p, zona) {
    */
   let textos = [];
   for (let k = 0; k < 6; k++) {
-    await p.waitForFunction(() => !document.getAnimations().some((a) => a.playState === 'running' && a.effect && a.effect.getTiming().iterations !== Infinity), null, { timeout: 4000 }).catch(() => {});
+    await p.waitForFunction(() => !document.getAnimations().some((a) => a.playState === 'running' && a.effect && a.effect.getTiming().iterations !== Infinity) &&
+      !(window.gsap && window.gsap.globalTimeline.getChildren(true, true, false).some((t) => t.progress() < 1 && !t.paused() && t.repeat() !== -1)), null, { timeout: 4000 }).catch(() => {});
     textos = await p.evaluate(coresDosTextos, zona);
     if (!textos.some((x) => x.esmaecido)) break;
     await espera(700);
