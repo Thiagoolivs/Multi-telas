@@ -22,7 +22,7 @@
 .fala::after { left: 7cqmin; }
 .depoimento { font: 600 max(var(--mt-piso, 0cqw), calc(7.6cqmin * var(--mt-escala-titulo, 1)))/1.2 var(--mt-fonte-titulo); text-wrap: balance; }
 .autor { margin-top: 4cqmin; font: 600 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.2 var(--mt-fonte-texto); color: var(--mt-preco); }
-@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
   .mt-peca { column-gap: 5cqw; padding: 7cqmin 6cqw; }
   .nota { font-size: max(var(--mt-piso, 0cqw), calc(28cqmin * var(--mt-escala-titulo, 1))); }
   .estrelas i { width: 6cqmin; height: 6cqmin; }

@@ -20,7 +20,7 @@ h1 { margin-top: 2cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(11cqmin * var(
 .planos li { display: flex; align-items: center; min-height: 15cqmin; padding: 2.4cqmin 3.4cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie);
   border-left: 1.2cqmin solid var(--mt-destaque); font: 700 max(var(--mt-piso, 0cqw), 5.2cqmin)/1.15 var(--mt-fonte-texto); }
 .planos li:has(span:empty) { display: none; }
-@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
   .mt-peca { grid-template-columns: 34fr 66fr; column-gap: 4cqw; padding: 7cqmin 6cqw; }
   .escudo { font-size: 1.3cqmin; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(9.4cqmin * var(--mt-escala-titulo, 1))); }

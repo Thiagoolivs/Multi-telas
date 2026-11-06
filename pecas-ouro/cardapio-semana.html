@@ -11,7 +11,9 @@
   background: radial-gradient(120% 100% at 100% 0%, var(--mt-fundo-2), var(--mt-fundo) 60%); }
 .cabeca { display: flex; align-items: flex-end; justify-content: space-between; gap: 5cqw; }
 .kicker { display: flex; align-items: center; gap: 2cqmin; font: 700 max(var(--mt-piso, 0cqw), 3.6cqmin)/1.15 var(--mt-fonte-texto); letter-spacing: .08em; text-transform: uppercase; color: var(--mt-preco); }
-.kicker i { display: block; flex: none; width: 6cqmin; height: .9cqmin; border-radius: 1cqmin; background: var(--mt-destaque); }
+/* O fio do kicker fica na altura da primeira linha, mesmo quando o kicker quebra. */
+.kicker { align-items: flex-start; }
+.kicker i { display: block; flex: none; align-self: flex-start; width: 6cqmin; height: .9cqmin; margin-top: .52em; border-radius: 1cqmin; background: var(--mt-destaque); }
 h1 { margin-top: 2cqmin; font: 600 max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
 .quando { flex: none; margin-bottom: 1cqmin; font: 600 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-align: right; }
 .dias { list-style: none; margin: 4.4cqmin 0 0; padding: 0; }
@@ -24,7 +26,7 @@ h1 { margin-top: 2cqmin; font: 600 max(var(--mt-piso, 0cqw), calc(12cqmin * var(
 .prato { font: 600 max(var(--mt-piso, 0cqw), 6.2cqmin)/1.15 var(--mt-fonte-texto); text-wrap: balance; }
 .nota { margin-top: 3.6cqmin; font: 500 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 /* A principal ao lado da lateral: sem o kicker (o título já diz), linhas mais justas. */
-@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
   .mt-peca { padding: 6cqmin 6cqw; }
   .kicker { display: none; }
   h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(9.4cqmin * var(--mt-escala-titulo, 1))); }
@@ -58,11 +60,12 @@ h1 { margin-top: 2cqmin; font: 600 max(var(--mt-piso, 0cqw), calc(12cqmin * var(
   .kicker { display: none; }
   .quando { text-align: right; }
   h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(8.4cqmin * var(--mt-escala-titulo, 1))); }
-  .dias { margin-top: 3.4cqmin; }
-  .dias li { padding: 1.3cqmin 0; }
-  .dia { font-size: max(var(--mt-piso, 0cqw), 3.4cqmin); }
-  .prato { font-size: max(var(--mt-piso, 0cqw), 4.6cqmin); }
-  .nota { margin-top: 2.6cqmin; font-size: max(var(--mt-piso, 0cqw), 3.6cqmin); }
+  .dias { margin-top: 3cqmin; }
+  .dias li { padding: .9cqmin 0; }
+  .dia { padding: .15em .5em; font-size: max(var(--mt-piso, 0cqw), 3.4cqmin); }
+  .prato { font-size: max(var(--mt-piso, 0cqw), 4.6cqmin); line-height: 1.1; }
+  /* Quadrada: cinco linhas com a letra da TV já enchem a peça — a nota do pé sai (o "todo dia" fica para a lateral e a deitada). */
+  .nota { display: none; }
 }
 /* A lateral: o dia em cima do prato; sem o horário e a nota. */
 @container (max-width: 700px) {

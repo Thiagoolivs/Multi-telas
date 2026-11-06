@@ -22,7 +22,7 @@ h1 { margin-top: 3cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(11.4cqmin * va
 .apoio { margin-top: 4cqmin; font: 500 max(var(--mt-piso, 0cqw), 5.4cqmin)/1.32 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 22em; text-wrap: pretty; }
 .fonte:empty { display: none; }
 .fonte { margin-top: 6cqmin; padding-top: 2.6cqmin; border-top: .4cqmin solid var(--mt-linha); font: 600 max(var(--mt-piso, 0cqw), 3.8cqmin)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
-@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
   .mt-peca { column-gap: 5cqw; padding: 7cqmin 6cqw; }
   .luz { font-size: 4.6cqmin; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1))); }
