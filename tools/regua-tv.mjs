@@ -251,11 +251,27 @@ async function medirContrasteUmaVez(p, zona) {
 
 async function subirServidor() {
   const dados = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-regua-'));
+  /*
+   * O log do servidor vai para um arquivo (junto das fotos, no CI) e, se ele
+   * cair no meio da medida, o fim do log sai na tela: um ECONNRESET sozinho
+   * não diz por quê (06/11, PR #328).
+   */
+  const pastaDoLog = process.env.REGUA_SAIDA ? path.resolve(RAIZ, process.env.REGUA_SAIDA) : os.tmpdir();
+  fs.mkdirSync(pastaDoLog, { recursive: true });
+  const arqDoLog = path.join(pastaDoLog, 'servidor-' + PORTA + '.log');
+  const saida = fs.openSync(arqDoLog, 'w');
+  let parando = false;
   const servidor = spawn(process.execPath, ['server.js'], {
-    cwd: RAIZ, stdio: 'ignore',
+    cwd: RAIZ, stdio: ['ignore', saida, saida],
     env: { ...process.env, PORT: String(PORTA), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '', DATA_DIR: dados, MEDIA_DIR: dados, AI_PROVIDER: 'dev', TRUST_PROXY: '', RAILWAY_ENVIRONMENT: '', NODE_ENV: 'test' },
   });
-  const parar = () => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* segue */ } };
+  servidor.on('exit', (codigo, sinal) => {
+    if (parando) return;
+    let fim = '';
+    try { fim = fs.readFileSync(arqDoLog, 'utf8').split('\n').slice(-60).join('\n'); } catch (e) { /* sem log */ }
+    console.error('\nO servidor de teste caiu (código ' + codigo + ', sinal ' + sinal + '). Fim do log (' + arqDoLog + '):\n' + fim);
+  });
+  const parar = () => { parando = true; servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* segue */ } };
   for (let i = 0; i < 160; i++) {
     try { if ((await fetch(BASE + '/tv')).ok) return parar; } catch (e) { /* ainda subindo */ }
     await espera(250);
@@ -319,22 +335,26 @@ async function esperarItem(p, item) {
  */
 const FORMATOS_CHEIOS = ['Tela cheia 16:9', 'Vertical 9:16', 'Quadrada 1:1'];
 /*
- * A coluna lateral também no BALCÃO (4,5%): a peça de lateral numa TV de
+ * As zonas do Corporativo também no BALCÃO (4,5%): a peça numa TV de
  * comércio é lida a 4 m. Desde o redesenho das laterais (cardapio-semana,
  * servico-semana e as outras 19 que cediam), todas cabem com a letra
- * inteira, e uma peça nova que ceder aqui reprova.
+ * inteira na coluna; desde o da principal (a regra de altura 600 a 860 px:
+ * oferta-foto, oferta-selo, cardapio-categorias e as outras 14 que cediam
+ * aqui, com fonte larga ou no tamanho da TV), também no destaque. Uma peça
+ * nova que ceder em uma das duas reprova.
  */
 const LATERAL_NO_BALCAO = 'Lateral · Corporativo';
+const DESTAQUE_NO_BALCAO = 'Destaque · Corporativo';
 const PENDENTES = new Set([]);
 // A meta da fase 3 para as zonas (lateral e bloco): 85% das fotos na régua.
 const META_ZONAS = 0.85;
-async function conferirPecas(navegador, local, soZona) {
+async function conferirPecas(navegador, local, soZonas) {
   const manifesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', 'manifesto.json'), 'utf8'));
   const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
   const saida = [];
   // Sem local: as peças de destaque, na conta da tela cheia. Com local: também as da lateral (a zona pequena ganha piso).
-  // Com soZona: só a lateral, só as peças que vão nela (o balcão).
-  const entra = (x) => (soZona ? x.papeis.includes('lateral') : x.papeis.includes('destaque') || (local && x.papeis.includes('lateral')));
+  // Com soZonas (o balcão), só aquelas zonas entram na conta.
+  const entra = (x) => x.papeis.includes('destaque') || (local && x.papeis.includes('lateral'));
   for (const peca of manifesto.pecas.filter(entra)) {
     await p.goto(BASE + '/bancada.html?ver=peca&peca=' + peca.id + '&modo=todos&tamanho=caber' + (local ? '&local=' + local : ''));
     await p.evaluate(() => (document.fonts && document.fonts.ready) || null);
@@ -354,8 +374,8 @@ async function conferirPecas(navegador, local, soZona) {
     });
     for (const [zona, cedeu] of Object.entries(porZona)) {
       const cheia = FORMATOS_CHEIOS.includes(zona);
-      // Tela cheia sem local; as zonas com o local do escritório (a Empresas, onde elas moram); a lateral no balcão.
-      if (soZona ? zona === soZona : local ? !cheia : cheia) saida.push({ id: peca.id, zona, cedeu, cheia, local: local || '' });
+      // Tela cheia sem local; as zonas com o local do escritório (a Empresas, onde elas moram); a lateral e o destaque no balcão.
+      if (soZonas ? soZonas.includes(zona) : local ? !cheia : cheia) saida.push({ id: peca.id, zona, cedeu, cheia, local: local || '' });
     }
   }
   await p.close();
@@ -464,7 +484,7 @@ async function main() {
       await painel.close();
       for (const tv of Object.values(tvs)) await tv.p.context().close();
     }
-    pecas = (await conferirPecas(navegador)).concat(await conferirPecas(navegador, 'escritorio'), await conferirPecas(navegador, 'balcao', LATERAL_NO_BALCAO));
+    pecas = (await conferirPecas(navegador)).concat(await conferirPecas(navegador, 'escritorio'), await conferirPecas(navegador, 'balcao', [LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO]));
   } finally {
     await navegador.close();
     parar();
@@ -515,10 +535,11 @@ async function main() {
     for (const x of l.filter((y) => y.cedeu < 1)) console.log('  · ' + x.id + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%');
     if (ok / l.length < META_ZONAS) { console.log('  ✗ abaixo da meta de ' + Math.round(META_ZONAS * 100) + '%'); reprova = true; }
   }
-  // A lateral no balcão (4,5%): bloqueio, peça a peça, como a tela cheia.
-  const noBalcao = pecas.filter((x) => x.local === 'balcao' && x.zona === LATERAL_NO_BALCAO);
-  if (noBalcao.length) {
-    console.log('Peças-ouro em Lateral · balcão (' + PISO + '%): ' + noBalcao.filter((x) => x.cedeu >= 1).length + ' de ' + noBalcao.length + ' com a letra inteira');
+  // A lateral e o destaque do Corporativo no balcão (4,5%): bloqueio, peça a peça, como a tela cheia.
+  for (const [zona, nome] of [[LATERAL_NO_BALCAO, 'Lateral'], [DESTAQUE_NO_BALCAO, 'Destaque']]) {
+    const noBalcao = pecas.filter((x) => x.local === 'balcao' && x.zona === zona);
+    if (!noBalcao.length) continue;
+    console.log('Peças-ouro em ' + nome + ' · balcão (' + PISO + '%): ' + noBalcao.filter((x) => x.cedeu >= 1).length + ' de ' + noBalcao.length + ' com a letra inteira');
     for (const x of noBalcao.filter((y) => y.cedeu < 1)) { console.log('  ✗ ' + x.id + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%'); reprova = true; }
   }
   // Fase 10: o contraste de todo texto, em todo arranjo.

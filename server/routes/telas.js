@@ -379,6 +379,13 @@ module.exports = function (ctx) {
       if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
       // Fase 13: o membro de uma loja vê só as TVs dela.
       const rows = permissoes.filtrar(sess, await db.listDevices(sess.tenant_id));
+      // Quem precisa de aprovação: em que TVs há um pedido seu esperando (o "Pôr na TV" diz que a mudança nova vai junto).
+      const esperando = new Map();
+      if (sess.precisaAprovar) {
+        for (const p of await db.listarAprovacoes(sess.tenant_id, { estado: 'pendente', autorId: sess.user_id, limite: 50 })) {
+          for (const t of p.telas || []) if (!esperando.has(t.id)) esperando.set(t.id, p.id);
+        }
+      }
       const list = rows.map((d) => {
         const info = (() => { try { return d.info ? JSON.parse(d.info) : null; } catch (_) { return null; } })();
         return {
@@ -388,6 +395,7 @@ module.exports = function (ctx) {
           info,
           // D41: a casca Android desta TV está atrás da publicada (o nome da nova; vazio se não).
           appNovo: apk.versaoNovaPara(info),
+          ...(esperando.has(d.id) ? { meuPedido: esperando.get(d.id) } : {}),
         };
       });
       return sendJson(res, 200, { devices: list });
@@ -471,6 +479,20 @@ module.exports = function (ctx) {
       // Player lê a própria config (com device token)
       if (req.method === 'GET' && sub === 'config') {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
+        /*
+         * Quem precisa de aprovação e tem um pedido seu esperando para esta TV
+         * lê a programação DO PEDIDO, com a versão dele (server/aprovacao.js,
+         * juntar os pedidos): o que mudar agora vai junto, nada se perde.
+         * `X-Meu-Pedido` diz qual é (o painel avisa).
+         */
+        if (!dtOk && sess && sess.precisaAprovar) {
+          const meu = (await aprovacao.meusPendentesPorTela(db, sess)).get(device.id);
+          const c = meu && meu.item.config ? configParaOPainel(Object.assign({}, device, { config: JSON.stringify(meu.item.config) }), await empresaDa(device.tenant_id), await db.getBrandKit(device.tenant_id).catch(() => null)) : null;
+          if (c) {
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Config-Versao': String(aprovacao.versaoDoPedido(meu.pedido)), 'X-Meu-Pedido': meu.pedido.id });
+            return res.end(JSON.stringify(c));
+          }
+        }
         /*
          * TV sem programação: 204, mas COM a versão. Sem o cabeçalho o painel
          * lia "versão 0", o servidor comparava com a data do pareamento e
@@ -578,7 +600,14 @@ module.exports = function (ctx) {
         const versaoPedida = query && query.versao != null && query.versao !== '' ? Number(query.versao) : null;
         // "Versão 0" numa TV que ainda não tem programação é "li vazia": não há o que sobrescrever (painel antigo, 24/10).
         const vaziaLidaVazia = !device.config && versaoPedida === 0;
-        if (versaoPedida != null && Number.isFinite(versaoPedida) && !vaziaLidaVazia && versaoPedida !== (Number(device.updated_at) || 0)) {
+        // Com um pedido seu esperando para esta TV, a versão que vale é a do pedido: a mudança nova vai junto (aprovacao.conferirVersao).
+        const meus = sess.precisaAprovar ? await aprovacao.meusPendentesPorTela(db, sess) : null;
+        const meu = meus && meus.get(id);
+        const naVersao = meu ? aprovacao.conferirVersao(meu, device, versaoPedida != null && Number.isFinite(versaoPedida) ? versaoPedida : null) : null;
+        if (naVersao && !naVersao.ok) {
+          return sendJson(res, 409, { error: aprovacao.MUDANCA_ESPERANDO, code: 'config-mudou', versao: naVersao.versao, meuPedido: meu.pedido.id });
+        }
+        if (!meu && versaoPedida != null && Number.isFinite(versaoPedida) && !vaziaLidaVazia && versaoPedida !== (Number(device.updated_at) || 0)) {
           return sendJson(res, 409, {
             error: 'Esta TV foi mudada em outro lugar enquanto você editava. Recarregue para ver a programação atual.',
             code: 'config-mudou', versao: Number(device.updated_at) || 0,
@@ -597,8 +626,9 @@ module.exports = function (ctx) {
            * conferir. 202: aceito, ainda não no ar.
            */
           if (sess.precisaAprovar) {
-            const pedido = await aprovacao.pedir(db, sess, [{ device, cfg, versao: comVersao != null ? comVersao : (Number(device.updated_at) || 0) }],
-              String((query && query.descricao) || '').slice(0, 120) || (device.name ? 'Mudança em ' + device.name : 'Mudança na TV'));
+            const base = naVersao ? naVersao.base : comVersao != null ? comVersao : (Number(device.updated_at) || 0);
+            const pedido = await aprovacao.pedir(db, sess, [{ device, cfg, versao: base }],
+              String((query && query.descricao) || '').slice(0, 120) || (device.name ? 'Mudança em ' + device.name : 'Mudança na TV'), meus);
             return sendJson(res, 202, aprovacao.resposta(pedido));
           }
           const updatedAt = await db.setDeviceConfig(id, JSON.stringify(cfg), device.name || cfg.settings.nome, comVersao);
@@ -1102,7 +1132,7 @@ module.exports = function (ctx) {
         if (!conferido.prontos) return sendJson(res, conferido.status, conferido.corpo);
         const descricao = String((b && b.descricao) || '').slice(0, 120);
         if (sess.precisaAprovar) {
-          const pedido = await aprovacao.pedir(db, sess, conferido.prontos, descricao);
+          const pedido = await aprovacao.pedir(db, sess, conferido.prontos, descricao, conferido.meus);
           return sendJson(res, 202, aprovacao.resposta(pedido));
         }
         const r = await aplicarLote(sess.tenant_id, sess.user_id, conferido.prontos, descricao);
@@ -1151,6 +1181,8 @@ module.exports = function (ctx) {
     const prontos = [];
     const conflitos = [];
     const problemas = [];
+    // Quem precisa de aprovação: a TV com pedido seu esperando confere contra o pedido (aprovacao.conferirVersao).
+    const meus = sess && sess.precisaAprovar ? await aprovacao.meusPendentesPorTela(db, sess) : null;
     // A mesma TV duas vezes no envio: qual das duas valeria? Recusa em vez de adivinhar.
     const ids = itens.map((it) => String((it && it.id) || '')).filter(Boolean);
     if (new Set(ids).size !== ids.length) return { status: 400, corpo: { error: 'A mesma TV veio duas vezes no envio. Nada foi enviado.', code: 'tv-repetida' } };
@@ -1168,21 +1200,22 @@ module.exports = function (ctx) {
         return { status: 403, corpo: { error: 'Uma das TVs não é da sua loja. Nada foi enviado.', code: 'loja' } };
       }
       const versao = it.versao != null && it.versao !== '' ? Number(it.versao) : null;
-      // "Versão 0" numa TV ainda sem programação é "li vazia" (ver o PUT da config).
-      const vaziaLidaVazia = !device.config && versao === 0;
-      if (versao != null && !vaziaLidaVazia && versao !== (Number(device.updated_at) || 0)) { conflitos.push({ id, nome: device.name, versao: Number(device.updated_at) || 0 }); continue; }
+      const meu = meus && meus.get(id);
+      const v = aprovacao.conferirVersao(meu, device, versao);
+      if (!v.ok) { conflitos.push(Object.assign({ id, nome: device.name, versao: v.versao }, meu ? { meuPedido: meu.pedido.id } : {})); continue; }
       const p = await prepararConfig(device, it.config);
       if (p.corpo) { problemas.push(Object.assign({ id, nome: device.name }, p.corpo)); continue; }
-      prontos.push({ device, cfg: p.cfg, versao: Number(device.updated_at) || 0 });
+      prontos.push({ device, cfg: p.cfg, versao: v.base });
     }
     if (conflitos.length) {
-      return { status: 409, corpo: { error: 'Algumas TVs foram mudadas em outro lugar enquanto você enviava. Nada foi enviado.', code: 'config-mudou', telas: conflitos } };
+      const doPedido = conflitos.some((c) => c.meuPedido);
+      return { status: 409, corpo: { error: doPedido ? aprovacao.MUDANCA_ESPERANDO : 'Algumas TVs foram mudadas em outro lugar enquanto você enviava. Nada foi enviado.', code: 'config-mudou', telas: conflitos } };
     }
     if (problemas.length) {
       return { status: 400, corpo: { error: (problemas[0].nome ? problemas[0].nome + ': ' : '') + (problemas[0].error || 'programação recusada') + '. Nada foi enviado.', code: problemas[0].code, problemas: problemas.slice(0, 20) } };
     }
     if (!prontos.length) return { status: 400, corpo: { error: 'escolha pelo menos uma TV' } };
-    return { prontos };
+    return { prontos, meus };
   }
 
   /*

@@ -44,6 +44,28 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
   .passos small { margin-top: 1.2cqh; line-height: 1.25; max-width: none; }
   .cta { bottom: 5cqh; max-width: 34cqw; line-height: 1.2; letter-spacing: .1em; text-wrap: balance; }
 }
+/*
+ * A principal do Corporativo NA TV (1379×784, ou mais larga com a margem
+ * da TV) passa de 1,74 e ficava com o desenho da tela cheia, que cedia a
+ * letra do balcão. Pela altura (600 a 860 px), a mesma composição de cima:
+ * os passos um embaixo do outro (aqui um pouco mais juntos, e o título da
+ * fonte larga de uma marca encolhe como o da tela cheia).
+ */
+@container (aspect-ratio >= 1.74) and (min-height: 600px) and (max-height: 860px) {
+  .marca-nome { top: 5cqh; letter-spacing: .1em; }
+  .cabeca { right: auto; width: 34cqw; top: 15cqh; }
+  .kicker { letter-spacing: .1em; line-height: 1.15; }
+  .kicker i { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqh * var(--mt-escala-titulo, 1))); margin-top: .36em; white-space: normal; }
+  h1 span, h1 em { display: block; }
+  .passos { left: 44cqw; right: 5cqw; top: 50%; bottom: auto; transform: translateY(-50%); grid-template-columns: 1fr; }
+  .passos li { display: grid; grid-template-columns: 5.4cqw 1fr; column-gap: 1.3cqw; align-items: baseline; padding: 1.3cqh 0; border-top-width: .2cqw; }
+  .passos li::before { top: -.5cqw; width: .9cqw; height: .9cqw; }
+  .num { grid-row: 1 / 3; font-size: max(var(--mt-piso, 0cqw), 9cqh); }
+  .passos b { margin: 0; }
+  .passos small { margin-top: 1.2cqh; line-height: 1.25; max-width: none; }
+  .cta { bottom: 5cqh; max-width: 34cqw; line-height: 1.2; letter-spacing: .1em; text-wrap: balance; }
+}
 /* Em pé e quase quadrada: os passos em coluna, número à esquerda. */
 @container (aspect-ratio < 1.25) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); }
