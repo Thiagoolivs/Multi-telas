@@ -196,6 +196,10 @@ test('servidor: o membro de uma loja não alcança outra, e o que ele põe na TV
   // A lista: só as TVs da loja dele.
   assert.deepEqual((await pedir('/api/devices', { cookie: membro })).json.devices.map((d) => d.id), [centro.id]);
   assert.equal((await pedir('/api/devices', { cookie: dono })).json.devices.length, 2, 'o dono continua vendo todas');
+  // A programação de todas as TVs de uma vez e o "o que está passando": também só as dele.
+  assert.deepEqual(Object.keys((await pedir('/api/devices/configs', { cookie: membro })).json.configs), [centro.id], 'o membro leu a programação da outra loja');
+  assert.deepEqual(Object.keys((await pedir('/api/devices/estados?ids=' + norte.id + ',' + centro.id, { cookie: membro })).json.estados), [centro.id]);
+  assert.equal(Object.keys((await pedir('/api/devices/configs', { cookie: dono })).json.configs).length, 2);
   // A TV de outra loja, pelo endereço direto: nada.
   for (const [metodo, sub, corpo] of [['GET', '/config'], ['PUT', '/config', cfg('invadida')], ['GET', ''], ['POST', '/comando', { acao: 'recarregar' }],
     ['POST', '/rename', { name: 'X' }], ['POST', '/expediente', {}], ['POST', '/audio', { acao: 'pausar' }], ['GET', '/estado'], ['POST', '/grupo', { grupo: 'Loja Centro' }]]) {
