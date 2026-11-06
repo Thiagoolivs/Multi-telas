@@ -151,10 +151,20 @@ test('celular: abas viram seletor, topo mais baixo, listas de 12 em 12', () => {
   assert.match(h, /mb-4 flex flex-col gap-2 sm:mb-5/);
   assert.match(h, /max-sm:line-clamp-2/);
   const p = ler('web/src/pages/PecasProntasPage.jsx');
-  assert.match(p, /visiveis\.slice\(0, qtPecas\)\.map/);
-  assert.match(p, /modelosVisiveis\.slice\(0, qtModelos\)\.map/);
+  /*
+   * Fase 10 (reteste do bloco 8): eram duas grades na página (as peças da
+   * conta e os modelos), cada uma de 12 em 12. Agora é uma grade só — as
+   * telas inteiras e as peças prontas —, e é ela que vem de 12 em 12, com
+   * "Mostrar mais". A regra protegida é a mesma: nada de dezenas de cartões
+   * de uma vez no celular.
+   */
+  assert.match(p, /visiveis\.slice\(0, qt\)\.map/);
+  assert.match(p, /<MostrarMais total=\{visiveis\.length\} mostrando=\{qt\} onMais=\{\(\) => setQt\(\(n\) => n \+ POR_VEZ\)\} \/>/);
+  assert.doesNotMatch(p, /modelosVisiveis/, 'voltou a segunda grade');
   assert.match(p, /const POR_VEZ = 12;/);
   assert.match(p, /Mostrar mais \(\{total - mostrando\}\)/);
+  // Trocar o filtro volta aos 12 primeiros.
+  assert.match(p, /const setFiltro = \(f\) => \{ setFiltroAgora\(f\); setQt\(POR_VEZ\); \};/);
   // Nos cartões, o botão é o de contorno: era a página dos 49 violetas.
   assert.doesNotMatch(p, /size="sm" variant="primary"/);
   // A tabela da semana tem nome em toda coluna (o axe acusava o canto vazio).

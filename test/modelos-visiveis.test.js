@@ -40,8 +40,18 @@ test('o modelo sai na marca da conta, no modo "Cor da marca", com o nome onde a 
 
 test('Peças prontas mostra os modelos; com eles, a página nunca fica vazia', () => {
   const p = ler('web/src/pages/PecasProntasPage.jsx');
-  assert.match(p, /Modelos prontos, com a sua marca/);
-  assert.match(p, /visiveis\.length === 0 && modelosVisiveis\.length > 0 \? null :/);
+  /*
+   * Fase 10 (reteste do bloco 8): a seção "Modelos prontos, com a sua marca"
+   * ficava embaixo das peças da conta, numa segunda grade. Agora os modelos
+   * SÃO a grade de Prontos para você (com as telas inteiras), e as peças da
+   * conta moram nas abas delas (Campanhas, Peças guardadas). O vazio só
+   * aparece quando o filtro ou a busca não deixam nada — nunca "Nenhuma peça
+   * pronta ainda" com os modelos guardados.
+   */
+  assert.match(p, /const item = itemDoModelo\(m, marca, perfil\.id\);/);
+  assert.match(p, /telasProntas\.meus\.map\(daTela\)\.concat\(grupos\.meus\.map\(doModelo\),/);
+  assert.doesNotMatch(p, /Nenhuma peça pronta ainda/);
+  assert.match(p, /title="Nada neste filtro" description="Troque o filtro ou a busca\."/);
   // Fase 8: um violeta por tela — nos cartões, o botão é o de contorno.
   assert.match(p, /<Button size="sm" variant="secondary" icon=\{Wand2\} className="border-accent\/50 font-semibold" onClick=\{\(\) => setUsando\(p\)\}>Usar<\/Button>/);
   assert.match(p, /<EditarPeca item=\{usando\.item\}/);

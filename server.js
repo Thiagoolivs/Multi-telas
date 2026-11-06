@@ -86,7 +86,7 @@ const paletaInicial = require('./server/paleta');
 const conferencia = require('./server/conferencia');
 const redesRotas = require('./server/routes/redes');
 
-const { semCopiasDeCampanha } = require('./server/copias-de-campanha.js');
+const { semCopiasDeCampanha, comACampanha } = require('./server/copias-de-campanha.js');
 const compressao = require('./server/compressao.js');
 const pacoteTv = require('./server/pacote-tv.js');
 const saude = require('./server/saude.js');
@@ -862,7 +862,8 @@ async function handleApi(req, res, pathname, query) {
     if (req.method === 'GET' && parts.length === 2) {
       // As cópias antigas das campanhas do Criar ficam de fora (item 43): a campanha mora em Campanhas.
       const campanhas = await db.listarCampanhas(sess.tenant_id, 500, { arquivadas: 'todas' }).catch(() => []);
-      return sendJson(res, 200, { items: semCopiasDeCampanha(await db.listLibrary(sess.tenant_id), campanhas) });
+      // Fase 10: a pasta que sobra com o nome de uma campanha leva o id dela (Peças guardadas mostra o link).
+      return sendJson(res, 200, { items: comACampanha(semCopiasDeCampanha(await db.listLibrary(sess.tenant_id), campanhas), campanhas) });
     }
     if (req.method === 'POST' && parts.length === 2) {
       return readBody(req, res, async (b) => {

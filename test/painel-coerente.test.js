@@ -160,7 +160,23 @@ test('item 34: Mídias por propósito, com as peças prontas e o disco discreto'
   const p = semComentarios(ler('web/src/pages/PecasProntasPage.jsx'));
   assert.match(p, /<PorNaTV peca=\{porNaTv\} telas=\{telas\}/);
   assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /await porPecaNasTelas\(\{ \.\.\.peca, item \}, alvos, telas\);/);
-  assert.match(p, /criar\.pecasProntas\(\)/);
+  /*
+   * Fase 10 (reteste do bloco 8: "a mesma campanha aparece em 3 lugares"):
+   * as peças das campanhas saíram de Prontos para você. A casa delas é a
+   * campanha, e é lá que cada peça tem o "Pôr na TV" de uma peça só — com o
+   * nome da campanha, como antes (o _campanha acima, que o "Pausar" usa).
+   * Prontos só traz o link. O Adicionar da página da TV continua oferecendo
+   * as peças das campanhas que cabem na parte (é um seletor, não uma lista).
+   */
+  assert.doesNotMatch(p, /criar\.pecasProntas\(\)/, 'as peças das campanhas voltaram a ser listadas fora da campanha');
+  assert.match(p, /onClick=\{\(\) => onIr && onIr\('campanhas'\)\}>Campanhas<\/button>/);
+  const k = semComentarios(ler('web/src/pages/CampanhasPage.jsx'));
+  assert.match(k, /onPorNaTv=\{setPorNaTv\} \/>/);
+  assert.match(k, /<PorNaTV peca=\{porNaTv\} telas=\{telas\}/);
+  const r = semComentarios(ler('web/src/components/criar/ResultadoCampanha.jsx'));
+  assert.match(r, /onPorNaTv\(\{ item: \{ \.\.\.p\.item, formato: p\.formato \|\| p\.item\.formato \}, papel: faixa \|\| p\.papel, formato: p\.formato, label: p\.label, campanha: campanha\.nome \}\)/);
+  for (const z of ['Cabeçalho', 'Principal', 'Lateral', 'Rodapé']) assert.match(r, new RegExp('<Zona titulo="' + z + '"[^>]*onPorNaTv=\\{porNaTv\\}'), z);
+  assert.match(semComentarios(ler('web/src/components/content/TypePicker.jsx')), /criar\.pecasProntas\(\)/);
 });
 
 test('item 35: a data de hoje é ideia no Criar e no Início, não aviso no topo da TV', async () => {
@@ -283,8 +299,33 @@ test('item 43: as cópias antigas das campanhas do Criar saem de Meus Designs (e
   assert.ok(!ficam.includes(items[0]));
   assert.deepEqual(semCopiasDeCampanha(items, []), items);
   const s = ler('server.js');
-  assert.match(s, /return sendJson\(res, 200, \{ items: semCopiasDeCampanha\(await db\.listLibrary\(sess\.tenant_id\), campanhas\) \}\);/);
+  // Fase 10: a lista também leva o id da campanha de mesmo nome (comACampanha, abaixo).
+  assert.match(s, /return sendJson\(res, 200, \{ items: comACampanha\(semCopiasDeCampanha\(await db\.listLibrary\(sess\.tenant_id\), campanhas\), campanhas\) \}\);/);
   assert.doesNotMatch(ler('server/copias-de-campanha.js'), /delete|DELETE/, 'esconder, nunca apagar');
+});
+
+/*
+ * Fase 10 (reteste do bloco 8): a pasta "Semana do pão de queijo" em Peças
+ * guardadas, feita depois da campanha de mesmo nome, listava as peças de
+ * novo. Ela fica (não é cópia), mas leva o id da campanha, e Peças guardadas
+ * mostra o link para a campanha no lugar da grade.
+ */
+test('Peças guardadas: a pasta com o nome de uma campanha leva até a campanha, sem listar as peças de novo', () => {
+  const { comACampanha } = require('../server/copias-de-campanha.js');
+  const campanhas = [{ id: 'cmp_novo', nome: 'Promoção da semana' }, { id: 'cmp_velho', nome: 'Promoção da semana' }, { id: 'cmp_b', nome: '' }];
+  const items = [{ id: 'a', campaign: 'Promoção da semana' }, { id: 'b', campaign: 'Avisos' }, { id: 'c', campaign: '' }];
+  const r = comACampanha(items, campanhas);
+  assert.equal(r[0].campanhaId, 'cmp_novo', 'com dois nomes iguais, a mais recente');
+  assert.equal(r[1].campanhaId, undefined);
+  assert.equal(r[2].campanhaId, undefined, 'campanha sem nome não casa com a peça sem pasta');
+  assert.equal(items[0].campanhaId, undefined, 'não mexe na lista recebida');
+  assert.deepEqual(comACampanha(items, []), items);
+  const d = ler('web/src/pages/MyDesignsPage.jsx');
+  assert.match(d, /const campanhaId = \(doGrupo\.find\(\(it\) => it\.campanhaId\) \|\| \{\}\)\.campanhaId;/);
+  assert.match(d, /\{daCampanha \? \(/);
+  assert.match(d, /onClick=\{\(\) => onIr && onIr\('campanhas', \{ campanha: campanhaId \}\)\}>Abrir a campanha<\/Button>/);
+  // As peças guardadas continuam a um toque, para quem guardou algo à mão com o mesmo nome.
+  assert.match(d, /setAbertas\(\(m\) => \(\{ \.\.\.m, \[camp\]: true \}\)\)/);
 });
 
 test('item 44: Vestir a tela com a data de hoje mora em Ajustes › Aparência', () => {

@@ -19,7 +19,7 @@ const RAIZ = path.join(__dirname, '..');
 const ler = (...p) => fs.readFileSync(path.join(RAIZ, ...p), 'utf8');
 const menu = () => import(pathToFileURL(path.join(RAIZ, 'web/src/lib/menu.js')).href);
 
-test('o menu da fase 7: o botão Criar e 5 itens (6 na Empresas); a conta no avatar; a Biblioteca em 4 abas', async () => {
+test('o menu da fase 7: o botão Criar e 5 itens (6 na Empresas); a conta no avatar; a Biblioteca em abas diretas', async () => {
   const M = await menu();
   assert.deepStrictEqual(M.GRUPOS.map((g) => g.label), ['Criar', 'Início', 'Telas', 'Agenda', 'Biblioteca', 'Marca', 'Pessoas', 'Conta']);
   const de = (id) => M.GRUPOS.find((g) => g.id === id).paginas;
@@ -27,7 +27,14 @@ test('o menu da fase 7: o botão Criar e 5 itens (6 na Empresas); a conta no ava
   assert.deepStrictEqual(de('inicio'), ['overview']);
   assert.deepStrictEqual(de('telas'), ['screens'], 'a TV abre a página dela; a Programação mora em Telas');
   assert.deepStrictEqual(de('agenda'), ['calendario']);
-  assert.deepStrictEqual(de('midias'), ['prontos', 'seus', 'storage']);
+  /*
+   * Fase 10 (reteste do bloco 8: "a Biblioteca tem até 4 níveis"): a aba
+   * "Seus conteúdos" tinha as partes Campanhas e Peças guardadas, e a
+   * "Prontos para você", Telas inteiras e Peças soltas. Agora cada aba é a
+   * página, e dentro dela só um filtro: no máximo 2 níveis entre o menu e a
+   * coisa (Biblioteca › Campanhas › a campanha).
+   */
+  assert.deepStrictEqual(de('midias'), ['prontos', 'campanhas', 'designs', 'storage']);
   assert.deepStrictEqual(de('extras'), ['birthdays', 'mural', 'indicadores']);
   assert.deepStrictEqual(de('conta'), ['billing', 'team', 'settings', 'support']);
   assert.equal(M.GRUPOS.find((g) => g.id === 'conta').menu, false, 'a conta mora no avatar');
@@ -67,6 +74,9 @@ test('nenhum link antigo quebra; os novos (por grupo) funcionam', async () => {
   // D18: Mídias abre nas telas prontas; ?ir=pecas continua abrindo as peças.
   assert.equal(M.paginaDoIr('midias'), 'prontos');
   assert.equal(M.paginaDoIr('pecas'), 'pecas');
+  // Fase 10: ?ir=seus (a aba que saiu) abre as Campanhas, onde a campanha mora.
+  assert.equal(M.paginaDoIr('seus'), 'campanhas');
+  assert.ok(!M.PAGINAS.seus, '"Seus conteúdos" voltou a ser aba');
   assert.equal(M.paginaDoIr('storage'), 'storage', 'o endereço antigo continua: é Fotos e vídeos');
   // Grupos que mudaram de nome continuam abrindo o mesmo lugar.
   assert.equal(M.paginaDoIr('automaticos'), 'birthdays');
@@ -120,4 +130,31 @@ test('Adicionar conteúdo pergunta antes: 6 entradas grandes; todos os tipos em 
   // Foto ou vídeo entra pelo mesmo caminho do "Pôr na TV": inteira, com o fundo borrado.
   // O nome do arquivo vai junto: é o nome da foto na fila (test/ajustes-da-tv.test.js).
   assert.match(p, /onPickItem\(itemDaMidia\(\{ url: r\.url, fundo: prep\.fundo, video, nome: f\.name \}\)\)/);
+});
+
+/*
+ * Fase 10 (reteste do bloco 8): os endereços de antes caem no lugar novo da
+ * Biblioteca, sem parte nenhuma dentro da aba. Peças prontas e Telas prontas
+ * são "Prontos para você" (as telas já com o filtro "Telas inteiras"); a
+ * aba "Seus conteúdos" que ficou no histórico do navegador abre Campanhas ou
+ * Peças guardadas; e a página não tem mais as partes (Partes) dentro.
+ */
+test('a Biblioteca em 2 níveis: os endereços antigos abrem a aba nova, e as abas não têm partes dentro', () => {
+  const app = ler('web/src/App.jsx');
+  const naBib = app.slice(app.indexOf('const NA_BIBLIOTECA = {'), app.indexOf('function enderecoDaRota('));
+  assert.match(naBib, /telasprontas: \{ name: 'prontos', filtro: 'telas' \}, pecas: \{ name: 'prontos' \}/);
+  assert.match(naBib, /studio: \{ name: 'designs' \}, campaigns: \{ name: 'designs' \}, images: \{ name: 'designs' \}/);
+  assert.match(naBib, /if \(r\.name === 'seus'\) return \{ \.\.\.resto, name: parte === 'pecas' \? 'designs' : 'campanhas' \};/);
+  // O voltar do navegador também passa pela troca (uma entrada antiga não cai numa página que não existe).
+  assert.match(app, /setRoute\(naBiblioteca\(resto\)\);/);
+  assert.match(app, /const ir = paginaDoIr\(q\.get\('ir'\)\);\s*if \(ir\) return naBiblioteca\(\{ name: ir \}\);/);
+  assert.match(app, /case 'prontos': return <PecasProntasPage key=\{\(route\.filtro \|\| ''\) \+ \(route\.tela \|\| ''\)\} filtroInicial=\{route\.filtro\} telaAlvo=\{route\.tela\} onIr=\{go\} \/>;/);
+  assert.doesNotMatch(app, /case 'seus':/);
+  // Nenhuma parte dentro das abas da Biblioteca: a grade tem um filtro só.
+  assert.doesNotMatch(ler('web/src/pages/BibliotecaPage.jsx'), /<Partes/);
+  const p = ler('web/src/pages/PecasProntasPage.jsx');
+  assert.doesNotMatch(p, /<Partes/);
+  assert.match(p, /\['tudo', 'Tudo'\], \['telas', 'Telas inteiras'\], \['deitada', 'TV deitada'\], \['empe', 'TV em pé'\], \['faixas', 'Cabeçalho e rodapé'\]/);
+  // A TV vazia continua oferecendo a tela pronta: o endereço antigo abre a grade já nas telas inteiras.
+  assert.match(ler('web/src/pages/ContentEditorPage.jsx'), /onIr\('telasprontas', \{ tela: device && device\.id \}\)/);
 });
