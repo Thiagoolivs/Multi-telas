@@ -114,7 +114,14 @@ test('Telas prontas: a nota interna do manifesto não chega ao cliente (corrigid
 
 test('Peças prontas: carregando mostra carregando, não "Nenhuma peça pronta ainda"', () => {
   const s = ler('web/src/pages/PecasProntasPage.jsx');
-  assert.match(s, /pecas === null \|\| \(visiveis\.length === 0 && \(modelos === null \|\| marca === null\)\)/);
+  /*
+   * Fase 10: a página não lista mais as peças da conta (elas moram em
+   * Campanhas e em Peças guardadas), só os modelos e as telas inteiras.
+   * Carregando é enquanto um dos dois (ou a marca) não chegou; o vazio só
+   * vem depois.
+   */
+  assert.match(s, /const carregando = modelos === null \|\| dados === null \|\| marca === null;/);
+  assert.match(s, /\) : carregando \? \(/);
   assert.match(s, /Carregando as peças…/);
 });
 

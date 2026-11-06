@@ -34,7 +34,7 @@ const FAQ = [
   },
   {
     q: 'Como reaproveito um design em várias telas?',
-    a: 'Tudo que você cria fica na Biblioteca, em Seus conteúdos. Ao adicionar conteúdo em uma tela, o painel abre justamente na sua biblioteca, com busca — é só clicar no design para inseri-lo.',
+    a: 'O que a IA cria fica na Biblioteca, em Campanhas, e o que você guarda, em Peças guardadas. Ao adicionar conteúdo em uma tela, o painel abre justamente na sua biblioteca, com busca — é só clicar no design para inseri-lo.',
   },
   {
     q: 'A TV foi trocada ou apagada. Perco a programação?',

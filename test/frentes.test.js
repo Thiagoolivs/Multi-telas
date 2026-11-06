@@ -40,7 +40,8 @@ test('o menu da frente: Empresas tem Pessoas no menu; Saúde e Comércio, os App
   assert.deepEqual(itens('empresa'), ['Início', 'Telas', 'Agenda', 'Biblioteca', 'Marca', 'Pessoas']);
   for (const f of ['saude', 'comercio']) {
     assert.deepEqual(itens(f), ['Início', 'Telas', 'Agenda', 'Biblioteca', 'Marca']);
-    assert.deepEqual(M.gruposDa(f).find((g) => g.id === 'midias').paginas, ['prontos', 'seus', 'storage', 'apps']);
+    // Fase 10: as abas da Biblioteca são as próprias páginas (Campanhas e Peças guardadas eram partes de "Seus conteúdos").
+    assert.deepEqual(M.gruposDa(f).find((g) => g.id === 'midias').paginas, ['prontos', 'campanhas', 'designs', 'storage', 'apps']);
     assert.equal(M.grupoNaFrente('birthdays', f).id, 'midias', 'os Apps acendem a Biblioteca');
   }
   assert.equal(M.grupoNaFrente('birthdays', 'empresa').id, 'extras');

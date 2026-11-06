@@ -83,7 +83,7 @@ export function ListaDeConversas({ atual, onAbrir, onNova, onExcluiu, versao, cl
     const ok = await confirmar({
       titulo: 'Excluir a conversa?',
       texto: '"' + nome + '" e tudo o que foi combinado nela vão ser apagados. Não dá para desfazer.'
-        + (c.estado === 'gerado' ? ' A campanha que ela criou continua em Seus conteúdos.' : ' Se quiser só tirar da lista, use Arquivar.'),
+        + (c.estado === 'gerado' ? ' A campanha que ela criou continua na Biblioteca, em Campanhas.' : ' Se quiser só tirar da lista, use Arquivar.'),
       botao: 'Excluir', perigo: true,
     });
     if (!ok) return;

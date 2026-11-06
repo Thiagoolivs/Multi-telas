@@ -55,12 +55,10 @@ const CriarPage = pagina(() => import('./pages/CriarPage.jsx'), 'CriarPage');
 const CriacaoRapidaPage = pagina(() => import('./pages/CriacaoRapidaPage.jsx'), 'CriacaoRapidaPage');
 const CampanhasPage = pagina(() => import('./pages/CampanhasPage.jsx'), 'CampanhasPage');
 const CriandoPage = pagina(() => import('./pages/CriandoPage.jsx'), 'CriandoPage');
+// Fase 10: a página Prontos para você (as telas inteiras e as peças, numa grade só).
 const PecasProntasPage = pagina(() => import('./pages/PecasProntasPage.jsx'), 'PecasProntasPage');
-const TelasProntasPage = pagina(() => import('./pages/TelasProntasPage.jsx'), 'TelasProntasPage');
 const CalendarioPage = pagina(() => import('./pages/CalendarioPage.jsx'), 'CalendarioPage');
-// Fase 7: a Biblioteca única (as páginas de antes viraram partes destas).
-const ProntosPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'ProntosPage');
-const SeusConteudosPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'SeusConteudosPage');
+// Fase 7: a Biblioteca única. Fase 10: as abas são as próprias páginas; os Apps moram em BibliotecaPage.
 const AppsPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'AppsPage');
 // Fase 13: a fila de aprovação (o dono aprova pelo celular; o membro vê a resposta).
 const AprovacoesPage = pagina(() => import('./pages/AprovacoesPage.jsx'), 'AprovacoesPage');
@@ -69,9 +67,8 @@ const SenhaPage = pagina(() => import('./pages/SenhaPage.jsx'), 'SenhaPage');
 
 const META = {
   overview: { title: 'Início' },
-  // Fase 7: a Biblioteca única, em quatro abas.
+  // Fase 7: a Biblioteca única. Fase 10: Prontos, Campanhas, Peças guardadas, Fotos e vídeos e Apps, sem partes dentro.
   prontos: { title: 'Biblioteca', subtitle: 'Pronto para pôr na TV, já na sua marca.' },
-  seus: { title: 'Biblioteca', subtitle: 'O que a IA criou para você e as peças que você guardou.' },
   apps: { title: 'Biblioteca', subtitle: 'Conteúdos que se atualizam sozinhos.' },
   criar: { title: 'Criar' },
   // Os quatro passos de antes do chat (item 24): continuam, em Meus Designs › Mais.
@@ -153,7 +150,8 @@ function useTheme() {
  * que qualquer um escreve.
  */
 // campanhas, pecas, musicas e ia entraram no D3: recarregar nessas páginas caía na Visão geral.
-const ATALHOS = ['prontos', 'seus', 'apps', 'criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio', 'indicadores', 'senha', 'planilhas',
+// Fase 10: 'seus' saiu (não é mais aba); o endereço antigo abre as Campanhas (lib/menu.js, APELIDOS).
+const ATALHOS = ['prontos', 'apps', 'criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio', 'indicadores', 'senha', 'planilhas',
   'team', 'aprovacoes', 'storage', 'pecas', 'telasprontas', 'calendario', 'musicas', 'ia', 'banco', 'birthdays', 'support', 'settings'];
 
 /*
@@ -167,17 +165,25 @@ const ATALHOS = ['prontos', 'seus', 'apps', 'criar', 'campanhas', 'screens', 'pr
  * aparelho vem da lista, não do endereço.
  */
 /*
- * Fase 7: os endereços de antes abrem a parte certa da Biblioteca única.
- * Peças prontas e Telas prontas são "Prontos para você"; Criados e Meus
- * Designs, "Seus conteúdos". O que vinha junto (a campanha, a TV) segue.
+ * Os endereços de antes abrem o lugar novo da Biblioteca (fase 7, e de novo
+ * na fase 10, quando as partes das abas viraram abas e filtro). Peças
+ * prontas e Telas prontas são "Prontos para você" (as telas com o filtro
+ * "Telas inteiras"); "Seus conteúdos", que já foi aba, abre as Campanhas
+ * (ou as Peças guardadas, se era essa a parte); os nomes antigos de Meus
+ * Designs abrem as Peças guardadas. O que vinha junto (a campanha, a TV) segue.
  */
-const PARTE_DA_BIBLIOTECA = {
-  telasprontas: ['prontos', 'telas'], pecas: ['prontos', 'pecas'],
-  campanhas: ['seus', 'campanhas'], designs: ['seus', 'pecas'], studio: ['seus', 'pecas'], campaigns: ['seus', 'pecas'], images: ['seus', 'pecas'],
+const NA_BIBLIOTECA = {
+  telasprontas: { name: 'prontos', filtro: 'telas' }, pecas: { name: 'prontos' },
+  studio: { name: 'designs' }, campaigns: { name: 'designs' }, images: { name: 'designs' },
 };
 function naBiblioteca(r) {
-  const p = r && PARTE_DA_BIBLIOTECA[r.name];
-  return p ? { ...r, name: p[0], parte: p[1] } : r;
+  if (!r) return r;
+  const { parte, ...resto } = r;
+  // Uma entrada do histórico de antes da fase 10 ainda pode trazer a parte.
+  if (r.name === 'seus') return { ...resto, name: parte === 'pecas' ? 'designs' : 'campanhas' };
+  if (r.name === 'prontos' && parte === 'telas') return { ...resto, filtro: 'telas' };
+  const novo = NA_BIBLIOTECA[r.name];
+  return novo ? { ...resto, ...novo } : r;
 }
 
 function enderecoDaRota(r) {
@@ -252,7 +258,8 @@ export default function App() {
       if (!r) { setRoute(rotaDaUrl()); return; }
       // Voltar não reabre o pareamento: aquele código já foi usado.
       const { parear, abrirParear, ...resto } = r;
-      setRoute(resto);
+      // Uma entrada antiga do histórico (a aba "Seus conteúdos", que saiu na fase 10) cai no lugar novo.
+      setRoute(naBiblioteca(resto));
     };
     window.addEventListener('popstate', voltar);
     return () => window.removeEventListener('popstate', voltar);
@@ -324,11 +331,11 @@ export default function App() {
       case 'content': return <ContentEditorPage device={route.device} zonaInicial={route.zona} onBack={() => go('screens')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
       case 'aprovacoes': return <AprovacoesPage me={user} onIr={go} />;
       case 'team': return <TeamPage key={route.convidar ? 'convidar' : 'equipe'} me={user} onLeft={logout} abrirConvite={!!route.convidar} />;
-      case 'prontos': return <ProntosPage key={route.parte || ''} parte={route.parte} telaAlvo={route.tela} onIr={go} />;
-      case 'seus': return <SeusConteudosPage key={(route.parte || '') + (route.campanha || '')} parte={route.parte} campanha={route.campanha} pedido={route.pedido} onIr={go} />;
+      case 'prontos': return <PecasProntasPage key={(route.filtro || '') + (route.tela || '')} filtroInicial={route.filtro} telaAlvo={route.tela} onIr={go} />;
       case 'apps': return <AppsPage onIr={go} />;
+      // Endereços antigos: naBiblioteca já leva a 'prontos'; ficam aqui para nenhum link cair no vazio.
       case 'pecas': return <PecasProntasPage onIr={go} />;
-      case 'telasprontas': return <TelasProntasPage onIr={go} telaAlvo={route.tela} />;
+      case 'telasprontas': return <PecasProntasPage filtroInicial="telas" telaAlvo={route.tela} onIr={go} />;
       case 'calendario': return <CalendarioPage onIr={go} />;
       case 'storage': return <ArquivosPage filtro="fotos" onIr={go} />;
       case 'musicas': return <ArquivosPage filtro="musicas" onIr={go} />;
