@@ -24,31 +24,123 @@ const ESTADOS_FINAIS = ['aprovada', 'recusada', 'substituida', 'cancelada'];
 const chaveDasTelas = (ids) => ids.map(String).sort().join(',');
 
 /*
+ * JUNTAR OS PEDIDOS (lote de 06/11; decisão do dono). Antes, o pedido novo
+ * do membro para as mesmas TVs TROCAVA o que esperava, e o novo era feito
+ * em cima da TV de agora: a mudança de antes se perdia (a data posta e a
+ * apagada logo depois — só a segunda chegava ao dono). Agora a pessoa
+ * edita EM CIMA do que ela mesma tem esperando, e tudo vai junto:
+ *
+ *   - quem lê a programação de uma TV (GET /config) tendo um pedido seu
+ *     esperando para ela recebe a programação DO PEDIDO, com a "versão" do
+ *     pedido (versaoDoPedido) no lugar da versão da TV (routes/telas.js);
+ *   - gravar com essa versão vale (conferirVersao), e a base da aprovação
+ *     continua a do primeiro pedido: se o dono mexeu na TV depois, a
+ *     aprovação ainda mostra o conflito e o "por cima". Gravar com a versão
+ *     da TV de agora, tendo pedido esperando, é 409 — o painel relê e
+ *     refaz em cima do pedido (lib/rodar.js);
+ *   - o pedido novo JUNTA os de antes da mesma pessoa que tocam as mesmas
+ *     TVs (pedir): as TVs de lá que não vieram agora vão junto, como
+ *     estavam, e o que veio junto (as campanhas, as datas postas e tiradas
+ *     da Agenda) também. Os de antes saem da fila (substituida).
+ *
+ * Por TV, o pedido mais novo desta pessoa que espera e a toca: Map id → { pedido, item }.
+ * Só para quem precisa de aprovação (o dono e o admin não pedem).
+ */
+async function meusPendentesPorTela(db, sess) {
+  const porTela = new Map();
+  if (!sess || !sess.precisaAprovar) return porTela;
+  const lista = await db.listarAprovacoes(sess.tenant_id, { estado: 'pendente', autorId: sess.user_id, limite: 50 });
+  for (const r of lista) {
+    if (!(r.telas || []).some((t) => !porTela.has(t.id))) continue;
+    const pedido = await db.lerAprovacao(r.id, sess.tenant_id);
+    if (!pedido || pedido.estado !== 'pendente') continue;
+    for (const item of pedido.itens || []) if (!porTela.has(item.id)) porTela.set(item.id, { pedido, item });
+  }
+  return porTela;
+}
+// A versão que o membro lê de uma TV com pedido seu esperando: a do pedido (o instante em que foi feito), não a da TV.
+const versaoDoPedido = (pedido) => Number(pedido && pedido.criadoEm) || 0;
+/*
+ * Confere a versão que o membro mandou para `device` (`meu`: o pedido dele
+ * que espera para ela, ou nada). Devolve { ok, base } — `base`, a versão da
+ * TV contra a qual a aprovação vai conferir — ou { ok: false, versao }.
+ */
+function conferirVersao(meu, device, versao) {
+  const daTv = Number(device.updated_at) || 0;
+  if (meu) {
+    if (versao != null && versao !== versaoDoPedido(meu.pedido)) return { ok: false, versao: versaoDoPedido(meu.pedido), pedido: meu.pedido.id };
+    return { ok: true, base: Number(meu.item.versao) || 0 };
+  }
+  // "Versão 0" numa TV ainda sem programação é "li vazia" (ver o PUT da config).
+  const vaziaLidaVazia = !device.config && versao === 0;
+  if (versao != null && !vaziaLidaVazia && versao !== daTv) return { ok: false, versao: daTv };
+  return { ok: true, base: daTv };
+}
+// O 409 de quem tem pedido esperando e gravou em cima da TV de agora.
+const MUDANCA_ESPERANDO = 'Você tem uma mudança esperando aprovação nesta TV. Abra de novo: a nova vai junto com ela.';
+
+// O que veio junto de cada pedido (do mais velho ao mais novo), num só: as campanhas e as datas postas e tiradas.
+const listaDe = (extra, chave) => (extra && Array.isArray(extra[chave]) ? extra[chave] : []);
+function campanhasDe(extra) {
+  return [].concat(listaDe(extra, 'campanhas'), extra && extra.campanha ? [extra.campanha] : []).filter((c) => c && c.id);
+}
+function juntarExtras(extras) {
+  const campanhas = new Map();
+  let por = [];
+  let tira = [];
+  for (const e of extras || []) {
+    if (!e) continue;
+    for (const c of campanhasDe(e)) { campanhas.delete(c.id); campanhas.set(c.id, c); }
+    for (const id of listaDe(e, 'calendario')) { tira = tira.filter((x) => x !== id); por = por.filter((x) => x !== id).concat(id); }
+    for (const id of listaDe(e, 'calendarioApagar')) { por = por.filter((x) => x !== id); tira = tira.filter((x) => x !== id).concat(id); }
+  }
+  const out = {};
+  if (campanhas.size) { out.campanhas = [...campanhas.values()].slice(-20); out.campanha = out.campanhas[out.campanhas.length - 1]; }
+  if (por.length) out.calendario = por.slice(-200);
+  if (tira.length) out.calendarioApagar = tira.slice(-200);
+  return Object.keys(out).length ? out : null;
+}
+
+/*
  * O pedido, a partir do que o envio já conferiu (posse, loja, versão e a
  * porta das peças): `prontos` = [{ device, cfg, versao }]. A versão guardada
- * é a que o membro leu — é contra ela que a aprovação confere.
+ * é a base — a da TV que o membro leu, ou a do pedido dele que já esperava
+ * (conferirVersao) — e é contra ela que a aprovação confere. `meus`: o
+ * meusPendentesPorTela já lido (senão, lê aqui).
  */
-async function pedir(db, sess, prontos, descricao) {
+async function pedir(db, sess, prontos, descricao, meus) {
+  const porTela = meus || await meusPendentesPorTela(db, sess);
+  const antigos = new Map();
+  for (const p of prontos) { const m = porTela.get(p.device.id); if (m) antigos.set(m.pedido.id, m.pedido); }
+  const velhos = [...antigos.values()].sort((a, b) => (a.criadoEm || 0) - (b.criadoEm || 0));
   const itens = prontos.map((p) => ({
     id: p.device.id, nome: p.device.name || 'TV', versao: Number(p.versao) || 0, config: p.cfg,
   }));
+  // As TVs do pedido de antes que não vieram agora vão junto, como estavam.
+  for (const v of velhos) for (const i of v.itens || []) if (!itens.some((x) => x.id === i.id)) itens.push(i);
+  const frases = [];
+  for (const d of velhos.map((v) => v.descricao).concat(String(descricao || '').trim() || 'Mudança na TV')) if (d && !frases.includes(d)) frases.push(d);
   const telasChave = chaveDasTelas(itens.map((i) => i.id));
   const pedido = await db.criarAprovacao(sess.tenant_id, {
-    autorId: sess.user_id, autorNome: sess.name || sess.email || '', descricao: String(descricao || '').slice(0, 160) || 'Mudança na TV',
-    itens, telasChave,
+    autorId: sess.user_id, autorNome: sess.name || sess.email || '', descricao: frases.join(' · ').slice(0, 160),
+    itens, telasChave, extra: juntarExtras(velhos.map((v) => v.extra)),
   });
-  // Pediu de novo para as mesmas TVs: o pedido de antes sai da fila (o novo já traz tudo).
+  // Os de antes estão dentro deste: saem da fila (e um pedido igual, para as mesmas TVs, também).
+  for (const v of velhos) await db.mudarEstadoDaAprovacao(v.id, sess.tenant_id, 'pendente', 'substituida', { decididoEm: Date.now() }).catch(() => false);
   await db.substituirAprovacoes(sess.tenant_id, sess.user_id, telasChave, pedido.id).catch(() => 0);
   await db.registrarEvento(sess.tenant_id, sess.user_id, 'aprovacao.pedir').catch(() => {});
+  pedido.juntou = velhos.length;
   return pedido;
 }
 
 // A resposta 202 que o painel entende ("mandado para aprovação"), igual para uma TV ou várias.
+// `versao`: a que o painel usa para a próxima gravação, que vai junto com esta; `junto`: entrou no pedido que já esperava.
 function resposta(pedido) {
   return {
     ok: true, pendente: true,
-    mensagem: 'Mandado para aprovação. Vai para a TV quando o dono aprovar.',
-    aprovacao: { id: pedido.id, descricao: pedido.descricao, telas: pedido.telas },
+    mensagem: pedido.juntou ? 'Mandado para aprovação, junto com a mudança que já esperava.' : 'Mandado para aprovação. Vai para a TV quando o dono aprovar.',
+    aprovacao: { id: pedido.id, descricao: pedido.descricao, telas: pedido.telas, junto: !!pedido.juntou },
+    versao: versaoDoPedido(pedido),
   };
 }
 
@@ -65,7 +157,10 @@ async function anexarCampanha(db, sess, campanhaId, estado, telas) {
   const DOIS_MINUTOS = 2 * 60 * 1000;
   const alvo = recentes.find((p) => Date.now() - p.criadoEm < DOIS_MINUTOS);
   if (!alvo) return null;
-  const extra = Object.assign({}, alvo.extra || {}, { campanha: { id: campanhaId, estado, telas: (telas || []).slice(0, 50) } });
+  // As campanhas que já estavam no pedido (juntado) continuam nele: cada uma fica no estado pedido.
+  const nova = { id: campanhaId, estado, telas: (telas || []).slice(0, 50) };
+  const campanhas = campanhasDe(alvo.extra).filter((c) => c.id !== campanhaId).concat(nova).slice(-20);
+  const extra = Object.assign({}, alvo.extra || {}, { campanha: nova, campanhas });
   const ok = await db.mudarEstadoDaAprovacao(alvo.id, sess.tenant_id, 'pendente', 'pendente', { extra });
   return ok ? alvo : null;
 }
@@ -87,7 +182,6 @@ function temAData(config, eventoId) {
 function levaAData(pedido, eventoId) {
   return (pedido.itens || []).some((i) => temAData(i.config, eventoId));
 }
-const listaDe = (extra, chave) => (extra && Array.isArray(extra[chave]) ? extra[chave] : []);
 // Anota a data numa das listas do pedido (`calendario`: pôr; `calendarioApagar`: tirar), e tira da outra.
 async function anotarNoPedido(db, sess, pedido, eventoId, chave) {
   const outra = chave === 'calendario' ? 'calendarioApagar' : 'calendario';
@@ -169,11 +263,13 @@ async function aplicarExtra(db, tenantId, pedido) {
   }
   // A peça saiu das TVs: a data sai da Agenda junto.
   for (const id of listaDe(extra, 'calendarioApagar')) await db.removerEvento(id, tenantId).catch(() => false);
-  const c = extra.campanha;
-  if (!c || !c.id) return;
-  const atual = await db.lerCampanha(tenantId, c.id).catch(() => null);
-  if (!atual) return;
-  await db.salvarCampanha(tenantId, c.id, { ...atual, estado: c.estado, telas: c.telas || atual.telas || [] }).catch(() => {});
+  // Cada campanha que veio no pedido (juntado, pode ser mais de uma), no estado pedido.
+  const porId = new Map();
+  for (const c of campanhasDe(extra)) porId.set(c.id, c);
+  for (const c of porId.values()) {
+    const atual = await db.lerCampanha(tenantId, c.id).catch(() => null);
+    if (atual) await db.salvarCampanha(tenantId, c.id, { ...atual, estado: c.estado, telas: c.telas || atual.telas || [] }).catch(() => {});
+  }
 }
 
 /*
@@ -193,4 +289,4 @@ function antesEDepois(pedido, telasAgora, normalizar) {
   });
 }
 
-module.exports = { ESTADOS_FINAIS, chaveDasTelas, pedir, resposta, anexarCampanha, temAData, levaAData, anexarCalendario, anexarApagar, situacaoDasDatas, aplicarExtra, antesEDepois };
+module.exports = { ESTADOS_FINAIS, chaveDasTelas, meusPendentesPorTela, versaoDoPedido, conferirVersao, MUDANCA_ESPERANDO, juntarExtras, pedir, resposta, anexarCampanha, temAData, levaAData, anexarCalendario, anexarApagar, situacaoDasDatas, aplicarExtra, antesEDepois };

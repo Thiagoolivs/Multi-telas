@@ -61,6 +61,21 @@ test('o estado de cada data vem do último pedido que a levou, se ele for mais n
   const [x, y] = A.situacaoDasDatas([ev('cal_x', 600), ev('cal_y', 600)], tirando, () => true);
   assert.deepEqual(x.aprovacao, { id: 'apr_9', estado: 'pendente', saindo: true }, 'vale o pedido mais novo, o que tira');
   assert.deepEqual(y.aprovacao, { id: 'apr_8', estado: 'recusada', saindo: true, motivo: 'Fica' });
+  // Juntar os pedidos: o que veio em cada um vai junto (as datas postas e tiradas, as campanhas); a mais nova decide.
+  assert.deepEqual(A.juntarExtras([
+    { calendario: ['cal_a', 'cal_b'], campanha: { id: 'c1', estado: 'no_ar' } },
+    { calendarioApagar: ['cal_b', 'cal_c'], campanhas: [{ id: 'c2', estado: 'no_ar' }], campanha: { id: 'c2', estado: 'no_ar' } },
+    null,
+  ]), { campanhas: [{ id: 'c1', estado: 'no_ar' }, { id: 'c2', estado: 'no_ar' }], campanha: { id: 'c2', estado: 'no_ar' }, calendario: ['cal_a'], calendarioApagar: ['cal_b', 'cal_c'] });
+  assert.equal(A.juntarExtras([null, {}]), null);
+  // A versão: com pedido esperando, a do pedido (e a base fica a do pedido); sem, a da TV.
+  const tvV = { updated_at: 100, config: '{}' };
+  const meu = { pedido: { id: 'apr_m', criadoEm: 555 }, item: { versao: 90 } };
+  assert.deepEqual(A.conferirVersao(meu, tvV, 555), { ok: true, base: 90 });
+  assert.equal(A.conferirVersao(meu, tvV, 100).ok, false, 'em cima da TV de agora, com pedido esperando');
+  assert.deepEqual(A.conferirVersao(null, tvV, 100), { ok: true, base: 100 });
+  assert.equal(A.conferirVersao(null, tvV, 90).ok, false);
+  assert.deepEqual(A.conferirVersao(null, { updated_at: 7, config: null }, 0), { ok: true, base: 7 }, 'TV vazia lida vazia');
   // O motivo da recusa é de quem pediu e do dono.
   assert.equal(A.situacaoDasDatas([ev('cal_b')], pedidos, () => false)[0].aprovacao.motivo, undefined);
   // O pedido leva a data só se a peça dela (o item `_calendario`) está em alguma TV dele.
@@ -109,6 +124,12 @@ test('o painel mostra o estado do servidor e o link para Aprovações', () => {
   assert.match(c, /const r = await calendario\.apagar\(ev\.id\);\s*if \(r && r\.esperandoAprovacao\) avisarPedidoDeAprovacao\(\);/);
   assert.match(c, /\{sit\.estado !== 'saindo' && <button type="button" onClick=\{\(\) => apagar\(ev\)\}/);
   assert.match(c, /sit\.estado === 'saindo' \? <span className="font-medium text-warn">\{sit\.texto\}<\/span>/);
+  // A página da TV e o "Pôr na TV" dizem ao membro o que ele tem esperando, e que a mudança nova vai junto.
+  const tvPage = ler('web/src/pages/ContentEditorPage.jsx');
+  assert.match(tvPage, /Você tem uma mudança esperando aprovação nesta TV\. O que você mudar agora vai junto, no mesmo pedido\./);
+  assert.match(tvPage, /if \(r\.versao\) versao\.current = r\.versao;/, 'a próxima gravação do editor não vai em cima do pedido');
+  assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /A nova vai junto, no mesmo pedido\./);
+  assert.match(ler('web/src/api.js'), /meuPedido: r\.headers\.get\('X-Meu-Pedido'\) \|\| ''/);
   // Um violeta por tela: o link é texto, não botão violeta.
   assert.doesNotMatch(c, /variant="primary"[^>]*>\s*Ver em Aprovações/);
 });
@@ -345,6 +366,55 @@ test('servidor: a data do membro espera a aprovação, vai para a TV quando apro
   assert.equal(await daAgenda(dono, doCentro.id), undefined);
   assert.deepEqual(await naTv(), ['Aniversário da rede']);
   assert.deepEqual((await naTv(norte)).sort(), ['Aniversário da rede', 'Feira do Norte'], 'mexeu na TV da outra loja');
+
+  /* ---- 11. as mudanças do membro vão JUNTAS: põe uma data e apaga outra → um pedido só, com as duas ---- */
+  const pedidosDoMembro = async () => (await pedir('/api/aprovacoes', { cookie: dono })).json.pendentes.filter((p) => p.autorId === meMembro.user.id);
+  const feira = await donoPoe('Feira de verão', { tipo: 'grupo', nome: 'Loja Centro' }, [tv]);
+  const diaA = await porNaAgenda(membro, 'Dia do cliente');
+  assert.equal(diaA.marcar.status, 202);
+  const pedidoA = diaA.lote.json.aprovacao.id;
+  // O membro lê a TV com o que ele mesmo pediu (e a versão do pedido).
+  const lidaA = await pedir('/api/devices/' + tv.id + '/config', { cookie: membro });
+  assert.equal(lidaA.headers['x-meu-pedido'], pedidoA);
+  assert.ok(lidaA.json.zonas.principal.items.some((it) => it._calendario === diaA.ev.id), 'a data posta não aparece para quem a pôs');
+  assert.deepEqual((await pedir('/api/devices', { cookie: membro })).json.devices.find((d) => d.id === tv.id).meuPedido, pedidoA);
+  const saiFeira = await tirar(membro, feira);
+  assert.equal(saiFeira.lote.status, 202);
+  assert.equal(saiFeira.lote.json.aprovacao.junto, true, 'o pedido novo não juntou o de antes');
+  const juntos = saiFeira.lote.json.aprovacao.id;
+  assert.equal(saiFeira.apagar.status, 202);
+  assert.deepEqual((await pedidosDoMembro()).map((p) => p.id), [juntos], 'ficaram dois pedidos (ou nenhum) na fila');
+  for (const quem of [membro, dono]) {
+    assert.deepEqual((await daAgenda(quem, diaA.ev.id)).aprovacao, { id: juntos, estado: 'pendente' }, 'a data posta antes virou "um pedido mais novo tomou o lugar"');
+    assert.deepEqual((await daAgenda(quem, feira.id)).aprovacao, { id: juntos, estado: 'pendente', saindo: true });
+  }
+  // O dono vê as duas mudanças no mesmo pedido.
+  const depoisJuntos = (await pedir('/api/aprovacoes/' + juntos, { cookie: dono })).json.telas[0].depois.zonas.principal.items.map((it) => it.titulo);
+  assert.ok(depoisJuntos.includes('Dia do cliente') && !depoisJuntos.includes('Feira de verão'), JSON.stringify(depoisJuntos));
+  assert.equal((await pedir('/api/aprovacoes/' + pedidoA + '/aprovar', { method: 'POST', cookie: dono })).status, 409, 'o pedido de dentro aprovava sozinho');
+  // Aprovado: a data posta vai para a TV e a apagada sai.
+  assert.equal((await pedir('/api/aprovacoes/' + juntos + '/aprovar', { method: 'POST', cookie: dono })).status, 200);
+  assert.deepEqual((await naTv()).sort(), ['Aniversário da rede', 'Dia do cliente']);
+  const aprovadoA = await daAgenda(dono, diaA.ev.id);
+  assert.equal(aprovadoA.aprovacao, undefined);
+  assert.ok(aprovadoA.aplicadoEm > 0, 'a aprovação do pedido juntado não marcou a data posta');
+  assert.equal(await daAgenda(dono, feira.id), undefined, 'a data apagada continua na Agenda');
+
+  // De novo, recusado: nem uma nem outra.
+  const feira2 = await donoPoe('Feira de inverno', { tipo: 'grupo', nome: 'Loja Centro' }, [tv]);
+  const diaC = await porNaAgenda(membro, 'Dia da família');
+  assert.equal(diaC.marcar.status, 202);
+  const saiFeira2 = await tirar(membro, feira2);
+  assert.equal(saiFeira2.apagar.status, 202);
+  const juntos2 = saiFeira2.lote.json.aprovacao.id;
+  assert.equal((await pedir('/api/aprovacoes/' + juntos2 + '/recusar', { method: 'POST', cookie: dono, json: { motivo: 'Agora não' } })).status, 200);
+  assert.deepEqual((await naTv()).sort(), ['Aniversário da rede', 'Dia do cliente', 'Feira de inverno']);
+  assert.deepEqual((await daAgenda(membro, diaC.ev.id)).aprovacao, { id: juntos2, estado: 'recusada', motivo: 'Agora não' });
+  assert.equal((await daAgenda(membro, diaC.ev.id)).aplicadoEm, null);
+  const ficou = await daAgenda(membro, feira2.id);
+  assert.deepEqual(ficou.aprovacao, { id: juntos2, estado: 'recusada', saindo: true, motivo: 'Agora não' });
+  assert.ok(ficou.aplicadoEm > 0, 'a data que não saiu deixou de estar na TV');
+  assert.deepEqual(await pedidosDoMembro(), []);
 
   // Outra conta não vê nada disso.
   const outra = cookieDe(await cadastro('fora' + n + '@teste.local', { name: 'Outra' }));
