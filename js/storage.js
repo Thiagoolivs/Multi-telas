@@ -167,6 +167,41 @@
     };
   }
 
+  /*
+   * MODO AMBIENTE (fase 9): a arte calma da marca entre os avisos
+   * (js/rodizio.js, comAmbiente; o desenho em js/ambiente.js). Desligado
+   * quando não vem. `peca`: a arte escolhida (uma peça-ouro de ambiente); a
+   * porta das peças confere no servidor (js/peca-html.js, conferirConfig).
+   */
+  function normalizeAmbiente(a) {
+    const src = (a && typeof a === 'object' && !Array.isArray(a)) ? a : {};
+    const cada = Number(src.cada);
+    const seg = Number(src.segundos);
+    const out = {
+      ativo: src.ativo === true,
+      cada: Number.isFinite(cada) ? Math.max(2, Math.min(12, Math.round(cada))) : 4,
+      segundos: Number.isFinite(seg) ? Math.max(6, Math.min(30, Math.round(seg))) : 10,
+      mostrar: src.mostrar === 'frase' ? 'frase' : 'relogio',
+      frase: typeof src.frase === 'string' ? src.frase.replace(/\s+/g, ' ').trim().slice(0, 90) : '',
+    };
+    if (src.peca && typeof src.peca === 'object' && src.peca.type === 'peca-html') out.peca = src.peca;
+    return out;
+  }
+  /*
+   * A CHAMADA DE SENHA nesta TV (fase 12; js/senha.js). Ligada e com som
+   * quando não vem: a TV só mostra alguma coisa se a recepção chamar.
+   */
+  function normalizeSenha(s) {
+    const src = (s && typeof s === 'object' && !Array.isArray(s)) ? s : {};
+    const seg = Number(src.segundos);
+    return {
+      ativo: src.ativo !== false,
+      som: src.som !== false,
+      fixa: src.fixa === true,
+      segundos: Number.isFinite(seg) ? Math.max(5, Math.min(30, Math.round(seg))) : 12,
+    };
+  }
+
   /* ---------- Validação / normalização ---------- */
   /*
    * CABEÇALHO E RODAPÉ VIVOS (EXECUTOR item 22): várias peças girando
@@ -217,6 +252,9 @@
     // O título de exemplo que vazou para as telas de cliente (ver settingsPadrao).
     if (out.settings.titulo === 'Raft Embalagens' && out.settings.nome !== 'Raft Embalagens') out.settings.titulo = '';
     out.settings.audio = normalizeAudio(out.settings.audio);
+    // Só quando vêm: a config que nunca mexeu nisso continua sem as chaves.
+    if (out.settings.ambiente !== undefined) out.settings.ambiente = normalizeAmbiente(out.settings.ambiente);
+    if (out.settings.senha !== undefined) out.settings.senha = normalizeSenha(out.settings.senha);
     // Onde a TV fica (fase 3): decide a letra mínima. Vazio = o padrão da frente (js/player.js, LOCAIS).
     if (['balcao', 'recepcao', 'escritorio'].indexOf(out.settings.local) < 0) out.settings.local = '';
 
@@ -473,7 +511,7 @@
    * uma config nos dois lados.
    */
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { normalize, sampleConfig, settingsPadrao, SCHEMA_VERSION };
+    module.exports = { normalize, sampleConfig, settingsPadrao, normalizeAmbiente, normalizeSenha, SCHEMA_VERSION };
   }
 
   global.MTStorage = {
