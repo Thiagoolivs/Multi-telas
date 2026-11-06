@@ -23,7 +23,17 @@ const dd = (n) => String(n).padStart(2, '0');
 const isoDe = (d) => d.getFullYear() + '-' + dd(d.getMonth() + 1) + '-' + dd(d.getDate());
 
 let A; // web/src/lib/aplicarConteudo.js (ESM)
-test.before(async () => { A = await import('../web/src/lib/aplicarConteudo.js'); });
+/*
+ * O painel agenda a partir de HOJE (agendarPeca usa a data do relógio), e a
+ * semana simulada começa em 05/11: o relógio do teste fica parado nessa
+ * quinta. Sem isso, rodado em outro dia, a peça "começava" depois da semana
+ * e a conta via buraco onde não há.
+ */
+test.before(async () => {
+  test.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 10, 5, 9, 0).getTime() });
+  A = await import('../web/src/lib/aplicarConteudo.js');
+});
+test.after(() => test.mock.timers.reset());
 
 const peca = (id, titulo, extra) => Object.assign({ type: 'announce', id, titulo, corpo: 'Venha conferir com a gente.', duracao: 12 }, extra || {});
 const naFaixa = (item, faixa, dias) => A.agendarPeca(item, faixa, dias || 0, INICIO);

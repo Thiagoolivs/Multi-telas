@@ -1,0 +1,115 @@
+<!--
+  Kit — família oferta. Destaque e lateral.
+  A conta que convence: três itens somados, o sinal de igual e o preço do
+  kit, com o "separados" riscado embaixo. Os itens são etiquetas iguais
+  ligadas por um + desenhado, para a soma ler de longe. Item em branco
+  sai da conta.
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: flex; flex-direction: column; justify-content: center; padding: 8cqmin 7cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(120% 100% at 50% 100%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+.kicker { display: flex; align-items: center; gap: 2cqmin; font: 700 max(var(--mt-piso, 0cqw), 4cqmin)/1.15 var(--mt-fonte-texto); letter-spacing: .08em; text-transform: uppercase; color: var(--mt-preco); }
+/* O fio do kicker fica na altura da primeira linha, mesmo quando o kicker quebra. */
+.kicker { align-items: flex-start; }
+.kicker i { display: block; flex: none; align-self: flex-start; width: 6cqmin; height: .9cqmin; margin-top: .52em; border-radius: 1cqmin; background: var(--mt-destaque); }
+h1 { margin-top: 2.6cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.conta { margin-top: 6cqmin; display: flex; align-items: center; flex-wrap: wrap; gap: 3cqmin 0; }
+.itens { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 3cqmin 0; }
+.itens li { display: flex; align-items: center; }
+.itens li:has(span:empty) { display: none; }
+.itens span { padding: 2.6cqmin 3.4cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie); font: 700 max(var(--mt-piso, 0cqw), 5cqmin)/1.1 var(--mt-fonte-texto); white-space: nowrap; }
+/* O "+" e o "=" são desenho: duas barras cruzadas, duas barras paralelas. */
+.itens li + li::before, .igual { content: ''; position: relative; flex: none; width: 6cqmin; height: 6cqmin; margin: 0 2.4cqmin;
+  background: linear-gradient(var(--mt-destaque), var(--mt-destaque)) center / 100% 26% no-repeat, linear-gradient(var(--mt-destaque), var(--mt-destaque)) center / 26% 100% no-repeat; }
+.igual { display: block; background: linear-gradient(var(--mt-destaque), var(--mt-destaque)) 0 22% / 100% 24% no-repeat, linear-gradient(var(--mt-destaque), var(--mt-destaque)) 0 78% / 100% 24% no-repeat; }
+.preco { display: flex; align-items: flex-start; color: var(--mt-preco); white-space: nowrap; }
+.preco small { margin-top: .5em; margin-right: .2em; font: 700 max(var(--mt-piso, 0cqw), 5.4cqmin)/1 var(--mt-fonte-texto); }
+.preco b { font: 700 max(var(--mt-piso, 0cqw), calc(26cqmin * var(--mt-escala-titulo, 1)))/.82 var(--mt-fonte-titulo); letter-spacing: -.03em; }
+.preco sup { margin-top: .12em; font: 700 max(var(--mt-piso, 0cqw), calc(9cqmin * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); }
+.rodape { margin-top: 5cqmin; display: flex; flex-wrap: wrap; gap: 1.6cqmin 5cqw; font: 600 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.25 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.rodape s { text-decoration-thickness: .1em; }
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  .mt-peca { padding: 7cqmin 6cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1))); }
+  .itens span { padding: 2cqmin 2.8cqmin; font-size: max(var(--mt-piso, 0cqw), 4.4cqmin); }
+  .itens li + li::before, .igual { width: 5cqmin; height: 5cqmin; margin: 0 1.8cqmin; }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(22cqmin * var(--mt-escala-titulo, 1))); }
+}
+/* Em pé e quase quadrada: os itens em coluna, o igual e o preço embaixo. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { padding: 8cqmin 8cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .conta { flex-direction: column; align-items: flex-start; gap: 3cqmin; }
+  .itens { flex-direction: column; align-items: flex-start; gap: 0; }
+  .itens li { flex-direction: column; align-items: flex-start; }
+  .itens li + li::before { margin: 2cqmin 0 2cqmin 4cqmin; }
+  .itens span { font-size: max(var(--mt-piso, 0cqw), 5.4cqw); }
+  .igual { margin: 1cqmin 0 1cqmin 4cqmin; }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(28cqw * var(--mt-escala-titulo, 1))); }
+  .preco sup { font-size: max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1))); }
+  .rodape { flex-direction: column; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+  h1 { margin-top: 3.4cqw; font-size: max(var(--mt-piso, 0cqw), calc(14cqw * var(--mt-escala-titulo, 1))); }
+  .conta { margin-top: 9cqw; }
+  .itens span { padding: 3.4cqw 5cqw; font-size: max(var(--mt-piso, 0cqw), 6.4cqw); }
+  .itens li + li::before, .igual { width: 7cqw; height: 7cqw; }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(34cqw * var(--mt-escala-titulo, 1))); }
+  .preco sup { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .rodape { margin-top: 7cqw; font-size: max(var(--mt-piso, 0cqw), 5.4cqw); }
+}
+/* Quase quadrada: a conta armada — os itens empilhados, cada um com o seu +, e o igual e o preço à direita. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { padding: 7cqmin 7cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.6cqmin); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1))); }
+  .conta { flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 0; margin-top: 5cqmin; }
+  .itens { flex-direction: column; align-items: flex-start; gap: 1.6cqmin; }
+  .itens li { flex-direction: row; align-items: center; }
+  .itens li + li::before { width: 4cqmin; height: 4cqmin; margin: 0 1.6cqmin 0 0; }
+  .itens li:first-child { padding-left: 5.6cqmin; }
+  .itens span { padding: 1.6cqmin 2.4cqmin; font-size: max(var(--mt-piso, 0cqw), 4.4cqmin); }
+  .igual { flex: none; width: 4.4cqmin; height: 4.4cqmin; margin: 0 3cqmin; }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(22cqmin * var(--mt-escala-titulo, 1))); }
+  .preco sup { font-size: max(var(--mt-piso, 0cqw), calc(7.4cqmin * var(--mt-escala-titulo, 1))); }
+  .rodape { flex-direction: row; margin-top: 5cqmin; font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
+}
+/* A lateral: os itens em coluna, sem o "+", e o preço; a validade fica. */
+@container (max-width: 700px) {
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 5.6cqw); letter-spacing: .04em; }
+  .kicker i { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .conta { margin-top: 6cqw; }
+  .itens { gap: 2cqw; }
+  .itens li + li::before { display: none; }
+  .itens span { padding: 2.6cqw 4cqw; font-size: max(var(--mt-piso, 0cqw), 6.6cqw); }
+  .igual { width: 6cqw; height: 6cqw; margin: 2cqw 0 1cqw 3cqw; }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(30cqw * var(--mt-escala-titulo, 1))); }
+  .rodape { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+}
+/* Deitada e baixa: o título, a conta numa linha e o preço; o rodapé sai. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 5cqmin 6cqw; }
+  .kicker, .rodape { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1))); }
+  .conta { margin-top: 5cqmin; }
+  .itens span { font-size: max(var(--mt-piso, 0cqw), 7cqmin); }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(32cqmin * var(--mt-escala-titulo, 1))); }
+}
+</style>
+<section class="mt-peca oferta-kit">
+  <p class="kicker" data-entrada="esquerda"><i aria-hidden="true"></i><span data-campo="kicker">Kit da semana</span></p>
+  <h1 data-campo="titulo" data-entrada="subir" data-ordem="1">Cuidado dos fios</h1>
+  <div class="conta">
+    <ul class="itens">
+      <li data-entrada="subir" data-ordem="2"><span data-campo="item1">Shampoo</span></li>
+      <li data-entrada="subir" data-ordem="3"><span data-campo="item2">Máscara</span></li>
+      <li data-entrada="subir" data-ordem="4"><span data-campo="item3">Leave-in</span></li>
+    </ul>
+    <i class="igual" aria-hidden="true"></i>
+    <p class="preco" data-entrada="crescer" data-ordem="5"><small aria-hidden="true">R$</small><b data-campo="preco">89</b><sup data-campo="centavos">,90</sup></p>
+  </div>
+  <p class="rodape" data-entrada="aparecer" data-ordem="6"><s data-campo="de">Separados: R$ 129,70</s><span data-campo="nota">Até sábado ou enquanto durar o estoque</span></p>
+</section>

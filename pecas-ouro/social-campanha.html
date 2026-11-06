@@ -1,0 +1,85 @@
+<!--
+  Campanha do mês — família social. Destaque e lateral.
+  O calendário da saúde (Novembro Azul, Outubro Rosa, Setembro Amarelo):
+  a MENSAGEM é o título, e o nome da campanha vai em cima, com o laço.
+  Uma mensagem e uma ação (CDC), e a fonte no pé (REFERENCIAS §6.11). O
+  laço é desenho em CSS — uma alça e duas pontas cruzadas — e o arco de
+  fundo sai da peça, como na tela de referência s2.
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: flex; flex-direction: column; justify-content: center; padding: 8cqmin 7cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.mt-peca::before { content: ''; position: absolute; right: -30cqmin; top: 50%; width: 92cqmin; height: 92cqmin; margin-top: -46cqmin; border-radius: 50%;
+  border: 9cqmin solid var(--mt-destaque); opacity: .22; }
+.texto { position: relative; max-width: 56cqw; }
+.campanha { display: flex; align-items: center; gap: 2.6cqmin; font: 700 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.1 var(--mt-fonte-texto); letter-spacing: .08em; text-transform: uppercase; color: var(--mt-preco); }
+/* O laço: 10em × 15em; a alça é um anel aberto embaixo, as pontas cruzam logo abaixo dela. */
+.laco { position: relative; flex: none; width: 10em; height: 15em; font-size: .5cqmin; }
+.laco::before { content: ''; position: absolute; left: 1.6em; top: 0; width: 6.8em; height: 8.4em; border: 1.6em solid var(--mt-destaque); border-bottom-color: transparent; border-radius: 50% 50% 46% 46%; }
+.laco i, .laco b { position: absolute; top: 5.2em; width: 1.7em; height: 9.6em; border-radius: .3em .3em .85em .85em; background: var(--mt-destaque); transform-origin: 50% 0; }
+.laco i { left: 6.1em; transform: rotate(27deg); }
+.laco b { left: 2.2em; transform: rotate(-27deg); }
+h1 { margin-top: 4cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(12.6cqmin * var(--mt-escala-titulo, 1)))/1.02 var(--mt-fonte-titulo); letter-spacing: -.015em; text-wrap: balance; }
+.apoio { margin-top: 4.4cqmin; font: 500 max(var(--mt-piso, 0cqw), 5.6cqmin)/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 22em; text-wrap: pretty; }
+.fonte { position: relative; margin-top: 7cqmin; font: 600 max(var(--mt-piso, 0cqw), 3.8cqmin)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  .mt-peca::before { right: -26cqmin; width: 80cqmin; height: 80cqmin; margin-top: -40cqmin; border-width: 8cqmin; }
+  .texto { max-width: 60cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(11cqmin * var(--mt-escala-titulo, 1))); }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 5cqmin); }
+}
+/* Em pé: o arco sobe para trás do título, e a mensagem ocupa a largura. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { padding: 9cqmin 8cqw; }
+  .mt-peca { justify-content: flex-end; }
+  .mt-peca::before { right: -34cqw; top: -30cqw; width: 90cqw; height: 90cqw; margin-top: 0; border-width: 10cqw; }
+  .texto { max-width: none; }
+  .campanha { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .laco { font-size: .6cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+  .fonte { font-size: max(var(--mt-piso, 0cqw), 4.2cqw); }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .mt-peca { justify-content: flex-end; padding-bottom: 14cqmin; }
+  .mt-peca::before { top: -24cqw; right: -40cqw; width: 110cqw; height: 110cqw; border-width: 12cqw; }
+  .campanha { font-size: max(var(--mt-piso, 0cqw), 5cqw); }
+  .laco { font-size: .8cqw; }
+  h1 { margin-top: 6cqw; font-size: max(var(--mt-piso, 0cqw), calc(15cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { margin-top: 6cqw; font-size: max(var(--mt-piso, 0cqw), 6.6cqw); }
+  .fonte { margin-top: 10cqw; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { justify-content: flex-end; padding: 7cqmin 7cqw 9cqmin; }
+  .mt-peca::before { top: -44cqmin; right: -26cqmin; width: 76cqmin; height: 76cqmin; border-width: 8cqmin; }
+  .campanha { font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
+  .laco { font-size: .45cqmin; }
+  h1 { margin-top: 3.4cqmin; font-size: max(var(--mt-piso, 0cqw), calc(10.4cqmin * var(--mt-escala-titulo, 1))); }
+  .apoio { margin-top: 3.4cqmin; font-size: max(var(--mt-piso, 0cqw), 5cqmin); }
+  .fonte { margin-top: 5cqmin; font-size: max(var(--mt-piso, 0cqw), 3.6cqmin); }
+}
+/* A lateral: a campanha e a mensagem; o apoio sai. */
+@container (max-width: 700px) {
+  .campanha { font-size: max(var(--mt-piso, 0cqw), 6.2cqw); letter-spacing: .04em; }
+  .laco { font-size: .9cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12.4cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { display: none; }
+  .fonte { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+}
+/* Deitada e baixa: a campanha, a mensagem e a fonte. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 6cqmin 6cqw; }
+  .apoio { display: none; }
+  .laco { font-size: .7cqmin; }
+  h1 { margin-top: 3cqmin; font-size: max(var(--mt-piso, 0cqw), calc(14cqmin * var(--mt-escala-titulo, 1))); }
+  .fonte { margin-top: 4cqmin; }
+}
+</style>
+<section class="mt-peca social-campanha">
+  <div class="texto">
+    <p class="campanha" data-entrada="esquerda"><span class="laco" aria-hidden="true"><i></i><b></b></span><span data-campo="campanha">Novembro Azul</span></p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="1">Homem também vai ao médico.</h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="2">Converse com o seu médico sobre os exames certos para a sua idade.</p>
+    <p class="fonte" data-campo="fonte" data-entrada="aparecer" data-ordem="3">Fonte: Ministério da Saúde</p>
+  </div>
+</section>

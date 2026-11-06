@@ -257,7 +257,8 @@ test('toda peça da biblioteca-ouro passa pela porta sem nenhum problema', () =>
     const v = P.validarItem({ type: 'peca-html', html: arq.html, css: arq.css, campos: def.campos || {} });
     assert.deepEqual(v.problemas, [], def.id);
     for (const papel of def.papeis) assert.ok(P.PAPEIS.includes(papel), def.id + ': papel ' + papel);
-    assert.ok(['rascunho', 'aprovada'].includes(def.estado), def.id + ': estado ' + def.estado);
+    // Lote 3: a peça nova chega 'proposta' e o dono aprova na galeria (Plataforma › Conteúdo pronto).
+    assert.ok(['rascunho', 'proposta', 'aprovada'].includes(def.estado), def.id + ': estado ' + def.estado);
   }
 });
 

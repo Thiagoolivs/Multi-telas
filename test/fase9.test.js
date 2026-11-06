@@ -80,7 +80,9 @@ test('o painel: a galeria na Plataforma, com a peça desenhada e Aprovar e Recus
 test('cada peça tem as frentes que atende, e os textos de cada frente cabem nos campos dela', () => {
   const m = JSON.parse(ler('pecas-ouro/manifesto.json'));
   const FRENTES = ['comercio', 'saude', 'empresa'];
-  const DO_EXEMPLO = { otica: 'comercio', padaria: 'comercio', salao: 'comercio', lanchonete: 'comercio', clinica: 'saude', rotasul: 'empresa' };
+  const DO_EXEMPLO = { otica: 'comercio', padaria: 'comercio', salao: 'comercio', lanchonete: 'comercio', clinica: 'saude', rotasul: 'empresa',
+    // Lote 3: as peças novas também nascem nas marcas de exemplo do lote 2.
+    restaurante: 'comercio', dentista: 'saude', farmacia: 'saude', escritorio: 'empresa', industria: 'empresa' };
   for (const p of m.pecas) {
     assert.ok(Array.isArray(p.frentes) && p.frentes.length, p.id + ' sem frentes');
     for (const f of p.frentes) assert.ok(FRENTES.includes(f), p.id + ': frente ' + f);

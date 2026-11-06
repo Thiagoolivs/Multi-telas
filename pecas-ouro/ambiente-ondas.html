@@ -1,0 +1,58 @@
+<!--
+  Modo ambiente: ondas — família ambiente. Destaque e lateral.
+  Arte calma da marca para tocar entre os avisos (REFERENCIAS: "nem toda
+  tela precisa falar"). Três ondas largas nas cores da marca, uma lua
+  cheia e, se quiser, uma frase curta. Sem dado, sem data, sem pressa:
+  nada pisca, só a onda do meio respira devagar. Frase em branco some.
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: flex; flex-direction: column; justify-content: flex-start; padding: 12cqmin 8cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: linear-gradient(180deg, var(--mt-fundo) 30%, var(--mt-fundo-2)); }
+.lua { position: absolute; right: 14cqw; top: 14cqmin; width: 26cqmin; height: 26cqmin; border-radius: 50%; background: var(--mt-destaque); opacity: .85;
+  box-shadow: 0 0 0 5cqmin var(--mt-fundo-2), 0 0 0 10cqmin var(--mt-fundo); }
+.onda { position: absolute; left: -30cqw; width: 160cqw; border-radius: 50%; }
+.o1 { bottom: -58cqmin; height: 100cqmin; background: var(--mt-destaque); opacity: .25; }
+.o2 { left: -50cqw; bottom: -70cqmin; height: 100cqmin; background: var(--mt-destaque); opacity: .45; }
+.o3 { left: -44cqw; bottom: -80cqmin; height: 100cqmin; background: var(--mt-superficie); }
+.frase { position: relative; max-width: 60cqw; font: 600 max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1)))/1.08 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.frase:empty { display: none; }
+.marca-nome { position: absolute; left: 8cqw; bottom: 7cqmin; font: 700 max(var(--mt-piso, 0cqw), 3.6cqmin)/1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-texto-suave); }
+@container (aspect-ratio < 1.25) {
+  .mt-peca { padding: 14cqmin 9cqw; }
+  .lua { right: 12cqw; top: auto; bottom: 46cqh; width: 34cqmin; height: 34cqmin; }
+  .onda { left: -60cqw; width: 220cqw; }
+  .o1 { bottom: -40cqh; height: 70cqh; }
+  .o2 { left: -90cqw; bottom: -46cqh; height: 70cqh; }
+  .o3 { left: -60cqw; bottom: -52cqh; height: 70cqh; }
+  .frase { max-width: none; font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .marca-nome { left: 9cqw; bottom: 6cqmin; font-size: max(var(--mt-piso, 0cqw), 4cqw); }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { padding: 11cqmin 8cqw; }
+  .lua { bottom: 34cqh; width: 24cqmin; height: 24cqmin; }
+  .o1 { bottom: -50cqh; height: 90cqh; }
+  .o2 { bottom: -58cqh; height: 90cqh; }
+  .o3 { bottom: -66cqh; height: 90cqh; }
+  .frase { max-width: 70cqw; font-size: max(var(--mt-piso, 0cqw), calc(9.4cqmin * var(--mt-escala-titulo, 1))); }
+  .marca-nome { font-size: max(var(--mt-piso, 0cqw), 3.4cqmin); }
+}
+@container (max-width: 700px) {
+  .frase { font-size: max(var(--mt-piso, 0cqw), calc(11cqw * var(--mt-escala-titulo, 1))); }
+  .marca-nome { font-size: max(var(--mt-piso, 0cqw), 5.4cqw); letter-spacing: .08em; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 9cqmin 7cqw; }
+  .lua { top: 10cqmin; width: 30cqmin; height: 30cqmin; }
+  .frase { font-size: max(var(--mt-piso, 0cqw), calc(13cqmin * var(--mt-escala-titulo, 1))); }
+  .marca-nome { display: none; }
+}
+</style>
+<section class="mt-peca ambiente-ondas">
+  <span class="lua" aria-hidden="true" data-entrada="aparecer"></span>
+  <span class="onda o1" aria-hidden="true" data-entrada="subir"></span>
+  <span class="onda o2" aria-hidden="true" data-entrada="subir" data-ordem="1" data-continua="flutuar"></span>
+  <span class="onda o3" aria-hidden="true" data-entrada="subir" data-ordem="2"></span>
+  <p class="frase" data-campo="frase" data-entrada="aparecer" data-ordem="3">Respire fundo. Já já chamamos você.</p>
+  <span class="marca-nome" data-campo="marca" data-repete="marca" data-entrada="aparecer" data-ordem="4">Clínica Vida</span>
+</section>
