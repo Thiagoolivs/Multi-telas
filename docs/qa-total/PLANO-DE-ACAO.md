@@ -353,8 +353,8 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [ ] Fase 6: a IA no nível de marca
 - [x] Fase 7: o painel novo, a estrutura (4 das 9 tarefas ainda passam de 3 cliques; ver o andamento)
 - [x] Fase 8: o painel novo, o acabamento (a nota da interface sai no reteste, fase 10)
-- [ ] Fase 9: modelos com função e pacotes prontos
-- [ ] Fase 10: reteste completo e pilotos
+- [x] Fase 9: modelos com função e pacotes prontos (os lotes esperam a aprovação na galeria)
+- [ ] Fase 10: reteste completo e pilotos (reteste feito, nota 7,1; faltam o bloco 2 com a IA e os pilotos)
 - [ ] Fase 11: dados vivos
 - [ ] Fase 12: Saúde, a chamada de senha
 - [ ] Fase 13: equipe e redes
@@ -368,7 +368,7 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [ ] Modo ambiente: arte calma da marca entre os avisos (fase 9)
 - [ ] Calendário de datas pronto para cada frente (fases 5 e 9)
 
-### Diferenciais para depois (aprovado em 05/11)
+### Diferenciais para depois (aprovado em 05/11; o dono reconfirmou em 06/11: entram depois das fases 11 a 13)
 - [ ] Multi Telas Ads (planejamento em [docs/ads/](../ads/README.md))
 - [ ] Pedir pelo WhatsApp: "acabou o pão de queijo" muda a TV
 - [ ] Vídeo curto feito pela IA (5 a 8 s de movimento de verdade)
