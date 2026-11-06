@@ -1357,7 +1357,13 @@
           "modo": "claro",
           "pecas": [
             {
-              "id": "social-data"
+              "id": "social-data",
+              "campos": {
+                "numero": "40",
+                "kicker": "Saúde da mulher",
+                "titulo": "Previna-se",
+                "titulo2": "hoje"
+              }
             },
             {
               "id": "oferta-parcelado"
@@ -1366,7 +1372,13 @@
               "id": "institucional-valores"
             },
             {
-              "id": "servico-comunicado"
+              "id": "servico-comunicado",
+              "campos": {
+                "mes": "Nesta",
+                "dia": "6ª",
+                "semana": "feira",
+                "volta": "Voltamos no sábado, às 8h."
+              }
             }
           ]
         },
@@ -1431,7 +1443,10 @@
               "id": "cardapio-categorias"
             },
             {
-              "id": "institucional-lancamento"
+              "id": "institucional-lancamento",
+              "campos": {
+                "quando": "A partir de sexta"
+              }
             },
             {
               "id": "cardapio-combo",
@@ -1515,7 +1530,10 @@
               "id": "gente-boas-vindas"
             },
             {
-              "id": "gente-comunicado"
+              "id": "gente-comunicado",
+              "campos": {
+                "data": "publicado nesta semana"
+              }
             }
           ]
         },
@@ -1526,7 +1544,9 @@
               "id": "gente-mes",
               "campos": {
                 "nome4": "Paula Mendes",
-                "setor4": "Comercial"
+                "setor4": "Comercial",
+                "titulo": "Aniversariantes",
+                "mes": "do mês"
               }
             },
             {
@@ -1634,7 +1654,7 @@
                 "kicker": "Termina",
                 "pre": "no",
                 "dia": "sábado",
-                "data": "31/10",
+                "data": "Últimos dias",
                 "apoio": "Enquanto durar o estoque",
                 "cta": "Aproveite"
               }
@@ -2025,7 +2045,7 @@
                 "titulo": "Coleção",
                 "titulo2": "Verão 2027",
                 "apoio": "Armações leves, cores do mar e lentes polarizadas.",
-                "quando": "A partir de 05/11"
+                "quando": "Já na loja"
               }
             },
             {
@@ -2315,7 +2335,7 @@
                 "assunto": "Vacinação contra a gripe na sexta, aqui na empresa",
                 "texto": "A equipe de saúde atende no refeitório das 9h às 16h. Traga um documento com foto.",
                 "assinatura": "Equipe de RH",
-                "data": "publicado em 20 de outubro"
+                "data": "publicado nesta semana"
               }
             }
           ]
@@ -2326,9 +2346,9 @@
             {
               "id": "gente-mes",
               "campos": {
-                "kicker": "Aniversariantes",
-                "titulo": "de outubro",
-                "mes": "out",
+                "kicker": "Parabéns",
+                "titulo": "Aniversariantes",
+                "mes": "do mês",
                 "dia1": "03",
                 "nome1": "João Pereira",
                 "setor1": "Logística",
@@ -2464,7 +2484,7 @@
               "id": "servico-alerta",
               "campos": {
                 "kicker": "SIPAT",
-                "titulo": "De 10 a 14 de novembro",
+                "titulo": "De segunda a sexta",
                 "apoio": "Palestras no refeitório, às 15h."
               }
             }
@@ -2520,23 +2540,23 @@
                 "rotulo": "Comunicado",
                 "de": "De: Diretoria",
                 "para": "Para: todos os colaboradores",
-                "assunto": "Novo plano de saúde a partir de dezembro",
-                "texto": "A troca de operadora não muda a cobertura. As carteirinhas novas chegam pelo RH até 30/11.",
+                "assunto": "Novo plano de saúde a partir do mês que vem",
+                "texto": "A troca de operadora não muda a cobertura. As carteirinhas novas chegam pelo RH até o fim do mês.",
                 "assinatura": "Diretoria de Pessoas",
-                "data": "publicado em 21 de outubro"
+                "data": "publicado nesta semana"
               }
             },
             {
               "id": "servico-comunicado",
               "campos": {
                 "marca": "Rota Sul",
-                "mes": "Novembro",
-                "dia": "02",
-                "semana": "Segunda-feira",
+                "mes": "Nesta",
+                "dia": "2ª",
+                "semana": "feira",
                 "kicker": "Feriado",
                 "titulo": "Não haverá expediente",
                 "apoio": "A portaria funciona em regime de plantão. Emergências: ramal 2000.",
-                "volta": "Voltamos na terça, 03, às 6h."
+                "volta": "Voltamos na terça, às 6h."
               }
             }
           ]
@@ -2620,7 +2640,7 @@
                 "kicker": "No prazo",
                 "titulo": "das entregas",
                 "apoio": "São 1.200 entregas por dia.",
-                "endereco": "Dados de outubro"
+                "endereco": "Dados do último mês"
               }
             }
           ]
@@ -2695,7 +2715,7 @@
                 "titulo": "Novo sistema",
                 "titulo2": "de ponto",
                 "apoio": "Bata o ponto pelo celular, com o crachá ou pela digital.",
-                "quando": "A partir de 01/11"
+                "quando": "A partir de segunda"
               }
             },
             {
@@ -2960,8 +2980,8 @@
               "id": "social-data",
               "campos": {
                 "marca": "Clínica Vida",
-                "numero": "31",
-                "kicker": "Outubro Rosa",
+                "numero": "40",
+                "kicker": "Saúde da mulher",
                 "titulo": "Previna-se",
                 "titulo2": "hoje",
                 "apoio": "O exame de mamografia é rápido e salva vidas.",
@@ -2972,9 +2992,9 @@
               "id": "servico-comunicado",
               "campos": {
                 "marca": "Clínica Vida",
-                "mes": "Outubro",
-                "dia": "25",
-                "semana": "Sábado",
+                "mes": "Nesta",
+                "dia": "6ª",
+                "semana": "feira",
                 "kicker": "Mutirão",
                 "titulo": "Mamografia sem fila",
                 "apoio": "Das 8h às 12h, por ordem de chegada. Traga o pedido médico.",
@@ -3359,13 +3379,13 @@
               "id": "servico-comunicado",
               "campos": {
                 "marca": "Clínica Vida",
-                "mes": "Novembro",
-                "dia": "15",
-                "semana": "Sábado",
+                "mes": "Nesta",
+                "dia": "6ª",
+                "semana": "feira",
                 "kicker": "Feriado",
                 "titulo": "Não haverá atendimento",
                 "apoio": "Resultados de exame continuam saindo pelo WhatsApp. Em urgência, procure o pronto-socorro.",
-                "volta": "Voltamos na segunda, 17, às 7h."
+                "volta": "Voltamos no sábado, às 7h."
               }
             },
             {
@@ -3434,9 +3454,9 @@
               "id": "servico-comunicado",
               "campos": {
                 "marca": "Padaria do Bairro",
-                "mes": "Novembro",
-                "dia": "02",
-                "semana": "Segunda-feira",
+                "mes": "Nesta",
+                "dia": "2ª",
+                "semana": "feira",
                 "kicker": "Feriado",
                 "titulo": "Abrimos meio período",
                 "apoio": "Das 7h às 13h, com pão quentinho às 7h e às 11h.",
