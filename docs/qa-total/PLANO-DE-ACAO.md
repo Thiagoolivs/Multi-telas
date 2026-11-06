@@ -327,6 +327,15 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** mudar uma célula da planilha muda a TV em até 5 minutos, e a planilha com erro não quebra a tela.
 
+**Andamento (06/11):**
+- [x] **Preço e cardápio vindos de uma planilha.** Em Biblioteca › Apps › Preços da planilha, o cliente cola o link do Google Planilhas (ou envia o CSV). O servidor lê de 5 em 5 minutos (`server/planilha.js`, `server/routes/planilha.js`, a tabela `planilhas` nos dois bancos) e avisa a TV só quando um preço muda. "Pôr na TV" oferece a **tabela de preços** (o tipo `precos`, com as seções) ou o **cardápio pronto** (as peças-ouro `cardapio-colunas` e `cardapio-categorias`, campos `item1-nome`/`item1-preco`… e `grupo1`/`g1-item1`…). Na TV aparece "Atualizado às 14:05".
+  - **Segurança:** só `docs.google.com`, `docs.googleusercontent.com` e `doc-…-sheets.googleusercontent.com`, em https, e cada redirecionamento passa pela mesma regra (a tela de login do Google vira "a planilha não está compartilhada"). Por cima, a checagem de IP interno de `server/site.js`. Teto de 8 s e de 512 KB; rota com sessão, conta e limite de leituras por hora. O host de teste (`PLANILHA_HOST_TESTE`) fica desligado por padrão e é ignorado em produção.
+  - **Planilha com erro não quebra a tela:** a TV fica com os últimos preços bons (no servidor e no aparelho, sem rede), e o painel mostra o erro em palavras ("a planilha não está aberta para quem tem o link…"). O item guarda uma cópia em texto para a TV que liga sem rede.
+  - Conferido de ponta a ponta numa TV pareada (porta local): mudou a célula, a TV mudou sem recarregar; a planilha quebrou, a TV seguiu com o preço de antes.
+- [x] **Indicadores vindos de uma planilha.** Em Indicadores, "Ligar uma planilha" é o botão principal: uma linha por indicador (nome, valor, meta, unidade, anterior). O "anterior" dá a seta de subiu ou desceu; refugo e acidente continuam "menos é melhor". É o conector `planilha` dos indicadores (o mesmo relógio e o mesmo cartão ao vivo da TV).
+- [x] **Calendário de datas pronto para cada frente** (`js/datas-frente.js`). Na Agenda, "Datas que vêm" traz as datas prontas da frente, calculadas para o ano (Dia das Mães é o 2º domingo de maio), cada uma com "Pôr na programação" (o mesmo caminho do "Colar o calendário"). Comércio: liquidação de janeiro, Dia das Mães, dos Namorados, dos Pais, das Crianças, Black Friday, Natal… Saúde: as cores do ano (Janeiro Branco a Dezembro Vermelho) e a vacinação. Empresas: SIPAT, CIPA e o aniversário da empresa (vocês escolhem o dia), Dia do Trabalho, confraternização, Natal. As campanhas de mês inteiro ficam no ar o mês todo. Os mesmos nomes valem no texto colado ("Setembro Amarelo").
+- [ ] **Conferir com uma planilha real do Google em produção** (os testes não tocam a internet: o "Google" deles é um servidor local).
+
 ### Fase 12: Saúde, a chamada de senha (3 dias)
 **Objetivo:** o motivo número 1 de uma TV em sala de espera.
 - A recepção chama a próxima senha pelo celular ou pelo computador (senha, consultório ou guichê).
@@ -360,13 +369,13 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [ ] Fase 13: equipe e redes
 
 ### Para valer o preço (aprovado em 05/11)
-- [ ] Preço e cardápio vindos de uma planilha (fase 11)
-- [ ] Indicadores vindos de uma planilha (fase 11)
+- [x] Preço e cardápio vindos de uma planilha (fase 11)
+- [x] Indicadores vindos de uma planilha (fase 11)
 - [ ] Chamada de senha para Saúde (fase 12)
 - [ ] Aprovação antes de ir ao ar (fase 13)
 - [ ] Permissão por loja (fase 13)
 - [ ] Modo ambiente: arte calma da marca entre os avisos (fase 9)
-- [ ] Calendário de datas pronto para cada frente (fases 5 e 9)
+- [x] Calendário de datas pronto para cada frente (fases 5 e 9)
 
 ### Diferenciais para depois (aprovado em 05/11)
 - [ ] Multi Telas Ads (planejamento em [docs/ads/](../ads/README.md))
