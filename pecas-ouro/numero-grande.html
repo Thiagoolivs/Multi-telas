@@ -43,13 +43,18 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1.02 var(--mt-fonte-titulo); te
 }
 /* A lateral: o número e a frase; o resto sai. */
 @container (max-width: 700px) {
-  .apoio { display: none; }
-  .marca-nome { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .32em; }
-  .numero small { font-size: max(var(--mt-piso, 0cqw), 4.4cqw); letter-spacing: .4em; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .22em; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
+  /* Com a letra do balcão os blocos presos no alto, no meio e no pé se encontravam: aqui eles vão um embaixo
+     do outro, centrados, e o espaçado das letras diminui. */
+  .mt-peca { display: flex; flex-direction: column; justify-content: center; gap: 4.4cqw; padding: 6cqmin 7cqw; }
+  .marca-nome, .numero, .texto, .assinatura { position: static; width: auto; transform: none; }
+  .apoio, .kicker i { display: none; }
+  .marca-nome { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .08em; line-height: 1.1; }
+  .numero small { margin-top: 4cqw; font-size: max(var(--mt-piso, 0cqw), 4.4cqw); letter-spacing: .14em; }
+  .texto { padding-top: 3.6cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .06em; }
+  h1 { margin: 2cqw 0 0; font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
   /* Com a letra da TV, o endereço espaçado passava da margem na lateral: fica justo e pode quebrar. */
-  .assinatura { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); letter-spacing: .06em; left: 8cqw; right: 8cqw; line-height: 1.2; }
+  .assinatura { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); letter-spacing: .04em; line-height: 1.2; }
 }
 </style>
 <section class="mt-peca numero-grande">

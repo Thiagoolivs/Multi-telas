@@ -75,17 +75,20 @@ h1 em { display: block; font-style: normal; font-size: max(var(--mt-piso, 0cqw),
    * passava por cima dos óculos da foto (o detector mediu 1,2:1). A foto
    * fica com o terço de cima e o véu cobre o resto.
    */
-  .foto { height: 38%; object-position: 50% 36%; }
-  .veu { background: linear-gradient(180deg, var(--mt-fundo) 0%, var(--mt-fundo-0) 12%), linear-gradient(0deg, var(--mt-fundo) 64%, var(--mt-fundo-0) 74%); }
-  .apoio, .parc { display: none; }
-  .marca-nome { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .32em; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .22em; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 10.5cqw); }
+  .foto { height: 33%; object-position: 50% 38%; }
+  .veu { background: linear-gradient(180deg, var(--mt-fundo) 0%, var(--mt-fundo-0) 12%), linear-gradient(0deg, var(--mt-fundo) 67%, var(--mt-fundo-0) 76%); }
+  .apoio, .parc, .kicker i { display: none; }
+  /* Com a letra do balcão o espaçado da marca, do kicker e do "a partir de" passava da coluna: menos espaço entre as letras. */
+  .marca-nome { right: 8cqw; font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .08em; line-height: 1.1; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .04em; }
+  h1 { margin: 1.4cqw 0 1.6cqw; font-size: max(var(--mt-piso, 0cqw), 10.5cqw); }
+  /* O "a partir de" em cima do preço, numa linha só (ao lado dele quebrava em três). */
+  .preco { flex-direction: column; align-items: flex-start; gap: 1.6cqw; width: 100%; margin-top: 1.6cqw; padding-top: 1.6cqw; }
   .valor { font-size: max(var(--mt-piso, 0cqw), 17cqw); }
-  .de { font-size: max(var(--mt-piso, 0cqw), 3cqw); letter-spacing: .1em; }
-  /* Com a letra da TV a chamada quebra em duas linhas: o bloco sobe para dar lugar a ela. */
-  .bloco { bottom: 16cqh; }
-  .cta { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .08em; right: 8cqw; line-height: 1.2; }
+  .de { font-size: max(var(--mt-piso, 0cqw), 3cqw); letter-spacing: .04em; }
+  /* A chamada sai: com a letra do balcão, em duas linhas, ela encostava no preço. A oferta e o prazo (no kicker) ficam. */
+  .bloco { display: flex; flex-direction: column; justify-content: center; top: 31cqh; bottom: 5cqh; }
+  .cta { display: none; }
 }
 </style>
 <section class="mt-peca oferta-foto">

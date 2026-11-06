@@ -62,12 +62,16 @@
 }
 /* A lateral: o relógio, a hora e os dias; a nota fica, menor. */
 @container (max-width: 700px) {
-  .relogio { font-size: 4.4cqw; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .04em; }
+  /* Com a letra do balcão o relógio grande em cima empurrava a nota para fora: ele vai para o lado do kicker, como na quadrada. */
+  .mt-peca { grid-template-columns: auto 1fr; column-gap: 4cqw; row-gap: 0; padding: 7cqmin 7cqw; }
+  .relogio { font-size: 2.6cqw; }
+  .texto { display: contents; }
+  .kicker { grid-column: 2; font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .04em; line-height: 1.1; }
   .kicker i { display: none; }
-  .hora { font-size: max(var(--mt-piso, 0cqw), calc(17cqw * var(--mt-escala-titulo, 1))); }
-  .dias { font-size: max(var(--mt-piso, 0cqw), 7.4cqw); }
-  .nota { font-size: max(var(--mt-piso, 0cqw), 6.2cqw); }
+  .hora, .dias, .nota { grid-column: 1 / -1; }
+  .hora { margin-top: 4.4cqw; font-size: max(var(--mt-piso, 0cqw), calc(17cqw * var(--mt-escala-titulo, 1))); }
+  .dias { margin-top: 2.4cqw; font-size: max(var(--mt-piso, 0cqw), 7.4cqw); line-height: 1.12; }
+  .nota { margin-top: 4.4cqw; padding-top: 2.4cqw; font-size: max(var(--mt-piso, 0cqw), 6.2cqw); line-height: 1.2; max-width: none; }
 }
 /* Deitada e baixa: o relógio, a hora e os dias; a nota sai. */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {

@@ -68,14 +68,16 @@ h1 { margin-top: 2.4cqmin; font: 600 max(var(--mt-piso, 0cqw), calc(10cqmin * va
 }
 /* A lateral: o número embaixo do rótulo; sem o selo e o "atualizado". */
 @container (max-width: 700px) {
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; }
+  /* Com a letra do balcão, três cartões de três linhas passavam da coluna: o número sobe para a linha do rótulo. */
+  .mt-peca { padding: 6cqmin 6cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .04em; line-height: 1.1; }
   .kicker i, .atualizado, .selo { display: none; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(11cqw * var(--mt-escala-titulo, 1))); }
-  .metas { margin-top: 6cqw; gap: 4cqw; }
-  .metas li { display: flex; padding: 4cqw 5cqw; text-align: left; }
-  .rotulo { font-size: max(var(--mt-piso, 0cqw), 6.2cqw); }
-  .valor { margin-top: 1.6cqw; font-size: max(var(--mt-piso, 0cqw), calc(15cqw * var(--mt-escala-titulo, 1))); }
-  .ref { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+  .metas { margin-top: 5cqw; gap: 3.4cqw; }
+  .metas li { display: grid; grid-template-columns: 1fr auto; align-items: baseline; column-gap: 3cqw; padding: 3.4cqw 4.4cqw; text-align: left; }
+  .rotulo { grid-column: 1; grid-row: 1; font-size: max(var(--mt-piso, 0cqw), 6.2cqw); }
+  .valor { grid-column: 2; grid-row: 1; margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .ref { grid-column: 1 / -1; margin-top: 1.4cqw; font-size: max(var(--mt-piso, 0cqw), 6cqw); }
 }
 /* Deitada e baixa: as três lado a lado, sem a régua e o selo. */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {

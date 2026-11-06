@@ -53,9 +53,17 @@ h1 { margin-top: 5cqmin; font: 600 max(var(--mt-piso, 0cqw), 11cqmin)/1.02 var(-
   .pedido, .pedido small { font-size: max(var(--mt-piso, 0cqw), 3cqmin); }
 }
 @container (max-width: 700px) {
+  /* Com a letra do balcão: o selo espaçado quebrava em duas linhas e o respiro empurrava o QR para fora; tudo mais junto. */
+  .mt-peca { gap: 4.4cqmin; padding: 6cqmin 6cqw; }
+  .selo { gap: 1.4cqmin; padding: 1.2cqmin 2.6cqmin; letter-spacing: .08em; }
+  h1 { margin-top: 3cqmin; }
+  .setor { margin-top: 2cqmin; line-height: 1.18; }
+  .requisitos { margin-top: 3cqmin; }
+  .requisitos li { padding: 1.4cqmin 0; line-height: 1.16; }
   /* D44: o QR da lateral tinha 115px — pequeno demais para o celular ler de onde a pessoa está. */
   .qr { width: 42cqmin; height: 42cqmin; }
   .requisitos li:nth-child(3) { display: none; }
+  .pedido { letter-spacing: .06em; line-height: 1.15; }
   .pedido small { display: none; }
 }
 </style>

@@ -70,20 +70,23 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.92 var(--mt-fonte-titulo); tex
   .pontos { grid-column: 3; }
   .valor { font-size: max(var(--mt-piso, 0cqw), 4.4cqw); }
 }
-/* A lateral: o nome e o preço; a medida e o apoio saem. */
+/* A lateral: o nome e o preço; a medida e o apoio saem. Com a letra do balcão, os seis itens presos no pé subiam
+   no título: aqui os blocos vão um embaixo do outro, centrados; o kicker, o nome da loja (a tela já diz) e a chamada saem. */
 @container (max-width: 700px) {
-  .apoio, .medida { display: none; }
-  /* Com a letra da TV a marca espaçada quebrava e encostava no rótulo: menos espaço entre letras, e o cabeçalho desce. */
-  .marca-nome { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .14em; line-height: 1.15; right: 8cqw; }
-  .cabeca { top: 14cqh; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .12em; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 13cqw); white-space: normal; }
-  .itens { bottom: 11cqh; }
-  .itens li { padding: 3.6cqw 0 3.2cqw; }
+  .mt-peca { display: flex; flex-direction: column; justify-content: center; padding: 6cqmin 6.4cqw; }
+  .cabeca, .itens { position: static; }
+  .apoio, .medida, .marca-nome, .cta, .kicker { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), 13cqw); white-space: normal; line-height: .95; }
+  .itens { margin-top: 4.4cqw; }
+  /* O preço que não cabe ao lado do nome desce para a linha de baixo, à direita, com o pontilhado até ele
+     (com a fonte larga de uma marca, nome e preço lado a lado passavam da borda). */
+  .itens li { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 1.6cqw; row-gap: 0; padding: 2.2cqw 0 2cqw; }
   /* Nome e preço dividem a linha estreita: com fonte de marca larga, encolhem juntos (--mt-escala-titulo). */
-  .nome { font-size: max(var(--mt-piso, 0cqw), calc(6.4cqw * var(--mt-escala-titulo, 1))); }
-  .valor { font-size: max(var(--mt-piso, 0cqw), calc(7.6cqw * var(--mt-escala-titulo, 1))); }
-  .cta { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .16em; }
+  .nome { flex: 0 1 auto; min-width: 0; font-size: max(var(--mt-piso, 0cqw), calc(6.4cqw * var(--mt-escala-titulo, 1))); line-height: 1.02; }
+  .pontos { flex: 1 0 1.6em; align-self: auto; margin-bottom: .3em; }
+  .valor { flex: none; margin-left: auto; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1))); }
+  .valor small { margin-right: .12em; }
 }
 </style>
 <section class="mt-peca cardapio-colunas">

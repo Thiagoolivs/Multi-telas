@@ -76,14 +76,16 @@ h1 { margin-top: 2.4cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(12cqmin * va
 }
 /* A lateral: uma forma por linha, o ícone ao lado; a nota fica. */
 @container (max-width: 700px) {
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 5.8cqw); letter-spacing: .04em; }
+  /* Com a letra do balcão a nota passava do pé: os cartões e o respiro mais justos. */
+  .mt-peca { padding: 6cqmin 7cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 5.8cqw); letter-spacing: .04em; line-height: 1.1; }
   .kicker i { display: none; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(11.6cqw * var(--mt-escala-titulo, 1))); }
-  .formas { grid-template-columns: 1fr; gap: 2.4cqw; margin-top: 6cqw; }
-  .formas li { flex-direction: row; align-items: center; gap: 4cqw; padding: 3cqw 4cqw; }
-  .nome { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); }
+  .formas { grid-template-columns: 1fr; gap: 2cqw; margin-top: 4.4cqw; }
+  .formas li { flex-direction: row; align-items: center; gap: 4cqw; padding: 1.7cqw 4cqw; }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); line-height: 1.1; }
   .ico { font-size: 1.7cqw; }
-  .nota { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+  .nota { margin-top: 3.4cqw; font-size: max(var(--mt-piso, 0cqw), 6cqw); line-height: 1.16; }
 }
 /* Deitada e baixa: o título e as quatro formas numa linha; a nota sai. */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {
