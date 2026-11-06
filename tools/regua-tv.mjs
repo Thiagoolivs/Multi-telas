@@ -251,11 +251,27 @@ async function medirContrasteUmaVez(p, zona) {
 
 async function subirServidor() {
   const dados = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-regua-'));
+  /*
+   * O log do servidor vai para um arquivo (junto das fotos, no CI) e, se ele
+   * cair no meio da medida, o fim do log sai na tela: um ECONNRESET sozinho
+   * não diz por quê (06/11, PR #328).
+   */
+  const pastaDoLog = process.env.REGUA_SAIDA ? path.resolve(RAIZ, process.env.REGUA_SAIDA) : os.tmpdir();
+  fs.mkdirSync(pastaDoLog, { recursive: true });
+  const arqDoLog = path.join(pastaDoLog, 'servidor-' + PORTA + '.log');
+  const saida = fs.openSync(arqDoLog, 'w');
+  let parando = false;
   const servidor = spawn(process.execPath, ['server.js'], {
-    cwd: RAIZ, stdio: 'ignore',
+    cwd: RAIZ, stdio: ['ignore', saida, saida],
     env: { ...process.env, PORT: String(PORTA), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '', DATA_DIR: dados, MEDIA_DIR: dados, AI_PROVIDER: 'dev', TRUST_PROXY: '', RAILWAY_ENVIRONMENT: '', NODE_ENV: 'test' },
   });
-  const parar = () => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* segue */ } };
+  servidor.on('exit', (codigo, sinal) => {
+    if (parando) return;
+    let fim = '';
+    try { fim = fs.readFileSync(arqDoLog, 'utf8').split('\n').slice(-60).join('\n'); } catch (e) { /* sem log */ }
+    console.error('\nO servidor de teste caiu (código ' + codigo + ', sinal ' + sinal + '). Fim do log (' + arqDoLog + '):\n' + fim);
+  });
+  const parar = () => { parando = true; servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* segue */ } };
   for (let i = 0; i < 160; i++) {
     try { if ((await fetch(BASE + '/tv')).ok) return parar; } catch (e) { /* ainda subindo */ }
     await espera(250);
