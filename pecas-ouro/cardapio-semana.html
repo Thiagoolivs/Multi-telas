@@ -67,15 +67,17 @@ h1 { margin-top: 2cqmin; font: 600 max(var(--mt-piso, 0cqw), calc(12cqmin * var(
   /* Quadrada: cinco linhas com a letra da TV já enchem a peça — a nota do pé sai (o "todo dia" fica para a lateral e a deitada). */
   .nota { display: none; }
 }
-/* A lateral: o dia em cima do prato; sem o horário e a nota. */
+/* A lateral: o dia abre a linha do prato, na cor do preço (a etiqueta em cima dobrava a altura de cada dia
+   e, com a letra do balcão, os cinco não cabiam); sem o kicker, o horário e a nota. */
 @container (max-width: 700px) {
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; }
-  .kicker i, .quando, .nota { display: none; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
-  .dias { margin-top: 5cqw; }
-  .dias li { grid-template-columns: 1fr; row-gap: 1.2cqw; padding: 2.4cqw 0; }
-  .dia { font-size: max(var(--mt-piso, 0cqw), 5cqw); }
-  .prato { font-size: max(var(--mt-piso, 0cqw), 7cqw); }
+  .mt-peca { padding: 5cqmin 5cqw; }
+  .kicker, .quando, .nota { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1))); line-height: 1.02; }
+  .dias { margin-top: 3cqw; }
+  .dias li { display: block; padding: 1.6cqw 0; text-wrap: wrap; }
+  .dia { display: inline; min-width: 0; margin-right: .3em; padding: 0; border-radius: 0; background: none; color: var(--mt-preco);
+    font-size: max(var(--mt-piso, 0cqw), 6.6cqw); letter-spacing: .03em; }
+  .prato { font-size: max(var(--mt-piso, 0cqw), 6.6cqw); line-height: 1.08; text-wrap: wrap; }
 }
 /* Deitada e baixa: o título e os cinco dias, sem o resto. */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {

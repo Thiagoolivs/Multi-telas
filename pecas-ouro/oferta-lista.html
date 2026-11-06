@@ -54,14 +54,20 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.95 var(--mt-fonte-titulo); tex
 }
 /* A lateral: menos texto, letra maior. */
 @container (max-width: 700px) {
-  .apoio, .det { display: none; }
-  .marca-nome { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .32em; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .22em; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 11.5cqw); }
-  .num { font-size: max(var(--mt-piso, 0cqw), 3cqw); }
-  .txt b { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
-  .valor { font-size: max(var(--mt-piso, 0cqw), 10.5cqw); }
-  .cta { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .16em; }
+  /* Com a letra do balcão os blocos presos no alto e no pé se encontravam: aqui eles vão um embaixo do outro,
+     centrados; o kicker, o nome da loja (a tela já diz, no cabeçalho) e a chamada saem: o título e os três itens ficam. */
+  .mt-peca { display: flex; flex-direction: column; justify-content: center; gap: 4cqw; padding: 6cqmin 7cqw; }
+  .cabeca, .itens { position: static; width: auto; transform: none; }
+  .apoio, .det, .marca-nome, .cta, .kicker { display: none; }
+  h1 { margin: 0; font-size: max(var(--mt-piso, 0cqw), 11.5cqw); }
+  /* O preço que não cabe ao lado do nome (fonte de marca larga) desce para a linha de baixo, à direita. */
+  /* A linha na letra do número: a coluna dele (1,3em) e a do nome contam na mesma medida. */
+  .itens li { display: flex; flex-wrap: wrap; align-items: center; column-gap: 2cqw; row-gap: .4cqw; padding: 2.2cqw 0; font-size: max(var(--mt-piso, 0cqw), 3cqw); }
+  .num { flex: none; width: 1.3em; font-size: 1em; letter-spacing: 0; }
+  .txt { flex: 1 1 auto; min-width: 0; max-width: calc(100% - 1.3em - 2cqw); }
+  .txt b { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: 0; }
+  .valor { flex: none; margin-left: auto; font-size: max(var(--mt-piso, 0cqw), 13.5cqw); }
+  .valor small { vertical-align: .5em; }
 }
 </style>
 <section class="mt-peca oferta-lista">

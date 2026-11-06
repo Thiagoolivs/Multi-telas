@@ -68,14 +68,17 @@ h1 { margin-top: 3cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(10cqmin * var(
 }
 /* A lateral: o mostrador e a lista, sem o kicker. */
 @container (max-width: 700px) {
-  .mt-peca { row-gap: 7cqw; }
+  /* Com a letra do balcão a unidade não cabia dentro do mostrador: ela sai para o lado dele, e o mostrador fica só com o número. */
+  .mt-peca { row-gap: 5cqw; padding: 6cqmin 7cqw; }
   .kicker { display: none; }
-  .mostrador { width: 58cqw; height: 58cqw; }
-  .numero { font-size: max(var(--mt-piso, 0cqw), calc(26cqw * var(--mt-escala-titulo, 1))); }
-  .unidade { max-width: 40cqw; font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+  .mostrador { justify-self: start; width: 36cqw; height: 36cqw; border-width: 2.4cqw; }
+  .mostrador::before { inset: 1.8cqw; }
+  .numero { font-size: max(var(--mt-piso, 0cqw), calc(19cqw * var(--mt-escala-titulo, 1))); }
+  .unidade { position: absolute; left: calc(100% + 4.4cqw); top: 50%; width: 46cqw; max-width: none; margin: 0; transform: translateY(-50%);
+    text-align: left; font-size: max(var(--mt-piso, 0cqw), 6cqw); line-height: 1.1; text-wrap: wrap; }
   h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(10.6cqw * var(--mt-escala-titulo, 1))); }
-  .itens { margin-top: 5cqw; }
-  .itens li { font-size: max(var(--mt-piso, 0cqw), 6.6cqw); }
+  .itens { margin-top: 4cqw; gap: 3cqw; }
+  .itens li { font-size: max(var(--mt-piso, 0cqw), 6.6cqw); line-height: 1.12; }
 }
 /* Deitada e baixa: o mostrador e a lista; o título sai (a lista já diz). */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {

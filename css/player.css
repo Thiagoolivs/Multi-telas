@@ -381,6 +381,11 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
  */
 /* D37: o crédito da foto do banco de imagens, discreto no canto. */
 .mt-credito { position: absolute; right: 1.2cqh; bottom: 1cqh; z-index: 5; padding: .3cqh 1cqh; border-radius: 99px; background: rgba(0,0,0,.42); color: rgba(255,255,255,.82); font-size: max(9px, 1.6cqh); line-height: 1.3; pointer-events: none; }
+/* As páginas da peça vinda da planilha (js/render.js, paginarPeca): os pontinhos no pé, no meio, como o crédito. */
+.mt-peca-paginas { position: absolute; left: 0; right: 0; bottom: 1cqh; z-index: 5; display: flex; gap: 1cqh; width: max-content; margin: 0 auto;
+  padding: .7cqh 1.2cqh; border-radius: 99px; background: rgba(0,0,0,.42); pointer-events: none; }
+.mt-peca-paginas i { display: block; width: 12px; height: 12px; width: max(8px, 1.3cqh); height: max(8px, 1.3cqh); border-radius: 50%; background: rgba(255,255,255,.45); }
+.mt-peca-paginas i.mt-on { background: #fff; }
 
 /* D33: o mural da data — o título e a grade de fotos da equipe. */
 .mt-fdd { display: flex; flex-direction: column; gap: 2.4cqh; padding: 4cqh 4cqw; }
@@ -1538,11 +1543,26 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-compacto .mt-precos-linha { padding: .12em 0; }
 .mt-compacto .mt-precos-secao { padding: .35em 0 .05em; }
 .mt-compacto .mt-precos-rodape { margin-top: 1.2cqh; }
+/* Em páginas (js/player.js, paginarPrecos): a linha de outra página some, os pontinhos dizem qual é esta. */
+.mt-precos-lista > [data-mt-fora] { display: none; }
+.mt-precos-paginas { display: flex; gap: 12px; margin-top: 1.6cqh; }
+.mt-precos-paginas i { display: block; width: 16px; height: 16px; width: clamp(14px, 2.4cqw, 22px); height: clamp(14px, 2.4cqw, 22px); border-radius: 50%;
+  background: var(--text); opacity: .28; }
+.mt-precos-paginas i.mt-on { background: var(--accent); opacity: 1; }
+.mt-precos-vira { animation: mt-precos-vira .6s ease-out both; }
+@keyframes mt-precos-vira { from { opacity: 0; transform: translateY(1.5cqh); } to { opacity: 1; transform: none; } }
+.mt-perf .mt-precos-vira { animation: none; }
 .mt-ann.mt-compacto .ann-inner { gap: 1.8cqh; padding: 2.5cqw; }
 .mt-compacto .mt-text-title { margin-bottom: .2em; }
 @container (orientation: portrait) {
   .mt-precos-lista { column-count: var(--cols-pe, 1); font-size: max(var(--mt-piso, 0px), var(--corpo-pe)); }
   .mt-precos-rodape { font-size: max(var(--mt-piso, 0px), calc(var(--corpo-pe) * .75)); }
+}
+/* A coluna estreita (a lateral): o nome que não cabe ao lado do preço fica inteiro na linha dele, sem hífen, e o preço desce, à direita. */
+@container (max-width: 640px) {
+  .mt-precos-linha { flex-wrap: wrap; row-gap: 0; }
+  .mt-precos-nome { hyphens: manual; }
+  .mt-precos-preco { margin-left: auto; }
 }
 
 /* ---------- Cabeçalho e rodapé com peça em HTML (js/player.js, startPecaFixa) ----------

@@ -318,15 +318,24 @@ async function esperarItem(p, item) {
  * caber é avisada para sair dela.
  */
 const FORMATOS_CHEIOS = ['Tela cheia 16:9', 'Vertical 9:16', 'Quadrada 1:1'];
+/*
+ * A coluna lateral também no BALCÃO (4,5%): a peça de lateral numa TV de
+ * comércio é lida a 4 m. Desde o redesenho das laterais (cardapio-semana,
+ * servico-semana e as outras 19 que cediam), todas cabem com a letra
+ * inteira, e uma peça nova que ceder aqui reprova.
+ */
+const LATERAL_NO_BALCAO = 'Lateral · Corporativo';
 const PENDENTES = new Set([]);
 // A meta da fase 3 para as zonas (lateral e bloco): 85% das fotos na régua.
 const META_ZONAS = 0.85;
-async function conferirPecas(navegador, local) {
+async function conferirPecas(navegador, local, soZona) {
   const manifesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', 'manifesto.json'), 'utf8'));
   const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
   const saida = [];
   // Sem local: as peças de destaque, na conta da tela cheia. Com local: também as da lateral (a zona pequena ganha piso).
-  for (const peca of manifesto.pecas.filter((x) => x.papeis.includes('destaque') || (local && x.papeis.includes('lateral')))) {
+  // Com soZona: só a lateral, só as peças que vão nela (o balcão).
+  const entra = (x) => (soZona ? x.papeis.includes('lateral') : x.papeis.includes('destaque') || (local && x.papeis.includes('lateral')));
+  for (const peca of manifesto.pecas.filter(entra)) {
     await p.goto(BASE + '/bancada.html?ver=peca&peca=' + peca.id + '&modo=todos&tamanho=caber' + (local ? '&local=' + local : ''));
     await p.evaluate(() => (document.fonts && document.fonts.ready) || null);
     await espera(1500);
@@ -345,8 +354,8 @@ async function conferirPecas(navegador, local) {
     });
     for (const [zona, cedeu] of Object.entries(porZona)) {
       const cheia = FORMATOS_CHEIOS.includes(zona);
-      // Tela cheia sem local; as zonas com o local do escritório (a Empresas, onde elas moram).
-      if (local ? !cheia : cheia) saida.push({ id: peca.id, zona, cedeu, cheia, local: local || '' });
+      // Tela cheia sem local; as zonas com o local do escritório (a Empresas, onde elas moram); a lateral no balcão.
+      if (soZona ? zona === soZona : local ? !cheia : cheia) saida.push({ id: peca.id, zona, cedeu, cheia, local: local || '' });
     }
   }
   await p.close();
@@ -455,7 +464,7 @@ async function main() {
       await painel.close();
       for (const tv of Object.values(tvs)) await tv.p.context().close();
     }
-    pecas = (await conferirPecas(navegador)).concat(await conferirPecas(navegador, 'escritorio'));
+    pecas = (await conferirPecas(navegador)).concat(await conferirPecas(navegador, 'escritorio'), await conferirPecas(navegador, 'balcao', LATERAL_NO_BALCAO));
   } finally {
     await navegador.close();
     parar();
@@ -499,12 +508,18 @@ async function main() {
     if (cheias.some((x) => x.id === id && x.zona === zona && x.cedeu >= 1)) console.log('  ✓ ' + k + ' já cabe: tire de PENDENTES em tools/regua-tv.mjs');
   }
   for (const zona of ['Destaque · Corporativo', 'Lateral · Corporativo']) {
-    const l = pecas.filter((x) => x.zona === zona);
+    const l = pecas.filter((x) => x.zona === zona && x.local === 'escritorio');
     if (!l.length) continue;
     const ok = l.filter((x) => x.cedeu >= 1).length;
     console.log('Peças-ouro em ' + zona + ', no escritório (3%): ' + ok + ' de ' + l.length + ' com a letra inteira');
     for (const x of l.filter((y) => y.cedeu < 1)) console.log('  · ' + x.id + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%');
     if (ok / l.length < META_ZONAS) { console.log('  ✗ abaixo da meta de ' + Math.round(META_ZONAS * 100) + '%'); reprova = true; }
+  }
+  // A lateral no balcão (4,5%): bloqueio, peça a peça, como a tela cheia.
+  const noBalcao = pecas.filter((x) => x.local === 'balcao' && x.zona === LATERAL_NO_BALCAO);
+  if (noBalcao.length) {
+    console.log('Peças-ouro em Lateral · balcão (' + PISO + '%): ' + noBalcao.filter((x) => x.cedeu >= 1).length + ' de ' + noBalcao.length + ' com a letra inteira');
+    for (const x of noBalcao.filter((y) => y.cedeu < 1)) { console.log('  ✗ ' + x.id + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%'); reprova = true; }
   }
   // Fase 10: o contraste de todo texto, em todo arranjo.
   for (const [, , nome] of ARRANJOS) {

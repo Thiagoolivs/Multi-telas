@@ -64,12 +64,16 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
 }
 /* A coluna estreita: o que fica, maior; o pedido fica só o rótulo. */
 @container (max-width: 700px) {
-  .mt-peca { gap: 9cqmin; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 12.6cqmin); }
-  .meta { font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
+  /* Com a letra do balcão: o espaçado do kicker e do pedido quebrava em três linhas; menos espaço entre as letras e entre os blocos. */
+  .mt-peca { gap: 6cqmin; padding: 7cqmin 8cqw; }
+  .kicker { letter-spacing: .1em; line-height: 1.1; }
+  .kicker i { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 12.6cqmin); margin-top: 3.4cqmin; }
+  .meta { margin-top: 3cqmin; font-size: max(var(--mt-piso, 0cqw), 4cqmin); line-height: 1.22; }
+  .preco { margin-top: 3.6cqmin; padding-top: 3.6cqmin; }
   .valor { font-size: max(var(--mt-piso, 0cqw), 21cqmin); }
   .qr { width: 42cqmin; height: 42cqmin; }
-  .pedido { font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
+  .pedido { font-size: max(var(--mt-piso, 0cqw), 4cqmin); letter-spacing: .04em; line-height: 1.15; }
   .pedido small { display: none; }
 }
 </style>

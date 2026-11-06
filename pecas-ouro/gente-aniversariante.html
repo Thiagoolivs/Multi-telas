@@ -59,7 +59,14 @@ h1 { margin-top: 7cqmin; font: 600 max(var(--mt-piso, 0cqw), 11cqmin)/1.02 var(-
   .recado { font-size: max(var(--mt-piso, 0cqw), 3.2cqmin); margin-top: 4cqmin; }
 }
 @container (max-width: 700px) {
-  .setor { font-size: max(var(--mt-piso, 0cqw), 4.6cqmin); }
+  /* Com a letra do balcão o "ANIVERSARIANTE" espaçado, em maiúscula, passava das duas bordas da coluna:
+     aqui o kicker vai em caixa baixa, justo, e o recado menos espaçado. */
+  .mt-peca { padding: 7cqmin 7cqw; }
+  .kicker { letter-spacing: .02em; text-transform: none; line-height: 1.1; }
+  .avatar { margin-top: 5cqmin; width: 36cqmin; height: 36cqmin; }
+  h1 { margin-top: 5cqmin; font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .setor { font-size: max(var(--mt-piso, 0cqw), 4.6cqmin); line-height: 1.2; }
+  .recado { margin-top: 4cqmin; letter-spacing: .06em; line-height: 1.1; }
 }
 </style>
 <section class="mt-peca gente-aniversariante">
