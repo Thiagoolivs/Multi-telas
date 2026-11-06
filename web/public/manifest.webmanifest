@@ -83,6 +83,18 @@
       ]
     },
     {
+      "name": "Chamar senha",
+      "short_name": "Senha",
+      "description": "Chamar a próxima senha na TV da sala de espera.",
+      "url": "/app/?ir=senha",
+      "icons": [
+        {
+          "src": "/icons/icone-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
       "name": "Meus designs",
       "short_name": "Designs",
       "description": "Abrir o editor e as peças salvas.",

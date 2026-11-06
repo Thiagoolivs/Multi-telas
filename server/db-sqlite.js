@@ -254,6 +254,18 @@ db.exec(`
     id TEXT PRIMARY KEY, tenant_id TEXT, descricao TEXT, telas TEXT, created_at INTEGER, desfeito_em INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_lotes_tenant ON lotes(tenant_id, created_at);
+  -- A chamada de senha da Saúde (fase 12, server/senha.js): o último número
+  -- de cada fila (grupo de TVs e letra) e cada chamada. Só senha, lugar e
+  -- hora: o lugar é tipo e número, sem campo onde caiba o nome do paciente.
+  CREATE TABLE IF NOT EXISTS senha_filas (
+    tenant_id TEXT, grupo TEXT, prefixo TEXT, numero INTEGER, dia TEXT, atualizado_em INTEGER,
+    PRIMARY KEY (tenant_id, grupo, prefixo)
+  );
+  CREATE TABLE IF NOT EXISTS senha_chamadas (
+    id TEXT PRIMARY KEY, tenant_id TEXT, grupo TEXT, prefixo TEXT, numero INTEGER,
+    local_tipo TEXT, local_num INTEGER, tipo TEXT, dia TEXT, em INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_senha_chamadas_dia ON senha_chamadas(tenant_id, dia, em);
   -- Coluna oculta em vez de DELETE: o botão de pânico precisa ser instantâneo e
   -- reversível. Apagar arquivo de storage no meio de um evento é irreversível
   -- e lento justamente quando a pressa é máxima.
@@ -1857,6 +1869,8 @@ async function dadosDoTenant(tenantId) {
     usoDaIA: pega('SELECT tipo, creditos, custo_centavos, referencia, created_at FROM uso_ia WHERE tenant_id = ?'),
     chamados: pega('SELECT * FROM reclamacoes WHERE tenant_id = ?'),
     acessosDoSuporte: pega('SELECT * FROM acessos_suporte WHERE tenant_id = ?'),
+    // A chamada de senha (fase 12): só senha, lugar e hora.
+    chamadasDeSenha: pega('SELECT grupo, prefixo, numero, local_tipo, local_num, tipo, em FROM senha_chamadas WHERE tenant_id = ?'),
   };
 }
 
@@ -1901,7 +1915,8 @@ async function apagarTenant(tenantId) {
   try {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     // As tabelas novas ficavam para trás (D0.7); ver db-postgres.js.
-    for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
+    // A chamada de senha (fase 12) vai na frente: a lista de baixo é a de antes.
+    for (const tabela of ['senha_filas', 'senha_chamadas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes',
       'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
@@ -2083,8 +2098,50 @@ async function decidirConteudo(tipo, id, estado, por) {
     .run(tipo, id, estado, por || '', Date.now());
 }
 
+/*
+ * A chamada de senha (fase 12; a regra em server/senha.js, as rotas em
+ * server/routes/senha.js). "Chamar a próxima" é UM comando: duas recepções
+ * apertando juntas recebem números diferentes. No dia seguinte (o dia da
+ * loja, que quem chama manda), a fila volta a 1; passou de 999, também.
+ */
+async function senhaProxima(tenantId, grupo, prefixo, dia, agora) {
+  const r = db.prepare(`INSERT INTO senha_filas (tenant_id, grupo, prefixo, numero, dia, atualizado_em) VALUES (?, ?, ?, 1, ?, ?)
+    ON CONFLICT (tenant_id, grupo, prefixo) DO UPDATE SET
+      numero = CASE WHEN senha_filas.dia = excluded.dia AND senha_filas.numero < 999 THEN senha_filas.numero + 1 ELSE 1 END,
+      dia = excluded.dia, atualizado_em = excluded.atualizado_em
+    RETURNING numero`).get(tenantId, grupo, prefixo, dia, agora);
+  return Number(r.numero);
+}
+async function senhaRegistrar(tenantId, c) {
+  const linha = { id: 'sc_' + rid(12), tenant_id: tenantId, grupo: c.grupo, prefixo: c.prefixo, numero: c.numero,
+    local_tipo: c.localTipo, local_num: c.localNum, tipo: c.tipo, dia: c.dia, em: c.em };
+  db.prepare('INSERT INTO senha_chamadas (id, tenant_id, grupo, prefixo, numero, local_tipo, local_num, tipo, dia, em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(linha.id, tenantId, linha.grupo, linha.prefixo, linha.numero, linha.local_tipo, linha.local_num, linha.tipo, linha.dia, linha.em);
+  // A TV só mostra as do dia: as de dias atrás não servem para nada.
+  db.prepare('DELETE FROM senha_chamadas WHERE tenant_id = ? AND em < ?').run(tenantId, c.em - 3 * 24 * 60 * 60 * 1000);
+  return linha;
+}
+async function senhaChamadas(tenantId, grupos, dia, limite) {
+  const gs = grupos && grupos.length ? grupos : [''];
+  return db.prepare('SELECT * FROM senha_chamadas WHERE tenant_id = ? AND dia = ? AND grupo IN (' + gs.map(() => '?').join(', ') + ') ORDER BY em DESC LIMIT ?')
+    .all(tenantId, dia, ...gs, Number(limite) || 12);
+}
+async function senhaFilas(tenantId, grupo) {
+  return db.prepare('SELECT prefixo, numero, dia FROM senha_filas WHERE tenant_id = ? AND grupo = ?').all(tenantId, grupo);
+}
+// Zerar o dia: a fila volta a 1 e a TV fica sem chamadas.
+async function senhaZerar(tenantId, grupo) {
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM senha_chamadas WHERE tenant_id = ? AND grupo = ?').run(tenantId, grupo);
+    db.prepare('DELETE FROM senha_filas WHERE tenant_id = ? AND grupo = ?').run(tenantId, grupo);
+    db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+}
+
 module.exports = {
   decisoesDoConteudo, decidirConteudo,
+  senhaProxima, senhaRegistrar, senhaChamadas, senhaFilas, senhaZerar,
   listarCalendario, eventoDoCalendario, salvarEvento, removerEvento,
   salvarLote, loteDaConta, marcarLoteDesfeito, listarLotes,
   init,

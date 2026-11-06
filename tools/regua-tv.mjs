@@ -11,7 +11,8 @@
  * lado menor da TV — é o que se lê a 4 m. Em tela cheia é bloqueio: uma
  * mudança que deixar letra pequena reprova o CI. As zonas (principal de um
  * layout com lateral) são só medidas e relatadas: a régua delas é a meta da
- * fase 3.
+ * fase 3. A tela da chamada de senha (fase 12) também é tela cheia, e
+ * também bloqueia.
  *
  * Saída: o relatório no terminal e, com REGUA_SAIDA=<pasta>, as fotos e o
  * medidas.json lá.
@@ -238,6 +239,8 @@ async function main() {
   const navegador = await chromium.launch();
   const fotos = [];
   const padroes = [];
+  // Fase 12: a tela da chamada de senha (tela cheia: a régua de 4,5% vale para qualquer frente).
+  const senhas = [];
   let pecas = [];
   try {
     for (const [frente, tipos] of Object.entries(CASOS)) {
@@ -295,6 +298,38 @@ async function main() {
         const visto = textos.filter((t) => TEXTO_PADRAO.test(t));
         padroes.push({ frente, tipo: item.type, visto });
       }
+      // Fase 12: a recepção chama e a senha toma a tela inteira nas três TVs (js/senha.js).
+      if (frente === 'saude') {
+        const r = await api.post(BASE + '/api/senha/proxima', { data: { prefixo: 'A', local: { tipo: 'consultorio', numero: 12 } } });
+        if (r.status() >= 300) throw new Error('chamar a senha: ' + r.status() + ' ' + await r.text());
+        await Promise.all(Object.entries(tvs).map(async ([orient, tv]) => {
+          let ok = false;
+          for (let i = 0; i < 40 && !ok; i++) { ok = await tv.p.evaluate(() => !!document.querySelector('.mt-senha-tela.mt-in .mt-senha-num')); if (!ok) await espera(150); }
+          await espera(1300);   // a entrada termina e a letra assenta
+          const m = ok ? await tv.p.evaluate(() => {
+            const raiz = document.querySelector('.mt-senha-tela');
+            const lado = Math.min(innerWidth, innerHeight);
+            const R = raiz.getBoundingClientRect();
+            const textos = [];
+            const andar = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+            for (let n = andar.nextNode(); n; n = andar.nextNode()) {
+              const t = n.textContent.trim();
+              if (t.length < 2 || !n.parentElement || getComputedStyle(n.parentElement).display === 'none') continue;
+              const fx = document.createRange(); fx.selectNodeContents(n); const q = fx.getBoundingClientRect();
+              textos.push({ t, letra: +(parseFloat(getComputedStyle(n.parentElement).fontSize) / lado * 100).toFixed(2),
+                fora: q.right > R.right + 1 || q.bottom > R.bottom + 1 || q.left < R.left - 1 || q.top < R.top - 1 });
+            }
+            const num = raiz.querySelector('.mt-senha-num');
+            return { textos, senha: +(parseFloat(getComputedStyle(num).fontSize) / lado * 100).toFixed(2) };
+          }) : { textos: [], senha: 0 };
+          if (SAIDA) await tv.p.screenshot({ path: path.join(SAIDA, 'senha-' + orient.replace(' ', '-') + '.png') });
+          const pequenas = m.textos.filter((x) => x.letra < PISO - 0.005);
+          const fora = m.textos.filter((x) => x.fora);
+          senhas.push({ orient, apareceu: ok, senha: m.senha, menor: m.textos.length ? Math.min(...m.textos.map((x) => x.letra)) : null,
+            pequenas: pequenas.map((x) => x.t + ' (' + x.letra + '%)'), fora: fora.map((x) => x.t),
+            passa: ok && !pequenas.length && !fora.length && m.senha >= PISO * 4 });
+        }));
+      }
       await painel.close();
       for (const tv of Object.values(tvs)) await tv.p.context().close();
     }
@@ -303,7 +338,7 @@ async function main() {
     await navegador.close();
     parar();
   }
-  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas }, null, 1));
+  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, senhas }, null, 1));
 
   let reprova = false;
   for (const [, , nome, bloqueia] of ARRANJOS) {
@@ -321,6 +356,14 @@ async function main() {
     if (bloqueia && ok < doArranjo.length) reprova = true;
     // Fase 3: a lateral e o bloco passam em 85% ou mais (a meta da fase), e a mudança que baixar disso reprova.
     if ((nome === 'Lateral' || nome === 'Bloco') && ok / doArranjo.length < META_ZONAS) { console.log('  ✗ abaixo da meta de ' + Math.round(META_ZONAS * 100) + '%'); reprova = true; }
+  }
+  if (senhas.length) {
+    console.log('\nChamada de senha em tela cheia (régua de ' + PISO + '%; a senha com 4× isso ou mais): ' + senhas.filter((x) => x.passa).length + ' de ' + senhas.length);
+    for (const x of senhas.filter((y) => !y.passa)) {
+      console.log('  ✗ ' + x.orient + (x.apareceu ? '' : ': a senha não apareceu') + (x.pequenas.length ? ' letra abaixo da régua: ' + x.pequenas.slice(0, 3).join(', ') : '')
+        + (x.fora.length ? ' sai da tela: ' + x.fora.slice(0, 3).join(', ') : '') + (x.apareceu && x.senha < PISO * 4 ? ' a senha ficou pequena (' + x.senha + '%)' : ''));
+      reprova = true;
+    }
   }
   const cheias = pecas.filter((x) => x.cheia);
   console.log('\nPeças-ouro em tela cheia (16:9, 9:16 e 1:1): ' + cheias.filter((x) => x.cedeu >= 1).length + ' de ' + cheias.length + ' com a letra inteira');

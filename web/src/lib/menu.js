@@ -45,6 +45,8 @@ export const PAGINAS = {
   mural: 'Mural de fotos',
   relatorio: 'Relatório de exibição',
   indicadores: 'Indicadores',
+  // Fase 12: a chamada de senha (Saúde primeiro, mas aberta a todas as frentes).
+  senha: 'Chamada de senha',
   billing: 'Plano',
   team: 'Equipe',
   settings: 'Ajustes',
@@ -80,7 +82,8 @@ export const GRUPOS = [
    * As páginas de antes continuam como partes delas.
    */
   { id: 'midias', label: 'Biblioteca', paginas: ['prontos', 'seus', 'storage'],
-    tambem: ['apps', 'telasprontas', 'pecas', 'campanhas', 'designs', 'studio', 'campaigns', 'images', 'musicas', 'ia', 'banco'] },
+    // A chamada de senha (fase 12) é um dos Apps: acende a Biblioteca; na Saúde, também está no topo (Topbar).
+    tambem: ['apps', 'telasprontas', 'pecas', 'campanhas', 'designs', 'studio', 'campaigns', 'images', 'musicas', 'ia', 'banco', 'senha'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },
   // Pessoas: item do menu na Empresas; no Comércio e na Saúde, os Apps da Biblioteca (gruposDa).
   { id: 'extras', label: 'Pessoas', paginas: ['birthdays', 'mural', 'indicadores'] },

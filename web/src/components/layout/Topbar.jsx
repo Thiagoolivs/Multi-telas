@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, Sun, Moon, LogOut, ChevronDown, CreditCard, Users, Settings, LifeBuoy, UserPlus } from 'lucide-react';
+import { Menu, Sun, Moon, LogOut, ChevronDown, CreditCard, Users, Settings, LifeBuoy, UserPlus, Megaphone } from 'lucide-react';
 import { IconButton } from '../ui/Button.jsx';
+import { usePerfil } from '../../lib/perfil.js';
 
 const ROLE_LABEL = { owner: 'Dono', admin: 'Admin', member: 'Membro' };
 
 export function Topbar({ title, onOpenMenu, theme, onToggleTheme, user, onLogout, onNavigate }) {
+  const perfil = usePerfil();
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur">
       <IconButton icon={Menu} label="Menu" className="lg:hidden" onClick={onOpenMenu} />
@@ -15,9 +17,20 @@ export function Topbar({ title, onOpenMenu, theme, onToggleTheme, user, onLogout
         operacional", sempre verde e fixo no código — em português ele soa
         como Windows (EXECUTOR D2).
       */}
-      <h1 className="text-sm font-semibold text-ink lg:hidden">{title}</h1>
+      <h1 className="min-w-0 truncate text-sm font-semibold text-ink lg:hidden">{title}</h1>
 
       <div className="ml-auto flex items-center gap-1.5">
+        {/*
+          Fase 12: na Saúde, a chamada de senha a um toque de qualquer página
+          (a recepção não procura no menu). Neutro: o violeta é o da página.
+        */}
+        {perfil.id === 'saude' && onNavigate && (
+          <button type="button" onClick={() => onNavigate('senha')}
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-line-strong bg-surface px-2.5 text-sm font-medium text-ink transition hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent max-sm:h-11 max-sm:px-3">
+            <Megaphone size={15} strokeWidth={2} aria-hidden="true" />
+            <span className="sm:hidden">Senha</span><span className="hidden sm:inline">Chamar senha</span>
+          </button>
+        )}
         {/* O nome diz o que o botão faz agora (QA de 03/11), e não só "alternar". */}
         <IconButton icon={theme === 'dark' ? Sun : Moon} label={theme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'} onClick={onToggleTheme} />
         <UserMenu user={user} onLogout={onLogout} onNavigate={onNavigate} />

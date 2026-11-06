@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState } from 'react';
-import { Users, Images, BarChart3, ChevronRight } from 'lucide-react';
+import { Users, Images, BarChart3, ChevronRight, Megaphone } from 'lucide-react';
 import { Partes } from '../components/ui/Partes.jsx';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { usePerfil } from '../lib/perfil.js';
@@ -57,6 +57,8 @@ const APPS = [
   { id: 'birthdays', nome: 'Aniversariantes', texto: 'Os aniversários da semana entram sozinhos na TV.', Icone: Users },
   { id: 'mural', nome: 'Mural de fotos', texto: 'O público manda a foto pelo QR e ela aparece na TV.', Icone: Images },
   { id: 'indicadores', nome: 'Indicadores', texto: 'Um número que se atualiza sozinho, vindo de um sistema.', Icone: BarChart3 },
+  // Fase 12: a recepção chama pelo celular e a TV mostra a senha gigante, sem o nome do paciente.
+  { id: 'senha', nome: 'Chamada de senha', texto: 'A recepção chama a próxima senha e a TV mostra na hora.', Icone: Megaphone },
 ];
 export function AppsPage({ onIr }) {
   const frente = usePerfil();

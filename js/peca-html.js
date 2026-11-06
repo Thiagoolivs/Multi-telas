@@ -859,6 +859,13 @@
         return Object.assign({}, item, v.item);
       });
     });
+    // A arte do modo ambiente (fase 9, settings.ambiente.peca) passa pela mesma porta.
+    const amb = cfg && cfg.settings && cfg.settings.ambiente;
+    if (amb && amb.peca && typeof amb.peca === 'object') {
+      const v = validarItem(amb.peca, opts);
+      v.problemas.forEach((p) => problemas.push('modo ambiente: ' + p));
+      amb.peca = Object.assign({}, amb.peca, v.item);
+    }
     return { problemas };
   }
 

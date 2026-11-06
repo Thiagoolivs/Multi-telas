@@ -2167,5 +2167,12 @@
   ];
 
   const conhece = (tipo) => Object.prototype.hasOwnProperty.call(RENDERERS, tipo);
-  global.MTRender = { renderItem, conhece, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca, hostDaPeca };
+  /*
+   * Um desenhista que mora em outro arquivo do player (o modo ambiente,
+   * js/ambiente.js). Só acrescenta tipo novo: não troca o de um que existe.
+   */
+  function registrar(tipo, fn) {
+    if (typeof fn === 'function' && !conhece(tipo)) RENDERERS[tipo] = fn;
+  }
+  global.MTRender = { renderItem, conhece, registrar, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca, hostDaPeca };
 })(window);

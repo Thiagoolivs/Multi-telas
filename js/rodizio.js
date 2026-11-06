@@ -29,7 +29,7 @@
   const CAMPOS = ['etiqueta', 'kicker', 'selo', 'titulo', 'corpo', 'texto', 'autor', 'info', 'cta', 'caption',
     'rotulo', 'valor', 'variacao', 'detalhe', 'legenda', 'chamada', 'handle', 'precoDe', 'precoPor', 'linhas', 'rodape'];
   const TEMPO_PROPRIO = { image: 1, video: 1, youtube: 1, pptx: 1, web: 1, screen: 1, livesource: 1, weatherpro: 1,
-    birthdayauto: 1, mural: 1, quiz: 1, composicao: 1, clock: 1 };
+    birthdayauto: 1, mural: 1, quiz: 1, composicao: 1, clock: 1, ambiente: 1 };
 
   function palavras(txt) {
     const s = String(txt || '').replace(/[;|·•—–-]+/g, ' ').trim();
@@ -231,6 +231,55 @@
     return (seq || []).reduce(function (s, it) { return s + Math.max(0, f(it) || 0); }, 0);
   }
 
+  /*
+   * MODO AMBIENTE (fase 9: "arte calma da marca entre os avisos"). Uma peça
+   * calma — a cor da marca em movimento lento, com a hora e a data ou uma
+   * frase curta (js/ambiente.js) — entra a cada `cada` peças da volta; na
+   * volta mais curta que isso, uma vez por volta. Entra DEPOIS do rodízio
+   * (distribuir), de propósito: os tetos são da volta inteira, e o tempo de
+   * respiro só soma tempo normal — o urgente e a Alta ficam com uma fatia
+   * menor, nunca maior (test/modo-ambiente.test.js mede na semana simulada).
+   * Zona só com vídeo ao vivo, tela capturada ou página não ganha respiro:
+   * recarregar a transmissão a cada volta seria pior que não ter.
+   * `amb` = settings.ambiente (js/storage.js, normalizeAmbiente).
+   */
+  const AO_VIVO = { youtube: 1, livesource: 1, stream: 1, screen: 1, holyrics: 1, web: 1 };
+  function pecaDeAmbiente(amb) {
+    const a = amb || {};
+    const seg = Math.max(6, Math.min(30, Number(a.segundos) || 10));
+    const meta = { duracaoManual: true };
+    // A arte escolhida (uma peça-ouro de ambiente), quando houver; senão, a do player.
+    if (a.peca && typeof a.peca === 'object' && a.peca.type) {
+      return Object.assign({}, a.peca, { duracao: seg, meta: meta, _automatico: 'ambiente' });
+    }
+    // `id` e `titulo`: é o nome com que o respiro aparece no relatório de exibição (js/exibicoes.js).
+    return { type: 'ambiente', id: 'modo-ambiente', titulo: 'Modo ambiente', duracao: seg, mostrar: a.mostrar === 'frase' ? 'frase' : 'relogio',
+      frase: String(a.frase || ''), meta: meta, _automatico: 'ambiente' };
+  }
+  function comAmbiente(seq, amb) {
+    const lista = seq || [];
+    if (!amb || amb.ativo !== true || !lista.length) return lista;
+    if (lista.every(function (it) { return it && AO_VIVO[it.type]; })) return lista;
+    const cada = Math.max(2, Math.min(12, Math.round(Number(amb.cada) || 4)));
+    const respiro = pecaDeAmbiente(amb);
+    const out = [];
+    let desde = 0;
+    lista.forEach(function (it, i) {
+      out.push(it);
+      desde++;
+      /*
+       * A cada `cada` peças — e também entre duas vezes seguidas da mesma
+       * (o teto do urgente às vezes pede a normal duas vezes; a emenda da
+       * volta também conta): o respiro separa, e a peça não "pisca".
+       */
+      const proxima = lista[(i + 1) % lista.length];
+      if (desde >= cada || proxima === it) { out.push(respiro); desde = 0; }
+    });
+    // Volta curta: uma vez por volta. Sobra grande no fim (metade do passo ou mais): mais uma, para a emenda não ficar longa.
+    if (out.length === lista.length || (desde && desde >= Math.ceil(cada / 2))) out.push(respiro);
+    return out;
+  }
+
   // O tamanho certo da volta para o lugar (o tempo que a pessoa fica ali), em segundos.
   const VOLTA_DO_LOCAL = { balcao: [120, 300], recepcao: [480, 720], escritorio: [180, 600] };
 
@@ -238,6 +287,7 @@
     TETO: TETO, PESO: PESO, DUR_MIN: DUR_MIN, DUR_MAX: DUR_MAX, VOLTA_DO_LOCAL: VOLTA_DO_LOCAL,
     palavrasDe: palavrasDe, duracaoDe: duracaoDe, nivelDe: nivelDe, fonteDe: fonteDe,
     intercalar: intercalar, contasDe: contasDe, distribuir: distribuir, tempoDaVolta: tempoDaVolta, naJanela: naJanela,
+    comAmbiente: comAmbiente, pecaDeAmbiente: pecaDeAmbiente,
   };
   global.MTRodizio = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

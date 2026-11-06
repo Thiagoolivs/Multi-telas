@@ -626,6 +626,8 @@ function montarCtx() {
     kpis: require('./server/routes/kpis')(ctx),
     // O banco de imagens externo (D37).
     pixabay: require('./server/routes/pixabay')(ctx),
+    // A chamada de senha da Saúde (fase 12).
+    senha: require('./server/routes/senha')(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -2672,6 +2674,8 @@ const negocioCache = new Map();
 
   /* ----- Cobrança e telas: server/routes/billing.js e server/routes/telas.js ----- */
   if (await ctx.routes.billing(req, res, parts, query, sess)) return;
+  // Antes de telas: /api/devices/:id/senha é da chamada de senha (server/routes/senha.js).
+  if (await ctx.routes.senha(req, res, parts, query, sess)) return;
   if (await ctx.routes.telas(req, res, parts, query, sess)) return;
   if (await ctx.routes.relatorio(req, res, parts, query, sess)) return;
   if (await ctx.routes.redes(req, res, parts, query, sess)) return;
