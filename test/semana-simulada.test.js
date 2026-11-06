@@ -26,7 +26,22 @@ let A; // web/src/lib/aplicarConteudo.js (ESM)
 test.before(async () => { A = await import('../web/src/lib/aplicarConteudo.js'); });
 
 const peca = (id, titulo, extra) => Object.assign({ type: 'announce', id, titulo, corpo: 'Venha conferir com a gente.', duracao: 12 }, extra || {});
-const naFaixa = (item, faixa, dias) => A.agendarPeca(item, faixa, dias || 0);
+/*
+ * O "hoje" do painel é o primeiro dia da semana simulada (quinta, 05/11), e
+ * não o do relógio de quem roda o teste: agendarPeca começa a peça HOJE, e
+ * rodado no dia 06 a quinta inteira virava relógio (15 "buracos") e a oferta
+ * terminava no domingo.
+ */
+function noPrimeiroDia(fn) {
+  const Real = Date;
+  class Congelado extends Real {
+    constructor(...a) { if (a.length) super(...a); else super(INICIO.getTime()); }
+    static now() { return INICIO.getTime(); }
+  }
+  globalThis.Date = Congelado;
+  try { return fn(); } finally { globalThis.Date = Real; }
+}
+const naFaixa = (item, faixa, dias) => noPrimeiroDia(() => A.agendarPeca(item, faixa, dias || 0));
 
 /*
  * Roda a zona a semana inteira. `aberto(dia, hora)`: o horário da loja
