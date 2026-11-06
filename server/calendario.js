@@ -116,12 +116,30 @@ const APELIDOS = { 'dia-maes': ['dia das maes'], 'dia-pais': ['dia dos pais'], '
   independencia: ['independencia', '7 de setembro', 'sete de setembro'], 'dia-trabalho': ['dia do trabalho', 'dia do trabalhador'],
   'dia-mulher': ['dia da mulher', 'dia das mulheres'], 'ano-novo': ['ano novo', 'reveillon', 'virada do ano'] };
 const TIPO_DA_DATA = { 'black-friday': 'campanha', 'outubro-rosa': 'campanha', 'novembro-azul': 'campanha', independencia: 'feriado', 'dia-trabalho': 'feriado' };
+/*
+ * Fase 11: as datas prontas das frentes (js/datas-frente.js) também se leem
+ * pelo nome — "Setembro Amarelo", "Dia dos Namorados", "Maio Amarelo". A
+ * campanha de mês inteiro passa o mês todo (o evento é o último dia, com a
+ * antecedência desde o dia 1º); o resto continua com o catálogo das datas.
+ */
+const Frentes = require('../js/datas-frente.js');
 function datasPorNome(texto, hoje) {
   const t = ' ' + semAcento(texto).replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ') + ' ';
   const agora = hoje || new Date();
   const hojeIso = iso(agora);
   const saida = [];
+  const doCatalogo = new Set((Seasons.SEASONS || []).map((sz) => sz.id));
+  const vistos = new Set();
+  Frentes.todas().forEach((d) => {
+    if (doCatalogo.has(d.id) && d.quando.tipo !== 'mes') return;
+    const nomes = [semAcento(d.titulo)].concat(APELIDOS[d.id] || []);
+    if (!nomes.some((n) => t.indexOf(' ' + n + ' ') >= 0)) return;
+    const o = Frentes.ocorrencia(d, agora);
+    const ev = o && normalizar({ data: o.data, titulo: d.titulo, tipo: TIPO_DA_DATA[d.id] || d.tipo, detalhe: d.detalhe || '', antecedencia: o.antecedencia });
+    if (ev) { saida.push(ev); vistos.add(d.id); }
+  });
   (Seasons.SEASONS || []).forEach((sz) => {
+    if (vistos.has(sz.id)) return;
     const nomes = [semAcento(sz.label)].concat(APELIDOS[sz.id] || []);
     if (!nomes.some((n) => t.indexOf(' ' + n + ' ') >= 0)) return;
     let data = '';
