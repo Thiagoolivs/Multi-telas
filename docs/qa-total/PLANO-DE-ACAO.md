@@ -341,6 +341,37 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** um membro sem permissão não publica nem mexe em outra loja, e a peça aprovada vai ao ar sozinha.
 
+**Andamento (06/11):**
+- [x] **Aprovação antes de ir ao ar.** Uma chave em Equipe, desligada por padrão. Ligada, o que um membro põe na TV vira pedido, e a TV não muda. Vale para todo caminho: o editor, o "Pôr na TV", as campanhas, as telas e peças prontas, a foto que subiu, a Agenda e o aviso rápido. Todos passam pela gravação de uma TV ou pelo envio em lote, e é ali que o servidor decide (`server/aprovacao.js`).
+  - O dono e o admin veem um sino no topo, no celular também, com o número de pedidos esperando. A página Aprovações mostra o antes e o depois de cada TV: a miniatura e, embaixo, o que passa em texto, com o que é novo em negrito. Embaixo, Aprovar ou Recusar.
+  - Aprovado, vai ao ar sozinho, pelo mesmo envio em lote, com a versão que o membro leu. Se a TV mudou depois do pedido, nada é atropelado: o dono escolhe "Aprovar por cima" ou recusa. A aprovação entra em "Últimos envios", com Desfazer.
+  - Recusado, o membro vê o porquê na página "Seus pedidos", e o sino dele conta a resposta nova até ele abrir.
+  - A campanha posta no ar por um membro só fica "no ar" quando o pedido é aprovado.
+  - O pedido novo para as mesmas TVs troca o anterior. O membro pode desistir enquanto o pedido espera. Com a aprovação ligada, desfazer um envio fica com o dono.
+  - O dono e o admin põem na TV direto, como antes. O acesso de suporte não aprova nem muda a chave.
+- [x] **Permissão por loja.** Em Equipe › Escolher lojas, o dono dá a um membro uma ou mais lojas (os grupos das TVs). Esse membro vê e muda só as TVs delas (`server/permissoes.js`). O servidor confere em toda rota de TV:
+  - a lista de TVs;
+  - a página da TV (config, comando, som, horário, grupo, nome);
+  - o envio em lote, onde uma lista misturada é recusada inteira;
+  - o Desfazer e os "Últimos envios";
+  - as campanhas e o que a IA sabe das TVs ao conversar e criar;
+  - o que aparece sozinho nas TVs;
+  - o relatório.
+
+  A TV de outra loja responde 403 ou 404. Renomear uma loja leva junto a permissão de quem só via aquela loja.
+- [x] **O relatório por loja:** o filtro "Por loja" na página e `?grupo=` na API. O membro de uma loja vê só a soma das TVs dele.
+- [x] **Testes:** `test/fase13.test.js`. Eles tentam os caminhos proibidos direto na API:
+  - ler e gravar a config de uma TV de outra loja;
+  - o lote misturado;
+  - a campanha mirando uma TV de fora;
+  - o relatório de outra loja;
+  - mover a TV para outra loja;
+  - aprovar e recusar como membro;
+  - outra conta vendo o pedido.
+
+  Os testes também cobrem a aprovação de ponta a ponta: o pedido, o antes e o depois, aprovar, o conflito e o "por cima", recusar, desistir e o sino. As tabelas novas (`aprovacoes` e `acesso_lojas`, mais a coluna `tenants.aprovacao`) estão nos dois bancos e saem com a conta.
+- [x] **Visto no navegador** (servidor local, celular de 390×844): o dono liga a chave e dá a Loja Centro à gerente. A gerente vê só a TV do Balcão. As chamadas diretas dela à TV da Vitrine voltam 403 ou 404. O "Pôr na TV" dela diz "Mandado para aprovação", e a TV não muda. O dono vê o sino com 1, abre o antes e o depois e aprova, e a TV troca sozinha. O dono recusa outro pedido com o motivo, e a gerente vê "Por quê: O preço do pão está errado".
+
 ## Checklist
 
 ### As fases
@@ -357,14 +388,14 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [ ] Fase 10: reteste completo e pilotos (reteste feito, nota 7,1; faltam o bloco 2 com a IA e os pilotos)
 - [ ] Fase 11: dados vivos
 - [ ] Fase 12: Saúde, a chamada de senha
-- [ ] Fase 13: equipe e redes
+- [x] Fase 13: equipe e redes
 
 ### Para valer o preço (aprovado em 05/11)
 - [ ] Preço e cardápio vindos de uma planilha (fase 11)
 - [ ] Indicadores vindos de uma planilha (fase 11)
 - [ ] Chamada de senha para Saúde (fase 12)
-- [ ] Aprovação antes de ir ao ar (fase 13)
-- [ ] Permissão por loja (fase 13)
+- [x] Aprovação antes de ir ao ar (fase 13)
+- [x] Permissão por loja (fase 13)
 - [ ] Modo ambiente: arte calma da marca entre os avisos (fase 9)
 - [ ] Calendário de datas pronto para cada frente (fases 5 e 9)
 

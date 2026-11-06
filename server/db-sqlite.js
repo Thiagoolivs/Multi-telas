@@ -545,6 +545,21 @@ db.exec(`CREATE TABLE IF NOT EXISTS acessos_suporte (
   id TEXT PRIMARY KEY, operador TEXT, tenant_id TEXT, motivo TEXT, created_at INTEGER, expira_em INTEGER
 )`);
 db.exec('CREATE INDEX IF NOT EXISTS idx_acessos_suporte ON acessos_suporte(tenant_id, created_at)');
+/*
+ * Fase 13: equipe e redes. O pedido de aprovação (o que o membro quis pôr na
+ * TV, esperando o OK do dono) e as lojas que cada membro alcança. Sem linha
+ * em acesso_lojas = todas as TVs, como sempre foi (server/permissoes.js).
+ */
+db.exec(`CREATE TABLE IF NOT EXISTS aprovacoes (
+  id TEXT PRIMARY KEY, tenant_id TEXT, autor_id TEXT, autor_nome TEXT, descricao TEXT,
+  itens TEXT, telas_chave TEXT, estado TEXT, motivo TEXT, revisor_id TEXT, revisor_nome TEXT,
+  extra TEXT, created_at INTEGER, decidido_em INTEGER, visto_em INTEGER
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_aprovacoes_tenant ON aprovacoes(tenant_id, estado, created_at)');
+db.exec(`CREATE TABLE IF NOT EXISTS acesso_lojas (
+  user_id TEXT PRIMARY KEY, tenant_id TEXT, grupos TEXT, updated_at INTEGER
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_acesso_lojas_tenant ON acesso_lojas(tenant_id)');
 for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', 'stripe_subscription_id TEXT', 'plan_renews_at INTEGER',
   // Saldo em duas partes: a franquia do ciclo (expira) e o comprado (não
   // expira). `creditos_ciclo` guarda quando a franquia foi reposta pela
@@ -564,7 +579,9 @@ for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', '
   // Empresa, Comércio ou Saúde (js/perfil.js). Vazio = deduzido do ramo.
   'perfil TEXT',
   // Aniversários e mural nas TVs, sozinhos (server/automaticos.js, D15).
-  'automaticos TEXT']) {
+  'automaticos TEXT',
+  // Fase 13: o que o membro põe na TV espera o OK do dono (server/aprovacao.js).
+  'aprovacao INTEGER']) {
   garantirColuna('tenants', col);
 }
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
@@ -1581,6 +1598,84 @@ async function listarLotes(tenantId, n) {
   return db.prepare('SELECT * FROM lotes WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?').all(tenantId, n || 10).map((r) => mapLote(r, false));
 }
 
+/* ---------------- Fase 13: aprovação e lojas por membro ---------------- */
+const mapAprovacao = (r, comItens) => {
+  if (!r) return null;
+  const itens = jsonOu(r.itens, []);
+  return {
+    id: r.id, autorId: r.autor_id, autorNome: r.autor_nome || '', descricao: r.descricao || '', estado: r.estado,
+    motivo: r.motivo || '', revisorId: r.revisor_id || '', revisorNome: r.revisor_nome || '', extra: jsonOu(r.extra, null),
+    criadoEm: Number(r.created_at) || 0, decididoEm: Number(r.decidido_em) || 0, vistoEm: Number(r.visto_em) || 0,
+    telas: itens.map((i) => ({ id: i.id, nome: i.nome || '' })),
+    ...(comItens ? { itens } : {}),
+  };
+};
+async function setAprovacaoDaConta(tenantId, ligada) { db.prepare('UPDATE tenants SET aprovacao = ? WHERE id = ?').run(ligada ? 1 : 0, tenantId); }
+async function criarAprovacao(tenantId, a) {
+  const id = 'apr_' + rid(14);
+  db.prepare(`INSERT INTO aprovacoes (id, tenant_id, autor_id, autor_nome, descricao, itens, telas_chave, estado, motivo, revisor_id, revisor_nome, extra, created_at, decidido_em, visto_em)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', NULL, NULL, NULL, ?, ?, NULL, NULL)`)
+    .run(id, tenantId, a.autorId, String(a.autorNome || '').slice(0, 120), String(a.descricao || '').slice(0, 160),
+      JSON.stringify(a.itens || []), String(a.telasChave || '').slice(0, 4000), a.extra ? JSON.stringify(a.extra) : null, Date.now());
+  return mapAprovacao(db.prepare('SELECT * FROM aprovacoes WHERE id = ?').get(id), false);
+}
+async function lerAprovacao(id, tenantId) {
+  return mapAprovacao(db.prepare('SELECT * FROM aprovacoes WHERE id = ? AND tenant_id = ?').get(String(id || ''), tenantId), true);
+}
+async function listarAprovacoes(tenantId, o = {}) {
+  const f = [];
+  const v = [tenantId];
+  if (o.estado) { f.push('estado = ?'); v.push(o.estado); }
+  if (o.autorId) { f.push('autor_id = ?'); v.push(o.autorId); }
+  v.push(Math.max(1, Math.min(200, Number(o.limite) || 30)));
+  return db.prepare('SELECT * FROM aprovacoes WHERE tenant_id = ?' + f.map((x) => ' AND ' + x).join('') + ' ORDER BY created_at DESC LIMIT ?')
+    .all(...v).map((r) => mapAprovacao(r, false));
+}
+async function contarAprovacoes(tenantId, o = {}) {
+  if (o.naoVistasDe) {
+    return Number(db.prepare("SELECT COUNT(*) AS n FROM aprovacoes WHERE tenant_id = ? AND autor_id = ? AND estado IN ('aprovada', 'recusada') AND visto_em IS NULL")
+      .get(tenantId, o.naoVistasDe).n) || 0;
+  }
+  return Number(db.prepare("SELECT COUNT(*) AS n FROM aprovacoes WHERE tenant_id = ? AND estado = 'pendente'").get(tenantId).n) || 0;
+}
+// Troca o estado só se ainda está em `de` (dois revisores ao mesmo tempo: um só ganha). Devolve se trocou.
+async function mudarEstadoDaAprovacao(id, tenantId, de, para, c = {}) {
+  const r = db.prepare(`UPDATE aprovacoes SET estado = ?, motivo = COALESCE(?, motivo), revisor_id = COALESCE(?, revisor_id),
+      revisor_nome = COALESCE(?, revisor_nome), decidido_em = COALESCE(?, decidido_em), extra = COALESCE(?, extra)
+    WHERE id = ? AND tenant_id = ? AND estado = ?`)
+    .run(para, c.motivo == null ? null : String(c.motivo).slice(0, 500), c.revisorId || null, c.revisorNome == null ? null : String(c.revisorNome).slice(0, 120),
+      c.decididoEm || null, c.extra ? JSON.stringify(c.extra) : null, id, tenantId, de);
+  return Number(r.changes) > 0;
+}
+// O pedido novo do mesmo autor para as mesmas TVs substitui o que ainda esperava.
+async function substituirAprovacoes(tenantId, autorId, telasChave, menosId) {
+  return Number(db.prepare("UPDATE aprovacoes SET estado = 'substituida', decidido_em = ? WHERE tenant_id = ? AND autor_id = ? AND telas_chave = ? AND estado = 'pendente' AND id <> ?")
+    .run(Date.now(), tenantId, autorId, telasChave, menosId).changes) || 0;
+}
+async function marcarAprovacoesVistas(tenantId, autorId) {
+  db.prepare("UPDATE aprovacoes SET visto_em = ? WHERE tenant_id = ? AND autor_id = ? AND estado IN ('aprovada', 'recusada') AND visto_em IS NULL").run(Date.now(), tenantId, autorId);
+}
+async function lojasDoUsuario(userId, tenantId) {
+  const r = db.prepare('SELECT grupos FROM acesso_lojas WHERE user_id = ? AND tenant_id = ?').get(userId, tenantId);
+  const g = r ? jsonOu(r.grupos, null) : null;
+  return Array.isArray(g) ? g : null;
+}
+async function lojasDaConta(tenantId) {
+  const saida = {};
+  for (const r of db.prepare('SELECT user_id, grupos FROM acesso_lojas WHERE tenant_id = ?').all(tenantId)) {
+    const g = jsonOu(r.grupos, null);
+    if (Array.isArray(g)) saida[r.user_id] = g;
+  }
+  return saida;
+}
+// `grupos` null = todas as TVs (apaga a linha).
+async function salvarLojasDoUsuario(tenantId, userId, grupos) {
+  if (!Array.isArray(grupos)) { db.prepare('DELETE FROM acesso_lojas WHERE user_id = ? AND tenant_id = ?').run(userId, tenantId); return; }
+  db.prepare(`INSERT INTO acesso_lojas (user_id, tenant_id, grupos, updated_at) VALUES (?, ?, ?, ?)
+    ON CONFLICT(user_id) DO UPDATE SET tenant_id = excluded.tenant_id, grupos = excluded.grupos, updated_at = excluded.updated_at`)
+    .run(userId, tenantId, JSON.stringify(grupos), Date.now());
+}
+
 /* ---------------- Calendário da empresa (D23) ---------------- */
 const qCal = {
   listar: db.prepare('SELECT * FROM calendario WHERE tenant_id = ? ORDER BY data, created_at'),
@@ -1857,6 +1952,9 @@ async function dadosDoTenant(tenantId) {
     usoDaIA: pega('SELECT tipo, creditos, custo_centavos, referencia, created_at FROM uso_ia WHERE tenant_id = ?'),
     chamados: pega('SELECT * FROM reclamacoes WHERE tenant_id = ?'),
     acessosDoSuporte: pega('SELECT * FROM acessos_suporte WHERE tenant_id = ?'),
+    // Fase 13: os pedidos de aprovação e as lojas de cada membro.
+    pedidosDeAprovacao: pega('SELECT * FROM aprovacoes WHERE tenant_id = ?'),
+    lojasDaEquipe: pega('SELECT user_id, grupos, updated_at FROM acesso_lojas WHERE tenant_id = ?'),
   };
 }
 
@@ -1901,7 +1999,7 @@ async function apagarTenant(tenantId) {
   try {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     // As tabelas novas ficavam para trás (D0.7); ver db-postgres.js.
-    for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
+    for (const tabela of ['aprovacoes', 'acesso_lojas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes',
       'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
@@ -2033,8 +2131,11 @@ async function registrarExibicoes(deviceId, tenantId, lote, itens) {
   } catch (e) { db.exec('ROLLBACK'); throw e; }
 }
 async function relatorioExibicoes(tenantId, de, ate, deviceId) {
-  const f = deviceId ? ' AND e.device_id = ?' : '';
-  const v = deviceId ? [tenantId, de, ate, deviceId] : [tenantId, de, ate];
+  // Fase 13: uma lista de telas (a loja, ou as que o membro alcança). Lista vazia = nada.
+  if (Array.isArray(deviceId) && !deviceId.length) return { porConteudo: [], porTela: [], porHora: [] };
+  const lista = Array.isArray(deviceId) ? deviceId.map(String) : null;
+  const f = lista ? ' AND e.device_id IN (' + lista.map(() => '?').join(',') + ')' : deviceId ? ' AND e.device_id = ?' : '';
+  const v = lista ? [tenantId, de, ate, ...lista] : deviceId ? [tenantId, de, ate, deviceId] : [tenantId, de, ate];
   const porConteudo = db.prepare(`SELECT e.chave, MAX(e.rotulo) AS rotulo, MAX(e.tipo) AS tipo,
       SUM(e.vezes) AS vezes, SUM(e.segundos) AS segundos, COUNT(DISTINCT e.device_id) AS telas
     FROM exibicoes e WHERE e.tenant_id = ? AND e.hora >= ? AND e.hora < ?${f}
@@ -2087,6 +2188,8 @@ module.exports = {
   decisoesDoConteudo, decidirConteudo,
   listarCalendario, eventoDoCalendario, salvarEvento, removerEvento,
   salvarLote, loteDaConta, marcarLoteDesfeito, listarLotes,
+  setAprovacaoDaConta, criarAprovacao, lerAprovacao, listarAprovacoes, contarAprovacoes, mudarEstadoDaAprovacao, substituirAprovacoes, marcarAprovacoesVistas,
+  lojasDoUsuario, lojasDaConta, salvarLojasDoUsuario,
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil, setAutomaticos,

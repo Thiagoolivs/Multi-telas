@@ -425,6 +425,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     setPublishing(true); setPublishError('');
     try {
       const r = await deviceConfig.save(device.id, alvo, versao.current);
+      // Fase 13: esperando aprovação — a TV segue com o de antes; o aviso diz (lib/avisos.js).
+      if (r && r.pendente) { setDirty(false); apagarRascunho(device.id); return true; }
       if (r && r.updatedAt) versao.current = r.updatedAt;
       anterior.current = naTV.current; naTV.current = alvo;
       setDirty(false); setPublishedAt(Date.now()); setTentativa(0); setConflito(false); setAvisoRascunho(null); setDesfeito(false); setVerComo('agora');

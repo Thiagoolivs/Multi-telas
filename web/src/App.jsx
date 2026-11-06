@@ -61,6 +61,8 @@ const CalendarioPage = pagina(() => import('./pages/CalendarioPage.jsx'), 'Calen
 const ProntosPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'ProntosPage');
 const SeusConteudosPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'SeusConteudosPage');
 const AppsPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'AppsPage');
+// Fase 13: a fila de aprovação (o dono aprova pelo celular; o membro vê a resposta).
+const AprovacoesPage = pagina(() => import('./pages/AprovacoesPage.jsx'), 'AprovacoesPage');
 
 const META = {
   overview: { title: 'Início' },
@@ -83,6 +85,7 @@ const META = {
   campaigns: { title: 'Peças guardadas', nav: 'designs' },
   images: { title: 'Peças guardadas', nav: 'designs' },
   team: { title: 'Equipe' },
+  aprovacoes: { title: 'Aprovações' },
   brand: { title: 'Marca', subtitle: 'Cores, fontes e imagens que a IA usa para criar.' },
   mural: { title: 'Mural de fotos', subtitle: 'O público manda foto pelo QR e ela aparece na TV.' },
   content: { title: 'Telas', nav: 'screens' },
@@ -146,7 +149,7 @@ function useTheme() {
  */
 // campanhas, pecas, musicas e ia entraram no D3: recarregar nessas páginas caía na Visão geral.
 const ATALHOS = ['prontos', 'seus', 'apps', 'criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio', 'indicadores',
-  'team', 'storage', 'pecas', 'telasprontas', 'calendario', 'musicas', 'ia', 'banco', 'birthdays', 'support', 'settings'];
+  'team', 'aprovacoes', 'storage', 'pecas', 'telasprontas', 'calendario', 'musicas', 'ia', 'banco', 'birthdays', 'support', 'settings'];
 
 /*
  * O painel no histórico do navegador.
@@ -291,6 +294,7 @@ export default function App() {
       case 'screens': return <ScreensPage parear={route.parear} abrirParear={!!route.abrirParear} onEditContent={(device) => go('content', { device })} onCriar={(device) => go('criar', { tela: device.id })} onIrParaPlano={() => go('billing')} papel={user.role} />;
       case 'programacao': return <ProgramacaoPage onIr={go} />;
       case 'content': return <ContentEditorPage device={route.device} zonaInicial={route.zona} onBack={() => go('screens')} onCriar={(zona) => go('criar', { tela: route.device && route.device.id, zona: typeof zona === 'string' ? zona : undefined })} onIr={go} />;
+      case 'aprovacoes': return <AprovacoesPage me={user} onIr={go} />;
       case 'team': return <TeamPage key={route.convidar ? 'convidar' : 'equipe'} me={user} onLeft={logout} abrirConvite={!!route.convidar} />;
       case 'prontos': return <ProntosPage key={route.parte || ''} parte={route.parte} telaAlvo={route.tela} onIr={go} />;
       case 'seus': return <SeusConteudosPage key={(route.parte || '') + (route.campanha || '')} parte={route.parte} campanha={route.campanha} pedido={route.pedido} onIr={go} />;

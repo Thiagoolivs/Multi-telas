@@ -35,6 +35,8 @@ const E = require('../../js/escopo.js');
 const paleta = require('../paleta.js');
 const refs = require('../referencias.js');
 const esboco = require('../esboco.js');
+// Fase 13: o membro de uma loja só vê as TVs dela.
+const permissoes = require('../permissoes.js');
 
 // O que a conversa guarda. Mais que isso, as mais antigas saem: o escopo já as resume.
 const MAX_MENSAGENS = 200;
@@ -68,10 +70,11 @@ module.exports = function (ctx) {
   }
 
   // O que a IA precisa saber da conta: a marca (para não perguntar), a memória e as TVs.
-  async function contexto(tenantId) {
+  async function contexto(tenantId, sess) {
     const [kit, assets, tenant, lembrada, telas] = await Promise.all([
       db.getBrandKit(tenantId), db.listBrandAssets(tenantId), db.getTenant(tenantId),
-      db.getMemoria(tenantId).catch(() => null), db.listDevices(tenantId),
+      // Fase 13: o membro de uma loja conversa sobre as TVs dela.
+      db.getMemoria(tenantId).catch(() => null), db.listDevices(tenantId).then((l) => permissoes.filtrar(sess, l)),
     ]);
     const k = kit || {};
     const agora = new Date();
@@ -106,7 +109,7 @@ module.exports = function (ctx) {
         const id = b && typeof b.id === 'string' ? b.id : '';
         const atual = id ? await db.lerConversa(sess.tenant_id, id) : null;
         if (id && !atual) return sendJson(res, 404, { error: 'conversa não encontrada' });
-        const c = await contexto(sess.tenant_id);
+        const c = await contexto(sess.tenant_id, sess);
         c.referencias = (atual && atual.referencias) || [];
         const mensagens = ((atual && atual.mensagens) || []).concat({ papel: 'pessoa', texto, em: Date.now() });
         // O escopo do cartão (que a pessoa pode ter mudado à mão) vence o guardado.
@@ -182,7 +185,7 @@ module.exports = function (ctx) {
       const texto = String((b && b.texto) || '').trim();
       if (!texto) return sendJson(res, 400, { error: 'diga o que você quer' });
       try {
-        const c = await contexto(sess.tenant_id);
+        const c = await contexto(sess.tenant_id, sess);
         const tvFixa = b && typeof b.tv === 'string' && c.telas.some((t) => t.id === b.tv) ? b.tv : null;
         return sendJson(res, 200, await assistente.pedirNaProgramacao({ texto: texto.slice(0, 500), historico: b && b.historico, ctx: c, tvFixa }));
       } catch (e) {
@@ -223,7 +226,7 @@ module.exports = function (ctx) {
     if (parts.length === 3 && parts[2] === 'esboco') {
       if (req.method !== 'POST') { sendJson(res, 405, { error: 'método inválido' }); return true; }
       readBody(req, res, async (b) => {
-        const c = await contexto(sess.tenant_id);
+        const c = await contexto(sess.tenant_id, sess);
         const escopo = conversa.conferirEscopo(b && b.escopo, c);
         if (!E.temOQueGerar(escopo)) return sendJson(res, 400, { error: 'ainda não tem nada para aprovar: diga o que quer mostrar' });
         const id = b && typeof b.id === 'string' ? b.id : '';
@@ -296,7 +299,7 @@ module.exports = function (ctx) {
             return sendJson(res, 200, { conversa: await db.salvarConversa(sess.tenant_id, id, { ...atual, decisoes }) });
           }
           if (!b || !b.escopo || typeof b.escopo !== 'object') return sendJson(res, 400, { error: 'envie o escopo' });
-          const c = await contexto(sess.tenant_id);
+          const c = await contexto(sess.tenant_id, sess);
           const escopo = conversa.conferirEscopo(b.escopo, c);
           // O cartão mudado à mão também derruba a aprovação do esboço (D42).
           const aprovado = esboco.valeParaEste(atual.esboco, escopo) ? atual.esboco : null;

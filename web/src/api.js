@@ -44,6 +44,12 @@ async function api(method, path, body, opcoes) {
   const embrulhar = (d) => (opcoes && opcoes.comCabecalhos ? { data: d, headers: res.headers } : d);
   if (res.status === 204) return embrulhar(null);
   const data = await res.json().catch(() => null);
+  /*
+   * Fase 13: com a aprovação ligada, o que o membro pôs na TV virou pedido
+   * (202). Quem chamou segue como se tivesse dado certo; o aviso de "foi
+   * para a TV" vira "mandado para aprovação" (lib/avisos.js) e o sino conta.
+   */
+  if (res.status === 202 && data && data.pendente) window.dispatchEvent(new CustomEvent('mt:aprovacao', { detail: data }));
   if (!res.ok) {
     /*
      * Crédito acabado e pagamento atrasado respondem 402 com `mensagem`, e
@@ -95,6 +101,25 @@ export const team = {
   revokeInvite: (id) => api('DELETE', '/api/team/invites/' + id),
   setRole: (id, role) => api('POST', '/api/team/members/' + id + '/role', { role }),
   remove: (id) => api('DELETE', '/api/team/members/' + id),
+};
+
+/*
+ * Fase 13: a fila de aprovação (o dono aprova pelo celular) e as lojas de
+ * cada membro (server/routes/aprovacoes.js).
+ */
+export const aprovacoes = {
+  listar: () => api('GET', '/api/aprovacoes'),
+  contagem: () => api('GET', '/api/aprovacoes/contagem'),
+  ver: (id) => api('GET', '/api/aprovacoes/' + encodeURIComponent(id)),
+  aprovar: (id, porCima) => api('POST', '/api/aprovacoes/' + encodeURIComponent(id) + '/aprovar' + (porCima ? '?porCima=1' : '')),
+  recusar: (id, motivo) => api('POST', '/api/aprovacoes/' + encodeURIComponent(id) + '/recusar', { motivo }),
+  desistir: (id) => api('DELETE', '/api/aprovacoes/' + encodeURIComponent(id)),
+  vistas: () => api('POST', '/api/aprovacoes/vistas'),
+  regra: (ligada) => api('PUT', '/api/aprovacoes/regra', { ligada }),
+};
+export const lojas = {
+  listar: () => api('GET', '/api/lojas'),
+  salvar: (userId, grupos) => api('PUT', '/api/lojas/' + encodeURIComponent(userId), { grupos }),
 };
 
 export const devices = {
@@ -570,8 +595,10 @@ export const sistema = {
 };
 
 /* Relatório de exibição (server/routes/relatorio.js). */
+// `tela` pode ser 'g:Nome da loja' (fase 13: o relatório por loja).
 function qsRelatorio(dias, tela) {
-  return '?dias=' + encodeURIComponent(dias) + (tela ? '&tela=' + encodeURIComponent(tela) : '');
+  const loja = typeof tela === 'string' && tela.startsWith('g:') ? tela.slice(2) : '';
+  return '?dias=' + encodeURIComponent(dias) + (loja ? '&grupo=' + encodeURIComponent(loja) : tela ? '&tela=' + encodeURIComponent(tela) : '');
 }
 export const relatorio = {
   get: (dias, tela) => api('GET', '/api/relatorio' + qsRelatorio(dias, tela)),

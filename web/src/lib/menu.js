@@ -47,6 +47,8 @@ export const PAGINAS = {
   indicadores: 'Indicadores',
   billing: 'Plano',
   team: 'Equipe',
+  // Fase 13: o sino do topo abre a fila de aprovação.
+  aprovacoes: 'Aprovações',
   settings: 'Ajustes',
   support: 'Suporte',
 };
@@ -85,7 +87,7 @@ export const GRUPOS = [
   // Pessoas: item do menu na Empresas; no Comércio e na Saúde, os Apps da Biblioteca (gruposDa).
   { id: 'extras', label: 'Pessoas', paginas: ['birthdays', 'mural', 'indicadores'] },
   // A conta mora no avatar (Topbar): Plano, Equipe, Ajustes e Ajuda.
-  { id: 'conta', label: 'Conta', menu: false, paginas: ['billing', 'team', 'settings', 'support'] },
+  { id: 'conta', label: 'Conta', menu: false, paginas: ['billing', 'team', 'settings', 'support'], tambem: ['aprovacoes'] },
 ];
 
 /*
