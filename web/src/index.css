@@ -161,3 +161,17 @@
 @keyframes mt-andando { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 .mt-andando { animation: mt-andando 1.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .mt-andando { animation: none; width: 100%; opacity: .5; } }
+
+/*
+ * A prévia do desenho do modo ambiente (Ajustes da TV › Aparência): o mesmo
+ * js/ambiente.js da TV, num palco do tamanho da TV reduzido. O desenho mede
+ * as bolhas pela janela (vmax/vmin), que na TV é a tela inteira; aqui a
+ * janela é o painel, então a medida passa a ser o palco (cqmax/cqmin).
+ */
+.previa-ambiente > .mt-ambiente { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+.previa-ambiente .mt-amb-b1 { width: 70cqmax; height: 70cqmax; left: -24cqmax; top: -30cqmax; }
+.previa-ambiente .mt-amb-b2 { width: 60cqmax; height: 60cqmax; right: -22cqmax; bottom: -28cqmax; }
+.previa-ambiente .mt-amb-b3 { width: 38cqmax; height: 38cqmax; right: 8cqmax; top: -18cqmax; }
+.previa-ambiente .mt-amb-dia { margin-top: 2.4cqmin; }
+.previa-ambiente .mt-amb-frase + .mt-amb-dia { margin-top: 3.4cqmin; }
+@media (prefers-reduced-motion: reduce) { .previa-ambiente * { animation: none !important; } }
