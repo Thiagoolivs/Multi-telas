@@ -87,7 +87,7 @@ test('o robô mede a lateral e o bloco nos layouts que cada TV oferece, e a meta
 test('as peças-ouro da lateral cabem com a letra do balcão, e o robô bloqueia a que ceder', () => {
   const robo = ler('tools/regua-tv.mjs');
   // A lateral no balcão (4,5%), peça a peça: uma que ceder reprova, como na tela cheia.
-  assert.match(robo, /conferirPecas\(navegador, 'balcao', LATERAL_NO_BALCAO\)/);
+  assert.match(robo, /conferirPecas\(navegador, 'balcao', \[LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO\]\)/);
   assert.match(robo, /const LATERAL_NO_BALCAO = 'Lateral · Corporativo';/);
   assert.match(robo, /for \(const x of noBalcao\.filter\(\(y\) => y\.cedeu < 1\)\) \{ console\.log\('  ✗ ' \+ x\.id \+ ': o piso cedeu para ' \+ Math\.round\(x\.cedeu \* 100\) \+ '%'\); reprova = true; \}/);
   // A conta do escritório continua só com o escritório (a do balcão não entra nela).
@@ -95,4 +95,26 @@ test('as peças-ouro da lateral cabem com a letra do balcão, e o robô bloqueia
   // As duas da semana (lote 3) trocaram a etiqueta em cima do dia por uma na linha dele.
   assert.match(ler('pecas-ouro/cardapio-semana.html'), /\.dia \{ display: inline; min-width: 0;/);
   assert.match(ler('pecas-ouro/servico-semana.html'), /\.folha \{ display: inline-flex; flex-direction: row;/);
+});
+
+test('as peças-ouro do destaque cabem com a letra do balcão na principal do Corporativo, e o robô bloqueia a que ceder', () => {
+  const robo = ler('tools/regua-tv.mjs');
+  // O destaque do Corporativo no balcão (4,5%), na mesma passada da lateral: peça a peça, uma que ceder reprova.
+  assert.match(robo, /const DESTAQUE_NO_BALCAO = 'Destaque · Corporativo';/);
+  assert.match(robo, /for \(const \[zona, nome\] of \[\[LATERAL_NO_BALCAO, 'Lateral'\], \[DESTAQUE_NO_BALCAO, 'Destaque'\]\]\) \{/);
+  assert.match(robo, /console\.log\('Peças-ouro em ' \+ nome \+ ' · balcão \(' \+ PISO \+ '%\): '/);
+  // O redesenho mora só na regra da principal do Corporativo (altura de 600 a 860 px):
+  // a tela cheia, a em pé, a quadrada e a lateral não mudam.
+  const REGRA = '@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px)';
+  for (const id of ['oferta-foto', 'oferta-lista', 'cardapio-colunas', 'oferta-selo', 'oferta-parcelado', 'cardapio-categorias',
+    'gente-boas-vindas', 'gente-vaga', 'gente-comunicado', 'cardapio-dia-foto', 'servico-comunicado', 'social-avaliacao', 'lateral-prazo',
+    'institucional-valores']) {
+    assert.ok(ler('pecas-ouro/' + id + '.html').includes(REGRA), id + ': a regra da principal do Corporativo');
+  }
+  // Na TV a principal tem 1379×784 (proporção 1,76): as peças que a achavam pela proporção (até 1,74) a acham também pela altura.
+  const NA_TV = '@container (aspect-ratio >= 1.74) and (min-height: 600px) and (max-height: 860px)';
+  for (const id of ['servico-passos', 'social-mural', 'social-data']) assert.ok(ler('pecas-ouro/' + id + '.html').includes(NA_TV), id + ': a principal do Corporativo da TV');
+  // O preço que não cabe ao lado do nome desce para a linha da medida; os talheres não crescem com a letra.
+  assert.match(ler('pecas-ouro/cardapio-colunas.html'), /\.valor \{ grid-column: 3; grid-row: 2; \}/);
+  assert.match(ler('pecas-ouro/cardapio-dia-foto.html'), /\.talher \{ font-size: 1cqw; \}/);
 });
