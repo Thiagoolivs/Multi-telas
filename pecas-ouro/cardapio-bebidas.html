@@ -49,6 +49,29 @@ h1 { margin-top: 1.8cqw; font: 400 max(var(--mt-piso, 0cqw), 7.4cqw)/.95 var(--m
   .linha > span:not(:first-child) { text-align: left; }
   .p { font-size: max(var(--mt-piso, 0cqw), 7.4cqw); }
 }
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%): com a letra do balcão a última bebida passava do
+ * pé. O kicker sai (o título diz) e as linhas apertam.
+ */
+@container (max-width: 700px) and (max-height: 800px) {
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .linha { padding: 1.4cqw 0; }
+}
+/*
+ * A principal do Corporativo com a margem contra o corte (de 1321×739 a
+ * 1236×674): os tamanhos espaçados se encostavam ("LATA600JARRA") e o
+ * kicker passava do alto. O espaçado aperta, as colunas dos preços
+ * alargam e as linhas ficam mais justas.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 775px) {
+  .kicker { letter-spacing: .12em; }
+  h1 { margin-top: 1.2cqw; }
+  .tabela { margin-top: 2.4cqw; }
+  .linha { grid-template-columns: 1fr repeat(3, 16cqw); padding: 1.2cqw 0; }
+  .topo span { letter-spacing: .06em; }
+}
 </style>
 <section class="mt-peca cardapio-bebidas">
   <p class="kicker" data-entrada="esquerda"><i aria-hidden="true"></i><span data-campo="kicker">Para acompanhar</span></p>

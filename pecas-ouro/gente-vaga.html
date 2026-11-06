@@ -85,6 +85,30 @@ h1 { margin-top: 5cqmin; font: 600 max(var(--mt-piso, 0cqw), 11cqmin)/1.02 var(-
   .pedido { letter-spacing: .06em; line-height: 1.15; }
   .pedido small { display: none; }
 }
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%; a caixa sem o padding abaixo de 740 px): com a
+ * letra do balcão o QR passava do pé. O QR não encolhe (160 px para o
+ * celular ler): as linhas apertam; mais baixa (2% para cima) o setor sai, e
+ * bem baixa (4% para cima) fica só o primeiro requisito.
+ */
+@container (max-width: 700px) and (max-height: 800px) {
+  .mt-peca { gap: 3cqmin; }
+}
+@container (max-width: 700px) and (max-height: 740px) {
+  h1 { margin-top: 2cqmin; line-height: .98; }
+  .setor { margin-top: 1.2cqmin; line-height: 1.08; }
+  .requisitos { margin-top: 2cqmin; }
+  .requisitos li { padding: .9cqmin 0; line-height: 1.06; }
+  .pedido { line-height: 1.06; }
+}
+@container (max-width: 700px) and (max-height: 690px) {
+  .setor { display: none; }
+}
+@container (max-width: 700px) and (max-height: 645px) {
+  .requisitos li:nth-child(2) { display: none; }
+  .pedido { letter-spacing: .02em; }
+}
 </style>
 <section class="mt-peca gente-vaga">
   <div class="vaga">
