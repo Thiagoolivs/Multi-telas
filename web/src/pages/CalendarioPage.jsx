@@ -158,7 +158,9 @@ export function CalendarioPage({ onIr }) {
     if (!(await confirmar({ titulo: 'Tirar “' + ev.titulo + '”?', texto: 'Sai do calendário e das TVs em que estava.', botao: 'Tirar' }))) return;
     try {
       await gravarEmLote((ev.telas || []).map((id) => tvs.find((t) => t.id === id)).filter(Boolean), (cfg) => tirarDoCalendario(cfg, ev.id), 'Tirar: ' + ev.titulo);
-      await calendario.apagar(ev.id);
+      // Com a aprovação ligada, a data que está na TV fica "saindo" até o dono aprovar (o servidor responde 202).
+      const r = await calendario.apagar(ev.id);
+      if (r && r.esperandoAprovacao) avisarPedidoDeAprovacao();
       setTentativa((n) => n + 1);
     } catch (e) { aviso.erro('calendario', e.message || 'Não deu para tirar.'); }
   }
@@ -199,7 +201,7 @@ export function CalendarioPage({ onIr }) {
             {sit.estado === 'esperando' && <Badge tone="warn">Esperando aprovação</Badge>}
           </div>
           <div className="text-2xs text-ink-3">
-            {sit.texto}
+            {sit.estado === 'saindo' ? <span className="font-medium text-warn">{sit.texto}</span> : sit.texto}
             {ev.detalhe ? ' · ' + ev.detalhe : ''}
           </div>
           {(sit.nota || sit.pedido) && (
@@ -213,7 +215,8 @@ export function CalendarioPage({ onIr }) {
         </div>
         {ev.podeMudar === false ? <span className="shrink-0 text-2xs text-ink-3">Também em outras lojas</span> : (<>
           <button type="button" onClick={() => setEditando({ ...ev })} aria-label={'Editar ' + ev.titulo} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink"><Pencil size={15} /></button>
-          <button type="button" onClick={() => apagar(ev)} aria-label={'Tirar ' + ev.titulo} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-danger"><Trash2 size={15} /></button>
+          {/* Saindo: já há um pedido para tirar; outro "Tirar" só trocaria o pedido. */}
+          {sit.estado !== 'saindo' && <button type="button" onClick={() => apagar(ev)} aria-label={'Tirar ' + ev.titulo} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-danger"><Trash2 size={15} /></button>}
         </>)}
       </li>
     );
