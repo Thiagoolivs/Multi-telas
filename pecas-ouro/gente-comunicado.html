@@ -36,11 +36,16 @@ h1 { margin-top: 2.6cqw; font: 600 max(var(--mt-piso, 0cqw), 5.6cqw)/1.04 var(--
   .assina { flex-direction: column; gap: 1cqw; font-size: max(var(--mt-piso, 0cqw), 3cqw); margin-top: 6cqw; padding-top: 4cqw; border-top-width: .25cqw; }
   .assina small { font-size: max(var(--mt-piso, 0cqw), 2.6cqw); }
 }
+/*
+ * Quadrada. Com a letra do balcão e a fonte de título larga (o assunto em
+ * três linhas), o memorando passava um pouco do alto e do pé: o recado
+ * aperta a entrelinha.
+ */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .memo { left: 7cqw; right: 7cqw; padding-left: 5cqw; border-left-width: .8cqw; }
   .de { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
   h1 { font-size: max(var(--mt-piso, 0cqw), 7.6cqw); margin-top: 3.6cqw; }
-  .texto { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); margin-top: 3cqw; max-width: none; }
+  .texto { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); margin-top: 3cqw; max-width: none; line-height: 1.4; }
   .assina { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); margin-top: 4cqw; padding-top: 3cqw; border-top-width: .2cqw; }
   .assina small { font-size: max(var(--mt-piso, 0cqw), 2cqw); }
 }

@@ -37,13 +37,20 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
   .chega i { height: .25cqw; }
   .chega span { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); white-space: normal; line-height: 1.4; }
 }
+/*
+ * Quadrada. Com a fonte de título larga (Clínica Vida, Studio Bella, Rota
+ * Sul…), "DE COSTELA" não cabe numa linha e o nome vai em três; com a letra
+ * do balcão o apoio também vai em três, e a última encostava na data. O
+ * bloco sobe um pouco, o apoio aperta a entrelinha e a data desce para
+ * perto da margem: as três linhas de cada um cabem.
+ */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); }
   .carimbo { left: 7cqw; top: 14cqh; font-size: max(var(--mt-piso, 0cqw), 4.4cqw); padding: 1.4cqw 3cqw 1.2cqw; border-width: .4cqw; }
-  .bloco { left: 7cqw; right: 7cqw; top: 29cqh; }
+  .bloco { left: 7cqw; right: 7cqw; top: 27cqh; }
   h1 { font-size: max(var(--mt-piso, 0cqw), 16cqw); }
-  .apoio { margin-top: 3.6cqw; font-size: max(var(--mt-piso, 0cqw), 2.4cqw); max-width: none; }
-  .chega { left: 7cqw; right: 7cqw; bottom: 7cqh; }
+  .apoio { margin-top: 2.4cqw; font-size: max(var(--mt-piso, 0cqw), 2.4cqw); line-height: 1.3; max-width: none; }
+  .chega { left: 7cqw; right: 7cqw; bottom: 6cqh; }
   .chega i { height: .2cqw; }
   .chega span { font-size: max(var(--mt-piso, 0cqw), 2cqw); }
 }
