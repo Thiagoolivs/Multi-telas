@@ -56,4 +56,17 @@ function conferirDecisao(manifesto, tipo, id, estado) {
   return null;
 }
 
-module.exports = { ESTADOS, TIPOS, lerManifesto, aplicarDecisoes, conferirDecisao };
+/*
+ * As peças que uma tela usa (lote 3: a tela aprovada só aparece para as
+ * contas com as peças dela aprovadas). Aprovar a tela aprova junto as que
+ * ainda esperam; uma peça já recusada fica recusada — a decisão é do dono.
+ */
+function pecasDaTela(manifesto, id) {
+  const tela = (manifesto.telas || []).find((t) => t.id === id);
+  const ids = new Set();
+  for (const z of Object.values((tela && tela.zonas) || {})) for (const p of (z && z.pecas) || []) if (p && p.id) ids.add(p.id);
+  return [...ids];
+}
+const esperando = (e) => !e || e === 'proposta' || e === 'rascunho';
+
+module.exports = { ESTADOS, TIPOS, lerManifesto, aplicarDecisoes, conferirDecisao, pecasDaTela, esperando };

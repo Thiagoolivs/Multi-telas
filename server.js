@@ -1397,7 +1397,19 @@ const negocioCache = new Map();
           if (erro) return sendJson(res, 400, { error: erro });
           await db.decidirConteudo(tipo, id, estado, sess.email);
           log.info('conteudo.decidir', { tipo, id, estado, por: sess.email });
-          return sendJson(res, 200, { ok: true, tipo, id, estado });
+          // Aprovar a tela aprova as peças dela que ainda esperam (sem elas, a tela não chega às contas).
+          const pecas = [];
+          if (tipo === 'tela' && estado === 'aprovada') {
+            const agora = conteudoPronto.aplicarDecisoes(base, await db.decisoesDoConteudo());
+            for (const pid of conteudoPronto.pecasDaTela(agora, id)) {
+              const p = (agora.pecas || []).find((x) => x.id === pid);
+              if (!p || !conteudoPronto.esperando(p.estado)) continue;
+              await db.decidirConteudo('peca', pid, 'aprovada', sess.email);
+              log.info('conteudo.decidir', { tipo: 'peca', id: pid, estado: 'aprovada', por: sess.email, pela: id });
+              pecas.push(pid);
+            }
+          }
+          return sendJson(res, 200, { ok: true, tipo, id, estado, pecas });
         });
       }
       return sendJson(res, 404, { error: 'rota não encontrada' });

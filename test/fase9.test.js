@@ -43,6 +43,20 @@ test('a decisão só vale para o que existe, e só com os três estados', () => 
   assert.ok(real.telas.length >= 26 && real.pecas.length >= 43);
 });
 
+test('aprovar uma tela leva junto as peças dela que esperam; a recusada fica recusada', () => {
+  const m = {
+    pecas: [{ id: 'a', estado: 'proposta' }, { id: 'b', estado: 'recusada' }, { id: 'c', estado: 'aprovada' }],
+    telas: [{ id: 't', zonas: { principal: { pecas: [{ id: 'a' }, { id: 'b' }, { id: 'a' }] }, lateral: { pecas: [{ id: 'c' }] }, rodape: {} } }],
+  };
+  assert.deepEqual(C.pecasDaTela(m, 't'), ['a', 'b', 'c']);
+  assert.deepEqual(C.pecasDaTela(m, 'nao-existe'), []);
+  assert.deepEqual(C.pecasDaTela(m, 't').filter((id) => C.esperando(m.pecas.find((p) => p.id === id).estado)), ['a']);
+  const s = ler('server.js');
+  assert.match(s, /if \(tipo === 'tela' && estado === 'aprovada'\) \{[\s\S]*?conteudoPronto\.esperando\(p\.estado\)[\s\S]*?db\.decidirConteudo\('peca', pid, 'aprovada'/);
+  // A IA aprende só com o que o dono aprovou: o lote novo, em proposta, fica fora.
+  assert.match(ler('server/compositor.js'), /p\.papeis\.includes\(papel\) && \(!p\.estado \|\| p\.estado === 'aprovada'\)/);
+});
+
 test('o servidor: a galeria só para o operador, e o manifesto sai com as decisões', () => {
   const s = ler('server.js');
   const porta = s.indexOf("if (parts[1] === 'plataforma') {");

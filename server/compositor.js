@@ -125,8 +125,9 @@ const BIBLIOTECA = {};
 function biblioteca(papel) {
   if (BIBLIOTECA[papel]) return BIBLIOTECA[papel];
   const m = JSON.parse(fs.readFileSync(path.join(PASTA, 'manifesto.json'), 'utf8'));
+  // Só o que o dono aprovou (no arquivo): uma peça do lote novo, ainda em proposta, não ensina a IA.
   const lista = m.pecas
-    .filter((p) => p.papeis.includes(papel))
+    .filter((p) => p.papeis.includes(papel) && (!p.estado || p.estado === 'aprovada'))
     .sort((a, b) => a.id.localeCompare(b.id))
     .map((p) => '### ' + p.nome + ' (' + p.familia + ')\n' + cssJusto(semPiso(enxuto(fs.readFileSync(path.join(PASTA, p.id + '.html'), 'utf8')))));
   // Em teste a biblioteca muda no disco entre um caso e outro: só guarda fora dele.
