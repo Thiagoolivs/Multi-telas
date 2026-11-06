@@ -83,3 +83,16 @@ test('o robô mede a lateral e o bloco nos layouts que cada TV oferece, e a meta
   assert.match(robo, /const PISO_DA_FRENTE = \{ comercio: 4\.5, saude: 3\.5, empresa: 3 \};/);
   assert.match(robo, /conferirPecas\(navegador, 'escritorio'\)/, 'as peças da lateral também');
 });
+
+test('as peças-ouro da lateral cabem com a letra do balcão, e o robô bloqueia a que ceder', () => {
+  const robo = ler('tools/regua-tv.mjs');
+  // A lateral no balcão (4,5%), peça a peça: uma que ceder reprova, como na tela cheia.
+  assert.match(robo, /conferirPecas\(navegador, 'balcao', LATERAL_NO_BALCAO\)/);
+  assert.match(robo, /const LATERAL_NO_BALCAO = 'Lateral · Corporativo';/);
+  assert.match(robo, /for \(const x of noBalcao\.filter\(\(y\) => y\.cedeu < 1\)\) \{ console\.log\('  ✗ ' \+ x\.id \+ ': o piso cedeu para ' \+ Math\.round\(x\.cedeu \* 100\) \+ '%'\); reprova = true; \}/);
+  // A conta do escritório continua só com o escritório (a do balcão não entra nela).
+  assert.match(robo, /pecas\.filter\(\(x\) => x\.zona === zona && x\.local === 'escritorio'\)/);
+  // As duas da semana (lote 3) trocaram a etiqueta em cima do dia por uma na linha dele.
+  assert.match(ler('pecas-ouro/cardapio-semana.html'), /\.dia \{ display: inline; min-width: 0;/);
+  assert.match(ler('pecas-ouro/servico-semana.html'), /\.folha \{ display: inline-flex; flex-direction: row;/);
+});

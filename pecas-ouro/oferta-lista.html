@@ -61,9 +61,10 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.95 var(--mt-fonte-titulo); tex
   .apoio, .det, .marca-nome, .cta, .kicker { display: none; }
   h1 { margin: 0; font-size: max(var(--mt-piso, 0cqw), 11.5cqw); }
   /* O preço que não cabe ao lado do nome (fonte de marca larga) desce para a linha de baixo, à direita. */
-  .itens li { display: flex; flex-wrap: wrap; align-items: center; column-gap: 2cqw; row-gap: .4cqw; padding: 2.2cqw 0; }
-  .num { flex: none; width: max(calc(var(--mt-piso, 0cqw) * 1.3), 6.4cqw); font-size: max(var(--mt-piso, 0cqw), 3cqw); letter-spacing: 0; }
-  .txt { flex: 1 1 auto; min-width: 0; max-width: calc(100% - max(calc(var(--mt-piso, 0cqw) * 1.3), 6.4cqw) - 2cqw); }
+  /* A linha na letra do número: a coluna dele (1,3em) e a do nome contam na mesma medida. */
+  .itens li { display: flex; flex-wrap: wrap; align-items: center; column-gap: 2cqw; row-gap: .4cqw; padding: 2.2cqw 0; font-size: max(var(--mt-piso, 0cqw), 3cqw); }
+  .num { flex: none; width: 1.3em; font-size: 1em; letter-spacing: 0; }
+  .txt { flex: 1 1 auto; min-width: 0; max-width: calc(100% - 1.3em - 2cqw); }
   .txt b { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: 0; }
   .valor { flex: none; margin-left: auto; font-size: max(var(--mt-piso, 0cqw), 13.5cqw); }
   .valor small { vertical-align: .5em; }
