@@ -1,0 +1,92 @@
+<!--
+  Convênios aceitos — família serviço. Destaque e lateral.
+  A pergunta que mais se faz na recepção, respondida na parede: os nomes
+  dos planos em etiquetas iguais (sem logotipo — a marca do plano é dele,
+  e a peça fica com a da clínica). O escudo com o visto é desenho. Nome
+  em branco tira a etiqueta.
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: grid; grid-template-columns: 36fr 64fr; align-items: center; column-gap: 6cqw; padding: 8cqmin 7cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(110% 100% at 100% 100%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+/* O escudo: 10em × 12em, recortado em clip-path, com o visto por cima. */
+.escudo { position: relative; display: block; width: 10em; height: 12em; font-size: 1.6cqmin; background: var(--mt-destaque);
+  clip-path: polygon(50% 0, 100% 14%, 100% 52%, 92% 74%, 72% 92%, 50% 100%, 28% 92%, 8% 74%, 0 52%, 0 14%); }
+.escudo::after { content: ''; position: absolute; left: 3.7em; top: 2.6em; width: 2.6em; height: 5.2em; border: solid var(--mt-sobre-destaque); border-width: 0 1.1em 1.1em 0; transform: rotate(45deg); }
+.kicker { margin-top: 5cqmin; font: 700 max(var(--mt-piso, 0cqw), 3.8cqmin)/1.15 var(--mt-fonte-texto); letter-spacing: .08em; text-transform: uppercase; color: var(--mt-preco); }
+h1 { margin-top: 2cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(11cqmin * var(--mt-escala-titulo, 1)))/1.02 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.apoio { margin-top: 4cqmin; font: 500 max(var(--mt-piso, 0cqw), 4.6cqmin)/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.planos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 3cqmin; }
+.planos li { display: flex; align-items: center; min-height: 15cqmin; padding: 2.4cqmin 3.4cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie);
+  border-left: 1.2cqmin solid var(--mt-destaque); font: 700 max(var(--mt-piso, 0cqw), 5.2cqmin)/1.15 var(--mt-fonte-texto); }
+.planos li:has(span:empty) { display: none; }
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  .mt-peca { grid-template-columns: 34fr 66fr; column-gap: 4cqw; padding: 7cqmin 6cqw; }
+  .escudo { font-size: 1.3cqmin; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(9.4cqmin * var(--mt-escala-titulo, 1))); }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 4.2cqmin); }
+  .planos { gap: 2.4cqmin; }
+  .planos li { min-height: 13cqmin; font-size: max(var(--mt-piso, 0cqw), 4.6cqmin); }
+}
+/* Em pé: o escudo e o título em cima, as etiquetas embaixo. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; align-content: center; row-gap: 7cqmin; padding: 8cqmin 8cqw; }
+  .cabeca { display: grid; grid-template-columns: auto 1fr; column-gap: 5cqw; align-items: center; }
+  .escudo { grid-row: 1 / span 2; font-size: 1.8cqw; }
+  .kicker { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), 4cqw); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10.6cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { grid-column: 1 / -1; margin-top: 5cqw; font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+  .planos li { font-size: max(var(--mt-piso, 0cqw), 5.4cqw); min-height: 16cqw; }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .mt-peca { row-gap: 10cqw; }
+  .escudo { font-size: 2.2cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { margin-top: 7cqw; font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
+  .planos { gap: 4cqw; }
+  .planos li { min-height: 20cqw; padding: 3cqw 4cqw; font-size: max(var(--mt-piso, 0cqw), 6.2cqw); }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { row-gap: 4.4cqmin; padding: 7cqmin 7cqw; }
+  .escudo { font-size: 1.2cqmin; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.6cqmin); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(9cqmin * var(--mt-escala-titulo, 1))); }
+  .apoio { margin-top: 3cqmin; font-size: max(var(--mt-piso, 0cqw), 4.2cqmin); }
+  .planos { gap: 2.4cqmin; }
+  .planos li { min-height: 12cqmin; padding: 1.8cqmin 3cqmin; font-size: max(var(--mt-piso, 0cqw), 4.6cqmin); }
+}
+/* A lateral: uma coluna de etiquetas, sem o apoio. */
+@container (max-width: 700px) {
+  .escudo { font-size: 1.5cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 5.8cqw); letter-spacing: .04em; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10.6cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { display: none; }
+  .planos { grid-template-columns: 1fr; gap: 2.6cqw; }
+  .planos li { min-height: 0; padding: 2.6cqw 4cqw; font-size: max(var(--mt-piso, 0cqw), 6.6cqw); }
+}
+/* Deitada e baixa: o título ao lado, três etiquetas por linha. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { grid-template-columns: 30fr 70fr; padding: 5cqmin 6cqw; }
+  .escudo, .kicker, .apoio { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1))); }
+  .planos { grid-template-columns: 1fr 1fr; gap: 2.4cqmin; }
+  .planos li { min-height: 0; padding: 1.8cqmin 2.6cqmin; }
+}
+</style>
+<section class="mt-peca servico-convenios">
+  <div class="cabeca">
+    <span class="escudo" aria-hidden="true" data-entrada="crescer"></span>
+    <p class="kicker" data-campo="kicker" data-entrada="esquerda" data-ordem="1">Atendemos</p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Convênios aceitos</h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Não achou o seu? Pergunte na recepção.</p>
+  </div>
+  <ul class="planos">
+    <li data-entrada="subir" data-ordem="3"><span data-campo="plano1">OdontoVida</span></li>
+    <li data-entrada="subir" data-ordem="3"><span data-campo="plano2">Sorriso Pleno</span></li>
+    <li data-entrada="subir" data-ordem="4"><span data-campo="plano3">Dental Mais</span></li>
+    <li data-entrada="subir" data-ordem="4"><span data-campo="plano4">Bem Odonto</span></li>
+    <li data-entrada="subir" data-ordem="5"><span data-campo="plano5">Odonto Litoral</span></li>
+    <li data-entrada="subir" data-ordem="5"><span data-campo="plano6">Particular</span></li>
+  </ul>
+</section>

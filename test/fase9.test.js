@@ -43,6 +43,20 @@ test('a decisão só vale para o que existe, e só com os três estados', () => 
   assert.ok(real.telas.length >= 26 && real.pecas.length >= 43);
 });
 
+test('aprovar uma tela leva junto as peças dela que esperam; a recusada fica recusada', () => {
+  const m = {
+    pecas: [{ id: 'a', estado: 'proposta' }, { id: 'b', estado: 'recusada' }, { id: 'c', estado: 'aprovada' }],
+    telas: [{ id: 't', zonas: { principal: { pecas: [{ id: 'a' }, { id: 'b' }, { id: 'a' }] }, lateral: { pecas: [{ id: 'c' }] }, rodape: {} } }],
+  };
+  assert.deepEqual(C.pecasDaTela(m, 't'), ['a', 'b', 'c']);
+  assert.deepEqual(C.pecasDaTela(m, 'nao-existe'), []);
+  assert.deepEqual(C.pecasDaTela(m, 't').filter((id) => C.esperando(m.pecas.find((p) => p.id === id).estado)), ['a']);
+  const s = ler('server.js');
+  assert.match(s, /if \(tipo === 'tela' && estado === 'aprovada'\) \{[\s\S]*?conteudoPronto\.esperando\(p\.estado\)[\s\S]*?db\.decidirConteudo\('peca', pid, 'aprovada'/);
+  // A IA aprende só com o que o dono aprovou: o lote novo, em proposta, fica fora.
+  assert.match(ler('server/compositor.js'), /p\.papeis\.includes\(papel\) && \(!p\.estado \|\| p\.estado === 'aprovada'\)/);
+});
+
 test('o servidor: a galeria só para o operador, e o manifesto sai com as decisões', () => {
   const s = ler('server.js');
   const porta = s.indexOf("if (parts[1] === 'plataforma') {");
@@ -80,7 +94,9 @@ test('o painel: a galeria na Plataforma, com a peça desenhada e Aprovar e Recus
 test('cada peça tem as frentes que atende, e os textos de cada frente cabem nos campos dela', () => {
   const m = JSON.parse(ler('pecas-ouro/manifesto.json'));
   const FRENTES = ['comercio', 'saude', 'empresa'];
-  const DO_EXEMPLO = { otica: 'comercio', padaria: 'comercio', salao: 'comercio', lanchonete: 'comercio', clinica: 'saude', rotasul: 'empresa' };
+  const DO_EXEMPLO = { otica: 'comercio', padaria: 'comercio', salao: 'comercio', lanchonete: 'comercio', clinica: 'saude', rotasul: 'empresa',
+    // Lote 3: as peças novas também nascem nas marcas de exemplo do lote 2.
+    restaurante: 'comercio', dentista: 'saude', farmacia: 'saude', escritorio: 'empresa', industria: 'empresa' };
   for (const p of m.pecas) {
     assert.ok(Array.isArray(p.frentes) && p.frentes.length, p.id + ' sem frentes');
     for (const f of p.frentes) assert.ok(FRENTES.includes(f), p.id + ': frente ' + f);

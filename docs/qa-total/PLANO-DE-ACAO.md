@@ -297,6 +297,10 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
   - **Base:** o 429 vira "Muitos pedidos desta conta agora", sem "Sem conexão"; Telas de 29 para 5 pedidos e Programação de 30 para 6; apagar a peça de outra conta responde 404.
   - **Interface:** o "Na TV agora" é o próprio player em miniatura; o conteúdo pronto pelo tipo de negócio; "Escolher um modelo" abre um editor simples, com um campo por texto.
   - **Falta:** a Biblioteca ainda tem 4 níveis e a mesma campanha aparece em 3 lugares; os nomes dos layouts em Ajustes; as telas prontas esperam a sua aprovação na galeria.
+- [x] **Lote 3 de design (06/11), esperando a sua aprovação na galeria:**
+  - **26 peças-ouro novas:** 8 de Empresas (meta, turno, EPI, ramais, cardápio da semana…), 7 de Saúde (Novembro Azul, preparo de exame, convênios, vacina, tempo de espera…), 8 de Comércio (oferta relâmpago com contagem, kit, fidelidade, delivery, Wi-Fi com QR…) e 3 de modo ambiente. Nenhum texto de saúde com preço, desconto ou promessa.
+  - **18 telas `l3-*`:** dois formatos por negócio (padaria, restaurante, ótica, salão, farmácia, clínica, dentista, escritório, indústria), todas com a letra inteira na bancada.
+  - Aprovar uma tela na galeria aprova junto as peças dela que esperam. A IA só aprende com as peças aprovadas.
 - [ ] **Bloco 2 e os cenários de IA do bloco 3:** dependem do crédito do Gemini.
 - [ ] **Os pilotos:** com você, pelo roteiro.
 - **O que falta para cada bloco chegar a 9 (do reteste):**

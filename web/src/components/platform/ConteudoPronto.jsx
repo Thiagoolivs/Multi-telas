@@ -60,12 +60,16 @@ export function ConteudoPronto() {
   async function decidir(qual, item, estado) {
     setDecidindo(qual + ':' + item.id);
     try {
-      await plataforma.decidirConteudo(qual, item.id, estado);
+      const r = await plataforma.decidirConteudo(qual, item.id, estado);
+      // Aprovar a tela aprova as peças dela que esperavam (o servidor diz quais).
+      const junto = new Set((r && r.pecas) || []);
       setDados((d) => {
         const chave = qual === 'tela' ? 'telas' : 'pecas';
-        return { ...d, m: { ...d.m, [chave]: d.m[chave].map((x) => (x.id === item.id ? { ...x, estado } : x)) } };
+        const m = { ...d.m, [chave]: d.m[chave].map((x) => (x.id === item.id ? { ...x, estado } : x)) };
+        if (junto.size) m.pecas = m.pecas.map((x) => (junto.has(x.id) ? { ...x, estado: 'aprovada' } : x));
+        return { ...d, m };
       });
-      aviso.ok((qual === 'tela' ? 'Tela' : 'Peça') + ' "' + (item.nome || item.id) + '": ' + (estado === 'aprovada' ? 'aprovada. Já aparece para as contas.' : estado === 'recusada' ? 'recusada.' : 'de volta à espera.'));
+      aviso.ok((qual === 'tela' ? 'Tela' : 'Peça') + ' "' + (item.nome || item.id) + '": ' + (estado === 'aprovada' ? 'aprovada' + (junto.size ? ', com ' + junto.size + (junto.size === 1 ? ' peça nova dela' : ' peças novas dela') : '') + '. Já aparece para as contas.' : estado === 'recusada' ? 'recusada.' : 'de volta à espera.'));
     } catch (e) { aviso.erro('conteudo', e.message || 'Não deu para salvar a decisão.'); }
     finally { setDecidindo(''); }
   }

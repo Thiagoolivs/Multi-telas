@@ -121,8 +121,12 @@ test('a porta da peça recusa a letra abaixo do mínimo (lida no CSS, sem navega
 test('a biblioteca-ouro vai sem os comentários: o mesmo código, menos tokens', () => {
   const fixo = compositor.fixo('destaque');
   assert.doesNotMatch(fixo, /<!--/);
-  const bruto = 155000;
-  assert.ok(fixo.length < bruto * 0.9, 'o destaque ainda leva ' + fixo.length + ' caracteres');
+  // O bruto é a soma dos arquivos de destaque (era 155 mil antes do lote 3, que trouxe 26 peças novas).
+  const pasta = path.join(__dirname, '..', 'pecas-ouro');
+  const bruto = JSON.parse(fs.readFileSync(path.join(pasta, 'manifesto.json'), 'utf8')).pecas
+    .filter((p) => p.papeis.includes('destaque')).reduce((n, p) => n + fs.readFileSync(path.join(pasta, p.id + '.html'), 'utf8').length, 0);
+  assert.ok(bruto > 150000, 'a biblioteca de destaque é a do manifesto');
+  assert.ok(fixo.length < bruto * 0.9, 'o destaque ainda leva ' + fixo.length + ' de ' + bruto + ' caracteres');
   assert.match(fixo, /font: 400 6\.6cqw\/1 var\(--mt-fonte-titulo\)/, 'o CSS das peças continua inteiro');
 });
 
