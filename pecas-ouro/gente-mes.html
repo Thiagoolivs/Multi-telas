@@ -41,17 +41,16 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
   .lista b { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); }
   .lista small { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
 }
-/* A coluna estreita: o dia e o nome; o setor fica, menor. O kicker sai — o título já diz. */
+/* A coluna estreita: o dia e o nome. O kicker sai — o título já diz — e o setor também: seis pessoas
+   de duas linhas, com a letra do balcão, subiam no título. */
 @container (max-width: 700px) {
-  /* Seis pessoas na lateral, com a letra da TV: linhas mais justas, para a lista não subir no título. */
   .cabeca { top: 6cqh; }
-  .kicker { display: none; }
+  .kicker, .lista small { display: none; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(8.6cqw * var(--mt-escala-titulo, 1))); margin-top: 0; }
   .lista { bottom: 5cqh; }
-  .lista li { grid-template-columns: 14cqw 1fr; padding: 1.3cqw 0; }
+  .lista li { grid-template-columns: 14cqw 1fr; padding: 1.6cqw 0; }
   .dia { font-size: max(var(--mt-piso, 0cqw), 8cqw); }
   .lista b { font-size: max(var(--mt-piso, 0cqw), 5cqw); line-height: 1.1; }
-  .lista small { font-size: max(var(--mt-piso, 0cqw), 3.2cqw); margin-top: .2cqw; line-height: 1.15; }
 }
 </style>
 <section class="mt-peca gente-mes">

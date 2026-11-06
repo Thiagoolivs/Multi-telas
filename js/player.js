@@ -124,11 +124,13 @@
     const miolo = slide.querySelector(':scope > .mt-text-inner, :scope > .ann-inner, :scope > .mt-precos-inner');
     if (!miolo) return;
     const lista = slide.hasAttribute('data-mt-colunas-auto') ? miolo.querySelector('.mt-precos-lista') : null;
+    const precos = miolo.classList.contains('mt-precos-inner') ? miolo.querySelector('.mt-precos-lista') : null;
     const medir = function () {
       // Volta ao desenho original: a fonte pode ter chegado e mudado tudo.
       miolo.style.transform = '';
       slide.classList.remove('mt-compacto');
       if (lista) lista.style.columnCount = '';
+      if (precos) desfazerPaginas(slide, miolo, precos);
       miolo.querySelectorAll('[data-mt-cabe]').forEach((e) => { e.style.fontSize = ''; e.removeAttribute('data-mt-cabe'); });
       miolo.querySelectorAll('[data-mt-apoio]').forEach((e) => { e.style.display = ''; });
       // A caixa é medida de novo a cada passo: o modo compacto muda o respiro da própria caixa.
@@ -161,7 +163,10 @@
         esc = sobra();
         if (lista && esc < 1) {
           const base = parseInt(getComputedStyle(lista).columnCount, 10) || 1;
+          const vao = parseFloat(getComputedStyle(lista).columnGap) || 0;
           for (let c = base + 1; c <= 3 && esc < 1; c++) {
+            // Coluna mais estreita que nove letras do piso quebra o nome no meio ("Coxin-ha"): aí vale a página (passo 5).
+            if ((lista.clientWidth - vao * (c - 1)) / c < piso * 9) break;
             lista.style.columnCount = String(c);
             const agora = sobra();
             if (agora <= esc) { lista.style.columnCount = c - 1 > base ? String(c - 1) : ''; break; }
@@ -187,6 +192,8 @@
           apoios.forEach((e) => { if ((Number(e.getAttribute('data-mt-apoio')) || 1) === niveis[i]) e.style.display = 'none'; });
           esc = sobra();
         }
+        // 5. a lista de preços vai em páginas, com a letra inteira (a coluna lateral não cabe a tabela toda a 4 m).
+        if (precos && esc < 1 && paginarPrecos(slide, miolo, precos, () => caixa()[0])) esc = sobra();
       }
       if (esc < 1) {
         miolo.style.transformOrigin = 'center center';
@@ -195,6 +202,87 @@
     };
     afterPaint(medir);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir).catch(function () {});
+  }
+
+  /*
+   * A TABELA DE PREÇOS EM PÁGINAS (fase 3). Na coluna lateral (506×915 numa
+   * TV 1080p) a tabela de nove itens só cabia encolhida a 2,8% do lado
+   * menor: ninguém lê o preço a 4 m. Em vez de encolher, a lista se divide
+   * em páginas que cabem com a letra mínima, e a TV vira a página sozinha,
+   * como já gira os itens. O título e o rodapé ficam em todas; a página que
+   * começa no meio de uma seção repete o nome dela; os pontinhos embaixo
+   * dizem que há mais. O tempo do item cresce para cada página ter o dela
+   * (no mínimo 8 s): o evento mt:paginas avisa a zona (startPlaylist, advance).
+   */
+  const PRECOS_PAGINA_MIN_S = 8;
+  function desfazerPaginas(slide, miolo, lista) {
+    if (slide._mtPaginas) { slide._mtPaginas.parar(); slide._mtPaginas = null; }
+    slide.removeAttribute('data-mt-paginas');
+    Array.prototype.forEach.call(lista.children, (l) => l.removeAttribute('data-mt-fora'));
+    lista.classList.remove('mt-precos-vira');
+    const pontos = miolo.querySelector('.mt-precos-paginas');
+    if (pontos) pontos.parentNode.removeChild(pontos);
+  }
+  function paginarPrecos(slide, miolo, lista, alturaLivre) {
+    const linhas = Array.prototype.slice.call(lista.children);
+    if (linhas.length < 2) return 0;
+    const ehSecao = (l) => l.classList.contains('mt-precos-secao');
+    const pontos = document.createElement('div');
+    pontos.className = 'mt-precos-paginas';
+    pontos.setAttribute('aria-hidden', 'true');
+    pontos.appendChild(document.createElement('i'));
+    miolo.insertBefore(pontos, lista.nextSibling);
+    const cabe = () => miolo.scrollHeight - 1 <= alturaLivre();
+    const mostrar = (pg) => linhas.forEach((l, i) => {
+      if ((i >= pg.ini && i < pg.fim) || i === pg.cab) l.removeAttribute('data-mt-fora');
+      else l.setAttribute('data-mt-fora', '');
+    });
+    const secaoAntes = (i) => { for (let j = i - 1; j >= 0; j--) if (ehSecao(linhas[j])) return j; return -1; };
+    const paginas = [];
+    for (let ini = 0; ini < linhas.length;) {
+      if (paginas.length >= 20) { desfazerPaginas(slide, miolo, lista); return 0; }
+      const cab = ehSecao(linhas[ini]) ? -1 : secaoAntes(ini);
+      // A maior página que cabe a partir de `ini` (busca ao meio: poucas medidas numa TV fraca).
+      let fim = linhas.length;
+      mostrar({ ini, fim, cab });
+      if (!cabe()) {
+        let a = ini + 1, b = linhas.length;
+        while (b - a > 1) {
+          const m = (a + b) >> 1;
+          mostrar({ ini, fim: m, cab });
+          if (cabe()) a = m; else b = m;
+        }
+        fim = a;
+      }
+      // O nome de uma seção não fica sozinho no pé da página: desce para a próxima.
+      while (fim - ini > 1 && fim < linhas.length && ehSecao(linhas[fim - 1])) fim--;
+      paginas.push({ ini, fim, cab });
+      ini = fim;
+    }
+    if (paginas.length < 2) { desfazerPaginas(slide, miolo, lista); return 0; }
+    pontos.textContent = '';
+    paginas.forEach(() => pontos.appendChild(document.createElement('i')));
+    const dur = Number(slide.getAttribute('data-mt-dur')) || 20;
+    const porPagina = Math.max(PRECOS_PAGINA_MIN_S, dur / paginas.length);
+    let atual = 0;
+    const virar = () => {
+      mostrar(paginas[atual]);
+      Array.prototype.forEach.call(pontos.children, (p, i) => { p.className = i === atual ? 'mt-on' : ''; });
+      lista.classList.remove('mt-precos-vira');
+      void lista.offsetWidth;
+      lista.classList.add('mt-precos-vira');
+    };
+    mostrar(paginas[0]);
+    Array.prototype.forEach.call(pontos.children, (p, i) => { p.className = i === 0 ? 'mt-on' : ''; });
+    const timer = setInterval(() => {
+      if (!slide.isConnected) { clearInterval(timer); return; }
+      atual = (atual + 1) % paginas.length;
+      virar();
+    }, porPagina * 1000);
+    slide._mtPaginas = { parar: () => clearInterval(timer), paginas: paginas.length };
+    slide.setAttribute('data-mt-paginas', String(paginas.length));
+    try { slide.dispatchEvent(new CustomEvent('mt:paginas', { detail: { paginas: paginas.length, segundos: porPagina * paginas.length } })); } catch (e) { /* segue */ }
+    return paginas.length;
   }
 
   function enterSlide(el, type, reveal) {
@@ -2311,6 +2399,10 @@
       }
 
       const transition = cfg.settings.transicao || 'fade';
+      // Fase 5: 1 s por palavra, de 6 a 25 s, a não ser que a pessoa tenha posto o tempo à mão.
+      const dur = R ? R.duracaoDe(item, rendered.duration) : rendered.duration;
+      // A tabela de preços em páginas divide este tempo entre elas (paginarPrecos).
+      if (dur > 0) rendered.el.setAttribute('data-mt-dur', String(dur));
       zoneEl.appendChild(rendered.el);
       enterSlide(rendered.el, transition, isRevealSlide(rendered.el));
       caberNaCaixa(rendered.el);
@@ -2347,8 +2439,15 @@
       // Conteúdo prioritário toma a tela (layout inteligente).
       try { maybeTakeover(item); } catch (e) {}
 
-      // Fase 5: 1 s por palavra, de 6 a 25 s, a não ser que a pessoa tenha posto o tempo à mão.
-      const dur = R ? R.duracaoDe(item, rendered.duration) : rendered.duration;
+      /*
+       * A tabela de preços que virou páginas na zona pequena (paginarPrecos):
+       * o item fica no ar o tempo de todas, e não só o da primeira.
+       */
+      rendered.el.addEventListener('mt:paginas', (e) => {
+        const s = e && e.detail ? Number(e.detail.segundos) : 0;
+        if (stopped || estatica || advanced || !currentSlide || currentSlide.el !== rendered.el || !(dur > 0) || !(s > dur)) return;
+        schedule(s);
+      });
       if (estatica) return; // estática — só o próprio item avança (ex.: vídeo ao terminar)
       if (dur && dur > 0) schedule(dur);
       else if (rendered.onEnter) {

@@ -76,12 +76,15 @@ h1 span + span { color: var(--mt-destaque); }
 }
 /* A lateral: o título e a placa; o apoio sai. */
 @container (max-width: 700px) {
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; }
+  /* Com a letra do balcão o rótulo de duas linhas passava do pé: o círculo um pouco menor e o respiro mais justo. */
+  .mt-peca { row-gap: 6cqmin; padding: 6cqmin 7cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; line-height: 1.1; }
   .kicker i, .apoio { display: none; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(15cqw * var(--mt-escala-titulo, 1))); }
-  .epi { gap: 7cqw 4cqw; }
-  .ico { font-size: 3.4cqw; }
-  .rotulo { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); }
+  .epi { gap: 5cqw 4cqw; }
+  .epi li { gap: 2cqmin; }
+  .ico { font-size: 2.9cqw; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); line-height: 1.08; }
 }
 /* Deitada e baixa: o título em cima e a placa em duas linhas, o rótulo ao lado do círculo. */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {

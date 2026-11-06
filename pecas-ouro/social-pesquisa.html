@@ -64,12 +64,14 @@ h1 { font: 600 max(var(--mt-piso, 0cqw), calc(10.4cqmin * var(--mt-escala-titulo
 }
 /* A lateral: o balão, o celular e a chamada; o detalhe sai. */
 @container (max-width: 700px) {
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; }
+  /* Com a letra do balcão e uma fonte de marca larga, o kicker e o pedido encostavam nas bordas: respiro mais justo. */
+  .mt-peca { row-gap: 4.4cqmin; padding: 6cqmin 7cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; line-height: 1.1; }
   .kicker i, .apoio { display: none; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1))); }
-  .balao { padding: 6cqw; }
-  .aparelho { width: 56cqw; margin-top: 4cqw; padding: 10cqw 3cqw 12cqw; }
-  .cta { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); }
+  .balao { padding: 5cqw; }
+  .aparelho { width: 56cqw; margin-top: 4cqw; padding: 8cqw 3cqw 10cqw; }
+  .cta { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); line-height: 1.12; }
 }
 /* Deitada e baixa: o balão e o celular, sem o detalhe. */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {

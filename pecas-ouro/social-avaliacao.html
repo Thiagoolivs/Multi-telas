@@ -56,12 +56,19 @@ h1 span:first-child { color: var(--mt-destaque); }
 }
 /* A coluna estreita: o que está lá, maior — ela é lida do outro lado da loja. */
 @container (max-width: 700px) {
-  .numero { font-size: max(var(--mt-piso, 0cqw), 27cqmin); }
+  /* Com a letra do balcão o "1.240 avaliações" ao lado da nota passava das duas bordas: ele desce para baixo
+     da nota e das estrelas; o espaçado das letras e o respiro diminuem. */
+  .bloco { left: 7cqw; right: 7cqw; }
+  .kicker { gap: 2cqmin; letter-spacing: .08em; }
+  .kicker i { width: 4cqmin; }
+  .nota { flex-wrap: wrap; justify-content: center; gap: 1.6cqmin 3.4cqmin; margin-top: 4.4cqmin; }
+  .lado { display: contents; }
+  .numero { font-size: max(var(--mt-piso, 0cqw), 22cqmin); }
   .estrelas i { width: 7cqmin; height: 7cqmin; }
-  .total { font-size: max(var(--mt-piso, 0cqw), 3.8cqmin); }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 10.4cqmin); }
-  .qr { width: 46cqmin; height: 46cqmin; }
-  .pedido { font-size: max(var(--mt-piso, 0cqw), 3.8cqmin); }
+  .total { flex-basis: 100%; font-size: max(var(--mt-piso, 0cqw), 3.8cqmin); letter-spacing: 0; }
+  h1 { margin: 4.4cqmin 0 4.4cqmin; padding-top: 4.4cqmin; font-size: max(var(--mt-piso, 0cqw), 10.4cqmin); }
+  .qr { width: 42cqmin; height: 42cqmin; }
+  .pedido { margin-top: 4.4cqmin; font-size: max(var(--mt-piso, 0cqw), 3.8cqmin); letter-spacing: .02em; text-transform: none; line-height: 1.1; }
 }
 </style>
 <section class="mt-peca social-avaliacao">

@@ -162,6 +162,11 @@
    * exemplo nem com um buraco no meio.
    */
   function camposDaPeca(nomes, itens, secao) {
+    var lista = daSecao(itens, secao);
+    return preencher(nomes, lista, secao ? [{ nome: secao, itens: lista }] : secoesDe(itens));
+  }
+  // Os campos de UMA tela da peça: `lista` vai nos item1…, `secoes` nos grupo1… (cada uma com os itens dela).
+  function preencher(nomes, lista, secoes) {
     var tem = {};
     (nomes || []).forEach(function (n) { tem[n] = true; });
     var campos = {};
@@ -172,7 +177,6 @@
       if (!tem[nome]) return;
       if (valor) { campos[nome] = String(valor); mostrar.push(nome); } else { campos[nome] = ''; esconder.push(nome); }
     };
-    var lista = daSecao(itens, secao);
     for (var n = 1; n <= 30; n++) {
       var base = 'item' + n + '-';
       if (!tem[base + 'nome']) continue;
@@ -190,7 +194,6 @@
       por(base + 'medida', i && i.descricao);
       por(base + 'detalhe', i && i.descricao);
     }
-    var secoes = secao ? [{ nome: secao, itens: lista }] : secoesDe(itens);
     for (var g = 1; g <= 12; g++) {
       if (!tem['grupo' + g]) continue;
       var s = secoes[g - 1];
@@ -207,6 +210,68 @@
     return { campos: campos, esconder: esconder, mostrar: mostrar, vazias: vazias };
   }
 
+  /*
+   * A planilha inteira na peça, em páginas (fase 11). A peça tem lugar para
+   * seis itens (cardapio-colunas) ou três seções de três (cardapio-categorias);
+   * com a planilha de doze, o resto sumia sem aviso. Agora cada página é uma
+   * tela da peça com os próximos itens, e a TV vira a página (js/render.js,
+   * renderPecaHtml). As páginas saem equilibradas (sete itens em seis lugares
+   * são 4 + 3, não 6 + 1). Por seção, cada grupo fica com a MESMA seção em
+   * todas as páginas de um bloco: a seção maior que o grupo continua no
+   * mesmo lugar na página seguinte; a menor repete. Devolve a lista de
+   * páginas, cada uma como o camposDaPeca devolve; uma só quando tudo cabe.
+   * No máximo `teto` páginas (10).
+   */
+  function emPedacos(lista, tamanho) {
+    var n = Math.max(1, Math.ceil(lista.length / tamanho));
+    var base = Math.floor(lista.length / n);
+    var sobra = lista.length % n;
+    var saida = [];
+    // As primeiras ficam com um a mais: treze em três são 5 + 4 + 4.
+    for (var i = 0, ini = 0; i < n; i++) {
+      var fim = ini + base + (i < sobra ? 1 : 0);
+      saida.push(lista.slice(ini, fim));
+      ini = fim;
+    }
+    return saida;
+  }
+  function paginasDaPeca(nomes, itens, secao, teto) {
+    var tem = {};
+    (nomes || []).forEach(function (n) { tem[n] = true; });
+    var vagas = 0;
+    for (var n = 1; n <= 30; n++) if (tem['item' + n + '-nome']) vagas++;
+    var grupos = 0;
+    var porGrupo = 0;
+    for (var g = 1; g <= 12; g++) {
+      if (!tem['grupo' + g]) continue;
+      grupos++;
+      var k = 0;
+      for (var j = 1; j <= 20; j++) if (tem['g' + g + '-item' + j]) k++;
+      porGrupo = porGrupo ? Math.min(porGrupo, k) : k;
+    }
+    var lista = daSecao(itens, secao);
+    var secoes = secao ? [{ nome: secao, itens: lista }] : secoesDe(itens);
+    var dasListas = vagas ? emPedacos(lista, vagas) : [];
+    // Por seção: os blocos de `grupos` seções; cada bloco tem as páginas da sua seção mais longa.
+    var dosGrupos = [];
+    if (grupos && porGrupo) {
+      for (var b = 0; b < secoes.length; b += grupos) {
+        var bloco = secoes.slice(b, b + grupos).map(function (s) { return { nome: s.nome, partes: emPedacos(s.itens, porGrupo) }; });
+        var paginasDoBloco = bloco.reduce(function (m, s) { return Math.max(m, s.partes.length); }, 1);
+        for (var q = 0; q < paginasDoBloco; q++) {
+          dosGrupos.push(bloco.map(function (s) { return { nome: s.nome, itens: s.partes[q % s.partes.length] }; }));
+        }
+      }
+    }
+    var total = Math.min(Math.max(1, dasListas.length, dosGrupos.length), Math.max(1, Number(teto) || 10));
+    var paginas = [];
+    for (var p = 0; p < total; p++) {
+      paginas.push(preencher(nomes, dasListas.length ? dasListas[p % dasListas.length] : lista,
+        dosGrupos.length ? dosGrupos[p % dosGrupos.length] : secoes));
+    }
+    return paginas;
+  }
+
   // A hora da última leitura boa, para o "Atualizado às 14:05" da TV.
   function hora(ms) {
     var d = new Date(Number(ms) || 0);
@@ -216,6 +281,6 @@
 
   return {
     ler: ler, layout: layout, medidas: medidas, formatarPreco: formatarPreco,
-    daPlanilha: daPlanilha, textoDaPlanilha: textoDaPlanilha, camposDaPeca: camposDaPeca, secoesDe: secoesDe, precoCurto: precoCurto, hora: hora,
+    daPlanilha: daPlanilha, textoDaPlanilha: textoDaPlanilha, camposDaPeca: camposDaPeca, paginasDaPeca: paginasDaPeca, secoesDe: secoesDe, precoCurto: precoCurto, hora: hora,
   };
 });

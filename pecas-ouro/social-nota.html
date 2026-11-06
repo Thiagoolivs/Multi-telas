@@ -64,11 +64,12 @@
 }
 /* A lateral: a nota, as estrelas e a fala. */
 @container (max-width: 700px) {
-  .nota { font-size: max(var(--mt-piso, 0cqw), calc(34cqw * var(--mt-escala-titulo, 1))); }
+  /* Com a letra do balcão e uma fonte de marca larga, a nota e o autor encostavam nas bordas: a nota um pouco menor. */
+  .nota { font-size: max(var(--mt-piso, 0cqw), calc(30cqw * var(--mt-escala-titulo, 1))); }
   .estrelas i { width: 10cqw; height: 10cqw; }
   .total { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
   .depoimento { font-size: max(var(--mt-piso, 0cqw), calc(8.6cqw * var(--mt-escala-titulo, 1))); }
-  .autor { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+  .autor { font-size: max(var(--mt-piso, 0cqw), 6cqw); line-height: 1.15; }
 }
 /* Deitada e baixa: a nota e a fala, sem o autor. */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {

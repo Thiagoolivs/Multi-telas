@@ -2020,7 +2020,9 @@
   /*
    * O cardápio pronto com os preços da planilha (fase 11): os campos de item
    * (item1-nome, item1-preco… ou grupo1, g1-item1…) vêm da planilha
-   * (js/precos.js, camposDaPeca); a linha sem item some inteira.
+   * (js/precos.js, camposDaPeca); a linha sem item some inteira. A planilha
+   * maior que a peça vai em PÁGINAS (paginasDaPeca): seis itens por tela no
+   * cardapio-colunas, e a TV vira a página, em vez de o sétimo sumir.
    */
   function comPlanilha(item) {
     const pl = item.planilha ? planilhaDe(item.planilha) : null;
@@ -2028,32 +2030,80 @@
     if (!pl || !P || !P.camposDaPeca || !(pl.itens || []).length) return null;
     const nomes = [];
     String(item.html || '').replace(/data-campo="([\w-]+)"/g, (_, n) => { nomes.push(n); return _; });
-    const r = P.camposDaPeca(nomes, pl.itens, item.planilhaSecao);
     const antes = Array.isArray(item.ocultos) ? item.ocultos : [];
-    const ocultos = antes.filter((n) => r.mostrar.indexOf(n) < 0).concat(r.esconder.filter((n) => antes.indexOf(n) < 0));
-    return { item: Object.assign({}, item, { campos: Object.assign({}, item.campos, r.campos), ocultos }), vazias: r.vazias, pl };
+    const telas = P.paginasDaPeca ? P.paginasDaPeca(nomes, pl.itens, item.planilhaSecao) : [P.camposDaPeca(nomes, pl.itens, item.planilhaSecao)];
+    const paginas = telas.map((r) => {
+      const ocultos = antes.filter((n) => r.mostrar.indexOf(n) < 0).concat(r.esconder.filter((n) => antes.indexOf(n) < 0));
+      return { item: Object.assign({}, item, { campos: Object.assign({}, item.campos, r.campos), ocultos }), vazias: r.vazias };
+    });
+    return { paginas, pl };
+  }
+
+  // A linha sem item da planilha some inteira (com os pontinhos e o "R$"), não só o nome.
+  function esconderVazias(host, vazias) {
+    const raiz = host && host.shadowRoot;
+    (vazias || []).forEach((n) => {
+      const campo = raiz && raiz.querySelector('[data-campo="' + n + '"]');
+      const linha = campo && campo.closest ? campo.closest('li') : null;
+      if (linha) linha.setAttribute('data-oculto', '');
+    });
   }
 
   function renderPecaHtml(item) {
     const el = div('mt-slide mt-peca-html');
     if (!global.MTPecaRender) return { el, duration: item.duracao || 12 };
     const viva = item.planilha ? comPlanilha(item) : null;
-    if (viva) item = viva.item;
+    if (viva) item = viva.paginas[0].item;
     const ctl = global.MTPecaRender.montar(hostDaPeca(el), item, opcoesDaPeca());
+    let virar = null;
     if (viva) {
-      // A linha sem item da planilha some inteira (com os pontinhos e o "R$"), não só o nome.
       const host = el.querySelector('.mt-peca-escala');
-      const raiz = host && host.shadowRoot;
-      (viva.vazias || []).forEach((n) => {
-        const campo = raiz && raiz.querySelector('[data-campo="' + n + '"]');
-        const linha = campo && campo.closest ? campo.closest('li') : null;
-        if (linha) linha.setAttribute('data-oculto', '');
-      });
+      esconderVazias(host, viva.paginas[0].vazias);
       const h = atualizadoAs(viva.pl);
       if (h) { const t = div('mt-credito mt-planilha-hora'); t.textContent = h; el.appendChild(t); }
+      if (viva.paginas.length > 1) virar = paginarPeca(el, host, viva.paginas, ctl);
     }
     comCredito(el, item.creditos);
+    // Com páginas, sair para o giro delas e a página que está no ar.
+    if (virar) return { el, duration: ctl.duracao, onLeave: virar.parar };
     return { el, duration: ctl.duracao, onLeave: ctl.parar };
+  }
+
+  /*
+   * As páginas de uma peça da planilha. A zona marca no slide o tempo do
+   * item (data-mt-dur, js/player.js) antes de pô-lo na tela; cada página
+   * fica esse tempo (no mínimo 8 s), e o evento mt:paginas pede à zona o
+   * tempo de todas. A página seguinte é montada na mesma peça, com a
+   * entrada dela. Os pontinhos (fora da peça, como o "Atualizado às")
+   * dizem que há mais.
+   */
+  const PAGINA_DA_PECA_MIN_S = 8;
+  function paginarPeca(el, host, paginas, primeira) {
+    const pontos = div('mt-peca-paginas');
+    pontos.setAttribute('aria-hidden', 'true');
+    paginas.forEach((p, i) => { const d = document.createElement('i'); if (!i) d.className = 'mt-on'; pontos.appendChild(d); });
+    el.appendChild(pontos);
+    el.setAttribute('data-mt-pagina-peca', '1/' + paginas.length);
+    let atual = 0, noAr = primeira, timer = null, partida = null, tentativas = 0;
+    const parar = () => { clearInterval(timer); clearTimeout(partida); timer = null; if (noAr) noAr.parar(); };
+    const proxima = () => {
+      if (!el.isConnected) { parar(); return; }
+      atual = (atual + 1) % paginas.length;
+      noAr.parar();
+      noAr = global.MTPecaRender.montar(host, paginas[atual].item, opcoesDaPeca());
+      esconderVazias(host, paginas[atual].vazias);
+      el.setAttribute('data-mt-pagina-peca', (atual + 1) + '/' + paginas.length);
+      Array.prototype.forEach.call(pontos.children, (d, i) => { d.className = i === atual ? 'mt-on' : ''; });
+    };
+    // Começa quando o slide está na tela (a zona já disse o tempo dele).
+    const comecar = () => {
+      if (!el.isConnected) { if (++tentativas < 100) partida = setTimeout(comecar, 100); return; }
+      const dur = Math.max(PAGINA_DA_PECA_MIN_S, Number(el.getAttribute('data-mt-dur')) || Number(primeira.duracao) || 12);
+      timer = setInterval(proxima, dur * 1000);
+      try { el.dispatchEvent(new CustomEvent('mt:paginas', { detail: { paginas: paginas.length, segundos: dur * paginas.length } })); } catch (e) { /* segue */ }
+    };
+    partida = setTimeout(comecar, 0);
+    return { parar };
   }
 
   /*

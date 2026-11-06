@@ -70,16 +70,19 @@ h1 { margin-top: 2.4cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(12.6cqmin * 
   .funcao { margin-top: .8cqmin; font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
   .registro { margin-top: .4cqmin; font-size: max(var(--mt-piso, 0cqw), 3.6cqmin); }
 }
-/* A lateral: o nome e a área; o registro fica, menor; o kicker sai. */
+/* A lateral: o nome, a área e o registro, uma pessoa embaixo da outra. */
 @container (max-width: 700px) {
-  .kicker { display: none; }
+  /* Com a letra do balcão a área ("Odontopediatria") não cabia ao lado do retrato: o retrato de iniciais sai,
+     e um filete na cor de destaque marca cada pessoa; o texto ganha a largura toda. */
+  .mt-peca { padding: 7cqmin 7cqw; }
+  .foto, .kicker i { display: none; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 5.8cqw); letter-spacing: .04em; line-height: 1.1; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(11.4cqw * var(--mt-escala-titulo, 1))); }
-  .pessoas { margin-top: 7cqw; gap: 6cqw; }
-  .foto { width: 22cqw; height: 22cqw; }
-  .foto span { font-size: 8cqw; }
-  .nome { font-size: max(var(--mt-piso, 0cqw), 7cqw); }
-  .funcao { font-size: max(var(--mt-piso, 0cqw), 6.2cqw); }
-  .registro { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+  .pessoas { margin-top: 5cqw; gap: 4.4cqw; }
+  .pessoas li { display: block; padding-left: 3.6cqw; border-left: 1.2cqw solid var(--mt-destaque); }
+  .nome { display: block; font-size: max(var(--mt-piso, 0cqw), 7cqw); }
+  .funcao { display: block; margin-top: .6cqw; font-size: max(var(--mt-piso, 0cqw), 6.2cqw); line-height: 1.12; }
+  .registro { display: block; margin-top: .4cqw; font-size: max(var(--mt-piso, 0cqw), 6cqw); line-height: 1.12; }
 }
 /* Deitada e baixa: as três lado a lado, o retrato menor, sem o registro. */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {

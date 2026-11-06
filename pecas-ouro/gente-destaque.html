@@ -74,12 +74,15 @@ h1 { margin-top: 2.6cqmin; font: 600 max(var(--mt-piso, 0cqw), calc(13cqmin * va
 }
 /* A lateral: retrato, nome, setor e a conquista; a assinatura sai. */
 @container (max-width: 700px) {
-  .retrato { width: 52cqw; height: 52cqw; }
-  .iniciais { font-size: 18cqw; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; }
+  /* Com a letra do balcão a conquista passava do pé: o retrato um pouco menor e o respiro mais justo. */
+  .mt-peca { row-gap: 4.4cqmin; padding: 6cqmin 7cqw; }
+  .retrato { width: 44cqw; height: 44cqw; }
+  .iniciais { font-size: 15cqw; }
+  .estrela { width: 11cqw; height: 11cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; line-height: 1.1; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
   .setor { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); }
-  .conquista { font-size: max(var(--mt-piso, 0cqw), 7cqw); }
+  .conquista { margin-top: 3.6cqmin; padding-top: 2.6cqmin; font-size: max(var(--mt-piso, 0cqw), 7cqw); line-height: 1.22; }
   .assinatura { display: none; }
 }
 /* Deitada e baixa: o retrato menor, sem a assinatura nem o kicker. */
