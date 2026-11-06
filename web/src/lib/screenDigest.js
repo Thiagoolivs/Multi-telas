@@ -13,6 +13,7 @@
 import { zonesOf, getLayout, THEME_PRESETS } from './screenConfig.js';
 import { typeLabel } from './contentTypes.js';
 import { zonaSoComHorario } from './agenda.js';
+import { nomeDaParte } from './tela.js';
 // Fase 5: a volta é a mesma conta da TV (js/rodizio.js: tetos, prazo, 1 s por palavra).
 import '../../../js/rodizio.js';
 const R = globalThis.MTRodizio;
@@ -128,7 +129,9 @@ export function digest(cfg, ratios, frente) {
   const problemas = [];
   const origens = { data: 0, campanha: 0, manual: 0 };
 
-  zonas.forEach((z) => {
+  // O nome que o cliente lê: "Meio", "Lado", "Faixa de baixo" — e não o do layout ("Principal").
+  zonas.forEach((z0) => {
+    const z = { ...z0, name: nomeDaParte(z0, layout) };
     const dados = (cfg.zonas && cfg.zonas[z.id]) || {};
     if (z.type === 'ticker') {
       const msgs = (dados.messages || []).filter(Boolean).length;
