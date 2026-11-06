@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef, Suspense, lazy } from 'react';
 import {
-  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, Clock, GripVertical, LayoutGrid, Info, CalendarClock, MessageSquare, LayoutTemplate, Pencil, Undo2, Redo2 } from 'lucide-react';
+  ArrowLeft, Plus, ChevronUp, ChevronDown, Copy, Trash2, Check, GripVertical, LayoutGrid, CalendarClock, MessageSquare, LayoutTemplate, Pencil, Undo2, Redo2 } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button, IconButton } from '../components/ui/Button.jsx';
 import { Spinner, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
@@ -10,20 +10,19 @@ import { emitir, aviso } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { ItemForm } from '../components/content/ItemForm.jsx';
 import { EditarPeca } from '../components/content/EditarPeca.jsx';
-import { ItemPreview } from '../components/content/ItemPreview.jsx';
-import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { TypePicker } from '../components/content/TypePicker.jsx';
 import { SettingsForm } from '../components/content/SettingsForm.jsx';
 import { aplicarConteudo } from '../lib/aplicarConteudo.js';
 import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
 import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
-import { MapaDaTela } from '../components/tela/MapaDaTela.jsx';
-import { MudarComIA } from '../components/tela/MudarComIA.jsx';
+import { MiniaturaDoItem } from '../components/tela/MiniaturaDoItem.jsx';
+import { EscolherQuando } from '../components/tela/PorNaTV.jsx';
 import { FaixaDaTela, pecasDaFaixa, comPecas } from '../components/tela/FaixaDaTela.jsx';
-import { papelDaZona, campanhasDaConfig, tamanhosDasZonas, estadoDoRascunho } from '../lib/tela.js';
+import { papelDaZona, campanhasDaConfig, tamanhosDasZonas, nomeDaParte } from '../lib/tela.js';
+import { quandoDoItem, itemComQuando, frasesDoQuando } from '../lib/quando.js';
 import { CampanhasNaTela, semCampanha } from '../components/tela/CampanhasNaTela.jsx';
 import { MiniaturaDaTela } from '../components/tela/MiniaturaDaTela.jsx';
-import { Palco } from '../components/content/VerTelaAgora.jsx';
+import { TvAoVivo } from '../components/tela/TvAoVivo.jsx';
 import { Partes } from '../components/ui/Partes.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
 import { deviceStatus } from '../lib/deviceStatus.js';
@@ -39,7 +38,7 @@ import { Sparkles, Wand2 } from 'lucide-react';
 import { Field, Input, Textarea } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { ai } from '../api.js';
-import { CONTENT_TYPES, typeLabel, itemSummary, defaultConfig, novoItem, ajustesDoEditor } from '../lib/contentTypes.js';
+import { CONTENT_TYPES, itemSummary, nomeDoTipo, defaultConfig, novoItem, ajustesDoEditor } from '../lib/contentTypes.js';
 import { zonesOf, ensureZone, formatoDoLayout } from '../lib/screenConfig.js';
 import { cn } from '../lib/cn.js';
 import { perfilAtual } from '../lib/perfil.js';
@@ -190,10 +189,10 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   // O que gira em cada zona, em poucas palavras, para o desenho da TV.
   function resumoDaZona(z) {
     const d = (cfg && cfg.zonas[z.id]) || {};
-    if (z.type === 'header') { const n = pecasDaFaixa(d).length; return n ? n + (n === 1 ? ' peça' : ' estilos') : 'automático'; }
+    if (z.type === 'header') { const n = pecasDaFaixa(d).length; return n ? n + (n === 1 ? ' peça' : ' estilos') : 'marca e relógio'; }
     if (z.type === 'ticker') { const n = pecasDaFaixa(d).length; return n ? n + (n === 1 ? ' peça' : ' peças') : (Array.isArray(d.fontes) && d.fontes.length ? 'notícias' : 'avisos'); }
     const n = (d.items || []).length;
-    return n ? n + (n === 1 ? ' conteúdo' : ' conteúdos') : 'vazia';
+    return n ? n + (n === 1 ? ' peça' : ' peças') : 'vazia';
   }
 
   /*
@@ -530,13 +529,22 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   }
 
   const current = items[selected];
+  /*
+   * O quadro da TV mostra "Como vai ficar" com rascunho, ou quando a pessoa
+   * escolhe uma peça da fila (fase 10): a peça aparece no lugar dela, na TV de
+   * verdade — e a prévia solta do formulário saiu.
+   */
+  const verPrevia = verComo === 'rascunho' && !!layoutCanonico;
+  function escolherPeca(idx) { setSelected(idx); setVerComo('rascunho'); }
+  // Mexeu: o quadro passa a mostrar como vai ficar.
+  useEffect(() => { if (dirty) setVerComo('rascunho'); }, [dirty]);
   const status = deviceStatus(device.lastSeen);
   const noAr = status.tone === 'ok';
 
   return (
     <div>
       {/* Cabeçalho: voltar, o nome da TV e se ela está no ar. O "Pôr na TV" mora na barra de baixo. */}
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <IconButton icon={ArrowLeft} label="Voltar para as telas" onClick={onBack} />
           <div className="min-w-0">
@@ -551,7 +559,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
           Um caminho de IA só (EXECUTOR item 28): leva ao Criar com esta TV
           marcada. O CampaignDialog fica no código, sem botão, por 30 dias.
         */}
-        {onCriar && <Button variant="secondary" icon={Plus} className="self-start whitespace-nowrap sm:self-auto" onClick={onCriar}>Criar para esta TV</Button>}
+        {onCriar && <Button variant="secondary" icon={Plus} className="shrink-0 whitespace-nowrap" onClick={onCriar}>Criar<span className="max-sm:hidden"> para esta TV</span></Button>}
       </div>
 
       <Partes rotulo="Partes da página da TV" valor={aba} onChange={setAba}
@@ -622,7 +630,6 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
           </div>
         </Panel>
       )}
-      {aba === 'passa' && cfg && <ScreenSummary cfg={cfg} />}
 
       {aba === 'ajustes' && cfg && (
         <Panel>
@@ -651,185 +658,200 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
       ) : (
         <>
           {/*
-            A TV no centro (fase 7): o que ela mostra agora, ao vivo, e, com
-            rascunho, como vai ficar. Ao lado, as partes da TV: tocar numa
-            abre a fila dela embaixo.
+            A PÁGINA DA TV EM FRASES (fase 10, reteste do bloco 8; wireframe B).
+            À esquerda, a TV de verdade (o próprio player num quadro): tocar
+            numa parte escolhe a parte, e as partes têm nome de gente ("o meio",
+            "a faixa de baixo"). Embaixo dela, o que passa na parte. À direita,
+            a peça escolhida para editar. No celular, nessa ordem: a TV, a fila
+            e a edição — o campo de editar subiu de ~1.700 px para menos da
+            metade. Saíram o mapa preto das partes (a TV já é o mapa) e a caixa
+            "Mudar a tela" (uma segunda IA; o Criar é o caminho de IA).
           */}
           <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            <Panel className="flex flex-col overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
-                <span className="text-sm font-semibold text-ink">{dirty && verComo === 'rascunho' ? 'Como vai ficar' : 'Na TV agora'}</span>
-                {dirty && (
+            <div className="min-w-0 space-y-4">
+              <Panel className="flex flex-col overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2.5">
+                  <h2 className="text-lg font-semibold text-ink">{verPrevia ? 'Como vai ficar' : 'Na TV agora'}</h2>
                   <div className="inline-flex gap-1 rounded-full border border-line p-0.5" role="radiogroup" aria-label="O que o quadro mostra">
                     {[['agora', 'Agora'], ['rascunho', 'Como vai ficar']].map(([id, nome]) => (
-                      <button key={id} type="button" role="radio" aria-checked={verComo === id} onClick={() => setVerComo(id)}
-                        className={cn('min-h-8 rounded-full px-3 text-xs font-medium max-sm:min-h-11', verComo === id ? 'bg-surface-2 font-semibold text-ink ring-1 ring-line-strong' : 'text-ink-2 hover:bg-surface-2')}>
+                      <button key={id} type="button" role="radio" aria-checked={(id === 'rascunho') === verPrevia} onClick={() => setVerComo(id)}
+                        className={cn('min-h-8 rounded-full px-3 text-xs font-medium max-sm:min-h-11', (id === 'rascunho') === verPrevia ? 'bg-surface-2 font-semibold text-ink ring-1 ring-line-strong' : 'text-ink-2 hover:bg-surface-2')}>
                         {nome}
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-              <div className="flex min-h-[200px] flex-1 items-center justify-center bg-gradient-to-br from-surface-2 to-accent-soft/40 p-3">
-                {dirty && verComo === 'rascunho' && layoutCanonico
-                  ? <div className="pointer-events-none w-full"><Palco estado={estadoDoRascunho(cfg, layoutCanonico, activeZone && { zona: activeZone.id, indice: selected })} alturaMaxima={340} /></div>
-                  : <MiniaturaDaTela d={device} online={noAr} vazia={!naTV.current} altura={340} pedirDeNovo={publishedAt || 0} />}
-              </div>
-            </Panel>
-            <div className="space-y-3">
-              {layoutCanonico && (
-                <MapaDaTela layout={layoutCanonico} ativa={activeZone && activeZone.id} onEscolher={selectZone} resumo={resumoDaZona}
-                  cfg={cfg} onIA={onCriar ? (z) => onCriar(papelDaZona(z)) : undefined} />
-              )}
-              {/* D28: layout e tema numa frase, com antes e depois; muda o rascunho. */}
-              <MudarComIA cfg={cfg} onAplicar={(novo) => { setCfg(novo); setDirty(true); }} />
-            </div>
-          </div>
-          <div className="mb-4"><CampanhasNaTela cfg={cfg} onTirar={tirarCampanha} onAbrir={onIr ? abrirCampanha : null} /></div>
-
-          {activeZone && (activeZone.type === 'ticker' || activeZone.type === 'header') ? (
-            <Panel>
-              <PanelHeader title={activeZone.type === 'header' ? 'Cabeçalho' : 'Rodapé'}
-                description={activeZone.type === 'header' ? 'A faixa de cima: a marca, a hora e as chamadas.' : 'A faixa de baixo: as peças e os avisos que passam, ou as notícias.'} />
-              <FaixaDaTela key={activeZone.id} tipo={activeZone.type} zona={cfg.zonas[activeZone.id]}
-                onAjustes={() => setAba('ajustes')} onAdicionar={() => setPicker(true)}
-                onChange={(z) => patchCfg((next) => { next.zonas[activeZone.id] = z; })} />
-            </Panel>
-          ) : (
-            <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-              {/* Sequência */}
-              <Panel className="flex flex-col">
-                <PanelHeader title="O que passa" description={items.length ? `${items.length} ${items.length === 1 ? 'conteúdo' : 'conteúdos'}` : undefined}
-                  actions={<>
-                    {/*
-                      "IA" aqui gerava texto solto numa caixa à parte. Criar é
-                      um lugar só (PLANO §5.1): o botão leva ao Criar com esta
-                      tela marcada. A caixa antiga fica escondida por 30 dias.
-                    */}
-                    {onCriar
-                      ? <Button size="sm" variant="secondary" icon={Plus} onClick={() => onCriar(papelDaZona(activeZone))}>Criar</Button>
-                      : <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>}
-                    {/* Fase 8: o violeta da página é o "Pôr na TV". */}
-                    <Button size="sm" variant="secondary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
-                  </>} />
-                {aiOpen && (
-                  <div className="space-y-2 border-b border-line bg-surface-2/50 p-3">
-                    <Textarea rows={2} value={aiBrief} onChange={(e) => setAiBrief(e.target.value)}
-                      placeholder="Descreva o que você quer (ex.: campanha de segurança, tom firme)…" />
-                    {aiErr && <p className="text-xs text-danger">{aiErr}</p>}
-                    <div className="flex items-center justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => setAiOpen(false)}>Cancelar</Button>
-                      <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || !aiBrief.trim()} onClick={generateAI}>
-                        {aiBusy ? 'Gerando…' : 'Gerar conteúdo'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {items.length === 0 ? (
-                  <EmptyState icon={Plus} title="Nada nesta parte ainda" description="Ponha o primeiro: um aviso, uma oferta, uma foto." exemplo={['Novo', 'O que passa aqui', 'um depois do outro']}
-                    action={<Button size="sm" variant="primary" icon={Plus} onClick={() => setPicker(true)}>Adicionar conteúdo</Button>} />
-                ) : (
-                  <ul className="divide-y divide-line">
-                    {items.map((it, idx) => (
-                      <li key={idx}>
-                        <button onClick={() => setSelected(idx)}
-                          className={cn('flex w-full items-center gap-3 px-3 py-2.5 text-left transition', idx === selected ? 'bg-accent-soft/60' : 'hover:bg-surface-2')}>
-                          <GripVertical size={14} className="shrink-0 text-ink-3" />
-                          <span className="w-10 shrink-0"><ItemPreview item={it} className="!rounded" /></span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-medium text-ink">{itemSummary(it)}</span>
-                            <span className="block truncate text-2xs text-ink-3">
-                              {typeLabel(it.type)} · {it.duracao === 0 ? 'fixo' : (it.duracao || 0) + 's'}
-                              {/* De qual campanha veio (item 25): é ela que "Pausar" tira daqui. */}
-                              {it._campanha ? ' · campanha ' + it._campanha : ''}
-                              {it._calendario ? ' · calendário' : ''}
-                              {it.meta && it.meta.prioridade === 'alta' ? ' · importância alta' : ''}
-                              {it.meta && it.meta.prioridade === 'urgente' ? <b className="text-danger"> · urgente</b> : null}
-                              {/* Fase 5: por que a peça tem esta importância (js/importancia.js); troca com um toque no editor. */}
-                              {it.meta && it.meta.porque ? ' · ' + it.meta.porque : ''}
-                              {it.meta && it.meta.exemplo ? <b className="text-warn"> · exemplo: troque o texto para ir ao ar</b> : null}
-                            </span>
-                            {temAgenda(it) && (
-                              <span className="mt-0.5 flex items-center gap-1 truncate text-2xs text-accent" title={resumoAgenda(it.agendamento)}>
-                                <CalendarClock size={11} className="shrink-0" /> {resumoAgenda(it.agendamento)}
-                              </span>
-                            )}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                </div>
+                <div className="flex min-h-[200px] flex-1 items-center justify-center bg-gradient-to-br from-surface-2 to-accent-soft/40 p-3">
+                  {/* O próprio player desenha (fase 10): o rascunho como a TV vai mostrar, com a peça escolhida no lugar dela. */}
+                  {verPrevia
+                    ? <TvAoVivo cfg={cfg} foco={activeZone && { zona: activeZone.id, indice: selected }} alturaMaxima={340}
+                        onParte={(id) => { const z = zones.find((x) => x.id === id); if (z) selectZone(z); }} parteAtiva={activeZone && activeZone.id}
+                        rotulo="Como a TV vai ficar" />
+                    : <MiniaturaDaTela d={device} cfg={naTV.current} online={noAr} vazia={!naTV.current} altura={340} pedirDeNovo={publishedAt || 0} />}
+                </div>
+                {/* As partes da TV, com o nome de quem tem loja e quantas peças giram em cada uma. */}
+                <div className="rolagem-lateral flex items-center gap-1.5 overflow-x-auto border-t border-line px-3 py-2.5 sm:flex-wrap" role="radiogroup" aria-label="Parte da TV">
+                  {zones.map((z) => {
+                    const ativa = !!activeZone && activeZone.id === z.id;
+                    return (
+                      <button key={z.id} type="button" role="radio" aria-checked={ativa} onClick={() => selectZone(z)}
+                        className={cn('min-h-9 shrink-0 whitespace-nowrap rounded-full border px-3 text-sm max-sm:min-h-11', ativa ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-accent/50')}>
+                        {nomeDaParte(z, layoutCanonico)}<span className="font-normal text-ink-3"> · {resumoDaZona(z)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </Panel>
 
-              {/* Editor do item */}
-              <Panel className="flex flex-col">
-                {!current ? (
-                  <EmptyState title="Nada selecionado" description="Selecione um conteúdo na sequência para editar." />
-                ) : (
-                  <>
-                    <PanelHeader title={typeLabel(current.type)}
-                      actions={
-                        <div className="flex items-center gap-0.5">
-                          <IconButton icon={ChevronUp} label="Subir" size={15} onClick={() => moveItem(selected, -1)} />
-                          <IconButton icon={ChevronDown} label="Descer" size={15} onClick={() => moveItem(selected, 1)} />
-                          <IconButton icon={Copy} label="Duplicar" size={15} onClick={() => dupItem(selected)} />
-                          <IconButton icon={Trash2} label="Remover" size={15} className="hover:text-danger" onClick={() => removeItem(selected)} />
-                        </div>
-                      } />
-                    <div className="grid gap-5 p-4 md:grid-cols-2">
-                      <div>
-                        <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Prévia</div>
-                        <ItemPreview item={current} />
-                        <p className="mt-2 flex items-center gap-1.5 text-2xs text-ink-3"><Clock size={12} /> {current.duracao === 0 ? 'Fica fixo na tela' : `${current.duracao || 0}s em tela`}</p>
+              {activeZone && activeZone.type !== 'ticker' && activeZone.type !== 'header' && (
+                <Panel className="flex flex-col">
+                  <PanelHeader title="O que passa" description={nomeDaParte(activeZone, layoutCanonico) + (items.length ? ' · ' + items.length + (items.length === 1 ? ' peça' : ' peças, uma depois da outra') : '')}
+                    actions={<>
+                      {/*
+                        "IA" aqui gerava texto solto numa caixa à parte. Criar é
+                        um lugar só (PLANO §5.1): o botão leva ao Criar com esta
+                        tela marcada. A caixa antiga fica escondida por 30 dias.
+                      */}
+                      {onCriar
+                        ? <Button size="sm" variant="secondary" icon={Plus} onClick={() => onCriar(papelDaZona(activeZone))}>Criar</Button>
+                        : <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>}
+                      {/* Fase 8: o violeta da página é o "Pôr na TV". */}
+                      <Button size="sm" variant="secondary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
+                    </>} />
+                  {aiOpen && (
+                    <div className="space-y-2 border-b border-line bg-surface-2/50 p-3">
+                      <Textarea rows={2} value={aiBrief} onChange={(e) => setAiBrief(e.target.value)}
+                        placeholder="Descreva o que você quer (ex.: campanha de segurança, tom firme)…" />
+                      {aiErr && <p className="text-xs text-danger">{aiErr}</p>}
+                      <div className="flex items-center justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setAiOpen(false)}>Cancelar</Button>
+                        <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || !aiBrief.trim()} onClick={generateAI}>
+                          {aiBusy ? 'Gerando…' : 'Gerar conteúdo'}
+                        </Button>
                       </div>
-                      <div>
-                        <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Conteúdo</div>
+                    </div>
+                  )}
+                  {items.length === 0 ? (
+                    <EmptyState icon={Plus} title="Nada nesta parte ainda" description="Ponha o primeiro: um aviso, uma oferta, uma foto." exemplo={['Novo', 'O que passa aqui', 'um depois do outro']}
+                      action={<Button size="sm" variant="secondary" icon={Plus} onClick={() => setPicker(true)}>Adicionar conteúdo</Button>} />
+                  ) : (
+                    <ul className="divide-y divide-line">
+                      {items.map((it, idx) => (
+                        <li key={idx}>
+                          <button onClick={() => escolherPeca(idx)} aria-current={idx === selected ? 'true' : undefined}
+                            className={cn('flex w-full items-center gap-3 px-3 py-2.5 text-left transition', idx === selected ? 'bg-accent-soft/60' : 'hover:bg-surface-2')}>
+                            <GripVertical size={14} className="shrink-0 text-ink-3 max-sm:hidden" />
+                            {/* A miniatura inteira (fase 10): a foto de verdade e o texto sem corte. */}
+                            <MiniaturaDoItem item={it} largura={64} />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-medium text-ink">{itemSummary(it)}</span>
+                              <span className="block truncate text-xs text-ink-3">
+                                {nomeDoTipo(it.type)}{it.duracao === 0 ? ' · fica fixo' : ''}
+                                {/* De qual campanha veio (item 25): é ela que "Pausar" tira daqui. */}
+                                {it._campanha ? ' · campanha ' + it._campanha : ''}
+                                {it._calendario ? ' · calendário' : ''}
+                                {it.meta && it.meta.prioridade === 'alta' ? ' · importância alta' : ''}
+                                {it.meta && it.meta.prioridade === 'urgente' ? <b className="text-danger"> · urgente</b> : null}
+                                {/* Fase 5: por que a peça tem esta importância (js/importancia.js); troca com um toque no editor. */}
+                                {it.meta && it.meta.porque ? ' · ' + it.meta.porque : ''}
+                                {it.meta && it.meta.exemplo ? <b className="text-warn"> · exemplo: troque o texto para ir ao ar</b> : null}
+                              </span>
+                              {temAgenda(it) && (
+                                <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-accent" title={resumoAgenda(it.agendamento)}>
+                                  <CalendarClock size={12} className="shrink-0" /> {quandoDoItem(it).quando === 'outro' ? resumoAgenda(it.agendamento) : frasesDoQuando(quandoDoItem(it))}
+                                </span>
+                              )}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Panel>
+              )}
+            </div>
+
+            <div className="min-w-0 space-y-4">
+              {activeZone && (activeZone.type === 'ticker' || activeZone.type === 'header') ? (
+                <Panel>
+                  <PanelHeader title={nomeDaParte(activeZone, layoutCanonico)}
+                    description={activeZone.type === 'header' ? 'A faixa de cima: a marca, a hora e as chamadas.' : 'A faixa de baixo: as peças e os avisos que passam, ou as notícias.'} />
+                  <FaixaDaTela key={activeZone.id} tipo={activeZone.type} zona={cfg.zonas[activeZone.id]}
+                    onAjustes={() => setAba('ajustes')} onAdicionar={() => setPicker(true)}
+                    onChange={(z) => patchCfg((next) => { next.zonas[activeZone.id] = z; })} />
+                </Panel>
+              ) : (
+                <Panel className="flex flex-col">
+                  {!current ? (
+                    <EmptyState title="Nada escolhido" description="Toque numa peça de “O que passa” para mudar o texto, a foto ou quando ela aparece." />
+                  ) : (
+                    <>
+                      {/* O nome da peça, e não o tipo técnico ("Texto / Comunicado"). A prévia é a própria TV, ao lado. */}
+                      <PanelHeader title={itemSummary(current)} description={nomeDoTipo(current.type) + ' · ' + nomeDaParte(activeZone, layoutCanonico)}
+                        actions={
+                          <div className="flex items-center gap-0.5">
+                            <IconButton icon={ChevronUp} label="Passar antes" size={15} onClick={() => moveItem(selected, -1)} />
+                            <IconButton icon={ChevronDown} label="Passar depois" size={15} onClick={() => moveItem(selected, 1)} />
+                            <IconButton icon={Copy} label="Duplicar" size={15} onClick={() => dupItem(selected)} />
+                            <IconButton icon={Trash2} label="Tirar da TV" size={15} className="hover:text-danger" onClick={() => removeItem(selected)} />
+                          </div>
+                        } />
+                      <div className="p-4">
                         {current.type === 'peca-html' && (
                           <div className="mb-3">
-                            <Button variant="primary" icon={Pencil} className="w-full" onClick={() => setEditandoPeca(true)}>Editar a peça</Button>
-                            <p className="mt-1.5 text-2xs text-ink-3">Textos, cores, fonte, o que aparece, outro desenho — ou peça à IA o que mudar.</p>
+                            <Button variant="secondary" icon={Pencil} className="w-full" onClick={() => setEditandoPeca(true)}>Editar a peça</Button>
+                            <p className="mt-1.5 text-xs text-ink-3">Textos, cores, fonte, o que aparece, outro desenho — ou peça à IA o que mudar.</p>
                           </div>
                         )}
                         {current.type === 'composicao' && (
-                          <Button variant="primary" icon={LayoutGrid} className="mb-3 w-full" onClick={() => setCompOpen(true)}>
-                            Abrir editor visual ({(current.elementos && current.elementos.length) || 0} elemento(s))
+                          <Button variant="secondary" icon={LayoutGrid} className="mb-3 w-full" onClick={() => setCompOpen(true)}>
+                            Mudar a arte
                           </Button>
                         )}
                         {/*
                           Fase 7, os três níveis: o conteúdo e o "quando mostrar" à vista;
                           aparência, tempo e a importância (D24) em "Mais ajustes".
+                          Fase 10: o "Quando" em frases, o mesmo do "Pôr na TV"; os dias
+                          e as horas à mão ficam em "Mais ajustes".
                         */}
                         <ItemForm item={current} onChange={(it) => updateItem(selected, it)}
                           maisAjustes={(
-                            <div>
-                              <span className="mb-1.5 block text-xs font-medium text-ink-2">Importância</span>
-                              <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Importância">
-                                {PRIORIDADES.map(([id, nome]) => {
-                                  const atual = ((current.meta && current.meta.prioridade) || 'normal') === id;
-                                  return (
-                                    <button key={id} type="button" role="radio" aria-checked={atual}
-                                      onClick={() => updateItem(selected, { ...current, meta: { ...(current.meta || {}), prioridade: id } })}
-                                      className={cn('rounded-md border px-2.5 py-1 text-xs max-sm:min-h-11', atual ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3')}>
-                                      {nome}
-                                    </button>
-                                  );
-                                })}
+                            <div className="space-y-4">
+                              <div>
+                                <span className="mb-1.5 block text-xs font-medium text-ink-2">Importância</span>
+                                <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Importância">
+                                  {PRIORIDADES.map(([id, nome]) => {
+                                    const atual = ((current.meta && current.meta.prioridade) || 'normal') === id;
+                                    return (
+                                      <button key={id} type="button" role="radio" aria-checked={atual}
+                                        onClick={() => updateItem(selected, { ...current, meta: { ...(current.meta || {}), prioridade: id } })}
+                                        className={cn('rounded-md border px-2.5 py-1 text-xs max-sm:min-h-11', atual ? 'border-accent bg-accent/10 font-semibold text-ink' : 'border-line text-ink-2 hover:border-ink-3')}>
+                                        {nome}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                <p className="mt-1 text-2xs text-ink-3">{(PRIORIDADES.find(([id]) => id === ((current.meta && current.meta.prioridade) || 'normal')) || PRIORIDADES[0])[2]}</p>
                               </div>
-                              <p className="mt-1 text-2xs text-ink-3">{(PRIORIDADES.find(([id]) => id === ((current.meta && current.meta.prioridade) || 'normal')) || PRIORIDADES[0])[2]}</p>
+                              <QuandoMostrar agendamento={current.agendamento}
+                                onChange={(ag) => updateItem(selected, { ...current, agendamento: ag })} />
                             </div>
-                          )} />
-                        <div className="mt-4">
-                          <QuandoMostrar agendamento={current.agendamento}
-                            onChange={(ag) => updateItem(selected, { ...current, agendamento: ag })} />
-                        </div>
+                          )}
+                          quando={(
+                            <EscolherQuando valor={quandoDoItem(current)} outro={temAgenda(current) ? resumoAgenda(current.agendamento) : ''}
+                              onChange={(escolha) => updateItem(selected, itemComQuando(current, escolha))} />
+                          )}
+                          maisRotulo="aparência, importância, dias e horas" />
                       </div>
-                    </div>
-                  </>
-                )}
-              </Panel>
+                    </>
+                  )}
+                </Panel>
+              )}
+              <CampanhasNaTela cfg={cfg} onTirar={tirarCampanha} onAbrir={onIr ? abrirCampanha : null} />
             </div>
-          )}
+          </div>
+          {/* O resumo da TV embaixo: quanto tempo ela leva para dar a volta, e o que conferir. */}
+          <ScreenSummary cfg={cfg} />
         </>
       )}
 

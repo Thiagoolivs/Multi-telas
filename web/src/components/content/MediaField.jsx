@@ -31,6 +31,7 @@ export function MediaField({ value, onChange, accept = 'image' }) {
     } finally { setBusy(false); }
   }
 
+  const interno = /^\/(media|pecas-ouro)\//.test(String(value || ''));
   const isVideo = accept === 'video';
   const isImage = accept === 'image';
   const isDoc = !isVideo && !isImage; // pptx/pdf etc.
@@ -56,9 +57,10 @@ export function MediaField({ value, onChange, accept = 'image' }) {
       <div className="flex items-center gap-2">
         <input ref={inputRef} type="file" accept={inputAccept} className="hidden" onChange={onFile} />
         <Button type="button" size="sm" variant="secondary" icon={UploadCloud} onClick={() => inputRef.current && inputRef.current.click()} disabled={busy}>
-          {busy ? 'Enviando…' : value ? 'Trocar arquivo' : 'Enviar arquivo'}
+          {busy ? 'Enviando…' : value ? (isImage ? 'Trocar a foto' : 'Trocar arquivo') : (isImage ? 'Escolher a foto' : 'Enviar arquivo')}
         </Button>
-        <Input value={value || ''} onChange={(e) => onChange(e.target.value)} placeholder="ou cole uma URL" className="flex-1" />
+        {/* O endereço interno ("/media/ten_…") não diz nada ao cliente (reteste da fase 10): o campo fica para colar um da internet. */}
+        <Input value={interno ? '' : (value || '')} onChange={(e) => onChange(e.target.value)} placeholder="ou cole o endereço de uma da internet" className="flex-1" aria-label="Endereço na internet" />
       </div>
       {error && <p className="text-xs text-danger">{error}</p>}
       {aviso && <p className="text-xs text-warn">{aviso}</p>}

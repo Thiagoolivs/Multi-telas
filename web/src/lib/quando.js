@@ -45,3 +45,32 @@ export function frasesDoQuando({ quando, ate, faixa } = {}) {
   if (quando === 'hora') return 'todo dia, ' + ((FAIXAS[faixa] || FAIXAS.manha).rotulo).toLowerCase();
   return 'sempre';
 }
+
+/*
+ * O CAMINHO DE VOLTA (fase 10, reteste do bloco 8): a peça que já está na TV
+ * mostrava o "Quando" antigo, com dias e horas, e o "Pôr na TV" falava em
+ * frases. Aqui o `agendamento` da peça vira a escolha em frases, para a
+ * página da TV usar o mesmo EscolherQuando. O que não cabe numa frase (dias
+ * da semana, horas à mão) é `outro`: fica no detalhado, em "Mais ajustes".
+ */
+const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+export function quandoDoItem(item, hoje = new Date()) {
+  const a = item && item.agendamento;
+  if (!a || !a.ativo) return { quando: 'sempre', ate: '', faixa: 'manha' };
+  const semDias = !Array.isArray(a.dias) || !a.dias.length;
+  const faixa = ['manha', 'almoco', 'tarde', 'saida'].find((id) => FAIXAS[id].horaInicio === a.horaInicio && FAIXAS[id].horaFim === a.horaFim);
+  const semHora = !a.horaInicio && !a.horaFim;
+  if (semDias && faixa && !a.dataFim) return { quando: 'hora', ate: '', faixa };
+  if (semDias && semHora && a.dataFim) {
+    if (a.dataFim === iso(hoje) && (!a.dataInicio || a.dataInicio === a.dataFim)) return { quando: 'hoje', ate: '', faixa: 'manha' };
+    return { quando: 'ate', ate: a.dataFim, faixa: 'manha' };
+  }
+  return { quando: 'outro', ate: '', faixa: 'manha' };
+}
+
+// A escolha em frases de volta na peça: "Sempre" tira o horário que ela tinha.
+export function itemComQuando(item, escolha) {
+  const { agendamento, ...sem } = item || {}; // eslint-disable-line no-unused-vars
+  if (!escolha || escolha.quando === 'sempre') return sem;
+  return comQuando(sem, escolha);
+}

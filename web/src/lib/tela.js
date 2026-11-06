@@ -161,3 +161,25 @@ export function estadoDoRascunho(cfg, layout, foco) {
   const emPe = (layout.orientation || '') === 'portrait';
   return { layoutId: s.layoutId, margem: Number(s.margemSegura) || 0, tela: emPe ? { w: 1080, h: 1920 } : { w: 1920, h: 1080 }, zonas };
 }
+
+/*
+ * O NOME DA PARTE, PARA O CLIENTE (fase 10, reteste do bloco 8). O layout
+ * chama as partes de "Cabeçalho, Principal, Secundária, Zona 2"; quem tem
+ * loja fala "a parte de cima, o meio, o lado, a faixa de baixo" (BLOCO-8 §2.4).
+ */
+const NOME_DA_PARTE = {
+  Principal: 'Meio', Lateral: 'Lado', Esquerda: 'Esquerda', Direita: 'Direita',
+  Superior: 'Em cima', Inferior: 'Embaixo', 'Vídeo / Live': 'Meio', 'Painel Dinâmico': 'Lado',
+};
+export function nomeDaParte(zona, layout) {
+  if (!zona) return 'Parte da TV';
+  if (zona.type === 'header') return 'Parte de cima';
+  if (zona.type === 'ticker') return 'Faixa de baixo';
+  const playlists = ((layout && layout.zones) || []).filter((z) => z.type === 'playlist');
+  if (playlists.length === 1) return 'Meio';
+  const n = String(zona.name || '');
+  if (/^Zona \d/.test(n)) return n.replace(/^Zona/, 'Parte');
+  // Em pé, a segunda parte fica embaixo da primeira, não do lado.
+  if (n === 'Secundária') return layout && layout.orientation === 'portrait' ? 'Embaixo' : 'Lado';
+  return NOME_DA_PARTE[n] || (papelDaZona(zona) === 'principal' ? 'Meio' : 'Lado');
+}
