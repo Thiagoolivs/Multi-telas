@@ -128,6 +128,7 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
   }
 
   const [aba, setAba] = React.useState('aparencia');
+  const idMarca = React.useId();
   const layout = getLayout(s.layoutId);
   const [trocaPendente, setTrocaPendente] = React.useState(null);
   function escolherLayout(id) {
@@ -202,7 +203,8 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
                   return <><b>{nomeDoLayout(trocaPendente.id)}</b> não tem {uma ? 'esta parte' : 'estas partes'}: {partes.join(', ')}. O que está {uma ? 'nela' : 'nelas'} fica guardado e volta se você voltar ao jeito de agora.</>;
                 })()}
                 <div className="mt-2 flex gap-2">
-                  <Button size="sm" variant="primary" onClick={() => { set({ layoutId: trocaPendente.id }); setTrocaPendente(null); }}>Trocar assim mesmo</Button>
+                  {/* Um violeta por tela: o da página é o "Pôr na TV". */}
+                  <Button size="sm" variant="secondary" onClick={() => { set({ layoutId: trocaPendente.id }); setTrocaPendente(null); }}>Trocar assim mesmo</Button>
                   <Button size="sm" variant="ghost" onClick={() => setTrocaPendente(null)}>Manter o de agora</Button>
                 </div>
               </div>
@@ -246,12 +248,13 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
                   moldura; o botão é a parte de cima, e a caixa vem embaixo.
                 */}
                 <div className={cn('rounded-lg border', usaMarca ? 'border-accent bg-accent-soft/40' : 'border-line hover:border-accent/50')}>
-                  <button type="button" onClick={() => escolherTema('marca')} aria-pressed={usaMarca} className="block w-full rounded-lg p-3 text-left">
+                  {/* O nome do botão é o título; a frase de baixo é a descrição (antes o leitor de tela lia as duas como nome). */}
+                  <button type="button" onClick={() => escolherTema('marca')} aria-pressed={usaMarca} aria-labelledby={idMarca + '-nome'} aria-describedby={idMarca + '-desc'} className="block w-full rounded-lg p-3 text-left">
                     <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                      As cores da minha marca
-                      <span className="flex gap-1">{coresMarca.slice(0, 4).map((c) => <span key={c} className="h-3.5 w-3.5 rounded-full border border-line" style={{ background: c }} />)}</span>
+                      <span id={idMarca + '-nome'}>As cores da minha marca</span>
+                      <span className="flex gap-1" aria-hidden="true">{coresMarca.slice(0, 4).map((c) => <span key={c} className="h-3.5 w-3.5 rounded-full border border-line" style={{ background: c }} />)}</span>
                     </span>
-                    <span className="mt-1 block text-2xs text-ink-3">A tela inteira sai da cor da empresa, com o contraste calculado.</span>
+                    <span id={idMarca + '-desc'} className="mt-1 block text-2xs text-ink-3">A tela inteira sai da cor da empresa, com o contraste calculado.</span>
                   </button>
                   {usaMarca && <div className="px-3 pb-3"><Checkbox label="Versão clara" checked={theme.marcaClara === true} onChange={(e) => setTheme({ marcaClara: e.target.checked })} /></div>}
                 </div>
