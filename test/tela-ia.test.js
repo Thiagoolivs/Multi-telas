@@ -129,7 +129,9 @@ test('o painel: aplica numa cópia (o fundo pintado à mão sai, o relógio sai 
   assert.match(M, /<PreviaDaTela cfg=\{proposta\.depois\} rotulo="Como fica" \/>/);
   assert.match(M, /onAplicar\(proposta\.depois\);/);
   assert.match(M, /acao: \{ rotulo: 'Desfazer', on: \(\) => onAplicar\(antes\) \}/);
-  assert.match(ler('web/src/pages/ContentEditorPage.jsx'), /<MudarComIA cfg=\{cfg\} onAplicar=\{\(novo\) => \{ setCfg\(novo\); setDirty\(true\); \}\} \/>/, 'não muda só o rascunho');
+  // Fase 10 (reteste do bloco 8): a caixa "Mudar a tela" saiu da página da TV — era uma segunda IA ao
+  // lado do Criar. O componente continua aqui, sem porta, e o teste dele também.
+  assert.doesNotMatch(ler('web/src/pages/ContentEditorPage.jsx'), /<MudarComIA /, 'a segunda IA voltou à página da TV');
   assert.match(ler('web/src/components/tela/PreviaDaTela.jsx'), /gradeDaMiniatura\(layout, \{ minimo: false \}\)/, 'a prévia distorce as faixas');
   assert.match(ler('web/src/components/tela/FaixaDaTela.jsx'), /<Checkbox label="Relógio" checked=\{z\.relogio !== false\}/);
   const srv = ler('server.js');
