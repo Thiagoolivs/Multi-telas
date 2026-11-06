@@ -32,6 +32,8 @@ function bloqueio(parts, metodo) {
   // Exportar e excluir dados é direito do titular, inclusive o GET da exportação.
   if (area === 'privacidade') return recusa;
   if (muda && (area === 'billing' || area === 'team')) return recusa;
+  // Fase 13: aprovar o que vai ao ar e escolher a loja de cada pessoa é decisão do dono, não do suporte.
+  if (muda && (area === 'aprovacoes' || area === 'lojas')) return recusa;
   if (muda && area === 'auth' && (acao === 'password' || acao === 'profile')) return recusa;
   return '';
 }

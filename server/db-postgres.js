@@ -387,6 +387,20 @@ async function init() {
     ALTER TABLE murais ADD COLUMN IF NOT EXISTS aprovar BOOLEAN;
     ALTER TABLE muralfotos ADD COLUMN IF NOT EXISTS pendente BOOLEAN;
     ALTER TABLE indicadores ADD COLUMN IF NOT EXISTS sentido TEXT;
+    -- Fase 13: equipe e redes (server/aprovacao.js e server/permissoes.js).
+    -- A conta liga a aprovação; o que o membro põe na TV espera o OK do dono.
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS aprovacao INTEGER;
+    CREATE TABLE IF NOT EXISTS aprovacoes (
+      id TEXT PRIMARY KEY, tenant_id TEXT, autor_id TEXT, autor_nome TEXT, descricao TEXT,
+      itens TEXT, telas_chave TEXT, estado TEXT, motivo TEXT, revisor_id TEXT, revisor_nome TEXT,
+      extra TEXT, created_at BIGINT, decidido_em BIGINT, visto_em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_aprovacoes_tenant ON aprovacoes(tenant_id, estado, created_at);
+    -- As lojas (grupos de TVs) que um membro alcança. Sem linha = todas.
+    CREATE TABLE IF NOT EXISTS acesso_lojas (
+      user_id TEXT PRIMARY KEY, tenant_id TEXT, grupos TEXT, updated_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_acesso_lojas_tenant ON acesso_lojas(tenant_id);
   `);
 }
 
@@ -977,6 +991,85 @@ async function marcarLoteDesfeito(id, tenantId) { await pool.query('UPDATE lotes
 async function listarLotes(tenantId, n) {
   const r = await pool.query('SELECT * FROM lotes WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT $2', [tenantId, n || 10]);
   return r.rows.map((x) => mapLote(x, false));
+}
+
+/* ---------------- Fase 13: aprovação e lojas por membro ---------------- */
+const mapAprovacao = (r, comItens) => {
+  if (!r) return null;
+  const itens = jsonOu(r.itens, []);
+  return {
+    id: r.id, autorId: r.autor_id, autorNome: r.autor_nome || '', descricao: r.descricao || '', estado: r.estado,
+    motivo: r.motivo || '', revisorId: r.revisor_id || '', revisorNome: r.revisor_nome || '', extra: jsonOu(r.extra, null),
+    criadoEm: Number(r.created_at) || 0, decididoEm: Number(r.decidido_em) || 0, vistoEm: Number(r.visto_em) || 0,
+    telas: itens.map((i) => ({ id: i.id, nome: i.nome || '' })),
+    ...(comItens ? { itens } : {}),
+  };
+};
+async function setAprovacaoDaConta(tenantId, ligada) { await pool.query('UPDATE tenants SET aprovacao = $1 WHERE id = $2', [ligada ? 1 : 0, tenantId]); }
+async function criarAprovacao(tenantId, a) {
+  const id = 'apr_' + rid(14);
+  await pool.query(`INSERT INTO aprovacoes (id, tenant_id, autor_id, autor_nome, descricao, itens, telas_chave, estado, motivo, revisor_id, revisor_nome, extra, created_at, decidido_em, visto_em)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente', NULL, NULL, NULL, $8, $9, NULL, NULL)`,
+  [id, tenantId, a.autorId, String(a.autorNome || '').slice(0, 120), String(a.descricao || '').slice(0, 160),
+    JSON.stringify(a.itens || []), String(a.telasChave || '').slice(0, 4000), a.extra ? JSON.stringify(a.extra) : null, Date.now()]);
+  return mapAprovacao((await pool.query('SELECT * FROM aprovacoes WHERE id = $1', [id])).rows[0], false);
+}
+async function lerAprovacao(id, tenantId) {
+  return mapAprovacao((await pool.query('SELECT * FROM aprovacoes WHERE id = $1 AND tenant_id = $2', [String(id || ''), tenantId])).rows[0], true);
+}
+async function listarAprovacoes(tenantId, o = {}) {
+  const f = [];
+  const v = [tenantId];
+  if (o.estado) { v.push(o.estado); f.push('estado = $' + v.length); }
+  if (o.autorId) { v.push(o.autorId); f.push('autor_id = $' + v.length); }
+  v.push(Math.max(1, Math.min(200, Number(o.limite) || 30)));
+  const r = await pool.query('SELECT * FROM aprovacoes WHERE tenant_id = $1' + f.map((x) => ' AND ' + x).join('') + ' ORDER BY created_at DESC LIMIT $' + v.length, v);
+  return r.rows.map((x) => mapAprovacao(x, false));
+}
+async function contarAprovacoes(tenantId, o = {}) {
+  if (o.naoVistasDe) {
+    return Number((await pool.query("SELECT COUNT(*)::int AS n FROM aprovacoes WHERE tenant_id = $1 AND autor_id = $2 AND estado IN ('aprovada', 'recusada') AND visto_em IS NULL",
+      [tenantId, o.naoVistasDe])).rows[0].n) || 0;
+  }
+  return Number((await pool.query("SELECT COUNT(*)::int AS n FROM aprovacoes WHERE tenant_id = $1 AND estado = 'pendente'", [tenantId])).rows[0].n) || 0;
+}
+// Troca o estado só se ainda está em `de` (dois revisores ao mesmo tempo: um só ganha). Devolve se trocou.
+async function mudarEstadoDaAprovacao(id, tenantId, de, para, c = {}) {
+  const r = await pool.query(`UPDATE aprovacoes SET estado = $1, motivo = COALESCE($2, motivo), revisor_id = COALESCE($3, revisor_id),
+      revisor_nome = COALESCE($4, revisor_nome), decidido_em = COALESCE($5, decidido_em), extra = COALESCE($6, extra)
+    WHERE id = $7 AND tenant_id = $8 AND estado = $9`,
+  [para, c.motivo == null ? null : String(c.motivo).slice(0, 500), c.revisorId || null, c.revisorNome == null ? null : String(c.revisorNome).slice(0, 120),
+    c.decididoEm || null, c.extra ? JSON.stringify(c.extra) : null, id, tenantId, de]);
+  return r.rowCount > 0;
+}
+// O pedido novo do mesmo autor para as mesmas TVs substitui o que ainda esperava.
+async function substituirAprovacoes(tenantId, autorId, telasChave, menosId) {
+  const r = await pool.query("UPDATE aprovacoes SET estado = 'substituida', decidido_em = $1 WHERE tenant_id = $2 AND autor_id = $3 AND telas_chave = $4 AND estado = 'pendente' AND id <> $5",
+    [Date.now(), tenantId, autorId, telasChave, menosId]);
+  return r.rowCount || 0;
+}
+async function marcarAprovacoesVistas(tenantId, autorId) {
+  await pool.query("UPDATE aprovacoes SET visto_em = $1 WHERE tenant_id = $2 AND autor_id = $3 AND estado IN ('aprovada', 'recusada') AND visto_em IS NULL", [Date.now(), tenantId, autorId]);
+}
+async function lojasDoUsuario(userId, tenantId) {
+  const r = (await pool.query('SELECT grupos FROM acesso_lojas WHERE user_id = $1 AND tenant_id = $2', [userId, tenantId])).rows[0];
+  const g = r ? jsonOu(r.grupos, null) : null;
+  return Array.isArray(g) ? g : null;
+}
+async function lojasDaConta(tenantId) {
+  const saida = {};
+  for (const r of (await pool.query('SELECT user_id, grupos FROM acesso_lojas WHERE tenant_id = $1', [tenantId])).rows) {
+    const g = jsonOu(r.grupos, null);
+    if (Array.isArray(g)) saida[r.user_id] = g;
+  }
+  return saida;
+}
+// `grupos` null = todas as TVs (apaga a linha).
+async function salvarLojasDoUsuario(tenantId, userId, grupos) {
+  if (!Array.isArray(grupos)) { await pool.query('DELETE FROM acesso_lojas WHERE user_id = $1 AND tenant_id = $2', [userId, tenantId]); return; }
+  await pool.query(`INSERT INTO acesso_lojas (user_id, tenant_id, grupos, updated_at) VALUES ($1, $2, $3, $4)
+    ON CONFLICT (user_id) DO UPDATE SET tenant_id = EXCLUDED.tenant_id, grupos = EXCLUDED.grupos, updated_at = EXCLUDED.updated_at`,
+  [userId, tenantId, JSON.stringify(grupos), Date.now()]);
 }
 
 /* ---------------- Calendário da empresa (D23) ---------------- */
@@ -1836,6 +1929,9 @@ async function dadosDoTenant(tenantId) {
     usoDaIA: await varios('SELECT tipo, creditos, custo_centavos, referencia, created_at FROM uso_ia WHERE tenant_id = $1'),
     chamados: await varios('SELECT * FROM reclamacoes WHERE tenant_id = $1'),
     acessosDoSuporte: await varios('SELECT * FROM acessos_suporte WHERE tenant_id = $1'),
+    // Fase 13: os pedidos de aprovação e as lojas de cada membro.
+    pedidosDeAprovacao: await varios('SELECT * FROM aprovacoes WHERE tenant_id = $1'),
+    lojasDaEquipe: await varios('SELECT user_id, grupos, updated_at FROM acesso_lojas WHERE tenant_id = $1'),
   };
 }
 
@@ -1879,7 +1975,7 @@ async function apagarTenant(tenantId) {
      * apagar não tem volta, guardar e decidir o prazo depois tem (revisão do
      * consultor; o prazo é do dono com o advogado).
      */
-    for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
+    for (const tabela of ['aprovacoes', 'acesso_lojas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes',
       'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
@@ -2023,8 +2119,11 @@ async function registrarExibicoes(deviceId, tenantId, lote, itens) {
   finally { c.release(); }
 }
 async function relatorioExibicoes(tenantId, de, ate, deviceId) {
-  const f = deviceId ? ' AND e.device_id = $4' : '';
-  const v = deviceId ? [tenantId, de, ate, deviceId] : [tenantId, de, ate];
+  // Fase 13: uma lista de telas (a loja, ou as que o membro alcança). Lista vazia = nada.
+  if (Array.isArray(deviceId) && !deviceId.length) return { porConteudo: [], porTela: [], porHora: [] };
+  const lista = Array.isArray(deviceId) ? deviceId.map(String) : null;
+  const f = lista ? ' AND e.device_id = ANY($4::text[])' : deviceId ? ' AND e.device_id = $4' : '';
+  const v = lista ? [tenantId, de, ate, lista] : deviceId ? [tenantId, de, ate, deviceId] : [tenantId, de, ate];
   const porConteudo = (await pool.query(`SELECT e.chave, MAX(e.rotulo) AS rotulo, MAX(e.tipo) AS tipo,
       SUM(e.vezes)::bigint AS vezes, SUM(e.segundos)::bigint AS segundos, COUNT(DISTINCT e.device_id)::int AS telas
     FROM exibicoes e WHERE e.tenant_id = $1 AND e.hora >= $2 AND e.hora < $3${f}
@@ -2054,6 +2153,8 @@ module.exports = {
   decisoesDoConteudo, decidirConteudo,
   listarCalendario, eventoDoCalendario, salvarEvento, removerEvento,
   salvarLote, loteDaConta, marcarLoteDesfeito, listarLotes,
+  setAprovacaoDaConta, criarAprovacao, lerAprovacao, listarAprovacoes, contarAprovacoes, mudarEstadoDaAprovacao, substituirAprovacoes, marcarAprovacoesVistas,
+  lojasDoUsuario, lojasDaConta, salvarLojasDoUsuario,
   init,
   createAccount, createUser, getUserByEmail, getUserById, listUsers,
   getUserByGoogle, setUserGoogle, setUserPassword, setUserName, setTenantName, setTenantPerfil, setAutomaticos,

@@ -32,6 +32,9 @@ module.exports = function (ctx) {
   const fotoQr = require('../foto-qr.js');
   const automaticos = require('../automaticos.js');
   const kpis = require('../kpis.js');
+  // Fase 13: a loja de cada membro e a aprovação antes de ir ao ar.
+  const permissoes = require('../permissoes.js');
+  const aprovacao = require('../aprovacao.js');
   const hostsMidia = (() => {
     try { return [new URL(storage.publicUrl('x')).host]; } catch (e) { return []; }
   })();
@@ -246,6 +249,8 @@ module.exports = function (ctx) {
          */
         if (b.reconectar) {
           const antiga = await db.getDevice(String(b.reconectar));
+          // A TV de outra loja não é reconectada por quem não a alcança (fase 13).
+          if (antiga && !permissoes.podeTela(sess, antiga)) return sendJson(res, 404, { error: 'tela não encontrada' });
           const nao = reconectar.impedimento(antiga, d, sess.tenant_id, Date.now(), PAIR_ONLINE_MS);
           if (nao) return sendJson(res, nao.status, { error: nao.error });
           return sendJson(res, 200, await reconectarTela(antiga, d, sess));
@@ -344,7 +349,8 @@ module.exports = function (ctx) {
     /* ----- Listar meus devices (requer login) ----- */
     if (req.method === 'GET' && parts[1] === 'devices' && parts.length === 2) {
       if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
-      const rows = await db.listDevices(sess.tenant_id);
+      // Fase 13: o membro de uma loja vê só as TVs dela.
+      const rows = permissoes.filtrar(sess, await db.listDevices(sess.tenant_id));
       const list = rows.map((d) => {
         const info = (() => { try { return d.info ? JSON.parse(d.info) : null; } catch (_) { return null; } })();
         return {
@@ -365,7 +371,11 @@ module.exports = function (ctx) {
       const device = await db.getDevice(id);
       if (!device) return sendJson(res, 404, { error: 'device não encontrado' });
       const sub = parts[3];
-      const owns = sess && device.tenant_id === sess.tenant_id;
+      /*
+       * Da conta E alcançável por esta pessoa (fase 13): o membro de uma loja
+       * não lê nem grava a TV de outra loja — nem pelo endereço direto.
+       */
+      const owns = !!sess && device.tenant_id === sess.tenant_id && permissoes.podeTela(sess, device);
       /*
        * Device token: SÓ pelo cabeçalho (x-device-token).
        *
@@ -517,6 +527,16 @@ module.exports = function (ctx) {
           // TV vazia lida vazia: a gravação confere contra a versão de agora (duas primeiras gravações juntas ainda não se atropelam).
           const comVersao = vaziaLidaVazia ? (Number(device.updated_at) || 0)
             : versaoPedida != null && Number.isFinite(versaoPedida) ? versaoPedida : null;
+          /*
+           * Aprovação ligada e quem grava é membro (fase 13): não vai para a
+           * TV, vira pedido — com a versão que ele leu, para a aprovação
+           * conferir. 202: aceito, ainda não no ar.
+           */
+          if (sess.precisaAprovar) {
+            const pedido = await aprovacao.pedir(db, sess, [{ device, cfg, versao: comVersao != null ? comVersao : (Number(device.updated_at) || 0) }],
+              String((query && query.descricao) || '').slice(0, 120) || (device.name ? 'Mudança em ' + device.name : 'Mudança na TV'));
+            return sendJson(res, 202, aprovacao.resposta(pedido));
+          }
           const updatedAt = await db.setDeviceConfig(id, JSON.stringify(cfg), device.name || cfg.settings.nome, comVersao);
           // Alguém gravou entre a conferência lá em cima e aqui (o corpo leva tempo para chegar).
           if (updatedAt == null) {
@@ -627,6 +647,8 @@ module.exports = function (ctx) {
         if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
         return readBody(req, res, async (b) => {
           const grupo = String((b && b.grupo) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+          // O membro de loja só move a TV entre as lojas dele (fase 13): senão ela sairia do alcance dele, ou entraria no de outro.
+          if (!permissoes.podeGrupo(sess, grupo)) return sendJson(res, 403, { error: 'Você só pode pôr esta TV numa das suas lojas.', code: 'loja' });
           await db.setGrupoDaTela(id, grupo);
           return sendJson(res, 200, { ok: true, grupo });
         });
@@ -916,7 +938,11 @@ module.exports = function (ctx) {
         const de = String((b && b.de) || '').trim();
         const para = String((b && b.para) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
         if (!de) return sendJson(res, 400, { error: 'qual grupo?' });
+        // Renomear vale para a conta inteira: o membro de loja não renomeia (fase 13).
+        if (permissoes.restrito(sess)) return sendJson(res, 403, { error: 'Só o dono ou um administrador renomeia uma loja.', code: 'loja' });
         const telas = await db.renomearGrupo(sess.tenant_id, de, para);
+        // Quem só via aquele grupo continua vendo, com o nome novo.
+        await permissoes.renomearNasLojas(db, sess.tenant_id, de, para);
         return sendJson(res, 200, { ok: true, telas, grupo: para });
       });
     }
@@ -941,14 +967,18 @@ module.exports = function (ctx) {
       const muralNasTelas = {};
       for (const cod of codigosDeMural) {
         // Item de mural posto à mão numa zona (a config é JSON compacto: sem espaço depois dos dois-pontos).
-        const naZona = (await db.ondeAparece(sess.tenant_id, '"codigo":"' + cod + '"')).telas;
-        const viaConta = (telas || []).filter((d) => automaticos.paraATela(atual, d).mural === cod).map((d) => d.name || 'TV');
+        const naZona = (await db.ondeAparece(sess.tenant_id, '"codigo":"' + cod + '"')).telas
+          // Fase 13: o membro de uma loja não fica sabendo o nome das TVs das outras.
+          .filter((nome) => !permissoes.restrito(sess) || permissoes.filtrar(sess, telas).some((d) => (d.name || 'TV') === nome));
+        const viaConta = permissoes.filtrar(sess, telas || []).filter((d) => automaticos.paraATela(atual, d).mural === cod).map((d) => d.name || 'TV');
         const nomes = [...new Set(naZona.concat(viaConta))];
         if (nomes.length) muralNasTelas[cod] = nomes;
       }
-      return sendJson(res, 200, { automaticos: atual, muralNasTelas, telas: (telas || []).map((d) => ({ id: d.id, nome: d.name || 'TV', grupo: d.grupo || '' })) });
+      return sendJson(res, 200, { automaticos: atual, muralNasTelas, telas: permissoes.filtrar(sess, telas).map((d) => ({ id: d.id, nome: d.name || 'TV', grupo: d.grupo || '' })) });
     }
     if (req.method === 'PUT') {
+      // Vale para todas as TVs da conta: o membro de uma loja não muda (fase 13).
+      if (permissoes.restrito(sess)) return sendJson(res, 403, { error: 'Só o dono ou um administrador muda o que aparece sozinho em todas as TVs.', code: 'loja' });
       return readBody(req, res, async (b) => {
         const novo = automaticos.normalizar(Object.assign({}, atual, b || {}), { idsDaConta, codigosDeMural });
         await db.setAutomaticos(sess.tenant_id, novo);
@@ -980,66 +1010,46 @@ module.exports = function (ctx) {
    * de gravar a primeira; se uma gravação falhar no meio (alguém salvou
    * naquele instante), as já gravadas voltam. O "antes" de cada TV fica 30
    * dias para o Desfazer.
+   *
+   * Fase 13: o membro de uma loja só envia para as TVs dela (a lista
+   * misturada é recusada inteira), e com a aprovação ligada o envio do
+   * membro vira um pedido (202) em vez de ir para as TVs.
    */
   async function rotaLote(req, res, parts, sess) {
     if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
     const idLote = parts[2];
-    if (!idLote && req.method === 'GET') return sendJson(res, 200, { lotes: await db.listarLotes(sess.tenant_id, 10) });
+    if (!idLote && req.method === 'GET') {
+      const lotes = await db.listarLotes(sess.tenant_id, 10);
+      if (!permissoes.restrito(sess)) return sendJson(res, 200, { lotes });
+      // O membro de loja vê só os envios que ficaram inteiros nas TVs dele.
+      const minhas = new Set(permissoes.filtrar(sess, await db.listDevices(sess.tenant_id)).map((d) => d.id));
+      return sendJson(res, 200, { lotes: lotes.filter((l) => (l.telas || []).length && l.telas.every((t) => minhas.has(t.id))) });
+    }
     if (!idLote && req.method === 'POST') {
       return readBody(req, res, async (b) => {
-        const itens = Array.isArray(b && b.itens) ? b.itens.slice(0, 200) : [];
-        if (!itens.length) return sendJson(res, 400, { error: 'escolha pelo menos uma TV' });
-        const prontos = [];
-        const conflitos = [];
-        const problemas = [];
-        // A mesma TV duas vezes no envio: qual das duas valeria? Recusa em vez de adivinhar.
-        const ids = itens.map((it) => String((it && it.id) || '')).filter(Boolean);
-        if (new Set(ids).size !== ids.length) return sendJson(res, 400, { error: 'A mesma TV veio duas vezes no envio. Nada foi enviado.', code: 'tv-repetida' });
-        for (const it of itens) {
-          const id = String((it && it.id) || '');
-          if (!id) continue;
-          const device = await db.getDevice(id);
-          if (!device || device.tenant_id !== sess.tenant_id) { problemas.push({ id, error: 'TV não encontrada nesta conta' }); continue; }
-          const versao = it.versao != null && it.versao !== '' ? Number(it.versao) : null;
-          // "Versão 0" numa TV ainda sem programação é "li vazia" (ver o PUT da config).
-          const vaziaLidaVazia = !device.config && versao === 0;
-          if (versao != null && !vaziaLidaVazia && versao !== (Number(device.updated_at) || 0)) { conflitos.push({ id, nome: device.name, versao: Number(device.updated_at) || 0 }); continue; }
-          const p = await prepararConfig(device, it.config);
-          if (p.corpo) { problemas.push(Object.assign({ id, nome: device.name }, p.corpo)); continue; }
-          prontos.push({ device, cfg: p.cfg, versao: Number(device.updated_at) || 0 });
+        const conferido = await conferirLote(sess, b && b.itens);
+        if (!conferido.prontos) return sendJson(res, conferido.status, conferido.corpo);
+        const descricao = String((b && b.descricao) || '').slice(0, 120);
+        if (sess.precisaAprovar) {
+          const pedido = await aprovacao.pedir(db, sess, conferido.prontos, descricao);
+          return sendJson(res, 202, aprovacao.resposta(pedido));
         }
-        if (conflitos.length) {
-          return sendJson(res, 409, { error: 'Algumas TVs foram mudadas em outro lugar enquanto você enviava. Nada foi enviado.', code: 'config-mudou', telas: conflitos });
-        }
-        if (problemas.length) {
-          return sendJson(res, 400, { error: (problemas[0].nome ? problemas[0].nome + ': ' : '') + (problemas[0].error || 'programação recusada') + '. Nada foi enviado.', code: problemas[0].code, problemas: problemas.slice(0, 20) });
-        }
-        const feitos = [];
-        for (const p of prontos) {
-          const updatedAt = await db.setDeviceConfig(p.device.id, JSON.stringify(p.cfg), p.device.name || p.cfg.settings.nome, p.versao);
-          if (updatedAt == null) {
-            // Alguém gravou nesta TV agora mesmo: as que já foram voltam ao que eram.
-            for (const f of feitos.reverse()) {
-              const volta = await db.setDeviceConfig(f.device.id, f.device.config || null, f.device.name, f.updatedAt);
-              if (volta != null) broadcast(f.device.id, 'config', { updatedAt: volta });
-            }
-            return sendJson(res, 409, { error: 'Uma TV foi mudada em outro lugar enquanto você enviava. Nada foi enviado.', code: 'config-mudou', telas: [{ id: p.device.id, nome: p.device.name }] });
-          }
-          feitos.push({ device: p.device, updatedAt });
-        }
-        const lote = await db.salvarLote(sess.tenant_id, {
-          descricao: String((b && b.descricao) || '').slice(0, 120),
-          telas: feitos.map((f) => ({ id: f.device.id, nome: f.device.name || '', antes: f.device.config || null, versaoAntes: Number(f.device.updated_at) || 0, versaoDepois: f.updatedAt })),
-        });
-        feitos.forEach((f) => broadcast(f.device.id, 'config', { updatedAt: f.updatedAt }));
-        await db.registrarEvento(sess.tenant_id, sess.user_id, 'lote.enviar');
-        return sendJson(res, 200, { ok: true, lote, telas: feitos.map((f) => ({ id: f.device.id, updatedAt: f.updatedAt })) });
+        const r = await aplicarLote(sess.tenant_id, sess.user_id, conferido.prontos, descricao);
+        return sendJson(res, r.status, r.corpo);
       });
     }
     if (idLote && parts[3] === 'desfazer' && req.method === 'POST') {
       const lote = await db.loteDaConta(idLote, sess.tenant_id);
       if (!lote) return sendJson(res, 404, { error: 'envio não encontrado' });
       if (lote.desfeitoEm) return sendJson(res, 409, { error: 'este envio já foi desfeito', code: 'ja-desfeito' });
+      // Fase 13: desfazer também muda o que está no ar — com aprovação ligada, é do dono.
+      if (sess.precisaAprovar) return sendJson(res, 403, { error: 'Com a aprovação ligada, quem desfaz um envio é o dono ou um administrador.', code: 'aprovacao' });
+      if (permissoes.restrito(sess)) {
+        for (const t of lote.telas) {
+          const d = await db.getDevice(t.id);
+          if (d && d.tenant_id === sess.tenant_id && !permissoes.podeTela(sess, d)) return sendJson(res, 404, { error: 'envio não encontrado' });
+        }
+      }
       const voltaram = [];
       const mudaram = [];
       for (const t of lote.telas) {
@@ -1058,6 +1068,81 @@ module.exports = function (ctx) {
     }
     return sendJson(res, 405, { error: 'método inválido' });
   }
+
+  /*
+   * A conferência do lote, sem gravar nada: posse, loja (fase 13), versão e
+   * a porta (prepararConfig) de TODAS. Devolve { prontos } ou { status, corpo }.
+   * O envio e a aprovação (server/routes/aprovacoes.js) passam por aqui.
+   */
+  async function conferirLote(sess, itensCrus) {
+    const itens = Array.isArray(itensCrus) ? itensCrus.slice(0, 200) : [];
+    if (!itens.length) return { status: 400, corpo: { error: 'escolha pelo menos uma TV' } };
+    const prontos = [];
+    const conflitos = [];
+    const problemas = [];
+    // A mesma TV duas vezes no envio: qual das duas valeria? Recusa em vez de adivinhar.
+    const ids = itens.map((it) => String((it && it.id) || '')).filter(Boolean);
+    if (new Set(ids).size !== ids.length) return { status: 400, corpo: { error: 'A mesma TV veio duas vezes no envio. Nada foi enviado.', code: 'tv-repetida' } };
+    for (const it of itens) {
+      const id = String((it && it.id) || '');
+      if (!id) continue;
+      const device = await db.getDevice(id);
+      if (!device || device.tenant_id !== sess.tenant_id) { problemas.push({ id, error: 'TV não encontrada nesta conta' }); continue; }
+      /*
+       * A TV de outra loja, numa lista misturada (fase 13): o envio inteiro
+       * é recusado — nada vai, nem para as TVs da loja dele. 403, e sem
+       * dizer o nome da TV que ele não alcança.
+       */
+      if (!permissoes.podeTela(sess, device)) {
+        return { status: 403, corpo: { error: 'Uma das TVs não é da sua loja. Nada foi enviado.', code: 'loja' } };
+      }
+      const versao = it.versao != null && it.versao !== '' ? Number(it.versao) : null;
+      // "Versão 0" numa TV ainda sem programação é "li vazia" (ver o PUT da config).
+      const vaziaLidaVazia = !device.config && versao === 0;
+      if (versao != null && !vaziaLidaVazia && versao !== (Number(device.updated_at) || 0)) { conflitos.push({ id, nome: device.name, versao: Number(device.updated_at) || 0 }); continue; }
+      const p = await prepararConfig(device, it.config);
+      if (p.corpo) { problemas.push(Object.assign({ id, nome: device.name }, p.corpo)); continue; }
+      prontos.push({ device, cfg: p.cfg, versao: Number(device.updated_at) || 0 });
+    }
+    if (conflitos.length) {
+      return { status: 409, corpo: { error: 'Algumas TVs foram mudadas em outro lugar enquanto você enviava. Nada foi enviado.', code: 'config-mudou', telas: conflitos } };
+    }
+    if (problemas.length) {
+      return { status: 400, corpo: { error: (problemas[0].nome ? problemas[0].nome + ': ' : '') + (problemas[0].error || 'programação recusada') + '. Nada foi enviado.', code: problemas[0].code, problemas: problemas.slice(0, 20) } };
+    }
+    if (!prontos.length) return { status: 400, corpo: { error: 'escolha pelo menos uma TV' } };
+    return { prontos };
+  }
+
+  /*
+   * A gravação do lote já conferido: tudo ou nada, com a versão de cada TV.
+   * Se uma gravação falhar no meio (alguém salvou naquele instante), as já
+   * gravadas voltam. Devolve { status, corpo }.
+   */
+  async function aplicarLote(tenantId, userId, prontos, descricao) {
+    const feitos = [];
+    for (const p of prontos) {
+      const updatedAt = await db.setDeviceConfig(p.device.id, JSON.stringify(p.cfg), p.device.name || p.cfg.settings.nome, p.versao);
+      if (updatedAt == null) {
+        // Alguém gravou nesta TV agora mesmo: as que já foram voltam ao que eram.
+        for (const f of feitos.reverse()) {
+          const volta = await db.setDeviceConfig(f.device.id, f.device.config || null, f.device.name, f.updatedAt);
+          if (volta != null) broadcast(f.device.id, 'config', { updatedAt: volta });
+        }
+        return { status: 409, corpo: { error: 'Uma TV foi mudada em outro lugar enquanto você enviava. Nada foi enviado.', code: 'config-mudou', telas: [{ id: p.device.id, nome: p.device.name }] } };
+      }
+      feitos.push({ device: p.device, updatedAt });
+    }
+    const lote = await db.salvarLote(tenantId, {
+      descricao: String(descricao || '').slice(0, 120),
+      telas: feitos.map((f) => ({ id: f.device.id, nome: f.device.name || '', antes: f.device.config || null, versaoAntes: Number(f.device.updated_at) || 0, versaoDepois: f.updatedAt })),
+    });
+    feitos.forEach((f) => broadcast(f.device.id, 'config', { updatedAt: f.updatedAt }));
+    await db.registrarEvento(tenantId, userId, 'lote.enviar');
+    return { status: 200, corpo: { ok: true, lote, telas: feitos.map((f) => ({ id: f.device.id, updatedAt: f.updatedAt })) } };
+  }
+  // A aprovação (server/routes/aprovacoes.js) põe no ar pelo mesmo caminho do envio.
+  ctx.publicar = { conferirLote, aplicarLote, normalizar: (c) => schema.normalize(c) };
 
   return async function (req, res, parts, query, sess) {
     if (parts[1] === 'lote') { await rotaLote(req, res, parts, sess); return true; }
