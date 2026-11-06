@@ -98,6 +98,19 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
   .kicker { display: none; }
   h1 { margin-top: 0; }
 }
+/*
+ * A principal do Corporativo com a margem contra o corte (de 1321×739 a
+ * 1236×674): o preço descia até 2 px da borda. O kicker e o pedido apertam
+ * o espaçado (uma linha a menos cada), a meta, a entrelinha, e o preço fica
+ * um pouco menor.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 775px) {
+  .kicker { letter-spacing: .08em; }
+  .meta { line-height: 1.2; }
+  .preco { margin-top: 3.4cqmin; padding-top: 3.4cqmin; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 15cqmin); }
+  .pedido { letter-spacing: .06em; }
+}
 </style>
 <section class="mt-peca servico-agenda">
   <div class="servico">

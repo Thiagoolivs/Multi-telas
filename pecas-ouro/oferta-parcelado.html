@@ -83,6 +83,13 @@ h1 { font: 600 max(var(--mt-piso, 0cqw), 5.4cqw)/1.02 var(--mt-fonte-titulo); le
   .inclui li:last-child { border-bottom-width: .2cqw; }
   .inclui li::before { width: 1.2cqw; height: 1.2cqw; }
 }
+/* Na TV (1377×782 e menor), a caixa da letra do "10×" chegava a 8 px do alto da peça: o número fica um pouco menor. */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 790px) {
+  .vezes { font-size: max(var(--mt-piso, 0cqw), 18.6cqw); }
+}
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 730px) {
+  .vezes { font-size: max(var(--mt-piso, 0cqw), 17cqw); }
+}
 </style>
 <section class="mt-peca oferta-parcelado">
   <div class="marca-nome" data-campo="marca" data-repete="marca">Clínica <b>Vida</b></div>
