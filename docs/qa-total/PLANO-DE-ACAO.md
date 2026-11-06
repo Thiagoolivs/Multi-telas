@@ -289,6 +289,14 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
   - o axe com uma campanha no ar;
   - os verbos e o "Mídias" que sobrou;
   - a Agenda repetindo o mesmo nome.
+- [x] **Corrigido na noite de 06/11 (o que o reteste listou abaixo):**
+  - **TV:** o texto na cor da marca com contraste de 4,5 ou mais em todo fundo, e a régua mede isso em toda tela; o cabeçalho que colava a marca na chamada; as datas vencidas do lote 1.
+  - **Telas e a página da TV:** o axe de Ajustes da TV; o mapa da TV com ícone e texto; o diálogo do Som; a página da TV sem termos técnicos, com o "Quando" novo e a fila com a foto e o texto.
+  - **Resto do painel:** a conta antiga sem o erro 500 nas campanhas; Peças guardadas com 12 por vez (de 4,3 s para 65 ms com 300 peças); a Marca no celular; as TVs fora do ar agrupadas.
+  - **Site e e-mails:** a página 404 com título e links; os 6 e-mails com a mesma moldura, a logo e o rodapé.
+  - **Base:** o 429 vira "Muitos pedidos desta conta agora", sem "Sem conexão"; Telas de 29 para 5 pedidos e Programação de 30 para 6; apagar a peça de outra conta responde 404.
+  - **Interface:** o "Na TV agora" é o próprio player em miniatura; o conteúdo pronto pelo tipo de negócio; "Escolher um modelo" abre um editor simples, com um campo por texto.
+  - **Falta:** a Biblioteca ainda tem 4 níveis e a mesma campanha aparece em 3 lugares; os nomes dos layouts em Ajustes; as telas prontas esperam a sua aprovação na galeria.
 - [ ] **Bloco 2 e os cenários de IA do bloco 3:** dependem do crédito do Gemini.
 - [ ] **Os pilotos:** com você, pelo roteiro.
 - **O que falta para cada bloco chegar a 9 (do reteste):**
@@ -343,6 +351,36 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** a chamada chega à TV em até 1 s e a tela segue a régua (o modelo `s1-senha` das telas de referência).
 
+**Andamento (06/11):**
+- [x] **A recepção chama pelo celular ou pelo computador:**
+  - a página **Chamada de senha**: na Saúde, um toque no botão "Chamar senha" do topo, de qualquer página; nas outras frentes, em Biblioteca › Apps; e no atalho do ícone do app;
+  - um botão grande, o único violeta da tela: "Chamar a próxima · A 043";
+  - também chamar de novo, chamar um número (a sequência não muda) e zerar o dia, que pergunta antes;
+  - onde atende: guichê, consultório, sala, triagem, caixa ou mesa, com o número, e a letra da senha. Fica guardado no aparelho de cada recepção;
+  - a fila é por conta e por grupo de TVs. "Todas as TVs" é a fila padrão, e cada grupo (uma segunda sala de espera) tem a sua;
+  - a senha volta a 001 sozinha a cada dia, no dia da loja (o fuso do horário da TV), e depois de 999;
+  - qualquer pessoa da conta chama, inclusive o membro. Toda rota pede login, e a da TV pede o token dela.
+- [x] **A TV mostra:**
+  - a senha gigante (30% do lado menor), o lugar, as 3 anteriores, a hora e a marca, no desenho do `s1-senha`, nas cores do tema da TV;
+  - deitada, em pé e quadrada;
+  - por 12 s por cima de tudo, com um "plim-plom" se o som da chamada estiver ligado na TV;
+  - e, se a TV pedir, "sempre à vista": uma faixa ao lado do conteúdo (embaixo, na TV em pé e na quadrada).
+- [x] **Nunca o nome do paciente:** o lugar é escolhido de uma lista, com número. Não há campo de texto livre, nem no banco.
+- [x] **Chega em menos de 1 s:**
+  - pelo tempo real que já existia (evento `senha`, com o estado inteiro: a TV não busca nada);
+  - medido de ponta a ponta, do clique no painel à senha na tela, em 3 TVs ao mesmo tempo: 5 chamadas, mediana de 52 ms e máximo de 104 ms;
+  - sem o tempo real, a TV pergunta a cada 4 s (medido: 1,2 s) e, ao reconectar, uma vez;
+  - recarregar a TV não perde a faixa e não anuncia de novo a mesma senha.
+- [x] **A régua:**
+  - a menor letra tem 4,8% do lado menor na tela da senha e 4,5% na faixa;
+  - o robô da régua (`npm run regua`) mede a tela da senha nas 3 TVs, e ela bloqueia como tela cheia;
+  - o axe deu 0 na página, no celular e no computador.
+- [x] **Dados:** as tabelas `senha_filas` e `senha_chamadas`, nos dois bancos. Saem com a conta e vão na exportação.
+- [x] **Ajustes da TV › Aparência:** mostrar a chamada nesta TV, o som e o "sempre à vista".
+- Falta:
+  - um piloto numa recepção de verdade, com o som numa TV real;
+  - a voz falando a senha ("Senha A 42, consultório 3"), se o piloto pedir.
+
 ### Fase 13: equipe e redes (3–4 dias)
 **Objetivo:** servir a empresa maior e a rede com várias lojas.
 - **Aprovação antes de ir ao ar.** O que a equipe cria espera o OK do dono ou do RH, que aprova pelo celular.
@@ -396,16 +434,20 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [x] Fase 9: modelos com função e pacotes prontos (os lotes esperam a aprovação na galeria)
 - [ ] Fase 10: reteste completo e pilotos (reteste feito, nota 7,1; faltam o bloco 2 com a IA e os pilotos)
 - [ ] Fase 11: dados vivos
-- [ ] Fase 12: Saúde, a chamada de senha
+- [x] Fase 12: Saúde, a chamada de senha (falta o piloto numa recepção; ver o andamento)
 - [x] Fase 13: equipe e redes
 
 ### Para valer o preço (aprovado em 05/11)
 - [x] Preço e cardápio vindos de uma planilha (fase 11)
 - [x] Indicadores vindos de uma planilha (fase 11)
-- [ ] Chamada de senha para Saúde (fase 12)
+- [x] Chamada de senha para Saúde (fase 12)
 - [x] Aprovação antes de ir ao ar (fase 13)
 - [x] Permissão por loja (fase 13)
-- [ ] Modo ambiente: arte calma da marca entre os avisos (fase 9)
+- [x] Modo ambiente: arte calma da marca entre os avisos (fase 9)
+  - Ajustes da TV › Aparência › Modo ambiente: a cada quantos avisos (3 a 8), quanto tempo fica e se mostra a hora e a data ou uma frase curta;
+  - o desenho da TV: a cor da marca em movimento lento, linhas finas, a hora grande e a marca embaixo. Na TV fraca, fica parado;
+  - entra depois do rodízio, e também separa a mesma peça que passaria duas vezes seguidas. Os tetos do urgente (25%) e da Alta (40%) continuam: o teste da semana simulada mede com o respiro ligado
+  - falta escolher uma peça-ouro de ambiente no painel. A TV já aceita: `settings.ambiente.peca`, que passa pela porta das peças.
 - [x] Calendário de datas pronto para cada frente (fases 5 e 9)
 
 ### Diferenciais para depois (aprovado em 05/11; o dono reconfirmou em 06/11: entram depois das fases 11 a 13)

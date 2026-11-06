@@ -371,6 +371,8 @@
        */
       showAguardando(dados && dados.nome);
     });
+    // A chamada de senha (fase 12): chega pelo mesmo tempo real, com pergunta de reserva (js/senha.js).
+    if (global.MTSenha) MTSenha.ligar(dev.id);
     /*
      * Som: a TV conta o que está tocando sempre que muda, e também de tempos
      * em tempos — o estado do servidor é em memória e precisa ser reposto
@@ -697,6 +699,8 @@
     // A trilha vem de settings e não das zonas: trocar de layout não pode
     // cortar a música no meio.
     trilha.aplicar((cfg.settings || {}).audio);
+    // A chamada de senha (fase 12): o que esta TV pede (som, faixa) e a marca da tela.
+    if (global.MTSenha) MTSenha.configurar(cfg);
     precacheMedia(cfg); // baixa a mídia da playlist p/ tocar offline depois
   }
 
@@ -733,6 +737,7 @@
     girar: 1,             // conferirGiro: recarrega a página, não a zona
     margemSegura: 1,      // aplicarMargem: uma variável CSS no <html>
     expediente: 1,        // aplicarExpediente: uma camada por cima, nada a refazer
+    senha: 1,             // a chamada de senha (js/senha.js): camada e faixa por fora das zonas
     // D29: trocar o layout é do PALCO (reorganizarPalco), que reaproveita as
     // zonas que continuam. O que o layout muda no desenho de uma zona (o tipo,
     // o formato, se há cabeçalho, o relógio de cima) vai em contextoDaZona.
@@ -949,6 +954,8 @@
         const dados = (cfg.zonas && cfg.zonas[id]) || {};
         let atual = null;
         try { atual = viva.ctrl && viva.ctrl.atual ? viva.ctrl.atual() : null; } catch (e) { atual = null; }
+        // O respiro do modo ambiente (fase 9) não está na programação salva: para o painel, é o relógio que ele mostra.
+        if (atual && atual.item && atual.item._automatico === 'ambiente') atual = { relogio: true };
         zonas[id] = Object.assign({ mensagens: Array.isArray(dados.messages) ? dados.messages.slice(0, 20) : undefined, peca: !!dados.peca }, atual || {});
       }
     }
@@ -2120,7 +2127,21 @@
     const deHoje = naSemana.filter((x) => x.t === hoje).map((x) => x.p);
     return { tem: naSemana.length > 0, hoje: deHoje.length > 0, pessoas: naSemana.map((x) => x.p), deHoje: deHoje };
   }
+  /*
+   * MODO AMBIENTE (fase 9): a arte calma da marca entre os avisos, só na
+   * zona principal, como os automáticos. Quem entra e quando é do rodízio
+   * (js/rodizio.js, comAmbiente); o desenho, de js/ambiente.js.
+   */
+  function ambienteDaZona(cfg, zonaId) {
+    const a = cfg && cfg.settings && cfg.settings.ambiente;
+    return a && a.ativo === true && zonaId === zonaPrincipal(cfg) ? a : null;
+  }
+  function comAmbiente(lista, amb) { return amb && R && R.comAmbiente ? R.comAmbiente(lista, amb) : lista; }
+  // A volta da zona depois do rodízio: os automáticos (aniversário, mural…) e, por último, o respiro do modo ambiente (fase 9).
   function comAutomaticos(lista, cfg, zonaId, agora) {
+    return comAmbiente(automaticosNaVolta(lista, cfg, zonaId, agora), ambienteDaZona(cfg, zonaId));
+  }
+  function automaticosNaVolta(lista, cfg, zonaId, agora) {
     const a = automaticosDaZona(cfg, zonaId);
     if (!a) return lista;
     const quando = agora || new Date();
@@ -2214,6 +2235,8 @@
     // Com automáticos na zona (D15), o rodízio pode crescer na semana do aniversário: nunca é "estática".
     const auto = automaticosDaZona(cfg, zonaId);
     const single = items.length === 1 && !hasAgenda(items[0]) && !auto;
+    // Fase 9: com o modo ambiente, a peça única também alterna com o respiro (menos a transmissão ao vivo: ela fica).
+    const estatica = single && comAmbiente(items, ambienteDaZona(cfg, zonaId)).length === items.length;
     const agendado = items.some(hasAgenda);
 
     /*
@@ -2246,6 +2269,7 @@
       const conhecidos = items.filter((it) => it && !ehExemplo(it) && (!MTRender.conhece || MTRender.conhece(it.type))
         // O urgente sem data sai na hora marcada (web/src/lib/aviso.js, QA total 05/11).
         && !(it.meta && Number(it.meta.expiraEm) > 0 && agoraMs > Number(it.meta.expiraEm)));
+      // Fase 9: o respiro do modo ambiente entra em comAutomaticos, por último.
       const ativos = comAutomaticos(distribuir(agendado ? conhecidos.filter(agendadoAgora) : conhecidos), cfg, zonaId);
       if (!ativos.length) {
         // Antes: "Nenhum conteúdo agendado agora", escrito para o público.
@@ -2325,7 +2349,7 @@
 
       // Fase 5: 1 s por palavra, de 6 a 25 s, a não ser que a pessoa tenha posto o tempo à mão.
       const dur = R ? R.duracaoDe(item, rendered.duration) : rendered.duration;
-      if (single) return; // estática — só o próprio item avança (ex.: vídeo ao terminar)
+      if (estatica) return; // estática — só o próprio item avança (ex.: vídeo ao terminar)
       if (dur && dur > 0) schedule(dur);
       else if (rendered.onEnter) {
         // Item controla o próprio avanço (ex.: vídeo até o fim, live "fixa"

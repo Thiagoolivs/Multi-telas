@@ -113,6 +113,7 @@
       localStorage.removeItem('mt.birthdays');
       localStorage.removeItem('mt.kpis');
       localStorage.removeItem('mt.planilhas');
+      localStorage.removeItem('mt.senha.estado'); // a senha da outra conta não fica na TV nova
     } catch (e) {}
   }
 
@@ -212,6 +213,10 @@
     const r = await api('GET', '/api/devices/' + id + '/birthdays', undefined, dtHeader());
     return (r && r.birthdays) || [];
   }
+  // A chamada de senha (fase 12): a atual e as anteriores que esta TV mostra (js/senha.js).
+  async function fetchSenha(id) {
+    return api('GET', '/api/devices/' + id + '/senha', undefined, dtHeader());
+  }
   // Os indicadores da empresa (D36): o último valor de cada um, para o cartão KPI.
   async function fetchKpis(id) {
     const r = await api('GET', '/api/devices/' + id + '/kpis', undefined, dtHeader());
@@ -308,6 +313,18 @@
     try { await api('POST', '/api/devices/' + id + '/exibicoes', corpo, dtHeader()); return true; }
     catch (e) { return false; /* offline: o lote fica guardado e sai no próximo ciclo */ }
   }
+  /*
+   * O tempo real está aberto agora? A chamada de senha (js/senha.js) só
+   * pergunta de poucos em poucos segundos quando NÃO está: com ele aberto, a
+   * chamada chega sozinha em menos de um segundo.
+   */
+  let aoVivo = false;
+  function tempoReal() { return aoVivo; }
+  function avisarTempoReal(aberto) {
+    if (aoVivo === aberto) return;
+    aoVivo = aberto;
+    try { document.dispatchEvent(new CustomEvent('mt:tempo-real', { detail: { aberto: aberto } })); } catch (e) { /* navegador sem CustomEvent */ }
+  }
   function subscribe(id, onConfig, onPareada) {
     let es;
     /*
@@ -391,6 +408,17 @@
       es.addEventListener('planilhas', () => {
         document.dispatchEvent(new CustomEvent('mt:planilhas-mudou'));
       });
+      // A conexão abriu (o servidor manda "ready" logo de cara).
+      es.addEventListener('ready', () => avisarTempoReal(true));
+      /*
+       * Chamada de senha (fase 12): o estado inteiro vem junto — a atual e as
+       * anteriores —, e a TV mostra sem buscar nada (js/senha.js).
+       */
+      es.addEventListener('senha', (ev) => {
+        let dado = null;
+        try { dado = JSON.parse(ev.data || 'null'); } catch (e) {}
+        if (dado) document.dispatchEvent(new CustomEvent('mt:senha', { detail: dado }));
+      });
       /*
        * O EventSource reconecta sozinho em queda de rede — mas DESISTE de vez
        * quando o servidor responde não-2xx, o que acontece num deploy no meio
@@ -412,6 +440,7 @@
         if (es !== fechada) return;           // já reconectando
         try { fechada.close(); } catch (e) {}
         es = null;
+        avisarTempoReal(false);
         const durou = Date.now() - abertoEm;
         setTimeout(connect, durou > 60000 ? 2000 : 15000);
       };
@@ -437,7 +466,7 @@
     // credencial da TV: o código do cartaz autoriza ENVIAR foto, e não listar
     // o que os outros mandaram.
     dtHeader, deviceToken,
-    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, fetchKpis, fetchPlanilhas, subscribe, heartbeat, reportAudio, enviarExibicoes, enviarEstado,
+    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, fetchKpis, fetchPlanilhas, fetchSenha, tempoReal, subscribe, heartbeat, reportAudio, enviarExibicoes, enviarEstado,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);

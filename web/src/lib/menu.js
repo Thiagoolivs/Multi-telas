@@ -47,6 +47,8 @@ export const PAGINAS = {
   indicadores: 'Indicadores',
   // Fase 11: preço e cardápio vindos de uma planilha (um dos Apps da Biblioteca).
   planilhas: 'Preços da planilha',
+  // Fase 12: a chamada de senha (Saúde primeiro, mas aberta a todas as frentes).
+  senha: 'Chamada de senha',
   billing: 'Plano',
   team: 'Equipe',
   // Fase 13: o sino do topo abre a fila de aprovação.
@@ -84,7 +86,8 @@ export const GRUPOS = [
    * As páginas de antes continuam como partes delas.
    */
   { id: 'midias', label: 'Biblioteca', paginas: ['prontos', 'seus', 'storage'],
-    tambem: ['apps', 'planilhas', 'telasprontas', 'pecas', 'campanhas', 'designs', 'studio', 'campaigns', 'images', 'musicas', 'ia', 'banco'] },
+    // A chamada de senha (fase 12) é um dos Apps: acende a Biblioteca; na Saúde, também está no topo (Topbar).
+    tambem: ['apps', 'planilhas', 'telasprontas', 'pecas', 'campanhas', 'designs', 'studio', 'campaigns', 'images', 'musicas', 'ia', 'banco', 'senha'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },
   // Pessoas: item do menu na Empresas; no Comércio e na Saúde, os Apps da Biblioteca (gruposDa).
   { id: 'extras', label: 'Pessoas', paginas: ['birthdays', 'mural', 'indicadores'] },
