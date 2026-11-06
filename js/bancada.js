@@ -58,6 +58,8 @@
   }
   const defDe = (id) => manifesto.pecas.find((p) => p.id === id) || { id, campos: {} };
   const marcaDe = (id) => manifesto.marcas.find((m) => m.id === id) || manifesto.marcas[0];
+  // "Todas as marcas": a peça em cada marca do manifesto, lado a lado (a fonte larga é a que mais quebra linha).
+  const TODAS = 'todas';
   const marcaDoItem = (m) => ({ cores: m.cores, fonteTitulo: m.fonteTitulo, fonteApoio: m.fonteApoio });
 
   function opcao(sel, valor, rotulo) {
@@ -138,11 +140,68 @@
     return { caixa, real };
   }
 
+  /*
+   * A MARGEM CONTRA O CORTE (Ajustes da TV › Encaixe; js/player.js,
+   * aplicarMargem: de 0 a 5%, de meio em meio). Ela empurra o palco para
+   * dentro e as zonas encolhem; o piso, não (é do lado menor da TV). Com 2%,
+   * a principal do Corporativo vai de 1377×782 para 1321×739 por dentro da
+   * borda, e a lateral de 504×782 para 483×739.
+   *
+   * Escolhida no seletor "Corporativo", as duas zonas do Corporativo vão no
+   * tamanho que a TV de 1080 linhas dá a elas com aquela margem: a mesma
+   * grade do player (css/player.css, .mt-stage: fresta de 1,1vh, a margem
+   * somada ao padding, a borda de 1 px da zona), montada e medida aqui. Sem
+   * escolha, ficam as zonas de sempre da bancada (1405×832 e 515×832). A
+   * tela cheia fica no tamanho de referência.
+   */
+  const MARGENS = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
+  function corporativoNaTv(margem) {
+    const W = 1920, H = 1080;
+    const layout = MT_getLayout('corporate');
+    const tv = document.createElement('div');
+    tv.style.cssText = 'position:absolute;left:-30000px;top:0;display:grid;box-sizing:border-box;width:' + W + 'px;height:' + H + 'px';
+    tv.style.gridTemplateColumns = layout.grid.columns;
+    tv.style.gridTemplateRows = emPx(layout.grid.rows, H);
+    tv.style.gridTemplateAreas = layout.grid.areas.map((a) => '"' + a + '"').join(' ');
+    tv.style.gap = (1.1 * H / 100) + 'px';
+    tv.style.padding = ((1.1 + margem) * H / 100) + 'px ' + (1.1 * H / 100 + margem * W / 100) + 'px';
+    const caixas = {};
+    layout.zones.forEach((z) => {
+      const c = document.createElement('div');
+      c.style.gridArea = z.area;
+      c.style.minWidth = '0';
+      c.style.minHeight = '0';
+      tv.appendChild(c);
+      caixas[z.id] = c;
+    });
+    document.body.appendChild(tv);
+    // Por dentro da borda de 1 px da zona (.mt-zone): é onde a peça mora.
+    const dentro = (id) => {
+      const r = caixas[id].getBoundingClientRect();
+      return { w: Math.round((r.width - 2) * 10) / 10, h: Math.round((r.height - 2) * 10) / 10 };
+    };
+    const out = { principal: dentro('principal'), lateral: dentro('lateral') };
+    tv.remove();
+    return out;
+  }
+  function zonasDoPapel(papel) {
+    const zonas = ZONAS[papel] || [];
+    const m = $('margem').value;
+    if (m === '') return zonas;
+    const tv = corporativoNaTv(Number(m));
+    return zonas.map((z) => (z.nome === 'Destaque · Corporativo' ? Object.assign({}, z, tv.principal)
+      : z.nome === 'Lateral · Corporativo' ? Object.assign({}, z, tv.lateral) : z));
+  }
+  const virgula = (n) => String(n).replace('.', ',');
+
   /* ---------------- Uma peça, em todas as zonas ---------------- */
 
   async function desenharPeca() {
+    // O robô da régua espera o "sim" para medir: antes, a peça que demorava a chegar saía da conta calada.
+    document.body.dataset.desenhada = 'nao';
     const def = defDe($('peca').value);
-    const marca = marcaDe($('marca').value);
+    const todas = $('marca').value === TODAS;
+    const marcas = todas ? manifesto.marcas : [marcaDe($('marca').value)];
     const modos = $('modo').value === 'todos' ? MTTokens.MODOS : [$('modo').value];
     const arq = await lerPeca(def.id);
 
@@ -150,29 +209,33 @@
     $('problemas').innerHTML = lista('A porta recusou:', conferida.problemas, 'problemas')
       + lista('Avisos:', conferida.avisos, 'problemas');
     $('info').innerHTML = '<b>' + escapar(def.nome) + '</b> · família ' + escapar(def.familia) + ' · ' + def.estado
-      + ' · ' + conferida.campos.length + ' campos · marca ' + escapar(marca.nome);
+      + ' · ' + conferida.campos.length + ' campos · ' + (todas ? 'as ' + marcas.length + ' marcas' : 'marca ' + escapar(marcas[0].nome))
+      + ($('margem').value === '' ? '' : ' · Corporativo na TV com margem contra o corte de ' + virgula($('margem').value) + '%');
 
     const palco = $('palco');
     palco.textContent = '';
     for (const papel of def.papeis) {
-      for (const zona of ZONAS[papel] || []) {
+      for (const zona of zonasDoPapel(papel)) {
         const linha = document.createElement('section');
         linha.className = 'linha';
         const h2 = document.createElement('h2');
-        h2.textContent = zona.nome + ' · ' + zona.w + '×' + zona.h;
+        h2.textContent = zona.nome + ' · ' + Math.round(zona.w) + '×' + Math.round(zona.h);
         linha.appendChild(h2);
         const grade = document.createElement('div');
         grade.className = 'grade';
-        for (const modo of modos) {
+        for (const marca of marcas) for (const modo of modos) {
           const fig = document.createElement('figure');
+          // A marca de cada figura fica no DOM: o robô da régua diz qual marca cedeu (tools/regua-tv.mjs).
+          fig.dataset.marca = marca.id;
           const m = moldura(zona.w, zona.h, real() ? zona : TETO);
           montarPeca(m.real, arq, def, papel, marca, modo, { mensagens: mensagensDaMarca(marca.id) });
           const legenda = document.createElement('figcaption');
-          legenda.textContent = modo;
+          const rotulo = todas ? marca.nome + ' · ' + modo : modo;
+          legenda.textContent = rotulo;
           vazamentos(m.real, papel).then((d) => {
             const ruim = (d.fora.length ? ' · VAZA: ' + d.fora.join(', ') : '') + (d.juntos.length ? ' · SOBREPÕE: ' + d.juntos.join(', ') : '');
             if (ruim) {
-              legenda.textContent = modo + ruim;
+              legenda.textContent = rotulo + ruim;
               legenda.classList.add('ruim');
             }
             // D44: fora da régua não é "não coube" — vai embaixo, em outra cor.
@@ -187,6 +250,7 @@
         palco.appendChild(linha);
       }
     }
+    document.body.dataset.desenhada = 'sim';
   }
 
   /* ---------------- A tela completa ---------------- */
@@ -235,7 +299,9 @@
     tv.style.gridTemplateAreas = layout.grid.areas.map((a) => '"' + a + '"').join(' ');
     const fresta = (1.1 * H / 100) + 'px';
     tv.style.gap = fresta;
-    tv.style.padding = fresta;
+    // Com a margem contra o corte (o seletor "Corporativo"), o padding cresce como o do player (.mt-stage).
+    const margem = Number($('margem').value) || 0;
+    tv.style.padding = ((1.1 + margem) * H / 100) + 'px ' + (1.1 * H / 100 + margem * W / 100) + 'px';
 
     const medir = [];
     for (const zona of layout.zones) {
@@ -307,7 +373,7 @@
     const tarefas = [];
     for (const def of manifesto.pecas) {
       for (const papel of def.papeis) {
-        for (const zona of ZONAS[papel] || []) {
+        for (const zona of zonasDoPapel(papel)) {
           for (const marca of manifesto.marcas) for (const modo of ['claro', 'escuro']) tarefas.push({ def, papel, zona, marca, modo });
         }
       }
@@ -364,6 +430,7 @@
     opcao($('ver'), 'tela', 'Tela completa');
     manifesto.pecas.forEach((p) => opcao($('peca'), p.id, p.nome + (p.estado === 'aprovada' ? ' ✓' : '')));
     manifesto.marcas.forEach((m) => opcao($('marca'), m.id, m.nome));
+    opcao($('marca'), TODAS, 'Todas as marcas');
     opcao($('modo'), 'todos', 'Os quatro');
     MTTokens.MODOS.forEach((m) => opcao($('modo'), m, m));
     // D18: as telas prontas chegam em lotes, por perfil; agrupadas, o dono revê um lote de uma vez.
@@ -392,11 +459,13 @@
       if (f) document.documentElement.style.setProperty('--mt-piso-tv', String(f));
       else document.documentElement.style.removeProperty('--mt-piso-tv');
     };
+    opcao($('margem'), '', 'Zonas da bancada');
+    MARGENS.forEach((m) => opcao($('margem'), String(m), m ? 'Na TV, margem de ' + virgula(m) + '%' : 'Na TV, sem margem'));
     const primeira = (manifesto.telas || [])[0];
     if (primeira) $('layout').value = primeira.layout;
 
     // A escolha fica na URL: dá para mandar o link de uma combinação.
-    const CHAVES = ['ver', 'peca', 'marca', 'modo', 'tela', 'layout', 'tamanho', 'local'];
+    const CHAVES = ['ver', 'peca', 'marca', 'modo', 'tela', 'layout', 'tamanho', 'local', 'margem'];
     const q = new URLSearchParams(location.search);
     CHAVES.forEach((k) => { if (q.get(k)) $(k).value = q.get(k); });
     porLocal();

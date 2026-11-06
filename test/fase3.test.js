@@ -118,3 +118,55 @@ test('as peças-ouro do destaque cabem com a letra do balcão na principal do Co
   assert.match(ler('pecas-ouro/cardapio-colunas.html'), /\.valor \{ grid-column: 3; grid-row: 2; \}/);
   assert.match(ler('pecas-ouro/cardapio-dia-foto.html'), /\.talher \{ font-size: 1cqw; \}/);
 });
+
+test('as peças-ouro em tela cheia cabem nas 11 marcas, e o robô bloqueia a que ceder em qualquer uma', () => {
+  const robo = ler('tools/regua-tv.mjs');
+  // Cada peça nas 11 marcas lado a lado (a bancada com marca=todas), no modo claro: o desenho é o mesmo nos quatro.
+  assert.match(robo, /x\.todasAsMarcas \? '&marca=todas&modo=claro' : '&modo=todos'/);
+  assert.match(robo, /console\.log\('Peças-ouro em tela cheia · todas as marcas \(' \+ nMarcas \+ '\): '/);
+  assert.match(robo, /for \(const x of cheiasNasMarcas\.filter\(\(y\) => y\.cedeu < 1\)\) \{ console\.log\(cedeuNaMarca\(x\)\); reprova = true; \}/);
+  // A bancada diz a marca de cada figura, e desenha todas quando pedem.
+  const B = ler('js/bancada.js');
+  assert.match(B, /const TODAS = 'todas';/);
+  assert.match(B, /fig\.dataset\.marca = marca\.id;/);
+  // A quadrada de quem cedia com a fonte de título larga (7 das 11 marcas, 97%).
+  assert.match(ler('pecas-ouro/institucional-lancamento.html'), /\.apoio \{ margin-top: 2\.4cqw; font-size: max\(var\(--mt-piso, 0cqw\), 2\.4cqw\); line-height: 1\.3; max-width: none; \}/);
+  assert.match(ler('pecas-ouro/gente-comunicado.html'), /\.texto \{ font-size: max\(var\(--mt-piso, 0cqw\), 2\.8cqw\); margin-top: 3cqw; max-width: none; line-height: 1\.4; \}/);
+});
+
+test('o destaque e a lateral cabem com a letra do balcão na TV com a margem contra o corte, e o robô bloqueia 2% e 3%', () => {
+  const robo = ler('tools/regua-tv.mjs');
+  assert.match(robo, /const MARGENS_NA_TV = \[2, 3\];/);
+  assert.match(robo, /conferirPecas\(navegador, 'balcao', zonas, \{ todasAsMarcas: true, margem \}\)/);
+  assert.match(robo, /console\.log\('Peças-ouro em ' \+ nome \+ ' · balcão com borda de ' \+ margem \+ '% \('/);
+  assert.match(robo, /for \(const x of naMargem\.filter\(\(y\) => y\.cedeu < 1\)\) \{ console\.log\(cedeuNaMarca\(x\)\); reprova = true; \}/);
+  // A peça que a bancada não desenhou reprova (antes saía da conta calada), e as passadas correm em quatro páginas.
+  assert.match(robo, /document\.body\.dataset\.desenhada === 'sim'/);
+  assert.match(robo, /SEM_DESENHO\.push\(/);
+  assert.match(robo, /const PAGINAS_DA_BANCADA = 4;/);
+  // A bancada mede o Corporativo no tamanho da TV com a margem, na mesma grade do player, e a faixa é a dos Ajustes (0 a 5%).
+  const B = ler('js/bancada.js');
+  assert.match(B, /const MARGENS = \[0, 0\.5, 1, 1\.5, 2, 2\.5, 3, 3\.5, 4, 4\.5, 5\];/);
+  assert.match(B, /tv\.style\.padding = \(\(1\.1 \+ margem\) \* H \/ 100\) \+ 'px ' \+ \(1\.1 \* H \/ 100 \+ margem \* W \/ 100\) \+ 'px';/);
+  assert.match(B, /document\.body\.dataset\.desenhada = 'sim';/);
+  assert.match(ler('js/player.js'), /Math\.max\(0, Math\.min\(5, Number\(cfg && cfg\.settings && cfg\.settings\.margemSegura\) \|\| 0\)\)/);
+  assert.match(ler('css/player.css'), /padding: calc\(1\.1vh \+ var\(--mt-margem, 0\) \* 1vh\) calc\(1\.1vh \+ var\(--mt-margem, 0\) \* 1vw\);/);
+  // As regras novas vão pela altura da zona, abaixo dos tamanhos que já passavam: a principal da TV com margem (até 775 px)...
+  const PRINCIPAL = '(aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 775px)';
+  for (const id of ['cardapio-bebidas', 'gente-mes', 'social-depoimento', 'cardapio-combo', 'cardapio-colunas', 'numero-grande',
+    'oferta-parcelado', 'servico-comunicado', 'institucional-lancamento']) {
+    assert.ok(ler('pecas-ouro/' + id + '.html').includes(PRINCIPAL), id + ': a principal do Corporativo com a margem');
+  }
+  // ... e a lateral da TV (a caixa da peça abaixo da da bancada, 515×832).
+  for (const id of ['oferta-kit', 'cardapio-bebidas', 'gente-equipe', 'servico-pagamento', 'social-nota', 'social-pesquisa', 'cardapio-semana',
+    'gente-mes', 'gente-destaque', 'gente-vaga', 'servico-semana', 'servico-epi', 'social-depoimento', 'cardapio-colunas', 'numero-grande',
+    'servico-convenios', 'servico-hora', 'servico-horario', 'servico-preparo', 'servico-ramais', 'social-wifi', 'servico-agenda',
+    'social-avaliacao', 'servico-espera']) {
+    assert.match(ler('pecas-ouro/' + id + '.html'), /@container \(max-width: 700px\) and \(max-height: \d+px\)/, id + ': a lateral da TV');
+  }
+  // servico-epi: na principal com margem, os filhos caíam na regra "deitada e baixa" e a peça não; agora cada um ocupa a linha.
+  assert.match(ler('pecas-ouro/servico-epi.html'), /\.texto, \.epi \{ grid-column: 1 \/ -1; \}/);
+  // Os QRs não encolhem abaixo dos 160 px com a margem (o do mural ia pela altura da zona).
+  assert.match(ler('pecas-ouro/social-mural.html'), /\.qr \{ width: 26cqh; height: 26cqh; \}/);
+  assert.match(ler('pecas-ouro/servico-agenda.html'), /\.qr \{ width: 46cqmin; height: 46cqmin; padding: 1\.2cqmin; \}/);
+});
