@@ -289,6 +289,14 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
   - o axe com uma campanha no ar;
   - os verbos e o "Mídias" que sobrou;
   - a Agenda repetindo o mesmo nome.
+- [x] **Corrigido na noite de 06/11 (o que o reteste listou abaixo):**
+  - **TV:** o texto na cor da marca com contraste de 4,5 ou mais em todo fundo, e a régua mede isso em toda tela; o cabeçalho que colava a marca na chamada; as datas vencidas do lote 1.
+  - **Telas e a página da TV:** o axe de Ajustes da TV; o mapa da TV com ícone e texto; o diálogo do Som; a página da TV sem termos técnicos, com o "Quando" novo e a fila com a foto e o texto.
+  - **Resto do painel:** a conta antiga sem o erro 500 nas campanhas; Peças guardadas com 12 por vez (de 4,3 s para 65 ms com 300 peças); a Marca no celular; as TVs fora do ar agrupadas.
+  - **Site e e-mails:** a página 404 com título e links; os 6 e-mails com a mesma moldura, a logo e o rodapé.
+  - **Base:** o 429 vira "Muitos pedidos desta conta agora", sem "Sem conexão"; Telas de 29 para 5 pedidos e Programação de 30 para 6; apagar a peça de outra conta responde 404.
+  - **Interface:** o "Na TV agora" é o próprio player em miniatura; o conteúdo pronto pelo tipo de negócio; "Escolher um modelo" abre um editor simples, com um campo por texto.
+  - **Falta:** a Biblioteca ainda tem 4 níveis e a mesma campanha aparece em 3 lugares; os nomes dos layouts em Ajustes; as telas prontas esperam a sua aprovação na galeria.
 - [ ] **Bloco 2 e os cenários de IA do bloco 3:** dependem do crédito do Gemini.
 - [ ] **Os pilotos:** com você, pelo roteiro.
 - **O que falta para cada bloco chegar a 9 (do reteste):**
