@@ -96,18 +96,20 @@ test('avaliar: letra mínima, margem e contraste', () => {
   const achados = R.avaliar(Object.assign({}, PECA, { textos: [
     { nome: 'de', px: 11, linhas: [linha(84, 600, 200, 612)], contraste: 9 },
     { nome: 'cta', px: 50, linhas: [linha(10, 780, 300, 800)], contraste: 9 },
-    // Abaixo de 3:1 é o par de cores errado (os tokens garantem 3:1 ou mais).
+    // Abaixo de 4,5:1 é o par de cores errado (os tokens garantem 4,5:1 a todo par).
     { nome: 'apoio', px: 50, linhas: [linha(84, 400, 600, 420)], contraste: 2.1 },
     { nome: 'preco', px: 120, linhas: [linha(84, 450, 600, 570)], contraste: 3.4 },
     { nome: 'kicker', px: 50, linhas: [linha(84, 100, 400, 118)], contraste: 1.4, sobreFoto: true },
     // Fora da peça é vazamento (outra régua): a margem não acusa de novo.
     { nome: 'vazou', px: 50, linhas: [linha(-20, 300, 200, 330)], contraste: 9 },
   ], qrs: [] }));
-  assert.deepEqual(achados.map((a) => a.regra + ':' + a.campo), ['letra:de', 'margem:cta', 'contraste:apoio', 'foto:kicker']);
+  // O preço com 3,4 reprova desde a fase 10: a régua de contraste é 4,5 em todo texto.
+  assert.deepEqual(achados.map((a) => a.regra + ':' + a.campo), ['letra:de', 'margem:cta', 'contraste:apoio', 'contraste:preco', 'foto:kicker']);
   // A régua da TV (fase 2): no destaque o mínimo é 48 px, o que se lê a 4 m.
   assert.match(achados[0].texto, /11px \(o mínimo é 48px\)/);
   assert.match(achados[1].texto, /encostado na borda \(10px dela\)/);
-  assert.match(achados[3].texto, /sobre a foto sem véu/);
+  assert.match(achados[3].texto, /3\.4:1, o mínimo é 4\.5:1/);
+  assert.match(achados[4].texto, /sobre a foto sem véu/);
   // Faixa: em cima e embaixo o piso é menor (6px), dos lados é o mesmo.
   const faixa = (l) => R.avaliar({ papel: 'cabecalho', w: 1920, h: 130, textos: [{ nome: 'chamada', px: 40, linhas: [l], contraste: 9 }], qrs: [] }).map((a) => a.regra);
   assert.deepEqual(faixa(linha(40, 8, 900, 122)), []);

@@ -8,8 +8,9 @@
  * em tela cheia e mede, no navegador, a letra que a TV desenha.
  *
  * A régua (docs/qa-total/REFERENCIAS.md): nenhuma letra abaixo de 4,5% do
- * lado menor da TV — é o que se lê a 4 m. Em tela cheia é bloqueio: uma
- * mudança que deixar letra pequena reprova o CI. As zonas (principal de um
+ * lado menor da TV — é o que se lê a 4 m —, e todo texto com contraste de
+ * 4,5:1 contra o que está atrás dele (fase 10). Em tela cheia é bloqueio:
+ * uma mudança que deixar letra pequena ou apagada reprova o CI. As zonas (principal de um
  * layout com lateral) são só medidas e relatadas: a régua delas é a meta da
  * fase 3.
  *
@@ -29,6 +30,7 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 const { getLayout } = createRequire(import.meta.url)('../js/templates.js');
 const RAIZ = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PISO = 4.5; // % do lado menor da TV, no balcão (4 m)
+const CONTRASTE = 4.5; // texto contra o que está atrás dele (REFERENCIAS, contraste)
 // Fase 3: a letra mínima depende de onde a TV fica, e a frente dá o padrão (js/player.js, LOCAIS).
 const PISO_DA_FRENTE = { comercio: 4.5, saude: 3.5, empresa: 3 };
 const PORTA = 7700 + Math.floor(Math.random() * 200);
@@ -127,6 +129,107 @@ function medir(zona) {
     textos.push({ t: t.slice(0, 60), letra: +letra.toFixed(2), fora });
   }
   return { zonaPx: Math.round(RZ.width) + 'x' + Math.round(RZ.height), textos };
+}
+
+/*
+ * O contraste de cada texto contra o que está ATRÁS dele (fase 10: a cor da
+ * marca no preço e no @ ficava entre 2,5 e 3,5). A régua é 4,5 em todo texto.
+ *
+ * Como mede: guarda a cor de cada texto, tira a foto da TV com todo texto
+ * transparente e lê, na foto, os pixels da caixa de cada texto. O fundo pode
+ * ser degradê, vidro ou foto: vale o pixel de pior contraste, tirando os 10%
+ * piores (a ponta de um brilho não reprova o texto inteiro).
+ */
+function coresDosTextos(zona) {
+  const raiz = [...document.querySelectorAll('.mt-zone')].find((e) => String(e.style.gridArea).split('/')[0].trim() === zona) || document.body;
+  const corDe = (s) => {
+    const n = String(s || '').match(/-?[\d.]+/g);
+    if (!n || n.length < 3) return null;
+    // color(srgb 0.1 0.2 0.3 / 0.5): canais de 0 a 1 (é o que o color-mix devolve).
+    const k = /^color\(srgb/.test(s) ? 255 : 1;
+    return { rgb: [n[0] * k, n[1] * k, n[2] * k], a: n.length > 3 ? Number(n[3]) : 1 };
+  };
+  const out = [];
+  const andar = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+  for (let n = andar.nextNode(); n; n = andar.nextNode()) {
+    const t = n.textContent.replace(/\s+/g, ' ').trim();
+    const el = n.parentElement;
+    if (t.length < 2 || !el) continue;
+    let alfa = 1, oculto = false, degrade = false;
+    for (let q = el; q && q !== document.body; q = q.parentElement) {
+      const c = getComputedStyle(q);
+      if (c.display === 'none' || c.visibility === 'hidden') oculto = true;
+      alfa *= Number(c.opacity);
+      // Texto pintado pelo fundo (degradê no texto): a cor dele não é a do `color`. Fica de fora.
+      if (c.webkitBackgroundClip === 'text' || c.backgroundClip === 'text') degrade = true;
+    }
+    if (oculto || degrade || alfa < 0.05) continue;
+    const cs = getComputedStyle(el);
+    const cor = corDe(cs.webkitTextFillColor && cs.webkitTextFillColor !== cs.color ? cs.webkitTextFillColor : cs.color);
+    if (!cor || cor.a < 0.05) continue;
+    const faixa = document.createRange();
+    faixa.selectNodeContents(n);
+    const r = faixa.getBoundingClientRect();
+    const x0 = Math.max(0, r.left), y0 = Math.max(0, r.top), x1 = Math.min(innerWidth, r.right), y1 = Math.min(innerHeight, r.bottom);
+    if (x1 - x0 < 2 || y1 - y0 < 2) continue;
+    // Opacidade abaixo de 0,8 no caminho: a peça está entrando ou saindo (ou é enfeite, como a aspa da citação).
+    out.push({ t: t.slice(0, 40), rgb: cor.rgb, a: cor.a * alfa, esmaecido: alfa < 0.8, caixa: [x0, y0, x1 - x0, y1 - y0] });
+  }
+  return out;
+}
+
+async function analisarContraste([png, textos]) {
+  const img = new Image();
+  img.src = 'data:image/png;base64,' + png;
+  await img.decode();
+  const cv = document.createElement('canvas');
+  cv.width = img.width; cv.height = img.height;
+  const cx = cv.getContext('2d', { willReadFrequently: true });
+  cx.drawImage(img, 0, 0);
+  const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+  const lum = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+  return textos.map((x) => {
+    const [l, t, w, h] = x.caixa.map((v) => Math.round(v));
+    const d = cx.getImageData(l, t, Math.max(1, Math.min(w, cv.width - l)), Math.max(1, Math.min(h, cv.height - t))).data;
+    const passo = Math.max(1, Math.floor(d.length / 4 / 3000));
+    const ks = [];
+    for (let i = 0; i < d.length; i += 4 * passo) {
+      const f = [d[i], d[i + 1], d[i + 2]];
+      const c = x.rgb.map((v, j) => v * x.a + f[j] * (1 - x.a));
+      const a = lum(c), b = lum(f);
+      ks.push((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05));
+    }
+    ks.sort((a, b) => a - b);
+    const hex = '#' + x.rgb.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+    return { t: x.t, cor: hex, k: +ks[Math.floor(ks.length * 0.1)].toFixed(2) };
+  });
+}
+
+async function medirContraste(p, zona) {
+  /*
+   * No meio de uma entrada ou saída a letra está meio transparente e o
+   * contraste sai baixo sem ser defeito: espera as animações acabarem e,
+   * se ainda houver texto esmaecido, espera mais um pouco.
+   */
+  let textos = [];
+  for (let k = 0; k < 6; k++) {
+    await p.waitForFunction(() => !document.getAnimations().some((a) => a.playState === 'running' && a.effect && a.effect.getTiming().iterations !== Infinity), null, { timeout: 4000 }).catch(() => {});
+    textos = await p.evaluate(coresDosTextos, zona);
+    if (!textos.some((x) => x.esmaecido)) break;
+    await espera(700);
+  }
+  textos = textos.filter((x) => !x.esmaecido);
+  if (!textos.length) return [];
+  await p.evaluate(() => {
+    const st = document.createElement('style');
+    st.id = 'mt-regua-sem-texto';
+    st.textContent = '*,*::before,*::after{color:transparent!important;-webkit-text-fill-color:transparent!important;text-shadow:none!important;transition:none!important}';
+    document.head.appendChild(st);
+    return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  });
+  const png = (await p.screenshot()).toString('base64');
+  await p.evaluate(() => { const st = document.getElementById('mt-regua-sem-texto'); if (st) st.remove(); });
+  return p.evaluate(analisarContraste, [png, textos]);
 }
 
 async function subirServidor() {
@@ -271,6 +374,8 @@ async function main() {
               m = await tv.p.evaluate(medir, zona);
             }
             if (SAIDA) await tv.p.screenshot({ path: path.join(SAIDA, id + '.png') });
+            const contraste = await medirContraste(tv.p, zona);
+            const baixo = contraste.filter((x) => x.k < CONTRASTE);
             // Fase 4: a marca entra sozinha — a TV de uma conta com marca sai com a cor dela.
             const corDaTv = await tv.p.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--brand').trim().toLowerCase());
             const comMarca = corDaTv === c.cores[0].toLowerCase();
@@ -282,7 +387,8 @@ async function main() {
             fotos.push({ id, frente, tipo, layout, zona, arranjo: nomeArranjo, orient, bloqueia, piso, zonaPx: m.zonaPx,
               menorLetra: m.textos.length ? Math.min(...m.textos.map((x) => x.letra)) : null,
               pequenas: pequenas.map((x) => x.t + ' (' + x.letra + '%)'), fora: fora.map((x) => x.t),
-              erros: tv.erros.splice(0), sumiu, comMarca, corDaTv, passa: !pequenas.length && !fora.length && !sumiu });
+              erros: tv.erros.splice(0), sumiu, comMarca, corDaTv, passa: !pequenas.length && !fora.length && !sumiu,
+              contraste, baixo: baixo.map((x) => x.t + ' (' + x.k + ':1, ' + x.cor + ')') });
           }));
         }
       }
@@ -341,6 +447,17 @@ async function main() {
     for (const x of l.filter((y) => y.cedeu < 1)) console.log('  · ' + x.id + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%');
     if (ok / l.length < META_ZONAS) { console.log('  ✗ abaixo da meta de ' + Math.round(META_ZONAS * 100) + '%'); reprova = true; }
   }
+  // Fase 10: o contraste de todo texto, em todo arranjo.
+  for (const [, , nome] of ARRANJOS) {
+    const doArranjo = fotos.filter((f) => f.arranjo === nome && f.contraste.length);
+    if (!doArranjo.length) continue;
+    const ruins = doArranjo.filter((f) => f.baixo.length);
+    console.log((nome === ARRANJOS[0][2] ? '\n' : '') + 'Contraste ≥ ' + CONTRASTE + ' em todo texto, ' + nome + ': ' + (doArranjo.length - ruins.length) + ' de ' + doArranjo.length);
+    for (const f of ruins.slice(0, 12)) console.log('  ' + (f.bloqueia ? '✗' : '·') + ' ' + f.id + ': ' + f.baixo.slice(0, 3).join(', '));
+    if (ruins.length > 12) console.log('  … e mais ' + (ruins.length - 12));
+    // Em tela cheia é bloqueio, como a letra: eram 16 de 39 antes da fase 10, e 38 de 38 depois.
+    if (ruins.some((f) => f.bloqueia)) reprova = true;
+  }
   const semMarca = fotos.filter((f) => f.bloqueia && !f.comMarca);
   console.log('\nCom a cor da marca (tela cheia): ' + (fotos.filter((f) => f.bloqueia).length - semMarca.length) + ' de ' + fotos.filter((f) => f.bloqueia).length);
   for (const f of semMarca.slice(0, 5)) console.log('  ✗ ' + f.id + ': a TV está com ' + (f.corDaTv || 'nada') + ' (a marca é outra)');
@@ -353,7 +470,7 @@ async function main() {
   for (const f of comErro) console.log('  erro na TV em ' + f.id + ': ' + f.erros[0]);
   if (comErro.length) reprova = true;
   if (reprova) {
-    console.log('\nA régua da TV reprovou. A letra mínima é ' + PISO + '% do lado menor da TV (docs/qa-total/REFERENCIAS.md).');
+    console.log('\nA régua da TV reprovou. A letra mínima é ' + PISO + '% do lado menor da TV, e o contraste de todo texto é ' + CONTRASTE + ':1 (docs/qa-total/REFERENCIAS.md).');
     process.exit(1);
   }
   console.log('\nA régua da TV passou.');

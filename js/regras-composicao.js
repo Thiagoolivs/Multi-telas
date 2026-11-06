@@ -56,12 +56,15 @@
      */
     qr: { min: 160, papeis: ['destaque', 'lateral'] },
     /*
-     * Contraste do texto com o que está atrás dele: 3:1. As cores são só por
-     * token, e js/tokens.js já garante 4,5:1 ao texto e ao preço e 3:1 ao
-     * destaque sobre os fundos — abaixo de 3, a COMPOSIÇÃO juntou o par
-     * errado (texto suave sobre o destaque, destaque sobre destaque).
+     * Contraste do texto com o que está atrás dele: 4,5:1, a régua do QA
+     * para todo texto (docs/qa-total/REFERENCIAS.md). As cores são só por
+     * token, e js/tokens.js garante 4,5:1 a todo par permitido sobre os
+     * fundos, o destaque também (fase 10; antes ele tinha 3 e a régua aqui
+     * era 3). Abaixo disso, a COMPOSIÇÃO juntou o par errado (texto suave
+     * sobre o destaque, destaque sobre destaque). A biblioteca inteira
+     * (3674 montagens na bancada) passa com 4,5.
      */
-    contraste: 3,
+    contraste: 4.5,
     /*
      * Hierarquia: com o número da oferta na peça (o preço, a parcela, o
      * desconto, o "10x"), ele é o maior texto — é o que se lê do outro lado
@@ -73,10 +76,10 @@
     /*
      * Texto sobre foto: a foto muda (o cliente troca), então o contraste é
      * medido no PIOR caso — foto toda preta e foto toda branca por baixo do
-     * véu. Com véu de verdade, os dois casos passam. O piso é 2,5 e não 3:
-     * o destaque tem 3:1 sobre o fundo CHEIO (o contrato de js/tokens.js),
-     * e sob o véu quase cheio fica entre 2,5 e 3 — se lê. Abaixo disso é a
-     * foto aparecendo atrás do texto (o kicker sobre os óculos: 1,2:1).
+     * véu. Com véu de verdade, os dois casos passam. O piso é 2,5, abaixo
+     * do texto sobre fundo cheio: é o PIOR caso (foto toda branca ou toda
+     * preta), e a foto de verdade fica no meio. Abaixo disso é a foto
+     * aparecendo atrás do texto (o kicker sobre os óculos: 1,2:1).
      */
     sobreFoto: 2.5,
   };

@@ -89,68 +89,34 @@
    * Os três fundos (fundo, fundo-2, superfície) aceitam os mesmos textos — a
    * peça põe um cartão sobre o fundo e escreve dentro dele sem pensar em cor.
    *
-   * 4.5 é o AA do WCAG para texto. Destaque fica em 3, o AA para texto
-   * grande e elementos gráficos, porque é o que ele é: selo, faixa, botão,
-   * kicker em corpo grande — nunca texto corrido. Preço também é grande
-   * sempre, mas fica em 4.5 de propósito: é o número que a pessoa precisa
-   * ler de relance, do outro lado da loja, e às vezes vive num cartão pequeno.
+   * 4.5 é o AA do WCAG para texto, e vale para todo par — o destaque
+   * também. Ele ficava em 3 (o AA para texto grande e elementos gráficos),
+   * mas na peça ele é texto quase sempre: o kicker, o @ das redes, a
+   * chamada do cabeçalho, o título do quiz. O reteste da TV (fase 10) mediu
+   * esses textos entre 2,5 e 3,5 contra o fundo, e a régua do QA pede 4,5
+   * em todo texto (docs/qa-total/REFERENCIAS.md). Uma cor só para forma e
+   * outra para texto não resolveria as peças já feitas pela IA, que usam
+   * o destaque nos dois.
    *
    * AA é o piso, não a meta: nos modos claro e escuro o texto passa de 12:1.
    */
   const FUNDOS = ['fundo', 'fundo2', 'superficie'];
+  const MIN_TEXTO = 4.5;
   const PARES = []
     .concat(FUNDOS.map((f) => ({ frente: 'texto', fundo: f, minimo: 4.5 })))
     .concat(FUNDOS.map((f) => ({ frente: 'textoSuave', fundo: f, minimo: 4.5 })))
     .concat(FUNDOS.map((f) => ({ frente: 'preco', fundo: f, minimo: 4.5 })))
-    .concat(FUNDOS.map((f) => ({ frente: 'destaque', fundo: f, minimo: 3 })))
+    .concat(FUNDOS.map((f) => ({ frente: 'destaque', fundo: f, minimo: MIN_TEXTO })))
     .concat([{ frente: 'sobreDestaque', fundo: 'destaque', minimo: 4.5 }]);
 
   const ok = (cor, fundos, minimo) => fundos.every((f) => C.contraste(cor, f) >= minimo);
 
   /*
-   * Leva uma cor até ela se ler sobre TODOS os fundos, mexendo só na
-   * luminosidade. Matiz e croma ficam: o destaque de uma marca laranja
-   * continua laranja, só mais claro ou mais escuro.
-   *
-   * Anda nos dois sentidos, um passo de cada vez, e para no primeiro que
-   * passa — a menor mudança possível. Escolher o sentido pela luminância
-   * do fundo e ir só nele é o bug que js/cor.js documenta em `acentoSobre`:
-   * nos meios-tons, o sentido "óbvio" não chega lá. O sentido que se afasta
-   * dos fundos só é tentado PRIMEIRO, como desempate.
+   * Leva uma cor até ela se ler sobre todos os fundos, mexendo só na
+   * luminosidade (matiz e croma ficam). A conta mora em js/cor.js, porque o
+   * tema da TV usa a mesma para o acento.
    */
-  function garantir(cor, fundos, minimo) {
-    if (ok(cor, fundos, minimo)) return cor;
-    const o = C.paraOklch(cor);
-    const media = fundos.reduce((s, f) => s + C.luminancia(f), 0) / fundos.length;
-    const primeiro = C.luminancia(cor) < media ? -1 : 1;
-    for (let i = 1; i <= 100; i++) {
-      for (const sinal of [primeiro, -primeiro]) {
-        const L = o.l + sinal * i * 0.01;
-        if (L < 0 || L > 1) continue;
-        const x = C.deOklch(L, o.c, sinal < 0 ? matizAoEscurecer(o, L) : o.h);
-        if (ok(x, fundos, minimo)) return x;
-      }
-    }
-    // Nenhuma luminosidade serve: os fundos estão dos dois lados do meio.
-    // Fica o extremo que mais se lê — e o teste do contrato denuncia.
-    const pior = (x) => Math.min.apply(null, fundos.map((f) => C.contraste(x, f)));
-    return pior('#ffffff') >= pior('#000000') ? '#ffffff' : '#000000';
-  }
-
-  /*
-   * A única exceção à matiz fixa: amarelo escurecendo.
-   *
-   * Amarelo escurecido na mesma matiz vira oliva — visto no render da
-   * amostra, a marca amarela no modo claro saía com botão cor de azeitona.
-   * Designer resolve puxando para o âmbar, e é o que isto faz: quanto mais
-   * escurece, mais a matiz anda em direção ao laranja (65°). Fora da faixa
-   * dos amarelos, nada muda.
-   */
-  function matizAoEscurecer(o, L) {
-    if (o.c < 0.05 || o.h < 75 || o.h > 125) return o.h;
-    const quanto = Math.min(1, (o.l - L) / 0.4);
-    return o.h - (o.h - 65) * quanto;
-  }
+  const garantir = C.garantirContraste;
 
   /*
    * Destaque no modo escuro: marca escura e pouco saturada (azul-marinho,
@@ -178,9 +144,9 @@
   }
 
   /*
-   * Preço: o destaque, se ele já se lê como texto; senão o destaque levado
-   * até 4.5. Igual ao destaque quando dá, porque preço é a coisa mais
-   * importante da peça e merece a cor que chama atenção.
+   * Preço: o destaque, que já se lê como texto (4.5 desde a fase 10). O
+   * token fica separado porque as peças já o usam, e para o preço continuar
+   * em 4.5 se um dia o destaque mudar de regra.
    */
   function preco(destaque, fundos) {
     return garantir(destaque, fundos, 4.5);
@@ -221,7 +187,7 @@
     const textoSuave = garantir(C.deOklch(0.8, tinta(o, 0.1, 0.02), o.h), fundos, 4.5);
     const acao = corDeAcao(marca, marca2, fundos);
     const oa = C.paraOklch(acao);
-    const destaque = garantir(ok(acao, fundos, 3) ? acao : C.deOklch(oa.l, vivo(oa), oa.h), fundos, 3);
+    const destaque = garantir(ok(acao, fundos, MIN_TEXTO) ? acao : C.deOklch(oa.l, vivo(oa), oa.h), fundos, MIN_TEXTO);
     return { fundo, fundo2, superficie, texto, textoSuave, destaque };
   }
 
@@ -233,7 +199,7 @@
     const fundos = [fundo, fundo2, superficie];
     const texto = garantir(C.deOklch(0.24, tinta(o, 0.25, 0.04), o.h), fundos, 4.5);
     const textoSuave = garantir(C.deOklch(0.45, tinta(o, 0.15, 0.03), o.h), fundos, 4.5);
-    const destaque = garantir(corDeAcao(marca, marca2, fundos), fundos, 3);
+    const destaque = garantir(corDeAcao(marca, marca2, fundos), fundos, MIN_TEXTO);
     return { fundo, fundo2, superficie, texto, textoSuave, destaque };
   }
 
@@ -275,7 +241,7 @@
      */
     const base = marca2 && marca2 !== marca ? marca2
       : textoClaro ? C.deOklch(0.9, Math.min(o.c, 0.09), o.h) : C.deOklch(0.3, Math.min(o.c, 0.12), o.h);
-    const destaque = garantir(base, fundos, 3);
+    const destaque = garantir(base, fundos, MIN_TEXTO);
     return { fundo, fundo2, superficie, texto, textoSuave, destaque };
   }
 
@@ -294,7 +260,7 @@
       fundo, fundo2, superficie,
       texto: garantir(g(0.3), fundos, 4.5),
       textoSuave: garantir(g(0.46), fundos, 4.5),
-      destaque: garantir(g(0.45), fundos, 3),
+      destaque: garantir(g(0.45), fundos, MIN_TEXTO),
     };
   }
 
