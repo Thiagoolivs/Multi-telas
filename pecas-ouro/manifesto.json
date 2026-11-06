@@ -1151,6 +1151,994 @@
         "titulo2": "com milho",
         "acompanha": "Linguiça, frango e alcatra com arroz e feijão da casa."
       }
+    },
+    {
+      "id": "indicador-meta",
+      "nome": "Indicador com meta",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa"
+      ],
+      "textos": {
+        "empresa": {
+          "kicker": "Linha 2 · novembro",
+          "titulo": "Peças produzidas no mês",
+          "numero": "18.450",
+          "unidade": "peças",
+          "seta": "▲",
+          "tendencia": "12% sobre outubro",
+          "meta": "Meta do mês: 17.000",
+          "atualizado": "Atualizado às 14h"
+        }
+      },
+      "estado": "proposta",
+      "marca": "industria",
+      "lote": 3
+    },
+    {
+      "id": "gente-destaque",
+      "nome": "Destaque do mês",
+      "familia": "gente",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa",
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "empresa": {
+          "iniciais": "JP",
+          "kicker": "Destaque de outubro",
+          "nome": "Juliana Prado",
+          "setor": "Expedição · turno A",
+          "conquista": "Zerou os atrasos de entrega da linha 3 em outubro.",
+          "assinatura": "Escolhida pelos colegas do setor"
+        },
+        "comercio": {
+          "iniciais": "CR",
+          "kicker": "Atendente do mês",
+          "nome": "Camila Rocha",
+          "setor": "Caixa · desde 2021",
+          "conquista": "Sabe o nome de quase todo cliente e o pedido de cada um.",
+          "assinatura": "Escolhida pela equipe da loja"
+        },
+        "saude": {
+          "iniciais": "RS",
+          "kicker": "Destaque do mês",
+          "nome": "Rita Souza",
+          "setor": "Enfermagem · coleta",
+          "conquista": "Coleta tranquila até para quem tem medo de agulha.",
+          "assinatura": "Escolhida pela equipe"
+        }
+      },
+      "estado": "proposta",
+      "marca": "rotasul",
+      "lote": 3
+    },
+    {
+      "id": "servico-semana",
+      "nome": "Agenda da semana",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa",
+        "saude",
+        "comercio"
+      ],
+      "textos": {
+        "empresa": {
+          "kicker": "Treinamentos",
+          "titulo": "Agenda",
+          "titulo2": "da semana",
+          "nota": "Inscrição com o seu líder até a véspera.",
+          "dia1": "Seg",
+          "data1": "10",
+          "evento1": "Integração de novos",
+          "detalhe1": "9h · Sala de treinamento",
+          "dia2": "Ter",
+          "data2": "11",
+          "evento2": "NR-12: máquinas seguras",
+          "detalhe2": "14h · Galpão B",
+          "dia3": "Qui",
+          "data3": "13",
+          "evento3": "Brigada de incêndio",
+          "detalhe3": "8h · Pátio",
+          "dia4": "Sex",
+          "data4": "14",
+          "evento4": "Primeiros socorros",
+          "detalhe4": "10h · Refeitório"
+        },
+        "saude": {
+          "kicker": "Grupos e palestras",
+          "titulo": "Agenda",
+          "titulo2": "da semana",
+          "nota": "Gratuito para pacientes. Inscrição na recepção.",
+          "dia1": "Seg",
+          "data1": "10",
+          "evento1": "Grupo de gestantes",
+          "detalhe1": "9h · Sala 3",
+          "dia2": "Ter",
+          "data2": "11",
+          "evento2": "Caminhada orientada",
+          "detalhe2": "7h · Praça em frente",
+          "dia3": "Qui",
+          "data3": "13",
+          "evento3": "Pressão sob controle",
+          "detalhe3": "15h · Auditório",
+          "dia4": "Sex",
+          "data4": "14",
+          "evento4": "Alimentação na infância",
+          "detalhe4": "10h · Sala 3"
+        },
+        "comercio": {
+          "kicker": "Programação",
+          "titulo": "Esta semana",
+          "titulo2": "na loja",
+          "nota": "Entrada livre: é só chegar.",
+          "dia1": "Ter",
+          "data1": "11",
+          "evento1": "Aula de pão caseiro",
+          "detalhe1": "15h · no salão",
+          "dia2": "Qua",
+          "data2": "12",
+          "evento2": "Fornada de panetone",
+          "detalhe2": "A partir das 16h",
+          "dia3": "Qui",
+          "data3": "13",
+          "evento3": "Degustação de cafés",
+          "detalhe3": "9h às 11h · balcão",
+          "dia4": "Sáb",
+          "data4": "15",
+          "evento4": "Café com música ao vivo",
+          "detalhe4": "10h às 12h"
+        }
+      },
+      "estado": "proposta",
+      "marca": "escritorio",
+      "lote": 3
+    },
+    {
+      "id": "servico-ramais",
+      "nome": "Ramais e contatos úteis",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa",
+        "saude"
+      ],
+      "textos": {
+        "empresa": {
+          "kicker": "Contatos úteis",
+          "titulo": "Ramais",
+          "nota": "Emergência: ramal 299",
+          "setor1": "Portaria",
+          "ramal1": "200",
+          "setor2": "RH",
+          "ramal2": "214",
+          "setor3": "Segurança",
+          "ramal3": "230",
+          "setor4": "Manutenção",
+          "ramal4": "245",
+          "setor5": "TI",
+          "ramal5": "260",
+          "setor6": "Ambulatório",
+          "ramal6": "280"
+        },
+        "saude": {
+          "kicker": "Para a equipe",
+          "titulo": "Ramais",
+          "nota": "Código azul: ramal 222",
+          "setor1": "Recepção",
+          "ramal1": "201",
+          "setor2": "Coleta",
+          "ramal2": "210",
+          "setor3": "Enfermagem",
+          "ramal3": "220",
+          "setor4": "Farmácia",
+          "ramal4": "230",
+          "setor5": "Faturamento",
+          "ramal5": "240",
+          "setor6": "Manutenção",
+          "ramal6": "250"
+        }
+      },
+      "estado": "proposta",
+      "marca": "rotasul",
+      "lote": 3
+    },
+    {
+      "id": "social-pesquisa",
+      "nome": "Pesquisa com QR",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa",
+        "saude",
+        "comercio"
+      ],
+      "textos": {
+        "empresa": {
+          "kicker": "Pesquisa de clima",
+          "titulo": "Como está o seu dia a dia aqui?",
+          "apoio": "São 5 minutos, é anônima e fica aberta até sexta.",
+          "cta": "Aponte a câmera e responda"
+        },
+        "saude": {
+          "kicker": "Pesquisa de satisfação",
+          "titulo": "Como foi o seu atendimento hoje?",
+          "apoio": "Leva 2 minutos e ajuda a gente a melhorar.",
+          "cta": "Aponte a câmera e responda"
+        },
+        "comercio": {
+          "kicker": "Sua opinião",
+          "titulo": "O que a gente pode fazer melhor?",
+          "apoio": "Leva 2 minutos. A gente lê todas as respostas.",
+          "cta": "Aponte a câmera e responda"
+        }
+      },
+      "estado": "proposta",
+      "marca": "escritorio",
+      "lote": 3,
+      "campos": {
+        "link": "https://example.com/pesquisa"
+      }
+    },
+    {
+      "id": "cardapio-semana",
+      "nome": "Cardápio da semana",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa",
+        "comercio"
+      ],
+      "textos": {
+        "empresa": {
+          "kicker": "Refeitório",
+          "titulo": "Cardápio da semana",
+          "quando": "Almoço das 11h às 14h",
+          "dia1": "Seg",
+          "prato1": "Frango assado com polenta",
+          "dia2": "Ter",
+          "prato2": "Carne de panela com batata",
+          "dia3": "Qua",
+          "prato3": "Feijoada com couve",
+          "dia4": "Qui",
+          "prato4": "Strogonoff de frango",
+          "dia5": "Sex",
+          "prato5": "Peixe empanado com purê",
+          "nota": "Todo dia: arroz, feijão, salada e fruta"
+        },
+        "comercio": {
+          "kicker": "Prato feito",
+          "titulo": "Pratos da semana",
+          "quando": "Almoço das 11h às 15h",
+          "dia1": "Seg",
+          "prato1": "Virado à paulista",
+          "dia2": "Ter",
+          "prato2": "Bife à rolê com purê",
+          "dia3": "Qua",
+          "prato3": "Feijoada completa",
+          "dia4": "Qui",
+          "prato4": "Frango com quiabo",
+          "dia5": "Sex",
+          "prato5": "Peixe frito com pirão",
+          "nota": "Todos com arroz, feijão e salada"
+        }
+      },
+      "estado": "proposta",
+      "marca": "rotasul",
+      "lote": 3
+    },
+    {
+      "id": "servico-epi",
+      "nome": "EPI obrigatório",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa"
+      ],
+      "textos": {
+        "empresa": {
+          "kicker": "Área de produção",
+          "titulo": "EPI",
+          "titulo2": "obrigatório",
+          "apoio": "Sem o equipamento completo, não entre na área.",
+          "epi1": "Capacete",
+          "epi2": "Óculos",
+          "epi3": "Protetor auricular",
+          "epi4": "Luva"
+        }
+      },
+      "estado": "proposta",
+      "marca": "industria",
+      "lote": 3
+    },
+    {
+      "id": "indicador-turno",
+      "nome": "Metas do turno",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa",
+        "saude"
+      ],
+      "textos": {
+        "empresa": {
+          "kicker": "Turno A · hoje",
+          "titulo": "Metas do turno",
+          "atualizado": "Atualizado às 11h",
+          "rotulo1": "Produção",
+          "valor1": "1.240",
+          "ref1": "Meta: 1.300",
+          "selo1": "No ritmo",
+          "rotulo2": "Refugo",
+          "valor2": "1,8%",
+          "ref2": "Limite: 2%",
+          "selo2": "Dentro",
+          "rotulo3": "Paradas",
+          "valor3": "12 min",
+          "ref3": "Ontem: 25 min",
+          "selo3": "Melhorou"
+        },
+        "saude": {
+          "kicker": "Hoje na clínica",
+          "titulo": "Como estamos hoje",
+          "atualizado": "Atualizado às 11h",
+          "rotulo1": "Atendimentos",
+          "valor1": "86",
+          "ref1": "Ontem: 79",
+          "selo1": "",
+          "rotulo2": "Espera média",
+          "valor2": "14 min",
+          "ref2": "Meta: até 20 min",
+          "selo2": "Dentro da meta",
+          "rotulo3": "Avaliação",
+          "valor3": "4,9",
+          "ref3": "de 5, no Google",
+          "selo3": ""
+        }
+      },
+      "estado": "proposta",
+      "marca": "industria",
+      "lote": 3
+    },
+    {
+      "id": "social-campanha",
+      "nome": "Campanha do mês",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "campanha": "Novembro Azul",
+          "titulo": "Homem também vai ao médico.",
+          "apoio": "Converse com o seu médico sobre os exames certos para a sua idade.",
+          "fonte": "Fonte: Ministério da Saúde"
+        },
+        "empresa": {
+          "campanha": "Novembro Azul",
+          "titulo": "Check-up também é coisa de homem.",
+          "apoio": "O ambulatório marca o seu no horário do expediente.",
+          "fonte": "Fonte: Ministério da Saúde"
+        }
+      },
+      "estado": "proposta",
+      "marca": "clinica",
+      "lote": 3
+    },
+    {
+      "id": "servico-preparo",
+      "nome": "Preparo de exame",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "numero": "8",
+          "unidade": "horas de jejum",
+          "kicker": "Preparo",
+          "titulo": "Antes do exame de sangue",
+          "item1": "Água pode, café não",
+          "item2": "Traga o pedido médico",
+          "item3": "E um documento com foto"
+        },
+        "empresa": {
+          "numero": "8",
+          "unidade": "horas de jejum",
+          "kicker": "Exame periódico",
+          "titulo": "Exame periódico nesta quinta",
+          "item1": "Água pode, café não",
+          "item2": "Leve um documento com foto",
+          "item3": "Chegue no horário marcado"
+        }
+      },
+      "estado": "proposta",
+      "marca": "clinica",
+      "lote": 3
+    },
+    {
+      "id": "servico-convenios",
+      "nome": "Convênios aceitos",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Atendemos",
+          "titulo": "Convênios aceitos",
+          "apoio": "Não achou o seu? Pergunte na recepção.",
+          "plano1": "OdontoVida",
+          "plano2": "Sorriso Pleno",
+          "plano3": "Dental Mais",
+          "plano4": "Bem Odonto",
+          "plano5": "Odonto Litoral",
+          "plano6": "Particular"
+        }
+      },
+      "estado": "proposta",
+      "marca": "dentista",
+      "lote": 3
+    },
+    {
+      "id": "gente-equipe",
+      "nome": "Nossa equipe",
+      "familia": "gente",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Quem cuida do seu sorriso",
+          "titulo": "Nossa equipe",
+          "iniciais1": "PM",
+          "nome1": "Dra. Paula Mendes",
+          "funcao1": "Ortodontia",
+          "registro1": "CRO-SP 85421",
+          "iniciais2": "RA",
+          "nome2": "Dr. Rafael Alves",
+          "funcao2": "Implantes",
+          "registro2": "CRO-SP 91307",
+          "iniciais3": "LC",
+          "nome3": "Dra. Lia Campos",
+          "funcao3": "Odontopediatria",
+          "registro3": "CRO-SP 77815"
+        },
+        "comercio": {
+          "kicker": "Quem cuida de você",
+          "titulo": "Nosso time",
+          "iniciais1": "CN",
+          "nome1": "Carla Nunes",
+          "funcao1": "Coloração",
+          "registro1": "12 anos de salão",
+          "iniciais2": "BT",
+          "nome2": "Bruno Teles",
+          "funcao2": "Corte masculino",
+          "registro2": "De terça a sábado",
+          "iniciais3": "JS",
+          "nome3": "Júlia Sá",
+          "funcao3": "Manicure",
+          "registro3": "Com hora marcada"
+        },
+        "empresa": {
+          "kicker": "Quem procurar",
+          "titulo": "Fale com a gente",
+          "iniciais1": "AL",
+          "nome1": "Ana Lima",
+          "funcao1": "Recursos humanos",
+          "registro1": "Ramal 214",
+          "iniciais2": "MS",
+          "nome2": "Marcos Silva",
+          "funcao2": "Segurança do trabalho",
+          "registro2": "Ramal 230",
+          "iniciais3": "TC",
+          "nome3": "Tatiane Costa",
+          "funcao3": "Ambulatório",
+          "registro3": "Ramal 280"
+        }
+      },
+      "estado": "proposta",
+      "marca": "dentista",
+      "lote": 3
+    },
+    {
+      "id": "servico-vacina",
+      "nome": "Vacinação",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Vacinação",
+          "titulo": "Sua caderneta está em dia?",
+          "apoio": "Traga a caderneta: a gente confere e aplica as vacinas que faltam.",
+          "quando": "Sem agendamento",
+          "onde": "Todos os dias · das 8h às 20h"
+        },
+        "empresa": {
+          "kicker": "Saúde no trabalho",
+          "titulo": "Vacinação aqui na empresa",
+          "apoio": "Gripe e tétano, de graça para toda a equipe.",
+          "quando": "Quinta, 13 de novembro",
+          "onde": "Refeitório · das 9h às 15h"
+        }
+      },
+      "estado": "proposta",
+      "marca": "farmacia",
+      "lote": 3
+    },
+    {
+      "id": "servico-espera",
+      "nome": "Enquanto espera (dica)",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "empresa",
+        "comercio"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Enquanto você espera",
+          "titulo": "Troque a escova de dente a cada três meses",
+          "apoio": "Cerdas gastas limpam menos e podem machucar a gengiva.",
+          "fonte": "Fonte: Ministério da Saúde"
+        },
+        "empresa": {
+          "kicker": "Saúde no trabalho",
+          "titulo": "A cada hora sentado, levante e alongue",
+          "apoio": "Dois minutos de pausa aliviam as costas e descansam a vista.",
+          "fonte": "Dica do SESMT"
+        },
+        "comercio": {
+          "kicker": "Você sabia?",
+          "titulo": "Embrulhamos para presente sem custo",
+          "apoio": "É só pedir no caixa na hora de pagar.",
+          "fonte": ""
+        }
+      },
+      "estado": "proposta",
+      "marca": "dentista",
+      "lote": 3
+    },
+    {
+      "id": "servico-hora",
+      "nome": "Uma hora em destaque",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "kicker": "Coleta de exames",
+          "hora": "7h às 10h",
+          "dias": "De segunda a sábado",
+          "nota": "Sem agendamento, por ordem de chegada. Jejum conforme o pedido."
+        },
+        "comercio": {
+          "kicker": "Atendimento",
+          "hora": "8h às 20h",
+          "dias": "De segunda a sábado",
+          "nota": "Domingo e feriado, das 8h às 13h."
+        },
+        "empresa": {
+          "kicker": "Ginástica laboral",
+          "hora": "9h30",
+          "dias": "Toda terça e quinta",
+          "nota": "Dez minutos no pátio, com a roupa do trabalho mesmo."
+        }
+      },
+      "estado": "proposta",
+      "marca": "clinica",
+      "lote": 3
+    },
+    {
+      "id": "oferta-relampago",
+      "nome": "Oferta relâmpago com contagem",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "textos": {
+        "comercio": {
+          "kicker": "Oferta relâmpago",
+          "titulo": "Combo burger e fritas",
+          "de": "De R$ 39,90",
+          "preco": "29",
+          "centavos": ",90",
+          "unidade": "por pessoa",
+          "rotulo": "Acaba em"
+        }
+      },
+      "estado": "proposta",
+      "marca": "lanchonete",
+      "lote": 3
+    },
+    {
+      "id": "oferta-kit",
+      "nome": "Kit (a soma que convence)",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "textos": {
+        "comercio": {
+          "kicker": "Kit da semana",
+          "titulo": "Cuidado dos fios",
+          "item1": "Shampoo",
+          "item2": "Máscara",
+          "item3": "Leave-in",
+          "preco": "89",
+          "centavos": ",90",
+          "de": "Separados: R$ 129,70",
+          "nota": "Até sábado ou enquanto durar o estoque"
+        }
+      },
+      "estado": "proposta",
+      "marca": "salao",
+      "lote": 3
+    },
+    {
+      "id": "oferta-chegou",
+      "nome": "Chegou (lançamento)",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "comercio": {
+          "selo": "Novo",
+          "kicker": "Acabou de chegar",
+          "titulo": "Lentes com filtro de luz azul",
+          "apoio": "Para quem passa o dia na frente da tela.",
+          "quando": "Na loja a partir de hoje"
+        },
+        "saude": {
+          "selo": "Novo",
+          "kicker": "Para você",
+          "titulo": "Resultado de exame pelo celular",
+          "apoio": "O laudo chega no WhatsApp, sem precisar voltar aqui.",
+          "quando": "Disponível a partir de hoje"
+        },
+        "empresa": {
+          "selo": "Novo",
+          "kicker": "Acabou de chegar",
+          "titulo": "Ponto pelo celular",
+          "apoio": "Bata o ponto pelo aplicativo, sem fila no relógio.",
+          "quando": "Valendo a partir de segunda"
+        }
+      },
+      "estado": "proposta",
+      "marca": "otica",
+      "lote": 3
+    },
+    {
+      "id": "social-fidelidade",
+      "nome": "Cartão fidelidade",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "textos": {
+        "comercio": {
+          "kicker": "Cartão fidelidade",
+          "titulo": "O 10º café é por nossa conta",
+          "apoio": "A cada café, um carimbo. Peça o seu cartão no caixa."
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 3
+    },
+    {
+      "id": "social-delivery",
+      "nome": "Delivery com QR",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "textos": {
+        "comercio": {
+          "kicker": "Delivery",
+          "titulo": "Entregamos no bairro",
+          "apoio": "Taxa grátis acima de R$ 50 · em até 40 minutos",
+          "cta": "Peça pelo WhatsApp",
+          "contato": "(11) 99999-0000"
+        }
+      },
+      "estado": "proposta",
+      "marca": "lanchonete",
+      "lote": 3,
+      "campos": {
+        "link": "https://wa.me/5511999990000"
+      }
+    },
+    {
+      "id": "social-wifi",
+      "nome": "Wi-Fi para clientes",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "comercio": {
+          "kicker": "Wi-Fi grátis",
+          "titulo": "Fique conectado",
+          "rotulo-rede": "Rede",
+          "rede": "Clientes",
+          "rotulo-senha": "Senha",
+          "senha": "bemvindo2026",
+          "cta": "Ou aponte a câmera para entrar"
+        },
+        "saude": {
+          "kicker": "Wi-Fi grátis",
+          "titulo": "Enquanto você espera",
+          "rotulo-rede": "Rede",
+          "rede": "Pacientes",
+          "rotulo-senha": "Senha",
+          "senha": "saude2026",
+          "cta": "Ou aponte a câmera para entrar"
+        },
+        "empresa": {
+          "kicker": "Wi-Fi",
+          "titulo": "Rede para visitantes",
+          "rotulo-rede": "Rede",
+          "rede": "Visitantes",
+          "rotulo-senha": "Senha",
+          "senha": "boasvindas26",
+          "cta": "Ou aponte a câmera para entrar"
+        }
+      },
+      "estado": "proposta",
+      "marca": "salao",
+      "lote": 3,
+      "campos": {
+        "wifi": "WIFI:T:WPA;S:Clientes;P:bemvindo2026;;"
+      }
+    },
+    {
+      "id": "servico-pagamento",
+      "nome": "Formas de pagamento",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "comercio": {
+          "kicker": "No caixa",
+          "titulo": "Pague como preferir",
+          "forma1": "Pix",
+          "forma2": "Crédito e débito",
+          "forma3": "Vale-refeição",
+          "forma4": "Dinheiro",
+          "nota": "Até 3x sem juros nas compras acima de R$ 100"
+        },
+        "saude": {
+          "kicker": "Na recepção",
+          "titulo": "Formas de pagamento",
+          "forma1": "Pix",
+          "forma2": "Crédito e débito",
+          "forma3": "Convênios",
+          "forma4": "Dinheiro",
+          "nota": "Atendimento particular: pergunte na recepção."
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 3
+    },
+    {
+      "id": "social-nota",
+      "nome": "Nota e depoimento",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "comercio": {
+          "nota": "4,9",
+          "total": "1.280 avaliações no Google",
+          "depoimento": "A melhor lasanha da cidade, e o atendimento é de casa.",
+          "autor": "Marina S., cliente desde 2019"
+        },
+        "saude": {
+          "nota": "4,9",
+          "total": "620 avaliações no Google",
+          "depoimento": "Obrigado a cada paciente que tira um minuto para nos avaliar.",
+          "autor": "Equipe de atendimento"
+        }
+      },
+      "estado": "proposta",
+      "marca": "restaurante",
+      "lote": 3
+    },
+    {
+      "id": "ambiente-ondas",
+      "nome": "Ambiente: ondas",
+      "familia": "ambiente",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "textos": {
+        "saude": {
+          "frase": "Respire fundo. Já já chamamos você."
+        },
+        "comercio": {
+          "frase": "Obrigado pela visita. Volte sempre!"
+        },
+        "empresa": {
+          "frase": "Uma pausa para respirar. Bom trabalho."
+        }
+      },
+      "estado": "proposta",
+      "marca": "clinica",
+      "lote": 3
+    },
+    {
+      "id": "ambiente-formas",
+      "nome": "Ambiente: formas",
+      "familia": "ambiente",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa",
+        "comercio",
+        "saude"
+      ],
+      "textos": {
+        "empresa": {
+          "frase": "Bom trabalho, equipe."
+        },
+        "comercio": {
+          "frase": "Feito com carinho, todo dia."
+        },
+        "saude": {
+          "frase": "Seja bem-vindo. Fique à vontade."
+        }
+      },
+      "estado": "proposta",
+      "marca": "escritorio",
+      "lote": 3
+    },
+    {
+      "id": "ambiente-luz",
+      "nome": "Ambiente: luz",
+      "familia": "ambiente",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "textos": {
+        "comercio": {
+          "frase": "Bom dia! O pão já saiu do forno.",
+          "apoio": "Que o seu dia seja leve."
+        },
+        "saude": {
+          "frase": "Bom dia! Que bom ter você aqui.",
+          "apoio": "Fique à vontade enquanto espera."
+        },
+        "empresa": {
+          "frase": "Bom dia, equipe!",
+          "apoio": "Mais um dia de trabalho seguro."
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 3
     }
   ],
   "telas": [

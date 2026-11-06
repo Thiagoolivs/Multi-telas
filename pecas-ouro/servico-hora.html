@@ -1,0 +1,87 @@
+<!--
+  Uma hora em destaque — família serviço. Destaque e lateral.
+  Quando o que importa é UM horário (a coleta de exames, a fornada, o
+  ônibus), a tabela de dias vira um herói só: a hora enorme, os dias
+  embaixo e a regra no pé. O relógio é desenho (os ponteiros não andam —
+  é ícone, não relógio). Para o relógio de verdade há o cabeçalho.
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 7cqw; padding: 8cqmin 7cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(90% 120% at 0% 0%, var(--mt-fundo-2), var(--mt-fundo) 60%); }
+/* O relógio: 10em, o aro na cor de destaque, os doze traços num gradiente cônico, dois ponteiros. */
+.relogio { position: relative; flex: none; width: 10em; height: 10em; border-radius: 50%; font-size: 4.6cqmin;
+  border: .9em solid var(--mt-destaque); background: var(--mt-superficie); }
+.relogio::before { content: ''; position: absolute; inset: .5em; border-radius: 50%;
+  background: repeating-conic-gradient(var(--mt-texto-suave) 0 1.2deg, transparent 1.2deg 30deg); }
+.relogio::after { content: ''; position: absolute; inset: 1.4em; border-radius: 50%; background: var(--mt-superficie); }
+.relogio i, .relogio b { position: absolute; left: 50%; bottom: 50%; z-index: 1; border-radius: .3em; background: var(--mt-texto); transform-origin: 50% 100%; }
+.relogio i { width: .55em; height: 2.4em; margin-left: -.275em; transform: rotate(210deg); }
+.relogio b { width: .4em; height: 3.3em; margin-left: -.2em; transform: rotate(0deg); background: var(--mt-destaque); }
+.relogio em { position: absolute; left: 50%; top: 50%; z-index: 2; width: 1em; height: 1em; margin: -.5em 0 0 -.5em; border-radius: 50%; background: var(--mt-texto); }
+.kicker { display: flex; align-items: center; gap: 2cqmin; font: 700 max(var(--mt-piso, 0cqw), 4.2cqmin)/1.15 var(--mt-fonte-texto); letter-spacing: .08em; text-transform: uppercase; color: var(--mt-preco); }
+.kicker i { display: block; flex: none; width: 6cqmin; height: .9cqmin; border-radius: 1cqmin; background: var(--mt-destaque); }
+.hora { margin-top: 2.4cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(21cqmin * var(--mt-escala-titulo, 1)))/.95 var(--mt-fonte-titulo); letter-spacing: -.02em; text-wrap: balance; }
+.dias { margin-top: 3cqmin; font: 700 max(var(--mt-piso, 0cqw), 6.4cqmin)/1.15 var(--mt-fonte-texto); color: var(--mt-preco); }
+.nota { margin-top: 5cqmin; padding-top: 2.6cqmin; border-top: .4cqmin solid var(--mt-linha); font: 500 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 24em; }
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+  .mt-peca { column-gap: 5cqw; padding: 7cqmin 6cqw; }
+  .relogio { font-size: 3.8cqmin; }
+  .hora { font-size: max(var(--mt-piso, 0cqw), calc(17cqmin * var(--mt-escala-titulo, 1))); }
+  .dias { font-size: max(var(--mt-piso, 0cqw), 5.6cqmin); }
+}
+/* Em pé: o relógio em cima, a hora embaixo, na largura. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; align-content: center; row-gap: 7cqmin; padding: 8cqmin 8cqw; }
+  .relogio { font-size: 4.4cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.4cqw); }
+  .hora { font-size: max(var(--mt-piso, 0cqw), calc(19cqw * var(--mt-escala-titulo, 1))); }
+  .dias { font-size: max(var(--mt-piso, 0cqw), 6.6cqw); }
+  .nota { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); max-width: none; }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .mt-peca { row-gap: 10cqw; }
+  .relogio { font-size: 5.4cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 5cqw); }
+  .hora { margin-top: 4cqw; font-size: max(var(--mt-piso, 0cqw), calc(22cqw * var(--mt-escala-titulo, 1))); }
+  .dias { margin-top: 4cqw; font-size: max(var(--mt-piso, 0cqw), 7.6cqw); }
+  .nota { margin-top: 8cqw; font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
+}
+/* Quase quadrada: o relógio pequeno ao lado do kicker; a hora na largura. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: auto 1fr; column-gap: 4cqw; row-gap: 0; padding: 7cqmin 7cqw; }
+  .relogio { font-size: 2.2cqmin; }
+  .texto { display: contents; }
+  .kicker { grid-column: 2; font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
+  .hora, .dias, .nota { grid-column: 1 / -1; }
+  .hora { margin-top: 5cqmin; font-size: max(var(--mt-piso, 0cqw), calc(18cqmin * var(--mt-escala-titulo, 1))); }
+  .dias { font-size: max(var(--mt-piso, 0cqw), 5.8cqmin); }
+  .nota { font-size: max(var(--mt-piso, 0cqw), 4.2cqmin); max-width: none; }
+}
+/* A lateral: o relógio, a hora e os dias; a nota fica, menor. */
+@container (max-width: 700px) {
+  .relogio { font-size: 4.4cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .04em; }
+  .kicker i { display: none; }
+  .hora { font-size: max(var(--mt-piso, 0cqw), calc(17cqw * var(--mt-escala-titulo, 1))); }
+  .dias { font-size: max(var(--mt-piso, 0cqw), 7.4cqw); }
+  .nota { font-size: max(var(--mt-piso, 0cqw), 6.2cqw); }
+}
+/* Deitada e baixa: o relógio, a hora e os dias; a nota sai. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 5cqmin 6cqw; column-gap: 5cqw; }
+  .relogio { font-size: 6cqmin; }
+  .nota { display: none; }
+  .hora { font-size: max(var(--mt-piso, 0cqw), calc(24cqmin * var(--mt-escala-titulo, 1))); }
+  .dias { font-size: max(var(--mt-piso, 0cqw), 9cqmin); }
+}
+</style>
+<section class="mt-peca servico-hora">
+  <span class="relogio" aria-hidden="true" data-entrada="crescer"><i></i><b></b><em></em></span>
+  <div class="texto">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Coleta de exames</span></p>
+    <p class="hora" data-campo="hora" data-entrada="subir" data-ordem="2">7h às 10h</p>
+    <p class="dias" data-campo="dias" data-entrada="aparecer" data-ordem="3">De segunda a sábado</p>
+    <p class="nota" data-campo="nota" data-entrada="aparecer" data-ordem="4">Sem agendamento, por ordem de chegada. Jejum conforme o pedido.</p>
+  </div>
+</section>

@@ -1,0 +1,100 @@
+<!--
+  Metas do turno — família institucional. Destaque e lateral.
+  Três números de uma vez, cada um com a régua dele embaixo (a meta, o
+  ontem) e um selo de como está. Três e não mais: é o que se lê numa
+  olhada (Geckoboard). Selo em branco some; o número continua.
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: flex; flex-direction: column; justify-content: center; padding: 8cqmin 7cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(120% 90% at 50% 0%, var(--mt-fundo-2), var(--mt-fundo) 64%); }
+.cabeca { display: flex; align-items: flex-end; justify-content: space-between; gap: 5cqw; }
+.kicker { display: flex; align-items: center; gap: 2cqmin; font: 700 max(var(--mt-piso, 0cqw), 3.6cqmin)/1.15 var(--mt-fonte-texto); letter-spacing: .12em; text-transform: uppercase; color: var(--mt-preco); }
+.kicker i { display: block; flex: none; width: 6cqmin; height: .9cqmin; border-radius: 1cqmin; background: var(--mt-destaque); }
+h1 { margin-top: 2.4cqmin; font: 600 max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
+.atualizado { flex: none; margin-bottom: 1cqmin; font: 500 max(var(--mt-piso, 0cqw), 3.8cqmin)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.metas { list-style: none; margin: 6cqmin 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4cqmin; }
+.metas li { display: flex; flex-direction: column; padding: 4cqmin 4cqmin 4.4cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie); border-top: 1.2cqmin solid var(--mt-destaque); }
+.metas li:has(.valor:empty) { display: none; }
+.rotulo { font: 700 max(var(--mt-piso, 0cqw), 4.2cqmin)/1.15 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.valor { margin-top: 2.4cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(15cqmin * var(--mt-escala-titulo, 1)))/.9 var(--mt-fonte-titulo); letter-spacing: -.02em; white-space: nowrap; }
+.ref { margin-top: 2.4cqmin; font: 500 max(var(--mt-piso, 0cqw), 3.8cqmin)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.selo { align-self: flex-start; margin-top: 3cqmin; padding: 1cqmin 2.4cqmin; border-radius: 99em; background: var(--mt-destaque); color: var(--mt-sobre-destaque);
+  font: 700 max(var(--mt-piso, 0cqw), 3.6cqmin)/1.15 var(--mt-fonte-texto); }
+.selo:empty { display: none; }
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(8.6cqmin * var(--mt-escala-titulo, 1))); }
+  .metas { margin-top: 5cqmin; gap: 3cqmin; }
+  .metas li { padding: 3.4cqmin 3.4cqmin 3.8cqmin; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(12.6cqmin * var(--mt-escala-titulo, 1))); }
+}
+/* Em pé e quase quadrada: uma meta por linha, o número à direita. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { padding: 8cqmin 8cqw; }
+  .cabeca { flex-direction: column; align-items: flex-start; gap: 2cqmin; }
+  .atualizado { margin-bottom: 0; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10.6cqw * var(--mt-escala-titulo, 1))); }
+  .metas { grid-template-columns: 1fr; margin-top: 7cqmin; gap: 3.6cqmin; }
+  .metas li { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 4cqmin; border-top: 0; border-left: 1.2cqmin solid var(--mt-destaque); }
+  .rotulo { grid-column: 1; }
+  .ref { grid-column: 1; margin-top: 1.4cqmin; }
+  .selo { grid-column: 1; justify-self: start; }
+  .valor { grid-column: 2; grid-row: 1 / span 3; margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.4cqw); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .atualizado { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+  .metas { margin-top: 10cqw; gap: 5cqw; }
+  .metas li { padding: 5cqw 5cqw 5.4cqw; border-left-width: 1.6cqw; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
+  .ref { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+  .selo { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(16cqw * var(--mt-escala-titulo, 1))); }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { padding: 6cqmin 7cqw; }
+  .kicker, .atualizado { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(8.4cqmin * var(--mt-escala-titulo, 1))); }
+  .metas { margin-top: 3.4cqmin; gap: 2.2cqmin; }
+  .metas li { padding: 2cqmin 3.4cqmin; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
+  .ref { margin-top: .6cqmin; font-size: max(var(--mt-piso, 0cqw), 3.6cqmin); }
+  .selo { margin-top: 1.2cqmin; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(11cqmin * var(--mt-escala-titulo, 1))); }
+}
+/* A lateral: o número embaixo do rótulo; sem o selo e o "atualizado". */
+@container (max-width: 700px) {
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; }
+  .kicker i, .atualizado, .selo { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(11cqw * var(--mt-escala-titulo, 1))); }
+  .metas { margin-top: 6cqw; gap: 4cqw; }
+  .metas li { display: flex; padding: 4cqw 5cqw; text-align: left; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 6.2cqw); }
+  .valor { margin-top: 1.6cqw; font-size: max(var(--mt-piso, 0cqw), calc(15cqw * var(--mt-escala-titulo, 1))); }
+  .ref { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+}
+/* Deitada e baixa: as três lado a lado, sem a régua e o selo. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 5cqmin 6cqw; }
+  .kicker, .atualizado, .ref, .selo { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1))); }
+  .metas { margin-top: 4cqmin; gap: 3cqmin; }
+  .metas li { padding: 3cqmin 3.4cqmin; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(17cqmin * var(--mt-escala-titulo, 1))); }
+}
+</style>
+<section class="mt-peca indicador-turno">
+  <div class="cabeca">
+    <div>
+      <p class="kicker" data-entrada="esquerda"><i aria-hidden="true"></i><span data-campo="kicker">Turno A · hoje</span></p>
+      <h1 data-campo="titulo" data-entrada="subir" data-ordem="1">Metas do turno</h1>
+    </div>
+    <p class="atualizado" data-campo="atualizado" data-entrada="aparecer" data-ordem="2">Atualizado às 11h</p>
+  </div>
+  <ul class="metas">
+    <li data-entrada="subir" data-ordem="2"><span class="rotulo" data-campo="rotulo1">Produção</span><b class="valor" data-campo="valor1">1.240</b><span class="ref" data-campo="ref1">Meta: 1.300</span><span class="selo" data-campo="selo1">No ritmo</span></li>
+    <li data-entrada="subir" data-ordem="3"><span class="rotulo" data-campo="rotulo2">Refugo</span><b class="valor" data-campo="valor2">1,8%</b><span class="ref" data-campo="ref2">Limite: 2%</span><span class="selo" data-campo="selo2">Dentro</span></li>
+    <li data-entrada="subir" data-ordem="4"><span class="rotulo" data-campo="rotulo3">Paradas</span><b class="valor" data-campo="valor3">12 min</b><span class="ref" data-campo="ref3">Ontem: 25 min</span><span class="selo" data-campo="selo3">Melhorou</span></li>
+  </ul>
+</section>

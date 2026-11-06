@@ -1,0 +1,56 @@
+<!--
+  Modo ambiente: luz — família ambiente. Destaque e lateral.
+  Círculos concêntricos que se abrem do canto, como luz de manhã entrando
+  pela janela (gradiente radial repetido, um elemento só) e um disco de
+  sol que respira devagar. Para a loja abrir o dia ou fechar a semana com
+  uma frase de bom-dia. Frase em branco some.
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: flex; flex-direction: column; justify-content: center; padding: 10cqmin 8cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.mt-peca::before { content: ''; position: absolute; right: -40cqmin; top: -40cqmin; width: 170cqmin; height: 170cqmin; border-radius: 50%;
+  background: repeating-radial-gradient(circle, var(--mt-destaque) 0 3cqmin, transparent 3cqmin 9cqmin); opacity: .16; }
+.sol { position: absolute; right: 10cqw; top: 12cqmin; width: 30cqmin; height: 30cqmin; border-radius: 50%; background: var(--mt-destaque);
+  box-shadow: 0 0 0 4cqmin var(--mt-fundo), 0 0 0 5.4cqmin var(--mt-destaque); }
+.texto { position: relative; max-width: 58cqw; }
+.frase { font: 700 max(var(--mt-piso, 0cqw), calc(14cqmin * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.02em; text-wrap: balance; }
+.frase:empty { display: none; }
+.apoio { margin-top: 4cqmin; font: 600 max(var(--mt-piso, 0cqw), 5cqmin)/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.apoio:empty { display: none; }
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+  .texto { max-width: 60cqw; }
+  .sol { right: 8cqw; width: 26cqmin; height: 26cqmin; }
+  .frase { font-size: max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1))); }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { justify-content: flex-end; padding: 10cqmin 8cqw 14cqmin; }
+  .mt-peca::before { right: -60cqw; top: -50cqw; width: 170cqw; height: 170cqw; background: repeating-radial-gradient(circle, var(--mt-destaque) 0 3cqw, transparent 3cqw 9cqw); }
+  .sol { right: 14cqw; top: 14cqw; width: 34cqw; height: 34cqw; }
+  .texto { max-width: none; }
+  .frase { font-size: max(var(--mt-piso, 0cqw), calc(15cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { padding-bottom: 10cqmin; }
+  .sol { top: 10cqmin; right: 10cqw; width: 24cqmin; height: 24cqmin; }
+  .frase { font-size: max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1))); }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 4.6cqmin); }
+}
+@container (max-width: 700px) {
+  .frase { font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 6.2cqw); }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 8cqmin 7cqw; }
+  .sol { top: 50%; margin-top: -18cqmin; width: 36cqmin; height: 36cqmin; }
+  .frase { font-size: max(var(--mt-piso, 0cqw), calc(15cqmin * var(--mt-escala-titulo, 1))); }
+  .apoio { display: none; }
+}
+</style>
+<section class="mt-peca ambiente-luz">
+  <span class="sol" aria-hidden="true" data-entrada="crescer" data-continua="pulsar"></span>
+  <div class="texto">
+    <p class="frase" data-campo="frase" data-entrada="subir" data-ordem="1">Bom dia! O pão já saiu do forno.</p>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="2">Que o seu dia seja leve.</p>
+  </div>
+</section>

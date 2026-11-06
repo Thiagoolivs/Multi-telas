@@ -1,0 +1,91 @@
+<!--
+  Pesquisa com QR — família social. Destaque e lateral.
+  A pergunta mora num balão de fala (desenho: caixa e a ponta em
+  clip-path), e o QR num celular desenhado — o gesto que se pede está no
+  próprio desenho. O detalhe (quanto tempo, até quando) é uma linha só; o
+  resto vai para o celular, não para a TV (Staffbase).
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 7cqw; padding: 8cqmin 7cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(110% 100% at 100% 0%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+.kicker { display: flex; align-items: center; gap: 2cqmin; font: 700 max(var(--mt-piso, 0cqw), 3.6cqmin)/1.15 var(--mt-fonte-texto); letter-spacing: .12em; text-transform: uppercase; color: var(--mt-preco); }
+.kicker i { display: block; flex: none; width: 6cqmin; height: .9cqmin; border-radius: 1cqmin; background: var(--mt-destaque); }
+.balao { position: relative; margin-top: 4cqmin; padding: 5cqmin 6cqmin; border-radius: 4cqmin; background: var(--mt-destaque); color: var(--mt-sobre-destaque); }
+.balao::after { content: ''; position: absolute; left: 8cqmin; bottom: -5.6cqmin; width: 9cqmin; height: 6cqmin; background: var(--mt-destaque); clip-path: polygon(0 0, 100% 0, 0 100%); }
+h1 { font: 600 max(var(--mt-piso, 0cqw), calc(10.4cqmin * var(--mt-escala-titulo, 1)))/1.05 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.apoio { margin-top: 9cqmin; font: 500 max(var(--mt-piso, 0cqw), 4.6cqmin)/1.35 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 26em; }
+.celular { display: flex; flex-direction: column; align-items: center; }
+.aparelho { position: relative; width: 40cqmin; padding: 13cqmin 3cqmin 15cqmin; border-radius: 6cqmin; background: var(--mt-texto); }
+.aparelho::before { content: ''; position: absolute; left: 50%; top: 2.8cqmin; width: 10cqmin; height: 1.4cqmin; margin-left: -5cqmin; border-radius: 1cqmin; background: var(--mt-fundo); opacity: .5; }
+.aparelho::after { content: ''; position: absolute; left: 50%; bottom: 2.8cqmin; width: 4cqmin; height: 4cqmin; margin-left: -2cqmin; border-radius: 50%; border: .5cqmin solid var(--mt-fundo); opacity: .5; }
+.qr { margin: 0; padding: 1.6cqmin; border-radius: 1.6cqmin; background: var(--mt-superficie); }
+.qr img { width: 100%; aspect-ratio: 1; }
+/* Sem link, o celular sai inteiro (não fica um aparelho vazio na parede). */
+.celular:has(img[data-sem-foto]) { display: none; }
+.cta { margin-top: 3.4cqmin; font: 700 max(var(--mt-piso, 0cqw), 4.2cqmin)/1.2 var(--mt-fonte-texto); text-align: center; max-width: 52cqmin; }
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+  .aparelho { width: 36cqmin; padding: 11cqmin 2.6cqmin 13cqmin; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(8.4cqmin * var(--mt-escala-titulo, 1))); }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 4.2cqmin); }
+}
+/* Em pé: o balão em cima, o celular embaixo, a linha do detalhe no pé. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; align-content: center; justify-items: center; row-gap: 6cqmin; padding: 8cqmin 8cqw; }
+  .texto { justify-self: stretch; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(9cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { margin-top: 8cqmin; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .aparelho { width: 46cqw; padding: 12cqw 3.4cqw 14cqw; }
+  .cta { font-size: max(var(--mt-piso, 0cqw), 4.4cqw); max-width: none; }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.4cqw); }
+  .balao { margin-top: 5cqw; padding: 6cqw 7cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(11.6cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { margin-top: 11cqw; font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
+  .aparelho { width: 50cqw; }
+  .cta { font-size: max(var(--mt-piso, 0cqw), 5.4cqw); }
+}
+/* Quase quadrada: o balão em cima, e o celular ao lado do detalhe. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr auto; justify-items: stretch; align-items: end; row-gap: 4cqmin; column-gap: 5cqw; padding: 7cqmin 7cqw; }
+  .texto { display: contents; }
+  .kicker, .balao { grid-column: 1 / -1; }
+  .balao { margin-top: 0; padding: 4cqmin 5cqmin; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(8cqmin * var(--mt-escala-titulo, 1))); }
+  .apoio { grid-column: 1; align-self: center; margin-top: 4cqmin; font-size: max(var(--mt-piso, 0cqw), 4.4cqmin); }
+  .celular { grid-column: 2; margin-top: 4cqmin; }
+  .aparelho { width: 30cqmin; padding: 8cqmin 2.4cqmin 9cqmin; border-radius: 4.6cqmin; }
+  .aparelho::before { top: 2cqmin; }
+  .aparelho::after { bottom: 1.6cqmin; width: 3cqmin; height: 3cqmin; margin-left: -1.5cqmin; }
+  .cta { display: none; }
+}
+/* A lateral: o balão, o celular e a chamada; o detalhe sai. */
+@container (max-width: 700px) {
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; }
+  .kicker i, .apoio { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1))); }
+  .balao { padding: 6cqw; }
+  .aparelho { width: 56cqw; margin-top: 4cqw; padding: 10cqw 3cqw 12cqw; }
+  .cta { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); }
+}
+/* Deitada e baixa: o balão e o celular, sem o detalhe. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 6cqmin 6cqw; }
+  .kicker, .apoio, .cta { display: none; }
+  .balao { margin-top: 0; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(11cqmin * var(--mt-escala-titulo, 1))); }
+  .aparelho { width: 44cqmin; padding: 11cqmin 2.6cqmin 13cqmin; }
+}
+</style>
+<section class="mt-peca social-pesquisa">
+  <div class="texto">
+    <p class="kicker" data-entrada="esquerda"><i aria-hidden="true"></i><span data-campo="kicker">Pesquisa de clima</span></p>
+    <div class="balao" data-entrada="crescer" data-ordem="1"><h1 data-campo="titulo">Como está o seu dia a dia aqui?</h1></div>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">São 5 minutos, é anônima e fica aberta até sexta.</p>
+  </div>
+  <div class="celular" data-entrada="subir" data-ordem="2">
+    <div class="aparelho"><figure class="qr"><img data-campo-qr="link" alt="QR da pesquisa"></figure></div>
+    <p class="cta" data-campo="cta">Aponte a câmera e responda</p>
+  </div>
+</section>

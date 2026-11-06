@@ -1,0 +1,83 @@
+<!--
+  Enquanto espera — família serviço. Destaque e lateral.
+  A dica de saúde para a sala de espera: uma frase que se lê em três
+  segundos, a explicação curta e a fonte no pé (NHS, CDC: uma mensagem e
+  de onde ela vem). Peça calma: fundo liso, uma lâmpada desenhada com
+  anéis de luz em volta, sem nada piscando.
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 7cqw; padding: 8cqmin 7cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+/* A lâmpada: 10em × 10em; o bulbo, a base com as roscas e os anéis de luz (box-shadow). */
+.luz { position: relative; flex: none; width: 10em; height: 10em; font-size: 5.6cqmin; }
+.luz::before { content: ''; position: absolute; left: 1.4em; top: 1.4em; width: 7.2em; height: 7.2em; border-radius: 50%; background: var(--mt-destaque); opacity: .14;
+  box-shadow: 0 0 0 1.2em var(--mt-fundo-2); }
+.bulbo { position: absolute; left: 3.1em; top: 2.1em; width: 3.8em; height: 3.8em; border-radius: 50% 50% 46% 46%; background: var(--mt-destaque); }
+.bulbo::after { content: ''; position: absolute; left: .85em; bottom: -.9em; width: 2.1em; height: 1.4em; border-radius: 0 0 .4em .4em; background: var(--mt-destaque); }
+.base { position: absolute; left: 3.95em; top: 6.75em; width: 2.1em; height: 1.3em; border-radius: .2em .2em .6em .6em;
+  background: repeating-linear-gradient(180deg, var(--mt-texto) 0 .32em, var(--mt-fundo) .32em .44em); }
+.brilho { position: absolute; left: 3.9em; top: 2.9em; width: .9em; height: 1.3em; border-radius: 50%; border: .22em solid var(--mt-sobre-destaque); border-color: var(--mt-sobre-destaque) transparent transparent var(--mt-sobre-destaque); transform: rotate(-20deg); opacity: .8; }
+.kicker { font: 700 max(var(--mt-piso, 0cqw), 3.8cqmin)/1.15 var(--mt-fonte-texto); letter-spacing: .08em; text-transform: uppercase; color: var(--mt-preco); }
+h1 { margin-top: 3cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(11.4cqmin * var(--mt-escala-titulo, 1)))/1.04 var(--mt-fonte-titulo); letter-spacing: -.015em; text-wrap: balance; }
+.apoio { margin-top: 4cqmin; font: 500 max(var(--mt-piso, 0cqw), 5.4cqmin)/1.32 var(--mt-fonte-texto); color: var(--mt-texto-suave); max-width: 22em; text-wrap: pretty; }
+.fonte:empty { display: none; }
+.fonte { margin-top: 6cqmin; padding-top: 2.6cqmin; border-top: .4cqmin solid var(--mt-linha); font: 600 max(var(--mt-piso, 0cqw), 3.8cqmin)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+  .mt-peca { column-gap: 5cqw; padding: 7cqmin 6cqw; }
+  .luz { font-size: 4.6cqmin; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1))); }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 4.8cqmin); }
+}
+/* Em pé: a lâmpada em cima, a dica embaixo. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; align-content: center; row-gap: 6cqmin; padding: 8cqmin 8cqw; }
+  .luz { justify-self: start; margin-left: -4cqw; font-size: 4.6cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 5.8cqw); max-width: none; }
+  .fonte { font-size: max(var(--mt-piso, 0cqw), 4.2cqw); }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .mt-peca { row-gap: 8cqw; }
+  .luz { font-size: 5.6cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  h1 { margin-top: 4cqw; font-size: max(var(--mt-piso, 0cqw), calc(13.6cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { margin-top: 6cqw; font-size: max(var(--mt-piso, 0cqw), 6.6cqw); }
+  .fonte { margin-top: 10cqw; font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+}
+/* Quase quadrada: a lâmpada pequena ao lado do kicker. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: auto 1fr; align-items: center; column-gap: 3cqw; row-gap: 0; padding: 7cqmin 7cqw; }
+  .luz { margin-left: -3cqmin; font-size: 2.4cqmin; }
+  .texto { display: contents; }
+  .kicker { grid-column: 2; font-size: max(var(--mt-piso, 0cqw), 3.8cqmin); }
+  h1, .apoio, .fonte { grid-column: 1 / -1; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10.4cqmin * var(--mt-escala-titulo, 1))); }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 5cqmin); max-width: none; }
+  .fonte { margin-top: 5cqmin; font-size: max(var(--mt-piso, 0cqw), 3.6cqmin); }
+}
+/* A lateral: a lâmpada, a dica e a fonte; a explicação sai. */
+@container (max-width: 700px) {
+  .luz { font-size: 4.6cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 5.8cqw); letter-spacing: .04em; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(11.6cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { display: none; }
+  .fonte { font-size: max(var(--mt-piso, 0cqw), 5.8cqw); }
+}
+/* Deitada e baixa: a lâmpada, a dica e a fonte. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 5cqmin 6cqw; column-gap: 4cqw; }
+  .luz { font-size: 6cqmin; }
+  .apoio { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(13cqmin * var(--mt-escala-titulo, 1))); }
+  .fonte { margin-top: 4cqmin; }
+}
+</style>
+<section class="mt-peca servico-espera">
+  <span class="luz" aria-hidden="true" data-entrada="aparecer"><span class="bulbo"></span><span class="base"></span><span class="brilho"></span></span>
+  <div class="texto">
+    <p class="kicker" data-campo="kicker" data-entrada="esquerda" data-ordem="1">Enquanto você espera</p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Troque a escova de dente a cada três meses</h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Cerdas gastas limpam menos e podem machucar a gengiva.</p>
+    <p class="fonte" data-campo="fonte" data-entrada="aparecer" data-ordem="4">Fonte: Ministério da Saúde</p>
+  </div>
+</section>

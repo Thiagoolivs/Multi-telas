@@ -1,0 +1,93 @@
+<!--
+  Nota e depoimento — família social. Destaque e lateral.
+  A prova social em dois tempos: a nota grande com as cinco estrelas
+  (desenho em clip-path) e quantas pessoas avaliaram; do lado, uma frase
+  de quem avaliou, entre aspas desenhadas. Na saúde, o depoimento vira um
+  agradecimento (o conselho não deixa usar o paciente como garantia).
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 7cqw; padding: 8cqmin 7cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(100% 100% at 0% 50%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+.placar { display: flex; flex-direction: column; align-items: flex-start; }
+.nota { font: 700 max(var(--mt-piso, 0cqw), calc(34cqmin * var(--mt-escala-titulo, 1)))/.85 var(--mt-fonte-titulo); letter-spacing: -.03em; }
+/* Cinco estrelas: uma faixa da cor de destaque recortada por cinco estrelas lado a lado. */
+.estrelas { display: flex; gap: .5cqmin; margin-top: 3cqmin; }
+.estrelas i { display: block; width: 7cqmin; height: 7cqmin; background: var(--mt-destaque);
+  clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.total { margin-top: 2.6cqmin; font: 600 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.fala { position: relative; padding-top: 11cqmin; }
+.fala::before, .fala::after { content: ''; position: absolute; top: 0; width: 5cqmin; height: 8cqmin; border-radius: 50% 50% 50% 0 / 60% 60% 40% 0; background: var(--mt-destaque); transform: skewX(-12deg); }
+.fala::before { left: 0; }
+.fala::after { left: 7cqmin; }
+.depoimento { font: 600 max(var(--mt-piso, 0cqw), calc(7.6cqmin * var(--mt-escala-titulo, 1)))/1.2 var(--mt-fonte-titulo); text-wrap: balance; }
+.autor { margin-top: 4cqmin; font: 600 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.2 var(--mt-fonte-texto); color: var(--mt-preco); }
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+  .mt-peca { column-gap: 5cqw; padding: 7cqmin 6cqw; }
+  .nota { font-size: max(var(--mt-piso, 0cqw), calc(28cqmin * var(--mt-escala-titulo, 1))); }
+  .estrelas i { width: 6cqmin; height: 6cqmin; }
+  .depoimento { font-size: max(var(--mt-piso, 0cqw), calc(6.6cqmin * var(--mt-escala-titulo, 1))); }
+}
+/* Em pé: a nota em cima, a fala embaixo. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; align-content: center; row-gap: 9cqmin; padding: 9cqmin 8cqw; }
+  .nota { font-size: max(var(--mt-piso, 0cqw), calc(36cqw * var(--mt-escala-titulo, 1))); }
+  .estrelas i { width: 9cqw; height: 9cqw; }
+  .total { font-size: max(var(--mt-piso, 0cqw), 5cqw); }
+  .depoimento { font-size: max(var(--mt-piso, 0cqw), calc(8.4cqw * var(--mt-escala-titulo, 1))); }
+  .autor { font-size: max(var(--mt-piso, 0cqw), 5cqw); }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .mt-peca { row-gap: 14cqw; }
+  .nota { font-size: max(var(--mt-piso, 0cqw), calc(42cqw * var(--mt-escala-titulo, 1))); }
+  .estrelas i { width: 11cqw; height: 11cqw; }
+  .total { font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
+  .fala { padding-top: 13cqw; }
+  .fala::before, .fala::after { width: 6cqw; height: 9.6cqw; }
+  .fala::after { left: 8.4cqw; }
+  .depoimento { font-size: max(var(--mt-piso, 0cqw), calc(9.6cqw * var(--mt-escala-titulo, 1))); }
+  .autor { margin-top: 6cqw; font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
+}
+/* Quase quadrada: a nota e as estrelas numa linha; a fala embaixo. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { row-gap: 6cqmin; padding: 7cqmin 7cqw; }
+  .placar { display: grid; grid-template-columns: auto 1fr; column-gap: 5cqw; align-items: center; }
+  .nota { grid-row: 1 / span 2; font-size: max(var(--mt-piso, 0cqw), calc(26cqmin * var(--mt-escala-titulo, 1))); }
+  .estrelas { margin-top: 0; }
+  .estrelas i { width: 7cqmin; height: 7cqmin; }
+  .total { font-size: max(var(--mt-piso, 0cqw), 4.2cqmin); }
+  .fala { padding-top: 9cqmin; }
+  .fala::before, .fala::after { width: 4cqmin; height: 6.4cqmin; }
+  .fala::after { left: 5.6cqmin; }
+  .depoimento { font-size: max(var(--mt-piso, 0cqw), calc(7cqmin * var(--mt-escala-titulo, 1))); }
+  .autor { margin-top: 3cqmin; font-size: max(var(--mt-piso, 0cqw), 4.2cqmin); }
+}
+/* A lateral: a nota, as estrelas e a fala. */
+@container (max-width: 700px) {
+  .nota { font-size: max(var(--mt-piso, 0cqw), calc(34cqw * var(--mt-escala-titulo, 1))); }
+  .estrelas i { width: 10cqw; height: 10cqw; }
+  .total { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+  .depoimento { font-size: max(var(--mt-piso, 0cqw), calc(8.6cqw * var(--mt-escala-titulo, 1))); }
+  .autor { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+}
+/* Deitada e baixa: a nota e a fala, sem o autor. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 6cqmin 6cqw; column-gap: 6cqw; }
+  .nota { font-size: max(var(--mt-piso, 0cqw), calc(40cqmin * var(--mt-escala-titulo, 1))); }
+  .estrelas i { width: 8cqmin; height: 8cqmin; }
+  .autor { display: none; }
+  .fala { padding-top: 12cqmin; }
+  .depoimento { font-size: max(var(--mt-piso, 0cqw), calc(9cqmin * var(--mt-escala-titulo, 1))); }
+}
+</style>
+<section class="mt-peca social-nota">
+  <div class="placar" data-entrada="crescer">
+    <b class="nota" data-campo="nota">4,9</b>
+    <span class="estrelas" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+    <span class="total" data-campo="total">1.280 avaliações no Google</span>
+  </div>
+  <div class="fala" data-entrada="esquerda" data-ordem="2">
+    <p class="depoimento" data-campo="depoimento">A melhor lasanha da cidade, e o atendimento é de casa.</p>
+    <p class="autor" data-campo="autor">Marina S., cliente desde 2019</p>
+  </div>
+</section>

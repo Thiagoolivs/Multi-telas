@@ -1,0 +1,108 @@
+<!--
+  Oferta relâmpago — família oferta. Destaque e lateral.
+  O preço é o herói e o tempo é a pressão: a contagem regressiva até a
+  data da zona (data-vivo="contagem") numa faixa embaixo, em algarismos de
+  largura fixa. Sem data na zona, a faixa some e fica a oferta. O raio é
+  desenho (clip-path) e mora no selo do kicker.
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: grid; grid-template-columns: 1fr auto; grid-template-rows: 1fr auto; align-items: center; column-gap: 5cqw; padding: 8cqmin 7cqw 6cqmin;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(100% 120% at 100% 0%, var(--mt-fundo-2), var(--mt-fundo) 60%); }
+.selo { display: inline-flex; align-items: center; gap: 1.6cqmin; padding: 1.4cqmin 3cqmin 1.4cqmin 2.2cqmin; border-radius: 99em; background: var(--mt-destaque); color: var(--mt-sobre-destaque);
+  font: 700 max(var(--mt-piso, 0cqw), 4cqmin)/1.1 var(--mt-fonte-texto); letter-spacing: .06em; text-transform: uppercase; }
+.raio { flex: none; width: .7em; height: 1.15em; background: var(--mt-sobre-destaque); clip-path: polygon(62% 0, 8% 58%, 44% 58%, 30% 100%, 92% 38%, 56% 38%, 76% 0); }
+h1 { margin-top: 4cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-transform: uppercase; text-wrap: balance; }
+.de { margin-top: 3cqmin; font: 600 max(var(--mt-piso, 0cqw), 4.6cqmin)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.de s { text-decoration-thickness: .1em; }
+.preco { display: flex; align-items: flex-start; color: var(--mt-preco); white-space: nowrap; }
+.preco small { margin-top: .5em; margin-right: .2em; font: 700 max(var(--mt-piso, 0cqw), 6cqmin)/1 var(--mt-fonte-texto); }
+.preco b { font: 700 max(var(--mt-piso, 0cqw), calc(36cqmin * var(--mt-escala-titulo, 1)))/.8 var(--mt-fonte-titulo); letter-spacing: -.03em; }
+.preco sup { margin-top: .15em; font: 700 max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); }
+.unidade { display: block; margin-top: 2cqmin; text-align: right; font: 600 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.conta { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 4cqw; margin-top: 5cqmin; padding: 2.4cqmin 3.4cqmin; border-radius: var(--mt-raio);
+  background: var(--mt-superficie); border-left: 1.4cqmin solid var(--mt-destaque); }
+.conta:has([data-vivo="contagem"]:empty) { display: none; }
+.rotulo { font: 700 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.1 var(--mt-fonte-texto); letter-spacing: .06em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.tempo { font: 700 max(var(--mt-piso, 0cqw), 8cqmin)/1 var(--mt-fonte-texto); font-variant-numeric: tabular-nums; letter-spacing: .02em; white-space: nowrap; }
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+  .mt-peca { padding: 7cqmin 6cqw 5cqmin; column-gap: 4cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1))); }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(31cqmin * var(--mt-escala-titulo, 1))); }
+  .preco sup { font-size: max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1))); }
+  .conta { margin-top: 4cqmin; padding: 2cqmin 3cqmin; }
+  .tempo { font-size: max(var(--mt-piso, 0cqw), 7cqmin); }
+}
+/* Em pé: o produto em cima, o preço no meio, a contagem embaixo. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; grid-template-rows: auto; align-content: center; row-gap: 5cqmin; padding: 8cqmin 8cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .de { font-size: max(var(--mt-piso, 0cqw), 5cqw); }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(38cqw * var(--mt-escala-titulo, 1))); }
+  .preco sup { font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .preco small { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); }
+  .unidade { text-align: left; font-size: max(var(--mt-piso, 0cqw), 5cqw); }
+  .conta { margin-top: 3cqmin; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .tempo { font-size: max(var(--mt-piso, 0cqw), 8.4cqw); }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .mt-peca { row-gap: 8cqw; }
+  .selo { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+  h1 { margin-top: 6cqw; font-size: max(var(--mt-piso, 0cqw), calc(15cqw * var(--mt-escala-titulo, 1))); }
+  .de { margin-top: 4cqw; font-size: max(var(--mt-piso, 0cqw), 5.8cqw); }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(44cqw * var(--mt-escala-titulo, 1))); }
+  .preco sup { font-size: max(var(--mt-piso, 0cqw), calc(15cqw * var(--mt-escala-titulo, 1))); }
+  .conta { padding: 4cqw 5cqw; }
+  .tempo { font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
+}
+/* Quase quadrada: o preço ao lado do produto, a contagem embaixo. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr auto; column-gap: 4cqw; row-gap: 0; padding: 7cqmin 7cqw 6cqmin; }
+  .selo { font-size: max(var(--mt-piso, 0cqw), 3.6cqmin); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1))); }
+  .de { font-size: max(var(--mt-piso, 0cqw), 4.2cqmin); }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(28cqmin * var(--mt-escala-titulo, 1))); }
+  .preco sup { font-size: max(var(--mt-piso, 0cqw), calc(9cqmin * var(--mt-escala-titulo, 1))); }
+  .preco small { font-size: max(var(--mt-piso, 0cqw), 4.6cqmin); }
+  .unidade { text-align: right; font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
+  .conta { margin-top: 5cqmin; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
+  .tempo { font-size: max(var(--mt-piso, 0cqw), 7cqmin); }
+}
+/* A lateral: tudo empilhado; a contagem quebra o rótulo em cima do tempo. */
+@container (max-width: 700px) {
+  .selo { font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12.4cqw * var(--mt-escala-titulo, 1))); }
+  .de { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(36cqw * var(--mt-escala-titulo, 1))); }
+  .preco sup { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .preco small { font-size: max(var(--mt-piso, 0cqw), 7cqw); }
+  .unidade { font-size: max(var(--mt-piso, 0cqw), 6.4cqw); }
+  .conta { flex-direction: column; align-items: flex-start; gap: 1.4cqw; padding: 3.4cqw 4.4cqw; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 6cqw); }
+  .tempo { font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
+}
+/* Deitada e baixa: o produto e o preço; a contagem fica, mais baixa; o "de" sai. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 5cqmin 6cqw 4cqmin; }
+  .de, .unidade { display: none; }
+  h1 { margin-top: 3cqmin; font-size: max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1))); }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(40cqmin * var(--mt-escala-titulo, 1))); }
+  .preco sup { font-size: max(var(--mt-piso, 0cqw), calc(13cqmin * var(--mt-escala-titulo, 1))); }
+  .conta { margin-top: 3cqmin; padding: 1.6cqmin 3cqmin; }
+  .tempo { font-size: max(var(--mt-piso, 0cqw), 9cqmin); }
+}
+</style>
+<section class="mt-peca oferta-relampago">
+  <div class="texto">
+    <p class="selo" data-entrada="estourar"><span class="raio" aria-hidden="true"></span><span data-campo="kicker">Oferta relâmpago</span></p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="1">Combo burger e fritas</h1>
+    <p class="de" data-entrada="aparecer" data-ordem="2"><s data-campo="de">De R$ 39,90</s></p>
+  </div>
+  <div class="valor" data-entrada="crescer" data-ordem="3">
+    <p class="preco"><small aria-hidden="true">R$</small><b data-campo="preco">29</b><sup data-campo="centavos">,90</sup></p>
+    <span class="unidade" data-campo="unidade">por pessoa</span>
+  </div>
+  <div class="conta" data-entrada="subir" data-ordem="4"><span class="rotulo" data-campo="rotulo">Acaba em</span><span class="tempo" data-vivo="contagem">2d 04:15:09</span></div>
+</section>

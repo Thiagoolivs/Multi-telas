@@ -1,0 +1,105 @@
+<!--
+  Wi-Fi para clientes — família social. Destaque e lateral.
+  O que a pessoa precisa copiar (a rede e a senha) em letra grande e
+  espaçada, cada um no seu cartão; e o QR que conecta sem digitar (o
+  campo leva "WIFI:T:WPA;S:rede;P:senha;;"). O símbolo é desenho: três
+  arcos e um ponto. Sem o QR, a coluna dele some e o cartão fica.
+-->
+<style>
+.mt-peca { overflow-wrap: break-word; display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 6cqw; padding: 8cqmin 7cqw;
+  color: var(--mt-texto); font-family: var(--mt-fonte-texto);
+  background: radial-gradient(110% 110% at 0% 0%, var(--mt-fundo-2), var(--mt-fundo) 62%); }
+/* O símbolo: 10em × 7em; arcos são anéis com só a borda de cima, girados. */
+.sinal { position: relative; display: block; width: 10em; height: 6em; font-size: 2.2cqmin; }
+.sinal i { position: absolute; left: 50%; top: 0; border-radius: 50%; border: 1.1em solid transparent; border-top-color: var(--mt-destaque); }
+.sinal i:nth-child(1) { width: 10em; height: 10em; margin-left: -5em; }
+.sinal i:nth-child(2) { top: 1.7em; width: 6.6em; height: 6.6em; margin-left: -3.3em; }
+.sinal i:nth-child(3) { top: 3.4em; width: 3.2em; height: 3.2em; margin-left: -1.6em; }
+.sinal b { position: absolute; left: 50%; top: 4.25em; width: 1.5em; height: 1.5em; margin-left: -.75em; border-radius: 50%; background: var(--mt-destaque); }
+.kicker { margin-top: 3cqmin; font: 700 max(var(--mt-piso, 0cqw), 4cqmin)/1.15 var(--mt-fonte-texto); letter-spacing: .08em; text-transform: uppercase; color: var(--mt-preco); }
+h1 { margin-top: 2cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
+.dados { margin-top: 5cqmin; display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 2.4cqmin 4cqmin; padding: 3.4cqmin 4cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie); border-left: 1.2cqmin solid var(--mt-destaque); }
+.rotulo { font: 700 max(var(--mt-piso, 0cqw), 3.8cqmin)/1.1 var(--mt-fonte-texto); letter-spacing: .08em; text-transform: uppercase; color: var(--mt-texto-suave); }
+.valor { font: 700 max(var(--mt-piso, 0cqw), 6.6cqmin)/1.1 var(--mt-fonte-texto); letter-spacing: .02em; word-break: break-all; }
+.conectar { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.conectar:has(img[data-sem-foto]) { display: none; }
+.qr { margin: 0; width: 42cqmin; padding: 2cqmin; border-radius: var(--mt-raio); background: var(--mt-superficie); box-shadow: 0 0 0 .8cqmin var(--mt-destaque); }
+.qr img { width: 100%; aspect-ratio: 1; }
+.cta { margin-top: 3.4cqmin; max-width: 46cqmin; font: 700 max(var(--mt-piso, 0cqw), 4.4cqmin)/1.2 var(--mt-fonte-texto); }
+@container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
+  .mt-peca { column-gap: 5cqw; padding: 7cqmin 6cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1))); }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 5.8cqmin); }
+  .qr { width: 36cqmin; }
+  .cta { font-size: max(var(--mt-piso, 0cqw), 4cqmin); }
+}
+/* Em pé: o símbolo e o título em cima, os dados, e o QR embaixo. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; align-content: center; justify-items: center; row-gap: 7cqmin; padding: 8cqmin 8cqw; }
+  .texto { justify-self: stretch; }
+  .sinal { font-size: 1.8cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 4.2cqw); }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 7cqw); }
+  .qr { width: 44cqw; }
+  .cta { max-width: none; font-size: max(var(--mt-piso, 0cqw), 5cqw); }
+}
+@container (aspect-ratio < 0.8) and (min-width: 701px) {
+  .mt-peca { row-gap: 10cqw; }
+  .sinal { font-size: 2.2cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(15cqw * var(--mt-escala-titulo, 1))); }
+  .dados { margin-top: 7cqw; padding: 5cqw 5cqw; gap: 3.4cqw 5cqw; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 8cqw); }
+  .qr { width: 50cqw; }
+  .cta { font-size: max(var(--mt-piso, 0cqw), 5.6cqw); }
+}
+/* Quase quadrada: os dados à esquerda, o QR menor à direita. */
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr auto; justify-items: stretch; align-items: end; column-gap: 4cqw; padding: 7cqmin 7cqw; }
+  .sinal { font-size: 1.2cqmin; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.6cqmin); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10cqmin * var(--mt-escala-titulo, 1))); }
+  .dados { grid-template-columns: 1fr; gap: .6cqmin; padding: 2.6cqmin 3cqmin; }
+  .valor + .rotulo { margin-top: 2cqmin; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 5.4cqmin); }
+  .qr { width: 30cqmin; padding: 1.4cqmin; }
+  .cta { display: none; }
+}
+/* A lateral: o símbolo, os dados um embaixo do outro e o QR. */
+@container (max-width: 700px) {
+  .sinal { font-size: 2cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 5.8cqw); letter-spacing: .04em; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .dados { grid-template-columns: 1fr; gap: 1cqw; padding: 4cqw; }
+  .valor + .rotulo { margin-top: 3cqw; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 5.4cqw); }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 7.4cqw); }
+  .qr { width: 48cqw; }
+  .cta { display: none; }
+}
+/* Deitada e baixa: os dados e o QR; o símbolo e a chamada saem. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { padding: 5cqmin 6cqw; }
+  .sinal, .cta, .kicker { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12cqmin * var(--mt-escala-titulo, 1))); }
+  .dados { margin-top: 4cqmin; padding: 2.4cqmin 3.4cqmin; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 9cqmin); }
+  .qr { width: 60cqmin; }
+}
+</style>
+<section class="mt-peca social-wifi">
+  <div class="texto">
+    <span class="sinal" aria-hidden="true" data-entrada="aparecer"><i></i><i></i><i></i><b></b></span>
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="1">Wi-Fi grátis</p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Fique conectado</h1>
+    <div class="dados" data-entrada="subir" data-ordem="3">
+      <span class="rotulo" data-campo="rotulo-rede">Rede</span><span class="valor" data-campo="rede">Clientes</span>
+      <span class="rotulo" data-campo="rotulo-senha">Senha</span><span class="valor" data-campo="senha">bemvindo2026</span>
+    </div>
+  </div>
+  <div class="conectar" data-entrada="crescer" data-ordem="4">
+    <figure class="qr"><img data-campo-qr="wifi" alt="QR para entrar no Wi-Fi"></figure>
+    <p class="cta" data-campo="cta">Ou aponte a câmera para entrar</p>
+  </div>
+</section>
