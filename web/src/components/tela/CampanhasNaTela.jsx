@@ -19,7 +19,8 @@ export function CampanhasNaTela({ cfg, onAbrir, onTirar }) {
   if (!lista.length) return null;
   return (
     <section className="rounded-lg border border-line bg-surface p-3">
-      <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-ink"><Megaphone size={15} className="text-accent" /> Campanhas nesta TV</h3>
+      {/* h2: a seção da página da TV (o axe acusava h3 logo depois do h1, no reteste da fase 10). */}
+      <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-ink"><Megaphone size={15} className="text-accent" /> Campanhas nesta TV</h2>
       <ul className="divide-y divide-line">
         {lista.map((c) => (
           <li key={c.nome} className="flex flex-wrap items-center gap-2 py-2">

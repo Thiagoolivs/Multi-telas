@@ -1977,7 +1977,13 @@
     const palco = document.getElementById('stage');
     const w = (palco && palco.offsetWidth) || global.innerWidth || 1920;
     const h = (palco && palco.offsetHeight) || global.innerHeight || 1080;
-    const k = w >= h ? Math.min(w / 1920, h / 1080) : Math.min(w / 1080, h / 1920);
+    /*
+     * 1080 no lado menor (o mesmo do painel, VerTelaAgora): a TV deitada e a
+     * em pé dão o mesmo de antes; a QUADRADA (1080×1080) dava 0,56 — ela era
+     * tratada como 16:9 e toda peça saía desenhada para 1920 e encolhida, com
+     * a letra a 56% do piso (reteste da fase 10, bloco 1).
+     */
+    const k = Math.min(w, h) / 1080;
     return k > 0.2 && k < 8 ? k : 1;
   }
   function hostDaPeca(el) {

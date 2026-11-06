@@ -5,7 +5,39 @@ mais dura que a do QA de 03/11 ([docs/qa/RETESTE.md](../qa/RETESTE.md)):
 ela compara com o nível profissional ([REFERENCIAS.md](REFERENCIAS.md)) e com
 as [telas de referência](telas-referencia/), e não só com "funciona".
 
-## Notas
+## O reteste (fase 10, 05/11)
+
+Os mesmos blocos, com o mesmo método e a mesma régua, depois das fases 0 a 9.
+Servidor local, robô e TVs de verdade no navegador. A IA real ficou de fora:
+a chave do Gemini respondeu 402 (créditos esgotados).
+
+| Bloco | Antes | Agora | Relatório |
+|---|---|---|---|
+| 1. A TV | 4,5 | **6,5** | [RETESTE-BLOCO-1](RETESTE-BLOCO-1.md) |
+| 2. Criações da IA | 6,3 | — | Precisa da IA real |
+| 3. Programação | 5,9 | **8,0** nos 7 cenários sem IA (eram 6,3) | [RETESTE-BLOCO-3](RETESTE-BLOCO-3.md) |
+| 4. Telas e a página da TV | 7 | **8,5** | [RETESTE-BLOCO-4-7](RETESTE-BLOCO-4-7.md) |
+| 5. O resto do painel | 7 | **7,5** | [RETESTE-BLOCO-4-7](RETESTE-BLOCO-4-7.md) |
+| 6. Site e e-mails | 8 | **8** | [RETESTE-BLOCO-4-7](RETESTE-BLOCO-4-7.md) |
+| 7. A base | 8 | **8,5** | [RETESTE-BLOCO-4-7](RETESTE-BLOCO-4-7.md) |
+| 8. A interface do painel | 5,5 | **6,7** | [RETESTE-BLOCO-8](RETESTE-BLOCO-8.md) |
+
+**Nota geral provisória: 7,1 / 10** (era 6,2), com o mesmo peso dobrado para a
+TV, a IA, a programação e a interface. No bloco 2 entra a nota antiga. No 3,
+os 7 cenários medidos e a nota antiga dos 5 que dependem da IA.
+
+**Nenhum bloco chegou a 9.** O que falta em cada um está no plano, na
+[fase 10](PLANO-DE-ACAO.md#fase-10-reteste-completo-e-lançamento-para-pilotos-2-dias).
+
+**Corrigido já, com o que o reteste achou:**
+- A TV quadrada desenhava toda peça a 56% do piso, porque era tratada como 16:9 (`js/render.js`). A bancada não via isso, porque desenhava a tela quadrada em 1920×1080 (`js/bancada.js`).
+- 12 textos do cliente eram apagados nas telas prontas, porque os ids das marcas de exemplo são palavras comuns, como "dentista" e "clinica".
+- O pacote do dentista anunciava preço parcelado, e o código de ética do CFO não permite.
+- O axe com uma campanha no ar acusava 8 falhas: o título fora de ordem e o selo "rodando" sem contraste.
+- "Pôr pra rodar" virou "Pôr na TV", "Trocar agora" virou "Abrir a TV", e o "Mídias" que tinha sobrado na Marca saiu.
+- A Agenda não repete mais o mesmo nome em cada célula.
+
+## As notas do QA original (05/11)
 
 | Bloco | Nota | Em uma frase | Relatório |
 |---|---|---|---|

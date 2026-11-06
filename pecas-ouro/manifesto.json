@@ -3725,22 +3725,8 @@
       ],
       "estrutura": "pacote padaria",
       "marca": "padaria",
-      "layout": "square-header",
+      "layout": "square-hero",
       "zonas": {
-        "cabecalho": {
-          "modo": "marca",
-          "pecas": [
-            {
-              "id": "cabecalho-status",
-              "campos": {
-                "status": "Aberto agora",
-                "horario": "até as 20h",
-                "desde": "Desde 1987",
-                "marca": "Padaria do Bairro"
-              }
-            }
-          ]
-        },
         "principal": {
           "modo": "escuro",
           "pecas": [
@@ -4035,20 +4021,8 @@
       ],
       "estrutura": "pacote otica",
       "marca": "otica",
-      "layout": "square-header",
+      "layout": "square-hero",
       "zonas": {
-        "cabecalho": {
-          "modo": "marca",
-          "pecas": [
-            {
-              "id": "cabecalho-classico",
-              "campos": {
-                "chamada": "Exame de vista sem fila",
-                "marca": "Ótica Central"
-              }
-            }
-          ]
-        },
         "principal": {
           "modo": "escuro",
           "pecas": [
@@ -4396,21 +4370,8 @@
       ],
       "estrutura": "pacote restaurante",
       "marca": "restaurante",
-      "layout": "square-header",
+      "layout": "square-hero",
       "zonas": {
-        "cabecalho": {
-          "modo": "marca",
-          "pecas": [
-            {
-              "id": "cabecalho-chamada",
-              "campos": {
-                "chamada": "Almoço executivo",
-                "quando": "de segunda a sexta",
-                "marca": "Cantina da Nona"
-              }
-            }
-          ]
-        },
         "principal": {
           "modo": "escuro",
           "pecas": [
@@ -4711,20 +4672,8 @@
       ],
       "estrutura": "pacote salao",
       "marca": "salao",
-      "layout": "square-header",
+      "layout": "square-hero",
       "zonas": {
-        "cabecalho": {
-          "modo": "marca",
-          "pecas": [
-            {
-              "id": "cabecalho-centro",
-              "campos": {
-                "sub": "Cabelo · unhas · estética",
-                "marca": "Studio Bella"
-              }
-            }
-          ]
-        },
         "principal": {
           "modo": "escuro",
           "pecas": [
@@ -5006,19 +4955,8 @@
       ],
       "estrutura": "pacote clinica",
       "marca": "clinica",
-      "layout": "square-header",
+      "layout": "square-hero",
       "zonas": {
-        "cabecalho": {
-          "modo": "marca",
-          "pecas": [
-            {
-              "id": "cabecalho-minimo",
-              "campos": {
-                "marca": "Clínica Vida"
-              }
-            }
-          ]
-        },
         "principal": {
           "modo": "escuro",
           "pecas": [
@@ -5125,34 +5063,33 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "oferta-parcelado",
-              "campos": {
-                "kicker": "Sorriso novo",
-                "titulo": "Clareamento com avaliação",
-                "item1": "Avaliação com o dentista",
-                "item2": "Limpeza antes do clareamento",
-                "item3": "Moldeira e gel para casa",
-                "vezes": "10",
-                "de": "sem juros, de",
-                "parcela": "49",
-                "centavos": ",90",
-                "total": "Total de R$ 499,00 no cartão",
-                "marca": "Sorriso Odontologia"
-              }
-            },
-            {
               "id": "servico-passos",
               "campos": {
                 "kicker": "Primeira consulta?",
                 "titulo": "Seu tratamento",
                 "titulo2": "em três tempos",
                 "passo1": "Avaliação",
-                "passo1-detalhe": "Raio X e exame, sem compromisso.",
+                "passo1-detalhe": "Raio X e exame da boca.",
                 "passo2": "Plano",
-                "passo2-detalhe": "Quantas sessões e quanto custa.",
+                "passo2-detalhe": "O que fazer e em quantas sessões.",
                 "passo3": "Retorno",
                 "passo3-detalhe": "Com lembrete pelo WhatsApp.",
-                "cta": "A avaliação não tem custo",
+                "cta": "Agende na recepção",
+                "marca": "Sorriso Odontologia"
+              }
+            },
+            {
+              "id": "institucional-valores",
+              "campos": {
+                "kicker": "Como a gente cuida",
+                "titulo": "Três promessas",
+                "titulo2": "para cada consulta",
+                "valor1": "Explicar antes",
+                "valor1-texto": "Cada passo do tratamento, antes de começar.",
+                "valor2": "Pontualidade",
+                "valor2-texto": "Atraso de mais de 15 minutos, a gente avisa antes.",
+                "valor3": "Acompanhamento",
+                "valor3-texto": "Retorno marcado e lembrete pelo WhatsApp.",
                 "marca": "Sorriso Odontologia"
               }
             }
@@ -5171,14 +5108,18 @@
               }
             },
             {
-              "id": "social-avaliacao",
+              "id": "servico-horario",
               "campos": {
-                "kicker": "No Google",
-                "nota": "4,9",
-                "total": "320 avaliações",
-                "titulo": "Foi bem atendido?",
-                "titulo2": "Conta pra gente",
-                "pedido": "Aponte a câmera"
+                "kicker": "Atendimento",
+                "titulo": "Horário",
+                "titulo2": "do consultório",
+                "dia1": "Seg a sex",
+                "hora1": "8h – 19h",
+                "dia2": "Sábado",
+                "hora2": "8h – 12h",
+                "dia3": "Domingo",
+                "hora3": "Fechado",
+                "nota": "Urgência: ligue antes"
               }
             }
           ]
@@ -5206,7 +5147,7 @@
         "Aceitamos os principais convênios",
         "Limpeza a cada 6 meses: marque a sua"
       ],
-      "sobre": "Para o consultório: o tratamento com parcela, os passos da primeira consulta e o agendamento.",
+      "sobre": "Para o consultório: os passos da primeira consulta, as promessas do atendimento e o horário. Sem preço: o CFO não permite.",
       "estado": "proposta",
       "lote": 2
     },
@@ -5240,34 +5181,33 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "oferta-parcelado",
-              "campos": {
-                "kicker": "Sorriso novo",
-                "titulo": "Clareamento com avaliação",
-                "item1": "Avaliação com o dentista",
-                "item2": "Limpeza antes do clareamento",
-                "item3": "Moldeira e gel para casa",
-                "vezes": "10",
-                "de": "sem juros, de",
-                "parcela": "49",
-                "centavos": ",90",
-                "total": "Total de R$ 499,00 no cartão",
-                "marca": "Sorriso Odontologia"
-              }
-            },
-            {
               "id": "servico-passos",
               "campos": {
                 "kicker": "Primeira consulta?",
                 "titulo": "Seu tratamento",
                 "titulo2": "em três tempos",
                 "passo1": "Avaliação",
-                "passo1-detalhe": "Raio X e exame, sem compromisso.",
+                "passo1-detalhe": "Raio X e exame da boca.",
                 "passo2": "Plano",
-                "passo2-detalhe": "Quantas sessões e quanto custa.",
+                "passo2-detalhe": "O que fazer e em quantas sessões.",
                 "passo3": "Retorno",
                 "passo3-detalhe": "Com lembrete pelo WhatsApp.",
-                "cta": "A avaliação não tem custo",
+                "cta": "Agende na recepção",
+                "marca": "Sorriso Odontologia"
+              }
+            },
+            {
+              "id": "institucional-valores",
+              "campos": {
+                "kicker": "Como a gente cuida",
+                "titulo": "Três promessas",
+                "titulo2": "para cada consulta",
+                "valor1": "Explicar antes",
+                "valor1-texto": "Cada passo do tratamento, antes de começar.",
+                "valor2": "Pontualidade",
+                "valor2-texto": "Atraso de mais de 15 minutos, a gente avisa antes.",
+                "valor3": "Acompanhamento",
+                "valor3-texto": "Retorno marcado e lembrete pelo WhatsApp.",
                 "marca": "Sorriso Odontologia"
               }
             }
@@ -5286,14 +5226,18 @@
               }
             },
             {
-              "id": "social-avaliacao",
+              "id": "servico-horario",
               "campos": {
-                "kicker": "No Google",
-                "nota": "4,9",
-                "total": "320 avaliações",
-                "titulo": "Foi bem atendido?",
-                "titulo2": "Conta pra gente",
-                "pedido": "Aponte a câmera"
+                "kicker": "Atendimento",
+                "titulo": "Horário",
+                "titulo2": "do consultório",
+                "dia1": "Seg a sex",
+                "hora1": "8h – 19h",
+                "dia2": "Sábado",
+                "hora2": "8h – 12h",
+                "dia3": "Domingo",
+                "hora3": "Fechado",
+                "nota": "Urgência: ligue antes"
               }
             }
           ]
@@ -5321,7 +5265,7 @@
         "Aceitamos os principais convênios",
         "Limpeza a cada 6 meses: marque a sua"
       ],
-      "sobre": "Para o consultório: o tratamento com parcela, os passos da primeira consulta e o agendamento.",
+      "sobre": "Para o consultório: os passos da primeira consulta, as promessas do atendimento e o horário. Sem preço: o CFO não permite.",
       "estado": "proposta",
       "lote": 2
     },
@@ -5335,41 +5279,11 @@
       ],
       "estrutura": "pacote dentista",
       "marca": "dentista",
-      "layout": "square-header",
+      "layout": "square-hero",
       "zonas": {
-        "cabecalho": {
-          "modo": "marca",
-          "pecas": [
-            {
-              "id": "cabecalho-status",
-              "campos": {
-                "status": "Atendendo agora",
-                "horario": "até as 19h",
-                "desde": "",
-                "marca": "Sorriso Odontologia"
-              }
-            }
-          ]
-        },
         "principal": {
           "modo": "escuro",
           "pecas": [
-            {
-              "id": "oferta-parcelado",
-              "campos": {
-                "kicker": "Sorriso novo",
-                "titulo": "Clareamento com avaliação",
-                "item1": "Avaliação com o dentista",
-                "item2": "Limpeza antes do clareamento",
-                "item3": "Moldeira e gel para casa",
-                "vezes": "10",
-                "de": "sem juros, de",
-                "parcela": "49",
-                "centavos": ",90",
-                "total": "Total de R$ 499,00 no cartão",
-                "marca": "Sorriso Odontologia"
-              }
-            },
             {
               "id": "servico-passos",
               "campos": {
@@ -5377,12 +5291,27 @@
                 "titulo": "Seu tratamento",
                 "titulo2": "em três tempos",
                 "passo1": "Avaliação",
-                "passo1-detalhe": "Raio X e exame, sem compromisso.",
+                "passo1-detalhe": "Raio X e exame da boca.",
                 "passo2": "Plano",
-                "passo2-detalhe": "Quantas sessões e quanto custa.",
+                "passo2-detalhe": "O que fazer e em quantas sessões.",
                 "passo3": "Retorno",
                 "passo3-detalhe": "Com lembrete pelo WhatsApp.",
-                "cta": "A avaliação não tem custo",
+                "cta": "Agende na recepção",
+                "marca": "Sorriso Odontologia"
+              }
+            },
+            {
+              "id": "institucional-valores",
+              "campos": {
+                "kicker": "Como a gente cuida",
+                "titulo": "Três promessas",
+                "titulo2": "para cada consulta",
+                "valor1": "Explicar antes",
+                "valor1-texto": "Cada passo do tratamento, antes de começar.",
+                "valor2": "Pontualidade",
+                "valor2-texto": "Atraso de mais de 15 minutos, a gente avisa antes.",
+                "valor3": "Acompanhamento",
+                "valor3-texto": "Retorno marcado e lembrete pelo WhatsApp.",
                 "marca": "Sorriso Odontologia"
               }
             },
@@ -5396,14 +5325,18 @@
               }
             },
             {
-              "id": "social-avaliacao",
+              "id": "servico-horario",
               "campos": {
-                "kicker": "No Google",
-                "nota": "4,9",
-                "total": "320 avaliações",
-                "titulo": "Foi bem atendido?",
-                "titulo2": "Conta pra gente",
-                "pedido": "Aponte a câmera"
+                "kicker": "Atendimento",
+                "titulo": "Horário",
+                "titulo2": "do consultório",
+                "dia1": "Seg a sex",
+                "hora1": "8h – 19h",
+                "dia2": "Sábado",
+                "hora2": "8h – 12h",
+                "dia3": "Domingo",
+                "hora3": "Fechado",
+                "nota": "Urgência: ligue antes"
               }
             }
           ]
@@ -5431,7 +5364,7 @@
         "Aceitamos os principais convênios",
         "Limpeza a cada 6 meses: marque a sua"
       ],
-      "sobre": "Para o consultório: o tratamento com parcela, os passos da primeira consulta e o agendamento.",
+      "sobre": "Para o consultório: os passos da primeira consulta, as promessas do atendimento e o horário. Sem preço: o CFO não permite.",
       "estado": "proposta",
       "lote": 2
     },
@@ -5665,20 +5598,8 @@
       ],
       "estrutura": "pacote farmacia",
       "marca": "farmacia",
-      "layout": "square-header",
+      "layout": "square-hero",
       "zonas": {
-        "cabecalho": {
-          "modo": "marca",
-          "pecas": [
-            {
-              "id": "cabecalho-classico",
-              "campos": {
-                "chamada": "Vacina da gripe sem agendar",
-                "marca": "Farmácia Bem Estar"
-              }
-            }
-          ]
-        },
         "principal": {
           "modo": "escuro",
           "pecas": [
@@ -5964,20 +5885,8 @@
       ],
       "estrutura": "pacote escritorio",
       "marca": "escritorio",
-      "layout": "square-header",
+      "layout": "square-hero",
       "zonas": {
-        "cabecalho": {
-          "modo": "marca",
-          "pecas": [
-            {
-              "id": "cabecalho-centro",
-              "campos": {
-                "sub": "Comunicação interna",
-                "marca": "Vértice Contabilidade"
-              }
-            }
-          ]
-        },
         "principal": {
           "modo": "escuro",
           "pecas": [
@@ -6079,8 +5988,8 @@
                 "numero": "98",
                 "unidade": "dias",
                 "kicker": "Sem acidente",
-                "titulo": "Nosso recorde de segurança",
-                "apoio": "Obrigado a cada um que usa o EPI e para a máquina antes de mexer.",
+                "titulo": "Nosso recorde",
+                "apoio": "Obrigado a quem usa o EPI.",
                 "endereco": "",
                 "marca": "Metalúrgica Andrade"
               }
@@ -6172,8 +6081,8 @@
                 "numero": "98",
                 "unidade": "dias",
                 "kicker": "Sem acidente",
-                "titulo": "Nosso recorde de segurança",
-                "apoio": "Obrigado a cada um que usa o EPI e para a máquina antes de mexer.",
+                "titulo": "Nosso recorde",
+                "apoio": "Obrigado a quem usa o EPI.",
                 "endereco": "",
                 "marca": "Metalúrgica Andrade"
               }
@@ -6242,35 +6151,11 @@
       ],
       "estrutura": "pacote industria",
       "marca": "industria",
-      "layout": "square-header",
+      "layout": "square-hero",
       "zonas": {
-        "cabecalho": {
-          "modo": "marca",
-          "pecas": [
-            {
-              "id": "cabecalho-classico",
-              "campos": {
-                "chamada": "Semana da segurança · até sexta",
-                "marca": "Metalúrgica Andrade"
-              }
-            }
-          ]
-        },
         "principal": {
           "modo": "escuro",
           "pecas": [
-            {
-              "id": "numero-grande",
-              "campos": {
-                "numero": "98",
-                "unidade": "dias",
-                "kicker": "Sem acidente",
-                "titulo": "Nosso recorde de segurança",
-                "apoio": "Obrigado a cada um que usa o EPI e para a máquina antes de mexer.",
-                "endereco": "",
-                "marca": "Metalúrgica Andrade"
-              }
-            },
             {
               "id": "servico-alerta",
               "campos": {

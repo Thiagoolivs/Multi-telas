@@ -97,7 +97,15 @@ const compacto = (s) => semAcento(s).toLowerCase().replace(/[^a-z0-9]/g, '');
 export function nomesDeExemplo(marcas) {
   const nomes = [];
   (marcas || []).forEach((m) => { if (m.nome) nomes.push(m.nome); (APELIDOS[m.id] || []).forEach((a) => nomes.push(a)); });
-  return { nomes: nomes.sort((a, b) => b.length - a.length), compactos: (marcas || []).map((m) => compacto(m.nome)).concat((marcas || []).map((m) => m.id)) };
+  /*
+   * Os compactos são os NOMES ("padariadobairro", "rotasul"), nunca os ids das
+   * marcas: desde a fase 9 há ids que são palavras comuns ("dentista",
+   * "clinica", "farmacia"), e um texto do cliente que as contivesse era
+   * apagado (reteste da fase 10: 12 textos sumiam).
+   */
+  const compactos = [];
+  (marcas || []).forEach((m) => { compactos.push(compacto(m.nome)); (APELIDOS[m.id] || []).forEach((a) => compactos.push(compacto(a))); });
+  return { nomes: nomes.sort((a, b) => b.length - a.length), compactos: [...new Set(compactos.filter(Boolean))] };
 }
 
 const EH_CONTATO = /@[\w.]{2,}|https?:\/\/|\bwww\.|\b[\w-]+\.(com|net|org)(\.br)?\b|\(?\b\d{2}\)?\s?\d{4,5}-\d{4}\b/i;

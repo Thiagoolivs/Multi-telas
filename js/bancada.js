@@ -201,7 +201,9 @@
     const tela = manifesto.telas.find((t) => t.id === $('tela').value) || manifesto.telas[0];
     const layout = MT_getLayout($('layout').value || tela.layout);
     const emPe = layout.orientation === 'portrait';
-    const W = emPe ? 1080 : 1920;
+    // A quadrada no tamanho dela (fase 10): desenhada em 1920×1080, a tela pronta quadrada passava na bancada e encolhia na TV.
+    const quadrada = layout.orientation === 'square';
+    const W = emPe || quadrada ? 1080 : 1920;
     const H = emPe ? 1920 : 1080;
     const marca = marcaDe(tela.marca);
 

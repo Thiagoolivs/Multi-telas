@@ -279,6 +279,47 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 
 **Pronto quando:** todos os blocos ficam em 9 ou mais.
 
+**Andamento (05/11):**
+- [x] **Reteste dos blocos 1, 3 (sem IA), 4 a 7 e 8,** com o mesmo método e a mesma régua. As notas estão em [RESULTADO.md](RESULTADO.md): nota geral provisória **7,1**, era 6,2. Nenhum bloco chegou a 9.
+- [x] **O roteiro do piloto numa TV de verdade:** [ROTEIRO-PILOTO.md](ROTEIRO-PILOTO.md).
+- [x] **Corrigido o que o reteste achou e era pequeno:**
+  - a TV quadrada a 56% do piso;
+  - os textos do cliente apagados nas telas prontas;
+  - o preço no pacote do dentista;
+  - o axe com uma campanha no ar;
+  - os verbos e o "Mídias" que sobrou;
+  - a Agenda repetindo o mesmo nome.
+- [ ] **Bloco 2 e os cenários de IA do bloco 3:** dependem do crédito do Gemini.
+- [ ] **Os pilotos:** com você, pelo roteiro.
+- **O que falta para cada bloco chegar a 9 (do reteste):**
+  - **1. A TV (6,5):**
+    - A cor da marca no texto (preço, @, kicker) fica entre 2,5 e 3,5 de contraste; a régua pede 4,5. Hoje aceitamos 3 no destaque (`js/tokens.js:105`) e o tema mira 3,5 (`js/theme.js:246`).
+    - As telas prontas esperam a sua aprovação na galeria: hoje só 1 de 53 está aprovada.
+    - O cabeçalho cola a marca na chamada ("PADARIA SOLSEMANA DO SOL").
+    - As telas do lote 1 têm datas vencidas.
+  - **4. Telas e a página da TV (8,5):**
+    - Ajustes da TV tem uma falha crítica e uma séria no axe (`SettingsForm.jsx:223-234`).
+    - O mapa da TV pinta de preto as partes de texto e de clima.
+    - O diálogo do Som aponta para um menu que não existe mais (`ScreensPage.jsx:149`).
+  - **5. O resto do painel (7,5):**
+    - A conta antiga ainda leva um erro 500 na lista de campanhas (`server/ajuste.js:76`).
+    - Peças guardadas com 300 peças trava por 4,5 s, sem paginar.
+    - A Marca fica espremida no celular (`LogoDaMarca.jsx:110`).
+    - O Início e os Alertas listam as TVs fora do ar uma por uma.
+  - **6. Site e e-mails (8):**
+    - A página 404 não tem título nem um link de volta.
+    - O e-mail do código de foto não tem moldura.
+    - Nenhum e-mail tem a logo nem o rodapé da empresa.
+  - **7. A base (8,5):**
+    - Duas sessões numa conta de 25 TVs batem no limite de 600 chamadas, e o painel diz "Sem conexão" (`App.jsx:215`).
+    - A Programação com 25 TVs leva 4,2 s no 4G lento.
+    - Apagar uma peça da biblioteca de outra conta responde 200 sem apagar nada.
+  - **8. A interface (6,7):**
+    - O "Na TV agora" não é a TV de verdade: o cabeçalho vira uma caixa escrita "Cabeçalho", sem a marca (`VerTelaAgora.jsx:189-206`).
+    - O conteúdo pronto é filtrado pela frente e não pelo tipo de negócio.
+    - A página da TV ainda tem termos técnicos e o "Quando" antigo para a peça que já está no ar.
+    - Há caminhos repetidos: a mesma campanha em 3 lugares, e "Escolher um modelo" abre o editor avançado.
+
 ### Fase 11: dados vivos (3–4 dias)
 **Objetivo:** o preço e o número na TV nunca ficam errados.
 - **Preço e cardápio vindos de uma planilha** (Google Planilhas ou CSV): o cliente edita a planilha e a TV muda. Na tela aparece "atualizado às".

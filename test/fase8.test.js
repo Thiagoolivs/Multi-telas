@@ -69,7 +69,8 @@ test('o glossário: nenhum termo velho nos textos que o cliente lê', () => {
     if (DO_OPERADOR.test(f)) continue;
     // Só o que vira texto na tela: strings e texto de JSX, sem os comentários.
     const s = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
-    const textos = s.match(/'[^'\n]*'|"[^"\n]*"|`[^`]*`|>[^<>{}\n]+</g) || [];
+    // O texto de JSX pode morar em linha própria (o "Em Mídias › Fotos" da Marca escapou assim, no reteste da fase 10).
+    const textos = s.match(/'[^'\n]*'|"[^"\n]*"|`[^`]*`|>[^<>{}]+</g) || [];
     for (const t of textos) for (const v of VELHOS) if (v.test(t) && !/import |from '|aria-hidden/.test(t)) ruins.push(path.relative(RAIZ, f) + ': ' + t.slice(0, 80));
   }
   assert.deepEqual(ruins, []);

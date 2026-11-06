@@ -190,7 +190,7 @@ function TvsAoVivo({ data, onIr }) {
                 </div>
                 {/* Secundário (QA de lançamento, 03/11): eram três botões violeta no Início; o principal é "Criar com a IA". */}
                 <Button size="sm" variant="secondary" icon={Repeat} onClick={() => onIr && onIr('content', { device: d })}>
-                  {d.hasConfig ? 'Trocar agora' : 'Pôr conteúdo'}
+                  {d.hasConfig ? 'Abrir a TV' : 'Pôr conteúdo'}
                 </Button>
               </div>
             </div>
