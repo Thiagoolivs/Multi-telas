@@ -49,9 +49,10 @@ async function completarSessao(db, sess) {
   sess.lojas = null;
   sess.precisaAprovar = false;
   if (sess.role !== 'member' || !sess.tenant_id) return sess;
+  // Sem catch de propósito: se a leitura falhar, o pedido falha. Nunca vale "todas as TVs" nem "sem aprovação" por engano.
   const [grupos, conta] = await Promise.all([
-    db.lojasDoUsuario(sess.user_id, sess.tenant_id).catch(() => null),
-    db.getTenant(sess.tenant_id).catch(() => null),
+    db.lojasDoUsuario(sess.user_id, sess.tenant_id),
+    db.getTenant(sess.tenant_id),
   ]);
   sess.lojas = Array.isArray(grupos) ? grupos : null;
   sess.precisaAprovar = !!(conta && Number(conta.aprovacao));
