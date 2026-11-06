@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy, useMemo } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy, useMemo } from 'react';
 import { confirmar, perguntar } from '../lib/confirmar.js';
 import {
   Plus, Wand2, ImagePlus, Upload, Pencil, Download, Send, Trash2, Sparkles, Check,
@@ -283,6 +283,28 @@ function PlanoParaConfirmar({ plano, onGerar, onVoltar }) {
 }
 
 
+/*
+ * PEÇAS GUARDADAS COM MUITA COISA (reteste da fase 10): 300 peças eram 300
+ * peças desenhadas de uma vez, no tamanho da TV, e a página travava 4,5 s.
+ * Agora cada pasta mostra 12 por vez ("Mostrar mais"), e cada miniatura só
+ * é desenhada quando chega perto da tela.
+ */
+const POR_VEZ = 12;
+
+function MiniaturaQuandoAparecer({ item }) {
+  const caixa = useRef(null);
+  const [ver, setVer] = useState(() => typeof IntersectionObserver === 'undefined');
+  useEffect(() => {
+    if (ver || !caixa.current) return undefined;
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setVer(true); io.disconnect(); } }, { rootMargin: '300px' });
+    io.observe(caixa.current);
+    return () => io.disconnect();
+  }, [ver]);
+  if (ver) return <DesignThumb item={item} />;
+  const formato = String((item && item.formato) || '16/9');
+  return <div ref={caixa} aria-hidden="true" className="w-full rounded-md bg-surface-2" style={{ aspectRatio: formato.replace('/', ' / ') }} />;
+}
+
 export function MyDesignsPage({ onIr }) {
   const { data, loading, reload } = useAsync(library.list);
   const { data: devData } = useAsync(devices.list);
@@ -292,6 +314,8 @@ export function MyDesignsPage({ onIr }) {
   const collections = useMemo(() => Array.from(new Set(saved.map((i) => i.campaign))).filter(Boolean), [saved]);
 
   const [q, setQ] = useState('');
+  // Quantas peças cada pasta mostra agora (12 de começo).
+  const [qtDaPasta, setQtDaPasta] = useState({});
   const [editing, setEditing] = useState(null);   // { id?, item } no editor
   const [editandoPeca, setEditandoPeca] = useState(null); // { id, item, label } — peça em HTML
   const [redesDe, setRedesDe] = useState(null); // { item, label } — postar nas redes
@@ -730,7 +754,8 @@ export function MyDesignsPage({ onIr }) {
   const groups = {};
   for (const it of saved) {
     if (q && !((it.label || '') + ' ' + (it.campaign || '')).toLowerCase().includes(q.toLowerCase())) continue;
-    (groups[it.campaign] = groups[it.campaign] || []).push(it);
+    const pasta = it.campaign || '';
+    (groups[pasta] = groups[pasta] || []).push(it);
   }
   const groupNames = Object.keys(groups);
 
@@ -817,16 +842,18 @@ export function MyDesignsPage({ onIr }) {
           <div className="space-y-5 p-4">
             {groupNames.map((camp) => {
               const doGrupo = groups[camp];
+              const qt = qtDaPasta[camp] || POR_VEZ;
               return (
                 <div key={camp} className="rounded-xl border border-line">
                   {/* Cabeçalho da pasta: a pasta inteira é gerenciada aqui */}
                   <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
                     <FolderOpen size={15} className="text-ink-3" />
-                    <span className="text-sm font-semibold text-ink">{camp}</span>
+                    <span className="text-sm font-semibold text-ink">{camp || 'Sem pasta'}</span>
                     <span className="tnum text-2xs text-ink-3">{doGrupo.length} peça(s)</span>
                     <div className="flex-1" />
+                    {/* De contorno (reteste da fase 10): era um violeta por pasta, até 10 na tela. */}
                     <button onClick={() => abrirPublicar(camp, doGrupo.map((it) => ({ item: it.item, formato: it.formato || '16/9', label: it.label })))}
-                      className="flex items-center gap-1 rounded-md bg-accent px-2.5 py-1.5 text-2xs font-semibold text-white transition hover:opacity-90">
+                      className="flex items-center gap-1 rounded-md border border-line-strong bg-surface px-2.5 py-1.5 text-2xs font-semibold text-ink transition hover:bg-surface-2">
                       <Rocket size={12} /> Pôr a pasta na TV
                     </button>
                     <button title="Renomear" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => renomearCampanha(camp)}><Type size={13} /></button>
@@ -835,10 +862,10 @@ export function MyDesignsPage({ onIr }) {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                    {doGrupo.map((it) => (
+                    {doGrupo.slice(0, qt).map((it) => (
                       <div key={it.id} className="space-y-2 rounded-lg border border-line bg-surface p-2">
-                        <DesignThumb item={it.item} />
-                        <div className="truncate px-0.5 text-2xs font-medium text-ink-2">{it.label}</div>
+                        <MiniaturaQuandoAparecer item={it.item} />
+                        <div className="truncate px-0.5 text-2xs font-medium text-ink-2" title={it.label || undefined}>{it.label}</div>
                         {/* No celular (cartão de ~114 px) "Publicar" ocupa a linha de cima e os ícones vão embaixo: na mesma linha estouravam para fora (D3). */}
                         <div className="flex flex-wrap items-center gap-1">
                           <button onClick={() => abrirPublicar(it.label || camp, [{ item: it.item, formato: it.formato || '16/9', label: it.label }])}
@@ -865,6 +892,13 @@ export function MyDesignsPage({ onIr }) {
                       </div>
                     ))}
                   </div>
+                  {doGrupo.length > qt && (
+                    <div className="flex justify-center px-3 pb-3">
+                      <Button size="sm" variant="secondary" onClick={() => setQtDaPasta((m) => ({ ...m, [camp]: qt + POR_VEZ }))}>
+                        Mostrar mais ({doGrupo.length - qt})
+                      </Button>
+                    </div>
+                  )}
                 </div>
               );
             })}

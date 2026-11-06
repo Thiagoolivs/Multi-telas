@@ -75,6 +75,31 @@ module.exports = function (ctx) {
   }
 
   /*
+   * A PROGRAMAÇÃO COMO O PAINEL LÊ (QA total, 05/11): limpa pelo mesmo
+   * normalizador da TV (js/storage.js), com o nome da conta no cabeçalho e o
+   * tema da marca. Lida crua, uma programação de versão antiga (a lista em vez
+   * do objeto, `items` como texto, item nulo) derrubava a Programação e o
+   * editor. Ilegível de todo: null, e o painel a vê como TV sem programação.
+   * Uma TV (GET /config) e todas de uma vez (GET /api/devices/configs) passam
+   * por aqui.
+   */
+  function configParaOPainel(device, empresa, kit) {
+    if (!device || !device.config) return null;
+    try {
+      let c = JSON.parse(device.config);
+      if (!c || typeof c !== 'object' || Array.isArray(c)) return null;
+      c = schema.normalize(c);
+      if (c && c.settings) {
+        nomeDaConta(c, device, empresa);
+        // A marca entra sozinha (fase 4): a TV que não escolheu outro tema sai com o da marca.
+        const tema = paleta.temaDaTv(c.settings.theme, kit);
+        if (tema) c.settings.theme = tema;
+      }
+      return c;
+    } catch (e) { return null; }
+  }
+
+  /*
    * A config que vai para a TV, pronta: normalizada, com as peças pela porta,
    * o quiz conferido, os hosts de mídia, o nome da conta e o horário da tela.
    * Devolve { cfg } ou { status, corpo } com o motivo. O PUT de uma TV e o
@@ -365,6 +390,41 @@ module.exports = function (ctx) {
       return sendJson(res, 200, { devices: list });
     }
 
+    /*
+     * ----- Todas as TVs de uma vez (reteste da fase 10) -----
+     * A Programação de 25 TVs fazia 25 pedidos de programação, e Telas e o
+     * Início um "o que está passando" por TV. Duas pessoas na mesma conta
+     * batiam no freio do painel (600 em 5 min) e o 4G lento levava 4,2 s.
+     * Agora é um pedido só, com a mesma resposta de cada TV.
+     */
+    if (req.method === 'GET' && parts[1] === 'devices' && parts[2] === 'configs' && parts.length === 3) {
+      if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+      const [rows, empresa, kit] = await Promise.all([
+        db.listDevices(sess.tenant_id), empresaDa(sess.tenant_id), db.getBrandKit(sess.tenant_id).catch(() => null),
+      ]);
+      const configs = {};
+      for (const r of rows) {
+        // A lista não traz a programação: lê cada TV da conta (no banco, não na rede).
+        const d = r.config !== undefined ? r : await db.getDevice(r.id);
+        if (!d || d.tenant_id !== sess.tenant_id) continue;
+        configs[d.id] = { config: configParaOPainel(d, empresa, kit), versao: Number(d.updated_at) || 0 };
+      }
+      return sendJson(res, 200, { configs });
+    }
+    if (req.method === 'GET' && parts[1] === 'devices' && parts[2] === 'estados' && parts.length === 3) {
+      if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+      // Só as TVs desta conta: o id de outra conta some da resposta, como se não existisse.
+      const daConta = new Set((await db.listDevices(sess.tenant_id)).map((d) => d.id));
+      const pedidos = String((query && query.ids) || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 100);
+      const estados = {};
+      for (const id of (pedidos.length ? pedidos : [...daConta])) {
+        if (!daConta.has(id)) continue;
+        const e = estadosDaTela.get(id);
+        estados[id] = e ? { em: e.em, estado: e.estado, online: !!subscribers[id] } : { em: 0, estado: null, online: !!subscribers[id] };
+      }
+      return sendJson(res, 200, { estados });
+    }
+
     /* ----- Rotas /api/devices/:id/... ----- */
     if (parts[1] === 'devices' && parts[2]) {
       const id = parts[2];
@@ -422,25 +482,21 @@ module.exports = function (ctx) {
          * cabeçalho: o corpo continua a config pura, que a TV lê como sempre.
          * O painel devolve a versão ao gravar (D0.5).
          */
+        // O painel recebe a programação já limpa (configParaOPainel); ilegível, 204 como TV sem programação.
+        if (!dtOk) {
+          const c = configParaOPainel(device, await empresaDa(device.tenant_id), await db.getBrandKit(device.tenant_id).catch(() => null));
+          if (!c) {
+            res.writeHead(204, { 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) });
+            return res.end();
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) });
+          return res.end(JSON.stringify(c));
+        }
         // A config gravada antes do item 39 traz o título de exemplo e o nome da TV no cabeçalho.
         let corpo = device.config;
         try {
-          let c = JSON.parse(device.config);
-          /*
-           * O PAINEL RECEBE A PROGRAMAÇÃO JÁ LIMPA (QA total, 05/11), pelo mesmo
-           * normalizador da TV (js/storage.js). Lida crua, uma programação de
-           * versão antiga (a lista em vez do objeto, `items` como texto, item
-           * nulo) derrubava a Programação e o editor. Ilegível de todo: o
-           * painel a vê como TV sem programação (204), e não quebra.
-           */
-          if (!dtOk) {
-            if (!c || typeof c !== 'object' || Array.isArray(c)) {
-              res.writeHead(204, { 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) });
-              return res.end();
-            }
-            c = schema.normalize(c);
-          }
-          let mudou = !dtOk || !!(c && c.settings && nomeDaConta(c, device, await empresaDa(device.tenant_id)));
+          const c = JSON.parse(device.config);
+          let mudou = !!(c && c.settings && nomeDaConta(c, device, await empresaDa(device.tenant_id)));
           /*
            * A logo da marca (D8): `settings.logoUrl` nunca era preenchido, e a
            * TV mostrava o nome em texto. Vai só para a TV (token), calculada
@@ -495,8 +551,7 @@ module.exports = function (ctx) {
           }
           if (mudou) corpo = JSON.stringify(c);
         } catch (e) {
-          // Config ilegível: a TV se vira com ela; o painel a vê como TV sem programação.
-          if (!dtOk) { res.writeHead(204, { 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) }); return res.end(); }
+          // Config ilegível: a TV se vira com ela (o painel já saiu acima, com 204).
         }
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Config-Versao': String(Number(device.updated_at) || 0) });
         return res.end(corpo);

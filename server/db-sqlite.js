@@ -1408,11 +1408,19 @@ const qCamp = {
   capa: db.prepare('UPDATE campanhas SET capa = ? WHERE id = ? AND tenant_id = ?'),
   remover: db.prepare('DELETE FROM campanhas WHERE id = ? AND tenant_id = ?'),
 };
+/*
+ * Campanha de formato velho (reteste da fase 10): `telas` em texto, `resultado`
+ * sem lista de TVs, capa quebrada. Sai daqui sempre no formato de hoje, para
+ * nenhuma rota tropeçar nela ("x".forEach dava 500 na lista inteira).
+ */
+const soLista = (v) => (Array.isArray(v) ? v : []);
+const soObjeto = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : null);
+const resultadoDe = (v) => { const o = soObjeto(v); return o && !Array.isArray(o.telas) ? { ...o, telas: [] } : o; };
 const mapCamp = (r) => r && ({
   id: r.id, nome: r.nome || '', conversaId: r.conversa_id || '', estado: r.estado || 'pronta',
-  escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
-  resultado: r.resultado === undefined ? undefined : jsonOu(r.resultado, null),
-  telas: jsonOu(r.telas, []), capa: jsonOu(r.capa, null),
+  escopo: r.escopo === undefined ? undefined : soObjeto(jsonOu(r.escopo, null)),
+  resultado: r.resultado === undefined ? undefined : resultadoDe(jsonOu(r.resultado, null)),
+  telas: soLista(jsonOu(r.telas, [])), capa: soObjeto(jsonOu(r.capa, null)),
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
   arquivada: Number(r.arquivada) || 0,
 });
@@ -1932,7 +1940,8 @@ function mapLibRow(r) { let item = {}; try { item = JSON.parse(r.item); } catch 
 async function listLibrary(tenantId) { return q.libraryByTenant.all(tenantId).map(mapLibRow); }
 async function getLibraryItem(id, tenantId) { const r = q.libraryById.get(id, tenantId); return r ? mapLibRow(r) : null; }
 async function updateLibraryItem(id, tenantId, item, label) { return q.updateLibrary.run(JSON.stringify(item || {}), label || '', id, tenantId).changes; }
-async function deleteLibraryItem(id, tenantId) { q.deleteLibrary.run(id, tenantId); }
+// Devolve quantas apagou: 0 quer dizer que a peça não é desta conta (ou já saiu), e a rota responde 404.
+async function deleteLibraryItem(id, tenantId) { return q.deleteLibrary.run(id, tenantId).changes; }
 
 /*
  * Aceite dos termos: guarda QUAL versão a pessoa aceitou, quando e de onde. Sem

@@ -744,11 +744,19 @@ async function salvarConversa(tenantId, id, c) {
 }
 /* ---------------- Campanhas do Criar ---------------- */
 /* Ver a nota em db-sqlite.js. Mesma API assíncrona nos dois. */
+/*
+ * Ver a nota em db-sqlite.js. Campanha de formato velho (reteste da fase 10): `telas` em texto, `resultado`
+ * sem lista de TVs, capa quebrada. Sai daqui sempre no formato de hoje, para
+ * nenhuma rota tropeçar nela ("x".forEach dava 500 na lista inteira).
+ */
+const soLista = (v) => (Array.isArray(v) ? v : []);
+const soObjeto = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : null);
+const resultadoDe = (v) => { const o = soObjeto(v); return o && !Array.isArray(o.telas) ? { ...o, telas: [] } : o; };
 const mapCamp = (r) => r && ({
   id: r.id, nome: r.nome || '', conversaId: r.conversa_id || '', estado: r.estado || 'pronta',
-  escopo: r.escopo === undefined ? undefined : jsonOu(r.escopo, null),
-  resultado: r.resultado === undefined ? undefined : jsonOu(r.resultado, null),
-  telas: jsonOu(r.telas, []), capa: jsonOu(r.capa, null),
+  escopo: r.escopo === undefined ? undefined : soObjeto(jsonOu(r.escopo, null)),
+  resultado: r.resultado === undefined ? undefined : resultadoDe(jsonOu(r.resultado, null)),
+  telas: soLista(jsonOu(r.telas, [])), capa: soObjeto(jsonOu(r.capa, null)),
   criadoEm: Number(r.criado_em) || 0, atualizadoEm: Number(r.atualizado_em) || 0,
   arquivada: Number(r.arquivada) || 0,
 });
@@ -1900,7 +1908,8 @@ async function updateLibraryItem(id, tenantId, item, label) {
   const r = await pool.query('UPDATE library SET item = $1, label = $2 WHERE id = $3 AND tenant_id = $4', [JSON.stringify(item || {}), label || '', id, tenantId]);
   return r.rowCount;
 }
-async function deleteLibraryItem(id, tenantId) { await pool.query('DELETE FROM library WHERE id = $1 AND tenant_id = $2', [id, tenantId]); }
+// Devolve quantas apagou: 0 quer dizer que a peça não é desta conta (ou já saiu), e a rota responde 404.
+async function deleteLibraryItem(id, tenantId) { const r = await pool.query('DELETE FROM library WHERE id = $1 AND tenant_id = $2', [id, tenantId]); return r.rowCount; }
 
 /*
  * Aceite dos termos: guarda QUAL versão a pessoa aceitou, quando e de onde. Sem

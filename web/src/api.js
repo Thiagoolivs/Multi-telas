@@ -5,7 +5,24 @@
  * Mantido pequeno de propósito: uma função `api()` e helpers nomeados por
  * endpoint, para as telas não lidarem com fetch cru.
  */
-async function api(method, path, body, opcoes) {
+/*
+ * A mesma leitura pedida duas vezes ao mesmo tempo (o Início e o menu lendo
+ * a lista de TVs, por exemplo) vira um pedido só (reteste da fase 10: menos
+ * pedidos, longe do freio da conta). Quem chega depois recebe uma cópia, para
+ * ninguém mexer no objeto do outro.
+ */
+const emVoo = new Map();
+const copia = (d) => (d == null ? d : typeof structuredClone === 'function' ? structuredClone(d) : JSON.parse(JSON.stringify(d)));
+function api(method, path, body, opcoes) {
+  if (method !== 'GET' || body !== undefined || opcoes) return pedir(method, path, body, opcoes);
+  const ja = emVoo.get(path);
+  if (ja) return ja.then(copia);
+  const p = pedir(method, path).finally(() => emVoo.delete(path));
+  emVoo.set(path, p);
+  return p;
+}
+
+async function pedir(method, path, body, opcoes) {
   const opt = { method, headers: {}, credentials: 'same-origin' };
   if (body !== undefined) {
     opt.headers['Content-Type'] = 'application/json';
@@ -58,6 +75,15 @@ async function api(method, path, body, opcoes) {
      */
     const e = new Error((data && (data.error || data.mensagem)) || 'HTTP ' + res.status);
     e.status = res.status;
+    /*
+     * 429 é o freio da conta (server/limites.js), não falta de internet: quem
+     * chama diz "muitos pedidos agora" e sabe em quantos segundos tentar de
+     * novo (reteste da fase 10: o painel dizia "Sem conexão").
+     */
+    if (res.status === 429) {
+      e.retryAfter = Number(res.headers.get('Retry-After')) || 0;
+      window.dispatchEvent(new CustomEvent('mt:freio', { detail: { segundos: e.retryAfter } }));
+    }
     e.codigo = data && (data.erro || data.code);
     // O corpo inteiro, para quem precisa de mais que a frase (a multa do anual no 409).
     e.dados = data;
@@ -152,6 +178,8 @@ export const deviceConfig = {
     const r = await api('GET', '/api/devices/' + id + '/config', undefined, { comCabecalhos: true });
     return { config: r.data, versao: Number(r.headers.get('X-Config-Versao')) || 0 };
   },
+  // A programação de todas as TVs da conta num pedido só: { [id]: { config, versao } } (a Programação, reteste da fase 10).
+  todas: () => api('GET', '/api/devices/configs').then((r) => (r && r.configs) || {}),
   // `versao`: a que foi lida. O servidor recusa (409, code 'config-mudou') se alguém gravou no meio.
   save: (id, config, versao) => api('PUT', '/api/devices/' + id + '/config' + (versao != null ? '?versao=' + encodeURIComponent(versao) : ''), config),
 };
@@ -683,7 +711,46 @@ export const redes = {
  * "Ver a tela agora" (EXECUTOR item 9): pede à TV o que está no ar e lê a
  * resposta. A TV responde pelo comando "estado" (js/player.js, coletarEstado).
  */
+/*
+ * As leituras de várias TVs no mesmo instante viram UM pedido (reteste da
+ * fase 10): Telas e o Início abriam uma miniatura por TV, e cada uma lia o
+ * "o que está passando" sozinha — 25 pedidos numa conta de 25 TVs, que com
+ * duas pessoas no painel batiam no freio da conta. As leituras que chegam
+ * juntas (dentro de 30 ms) saem num GET /api/devices/estados só, e cada
+ * miniatura recebe a resposta dela, igual à de antes.
+ */
+let leituraJunta = null;
+function lerEmLote(id) {
+  if (!leituraJunta) {
+    const atual = { pedidos: new Map() };
+    leituraJunta = atual;
+    setTimeout(() => {
+      leituraJunta = null;
+      const todos = [...atual.pedidos.keys()];
+      // De 100 em 100: é o teto do servidor por pedido.
+      for (let i = 0; i < todos.length; i += 100) {
+        const ids = todos.slice(i, i + 100);
+        api('GET', '/api/devices/estados?ids=' + ids.map(encodeURIComponent).join(','))
+          .then((r) => {
+            const estados = (r && r.estados) || {};
+            for (const k of ids) {
+              const fila = atual.pedidos.get(k);
+              if (estados[k]) fila.forEach((f) => f.ok(estados[k]));
+              else { const e = new Error('sem permissão'); e.status = 403; fila.forEach((f) => f.falha(e)); }
+            }
+          })
+          .catch((e) => { for (const k of ids) atual.pedidos.get(k).forEach((f) => f.falha(e)); });
+      }
+    }, 30);
+  }
+  return new Promise((ok, falha) => {
+    const fila = leituraJunta.pedidos.get(id) || [];
+    fila.push({ ok, falha });
+    leituraJunta.pedidos.set(id, fila);
+  });
+}
+
 export const telaAgora = {
   pedir: (id) => api('POST', '/api/devices/' + id + '/comando', { acao: 'estado' }),
-  ler: (id) => api('GET', '/api/devices/' + id + '/estado'),
+  ler: (id) => lerEmLote(id),
 };
