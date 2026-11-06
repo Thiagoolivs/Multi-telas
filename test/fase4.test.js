@@ -37,7 +37,7 @@ test('quem escolheu outro tema fica com o dele, e "Usar nas minhas TVs" desligad
 
 test('a marca chega na TV e no painel, a escolha fica gravada e a Marca tem o liga-desliga', () => {
   const T = ler('server/routes/telas.js');
-  assert.match(T, /const tema = paleta\.temaDaTv\(c\.settings\.theme, await db\.getBrandKit\(device\.tenant_id\)/);
+  assert.match(T, /const kit = await db\.getBrandKit\(device\.tenant_id\)\.catch\(\(\) => null\);\s*const tema = paleta\.temaDaTv\(c\.settings\.theme, kit\);/);
   for (const db of ['server/db-sqlite.js', 'server/db-postgres.js']) {
     const d = ler(db);
     assert.match(d, /nas_tvs INTEGER/, db + ': a coluna nos DOIS bancos');

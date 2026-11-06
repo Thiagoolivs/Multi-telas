@@ -29,6 +29,9 @@ import '../../../../js/ambiente.js'; // o desenho de reserva, o mesmo da TV
  * cores e o nome da marca de agora, em settings.ambiente.peca — a TV a põe
  * no lugar do desenho (js/rodizio.js, pecaDeAmbiente) e o servidor a passa
  * pela porta das peças antes de gravar (js/peca-html.js, conferirConfig).
+ * Mudada a Marca depois, a peça segue a marca nova sem ninguém regravar a
+ * TV: o servidor a entrega com as cores e o nome de agora (server/paleta.js,
+ * ambienteDaMarca), e é assim que ela chega aqui para ser gravada.
  */
 const CADA = [3, 4, 5, 6, 8];
 const SEGUNDOS = [8, 10, 15, 20];

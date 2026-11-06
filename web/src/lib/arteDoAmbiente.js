@@ -8,10 +8,12 @@
  * /pecas-ouro/manifesto.json já sai com a decisão (server/conteudoPronto.js).
  *
  * A escolhida vai inteira para settings.ambiente.peca: um item peca-html com
- * as cores e o nome da marca daquele momento (como as cores da marca nos
- * Ajustes: a TV funciona sem internet e não muda sozinha). A TV a põe no
- * lugar do desenho (js/rodizio.js, pecaDeAmbiente), e o servidor a passa
- * pela porta das peças antes de gravar (js/peca-html.js, conferirConfig).
+ * as cores e o nome da marca (a TV funciona sem internet e precisa do item
+ * inteiro). A TV a põe no lugar do desenho (js/rodizio.js, pecaDeAmbiente),
+ * e o servidor a passa pela porta das peças antes de gravar
+ * (js/peca-html.js, conferirConfig). Mudou a Marca, a peça acompanha: como
+ * o tema da marca, o servidor a entrega à TV e ao painel com as cores e o
+ * nome de agora (server/paleta.js, ambienteDaMarca) — lote de 06/11.
  */
 import { itemDoModelo, daFrente } from './modelosOuro.js';
 
