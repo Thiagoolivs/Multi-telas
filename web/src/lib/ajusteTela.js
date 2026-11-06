@@ -8,6 +8,7 @@
  * o "Usar assim", o rascunho do editor (vai para a TV no Publicar).
  */
 import { getLayout, THEME_PRESETS, FONTS } from './screenConfig.js';
+import { nomeDoLayout } from './nomesDosLayouts.js';
 import './fundoDaTV.js'; // js/theme.js: a mesma conta de cor da TV
 
 // O que some ao trocar de layout: zona com conteúdo que o layout novo não tem (fica guardado na config).
@@ -78,7 +79,8 @@ export function descrever(cfg, m, { coresMarca = [] } = {}) {
   const atual = getLayout(cfg && cfg.settings && cfg.settings.layoutId);
   if (m.layoutId) {
     const novo = getLayout(m.layoutId);
-    l.push({ texto: 'Layout: ' + atual.name + ' → ' + novo.name });
+    // O nome que a pessoa lê, não o do catálogo da TV (lib/nomesDosLayouts.js).
+    l.push({ texto: 'Divisão da TV: ' + nomeDoLayout(atual.id) + ' → ' + nomeDoLayout(novo.id) });
     for (const id of zonasQueSaem(cfg && cfg.zonas, m.layoutId)) {
       const z = atual.zones.find((x) => x.id === id);
       l.push({ aviso: true, texto: 'A parte ' + (z ? z.name.replace(/\s*\(.*\)$/, '') : id) + ' sai da tela; o que está nela fica guardado.' });

@@ -3,7 +3,9 @@ import { RotateCcw, Palette, Maximize, Music, Clock, SlidersHorizontal, Check } 
 import { Field, Input, Select, Checkbox } from '../ui/Field.jsx';
 import { Button, IconButton } from '../ui/Button.jsx';
 import { LAYOUTS, THEME_PRESETS, FONTS, TRANSITIONS, DECORATIONS, getLayout } from '../../lib/screenConfig.js';
-import { gradeDaMiniatura, proporcaoDoLayout } from '../../lib/tela.js';
+import { gradeDaMiniatura, proporcaoDoLayout, nomeDaParte } from '../../lib/tela.js';
+// O nome que a pessoa lê: a forma da divisão, não o nome do catálogo da TV ("Painel Notícias").
+import { nomeDoLayout, comoSeDivide } from '../../lib/nomesDosLayouts.js';
 import { useAsync } from '../../lib/useAsync.js';
 import { brand, devices } from '../../api.js';
 import { SoundPanel } from './SoundPanel.jsx';
@@ -53,14 +55,26 @@ function hexRgba(hex, a) {
 }
 
 // O desenho de um layout, para escolher olhando (o mesmo da página da TV).
+// As faixas (em cima e embaixo) saem em cinza; as partes de conteúdo, em branco.
 function MiniLayout({ id }) {
   const c = globalThis.MT_getLayout ? globalThis.MT_getLayout(id) : null;
   if (!c) return null;
   return (
     <div className="grid w-full gap-px rounded border-2 border-ink/70 bg-ink/70" style={{ aspectRatio: proporcaoDoLayout(c), ...gradeDaMiniatura(c, { minimo: false }) }}>
-      {c.zones.map((z) => <span key={z.id} style={{ gridArea: z.area || undefined }} className="min-h-0 min-w-0 rounded-[2px] bg-surface" />)}
+      {c.zones.map((z) => <span key={z.id} style={{ gridArea: z.area || undefined }} className={cn('min-h-0 min-w-0 rounded-[2px]', z.type === 'playlist' ? 'bg-surface' : 'bg-line-strong')} />)}
     </div>
   );
+}
+
+// As partes que somem ao trocar de divisão, pelo nome que a pessoa conhece ("lado", "faixa de baixo").
+function partesQueSaem(ids, layoutId) {
+  const atual = globalThis.MT_getLayout ? globalThis.MT_getLayout(layoutId) : null;
+  const todos = globalThis.MT_LAYOUTS || [];
+  return ids.map((id) => {
+    const dono = (atual && atual.zones.some((z) => z.id === id)) ? atual : todos.find((l) => l.zones.some((z) => z.id === id));
+    const zona = dono && dono.zones.find((z) => z.id === id);
+    return zona ? nomeDaParte(zona, dono).toLowerCase() : id;
+  }).filter((n, i, xs) => xs.indexOf(n) === i);
 }
 
 // O que some ao trocar de layout (mora em lib/ajusteTela.js: a IA da tela usa a mesma conta).
@@ -173,16 +187,20 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
                 {Object.keys(LOCAIS_NOME).map((k) => <option key={k} value={k}>{LOCAIS_NOME[k]}</option>)}
               </Select>
             </Field>
-            <div className="mb-2 mt-4 text-sm font-semibold text-ink">Layout</div>
-            <p className="mb-2 text-xs text-ink-3">Como a TV se divide: {layout.description}</p>
+            <div className="mb-2 mt-4 text-sm font-semibold text-ink">Como a TV se divide</div>
+            <p className="mb-2 text-xs text-ink-3">Agora: {comoSeDivide(layout.id)}</p>
             {local === 'balcao' && temLateral && (
               <p className="mb-2 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-xs text-ink">
-                No balcão a letra precisa ser grande, e a lateral é estreita: nela cabe pouco (um preço, um número, um QR). Cardápio inteiro fica melhor em <b>Tela cheia</b> ou <b>Dois quadrados</b>.
+                No balcão a letra precisa ser grande, e a lateral é estreita: nela cabe pouco (um preço, um número, um QR). Cardápio inteiro fica melhor em <b>{nomeDoLayout('full')}</b> ou <b>{nomeDoLayout('duo')}</b>.
               </p>
             )}
             {trocaPendente && (
               <div className="mb-3 rounded-md border border-warn/40 bg-warn-soft px-3 py-2 text-xs text-ink">
-                O layout <b>{getLayout(trocaPendente.id).name}</b> não tem {trocaPendente.saem.join(', ')}. O que está lá fica guardado e volta se você voltar a este layout.
+                {(() => {
+                  const partes = partesQueSaem(trocaPendente.saem, s.layoutId || 'dashboard');
+                  const uma = partes.length === 1;
+                  return <><b>{nomeDoLayout(trocaPendente.id)}</b> não tem {uma ? 'esta parte' : 'estas partes'}: {partes.join(', ')}. O que está {uma ? 'nela' : 'nelas'} fica guardado e volta se você voltar ao jeito de agora.</>;
+                })()}
                 <div className="mt-2 flex gap-2">
                   <Button size="sm" variant="primary" onClick={() => { set({ layoutId: trocaPendente.id }); setTrocaPendente(null); }}>Trocar assim mesmo</Button>
                   <Button size="sm" variant="ghost" onClick={() => setTrocaPendente(null)}>Manter o de agora</Button>
@@ -206,7 +224,7 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
                               sel ? 'border-accent bg-accent-soft/40' : 'border-line hover:border-accent/50')}>
                             <div className={cn('mx-auto w-full', l.orientation === 'portrait' ? 'max-w-[3.5rem]' : l.orientation === 'square' ? 'max-w-[5rem]' : '')}><MiniLayout id={l.id} /></div>
                             <span className="flex items-center gap-1 text-2xs font-medium leading-tight text-ink">
-                              {sel && <Check size={11} className="shrink-0 text-accent" />}{l.name}
+                              {sel && <Check size={11} className="shrink-0 text-accent" />}{nomeDoLayout(l.id, { curto: true })}
                             </span>
                           </button>
                         );
