@@ -10,6 +10,13 @@
  * Quem põe a peça nas TVs é o painel, com versão (gravarNaTela), como as
  * campanhas: aqui fica a lista, para ser "programado e editável".
  *
+ * Com a aprovação ligada (fase 13; lote de 06/11), o membro não põe a data
+ * na TV: o envio virou pedido. O "aplicado" dele não marca a data como
+ * posta; a data entra no pedido que a leva (PUT responde 202) e só fica
+ * posta quando o dono aprova (server/aprovacao.js). A lista diz, de cada
+ * data com pedido, se ela espera aprovação ou se a mudança foi recusada
+ * (com o motivo) — o estado vem daqui, não do painel.
+ *
  * Fase 13: o membro de uma loja (server/permissoes.js) só vê as datas que
  * passam nas TVs dele, e só grava, muda ou apaga a data que fica inteira nas
  * lojas dele. O "todas as TVs" dele vira "as lojas dele" (alvo `grupos`):
@@ -19,9 +26,16 @@
 const C = require('../calendario');
 const P = require('../../js/peca-html.js');
 const permissoes = require('../permissoes');
+const aprovacao = require('../aprovacao');
 
 module.exports = function (ctx) {
-  const { db, sendJson, readBody } = ctx;
+  const { db, sendJson, readBody, canManageTeam } = ctx;
+
+  // As datas com o estado do pedido de cada uma (esperando, recusada…). Sem conseguir ler os pedidos, a lista sai como antes.
+  async function comPedidos(sess, eventos) {
+    const pedidos = await db.listarAprovacoes(sess.tenant_id, { limite: 100 }).catch(() => []);
+    return aprovacao.situacaoDasDatas(eventos, pedidos, (p) => canManageTeam(sess.role) || p.autorId === sess.user_id);
+  }
 
   // A peça do evento passa pela mesma porta da TV antes de ser guardada.
   function itemValido(item) {
@@ -76,8 +90,10 @@ module.exports = function (ctx) {
 
   function gravar(sess, c, e, id) {
     if (!c.ev) return null;
+    // Com a aprovação ligada, "aplicado" do membro é só o pedido: a data fica posta quando o dono aprovar (aprovacao.aplicarExtra).
+    const pos = e.aplicado === true && !sess.precisaAprovar;
     return db.salvarEvento(sess.tenant_id, Object.assign(c.ev, {
-      item: itemValido(e.item), telas: c.telas, aplicadoEm: e.aplicado === true ? Date.now() : (e.aplicado === false ? 0 : null),
+      item: itemValido(e.item), telas: c.telas, aplicadoEm: pos ? Date.now() : (e.aplicado === false ? 0 : null),
     }), id);
   }
 
@@ -88,7 +104,7 @@ module.exports = function (ctx) {
     if (parts.length > 3) { sendJson(res, 404, { error: 'não encontrado' }); return true; }
 
     if (!id && req.method === 'GET') {
-      const eventos = await db.listarCalendario(sess.tenant_id);
+      const eventos = await comPedidos(sess, await db.listarCalendario(sess.tenant_id));
       const alc = await alcanceDe(sess);
       if (!alc) { sendJson(res, 200, { eventos }); return true; }
       // O membro de uma loja: só as datas que passam nas TVs dele, sem os ids das TVs dos outros.
@@ -129,6 +145,14 @@ module.exports = function (ctx) {
         if (c.negado) return sendJson(res, 403, RECUSA_LOJA);
         const s = await gravar(sess, c, b || {}, id);
         if (!s) return sendJson(res, 400, { error: 'o evento precisa de data e título' });
+        // O membro com aprovação: a data espera junto com o pedido que leva a peça dela (202, como a campanha).
+        if (sess.precisaAprovar && b && b.aplicado === true) {
+          const pedido = await aprovacao.anexarCalendario(db, sess, id);
+          if (pedido) {
+            const aprov = { id: pedido.id, estado: 'pendente' };
+            return sendJson(res, 202, { evento: Object.assign({}, s, { aprovacao: aprov }), esperandoAprovacao: true, aprovacao: aprov });
+          }
+        }
         return sendJson(res, 200, { evento: s });
       });
       return true;

@@ -7,8 +7,8 @@ import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { calendario, devices, brand } from '../api.js';
 import { carregarModelos } from '../lib/modelosOuro.js';
 import { gravarEmLote } from '../lib/rodar.js';
-import { pecaDoEvento, aplicarCalendario, tirarDoCalendario, telasDoEvento, periodoDoEvento, partesDaData, NOME_DO_TIPO } from '../lib/calendario.js';
-import { aviso } from '../lib/avisos.js';
+import { pecaDoEvento, aplicarCalendario, tirarDoCalendario, telasDoEvento, partesDaData, situacaoDaData, NOME_DO_TIPO } from '../lib/calendario.js';
+import { aviso, avisarPedidoDeAprovacao } from '../lib/avisos.js';
 import { confirmar } from '../lib/confirmar.js';
 import { cn } from '../lib/cn.js';
 import { usePerfil } from '../lib/perfil.js';
@@ -137,8 +137,17 @@ export function CalendarioPage({ onIr }) {
       const dela = (tv) => salvos.filter((e) => telasDoEvento(e, tvs).some((t) => t.id === tv.id));
       const fora = (tv) => salvos.filter((e) => !dela(tv).includes(e) && (e.telas || []).includes(tv.id)).map((e) => e.id);
       await gravarEmLote(tvs.filter((tv) => dela(tv).length || fora(tv).length), (cfg, tv) => aplicarCalendario(cfg, dela(tv), fora(tv)), 'Calendário');
-      for (const e of salvos) await calendario.atualizar(e.id, { ...e, telas: telasDoEvento(e, tvs).map((t) => t.id), aplicado: true });
-      aviso.ok(salvos.length === 1 ? '“' + salvos[0].titulo + '” está na programação.' : salvos.length + ' datas na programação.');
+      /*
+       * Com a aprovação ligada, o servidor não marca a data como posta: ela
+       * espera junto com o pedido (202) e a lista diz "Esperando aprovação".
+       */
+      let esperando = false;
+      for (const e of salvos) {
+        const r = await calendario.atualizar(e.id, { ...e, telas: telasDoEvento(e, tvs).map((t) => t.id), aplicado: true });
+        if (r && r.esperandoAprovacao) esperando = true;
+      }
+      if (esperando) avisarPedidoDeAprovacao();
+      else aviso.ok(salvos.length === 1 ? '“' + salvos[0].titulo + '” está na programação.' : salvos.length + ' datas na programação.');
       setLidos(null); setTexto(''); setEditando(null);
       setTentativa((n) => n + 1);
     } catch (e) { aviso.erro('calendario', e.message || 'Não deu para pôr na TV.'); }
@@ -161,8 +170,8 @@ export function CalendarioPage({ onIr }) {
 
   function Linha({ ev }) {
     const d = partesDaData(ev.data);
-    const p = periodoDoEvento(ev);
-    const naTv = (ev.telas || []).length;
+    // Na TV, esperando aprovação ou fora (com o porquê): o estado que o servidor manda (lib/calendario.js).
+    const sit = situacaoDaData(ev);
     if (editando && editando.id === ev.id) {
       return (
         <li className="space-y-2 p-3">
@@ -187,11 +196,20 @@ export function CalendarioPage({ onIr }) {
             <span className="truncate text-sm font-semibold text-ink">{ev.titulo}</span>
             <Badge>{NOME_DO_TIPO[ev.tipo] || 'Evento'}</Badge>
             {ev.prioridade !== 'normal' && <Badge tone="warn">{ev.prioridade === 'urgente' ? 'Urgente' : 'Alta'}</Badge>}
+            {sit.estado === 'esperando' && <Badge tone="warn">Esperando aprovação</Badge>}
           </div>
           <div className="text-2xs text-ink-3">
-            {naTv ? 'Na TV de ' + partesDaData(p.dataInicio).curta + ' a ' + d.curta + ' · ' + (naTv === 1 ? '1 TV' : naTv + ' TVs') : 'Fora da TV'}
+            {sit.texto}
             {ev.detalhe ? ' · ' + ev.detalhe : ''}
           </div>
+          {(sit.nota || sit.pedido) && (
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-2xs">
+              {sit.nota && <span className={sit.estado === 'fora' ? 'text-danger' : 'text-ink-2'}>{sit.nota}</span>}
+              {sit.pedido && onIr && (
+                <button type="button" onClick={() => onIr('aprovacoes')} className="font-semibold text-accent hover:underline">Ver em Aprovações</button>
+              )}
+            </div>
+          )}
         </div>
         {ev.podeMudar === false ? <span className="shrink-0 text-2xs text-ink-3">Também em outras lojas</span> : (<>
           <button type="button" onClick={() => setEditando({ ...ev })} aria-label={'Editar ' + ev.titulo} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink"><Pencil size={15} /></button>
