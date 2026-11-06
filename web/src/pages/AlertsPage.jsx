@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, MonitorPlay, MonitorX, HardDrive, LayoutTemplate, CheckCircle2, AlertTriangle, Info, ArrowRight } from 'lucide-react';
+import { Bell, MonitorPlay, MonitorX, HardDrive, LayoutTemplate, CheckCircle2, AlertTriangle, Info, ArrowRight, ChevronDown } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -27,39 +27,75 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling, onAbrirTela 
   const list = (devData && devData.devices) || [];
 
   const alerts = [];
+  const nome = (d) => d.name || 'Tela sem nome';
 
+  /*
+   * Várias TVs com o mesmo problema viram UM cartão (reteste da fase 10: a
+   * conta de 25 TVs via 25 cartões vermelhos iguais). "25 TVs fora do ar",
+   * e a lista de quais abre embaixo. Uma TV só continua com o cartão dela.
+   */
   // 1) Telas que pararam de responder.
   const offline = list.filter((d) => d.lastSeen && deviceStatus(d.lastSeen).tone === 'danger');
-  for (const d of offline) {
+  if (offline.length > 1) {
     alerts.push({
-      id: 'off-' + d.id, tone: 'danger', Icon: MonitorX,
-      title: `“${d.name || 'Tela sem nome'}” está offline`,
-      desc: `Sem resposta ${relativeTime(d.lastSeen)}. Verifique a energia, a internet e se o MultiTelas está aberto na TV.`,
+      id: 'off', tone: 'danger', Icon: MonitorX,
+      title: `${offline.length} TVs fora do ar`,
+      desc: 'Sem resposta. Verifique a energia, a internet e se o MultiTelas está aberto em cada uma.',
       action: { label: 'Ver telas', on: onGoScreens },
+      itens: offline.map((d) => ({ id: d.id, nome: nome(d), detalhe: 'último sinal ' + relativeTime(d.lastSeen) })),
     });
+  } else {
+    for (const d of offline) {
+      alerts.push({
+        id: 'off-' + d.id, tone: 'danger', Icon: MonitorX,
+        title: `“${nome(d)}” está fora do ar`,
+        desc: `Sem resposta ${relativeTime(d.lastSeen)}. Verifique a energia, a internet e se o MultiTelas está aberto na TV.`,
+        action: { label: 'Ver telas', on: onGoScreens },
+      });
+    }
   }
 
   // 2) Telas pareadas que nunca chegaram a conectar.
   const nunca = list.filter((d) => !d.lastSeen);
-  for (const d of nunca) {
+  if (nunca.length > 1) {
     alerts.push({
-      id: 'never-' + d.id, tone: 'warn', Icon: MonitorPlay,
-      title: `“${d.name || 'Tela sem nome'}” nunca conectou`,
-      desc: 'A TV foi ligada à conta, mas o MultiTelas ainda não abriu nela. Abra o MultiTelas na TV para começar a mostrar.',
+      id: 'never', tone: 'warn', Icon: MonitorPlay,
+      title: `${nunca.length} TVs ainda não abriram o MultiTelas`,
+      desc: 'Foram ligadas à conta, mas o MultiTelas ainda não abriu nelas. Abra o MultiTelas em cada TV para começar a mostrar.',
       action: { label: 'Ver telas', on: onGoScreens },
+      itens: nunca.map((d) => ({ id: d.id, nome: nome(d), detalhe: 'nunca deu sinal' })),
     });
+  } else {
+    for (const d of nunca) {
+      alerts.push({
+        id: 'never-' + d.id, tone: 'warn', Icon: MonitorPlay,
+        title: `“${nome(d)}” nunca conectou`,
+        desc: 'A TV foi ligada à conta, mas o MultiTelas ainda não abriu nela. Abra o MultiTelas na TV para começar a mostrar.',
+        action: { label: 'Ver telas', on: onGoScreens },
+      });
+    }
   }
 
   // 3) Telas sem programação: pareadas, mas sem nada para exibir.
   const semConteudo = list.filter((d) => !d.hasConfig);
-  for (const d of semConteudo) {
+  // Direto para a programação DESTA TV (D3): ir para a lista de Telas era um passo a mais, sem rumo.
+  const porConteudo = (d) => () => (onAbrirTela ? onAbrirTela(d) : onGoScreens());
+  if (semConteudo.length > 1) {
     alerts.push({
-      id: 'nocfg-' + d.id, tone: 'warn', Icon: LayoutTemplate,
-      title: `“${d.name || 'Tela sem nome'}” está sem programação`,
-      desc: 'Nada foi posto nesta TV ainda. Ponha um conteúdo para ela não ficar em branco.',
-      // Direto para a programação DESTA TV (D3): ir para a lista de Telas era um passo a mais, sem rumo.
-      action: { label: 'Pôr conteúdo', on: () => (onAbrirTela ? onAbrirTela(d) : onGoScreens()) },
+      id: 'nocfg', tone: 'warn', Icon: LayoutTemplate,
+      title: `${semConteudo.length} TVs sem programação`,
+      desc: 'Nada foi posto nelas ainda. Ponha um conteúdo para não ficarem em branco.',
+      itens: semConteudo.map((d) => ({ id: d.id, nome: nome(d), acao: { label: 'Pôr conteúdo', on: porConteudo(d) } })),
     });
+  } else {
+    for (const d of semConteudo) {
+      alerts.push({
+        id: 'nocfg-' + d.id, tone: 'warn', Icon: LayoutTemplate,
+        title: `“${nome(d)}” está sem programação`,
+        desc: 'Nada foi posto nesta TV ainda. Ponha um conteúdo para ela não ficar em branco.',
+        action: { label: 'Pôr conteúdo', on: porConteudo(d) },
+      });
+    }
   }
 
   // 4) Armazenamento perto do limite do plano.
@@ -89,7 +125,8 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling, onAbrirTela 
 
   const ordem = { danger: 0, warn: 1, info: 2 };
   alerts.sort((a, b) => ordem[a.tone] - ordem[b.tone]);
-  const criticos = alerts.filter((a) => a.tone === 'danger').length;
+  // Um cartão de "25 TVs fora do ar" conta como um alerta, mas são 25 TVs: o resumo diz quantas.
+  const criticos = alerts.filter((a) => a.tone === 'danger').reduce((n, a) => n + (a.itens ? a.itens.length : 1), 0);
 
   return (
     <div>
@@ -99,7 +136,7 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling, onAbrirTela 
       <Panel>
         <PanelHeader title="Situação da rede"
           description={loadingDev ? undefined
-            : alerts.length ? `${alerts.length} ${alerts.length === 1 ? 'alerta' : 'alertas'}${criticos ? ` · ${criticos} crítico${criticos > 1 ? 's' : ''}` : ''}`
+            : alerts.length ? `${alerts.length} ${alerts.length === 1 ? 'alerta' : 'alertas'}${criticos ? ` · ${criticos} ${criticos > 1 ? 'TVs fora do ar' : 'TV fora do ar'}` : ''}`
             : `${list.length} ${list.length === 1 ? 'tela' : 'telas'} · tudo certo`} />
 
         {erroDev ? (
@@ -115,29 +152,58 @@ export function AlertsPage({ onGoScreens, onGoStorage, onGoBilling, onAbrirTela 
             description="Todas as telas estão online e com programação. Nada precisa de você agora." />
         ) : (
           <div className="space-y-2.5 p-4">
-            {alerts.map((a) => {
-              const t = TONE[a.tone];
-              const Icon = a.Icon || t.Icon;
-              return (
-                <div key={a.id} className={cn('flex flex-wrap items-start gap-3 rounded-lg border p-3', t.box)}>
-                  <Icon size={18} className={cn('mt-0.5 shrink-0', t.icon)} />
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold text-ink">{a.title}</div>
-                    <div className="mt-0.5 text-xs leading-snug text-ink-2">{a.desc}</div>
-                  </div>
-                  {a.action && (
-                    <Button size="sm" variant="secondary" icon={ArrowRight} onClick={a.action.on}>{a.action.label}</Button>
-                  )}
-                </div>
-              );
-            })}
+            {alerts.map((a) => <CartaoDeAlerta key={a.id} a={a} />)}
           </div>
         )}
       </Panel>
 
       <p className="mt-3 flex items-center gap-1.5 text-2xs text-ink-3">
-        <Bell size={12} /> Uma tela é considerada offline quando passa mais de 90 segundos sem responder.
+        <Bell size={12} /> Uma TV fica "fora do ar" quando passa mais de 90 segundos sem responder.
       </p>
+    </div>
+  );
+}
+
+/*
+ * Um alerta. Com `itens` (várias TVs com o mesmo problema), a lista de quais
+ * fica fechada embaixo, em "Ver as N"; cada TV com o último sinal ou com o
+ * botão que resolve.
+ */
+function CartaoDeAlerta({ a }) {
+  const [aberto, setAberto] = React.useState(false);
+  const t = TONE[a.tone];
+  const Icon = a.Icon || t.Icon;
+  const idLista = 'alerta-' + a.id;
+  return (
+    <div className={cn('rounded-lg border p-3', t.box)}>
+      <div className="flex flex-wrap items-start gap-3">
+        <Icon size={18} className={cn('mt-0.5 shrink-0', t.icon)} />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-ink">{a.title}</div>
+          <div className="mt-0.5 text-xs leading-snug text-ink-2">{a.desc}</div>
+          {a.itens && (
+            <button type="button" aria-expanded={aberto} aria-controls={idLista} onClick={() => setAberto((v) => !v)}
+              className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline">
+              <ChevronDown size={13} className={cn('transition', aberto && 'rotate-180')} />
+              {aberto ? 'Esconder a lista' : 'Ver as ' + a.itens.length}
+            </button>
+          )}
+        </div>
+        {a.action && (
+          <Button size="sm" variant="secondary" icon={ArrowRight} onClick={a.action.on}>{a.action.label}</Button>
+        )}
+      </div>
+      {a.itens && aberto && (
+        <ul id={idLista} className="mt-2 divide-y divide-line rounded-md border border-line bg-surface">
+          {a.itens.map((i) => (
+            <li key={i.id} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+              <span className="min-w-0 flex-1 truncate text-ink" title={i.nome}>{i.nome}</span>
+              {i.detalhe && <span className="shrink-0 text-xs text-ink-3">{i.detalhe}</span>}
+              {i.acao && <Button size="sm" variant="ghost" onClick={i.acao.on}>{i.acao.label}</Button>}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

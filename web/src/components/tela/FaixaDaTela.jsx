@@ -109,7 +109,7 @@ export function FaixaDaTela({ tipo, zona, onChange, onAdicionar, onAjustes }) {
         ) : (
           <div className="rounded-md border border-dashed border-line p-4 text-sm text-ink-2">
             <b className="text-ink">Cabeçalho automático:</b> logo, nome, relógio e clima, nas cores da tela.
-            {onAjustes && <> O nome e o tema ficam em <button type="button" className="font-medium text-accent hover:underline" onClick={onAjustes}>Ajustes da tela</button>.</>}
+            {onAjustes && <> O nome e o tema ficam em <button type="button" className="font-medium text-accent hover:underline" onClick={onAjustes}>Ajustes da TV</button>.</>}
             {/* D28: o relógio e o clima podem sair (sem a chave, ficam). */}
             <div className="mt-3 flex flex-wrap gap-4">
               <Checkbox label="Relógio" checked={z.relogio !== false} onChange={(e) => onChange(mostrarOuNao(z, 'relogio', e.target.checked))} />

@@ -8,7 +8,7 @@ import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { RedesSociais } from '../components/content/RedesSociais.jsx';
 import { criar, library, devices, brand } from '../api.js';
 import { EditarPeca } from '../components/content/EditarPeca.jsx';
-import { carregarModelos, itemDoModelo, ordenarPorPerfil, daFrente } from '../lib/modelosOuro.js';
+import { carregarModelos, itemDoModelo, ordenarPorPerfil, daFrente, separarPorRamo } from '../lib/modelosOuro.js';
 import { usePerfil } from '../lib/perfil.js';
 import { PorNaTV } from '../components/tela/PorNaTV.jsx';
 import { aviso } from '../lib/avisos.js';
@@ -83,15 +83,27 @@ export function PecasProntasPage({ onIr }) {
     devices.list().then((r) => setTelas((r && r.devices) || [])).catch(() => setTelas([]));
     brand.get().then((r) => {
       const k = (r && r.kit) || {};
-      setMarca({ cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '' });
+      // O ramo que a Marca deduziu (fase 10): a padaria vê primeiro os modelos de padaria.
+      setMarca({ cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '', ramo: (r && r.ramo) || '' });
     }).catch(() => setMarca({}));
     carregarModelos().then(setModelos).catch(() => setModelos([]));
   }, [tentativa]);
 
-  // Os modelos na marca da conta, na ordem do tipo de negócio, com o mesmo filtro e a mesma busca.
+  /*
+   * Os modelos na marca da conta, com o mesmo filtro e a mesma busca. Fase 10:
+   * pela frente E pelo ramo — primeiro os do negócio da conta, depois os que
+   * servem a qualquer um. Os de outro negócio (óculos de sol na padaria) só
+   * com "Ver também os de outros negócios".
+   */
+  const grupos = useMemo(() => {
+    if (!modelos || !marca) return { meus: [], outros: [] };
+    const daMinhaFrente = ordenarPorPerfil(daFrente(modelos, perfil.id), perfil.id);
+    const { meus, outros } = separarPorRamo(daMinhaFrente, marca.ramo, perfil.id);
+    return { meus, outros: outros.concat(ordenarPorPerfil(modelos.filter((m) => !daMinhaFrente.includes(m)), perfil.id)) };
+  }, [modelos, marca, perfil.id]);
   const modelosVisiveis = useMemo(() => {
     if (!modelos || !marca) return [];
-    return ordenarPorPerfil(deOutros ? modelos : daFrente(modelos, perfil.id), perfil.id).map((m) => {
+    return (deOutros ? grupos.meus.concat(grupos.outros) : grupos.meus).map((m) => {
       const item = itemDoModelo(m, marca, perfil.id);
       return { id: 'modelo-' + m.id, item, papel: item.papel, formato: item.formato, label: m.nome, origem: 'modelo · ' + m.familia, modelo: true };
     }).filter((p) => {
@@ -102,7 +114,7 @@ export function PecasProntasPage({ onIr }) {
       const t = q.trim().toLowerCase();
       return !t || ((p.label || '') + ' ' + (p.origem || '')).toLowerCase().includes(t);
     });
-  }, [modelos, marca, perfil.id, filtro, q, deOutros]);
+  }, [modelos, marca, perfil.id, filtro, q, deOutros, grupos]);
 
   const visiveis = useMemo(() => (pecas || []).filter((p) => {
     const faixa = p.papel === 'cabecalho' || p.papel === 'rodape';
@@ -118,7 +130,7 @@ export function PecasProntasPage({ onIr }) {
     <div className="max-w-6xl">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">Peças prontas</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">Peças soltas</h1>
           <p className="mt-1 text-sm text-ink-2">O que já está pronto para a TV e para as redes: das suas campanhas, da biblioteca e os modelos com a sua marca.</p>
         </div>
         <Button variant="secondary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar novas</Button>
@@ -191,10 +203,13 @@ export function PecasProntasPage({ onIr }) {
           <div>
             <h2 className="text-base font-semibold text-ink">Modelos prontos, com a sua marca</h2>
             <p className="text-sm text-ink-2">Toque em Usar, troque o texto e ponha na TV. Já saem nas suas cores, com o seu nome e a sua logo.</p>
-            <button type="button" onClick={() => setDeOutros(!deOutros)} aria-pressed={deOutros}
-              className="mt-1 text-xs font-medium text-accent hover:underline">
-              {deOutros ? 'Ver só os do meu tipo de negócio' : 'Ver também os de outros negócios'}
-            </button>
+            {grupos.outros.length > 0 && (
+              <button type="button" onClick={() => setDeOutros(!deOutros)} aria-pressed={deOutros}
+                className="mt-1 text-sm font-medium text-accent hover:underline">
+                {deOutros ? 'Ver só os do meu tipo de negócio' : 'Ver também os de outros negócios'}
+                {!deOutros && <span className="text-ink-3"> ({grupos.outros.length})</span>}
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {modelosVisiveis.slice(0, qtModelos).map((p) => {

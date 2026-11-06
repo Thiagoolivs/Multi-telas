@@ -7,29 +7,30 @@
   a altura da faixa decide a letra.
 -->
 <style>
-.mt-peca { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6cqh; padding: 0 3cqw;
+/* Fase 10: no piso da TV o espaço entre as letras (em em) crescia com a letra, e o status passava por cima da marca na faixa em pé. Agora ele é fixo, e nada sai da coluna dele. */
+.mt-peca { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 6cqh; padding: 0 3cqw;
   color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: linear-gradient(180deg, var(--mt-fundo-2), var(--mt-fundo)); border-bottom: 1.2cqh solid var(--mt-linha); }
 .status { display: flex; align-items: center; gap: 9cqh; min-width: 0; }
 .ponto { flex: none; width: 13cqh; height: 13cqh; border-radius: 50%; background: var(--mt-destaque);
   box-shadow: 0 0 0 4.5cqh var(--mt-fundo-2), 0 0 0 5.7cqh var(--mt-destaque); }
 .estado { display: flex; flex-direction: column; gap: 7cqh; min-width: 0; }
-.aberto { font: 700 max(var(--mt-piso, 0cqw), 17cqh)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
-.ate { font: 500 max(var(--mt-piso, 0cqw), 19cqh)/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); white-space: nowrap; }
-.marca { display: flex; flex-direction: column; align-items: center; gap: 8cqh; }
+.aberto { font: 700 max(var(--mt-piso, 0cqw), 17cqh)/1.1 var(--mt-fonte-texto); letter-spacing: 5.1cqh; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ate { font: 500 max(var(--mt-piso, 0cqw), 19cqh)/1.1 var(--mt-fonte-texto); color: var(--mt-texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.marca { display: flex; flex-direction: column; align-items: center; gap: 8cqh; min-width: 0; max-width: 52cqw; }
 .logo { height: 58cqh; width: auto; max-width: 30cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { font: 400 max(var(--mt-piso, 0cqw), 40cqh)/.9 var(--mt-fonte-titulo); letter-spacing: .12em; text-transform: uppercase; white-space: nowrap; }
+.nome { max-width: 100%; font: 400 max(var(--mt-piso, 0cqw), 40cqh)/.9 var(--mt-fonte-titulo); letter-spacing: 4.8cqh; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nome b { font-weight: inherit; color: var(--mt-destaque); }
-.desde { display: flex; align-items: center; gap: 4cqh; font: 600 max(var(--mt-piso, 0cqw), 11cqh)/1 var(--mt-fonte-texto); letter-spacing: .5em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.desde { display: flex; align-items: center; gap: 4cqh; max-width: 100%; font: 600 max(var(--mt-piso, 0cqw), 11cqh)/1 var(--mt-fonte-texto); letter-spacing: 5.5cqh; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; overflow: hidden; }
 .desde i { display: block; width: 18cqh; height: 1cqh; background: var(--mt-linha); }
-.agora { justify-self: end; display: flex; align-items: center; gap: 5cqh; }
+.agora { justify-self: end; display: flex; align-items: center; gap: 5cqh; min-width: 0; }
 .clima { font: 500 max(var(--mt-piso, 0cqw), 26cqh)/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 .sep { display: block; width: 1.2cqh; height: 44cqh; background: var(--mt-linha); }
 .tempo { display: flex; flex-direction: column; align-items: flex-end; gap: 4cqh; }
 .hora { font: 400 max(var(--mt-piso, 0cqw), 46cqh)/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
-.data { font: 600 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.data { font: 600 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: 3.6cqh; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
 /* Faixa mais curta (TV em pé): o "desde" e o clima saem; status, marca e hora ficam. */
 @container (aspect-ratio < 9) {
   .mt-peca { gap: 4cqh; }
@@ -37,9 +38,9 @@
   .status { gap: 7cqh; }
   .ponto { width: 10cqh; height: 10cqh; box-shadow: 0 0 0 3.5cqh var(--mt-fundo-2), 0 0 0 4.5cqh var(--mt-destaque); }
   .estado { gap: 6cqh; }
-  .aberto { font-size: max(var(--mt-piso, 0cqw), 13cqh); letter-spacing: .2em; }
+  .aberto { font-size: max(var(--mt-piso, 0cqw), 13cqh); letter-spacing: 2.6cqh; }
   .ate { font-size: max(var(--mt-piso, 0cqw), 15cqh); }
-  .nome { font-size: max(var(--mt-piso, 0cqw), 30cqh); letter-spacing: .08em; }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 30cqh); letter-spacing: 2.4cqh; }
   .hora { font-size: max(var(--mt-piso, 0cqw), 38cqh); }
 }
 </style>

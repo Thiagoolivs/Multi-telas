@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
-import { Plus, Sparkles } from 'lucide-react';
+import { Plus, Sparkles, Type, CloudSun } from 'lucide-react';
 import { cn } from '../../lib/cn.js';
 import { gradeDaMiniatura, proporcaoDoLayout, pecasDaFaixa, tamanhosDasZonas } from '../../lib/tela.js';
+import { CONTENT_TYPES } from '../../lib/contentTypes.js';
 import { PecaHtml } from '../content/PecaHtml.jsx';
 
 /*
@@ -43,6 +44,52 @@ export function Conteudo({ item, tamanho }) {
   return null;
 }
 
+/*
+ * O QUE A PARTE MOSTRA, quando não é peça nem foto (reteste da fase 10: a
+ * parte de texto, de aviso e de clima saía preta no mapa, e a pessoa não via
+ * o que estava ali). Uma prévia de leitura: o ícone do tipo, o título e uma
+ * linha do texto. Não é o desenho da TV (esse fica no "Na TV agora"); é para
+ * reconhecer qual parte é qual.
+ */
+const linha = (v) => (v == null ? '' : String(v).replace(/\s+/g, ' ').trim());
+function textosDoItem(item, settings) {
+  const t = CONTENT_TYPES[item.type];
+  if (item.type === 'weatherpro' || item.type === 'clima') {
+    return { titulo: linha(item.cidade || (settings && settings.cidadeClima)) || 'Clima', apoio: 'Clima de agora', Icone: CloudSun };
+  }
+  let resumo = '';
+  try { resumo = t ? linha(t.summary(item)) : ''; } catch (e) { resumo = ''; }
+  const titulo = linha(item.titulo || item.texto || resumo) || (t ? t.label : 'Conteúdo');
+  const apoio = [item.corpo, item.precoPor, item.valor, item.autor, item.info].map(linha).find((x) => x && x !== titulo) || (t ? t.label : '');
+  return { titulo, apoio: apoio === titulo ? '' : apoio, Icone: (t && t.icon) || Type };
+}
+
+function PreviaDoItem({ item, settings }) {
+  const { titulo, apoio, Icone } = textosDoItem(item, settings);
+  return (
+    <span aria-hidden="true" className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 pb-6 pt-2 text-center text-white">
+      <Icone size={16} className="shrink-0 text-white/70" />
+      <span className="line-clamp-2 max-w-full break-words text-xs font-semibold leading-tight">{titulo}</span>
+      {apoio && <span className="line-clamp-2 max-w-full break-words text-2xs leading-tight text-white/75">{apoio}</span>}
+    </span>
+  );
+}
+
+// O cabeçalho e o rodapé sem peça: o nome com a hora, e o letreiro com os avisos que passam.
+function PreviaDaFaixa({ zona, d, settings }) {
+  const s = settings || {};
+  const texto = zona.type === 'header'
+    ? linha(s.titulo || s.nome)
+    : (Array.isArray(d.messages) ? d.messages : []).map(linha).filter(Boolean).join('  ·  ');
+  if (!texto && zona.type !== 'header') return null;
+  return (
+    <span aria-hidden="true" className="flex h-full w-full items-center justify-end gap-2 pl-24 pr-2 text-2xs text-white/85">
+      <span className="min-w-0 truncate">{texto}</span>
+      {zona.type === 'header' && <span className="shrink-0 font-semibold tabular-nums text-white">10:42</span>}
+    </span>
+  );
+}
+
 export function MapaDaTela({ layout, ativa, onEscolher, resumo, cfg, onIA }) {
   const tamanhos = useMemo(() => (cfg ? tamanhosDasZonas(layout) : {}), [layout, !!cfg]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!layout) return null;
@@ -68,7 +115,13 @@ export function MapaDaTela({ layout, ativa, onEscolher, resumo, cfg, onIA }) {
                   cfg && (sel ? 'ring-2 ring-accent ring-offset-1 ring-offset-[#0b0f17]' : 'ring-1 ring-white/10 hover:ring-white/40'))}>
                 {cfg ? (
                   <>
-                    <span className="pointer-events-none absolute inset-0"><Conteudo item={item} tamanho={tamanhos[z.id]} /></span>
+                    <span className="pointer-events-none absolute inset-0">
+                      {item && (item.type === 'peca-html' || ((item.type === 'image' || item.type === 'imagem') && item.src))
+                        ? <Conteudo item={item} tamanho={tamanhos[z.id]} />
+                        : item && !faixa ? <PreviaDoItem item={item} settings={cfg.settings} />
+                        : faixa && !item ? <PreviaDaFaixa zona={z} d={(cfg.zonas && cfg.zonas[z.id]) || {}} settings={cfg.settings} />
+                        : null}
+                    </span>
                     {vazia && <span className="absolute inset-0 flex items-center justify-center text-white/50"><Plus size={faixa ? 12 : 18} /></span>}
                     <span className={cn('pointer-events-none absolute left-1 max-w-[calc(100%-0.5rem)] truncate rounded px-1.5 py-0.5 text-[10px] font-semibold leading-tight backdrop-blur',
                       faixa ? 'top-1/2 -translate-y-1/2' : 'bottom-1',

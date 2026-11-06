@@ -151,7 +151,7 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
 
   return (
     <div className="space-y-4">
-      <div className="rolagem-lateral flex gap-1 overflow-x-auto rounded-lg border border-line bg-surface-2 p-1" role="tablist" aria-label="Ajustes da tela">
+      <div className="rolagem-lateral flex gap-1 overflow-x-auto rounded-lg border border-line bg-surface-2 p-1" role="tablist" aria-label="Ajustes da TV">
         {ABAS.map(([id, nome, Icone]) => (
           <button key={id} type="button" role="tab" aria-selected={aba === id} onClick={() => setAba(id)}
             className={cn('inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition',
@@ -220,18 +220,25 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
             <div className="mb-2 text-sm font-semibold text-ink">Cores</div>
             {temCores ? (
               <div className="grid gap-2 sm:grid-cols-2">
-                <button type="button" onClick={() => escolherTema('marca')} aria-pressed={usaMarca}
-                  className={cn('rounded-lg border p-3 text-left', usaMarca ? 'border-accent bg-accent-soft/40' : 'border-line hover:border-accent/50')}>
-                  <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-                    As cores da minha marca
-                    <span className="flex gap-1">{coresMarca.slice(0, 4).map((c) => <span key={c} className="h-3.5 w-3.5 rounded-full border border-line" style={{ background: c }} />)}</span>
-                  </div>
-                  <p className="mt-1 text-2xs text-ink-3">A tela inteira sai da cor da empresa, com o contraste calculado.</p>
-                  {usaMarca && <div className="mt-2"><Checkbox label="Versão clara" checked={theme.marcaClara === true} onChange={(e) => setTheme({ marcaClara: e.target.checked })} /></div>}
-                </button>
+                {/*
+                  A caixa "Versão clara" fica FORA do botão (axe, reteste da fase 10:
+                  controle dentro de controle, `nested-interactive`). O cartão é a
+                  moldura; o botão é a parte de cima, e a caixa vem embaixo.
+                */}
+                <div className={cn('rounded-lg border', usaMarca ? 'border-accent bg-accent-soft/40' : 'border-line hover:border-accent/50')}>
+                  <button type="button" onClick={() => escolherTema('marca')} aria-pressed={usaMarca} className="block w-full rounded-lg p-3 text-left">
+                    <span className="flex items-center gap-2 text-sm font-semibold text-ink">
+                      As cores da minha marca
+                      <span className="flex gap-1">{coresMarca.slice(0, 4).map((c) => <span key={c} className="h-3.5 w-3.5 rounded-full border border-line" style={{ background: c }} />)}</span>
+                    </span>
+                    <span className="mt-1 block text-2xs text-ink-3">A tela inteira sai da cor da empresa, com o contraste calculado.</span>
+                  </button>
+                  {usaMarca && <div className="px-3 pb-3"><Checkbox label="Versão clara" checked={theme.marcaClara === true} onChange={(e) => setTheme({ marcaClara: e.target.checked })} /></div>}
+                </div>
                 <div className={cn('rounded-lg border p-3', !usaMarca ? 'border-accent bg-accent-soft/40' : 'border-line')}>
-                  <div className="text-sm font-semibold text-ink">Um tema pronto</div>
-                  <Select className="mt-2" value={usaMarca ? '' : theme.preset} onChange={(e) => e.target.value && escolherTema(e.target.value)}>
+                  {/* O seletor tem nome (axe `select-name`): o título do cartão é o rótulo dele. */}
+                  <label htmlFor="tema-pronto" className="block text-sm font-semibold text-ink">Um tema pronto</label>
+                  <Select id="tema-pronto" className="mt-2" value={usaMarca ? '' : theme.preset} onChange={(e) => e.target.value && escolherTema(e.target.value)}>
                     {usaMarca && <option value="">Escolher…</option>}
                     {THEME_PRESETS.filter((t) => t.value !== 'marca').map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </Select>
@@ -245,7 +252,7 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
               </div>
             ) : (
               <>
-                <Select value={theme.preset} onChange={(e) => escolherTema(e.target.value)}>
+                <Select aria-label="Tema da TV" value={theme.preset} onChange={(e) => escolherTema(e.target.value)}>
                   {THEME_PRESETS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                 </Select>
                 <p className="mt-1 text-2xs text-ink-3">Cadastre as cores da empresa em <b className="text-ink-2">Marca</b> e a tela passa a poder usá-las.</p>

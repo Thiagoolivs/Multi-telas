@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, MonitorPlay, Megaphone, Plus, Search, Archive, ArchiveRestore, Pencil, Trash2, Layers, X } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
-import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
+import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { ResultadoCampanha } from '../components/criar/ResultadoCampanha.jsx';
 import { PorPraRodar } from '../components/criar/PorPraRodar.jsx';
@@ -34,8 +34,9 @@ import { cn } from '../lib/cn.js';
  */
 
 const ESTADO = {
-  no_ar: { rotulo: 'No ar', classe: 'bg-ok/15 text-ok' },
-  pausada: { rotulo: 'Pausada', classe: 'bg-warn/15 text-warn' },
+  // O fundo claro de verdade (ok-soft, warn-soft), não a cor a 15%: o selo dava 4,08:1 (axe, reteste da fase 10).
+  no_ar: { rotulo: 'No ar', classe: 'bg-ok-soft text-ok' },
+  pausada: { rotulo: 'Pausada', classe: 'bg-warn-soft text-warn' },
   pronta: { rotulo: 'Pronta', classe: 'bg-surface-2 text-ink-2' },
   // QA de lançamento, 03/11: texto que a lei barra (server/conferencia.js) — fica fora da TV até trocar.
   revisar: { rotulo: 'Trocar texto', classe: 'bg-danger/10 text-danger' },
@@ -65,13 +66,15 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
   const [aberta, setAberta] = useState(null);
   const [abrindo, setAbrindo] = useState(false);
   const [erro, setErro] = useState('');
+  // A lista que não veio é erro, não "nenhuma campanha" (reteste da fase 10: os dois apareciam juntos).
+  const [erroLista, setErroLista] = useState('');
   const pedido = useRef(0);
 
   // Toda busca nova descarta a resposta de uma busca anterior que chegue atrasada.
   function carregar(o) {
     const n = ++pedido.current;
     const pular = (o && o.pular) || 0;
-    if (!pular) setLista(null);
+    if (!pular) { setLista(null); setErroLista(''); }
     return criar.campanhas({ q: busca.trim(), arquivadas, pular })
       .then((r) => {
         if (n !== pedido.current) return;
@@ -79,7 +82,13 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
         setLista((l) => (pular ? (l || []).concat(novas) : novas));
         setMais(!!(r && r.mais));
       })
-      .catch((e) => { if (n === pedido.current) { setErro(e.message || 'Não deu para carregar.'); setLista((l) => l || []); } });
+      .catch((e) => {
+        if (n !== pedido.current) return;
+        // "Ver mais" que falha não apaga o que já está na tela: só avisa.
+        if (pular) { aviso.erro('campanhas', 'Não deu para trazer mais campanhas: ' + (e.message || 'falha de conexão') + '.'); return; }
+        setErroLista(e.offline ? e.message : 'As campanhas não vieram agora. Nada foi apagado; tente de novo.');
+        setLista(null);
+      });
   }
 
   useEffect(() => {
@@ -196,7 +205,9 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
       </div>
 
       {erro && <div className="mb-3 rounded-md border border-danger-soft bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{erro}</div>}
-      {lista === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : lista.length === 0 ? (
+      {erroLista ? (
+        <Panel><ErrorState title="Não deu para carregar as campanhas" description={erroLista} onRetry={() => carregar()} /></Panel>
+      ) : lista === null ? <div className="flex justify-center py-16"><Spinner size={20} /></div> : lista.length === 0 ? (
         <Panel>
           {procurando || arquivadas ? (
             <EmptyState icon={procurando ? Search : Archive}

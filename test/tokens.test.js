@@ -73,9 +73,14 @@ test('conferir acusa um jogo quebrado (o teste do contrato não é vazio)', () =
   assert.ok(f.some((x) => x.frente === 'sobreDestaque'), 'texto do botão invisível passou');
 });
 
-test('todo par do contrato tem piso de AA: 4.5 para texto, 3 só para o destaque', () => {
+test('todo par do contrato tem piso de 4.5, o destaque também (é o kicker, o @, a chamada)', () => {
+  /*
+   * O destaque ficava em 3 (o AA de texto grande). O reteste da TV (fase
+   * 10) mediu o kicker e o @ entre 2,5 e 3,5 contra o fundo; a régua do QA
+   * pede 4,5 em todo texto. Voltar o destaque a 3 reprova aqui.
+   */
   for (const p of T.PARES) {
-    assert.equal(p.minimo, p.frente === 'destaque' ? 3 : 4.5, p.frente + ' sobre ' + p.fundo);
+    assert.equal(p.minimo, 4.5, p.frente + ' sobre ' + p.fundo);
   }
   // Os três fundos aceitam os mesmos textos: cartão sobre fundo não muda a regra.
   for (const frente of ['texto', 'textoSuave', 'preco', 'destaque']) {

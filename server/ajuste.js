@@ -71,9 +71,11 @@ const FAIXAS = ['cabecalho', 'rodape'];
  * lateral, rodapé. É por esta lista que "a peça 2" quer dizer a mesma coisa
  * para o cliente, para a IA e para o código.
  */
+// As TVs do resultado, sempre uma lista: campanha velha com `telas` em texto ("x") derrubava a lista inteira (reteste da fase 10).
+const telasDo = (resultado) => (resultado && Array.isArray(resultado.telas) ? resultado.telas : []);
 function numerar(resultado) {
   const lista = [];
-  ((resultado && resultado.telas) || []).forEach((t, ti) => {
+  telasDo(resultado).forEach((t, ti) => {
     // Campanha de formato antigo (sem cabeçalho ou rodapé) não derruba a conta inteira (QA total, 05/11).
     const z = (t && t.zonas) || {};
     const lista_ = (x) => (Array.isArray(x) ? x : []);
@@ -113,7 +115,7 @@ const inteiro = (v) => (Number.isInteger(v) ? v : Math.round(Number(v)));
 function lerMudancas(lista, resultado, opcoes) {
   const refs = (opcoes && Array.isArray(opcoes.refs)) ? opcoes.refs : [];
   const pecas = numerar(resultado);
-  const nTelas = ((resultado && resultado.telas) || []).length;
+  const nTelas = telasDo(resultado).length;
   const saida = [];
   for (const m of (Array.isArray(lista) ? lista : []).slice(0, 12)) {
     if (!m || !TIPOS.includes(m.tipo)) continue;
@@ -237,7 +239,7 @@ async function entender(texto, campanha) {
   const resultado = campanha.resultado;
   if (ai.mode() === 'dev') return semIA(texto, resultado);
   const usuario = ['PEÇAS DA CAMPANHA "' + (resultado.nome || campanha.nome) + '":', listaParaIA(resultado),
-    '', 'TVs: ' + resultado.telas.length, '', 'PEDIDO DO CLIENTE: ' + corta(texto, 600)].join('\n');
+    '', 'TVs: ' + telasDo(resultado).length, '', 'PEDIDO DO CLIENTE: ' + corta(texto, 600)].join('\n');
   try {
     const r = ai.parseAiJson(await ai.callLLM(SISTEMA, usuario));
     const mudancas = lerMudancas(r && r.mudancas, resultado);

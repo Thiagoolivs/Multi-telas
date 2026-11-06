@@ -12,6 +12,17 @@
 
   const stage = document.getElementById('stage');
   const overlay = document.getElementById('overlay');
+  /*
+   * A PRÉVIA DO PAINEL (fase 10, reteste do bloco 8): o "Na TV agora" do
+   * painel era um desenho parecido com a TV, e não a TV. Agora o painel abre
+   * este mesmo player num quadro (web/src/components/tela/TvAoVivo.jsx), com
+   * a marca `data-mt-previa` na página. Nesse modo ele só desenha a
+   * programação que o painel entrega: sem nuvem, sem som, sem relatório, sem
+   * guardar nada no aparelho.
+   */
+  const EM_PREVIA = !!(document.documentElement && document.documentElement.hasAttribute('data-mt-previa'));
+  // As partes que a TV contou estarem no relógio (nada no horário agora).
+  let previaRelogio = [];
 
   let currentConfig = null;
   let configFingerprint = '';
@@ -450,6 +461,32 @@
     loadKpis(dev.id);
     setInterval(function () { loadKpis(dev.id); }, 5 * 60 * 1000);
     document.addEventListener('mt:kpis-mudou', function () { loadKpis(dev.id); });
+    // Preço da planilha (fase 11): a cada 5 min (o servidor lê a planilha no mesmo ritmo) e quando ele avisa.
+    loadPlanilhas(dev.id);
+    setInterval(function () { loadPlanilhas(dev.id); }, 5 * 60 * 1000);
+    document.addEventListener('mt:planilhas-mudou', function () { loadPlanilhas(dev.id); });
+  }
+
+  /*
+   * Os itens das planilhas de preço (global.MT_PLANILHAS), com cache: a TV
+   * sem rede, ou com a planilha quebrada, continua com os últimos preços
+   * bons. Só avisa a tela (mt:planilhas) quando algum preço mudou — aí a
+   * peça no ar que lê a planilha é redesenhada (startPlaylist).
+   */
+  function loadPlanilhas(id) {
+    try {
+      const cached = localStorage.getItem('mt.planilhas');
+      if (cached && !global.MT_PLANILHAS) global.MT_PLANILHAS = JSON.parse(cached);
+    } catch (e) {}
+    if (!global.MTCloud || !MTCloud.fetchPlanilhas) return;
+    MTCloud.fetchPlanilhas(id).then(function (lista) {
+      const novo = JSON.stringify(lista || []);
+      const antes = JSON.stringify(global.MT_PLANILHAS || []);
+      global.MT_PLANILHAS = lista || [];
+      if (novo === antes) return;
+      try { localStorage.setItem('mt.planilhas', novo); } catch (e) {}
+      try { global.dispatchEvent(new Event('mt:planilhas')); } catch (e) {}
+    }).catch(function () { /* offline: mantém o cache */ });
   }
 
   // Os valores dos indicadores (global.MT_KPIS), com cache para a TV sem rede mostrar o último número.
@@ -655,6 +692,8 @@
     currentConfig = cfg;
     conferirGiro((cfg.settings || {}).girar);
     aplicarNoPalco(cfg);
+    // Na prévia, nada de música tocando no painel nem mídia baixada à toa.
+    if (EM_PREVIA) return;
     // A trilha vem de settings e não das zonas: trocar de layout não pode
     // cortar a música no meio.
     trilha.aplicar((cfg.settings || {}).audio);
@@ -1126,6 +1165,12 @@
 
   function iniciarZona(zoneEl, zone, cfg) {
     const data = cfg.zonas[zone.id] || {};
+    // Prévia: a TV contou que esta parte está no relógio (nada no horário agora).
+    if (EM_PREVIA && previaRelogio.indexOf(zone.id) >= 0) {
+      const r = relogioDeZona();
+      zoneEl.appendChild(r.el);
+      return { stop: r.parar, atual: () => ({ relogio: true }) };
+    }
     if (temPecaFixa(zone, data)) return startPecaFixa(zoneEl, zone, data);
     if (zone.type === 'ticker' && rodapeEsperando(data)) {
       const espera = esperaDeZona(true);
@@ -2317,12 +2362,28 @@
     };
     if (auto) global.addEventListener('mt:aniversarios', aoChegarAniversarios);
 
+    /*
+     * O preço da planilha mudou (fase 11): o item no ar que lê uma planilha é
+     * desenhado de novo, com os preços novos — inclusive na zona de um item
+     * só, que fica estática e nunca entraria de novo sozinha.
+     */
+    const aoMudarPlanilha = () => {
+      if (stopped || !(noAr && noAr.item && noAr.item.planilha)) return;
+      // Sem "a mesma peça no ar": o advance desenha de novo a mesma posição, em vez de deixá-la como está.
+      noAr = { refazer: true };
+      index = Math.max(0, index - 1);
+      clearTimeout(timer);
+      advance();
+    };
+    global.addEventListener('mt:planilhas', aoMudarPlanilha);
+
     advance();
     return {
       atual: () => noAr,
       stop: () => {
         stopped = true; clearTimeout(timer);
         if (auto) global.removeEventListener('mt:aniversarios', aoChegarAniversarios);
+        global.removeEventListener('mt:planilhas', aoMudarPlanilha);
         if (currentSlide && currentSlide.parar) currentSlide.parar(); // relógio de fora do horário
         /*
          * A saída do slide no ar. Só o leaveSlide a chamava, e refazer a zona
@@ -2998,6 +3059,28 @@
     document.addEventListener('mt:som', (e) => trilha.comando((e && e.detail) || {}));
   }
 
+  /*
+   * A prévia do painel: quem manda a programação é o painel, que chama
+   * MTPrevia.mostrar com ela em texto (JSON: o objeto do painel é de outra
+   * janela). `extras.relogio`: as partes que a TV contou estarem no relógio.
+   * Cada chamada troca só o que mudou, como na TV.
+   */
+  function bootPrevia() {
+    global.MTPrevia = {
+      mostrar: function (texto, extras) {
+        let cfg;
+        try { cfg = JSON.parse(texto); } catch (e) { return false; }
+        const relogio = (extras && Array.isArray(extras.relogio)) ? extras.relogio.map(String) : [];
+        // Mudou quem está no relógio: o palco é montado de novo (é raro, e a prévia não tem pressa).
+        if (relogio.join('|') !== previaRelogio.join('|')) { previaRelogio = relogio; configFingerprint = ''; if (palco) teardownZones(); }
+        applyConfig(cfg);
+        return true;
+      },
+    };
+  }
+  // Na prévia o painel é quem manda: sem moldura girada, sem tela cheia, sem nuvem (ver montarMolduraSeGirada).
+  if (EM_PREVIA) bootPrevia();
+
   /* ---------------- TV em pé ----------------
    *
    * Totem e TV pendurada em pé são comuns em loja, e TV Box não gira a
@@ -3021,6 +3104,8 @@
   try { naMoldura = global.top !== global && /[?&]moldura=1(&|$)/.test(global.location.search); } catch (e) {}
 
   function montarMolduraSeGirada() {
+    // Na prévia do painel o player não sobe sozinho: quem desenha é o MTPrevia.
+    if (global.MTPrevia) return true;
     if (naMoldura) return false;
     const g = giroGuardado();
     if (!g) return false;
@@ -3039,6 +3124,8 @@
   // Chamado a cada config aplicada: se o giro pedido não é o que está no ar,
   // guarda e recarrega a página de fora (que monta ou desmonta a moldura).
   function conferirGiro(pedido) {
+    // Na prévia do painel, a TV girada já chega em pé: girar recarregaria o painel.
+    if (global.MTPrevia) return;
     const g = normalizarGiro(pedido);
     const noAr = naMoldura ? giroGuardado() : 0;
     if (g === noAr) return;

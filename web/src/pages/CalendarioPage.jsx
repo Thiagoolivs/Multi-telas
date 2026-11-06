@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, Sparkles, Trash2, Pencil, Check, X, MonitorPlay } from 'lucide-react';
+import { CalendarDays, CalendarPlus, Sparkles, Trash2, Pencil, Check, X, MonitorPlay } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
@@ -13,6 +13,8 @@ import { confirmar } from '../lib/confirmar.js';
 import { cn } from '../lib/cn.js';
 import { usePerfil } from '../lib/perfil.js';
 import { SemanaDaTv } from '../components/agenda/SemanaDaTv.jsx';
+import '../../../js/datas-br.js';
+import '../../../js/datas-frente.js';
 
 /*
  * PROGRAMAÇÃO › CALENDÁRIO (EXECUTOR D23).
@@ -24,6 +26,14 @@ import { SemanaDaTv } from '../components/agenda/SemanaDaTv.jsx';
  * sai depois do dia. Editar ou apagar a data muda a TV junto.
  */
 const TIPOS = Object.keys(NOME_DO_TIPO);
+/*
+ * Fase 11: as datas prontas da frente (js/datas-frente.js) — Dia das Mães,
+ * Black Friday e Natal no Comércio; o calendário das cores da saúde na
+ * Saúde; SIPAT, CIPA e confraternização na Empresas. Cada uma vai para a
+ * programação com um toque, pelo mesmo caminho do "Colar o calendário".
+ */
+const DatasFrente = globalThis.MTDatasFrente;
+const semAcento = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 const hojeIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const campo = 'rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink';
 
@@ -73,6 +83,8 @@ export function CalendarioPage({ onIr }) {
   const [onde, setOnde] = useState('todas');
   const [aplicando, setAplicando] = useState(false);
   const [editando, setEditando] = useState(null);
+  const [verTodas, setVerTodas] = useState(false);
+  const [diasEscolhidos, setDiasEscolhidos] = useState({});
 
   useEffect(() => {
     setErro(''); setEventos(null);
@@ -90,6 +102,13 @@ export function CalendarioPage({ onIr }) {
   const hoje = hojeIso();
   const proximos = (eventos || []).filter((e) => e.data >= hoje);
   const passados = (eventos || []).filter((e) => e.data < hoje);
+  // As datas prontas que ainda não estão na Agenda (o mesmo nome no mesmo ano).
+  const sugeridas = useMemo(() => {
+    if (!DatasFrente || !eventos) return [];
+    const ja = new Set(eventos.map((e) => semAcento(e.titulo) + '|' + String(e.data).slice(0, 4)));
+    const jaSemDia = new Set(eventos.filter((e) => e.data >= hojeIso()).map((e) => semAcento(e.titulo)));
+    return DatasFrente.proximas(perfil.id, new Date()).filter((d) => (d.data ? !ja.has(semAcento(d.titulo) + '|' + d.data.slice(0, 4)) : !jaSemDia.has(semAcento(d.titulo))));
+  }, [eventos, perfil.id]);
 
   async function ler() {
     setLendo(true);
@@ -235,12 +254,55 @@ export function CalendarioPage({ onIr }) {
       )}
 
       <Panel>
-        <PanelHeader title="Datas que vêm" description={proximos.length ? undefined : 'Nenhuma data por vir.'} />
+        <PanelHeader title="Datas que vêm" description={proximos.length ? undefined : 'Nenhuma data sua por vir.'} />
         {proximos.length ? (
           <ul className="divide-y divide-line">{proximos.map((ev) => <Linha key={ev.id} ev={ev} />)}</ul>
-        ) : (
+        ) : !sugeridas.length && (
           <EmptyState icon={CalendarDays} title="Nenhuma data ainda" exemplo={['27/11', 'Black Friday', 'entra e sai da TV sozinha']}
             description="Cole o calendário acima: feriados, eventos, campanhas e avisos viram peças na TV, cada uma no seu período." />
+        )}
+        {sugeridas.length > 0 && (
+          <div className="border-t border-line">
+            <div className="px-4 pt-3 text-sm font-semibold text-ink">Datas prontas {perfil.lugarDe}</div>
+            <p className="px-4 pb-1 text-sm text-ink-2">Um toque põe a data na programação: o aviso com a sua marca entra na TV alguns dias antes e sai depois do dia.</p>
+            <ul className="divide-y divide-line">
+              {(verTodas ? sugeridas : sugeridas.slice(0, 6)).map((d) => {
+                const dia = d.semDia ? (diasEscolhidos[d.id] || '') : d.data;
+                const p = dia ? partesDaData(dia) : null;
+                return (
+                  <li key={d.id} className="flex flex-wrap items-center gap-3 p-3">
+                    <div className="w-12 shrink-0 rounded-lg bg-surface-2 py-1 text-center">
+                      <div className="text-lg font-bold leading-none text-ink">{p ? (d.mesInteiro ? '01' : p.dia) : '?'}</div>
+                      <div className="text-2xs uppercase text-ink-3">{p ? p.mes.slice(0, 3) : 'dia'}</div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="truncate text-sm font-semibold text-ink">{d.titulo}</span>
+                        <Badge>{NOME_DO_TIPO[d.tipo] || 'Evento'}</Badge>
+                      </div>
+                      <div className="text-sm text-ink-3">
+                        {d.semDia ? 'Vocês escolhem o dia' : d.mesInteiro ? 'Na TV o mês todo' : 'Entra na TV ' + d.antecedencia + ' dias antes · ' + p.semana}
+                        {d.detalhe ? ' · ' + d.detalhe : ''}
+                      </div>
+                    </div>
+                    {d.semDia && (
+                      <input type="date" value={dia} min={hoje} onChange={(e) => setDiasEscolhidos((x) => ({ ...x, [d.id]: e.target.value }))}
+                        className={campo} aria-label={'Dia de ' + d.titulo} />
+                    )}
+                    <Button size="sm" variant="secondary" icon={CalendarPlus} disabled={!dia || aplicando || !modelos || !marca}
+                      onClick={() => porNaProgramacao([{ data: dia, titulo: d.titulo, tipo: d.tipo, detalhe: d.detalhe, antecedencia: d.antecedencia, prioridade: 'normal', alvo }])}>
+                      Pôr na programação
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+            {sugeridas.length > 6 && (
+              <button type="button" onClick={() => setVerTodas((v) => !v)} className="w-full border-t border-line px-4 py-2.5 text-left text-sm font-medium text-accent hover:bg-surface-2">
+                {verTodas ? 'Ver menos' : 'Ver todas as datas (' + sugeridas.length + ')'}
+              </button>
+            )}
+          </div>
         )}
       </Panel>
       {passados.length > 0 && (

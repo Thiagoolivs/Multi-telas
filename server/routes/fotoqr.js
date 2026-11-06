@@ -19,7 +19,7 @@ const muralLib = require('../mural');
 const guarda = require('../guarda');
 
 module.exports = function (ctx) {
-  const { db, sendJson, readBody, rateLimit, clientIp, midia, mail, erros, canManageTeam, avisarTelas, storage } = ctx;
+  const { db, sendJson, readBody, rateLimit, clientIp, midia, mail, erros, canManageTeam, avisarTelas, storage, baseUrl } = ctx;
   // Abrir, pausar ou apagar o pedido muda o cartão do QR nas TVs (D31b): elas buscam a config de novo.
   const avisar = (t) => avisarTelas(t, 'config', {}).catch(() => {});
 
@@ -50,7 +50,7 @@ module.exports = function (ctx) {
         if (!rlE.ok) return sendJson(res, 429, { error: 'muitos códigos para este e-mail — espere um pouco' }, { 'Retry-After': String(rlE.retryAfter) });
         const codigo = F.pedirCodigo(pedido.id, email);
         const t = await db.getTenant(pedido.tenantId).catch(() => null);
-        try { await mail.send(Object.assign({ to: email }, F.emailDoCodigo(codigo, (t && t.name) || ''))); }
+        try { await mail.send(Object.assign({ to: email }, F.emailDoCodigo(codigo, (t && t.name) || '', baseUrl(req)))); }
         catch (e) { erros.registrar(e, { onde: 'código da foto pelo QR' }); return sendJson(res, 502, { error: 'não deu para mandar o e-mail agora — tente de novo' }); }
         // A mesma resposta com o e-mail na lista ou não: a página não revela quem trabalha lá.
         return sendJson(res, 200, Object.assign({ ok: true }, emDev() ? { codigoDev: codigo } : {}));

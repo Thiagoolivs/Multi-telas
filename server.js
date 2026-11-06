@@ -630,6 +630,8 @@ function montarCtx() {
     pixabay: require('./server/routes/pixabay')(ctx),
     // Fase 13: a fila de aprovação e as lojas de cada membro (usa ctx.publicar, de telas).
     aprovacoes: require('./server/routes/aprovacoes')(ctx),
+    // Preço e cardápio vindos de uma planilha (fase 11).
+    planilha: require('./server/routes/planilha')(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -884,16 +886,22 @@ async function handleApi(req, res, pathname, query) {
      */
     if (parts[2] === 'campanhas' && parts[3]) {
       const nome = decodeURIComponent(parts[3]);
+      /*
+       * Pasta que não é desta conta (ou que não existe mais) responde 404, como
+       * a peça avulsa: um 200 com "0 alteradas" fazia parecer que deu certo.
+       */
       if (req.method === 'PUT') {
         return readBody(req, res, async (b) => {
           const novo = String((b && b.nome) || '').trim().slice(0, 120);
           if (!novo) return sendJson(res, 400, { error: 'informe o novo nome' });
           const n = await db.renameCampaign(sess.tenant_id, nome, novo);
+          if (!n) return sendJson(res, 404, { error: 'pasta não encontrada' });
           return sendJson(res, 200, { ok: true, alteradas: n });
         });
       }
       if (req.method === 'DELETE') {
         const n = await db.deleteCampaign(sess.tenant_id, nome);
+        if (!n) return sendJson(res, 404, { error: 'pasta não encontrada' });
         return sendJson(res, 200, { ok: true, removidas: n });
       }
       if (req.method === 'POST' && parts[4] === 'duplicar') {
@@ -920,8 +928,13 @@ async function handleApi(req, res, pathname, query) {
           return sendJson(res, 200, { ok: true });
         });
       }
+      /*
+       * Peça de outra conta: 404, e nada sai (reteste da fase 10). O DELETE já
+       * filtrava pela conta, mas respondia 200 mesmo sem apagar nada.
+       */
       if (req.method === 'DELETE') {
-        await db.deleteLibraryItem(parts[2], sess.tenant_id);
+        const n = await db.deleteLibraryItem(parts[2], sess.tenant_id);
+        if (!n) return sendJson(res, 404, { error: 'peça não encontrada' });
         return sendJson(res, 200, { ok: true });
       }
     }
@@ -2688,6 +2701,7 @@ const negocioCache = new Map();
   if (await ctx.routes.fotoqr(req, res, parts, query, sess)) return;
   if (await ctx.routes.kpis(req, res, parts, query, sess)) return;
   if (await ctx.routes.pixabay(req, res, parts, query, sess)) return;
+  if (await ctx.routes.planilha(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------
@@ -2881,8 +2895,7 @@ function handleApp(req, res, urlPath) {
   fs.readFile(filePath, (err, data) => {
     if (err) {
       if (!path.extname(rest)) return serveAppIndex(req, res); // rota de cliente
-      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-      return res.end('Não encontrado: ' + urlPath);
+      return naoEncontrado(res, urlPath, req);
     }
     sendFile(res, filePath, data);
   });
@@ -3165,7 +3178,7 @@ async function handleStatic(req, res, urlPath) {
     res.writeHead(301, { Location: '/app', 'Cache-Control': 'no-store' });
     return res.end();
   }
-  return servirPublico(res, urlPath);
+  return servirPublico(res, urlPath, req);
 }
 
 /*
@@ -3234,11 +3247,48 @@ function caminhoLimpo(urlPath) {
   return limpo;
 }
 
-function servirPublico(res, urlPath) {
-  if (!caminhoLimpo(urlPath) || !ehPublico(urlPath)) {
+/*
+ * A PÁGINA 404 (reteste da fase 10): era "Não encontrado: /x" em texto puro,
+ * sem título, sem idioma e sem caminho de volta. Quem abre uma PÁGINA (sem
+ * extensão, ou o navegador pedindo HTML) recebe uma página de verdade, com o
+ * link para o site e para o painel. Um arquivo que falta (.js, .png) continua
+ * com a resposta curta em texto: quem pede é um programa, não uma pessoa. O
+ * endereço pedido não volta na página (nada de eco do que veio de fora).
+ */
+const PAGINA_404 = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
+<title>Página não encontrada · MultiTelas</title><link rel="icon" href="/icons/icone.svg">
+<style>
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f5f7fa; color: #0e0b1f;
+    font-family: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; padding: 24px; box-sizing: border-box; }
+  main { max-width: 440px; text-align: center; }
+  .marca { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: #0e0b1f; text-decoration: none; }
+  .marca img { width: 32px; height: 32px; border-radius: 8px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 28px 0 10px; }
+  p { font-size: 16px; line-height: 1.55; color: #4b5563; margin: 0 0 24px; }
+  .botoes { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  a.botao { display: inline-block; padding: 11px 18px; border-radius: 8px; font-weight: 600; font-size: 15px; text-decoration: none; }
+  a.principal { background: #5b2eff; color: #fff; }
+  a.contorno { border: 1px solid #d3d9e2; color: #0e0b1f; background: #fff; }
+  a:focus-visible { outline: 2px solid #5b2eff; outline-offset: 2px; }
+</style></head><body><main>
+<a class="marca" href="/"><img src="/icons/icone.svg" alt="">MultiTelas</a>
+<h1>Página não encontrada</h1>
+<p>Este endereço não existe ou mudou de lugar. Suas TVs continuam no ar.</p>
+<div class="botoes"><a class="botao principal" href="/app/">Ir para o painel</a><a class="botao contorno" href="/">Voltar ao site</a></div>
+</main></body></html>`;
+function naoEncontrado(res, urlPath, req) {
+  const aceita = String((req && req.headers && req.headers.accept) || '');
+  if (path.extname(urlPath) && !/text\/html/.test(aceita)) {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     return res.end('Não encontrado: ' + urlPath);
   }
+  res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+  return res.end(PAGINA_404);
+}
+
+function servirPublico(res, urlPath, req) {
+  if (!caminhoLimpo(urlPath) || !ehPublico(urlPath)) return naoEncontrado(res, urlPath, req);
   /*
    * Fase 9: o manifesto do conteúdo pronto sai com as decisões da galeria
    * do operador por cima (server/conteudoPronto.js). Sem banco, o arquivo.
@@ -3262,7 +3312,7 @@ function servirPublico(res, urlPath) {
     res.writeHead(403); return res.end('Acesso negado');
   }
   fs.readFile(filePath, (err, data) => {
-    if (err) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Não encontrado: ' + urlPath); }
+    if (err) return naoEncontrado(res, urlPath, req);
     sendFile(res, filePath, data);
   });
 }
@@ -3545,5 +3595,7 @@ db.init()
       } catch (e) { erros.registrar(e, { onde: 'conectores de indicadores' }); }
     };
     setInterval(buscarIndicadores, 60 * 1000).unref();
+    // As planilhas de preço (fase 11): de 5 em 5 minutos, e a TV só é avisada quando muda.
+    require('./server/routes/planilha').ligarRelogio({ db, avisarTelas, erros });
   }))
   .catch((e) => { log.erro('db.init-falhou', e); process.exit(1); });

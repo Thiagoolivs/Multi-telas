@@ -32,14 +32,18 @@ test('a página da TV: três partes, sem o diálogo de ajustes', () => {
 
 test('a TV no centro: ao vivo, e "como vai ficar" quando há rascunho', () => {
   const s = semComentarios(ler('web/src/pages/ContentEditorPage.jsx'));
-  assert.match(s, /<MiniaturaDaTela d=\{device\} online=\{noAr\} vazia=\{!naTV\.current\} altura=\{340\} pedirDeNovo=\{publishedAt \|\| 0\} \/>/);
+  // Fase 10: a miniatura recebe a programação que está na TV, para desenhar com o próprio player.
+  assert.match(s, /<MiniaturaDaTela d=\{device\} cfg=\{naTV\.current\} online=\{noAr\} vazia=\{!naTV\.current\} altura=\{340\} pedirDeNovo=\{publishedAt \|\| 0\} \/>/);
   // Pôs na TV: a miniatura pergunta de novo (passa do "já perguntei há 2 min", não do teto de 8 por minuto).
   const m = ler('web/src/components/tela/MiniaturaDaTela.jsx');
   assert.match(m, /if \(!deNovo && agora - \(pedidos\.get\(id\) \|\| 0\) < JA_PEDIU_MS\) return false;/);
   assert.match(m, /\[d\.id, online, vazia, d\.updatedAt, pedirDeNovo\]/);
   // "Como vai ficar" no mesmo palco do ao vivo, com a peça que se edita na zona dela.
-  assert.match(s, /<Palco estado=\{estadoDoRascunho\(cfg, layoutCanonico, activeZone && \{ zona: activeZone\.id, indice: selected \}\)\} alturaMaxima=\{340\} \/>/);
-  assert.match(ler('web/src/components/tela/MiniaturaDaTela.jsx'), /<Palco estado=\{resposta\.estado\} alturaMaxima=\{altura\} \/>/);
+  // Fase 10: o "como vai ficar" é o próprio player (TvAoVivo), não mais o desenho do Palco.
+  assert.match(s, /<TvAoVivo cfg=\{cfg\} foco=\{activeZone && \{ zona: activeZone\.id, indice: selected \}\} alturaMaxima=\{340\}/);
+  assert.match(ler('web/src/components/tela/MiniaturaDaTela.jsx'), /<TvAoVivo cfg=\{programacao\} estado=\{resposta\.estado\} alturaMaxima=\{altura\}/);
+  // Sem a programação (não deu para ler), o desenho de antes continua.
+  assert.match(ler('web/src/components/tela/MiniaturaDaTela.jsx'), /: <Palco estado=\{resposta\.estado\} alturaMaxima=\{altura\} \/>/);
   // O cabeçalho diz se a TV está no ar, em palavras.
   assert.match(s, /const status = deviceStatus\(device\.lastSeen\);/);
 });

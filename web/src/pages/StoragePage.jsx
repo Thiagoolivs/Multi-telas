@@ -73,7 +73,7 @@ const RECORTES = {
   },
   musicas: {
     titulo: 'Músicas', vazio: 'Sem músicas ainda', enviar: 'Enviar música',
-    subtitulo: 'Para a música de fundo das TVs: escolha em Ajustes da tela › Som.',
+    subtitulo: 'Para a música de fundo das TVs: escolha na página da TV, em Ajustes da TV › Som.',
     accept: 'audio/mpeg,audio/mp4,audio/ogg,audio/wav,.mp3,.m4a,.ogg,.wav',
     pertence: (m) => /^audio\//.test(m.mime || ''),
   },

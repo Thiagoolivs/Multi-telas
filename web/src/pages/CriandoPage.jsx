@@ -116,7 +116,8 @@ export function CriandoPage({ onIr }) {
                         </div>
                       </div>
                       {ok && onIr && (
-                        <Button size="sm" variant="secondary" onClick={() => onIr(pagina, params)}>
+                        // No celular fica só a seta: o nome vai no aria-label (axe `button-name`, reteste da fase 10).
+                        <Button size="sm" variant="secondary" aria-label={ROTULO_ABRIR[pagina] || 'Abrir'} onClick={() => onIr(pagina, params)}>
                           <span className="hidden sm:inline">{ROTULO_ABRIR[pagina]}</span><ArrowRight size={14} className="sm:ml-1" />
                         </Button>
                       )}

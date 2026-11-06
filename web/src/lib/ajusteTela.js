@@ -50,7 +50,8 @@ export function aplicarMudancas(cfg, m, { coresMarca = [] } = {}) {
     const T = globalThis.MTTheme;
     const semAcento = { ...theme, overrides: { ...ov, accent: '' } };
     const t = T ? T.resolve(semAcento, { pecas: T.pecasDaConfig(next) }) : null;
-    ov.accent = t && T.acentoSobre ? T.acentoSobre(t.bg, m.destaque) : m.destaque;
+    // 4,5 contra o palco e o vidro das zonas: o destaque pinta o preço e o @ (js/theme.js, acentoDoTema).
+    ov.accent = t && T.acentoDoTema ? T.acentoDoTema(m.destaque, t) : m.destaque;
   }
   if (m.cidadeClima) s.cidadeClima = m.cidadeClima;
 

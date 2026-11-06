@@ -1326,9 +1326,27 @@
    * quem escolhe é a própria zona (@container orientation em player.css) —
    * o renderizador não sabe onde a peça vai morar.
    */
+  /*
+   * PREÇO VINDO DA PLANILHA (fase 11): `item.planilha` aponta uma planilha da
+   * conta, e os itens vêm de global.MT_PLANILHAS — que a TV busca de 5 em 5
+   * minutos e guarda para quando cair a rede (js/player.js). Sem a planilha
+   * ainda (a TV acabou de ligar sem rede), vale a cópia em texto que o painel
+   * guardou no item ao pôr na TV. `item.planilhaSecao` mostra uma seção só.
+   */
+  function planilhaDe(id) {
+    const lista = Array.isArray(global.MT_PLANILHAS) ? global.MT_PLANILHAS : [];
+    return id ? lista.filter((p) => p && p.id === id)[0] || null : null;
+  }
+  function atualizadoAs(pl) {
+    const h = pl && global.MTPrecos && global.MTPrecos.hora ? global.MTPrecos.hora(pl.em) : '';
+    return h ? 'Atualizado às ' + h : '';
+  }
+
   function renderPrecos(item) {
     const P = global.MTPrecos;
-    const linhas = P ? P.ler(item.linhas) : [];
+    const pl = item.planilha ? planilhaDe(item.planilha) : null;
+    const daPlanilha = pl && P && P.daPlanilha ? P.daPlanilha(pl.itens, item.planilhaSecao) : null;
+    const linhas = daPlanilha && daPlanilha.length ? daPlanilha : (P ? P.ler(item.linhas) : []);
     const el = div('mt-slide mt-surface mt-precos');
     if (item.bg) el.style.background = item.bg;
     const inner = div('mt-precos-inner');
@@ -1342,7 +1360,9 @@
       lista.appendChild(row);
     });
     inner.appendChild(lista);
-    if (item.rodape) inner.appendChild(divText('mt-precos-rodape', item.rodape));
+    // "Atualizado às 14:05": quem olha sabe que o preço é o de agora.
+    const rodape = [item.rodape, daPlanilha && daPlanilha.length ? atualizadoAs(pl) : ''].filter(Boolean).join(' · ');
+    if (rodape) inner.appendChild(divText('mt-precos-rodape', rodape));
     el.appendChild(inner);
 
     // Arranjo para a zona deitada e para em pé; o CSS escolhe pela zona real.
@@ -1997,10 +2017,41 @@
     return host;
   }
 
+  /*
+   * O cardápio pronto com os preços da planilha (fase 11): os campos de item
+   * (item1-nome, item1-preco… ou grupo1, g1-item1…) vêm da planilha
+   * (js/precos.js, camposDaPeca); a linha sem item some inteira.
+   */
+  function comPlanilha(item) {
+    const pl = item.planilha ? planilhaDe(item.planilha) : null;
+    const P = global.MTPrecos;
+    if (!pl || !P || !P.camposDaPeca || !(pl.itens || []).length) return null;
+    const nomes = [];
+    String(item.html || '').replace(/data-campo="([\w-]+)"/g, (_, n) => { nomes.push(n); return _; });
+    const r = P.camposDaPeca(nomes, pl.itens, item.planilhaSecao);
+    const antes = Array.isArray(item.ocultos) ? item.ocultos : [];
+    const ocultos = antes.filter((n) => r.mostrar.indexOf(n) < 0).concat(r.esconder.filter((n) => antes.indexOf(n) < 0));
+    return { item: Object.assign({}, item, { campos: Object.assign({}, item.campos, r.campos), ocultos }), vazias: r.vazias, pl };
+  }
+
   function renderPecaHtml(item) {
     const el = div('mt-slide mt-peca-html');
     if (!global.MTPecaRender) return { el, duration: item.duracao || 12 };
+    const viva = item.planilha ? comPlanilha(item) : null;
+    if (viva) item = viva.item;
     const ctl = global.MTPecaRender.montar(hostDaPeca(el), item, opcoesDaPeca());
+    if (viva) {
+      // A linha sem item da planilha some inteira (com os pontinhos e o "R$"), não só o nome.
+      const host = el.querySelector('.mt-peca-escala');
+      const raiz = host && host.shadowRoot;
+      (viva.vazias || []).forEach((n) => {
+        const campo = raiz && raiz.querySelector('[data-campo="' + n + '"]');
+        const linha = campo && campo.closest ? campo.closest('li') : null;
+        if (linha) linha.setAttribute('data-oculto', '');
+      });
+      const h = atualizadoAs(viva.pl);
+      if (h) { const t = div('mt-credito mt-planilha-hora'); t.textContent = h; el.appendChild(t); }
+    }
     comCredito(el, item.creditos);
     return { el, duration: ctl.duracao, onLeave: ctl.parar };
   }

@@ -6,21 +6,22 @@
   em cqh: a altura da faixa decide a letra.
 -->
 <style>
-.mt-peca { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 7cqh; padding: 0 3cqw;
+/* Fase 10: no piso da TV o espaço entre as letras (em em) crescia com a letra, e a linha de baixo da marca passava por cima da data. Agora ele é fixo, e nada sai da coluna dele. */
+.mt-peca { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 7cqh; padding: 0 3cqw;
   color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: linear-gradient(180deg, var(--mt-fundo-2), var(--mt-fundo)); border-bottom: 1.2cqh solid var(--mt-linha); }
 .lado { display: flex; align-items: center; gap: 7cqh; min-width: 0; }
-.lado > i { flex: 1; min-width: 4cqw; height: 1.2cqh; background: var(--mt-linha); }
-.info { display: flex; flex-direction: column; gap: 6cqh; }
+.lado > i { flex: 1; min-width: 1.5cqw; height: 1.2cqh; background: var(--mt-linha); }
+.info { display: flex; flex-direction: column; gap: 6cqh; min-width: 0; }
 .clima { font: 500 max(var(--mt-piso, 0cqw), 22cqh)/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
-.data { font: 600 max(var(--mt-piso, 0cqw), 14cqh)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
-.marca { display: flex; flex-direction: column; align-items: center; gap: 7cqh; }
+.data { font: 600 max(var(--mt-piso, 0cqw), 14cqh)/1 var(--mt-fonte-texto); letter-spacing: 2.4cqh; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.marca { display: flex; flex-direction: column; align-items: center; gap: 5cqh; min-width: 0; max-width: 56cqw; }
 .logo { height: 60cqh; width: auto; max-width: 30cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { font: italic 400 calc(48cqh * var(--mt-escala-titulo, 1))/.95 var(--mt-fonte-titulo); letter-spacing: .01em; white-space: nowrap; }
+.nome { max-width: 100%; font: italic 400 calc(48cqh * var(--mt-escala-titulo, 1))/.95 var(--mt-fonte-titulo); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nome b { font-weight: inherit; color: var(--mt-destaque); }
-.sub { font: 600 max(var(--mt-piso, 0cqw), 11cqh)/1 var(--mt-fonte-texto); letter-spacing: .5em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.sub { max-width: 100%; font: 600 max(var(--mt-piso, 0cqw), 11cqh)/.9 var(--mt-fonte-texto); letter-spacing: 5.5cqh; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hora { font: 400 max(var(--mt-piso, 0cqw), 46cqh)/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
 /* Faixa mais curta (TV em pé): o clima, a data e a linha de baixo da marca saem. */
 @container (aspect-ratio < 9) {

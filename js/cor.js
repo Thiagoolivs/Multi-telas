@@ -230,10 +230,60 @@
     return rgb2hex(rgb[0], rgb[1], rgb[2]);
   }
 
+  /*
+   * Leva uma cor até ela se ler sobre TODOS os fundos, mexendo só na
+   * luminosidade. Matiz e croma ficam: o destaque de uma marca laranja
+   * continua laranja, só mais claro ou mais escuro.
+   *
+   * Anda nos dois sentidos, um passo de cada vez, e para no primeiro que
+   * passa — a menor mudança possível. Escolher o sentido pela luminância
+   * do fundo e ir só nele é o bug de `acentoSobre` lá em cima: nos
+   * meios-tons, o sentido "óbvio" não chega lá. O sentido que se afasta
+   * dos fundos só é tentado PRIMEIRO, como desempate.
+   *
+   * Mora aqui, e não em js/tokens.js, porque o tema da TV (js/theme.js)
+   * usa a mesma conta para o acento: o preço e o @ são texto nos dois.
+   */
+  function garantirContraste(cor, fundos, minimo) {
+    const passa = (x) => fundos.every((f) => contraste(x, f) >= minimo);
+    if (passa(cor)) return cor;
+    const o = paraOklch(cor);
+    if (!o) return cor;
+    const media = fundos.reduce((s, f) => s + luminancia(f), 0) / fundos.length;
+    const primeiro = luminancia(cor) < media ? -1 : 1;
+    for (let i = 1; i <= 100; i++) {
+      for (const sinal of [primeiro, -primeiro]) {
+        const L = o.l + sinal * i * 0.01;
+        if (L < 0 || L > 1) continue;
+        const x = deOklch(L, o.c, sinal < 0 ? matizAoEscurecer(o, L) : o.h);
+        if (passa(x)) return x;
+      }
+    }
+    // Nenhuma luminosidade serve: os fundos estão dos dois lados do meio.
+    // Fica o extremo que mais se lê — e o teste do contrato denuncia.
+    const pior = (x) => Math.min.apply(null, fundos.map((f) => contraste(x, f)));
+    return pior('#ffffff') >= pior('#000000') ? '#ffffff' : '#000000';
+  }
+
+  /*
+   * A única exceção à matiz fixa: amarelo escurecendo.
+   *
+   * Amarelo escurecido na mesma matiz vira oliva — visto no render da
+   * amostra, a marca amarela no modo claro saía com botão cor de azeitona.
+   * Designer resolve puxando para o âmbar, e é o que isto faz: quanto mais
+   * escurece, mais a matiz anda em direção ao laranja (65°). Fora da faixa
+   * dos amarelos, nada muda.
+   */
+  function matizAoEscurecer(o, L) {
+    if (o.c < 0.05 || o.h < 75 || o.h > 125) return o.h;
+    const quanto = Math.min(1, (o.l - L) / 0.4);
+    return o.h - (o.h - 65) * quanto;
+  }
+
   return {
     hex2rgb, rgb2hex, okHex, luminancia, contraste, mix,
     escurecer, clarear, girarMatiz, rgba, rgbTriple,
-    acentoSobre, textoSobre,
+    acentoSobre, textoSobre, garantirContraste,
     paraOklch, deOklch,
   };
 });

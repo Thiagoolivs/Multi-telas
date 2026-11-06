@@ -49,12 +49,19 @@ export function ProgramacaoPage({ onIr }) {
 
   useEffect(() => {
     setErro(''); setTelas(null);
-    devices.list().then((r) => {
+    /*
+     * A programação de todas as TVs num pedido só (reteste da fase 10): eram
+     * 25 pedidos numa conta de 25 TVs, 4,2 s no 4G lento, e duas pessoas no
+     * painel batiam no freio da conta. Vem junto com a lista, ao mesmo tempo.
+     */
+    const todas = deviceConfig.todas().then((m) => ({ ok: m }), () => ({ falhou: true }));
+    devices.list().then(async (r) => {
       const lista = (r && r.devices) || [];
       setTelas(lista);
-      for (const d of lista) {
-        deviceConfig.get(d.id).then((c) => setCfgs((m) => ({ ...m, [d.id]: c || null }))).catch(() => setCfgs((m) => ({ ...m, [d.id]: 'erro' })));
-      }
+      const t = await todas;
+      const m = {};
+      for (const d of lista) m[d.id] = t.falhou ? 'erro' : ((t.ok[d.id] && t.ok[d.id].config) || null);
+      setCfgs(m);
     }).catch((e) => setErro(e.message || 'Não deu para carregar as TVs.'));
   }, [tentativa]);
 
@@ -72,7 +79,8 @@ export function ProgramacaoPage({ onIr }) {
           é a mesma conversa do Criar, que faz as duas coisas (AcaoDaIA). O
           PedirIA fica no código, sem botão, por 30 dias.
         */}
-        <Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
+        {/* Sem TV, o violeta é o "Ligar uma TV" do vazio; o Criar fica de contorno (um violeta por tela). */}
+        <Button variant={telas && telas.length === 0 ? 'secondary' : 'primary'} icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>
       </div>
 
       {erro ? (
@@ -116,7 +124,8 @@ export function ProgramacaoPage({ onIr }) {
                     : 'Sem campanha no ar'}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  <Button size="sm" variant="primary" icon={Pencil} onClick={() => editar(d)}>Editar programação</Button>
+                  {/* De contorno: o violeta da página é o Criar lá em cima (reteste da fase 10: eram 25, um por TV). */}
+                  <Button size="sm" variant="secondary" icon={Pencil} onClick={() => editar(d)}>Editar programação</Button>
                   <Button size="sm" icon={Plus} onClick={() => onIr && onIr('criar', { tela: d.id })}>Criar para esta TV</Button>
                 </div>
               </div>
