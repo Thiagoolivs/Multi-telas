@@ -6,6 +6,7 @@ import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { ResultadoCampanha } from '../components/criar/ResultadoCampanha.jsx';
 import { PorPraRodar } from '../components/criar/PorPraRodar.jsx';
+import { PorNaTV } from '../components/tela/PorNaTV.jsx';
 import { ProximoPasso } from '../components/layout/ProximoPasso.jsx';
 import { criar, devices } from '../api.js';
 import { confirmar, perguntar } from '../lib/confirmar.js';
@@ -31,6 +32,12 @@ import { cn } from '../lib/cn.js';
  * aba criados, e se eu quiser editar, entro lá". Esta é a aba: o Criar
  * termina aqui, com a campanha aberta — Pôr pra rodar, editar cada peça à
  * mão e pedir mudanças à IA.
+ *
+ * UM LUGAR SÓ (fase 10, reteste do bloco 8): a mesma campanha aparecia aqui,
+ * nas Peças soltas e nas Peças guardadas. Agora as peças da campanha só são
+ * listadas aqui, dentro dela, cada uma com o "Pôr na TV" de uma peça só; a
+ * Biblioteca › Prontos para você e a pasta de mesmo nome em Peças guardadas
+ * trazem um link para cá.
  */
 
 const ESTADO = {
@@ -65,6 +72,8 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
   const [telas, setTelas] = useState([]);
   const [aberta, setAberta] = useState(null);
   const [abrindo, setAbrindo] = useState(false);
+  // Uma peça da campanha a caminho de uma TV (o diálogo único: onde e quando, com Desfazer).
+  const [porNaTv, setPorNaTv] = useState(null);
   const [erro, setErro] = useState('');
   // A lista que não veio é erro, não "nenhuma campanha" (reteste da fase 10: os dois apareciam juntos).
   const [erroLista, setErroLista] = useState('');
@@ -169,7 +178,12 @@ export function CampanhasPage({ campanhaInicial, pedidoInicial, onIr }) {
         {/* O assistente do Criar ("muda a campanha X") abre aqui com o pedido já escrito no Editar com a IA. */}
         <ResultadoCampanha campanha={aberta} telas={telas} onIr={onIr} onMudou={mudou} onNova={onIr ? () => onIr('criar') : undefined}
           pedidoInicial={aberta.id === campanhaInicial ? pedidoInicial : ''}
-          acoes={<PorPraRodar campanha={aberta} telas={telas} onMudou={mudou} />} />
+          acoes={<PorPraRodar campanha={aberta} telas={telas} onMudou={mudou} />}
+          onPorNaTv={setPorNaTv} />
+        {porNaTv && (
+          <PorNaTV peca={porNaTv} telas={telas} onFechar={() => setPorNaTv(null)}
+            descricao={'Só esta peça, ' + (porNaTv.papel === 'cabecalho' ? 'no cabeçalho' : porNaTv.papel === 'rodape' ? 'no rodapé' : 'na parte da TV que combina com ela') + ', no fim do que já está lá. O resto da campanha fica como está.'} />
+        )}
       </div>
     );
   }

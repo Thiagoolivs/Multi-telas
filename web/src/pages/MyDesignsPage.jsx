@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, Suspense, lazy, useMemo } from 'rea
 import { confirmar, perguntar } from '../lib/confirmar.js';
 import {
   Plus, Wand2, ImagePlus, Upload, Pencil, Download, Send, Trash2, Sparkles, Check,
-  MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket, MessagesSquare, Share2, MessageSquare } from 'lucide-react';
+  MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket, MessagesSquare, Share2, MessageSquare, Megaphone } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -316,6 +316,8 @@ export function MyDesignsPage({ onIr }) {
   const [q, setQ] = useState('');
   // Quantas peças cada pasta mostra agora (12 de começo).
   const [qtDaPasta, setQtDaPasta] = useState({});
+  // As pastas de uma campanha que a pessoa pediu para ver aqui mesmo (o normal é o link para a campanha).
+  const [abertas, setAbertas] = useState({});
   const [editing, setEditing] = useState(null);   // { id?, item } no editor
   const [editandoPeca, setEditandoPeca] = useState(null); // { id, item, label } — peça em HTML
   const [redesDe, setRedesDe] = useState(null); // { item, label } — postar nas redes
@@ -843,6 +845,13 @@ export function MyDesignsPage({ onIr }) {
             {groupNames.map((camp) => {
               const doGrupo = groups[camp];
               const qt = qtDaPasta[camp] || POR_VEZ;
+              /*
+               * A pasta com o nome de uma campanha do Criar (fase 10, reteste
+               * do bloco 8): a campanha é a casa das peças dela. Aqui fica o
+               * link, e as peças guardadas só aparecem se a pessoa pedir.
+               */
+              const campanhaId = (doGrupo.find((it) => it.campanhaId) || {}).campanhaId;
+              const daCampanha = !!campanhaId && !abertas[camp];
               return (
                 <div key={camp} className="rounded-xl border border-line">
                   {/* Cabeçalho da pasta: a pasta inteira é gerenciada aqui */}
@@ -852,15 +861,28 @@ export function MyDesignsPage({ onIr }) {
                     <span className="tnum text-2xs text-ink-3">{doGrupo.length} peça(s)</span>
                     <div className="flex-1" />
                     {/* De contorno (reteste da fase 10): era um violeta por pasta, até 10 na tela. */}
-                    <button onClick={() => abrirPublicar(camp, doGrupo.map((it) => ({ item: it.item, formato: it.formato || '16/9', label: it.label })))}
-                      className="flex items-center gap-1 rounded-md border border-line-strong bg-surface px-2.5 py-1.5 text-2xs font-semibold text-ink transition hover:bg-surface-2">
-                      <Rocket size={12} /> Pôr a pasta na TV
-                    </button>
+                    {!daCampanha && (
+                      <button onClick={() => abrirPublicar(camp, doGrupo.map((it) => ({ item: it.item, formato: it.formato || '16/9', label: it.label })))}
+                        className="flex items-center gap-1 rounded-md border border-line-strong bg-surface px-2.5 py-1.5 text-2xs font-semibold text-ink transition hover:bg-surface-2">
+                        <Rocket size={12} /> Pôr a pasta na TV
+                      </button>
+                    )}
                     <button title="Renomear" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => renomearCampanha(camp)}><Type size={13} /></button>
                     <button title="Duplicar pasta" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-ink" onClick={() => duplicarCampanha(camp)}><Copy size={13} /></button>
                     <button title="Excluir pasta" className="rounded-md border border-line p-1.5 text-ink-2 hover:bg-surface-2 hover:text-danger" onClick={() => excluirCampanha(camp, doGrupo.length)}><Trash2 size={13} /></button>
                   </div>
 
+                  {daCampanha ? (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3 text-sm text-ink-2">
+                      <Megaphone size={16} className="shrink-0 text-ink-3" />
+                      <span className="min-w-0 flex-1">É a campanha “{camp}”. As peças dela ficam na campanha, em Campanhas: lá você põe na TV, edita e pede mudanças à IA.</span>
+                      <Button size="sm" variant="secondary" onClick={() => onIr && onIr('campanhas', { campanha: campanhaId })}>Abrir a campanha</Button>
+                      <button type="button" className="text-xs font-medium text-ink-3 hover:text-ink hover:underline" onClick={() => setAbertas((m) => ({ ...m, [camp]: true }))}>
+                        Ver as {doGrupo.length} peças desta pasta
+                      </button>
+                    </div>
+                  ) : (
+                  <>
                   <div className="grid grid-cols-2 gap-3 p-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {doGrupo.slice(0, qt).map((it) => (
                       <div key={it.id} className="space-y-2 rounded-lg border border-line bg-surface p-2">
@@ -898,6 +920,8 @@ export function MyDesignsPage({ onIr }) {
                         Mostrar mais ({doGrupo.length - qt})
                       </Button>
                     </div>
+                  )}
+                  </>
                   )}
                 </div>
               );

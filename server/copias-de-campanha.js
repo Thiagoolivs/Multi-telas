@@ -25,4 +25,19 @@ function semCopiasDeCampanha(items, campanhas) {
   return items.filter((i) => !ehCopia(i, lista));
 }
 
-module.exports = { semCopiasDeCampanha, ehCopia };
+/*
+ * A PASTA COM O NOME DE UMA CAMPANHA (fase 10, reteste do bloco 8: "a mesma
+ * campanha aparece em 3 lugares"). A peça guardada fora da janela da cópia
+ * (outra hora, à mão) fica na lista, mas leva o id da campanha de mesmo
+ * nome: Peças guardadas mostra um link para a campanha, a casa das peças
+ * dela, em vez de listar tudo de novo. Com dois nomes iguais, vale a
+ * campanha mais recente (a lista vem do mais novo para o mais velho).
+ */
+function comACampanha(items, campanhas) {
+  const porNome = new Map();
+  for (const c of Array.isArray(campanhas) ? campanhas : []) if (c.nome && !porNome.has(c.nome)) porNome.set(c.nome, c.id);
+  if (!porNome.size) return items;
+  return items.map((i) => (porNome.has(i.campaign) ? { ...i, campanhaId: porNome.get(i.campaign) } : i));
+}
+
+module.exports = { semCopiasDeCampanha, ehCopia, comACampanha };
