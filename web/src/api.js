@@ -174,9 +174,14 @@ export const deviceConfig = {
    * servidor ESTOURA — nunca vira "TV vazia", que era como uma queda de
    * rede fazia o painel gravar a programação padrão por cima da real.
    */
+  /*
+   * Com a aprovação ligada, quem tem um pedido seu esperando para a TV lê a
+   * programação DO PEDIDO (e a versão dele): o que mudar vai junto.
+   * `meuPedido` é o id desse pedido ('' sem pedido).
+   */
   ler: async (id) => {
     const r = await api('GET', '/api/devices/' + id + '/config', undefined, { comCabecalhos: true });
-    return { config: r.data, versao: Number(r.headers.get('X-Config-Versao')) || 0 };
+    return { config: r.data, versao: Number(r.headers.get('X-Config-Versao')) || 0, meuPedido: r.headers.get('X-Meu-Pedido') || '' };
   },
   // A programação de todas as TVs da conta num pedido só: { [id]: { config, versao } } (a Programação, reteste da fase 10).
   todas: () => api('GET', '/api/devices/configs').then((r) => (r && r.configs) || {}),

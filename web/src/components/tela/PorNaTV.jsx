@@ -39,6 +39,8 @@ export function PorNaTV({ peca, telaInicial, telas: dadas, onFechar, onFeito, ti
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const falta = faltaData(escolha);
+  // Fase 13: as TVs escolhidas em que esta pessoa já tem uma mudança esperando aprovação (a nova vai junto).
+  const comPedido = (telas || []).filter((t) => t.meuPedido && alvos.includes(t.id));
 
   async function por() {
     setEnviando(true);
@@ -84,6 +86,11 @@ export function PorNaTV({ peca, telaInicial, telas: dadas, onFechar, onFeito, ti
                   );
                 })}
               </div>
+              {comPedido.length > 0 && (
+                <p className="mt-2 rounded-md border border-accent/30 bg-accent-soft/40 px-3 py-2 text-sm text-ink" role="status">
+                  Você tem uma mudança esperando aprovação {comPedido.length === 1 ? 'em ' + (comPedido[0].name || 'uma TV') : 'em ' + comPedido.length + ' destas TVs'}. A nova vai junto, no mesmo pedido.
+                </p>
+              )}
             </>
           )}
         </section>

@@ -205,6 +205,11 @@ test('comparar e gravar é um UPDATE só: a versão velha não grava nem chegand
 test('o envio em lote também aceita "versão 0" numa TV ainda vazia (o "Pôr na TV" da TV nova)', () => {
   const t = fs.readFileSync(path.join(RAIZ, 'server', 'routes', 'telas.js'), 'utf8');
   const lote = t.slice(t.indexOf('async function rotaLote'));
-  assert.match(lote, /const vaziaLidaVazia = !device\.config && versao === 0;/);
-  assert.match(lote, /if \(versao != null && !vaziaLidaVazia && versao !== \(Number\(device\.updated_at\) \|\| 0\)\)/);
+  // A conferência mora em server/aprovacao.js (conferirVersao): a mesma para quem tem pedido esperando e para quem não tem.
+  assert.match(lote, /const v = aprovacao\.conferirVersao\(meu, device, versao\);/);
+  const a = fs.readFileSync(path.join(RAIZ, 'server', 'aprovacao.js'), 'utf8');
+  assert.match(a, /const vaziaLidaVazia = !device\.config && versao === 0;/);
+  assert.match(a, /if \(versao != null && !vaziaLidaVazia && versao !== daTv\)/);
+  const A = require('../server/aprovacao.js');
+  assert.deepEqual(A.conferirVersao(null, { updated_at: 7, config: null }, 0), { ok: true, base: 7 });
 });
