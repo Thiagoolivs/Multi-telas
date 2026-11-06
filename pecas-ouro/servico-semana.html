@@ -69,16 +69,23 @@ h1 span + span { color: var(--mt-destaque); }
   .evento { font-size: max(var(--mt-piso, 0cqw), 4.8cqmin); }
   .detalhe { margin-top: .4cqmin; font-size: max(var(--mt-piso, 0cqw), 3.8cqmin); }
 }
-/* A lateral: três linhas, sem a nota. */
+/* A lateral: três linhas, sem a nota. A folhinha vira uma etiqueta na linha do evento ("SEG 10 Integração…"):
+   em cima dele, com a letra do balcão, os três não cabiam na coluna. */
 @container (max-width: 700px) {
-  .mt-peca { row-gap: 6cqmin; }
-  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; }
-  .kicker i, .nota { display: none; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .mt-peca { row-gap: 3.6cqw; padding: 4.4cqmin 5cqw; }
+  .kicker, .kicker i, .nota { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(10.4cqw * var(--mt-escala-titulo, 1))); line-height: 1.02; }
+  h1 span { display: inline; }
+  .lista { gap: 3.8cqw; }
+  .lista li { display: block; }
   .lista li:nth-child(4) { display: none; }
-  .folha { font-size: max(var(--mt-piso, 0cqw), 5cqw); }
-  .evento { font-size: max(var(--mt-piso, 0cqw), 7cqw); }
-  .detalhe { font-size: max(var(--mt-piso, 0cqw), 6.2cqw); }
+  .lista li > span:last-child { display: inline; }
+  .folha { display: inline-flex; flex-direction: row; align-items: baseline; gap: .22em; min-width: 0; margin-right: .28em; padding: .1em .28em;
+    vertical-align: baseline; font-size: max(var(--mt-piso, 0cqw), 6.6cqw); }
+  .dia { letter-spacing: .02em; }
+  .data { font-size: 1em; }
+  .evento { display: inline; font-size: max(var(--mt-piso, 0cqw), 6.6cqw); line-height: 1.12; text-wrap: wrap; }
+  .detalhe { margin-top: .15em; font-size: max(var(--mt-piso, 0cqw), 6.2cqw); line-height: 1.12; }
 }
 /* Deitada e baixa: o título ao lado, três linhas, sem o detalhe. */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {
