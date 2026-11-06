@@ -21,6 +21,7 @@ import { cn } from '../lib/cn.js';
 import { abrirSubir } from '../lib/subir.js';
 import { CONTENT_TYPES } from '../lib/contentTypes.js';
 import { PorNaTV } from '../components/tela/PorNaTV.jsx';
+import { TrocarTextos, textosDaArte } from '../components/content/TextosDaArte.jsx';
 // Fase 7: os modelos e o editor livre também moram no Criar (sob demanda: não pesam a conversa).
 const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
 const CompositionEditor = lazy(() => import('../components/content/CompositionEditor.jsx').then((m) => ({ default: m.CompositionEditor })));
@@ -116,6 +117,8 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
   // Fase 7: a galeria de modelos, a peça no editor e a peça pronta esperando o "Pôr na TV".
   const [modeloAberto, setModeloAberto] = useState(false);
   const [compondo, setCompondo] = useState(null);
+  // Fase 10: o modelo abre no formulário simples (trocar os textos); o editor livre fica a um botão.
+  const [trocando, setTrocando] = useState(null);
   const [porNaTv, setPorNaTv] = useState(null);
   const [avancado, setAvancado] = useState(false);
   // Os textos do modelo como vieram: salvar sem mudar nada levaria o preço de exemplo à TV.
@@ -444,9 +447,20 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
               setModeloAberto(false);
               const base = CONTENT_TYPES.composicao.make();
               textosDoModelo.current = peca ? textosDa(peca) : null;
-              setCompondo(peca ? { ...base, ...peca } : { ...base, formato });
+              // Modelo com texto: o formulário simples. Em branco: o editor livre, que é o que a pessoa pediu.
+              if (peca && textosDaArte(peca).length) setTrocando({ ...base, ...peca });
+              else setCompondo(peca ? { ...base, ...peca } : { ...base, formato });
             }} />
         </Suspense>
+      )}
+      {trocando && (
+        <TrocarTextos item={trocando} onMudar={setTrocando} onFechar={() => setTrocando(null)}
+          onAvancado={(it) => { setTrocando(null); setCompondo(it); }}
+          onContinuar={(it) => {
+            setTrocando(null);
+            const igual = !!textosDoModelo.current && textosDa(it) === textosDoModelo.current;
+            setPorNaTv({ item: it, formato: it.formato, label: 'Modelo', alerta: igual ? 'Os textos ainda são os do modelo, com preço e data de exemplo. Confira antes: preço na TV pode ter que ser honrado.' : '' });
+          }} />
       )}
       {compondo && (
         <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90"><Spinner size={22} /></div>}>

@@ -160,3 +160,21 @@ test('o "Quando" da peça que já está na TV é o mesmo do "Pôr na TV"; o deta
   assert.match(e, /maisAjustes=\{\([\s\S]{0,2000}<QuandoMostrar agendamento=\{current\.agendamento\}[\s\S]{0,400}quando=\{\(/);
   assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /export function EscolherQuando\(\{ valor, onChange, numero = '', outro = '' \}\)/);
 });
+
+test('"Escolher um modelo" abre um formulário de textos; o editor livre fica a um botão', async () => {
+  const A = await importar('web/src/lib/textosDaArte.js');
+  require('../js/modelos.js');
+  const peca = globalThis.MTModelos.montar('promocao', '16/9', ['#6b3e1f'], 'comercio');
+  const r = A.rotulosDaArte(peca);
+  assert.deepEqual(r.map((x) => x.rotulo), ['Chamada 1', 'Preço', 'Chamada 2'], 'de cima para baixo, pelo papel do texto');
+  const trocada = A.comTexto(peca, r[1].indice, 'R$ 4,50');
+  assert.equal(A.rotulosDaArte(trocada)[1].texto, 'R$ 4,50');
+  assert.notEqual(peca.elementos[r[1].indice].text, 'R$ 4,50', 'mexeu na peça original');
+  const c = semComentarios(ler('web/src/pages/CriarPage.jsx'));
+  assert.match(c, /if \(peca && textosDaArte\(peca\)\.length\) setTrocando\(\{ \.\.\.base, \.\.\.peca \}\);/);
+  assert.match(c, /onAvancado=\{\(it\) => \{ setTrocando\(null\); setCompondo\(it\); \}\}/);
+  // Na página da TV, a arte mostra os textos como formulário, e o editor livre vira "Editor avançado".
+  const e = semComentarios(ler('web/src/pages/ContentEditorPage.jsx'));
+  assert.match(e, /<CamposDaArte item=\{current\} onChange=\{\(it\) => updateItem\(selected, it\)\} \/>/);
+  assert.match(e, /if \(peca && textosDaArte\(peca\)\.length\) \{ setTrocandoModelo\(\{ \.\.\.base, \.\.\.peca \}\); return; \}/);
+});

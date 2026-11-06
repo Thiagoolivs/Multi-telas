@@ -17,6 +17,7 @@ import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
 import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
 import { MiniaturaDoItem } from '../components/tela/MiniaturaDoItem.jsx';
 import { EscolherQuando } from '../components/tela/PorNaTV.jsx';
+import { TrocarTextos, CamposDaArte, textosDaArte } from '../components/content/TextosDaArte.jsx';
 import { FaixaDaTela, pecasDaFaixa, comPecas } from '../components/tela/FaixaDaTela.jsx';
 import { papelDaZona, campanhasDaConfig, tamanhosDasZonas, nomeDaParte } from '../lib/tela.js';
 import { quandoDoItem, itemComQuando, frasesDoQuando } from '../lib/quando.js';
@@ -358,9 +359,12 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
    * que ser honrado. Cancelar agora descarta sem ter ido ao ar.
    */
   const [novaPeca, setNovaPeca] = useState(null);
+  // Fase 10: o modelo abre no formulário simples (trocar os textos); o editor livre fica a um botão.
+  const [trocandoModelo, setTrocandoModelo] = useState(null);
   function comecarDe(peca, formato) {
     setModeloAberto(false);
     const base = CONTENT_TYPES.composicao.make();
+    if (peca && textosDaArte(peca).length) { setTrocandoModelo({ ...base, ...peca }); return; }
     setNovaPeca(peca ? { ...base, ...peca } : { ...base, formato });
     setCompOpen(true);
   }
@@ -803,10 +807,12 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                             <p className="mt-1.5 text-xs text-ink-3">Textos, cores, fonte, o que aparece, outro desenho — ou peça à IA o que mudar.</p>
                           </div>
                         )}
+                        {/* A arte: os textos à vista, como um formulário; o desenho, no editor avançado. */}
                         {current.type === 'composicao' && (
-                          <Button variant="secondary" icon={LayoutGrid} className="mb-3 w-full" onClick={() => setCompOpen(true)}>
-                            Mudar a arte
-                          </Button>
+                          <div className="mb-4 space-y-3">
+                            <CamposDaArte item={current} onChange={(it) => updateItem(selected, it)} />
+                            <Button variant="ghost" size="sm" icon={LayoutGrid} onClick={() => setCompOpen(true)}>Editor avançado</Button>
+                          </div>
                         )}
                         {/*
                           Fase 7, os três níveis: o conteúdo e o "quando mostrar" à vista;
@@ -928,6 +934,11 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
           lugar={activeZone && layoutCanonico ? { nome: activeZone.name.replace(/\s*\(.*\)$/, ''), tamanho: tamanhosTV[activeZone.id] || [1920, 1080] } : undefined}
           onFechar={() => setEditandoPeca(false)}
           onSalvar={async (novo) => { updateItem(selected, { ...current, ...novo }); setEditandoPeca(false); }} />
+      )}
+      {trocandoModelo && (
+        <TrocarTextos item={trocandoModelo} onMudar={setTrocandoModelo} onFechar={() => setTrocandoModelo(null)} continuar="Pôr nesta parte"
+          onAvancado={(it) => { setTrocandoModelo(null); setNovaPeca(it); setCompOpen(true); }}
+          onContinuar={(it) => { setTrocandoModelo(null); mutateItems((arr) => { arr.push(it); return arr; }); setSelected(items.length); }} />
       )}
       {compOpen && (novaPeca || (current && current.type === 'composicao')) && (
         <Suspense fallback={<div className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/90"><Spinner size={22} /></div>}>
