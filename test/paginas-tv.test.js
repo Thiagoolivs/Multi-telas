@@ -59,13 +59,16 @@ test('o cardápio por seção: cada grupo fica com a mesma seção em todas as p
 test('a TV vira a página da peça da planilha e pede à zona o tempo de todas', () => {
   const R = ler('js/render.js');
   assert.match(R, /P\.paginasDaPeca\(nomes, pl\.itens, item\.planilhaSecao\)/);
-  assert.match(R, /function paginarPeca\(el, paginas, desenhar, padrao\)/);
+  assert.match(R, /function paginarPeca\(el, host, paginas, primeira\)/);
   // Cada página fica o tempo do item (o que a zona marcou no slide), e a zona espera todas.
   assert.match(R, /Number\(el\.getAttribute\('data-mt-dur'\)\)/);
   assert.match(R, /new CustomEvent\('mt:paginas', \{ detail: \{ paginas: paginas\.length, segundos: dur \* paginas\.length \} \}\)/);
   // A página que sai da tela para de virar; o onLeave para o relógio das páginas e a peça no ar.
   assert.match(R, /if \(!el\.isConnected\) \{ parar\(\); return; \}/);
-  assert.match(R, /onLeave: \(\) => \{ if \(virar\) virar\.parar\(\); ctl\.parar\(\); \}/);
+  assert.match(R, /const parar = \(\) => \{ clearInterval\(timer\); clearTimeout\(partida\); timer = null; if \(noAr\) noAr\.parar\(\); \};/);
+  assert.match(R, /if \(virar\) return \{ el, duration: ctl\.duracao, onLeave: virar\.parar \};/);
+  // A página seguinte troca a peça no ar: a de antes para (relógio, observador) antes da nova entrar.
+  assert.match(R, /noAr\.parar\(\);\n\s+noAr = global\.MTPecaRender\.montar\(host, paginas\[atual\]\.item, opcoesDaPeca\(\)\);/);
   assert.match(ler('css/player.css'), /\.mt-peca-paginas \{/);
 });
 

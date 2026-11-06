@@ -2039,63 +2039,66 @@
     return { paginas, pl };
   }
 
-  // A página da planilha muda a cada volta do item (no mínimo 8 s cada): o item fica no ar o tempo de todas.
-  const PAGINA_DA_PECA_MIN_S = 8;
+  // A linha sem item da planilha some inteira (com os pontinhos e o "R$"), não só o nome.
+  function esconderVazias(host, vazias) {
+    const raiz = host && host.shadowRoot;
+    (vazias || []).forEach((n) => {
+      const campo = raiz && raiz.querySelector('[data-campo="' + n + '"]');
+      const linha = campo && campo.closest ? campo.closest('li') : null;
+      if (linha) linha.setAttribute('data-oculto', '');
+    });
+  }
+
   function renderPecaHtml(item) {
     const el = div('mt-slide mt-peca-html');
     if (!global.MTPecaRender) return { el, duration: item.duracao || 12 };
     const viva = item.planilha ? comPlanilha(item) : null;
-    const host = hostDaPeca(el);
-    let ctl = null;
-    const desenhar = (pagina) => {
-      if (ctl) ctl.parar();
-      ctl = global.MTPecaRender.montar(host, pagina ? pagina.item : item, opcoesDaPeca());
-      if (!pagina) return;
-      // A linha sem item da planilha some inteira (com os pontinhos e o "R$"), não só o nome.
-      const raiz = host.shadowRoot;
-      (pagina.vazias || []).forEach((n) => {
-        const campo = raiz && raiz.querySelector('[data-campo="' + n + '"]');
-        const linha = campo && campo.closest ? campo.closest('li') : null;
-        if (linha) linha.setAttribute('data-oculto', '');
-      });
-    };
-    desenhar(viva && viva.paginas[0]);
+    if (viva) item = viva.paginas[0].item;
+    const ctl = global.MTPecaRender.montar(hostDaPeca(el), item, opcoesDaPeca());
     let virar = null;
     if (viva) {
-      item = viva.paginas[0].item;
+      const host = el.querySelector('.mt-peca-escala');
+      esconderVazias(host, viva.paginas[0].vazias);
       const h = atualizadoAs(viva.pl);
       if (h) { const t = div('mt-credito mt-planilha-hora'); t.textContent = h; el.appendChild(t); }
-      if (viva.paginas.length > 1) virar = paginarPeca(el, viva.paginas, desenhar, ctl.duracao);
+      if (viva.paginas.length > 1) virar = paginarPeca(el, host, viva.paginas, ctl);
     }
     comCredito(el, item.creditos);
-    return { el, duration: ctl.duracao, onLeave: () => { if (virar) virar.parar(); ctl.parar(); } };
+    // Com páginas, sair para o giro delas e a página que está no ar.
+    if (virar) return { el, duration: ctl.duracao, onLeave: virar.parar };
+    return { el, duration: ctl.duracao, onLeave: ctl.parar };
   }
 
   /*
    * As páginas de uma peça da planilha. A zona marca no slide o tempo do
    * item (data-mt-dur, js/player.js) antes de pô-lo na tela; cada página
-   * fica esse tempo, e o evento mt:paginas pede à zona o tempo de todas.
-   * Os pontinhos (fora da peça, como o "Atualizado às") dizem que há mais.
+   * fica esse tempo (no mínimo 8 s), e o evento mt:paginas pede à zona o
+   * tempo de todas. A página seguinte é montada na mesma peça, com a
+   * entrada dela. Os pontinhos (fora da peça, como o "Atualizado às")
+   * dizem que há mais.
    */
-  function paginarPeca(el, paginas, desenhar, padrao) {
+  const PAGINA_DA_PECA_MIN_S = 8;
+  function paginarPeca(el, host, paginas, primeira) {
     const pontos = div('mt-peca-paginas');
     pontos.setAttribute('aria-hidden', 'true');
     paginas.forEach((p, i) => { const d = document.createElement('i'); if (!i) d.className = 'mt-on'; pontos.appendChild(d); });
     el.appendChild(pontos);
     el.setAttribute('data-mt-pagina-peca', '1/' + paginas.length);
-    let atual = 0, timer = null, partida = null, tentativas = 0;
-    const parar = () => { clearInterval(timer); clearTimeout(partida); timer = null; };
+    let atual = 0, noAr = primeira, timer = null, partida = null, tentativas = 0;
+    const parar = () => { clearInterval(timer); clearTimeout(partida); timer = null; if (noAr) noAr.parar(); };
     const proxima = () => {
       if (!el.isConnected) { parar(); return; }
       atual = (atual + 1) % paginas.length;
-      desenhar(paginas[atual]);
+      noAr.parar();
+      noAr = global.MTPecaRender.montar(host, paginas[atual].item, opcoesDaPeca());
+      esconderVazias(host, paginas[atual].vazias);
       el.setAttribute('data-mt-pagina-peca', (atual + 1) + '/' + paginas.length);
       Array.prototype.forEach.call(pontos.children, (d, i) => { d.className = i === atual ? 'mt-on' : ''; });
     };
     // Começa quando o slide está na tela (a zona já disse o tempo dele).
     const comecar = () => {
       if (!el.isConnected) { if (++tentativas < 100) partida = setTimeout(comecar, 100); return; }
-      const dur = Math.max(PAGINA_DA_PECA_MIN_S, Number(el.getAttribute('data-mt-dur')) || Number(padrao) || 12);
+      const dur = Math.max(PAGINA_DA_PECA_MIN_S, Number(el.getAttribute('data-mt-dur')) || Number(primeira.duracao) || 12);
       timer = setInterval(proxima, dur * 1000);
       try { el.dispatchEvent(new CustomEvent('mt:paginas', { detail: { paginas: paginas.length, segundos: dur * paginas.length } })); } catch (e) { /* segue */ }
     };
