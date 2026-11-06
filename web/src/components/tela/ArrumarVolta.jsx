@@ -5,6 +5,8 @@ import { Badge } from '../ui/Badge.jsx';
 import { Dialog } from '../ui/Dialog.jsx';
 import { MiniaturaDoItem } from './MiniaturaDoItem.jsx';
 import { itemSummary, nomeDoTipo } from '../../lib/contentTypes.js';
+import { precisaDeNomes } from '../../lib/nomesDasMidias.js';
+import { useNomesDasMidias } from '../../lib/useNomesDasMidias.js';
 import { formatarTempo } from '../../lib/screenDigest.js';
 import { pecasParaTirar, voltaSem, semAsPecas, NOME_DO_MOTIVO } from '../../lib/arrumarVolta.js';
 import { cn } from '../../lib/cn.js';
@@ -32,6 +34,7 @@ export function ArrumarVolta({ cfg, volta, parte, aoArrumar }) {
   const itens = useMemo(() => (foto && foto.zonas && foto.zonas[volta.zona] && foto.zonas[volta.zona].items) || [], [foto, volta.zona]);
   const sugestao = useMemo(() => (foto ? pecasParaTirar(itens, { maxSeg: volta.max }) : null), [foto, itens, volta.max]);
   const depois = useMemo(() => (foto ? voltaSem(itens, fora) : 0), [foto, itens, fora]);
+  const nomes = useNomesDasMidias(aberto && precisaDeNomes(foto));
 
   function abrir() {
     const c = structuredClone(cfg);
@@ -78,11 +81,11 @@ export function ArrumarVolta({ cfg, volta, parte, aoArrumar }) {
                 return (
                   <li key={p.indice}>
                     <label className={cn('flex cursor-pointer items-center gap-3 p-2.5', !marcada && 'opacity-60')}>
-                      <input type="checkbox" checked={marcada} onChange={() => alternar(p.indice)} aria-label={'Tirar ' + itemSummary(it)} />
+                      <input type="checkbox" checked={marcada} onChange={() => alternar(p.indice)} aria-label={'Tirar ' + itemSummary(it, nomes)} />
                       <MiniaturaDoItem item={it} largura={56} />
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-1.5">
-                          <span className="truncate text-sm font-medium text-ink">{itemSummary(it)}</span>
+                          <span className="truncate text-sm font-medium text-ink">{itemSummary(it, nomes)}</span>
                           <Badge tone={TOM[p.motivo]}>{NOME_DO_MOTIVO[p.motivo]}</Badge>
                         </span>
                         <span className="block text-2xs text-ink-3">{nomeDoTipo(it.type)} · {p.texto}</span>

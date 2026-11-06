@@ -8,6 +8,8 @@ import { Select } from '../ui/Field.jsx';
 import { devices, deviceConfig } from '../../api.js';
 import { semanaDaTv } from '../../lib/semana.js';
 import { itemSummary } from '../../lib/contentTypes.js';
+import { precisaDeNomes } from '../../lib/nomesDasMidias.js';
+import { useNomesDasMidias } from '../../lib/useNomesDasMidias.js';
 import { cn } from '../../lib/cn.js';
 
 /*
@@ -43,7 +45,9 @@ export function SemanaDaTv({ onIr }) {
 
   const tv = (tvs || []).find((t) => t.id === id);
   const layout = useMemo(() => (cfg && globalThis.MT_getLayout ? globalThis.MT_getLayout(cfg.settings && cfg.settings.layoutId) : null), [cfg]);
-  const s = useMemo(() => (cfg && layout ? semanaDaTv(cfg, layout, { expediente: tv && tv.expediente, nome: itemSummary }) : null), [cfg, layout, tv]);
+  // A foto e o vídeo postos antes do nome ir junto: o nome original vem das Mídias (um pedido, guardado).
+  const nomes = useNomesDasMidias(precisaDeNomes(cfg));
+  const s = useMemo(() => (cfg && layout ? semanaDaTv(cfg, layout, { expediente: tv && tv.expediente, nome: (it) => itemSummary(it, nomes) }) : null), [cfg, layout, tv, nomes]);
 
   if (tvs === null) return <Panel><div className="flex justify-center py-10"><Spinner size={18} /></div></Panel>;
   if (!tvs.length) return null;

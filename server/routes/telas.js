@@ -94,6 +94,9 @@ module.exports = function (ctx) {
         // A marca entra sozinha (fase 4): a TV que não escolheu outro tema sai com o da marca.
         const tema = paleta.temaDaTv(c.settings.theme, kit);
         if (tema) c.settings.theme = tema;
+        // A arte do modo ambiente também (lote de 06/11): as cores e o nome da marca de agora.
+        const amb = paleta.ambienteDaMarca(c.settings.ambiente, kit, empresa, { hostsMidia });
+        if (amb) c.settings.ambiente = amb;
       }
       return c;
     } catch (e) { return null; }
@@ -497,7 +500,8 @@ module.exports = function (ctx) {
         let corpo = device.config;
         try {
           const c = JSON.parse(device.config);
-          let mudou = !!(c && c.settings && nomeDaConta(c, device, await empresaDa(device.tenant_id)));
+          const empresa = await empresaDa(device.tenant_id);
+          let mudou = !!(c && c.settings && nomeDaConta(c, device, empresa));
           /*
            * A logo da marca (D8): `settings.logoUrl` nunca era preenchido, e a
            * TV mostrava o nome em texto. Vai só para a TV (token), calculada
@@ -509,8 +513,12 @@ module.exports = function (ctx) {
            * o que a TV mostra, e o que o painel gravar já vem com a marca.
            */
           if (c && c.settings) {
-            const tema = paleta.temaDaTv(c.settings.theme, await db.getBrandKit(device.tenant_id).catch(() => null));
+            const kit = await db.getBrandKit(device.tenant_id).catch(() => null);
+            const tema = paleta.temaDaTv(c.settings.theme, kit);
             if (tema) { c.settings.theme = tema; mudou = true; }
+            // A arte do modo ambiente segue a marca (lote de 06/11): mudou a Marca, a TV pega as cores e o nome novos.
+            const amb = paleta.ambienteDaMarca(c.settings.ambiente, kit, empresa, { hostsMidia });
+            if (amb) { c.settings.ambiente = amb; mudou = true; }
           }
           if (dtOk && c && c.settings) {
             const logo = await paleta.logoDaConta(db, device.tenant_id);

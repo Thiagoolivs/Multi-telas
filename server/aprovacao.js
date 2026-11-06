@@ -70,9 +70,106 @@ async function anexarCampanha(db, sess, campanhaId, estado, telas) {
   return ok ? alvo : null;
 }
 
-// Depois de aprovado e no ar: o que veio junto (o estado da campanha) também vale.
+/*
+ * A DATA DA AGENDA posta por um membro com aprovação (lote de 06/11): a
+ * peça da data foi para o pedido, então a Agenda não pode dizer "na TV"
+ * (dizia: o painel marca a data logo depois do envio). Aqui a data entra
+ * no pedido que a LEVA de verdade — o pendente mais novo desta pessoa com
+ * a peça da data (o item `_calendario`) em alguma TV — e a aprovação a
+ * marca como posta (aplicarExtra). Quem lê o estado é situacaoDasDatas.
+ * Devolve o pedido, ou null (nenhum pedido leva a data).
+ */
+// A peça da data (o item `_calendario`) está nesta programação?
+function temAData(config, eventoId) {
+  return Object.values((config && config.zonas) || {})
+    .some((z) => z && Array.isArray(z.items) && z.items.some((it) => it && it._calendario === eventoId));
+}
+function levaAData(pedido, eventoId) {
+  return (pedido.itens || []).some((i) => temAData(i.config, eventoId));
+}
+const listaDe = (extra, chave) => (extra && Array.isArray(extra[chave]) ? extra[chave] : []);
+// Anota a data numa das listas do pedido (`calendario`: pôr; `calendarioApagar`: tirar), e tira da outra.
+async function anotarNoPedido(db, sess, pedido, eventoId, chave) {
+  const outra = chave === 'calendario' ? 'calendarioApagar' : 'calendario';
+  const extra = Object.assign({}, pedido.extra || {}, {
+    [chave]: listaDe(pedido.extra, chave).filter((x) => x !== eventoId).concat(eventoId).slice(-200),
+    [outra]: listaDe(pedido.extra, outra).filter((x) => x !== eventoId),
+  });
+  return db.mudarEstadoDaAprovacao(pedido.id, sess.tenant_id, 'pendente', 'pendente', { extra });
+}
+async function anexarCalendario(db, sess, eventoId) {
+  const recentes = await db.listarAprovacoes(sess.tenant_id, { estado: 'pendente', autorId: sess.user_id, limite: 5 });
+  for (const r of recentes) {
+    const pedido = await db.lerAprovacao(r.id, sess.tenant_id);
+    if (!pedido || !levaAData(pedido, eventoId)) continue;
+    return (await anotarNoPedido(db, sess, pedido, eventoId, 'calendario')) ? pedido : null;
+  }
+  return null;
+}
+
+/*
+ * APAGAR a data que está na TV, com aprovação (lote de 06/11): o painel
+ * tira a peça das TVs (vira pedido) e depois apaga a data. Apagada na hora,
+ * a recusa deixava a peça na TV sem data nenhuma na Agenda para cuidar dela.
+ * A data fica, "saindo", no pedido que TIRA a peça de verdade: o pendente
+ * mais novo desta pessoa que tira a peça de todas as TVs que a mostram
+ * agora (`naTv`) e não a põe em nenhuma. Aprovado, a data sai (aplicarExtra);
+ * recusado ou cancelado, ela continua como estava. Devolve o pedido, ou null.
+ */
+async function anexarApagar(db, sess, eventoId, naTv) {
+  if (!naTv || !naTv.length) return null;
+  const recentes = await db.listarAprovacoes(sess.tenant_id, { estado: 'pendente', autorId: sess.user_id, limite: 5 });
+  for (const r of recentes) {
+    const pedido = await db.lerAprovacao(r.id, sess.tenant_id);
+    if (!pedido || levaAData(pedido, eventoId)) continue;
+    const itens = pedido.itens || [];
+    if (!naTv.every((id) => itens.some((i) => i.id === id && i.config && !temAData(i.config, eventoId)))) continue;
+    return (await anotarNoPedido(db, sess, pedido, eventoId, 'calendarioApagar')) ? pedido : null;
+  }
+  return null;
+}
+
+/*
+ * O que a Agenda diz de cada data com pedido. `pedidos`: os da conta, os
+ * mais novos primeiro (db.listarAprovacoes). Vale o último pedido que levou
+ * ou tirou a data, se ele for mais novo que a última vez que a data foi
+ * para a TV (aplicadoEm: posta direto, ou aprovada):
+ *   pendente (ou aplicando)          → `aprovacao.estado` 'pendente': "Esperando aprovação";
+ *   recusada (com o motivo), cancelada, substituida → a mudança não foi.
+ * O pedido que TIRA a data vem com `saindo: true` ("Saindo da TV"; não
+ * aprovado, ela continua na TV). Aprovado não marca nada: a aprovação já
+ * marcou a data como posta (ou já a apagou).
+ * `verMotivo(pedido)`: o motivo da recusa vai para quem pediu e para o dono.
+ */
+function situacaoDasDatas(eventos, pedidos, verMotivo) {
+  const ultimo = new Map();
+  for (const p of pedidos || []) {
+    if (!p) continue;
+    for (const id of listaDe(p.extra, 'calendario')) if (!ultimo.has(id)) ultimo.set(id, { p, saindo: false });
+    for (const id of listaDe(p.extra, 'calendarioApagar')) if (!ultimo.has(id)) ultimo.set(id, { p, saindo: true });
+  }
+  return (eventos || []).map((ev) => {
+    const u = ultimo.get(ev.id);
+    const p = u && u.p;
+    if (!p || p.estado === 'aprovada' || (Number(ev.aplicadoEm) || 0) > (Number(p.criadoEm) || 0)) return ev;
+    const estado = p.estado === 'aplicando' ? 'pendente' : p.estado;
+    const aprovacao = { id: p.id, estado };
+    if (u.saindo) aprovacao.saindo = true;
+    if (estado === 'recusada' && p.motivo && (!verMotivo || verMotivo(p))) aprovacao.motivo = p.motivo;
+    return Object.assign({}, ev, { aprovacao });
+  });
+}
+
+// Depois de aprovado e no ar: o que veio junto (o estado da campanha, as datas da Agenda postas e tiradas) também vale.
 async function aplicarExtra(db, tenantId, pedido) {
-  const c = pedido && pedido.extra && pedido.extra.campanha;
+  const extra = (pedido && pedido.extra) || {};
+  for (const id of listaDe(extra, 'calendario')) {
+    const ev = await db.eventoDoCalendario(id, tenantId).catch(() => null);
+    if (ev) await db.salvarEvento(tenantId, Object.assign({}, ev, { aplicadoEm: Date.now() }), id).catch(() => {});
+  }
+  // A peça saiu das TVs: a data sai da Agenda junto.
+  for (const id of listaDe(extra, 'calendarioApagar')) await db.removerEvento(id, tenantId).catch(() => false);
+  const c = extra.campanha;
   if (!c || !c.id) return;
   const atual = await db.lerCampanha(tenantId, c.id).catch(() => null);
   if (!atual) return;
@@ -96,4 +193,4 @@ function antesEDepois(pedido, telasAgora, normalizar) {
   });
 }
 
-module.exports = { ESTADOS_FINAIS, chaveDasTelas, pedir, resposta, anexarCampanha, aplicarExtra, antesEDepois };
+module.exports = { ESTADOS_FINAIS, chaveDasTelas, pedir, resposta, anexarCampanha, temAData, levaAData, anexarCalendario, anexarApagar, situacaoDasDatas, aplicarExtra, antesEDepois };

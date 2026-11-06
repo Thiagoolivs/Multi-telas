@@ -223,7 +223,7 @@ test('item 39: o exemplo "Raft Embalagens" não vai mais para a TV de cliente', 
   assert.match(t, /if \(empresa && \(!s\.nome \|\| s\.nome === device\.name\)\) \{ s\.nome = empresa; mudou = true; \}/);
   assert.match(t, /nomeDaConta\(cfg, device, await empresaDa\(device\.tenant_id\)\);/, 'ao gravar');
   // Desde o D8 a entrega também leva a logo: o nome da conta continua passando por aqui.
-  assert.match(t, /let mudou = !!\(c && c\.settings && nomeDaConta\(c, device, await empresaDa\(device\.tenant_id\)\)\);/, 'ao entregar à TV');
+  assert.match(t, /const empresa = await empresaDa\(device\.tenant_id\);\s*let mudou = !!\(c && c\.settings && nomeDaConta\(c, device, empresa\)\);/, 'ao entregar à TV');
   // O painel lê pelo mesmo nomeDaConta (configParaOPainel), uma TV ou todas de uma vez (reteste da fase 10).
   assert.match(t, /function configParaOPainel\(device, empresa, kit\) \{[\s\S]*?nomeDaConta\(c, device, empresa\);/);
   assert.match(t, /if \(mudou\) corpo = JSON\.stringify\(c\);/);
@@ -243,7 +243,7 @@ test('item 40 (fase 7): a Programação mora em Telas; cada TV abre a página de
   assert.match(app, /content: \{ title: 'Telas', nav: 'screens' \}/);
   const p = semComentarios(ler('web/src/pages/ProgramacaoPage.jsx'));
   // Desde o D3 a parte tocada abre o editor JÁ nela (antes ignorava a zona).
-  assert.match(p, /<MapaDaTela layout=\{layout\} onEscolher=\{\(z\) => editar\(d, z && z\.id\)\} resumo=\{resumoDaZona\(cfg\)\} cfg=\{cfg\} \/>/);
+  assert.match(p, /<MapaDaTela layout=\{layout\} onEscolher=\{\(z\) => editar\(d, z && z\.id\)\} resumo=\{resumoDaZona\(cfg\)\} cfg=\{cfg\} nomes=\{nomes\} \/>/);
   assert.match(p, /onIr\('content', \{ device: d, \.\.\.\(zona \? \{ zona \} : \{\}\) \}\)/);
   assert.doesNotMatch(ler('js/seasons.js'), /Raft/, 'os pacotes de data não falam da empresa de exemplo');
 });

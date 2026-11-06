@@ -682,8 +682,17 @@ async function enviarBytes(caminho, file) {
   return data;
 }
 
+/*
+ * Quem quer saber de toda lista das Mídias que chegar (os nomes das fotos de
+ * antes, lib/useNomesDasMidias.js): a página que já leu a lista poupa o pedido.
+ */
+const ouvintesDaLista = new Set();
 export const media = {
-  list: () => api('GET', '/api/media'),
+  list: () => api('GET', '/api/media').then((r) => {
+    ouvintesDaLista.forEach((f) => { try { f(r); } catch (e) { /* quem ouve não derruba a lista */ } });
+    return r;
+  }),
+  ouvirLista: (fn) => { ouvintesDaLista.add(fn); return () => ouvintesDaLista.delete(fn); },
   // forcar: a pessoa viu onde a mídia está em uso (409 'midia-em-uso') e confirmou.
   remove: (id, forcar) => api('DELETE', '/api/media/' + id + (forcar ? '?forcar=1' : '')),
   // Upload de bytes crus (o navegador manda o File direto). Retorna { url, ... }.

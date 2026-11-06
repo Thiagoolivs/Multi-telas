@@ -4,11 +4,20 @@
  *   GET    /api/calendario        os eventos da conta, por data
  *   POST   /api/calendario        grava a lista revisada (novos e editados)
  *   PUT    /api/calendario/:id    edita um evento (e marca as TVs em que entrou)
- *   DELETE /api/calendario/:id    apaga o evento (o painel tira da TV antes)
+ *   DELETE /api/calendario/:id    apaga o evento (o painel tira da TV antes; com aprovação, 202 até aprovar)
  *
  * Quem lê o texto colado é /api/ai/calendario (server.js, medido e com teto).
  * Quem põe a peça nas TVs é o painel, com versão (gravarNaTela), como as
  * campanhas: aqui fica a lista, para ser "programado e editável".
+ *
+ * Com a aprovação ligada (fase 13; lote de 06/11), o membro não põe a data
+ * na TV: o envio virou pedido. O "aplicado" dele não marca a data como
+ * posta; a data entra no pedido que a leva (PUT responde 202) e só fica
+ * posta quando o dono aprova (server/aprovacao.js). Apagar a data que está
+ * numa TV também espera: ela fica "saindo" no pedido que tira a peça
+ * (DELETE responde 202) e só sai quando o dono aprova. A lista diz, de cada
+ * data com pedido, se ela espera aprovação ou se a mudança foi recusada
+ * (com o motivo) — o estado vem daqui, não do painel.
  *
  * Fase 13: o membro de uma loja (server/permissoes.js) só vê as datas que
  * passam nas TVs dele, e só grava, muda ou apaga a data que fica inteira nas
@@ -19,9 +28,16 @@
 const C = require('../calendario');
 const P = require('../../js/peca-html.js');
 const permissoes = require('../permissoes');
+const aprovacao = require('../aprovacao');
 
 module.exports = function (ctx) {
-  const { db, sendJson, readBody } = ctx;
+  const { db, sendJson, readBody, canManageTeam } = ctx;
+
+  // As datas com o estado do pedido de cada uma (esperando, recusada…). Sem conseguir ler os pedidos, a lista sai como antes.
+  async function comPedidos(sess, eventos) {
+    const pedidos = await db.listarAprovacoes(sess.tenant_id, { limite: 100 }).catch(() => []);
+    return aprovacao.situacaoDasDatas(eventos, pedidos, (p) => canManageTeam(sess.role) || p.autorId === sess.user_id);
+  }
 
   // A peça do evento passa pela mesma porta da TV antes de ser guardada.
   function itemValido(item) {
@@ -57,6 +73,20 @@ module.exports = function (ctx) {
     return { minhas, dele, toca };
   }
   const RECUSA_LOJA = { error: 'Esta data vale também para TVs de outras lojas. Quem muda é o dono ou um administrador.', code: 'loja' };
+  const SEM_PEDIDO_DE_TIRAR = { error: 'Esta data ainda está na TV e não achamos o pedido para tirá-la. Nada foi apagado: tente de novo.', code: 'sem-pedido' };
+
+  // As TVs da conta que mostram a peça da data agora (a programação gravada, não a que o painel diz).
+  async function telasComAData(sess, id) {
+    const ids = [];
+    for (const d of await db.listDevices(sess.tenant_id)) {
+      const tv = await db.getDevice(d.id);
+      if (!tv || tv.tenant_id !== sess.tenant_id || !tv.config) continue;
+      let cfg = null;
+      try { cfg = JSON.parse(tv.config); } catch (e) { cfg = null; }
+      if (aprovacao.temAData(cfg, id)) ids.push(tv.id);
+    }
+    return ids;
+  }
 
   /*
    * O que vai ser gravado, já conferido para o membro de uma loja: o "todas" vira as lojas dele;
@@ -76,8 +106,10 @@ module.exports = function (ctx) {
 
   function gravar(sess, c, e, id) {
     if (!c.ev) return null;
+    // Com a aprovação ligada, "aplicado" do membro é só o pedido: a data fica posta quando o dono aprovar (aprovacao.aplicarExtra).
+    const pos = e.aplicado === true && !sess.precisaAprovar;
     return db.salvarEvento(sess.tenant_id, Object.assign(c.ev, {
-      item: itemValido(e.item), telas: c.telas, aplicadoEm: e.aplicado === true ? Date.now() : (e.aplicado === false ? 0 : null),
+      item: itemValido(e.item), telas: c.telas, aplicadoEm: pos ? Date.now() : (e.aplicado === false ? 0 : null),
     }), id);
   }
 
@@ -88,7 +120,7 @@ module.exports = function (ctx) {
     if (parts.length > 3) { sendJson(res, 404, { error: 'não encontrado' }); return true; }
 
     if (!id && req.method === 'GET') {
-      const eventos = await db.listarCalendario(sess.tenant_id);
+      const eventos = await comPedidos(sess, await db.listarCalendario(sess.tenant_id));
       const alc = await alcanceDe(sess);
       if (!alc) { sendJson(res, 200, { eventos }); return true; }
       // O membro de uma loja: só as datas que passam nas TVs dele, sem os ids das TVs dos outros.
@@ -129,16 +161,40 @@ module.exports = function (ctx) {
         if (c.negado) return sendJson(res, 403, RECUSA_LOJA);
         const s = await gravar(sess, c, b || {}, id);
         if (!s) return sendJson(res, 400, { error: 'o evento precisa de data e título' });
+        // O membro com aprovação: a data espera junto com o pedido que leva a peça dela (202, como a campanha).
+        if (sess.precisaAprovar && b && b.aplicado === true) {
+          const pedido = await aprovacao.anexarCalendario(db, sess, id);
+          if (pedido) {
+            const aprov = { id: pedido.id, estado: 'pendente' };
+            return sendJson(res, 202, { evento: Object.assign({}, s, { aprovacao: aprov }), esperandoAprovacao: true, aprovacao: aprov });
+          }
+        }
         return sendJson(res, 200, { evento: s });
       });
       return true;
     }
     if (id && req.method === 'DELETE') {
       const alc = await alcanceDe(sess);
+      const antes = alc || sess.precisaAprovar ? await db.eventoDoCalendario(id, sess.tenant_id) : null;
       if (alc) {
-        const antes = await db.eventoDoCalendario(id, sess.tenant_id);
         if (!antes || !alc.toca(antes)) { sendJson(res, 404, { error: 'evento não encontrado' }); return true; }
         if (!alc.dele(antes)) { sendJson(res, 403, RECUSA_LOJA); return true; }
+      }
+      /*
+       * Com a aprovação ligada, a data que está numa TV não some na hora: a
+       * peça só sai quando o dono aprovar. Ela fica "saindo", no pedido que
+       * tira a peça (202); aprovado, sai (aprovacao.aplicarExtra). Sem esse
+       * pedido, nada é apagado. A data que não está em TV nenhuma sai direto.
+       */
+      if (sess.precisaAprovar && antes) {
+        const naTv = await telasComAData(sess, id);
+        if (naTv.length) {
+          const pedido = await aprovacao.anexarApagar(db, sess, id, naTv);
+          if (!pedido) { sendJson(res, 409, SEM_PEDIDO_DE_TIRAR); return true; }
+          const aprov = { id: pedido.id, estado: 'pendente', saindo: true };
+          sendJson(res, 202, { ok: true, esperandoAprovacao: true, saindo: true, aprovacao: aprov, evento: Object.assign({}, antes, { aprovacao: aprov }) });
+          return true;
+        }
       }
       const ok = await db.removerEvento(id, sess.tenant_id);
       sendJson(res, ok ? 200 : 404, ok ? { ok: true } : { error: 'evento não encontrado' });

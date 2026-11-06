@@ -128,7 +128,7 @@ test('a Agenda abre na semana, com as datas que vêm embaixo', () => {
   assert.match(c, /<SemanaDaTv onIr=\{onIr\} \/>/);
   assert.match(c, /title="Datas que vêm"/);
   const k = ler('web/src/components/agenda/SemanaDaTv.jsx');
-  assert.match(k, /semanaDaTv\(cfg, layout, \{ expediente: tv && tv.expediente, nome: itemSummary \}\)/);
+  assert.match(k, /semanaDaTv\(cfg, layout, \{ expediente: tv && tv.expediente, nome: \(it\) => itemSummary\(it, nomes\) \}\)/);
   assert.match(k, /import '\.\.\/\.\.\/\.\.\/\.\.\/js\/rodizio\.js';/, 'a semana usa o mesmo naJanela da TV');
   assert.match(k, /Vazio: só o relógio/);
   // No celular, um dia por vez (os sete lado a lado não cabem); no computador, a semana inteira.

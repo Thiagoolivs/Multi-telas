@@ -95,4 +95,45 @@ function temaDaTv(theme, kit) {
   return Object.assign({}, t, { preset: 'marca', marca: cores, overrides });
 }
 
-module.exports = { garantir, ramoDaConta, perfilDaConta, logoDaConta, temaDaTv, escolheuTema };
+/*
+ * A ARTE DO MODO AMBIENTE ACOMPANHA A MARCA (lote de 06/11). A peça-ouro
+ * escolhida em Ajustes da TV › Aparência vai inteira para a config
+ * (settings.ambiente.peca), com as cores, as fontes e o nome da marca do
+ * momento: a TV desenha sem internet e precisa do item inteiro
+ * (js/rodizio.js, pecaDeAmbiente). Só que, mudada a Marca, a TV seguia com
+ * as cores e o nome velhos. Como o tema (temaDaTv), a peça sai daqui com a
+ * marca de AGORA — para a TV e para o painel (o que o painel gravar já vai
+ * com ela). O desenho, a frase e o resto ficam; só a marca troca. Vale para
+ * a peça-ouro no modo da marca (a escolhida no painel, lib/arteDoAmbiente.js).
+ *
+ * `empresa`: o nome da conta, quando a marca não tem nome próprio. Sem nome
+ * nenhum, o lugar do nome fica vazio e escondido (nunca o nome de exemplo).
+ * A peça nova passa pela mesma porta da TV (js/peca-html.js; `opcoes` =
+ * { hostsMidia }, as da gravação); se não passar, fica a gravada. Devolve
+ * o ambiente novo, ou null para manter.
+ */
+let pecaHtml = null;
+const marcaIgual = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || null);
+function ambienteDaMarca(ambiente, kit, empresa, opcoes) {
+  const p = ambiente && typeof ambiente === 'object' ? ambiente.peca : null;
+  if (!kit || !p || typeof p !== 'object' || p.type !== 'peca-html') return null;
+  if (!p.origem || p.origem.motor !== 'ouro' || (p.modo && p.modo !== 'marca')) return null;
+  pecaHtml = pecaHtml || require('../js/peca-html.js');
+  const nome = String((kit.nome && kit.nome !== 'Marca principal' ? kit.nome : empresa) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  const campos = Object.assign({}, p.campos || {});
+  let ocultos = Array.isArray(p.ocultos) ? p.ocultos.slice() : [];
+  if (/data-campo="marca"/.test(String(p.html || ''))) {
+    campos.marca = nome;
+    ocultos = ocultos.filter((x) => x !== 'marca').concat(nome ? [] : ['marca']);
+  }
+  const novo = Object.assign({}, p, { campos, marca: { cores: Array.isArray(kit.cores) ? kit.cores : [], fonteTitulo: kit.fonteTitulo || '', fonteApoio: kit.fonteApoio || '' } });
+  if (ocultos.length) novo.ocultos = ocultos; else delete novo.ocultos;
+  const v = pecaHtml.validarItem(novo, opcoes || {});
+  if (!v.ok) return null;
+  const pronta = Object.assign({}, novo, v.item);
+  const antes = pecaHtml.validarItem(p, opcoes || {}).item;
+  if (marcaIgual(antes.marca, pronta.marca) && marcaIgual(antes.campos, pronta.campos) && marcaIgual(antes.ocultos, pronta.ocultos)) return null;
+  return Object.assign({}, ambiente, { peca: pronta });
+}
+
+module.exports = { garantir, ramoDaConta, perfilDaConta, logoDaConta, temaDaTv, escolheuTema, ambienteDaMarca };

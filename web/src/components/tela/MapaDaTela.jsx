@@ -52,20 +52,21 @@ export function Conteudo({ item, tamanho }) {
  * reconhecer qual parte é qual.
  */
 const linha = (v) => (v == null ? '' : String(v).replace(/\s+/g, ' ').trim());
-function textosDoItem(item, settings) {
+// `nomes`: os nomes das Mídias (useNomesDasMidias), para o vídeo posto antes do nome ir junto.
+function textosDoItem(item, settings, nomes) {
   const t = CONTENT_TYPES[item.type];
   if (item.type === 'weatherpro' || item.type === 'clima') {
     return { titulo: linha(item.cidade || (settings && settings.cidadeClima)) || 'Clima', apoio: 'Clima de agora', Icone: CloudSun };
   }
   let resumo = '';
-  try { resumo = t ? linha(t.summary(item)) : ''; } catch (e) { resumo = ''; }
+  try { resumo = t ? linha(t.summary(item, nomes)) : ''; } catch (e) { resumo = ''; }
   const titulo = linha(item.titulo || item.texto || resumo) || (t ? t.label : 'Conteúdo');
   const apoio = [item.corpo, item.precoPor, item.valor, item.autor, item.info].map(linha).find((x) => x && x !== titulo) || (t ? t.label : '');
   return { titulo, apoio: apoio === titulo ? '' : apoio, Icone: (t && t.icon) || Type };
 }
 
-function PreviaDoItem({ item, settings }) {
-  const { titulo, apoio, Icone } = textosDoItem(item, settings);
+function PreviaDoItem({ item, settings, nomes }) {
+  const { titulo, apoio, Icone } = textosDoItem(item, settings, nomes);
   return (
     <span aria-hidden="true" className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 pb-6 pt-2 text-center text-white">
       <Icone size={16} className="shrink-0 text-white/70" />
@@ -90,7 +91,7 @@ function PreviaDaFaixa({ zona, d, settings }) {
   );
 }
 
-export function MapaDaTela({ layout, ativa, onEscolher, resumo, cfg, onIA }) {
+export function MapaDaTela({ layout, ativa, onEscolher, resumo, cfg, onIA, nomes }) {
   const tamanhos = useMemo(() => (cfg ? tamanhosDasZonas(layout) : {}), [layout, !!cfg]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!layout) return null;
   const emPe = (layout.orientation || '') === 'portrait';
@@ -118,7 +119,7 @@ export function MapaDaTela({ layout, ativa, onEscolher, resumo, cfg, onIA }) {
                     <span className="pointer-events-none absolute inset-0">
                       {item && (item.type === 'peca-html' || ((item.type === 'image' || item.type === 'imagem') && item.src))
                         ? <Conteudo item={item} tamanho={tamanhos[z.id]} />
-                        : item && !faixa ? <PreviaDoItem item={item} settings={cfg.settings} />
+                        : item && !faixa ? <PreviaDoItem item={item} settings={cfg.settings} nomes={nomes} />
                         : faixa && !item ? <PreviaDaFaixa zona={z} d={(cfg.zonas && cfg.zonas[z.id]) || {}} settings={cfg.settings} />
                         : null}
                     </span>

@@ -9,6 +9,8 @@ import { avisarMudanca } from '../components/layout/SinoAprovacoes.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { relativeTime } from '../lib/format.js';
 import { itemSummary } from '../lib/contentTypes.js';
+import { precisaDeNomes } from '../lib/nomesDasMidias.js';
+import { useNomesDasMidias } from '../lib/useNomesDasMidias.js';
 import { aviso } from '../lib/avisos.js';
 import { perguntar, confirmar } from '../lib/confirmar.js';
 import { aprovacoes } from '../api.js';
@@ -37,12 +39,13 @@ const ESTADO = {
 const nomesDasTelas = (p) => (p.telas || []).map((t) => t.nome || 'TV').join(', ');
 
 // O que passa na TV, em texto: no celular, o preço trocado se lê aqui, mesmo quando a miniatura é pequena.
-function oQuePassa(cfg) {
+// `nomesDasMidias`: o nome original da foto e do vídeo postos antes do nome ir junto (useNomesDasMidias).
+function oQuePassa(cfg, nomesDasMidias) {
   const itens = Object.values((cfg && cfg.zonas) || {}).flatMap((z) => (z && Array.isArray(z.items) ? z.items : []));
   const nomes = [];
   for (const it of itens) {
     let nome = '';
-    try { nome = String(itemSummary(it) || '').trim(); } catch (e) { nome = ''; }
+    try { nome = String(itemSummary(it, nomesDasMidias) || '').trim(); } catch (e) { nome = ''; }
     if (nome && !nomes.includes(nome)) nomes.push(nome);
   }
   return nomes;
@@ -143,6 +146,7 @@ function Detalhe({ id, onFechar, onDecidido }) {
   const { data, loading, error, reload } = useAsync(() => aprovacoes.ver(id), [id]);
   const [ocupado, setOcupado] = useState(false);
   const [conflito, setConflito] = useState('');
+  const nomesDasMidias = useNomesDasMidias(((data && data.telas) || []).some((t) => precisaDeNomes(t.antes) || precisaDeNomes(t.depois)));
 
   async function aprovar(porCima) {
     if (porCima && !(await confirmar({
@@ -194,8 +198,8 @@ function Detalhe({ id, onFechar, onDecidido }) {
           <div className="mt-2 grid grid-cols-2 gap-2 sm:gap-4">
             {t.antes ? <PreviaDaTela cfg={t.antes} rotulo="Antes (agora na TV)" /> : <SemPrevia rotulo="Antes (agora na TV)" texto="A TV ainda não tinha nada." />}
             {t.depois ? <PreviaDaTela cfg={t.depois} rotulo="Depois (se aprovar)" /> : <SemPrevia rotulo="Depois (se aprovar)" texto="Sem prévia." />}
-            <ListaDoQuePassa nomes={oQuePassa(t.antes)} />
-            <ListaDoQuePassa nomes={oQuePassa(t.depois)} antes={oQuePassa(t.antes)} />
+            <ListaDoQuePassa nomes={oQuePassa(t.antes, nomesDasMidias)} />
+            <ListaDoQuePassa nomes={oQuePassa(t.depois, nomesDasMidias)} antes={oQuePassa(t.antes, nomesDasMidias)} />
           </div>
         </section>
       ))}

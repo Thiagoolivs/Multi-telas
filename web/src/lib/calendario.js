@@ -90,6 +90,52 @@ export function pecaDoEvento(ev, modelos, marca) {
   };
 }
 
+/*
+ * O QUE A AGENDA DIZ DA DATA (lote de 06/11). Com a aprovação ligada, o
+ * membro que põe a data manda um pedido; a lista dizia "Na TV" do mesmo
+ * jeito. O estado vem do servidor (GET /api/calendario: `aprovacao` do
+ * último pedido que levou a data, e `aplicadoEm`, a última vez que a data
+ * foi para a TV de verdade):
+ *
+ *   esperando  o pedido espera o dono, e a data ainda não está na TV;
+ *   saindo     a data foi apagada, e o pedido que a tira da TV espera o dono
+ *              (até lá ela continua na TV e na Agenda);
+ *   na-tv      está na TV (a `nota` diz se uma mudança dela — ou a saída —
+ *              espera ou não foi);
+ *   fora       não está na TV (a `nota` diz o porquê: o pedido recusado, com o motivo).
+ *
+ * `pedido`: o id do pedido que espera (o link para Aprovações).
+ */
+const PORQUE = {
+  recusada: (a) => 'O pedido foi recusado' + (a.motivo ? ': ' + a.motivo : '.'),
+  cancelada: () => 'O pedido foi cancelado.',
+  substituida: () => 'Um pedido mais novo tomou o lugar.',
+};
+export function situacaoDaData(ev) {
+  const e = ev || {};
+  const n = (e.telas || []).length;
+  const p = periodoDoEvento(e);
+  const periodo = 'de ' + partesDaData(p.dataInicio).curta + ' a ' + partesDaData(e.data).curta;
+  const naTv = 'Na TV ' + periodo + ' · ' + (n === 1 ? '1 TV' : n + ' TVs');
+  const a = e.aprovacao;
+  const jaFoi = !!e.aplicadoEm;
+  // Apagada com aprovação: sai da TV (e da Agenda) quando aprovarem; recusado, fica como estava.
+  if (a && a.saindo) {
+    if (a.estado === 'pendente') return { estado: 'saindo', texto: 'Saindo da TV · espera aprovação', pedido: a.id };
+    if (PORQUE[a.estado]) return { estado: 'na-tv', texto: naTv, nota: 'Não saiu da TV. ' + PORQUE[a.estado](a) };
+  }
+  if (a && a.estado === 'pendente') {
+    return jaFoi
+      ? { estado: 'na-tv', texto: naTv, nota: 'A mudança espera aprovação.', pedido: a.id }
+      : { estado: 'esperando', texto: 'Entra na TV ' + periodo + ' quando aprovarem', pedido: a.id };
+  }
+  if (a && PORQUE[a.estado]) {
+    const porque = PORQUE[a.estado](a);
+    return jaFoi ? { estado: 'na-tv', texto: naTv, nota: 'A mudança não foi. ' + porque } : { estado: 'fora', texto: 'Fora da TV', nota: porque };
+  }
+  return n ? { estado: 'na-tv', texto: naTv } : { estado: 'fora', texto: 'Fora da TV' };
+}
+
 // As TVs do evento: todas, um grupo ou as escolhidas.
 export function telasDoEvento(ev, telas) {
   const a = (ev && ev.alvo) || { tipo: 'todas' };

@@ -12,6 +12,7 @@
 import {
   Megaphone, Type, Quote, Tag, BarChart3, Share2, Image as ImageIcon,
   Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout, Airplay, Cast, Presentation, ReceiptText, Palette, CircleHelp } from 'lucide-react';
+import { nomeGuardado } from './nomesDasMidias.js';
 
 const GRUPO_PC = 'Com computador ligado à TV';
 
@@ -172,7 +173,8 @@ export const CONTENT_TYPES = {
     ],
     make: () => ({ type: 'image', src: '', fit: 'cover', duracao: 8 }),
     // O nome da foto na fila e na semana: o título, a legenda ou o nome do arquivo; "Foto" só sem nada disso.
-    summary: (i) => nomeDaMidia(i, 'Foto') || (i.src ? 'Foto' : 'Foto (sem arquivo)'),
+    // `nomes`: o nome original guardado nas Mídias, para a foto posta antes do nome ir junto (lib/nomesDasMidias.js).
+    summary: (i, nomes) => nomeDaMidia(i, 'Foto', nomes) || (i.src ? 'Foto' : 'Foto (sem arquivo)'),
   },
   video: {
     label: 'Vídeo (MP4)', icon: Film, group: 'Mídia',
@@ -185,7 +187,7 @@ export const CONTENT_TYPES = {
       { key: 'duracao', label: 'Tempo na tela (segundos)', kind: 'number', min: 0, hint: '0 = toca o vídeo inteiro', ...AV },
     ],
     make: () => ({ type: 'video', src: '', loop: false, muted: true, fit: 'contain', duracao: 0 }),
-    summary: (i) => nomeDaMidia(i, 'Vídeo') || (i.src ? 'Vídeo' : 'Vídeo (sem arquivo)'),
+    summary: (i, nomes) => nomeDaMidia(i, 'Vídeo', nomes) || (i.src ? 'Vídeo' : 'Vídeo (sem arquivo)'),
   },
   youtube: {
     label: 'YouTube / Ao vivo', icon: Youtube, group: 'Mídia',
@@ -459,13 +461,19 @@ export function nomeDoArquivo(nome, tipo = 'Foto') {
  * nome do arquivo enviado (`nome`, gravado ao subir). O endereço colado da
  * internet às vezes já diz o que é; o do nosso armazenamento (/media/…) é
  * um código e não entra.
+ *
+ * `nomes` (opcional): o mapa endereço → nome original das Mídias da conta
+ * (lib/nomesDasMidias.js). A foto posta na TV antes do `nome` ir junto acha
+ * o nome por ele; sem o mapa, ou sem nome guardado, fica "Foto".
  */
-export function nomeDaMidia(item, tipo = 'Foto') {
+export function nomeDaMidia(item, tipo = 'Foto', nomes) {
   const i = item || {};
   const proprio = [i.titulo, i.legenda, i.caption].find((x) => typeof x === 'string' && x.trim());
   if (proprio) return proprio.replace(/\s+/g, ' ').trim().slice(0, 60);
   const doArquivo = nomeDoArquivo(i.nome, tipo);
   if (doArquivo) return doArquivo;
+  const daBiblioteca = nomeDoArquivo(nomeGuardado(i, nomes), tipo);
+  if (daBiblioteca) return daBiblioteca;
   if (typeof i.src === 'string' && !/^(\/media\/|data:|blob:)/.test(i.src)) return nomeDoArquivo(i.src, tipo);
   return '';
 }
@@ -498,9 +506,10 @@ export function nomeDoTipo(type) {
 export function typeLabel(type) {
   return (CONTENT_TYPES[type] && CONTENT_TYPES[type].label) || type;
 }
-export function itemSummary(item) {
+// `nomes`: o mapa dos nomes das Mídias (useNomesDasMidias), para a foto e o vídeo de antes; os outros tipos não usam.
+export function itemSummary(item, nomes) {
   const t = CONTENT_TYPES[item.type];
-  return t ? t.summary(item) : (item.type || 'Conteúdo');
+  return t ? t.summary(item, nomes) : (item.type || 'Conteúdo');
 }
 
 // Config mínima para uma tela sem conteúdo ainda.
