@@ -110,6 +110,17 @@ test('Postgres de verdade: lojas, aprovação, planilha, senha, exportar e exclu
   assert.deepEqual((await pedir('/api/lojas', { cookie: dono })).json.membros[meMembro.user.id], ['Loja do Centro']);
   assert.deepEqual((await pedir('/api/devices', { cookie: membro })).json.devices.map((d) => d.id), [centro.id]);
 
+  /* ---- a Agenda do membro de uma loja (calendario, alvo em JSON) ---- */
+  const cal = (cookie, eventos) => pedir('/api/calendario', { method: 'POST', cookie, json: { eventos } });
+  const evConta = (await cal(dono, [{ data: '2030-11-27', titulo: 'Black Friday', alvo: { tipo: 'todas' }, telas: [centro.id, norte.id] }])).json.eventos[0];
+  const evMembro = await cal(membro, [{ data: '2030-12-01', titulo: 'Dia do pão', alvo: { tipo: 'todas' } }]);
+  assert.equal(evMembro.status, 200, evMembro.texto);
+  assert.deepEqual(evMembro.json.eventos[0].alvo, { tipo: 'grupos', nomes: ['Loja do Centro'] });
+  assert.equal((await cal(membro, [{ data: '2030-12-01', titulo: 'x', alvo: { tipo: 'grupo', nome: 'Loja Norte' } }])).status, 403);
+  assert.equal((await pedir('/api/calendario/' + evConta.id, { method: 'DELETE', cookie: membro })).status, 403);
+  assert.deepEqual((await pedir('/api/calendario', { cookie: membro })).json.eventos.map((e) => [e.titulo, e.podeMudar, e.telas]),
+    [['Black Friday', false, [centro.id]], ['Dia do pão', true, []]]);
+
   /* ---- aprovação (tenants.aprovacao, aprovacoes) ---- */
   assert.equal((await pedir('/api/aprovacoes/regra', { method: 'PUT', cookie: dono, json: { ligada: true } })).json.ligada, true);
   const [{ aprovacao: col }] = (await pg.query('SELECT aprovacao FROM tenants WHERE id = $1', [tenantId])).rows;

@@ -33,6 +33,11 @@ function dataValida(s) {
 function alvoValido(a) {
   if (!a || typeof a !== 'object' || a.tipo === 'todas') return { tipo: 'todas' };
   if (a.tipo === 'grupo' && corta(a.nome, 60)) return { tipo: 'grupo', nome: corta(a.nome, 60) };
+  // As lojas do membro (fase 13): o "todas as TVs" de quem só vê algumas lojas (server/routes/calendario.js).
+  if (a.tipo === 'grupos' && Array.isArray(a.nomes)) {
+    const nomes = [...new Set(a.nomes.map((x) => corta(x, 60)).filter(Boolean))].slice(0, 50);
+    if (nomes.length) return { tipo: 'grupos', nomes };
+  }
   if (a.tipo === 'telas' && Array.isArray(a.ids)) {
     const ids = a.ids.map((x) => String(x || '')).filter((x) => /^[A-Za-z0-9_-]{1,64}$/.test(x)).slice(0, 200);
     if (ids.length) return { tipo: 'telas', ids };

@@ -252,6 +252,32 @@ test('servidor: o membro de uma loja não alcança outra, e o que ele põe na TV
   const campFora = await pedir('/api/campanhas/' + camp.id, { method: 'PUT', cookie: membro, json: { estado: 'no_ar', telas: [norte.id] } });
   assert.equal(campFora.status, 403, 'campanha posta na TV de outra loja');
   assert.equal((await db.lerCampanha(tenantId, camp.id)).estado, 'pronta');
+  // A Agenda: a data do membro fica nas lojas dele; a da conta inteira e a de outra loja ele não muda.
+  const data = (titulo, extra) => ({ data: '2030-11-27', titulo, tipo: 'campanha', antecedencia: 7, ...extra });
+  const salvarCal = (cookie, eventos) => pedir('/api/calendario', { method: 'POST', cookie, json: { eventos } });
+  const daConta = (await salvarCal(dono, [data('Black Friday', { alvo: { tipo: 'todas' }, telas: [centro.id, norte.id] })])).json.eventos[0];
+  const doNorte = (await salvarCal(dono, [data('Feira do Norte', { alvo: { tipo: 'grupo', nome: 'Loja Norte' }, telas: [norte.id] })])).json.eventos[0];
+  const vista = (await pedir('/api/calendario', { cookie: membro })).json;
+  assert.deepEqual(vista.lojas, ['Loja Centro']);
+  assert.deepEqual(vista.eventos.map((e) => [e.titulo, e.podeMudar, e.telas]), [['Black Friday', false, [centro.id]]], 'o membro viu a data da outra loja (ou as TVs dela)');
+  assert.equal((await pedir('/api/calendario', { cookie: dono })).json.eventos.length, 2);
+  for (const [ev, esperado] of [[daConta, 403], [doNorte, 404]]) {
+    assert.equal((await pedir('/api/calendario/' + ev.id, { method: 'PUT', cookie: membro, json: { ...ev, titulo: 'Mudei', telas: [centro.id] } })).status, esperado);
+    assert.equal((await pedir('/api/calendario/' + ev.id, { method: 'DELETE', cookie: membro })).status, esperado);
+    assert.equal((await salvarCal(membro, [{ ...ev, titulo: 'Mudei pelo POST' }])).status, 403);
+  }
+  // Pôr na programação: o "todas as TVs" dele vira as lojas dele; outra loja, nem pelo alvo nem pelas TVs.
+  for (const extra of [{ alvo: { tipo: 'grupo', nome: 'Loja Norte' } }, { alvo: { tipo: 'telas', ids: [norte.id] } }, { telas: [norte.id] }, { alvo: { tipo: 'grupos', nomes: ['Loja Centro', 'Loja Norte'] } }]) {
+    assert.equal((await salvarCal(membro, [data('Ok', { alvo: { tipo: 'todas' } }), data('Invasão', extra)])).status, 403, JSON.stringify(extra));
+  }
+  assert.equal((await pedir('/api/calendario', { cookie: dono })).json.eventos.length, 2, 'a lista recusada gravou alguma data');
+  const minha = (await salvarCal(membro, [data('Dia do pão', { alvo: { tipo: 'todas' } })])).json.eventos[0];
+  assert.deepEqual(minha.alvo, { tipo: 'grupos', nomes: ['Loja Centro'] });
+  assert.equal((await pedir('/api/calendario/' + minha.id, { method: 'PUT', cookie: membro, json: { ...minha, telas: [centro.id], aplicado: true } })).status, 200);
+  assert.equal((await pedir('/api/calendario/' + minha.id, { method: 'PUT', cookie: membro, json: { ...minha, telas: [centro.id, norte.id] } })).status, 403);
+  assert.equal((await pedir('/api/calendario', { cookie: membro })).json.eventos.find((e) => e.id === minha.id).podeMudar, true);
+  assert.equal((await pedir('/api/calendario/' + minha.id, { method: 'DELETE', cookie: membro })).status, 200);
+  assert.equal((await pedir('/api/calendario', { cookie: dono })).json.eventos.length, 2);
   // Na loja dele, sem aprovação, vai direto.
   const direto = await pedir('/api/lote', { method: 'POST', cookie: membro, json: { itens: [{ id: centro.id, config: cfg('Centro direto'), versao: await versao(centro, membro) }] } });
   assert.equal(direto.status, 200);
