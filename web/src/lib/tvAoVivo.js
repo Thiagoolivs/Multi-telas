@@ -20,7 +20,7 @@ export const SCRIPTS_DA_TV = [
   'js/perf.js', 'js/vendor/gsap.min.js', 'js/cor.js', 'js/fontes.js', 'js/peca.js', 'js/animacao.js', 'js/tokens.js',
   'js/peca-html.js', 'js/peca-render.js', 'js/templates.js', 'js/theme.js', 'js/datas-br.js', 'js/seasons.js',
   'js/adaptive.js', 'js/expediente.js', 'js/storage.js', 'js/news.js', 'js/graficos.js', 'js/precos.js', 'js/quiz.js',
-  'js/render.js', 'js/exibicoes.js', 'js/cloud.js', 'js/rodizio.js', 'js/player.js',
+  'js/render.js', 'js/ambiente.js', 'js/exibicoes.js', 'js/cloud.js', 'js/senha.js', 'js/rodizio.js', 'js/player.js',
 ];
 
 /*

@@ -2036,8 +2036,8 @@ async function apagarTenant(tenantId) {
      * apagar não tem volta, guardar e decidir o prazo depois tem (revisão do
      * consultor; o prazo é do dono com o advogado).
      */
-    // A chamada de senha (fase 12) e a fase 13 vão na frente: a lista de baixo é a de antes.
-    for (const tabela of ['senha_filas', 'senha_chamadas', 'aprovacoes', 'acesso_lojas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
+    // As fases 12 e 13 vão na frente (os pedidos, as lojas e a senha): a lista de baixo é a de antes.
+    for (const tabela of ['aprovacoes', 'acesso_lojas', 'senha_filas', 'senha_chamadas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'planilhas', 'pacotes_pagos', 'calendario', 'lotes',
       'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
