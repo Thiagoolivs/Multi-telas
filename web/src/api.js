@@ -749,6 +749,14 @@ function lerEmLote(id) {
     leituraJunta.pedidos.set(id, fila);
   });
 }
+// A chamada de senha (fase 12): a recepção chama e a TV da sala de espera mostra (server/routes/senha.js).
+export const senhas = {
+  fila: (grupo) => api('GET', '/api/senha' + (grupo ? '?grupo=' + encodeURIComponent(grupo) : '')),
+  proxima: (corpo) => api('POST', '/api/senha/proxima', corpo),
+  chamar: (corpo) => api('POST', '/api/senha/chamar', corpo),
+  rechamar: (grupo) => api('POST', '/api/senha/rechamar', { grupo }),
+  zerar: (grupo) => api('POST', '/api/senha/zerar', { grupo }),
+};
 
 export const telaAgora = {
   pedir: (id) => api('POST', '/api/devices/' + id + '/comando', { acao: 'estado' }),

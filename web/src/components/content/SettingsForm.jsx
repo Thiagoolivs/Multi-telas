@@ -13,6 +13,8 @@ import { cn } from '../../lib/cn.js';
 import { FUNDOS_TV, corDoFundo } from '../../lib/fundoDaTV.js';
 import { zonasQueSaem } from '../../lib/ajusteTela.js';
 import { usePerfil } from '../../lib/perfil.js';
+// Modo ambiente e chamada de senha (fases 9 e 12): componente à parte, uma linha aqui.
+import { AmbienteESenha } from './AmbienteESenha.jsx';
 
 /*
  * AJUSTES DA TELA, POR TAREFA (EXECUTOR §2c, item 33).
@@ -262,6 +264,8 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
 
           {/* Vestir a tela com a data de hoje (item 44): saiu do topo da TV no item 35, e mora aqui. Some quando não há data. */}
           {dataDeHoje}
+
+          <AmbienteESenha settings={s} onChange={set} />
 
           {/* O fundo da TV (item 41): o que fica atrás das peças, e o cabeçalho e o rodapé automáticos. */}
           <div>

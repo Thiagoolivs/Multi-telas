@@ -64,6 +64,8 @@ const SeusConteudosPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'Se
 const AppsPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'AppsPage');
 // Fase 13: a fila de aprovação (o dono aprova pelo celular; o membro vê a resposta).
 const AprovacoesPage = pagina(() => import('./pages/AprovacoesPage.jsx'), 'AprovacoesPage');
+// Fase 12: a chamada de senha (a recepção chama, a TV da sala de espera mostra).
+const SenhaPage = pagina(() => import('./pages/SenhaPage.jsx'), 'SenhaPage');
 
 const META = {
   overview: { title: 'Início' },
@@ -94,6 +96,7 @@ const META = {
   relatorio: { title: 'Relatório de exibição', subtitle: 'O que passou, quantas vezes e em qual tela — contado pela própria TV.' },
   indicadores: { title: 'Indicadores', subtitle: 'Os números da empresa na TV, sempre atualizados.' },
   planilhas: { title: 'Preços da planilha', subtitle: 'O preço muda na planilha e a TV muda junto.' },
+  senha: { title: 'Chamada de senha' },
   support: { title: 'Suporte', subtitle: 'Dúvidas frequentes e contato.' },
   // Mídias por propósito (item 34). 'storage' segue como endereço: é Fotos e vídeos.
   pecas: { title: 'Peças prontas' },
@@ -150,7 +153,7 @@ function useTheme() {
  * que qualquer um escreve.
  */
 // campanhas, pecas, musicas e ia entraram no D3: recarregar nessas páginas caía na Visão geral.
-const ATALHOS = ['prontos', 'seus', 'apps', 'criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio', 'indicadores', 'planilhas',
+const ATALHOS = ['prontos', 'seus', 'apps', 'criar', 'campanhas', 'screens', 'programacao', 'designs', 'brand', 'mural', 'billing', 'alerts', 'relatorio', 'indicadores', 'planilhas', 'senha',
   'team', 'aprovacoes', 'storage', 'pecas', 'telasprontas', 'calendario', 'musicas', 'ia', 'banco', 'birthdays', 'support', 'settings'];
 
 /*
@@ -346,6 +349,7 @@ export default function App() {
       case 'relatorio': return <RelatorioPage onIrParaPlano={() => go('billing')} />;
       case 'indicadores': return <IndicadoresPage />;
       case 'planilhas': return <PlanilhasPage />;
+      case 'senha': return <SenhaPage onIr={go} />;
       case 'billing': return <BillingPage onFalarComVendas={() => go('support')} />;
       case 'system': return <SystemPage />;
       case 'platform': return <PlatformPage />;

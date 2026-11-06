@@ -142,6 +142,16 @@ async function init() {
       id TEXT PRIMARY KEY, tenant_id TEXT, descricao TEXT, telas TEXT, created_at BIGINT, desfeito_em BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_lotes_tenant ON lotes(tenant_id, created_at);
+    -- A chamada de senha da Saúde (fase 12); ver db-sqlite.js.
+    CREATE TABLE IF NOT EXISTS senha_filas (
+      tenant_id TEXT, grupo TEXT, prefixo TEXT, numero INTEGER, dia TEXT, atualizado_em BIGINT,
+      PRIMARY KEY (tenant_id, grupo, prefixo)
+    );
+    CREATE TABLE IF NOT EXISTS senha_chamadas (
+      id TEXT PRIMARY KEY, tenant_id TEXT, grupo TEXT, prefixo TEXT, numero INTEGER,
+      local_tipo TEXT, local_num INTEGER, tipo TEXT, dia TEXT, em BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_senha_chamadas_dia ON senha_chamadas(tenant_id, dia, em);
     -- Coluna oculta em vez de DELETE: o botão de pânico precisa ser
     -- instantâneo e reversível. Apagar arquivo de storage no meio de um evento
     -- é irreversível e lento justamente quando a pressa é máxima.
@@ -1981,6 +1991,8 @@ async function dadosDoTenant(tenantId) {
     // Fase 13: os pedidos de aprovação e as lojas de cada membro.
     pedidosDeAprovacao: await varios('SELECT * FROM aprovacoes WHERE tenant_id = $1'),
     lojasDaEquipe: await varios('SELECT user_id, grupos, updated_at FROM acesso_lojas WHERE tenant_id = $1'),
+    // A chamada de senha (fase 12): só senha, lugar e hora.
+    chamadasDeSenha: await varios('SELECT grupo, prefixo, numero, local_tipo, local_num, tipo, em FROM senha_chamadas WHERE tenant_id = $1'),
   };
 }
 
@@ -2024,7 +2036,8 @@ async function apagarTenant(tenantId) {
      * apagar não tem volta, guardar e decidir o prazo depois tem (revisão do
      * consultor; o prazo é do dono com o advogado).
      */
-    for (const tabela of ['aprovacoes', 'acesso_lojas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
+    // A chamada de senha (fase 12) e a fase 13 vão na frente: a lista de baixo é a de antes.
+    for (const tabela of ['senha_filas', 'senha_chamadas', 'aprovacoes', 'acesso_lojas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
       'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'planilhas', 'pacotes_pagos', 'calendario', 'lotes',
       'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
@@ -2198,8 +2211,45 @@ async function decidirConteudo(tipo, id, estado, por) {
   [tipo, id, estado, por || '', Date.now()]);
 }
 
+/* A chamada de senha (fase 12); ver db-sqlite.js. "Chamar a próxima" é um comando só (UPSERT ... RETURNING). */
+async function senhaProxima(tenantId, grupo, prefixo, dia, agora) {
+  const r = await pool.query(`INSERT INTO senha_filas (tenant_id, grupo, prefixo, numero, dia, atualizado_em) VALUES ($1, $2, $3, 1, $4, $5)
+    ON CONFLICT (tenant_id, grupo, prefixo) DO UPDATE SET
+      numero = CASE WHEN senha_filas.dia = EXCLUDED.dia AND senha_filas.numero < 999 THEN senha_filas.numero + 1 ELSE 1 END,
+      dia = EXCLUDED.dia, atualizado_em = EXCLUDED.atualizado_em
+    RETURNING numero`, [tenantId, grupo, prefixo, dia, agora]);
+  return Number(r.rows[0].numero);
+}
+async function senhaRegistrar(tenantId, c) {
+  const linha = { id: 'sc_' + rid(12), tenant_id: tenantId, grupo: c.grupo, prefixo: c.prefixo, numero: c.numero,
+    local_tipo: c.localTipo, local_num: c.localNum, tipo: c.tipo, dia: c.dia, em: c.em };
+  await pool.query('INSERT INTO senha_chamadas (id, tenant_id, grupo, prefixo, numero, local_tipo, local_num, tipo, dia, em) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+    [linha.id, tenantId, linha.grupo, linha.prefixo, linha.numero, linha.local_tipo, linha.local_num, linha.tipo, linha.dia, linha.em]);
+  await pool.query('DELETE FROM senha_chamadas WHERE tenant_id = $1 AND em < $2', [tenantId, c.em - 3 * 24 * 60 * 60 * 1000]);
+  return linha;
+}
+async function senhaChamadas(tenantId, grupos, dia, limite) {
+  const gs = grupos && grupos.length ? grupos : [''];
+  return (await pool.query('SELECT * FROM senha_chamadas WHERE tenant_id = $1 AND dia = $2 AND grupo = ANY($3::text[]) ORDER BY em DESC LIMIT $4',
+    [tenantId, dia, gs, Number(limite) || 12])).rows;
+}
+async function senhaFilas(tenantId, grupo) {
+  return (await pool.query('SELECT prefixo, numero, dia FROM senha_filas WHERE tenant_id = $1 AND grupo = $2', [tenantId, grupo])).rows;
+}
+async function senhaZerar(tenantId, grupo) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM senha_chamadas WHERE tenant_id = $1 AND grupo = $2', [tenantId, grupo]);
+    await client.query('DELETE FROM senha_filas WHERE tenant_id = $1 AND grupo = $2', [tenantId, grupo]);
+    await client.query('COMMIT');
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}
+
 module.exports = {
   decisoesDoConteudo, decidirConteudo,
+  senhaProxima, senhaRegistrar, senhaChamadas, senhaFilas, senhaZerar,
   listarCalendario, eventoDoCalendario, salvarEvento, removerEvento,
   salvarLote, loteDaConta, marcarLoteDesfeito, listarLotes,
   setAprovacaoDaConta, criarAprovacao, lerAprovacao, listarAprovacoes, contarAprovacoes, mudarEstadoDaAprovacao, substituirAprovacoes, marcarAprovacoesVistas,
