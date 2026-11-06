@@ -160,7 +160,23 @@ test('item 34: Mídias por propósito, com as peças prontas e o disco discreto'
   const p = semComentarios(ler('web/src/pages/PecasProntasPage.jsx'));
   assert.match(p, /<PorNaTV peca=\{porNaTv\} telas=\{telas\}/);
   assert.match(ler('web/src/components/tela/PorNaTV.jsx'), /await porPecaNasTelas\(\{ \.\.\.peca, item \}, alvos, telas\);/);
-  assert.match(p, /criar\.pecasProntas\(\)/);
+  /*
+   * Fase 10 (reteste do bloco 8: "a mesma campanha aparece em 3 lugares"):
+   * as peças das campanhas saíram de Prontos para você. A casa delas é a
+   * campanha, e é lá que cada peça tem o "Pôr na TV" de uma peça só — com o
+   * nome da campanha, como antes (o _campanha acima, que o "Pausar" usa).
+   * Prontos só traz o link. O Adicionar da página da TV continua oferecendo
+   * as peças das campanhas que cabem na parte (é um seletor, não uma lista).
+   */
+  assert.doesNotMatch(p, /criar\.pecasProntas\(\)/, 'as peças das campanhas voltaram a ser listadas fora da campanha');
+  assert.match(p, /onClick=\{\(\) => onIr && onIr\('campanhas'\)\}>Campanhas<\/button>/);
+  const k = semComentarios(ler('web/src/pages/CampanhasPage.jsx'));
+  assert.match(k, /onPorNaTv=\{setPorNaTv\} \/>/);
+  assert.match(k, /<PorNaTV peca=\{porNaTv\} telas=\{telas\}/);
+  const r = semComentarios(ler('web/src/components/criar/ResultadoCampanha.jsx'));
+  assert.match(r, /onPorNaTv\(\{ item: \{ \.\.\.p\.item, formato: p\.formato \|\| p\.item\.formato \}, papel: faixa \|\| p\.papel, formato: p\.formato, label: p\.label, campanha: campanha\.nome \}\)/);
+  for (const z of ['Cabeçalho', 'Principal', 'Lateral', 'Rodapé']) assert.match(r, new RegExp('<Zona titulo="' + z + '"[^>]*onPorNaTv=\\{porNaTv\\}'), z);
+  assert.match(semComentarios(ler('web/src/components/content/TypePicker.jsx')), /criar\.pecasProntas\(\)/);
 });
 
 test('item 35: a data de hoje é ideia no Criar e no Início, não aviso no topo da TV', async () => {

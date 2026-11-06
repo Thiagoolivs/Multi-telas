@@ -31,9 +31,8 @@ export const PAGINAS = {
   designs: 'Peças guardadas',
   telasprontas: 'Telas prontas',
   pecas: 'Peças prontas',
-  // Fase 7: a Biblioteca única — o que está pronto, o que é seu, os arquivos e os Apps.
+  // Fase 7: a Biblioteca única. Fase 10: as abas são as páginas (Prontos, Campanhas, Peças guardadas…), sem partes dentro.
   prontos: 'Prontos para você',
-  seus: 'Seus conteúdos',
   apps: 'Apps',
   // Fotos e vídeos, Músicas e Da IA viraram uma aba só, com filtro (QA de 26/10).
   storage: 'Fotos e vídeos',
@@ -80,14 +79,19 @@ export const GRUPOS = [
   // Agenda: as datas e o que tem período (a semana visual é a fase 8).
   { id: 'agenda', label: 'Agenda', paginas: ['calendario'] },
   /*
-   * Biblioteca: tudo que pode ir para a TV, uma vez só. Quatro abas no máximo:
-   * o que está pronto, o que é seu, as fotos e vídeos (com as músicas) e,
-   * no Comércio e na Saúde, os Apps (aniversários, mural e indicadores).
-   * As páginas de antes continuam como partes delas.
+   * Biblioteca: tudo que pode ir para a TV, uma vez só, e cada coisa num
+   * lugar. Fase 10 (reteste do bloco 8): eram até 4 níveis (Biblioteca ›
+   * Prontos › Peças soltas › TV deitada), porque as abas tinham partes
+   * dentro. Agora cada aba é a própria página, e dentro dela só um filtro:
+   *   Prontos para você — as telas inteiras e as peças, na marca da conta;
+   *   Campanhas — o que a IA criou; a campanha é a casa das peças dela;
+   *   Peças guardadas — o que a pessoa guardou;
+   *   Fotos e vídeos — os arquivos (com as músicas);
+   *   e, no Comércio e na Saúde, os Apps (gruposDa).
    */
-  { id: 'midias', label: 'Biblioteca', paginas: ['prontos', 'seus', 'storage'],
+  { id: 'midias', label: 'Biblioteca', paginas: ['prontos', 'campanhas', 'designs', 'storage'],
     // A chamada de senha (fase 12) é um dos Apps: acende a Biblioteca; na Saúde, também está no topo (Topbar).
-    tambem: ['apps', 'planilhas', 'telasprontas', 'pecas', 'campanhas', 'designs', 'studio', 'campaigns', 'images', 'musicas', 'ia', 'banco', 'senha'] },
+    tambem: ['apps', 'planilhas', 'telasprontas', 'pecas', 'studio', 'campaigns', 'images', 'musicas', 'ia', 'banco', 'senha'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },
   // Pessoas: item do menu na Empresas; no Comércio e na Saúde, os Apps da Biblioteca (gruposDa).
   { id: 'extras', label: 'Pessoas', paginas: ['birthdays', 'mural', 'indicadores'] },
@@ -138,7 +142,10 @@ export function grupoNaFrente(pagina, frente) {
  * escreve.
  */
 // Nomes novos para páginas que mantêm o endereço antigo, e grupos que mudaram de nome.
-const APELIDOS = { criados: 'campanhas', automaticos: 'birthdays', relatorios: 'relatorio', biblioteca: 'prontos', pessoas: 'birthdays' };
+// Fase 10: "Seus conteúdos" deixou de ser aba (eram as partes Campanhas e Peças guardadas); o endereço abre as Campanhas.
+// Os nomes antigos de Meus Designs (studio, campaigns, images) abrem as Peças guardadas.
+const APELIDOS = { criados: 'campanhas', automaticos: 'birthdays', relatorios: 'relatorio', biblioteca: 'prontos', pessoas: 'birthdays', seus: 'campanhas',
+  studio: 'designs', campaigns: 'designs', images: 'designs' };
 
 export function paginaDoIr(ir) {
   if (!ir) return null;

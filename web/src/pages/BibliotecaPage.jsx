@@ -1,52 +1,21 @@
-import React, { Suspense, lazy, useState } from 'react';
+import React from 'react';
 import { Users, Images, BarChart3, Sheet, ChevronRight, Megaphone } from 'lucide-react';
-import { Partes } from '../components/ui/Partes.jsx';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { usePerfil } from '../lib/perfil.js';
 
 /*
  * A BIBLIOTECA ÚNICA (fase 7; BLOCO-8, 4.2). A mesma peça aparecia em
  * Criados, Peças prontas e Meus Designs, e o dono não sabia onde procurar.
- * Agora são quatro abas: o que está pronto para você, o que é seu, as fotos
- * e vídeos e (no Comércio e na Saúde) os Apps. As páginas de antes continuam
- * — viraram partes destas, e os endereços antigos abrem a parte certa.
+ *
+ * Fase 10 (reteste do bloco 8): eram até 4 níveis (Biblioteca › Prontos ›
+ * Peças soltas › TV deitada), com partes dentro das abas. Agora as abas da
+ * Biblioteca são as próprias páginas, sem parte nenhuma dentro:
+ *   Prontos para você (telas inteiras e peças, com um filtro só) ·
+ *   Campanhas (a casa das peças de cada campanha) · Peças guardadas ·
+ *   Fotos e vídeos · e, no Comércio e na Saúde, os Apps.
+ * O menu está em lib/menu.js; os endereços antigos (?ir=seus, ?ir=pecas,
+ * ?ir=telasprontas) abrem a aba nova (App.jsx, naBiblioteca).
  */
-const TelasProntasPage = lazy(() => import('./TelasProntasPage.jsx').then((m) => ({ default: m.TelasProntasPage })));
-const PecasProntasPage = lazy(() => import('./PecasProntasPage.jsx').then((m) => ({ default: m.PecasProntasPage })));
-const CampanhasPage = lazy(() => import('./CampanhasPage.jsx').then((m) => ({ default: m.CampanhasPage })));
-const MyDesignsPage = lazy(() => import('./MyDesignsPage.jsx').then((m) => ({ default: m.MyDesignsPage })));
-
-const Carregando = () => <div className="py-10 text-center text-sm text-ink-3">Abrindo…</div>;
-
-// Prontos para você: a tela inteira pronta ou a peça solta, na marca da conta.
-export function ProntosPage({ onIr, telaAlvo, parte }) {
-  const [aba, setAba] = useState(parte === 'pecas' ? 'pecas' : 'telas');
-  return (
-    <div>
-      <Partes rotulo="O que está pronto" valor={aba} onChange={setAba}
-        opcoes={[['telas', 'Telas inteiras'], ['pecas', 'Peças soltas']]} />
-      <Suspense fallback={<Carregando />}>
-        {aba === 'telas' ? <TelasProntasPage onIr={onIr} telaAlvo={telaAlvo} /> : <PecasProntasPage onIr={onIr} />}
-      </Suspense>
-    </div>
-  );
-}
-
-// Seus conteúdos: o que a IA criou para você (as campanhas) e as peças que você guardou.
-export function SeusConteudosPage({ onIr, parte, campanha, pedido }) {
-  const [aba, setAba] = useState(parte === 'pecas' ? 'pecas' : 'campanhas');
-  return (
-    <div>
-      <Partes rotulo="Seus conteúdos" valor={aba} onChange={setAba}
-        opcoes={[['campanhas', 'Campanhas'], ['pecas', 'Peças guardadas']]} />
-      <Suspense fallback={<Carregando />}>
-        {aba === 'campanhas'
-          ? <CampanhasPage key={campanha || ''} campanhaInicial={campanha} pedidoInicial={pedido} onIr={onIr} />
-          : <MyDesignsPage onIr={onIr} />}
-      </Suspense>
-    </div>
-  );
-}
 
 /*
  * Apps: os conteúdos que se atualizam sozinhos (aniversários, o mural de

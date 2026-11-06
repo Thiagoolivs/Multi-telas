@@ -24,7 +24,7 @@ export function AbasDoGrupo({ active, onNavigate }) {
     <>
     {/*
       Fase 8, o celular: as abas que não cabem viram um seletor (BLOCO-8 §2.9:
-      "Prontos para você | Seus conteúdos | Fotos e…" cortava no meio).
+      "Prontos para você | Campanhas | Peças guardadas…" cortava no meio).
     */}
     <div className="mb-3 sm:hidden">
       <Select aria-label={grupo.label} value={active} onChange={(e) => onNavigate(e.target.value)} className="font-semibold">
