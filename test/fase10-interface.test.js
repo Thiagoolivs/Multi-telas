@@ -108,9 +108,17 @@ test('conteúdo pronto pelo ramo: a padaria não vê óculos de sol nem coloraç
   // As telas inteiras também.
   const t = semComentarios(ler('web/src/pages/TelasProntasPage.jsx'));
   assert.match(t, /const deOutroNegocio = \(t\) => !!doRamo && !doRamo\.includes\(t\.marca\) && !\(t\.ramos \|\| \[\]\)\.includes\(marca\.ramo\);/);
-  // O título casa com a aba.
-  assert.match(ler('web/src/pages/PecasProntasPage.jsx'), />Peças soltas<\/h1>/);
-  assert.match(ler('web/src/pages/TelasProntasPage.jsx'), />Telas inteiras<\/h1>/);
+  /*
+   * O título casa com a aba. Fase 10 (reteste do bloco 8, "a Biblioteca tem
+   * 4 níveis"): "Telas inteiras" e "Peças soltas" deixaram de ser partes da
+   * aba e viraram uma grade só, com o filtro; o título é o da aba.
+   */
+  assert.match(ler('web/src/pages/PecasProntasPage.jsx'), />Prontos para você<\/h1>/);
+  assert.match(ler('web/src/lib/menu.js'), /prontos: 'Prontos para você',/);
+  // E a tela inteira de outro negócio segue a mesma regra dos modelos na grade: só com o botão.
+  const g = ler('web/src/pages/PecasProntasPage.jsx');
+  assert.match(g, /telasDaConta\(dados, marca, perfil\.id, telas, false\)/);
+  assert.match(g, /deOutros \? telasProntas\.outros\.map\(daTela\)\.concat\(grupos\.outros\.map\(doModelo\)\) : \[\]/);
 });
 
 test('a página da TV em frases: as partes com nome de gente, sem "Zonas", "ciclo" nem "Composição"', async () => {

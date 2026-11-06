@@ -527,7 +527,7 @@ export function CriacaoRapidaPage({ opcaoInicial, telaInicial, onIr }) {
           <div className="space-y-4 p-4">
             {/* Sem TV ainda: o próximo passo é ligar uma (PLANO §5.3) — e a peça vai junto no pareamento. */}
             {!pronto.nTelas && (
-              <ProximoPasso feito="A peça está pronta." proximo="ligar a TV; depois é só pôr esta peça nela, pela Biblioteca › Seus conteúdos." acao="Ligar a TV"
+              <ProximoPasso feito="A peça está pronta." proximo="ligar a TV; depois é só pôr esta peça nela, pela Biblioteca › Peças guardadas." acao="Ligar a TV"
                 onIr={() => onIr && onIr('screens', { abrirParear: true })} />
             )}
             <div className="flex items-center gap-2 text-sm text-ink">

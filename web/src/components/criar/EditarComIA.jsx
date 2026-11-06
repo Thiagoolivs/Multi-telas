@@ -152,7 +152,7 @@ export function EditarComIA({ campanha, onMudou, textoInicial }) {
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
             placeholder="O que você quer mudar?"
             className="min-w-0 flex-1 resize-none rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent" />
-          <Button variant="primary" icon={Send} disabled={!texto.trim() || !!etapa} onClick={() => enviar()} aria-label="Mandar" />
+          <Button variant="secondary" icon={Send} disabled={!texto.trim() || !!etapa} onClick={() => enviar()} aria-label="Mandar" />
         </div>
         {temAnterior && !etapa && (
           <button type="button" onClick={desfazer} className="flex items-center gap-1 text-xs text-ink-2 hover:text-ink"><Undo2 size={12} /> Desfazer o último passo</button>

@@ -296,7 +296,9 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
   - **Site e e-mails:** a página 404 com título e links; os 6 e-mails com a mesma moldura, a logo e o rodapé.
   - **Base:** o 429 vira "Muitos pedidos desta conta agora", sem "Sem conexão"; Telas de 29 para 5 pedidos e Programação de 30 para 6; apagar a peça de outra conta responde 404.
   - **Interface:** o "Na TV agora" é o próprio player em miniatura; o conteúdo pronto pelo tipo de negócio; "Escolher um modelo" abre um editor simples, com um campo por texto.
-  - **Falta:** a Biblioteca ainda tem 4 níveis e a mesma campanha aparece em 3 lugares; os nomes dos layouts em Ajustes; as telas prontas esperam a sua aprovação na galeria.
+  - **A Biblioteca em 2 níveis:** as abas são as próprias páginas (Prontos para você, Campanhas, Peças guardadas, Fotos e vídeos e, no Comércio e na Saúde, Apps), sem partes dentro. Prontos junta as telas inteiras e as peças numa grade só, com um filtro (Tudo, Telas inteiras, TV deitada, TV em pé, Cabeçalho e rodapé). Os endereços antigos abrem o lugar novo.
+  - **A campanha num lugar só:** as peças dela só aparecem dentro da campanha, cada uma com o "Pôr na TV" de uma peça só. Prontos e a pasta de mesmo nome em Peças guardadas levam até ela.
+  - **Falta:** os nomes dos layouts em Ajustes; as telas prontas esperam a sua aprovação na galeria.
 - [x] **Lote 3 de design (06/11), esperando a sua aprovação na galeria:**
   - **26 peças-ouro novas:** 8 de Empresas (meta, turno, EPI, ramais, cardápio da semana…), 7 de Saúde (Novembro Azul, preparo de exame, convênios, vacina, tempo de espera…), 8 de Comércio (oferta relâmpago com contagem, kit, fidelidade, delivery, Wi-Fi com QR…) e 3 de modo ambiente. Nenhum texto de saúde com preço, desconto ou promessa.
   - **18 telas `l3-*`:** dois formatos por negócio (padaria, restaurante, ótica, salão, farmácia, clínica, dentista, escritório, indústria), todas com a letra inteira na bancada.

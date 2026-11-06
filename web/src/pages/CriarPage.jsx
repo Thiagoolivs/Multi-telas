@@ -252,7 +252,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     setVersaoDaLista((v) => v + 1);
     if (!montada.current) return;
     nova();
-    aviso.ok('Pronta e salva em Seus conteúdos.');
+    aviso.ok('Pronta e salva na Biblioteca, em Campanhas.');
     if (onIr) onIr('campanhas', { campanha: c.id });
   }
 
@@ -373,7 +373,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
     // A conversa que virou campanha não continua aqui: mudar é em Criados (D47).
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-ok/30 bg-ok-soft px-3 py-2.5 text-sm text-ink">
       <CheckCircle2 size={16} className="shrink-0 text-ok" />
-      <span className="min-w-0 flex-1">Esta conversa virou uma campanha. Para mudar alguma coisa, abra em Seus conteúdos.</span>
+      <span className="min-w-0 flex-1">Esta conversa virou uma campanha. Para mudar alguma coisa, abra a campanha.</span>
       {conversa.campanhaId && onIr && (
         <Button size="sm" variant="primary" onClick={() => onIr('campanhas', { campanha: conversa.campanhaId })}>
           Abrir a campanha <ArrowRight size={14} className="ml-1" />
@@ -420,7 +420,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
             <Spinner size={26} />
             <div className="text-sm font-semibold text-ink">{gerando.etapa || 'criando'}</div>
             {gerando.detalhe && <div className="text-xs text-ink-3">{gerando.detalhe}</div>}
-            <div className="tnum text-2xs text-ink-3">{gerando.segundos || 0}s · pode sair desta tela: a criação continua e fica salva em Seus conteúdos.</div>
+            <div className="tnum text-2xs text-ink-3">{gerando.segundos || 0}s · pode sair desta tela: a criação continua e fica salva na Biblioteca, em Campanhas.</div>
             {/* D11: o andamento também fica em Criando, e o aviso chega em qualquer página. */}
             {onIr && <button type="button" onClick={() => onIr('criando')} className="text-xs font-medium text-accent hover:underline">Acompanhar em Criando e seguir usando o painel</button>}
           </div>
@@ -590,7 +590,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
                 <p className="text-xs text-ink-3">
                   O que ficou pronto está em{' '}
-                  <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('campanhas')}>Seus conteúdos</button>.
+                  <button type="button" className="font-medium text-accent hover:underline" onClick={() => onIr && onIr('campanhas')}>Biblioteca › Campanhas</button>.
                 </p>
               </>
             )}

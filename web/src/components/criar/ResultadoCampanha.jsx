@@ -22,6 +22,11 @@ import { cn } from '../../lib/cn.js';
  * uma CONVERSA ao lado das peças (EditarComIA): pergunta quando não entende,
  * muda só o que foi pedido, lembra o que já foi dito, e "Desfazer" volta o
  * último passo.
+ *
+ * A CASA DAS PEÇAS DA CAMPANHA (fase 10, reteste do bloco 8: "a mesma
+ * campanha aparece em 3 lugares"). As peças dela apareciam também nas Peças
+ * soltas, só para ter o "Pôr na TV" de uma peça. Agora esse "Pôr na TV" mora
+ * aqui, em cada peça (`onPorNaTv`), e os outros lugares trazem um link para cá.
  */
 
 const FAIXA = { manha: 'Manhã', almoco: 'Almoço', tarde: 'Tarde', saida: 'Fim do dia', dia: 'O dia todo' };
@@ -137,7 +142,7 @@ function Letreiro({ rotulo, mensagens, onSalvar }) {
   );
 }
 
-function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, onEditar, onLetreiro }) {
+function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, onEditar, onLetreiro, onPorNaTv }) {
   if (!pecas.length && !(mensagens && mensagens.length) && !onLetreiro) return null;
   if (faixa && !pecas.length && !(mensagens && mensagens.length)) return null;
   const legenda = (p) => (
@@ -145,11 +150,19 @@ function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, on
       <Numero n={numeros[p.vaga]} />
       {p.horario && <><Clock size={10} /> {quando(p.horario)}</>}
       {querFoto && !p.comFoto && (p.zona === 'principal' || p.zona === 'lateral') && <span className="flex items-center gap-0.5"><ImageOff size={10} /> sem foto</span>}
-      {onEditar && (
-        <button type="button" onClick={() => onEditar(p)} className="ml-auto flex items-center gap-0.5 rounded px-1 py-0.5 text-ink-2 hover:bg-surface-2 hover:text-ink">
-          <Pencil size={10} /> Editar
-        </button>
-      )}
+      <span className="ml-auto flex items-center gap-0.5">
+        {/* Só esta peça, numa TV, com o "Quando" (o mesmo diálogo das peças prontas). */}
+        {onPorNaTv && (
+          <button type="button" onClick={() => onPorNaTv(p, faixa)} className="flex items-center gap-0.5 rounded px-1 py-0.5 text-ink-2 hover:bg-surface-2 hover:text-ink max-sm:px-2 max-sm:py-1.5">
+            <MonitorPlay size={10} /> Pôr na TV
+          </button>
+        )}
+        {onEditar && (
+          <button type="button" onClick={() => onEditar(p)} className="flex items-center gap-0.5 rounded px-1 py-0.5 text-ink-2 hover:bg-surface-2 hover:text-ink max-sm:px-2 max-sm:py-1.5">
+            <Pencil size={10} /> Editar
+          </button>
+        )}
+      </span>
     </div>
   );
   return (
@@ -181,7 +194,7 @@ function Zona({ titulo, pecas, faixa, mensagens, contagem, querFoto, numeros, on
 }
 
 // A caixa de ajuste: o chat continua depois de gerar.
-export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, onMudou, pedidoInicial }) {
+export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, onMudou, pedidoInicial, onPorNaTv }) {
   const [redesDe, setRedesDe] = useState(null);
   const [editando, setEditando] = useState(null);
   const r = (campanha && campanha.resultado) || {};
@@ -193,6 +206,8 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
   const daRede = (r.social && todas.find((p) => p.vaga === r.social.peca)) || todas[0]
     || ((r.biblioteca || [])[0] && { item: r.biblioteca[0].item, label: r.biblioteca[0].label });
   const editar = onMudou ? setEditando : null;
+  // Uma peça só, para o Pôr na TV: a faixa vai para a faixa, e a peça leva o nome da campanha (o "Pausar" tira junto).
+  const porNaTv = onPorNaTv ? (p, faixa) => onPorNaTv({ item: { ...p.item, formato: p.formato || p.item.formato }, papel: faixa || p.papel, formato: p.formato, label: p.label, campanha: campanha.nome }) : null;
   // QA de lançamento, 03/11: com texto que a lei barra, a campanha não está "pronta" (server/conferencia.js).
   const barrada = ((r.conferencia && r.conferencia.bloqueios) || []).length > 0;
   // Salva o letreiro de uma TV (D12). No ar, a TV só muda ao pôr pra rodar de novo.
@@ -214,7 +229,7 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
           <div className="text-xs text-ink-2">
             {r.contagem ? r.contagem.pecas + (r.contagem.pecas === 1 ? ' peça' : ' peças') : ''}
             {r.contagem && r.contagem.fotosGeradas ? ' · ' + r.contagem.fotosGeradas + (r.contagem.fotosGeradas === 1 ? ' foto gerada' : ' fotos geradas') : ''}
-            {' · salva em Seus conteúdos'}
+            {' · salva na Biblioteca, em Campanhas'}
           </div>
         </div>
         {onMudou && (
@@ -231,10 +246,10 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
       {(r.telas || []).map((t, i) => (
         <section key={i} className="space-y-3 rounded-lg border border-line bg-surface p-3">
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><MonitorPlay size={15} className="text-accent" /> {nomeDaTela(t, i)}</h3>
-          <Zona titulo="Cabeçalho" pecas={t.zonas.cabecalho.pecas} faixa="cabecalho" mensagens={t.zonas.cabecalho.mensagens} numeros={numeros} onEditar={editar} onLetreiro={letreiroDe(i, 'cabecalho')} />
-          <Zona titulo="Principal" pecas={t.zonas.principal} querFoto={querFoto} numeros={numeros} onEditar={editar} />
-          <Zona titulo="Lateral" pecas={t.zonas.lateral} querFoto={querFoto} numeros={numeros} onEditar={editar} />
-          <Zona titulo="Rodapé" pecas={t.zonas.rodape.pecas} faixa="rodape" mensagens={t.zonas.rodape.mensagens} contagem={t.zonas.rodape.contagem} numeros={numeros} onEditar={editar} onLetreiro={letreiroDe(i, 'rodape')} />
+          <Zona titulo="Cabeçalho" pecas={t.zonas.cabecalho.pecas} faixa="cabecalho" mensagens={t.zonas.cabecalho.mensagens} numeros={numeros} onEditar={editar} onPorNaTv={porNaTv} onLetreiro={letreiroDe(i, 'cabecalho')} />
+          <Zona titulo="Principal" pecas={t.zonas.principal} querFoto={querFoto} numeros={numeros} onEditar={editar} onPorNaTv={porNaTv} />
+          <Zona titulo="Lateral" pecas={t.zonas.lateral} querFoto={querFoto} numeros={numeros} onEditar={editar} onPorNaTv={porNaTv} />
+          <Zona titulo="Rodapé" pecas={t.zonas.rodape.pecas} faixa="rodape" mensagens={t.zonas.rodape.mensagens} contagem={t.zonas.rodape.contagem} numeros={numeros} onEditar={editar} onPorNaTv={porNaTv} onLetreiro={letreiroDe(i, 'rodape')} />
         </section>
       ))}
 
@@ -244,7 +259,8 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><Share2 size={15} className="text-accent" /> Redes</h3>
           <p className="text-xs text-ink-2">{r.social.canais.map((c) => E.NOME_REDE[c]).join(', ')}: a imagem é a peça principal no tamanho de cada rede, com o texto pronto.</p>
           {daRede && (
-            <Button variant="primary" icon={Share2} onClick={() => setRedesDe(daRede)}>Postar nas redes</Button>
+            // Um violeta por tela (fase 8): na campanha aberta, o violeta é o "Pôr na TV" de cima.
+            <Button variant="secondary" icon={Share2} onClick={() => setRedesDe(daRede)}>Postar nas redes</Button>
           )}
         </section>
       )}
