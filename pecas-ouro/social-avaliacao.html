@@ -82,6 +82,17 @@ h1 span:first-child { color: var(--mt-destaque); }
   .qr { width: 42cqmin; height: 42cqmin; }
   .pedido { margin-top: 4.4cqmin; font-size: max(var(--mt-piso, 0cqw), 3.8cqmin); letter-spacing: .02em; text-transform: none; line-height: 1.1; }
 }
+/*
+ * A lateral no tamanho da TV com a margem contra o corte de 2,5% ou mais
+ * (473×717 e menor): com a letra do balcão o bloco, centrado, passava do
+ * alto e do pé. Os respiros em volta do título e do QR apertam; o QR não
+ * encolhe.
+ */
+@container (max-width: 700px) and (max-height: 745px) {
+  .nota { margin-top: 3cqmin; }
+  h1 { margin: 2.6cqmin 0 2.6cqmin; padding-top: 2.6cqmin; }
+  .pedido { margin-top: 2.6cqmin; }
+}
 </style>
 <section class="mt-peca social-avaliacao">
   <div class="bloco">

@@ -43,6 +43,17 @@ h1 em { display: block; font-style: normal; color: var(--mt-destaque); white-spa
   .pe i { flex: none; align-self: stretch; height: .2cqw; }
   .assinatura { font-size: max(var(--mt-piso, 0cqw), 1.7cqw); }
 }
+/*
+ * A principal do Corporativo com a margem contra o corte de 2,5% ou mais
+ * (de 1307×728 a 1236×674): com a letra do balcão o endereço quebrava em
+ * duas linhas e subia na última linha do manifesto. O espaçado do endereço
+ * aperta (uma linha) e o pé desce um pouco; o manifesto encolhe um pouco.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 745px) {
+  h1 { margin-top: 2cqw; font-size: calc(9.2cqw * var(--mt-escala-titulo, 1)); }
+  .pe { bottom: 5cqh; }
+  .assinatura { letter-spacing: .04em; }
+}
 </style>
 <section class="mt-peca manifesto">
   <div class="marca-nome" data-campo="marca" data-repete="marca">Padaria <b>do Bairro</b></div>
