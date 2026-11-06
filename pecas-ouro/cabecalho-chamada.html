@@ -8,20 +8,32 @@
 <style>
 .mt-peca { display: flex; align-items: center; gap: 8cqh; padding: 0 3cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: var(--mt-fundo); border-bottom: 1.2cqh solid var(--mt-linha); }
-.marca { flex: none; display: flex; align-items: center; }
+.marca { flex: 0 1 auto; min-width: 0; max-width: 38%; display: flex; align-items: center; }
 .logo { height: 52cqh; width: auto; max-width: 22cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { font: 700 max(var(--mt-piso, 0cqw), 17cqh)/1.05 var(--mt-fonte-texto); letter-spacing: .26em; text-transform: uppercase; white-space: nowrap; }
+/* O espaço entre as letras é fixo: em em, ele crescia com a letra do piso e a marca longa empurrava a chamada. A marca longa quebra em duas linhas. */
+.nome { font: 700 max(var(--mt-piso, 0cqw), 17cqh)/1.1 var(--mt-fonte-texto); letter-spacing: 4.4cqh; text-transform: uppercase;
+  min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/*
+  Fase 10: no piso da TV a chamada e o "quando" se encostavam ("FIQUE
+  SABENDOESTA SEMANA"), e a chamada longa vazava da tarja por cima da marca.
+  Agora há um ponto entre os dois, o espaçamento das letras do "quando" é
+  fixo (não cresce com a letra) e nada sai da tarja.
+*/
 .chamada { flex: 1; min-width: 0; align-self: stretch; display: flex; align-items: center; justify-content: center; gap: 8cqh; margin: 14cqh 0;
+  padding: 0 14cqh; overflow: hidden;
   background: var(--mt-destaque); color: var(--mt-sobre-destaque); border-radius: var(--mt-raio); }
-.chamada span { font: 400 calc(46cqh * var(--mt-escala-titulo, 1))/1 var(--mt-fonte-titulo); letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
-.chamada small { font: 700 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; white-space: nowrap; opacity: .85; }
+.chamada span { min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  font: 400 calc(46cqh * var(--mt-escala-titulo, 1))/1.1 var(--mt-fonte-titulo); letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+.chamada small { flex: none; font: 700 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: 4.5cqh; text-transform: uppercase; white-space: nowrap; opacity: .85; }
+.chamada small::before { content: "·"; margin-right: .45em; }
 .hora { flex: none; font: 400 max(var(--mt-piso, 0cqw), 46cqh)/1 var(--mt-fonte-titulo); letter-spacing: .02em; }
 /* Faixa em pé: a largura é pouca — a chamada e a marca encolhem, o "quando" sai. */
 @container (aspect-ratio < 9) {
   .mt-peca { gap: 5cqh; }
-  .nome { font-size: max(var(--mt-piso, 0cqw), 12cqh); letter-spacing: .14em; }
+  .marca { max-width: 42%; }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 12cqh); letter-spacing: 1.7cqh; }
   .chamada { margin: 18cqh 0; }
   /* D44: em pé a faixa é estreita — a chamada quebra em duas linhas em vez de passar por cima do relógio. */
   .chamada span { font-size: max(var(--mt-piso, 0cqw), calc(30cqh * var(--mt-escala-titulo, 1))); white-space: normal; text-wrap: balance; text-align: center; padding: 0 3cqh; }

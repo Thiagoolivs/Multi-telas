@@ -161,7 +161,7 @@
    * de fundo de cartaz parece papel.
    *
    * Amarelo é a exceção de luminosidade: escurecido na mesma matiz vira oliva
-   * (o mesmo problema que js/tokens.js resolve em `matizAoEscurecer`). Ele
+   * (o mesmo problema que js/cor.js resolve em `matizAoEscurecer`). Ele
    * pode ficar mais claro que as outras cores, e o que escurece puxa para o
    * âmbar.
    */
