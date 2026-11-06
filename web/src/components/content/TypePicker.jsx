@@ -159,7 +159,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona })
       const prep = video ? await prepararVideo(f) : await prepararFoto(f);
       const av = video ? await avaliarVideo(f, prep).catch(() => null) : null;
       const r = await enviarComProgresso(prep.envio, (p) => setEnvio((e) => ({ ...e, progresso: p })));
-      onPickItem(itemDaMidia({ url: r.url, fundo: prep.fundo, video }));
+      onPickItem(itemDaMidia({ url: r.url, fundo: prep.fundo, video, nome: f.name }));
       if (av && av.pesado) { setEnvio({ pronto: true, aviso: av.aviso }); return; }
       onClose();
     } catch (e) {
@@ -251,7 +251,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona })
             {(midias || []).map((m) => {
               const video = /^video\//.test(m.mime || '');
               return (
-                <button key={m.id} type="button" onClick={() => pegar(itemDaMidia({ url: m.url, video }))}
+                <button key={m.id} type="button" onClick={() => pegar(itemDaMidia({ url: m.url, video, nome: m.name }))}
                   className="space-y-1.5 rounded-xl border border-line bg-surface p-2 text-left transition hover:border-accent/60">
                   <div className="flex h-24 items-center justify-center overflow-hidden rounded-md bg-surface-2">
                     {video ? <Film size={22} className="text-ink-3" /> : <img src={m.url} alt="" className="h-full w-full object-cover" loading="lazy" />}

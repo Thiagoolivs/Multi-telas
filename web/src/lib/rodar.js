@@ -16,7 +16,7 @@ import { deviceConfig, lote as loteApi } from '../api.js';
 import { aviso, emitir } from './avisos.js';
 import { defaultConfig } from './contentTypes.js';
 import { aplicarConteudo, removerOrigem } from './aplicarConteudo.js';
-import { zonesOf, getLayout } from './screenConfig.js';
+import { zonesOf } from './screenConfig.js';
 
 // O layout com as quatro zonas, deitado e em pé.
 export const LAYOUT_COMPLETO = { deitada: 'corporate', emPe: 'portrait-stack' };
@@ -72,7 +72,8 @@ export function zonasQueFaltam(cfg, entrada) {
 }
 
 export function layoutPara(cfg) { return emPe(cfg) ? LAYOUT_COMPLETO.emPe : LAYOUT_COMPLETO.deitada; }
-export function nomeDoLayout(id) { return (getLayout(id) || {}).name || id; }
+// O nome que a pessoa lê ("Grande + coluna + faixas"), não o do catálogo da TV ("Corporativo Completo").
+export { nomeDoLayout } from './nomesDosLayouts.js';
 
 const marcar = (p, nome) => ({ ...p.item, _campanha: nome });
 

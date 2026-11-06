@@ -160,7 +160,7 @@ export function SubirConteudo() {
        * entra inteira, com o fundo borrado, em vez de ir para a lateral estreita.
        */
       const titulo = 'Enviado ' + new Date().toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const pecas = prontos.map((x) => ({ formato: '16/9', item: comQuando(itemDaMidia({ url: x.url, fundo: x.fundo, video: x.video }), escolha) }));
+      const pecas = prontos.map((x) => ({ formato: '16/9', item: comQuando(itemDaMidia({ url: x.url, fundo: x.fundo, video: x.video, nome: x.nome }), escolha) }));
       if (alvos.length) await publicarPecas({ alvos, pecas, titulo, telas });
       setFeito({ n: prontos.length, telas: alvos.length });
       aviso.ok(alvos.length ? 'Na TV: ' + prontos.length + (prontos.length === 1 ? ' arquivo.' : ' arquivos.') : 'Guardado na Biblioteca.');

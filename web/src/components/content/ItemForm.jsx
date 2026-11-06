@@ -63,7 +63,8 @@ export function ItemForm({ item, onChange, maisAjustes, quando, maisRotulo }) {
     return (
       <Field key={f.key} label={f.label} hint={f.hint}>
         {f.kind === 'media' ? (
-          <MediaField value={value} accept={f.accept || 'image'} onChange={(v) => set(f.key, v)} />
+          // A foto ou o vídeo da peça (`src`) leva o nome do arquivo novo (é o nome na fila); o endereço colado, nenhum.
+          <MediaField value={value} accept={f.accept || 'image'} onChange={(v, nome) => (f.key === 'src' ? onChange({ ...item, src: v, nome: nome || undefined }) : set(f.key, v))} />
         ) : f.kind === 'mural' ? (
           <MuralField value={value} onChange={(v) => set(f.key, v)} />
         ) : f.kind === 'textarea' ? (
