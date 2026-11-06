@@ -70,7 +70,11 @@ test('o exemplo fixo é a biblioteca inteira do papel, igual em todo pedido — 
   const f = C.fixo('destaque');
   assert.equal(f, C.fixo('destaque'), 'o fixo mudou entre duas chamadas');
   const m = JSON.parse(ler('pecas-ouro', 'manifesto.json'));
-  for (const p of m.pecas.filter((x) => x.papeis.includes('destaque'))) assert.ok(f.includes('### ' + p.nome), p.id + ' fora dos exemplos');
+  // A biblioteca aprovada: a peça do lote novo, ainda em proposta, não ensina a IA.
+  const aprovada = (x) => !x.estado || x.estado === 'aprovada';
+  for (const p of m.pecas.filter((x) => x.papeis.includes('destaque') && aprovada(x))) assert.ok(f.includes('### ' + p.nome), p.id + ' fora dos exemplos');
+  const proposta = m.pecas.find((x) => x.papeis.includes('destaque') && !aprovada(x));
+  if (proposta) assert.ok(!f.includes('### ' + proposta.nome + ' ('), proposta.id + ' (em proposta) nos exemplos');
   assert.ok(!f.includes('Faixa fixa com chamada'), 'peça de rodapé nos exemplos de destaque');
   // O pedido do cliente nunca entra no fixo.
   assert.ok(!f.includes('Padaria do Bairro"') && !/Pedido do cliente/.test(f));
