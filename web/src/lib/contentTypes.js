@@ -113,7 +113,8 @@ export const CONTENT_TYPES = {
     // Nasce SEM preços: o conteúdo vai ao ar na hora, e preço de exemplo na
     // TV da loja pode ter que ser honrado. Os exemplos ficam só como dica.
     make: () => ({ type: 'precos', titulo: 'CARDÁPIO', colunas: 'auto', duracao: 20, rodape: '', linhas: '' }),
-    summary: (i) => (i.titulo || 'Tabela de preços') + ' · ' + String(i.linhas || '').split('\n').filter((l) => l.trim()).length + ' linha(s)',
+    // Fase 11: a tabela que lê uma planilha se atualiza sozinha (o texto é só a cópia para a TV sem rede).
+    summary: (i) => (i.titulo || 'Tabela de preços') + (i.planilha ? ' · da planilha, atualiza sozinha' : ' · ' + String(i.linhas || '').split('\n').filter((l) => l.trim()).length + ' linha(s)'),
   },
   /*
    * Quiz com cronômetro (D21): pergunta, alternativas, o tempo correndo e a
@@ -281,7 +282,8 @@ export const CONTENT_TYPES = {
     label: 'Composição (editor livre)', icon: Layout, group: 'Mídia',
     fields: [DUR], // os elementos são editados no editor visual (tela cheia)
     make: () => ({ type: 'composicao', bg: { kind: 'cor', cor: '#0a1020' }, elementos: [], duracao: 12 }),
-    summary: (i) => 'Composição (' + ((i.elementos && i.elementos.length) || 0) + ' elemento(s))',
+    // Fase 10: o título da arte (o maior texto dela), e não "Composição (4 elemento(s))".
+    summary: (i) => tituloDaArte(i) || 'Arte',
   },
   /*
    * A peça do motor novo (PLANO §4.6). Nasce na campanha com IA, não aqui:
@@ -424,6 +426,31 @@ export function semExemplo(antes, depois) {
   const meta = { ...depois.meta };
   delete meta.exemplo;
   return { ...depois, meta };
+}
+
+/*
+ * O título de uma arte do editor livre: o texto de letra maior, numa linha.
+ * É o que se lê de longe, então é o nome que a pessoa reconhece.
+ */
+export function tituloDaArte(item) {
+  const textos = ((item && item.elementos) || []).filter((e) => e && e.tipo === 'texto' && String(e.text || '').trim());
+  if (!textos.length) return '';
+  const maior = textos.reduce((a, b) => ((Number(b.tamanho) || 0) > (Number(a.tamanho) || 0) ? b : a));
+  return String(maior.text).replace(/\s+/g, ' ').trim().slice(0, 48);
+}
+
+/*
+ * O tipo da peça em uma palavra de cliente (fase 10). A lista "Adicionar"
+ * continua com os nomes dela; na página da TV, a peça é "Texto", "Foto",
+ * "Arte" — não "Texto / Comunicado" nem "Composição (editor livre)".
+ */
+const NOME_DO_TIPO = {
+  text: 'Texto', announce: 'Aviso', notice: 'Aviso', image: 'Foto', video: 'Vídeo', youtube: 'Vídeo do YouTube',
+  composicao: 'Arte', 'peca-html': 'Peça pronta', poster: 'Arte', promo: 'Oferta', precos: 'Cardápio', quote: 'Frase',
+  weatherpro: 'Clima', weather: 'Clima', clock: 'Relógio', qrcode: 'QR code', social: 'Redes sociais', kpi: 'Indicador',
+};
+export function nomeDoTipo(type) {
+  return NOME_DO_TIPO[type] || typeLabel(type);
 }
 
 export function typeLabel(type) {

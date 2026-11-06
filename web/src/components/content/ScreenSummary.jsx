@@ -2,7 +2,7 @@ import { usePerfil } from '../../lib/perfil.js';
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Palette, Sparkles, Clock, AlertTriangle, Lightbulb, Check, Info } from 'lucide-react';
 import { digest, formatarTempo } from '../../lib/screenDigest.js';
-import { cn } from '../../lib/cn.js';
+import { nomeDaParte } from '../../lib/tela.js';
 
 /*
  * "O que está nesta tela" — a resposta para "o sistema não passa segurança".
@@ -16,6 +16,7 @@ export function ScreenSummary({ cfg }) {
   const perfil = usePerfil();
   // A frente dá o local padrão da TV (fase 3): a volta certa é a do lugar.
   const d = useMemo(() => digest(cfg, null, perfil.id), [cfg, perfil.id]);
+  const layout = globalThis.MT_getLayout ? globalThis.MT_getLayout(cfg && cfg.settings && cfg.settings.layoutId) : null;
   if (!d) return null;
 
   const avisos = d.problemas.filter((p) => p.nivel === 'aviso');
@@ -26,28 +27,32 @@ export function ScreenSummary({ cfg }) {
       <button type="button" onClick={() => setAberto((o) => !o)}
         className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left">
         {aberto ? <ChevronDown size={15} className="text-ink-3" /> : <ChevronRight size={15} className="text-ink-3" />}
-        <span className="text-sm font-semibold text-ink">O que está nesta tela</span>
+        <span className="text-sm font-semibold text-ink">Resumo desta TV</span>
 
-        {/* Linha de estado: dá para entender sem abrir. */}
-        <span className="hidden min-w-0 flex-1 truncate text-xs text-ink-3 sm:block">
-          {d.layout} · {d.tema.texto}
+        {/*
+          Linha de estado: dá para entender sem abrir. Fase 10: sem o nome
+          técnico do layout ("Corporativo Completo", "Cabeçalho + 2 Zonas") e
+          sem "ciclo" — a volta da TV, em palavras.
+        */}
+        <span className="hidden min-w-0 flex-1 truncate text-sm text-ink-3 sm:block">
+          {d.tema.texto}
           {d.decoracao ? ` · ${d.decoracao}` : ''}
-          {d.cicloTotal ? ` · ciclo de ${formatarTempo(d.cicloTotal)}` : ''}
+          {d.cicloTotal ? ` · dá a volta em ${formatarTempo(d.cicloTotal)}` : ''}
         </span>
 
         <span className="ml-auto flex shrink-0 items-center gap-1.5">
           {avisos.length > 0 ? (
-            <span className="flex items-center gap-1 rounded-full bg-danger-soft px-2 py-0.5 text-2xs font-semibold text-danger">
-              <AlertTriangle size={11} /> {avisos.length}
+            <span className="flex items-center gap-1 rounded-full bg-danger-soft px-2 py-0.5 text-xs font-semibold text-danger">
+              <AlertTriangle size={12} /> {avisos.length} {avisos.length === 1 ? 'coisa a conferir' : 'coisas a conferir'}
             </span>
           ) : (
-            <span className="flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-2xs font-medium text-ink-3">
-              <Check size={11} className="text-emerald-500" /> sem problemas
+            <span className="flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-ink-3">
+              <Check size={12} className="text-emerald-500" /> tudo certo
             </span>
           )}
           {dicas.length > 0 && (
-            <span className="flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-2xs font-medium text-ink-3">
-              <Lightbulb size={11} /> {dicas.length}
+            <span className="flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-xs font-medium text-ink-3">
+              <Lightbulb size={12} /> {dicas.length} {dicas.length === 1 ? 'dica' : 'dicas'}
             </span>
           )}
         </span>
@@ -58,11 +63,11 @@ export function ScreenSummary({ cfg }) {
           <div className="grid gap-4 md:grid-cols-2">
             {/* Zonas */}
             <div>
-              <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Partes da TV</div>
+              <div className="mb-2 text-sm font-semibold text-ink">Partes da TV</div>
               <div className="space-y-1.5">
                 {d.zonas.map((z) => (
-                  <div key={z.id} className="flex items-baseline gap-2 text-xs">
-                    <span className="font-medium text-ink">{z.nome}</span>
+                  <div key={z.id} className="flex items-baseline gap-2 text-sm">
+                    <span className="font-medium text-ink">{nomeDaParte({ id: z.id, type: z.tipo, name: z.nome }, layout)}</span>
                     <span className="text-ink-3">{z.resumo}</span>
                     {z.ciclo > 0 && (
                       <span className="tnum ml-auto flex items-center gap-1 text-ink-3">
@@ -75,8 +80,8 @@ export function ScreenSummary({ cfg }) {
             </div>
 
             {/* Aparência e origem */}
-            <div className="space-y-2 text-xs">
-              <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-3">Aparência</div>
+            <div className="space-y-2 text-sm">
+              <div className="mb-2 text-sm font-semibold text-ink">Aparência</div>
               <div className="flex items-start gap-1.5 text-ink-2">
                 <Palette size={13} className="mt-0.5 shrink-0 text-ink-3" />
                 <span>

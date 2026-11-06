@@ -20,7 +20,8 @@ test('item 28: um caminho de IA só — a TV leva ao Criar, sem o formulário an
   assert.doesNotMatch(tv, />Campanha com IA</, 'o botão do formulário antigo voltou');
   assert.doesNotMatch(tv, /A IA monta tudo/);
   assert.doesNotMatch(tv, /setCampOpen\(true\)/, 'nenhum botão abre o formulário antigo');
-  assert.match(tv, /onClick=\{onCriar\}>Criar para esta TV</);
+  // Fase 10: no celular o botão diz só "Criar", na mesma linha do nome da TV.
+  assert.match(tv, /onClick=\{onCriar\}>Criar<span className="max-sm:hidden"> para esta TV<\/span></);
   assert.match(tv, /onClick=\{\(\) => onCriar && onCriar\(\)\}/, 'a tela vazia começa pelo Criar');
   // Esconder antes de apagar: o diálogo fica no código, sem botão.
   assert.match(tv, /function CampaignDialog\(/);
@@ -80,7 +81,11 @@ test('itens 30 e 31: a faixa é uma lista, as campanhas da TV se contam e se tir
   // A página da TV usa as peças da faixa, o desenho e as campanhas.
   const tv = semComentarios(ler('web/src/pages/ContentEditorPage.jsx'));
   // D20: o mapa mostra o que passa em cada zona (cfg) e tem o botão de IA dentro da zona.
-  assert.match(tv, /<MapaDaTela layout=\{layoutCanonico\} ativa=\{activeZone && activeZone\.id\} onEscolher=\{selectZone\} resumo=\{resumoDaZona\}\s+cfg=\{cfg\} onIA=\{onCriar \? \(z\) => onCriar\(papelDaZona\(z\)\) : undefined\} \/>/);
+  // Fase 10 (reteste do bloco 8): o mapa preto saiu da página da TV. A própria TV é o mapa —
+  // tocar numa parte escolhe a parte — e os botões das partes têm nome de gente, com o resumo.
+  assert.doesNotMatch(tv, /<MapaDaTela /);
+  assert.match(tv, /onParte=\{\(id\) => \{ const z = zones\.find\(\(x\) => x\.id === id\); if \(z\) selectZone\(z\); \}\}/);
+  assert.match(tv, /\{nomeDaParte\(z, layoutCanonico\)\}<span className="font-normal text-ink-3"> · \{resumoDaZona\(z\)\}<\/span>/);
   assert.match(tv, /<CampanhasNaTela cfg=\{cfg\} onTirar=\{tirarCampanha\}/);
   assert.doesNotMatch(tv, /function PecaDaZona/, 'a peça única de antes saiu');
   const faixa = semComentarios(ler('web/src/components/tela/FaixaDaTela.jsx'));
@@ -202,7 +207,9 @@ test('item 39: o exemplo "Raft Embalagens" não vai mais para a TV de cliente', 
   assert.match(t, /if \(empresa && \(!s\.nome \|\| s\.nome === device\.name\)\) \{ s\.nome = empresa; mudou = true; \}/);
   assert.match(t, /nomeDaConta\(cfg, device, await empresaDa\(device\.tenant_id\)\);/, 'ao gravar');
   // Desde o D8 a entrega também leva a logo: o nome da conta continua passando por aqui.
-  assert.match(t, /let mudou = !dtOk \|\| !!\(c && c\.settings && nomeDaConta\(c, device, await empresaDa\(device\.tenant_id\)\)\);/, 'ao entregar à TV');
+  assert.match(t, /let mudou = !!\(c && c\.settings && nomeDaConta\(c, device, await empresaDa\(device\.tenant_id\)\)\);/, 'ao entregar à TV');
+  // O painel lê pelo mesmo nomeDaConta (configParaOPainel), uma TV ou todas de uma vez (reteste da fase 10).
+  assert.match(t, /function configParaOPainel\(device, empresa, kit\) \{[\s\S]*?nomeDaConta\(c, device, empresa\);/);
   assert.match(t, /if \(mudou\) corpo = JSON\.stringify\(c\);/);
 });
 

@@ -108,7 +108,12 @@ export function LogoDaMarca({ logo, logoClara, logoEscura, busy, onSubir, onTira
         <div className="space-y-3 p-4">
           <div className="flex flex-wrap items-center gap-4">
             <NosDoisFundos url={logo.url} clara={logoClara && logoClara.url} escura={logoEscura && logoEscura.url} />
-            <div className="min-w-0 flex-1 space-y-2">
+            {/*
+              Largura mínima de 14rem (reteste da fase 10): no celular a análise
+              não cabe ao lado da logo e desce para a linha de baixo, inteira. Com
+              `flex-1` sozinho ela ficava espremida ("Tama bom (400×").
+            */}
+            <div className="min-w-[14rem] flex-1 space-y-2">
               {a === null && <span className="flex items-center gap-1.5 text-xs text-ink-3"><Spinner size={12} /> Analisando a logo…</span>}
               {a === false && <span className="text-xs text-ink-3">Não deu para analisar esta logo.</span>}
               {a && (

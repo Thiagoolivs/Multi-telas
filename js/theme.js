@@ -134,9 +134,14 @@
       radius: 16, blur: 22, shadow: '0 0 40px rgba(34,211,238,.25), 0 18px 50px rgba(0,0,0,.55)', fx: 1,
       glow: 'rgba(34,211,238,.6)',
     },
+    /*
+     * bg2 era #1f6f8b: o vidro branco sobre ele deixava o próprio texto
+     * branco em 4,3 e o acento rosa em 3,3. Um tom mais fundo do mesmo
+     * azul-petróleo dá 5,9 ao texto e 4,5 ao rosa.
+     */
     glassmorphism: {
       label: 'Glassmorphism', dark: true,
-      bg: '#3a2f6b', bg2: '#1f6f8b', brand: '#ffffff', brand2: '#e0d7ff', accent: '#ffd6f5',
+      bg: '#3a2f6b', bg2: '#00556e', brand: '#ffffff', brand2: '#e0d7ff', accent: '#ffd6f5',
       surface: '255,255,255', glass: 0.14, border: 'rgba(255,255,255,.35)',
       text: '#ffffff', textDim: 'rgba(255,255,255,.78)',
       radius: 24, blur: 30, shadow: '0 20px 60px rgba(0,0,0,.35)', fx: 1,
@@ -243,7 +248,60 @@
 
   // Ambas moram em js/cor.js: são as regras que o gerador de peças também usa.
   const textoSobre = (fundo, marca) => C.textoSobre(fundo, marca, MIN_CONTRASTE);
-  const acentoSobre = (fundo, marca) => C.acentoSobre(fundo, marca, 3.5);
+
+  /*
+   * O acento também é texto: o preço da lista, o @ das redes, o kicker, a
+   * data do aniversário. Ele mirava 3,5 só contra o fundo liso, e o reteste
+   * da TV (fase 10) mediu esses textos entre 2,5 e 3,5 — o preço da clínica
+   * sobre o palco escuro deu 2,6. Agora é 4,5, como todo texto, contra TODO
+   * fundo em que ele pode estar: o palco (bg e bg2) e o vidro das zonas por
+   * cima dele. A cor muda só na luminosidade (js/cor.js, garantirContraste):
+   * o verde-azulado da marca continua verde-azulado, só mais claro.
+   */
+  const MIN_ACENTO = 4.5;
+  // Sobre uma cor só: o rodapé pintado na cor da marca (js/player.js).
+  const acentoSobre = (fundo, marca) => C.garantirContraste(marca, [fundo], MIN_ACENTO);
+
+  /*
+   * Os fundos em que o acento aparece: o palco, a superfície (vidro) das
+   * zonas sobre ele e as camadas de .mt-surface (css/player.css), o fundo de
+   * quase todo conteúdo pronto: o halo no canto de cima (30%, sobre o bg2
+   * já tingido em 8,5%, com o véu branco de 5% do topo) e a marca no canto
+   * de baixo (24%). Os números são os do CSS: mudou lá, muda aqui.
+   */
+  function fundosDoTema(t) {
+    const bg = okHex(t.bg), bg2 = okHex(t.bg2);
+    const lista = [bg, bg2].filter(Boolean);
+    const sup = String(t.surface || '').split(',').map(Number);
+    if (sup.length === 3 && sup.every((v) => isFinite(v))) {
+      const cor = rgb2hex(sup[0], sup[1], sup[2]);
+      const vidro = isFinite(Number(t.glass)) ? Number(t.glass) : 0.55;
+      lista.slice().forEach((f) => lista.push(mix(f, cor, vidro)));
+    }
+    const halo = okHex(t.halo), marca = okHex(t.brand);
+    if (halo && bg2) {
+      const tingido = mix(bg2, halo, 0.085);
+      lista.push(tingido, mix(mix(tingido, halo, 0.3), '#ffffff', 0.05));
+    }
+    if (marca && bg) lista.push(mix(bg, marca, 0.24));
+    return lista;
+  }
+
+  /*
+   * O halo é o brilho de fundo (o canto de .mt-surface e o do palco). Ele
+   * sai da cor de sempre (a marca, ou o acento do tema pronto), mas nunca
+   * clara a ponto de apagar o texto: com a marca amarela ou branca, o canto
+   * do conteúdo ficava cinza-médio e nem o texto branco passava de 3,5.
+   */
+  function haloSeguro(cor, t) {
+    const base = okHex(cor), texto = okHex(t.text);
+    return base && texto ? C.garantirContraste(base, [texto], MIN_CONTRASTE) : cor;
+  }
+  function acentoDoTema(cor, t) {
+    const fundos = fundosDoTema(t);
+    const base = okHex(cor);
+    return base && fundos.length ? C.garantirContraste(base, fundos, MIN_ACENTO) : cor;
+  }
 
   function cores1e2(cores) {
     const lista = (Array.isArray(cores) ? cores : []).map(okHex).filter(Boolean);
@@ -258,7 +316,8 @@
     const out = Object.assign({}, t);
     out.brand = c.marca;
     out.brand2 = c.marca2;
-    out.accent = acentoSobre(t.bg, c.marca);
+    out.halo = c.marca;
+    out.accent = acentoDoTema(c.marca, out);
     out.glow = rgba(c.marca, 0.45);
     // Borda e brilho seguem a marca só quando o preset já usava cor na borda.
     if (/^rgba\(\d+,\s*\d+,\s*\d+/.test(String(t.border)) && !/255,\s*255,\s*255/.test(String(t.border))) {
@@ -276,11 +335,12 @@
     const bg2 = claro ? mix('#ffffff', c.marca, 0.14) : mix('#070a12', c.marca, 0.32);
     const surface = claro ? mix('#ffffff', c.marca, 0.03) : mix('#0d1220', c.marca, 0.22);
     const texto = textoSobre(bg, c.marca);
+    const vidro = { bg, bg2, surface: rgbTriple(surface), glass: claro ? 0.72 : 0.55, halo: c.marca, brand: c.marca, text: texto };
     return {
       label: 'Minha marca', dark: !claro,
-      bg, bg2, brand: c.marca, brand2: c.marca2,
-      accent: acentoSobre(bg, c.marca),
-      surface: rgbTriple(surface), glass: claro ? 0.72 : 0.55,
+      bg, bg2, brand: c.marca, brand2: c.marca2, halo: c.marca,
+      accent: acentoDoTema(c.marca, Object.assign({}, vidro, { halo: haloSeguro(c.marca, vidro) })),
+      surface: vidro.surface, glass: vidro.glass,
       border: rgba(c.marca, claro ? 0.22 : 0.3),
       text: texto,
       textDim: mix(texto, bg, 0.38),
@@ -306,14 +366,16 @@
   // O clima (texto, vidro, borda, sombra) que combina com um fundo.
   function climaDe(t, bg, bg2, text, textDim) {
     const claro = luminance(bg) > 0.45;
-    return Object.assign({}, t, {
+    const out = Object.assign({}, t, {
       dark: !claro, bg, bg2, text, textDim,
       surface: rgbTriple(claro ? mix(bg, '#ffffff', 0.55) : mix(bg, '#ffffff', 0.06)),
       glass: claro ? 0.72 : 0.55,
       border: claro ? 'rgba(20,25,40,.10)' : 'rgba(255,255,255,.09)',
       shadow: claro ? '0 14px 40px rgba(20,25,40,.14)' : '0 18px 50px rgba(0,0,0,.45)',
-      accent: acentoSobre(bg, t.brand),
     });
+    out.halo = t.halo || t.brand;
+    out.accent = acentoDoTema(t.brand, Object.assign({}, out, { halo: haloSeguro(out.halo, out) }));
+    return out;
   }
 
   /*
@@ -376,6 +438,13 @@
     // O fundo da TV antes dos ajustes manuais, que continuam com a palavra final.
     base = aplicarFundo(base, theme, ctx);
     const t = Object.assign({}, base);
+    // O halo nasce da cor de antes do ajuste (como sempre foi), sem apagar o texto.
+    const haloDoAcento = !t.halo;
+    t.halo = haloSeguro(t.halo || t.accent, t);
+    // O acento dos temas prontos também vira texto (o preço, o @): 4,5 contra os fundos dele.
+    t.accent = acentoDoTema(t.accent, t);
+    // O texto suave (rótulo, categoria da lista) também: era mistura do texto com o fundo, sem conferir o halo.
+    if (okHex(t.textDim)) t.textDim = C.garantirContraste(okHex(t.textDim), fundosDoTema(t), MIN_CONTRASTE);
     // Ajustes manuais possíveis do editor.
     const ov = theme.overrides || {};
     ['bg', 'bg2', 'brand', 'brand2', 'accent', 'text', 'textDim', 'surface',
@@ -384,14 +453,24 @@
       if (ov[k] !== undefined && ov[k] !== null && ov[k] !== '') t[k] = Number(ov[k]);
     });
     if (ov.shadow) t.shadow = ov.shadow;
+    // O acento posto à mão leva o halo junto, como antes (o halo segue o acento quando o tema não tem um).
+    if (ov.accent && haloDoAcento) t.halo = haloSeguro(ov.accent, t);
     t.font = theme.font || 'system';
     return t;
   }
 
   // Luminância relativa (0–1) de uma cor hex, para escolher texto legível.
   // Cor de texto que contrasta com um fundo sólido (para chips/badges).
-  function onColor(hex) {
-    return luminance(hex) > 0.55 ? '#0b1020' : '#ffffff';
+  /*
+   * Escolhe pelo contraste medido, não pela luminância: o corte em 0,55
+   * mandava texto branco sobre o laranja-claro do acento (3,4:1). Com mais
+   * de uma cor (o degradê do botão), vale a que se lê na PIOR das pontas.
+   */
+  function onColor(hex, outra) {
+    const cores = [hex, outra].map((x) => okHex(x)).filter(Boolean);
+    if (!cores.length) return '#ffffff';
+    const pior = (tx) => Math.min.apply(null, cores.map((c) => contraste(tx, c)));
+    return pior('#ffffff') >= pior('#0b1020') ? '#ffffff' : '#0b1020';
   }
 
   // Aplica os tokens no elemento raiz informado (document.documentElement
@@ -400,14 +479,26 @@
     root = root || document.documentElement;
     const t = resolve(theme, ctx);
     const s = root.style;
-    s.setProperty('--on-brand', onColor(t.brand));
-    s.setProperty('--on-accent', onColor(t.accent));
+    /*
+     * Texto sobre a marca: o rodapé, o botão da oferta, a hora da agenda vão
+     * num degradê da marca para a segunda cor. Branco sobre o terracota e
+     * dourado da padaria dava 1,6:1 na ponta dourada. As pontas do degradê
+     * que levam texto vêm acertadas para o texto escolhido (só a luz muda).
+     */
+    const sobreMarca = onColor(t.brand, t.brand2);
+    s.setProperty('--on-brand', sobreMarca);
+    s.setProperty('--brand-sob-texto', okHex(t.brand) ? C.garantirContraste(okHex(t.brand), [sobreMarca], MIN_CONTRASTE) : t.brand);
+    s.setProperty('--brand-2-sob-texto', okHex(t.brand2) ? C.garantirContraste(okHex(t.brand2), [sobreMarca], MIN_CONTRASTE) : t.brand2);
+    // O selo no acento: o degradê vai para o lado contrário ao do texto, para nunca chegar perto dele.
+    const sobreAcento = onColor(t.accent);
+    s.setProperty('--on-accent', sobreAcento);
+    s.setProperty('--accent-2', okHex(t.accent) ? mix(t.accent, sobreAcento === '#ffffff' ? '#000000' : '#ffffff', 0.22) : t.accent);
     s.setProperty('--bg', t.bg);
     s.setProperty('--bg-2', t.bg2);
     s.setProperty('--brand', t.brand);
     s.setProperty('--brand-2', t.brand2);
     s.setProperty('--accent', t.accent);
-    // O halo de fundo: a cor de destaque, a não ser que o tema diga outra (o lima da marca vira oliva quando desfocado).
+    // O halo de fundo: a cor de destaque (ou a marca), a não ser que o tema diga outra (o lima da marca vira oliva quando desfocado). Vem de resolve, já sem apagar o texto.
     s.setProperty('--halo', t.halo || t.accent);
     s.setProperty('--surface-rgb', t.surface);
     s.setProperty('--glass', String(t.glass));
@@ -445,7 +536,7 @@
     PRESETS, FONTS, DEFAULT_PRESET, FAMILIAS_PECA, familiaPeca,
     resolve, apply, preview, listPresets, listFonts, ensureFont, FUNDOS, pecasDaConfig,
     // Expostos para o painel prever a cor sem duplicar a matemática.
-    derivar, tingir, textoSobre, acentoSobre, contraste, mix, girarMatiz, rgba,
+    derivar, tingir, textoSobre, acentoSobre, acentoDoTema, contraste, mix, girarMatiz, rgba,
   };
   // Módulo duplo (D28): o servidor confere os temas que a IA propõe pela mesma lista.
   if (typeof module !== 'undefined' && module.exports) module.exports = global.MTTheme;

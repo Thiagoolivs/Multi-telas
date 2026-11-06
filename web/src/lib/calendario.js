@@ -35,6 +35,18 @@ export function periodoDoEvento(ev) {
   return { dataInicio: iso(ini), dataFim: ev.data };
 }
 
+/*
+ * A campanha de mês inteiro (js/datas-frente.js): o evento é o último dia do
+ * mês e entra na TV no dia 1º. Sai do que está guardado (data e
+ * antecedência), então editar a data depois continua dando o mesmo cartaz.
+ */
+export function campanhaDoMes(ev) {
+  if (!ev || !ev.data) return false;
+  const [a, m, d] = ev.data.split('-').map(Number);
+  const ultimo = new Date(a, m, 0).getDate();
+  return d === ultimo && periodoDoEvento(ev).dataInicio === ev.data.slice(0, 8) + '01';
+}
+
 // O título em duas linhas, para o cartaz do dia ("Outubro" / "Rosa").
 function duasLinhas(t) {
   const p = String(t || '').split(' ').filter(Boolean);
@@ -58,7 +70,9 @@ export function pecaDoEvento(ev, modelos, marca) {
     campos = { mes: maiuscula(d.mes), dia: d.dia, semana: maiuscula(d.semana), kicker: tipo, titulo: ev.titulo, apoio: ev.detalhe || '' };
   } else if (modelo.id === 'social-data') {
     const [t1, t2] = duasLinhas(ev.titulo);
-    campos = { numero: d.dia, kicker: tipo + ' · ' + d.dia + ' de ' + d.mes, titulo: t1, titulo2: t2, apoio: ev.detalhe || '' };
+    // A campanha do mês inteiro (Outubro Rosa, fase 11): o número é o do mês, não o último dia.
+    const mesTodo = campanhaDoMes(ev);
+    campos = { numero: mesTodo ? String(Number(ev.data.slice(5, 7))).padStart(2, '0') : d.dia, kicker: mesTodo ? tipo + ' · o mês todo' : tipo + ' · ' + d.dia + ' de ' + d.mes, titulo: t1, titulo2: t2, apoio: ev.detalhe || '' };
   } else {
     campos = { kicker: tipo + ' · ' + d.curta, titulo: ev.titulo, apoio: ev.detalhe || '' };
   }

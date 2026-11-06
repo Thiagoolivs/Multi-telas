@@ -108,7 +108,8 @@ test('o painel: um só Criar (fase 7); o aviso e o "Mudar com IA" com a mini-con
   const P = ler('web/src/pages/ProgramacaoPage.jsx');
   // Fase 7: o "Pedir à IA" da Programação era uma segunda porta para a mesma conversa; agora é só o Criar.
   assert.doesNotMatch(P, /<PedirIA /);
-  assert.match(P, /<Button variant="primary" icon=\{Plus\} onClick=\{\(\) => onIr && onIr\('criar'\)\}>Criar<\/Button>/);
+  // Violeta quando há TV; sem TV, o violeta é o "Ligar uma TV" do vazio (um violeta por tela, reteste da fase 10).
+  assert.match(P, /<Button variant=\{telas && telas\.length === 0 \? 'secondary' : 'primary'\} icon=\{Plus\} onClick=\{\(\) => onIr && onIr\('criar'\)\}>Criar<\/Button>/);
   const I = ler('web/src/components/tela/PedirIA.jsx');
   assert.match(I, /if \(r\.destino === 'criar'\) \{ onFechar\(\); if \(onIr\) onIr\('criar', \{ texto: r\.texto \}\); return; \}/);
   assert.match(I, /if \(avisoPronto\) return <AvisoRapido avisoInicial=\{avisoPronto\} onFechar=\{onFechar\} \/>;/);

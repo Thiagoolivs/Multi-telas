@@ -112,6 +112,7 @@
       localStorage.removeItem('mt.lastConfig'); // não herda a exibição da tela antiga
       localStorage.removeItem('mt.birthdays');
       localStorage.removeItem('mt.kpis');
+      localStorage.removeItem('mt.planilhas');
     } catch (e) {}
   }
 
@@ -215,6 +216,11 @@
   async function fetchKpis(id) {
     const r = await api('GET', '/api/devices/' + id + '/kpis', undefined, dtHeader());
     return (r && r.indicadores) || [];
+  }
+  // Preço e cardápio vindos de uma planilha (fase 11): os últimos itens bons de cada uma.
+  async function fetchPlanilhas(id) {
+    const r = await api('GET', '/api/devices/' + id + '/planilhas', undefined, dtHeader());
+    return (r && r.planilhas) || [];
   }
   /*
    * O que a TV conta de si no pulso: é a primeira pergunta de todo suporte
@@ -381,6 +387,10 @@
       es.addEventListener('kpis', () => {
         document.dispatchEvent(new CustomEvent('mt:kpis-mudou'));
       });
+      // Os preços da planilha mudaram (fase 11): a TV busca de novo e redesenha o que está no ar.
+      es.addEventListener('planilhas', () => {
+        document.dispatchEvent(new CustomEvent('mt:planilhas-mudou'));
+      });
       /*
        * O EventSource reconecta sozinho em queda de rede — mas DESISTE de vez
        * quando o servidor responde não-2xx, o que acontece num deploy no meio
@@ -427,7 +437,7 @@
     // credencial da TV: o código do cartaz autoriza ENVIAR foto, e não listar
     // o que os outros mandaram.
     dtHeader, deviceToken,
-    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, fetchKpis, subscribe, heartbeat, reportAudio, enviarExibicoes, enviarEstado,
+    deviceMode, ensureDevice, resetDevice, fetchConfig, fetchBirthdays, fetchKpis, fetchPlanilhas, subscribe, heartbeat, reportAudio, enviarExibicoes, enviarEstado,
     pair, controlledDeviceId, disconnect, listDevices, pushConfig,
   };
 })(window);

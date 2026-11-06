@@ -299,7 +299,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-screen-hint { color: var(--text-dim); font-size: max(var(--mt-piso, 0px), clamp(1.2vmin, 2.6cqw, 2.41vmin)); max-width: 80%; }
 .mt-screen-start {
   font: inherit; font-weight: 700; font-size: max(var(--mt-piso, 0px), clamp(1.3vmin, 2.6cqw, 2.41vmin));
-  color: var(--on-brand); background: linear-gradient(150deg, var(--brand), var(--brand-2));
+  color: var(--on-brand); background: linear-gradient(150deg, var(--brand-sob-texto, var(--brand)), var(--brand-2-sob-texto, var(--brand-2)));
   border: 0; border-radius: 100px; padding: 1.6cqh 4cqw; cursor: pointer;
   box-shadow: var(--shadow);
 }
@@ -612,8 +612,9 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 
 /* ---------- Rodapé / ticker (rolagem clássica) ---------- */
+/* As pontas do degradê que levam texto vêm acertadas para o --on-brand (js/theme.js): branco no dourado dava 1,6:1. */
 .mt-ticker {
-  background: linear-gradient(90deg, var(--brand), var(--brand-2));
+  background: linear-gradient(90deg, var(--brand-sob-texto, var(--brand)), var(--brand-2-sob-texto, var(--brand-2)));
   display: flex; align-items: center;
   overflow: hidden; white-space: nowrap;
 }
@@ -780,7 +781,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
               0 0 0 1cqw var(--border), 0 20px 50px rgba(0,0,0,.4);
 }
 .bc-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.bc-initials { font-size: 9cqw; font-weight: 600; color: var(--brand); letter-spacing: -.02em; }
+/* Texto na cor da marca: o acento, que tem 4,5 contra o fundo. A marca crua pode ser escura no palco escuro. */
+.bc-initials { font-size: 9cqw; font-weight: 600; color: var(--accent); letter-spacing: -.02em; }
 .bc-text { max-width: 48cqw; text-align: left; }
 .bc-kicker {
   display: inline-block; font-size: max(var(--mt-piso, 0px), 2cqw); font-weight: 700;
@@ -829,7 +831,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-bday-pessoa .mt-bday-name { font-size: max(var(--mt-piso, 0px), min(6.4cqw, 11cqh)); line-height: 1.05; font-weight: 800; letter-spacing: -.02em; }
 .mt-bday-pessoa .mt-bday-role { font-size: max(var(--mt-piso, 0px), min(2.8cqw, 5cqh)); }
 .mt-bday-quando { margin-top: 1cqh; font-size: max(var(--mt-piso, 0px), min(3cqw, 5.4cqh)); font-weight: 700; color: var(--text); }
-.mt-bday-pessoa.is-hoje .mt-bday-quando { color: var(--brand); }
+.mt-bday-pessoa.is-hoje .mt-bday-quando { color: var(--accent); }
 @container (aspect-ratio < 1) {
   .mt-bday.mt-bday-pessoa { flex-direction: column; text-align: center; gap: 3cqh; }
   .mt-bday-pessoa .bc-avatar-xl { width: min(62cqw, 40cqh); }
@@ -846,7 +848,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-bday-when { flex: none; text-align: right; display: flex; flex-direction: column; line-height: 1.1; }
 .mt-bday-date { font-size: max(var(--mt-piso, 0px), clamp(1.2vmin, 2.2cqw, 2.22vmin)); font-weight: 700; }
 .mt-bday-wd { font-size: max(var(--mt-piso, 0px), clamp(0.93vmin, 1.6cqw, 1.48vmin)); color: var(--text-dim); text-transform: capitalize; }
-.mt-bday-when.is-today .mt-bday-date, .mt-bday-when.is-today .mt-bday-wd { color: var(--brand); }
+.mt-bday-when.is-today .mt-bday-date, .mt-bday-when.is-today .mt-bday-wd { color: var(--accent); }
 
 /* ---------- Mapas (trânsito / região) ---------- */
 .mt-map { background: #0e1526; }
@@ -889,7 +891,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 .mt-spot-initials {
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(150deg, var(--brand), var(--brand-2));
+  background: linear-gradient(150deg, var(--brand-sob-texto, var(--brand)), var(--brand-2-sob-texto, var(--brand-2)));
   font-size: 11cqw; font-weight: 800; color: var(--on-brand);
 }
 .mt-spot-info { min-width: 0; }
@@ -917,7 +919,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-agenda-time {
   flex: none; min-width: 20cqw; text-align: center;
   font-size: max(var(--mt-piso, 0px), 3.6cqw); font-weight: 800; font-variant-numeric: tabular-nums;
-  color: var(--on-brand); background: linear-gradient(150deg, var(--brand), var(--brand-2));
+  color: var(--on-brand); background: linear-gradient(150deg, var(--brand-sob-texto, var(--brand)), var(--brand-2-sob-texto, var(--brand-2)));
   padding: 1.4cqh 2cqw; border-radius: 12px;
 }
 .mt-agenda-act { font-size: max(var(--mt-piso, 0px), 4cqw); font-weight: 500; }
@@ -938,8 +940,11 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-kpi-trend {
   font-size: max(var(--mt-piso, 0px), 4.4cqw); font-weight: 800; padding: 1cqh 2.4cqw; border-radius: 100px;
 }
-.mt-kpi-subiu { color: #16a34a; background: color-mix(in srgb, #22c55e 18%, transparent); }
-.mt-kpi-desceu { color: #dc2626; background: color-mix(in srgb, #ef4444 18%, transparent); }
+/* O verde e o vermelho da tendência no tom que se lê no fundo: o #16a34a dava 3,8:1 no palco escuro. */
+.mt-kpi-subiu { color: #4ade80; background: color-mix(in srgb, #22c55e 18%, transparent); }
+.mt-kpi-desceu { color: #fca5a5; background: color-mix(in srgb, #ef4444 18%, transparent); }
+.theme-light .mt-kpi-subiu { color: #166534; }
+.theme-light .mt-kpi-desceu { color: #991b1b; }
 .mt-kpi-estavel { color: var(--text-dim); background: color-mix(in srgb, var(--text) 12%, transparent); }
 .mt-kpi-detail { font-size: max(var(--mt-piso, 0px), 3.4cqw); color: var(--text-dim); margin-top: 2cqh; }
 /* D36: a meta — a barra até 100% e, batida, o número em destaque com o brilho da marca. */
@@ -987,7 +992,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-promo-selo {
   font-size: max(var(--mt-piso, 0px), clamp(1.11vmin, 2.6cqh, 2.41vmin)); font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
   color: var(--on-accent);
-  background: linear-gradient(150deg, var(--accent), color-mix(in srgb, var(--accent) 78%, #000));
+  /* A outra ponta vai para o lado contrário ao do texto (js/theme.js, --accent-2): escurecer sob texto escuro o apagava. */
+  background: var(--accent); background: linear-gradient(150deg, var(--accent), var(--accent-2, var(--accent)));
   padding: 1.2cqh 2.4cqh; border-radius: 100px;
   box-shadow: 0 8px 22px color-mix(in srgb, var(--accent) 45%, transparent);
 }
@@ -1002,7 +1008,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 }
 .mt-promo-cta {
   margin-top: 1cqh; font-size: max(var(--mt-piso, 0px), clamp(1.3vmin, 3.4cqh, 3.15vmin)); font-weight: 700; color: var(--on-brand);
-  background: linear-gradient(150deg, var(--brand), var(--brand-2));
+  background: linear-gradient(150deg, var(--brand-sob-texto, var(--brand)), var(--brand-2-sob-texto, var(--brand-2)));
   padding: 1.7cqh 3.4cqh; border-radius: 100px; box-shadow: var(--shadow);
 }
 
@@ -1031,7 +1037,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-social-icon {
   width: 20cqw; max-width: 26cqh; aspect-ratio: 1; border-radius: 28%;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(150deg, var(--brand), var(--brand-2)); color: var(--on-brand);
+  background: linear-gradient(150deg, var(--brand-sob-texto, var(--brand)), var(--brand-2-sob-texto, var(--brand-2))); color: var(--on-brand);
   box-shadow: var(--shadow);
 }
 .mt-social-icon svg { width: 56%; height: 56%; }
@@ -1621,3 +1627,6 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   .mt-takeover-card .mt-slide, .mt-takeover-urgente::before, .mt-overlay, .mt-fora, .mt-peca-fixa { top: 0; right: 0; bottom: 0; left: 0; }
   .mt-mural-legenda { top: auto; right: 0; bottom: 0; left: 0; }
 }
+
+/* Fase 11: "Atualizado às 14:05" do cardápio com preço da planilha — no canto oposto ao crédito da foto, legível de longe. */
+.mt-planilha-hora { right: auto; left: 1.6cqh; bottom: 1.4cqh; padding: .4cqh 1.4cqh; font-size: max(var(--mt-piso, 0px), 2.8cqh); }

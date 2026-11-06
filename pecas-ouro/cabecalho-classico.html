@@ -6,27 +6,40 @@
   letra — a largura varia de 1920 (deitada) a 1080 (em pé).
 -->
 <style>
+/*
+  Fase 10: com a letra no piso da TV (4,5% no balcão), o nome da marca e a
+  chamada se encostavam ("PADARIA SOLSEMANA DO SOL"): o espaçamento das
+  letras era em em, e crescia junto com a letra; a chamada que não cabia
+  vazava por cima da marca. Agora o espaçamento é fixo (cqh, o mesmo do
+  desenho original), a chamada tem respiro dos dois lados e quebra em duas
+  linhas sem nunca sair da caixa dela, e a marca longa quebra em vez de
+  empurrar o resto.
+*/
 .mt-peca { display: flex; align-items: center; gap: 6cqh; padding: 0 3cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: linear-gradient(180deg, var(--mt-fundo-2), var(--mt-fundo)); border-bottom: 1.2cqh solid var(--mt-linha); }
-.marca { display: flex; align-items: center; gap: 4cqh; flex: none; }
+.marca { display: flex; align-items: center; gap: 4cqh; flex: 0 1 auto; min-width: 0; max-width: 42%; }
 .logo { height: 56cqh; width: auto; max-width: 28cqw; object-fit: contain; }
 .logo[data-sem-foto] { display: none; }
 .logo:not([data-sem-foto]) + .nome { display: none; }
-.nome { font: 600 max(var(--mt-piso, 0cqw), 21cqh)/1 var(--mt-fonte-texto); letter-spacing: .42em; text-transform: uppercase; white-space: nowrap; }
+.nome { font: 600 max(var(--mt-piso, 0cqw), 21cqh)/1.12 var(--mt-fonte-texto); letter-spacing: 8.8cqh; text-transform: uppercase;
+  min-width: 0; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .nome b { font-weight: 800; }
-.chamada { flex: 1; display: flex; align-items: center; justify-content: center; gap: 4cqh; min-width: 0;
-  font: 600 max(var(--mt-piso, 0cqw), 19cqh)/1 var(--mt-fonte-texto); letter-spacing: .3em; text-transform: uppercase; color: var(--mt-destaque); white-space: nowrap; }
-.chamada i { display: block; width: 40cqh; height: 1.2cqh; background: var(--mt-destaque); }
+.chamada { flex: 1 1 0; display: flex; align-items: center; justify-content: center; gap: 4cqh; min-width: 0; overflow: hidden; padding: 0 .9em;
+  font: 600 max(var(--mt-piso, 0cqw), 19cqh)/1.12 var(--mt-fonte-texto); letter-spacing: 5.7cqh; text-transform: uppercase; color: var(--mt-destaque); }
+.chamada span { min-width: 0; text-align: center; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+/* Os traços cedem primeiro: são enfeite. */
+.chamada i { display: block; flex: 0 30 40cqh; min-width: 0; height: 1.2cqh; background: var(--mt-destaque); }
 .agora { display: flex; align-items: center; gap: 5cqh; flex: none; margin-left: auto; }
 .clima { font: 500 max(var(--mt-piso, 0cqw), 26cqh)/1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 .sep { display: block; width: 1.2cqh; height: 44cqh; background: var(--mt-linha); }
 .tempo { display: flex; flex-direction: column; align-items: flex-end; gap: 4cqh; }
 .hora { font: 400 max(var(--mt-piso, 0cqw), 46cqh)/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
-.data { font: 600 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
+.data { font: 600 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: 3.6cqh; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
 /* Faixa mais curta (TV em pé): a chamada sai, marca e hora ficam. */
 @container (aspect-ratio < 9) {
   .chamada { display: none; }
-  .nome { font-size: max(var(--mt-piso, 0cqw), 19cqh); letter-spacing: .32em; }
+  .marca { max-width: 62%; margin-right: 4cqh; }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 19cqh); letter-spacing: 6cqh; }
 }
 </style>
 <section class="mt-peca cabecalho">

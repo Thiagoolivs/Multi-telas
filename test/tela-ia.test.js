@@ -72,7 +72,7 @@ test('três temas novos (dois claros), legíveis, e o painel lista todos os tema
   for (const id of ['clinica-suave', 'corporativo-claro', 'varejo-quente']) {
     const t = T.resolve({ preset: id });
     assert.ok(T.contraste(t.bg, t.text) >= 4.5, id + ': texto');
-    assert.ok(T.contraste(t.bg, t.accent) >= 3.5, id + ': destaque');
+    assert.ok(T.contraste(t.bg, t.accent) >= 4.5, id + ': destaque (é o preço e o @: texto)');
   }
   const painel = ler('web/src/lib/screenConfig.js');
   for (const id of Object.keys(T.PRESETS)) assert.match(painel, new RegExp("value: '" + id + "'"), 'o painel não oferece o tema ' + id);
@@ -119,7 +119,8 @@ test('o painel: aplica numa cópia (o fundo pintado à mão sai, o relógio sai 
   // O destaque no tom que se lê sobre o fundo.
   const c = L.aplicarMudancas(cfg, { fundo: 'claro', destaque: '#facc15' });
   const t = T.resolve(c.settings.theme, {});
-  assert.ok(T.contraste(t.bg, c.settings.theme.overrides.accent) >= 3.5, 'amarelo ilegível no fundo claro');
+  assert.ok(T.contraste(t.bg, c.settings.theme.overrides.accent) >= 4.5, 'amarelo ilegível no fundo claro');
+  assert.ok(T.contraste(t.bg2, c.settings.theme.overrides.accent) >= 4.5, 'amarelo ilegível no fundo claro (bg2)');
   // A zona que sai é dita.
   const linhas = L.descrever({ settings: { layoutId: 'corporate' }, zonas: { lateral: { items: [{ type: 'image' }] } } }, { layoutId: 'full-ticker' });
   assert.ok(linhas.some((l) => l.aviso && /Lateral sai da tela; o que está nela fica guardado/.test(l.texto)), JSON.stringify(linhas));
@@ -129,7 +130,9 @@ test('o painel: aplica numa cópia (o fundo pintado à mão sai, o relógio sai 
   assert.match(M, /<PreviaDaTela cfg=\{proposta\.depois\} rotulo="Como fica" \/>/);
   assert.match(M, /onAplicar\(proposta\.depois\);/);
   assert.match(M, /acao: \{ rotulo: 'Desfazer', on: \(\) => onAplicar\(antes\) \}/);
-  assert.match(ler('web/src/pages/ContentEditorPage.jsx'), /<MudarComIA cfg=\{cfg\} onAplicar=\{\(novo\) => \{ setCfg\(novo\); setDirty\(true\); \}\} \/>/, 'não muda só o rascunho');
+  // Fase 10 (reteste do bloco 8): a caixa "Mudar a tela" saiu da página da TV — era uma segunda IA ao
+  // lado do Criar. O componente continua aqui, sem porta, e o teste dele também.
+  assert.doesNotMatch(ler('web/src/pages/ContentEditorPage.jsx'), /<MudarComIA /, 'a segunda IA voltou à página da TV');
   assert.match(ler('web/src/components/tela/PreviaDaTela.jsx'), /gradeDaMiniatura\(layout, \{ minimo: false \}\)/, 'a prévia distorce as faixas');
   assert.match(ler('web/src/components/tela/FaixaDaTela.jsx'), /<Checkbox label="Relógio" checked=\{z\.relogio !== false\}/);
   const srv = ler('server.js');

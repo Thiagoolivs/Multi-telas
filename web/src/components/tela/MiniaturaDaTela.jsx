@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { MonitorPlay } from 'lucide-react';
 import { Palco } from '../content/VerTelaAgora.jsx';
-import { telaAgora } from '../../api.js';
+import { TvAoVivo } from './TvAoVivo.jsx';
+import { telaAgora, deviceConfig } from '../../api.js';
 
 /*
  * A TV em miniatura, com o que ela está mostrando (QA de 26/10: "o que está
@@ -37,12 +38,41 @@ export function podePedir(id, agora = Date.now(), deNovo = false) {
 }
 
 /*
+ * A programação de cada TV, para a miniatura sair com a marca, a logo e o
+ * cabeçalho de verdade (fase 10): a resposta da TV diz o que está no ar, a
+ * programação diz como a TV desenha. Lida uma vez por versão da TV (o
+ * `updatedAt` da lista muda quando alguém põe algo nela).
+ */
+const programacoes = new Map();
+function lerProgramacao(id, versao) {
+  const guardada = programacoes.get(id);
+  if (guardada && guardada.versao === versao) return guardada.promessa;
+  const promessa = deviceConfig.get(id).catch(() => null);
+  programacoes.set(id, { versao, promessa });
+  if (programacoes.size > 200) programacoes.delete(programacoes.keys().next().value);
+  return promessa;
+}
+
+/*
  * `altura`: a altura máxima do palco (o cartão usa 220; a página da TV, mais).
  * `pedirDeNovo`: muda quando a página da TV põe algo no ar — a miniatura
  * espera a TV trocar e pergunta de novo, em vez de seguir com a imagem velha.
  */
-export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeNovo = 0 }) {
+/*
+ * `cfg`: a programação que está na TV, quando quem chama já tem (a página da
+ * TV). Sem ela, a miniatura lê a da TV.
+ */
+export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeNovo = 0, cfg }) {
   const [resposta, setResposta] = useState(null);
+  // undefined: lendo; null: não deu para ler (fica o desenho de antes).
+  const [lida, setLida] = useState(undefined);
+  useEffect(() => {
+    if (cfg || vazia) return undefined;
+    let vivo = true;
+    lerProgramacao(d.id, d.updatedAt || 0).then((c) => { if (vivo) setLida(c); });
+    return () => { vivo = false; };
+  }, [d.id, d.updatedAt, cfg, vazia]);
+  const programacao = cfg || lida;
   // Começa "perguntando": até a primeira leitura voltar, a TV no ar está sendo consultada.
   const [perguntando, setPerguntando] = useState(online && !vazia);
 
@@ -83,7 +113,13 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
     const selo = !online ? 'Última imagem · ' + quando : velha && quando ? 'Visto em ' + quando : '';
     return (
       <div className="pointer-events-none relative w-full" aria-label={(selo ? selo + ' · ' : 'O que está passando agora · ') + (d.name || '')}>
-        <div className={!online ? 'opacity-50 grayscale' : ''}><Palco estado={resposta.estado} alturaMaxima={altura} /></div>
+        <div className={!online ? 'opacity-50 grayscale' : ''}>
+          {/* A TV de verdade (o player num quadro); sem a programação ainda, o desenho de antes. */}
+          {programacao === undefined ? <div className="aspect-video w-full rounded-lg bg-surface-2" />
+            : programacao
+            ? <TvAoVivo cfg={programacao} estado={resposta.estado} alturaMaxima={altura} leve={altura <= 240} rotulo={'O que passa agora em ' + (d.name || 'esta TV')} />
+            : <Palco estado={resposta.estado} alturaMaxima={altura} />}
+        </div>
         {selo && <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">{selo}</span>}
       </div>
     );

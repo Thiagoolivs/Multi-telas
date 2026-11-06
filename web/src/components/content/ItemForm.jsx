@@ -18,7 +18,8 @@ const guardarMais = (v) => { try { localStorage.setItem(CHAVE_MAIS, v ? '1' : '0
 // específicos — só renderiza os campos declarados em contentTypes.js.
 // Fase 7: o conteúdo em cima; aparência e tempo (`nivel: 'avancado'`) e o
 // que a página passar em `maisAjustes` ficam recolhidos em "Mais ajustes".
-export function ItemForm({ item, onChange, maisAjustes }) {
+// Fase 10: `quando` (o "Quando" em frases) vem logo depois do conteúdo; `maisRotulo` diz o que há em "Mais ajustes".
+export function ItemForm({ item, onChange, maisAjustes, quando, maisRotulo }) {
   const [aberto, setAberto] = useState(lerMais);
   const schema = CONTENT_TYPES[item.type];
   if (!schema) return <p className="text-sm text-ink-3">Tipo sem editor: {item.type}</p>;
@@ -30,13 +31,14 @@ export function ItemForm({ item, onChange, maisAjustes }) {
   return (
     <div className="space-y-3.5">
       {simples.map(campo)}
+      {quando}
       {temMais && (
         <div className="rounded-lg border border-line">
           <button type="button" aria-expanded={aberto} onClick={() => { setAberto(!aberto); guardarMais(!aberto); }}
             className="flex min-h-11 w-full items-center gap-1.5 px-3 text-left text-sm font-medium text-ink-2 hover:text-ink">
             <ChevronRight size={15} className={'shrink-0 transition-transform ' + (aberto ? 'rotate-90' : '')} />
-            Mais ajustes
-            <span className="truncate text-xs font-normal text-ink-3">· {[avancados.length ? 'aparência e tempo' : '', maisAjustes ? 'importância' : ''].filter(Boolean).join(', ')}</span>
+            <span className="shrink-0 whitespace-nowrap">Mais ajustes</span>
+            <span className="min-w-0 truncate text-xs font-normal text-ink-3">· {maisRotulo || [avancados.length ? 'aparência e tempo' : '', maisAjustes ? 'importância' : ''].filter(Boolean).join(', ')}</span>
           </button>
           {aberto && (
             <div className="space-y-3.5 border-t border-line p-3">

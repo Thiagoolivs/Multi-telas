@@ -99,9 +99,12 @@ export const faltaData = (e) => e.quando === 'ate' && !e.ate;
 
 /*
  * QUANDO, em palavras (fase 7): sempre, só hoje, até um dia ou numa hora do
- * dia. Também no "Pôr foto ou vídeo na TV" (SubirConteudo.jsx).
+ * dia. Também no "Pôr foto ou vídeo na TV" (SubirConteudo.jsx) e, desde a
+ * fase 10, na peça que já está na TV (a página da TV). Lá a peça pode ter
+ * dias e horas escolhidos à mão: `outro` é o resumo deles, e o chip "Do seu
+ * jeito" aparece marcado.
  */
-export function EscolherQuando({ valor, onChange, numero = '' }) {
+export function EscolherQuando({ valor, onChange, numero = '', outro = '' }) {
   const { quando, ate, faixa } = valor;
   const mudar = (campos) => onChange({ ...valor, ...campos });
   return (
@@ -114,6 +117,9 @@ export function EscolherQuando({ valor, onChange, numero = '' }) {
             {nome}
           </button>
         ))}
+        {quando === 'outro' && (
+          <button type="button" role="radio" aria-checked className="min-h-9 rounded-full border border-accent bg-accent/10 px-3 text-sm font-semibold text-ink max-sm:min-h-11">Do seu jeito</button>
+        )}
       </div>
       {quando === 'ate' && (
         <label className="mt-2 flex items-center gap-2 text-sm text-ink-2">
@@ -132,7 +138,8 @@ export function EscolherQuando({ valor, onChange, numero = '' }) {
         </div>
       )}
       <p className="mt-1.5 text-2xs text-ink-3">
-        {quando === 'sempre' ? 'Fica na TV até você tirar.' : quando === 'hoje' ? 'Amanhã ela sai sozinha.'
+        {quando === 'outro' ? (outro || 'Dias e horas escolhidos à mão') + '. Para mudar os dias e as horas, abra “Mais ajustes”.'
+          : quando === 'sempre' ? 'Fica na TV até você tirar.' : quando === 'hoje' ? 'Amanhã ela sai sozinha.'
           : quando === 'ate' ? 'No dia seguinte ela sai sozinha, e a TV segue com o resto.' : 'Todo dia, só nessa hora; no resto do dia passa o que já está lá.'}
       </p>
     </section>

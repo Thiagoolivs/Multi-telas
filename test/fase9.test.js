@@ -105,7 +105,9 @@ test('o painel filtra pela frente e põe o exemplo dela; o botão mostra os outr
   assert.match(src, /export const daFrente = \(modelos, perfil\) => modelos\.filter\(\(m\) => !Array\.isArray\(m\.frentes\) \|\| !m\.frentes\.length \|\| m\.frentes\.includes\(perfil\)\);/);
   assert.match(src, /const daFrente = \(frente && m\.textos && m\.textos\[frente\]\) \|\| \{\};/);
   const p = ler('web/src/pages/PecasProntasPage.jsx');
-  assert.match(p, /ordenarPorPerfil\(deOutros \? modelos : daFrente\(modelos, perfil\.id\), perfil\.id\)/);
+  // Fase 10: pela frente e pelo ramo (separarPorRamo); os de outra frente e de outro negócio vão para o botão.
+  assert.match(p, /const daMinhaFrente = ordenarPorPerfil\(daFrente\(modelos, perfil\.id\), perfil\.id\);/);
+  assert.match(p, /separarPorRamo\(daMinhaFrente, marca\.ramo, perfil\.id\)/);
   assert.match(p, /itemDoModelo\(m, marca, perfil\.id\)/);
   assert.match(p, /'Ver também os de outros negócios'/);
   void pathToFileURL;
@@ -162,5 +164,6 @@ test('as telas prontas: o pacote do negócio da conta primeiro, na orientação 
   const c = T.paraOCliente({ id: 'x', zonas: {}, negocio: 'padaria', ramos: ['padaria'] });
   assert.equal(c.negocio, 'padaria');
   assert.deepEqual(c.ramos, ['padaria']);
-  assert.match(ler('web/src/pages/TelasProntasPage.jsx'), /return ordemDasTelas\(dados\.telas\.filter\(\(t\) => todas \|\| doPerfil\(t\)\), marca\.ramo, emPeAsTvs\)/);
+  // Fase 10: a tela de outro negócio (a ótica na padaria) só em "Todas".
+  assert.match(ler('web/src/pages/TelasProntasPage.jsx'), /return ordemDasTelas\(dados\.telas\.filter\(\(t\) => todas \|\| \(doPerfil\(t\) && !deOutroNegocio\(t\)\)\), marca\.ramo, emPeAsTvs\)/);
 });

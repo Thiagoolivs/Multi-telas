@@ -7,6 +7,7 @@ import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { EditarPeca } from '../components/content/EditarPeca.jsx';
 import { Palco } from '../components/content/VerTelaAgora.jsx';
+import { MARCAS_DO_RAMO } from '../lib/modelosOuro.js';
 import { brand, devices } from '../api.js';
 import { usePerfil } from '../lib/perfil.js';
 import { gravarEmLote, avisarComDesfazer } from '../lib/rodar.js';
@@ -55,9 +56,15 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
   const lista = useMemo(() => {
     if (!dados || !marca) return [];
     const doPerfil = (t) => perfilDaTela(t) === perfil.id;
+    /*
+     * Fase 10: a tela de outro negócio (a "Semana do sol" da ótica, na
+     * padaria) só aparece em "Todas". Vale quando a Marca sabe o ramo da conta.
+     */
+    const doRamo = MARCAS_DO_RAMO[marca.ramo];
+    const deOutroNegocio = (t) => !!doRamo && !doRamo.includes(t.marca) && !(t.ramos || []).includes(marca.ramo);
     // Fase 9: o pacote do negócio da conta primeiro, na orientação das TVs dela (lib/telasProntas.js).
     const emPeAsTvs = tvs.length ? tvs.every((d) => tvEmPe(d) === true) : null;
-    return ordemDasTelas(dados.telas.filter((t) => todas || doPerfil(t)), marca.ramo, emPeAsTvs)
+    return ordemDasTelas(dados.telas.filter((t) => todas || (doPerfil(t) && !deOutroNegocio(t))), marca.ramo, emPeAsTvs)
       .sort((a, b) => Number(doPerfil(b)) - Number(doPerfil(a)))
       .map((t) => ({ tela: t, montada: montarTela(t, dados.modelos, marca, dados.exemplos) }));
   }, [dados, marca, perfil.id, todas, tvs]);
@@ -231,7 +238,7 @@ export function TelasProntasPage({ onIr, telaAlvo }) {
     <div className="max-w-6xl">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-ink">Telas prontas</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-ink">Telas inteiras</h1>
           <p className="mt-1 text-sm text-ink-2">A tela inteira, já com a sua marca. Escolha, troque os textos e ponha na TV.</p>
         </div>
         <div className="flex gap-1 rounded-lg border border-line bg-surface-2 p-1">

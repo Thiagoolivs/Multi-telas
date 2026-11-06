@@ -43,7 +43,7 @@ const aprovacao = require('../aprovacao.js');
 function capaDe(r) {
   // `n`: quantas peças a pasta tem (D10) — o cartão diz sem abrir a campanha.
   const n = ajuste.numerar(r).length;
-  const telas = (r && r.telas) || [];
+  const telas = r && Array.isArray(r.telas) ? r.telas : [];
   // Formato antigo (sem cabeçalho ou rodapé): o que faltar conta como vazio (QA total, 05/11).
   const zonasDe = (t) => (t && t.zonas) || {};
   const primeira = (x) => (Array.isArray(x) ? x[0] : undefined);
@@ -53,7 +53,7 @@ function capaDe(r) {
     const p = primeira(z.lateral) || primeira((z.cabecalho || {}).pecas) || primeira((z.rodape || {}).pecas);
     if (p) return { item: p.item, formato: p.formato, n };
   }
-  const b = ((r && r.biblioteca) || [])[0];
+  const b = (r && Array.isArray(r.biblioteca) ? r.biblioteca : [])[0];
   return b ? { item: b.item, formato: b.formato, n } : null;
 }
 
@@ -62,7 +62,7 @@ function configDe(d) {
 }
 
 module.exports = function (ctx) {
-  const { db, sendJson, readBody, rateLimit, emTrabalho, marcaDaConta, fotoDaConta, estiloDasReferencias, midia, plans } = ctx;
+  const { db, sendJson, readBody, rateLimit, emTrabalho, marcaDaConta, fotoDaConta, estiloDasReferencias, midia, plans, erros } = ctx;
 
   // A conversa de edição da campanha (D50), criada na primeira vez com o combinado da original (D48).
   async function conversaDaEdicao(sess, c) {
@@ -369,11 +369,18 @@ module.exports = function (ctx) {
       const lista = await db.listarCampanhas(sess.tenant_id, 60);
       const pecas = [];
       for (const c of lista) {
-        const k = await db.lerCampanha(sess.tenant_id, c.id);
-        for (const x of ajuste.numerar(k && k.resultado)) {
-          pecas.push({ campanha: c.nome, campanhaId: c.id, vaga: x.peca.vaga, zona: x.zona, papel: x.peca.papel, formato: x.peca.formato, label: x.peca.label, item: x.peca.item });
-          if (pecas.length >= 120) break;
-        }
+        /*
+         * Uma campanha torta fica de fora, e só ela (reteste da fase 10): antes
+         * uma só derrubava a lista toda com 500, e o Adicionar ficava vazio.
+         */
+        try {
+          const k = await db.lerCampanha(sess.tenant_id, c.id);
+          for (const x of ajuste.numerar(k && k.resultado)) {
+            if (!x.peca || typeof x.peca !== 'object') continue;
+            pecas.push({ campanha: c.nome, campanhaId: c.id, vaga: x.peca.vaga, zona: x.zona, papel: x.peca.papel, formato: x.peca.formato, label: x.peca.label, item: x.peca.item });
+            if (pecas.length >= 120) break;
+          }
+        } catch (e) { erros.registrar(e, { rota: '/api/campanhas/pecas', campanha: c.id }); }
         if (pecas.length >= 120) break;
       }
       sendJson(res, 200, { pecas });
@@ -398,9 +405,12 @@ module.exports = function (ctx) {
        */
       for (const c of pagina) {
         if (c.capa && c.capa.n != null) continue;
-        const k = await db.lerCampanha(sess.tenant_id, c.id);
-        c.capa = k && k.resultado ? capaDe(k.resultado) : null;
-        if (c.capa) await db.salvarCapaDaCampanha(sess.tenant_id, c.id, c.capa).catch(() => {});
+        // Campanha de formato velho fica sem capa, e a lista abre (reteste da fase 10).
+        try {
+          const k = await db.lerCampanha(sess.tenant_id, c.id);
+          c.capa = k && k.resultado ? capaDe(k.resultado) : null;
+          if (c.capa) await db.salvarCapaDaCampanha(sess.tenant_id, c.id, c.capa).catch(() => {});
+        } catch (e) { c.capa = null; erros.registrar(e, { rota: '/api/campanhas', campanha: c.id }); }
       }
       sendJson(res, 200, { campanhas: pagina, mais });
       return true;
