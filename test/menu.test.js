@@ -118,5 +118,6 @@ test('Adicionar conteúdo pergunta antes: 6 entradas grandes; todos os tipos em 
   assert.match(p, /placeholder=\{tab === 'prontas' \? 'Buscar nas peças…' : 'Buscar um tipo: clima, vídeo, QR…'\}/);
   assert.match(p, /catalogo\.principais\.filter\(bate\)/, 'a busca filtra os tipos prontos (o catálogo da frente, fase 1)');
   // Foto ou vídeo entra pelo mesmo caminho do "Pôr na TV": inteira, com o fundo borrado.
-  assert.match(p, /onPickItem\(itemDaMidia\(\{ url: r\.url, fundo: prep\.fundo, video \}\)\)/);
+  // O nome do arquivo vai junto: é o nome da foto na fila (test/ajustes-da-tv.test.js).
+  assert.match(p, /onPickItem\(itemDaMidia\(\{ url: r\.url, fundo: prep\.fundo, video, nome: f\.name \}\)\)/);
 });

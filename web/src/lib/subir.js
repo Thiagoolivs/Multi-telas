@@ -147,10 +147,17 @@ export function enviarComProgresso(arquivo, onProgresso) {
  * faixa preta. TV com o player antigo no cache ignora `fundo` e mostra o
  * `contain` de sempre: nada quebra.
  */
-export function itemDaMidia({ url, fundo, video }) {
-  return video
+/*
+ * `nome`: o nome do arquivo que a pessoa escolheu ("foto-vitrine_2.jpg"). O
+ * endereço do armazenamento é um código; é por este nome que a foto aparece
+ * na fila e na semana (contentTypes.js, nomeDaMidia), e não como "Imagem".
+ */
+export function itemDaMidia({ url, fundo, video, nome }) {
+  const item = video
     ? { type: 'video', src: url, fit: 'contain', fundo: fundo || '', loop: false, muted: true, duracao: 0 }
     : { type: 'image', src: url, fit: 'contain', fundo: fundo || '', duracao: 10 };
+  const n = String(nome || '').trim().slice(0, 180);
+  return n ? { ...item, nome: n } : item;
 }
 
 // Abrir o "Subir" de qualquer lugar do painel (Início, arrastar e soltar, e

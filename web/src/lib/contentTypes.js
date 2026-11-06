@@ -171,7 +171,8 @@ export const CONTENT_TYPES = {
       DUR,
     ],
     make: () => ({ type: 'image', src: '', fit: 'cover', duracao: 8 }),
-    summary: (i) => i.src ? 'Imagem' : 'Imagem (sem arquivo)',
+    // O nome da foto na fila e na semana: o título, a legenda ou o nome do arquivo; "Foto" só sem nada disso.
+    summary: (i) => nomeDaMidia(i, 'Foto') || (i.src ? 'Foto' : 'Foto (sem arquivo)'),
   },
   video: {
     label: 'Vídeo (MP4)', icon: Film, group: 'Mídia',
@@ -184,7 +185,7 @@ export const CONTENT_TYPES = {
       { key: 'duracao', label: 'Tempo na tela (segundos)', kind: 'number', min: 0, hint: '0 = toca o vídeo inteiro', ...AV },
     ],
     make: () => ({ type: 'video', src: '', loop: false, muted: true, fit: 'contain', duracao: 0 }),
-    summary: (i) => i.src ? 'Vídeo' : 'Vídeo (sem arquivo)',
+    summary: (i) => nomeDaMidia(i, 'Vídeo') || (i.src ? 'Vídeo' : 'Vídeo (sem arquivo)'),
   },
   youtube: {
     label: 'YouTube / Ao vivo', icon: Youtube, group: 'Mídia',
@@ -426,6 +427,47 @@ export function semExemplo(antes, depois) {
   const meta = { ...depois.meta };
   delete meta.exemplo;
   return { ...depois, meta };
+}
+
+/*
+ * O NOME DE UM ARQUIVO, COMO GENTE FALA: "foto-vitrine_2.jpg" vira "Foto
+ * vitrine 2". A fila da TV e a semana mostravam "Imagem" em toda foto, e com
+ * dez fotos ninguém achava a da vitrine.
+ *
+ * Nome que não diz nada some (volta ''): vazio, genérico ("image", "foto",
+ * "arquivo") ou código (o id do nosso armazenamento, um hash). A foto da
+ * câmera ("IMG_20241103_101500", "WhatsApp Image 2024-11-03 at…") vira
+ * "Foto de 03/11/2024"; `tipo` é a palavra da frente ("Foto", "Vídeo").
+ */
+const GENERICO = /^(arquivo|file|imagem|image|img|foto|photo|picture|pic|video|vídeo|movie|clip|blob|download|untitled|sem título|captura de tela|screenshot)$/i;
+const DA_CAMERA = /^(?:img|pxl|dsc|dscn|dcim|vid|mvimg|whatsapp (?:image|video)|screenshot|captura de tela|foto|video)\D{0,6}(20\d{2}) ?(\d{2}) ?(\d{2})(?!\d)/i;
+export function nomeDoArquivo(nome, tipo = 'Foto') {
+  let s = String(nome || '').split(/[?#]/)[0].split(/[\\/]/).pop() || '';
+  try { s = decodeURIComponent(s); } catch (e) { /* fica como veio */ }
+  s = s.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_\-.+]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!s || GENERICO.test(s)) return '';
+  const cam = DA_CAMERA.exec(s);
+  if (cam) return tipo + ' de ' + cam[3] + '/' + cam[2] + '/' + cam[1];
+  // Código: só números, ou uma palavra só de letras e números misturados (o id que o servidor dá).
+  const palavras = s.split(' ');
+  if (palavras.every((p) => /^\d+$/.test(p) || (p.length >= 8 && /\d/.test(p) && /[a-z]/i.test(p)))) return '';
+  return (s.charAt(0).toUpperCase() + s.slice(1)).slice(0, 60);
+}
+
+/*
+ * O nome de uma foto ou vídeo: o título ou a legenda, quando há; senão, o
+ * nome do arquivo enviado (`nome`, gravado ao subir). O endereço colado da
+ * internet às vezes já diz o que é; o do nosso armazenamento (/media/…) é
+ * um código e não entra.
+ */
+export function nomeDaMidia(item, tipo = 'Foto') {
+  const i = item || {};
+  const proprio = [i.titulo, i.legenda, i.caption].find((x) => typeof x === 'string' && x.trim());
+  if (proprio) return proprio.replace(/\s+/g, ' ').trim().slice(0, 60);
+  const doArquivo = nomeDoArquivo(i.nome, tipo);
+  if (doArquivo) return doArquivo;
+  if (typeof i.src === 'string' && !/^(\/media\/|data:|blob:)/.test(i.src)) return nomeDoArquivo(i.src, tipo);
+  return '';
 }
 
 /*
