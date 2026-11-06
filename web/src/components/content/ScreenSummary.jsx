@@ -3,6 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Palette, Sparkles, Clock, AlertTriangle, Lightbulb, Check, Info } from 'lucide-react';
 import { digest, formatarTempo } from '../../lib/screenDigest.js';
 import { nomeDaParte } from '../../lib/tela.js';
+import { ArrumarVolta } from '../tela/ArrumarVolta.jsx';
 
 /*
  * "O que está nesta tela" — a resposta para "o sistema não passa segurança".
@@ -11,7 +12,7 @@ import { nomeDaParte } from '../../lib/tela.js';
  * nada dizia qual coisa venceu nem o que a TV está exibindo agora. Este resumo
  * não decide nada: ele descreve, e é isso que devolve o controle.
  */
-export function ScreenSummary({ cfg }) {
+export function ScreenSummary({ cfg, aoArrumar }) {
   const [aberto, setAberto] = useState(false);
   const perfil = usePerfil();
   // A frente dá o local padrão da TV (fase 3): a volta certa é a do lugar.
@@ -116,7 +117,15 @@ export function ScreenSummary({ cfg }) {
               ))}
               {dicas.map((p, i) => (
                 <div key={'d' + i} className="flex items-start gap-1.5 text-xs text-ink-3">
-                  <Lightbulb size={13} className="mt-0.5 shrink-0" /> {p.texto}
+                  <Lightbulb size={13} className="mt-0.5 shrink-0" />
+                  <span>
+                    {p.texto}
+                    {/* A volta longa: a lista do que pode sair, com o porquê (components/tela/ArrumarVolta.jsx). */}
+                    {p.volta && aoArrumar && (
+                      <span className="block"><ArrumarVolta cfg={cfg} volta={p.volta} aoArrumar={aoArrumar}
+                        parte={nomeDaParte({ id: p.volta.zona, type: 'playlist', name: p.volta.nome }, layout)} /></span>
+                    )}
+                  </span>
                 </div>
               ))}
             </div>

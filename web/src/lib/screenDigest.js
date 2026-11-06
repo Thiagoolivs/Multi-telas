@@ -13,6 +13,7 @@
 import { zonesOf, getLayout, THEME_PRESETS } from './screenConfig.js';
 import { typeLabel } from './contentTypes.js';
 import { zonaSoComHorario } from './agenda.js';
+import { nomeDaParte } from './tela.js';
 // Fase 5: a volta é a mesma conta da TV (js/rodizio.js: tetos, prazo, 1 s por palavra).
 import '../../../js/rodizio.js';
 const R = globalThis.MTRodizio;
@@ -85,7 +86,8 @@ function problemasDaZona(zona, itens, ciclo, local) {
      */
     const [min, max] = R.VOLTA_DO_LOCAL[local];
     if (ciclo < min) p.push({ nivel: 'dica', texto: `${zona.name} repete a cada ${formatarTempo(ciclo)}: ${NOME_DO_LOCAL[local]} a pessoa fica uns ${formatarTempo(min)} e vê a mesma coisa de novo. Ponha mais peças.` });
-    else if (ciclo > max) p.push({ nivel: 'dica', texto: `${zona.name} leva ${formatarTempo(ciclo)} para dar a volta: ${NOME_DO_LOCAL[local]} a pessoa fica uns ${formatarTempo(max)} e não vê tudo. Divida por horário ou tire peças.` });
+    // `volta`: o que o "Arrumar a volta" precisa (components/tela/ArrumarVolta.jsx).
+    else if (ciclo > max) p.push({ nivel: 'dica', texto: `${zona.name} leva ${formatarTempo(ciclo)} para dar a volta: ${NOME_DO_LOCAL[local]} a pessoa fica uns ${formatarTempo(max)} e não vê tudo. Divida por horário ou tire peças.`, volta: { zona: zona.id, nome: zona.name, ciclo, max, lugar: NOME_DO_LOCAL[local] } });
   } else if (!fixo && ciclo > 0 && ciclo < 45) {
     p.push({ nivel: 'dica', texto: `${zona.name} repete a cada ${formatarTempo(ciclo)} — quem passa duas vezes vê o mesmo` });
   }
@@ -127,7 +129,9 @@ export function digest(cfg, ratios, frente) {
   const problemas = [];
   const origens = { data: 0, campanha: 0, manual: 0 };
 
-  zonas.forEach((z) => {
+  // O nome que o cliente lê: "Meio", "Lado", "Faixa de baixo" — e não o do layout ("Principal").
+  zonas.forEach((z0) => {
+    const z = { ...z0, name: nomeDaParte(z0, layout) };
     const dados = (cfg.zonas && cfg.zonas[z.id]) || {};
     if (z.type === 'ticker') {
       const msgs = (dados.messages || []).filter(Boolean).length;

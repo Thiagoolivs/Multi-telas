@@ -85,10 +85,12 @@ export function CalendarioPage({ onIr }) {
   const [editando, setEditando] = useState(null);
   const [verTodas, setVerTodas] = useState(false);
   const [diasEscolhidos, setDiasEscolhidos] = useState({});
+  // Fase 13: o membro de uma loja só vê e põe datas nas TVs das lojas dele (o servidor manda a lista e confere).
+  const [lojas, setLojas] = useState(null);
 
   useEffect(() => {
     setErro(''); setEventos(null);
-    calendario.listar().then((r) => setEventos((r && r.eventos) || [])).catch((e) => setErro(e.message || 'Não deu para abrir o calendário.'));
+    calendario.listar().then((r) => { setEventos((r && r.eventos) || []); setLojas(Array.isArray(r && r.lojas) ? r.lojas : null); }).catch((e) => setErro(e.message || 'Não deu para abrir o calendário.'));
     devices.list().then((r) => setTvs((r && r.devices) || [])).catch(() => setTvs([]));
     carregarModelos().then((m) => setModelos(new Map(m.map((x) => [x.id, x])))).catch(() => setModelos(new Map()));
     brand.get().then((r) => {
@@ -191,8 +193,10 @@ export function CalendarioPage({ onIr }) {
             {ev.detalhe ? ' · ' + ev.detalhe : ''}
           </div>
         </div>
-        <button type="button" onClick={() => setEditando({ ...ev })} aria-label={'Editar ' + ev.titulo} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink"><Pencil size={15} /></button>
-        <button type="button" onClick={() => apagar(ev)} aria-label={'Tirar ' + ev.titulo} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-danger"><Trash2 size={15} /></button>
+        {ev.podeMudar === false ? <span className="shrink-0 text-2xs text-ink-3">Também em outras lojas</span> : (<>
+          <button type="button" onClick={() => setEditando({ ...ev })} aria-label={'Editar ' + ev.titulo} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-ink"><Pencil size={15} /></button>
+          <button type="button" onClick={() => apagar(ev)} aria-label={'Tirar ' + ev.titulo} className="rounded p-1.5 text-ink-3 hover:bg-surface-2 hover:text-danger"><Trash2 size={15} /></button>
+        </>)}
       </li>
     );
   }
@@ -237,7 +241,7 @@ export function CalendarioPage({ onIr }) {
             <label className="flex items-center gap-2 text-sm text-ink-2">
               <MonitorPlay size={15} /> Em
               <select value={onde} onChange={(e) => setOnde(e.target.value)} className={campo} aria-label="Em quais TVs">
-                <option value="todas">todas as TVs</option>
+                <option value="todas">{!lojas ? 'todas as TVs' : lojas.length === 1 ? 'as TVs da sua loja' : 'as TVs das suas lojas'}</option>
                 {grupos.map((g) => <option key={g} value={g}>o grupo {g}</option>)}
               </select>
             </label>

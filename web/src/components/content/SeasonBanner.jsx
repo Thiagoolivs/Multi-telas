@@ -39,8 +39,9 @@ export function SeasonBanner({ zonas, onAplicar }) {
             : `Programação pronta: cores da data, decoração, ${quantos} conteúdos nas partes da TV e os avisos do rodapé — o bastante para rodar o dia inteiro.`}
         </div>
       </div>
+      {/* Um violeta por tela: nos Ajustes da TV, o violeta é o "Pôr na TV"; vestir a data é sugestão. */}
       {!aplicado && (
-        <Button size="sm" variant="primary" icon={CalendarDays}
+        <Button size="sm" variant="secondary" icon={CalendarDays}
           onClick={() => { onAplicar(hoje, programa); setAplicado(true); }}>
           Vestir a tela
         </Button>

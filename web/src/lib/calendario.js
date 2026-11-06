@@ -95,6 +95,12 @@ export function telasDoEvento(ev, telas) {
   const a = (ev && ev.alvo) || { tipo: 'todas' };
   if (a.tipo === 'grupo') return (telas || []).filter((t) => (t.grupo || '') === a.nome);
   if (a.tipo === 'telas') return (telas || []).filter((t) => (a.ids || []).includes(t.id));
+  // As lojas de um membro (fase 13): o servidor grava assim o "todas as TVs" de quem só vê algumas lojas.
+  if (a.tipo === 'grupos') {
+    const k = (g) => String(g || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const nomes = new Set((a.nomes || []).map(k));
+    return (telas || []).filter((t) => t.grupo && nomes.has(k(t.grupo)));
+  }
   return telas || [];
 }
 

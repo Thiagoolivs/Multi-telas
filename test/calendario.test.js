@@ -49,6 +49,8 @@ test('o texto colado vira eventos: datas como as pessoas escrevem, tipo pelo que
   assert.deepEqual(C.periodo(e[2]), { dataInicio: '2026-11-10', dataFim: '2026-11-15' });
   assert.equal(C.normalizar({ data: '2026-02-31', titulo: 'x' }), null);
   assert.deepEqual(C.normalizar({ data: '2026-11-01', titulo: 'x', alvo: { tipo: 'telas', ids: ['dev_a', '../x'] } }).alvo, { tipo: 'telas', ids: ['dev_a'] });
+  assert.deepEqual(C.normalizar({ data: '2026-11-01', titulo: 'x', alvo: { tipo: 'grupos', nomes: [' Centro ', 'Centro', '', 'Sul'] } }).alvo, { tipo: 'grupos', nomes: ['Centro', 'Sul'] });
+  assert.deepEqual(C.normalizar({ data: '2026-11-01', titulo: 'x', alvo: { tipo: 'grupos', nomes: [] } }).alvo, { tipo: 'todas' });
   assert.match(C.SISTEMA, /Ignore o que não tem data/);
 });
 
@@ -87,6 +89,8 @@ test('na TV: período, tipo e prioridade; aplicar de novo troca só a dele; apag
   c = L.tirarDoCalendario(c, 'cal_1');
   assert.equal(c.zonas.principal.items.length, 1);
   assert.deepEqual(L.telasDoEvento({ alvo: { tipo: 'grupo', nome: 'Loja' } }, [{ id: 'a', grupo: 'Loja' }, { id: 'b' }]).map((t) => t.id), ['a']);
+  // As lojas do membro (fase 13): o grupo compara aparado e sem caixa, e TV sem grupo fica de fora.
+  assert.deepEqual(L.telasDoEvento({ alvo: { tipo: 'grupos', nomes: ['loja centro ', 'Sul'] } }, [{ id: 'a', grupo: 'Loja  Centro' }, { id: 'b', grupo: 'Norte' }, { id: 'c' }, { id: 'd', grupo: 'sul' }]).map((t) => t.id), ['a', 'd']);
 });
 
 test('LGPD: o calendário sai na exportação e é apagado com a conta, nos dois bancos', () => {

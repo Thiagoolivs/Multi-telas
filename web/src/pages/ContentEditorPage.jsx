@@ -470,6 +470,21 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
       await publish();
     } catch (e) { setPublishError(e.message || 'Não deu para ler a versão nova.'); }
   }
+  /*
+   * "Arrumar a volta" (components/tela/ArrumarVolta.jsx): as peças escolhidas
+   * saem pelo "Pôr na TV" de sempre (com a aprovação, vira pedido) e o aviso
+   * traz o Desfazer, que põe a programação de antes de volta.
+   */
+  async function arrumarVolta(novo, quantas) {
+    const antes = cfg;
+    setCfg(novo);
+    if (!(await publish(novo))) { setDirty(true); return false; }
+    emitir({
+      tom: 'desfazer', texto: (quantas === 1 ? '1 peça saiu' : quantas + ' peças saíram') + ' da volta.',
+      acao: { rotulo: 'Desfazer', on: () => { setCfg(antes); publish(antes).then((ok) => { if (!ok) setDirty(true); }); } },
+    });
+    return true;
+  }
   // Desfazer (e refazer) o último "Pôr na TV": a TV volta ao que estava, e a tela daqui também.
   async function desfazer() {
     const a = anterior.current;
@@ -859,7 +874,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
             </div>
           </div>
           {/* O resumo da TV embaixo: quanto tempo ela leva para dar a volta, e o que conferir. */}
-          <ScreenSummary cfg={cfg} />
+          <ScreenSummary cfg={cfg} aoArrumar={arrumarVolta} />
         </>
       )}
 

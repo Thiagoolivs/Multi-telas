@@ -7,6 +7,7 @@ import { avaliarVideo } from '../../lib/subir.js';
 
 // Campo de mídia: envia arquivo (para o storage) OU aceita uma URL colada.
 // O upload devolve uma URL estável — nada de base64 no config.
+// `onChange(url, nome)`: o nome do arquivo enviado vai junto (é o nome da foto na fila); colar ou tirar, sem nome.
 export function MediaField({ value, onChange, accept = 'image' }) {
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
@@ -25,7 +26,7 @@ export function MediaField({ value, onChange, accept = 'image' }) {
         if (av) setAviso(av.aviso);
       }
       const res = await media.upload(file);
-      onChange(res.url);
+      onChange(res.url, file.name || res.name || '');
     } catch (err) {
       setError(err.message || 'Falha no upload.');
     } finally { setBusy(false); }

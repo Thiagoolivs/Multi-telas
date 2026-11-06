@@ -399,8 +399,9 @@ module.exports = function (ctx) {
      */
     if (req.method === 'GET' && parts[1] === 'devices' && parts[2] === 'configs' && parts.length === 3) {
       if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+      // Fase 13: o membro de uma loja recebe só a programação das TVs dela (como a lista e GET /config).
       const [rows, empresa, kit] = await Promise.all([
-        db.listDevices(sess.tenant_id), empresaDa(sess.tenant_id), db.getBrandKit(sess.tenant_id).catch(() => null),
+        db.listDevices(sess.tenant_id).then((l) => permissoes.filtrar(sess, l)), empresaDa(sess.tenant_id), db.getBrandKit(sess.tenant_id).catch(() => null),
       ]);
       const configs = {};
       for (const r of rows) {
@@ -413,8 +414,8 @@ module.exports = function (ctx) {
     }
     if (req.method === 'GET' && parts[1] === 'devices' && parts[2] === 'estados' && parts.length === 3) {
       if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
-      // Só as TVs desta conta: o id de outra conta some da resposta, como se não existisse.
-      const daConta = new Set((await db.listDevices(sess.tenant_id)).map((d) => d.id));
+      // Só as TVs desta conta (e, para o membro de uma loja, as dela): o resto some da resposta, como se não existisse.
+      const daConta = new Set(permissoes.filtrar(sess, await db.listDevices(sess.tenant_id)).map((d) => d.id));
       const pedidos = String((query && query.ids) || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 100);
       const estados = {};
       for (const id of (pedidos.length ? pedidos : [...daConta])) {
