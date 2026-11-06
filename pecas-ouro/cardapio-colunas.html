@@ -29,6 +29,29 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.92 var(--mt-fonte-titulo); tex
 .medida { grid-column: 1 / -1; margin-top: .9cqh; font: 500 max(var(--mt-piso, 0cqw), 1.15cqw)/1 var(--mt-fonte-texto); letter-spacing: .1em; text-transform: uppercase; color: var(--mt-texto-suave); }
 .medida:empty { display: none; }
 .cta { position: absolute; left: 6cqw; bottom: 6cqh; font: 600 max(var(--mt-piso, 0cqw), 1.2cqw)/1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
+/*
+ * A principal do Corporativo (1379×784 na TV): com a letra do balcão o nome
+ * comprido quebrava ao lado do preço e a lista subia no título. O nome fica
+ * com a linha toda; o preço desce para a linha da medida, com o pontilhado
+ * entre os dois, e a medida vai em caixa baixa (comprida, ela quebra antes
+ * do preço). O apoio sai, o kicker vai para o lado do título, no lugar
+ * dele, e as letras espaçadas apertam.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  .marca-nome { letter-spacing: .16em; }
+  .cabeca > div { display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: baseline; gap: 3cqw; }
+  .kicker { letter-spacing: .06em; }
+  .kicker i { width: 2.4cqw; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(5.6cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { display: none; }
+  .itens { column-gap: 3cqw; }
+  .itens li { align-content: start; column-gap: .6cqw; row-gap: .4cqh; padding: 1cqh 0 .8cqh; }
+  .nome { grid-column: 1 / -1; }
+  .medida { grid-column: 1; grid-row: 2; margin-top: 0; font-weight: 400; letter-spacing: 0; text-transform: none; line-height: 1.1; text-wrap: balance; }
+  .pontos { grid-column: 2; grid-row: 2; margin-bottom: .25em; }
+  .valor { grid-column: 3; grid-row: 2; }
+  .cta { letter-spacing: .06em; }
+}
 /* Em pé e quase quadrada: uma coluna, o título em cima. */
 @container (aspect-ratio < 1.25) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); }

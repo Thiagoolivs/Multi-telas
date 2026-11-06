@@ -35,6 +35,18 @@ h1 span:first-child { color: var(--mt-destaque); }
   .qr { flex: none; width: 56cqmin; height: 56cqmin; }
   .pedido { display: none; }
 }
+/*
+ * A principal do Corporativo (1379×784 na TV): com a letra do balcão e a
+ * fonte de número larga de uma marca, o "1.240 avaliações" ao lado da nota
+ * encostava no QR. O QR fica um pouco menor, as margens e o respiro
+ * encurtam e o total aperta o espaçado.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  .bloco { left: 6cqw; right: 6cqw; gap: 4cqw; }
+  .kicker { letter-spacing: .16em; }
+  .qr { width: 48cqmin; height: 48cqmin; }
+  .total { letter-spacing: 0; }
+}
 /* Quase quadrada: o QR e o título encolhem para a coluna caber. */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .nota { margin-top: 4cqmin; }

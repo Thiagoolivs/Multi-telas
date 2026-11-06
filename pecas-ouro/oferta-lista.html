@@ -23,6 +23,23 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.95 var(--mt-fonte-titulo); tex
 .valor { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
 .valor small { font-size: max(var(--mt-piso, 0cqw), .36em); vertical-align: 1em; margin-right: .2em; }
 .cta { position: absolute; left: 6cqw; bottom: 6cqh; font: 600 max(var(--mt-piso, 0cqw), 1.2cqw)/1 var(--mt-fonte-texto); letter-spacing: .24em; text-transform: uppercase; padding-bottom: .7cqw; border-bottom: .12cqw solid var(--mt-destaque); }
+/*
+ * A principal do Corporativo (1379×784 na TV): com a letra do balcão o
+ * detalhe de cada item vai em duas linhas e a lista ocupa a altura toda.
+ * Ela fica com a coluna da direita inteira; na da esquerda o apoio sai, as
+ * letras espaçadas apertam e a chamada quebra dentro da coluna (comprida,
+ * ela passava por baixo da lista).
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  .marca-nome { letter-spacing: .14em; }
+  .kicker { gap: .8cqw; letter-spacing: .06em; }
+  .kicker i { width: 2.4cqw; }
+  h1 { margin: 1.4cqw 0 0; }
+  .apoio { display: none; }
+  .itens li { padding: 1.1cqw 0; }
+  .det { margin-top: .3cqw; line-height: 1.2; }
+  .cta { max-width: 36cqw; letter-spacing: .06em; line-height: 1.1; }
+}
 /* Em pé e quase quadrada: título em cima, lista embaixo. */
 @container (aspect-ratio < 1.25) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); }

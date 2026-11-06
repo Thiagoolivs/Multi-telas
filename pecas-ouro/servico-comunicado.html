@@ -21,6 +21,24 @@
 h1 { font: 600 max(var(--mt-piso, 0cqw), 5.2cqw)/1.04 var(--mt-fonte-titulo); letter-spacing: -.02em; margin: 2.2cqw 0 2.4cqw; text-wrap: balance; }
 .apoio { font: 400 max(var(--mt-piso, 0cqw), 1.7cqw)/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
 .volta { margin-top: 2.8cqw; padding-top: 2.2cqw; border-top: .12cqw solid var(--mt-linha); font: 600 max(var(--mt-piso, 0cqw), 1.6cqw)/1.3 var(--mt-fonte-texto); }
+/*
+ * A principal do Corporativo (1379×784 na TV): com a letra do balcão e a
+ * fonte de título larga de uma marca, o texto passava do alto e do pé. A
+ * folha do calendário fica um pouco mais estreita e o texto ganha a
+ * largura; as letras espaçadas apertam e as entrelinhas ficam mais justas.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  .marca-nome { letter-spacing: .16em; }
+  .folha { left: 6cqw; width: 28cqw; }
+  .mes { letter-spacing: .16em; }
+  .semana { letter-spacing: .04em; }
+  .texto { left: 40cqw; right: 6cqw; }
+  .kicker { gap: .8cqw; letter-spacing: .1em; }
+  .kicker i { width: 2.4cqw; }
+  h1 { margin: 1.4cqw 0 1.6cqw; }
+  .apoio { line-height: 1.3; }
+  .volta { margin-top: 1.8cqw; padding-top: 1.4cqw; line-height: 1.2; }
+}
 @container (aspect-ratio < 0.8) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); }
   .folha { left: 8cqw; top: 11cqh; transform: none; width: 50cqw; }

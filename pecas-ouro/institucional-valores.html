@@ -32,6 +32,18 @@ h1 span { display: block; white-space: nowrap; }
 @container (aspect-ratio >= 1.25) and (aspect-ratio < 1.75) {
   h1 span { display: inline; }
 }
+/*
+ * Na TV o destaque do corporativo (1379×784) passa de 1,75: pela altura, o
+ * mesmo título numa linha. Com a letra do balcão e a fonte larga de uma
+ * marca ele quebrava e a segunda linha passava por cima do filete da lista:
+ * o título encolhe como o da tela cheia (--mt-escala-titulo), e o texto de
+ * cada valor fica com a entrelinha mais justa.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(5.2cqw * var(--mt-escala-titulo, 1))); }
+  h1 span { display: inline; }
+  .valores small { line-height: 1.2; }
+}
 @container (aspect-ratio < 1.25) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2cqw); }
   .cabeca { left: 8cqw; right: 8cqw; top: 11cqh; }

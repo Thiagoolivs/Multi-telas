@@ -25,6 +25,19 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 5.8cqw)/.95 var(--mt-fonte-titulo); tex
    .6em do próprio tamanho abria a linha. */
 .preco { font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
 .preco small { font-size: max(var(--mt-piso, 0cqw), .5em); margin-right: .15em; vertical-align: top; }
+/*
+ * A principal do Corporativo (1379×784 na TV): com a letra do balcão o
+ * detalhe de cada item ia em duas ou três linhas e as colunas passavam do
+ * pé. Como na quadrada, o detalhe sai: ficam o nome e o preço. A nota vai
+ * numa linha, em caixa baixa, e o nome da loja aperta o espaçado.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  .marca-nome { letter-spacing: .12em; }
+  .nota { max-width: 54cqw; letter-spacing: 0; text-transform: none; }
+  .grupos { column-gap: 3cqw; }
+  .grupo b small { display: none; }
+  .grupo li { padding: 1cqh 0 1.1cqh; }
+}
 /* Em pé: o cardápio de parede — uma categoria embaixo da outra. Com a letra da TV, a
    nota desce para baixo do título (ao lado ele a quebrava em três linhas) e o respiro
    entre os itens aperta: nove itens com detalhe cabem medidos. */
