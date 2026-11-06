@@ -213,6 +213,17 @@ test('servidor: o membro de uma loja não alcança outra, e o que ele põe na TV
   // Mover a TV dele para a outra loja, ou renomear a loja da conta: não.
   assert.equal((await pedir('/api/devices/' + centro.id + '/grupo', { method: 'POST', cookie: membro, json: { grupo: 'Loja Norte' } })).status, 403);
   assert.equal((await pedir('/api/grupos/renomear', { method: 'POST', cookie: membro, json: { de: 'Loja Norte', para: 'Minha' } })).status, 403);
+  // A senha (fase 12): o membro de uma loja não chama na fila de outra, nem na de "todas as TVs".
+  const local = { tipo: 'guiche', numero: 1 };
+  assert.equal((await pedir('/api/senha/proxima', { method: 'POST', cookie: membro, json: { grupo: 'Loja Norte', local } })).status, 403, 'chamou senha na outra loja');
+  assert.equal((await pedir('/api/senha/proxima', { method: 'POST', cookie: membro, json: { grupo: '', local } })).status, 403, 'chamou senha em todas as TVs');
+  assert.equal((await pedir('/api/senha/zerar', { method: 'POST', cookie: membro, json: { grupo: 'Loja Norte' } })).status, 403, 'zerou a fila da outra loja');
+  const filaDele = await pedir('/api/senha?grupo=Loja%20Norte', { cookie: membro });
+  assert.equal(filaDele.json.grupo, 'Loja Centro', 'a fila que ele vê é a da loja dele');
+  assert.deepEqual(filaDele.json.grupos, ['Loja Centro']);
+  assert.equal((await pedir('/api/senha/proxima', { method: 'POST', cookie: membro, json: { grupo: 'Loja Centro', local } })).status, 200, 'na loja dele, chama');
+  // A planilha de preços vale para a conta inteira: o membro de uma loja não troca.
+  assert.equal((await pedir('/api/planilhas', { method: 'POST', cookie: membro, json: { nome: 'X', csv: 'Café;5' } })).status, 403);
   assert.equal((await pedir('/api/automaticos', { method: 'PUT', cookie: membro, json: { aniversarios: { ligado: true } } })).status, 403);
   assert.deepEqual((await pedir('/api/automaticos', { cookie: membro })).json.telas.map((x) => x.id), [centro.id]);
   // Relatório: a TV de fora é 404; a loja de fora vem vazia; sem filtro, só as dele.

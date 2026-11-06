@@ -20,6 +20,7 @@
  */
 'use strict';
 const S = require('../senha');
+const permissoes = require('../permissoes');
 
 module.exports = function (ctx) {
   const { db, sendJson, readBody, rateLimit, broadcast, subscribers, safeEqual, limites } = ctx;
@@ -108,7 +109,7 @@ module.exports = function (ctx) {
     // Primeiro a TV, depois a resposta: é a TV que o paciente está olhando.
     await avisarTelas(t, grupo, telas, dia);
     db.registrarEvento(t, sess.user_id, 'senha.' + acao).catch(() => {});
-    return sendJson(res, 200, await fila(t, grupo, telas, dia));
+    return sendJson(res, 200, await fila(t, grupo, permissoes.filtrar(sess, telas), dia));
   }
 
   return async function (req, res, parts, query, sess) {
@@ -121,7 +122,10 @@ module.exports = function (ctx) {
     if (parts.length === 2 && req.method === 'GET') {
       const telas = await db.listDevices(sess.tenant_id);
       const dia = S.diaNaLoja(Date.now(), S.fusoDasTelas(telas));
-      sendJson(res, 200, Object.assign(await fila(sess.tenant_id, S.grupoDe(query && query.grupo), telas, dia), { locais: S.LOCAIS }));
+      // Fase 13: o membro de uma loja só vê a fila das lojas dele (e as TVs delas).
+      let grupo = S.grupoDe(query && query.grupo);
+      if (permissoes.restrito(sess) && !permissoes.podeGrupo(sess, grupo)) grupo = S.grupoDe(sess.lojas[0] || '');
+      sendJson(res, 200, Object.assign(await fila(sess.tenant_id, grupo, permissoes.filtrar(sess, telas), dia), { locais: S.LOCAIS }));
       return true;
     }
     const acao = parts[2];
@@ -132,6 +136,8 @@ module.exports = function (ctx) {
     if (!rl.ok) { sendJson(res, 429, { error: 'Muitas chamadas em pouco tempo. Espere ' + rl.retryAfter + ' segundos.' }, { 'Retry-After': String(rl.retryAfter) }); return true; }
     readBody(req, res, async (b) => {
       if (!b || typeof b !== 'object') return sendJson(res, 400, { error: 'json inválido' });
+      // Fase 13: o membro de uma loja só chama nas TVs das lojas dele ("todas as TVs" não é dele).
+      if (permissoes.restrito(sess) && !permissoes.podeGrupo(sess, S.grupoDe(b.grupo))) return sendJson(res, 403, { error: 'Esta fila é de uma loja que não é sua.' });
       if (acao === 'zerar') {
         const grupo = S.grupoDe(b.grupo);
         const telas = await db.listDevices(sess.tenant_id);
