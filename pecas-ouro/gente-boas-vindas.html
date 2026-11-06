@@ -21,6 +21,23 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
 .cargo { margin-top: 2.4cqw; font: 600 max(var(--mt-piso, 0cqw), 2cqw)/1.3 var(--mt-fonte-texto); }
 .curioso { margin-top: 2.4cqw; padding-top: 2.2cqw; border-top: .14cqw solid var(--mt-linha); font: 400 max(var(--mt-piso, 0cqw), 1.6cqw)/1.5 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
 .curioso b { display: block; margin-bottom: .6cqw; font: 700 max(var(--mt-piso, 0cqw), 1.1cqw)/1 var(--mt-fonte-texto); letter-spacing: .26em; text-transform: uppercase; color: var(--mt-texto); }
+/*
+ * A principal do Corporativo (1379×784 na TV): com a letra do balcão o
+ * bloco, centrado no meio da peça, subia até a marca. Ele fica centrado na
+ * faixa abaixo dela, mais largo (o retrato encolhe um pouco), com os
+ * respiros e as entrelinhas mais justos e o espaçado das letras menor.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  .marca-nome { letter-spacing: .16em; }
+  .retrato { right: 7cqw; width: 27cqw; height: 27cqw; box-shadow: 1.1cqw 1.1cqw 0 0 var(--mt-destaque); }
+  .bloco { top: 12cqh; bottom: 4cqh; width: 54cqw; transform: none; display: flex; flex-direction: column; justify-content: center; justify-content: safe center; }
+  .kicker { gap: .8cqw; letter-spacing: .08em; }
+  .kicker i { width: 2.4cqw; }
+  h1 { margin-top: 1.4cqw; }
+  .cargo { margin-top: 1.4cqw; line-height: 1.2; }
+  .curioso { margin-top: 1.6cqw; padding-top: 1.4cqw; line-height: 1.25; }
+  .curioso b { margin-bottom: .4cqw; letter-spacing: .08em; }
+}
 @container (aspect-ratio < 0.8) {
   .marca-nome { left: 8cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 2.2cqw); }
   .retrato { left: 8cqw; right: auto; top: 11cqh; translate: none; width: 52cqw; height: 52cqw; box-shadow: 2.4cqw 2.4cqw 0 0 var(--mt-destaque); }

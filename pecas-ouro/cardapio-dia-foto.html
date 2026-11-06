@@ -37,6 +37,27 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
 .valor { font: 400 max(var(--mt-piso, 0cqw), 6cqw)/.8 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
 .valor small { font-size: max(var(--mt-piso, 0cqw), .34em); vertical-align: 1.05em; margin-right: .2em; }
 .valor sup { font-size: max(var(--mt-piso, 0cqw), .38em); vertical-align: 1em; }
+/*
+ * A principal do Corporativo (1379×784 na TV): com a letra do balcão o
+ * bloco passava da altura e os talheres, medidos pela letra, cresciam até
+ * cortar a marca. Os talheres voltam ao tamanho do desenho e o prato fica
+ * um pouco menor e mais à direita: o bloco ganha largura. As letras
+ * espaçadas apertam e os respiros encurtam.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+  .prato { right: 7cqw; width: 36cqw; height: 36cqw; margin-top: -18cqw; box-shadow: inset 0 0 0 3cqw var(--mt-fundo-2), 0 0 0 .14cqw var(--mt-linha); }
+  .talher { font-size: 1cqw; }
+  .garfo { right: 45cqw; }
+  .faca { right: 3cqw; }
+  .marca-nome { letter-spacing: .14em; }
+  .bloco { top: 12cqh; bottom: 5cqh; width: 39cqw; }
+  .kicker { gap: .8cqw; letter-spacing: .06em; }
+  .kicker i { width: 2.4cqw; }
+  h1 { margin-top: 1.2cqw; font-size: max(var(--mt-piso, 0cqw), calc(5cqw * var(--mt-escala-titulo, 1))); }
+  .acompanha { margin-top: 1.4cqw; line-height: 1.25; }
+  .preco { margin-top: 1.6cqw; padding-top: 1.4cqw; }
+  .quando { letter-spacing: .06em; line-height: 1.2; text-wrap: balance; }
+}
 @container (aspect-ratio < 0.8) {
   .prato { right: auto; left: 50%; top: 9cqh; width: 64cqw; height: 64cqw; margin: 0 0 0 -32cqw; box-shadow: inset 0 0 0 5.4cqw var(--mt-fundo-2), 0 0 0 .25cqw var(--mt-linha); }
   .talher { top: calc(9cqh + 32cqw); font-size: max(var(--mt-piso, 0cqw), 1.7cqw); }

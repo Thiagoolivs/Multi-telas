@@ -295,11 +295,30 @@ test('servidor: o membro de uma loja não alcança outra, e o que ele põe na TV
   assert.equal(pelaTela.status, 202);
   assert.equal(pelaTela.json.pendente, true);
   assert.equal(await titulo(centro), 'Centro direto', 'foi para a TV sem aprovação');
-  // De novo, pelo lote ("Pôr na TV"): o pedido novo troca o de antes.
-  const peloLote = await pedir('/api/lote', { method: 'POST', cookie: membro, json: { itens: [{ id: centro.id, config: cfg('Centro pedido 2'), versao: v1 }], descricao: 'Oferta do dia' } });
+  /*
+   * De novo, pelo lote ("Pôr na TV"): os dois vão JUNTOS (decisão do dono,
+   * 06/11). Quem tem pedido esperando lê a programação do pedido, com a
+   * versão dele; a mudança nova vai em cima, e o dono recebe as duas.
+   */
+  const lidaComPedido = await pedir('/api/devices/' + centro.id + '/config', { cookie: membro });
+  assert.equal(lidaComPedido.json.zonas.principal.items[0].titulo, 'Centro pedido 1', 'o membro não lê o que ele mesmo mandou');
+  assert.equal(lidaComPedido.headers['x-meu-pedido'], pelaTela.json.aprovacao.id);
+  const vPedido = Number(lidaComPedido.headers['x-config-versao']);
+  assert.equal(vPedido, pelaTela.json.versao, 'a versão do pedido que o 202 devolve é a que se lê');
+  assert.notEqual(vPedido, v1);
+  // Em cima da TV de agora (a versão dela), com pedido esperando: 409 — a mudança de antes se perderia.
+  const emCimaDaTv = await pedir('/api/lote', { method: 'POST', cookie: membro, json: { itens: [{ id: centro.id, config: cfg('Centro pedido 2'), versao: v1 }] } });
+  assert.equal(emCimaDaTv.status, 409);
+  assert.equal(emCimaDaTv.json.code, 'config-mudou');
+  assert.match(emCimaDaTv.json.error, /mudança esperando aprovação/);
+  assert.equal((await pedir('/api/devices/' + centro.id + '/config?versao=' + v1, { method: 'PUT', cookie: membro, json: cfg('x') })).status, 409);
+  const somar = (lida, titulo) => ({ ...lida, zonas: { ...lida.zonas, principal: { ...lida.zonas.principal, items: [{ type: 'text', titulo }].concat(lida.zonas.principal.items) } } });
+  const peloLote = await pedir('/api/lote', { method: 'POST', cookie: membro, json: { itens: [{ id: centro.id, config: somar(lidaComPedido.json, 'Centro pedido 2'), versao: vPedido }], descricao: 'Oferta do dia' } });
   assert.equal(peloLote.status, 202);
+  assert.equal(peloLote.json.aprovacao.junto, true);
   assert.equal(await titulo(centro), 'Centro direto');
   const pedidoId = peloLote.json.aprovacao.id;
+  assert.notEqual(pedidoId, pelaTela.json.aprovacao.id);
   // A campanha "no ar" espera junto com o pedido.
   const campDentro = await pedir('/api/campanhas/' + camp.id, { method: 'PUT', cookie: membro, json: { estado: 'no_ar', telas: [centro.id] } });
   assert.equal(campDentro.status, 202);
@@ -314,26 +333,37 @@ test('servidor: o membro de uma loja não alcança outra, e o que ele põe na TV
   assert.equal((await pedir('/api/aprovacoes/' + pedidoId, { cookie: outra })).status, 404);
   assert.equal((await pedir('/api/aprovacoes/' + pedidoId + '/aprovar', { method: 'POST', cookie: outra })).status, 404);
 
-  // O dono: o sino conta um (o primeiro pedido foi trocado pelo segundo), e o antes e o depois.
+  // O dono: o sino conta um (o primeiro pedido está dentro do segundo), e o antes e o depois com as duas mudanças.
   assert.equal((await pedir('/api/aprovacoes/contagem', { cookie: dono })).json.n, 1);
   const fila = (await pedir('/api/aprovacoes', { cookie: dono })).json;
   assert.deepEqual(fila.pendentes.map((p) => p.id), [pedidoId]);
+  assert.match(fila.pendentes[0].descricao, /^Mudança .* · Oferta do dia$/, 'o nome do pedido diz as duas mudanças');
   const aberto = (await pedir('/api/aprovacoes/' + pedidoId, { cookie: dono })).json;
   assert.equal(aberto.telas[0].antes.zonas.principal.items[0].titulo, 'Centro direto');
-  assert.equal(aberto.telas[0].depois.zonas.principal.items[0].titulo, 'Centro pedido 2');
-  assert.equal(aberto.telas[0].mudouDepois, false);
+  assert.deepEqual(aberto.telas[0].depois.zonas.principal.items.map((it) => it.titulo), ['Centro pedido 2', 'Centro pedido 1'], 'a primeira mudança se perdeu');
+  assert.equal(aberto.telas[0].mudouDepois, false, 'a base é a TV de quando o primeiro pedido foi feito');
   // Aprovado: vai ao ar sozinho, e a campanha fica no ar.
   const aprovado = await pedir('/api/aprovacoes/' + pedidoId + '/aprovar', { method: 'POST', cookie: dono });
   assert.equal(aprovado.status, 200);
   assert.ok(aprovado.json.lote, 'a aprovação não deixou o envio para desfazer');
   assert.equal(await titulo(centro), 'Centro pedido 2', 'a peça aprovada não foi ao ar');
+  assert.deepEqual((await pedir('/api/devices/' + centro.id + '/config', { headers: { 'x-device-token': centro.deviceToken } })).json.zonas.principal.items.map((it) => it.titulo), ['Centro pedido 2', 'Centro pedido 1']);
+  // Decidido o pedido, o membro volta a ler a TV de verdade.
+  assert.equal((await pedir('/api/devices/' + centro.id + '/config', { cookie: membro })).headers['x-meu-pedido'], undefined);
   assert.equal((await db.lerCampanha(tenantId, camp.id)).estado, 'no_ar');
   assert.equal((await pedir('/api/aprovacoes/' + pedidoId + '/aprovar', { method: 'POST', cookie: dono })).status, 409, 'aprovou duas vezes');
 
   // Conflito: a TV mudou depois do pedido. Nada é atropelado; "por cima" é escolha do dono.
   const v2 = await versao(centro, membro);
-  const p3 = (await pedir('/api/devices/' + centro.id + '/config?versao=' + v2, { method: 'PUT', cookie: membro, json: cfg('Centro pedido 3') })).json.aprovacao.id;
+  const p3a = (await pedir('/api/devices/' + centro.id + '/config?versao=' + v2, { method: 'PUT', cookie: membro, json: cfg('Centro pedido 3') })).json.aprovacao.id;
   assert.equal((await pedir('/api/devices/' + centro.id + '/config', { method: 'PUT', cookie: dono, json: cfg('Centro do dono') })).status, 200, 'o dono publica direto');
+  // O membro mexe de novo, em cima do pedido dele: vai junto, e o conflito com o que o dono pôs continua à vista.
+  const lida3 = await pedir('/api/devices/' + centro.id + '/config', { cookie: membro });
+  assert.equal(lida3.json.zonas.principal.items[0].titulo, 'Centro pedido 3');
+  const lida3b = lida3.json;
+  lida3b.zonas.principal.items.push({ type: 'text', titulo: 'Centro pedido 3b' });
+  const p3 = (await pedir('/api/devices/' + centro.id + '/config?versao=' + lida3.headers['x-config-versao'], { method: 'PUT', cookie: membro, json: lida3b })).json.aprovacao.id;
+  assert.notEqual(p3, p3a);
   assert.equal((await pedir('/api/aprovacoes/' + p3, { cookie: dono })).json.telas[0].mudouDepois, true);
   const conflito = await pedir('/api/aprovacoes/' + p3 + '/aprovar', { method: 'POST', cookie: dono });
   assert.equal(conflito.status, 409);
@@ -342,6 +372,7 @@ test('servidor: o membro de uma loja não alcança outra, e o que ele põe na TV
   assert.equal((await pedir('/api/aprovacoes/contagem', { cookie: dono })).json.n, 1, 'o pedido saiu da fila com o conflito');
   assert.equal((await pedir('/api/aprovacoes/' + p3 + '/aprovar?porCima=1', { method: 'POST', cookie: dono })).status, 200);
   assert.equal(await titulo(centro), 'Centro pedido 3');
+  assert.equal((await pedir('/api/aprovacoes/' + p3a + '/aprovar', { method: 'POST', cookie: dono })).status, 409, 'o pedido de dentro do juntado ainda aprovava sozinho');
 
   // Recusado: o membro vê o porquê, e o sino dele conta até ele ver.
   const v3 = await versao(centro, membro);

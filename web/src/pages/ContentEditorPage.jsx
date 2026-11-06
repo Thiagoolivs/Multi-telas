@@ -88,6 +88,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   const { data, loading, error, reload } = useAsync(() => deviceConfig.ler(device.id), [device.id]);
   const versao = useRef(0);
   const [conflito, setConflito] = useState(false);
+  // Fase 13: o pedido desta pessoa que espera aprovação para esta TV (a mudança nova vai junto com ele).
+  const [meuPedido, setMeuPedido] = useState('');
   const [tentativa, setTentativa] = useState(0);
 
   const [cfg, setCfg] = useState(null);
@@ -144,6 +146,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     if (error || !data) { setCfg(null); return; }
     const seeded = data.config || defaultConfig(device.name);
     versao.current = data.versao || 0;
+    setMeuPedido(data.meuPedido || '');
     naTV.current = data.config || null; anterior.current = null;
     setConflito(false);
     setTentativa(0);
@@ -432,8 +435,16 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
     setPublishing(true); setPublishError('');
     try {
       const r = await deviceConfig.save(device.id, alvo, versao.current);
-      // Fase 13: esperando aprovação — a TV segue com o de antes; o aviso diz (lib/avisos.js).
-      if (r && r.pendente) { setDirty(false); apagarRascunho(device.id); return true; }
+      /*
+       * Fase 13: esperando aprovação — a TV segue com o de antes; o aviso diz
+       * (lib/avisos.js). A próxima mudança vai em cima desta, no mesmo pedido:
+       * a versão passa a ser a do pedido (server/aprovacao.js, juntar).
+       */
+      if (r && r.pendente) {
+        if (r.versao) versao.current = r.versao;
+        if (r.aprovacao && r.aprovacao.id) setMeuPedido(r.aprovacao.id);
+        setDirty(false); apagarRascunho(device.id); return true;
+      }
       if (r && r.updatedAt) versao.current = r.updatedAt;
       anterior.current = naTV.current; naTV.current = alvo;
       setDirty(false); setPublishedAt(Date.now()); setTentativa(0); setConflito(false); setAvisoRascunho(null); setDesfeito(false); setVerComo('agora');
@@ -597,6 +608,12 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
             <Button variant="ghost" size="sm" onClick={async () => { if (await confirmar({ titulo: 'Ver a versão nova?', texto: 'O seu rascunho é descartado.', botao: 'Ver a nova', perigo: true })) descartarRascunho(); }}>Ver a versão nova</Button>
             <Button variant="primary" size="sm" disabled={publishing} onClick={publicarPorCima}>Pôr o meu por cima</Button>
           </span>
+        </div>
+      )}
+      {meuPedido && !conflito && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-accent/30 bg-accent-soft/40 px-3 py-2 text-sm text-ink" role="status">
+          <span>Você tem uma mudança esperando aprovação nesta TV. O que você mudar agora vai junto, no mesmo pedido.</span>
+          {onIr && <button type="button" className="text-sm font-semibold text-accent hover:underline" onClick={() => onIr('aprovacoes')}>Ver em Aprovações</button>}
         </div>
       )}
       {avisoRascunho && !conflito && (
@@ -901,7 +918,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                 <><span className="h-2 w-2 shrink-0 rounded-full bg-warn" aria-hidden /><span className="text-ink">Rascunho · ainda não está na TV</span></>
               ) : (
                 <><Check size={15} className="shrink-0 text-emerald-500" />
-                  <span className="text-ink-2">{publishedAt ? (desfeito ? 'A TV voltou ao que estava' : 'Na TV desde ' + hora(publishedAt)) : 'No ar · nada novo para pôr'}</span></>
+                  <span className="text-ink-2">{meuPedido ? 'Esperando aprovação · a próxima mudança vai junto' : publishedAt ? (desfeito ? 'A TV voltou ao que estava' : 'Na TV desde ' + hora(publishedAt)) : 'No ar · nada novo para pôr'}</span></>
               )}
             </span>
             <span className="flex flex-wrap items-center gap-2">

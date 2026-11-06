@@ -44,6 +44,27 @@ h1 { margin-top: 2.2cqw; font: 400 max(var(--mt-piso, 0cqw), 5.6cqw)/.98 var(--m
   .qr { width: 21cqh; height: 21cqh; padding: .7cqh; }
   .pedido { letter-spacing: .06em; text-wrap: balance; }
 }
+/*
+ * A principal do Corporativo NA TV (1379×784, ou mais larga com a margem
+ * da TV) passa de 1,74 e ficava com o desenho da tela cheia, que cedia a
+ * letra do balcão. Pela altura (600 a 860 px), a mesma composição de cima:
+ * o cartão quadrado e o texto com a largura que sobra.
+ */
+@container (aspect-ratio >= 1.74) and (min-height: 600px) and (max-height: 860px) {
+  .cartao { left: 6cqw; width: 35cqw; padding: 1.2cqw 1.2cqw 0; }
+  .cartao img { aspect-ratio: 1; }
+  .legenda { padding: 1.2cqw .3cqw 1.6cqw; line-height: 1.25; }
+  .legenda small { margin-top: .3cqw; line-height: 1.25; }
+  .bloco { left: 47cqw; right: 6cqw; }
+  .kicker { letter-spacing: .1em; }
+  .kicker i { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 10cqh); margin-top: .36em; }
+  .apoio { line-height: 1.4; }
+  .mande { margin-top: 2.2cqw; }
+  /* O QR do tamanho que o celular lê (160 px) na altura menor da TV. */
+  .qr { width: 23cqh; height: 23cqh; padding: .7cqh; }
+  .pedido { letter-spacing: .06em; text-wrap: balance; }
+}
 /* Em pé: o cartão em cima, quadrado; o texto embaixo, com o QR. */
 @container (aspect-ratio < 0.8) {
   .cartao { left: 50%; top: 5cqh; width: 56cqw; padding: 2.2cqw 2.2cqw 0; translate: -50% 0; }
