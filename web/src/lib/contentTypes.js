@@ -113,7 +113,8 @@ export const CONTENT_TYPES = {
     // Nasce SEM preços: o conteúdo vai ao ar na hora, e preço de exemplo na
     // TV da loja pode ter que ser honrado. Os exemplos ficam só como dica.
     make: () => ({ type: 'precos', titulo: 'CARDÁPIO', colunas: 'auto', duracao: 20, rodape: '', linhas: '' }),
-    summary: (i) => (i.titulo || 'Tabela de preços') + ' · ' + String(i.linhas || '').split('\n').filter((l) => l.trim()).length + ' linha(s)',
+    // Fase 11: a tabela que lê uma planilha se atualiza sozinha (o texto é só a cópia para a TV sem rede).
+    summary: (i) => (i.titulo || 'Tabela de preços') + (i.planilha ? ' · da planilha, atualiza sozinha' : ' · ' + String(i.linhas || '').split('\n').filter((l) => l.trim()).length + ' linha(s)'),
   },
   /*
    * Quiz com cronômetro (D21): pergunta, alternativas, o tempo correndo e a

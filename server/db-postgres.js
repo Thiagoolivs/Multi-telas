@@ -117,6 +117,12 @@ async function init() {
       meta DOUBLE PRECISION, anterior DOUBLE PRECISION, atualizado_em BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_indicadores_tenant ON indicadores(tenant_id);
+    -- Preço e cardápio vindos de uma planilha (fase 11): o link (ou o CSV) e os últimos itens bons.
+    CREATE TABLE IF NOT EXISTS planilhas (
+      id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, origem TEXT, link TEXT, url TEXT, csv TEXT, linhas TEXT,
+      aviso TEXT, ultimo_ok BIGINT, ultimo_erro TEXT, proxima BIGINT, created_at BIGINT
+    );
+    CREATE INDEX IF NOT EXISTS idx_planilhas_tenant ON planilhas(tenant_id);
     ALTER TABLE fotos_pessoa ADD COLUMN IF NOT EXISTS aceite_em BIGINT;
     -- Fotos para uma data (D33): a data do pedido e a foto aprovada que fica no mural dela.
     ALTER TABLE pedidos_foto ADD COLUMN IF NOT EXISTS data_id TEXT;
@@ -1135,7 +1141,8 @@ async function listarConectores(tenantId) { return (await pool.query('SELECT * F
 // Com o segredo cifrado e o hash do token: só para o servidor (nunca vai ao painel).
 async function conectorInterno(id, tenantId) { return (await pool.query('SELECT * FROM conectores_kpi WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rows[0] || null; }
 async function conectorPorToken(hash) { return mapConector((await pool.query("SELECT * FROM conectores_kpi WHERE token_hash = $1 AND modo = 'push'", [String(hash)])).rows[0]); }
-async function conectoresParaBuscar(agora) { return (await pool.query("SELECT * FROM conectores_kpi WHERE modo = 'pull' AND url <> '' AND proxima <= $1", [Number(agora)])).rows; }
+// 'planilha' (fase 11): o indicador que vem de uma planilha do Google também é buscado pelo relógio.
+async function conectoresParaBuscar(agora) { return (await pool.query("SELECT * FROM conectores_kpi WHERE modo IN ('pull', 'planilha') AND url <> '' AND proxima <= $1", [Number(agora)])).rows; }
 const CAMPOS_CONECTOR = { nome: 'nome', url: 'url', authTipo: 'auth_tipo', authNome: 'auth_nome', authSegredo: 'auth_segredo', tokenHash: 'token_hash', intervaloMin: 'intervalo_min', ultimoOk: 'ultimo_ok', ultimoErro: 'ultimo_erro', proxima: 'proxima' };
 async function atualizarConector(id, tenantId, campos) {
   const sets = [];
@@ -1166,12 +1173,13 @@ async function gravarIndicadores(tenantId, conectorId, lista, agora) {
         await client.query('UPDATE indicadores SET nome = CASE WHEN $1::boolean THEN $2::text ELSE nome END, valor = $3, '
           + 'unidade = CASE WHEN $4::boolean THEN $5::text ELSE unidade END, meta = CASE WHEN $6::boolean THEN $7::double precision ELSE meta END, '
           + 'sentido = CASE WHEN $8::boolean THEN $9::text ELSE sentido END, '
-          + 'anterior = CASE WHEN valor = $3 THEN anterior ELSE valor END, atualizado_em = $10 WHERE id = $11',
+          + 'anterior = CASE WHEN $12::boolean THEN $13::double precision WHEN valor = $3 THEN anterior ELSE valor END, atualizado_em = $10 WHERE id = $11',
           [tem('nome'), i.nome == null ? null : i.nome, i.valor, tem('unidade'), i.unidade || '', tem('meta'), i.meta == null ? null : i.meta,
-            tem('sentido'), i.sentido || '', quando, atual.id]);
+            tem('sentido'), i.sentido || '', quando, atual.id, tem('anterior'), i.anterior == null ? null : i.anterior]);
       } else {
-        await client.query('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, sentido, anterior, atualizado_em) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULL,$10)',
-          ['ki_' + rid(12), tenantId, conectorId, i.chave, i.nome || i.nomeNovo || i.chave, i.valor, i.unidade || '', i.meta == null ? null : i.meta, i.sentido || '', quando]);
+        // `anterior` só quando a origem diz (a planilha com a coluna "anterior", fase 11).
+        await client.query('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, sentido, anterior, atualizado_em) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$11,$10)',
+          ['ki_' + rid(12), tenantId, conectorId, i.chave, i.nome || i.nomeNovo || i.chave, i.valor, i.unidade || '', i.meta == null ? null : i.meta, i.sentido || '', quando, i.anterior == null ? null : i.anterior]);
       }
     }
     await client.query('COMMIT');
@@ -1183,6 +1191,37 @@ async function gravarIndicadores(tenantId, conectorId, lista, agora) {
   return lista.length;
 }
 async function listarIndicadores(tenantId) { return (await pool.query('SELECT * FROM indicadores WHERE tenant_id = $1 ORDER BY nome', [tenantId])).rows.map(mapIndicador); }
+
+/* ----- Preço e cardápio vindos de uma planilha (fase 11) ----- */
+const mapPlanilha = (r) => {
+  if (!r) return null;
+  let itens = [];
+  try { itens = JSON.parse(r.linhas || '[]'); } catch (e) { itens = []; }
+  return {
+    id: r.id, tenantId: r.tenant_id, nome: r.nome || '', origem: r.origem || 'google', link: r.link || '', itens: Array.isArray(itens) ? itens : [],
+    aviso: r.aviso || '', ultimoOk: Number(r.ultimo_ok) || 0, ultimoErro: r.ultimo_erro || '', proxima: Number(r.proxima) || 0, criadoEm: Number(r.created_at) || 0,
+  };
+};
+async function criarPlanilha(tenantId, p) {
+  const id = 'pl_' + rid(12);
+  const r = await pool.query("INSERT INTO planilhas (id, tenant_id, nome, origem, link, url, csv, linhas, aviso, ultimo_ok, ultimo_erro, proxima, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,'[]','',0,'',0,$8) RETURNING *",
+    [id, tenantId, p.nome || '', p.origem || 'google', p.link || '', p.url || '', p.csv || '', Date.now()]);
+  return r.rows[0];
+}
+async function listarPlanilhas(tenantId) { return (await pool.query('SELECT * FROM planilhas WHERE tenant_id = $1 ORDER BY created_at', [tenantId])).rows.map(mapPlanilha); }
+// A linha inteira (com o CSV enviado): só para o servidor.
+async function planilhaInterna(id, tenantId) { return (await pool.query('SELECT * FROM planilhas WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rows[0] || null; }
+async function planilhasParaBuscar(agora) { return (await pool.query("SELECT * FROM planilhas WHERE origem = 'google' AND url <> '' AND proxima <= $1", [Number(agora)])).rows; }
+const CAMPOS_PLANILHA = { nome: 'nome', origem: 'origem', link: 'link', url: 'url', csv: 'csv', linhas: 'linhas', aviso: 'aviso', ultimoOk: 'ultimo_ok', ultimoErro: 'ultimo_erro', proxima: 'proxima' };
+async function atualizarPlanilha(id, tenantId, campos) {
+  const sets = [];
+  const vals = [];
+  for (const k of Object.keys(campos || {})) if (CAMPOS_PLANILHA[k]) { vals.push(campos[k]); sets.push(CAMPOS_PLANILHA[k] + ' = $' + vals.length); }
+  if (!sets.length) return 0;
+  vals.push(String(id), tenantId);
+  return (await pool.query('UPDATE planilhas SET ' + sets.join(', ') + ' WHERE id = $' + (vals.length - 1) + ' AND tenant_id = $' + vals.length, vals)).rowCount;
+}
+async function removerPlanilha(id, tenantId) { return (await pool.query('DELETE FROM planilhas WHERE id = $1 AND tenant_id = $2', [String(id), tenantId])).rowCount; }
 
 /* ----- Fotos pelo QR (D31) ----- */
 const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, dataId: r.data_id || '', dataAlvo: r.data_alvo || '', guardarAte: r.guardar_ate || '', criadoEm: Number(r.created_at) || 0 } : null);
@@ -1914,6 +1953,7 @@ async function dadosDoTenant(tenantId) {
     // Sem o segredo cifrado e sem o hash do token: são credenciais, não dados da conta.
     conectoresDeIndicadores: await varios('SELECT id, nome, modo, url, auth_tipo, intervalo_min, ultimo_ok, ultimo_erro, created_at FROM conectores_kpi WHERE tenant_id = $1'),
     indicadores: await varios('SELECT id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em FROM indicadores WHERE tenant_id = $1'),
+    planilhas: await varios('SELECT id, nome, origem, link, linhas, ultimo_ok, ultimo_erro, created_at FROM planilhas WHERE tenant_id = $1'),
     fotosParaAprovar: await varios('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, aceite_em, aprovada_em, created_at FROM fotos_pessoa WHERE tenant_id = $1'),
     midias: await varios('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = $1'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
@@ -1976,7 +2016,7 @@ async function apagarTenant(tenantId) {
      * consultor; o prazo é do dono com o advogado).
      */
     for (const tabela of ['aprovacoes', 'acesso_lojas', 'marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes',
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'planilhas', 'pacotes_pagos', 'calendario', 'lotes',
       'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       await client.query('DELETE FROM ' + tabela + ' WHERE tenant_id = $1', [tenantId]);
     }
@@ -2181,6 +2221,7 @@ module.exports = {
   addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa, marcarConsentimento, aprovarFotoPessoa,
   pedidosFotoDeData, fotosPendentesAntigas, guardarPedidoFotoAte,
   criarConector, listarConectores, conectorInterno, conectorPorToken, conectoresParaBuscar, atualizarConector, removerConector, gravarIndicadores, listarIndicadores, mapConector,
+  criarPlanilha, listarPlanilhas, planilhaInterna, planilhasParaBuscar, atualizarPlanilha, removerPlanilha, mapPlanilha,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,

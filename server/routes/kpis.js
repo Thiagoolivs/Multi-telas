@@ -14,6 +14,7 @@
  */
 const crypto = require('crypto');
 const K = require('../kpis');
+const P = require('../planilha');
 const segredo = require('../segredo');
 
 module.exports = function (ctx) {
@@ -30,6 +31,16 @@ module.exports = function (ctx) {
   function camposDe(b, modo) {
     const c = {};
     if (b.nome !== undefined) c.nome = corta(b.nome, 60) || 'Indicadores';
+    // A planilha do Google (fase 11): o link que a pessoa cola vira o endereço do CSV; nada de autenticação.
+    if (modo === 'planilha') {
+      if (b.link !== undefined) {
+        const conv = P.linkParaCsv(b.link);
+        if (conv.erro) return { erro: conv.erro };
+        c.url = conv.url;
+      }
+      if (b.intervaloMin !== undefined) c.intervaloMin = Math.max(K.INTERVALO_MIN, Math.min(24 * 60, Number(b.intervaloMin) || 5));
+      return { campos: c };
+    }
     if (modo !== 'pull') return { campos: c };
     if (b.url !== undefined) {
       const url = corta(b.url, 500);
@@ -93,13 +104,26 @@ module.exports = function (ctx) {
     const id = parts[3];
     if (!id && req.method === 'POST') {
       return readBody(req, res, async (b) => {
-        const modo = b && b.modo === 'pull' ? 'pull' : 'push';
+        const modo = b && (b.modo === 'pull' || b.modo === 'planilha') ? b.modo : 'push';
         if ((await db.listarConectores(t)).length >= 10) return sendJson(res, 400, { error: 'no máximo 10 conectores por conta' });
         const { campos, erro } = camposDe(Object.assign({ nome: '' }, b || {}), modo);
         if (erro) return sendJson(res, 400, { error: erro });
+        if (modo === 'planilha' && !campos.url) return sendJson(res, 400, { error: 'cole o link da planilha' });
+        if (modo === 'planilha') {
+          const rl = rateLimit('kpi:teste:' + t, 30, 60 * 60 * 1000);
+          if (!rl.ok) return sendJson(res, 429, { error: 'muitas planilhas ligadas agora — espere um pouco' });
+          if (campos.intervaloMin === undefined) campos.intervaloMin = K.INTERVALO_MIN;
+        }
         const token = modo === 'push' ? novoToken() : '';
         const conector = await db.criarConector(t, Object.assign(campos, { modo, tokenHash: token ? hash(token) : '' }));
         await db.registrarEvento(t, sess.user_id, 'kpis.conector').catch(() => {});
+        // A planilha é lida na hora: o painel mostra o que veio, ou o erro em palavras.
+        if (modo === 'planilha') {
+          const r = await K.buscarAgora(await db.conectorInterno(conector.id, t), { db, site, segredo });
+          if (!r.erro) avisar(t);
+          const atual = (await db.listarConectores(t)).find((c) => c.id === conector.id) || conector;
+          return sendJson(res, 200, Object.assign({ conector: atual }, r.erro ? { erro: r.erro } : { indicadores: comSentido(r.lista), avisos: r.avisos || [] }));
+        }
         return sendJson(res, 200, Object.assign({ conector }, token ? { token } : {}));
       });
     }
@@ -122,7 +146,7 @@ module.exports = function (ctx) {
       return sendJson(res, 200, { token });
     }
     if (parts[4] === 'testar' && req.method === 'POST') {
-      if (linha.modo !== 'pull' || !linha.url) return sendJson(res, 400, { error: 'diga o endereço primeiro' });
+      if ((linha.modo !== 'pull' && linha.modo !== 'planilha') || !linha.url) return sendJson(res, 400, { error: linha.modo === 'planilha' ? 'cole o link da planilha primeiro' : 'diga o endereço primeiro' });
       const rl = rateLimit('kpi:teste:' + t, 30, 60 * 60 * 1000);
       if (!rl.ok) return sendJson(res, 429, { error: 'muitos testes agora — espere um pouco' });
       const r = await K.buscarAgora(linha, { db, site, segredo });

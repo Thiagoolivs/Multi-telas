@@ -215,6 +215,22 @@ async function buscarAgora(linha, { db, site, segredo, agora, politica }) {
     await db.atualizarConector(linha.id, linha.tenant_id, { ultimoErro: erro, proxima });
     return { erro };
   };
+  /*
+   * A PLANILHA (fase 11): o caminho fácil, para quem não tem TI. O link do
+   * Google Planilhas vira o CSV, uma linha por indicador (nome; valor; meta;
+   * unidade; anterior). Só hosts do Google (server/planilha.js). Erro não
+   * apaga o número de antes: a TV continua com o último bom.
+   */
+  if (linha.modo === 'planilha') {
+    const P = require('./planilha');
+    const r = await P.buscarCsv(linha.url, { politica });
+    if (r.erro) return falhou(r.erro);
+    const { lista, avisos } = P.lerIndicadores(r.linhas);
+    if (!lista.length) return falhou((avisos[0] && avisos[0].aviso) ? 'nenhum indicador na planilha: ' + avisos[0].aviso : 'nenhum indicador na planilha — a primeira coluna é o nome e a segunda, o número');
+    await db.gravarIndicadores(linha.tenant_id, linha.id, lista, quando);
+    await db.atualizarConector(linha.id, linha.tenant_id, { ultimoOk: quando, ultimoErro: '', proxima });
+    return { lista, avisos };
+  }
   const senha = linha.auth_segredo ? segredo.decifrar(linha.auth_segredo) : '';
   if (linha.auth_segredo && !senha) return falhou('não deu para abrir a autenticação guardada — salve de novo');
   let mapa = {};

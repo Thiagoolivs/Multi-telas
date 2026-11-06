@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState } from 'react';
-import { Users, Images, BarChart3, ChevronRight } from 'lucide-react';
+import { Users, Images, BarChart3, Sheet, ChevronRight } from 'lucide-react';
 import { Partes } from '../components/ui/Partes.jsx';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { usePerfil } from '../lib/perfil.js';
@@ -57,6 +57,8 @@ const APPS = [
   { id: 'birthdays', nome: 'Aniversariantes', texto: 'Os aniversários da semana entram sozinhos na TV.', Icone: Users },
   { id: 'mural', nome: 'Mural de fotos', texto: 'O público manda a foto pelo QR e ela aparece na TV.', Icone: Images },
   { id: 'indicadores', nome: 'Indicadores', texto: 'Um número que se atualiza sozinho, vindo de um sistema.', Icone: BarChart3 },
+  // Fase 11: o preço e o cardápio vindos de uma planilha do Google (ou de um CSV).
+  { id: 'planilhas', nome: 'Preços da planilha', texto: 'Mudou o preço na planilha, a TV muda junto.', Icone: Sheet },
 ];
 export function AppsPage({ onIr }) {
   const frente = usePerfil();

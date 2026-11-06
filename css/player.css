@@ -1621,3 +1621,6 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   .mt-takeover-card .mt-slide, .mt-takeover-urgente::before, .mt-overlay, .mt-fora, .mt-peca-fixa { top: 0; right: 0; bottom: 0; left: 0; }
   .mt-mural-legenda { top: auto; right: 0; bottom: 0; left: 0; }
 }
+
+/* Fase 11: "Atualizado às 14:05" do cardápio com preço da planilha — no canto oposto ao crédito da foto, legível de longe. */
+.mt-planilha-hora { right: auto; left: 1.6cqh; bottom: 1.4cqh; padding: .4cqh 1.4cqh; font-size: max(var(--mt-piso, 0px), 2.8cqh); }

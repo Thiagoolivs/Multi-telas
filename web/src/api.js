@@ -579,6 +579,15 @@ export const kpis = {
   testar: (id) => api('POST', '/api/kpis/conectores/' + encodeURIComponent(id) + '/testar'),
 };
 
+/* Preço e cardápio vindos de uma planilha (fase 11): o link do Google ou o CSV, e os itens lidos. */
+export const planilhas = {
+  list: () => api('GET', '/api/planilhas'),
+  criar: (p) => api('POST', '/api/planilhas', p),
+  atualizar: (id, p) => api('PUT', '/api/planilhas/' + encodeURIComponent(id), p),
+  lerAgora: (id) => api('POST', '/api/planilhas/' + encodeURIComponent(id) + '/atualizar'),
+  remover: (id) => api('DELETE', '/api/planilhas/' + encodeURIComponent(id)),
+};
+
 /* A foto da pessoa pelo QR, com o RH aprovando (D31). */
 export const fotoqr = {
   list: () => api('GET', '/api/fotoqr'),
