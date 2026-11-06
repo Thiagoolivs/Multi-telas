@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Menu, Sun, Moon, LogOut, ChevronDown, CreditCard, Users, Settings, LifeBuoy, UserPlus } from 'lucide-react';
 import { IconButton } from '../ui/Button.jsx';
+import { SinoAprovacoes } from './SinoAprovacoes.jsx';
 
 const ROLE_LABEL = { owner: 'Dono', admin: 'Admin', member: 'Membro' };
 
-export function Topbar({ title, onOpenMenu, theme, onToggleTheme, user, onLogout, onNavigate }) {
+export function Topbar({ title, onOpenMenu, theme, onToggleTheme, user, onLogout, onNavigate, active }) {
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur">
       <IconButton icon={Menu} label="Menu" className="lg:hidden" onClick={onOpenMenu} />
@@ -18,6 +19,8 @@ export function Topbar({ title, onOpenMenu, theme, onToggleTheme, user, onLogout
       <h1 className="text-sm font-semibold text-ink lg:hidden">{title}</h1>
 
       <div className="ml-auto flex items-center gap-1.5">
+        {/* Fase 13: os pedidos de aprovação (o dono aprova daqui, no celular). */}
+        <SinoAprovacoes onNavigate={onNavigate} ativo={active === 'aprovacoes'} />
         {/* O nome diz o que o botão faz agora (QA de 03/11), e não só "alternar". */}
         <IconButton icon={theme === 'dark' ? Sun : Moon} label={theme === 'dark' ? 'Usar tema claro' : 'Usar tema escuro'} onClick={onToggleTheme} />
         <UserMenu user={user} onLogout={onLogout} onNavigate={onNavigate} />

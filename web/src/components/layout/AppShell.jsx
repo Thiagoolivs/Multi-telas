@@ -92,7 +92,7 @@ export function AppShell({ active, onNavigate, title, theme, onToggleTheme, user
         <FaixaSuporte suporte={suporte} empresa={empresa} />
         <FaixaTeste onIrParaPlano={() => onNavigate('billing')} />
         <FaixaOffline />
-        <Topbar title={title} onOpenMenu={() => setDrawer(true)} theme={theme} onToggleTheme={onToggleTheme} user={user} onLogout={onLogout} onNavigate={navigate} />
+        <Topbar title={title} onOpenMenu={() => setDrawer(true)} theme={theme} onToggleTheme={onToggleTheme} user={user} onLogout={onLogout} onNavigate={navigate} active={active} />
         <main id="conteudo" ref={conteudo} tabIndex={-1} className="flex-1 overflow-y-auto focus:outline-none">
           {/* No celular, espaço para a barra de baixo não cobrir o fim da página. */}
           <div className="mx-auto max-w-[1400px] px-4 pb-24 pt-5 sm:px-6 sm:pt-6 lg:pb-6">

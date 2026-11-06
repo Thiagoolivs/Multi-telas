@@ -30,6 +30,8 @@ export function RelatorioPage({ onIrParaPlano, telaFixa }) {
   const { data, loading, error, reload } = useAsync(carregar, [dias, tela]);
   const lista = useAsync(telaFixa ? async () => null : devices.list);
   const telas = (lista.data && lista.data.devices) || [];
+  // Fase 13: o relatório por loja (o grupo das TVs). O valor 'g:Nome' vira ?grupo= (api.js).
+  const lojasDasTelas = [...new Set(telas.map((t) => String(t.grupo || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
 
   const bloqueado = error && error.status === 402;
 
@@ -45,7 +47,12 @@ export function RelatorioPage({ onIrParaPlano, telaFixa }) {
         </Select></div>
         {!telaFixa && <div className="min-w-0 sm:w-52"><Select aria-label="Qual tela" value={tela} onChange={(e) => setTela(e.target.value)}>
           <option value="">Todas as telas</option>
-          {telas.map((t) => <option key={t.id} value={t.id}>{t.name || 'Tela sem nome'}</option>)}
+          {lojasDasTelas.length > 0 && <optgroup label="Por loja">
+            {lojasDasTelas.map((g) => <option key={'g:' + g} value={'g:' + g}>{g}</option>)}
+          </optgroup>}
+          <optgroup label="Uma tela">
+            {telas.map((t) => <option key={t.id} value={t.id}>{t.name || 'Tela sem nome'}</option>)}
+          </optgroup>
         </Select></div>}
         <div className="col-span-2 sm:col-span-1 sm:ml-auto">
           {/* Planilha vazia não serve para nada: só baixa com exibição no período. */}
@@ -98,7 +105,7 @@ export function RelatorioPage({ onIrParaPlano, telaFixa }) {
             </Table>
           </Panel>
 
-          {!tela && (
+          {(!tela || tela.startsWith('g:')) && (
             <Panel>
               <PanelHeader title="Por tela" />
               <Table>

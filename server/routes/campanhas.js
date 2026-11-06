@@ -32,6 +32,9 @@ const P = require('../../js/peca-html.js');
 const qualidade = require('../qualidade');
 const conferencia = require('../conferencia');
 const compositor = require('../compositor');
+// Fase 13: a loja de cada membro e a aprovação antes de ir ao ar.
+const permissoes = require('../permissoes.js');
+const aprovacao = require('../aprovacao.js');
 
 /*
  * A capa da campanha (item 29): a primeira peça da principal (ou a primeira
@@ -80,7 +83,7 @@ module.exports = function (ctx) {
       const conversaId = b && typeof b.conversaId === 'string' ? b.conversaId : '';
       const conv = conversaId ? await db.lerConversa(sess.tenant_id, conversaId) : null;
       if (conversaId && !conv) return sendJson(res, 404, { error: 'conversa não encontrada' });
-      const ctxConta = await contextoDaConta(sess.tenant_id);
+      const ctxConta = await contextoDaConta(sess.tenant_id, sess);
       // D48: o que a pessoa decidiu na conversa (preço, frase exata, o que não quer) vai ao gerador.
       if (conv && Array.isArray(conv.decisoes)) ctxConta.combinado = conv.decisoes;
       // QA de lançamento, 03/11: o que a pessoa escreveu é a fonte dos fatos (preço, data, horário) que a peça pode trazer.
@@ -118,9 +121,10 @@ module.exports = function (ctx) {
   }
 
   // O que o gerador precisa saber da conta, para o ajuste desenhar igual (item 26).
-  async function contextoDaConta(tenantId) {
+  async function contextoDaConta(tenantId, sess) {
     const [{ kit, marca, lembrada }, telasDb, tenant] = await Promise.all([
-      marcaDaConta(tenantId), db.listDevices(tenantId), db.getTenant(tenantId),
+      // Fase 13: o membro de uma loja só mira as TVs dela.
+      marcaDaConta(tenantId), db.listDevices(tenantId).then((l) => permissoes.filtrar(sess, l)), db.getTenant(tenantId),
     ]);
     const k = kit || {};
     return {
@@ -157,7 +161,7 @@ module.exports = function (ctx) {
         if (esboco.geraAlgo(mudancas)) {
           return { campanha: c, resposta: 'Para redesenhar ou acrescentar peças, use o Editar com a IA: eu mostro o que vou fazer e você aprova.', mudancas: [] };
         }
-        const ctxConta = await contextoDaConta(sess.tenant_id);
+        const ctxConta = await contextoDaConta(sess.tenant_id, sess);
         const feito = await ajuste.aplicar(c, mudancas, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso });
         const salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo, capa: capaDe(feito.resultado),
           estado: conferencia.estadoDepois(c.estado, feito.resultado.conferencia) });
@@ -231,7 +235,7 @@ module.exports = function (ctx) {
         let salva = c;
         let refeitas = 0;
         if (out.acao === 'fazer' && out.mudancas.length) {
-          const ctxConta = await contextoDaConta(sess.tenant_id);
+          const ctxConta = await contextoDaConta(sess.tenant_id, sess);
           const feito = await ajuste.aplicar(c, out.mudancas, ctxConta, { onImagem: fotoDaConta(sess, null), onProgresso: progresso, pedido: texto });
           salva = await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: feito.resultado, escopo: feito.escopo, capa: capaDe(feito.resultado),
             estado: conferencia.estadoDepois(c.estado, feito.resultado.conferencia) });
@@ -315,7 +319,7 @@ module.exports = function (ctx) {
         const anterior = { ...c.resultado }; delete anterior.anterior;
         r.anterior = { resultado: anterior, escopo: c.escopo };
         // A conferência de novo: o que a pessoa escreveu à mão é dela (vale como fonte), e a regra da frente vale igual.
-        r.conferencia = conferencia.reconferir(r, Object.assign({ hoje: new Date() }, conferencia.opcoesDaConta(await contextoDaConta(sess.tenant_id), c.escopo)), mensagens);
+        r.conferencia = conferencia.reconferir(r, Object.assign({ hoje: new Date() }, conferencia.opcoesDaConta(await contextoDaConta(sess.tenant_id, sess), c.escopo)), mensagens);
         return sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: r, capa: capaDe(r), estado: conferencia.estadoDepois(c.estado, r.conferencia) }) });
       });
       return true;
@@ -350,7 +354,7 @@ module.exports = function (ctx) {
         const anterior = { ...c.resultado }; delete anterior.anterior;
         r.anterior = { resultado: anterior, escopo: c.escopo };
         // A peça editada à mão foi conferida pela pessoa: os fatos dela passam a valer; a regra da frente, não muda.
-        r.conferencia = conferencia.reconferir(r, Object.assign({ hoje: new Date() }, conferencia.opcoesDaConta(await contextoDaConta(sess.tenant_id), c.escopo)),
+        r.conferencia = conferencia.reconferir(r, Object.assign({ hoje: new Date() }, conferencia.opcoesDaConta(await contextoDaConta(sess.tenant_id, sess), c.escopo)),
           Object.values(compositor.textosDaPeca(lista[i].item)));
         return sendJson(res, 200, { campanha: await db.salvarCampanha(sess.tenant_id, c.id, { ...c, resultado: r, capa: capaDe(r), estado: conferencia.estadoDepois(c.estado, r.conferencia) }) });
       });
@@ -453,8 +457,22 @@ module.exports = function (ctx) {
          */
         const barrada = conferencia.porQueNaoRoda(c.resultado && c.resultado.conferencia);
         if (barrada && estado !== 'pausada') return sendJson(res, 409, { error: barrada, code: 'conteudo-barrado' });
-        const daConta = new Set(((await db.listDevices(sess.tenant_id)) || []).map((d) => d.id));
-        const telas = (Array.isArray(b.telas) ? b.telas : c.telas).filter((t) => daConta.has(t)).slice(0, 50);
+        // Fase 13: só as TVs que esta pessoa alcança (a de outra loja é tirada da lista, como a de outra conta).
+        const daConta = new Set(permissoes.filtrar(sess, (await db.listDevices(sess.tenant_id)) || []).map((d) => d.id));
+        const pedidas = Array.isArray(b.telas) ? b.telas : c.telas;
+        if (permissoes.restrito(sess) && Array.isArray(b.telas) && b.telas.some((t) => !daConta.has(t))) {
+          return sendJson(res, 403, { error: 'Uma das TVs não é da sua loja.', code: 'loja' });
+        }
+        const telas = (pedidas || []).filter((t) => daConta.has(t)).slice(0, 50);
+        /*
+         * Aprovação ligada (fase 13): as peças foram para um pedido, então a
+         * campanha só fica "no ar" (ou "pausada") quando o dono aprovar — o
+         * estado vai junto do pedido. Sem pedido para anexar, segue normal.
+         */
+        if (sess.precisaAprovar && (estado === 'no_ar' || estado === 'pausada')) {
+          const pedido = await aprovacao.anexarCampanha(db, sess, id, estado, telas);
+          if (pedido) return sendJson(res, 202, { campanha: c, esperandoAprovacao: true, aprovacao: { id: pedido.id } });
+        }
         const salva = await db.salvarCampanha(sess.tenant_id, id, { ...c, estado, telas });
         await db.registrarEvento(sess.tenant_id, sess.user_id, estado === 'no_ar' ? 'campanha.rodar' : 'campanha.' + estado);
         return sendJson(res, 200, { campanha: salva });

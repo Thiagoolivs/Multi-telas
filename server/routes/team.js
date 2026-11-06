@@ -70,6 +70,8 @@ module.exports = function(ctx) {
           if (target.role === 'owner' && (await db.countOwners(sess.tenant_id)) <= 1)
             return sendJson(res, 409, { error: 'a empresa precisa de ao menos um dono' });
           await db.removeUser(targetId, sess.tenant_id);
+          // Fase 13: as lojas dele saem junto (server/permissoes.js).
+          await db.salvarLojasDoUsuario(sess.tenant_id, targetId, null).catch(() => {});
           if (isSelf) await auth.clearSession(res, sess.token, req);
           return sendJson(res, 200, { ok: true });
         }

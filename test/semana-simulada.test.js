@@ -26,7 +26,7 @@ let A; // web/src/lib/aplicarConteudo.js (ESM)
 test.before(async () => { A = await import('../web/src/lib/aplicarConteudo.js'); });
 
 const peca = (id, titulo, extra) => Object.assign({ type: 'announce', id, titulo, corpo: 'Venha conferir com a gente.', duracao: 12 }, extra || {});
-const naFaixa = (item, faixa, dias) => A.agendarPeca(item, faixa, dias || 0);
+const naFaixa = (item, faixa, dias) => A.agendarPeca(item, faixa, dias || 0, INICIO);
 
 /*
  * Roda a zona a semana inteira. `aberto(dia, hora)`: o horário da loja

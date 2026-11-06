@@ -48,9 +48,25 @@ export function listar() {
  * do que não ter botão: a pessoa vê que havia algo a fazer e não alcança.
  */
 // 'desfazer' fica mais tempo: é o tempo de a pessoa perceber o que apagou.
-const SOME_SOZINHO = { ok: 4500, desfazer: 9000 };
+const SOME_SOZINHO = { ok: 4500, desfazer: 9000, pedido: 9000 };
+
+/*
+ * FASE 13: MANDADO PARA APROVAÇÃO. Com a aprovação ligada, o envio do membro
+ * vira pedido (o servidor responde 202 e lib/api.js avisa com 'mt:aprovacao').
+ * Cada tela que põe algo na TV diz o seu "Pronto: está na TV" logo depois —
+ * e isso seria mentira. Nos segundos seguintes ao pedido, o recado de sucesso
+ * (e o Desfazer, que não há o que desfazer) dá lugar ao aviso do pedido.
+ */
+const JANELA_DO_PEDIDO = 8000;
+let pedidoEm = 0;
+export function avisarPedidoDeAprovacao(agora = Date.now()) {
+  pedidoEm = agora;
+  return emitir({ id: 'aprovacao', tom: 'pedido', texto: 'Mandado para aprovação.', detalhe: 'Vai para a TV quando o dono aprovar. Você vê a resposta no sino, lá em cima.' });
+}
+if (typeof window !== 'undefined' && window.addEventListener) window.addEventListener('mt:aprovacao', () => avisarPedidoDeAprovacao());
 
 export function emitir(aviso) {
+  if ((aviso.tom === 'ok' || aviso.tom === 'desfazer') && Date.now() - pedidoEm < JANELA_DO_PEDIDO) return 'aprovacao';
   const id = aviso.id || 'a' + (seq++);
   const item = { ...aviso, id, tom: aviso.tom || 'ok', em: Date.now() };
   const i = avisos.findIndex((a) => a.id === id);

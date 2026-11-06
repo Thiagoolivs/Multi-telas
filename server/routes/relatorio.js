@@ -1,7 +1,7 @@
 /*
  * server/routes/relatorio.js — o relatório de exibição (proof-of-play).
  *
- *   GET /api/relatorio?dias=7|30|90[&tela=ID][&formato=csv]
+ *   GET /api/relatorio?dias=7|30|90[&tela=ID|&grupo=Loja][&formato=csv]
  *
  * O que tocou, quantas vezes, por quanto tempo e em qual tela — contado pela
  * própria TV (js/exibicoes.js), agregado por hora. É o argumento de venda
@@ -12,6 +12,8 @@
  * justamente no teste que o cliente precisa ver que funciona).
  */
 'use strict';
+
+const permissoes = require('../permissoes.js');
 
 module.exports = function (ctx) {
   const { db, plans, sendJson } = ctx;
@@ -63,12 +65,23 @@ module.exports = function (ctx) {
     const ate = (Math.floor(Date.now() / HORA) + 1) * HORA;
     const de = ate - dias * 24 * HORA;
     const tela = query.tela ? String(query.tela).slice(0, 40) : null;
+    const grupo = !tela && query.grupo ? String(query.grupo).slice(0, 60) : '';
+    // Fase 13: o membro de uma loja vê o relatório das TVs dela (a de outra loja é 404, como a de outra conta).
     if (tela) {
       const d = await db.getDevice(tela);
-      if (!d || d.tenant_id !== sess.tenant_id) return sendJson(res, 404, { error: 'tela não encontrada' });
+      if (!d || d.tenant_id !== sess.tenant_id || !permissoes.podeTela(sess, d)) return sendJson(res, 404, { error: 'tela não encontrada' });
+    }
+    /*
+     * Por loja (fase 13): as TVs do grupo, entre as que a pessoa alcança. Sem
+     * tela nem loja, o membro de loja vê a soma das TVs dele — nunca a conta inteira.
+     */
+    let filtro = tela;
+    if (!tela && (grupo || permissoes.restrito(sess))) {
+      const minhas = permissoes.filtrar(sess, await db.listDevices(sess.tenant_id));
+      filtro = (grupo ? minhas.filter((d) => permissoes.chave(d.grupo) === permissoes.chave(grupo)) : minhas).map((d) => d.id);
     }
 
-    const r = await db.relatorioExibicoes(sess.tenant_id, de, ate, tela);
+    const r = await db.relatorioExibicoes(sess.tenant_id, de, ate, filtro);
     const num = (x) => Number(x) || 0;
     const porDiaMapa = new Map();
     for (const h of r.porHora) {
@@ -78,7 +91,7 @@ module.exports = function (ctx) {
       porDiaMapa.set(dia, acc);
     }
     const rel = {
-      de, ate, dias,
+      de, ate, dias, grupo: grupo || '',
       porConteudo: r.porConteudo.map((c) => ({ chave: c.chave, rotulo: c.rotulo || 'Conteúdo', tipo: c.tipo || '', vezes: num(c.vezes), segundos: num(c.segundos), telas: num(c.telas) })),
       porTela: r.porTela.map((t) => ({ id: t.device_id, nome: t.nome || 'Tela removida', vezes: num(t.vezes), segundos: num(t.segundos) })),
       porDia: [...porDiaMapa.values()],
@@ -93,7 +106,7 @@ module.exports = function (ctx) {
     if (query.formato === 'csv') {
       res.writeHead(200, {
         'Content-Type': 'text/csv; charset=utf-8',
-        'Content-Disposition': 'attachment; filename="relatorio-exibicao-' + dias + 'd.csv"',
+        'Content-Disposition': 'attachment; filename="relatorio-exibicao-' + dias + 'd' + (grupo ? '-' + grupo.normalize('NFD').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase().slice(0, 30) : '') + '.csv"',
         'Cache-Control': 'no-store',
       });
       return res.end(csv(rel));

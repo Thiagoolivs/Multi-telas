@@ -161,13 +161,14 @@ const emISO = (d) => d.getFullYear() + '-' + doisDigitos(d.getMonth() + 1) + '-'
  * Sem prazo (`dias` = 0), a campanha fica no ar até ser trocada; com prazo, ela
  * sai sozinha e a tela volta ao que era.
  */
-export function agendarPeca(item, faixa, dias) {
+export function agendarPeca(item, faixa, dias, agora) {
   const f = FAIXAS[faixa] || FAIXAS.dia;
   const semHora = !f.horaInicio && !f.horaFim;
   const prazo = Number(dias) > 0 ? Number(dias) : 0;
   if (semHora && !prazo) return item;                 // sem janela: nada a agendar
 
-  const hoje = new Date();
+  // `agora` só nos testes (a semana simulada roda numa semana fixa).
+  const hoje = agora ? new Date(agora) : new Date();
   const fim = new Date(hoje);
   if (prazo) fim.setDate(fim.getDate() + prazo - 1);
 

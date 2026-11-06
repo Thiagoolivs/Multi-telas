@@ -92,6 +92,8 @@ const pacoteTv = require('./server/pacote-tv.js');
 const saude = require('./server/saude.js');
 const Perfil = require('./js/perfil.js');
 const landingFrentes = require('./server/landing-frentes.js');
+// Fase 13: a loja de cada membro e a aprovação antes de ir ao ar.
+const permissoes = require('./server/permissoes.js');
 const PORT = process.env.PORT || 8080;
 const ROOT = __dirname;
 
@@ -626,6 +628,8 @@ function montarCtx() {
     kpis: require('./server/routes/kpis')(ctx),
     // O banco de imagens externo (D37).
     pixabay: require('./server/routes/pixabay')(ctx),
+    // Fase 13: a fila de aprovação e as lojas de cada membro (usa ctx.publicar, de telas).
+    aprovacoes: require('./server/routes/aprovacoes')(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -636,6 +640,8 @@ async function handleApi(req, res, pathname, query) {
 
   const parts = pathname.split('/').filter(Boolean); // ['api', ...]
   const sess = await auth.currentSession(req);
+  // Fase 13: as lojas do membro e se a conta pede aprovação, uma vez por pedido (server/permissoes.js).
+  await permissoes.completarSessao(db, sess);
 
   /*
    * SESSÃO DE SUPORTE (o operador dentro da conta de um cliente): o que é do
@@ -2359,7 +2365,7 @@ const negocioCache = new Map();
     return readBody(req, res, async (b) => {
       const texto = String((b && b.texto) || '').trim();
       if (!texto) return sendJson(res, 400, { error: 'escreva o aviso' });
-      const grupos = [...new Set(((await db.listDevices(sess.tenant_id)) || []).map((d) => d.grupo).filter(Boolean))];
+      const grupos = [...new Set(permissoes.filtrar(sess, await db.listDevices(sess.tenant_id)).map((d) => d.grupo).filter(Boolean))];
       try {
         // D51: com o histórico da mini-conversa; sem o essencial, volta a pergunta.
         const r = await avisoRapido.entender(texto.slice(0, 500), { grupos, historico: b && b.historico });
@@ -2673,6 +2679,7 @@ const negocioCache = new Map();
   /* ----- Cobrança e telas: server/routes/billing.js e server/routes/telas.js ----- */
   if (await ctx.routes.billing(req, res, parts, query, sess)) return;
   if (await ctx.routes.telas(req, res, parts, query, sess)) return;
+  if (await ctx.routes.aprovacoes(req, res, parts, query, sess)) return;
   if (await ctx.routes.relatorio(req, res, parts, query, sess)) return;
   if (await ctx.routes.redes(req, res, parts, query, sess)) return;
   if (await ctx.routes.conversas(req, res, parts, query, sess)) return;

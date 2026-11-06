@@ -12,6 +12,8 @@ import { Dialog } from '../components/ui/Dialog.jsx';
 import { SkeletonRows, ErrorState, EmptyState } from '../components/ui/Feedback.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { team } from '../api.js';
+// Fase 13: a aprovação antes de ir ao ar e as lojas de cada membro.
+import { ChaveAprovacao, LojasDoMembro, useLojas } from '../components/equipe/AprovacaoELojas.jsx';
 
 const ROLE = {
   owner: { label: 'Dono', tone: 'accent' },
@@ -24,6 +26,7 @@ export function TeamPage({ me, onLeft, abrirConvite }) {
   const { data, loading, error, reload } = useAsync(team.list);
   const [inviteOpen, setInviteOpen] = useState(!!abrirConvite && (me.role === 'owner' || me.role === 'admin'));
   const [busyId, setBusyId] = useState(null);
+  const lojasDaConta = useLojas();
 
   const canManage = me.role === 'owner' || me.role === 'admin';
   const isOwner = me.role === 'owner';
@@ -53,7 +56,7 @@ export function TeamPage({ me, onLeft, abrirConvite }) {
       botao: 'Tornar dono', perigo: true,
     }))) return;
     setBusyId(m.id);
-    try { await team.setRole(m.id, role); await reload(); }
+    try { await team.setRole(m.id, role); await reload(); lojasDaConta.reload(); }
     catch (e) { aviso.erro('equipe', e.message || 'Não deu para mudar o papel.'); }
     finally { setBusyId(null); }
   }
@@ -138,6 +141,7 @@ export function TeamPage({ me, onLeft, abrirConvite }) {
                           {m.isMe && <span className="rounded bg-surface-2 px-1.5 py-0.5 text-2xs text-ink-3">você</span>}
                         </div>
                         <div className="break-all text-xs text-ink-3">{m.email}</div>
+                        <LojasDoMembro membro={m} dados={lojasDaConta.data} podeMudar={canManage} onMudou={lojasDaConta.reload} />
                         <div className="mt-2 flex flex-wrap items-center gap-2 sm:hidden">{papel(m)}{acao(m)}</div>
                       </div>
                     </div>
@@ -150,6 +154,8 @@ export function TeamPage({ me, onLeft, abrirConvite }) {
           </Table>
         )}
       </Panel>
+
+      <ChaveAprovacao podeMudar={canManage} />
 
       {canManage && invites.length > 0 && (
         <Panel className="mt-4">
