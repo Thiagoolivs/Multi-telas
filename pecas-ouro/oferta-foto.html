@@ -76,7 +76,8 @@ h1 em { display: block; font-style: normal; font-size: max(var(--mt-piso, 0cqw),
    * fica com o terço de cima e o véu cobre o resto.
    */
   .foto { height: 33%; object-position: 50% 38%; }
-  .veu { background: linear-gradient(180deg, var(--mt-fundo) 0%, var(--mt-fundo-0) 12%), linear-gradient(0deg, var(--mt-fundo) 67%, var(--mt-fundo-0) 76%); }
+  /* O véu de cima cobre o nome da loja, que com a letra do balcão quebra em duas linhas. */
+  .veu { background: linear-gradient(180deg, var(--mt-fundo) 0%, var(--mt-fundo) 11%, var(--mt-fundo-0) 21%), linear-gradient(0deg, var(--mt-fundo) 67%, var(--mt-fundo-0) 76%); }
   .apoio, .parc, .kicker i { display: none; }
   /* Com a letra do balcão o espaçado da marca, do kicker e do "a partir de" passava da coluna: menos espaço entre as letras. */
   .marca-nome { right: 8cqw; font-size: max(var(--mt-piso, 0cqw), 3.2cqw); letter-spacing: .08em; line-height: 1.1; }

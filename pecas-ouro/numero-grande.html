@@ -53,8 +53,9 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1.02 var(--mt-fonte-titulo); te
   .texto { padding-top: 3.6cqw; }
   .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .06em; }
   h1 { margin: 2cqw 0 0; font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
-  /* Com a letra da TV, o endereço espaçado passava da margem na lateral: fica justo e pode quebrar. */
-  .assinatura { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); letter-spacing: .04em; line-height: 1.2; }
+  /* Com a letra da TV, o endereço espaçado passava da margem na lateral: fica justo e pode quebrar.
+     3,4cqw: o cqw aqui é da peça sem o respiro dela (o padding acima), e sem piso (a miniatura) ele não pode ficar abaixo de 14px. */
+  .assinatura { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .04em; line-height: 1.2; }
 }
 </style>
 <section class="mt-peca numero-grande">
