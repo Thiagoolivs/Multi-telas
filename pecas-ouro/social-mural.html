@@ -66,6 +66,24 @@ h1 { margin-top: 2.2cqw; font: 400 max(var(--mt-piso, 0cqw), 5.6cqw)/.98 var(--m
   .pedido { letter-spacing: .06em; text-wrap: balance; }
 }
 /* Em pé: o cartão em cima, quadrado; o texto embaixo, com o QR. */
+/*
+ * A principal do Corporativo com a margem contra o corte (de 1321×739 a
+ * 1236×674): com a letra do balcão o bloco e o cartão passavam do alto e
+ * do pé, e o QR, medido pela altura, ficava abaixo dos 160 px que o
+ * celular lê. O cartão estreita, o texto ganha a largura (o apoio numa
+ * linha a menos) e o QR fica com 160 px ou mais.
+ */
+@container (aspect-ratio >= 1.74) and (min-height: 600px) and (max-height: 775px) {
+  .cartao { width: 29cqw; }
+  .legenda { padding: 1cqw .3cqw 1.3cqw; line-height: 1.12; }
+  .legenda small { line-height: 1.12; }
+  .bloco { left: 41cqw; }
+  .kicker { letter-spacing: .04em; }
+  h1 { margin-top: .26em; }
+  .apoio { margin-top: 1.6cqw; line-height: 1.24; }
+  .mande { margin-top: 1.8cqw; }
+  .qr { width: 26cqh; height: 26cqh; }
+}
 @container (aspect-ratio < 0.8) {
   .cartao { left: 50%; top: 5cqh; width: 56cqw; padding: 2.2cqw 2.2cqw 0; translate: -50% 0; }
   .cartao img { aspect-ratio: 1; }

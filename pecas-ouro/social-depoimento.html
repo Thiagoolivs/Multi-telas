@@ -43,6 +43,31 @@
   .autor { margin-top: 5cqmin; padding-top: 4.4cqmin; }
   .autor b, .autor small { font-size: max(var(--mt-piso, 0cqw), 3cqmin); }
 }
+/*
+ * A principal do Corporativo com a margem contra o corte (de 1321×739 a
+ * 1236×674): com a letra do balcão o "cliente desde" passava do pé. A aspa
+ * desenhada encolhe e os respiros apertam; a frase fica do tamanho dela.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 775px) {
+  .aspas { font-size: max(var(--mt-piso, 0cqw), 34cqmin); }
+  .estrelas { margin-top: 2.4cqmin; }
+  .frase { margin-top: 3cqmin; line-height: 1.16; }
+  .autor { margin-top: 4cqmin; padding-top: 3cqmin; }
+  .autor small { margin-top: 1cqmin; line-height: 1.15; }
+}
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%; a caixa sem o padding abaixo de 720 px): o nome
+ * espaçado quebrava em duas linhas ("JULIANA / M.") e o "cliente desde"
+ * passava do pé. O espaçado do nome aperta e os respiros também.
+ */
+@container (max-width: 700px) and (max-height: 720px) {
+  .estrelas { margin-top: 2.4cqmin; }
+  .frase { margin-top: 3.4cqmin; line-height: 1.18; }
+  .autor { margin-top: 4.4cqmin; padding-top: 3.4cqmin; }
+  .autor b { letter-spacing: .06em; }
+  .autor small { margin-top: 1cqmin; line-height: 1.15; }
+}
 </style>
 <section class="mt-peca social-depoimento">
   <span class="aspas" aria-hidden="true" data-entrada="crescer">“</span>

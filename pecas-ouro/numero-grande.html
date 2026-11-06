@@ -41,6 +41,22 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1.02 var(--mt-fonte-titulo); te
   .apoio { line-height: 1.4; }
   .assinatura { right: 8cqw; letter-spacing: .04em; }
 }
+/*
+ * A principal do Corporativo com a margem contra o corte (de 1321×739 a
+ * 1236×674): com a letra do balcão o nome da loja espaçado encostava no
+ * kicker, o endereço quebrava por cima do apoio e o apoio passava do pé. O
+ * espaçado largo aperta (o endereço numa linha), o apoio usa a largura da
+ * coluna e a entrelinha fica mais justa.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 775px) {
+  .marca-nome { letter-spacing: .14em; }
+  .numero small { letter-spacing: .2em; }
+  .texto { right: 6cqw; }
+  .kicker { letter-spacing: .08em; }
+  h1 { margin: 1.4cqw 0; }
+  .apoio { max-width: none; line-height: 1.25; }
+  .assinatura { right: 6cqw; letter-spacing: .06em; }
+}
 /* A lateral: o número e a frase; o resto sai. */
 @container (max-width: 700px) {
   /* Com a letra do balcão os blocos presos no alto, no meio e no pé se encontravam: aqui eles vão um embaixo
@@ -56,6 +72,23 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 4.6cqw)/1.02 var(--mt-fonte-titulo); te
   /* Com a letra da TV, o endereço espaçado passava da margem na lateral: fica justo e pode quebrar.
      3,4cqw: o cqw aqui é da peça sem o respiro dela (o padding acima), e sem piso (a miniatura) ele não pode ficar abaixo de 14px. */
   .assinatura { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); letter-spacing: .04em; line-height: 1.2; }
+}
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%; a caixa sem o padding abaixo de 740 px): com a
+ * letra do balcão o nome da loja e o endereço passavam do alto e do pé. Os
+ * dois vão em caixa baixa (uma linha a menos cada), o número encolhe um
+ * pouco e os blocos chegam mais perto.
+ */
+@container (max-width: 700px) and (max-height: 800px) {
+  .mt-peca { gap: 3cqw; }
+}
+@container (max-width: 700px) and (max-height: 740px) {
+  .marca-nome, .assinatura { text-transform: none; letter-spacing: 0; line-height: 1.08; }
+  .numero > span { font-size: max(var(--mt-piso, 0cqw), calc(38cqw * var(--mt-escala-titulo, 1))); }
+  .numero small { margin-top: 2.6cqw; }
+  .texto { padding-top: 2.6cqw; }
+  h1 { line-height: .98; }
 }
 </style>
 <section class="mt-peca numero-grande">

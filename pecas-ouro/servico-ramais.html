@@ -74,6 +74,15 @@ h1 { margin-top: 3cqmin; font: 600 max(var(--mt-piso, 0cqw), calc(15cqmin * var(
   .lista li { padding: 1.4cqmin 0; }
   .ramal { font-size: max(var(--mt-piso, 0cqw), calc(11cqmin * var(--mt-escala-titulo, 1))); }
 }
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%): com a letra do balcão o último ramal passava do pé. As linhas
+ * da lista apertam.
+ */
+@container (max-width: 700px) and (max-height: 720px) {
+  .nota { margin-top: 3cqw; padding: 1.6cqw 3cqw; line-height: 1.12; }
+  .lista li { padding: 1.3cqw 0; }
+}
 </style>
 <section class="mt-peca servico-ramais">
   <div class="cabeca">
