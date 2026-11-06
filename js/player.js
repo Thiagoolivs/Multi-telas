@@ -450,6 +450,32 @@
     loadKpis(dev.id);
     setInterval(function () { loadKpis(dev.id); }, 5 * 60 * 1000);
     document.addEventListener('mt:kpis-mudou', function () { loadKpis(dev.id); });
+    // Preço da planilha (fase 11): a cada 5 min (o servidor lê a planilha no mesmo ritmo) e quando ele avisa.
+    loadPlanilhas(dev.id);
+    setInterval(function () { loadPlanilhas(dev.id); }, 5 * 60 * 1000);
+    document.addEventListener('mt:planilhas-mudou', function () { loadPlanilhas(dev.id); });
+  }
+
+  /*
+   * Os itens das planilhas de preço (global.MT_PLANILHAS), com cache: a TV
+   * sem rede, ou com a planilha quebrada, continua com os últimos preços
+   * bons. Só avisa a tela (mt:planilhas) quando algum preço mudou — aí a
+   * peça no ar que lê a planilha é redesenhada (startPlaylist).
+   */
+  function loadPlanilhas(id) {
+    try {
+      const cached = localStorage.getItem('mt.planilhas');
+      if (cached && !global.MT_PLANILHAS) global.MT_PLANILHAS = JSON.parse(cached);
+    } catch (e) {}
+    if (!global.MTCloud || !MTCloud.fetchPlanilhas) return;
+    MTCloud.fetchPlanilhas(id).then(function (lista) {
+      const novo = JSON.stringify(lista || []);
+      const antes = JSON.stringify(global.MT_PLANILHAS || []);
+      global.MT_PLANILHAS = lista || [];
+      if (novo === antes) return;
+      try { localStorage.setItem('mt.planilhas', novo); } catch (e) {}
+      try { global.dispatchEvent(new Event('mt:planilhas')); } catch (e) {}
+    }).catch(function () { /* offline: mantém o cache */ });
   }
 
   // Os valores dos indicadores (global.MT_KPIS), com cache para a TV sem rede mostrar o último número.
@@ -2317,12 +2343,28 @@
     };
     if (auto) global.addEventListener('mt:aniversarios', aoChegarAniversarios);
 
+    /*
+     * O preço da planilha mudou (fase 11): o item no ar que lê uma planilha é
+     * desenhado de novo, com os preços novos — inclusive na zona de um item
+     * só, que fica estática e nunca entraria de novo sozinha.
+     */
+    const aoMudarPlanilha = () => {
+      if (stopped || !(noAr && noAr.item && noAr.item.planilha)) return;
+      // Sem "a mesma peça no ar": o advance desenha de novo a mesma posição, em vez de deixá-la como está.
+      noAr = { refazer: true };
+      index = Math.max(0, index - 1);
+      clearTimeout(timer);
+      advance();
+    };
+    global.addEventListener('mt:planilhas', aoMudarPlanilha);
+
     advance();
     return {
       atual: () => noAr,
       stop: () => {
         stopped = true; clearTimeout(timer);
         if (auto) global.removeEventListener('mt:aniversarios', aoChegarAniversarios);
+        global.removeEventListener('mt:planilhas', aoMudarPlanilha);
         if (currentSlide && currentSlide.parar) currentSlide.parar(); // relógio de fora do horário
         /*
          * A saída do slide no ar. Só o leaveSlide a chamava, e refazer a zona

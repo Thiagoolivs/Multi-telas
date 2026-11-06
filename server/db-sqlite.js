@@ -240,6 +240,13 @@ db.exec(`
     meta REAL, anterior REAL, atualizado_em INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_indicadores_tenant ON indicadores(tenant_id);
+  -- Preço e cardápio vindos de uma planilha (fase 11): o link do Google (ou o
+  -- CSV enviado) e os últimos itens bons, que a TV mostra mesmo com erro.
+  CREATE TABLE IF NOT EXISTS planilhas (
+    id TEXT PRIMARY KEY, tenant_id TEXT, nome TEXT, origem TEXT, link TEXT, url TEXT, csv TEXT, linhas TEXT,
+    aviso TEXT, ultimo_ok INTEGER, ultimo_erro TEXT, proxima INTEGER, created_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_planilhas_tenant ON planilhas(tenant_id);
   -- O calendário da empresa (D23): cada data vira um evento, com a peça
   -- dele e as TVs em que entrou. item é a peça (JSON) para editar depois.
   CREATE TABLE IF NOT EXISTS calendario (
@@ -1645,7 +1652,8 @@ async function listarConectores(tenantId) { return db.prepare('SELECT * FROM con
 // Com o segredo cifrado e o hash do token: só para o servidor (nunca vai ao painel).
 async function conectorInterno(id, tenantId) { return db.prepare('SELECT * FROM conectores_kpi WHERE id = ? AND tenant_id = ?').get(String(id), tenantId) || null; }
 async function conectorPorToken(hash) { return mapConector(db.prepare("SELECT * FROM conectores_kpi WHERE token_hash = ? AND modo = 'push'").get(String(hash))); }
-async function conectoresParaBuscar(agora) { return db.prepare("SELECT * FROM conectores_kpi WHERE modo = 'pull' AND url <> '' AND proxima <= ?").all(Number(agora)); }
+// 'planilha' (fase 11): o indicador que vem de uma planilha do Google também é buscado pelo relógio.
+async function conectoresParaBuscar(agora) { return db.prepare("SELECT * FROM conectores_kpi WHERE modo IN ('pull', 'planilha') AND url <> '' AND proxima <= ?").all(Number(agora)); }
 const CAMPOS_CONECTOR = { nome: 'nome', url: 'url', authTipo: 'auth_tipo', authNome: 'auth_nome', authSegredo: 'auth_segredo', tokenHash: 'token_hash', intervaloMin: 'intervalo_min', ultimoOk: 'ultimo_ok', ultimoErro: 'ultimo_erro', proxima: 'proxima' };
 async function atualizarConector(id, tenantId, campos) {
   const sets = [];
@@ -1673,12 +1681,13 @@ async function gravarIndicadores(tenantId, conectorId, lista, agora) {
       if (atual) {
         db.prepare('UPDATE indicadores SET nome = CASE WHEN ? = 1 THEN ? ELSE nome END, valor = ?, unidade = CASE WHEN ? = 1 THEN ? ELSE unidade END, '
           + 'meta = CASE WHEN ? = 1 THEN ? ELSE meta END, sentido = CASE WHEN ? = 1 THEN ? ELSE sentido END, '
-          + 'anterior = CASE WHEN valor = ? THEN anterior ELSE valor END, atualizado_em = ? WHERE id = ?')
+          + 'anterior = CASE WHEN ? = 1 THEN ? WHEN valor = ? THEN anterior ELSE valor END, atualizado_em = ? WHERE id = ?')
           .run(tem('nome'), i.nome == null ? null : i.nome, i.valor, tem('unidade'), i.unidade || '', tem('meta'), i.meta == null ? null : i.meta,
-            tem('sentido'), i.sentido || '', i.valor, quando, atual.id);
+            tem('sentido'), i.sentido || '', tem('anterior'), i.anterior == null ? null : i.anterior, i.valor, quando, atual.id);
       } else {
-        db.prepare('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, sentido, anterior, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)')
-          .run('ki_' + rid(12), tenantId, conectorId, i.chave, i.nome || i.nomeNovo || i.chave, i.valor, i.unidade || '', i.meta == null ? null : i.meta, i.sentido || '', quando);
+        // `anterior` só quando a origem diz (a planilha com a coluna "anterior", fase 11).
+        db.prepare('INSERT INTO indicadores (id, tenant_id, conector_id, chave, nome, valor, unidade, meta, sentido, anterior, atualizado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+          .run('ki_' + rid(12), tenantId, conectorId, i.chave, i.nome || i.nomeNovo || i.chave, i.valor, i.unidade || '', i.meta == null ? null : i.meta, i.sentido || '', i.anterior == null ? null : i.anterior, quando);
       }
     }
     db.exec('COMMIT');
@@ -1686,6 +1695,36 @@ async function gravarIndicadores(tenantId, conectorId, lista, agora) {
   return lista.length;
 }
 async function listarIndicadores(tenantId) { return db.prepare('SELECT * FROM indicadores WHERE tenant_id = ? ORDER BY nome').all(tenantId).map(mapIndicador); }
+
+/* ----- Preço e cardápio vindos de uma planilha (fase 11) ----- */
+const mapPlanilha = (r) => {
+  if (!r) return null;
+  let itens = [];
+  try { itens = JSON.parse(r.linhas || '[]'); } catch (e) { itens = []; }
+  return {
+    id: r.id, tenantId: r.tenant_id, nome: r.nome || '', origem: r.origem || 'google', link: r.link || '', itens: Array.isArray(itens) ? itens : [],
+    aviso: r.aviso || '', ultimoOk: Number(r.ultimo_ok) || 0, ultimoErro: r.ultimo_erro || '', proxima: Number(r.proxima) || 0, criadoEm: Number(r.created_at) || 0,
+  };
+};
+async function criarPlanilha(tenantId, p) {
+  const id = 'pl_' + rid(12);
+  db.prepare('INSERT INTO planilhas (id, tenant_id, nome, origem, link, url, csv, linhas, aviso, ultimo_ok, ultimo_erro, proxima, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, \'[]\', \'\', 0, \'\', 0, ?)')
+    .run(id, tenantId, p.nome || '', p.origem || 'google', p.link || '', p.url || '', p.csv || '', Date.now());
+  return db.prepare('SELECT * FROM planilhas WHERE id = ?').get(id);
+}
+async function listarPlanilhas(tenantId) { return db.prepare('SELECT * FROM planilhas WHERE tenant_id = ? ORDER BY created_at').all(tenantId).map(mapPlanilha); }
+// A linha inteira (com o CSV enviado): só para o servidor.
+async function planilhaInterna(id, tenantId) { return db.prepare('SELECT * FROM planilhas WHERE id = ? AND tenant_id = ?').get(String(id), tenantId) || null; }
+async function planilhasParaBuscar(agora) { return db.prepare("SELECT * FROM planilhas WHERE origem = 'google' AND url <> '' AND proxima <= ?").all(Number(agora)); }
+const CAMPOS_PLANILHA = { nome: 'nome', origem: 'origem', link: 'link', url: 'url', csv: 'csv', linhas: 'linhas', aviso: 'aviso', ultimoOk: 'ultimo_ok', ultimoErro: 'ultimo_erro', proxima: 'proxima' };
+async function atualizarPlanilha(id, tenantId, campos) {
+  const sets = [];
+  const vals = [];
+  for (const k of Object.keys(campos || {})) if (CAMPOS_PLANILHA[k]) { sets.push(CAMPOS_PLANILHA[k] + ' = ?'); vals.push(campos[k]); }
+  if (!sets.length) return 0;
+  return db.prepare('UPDATE planilhas SET ' + sets.join(', ') + ' WHERE id = ? AND tenant_id = ?').run(...vals, String(id), tenantId).changes;
+}
+async function removerPlanilha(id, tenantId) { return db.prepare('DELETE FROM planilhas WHERE id = ? AND tenant_id = ?').run(String(id), tenantId).changes; }
 
 /* ----- Fotos pelo QR (D31) ----- */
 const mapPedidoFoto = (r) => (r ? { id: r.id, tenantId: r.tenant_id, codigo: r.codigo, titulo: r.titulo || '', tipo: r.tipo || 'perfil', inicio: r.inicio || '', fim: r.fim || '', aceitando: !!r.aceitando, dataId: r.data_id || '', dataAlvo: r.data_alvo || '', guardarAte: r.guardar_ate || '', criadoEm: Number(r.created_at) || 0 } : null);
@@ -1842,6 +1881,7 @@ async function dadosDoTenant(tenantId) {
     // Sem o segredo cifrado e sem o hash do token: são credenciais, não dados da conta.
     conectoresDeIndicadores: pega('SELECT id, nome, modo, url, auth_tipo, intervalo_min, ultimo_ok, ultimo_erro, created_at FROM conectores_kpi WHERE tenant_id = ?'),
     indicadores: pega('SELECT id, conector_id, chave, nome, valor, unidade, meta, anterior, atualizado_em FROM indicadores WHERE tenant_id = ?'),
+    planilhas: pega('SELECT id, nome, origem, link, linhas, ultimo_ok, ultimo_erro, created_at FROM planilhas WHERE tenant_id = ?'),
     fotosParaAprovar: pega('SELECT id, pedido_id, pessoa_id, nome, dia, mes, setor, email, url, aceite_em, aprovada_em, created_at FROM fotos_pessoa WHERE tenant_id = ?'),
     midias: pega('SELECT id, name, mime, size, url, created_at FROM media WHERE tenant_id = ?'),
     // O mural também é dado pessoal — de terceiros, inclusive. Exportar sem ele
@@ -1902,7 +1942,7 @@ async function apagarTenant(tenantId) {
     for (const uid of usuarios) db.prepare('DELETE FROM resets WHERE user_id = ?').run(uid);
     // As tabelas novas ficavam para trás (D0.7); ver db-postgres.js.
     for (const tabela of ['marcas', 'conversas', 'campanhas', 'jobs', 'eventos', 'reclamacoes', 'uso_ia', 'sessions', 'aceites', 'invites', 'devices', 'library',
-      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'pacotes_pagos', 'calendario', 'lotes',
+      'brandassets', 'brandkit', 'brandmemoria', 'murais', 'muralfotos', 'birthdays', 'media', 'exibicoes', 'planilhas', 'pacotes_pagos', 'calendario', 'lotes',
       'pedidos_foto', 'fotos_pessoa', 'conectores_kpi', 'indicadores', 'users']) {
       db.prepare('DELETE FROM ' + tabela + ' WHERE tenant_id = ?').run(tenantId);
     }
@@ -2113,6 +2153,7 @@ module.exports = {
   addFotoPessoa, listarFotosPessoa, fotoPessoaPorId, removerFotoPessoa, marcarConsentimento, aprovarFotoPessoa,
   pedidosFotoDeData, fotosPendentesAntigas, guardarPedidoFotoAte,
   criarConector, listarConectores, conectorInterno, conectorPorToken, conectoresParaBuscar, atualizarConector, removerConector, gravarIndicadores, listarIndicadores, mapConector,
+  criarPlanilha, listarPlanilhas, planilhaInterna, planilhasParaBuscar, atualizarPlanilha, removerPlanilha, mapPlanilha,
   addFotoMural, listarFotosMural, fotosVisiveis, ocultarFoto, ocultarTodasFotos, contarFotosRecentes,
   getBrandKit, saveBrandKit, listBrandAssets, addBrandAsset, removeBrandAsset, labelBrandAsset,
   listMarcas, marcaAtiva, criarMarca, salvarMarca, ativarMarca, removerMarca, salvarSiteDaMarca, MAX_MARCAS,

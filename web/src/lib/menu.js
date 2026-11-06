@@ -45,6 +45,8 @@ export const PAGINAS = {
   mural: 'Mural de fotos',
   relatorio: 'Relatório de exibição',
   indicadores: 'Indicadores',
+  // Fase 11: preço e cardápio vindos de uma planilha (um dos Apps da Biblioteca).
+  planilhas: 'Preços da planilha',
   billing: 'Plano',
   team: 'Equipe',
   settings: 'Ajustes',
@@ -80,7 +82,7 @@ export const GRUPOS = [
    * As páginas de antes continuam como partes delas.
    */
   { id: 'midias', label: 'Biblioteca', paginas: ['prontos', 'seus', 'storage'],
-    tambem: ['apps', 'telasprontas', 'pecas', 'campanhas', 'designs', 'studio', 'campaigns', 'images', 'musicas', 'ia', 'banco'] },
+    tambem: ['apps', 'planilhas', 'telasprontas', 'pecas', 'campanhas', 'designs', 'studio', 'campaigns', 'images', 'musicas', 'ia', 'banco'] },
   { id: 'marca', label: 'Marca', paginas: ['brand'] },
   // Pessoas: item do menu na Empresas; no Comércio e na Saúde, os Apps da Biblioteca (gruposDa).
   { id: 'extras', label: 'Pessoas', paginas: ['birthdays', 'mural', 'indicadores'] },

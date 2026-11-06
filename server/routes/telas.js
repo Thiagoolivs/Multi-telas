@@ -655,6 +655,13 @@ module.exports = function (ctx) {
         res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
         return res.end(JSON.stringify({ indicadores: lista }));
       }
+      // Preço e cardápio vindos de uma planilha (fase 11): os últimos itens bons de cada uma.
+      if (req.method === 'GET' && sub === 'planilhas') {
+        if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
+        const lista = device.tenant_id ? (await db.listarPlanilhas(device.tenant_id)).map(require('../planilha.js').paraTv) : [];
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+        return res.end(JSON.stringify({ planilhas: lista }));
+      }
       if (req.method === 'GET' && sub === 'birthdays') {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
         if (!device.tenant_id) return sendJson(res, 200, { birthdays: [] });

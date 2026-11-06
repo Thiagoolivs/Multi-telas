@@ -626,6 +626,8 @@ function montarCtx() {
     kpis: require('./server/routes/kpis')(ctx),
     // O banco de imagens externo (D37).
     pixabay: require('./server/routes/pixabay')(ctx),
+    // Preço e cardápio vindos de uma planilha (fase 11).
+    planilha: require('./server/routes/planilha')(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -2681,6 +2683,7 @@ const negocioCache = new Map();
   if (await ctx.routes.fotoqr(req, res, parts, query, sess)) return;
   if (await ctx.routes.kpis(req, res, parts, query, sess)) return;
   if (await ctx.routes.pixabay(req, res, parts, query, sess)) return;
+  if (await ctx.routes.planilha(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------
@@ -3538,5 +3541,7 @@ db.init()
       } catch (e) { erros.registrar(e, { onde: 'conectores de indicadores' }); }
     };
     setInterval(buscarIndicadores, 60 * 1000).unref();
+    // As planilhas de preço (fase 11): de 5 em 5 minutos, e a TV só é avisada quando muda.
+    require('./server/routes/planilha').ligarRelogio({ db, avisarTelas, erros });
   }))
   .catch((e) => { log.erro('db.init-falhou', e); process.exit(1); });

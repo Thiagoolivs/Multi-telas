@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Gauge, Plus, Trash2, RefreshCw, KeyRound, MonitorPlay, Check, Copy, AlertTriangle, Download, Upload } from 'lucide-react';
+import { Gauge, Plus, Trash2, RefreshCw, KeyRound, MonitorPlay, Check, Copy, AlertTriangle, Download, Upload, Sheet } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -24,6 +24,11 @@ import { usePerfil } from '../lib/perfil.js';
  *     autenticação guardada cifrada, a cada N minutos.
  * Cada indicador vira um cartão ao vivo na TV ("Pôr na TV"): o número, a
  * variação e a barra da meta.
+ *
+ * Fase 11: o caminho FÁCIL é a planilha. Endereço JSON e token eram
+ * "impossíveis para quem não tem TI"; a planilha do Google, todo mundo tem.
+ * Uma linha por indicador (nome, valor, meta, unidade, anterior), lida de
+ * tempos em tempos pelo servidor (server/planilha.js).
  */
 function formatar(v, u) {
   if (v == null || !isFinite(v)) return '—';
@@ -63,11 +68,65 @@ function ExemploPush({ entrada, token }) {
   );
 }
 
+function ComoMontarPlanilha() {
+  return (
+    <div className="space-y-2 rounded-lg border border-line bg-surface-2 p-3 text-sm text-ink-2">
+      <div className="font-medium text-ink">Como montar a planilha</div>
+      <div>Uma linha por indicador: <b>Nome</b> | <b>Valor</b> | Meta | Unidade | Anterior. A primeira linha pode ter os nomes das colunas.</div>
+      <pre className="overflow-x-auto rounded-md bg-surface p-2 font-mono text-xs text-ink">{'Indicador     | Valor  | Meta   | Unidade | Anterior\nVendas do dia | 12300  | 20000  | R$      | 11000\nRefugo        | 2,6    | 2      | %       |'}</pre>
+      <div className="text-xs text-ink-3">"Anterior" (o mês passado, ontem) dá a seta de subiu ou desceu; sem ele, a seta sai da mudança entre uma leitura e outra. Refugo, perda e acidente: menos é melhor, e a TV sabe disso.</div>
+      <div className="font-medium text-ink">No Google Planilhas</div>
+      <ol className="list-decimal space-y-0.5 pl-5">
+        <li>Toque em <b>Compartilhar</b>.</li>
+        <li>Em “Acesso geral”, escolha <b>Qualquer pessoa com o link</b> (Leitor).</li>
+        <li>Toque em <b>Copiar link</b> e cole aqui.</li>
+      </ol>
+    </div>
+  );
+}
+
+function LigarPlanilha({ onFechar, onPronto }) {
+  const [nome, setNome] = useState('Planilha de indicadores');
+  const [link, setLink] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  async function ligar() {
+    setEnviando(true);
+    try {
+      const r = await kpis.criar({ modo: 'planilha', nome, link });
+      setResultado(r.erro ? { erro: r.erro } : { lista: r.indicadores || [] });
+    } catch (e) { setResultado({ erro: e.message || 'Não deu certo.', antes: true }); }
+    finally { setEnviando(false); }
+  }
+  const feito = resultado && !resultado.antes;
+  return (
+    <Dialog open onClose={feito ? onPronto : onFechar} title="Ligar uma planilha" className="max-w-xl"
+      description="Os números vêm da planilha e se atualizam sozinhos, a cada 5 minutos."
+      footer={feito
+        ? <Button variant="primary" icon={Check} onClick={onPronto}>Pronto</Button>
+        : <Button variant="primary" icon={Sheet} disabled={!link.trim() || enviando} onClick={ligar}>{enviando ? 'Lendo a planilha…' : 'Ligar a planilha'}</Button>}>
+      <div className="space-y-3">
+        {!feito && (
+          <>
+            <Field label="Nome"><Input value={nome} onChange={(e) => setNome(e.target.value)} maxLength={60} /></Field>
+            <Field label="Link da planilha"><Input value={link} onChange={(e) => setLink(e.target.value)} maxLength={500} placeholder="https://docs.google.com/spreadsheets/d/…" /></Field>
+            <ComoMontarPlanilha />
+          </>
+        )}
+        {resultado && (resultado.erro
+          ? <p className="flex items-start gap-1.5 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-ink"><AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />{(feito ? 'A planilha foi ligada, mas não deu para ler: ' : '') + resultado.erro + '.'}</p>
+          : <div className="rounded-md border border-ok/40 bg-ok-soft px-3 py-2 text-sm text-ink">Veio {resultado.lista.length === 1 ? '1 indicador' : resultado.lista.length + ' indicadores'}: {resultado.lista.slice(0, 6).map((i) => i.nome + ' = ' + formatar(i.valor, i.unidade)).join(' · ')}</div>)}
+      </div>
+    </Dialog>
+  );
+}
+
 function EditarConector({ c, segredosProntos, onFechar, onSalvo }) {
   const perfil = usePerfil();
   const empresa = perfil.id === 'empresa';
   const pull = c.modo === 'pull';
-  const [f, setF] = useState({ nome: c.nome || '', url: c.url || '', authTipo: c.authTipo || 'nenhum', authNome: c.authNome || '', segredo: '', intervaloMin: c.intervaloMin || 15, mapa: Object.assign({ lista: '', chave: '', nome: '', valor: '', unidade: '', meta: '' }, c.mapa || {}) });
+  const planilha = c.modo === 'planilha';
+  const [f, setF] = useState({ link: c.url || '', nome: c.nome || '', url: c.url || '', authTipo: c.authTipo || 'nenhum', authNome: c.authNome || '', segredo: '', intervaloMin: c.intervaloMin || 15, mapa: Object.assign({ lista: '', chave: '', nome: '', valor: '', unidade: '', meta: '' }, c.mapa || {}) });
   const [salvando, setSalvando] = useState(false);
   const [teste, setTeste] = useState(null);
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
@@ -77,6 +136,7 @@ function EditarConector({ c, segredosProntos, onFechar, onSalvo }) {
     try {
       const corpo = { nome: f.nome };
       if (pull) Object.assign(corpo, { url: f.url, authTipo: f.authTipo, authNome: f.authNome, intervaloMin: Number(f.intervaloMin), mapa: f.mapa }, f.segredo ? { segredo: f.segredo } : {});
+      if (planilha) Object.assign(corpo, { intervaloMin: Number(f.intervaloMin) }, f.link !== c.url ? { link: f.link } : {});
       await kpis.atualizar(c.id, corpo);
       if (depois) await depois();
       else { aviso.ok('Salvo.'); onSalvo(); }
@@ -88,13 +148,23 @@ function EditarConector({ c, segredosProntos, onFechar, onSalvo }) {
     catch (e) { setTeste({ erro: e.message || 'Não deu certo.' }); }
   });
   return (
-    <Dialog open onClose={onFechar} title={(pull ? 'Buscar de um endereço' : 'Receber do sistema ' + perfil.lugarDe) + ': ' + (c.nome || '')} className="max-w-2xl"
+    <Dialog open onClose={onFechar} title={(planilha ? 'Planilha' : pull ? 'Buscar de um endereço' : 'Receber do sistema ' + perfil.lugarDe) + ': ' + (c.nome || '')} className="max-w-2xl"
       footer={<>
-        {pull && <Button variant="secondary" icon={RefreshCw} disabled={salvando || !f.url} onClick={testar}>Salvar e testar agora</Button>}
+        {(pull || planilha) && <Button variant="secondary" icon={RefreshCw} disabled={salvando || !(planilha ? f.link : f.url)} onClick={testar}>{planilha ? 'Salvar e ler agora' : 'Salvar e testar agora'}</Button>}
         <Button variant="primary" icon={Check} disabled={salvando} onClick={() => salvar()}>{salvando ? 'Salvando…' : 'Salvar'}</Button>
       </>}>
       <div className="space-y-3">
         <Field label="Nome"><Input value={f.nome} onChange={set('nome')} maxLength={60} placeholder={empresa ? 'Ex.: Protheus — vendas' : 'Ex.: Vendas do dia'} /></Field>
+        {planilha && (
+          <>
+            <Field label="Link da planilha" hint="Para trocar, cole o link de outra planilha do Google."><Input value={f.link} onChange={set('link')} maxLength={500} /></Field>
+            <Field label="Ler a cada (minutos)" className="max-w-[12rem]"><Input type="number" min={5} max={1440} value={f.intervaloMin} onChange={set('intervaloMin')} /></Field>
+            <ComoMontarPlanilha />
+            {teste && (teste.erro
+              ? <p className="flex items-start gap-1.5 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-ink"><AlertTriangle size={15} className="mt-0.5 shrink-0 text-danger" />{teste.erro}</p>
+              : <div className="rounded-md border border-ok/40 bg-ok-soft px-3 py-2 text-sm text-ink">Veio {teste.lista.length === 1 ? '1 indicador' : teste.lista.length + ' indicadores'}: {teste.lista.slice(0, 6).map((i) => i.nome + ' = ' + formatar(i.valor, i.unidade)).join(' · ')}</div>)}
+          </>
+        )}
         {pull && (
           <>
             <Field label="Endereço (responde JSON)" hint={'https://… — o endereço ' + (empresa ? 'da API REST do Protheus ou de outro sistema' : 'do sistema que vocês usam') + ', acessível da internet.'}><Input value={f.url} onChange={set('url')} maxLength={500} placeholder="https://erp.suaempresa.com.br/rest/indicadores" /></Field>
@@ -182,6 +252,7 @@ export function IndicadoresPage() {
   const [editando, setEditando] = useState(null);
   const [novoToken, setNovoToken] = useState(null);
   const [naTv, setNaTv] = useState(null);
+  const [ligandoPlanilha, setLigandoPlanilha] = useState(false);
   const conectores = (data && data.conectores) || [];
   const indicadores = (data && data.indicadores) || [];
   const nomeDo = (id) => (conectores.find((c) => c.id === id) || {}).nome || '';
@@ -208,6 +279,8 @@ export function IndicadoresPage() {
     <div>
       <PageHeader title="Indicadores" subtitle={'Os números ' + perfil.lugarDe + ' na TV, sempre atualizados — ' + perfil.textos.sistema + '.'}
         actions={<>
+          {/* Fase 11: a planilha é o caminho fácil — o botão principal da tela. */}
+          <Button variant="primary" icon={Sheet} onClick={() => setLigandoPlanilha(true)}>Ligar uma planilha</Button>
           <Button variant="secondary" icon={Upload} onClick={() => criar('push')}>Receber do sistema</Button>
           <Button variant="secondary" icon={Download} onClick={() => criar('pull')}>Buscar de um endereço</Button>
         </>} />
@@ -215,7 +288,7 @@ export function IndicadoresPage() {
       <Panel className="mb-4">
         <PanelHeader title="Os números" description={indicadores.length ? 'O último valor de cada um. Na TV, o cartão mostra o número, a variação e a meta.' : undefined} />
         {indicadores.length === 0 ? (
-          <EmptyState icon={Gauge} title="Nenhum número ainda" exemplo={['Meta do mês', '1.250', 'atualiza sozinho']} description={'Ligue um sistema acima: o sistema ' + perfil.lugarDe + ' manda os números, ou o MultiTelas busca num endereço.'} />
+          <EmptyState icon={Gauge} title="Nenhum número ainda" exemplo={['Meta do mês', '1.250', 'atualiza sozinho']} description={'O jeito mais fácil: ligue uma planilha do Google com os números. Quem tem sistema pode mandar os números ou deixar o MultiTelas buscar num endereço.'} />
         ) : (
           <ul className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
             {indicadores.map((i) => {
@@ -247,7 +320,7 @@ export function IndicadoresPage() {
       </Panel>
 
       <Panel>
-        <PanelHeader title="Conectores" description={'De onde os números vêm. Receber: o sistema ' + perfil.lugarDe + ' manda' + (perfil.id === 'empresa' ? ' (bom para o Protheus da rede interna)' : '') + '. Buscar: o MultiTelas pega num endereço.'} />
+        <PanelHeader title="Conectores" description={'De onde os números vêm. Receber: o sistema ' + perfil.lugarDe + ' manda' + (perfil.id === 'empresa' ? ' (bom para o Protheus da rede interna)' : '') + '. Buscar: o MultiTelas pega num endereço. Planilha: o MultiTelas lê a planilha do Google.'} />
         {conectores.length === 0 ? (
           <p className="p-4 text-sm text-ink-3">Nenhum conector. Use os botões acima.</p>
         ) : (
@@ -257,10 +330,10 @@ export function IndicadoresPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="truncate text-sm font-medium text-ink">{c.nome}</span>
-                    <span className="rounded-full bg-surface-2 px-2 py-0.5 text-2xs text-ink-2">{c.modo === 'pull' ? 'Busca a cada ' + c.intervaloMin + ' min' : 'Recebe'}</span>
+                    <span className="rounded-full bg-surface-2 px-2 py-0.5 text-2xs text-ink-2">{c.modo === 'planilha' ? 'Planilha · lê a cada ' + c.intervaloMin + ' min' : c.modo === 'pull' ? 'Busca a cada ' + c.intervaloMin + ' min' : 'Recebe'}</span>
                   </div>
                   <div className={'truncate text-xs ' + (c.ultimoErro ? 'text-danger' : 'text-ink-3')}>
-                    {c.ultimoErro ? 'Erro: ' + c.ultimoErro : 'Último número ' + haQuanto(c.ultimoOk)}{c.modo === 'pull' && c.url ? ' · ' + c.url : ''}
+                    {c.ultimoErro ? 'Erro: ' + c.ultimoErro + (c.ultimoOk ? ' — a TV continua com os números de ' + haQuanto(c.ultimoOk) : '') : 'Último número ' + haQuanto(c.ultimoOk)}{c.modo === 'pull' && c.url ? ' · ' + c.url : ''}
                   </div>
                 </div>
                 {c.modo === 'push'
@@ -279,6 +352,7 @@ export function IndicadoresPage() {
 
       {editando && <EditarConector c={editando} segredosProntos={!!(data && data.segredosProntos)} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); reload(); }} />}
       {naTv && <PorNaTv indicador={naTv} onFechar={() => setNaTv(null)} />}
+      {ligandoPlanilha && <LigarPlanilha onFechar={() => setLigandoPlanilha(false)} onPronto={() => { setLigandoPlanilha(false); reload(); }} />}
       {novoToken && (
         <Dialog open onClose={() => { setNovoToken(null); reload(); }} title={'Token de ' + novoToken.conector.nome} className="max-w-xl"
           description="Copie agora: por segurança, ele não aparece de novo (dá para gerar outro)."
