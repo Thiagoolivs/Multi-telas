@@ -1962,7 +1962,7 @@
           "cta": "Ou aponte a câmera para entrar"
         },
         "saude": {
-          "kicker": "Wi-Fi grátis",
+          "kicker": "Wi-Fi para pacientes",
           "titulo": "Enquanto você espera",
           "rotulo-rede": "Rede",
           "rede": "Pacientes",
@@ -7192,6 +7192,1834 @@
       "sobre": "Para a fábrica: os dias sem acidente, o EPI e as pessoas do time.",
       "estado": "proposta",
       "lote": 2
+    },
+    {
+      "id": "l3-padaria-deitada",
+      "nome": "Padaria · TV deitada · fidelidade e fornada",
+      "perfil": "comercio",
+      "negocio": "padaria",
+      "ramos": [
+        "padaria"
+      ],
+      "estrutura": "pacote padaria",
+      "marca": "padaria",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-status",
+              "campos": {
+                "status": "Aberto agora",
+                "horario": "até as 20h",
+                "desde": "",
+                "marca": "Padaria do Bairro"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "social-fidelidade",
+              "campos": {
+                "kicker": "Cartão fidelidade",
+                "titulo": "O 10º café é por nossa conta",
+                "apoio": "A cada café, um carimbo. Peça o seu cartão no caixa.",
+                "marca": "Padaria do Bairro"
+              }
+            },
+            {
+              "id": "oferta-relampago",
+              "campos": {
+                "kicker": "Oferta relâmpago",
+                "titulo": "Pão de queijo",
+                "de": "De R$ 59,90",
+                "preco": "44",
+                "centavos": ",90",
+                "unidade": "o quilo",
+                "rotulo": "Acaba em"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "social-wifi",
+              "campos": {
+                "kicker": "Wi-Fi grátis",
+                "titulo": "Fique conectado",
+                "rotulo-rede": "Rede",
+                "rede": "Clientes",
+                "rotulo-senha": "Senha",
+                "senha": "paoquente",
+                "cta": "Ou aponte a câmera para entrar",
+                "wifi": "WIFI:T:WPA;S:Clientes;P:paoquente;;"
+              }
+            },
+            {
+              "id": "servico-hora",
+              "campos": {
+                "kicker": "Fornada da tarde",
+                "hora": "16h",
+                "dias": "Todos os dias",
+                "nota": "Pão francês e baguete saindo juntos."
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Encomendas de bolo com 48h de antecedência",
+        "Café passado na hora",
+        "Sexta tem pão de fermentação natural"
+      ],
+      "sobre": "Para a padaria: o cartão fidelidade, a oferta do dia e a hora da fornada.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-padaria-quadrada",
+      "nome": "Padaria · TV quadrada · fidelidade e fornada",
+      "perfil": "comercio",
+      "negocio": "padaria",
+      "ramos": [
+        "padaria"
+      ],
+      "estrutura": "pacote padaria",
+      "marca": "padaria",
+      "layout": "square-hero",
+      "zonas": {
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "social-fidelidade",
+              "campos": {
+                "kicker": "Cartão fidelidade",
+                "titulo": "O 10º café é por nossa conta",
+                "apoio": "A cada café, um carimbo. Peça o seu cartão no caixa.",
+                "marca": "Padaria do Bairro"
+              }
+            },
+            {
+              "id": "oferta-relampago",
+              "campos": {
+                "kicker": "Oferta relâmpago",
+                "titulo": "Pão de queijo",
+                "de": "De R$ 59,90",
+                "preco": "44",
+                "centavos": ",90",
+                "unidade": "o quilo",
+                "rotulo": "Acaba em"
+              }
+            },
+            {
+              "id": "servico-hora",
+              "campos": {
+                "kicker": "Fornada da tarde",
+                "hora": "16h",
+                "dias": "Todos os dias",
+                "nota": "Pão francês e baguete saindo juntos."
+              }
+            },
+            {
+              "id": "ambiente-luz",
+              "campos": {
+                "frase": "Bom dia! O pão já saiu do forno.",
+                "apoio": "Que o seu dia seja leve."
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Encomendas de bolo com 48h de antecedência",
+        "Café passado na hora",
+        "Sexta tem pão de fermentação natural"
+      ],
+      "sobre": "Para a padaria: o cartão fidelidade, a oferta do dia e a hora da fornada.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-restaurante-em-pe",
+      "nome": "Restaurante · TV em pé · pratos da semana",
+      "perfil": "comercio",
+      "negocio": "restaurante",
+      "ramos": [
+        "comida"
+      ],
+      "estrutura": "pacote restaurante",
+      "marca": "restaurante",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-chamada",
+              "campos": {
+                "chamada": "Prato feito todo dia",
+                "quando": "de segunda a sábado",
+                "marca": "Cantina da Nona"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cardapio-semana",
+              "campos": {
+                "kicker": "Prato feito",
+                "titulo": "Pratos da semana",
+                "quando": "Almoço das 11h às 15h",
+                "dia1": "Seg",
+                "prato1": "Virado à paulista",
+                "dia2": "Ter",
+                "prato2": "Bife à rolê com purê",
+                "dia3": "Qua",
+                "prato3": "Lasanha da Nona",
+                "dia4": "Qui",
+                "prato4": "Frango com polenta",
+                "dia5": "Sex",
+                "prato5": "Peixe com pirão",
+                "nota": "Todos com arroz, feijão e salada"
+              }
+            },
+            {
+              "id": "social-nota",
+              "campos": {
+                "nota": "4,8",
+                "total": "2.140 avaliações no Google",
+                "depoimento": "A lasanha de quarta vale a semana inteira.",
+                "autor": "Rafael M., cliente desde 2018"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "social-delivery",
+              "campos": {
+                "kicker": "Delivery",
+                "titulo": "Também entregamos",
+                "apoio": "Taxa grátis acima de R$ 60 · em até 45 minutos",
+                "cta": "Peça pelo WhatsApp",
+                "contato": "(11) 99999-0000",
+                "link": "https://wa.me/5511999990000"
+              }
+            },
+            {
+              "id": "servico-pagamento",
+              "campos": {
+                "kicker": "No caixa",
+                "titulo": "Pague como preferir",
+                "forma1": "Pix",
+                "forma2": "Crédito e débito",
+                "forma3": "Vale-refeição",
+                "forma4": "Dinheiro",
+                "nota": ""
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Reserve a sua mesa",
+                "rotulo1": "Telefone",
+                "contato1": "(11) 3333-0000",
+                "rotulo2": "Instagram",
+                "contato2": "@cantinadanona",
+                "rotulo3": "Endereço",
+                "contato3": "Rua das Flores, 120"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Sobremesa da casa: pudim de leite",
+        "Fazemos encomendas para festas",
+        "Domingo tem macarronada"
+      ],
+      "sobre": "Para o restaurante: o prato de cada dia, a nota dos clientes e o delivery.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-restaurante-quadrada",
+      "nome": "Restaurante · TV quadrada · pratos da semana",
+      "perfil": "comercio",
+      "negocio": "restaurante",
+      "ramos": [
+        "comida"
+      ],
+      "estrutura": "pacote restaurante",
+      "marca": "restaurante",
+      "layout": "square-hero",
+      "zonas": {
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cardapio-semana",
+              "campos": {
+                "kicker": "Prato feito",
+                "titulo": "Pratos da semana",
+                "quando": "Almoço das 11h às 15h",
+                "dia1": "Seg",
+                "prato1": "Virado à paulista",
+                "dia2": "Ter",
+                "prato2": "Bife à rolê com purê",
+                "dia3": "Qua",
+                "prato3": "Lasanha da Nona",
+                "dia4": "Qui",
+                "prato4": "Frango com polenta",
+                "dia5": "Sex",
+                "prato5": "Peixe com pirão",
+                "nota": "Todos com arroz, feijão e salada"
+              }
+            },
+            {
+              "id": "social-nota",
+              "campos": {
+                "nota": "4,8",
+                "total": "2.140 avaliações no Google",
+                "depoimento": "A lasanha de quarta vale a semana inteira.",
+                "autor": "Rafael M., cliente desde 2018"
+              }
+            },
+            {
+              "id": "social-delivery",
+              "campos": {
+                "kicker": "Delivery",
+                "titulo": "Também entregamos",
+                "apoio": "Taxa grátis acima de R$ 60 · em até 45 minutos",
+                "cta": "Peça pelo WhatsApp",
+                "contato": "(11) 99999-0000",
+                "link": "https://wa.me/5511999990000"
+              }
+            },
+            {
+              "id": "servico-pagamento",
+              "campos": {
+                "kicker": "No caixa",
+                "titulo": "Pague como preferir",
+                "forma1": "Pix",
+                "forma2": "Crédito e débito",
+                "forma3": "Vale-refeição",
+                "forma4": "Dinheiro",
+                "nota": ""
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Reserve a sua mesa",
+                "rotulo1": "Telefone",
+                "contato1": "(11) 3333-0000",
+                "rotulo2": "Instagram",
+                "contato2": "@cantinadanona",
+                "rotulo3": "Endereço",
+                "contato3": "Rua das Flores, 120"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Sobremesa da casa: pudim de leite",
+        "Fazemos encomendas para festas",
+        "Domingo tem macarronada"
+      ],
+      "sobre": "Para o restaurante: o prato de cada dia, a nota dos clientes e o delivery.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-otica-deitada",
+      "nome": "Ótica · TV deitada · lançamento e óculos completo",
+      "perfil": "comercio",
+      "negocio": "otica",
+      "ramos": [
+        "otica"
+      ],
+      "estrutura": "pacote otica",
+      "marca": "otica",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-classico",
+              "campos": {
+                "chamada": "Semana da visão · até sábado",
+                "marca": "Ótica Central"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "oferta-chegou",
+              "campos": {
+                "selo": "Novo",
+                "kicker": "Acabou de chegar",
+                "titulo": "Lentes com filtro de luz azul",
+                "apoio": "Para quem passa o dia na frente da tela.",
+                "quando": "Na loja a partir de hoje"
+              }
+            },
+            {
+              "id": "oferta-kit",
+              "campos": {
+                "kicker": "Kit da semana",
+                "titulo": "Óculos completo",
+                "item1": "Armação",
+                "item2": "Lentes",
+                "item3": "Estojo",
+                "preco": "299",
+                "centavos": ",00",
+                "de": "Separados: R$ 420,00",
+                "nota": "Lentes simples, grau até 4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "servico-pagamento",
+              "campos": {
+                "kicker": "Facilidades",
+                "titulo": "Pague como preferir",
+                "forma1": "Pix",
+                "forma2": "Crédito e débito",
+                "forma3": "Vale-presente",
+                "forma4": "Dinheiro",
+                "nota": "Até 10x sem juros no cartão"
+              }
+            },
+            {
+              "id": "social-nota",
+              "campos": {
+                "nota": "4,9",
+                "total": "860 avaliações no Google",
+                "depoimento": "Saí com os óculos ajustados no mesmo dia.",
+                "autor": "Paula R., cliente"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Ótica Central"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ajuste e limpeza de óculos grátis",
+        "Lentes prontas em até 7 dias",
+        "Estacionamento conveniado"
+      ],
+      "sobre": "Para a ótica: a novidade da vitrine, o óculos completo e como pagar.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-otica-em-pe",
+      "nome": "Ótica · TV em pé · lançamento e óculos completo",
+      "perfil": "comercio",
+      "negocio": "otica",
+      "ramos": [
+        "otica"
+      ],
+      "estrutura": "pacote otica",
+      "marca": "otica",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-classico",
+              "campos": {
+                "chamada": "Semana da visão · até sábado",
+                "marca": "Ótica Central"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "oferta-chegou",
+              "campos": {
+                "selo": "Novo",
+                "kicker": "Acabou de chegar",
+                "titulo": "Lentes com filtro de luz azul",
+                "apoio": "Para quem passa o dia na frente da tela.",
+                "quando": "Na loja a partir de hoje"
+              }
+            },
+            {
+              "id": "oferta-kit",
+              "campos": {
+                "kicker": "Kit da semana",
+                "titulo": "Óculos completo",
+                "item1": "Armação",
+                "item2": "Lentes",
+                "item3": "Estojo",
+                "preco": "299",
+                "centavos": ",00",
+                "de": "Separados: R$ 420,00",
+                "nota": "Lentes simples, grau até 4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "servico-pagamento",
+              "campos": {
+                "kicker": "Facilidades",
+                "titulo": "Pague como preferir",
+                "forma1": "Pix",
+                "forma2": "Crédito e débito",
+                "forma3": "Vale-presente",
+                "forma4": "Dinheiro",
+                "nota": "Até 10x sem juros no cartão"
+              }
+            },
+            {
+              "id": "social-nota",
+              "campos": {
+                "nota": "4,9",
+                "total": "860 avaliações no Google",
+                "depoimento": "Saí com os óculos ajustados no mesmo dia.",
+                "autor": "Paula R., cliente"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Ótica Central"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ajuste e limpeza de óculos grátis",
+        "Lentes prontas em até 7 dias",
+        "Estacionamento conveniado"
+      ],
+      "sobre": "Para a ótica: a novidade da vitrine, o óculos completo e como pagar.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-salao-em-pe",
+      "nome": "Salão · TV em pé · kit e equipe",
+      "perfil": "comercio",
+      "negocio": "salao",
+      "ramos": [
+        "beleza",
+        "barbearia"
+      ],
+      "estrutura": "pacote salao",
+      "marca": "salao",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-centro",
+              "campos": {
+                "sub": "Cabelo · unhas · estética",
+                "marca": "Studio Bella"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "oferta-kit",
+              "campos": {
+                "kicker": "Kit da semana",
+                "titulo": "Cuidado dos fios",
+                "item1": "Shampoo",
+                "item2": "Máscara",
+                "item3": "Leave-in",
+                "preco": "89",
+                "centavos": ",90",
+                "de": "Separados: R$ 129,70",
+                "nota": "Até sábado ou enquanto durar o estoque"
+              }
+            },
+            {
+              "id": "gente-equipe",
+              "campos": {
+                "kicker": "Quem cuida de você",
+                "titulo": "Nosso time",
+                "iniciais1": "CN",
+                "nome1": "Carla Nunes",
+                "funcao1": "Coloração",
+                "registro1": "12 anos de salão",
+                "iniciais2": "BT",
+                "nome2": "Bruno Teles",
+                "funcao2": "Corte masculino",
+                "registro2": "De terça a sábado",
+                "iniciais3": "JS",
+                "nome3": "Júlia Sá",
+                "funcao3": "Manicure",
+                "registro3": "Com hora marcada"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "social-wifi",
+              "campos": {
+                "kicker": "Wi-Fi grátis",
+                "titulo": "Relaxe e conecte",
+                "rotulo-rede": "Rede",
+                "rede": "Clientes",
+                "rotulo-senha": "Senha",
+                "senha": "cabelo2026",
+                "cta": "Ou aponte a câmera para entrar",
+                "wifi": "WIFI:T:WPA;S:Clientes;P:cabelo2026;;"
+              }
+            },
+            {
+              "id": "servico-hora",
+              "campos": {
+                "kicker": "Atendimento",
+                "hora": "9h às 20h",
+                "dias": "De terça a sábado, sem fila",
+                "nota": "Encaixe na hora? Pergunte na recepção."
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Agende pelo WhatsApp",
+                "rotulo1": "WhatsApp",
+                "contato1": "(11) 98888-0000",
+                "rotulo2": "Instagram",
+                "contato2": "@studiobella",
+                "rotulo3": "Endereço",
+                "contato3": "Rua Oscar Freire, 900"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Terça tem escova com 20% de desconto",
+        "Vale-presente à venda na recepção",
+        "Sobrancelha com hora marcada"
+      ],
+      "sobre": "Para o salão: o kit da semana, quem atende e o Wi-Fi para quem espera.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-salao-quadrada",
+      "nome": "Salão · TV quadrada · kit e equipe",
+      "perfil": "comercio",
+      "negocio": "salao",
+      "ramos": [
+        "beleza",
+        "barbearia"
+      ],
+      "estrutura": "pacote salao",
+      "marca": "salao",
+      "layout": "square-hero",
+      "zonas": {
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "oferta-kit",
+              "campos": {
+                "kicker": "Kit da semana",
+                "titulo": "Cuidado dos fios",
+                "item1": "Shampoo",
+                "item2": "Máscara",
+                "item3": "Leave-in",
+                "preco": "89",
+                "centavos": ",90",
+                "de": "Separados: R$ 129,70",
+                "nota": "Até sábado ou enquanto durar o estoque"
+              }
+            },
+            {
+              "id": "gente-equipe",
+              "campos": {
+                "kicker": "Quem cuida de você",
+                "titulo": "Nosso time",
+                "iniciais1": "CN",
+                "nome1": "Carla Nunes",
+                "funcao1": "Coloração",
+                "registro1": "12 anos de salão",
+                "iniciais2": "BT",
+                "nome2": "Bruno Teles",
+                "funcao2": "Corte masculino",
+                "registro2": "De terça a sábado",
+                "iniciais3": "JS",
+                "nome3": "Júlia Sá",
+                "funcao3": "Manicure",
+                "registro3": "Com hora marcada"
+              }
+            },
+            {
+              "id": "social-wifi",
+              "campos": {
+                "kicker": "Wi-Fi grátis",
+                "titulo": "Relaxe e conecte",
+                "rotulo-rede": "Rede",
+                "rede": "Clientes",
+                "rotulo-senha": "Senha",
+                "senha": "cabelo2026",
+                "cta": "Ou aponte a câmera para entrar",
+                "wifi": "WIFI:T:WPA;S:Clientes;P:cabelo2026;;"
+              }
+            },
+            {
+              "id": "ambiente-ondas",
+              "campos": {
+                "frase": "Obrigado pela visita. Volte sempre!",
+                "marca": "Studio Bella"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Agende pelo WhatsApp",
+                "rotulo1": "WhatsApp",
+                "contato1": "(11) 98888-0000",
+                "rotulo2": "Instagram",
+                "contato2": "@studiobella",
+                "rotulo3": "Endereço",
+                "contato3": "Rua Oscar Freire, 900"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Terça tem escova com 20% de desconto",
+        "Vale-presente à venda na recepção",
+        "Sobrancelha com hora marcada"
+      ],
+      "sobre": "Para o salão: o kit da semana, quem atende e o Wi-Fi para quem espera.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-farmacia-deitada",
+      "nome": "Farmácia · TV deitada · vacinação e cuidados",
+      "perfil": "saude",
+      "negocio": "farmacia",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote farmacia",
+      "marca": "farmacia",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-classico",
+              "campos": {
+                "chamada": "Vacinação todos os dias",
+                "marca": "Farmácia Bem Estar"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "servico-vacina",
+              "campos": {
+                "kicker": "Vacinação",
+                "titulo": "Sua caderneta está em dia?",
+                "apoio": "Traga a caderneta: a gente confere e aplica as vacinas que faltam.",
+                "quando": "Sem agendamento",
+                "onde": "Sala de vacina · das 8h às 20h"
+              }
+            },
+            {
+              "id": "servico-espera",
+              "campos": {
+                "kicker": "Dica da farmácia",
+                "titulo": "Guarde os remédios longe do calor",
+                "apoio": "Calor e umidade estragam o remédio antes da validade.",
+                "fonte": "Fonte: Anvisa"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "servico-hora",
+              "campos": {
+                "kicker": "Aferição de pressão",
+                "hora": "8h às 20h",
+                "dias": "Todos os dias",
+                "nota": "Grátis, com o farmacêutico."
+              }
+            },
+            {
+              "id": "servico-pagamento",
+              "campos": {
+                "kicker": "No caixa",
+                "titulo": "Formas de pagamento",
+                "forma1": "Pix",
+                "forma2": "Crédito e débito",
+                "forma3": "Convênio da empresa",
+                "forma4": "Dinheiro",
+                "nota": ""
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-relogio",
+              "campos": {
+                "rotulo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Entregamos em casa: peça pelo telefone",
+        "Desconto para maiores de 60 anos",
+        "Farmacêutico de plantão para tirar dúvidas"
+      ],
+      "sobre": "Para a farmácia: a vacinação, uma dica de cuidado e o horário da aferição.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-farmacia-quadrada",
+      "nome": "Farmácia · TV quadrada · vacinação e cuidados",
+      "perfil": "saude",
+      "negocio": "farmacia",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote farmacia",
+      "marca": "farmacia",
+      "layout": "square-hero",
+      "zonas": {
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "servico-vacina",
+              "campos": {
+                "kicker": "Vacinação",
+                "titulo": "Sua caderneta está em dia?",
+                "apoio": "Traga a caderneta: a gente confere e aplica as vacinas que faltam.",
+                "quando": "Sem agendamento",
+                "onde": "Sala de vacina · das 8h às 20h"
+              }
+            },
+            {
+              "id": "servico-espera",
+              "campos": {
+                "kicker": "Dica da farmácia",
+                "titulo": "Guarde os remédios longe do calor",
+                "apoio": "Calor e umidade estragam o remédio antes da validade.",
+                "fonte": "Fonte: Anvisa"
+              }
+            },
+            {
+              "id": "servico-hora",
+              "campos": {
+                "kicker": "Aferição de pressão",
+                "hora": "8h às 20h",
+                "dias": "Todos os dias",
+                "nota": "Grátis, com o farmacêutico."
+              }
+            },
+            {
+              "id": "social-wifi",
+              "campos": {
+                "kicker": "Wi-Fi grátis",
+                "titulo": "Enquanto você espera",
+                "rotulo-rede": "Rede",
+                "rede": "Clientes",
+                "rotulo-senha": "Senha",
+                "senha": "bemestar26",
+                "cta": "Ou aponte a câmera para entrar",
+                "wifi": "WIFI:T:WPA;S:Clientes;P:bemestar26;;"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-relogio",
+              "campos": {
+                "rotulo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Entregamos em casa: peça pelo telefone",
+        "Desconto para maiores de 60 anos",
+        "Farmacêutico de plantão para tirar dúvidas"
+      ],
+      "sobre": "Para a farmácia: a vacinação, uma dica de cuidado e o horário da aferição.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-clinica-deitada",
+      "nome": "Clínica · TV deitada · Novembro Azul e preparo",
+      "perfil": "saude",
+      "negocio": "clinica",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote clinica",
+      "marca": "clinica",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Clínica Vida"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "social-campanha",
+              "campos": {
+                "campanha": "Novembro Azul",
+                "titulo": "Homem também vai ao médico.",
+                "apoio": "Converse com o seu médico sobre os exames certos para a sua idade.",
+                "fonte": "Fonte: Ministério da Saúde"
+              }
+            },
+            {
+              "id": "servico-preparo",
+              "campos": {
+                "numero": "8",
+                "unidade": "horas de jejum",
+                "kicker": "Preparo",
+                "titulo": "Antes do exame de sangue",
+                "item1": "Água pode, café não",
+                "item2": "Traga o pedido médico",
+                "item3": "E um documento com foto"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "servico-hora",
+              "campos": {
+                "kicker": "Coleta de exames",
+                "hora": "7h às 10h",
+                "dias": "De segunda a sábado",
+                "nota": "Sem agendamento, por ordem de chegada."
+              }
+            },
+            {
+              "id": "social-pesquisa",
+              "campos": {
+                "kicker": "Pesquisa de satisfação",
+                "titulo": "Como foi o seu atendimento hoje?",
+                "apoio": "Leva 2 minutos e ajuda a gente a melhorar.",
+                "cta": "Aponte a câmera e responda",
+                "link": "https://example.com/pesquisa"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-relogio",
+              "campos": {
+                "rotulo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Resultados de exame pelo WhatsApp",
+        "Prioridade: idosos, gestantes e crianças de colo",
+        "Estacionamento gratuito no subsolo"
+      ],
+      "sobre": "Para a clínica: a campanha do mês, o preparo do exame e a hora da coleta.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-clinica-em-pe",
+      "nome": "Clínica · TV em pé · Novembro Azul e preparo",
+      "perfil": "saude",
+      "negocio": "clinica",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote clinica",
+      "marca": "clinica",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Clínica Vida"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "social-campanha",
+              "campos": {
+                "campanha": "Novembro Azul",
+                "titulo": "Homem também vai ao médico.",
+                "apoio": "Converse com o seu médico sobre os exames certos para a sua idade.",
+                "fonte": "Fonte: Ministério da Saúde"
+              }
+            },
+            {
+              "id": "servico-preparo",
+              "campos": {
+                "numero": "8",
+                "unidade": "horas de jejum",
+                "kicker": "Preparo",
+                "titulo": "Antes do exame de sangue",
+                "item1": "Água pode, café não",
+                "item2": "Traga o pedido médico",
+                "item3": "E um documento com foto"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "servico-hora",
+              "campos": {
+                "kicker": "Coleta de exames",
+                "hora": "7h às 10h",
+                "dias": "De segunda a sábado",
+                "nota": "Sem agendamento, por ordem de chegada."
+              }
+            },
+            {
+              "id": "social-pesquisa",
+              "campos": {
+                "kicker": "Pesquisa de satisfação",
+                "titulo": "Como foi o seu atendimento hoje?",
+                "apoio": "Leva 2 minutos e ajuda a gente a melhorar.",
+                "cta": "Aponte a câmera e responda",
+                "link": "https://example.com/pesquisa"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-relogio",
+              "campos": {
+                "rotulo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Resultados de exame pelo WhatsApp",
+        "Prioridade: idosos, gestantes e crianças de colo",
+        "Estacionamento gratuito no subsolo"
+      ],
+      "sobre": "Para a clínica: a campanha do mês, o preparo do exame e a hora da coleta.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-dentista-em-pe",
+      "nome": "Dentista · TV em pé · equipe e convênios",
+      "perfil": "saude",
+      "negocio": "dentista",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote dentista",
+      "marca": "dentista",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Sorriso Odontologia"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "gente-equipe",
+              "campos": {
+                "kicker": "Quem cuida do seu sorriso",
+                "titulo": "Nossa equipe",
+                "iniciais1": "PM",
+                "nome1": "Dra. Paula Mendes",
+                "funcao1": "Ortodontia",
+                "registro1": "CRO-SP 85421",
+                "iniciais2": "RA",
+                "nome2": "Dr. Rafael Alves",
+                "funcao2": "Implantes",
+                "registro2": "CRO-SP 91307",
+                "iniciais3": "LC",
+                "nome3": "Dra. Lia Campos",
+                "funcao3": "Odontopediatria",
+                "registro3": "CRO-SP 77815"
+              }
+            },
+            {
+              "id": "servico-espera",
+              "campos": {
+                "kicker": "Enquanto você espera",
+                "titulo": "Troque a escova de dente a cada três meses",
+                "apoio": "Cerdas gastas limpam menos e podem machucar a gengiva.",
+                "fonte": "Fonte: Ministério da Saúde"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "servico-convenios",
+              "campos": {
+                "kicker": "Atendemos",
+                "titulo": "Convênios aceitos",
+                "apoio": "Não achou o seu? Pergunte na recepção.",
+                "plano1": "OdontoVida",
+                "plano2": "Sorriso Pleno",
+                "plano3": "Dental Mais",
+                "plano4": "Bem Odonto",
+                "plano5": "Odonto Litoral",
+                "plano6": "Particular"
+              }
+            },
+            {
+              "id": "social-wifi",
+              "campos": {
+                "kicker": "Wi-Fi para pacientes",
+                "titulo": "Para quem espera",
+                "rotulo-rede": "Rede",
+                "rede": "Pacientes",
+                "rotulo-senha": "Senha",
+                "senha": "sorriso26",
+                "cta": "Ou aponte a câmera para entrar",
+                "wifi": "WIFI:T:WPA;S:Pacientes;P:sorriso26;;"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Hora marcada, sem espera",
+                "rotulo1": "WhatsApp",
+                "contato1": "(11) 97777-0000",
+                "rotulo2": "Instagram",
+                "contato2": "@sorrisoodonto",
+                "rotulo3": "Endereço",
+                "contato3": "Av. Brasil, 450"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Primeira consulta com hora marcada",
+        "Atendemos crianças a partir de 2 anos",
+        "Acesso para cadeira de rodas"
+      ],
+      "sobre": "Para o consultório: a equipe com registro, os convênios e uma dica para a espera.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-dentista-quadrada",
+      "nome": "Dentista · TV quadrada · equipe e convênios",
+      "perfil": "saude",
+      "negocio": "dentista",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote dentista",
+      "marca": "dentista",
+      "layout": "square-hero",
+      "zonas": {
+        "principal": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "gente-equipe",
+              "campos": {
+                "kicker": "Quem cuida do seu sorriso",
+                "titulo": "Nossa equipe",
+                "iniciais1": "PM",
+                "nome1": "Dra. Paula Mendes",
+                "funcao1": "Ortodontia",
+                "registro1": "CRO-SP 85421",
+                "iniciais2": "RA",
+                "nome2": "Dr. Rafael Alves",
+                "funcao2": "Implantes",
+                "registro2": "CRO-SP 91307",
+                "iniciais3": "LC",
+                "nome3": "Dra. Lia Campos",
+                "funcao3": "Odontopediatria",
+                "registro3": "CRO-SP 77815"
+              }
+            },
+            {
+              "id": "servico-convenios",
+              "campos": {
+                "kicker": "Atendemos",
+                "titulo": "Convênios aceitos",
+                "apoio": "Não achou o seu? Pergunte na recepção.",
+                "plano1": "OdontoVida",
+                "plano2": "Sorriso Pleno",
+                "plano3": "Dental Mais",
+                "plano4": "Bem Odonto",
+                "plano5": "Odonto Litoral",
+                "plano6": "Particular"
+              }
+            },
+            {
+              "id": "servico-espera",
+              "campos": {
+                "kicker": "Enquanto você espera",
+                "titulo": "Troque a escova de dente a cada três meses",
+                "apoio": "Cerdas gastas limpam menos e podem machucar a gengiva.",
+                "fonte": "Fonte: Ministério da Saúde"
+              }
+            },
+            {
+              "id": "ambiente-ondas",
+              "campos": {
+                "frase": "Respire fundo. Já já chamamos você.",
+                "marca": "Sorriso Odontologia"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-faixa",
+              "campos": {
+                "chamada": "Hora marcada, sem espera",
+                "rotulo1": "WhatsApp",
+                "contato1": "(11) 97777-0000",
+                "rotulo2": "Instagram",
+                "contato2": "@sorrisoodonto",
+                "rotulo3": "Endereço",
+                "contato3": "Av. Brasil, 450"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Primeira consulta com hora marcada",
+        "Atendemos crianças a partir de 2 anos",
+        "Acesso para cadeira de rodas"
+      ],
+      "sobre": "Para o consultório: a equipe com registro, os convênios e uma dica para a espera.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-escritorio-deitada",
+      "nome": "Escritório · TV deitada · metas e agenda",
+      "perfil": "empresa",
+      "negocio": "escritorio",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote escritorio",
+      "marca": "escritorio",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-centro",
+              "campos": {
+                "sub": "Comunicação interna",
+                "marca": "Vértice Contabilidade"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "indicador-turno",
+              "campos": {
+                "kicker": "Novembro, até hoje",
+                "titulo": "Metas do mês",
+                "atualizado": "Atualizado às 9h",
+                "rotulo1": "Declarações",
+                "valor1": "312",
+                "ref1": "Meta: 350",
+                "selo1": "No ritmo",
+                "rotulo2": "No prazo",
+                "valor2": "98%",
+                "ref2": "Meta: 95%",
+                "selo2": "Acima",
+                "rotulo3": "Chamados",
+                "valor3": "14",
+                "ref3": "Ontem: 21",
+                "selo3": "Melhorou"
+              }
+            },
+            {
+              "id": "servico-semana",
+              "campos": {
+                "kicker": "Treinamentos",
+                "titulo": "Agenda",
+                "titulo2": "da semana",
+                "nota": "Inscrição com o seu líder até a véspera.",
+                "dia1": "Seg",
+                "data1": "10",
+                "evento1": "Integração de novos",
+                "detalhe1": "9h · Sala 2",
+                "dia2": "Ter",
+                "data2": "11",
+                "evento2": "Reforma tributária",
+                "detalhe2": "14h · Auditório",
+                "dia3": "Qui",
+                "data3": "13",
+                "evento3": "Brigada de incêndio",
+                "detalhe3": "8h · Recepção",
+                "dia4": "Sex",
+                "data4": "14",
+                "evento4": "Excel avançado",
+                "detalhe4": "10h · Sala 2"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "gente-destaque",
+              "campos": {
+                "iniciais": "MF",
+                "kicker": "Destaque de outubro",
+                "nome": "Mariana Faria",
+                "setor": "Fiscal · 4 anos de casa",
+                "conquista": "Fechou o balanço de 40 clientes sem um dia de atraso.",
+                "assinatura": "Escolhida pela equipe"
+              }
+            },
+            {
+              "id": "servico-ramais",
+              "campos": {
+                "kicker": "Contatos úteis",
+                "titulo": "Ramais",
+                "nota": "TI urgente: ramal 205",
+                "setor1": "Recepção",
+                "ramal1": "200",
+                "setor2": "Fiscal",
+                "ramal2": "210",
+                "setor3": "Contábil",
+                "ramal3": "220",
+                "setor4": "Pessoal",
+                "ramal4": "230",
+                "setor5": "Financeiro",
+                "ramal5": "240",
+                "setor6": "Diretoria",
+                "ramal6": "250"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-relogio",
+              "campos": {
+                "rotulo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Aniversariantes do mês: bolo na sexta, às 16h",
+        "Lembrete: ponto até as 9h15",
+        "Reunião geral na segunda, às 9h"
+      ],
+      "sobre": "Para o escritório: as metas do mês, a agenda de treinamentos e quem se destacou.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-escritorio-em-pe",
+      "nome": "Escritório · TV em pé · metas e agenda",
+      "perfil": "empresa",
+      "negocio": "escritorio",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote escritorio",
+      "marca": "escritorio",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Vértice Contabilidade"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "indicador-turno",
+              "campos": {
+                "kicker": "Novembro, até hoje",
+                "titulo": "Metas do mês",
+                "atualizado": "Atualizado às 9h",
+                "rotulo1": "Declarações",
+                "valor1": "312",
+                "ref1": "Meta: 350",
+                "selo1": "No ritmo",
+                "rotulo2": "No prazo",
+                "valor2": "98%",
+                "ref2": "Meta: 95%",
+                "selo2": "Acima",
+                "rotulo3": "Chamados",
+                "valor3": "14",
+                "ref3": "Ontem: 21",
+                "selo3": "Melhorou"
+              }
+            },
+            {
+              "id": "servico-semana",
+              "campos": {
+                "kicker": "Treinamentos",
+                "titulo": "Agenda",
+                "titulo2": "da semana",
+                "nota": "Inscrição com o seu líder até a véspera.",
+                "dia1": "Seg",
+                "data1": "10",
+                "evento1": "Integração de novos",
+                "detalhe1": "9h · Sala 2",
+                "dia2": "Ter",
+                "data2": "11",
+                "evento2": "Reforma tributária",
+                "detalhe2": "14h · Auditório",
+                "dia3": "Qui",
+                "data3": "13",
+                "evento3": "Brigada de incêndio",
+                "detalhe3": "8h · Recepção",
+                "dia4": "Sex",
+                "data4": "14",
+                "evento4": "Excel avançado",
+                "detalhe4": "10h · Sala 2"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "claro",
+          "pecas": [
+            {
+              "id": "gente-destaque",
+              "campos": {
+                "iniciais": "MF",
+                "kicker": "Destaque de outubro",
+                "nome": "Mariana Faria",
+                "setor": "Fiscal · 4 anos de casa",
+                "conquista": "Fechou o balanço de 40 clientes sem um dia de atraso.",
+                "assinatura": "Escolhida pela equipe"
+              }
+            },
+            {
+              "id": "social-pesquisa",
+              "campos": {
+                "kicker": "Pesquisa de clima",
+                "titulo": "Como está o seu dia a dia aqui?",
+                "apoio": "São 5 minutos, é anônima e fica aberta até sexta.",
+                "cta": "Aponte a câmera e responda",
+                "link": "https://example.com/pesquisa"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "rodape-relogio",
+              "campos": {
+                "rotulo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Aniversariantes do mês: bolo na sexta, às 16h",
+        "Lembrete: ponto até as 9h15",
+        "Reunião geral na segunda, às 9h"
+      ],
+      "sobre": "Para o escritório: as metas do mês, a agenda de treinamentos e quem se destacou.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-industria-deitada",
+      "nome": "Indústria · TV deitada · segurança e produção",
+      "perfil": "empresa",
+      "negocio": "industria",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote industria",
+      "marca": "industria",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-classico",
+              "campos": {
+                "chamada": "Semana da segurança · até sexta",
+                "marca": "Metalúrgica Andrade"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "servico-epi",
+              "campos": {
+                "kicker": "Área de produção",
+                "titulo": "EPI",
+                "titulo2": "obrigatório",
+                "apoio": "Sem o equipamento completo, não entre na área.",
+                "epi1": "Capacete",
+                "epi2": "Óculos",
+                "epi3": "Protetor auricular",
+                "epi4": "Luva"
+              }
+            },
+            {
+              "id": "indicador-meta",
+              "campos": {
+                "kicker": "Linha 2 · novembro",
+                "titulo": "Peças produzidas no mês",
+                "numero": "18.450",
+                "unidade": "peças",
+                "seta": "▲",
+                "tendencia": "12% sobre outubro",
+                "meta": "Meta do mês: 17.000",
+                "atualizado": "Atualizado às 14h"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cardapio-semana",
+              "campos": {
+                "kicker": "Refeitório",
+                "titulo": "Cardápio da semana",
+                "quando": "Almoço das 11h às 14h",
+                "dia1": "Seg",
+                "prato1": "Frango assado com polenta",
+                "dia2": "Ter",
+                "prato2": "Carne de panela com batata",
+                "dia3": "Qua",
+                "prato3": "Feijoada com couve",
+                "dia4": "Qui",
+                "prato4": "Strogonoff de frango",
+                "dia5": "Sex",
+                "prato5": "Peixe empanado com purê",
+                "nota": "Todo dia: arroz, feijão, salada e fruta"
+              }
+            },
+            {
+              "id": "gente-destaque",
+              "campos": {
+                "iniciais": "RS",
+                "kicker": "Destaque de outubro",
+                "nome": "Roberto Silva",
+                "setor": "Usinagem · turno B",
+                "conquista": "Sugeriu a troca de ferramenta que cortou o refugo pela metade.",
+                "assinatura": "Escolhido pelos colegas"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-relogio",
+              "campos": {
+                "rotulo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ônibus da noite sai às 22h10",
+        "Treinamento de brigada na quinta",
+        "Exame periódico: confira a sua data no RH"
+      ],
+      "sobre": "Para a fábrica: o EPI da área, a produção do mês e o cardápio do refeitório.",
+      "estado": "proposta",
+      "lote": 3
+    },
+    {
+      "id": "l3-industria-quadrada",
+      "nome": "Indústria · TV quadrada · segurança e produção",
+      "perfil": "empresa",
+      "negocio": "industria",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote industria",
+      "marca": "industria",
+      "layout": "square-hero",
+      "zonas": {
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "servico-epi",
+              "campos": {
+                "kicker": "Área de produção",
+                "titulo": "EPI",
+                "titulo2": "obrigatório",
+                "apoio": "Sem o equipamento completo, não entre na área.",
+                "epi1": "Capacete",
+                "epi2": "Óculos",
+                "epi3": "Protetor auricular",
+                "epi4": "Luva"
+              }
+            },
+            {
+              "id": "indicador-meta",
+              "campos": {
+                "kicker": "Linha 2 · novembro",
+                "titulo": "Peças produzidas no mês",
+                "numero": "18.450",
+                "unidade": "peças",
+                "seta": "▲",
+                "tendencia": "12% sobre outubro",
+                "meta": "Meta do mês: 17.000",
+                "atualizado": "Atualizado às 14h"
+              }
+            },
+            {
+              "id": "cardapio-semana",
+              "campos": {
+                "kicker": "Refeitório",
+                "titulo": "Cardápio da semana",
+                "quando": "Almoço das 11h às 14h",
+                "dia1": "Seg",
+                "prato1": "Frango assado com polenta",
+                "dia2": "Ter",
+                "prato2": "Carne de panela com batata",
+                "dia3": "Qua",
+                "prato3": "Feijoada com couve",
+                "dia4": "Qui",
+                "prato4": "Strogonoff de frango",
+                "dia5": "Sex",
+                "prato5": "Peixe empanado com purê",
+                "nota": "Todo dia: arroz, feijão, salada e fruta"
+              }
+            },
+            {
+              "id": "ambiente-formas",
+              "campos": {
+                "frase": "Uma pausa para respirar. Bom trabalho.",
+                "marca": "Metalúrgica Andrade"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-relogio",
+              "campos": {
+                "rotulo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ônibus da noite sai às 22h10",
+        "Treinamento de brigada na quinta",
+        "Exame periódico: confira a sua data no RH"
+      ],
+      "sobre": "Para a fábrica: o EPI da área, a produção do mês e o cardápio do refeitório.",
+      "estado": "proposta",
+      "lote": 3
     }
   ]
 }

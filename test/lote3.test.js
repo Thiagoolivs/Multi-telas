@@ -98,3 +98,62 @@ test('lote 3: desenho só com o que a porta deixa, na régua da TV', () => {
   // Modo ambiente: a frase é opcional — em branco, some.
   for (const p of LOTE.filter((x) => x.familia === 'ambiente')) assert.match(ler('pecas-ouro/' + p.id + '.html'), /\.frase:empty|:has\(\.frase:empty\)/, p.id);
 });
+
+/*
+ * As telas do lote 3: dois formatos por negócio, seis de cada orientação,
+ * feitas com as peças novas. Conferidas na bancada no tamanho de verdade:
+ * a letra inteira (piso sem ceder) em todas as zonas das 18.
+ */
+const TELAS = M.telas.filter((t) => t.lote === 3);
+const NEGOCIOS = ['padaria', 'restaurante', 'otica', 'salao', 'farmacia', 'clinica', 'dentista', 'escritorio', 'industria'];
+const LAYOUT = { deitada: 'corporate', 'em-pe': 'portrait-stack', quadrada: 'square-hero' };
+const { RAMOS } = require('../js/paletas.js');
+const entrada = (e) => (typeof e === 'string' ? { id: e, campos: {} } : { id: e.id, campos: e.campos || {} });
+
+test('lote 3: telas prontas por negócio, nas três orientações', () => {
+  assert.ok(TELAS.length >= 12, 'lote 3 com ' + TELAS.length + ' telas');
+  for (const n of NEGOCIOS) assert.ok(TELAS.some((t) => t.negocio === n), n + ' sem tela no lote 3');
+  for (const [forma, layout] of Object.entries(LAYOUT)) assert.ok(TELAS.filter((t) => t.layout === layout).length >= 4, forma + ': poucas telas');
+  const ramos = new Set(RAMOS.map((r) => r.id));
+  for (const t of TELAS) {
+    const forma = Object.keys(LAYOUT).find((f) => t.id.endsWith('-' + f));
+    assert.ok(forma && t.id === 'l3-' + t.negocio + '-' + forma, t.id + ': id');
+    assert.equal(t.layout, LAYOUT[forma], t.id + ': layout');
+    assert.equal(t.estado, 'proposta', t.id + ': só vai para as contas depois da galeria');
+    assert.ok(NEGOCIOS.includes(t.negocio), t.id + ': negócio');
+    assert.ok(FRENTES.includes(t.perfil), t.id + ': perfil');
+    assert.ok(t.ramos.length && t.ramos.every((r) => ramos.has(r)), t.id + ': ramos da Marca');
+    assert.ok(M.marcas.some((b) => b.id === t.marca), t.id + ': marca de exemplo');
+    assert.equal(CASA[t.marca], t.perfil, t.id + ': marca da própria frente');
+    assert.equal('lateral' in t.zonas, forma !== 'quadrada', t.id + ': a quadrada não tem lado');
+    // O texto do cartão é de cliente: sem nota interna (web/src/lib/telasProntas.js, descricaoDaTela).
+    assert.ok(t.sobre && t.sobre.length <= 140 && !/PLANO|§|docs\/|bancada|\bzonas?\b|\blote\b/i.test(t.sobre), t.id + ': sobre');
+    // Cada tela mostra peças novas: o lote 3 não é o lote 2 com outro nome.
+    const novas = Object.values(t.zonas).flatMap((z) => z.pecas.map(entrada)).filter((e) => LOTE.some((p) => p.id === e.id));
+    assert.ok(novas.length >= 2, t.id + ': peças do lote 3');
+    for (const z of Object.values(t.zonas)) {
+      for (const e of z.pecas.map(entrada)) {
+        const def = M.pecas.find((p) => p.id === e.id);
+        // A peça do lote 3 serve à frente da tela.
+        if (def.lote === 3) assert.ok(def.frentes.includes(t.perfil), t.id + ': ' + e.id + ' não serve à frente ' + t.perfil);
+        const nomes = campos(e.id).map((c) => c.nome);
+        for (const k of Object.keys(e.campos)) assert.ok(nomes.includes(k), t.id + ': ' + e.id + ' não tem o campo ' + k);
+      }
+    }
+  }
+});
+
+test('lote 3: tela de saúde sem preço e sem promessa, nem no letreiro', () => {
+  for (const t of TELAS.filter((x) => x.perfil === 'saude')) {
+    const textos = Object.values(t.zonas).flatMap((z) => z.pecas.map(entrada))
+      .flatMap((e) => Object.entries(e.campos).filter(([k]) => !/^(link|wifi)$/.test(k)).map(([, v]) => v))
+      .concat(t.mensagens);
+    for (const v of textos) {
+      assert.doesNotMatch(String(v), PRECO, t.id + ': preço em "' + v + '"');
+      assert.doesNotMatch(String(v), PROMESSA, t.id + ': promessa em "' + v + '"');
+    }
+    for (const z of Object.values(t.zonas)) {
+      for (const e of z.pecas.map(entrada)) assert.doesNotMatch(ler('pecas-ouro/' + e.id + '.html'), /data-campo="preco"/, t.id + ': peça de preço');
+    }
+  }
+});
