@@ -40,6 +40,8 @@ import { Field, Input, Textarea } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { ai } from '../api.js';
 import { CONTENT_TYPES, itemSummary, nomeDoTipo, defaultConfig, novoItem, ajustesDoEditor } from '../lib/contentTypes.js';
+import { precisaDeNomes } from '../lib/nomesDasMidias.js';
+import { useNomesDasMidias } from '../lib/useNomesDasMidias.js';
 import { zonesOf, ensureZone, formatoDoLayout } from '../lib/screenConfig.js';
 import { cn } from '../lib/cn.js';
 import { perfilAtual } from '../lib/perfil.js';
@@ -89,6 +91,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
   const [tentativa, setTentativa] = useState(0);
 
   const [cfg, setCfg] = useState(null);
+  // A foto e o vídeo postos antes do nome ir junto: o nome original vem das Mídias (um pedido, guardado).
+  const nomesDasMidias = useNomesDasMidias(precisaDeNomes(cfg));
   /*
    * A PÁGINA DA TV (fase 7): o que passa, os ajustes e o que passou numa
    * página só. Antes eram quatro lugares (Telas, Programação, o diálogo de
@@ -765,7 +769,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                             {/* A miniatura inteira (fase 10): a foto de verdade e o texto sem corte. */}
                             <MiniaturaDoItem item={it} largura={64} />
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-medium text-ink">{itemSummary(it)}</span>
+                              <span className="block truncate text-sm font-medium text-ink">{itemSummary(it, nomesDasMidias)}</span>
                               <span className="block truncate text-xs text-ink-3">
                                 {nomeDoTipo(it.type)}{it.duracao === 0 ? ' · fica fixo' : ''}
                                 {/* De qual campanha veio (item 25): é ela que "Pausar" tira daqui. */}
@@ -808,7 +812,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                   ) : (
                     <>
                       {/* O nome da peça, e não o tipo técnico ("Texto / Comunicado"). A prévia é a própria TV, ao lado. */}
-                      <PanelHeader title={itemSummary(current)} description={nomeDoTipo(current.type) + ' · ' + nomeDaParte(activeZone, layoutCanonico)}
+                      <PanelHeader title={itemSummary(current, nomesDasMidias)} description={nomeDoTipo(current.type) + ' · ' + nomeDaParte(activeZone, layoutCanonico)}
                         actions={
                           <div className="flex items-center gap-0.5">
                             <IconButton icon={ChevronUp} label="Passar antes" size={15} onClick={() => moveItem(selected, -1)} />

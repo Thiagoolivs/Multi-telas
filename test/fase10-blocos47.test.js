@@ -73,9 +73,9 @@ test('axe: Ajustes da TV sem caixa dentro de botão e com o tema nomeado; Criand
 
 test('o mapa da TV mostra o que cada parte passa: texto, aviso e clima não ficam pretos', () => {
   const m = ler('web/src/components/tela/MapaDaTela.jsx');
-  assert.match(m, /function textosDoItem\(item, settings\)/);
+  assert.match(m, /function textosDoItem\(item, settings, nomes\)/);
   assert.match(m, /return \{ titulo: linha\(item\.cidade \|\| \(settings && settings\.cidadeClima\)\) \|\| 'Clima', apoio: 'Clima de agora', Icone: CloudSun \};/);
-  assert.match(m, /: item && !faixa \? <PreviaDoItem item=\{item\} settings=\{cfg\.settings\} \/>/);
+  assert.match(m, /: item && !faixa \? <PreviaDoItem item=\{item\} settings=\{cfg\.settings\} nomes=\{nomes\} \/>/);
   assert.match(m, /: faixa && !item \? <PreviaDaFaixa zona=\{z\} /);
   // A Conteudo de antes fica igual (a prévia "Como vai ficar" usa a mesma).
   assert.match(m, /export function Conteudo\(\{ item, tamanho \}\) \{\s*if \(!item\) return null;/);

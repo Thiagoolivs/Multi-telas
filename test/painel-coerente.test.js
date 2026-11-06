@@ -243,7 +243,7 @@ test('item 40 (fase 7): a Programação mora em Telas; cada TV abre a página de
   assert.match(app, /content: \{ title: 'Telas', nav: 'screens' \}/);
   const p = semComentarios(ler('web/src/pages/ProgramacaoPage.jsx'));
   // Desde o D3 a parte tocada abre o editor JÁ nela (antes ignorava a zona).
-  assert.match(p, /<MapaDaTela layout=\{layout\} onEscolher=\{\(z\) => editar\(d, z && z\.id\)\} resumo=\{resumoDaZona\(cfg\)\} cfg=\{cfg\} \/>/);
+  assert.match(p, /<MapaDaTela layout=\{layout\} onEscolher=\{\(z\) => editar\(d, z && z\.id\)\} resumo=\{resumoDaZona\(cfg\)\} cfg=\{cfg\} nomes=\{nomes\} \/>/);
   assert.match(p, /onIr\('content', \{ device: d, \.\.\.\(zona \? \{ zona \} : \{\}\) \}\)/);
   assert.doesNotMatch(ler('js/seasons.js'), /Raft/, 'os pacotes de data não falam da empresa de exemplo');
 });

@@ -9,6 +9,8 @@ import { UltimosEnvios } from '../components/tela/UltimosEnvios.jsx';
 import { devices, deviceConfig } from '../api.js';
 import { deviceStatus } from '../lib/deviceStatus.js';
 import { campanhasDaConfig, pecasDaFaixa } from '../lib/tela.js';
+import { precisaDeNomes } from '../lib/nomesDasMidias.js';
+import { useNomesDasMidias } from '../lib/useNomesDasMidias.js';
 import '../lib/screenConfig.js';
 
 /*
@@ -46,6 +48,8 @@ export function ProgramacaoPage({ onIr }) {
    */
   const [erro, setErro] = useState('');
   const [tentativa, setTentativa] = useState(0);
+  // O vídeo posto antes do nome ir junto: o nome original vem das Mídias (um pedido para todas as TVs, guardado).
+  const nomes = useNomesDasMidias(Object.values(cfgs).some(precisaDeNomes));
 
   useEffect(() => {
     setErro(''); setTelas(null);
@@ -111,7 +115,7 @@ export function ProgramacaoPage({ onIr }) {
                       className="flex h-40 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-warn/50 text-sm text-ink-2">
                       Não deu para ler o que está nesta TV.<span className="text-xs text-accent">Tentar de novo</span>
                     </button>
-                  ) : layout ? <MapaDaTela layout={layout} onEscolher={(z) => editar(d, z && z.id)} resumo={resumoDaZona(cfg)} cfg={cfg} />
+                  ) : layout ? <MapaDaTela layout={layout} onEscolher={(z) => editar(d, z && z.id)} resumo={resumoDaZona(cfg)} cfg={cfg} nomes={nomes} />
                     : (
                       <button type="button" onClick={() => editar(d)}
                         className="flex h-40 items-center justify-center rounded-lg border border-dashed border-line text-sm text-ink-3 hover:border-accent/60">
