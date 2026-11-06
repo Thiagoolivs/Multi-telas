@@ -29,7 +29,7 @@ export function SeasonBanner({ zonas, onAplicar }) {
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-accent/40 bg-accent-soft/40 px-4 py-3">
       <span className="text-2xl leading-none">{hoje.emoji}</span>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-[12rem] flex-1">
         <div className="text-sm font-semibold text-ink">
           {aplicado ? `Pronto — a tela está com a cara de ${hoje.label}.` : `Hoje é ${hoje.label}`}
         </div>
