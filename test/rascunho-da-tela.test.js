@@ -26,7 +26,9 @@ test('nada publica sozinho: só o botão (ou Ctrl+S) e ações explícitas', () 
   assert.match(S, /if \(\(e\.ctrlKey \|\| e\.metaKey\) && e\.key\.toLowerCase\(\) === 's'\) \{ e\.preventDefault\(\); if \(dirty && !publishing\) publish\(\); \}/);
   // Tirar uma campanha da TV publica já (a campanha sai da lista desta TV no servidor ao mesmo tempo).
   assert.match(S, /if \(!\(await publish\(novo\)\)\) setDirty\(true\);/);
-  assert.ok(chamadas <= 7, 'apareceu publicação nova: ' + chamadas);
+  // "Arrumar a volta" também é ação explícita (a pessoa confirma "Tirar N peças"), e o Desfazer dela.
+  assert.match(S, /async function arrumarVolta\(novo, quantas\) \{[\s\S]*?if \(!\(await publish\(novo\)\)\) \{ setDirty\(true\); return false; \}[\s\S]*?publish\(antes\)/);
+  assert.ok(chamadas <= 9, 'apareceu publicação nova: ' + chamadas);
 });
 
 test('o rascunho fica guardado, volta ao abrir e respeita a TV que mudou', () => {
