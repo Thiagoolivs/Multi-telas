@@ -132,11 +132,12 @@ function mensagem(tipo, contaRecebida, appUrl, agora) {
 function montar({ assunto, titulo, paragrafos, botao, destino }, appUrl) {
   const link = appUrl ? appUrl + destino : '';
   const text = titulo + '\n\n' + paragrafos.join('\n\n') + (link ? '\n\n' + botao + ': ' + link : '');
-  const html = '<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0f172a">' +
+  // Na moldura de todo e-mail (server/mail.js): a marca em cima e quem manda embaixo (reteste da fase 10).
+  const html = require('./mail').moldura(
     '<h1 style="font-size:18px;margin:0 0 12px">' + escapar(titulo) + '</h1>' +
     paragrafos.map((p) => '<p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#334155">' + escapar(p) + '</p>').join('') +
-    (link ? '<p style="margin:8px 0 0"><a href="' + escapar(link) + '" style="display:inline-block;background:#5B2EFF;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 20px;border-radius:8px">' + escapar(botao) + '</a></p>' : '') +
-    '</div>';
+    (link ? '<p style="margin:8px 0 0"><a href="' + escapar(link) + '" style="display:inline-block;background:#5B2EFF;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 20px;border-radius:8px">' + escapar(botao) + '</a></p>' : ''),
+    { base: appUrl });
   return { subject: assunto, text, html };
 }
 

@@ -146,7 +146,7 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
         open={!!somTarget}
         onClose={() => setSomTarget(null)}
         title={'Som · ' + ((somTarget && somTarget.name) || 'Tela')}
-        description="Age na TV na hora. A playlist fica em Conteúdo › Ajustes da tela."
+        description="Age na TV na hora. A música de fundo se escolhe na página da TV, em Ajustes da TV › Som."
       >
         {somTarget && <SoundRemote deviceId={somTarget.id} />}
       </Dialog>

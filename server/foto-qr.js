@@ -136,12 +136,25 @@ function semanaDaData(dataAlvo, hoje) {
 }
 const saudacaoDa = (id) => { const s = S.getSeason(id); return (s && s.greeting && s.greeting.titulo) || (s ? s.label : ''); };
 
-function emailDoCodigo(codigo, empresa) {
+/*
+ * O e-mail do código (reteste da fase 10): saía cru, sem moldura e em Times.
+ * Agora na moldura de todo e-mail (server/mail.js), com o código grande no
+ * meio e a empresa que pediu a foto escrita. `base`: o endereço do app, para
+ * a logo (sem ele, o nome escrito).
+ */
+function emailDoCodigo(codigo, empresa, base) {
   const de = empresa ? ' — ' + empresa : '';
+  const p = (t) => '<p style="font-size:14px;line-height:1.6;margin:0 0 16px;color:#334155">' + t + '</p>';
   return {
     subject: 'Seu código para mandar a foto' + de,
     text: 'Seu código é ' + codigo + '. Ele vale 10 minutos.\n\nSe não foi você que pediu, ignore este e-mail.',
-    html: '<p>Seu código para mandar a foto' + muralLib.esc(de) + ':</p><p style="font-size:28px;font-weight:700;letter-spacing:4px">' + codigo + '</p><p>Ele vale 10 minutos. Se não foi você que pediu, ignore este e-mail.</p>',
+    html: require('./mail').moldura(
+      '<h1 style="font-size:18px;margin:0 0 12px">Seu código para mandar a foto</h1>' +
+      p(empresa ? 'Digite este código na página da ' + muralLib.esc(empresa) + ' para mandar a sua foto:' : 'Digite este código na página para mandar a sua foto:') +
+      '<p style="margin:0 0 16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:30px;font-weight:700;letter-spacing:6px;color:#0e0b1f;background:#f3f5f8;border-radius:8px;padding:14px 0;text-align:center">' + muralLib.esc(codigo) + '</p>' +
+      p('Ele vale 10 minutos.') +
+      '<p style="font-size:12px;line-height:1.6;color:#64748b;margin:0">Se não foi você que pediu, ignore este e-mail.</p>',
+      { base, motivo: 'Você recebe este e-mail porque pediu um código para mandar a sua foto.' }),
   };
 }
 

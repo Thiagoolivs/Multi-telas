@@ -76,7 +76,7 @@ export function SoundRemote({ deviceId, compacto }) {
     );
   }
   if (info && info.conhecido && e && !e.ativo) {
-    return <p className="text-xs text-ink-3">Esta tela está sem música de fundo configurada.</p>;
+    return <p className="text-xs text-ink-3">Esta TV está sem música de fundo.</p>;
   }
 
   return (

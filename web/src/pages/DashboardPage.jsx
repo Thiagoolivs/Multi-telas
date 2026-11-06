@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus, Sparkles, CalendarDays, Repeat } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus, Sparkles, CalendarDays, Repeat, ChevronDown } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Panel } from '../components/ui/Panel.jsx';
@@ -154,7 +154,17 @@ function TvsAoVivo({ data, onIr }) {
   if (!screens.length) return null;
 
   const avisos = [];
-  offline.forEach((d) => avisos.push({ id: 'off_' + d.id, tom: 'danger', texto: (d.name || 'Uma TV') + ' está fora do ar' + (deviceStatus(d.lastSeen).seen ? ' (último sinal ' + deviceStatus(d.lastSeen).seen + ')' : ''), acao: 'Ver', on: () => onIr && onIr('screens') }));
+  const ultimo = (d) => (deviceStatus(d.lastSeen).seen ? 'último sinal ' + deviceStatus(d.lastSeen).seen : '');
+  /*
+   * Várias TVs fora do ar viram UMA linha (reteste da fase 10: eram 25 linhas
+   * vermelhas iguais no Início). "25 TVs fora do ar", e "Quais?" abre a lista.
+   */
+  if (offline.length > 1) {
+    avisos.push({ id: 'off', tom: 'danger', texto: offline.length + ' TVs fora do ar', acao: 'Ver', on: () => onIr && onIr('screens'),
+      itens: offline.map((d) => ({ id: d.id, nome: d.name || 'Tela sem nome', detalhe: ultimo(d) })) });
+  } else {
+    offline.forEach((d) => avisos.push({ id: 'off_' + d.id, tom: 'danger', texto: (d.name || 'Uma TV') + ' está fora do ar' + (ultimo(d) ? ' (' + ultimo(d) + ')' : ''), acao: 'Ver', on: () => onIr && onIr('screens') }));
+  }
   if (never.length) avisos.push({ id: 'never', tom: 'neutral', texto: never.length + (never.length === 1 ? ' TV esperando' : ' TVs esperando') + ' a primeira conexão', acao: 'Ver', on: () => onIr && onIr('screens') });
   if (storeFrac >= 0.8) avisos.push({ id: 'store', tom: 'warn', texto: 'Armazenamento em ' + Math.round(storeFrac * 100) + '% (' + formatBytes(data.storage.used) + ')', acao: 'Ver', on: () => onIr && onIr('storage') });
   const resumo = { total: screens.length, offline: offline.length };
@@ -163,12 +173,7 @@ function TvsAoVivo({ data, onIr }) {
     <section className="mb-5" aria-label="Suas TVs">
       {avisos.length > 0 && (
         <ul className="mb-3 space-y-1.5">
-          {avisos.map((a) => (
-            <li key={a.id} className={'flex items-center gap-3 rounded-lg border px-3 py-2 text-sm ' + (a.tom === 'danger' ? 'border-danger/30 bg-danger-soft text-ink' : a.tom === 'warn' ? 'border-warn/30 bg-warn-soft text-ink' : 'border-line bg-surface-2 text-ink-2')}>
-              <span className="min-w-0 flex-1">{a.texto}</span>
-              <button type="button" onClick={a.on} className="shrink-0 font-semibold text-accent hover:underline">{a.acao}</button>
-            </li>
-          ))}
+          {avisos.map((a) => <LinhaDeAviso key={a.id} a={a} />)}
         </ul>
       )}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -203,5 +208,35 @@ function TvsAoVivo({ data, onIr }) {
         </button>
       )}
     </section>
+  );
+}
+
+// Uma linha de aviso do Início. Com `itens`, "Quais?" abre a lista das TVs embaixo.
+function LinhaDeAviso({ a }) {
+  const [aberto, setAberto] = React.useState(false);
+  const id = 'aviso-' + a.id;
+  return (
+    <li className={'rounded-lg border px-3 py-2 text-sm ' + (a.tom === 'danger' ? 'border-danger/30 bg-danger-soft text-ink' : a.tom === 'warn' ? 'border-warn/30 bg-warn-soft text-ink' : 'border-line bg-surface-2 text-ink-2')}>
+      <div className="flex items-center gap-3">
+        <span className="min-w-0 flex-1">{a.texto}</span>
+        {a.itens && (
+          <button type="button" aria-expanded={aberto} aria-controls={id} onClick={() => setAberto((v) => !v)}
+            className="inline-flex shrink-0 items-center gap-1 font-semibold text-accent hover:underline">
+            {aberto ? 'Esconder' : 'Quais?'} <ChevronDown size={14} className={aberto ? 'rotate-180 transition' : 'transition'} />
+          </button>
+        )}
+        <button type="button" onClick={a.on} className="shrink-0 font-semibold text-accent hover:underline">{a.acao}</button>
+      </div>
+      {a.itens && aberto && (
+        <ul id={id} className="mt-2 divide-y divide-line rounded-md border border-line bg-surface">
+          {a.itens.map((i) => (
+            <li key={i.id} className="flex items-center gap-2 px-3 py-1.5">
+              <span className="min-w-0 flex-1 truncate text-ink" title={i.nome}>{i.nome}</span>
+              {i.detalhe && <span className="shrink-0 text-xs text-ink-3">{i.detalhe}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }

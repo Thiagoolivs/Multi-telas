@@ -207,14 +207,15 @@ function mensagem(aviso, appUrl) {
     ? '<li style="margin:0 0 6px;color:#64748b">e mais ' + resto + (resto === 1 ? ' tela' : ' telas') + '</li>'
     : '';
 
-  const html = '<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0f172a">' +
+  // Na moldura de todo e-mail (server/mail.js): a marca em cima e quem manda embaixo (reteste da fase 10).
+  const html = require('./mail').moldura(
     '<h1 style="font-size:18px;margin:0 0 12px">' + escapar(titulo) + '</h1>' +
     '<ul style="font-size:14px;line-height:1.6;margin:0 0 20px;padding-left:20px;color:#334155">' + itens + extra + '</ul>' +
     '<p style="font-size:14px;line-height:1.6;margin:0 0 20px;color:#334155">' + causas + '</p>' +
     '<p style="font-size:14px;line-height:1.6;margin:0 0 20px;color:#334155">Você não precisa fazer nada aqui: quando a tela voltar a ter internet, ela volta a exibir sozinha o que já estava programado.</p>' +
     (appUrl ? '<p style="margin:0 0 24px"><a href="' + appUrl + '/app/?ir=screens" style="display:inline-block;background:#5B2EFF;color:#fff;text-decoration:none;font-size:14px;font-weight:600;padding:11px 20px;border-radius:8px">Ver minhas TVs</a></p>' : '') +
-    '<p style="font-size:12px;line-height:1.6;color:#64748b;margin:0">Este aviso é enviado uma vez por queda.</p>' +
-    '</div>';
+    '<p style="font-size:12px;line-height:1.6;color:#64748b;margin:0">Este aviso é enviado uma vez por queda.</p>',
+    { base: appUrl });
 
   return { subject, text, html };
 }

@@ -202,17 +202,34 @@ export default function App() {
   const [theme, toggleTheme] = useTheme();
   const perfil = usePerfil();
 
-  const [semRede, setSemRede] = useState(false);
+  /*
+   * Por que o painel não abriu, em palavras certas (reteste da fase 10): o
+   * freio da conta (429) aparecia como "Sem conexão", e a pessoa ia mexer na
+   * internet que estava boa. `semRede`: null (abriu), 'rede', 'limite' ou
+   * 'servidor'; `espera`: os segundos até tentar de novo sozinho, no 429.
+   */
+  const [semRede, setSemRede] = useState(null);
+  const [espera, setEspera] = useState(0);
   const refresh = () => auth.me()
     .then((me) => {
-      setSemRede(false);
+      setSemRede(null);
       // Empresa, Comércio ou Saúde: as páginas leem com usePerfil() (D4).
       if (me && me.tenant) definirPerfil(me.tenant.perfil);
       // A logo da marca: as prévias das peças desenham com ela, como a TV (D8).
       globalThis.MT_LOGO = (me && me.tenant && me.tenant.logo) || null;
       setSession(me || null);
     })
-    .catch(() => setSemRede(true));
+    .catch((e) => {
+      if (e && e.status === 429) { setEspera(Math.min(300, Math.max(5, e.retryAfter || 30))); setSemRede('limite'); }
+      else setSemRede(e && e.status ? 'servidor' : 'rede');
+    });
+  // No 429 o painel tenta de novo sozinho quando o freio solta, com a contagem à vista.
+  useEffect(() => {
+    if (semRede !== 'limite') return undefined;
+    if (espera <= 0) { refresh(); return undefined; }
+    const t = setTimeout(() => setEspera((n) => n - 1), 1000);
+    return () => clearTimeout(t);
+  }, [semRede, espera]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { cadastroPeloGoogle(); refresh(); }, []);
 
   const go = (name, params) => {
@@ -263,10 +280,16 @@ export default function App() {
   }, [tituloDaPagina, perfil.marca]);
 
   if (session === undefined && semRede) {
+    const TEXTOS = {
+      rede: ['Sem conexão com o MultiTelas', 'Suas TVs continuam mostrando a última programação. Assim que a internet voltar, o painel abre.'],
+      limite: ['Muitos pedidos desta conta agora', 'Acontece quando várias pessoas usam o painel ao mesmo tempo. Suas TVs continuam no ar. O painel abre sozinho em ' + espera + ' s.'],
+      servidor: ['O MultiTelas não respondeu agora', 'Suas TVs continuam mostrando a última programação. Tente de novo em instantes.'],
+    };
+    const [titulo, texto] = TEXTOS[semRede] || TEXTOS.rede;
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-canvas px-6 text-center">
-        <p className="text-sm font-semibold text-ink">Sem conexão com o MultiTelas</p>
-        <p className="max-w-xs text-xs text-ink-3">Suas TVs continuam mostrando a última programação. Assim que a internet voltar, o painel abre.</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-canvas px-6 text-center" role="alert">
+        <p className="text-sm font-semibold text-ink">{titulo}</p>
+        <p className="max-w-xs text-xs text-ink-3">{texto}</p>
         <button type="button" className="text-sm font-semibold text-accent hover:underline" onClick={refresh}>Tentar de novo</button>
       </div>
     );

@@ -24,6 +24,13 @@ const isoDe = (d) => d.getFullYear() + '-' + dd(d.getMonth() + 1) + '-' + dd(d.g
 
 let A; // web/src/lib/aplicarConteudo.js (ESM)
 test.before(async () => { A = await import('../web/src/lib/aplicarConteudo.js'); });
+/*
+ * O relógio parado na quinta 05/11 (o agendarPeca agenda a partir de "hoje"):
+ * a semana simulada começa nesse dia, e o teste não pode vencer com a data
+ * de verdade (a partir de 06/11 ele falhava sozinho).
+ */
+test.beforeEach(() => { test.mock.timers.enable({ apis: ['Date'], now: INICIO.getTime() }); });
+test.afterEach(() => { test.mock.timers.reset(); });
 
 const peca = (id, titulo, extra) => Object.assign({ type: 'announce', id, titulo, corpo: 'Venha conferir com a gente.', duracao: 12 }, extra || {});
 const naFaixa = (item, faixa, dias) => A.agendarPeca(item, faixa, dias || 0);

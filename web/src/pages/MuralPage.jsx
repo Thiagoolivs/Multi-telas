@@ -182,8 +182,9 @@ function MuralDetalhe({ mural, base, onMudou, onCriar }) {
 
         <Panel>
           <PanelBody className="space-y-3">
-            <label className="block text-xs font-medium text-ink-2">Nome do mural</label>
-            <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} onBlur={salvarTitulo} />
+            {/* O rótulo ligado ao campo (axe `label`, reteste da fase 10). */}
+            <label htmlFor="nome-do-mural" className="block text-xs font-medium text-ink-2">Nome do mural</label>
+            <Input id="nome-do-mural" value={titulo} onChange={(e) => setTitulo(e.target.value)} onBlur={salvarTitulo} />
             <MostrarNasTVs qual="mural" codigo={String(mural.codigo).toUpperCase()} titulo="Mostrar nas TVs"
               explicacao="As fotos aprovadas entram sozinhas no rodízio da área principal (1 a cada 5 peças)." />
             <div className="flex items-center justify-between rounded-md border border-line bg-surface-2 px-3 py-2">
