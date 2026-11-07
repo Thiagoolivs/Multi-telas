@@ -172,7 +172,7 @@ test('passo 5: a foto e até três textos; o que sobra do exemplo sai da TV', as
   const padaria = L.negocioPeloId('padaria');
   const [op] = L.opcoesDeTela(dados, padaria, 'comercio', MARCA, 'deitada');
   const c = L.camposQueImportam(op.montada, padaria, dados.modelos);
-  assert.deepEqual(c.fotos, [{ nome: 'foto', rotulo: 'Ponha a foto do seu pão ou do seu café' }]);
+  assert.deepEqual(c.fotos, [{ nome: 'foto', papel: 'produto', rotulo: 'Ponha a foto do seu pão ou do seu café' }]);
   assert.deepEqual(c.textos.map((t) => [t.nome, t.rotulo]), [['titulo', 'Nome do produto'], ['preco', 'Preço'], ['quando', 'Quando']]);
   assert.ok(c.textos.every((t) => t.limite >= 12 && t.exemplo), 'o exemplo vira o "Ex.:" do campo');
   const com = L.aplicarCampos(op.montada, { foto: '/media/t/pao.jpg', titulo: 'Pão de queijo', preco: 'R$ 4,5' });
@@ -253,10 +253,12 @@ test('o painel: abre sozinho na conta nova, fica no Início, e cada passo tem um
       assert.ok((bloco.split(/\n {2}\}/)[0].match(/principal: \{/g) || []).length <= 1, f + ': dois botões violeta na mesma tela');
     }
   }
-  // O quadro da foto é trocado pelo TrocarFoto (components/fotos) sem mexer em quem chama: as mesmas props.
+  // O quadro da foto abre o TrocarFoto (celular, banco de fotos, IA), com o papel do espaço vindo do manifesto.
   const foto = ler('web/src/components/primeira-tv/FotoDoPasso.jsx');
-  assert.match(foto, /export function FotoDoPasso\(\{ papel, ramo, valor, onTrocar, formato = '16\/9', rotulo \}\)/);
-  assert.match(ler('web/src/components/primeira-tv/PassoFotos.jsx'), /<FotoDoPasso key=\{f\.nome\} papel="destaque" ramo=\{neg && neg\.ramo\} formato="16\/9"/);
+  assert.match(foto, /import \{ TrocarFoto \} from '\.\.\/fotos\/TrocarFoto\.jsx';/);
+  assert.match(foto, /<TrocarFoto papel=\{papel\} ramo=\{ramo \|\| ''\} formato=\{formato\}/);
+  assert.match(ler('web/src/components/primeira-tv/PassoFotos.jsx'), /<FotoDoPasso key=\{f\.nome\} papel=\{f\.papel\} ramo=\{neg && neg\.ramo\} formato="16\/9"/);
+  assert.match(ler('web/src/lib/primeiraTv.js'), /papel: papeis\[d\.nome\] \|\| \(familia === 'gente' \? 'pessoa' : 'produto'\)/);
   // O pedido do membro diz que espera o dono.
   const pronto = ler('web/src/components/primeira-tv/PassoPronto.jsx');
   assert.match(pronto, /precisaAprovar \? 'Pedir para pôr na TV' : 'Pôr na TV'/);

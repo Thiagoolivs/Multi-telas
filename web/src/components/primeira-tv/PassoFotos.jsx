@@ -25,7 +25,7 @@ export function PassoFotos({ estado, opcao, campos, neg, horario, frente, onConc
       {previa && <div className="mb-5 rounded-xl bg-surface-2 p-2"><Palco estado={estadoDaPrevia(previa)} alturaMaxima={240} /></div>}
       <div className="space-y-4">
         {campos.fotos.map((f) => (
-          <FotoDoPasso key={f.nome} papel="destaque" ramo={neg && neg.ramo} formato="16/9" rotulo={f.rotulo}
+          <FotoDoPasso key={f.nome} papel={f.papel} ramo={neg && neg.ramo} formato="16/9" rotulo={f.rotulo}
             valor={valores[f.nome] || ''} onTrocar={(url) => mudar(f.nome, url)} />
         ))}
         {campos.textos.map((t) => (

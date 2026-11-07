@@ -263,8 +263,11 @@ export function camposQueImportam(montada, neg, modelos) {
     const d = defs.find((x) => x.nome === nome);
     return (d && d.exemplo) || '';
   };
+  // O papel do espaço (manifesto, `fotos`): o banco de fotos do "Trocar foto" abre nas fotos certas.
+  const papeis = (base && base.fotos) || (heroi.espacos ? Object.fromEntries(Object.entries(heroi.espacos).map(([k, e]) => [k, e && e.papel])) : {});
   const fotos = defs.filter((d) => d.tipo === 'img' && d.nome !== 'logo').map((d) => ({
     nome: d.nome,
+    papel: papeis[d.nome] || (familia === 'gente' ? 'pessoa' : 'produto'),
     rotulo: 'Ponha a foto ' + (familia === 'gente' ? 'da pessoa' : (neg && neg.foto) || 'do seu produto'),
   }));
   const textos = [];
