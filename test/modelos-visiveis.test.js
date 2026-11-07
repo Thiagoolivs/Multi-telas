@@ -25,11 +25,11 @@ test('todas as peças-ouro aprovadas existem e têm papel', () => {
   }
 });
 
-test('o modelo sai na marca da conta, no modo "Cor da marca", com o nome onde a peça escreve a marca', async () => {
+test('o modelo sai na marca da conta, no clima dela (sem clima, "Cor da marca"), com o nome onde a peça escreve a marca', async () => {
   const { pathToFileURL } = require('node:url');
   // A lib do painel importa o desenhista; aqui só a montagem, sem navegador.
   const src = ler('web/src/lib/modelosOuro.js');
-  assert.match(src, /modo: 'marca', formato: FORMATO_DO_PAPEL\[papel\] \|\| '16\/9'/);
+  assert.match(src, /modo: CLIMAS\.includes\(k\.clima\) \? k\.clima : 'marca', formato: FORMATO_DO_PAPEL\[papel\] \|\| '16\/9'/);
   // Fase 9: o exemplo na língua da frente vem antes, e o nome da conta por cima.
   assert.match(src, /const campos = \{ \.\.\.daFrente, \.\.\.\(k\.nome && \/data-campo="marca"\/\.test\(m\.arq\.html\) \? \{ marca: k\.nome \} : \{\}\) \};/);
   assert.match(src, /marca: \{ cores: k\.cores \|\| \[\], fonteTitulo: k\.fonteTitulo \|\| '', fonteApoio: k\.fonteApoio \|\| '' \}/);

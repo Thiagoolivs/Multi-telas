@@ -179,3 +179,118 @@ test('os climas: três, com nome de gente, e o padrão sai do ramo do negócio',
   assert.equal(P.climaDoRamo('nao-existe'), 'escuro');
   for (const r of P.RAMOS.map((x) => x.id).concat('geral')) assert.ok(T.MODOS.includes(P.climaDoRamo(r)), r);
 });
+
+/* ---------------- As cores do logo ---------------- */
+
+// Um "logo" de mentira: pixels RGBA, como o canvas devolve. [hex, quantos, alfa].
+function logo(partes) {
+  const px = [];
+  for (const [hex, n, a] of partes) {
+    const [r, g, b] = C.hex2rgb(hex);
+    for (let i = 0; i < n; i++) px.push(r, g, b, a === undefined ? 255 : a);
+  }
+  return px;
+}
+const matiz = (hex) => lch(hex).h;
+const perto = (a, b, tol) => { const d = Math.abs(a - b) % 360; return (d > 180 ? 360 - d : d) < tol; };
+
+test('logo: a cor mais característica e saturada, sem o fundo branco, o contorno preto e o cinza', () => {
+  // Fundo branco, texto preto, o vermelho do selo e a borda serrilhada (rosa-acinzentado).
+  const r = P.coresDosPixels(logo([['#ffffff', 2900], ['#111111', 400], ['#d62828', 600], ['#c9a3a3', 120], ['#888888', 76]]));
+  assert.ok(r.length >= 1 && perto(matiz(r[0]), matiz('#d62828'), 8), 'devia ser o vermelho: ' + r);
+  assert.ok(lch(r[0]).c > 0.18, 'o serrilhado puxou o vermelho para o cinza: ' + r[0]);
+  // 300 pixels de vermelho valem mais que 1.500 de bege-pêssego (o fundo do logo).
+  const b = P.coresDosPixels(logo([['#ffd8b5', 1500], ['#c62828', 300], ['#ffffff', 2296]]));
+  assert.ok(perto(matiz(b[0]), matiz('#c62828'), 8), 'o bege ganhou do vermelho: ' + b);
+  // A segunda cor é outra cor: dois azuis quase iguais contam uma vez.
+  const azuis = P.coresDosPixels(logo([['#1e88e5', 900], ['#2196f3', 900], ['#ffffff', 2296]]));
+  assert.equal(azuis.length, 1, 'os dois azuis viraram duas cores: ' + azuis);
+  // Seis cores: as duas que mais pesam, e diferentes entre si.
+  const seis = P.coresDosPixels(logo([['#e53935', 300], ['#fb8c00', 300], ['#fdd835', 300], ['#43a047', 300], ['#1e88e5', 300], ['#8e24aa', 300]]));
+  assert.equal(seis.length, 2);
+  assert.ok(!perto(matiz(seis[0]), matiz(seis[1]), 30), 'duas cores parecidas: ' + seis);
+});
+
+test('logo monocromático: vale a tinta dele; logo só de pastéis ganha uma cor forte na frente', () => {
+  const preto = P.coresDosPixels(logo([['#ffffff', 3500], ['#141414', 500], ['#7a7a7a', 96]]));
+  assert.equal(preto.length, 1);
+  assert.ok(lch(preto[0]).l < 0.35 && lch(preto[0]).c < 0.01, 'o logo preto devia dar preto: ' + preto);
+  assert.deepEqual(P.coresDosPixels(logo([['#ffffff', 900], ['#000000', 3196, 0]])), ['#ffffff'], 'logo branco sobre transparente');
+  assert.deepEqual(P.coresDosPixels(logo([['#000000', 4096, 0]])), [], 'tudo transparente');
+  // Menta e lavanda: a primeira vira uma menta forte; os pastéis ficam como acento.
+  const r = P.coresDosPixels(logo([['#b5ead7', 800], ['#c7ceea', 600], ['#000000', 2696, 0]]));
+  assert.ok(r.length >= 2, String(r));
+  const forte = lch(r[0]);
+  assert.ok(forte.l < 0.6 && vivo(r[0]) && perto(forte.h, matiz('#b5ead7'), 12), 'a cor forte: ' + r[0]);
+  assert.ok(r.slice(1).every((x) => lch(x).l > 0.78), 'os pastéis continuam depois: ' + r);
+  // Com uma cor forte no meio, firmar não mexe.
+  assert.deepEqual(P.firmar(['#0f766e', '#e0f2f1']), ['#0f766e', '#e0f2f1']);
+  // Amarelo-claro firma no âmbar, não no oliva.
+  assert.ok(matiz(P.firmar(['#f9e79f'])[0]) < 80, P.firmar(['#f9e79f'])[0]);
+});
+
+test('o painel lê o logo pela regra de js/paletas.js, e o site também passa por firmar', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const lib = fs.readFileSync(path.join(__dirname, '..', 'web/src/lib/paletas.js'), 'utf8');
+  assert.match(lib, /ok\(P\.coresDosPixels\(g\.getImageData\(0, 0, N, N\)\.data\)\);/);
+  assert.match(lib, /return P\.firmar\(sai\);/);
+});
+
+/* ---------------- O clima na conta, na TV e no painel ---------------- */
+
+test('o clima vai para o tema da TV; a marca sem clima deixa a TV como era', () => {
+  const paleta = require('../server/paleta.js');
+  const kit = { cores: ['#0f766e', '#f29e7e'], nasTvs: true, clima: 'claro' };
+  const t = paleta.temaDaTv({ preset: 'dark-premium' }, kit);
+  assert.equal(t.preset, 'marca');
+  assert.equal(t.clima, 'claro');
+  assert.equal(paleta.temaDaTv(t, kit), null, 'já está igual: nada a trocar');
+  assert.equal(paleta.temaDaTv(t, Object.assign({}, kit, { clima: 'marca' })).clima, 'marca', 'mudou o clima na Marca: a TV acompanha');
+  const antiga = paleta.temaDaTv({ preset: 'dark-premium' }, { cores: ['#0f766e'], nasTvs: true, clima: '' });
+  assert.ok(!('clima' in antiga), 'marca de antes dos climas: tema sem clima (escuro, como era)');
+  assert.equal(paleta.temaDaTv({ preset: 'dark-premium' }, Object.assign({}, kit, { clima: 'neon' })).clima, undefined, 'clima inventado não passa');
+  // Uma TV com a "Versão clara" marcada à mão continua clara, qualquer que seja o clima da marca.
+  assert.equal(TH.resolve({ preset: 'marca', marca: kit.cores, clima: 'marca', marcaClara: true }).dark, false);
+});
+
+test('a conta nova nasce com o clima do ramo; a de antes fica sem, até escolher', async () => {
+  const db = require('../server/db-sqlite.js');
+  const paleta = require('../server/paleta.js');
+  const id = 'pp' + Date.now() + '-' + process.pid;
+  const nova = await db.createAccount(id + '-c@exemplo.invalido', 'hash', 'Clínica Sorriso', 'Dona');
+  const kit = await paleta.garantir(db, nova.tenantId);
+  assert.equal(kit.clima, 'claro');
+  assert.equal((await db.getBrandKit(nova.tenantId)).clima, 'claro', 'o clima ficou gravado');
+  const velha = await db.createAccount(id + '-v@exemplo.invalido', 'hash', 'Cantina da Nona', 'Dono');
+  await db.saveBrandKit(velha.tenantId, { cores: ['#7a1f1f', '#e9c46a'] });
+  assert.equal((await paleta.garantir(db, velha.tenantId)).clima, '', 'quem já tinha cor não ganha clima por cima');
+  const ativa = await db.getBrandKit(velha.tenantId);
+  await db.salvarClimaDaMarca(ativa.id, velha.tenantId, 'escuro');
+  assert.equal((await db.getBrandKit(velha.tenantId)).clima, 'escuro');
+  // As duas bases têm a coluna e a função, e a rota só grava clima válido.
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const ler = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+  assert.match(ler('server/db-postgres.js'), /ALTER TABLE marcas ADD COLUMN IF NOT EXISTS clima TEXT;/);
+  assert.match(ler('server/db-postgres.js'), /async function salvarClimaDaMarca\(/);
+  assert.match(ler('server.js'), /if \(b && paletas\.ehClima\(b\.clima\)\) \{/);
+});
+
+test('o painel: as peças prontas no clima da marca, a escolha na Marca e o esboço com as cores da TV', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const ler = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+  assert.match(ler('web/src/lib/modelosOuro.js'), /modo: CLIMAS\.includes\(k\.clima\) \? k\.clima : 'marca'/);
+  for (const f of ['web/src/lib/telasProntas.js', 'web/src/pages/CalendarioPage.jsx', 'web/src/components/tela/AvisoRapido.jsx', 'web/src/pages/PlanilhasPage.jsx', 'web/src/components/content/AmbienteESenha.jsx']) {
+    assert.match(ler(f), /clima: k\.clima \|\| ''/, f + ': a marca sem o clima');
+  }
+  const pal = ler('web/src/components/content/PaletasSugeridas.jsx');
+  assert.match(pal, /role="radiogroup" aria-labelledby="clima-da-tela"/);
+  assert.match(pal, /\{CLIMAS\.map\(\(c\) => \{/);
+  assert.equal((pal.match(/variant="primary"/g) || []).length, 1, 'um violeta só (o "Usar estas cores" do avançado)');
+  const pag = ler('web/src/pages/BrandPage.jsx');
+  assert.match(pag, /clima=\{kit\.clima\} escolherClima=\{aplicarClima\}/);
+  assert.match(pag, /<EsbocoDaTela cores=\{cores\} clima=\{kit\.clima\}/);
+  assert.match(ler('web/src/components/criar/EsbocoDaTela.jsx'), /T\.daMarca\(\{ cores: lista \}, clima \|\| 'marca'\)\.cores/);
+});

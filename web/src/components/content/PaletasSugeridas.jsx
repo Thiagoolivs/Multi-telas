@@ -5,7 +5,7 @@ import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { PecaHtml } from './PecaHtml.jsx';
 import { carregarDesenhista } from '../../lib/pecaHtml.js';
-import { RAMOS, NOMES_RAMO, sugerir, aoRedor, avisos, mesmaPaleta, ehCurada, coresDoTexto, coresDoLogo } from '../../lib/paletas.js';
+import { RAMOS, NOMES_RAMO, CLIMAS, climaDoRamo, sugerir, aoRedor, avisos, mesmaPaleta, ehCurada, coresDoTexto, coresDoLogo } from '../../lib/paletas.js';
 import { usePerfil } from '../../lib/perfil.js';
 
 /*
@@ -67,7 +67,7 @@ function Bolinhas({ cores, grande }) {
   );
 }
 
-export function PaletasSugeridas({ kit, empresa, ramoDaConta, logoUrl, fonteTitulo, fonteApoio, cores, setCores, aplicar, ocupado }) {
+export function PaletasSugeridas({ kit, empresa, ramoDaConta, logoUrl, fonteTitulo, fonteApoio, cores, setCores, aplicar, ocupado, clima, escolherClima }) {
   const [arq, setArq] = useState(null);
   const [ramo, setRamo] = useState(ramoDaConta || 'geral');
   const [doLogo, setDoLogo] = useState([]);
@@ -106,16 +106,56 @@ export function PaletasSugeridas({ kit, empresa, ramoDaConta, logoUrl, fonteTitu
       apoio: 'Aproveite: é por tempo limitado.', cta: 'Fale com a gente', nota: 'em toda a loja',
     } : perfil.id === 'saude' ? { marca: marcaNome } : {}
   ), [perfil.id, marcaNome, titulo, kicker]);
-  const itemDe = (p) => arq && ({
+  /*
+   * O CLIMA (lote de 06/11): a mesma marca em três jeitos que parecem caros,
+   * e as paletas desenhadas no clima escolhido — a amostra é a peça que vai
+   * à TV. Marca sem clima (a de antes) segue no "Cor da marca", como era; o
+   * do ramo aparece como recomendado.
+   */
+  const climaEmUso = CLIMAS.some((c) => c.id === clima) ? clima : '';
+  const sugerido = climaDoRamo(ramoDaConta || 'geral');
+  const itemDe = (p, modo) => arq && ({
     type: 'peca-html', papel: 'destaque', html: arq.html, css: arq.css, campos,
-    modo: 'marca', marca: { cores: p.cores, fonteTitulo: fonteTitulo || '', fonteApoio: fonteApoio || '' },
+    modo: modo || climaEmUso || 'marca', marca: { cores: p.cores, fonteTitulo: fonteTitulo || '', fonteApoio: fonteApoio || '' },
   });
+  const coresDoClima = salvas.length ? salvas : cores;
 
   return (
     <Panel>
       <PanelHeader title="Cores"
-        description="Escolha uma paleta: todas foram feitas para se ler na TV, de longe. Vale para as peças, a tela inteira e as redes." />
+        description="Escolha o clima e uma paleta: todos foram feitos para se ler na TV, de longe. Vale para as peças, a tela inteira e as redes." />
       <div className="space-y-3 p-4">
+        {escolherClima && (
+          <div>
+            <div className="mb-1.5 text-xs font-semibold text-ink" id="clima-da-tela">Clima da tela</div>
+            <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-labelledby="clima-da-tela">
+              {CLIMAS.map((c) => {
+                const sel = climaEmUso === c.id;
+                const item = itemDe({ cores: coresDoClima }, c.id);
+                return (
+                  <button key={c.id} type="button" role="radio" aria-checked={sel} disabled={ocupado} onClick={() => !sel && escolherClima(c.id)}
+                    className={'flex flex-col overflow-hidden rounded-lg border bg-surface text-left transition '
+                      + (sel ? 'border-accent ring-2 ring-accent/40' : 'border-line hover:border-ink-3')}>
+                    <span className="relative block">
+                      {item ? <PecaHtml item={item} formato="16/9" className="!rounded-none !ring-0" />
+                        : <span className="block aspect-video bg-surface-2" />}
+                      {!climaEmUso && c.id === sugerido && (
+                        <span className="absolute right-1 top-1 rounded-full bg-surface/90 px-1.5 py-0.5 text-2xs font-semibold text-ink shadow">Recomendado</span>
+                      )}
+                    </span>
+                    <span className="flex flex-1 flex-col gap-0.5 p-2">
+                      <span className="flex items-center gap-1 text-xs font-semibold leading-tight text-ink">
+                        {sel && <Check size={12} className="shrink-0 text-accent" />}{c.nome}
+                      </span>
+                      {/* No celular o desenho já diz; a frase só espremeria o nome. */}
+                      <span className="hidden text-2xs leading-snug text-ink-3 sm:block">{c.porque}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-2">
           <span>Paletas para</span>
           <Select value={ramo} onChange={(e) => setRamo(e.target.value)} className="!h-8 !w-auto py-0 text-xs" aria-label="Ramo do negócio">

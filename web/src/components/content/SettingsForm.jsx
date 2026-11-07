@@ -122,6 +122,9 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
   function escolherTema(preset) {
     const patch = { preset };
     if (preset === 'marca' || theme.aplicarMarca) patch.marca = coresMarca;
+    // O clima da Marca vai junto (lote de 06/11): a prévia já sai como a TV vai sair (server/paleta.js, temaDaTv).
+    const clima = brandData && brandData.kit && brandData.kit.clima;
+    if (preset === 'marca' && ['escuro', 'claro', 'marca'].includes(clima)) patch.clima = clima;
     // Fase 4: escolher um tema pronto é escolha desta TV; a marca (server/paleta.js, temaDaTv) não passa por cima.
     patch.escolhido = preset !== 'marca';
     setTheme(patch);

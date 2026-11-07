@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../../lib/cn.js';
+import '../../lib/paletas.js'; // js/cor.js → js/tokens.js: a mesma conta de cor das peças e da TV
 
 /*
  * O ESBOÇO DA TELA (EXECUTOR D13): como a TV vai ficar, ANTES de gastar.
@@ -24,12 +25,27 @@ function Barra({ cor, largura, altura = 'h-1.5', className }) {
 
 /*
  * `zonas`: { cabecalho, principal, lateral, rodape } com { pecas, mensagens }
- * (o formato do escopo). `cores`: [principal, acento, apoio].
+ * (o formato do escopo). `cores`: [principal, acento, apoio]. `clima`: o da
+ * marca ('escuro', 'claro' ou 'marca'; js/paletas.js, CLIMAS).
+ *
+ * As cores são as que a peça e a TV pintam (js/tokens.js), e não as cores
+ * cruas: antes o esboço pintava o fundo com a cor exata e a lateral inteira
+ * com o acento — a marca rosa-pastel via um esboço rosa-pastel que a TV
+ * nunca mostra (lote de 06/11).
  */
-export function EsbocoDaTela({ zonas, cores, nome, logo, emPe, rotulo, className }) {
-  const fundo = (cores && cores[0]) || '#1e3a8a';
-  const acento = (cores && cores[1]) || '#f59e0b';
-  const texto = sobre(fundo);
+function coresDoEsboco(cores, clima) {
+  const T = globalThis.MTTokens;
+  const lista = (cores || []).filter(Boolean);
+  if (!T || !lista.length) {
+    const fundo = lista[0] || '#1e3a8a';
+    return { fundo, fundo2: fundo, superficie: lista[1] || '#f59e0b', acento: lista[1] || '#f59e0b', texto: sobre(fundo) };
+  }
+  const k = T.daMarca({ cores: lista }, clima || 'marca').cores;
+  return { fundo: k.fundo, fundo2: k.fundo2, superficie: k.superficie, acento: k.destaque, texto: k.texto };
+}
+
+export function EsbocoDaTela({ zonas, cores, clima, nome, logo, emPe, rotulo, className }) {
+  const { fundo, fundo2, superficie, acento, texto } = coresDoEsboco(cores, clima);
   const z = zonas || {};
   const temCab = !!(z.cabecalho && (z.cabecalho.pecas > 0 || (z.cabecalho.vivos || []).length || (z.cabecalho.mensagens || []).length));
   const temLat = !!(z.lateral && z.lateral.pecas > 0);
@@ -49,7 +65,7 @@ export function EsbocoDaTela({ zonas, cores, nome, logo, emPe, rotulo, className
         role="img" aria-label={'Esboço da TV' + (rotulo ? ': ' + rotulo : '')}>
         <div className="flex h-full flex-col gap-[2px]">
           {temCab && (
-            <div className="relative flex h-[13%] items-center justify-between px-[4%]" style={{ background: fundo, filter: 'brightness(.8)' }}>
+            <div className="relative flex h-[13%] items-center justify-between px-[4%]" style={{ background: fundo2 }}>
               {logoUrl ? <img src={logoUrl} alt="" className="h-[60%] max-w-[30%] object-contain" />
                 : <span className="truncate text-[9px] font-bold uppercase tracking-wider" style={{ color: texto }}>{nome || 'Sua marca'}</span>}
               <span className="text-[9px] font-semibold" style={{ color: texto }}>10:30</span>
@@ -72,16 +88,16 @@ export function EsbocoDaTela({ zonas, cores, nome, logo, emPe, rotulo, className
               )}
             </div>
             {temLat && (
-              <div className="relative flex w-[28%] flex-col justify-center gap-[6%] px-[6%]" style={{ background: acento }}>
-                <Barra cor={sobre(acento)} largura="60%" altura="h-2" />
-                <Barra cor={sobre(acento)} largura="80%" altura="h-4" />
-                <Barra cor={sobre(acento)} largura="45%" className="opacity-60" />
+              <div className="relative flex w-[28%] flex-col justify-center gap-[6%] px-[6%]" style={{ background: superficie }}>
+                <Barra cor={acento} largura="60%" altura="h-2" />
+                <Barra cor={texto} largura="80%" altura="h-4" />
+                <Barra cor={texto} largura="45%" className="opacity-60" />
                 <Chip>{z.lateral.pecas}</Chip>
               </div>
             )}
           </div>
           {temRod && (
-            <div className="relative flex h-[11%] items-center gap-2 overflow-hidden px-[3%]" style={{ background: 'linear-gradient(90deg, ' + fundo + ', ' + acento + ')' }}>
+            <div className="relative flex h-[11%] items-center gap-2 overflow-hidden px-[3%]" style={{ background: fundo2, borderTop: '2px solid ' + acento }}>
               <span className="truncate text-[9px] font-semibold" style={{ color: texto }}>{frase || 'letreiro'}</span>
             </div>
           )}

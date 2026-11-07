@@ -49,7 +49,7 @@ function coresDoDesenho(theme, marca) {
   const semEscolha = th.escolhido !== true && !th.aplicarMarca && (!th.preset || th.preset === 'dark-premium');
   const cores = (marca && marca.cores) || [];
   const usar = th.preset !== 'marca' && semEscolha && cores.length && marca.nasTvs !== false
-    ? { preset: 'marca', marca: cores, fundo: th.fundo, fundoCor: th.fundoCor } : th;
+    ? { preset: 'marca', marca: cores, clima: marca.clima || undefined, fundo: th.fundo, fundoCor: th.fundoCor } : th;
   const t = T.resolve(usar, {});
   return { '--bg': t.bg, '--bg-2': t.bg2, '--brand': t.brand, '--brand-2': t.brand2, '--accent': t.accent, '--text': t.text };
 }
@@ -113,7 +113,7 @@ function useArtes(frente) {
       .catch(() => { if (vivo) setArtes([]); });
     brand.get().then((r) => {
       const k = (r && r.kit) || {};
-      if (vivo) setMarca({ cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nasTvs: k.nasTvs !== false, nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '' });
+      if (vivo) setMarca({ cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', clima: k.clima || '', nasTvs: k.nasTvs !== false, nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '' });
     }).catch(() => { if (vivo) setMarca({}); });
     return () => { vivo = false; };
   }, [frente]);

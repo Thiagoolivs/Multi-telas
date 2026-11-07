@@ -183,19 +183,109 @@
    */
   const neon = (hex) => { const o = C.paraOklch(hex); return o.l > 0.78 && o.c > 0.12; };
 
+  // Pastel: clara e de pouco croma (rosa-bebê, menta, lavanda, amarelo-claro). Cor de verdade, sem força.
+  const pastel = (o) => !!o && o.c >= 0.03 && o.l > 0.78 && o.c < 0.12;
+
+  /*
+   * AS CORES DO LOGO (lote de 06/11), lidas dos pixels (RGBA, como o canvas
+   * devolve). Antes o painel agrupava por matiz e devolvia a MÉDIA dos dois
+   * grupos com mais pixels: o anti-serrilhado puxava a média para o cinza,
+   * o fundo pastel ganhava do detalhe forte, e o logo preto e branco não
+   * devolvia nada.
+   *
+   * Agora:
+   *   - pixel quase branco, quase preto ou cinza não conta como cor — a não
+   *     ser que o logo seja só isso (monocromático): aí vale o tom escuro
+   *     dele (ou o claro, se o logo é branco sobre transparente);
+   *   - cada faixa de matiz pesa pelo CROMA dos pixels, não só pela
+   *     quantidade: o vermelho do selo ganha do bege do fundo;
+   *   - a cor de cada faixa é a da metade mais saturada dela, não a média;
+   *   - a segunda cor tem que ser outra (30° de matiz ou 0,25 de luz);
+   *   - logo só de pastéis ganha uma versão forte da cor dele na frente
+   *     (`firmar`): o pastel continua, como acento.
+   */
+  function coresDosPixels(px, opcoes) {
+    const max = (opcoes && opcoes.max) || 2;
+    const faixas = {};
+    let opacos = 0;
+    const tinta = [], claros = [];
+    for (let i = 0; i + 3 < px.length; i += 4) {
+      if (px[i + 3] < 200) continue;
+      opacos++;
+      const hex = C.rgb2hex(px[i], px[i + 1], px[i + 2]);
+      const o = C.paraOklch(hex);
+      if (o.c < 0.04 || o.l > 0.97 || o.l < 0.15) {
+        if (o.l > 0.85) claros.push(o); else tinta.push(o);
+        continue;
+      }
+      const k = Math.round(o.h / 20) % 18;
+      (faixas[k] || (faixas[k] = [])).push(o);
+    }
+    const comCor = Object.keys(faixas).reduce((s, k) => s + faixas[k].length, 0);
+    // Monocromático: menos de 3% dos pixels têm cor (e menos de 12).
+    if (!opacos) return [];
+    if (comCor < Math.max(12, opacos * 0.03)) {
+      const media = (l) => {
+        const L = l.reduce((s, o) => s + o.l, 0) / l.length;
+        return C.deOklch(L, 0, 0);
+      };
+      // A tinta do logo (preto, grafite, cinza) sobre o fundo branco; logo só branco, branco.
+      if (tinta.length >= Math.max(6, opacos * 0.02)) return [media(tinta)];
+      return claros.length ? ['#ffffff'] : [];
+    }
+    const grupos = Object.keys(faixas).map((k) => {
+      const l = faixas[k].slice().sort((a, b) => b.c - a.c);
+      const topo = l.slice(0, Math.max(1, Math.ceil(l.length / 2)));
+      const L = topo.reduce((s, o) => s + o.l, 0) / topo.length;
+      const c = topo.reduce((s, o) => s + o.c, 0) / topo.length;
+      // Média circular da matiz (a faixa do vermelho passa pelo 0°).
+      const x = topo.reduce((s, o) => s + Math.cos(o.h * Math.PI / 180), 0);
+      const y = topo.reduce((s, o) => s + Math.sin(o.h * Math.PI / 180), 0);
+      const h = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+      // Peso pelo croma ao quadrado: 300 pixels de vermelho valem mais que 1.500 de bege.
+      return { n: l.length, peso: l.reduce((s, o) => s + o.c * o.c, 0), o: { l: L, c, h } };
+    }).filter((g) => g.n >= 6).sort((a, b) => b.peso - a.peso);
+    const escolhidas = [];
+    const distancia = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+    for (const g of grupos) {
+      if (escolhidas.length >= max) break;
+      if (escolhidas.some((e) => distancia(e.h, g.o.h) < 30 && Math.abs(e.l - g.o.l) < 0.25)) continue;
+      escolhidas.push(g.o);
+    }
+    return firmar(escolhidas.map((o) => C.deOklch(o.l, o.c, o.h)));
+  }
+
+  /*
+   * Só pastel não serve de marca na TV: o fundo vira tom lavado e o acento
+   * some. Na frente vai uma versão FORTE da primeira cor (mesma matiz, luz
+   * 0,5, croma de verdade; amarelo vai para o âmbar); os pastéis ficam
+   * depois, como acento. Com uma cor forte no meio, nada muda.
+   */
+  function firmar(cores) {
+    const lista = [].concat(cores || []).map((c) => C.okHex(c, null)).filter(Boolean);
+    const os = lista.map((c) => C.paraOklch(c));
+    if (!lista.length || !os.every(pastel)) return lista;
+    const o = os[0];
+    const h = o.h >= 80 && o.h <= 118 ? 70 : o.h;
+    return [C.deOklch(0.5, Math.max(0.13, Math.min(0.2, o.c * 2)), h)].concat(lista).slice(0, 3);
+  }
+
   /*
    * O acento acertado para se ler sobre a principal (3:1, o AA de elemento
    * gráfico — é o selo e o preço no cartaz) sem perder a matiz dele.
    */
   function acentoDe(hex, principal) {
     const o = C.paraOklch(hex);
-    const c = o.c < 0.03 ? o.c : Math.max(0.08, Math.min(0.17, o.c));
-    let melhor = C.deOklch(o.l, c, o.h);
+    // O pastel (lote de 06/11) desce um pouco e ganha croma: rosa-bebê de acento é o "infantil".
+    const p = pastel(o);
+    const c = o.c < 0.03 ? o.c : Math.max(p ? 0.12 : 0.08, Math.min(0.17, o.c));
+    const L0 = p ? 0.8 : o.l;
+    let melhor = C.deOklch(L0, c, o.h);
     if (C.contraste(melhor, principal) >= 3) return melhor;
     const lp = C.paraOklch(principal).l;
     // Afasta da principal: sobe se ela é escura, desce se é clara.
     const passo = lp < 0.6 ? 0.02 : -0.02;
-    for (let L = o.l; L >= 0 && L <= 1; L += passo) {
+    for (let L = L0; L >= 0 && L <= 1; L += passo) {
       melhor = C.deOklch(L, c, o.h);
       if (C.contraste(melhor, principal) >= 3) return melhor;
     }
@@ -351,7 +441,7 @@
     }
     const o = C.paraOklch(a);
     if (o.c > 0.2) sai.push('A cor principal é muito saturada: numa TV grande ela vibra e cansa a vista. Uma versão um pouco mais fechada fica mais cara.');
-    if (o.l > 0.85) sai.push('A cor principal é quase branca: no estilo "Cor da marca" a peça vai parecer papel em branco.');
+    if (o.l > 0.85) sai.push('A cor principal é muito clara: na TV ela vira o destaque sobre um fundo escuro, e não o fundo. Se a marca tem uma cor mais forte, ponha essa como principal.');
     for (const modo of ['claro', 'escuro', 'marca']) {
       if (T.conferir(T.gerar({ marca: a, marca2: b, modo })).length) {
         sai.push('Algumas combinações não chegam ao contraste mínimo no estilo ' + modo + '. Prefira uma das paletas sugeridas.');
@@ -361,5 +451,5 @@
     return sai;
   }
 
-  return { RAMOS, NOMES_RAMO, CURADAS, CLIMAS, detectarRamo, aoRedor, sugerir, inicial, avisos, principalDe, climaDoRamo, ehClima };
+  return { RAMOS, NOMES_RAMO, CURADAS, CLIMAS, detectarRamo, aoRedor, sugerir, inicial, avisos, principalDe, climaDoRamo, ehClima, coresDosPixels, firmar };
 });
