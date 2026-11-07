@@ -1602,5 +1602,320 @@
     "licenca": "CC0 1.0 (domínio público)",
     "fonte": "https://commons.wikimedia.org/wiki/File:Braided_Hair_(Unsplash).jpg",
     "origem": "https://unsplash.com/photos/ZvPoZtY-0ng"
+  },
+  {
+    "id": "clinica-alongamento",
+    "arquivo": "/pecas-ouro/fotos/clinica/alongamento.jpg",
+    "ramos": [
+      "saude",
+      "academia"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.4,
+      "y": 0.4
+    },
+    "descricao": "Mulher se alongando num campo ao pôr do sol",
+    "credito": "Andressa Voltolini / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Woman_yoga_pose_sunrise_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/H7WdV-dNRZE"
+  },
+  {
+    "id": "clinica-atrio",
+    "arquivo": "/pecas-ouro/fotos/clinica/atrio.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "descricao": "Átrio branco e iluminado de um prédio moderno",
+    "credito": "Scott Webb / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Exploration_(Unsplash_NJ2QKVuxGrE).jpg",
+    "origem": "https://unsplash.com/photos/NJ2QKVuxGrE"
+  },
+  {
+    "id": "clinica-corredor",
+    "arquivo": "/pecas-ouro/fotos/clinica/corredor.jpg",
+    "ramos": [
+      "saude",
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Passarela branca e envidraçada, em perspectiva",
+    "credito": "Rucksack Magazine / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Crossrail_Place_Roof_Garden_Bridge_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/4RwHP-KW_x4"
+  },
+  {
+    "id": "clinica-frutas",
+    "arquivo": "/pecas-ouro/fotos/clinica/frutas.jpg",
+    "ramos": [
+      "saude",
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.5
+    },
+    "descricao": "Tigela de frutas vermelhas sobre mesa branca",
+    "credito": "Iwona Łach / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Bowl_of_Fresh_Fruit_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/psuWeghs_CM"
+  },
+  {
+    "id": "clinica-predio-claro",
+    "arquivo": "/pecas-ouro/fotos/clinica/predio-claro.jpg",
+    "ramos": [
+      "saude",
+      "corporativo"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.6,
+      "y": 0.6
+    },
+    "descricao": "Prédio claro contra o céu azul, linhas limpas",
+    "credito": "Scott Webb / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Play_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/M5PYMJ83OfE"
+  },
+  {
+    "id": "clinica-refeicao",
+    "arquivo": "/pecas-ouro/fotos/clinica/refeicao.jpg",
+    "ramos": [
+      "saude",
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "descricao": "Pratos leves com salada num café",
+    "credito": "Jade Wulfraat / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Healthy_Cafe_Food_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/yXnPoTkkY94"
+  },
+  {
+    "id": "clinica-sorriso-sol",
+    "arquivo": "/pecas-ouro/fotos/clinica/sorriso-sol.jpg",
+    "ramos": [
+      "saude",
+      "beleza"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.3
+    },
+    "descricao": "Mulher sorrindo de olhos fechados ao sol, foto vertical",
+    "credito": "William Stitt / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:William_Stitt_2017-03-19_(Unsplash_vfc01uHpOyQ).jpg",
+    "origem": "https://unsplash.com/photos/vfc01uHpOyQ"
+  },
+  {
+    "id": "farmacia-cafe-da-manha",
+    "arquivo": "/pecas-ouro/fotos/farmacia/cafe-da-manha.jpg",
+    "ramos": [
+      "saude",
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Café da manhã com frutas, iogurte e suco, visto de cima",
+    "credito": "Jannis Brandt / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Healthy_Trendy_Brunch_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/8manzosDSGM"
+  },
+  {
+    "id": "industria-conteineres",
+    "arquivo": "/pecas-ouro/fotos/industria/conteineres.jpg",
+    "ramos": [
+      "corporativo",
+      "varejo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Contêineres coloridos empilhados",
+    "credito": "Erwan Hesry / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Erwan_Hesry_2016_(Unsplash).jpg",
+    "origem": "http://unsplash.com/photos/RJjY5Hpnifk"
+  },
+  {
+    "id": "industria-escada",
+    "arquivo": "/pecas-ouro/fotos/industria/escada.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Escada metálica com faixas amarelas de segurança",
+    "credito": "Daria Nepriakhina / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Watch_your_step_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/UHO0Ry6qUOQ"
+  },
+  {
+    "id": "industria-estrutura",
+    "arquivo": "/pecas-ouro/fotos/industria/estrutura.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Estrutura de aço e vidro vista de baixo",
+    "credito": "Matt Briney / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Steel_architecture_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/GQmkzcjry3A"
+  },
+  {
+    "id": "textura-aco",
+    "arquivo": "/pecas-ouro/fotos/textura/aco.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Ondas de aço em preto e branco",
+    "credito": "Ricardo Gomez Angel / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Steel_waves_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/j5gCOKZdm6I"
+  },
+  {
+    "id": "textura-madeira-clara",
+    "arquivo": "/pecas-ouro/fotos/textura/madeira-clara.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.4,
+      "y": 0.5
+    },
+    "descricao": "Tábua de madeira clara com folhas verdes no canto",
+    "credito": "Lukas Blazek / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Fresh_wood_garlic_on_wood_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/EWDvHNNfUmQ"
+  },
+  {
+    "id": "textura-madeira",
+    "arquivo": "/pecas-ouro/fotos/textura/madeira.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Seções de madeira empilhadas, em grade",
+    "credito": "kindfolk kindfolk / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Wood_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/x7JLwunX0M0"
+  },
+  {
+    "id": "textura-marmore-escada",
+    "arquivo": "/pecas-ouro/fotos/textura/marmore-escada.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Escada curva de mármore branco",
+    "credito": "Daniel von Appen / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Curve_in_white_marble_stairs_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/tb4heMa-ZRo"
+  },
+  {
+    "id": "textura-metal-ondulado",
+    "arquivo": "/pecas-ouro/fotos/textura/metal-ondulado.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Chapa de metal ondulada vermelha e azul",
+    "credito": "Samuel Zeller / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Samuel_Zeller_2014-12-10_(Unsplash_Edva6JFPeyU).jpg",
+    "origem": "https://unsplash.com/photos/Edva6JFPeyU"
+  },
+  {
+    "id": "textura-tipos-moveis",
+    "arquivo": "/pecas-ouro/fotos/textura/tipos-moveis.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Tipos móveis de madeira, em detalhe",
+    "credito": "Raphael Schaller / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Typesetting_in_wood_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/GkinCd2enIY"
+  },
+  {
+    "id": "textura-toras",
+    "arquivo": "/pecas-ouro/fotos/textura/toras.jpg",
+    "ramos": [
+      "geral",
+      "corporativo"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Toras de madeira empilhadas, vistas de frente",
+    "credito": "Maciej Rusek / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Maciej_Rusek_2017_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/XiQQQ0R7vfI"
   }
 ]
