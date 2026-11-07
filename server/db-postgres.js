@@ -419,6 +419,8 @@ async function init() {
       user_id TEXT PRIMARY KEY, tenant_id TEXT, grupos TEXT, updated_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_acesso_lojas_tenant ON acesso_lojas(tenant_id);
+    -- "Sua primeira TV em 5 minutos": o progresso do passo a passo, em JSON (js/primeira-tv.js).
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS primeira_tv TEXT;
   `);
 }
 
@@ -2299,6 +2301,7 @@ module.exports = {
   numerosDaPlataforma,
   salvarClimaDaMarca,
   salvarNasTvsDaMarca,
+  salvarPrimeiraTv,
   salvarLocalDaMarca,
 };
 
@@ -2327,4 +2330,12 @@ async function salvarClimaDaMarca(id, tenantId, clima) {
   await pool.query('UPDATE marcas SET clima = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4', [String(clima || ''), Date.now(), id, tenantId]);
   const r = await pool.query('SELECT * FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   return mapMarca(r.rows[0]);
+}
+
+/*
+ * O progresso do "Sua primeira TV em 5 minutos" (server/routes/primeira-tv.js):
+ * o estado inteiro, já limpo por js/primeira-tv.js, na coluna da conta.
+ */
+async function salvarPrimeiraTv(id, estado) {
+  await pool.query('UPDATE tenants SET primeira_tv = $1 WHERE id = $2', [JSON.stringify(estado || null), id]);
 }

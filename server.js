@@ -88,6 +88,8 @@ const paletaInicial = require('./server/paleta');
 const paletas = require('./js/paletas.js');
 const conferencia = require('./server/conferencia');
 const redesRotas = require('./server/routes/redes');
+// "Sua primeira TV em 5 minutos" (o progresso e o negócio escolhido, que vira o ramo da conta).
+const primeiraTvRotas = require('./server/routes/primeira-tv');
 
 const { semCopiasDeCampanha, comACampanha } = require('./server/copias-de-campanha.js');
 const compressao = require('./server/compressao.js');
@@ -637,6 +639,8 @@ function montarCtx() {
     planilha: require('./server/routes/planilha')(ctx),
     // A chamada de senha da Saúde (fase 12).
     senha: require('./server/routes/senha')(ctx),
+    // "Sua primeira TV em 5 minutos": o progresso do passo a passo.
+    primeiraTv: primeiraTvRotas(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -1935,7 +1939,8 @@ const negocioCache = new Map();
         db.getMemoria(sess.tenant_id), db.listMarcas(sess.tenant_id),
       ]);
       return sendJson(res, 200, {
-        ramo: await paletaInicial.ramoDaConta(db, sess.tenant_id, kit),
+        // O negócio que a pessoa escolheu no "Sua primeira TV" vale antes do deduzido (server/routes/primeira-tv.js).
+        ramo: await paletaInicial.ramoDaConta(db, sess.tenant_id, kit).then(async (deduzido) => (await primeiraTvRotas.ramoEscolhido(db, sess.tenant_id)) || deduzido),
         empresa: ((await db.getTenant(sess.tenant_id)) || {}).name || '',
         kit: kit || null, assets, memoria: mem || null, marcas, limiteMarcas: db.MAX_MARCAS,
         familias: Object.keys(ds.FAMILIAS), direcoes: ds.DIRECOES,
@@ -2756,6 +2761,7 @@ const negocioCache = new Map();
   if (await ctx.routes.kpis(req, res, parts, query, sess)) return;
   if (await ctx.routes.pixabay(req, res, parts, query, sess)) return;
   if (await ctx.routes.planilha(req, res, parts, query, sess)) return;
+  if (await ctx.routes.primeiraTv(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------

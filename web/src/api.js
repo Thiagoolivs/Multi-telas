@@ -786,3 +786,9 @@ export const telaAgora = {
   pedir: (id) => api('POST', '/api/devices/' + id + '/comando', { acao: 'estado' }),
   ler: (id) => lerEmLote(id),
 };
+
+// "Sua primeira TV em 5 minutos": o progresso do passo a passo, guardado na conta (server/routes/primeira-tv.js).
+export const primeiraTv = {
+  ler: () => api('GET', '/api/primeira-tv'),
+  salvar: (estado) => api('PUT', '/api/primeira-tv', { estado }),
+};
