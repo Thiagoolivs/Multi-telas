@@ -1,0 +1,105 @@
+<!--
+  Díptico com preço — família oferta (lote 4, arquétipo A2).
+  Corte seco ao meio, como uma página dupla de catálogo: a foto numa
+  metade, o texto na outra, sem degradê. A coluna do texto tem grade
+  suíça: o kicker no alto com um filete, o título no meio, o preço no pé
+  sobre outro filete. O número é o maior texto (D44). Em pé, a foto vai
+  para cima; na lateral, ela vira uma faixa e fica só produto e preço.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 46fr 54fr; }
+.foto { width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; min-height: 0; }
+.texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; padding: 7cqh 6cqw 7cqh 5cqw; }
+.kicker { padding-bottom: 1.6cqw; border-bottom: .14cqw solid var(--mt-linha); font: 600 max(var(--mt-piso, 0cqw), 2.6cqw)/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.meio { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; padding: 2cqh 0; }
+h1 { font: 500 max(var(--mt-piso, 0cqw), calc(5.8cqw * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+h1 span, h1 em { display: block; }
+h1 em { font-style: normal; color: var(--mt-texto-suave); }
+.apoio { margin-top: 2.4cqw; font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1.25 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+/* O preço: o rótulo em cima, o número, a parcela embaixo. Em pé, rótulo e parcela à esquerda e o número à direita (grade). */
+.preco { padding-top: 2cqw; border-top: .14cqw solid var(--mt-linha); display: grid; grid-template-columns: auto; justify-content: start; row-gap: 1cqw; }
+.rotulo { font: 600 max(var(--mt-piso, 0cqw), 2.6cqw)/1.2 var(--mt-fonte-texto); }
+.parc { font: 500 max(var(--mt-piso, 0cqw), 2.6cqw)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.valor { font: 500 max(var(--mt-piso, 0cqw), calc(8.4cqw * var(--mt-escala-titulo, 1)))/.82 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; letter-spacing: -.02em; }
+.valor small { font-size: max(var(--mt-piso, 0cqw), .3em); vertical-align: 1.5em; margin-right: .12em; letter-spacing: 0; }
+.valor sup { font-size: max(var(--mt-piso, 0cqw), .32em); vertical-align: 1.4em; letter-spacing: 0; }
+.cta { margin-top: 2.6cqh; font: 600 max(var(--mt-piso, 0cqw), 2.6cqw)/1.2 var(--mt-fonte-texto); }
+.cta span { padding-bottom: .4cqw; border-bottom: .16cqw solid var(--mt-destaque); }
+
+/* A principal do Corporativo (1405×832): letra do balcão; o apoio e a chamada saem. */
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { grid-template-columns: 44fr 56fr; }
+  .texto { padding: 6cqh 5cqw 10cqh 4.4cqw; }
+  .kicker { padding-bottom: 1.4cqh; font-size: max(var(--mt-piso, 0cqw), 3.5cqw); letter-spacing: .06em; }
+  .meio { padding: 2cqh 0; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(6.6cqw * var(--mt-escala-titulo, 1))); }
+  .apoio, .cta, .parc { display: none; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 3.5cqw); }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(11cqw * var(--mt-escala-titulo, 1))); }
+}
+/* A faixa baixa (1038×559): título e preço. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .texto { padding: 5cqh 5cqw 5cqh 4cqw; }
+  .kicker { display: none; }
+  .meio { padding: 0 0 2cqh; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(5.4cqw * var(--mt-escala-titulo, 1))); }
+  h1 em { display: none; }
+  .rotulo, .parc { display: none; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1))); }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; grid-template-rows: 46fr 54fr; }
+  .texto { padding: 5cqh 7cqw 6cqh; }
+  .kicker { padding-bottom: 2.6cqw; border-bottom-width: .24cqw; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); letter-spacing: .1em; }
+  .meio { padding: 4cqw 0; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(10.4cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { margin-top: 3cqw; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .preco { padding-top: 3.4cqw; border-top-width: .24cqw; grid-template-columns: 1fr auto; column-gap: 3cqw; align-items: end; justify-content: stretch; }
+  .rotulo { grid-column: 1; grid-row: 1; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .parc { grid-column: 1; grid-row: 2; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .valor { grid-column: 2; grid-row: 1 / 3; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(17cqw * var(--mt-escala-titulo, 1))); }
+  .cta { margin-top: 4cqw; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .cta span { border-bottom-width: .3cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-rows: 34fr 66fr; }
+  .texto { padding: 4cqh 7cqw 7.4cqh; }
+  .kicker { padding-bottom: 1.6cqh; }
+  .meio { padding: 2cqh 0; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(8.2cqw * var(--mt-escala-titulo, 1))); }
+  .apoio, .cta, .parc { display: none; }
+  .preco { grid-template-columns: 1fr auto; }
+  .rotulo { grid-row: 1; align-self: end; }
+  .valor { grid-row: 1; font-size: max(var(--mt-piso, 0cqw), calc(14cqw * var(--mt-escala-titulo, 1))); }
+}
+/* A lateral (515×832): a foto vira faixa no alto; produto e preço. */
+@container (max-width: 700px) {
+  .mt-peca { grid-template-columns: 1fr; grid-template-rows: 36fr 64fr; }
+  .texto { padding: 4cqh 8cqw 5cqh; }
+  .kicker { padding-bottom: 1.6cqh; font-size: max(var(--mt-piso, 0cqw), 9.6cqw); letter-spacing: .02em; text-transform: none; }
+  .meio { padding: 2cqh 0; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(12.5cqw * var(--mt-escala-titulo, 1))); }
+  h1 em, .apoio, .cta, .parc { display: none; }
+  .preco { grid-template-columns: auto; margin-bottom: 4cqh; }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
+  .valor { grid-column: 1; grid-row: 2; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(26cqw * var(--mt-escala-titulo, 1))); }
+}
+</style>
+<section class="mt-peca diptico-oferta">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+  <div class="texto">
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="1">Coleção de outono</p>
+    <div class="meio">
+      <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Armações</span><em data-campo="titulo2">em acetato</em></h1>
+      <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Leves, resistentes e ajustadas na hora.</p>
+    </div>
+    <div class="preco" data-entrada="subir" data-ordem="4">
+      <p class="rotulo" data-campo="preco-rotulo">a partir de</p>
+      <span class="valor"><small aria-hidden="true">R$</small><span data-campo="preco">389</span><sup data-campo="centavos">,00</sup></span>
+      <p class="parc" data-campo="parcelas">ou 10× de R$ 38,90</p>
+    </div>
+    <p class="cta" data-entrada="aparecer" data-ordem="5"><span data-campo="cta">Prove na loja, sem compromisso</span></p>
+  </div>
+</section>

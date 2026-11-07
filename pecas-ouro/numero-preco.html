@@ -1,0 +1,62 @@
+<!--
+  O preço grande — família oferta (lote 4, arquétipo A4).
+  Quadro de lanchonete de rede: o produto em foto num lado, em corte seco,
+  e no outro o número do preço enorme — é o maior texto da peça e o que se
+  lê do outro lado da loja (D44). O R$ e os centavos ficam pequenos e na
+  cor de destaque; o nome e a descrição, curtos, em cima.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5.4cqw; --p: 17cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 46fr 54fr; }
+.texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 7cqh 4cqw 7cqh 6cqw; }
+.foto { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 50%; }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.apoio { margin-top: 2cqh; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.25 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.valor { margin-top: 3cqh; display: block; font: 500 max(var(--mt-piso, 0cqw), calc(var(--p) * var(--mt-escala-titulo, 1)))/.86 var(--mt-fonte-titulo); color: var(--mt-texto); white-space: nowrap; letter-spacing: -.03em; }
+.valor small, .valor sup { color: var(--mt-preco); letter-spacing: 0; }
+.valor small { font-size: max(var(--mt-piso, 0cqw), .22em); vertical-align: 2.6em; margin-right: .1em; }
+.valor sup { font-size: max(var(--mt-piso, 0cqw), .28em); vertical-align: 1.9em; }
+.nota { margin-top: 3cqh; font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { --f: 3.5cqw; --t: 5.6cqw; --p: 18cqw; grid-template-columns: 52fr 48fr; }
+  .texto { padding: 5cqh 3cqw 5cqh 5cqw; }
+  .kicker { letter-spacing: .06em; }
+  .apoio { display: none; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 5.2cqw; --p: 15cqw; }
+  .kicker, .nota { display: none; }
+  .valor { margin-top: 2cqh; }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 9cqw; --p: 30cqw; grid-template-columns: 1fr; grid-template-rows: 46fr 54fr; }
+  .texto { grid-row: 2; justify-content: center; padding: 4cqh 7cqw 6cqh; }
+  .foto { grid-row: 1; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --t: 7cqw; --p: 21cqw; grid-template-rows: 42fr 58fr; }
+  .texto { padding: 3cqh 7cqw 5cqh; }
+  .apoio { display: none; }
+  .valor { margin-top: 2cqh; }
+  .nota { margin-top: 2cqh; }
+}
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 12cqw; --p: 34cqw; grid-template-columns: 1fr; grid-template-rows: 40fr 60fr; }
+  .texto { grid-row: 2; padding: 3cqh 8cqw 4cqh; }
+  .foto { grid-row: 1; }
+  .kicker { letter-spacing: .02em; text-transform: none; }
+  .apoio, .nota { display: none; }
+  .valor { margin-top: 2cqh; }
+}
+</style>
+<section class="mt-peca numero-preco">
+  <div class="texto">
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="1">Combo do dia</p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Burger da casa</h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Pão brioche, blend de 180 g, cheddar e fritas.</p>
+    <p class="valor" data-entrada="crescer" data-ordem="4"><small aria-hidden="true">R$</small><span data-campo="preco">29</span><sup data-campo="centavos">,90</sup></p>
+    <p class="nota" data-campo="nota" data-entrada="aparecer" data-ordem="5">Até as 15h</p>
+  </div>
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+</section>

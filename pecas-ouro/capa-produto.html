@@ -1,0 +1,93 @@
+<!--
+  Capa com preço — família oferta (lote 4, arquétipo A1, docs/design/SISTEMA-VISUAL.md).
+  O produto em foto ocupa a peça; o texto e o preço moram num bloco de
+  fundo cheio da marca à DIREITA (deitada) ou no pé (em pé, quadrada e
+  lateral), e a foto se funde nele pelo degradê do ::before. O número do
+  preço é o maior texto da peça (D44, hierarquia); o R$ e os centavos ficam
+  pequenos. Tudo em fluxo: o piso da TV empurra, não sobrepõe.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.foto { position: absolute; top: 0; left: 0; width: 66%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.bloco { position: absolute; top: 0; right: 0; bottom: 0; width: 46%; display: flex; flex-direction: column; justify-content: center; padding: 8cqh 6cqw 8cqh 2cqw; background: var(--mt-fundo); }
+.bloco::before { content: ""; position: absolute; top: 0; bottom: 0; right: 100%; width: 14cqw; background: linear-gradient(270deg, var(--mt-fundo), var(--mt-fundo-0)); }
+.kicker { display: flex; align-items: center; gap: 1.2cqw; font: 600 max(var(--mt-piso, 0cqw), 2.6cqw)/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { flex: none; display: block; width: 3.2cqw; height: .16cqw; background: var(--mt-destaque); }
+h1 { margin-top: 2.2cqw; font: 500 max(var(--mt-piso, 0cqw), calc(6cqw * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.preco { margin-top: 3.4cqh; padding-top: 3cqh; border-top: .14cqw solid var(--mt-linha); display: flex; align-items: baseline; gap: 2cqw; flex-wrap: wrap; }
+.valor { font: 500 max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1)))/.82 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; letter-spacing: -.02em; }
+.valor small { font-size: max(var(--mt-piso, 0cqw), .3em); vertical-align: 1.5em; margin-right: .12em; letter-spacing: 0; }
+.valor sup { font-size: max(var(--mt-piso, 0cqw), .34em); vertical-align: 1.3em; letter-spacing: 0; }
+.unidade { padding-bottom: .4cqw; font: 500 max(var(--mt-piso, 0cqw), 2.6cqw)/1.1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.cta { margin-top: 3.4cqh; font: 600 max(var(--mt-piso, 0cqw), 2.6cqw)/1.35 var(--mt-fonte-texto); text-wrap: balance; }
+.cta span { padding-bottom: .4cqw; border-bottom: .16cqw solid var(--mt-destaque); }
+.foto[data-sem-foto] ~ .bloco::before { display: none; }
+
+/* A principal do Corporativo (1405×832): a letra do balcão ocupa mais; o bloco alarga e a chamada sai. */
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .foto { width: 58%; }
+  .bloco { width: 54%; padding: 6cqh 6cqw 6cqh 2cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.5cqw); letter-spacing: .08em; }
+  .kicker i { display: none; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(6.6cqw * var(--mt-escala-titulo, 1))); }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .unidade { font-size: max(var(--mt-piso, 0cqw), 3.5cqw); }
+  .cta { display: none; }
+}
+/* A faixa baixa (1038×559, a de baixo da TV em pé): título e preço. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .foto { width: 52%; }
+  .bloco { width: 56%; padding: 5cqh 5cqw 5cqh 2cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+  h1 { margin-top: 1.2cqw; font-size: max(var(--mt-piso, 0cqw), calc(5.6cqw * var(--mt-escala-titulo, 1))); }
+  .preco { margin-top: 2cqh; padding-top: 2cqh; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1))); }
+  .unidade { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+}
+/* Em pé e quadrada: a foto em cima, o bloco no pé. */
+@container (aspect-ratio < 1.25) {
+  .foto { width: 100%; height: 62%; object-position: 50% 50%; }
+  .bloco { top: auto; left: 0; width: auto; justify-content: flex-end; padding: 0 7cqw 7cqh; }
+  .bloco::before { top: auto; right: 0; left: 0; bottom: 100%; width: auto; height: 22cqh; background: linear-gradient(0deg, var(--mt-fundo), var(--mt-fundo-0)); }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); letter-spacing: .1em; }
+  .kicker i { width: 5cqw; height: .26cqw; }
+  h1 { margin-top: 3cqw; font-size: max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1))); }
+  .preco { margin-top: 4cqw; padding-top: 4cqw; border-top-width: .24cqw; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(19cqw * var(--mt-escala-titulo, 1))); }
+  .unidade { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .cta { margin-top: 4.4cqw; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .cta span { border-bottom-width: .3cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .foto { height: 56%; }
+  .bloco { padding-bottom: 6cqh; }
+  .bloco::before { height: 16cqh; }
+  h1 { margin-top: 2cqw; font-size: max(var(--mt-piso, 0cqw), calc(8.4cqw * var(--mt-escala-titulo, 1))); }
+  .preco { margin-top: 3cqw; padding-top: 3cqw; margin-bottom: 3cqh; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(15cqw * var(--mt-escala-titulo, 1))); }
+  .cta { display: none; }
+}
+/* A lateral estreita (515×832): produto, preço e nada mais. */
+@container (max-width: 700px) {
+  .foto { height: 44%; }
+  .bloco { padding: 0 8cqw 5cqh; }
+  .bloco::before { height: 12cqh; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 9.6cqw); letter-spacing: .02em; text-transform: none; }
+  .kicker i, .cta, .unidade { display: none; }
+  h1 { margin-top: 1.6cqh; font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .preco { margin-top: 2cqh; padding-top: 2cqh; margin-bottom: 4cqh; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), calc(28cqw * var(--mt-escala-titulo, 1))); }
+}
+</style>
+<section class="mt-peca capa-produto">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+  <div class="bloco">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Saiu agora</span></p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Pão de fermentação natural</h1>
+    <div class="preco" data-entrada="subir" data-ordem="3">
+      <span class="valor"><small aria-hidden="true">R$</small><span data-campo="preco">24</span><sup data-campo="centavos">,90</sup></span>
+      <span class="unidade" data-campo="unidade">a unidade</span>
+    </div>
+    <p class="cta" data-entrada="aparecer" data-ordem="4"><span data-campo="cta">Separamos para você no balcão</span></p>
+  </div>
+</section>

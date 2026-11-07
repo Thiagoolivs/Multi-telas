@@ -2160,6 +2160,1207 @@
       "estado": "proposta",
       "marca": "padaria",
       "lote": 3
+    },
+    {
+      "id": "aviso-faixa",
+      "nome": "Aviso com foto",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "comercio": {
+          "selo": "Aviso",
+          "titulo": "Fechados no feriado de quinta",
+          "corpo": "Voltamos na sexta, no horário de sempre. Encomendas podem ser retiradas na quarta até as 20h.",
+          "quando": "Quinta, 20 de novembro"
+        },
+        "saude": {
+          "selo": "Aviso",
+          "titulo": "Atendimento em horário especial",
+          "corpo": "Na véspera do feriado a recepção fecha às 15h. Remarcações pelo telefone da clínica.",
+          "quando": "Quarta, 19 de novembro"
+        },
+        "empresa": {
+          "selo": "Comunicado",
+          "titulo": "Estacionamento fechado para obra",
+          "corpo": "Use a entrada da rua de trás. A portaria 2 fica aberta das 6h às 22h.",
+          "quando": "De 10 a 21 de novembro"
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/padaria/balcao.jpg"
+      }
+    },
+    {
+      "id": "capa-campanha",
+      "nome": "Capa · campanha com período",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "saude": {
+          "periodo": "Até 30 de maio",
+          "titulo": "Vacina da gripe",
+          "titulo2": "já chegou",
+          "apoio": "Aplicação na sala de serviços, por farmacêutico.",
+          "local": "Sem agendamento"
+        },
+        "comercio": {
+          "periodo": "Só este mês",
+          "titulo": "Semana da casa",
+          "titulo2": "nova",
+          "apoio": "Peças escolhidas a dedo para o seu dia a dia.",
+          "local": "Na loja e no site"
+        },
+        "empresa": {
+          "periodo": "De 10 a 14 de junho",
+          "titulo": "SIPAT",
+          "titulo2": "2026",
+          "apoio": "Palestras, exames e a gincana da segurança.",
+          "local": "No auditório, às 14h"
+        }
+      },
+      "estado": "proposta",
+      "marca": "farmacia",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
+      }
+    },
+    {
+      "id": "capa-casa",
+      "nome": "Capa · foto cheia com a frase da casa",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Desde 1987",
+          "titulo": "A mesa posta",
+          "titulo2": "como em casa",
+          "apoio": "Massa feita à mão todas as manhãs e o vinho da casa.",
+          "endereco": "Terça a domingo"
+        },
+        "saude": {
+          "kicker": "Bem-vindo",
+          "titulo": "Cuidado de perto,",
+          "titulo2": "sem pressa",
+          "apoio": "Uma equipe que escuta, explica e acompanha cada consulta.",
+          "endereco": "Segunda a sábado"
+        },
+        "empresa": {
+          "kicker": "Quem somos",
+          "titulo": "Gente que faz",
+          "titulo2": "o trabalho bem feito",
+          "apoio": "Cada entrega passa por mãos que conhecem o ofício.",
+          "endereco": "Unidade Centro"
+        }
+      },
+      "estado": "proposta",
+      "marca": "restaurante",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/restaurante/jantar.jpg"
+      }
+    },
+    {
+      "id": "capa-produto",
+      "nome": "Capa · produto em foto com o preço",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Saiu agora",
+          "titulo": "Pão de fermentação natural",
+          "preco": "24",
+          "centavos": ",90",
+          "unidade": "a unidade",
+          "cta": "Separamos para você no balcão"
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/padaria/pao-tabua.jpg"
+      }
+    },
+    {
+      "id": "cardapio-destaque",
+      "nome": "Prato do dia em cartão",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Prato do dia · quinta",
+          "titulo": "Tagliatelle ao ragu de costela",
+          "apoio": "Massa fresca da casa, ragu cozido por seis horas e parmesão.",
+          "quando": "Almoço, até as 15h",
+          "preco": "48",
+          "centavos": ",00"
+        },
+        "empresa": {
+          "kicker": "Almoço de hoje",
+          "titulo": "Frango assado com legumes",
+          "apoio": "Arroz, feijão, salada da horta e a fruta da estação.",
+          "quando": "Das 11h às 14h",
+          "preco": "12",
+          "centavos": ",00"
+        }
+      },
+      "estado": "proposta",
+      "marca": "restaurante",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/restaurante/prato-autoral.jpg"
+      }
+    },
+    {
+      "id": "cardapio-quadro",
+      "nome": "Quadro do cardápio com foto",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Feitas aqui, todo dia",
+          "titulo": "Massas da casa",
+          "item1": "Tagliatelle ao ragu",
+          "preco1": "58",
+          "item2": "Nhoque de batata",
+          "preco2": "49",
+          "item3": "Lasanha da nonna",
+          "preco3": "62",
+          "item4": "Ravioli de abóbora",
+          "preco4": "56",
+          "item5": "Espaguete ao pomodoro",
+          "preco5": "44",
+          "nota": "Preços em reais · meia porção sob pedido"
+        },
+        "empresa": {
+          "kicker": "Refeitório · semana",
+          "titulo": "Cardápio do almoço",
+          "item1": "Segunda · frango assado",
+          "preco1": "12",
+          "item2": "Terça · carne de panela",
+          "preco2": "12",
+          "item3": "Quarta · feijoada",
+          "preco3": "14",
+          "item4": "Quinta · peixe grelhado",
+          "preco4": "12",
+          "item5": "Sexta · massa ao sugo",
+          "preco5": "12",
+          "nota": "Desconto em folha · das 11h às 14h"
+        }
+      },
+      "estado": "proposta",
+      "marca": "restaurante",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/restaurante/tagliatelle.jpg"
+      }
+    },
+    {
+      "id": "cardapio-trio",
+      "nome": "Vitrine de três produtos",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "produto",
+        "foto2": "produto",
+        "foto3": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "titulo": "Da vitrine de hoje",
+          "kicker": "Saídos do forno",
+          "nome1": "Croissant de manteiga",
+          "preco1": "9,50",
+          "nome2": "Bolo de café",
+          "preco2": "12",
+          "nome3": "Pão rústico",
+          "preco3": "22"
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/padaria/croissants-assadeira.jpg",
+        "foto2": "/pecas-ouro/fotos/padaria/bolo-cafe.jpg",
+        "foto3": "/pecas-ouro/fotos/padaria/paes-rusticos.jpg"
+      }
+    },
+    {
+      "id": "dica-foto",
+      "nome": "Dica da casa",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "saude": {
+          "kicker": "Dica da semana",
+          "edicao": "Nº 12",
+          "titulo": "Beba água ao longo do dia, mesmo sem sede",
+          "apoio": "Deixe uma garrafa à vista na mesa. Dúvidas sobre o seu caso, fale com o farmacêutico."
+        },
+        "comercio": {
+          "kicker": "Dica da casa",
+          "edicao": "Nº 4",
+          "titulo": "Pão de fermentação natural congela bem",
+          "apoio": "Fatie antes, congele em saco fechado e aqueça direto na torradeira."
+        },
+        "empresa": {
+          "kicker": "Dica de segurança",
+          "edicao": "Nº 7",
+          "titulo": "Pausa de cinco minutos a cada hora de tela",
+          "apoio": "Olhe para longe, alongue os ombros e volte com a vista descansada."
+        }
+      },
+      "estado": "proposta",
+      "marca": "farmacia",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/farmacia/cha-jarra.jpg"
+      }
+    },
+    {
+      "id": "diptico-agenda",
+      "nome": "Díptico · agende pelo QR",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "fotos": {
+        "foto": "pessoa"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Agenda aberta",
+          "titulo": "Seu horário",
+          "titulo2": "em dois toques",
+          "instrucao": "Aponte a câmera e escolha o dia",
+          "contato": "ou fale com a recepção"
+        },
+        "saude": {
+          "kicker": "Agendamento",
+          "titulo": "Marque a consulta",
+          "titulo2": "pelo celular",
+          "instrucao": "Aponte a câmera e escolha o horário",
+          "contato": "ou fale com a recepção"
+        }
+      },
+      "estado": "proposta",
+      "marca": "salao",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/salao/coque.jpg",
+        "link": "https://exemplo.com.br/agenda"
+      }
+    },
+    {
+      "id": "diptico-oferta",
+      "nome": "Díptico · foto e oferta em corte seco",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Coleção de outono",
+          "titulo": "Armações",
+          "titulo2": "em acetato",
+          "apoio": "Leves, resistentes e ajustadas na hora.",
+          "preco-rotulo": "a partir de",
+          "parcelas": "ou 10× de R$ 38,90",
+          "preco": "389",
+          "centavos": ",00",
+          "cta": "Prove na loja, sem compromisso"
+        }
+      },
+      "estado": "proposta",
+      "marca": "otica",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/otica/tartaruga.jpg"
+      }
+    },
+    {
+      "id": "diptico-servico",
+      "nome": "Díptico · serviço em três passos",
+      "familia": "serviço",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "saude",
+        "empresa",
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "saude": {
+          "kicker": "Check-up completo",
+          "titulo": "Tudo num só lugar, numa só manhã",
+          "passo1": "Consulta com o clínico",
+          "passo2": "Exames no mesmo dia",
+          "passo3": "Retorno com os resultados",
+          "nota": "Convênios e particular · agende na recepção"
+        },
+        "empresa": {
+          "kicker": "Exame periódico",
+          "titulo": "Seu exame em três etapas",
+          "passo1": "Agende com o RH",
+          "passo2": "Faça os exames no ambulatório",
+          "passo3": "Retire o atestado",
+          "nota": "Dúvidas: ramal 280"
+        },
+        "comercio": {
+          "kicker": "Ajuste na hora",
+          "titulo": "Seus óculos prontos em três passos",
+          "passo1": "Escolha a armação",
+          "passo2": "Medimos as lentes aqui",
+          "passo3": "Retire ajustado",
+          "nota": "Traga a sua receita"
+        }
+      },
+      "estado": "proposta",
+      "marca": "clinica",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
+      }
+    },
+    {
+      "id": "editorial-citacao",
+      "nome": "Citação com retrato",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "pessoa"
+      },
+      "textos": {
+        "comercio": {
+          "citacao": "Saio daqui me sentindo outra pessoa. E o café é sempre bom.",
+          "nome": "Renata Alves",
+          "detalhe": "Cliente há seis anos"
+        },
+        "empresa": {
+          "citacao": "Aqui eu aprendi o ofício e hoje ensino quem chega.",
+          "nome": "Carlos Mendes",
+          "detalhe": "22 anos de casa, na usinagem"
+        }
+      },
+      "estado": "proposta",
+      "marca": "salao",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/salao/cabelo-vento.jpg"
+      }
+    },
+    {
+      "id": "editorial-indice",
+      "nome": "Índice em três passos",
+      "familia": "serviço",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "saude": {
+          "kicker": "Primeira consulta",
+          "titulo": "Sua visita em três passos",
+          "passo1": "Chegue 15 minutos antes",
+          "passo2": "Traga documento e carteirinha",
+          "passo3": "Aguarde ser chamado pelo nome"
+        },
+        "comercio": {
+          "kicker": "Encomendas",
+          "titulo": "Seu bolo em três passos",
+          "passo1": "Escolha o sabor no balcão",
+          "passo2": "Peça com dois dias de antecedência",
+          "passo3": "Retire no horário marcado"
+        },
+        "empresa": {
+          "kicker": "Primeiro dia",
+          "titulo": "Sua chegada em três passos",
+          "passo1": "Crachá na portaria",
+          "passo2": "Integração às 9h, sala 2",
+          "passo3": "Almoço com a sua equipe"
+        }
+      },
+      "estado": "proposta",
+      "marca": "clinica",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/escritorio/sala-reuniao.jpg"
+      }
+    },
+    {
+      "id": "editorial-moldura",
+      "nome": "Página de revista · foto emoldurada",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Edição de outono",
+          "titulo": "Clássicos que não saem de moda",
+          "apoio": "Acetato italiano, desenho dos anos cinquenta e lentes feitas na medida do seu rosto.",
+          "legenda": "Na foto: armação Lisboa"
+        },
+        "saude": {
+          "kicker": "Nossa casa",
+          "titulo": "Um lugar pensado para você ficar à vontade",
+          "apoio": "Salas claras, silêncio e tempo para conversar sobre o seu cuidado.",
+          "legenda": "Na foto: a recepção"
+        },
+        "empresa": {
+          "kicker": "Por dentro",
+          "titulo": "O escritório novo ficou pronto",
+          "apoio": "Mais luz, salas de reunião e um café de verdade no terceiro andar.",
+          "legenda": "Na foto: o terceiro andar"
+        }
+      },
+      "estado": "proposta",
+      "marca": "otica",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/otica/armacao-madeira.jpg"
+      }
+    },
+    {
+      "id": "equipe-trio",
+      "nome": "Equipe em três retratos",
+      "familia": "gente",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "pessoa",
+        "foto2": "pessoa",
+        "foto3": "pessoa"
+      },
+      "textos": {
+        "saude": {
+          "titulo": "Quem cuida de você",
+          "kicker": "Nossa equipe",
+          "nome1": "Dra. Paula Mendes",
+          "funcao1": "Ortodontia",
+          "nome2": "Dr. Rafael Alves",
+          "funcao2": "Implantes",
+          "nome3": "Dr. Lucas Prado",
+          "funcao3": "Clínica geral"
+        },
+        "comercio": {
+          "titulo": "Nosso time",
+          "kicker": "Quem atende você",
+          "nome1": "Carla Nunes",
+          "funcao1": "Coloração",
+          "nome2": "Bruno Teles",
+          "funcao2": "Corte masculino",
+          "nome3": "Júlio Sá",
+          "funcao3": "Barba"
+        },
+        "empresa": {
+          "titulo": "Fale com a gente",
+          "kicker": "Quem procurar",
+          "nome1": "Ana Lima",
+          "funcao1": "Recursos humanos",
+          "nome2": "Marcos Silva",
+          "funcao2": "Segurança do trabalho",
+          "nome3": "Tiago Costa",
+          "funcao3": "Ambulatório"
+        }
+      },
+      "estado": "proposta",
+      "marca": "dentista",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg",
+        "foto2": "/pecas-ouro/fotos/dentista/sorriso-rapaz.jpg",
+        "foto3": "/pecas-ouro/fotos/dentista/sorriso-tranquilo.jpg"
+      }
+    },
+    {
+      "id": "evento-foto",
+      "nome": "Evento com data",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "dia": "14",
+          "mes": "Sábado · junho",
+          "kicker": "Na loja",
+          "titulo": "Degustação de pães de fermentação natural",
+          "hora": "Das 9h às 12h",
+          "local": "No balcão, com o padeiro"
+        },
+        "saude": {
+          "dia": "22",
+          "mes": "Quarta · outubro",
+          "kicker": "Roda de conversa",
+          "titulo": "Outubro Rosa: tire as suas dúvidas",
+          "hora": "Às 10h",
+          "local": "Na sala de espera, com a equipe"
+        },
+        "empresa": {
+          "dia": "10",
+          "mes": "Segunda · junho",
+          "kicker": "SIPAT",
+          "titulo": "Abertura da semana de prevenção",
+          "hora": "Às 14h",
+          "local": "No auditório"
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/padaria/paes-rusticos.jpg"
+      }
+    },
+    {
+      "id": "frase-faixa",
+      "nome": "Frase grande com faixa de foto",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "textura"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "O que nos move",
+          "titulo": "Pão bom leva tempo.",
+          "titulo2": "A gente espera.",
+          "detalhe": "Fermentação de 24 horas"
+        },
+        "saude": {
+          "kicker": "O que nos move",
+          "titulo": "Ouvir antes",
+          "titulo2": "de cuidar.",
+          "detalhe": "Consultas com tempo para conversar"
+        },
+        "empresa": {
+          "kicker": "Nosso jeito",
+          "titulo": "Bem feito",
+          "titulo2": "na primeira vez.",
+          "detalhe": "Qualidade é de todos"
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/padaria/pao-de-forma.jpg"
+      }
+    },
+    {
+      "id": "gente-retrato",
+      "nome": "Retrato de quem atende",
+      "familia": "gente",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "pessoa"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Quem atende você",
+          "nome": "Marina Duarte",
+          "funcao": "Colorista · 12 anos de salão",
+          "frase": "Cor boa é a que parece sua. Eu começo sempre pela conversa."
+        },
+        "saude": {
+          "kicker": "Chegou à equipe",
+          "nome": "Dra. Helena Rocha",
+          "funcao": "Clínica geral · CRM-SP 154872",
+          "frase": "Gosto de explicar cada passo, sem pressa e sem termo difícil."
+        },
+        "empresa": {
+          "kicker": "Colaborador do mês",
+          "nome": "Rogério Lima",
+          "funcao": "Manutenção · turno A",
+          "frase": "Máquina parada é problema de todo mundo. A gente resolve junto."
+        }
+      },
+      "estado": "proposta",
+      "marca": "salao",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/salao/cabelo-vento.jpg"
+      }
+    },
+    {
+      "id": "horario-foto",
+      "nome": "Horário com foto",
+      "familia": "serviço",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "saude": {
+          "kicker": "Estamos abertos",
+          "titulo": "Horário de atendimento",
+          "dia1": "Segunda a sexta",
+          "hora1": "7h – 22h",
+          "dia2": "Sábado",
+          "hora2": "8h – 20h",
+          "dia3": "Domingo",
+          "hora3": "8h – 14h",
+          "nota": "Plantão no primeiro domingo do mês"
+        },
+        "comercio": {
+          "kicker": "Venha nos ver",
+          "titulo": "Horário de funcionamento",
+          "dia1": "Segunda a sexta",
+          "hora1": "6h – 20h",
+          "dia2": "Sábado",
+          "hora2": "6h – 18h",
+          "dia3": "Domingo",
+          "hora3": "7h – 12h",
+          "nota": "Feriados: das 7h às 12h"
+        },
+        "empresa": {
+          "kicker": "Refeitório",
+          "titulo": "Horário das refeições",
+          "dia1": "Café",
+          "hora1": "6h – 7h30",
+          "dia2": "Almoço",
+          "hora2": "11h – 14h",
+          "dia3": "Jantar",
+          "hora3": "18h – 19h30",
+          "nota": "Turno da noite: lanche às 2h"
+        }
+      },
+      "estado": "proposta",
+      "marca": "farmacia",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/farmacia/balcao-moderno.jpg"
+      }
+    },
+    {
+      "id": "mural-foto",
+      "nome": "Mosaico de quatro fotos",
+      "familia": "social",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "produto",
+        "foto2": "pessoa",
+        "foto3": "produto",
+        "foto4": "ambiente"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "No Instagram",
+          "titulo": "Os bastidores da cozinha, todo dia",
+          "arroba": "@sua.casa"
+        },
+        "empresa": {
+          "kicker": "Por dentro",
+          "titulo": "Fotos da nossa semana",
+          "arroba": "Mande a sua para o RH"
+        }
+      },
+      "estado": "proposta",
+      "marca": "restaurante",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/restaurante/antepasto.jpg",
+        "foto2": "/pecas-ouro/fotos/restaurante/fazendo-massa.jpg",
+        "foto3": "/pecas-ouro/fotos/restaurante/queijos.jpg",
+        "foto4": "/pecas-ouro/fotos/restaurante/salao-rustico.jpg"
+      }
+    },
+    {
+      "id": "numero-dado",
+      "nome": "O número do mês",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa",
+        "comercio",
+        "saude"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "empresa": {
+          "kicker": "Segurança",
+          "numero": "312",
+          "rotulo": "dias sem acidente com afastamento",
+          "contexto": "O recorde da fábrica é 405. Vamos juntos."
+        },
+        "comercio": {
+          "kicker": "Obrigado, freguesia",
+          "numero": "1.200",
+          "rotulo": "pães saem do nosso forno todo dia",
+          "contexto": "Fornadas às 6h, às 11h e às 16h."
+        },
+        "saude": {
+          "kicker": "Nossa equipe",
+          "numero": "18",
+          "rotulo": "especialidades no mesmo endereço",
+          "contexto": "Pergunte na recepção pela sua."
+        }
+      },
+      "estado": "proposta",
+      "marca": "industria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/escritorio/predio-noite.jpg"
+      }
+    },
+    {
+      "id": "numero-marco",
+      "nome": "Marco da casa em campo de cor",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "pessoa"
+      },
+      "textos": {
+        "saude": {
+          "kicker": "Desde 2011",
+          "numero": "15",
+          "rotulo": "anos cuidando de sorrisos",
+          "assinatura": "Obrigado pela confiança"
+        },
+        "comercio": {
+          "kicker": "Desde 1987",
+          "numero": "38",
+          "rotulo": "anos na mesma esquina",
+          "assinatura": "Obrigado, freguesia"
+        },
+        "empresa": {
+          "kicker": "Desde 1998",
+          "numero": "28",
+          "rotulo": "anos fazendo junto",
+          "assinatura": "Parabéns a cada um de vocês"
+        }
+      },
+      "estado": "proposta",
+      "marca": "dentista",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
+      }
+    },
+    {
+      "id": "numero-preco",
+      "nome": "O preço grande",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Combo do dia",
+          "titulo": "Burger da casa",
+          "apoio": "Pão brioche, blend de 180 g, cheddar e fritas.",
+          "preco": "29",
+          "centavos": ",90",
+          "nota": "Até as 15h"
+        }
+      },
+      "estado": "proposta",
+      "marca": "lanchonete",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/lanchonete/burger-gourmet.jpg"
+      }
+    },
+    {
+      "id": "oferta-desconto",
+      "nome": "O desconto grande",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Semana do sol",
+          "desconto": "30",
+          "titulo": "Em todos os óculos de sol da vitrine",
+          "prazo": "Até sábado ou enquanto durar o estoque"
+        }
+      },
+      "estado": "proposta",
+      "marca": "otica",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/otica/sol-areia.jpg"
+      }
+    },
+    {
+      "id": "oferta-dupla",
+      "nome": "Dois produtos, dois preços",
+      "familia": "oferta",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "produto",
+        "foto2": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "titulo": "Café da manhã",
+          "kicker": "Até as 10h",
+          "nome1": "Croissant e café",
+          "preco1": "16",
+          "nome2": "Fatia de bolo e café",
+          "preco2": "14"
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/padaria/croissants-cafe.jpg",
+        "foto2": "/pecas-ouro/fotos/padaria/bolo-cafe.jpg"
+      }
+    },
+    {
+      "id": "qr-foto",
+      "nome": "Chamada com QR sobre foto",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Gostou de hoje?",
+          "titulo": "Conte para a gente em um minuto",
+          "instrucao": "Aponte a câmera do celular",
+          "nota": "sua avaliação ajuda muito"
+        },
+        "saude": {
+          "kicker": "Sua opinião",
+          "titulo": "Como foi o seu atendimento?",
+          "instrucao": "Aponte a câmera do celular",
+          "nota": "leva menos de um minuto"
+        },
+        "empresa": {
+          "kicker": "Pesquisa interna",
+          "titulo": "Como está o seu dia a dia aqui?",
+          "instrucao": "Aponte a câmera e responda",
+          "nota": "é anônimo"
+        }
+      },
+      "estado": "proposta",
+      "marca": "restaurante",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/restaurante/brinde.jpg",
+        "link": "https://exemplo.com.br/avaliar"
+      }
+    },
+    {
+      "id": "recepcao-foto",
+      "nome": "Boas-vindas da recepção",
+      "familia": "institucional",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "saude",
+        "empresa",
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "saude": {
+          "kicker": "Recepção",
+          "titulo": "Bem-vindo",
+          "apoio": "Fique à vontade. Chamamos você pelo nome na hora da consulta."
+        },
+        "empresa": {
+          "kicker": "Recepção",
+          "titulo": "Bem-vindo",
+          "apoio": "Visitantes: apresentem um documento na portaria e aguardem o crachá."
+        },
+        "comercio": {
+          "kicker": "Que bom ver você",
+          "titulo": "Bem-vindo",
+          "apoio": "Sente-se, o café é por nossa conta enquanto você espera."
+        }
+      },
+      "estado": "proposta",
+      "marca": "clinica",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/clinica/espera.jpg"
+      }
+    },
+    {
+      "id": "seguranca-foto",
+      "nome": "Lista de segurança com foto",
+      "familia": "serviço",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "pessoa"
+      },
+      "textos": {
+        "empresa": {
+          "selo": "Área de solda",
+          "titulo": "Antes de entrar, confira",
+          "item1": "Máscara de solda abaixada",
+          "item2": "Luvas de raspa",
+          "item3": "Avental e mangote",
+          "item4": "Botina com biqueira"
+        }
+      },
+      "estado": "proposta",
+      "marca": "industria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/industria/soldador.jpg"
+      }
+    },
+    {
+      "id": "vaga-foto",
+      "nome": "Vaga aberta com QR",
+      "familia": "gente",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "pessoa"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Vem trabalhar com a gente",
+          "titulo": "Estamos contratando",
+          "vaga1": "Chapeiro(a) · noite",
+          "vaga2": "Atendente · fins de semana",
+          "instrucao": "Aponte a câmera e mande o seu currículo"
+        },
+        "empresa": {
+          "kicker": "Indique um amigo",
+          "titulo": "Vagas abertas",
+          "vaga1": "Operador(a) de máquina · turno B",
+          "vaga2": "Auxiliar de logística · turno A",
+          "instrucao": "Aponte a câmera e veja os requisitos"
+        }
+      },
+      "estado": "proposta",
+      "marca": "lanchonete",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/lanchonete/chapeiro.jpg",
+        "link": "https://exemplo.com.br/vagas"
+      }
     }
   ],
   "telas": [
@@ -9061,6 +10262,1903 @@
       "sobre": "Para a fábrica: o EPI da área, a produção do mês e o cardápio do refeitório.",
       "estado": "proposta",
       "lote": 3
+    },
+    {
+      "id": "l4-padaria-deitada",
+      "nome": "Padaria · TV deitada · fornada e vitrine",
+      "perfil": "comercio",
+      "negocio": "padaria",
+      "ramos": [
+        "padaria"
+      ],
+      "estrutura": "pacote padaria com foto",
+      "marca": "padaria",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Padaria do Bairro"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "capa-produto",
+              "campos": {
+                "kicker": "Saiu agora",
+                "titulo": "Pão de fermentação natural",
+                "preco": "24",
+                "centavos": ",90",
+                "unidade": "a unidade",
+                "cta": "Separamos para você no balcão",
+                "foto": "/pecas-ouro/fotos/padaria/pao-tabua.jpg"
+              }
+            },
+            {
+              "id": "cardapio-trio",
+              "campos": {
+                "titulo": "Da vitrine de hoje",
+                "kicker": "Saídos do forno",
+                "nome1": "Croissant de manteiga",
+                "preco1": "9,50",
+                "nome2": "Bolo de café",
+                "preco2": "12",
+                "nome3": "Pão rústico",
+                "preco3": "22",
+                "foto": "/pecas-ouro/fotos/padaria/croissants-assadeira.jpg",
+                "foto2": "/pecas-ouro/fotos/padaria/bolo-cafe.jpg",
+                "foto3": "/pecas-ouro/fotos/padaria/paes-rusticos.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "evento-foto",
+              "campos": {
+                "dia": "14",
+                "mes": "Sábado · junho",
+                "kicker": "Na loja",
+                "titulo": "Degustação de pães de fermentação natural",
+                "hora": "Das 9h às 12h",
+                "local": "No balcão, com o padeiro",
+                "foto": "/pecas-ouro/fotos/padaria/fornada.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Encomendas de bolo com 48h de antecedência",
+        "Café passado na hora",
+        "Pão de fermentação natural às sextas"
+      ],
+      "sobre": "Para a padaria: o pão do dia com preço, a vitrine em fotos e a degustação de sábado.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-padaria-em-pe",
+      "nome": "Padaria · TV em pé · café da manhã",
+      "perfil": "comercio",
+      "negocio": "padaria",
+      "ramos": [
+        "padaria"
+      ],
+      "estrutura": "pacote padaria com foto",
+      "marca": "padaria",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Padaria do Bairro"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "oferta-dupla",
+              "campos": {
+                "titulo": "Café da manhã",
+                "kicker": "Até as 10h",
+                "nome1": "Croissant e café",
+                "preco1": "16",
+                "nome2": "Fatia de bolo e café",
+                "preco2": "14",
+                "foto": "/pecas-ouro/fotos/padaria/croissants-cafe.jpg",
+                "foto2": "/pecas-ouro/fotos/padaria/bolo-cafe.jpg"
+              }
+            },
+            {
+              "id": "frase-faixa",
+              "campos": {
+                "kicker": "O que nos move",
+                "titulo": "Pão bom leva tempo.",
+                "titulo2": "A gente espera.",
+                "detalhe": "Fermentação de 24 horas",
+                "foto": "/pecas-ouro/fotos/padaria/pao-de-forma.jpg",
+                "marca": "Padaria do Bairro"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "horario-foto",
+              "campos": {
+                "kicker": "Venha nos ver",
+                "titulo": "Horário de funcionamento",
+                "dia1": "Segunda a sexta",
+                "hora1": "6h – 20h",
+                "dia2": "Sábado",
+                "hora2": "6h – 18h",
+                "dia3": "Domingo",
+                "hora3": "7h – 12h",
+                "nota": "Feriados: das 7h às 12h",
+                "foto": "/pecas-ouro/fotos/padaria/prateleiras.jpg"
+              }
+            },
+            {
+              "id": "aviso-faixa",
+              "campos": {
+                "selo": "Aviso",
+                "titulo": "Fechados no feriado de quinta",
+                "corpo": "Voltamos na sexta, no horário de sempre. Encomendas podem ser retiradas na quarta até as 20h.",
+                "quando": "Quinta, 20 de novembro",
+                "foto": "/pecas-ouro/fotos/padaria/balcao.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Fornadas às 6h, às 11h e às 16h",
+        "Aceitamos Pix e cartão",
+        "Bolo inteiro sob encomenda"
+      ],
+      "sobre": "Para a padaria em pé: o café da manhã com preço, a frase da casa, o horário e o aviso do feriado.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-restaurante-deitada",
+      "nome": "Restaurante · TV deitada · prato do dia",
+      "perfil": "comercio",
+      "negocio": "restaurante",
+      "ramos": [
+        "comida"
+      ],
+      "estrutura": "pacote restaurante com foto",
+      "marca": "restaurante",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Cantina da Nona"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cardapio-destaque",
+              "campos": {
+                "kicker": "Prato do dia · quinta",
+                "titulo": "Tagliatelle ao ragu de costela",
+                "apoio": "Massa fresca da casa, ragu cozido por seis horas e parmesão.",
+                "quando": "Almoço, até as 15h",
+                "preco": "48",
+                "centavos": ",00",
+                "foto": "/pecas-ouro/fotos/restaurante/prato-autoral.jpg"
+              }
+            },
+            {
+              "id": "capa-casa",
+              "campos": {
+                "kicker": "Desde 1987",
+                "titulo": "A mesa posta",
+                "titulo2": "como em casa",
+                "apoio": "Massa feita à mão todas as manhãs e o vinho da casa.",
+                "endereco": "Terça a domingo",
+                "foto": "/pecas-ouro/fotos/restaurante/jantar.jpg",
+                "marca": "Cantina da Nona"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "qr-foto",
+              "campos": {
+                "kicker": "Gostou de hoje?",
+                "titulo": "Conte para a gente em um minuto",
+                "instrucao": "Aponte a câmera do celular",
+                "nota": "sua avaliação ajuda muito",
+                "foto": "/pecas-ouro/fotos/restaurante/brinde.jpg",
+                "link": "https://exemplo.com.br/avaliar"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Reservas para grupos com um dia de antecedência",
+        "Massa fresca feita todas as manhãs",
+        "Vinho da casa em taça ou garrafa"
+      ],
+      "sobre": "Para o restaurante: o prato do dia em cartão, a casa em foto cheia e a avaliação pelo QR.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-restaurante-em-pe",
+      "nome": "Restaurante · TV em pé · cardápio e cozinha",
+      "perfil": "comercio",
+      "negocio": "restaurante",
+      "ramos": [
+        "comida"
+      ],
+      "estrutura": "pacote restaurante com foto",
+      "marca": "restaurante",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Cantina da Nona"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cardapio-quadro",
+              "campos": {
+                "kicker": "Feitas aqui, todo dia",
+                "titulo": "Massas da casa",
+                "item1": "Tagliatelle ao ragu",
+                "preco1": "58",
+                "item2": "Nhoque de batata",
+                "preco2": "49",
+                "item3": "Lasanha da nonna",
+                "preco3": "62",
+                "item4": "Ravioli de abóbora",
+                "preco4": "56",
+                "item5": "Espaguete ao pomodoro",
+                "preco5": "44",
+                "nota": "Preços em reais · meia porção sob pedido",
+                "foto": "/pecas-ouro/fotos/restaurante/tagliatelle.jpg"
+              }
+            },
+            {
+              "id": "mural-foto",
+              "campos": {
+                "kicker": "No Instagram",
+                "titulo": "Os bastidores da cozinha, todo dia",
+                "arroba": "@sua.casa",
+                "foto": "/pecas-ouro/fotos/restaurante/antepasto.jpg",
+                "foto2": "/pecas-ouro/fotos/restaurante/fazendo-massa.jpg",
+                "foto3": "/pecas-ouro/fotos/restaurante/queijos.jpg",
+                "foto4": "/pecas-ouro/fotos/restaurante/salao-rustico.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "editorial-citacao",
+              "campos": {
+                "citacao": "A massa tem o gosto da casa da minha avó.",
+                "nome": "Helena Prado",
+                "detalhe": "Cliente às sextas",
+                "foto": "/pecas-ouro/fotos/restaurante/cozinha.jpg"
+              }
+            },
+            {
+              "id": "horario-foto",
+              "campos": {
+                "kicker": "Reservas",
+                "titulo": "Horário da casa",
+                "dia1": "Terça a sexta",
+                "hora1": "11h30 – 23h",
+                "dia2": "Sábado",
+                "hora2": "12h – 0h",
+                "dia3": "Domingo",
+                "hora3": "12h – 17h",
+                "nota": "Segunda: fechado para descanso",
+                "foto": "/pecas-ouro/fotos/restaurante/salao.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Pergunte pelo vinho da semana",
+        "Sobremesa da nonna todo domingo",
+        "Meia porção de massa sob pedido"
+      ],
+      "sobre": "Para o restaurante em pé: as massas da casa com preço, a cozinha em fotos, um cliente e o horário.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-lanchonete-deitada",
+      "nome": "Lanchonete · TV deitada · combo e vagas",
+      "perfil": "comercio",
+      "negocio": "lanchonete",
+      "ramos": [
+        "comida"
+      ],
+      "estrutura": "pacote lanchonete com foto",
+      "marca": "lanchonete",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Lanchonete da Praça"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "numero-preco",
+              "campos": {
+                "kicker": "Combo do dia",
+                "titulo": "Burger da casa",
+                "apoio": "Pão brioche, blend de 180 g, cheddar e fritas.",
+                "preco": "29",
+                "centavos": ",90",
+                "nota": "Até as 15h",
+                "foto": "/pecas-ouro/fotos/lanchonete/burger-gourmet.jpg"
+              }
+            },
+            {
+              "id": "capa-produto",
+              "campos": {
+                "kicker": "Combo da casa",
+                "titulo": "Burger, fritas e refri",
+                "preco": "34",
+                "centavos": ",90",
+                "unidade": "o combo",
+                "cta": "Peça no caixa ou pelo app",
+                "foto": "/pecas-ouro/fotos/lanchonete/combo.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "vaga-foto",
+              "campos": {
+                "kicker": "Vem trabalhar com a gente",
+                "titulo": "Estamos contratando",
+                "vaga1": "Chapeiro(a) · noite",
+                "vaga2": "Atendente · fins de semana",
+                "instrucao": "Aponte a câmera e mande o seu currículo",
+                "foto": "/pecas-ouro/fotos/lanchonete/chapeiro.jpg",
+                "link": "https://exemplo.com.br/vagas"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Delivery até as 23h",
+        "Molho da casa em todos os lanches",
+        "Peça pelo app e retire no balcão"
+      ],
+      "sobre": "Para a lanchonete: o burger com preço grande, o combo da casa e a vaga com QR.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-lanchonete-em-pe",
+      "nome": "Lanchonete · TV em pé · para dividir",
+      "perfil": "comercio",
+      "negocio": "lanchonete",
+      "ramos": [
+        "comida"
+      ],
+      "estrutura": "pacote lanchonete com foto",
+      "marca": "lanchonete",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Lanchonete da Praça"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "oferta-dupla",
+              "campos": {
+                "titulo": "Para dividir",
+                "kicker": "Toda noite",
+                "nome1": "Cheeseburger duplo",
+                "preco1": "28",
+                "nome2": "Porção de fritas",
+                "preco2": "19",
+                "foto": "/pecas-ouro/fotos/lanchonete/cheeseburger.jpg",
+                "foto2": "/pecas-ouro/fotos/lanchonete/fritas.jpg"
+              }
+            },
+            {
+              "id": "capa-casa",
+              "campos": {
+                "kicker": "Desde 2009",
+                "titulo": "O lanche",
+                "titulo2": "da turma toda",
+                "apoio": "Mesas grandes, chope gelado e música baixa.",
+                "endereco": "Todo dia, das 11h às 23h",
+                "foto": "/pecas-ouro/fotos/lanchonete/mesa-amigos.jpg",
+                "marca": "Lanchonete da Praça"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cardapio-destaque",
+              "campos": {
+                "kicker": "Balde da semana",
+                "titulo": "Frango crocante com molho da casa",
+                "apoio": "Oito pedaços temperados na hora.",
+                "quando": "Para dois",
+                "preco": "42",
+                "centavos": ",00",
+                "foto": "/pecas-ouro/fotos/lanchonete/frango-frito.jpg"
+              }
+            },
+            {
+              "id": "oferta-desconto",
+              "campos": {
+                "kicker": "Terça da pizza",
+                "desconto": "20",
+                "titulo": "Na pizza brotinho, só às terças",
+                "prazo": "Das 18h às 23h",
+                "foto": "/pecas-ouro/fotos/lanchonete/pizza.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Refil de refrigerante no salão",
+        "Aniversariante ganha a sobremesa",
+        "Aceitamos vale-refeição"
+      ],
+      "sobre": "Para a lanchonete em pé: os lanches para dividir, a casa cheia, o balde da semana e a terça da pizza.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-otica-deitada",
+      "nome": "Ótica · TV deitada · coleção de outono",
+      "perfil": "comercio",
+      "negocio": "otica",
+      "ramos": [
+        "otica"
+      ],
+      "estrutura": "pacote otica com foto",
+      "marca": "otica",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Ótica Central"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "diptico-oferta",
+              "campos": {
+                "kicker": "Coleção de outono",
+                "titulo": "Armações",
+                "titulo2": "em acetato",
+                "apoio": "Leves, resistentes e ajustadas na hora.",
+                "preco-rotulo": "a partir de",
+                "parcelas": "ou 10× de R$ 38,90",
+                "preco": "389",
+                "centavos": ",00",
+                "cta": "Prove na loja, sem compromisso",
+                "foto": "/pecas-ouro/fotos/otica/tartaruga.jpg"
+              }
+            },
+            {
+              "id": "editorial-moldura",
+              "campos": {
+                "kicker": "Edição de outono",
+                "titulo": "Clássicos que não saem de moda",
+                "apoio": "Acetato italiano, desenho dos anos cinquenta e lentes feitas na medida do seu rosto.",
+                "legenda": "Na foto: armação Lisboa",
+                "foto": "/pecas-ouro/fotos/otica/armacao-madeira.jpg",
+                "marca": "Ótica Central"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "oferta-desconto",
+              "campos": {
+                "kicker": "Semana do sol",
+                "desconto": "30",
+                "titulo": "Em todos os óculos de sol da vitrine",
+                "prazo": "Até sábado ou enquanto durar o estoque",
+                "foto": "/pecas-ouro/fotos/otica/sol-areia.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Parcelamos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ajuste de armação sem custo",
+        "Lentes prontas em até sete dias",
+        "Parcelamos em até 10 vezes"
+      ],
+      "sobre": "Para a ótica: a coleção em díptico, a página de revista da armação e o desconto dos óculos de sol.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-otica-em-pe",
+      "nome": "Ótica · TV em pé · verão e exame",
+      "perfil": "comercio",
+      "negocio": "otica",
+      "ramos": [
+        "otica"
+      ],
+      "estrutura": "pacote otica com foto",
+      "marca": "otica",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Ótica Central"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "capa-campanha",
+              "campos": {
+                "periodo": "Até 31 de janeiro",
+                "titulo": "Coleção",
+                "titulo2": "de verão",
+                "apoio": "Lentes com proteção UV e armações leves para o calor.",
+                "local": "Na loja e no site",
+                "foto": "/pecas-ouro/fotos/otica/sol-mulher.jpg"
+              }
+            },
+            {
+              "id": "diptico-servico",
+              "campos": {
+                "kicker": "Ajuste na hora",
+                "titulo": "Seus óculos prontos em três passos",
+                "passo1": "Escolha a armação",
+                "passo2": "Medimos as lentes aqui",
+                "passo3": "Retire ajustado",
+                "nota": "Traga a sua receita",
+                "foto": "/pecas-ouro/fotos/otica/leitura.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "diptico-agenda",
+              "campos": {
+                "kicker": "Exame de vista",
+                "titulo": "Marque o seu",
+                "titulo2": "pelo celular",
+                "instrucao": "Aponte a câmera e escolha o horário",
+                "contato": "ou fale com a gente no balcão",
+                "foto": "/pecas-ouro/fotos/otica/retrato-oculos.jpg",
+                "link": "https://exemplo.com.br/agenda"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Óculos de sol com proteção UV400",
+        "Lentes multifocais com adaptação assistida",
+        "Limpeza de lentes na hora"
+      ],
+      "sobre": "Para a ótica em pé: a coleção de verão, o óculos pronto em três passos e o exame de vista pelo QR.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-salao-deitada",
+      "nome": "Salão · TV deitada · quem atende",
+      "perfil": "comercio",
+      "negocio": "salao",
+      "ramos": [
+        "beleza",
+        "barbearia"
+      ],
+      "estrutura": "pacote salao com foto",
+      "marca": "salao",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Studio Bella"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "gente-retrato",
+              "campos": {
+                "kicker": "Quem atende você",
+                "nome": "Marina Duarte",
+                "funcao": "Colorista · 12 anos de salão",
+                "frase": "Cor boa é a que parece sua. Eu começo sempre pela conversa.",
+                "foto": "/pecas-ouro/fotos/salao/cabelo-vento.jpg"
+              }
+            },
+            {
+              "id": "capa-casa",
+              "campos": {
+                "kicker": "Desde 2014",
+                "titulo": "Seu tempo,",
+                "titulo2": "seu cuidado",
+                "apoio": "Cabelo, unhas e maquiagem com hora marcada.",
+                "endereco": "Terça a sábado",
+                "foto": "/pecas-ouro/fotos/salao/camarim.jpg",
+                "marca": "Studio Bella"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "diptico-agenda",
+              "campos": {
+                "kicker": "Agenda aberta",
+                "titulo": "Seu horário",
+                "titulo2": "em dois toques",
+                "instrucao": "Aponte a câmera e escolha o dia",
+                "contato": "ou fale com a recepção",
+                "foto": "/pecas-ouro/fotos/salao/coque.jpg",
+                "link": "https://exemplo.com.br/agenda"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Parcelamos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Café e água enquanto você espera",
+        "Pacotes para noivas sob consulta",
+        "Hidratação com hora marcada"
+      ],
+      "sobre": "Para o salão: a profissional em retrato, a casa em foto cheia e a agenda pelo QR.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-salao-em-pe",
+      "nome": "Salão · TV em pé · equipe e novidade",
+      "perfil": "comercio",
+      "negocio": "salao",
+      "ramos": [
+        "beleza",
+        "barbearia"
+      ],
+      "estrutura": "pacote salao com foto",
+      "marca": "salao",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Studio Bella"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "equipe-trio",
+              "campos": {
+                "titulo": "Nosso time",
+                "kicker": "Quem atende você",
+                "nome1": "Carla Nunes",
+                "funcao1": "Coloração",
+                "nome2": "Bruno Teles",
+                "funcao2": "Corte masculino",
+                "nome3": "Júlio Sá",
+                "funcao3": "Barba",
+                "foto": "/pecas-ouro/fotos/salao/batom.jpg",
+                "foto2": "/pecas-ouro/fotos/salao/barbeiro.jpg",
+                "foto3": "/pecas-ouro/fotos/salao/tranca.jpg"
+              }
+            },
+            {
+              "id": "editorial-citacao",
+              "campos": {
+                "citacao": "Saio daqui me sentindo outra pessoa. E o café é sempre bom.",
+                "nome": "Renata Alves",
+                "detalhe": "Cliente há seis anos",
+                "foto": "/pecas-ouro/fotos/salao/maquiagem.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "numero-marco",
+              "campos": {
+                "kicker": "Desde 2014",
+                "numero": "10",
+                "rotulo": "anos de salão",
+                "assinatura": "Obrigada, clientes",
+                "foto": "/pecas-ouro/fotos/salao/ombre.jpg"
+              }
+            },
+            {
+              "id": "aviso-faixa",
+              "campos": {
+                "selo": "Novidade",
+                "titulo": "Agora com manicure aos domingos",
+                "corpo": "Das 9h às 14h, com hora marcada.",
+                "quando": "A partir de 7 de dezembro",
+                "foto": "/pecas-ouro/fotos/salao/pinceis.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Agende pelo WhatsApp do salão",
+        "Barba às sextas até as 21h",
+        "Vale-presente no caixa"
+      ],
+      "sobre": "Para o salão em pé: a equipe em três retratos, o depoimento de uma cliente, os dez anos e a novidade.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-farmacia-deitada",
+      "nome": "Farmácia · TV deitada · vacina e dica",
+      "perfil": "saude",
+      "negocio": "farmacia",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote farmacia com foto",
+      "marca": "farmacia",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Farmácia Bem Estar"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "capa-campanha",
+              "campos": {
+                "periodo": "Até 30 de maio",
+                "titulo": "Vacina da gripe",
+                "titulo2": "já chegou",
+                "apoio": "Aplicação na sala de serviços, por farmacêutico.",
+                "local": "Sem agendamento",
+                "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
+              }
+            },
+            {
+              "id": "dica-foto",
+              "campos": {
+                "kicker": "Dica da semana",
+                "edicao": "Nº 12",
+                "titulo": "Beba água ao longo do dia, mesmo sem sede",
+                "apoio": "Deixe uma garrafa à vista na mesa. Dúvidas sobre o seu caso, fale com o farmacêutico.",
+                "foto": "/pecas-ouro/fotos/farmacia/cha-jarra.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "horario-foto",
+              "campos": {
+                "kicker": "Estamos abertos",
+                "titulo": "Horário de atendimento",
+                "dia1": "Segunda a sexta",
+                "hora1": "7h – 22h",
+                "dia2": "Sábado",
+                "hora2": "8h – 20h",
+                "dia3": "Domingo",
+                "hora3": "8h – 14h",
+                "nota": "Plantão no primeiro domingo do mês",
+                "foto": "/pecas-ouro/fotos/farmacia/balcao-moderno.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Parcelamos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Farmacêutico de plantão o dia todo",
+        "Entregamos no bairro",
+        "Traga a sua receita"
+      ],
+      "sobre": "Para a farmácia: a campanha da vacina, a dica da semana e o horário de atendimento.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-farmacia-em-pe",
+      "nome": "Farmácia · TV em pé · serviços e opinião",
+      "perfil": "saude",
+      "negocio": "farmacia",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote farmacia com foto",
+      "marca": "farmacia",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Farmácia Bem Estar"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "diptico-servico",
+              "campos": {
+                "kicker": "Serviços farmacêuticos",
+                "titulo": "Atendimento na sala ao lado do caixa",
+                "passo1": "Aferição de pressão",
+                "passo2": "Teste de glicemia",
+                "passo3": "Orientação sobre remédios",
+                "nota": "Pergunte a um farmacêutico",
+                "foto": "/pecas-ouro/fotos/farmacia/cha-bule.jpg"
+              }
+            },
+            {
+              "id": "frase-faixa",
+              "campos": {
+                "kicker": "Nosso compromisso",
+                "titulo": "Cada dúvida",
+                "titulo2": "tem resposta.",
+                "detalhe": "Farmacêutico no balcão o dia todo",
+                "foto": "/pecas-ouro/fotos/farmacia/comprimidos.jpg",
+                "marca": "Farmácia Bem Estar"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "qr-foto",
+              "campos": {
+                "kicker": "Sua opinião",
+                "titulo": "Como foi o seu atendimento?",
+                "instrucao": "Aponte a câmera do celular",
+                "nota": "leva menos de um minuto",
+                "foto": "/pecas-ouro/fotos/farmacia/cafe-da-manha.jpg",
+                "link": "https://exemplo.com.br/avaliar"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Entregamos no bairro",
+        "Aceitamos convênios",
+        "Medicamentos só com orientação"
+      ],
+      "sobre": "Para a farmácia em pé: os serviços na sala ao lado do caixa, o compromisso da casa e a opinião pelo QR.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-clinica-deitada",
+      "nome": "Clínica · TV deitada · especialidades",
+      "perfil": "saude",
+      "negocio": "clinica",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote clinica com foto",
+      "marca": "clinica",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Clínica Vida"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "numero-dado",
+              "campos": {
+                "kicker": "Nossa equipe",
+                "numero": "18",
+                "rotulo": "especialidades no mesmo endereço",
+                "contexto": "Pergunte na recepção pela sua.",
+                "foto": "/pecas-ouro/fotos/clinica/atrio.jpg"
+              }
+            },
+            {
+              "id": "editorial-indice",
+              "campos": {
+                "kicker": "Primeira consulta",
+                "titulo": "Sua visita em três passos",
+                "passo1": "Chegue 15 minutos antes",
+                "passo2": "Traga documento e carteirinha",
+                "passo3": "Aguarde ser chamado pelo nome",
+                "foto": "/pecas-ouro/fotos/clinica/corredor.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "dica-foto",
+              "campos": {
+                "kicker": "Dica da semana",
+                "edicao": "Nº 3",
+                "titulo": "Fruta no lanche da tarde",
+                "apoio": "Uma porção por dia já faz parte de uma rotina mais leve.",
+                "foto": "/pecas-ouro/fotos/clinica/frutas.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Convênios e particular",
+        "Resultados de exame pelo site",
+        "Wi-Fi na sala de espera"
+      ],
+      "sobre": "Para a clínica: as especialidades da casa, a primeira consulta em três passos e a dica da semana.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-clinica-em-pe",
+      "nome": "Clínica · TV em pé · boas-vindas",
+      "perfil": "saude",
+      "negocio": "clinica",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote clinica com foto",
+      "marca": "clinica",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Clínica Vida"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "capa-casa",
+              "campos": {
+                "kicker": "Bem-vindo",
+                "titulo": "Cuidado de perto,",
+                "titulo2": "sem pressa",
+                "apoio": "Uma equipe que escuta, explica e acompanha cada consulta.",
+                "endereco": "Segunda a sábado",
+                "foto": "/pecas-ouro/fotos/clinica/fachada.jpg",
+                "marca": "Clínica Vida"
+              }
+            },
+            {
+              "id": "diptico-servico",
+              "campos": {
+                "kicker": "Check-up completo",
+                "titulo": "Tudo num só lugar, numa só manhã",
+                "passo1": "Consulta com o clínico",
+                "passo2": "Exames no mesmo dia",
+                "passo3": "Retorno com os resultados",
+                "nota": "Convênios e particular · agende na recepção",
+                "foto": "/pecas-ouro/fotos/clinica/sala-clara.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "evento-foto",
+              "campos": {
+                "dia": "22",
+                "mes": "Quarta · outubro",
+                "kicker": "Roda de conversa",
+                "titulo": "Outubro Rosa: tire as suas dúvidas",
+                "hora": "Às 10h",
+                "local": "Na sala de espera, com a equipe",
+                "foto": "/pecas-ouro/fotos/clinica/alongamento.jpg"
+              }
+            },
+            {
+              "id": "diptico-agenda",
+              "campos": {
+                "kicker": "Agendamento",
+                "titulo": "Marque a consulta",
+                "titulo2": "pelo celular",
+                "instrucao": "Aponte a câmera e escolha o horário",
+                "contato": "ou fale com a recepção",
+                "foto": "/pecas-ouro/fotos/clinica/sorriso-sol.jpg",
+                "link": "https://exemplo.com.br/agenda"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Convênios e particular",
+        "Resultados de exame pelo site",
+        "Estacionamento conveniado ao lado"
+      ],
+      "sobre": "Para a clínica em pé: a casa em foto cheia, o check-up em três passos, a roda de conversa e a agenda pelo QR.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-dentista-deitada",
+      "nome": "Dentista · TV deitada · equipe e agenda",
+      "perfil": "saude",
+      "negocio": "dentista",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote dentista com foto",
+      "marca": "dentista",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Sorriso Odontologia"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "numero-marco",
+              "campos": {
+                "kicker": "Desde 2011",
+                "numero": "15",
+                "rotulo": "anos cuidando de sorrisos",
+                "assinatura": "Obrigado pela confiança",
+                "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
+              }
+            },
+            {
+              "id": "equipe-trio",
+              "campos": {
+                "titulo": "Quem cuida de você",
+                "kicker": "Nossa equipe",
+                "nome1": "Dra. Paula Mendes",
+                "funcao1": "Ortodontia",
+                "nome2": "Dr. Rafael Alves",
+                "funcao2": "Implantes",
+                "nome3": "Dr. Lucas Prado",
+                "funcao3": "Clínica geral",
+                "foto": "/pecas-ouro/fotos/dentista/sorriso-sardas.jpg",
+                "foto2": "/pecas-ouro/fotos/dentista/sorriso-rapaz.jpg",
+                "foto3": "/pecas-ouro/fotos/dentista/sorriso-tranquilo.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "diptico-agenda",
+              "campos": {
+                "kicker": "Agendamento",
+                "titulo": "Marque a consulta",
+                "titulo2": "pelo celular",
+                "instrucao": "Aponte a câmera e escolha o horário",
+                "contato": "ou fale com a recepção",
+                "foto": "/pecas-ouro/fotos/dentista/sorriso-flores.jpg",
+                "link": "https://exemplo.com.br/agenda"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Atendemos convênios odontológicos",
+        "Avaliação com hora marcada",
+        "Atendimento infantil às quartas"
+      ],
+      "sobre": "Para o consultório: os quinze anos da casa, a equipe em retratos e a agenda pelo QR.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-dentista-em-pe",
+      "nome": "Dentista · TV em pé · primeira consulta",
+      "perfil": "saude",
+      "negocio": "dentista",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote dentista com foto",
+      "marca": "dentista",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Sorriso Odontologia"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "capa-casa",
+              "campos": {
+                "kicker": "Bem-vindo",
+                "titulo": "Cuidar do sorriso,",
+                "titulo2": "sem pressa",
+                "apoio": "Uma equipe que explica cada etapa do seu tratamento.",
+                "endereco": "Segunda a sábado",
+                "foto": "/pecas-ouro/fotos/dentista/consultorio.jpg",
+                "marca": "Sorriso Odontologia"
+              }
+            },
+            {
+              "id": "editorial-indice",
+              "campos": {
+                "kicker": "Primeira consulta",
+                "titulo": "Sua visita em três passos",
+                "passo1": "Chegue 15 minutos antes",
+                "passo2": "Traga documento e carteirinha",
+                "passo3": "Aguarde ser chamado pelo nome",
+                "foto": "/pecas-ouro/fotos/clinica/espera.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "dica-foto",
+              "campos": {
+                "kicker": "Dica da semana",
+                "edicao": "Nº 8",
+                "titulo": "Troque a escova a cada três meses",
+                "apoio": "Ou antes, se as cerdas estiverem abertas.",
+                "foto": "/pecas-ouro/fotos/dentista/sorriso-sardas.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Atendemos convênios odontológicos",
+        "Avaliação com hora marcada",
+        "Estacionamento ao lado"
+      ],
+      "sobre": "Para o consultório em pé: a casa em foto cheia, a primeira consulta em três passos e a dica da semana.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-escritorio-deitada",
+      "nome": "Escritório · TV deitada · equipe e números",
+      "perfil": "empresa",
+      "negocio": "escritorio",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote escritorio com foto",
+      "marca": "escritorio",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-centro",
+              "campos": {
+                "sub": "Comunicação interna",
+                "marca": "Vértice Contabilidade"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "capa-casa",
+              "campos": {
+                "kicker": "Quem somos",
+                "titulo": "Gente que faz",
+                "titulo2": "o trabalho bem feito",
+                "apoio": "Cada entrega passa por mãos que conhecem o ofício.",
+                "endereco": "Unidade Centro",
+                "foto": "/pecas-ouro/fotos/escritorio/escritorio-aberto.jpg",
+                "marca": "Vértice Contabilidade"
+              }
+            },
+            {
+              "id": "numero-dado",
+              "campos": {
+                "kicker": "Nosso ano",
+                "numero": "1.240",
+                "rotulo": "declarações entregues no prazo",
+                "contexto": "Obrigado a cada um da equipe.",
+                "foto": "/pecas-ouro/fotos/escritorio/predio-noite.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "aviso-faixa",
+              "campos": {
+                "selo": "Comunicado",
+                "titulo": "Estacionamento fechado para obra",
+                "corpo": "Use a entrada da rua de trás. A portaria 2 fica aberta das 6h às 22h.",
+                "quando": "De 10 a 21 de novembro",
+                "foto": "/pecas-ouro/fotos/escritorio/sala-reuniao.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ponto até o dia 25",
+        "Reunião geral na primeira segunda do mês",
+        "Café novo na copa do terceiro andar"
+      ],
+      "sobre": "Para o escritório: a equipe em foto cheia, o número do ano e o comunicado da semana.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-escritorio-em-pe",
+      "nome": "Escritório · TV em pé · novidades da casa",
+      "perfil": "empresa",
+      "negocio": "escritorio",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote escritorio com foto",
+      "marca": "escritorio",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-centro",
+              "campos": {
+                "sub": "Comunicação interna",
+                "marca": "Vértice Contabilidade"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "editorial-moldura",
+              "campos": {
+                "kicker": "Por dentro",
+                "titulo": "O escritório novo ficou pronto",
+                "apoio": "Mais luz, salas de reunião e um café de verdade no terceiro andar.",
+                "legenda": "Na foto: o terceiro andar",
+                "foto": "/pecas-ouro/fotos/escritorio/mesa-minimalista.jpg",
+                "marca": "Vértice Contabilidade"
+              }
+            },
+            {
+              "id": "diptico-servico",
+              "campos": {
+                "kicker": "Exame periódico",
+                "titulo": "Seu exame em três etapas",
+                "passo1": "Agende com o RH",
+                "passo2": "Faça os exames no ambulatório",
+                "passo3": "Retire o atestado",
+                "nota": "Dúvidas: ramal 280",
+                "foto": "/pecas-ouro/fotos/escritorio/maos-notebook.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "qr-foto",
+              "campos": {
+                "kicker": "Pesquisa interna",
+                "titulo": "Como está o seu dia a dia aqui?",
+                "instrucao": "Aponte a câmera e responda",
+                "nota": "é anônimo",
+                "foto": "/pecas-ouro/fotos/escritorio/reuniao.jpg",
+                "link": "https://exemplo.com.br/avaliar"
+              }
+            },
+            {
+              "id": "evento-foto",
+              "campos": {
+                "dia": "28",
+                "mes": "Sexta · novembro",
+                "kicker": "Confraternização",
+                "titulo": "Café da manhã de fim de ano",
+                "hora": "Às 8h30",
+                "local": "No terraço",
+                "foto": "/pecas-ouro/fotos/escritorio/equipe-executiva.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ponto até o dia 25",
+        "Férias: avise o RH com 30 dias",
+        "Aniversariantes do mês na copa"
+      ],
+      "sobre": "Para o escritório em pé: o andar novo, o exame periódico em três etapas, a pesquisa pelo QR e a confraternização.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-industria-deitada",
+      "nome": "Indústria · TV deitada · segurança",
+      "perfil": "empresa",
+      "negocio": "industria",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote industria com foto",
+      "marca": "industria",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Metalúrgica Andrade"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "numero-dado",
+              "campos": {
+                "kicker": "Segurança",
+                "numero": "312",
+                "rotulo": "dias sem acidente com afastamento",
+                "contexto": "O recorde da fábrica é 405. Vamos juntos.",
+                "foto": "/pecas-ouro/fotos/industria/fabrica.jpg"
+              }
+            },
+            {
+              "id": "seguranca-foto",
+              "campos": {
+                "selo": "Área de solda",
+                "titulo": "Antes de entrar, confira",
+                "item1": "Máscara de solda abaixada",
+                "item2": "Luvas de raspa",
+                "item3": "Avental e mangote",
+                "item4": "Botina com biqueira",
+                "foto": "/pecas-ouro/fotos/industria/soldador.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "horario-foto",
+              "campos": {
+                "kicker": "Refeitório",
+                "titulo": "Horário das refeições",
+                "dia1": "Café",
+                "hora1": "6h – 7h30",
+                "dia2": "Almoço",
+                "hora2": "11h – 14h",
+                "dia3": "Jantar",
+                "hora3": "18h – 19h30",
+                "nota": "Turno da noite: lanche às 2h",
+                "foto": "/pecas-ouro/fotos/industria/escada.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Use o protetor auricular no galpão 2",
+        "Treinamento de brigada na quinta",
+        "Exame periódico: confira a sua data no RH"
+      ],
+      "sobre": "Para a fábrica: os dias sem acidente, o EPI da área de solda e o horário do refeitório.",
+      "estado": "proposta",
+      "lote": 4
+    },
+    {
+      "id": "l4-industria-em-pe",
+      "nome": "Indústria · TV em pé · gente da fábrica",
+      "perfil": "empresa",
+      "negocio": "industria",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote industria com foto",
+      "marca": "industria",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Metalúrgica Andrade"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "frase-faixa",
+              "campos": {
+                "kicker": "Nosso jeito",
+                "titulo": "Bem feito",
+                "titulo2": "na primeira vez.",
+                "detalhe": "Qualidade é de todos",
+                "foto": "/pecas-ouro/fotos/industria/estrutura.jpg",
+                "marca": "Metalúrgica Andrade"
+              }
+            },
+            {
+              "id": "editorial-citacao",
+              "campos": {
+                "citacao": "Aqui eu aprendi o ofício e hoje ensino quem chega.",
+                "nome": "Carlos Mendes",
+                "detalhe": "22 anos de casa, na usinagem",
+                "foto": "/pecas-ouro/fotos/industria/marceneiro.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "vaga-foto",
+              "campos": {
+                "kicker": "Indique um amigo",
+                "titulo": "Vagas abertas",
+                "vaga1": "Operador(a) de máquina · turno B",
+                "vaga2": "Auxiliar de logística · turno A",
+                "instrucao": "Aponte a câmera e veja os requisitos",
+                "foto": "/pecas-ouro/fotos/industria/tear.jpg",
+                "link": "https://exemplo.com.br/vagas"
+              }
+            },
+            {
+              "id": "aviso-faixa",
+              "campos": {
+                "selo": "Comunicado",
+                "titulo": "Parada da linha 2 para manutenção",
+                "corpo": "Sábado, das 6h às 14h. O turno B apoia o setor de pintura.",
+                "quando": "Sábado, 15 de novembro",
+                "foto": "/pecas-ouro/fotos/industria/conteineres.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ônibus da noite sai às 22h10",
+        "Use o protetor auricular no galpão 2",
+        "Indique um amigo para as vagas"
+      ],
+      "sobre": "Para a fábrica em pé: o jeito da casa, a palavra de quem faz, as vagas pelo QR e a parada da linha.",
+      "estado": "proposta",
+      "lote": 4
     }
   ]
 }

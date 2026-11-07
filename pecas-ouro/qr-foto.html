@@ -1,0 +1,62 @@
+<!--
+  Chamada com QR sobre foto — família social (lote 4, arquétipo A8).
+  A foto cobre a peça; um cartão de fundo cheio, encostado à direita de
+  cima a baixo, leva o convite e o QR grande (160 px ou mais na TV, D44).
+  O QR nunca fica sobre a foto. Em pé e na quadrada, o cartão vai para o
+  pé; na lateral, a foto vira faixa e o QR cresce.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5.4cqw; --q: 15cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 35% 50%; }
+.cartao { position: absolute; top: 0; right: 0; bottom: 0; width: 42%; display: flex; flex-direction: column; justify-content: center; padding: 8cqh 6cqw 8cqh 4.4cqw; background: var(--mt-fundo); }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.02 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.qr { margin-top: 5cqh; display: flex; align-items: center; gap: 2.4cqw; }
+.qr img { flex: none; width: var(--q); height: var(--q); }
+.qr p { min-width: 0; font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.25 var(--mt-fonte-texto); text-wrap: balance; }
+.qr b { display: block; margin-top: .8cqh; font-weight: 600; color: var(--mt-destaque); overflow-wrap: anywhere; }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { --f: 3.5cqw; --t: 5.4cqw; --q: 17cqw; }
+  .cartao { width: 54%; padding: 6cqh 5cqw 6cqh 4cqw; }
+  .kicker { letter-spacing: .06em; }
+  .qr { margin-top: 4cqh; }
+  .qr b { display: none; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 5.4cqw; --q: 20cqw; }
+  .kicker { display: none; }
+  .qr { margin-top: 3cqh; }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 9.4cqw; --q: 30cqw; }
+  .foto { height: 52%; object-position: 50% 40%; }
+  .cartao { top: auto; left: 0; width: auto; height: 50%; justify-content: center; padding: 4cqh 7cqw 6cqh; }
+  .qr { margin-top: 4cqh; gap: 4.4cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --t: 7cqw; --q: 24cqw; }
+  .foto { height: 100%; width: 46%; object-position: 50% 40%; }
+  .cartao { top: 0; left: auto; width: 56%; height: auto; padding: 6cqh 6cqw 6cqh 5cqw; }
+  .qr { flex-direction: column; align-items: flex-start; gap: 3cqh; }
+}
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 11.4cqw; --q: 40cqw; }
+  .foto { width: 100%; height: 26%; }
+  .cartao { top: auto; left: 0; width: auto; height: 76%; padding: 3cqh 8cqw 5cqh; }
+  .kicker { display: none; }
+  .qr { flex-direction: column; align-items: flex-start; margin-top: 2.4cqh; gap: 2.4cqh; }
+  .qr b { display: none; }
+}
+</style>
+<section class="mt-peca qr-foto">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+  <div class="cartao">
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="1">Gostou de hoje?</p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Conte para a gente em um minuto</h1>
+    <div class="qr" data-entrada="subir" data-ordem="3">
+      <img data-campo-qr="link" alt="QR para avaliar">
+      <p><span data-campo="instrucao">Aponte a câmera do celular</span><b data-campo="nota">sua avaliação ajuda muito</b></p>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,55 @@
+<!--
+  O desconto grande — família oferta (lote 4, arquétipo A4).
+  O número do desconto domina, na letra do título e na cor do texto, com o
+  "%" e o "off" menores na cor de destaque. A foto do produto ocupa a outra
+  metade em corte seco. O prazo vai num filete embaixo. Só comércio: na
+  saúde, desconto não se anuncia.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 4.6cqw; --n: 21cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 50fr 50fr; }
+.texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 7cqh 4cqw 7cqh 6cqw; }
+.foto { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 50%; }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.numero { margin-top: 2cqh; display: flex; align-items: flex-start; font: 500 max(var(--mt-piso, 0cqw), calc(var(--n) * var(--mt-escala-titulo, 1)))/.82 var(--mt-fonte-titulo); letter-spacing: -.04em; white-space: nowrap; }
+.numero small { margin-left: .04em; display: flex; flex-direction: column; font-size: max(var(--mt-piso, 0cqw), .3em); line-height: .9; letter-spacing: 0; color: var(--mt-destaque); }
+h1 { margin-top: 3cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.05 var(--mt-fonte-titulo); text-wrap: balance; }
+.prazo { margin-top: 3cqh; padding-top: 2cqh; border-top: .14cqw solid var(--mt-linha); font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.25 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { --f: 3.5cqw; --t: 4.8cqw; --n: 20cqw; grid-template-columns: 54fr 46fr; }
+  .texto { padding: 5cqh 3cqw 5cqh 5cqw; }
+  .kicker { letter-spacing: .06em; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 5cqw; --n: 17cqw; }
+  .kicker, .prazo { display: none; }
+  .numero { margin-top: 0; }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 8cqw; --n: 38cqw; grid-template-columns: 1fr; grid-template-rows: 42fr 58fr; }
+  .foto { grid-row: 1; }
+  .texto { grid-row: 2; padding: 5cqh 7cqw 6cqh; }
+  .prazo { border-top-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --t: 6.4cqw; --n: 24cqw; grid-template-rows: 38fr 62fr; }
+  .texto { padding: 4cqh 7cqw 5cqh; }
+  h1 { margin-top: 2cqh; }
+  .prazo { margin-top: 2cqh; padding-top: 1.6cqh; }
+}
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 11cqw; --n: 46cqw; grid-template-rows: 34fr 66fr; }
+  .texto { padding: 3cqh 8cqw 4cqh; }
+  .kicker { letter-spacing: .02em; text-transform: none; }
+  .prazo { display: none; }
+}
+</style>
+<section class="mt-peca oferta-desconto">
+  <div class="texto">
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="1">Semana do sol</p>
+    <p class="numero" data-entrada="crescer" data-ordem="2"><span data-campo="desconto">30</span><small aria-hidden="true"><span>%</span><span>off</span></small></p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="3">Em todos os óculos de sol da vitrine</h1>
+    <p class="prazo" data-campo="prazo" data-entrada="aparecer" data-ordem="4">Até sábado ou enquanto durar o estoque</p>
+  </div>
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+</section>

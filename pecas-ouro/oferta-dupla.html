@@ -1,0 +1,50 @@
+<!--
+  Dois produtos, dois preços — família oferta (lote 4, arquétipo A9).
+  Dois quadros iguais lado a lado, cada um com a foto em cima e o nome e o
+  preço embaixo, sob um título curto: o combo e o avulso, o croissant e o
+  café, a armação e a lente. O preço fica na cor de destaque, na letra do
+  título. Em pé, os dois quadros empilham.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5.2cqw; --p: 6cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo);
+  display: flex; flex-direction: column; padding: 6cqh 6cqw; }
+.cabeca { flex: none; display: flex; align-items: baseline; justify-content: space-between; gap: 3cqw; padding-bottom: 2cqh; border-bottom: .14cqw solid var(--mt-linha); }
+h1 { font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.grade { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4cqw; margin-top: 4cqh; }
+.item { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.item img { flex: 1 1 auto; width: 100%; min-height: 0; object-fit: cover; object-position: 50% 50%; }
+.item p { flex: none; display: flex; align-items: baseline; justify-content: space-between; gap: 2cqw; margin-top: 2.4cqh; }
+.item span { min-width: 0; font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); text-wrap: balance; }
+.item b { flex: none; font: 500 max(var(--mt-piso, 0cqw), calc(var(--p) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.item b small { font-size: max(var(--mt-piso, 0cqw), .42em); margin-right: .12em; }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { --f: 3.5cqw; --t: 5cqw; --p: 6.4cqw; padding: 5.4cqh 4cqw 5cqh; }
+  .kicker { display: none; }
+  .grade { gap: 3cqw; margin-top: 3cqh; }
+  .item p { margin-top: 1.6cqh; }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 9cqw; --p: 10cqw; padding: 5cqh 7cqw; }
+  .cabeca { flex-direction: column; align-items: flex-start; gap: 1.4cqh; border-bottom-width: .24cqw; }
+  .kicker { order: -1; }
+  .grade { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; gap: 3cqh; margin-top: 3cqh; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --t: 7cqw; --p: 8cqw; padding: 4cqh 6cqw; }
+  .kicker { display: none; }
+  .grade { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr; gap: 4cqw; margin-top: 3cqh; }
+  .item p { flex-direction: column; align-items: flex-start; gap: 1cqh; margin-top: 1.6cqh; }
+}
+</style>
+<section class="mt-peca oferta-dupla">
+  <header class="cabeca" data-entrada="aparecer" data-ordem="1">
+    <h1 data-campo="titulo">Café da manhã</h1>
+    <p class="kicker" data-campo="kicker">Até as 10h</p>
+  </header>
+  <div class="grade">
+    <figure class="item" data-entrada="subir" data-ordem="2"><img data-campo-img="foto" alt=""><p><span data-campo="nome1">Croissant e café</span><b><small aria-hidden="true">R$</small><span data-campo="preco1">16</span></b></p></figure>
+    <figure class="item" data-entrada="subir" data-ordem="3"><img data-campo-img="foto2" alt=""><p><span data-campo="nome2">Fatia de bolo e café</span><b><small aria-hidden="true">R$</small><span data-campo="preco2">14</span></b></p></figure>
+  </div>
+</section>

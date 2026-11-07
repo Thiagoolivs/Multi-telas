@@ -1,0 +1,52 @@
+<!--
+  Equipe em três retratos — família gente (lote 4, arquétipos A7 + A9).
+  Três pessoas lado a lado, retrato no alto e o nome e a função embaixo,
+  sob um título curto. Em pé e quadrada, três linhas (retrato à esquerda).
+  As três fotos têm o mesmo papel (pessoa) para a grade ficar uniforme.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo);
+  display: flex; flex-direction: column; padding: 6cqh 6cqw; }
+.cabeca { flex: none; display: flex; align-items: baseline; justify-content: space-between; gap: 3cqw; padding-bottom: 2cqh; border-bottom: .14cqw solid var(--mt-linha); }
+h1 { font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.grade { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3cqw; margin-top: 4cqh; }
+.pessoa { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.pessoa img { flex: 1 1 auto; width: 100%; min-height: 0; object-fit: cover; object-position: 50% 30%; }
+.pessoa p { flex: none; margin-top: 2cqh; }
+.pessoa b { display: block; font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.15 var(--mt-fonte-texto); }
+.pessoa span { display: block; margin-top: .6cqh; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.15 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { --f: 3.5cqw; --t: 4.8cqw; padding: 4cqh 4cqw 5cqh; }
+  .kicker, .pessoa span { display: none; }
+  .grade { gap: 2.4cqw; margin-top: 3cqh; }
+  .pessoa p { margin-top: 1.4cqh; }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 9cqw; padding: 5cqh 7cqw; }
+  .cabeca { flex-direction: column; align-items: flex-start; gap: 1.4cqh; border-bottom-width: .24cqw; }
+  .kicker { order: -1; }
+  .grade { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr 1fr; gap: 3cqh; margin-top: 3cqh; }
+  .pessoa { display: grid; grid-template-columns: 40fr 60fr; gap: 5cqw; align-items: center; }
+  .pessoa img { height: 100%; }
+  .pessoa p { margin-top: 0; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --t: 7cqw; padding: 4cqh 6cqw; }
+  .kicker { display: none; }
+  .grade { gap: 2.4cqh; margin-top: 2.4cqh; }
+  .pessoa { grid-template-columns: 30fr 70fr; }
+}
+</style>
+<section class="mt-peca equipe-trio">
+  <header class="cabeca" data-entrada="aparecer" data-ordem="1">
+    <h1 data-campo="titulo">Quem cuida de você</h1>
+    <p class="kicker" data-campo="kicker">Nossa equipe</p>
+  </header>
+  <div class="grade">
+    <figure class="pessoa" data-entrada="subir" data-ordem="2"><img data-campo-img="foto" alt=""><p><b data-campo="nome1">Dra. Paula Mendes</b><span data-campo="funcao1">Ortodontia</span></p></figure>
+    <figure class="pessoa" data-entrada="subir" data-ordem="3"><img data-campo-img="foto2" alt=""><p><b data-campo="nome2">Dr. Rafael Alves</b><span data-campo="funcao2">Implantes</span></p></figure>
+    <figure class="pessoa" data-entrada="subir" data-ordem="4"><img data-campo-img="foto3" alt=""><p><b data-campo="nome3">Dra. Lia Campos</b><span data-campo="funcao3">Odontopediatria</span></p></figure>
+  </div>
+</section>
