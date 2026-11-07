@@ -17,7 +17,7 @@
 .quem small { display: block; margin-top: .6cqh; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
 
 @container (aspect-ratio >= 1.25) and (max-height: 900px) {
-  .mt-peca { --f: 3.5cqw; --t: 4.8cqw; grid-template-columns: 36fr 64fr; }
+  .mt-peca { --f: 3.5cqw; --t: 4.6cqw; grid-template-columns: 44fr 56fr; }
   .texto { padding: 5cqh 5cqw; }
   .quem { margin-top: 3cqh; }
   .quem small { display: none; }
@@ -32,8 +32,10 @@
   .quem { margin-top: 4cqw; padding-top: 3cqw; border-top-width: .24cqw; }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .mt-peca { --t: 6.4cqw; grid-template-columns: 38fr 62fr; grid-template-rows: 1fr; }
-  .texto { justify-content: center; padding: 6cqh 6cqw 6cqh 5cqw; }
+  .mt-peca { --t: 6.4cqw; grid-template-rows: 42fr 58fr; }
+  .texto { justify-content: center; padding: 4cqh 7cqw 5cqh; }
+  .aspa { height: .42em; }
+  .quem { margin-top: 3cqh; padding-top: 2cqh; }
   .quem small { display: none; }
 }
 @container (max-width: 700px) {

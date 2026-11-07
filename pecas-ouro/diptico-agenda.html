@@ -49,12 +49,12 @@ h1 em { font-style: normal; color: var(--mt-texto-suave); }
   .qr b { margin-top: 1.4cqw; }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .mt-peca { grid-template-columns: 40fr 60fr; grid-template-rows: 1fr; }
-  .texto { justify-content: center; padding: 6cqh 6cqw 6cqh 5cqw; }
+  .mt-peca { grid-template-columns: 1fr; grid-template-rows: 36fr 64fr; }
+  .texto { justify-content: center; padding: 4cqh 7cqw 5cqh; }
   .kicker { display: none; }
-  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(8cqw * var(--mt-escala-titulo, 1))); }
-  .qr { flex-direction: column; align-items: flex-start; margin-top: 4cqw; gap: 3cqw; }
-  .qr img { width: 26cqw; height: 26cqw; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(7.6cqw * var(--mt-escala-titulo, 1))); }
+  .qr { margin-top: 4cqh; gap: 4cqw; }
+  .qr img { width: 24cqw; height: 24cqw; }
   .qr b { display: none; }
 }
 /* A lateral (515×832): a foto vira faixa; o QR grande e uma frase. */

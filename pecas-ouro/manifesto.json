@@ -2990,7 +2990,7 @@
       "marca": "farmacia",
       "lote": 4,
       "campos": {
-        "foto": "/pecas-ouro/fotos/farmacia/farmacia-rua.jpg"
+        "foto": "/pecas-ouro/fotos/farmacia/balcao-moderno.jpg"
       }
     },
     {
@@ -11254,7 +11254,7 @@
                 "titulo2": "já chegou",
                 "apoio": "Aplicação na sala de serviços, por farmacêutico.",
                 "local": "Sem agendamento",
-                "foto": "/pecas-ouro/fotos/farmacia/balcao-moderno.jpg"
+                "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
               }
             },
             {
@@ -11284,7 +11284,7 @@
                 "dia3": "Domingo",
                 "hora3": "8h – 14h",
                 "nota": "Plantão no primeiro domingo do mês",
-                "foto": "/pecas-ouro/fotos/farmacia/farmacia-rua.jpg"
+                "foto": "/pecas-ouro/fotos/farmacia/balcao-moderno.jpg"
               }
             }
           ]

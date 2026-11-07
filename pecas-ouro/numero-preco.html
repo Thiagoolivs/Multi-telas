@@ -35,10 +35,11 @@ h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(-
   .foto { grid-row: 1; }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .mt-peca { --t: 7cqw; --p: 22cqw; grid-template-columns: 50fr 50fr; grid-template-rows: 1fr; }
-  .texto { grid-row: 1; padding: 6cqh 3cqw 6cqh 6cqw; }
-  .foto { grid-row: 1; }
+  .mt-peca { --t: 7cqw; --p: 21cqw; grid-template-rows: 42fr 58fr; }
+  .texto { padding: 3cqh 7cqw 5cqh; }
   .apoio { display: none; }
+  .valor { margin-top: 2cqh; }
+  .nota { margin-top: 2cqh; }
 }
 @container (max-width: 700px) {
   .mt-peca { --f: 9.6cqw; --t: 12cqw; --p: 34cqw; grid-template-columns: 1fr; grid-template-rows: 40fr 60fr; }

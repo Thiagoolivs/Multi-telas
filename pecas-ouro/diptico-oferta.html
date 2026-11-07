@@ -29,7 +29,7 @@ h1 em { font-style: normal; color: var(--mt-texto-suave); }
 /* A principal do Corporativo (1405×832): letra do balcão; o apoio e a chamada saem. */
 @container (aspect-ratio >= 1.25) and (max-height: 900px) {
   .mt-peca { grid-template-columns: 44fr 56fr; }
-  .texto { padding: 6cqh 5cqw 6cqh 4.4cqw; }
+  .texto { padding: 6cqh 5cqw 8cqh 4.4cqw; }
   .kicker { padding-bottom: 1.4cqh; font-size: max(var(--mt-piso, 0cqw), 3.5cqw); letter-spacing: .06em; }
   .meio { padding: 2cqh 0; }
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(6.6cqw * var(--mt-escala-titulo, 1))); }
@@ -63,14 +63,15 @@ h1 em { font-style: normal; color: var(--mt-texto-suave); }
   .cta span { border-bottom-width: .3cqw; }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .mt-peca { grid-template-columns: 40fr 60fr; grid-template-rows: 1fr; }
-  .texto { padding: 6cqh 6cqw 6cqh 5cqw; }
-  .kicker { padding-bottom: 2cqw; letter-spacing: .04em; text-transform: none; }
-  .meio { padding: 3cqw 0; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), calc(8.4cqw * var(--mt-escala-titulo, 1))); }
+  .mt-peca { grid-template-rows: 34fr 66fr; }
+  .texto { padding: 4cqh 7cqw 7.4cqh; }
+  .kicker { padding-bottom: 1.6cqh; }
+  .meio { padding: 2cqh 0; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(8.2cqw * var(--mt-escala-titulo, 1))); }
   .apoio, .cta, .parc { display: none; }
-  .preco { grid-template-columns: auto; margin-bottom: 4cqh; }
-  .valor { grid-column: 1; grid-row: 2; font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .preco { grid-template-columns: 1fr auto; }
+  .rotulo { grid-row: 1; align-self: end; }
+  .valor { grid-row: 1; font-size: max(var(--mt-piso, 0cqw), calc(14cqw * var(--mt-escala-titulo, 1))); }
 }
 /* A lateral (515×832): a foto vira faixa no alto; produto e preço. */
 @container (max-width: 700px) {

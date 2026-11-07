@@ -6,9 +6,9 @@
 -->
 <style>
 .mt-peca { --f: 2.6cqw; --t: 5.6cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo);
-  display: grid; grid-template-columns: 34fr 66fr; gap: 0; }
+  display: grid; grid-template-columns: 37fr 63fr; gap: 0; }
 .texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 7cqh 4cqw 7cqh 6cqw; }
-.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .08em; text-transform: uppercase; color: var(--mt-destaque); }
 h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.02 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
 .arroba { margin-top: 4cqh; padding-top: 2cqh; border-top: .14cqw solid var(--mt-linha); font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); overflow-wrap: anywhere; }
 .grade { min-width: 0; min-height: 0; display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr 1fr; gap: .8cqw; padding: 0 0 0 0; }
@@ -29,11 +29,14 @@ h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(-
   .arroba { border-top-width: .24cqw; }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .mt-peca { --t: 7.6cqw; grid-template-columns: 40fr 60fr; grid-template-rows: 1fr; }
-  .grade { grid-row: 1; grid-column: 2; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1cqw; }
+  .mt-peca { --t: 7cqw; grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .texto { grid-row: 1; grid-column: 1; padding: 5cqh 7cqw 4cqh; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .arroba { margin-top: 2cqh; padding-top: 1.6cqh; }
+  .grade { grid-row: 2; grid-column: 1; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 1cqw; }
   .grade img:first-child { grid-row: auto; grid-column: auto; }
   .grade img:nth-child(4) { display: block; }
-  .texto { grid-row: 1; grid-column: 1; padding: 6cqh 4cqw 6cqh 6cqw; }
 }
 </style>
 <section class="mt-peca mural-foto">

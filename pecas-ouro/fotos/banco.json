@@ -511,22 +511,6 @@
     "origem": "https://unsplash.com/photos/JPHyoXTy-kE"
   },
   {
-    "id": "farmacia-farmacia-rua",
-    "arquivo": "/pecas-ouro/fotos/farmacia/farmacia-rua.jpg",
-    "ramos": [
-      "saude"
-    ],
-    "papel": "ambiente",
-    "foco": {
-      "x": 0.5,
-      "y": 0.45
-    },
-    "descricao": "Fachada de farmácia de bairro com a cruz verde",
-    "credito": "George E. Koronaios",
-    "licenca": "CC0 1.0 (domínio público)",
-    "fonte": "https://commons.wikimedia.org/wiki/File:Pharmacy_Argyro_Voltyraki,_Chairefontos_Street,_Plaka._May_2019.jpg"
-  },
-  {
     "id": "farmacia-xicara-maos",
     "arquivo": "/pecas-ouro/fotos/farmacia/xicara-maos.jpg",
     "ramos": [

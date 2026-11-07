@@ -42,10 +42,10 @@ h1 { font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo,
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .mt-peca { --t: 8.2cqw; padding: 5cqh 6cqw 6cqh; }
-  .corpo { grid-template-columns: 46fr 54fr; grid-template-rows: 1fr; gap: 5cqw; }
-  .texto, .quadro { grid-row: 1; }
   .apoio { display: none; }
   .topo b { display: none; }
+  .corpo { gap: 3cqh; margin-top: 3cqh; }
+  .legenda { margin-top: 2.4cqh; }
 }
 @container (max-width: 700px) {
   .mt-peca { --f: 9.6cqw; --t: 13cqw; padding: 4cqh 8cqw 5cqh; }

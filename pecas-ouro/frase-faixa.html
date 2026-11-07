@@ -13,6 +13,7 @@
 .kicker { display: flex; align-items: center; gap: 1.2cqw; font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
 .kicker i { flex: none; display: block; width: 3.2cqw; height: .16cqw; background: var(--mt-destaque); }
 h1 { margin: 4cqh 0; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.02 var(--mt-fonte-titulo); letter-spacing: -.015em; text-wrap: balance; }
+h1 span, h1 em { display: block; }
 h1 em { font-style: normal; color: var(--mt-destaque); }
 .assina { padding-top: 2cqh; border-top: .14cqw solid var(--mt-linha); display: flex; flex-wrap: wrap; gap: .6cqh 2.4cqw; align-items: baseline; font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
 .assina b { font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
@@ -54,7 +55,7 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
 <section class="mt-peca frase-faixa">
   <div class="texto">
     <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">O que nos move</span></p>
-    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Pão bom leva tempo.</span> <em data-campo="titulo2">A gente espera.</em></h1>
+    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Pão bom leva tempo.</span><em data-campo="titulo2">A gente espera.</em></h1>
     <p class="assina" data-entrada="aparecer" data-ordem="3"><b data-campo="marca" data-repete="marca">Padaria do Bairro</b><span data-campo="detalhe">Fermentação de 24 horas</span></p>
   </div>
   <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">

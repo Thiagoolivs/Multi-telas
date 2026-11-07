@@ -17,7 +17,7 @@ h1 { margin-top: 3cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(-
 .itens span { min-width: 0; font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
 
 @container (aspect-ratio >= 1.25) and (max-height: 900px) {
-  .mt-peca { --f: 3.5cqw; --t: 5.4cqw; grid-template-columns: 36fr 64fr; }
+  .mt-peca { --f: 3.5cqw; --t: 5.4cqw; grid-template-columns: 43fr 57fr; }
   .texto { padding: 5cqh 5cqw 5cqh 4cqw; }
   .selo { letter-spacing: .04em; }
   h1 { margin-top: 2cqh; }
@@ -33,9 +33,11 @@ h1 { margin-top: 3cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(-
   .itens i { width: 4.4cqw; height: .9cqw; }
 }
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
-  .mt-peca { --t: 7.4cqw; grid-template-columns: 36fr 64fr; grid-template-rows: 1fr; }
-  .texto { justify-content: center; padding: 5cqh 6cqw 5cqh 5cqw; }
-  .itens li { padding: 1.4cqh 0; }
+  .mt-peca { --t: 7.4cqw; grid-template-rows: 32fr 68fr; }
+  .texto { justify-content: center; padding: 4cqh 7cqw 5cqh; }
+  h1 { margin-top: 2cqh; }
+  .itens { margin-top: 2cqh; }
+  .itens li { padding: 1.3cqh 0; }
 }
 </style>
 <section class="mt-peca seguranca-foto">
