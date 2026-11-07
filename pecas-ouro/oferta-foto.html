@@ -111,6 +111,18 @@ h1 em { display: block; font-style: normal; font-size: max(var(--mt-piso, 0cqw),
   .bloco { display: flex; flex-direction: column; justify-content: center; top: 31cqh; bottom: 5cqh; }
   .cta { display: none; }
 }
+/*
+ * A principal do Corporativo com a margem contra o corte de 3,5% ou mais
+ * (1279×707 e menor): o kicker ia em duas linhas e as parcelas desciam na
+ * chamada. O kicker vai em caixa baixa, sem o fio, e a chamada desce para
+ * perto da margem: o bloco ganha a altura.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 715px) {
+  .kicker { text-transform: none; letter-spacing: 0; }
+  .kicker i { display: none; }
+  .bloco { bottom: 12cqh; }
+  .cta { bottom: 4cqh; }
+}
 </style>
 <section class="mt-peca oferta-foto">
   <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">

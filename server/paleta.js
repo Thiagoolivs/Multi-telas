@@ -31,16 +31,26 @@ async function ramoDaConta(db, tenantId, kit) {
  * Garante que a marca ativa tenha cores. Se já tem, não mexe — a cor que a
  * pessoa escolheu nunca é trocada por sugestão. Devolve a marca (atualizada,
  * se precisou).
+ *
+ * A marca que nasce aqui nasce também com o CLIMA do ramo (lote de 06/11,
+ * js/paletas.js climaDoRamo): a clínica no claro limpo, o restaurante no
+ * escuro elegante, o varejo na cor da marca forte. A conta de antes, que
+ * já tinha cor, fica sem clima até a pessoa escolher um na Marca: a TV
+ * dela continua no escuro e as peças prontas na cor da marca, como eram —
+ * só a conta da cor melhorou.
  */
 async function garantir(db, tenantId) {
   const kit = await db.getBrandKit(tenantId);
   if (!kit || (Array.isArray(kit.cores) && kit.cores.length)) return kit;
-  const cores = P.inicial(await textosDaConta(db, tenantId, kit));
+  const textos = await textosDaConta(db, tenantId, kit);
+  const cores = P.inicial(textos);
   await db.saveBrandKit(tenantId, {
     nome: kit.nome, cores, fonteTitulo: kit.fonteTitulo, fonteApoio: kit.fonteApoio,
     direcao: kit.direcao, tom: kit.tom, observacoes: kit.observacoes,
   });
-  return Object.assign({}, kit, { cores });
+  const clima = kit.clima || P.climaDoRamo(P.detectarRamo(textos));
+  if (!kit.clima && kit.id && db.salvarClimaDaMarca) await db.salvarClimaDaMarca(kit.id, tenantId, clima);
+  return Object.assign({}, kit, { cores, clima });
 }
 
 /*
@@ -83,16 +93,24 @@ function escolheuTema(t) {
     || (!!t.preset && t.preset !== 'dark-premium' && t.preset !== 'marca')
     || Object.keys(ov).some(mexeu));
 }
+/*
+ * O clima da marca vai junto (lote de 06/11): a TV sai no Escuro elegante,
+ * no Claro limpo ou na Cor da marca forte, o mesmo das peças. Marca sem
+ * clima (a de antes) deixa o tema sem clima — escuro, como sempre foi.
+ */
 function temaDaTv(theme, kit) {
   const cores = (kit && Array.isArray(kit.cores) ? kit.cores : []).filter(Boolean);
   if (!kit || kit.nasTvs === false || !cores.length) return null;
   const t = theme && typeof theme === 'object' ? theme : {};
   if (escolheuTema(t)) return null;
-  if (t.preset === 'marca' && JSON.stringify(t.marca || []) === JSON.stringify(cores)) return null;
+  const clima = P.ehClima(kit.clima) ? kit.clima : '';
+  if (t.preset === 'marca' && JSON.stringify(t.marca || []) === JSON.stringify(cores) && (t.clima || '') === clima) return null;
   // Os ajustes herdados saem junto: eles pintariam a TV de roxo por cima da marca.
   const overrides = Object.assign({}, t.overrides || {});
   Object.keys(HERDADO).forEach((k) => { if (String(overrides[k] || '').toLowerCase() === HERDADO[k]) delete overrides[k]; });
-  return Object.assign({}, t, { preset: 'marca', marca: cores, overrides });
+  const novo = Object.assign({}, t, { preset: 'marca', marca: cores, overrides });
+  if (clima) novo.clima = clima; else delete novo.clima;
+  return novo;
 }
 
 /*
@@ -117,7 +135,8 @@ const marcaIgual = (a, b) => JSON.stringify(a || null) === JSON.stringify(b || n
 function ambienteDaMarca(ambiente, kit, empresa, opcoes) {
   const p = ambiente && typeof ambiente === 'object' ? ambiente.peca : null;
   if (!kit || !p || typeof p !== 'object' || p.type !== 'peca-html') return null;
-  if (!p.origem || p.origem.motor !== 'ouro' || (p.modo && p.modo !== 'marca')) return null;
+  // O modo da marca é o clima dela (lote de 06/11): a peça em qualquer um dos três segue o clima de agora.
+  if (!p.origem || p.origem.motor !== 'ouro' || (p.modo && !P.ehClima(p.modo))) return null;
   pecaHtml = pecaHtml || require('../js/peca-html.js');
   const nome = String((kit.nome && kit.nome !== 'Marca principal' ? kit.nome : empresa) || '').replace(/\s+/g, ' ').trim().slice(0, 60);
   const campos = Object.assign({}, p.campos || {});
@@ -127,12 +146,13 @@ function ambienteDaMarca(ambiente, kit, empresa, opcoes) {
     ocultos = ocultos.filter((x) => x !== 'marca').concat(nome ? [] : ['marca']);
   }
   const novo = Object.assign({}, p, { campos, marca: { cores: Array.isArray(kit.cores) ? kit.cores : [], fonteTitulo: kit.fonteTitulo || '', fonteApoio: kit.fonteApoio || '' } });
+  if (P.ehClima(kit.clima)) novo.modo = kit.clima;
   if (ocultos.length) novo.ocultos = ocultos; else delete novo.ocultos;
   const v = pecaHtml.validarItem(novo, opcoes || {});
   if (!v.ok) return null;
   const pronta = Object.assign({}, novo, v.item);
   const antes = pecaHtml.validarItem(p, opcoes || {}).item;
-  if (marcaIgual(antes.marca, pronta.marca) && marcaIgual(antes.campos, pronta.campos) && marcaIgual(antes.ocultos, pronta.ocultos)) return null;
+  if (marcaIgual(antes.marca, pronta.marca) && marcaIgual(antes.campos, pronta.campos) && marcaIgual(antes.ocultos, pronta.ocultos) && antes.modo === pronta.modo) return null;
   return Object.assign({}, ambiente, { peca: pronta });
 }
 

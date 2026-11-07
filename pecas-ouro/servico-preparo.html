@@ -91,6 +91,36 @@ h1 { margin-top: 3cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(10cqmin * var(
   .itens { margin-top: 3cqmin; gap: 2cqmin; }
   .itens li:nth-child(3) { display: none; }
 }
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%): com a letra do balcão a medida ("horas de jejum") ia em três linhas ao lado do
+ * mostrador e passava do alto, e o último item do pé. O mostrador
+ * encolhe e a medida ganha a largura ao lado dele (duas linhas); as
+ * linhas e os respiros apertam.
+ */
+@container (max-width: 700px) and (max-height: 800px) {
+  .mt-peca { row-gap: 3cqw; }
+}
+@container (max-width: 700px) and (max-height: 700px) {
+  .mt-peca { padding: 6cqmin 4.6cqw; }
+}
+@container (max-width: 700px) and (max-height: 740px) {
+  .mostrador { width: 30cqw; height: 30cqw; border-width: 2cqw; }
+  .numero { font-size: max(var(--mt-piso, 0cqw), calc(16cqw * var(--mt-escala-titulo, 1))); }
+  .unidade { width: 62cqw; line-height: 1.04; }
+  h1 { line-height: 1; }
+  .itens { margin-top: 2.4cqw; gap: 1.6cqw; }
+  .itens li { line-height: 1.04; }
+}
+@container (max-width: 700px) and (max-height: 650px) {
+  h1 { line-height: .96; }
+  .itens { gap: 1cqw; }
+  .mostrador { width: 25cqw; height: 25cqw; border-width: 1.8cqw; }
+  .numero { font-size: max(var(--mt-piso, 0cqw), calc(13cqw * var(--mt-escala-titulo, 1))); }
+  .unidade { left: calc(100% + 3.4cqw); width: 66cqw; }
+  .itens li { gap: 2cqw; line-height: 1; }
+  .itens i { font-size: .7em; }
+}
 </style>
 <section class="mt-peca servico-preparo">
   <div class="mostrador" data-entrada="crescer">

@@ -74,6 +74,20 @@ h1 span { display: block; }
   .valor { font-size: max(var(--mt-piso, 0cqw), 18cqw); }
   .nota { left: 7cqw; right: 7cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.7cqw); letter-spacing: .08em; }
 }
+/*
+ * A principal do Corporativo com a margem contra o corte (de 1321×739 a
+ * 1236×674): com a letra do balcão o detalhe de cada item ia em três
+ * linhas e a soma subia no título e descia na nota. O detalhe sai (como no
+ * cardápio por categoria), ficam o nome dos itens e o preço; o espaçado
+ * largo da marca, do kicker e da nota aperta.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 775px) {
+  .marca-nome { letter-spacing: .16em; }
+  .cabeca { top: 13cqh; }
+  .kicker { letter-spacing: .06em; }
+  .soma small { display: none; }
+  .nota { letter-spacing: .06em; }
+}
 </style>
 <section class="mt-peca cardapio-combo">
   <div class="marca-nome" data-campo="marca" data-repete="marca">Padaria <b>do Bairro</b></div>

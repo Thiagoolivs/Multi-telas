@@ -91,6 +91,30 @@ h1 { margin-top: 2.6cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(12cqmin * va
   .preco b { font-size: max(var(--mt-piso, 0cqw), calc(25cqw * var(--mt-escala-titulo, 1))); }
   .rodape { margin-top: 3.6cqw; gap: 1.6cqw; font-size: max(var(--mt-piso, 0cqw), 6cqw); line-height: 1.14; }
 }
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%; a caixa da peça sem o padding fica abaixo de 740
+ * px). Com a letra do balcão a nota passava do pé. O "=" vai para a linha
+ * do preço e as etiquetas apertam; mais baixa (a margem de 2% para cima),
+ * o kicker sai e o preço encolhe um pouco, e mais baixa ainda (3,5%) a nota
+ * da validade sai e o "separados" fica sozinho no pé.
+ */
+@container (max-width: 700px) and (max-height: 740px) {
+  .conta { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .itens { flex: 0 0 100%; }
+  .itens span { padding: .9cqw 3.4cqw; }
+  .igual { margin: 0 2cqw 0 3cqw; }
+}
+@container (max-width: 700px) and (max-height: 700px) {
+  .kicker { display: none; }
+  h1 { margin-top: 0; line-height: .96; }
+  .conta { margin-top: 3.4cqw; }
+  .itens { gap: 1cqw; }
+  .preco b { font-size: max(var(--mt-piso, 0cqw), calc(21cqw * var(--mt-escala-titulo, 1))); }
+}
+@container (max-width: 700px) and (max-height: 655px) {
+  .rodape span { display: none; }
+}
 /* Deitada e baixa: o título, a conta numa linha e o preço; o rodapé sai. */
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {
   .mt-peca { padding: 5cqmin 6cqw; }

@@ -37,6 +37,8 @@ const mail = require('./server/mail');
 const plans = require('./server/plans');
 const billing = require('./server/billing');
 const ai = require('./server/ai');
+// O "Gerar com IA" do espaço de imagem (POST /api/ia/imagem).
+const iaImagem = require('./server/ia-imagem');
 // Cada requisição da API é uma medição de IA: os tokens somam e o uso-ia.cobrar os grava.
 const motores = require('./server/motores');
 const { AsyncResource } = require('node:async_hooks');
@@ -83,8 +85,11 @@ const memory = require('./server/ai-memoria');
 const muralLib = require('./server/mural');
 const qrcode = require('./server/qr');
 const paletaInicial = require('./server/paleta');
+const paletas = require('./js/paletas.js');
 const conferencia = require('./server/conferencia');
 const redesRotas = require('./server/routes/redes');
+// "Sua primeira TV em 5 minutos" (o progresso e o negócio escolhido, que vira o ramo da conta).
+const primeiraTvRotas = require('./server/routes/primeira-tv');
 
 const { semCopiasDeCampanha, comACampanha } = require('./server/copias-de-campanha.js');
 const compressao = require('./server/compressao.js');
@@ -634,6 +639,8 @@ function montarCtx() {
     planilha: require('./server/routes/planilha')(ctx),
     // A chamada de senha da Saúde (fase 12).
     senha: require('./server/routes/senha')(ctx),
+    // "Sua primeira TV em 5 minutos": o progresso do passo a passo.
+    primeiraTv: primeiraTvRotas(ctx),
   };
   ctxDasRotas = ctx;
   return ctx;
@@ -1932,7 +1939,8 @@ const negocioCache = new Map();
         db.getMemoria(sess.tenant_id), db.listMarcas(sess.tenant_id),
       ]);
       return sendJson(res, 200, {
-        ramo: await paletaInicial.ramoDaConta(db, sess.tenant_id, kit),
+        // O negócio que a pessoa escolheu no "Sua primeira TV" vale antes do deduzido (server/routes/primeira-tv.js).
+        ramo: await paletaInicial.ramoDaConta(db, sess.tenant_id, kit).then(async (deduzido) => (await primeiraTvRotas.ramoEscolhido(db, sess.tenant_id)) || deduzido),
         empresa: ((await db.getTenant(sess.tenant_id)) || {}).name || '',
         kit: kit || null, assets, memoria: mem || null, marcas, limiteMarcas: db.MAX_MARCAS,
         familias: Object.keys(ds.FAMILIAS), direcoes: ds.DIRECOES,
@@ -1960,6 +1968,11 @@ const negocioCache = new Map();
         if (b && typeof b.nasTvs === 'boolean') {
           const ativa = await db.getBrandKit(sess.tenant_id);
           if (ativa) await db.salvarNasTvsDaMarca(ativa.id, sess.tenant_id, b.nasTvs);
+        }
+        // O clima (lote de 06/11): Escuro elegante, Claro limpo ou Cor da marca forte. Só quando a tela manda um válido.
+        if (b && paletas.ehClima(b.clima)) {
+          const ativa = await db.getBrandKit(sess.tenant_id);
+          if (ativa) await db.salvarClimaDaMarca(ativa.id, sess.tenant_id, b.clima);
         }
         return sendJson(res, 200, { ok: true });
       });
@@ -2327,6 +2340,35 @@ const negocioCache = new Map();
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
         return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' };
       });
+    });
+  }
+
+  /*
+   * ----- IA: a foto de um espaço de imagem ("Trocar foto" › Gerar com IA) -----
+   * Uma foto, no formato do espaço, guardada nas fotos da conta; a resposta é
+   * a mídia. Freio por conta, crédito reservado antes e cobrado depois, uso
+   * registrado: as regras moram em server/ia-imagem.js. Sem esboço (D42b):
+   * o pedido é a frase que a pessoa leu e mandou, e a foto é uma só.
+   */
+  if (parts[1] === 'ia' && parts[2] === 'imagem') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ia:imagem:' + sess.tenant_id, iaImagem.porHora(), 60 * 60 * 1000);
+    if (!rl.ok) {
+      return sendJson(res, 429, { error: 'Muitas fotos geradas nesta hora. Tente de novo daqui a ' + security.esperaEmPalavras(rl.retryAfter) + ', ou use uma foto do celular ou do banco.' },
+        { 'Retry-After': String(rl.retryAfter) });
+    }
+    return readBody(req, res, async (b) => {
+      const pedido = iaImagem.lerPedido(b);
+      if (pedido.erro) return sendJson(res, 400, { error: pedido.erro });
+      try {
+        const r = await iaImagem.gerar({ db, ai, midia, usoIA }, sess, pedido);
+        if (r.status === 200) await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem').catch(() => {});
+        return sendJson(res, r.status, r.corpo);
+      } catch (e) {
+        erros.registrar(e, { rota: '/api/ia/imagem' });
+        return sendJson(res, 500, { error: iaImagem.FALHOU });
+      }
     });
   }
 
@@ -2719,6 +2761,7 @@ const negocioCache = new Map();
   if (await ctx.routes.kpis(req, res, parts, query, sess)) return;
   if (await ctx.routes.pixabay(req, res, parts, query, sess)) return;
   if (await ctx.routes.planilha(req, res, parts, query, sess)) return;
+  if (await ctx.routes.primeiraTv(req, res, parts, query, sess)) return;
 
   /* ----- Mídia (upload/list/delete) — arquivos fora do banco ----- */
   /* ---------------- Banco de Imagens MultiTelas ----------------

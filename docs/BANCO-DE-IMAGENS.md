@@ -123,3 +123,104 @@ não erra a cor, apaga a imagem.
 O feed nunca devolve `key` (é a única barreira de `/media/*`, uma rota sem
 autenticação) nem `tenant_id`. O `mediaId` sai só para o dono — para os outros,
 mostrá-lo seria dizer de qual conta a imagem veio.
+
+---
+
+# Espaços de imagem e o banco de fotos das peças
+
+Cada foto de uma peça em HTML (`data-campo-img`, menos a `logo`) é um **espaço
+de imagem**: o cliente o enche pelo "Trocar foto" do painel
+(`web/src/components/fotos/TrocarFoto.jsx`) com a foto do celular, uma do banco
+de fotos do ramo dele ou uma gerada pela IA. Testes:
+`test/espacos-de-imagem.test.js`.
+
+## O papel de cada espaço (manifesto)
+
+Cada peça-ouro diz o papel de cada espaço em `pecas-ouro/manifesto.json`, ao
+lado de `papeis` — sem mexer no HTML da peça:
+
+```json
+{ "id": "oferta-foto", "papeis": ["destaque", "lateral"], "fotos": { "foto": "produto" } }
+```
+
+Papéis: `produto`, `ambiente`, `pessoa` e `textura` (fundo). **Peça nova com
+foto declara o papel de todo espaço que não seja a logo** — o teste recusa
+espaço sem papel e papel de espaço que a peça não tem. O papel é copiado para o
+item quando a peça nasce (`web/src/lib/modelosOuro.js`, `itemDoModelo`; a
+bancada faz o mesmo), porque a TV desenha sem o manifesto.
+
+## O item
+
+O arquivo continua **texto** em `campos` — item antigo, TV antiga e a
+conferência do servidor (`conferirConfig`) seguem iguais. O resto mora ao lado:
+
+```json
+{
+  "campos":  { "foto": "/media/t_1/abc.jpg" },
+  "espacos": { "foto": { "papel": "produto", "foco": { "x": 0.54, "y": 0.46 }, "fundo": "data:image/jpeg;base64,…" } }
+}
+```
+
+- `foco`: o ponto que o cliente tocou, de 0 a 1 (0,0 é o canto de cima à
+  esquerda). Vira `object-position`: esse ponto nunca sai do quadro.
+- `fundo`: a foto em miniatura (~24 px, até 4 KB), feita no painel ao escolher
+  a foto. Esticada, é o fundo desfocado. Sem ela, a TV faz a miniatura num
+  `<canvas>`; foto de outro endereço não deixa, e aí o fundo é a cor da marca.
+- Na entrada, `campos.foto` também aceita `{ "src": "/media/…", "foco": { "x", "y" } }`
+  (o que o "Trocar foto" devolve em `onTrocar`): a porta (`js/peca-html.js`,
+  `validarItem`) separa, e o que é gravado tem sempre o texto em `campos`.
+- `foco` e `fundo` são da foto do campo: quem troca a foto troca (ou apaga) os
+  dois. Sem foto, só o `papel` fica.
+
+## Qualquer foto, em qualquer espaço
+
+O desenhista (`js/peca-render.js`, `encaixeDaFoto` e `encaixarFoto`) decide, na
+TV, na bancada e no painel, com o mesmo código:
+
+- **cobrir** (o normal): enche o espaço e corta o que sobra, alinhado no foco;
+- **inteira, com o fundo desfocado**: quando cobrir jogaria fora mais da foto do
+  que o papel tolera (ambiente 60%, produto 45%, pessoa 40%, mais 15 pontos com
+  o foco escolhido; textura sempre cobre) ou quando ela teria que crescer mais
+  de 2,5× (pequena demais). Atrás dela, ela mesma esticada e escurecida — sem
+  `filter: blur()`, que o box barato não aguenta. Com o foco escolhido, ela
+  pode perder até um quarto em volta do ponto, para o assunto sair maior.
+
+## O banco de fotos (`pecas-ouro/fotos/banco.json`)
+
+Fotos livres para uso comercial, por ramo, em `pecas-ouro/fotos/<ramo>/`. O
+índice é uma lista:
+
+```json
+[{
+  "id": "padaria-pao-frances",
+  "arquivo": "/pecas-ouro/fotos/padaria/pao-frances.jpg",
+  "ramos": ["padaria"],
+  "papel": "produto",
+  "foco": { "x": 0.5, "y": 0.45 },
+  "descricao": "Pães franceses na bancada",
+  "credito": "Fulano de Tal / Unsplash",
+  "licenca": "Unsplash License",
+  "fonte": "https://unsplash.com/photos/…"
+}]
+```
+
+- `ramos`: os de `js/paletas.js` (`RAMOS`: otica, pet, academia, barbearia,
+  beleza, saude, padaria, comida, moda, varejo, corporativo) ou `geral` (serve a
+  qualquer negócio).
+- `descricao` é opcional (o nome da foto para quem usa leitor de tela).
+- O arquivo: JPEG, PNG ou WEBP, maior lado até 1920 px, até 900 KB (JPEG
+  q≈82). Nome só com `a-z`, `0-9` e `-`.
+- O "Trocar foto" mostra primeiro as do ramo da conta e do papel do espaço; o
+  crédito vai junto da peça e aparece pequeno no canto da TV.
+
+## Gerar com IA (`POST /api/ia/imagem`)
+
+`{ prompt, formato: '16/9' | '9/16' | '1/1', papel }` → `{ item }` (a mídia,
+guardada na Biblioteca da conta como um envio). Regras em `server/ia-imagem.js`:
+freio por conta (`MT_IA_IMAGEM_POR_HORA`, padrão 20), uma criação reservada
+antes e cobrada depois (tipo `gerar-imagem` no uso de IA), o modelo da cascata
+do Gemini (`GEMINI_IMAGE_MODEL` escolhe outro). Gerador sem crédito (402, teto
+de gasto, cota): "A geração de imagens está sem crédito agora. Use uma foto do
+celular ou do banco." Com `AI_PROVIDER=dev`, sai uma foto de exemplo desenhada
+no servidor (a mesma para o mesmo pedido), sem crédito, registrada como
+`gerar-imagem-exemplo`.

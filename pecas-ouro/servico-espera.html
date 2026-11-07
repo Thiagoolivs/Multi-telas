@@ -71,6 +71,19 @@ h1 { margin-top: 3cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(11.4cqmin * va
   h1 { font-size: max(var(--mt-piso, 0cqw), calc(13cqmin * var(--mt-escala-titulo, 1))); }
   .fonte { margin-top: 4cqmin; }
 }
+/*
+ * A lateral no tamanho da TV com a margem contra o corte de 3% ou mais (a
+ * caixa sem o padding abaixo de 690 px): com a letra do balcão a fonte da
+ * informação passava do pé. A lâmpada desenhada encolhe; a fonte fica.
+ */
+@container (max-width: 700px) and (max-height: 690px) {
+  .luz { font-size: 3.2cqw; }
+  .fonte { margin-top: 3.4cqw; padding-top: 2cqw; }
+}
+@container (max-width: 700px) and (max-height: 640px) {
+  .luz { font-size: 2.6cqw; }
+  h1 { line-height: 1; }
+}
 </style>
 <section class="mt-peca servico-espera">
   <span class="luz" aria-hidden="true" data-entrada="aparecer"><span class="bulbo"></span><span class="base"></span><span class="brilho"></span></span>

@@ -111,6 +111,41 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.92 var(--mt-fonte-titulo); tex
   .valor { font-size: max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1))); }
   .valor small { margin-right: .12em; }
 }
+/*
+ * A principal do Corporativo com a margem contra o corte (de 1321×739 a
+ * 1236×674): com a letra do balcão a lista subia no título. O título sobe
+ * um pouco e as linhas apertam; mais baixa (a margem de 3% para cima), a
+ * chamada do pé sai e a lista desce até a margem.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 775px) {
+  .cabeca { top: 12.5cqh; }
+  .itens li { padding: .6cqh 0 .5cqh; row-gap: 0; }
+  .nome, .medida { line-height: 1.02; }
+}
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 725px) {
+  .cta { display: none; }
+  .itens { bottom: 5cqh; }
+}
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%; a caixa sem o padding abaixo de 740 px): com a
+ * letra do balcão o título passava do alto. As linhas dos itens apertam;
+ * bem baixa (a margem de 3,5% para cima), o título sai: os pães com os
+ * preços dizem o que é.
+ */
+@container (max-width: 700px) and (max-height: 740px) {
+  h1 { line-height: .9; }
+  .itens { margin-top: 2.4cqw; }
+  .itens li { padding: 1cqw 0 .9cqw; }
+}
+@container (max-width: 700px) and (max-height: 680px) {
+  .itens li { padding: .4cqw 0 .3cqw; }
+  .nome { line-height: .98; }
+}
+@container (max-width: 700px) and (max-height: 655px) {
+  .cabeca { display: none; }
+  .itens { margin-top: 0; }
+}
 </style>
 <section class="mt-peca cardapio-colunas">
   <div class="marca-nome" data-campo="marca" data-repete="marca">Padaria <b>do Bairro</b></div>

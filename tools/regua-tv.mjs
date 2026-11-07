@@ -15,6 +15,11 @@
  * fase 3. A tela da chamada de senha (fase 12) também é tela cheia, e
  * também bloqueia.
  *
+ * As peças-ouro (as artes da IA) são conferidas na bancada, peça a peça:
+ * em tela cheia (na marca padrão e nas 11 marcas do manifesto), e nas duas
+ * zonas do Corporativo no escritório e no balcão, no tamanho da bancada e
+ * no da TV com a margem contra o corte de 2% e de 3%.
+ *
  * Saída: o relatório no terminal e, com REGUA_SAIDA=<pasta>, as fotos e o
  * medidas.json lá.
  */
@@ -345,41 +350,96 @@ const FORMATOS_CHEIOS = ['Tela cheia 16:9', 'Vertical 9:16', 'Quadrada 1:1'];
  */
 const LATERAL_NO_BALCAO = 'Lateral · Corporativo';
 const DESTAQUE_NO_BALCAO = 'Destaque · Corporativo';
+/*
+ * As OUTRAS MARCAS e a MARGEM contra o corte, numa passada só (bloqueio).
+ *
+ * As passadas de cima usam a primeira marca do manifesto (a Ótica, de
+ * título condensado). Com a fonte de título larga (Clínica Vida, Studio
+ * Bella, Rota Sul…) o título quebra uma linha a mais: a quadrada do
+ * lançamento e do comunicado cedia para 97% em 7 das 11 marcas, e ninguém
+ * via. Aqui cada peça vai nas 11 marcas lado a lado (marca=todas na
+ * bancada), no modo claro: os quatro modos só trocam a cor, o desenho é o
+ * mesmo.
+ *
+ * Na mesma página, o Corporativo vai no tamanho da TV com a margem contra
+ * o corte (Ajustes da TV › Encaixe, de 0 a 5% de meio em meio): com 2%, a
+ * principal fica com 1321×739 e a lateral com 483×739; com 3%, 1293×717 e
+ * 473×717. O piso do balcão não muda (é do lado da TV). Antes do
+ * redesenho, 29 peças × zona cediam com 2% nas 11 marcas (servico-epi,
+ * 75%), e 11 laterais já cediam sem margem nenhuma (504×782). A tela cheia
+ * não depende do local (zona grande: 4,5% com ou sem ele) nem da margem (a
+ * bancada a desenha no tamanho de referência): entra na conta das marcas
+ * na primeira passada.
+ */
+const MARGENS_NA_TV = [2, 3];
 const PENDENTES = new Set([]);
 // A meta da fase 3 para as zonas (lateral e bloco): 85% das fotos na régua.
 const META_ZONAS = 0.85;
-async function conferirPecas(navegador, local, soZonas) {
+/*
+ * Quatro páginas da bancada ao mesmo tempo, cada uma com uma peça: o que
+ * pesa é a espera de 1,5 s de cada peça, e ela corre junto. Numa página só,
+ * cada passada custava um minuto e meio.
+ */
+const PAGINAS_DA_BANCADA = 4;
+const SEM_DESENHO = [];
+async function conferirPecas(navegador, local, soZonas, extra) {
+  const x = extra || {};
   const manifesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', 'manifesto.json'), 'utf8'));
-  const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
   const saida = [];
   // Sem local: as peças de destaque, na conta da tela cheia. Com local: também as da lateral (a zona pequena ganha piso).
   // Com soZonas (o balcão), só aquelas zonas entram na conta.
-  const entra = (x) => x.papeis.includes('destaque') || (local && x.papeis.includes('lateral'));
-  for (const peca of manifesto.pecas.filter(entra)) {
-    await p.goto(BASE + '/bancada.html?ver=peca&peca=' + peca.id + '&modo=todos&tamanho=caber' + (local ? '&local=' + local : ''));
-    await p.evaluate(() => (document.fonts && document.fonts.ready) || null);
-    await espera(1500);
-    const porZona = await p.evaluate(() => {
-      const out = {};
-      document.querySelectorAll('#palco section.linha').forEach((sec) => {
-        const nome = sec.querySelector('h2').textContent.split(' · ').slice(0, -1).join(' · ');
-        let menor = 1;
-        sec.querySelectorAll('*').forEach((el) => {
-          const pl = el.shadowRoot && el.shadowRoot.querySelector('.mt-palco');
-          if (pl && pl.hasAttribute('data-mt-piso-cedeu')) menor = Math.min(menor, parseFloat(pl.getAttribute('data-mt-piso-cedeu')));
+  const entra = (y) => y.papeis.includes('destaque') || (local && y.papeis.includes('lateral'));
+  const ordem = manifesto.pecas.filter(entra);
+  const fila = ordem.slice();
+  const busca = (x.todasAsMarcas ? '&marca=todas&modo=claro' : '&modo=todos') + '&tamanho=caber' + (local ? '&local=' + local : '')
+    + (x.margem != null ? '&margem=' + x.margem : '');
+  const trabalhar = async () => {
+    const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
+    for (let peca = fila.shift(); peca; peca = fila.shift()) {
+      /*
+       * Espera a bancada dizer que desenhou (js/bancada.js, data-desenhada):
+       * com a máquina ocupada, a peça que demorava a chegar saía da conta
+       * calada (150 de 174 na tela cheia, numa rodada de 06/11). A que não
+       * desenhar nem na segunda vez reprova.
+       */
+      let desenhou = false;
+      for (let k = 0; k < 2 && !desenhou; k++) {
+        await p.goto(BASE + '/bancada.html?ver=peca&peca=' + peca.id + busca);
+        desenhou = await p.waitForFunction(() => document.body.dataset.desenhada === 'sim', null, { timeout: 20000 }).then(() => true, () => false);
+      }
+      if (!desenhou) { SEM_DESENHO.push(peca.id + (local ? ' (' + local + ')' : '')); continue; }
+      await p.evaluate(() => (document.fonts && document.fonts.ready) || null);
+      await espera(1500);
+      // O menor piso de cada zona, por marca (cada figura diz a dela: js/bancada.js, data-marca).
+      const porZona = await p.evaluate(() => {
+        const out = [];
+        document.querySelectorAll('#palco section.linha').forEach((sec) => {
+          const titulo = sec.querySelector('h2').textContent.split(' · ');
+          const menor = {};
+          sec.querySelectorAll('figure').forEach((fig) => {
+            const m = fig.dataset.marca || '';
+            if (!(m in menor)) menor[m] = 1;
+            fig.querySelectorAll('*').forEach((el) => {
+              const pl = el.shadowRoot && el.shadowRoot.querySelector('.mt-palco');
+              if (pl && pl.hasAttribute('data-mt-piso-cedeu')) menor[m] = Math.min(menor[m], parseFloat(pl.getAttribute('data-mt-piso-cedeu')));
+            });
+          });
+          Object.keys(menor).forEach((m) => out.push({ zona: titulo.slice(0, -1).join(' · '), tamanho: titulo[titulo.length - 1], marca: m, cedeu: menor[m] }));
         });
-        out[nome] = menor;
+        return out;
       });
-      return out;
-    });
-    for (const [zona, cedeu] of Object.entries(porZona)) {
-      const cheia = FORMATOS_CHEIOS.includes(zona);
-      // Tela cheia sem local; as zonas com o local do escritório (a Empresas, onde elas moram); a lateral e o destaque no balcão.
-      if (soZonas ? soZonas.includes(zona) : local ? !cheia : cheia) saida.push({ id: peca.id, zona, cedeu, cheia, local: local || '' });
+      for (const { zona, tamanho, marca, cedeu } of porZona) {
+        const cheia = FORMATOS_CHEIOS.includes(zona);
+        // Tela cheia sem local; as zonas com o local do escritório (a Empresas, onde elas moram); a lateral e o destaque no balcão.
+        if (soZonas ? soZonas.includes(zona) : local ? !cheia : cheia) saida.push({ id: peca.id, zona, tamanho, marca, cedeu, cheia, local: local || '' });
+      }
     }
-  }
-  await p.close();
-  return saida;
+    await p.close();
+  };
+  await Promise.all(Array.from({ length: PAGINAS_DA_BANCADA }, trabalhar));
+  // Na ordem do manifesto (as páginas terminam fora de ordem).
+  const pos = (id) => ordem.findIndex((y) => y.id === id);
+  return saida.sort((a, b) => pos(a.id) - pos(b.id));
 }
 
 async function main() {
@@ -390,6 +450,7 @@ async function main() {
   // Fase 12: a tela da chamada de senha (tela cheia: a régua de 4,5% vale para qualquer frente).
   const senhas = [];
   let pecas = [];
+  let marcas = [];
   try {
     for (const [frente, tipos] of Object.entries(CASOS)) {
       const painel = await navegador.newContext();
@@ -485,11 +546,17 @@ async function main() {
       for (const tv of Object.values(tvs)) await tv.p.context().close();
     }
     pecas = (await conferirPecas(navegador)).concat(await conferirPecas(navegador, 'escritorio'), await conferirPecas(navegador, 'balcao', [LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO]));
+    // As 11 marcas: a tela cheia e o Corporativo no balcão com a margem de 2%; depois o Corporativo com 3% (uma página por peça).
+    for (const margem of MARGENS_NA_TV) {
+      const zonas = (margem === MARGENS_NA_TV[0] ? FORMATOS_CHEIOS : []).concat(LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO);
+      const desta = await conferirPecas(navegador, 'balcao', zonas, { todasAsMarcas: true, margem });
+      marcas = marcas.concat(desta.map((x) => Object.assign(x, { margem })));
+    }
   } finally {
     await navegador.close();
     parar();
   }
-  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, senhas }, null, 1));
+  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, marcas, senhas }, null, 1));
 
   let reprova = false;
   for (const [, , nome, bloqueia] of ARRANJOS) {
@@ -541,6 +608,24 @@ async function main() {
     if (!noBalcao.length) continue;
     console.log('Peças-ouro em ' + nome + ' · balcão (' + PISO + '%): ' + noBalcao.filter((x) => x.cedeu >= 1).length + ' de ' + noBalcao.length + ' com a letra inteira');
     for (const x of noBalcao.filter((y) => y.cedeu < 1)) { console.log('  ✗ ' + x.id + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%'); reprova = true; }
+  }
+  for (const x of SEM_DESENHO) { console.log('  ✗ ' + x + ': a bancada não desenhou a peça'); reprova = true; }
+  // As 11 marcas em tela cheia, e o Corporativo no balcão com a margem contra o corte: bloqueio, peça a peça e marca a marca.
+  const nMarcas = new Set(marcas.map((x) => x.marca)).size;
+  const cedeuNaMarca = (x) => '  ✗ ' + x.id + ' · ' + x.marca + (x.cheia ? ' · ' + x.zona : '') + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%';
+  const cheiasNasMarcas = marcas.filter((x) => x.cheia);
+  if (cheiasNasMarcas.length) {
+    console.log('Peças-ouro em tela cheia · todas as marcas (' + nMarcas + '): ' + cheiasNasMarcas.filter((x) => x.cedeu >= 1).length + ' de ' + cheiasNasMarcas.length + ' com a letra inteira');
+    for (const x of cheiasNasMarcas.filter((y) => y.cedeu < 1)) { console.log(cedeuNaMarca(x)); reprova = true; }
+  }
+  for (const margem of MARGENS_NA_TV) {
+    for (const [zona, nome] of [[LATERAL_NO_BALCAO, 'Lateral'], [DESTAQUE_NO_BALCAO, 'Destaque']]) {
+      const naMargem = marcas.filter((x) => x.zona === zona && x.margem === margem);
+      if (!naMargem.length) continue;
+      console.log('Peças-ouro em ' + nome + ' · balcão com borda de ' + margem + '% (' + naMargem[0].tamanho + ', ' + nMarcas + ' marcas): '
+        + naMargem.filter((x) => x.cedeu >= 1).length + ' de ' + naMargem.length + ' com a letra inteira');
+      for (const x of naMargem.filter((y) => y.cedeu < 1)) { console.log(cedeuNaMarca(x)); reprova = true; }
+    }
   }
   // Fase 10: o contraste de todo texto, em todo arranjo.
   for (const [, , nome] of ARRANJOS) {

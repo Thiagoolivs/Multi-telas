@@ -52,6 +52,36 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
   .dia { font-size: max(var(--mt-piso, 0cqw), 8cqw); }
   .lista b { font-size: max(var(--mt-piso, 0cqw), 5cqw); line-height: 1.1; }
 }
+/*
+ * A principal do Corporativo com a margem contra o corte (de 1321×739 a
+ * 1236×674): com a letra do balcão o título descia por cima da primeira
+ * linha da lista. O kicker aperta o espaçado (uma linha), o título vai numa
+ * linha só e a lista e o cabeçalho chegam mais perto das bordas.
+ */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 775px) {
+  .cabeca { top: 5cqh; }
+  .kicker { letter-spacing: .04em; }
+  h1 { margin-top: 1.2cqw; }
+  h1 span, h1 em { display: inline; }
+  .lista { bottom: 5cqh; }
+  .lista li { padding: .6cqw 0; }
+  .lista b, .lista small { line-height: 1.12; }
+}
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%): o título não cabia na largura (fonte larga) e a
+ * lista subia nele. O título quebra onde couber ("Aniversariantes / de
+ * outubro"), o cabeçalho e a lista usam a largura até a margem e chegam
+ * mais perto do alto e do pé; as linhas apertam.
+ */
+@container (max-width: 700px) and (max-height: 800px) {
+  .cabeca { left: 4cqw; right: 4cqw; top: 4.6cqh; }
+  h1 { line-height: .98; }
+  h1 span, h1 em { display: inline; white-space: normal; }
+  .lista { left: 4cqw; right: 4cqw; bottom: 3.4cqh; }
+  .lista li { grid-template-columns: 12cqw 1fr; padding: .6cqw 0; }
+  .lista b { line-height: 1.02; }
+}
 </style>
 <section class="mt-peca gente-mes">
   <div class="cabeca">

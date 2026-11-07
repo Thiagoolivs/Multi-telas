@@ -143,6 +143,9 @@
         "destaque",
         "lateral"
       ],
+      "fotos": {
+        "foto": "produto"
+      },
       "frentes": [
         "comercio"
       ],
@@ -926,6 +929,9 @@
         "destaque",
         "lateral"
       ],
+      "fotos": {
+        "foto": "pessoa"
+      },
       "frentes": [
         "empresa",
         "saude"
@@ -972,6 +978,9 @@
       "papeis": [
         "destaque"
       ],
+      "fotos": {
+        "foto": "pessoa"
+      },
       "frentes": [
         "empresa",
         "saude"
@@ -1056,6 +1065,9 @@
       "papeis": [
         "destaque"
       ],
+      "fotos": {
+        "foto": "ambiente"
+      },
       "frentes": [
         "comercio",
         "saude",
@@ -1089,6 +1101,9 @@
       "papeis": [
         "destaque"
       ],
+      "fotos": {
+        "foto": "pessoa"
+      },
       "frentes": [
         "comercio",
         "saude",
@@ -1127,6 +1142,9 @@
       "papeis": [
         "destaque"
       ],
+      "fotos": {
+        "foto": "produto"
+      },
       "frentes": [
         "comercio",
         "empresa"
@@ -1187,6 +1205,9 @@
         "destaque",
         "lateral"
       ],
+      "fotos": {
+        "foto": "pessoa"
+      },
       "frentes": [
         "empresa",
         "comercio",

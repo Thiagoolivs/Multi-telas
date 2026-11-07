@@ -89,10 +89,21 @@ test('todo par do contrato tem piso de 4.5, o destaque também (é o kicker, o @
   }
 });
 
-test('modo marca: o fundo é a cor EXATA da marca — é o efeito cartaz', () => {
+test('modo marca ("Cor da marca forte"): o fundo é a marca num tom PROFUNDO, nunca claro', () => {
+  /*
+   * Era a cor EXATA da marca: o amarelo-claro e o rosa-pastel viravam a
+   * peça inteira em pastel, e o vermelho puro pedia texto marrom (lote de
+   * 06/11). Agora a mesma matiz, de 0,24 a 0,42 de luminosidade; a marca
+   * que já é profunda (o vinho da cantina) entra como é.
+   */
   for (const marca of DIFICEIS) {
-    assert.equal(T.gerar({ marca, modo: 'marca' }).cores.fundo, C.okHex(marca), marca);
+    const f = C.paraOklch(T.gerar({ marca, modo: 'marca' }).cores.fundo);
+    assert.ok(f.l <= 0.43, marca + ': fundo claro demais (' + f.l.toFixed(2) + ')');
+    const o = C.paraOklch(C.okHex(marca));
+    const distancia = Math.min(Math.abs(f.h - o.h), 360 - Math.abs(f.h - o.h));
+    if (o.c >= 0.06 && o.l <= 0.72 && !(o.h >= 80 && o.h <= 118)) assert.ok(distancia < 8, marca + ': a matiz andou ' + distancia.toFixed(0) + '°');
   }
+  assert.equal(T.gerar({ marca: '#7a1f1f', modo: 'marca' }).cores.fundo, '#7a1f1f');
 });
 
 test('sem saída para um lado, a cor tenta o outro antes de virar preto ou branco', () => {
@@ -120,9 +131,15 @@ test('com duas cores, o destaque é a que já se lê naquele fundo', () => {
   const h = (x) => C.paraOklch(x).h;
   const escuro = T.gerar({ marca: '#1b2a4a', marca2: '#c8a96e', modo: 'escuro' }).cores.destaque;
   const claro = T.gerar({ marca: '#1b2a4a', marca2: '#c8a96e', modo: 'claro' }).cores.destaque;
-  assert.equal(escuro, '#c8a96e', 'no escuro o dourado já se lê e deveria entrar intacto');
-  assert.equal(claro, '#1b2a4a', 'no claro o marinho já se lê e deveria entrar intacto');
-  assert.ok(Math.abs(h(escuro) - h('#c8a96e')) < 5);
+  assert.ok(Math.abs(h(escuro) - h('#c8a96e')) < 6, 'no escuro o destaque é o dourado: ' + escuro);
+  assert.ok(Math.abs(h(claro) - h('#1b2a4a')) < 8, 'no claro o destaque é o marinho: ' + claro);
+  /*
+   * Lote de 06/11: "o que já se lê" não basta, o acento tem que ser COR.
+   * O dourado apagado (croma 0,085) ganha croma; o marinho, um pouco de luz.
+   * Uma cor que já está na faixa, com croma e contraste, entra intacta.
+   */
+  assert.ok(C.paraOklch(escuro).c >= 0.11 && C.paraOklch(claro).c >= 0.11, escuro + ' / ' + claro);
+  assert.equal(T.gerar({ marca: '#0b6e99', marca2: '#38bdf8', modo: 'escuro' }).cores.destaque, '#38bdf8');
 });
 
 test('modo marca usa a segunda cor como destaque quando ela existe', () => {

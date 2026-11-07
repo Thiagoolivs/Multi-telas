@@ -6,10 +6,11 @@ import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input } from '../ui/Field.jsx';
 import { PecaHtml } from './PecaHtml.jsx';
-import { FotoDoProduto } from './FotoDoProduto.jsx';
-import { carregarDesenhista, conferirNosFormatos, NOME_DO_FORMATO } from '../../lib/pecaHtml.js';
+import { TrocarFoto } from '../fotos/TrocarFoto.jsx';
+import { carregarDesenhista, conferirNosFormatos, medirEspaco, NOME_DO_FORMATO } from '../../lib/pecaHtml.js';
+import { papelDoEspaco, papelNoManifesto, espacoComFoto } from '../../lib/espacos.js';
 import { ai, brand } from '../../api.js';
-import { carregarModelos } from '../../lib/modelosOuro.js';
+import { carregarModelos, espacosDoModelo } from '../../lib/modelosOuro.js';
 import { CURADAS } from '../../lib/paletas.js';
 import { MiniConversa, comPergunta } from '../tela/MiniConversa.jsx';
 
@@ -147,7 +148,11 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   const [definicao, setDefinicao] = useState(null);
   // O texto dos campos escondidos volta de `guardados` (ver `atual`): esconder e mostrar de novo não perde nada.
   const [campos, setCampos] = useState(() => ({ ...(item.campos || {}), ...(item.guardados || {}) }));
-  const [fotoAberta, setFotoAberta] = useState(null);
+  // O "Trocar foto" aberto: { campo, papel, formato } (o formato é o espaço medido na peça).
+  const [trocandoFoto, setTrocandoFoto] = useState(null);
+  // Os espaços de imagem (js/peca-html.js, ESPAÇOS DE IMAGEM): o papel, o ponto que importa e o fundo desfocado de cada foto.
+  const [espacos, setEspacos] = useState(() => ({ ...(item.espacos || {}) }));
+  const [ramo, setRamo] = useState('');
   const [conferencia, setConferencia] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [modo, setModo] = useState(item.modo || 'escuro');
@@ -174,6 +179,8 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
     brand.get().then((r) => {
       const k = (r && r.kit) || {};
       setDaConta({ marca: marcaDaPeca(k), nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '' });
+      // O tipo de negócio: o banco de fotos do "Trocar foto" abre nas fotos dele.
+      setRamo((r && r.ramo) || '');
     }).catch(() => setDaConta({ marca: null, nome: '' }));
   }, []);
 
@@ -198,15 +205,18 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
    * campo não viesse. Vazio, ela não mostra nada.
    */
   const atual = useMemo(() => {
-    const { ocultos: _o, guardados: _g, creditos: _c, ...resto } = item; // eslint-disable-line no-unused-vars
+    const { ocultos: _o, guardados: _g, creditos: _c, espacos: _e, ...resto } = item; // eslint-disable-line no-unused-vars
     const doDesenho = { html: desenho.html, css: desenho.css, origem: { ...(item.origem || {}), ...(desenho.base ? { base: desenho.base } : {}) } };
     const gravados = { ...campos };
     const guardados = {};
     ocultos.forEach((n) => { if (gravados[n]) guardados[n] = gravados[n]; gravados[n] = ''; });
     // Só o crédito de foto que continua na peça (e visível).
     const vivos = Object.fromEntries(Object.entries(creditos).filter(([n]) => gravados[n]));
-    return { ...resto, ...doDesenho, campos: gravados, modo, marca, ...(ocultos.length ? { ocultos } : {}), ...(Object.keys(guardados).length ? { guardados } : {}), ...(Object.keys(vivos).length ? { creditos: vivos } : {}) };
-  }, [item, desenho, campos, modo, marca, ocultos, creditos]);
+    // Os espaços que têm papel ou foto. Vai mesmo vazio quando a peça tinha: quem junta com a de antes não fica com o foco da foto velha.
+    const espacosVivos = Object.fromEntries(Object.entries(espacos).filter(([n, e]) => e && (e.papel || gravados[n])));
+    return { ...resto, ...doDesenho, campos: gravados, modo, marca, ...(ocultos.length ? { ocultos } : {}), ...(Object.keys(guardados).length ? { guardados } : {}), ...(Object.keys(vivos).length ? { creditos: vivos } : {}),
+      ...(item.espacos || Object.keys(espacosVivos).length ? { espacos: espacosVivos } : {}) };
+  }, [item, desenho, campos, modo, marca, ocultos, creditos, espacos]);
 
   // Confere meio segundo depois da última mudança (nos três formatos, ou no lugar da peça).
   useEffect(() => {
@@ -282,6 +292,13 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
     const nomes = nomesDo(m);
     setCampos(camposPara(nomes));
     setOcultos((o) => o.filter((n) => nomes.has(n)));
+    // A foto vai junto (o mesmo nome de campo), com o ponto que importa; o papel é o do desenho novo.
+    setEspacos((x) => {
+      const n = {};
+      for (const [k, e] of Object.entries(x)) if (nomes.has(k)) { const { papel: _p, ...resto } = e || {}; n[k] = resto; } // eslint-disable-line no-unused-vars
+      for (const [k, e] of Object.entries(espacosDoModelo(m))) n[k] = { ...(n[k] || {}), ...e };
+      return n;
+    });
     setDesenho({ html: m.arq.html, css: m.arq.css, base: m.id });
   }
 
@@ -291,6 +308,21 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
   // (O nome da empresa de exemplo não vai: no desenho novo entra o da conta.)
   const efetivos = useMemo(() => ({ ...Object.fromEntries(textos.filter((c) => c.nome !== 'marca').map((c) => [c.nome, c.exemplo])), ...campos }), [definicao, campos]); // eslint-disable-line react-hooks/exhaustive-deps
   const visiveis = textos.filter((c) => !ocultos.includes(c.nome));
+
+  // O título da peça, para o pedido de foto à IA: "Churrasco com milho" (a 2ª linha só se não for preço).
+  const tituloDaPeca = [efetivos.titulo, efetivos.titulo2].filter((t) => t && !/\d|%/.test(t)).join(' ') || efetivos.titulo || '';
+
+  /*
+   * Abrir o "Trocar foto": o papel do espaço (o do item; sem ele, o do
+   * modelo de onde a peça veio) e a forma dele, medida na peça desenhada no
+   * tamanho da TV — é essa forma que a prévia do diálogo mostra.
+   */
+  async function abrirFoto(campo) {
+    const base = desenho.base || (item.origem && item.origem.base) || '';
+    const doModelo = (espacos[campo] && espacos[campo].papel) ? '' : await papelNoManifesto(base, campo).catch(() => '');
+    const medida = await medirEspaco(atual, campo, lugar ? lugar.tamanho : (item.formato || '16/9')).catch(() => null);
+    setTrocandoFoto({ campo, papel: papelDoEspaco({ espacos }, campo, doModelo), formato: medida || item.formato || '16/9' });
+  }
 
   // Os desenhos que cabem no mesmo lugar: primeiro os da mesma família.
   const papel = item.papel || 'destaque';
@@ -369,29 +401,37 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
                 </Field>
               );
             })}
-            {fotos.map((c) => (
-              <div key={c.nome}>
-                <span className="mb-1.5 block text-xs font-medium text-ink-2">{c.nome === 'foto' ? 'Foto' : rotulo(c.nome)}</span>
-                <div className="flex items-center gap-2">
-                  {campos[c.nome] && <img src={campos[c.nome]} alt="" className="h-12 w-12 rounded-md border border-line object-cover" />}
-                  <Button size="sm" variant="secondary" onClick={() => setFotoAberta(fotoAberta === c.nome ? null : c.nome)}>
-                    {campos[c.nome] ? 'Trocar foto' : 'Escolher foto'}
-                  </Button>
+            {fotos.map((c) => {
+              const foco = espacos[c.nome] && espacos[c.nome].foco;
+              return (
+                <div key={c.nome}>
+                  <span className="mb-1.5 block text-xs font-medium text-ink-2">{c.nome === 'foto' ? 'Foto' : rotulo(c.nome)}</span>
+                  <div className="flex items-center gap-2">
+                    {campos[c.nome] && <img src={campos[c.nome]} alt="" className="h-12 w-12 rounded-md border border-line object-cover"
+                      style={foco ? { objectPosition: Math.round(foco.x * 100) + '% ' + Math.round(foco.y * 100) + '%' } : undefined} />}
+                    <Button size="sm" variant="secondary" disabled={!!trocandoFoto} onClick={() => abrirFoto(c.nome)}>
+                      {campos[c.nome] ? 'Trocar foto' : 'Escolher foto'}
+                    </Button>
+                  </div>
+                  {creditos[c.nome] && campos[c.nome] && (
+                    <p className="mt-1 text-2xs text-ink-3">{creditos[c.nome]} — aparece pequeno no canto da TV.</p>
+                  )}
                 </div>
-                {fotoAberta === c.nome && (
-                  <FotoDoProduto incluirIa aviso="Escolha uma foto da sua Biblioteca ou envie outra." botao="Enviar foto"
-                    onFechar={() => setFotoAberta(null)}
-                    onEscolher={(url, extra) => {
-                      setCampos((x) => ({ ...x, [c.nome]: url }));
-                      setCreditos((x) => { const n = { ...x }; if (extra && extra.credito) n[c.nome] = extra.credito; else delete n[c.nome]; return n; });
-                      setFotoAberta(null);
-                    }} />
-                )}
-                {creditos[c.nome] && campos[c.nome] && (
-                  <p className="mt-1 text-2xs text-ink-3">{creditos[c.nome]} — aparece pequeno no canto da TV.</p>
-                )}
-              </div>
-            ))}
+              );
+            })}
+            {trocandoFoto && (
+              <TrocarFoto papel={trocandoFoto.papel} ramo={ramo} formato={trocandoFoto.formato} titulo={tituloDaPeca}
+                valor={{ src: campos[trocandoFoto.campo] || '', foco: (espacos[trocandoFoto.campo] || {}).foco || null }}
+                onFechar={() => setTrocandoFoto(null)}
+                onTrocar={(valor, extra) => {
+                  const campo = trocandoFoto.campo;
+                  const mudou = valor.src !== campos[campo];
+                  setCampos((x) => ({ ...x, [campo]: valor.src }));
+                  setEspacos((x) => ({ ...x, [campo]: espacoComFoto({ ...(x[campo] || {}), papel: trocandoFoto.papel }, { foco: valor.foco, fundo: extra && extra.fundo }) }));
+                  setCreditos((x) => { const n = { ...x }; if (extra && extra.credito) n[campo] = extra.credito; else if (mudou) delete n[campo]; return n; });
+                  setTrocandoFoto(null);
+                }} />
+            )}
           </>}
 
           {aba === 'visual' && <>

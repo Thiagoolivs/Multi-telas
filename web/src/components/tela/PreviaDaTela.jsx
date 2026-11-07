@@ -13,8 +13,9 @@ import { cn } from '../../lib/cn.js';
  */
 const rgba = (triplo, a) => 'rgba(' + (triplo || '255,255,255') + ',' + (a == null ? 0.5 : a) + ')';
 
-// O texto do selo na cor da marca: branco onde se lê, escuro onde não.
-const sobreMarca = (t) => { const T = globalThis.MTTheme; return T && T.contraste(t.brand, '#ffffff') < 3 ? '#0b1020' : '#ffffff'; };
+// O selo na cor da marca como a TV pinta (a pastel ganha corpo: js/theme.js, corQuePinta), e o texto que se lê nele.
+const pintaMarca = (t) => { const T = globalThis.MTTheme; return T && T.corQuePinta ? T.corQuePinta(t.brand) : t.brand; };
+const sobreMarca = (t) => { const T = globalThis.MTTheme; return T && T.contraste(pintaMarca(t), '#ffffff') < 3 ? '#0b1020' : '#ffffff'; };
 
 function Cabecalho({ s, d, t }) {
   return (
@@ -34,7 +35,7 @@ function Cabecalho({ s, d, t }) {
 function Rodape({ d, t, relogioEmCima }) {
   return (
     <div className="flex h-full items-center gap-1.5 px-[2%] text-[9px]" style={{ background: rgba(t.surface, t.glass), color: t.text }}>
-      <span className="shrink-0 rounded px-1 py-px font-bold uppercase" style={{ background: t.brand, color: sobreMarca(t) }}>{(d.titulo || 'Últimas notícias').slice(0, 18)}</span>
+      <span className="shrink-0 rounded px-1 py-px font-bold uppercase" style={{ background: pintaMarca(t), color: sobreMarca(t) }}>{(d.titulo || 'Últimas notícias').slice(0, 18)}</span>
       <span className="min-w-0 flex-1 truncate" style={{ color: t.textDim }}>As manchetes e os avisos passam aqui</span>
       {d.mostrarRelogio !== false && !relogioEmCima && <span className="shrink-0 font-bold tabular-nums">10:42</span>}
     </div>

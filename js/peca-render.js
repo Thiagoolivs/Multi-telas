@@ -450,6 +450,149 @@
     alvo.setAttribute('data-oculto', '');
   }
 
+  /* ============ Espaços de imagem: qualquer foto, em qualquer espaço ============
+   *
+   * O cliente põe a foto que tem — a do celular, em pé, numa peça deitada;
+   * a do banco; uma pequena demais — e ela tem que ficar bonita no espaço
+   * da peça. Duas maneiras de pôr uma foto num espaço:
+   *
+   *   cobrir  enche o espaço e corta o que sobra (object-fit: cover). Com o
+   *           FOCO do cliente, o corte se alinha no ponto que ele tocou: o
+   *           ponto x% da foto fica a x% do espaço, então nunca sai do quadro.
+   *   conter  a foto inteira no meio (com o foco, quase inteira: até um
+   *           quarto dela em volta do ponto) e, atrás dela, ela mesma
+   *           esticada e escurecida — o fundo desfocado. Nada de faixa preta,
+   *           nada de cabeça ou produto cortado ao meio.
+   *
+   * Cobrir é o normal. Conter entra quando o corte levaria demais da foto
+   * (a proporção da foto está longe da do espaço) ou quando a foto, para
+   * cobrir, teria que crescer além da conta (pequena demais, sai borrada).
+   * Quanto o papel tolera perder: o ambiente aguenta corte (é cenário), o
+   * produto menos, a pessoa menos ainda; a textura sempre cobre (é fundo).
+   * Com o foco escolhido, a folga é maior: o que importa já está garantido.
+   *
+   * O borrão NÃO é `filter: blur()` (a placa do box barato não aguenta,
+   * a mesma regra de js/render.js, comFundo): é a foto em miniatura (24 px)
+   * esticada, que o navegador já desenha borrada. A miniatura vem pronta no
+   * item (`espacos[nome].fundo`, feita no painel ao escolher a foto); sem
+   * ela, sai daqui mesmo, de um <canvas>. Foto de outro endereço não deixa
+   * ler o canvas: aí o fundo é a cor de fundo da marca.
+   *
+   * Tudo no <img> que a peça já tem — estilo inline, nenhum elemento novo:
+   * os seletores da peça (`.foto + .veu`, `.avatar img`) continuam valendo,
+   * e a borda redonda e a entrada animada vêm junto.
+   */
+  const CORTE_DO_PAPEL = { produto: 0.45, pessoa: 0.4, ambiente: 0.6 };
+  const CORTE_PADRAO = 0.5;
+  const FOLGA_DO_FOCO = 0.15;
+  // Cobrir esticando mais que isto (2,5× o tamanho da foto) já se vê borrado na TV.
+  const AMPLIACAO_MAXIMA = 2.5;
+  // No "conter", com o foco escolhido, a foto pode perder até isto em volta dele (o assunto sai maior).
+  const PERDA_NO_FUNDO = 0.25;
+  const VEU_DO_FUNDO = 'linear-gradient(rgba(0,0,0,.38),rgba(0,0,0,.38))';
+  const LADO_DA_MINIATURA = 24;
+
+  /*
+   * A decisão, pura (a TV, a bancada, o painel e o teste chamam a mesma):
+   * e = { fotoW, fotoH, espacoW, espacoH, papel, foco }. Devolve { modo,
+   * motivo, corte, ampliacao }: `corte` é a fração da foto que cobrir
+   * jogaria fora no lado que sobra; `ampliacao`, quanto ela cresceria.
+   */
+  function encaixeDaFoto(e) {
+    const o = e || {};
+    const fw = Number(o.fotoW), fh = Number(o.fotoH), ew = Number(o.espacoW), eh = Number(o.espacoH);
+    if (!(fw > 0 && fh > 0 && ew > 0 && eh > 0)) return { modo: 'cobrir', motivo: 'sem-medida', corte: 0, ampliacao: 1 };
+    const rf = fw / fh, re = ew / eh;
+    const corte = 1 - Math.min(rf, re) / Math.max(rf, re);
+    const ampliacao = Math.max(ew / fw, eh / fh);
+    const medidas = { corte: Math.round(corte * 1000) / 1000, ampliacao: Math.round(ampliacao * 100) / 100 };
+    if (o.papel === 'textura') return Object.assign({ modo: 'cobrir', motivo: 'textura' }, medidas);
+    const tolera = Math.min(0.85, (CORTE_DO_PAPEL[o.papel] != null ? CORTE_DO_PAPEL[o.papel] : CORTE_PADRAO) + (o.foco ? FOLGA_DO_FOCO : 0));
+    if (corte > tolera) return Object.assign({ modo: 'conter', motivo: 'formato' }, medidas);
+    if (ampliacao > AMPLIACAO_MAXIMA) return Object.assign({ modo: 'conter', motivo: 'pequena' }, medidas);
+    return Object.assign({ modo: 'cobrir', motivo: 'cabe' }, medidas);
+  }
+
+  /*
+   * A miniatura de uma foto já carregada (data:image/jpeg), ou null quando o
+   * navegador não deixa ler (foto de outro endereço) ou não há canvas. O
+   * painel usa a mesma para guardar `espacos[nome].fundo`.
+   */
+  function miniaturaDaFoto(img, lado) {
+    try {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const doc = img.ownerDocument || (typeof document !== 'undefined' ? document : null);
+      if (!w || !h || !doc) return null;
+      const k = (lado || LADO_DA_MINIATURA) / Math.max(w, h);
+      const c = doc.createElement('canvas');
+      c.width = Math.max(1, Math.round(w * k));
+      c.height = Math.max(1, Math.round(h * k));
+      const g = c.getContext && c.getContext('2d');
+      if (!g) return null;
+      g.drawImage(img, 0, 0, c.width, c.height);
+      const url = c.toDataURL('image/jpeg', 0.7);
+      return /^data:image\/jpeg;base64,/.test(url) ? url : null;
+    } catch (e) { return null; }
+  }
+
+  // A miniatura feita aqui, uma vez por foto (a mesma foto volta a cada giro da playlist).
+  const miniaturas = {};
+  let quantasMiniaturas = 0;
+  function fundoDoEspaco(img, esp) {
+    if (esp && esp.fundo) return esp.fundo;
+    const src = img.currentSrc || img.src || '';
+    if (!Object.prototype.hasOwnProperty.call(miniaturas, src)) {
+      if (++quantasMiniaturas > 60) { Object.keys(miniaturas).forEach((k) => { delete miniaturas[k]; }); quantasMiniaturas = 1; }
+      miniaturas[src] = miniaturaDaFoto(img);
+    }
+    return miniaturas[src];
+  }
+
+  const pct = (n) => Math.round(n * 1000) / 10 + '%';
+  const PROPRIAS = ['object-fit', 'object-position', 'background', 'padding', 'box-sizing'];
+
+  /*
+   * Põe a foto no espaço: decide (encaixeDaFoto) e escreve no próprio <img>.
+   * Chamada quando a foto carrega e a cada vez que a zona muda de tamanho.
+   * `esp` = { papel, foco, fundo } (ver peca-html.js, ESPAÇOS DE IMAGEM).
+   */
+  function encaixarFoto(img, esp) {
+    const e = esp || {};
+    const s = img.style;
+    PROPRIAS.forEach((p) => s.removeProperty(p));
+    img.removeAttribute('data-mt-encaixe');
+    if (e.foco) s.setProperty('object-position', pct(e.foco.x) + ' ' + pct(e.foco.y), 'important');
+    if (!img.naturalWidth || img.hasAttribute('data-sem-foto')) return null;
+    const w = img.clientWidth, h = img.clientHeight;
+    const d = encaixeDaFoto({ fotoW: img.naturalWidth, fotoH: img.naturalHeight, espacoW: w, espacoH: h, papel: e.papel, foco: e.foco });
+    if (d.modo !== 'conter') return d;
+    img.setAttribute('data-mt-encaixe', d.motivo);
+    const fundo = fundoDoEspaco(img, e);
+    s.setProperty('background', (fundo ? VEU_DO_FUNDO + ',url("' + fundo + '") center/cover no-repeat,' : '') + 'var(--mt-fundo-2,#1a1a1a)', 'important');
+    /*
+     * A JANELA da foto dentro do espaço: a foto inteira (contain) e, com o
+     * foco escolhido, até PERDA_NO_FUNDO dela em volta do ponto, para o
+     * assunto sair maior; nunca além de AMPLIACAO_MAXIMA (a pequena fica no
+     * meio, no tamanho em que ainda sai nítida). A janela entra como padding
+     * — a caixa da peça é border-box, então o espaço não muda de tamanho — e
+     * a foto cobre a janela, alinhada no foco. Se o espaço mudar de tamanho
+     * com o padding (foto de altura automática), ele sai e fica o contain.
+     */
+    const fw = img.naturalWidth, fh = img.naturalHeight;
+    const k = Math.min(Math.min(w / fw, h / fh) / (e.foco ? 1 - PERDA_NO_FUNDO : 1), AMPLIACAO_MAXIMA);
+    const cw = Math.min(w, fw * k), ch = Math.min(h, fh * k);
+    s.setProperty('object-fit', 'cover', 'important');
+    s.setProperty('object-position', e.foco ? pct(e.foco.x) + ' ' + pct(e.foco.y) : '50% 50%', 'important');
+    s.setProperty('box-sizing', 'border-box', 'important');
+    s.setProperty('padding', Math.max(0, (h - ch) / 2).toFixed(1) + 'px ' + Math.max(0, (w - cw) / 2).toFixed(1) + 'px', 'important');
+    if (Math.abs(img.clientWidth - w) > 1 || Math.abs(img.clientHeight - h) > 1) {
+      s.removeProperty('padding'); s.removeProperty('box-sizing');
+      s.setProperty('object-fit', 'contain', 'important');
+      s.setProperty('object-position', '50% 50%', 'important');
+    }
+    return d;
+  }
+
   /* ============ Navegador sem container queries (Chromium < 105) ============
    *
    * QA de lançamento, 03/11 (usuário 19): toda peça mede tudo em cqw/cqh e
@@ -767,20 +910,23 @@
       if (w + 'x' + h !== medidaAtual) estilo.textContent = cssDeAgora();
       return true;
     };
+    // As fotos de campo (não a logo nem o QR): cada uma encaixa no seu espaço (encaixarFoto), de novo a cada medida nova.
+    const fotos = [];
+    const encaixarFotos = () => fotos.forEach((f) => encaixarFoto(f.el, f.esp));
     enquadrar(host, palcoEl);
     // A zona muda de tamanho (layout que "respira", tela girada): enquadra de novo.
     let observador = null;
     let espera = null;
     let aoRedimensionar = null;
     if (typeof ResizeObserver !== 'undefined') {
-      observador = new ResizeObserver(() => { enquadrar(host, palcoEl); remedir(); });
+      observador = new ResizeObserver(() => { enquadrar(host, palcoEl); remedir(); encaixarFotos(); });
       observador.observe(host);
     } else if (semCq) {
       // Chromium < 64: sem ResizeObserver. Confere até a zona ter tamanho, e a cada giro da janela.
       let tentativas = 0;
-      const conferir = () => { espera = null; enquadrar(host, palcoEl); if (!remedir() && ++tentativas < 40) espera = setTimeout(conferir, 250); };
+      const conferir = () => { espera = null; enquadrar(host, palcoEl); if (!remedir() && ++tentativas < 40) espera = setTimeout(conferir, 250); else encaixarFotos(); };
       if (!remedir()) espera = setTimeout(conferir, 50);
-      aoRedimensionar = () => { enquadrar(host, palcoEl); remedir(); };
+      aoRedimensionar = () => { enquadrar(host, palcoEl); remedir(); encaixarFotos(); };
       if (typeof window !== 'undefined') window.addEventListener('resize', aoRedimensionar);
     }
     // A tela já mostra a marca (no cabeçalho): a peça não repete.
@@ -800,12 +946,18 @@
       const qr = el.hasAttribute('data-campo-qr');
       const campo = el.getAttribute(qr ? 'data-campo-qr' : 'data-campo-img');
       const valor = campo === 'logo' && !qr ? logoDaPeca(it.campos.logo, o.logo, tokens) : it.campos[campo];
+      const foto = !qr && campo !== 'logo' && !o.rascunho && !!valor ? { el, esp: (it.espacos || {})[campo] || {} } : null;
       // Foto que não carrega some, em vez do ícone de imagem quebrada na parede.
-      el.onerror = () => el.setAttribute('data-sem-foto', '');
+      el.onerror = () => { el.setAttribute('data-sem-foto', ''); if (foto) encaixarFoto(el, foto.esp); };
       if (o.rascunho && !qr) el.src = silhueta(tokens);
       // O QR é desenhado pelo nosso servidor a partir do texto: nada vem de fora.
       else if (valor) el.src = qr ? '/api/qr.svg?d=' + encodeURIComponent(valor) : valor;
       else el.setAttribute('data-sem-foto', '');
+      if (foto) {
+        fotos.push(foto);
+        el.addEventListener('load', () => encaixarFoto(el, foto.esp));
+        encaixarFoto(el, foto.esp);
+      }
     });
 
     // Campos vivos.
@@ -819,6 +971,7 @@
     tick();
     // Com os textos no lugar, o piso da régua confere de novo (a peça pode ter ganho texto agora).
     enquadrar(host, palcoEl);
+    encaixarFotos();
     /*
      * E quando a fonte da marca chega: medida com a fonte de reserva (mais
      * larga), o piso cedia sem precisar. O fonts.ready sozinho não basta: a
@@ -827,7 +980,7 @@
      * de chegar (loadingdone), enquanto a peça está na tela.
      */
     const fontes = host.ownerDocument && host.ownerDocument.fonts;
-    const aoChegarFonte = () => { if (host.isConnected !== false) enquadrar(host, palcoEl); };
+    const aoChegarFonte = () => { if (host.isConnected !== false) { enquadrar(host, palcoEl); encaixarFotos(); } };
     if (fontes && fontes.ready && typeof fontes.ready.then === 'function') fontes.ready.then(aoChegarFonte).catch(() => {});
     if (fontes && typeof fontes.addEventListener === 'function') fontes.addEventListener('loadingdone', aoChegarFonte);
     let relogio = null;
@@ -903,6 +1056,8 @@
 
   return {
     ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA,
+    // Os espaços de imagem: a decisão (pura), a miniatura do fundo e o encaixe no <img> (o painel usa os três).
+    encaixeDaFoto, miniaturaDaFoto, encaixarFoto, AMPLIACAO_MAXIMA,
     BASE_SEM_CQ, cssSemCq, cssCompletoSemCq, condicaoCq, temContainerQueries, referencia,
   };
 });
