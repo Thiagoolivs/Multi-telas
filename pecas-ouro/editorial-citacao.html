@@ -1,0 +1,54 @@
+<!--
+  Citação com retrato — família social (lote 4, arquétipo A3/A7).
+  Um depoimento como numa entrevista de revista: o retrato em corte seco
+  de um lado, a aspa grande na cor de destaque (desenho, aria-hidden), a
+  frase na letra do título e a assinatura sob um filete. Comércio e
+  empresa: na saúde, depoimento de paciente pede cuidado (CFM/CFO), e esta
+  peça não é oferecida lá.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 4.6cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 40fr 60fr; }
+.foto { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 35%; }
+.texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 7cqh 7cqw 7cqh 6cqw; }
+.aspa { height: .5em; font: 500 calc(var(--t) * 3) / 1 var(--mt-fonte-titulo); color: var(--mt-destaque); }
+.frase { font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.15 var(--mt-fonte-titulo); letter-spacing: -.005em; text-wrap: balance; }
+.quem { margin-top: 4cqh; padding-top: 2cqh; border-top: .14cqw solid var(--mt-linha); }
+.quem b { display: block; font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
+.quem small { display: block; margin-top: .6cqh; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { --f: 3.5cqw; --t: 4.8cqw; grid-template-columns: 36fr 64fr; }
+  .texto { padding: 5cqh 5cqw; }
+  .quem { margin-top: 3cqh; }
+  .quem small { display: none; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 4.8cqw; }
+  .aspa { display: none; }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 7.6cqw; grid-template-columns: 1fr; grid-template-rows: 44fr 56fr; }
+  .texto { justify-content: flex-start; padding: 5cqh 7cqw 6cqh; }
+  .quem { margin-top: 4cqw; padding-top: 3cqw; border-top-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --t: 6.4cqw; grid-template-columns: 38fr 62fr; grid-template-rows: 1fr; }
+  .texto { justify-content: center; padding: 6cqh 6cqw 6cqh 5cqw; }
+  .quem small { display: none; }
+}
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 9.6cqw; grid-template-rows: 32fr 68fr; }
+  .texto { justify-content: center; padding: 2cqh 8cqw 4cqh; }
+  .aspa { height: .42em; }
+  .quem { margin-top: 2.4cqh; padding-top: 1.6cqh; }
+  .quem small { display: none; }
+}
+</style>
+<section class="mt-peca editorial-citacao">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+  <div class="texto">
+    <p class="aspa" aria-hidden="true" data-entrada="aparecer" data-ordem="1">“</p>
+    <p class="frase" data-campo="citacao" data-entrada="subir" data-ordem="2">Saio daqui me sentindo outra pessoa. E o café é sempre bom.</p>
+    <p class="quem" data-entrada="aparecer" data-ordem="3"><b data-campo="nome">Renata Alves</b><small data-campo="detalhe">Cliente há seis anos</small></p>
+  </div>
+</section>

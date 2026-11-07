@@ -1,0 +1,57 @@
+<!--
+  Marco da casa — família institucional (lote 4, arquétipo A4).
+  Um campo de cor: a coluna inteira na cor de destaque da marca (o único
+  bloco de cor, com o texto em --mt-sobre-destaque, par garantido em 4,5:1
+  pelos tokens), o número grande, e a foto em corte seco ao lado. Para
+  aniversário da casa, uma conquista, uma marca redonda. Na saúde, número
+  de casa (anos, atendimentos), nunca resultado prometido.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --n: 20cqw; --t: 4.6cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 42fr 58fr; }
+.campo { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 7cqh 5cqw 7cqh 6cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); }
+.foto { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 45%; }
+.kicker { font: 700 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; }
+.marco { margin: auto 0; padding: 3cqh 0; }
+.numero { font: 500 max(var(--mt-piso, 0cqw), calc(var(--n) * var(--mt-escala-titulo, 1)))/.84 var(--mt-fonte-titulo); letter-spacing: -.04em; white-space: nowrap; }
+.rotulo { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.05 var(--mt-fonte-titulo); text-wrap: balance; }
+.assina { padding-top: 2cqh; border-top: .16cqw solid var(--mt-sobre-destaque); font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { --f: 3.5cqw; --n: 18cqw; --t: 4.8cqw; grid-template-columns: 46fr 54fr; }
+  .campo { padding: 5cqh 4cqw 5cqh 5cqw; }
+  .kicker { letter-spacing: .06em; }
+  .marco { padding: 2cqh 0; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --n: 15cqw; --t: 5cqw; }
+  .kicker, .assina { display: none; }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --n: 36cqw; --t: 8cqw; grid-template-columns: 1fr; grid-template-rows: 52fr 48fr; }
+  .campo { grid-row: 2; padding: 5cqh 7cqw; }
+  .foto { grid-row: 1; }
+  .assina { border-top-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --n: 26cqw; --t: 6.6cqw; grid-template-columns: 50fr 50fr; grid-template-rows: 1fr; }
+  .campo { grid-row: 1; padding: 6cqh 5cqw 6cqh 6cqw; }
+  .foto { grid-row: 1; }
+}
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --n: 40cqw; --t: 11cqw; grid-template-rows: 36fr 64fr; }
+  .campo { padding: 3cqh 8cqw 4cqh; }
+  .kicker { letter-spacing: .02em; text-transform: none; }
+  .assina { display: none; }
+}
+</style>
+<section class="mt-peca numero-marco">
+  <div class="campo">
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="1">Desde 2011</p>
+    <div class="marco">
+      <p class="numero" data-campo="numero" data-entrada="crescer" data-ordem="2">15</p>
+      <p class="rotulo" data-campo="rotulo" data-entrada="subir" data-ordem="3">anos cuidando de sorrisos</p>
+    </div>
+    <p class="assina" data-campo="assinatura" data-entrada="aparecer" data-ordem="4">Obrigado pela confiança</p>
+  </div>
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+</section>

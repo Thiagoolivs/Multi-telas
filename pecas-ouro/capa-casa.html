@@ -1,0 +1,86 @@
+<!--
+  Capa — família institucional (lote 4, docs/design/SISTEMA-VISUAL.md, arquétipo A1).
+  A foto é a peça, como a capa de uma revista. O texto mora num bloco de
+  fundo cheio da marca, e a foto se funde nele por um degradê que fica FORA
+  do bloco (o ::before): deitada, o bloco é a coluna da esquerda; em pé, na
+  quadrada e na lateral, é o pé da peça. Quando a letra cresce com o piso da
+  TV, o bloco cresce e o véu vai junto — o texto nunca fica sobre a foto
+  crua, com qualquer foto. Tudo em fluxo (flex): o piso empurra, não
+  sobrepõe. Numa tela com cabeçalho o nome sai (data-repete) e fica a linha
+  de baixo da assinatura.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.foto { position: absolute; top: 0; bottom: 0; left: 30%; width: 70%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.pe { position: absolute; left: 0; top: 0; bottom: 0; width: 50%; display: flex; flex-direction: column; justify-content: flex-end; padding: 8cqh 0 8cqh 6cqw; background: var(--mt-fundo); }
+/* O degradê ao lado do bloco: a foto se funde no fundo da marca, sem linha. */
+.pe::before { content: ""; position: absolute; top: 0; bottom: 0; left: 100%; width: 16cqw; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
+.kicker { display: flex; align-items: center; gap: 1.2cqw; font: 600 max(var(--mt-piso, 0cqw), 2.6cqw)/1.1 var(--mt-fonte-texto); letter-spacing: .16em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { flex: none; display: block; width: 3.2cqw; height: .16cqw; background: var(--mt-destaque); }
+h1 { margin-top: 2.2cqw; font: 500 max(var(--mt-piso, 0cqw), calc(7cqw * var(--mt-escala-titulo, 1)))/.98 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+h1 span, h1 em { display: block; }
+h1 em { font-style: normal; color: var(--mt-texto-suave); }
+.apoio { margin-top: 2.4cqw; font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1.25 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.assina { margin-top: 4cqh; padding-top: 2.4cqh; border-top: .14cqw solid var(--mt-linha); display: flex; flex-wrap: wrap; align-items: baseline; gap: .6cqw 2cqw; }
+.assina b { font: 600 max(var(--mt-piso, 0cqw), 2.6cqw)/1.1 var(--mt-fonte-texto); letter-spacing: .12em; text-transform: uppercase; }
+.assina small { font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1.2 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+/* Sem foto: o fundo da marca segura a peça sozinho. */
+.foto[data-sem-foto] ~ .pe::before { display: none; }
+
+/* A principal do Corporativo (1405×832): a letra do balcão pesa mais aqui. A coluna alarga e o apoio sai. */
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .foto { left: 36%; width: 64%; }
+  .pe { width: 58%; padding: 7cqh 0 7cqh 6cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.5cqw); letter-spacing: .1em; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(7.6cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { display: none; }
+  .assina b, .assina small { font-size: max(var(--mt-piso, 0cqw), 3.5cqw); }
+}
+/* A faixa baixa (a zona de baixo da TV em pé, 1038×559): só a frase. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .pe { width: 54%; justify-content: center; padding: 6cqh 0 6cqh 6cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3cqw); }
+  .kicker i { display: none; }
+  h1 { margin-top: 1.6cqw; font-size: max(var(--mt-piso, 0cqw), calc(6.4cqw * var(--mt-escala-titulo, 1))); }
+  .assina { display: none; }
+}
+/* Em pé e quadrada: a foto em cima, o bloco no pé, o degradê sobe dele. */
+@container (aspect-ratio < 1.25) {
+  .foto { left: 0; width: 100%; object-position: 50% 40%; }
+  .pe { top: auto; left: 0; right: 0; width: auto; padding: 0 7cqw 7cqh; }
+  .pe::before { top: auto; left: 0; right: 0; bottom: 100%; width: auto; height: 26cqh; background: linear-gradient(0deg, var(--mt-fundo), var(--mt-fundo-0)); }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.4cqw); }
+  .kicker i { width: 5cqw; height: .26cqw; }
+  h1 { margin-top: 3.4cqw; font-size: max(var(--mt-piso, 0cqw), calc(11.5cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { margin-top: 3.4cqw; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .assina { margin-top: 4.4cqw; padding-top: 3.4cqw; border-top-width: .24cqw; gap: 1cqw 3cqw; }
+  .assina b, .assina small { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .pe { padding-bottom: 6cqh; }
+  .pe::before { height: 20cqh; }
+  h1 { margin-top: 2.6cqw; font-size: max(var(--mt-piso, 0cqw), calc(9.4cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { display: none; }
+  .assina { margin-top: 3.4cqw; padding-top: 2.6cqw; }
+}
+/* A lateral estreita (515×832): título e nome da casa, letra grande. */
+@container (max-width: 700px) {
+  .pe { padding: 0 8cqw 6cqh; }
+  .pe::before { height: 16cqh; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .08em; }
+  .kicker i { display: none; }
+  h1 { margin-top: 2cqh; font-size: max(var(--mt-piso, 0cqw), calc(14.5cqw * var(--mt-escala-titulo, 1))); }
+  .apoio, .assina small { display: none; }
+  .assina { margin-top: 3cqh; padding-top: 2.4cqh; }
+  .assina b { font-size: max(var(--mt-piso, 0cqw), 6cqw); letter-spacing: .06em; }
+}
+</style>
+<section class="mt-peca capa-casa">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+  <div class="pe">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Desde 1987</span></p>
+    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">A mesa posta</span><em data-campo="titulo2">como em casa</em></h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Massa feita à mão todas as manhãs e o vinho da casa.</p>
+    <p class="assina" data-entrada="aparecer" data-ordem="4"><b data-campo="marca" data-repete="marca">Cantina da Nona</b><small data-campo="endereco">Terça a domingo</small></p>
+  </div>
+</section>

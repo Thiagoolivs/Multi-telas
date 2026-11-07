@@ -1,0 +1,61 @@
+<!--
+  Índice em três passos — família serviço (lote 4, arquétipo A3).
+  Uma faixa de foto no alto, de ponta a ponta; embaixo, o título e três
+  passos com o numeral grande na letra do título e na cor de destaque (o
+  numeral é desenho, aria-hidden; cada passo é um campo). Grade suíça:
+  colunas iguais, filete em cima de cada passo. Sem preço — serve à saúde.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5cqw; --n: 7cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo);
+  display: grid; grid-template-rows: 44fr 56fr; }
+.foto { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 45%; }
+.corpo { min-height: 0; display: grid; grid-template-columns: 31fr 23fr 23fr 23fr; column-gap: 3cqw; align-items: start; align-content: center; padding: 5cqh 6cqw; }
+.cabeca { min-width: 0; }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+h1 { margin-top: 2.4cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.02 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.passo { min-width: 0; padding-top: 1.6cqh; border-top: .16cqw solid var(--mt-linha); }
+.passo i { display: block; font: 500 max(var(--mt-piso, 0cqw), calc(var(--n) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); font-style: normal; color: var(--mt-destaque); }
+.passo span { display: block; margin-top: 1.2cqh; font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.22 var(--mt-fonte-texto); text-wrap: balance; }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { --f: 3.5cqw; --t: 5.2cqw; --n: 6cqw; grid-template-rows: 28fr 72fr; }
+  .corpo { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: auto auto; row-gap: 3cqh; padding: 4cqh 5cqw 5cqh; }
+  .cabeca { grid-column: 1 / -1; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 5.2cqw; --n: 6cqw; grid-template-rows: 1fr; grid-template-columns: 30fr 70fr; }
+  .corpo { grid-template-columns: 1fr; grid-template-rows: auto; row-gap: 0; align-content: center; padding: 4cqh 5cqw; }
+  .cabeca { display: none; }
+  .passo { display: flex; align-items: baseline; gap: 3cqw; padding: 1.4cqh 0; }
+  .passo span { margin-top: 0; }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 9.4cqw; --n: 9cqw; grid-template-rows: 30fr 70fr; }
+  .corpo { grid-template-columns: 1fr; row-gap: 0; align-content: start; padding: 5cqh 7cqw 6cqh; }
+  .cabeca { margin-bottom: 4cqh; }
+  .passo { display: grid; grid-template-columns: 14cqw 1fr; align-items: baseline; padding: 2.4cqh 0; border-top-width: .24cqw; }
+  .passo span { margin-top: 0; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --t: 7.6cqw; --n: 7.6cqw; grid-template-rows: 26fr 74fr; }
+  .corpo { padding: 4cqh 7cqw 5cqh; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .cabeca { margin-bottom: 3cqh; }
+  .passo { padding: 1.6cqh 0; }
+}
+</style>
+<section class="mt-peca editorial-indice">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+  <div class="corpo">
+    <div class="cabeca" data-entrada="subir" data-ordem="1">
+      <p class="kicker" data-campo="kicker">Primeira consulta</p>
+      <h1 data-campo="titulo">Sua visita em três passos</h1>
+    </div>
+    <p class="passo" data-entrada="subir" data-ordem="2"><i aria-hidden="true">1</i><span data-campo="passo1">Chegue 15 minutos antes</span></p>
+    <p class="passo" data-entrada="subir" data-ordem="3"><i aria-hidden="true">2</i><span data-campo="passo2">Traga documento e carteirinha</span></p>
+    <p class="passo" data-entrada="subir" data-ordem="4"><i aria-hidden="true">3</i><span data-campo="passo3">Aguarde ser chamado pelo nome</span></p>
+  </div>
+</section>

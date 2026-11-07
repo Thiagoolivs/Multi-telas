@@ -2139,6 +2139,618 @@
       "estado": "proposta",
       "marca": "padaria",
       "lote": 3
+    },
+    {
+      "id": "capa-campanha",
+      "nome": "Capa · campanha com período",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "saude": {
+          "periodo": "Até 30 de maio",
+          "titulo": "Vacina da gripe",
+          "titulo2": "já chegou",
+          "apoio": "Aplicação na sala de serviços, por farmacêutico.",
+          "local": "Sem agendamento"
+        },
+        "comercio": {
+          "periodo": "Só este mês",
+          "titulo": "Semana da casa",
+          "titulo2": "nova",
+          "apoio": "Peças escolhidas a dedo para o seu dia a dia.",
+          "local": "Na loja e no site"
+        },
+        "empresa": {
+          "periodo": "De 10 a 14 de junho",
+          "titulo": "SIPAT",
+          "titulo2": "2026",
+          "apoio": "Palestras, exames e a gincana da segurança.",
+          "local": "No auditório, às 14h"
+        }
+      },
+      "estado": "proposta",
+      "marca": "farmacia",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
+      }
+    },
+    {
+      "id": "capa-casa",
+      "nome": "Capa · foto cheia com a frase da casa",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Desde 1987",
+          "titulo": "A mesa posta",
+          "titulo2": "como em casa",
+          "apoio": "Massa feita à mão todas as manhãs e o vinho da casa.",
+          "endereco": "Terça a domingo"
+        },
+        "saude": {
+          "kicker": "Bem-vindo",
+          "titulo": "Cuidado de perto,",
+          "titulo2": "sem pressa",
+          "apoio": "Uma equipe que escuta, explica e acompanha cada consulta.",
+          "endereco": "Segunda a sábado"
+        },
+        "empresa": {
+          "kicker": "Quem somos",
+          "titulo": "Gente que faz",
+          "titulo2": "o trabalho bem feito",
+          "apoio": "Cada entrega passa por mãos que conhecem o ofício.",
+          "endereco": "Unidade Centro"
+        }
+      },
+      "estado": "proposta",
+      "marca": "restaurante",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/restaurante/jantar.jpg"
+      }
+    },
+    {
+      "id": "capa-produto",
+      "nome": "Capa · produto em foto com o preço",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Saiu agora",
+          "titulo": "Pão de fermentação natural",
+          "preco": "24",
+          "centavos": ",90",
+          "unidade": "a unidade",
+          "cta": "Separamos para você no balcão"
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/padaria/pao-tabua.jpg"
+      }
+    },
+    {
+      "id": "cardapio-destaque",
+      "nome": "Prato do dia em cartão",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Prato do dia · quinta",
+          "titulo": "Tagliatelle ao ragu de costela",
+          "apoio": "Massa fresca da casa, ragu cozido por seis horas e parmesão.",
+          "quando": "Almoço, até as 15h",
+          "preco": "48",
+          "centavos": ",00"
+        },
+        "empresa": {
+          "kicker": "Almoço de hoje",
+          "titulo": "Frango assado com legumes",
+          "apoio": "Arroz, feijão, salada da horta e a fruta da estação.",
+          "quando": "Das 11h às 14h",
+          "preco": "12",
+          "centavos": ",00"
+        }
+      },
+      "estado": "proposta",
+      "marca": "restaurante",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/restaurante/prato-autoral.jpg"
+      }
+    },
+    {
+      "id": "cardapio-quadro",
+      "nome": "Quadro do cardápio com foto",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Feitas aqui, todo dia",
+          "titulo": "Massas da casa",
+          "item1": "Tagliatelle ao ragu",
+          "preco1": "58",
+          "item2": "Nhoque de batata",
+          "preco2": "49",
+          "item3": "Lasanha da nonna",
+          "preco3": "62",
+          "item4": "Ravioli de abóbora",
+          "preco4": "56",
+          "item5": "Espaguete ao pomodoro",
+          "preco5": "44",
+          "nota": "Preços em reais · meia porção sob pedido"
+        },
+        "empresa": {
+          "kicker": "Refeitório · semana",
+          "titulo": "Cardápio do almoço",
+          "item1": "Segunda · frango assado",
+          "preco1": "12",
+          "item2": "Terça · carne de panela",
+          "preco2": "12",
+          "item3": "Quarta · feijoada",
+          "preco3": "14",
+          "item4": "Quinta · peixe grelhado",
+          "preco4": "12",
+          "item5": "Sexta · massa ao sugo",
+          "preco5": "12",
+          "nota": "Desconto em folha · das 11h às 14h"
+        }
+      },
+      "estado": "proposta",
+      "marca": "restaurante",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/restaurante/tagliatelle.jpg"
+      }
+    },
+    {
+      "id": "cardapio-trio",
+      "nome": "Vitrine de três produtos",
+      "familia": "cardápio",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "produto",
+        "foto2": "produto",
+        "foto3": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "titulo": "Da vitrine de hoje",
+          "kicker": "Saídos do forno",
+          "nome1": "Croissant de manteiga",
+          "preco1": "9,50",
+          "nome2": "Bolo de café",
+          "preco2": "12",
+          "nome3": "Pão rústico",
+          "preco3": "22"
+        }
+      },
+      "estado": "proposta",
+      "marca": "padaria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/padaria/croissants-assadeira.jpg",
+        "foto2": "/pecas-ouro/fotos/padaria/bolo-cafe.jpg",
+        "foto3": "/pecas-ouro/fotos/padaria/paes-rusticos.jpg"
+      }
+    },
+    {
+      "id": "diptico-agenda",
+      "nome": "Díptico · agende pelo QR",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude"
+      ],
+      "fotos": {
+        "foto": "pessoa"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Agenda aberta",
+          "titulo": "Seu horário",
+          "titulo2": "em dois toques",
+          "instrucao": "Aponte a câmera e escolha o dia",
+          "contato": "ou fale com a recepção"
+        },
+        "saude": {
+          "kicker": "Agendamento",
+          "titulo": "Marque a consulta",
+          "titulo2": "pelo celular",
+          "instrucao": "Aponte a câmera e escolha o horário",
+          "contato": "ou fale com a recepção"
+        }
+      },
+      "estado": "proposta",
+      "marca": "salao",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/salao/coque.jpg",
+        "link": "https://exemplo.com.br/agenda"
+      }
+    },
+    {
+      "id": "diptico-oferta",
+      "nome": "Díptico · foto e oferta em corte seco",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Coleção de outono",
+          "titulo": "Armações",
+          "titulo2": "em acetato",
+          "apoio": "Leves, resistentes e ajustadas na hora.",
+          "preco-rotulo": "a partir de",
+          "parcelas": "ou 10× de R$ 38,90",
+          "preco": "389",
+          "centavos": ",00",
+          "cta": "Prove na loja, sem compromisso"
+        }
+      },
+      "estado": "proposta",
+      "marca": "otica",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/otica/tartaruga.jpg"
+      }
+    },
+    {
+      "id": "diptico-servico",
+      "nome": "Díptico · serviço em três passos",
+      "familia": "serviço",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "saude",
+        "empresa",
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "saude": {
+          "kicker": "Check-up completo",
+          "titulo": "Tudo num só lugar, numa só manhã",
+          "passo1": "Consulta com o clínico",
+          "passo2": "Exames no mesmo dia",
+          "passo3": "Retorno com os resultados",
+          "nota": "Convênios e particular · agende na recepção"
+        },
+        "empresa": {
+          "kicker": "Exame periódico",
+          "titulo": "Seu exame em três etapas",
+          "passo1": "Agende com o RH",
+          "passo2": "Faça os exames no ambulatório",
+          "passo3": "Retire o atestado",
+          "nota": "Dúvidas: ramal 280"
+        },
+        "comercio": {
+          "kicker": "Ajuste na hora",
+          "titulo": "Seus óculos prontos em três passos",
+          "passo1": "Escolha a armação",
+          "passo2": "Medimos as lentes aqui",
+          "passo3": "Retire ajustado",
+          "nota": "Traga a sua receita"
+        }
+      },
+      "estado": "proposta",
+      "marca": "clinica",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
+      }
+    },
+    {
+      "id": "editorial-citacao",
+      "nome": "Citação com retrato",
+      "familia": "social",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "pessoa"
+      },
+      "textos": {
+        "comercio": {
+          "citacao": "Saio daqui me sentindo outra pessoa. E o café é sempre bom.",
+          "nome": "Renata Alves",
+          "detalhe": "Cliente há seis anos"
+        },
+        "empresa": {
+          "citacao": "Aqui eu aprendi o ofício e hoje ensino quem chega.",
+          "nome": "Carlos Mendes",
+          "detalhe": "22 anos de casa, na usinagem"
+        }
+      },
+      "estado": "proposta",
+      "marca": "salao",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/salao/cabelo-vento.jpg"
+      }
+    },
+    {
+      "id": "editorial-indice",
+      "nome": "Índice em três passos",
+      "familia": "serviço",
+      "papeis": [
+        "destaque"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "saude": {
+          "kicker": "Primeira consulta",
+          "titulo": "Sua visita em três passos",
+          "passo1": "Chegue 15 minutos antes",
+          "passo2": "Traga documento e carteirinha",
+          "passo3": "Aguarde ser chamado pelo nome"
+        },
+        "comercio": {
+          "kicker": "Encomendas",
+          "titulo": "Seu bolo em três passos",
+          "passo1": "Escolha o sabor no balcão",
+          "passo2": "Peça com dois dias de antecedência",
+          "passo3": "Retire no horário marcado"
+        },
+        "empresa": {
+          "kicker": "Primeiro dia",
+          "titulo": "Sua chegada em três passos",
+          "passo1": "Crachá na portaria",
+          "passo2": "Integração às 9h, sala 2",
+          "passo3": "Almoço com a sua equipe"
+        }
+      },
+      "estado": "proposta",
+      "marca": "clinica",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/escritorio/sala-reuniao.jpg"
+      }
+    },
+    {
+      "id": "editorial-moldura",
+      "nome": "Página de revista · foto emoldurada",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio",
+        "saude",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Edição de outono",
+          "titulo": "Clássicos que não saem de moda",
+          "apoio": "Acetato italiano, desenho dos anos cinquenta e lentes feitas na medida do seu rosto.",
+          "legenda": "Na foto: armação Lisboa"
+        },
+        "saude": {
+          "kicker": "Nossa casa",
+          "titulo": "Um lugar pensado para você ficar à vontade",
+          "apoio": "Salas claras, silêncio e tempo para conversar sobre o seu cuidado.",
+          "legenda": "Na foto: a recepção"
+        },
+        "empresa": {
+          "kicker": "Por dentro",
+          "titulo": "O escritório novo ficou pronto",
+          "apoio": "Mais luz, salas de reunião e um café de verdade no terceiro andar.",
+          "legenda": "Na foto: o terceiro andar"
+        }
+      },
+      "estado": "proposta",
+      "marca": "otica",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/otica/armacao-madeira.jpg"
+      }
+    },
+    {
+      "id": "numero-dado",
+      "nome": "O número do mês",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "empresa",
+        "comercio",
+        "saude"
+      ],
+      "fotos": {
+        "foto": "ambiente"
+      },
+      "textos": {
+        "empresa": {
+          "kicker": "Segurança",
+          "numero": "312",
+          "rotulo": "dias sem acidente com afastamento",
+          "contexto": "O recorde da fábrica é 405. Vamos juntos."
+        },
+        "comercio": {
+          "kicker": "Obrigado, freguesia",
+          "numero": "1.200",
+          "rotulo": "pães saem do nosso forno todo dia",
+          "contexto": "Fornadas às 6h, às 11h e às 16h."
+        },
+        "saude": {
+          "kicker": "Nossa equipe",
+          "numero": "18",
+          "rotulo": "especialidades no mesmo endereço",
+          "contexto": "Pergunte na recepção pela sua."
+        }
+      },
+      "estado": "proposta",
+      "marca": "industria",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/escritorio/predio-noite.jpg"
+      }
+    },
+    {
+      "id": "numero-marco",
+      "nome": "Marco da casa em campo de cor",
+      "familia": "institucional",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "saude",
+        "comercio",
+        "empresa"
+      ],
+      "fotos": {
+        "foto": "pessoa"
+      },
+      "textos": {
+        "saude": {
+          "kicker": "Desde 2011",
+          "numero": "15",
+          "rotulo": "anos cuidando de sorrisos",
+          "assinatura": "Obrigado pela confiança"
+        },
+        "comercio": {
+          "kicker": "Desde 1987",
+          "numero": "38",
+          "rotulo": "anos na mesma esquina",
+          "assinatura": "Obrigado, freguesia"
+        },
+        "empresa": {
+          "kicker": "Desde 1998",
+          "numero": "28",
+          "rotulo": "anos fazendo junto",
+          "assinatura": "Parabéns a cada um de vocês"
+        }
+      },
+      "estado": "proposta",
+      "marca": "dentista",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/dentista/sorriso-estudio.jpg"
+      }
+    },
+    {
+      "id": "numero-preco",
+      "nome": "O preço grande",
+      "familia": "oferta",
+      "papeis": [
+        "destaque",
+        "lateral"
+      ],
+      "frentes": [
+        "comercio"
+      ],
+      "fotos": {
+        "foto": "produto"
+      },
+      "textos": {
+        "comercio": {
+          "kicker": "Combo do dia",
+          "titulo": "Burger da casa",
+          "apoio": "Pão brioche, blend de 180 g, cheddar e fritas.",
+          "preco": "29",
+          "centavos": ",90",
+          "nota": "Até as 15h"
+        }
+      },
+      "estado": "proposta",
+      "marca": "lanchonete",
+      "lote": 4,
+      "campos": {
+        "foto": "/pecas-ouro/fotos/lanchonete/burger-gourmet.jpg"
+      }
     }
   ],
   "telas": [

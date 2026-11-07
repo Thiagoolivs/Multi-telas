@@ -1,0 +1,81 @@
+<!--
+  Díptico com QR — família social (lote 4, arquétipos A2 + A8).
+  A foto numa metade; na outra, o convite e o QR grande (o celular lê de
+  onde a pessoa está: 160 px ou mais na TV de 1080 linhas, D44). O QR
+  fica sobre o fundo cheio, nunca sobre a foto, e ao lado dele a instrução
+  curta. Sem o link, o QR e a instrução somem juntos (peca-render).
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 48fr 52fr; }
+.foto { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 40%; }
+.texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 7cqh 6cqw 7cqh 5cqw; }
+.kicker { display: flex; align-items: center; gap: 1.2cqw; font: 600 max(var(--mt-piso, 0cqw), 2.6cqw)/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { flex: none; display: block; width: 3.2cqw; height: .16cqw; background: var(--mt-destaque); }
+h1 { margin-top: 2cqw; font: 500 max(var(--mt-piso, 0cqw), calc(6cqw * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+h1 span, h1 em { display: block; }
+h1 em { font-style: normal; color: var(--mt-texto-suave); }
+.qr { margin-top: 5cqh; display: flex; align-items: center; gap: 2.6cqw; }
+.qr img { flex: none; width: 13cqw; height: 13cqw; }
+.qr p { min-width: 0; font: 500 max(var(--mt-piso, 0cqw), 2.6cqw)/1.25 var(--mt-fonte-texto); text-wrap: balance; }
+.qr b { display: block; margin-top: .8cqw; font-weight: 400; color: var(--mt-texto-suave); }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { grid-template-columns: 40fr 60fr; }
+  .texto { padding: 5cqh 5cqw 5cqh 4.4cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.5cqw); letter-spacing: .06em; }
+  .kicker i { display: none; }
+  h1 { margin-top: 1.6cqh; font-size: max(var(--mt-piso, 0cqw), calc(6.2cqw * var(--mt-escala-titulo, 1))); }
+  .qr { margin-top: 4cqh; }
+  .qr img { width: 16cqw; height: 16cqw; }
+  .qr p { font-size: max(var(--mt-piso, 0cqw), 3.5cqw); }
+  .qr b { display: none; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .kicker, h1 em { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(5.6cqw * var(--mt-escala-titulo, 1))); }
+  .qr { margin-top: 3cqh; }
+  .qr img { width: 18cqw; height: 18cqw; }
+  .qr p { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; grid-template-rows: 44fr 56fr; }
+  .texto { justify-content: flex-start; padding: 6cqh 7cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); letter-spacing: .1em; }
+  .kicker i { width: 5cqw; height: .26cqw; }
+  h1 { margin-top: 3cqw; font-size: max(var(--mt-piso, 0cqw), calc(10.4cqw * var(--mt-escala-titulo, 1))); }
+  .qr { margin-top: 6cqw; gap: 4.4cqw; }
+  .qr img { width: 30cqw; height: 30cqw; }
+  .qr p { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .qr b { margin-top: 1.4cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 40fr 60fr; grid-template-rows: 1fr; }
+  .texto { justify-content: center; padding: 6cqh 6cqw 6cqh 5cqw; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(8cqw * var(--mt-escala-titulo, 1))); }
+  .qr { flex-direction: column; align-items: flex-start; margin-top: 4cqw; gap: 3cqw; }
+  .qr img { width: 26cqw; height: 26cqw; }
+  .qr b { display: none; }
+}
+/* A lateral (515×832): a foto vira faixa; o QR grande e uma frase. */
+@container (max-width: 700px) {
+  .mt-peca { grid-template-columns: 1fr; grid-template-rows: 30fr 70fr; }
+  .texto { justify-content: center; padding: 3cqh 8cqw 4cqh; }
+  .kicker, h1 em, .qr b { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(12cqw * var(--mt-escala-titulo, 1))); }
+  .qr { flex-direction: column; align-items: flex-start; margin-top: 3cqh; gap: 2.4cqh; }
+  .qr img { width: 46cqw; height: 46cqw; }
+  .qr p { font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
+}
+</style>
+<section class="mt-peca diptico-agenda">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+  <div class="texto">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Agenda aberta</span></p>
+    <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Seu horário</span><em data-campo="titulo2">em dois toques</em></h1>
+    <div class="qr" data-entrada="subir" data-ordem="3">
+      <img data-campo-qr="link" alt="QR para agendar">
+      <p><span data-campo="instrucao">Aponte a câmera e escolha o dia</span><b data-campo="contato">ou fale com a recepção</b></p>
+    </div>
+  </div>
+</section>

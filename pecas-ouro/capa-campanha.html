@@ -1,0 +1,84 @@
+<!--
+  Capa de campanha — família institucional (lote 4, arquétipo A1).
+  A foto inteira e, no pé, uma faixa de fundo cheio com a campanha: o
+  período vai num selo reto na cor de destaque (o único bloco de cor da
+  peça), o título à esquerda e o "onde/como" à direita. O degradê sobe da
+  faixa para a foto (::before), e a faixa cresce com o piso da TV — o texto
+  nunca fica sobre a foto crua. Serve à saúde: sem preço, sem promessa.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.foto { position: absolute; inset: 0 0 auto 0; width: 100%; height: 78%; object-fit: cover; object-position: 50% 40%; }
+.faixa { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 5cqw; padding: 0 6cqw 7cqh; background: var(--mt-fundo); }
+.faixa::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 26cqh; background: linear-gradient(0deg, var(--mt-fundo), var(--mt-fundo-0)); }
+.frase { flex: 1 1 auto; min-width: 0; }
+.selo { display: inline-block; padding: .7cqw 1.4cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); font: 700 max(var(--mt-piso, 0cqw), 2.6cqw)/1 var(--mt-fonte-texto); letter-spacing: .1em; text-transform: uppercase; }
+h1 { margin-top: 2.6cqw; font: 500 max(var(--mt-piso, 0cqw), calc(6.8cqw * var(--mt-escala-titulo, 1)))/.98 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+h1 span, h1 em { display: block; }
+h1 em { font-style: normal; color: var(--mt-destaque); }
+.lado { flex: 0 1 36cqw; min-width: 0; padding-bottom: .3cqw; }
+.apoio { font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1.25 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.local { margin-top: 1.6cqw; padding-top: 1.6cqw; border-top: .14cqw solid var(--mt-linha); font: 600 max(var(--mt-piso, 0cqw), 2.6cqw)/1.2 var(--mt-fonte-texto); }
+.foto[data-sem-foto] ~ .faixa::before { display: none; }
+
+/* A principal do Corporativo (1405×832): o lado desce para baixo do título, e o apoio sai. */
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .foto { height: 70%; }
+  .faixa { flex-direction: column; align-items: flex-start; gap: 3cqh; padding-bottom: 6cqh; }
+  .faixa::before { height: 22cqh; }
+  .selo { font-size: max(var(--mt-piso, 0cqw), 3.5cqw); letter-spacing: .06em; }
+  h1 { margin-top: 2.4cqh; font-size: max(var(--mt-piso, 0cqw), calc(7.2cqw * var(--mt-escala-titulo, 1))); }
+  .lado { flex: none; }
+  .apoio { display: none; }
+  .local { margin: 0; padding: 0; border: 0; font-size: max(var(--mt-piso, 0cqw), 3.5cqw); }
+}
+/* A faixa baixa (1038×559): foto à direita, campanha à esquerda. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .foto { inset: 0 0 0 auto; width: 50%; height: 100%; }
+  .faixa { top: 0; right: 46%; justify-content: center; padding: 0 0 0 5cqw; }
+  .faixa::before { top: 0; bottom: 0; left: 100%; height: auto; width: 12cqw; background: linear-gradient(90deg, var(--mt-fundo), var(--mt-fundo-0)); }
+  .selo { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+  h1 { font-size: max(var(--mt-piso, 0cqw), calc(6.2cqw * var(--mt-escala-titulo, 1))); }
+  .lado { display: none; }
+}
+@container (aspect-ratio < 1.25) {
+  .foto { height: 64%; }
+  .faixa { flex-direction: column; align-items: flex-start; gap: 4.4cqw; padding: 0 7cqw 7cqh; }
+  .faixa::before { height: 20cqh; }
+  .selo { padding: 1.2cqw 2.4cqw; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  h1 { margin-top: 4cqw; font-size: max(var(--mt-piso, 0cqw), calc(11cqw * var(--mt-escala-titulo, 1))); }
+  .lado { flex: none; width: 100%; }
+  .apoio { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .local { margin-top: 3cqw; padding-top: 3cqw; border-top-width: .24cqw; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .foto { height: 58%; }
+  .faixa { gap: 3cqw; padding-bottom: 6cqh; }
+  .faixa::before { height: 14cqh; }
+  h1 { margin-top: 3cqw; font-size: max(var(--mt-piso, 0cqw), calc(8.8cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { display: none; }
+  .local { margin: 0; padding: 0; border: 0; }
+}
+@container (max-width: 700px) {
+  .foto { height: 48%; }
+  .faixa { padding: 0 8cqw 6cqh; gap: 3cqh; }
+  .faixa::before { height: 12cqh; }
+  .selo { font-size: max(var(--mt-piso, 0cqw), 9.6cqw); letter-spacing: .02em; text-transform: none; padding: 1.6cqw 3cqw; }
+  h1 { margin-top: 3cqh; font-size: max(var(--mt-piso, 0cqw), calc(13.5cqw * var(--mt-escala-titulo, 1))); }
+  .apoio { display: none; }
+  .local { margin: 0; padding: 0; border: 0; font-size: max(var(--mt-piso, 0cqw), 9.6cqw); }
+}
+</style>
+<section class="mt-peca capa-campanha">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+  <div class="faixa">
+    <div class="frase">
+      <p class="selo" data-campo="periodo" data-entrada="esquerda" data-ordem="1">Até 30 de maio</p>
+      <h1 data-entrada="subir" data-ordem="2"><span data-campo="titulo">Vacina da gripe</span><em data-campo="titulo2">já chegou</em></h1>
+    </div>
+    <div class="lado" data-entrada="aparecer" data-ordem="3">
+      <p class="apoio" data-campo="apoio">Aplicação na sala de serviços, por farmacêutico.</p>
+      <p class="local" data-campo="local">Sem agendamento</p>
+    </div>
+  </div>
+</section>

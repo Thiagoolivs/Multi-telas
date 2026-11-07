@@ -1,0 +1,78 @@
+<!--
+  Díptico de serviço — família serviço (lote 4, arquétipo A2).
+  Texto à esquerda, foto à direita, corte seco. O texto é um índice de
+  revista: kicker, título e três passos numerados (01, 02, 03) separados
+  por filetes — a numeração é desenho (aria-hidden) e cada passo é um
+  campo. Sem preço: serve à saúde, à empresa e ao comércio.
+-->
+<style>
+.mt-peca { color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 58fr 42fr; }
+.texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 7cqh 5cqw 7cqh 6cqw; }
+.foto { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 50%; }
+.kicker { display: flex; align-items: center; gap: 1.2cqw; font: 600 max(var(--mt-piso, 0cqw), 2.6cqw)/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { flex: none; display: block; width: 3.2cqw; height: .16cqw; background: var(--mt-destaque); }
+h1 { margin-top: 2cqw; font: 500 max(var(--mt-piso, 0cqw), calc(5.6cqw * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.passos { margin-top: 4cqh; list-style: none; padding: 0; border-top: .14cqw solid var(--mt-linha); }
+.passos li { display: flex; align-items: baseline; gap: 2cqw; padding: 1.5cqw 0; border-bottom: .14cqw solid var(--mt-linha); }
+.passos i { flex: none; width: 4.4cqw; font: 500 max(var(--mt-piso, 0cqw), 2.6cqw)/1 var(--mt-fonte-titulo); font-style: normal; color: var(--mt-destaque); }
+.passos span { font: 500 max(var(--mt-piso, 0cqw), 2.6cqw)/1.2 var(--mt-fonte-texto); }
+.nota { margin-top: 3cqh; font: 400 max(var(--mt-piso, 0cqw), 2.6cqw)/1.25 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+
+/* A principal do Corporativo (1405×832): a letra do balcão; a nota sai. */
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { grid-template-columns: 64fr 36fr; }
+  .texto { padding: 5cqh 4cqw 5cqh 5cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 3.5cqw); letter-spacing: .06em; }
+  .kicker i { display: none; }
+  h1 { margin-top: 1.6cqh; font-size: max(var(--mt-piso, 0cqw), calc(5.8cqw * var(--mt-escala-titulo, 1))); }
+  .passos { margin-top: 3cqh; }
+  .passos li { padding: 1.2cqh 0; }
+  .passos i { width: 5.6cqw; font-size: max(var(--mt-piso, 0cqw), 3.5cqw); }
+  .passos span { font-size: max(var(--mt-piso, 0cqw), 3.5cqw); }
+  .nota { display: none; }
+}
+/* A faixa baixa (1038×559): título e os passos, sem kicker. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .kicker { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(5.2cqw * var(--mt-escala-titulo, 1))); }
+  .passos { margin-top: 2cqh; }
+  .passos li { padding: .6cqh 0; }
+  .passos i { width: 6cqw; font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+  .passos span { font-size: max(var(--mt-piso, 0cqw), 4.8cqw); }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; grid-template-rows: 38fr 62fr; }
+  .foto { grid-row: 1; }
+  .texto { grid-row: 2; justify-content: flex-start; padding: 6cqh 7cqw; }
+  .kicker { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); letter-spacing: .1em; }
+  .kicker i { width: 5cqw; height: .26cqw; }
+  h1 { margin-top: 3cqw; font-size: max(var(--mt-piso, 0cqw), calc(10cqw * var(--mt-escala-titulo, 1))); }
+  .passos { margin-top: 5cqw; border-top-width: .24cqw; }
+  .passos li { gap: 3cqw; padding: 2.6cqw 0; border-bottom-width: .24cqw; }
+  .passos i { width: 8cqw; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .passos span { font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+  .nota { margin-top: 4cqw; font-size: max(var(--mt-piso, 0cqw), 4.6cqw); }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { grid-template-columns: 1fr; grid-template-rows: 30fr 70fr; }
+  .texto { justify-content: center; padding: 4cqh 7cqw 5cqh; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(8cqw * var(--mt-escala-titulo, 1))); }
+  .passos { margin-top: 3cqw; }
+  .passos li { padding: 1.6cqw 0; }
+  .nota { display: none; }
+}
+</style>
+<section class="mt-peca diptico-servico">
+  <div class="texto">
+    <p class="kicker" data-entrada="esquerda" data-ordem="1"><i aria-hidden="true"></i><span data-campo="kicker">Check-up completo</span></p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Tudo num só lugar, numa só manhã</h1>
+    <ol class="passos" data-entrada="subir" data-ordem="3">
+      <li><i aria-hidden="true">01</i><span data-campo="passo1">Consulta com o clínico</span></li>
+      <li><i aria-hidden="true">02</i><span data-campo="passo2">Exames no mesmo dia</span></li>
+      <li><i aria-hidden="true">03</i><span data-campo="passo3">Retorno com os resultados</span></li>
+    </ol>
+    <p class="nota" data-campo="nota" data-entrada="aparecer" data-ordem="4">Convênios e particular · agende na recepção</p>
+  </div>
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+</section>
