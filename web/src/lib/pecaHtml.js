@@ -43,6 +43,31 @@ export const TAMANHO_REAL = {
 export const NOME_DO_FORMATO = { '16/9': 'TV deitada', '9/16': 'TV em pé', '1/1': 'tela quadrada' };
 
 /*
+ * O tamanho de um espaço de imagem da peça na TV ({ w, h } em pixel), medido
+ * com a peça desenhada no tamanho real, fora da vista. É a forma que a
+ * prévia do "Trocar foto" mostra. `tamanho`: [largura, altura] da zona, ou
+ * o formato ('16/9'…). Sem medida (espaço escondido), null.
+ */
+export async function medirEspaco(item, campo, tamanho) {
+  const R = await carregarDesenhista();
+  const [w, h] = Array.isArray(tamanho) ? tamanho : TAMANHO_REAL[tamanho] || TAMANHO_REAL['16/9'];
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:0;top:0;width:' + w + 'px;height:' + h + 'px;opacity:0;pointer-events:none;z-index:-1;container-type:size';
+  document.body.appendChild(host);
+  let ctl = null;
+  try {
+    ctl = R.montar(host, item, { leve: true });
+    const img = host.shadowRoot && host.shadowRoot.querySelector('img[data-campo-img="' + campo + '"]');
+    if (!img) return null;
+    const caixa = img.clientWidth && img.clientHeight ? img : img.parentElement;
+    return caixa && caixa.clientWidth && caixa.clientHeight ? { w: caixa.clientWidth, h: caixa.clientHeight } : null;
+  } finally {
+    if (ctl) ctl.parar();
+    host.remove();
+  }
+}
+
+/*
  * A peça cabe nos três formatos? A mesma peça vai para TV deitada e em pé,
  * então o texto que o cliente digita é conferido nos três, em tamanho real,
  * fora da vista — com o mesmo detector da bancada (js/peca-conferir.js).
