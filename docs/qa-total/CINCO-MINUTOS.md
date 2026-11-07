@@ -30,12 +30,12 @@ passo a passo e 14 com o cadastro.
 | Criar a conta | 6 (3) | 1 | 72 | 65 | 0,2 s | 46 s |
 | 1. Seu negócio | 1 (0) | 1 | 36 | 0 | 0,0 s | 14 s |
 | 2. Sua marca | 3 (0) | 2 | 79 | 0 | 0,1 s | 34 s |
-| 3. Ligar a TV | 2 (1) | 1 | 97 | 6 | 0,1 s | 36 s |
+| 3. Ligar a TV | 2 (1) | 1 | 97 | 6 | 0,2 s | 36 s |
 | 4. Escolher a tela | 1 (0) | 1 | 32 | 0 | 0,0 s | 13 s |
 | 5. Fotos e textos | 5 (2) | 2 | 43 | 21 | 0,1 s | 29 s |
 | 6. Horário | 1 (0) | 1 | 54 | 0 | 0,0 s | 20 s |
-| 7. Pôr na TV | 1 (0) | 1 | 77 | 0 | 0,1 s | 28 s |
-| **Passos 1 a 7** | **14 (3)** | | | | **0,4 s** | **174 s** |
+| 7. Pôr na TV | 1 (0) | 1 | 77 | 0 | 0,2 s | 28 s |
+| **Passos 1 a 7** | **14 (3)** | | | | **0,6 s** | **174 s** |
 
 No computador, os mesmos números (a diferença é de 1 s no cadastro e de
 0,1 s de espera).
@@ -55,7 +55,7 @@ escolher a foto na galeria · o campo do nome · o campo do preço · Continuar
   por decisão, e mais o que a régua não dizia: 0,3 s por letra digitada, 4 s
   para achar a foto na galeria e a espera de verdade do painel.
 - **Espera do painel:** medida, do toque até a tela seguinte aparecer.
-  No servidor local é quase nada (0,4 s no passo a passo inteiro). Numa
+  No servidor local é quase nada (0,5 a 0,6 s no passo a passo inteiro). Numa
   rede de celular, mandar o logo e a foto, ligar a TV e pôr na TV somam
   uns 5 a 10 s: o total fica abaixo de 3 minutos e meio.
 - As telas prontas do passo 4 carregam no passo 1 (em segundo plano): no
@@ -113,7 +113,10 @@ Pasta `p11/outros-caminhos/`:
 - **Membro com a aprovação ligada:** escolhe uma TV da conta (`11`), o botão
   é "Pedir para pôr na TV" (`12`), o fim diz "Pedido mandado!" com "Meus
   pedidos" no lugar de "Convidar alguém" (`13`), e o pedido "Tela pronta:
-  Foto da casa" está na fila do dono.
+  Foto da clínica" está na fila do dono.
+- **Tema escuro e "Trocar as cores"** (Metalúrgica Andrade, indústria):
+  `14` a `16` — as paletas do logo na TV desenhada, um toque troca, e as
+  telas da Empresas (nada de oferta nem de cardápio).
 
 ## O que foi feito
 

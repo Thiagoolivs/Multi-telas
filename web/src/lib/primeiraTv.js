@@ -99,7 +99,7 @@ const TITULO_DO_HORARIO = {
 const NOME_DA_MONTADA = {
   'cardapio-dia-foto': 'Prato do dia, com foto', 'lateral-chamada': 'Chamada do dia', 'cardapio-combo': 'Combo com preço',
   'institucional-lancamento': 'Novidade da casa', 'cardapio-categorias': 'Cardápio', 'oferta-foto': 'Oferta com foto',
-  'institucional-foto': 'Foto da casa', 'oferta-lista': 'Três ofertas', 'oferta-selo': 'Oferta com desconto',
+  'oferta-lista': 'Três ofertas', 'oferta-selo': 'Oferta com desconto',
   'servico-agenda': 'Serviço da semana', 'servico-passos': 'Como funciona', 'servico-alerta': 'Aviso',
   'servico-comunicado': 'Comunicado', 'institucional-valores': 'O que a gente promete', 'gente-comunicado': 'Comunicado da equipe',
   'gente-boas-vindas': 'Boas-vindas',
@@ -122,6 +122,10 @@ const DESTAQUES_DA_FRENTE = {
   saude: ['institucional-foto', 'servico-alerta', 'servico-comunicado'],
   empresa: ['institucional-foto', 'gente-comunicado', 'servico-alerta'],
 };
+
+// A foto da casa, da clínica ou da empresa.
+const LUGAR = { comercio: 'da casa', saude: 'da clínica', empresa: 'da empresa' };
+const nomeDaMontada = (m, frente) => (m.id === 'institucional-foto' ? 'Foto ' + (LUGAR[frente] || LUGAR.comercio) : NOME_DA_MONTADA[m.id] || m.nome);
 
 const serveAFrente = (m, frente) => !Array.isArray(m.frentes) || !m.frentes.length || m.frentes.includes(frente);
 // O texto de exemplo na língua da frente, quando a peça é de outra marca de exemplo (a da padaria, na clínica).
@@ -164,7 +168,7 @@ export function telaMontada(heroi, modelos, neg, frente, forma) {
     rodape: { modo: MODO.rodape, pecas: [rodape].filter(Boolean) },
   };
   return {
-    id: 'montada:' + ((neg && neg.id) || 'outro') + ':' + heroi.id, nome: NOME_DA_MONTADA[heroi.id] || heroi.nome, montada: true,
+    id: 'montada:' + ((neg && neg.id) || 'outro') + ':' + heroi.id, nome: nomeDaMontada(heroi, frente), montada: true,
     layout: forma === 'empe' ? 'portrait-stack' : 'corporate', zonas, mensagens: [],
   };
 }
