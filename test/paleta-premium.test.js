@@ -308,3 +308,26 @@ test('o painel: as peças prontas no clima da marca, a escolha na Marca e o esbo
   assert.match(pag, /<EsbocoDaTela cores=\{cores\} clima=\{kit\.clima\}/);
   assert.match(ler('web/src/components/criar/EsbocoDaTela.jsx'), /T\.daMarca\(\{ cores: lista \}, clima \|\| 'marca'\)\.cores/);
 });
+
+test('a arte do ambiente nasce no clima da marca e acompanha quando ele muda', async () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { pathToFileURL } = require('node:url');
+  const PH = require('../js/peca-html.js');
+  const CP = require('../server/conteudoPronto.js');
+  const paleta = require('../server/paleta.js');
+  const ler = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+  globalThis.MTPecaHtml = globalThis.MTPecaHtml || PH;
+  const Am = await import(pathToFileURL(path.join(__dirname, '..', 'web/src/lib/arteDoAmbiente.js')).href);
+  const m = CP.aplicarDecisoes(JSON.parse(ler('pecas-ouro/manifesto.json')), [{ tipo: 'peca', id: 'ambiente-ondas', estado: 'aprovada', decidido_em: 1 }]);
+  const ondas = Object.assign({}, m.pecas.find((p) => p.id === 'ambiente-ondas'), { arq: PH.doArquivo(ler('pecas-ouro/ambiente-ondas.html')) });
+  const marca = { nome: 'Clínica Vida', cores: ['#0f766e', '#f29e7e'], clima: 'claro' };
+  const peca = Am.pecaDaArte(ondas, marca, 'saude', '');
+  assert.equal(peca.modo, 'claro', 'a arte escolhida já nasce no clima da marca');
+  const amb = { ativo: true, cada: 3, segundos: 8, peca };
+  assert.equal(paleta.ambienteDaMarca(amb, marca, '', {}), null, 'no clima de agora: nada a trocar');
+  const trocou = paleta.ambienteDaMarca(amb, Object.assign({}, marca, { clima: 'marca' }), '', {});
+  assert.equal(trocou.peca.modo, 'marca', 'mudou o clima na Marca: a arte acompanha');
+  // Marca sem clima (a de antes): a arte fica no modo dela.
+  assert.equal(paleta.ambienteDaMarca(amb, Object.assign({}, marca, { clima: '' }), '', {}), null);
+});
