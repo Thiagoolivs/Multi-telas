@@ -32,10 +32,13 @@ export function carregarModelos() {
 const FORMATO_DO_PAPEL = { destaque: '16/9', lateral: '9/16', cabecalho: '16/9', rodape: '16/9' };
 
 /*
- * A peça do modelo, pronta para desenhar e para ir à TV: no modo "Cor da
- * marca", com as cores e as fontes da conta, e o nome dela onde o modelo
+ * A peça do modelo, pronta para desenhar e para ir à TV: no CLIMA da marca
+ * (lote de 06/11: Escuro elegante, Claro limpo ou Cor da marca forte —
+ * `marca.clima`; a marca de antes dos climas fica no modo "Cor da marca",
+ * como era), com as cores e as fontes da conta, e o nome dela onde o modelo
  * escreve a marca. A logo entra sozinha no lugar de logo (D8, MT_LOGO).
  */
+const CLIMAS = ['escuro', 'claro', 'marca'];
 export function itemDoModelo(m, marca, frente) {
   const k = marca || {};
   const papel = (m.papeis && m.papeis[0]) || 'destaque';
@@ -49,7 +52,7 @@ export function itemDoModelo(m, marca, frente) {
   return {
     type: 'peca-html', versao: 1, papel, html: m.arq.html, css: m.arq.css, campos,
     marca: { cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '' },
-    modo: 'marca', formato: FORMATO_DO_PAPEL[papel] || '16/9', duracao: papel === 'lateral' ? 12 : 20,
+    modo: CLIMAS.includes(k.clima) ? k.clima : 'marca', formato: FORMATO_DO_PAPEL[papel] || '16/9', duracao: papel === 'lateral' ? 12 : 20,
     origem: { motor: 'ouro', base: m.id, pedido: 'modelo pronto' },
   };
 }

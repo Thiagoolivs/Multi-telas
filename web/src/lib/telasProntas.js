@@ -211,7 +211,7 @@ export function marcaDaConta(r) {
   const k = (r && r.kit) || {};
   const local = k.local || {};
   // O site e o endereço da Marca entram onde a tela de exemplo tinha os dela.
-  return { cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '',
+  return { cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', clima: k.clima || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '',
     site: k.site || '', endereco: [local.endereco, local.bairro].filter(Boolean).join(' · '),
     // O ramo que a Marca deduziu (js/paletas.js, detectarRamo): põe o pacote do negócio da conta primeiro.
     ramo: (r && r.ramo) || '' };

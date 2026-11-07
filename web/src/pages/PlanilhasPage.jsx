@@ -138,7 +138,7 @@ function PorNaTv({ planilha, onFechar }) {
     const modelo = modelos.find((m) => m.id === id);
     if (!modelo) throw new Error('O cardápio pronto não abriu agora. Tente a tabela de preços.');
     const k = (kit && kit.kit) || {};
-    const marca = { cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (kit && kit.empresa)) || '' };
+    const marca = { cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', clima: k.clima || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (kit && kit.empresa)) || '' };
     const base = itemDoModelo(modelo, marca, perfil.id);
     const declarados = globalThis.MTPecaHtml.higienizar(modelo.arq).campos;
     const r = P.camposDaPeca(declarados.map((c) => c.nome), planilha.itens, secao);

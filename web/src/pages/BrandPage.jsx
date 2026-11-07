@@ -198,6 +198,23 @@ export function BrandPage({ onIr }) {
     finally { setBusy(false); }
   }
 
+  /*
+   * O clima (lote de 06/11) também é um toque: Escuro elegante, Claro limpo
+   * ou Cor da marca forte. As peças prontas, o esboço e as TVs que vestem a
+   * marca mudam juntos (server/paleta.js, temaDaTv).
+   */
+  async function aplicarClima(clima) {
+    setBusy(true); setErr('');
+    try {
+      clearTimeout(espera.current);
+      await brand.save({ ...campos, cores, clima });
+      salvo.current = comoEsta;
+      aviso.ok('Clima trocado. As próximas peças e a TV já saem assim.');
+      reload();
+    } catch (e) { setErr(e.message || 'Não foi possível trocar o clima.'); }
+    finally { setBusy(false); }
+  }
+
   async function subir(kind, e) {
     const f = (e.target.files || [])[0]; e.target.value = '';
     if (!f) return;
@@ -364,7 +381,8 @@ export function BrandPage({ onIr }) {
         logoUrl={logo && logo.url}
         fonteTitulo={fonteTitulo} fonteApoio={fonteApoio}
         cores={cores} setCores={setCores}
-        aplicar={aplicarPaleta} ocupado={busy} />
+        aplicar={aplicarPaleta} ocupado={busy}
+        clima={kit.clima} escolherClima={aplicarClima} />
 
       {/*
         O esboço da TV com estas cores (D13): a planta da tela inteira —
@@ -374,7 +392,7 @@ export function BrandPage({ onIr }) {
         <PanelHeader title="Como fica na TV" description="Um esboço da tela inteira com as cores e a logo de agora. Muda junto quando você escolhe outra paleta." />
         <div className="p-4">
           <div className="mx-auto max-w-xl">
-            <EsbocoDaTela cores={cores} nome={nome && nome !== 'Marca principal' ? nome : (data && data.empresa)} logo={logo ? { url: logo.url, clara: logoClara ? logoClara.url : '', escura: logoEscura ? logoEscura.url : '' } : null}
+            <EsbocoDaTela cores={cores} clima={kit.clima} nome={nome && nome !== 'Marca principal' ? nome : (data && data.empresa)} logo={logo ? { url: logo.url, clara: logoClara ? logoClara.url : '', escura: logoEscura ? logoEscura.url : '' } : null}
               zonas={{ cabecalho: { pecas: 1 }, principal: { pecas: 3 }, lateral: { pecas: 2 }, rodape: { pecas: 1, mensagens: [FRASE_DO_PERFIL[perfil.id] || FRASE_DO_PERFIL.comercio] } }} />
           </div>
           {/*

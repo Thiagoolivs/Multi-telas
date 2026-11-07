@@ -83,6 +83,7 @@ const memory = require('./server/ai-memoria');
 const muralLib = require('./server/mural');
 const qrcode = require('./server/qr');
 const paletaInicial = require('./server/paleta');
+const paletas = require('./js/paletas.js');
 const conferencia = require('./server/conferencia');
 const redesRotas = require('./server/routes/redes');
 
@@ -1960,6 +1961,11 @@ const negocioCache = new Map();
         if (b && typeof b.nasTvs === 'boolean') {
           const ativa = await db.getBrandKit(sess.tenant_id);
           if (ativa) await db.salvarNasTvsDaMarca(ativa.id, sess.tenant_id, b.nasTvs);
+        }
+        // O clima (lote de 06/11): Escuro elegante, Claro limpo ou Cor da marca forte. Só quando a tela manda um válido.
+        if (b && paletas.ehClima(b.clima)) {
+          const ativa = await db.getBrandKit(sess.tenant_id);
+          if (ativa) await db.salvarClimaDaMarca(ativa.id, sess.tenant_id, b.clima);
         }
         return sendJson(res, 200, { ok: true });
       });

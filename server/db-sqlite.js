@@ -457,6 +457,8 @@ garantirColuna('indicadores', 'sentido TEXT');
 garantirColuna('marcas', 'localizacao TEXT');
 // Fase 4: a marca nas TVs (o tema da TV sai dela). Ligada por padrão; a pessoa desliga na Marca.
 garantirColuna('marcas', 'nas_tvs INTEGER');
+// O clima da marca (lote de 06/11): Escuro elegante, Claro limpo ou Cor da marca forte (js/paletas.js, CLIMAS).
+garantirColuna('marcas', 'clima TEXT');
 // O banco comum com fotos da Pixabay escolhidas pelo operador: de onde veio, o crédito e o link.
 garantirColuna('banco', 'origem TEXT');
 garantirColuna('banco', 'credito TEXT');
@@ -1147,6 +1149,8 @@ function mapMarca(r) {
     local: lerLocal(r.localizacao),
     // Ligada por padrão: só o 0 gravado desliga.
     nasTvs: !(r.nas_tvs === 0 || r.nas_tvs === '0' || r.nas_tvs === false),
+    // O clima (lote de 06/11): 'escuro', 'claro' ou 'marca'. Vazio é a marca de antes dos climas.
+    clima: r.clima || '',
   };
 }
 
@@ -2335,6 +2339,7 @@ module.exports = {
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
+  salvarClimaDaMarca,
   salvarNasTvsDaMarca,
   salvarLocalDaMarca,
 };
@@ -2356,5 +2361,9 @@ async function salvarLocalDaMarca(id, tenantId, local) {
 }
 async function salvarNasTvsDaMarca(id, tenantId, ligado) {
   db.prepare('UPDATE marcas SET nas_tvs = ?, updated_at = ? WHERE id = ? AND tenant_id = ?').run(ligado ? 1 : 0, Date.now(), id, tenantId);
+  return mapMarca(qMarca.porId.get(id, tenantId));
+}
+async function salvarClimaDaMarca(id, tenantId, clima) {
+  db.prepare('UPDATE marcas SET clima = ?, updated_at = ? WHERE id = ? AND tenant_id = ?').run(String(clima || ''), Date.now(), id, tenantId);
   return mapMarca(qMarca.porId.get(id, tenantId));
 }

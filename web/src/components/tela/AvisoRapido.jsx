@@ -38,7 +38,7 @@ export function AvisoRapido({ onFechar, avisoInicial }) {
     carregarModelos().then((m) => setModelos(new Map(m.map((x) => [x.id, x])))).catch(() => setModelos(new Map()));
     brand.get().then((r) => {
       const k = (r && r.kit) || {};
-      setMarca({ cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '' });
+      setMarca({ cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '', clima: k.clima || '', nome: (k.nome && k.nome !== 'Marca principal' ? k.nome : (r && r.empresa)) || '' });
     }).catch(() => setMarca({}));
   }, []);
 
