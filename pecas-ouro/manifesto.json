@@ -10279,11 +10279,8 @@
           "modo": "marca",
           "pecas": [
             {
-              "id": "cabecalho-status",
+              "id": "cabecalho-minimo",
               "campos": {
-                "status": "Aberto agora",
-                "horario": "até as 20h",
-                "desde": "",
                 "marca": "Padaria do Bairro"
               }
             }
@@ -11414,9 +11411,8 @@
           "modo": "marca",
           "pecas": [
             {
-              "id": "cabecalho-centro",
+              "id": "cabecalho-minimo",
               "campos": {
-                "sub": "Consultas e exames",
                 "marca": "Clínica Vida"
               }
             }
