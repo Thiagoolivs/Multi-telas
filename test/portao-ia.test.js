@@ -23,13 +23,16 @@ const EXCECOES = {
   job: 'só lê o andamento de um trabalho (GET), não chama a IA',
   jobs: 'só lista os trabalhos da conta (GET), não chama a IA',
   'generate-image': 'imagem cobra criação: reserva e cobra dentro da própria rota (usoIA.reservar)',
+  // /api/ia/imagem (o "Gerar com IA" do espaço de imagem): o mesmo caminho do dinheiro, em server/ia-imagem.js.
+  imagem: 'imagem do espaço cobra criação: reserva e cobra em server/ia-imagem.js (usoIA.reservar)',
 };
 
 function rotasDeIA() {
   const arquivos = ['server.js'].concat(fs.readdirSync(path.join(RAIZ, 'server/routes')).filter((f) => f.endsWith('.js')).map((f) => 'server/routes/' + f));
   const nomes = new Map();
   for (const f of arquivos) {
-    for (const m of ler(f).matchAll(/parts\[1\] === 'ai' && parts\[2\] === '([a-z0-9-]+)'/g)) nomes.set(m[1], f);
+    // /api/ai/* e /api/ia/* (o espaço de imagem): as duas portas da IA.
+    for (const m of ler(f).matchAll(/parts\[1\] === '(?:ai|ia)' && parts\[2\] === '([a-z0-9-]+)'/g)) nomes.set(m[1], f);
   }
   return nomes;
 }
@@ -57,4 +60,7 @@ test('toda rota /api/ai/* está no mapa TIPO_IA (o portão da medição) ou é e
   // (Desde o D42b a rota confere o esboço antes de reservar: a janela é maior.)
   assert.match(ler('server.js'), /parts\[2\] === 'generate-image'[\s\S]{0,3200}usoIA\.reservar\(/);
   for (const k of Object.keys(EXCECOES)) assert.ok(!mapa.has(k), k + ' é exceção E está no mapa');
+  // A do espaço de imagem: freio por conta e a reserva antes de gerar, como a outra.
+  assert.match(ler('server.js'), /parts\[1\] === 'ia' && parts\[2\] === 'imagem'[\s\S]{0,800}rateLimit\('ia:imagem:'/);
+  assert.match(ler('server/ia-imagem.js'), /usoIA\.reservar\(db, tenant, 'gerar-imagem', 1\)[\s\S]*ai\.generateImage\(/);
 });

@@ -37,6 +37,8 @@ const mail = require('./server/mail');
 const plans = require('./server/plans');
 const billing = require('./server/billing');
 const ai = require('./server/ai');
+// O "Gerar com IA" do espaço de imagem (POST /api/ia/imagem).
+const iaImagem = require('./server/ia-imagem');
 // Cada requisição da API é uma medição de IA: os tokens somam e o uso-ia.cobrar os grava.
 const motores = require('./server/motores');
 const { AsyncResource } = require('node:async_hooks');
@@ -2327,6 +2329,35 @@ const negocioCache = new Map();
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem');
         return { mode: ai.mode(), url: saved.url, mime: saved.mime, formato: (b && b.formato) || '16/9' };
       });
+    });
+  }
+
+  /*
+   * ----- IA: a foto de um espaço de imagem ("Trocar foto" › Gerar com IA) -----
+   * Uma foto, no formato do espaço, guardada nas fotos da conta; a resposta é
+   * a mídia. Freio por conta, crédito reservado antes e cobrado depois, uso
+   * registrado: as regras moram em server/ia-imagem.js. Sem esboço (D42b):
+   * o pedido é a frase que a pessoa leu e mandou, e a foto é uma só.
+   */
+  if (parts[1] === 'ia' && parts[2] === 'imagem') {
+    if (!sess) return sendJson(res, 401, { error: 'não autenticado' });
+    if (req.method !== 'POST') return sendJson(res, 405, { error: 'método inválido' });
+    const rl = rateLimit('ia:imagem:' + sess.tenant_id, iaImagem.porHora(), 60 * 60 * 1000);
+    if (!rl.ok) {
+      return sendJson(res, 429, { error: 'Muitas fotos geradas nesta hora. Tente de novo daqui a ' + security.esperaEmPalavras(rl.retryAfter) + ', ou use uma foto do celular ou do banco.' },
+        { 'Retry-After': String(rl.retryAfter) });
+    }
+    return readBody(req, res, async (b) => {
+      const pedido = iaImagem.lerPedido(b);
+      if (pedido.erro) return sendJson(res, 400, { error: pedido.erro });
+      try {
+        const r = await iaImagem.gerar({ db, ai, midia, usoIA }, sess, pedido);
+        if (r.status === 200) await db.registrarEvento(sess.tenant_id, sess.user_id, 'ia.imagem').catch(() => {});
+        return sendJson(res, r.status, r.corpo);
+      } catch (e) {
+        erros.registrar(e, { rota: '/api/ia/imagem' });
+        return sendJson(res, 500, { error: iaImagem.FALHOU });
+      }
     });
   }
 
