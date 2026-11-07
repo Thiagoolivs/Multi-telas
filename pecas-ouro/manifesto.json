@@ -3115,7 +3115,7 @@
       "marca": "dentista",
       "lote": 4,
       "campos": {
-        "foto": "/pecas-ouro/fotos/dentista/sorriso-estudio.jpg"
+        "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
       }
     },
     {
@@ -11615,7 +11615,7 @@
                 "numero": "15",
                 "rotulo": "anos cuidando de sorrisos",
                 "assinatura": "Obrigado pela confiança",
-                "foto": "/pecas-ouro/fotos/dentista/sorriso-estudio.jpg"
+                "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
               }
             },
             {
@@ -11629,7 +11629,7 @@
                 "funcao2": "Implantes",
                 "nome3": "Dr. Lucas Prado",
                 "funcao3": "Clínica geral",
-                "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg",
+                "foto": "/pecas-ouro/fotos/dentista/sorriso-sardas.jpg",
                 "foto2": "/pecas-ouro/fotos/dentista/sorriso-rapaz.jpg",
                 "foto3": "/pecas-ouro/fotos/dentista/sorriso-tranquilo.jpg"
               }

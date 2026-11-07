@@ -8,7 +8,7 @@
 .mt-peca { --f: 2.6cqw; --t: 6cqw; --q: 12cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 46fr 54fr; }
 .foto { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 45%; }
 .texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 7cqh 6cqw 7cqh 5cqw; }
-.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); text-wrap: balance; letter-spacing: .08em; text-transform: uppercase; color: var(--mt-destaque); }
 h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
 .vagas { margin-top: 3.4cqh; list-style: none; padding: 0; border-top: .14cqw solid var(--mt-linha); }
 .vagas li { padding: 1.6cqh 0; border-bottom: .14cqw solid var(--mt-linha); font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
@@ -46,11 +46,12 @@ h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(-
   .qr { margin-top: 3cqh; }
 }
 @container (max-width: 700px) {
-  .mt-peca { --f: 9.6cqw; --t: 12cqw; --q: 44cqw; grid-template-rows: 24fr 76fr; }
-  .texto { justify-content: center; padding: 3cqh 8cqw 4cqh; }
+  .mt-peca { --f: 9.6cqw; --t: 11cqw; --q: 36cqw; grid-template-rows: 21fr 79fr; }
+  .texto { justify-content: center; padding: 3cqh 8cqw 4.4cqh; }
   .kicker, .vagas { display: none; }
   h1 { margin-top: 0; }
-  .qr { flex-direction: column; align-items: flex-start; margin-top: 3cqh; gap: 2.4cqh; }
+  .qr { flex-direction: column; align-items: flex-start; margin-top: 2.4cqh; gap: 2cqh; }
+  .qr p { line-height: 1.15; }
 }
 </style>
 <section class="mt-peca vaga-foto">
