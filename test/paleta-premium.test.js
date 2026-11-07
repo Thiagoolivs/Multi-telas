@@ -180,6 +180,20 @@ test('os climas: três, com nome de gente, e o padrão sai do ramo do negócio',
   for (const r of P.RAMOS.map((x) => x.id).concat('geral')) assert.ok(T.MODOS.includes(P.climaDoRamo(r)), r);
 });
 
+test('na TV, o botão e o letreiro na cor da marca pastel ganham corpo; --brand segue a cor cadastrada', () => {
+  for (const cores of [['#f8c8dc'], ['#f9e79f'], ['#b5ead7', '#c7ceea']]) {
+    const vars = {};
+    TH.apply({ preset: 'marca', marca: cores, clima: 'escuro' }, { style: { setProperty: (k, v) => { vars[k] = v; } }, classList: { toggle() {} } });
+    assert.equal(vars['--brand'], cores[0], 'o --brand é a cor da empresa');
+    for (const k of ['--brand-sob-texto', '--brand-2-sob-texto']) {
+      assert.ok(lch(vars[k]).c >= 0.1 && lch(vars[k]).l <= 0.78, cores + ' ' + k + ': ' + vars[k] + ' ainda é pastel');
+      assert.ok(TH.contraste(vars[k], vars['--on-brand']) >= 4.5, cores + ' ' + k + ': texto sobre ele');
+    }
+  }
+  // Cor forte passa como está.
+  assert.equal(TH.corQuePinta('#0f766e'), '#0f766e');
+});
+
 /* ---------------- As cores do logo ---------------- */
 
 // Um "logo" de mentira: pixels RGBA, como o canvas devolve. [hex, quantos, alfa].

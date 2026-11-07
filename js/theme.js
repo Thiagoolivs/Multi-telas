@@ -505,6 +505,18 @@
     return pior('#ffffff') >= pior('#0b1020') ? '#ffffff' : '#0b1020';
   }
 
+  /*
+   * A cor da marca que PINTA uma área com texto (o botão, o letreiro): a
+   * pastel (clara e de pouco croma) desce um pouco e ganha croma, na mesma
+   * matiz — o amarelo-claro vai para o âmbar, não para o oliva. Cor forte
+   * passa como está.
+   */
+  function corQuePinta(hex) {
+    const o = C.paraOklch(okHex(hex));
+    if (!o || o.c < 0.03 || o.l <= 0.78 || o.c >= 0.12) return hex;
+    return C.deOklch(0.72, Math.max(0.13, o.c), C.matizAoEscurecer(o, 0.72));
+  }
+
   // Aplica os tokens no elemento raiz informado (document.documentElement
   // no player; um container isolado poderia ser usado em previews).
   function apply(theme, root, ctx) {
@@ -516,11 +528,15 @@
      * num degradê da marca para a segunda cor. Branco sobre o terracota e
      * dourado da padaria dava 1,6:1 na ponta dourada. As pontas do degradê
      * que levam texto vêm acertadas para o texto escolhido (só a luz muda).
+     * A marca pastel pinta com corpo (corQuePinta): o botão rosa-bebê era o
+     * "infantil" que sobrava na TV (lote de 06/11). O --brand continua a cor
+     * cadastrada.
      */
-    const sobreMarca = onColor(t.brand, t.brand2);
+    const pintaMarca = corQuePinta(t.brand), pintaMarca2 = corQuePinta(t.brand2);
+    const sobreMarca = onColor(pintaMarca, pintaMarca2);
     s.setProperty('--on-brand', sobreMarca);
-    s.setProperty('--brand-sob-texto', okHex(t.brand) ? C.garantirContraste(okHex(t.brand), [sobreMarca], MIN_CONTRASTE) : t.brand);
-    s.setProperty('--brand-2-sob-texto', okHex(t.brand2) ? C.garantirContraste(okHex(t.brand2), [sobreMarca], MIN_CONTRASTE) : t.brand2);
+    s.setProperty('--brand-sob-texto', okHex(pintaMarca) ? C.garantirContraste(okHex(pintaMarca), [sobreMarca], MIN_CONTRASTE) : t.brand);
+    s.setProperty('--brand-2-sob-texto', okHex(pintaMarca2) ? C.garantirContraste(okHex(pintaMarca2), [sobreMarca], MIN_CONTRASTE) : t.brand2);
     // O selo no acento: o degradê vai para o lado contrário ao do texto, para nunca chegar perto dele.
     const sobreAcento = onColor(t.accent);
     s.setProperty('--on-accent', sobreAcento);
@@ -568,7 +584,7 @@
     PRESETS, FONTS, DEFAULT_PRESET, FAMILIAS_PECA, familiaPeca,
     resolve, apply, preview, listPresets, listFonts, ensureFont, FUNDOS, CLIMAS, pecasDaConfig,
     // Expostos para o painel prever a cor sem duplicar a matemática.
-    derivar, tingir, textoSobre, acentoSobre, acentoDoTema, contraste, mix, girarMatiz, rgba,
+    derivar, tingir, textoSobre, acentoSobre, acentoDoTema, corQuePinta, contraste, mix, girarMatiz, rgba,
   };
   // Módulo duplo (D28): o servidor confere os temas que a IA propõe pela mesma lista.
   if (typeof module !== 'undefined' && module.exports) module.exports = global.MTTheme;
