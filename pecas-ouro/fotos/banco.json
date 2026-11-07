@@ -2,9 +2,16 @@
   {
     "id": "otica-oculos-de-sol-retrato",
     "arquivo": "/pecas-ouro/fotos/otica-sol.jpg",
-    "ramos": ["otica", "beleza", "moda"],
+    "ramos": [
+      "otica",
+      "beleza",
+      "moda"
+    ],
     "papel": "pessoa",
-    "foco": { "x": 0.54, "y": 0.5 },
+    "foco": {
+      "x": 0.54,
+      "y": 0.5
+    },
     "descricao": "Mulher de óculos de sol espelhados e boina clara",
     "credito": "Omid Armin / Unsplash",
     "licenca": "Unsplash License",
@@ -13,9 +20,14 @@
   {
     "id": "otica-oculos-de-sol",
     "arquivo": "/pecas-ouro/fotos/otica-sol.jpg",
-    "ramos": ["otica"],
+    "ramos": [
+      "otica"
+    ],
     "papel": "produto",
-    "foco": { "x": 0.54, "y": 0.46 },
+    "foco": {
+      "x": 0.54,
+      "y": 0.46
+    },
     "descricao": "Óculos de sol espelhados de armação dourada",
     "credito": "Omid Armin / Unsplash",
     "licenca": "Unsplash License",
@@ -24,12 +36,1870 @@
   {
     "id": "comida-prato-feito-churrasco",
     "arquivo": "/pecas-ouro/fotos/prato-do-dia.jpg",
-    "ramos": ["comida"],
+    "ramos": [
+      "comida"
+    ],
     "papel": "produto",
-    "foco": { "x": 0.49, "y": 0.49 },
+    "foco": {
+      "x": 0.49,
+      "y": 0.49
+    },
     "descricao": "Prato de churrasco com arroz, linguiça, frango e milho, visto de cima",
     "credito": "DΛVΞ GΛRCIΛ / Pexels",
     "licenca": "Pexels License",
     "fonte": "https://www.pexels.com/pt-br/foto/delicioso-prato-de-carnes-grelhadas-com-arroz-e-milho-38788368/"
+  },
+  {
+    "id": "clinica-entrada",
+    "arquivo": "/pecas-ouro/fotos/clinica/entrada.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Fachada branca e geométrica de um prédio de saúde, vista de baixo",
+    "credito": "Joel Filipe / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Madrid_entrance_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/vWbmXOl3H8s"
+  },
+  {
+    "id": "clinica-espera",
+    "arquivo": "/pecas-ouro/fotos/clinica/espera.jpg",
+    "ramos": [
+      "saude",
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.6
+    },
+    "descricao": "Sala clara com mesa branca e cadeiras, luz natural",
+    "credito": "Breather breather / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Stylish_meeting_room_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/voxDu8GIs6g"
+  },
+  {
+    "id": "clinica-fachada",
+    "arquivo": "/pecas-ouro/fotos/clinica/fachada.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.6
+    },
+    "descricao": "Edifício branco arredondado com fachada vazada, céu claro",
+    "credito": "Joel Filipe / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Madrid,_Spain_(Unsplash_PkE6yQwE-6Y).jpg",
+    "origem": "https://unsplash.com/photos/PkE6yQwE-6Y"
+  },
+  {
+    "id": "clinica-sala-clara",
+    "arquivo": "/pecas-ouro/fotos/clinica/sala-clara.jpg",
+    "ramos": [
+      "saude",
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "descricao": "Sala de reunião branca com janelas altas e piso de madeira",
+    "credito": "Breather breather / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:White_office_space_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/oKlhoijT2JM"
+  },
+  {
+    "id": "dentista-consultorio",
+    "arquivo": "/pecas-ouro/fotos/dentista/consultorio.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.45,
+      "y": 0.6
+    },
+    "descricao": "Cadeira odontológica em consultório branco e iluminado",
+    "credito": "Daniel Frank / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Dentist_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/kdoaOFGE9QM"
+  },
+  {
+    "id": "dentista-sorriso-estudio",
+    "arquivo": "/pecas-ouro/fotos/dentista/sorriso-estudio.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.35
+    },
+    "descricao": "Rapaz sorrindo de suéter claro, fundo verde-claro",
+    "credito": "michael m_minimal / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Always_smile_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/gKbrJTDV6os"
+  },
+  {
+    "id": "dentista-sorriso-flores",
+    "arquivo": "/pecas-ouro/fotos/dentista/sorriso-flores.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.4
+    },
+    "descricao": "Mulher sorrindo com coroa de flores, fundo amarelo",
+    "credito": "Autumn Goodman / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Mother_Nature,_Summer_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/vTL_qy03D1I"
+  },
+  {
+    "id": "dentista-sorriso-janela",
+    "arquivo": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.55,
+      "y": 0.45
+    },
+    "descricao": "Mulher sorrindo sentada perto da janela, ambiente claro",
+    "credito": "Brooke Cagle / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Smiling_woman_by_a_window_(Unsplash_NoRsyXmHGpI).jpg",
+    "origem": "https://unsplash.com/photos/NoRsyXmHGpI"
+  },
+  {
+    "id": "dentista-sorriso-rapaz",
+    "arquivo": "/pecas-ouro/fotos/dentista/sorriso-rapaz.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.55,
+      "y": 0.4
+    },
+    "descricao": "Rapaz sorrindo de camiseta preta num gramado",
+    "credito": "Hunter Johnson / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Hunter_Johnson_2017-03-14_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/OK7VpKfbb_c"
+  },
+  {
+    "id": "dentista-sorriso-sardas",
+    "arquivo": "/pecas-ouro/fotos/dentista/sorriso-sardas.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.4
+    },
+    "descricao": "Mulher ruiva de sardas, sorriso aberto",
+    "credito": "Gabriel Silvério / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Smile_with_Freckles_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/u3WmDyKGsrY"
+  },
+  {
+    "id": "dentista-sorriso-tranquilo",
+    "arquivo": "/pecas-ouro/fotos/dentista/sorriso-tranquilo.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.35
+    },
+    "descricao": "Homem de dreadlocks, sorriso calmo, fundo claro",
+    "credito": "Brooke Cagle / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Sitting_And_Smiling_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/Nm70URdtf3c"
+  },
+  {
+    "id": "escritorio-equipe-executiva",
+    "arquivo": "/pecas-ouro/fotos/escritorio/equipe-executiva.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.35
+    },
+    "descricao": "Duas pessoas de terno andando lado a lado, sorrindo",
+    "credito": "rawpixel.com rawpixel / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Smiling_businesspeople_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/FXN2ENfu-sg"
+  },
+  {
+    "id": "escritorio-escritorio-aberto",
+    "arquivo": "/pecas-ouro/fotos/escritorio/escritorio-aberto.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.6,
+      "y": 0.5
+    },
+    "descricao": "Escritório aberto com mesas, plantas e luz natural",
+    "credito": "Crew crew / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Desks_in_an_open_office_space_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/IXHNBGTKJfw"
+  },
+  {
+    "id": "escritorio-maos-notebook",
+    "arquivo": "/pecas-ouro/fotos/escritorio/maos-notebook.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Mãos sobre o notebook numa mesa branca",
+    "credito": "JESHOOTS.COM jeshoots / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Businessman_working_and_writing_notes_in_office_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/LtNvQHdKkmw"
+  },
+  {
+    "id": "escritorio-mesa-cafe",
+    "arquivo": "/pecas-ouro/fotos/escritorio/mesa-cafe.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.55,
+      "y": 0.45
+    },
+    "descricao": "Mesa branca com caneca de café, caneta e clipes",
+    "credito": "Bench Accounting / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Office_supplies_and_coffee_(Unsplash_xxeAftHHq6E).jpg",
+    "origem": "https://unsplash.com/photos/xxeAftHHq6E"
+  },
+  {
+    "id": "escritorio-mesa-minimalista",
+    "arquivo": "/pecas-ouro/fotos/escritorio/mesa-minimalista.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.7,
+      "y": 0.5
+    },
+    "descricao": "Mesa de madeira com computador, parede branca e calendário",
+    "credito": "Roman Bozhko / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Clean_minimalist_office_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/PypjzKTUqLo"
+  },
+  {
+    "id": "escritorio-notebook",
+    "arquivo": "/pecas-ouro/fotos/escritorio/notebook.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.6,
+      "y": 0.5
+    },
+    "descricao": "Homem trabalhando no notebook numa mesa de madeira",
+    "credito": "Bench Accounting / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Man_at_a_laptop_in_an_office_(Unsplash).jpg",
+    "origem": "http://unsplash.com/photos/C3V88BOoRoM"
+  },
+  {
+    "id": "escritorio-predio-noite",
+    "arquivo": "/pecas-ouro/fotos/escritorio/predio-noite.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Janelas acesas de um prédio de escritórios à noite",
+    "credito": "Davide Cantelli / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Warm_light_in_office_building_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/a7_B7yBQ9cg"
+  },
+  {
+    "id": "escritorio-predio",
+    "arquivo": "/pecas-ouro/fotos/escritorio/predio.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Torre de vidro vista de baixo, céu azul",
+    "credito": "Patrick Tomasso / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Geometric_office_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/gMes5dNykus"
+  },
+  {
+    "id": "escritorio-reuniao",
+    "arquivo": "/pecas-ouro/fotos/escritorio/reuniao.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Duas pessoas em reunião numa mesa de madeira com tablet e café",
+    "credito": "Alejandro Escamilla / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Two_people_meeting_with_iphone_and_ipad_(Unsplash).jpg",
+    "origem": "http://unsplash.com/photos/BbQLHCpVUqA"
+  },
+  {
+    "id": "escritorio-sala-reuniao",
+    "arquivo": "/pecas-ouro/fotos/escritorio/sala-reuniao.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "descricao": "Sala de reunião ampla e clara com mesa longa",
+    "credito": "Breather breather / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Large_meeting_room_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/rc8sigFJAHo"
+  },
+  {
+    "id": "farmacia-balcao-moderno",
+    "arquivo": "/pecas-ouro/fotos/farmacia/balcao-moderno.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Interior de farmácia moderna com prateleiras organizadas",
+    "credito": "Syced",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Pharmacy_in_Tokyo.jpg"
+  },
+  {
+    "id": "farmacia-cha-bule",
+    "arquivo": "/pecas-ouro/fotos/farmacia/cha-bule.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Bule de chá e duas xícaras numa bandeja de madeira",
+    "credito": "Alisher Sharip / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Alisher_Sharip_2016_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/mumpl9-D7Uc"
+  },
+  {
+    "id": "farmacia-cha-ervas",
+    "arquivo": "/pecas-ouro/fotos/farmacia/cha-ervas.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.45
+    },
+    "descricao": "Chá de ervas, mel e limão vistos de cima, fundo escuro",
+    "credito": "Gaelle Marcel / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Herbal_Tea_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/9hG-jRmlTm8"
+  },
+  {
+    "id": "farmacia-cha-jarra",
+    "arquivo": "/pecas-ouro/fotos/farmacia/cha-jarra.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.6,
+      "y": 0.55
+    },
+    "descricao": "Jarra de chá gelado e xícara branca sobre mesa, fundo verde",
+    "credito": "bady qb / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Pitcher_of_tea_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/-C_0QOELNVw"
+  },
+  {
+    "id": "farmacia-comprimidos",
+    "arquivo": "/pecas-ouro/fotos/farmacia/comprimidos.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Comprimidos e cápsulas coloridos, vistos de perto",
+    "credito": "freestocks.org freestocks / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Olsztyn,_Poland_(Unsplash_nss2eRzQwgw).jpg",
+    "origem": "https://unsplash.com/photos/nss2eRzQwgw"
+  },
+  {
+    "id": "farmacia-cuidados",
+    "arquivo": "/pecas-ouro/fotos/farmacia/cuidados.jpg",
+    "ramos": [
+      "saude",
+      "beleza"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Pincéis e pó facial numa bandeja branca",
+    "credito": "Oli Dale / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Make-up_brushes_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/JPHyoXTy-kE"
+  },
+  {
+    "id": "farmacia-xicara-maos",
+    "arquivo": "/pecas-ouro/fotos/farmacia/xicara-maos.jpg",
+    "ramos": [
+      "saude",
+      "padaria"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Mãos segurando xícara e pires junto a uma grade",
+    "credito": "Toa Heftiba / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:A_woman_is_like_a_tea_bag._(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/qjRLEOuIc3g"
+  },
+  {
+    "id": "industria-fabrica",
+    "arquivo": "/pecas-ouro/fotos/industria/fabrica.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Prédio de fábrica de tijolos com chaminé, fim de tarde",
+    "credito": "Robert Katzki / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Urban_factory_Brooklyn_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/5kS61S5ZAJg"
+  },
+  {
+    "id": "industria-ferramentas",
+    "arquivo": "/pecas-ouro/fotos/industria/ferramentas.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Ferramentas de oficina sobre a bancada",
+    "credito": "Igor Ovsyannykov / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Workshop_Tools_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/mQgVyUC0V-I"
+  },
+  {
+    "id": "industria-furadeira",
+    "arquivo": "/pecas-ouro/fotos/industria/furadeira.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.4,
+      "y": 0.5
+    },
+    "descricao": "Mãos operando uma furadeira de bancada, fundo escuro",
+    "credito": "Adi Goldstein / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:The_Workshop_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/E_8Zk_hfpcE"
+  },
+  {
+    "id": "industria-marceneiro",
+    "arquivo": "/pecas-ouro/fotos/industria/marceneiro.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Marceneiro lixando uma peça de madeira",
+    "credito": "Ian Schneider / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Woodworker_in_a_workshop_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/IQbC4VU4YPQ"
+  },
+  {
+    "id": "industria-soldador",
+    "arquivo": "/pecas-ouro/fotos/industria/soldador.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Soldador trabalhando, faíscas e luz de solda",
+    "credito": "Uğur Gürcüoğlu / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Welder_in_a_workshop_(Unsplash).jpg",
+    "origem": "http://unsplash.com/photos/s1M0ncSl9l4"
+  },
+  {
+    "id": "industria-tear",
+    "arquivo": "/pecas-ouro/fotos/industria/tear.jpg",
+    "ramos": [
+      "corporativo",
+      "moda"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Mãos ajustando os fios num tear industrial",
+    "credito": "Igor Ovsyannykov / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Factory_Worker_Making_Clothes_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/w_nh1ECO7QY"
+  },
+  {
+    "id": "industria-textil",
+    "arquivo": "/pecas-ouro/fotos/industria/textil.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Máquinas de uma fábrica têxtil, em detalhe",
+    "credito": "Igor Ovsyannykov / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Independent_Textile_Factory_in_Manali_India._(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/pgF1IXhdBJM"
+  },
+  {
+    "id": "lanchonete-burger-chope",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/burger-chope.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.6
+    },
+    "descricao": "Hambúrguer com fritas e copo de chope",
+    "credito": "Edward Franklin / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Eugene,_United_States_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/Nb_Q-M3Cdzg"
+  },
+  {
+    "id": "lanchonete-burger-classico",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/burger-classico.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.35,
+      "y": 0.5
+    },
+    "descricao": "Hambúrguer clássico com queijo, fundo escuro",
+    "credito": "Sebastián LP / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Lima_Region,_Peru_(Unsplash_CIos1pQ4MCQ).jpg",
+    "origem": "https://unsplash.com/photos/CIos1pQ4MCQ"
+  },
+  {
+    "id": "lanchonete-burger-gourmet",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/burger-gourmet.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Hambúrguer de pão brioche alto, luzes ao fundo",
+    "credito": "Eaters Collective / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Gourmet_Hamburger_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/vOdK_eih7B0"
+  },
+  {
+    "id": "lanchonete-chapeiro",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/chapeiro.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.35,
+      "y": 0.45
+    },
+    "descricao": "Chapeiro preparando lanches na chapa",
+    "credito": "Clem Onojeghuo / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Frenchie_burgers_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/mQ0_MMw5qas"
+  },
+  {
+    "id": "lanchonete-cheeseburger",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/cheeseburger.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.5
+    },
+    "descricao": "Cheeseburger com alface e tomate, close",
+    "credito": "Thomas Habr / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Best_Cheeseburger_ever_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/MjMLAst5pUI"
+  },
+  {
+    "id": "lanchonete-combo",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/combo.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.6,
+      "y": 0.55
+    },
+    "descricao": "Hambúrguer, fritas e refrigerante na mesa",
+    "credito": "Javier Molina / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Burger,_Fries,_and_Juice_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/L99H7JKYPVY"
+  },
+  {
+    "id": "lanchonete-frango-frito",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/frango-frito.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Frango frito crocante numa cesta",
+    "credito": "Brian Chan / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Fried_Chicken_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/NbXjZomyNEM"
+  },
+  {
+    "id": "lanchonete-fritas",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/fritas.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Batata frita em porção, vista de perto",
+    "credito": "Stephanie McCabe / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Truffle_Fries_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/ZsB2MbzSHjI"
+  },
+  {
+    "id": "lanchonete-mesa-amigos",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/mesa-amigos.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Amigos dividindo lanches numa mesa",
+    "credito": "Dan Gold / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Friends_eating_lunch_in_diner_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/E6HjQaB7UEA"
+  },
+  {
+    "id": "lanchonete-pizza",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/pizza.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Pizza inteira recém-saída do forno",
+    "credito": "David Nuescheler / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:A_well_garnished_pizza_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/gUBJ9vSlky0"
+  },
+  {
+    "id": "lanchonete-sanduiche-frango",
+    "arquivo": "/pecas-ouro/fotos/lanchonete/sanduiche-frango.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.45
+    },
+    "descricao": "Sanduíche de frango empanado, foto vertical",
+    "credito": "Eaters Collective / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Chicken_Sandwich_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/pLKgCsBOiw4"
+  },
+  {
+    "id": "otica-armacao-madeira",
+    "arquivo": "/pecas-ouro/fotos/otica/armacao-madeira.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Óculos de armação escura sobre mesa de madeira",
+    "credito": "Clem Onojeghuo / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Elegant_glasses_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/TI-mxzGbsmk"
+  },
+  {
+    "id": "otica-leitura",
+    "arquivo": "/pecas-ouro/fotos/otica/leitura.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Óculos de leitura sobre um livro aberto",
+    "credito": "Dmitry Ratushny / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Through_the_reading_glasses_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/wpi3sDUrSEk"
+  },
+  {
+    "id": "otica-oculos-luz",
+    "arquivo": "/pecas-ouro/fotos/otica/oculos-luz.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.6
+    },
+    "descricao": "Óculos de grau em luz suave",
+    "credito": "MontyLov montylov / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:MontyLov_2017-05-05_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/WfAeYGGaWNk"
+  },
+  {
+    "id": "otica-retrato-homem",
+    "arquivo": "/pecas-ouro/fotos/otica/retrato-homem.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.35
+    },
+    "descricao": "Homem de óculos, retrato em close",
+    "credito": "Seth Doyle / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Man_vanguard_glasses_outdoors_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/vmBik4xv27s"
+  },
+  {
+    "id": "otica-retrato-oculos",
+    "arquivo": "/pecas-ouro/fotos/otica/retrato-oculos.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.35
+    },
+    "descricao": "Mulher de óculos de grau, retrato",
+    "credito": "Sebastian Unrau / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Nose_Ring_and_Glasses_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/4E7lYu3OhFw"
+  },
+  {
+    "id": "otica-sol-areia",
+    "arquivo": "/pecas-ouro/fotos/otica/sol-areia.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "descricao": "Óculos de sol sobre a areia",
+    "credito": "Steve Halama / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Steve_Halama_2017-02-02_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/axTJazt56mg"
+  },
+  {
+    "id": "otica-sol-mulher",
+    "arquivo": "/pecas-ouro/fotos/otica/sol-mulher.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.35
+    },
+    "descricao": "Mulher de óculos de sol, retrato ao ar livre",
+    "credito": "Ilya Yakover / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Ilya_Yakover_2017-05-30_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/MEkDfap2H98"
+  },
+  {
+    "id": "otica-sol-retrato",
+    "arquivo": "/pecas-ouro/fotos/otica/sol-retrato.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.55,
+      "y": 0.35
+    },
+    "descricao": "Retrato com óculos de sol, luz de fim de tarde",
+    "credito": "Brooke Cagle / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Brooke_Cagle_2017-06-01_(Unsplash_qpirSKdJDUw).jpg",
+    "origem": "https://unsplash.com/photos/qpirSKdJDUw"
+  },
+  {
+    "id": "otica-tartaruga",
+    "arquivo": "/pecas-ouro/fotos/otica/tartaruga.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Óculos de acetato tartaruga sobre tricô claro",
+    "credito": "Keilidh Ewan / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Tortoise_glasses_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/vuu8Xkki4zQ"
+  },
+  {
+    "id": "otica-vitrine",
+    "arquivo": "/pecas-ouro/fotos/otica/vitrine.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Óculos expostos em vitrine",
+    "credito": "Scott Van Daalen / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Picking_Out_Eye_Wear_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/UsALNdok2m4"
+  },
+  {
+    "id": "padaria-balcao",
+    "arquivo": "/pecas-ouro/fotos/padaria/balcao.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "descricao": "Balcão de padaria com pães expostos",
+    "credito": "Roman Kraft / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Bread_at_a_Bakery_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/P8zDQz8Y2Vc"
+  },
+  {
+    "id": "padaria-bolo-cafe",
+    "arquivo": "/pecas-ouro/fotos/padaria/bolo-cafe.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Bolo de café com nozes visto de cima",
+    "credito": "Rachael Gorjestani / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Coffee_cake_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/fs9MXZo-k1o"
+  },
+  {
+    "id": "padaria-cafe-latte",
+    "arquivo": "/pecas-ouro/fotos/padaria/cafe-latte.jpg",
+    "ramos": [
+      "padaria",
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "descricao": "Café com leite com desenho na espuma",
+    "credito": "rawpixel.com rawpixel / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Blue_coffee_cup_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/CVYT72bMugw"
+  },
+  {
+    "id": "padaria-croissants-assadeira",
+    "arquivo": "/pecas-ouro/fotos/padaria/croissants-assadeira.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Croissants dourados na assadeira",
+    "credito": "Olia Gozha / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Rivne,_Ukraine_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/FHEH2jQgLVk"
+  },
+  {
+    "id": "padaria-croissants-cafe",
+    "arquivo": "/pecas-ouro/fotos/padaria/croissants-cafe.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.55
+    },
+    "descricao": "Croissants e café na mesa",
+    "credito": "Alisa Anton / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Alisa_Anton_2016-03-12_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/hpKOiuz9AkE"
+  },
+  {
+    "id": "padaria-espresso",
+    "arquivo": "/pecas-ouro/fotos/padaria/espresso.jpg",
+    "ramos": [
+      "padaria",
+      "comida"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.55,
+      "y": 0.5
+    },
+    "descricao": "Máquina de espresso tirando café",
+    "credito": "rawpixel.com rawpixel / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Rawpixel.com_2017-02-20_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/RbjArfVcczg"
+  },
+  {
+    "id": "padaria-fornada",
+    "arquivo": "/pecas-ouro/fotos/padaria/fornada.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.6
+    },
+    "descricao": "Pães saindo do forno",
+    "credito": "Liene Vitamante / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Santa_Monica,_United_States_(Unsplash_PO2GsmeN8hU).jpg",
+    "origem": "https://unsplash.com/photos/PO2GsmeN8hU"
+  },
+  {
+    "id": "padaria-paes-rusticos",
+    "arquivo": "/pecas-ouro/fotos/padaria/paes-rusticos.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.6,
+      "y": 0.55
+    },
+    "descricao": "Pães rústicos com flores amarelas ao fundo",
+    "credito": "Kim Cruickshanks / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Bread_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/ztgcyQILXsM"
+  },
+  {
+    "id": "padaria-pao-de-forma",
+    "arquivo": "/pecas-ouro/fotos/padaria/pao-de-forma.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Pão caseiro fatiado sobre tábua, visto de cima",
+    "credito": "Artur Rutkowski / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Fresh_Rustic_Bread_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/VWQM9MbZDDw"
+  },
+  {
+    "id": "padaria-pao-nas-maos",
+    "arquivo": "/pecas-ouro/fotos/padaria/pao-nas-maos.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.45
+    },
+    "descricao": "Mãos segurando um pão de fermentação natural",
+    "credito": "Kate Remmer / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Man_holding_bread_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/RZn4_FzNUCY"
+  },
+  {
+    "id": "padaria-pao-tabua",
+    "arquivo": "/pecas-ouro/fotos/padaria/pao-tabua.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.5
+    },
+    "descricao": "Pão de fermentação natural sobre tábua de madeira, visto de cima",
+    "credito": "Ben Garratt / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Ben_Garratt_2016_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/AumHYHRn2AM"
+  },
+  {
+    "id": "padaria-prateleiras",
+    "arquivo": "/pecas-ouro/fotos/padaria/prateleiras.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Prateleiras de padaria com pães variados",
+    "credito": "Clark Young / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Loaves_of_Bread_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/jfbMODLPrQ0"
+  },
+  {
+    "id": "restaurante-antepasto",
+    "arquivo": "/pecas-ouro/fotos/restaurante/antepasto.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Tábua de antepastos com frios e pães",
+    "credito": "Brenan Greene / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Italian_Dish_for_High-End_Resturant_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/zhiZOpm99Iw"
+  },
+  {
+    "id": "restaurante-brinde",
+    "arquivo": "/pecas-ouro/fotos/restaurante/brinde.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.45
+    },
+    "descricao": "Taças de vinho num brinde à mesa",
+    "credito": "Yutacar yutacar / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Restaurant_Swan_Lake_Beer,_Agano-shi,_Niigata-pref,_Japan_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/JKMnm3CIncw"
+  },
+  {
+    "id": "restaurante-cozinha",
+    "arquivo": "/pecas-ouro/fotos/restaurante/cozinha.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.55,
+      "y": 0.45
+    },
+    "descricao": "Cozinheiro finalizando pratos na cozinha",
+    "credito": "Lan Pham / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Night_Shift_at_the_Restaurant_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/slyyeNC6qzY"
+  },
+  {
+    "id": "restaurante-fazendo-massa",
+    "arquivo": "/pecas-ouro/fotos/restaurante/fazendo-massa.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Mãos abrindo massa fresca na bancada",
+    "credito": "Jorge Zapata / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Making_Pasta_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/4nXkhLCrkLo"
+  },
+  {
+    "id": "restaurante-jantar",
+    "arquivo": "/pecas-ouro/fotos/restaurante/jantar.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Mesa posta para o jantar, luz quente",
+    "credito": "Jay Wennington / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Gourmet_meal_and_white_wine_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/N_Y88TWmGwA"
+  },
+  {
+    "id": "restaurante-massa-fresca",
+    "arquivo": "/pecas-ouro/fotos/restaurante/massa-fresca.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Massa fresca crua sobre farinha",
+    "credito": "Eaters Collective / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Plate_of_Pasta_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/ddZYOtZUnBk"
+  },
+  {
+    "id": "restaurante-pizza",
+    "arquivo": "/pecas-ouro/fotos/restaurante/pizza.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Pizza de forno a lenha sobre a mesa",
+    "credito": "Brenan Greene / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Pizza_for_High-End_Italian_Restaurant_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/HPZs4EXRFSU"
+  },
+  {
+    "id": "restaurante-prato-autoral",
+    "arquivo": "/pecas-ouro/fotos/restaurante/prato-autoral.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.55,
+      "y": 0.55
+    },
+    "descricao": "Prato autoral com legumes, visto de cima sobre madeira",
+    "credito": "Adam Jaime / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Adam_Jaime_2016-08-04_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/oFljzK61O1s"
+  },
+  {
+    "id": "restaurante-queijos",
+    "arquivo": "/pecas-ouro/fotos/restaurante/queijos.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Queijos variados sobre a tábua",
+    "credito": "Jez Timms / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Jez_Timms_2016-01-07_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/gMW2NZ7JGrE"
+  },
+  {
+    "id": "restaurante-salao-rustico",
+    "arquivo": "/pecas-ouro/fotos/restaurante/salao-rustico.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Salão de restaurante rústico com mesas de madeira",
+    "credito": "Adam Wilson / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Rustic_Restaurant_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/7Od26RsZ2Rk"
+  },
+  {
+    "id": "restaurante-salao",
+    "arquivo": "/pecas-ouro/fotos/restaurante/salao.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Salão de restaurante iluminado à noite",
+    "credito": "Todd Diemer / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:In_a_vintage_tavern_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/SEFR62Upnqw"
+  },
+  {
+    "id": "restaurante-tagliatelle",
+    "arquivo": "/pecas-ouro/fotos/restaurante/tagliatelle.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "descricao": "Prato de tagliatelle ao ragu",
+    "credito": "Izzy Boscawen / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:The_temptress_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/HrcpO5MCedQ"
+  },
+  {
+    "id": "salao-barba",
+    "arquivo": "/pecas-ouro/fotos/salao/barba.jpg",
+    "ramos": [
+      "beleza",
+      "barbearia"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Barbeiro aparando a barba de um cliente",
+    "credito": "Christoffer Engström / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Christoffer_Engstr%C3%B6m_2017-01-13_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/1ouGlRChSbY"
+  },
+  {
+    "id": "salao-barbeiro",
+    "arquivo": "/pecas-ouro/fotos/salao/barbeiro.jpg",
+    "ramos": [
+      "beleza",
+      "barbearia"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.45
+    },
+    "descricao": "Barbeiro passando a máquina na nuca do cliente",
+    "credito": "Phùng Hải / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Head_shaved_by_barber_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/m4Pd_e-4zKs"
+  },
+  {
+    "id": "salao-batom",
+    "arquivo": "/pecas-ouro/fotos/salao/batom.jpg",
+    "ramos": [
+      "beleza"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.4
+    },
+    "descricao": "Mulher passando batom vermelho",
+    "credito": "Alejandra Higareda / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Alejandra_Higareda_2017_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/fjUWDEWkw8U"
+  },
+  {
+    "id": "salao-cabelo-vento",
+    "arquivo": "/pecas-ouro/fotos/salao/cabelo-vento.jpg",
+    "ramos": [
+      "beleza"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.45,
+      "y": 0.4
+    },
+    "descricao": "Mulher de cabelo longo ao vento, retrato ao ar livre",
+    "credito": "Pete Bellis / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Flawless_Hairflip_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/I8Id_Dd7ODw"
+  },
+  {
+    "id": "salao-camarim",
+    "arquivo": "/pecas-ouro/fotos/salao/camarim.jpg",
+    "ramos": [
+      "beleza"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.6,
+      "y": 0.45
+    },
+    "descricao": "Mulher diante do espelho de camarim iluminado",
+    "credito": "Enrico Carcasci / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Mirror_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/K04ykMnmQxw"
+  },
+  {
+    "id": "salao-coque",
+    "arquivo": "/pecas-ouro/fotos/salao/coque.jpg",
+    "ramos": [
+      "beleza"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.55,
+      "y": 0.45
+    },
+    "descricao": "Mulher de costas com coque ruivo",
+    "credito": "Tyler McRobert / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Woman_red_hair_looking_at_sky_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/Rn0rzGxPedM"
+  },
+  {
+    "id": "salao-maquiagem",
+    "arquivo": "/pecas-ouro/fotos/salao/maquiagem.jpg",
+    "ramos": [
+      "beleza"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.45
+    },
+    "descricao": "Maquiadora aplicando batom na modelo",
+    "credito": "freestocks.org freestocks / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Beauty_photoshoot_makeup_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/YGmk9UZMdZg"
+  },
+  {
+    "id": "salao-ombre",
+    "arquivo": "/pecas-ouro/fotos/salao/ombre.jpg",
+    "ramos": [
+      "beleza"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.65,
+      "y": 0.5
+    },
+    "descricao": "Cabelo longo com ombré, de costas",
+    "credito": "Priscilla Du Preez / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Ombre_Hair_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/aTkJ13pvOd8"
+  },
+  {
+    "id": "salao-pinceis",
+    "arquivo": "/pecas-ouro/fotos/salao/pinceis.jpg",
+    "ramos": [
+      "beleza"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Estojo de pincéis e maquiagem",
+    "credito": "Manu Camargo / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Make-up_kit_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/BkaD07QEiJc"
+  },
+  {
+    "id": "salao-tranca",
+    "arquivo": "/pecas-ouro/fotos/salao/tranca.jpg",
+    "ramos": [
+      "beleza"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.45,
+      "y": 0.5
+    },
+    "descricao": "Trança no cabelo, vista de costas",
+    "credito": "Pete Bellis / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Braided_Hair_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/ZvPoZtY-0ng"
+  },
+  {
+    "id": "clinica-alongamento",
+    "arquivo": "/pecas-ouro/fotos/clinica/alongamento.jpg",
+    "ramos": [
+      "saude",
+      "academia"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.4,
+      "y": 0.4
+    },
+    "descricao": "Mulher se alongando num campo ao pôr do sol",
+    "credito": "Andressa Voltolini / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Woman_yoga_pose_sunrise_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/H7WdV-dNRZE"
+  },
+  {
+    "id": "clinica-atrio",
+    "arquivo": "/pecas-ouro/fotos/clinica/atrio.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "descricao": "Átrio branco e iluminado de um prédio moderno",
+    "credito": "Scott Webb / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Exploration_(Unsplash_NJ2QKVuxGrE).jpg",
+    "origem": "https://unsplash.com/photos/NJ2QKVuxGrE"
+  },
+  {
+    "id": "clinica-corredor",
+    "arquivo": "/pecas-ouro/fotos/clinica/corredor.jpg",
+    "ramos": [
+      "saude",
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Passarela branca e envidraçada, em perspectiva",
+    "credito": "Rucksack Magazine / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Crossrail_Place_Roof_Garden_Bridge_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/4RwHP-KW_x4"
+  },
+  {
+    "id": "clinica-frutas",
+    "arquivo": "/pecas-ouro/fotos/clinica/frutas.jpg",
+    "ramos": [
+      "saude",
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.5
+    },
+    "descricao": "Tigela de frutas vermelhas sobre mesa branca",
+    "credito": "Iwona Łach / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Bowl_of_Fresh_Fruit_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/psuWeghs_CM"
+  },
+  {
+    "id": "clinica-predio-claro",
+    "arquivo": "/pecas-ouro/fotos/clinica/predio-claro.jpg",
+    "ramos": [
+      "saude",
+      "corporativo"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.6,
+      "y": 0.6
+    },
+    "descricao": "Prédio claro contra o céu azul, linhas limpas",
+    "credito": "Scott Webb / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Play_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/M5PYMJ83OfE"
+  },
+  {
+    "id": "clinica-refeicao",
+    "arquivo": "/pecas-ouro/fotos/clinica/refeicao.jpg",
+    "ramos": [
+      "saude",
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "descricao": "Pratos leves com salada num café",
+    "credito": "Jade Wulfraat / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Healthy_Cafe_Food_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/yXnPoTkkY94"
+  },
+  {
+    "id": "clinica-sorriso-sol",
+    "arquivo": "/pecas-ouro/fotos/clinica/sorriso-sol.jpg",
+    "ramos": [
+      "saude",
+      "beleza"
+    ],
+    "papel": "pessoa",
+    "foco": {
+      "x": 0.5,
+      "y": 0.3
+    },
+    "descricao": "Mulher sorrindo de olhos fechados ao sol, foto vertical",
+    "credito": "William Stitt / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:William_Stitt_2017-03-19_(Unsplash_vfc01uHpOyQ).jpg",
+    "origem": "https://unsplash.com/photos/vfc01uHpOyQ"
+  },
+  {
+    "id": "farmacia-cafe-da-manha",
+    "arquivo": "/pecas-ouro/fotos/farmacia/cafe-da-manha.jpg",
+    "ramos": [
+      "saude",
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Café da manhã com frutas, iogurte e suco, visto de cima",
+    "credito": "Jannis Brandt / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Healthy_Trendy_Brunch_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/8manzosDSGM"
+  },
+  {
+    "id": "industria-conteineres",
+    "arquivo": "/pecas-ouro/fotos/industria/conteineres.jpg",
+    "ramos": [
+      "corporativo",
+      "varejo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Contêineres coloridos empilhados",
+    "credito": "Erwan Hesry / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Erwan_Hesry_2016_(Unsplash).jpg",
+    "origem": "http://unsplash.com/photos/RJjY5Hpnifk"
+  },
+  {
+    "id": "industria-escada",
+    "arquivo": "/pecas-ouro/fotos/industria/escada.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Escada metálica com faixas amarelas de segurança",
+    "credito": "Daria Nepriakhina / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Watch_your_step_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/UHO0Ry6qUOQ"
+  },
+  {
+    "id": "industria-estrutura",
+    "arquivo": "/pecas-ouro/fotos/industria/estrutura.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Estrutura de aço e vidro vista de baixo",
+    "credito": "Matt Briney / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Steel_architecture_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/GQmkzcjry3A"
+  },
+  {
+    "id": "textura-aco",
+    "arquivo": "/pecas-ouro/fotos/textura/aco.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Ondas de aço em preto e branco",
+    "credito": "Ricardo Gomez Angel / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Steel_waves_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/j5gCOKZdm6I"
+  },
+  {
+    "id": "textura-madeira-clara",
+    "arquivo": "/pecas-ouro/fotos/textura/madeira-clara.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.4,
+      "y": 0.5
+    },
+    "descricao": "Tábua de madeira clara com folhas verdes no canto",
+    "credito": "Lukas Blazek / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Fresh_wood_garlic_on_wood_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/EWDvHNNfUmQ"
+  },
+  {
+    "id": "textura-madeira",
+    "arquivo": "/pecas-ouro/fotos/textura/madeira.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Seções de madeira empilhadas, em grade",
+    "credito": "kindfolk kindfolk / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Wood_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/x7JLwunX0M0"
+  },
+  {
+    "id": "textura-marmore-escada",
+    "arquivo": "/pecas-ouro/fotos/textura/marmore-escada.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Escada curva de mármore branco",
+    "credito": "Daniel von Appen / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Curve_in_white_marble_stairs_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/tb4heMa-ZRo"
+  },
+  {
+    "id": "textura-metal-ondulado",
+    "arquivo": "/pecas-ouro/fotos/textura/metal-ondulado.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Chapa de metal ondulada vermelha e azul",
+    "credito": "Samuel Zeller / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Samuel_Zeller_2014-12-10_(Unsplash_Edva6JFPeyU).jpg",
+    "origem": "https://unsplash.com/photos/Edva6JFPeyU"
+  },
+  {
+    "id": "textura-tipos-moveis",
+    "arquivo": "/pecas-ouro/fotos/textura/tipos-moveis.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Tipos móveis de madeira, em detalhe",
+    "credito": "Raphael Schaller / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Typesetting_in_wood_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/GkinCd2enIY"
+  },
+  {
+    "id": "textura-toras",
+    "arquivo": "/pecas-ouro/fotos/textura/toras.jpg",
+    "ramos": [
+      "geral",
+      "corporativo"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "descricao": "Toras de madeira empilhadas, vistas de frente",
+    "credito": "Maciej Rusek / Unsplash",
+    "licenca": "CC0 1.0 (domínio público)",
+    "fonte": "https://commons.wikimedia.org/wiki/File:Maciej_Rusek_2017_(Unsplash).jpg",
+    "origem": "https://unsplash.com/photos/XiQQQ0R7vfI"
   }
 ]

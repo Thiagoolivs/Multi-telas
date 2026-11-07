@@ -1,0 +1,51 @@
+<!--
+  Dica da casa — família serviço (lote 4, arquétipo A3).
+  Uma dica curta e útil, como a coluna de uma revista: o número da dica
+  pequeno sobre um filete, a dica na letra do título e uma linha de
+  explicação. A foto ilustra sem literalidade (o chá, a mesa, a luz).
+  Na saúde, orientação geral — nunca promessa de resultado.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 6cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 44fr 56fr; }
+.foto { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 50%; }
+.texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 8cqh 7cqw 8cqh 6cqw; }
+.kicker { display: flex; align-items: baseline; justify-content: space-between; gap: 2cqw; padding-bottom: 2cqh; border-bottom: .14cqw solid var(--mt-linha); font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker b { flex: none; white-space: nowrap; color: var(--mt-texto-suave); font-weight: 600; }
+h1 { margin-top: 4cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.04 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.apoio { margin-top: 3cqh; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.35 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { --f: 3.5cqw; --t: 6cqw; grid-template-columns: 38fr 62fr; }
+  .texto { padding: 6cqh 5cqw; }
+  .kicker { letter-spacing: .06em; }
+  h1 { margin-top: 3cqh; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 5.8cqw; }
+  .apoio { display: none; }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 10.6cqw; grid-template-columns: 1fr; grid-template-rows: 40fr 60fr; }
+  .texto { justify-content: flex-start; padding: 6cqh 7cqw; }
+  .kicker { border-bottom-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --t: 8cqw; grid-template-columns: 40fr 60fr; grid-template-rows: 1fr; }
+  .texto { justify-content: center; padding: 6cqh 6cqw 6cqh 5cqw; }
+}
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 12.4cqw; grid-template-rows: 28fr 72fr; }
+  .texto { justify-content: center; padding: 3cqh 8cqw 4cqh; }
+  .kicker { letter-spacing: .02em; text-transform: none; }
+  .kicker b, .apoio { display: none; }
+  h1 { margin-top: 2.4cqh; }
+}
+</style>
+<section class="mt-peca dica-foto">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+  <div class="texto">
+    <p class="kicker" data-entrada="aparecer" data-ordem="1"><span data-campo="kicker">Dica da semana</span><b data-campo="edicao">Nº 12</b></p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Leve a lista dos seus remédios à consulta</h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="3">Nome, dose e horário de cada um. Uma foto das caixas no celular também serve.</p>
+  </div>
+</section>
