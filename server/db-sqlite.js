@@ -603,6 +603,8 @@ for (const col of ['plan TEXT', 'plan_status TEXT', 'stripe_customer_id TEXT', '
   'aprovacao INTEGER']) {
   garantirColuna('tenants', col);
 }
+// "Sua primeira TV em 5 minutos": o progresso do passo a passo, em JSON (js/primeira-tv.js).
+garantirColuna('tenants', 'primeira_tv TEXT');
 db.exec("UPDATE tenants SET plan = 'free' WHERE plan IS NULL");
 migrarBrandkit();
 
@@ -2336,6 +2338,7 @@ module.exports = {
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
   salvarNasTvsDaMarca,
+  salvarPrimeiraTv,
   salvarLocalDaMarca,
 };
 
@@ -2357,4 +2360,12 @@ async function salvarLocalDaMarca(id, tenantId, local) {
 async function salvarNasTvsDaMarca(id, tenantId, ligado) {
   db.prepare('UPDATE marcas SET nas_tvs = ?, updated_at = ? WHERE id = ? AND tenant_id = ?').run(ligado ? 1 : 0, Date.now(), id, tenantId);
   return mapMarca(qMarca.porId.get(id, tenantId));
+}
+
+/*
+ * O progresso do "Sua primeira TV em 5 minutos" (server/routes/primeira-tv.js):
+ * o estado inteiro, já limpo por js/primeira-tv.js, na coluna da conta.
+ */
+async function salvarPrimeiraTv(id, estado) {
+  db.prepare('UPDATE tenants SET primeira_tv = ? WHERE id = ?').run(JSON.stringify(estado || null), id);
 }
