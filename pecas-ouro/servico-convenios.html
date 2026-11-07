@@ -73,6 +73,20 @@ h1 { margin-top: 2cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(11cqmin * var(
   .planos { grid-template-columns: 1fr 1fr; gap: 2.4cqmin; }
   .planos li { min-height: 0; padding: 1.8cqmin 2.6cqmin; }
 }
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%): com a letra do balcão o último convênio passava do pé. As
+ * etiquetas e os respiros apertam.
+ */
+@container (max-width: 700px) and (max-height: 720px) {
+  .kicker { margin-top: 2.4cqw; }
+  h1 { margin-top: 1cqw; }
+  .planos { gap: 1.6cqw; }
+  .planos li { padding: 1.5cqw 4cqw; line-height: 1.08; }
+}
+@container (max-width: 700px) and (max-height: 620px) {
+  .kicker { letter-spacing: 0; }
+}
 </style>
 <section class="mt-peca servico-convenios">
   <div class="cabeca">

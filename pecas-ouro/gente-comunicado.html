@@ -28,6 +28,12 @@ h1 { margin-top: 2.6cqw; font: 600 max(var(--mt-piso, 0cqw), 5.6cqw)/1.04 var(--
   .texto { margin-top: 1.6cqw; max-width: none; line-height: 1.3; }
   .assina { margin-top: 2cqw; padding-top: 1.4cqw; line-height: 1.2; }
 }
+/* Com a margem contra o corte (de 1321×739 a 1236×674), o recado ainda passava do alto e do pé: o assunto e as entrelinhas apertam mais. */
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 745px) {
+  h1 { margin-top: 1.2cqw; font-size: max(var(--mt-piso, 0cqw), calc(4.6cqw * var(--mt-escala-titulo, 1))); line-height: 1; }
+  .texto { margin-top: 1.2cqw; line-height: 1.18; }
+  .assina { margin-top: 1.4cqw; padding-top: 1cqw; }
+}
 @container (aspect-ratio < 0.8) {
   .memo { left: 8cqw; right: 8cqw; padding-left: 6cqw; border-left-width: 1cqw; }
   .de { font-size: max(var(--mt-piso, 0cqw), 2.4cqw); gap: 1.6cqw 5cqw; }
@@ -36,11 +42,16 @@ h1 { margin-top: 2.6cqw; font: 600 max(var(--mt-piso, 0cqw), 5.6cqw)/1.04 var(--
   .assina { flex-direction: column; gap: 1cqw; font-size: max(var(--mt-piso, 0cqw), 3cqw); margin-top: 6cqw; padding-top: 4cqw; border-top-width: .25cqw; }
   .assina small { font-size: max(var(--mt-piso, 0cqw), 2.6cqw); }
 }
+/*
+ * Quadrada. Com a letra do balcão e a fonte de título larga (o assunto em
+ * três linhas), o memorando passava um pouco do alto e do pé: o recado
+ * aperta a entrelinha.
+ */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .memo { left: 7cqw; right: 7cqw; padding-left: 5cqw; border-left-width: .8cqw; }
   .de { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
   h1 { font-size: max(var(--mt-piso, 0cqw), 7.6cqw); margin-top: 3.6cqw; }
-  .texto { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); margin-top: 3cqw; max-width: none; }
+  .texto { font-size: max(var(--mt-piso, 0cqw), 2.8cqw); margin-top: 3cqw; max-width: none; line-height: 1.4; }
   .assina { font-size: max(var(--mt-piso, 0cqw), 2.3cqw); margin-top: 4cqw; padding-top: 3cqw; border-top-width: .2cqw; }
   .assina small { font-size: max(var(--mt-piso, 0cqw), 2cqw); }
 }

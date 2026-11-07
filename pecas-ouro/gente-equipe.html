@@ -85,6 +85,25 @@ h1 { margin-top: 2.4cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(12.6cqmin * 
   .registro { display: block; margin-top: .4cqw; font-size: max(var(--mt-piso, 0cqw), 6cqw); line-height: 1.12; }
 }
 /* Deitada e baixa: as três lado a lado, o retrato menor, sem o registro. */
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 483×739 com a margem
+ * contra o corte de 2%; a caixa sem o padding abaixo de 740 px): com a
+ * letra do balcão a terceira pessoa passava do pé. O kicker sai (o título
+ * diz) e os respiros apertam; o registro (CRO) fica.
+ */
+@container (max-width: 700px) and (max-height: 740px) {
+  .kicker { display: none; }
+  h1 { margin-top: 0; line-height: 1; }
+  .pessoas { margin-top: 3.6cqw; gap: 3cqw; }
+  .nome { line-height: 1.04; }
+  .funcao, .registro { margin-top: 0; line-height: 1.08; }
+}
+/* Mais baixa (a margem de 3,5% para cima): o filete afina e o nome ganha largura (numa linha só, na fonte larga). */
+@container (max-width: 700px) and (max-height: 645px) {
+  .pessoas { margin-top: 3cqw; gap: 2.4cqw; }
+  .pessoas li { padding-left: 2.4cqw; border-left-width: .9cqw; }
+  .nome { letter-spacing: -.01em; line-height: 1; }
+}
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {
   .mt-peca { padding: 5cqmin 6cqw; }
   .kicker, .registro { display: none; }

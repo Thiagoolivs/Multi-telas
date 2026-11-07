@@ -72,6 +72,34 @@
   .autor { font-size: max(var(--mt-piso, 0cqw), 6cqw); line-height: 1.15; }
 }
 /* Deitada e baixa: a nota e a fala, sem o autor. */
+/*
+ * A lateral no tamanho da TV (504×782 sem margem, 452×674 com a margem
+ * contra o corte de 5%): com a letra do balcão o nome de quem falou
+ * passava do pé. A nota vai à esquerda, com as estrelas e o total ao lado
+ * (como na quadrada), e os respiros apertam.
+ */
+@container (max-width: 700px) and (max-height: 800px) {
+  .mt-peca { row-gap: 5cqw; }
+}
+@container (max-width: 700px) and (max-height: 700px) {
+  .mt-peca { row-gap: 4cqw; padding: 6cqmin 8cqw; }
+}
+@container (max-width: 700px) and (max-height: 720px) {
+  .placar { display: grid; grid-template-columns: auto 1fr; column-gap: 4cqw; align-items: center; }
+  .nota { grid-row: 1 / span 2; font-size: max(var(--mt-piso, 0cqw), calc(26cqw * var(--mt-escala-titulo, 1))); }
+  .estrelas { margin-top: 0; }
+  .estrelas i { width: 8cqw; height: 8cqw; }
+  .total { margin-top: 1.4cqw; line-height: 1.1; }
+  .fala { padding-top: 8cqmin; }
+  .depoimento { line-height: 1.1; }
+  .autor { margin-top: 3cqw; line-height: 1.06; }
+}
+/* Mais baixa (a margem de 2% para cima): as aspas desenhadas saem; a fala começa logo abaixo do placar. */
+@container (max-width: 700px) and (max-height: 660px) {
+  .fala { padding-top: 0; }
+  .fala::before, .fala::after { display: none; }
+  .total { line-height: 1.02; }
+}
 @container (aspect-ratio >= 1.25) and (max-height: 640px) {
   .mt-peca { padding: 6cqmin 6cqw; column-gap: 6cqw; }
   .nota { font-size: max(var(--mt-piso, 0cqw), calc(40cqmin * var(--mt-escala-titulo, 1))); }
