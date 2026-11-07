@@ -1,0 +1,59 @@
+<!--
+  Aviso com foto — família serviço (lote 4, arquétipo A10).
+  O comunicado sério e bonito: um selo reto na cor de destaque ("Aviso"),
+  o título grande, duas linhas de explicação e a data sob um filete. A foto
+  do lugar fica numa coluna em corte seco — o aviso é da casa, não da
+  internet. Sem pictograma: quem fala é a tipografia.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 6cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 62fr 38fr; }
+.texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 8cqh 5cqw 8cqh 6cqw; }
+.foto { width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 50%; }
+.selo { align-self: flex-start; padding: .8cqh 1.4cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); font: 700 max(var(--mt-piso, 0cqw), var(--f))/1 var(--mt-fonte-texto); letter-spacing: .12em; text-transform: uppercase; }
+h1 { margin-top: 3.4cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.02 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.corpo { margin-top: 3cqh; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.quando { margin-top: 4cqh; padding-top: 2cqh; border-top: .14cqw solid var(--mt-linha); font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
+
+@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+  .mt-peca { --f: 3.5cqw; --t: 6cqw; grid-template-columns: 66fr 34fr; }
+  .texto { padding: 6cqh 4cqw 6cqh 5cqw; }
+  .selo { letter-spacing: .06em; }
+  .corpo { display: none; }
+  .quando { margin-top: 3cqh; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 5.8cqw; }
+  .quando { display: none; }
+  h1 { margin-top: 2.4cqh; }
+}
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 10.6cqw; grid-template-columns: 1fr; grid-template-rows: 34fr 66fr; }
+  .foto { grid-row: 1; }
+  .texto { grid-row: 2; justify-content: flex-start; padding: 6cqh 7cqw; }
+  .selo { padding: 1cqh 2.4cqw; }
+  .quando { border-top-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --t: 8cqw; grid-template-columns: 64fr 36fr; grid-template-rows: 1fr; }
+  .foto, .texto { grid-row: 1; }
+  .texto { justify-content: center; padding: 6cqh 5cqw 6cqh 6cqw; }
+  .corpo { display: none; }
+}
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 12.6cqw; grid-template-rows: 26fr 74fr; }
+  .texto { justify-content: center; padding: 3cqh 8cqw 4cqh; }
+  .selo { letter-spacing: .02em; text-transform: none; padding: 1cqh 3cqw; }
+  h1 { margin-top: 2.4cqh; }
+  .corpo { display: none; }
+  .quando { margin-top: 2.4cqh; padding-top: 1.6cqh; }
+}
+</style>
+<section class="mt-peca aviso-faixa">
+  <div class="texto">
+    <p class="selo" data-campo="selo" data-entrada="esquerda" data-ordem="1">Aviso</p>
+    <h1 data-campo="titulo" data-entrada="subir" data-ordem="2">Fechados no feriado de quinta</h1>
+    <p class="corpo" data-campo="corpo" data-entrada="aparecer" data-ordem="3">Voltamos na sexta, no horário de sempre. Encomendas podem ser retiradas na quarta até as 20h.</p>
+    <p class="quando" data-campo="quando" data-entrada="aparecer" data-ordem="4">Quinta, 20 de novembro</p>
+  </div>
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
+</section>
