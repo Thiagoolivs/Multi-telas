@@ -390,6 +390,8 @@ async function init() {
     ALTER TABLE marcas ADD COLUMN IF NOT EXISTS localizacao TEXT;
     -- Fase 4: a marca nas TVs (o tema da TV sai dela). Ligada por padrão (NULL também).
     ALTER TABLE marcas ADD COLUMN IF NOT EXISTS nas_tvs INTEGER;
+    -- O clima da marca (lote de 06/11): escuro, claro ou marca (js/paletas.js, CLIMAS).
+    ALTER TABLE marcas ADD COLUMN IF NOT EXISTS clima TEXT;
     -- A capa da campanha (item 29): a lista não carrega o resultado inteiro.
     ALTER TABLE campanhas ADD COLUMN IF NOT EXISTS capa TEXT;
     -- Arquivada desde quando (0 = não). Sai da lista, não do banco (D10).
@@ -501,6 +503,8 @@ function mapMarca(r) {
     local: lerLocal(r.localizacao),
     // Ligada por padrão: só o 0 gravado desliga.
     nasTvs: !(r.nas_tvs === 0 || r.nas_tvs === '0' || r.nas_tvs === false),
+    // O clima (lote de 06/11): 'escuro', 'claro' ou 'marca'. Vazio é a marca de antes dos climas.
+    clima: r.clima || '',
   };
 }
 
@@ -2293,6 +2297,7 @@ module.exports = {
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
+  salvarClimaDaMarca,
   salvarNasTvsDaMarca,
   salvarLocalDaMarca,
 };
@@ -2315,6 +2320,11 @@ async function salvarLocalDaMarca(id, tenantId, local) {
 }
 async function salvarNasTvsDaMarca(id, tenantId, ligado) {
   await pool.query('UPDATE marcas SET nas_tvs = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4', [ligado ? 1 : 0, Date.now(), id, tenantId]);
+  const r = await pool.query('SELECT * FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapMarca(r.rows[0]);
+}
+async function salvarClimaDaMarca(id, tenantId, clima) {
+  await pool.query('UPDATE marcas SET clima = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4', [String(clima || ''), Date.now(), id, tenantId]);
   const r = await pool.query('SELECT * FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   return mapMarca(r.rows[0]);
 }

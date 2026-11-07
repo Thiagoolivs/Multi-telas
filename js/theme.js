@@ -332,11 +332,12 @@
    * em vez de mexer em cor solta. São os modos das peças (js/tokens.js):
    * o palco da TV sai da MESMA conta, para a tela inteira e a peça serem
    * uma coisa só — e para a prévia do painel mostrar o que a TV mostra.
-   * `marcaClara` é o nome de antes do "Claro limpo"; tema sem clima segue
-   * escuro, como sempre foi.
+   * A "Versão clara" de uma TV (`marcaClara`, nos Ajustes) continua valendo
+   * por cima do clima da marca: é a escolha daquela TV. Tema sem clima
+   * segue escuro, como sempre foi.
    */
   const CLIMAS = ['escuro', 'claro', 'marca'];
-  const climaDoTema = (o) => (o && CLIMAS.indexOf(o.clima) >= 0 ? o.clima : o && o.claro === true ? 'claro' : 'escuro');
+  const climaDoTema = (o) => (o && o.claro === true ? 'claro' : o && CLIMAS.indexOf(o.clima) >= 0 ? o.clima : 'escuro');
   const tokens = () => global.MTTokens || (typeof require === 'function' ? require('./tokens.js') : null);
 
   /*
