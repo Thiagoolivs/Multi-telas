@@ -1,0 +1,35 @@
+[
+  {
+    "id": "otica-oculos-de-sol-retrato",
+    "arquivo": "/pecas-ouro/fotos/otica-sol.jpg",
+    "ramos": ["otica", "beleza", "moda"],
+    "papel": "pessoa",
+    "foco": { "x": 0.54, "y": 0.5 },
+    "descricao": "Mulher de óculos de sol espelhados e boina clara",
+    "credito": "Omid Armin / Unsplash",
+    "licenca": "Unsplash License",
+    "fonte": "https://unsplash.com"
+  },
+  {
+    "id": "otica-oculos-de-sol",
+    "arquivo": "/pecas-ouro/fotos/otica-sol.jpg",
+    "ramos": ["otica"],
+    "papel": "produto",
+    "foco": { "x": 0.54, "y": 0.46 },
+    "descricao": "Óculos de sol espelhados de armação dourada",
+    "credito": "Omid Armin / Unsplash",
+    "licenca": "Unsplash License",
+    "fonte": "https://unsplash.com"
+  },
+  {
+    "id": "comida-prato-feito-churrasco",
+    "arquivo": "/pecas-ouro/fotos/prato-do-dia.jpg",
+    "ramos": ["comida"],
+    "papel": "produto",
+    "foco": { "x": 0.49, "y": 0.49 },
+    "descricao": "Prato de churrasco com arroz, linguiça, frango e milho, visto de cima",
+    "credito": "DΛVΞ GΛRCIΛ / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/pt-br/foto/delicioso-prato-de-carnes-grelhadas-com-arroz-e-milho-38788368/"
+  }
+]

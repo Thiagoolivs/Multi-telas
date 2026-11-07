@@ -22,6 +22,9 @@ export const sugerir = P.sugerir;
 export const aoRedor = P.aoRedor;
 export const avisos = P.avisos;
 export const detectarRamo = P.detectarRamo;
+// Os três climas da marca (Escuro elegante, Claro limpo, Cor da marca forte) e o do ramo.
+export const CLIMAS = P.CLIMAS;
+export const climaDoRamo = P.climaDoRamo;
 
 // Duas listas de cores são a mesma paleta se as duas primeiras batem.
 export const mesmaPaleta = (a, b) => !!a && !!b && a.length > 1 && b.length > 1
@@ -36,7 +39,8 @@ export function ehCurada(cores) {
 /*
  * Cores do resumo do site lido (server/site.js escreve os hex no resumo).
  * Cinza e quase-branco saem: site de todo mundo tem fundo branco e texto
- * cinza, e isso não é identidade.
+ * cinza, e isso não é identidade. Site só de pastéis ganha uma versão forte
+ * da cor dele na frente (js/paletas.js, firmar — lote de 06/11).
  */
 export function coresDoTexto(texto) {
   const achadas = String(texto || '').match(/#[0-9a-f]{6}\b/gi) || [];
@@ -47,16 +51,18 @@ export function coresDoTexto(texto) {
     if (!sai.some((x) => x.toLowerCase() === h.toLowerCase())) sai.push(h.toLowerCase());
     if (sai.length >= 2) break;
   }
-  return sai;
+  return P.firmar(sai);
 }
 
 /*
  * As cores do logo, lidas no navegador.
  *
  * O logo é mídia nossa (mesma origem), então o canvas não fica "sujo" e dá
- * para ler os pixels. Reduz para 64×64, ignora o transparente e o neutro
- * (fundo branco, contorno preto), agrupa por matiz e devolve a cor média
- * dos dois grupos maiores — a cor do logo, e a segunda se houver.
+ * para ler os pixels. Reduz para 64×64 e entrega os pixels à regra de
+ * js/paletas.js (coresDosPixels, lote de 06/11): a cor mais característica
+ * e saturada, sem o fundo branco, o contorno preto e o cinza — a não ser
+ * que o logo seja só isso —, e logo só de pastéis com uma versão forte da
+ * cor dele na frente. A regra mora lá para o teste conferir sem navegador.
  */
 export function coresDoLogo(url) {
   return new Promise((ok) => {
@@ -69,19 +75,7 @@ export function coresDoLogo(url) {
         cv.width = N; cv.height = N;
         const g = cv.getContext('2d', { willReadFrequently: true });
         g.drawImage(img, 0, 0, N, N);
-        const px = g.getImageData(0, 0, N, N).data;
-        const grupos = {};
-        for (let i = 0; i < px.length; i += 4) {
-          if (px[i + 3] < 200) continue;
-          const hex = C.rgb2hex(px[i], px[i + 1], px[i + 2]);
-          const o = C.paraOklch(hex);
-          if (o.c < 0.05 || o.l > 0.95 || o.l < 0.12) continue;
-          const k = Math.round(o.h / 20) % 18;
-          const gr = grupos[k] || (grupos[k] = { n: 0, r: 0, g: 0, b: 0 });
-          gr.n++; gr.r += px[i]; gr.g += px[i + 1]; gr.b += px[i + 2];
-        }
-        const ordem = Object.values(grupos).filter((x) => x.n >= 12).sort((a, b) => b.n - a.n).slice(0, 2);
-        ok(ordem.map((x) => C.rgb2hex(x.r / x.n, x.g / x.n, x.b / x.n)));
+        ok(P.coresDosPixels(g.getImageData(0, 0, N, N).data));
       } catch (e) { ok([]); }
     };
     img.onerror = () => ok([]);

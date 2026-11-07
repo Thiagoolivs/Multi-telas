@@ -75,6 +75,13 @@ const OPERACOES = {
    */
   'campanha-peca-produto': { creditos: 1, custoCentavos: CUSTO_IMAGEM_CENTAVOS, rotulo: 'Peça com a foto do seu produto' },
 
+  /*
+   * A foto de exemplo do "Gerar com IA" do espaço de imagem quando não há IA
+   * (AI_PROVIDER=dev, server/ia-imagem.js): desenhada aqui, sem provedor.
+   * Registrada como as outras chamadas, sem crédito e sem custo.
+   */
+  'gerar-imagem-exemplo': { creditos: 0, custoCentavos: 0, rotulo: 'Foto de exemplo (sem IA)' },
+
   // Tudo abaixo é texto: livre, medido, nunca cobrado.
   briefing: { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Briefing' },
   'gerar-conteudo': { creditos: 0, custoCentavos: CUSTO_TEXTO_CENTAVOS, rotulo: 'Conteúdo por IA' },

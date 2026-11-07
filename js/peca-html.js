@@ -61,6 +61,8 @@
     profundidade: 24,
     campo: 400,
     problemas: 40,
+    // A miniatura que vira o fundo desfocado de um espaço de imagem (~24 px em JPEG: 1 a 2 KB).
+    fundo: 4096,
   };
 
   const PAPEIS = ['cabecalho', 'destaque', 'lateral', 'rodape'];
@@ -723,6 +725,70 @@
   }
 
   /*
+   * ESPAÇOS DE IMAGEM. Cada foto de campo (data-campo-img) é um espaço que o
+   * cliente enche com a foto do celular, uma do banco de fotos ou uma gerada
+   * pela IA. Além do arquivo, o espaço sabe:
+   *
+   *   papel  o que costuma ir ali: 'produto', 'ambiente', 'pessoa' ou
+   *          'textura' (fundo). Vem do manifesto das peças-ouro
+   *          (`fotos: { "foto": "produto" }`) e é COPIADO para o item quando
+   *          a peça nasce: a TV desenha sem o manifesto.
+   *   foco   { x, y }, de 0 a 1 (0,0 é o canto de cima à esquerda): o ponto
+   *          que o cliente tocou, o que não pode sumir no corte.
+   *   fundo  a foto em miniatura (data:image/…;base64, ~24 px), feita no
+   *          painel. Esticada, vira o fundo desfocado quando a foto não tem
+   *          o formato do espaço (js/peca-render.js, `encaixeDaFoto`).
+   *
+   * O ARQUIVO continua em `campos[nome]`, como texto ("/media/…"): item
+   * antigo, TV antiga e todo leitor de `campos` seguem iguais. O resto mora
+   * ao lado, em `item.espacos[nome]`. Na entrada, `campos[nome]` também
+   * aceita { src, foco } (o que o "Trocar foto" do painel devolve): a porta
+   * separa, e o que sai daqui tem sempre o texto em `campos`.
+   *
+   * `foco` e `fundo` são da foto que está no campo: quem troca a foto troca
+   * (ou apaga) os dois.
+   */
+  const PAPEIS_FOTO = ['produto', 'ambiente', 'pessoa', 'textura'];
+  const FUNDO_OK = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$/;
+
+  /*
+   * { x, y } de 0 a 1. Um arredondamento que passa da borda (1,0004) volta
+   * para ela; um número longe dela (54, que alguém quis dizer 54%) não é
+   * foco — melhor nenhum que o canto errado.
+   */
+  function lerFoco(f) {
+    if (!f || typeof f !== 'object') return null;
+    const um = (v) => {
+      if (v == null || v === '' || typeof v === 'boolean') return NaN;
+      const n = Number(v);
+      if (!isFinite(n) || n < -0.5 || n > 1.5) return NaN;
+      return Math.round(Math.min(1, Math.max(0, n)) * 1000) / 1000;
+    };
+    const x = um(f.x), y = um(f.y);
+    return isFinite(x) && isFinite(y) ? { x, y } : null;
+  }
+
+  // O valor de um campo de foto: o texto de sempre ou { src, foco }.
+  function fotoDoCampo(v) {
+    if (v && typeof v === 'object') {
+      const src = typeof v.src === 'string' ? v.src : typeof v.url === 'string' ? v.url : '';
+      return { src, foco: lerFoco(v.foco) };
+    }
+    return { src: v == null ? '' : String(v), foco: null };
+  }
+
+  // Um espaço lido do item: só o que é conhecido, só valor válido. Vazio vira null.
+  function lerEspaco(e) {
+    if (!e || typeof e !== 'object') return null;
+    const s = {};
+    if (PAPEIS_FOTO.indexOf(e.papel) >= 0) s.papel = e.papel;
+    const foco = lerFoco(e.foco);
+    if (foco) s.foco = foco;
+    if (typeof e.fundo === 'string' && e.fundo.length <= LIMITES.fundo && FUNDO_OK.test(e.fundo)) s.fundo = e.fundo;
+    return Object.keys(s).length ? s : null;
+  }
+
+  /*
    * A marca VAI JUNTO no item: cores e fontes, copiadas da Marca no momento
    * de publicar. A TV desenha sem internet — ela não pode ir buscar a marca
    * pelo `marcaId` na hora de exibir. Quando a Marca muda, o servidor copia
@@ -759,13 +825,18 @@
     const porNome = {};
     h.campos.forEach((c) => { porNome[c.nome] = c; });
     const entrada = it.campos && typeof it.campos === 'object' ? it.campos : {};
+    const focosDosCampos = {};
     Object.keys(entrada).forEach((k) => {
       const def = porNome[k];
       if (!def) { problemas.push(`campo "${String(k).slice(0, 30)}" não existe nesta peça`); return; }
       const v = entrada[k];
       if (def.tipo === 'img') {
-        if (ehMidia(v, o.hostsMidia)) campos[k] = String(v);
-        else problemas.push(`foto do campo "${k}" precisa ser um arquivo das Mídias`);
+        // O texto de sempre, ou { src, foco } (ver ESPAÇOS DE IMAGEM): sai sempre o texto.
+        const f = fotoDoCampo(v);
+        if (ehMidia(f.src, o.hostsMidia)) {
+          campos[k] = f.src;
+          if (f.foco) focosDosCampos[k] = f.foco;
+        } else problemas.push(`foto do campo "${k}" precisa ser um arquivo das Mídias`);
         return;
       }
       // Texto puro: sem caractere de controle, com teto. Quem escapa é o renderizador.
@@ -818,7 +889,37 @@
       }
     });
     if (Object.keys(guardados).length) saida.item.guardados = guardados;
+    /*
+     * Os espaços de imagem: só dos campos de foto que a peça declara. O papel
+     * vale sempre; foco e fundo, só com foto no campo. Espaço de campo que a
+     * peça não tem (sobra de outro desenho) sai calado: não é erro de quem
+     * mandou, e recusar a tela inteira por isso seria pior.
+     */
+    const entradaEspacos = it.espacos && typeof it.espacos === 'object' ? it.espacos : {};
+    const espacos = {};
+    h.campos.forEach((c) => {
+      if (c.tipo !== 'img') return;
+      const e = lerEspaco(entradaEspacos[c.nome]) || {};
+      const foco = focosDosCampos[c.nome] || e.foco;
+      // Sempre na mesma ordem: conferir de novo o que saiu daqui não muda nada.
+      const s = {};
+      if (e.papel) s.papel = e.papel;
+      if (foco && campos[c.nome]) s.foco = foco;
+      if (e.fundo && campos[c.nome]) s.fundo = e.fundo;
+      if (Object.keys(s).length) espacos[c.nome] = s;
+    });
+    if (Object.keys(espacos).length) saida.item.espacos = espacos;
     return saida;
+  }
+
+  /*
+   * O item da config com o que saiu da porta por cima. Os espaços vêm só da
+   * porta: sem nenhum válido, o que veio de fora não fica escondido no item.
+   */
+  function juntar(original, v) {
+    const r = Object.assign({}, original, v.item);
+    if (!v.item.espacos) delete r.espacos;
+    return r;
   }
 
   /*
@@ -840,7 +941,7 @@
         if (dados.peca.type !== 'peca-html') problemas.push(zona + ' (peça fixa): type precisa ser "peca-html"');
         const v = validarItem(dados.peca, opts);
         v.problemas.forEach((p) => { if (!/^type precisa/.test(p)) problemas.push(zona + ' (peça fixa): ' + p); });
-        dados.peca = Object.assign({}, dados.peca, v.item);
+        dados.peca = juntar(dados.peca, v);
       }
       // As peças que giram no cabeçalho/rodapé (EXECUTOR item 22): cada uma pela mesma porta.
       if (Array.isArray(dados.pecas)) {
@@ -848,7 +949,7 @@
           if (!peca || peca.type !== 'peca-html') { problemas.push(zona + ' (peça ' + (i + 1) + ' do giro): type precisa ser "peca-html"'); return peca; }
           const v = validarItem(peca, opts);
           v.problemas.forEach((p) => problemas.push(zona + ' (peça ' + (i + 1) + ' do giro): ' + p));
-          return Object.assign({}, peca, v.item);
+          return juntar(peca, v);
         });
       }
       if (!Array.isArray(dados.items)) return;
@@ -856,7 +957,7 @@
         if (!item || item.type !== 'peca-html') return item;
         const v = validarItem(item, opts);
         v.problemas.forEach((p) => problemas.push(zona + ' #' + (i + 1) + ': ' + p));
-        return Object.assign({}, item, v.item);
+        return juntar(item, v);
       });
     });
     // A arte do modo ambiente (fase 9, settings.ambiente.peca) passa pela mesma porta.
@@ -864,7 +965,7 @@
     if (amb && amb.peca && typeof amb.peca === 'object') {
       const v = validarItem(amb.peca, opts);
       v.problemas.forEach((p) => problemas.push('modo ambiente: ' + p));
-      amb.peca = Object.assign({}, amb.peca, v.item);
+      amb.peca = juntar(amb.peca, v);
     }
     return { problemas };
   }
@@ -893,7 +994,8 @@
     const campos = it.campos && typeof it.campos === 'object' ? it.campos : {};
     const urls = [];
     String(it.html || '').replace(/data-campo-img="([\w-]+)"/g, (_, nome) => {
-      const v = campos[nome];
+      // O texto de sempre ou { src, foco } (item ainda não passado pela porta).
+      const v = fotoDoCampo(campos[nome]).src;
       if (ehMidia(v, hosts) && urls.indexOf(v) < 0) urls.push(v);
       return '';
     });
@@ -901,8 +1003,9 @@
   }
 
   return {
-    LIMITES, PAPEIS, FORMATOS, VIVOS,
+    LIMITES, PAPEIS, FORMATOS, VIVOS, PAPEIS_FOTO,
     higienizar, validarItem, ehMidia, doArquivo, conferirConfig, fotosDoItem,
+    lerFoco, fotoDoCampo, lerEspaco,
     // Para o teste comparar com o lookbehind de antes (QA de lançamento, 03/11).
     _semLookbehind: { semPrefixo, NUMERO, NOME_SOLTO },
   };

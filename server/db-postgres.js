@@ -390,6 +390,8 @@ async function init() {
     ALTER TABLE marcas ADD COLUMN IF NOT EXISTS localizacao TEXT;
     -- Fase 4: a marca nas TVs (o tema da TV sai dela). Ligada por padrão (NULL também).
     ALTER TABLE marcas ADD COLUMN IF NOT EXISTS nas_tvs INTEGER;
+    -- O clima da marca (lote de 06/11): escuro, claro ou marca (js/paletas.js, CLIMAS).
+    ALTER TABLE marcas ADD COLUMN IF NOT EXISTS clima TEXT;
     -- A capa da campanha (item 29): a lista não carrega o resultado inteiro.
     ALTER TABLE campanhas ADD COLUMN IF NOT EXISTS capa TEXT;
     -- Arquivada desde quando (0 = não). Sai da lista, não do banco (D10).
@@ -417,6 +419,8 @@ async function init() {
       user_id TEXT PRIMARY KEY, tenant_id TEXT, grupos TEXT, updated_at BIGINT
     );
     CREATE INDEX IF NOT EXISTS idx_acesso_lojas_tenant ON acesso_lojas(tenant_id);
+    -- "Sua primeira TV em 5 minutos": o progresso do passo a passo, em JSON (js/primeira-tv.js).
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS primeira_tv TEXT;
   `);
 }
 
@@ -501,6 +505,8 @@ function mapMarca(r) {
     local: lerLocal(r.localizacao),
     // Ligada por padrão: só o 0 gravado desliga.
     nasTvs: !(r.nas_tvs === 0 || r.nas_tvs === '0' || r.nas_tvs === false),
+    // O clima (lote de 06/11): 'escuro', 'claro' ou 'marca'. Vazio é a marca de antes dos climas.
+    clima: r.clima || '',
   };
 }
 
@@ -2293,7 +2299,9 @@ module.exports = {
   criarCampanha, lerCampanha, salvarCampanha, listarCampanhas, arquivarCampanha, salvarCapaDaCampanha, removerCampanha,
   criarReclamacao, listarReclamacoes, reclamacoesDoTenant, resolverReclamacao, resumoReclamacoes,
   numerosDaPlataforma,
+  salvarClimaDaMarca,
   salvarNasTvsDaMarca,
+  salvarPrimeiraTv,
   salvarLocalDaMarca,
 };
 
@@ -2317,4 +2325,17 @@ async function salvarNasTvsDaMarca(id, tenantId, ligado) {
   await pool.query('UPDATE marcas SET nas_tvs = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4', [ligado ? 1 : 0, Date.now(), id, tenantId]);
   const r = await pool.query('SELECT * FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
   return mapMarca(r.rows[0]);
+}
+async function salvarClimaDaMarca(id, tenantId, clima) {
+  await pool.query('UPDATE marcas SET clima = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4', [String(clima || ''), Date.now(), id, tenantId]);
+  const r = await pool.query('SELECT * FROM marcas WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+  return mapMarca(r.rows[0]);
+}
+
+/*
+ * O progresso do "Sua primeira TV em 5 minutos" (server/routes/primeira-tv.js):
+ * o estado inteiro, já limpo por js/primeira-tv.js, na coluna da conta.
+ */
+async function salvarPrimeiraTv(id, estado) {
+  await pool.query('UPDATE tenants SET primeira_tv = $1 WHERE id = $2', [JSON.stringify(estado || null), id]);
 }

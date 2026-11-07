@@ -679,6 +679,16 @@ export const bancoImagens = {
   curarPixabay: (b) => api('POST', '/api/plataforma/banco/pixabay', b),
 };
 
+/*
+ * O "Gerar com IA" do espaço de imagem (server/ia-imagem.js): uma foto no
+ * formato do espaço ('16/9', '9/16' ou '1/1'), já guardada na Biblioteca da
+ * conta. Devolve { item: { id, url, mime, … } }. Sem crédito, o erro (402)
+ * já traz a frase do que fazer.
+ */
+export const ia = {
+  imagem: ({ prompt, formato, papel }) => api('POST', '/api/ia/imagem', { prompt, formato, papel }),
+};
+
 // Bytes crus para uma rota (a imagem de referência do chat, D45): o erro do servidor vira a mensagem.
 async function enviarBytes(caminho, file) {
   const res = await fetch(caminho, { method: 'POST', body: file, credentials: 'same-origin', headers: { 'Content-Type': file.type || 'application/octet-stream' } });
@@ -775,4 +785,10 @@ export const senhas = {
 export const telaAgora = {
   pedir: (id) => api('POST', '/api/devices/' + id + '/comando', { acao: 'estado' }),
   ler: (id) => lerEmLote(id),
+};
+
+// "Sua primeira TV em 5 minutos": o progresso do passo a passo, guardado na conta (server/routes/primeira-tv.js).
+export const primeiraTv = {
+  ler: () => api('GET', '/api/primeira-tv'),
+  salvar: (estado) => api('PUT', '/api/primeira-tv', { estado }),
 };

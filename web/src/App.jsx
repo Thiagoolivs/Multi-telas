@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { auth } from './api.js';
+import { auth, primeiraTv as primeiraTvApi } from './api.js';
 import { cadastroPeloGoogle } from './lib/analytics.js';
 import { AppShell } from './components/layout/AppShell.jsx';
 import { LimiteDeErro } from './components/layout/LimiteDeErro.jsx';
@@ -64,6 +64,8 @@ const AppsPage = pagina(() => import('./pages/BibliotecaPage.jsx'), 'AppsPage');
 const AprovacoesPage = pagina(() => import('./pages/AprovacoesPage.jsx'), 'AprovacoesPage');
 // Fase 12: a chamada de senha (a recepção chama, a TV da sala de espera mostra).
 const SenhaPage = pagina(() => import('./pages/SenhaPage.jsx'), 'SenhaPage');
+// "Sua primeira TV em 5 minutos": o passo a passo da conta nova, fora da moldura do painel.
+const PrimeiraTvPage = pagina(() => import('./pages/PrimeiraTvPage.jsx'), 'PrimeiraTvPage');
 
 const META = {
   overview: { title: 'Início' },
@@ -119,6 +121,7 @@ const META = {
 function tituloDe(nome, perfil) {
   // Fase 8: a página é a Agenda (a semana na TV e as datas), o nome do menu.
   if (nome === 'calendario') return 'Agenda';
+  if (nome === 'primeiratv') return 'Sua primeira TV';
   return (META[nome] || META.overview).title;
 }
 
@@ -188,6 +191,8 @@ function naBiblioteca(r) {
 
 function enderecoDaRota(r) {
   if (r.name === 'content') return '/app/?ir=screens';
+  // Recarregar no meio do passo a passo volta a ele (o progresso está guardado na conta).
+  if (r.name === 'primeiratv') return '/app/?ir=primeiratv';
   if (ATALHOS.includes(r.name)) return '/app/?ir=' + r.name;
   return '/app/';
 }
@@ -201,6 +206,8 @@ function rotaDaUrl() {
   const parear = (q.get('parear') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || parearGuardado();
   if (parear) return { name: 'screens', parear };
   if (q.get('billing')) return { name: 'billing' };
+  // O passo a passo da primeira TV não é página do menu: tem endereço próprio, fora da lista de ?ir=.
+  if (q.get('ir') === 'primeiratv') return { name: 'primeiratv' };
   /*
    * `?ir=` aceita o nome de uma página (o endereço antigo, que continua
    * valendo) ou de um grupo do menu novo (`?ir=midias` abre a primeira aba).
@@ -258,6 +265,8 @@ export default function App() {
       if (!r) { setRoute(rotaDaUrl()); return; }
       // Voltar não reabre o pareamento: aquele código já foi usado.
       const { parear, abrirParear, ...resto } = r;
+      // "Montar a TV de novo" também não recomeça de novo ao voltar para ele: o progresso de agora fica.
+      delete resto.deNovo;
       // Uma entrada antiga do histórico (a aba "Seus conteúdos", que saiu na fase 10) cai no lugar novo.
       setRoute(naBiblioteca(resto));
     };
@@ -275,11 +284,32 @@ export default function App() {
     if (session) ligarTrabalhos(go, () => rotaAtual.current);
   }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /*
+   * "SUA PRIMEIRA TV EM 5 MINUTOS": a conta nova (sem TV no ar) cai direto
+   * no passo a passo, uma vez por sessão do painel — o servidor diz quando
+   * (`abrir`: dono ou administrador, sem ter terminado nem saído). E o QR da
+   * TV lido no meio do passo "Ligar a TV" volta para ele, com o código.
+   */
+  const rotaInicial = useRef(route);
+  const conferiuPrimeira = useRef(false);
+  useEffect(() => {
+    if (!session || conferiuPrimeira.current) return;
+    conferiuPrimeira.current = true;
+    primeiraTvApi.ler().then((r) => {
+      const e = r && r.estado;
+      if (!e) return;
+      const ini = rotaInicial.current || {};
+      if (ini.name === 'screens' && ini.parear && rotaAtual.current === 'screens' && !e.fim && e.passo === 'tv') go('primeiratv', { parear: ini.parear });
+      else if (r.abrir && rotaAtual.current === 'overview') go('primeiratv');
+    }).catch(() => { /* sem o passo a passo, o Início de sempre */ });
+  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function logout() {
     desligarTrabalhos();
     // Os rascunhos das TVs (D14) não ficam para a próxima pessoa no mesmo computador (revisão do #232).
     try { Object.keys(localStorage).filter((k) => k.startsWith('mt.rascunho.')).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* sem acesso */ }
     await auth.logout();
+    conferiuPrimeira.current = false;
     setSession(null);
     setRoute({ name: 'overview' });
   }
@@ -320,6 +350,19 @@ export default function App() {
   if (!session) return <AuthScreen onAuthed={refresh} />;
 
   const user = session.user || {};
+
+  // O passo a passo da primeira TV ocupa a tela inteira: sem menu, só o passo, o "Voltar" e o "Sair".
+  if (route.name === 'primeiratv') {
+    return (
+      <LimiteDeErro key="primeiratv">
+        <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-canvas"><Spinner size={22} /></div>}>
+          <PrimeiraTvPage key={route.deNovo ? 'de-novo' : 'continuar'} me={user} parear={route.parear} comecarDeNovo={!!route.deNovo}
+            onIr={go} onSair={() => go('overview')} />
+        </Suspense>
+      </LimiteDeErro>
+    );
+  }
+
   const meta = { ...(META[route.name] || META.overview), title: tituloDaPagina || (META[route.name] || META.overview).title };
   const navActive = meta.nav || route.name; // qual item da sidebar destacar
 

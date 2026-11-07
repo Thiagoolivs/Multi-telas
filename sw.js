@@ -13,7 +13,7 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v83';
+const SHELL_CACHE = 'mt-shell-v85';
 const MEDIA_CACHE = 'mt-media-v1';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
@@ -92,7 +92,9 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname === '/bancada.html' || url.pathname === '/js/bancada.js' || url.pathname === '/js/peca-conferir.js'
     || url.pathname === '/js/regras-composicao.js'
     || url.pathname === '/experimento.html' || url.pathname === '/js/experimento.js'
-    || /^\/pecas-ouro\/[^/]+\.(html|json)$/.test(url.pathname)) return;
+    || /^\/pecas-ouro\/[^/]+\.(html|json)$/.test(url.pathname)
+    // O índice do banco de fotos dos espaços de imagem muda quando entra foto nova: não é foto, não fica guardado.
+    || url.pathname === '/pecas-ouro/fotos/banco.json') return;
   if (url.pathname.startsWith('/media/') || url.pathname.startsWith('/pecas-ouro/fotos/')) {
     event.respondWith(cacheFirst(req, MEDIA_CACHE));
     return;
