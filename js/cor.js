@@ -284,6 +284,6 @@
     hex2rgb, rgb2hex, okHex, luminancia, contraste, mix,
     escurecer, clarear, girarMatiz, rgba, rgbTriple,
     acentoSobre, textoSobre, garantirContraste,
-    paraOklch, deOklch,
+    paraOklch, deOklch, matizAoEscurecer,
   };
 });

@@ -326,27 +326,53 @@
     return out;
   }
 
-  // Constrói um tema completo a partir da marca.
+  /*
+   * OS CLIMAS (lote de 06/11): o dono escolhe na Marca entre "Escuro
+   * elegante", "Claro limpo" e "Cor da marca forte" (js/paletas.js, CLIMAS),
+   * em vez de mexer em cor solta. São os modos das peças (js/tokens.js):
+   * o palco da TV sai da MESMA conta, para a tela inteira e a peça serem
+   * uma coisa só — e para a prévia do painel mostrar o que a TV mostra.
+   * `marcaClara` é o nome de antes do "Claro limpo"; tema sem clima segue
+   * escuro, como sempre foi.
+   */
+  const CLIMAS = ['escuro', 'claro', 'marca'];
+  const climaDoTema = (o) => (o && CLIMAS.indexOf(o.clima) >= 0 ? o.clima : o && o.claro === true ? 'claro' : 'escuro');
+  const tokens = () => global.MTTokens || (typeof require === 'function' ? require('./tokens.js') : null);
+
+  /*
+   * Constrói um tema completo a partir da marca. Antes misturava a cor da
+   * marca com preto ou branco: a marca clara dava um palco barrento no
+   * escuro (#54513f do amarelo-claro) e um tom lavado no claro (o rosa-bebê
+   * da marca rosa). Agora os fundos, o texto e o acento são os da peça no
+   * mesmo clima; a marca (--brand) continua a cor exata que a empresa
+   * cadastrou.
+   */
   function derivar(cores, opts) {
     const c = cores1e2(cores);
-    if (!c) return null;
-    const claro = (opts && opts.claro) === true;
-    const bg = claro ? mix('#ffffff', c.marca, 0.06) : mix('#070a12', c.marca, 0.16);
-    const bg2 = claro ? mix('#ffffff', c.marca, 0.14) : mix('#070a12', c.marca, 0.32);
-    const surface = claro ? mix('#ffffff', c.marca, 0.03) : mix('#0d1220', c.marca, 0.22);
-    const texto = textoSobre(bg, c.marca);
-    const vidro = { bg, bg2, surface: rgbTriple(surface), glass: claro ? 0.72 : 0.55, halo: c.marca, brand: c.marca, text: texto };
+    const Tk = tokens();
+    if (!c || !Tk) return null;
+    const clima = climaDoTema(opts);
+    const claro = clima === 'claro';
+    const lista = (Array.isArray(cores) ? cores : []).map(okHex).filter(Boolean);
+    const k = Tk.gerar({ marca: lista[0], marca2: lista[1], cores: lista, modo: clima }).cores;
+    /*
+     * O brilho do canto: no claro limpo não tinge o papel (fica a pedra do
+     * fundo-2); na cor forte a tela já é a marca, e o canto escurece em vez
+     * de clarear — clarear o vinho apagava o acento rosa.
+     */
+    const halo = clima === 'escuro' ? c.marca : k.fundo2;
+    const vidro = { bg: k.fundo, bg2: k.fundo2, surface: rgbTriple(k.superficie), glass: claro ? 0.72 : 0.55, halo, brand: c.marca, text: k.texto };
     return {
-      label: 'Minha marca', dark: !claro,
-      bg, bg2, brand: c.marca, brand2: c.marca2, halo: c.marca,
-      accent: acentoDoTema(c.marca, Object.assign({}, vidro, { halo: haloSeguro(c.marca, vidro) })),
+      label: 'Minha marca', dark: !claro, clima,
+      bg: k.fundo, bg2: k.fundo2, brand: c.marca, brand2: c.marca2, halo,
+      accent: acentoDoTema(k.destaque, Object.assign({}, vidro, { halo: haloSeguro(halo, vidro) })),
       surface: vidro.surface, glass: vidro.glass,
-      border: rgba(c.marca, claro ? 0.22 : 0.3),
-      text: texto,
-      textDim: mix(texto, bg, 0.38),
+      border: claro ? 'rgba(20,25,40,.10)' : rgba(c.marca, 0.3),
+      text: k.texto,
+      textDim: k.textoSuave,
       radius: 20, blur: 22,
       shadow: claro ? '0 14px 40px rgba(20,25,40,.14)' : '0 18px 50px rgba(0,0,0,.45)',
-      fx: 0.9, glow: rgba(c.marca, 0.45),
+      fx: claro ? 0.5 : 0.9, glow: rgba(c.marca, claro ? 0.25 : 0.45),
     };
   }
 
@@ -363,8 +389,13 @@
    */
   const FUNDOS = ['pecas', 'claro', 'escuro', 'cor'];
 
-  // O clima (texto, vidro, borda, sombra) que combina com um fundo.
-  function climaDe(t, bg, bg2, text, textDim) {
+  /*
+   * O clima (texto, vidro, borda, sombra) que combina com um fundo. Com o
+   * `destaque` das peças, o acento do palco é o mesmo delas (o dourado da
+   * ótica, e não o marinho clareado até um cinza-azulado); sem, sai da marca.
+   * No fundo claro o brilho do canto é a pedra do fundo-2: papel limpo.
+   */
+  function climaDe(t, bg, bg2, text, textDim, destaque) {
     const claro = luminance(bg) > 0.45;
     const out = Object.assign({}, t, {
       dark: !claro, bg, bg2, text, textDim,
@@ -373,8 +404,8 @@
       border: claro ? 'rgba(20,25,40,.10)' : 'rgba(255,255,255,.09)',
       shadow: claro ? '0 14px 40px rgba(20,25,40,.14)' : '0 18px 50px rgba(0,0,0,.45)',
     });
-    out.halo = t.halo || t.brand;
-    out.accent = acentoDoTema(t.brand, Object.assign({}, out, { halo: haloSeguro(out.halo, out) }));
+    out.halo = claro && destaque ? bg2 : (t.halo || t.brand);
+    out.accent = acentoDoTema(destaque || t.brand, Object.assign({}, out, { halo: haloSeguro(out.halo, out) }));
     return out;
   }
 
@@ -410,14 +441,14 @@
     }
     if (modo === 'claro' || modo === 'escuro') {
       if (!t.dark === (modo === 'claro')) return t;
-      const d = derivar([t.brand, t.brand2], { claro: modo === 'claro' });
+      const d = derivar([t.brand, t.brand2], { clima: modo });
       return d ? Object.assign({}, t, d, { label: t.label }) : t;
     }
     const p = ctx && ctx.pecas;
-    const Tk = global.MTTokens || (typeof require === 'function' ? require('./tokens.js') : null);
+    const Tk = tokens();
     if (!p || !Tk) return t;
     const k = Tk.daMarca({ cores: p.cores }, p.modo).cores;
-    return climaDe(t, k.fundo, k.fundo2, k.texto, k.textoSuave);
+    return climaDe(t, k.fundo, k.fundo2, k.texto, k.textoSuave, k.destaque);
   }
 
   /* ---------------- Composição do tema ---------------- */
@@ -431,7 +462,7 @@
      */
     let base = PRESETS[theme.preset] || PRESETS[DEFAULT_PRESET];
     if (theme.preset === 'marca') {
-      base = derivar(theme.marca, { claro: theme.marcaClara === true }) || PRESETS[DEFAULT_PRESET];
+      base = derivar(theme.marca, { clima: theme.clima, claro: theme.marcaClara === true }) || PRESETS[DEFAULT_PRESET];
     } else if (theme.aplicarMarca) {
       base = tingir(base, theme.marca);
     }
@@ -534,7 +565,7 @@
 
   global.MTTheme = {
     PRESETS, FONTS, DEFAULT_PRESET, FAMILIAS_PECA, familiaPeca,
-    resolve, apply, preview, listPresets, listFonts, ensureFont, FUNDOS, pecasDaConfig,
+    resolve, apply, preview, listPresets, listFonts, ensureFont, FUNDOS, CLIMAS, pecasDaConfig,
     // Expostos para o painel prever a cor sem duplicar a matemática.
     derivar, tingir, textoSobre, acentoSobre, acentoDoTema, contraste, mix, girarMatiz, rgba,
   };

@@ -300,6 +300,28 @@
     return { ramo, nomeRamo: NOMES_RAMO[ramo], paletas: out };
   }
 
+  /*
+   * OS CLIMAS (lote de 06/11). O dono achou a TV "meio feia e infantil":
+   * a cor solta, em tom pastel, não funcionava em todo caso. Em vez de mais
+   * seletor de cor, três climas com nome — a mesma marca nos três, cada um
+   * com uma base que parece cara (js/tokens.js: os modos escuro, claro e
+   * marca). O padrão sai do ramo: a clínica abre no claro limpo, o
+   * restaurante no escuro elegante, o varejo na cor da marca forte.
+   */
+  const CLIMAS = [
+    { id: 'escuro', nome: 'Escuro elegante', porque: 'fundo quase preto e a cor da marca acesa no destaque' },
+    { id: 'claro', nome: 'Claro limpo', porque: 'fundo off-white, a marca no texto e no destaque' },
+    { id: 'marca', nome: 'Cor da marca forte', porque: 'a tela inteira na cor da marca, num tom profundo' },
+  ];
+  const CLIMA_DO_RAMO = {
+    saude: 'claro', otica: 'claro', corporativo: 'claro',
+    comida: 'escuro', padaria: 'escuro', barbearia: 'escuro', beleza: 'escuro', moda: 'escuro',
+    varejo: 'marca', academia: 'marca', pet: 'marca',
+  };
+  const ehClima = (id) => CLIMAS.some((c) => c.id === id);
+  // O clima com que a conta nasce: o do ramo (o escuro, o de sempre, para o resto).
+  const climaDoRamo = (ramo) => CLIMA_DO_RAMO[ramo] || 'escuro';
+
   // A paleta com que uma conta nova nasce: a primeira do ramo dela.
   function inicial(textos) {
     const ramo = detectarRamo(textos);
@@ -339,5 +361,5 @@
     return sai;
   }
 
-  return { RAMOS, NOMES_RAMO, CURADAS, detectarRamo, aoRedor, sugerir, inicial, avisos, principalDe };
+  return { RAMOS, NOMES_RAMO, CURADAS, CLIMAS, detectarRamo, aoRedor, sugerir, inicial, avisos, principalDe, climaDoRamo, ehClima };
 });

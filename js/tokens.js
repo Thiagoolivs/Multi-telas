@@ -119,14 +119,116 @@
   const garantir = C.garantirContraste;
 
   /*
-   * Destaque no modo escuro: marca escura e pouco saturada (azul-marinho,
-   * vinho) clareada na mesma saturação vira cinza-azulado, um botão apagado
-   * — também visto no render. Ganha croma ao subir, com teto, para continuar
-   * parecendo cor de marca e não cor de sistema. Marca cinza continua cinza.
+   * A POLÍTICA DE COR (lote de 06/11). O dono achou a TV "meio feia e
+   * infantil", e os tons pastel não funcionavam em todo caso. A folha de
+   * contato das 11 marcas de exemplo e de 11 logos difíceis mostrou onde:
+   * o fundo claro era um tom LAVADO da marca (rosa-bebê, pêssego, menta), o
+   * modo "marca" pintava a peça inteira com a cor exata — o amarelo-claro e
+   * o rosa-pastel viravam cartaz de festa infantil, o vermelho puro pedia
+   * texto marrom —, e o acento escolhia a cor que menos precisava de ajuste
+   * mesmo quando ela era um quase-branco (o "#e0f2f1" da clínica virava o
+   * destaque do escuro). As regras agora:
+   *
+   *   1. A BASE é escura (tinta, carvão ou um tom PROFUNDO da marca) ou um
+   *      neutro quente ou frio (off-white, pedra). Nunca um tom lavado.
+   *   2. UM acento forte, saído da marca, levado em OKLCH a uma faixa de
+   *      luminosidade e a um croma mínimo em que ele é COR — nem pastel,
+   *      nem tinta — e a 4,5 sobre a base.
+   *   3. Cor clara (pastel, neon, amarelo) nunca é fundo: vira o acento
+   *      sobre uma base escura.
+   *   4. Quase-branco, quase-preto e cinza não são acento, a não ser que a
+   *      marca seja só isso (monocromática).
+   *
+   * Os três modos com cor são os três CLIMAS que o dono escolhe na Marca
+   * (js/paletas.js, CLIMAS): escuro = "Escuro elegante", claro = "Claro
+   * limpo", marca = "Cor da marca forte".
    */
-  function vivo(o) {
-    if (o.c < 0.03 || o.l > 0.6) return o.c;
-    return Math.max(o.c, Math.min(o.c * 1.8, 0.13));
+  const NEUTRA = 0.035;          // croma abaixo disso é cinza
+  const C_ACENTO = [0.12, 0.22]; // croma do acento: abaixo é apagado; acima vibra na TV
+  // A faixa de luminosidade em que o acento é cor, em cada base.
+  const FAIXA = { escuro: [0.66, 0.84], claro: [0.3, 0.56], marca: [0.74, 0.9] };
+
+  const entre = (x, a, b) => Math.max(a, Math.min(b, x));
+  // É cor de verdade? Cinza, quase-branco tingido e quase-preto não são.
+  const ehCor = (o) => !!o && o.c >= NEUTRA && o.l > 0.12 && !(o.l > 0.93 && o.c < 0.06);
+  // A faixa dos amarelos: escurecidos na mesma matiz, viram oliva (js/cor.js, matizAoEscurecer).
+  const amarela = (o) => o.h >= 80 && o.h <= 118;
+
+  // As cores da marca, lidas uma vez: { hex, o, i } na ordem da Marca, sem repetir.
+  function lerCores(lista) {
+    const out = [];
+    lista.forEach((h, i) => {
+      const hex = C.okHex(h, null);
+      if (hex && !out.some((x) => x.hex === hex)) out.push({ hex, o: C.paraOklch(hex), i });
+    });
+    return out;
+  }
+
+  /*
+   * Quem pode ser acento: as cores de verdade entre a principal e a segunda
+   * (a "cor de ação" da Marca); se as duas são neutras (logo preto e branco
+   * com um detalhe vermelho), a primeira cor de verdade que vier depois.
+   */
+  function candidatas(cores) {
+    const comCor = cores.filter((x) => ehCor(x.o));
+    const primeiras = comCor.filter((x) => x.i < 2);
+    return primeiras.length ? primeiras : comCor.slice(0, 1);
+  }
+
+  /*
+   * Das candidatas, a que já está mais perto da faixa do acento: a que muda
+   * menos para virar cor nesta base — no escuro, o dourado da ótica; no
+   * claro, o marinho. Empate fica com a principal.
+   */
+  function maisPerto(cands, faixa) {
+    const longe = (o) => (o.l < faixa[0] ? faixa[0] - o.l : o.l > faixa[1] ? o.l - faixa[1] : 0);
+    return cands.reduce((m, x) => (longe(x.o) < longe(m.o) - 1e-9 ? x : m), cands[0]);
+  }
+
+  /*
+   * O acento VIVO: a cor da marca na faixa de luminosidade do clima, com
+   * croma mínimo, e a 4,5 sobre todos os fundos. A matiz fica (o amarelo
+   * escurecendo puxa para o âmbar, nunca para o oliva). A cor que já está
+   * na faixa, com croma e contraste, entra intacta.
+   */
+  function acentoVivo(x, fundos, faixa) {
+    const o = x.o;
+    if (!ehCor(o)) return garantir(x.hex, fundos, MIN_TEXTO);
+    if (o.l >= faixa[0] && o.l <= faixa[1] && o.c >= C_ACENTO[0] && ok(x.hex, fundos, MIN_TEXTO)) return x.hex;
+    // O pastel pede mais croma que o resto: a 0,11 o rosa-bebê ainda é rosa-bebê.
+    const c = entre(o.c, o.l > 0.8 ? C_ACENTO[0] + 0.03 : C_ACENTO[0], C_ACENTO[1]);
+    const cor = (L) => C.deOklch(L, c, L < o.l ? C.matizAoEscurecer(o, L) : o.h);
+    /*
+     * Perto do branco a tela não tem croma (o rosa a 0,87 não passa de 0,08
+     * em sRGB): o pastel continuaria pastel. Desce dentro da faixa até a cor
+     * caber com o croma pedido.
+     */
+    const croma = (L) => C.paraOklch(cor(L)).c;
+    let L0 = entre(o.l, faixa[0], faixa[1]);
+    while (L0 - 0.01 >= faixa[0] && croma(L0) < c * 0.9 && croma(L0 - 0.01) > croma(L0) + 1e-4) L0 -= 0.01;
+    const media = fundos.reduce((s, f) => s + C.luminancia(f), 0) / fundos.length;
+    // Primeiro para longe dos fundos (sobe na base escura); o outro sentido é o desempate.
+    const longe = media < 0.2 ? 1 : -1;
+    for (let i = 0; i <= 100; i++) {
+      for (const s of i ? [longe, -longe] : [0]) {
+        const L = L0 + s * i * 0.01;
+        if (L < 0 || L > 1) continue;
+        const k = cor(L);
+        if (ok(k, fundos, MIN_TEXTO)) return k;
+      }
+    }
+    return garantir(cor(L0), fundos, MIN_TEXTO);
+  }
+
+  /*
+   * A matiz e o croma que tingem as bases: os da principal. Principal sem
+   * cor (preto, branco, cinza) dá bases neutras. Na faixa dos amarelos a
+   * base escura viraria oliva: vai para o quente (60°).
+   */
+  function tintaDa(cores) {
+    const p = cores[0];
+    if (!p || !ehCor(p.o)) return { h: 0, c: 0 };
+    return amarela(p.o) ? { h: 60, c: Math.min(p.o.c, 0.06) } : { h: p.o.h, c: p.o.c };
   }
 
   /*
@@ -160,88 +262,96 @@
    * cinza dá fundos cinza; uma marca saturada dá fundos com um TOQUE dela —
    * fundo saturado cansa a vista e briga com a foto.
    */
-  const tinta = (o, fator, teto) => Math.min(o.c * fator, teto);
+  const tinta = (t, fator, teto) => Math.min(t.c * fator, teto);
 
-  /*
-   * Com duas cores de marca, o destaque é a que JÁ SE LÊ naquele fundo.
-   *
-   * Destaque é a cor de ação, e a marca costuma ter uma cor de identidade
-   * escura e uma de acento — o azul-marinho e o dourado da ótica. No modo
-   * escuro, clarear o azul-marinho até ele aparecer dá um azul qualquer; o
-   * dourado já aparece como é. No claro, o contrário. Escolher a que precisa
-   * de MENOS ajuste é escolher a que continua sendo ela mesma. Empate fica
-   * com a principal.
-   */
-  function corDeAcao(marca, marca2, fundos) {
-    if (!marca2 || marca2 === marca) return marca;
-    const pior = (x) => Math.min.apply(null, fundos.map((f) => C.contraste(x, f)));
-    return pior(marca2) > pior(marca) ? marca2 : marca;
+  // O acento de um clima: a candidata mais perto da faixa, viva; sem candidata (monocromática), a principal legível.
+  function acentoDoClima(cores, fundos, faixa) {
+    const cands = candidatas(cores);
+    if (cands.length) return acentoVivo(maisPerto(cands, faixa), fundos, faixa);
+    return garantir(cores[0].hex, fundos, MIN_TEXTO);
   }
 
-  function modoEscuro(marca, marca2, o) {
-    const fundo = C.deOklch(0.2, tinta(o, 0.18, 0.035), o.h);
-    const fundo2 = C.deOklch(0.255, tinta(o, 0.25, 0.045), o.h);
-    const superficie = C.deOklch(0.3, tinta(o, 0.28, 0.05), o.h);
+  /*
+   * ESCURO ELEGANTE: tinta quase preta com um sopro da matiz da marca (o
+   * marinho da ótica, o vinho da cantina) e o acento claro e vivo.
+   */
+  function modoEscuro(cores) {
+    const t = tintaDa(cores);
+    const fundo = C.deOklch(0.2, tinta(t, 0.18, 0.035), t.h);
+    const fundo2 = C.deOklch(0.255, tinta(t, 0.25, 0.045), t.h);
+    const superficie = C.deOklch(0.3, tinta(t, 0.28, 0.05), t.h);
     const fundos = [fundo, fundo2, superficie];
-    const texto = garantir(C.deOklch(0.97, tinta(o, 0.08, 0.015), o.h), fundos, 4.5);
-    const textoSuave = garantir(C.deOklch(0.8, tinta(o, 0.1, 0.02), o.h), fundos, 4.5);
-    const acao = corDeAcao(marca, marca2, fundos);
-    const oa = C.paraOklch(acao);
-    const destaque = garantir(ok(acao, fundos, MIN_TEXTO) ? acao : C.deOklch(oa.l, vivo(oa), oa.h), fundos, MIN_TEXTO);
+    const texto = garantir(C.deOklch(0.97, tinta(t, 0.08, 0.015), t.h), fundos, 4.5);
+    const textoSuave = garantir(C.deOklch(0.8, tinta(t, 0.1, 0.02), t.h), fundos, 4.5);
+    const destaque = acentoDoClima(cores, fundos, FAIXA.escuro);
     return { fundo, fundo2, superficie, texto, textoSuave, destaque };
   }
 
-  function modoClaro(marca, marca2, o) {
-    const fundo = C.deOklch(0.975, tinta(o, 0.12, 0.02), o.h);
-    const fundo2 = C.deOklch(0.935, tinta(o, 0.18, 0.03), o.h);
+  /*
+   * CLARO LIMPO: um neutro de verdade — off-white e pedra quentes para a
+   * marca quente (vermelho, laranja, marrom, rosa, roxo), frios para a fria
+   * (verde, azul-petróleo, azul). Não é mais um tom lavado da marca: o
+   * rosa-bebê e o pêssego do fundo eram o "infantil". A marca fica no texto
+   * (tinta com um sopro dela) e no acento, escuro e saturado.
+   */
+  function modoClaro(cores) {
+    const t = tintaDa(cores);
+    const fria = t.c > 0 && t.h >= 140 && t.h <= 290;
+    // Marca monocromática: papel levemente quente (cinza puro parece o rascunho).
+    const hn = fria ? 250 : 75;
+    const cn = fria ? 0.006 : 0.008;
+    const fundo = C.deOklch(0.975, cn, hn);
+    const fundo2 = C.deOklch(0.93, cn * 1.4, hn);
     // Cartão mais claro que o fundo: é o "papel" sobre a mesa.
-    const superficie = C.deOklch(0.997, tinta(o, 0.04, 0.006), o.h);
+    const superficie = C.deOklch(0.995, cn * 0.4, hn);
     const fundos = [fundo, fundo2, superficie];
-    const texto = garantir(C.deOklch(0.24, tinta(o, 0.25, 0.04), o.h), fundos, 4.5);
-    const textoSuave = garantir(C.deOklch(0.45, tinta(o, 0.15, 0.03), o.h), fundos, 4.5);
-    const destaque = garantir(corDeAcao(marca, marca2, fundos), fundos, MIN_TEXTO);
+    const texto = garantir(C.deOklch(0.22, tinta(t, 0.25, 0.035), t.h), fundos, 4.5);
+    const textoSuave = garantir(C.deOklch(0.45, tinta(t, 0.15, 0.025), t.h), fundos, 4.5);
+    const destaque = acentoDoClima(cores, fundos, FAIXA.claro);
     return { fundo, fundo2, superficie, texto, textoSuave, destaque };
   }
 
   /*
-   * Modo marca: a peça inteira na cor EXATA da marca, como um cartaz.
+   * COR DA MARCA FORTE: a tela é a cor da marca, num tom PROFUNDO (L entre
+   * 0,24 e 0,42) — o efeito cartaz, sem o cartaz de festa. Antes era a cor
+   * exata: no meio-tom (vermelho, rosa, laranja) só um quase-branco se lia
+   * como acento, e a cor clara pintava a peça inteira de pastel. No tom
+   * profundo, o texto claro e um acento vivo se leem.
    *
-   * O texto escolhe o lado (claro ou escuro) pelo contraste com a marca. O
-   * claro é um creme, não branco puro: sobre fundo chapado saturado, branco
-   * "vibra" — é a mesma escolha de `buildPalette` em server/design-system.js.
+   * A base é a primeira cor (das duas da Marca) que aguenta ser fundo; cor
+   * clara não aguenta — ela vira o acento, e a base sai de um tom profundo
+   * da matiz dela (amarelo vai para o chocolate, não para o oliva). O
+   * acento é a outra cor; sem outra, a própria marca em tom claro e vivo
+   * (azul-claro sobre azul-profundo): cartaz monocromático, que não erra a
+   * combinação. Inventar uma complementar seria decidir a identidade pela
+   * empresa. Marca só preta ou só branca: tinta preta, acento branco.
    *
-   * Fundo-2 e superfície se afastam do texto, nunca se aproximam: assim o
-   * cartão sobre o fundo só ganha contraste. Quando não há para onde ir (marca
-   * preta com texto claro já está no fundo do poço), vão um pouco para o
-   * outro lado, e o texto é conferido de novo contra os três.
+   * Fundo-2 e superfície se afastam do texto (mais escuros): o cartão sobre
+   * o fundo só ganha contraste.
    */
-  function modoMarca(marca, marca2, o) {
-    const textoClaro = C.contraste(marca, '#ffffff') >= C.contraste(marca, '#000000');
-    const longe = textoClaro ? -1 : 1;
-    const variar = (passo) => {
-      const L = o.l + longe * passo;
-      if (L >= 0 && L <= 1) return C.deOklch(L, o.c, o.h);
-      return C.deOklch(Math.max(0, Math.min(1, o.l - longe * passo * 0.75)), o.c, o.h);
-    };
-    const fundo = marca;
-    const fundo2 = variar(0.05);
-    const superficie = variar(0.1);
+  function modoForte(cores) {
+    const comCor = cores.filter((x) => ehCor(x.o));
+    const podeSerBase = (x) => x.i < 2 && x.o.l <= 0.72 && !(amarela(x.o) && x.o.l > 0.55);
+    const base = comCor.find(podeSerBase) || null;
+    let h = 0, c = 0, L = 0.17;
+    if (base) {
+      h = base.o.h; c = entre(base.o.c, 0.07, 0.2); L = entre(base.o.l, 0.24, 0.42);
+    } else if (comCor.length) {
+      h = amarela(comCor[0].o) ? 55 : comCor[0].o.h; c = entre(comCor[0].o.c * 1.3, 0.08, 0.14); L = 0.3;
+    }
+    const fundo = C.deOklch(L, c, h);
+    const fundo2 = C.deOklch(L - 0.045, c * 0.9, h);
+    const superficie = C.deOklch(L - 0.085, c * 0.8, h);
     const fundos = [fundo, fundo2, superficie];
-
-    const texto = garantir(textoClaro ? C.mix('#ffffff', '#ffe9c7', 0.55)
-      : C.deOklch(0.22, tinta(o, 0.5, 0.06), o.h), fundos, 4.5);
-    const textoSuave = garantir(C.mix(texto, marca, 0.22), fundos, 4.5);
-
-    /*
-     * O destaque não pode ser a marca — ela é o fundo. Com segunda cor
-     * cadastrada, é ela. Sem, uma versão da própria marca do lado do texto
-     * (azul-claro sobre azul-marinho): cartaz monocromático, que nunca
-     * erra a combinação. Inventar uma complementar seria decidir a
-     * identidade pela empresa.
-     */
-    const base = marca2 && marca2 !== marca ? marca2
-      : textoClaro ? C.deOklch(0.9, Math.min(o.c, 0.09), o.h) : C.deOklch(0.3, Math.min(o.c, 0.12), o.h);
-    const destaque = garantir(base, fundos, MIN_TEXTO);
+    const texto = garantir(c ? C.deOklch(0.975, 0.012, 80) : C.deOklch(0.975, 0, 0), fundos, 4.5);
+    const textoSuave = garantir(C.mix(texto, fundo, 0.22), fundos, 4.5);
+    const outras = comCor.filter((x) => x !== base);
+    let destaque;
+    if (outras.length) destaque = acentoVivo(outras[0], fundos, FAIXA.marca);
+    else if (c) {
+      const hex = C.deOklch(0.8, Math.max(c, 0.14), h);
+      destaque = acentoVivo({ hex, o: C.paraOklch(hex) }, fundos, FAIXA.marca);
+    } else destaque = garantir('#ffffff', fundos, MIN_TEXTO);
     return { fundo, fundo2, superficie, texto, textoSuave, destaque };
   }
 
@@ -268,7 +378,9 @@
    * Gera os tokens de um modo.
    *
    *   marca        cor principal (hex). Inválida ou ausente: a de reserva.
-   *   marca2       segunda cor, opcional — candidata a destaque (`corDeAcao`)
+   *   marca2       segunda cor, opcional — candidata a destaque
+   *   cores        todas as cores da Marca, opcional (o logo de seis cores):
+   *                quando as duas primeiras são neutras, o acento sai daqui
    *   modo         'claro' | 'escuro' | 'marca' | 'rascunho'
    *   fonteTitulo  id de js/fontes.js; desconhecido cai na família padrão
    *   fonteTexto   idem
@@ -279,12 +391,13 @@
     const marca = C.okHex(p.marca, MARCA_PADRAO);
     const marca2 = C.okHex(p.marca2, null);
     const modo = MODOS.indexOf(p.modo) >= 0 ? p.modo : MODO_PADRAO;
-    const o = C.paraOklch(marca);
+    const resto = Array.isArray(p.cores) ? p.cores.slice(2) : [];
+    const cores = lerCores([marca, marca2].concat(resto));
 
-    const base = modo === 'claro' ? modoClaro(marca, marca2, o)
-      : modo === 'marca' ? modoMarca(marca, marca2, o)
+    const base = modo === 'claro' ? modoClaro(cores)
+      : modo === 'marca' ? modoForte(cores)
         : modo === 'rascunho' ? modoRascunho()
-          : modoEscuro(marca, marca2, o);
+          : modoEscuro(cores);
     const fundos = [base.fundo, base.fundo2, base.superficie];
 
     const familia = (id) => F.FAMILIAS[F.familia(id)].css;
@@ -318,7 +431,7 @@
     const marca = m || {};
     const cores = Array.isArray(marca.cores) ? marca.cores : [];
     return gerar({
-      marca: cores[0], marca2: cores[1], modo, raio,
+      marca: cores[0], marca2: cores[1], cores, modo, raio,
       fonteTitulo: marca.fonteTitulo, fonteTexto: marca.fonteApoio,
     });
   }
