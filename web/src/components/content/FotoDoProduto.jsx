@@ -95,7 +95,7 @@ export function FotoDoProduto({ onEscolher, onFechar, aviso, botao, incluirIa })
  * para as suas Mídias e devolve o crédito, que vai junto da peça e aparece
  * discreto no canto da TV.
  */
-function BancoDeImagens({ onEscolher, pixabayLigada }) {
+export function BancoDeImagens({ onEscolher, pixabayLigada }) {
   const [termo, setTermo] = useState('');
   const [busca, setBusca] = useState(null);
   const [buscando, setBuscando] = useState(false);

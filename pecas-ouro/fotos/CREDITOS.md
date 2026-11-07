@@ -2,6 +2,9 @@
 
 Só exemplo: a peça do cliente usa a foto dele. Uso autorizado pelo dono.
 
+O crédito, a licença e a fonte de cada foto do banco de fotos dos espaços de imagem
+estão em `banco.json` (o formato: docs/BANCO-DE-IMAGENS.md, "Espaços de imagem").
+
 | Arquivo | Autor | Fonte |
 |---|---|---|
 | `otica-sol.jpg` | Omid Armin | Unsplash |

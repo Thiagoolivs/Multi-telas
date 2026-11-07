@@ -90,11 +90,30 @@
    */
   const entradaDe = (e) => (typeof e === 'string' ? { id: e, campos: {} } : { id: e.id, campos: e.campos || {} });
 
+  /*
+   * O papel de cada espaço de imagem (`fotos` no manifesto: { foto: 'produto' }),
+   * como o painel copia para o item: a foto de exemplo encaixa aqui como na TV.
+   * A foto de exemplo que está no banco de fotos (pecas-ouro/fotos/banco.json)
+   * leva o foco de lá — é o que o cliente teria escolhendo a mesma foto.
+   */
+  let bancoDeFotos = [];
+  const espacosDe = (def) => {
+    const e = {};
+    Object.keys(def.fotos || {}).forEach((n) => {
+      const foto = (def.campos || {})[n];
+      const doBanco = bancoDeFotos.filter((b) => b.arquivo === foto);
+      const b = doBanco.find((x) => x.papel === def.fotos[n]) || doBanco[0];
+      e[n] = b && b.foco ? { papel: def.fotos[n], foco: b.foco } : { papel: def.fotos[n] };
+    });
+    return e;
+  };
+
   function montarPeca(host, arq, def, papel, marca, modo, extra) {
     const x = extra || {};
     return MTPecaRender.montar(host, {
       type: 'peca-html', papel, html: arq.html, css: arq.css,
       campos: Object.assign({}, def.campos || {}, x.campos || {}),
+      espacos: Object.assign(espacosDe(def), x.espacos || {}),
       modo: modo === 'rascunho' ? 'escuro' : modo, marca: marcaDoItem(marca),
     }, {
       rascunho: modo === 'rascunho',
@@ -426,6 +445,8 @@
 
   async function iniciar() {
     manifesto = await (await fetch('/pecas-ouro/manifesto.json', { cache: 'no-store' })).json();
+    bancoDeFotos = await fetch('/pecas-ouro/fotos/banco.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    if (!Array.isArray(bancoDeFotos)) bancoDeFotos = [];
     opcao($('ver'), 'peca', 'Uma peça');
     opcao($('ver'), 'tela', 'Tela completa');
     manifesto.pecas.forEach((p) => opcao($('peca'), p.id, p.nome + (p.estado === 'aprovada' ? ' ✓' : '')));
