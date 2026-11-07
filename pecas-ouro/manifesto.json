@@ -10340,9 +10340,13 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-pagamento",
               "campos": {
-                "rotulo": "Avisos"
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
               }
             }
           ]
@@ -10443,9 +10447,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -10532,9 +10536,13 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-pagamento",
               "campos": {
-                "rotulo": "Avisos"
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
               }
             }
           ]
@@ -10641,9 +10649,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -10731,9 +10739,13 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-pagamento",
               "campos": {
-                "rotulo": "Avisos"
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
               }
             }
           ]
@@ -10832,9 +10844,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -10922,9 +10934,13 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-pagamento",
               "campos": {
-                "rotulo": "Avisos"
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Parcelamos"
               }
             }
           ]
@@ -11011,9 +11027,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -11100,9 +11116,13 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-pagamento",
               "campos": {
-                "rotulo": "Avisos"
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Parcelamos"
               }
             }
           ]
@@ -11200,9 +11220,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -11290,9 +11310,13 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-pagamento",
               "campos": {
-                "rotulo": "Avisos"
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Parcelamos"
               }
             }
           ]
@@ -11378,9 +11402,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -11463,9 +11487,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -11565,9 +11589,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -11657,9 +11681,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -11744,9 +11768,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -11831,9 +11855,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -11932,9 +11956,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -12023,9 +12047,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
@@ -12119,9 +12143,9 @@
           "modo": "escuro",
           "pecas": [
             {
-              "id": "rodape-relogio",
+              "id": "rodape-selo",
               "campos": {
-                "rotulo": "Avisos"
+                "selo": "Avisos"
               }
             }
           ]
