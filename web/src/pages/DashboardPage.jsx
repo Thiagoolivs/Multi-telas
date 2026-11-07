@@ -7,6 +7,7 @@ import { ErrorState, Spinner } from '../components/ui/Feedback.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
 import { MiniaturaDaTela } from '../components/tela/MiniaturaDaTela.jsx';
 import { PrimeirosPassos } from '../components/dashboard/PrimeirosPassos.jsx';
+import { CartaoPrimeiraTv } from '../components/dashboard/CartaoPrimeiraTv.jsx';
 import { abrirSubir } from '../lib/subir.js';
 import { useAsync } from '../lib/useAsync.js';
 import { devices as devicesApi, media as mediaApi, sistema, seasons } from '../api.js';
@@ -72,6 +73,8 @@ function AvisoDoSistema({ onAbrir, operador }) {
 }
 
 export function DashboardPage({ onGoSystem, onIr, operador }) {
+  // null: ainda lendo; true: o cartão do "Sua primeira TV" está à vista (o "Comece por aqui" espera).
+  const [cartaoPrimeira, setCartaoPrimeira] = React.useState(null);
   const { data, loading, error, reload } = useAsync(async () => {
     const [d, m] = await Promise.all([devicesApi.list(), mediaApi.list()]);
     return { devices: d.devices || [], storage: m.usage || { used: 0, quota: 1 } };
@@ -91,8 +94,13 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
         actions={<Button variant="secondary" icon={RefreshCw} onClick={reload}>Atualizar</Button>}
       />
       <AvisoDoSistema onAbrir={onGoSystem} operador={operador} />
+      {/*
+        "Sua primeira TV em 5 minutos" (PrimeiraTvPage): na conta nova, o cartão com o passo em que a pessoa
+        parou; depois, "Montar a TV de novo". Enquanto o cartão aparece, o "Comece por aqui" espera.
+      */}
+      {data && <CartaoPrimeiraTv devices={data.devices} onIr={onIr} onCartao={setCartaoPrimeira} />}
       {/* Conta nova: o caminho até a primeira peça na TV vem ANTES de tudo (PLANO §5.3). Some quando termina. */}
-      {data && <PrimeirosPassos devices={data.devices} onIr={onIr} />}
+      {data && cartaoPrimeira === false && <PrimeirosPassos devices={data.devices} onIr={onIr} />}
       {loading ? (
         <div className="flex justify-center py-16"><Spinner size={22} /></div>
       ) : error ? (

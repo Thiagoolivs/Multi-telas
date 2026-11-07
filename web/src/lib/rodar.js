@@ -191,7 +191,8 @@ export async function gravarEmLote(telas, fazer, descricao) {
     const itens = lista.map((tv, i) => ({ id: tv.id, config: fazer(lidas[i].cfg, tv), versao: lidas[i].versao }));
     try {
       const r = await loteApi.enviar(itens, descricao);
-      return { lote: (r && r.lote) || null, ids: lista.map((tv) => tv.id) };
+      // Com a aprovação ligada, o envio do membro virou pedido (202): quem chama pode dizer "espera o dono".
+      return { lote: (r && r.lote) || null, ids: lista.map((tv) => tv.id), ...(r && r.pendente ? { pendente: true, mensagem: r.mensagem || '' } : {}) };
     } catch (e) {
       if (e.codigo !== 'config-mudou') throw e;
     }
