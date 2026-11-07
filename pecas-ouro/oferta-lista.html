@@ -86,13 +86,13 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.95 var(--mt-fonte-titulo); tex
   .valor { flex: none; margin-left: auto; font-size: max(var(--mt-piso, 0cqw), 13.5cqw); }
   .valor small { vertical-align: .5em; }
 }
-/* Com a margem contra o corte de 2,5% ou mais (de 1307×728 a 1236×674): a lista e os detalhes apertam mais; com 4% ou mais, a lista alarga e o número de ordem sai. */
+/* Com a margem contra o corte de 2,5% ou mais (de 1307×728 a 1236×674): a lista e os detalhes apertam mais; com 3,5% ou mais, a lista alarga e o número de ordem sai. */
 @container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 745px) {
   .itens li { padding: .7cqw 0; }
   .txt b { line-height: 1; }
   .det { margin-top: .2cqw; line-height: 1.1; }
 }
-@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 700px) {
+@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 712px) {
   .itens { left: 42cqw; }
   .itens li { grid-template-columns: 1fr auto; }
   .num { display: none; }
