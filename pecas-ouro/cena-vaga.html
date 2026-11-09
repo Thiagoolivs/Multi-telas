@@ -1,0 +1,66 @@
+<!--
+  Vaga com o laço da equipe — família gente (lote 5, docs/design/SISTEMA-VISUAL.md).
+  A equipe trabalhando, em vídeo, de um lado; um painel de fundo cheio varre
+  por cima da borda dele com o título, as vagas e o QR grande (nunca sobre o
+  vídeo). É o "venha ver como é aqui" que a foto parada não mostra.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5.8cqw; --q: 12cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.foto { position: absolute; top: 0; right: 0; width: 56%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.painel { position: absolute; top: 0; left: 0; bottom: 0; width: 50%; display: flex; flex-direction: column; justify-content: center; padding: 7cqh 4cqw 7cqh 6cqw; background: var(--mt-fundo); }
+.kicker { display: flex; align-items: center; gap: 1.2cqw; font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .1em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { flex: none; display: block; width: 3.2cqw; height: .16cqw; background: var(--mt-destaque); }
+h1 { margin-top: 2.4cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.vagas { margin-top: 3.4cqh; padding: 0; list-style: none; }
+.vagas li { padding: 1.3cqh 0; border-top: .14cqw solid var(--mt-linha); font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
+.qr { margin-top: 3.4cqh; display: flex; align-items: center; gap: 2.4cqw; }
+.qr img { flex: none; width: var(--q); height: var(--q); }
+.qr p { min-width: 0; font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.25 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: balance; }
+.foto[data-sem-foto] ~ .painel { width: 100%; }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 5cqw; --q: 14cqw; }
+  .foto { width: 46%; }
+  .painel { width: 58%; padding: 4cqh 4cqw 4cqh 5cqw; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .vagas { margin-top: 2.4cqh; }
+  .vagas li { padding: .9cqh 0; }
+  .qr { margin-top: 2.4cqh; gap: 2cqw; }
+}
+/* Em pé: o vídeo em cima, o painel no pé. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 5.2cqw; --t: 11cqw; --q: 30cqw; }
+  .foto { width: 100%; height: 42%; }
+  .painel { top: auto; right: 0; width: auto; min-height: 58%; justify-content: center; padding: 5cqh 7cqw 6cqh; }
+  .kicker { letter-spacing: .1em; }
+  .kicker i { width: 5cqw; height: .26cqw; }
+  .vagas li { border-top-width: .24cqw; }
+  .qr { gap: 4cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 6.4cqw; --q: 22cqw; }
+  .foto { height: 32%; }
+  .painel { min-height: 68%; padding: 3.4cqh 7cqw 4.4cqh; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .vagas { margin-top: 2cqh; }
+  .vagas li { padding: 1cqh 0; }
+  .qr { margin-top: 2.4cqh; }
+}
+</style>
+<section class="mt-peca cena-vaga">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns">
+  <div class="painel" data-entrada="varrer" data-origem="esquerda" data-ordem="1">
+    <p class="kicker" data-entrada="aparecer" data-ordem="5"><i aria-hidden="true" data-entrada="desenhar" data-ordem="5"></i><span data-campo="kicker">Vem para a Vértice</span></p>
+    <h1 data-campo="titulo" data-entrada="revelar" data-ordem="6">Estamos contratando</h1>
+    <ul class="vagas">
+      <li data-campo="vaga1" data-entrada="subir" data-ordem="8">Analista contábil · pleno</li>
+      <li data-campo="vaga2" data-entrada="subir" data-ordem="9">Assistente fiscal · júnior</li>
+    </ul>
+    <div class="qr" data-entrada="aparecer" data-ordem="11">
+      <img data-campo-qr="link" alt="QR para se candidatar">
+      <p data-campo="instrucao">Aponte a câmera e envie o seu currículo</p>
+    </div>
+  </div>
+</section>

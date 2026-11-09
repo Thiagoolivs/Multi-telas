@@ -1,0 +1,53 @@
+<!--
+  Boas-vindas com o laço calmo — família institucional (lote 5, docs/design/SISTEMA-VISUAL.md).
+  Para a recepção (clínica, escritório, loja): o título grande de boas-vindas
+  numa coluna larga e o laço calmo (a sala clara, a cidade passando) numa
+  janela recuada da borda, de canto suave. Tudo devagar: sem varrer, sem
+  reflexo; o texto aparece em passos largos.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 7cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 50fr 50fr; }
+.texto { min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 8cqh 4cqw 8cqh 6cqw; }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+h1 { margin-top: 2.6cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.02 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+h1 span, h1 em { display: block; }
+h1 em { font-style: normal; color: var(--mt-texto-suave); }
+.apoio { margin-top: 3.4cqh; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.35 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.nota { margin-top: 4cqh; padding-top: 1.8cqh; border-top: .14cqw solid var(--mt-linha); font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
+.janela { position: relative; min-width: 0; min-height: 0; margin: 6cqh 6cqw 6cqh 0; overflow: hidden; border-radius: var(--mt-raio, 0); }
+.foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 5.4cqw; grid-template-columns: 50fr 50fr; }
+  .texto { padding: 5cqh 3cqw 5cqh 5cqw; }
+  .kicker { letter-spacing: .06em; }
+  h1 { margin-top: 1.8cqh; }
+  .apoio { margin-top: 2.4cqh; line-height: 1.25; }
+  .nota { display: none; }
+  .janela { margin: 5cqh 5cqw 5cqh 0; }
+}
+/* Em pé: a janela em cima, o texto embaixo. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 5.2cqw; --t: 13cqw; grid-template-columns: 1fr; grid-template-rows: 44fr 56fr; }
+  .janela { grid-row: 1; margin: 6cqh 7cqw 0; }
+  .texto { grid-row: 2; padding: 4cqh 7cqw 6cqh; }
+  .nota { border-top-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 8.6cqw; grid-template-rows: 44fr 56fr; }
+  .janela { margin: 6cqh 7cqw 0; }
+  .texto { padding: 3.4cqh 7cqw 5cqh; }
+  h1 { margin-top: 1.6cqh; }
+  .apoio { margin-top: 2.4cqh; }
+  .nota { display: none; }
+}
+</style>
+<section class="mt-peca cena-boas-vindas">
+  <div class="texto">
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="2">Recepção</p>
+    <h1 data-entrada="revelar" data-ordem="4"><span data-campo="titulo">Que bom</span><em data-campo="titulo2">ter você aqui</em></h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="8">Fique à vontade: chamamos você pelo nome na hora da consulta.</p>
+    <p class="nota" data-campo="nota" data-entrada="aparecer" data-ordem="11">Wi-Fi: Clínica Vida Visitantes</p>
+  </div>
+  <figure class="janela"><img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns"></figure>
+</section>

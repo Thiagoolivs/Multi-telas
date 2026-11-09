@@ -94,7 +94,8 @@
    * O papel de cada espaço de imagem (`fotos` no manifesto: { foto: 'produto' }),
    * como o painel copia para o item: a foto de exemplo encaixa aqui como na TV.
    * A foto de exemplo que está no banco de fotos (pecas-ouro/fotos/banco.json)
-   * leva o foco de lá — é o que o cliente teria escolhendo a mesma foto.
+   * leva o foco de lá — é o que o cliente teria escolhendo a mesma foto. O
+   * vídeo de exemplo (pecas-ouro/videos/banco.json), idem.
    */
   let bancoDeFotos = [];
   const espacosDe = (def) => {
@@ -475,8 +476,9 @@
 
   async function iniciar() {
     manifesto = await (await fetch('/pecas-ouro/manifesto.json', { cache: 'no-store' })).json();
-    bancoDeFotos = await fetch('/pecas-ouro/fotos/banco.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
-    if (!Array.isArray(bancoDeFotos)) bancoDeFotos = [];
+    // O banco de vídeos também (o lote 5 nasce com o laço no espaço da foto): o foco do vídeo de exemplo vem de lá.
+    const lerBanco = (url) => fetch(url, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : [])).then((b) => (Array.isArray(b) ? b : [])).catch(() => []);
+    bancoDeFotos = (await lerBanco('/pecas-ouro/fotos/banco.json')).concat(await lerBanco('/pecas-ouro/videos/banco.json'));
     opcao($('ver'), 'peca', 'Uma peça');
     opcao($('ver'), 'tela', 'Tela completa');
     manifesto.pecas.forEach((p) => opcao($('peca'), p.id, p.nome + (p.estado === 'aprovada' ? ' ✓' : '')));

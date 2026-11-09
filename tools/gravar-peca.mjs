@@ -31,6 +31,8 @@
  *   --base <url>             servidor já de pé (padrão: sobe um na porta 6022)
  *   --de <pasta>             os scripts e as peças de OUTRA cópia do projeto (ex.: o main),
  *                            servidos por cima do servidor: o antes e o depois na mesma máquina
+ *   --tela <id[,id…]>        grava a TELA PRONTA inteira (telas do manifesto), como a bancada a monta,
+ *                            no tamanho da TV do layout (deitada 1920×1080, em pé 1080×1920)
  *
  * Precisa do Playwright com o Chromium e, para o MP4, do ffmpeg no PATH.
  */
@@ -60,11 +62,12 @@ function argumentos(lista) {
 const A = argumentos(process.argv.slice(2));
 const FORMATOS = { '16x9': [1920, 1080], '9x16': [1080, 1920], '1x1': [1080, 1080] };
 const formato = FORMATOS[A.formato || '16x9'];
-if (!A.peca || !formato) {
-  console.error('uso: node tools/gravar-peca.mjs --peca <id[,id…]> [--marca <id>] [--formato 16x9|9x16|1x1] [--local balcao] [--saida <pasta>] [--quadros]');
+if ((!A.peca && !A.tela) || !formato) {
+  console.error('uso: node tools/gravar-peca.mjs --peca <id[,id…]> [--marca <id>] [--formato 16x9|9x16|1x1] [--local balcao] [--saida <pasta>] [--quadros]\n'
+    + '     node tools/gravar-peca.mjs --tela <id[,id…]> [--segundos 17] [--saida <pasta>]');
   process.exit(2);
 }
-const PECAS = String(A.peca).split(',').map((s) => s.trim()).filter(Boolean);
+const PECAS = String(A.peca || '').split(',').map((s) => s.trim()).filter(Boolean);
 const SEGUNDOS = Number(A.segundos) > 0 ? Number(A.segundos) : 4;
 const CPU = Number(A.cpu) > 0 ? Number(A.cpu) : 4;
 const PORTA = Number(process.env.PORTA_GRAVAR) || 6022;
@@ -125,7 +128,9 @@ const PALCO = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
 // Roda na página: lê a peça e os dados dela, e deixa pronto um "tocar()" que monta do zero.
 async function prepararNaPagina(o) {
   const manifesto = await (await fetch('/pecas-ouro/manifesto.json', { cache: 'no-store' })).json();
-  const banco = await fetch('/pecas-ouro/fotos/banco.json').then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  // As fotos e os vídeos do banco (o vídeo de exemplo do lote 5 também leva o foco de lá).
+  const lerBanco = (url) => fetch(url).then((r) => (r.ok ? r.json() : [])).then((b) => (Array.isArray(b) ? b : [])).catch(() => []);
+  const banco = (await lerBanco('/pecas-ouro/fotos/banco.json')).concat(await lerBanco('/pecas-ouro/videos/banco.json'));
   const LOCAIS = { balcao: 0.045, recepcao: 0.035, escritorio: 0.03 };
   if (LOCAIS[o.local]) document.documentElement.style.setProperty('--mt-piso-tv', String(LOCAIS[o.local]));
   const def = manifesto.pecas.find((p) => p.id === o.peca);
@@ -162,9 +167,15 @@ async function prepararNaPagina(o) {
   // Uma vez escondida, para as fontes e as fotos chegarem e ficarem no cache (a gravação não a vê).
   window.MT_TOCAR(true);
   await document.fonts.ready;
-  const imgs = [];
-  tv.querySelectorAll('div').forEach((h) => { if (h.shadowRoot) h.shadowRoot.querySelectorAll('img').forEach((i) => imgs.push(i)); });
+  const imgs = [], videos = [];
+  tv.querySelectorAll('div').forEach((h) => {
+    if (!h.shadowRoot) return;
+    h.shadowRoot.querySelectorAll('img').forEach((i) => imgs.push(i));
+    h.shadowRoot.querySelectorAll('video').forEach((v) => videos.push(v));
+  });
   await Promise.all(imgs.map((i) => (i.complete ? null : new Promise((r) => { i.onload = r; i.onerror = r; setTimeout(r, 8000); }))));
+  // A FOTO VIVA: o laço inteiro no cache antes de gravar (a TV o pôs em buffer com o item anterior).
+  await Promise.all(videos.map((v) => (v.readyState >= 4 ? null : new Promise((r) => { v.addEventListener('canplaythrough', r, { once: true }); v.addEventListener('error', r, { once: true }); setTimeout(r, 10000); }))));
   await document.fonts.ready;
   window.MT_LIMPAR();
   return { nome: def.nome, marca: marca.id };
@@ -236,6 +247,54 @@ async function gravar(navegador, peca, [w, h]) {
   // Do fim da tela preta (com 0,2 s dela, como a TV entre uma peça e outra) até a peça ter ficado no ar o pedido.
   const inicio = Math.max(0, inicioNoVideo(webm, (tocou - comecou) / 1000) - 0.2);
   paraMp4(webm, mp4, inicio, total + 0.2);
+  fs.rmSync(pasta, { recursive: true, force: true });
+  if (erros.length) console.warn('  erros na página: ' + erros.join(' | '));
+  return mp4;
+}
+
+/*
+ * --tela <id>: a TELA PRONTA inteira, como a bancada a monta ("Tela
+ * completa", no tamanho real: as zonas do layout, as peças de cada zona se
+ * revezando a cada 8 s). A página da bancada sem os controles, só a TV.
+ * Grava do "Rodar a entrada de novo" em diante (fontes, fotos e vídeos já
+ * no cache), por --segundos (padrão 17: duas peças da principal).
+ */
+const { getLayout } = createRequire(import.meta.url)('../js/templates.js');
+const SO_A_TV = 'header,#info,#problemas{display:none!important}main{padding:0!important}'
+  + '#palco .moldura{position:fixed!important;left:0;top:0;border-radius:0!important}html,body{overflow:hidden!important}';
+async function gravarTela(navegador, id) {
+  const manifesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', 'manifesto.json'), 'utf8'));
+  const tela = manifesto.telas.find((t) => t.id === id);
+  if (!tela) throw new Error('tela não está no manifesto: ' + id);
+  const orientacao = getLayout(tela.layout).orientation;
+  const [w, h] = orientacao === 'portrait' ? [1080, 1920] : orientacao === 'square' ? [1080, 1080] : [1920, 1080];
+  const segundos = Number(A.segundos) > 0 ? Number(A.segundos) : 17;
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-video-'));
+  const ctx = await navegador.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, recordVideo: { dir: pasta, size: { width: w, height: h } } });
+  const comecou = Date.now();
+  const p = await ctx.newPage();
+  const erros = [];
+  p.on('pageerror', (e) => erros.push(e.message));
+  await deOutraCopia(p);
+  await p.goto(BASE + '/bancada.html?ver=tela&tela=' + encodeURIComponent(id) + '&tamanho=real&local=' + (A.local || 'balcao'));
+  await p.addStyleTag({ content: SO_A_TV });
+  await p.waitForFunction(() => document.body.dataset.conferida === 'sim', null, { timeout: 60000 }).catch(() => {});
+  await p.evaluate(async () => {
+    await document.fonts.ready;
+    const vs = [];
+    document.querySelectorAll('.host').forEach((hh) => { if (hh.shadowRoot) hh.shadowRoot.querySelectorAll('video').forEach((v) => vs.push(v)); });
+    await Promise.all(vs.map((v) => (v.readyState >= 4 ? null : new Promise((r) => { v.addEventListener('canplaythrough', r, { once: true }); setTimeout(r, 10000); }))));
+  });
+  await espera(600);
+  const tocou = Date.now();
+  await p.click('#rodar', { force: true }).catch(() => p.evaluate(() => document.getElementById('rodar').click()));
+  await espera(segundos * 1000 + 400);
+  const video = p.video();
+  await ctx.close();
+  const webm = await video.path();
+  fs.mkdirSync(SAIDA, { recursive: true });
+  const mp4 = path.join(SAIDA, 'tela-' + id + '.mp4');
+  paraMp4(webm, mp4, Math.max(0, (tocou - comecou) / 1000 + 0.1), segundos);
   fs.rmSync(pasta, { recursive: true, force: true });
   if (erros.length) console.warn('  erros na página: ' + erros.join(' | '));
   return mp4;
@@ -338,6 +397,7 @@ try {
       const mp4 = await gravar(navegador, peca, formato);
       console.log(mp4);
     }
+    for (const tela of String(A.tela || '').split(',').map((s) => s.trim()).filter(Boolean)) console.log(await gravarTela(navegador, tela));
   }
 } finally {
   await navegador.close();
