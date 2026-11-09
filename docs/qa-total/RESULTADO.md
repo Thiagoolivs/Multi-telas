@@ -5,6 +5,43 @@ mais dura que a do QA de 03/11 ([docs/qa/RETESTE.md](../qa/RETESTE.md)):
 ela compara com o nível profissional ([REFERENCIAS.md](REFERENCIAS.md)) e com
 as [telas de referência](telas-referencia/), e não só com "funciona".
 
+## O reteste 2 (09/11)
+
+Os mesmos blocos, o mesmo método e a mesma régua, depois de tudo o que
+entrou de 05 a 07/11 (contraste da TV, cabeçalhos, piso do balcão com borda,
+paletas e climas, espaços de foto, a Primeira TV, a Biblioteca em 2 níveis,
+aprovação e permissão por loja, planilhas, senha, modo ambiente, lotes 3 e
+4, "Arrumar a volta"). Servidor local, sem a IA real. Relatório completo:
+[RETESTE-2](RETESTE-2.md).
+
+| Bloco | 05/11 (fase 10) | 09/11 |
+|---|---|---|
+| 1. A TV | 6,5 | **7,0** |
+| 2. Criações da IA | 6,3 | — (precisa da IA real; fica 6,3) |
+| 3. Programação | 8,0 nos 7 cenários sem IA | **8,3** nos mesmos 7 (o bloco, com a IA antiga: 7,0) |
+| 4. Telas e a página da TV | 8,5 | **8,5** |
+| 5. O resto do painel | 7,5 | **8,0** |
+| 6. Site e e-mails | 8 | **8,5** |
+| 7. A base | 8,5 | **8,5** |
+| 8. A interface do painel | 6,7 | **7,7** |
+
+**Nota geral provisória: 7,5 / 10** (era 7,1), com o mesmo peso dobrado
+para a TV, a IA, a programação e a interface.
+
+**Nenhum bloco chegou a 9, e não há bloqueador** (nenhuma quebra,
+vazamento ou falha de segurança). O que mais segura:
+- 90 de 91 telas e 55 de 98 peças esperam a sua aprovação na galeria;
+- o `cabecalho-centro` corta a data e os acentos em 13 telas, e o combo
+  põe texto sobre texto na TV quadrada;
+- peça com espaço de foto e sem foto fica pela metade;
+- a prévia das Aprovações vem vazia e o "Ver agora" de Telas ainda é desenho;
+- a Primeira TV passou a 16 toques (meta 15) com o Trocar foto, e o robô
+  dos 5 minutos quebrou nesse commit;
+- a volta longa aparece como "tudo certo · 1 dica", e a IA vai ao ar sem o
+  "Quando";
+- Prontos para você leva 7,4 s no 4G lento, e mostra "Outubro Rosa" em
+  novembro e um parcelado para clínica.
+
 ## O reteste (fase 10, 05/11)
 
 Os mesmos blocos, com o mesmo método e a mesma régua, depois das fases 0 a 9.
