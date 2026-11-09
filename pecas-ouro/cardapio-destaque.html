@@ -18,7 +18,8 @@ h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(-
 .valor small { font-size: max(var(--mt-piso, 0cqw), .32em); margin-right: .12em; }
 .valor sup { font-size: max(var(--mt-piso, 0cqw), .36em); vertical-align: 1.1em; }
 
-@container (aspect-ratio >= 1.25) and (max-height: 900px) {
+/* Sem mensagem no rodapé, a principal do Corporativo cresce (1377×913): o mesmo desenho, até 940 px de altura. */
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
   .mt-peca { --f: 3.5cqw; --t: 5.6cqw; --p: 8.4cqw; }
   .cartao { left: 3cqw; top: 5cqh; bottom: 5cqh; width: 54%; padding: 4cqh 4cqw; }
   .apoio { display: none; }

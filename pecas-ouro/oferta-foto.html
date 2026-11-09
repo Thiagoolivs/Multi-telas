@@ -36,7 +36,8 @@ h1 em { display: block; font-style: normal; font-size: max(var(--mt-piso, 0cqw),
  * espaçadas apertam e o preço vai numa linha só dele, entre o "a partir
  * de" e a parcela (ao lado, a parcela encostava nele).
  */
-@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+/* Sem mensagem no rodapé, a principal do Corporativo cresce (1377×913): o mesmo desenho, até 940 px de altura. */
+@container ((aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (min-height: 860px) and (max-height: 940px)) {
   .marca-nome { letter-spacing: .16em; }
   .bloco { top: 12cqh; bottom: 15cqh; }
   .kicker { gap: .8cqw; letter-spacing: .04em; }
