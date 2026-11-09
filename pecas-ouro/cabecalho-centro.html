@@ -31,6 +31,17 @@
   .nome { font-size: max(var(--mt-piso, 0cqw), calc(38cqh * var(--mt-escala-titulo, 1))); }
   .hora { font-size: max(var(--mt-piso, 0cqw), 38cqh); }
 }
+/*
+ * A faixa deitada (16:9) com a letra do balcão (4,5%, 48,6 px): as duas linhas
+ * empilhadas (o clima e a data; o nome e a linha de baixo) chegavam a 0–4 px
+ * da borda. O vão entre elas encolhe o quanto a letra cresceu acima do
+ * desenho. Sem piso (a letra do desenho) fica como era; a faixa em pé não
+ * muda.
+ */
+@container (aspect-ratio >= 9) {
+  .info { gap: max(0cqh, calc(6cqh - (max(var(--mt-piso, 0cqw), 14cqh) - 14cqh))); }
+  .marca { gap: max(0cqh, calc(5cqh - (max(var(--mt-piso, 0cqw), 11cqh) - 11cqh))); }
+}
 </style>
 <section class="mt-peca cabecalho-centro">
   <div class="lado" data-entrada="aparecer" data-ordem="1">

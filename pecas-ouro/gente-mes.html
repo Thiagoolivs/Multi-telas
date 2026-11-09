@@ -82,6 +82,14 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
   .lista li { grid-template-columns: 12cqw 1fr; padding: .6cqw 0; }
   .lista b { line-height: 1.02; }
 }
+/*
+ * A lateral sem mensagem no rodapé (504×913): a coluna fica mais alta, mas
+ * não mais larga, e o "Aniversariantes de" da fonte larga passava da borda.
+ * O título quebra onde couber.
+ */
+@container (max-width: 700px) and (min-height: 860px) and (max-height: 940px) {
+  h1 span, h1 em { display: inline; white-space: normal; }
+}
 </style>
 <section class="mt-peca gente-mes">
   <div class="cabeca">

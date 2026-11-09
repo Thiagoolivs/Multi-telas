@@ -172,11 +172,17 @@
    * somada ao padding, a borda de 1 px da zona), montada e medida aqui. Sem
    * escolha, ficam as zonas de sempre da bancada (1405×832 e 515×832). A
    * tela cheia fica no tamanho de referência.
+   *
+   * O RODAPÉ SEM MENSAGEM some na TV (js/templates.js, MT_juntarZonasVazias)
+   * e a principal cresce para baixo: sem margem, 1377×913 em vez de 1377×782.
+   * O seletor "Rodapé" desenha as duas zonas nesse tamanho (com a margem
+   * escolhida, ou sem nenhuma).
    */
   const MARGENS = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
-  function corporativoNaTv(margem) {
+  function corporativoNaTv(margem, semRodape) {
     const W = 1920, H = 1080;
-    const layout = MT_getLayout('corporate');
+    const base = MT_getLayout('corporate');
+    const layout = semRodape ? MT_juntarZonasVazias(base, ['rodape']) : base;
     const tv = document.createElement('div');
     tv.style.cssText = 'position:absolute;left:-30000px;top:0;display:grid;box-sizing:border-box;width:' + W + 'px;height:' + H + 'px';
     tv.style.gridTemplateColumns = layout.grid.columns;
@@ -206,8 +212,9 @@
   function zonasDoPapel(papel) {
     const zonas = ZONAS[papel] || [];
     const m = $('margem').value;
-    if (m === '') return zonas;
-    const tv = corporativoNaTv(Number(m));
+    const semRodape = $('rodape').value === 'vazio';
+    if (m === '' && !semRodape) return zonas;
+    const tv = corporativoNaTv(Number(m) || 0, semRodape);
     return zonas.map((z) => (z.nome === 'Destaque · Corporativo' ? Object.assign({}, z, tv.principal)
       : z.nome === 'Lateral · Corporativo' ? Object.assign({}, z, tv.lateral) : z));
   }
@@ -229,12 +236,20 @@
       + lista('Avisos:', conferida.avisos, 'problemas');
     $('info').innerHTML = '<b>' + escapar(def.nome) + '</b> · família ' + escapar(def.familia) + ' · ' + def.estado
       + ' · ' + conferida.campos.length + ' campos · ' + (todas ? 'as ' + marcas.length + ' marcas' : 'marca ' + escapar(marcas[0].nome))
-      + ($('margem').value === '' ? '' : ' · Corporativo na TV com margem contra o corte de ' + virgula($('margem').value) + '%');
+      + ($('margem').value === '' ? '' : ' · Corporativo na TV com margem contra o corte de ' + virgula($('margem').value) + '%')
+      + ($('rodape').value === 'vazio' ? ' · rodapé sem mensagem (a principal cresce)' : '');
 
     const palco = $('palco');
     palco.textContent = '';
+    /*
+     * zonas=corporativo (na URL, sem seletor): só as duas zonas do
+     * Corporativo. O robô da régua pede assim nas passadas da margem e do
+     * rodapé sem mensagem: a tela cheia nas 11 marcas (33 figuras por peça)
+     * não entrava na conta e custava três quartos do tempo da passada.
+     */
+    const soCorporativo = new URLSearchParams(location.search).get('zonas') === 'corporativo';
     for (const papel of def.papeis) {
-      for (const zona of zonasDoPapel(papel)) {
+      for (const zona of zonasDoPapel(papel).filter((z) => !soCorporativo || /Corporativo/.test(z.nome))) {
         const linha = document.createElement('section');
         linha.className = 'linha';
         const h2 = document.createElement('h2');
@@ -482,11 +497,13 @@
     };
     opcao($('margem'), '', 'Zonas da bancada');
     MARGENS.forEach((m) => opcao($('margem'), String(m), m ? 'Na TV, margem de ' + virgula(m) + '%' : 'Na TV, sem margem'));
+    opcao($('rodape'), '', 'Com mensagens');
+    opcao($('rodape'), 'vazio', 'Sem mensagem (some)');
     const primeira = (manifesto.telas || [])[0];
     if (primeira) $('layout').value = primeira.layout;
 
     // A escolha fica na URL: dá para mandar o link de uma combinação.
-    const CHAVES = ['ver', 'peca', 'marca', 'modo', 'tela', 'layout', 'tamanho', 'local', 'margem'];
+    const CHAVES = ['ver', 'peca', 'marca', 'modo', 'tela', 'layout', 'tamanho', 'local', 'margem', 'rodape'];
     const q = new URLSearchParams(location.search);
     CHAVES.forEach((k) => { if (q.get(k)) $(k).value = q.get(k); });
     porLocal();

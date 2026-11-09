@@ -66,6 +66,18 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
   .apoio { font-size: max(var(--mt-piso, 0cqw), 2.4cqw); max-width: none; }
   .cta { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); border-bottom-width: .2cqw; }
 }
+/*
+ * A principal do Corporativo com a margem contra o corte de 4% ou mais
+ * (1264×696 e menor): o bloco, que cresce para cima, chegava ao nome da
+ * marca. O título encolhe um pouco, as entrelinhas e os respiros apertam e
+ * o bloco desce para perto da margem.
+ */
+@container (aspect-ratio >= 1.74) and (min-height: 600px) and (max-height: 700px) {
+  .bloco { bottom: 4.6cqh; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 13cqh); margin: .24em 0 .2em; }
+  .apoio { line-height: 1.25; }
+  .cta { margin-top: .6em; }
+}
 </style>
 <section class="mt-peca social-data">
   <span class="fundo-num" data-campo="numero" aria-hidden="true" data-entrada="aparecer">10</span>

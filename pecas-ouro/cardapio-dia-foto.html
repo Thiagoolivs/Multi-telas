@@ -44,7 +44,8 @@ h1 em { font-style: normal; color: var(--mt-destaque); }
  * um pouco menor e mais à direita: o bloco ganha largura. As letras
  * espaçadas apertam e os respiros encurtam.
  */
-@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px) {
+/* Sem mensagem no rodapé, a principal do Corporativo cresce (1377×913): o mesmo desenho, até 940 px de altura. */
+@container ((aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (min-height: 860px) and (max-height: 940px)) {
   .prato { right: 7cqw; width: 36cqw; height: 36cqw; margin-top: -18cqw; box-shadow: inset 0 0 0 3cqw var(--mt-fundo-2), 0 0 0 .14cqw var(--mt-linha); }
   .talher { font-size: 1cqw; }
   .garfo { right: 45cqw; }

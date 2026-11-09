@@ -43,6 +43,10 @@ h1 { margin-top: 3cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(-
   h1 { margin-top: 1.6cqh; }
   .frase { display: none; }
 }
+/* A lateral com a margem contra o corte de 4,5% ou mais (457×685 e menor): a função descia até a borda de baixo. O retrato fica um pouco mais baixo. */
+@container (max-width: 700px) and (max-height: 690px) {
+  .mt-peca { grid-template-rows: 47fr 53fr; }
+}
 </style>
 <section class="mt-peca gente-retrato">
   <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">

@@ -219,7 +219,12 @@
       ],
       "estado": "aprovada",
       "marca": "otica",
-      "aprovadaEm": "2026-10-20"
+      "aprovadaEm": "2026-10-20",
+      "textos": {
+        "comercio": {
+          "data": "Últimos dias"
+        }
+      }
     },
     {
       "id": "lateral-qr",
@@ -778,12 +783,23 @@
         "comercio": {
           "titulo": "Fechado no feriado",
           "apoio": "Os pedidos pelo WhatsApp continuam: entregamos no dia seguinte.",
-          "volta": "Voltamos no sábado, 16, às 7h."
+          "volta": "Voltamos no sábado, às 7h.",
+          "mes": "Nesta",
+          "dia": "6ª",
+          "semana": "feira"
         },
         "empresa": {
           "titulo": "Não haverá expediente",
           "apoio": "O plantão da portaria e da manutenção segue normal.",
-          "volta": "Voltamos na segunda, 18, às 7h."
+          "volta": "Voltamos na segunda, às 7h.",
+          "mes": "Nesta",
+          "dia": "6ª",
+          "semana": "feira"
+        },
+        "saude": {
+          "mes": "Nesta",
+          "dia": "6ª",
+          "semana": "feira"
         }
       },
       "estado": "aprovada",
@@ -914,7 +930,7 @@
           "titulo": "Novo",
           "titulo2": "refeitório",
           "apoio": "Mais mesas, ar-condicionado e o cardápio da semana no mural.",
-          "quando": "A partir de segunda, 18"
+          "quando": "A partir de segunda"
         }
       },
       "estado": "aprovada",
@@ -964,7 +980,13 @@
           "setor3": "Enfermagem",
           "setor4": "Enfermagem",
           "setor5": "Faturamento",
-          "setor6": "Atendimento"
+          "setor6": "Atendimento",
+          "titulo": "Aniversariantes",
+          "mes": "do mês"
+        },
+        "empresa": {
+          "titulo": "Aniversariantes",
+          "mes": "do mês"
         }
       },
       "estado": "aprovada",
@@ -1051,7 +1073,11 @@
           "para": "Para: toda a equipe",
           "assunto": "Treinamento de primeiros socorros na quinta, às 14h",
           "texto": "Na sala de reuniões. Traga o crachá; a presença conta como hora de formação.",
-          "assinatura": "Coordenação de enfermagem"
+          "assinatura": "Coordenação de enfermagem",
+          "data": "publicado nesta semana"
+        },
+        "empresa": {
+          "data": "publicado nesta semana"
         }
       },
       "estado": "aprovada",
@@ -1120,7 +1146,7 @@
         },
         "empresa": {
           "legenda": "Time da expedição",
-          "quando": "Meta batida em outubro",
+          "quando": "Meta do mês batida",
           "kicker": "Mural da equipe",
           "titulo": "A próxima foto pode ser a sua",
           "apoio": "Mande a foto do seu time pelo QR e ela aparece aqui.",
@@ -1183,12 +1209,12 @@
       ],
       "textos": {
         "empresa": {
-          "kicker": "Linha 2 · novembro",
+          "kicker": "Linha 2 · este mês",
           "titulo": "Peças produzidas no mês",
           "numero": "18.450",
           "unidade": "peças",
           "seta": "▲",
-          "tendencia": "12% sobre outubro",
+          "tendencia": "12% no mês",
           "meta": "Meta do mês: 17.000",
           "atualizado": "Atualizado às 14h"
         }
@@ -1216,10 +1242,10 @@
       "textos": {
         "empresa": {
           "iniciais": "JP",
-          "kicker": "Destaque de outubro",
+          "kicker": "Destaque do mês",
           "nome": "Juliana Prado",
           "setor": "Expedição · turno A",
-          "conquista": "Zerou os atrasos de entrega da linha 3 em outubro.",
+          "conquista": "Zerou os atrasos de entrega da linha 3.",
           "assinatura": "Escolhida pelos colegas do setor"
         },
         "comercio": {
@@ -1734,7 +1760,7 @@
           "kicker": "Saúde no trabalho",
           "titulo": "Vacinação aqui na empresa",
           "apoio": "Gripe e tétano, de graça para toda a equipe.",
-          "quando": "Quinta, 13 de novembro",
+          "quando": "Nesta quinta-feira",
           "onde": "Refeitório · das 9h às 15h"
         }
       },
@@ -2182,19 +2208,19 @@
           "selo": "Aviso",
           "titulo": "Fechados no feriado de quinta",
           "corpo": "Voltamos na sexta, no horário de sempre. Encomendas podem ser retiradas na quarta até as 20h.",
-          "quando": "Quinta, 20 de novembro"
+          "quando": "Nesta quinta-feira"
         },
         "saude": {
           "selo": "Aviso",
           "titulo": "Atendimento em horário especial",
           "corpo": "Na véspera do feriado a recepção fecha às 15h. Remarcações pelo telefone da clínica.",
-          "quando": "Quarta, 19 de novembro"
+          "quando": "Nesta quarta-feira"
         },
         "empresa": {
           "selo": "Comunicado",
           "titulo": "Estacionamento fechado para obra",
           "corpo": "Use a entrada da rua de trás. A portaria 2 fica aberta das 6h às 22h.",
-          "quando": "De 10 a 21 de novembro"
+          "quando": "Nas próximas duas semanas"
         }
       },
       "estado": "proposta",
@@ -2222,7 +2248,7 @@
       },
       "textos": {
         "saude": {
-          "periodo": "Até 30 de maio",
+          "periodo": "Até o fim do mês",
           "titulo": "Vacina da gripe",
           "titulo2": "já chegou",
           "apoio": "Aplicação na sala de serviços, por farmacêutico.",
@@ -2236,9 +2262,9 @@
           "local": "Na loja e no site"
         },
         "empresa": {
-          "periodo": "De 10 a 14 de junho",
+          "periodo": "Na próxima semana",
           "titulo": "SIPAT",
-          "titulo2": "2026",
+          "titulo2": "vem aí",
           "apoio": "Palestras, exames e a gincana da segurança.",
           "local": "No auditório, às 14h"
         }
@@ -2819,7 +2845,7 @@
       "textos": {
         "comercio": {
           "dia": "14",
-          "mes": "Sábado · junho",
+          "mes": "Neste sábado",
           "kicker": "Na loja",
           "titulo": "Degustação de pães de fermentação natural",
           "hora": "Das 9h às 12h",
@@ -2827,7 +2853,7 @@
         },
         "saude": {
           "dia": "22",
-          "mes": "Quarta · outubro",
+          "mes": "Nesta quarta",
           "kicker": "Roda de conversa",
           "titulo": "Outubro Rosa: tire as suas dúvidas",
           "hora": "Às 10h",
@@ -2835,7 +2861,7 @@
         },
         "empresa": {
           "dia": "10",
-          "mes": "Segunda · junho",
+          "mes": "Nesta segunda",
           "kicker": "SIPAT",
           "titulo": "Abertura da semana de prevenção",
           "hora": "Às 14h",
@@ -4253,7 +4279,7 @@
                 "marca": "Ótica Central",
                 "selo": "Lançamento",
                 "titulo": "Coleção",
-                "titulo2": "Verão 2027",
+                "titulo2": "de verão",
                 "apoio": "Armações leves, cores do mar e lentes polarizadas.",
                 "quando": "Já na loja"
               }
@@ -4290,7 +4316,7 @@
       "mensagens": [
         "Reserve com 15% de desconto",
         "Lentes polarizadas em todas as armações",
-        "Coleção nova na vitrine em novembro"
+        "Coleção nova na vitrine esta semana"
       ],
       "sobre": "Tela cheia para um lançamento: a novidade em destaque e a contagem regressiva embaixo.",
       "estado": "proposta",
@@ -7947,7 +7973,7 @@
                 "assunto": "Fechamento do mês na sexta: entregas até as 16h",
                 "texto": "Quem tiver pendência com cliente, avise o seu gestor até quinta. Obrigado a todos.",
                 "assinatura": "Diretoria",
-                "data": "publicado em 3 de novembro"
+                "data": "publicado nesta semana"
               }
             },
             {
@@ -8044,7 +8070,7 @@
                 "assunto": "Fechamento do mês na sexta: entregas até as 16h",
                 "texto": "Quem tiver pendência com cliente, avise o seu gestor até quinta. Obrigado a todos.",
                 "assinatura": "Diretoria",
-                "data": "publicado em 3 de novembro"
+                "data": "publicado nesta semana"
               }
             },
             {
@@ -8129,7 +8155,7 @@
                 "assunto": "Fechamento do mês na sexta: entregas até as 16h",
                 "texto": "Quem tiver pendência com cliente, avise o seu gestor até quinta. Obrigado a todos.",
                 "assinatura": "Diretoria",
-                "data": "publicado em 3 de novembro"
+                "data": "publicado nesta semana"
               }
             },
             {
@@ -9841,7 +9867,7 @@
             {
               "id": "indicador-turno",
               "campos": {
-                "kicker": "Novembro, até hoje",
+                "kicker": "Este mês, até hoje",
                 "titulo": "Metas do mês",
                 "atualizado": "Atualizado às 9h",
                 "rotulo1": "Declarações",
@@ -9892,7 +9918,7 @@
               "id": "gente-destaque",
               "campos": {
                 "iniciais": "MF",
-                "kicker": "Destaque de outubro",
+                "kicker": "Destaque do mês",
                 "nome": "Mariana Faria",
                 "setor": "Fiscal · 4 anos de casa",
                 "conquista": "Fechou o balanço de 40 clientes sem um dia de atraso.",
@@ -9971,7 +9997,7 @@
             {
               "id": "indicador-turno",
               "campos": {
-                "kicker": "Novembro, até hoje",
+                "kicker": "Este mês, até hoje",
                 "titulo": "Metas do mês",
                 "atualizado": "Atualizado às 9h",
                 "rotulo1": "Declarações",
@@ -10022,7 +10048,7 @@
               "id": "gente-destaque",
               "campos": {
                 "iniciais": "MF",
-                "kicker": "Destaque de outubro",
+                "kicker": "Destaque do mês",
                 "nome": "Mariana Faria",
                 "setor": "Fiscal · 4 anos de casa",
                 "conquista": "Fechou o balanço de 40 clientes sem um dia de atraso.",
@@ -10105,12 +10131,12 @@
             {
               "id": "indicador-meta",
               "campos": {
-                "kicker": "Linha 2 · novembro",
+                "kicker": "Linha 2 · este mês",
                 "titulo": "Peças produzidas no mês",
                 "numero": "18.450",
                 "unidade": "peças",
                 "seta": "▲",
-                "tendencia": "12% sobre outubro",
+                "tendencia": "12% no mês",
                 "meta": "Meta do mês: 17.000",
                 "atualizado": "Atualizado às 14h"
               }
@@ -10143,7 +10169,7 @@
               "id": "gente-destaque",
               "campos": {
                 "iniciais": "RS",
-                "kicker": "Destaque de outubro",
+                "kicker": "Destaque do mês",
                 "nome": "Roberto Silva",
                 "setor": "Usinagem · turno B",
                 "conquista": "Sugeriu a troca de ferramenta que cortou o refugo pela metade.",
@@ -10204,12 +10230,12 @@
             {
               "id": "indicador-meta",
               "campos": {
-                "kicker": "Linha 2 · novembro",
+                "kicker": "Linha 2 · este mês",
                 "titulo": "Peças produzidas no mês",
                 "numero": "18.450",
                 "unidade": "peças",
                 "seta": "▲",
-                "tendencia": "12% sobre outubro",
+                "tendencia": "12% no mês",
                 "meta": "Meta do mês: 17.000",
                 "atualizado": "Atualizado às 14h"
               }
@@ -10326,7 +10352,7 @@
               "id": "evento-foto",
               "campos": {
                 "dia": "14",
-                "mes": "Sábado · junho",
+                "mes": "Neste sábado",
                 "kicker": "Na loja",
                 "titulo": "Degustação de pães de fermentação natural",
                 "hora": "Das 9h às 12h",
@@ -10437,7 +10463,7 @@
                 "selo": "Aviso",
                 "titulo": "Fechados no feriado de quinta",
                 "corpo": "Voltamos na sexta, no horário de sempre. Encomendas podem ser retiradas na quarta até as 20h.",
-                "quando": "Quinta, 20 de novembro",
+                "quando": "Nesta quinta-feira",
                 "foto": "/pecas-ouro/fotos/padaria/balcao.jpg"
               }
             }
@@ -10984,7 +11010,7 @@
             {
               "id": "capa-campanha",
               "campos": {
-                "periodo": "Até 31 de janeiro",
+                "periodo": "Até o fim do mês",
                 "titulo": "Coleção",
                 "titulo2": "de verão",
                 "apoio": "Lentes com proteção UV e armações leves para o calor.",
@@ -11210,7 +11236,7 @@
                 "selo": "Novidade",
                 "titulo": "Agora com manicure aos domingos",
                 "corpo": "Das 9h às 14h, com hora marcada.",
-                "quando": "A partir de 7 de dezembro",
+                "quando": "A partir da semana que vem",
                 "foto": "/pecas-ouro/fotos/salao/pinceis.jpg"
               }
             }
@@ -11266,7 +11292,7 @@
             {
               "id": "capa-campanha",
               "campos": {
-                "periodo": "Até 30 de maio",
+                "periodo": "Até o fim do mês",
                 "titulo": "Vacina da gripe",
                 "titulo2": "já chegou",
                 "apoio": "Aplicação na sala de serviços, por farmacêutico.",
@@ -11563,7 +11589,7 @@
               "id": "evento-foto",
               "campos": {
                 "dia": "22",
-                "mes": "Quarta · outubro",
+                "mes": "Nesta quarta",
                 "kicker": "Roda de conversa",
                 "titulo": "Outubro Rosa: tire as suas dúvidas",
                 "hora": "Às 10h",
@@ -11845,7 +11871,7 @@
                 "selo": "Comunicado",
                 "titulo": "Estacionamento fechado para obra",
                 "corpo": "Use a entrada da rua de trás. A portaria 2 fica aberta das 6h às 22h.",
-                "quando": "De 10 a 21 de novembro",
+                "quando": "Nas próximas duas semanas",
                 "foto": "/pecas-ouro/fotos/escritorio/sala-reuniao.jpg"
               }
             }
@@ -11942,7 +11968,7 @@
               "id": "evento-foto",
               "campos": {
                 "dia": "28",
-                "mes": "Sexta · novembro",
+                "mes": "Nesta sexta",
                 "kicker": "Confraternização",
                 "titulo": "Café da manhã de fim de ano",
                 "hora": "Às 8h30",
@@ -12133,7 +12159,7 @@
                 "selo": "Comunicado",
                 "titulo": "Parada da linha 2 para manutenção",
                 "corpo": "Sábado, das 6h às 14h. O turno B apoia o setor de pintura.",
-                "quando": "Sábado, 15 de novembro",
+                "quando": "Neste sábado",
                 "foto": "/pecas-ouro/fotos/industria/conteineres.jpg"
               }
             }

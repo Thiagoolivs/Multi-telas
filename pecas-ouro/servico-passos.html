@@ -107,6 +107,15 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
   .passos li { padding: .8cqh 0; }
   .passos small { margin-top: .6cqh; line-height: 1.12; }
 }
+/*
+ * Com a margem de 4% ou mais (1264×696 e menor), mesmo apertados, os três
+ * detalhes passavam do alto e do pé. Eles saem (o texto de apoio primeiro):
+ * ficam o número e o nome de cada passo.
+ */
+@container (aspect-ratio >= 1.74) and (min-height: 600px) and (max-height: 700px) {
+  .passos small { display: none; }
+  .passos li { padding: 2.4cqh 0; }
+}
 </style>
 <section class="mt-peca servico-passos">
   <div class="marca-nome" data-campo="marca" data-repete="marca">Studio <b>Bella</b></div>

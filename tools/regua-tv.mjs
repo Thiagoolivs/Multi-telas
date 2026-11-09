@@ -18,7 +18,8 @@
  * As peças-ouro (as artes da IA) são conferidas na bancada, peça a peça:
  * em tela cheia (na marca padrão e nas 11 marcas do manifesto), e nas duas
  * zonas do Corporativo no escritório e no balcão, no tamanho da bancada e
- * no da TV com a margem contra o corte de 2% e de 3%.
+ * no da TV com a margem contra o corte de 2%, 3% e 5%, e o destaque sem
+ * mensagem no rodapé (a principal cresce).
  *
  * Saída: o relatório no terminal e, com REGUA_SAIDA=<pasta>, as fotos e o
  * medidas.json lá.
@@ -371,7 +372,21 @@ const DESTAQUE_NO_BALCAO = 'Destaque · Corporativo';
  * bancada a desenha no tamanho de referência): entra na conta das marcas
  * na primeira passada.
  */
-const MARGENS_NA_TV = [2, 3];
+/*
+ * E a de 5%, o fim da escala do Encaixe (1236×674 e 452×674): de 4% a 5%,
+ * 19 peças × zona ainda cediam de 94% a 97% (indicador-turno, servico-vacina,
+ * qr-foto e outras). Com o redesenho, nenhuma cede de 0 a 5% nas 11 marcas.
+ */
+const MARGENS_NA_TV = [2, 3, 5];
+/*
+ * O RODAPÉ SEM MENSAGEM some na TV, e a principal do Corporativo cresce para
+ * baixo: 1377×913 (js/templates.js, MT_juntarZonasVazias). Lá cediam 14
+ * destaques nas 11 marcas (servico-ramais com 69%, cardapio-categorias com
+ * 78%): a proporção (1,51) caía entre a da TV e a da tela cheia. Bloqueio,
+ * só no destaque: a lateral só fica mais alta (504×913), e lá só gente-mes
+ * cedia (o título da fonte larga, já resolvido).
+ */
+const SEM_RODAPE = { rodape: 'vazio', margem: 0 };
 const PENDENTES = new Set([]);
 // A meta da fase 3 para as zonas (lateral e bloco): 85% das fotos na régua.
 const META_ZONAS = 0.85;
@@ -388,11 +403,11 @@ async function conferirPecas(navegador, local, soZonas, extra) {
   const saida = [];
   // Sem local: as peças de destaque, na conta da tela cheia. Com local: também as da lateral (a zona pequena ganha piso).
   // Com soZonas (o balcão), só aquelas zonas entram na conta.
-  const entra = (y) => y.papeis.includes('destaque') || (local && y.papeis.includes('lateral'));
+  const entra = (y) => y.papeis.includes('destaque') || (local && !x.soDestaque && y.papeis.includes('lateral'));
   const ordem = manifesto.pecas.filter(entra);
   const fila = ordem.slice();
   const busca = (x.todasAsMarcas ? '&marca=todas&modo=claro' : '&modo=todos') + '&tamanho=caber' + (local ? '&local=' + local : '')
-    + (x.margem != null ? '&margem=' + x.margem : '');
+    + (x.margem != null ? '&margem=' + x.margem : '') + (x.rodape ? '&rodape=' + x.rodape : '') + (x.soCorporativo ? '&zonas=corporativo' : '');
   const trabalhar = async () => {
     const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
     for (let peca = fila.shift(); peca; peca = fila.shift()) {
@@ -451,6 +466,8 @@ async function main() {
   const senhas = [];
   let pecas = [];
   let marcas = [];
+  let semRodape = [];
+  const inicio = Date.now();
   try {
     for (const [frente, tipos] of Object.entries(CASOS)) {
       const painel = await navegador.newContext();
@@ -546,17 +563,19 @@ async function main() {
       for (const tv of Object.values(tvs)) await tv.p.context().close();
     }
     pecas = (await conferirPecas(navegador)).concat(await conferirPecas(navegador, 'escritorio'), await conferirPecas(navegador, 'balcao', [LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO]));
-    // As 11 marcas: a tela cheia e o Corporativo no balcão com a margem de 2%; depois o Corporativo com 3% (uma página por peça).
+    // As 11 marcas: a tela cheia e o Corporativo no balcão com a margem de 2%; depois o Corporativo com 3% e 5%, e o destaque sem mensagem no rodapé (uma página por peça).
     for (const margem of MARGENS_NA_TV) {
       const zonas = (margem === MARGENS_NA_TV[0] ? FORMATOS_CHEIOS : []).concat(LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO);
-      const desta = await conferirPecas(navegador, 'balcao', zonas, { todasAsMarcas: true, margem });
+      // Depois da primeira, a bancada desenha só o Corporativo (a tela cheia já foi conferida e não muda com a margem).
+      const desta = await conferirPecas(navegador, 'balcao', zonas, { todasAsMarcas: true, margem, soCorporativo: margem !== MARGENS_NA_TV[0] });
       marcas = marcas.concat(desta.map((x) => Object.assign(x, { margem })));
     }
+    semRodape = await conferirPecas(navegador, 'balcao', [DESTAQUE_NO_BALCAO], Object.assign({ todasAsMarcas: true, soDestaque: true, soCorporativo: true }, SEM_RODAPE));
   } finally {
     await navegador.close();
     parar();
   }
-  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, marcas, senhas }, null, 1));
+  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, marcas, semRodape, senhas }, null, 1));
 
   let reprova = false;
   for (const [, , nome, bloqueia] of ARRANJOS) {
@@ -627,6 +646,11 @@ async function main() {
       for (const x of naMargem.filter((y) => y.cedeu < 1)) { console.log(cedeuNaMarca(x)); reprova = true; }
     }
   }
+  if (semRodape.length) {
+    console.log('Peças-ouro em Destaque · balcão sem mensagem no rodapé (' + semRodape[0].tamanho + ', ' + new Set(semRodape.map((x) => x.marca)).size + ' marcas): '
+      + semRodape.filter((x) => x.cedeu >= 1).length + ' de ' + semRodape.length + ' com a letra inteira');
+    for (const x of semRodape.filter((y) => y.cedeu < 1)) { console.log(cedeuNaMarca(x)); reprova = true; }
+  }
   // Fase 10: o contraste de todo texto, em todo arranjo.
   for (const [, , nome] of ARRANJOS) {
     const doArranjo = fotos.filter((f) => f.arranjo === nome && f.contraste.length);
@@ -650,9 +674,11 @@ async function main() {
   for (const f of comErro) console.log('  erro na TV em ' + f.id + ': ' + f.erros[0]);
   if (comErro.length) reprova = true;
   if (reprova) {
+    console.log('\nTempo: ' + Math.round((Date.now() - inicio) / 1000) + ' s');
     console.log('\nA régua da TV reprovou. A letra mínima é ' + PISO + '% do lado menor da TV, e o contraste de todo texto é ' + CONTRASTE + ':1 (docs/qa-total/REFERENCIAS.md).');
     process.exit(1);
   }
+  console.log('\nTempo: ' + Math.round((Date.now() - inicio) / 1000) + ' s');
   console.log('\nA régua da TV passou.');
 }
 

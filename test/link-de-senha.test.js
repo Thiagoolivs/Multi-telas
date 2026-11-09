@@ -38,8 +38,23 @@ function cliente(porta) {
   };
 }
 
+/*
+ * Porta livre dada pelo sistema, e não sorteada: com a porta sorteada, dois
+ * servidores de teste (deste arquivo ou de outro rodando junto) às vezes
+ * caíam na mesma; o segundo não subia, o "/tv" respondia pelo primeiro e o
+ * link de troca saía no log do servidor errado (CI do #332, 09/11).
+ */
+function portaLivre() {
+  return new Promise((ok, falha) => {
+    const s = require('node:net').createServer();
+    s.unref();
+    s.on('error', falha);
+    s.listen(0, '127.0.0.1', () => { const p = s.address().port; s.close(() => ok(p)); });
+  });
+}
+
 async function subir(t, envExtra) {
-  const porta = 4600 + Math.floor(Math.random() * 300);
+  const porta = await portaLivre();
   const dados = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-link-'));
   const env = { ...process.env, PORT: String(porta), STORAGE: 'local', SKIP_VERIFY: '1', DATABASE_URL: '', DATA_DIR: dados,
     AI_PROVIDER: 'dev', RESEND_API_KEY: '', BREVO_API_KEY: '', APP_URL: '', ...envExtra };
@@ -50,9 +65,14 @@ async function subir(t, envExtra) {
   servidor.stderr.on('data', (c) => { saida += c; });
   t.after(() => { servidor.kill(); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* o Windows segura o arquivo */ } });
   const pedir = cliente(porta);
+  // Pronto é ESTE servidor no ar (o log diz a porta dele), e não qualquer um respondendo nessa porta.
+  const noAr = () => new RegExp('servidor\\.no-ar.*"porta":"' + porta + '"').test(saida);
   let ok = false;
-  for (let i = 0; i < 160 && !ok; i++) { try { await pedir('/tv'); ok = true; } catch (e) { await new Promise((r) => setTimeout(r, 250)); } }
-  assert.ok(ok, 'o servidor de teste não subiu');
+  for (let i = 0; i < 160 && !ok; i++) {
+    if (servidor.exitCode !== null) break;
+    try { if (noAr()) { await pedir('/tv'); ok = true; } else throw new Error('subindo'); } catch (e) { await new Promise((r) => setTimeout(r, 250)); }
+  }
+  assert.ok(ok, 'o servidor de teste não subiu: ' + saida.slice(-500));
   return { pedir, saida: () => saida };
 }
 

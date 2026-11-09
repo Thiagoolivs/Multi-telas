@@ -90,15 +90,25 @@ h1 { margin-top: 2.4cqmin; font: 600 max(var(--mt-piso, 0cqw), calc(8.4cqmin * v
   .placar { margin-top: 2.4cqmin; row-gap: 2cqmin; }
   .base { margin-top: 3cqmin; padding-top: 2cqmin; row-gap: .6cqmin; line-height: 1.1; }
 }
+/*
+ * A lateral com a margem contra o corte de 5% (452×674; a caixa sem o
+ * padding abaixo de 598 px): o kicker e a meta chegavam às bordas. Os
+ * respiros apertam mais.
+ */
+@container (max-width: 700px) and (max-height: 598px) {
+  h1 { margin-top: 1cqmin; }
+  .placar { margin-top: 1.4cqmin; }
+  .base { margin-top: 2cqmin; padding-top: 1.6cqmin; }
+}
 </style>
 <section class="mt-peca indicador-meta">
   <div class="cabeca">
-    <p class="kicker" data-entrada="esquerda"><i aria-hidden="true"></i><span data-campo="kicker">Linha 2 · novembro</span></p>
+    <p class="kicker" data-entrada="esquerda"><i aria-hidden="true"></i><span data-campo="kicker">Linha 2 · este mês</span></p>
     <h1 data-campo="titulo" data-entrada="subir" data-ordem="1">Peças produzidas no mês</h1>
   </div>
   <div class="placar">
     <p class="numero" data-entrada="crescer" data-ordem="2"><b data-campo="numero">18.450</b><small data-campo="unidade">peças</small></p>
-    <p class="tendencia" data-entrada="aparecer" data-ordem="3"><span data-campo="seta">▲</span><span data-campo="tendencia">12% sobre outubro</span></p>
+    <p class="tendencia" data-entrada="aparecer" data-ordem="3"><span data-campo="seta">▲</span><span data-campo="tendencia">12% no mês</span></p>
   </div>
   <div class="base" data-entrada="aparecer" data-ordem="4">
     <b data-campo="meta">Meta do mês: 17.000</b>

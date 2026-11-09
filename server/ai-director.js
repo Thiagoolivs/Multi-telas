@@ -22,9 +22,31 @@ const fontMetrics = require('./font-metrics');
 const { validarComposicao } = require('./composer');
 const memoria = require('./ai-memoria');
 const compositor = require('./compositor');
+const Paletas = require('../js/paletas.js');
 
 // A direção visual do plano vira o modo dos tokens da peça em HTML (js/tokens.js).
 const MODO_DA_DIRECAO = { chapado: 'marca', cartaz: 'escuro', contraste: 'escuro', suave: 'claro' };
+
+/*
+ * O CLIMA DA MARCA manda na peça feita pela IA (lote de 06/11). A conta
+ * escolhe na Marca o Escuro elegante, o Claro limpo ou a Cor da marca forte
+ * (marcas.clima; js/paletas.js, CLIMAS), e a TV, o tema e a arte do
+ * ambiente seguem esse clima. A peça da IA saía no modo da direção de arte
+ * do plano (a "suave" clara na conta escura, o "chapado" na clínica de
+ * clima claro). Com clima, o modo da peça é o clima, e a direção que não
+ * combina com ele vira a do clima: é ela que decide a paleta da campanha
+ * (ds.buildPalette) e o pedido da foto. A direção que já combina (o cartaz
+ * e o contraste no escuro) fica. Sem clima (a conta de antes), tudo como
+ * era: o modo sai da direção.
+ */
+const DIRECAO_DO_CLIMA = { escuro: 'contraste', claro: 'suave', marca: 'chapado' };
+const climaDe = (marca) => (marca && Paletas.ehClima(marca.clima) ? marca.clima : '');
+function direcaoNoClima(direcao, marca) {
+  const clima = climaDe(marca);
+  if (!clima || MODO_DA_DIRECAO[direcao] === clima) return direcao;
+  return DIRECAO_DO_CLIMA[clima];
+}
+const modoDaPeca = (direcao, marca) => climaDe(marca) || MODO_DA_DIRECAO[direcao] || 'escuro';
 
 /* ---------------- Etapa 0: o briefing ---------------- */
 
@@ -469,9 +491,9 @@ function normalizarPlano(p, ctx, brief) {
   const brand = ds.okHex(ctx.brand || corMarca || id.brand, '#1e3a8a');
   const brand2 = ds.okHex(ctx.brand2 || corMarca2 || id.brand2, null) || ds.girarMatiz(brand, 35);
   const estilo = ['vibrante', 'sobrio', 'elegante', 'energetico'].includes(id.estilo) ? id.estilo : 'vibrante';
-  // Direção fixada pela marca só é respeitada se a empresa a definiu.
-  const direcao = ds.DIRECOES[m.direcao] ? m.direcao
-    : ds.DIRECOES[id.direcao] ? id.direcao : 'chapado';
+  // Direção fixada pela marca só é respeitada se a empresa a definiu. O clima da marca vence as duas (direcaoNoClima).
+  const direcao = direcaoNoClima(ds.DIRECOES[m.direcao] ? m.direcao
+    : ds.DIRECOES[id.direcao] ? id.direcao : 'chapado', m);
 
   /*
    * imagemBase: índice do acervo da empresa. Só vale se apontar para uma foto
@@ -1233,7 +1255,7 @@ function rascunhoDaPeca(peca, plano, ctx, brief) {
   const temFoto = !!(peca.bgImagem || (peca.precisaImagem && peca.promptImagem));
   const item = compositor.preencherOuro({
     pedido: brief, empresa: ctx.empresa || '', marca: marcaDoPlano(plano, ctx),
-    modo: MODO_DA_DIRECAO[plano.identidade.direcao] || 'escuro',
+    modo: modoDaPeca(plano.identidade.direcao, ctx.marca),
     foto: temFoto ? (peca.bgImagem || '/media/rascunho.jpg') : null,
     textos: { kicker: peca.kicker, titulo: peca.headline, apoio: peca.sub, cta: peca.cta },
   });
@@ -1432,7 +1454,7 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
    * "atual", e a que fica de reserva enquanto o motor novo se prova.
    */
   if (ctx.motorHtml) {
-    const modo = MODO_DA_DIRECAO[plano.identidade.direcao] || 'escuro';
+    const modo = modoDaPeca(plano.identidade.direcao, ctx.marca);
     const marcaDaPeca = marcaDoPlano(plano, ctx);
     // Uma peça em HTML serve deitada e em pé: a cópia de outro formato reaproveita, sem nova chamada.
     const porManchete = new Map();
@@ -1557,7 +1579,7 @@ async function dirigir(brief, ctx, { onImagem, onLerReferencias, onCatalogar, on
 }
 
 module.exports = { juntarPedido,
-  FAIXAS, FAIXAS_OK, MODO_DA_DIRECAO,
+  FAIXAS, FAIXAS_OK, MODO_DA_DIRECAO, direcaoNoClima, modoDaPeca,
   dirigir, planejar, comporPeca, layoutReserva, normalizarPlano, comFotoDeDestaque, comFotoNoDestaque,
   enriquecerBrief, textoDaCritica,
 };
