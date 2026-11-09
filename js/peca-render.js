@@ -54,15 +54,79 @@
     crescer: 'from{opacity:0;scale:.86}',
     estourar: '0%{opacity:0;scale:.6}60%{opacity:1;scale:1.06}100%{scale:1}',
     girar: 'from{opacity:0;rotate:-12deg;scale:.9}',
+    /*
+     * O MOVIMENTO DE CINEMA (lote de 09/11). As keyframes daqui são as do
+     * ELEMENTO; o que precisa de medida (a máscara de cada linha, o número
+     * que anda, a origem da foto) o player completa quando a peça ganha
+     * tamanho na tela (coreografia, mais abaixo):
+     *
+     *   revelar    a RESERVA: o texto sobe inteiro. Medidas as linhas, o
+     *              elemento fica parado e cada linha sobe de dentro da sua
+     *              própria máscara (DO_PLAYER.linha);
+     *   varrer     o bloco abre a partir de uma borda (`data-origem`);
+     *   desenhar   o filete se desenha de uma ponta à outra;
+     *   contar     o número aparece, e o player o faz subir do zero;
+     *   aproximar  chega 6% maior e assenta.
+     *
+     * Sem opacidade na "varrer" e na "desenhar": um bloco cheio que abre e
+     * um traço que corre já começam invisíveis (escala zero).
+     */
+    revelar: 'from{opacity:0;translate:0 24%}',
+    varrer: 'from{scale:0 1}',
+    desenhar: 'from{scale:0 1}',
+    contar: 'from{opacity:0}',
+    aproximar: 'from{opacity:0;scale:1.06}',
   };
   const CONTINUAS = {
     flutuar: '0%,100%{translate:0 -1.2%}50%{translate:0 1.2%}',
     pulsar: '0%,100%{scale:1}50%{scale:1.035}',
     balancar: '0%,100%{rotate:-2deg}50%{rotate:2deg}',
     brilhar: '0%,100%{opacity:1}50%{opacity:.72}',
+    /*
+     * A câmera lenta da foto anima `transform`, e não `scale`: ela só é
+     * posta numa foto SEM transform próprio (o player confere), e precisa
+     * se somar à "aproximar", que anima `scale` na mesma foto.
+     */
+    kenburns: 'from{transform:none}to{transform:scale(1.08)}',
+    // O reflexo é uma faixa de luz que o PLAYER põe por cima do elemento (não mexe nele): ela atravessa e sai.
+    reflexo: 'from{transform:translateX(-200%) skewX(-16deg)}to{transform:translateX(300%) skewX(-16deg)}',
+  };
+  /*
+   * Keyframes que não são de nenhum nome do vocabulário: a variante em pé
+   * da "varrer" e da "desenhar" e a máscara de cada linha da "revelar".
+   * A linha anda um pouco mais que a PRÓPRIA altura, que é a da máscara:
+   * começa inteira abaixo dela, escondida, e sobe até o lugar. Com 100%
+   * cravados, a borda das duas máscaras caía no mesmo meio pixel e uma
+   * fresta de letra aparecia antes da hora (visto no vídeo da citação).
+   */
+  const DO_PLAYER = {
+    'varrer-v': 'from{scale:1 0}',
+    'desenhar-v': 'from{scale:1 0}',
+    linha: 'from{transform:translateY(106%)}to{transform:none}',
   };
   // `rolagem`: segundos por caractere das mensagens do rodapé.
   const RITMO = { duracao: 0.7, passo: 0.15, inicio: 0.15, continua: 3.6, curva: 'cubic-bezier(.2,.7,.2,1)', rolagem: 0.22 };
+  /*
+   * O tempo e a curva de cada entrada de cinema (as outras: RITMO). Mais
+   * longas que as de sempre, e com desaceleração longa: é o que lê como
+   * "câmera", e não como slide. A "varrer" acelera e freia (abre como uma
+   * cortina); a "contar" esmaece rápido e o número anda `conta` segundos.
+   */
+  const TEMPO = {
+    revelar: { duracao: 0.95, curva: 'cubic-bezier(.16,1,.3,1)' },
+    varrer: { duracao: 0.85, curva: 'cubic-bezier(.77,0,.18,1)' },
+    desenhar: { duracao: 0.9, curva: 'cubic-bezier(.65,0,.35,1)' },
+    contar: { duracao: 0.45, curva: 'cubic-bezier(.2,.7,.2,1)' },
+    aproximar: { duracao: 1.2, curva: 'cubic-bezier(.16,1,.3,1)' },
+  };
+  /*
+   * linha     entre uma linha e a próxima na "revelar";
+   * conta     quanto o número leva do zero ao valor;
+   * reflexo   quanto a luz leva para atravessar, e a folga depois da entrada;
+   * simples   o esmaecer do modo leve (TV fraca) e de quem pediu menos movimento;
+   * kenburns  o mínimo de segundos da câmera lenta (ela dura a peça inteira).
+   */
+  const CINEMA = { linha: 0.09, conta: 1.5, reflexo: 1.2, folgaReflexo: 0.2, simples: 0.6, kenburns: 6 };
   // Espaço largo dos dois lados do ponto: espaço comum seria colapsado.
   const SEPARADOR = ' · ';
   const ROLAR = 'from{translate:0 0}to{translate:-50% 0}';
@@ -70,6 +134,7 @@
   function keyframes() {
     return Object.keys(ENTRADAS).map((k) => '@keyframes mt-pe-' + k + '{' + ENTRADAS[k] + '}').join('')
       + Object.keys(CONTINUAS).map((k) => '@keyframes mt-pc-' + k + '{' + CONTINUAS[k] + '}').join('')
+      + Object.keys(DO_PLAYER).map((k) => '@keyframes mt-px-' + k + '{' + DO_PLAYER[k] + '}').join('')
       + '@keyframes mt-pr-rolar{' + ROLAR + '}';
   }
 
@@ -200,7 +265,9 @@
    * opts:
    *   marca        { cores, fonteTitulo, fonteApoio } quando o item não traz
    *   rascunho     true desenha o wireframe (tokens do rascunho, foto silhueta)
-   *   leve         true sem animação (box que se mostrou lento, js/perf.js)
+   *   leve         true sem animação nenhuma (a miniatura do painel, o rasterizador)
+   *   movimento    'completo' (padrão) | 'simples' (TV fraca, js/perf.js: as
+   *                entradas só esmaecem, nada contínuo) | 'parado' (= leve)
    *   marcaNaTela  true quando a tela já mostra a marca (há cabeçalho): some
    *                o que a peça marcou com data-repete="marca"
    *   hostsMidia   hosts aceitos para foto além de /media/ (ver peca-html.js)
@@ -347,7 +414,9 @@
     const k = palco.offsetWidth ? P.width / palco.offsetWidth : 1;
     const mx = 16 * k, my = (palco.offsetHeight <= 220 ? 6 : 16) * k, tol = 2 * k;
     const doc = palco.ownerDocument;
-    const campos = Array.prototype.map.call(palco.querySelectorAll('[data-campo],[data-vivo],[data-campo-qr]'), (el) => {
+    // As cópias da "revelar" (máscaras por cima do original, por um segundo) não são campos: o original é medido.
+    const daPeca = Array.prototype.filter.call(palco.querySelectorAll('[data-campo],[data-vivo],[data-campo-qr]'), (el) => !camadaDoPlayer(el));
+    const campos = daPeca.map((el) => {
       let rs = [];
       if (el.tagName !== 'IMG' && doc.createRange && String(el.textContent || '').trim()) {
         const r = doc.createRange();
@@ -397,6 +466,7 @@
     const els = palco.querySelectorAll('*');
     for (let i = 0; i < els.length; i++) {
       const el = els[i];
+      if (camadaDoPlayer(el)) continue;
       if (el.hasAttribute('data-mt-piso')) { el.style.removeProperty('font-size'); el.removeAttribute('data-mt-piso'); }
       if (!piso) continue;
       let temTexto = false;
@@ -874,6 +944,674 @@
       + cssSemCq(cssDaPeca, m.pw, m.ph);
   }
 
+  /* ============ O movimento de cinema: a coreografia da peça ============
+   *
+   * A peça DECLARA e o player EXECUTA (PLANO §4.13). O que cada atributo
+   * pede está em js/animacao.js (os nomes, que são contrato) e nas
+   * keyframes do topo deste arquivo. Aqui mora o que precisa da peça já
+   * desenhada na tela:
+   *
+   *   revelar   mede as linhas do texto e põe, por cima do elemento, uma
+   *             máscara por linha (overflow escondido). Dentro de cada uma
+   *             vai uma CÓPIA do conteúdo, deslocada para mostrar só aquela
+   *             linha, e a cópia sobe de baixo. O original fica no lugar,
+   *             invisível (visibility), segurando o layout — nada da peça
+   *             muda de tamanho nem de lugar — e volta quando a última linha
+   *             assenta. As máscaras e as cópias somem: o repouso é o
+   *             elemento de sempre, idêntico.
+   *   contar    mede a largura do número no repouso e a prende (só enquanto
+   *             conta), põe os algarismos de largura igual e anda com eles
+   *             do zero ao valor. O último quadro é o texto ORIGINAL, letra
+   *             por letra. Se o texto mudar por fora no meio (campo vivo,
+   *             contagem regressiva), o novo vira o alvo.
+   *   kenburns  a foto cresce 8% durante a peça inteira, e de volta se a
+   *   aproximar peça ficar no ar (vai e volta). Só cresce para o lado em que
+   *             alguém a corta (borda da peça, quadro com overflow
+   *             escondido): crescer para o lado do texto passaria por cima
+   *             dele. Cortada dos dois lados, cresce em direção ao foco que
+   *             o cliente tocou (espacos.<campo>.foco). Num quadro solto
+   *             (cartão com legenda), a câmera lenta não roda.
+   *   reflexo   uma faixa de luz atravessa o elemento UMA vez, depois da
+   *             entrada, e a camada dela é tirada.
+   *
+   * Só `transform` e `opacity` se animam. O resto (largura presa, a
+   * posição relativa que segura a máscara, a visibilidade do original) é
+   * posto uma vez, devolvido no fim, e nunca animado.
+   *
+   * O relógio: as entradas de CSS começam quando a peça entra na tela; a
+   * coreografia mede no primeiro quadro em que ela tem tamanho (o mesmo
+   * em que o piso da régua é medido) e recomeça as entradas ali, que é o
+   * mesmo instante. Quem anuncia a peça pode pedir que ela espere a
+   * transição (`data-mt-espera` num ancestral, em segundos: js/player.js).
+   */
+  const ORIGEM_CSS = { esquerda: '0% 50%', direita: '100% 50%', cima: '50% 0%', baixo: '50% 100%' };
+  const ATRASO_MAX = 6;
+  const PROPRIO = Object.prototype.hasOwnProperty;
+
+  /*
+   * O jeito de mexer, a partir do que quem monta pediu:
+   *   completo  o vocabulário inteiro;
+   *   simples   toda entrada vira um esmaecer, e nada contínuo: a TV fraca
+   *             (js/perf.js) e quem pediu ao sistema menos movimento;
+   *   parado    nada se mexe: a miniatura do painel, a foto do rasterizador.
+   * `leve: true` sem `movimento` é o "parado" de sempre (o painel pede assim).
+   */
+  function movimentoDe(o, menosMovimento) {
+    const x = o || {};
+    const m = x.movimento === 'completo' || x.movimento === 'simples' || x.movimento === 'parado' ? x.movimento : (x.leve ? 'parado' : 'completo');
+    return m === 'completo' && menosMovimento ? 'simples' : m;
+  }
+
+  function pedeMenosMovimento(janela) {
+    try { return !!(janela && janela.matchMedia && janela.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+    catch (e) { return false; }
+  }
+
+  /*
+   * A animação de UM elemento, como o texto do `animation` — pura, para o
+   * teste. `a`: o que a peça declarou ({ entrada, continua, ordem, atraso,
+   * origem }); `m`: o que a coreografia mediu na tela ({ vertical, linhas,
+   * kenburns: { duracao } }). Devolve { animacao, origem, inicio, fim,
+   * entrada }: `origem` é o transform-origin que a entrada pede (null
+   * quando não pede); `inicio` e `fim` da entrada, em segundos.
+   */
+  function animacaoDoElemento(a, modo, espera, m) {
+    const med = m || {};
+    const ordem = Math.max(0, Math.min(20, Number(a.ordem) || 0));
+    const extra = Math.max(0, Math.min(ATRASO_MAX, Number(a.atraso) || 0));
+    const inicio = RITMO.inicio + ordem * RITMO.passo + extra + Math.max(0, Number(espera) || 0);
+    const s = (n) => Math.round(n * 100) / 100 + 's';
+    const e = a.entrada && PROPRIO.call(ENTRADAS, a.entrada) ? a.entrada : '';
+    const c = a.continua && PROPRIO.call(CONTINUAS, a.continua) ? a.continua : '';
+    const fora = { animacao: '', origem: null, inicio, fim: inicio, entrada: e };
+    if (modo === 'parado' || (!e && !c)) return fora;
+    if (modo === 'simples') {
+      // A TV fraca: o elemento só esmaece, na vez dele. Nada contínuo, nada de máscara nem de conta.
+      if (!e) return fora;
+      return { animacao: 'mt-pe-aparecer ' + s(CINEMA.simples) + ' ease-out ' + s(inicio) + ' both', origem: null, inicio, fim: inicio + CINEMA.simples, entrada: e };
+    }
+    const partes = [];
+    let fim = inicio;
+    let origem = null;
+    if (e) {
+      const t = TEMPO[e] || { duracao: RITMO.duracao, curva: RITMO.curva };
+      let nome = 'mt-pe-' + e;
+      if (e === 'varrer' || e === 'desenhar') {
+        // A origem decide o eixo: de cima ou de baixo, em pé. Sem origem, a "desenhar" segue o formato do traço.
+        const pe = a.origem === 'cima' || a.origem === 'baixo' || (!ORIGEM_CSS[a.origem] && e === 'desenhar' && !!med.vertical);
+        if (pe) nome = 'mt-px-' + e + '-v';
+        origem = ORIGEM_CSS[ORIGEM_CSS[a.origem] ? a.origem : (pe ? 'cima' : 'esquerda')];
+      }
+      if (e === 'revelar' && med.linhas > 0) {
+        // As linhas já estão nas máscaras: quem sobe são elas (revelarPorLinha), o elemento fica parado.
+        fim = inicio + t.duracao + (med.linhas - 1) * CINEMA.linha;
+      } else {
+        partes.push(nome + ' ' + s(t.duracao) + ' ' + t.curva + ' ' + s(inicio) + ' both');
+        fim = inicio + (e === 'contar' ? CINEMA.conta : t.duracao);
+      }
+    }
+    if (c === 'kenburns') {
+      // Só com a origem medida (a foto tem para onde crescer): sem ela, a foto fica parada.
+      if (med.kenburns) partes.push('mt-pc-kenburns ' + s(med.kenburns.duracao) + ' cubic-bezier(.45,0,.55,1) ' + s(inicio) + ' infinite alternate both');
+    } else if (c && c !== 'reflexo') {
+      /*
+       * A contínua começa DEPOIS da entrada e sem `fill` para trás: com
+       * `both`, o primeiro quadro dela valeria durante a espera e
+       * atropelaria a entrada, que mexe na mesma propriedade.
+       */
+      partes.push('mt-pc-' + c + ' ' + RITMO.continua + 's ease-in-out ' + s(fim) + ' infinite');
+    }
+    return { animacao: partes.join(','), origem, inicio, fim, entrada: e };
+  }
+
+  /*
+   * O número a caminho do valor final. `p` vai de 0 (o zero) a 1 (o texto
+   * final, IGUAL, letra por letra). Só os algarismos andam: o "R$", a
+   * vírgula, o ponto do milhar e o resto do texto ficam como estão. Um
+   * número com ponto de milhar ("1.299,90") continua com ponto; os
+   * centavos, os minutos e o que já tinha zero na frente (",90", ":05",
+   * "04") guardam o zero. Antes do fim, nunca chega ao valor: o último
+   * passo é sempre o texto original.
+   */
+  const NUMERO_BR = /\d{1,3}(?:\.\d{3})+(?:,\d+)?|\d+(?:,\d+)?/g;
+  function numeroAgora(tok, antes, q) {
+    const virgula = tok.indexOf(',');
+    const inteira = virgula < 0 ? tok : tok.slice(0, virgula);
+    const decimais = virgula < 0 ? '' : tok.slice(virgula + 1);
+    const algarismos = inteira.replace(/\./g, '');
+    const base = Math.pow(10, decimais.length);
+    const total = Number(algarismos) * base + (decimais ? Number(decimais) : 0);
+    const agora = Math.floor(total * q);
+    let int = String(Math.floor(agora / base));
+    if ((algarismos.length > 1 && algarismos.charAt(0) === '0') || antes === ',' || antes === ':') {
+      while (int.length < algarismos.length) int = '0' + int;
+    }
+    if (inteira.indexOf('.') >= 0) int = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    if (!decimais) return int;
+    let dec = String(agora % base);
+    while (dec.length < decimais.length) dec = '0' + dec;
+    return int + ',' + dec;
+  }
+  function contarTexto(final, p) {
+    return contarPartes([final], p)[0];
+  }
+
+  /*
+   * O mesmo, com o texto em PEDAÇOS: o preço da peça é "R$" num <small>,
+   * "24" num <span> e ",90" num <sup>. Contados à parte, o 24 parava no 23
+   * esperando o fim enquanto os centavos andavam (visto no vídeo). Aqui o
+   * número é lido no texto inteiro ("R$24,90") e cada pedaço recebe a parte
+   * dele, contada da DIREITA, que é onde ficam os centavos: "7,29" vira "7"
+   * e ",29". Devolve um texto por pedaço; com p = 1, os originais.
+   */
+  function contarPartes(finais, p) {
+    const partes = (finais || []).map((x) => String(x == null ? '' : x));
+    const k = Number(p);
+    if (!(k < 1)) return partes;
+    const q = Math.max(0, k);
+    const texto = partes.join('');
+    const trocas = [];
+    let agora = '';
+    let ate = 0;
+    texto.replace(NUMERO_BR, (tok, pos) => {
+      const novo = numeroAgora(tok, pos > 0 ? texto.charAt(pos - 1) : '', q);
+      trocas.push({ a: pos, b: pos + tok.length, novo });
+      agora += texto.slice(ate, pos) + novo;
+      ate = pos + tok.length;
+      return tok;
+    });
+    agora += texto.slice(ate);
+    // Uma posição do texto final no texto de agora: dentro de um número, contada da direita.
+    const mapa = (x) => {
+      let delta = 0;
+      for (let i = 0; i < trocas.length; i++) {
+        const t = trocas[i];
+        if (x <= t.a) break;
+        if (x < t.b) return t.a + delta + Math.max(0, t.novo.length - (t.b - x));
+        delta += t.novo.length - (t.b - t.a);
+      }
+      return x + delta;
+    };
+    let ini = 0;
+    return partes.map((x) => {
+      const a = mapa(ini), b = mapa(ini + x.length);
+      ini += x.length;
+      return agora.slice(a, b);
+    });
+  }
+
+  /*
+   * De onde a foto cresce (kenburns, aproximar) sem passar por cima do
+   * vizinho. `lados`: quais bordas da foto alguém corta ({ esquerda,
+   * direita, cima, baixo }); `foco`: { x, y } de 0 a 1. Em cada eixo:
+   * cortada dos dois lados, cresce em direção ao foco (o ponto fica e o
+   * resto se afasta — a câmera chega nele); de um lado só, a outra borda
+   * fica presa; de nenhum, não cresce (null).
+   */
+  function origemDaFoto(lados, foco) {
+    const l = lados || {};
+    const f = foco && isFinite(foco.x) && isFinite(foco.y) ? foco : { x: 0.5, y: 0.5 };
+    const eixo = (a, b, v) => (a && b ? Math.max(0, Math.min(1, Number(v))) : a ? 1 : b ? 0 : null);
+    const x = eixo(l.esquerda, l.direita, f.x);
+    const y = eixo(l.cima, l.baixo, f.y);
+    return x == null || y == null ? null : { x, y };
+  }
+
+  // A caixa de layout (sem transform) em pixels da peça, pela cadeia de offsetParent. Escondido: null.
+  function caixaNaPeca(el, peca) {
+    let x = 0, y = 0;
+    for (let n = el; n && n !== peca; n = n.offsetParent) {
+      if (!n.offsetParent) return null;
+      x += n.offsetLeft;
+      y += n.offsetTop;
+      // offsetLeft conta da borda de DENTRO do pai posicionado: soma a borda dele.
+      if (n.offsetParent !== peca) { x += n.offsetParent.clientLeft; y += n.offsetParent.clientTop; }
+    }
+    return { x, y, w: el.offsetWidth, h: el.offsetHeight };
+  }
+
+  // Quais bordas do elemento alguém corta: a peça (overflow escondido, sempre) ou um quadro no caminho.
+  function ladosCortados(el, peca, estilo) {
+    const caixa = caixaNaPeca(el, peca);
+    const lados = { esquerda: false, direita: false, cima: false, baixo: false };
+    if (!caixa) return lados;
+    const tol = 1.5;
+    for (let a = el.parentElement; a; a = a.parentElement) {
+      const cs = a === peca ? null : estilo(a);
+      const cortaX = !cs || cs.overflowX !== 'visible';
+      const cortaY = !cs || cs.overflowY !== 'visible';
+      const c = (cortaX || cortaY) && (a === peca ? { x: 0, y: 0 } : caixaNaPeca(a, peca));
+      if (c) {
+        const x0 = c.x + (a === peca ? 0 : a.clientLeft), y0 = c.y + (a === peca ? 0 : a.clientTop);
+        if (cortaX && caixa.x <= x0 + tol) lados.esquerda = true;
+        if (cortaX && caixa.x + caixa.w >= x0 + a.clientWidth - tol) lados.direita = true;
+        if (cortaY && caixa.y <= y0 + tol) lados.cima = true;
+        if (cortaY && caixa.y + caixa.h >= y0 + a.clientHeight - tol) lados.baixo = true;
+      }
+      if (a === peca) break;
+    }
+    return lados;
+  }
+
+  // As camadas que a coreografia põe na peça: as máscaras da "revelar" e a luz do "reflexo".
+  const CAMADAS = 'mt-revelar,mt-luz';
+  const camadaDoPlayer = (el) => !!(el && el.closest && el.closest(CAMADAS));
+
+  function coreografia(c) {
+    const host = c.host, sombra = c.sombra, peca = c.peca, palco = c.palco;
+    const fotos = c.fotos || [];
+    const modo = c.movimento;
+    const doc = host.ownerDocument;
+    const janela = (doc && doc.defaultView) || null;
+    const estilo = (el) => janela.getComputedStyle(el);
+    const relogio = () => (janela && janela.performance && janela.performance.now ? janela.performance.now() : Date.now());
+    const quadro = (f) => (janela && janela.requestAnimationFrame ? janela.requestAnimationFrame(f) : setTimeout(f, 16));
+    const semQuadro = (id) => (janela && janela.cancelAnimationFrame ? janela.cancelAnimationFrame(id) : clearTimeout(id));
+    const els = !peca || modo === 'parado' ? [] : Array.prototype.slice.call(sombra.querySelectorAll('[data-entrada],[data-continua]'));
+    const atributos = (el) => ({
+      entrada: el.getAttribute('data-entrada') || '', continua: el.getAttribute('data-continua') || '',
+      ordem: el.getAttribute('data-ordem'), atraso: el.getAttribute('data-atraso'), origem: el.getAttribute('data-origem') || '',
+    });
+    const medidas = new Map();
+    const guardados = new Map();
+    const relogios = [];
+    const fins = [];
+    const contas = [];
+    let andando = null;
+    let iniciada = false, parada = false;
+    let zero = 0;
+
+    // O estilo em linha que a coreografia muda é guardado e devolvido, nunca deixado para trás.
+    function por(el, prop, valor, prioridade) {
+      let g = guardados.get(el);
+      if (!g) guardados.set(el, (g = {}));
+      if (!PROPRIO.call(g, prop)) g[prop] = [el.style.getPropertyValue(prop), el.style.getPropertyPriority(prop)];
+      el.style.setProperty(prop, valor, prioridade || '');
+    }
+    function devolver(el, props) {
+      const g = guardados.get(el);
+      if (!g) return;
+      props.forEach((p) => {
+        if (!PROPRIO.call(g, p)) return;
+        if (g[p][0]) el.style.setProperty(p, g[p][0], g[p][1]); else el.style.removeProperty(p);
+        delete g[p];
+      });
+    }
+    const depois = (segundos, fn) => { relogios.push(setTimeout(fn, Math.max(0, segundos) * 1000)); };
+
+    // A transição que anuncia a peça pode pedir que as entradas esperem por ela (js/player.js).
+    function espera() {
+      const s = host.closest ? host.closest('[data-mt-espera]') : null;
+      return Math.max(0, Math.min(2, Number(s && s.getAttribute('data-mt-espera')) || 0));
+    }
+    // A câmera lenta dura o tempo da peça no ar: o que a zona marcou no slide, ou o da peça.
+    function duracaoDaPeca() {
+      const s = host.closest ? host.closest('[data-mt-dur]') : null;
+      return Math.max(CINEMA.kenburns, Number(s && s.getAttribute('data-mt-dur')) || Number(c.duracao) || 12);
+    }
+
+    function aplicar(seg) {
+      els.forEach((el) => {
+        const r = animacaoDoElemento(atributos(el), modo, seg, medidas.get(el));
+        el.style.animation = r.animacao;
+        if (r.origem) el.style.transformOrigin = r.origem;
+      });
+    }
+
+    // A origem da varrer/desenhar sai quando a entrada acaba: ela mudaria o transform que a peça já tiver.
+    function aoFimDaEntrada(ev) {
+      const el = ev.target;
+      if (els.indexOf(el) < 0 || !/^mt-p[ex]-(varrer|desenhar)/.test(ev.animationName || '')) return;
+      if (!(medidas.get(el) || {}).origemFoto) el.style.removeProperty('transform-origin');
+    }
+    if (els.length) sombra.addEventListener('animationend', aoFimDaEntrada);
+
+    /* ---- Medir, em repouso ---- */
+
+    /*
+     * As linhas do texto do elemento, em px da peça, relativas à caixa de
+     * dentro dele (o padding box), e de que linha é cada PALAVRA: `palavras`
+     * = [{ no, de, ate, linha }], `no` é a ordem do texto entre os textos do
+     * elemento. A "revelar" usa as palavras para mostrar, em cada máscara,
+     * só a linha dela.
+     */
+    function textosDoElemento(el) {
+      const out = [];
+      const andar = doc.createTreeWalker(el, 4);
+      for (let n = andar.nextNode(); n; n = andar.nextNode()) if (!camadaDoPlayer(n.parentNode)) out.push(n);
+      return out;
+    }
+    function linhasDe(el) {
+      const r0 = el.getBoundingClientRect();
+      if (!el.offsetHeight || !r0.height) return null;
+      const ky = r0.height / el.offsetHeight;
+      const topo = r0.top + el.clientTop * ky;
+      const palavras = [];
+      const faixa = doc.createRange();
+      textosDoElemento(el).forEach((n, k) => {
+        const re = /\S+/g;
+        for (let m = re.exec(n.nodeValue); m; m = re.exec(n.nodeValue)) {
+          faixa.setStart(n, m.index);
+          faixa.setEnd(n, m.index + m[0].length);
+          const rs = faixa.getClientRects();
+          let t = Infinity, b = -Infinity;
+          for (let i = 0; i < rs.length; i++) if (rs[i].width > 0.5 && rs[i].height > 0.5) { t = Math.min(t, rs[i].top); b = Math.max(b, rs[i].bottom); }
+          if (t < b) palavras.push({ no: k, de: m.index, ate: m.index + m[0].length, t: (t - topo) / ky, b: (b - topo) / ky });
+        }
+      });
+      if (!palavras.length) return null;
+      const linhas = [];
+      palavras.slice().sort((a, b) => a.t - b.t).forEach((p) => {
+        const meio = (p.t + p.b) / 2;
+        const l = linhas.filter((x) => meio >= x.t && meio <= x.b)[0];
+        if (l) { l.t = Math.min(l.t, p.t); l.b = Math.max(l.b, p.b); } else linhas.push({ t: p.t, b: p.b });
+      });
+      linhas.sort((a, b) => a.t - b.t);
+      palavras.forEach((p) => {
+        const meio = (p.t + p.b) / 2;
+        let melhor = 0;
+        linhas.forEach((l, i) => { if (Math.abs((l.t + l.b) / 2 - meio) < Math.abs((linhas[melhor].t + linhas[melhor].b) / 2 - meio)) melhor = i; });
+        p.linha = melhor;
+      });
+      return { linhas, palavras, w: el.clientWidth, h: el.clientHeight };
+    }
+
+    function planoDaRevelacao(el) {
+      if (el.tagName === 'IMG' || el.querySelector('img')) return null;
+      const d = estilo(el).display;
+      if (d === 'inline' || d === 'contents' || d === 'none') return null;
+      const p = linhasDe(el);
+      // Texto longo (mais de 8 linhas) não é título: a reserva (o bloco sobe inteiro) basta.
+      return p && p.linhas.length <= 8 && p.w > 0 ? p : null;
+    }
+
+    function planoDaConta(el) {
+      if (el.tagName === 'IMG' || !/\d/.test(el.textContent || '')) return null;
+      const pr = palco.getBoundingClientRect();
+      const k = palco.offsetWidth ? pr.width / palco.offsetWidth : 1;
+      const p = linhasDe(el);
+      return {
+        largura: k ? el.getBoundingClientRect().width / k : 0,
+        umaLinha: !p || p.linhas.length <= 1,
+        inline: estilo(el).display === 'inline',
+      };
+    }
+
+    function origemNaTela(el) {
+      if (estilo(el).transform !== 'none') return null;
+      let foco = null;
+      for (let i = 0; i < fotos.length; i++) if (fotos[i].el === el) foco = fotos[i].esp && fotos[i].esp.foco;
+      return origemDaFoto(ladosCortados(el, peca, estilo), foco);
+    }
+
+    /* ---- A revelação por linha ---- */
+
+    // Algum descendente posicionado mudaria de referência se o elemento virasse `position: relative`.
+    const temPosicionado = (el) => Array.prototype.some.call(el.querySelectorAll('*'), (d) => /^(absolute|fixed)$/.test(estilo(d).position));
+    function segurarCamadas(el) {
+      if (estilo(el).position !== 'static') return true;
+      if (temPosicionado(el)) return false;
+      por(el, 'position', 'relative');
+      return true;
+    }
+
+    const COPIAR = ['display', 'flex-direction', 'flex-wrap', 'align-items', 'align-content', 'justify-content', 'justify-items',
+      'row-gap', 'column-gap', 'grid-template-columns', 'grid-template-rows', 'grid-template-areas', 'grid-auto-flow', 'grid-auto-rows',
+      'grid-auto-columns', 'text-align', 'text-align-last', 'text-indent', 'white-space', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left'];
+    /*
+     * Na cópia da linha `linha`, as palavras das OUTRAS linhas ficam
+     * transparentes (um elemento em linha, sem caixa: o desenho não muda).
+     * Assim as máscaras podem se sobrepor sem que a cedilha de "Armações"
+     * suba junto com a linha de baixo (visto no vídeo do díptico).
+     */
+    function soAsDaLinha(copia, plano, linha) {
+      const nos = textosDoElemento(copia);
+      nos.forEach((n, k) => {
+        const outras = plano.palavras.filter((p) => p.no === k && p.linha !== linha);
+        if (!outras.length) return;
+        const texto = n.nodeValue;
+        const pedaco = doc.createDocumentFragment();
+        let ate = 0;
+        outras.forEach((p) => {
+          if (p.de > ate) pedaco.appendChild(doc.createTextNode(texto.slice(ate, p.de)));
+          const some = doc.createElement('mt-linha');
+          some.style.cssText = 'color:transparent;-webkit-text-fill-color:transparent;text-shadow:none';
+          some.textContent = texto.slice(p.de, p.ate);
+          pedaco.appendChild(some);
+          ate = p.ate;
+        });
+        if (ate < texto.length) pedaco.appendChild(doc.createTextNode(texto.slice(ate)));
+        n.parentNode.replaceChild(pedaco, n);
+      });
+    }
+
+    function revelarPorLinha(el, plano, inicio) {
+      if (!segurarCamadas(el)) return 0;
+      const cs = estilo(el);
+      const t = TEMPO.revelar;
+      const L = plano.linhas;
+      const n = L.length;
+      // Folga em volta de cada linha: acento, descendente e itálico não podem ser cortados. As máscaras se sobrepõem.
+      const lado = (parseFloat(cs.fontSize) || 16) * 0.6;
+      const folga = (i) => (L[i].b - L[i].t) * 0.2;
+      let molde = 'position:absolute;margin:0;border:0;box-sizing:border-box;width:' + plano.w + 'px;height:' + plano.h + 'px;';
+      COPIAR.forEach((p) => {
+        let v = cs.getPropertyValue(p);
+        if (p === 'display' && v === 'list-item') v = 'block';
+        if (v) molde += p + ':' + v + ';';
+      });
+      const camada = doc.createElement('mt-revelar');
+      camada.setAttribute('aria-hidden', 'true');
+      camada.style.cssText = 'position:absolute;display:block;left:0;top:0;width:100%;height:100%;margin:0;padding:0;border:0;pointer-events:none;visibility:visible';
+      let ultima = null;
+      for (let i = 0; i < n; i++) {
+        const topo = L[i].t - folga(i);
+        const base = L[i].b + folga(i);
+        const mascara = doc.createElement('mt-linha');
+        mascara.style.cssText = 'position:absolute;display:block;overflow:hidden;margin:0;padding:0;left:' + (-lado).toFixed(2) + 'px;width:'
+          + (plano.w + 2 * lado).toFixed(2) + 'px;top:' + topo.toFixed(2) + 'px;height:' + Math.max(1, base - topo).toFixed(2) + 'px';
+        const sobe = doc.createElement('mt-linha');
+        sobe.style.cssText = 'position:absolute;display:block;left:0;top:0;width:100%;height:100%;margin:0;padding:0;animation:mt-px-linha '
+          + t.duracao + 's ' + t.curva + ' ' + (Math.round((inicio + i * CINEMA.linha) * 100) / 100) + 's both';
+        const copia = doc.createElement('mt-linha');
+        copia.style.cssText = molde + 'left:' + lado.toFixed(2) + 'px;top:' + (-topo).toFixed(2) + 'px';
+        for (let k = el.firstChild; k; k = k.nextSibling) if (!camadaDoPlayer(k)) copia.appendChild(k.cloneNode(true));
+        if (n > 1) soAsDaLinha(copia, plano, i);
+        sobe.appendChild(copia);
+        mascara.appendChild(sobe);
+        camada.appendChild(mascara);
+        ultima = sobe;
+      }
+      el.appendChild(camada);
+      por(el, 'visibility', 'hidden');
+      let feita = false;
+      const terminar = () => {
+        if (feita) return;
+        feita = true;
+        if (camada.parentNode) camada.parentNode.removeChild(camada);
+        devolver(el, ['visibility', 'position']);
+      };
+      ultima.addEventListener('animationend', terminar);
+      // Sem o evento (aba escondida, animação cortada), o relógio garante a volta ao original.
+      depois(inicio + t.duracao + (n - 1) * CINEMA.linha + 0.6, terminar);
+      fins.push(terminar);
+      return n;
+    }
+
+    /* ---- O número que conta ---- */
+
+    // Os textos do elemento, na ordem. Com `antigos`, o alvo de quem não mudou fica; o que mudou por fora vira alvo novo.
+    function textosDe(el, antigos) {
+      const out = [];
+      const andar = doc.createTreeWalker(el, 4);
+      for (let n = andar.nextNode(); n; n = andar.nextNode()) {
+        if (camadaDoPlayer(n.parentNode)) continue;
+        const velho = antigos ? antigos.filter((x) => x.no === n)[0] : null;
+        out.push({ no: n, final: velho && n.nodeValue === velho.escrito ? velho.final : n.nodeValue, escrito: n.nodeValue });
+      }
+      return out;
+    }
+    const mudouPorFora = (k) => k.nos.some((x) => x.no.nodeValue !== x.escrito || !k.el.contains(x.no));
+
+    function prepararConta(el, plano, inicio) {
+      const k = { el, nos: textosDe(el, null), inicio, pais: [], feita: false };
+      if (!k.nos.some((x) => /\d/.test(x.final))) return;
+      // Algarismos de largura igual enquanto anda: o número não treme.
+      k.nos.forEach((x) => {
+        const pai = x.no.parentNode;
+        if (!/\d/.test(x.final)) return;
+        if (pai && pai.style && k.pais.indexOf(pai) < 0) { k.pais.push(pai); por(pai, 'font-variant-numeric', 'tabular-nums lining-nums', 'important'); }
+      });
+      // A largura do repouso fica presa: o "0,00" é mais estreito que o "1.299,90" e puxaria o resto da linha.
+      if (plano.umaLinha && plano.largura > 0) {
+        if (plano.inline) { por(el, 'display', 'inline-block'); por(el, 'text-align', 'right'); }
+        por(el, 'width', plano.largura.toFixed(2) + 'px');
+        por(el, 'white-space', 'nowrap');
+      }
+      escreverConta(k, 0);
+      contas.push(k);
+      depois(inicio + CINEMA.conta + 0.5, () => terminarConta(k));
+    }
+    function escreverConta(k, e) {
+      if (mudouPorFora(k)) k.nos = textosDe(k.el, k.nos);
+      const agora = contarPartes(k.nos.map((x) => x.final), e);
+      k.nos.forEach((x, i) => {
+        if (agora[i] !== x.no.nodeValue) x.no.nodeValue = agora[i];
+        x.escrito = agora[i];
+      });
+    }
+    function terminarConta(k) {
+      if (k.feita) return;
+      k.feita = true;
+      if (mudouPorFora(k)) k.nos = textosDe(k.el, k.nos);
+      k.nos.forEach((x) => { if (x.no.nodeValue !== x.final) x.no.nodeValue = x.final; });
+      k.pais.forEach((p) => devolver(p, ['font-variant-numeric']));
+      devolver(k.el, ['display', 'text-align', 'width', 'white-space']);
+    }
+    function andar() {
+      andando = null;
+      if (parada) return;
+      const agora = (relogio() - zero) / 1000;
+      let falta = false;
+      contas.forEach((k) => {
+        if (k.feita) return;
+        const q = (agora - k.inicio) / CINEMA.conta;
+        if (q >= 1) { terminarConta(k); return; }
+        // Desacelera no fim (cúbica): o olho lê o valor chegando.
+        escreverConta(k, q <= 0 ? 0 : 1 - Math.pow(1 - q, 3));
+        falta = true;
+      });
+      if (falta) andando = quadro(andar);
+    }
+
+    /* ---- O reflexo ---- */
+
+    function passarLuz(el) {
+      if (parada || !el.isConnected) return;
+      const img = el.tagName === 'IMG';
+      // Na foto, a luz vai ao lado dela, no pai (a foto não tem filhos); no texto, dentro do elemento.
+      const dono = img ? el.parentElement : el;
+      if (!dono || dono === palco || !segurarCamadas(dono)) return;
+      if (img && el.offsetParent !== dono) { devolver(dono, ['position']); return; }
+      const luz = doc.createElement('mt-luz');
+      luz.setAttribute('aria-hidden', 'true');
+      const caixa = img
+        ? 'left:' + el.offsetLeft + 'px;top:' + el.offsetTop + 'px;width:' + el.offsetWidth + 'px;height:' + el.offsetHeight + 'px;border-radius:' + estilo(el).borderRadius
+        : 'left:0;top:0;width:100%;height:100%;border-radius:inherit';
+      luz.style.cssText = 'position:absolute;display:block;overflow:hidden;margin:0;padding:0;border:0;pointer-events:none;visibility:visible;' + caixa;
+      const faixa = doc.createElement('mt-luz');
+      faixa.style.cssText = 'position:absolute;display:block;left:0;top:0;width:50%;height:100%;margin:0;padding:0;'
+        + 'background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.34) 50%,rgba(255,255,255,0) 100%);'
+        + 'animation:mt-pc-reflexo ' + CINEMA.reflexo + 's cubic-bezier(.45,0,.55,1) 0s both';
+      luz.appendChild(faixa);
+      if (img) dono.insertBefore(luz, el.nextSibling); else dono.appendChild(luz);
+      let feita = false;
+      const tirar = () => {
+        if (feita) return;
+        feita = true;
+        if (luz.parentNode) luz.parentNode.removeChild(luz);
+        devolver(dono, ['position']);
+      };
+      faixa.addEventListener('animationend', tirar);
+      depois(CINEMA.reflexo + 0.4, tirar);
+      fins.push(tirar);
+    }
+
+    /* ---- Começar, terminar ---- */
+
+    /*
+     * Chamado no primeiro quadro com a peça na tela (o ResizeObserver de
+     * montar). Devolve true quando já começou (ou não há o que fazer).
+     */
+    function iniciar() {
+      if (iniciada || parada) return true;
+      if (!els.length) { iniciada = true; return true; }
+      if (!host.isConnected || !host.clientWidth || !host.clientHeight) return false;
+      iniciada = true;
+      const seg = espera();
+      if (modo !== 'completo') { aplicar(seg); return true; }
+      // Medir em repouso: sem as entradas no meio do caminho (elas recomeçam juntas daqui, que é o instante zero).
+      const parar = doc.createElement('style');
+      parar.textContent = '.mt-palco,.mt-palco *{animation:none!important;transition:none!important}';
+      sombra.appendChild(parar);
+      try {
+        els.forEach((el) => {
+          const a = atributos(el);
+          const m = {};
+          medidas.set(el, m);
+          if (!el.getClientRects().length) return;
+          if (a.entrada === 'desenhar' && !ORIGEM_CSS[a.origem]) m.vertical = el.offsetHeight > el.offsetWidth;
+          if (a.entrada === 'revelar') m.planoLinhas = planoDaRevelacao(el);
+          if (a.entrada === 'contar') m.planoConta = planoDaConta(el);
+          if (a.continua === 'kenburns' || (a.entrada === 'aproximar' && el.tagName === 'IMG')) m.origemFoto = origemNaTela(el);
+        });
+      } finally {
+        sombra.removeChild(parar);
+      }
+      zero = relogio();
+      els.forEach((el) => {
+        const a = atributos(el);
+        const m = medidas.get(el);
+        const inicio = animacaoDoElemento(a, modo, seg, null).inicio;
+        if (m.origemFoto) el.style.transformOrigin = pct(m.origemFoto.x) + ' ' + pct(m.origemFoto.y);
+        if (a.continua === 'kenburns' && m.origemFoto) m.kenburns = { duracao: duracaoDaPeca() };
+        if (m.planoLinhas) m.linhas = revelarPorLinha(el, m.planoLinhas, inicio);
+      });
+      aplicar(seg);
+      els.forEach((el) => {
+        const a = atributos(el);
+        const m = medidas.get(el);
+        const r = animacaoDoElemento(a, modo, seg, m);
+        if (m.planoConta) prepararConta(el, m.planoConta, r.inicio);
+        if (a.continua === 'reflexo') depois(r.entrada ? r.fim + CINEMA.folgaReflexo : r.inicio + 0.5, () => passarLuz(el));
+      });
+      if (contas.length) andando = quadro(andar);
+      return true;
+    }
+
+    // Tudo no repouso, já: o conferidor da bancada (js/peca-conferir.js) mede logo depois de adiantar as animações.
+    function repousar() {
+      contas.forEach(terminarConta);
+      fins.slice().forEach((f) => f());
+    }
+    host.addEventListener('mt:repouso', repousar);
+
+    return {
+      aplicar,
+      iniciar,
+      parar() {
+        parada = true;
+        if (andando != null) semQuadro(andando);
+        andando = null;
+        relogios.forEach(clearTimeout);
+        relogios.length = 0;
+        repousar();
+        host.removeEventListener('mt:repouso', repousar);
+        sombra.removeEventListener('animationend', aoFimDaEntrada);
+      },
+    };
+  }
+
   function montar(host, item, opts) {
     const o = opts || {};
     garantirFontes(host.ownerDocument);
@@ -913,13 +1651,19 @@
     // As fotos de campo (não a logo nem o QR): cada uma encaixa no seu espaço (encaixarFoto), de novo a cada medida nova.
     const fotos = [];
     const encaixarFotos = () => fotos.forEach((f) => encaixarFoto(f.el, f.esp));
+    // O jeito de mexer (ver movimentoDe): quem pediu menos movimento ao sistema ganha o esmaecer simples.
+    const movimento = movimentoDe(o, pedeMenosMovimento(host.ownerDocument && host.ownerDocument.defaultView));
+    let coreo = null;
+    // A coreografia começa no primeiro quadro em que a peça tem tamanho na tela (depois do piso e das fotos).
+    const naTela = () => (coreo ? coreo.iniciar() : false);
     enquadrar(host, palcoEl);
     // A zona muda de tamanho (layout que "respira", tela girada): enquadra de novo.
     let observador = null;
     let espera = null;
     let aoRedimensionar = null;
+    let esperaTela = null;
     if (typeof ResizeObserver !== 'undefined') {
-      observador = new ResizeObserver(() => { enquadrar(host, palcoEl); remedir(); encaixarFotos(); });
+      observador = new ResizeObserver(() => { enquadrar(host, palcoEl); remedir(); encaixarFotos(); naTela(); });
       observador.observe(host);
     } else if (semCq) {
       // Chromium < 64: sem ResizeObserver. Confere até a zona ter tamanho, e a cada giro da janela.
@@ -1001,7 +1745,7 @@
       if (!msgs.length) { el.textContent = ''; return; }
       const linha = msgs.join(SEPARADOR) + SEPARADOR;
       el.textContent = linha + linha;
-      if (!o.leve) el.style.animation = 'mt-pr-rolar ' + Math.max(12, linha.length * RITMO.rolagem).toFixed(1) + 's linear infinite';
+      if (movimento === 'completo') el.style.animation = 'mt-pr-rolar ' + Math.max(12, linha.length * RITMO.rolagem).toFixed(1) + 's linear infinite';
     });
     /*
      * O CLIMA NUNCA É INVENTADO (QA de lançamento, 03/11). O "27°" é o texto
@@ -1019,23 +1763,19 @@
       }, () => { clima.forEach((el) => { el.textContent = ''; }); });
     }
 
-    // A entrada que a peça declarou. No modo leve, nada se mexe.
-    if (!o.leve) {
-      sombra.querySelectorAll('[data-entrada],[data-continua]').forEach((el) => {
-        const ordem = Number(el.getAttribute('data-ordem')) || 0;
-        const atraso = RITMO.inicio + ordem * RITMO.passo;
-        const partes = [];
-        const e = el.getAttribute('data-entrada');
-        const c = el.getAttribute('data-continua');
-        if (ENTRADAS[e]) partes.push('mt-pe-' + e + ' ' + RITMO.duracao + 's ' + RITMO.curva + ' ' + atraso.toFixed(2) + 's both');
-        /*
-         * A contínua começa DEPOIS da entrada e sem `fill` para trás: com
-         * `both`, o primeiro quadro dela valeria durante a espera e
-         * atropelaria a entrada, que mexe na mesma propriedade.
-         */
-        if (CONTINUAS[c]) partes.push('mt-pc-' + c + ' ' + RITMO.continua + 's ease-in-out ' + (atraso + (e ? RITMO.duracao : 0)).toFixed(2) + 's infinite');
-        if (partes.length) el.style.animation = partes.join(',');
-      });
+    /*
+     * A entrada que a peça declarou (a coreografia, logo acima). Já aqui,
+     * antes de a peça ir para a tela, cada elemento ganha a entrada de CSS:
+     * o primeiro quadro sai com tudo no começo, e o que precisa de medida
+     * (as linhas, o número, a foto) entra no primeiro quadro com tamanho.
+     */
+    coreo = coreografia({ host, sombra, peca, palco: palcoEl, fotos, movimento, duracao: Number(item && item.duracao) || 12 });
+    coreo.aplicar(0);
+    // Sem ResizeObserver (Chromium < 64): espera a peça ter tamanho, quadro a quadro, por até 10 s.
+    if (!observador && movimento !== 'parado') {
+      let vezes = 0;
+      const conferir = () => { esperaTela = null; if (!naTela() && ++vezes < 600) esperaTela = setTimeout(conferir, 16); };
+      esperaTela = setTimeout(conferir, 0);
     }
 
     return {
@@ -1044,6 +1784,8 @@
       problemas: v.problemas,
       duracao: Number(item && item.duracao) || 12,
       parar() {
+        if (coreo) coreo.parar();
+        if (esperaTela) clearTimeout(esperaTela); esperaTela = null;
         if (relogio) clearInterval(relogio); relogio = null;
         if (observador) observador.disconnect(); observador = null;
         if (espera) clearTimeout(espera); espera = null;
@@ -1056,6 +1798,8 @@
 
   return {
     ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA,
+    // O movimento de cinema: as partes puras (o teste), e as keyframes que só o player usa.
+    DO_PLAYER, TEMPO, CINEMA, movimentoDe, animacaoDoElemento, contarTexto, contarPartes, origemDaFoto,
     // Os espaços de imagem: a decisão (pura), a miniatura do fundo e o encaixe no <img> (o painel usa os três).
     encaixeDaFoto, miniaturaDaFoto, encaixarFoto, AMPLIACAO_MAXIMA,
     BASE_SEM_CQ, cssSemCq, cssCompletoSemCq, condicaoCq, temContainerQueries, referencia,

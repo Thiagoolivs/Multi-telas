@@ -219,7 +219,7 @@ test('o desenhista encaixa toda foto de campo — menos a logo, o QR e o rascunh
   const montar = src.slice(src.indexOf('function montar('), src.indexOf('return {\n      peca,'));
   assert.match(montar, /const foto = !qr && campo !== 'logo' && !o\.rascunho && !!valor \? \{ el, esp: \(it\.espacos \|\| \{\}\)\[campo\] \|\| \{\} \} : null;/);
   assert.match(montar, /el\.addEventListener\('load', \(\) => encaixarFoto\(el, foto\.esp\)\)/);
-  assert.match(montar, /new ResizeObserver\(\(\) => \{ enquadrar\(host, palcoEl\); remedir\(\); encaixarFotos\(\); \}\)/);
+  assert.match(montar, /new ResizeObserver\(\(\) => \{ enquadrar\(host, palcoEl\); remedir\(\); encaixarFotos\(\); naTela\(\); \}\)/);
   assert.match(montar, /aoRedimensionar = \(\) => \{ enquadrar\(host, palcoEl\); remedir\(\); encaixarFotos\(\); \}/);
   /*
    * Nenhum nome de função repetido na porta e no desenhista: a segunda

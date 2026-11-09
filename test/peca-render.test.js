@@ -41,12 +41,19 @@ test('as animações mexem só em opacidade e nas propriedades individuais de mo
    * Nunca `transform`: a peça usa transform para se posicionar, e a animação
    * apagaria isso (o bloco entraria e terminaria fora do lugar). E nada que
    * refaça layout — no box barato é o que trava.
+   *
+   * As duas exceções (movimento de cinema, 09/11) não mexem no transform da
+   * peça: a câmera lenta só é posta numa foto SEM transform próprio (o
+   * player confere) e o reflexo anima a faixa de luz que o player cria.
    */
   const props = new Set();
-  for (const k of Object.values(R.ENTRADAS).concat(Object.values(R.CONTINUAS))) {
+  const PROPRIO_TRANSFORM = ['kenburns', 'reflexo'];
+  for (const k of Object.values(R.ENTRADAS).concat(Object.keys(R.CONTINUAS).filter((c) => !PROPRIO_TRANSFORM.includes(c)).map((c) => R.CONTINUAS[c]))) {
     for (const m of k.matchAll(/([a-z-]+)\s*:/g)) props.add(m[1]);
   }
   assert.deepEqual([...props].sort(), ['opacity', 'rotate', 'scale', 'translate']);
+  for (const c of PROPRIO_TRANSFORM) assert.deepEqual([...new Set([...R.CONTINUAS[c].matchAll(/([a-z-]+)\s*:/g)].map((m) => m[1]))], ['transform'], c);
+  assert.match(ler('js', 'peca-render.js'), /if \(estilo\(el\)\.transform !== 'none'\) return null;/, 'a câmera lenta passaria por cima do transform da foto');
 });
 
 test('o CSS da sombra traz estrutura, tokens da marca, animações e a peça — nessa ordem', () => {
@@ -230,7 +237,8 @@ test('render.js desenha peca-html com o contexto da tela, e solta o relógio ao 
   const r = semComentarios(ler('js', 'render.js'));
   assert.match(r, /RENDERERS\['peca-html'\] = renderPecaHtml/);
   assert.match(r, /hostsMidia: global\.MT_HOSTS_MIDIA/);
-  assert.match(r, /leve: document\.documentElement\.classList\.contains\('mt-perf'\)/);
+  // A TV fraca (.mt-perf) passa o movimento simples (só esmaecer), não a peça parada.
+  assert.match(r, /movimento: document\.documentElement\.classList\.contains\('mt-perf'\) \? 'simples' : 'completo'/);
   assert.match(r, /onLeave: ctl\.parar/);
   const p = semComentarios(ler('js', 'player.js'));
   assert.ok((p.match(/contextoDaPeca\(cfg\)/g) || []).length >= 2, 'o contexto da peça não é atualizado nos dois caminhos do palco');

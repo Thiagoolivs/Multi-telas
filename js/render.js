@@ -1971,7 +1971,12 @@
     const t = global.MT_THEME || {};
     return Object.assign({
       marca: t.brand ? { cores: [t.brand, t.brand2].filter(Boolean) } : null,
-      leve: document.documentElement.classList.contains('mt-perf'),
+      /*
+       * A TV fraca (js/perf.js) não fica parada: cada entrada só esmaece, na
+       * vez dela, e nada contínuo nem de cinema (js/peca-render.js,
+       * movimentoDe). Era `leve: true`, a peça inteira sem movimento.
+       */
+      movimento: document.documentElement.classList.contains('mt-perf') ? 'simples' : 'completo',
       marcaNaTela: !!global.MT_MARCA_NA_TELA,
       logo: global.MT_LOGO || null,
       hostsMidia: global.MT_HOSTS_MIDIA || [],
