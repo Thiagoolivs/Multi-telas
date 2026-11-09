@@ -25,7 +25,10 @@ test('a régua bloqueia a margem de 5% e o destaque sem mensagem no rodapé', ()
   const robo = ler('tools/regua-tv.mjs');
   assert.match(robo, /const MARGENS_NA_TV = \[2, 3, 5\];/);
   assert.match(robo, /const SEM_RODAPE = \{ rodape: 'vazio', margem: 0 \};/);
-  assert.match(robo, /semRodape = await conferirPecas\(navegador, 'balcao', \[DESTAQUE_NO_BALCAO\], Object\.assign\(\{ todasAsMarcas: true, soDestaque: true \}, SEM_RODAPE\)\);/);
+  assert.match(robo, /semRodape = await conferirPecas\(navegador, 'balcao', \[DESTAQUE_NO_BALCAO\], Object\.assign\(\{ todasAsMarcas: true, soDestaque: true, soCorporativo: true \}, SEM_RODAPE\)\);/);
+  // Nas passadas da margem (depois da primeira) e do rodapé vazio, a bancada desenha só o Corporativo.
+  assert.match(robo, /\(x\.soCorporativo \? '&zonas=corporativo' : ''\)/);
+  assert.match(ler('js/bancada.js'), /zonasDoPapel\(papel\)\.filter\(\(z\) => !soCorporativo \|\| \/Corporativo\/\.test\(z\.nome\)\)/);
   assert.match(robo, /for \(const x of semRodape\.filter\(\(y\) => y\.cedeu < 1\)\) \{ console\.log\(cedeuNaMarca\(x\)\); reprova = true; \}/);
   assert.match(robo, /\(x\.rodape \? '&rodape=' \+ x\.rodape : ''\)/);
   // O robô diz quanto demorou (a régua inteira cabe em uns 10 minutos).

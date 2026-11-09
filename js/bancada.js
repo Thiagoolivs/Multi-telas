@@ -241,8 +241,15 @@
 
     const palco = $('palco');
     palco.textContent = '';
+    /*
+     * zonas=corporativo (na URL, sem seletor): só as duas zonas do
+     * Corporativo. O robô da régua pede assim nas passadas da margem e do
+     * rodapé sem mensagem: a tela cheia nas 11 marcas (33 figuras por peça)
+     * não entrava na conta e custava três quartos do tempo da passada.
+     */
+    const soCorporativo = new URLSearchParams(location.search).get('zonas') === 'corporativo';
     for (const papel of def.papeis) {
-      for (const zona of zonasDoPapel(papel)) {
+      for (const zona of zonasDoPapel(papel).filter((z) => !soCorporativo || /Corporativo/.test(z.nome))) {
         const linha = document.createElement('section');
         linha.className = 'linha';
         const h2 = document.createElement('h2');

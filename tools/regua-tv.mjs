@@ -407,7 +407,7 @@ async function conferirPecas(navegador, local, soZonas, extra) {
   const ordem = manifesto.pecas.filter(entra);
   const fila = ordem.slice();
   const busca = (x.todasAsMarcas ? '&marca=todas&modo=claro' : '&modo=todos') + '&tamanho=caber' + (local ? '&local=' + local : '')
-    + (x.margem != null ? '&margem=' + x.margem : '') + (x.rodape ? '&rodape=' + x.rodape : '');
+    + (x.margem != null ? '&margem=' + x.margem : '') + (x.rodape ? '&rodape=' + x.rodape : '') + (x.soCorporativo ? '&zonas=corporativo' : '');
   const trabalhar = async () => {
     const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
     for (let peca = fila.shift(); peca; peca = fila.shift()) {
@@ -566,10 +566,11 @@ async function main() {
     // As 11 marcas: a tela cheia e o Corporativo no balcão com a margem de 2%; depois o Corporativo com 3% e 5%, e o destaque sem mensagem no rodapé (uma página por peça).
     for (const margem of MARGENS_NA_TV) {
       const zonas = (margem === MARGENS_NA_TV[0] ? FORMATOS_CHEIOS : []).concat(LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO);
-      const desta = await conferirPecas(navegador, 'balcao', zonas, { todasAsMarcas: true, margem });
+      // Depois da primeira, a bancada desenha só o Corporativo (a tela cheia já foi conferida e não muda com a margem).
+      const desta = await conferirPecas(navegador, 'balcao', zonas, { todasAsMarcas: true, margem, soCorporativo: margem !== MARGENS_NA_TV[0] });
       marcas = marcas.concat(desta.map((x) => Object.assign(x, { margem })));
     }
-    semRodape = await conferirPecas(navegador, 'balcao', [DESTAQUE_NO_BALCAO], Object.assign({ todasAsMarcas: true, soDestaque: true }, SEM_RODAPE));
+    semRodape = await conferirPecas(navegador, 'balcao', [DESTAQUE_NO_BALCAO], Object.assign({ todasAsMarcas: true, soDestaque: true, soCorporativo: true }, SEM_RODAPE));
   } finally {
     await navegador.close();
     parar();

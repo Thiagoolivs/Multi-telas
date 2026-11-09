@@ -140,7 +140,7 @@ test('as peças-ouro em tela cheia cabem nas 11 marcas, e o robô bloqueia a que
 test('o destaque e a lateral cabem com a letra do balcão na TV com a margem contra o corte, e o robô bloqueia 2%, 3% e 5%', () => {
   const robo = ler('tools/regua-tv.mjs');
   assert.match(robo, /const MARGENS_NA_TV = \[2, 3, 5\];/);
-  assert.match(robo, /conferirPecas\(navegador, 'balcao', zonas, \{ todasAsMarcas: true, margem \}\)/);
+  assert.match(robo, /conferirPecas\(navegador, 'balcao', zonas, \{ todasAsMarcas: true, margem, soCorporativo: margem !== MARGENS_NA_TV\[0\] \}\)/);
   assert.match(robo, /console\.log\('Peças-ouro em ' \+ nome \+ ' · balcão com borda de ' \+ margem \+ '% \('/);
   assert.match(robo, /for \(const x of naMargem\.filter\(\(y\) => y\.cedeu < 1\)\) \{ console\.log\(cedeuNaMarca\(x\)\); reprova = true; \}/);
   // A peça que a bancada não desenhou reprova (antes saía da conta calada), e as passadas correm em quatro páginas.
