@@ -111,6 +111,15 @@ h1 em { font-style: italic; color: var(--mt-destaque); }
   .valor { font-size: max(var(--mt-piso, 0cqw), 15cqmin); }
   .pedido { letter-spacing: .06em; }
 }
+/*
+ * A lateral com a margem contra o corte de 5% (452×674; a caixa sem o
+ * padding abaixo de 620 px): o "Agende pelo QR" passava da borda direita.
+ * O vão entre o QR e o pedido aperta e o QR fica com 44% (167 px).
+ */
+@container (max-width: 700px) and (max-height: 620px) {
+  .agendar { gap: 3cqmin; }
+  .qr { width: 44cqmin; height: 44cqmin; }
+}
 </style>
 <section class="mt-peca servico-agenda">
   <div class="servico">

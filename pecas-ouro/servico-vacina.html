@@ -81,6 +81,21 @@ h1 { margin-top: 3cqmin; font: 700 max(var(--mt-piso, 0cqw), calc(13cqmin * var(
   h1 { margin-top: 0; font-size: max(var(--mt-piso, 0cqw), calc(14cqmin * var(--mt-escala-titulo, 1))); }
   .quando { margin-top: 3.4cqmin; }
 }
+/*
+ * A lateral com a margem contra o corte de 4% ou mais (462×696 e menor; a
+ * caixa sem o padding abaixo de 627 px): com a letra do balcão o "onde"
+ * descia até a borda de baixo. O círculo da seringa encolhe e os respiros
+ * apertam.
+ */
+@container (max-width: 700px) and (max-height: 700px) {
+  .mt-peca { row-gap: 4.4cqmin; }
+}
+@container (max-width: 700px) and (max-height: 627px) {
+  .selo { font-size: 4.2cqw; }
+  h1 { margin-top: 2cqmin; }
+  .quando { margin-top: 3.4cqmin; }
+  .onde { margin-top: 1.8cqmin; }
+}
 </style>
 <section class="mt-peca servico-vacina">
   <div class="texto">

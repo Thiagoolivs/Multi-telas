@@ -93,6 +93,18 @@ h1 span:first-child { color: var(--mt-destaque); }
   h1 { margin: 2.6cqmin 0 2.6cqmin; padding-top: 2.6cqmin; }
   .pedido { margin-top: 2.6cqmin; }
 }
+/*
+ * A lateral com a margem contra o corte de 4% ou mais (462×696 e menor): o
+ * kicker chegava à borda de cima, e o "Conta pra gente" da fonte de título
+ * larga, às dos lados. Os respiros apertam mais e o título aperta as letras;
+ * o QR não encolhe.
+ */
+@container (max-width: 700px) and (max-height: 700px) {
+  .nota { margin-top: 2.2cqmin; }
+  h1 span { letter-spacing: -.03em; }
+  h1 { margin: 1.8cqmin 0 2cqmin; padding-top: 1.8cqmin; }
+  .pedido { margin-top: 1.8cqmin; }
+}
 </style>
 <section class="mt-peca social-avaliacao">
   <div class="bloco">
