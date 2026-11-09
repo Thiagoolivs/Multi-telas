@@ -3705,21 +3705,21 @@
           "titulo": "Que bom",
           "titulo2": "ter você aqui",
           "apoio": "Fique à vontade: chamamos você pelo nome na hora da consulta.",
-          "nota": "Wi-Fi: Clínica Vida Visitantes"
+          "nota": "Wi-Fi: Visitantes · senha na recepção"
         },
         "empresa": {
           "kicker": "Visitantes",
           "titulo": "Seja bem-vindo",
-          "titulo2": "à Vértice",
+          "titulo2": "à nossa casa",
           "apoio": "Identifique-se na recepção: alguém da equipe vem buscar você.",
-          "nota": "Wi-Fi: Vértice Visitantes"
+          "nota": "Wi-Fi: Visitantes · senha na recepção"
         },
         "comercio": {
           "kicker": "Seja bem-vindo",
           "titulo": "Que bom",
           "titulo2": "ter você aqui",
           "apoio": "Sente-se, peça um café e fique o tempo que quiser.",
-          "nota": "Wi-Fi: Padaria Clientes"
+          "nota": "Wi-Fi: Clientes · senha no caixa"
         }
       },
       "estado": "proposta",
@@ -3842,7 +3842,7 @@
         "empresa": {
           "kicker": "Bastidores",
           "titulo": "Um dia na nossa fábrica",
-          "arroba": "@metalurgicaandrade"
+          "arroba": "@sua.empresa"
         }
       },
       "estado": "proposta",
@@ -3900,7 +3900,7 @@
       },
       "textos": {
         "empresa": {
-          "kicker": "Vem para a Vértice",
+          "kicker": "Vem para o nosso time",
           "titulo": "Estamos contratando",
           "vaga1": "Analista contábil · pleno",
           "vaga2": "Assistente fiscal · júnior",
@@ -3988,7 +3988,7 @@
         },
         "empresa": {
           "citacao": "Aqui eu aprendi a soldar, e hoje ensino quem chega.",
-          "nome": "Jorge Andrade",
+          "nome": "Jorge Ramos",
           "detalhe": "Soldador há 18 anos"
         }
       },
@@ -12796,6 +12796,1074 @@
       "sobre": "Para a fábrica em pé: o jeito da casa, a palavra de quem faz, as vagas pelo QR e a parada da linha.",
       "estado": "proposta",
       "lote": 4
+    },
+    {
+      "id": "l5-padaria-deitada",
+      "nome": "Padaria · TV deitada · a massa e o café em vídeo",
+      "perfil": "comercio",
+      "negocio": "padaria",
+      "ramos": [
+        "padaria"
+      ],
+      "estrutura": "pacote padaria com vídeo",
+      "marca": "padaria",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Padaria do Bairro"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-capa",
+              "campos": {
+                "kicker": "Feito aqui",
+                "titulo": "Massa sovada",
+                "titulo2": "à mão, todo dia",
+                "apoio": "Fermentação lenta e forno aceso desde as cinco da manhã.",
+                "foto": "/pecas-ouro/videos/padaria/massa-sovada.mp4"
+              }
+            },
+            {
+              "id": "cena-oferta",
+              "campos": {
+                "kicker": "Para começar o dia",
+                "titulo": "Café expresso duplo",
+                "preco": "8",
+                "centavos": ",50",
+                "unidade": "na xícara",
+                "foto": "/pecas-ouro/videos/padaria/espresso-saindo.mp4"
+              }
+            },
+            {
+              "id": "cena-mosaico",
+              "campos": {
+                "kicker": "No Instagram",
+                "titulo": "A fornada de hoje, ao vivo",
+                "arroba": "@padariadobairro",
+                "foto": "/pecas-ouro/videos/padaria/padeiro-modelando.mp4",
+                "foto2": "/pecas-ouro/fotos/padaria/croissants-assadeira.jpg",
+                "foto3": "/pecas-ouro/fotos/padaria/pao-tabua.jpg"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-aberto",
+              "campos": {
+                "selo": "Aberto todo dia",
+                "titulo": "Café passado na hora",
+                "dia1": "Segunda a sexta",
+                "hora1": "6h – 20h",
+                "dia2": "Sábado",
+                "hora2": "6h – 18h",
+                "dia3": "Domingo",
+                "hora3": "7h – 12h",
+                "nota": "Feriados: das 7h às 12h",
+                "foto": "/pecas-ouro/fotos/padaria/cafe-latte.jpg"
+              }
+            },
+            {
+              "id": "cena-frase",
+              "campos": {
+                "kicker": "O que nos move",
+                "titulo": "Café bom",
+                "titulo2": "não tem pressa.",
+                "detalhe": "Coado na hora, xícara por xícara",
+                "foto": "/pecas-ouro/fotos/padaria/pao-de-forma.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Fornadas às 6h, às 11h e às 16h",
+        "Pão de fermentação natural às sextas",
+        "Encomendas de bolo com 48h de antecedência"
+      ],
+      "sobre": "Para a padaria: a massa sendo sovada, o café saindo da máquina com o preço, a fornada em mosaico e o horário ao lado.",
+      "estado": "proposta",
+      "lote": 5
+    },
+    {
+      "id": "l5-padaria-em-pe",
+      "nome": "Padaria · TV em pé · o forno e o café em vídeo",
+      "perfil": "comercio",
+      "negocio": "padaria",
+      "ramos": [
+        "padaria"
+      ],
+      "estrutura": "pacote padaria com vídeo",
+      "marca": "padaria",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Padaria do Bairro"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-oferta",
+              "campos": {
+                "kicker": "Passado na hora",
+                "titulo": "Café coado na xícara",
+                "preco": "6",
+                "centavos": ",00",
+                "unidade": "a xícara",
+                "foto": "/pecas-ouro/videos/padaria/cafe-na-xicara.mp4"
+              }
+            },
+            {
+              "id": "cena-capa",
+              "campos": {
+                "kicker": "Saindo agora",
+                "titulo": "Biscoitos",
+                "titulo2": "direto do forno",
+                "apoio": "Manteiga, açúcar mascavo e uma fornada a cada duas horas.",
+                "foto": "/pecas-ouro/videos/padaria/biscoitos-no-forno.mp4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-aberto",
+              "campos": {
+                "selo": "Aberto todo dia",
+                "titulo": "Café passado na hora",
+                "dia1": "Segunda a sexta",
+                "hora1": "6h – 20h",
+                "dia2": "Sábado",
+                "hora2": "6h – 18h",
+                "dia3": "Domingo",
+                "hora3": "7h – 12h",
+                "nota": "Feriados: das 7h às 12h",
+                "foto": "/pecas-ouro/fotos/padaria/balcao.jpg"
+              }
+            },
+            {
+              "id": "cena-frase",
+              "campos": {
+                "kicker": "O que nos move",
+                "titulo": "Café bom",
+                "titulo2": "não tem pressa.",
+                "detalhe": "Coado na hora, xícara por xícara",
+                "foto": "/pecas-ouro/fotos/padaria/pao-de-forma.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Aceitamos Pix e cartão",
+        "Bolo inteiro sob encomenda",
+        "Fornadas às 6h, às 11h e às 16h"
+      ],
+      "sobre": "Para a padaria em pé: o café caindo na xícara com o preço, os biscoitos crescendo no forno, o horário e a frase da casa.",
+      "estado": "proposta",
+      "lote": 5
+    },
+    {
+      "id": "l5-restaurante-deitada",
+      "nome": "Restaurante · TV deitada · a massa e o vinho em vídeo",
+      "perfil": "comercio",
+      "negocio": "restaurante",
+      "ramos": [
+        "comida"
+      ],
+      "estrutura": "pacote restaurante com vídeo",
+      "marca": "restaurante",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Cantina da Nona"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-faixa",
+              "campos": {
+                "kicker": "Novidade",
+                "titulo": "Massa fresca, feita aqui",
+                "info1": "Todos os dias",
+                "info2": "Do almoço ao jantar",
+                "info3": "Peça a massa do dia",
+                "foto": "/pecas-ouro/videos/restaurante/massa-servida.mp4"
+              }
+            },
+            {
+              "id": "cena-janela",
+              "campos": {
+                "kicker": "Carta de vinhos",
+                "titulo": "Um tinto para cada massa",
+                "apoio": "Peça a sugestão do garçom: ele conhece a carta de cor.",
+                "legenda": "Na taça: Montepulciano d'Abruzzo",
+                "foto": "/pecas-ouro/videos/restaurante/vinho-servido.mp4"
+              }
+            },
+            {
+              "id": "cena-qr",
+              "campos": {
+                "kicker": "Cardápio no celular",
+                "titulo": "A carta inteira, com fotos",
+                "instrucao": "Aponte a câmera para o código",
+                "nota": "e peça direto ao garçom",
+                "foto": "/pecas-ouro/videos/texturas/seda-vinho.mp4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-depoimento",
+              "campos": {
+                "citacao": "A massa tem gosto de domingo na casa da avó.",
+                "nome": "Helena Prado",
+                "detalhe": "Cliente desde a inauguração",
+                "foto": "/pecas-ouro/fotos/restaurante/jantar.jpg"
+              }
+            },
+            {
+              "id": "cena-aberto",
+              "campos": {
+                "selo": "Aberto hoje",
+                "titulo": "Almoço e jantar",
+                "dia1": "Terça a sexta",
+                "hora1": "11h – 23h",
+                "dia2": "Sábado",
+                "hora2": "11h – 0h",
+                "dia3": "Domingo",
+                "hora3": "11h – 16h",
+                "nota": "Segunda: fechado",
+                "foto": "/pecas-ouro/fotos/restaurante/salao.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Reservas para grupos com um dia de antecedência",
+        "Massa fresca feita todas as manhãs",
+        "Vinho da casa em taça ou garrafa"
+      ],
+      "sobre": "Para o restaurante: a massa saindo da frigideira, o vinho servido na janela, o cardápio pelo QR e o horário.",
+      "estado": "proposta",
+      "lote": 5
+    },
+    {
+      "id": "l5-lanchonete-deitada",
+      "nome": "Lanchonete · TV deitada · a chapa em vídeo",
+      "perfil": "comercio",
+      "negocio": "lanchonete",
+      "ramos": [
+        "comida"
+      ],
+      "estrutura": "pacote lanchonete com vídeo",
+      "marca": "lanchonete",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Lanchonete da Praça"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-cardapio",
+              "campos": {
+                "kicker": "Na chapa agora",
+                "titulo": "Burgers da casa",
+                "item1": "Clássico",
+                "preco1": "29",
+                "item2": "Cheddar duplo",
+                "preco2": "36",
+                "item3": "Bacon e cebola",
+                "preco3": "34",
+                "item4": "Batata da casa",
+                "preco4": "14",
+                "foto": "/pecas-ouro/videos/lanchonete/cheeseburger-na-grelha.mp4"
+              }
+            },
+            {
+              "id": "cena-dividida",
+              "campos": {
+                "kicker": "Na chapa agora",
+                "titulo": "Smash duplo com cheddar",
+                "apoio": "Dois blends de 90 g, cheddar derretido e pão brioche.",
+                "preco": "32",
+                "centavos": ",90",
+                "unidade": "com fritas",
+                "nota": "Todo dia, até as 23h",
+                "foto": "/pecas-ouro/videos/lanchonete/hamburguer-na-chapa.mp4"
+              }
+            },
+            {
+              "id": "cena-oferta",
+              "campos": {
+                "kicker": "Para acompanhar",
+                "titulo": "Batata da casa",
+                "preco": "14",
+                "centavos": ",00",
+                "unidade": "a porção",
+                "foto": "/pecas-ouro/videos/lanchonete/batata-temperada.mp4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-aberto",
+              "campos": {
+                "selo": "Aberto hoje",
+                "titulo": "Chapa quente até tarde",
+                "dia1": "Segunda a quinta",
+                "hora1": "11h – 23h",
+                "dia2": "Sexta e sábado",
+                "hora2": "11h – 1h",
+                "dia3": "Domingo",
+                "hora3": "17h – 23h",
+                "nota": "Delivery até as 23h",
+                "foto": "/pecas-ouro/fotos/lanchonete/mesa-amigos.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-pagamento",
+              "campos": {
+                "rotulo": "Aceitamos",
+                "pagamento1": "Pix",
+                "pagamento2": "Crédito",
+                "pagamento3": "Débito",
+                "pagamento4": "Vale-refeição"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Refil de refrigerante no salão",
+        "Molho da casa em todos os lanches",
+        "Peça pelo app e retire no balcão"
+      ],
+      "sobre": "Para a lanchonete: o quadro de burgers com a chapa ao vivo, o smash com preço, a batata e o horário ao lado.",
+      "estado": "proposta",
+      "lote": 5
+    },
+    {
+      "id": "l5-lanchonete-em-pe",
+      "nome": "Lanchonete · TV em pé · o cardápio com a chapa",
+      "perfil": "comercio",
+      "negocio": "lanchonete",
+      "ramos": [
+        "comida"
+      ],
+      "estrutura": "pacote lanchonete com vídeo",
+      "marca": "lanchonete",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Lanchonete da Praça"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-cardapio",
+              "campos": {
+                "kicker": "Na chapa agora",
+                "titulo": "Burgers da casa",
+                "item1": "Clássico",
+                "preco1": "29",
+                "item2": "Cheddar duplo",
+                "preco2": "36",
+                "item3": "Bacon e cebola",
+                "preco3": "34",
+                "item4": "Batata da casa",
+                "preco4": "14",
+                "foto": "/pecas-ouro/videos/lanchonete/cheeseburger-na-grelha.mp4"
+              }
+            },
+            {
+              "id": "cena-dividida",
+              "campos": {
+                "kicker": "Saindo da fritadeira",
+                "titulo": "Batata crocante",
+                "apoio": "Cortada aqui, frita duas vezes e temperada na hora.",
+                "preco": "14",
+                "centavos": ",00",
+                "unidade": "a porção",
+                "nota": "Todo dia, até as 23h",
+                "foto": "/pecas-ouro/videos/lanchonete/batata-fritando.mp4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-oferta",
+              "campos": {
+                "kicker": "Combo da casa",
+                "titulo": "Burger, fritas e refri",
+                "preco": "39",
+                "centavos": ",90",
+                "unidade": "o combo",
+                "foto": "/pecas-ouro/fotos/lanchonete/combo.jpg"
+              }
+            },
+            {
+              "id": "cena-aberto",
+              "campos": {
+                "selo": "Aberto hoje",
+                "titulo": "Chapa quente até tarde",
+                "dia1": "Segunda a quinta",
+                "hora1": "11h – 23h",
+                "dia2": "Sexta e sábado",
+                "hora2": "11h – 1h",
+                "dia3": "Domingo",
+                "hora3": "17h – 23h",
+                "nota": "Delivery até as 23h",
+                "foto": "/pecas-ouro/fotos/lanchonete/mesa-amigos.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Refil de refrigerante no salão",
+        "Aceitamos vale-refeição",
+        "Peça pelo app e retire no balcão"
+      ],
+      "sobre": "Para a lanchonete em pé: o quadro de burgers e a batata em vídeo, o combo com preço e o horário embaixo.",
+      "estado": "proposta",
+      "lote": 5
+    },
+    {
+      "id": "l5-escritorio-deitada",
+      "nome": "Escritório · TV deitada · a cidade e a equipe em vídeo",
+      "perfil": "empresa",
+      "negocio": "escritorio",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote escritorio com vídeo",
+      "marca": "escritorio",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-centro",
+              "campos": {
+                "sub": "Comunicação interna",
+                "marca": "Vértice Contabilidade"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-boas-vindas",
+              "campos": {
+                "kicker": "Visitantes",
+                "titulo": "Seja bem-vindo",
+                "titulo2": "à nossa casa",
+                "apoio": "Identifique-se na recepção: alguém da equipe vem buscar você.",
+                "nota": "Wi-Fi: Visitantes · senha na recepção",
+                "foto": "/pecas-ouro/videos/escritorio/nuvens-sobre-a-cidade.mp4"
+              }
+            },
+            {
+              "id": "cena-faixa",
+              "campos": {
+                "kicker": "Novo endereço",
+                "titulo": "Agora no 12º andar",
+                "info1": "A partir de segunda",
+                "info2": "Torre Norte, sala 1204",
+                "info3": "Estacionamento no subsolo",
+                "foto": "/pecas-ouro/videos/escritorio/cidade-de-dia.mp4"
+              }
+            },
+            {
+              "id": "cena-vaga",
+              "campos": {
+                "kicker": "Vem para o nosso time",
+                "titulo": "Estamos contratando",
+                "vaga1": "Analista contábil · pleno",
+                "vaga2": "Assistente fiscal · júnior",
+                "instrucao": "Aponte a câmera e envie o seu currículo",
+                "foto": "/pecas-ouro/videos/escritorio/equipe-conversando.mp4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-numero",
+              "campos": {
+                "kicker": "Neste ano",
+                "numero": "1.240",
+                "rotulo": "declarações entregues no prazo",
+                "contexto": "Obrigado, equipe.",
+                "foto": "/pecas-ouro/fotos/escritorio/sala-reuniao.jpg"
+              }
+            },
+            {
+              "id": "cena-frase",
+              "campos": {
+                "kicker": "Nossos valores",
+                "titulo": "Clareza",
+                "titulo2": "em cada número.",
+                "detalhe": "Conferido duas vezes",
+                "foto": "/pecas-ouro/fotos/escritorio/predio.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ponto até o dia 25",
+        "Reunião geral na primeira segunda do mês",
+        "Café novo na copa do terceiro andar"
+      ],
+      "sobre": "Para o escritório: boas-vindas com a cidade passando, o novo endereço, a vaga com a equipe e os números do ano.",
+      "estado": "proposta",
+      "lote": 5
+    },
+    {
+      "id": "l5-escritorio-em-pe",
+      "nome": "Escritório · TV em pé · recepção com a cidade",
+      "perfil": "empresa",
+      "negocio": "escritorio",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote escritorio com vídeo",
+      "marca": "escritorio",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-centro",
+              "campos": {
+                "sub": "Comunicação interna",
+                "marca": "Vértice Contabilidade"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-boas-vindas",
+              "campos": {
+                "kicker": "Visitantes",
+                "titulo": "Seja bem-vindo",
+                "titulo2": "à nossa casa",
+                "apoio": "Identifique-se na recepção: alguém da equipe vem buscar você.",
+                "nota": "Wi-Fi: Visitantes · senha na recepção",
+                "foto": "/pecas-ouro/videos/escritorio/cidade-ao-entardecer.mp4"
+              }
+            },
+            {
+              "id": "cena-capa",
+              "campos": {
+                "kicker": "Quem somos",
+                "titulo": "Gente que cuida",
+                "titulo2": "das suas contas",
+                "apoio": "Contabilidade, fiscal e folha com a mesma equipe há vinte anos.",
+                "foto": "/pecas-ouro/videos/escritorio/equipe-trabalhando.mp4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-aviso",
+              "campos": {
+                "selo": "Aviso",
+                "titulo": "Sala 3 em manutenção",
+                "corpo": "As reuniões desta semana passam para a sala 5, no mesmo andar.",
+                "quando": "Até sexta-feira",
+                "foto": "/pecas-ouro/fotos/escritorio/sala-reuniao.jpg"
+              }
+            },
+            {
+              "id": "cena-numero",
+              "campos": {
+                "kicker": "Neste ano",
+                "numero": "1.240",
+                "rotulo": "declarações entregues no prazo",
+                "contexto": "Obrigado, equipe.",
+                "foto": "/pecas-ouro/fotos/escritorio/escritorio-aberto.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Ponto até o dia 25",
+        "Férias: avise o RH com 30 dias",
+        "Aniversariantes do mês na copa"
+      ],
+      "sobre": "Para a recepção do escritório em pé: boas-vindas com a cidade ao entardecer, a equipe trabalhando, o aviso e o número do ano.",
+      "estado": "proposta",
+      "lote": 5
+    },
+    {
+      "id": "l5-industria-deitada",
+      "nome": "Indústria · TV deitada · a solda e a fresa em vídeo",
+      "perfil": "empresa",
+      "negocio": "industria",
+      "ramos": [
+        "corporativo"
+      ],
+      "estrutura": "pacote industria com vídeo",
+      "marca": "industria",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Metalúrgica Andrade"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-numero",
+              "campos": {
+                "kicker": "Produção do mês",
+                "numero": "18.450",
+                "rotulo": "peças entregues no prazo",
+                "contexto": "Meta de 17.000 superada. Obrigado, equipe.",
+                "foto": "/pecas-ouro/videos/industria/solda-faiscas.mp4"
+              }
+            },
+            {
+              "id": "cena-aviso",
+              "campos": {
+                "selo": "Atenção",
+                "titulo": "Parada programada da linha 2",
+                "corpo": "Manutenção preventiva das fresadoras. O turno B apoia a linha 1.",
+                "quando": "Nesta sexta, das 13h às 17h",
+                "foto": "/pecas-ouro/videos/industria/fresadora.mp4"
+              }
+            },
+            {
+              "id": "cena-depoimento",
+              "campos": {
+                "citacao": "Aqui eu aprendi a soldar, e hoje ensino quem chega.",
+                "nome": "Jorge Ramos",
+                "detalhe": "Soldador há 18 anos",
+                "foto": "/pecas-ouro/videos/industria/torno-cnc.mp4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-capa",
+              "campos": {
+                "kicker": "Nossa casa",
+                "titulo": "Trinta anos",
+                "titulo2": "de metal bem feito",
+                "apoio": "Usinagem e solda com conferência em todas as etapas.",
+                "foto": "/pecas-ouro/fotos/industria/fabrica.jpg"
+              }
+            },
+            {
+              "id": "cena-frase",
+              "campos": {
+                "kicker": "Nossos valores",
+                "titulo": "Qualidade",
+                "titulo2": "é um hábito.",
+                "detalhe": "Cada peça conferida duas vezes",
+                "foto": "/pecas-ouro/fotos/industria/estrutura.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Use o protetor auricular no galpão 2",
+        "Treinamento de brigada na quinta",
+        "Exame periódico: confira a sua data no RH"
+      ],
+      "sobre": "Para a fábrica: a produção do mês sobre a solda, a parada da linha com a fresa, o depoimento do torno e a casa ao lado.",
+      "estado": "proposta",
+      "lote": 5
+    },
+    {
+      "id": "l5-clinica-deitada",
+      "nome": "Clínica · TV deitada · recepção calma em vídeo",
+      "perfil": "saude",
+      "negocio": "clinica",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote clinica com vídeo",
+      "marca": "clinica",
+      "layout": "corporate",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Clínica Vida"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-boas-vindas",
+              "campos": {
+                "kicker": "Recepção",
+                "titulo": "Que bom",
+                "titulo2": "ter você aqui",
+                "apoio": "Fique à vontade: chamamos você pelo nome na hora da consulta.",
+                "nota": "Wi-Fi: Visitantes · senha na recepção",
+                "foto": "/pecas-ouro/videos/clinica/recepcao-clara.mp4"
+              }
+            },
+            {
+              "id": "cena-aviso",
+              "campos": {
+                "selo": "Aviso",
+                "titulo": "Coleta de exames só pela manhã",
+                "corpo": "Nesta semana a coleta vai das 7h às 11h. Traga o pedido e um documento.",
+                "quando": "Até sexta-feira",
+                "foto": "/pecas-ouro/videos/farmacia/bancada-de-laboratorio.mp4"
+              }
+            },
+            {
+              "id": "cena-faixa",
+              "campos": {
+                "kicker": "Nova unidade",
+                "titulo": "Mais perto de você",
+                "info1": "A partir de segunda",
+                "info2": "Av. Central, 450",
+                "info3": "Os mesmos convênios",
+                "foto": "/pecas-ouro/videos/escritorio/cidade-de-dia.mp4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-aberto",
+              "campos": {
+                "selo": "Atendimento",
+                "titulo": "Estamos aqui para você",
+                "dia1": "Segunda a sexta",
+                "hora1": "7h – 19h",
+                "dia2": "Sábado",
+                "hora2": "7h – 12h",
+                "dia3": "Domingo",
+                "hora3": "Fechado",
+                "nota": "Agende pelo telefone ou na recepção",
+                "foto": "/pecas-ouro/fotos/clinica/espera.jpg"
+              }
+            },
+            {
+              "id": "cena-qr",
+              "campos": {
+                "kicker": "Agende pelo celular",
+                "titulo": "Sua consulta em dois toques",
+                "instrucao": "Aponte a câmera para o código",
+                "nota": "ou fale com a recepção",
+                "foto": "/pecas-ouro/fotos/clinica/predio-claro.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Convênios e particular",
+        "Resultados de exame pelo site",
+        "Wi-Fi na sala de espera"
+      ],
+      "sobre": "Para a clínica: boas-vindas com a sala clara, o aviso da coleta, a nova unidade, o horário e a agenda pelo QR.",
+      "estado": "proposta",
+      "lote": 5
+    },
+    {
+      "id": "l5-clinica-em-pe",
+      "nome": "Clínica · TV em pé · boas-vindas com a sala clara",
+      "perfil": "saude",
+      "negocio": "clinica",
+      "ramos": [
+        "saude"
+      ],
+      "estrutura": "pacote clinica com vídeo",
+      "marca": "clinica",
+      "layout": "portrait-stack",
+      "zonas": {
+        "cabecalho": {
+          "modo": "marca",
+          "pecas": [
+            {
+              "id": "cabecalho-minimo",
+              "campos": {
+                "marca": "Clínica Vida"
+              }
+            }
+          ]
+        },
+        "principal": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-boas-vindas",
+              "campos": {
+                "kicker": "Recepção",
+                "titulo": "Que bom",
+                "titulo2": "ter você aqui",
+                "apoio": "Fique à vontade: chamamos você pelo nome na hora da consulta.",
+                "nota": "Wi-Fi: Visitantes · senha na recepção",
+                "foto": "/pecas-ouro/videos/clinica/recepcao-clara.mp4"
+              }
+            },
+            {
+              "id": "cena-capa",
+              "campos": {
+                "kicker": "Bem-vindo",
+                "titulo": "Cuidado de perto,",
+                "titulo2": "sem pressa",
+                "apoio": "Uma equipe que escuta, explica e acompanha você.",
+                "foto": "/pecas-ouro/videos/texturas/luzes-douradas.mp4"
+              }
+            }
+          ]
+        },
+        "lateral": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "cena-aberto",
+              "campos": {
+                "selo": "Atendimento",
+                "titulo": "Estamos aqui para você",
+                "dia1": "Segunda a sexta",
+                "hora1": "7h – 19h",
+                "dia2": "Sábado",
+                "hora2": "7h – 12h",
+                "dia3": "Domingo",
+                "hora3": "Fechado",
+                "nota": "Agende pelo telefone ou na recepção",
+                "foto": "/pecas-ouro/fotos/clinica/espera.jpg"
+              }
+            },
+            {
+              "id": "cena-qr",
+              "campos": {
+                "kicker": "Agende pelo celular",
+                "titulo": "Sua consulta em dois toques",
+                "instrucao": "Aponte a câmera para o código",
+                "nota": "ou fale com a recepção",
+                "foto": "/pecas-ouro/fotos/clinica/predio-claro.jpg"
+              }
+            }
+          ]
+        },
+        "rodape": {
+          "modo": "escuro",
+          "pecas": [
+            {
+              "id": "rodape-selo",
+              "campos": {
+                "selo": "Avisos"
+              }
+            }
+          ]
+        }
+      },
+      "mensagens": [
+        "Convênios e particular",
+        "Resultados de exame pelo site",
+        "Estacionamento conveniado ao lado"
+      ],
+      "sobre": "Para a clínica em pé: boas-vindas com a sala clara, a casa com a luz dourada, o horário e a agenda pelo QR.",
+      "estado": "proposta",
+      "lote": 5
     }
   ]
 }
