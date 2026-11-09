@@ -40,7 +40,8 @@ const PISO = 4.5; // % do lado menor da TV, no balcão (4 m)
 const CONTRASTE = 4.5; // texto contra o que está atrás dele (REFERENCIAS, contraste)
 // Fase 3: a letra mínima depende de onde a TV fica, e a frente dá o padrão (js/player.js, LOCAIS).
 const PISO_DA_FRENTE = { comercio: 4.5, saude: 3.5, empresa: 3 };
-const PORTA = 7700 + Math.floor(Math.random() * 200);
+// REGUA_PORTA: a porta do servidor de teste (a máquina que só pode usar uma porta escolhe qual).
+const PORTA = Number(process.env.REGUA_PORTA) || 7700 + Math.floor(Math.random() * 200);
 const BASE = 'http://127.0.0.1:' + PORTA;
 const SAIDA = process.env.REGUA_SAIDA || '';
 // REGUA_SO=precos,quiz: só os tipos pedidos (para depurar um caso).
@@ -78,7 +79,13 @@ const CASOS = {
     social: { type: 'social', rede: 'linkedin', titulo: 'Siga a Alfa no LinkedIn', handle: 'Metalúrgica Alfa', url: 'https://linkedin.com/company/alfa', qr: true, duracao: 60 },
   },
 };
-const TVS = { deitada: [1920, 1080], 'em pé': [1080, 1920], quadrada: [1080, 1080] };
+/*
+ * REGUA_TVS="deitada,quadrada": só essas TVs (a máquina com pouca memória roda
+ * a régua em duas vezes). No CI, as três.
+ */
+const TODAS_AS_TVS = { deitada: [1920, 1080], 'em pé': [1080, 1920], quadrada: [1080, 1080] };
+const SO_TVS = (process.env.REGUA_TVS || '').split(',').map((x) => x.trim()).filter(Boolean);
+const TVS = Object.fromEntries(Object.entries(TODAS_AS_TVS).filter(([nome]) => !SO_TVS.length || SO_TVS.includes(nome)));
 // O que o "Adicionar" punha antes da fase 4 (web/src/lib/contentTypes.js, make): nada disso pode aparecer na TV.
 const PADROES = [
   { type: 'text', titulo: 'Novo comunicado', corpo: '', align: 'center', duracao: 60 },
@@ -396,6 +403,8 @@ const META_ZONAS = 0.85;
  * cada passada custava um minuto e meio.
  */
 const PAGINAS_DA_BANCADA = 4;
+// REGUA_PAGINAS=2: menos páginas da bancada ao mesmo tempo (máquina com pouca memória).
+const PAGINAS_AO_MESMO_TEMPO = Math.max(1, Number(process.env.REGUA_PAGINAS) || PAGINAS_DA_BANCADA);
 const SEM_DESENHO = [];
 async function conferirPecas(navegador, local, soZonas, extra) {
   const x = extra || {};
@@ -451,10 +460,59 @@ async function conferirPecas(navegador, local, soZonas, extra) {
     }
     await p.close();
   };
-  await Promise.all(Array.from({ length: PAGINAS_DA_BANCADA }, trabalhar));
+  await Promise.all(Array.from({ length: PAGINAS_AO_MESMO_TEMPO }, trabalhar));
   // Na ordem do manifesto (as páginas terminam fora de ordem).
   const pos = (id) => ordem.findIndex((y) => y.id === id);
   return saida.sort((a, b) => pos(a.id) - pos(b.id));
+}
+
+/*
+ * FOTO VIVA (o vídeo curto num espaço de foto, js/peca-render.js). A régua
+ * mede letra, e o vídeo não muda letra nenhuma — as peças acima são medidas
+ * com as fotos de exemplo. O que se confere aqui é o caminho do box fraco:
+ * no modo leve (`?leve=1` na bancada, o mesmo `leve` que a TV passa), o
+ * espaço mostra o POSTER (o primeiro quadro, ao lado do vídeo) parado, num
+ * <img>, e nenhum <video> nasce. Sem o modo leve, o espaço toca o vídeo (ou,
+ * no navegador que não decodifica H.264, volta ao poster): nunca fica vazio.
+ */
+const PECAS_DA_FOTO_VIVA = ['capa-produto', 'cardapio-destaque', 'capa-casa'];
+async function conferirFotoViva(navegador) {
+  const banco = JSON.parse(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', 'videos', 'banco.json'), 'utf8'));
+  const video = banco[0] && banco[0].arquivo;
+  const saida = [];
+  if (!video) return [{ id: 'banco de vídeos', leve: true, passa: false, motivo: 'pecas-ouro/videos/banco.json vazio' }];
+  const p = await navegador.newPage({ viewport: { width: 1600, height: 1000 } });
+  for (const peca of PECAS_DA_FOTO_VIVA) {
+    for (const leve of [true, false]) {
+      await p.goto(BASE + '/bancada.html?ver=peca&modo=claro&tamanho=caber&peca=' + peca + '&video=' + encodeURIComponent(video) + (leve ? '&leve=1' : ''));
+      const desenhou = await p.waitForFunction(() => document.body.dataset.desenhada === 'sim', null, { timeout: 30000 }).then(() => true, () => false);
+      await espera(2500);
+      const espacos = desenhou ? await p.evaluate(() => {
+        const out = [];
+        document.querySelectorAll('#palco figure').forEach((fig) => fig.querySelectorAll('*').forEach((el) => {
+          const raiz = el.shadowRoot;
+          if (!raiz || !raiz.querySelector('.mt-palco')) return;
+          const v = raiz.querySelector('video[data-campo-img]');
+          const img = raiz.querySelector('img[data-campo-img]:not([data-campo-img="logo"])');
+          out.push({
+            video: !!v, tocando: !!v && v.readyState >= 2 && !v.error, posterDoVideo: v ? v.getAttribute('poster') || '' : '',
+            img: img ? img.getAttribute('src') || '' : '', carregou: !!img && img.complete && img.naturalWidth > 0,
+            marca: img ? img.getAttribute('data-foto-viva') : null,
+          });
+        }));
+        return out;
+      }) : [];
+      const poster = video.replace(/\.(mp4|webm)$/, '.jpg');
+      const ruins = espacos.filter((e) => (leve
+        ? e.video || e.img !== poster || !e.carregou || e.marca !== 'poster'
+        : !(e.video && e.posterDoVideo === poster) && !(e.img === poster && e.carregou)));
+      saida.push({ id: peca, leve, passa: desenhou && espacos.length > 0 && !ruins.length, espacos: espacos.length,
+        tocando: espacos.filter((e) => e.tocando).length,
+        motivo: !desenhou ? 'a bancada não desenhou' : !espacos.length ? 'nenhum espaço de foto' : ruins.length ? ruins.length + ' espaço(s) sem o ' + (leve ? 'poster parado' : 'vídeo nem o poster') : '' });
+    }
+  }
+  await p.close();
+  return saida;
 }
 
 async function main() {
@@ -468,6 +526,7 @@ async function main() {
   let marcas = [];
   let semRodape = [];
   const inicio = Date.now();
+  let fotoViva = [];
   try {
     for (const [frente, tipos] of Object.entries(CASOS)) {
       const painel = await navegador.newContext();
@@ -519,7 +578,7 @@ async function main() {
         }
       }
       // Fase 4: o padrão antigo do "Adicionar" nunca vai ao ar.
-      const tv = tvs.deitada;
+      const tv = tvs.deitada || Object.values(tvs)[0];
       for (const item of PADROES) {
         await api.put(BASE + '/api/devices/' + tv.id + '/config', { data: { settings: { layoutId: 'full', nome: c.nome }, zonas: { principal: { items: [item] } } } });
         await espera(2500);
@@ -562,6 +621,7 @@ async function main() {
       await painel.close();
       for (const tv of Object.values(tvs)) await tv.p.context().close();
     }
+    fotoViva = await conferirFotoViva(navegador);
     pecas = (await conferirPecas(navegador)).concat(await conferirPecas(navegador, 'escritorio'), await conferirPecas(navegador, 'balcao', [LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO]));
     // As 11 marcas: a tela cheia e o Corporativo no balcão com a margem de 2%; depois o Corporativo com 3% e 5%, e o destaque sem mensagem no rodapé (uma página por peça).
     for (const margem of MARGENS_NA_TV) {
@@ -575,7 +635,7 @@ async function main() {
     await navegador.close();
     parar();
   }
-  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, marcas, semRodape, senhas }, null, 1));
+  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, marcas, semRodape, senhas, fotoViva }, null, 1));
 
   let reprova = false;
   for (const [, , nome, bloqueia] of ARRANJOS) {
@@ -629,6 +689,12 @@ async function main() {
     for (const x of noBalcao.filter((y) => y.cedeu < 1)) { console.log('  ✗ ' + x.id + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%'); reprova = true; }
   }
   for (const x of SEM_DESENHO) { console.log('  ✗ ' + x + ': a bancada não desenhou a peça'); reprova = true; }
+  // FOTO VIVA: no modo leve, o poster parado; fora dele, o vídeo (ou o poster, se o navegador não tocar H.264).
+  console.log('Foto viva na bancada (modo leve: o poster parado): ' + fotoViva.filter((x) => x.passa).length + ' de ' + fotoViva.length);
+  for (const x of fotoViva) {
+    if (!x.passa) { console.log('  ✗ ' + x.id + (x.leve ? ' (modo leve)' : '') + ': ' + x.motivo); reprova = true; }
+    else if (!x.leve) console.log('  · ' + x.id + ': ' + x.tocando + ' de ' + x.espacos + ' espaço(s) tocando o vídeo');
+  }
   // As 11 marcas em tela cheia, e o Corporativo no balcão com a margem contra o corte: bloqueio, peça a peça e marca a marca.
   const nMarcas = new Set(marcas.map((x) => x.marca)).size;
   const cedeuNaMarca = (x) => '  ✗ ' + x.id + ' · ' + x.marca + (x.cheia ? ' · ' + x.zona : '') + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%';

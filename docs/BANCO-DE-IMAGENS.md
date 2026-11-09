@@ -224,3 +224,33 @@ de gasto, cota): "A geração de imagens está sem crédito agora. Use uma foto 
 celular ou do banco." Com `AI_PROVIDER=dev`, sai uma foto de exemplo desenhada
 no servidor (a mesma para o mesmo pedido), sem crédito, registrada como
 `gerar-imagem-exemplo`.
+
+## Foto viva: um vídeo curto no espaço da foto
+
+Todo espaço de foto aceita também um **laço curto e mudo** (o café fumegando, o
+pão saindo do forno). Testes: `test/foto-viva.test.js`.
+
+- **O valor**: o mesmo texto de sempre, só que um arquivo nosso terminado em
+  `.mp4`/`.webm` (`/media/<conta>/<id>.mp4` ou `/pecas-ouro/videos/<ramo>/<nome>.mp4`).
+  O **poster** (o primeiro quadro, JPEG) mora ao lado, com o mesmo nome em `.jpg`;
+  a porta (`js/peca-html.js`, `ehVideo`/`posterDoVideo`) o escreve em
+  `espacos.<campo>.poster`, para a TV e o pré-carregamento offline o acharem.
+- **Na TV** (`js/peca-render.js`, `videoNoLugar`): o `<img data-campo-img>` do
+  autor vira `<video muted loop playsinline autoplay preload="auto" poster>` com
+  os mesmos atributos e o mesmo encaixe (foco, fundo desfocado); as regras da
+  peça que miram `img` valem para o `video` (`cssComVideo`). O autor continua
+  proibido de escrever `<video>`. O movimento de câmera da foto
+  (`data-continua="kenburns"`) não vale no vídeo. No **modo leve**, e quando o
+  vídeo não abre (sem rede e sem cache, codec que o box não toca), fica o poster
+  parado. Os vídeos entram no cache da mídia do `sw.js`, e o do próximo item é
+  posto em buffer como o item de vídeo (nunca no modo leve).
+- **Do celular** (`POST /api/media?fotoViva=1`, `server/foto-viva.js`): até 15 s
+  e 30 MB. Com ffmpeg no servidor (`/usr/bin/ffmpeg` ou `FFMPEG_PATH`), entra
+  MP4, MOV ou WEBM, e sai H.264 até 1080p, sem som, `faststart`, com o poster.
+  Sem ffmpeg (o deploy de hoje no Railway/Nixpacks não tem: pôr é decisão de
+  infra), só entra MP4 em H.264 até Full HD e 10 Mbps (a régua de `js/video.js`),
+  medido pelo ffprobe se houver ou pelas caixas do próprio MP4; o poster vem do
+  painel, tirado no `<canvas>` (`POST /api/media?posterDe=<id>`).
+- **O banco de vídeos**: `pecas-ouro/videos/banco.json`, no formato do banco de
+  fotos mais `poster` e `duracao`; créditos e a receita do ffmpeg em
+  `pecas-ouro/videos/CREDITOS.md`.

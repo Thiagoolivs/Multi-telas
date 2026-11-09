@@ -95,7 +95,15 @@ self.addEventListener('fetch', (event) => {
     || /^\/pecas-ouro\/[^/]+\.(html|json)$/.test(url.pathname)
     // O índice do banco de fotos dos espaços de imagem muda quando entra foto nova: não é foto, não fica guardado.
     || url.pathname === '/pecas-ouro/fotos/banco.json') return;
-  if (url.pathname.startsWith('/media/') || url.pathname.startsWith('/pecas-ouro/fotos/')) {
+  // O mesmo para o índice do banco de vídeos da FOTO VIVA.
+  if (url.pathname === '/pecas-ouro/videos/banco.json') return;
+  /*
+   * FOTO VIVA: os vídeos curtos do banco (pecas-ouro/videos/, até ~4 MB
+   * cada) e os do cliente (/media/, até 30 MB antes de comprimir) entram no
+   * mesmo cache das fotos, com o poster ao lado — offline, a TV toca o que já
+   * guardou e mostra o poster do resto.
+   */
+  if (url.pathname.startsWith('/media/') || url.pathname.startsWith('/pecas-ouro/fotos/') || url.pathname.startsWith('/pecas-ouro/videos/')) {
     event.respondWith(cacheFirst(req, MEDIA_CACHE));
     return;
   }

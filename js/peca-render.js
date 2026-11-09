@@ -520,7 +520,8 @@
    */
   function miniaturaDaFoto(img, lado) {
     try {
-      const w = img.naturalWidth, h = img.naturalHeight;
+      // A foto, ou o quadro de agora do vídeo da FOTO VIVA (o <canvas> desenha os dois).
+      const w = img.naturalWidth || img.videoWidth, h = img.naturalHeight || img.videoHeight;
       const doc = img.ownerDocument || (typeof document !== 'undefined' ? document : null);
       if (!w || !h || !doc) return null;
       const k = (lado || LADO_DA_MINIATURA) / Math.max(w, h);
@@ -562,9 +563,11 @@
     PROPRIAS.forEach((p) => s.removeProperty(p));
     img.removeAttribute('data-mt-encaixe');
     if (e.foco) s.setProperty('object-position', pct(e.foco.x) + ' ' + pct(e.foco.y), 'important');
-    if (!img.naturalWidth || img.hasAttribute('data-sem-foto')) return null;
+    // O vídeo da FOTO VIVA encaixa igual à foto: a medida dele é videoWidth/videoHeight.
+    const fw = img.naturalWidth || img.videoWidth || 0, fh = img.naturalHeight || img.videoHeight || 0;
+    if (!fw || !fh || img.hasAttribute('data-sem-foto')) return null;
     const w = img.clientWidth, h = img.clientHeight;
-    const d = encaixeDaFoto({ fotoW: img.naturalWidth, fotoH: img.naturalHeight, espacoW: w, espacoH: h, papel: e.papel, foco: e.foco });
+    const d = encaixeDaFoto({ fotoW: fw, fotoH: fh, espacoW: w, espacoH: h, papel: e.papel, foco: e.foco });
     if (d.modo !== 'conter') return d;
     img.setAttribute('data-mt-encaixe', d.motivo);
     const fundo = fundoDoEspaco(img, e);
@@ -578,7 +581,6 @@
      * a foto cobre a janela, alinhada no foco. Se o espaço mudar de tamanho
      * com o padding (foto de altura automática), ele sai e fica o contain.
      */
-    const fw = img.naturalWidth, fh = img.naturalHeight;
     const k = Math.min(Math.min(w / fw, h / fh) / (e.foco ? 1 - PERDA_NO_FUNDO : 1), AMPLIACAO_MAXIMA);
     const cw = Math.min(w, fw * k), ch = Math.min(h, fh * k);
     s.setProperty('object-fit', 'cover', 'important');
@@ -874,6 +876,117 @@
       + cssSemCq(cssDaPeca, m.pw, m.ph);
   }
 
+  /* ============ FOTO VIVA: um vídeo curto no espaço da foto ============
+   *
+   * O valor do campo terminado em .mp4/.webm (js/peca-html.js, ehVideo) é um
+   * laço curto e mudo. A peça continua com o <img data-campo-img> que o
+   * autor escreveu; aqui ele dá lugar a um <video> com os MESMOS atributos
+   * (classe, data-entrada, data-ordem…) e o MESMO encaixe da foto
+   * (encaixarFoto: cobrir com o foco, ou conter com o fundo desfocado).
+   *
+   * O CSS da peça que mira `img` (`.cartao img`, `.grade img:first-child`)
+   * ganha a mesma regra para `video` (cssComVideo): <video> de autor é
+   * proibido pela porta, então o único vídeo na peça é este.
+   *
+   * O POSTER (o primeiro quadro, em JPEG, ao lado do vídeo) é o que fica:
+   *   - no modo leve (o box fraco não decodifica vídeo atrás do texto): o
+   *     <img> recebe o poster e é uma foto como as outras;
+   *   - quando o vídeo não abre (TV sem rede que ainda não o guardou, codec
+   *     que o box não toca): o <video> volta a ser o <img>, com o poster.
+   *
+   * Movimento de câmera da foto (`data-continua="kenburns"`, o motor de
+   * movimento) não vale no vídeo: ele já se mexe. A contínua sai do <video>.
+   */
+  const SO_DA_FOTO = /^kenburns/;
+  const SEM_COPIAR = { src: 1, srcset: 1, sizes: 1, alt: 1, loading: 1, decoding: 1 };
+
+  // Divide uma lista de seletores nas vírgulas de fora dos parênteses (`:is(a, b)` fica inteiro).
+  function seletores(lista) {
+    const partes = [];
+    let nivel = 0, de = 0;
+    for (let i = 0; i < lista.length; i++) {
+      const c = lista[i];
+      if (c === '(') nivel++;
+      else if (c === ')') nivel--;
+      else if (c === ',' && nivel === 0) { partes.push(lista.slice(de, i)); de = i + 1; }
+    }
+    partes.push(lista.slice(de));
+    return partes;
+  }
+  const TEM_IMG = /(^|[\s>+~(,])img(?=$|[\s>+~),.:#[])/;
+  const TIPO_IMG = new RegExp(TEM_IMG.source, 'g');
+
+  /*
+   * O CSS da peça com cada seletor que mira `img` repetido para `video`. A
+   * porta já entregou o CSS no formato dela: regras `seletor{…}` e blocos
+   * `@container …{…}` com regras dentro — nada mais.
+   */
+  function cssComVideo(css) {
+    const base = ':where(.mt-peca) :where(video){display:block}.mt-peca video[data-sem-foto]{visibility:hidden}';
+    const s = String(css || '');
+    let saida = '', i = 0;
+    while (i < s.length) {
+      const abre = s.indexOf('{', i);
+      if (abre < 0) { saida += s.slice(i); break; }
+      const pre = s.slice(i, abre);
+      const ini = pre.lastIndexOf('}') + 1;
+      const prelude = pre.slice(ini);
+      saida += pre.slice(0, ini);
+      if (prelude.trim()[0] === '@' || !TEM_IMG.test(prelude)) saida += prelude + '{';
+      else saida += prelude + ',' + seletores(prelude).filter((x) => TEM_IMG.test(x)).map((x) => x.replace(TIPO_IMG, '$1video')).join(',') + '{';
+      i = abre + 1;
+    }
+    return base + saida;
+  }
+
+  /*
+   * Troca o <img> do campo pelo <video> e devolve o vídeo. `voltar()` desfaz:
+   * o <img> volta ao lugar com o poster (chamado quando o vídeo não abre).
+   */
+  function videoNoLugar(img, src, poster, aoVoltar) {
+    const doc = img.ownerDocument;
+    const v = doc.createElement('video');
+    Array.prototype.forEach.call(img.attributes, (a) => {
+      if (SEM_COPIAR[a.name] || /^on/i.test(a.name)) return;
+      if (a.name === 'data-continua' && SO_DA_FOTO.test(a.value)) return;
+      v.setAttribute(a.name, a.value);
+    });
+    const alt = img.getAttribute('alt');
+    if (alt) v.setAttribute('aria-label', alt); else v.setAttribute('aria-hidden', 'true');
+    v.setAttribute('data-foto-viva', '');
+    // Mudo, em laço, sem controles, dentro da página: é o que deixa tocar sozinho, sem gesto, numa TV.
+    v.muted = true;
+    v.defaultMuted = true;
+    v.setAttribute('muted', '');
+    v.loop = true;
+    v.autoplay = true;
+    v.setAttribute('playsinline', '');
+    v.setAttribute('webkit-playsinline', '');
+    v.setAttribute('disablepictureinpicture', '');
+    v.preload = 'auto';
+    if (poster) v.poster = poster;
+    v.src = src;
+    let voltou = false;
+    v.addEventListener('error', () => {
+      // O vídeo solto ao sair da tela (soltarVideo) não volta ao poster: já não está na tela.
+      if (voltou || !v.parentNode || v.hasAttribute('data-solto')) return;
+      voltou = true;
+      img.setAttribute('data-foto-viva', 'poster');
+      v.parentNode.replaceChild(img, v);
+      if (poster) img.src = poster; else img.setAttribute('data-sem-foto', '');
+      if (aoVoltar) aoVoltar(img);
+    });
+    img.parentNode.replaceChild(v, img);
+    const tocar = v.play && v.play();
+    if (tocar && typeof tocar.catch === 'function') tocar.catch(() => {});
+    return v;
+  }
+
+  // Solta o vídeo (o buffer de uma TV de 2 GB não espera o coletor de lixo).
+  function soltarVideo(v) {
+    try { v.setAttribute('data-solto', ''); v.pause(); v.removeAttribute('src'); v.load(); } catch (e) { /* já saiu */ }
+  }
+
   function montar(host, item, opts) {
     const o = opts || {};
     garantirFontes(host.ownerDocument);
@@ -883,6 +996,8 @@
     const tokens = T.daMarca(it.marca || o.marca || null, modo);
 
     const sombra = host.shadowRoot || host.attachShadow({ mode: 'open' });
+    // FOTO VIVA: com vídeo num espaço de foto, o CSS que mira `img` vale também para o <video> (cssComVideo).
+    if (!o.rascunho && !o.leve && Object.keys(it.campos).some((k) => P.ehVideo(it.campos[k], o.hostsMidia))) it.css = cssComVideo(it.css);
     /*
      * Sem container query (ver cssSemCq): o CSS sai em pixel, no tamanho da
      * zona. A zona pode ainda não estar na tela (o slide entra depois): até
@@ -942,21 +1057,31 @@
     (it.ocultos || []).forEach((n) => {
       sombra.querySelectorAll('[data-campo="' + n + '"],[data-campo-qr="' + n + '"]').forEach((el) => esconder(el, peca));
     });
+    const videos = [];
     sombra.querySelectorAll('img[data-campo-img],img[data-campo-qr]').forEach((el) => {
       const qr = el.hasAttribute('data-campo-qr');
       const campo = el.getAttribute(qr ? 'data-campo-qr' : 'data-campo-img');
       const valor = campo === 'logo' && !qr ? logoDaPeca(it.campos.logo, o.logo, tokens) : it.campos[campo];
       const foto = !qr && campo !== 'logo' && !o.rascunho && !!valor ? { el, esp: (it.espacos || {})[campo] || {} } : null;
+      // FOTO VIVA (ver videoNoLugar): o poster no modo leve; o vídeo no resto.
+      const poster = foto ? P.posterDoVideo(valor, foto.esp, o.hostsMidia) : '';
       // Foto que não carrega some, em vez do ícone de imagem quebrada na parede.
       el.onerror = () => { el.setAttribute('data-sem-foto', ''); if (foto) encaixarFoto(el, foto.esp); };
       if (o.rascunho && !qr) el.src = silhueta(tokens);
-      // O QR é desenhado pelo nosso servidor a partir do texto: nada vem de fora.
-      else if (valor) el.src = qr ? '/api/qr.svg?d=' + encodeURIComponent(valor) : valor;
-      else el.setAttribute('data-sem-foto', '');
+      else if (poster && o.leve) { el.setAttribute('data-foto-viva', 'poster'); el.src = poster; }
+      else if (poster) {
+        foto.el = videoNoLugar(el, valor, poster, (img) => { foto.el = img; encaixarFoto(img, foto.esp); });
+        videos.push(foto.el);
+        foto.el.addEventListener('loadedmetadata', () => encaixarFoto(foto.el, foto.esp));
+        el.addEventListener('load', () => encaixarFoto(el, foto.esp));
+      } else if (valor) {
+        // O QR é desenhado pelo nosso servidor a partir do texto: nada vem de fora.
+        el.src = qr ? '/api/qr.svg?d=' + encodeURIComponent(valor) : valor;
+      } else el.setAttribute('data-sem-foto', '');
       if (foto) {
         fotos.push(foto);
-        el.addEventListener('load', () => encaixarFoto(el, foto.esp));
-        encaixarFoto(el, foto.esp);
+        if (!poster || o.leve) el.addEventListener('load', () => encaixarFoto(el, foto.esp));
+        encaixarFoto(foto.el, foto.esp);
       }
     });
 
@@ -1045,6 +1170,7 @@
       duracao: Number(item && item.duracao) || 12,
       parar() {
         if (relogio) clearInterval(relogio); relogio = null;
+        videos.forEach(soltarVideo); videos.length = 0;
         if (observador) observador.disconnect(); observador = null;
         if (espera) clearTimeout(espera); espera = null;
         if (aoRedimensionar && typeof window !== 'undefined') window.removeEventListener('resize', aoRedimensionar);
@@ -1058,6 +1184,8 @@
     ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA,
     // Os espaços de imagem: a decisão (pura), a miniatura do fundo e o encaixe no <img> (o painel usa os três).
     encaixeDaFoto, miniaturaDaFoto, encaixarFoto, AMPLIACAO_MAXIMA,
+    // FOTO VIVA: o CSS da peça que vale também para o <video> do espaço, e a troca do <img> pelo <video>.
+    cssComVideo, videoNoLugar,
     BASE_SEM_CQ, cssSemCq, cssCompletoSemCq, condicaoCq, temContainerQueries, referencia,
   };
 });

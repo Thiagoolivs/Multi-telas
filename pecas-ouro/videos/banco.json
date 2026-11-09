@@ -1,0 +1,797 @@
+[
+  {
+    "id": "padaria-cafe-fumegando",
+    "arquivo": "/pecas-ouro/videos/padaria/cafe-fumegando.mp4",
+    "poster": "/pecas-ouro/videos/padaria/cafe-fumegando.jpg",
+    "ramos": [
+      "padaria",
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.62
+    },
+    "duracao": 8.0,
+    "descricao": "Caneca laranja de café fumegando ao sol da janela",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/a-coffee-cup-with-steam-coming-out-of-it-20736942/"
+  },
+  {
+    "id": "padaria-cafe-na-xicara",
+    "arquivo": "/pecas-ouro/videos/padaria/cafe-na-xicara.mp4",
+    "poster": "/pecas-ouro/videos/padaria/cafe-na-xicara.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.42,
+      "y": 0.55
+    },
+    "duracao": 7.0,
+    "descricao": "Café passado enchendo a xícara vermelha",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/coffee-at-the-morning-852348/"
+  },
+  {
+    "id": "padaria-espresso-saindo",
+    "arquivo": "/pecas-ouro/videos/padaria/espresso-saindo.mp4",
+    "poster": "/pecas-ouro/videos/padaria/espresso-saindo.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.6
+    },
+    "duracao": 7.0,
+    "descricao": "Espresso saindo da máquina no copinho de vidro",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/coffee-machine-dispensing-coffee-853761/"
+  },
+  {
+    "id": "padaria-espuma-do-cafe",
+    "arquivo": "/pecas-ouro/videos/padaria/espuma-do-cafe.mp4",
+    "poster": "/pecas-ouro/videos/padaria/espuma-do-cafe.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 7.0,
+    "descricao": "A espuma do café vista de cima",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-of-a-hot-coffee-10014105/"
+  },
+  {
+    "id": "padaria-cafe-coado",
+    "arquivo": "/pecas-ouro/videos/padaria/cafe-coado.mp4",
+    "poster": "/pecas-ouro/videos/padaria/cafe-coado.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.5
+    },
+    "duracao": 7.0,
+    "descricao": "Café coado caindo da jarra de vidro na xícara",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/pouring-black-coffee-into-a-cup-7118100/"
+  },
+  {
+    "id": "padaria-maos-na-farinha",
+    "arquivo": "/pecas-ouro/videos/padaria/maos-na-farinha.mp4",
+    "poster": "/pecas-ouro/videos/padaria/maos-na-farinha.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "duracao": 7.0,
+    "descricao": "Mãos abrindo a farinha na bancada",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-on-bread-making-11265881/"
+  },
+  {
+    "id": "padaria-massa-sovada",
+    "arquivo": "/pecas-ouro/videos/padaria/massa-sovada.mp4",
+    "poster": "/pecas-ouro/videos/padaria/massa-sovada.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.6
+    },
+    "duracao": 7.0,
+    "descricao": "Massa de pão sendo sovada na bancada enfarinhada",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-of-a-person-kneading-a-dough-8190079/"
+  },
+  {
+    "id": "padaria-padeiro-modelando",
+    "arquivo": "/pecas-ouro/videos/padaria/padeiro-modelando.mp4",
+    "poster": "/pecas-ouro/videos/padaria/padeiro-modelando.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.55,
+      "y": 0.6
+    },
+    "duracao": 7.0,
+    "descricao": "Padeiro modelando os pães na bancada",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/a-baker-showing-his-skill-in-forming-a-dough-ready-for-baking-3195294/"
+  },
+  {
+    "id": "padaria-biscoitos-no-forno",
+    "arquivo": "/pecas-ouro/videos/padaria/biscoitos-no-forno.mp4",
+    "poster": "/pecas-ouro/videos/padaria/biscoitos-no-forno.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "duracao": 8.0,
+    "descricao": "Biscoitos crescendo e dourando no forno",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/backing-cookies-852375/"
+  },
+  {
+    "id": "padaria-pao-partido",
+    "arquivo": "/pecas-ouro/videos/padaria/pao-partido.mp4",
+    "poster": "/pecas-ouro/videos/padaria/pao-partido.jpg",
+    "ramos": [
+      "padaria"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 6.0,
+    "descricao": "Pão quentinho sendo partido com as mãos",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/a-person-tearing-a-bread-6421230/"
+  },
+  {
+    "id": "restaurante-vinho-na-taca",
+    "arquivo": "/pecas-ouro/videos/restaurante/vinho-na-taca.mp4",
+    "poster": "/pecas-ouro/videos/restaurante/vinho-na-taca.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "duracao": 5.5,
+    "descricao": "Vinho tinto servido na taça de cristal, à mesa",
+    "credito": "cottonbro studio / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/a-person-pouring-red-wine-on-a-wine-glass-3198246/"
+  },
+  {
+    "id": "restaurante-vinho-servido",
+    "arquivo": "/pecas-ouro/videos/restaurante/vinho-servido.mp4",
+    "poster": "/pecas-ouro/videos/restaurante/vinho-servido.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "duracao": 8.0,
+    "descricao": "Vinho tinto sendo servido na taça, à mesa",
+    "credito": "RDNE Stock project / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/pouring-red-wine-in-a-glass-6005092/"
+  },
+  {
+    "id": "restaurante-massa-servida",
+    "arquivo": "/pecas-ouro/videos/restaurante/massa-servida.mp4",
+    "poster": "/pecas-ouro/videos/restaurante/massa-servida.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.6
+    },
+    "duracao": 6.0,
+    "descricao": "Massa cremosa saindo da frigideira para o prato",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/cooking-creamy-pasta-on-a-pan-3196175/"
+  },
+  {
+    "id": "restaurante-espaguete-na-panela",
+    "arquivo": "/pecas-ouro/videos/restaurante/espaguete-na-panela.mp4",
+    "poster": "/pecas-ouro/videos/restaurante/espaguete-na-panela.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 6.0,
+    "descricao": "Espaguete amolecendo na panela",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/hands-putting-spaghetti-pasta-on-a-pot-6289336/"
+  },
+  {
+    "id": "lanchonete-hamburguer-na-chapa",
+    "arquivo": "/pecas-ouro/videos/lanchonete/hamburguer-na-chapa.mp4",
+    "poster": "/pecas-ouro/videos/lanchonete/hamburguer-na-chapa.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.5
+    },
+    "duracao": 5.0,
+    "descricao": "Hambúrguer chiando na chapa quente",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-view-of-delicious-grilled-burger-4131833/"
+  },
+  {
+    "id": "lanchonete-cheeseburger-na-grelha",
+    "arquivo": "/pecas-ouro/videos/lanchonete/cheeseburger-na-grelha.mp4",
+    "poster": "/pecas-ouro/videos/lanchonete/cheeseburger-na-grelha.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.55,
+      "y": 0.6
+    },
+    "duracao": 7.0,
+    "descricao": "Queijo derretendo nos hambúrgueres da grelha",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/cheeseburgers-on-the-grill-6756617/"
+  },
+  {
+    "id": "lanchonete-batata-fritando",
+    "arquivo": "/pecas-ouro/videos/lanchonete/batata-fritando.mp4",
+    "poster": "/pecas-ouro/videos/lanchonete/batata-fritando.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "duracao": 7.0,
+    "descricao": "Batatas fritando no óleo, no cesto da fritadeira",
+    "credito": "Ron Lach / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/a-person-cooking-french-fries-8880949/"
+  },
+  {
+    "id": "lanchonete-batata-temperada",
+    "arquivo": "/pecas-ouro/videos/lanchonete/batata-temperada.mp4",
+    "poster": "/pecas-ouro/videos/lanchonete/batata-temperada.jpg",
+    "ramos": [
+      "comida"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 7.0,
+    "descricao": "Batata frita temperada, bem de perto",
+    "credito": "Engin Akyurt / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-view-of-french-fries-7490594/"
+  },
+  {
+    "id": "otica-vitrine-de-oculos",
+    "arquivo": "/pecas-ouro/videos/otica/vitrine-de-oculos.mp4",
+    "poster": "/pecas-ouro/videos/otica/vitrine-de-oculos.jpg",
+    "ramos": [
+      "otica"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.45
+    },
+    "duracao": 8.0,
+    "descricao": "Óculos de grau na vitrine de vidro",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/variety-of-eyeglasses-on-display-5241104/"
+  },
+  {
+    "id": "clinica-recepcao-clara",
+    "arquivo": "/pecas-ouro/videos/clinica/recepcao-clara.mp4",
+    "poster": "/pecas-ouro/videos/clinica/recepcao-clara.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 5.6,
+    "descricao": "Sala de espera clara e vazia",
+    "credito": "Enrique Silva / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/an-empty-hospital-lobby-5203514/"
+  },
+  {
+    "id": "farmacia-comprimidos",
+    "arquivo": "/pecas-ouro/videos/farmacia/comprimidos.mp4",
+    "poster": "/pecas-ouro/videos/farmacia/comprimidos.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "duracao": 8.0,
+    "descricao": "Comprimidos e cápsulas coloridos sobre a mesa",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/pills-close-up-7033922/"
+  },
+  {
+    "id": "farmacia-bancada-de-laboratorio",
+    "arquivo": "/pecas-ouro/videos/farmacia/bancada-de-laboratorio.mp4",
+    "poster": "/pecas-ouro/videos/farmacia/bancada-de-laboratorio.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.45,
+      "y": 0.55
+    },
+    "duracao": 5.0,
+    "descricao": "Cápsulas, frascos e béqueres numa bancada de laboratório",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-view-of-medicines-tablets-and-substances-7230312/"
+  },
+  {
+    "id": "escritorio-equipe-trabalhando",
+    "arquivo": "/pecas-ouro/videos/escritorio/equipe-trabalhando.mp4",
+    "poster": "/pecas-ouro/videos/escritorio/equipe-trabalhando.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 6.5,
+    "descricao": "Equipe trabalhando nos computadores do escritório",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/a-group-of-people-busy-working-with-their-computers-3249672/"
+  },
+  {
+    "id": "escritorio-equipe-conversando",
+    "arquivo": "/pecas-ouro/videos/escritorio/equipe-conversando.mp4",
+    "poster": "/pecas-ouro/videos/escritorio/equipe-conversando.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 7.0,
+    "descricao": "Equipe conversando no escritório envidraçado",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/people-working-in-an-office-6773475/"
+  },
+  {
+    "id": "escritorio-nuvens-sobre-a-cidade",
+    "arquivo": "/pecas-ouro/videos/escritorio/nuvens-sobre-a-cidade.mp4",
+    "poster": "/pecas-ouro/videos/escritorio/nuvens-sobre-a-cidade.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.6,
+      "y": 0.5
+    },
+    "duracao": 8.0,
+    "descricao": "Nuvens passando sobre os prédios, em timelapse",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/time-lapse-footage-of-a-sky-on-the-city-5338574/"
+  },
+  {
+    "id": "escritorio-cidade-de-dia",
+    "arquivo": "/pecas-ouro/videos/escritorio/cidade-de-dia.mp4",
+    "poster": "/pecas-ouro/videos/escritorio/cidade-de-dia.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.55
+    },
+    "duracao": 8.0,
+    "descricao": "Prédios da cidade sob nuvens brancas, em timelapse",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/time-lapse-video-of-city-buildings-under-white-clouds-5335804/"
+  },
+  {
+    "id": "escritorio-cidade-ao-entardecer",
+    "arquivo": "/pecas-ouro/videos/escritorio/cidade-ao-entardecer.mp4",
+    "poster": "/pecas-ouro/videos/escritorio/cidade-ao-entardecer.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.6
+    },
+    "duracao": 8.0,
+    "descricao": "A cidade ao entardecer, céu rosado",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/a-timelapse-video-over-a-city-4400217/"
+  },
+  {
+    "id": "industria-solda-faiscas",
+    "arquivo": "/pecas-ouro/videos/industria/solda-faiscas.mp4",
+    "poster": "/pecas-ouro/videos/industria/solda-faiscas.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.7,
+      "y": 0.4
+    },
+    "duracao": 7.0,
+    "descricao": "Faíscas da solda numa chapa de aço",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/professional-welding-steel-6046358/"
+  },
+  {
+    "id": "texturas-fumaca-suave",
+    "arquivo": "/pecas-ouro/videos/texturas/fumaca-suave.mp4",
+    "poster": "/pecas-ouro/videos/texturas/fumaca-suave.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.4,
+      "y": 0.4
+    },
+    "duracao": 8.0,
+    "descricao": "Fumaça branca suave no fundo preto",
+    "credito": "cottonbro studio / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/footage-of-smoke-against-black-background-9694807/"
+  },
+  {
+    "id": "texturas-nevoa",
+    "arquivo": "/pecas-ouro/videos/texturas/nevoa.mp4",
+    "poster": "/pecas-ouro/videos/texturas/nevoa.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.6
+    },
+    "duracao": 8.0,
+    "descricao": "Névoa densa subindo no escuro",
+    "credito": "Sayan Malakar / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/smoke-on-a-black-background-3996046/"
+  },
+  {
+    "id": "texturas-luzes-da-noite",
+    "arquivo": "/pecas-ouro/videos/texturas/luzes-da-noite.mp4",
+    "poster": "/pecas-ouro/videos/texturas/luzes-da-noite.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 8.0,
+    "descricao": "Luzes desfocadas da cidade à noite",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/video-of-bokeh-lights-854569/"
+  },
+  {
+    "id": "texturas-luzes-douradas",
+    "arquivo": "/pecas-ouro/videos/texturas/luzes-douradas.mp4",
+    "poster": "/pecas-ouro/videos/texturas/luzes-douradas.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 8.0,
+    "descricao": "Pontos de luz dourada no fundo escuro",
+    "credito": "The Marc Knight / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/video-of-bokeh-lights-3400765/"
+  },
+  {
+    "id": "texturas-brilho-dourado",
+    "arquivo": "/pecas-ouro/videos/texturas/brilho-dourado.mp4",
+    "poster": "/pecas-ouro/videos/texturas/brilho-dourado.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 8.0,
+    "descricao": "Brilho dourado desfocado",
+    "credito": "Nadezhda Moryak / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/bokeh-effect-of-lights-6340529/"
+  },
+  {
+    "id": "texturas-seda-creme",
+    "arquivo": "/pecas-ouro/videos/texturas/seda-creme.mp4",
+    "poster": "/pecas-ouro/videos/texturas/seda-creme.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 8.0,
+    "descricao": "Seda creme ondulando com a luz",
+    "credito": "Mikhail Nilov / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/a-moving-fabric-7677259/"
+  },
+  {
+    "id": "texturas-seda-vinho",
+    "arquivo": "/pecas-ouro/videos/texturas/seda-vinho.mp4",
+    "poster": "/pecas-ouro/videos/texturas/seda-vinho.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 8.0,
+    "descricao": "Seda cor de vinho em movimento lento",
+    "credito": "Mikhail Nilov / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-video-of-a-red-silk-cloth-7677235/"
+  },
+  {
+    "id": "texturas-seda-preta",
+    "arquivo": "/pecas-ouro/videos/texturas/seda-preta.mp4",
+    "poster": "/pecas-ouro/videos/texturas/seda-preta.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 8.0,
+    "descricao": "Seda preta com reflexos suaves",
+    "credito": "Mikhail Nilov / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-video-of-a-black-silk-cloth-7677321/"
+  },
+  {
+    "id": "texturas-tecido-bronze",
+    "arquivo": "/pecas-ouro/videos/texturas/tecido-bronze.mp4",
+    "poster": "/pecas-ouro/videos/texturas/tecido-bronze.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 8.0,
+    "descricao": "Tecido acetinado cor de bronze",
+    "credito": "Artem Podrez / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-video-of-a-wave-cloth-7233559/"
+  },
+  {
+    "id": "texturas-trama-dourada",
+    "arquivo": "/pecas-ouro/videos/texturas/trama-dourada.mp4",
+    "poster": "/pecas-ouro/videos/texturas/trama-dourada.jpg",
+    "ramos": [
+      "geral"
+    ],
+    "papel": "textura",
+    "foco": {
+      "x": 0.5,
+      "y": 0.5
+    },
+    "duracao": 8.0,
+    "descricao": "Trama de tecido dourado em câmera lenta",
+    "credito": "StefWithAnF / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/macro-view-of-a-yellow-weaved-fabric-5514239/"
+  },
+  {
+    "id": "industria-fresadora",
+    "arquivo": "/pecas-ouro/videos/industria/fresadora.mp4",
+    "poster": "/pecas-ouro/videos/industria/fresadora.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.5
+    },
+    "duracao": 7.0,
+    "descricao": "Fresadora desbastando um bloco de metal",
+    "credito": "Daniel Smyth / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-of-grinding-metal-12918424/"
+  },
+  {
+    "id": "industria-torno-cnc",
+    "arquivo": "/pecas-ouro/videos/industria/torno-cnc.mp4",
+    "poster": "/pecas-ouro/videos/industria/torno-cnc.jpg",
+    "ramos": [
+      "corporativo"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.4,
+      "y": 0.5
+    },
+    "duracao": 6.0,
+    "descricao": "Torno CNC usinando um eixo de aço",
+    "credito": "Daniel Smyth / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/turning-steel-on-a-cnc-machine-19791092/"
+  },
+  {
+    "id": "clinica-maos-com-luva",
+    "arquivo": "/pecas-ouro/videos/clinica/maos-com-luva.mp4",
+    "poster": "/pecas-ouro/videos/clinica/maos-com-luva.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.55,
+      "y": 0.55
+    },
+    "duracao": 7.0,
+    "descricao": "Mãos calçando a luva descartável",
+    "credito": "Kaboompics / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/rekawiczki-4132752/"
+  },
+  {
+    "id": "farmacia-cartelas-de-comprimidos",
+    "arquivo": "/pecas-ouro/videos/farmacia/cartelas-de-comprimidos.mp4",
+    "poster": "/pecas-ouro/videos/farmacia/cartelas-de-comprimidos.jpg",
+    "ramos": [
+      "saude"
+    ],
+    "papel": "produto",
+    "foco": {
+      "x": 0.45,
+      "y": 0.55
+    },
+    "duracao": 10.0,
+    "descricao": "Cartelas de comprimidos sobre a mesa de madeira",
+    "credito": "Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/aerial-view-of-medicine-strips-on-a-table-5406007/"
+  },
+  {
+    "id": "salao-corte-com-tesoura",
+    "arquivo": "/pecas-ouro/videos/salao/corte-com-tesoura.mp4",
+    "poster": "/pecas-ouro/videos/salao/corte-com-tesoura.jpg",
+    "ramos": [
+      "beleza",
+      "barbearia"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.5,
+      "y": 0.45
+    },
+    "duracao": 7.0,
+    "descricao": "Pente e tesoura acertando o corte, de perto",
+    "credito": "K / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/close-up-of-barber-cutting-hair-9738001/"
+  },
+  {
+    "id": "salao-barbeiro-cortando",
+    "arquivo": "/pecas-ouro/videos/salao/barbeiro-cortando.mp4",
+    "poster": "/pecas-ouro/videos/salao/barbeiro-cortando.jpg",
+    "ramos": [
+      "barbearia",
+      "beleza"
+    ],
+    "papel": "ambiente",
+    "foco": {
+      "x": 0.55,
+      "y": 0.4
+    },
+    "duracao": 6.0,
+    "descricao": "Barbeiro acertando o corte com pente e tesoura",
+    "credito": "ArtHouse Studio / Pexels",
+    "licenca": "Pexels License",
+    "fonte": "https://www.pexels.com/video/barber-cutting-the-hair-of-the-customer-7686515/"
+  }
+]
