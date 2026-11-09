@@ -27,6 +27,17 @@
   .rotulo { display: none; }
   .trilho [data-vivo] { font-size: max(var(--mt-piso, 0cqw), 30cqh); }
 }
+/*
+ * A faixa deitada (16:9) com a letra do balcão (4,5%, 48,6 px): a data e o clima,
+ * um embaixo do outro, chegavam a 2 px da borda. O vão entre eles encolhe o
+ * quanto a letra cresceu acima do desenho e a entrelinha não passa de 35%
+ * da faixa. Sem piso (a letra do desenho) fica como era; a faixa em pé não
+ * muda.
+ */
+@container (aspect-ratio >= 9) {
+  .data { gap: max(0cqh, calc(6cqh - (max(var(--mt-piso, 0cqw), 13cqh) - 13cqh))); }
+  .data > span { line-height: min(1em, 35cqh); }
+}
 </style>
 <section class="mt-peca rodape-relogio">
   <div class="agora" data-entrada="esquerda">

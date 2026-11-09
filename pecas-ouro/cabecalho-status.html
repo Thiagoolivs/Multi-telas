@@ -43,6 +43,22 @@
   .nome { font-size: max(var(--mt-piso, 0cqw), 30cqh); letter-spacing: 2.4cqh; }
   .hora { font-size: max(var(--mt-piso, 0cqw), 38cqh); }
 }
+/*
+ * A faixa deitada (16:9) com a letra do balcão (4,5%, 48,6 px): as linhas
+ * empilhadas (o status e o horário, o nome e o "desde", a hora e a data)
+ * chegavam a 0–5 px da borda. O vão entre elas encolhe o quanto a letra
+ * cresceu acima do desenho, a entrelinha das linhas de apoio não passa de
+ * 30% da faixa e, acima de 30% da faixa de letra, a hora encolhe o mesmo
+ * tanto. Sem piso (a letra do desenho) fica como era; a faixa em pé não muda.
+ */
+@container (aspect-ratio >= 9) {
+  .estado { gap: max(0cqh, calc(7cqh - (max(var(--mt-piso, 0cqw), 17cqh) - 17cqh))); }
+  .marca { gap: max(0cqh, calc(8cqh - (max(var(--mt-piso, 0cqw), 11cqh) - 11cqh))); }
+  .tempo { gap: max(0cqh, calc(4cqh - (max(var(--mt-piso, 0cqw), 15cqh) - 15cqh))); }
+  .aberto, .ate { line-height: min(1.1em, 30cqh); }
+  .desde, .data { line-height: min(1em, 30cqh); }
+  .hora { font-size: max(var(--mt-piso, 0cqw), calc(46cqh - (max(var(--mt-piso, 0cqw), 30cqh) - 30cqh))); }
+}
 </style>
 <section class="mt-peca cabecalho-status">
   <div class="status" data-entrada="aparecer" data-ordem="1">
