@@ -90,8 +90,9 @@ test('lote 4: desenho só com o que a porta deixa, só com token de cor e na let
     assert.match(arq.css, /var\(--mt-escala-titulo, 1\)/, p.id + ': escala do título');
     for (const papel of p.papeis) assert.deepEqual(RC.letrasPequenas(r.css, papel, r.html), [], p.id + ' (' + papel + ')');
     // Os formatos: Corporativo, em pé e quadrada (e a lateral, quando é papel da peça).
+    // (A do Corporativo pode vir com a faixa sem rodapé ao lado, num "or": o mesmo desenho até 940 px.)
     for (const cond of ['(aspect-ratio >= 1.25) and (max-height: 900px)', '(aspect-ratio < 1.25)', '(aspect-ratio >= 0.8) and (aspect-ratio < 1.25)']) {
-      assert.ok(arq.css.includes('@container ' + cond), p.id + ': @container ' + cond);
+      assert.ok(arq.css.includes('@container ' + cond) || arq.css.includes('@container (' + cond + ') or '), p.id + ': @container ' + cond);
     }
     if (p.papeis.includes('lateral')) assert.ok(arq.css.includes('@container (max-width: 700px)'), p.id + ': lateral');
   }

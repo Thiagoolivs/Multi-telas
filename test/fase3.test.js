@@ -12,6 +12,8 @@ const path = require('node:path');
 
 const RAIZ = path.join(__dirname, '..');
 const ler = (f) => fs.readFileSync(path.join(RAIZ, f), 'utf8');
+// A condição de um @container, sozinha ou como o primeiro lado de um "or".
+const temRegra = (css, cond) => css.includes('@container ' + cond + ' {') || css.includes('@container (' + cond + ') or ');
 const T = require('../js/templates.js');
 
 const juntar = (id, vazias) => T.juntarZonasVazias(T.getLayout(id), vazias);
@@ -105,11 +107,12 @@ test('as peças-ouro do destaque cabem com a letra do balcão na principal do Co
   assert.match(robo, /console\.log\('Peças-ouro em ' \+ nome \+ ' · balcão \(' \+ PISO \+ '%\): '/);
   // O redesenho mora só na regra da principal do Corporativo (altura de 600 a 860 px):
   // a tela cheia, a em pé, a quadrada e a lateral não mudam.
-  const REGRA = '@container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px)';
+  // (A regra pode vir com a faixa do Corporativo sem rodapé ao lado, num "or": o mesmo desenho, mais alto.)
+  const REGRA = '(aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 860px)';
   for (const id of ['oferta-foto', 'oferta-lista', 'cardapio-colunas', 'oferta-selo', 'oferta-parcelado', 'cardapio-categorias',
     'gente-boas-vindas', 'gente-vaga', 'gente-comunicado', 'cardapio-dia-foto', 'servico-comunicado', 'social-avaliacao', 'lateral-prazo',
     'institucional-valores']) {
-    assert.ok(ler('pecas-ouro/' + id + '.html').includes(REGRA), id + ': a regra da principal do Corporativo');
+    assert.ok(temRegra(ler('pecas-ouro/' + id + '.html'), REGRA), id + ': a regra da principal do Corporativo');
   }
   // Na TV a principal tem 1379×784 (proporção 1,76): as peças que a achavam pela proporção (até 1,74) a acham também pela altura.
   const NA_TV = '@container (aspect-ratio >= 1.74) and (min-height: 600px) and (max-height: 860px)';
@@ -134,9 +137,9 @@ test('as peças-ouro em tela cheia cabem nas 11 marcas, e o robô bloqueia a que
   assert.match(ler('pecas-ouro/gente-comunicado.html'), /\.texto \{ font-size: max\(var\(--mt-piso, 0cqw\), 2\.8cqw\); margin-top: 3cqw; max-width: none; line-height: 1\.4; \}/);
 });
 
-test('o destaque e a lateral cabem com a letra do balcão na TV com a margem contra o corte, e o robô bloqueia 2% e 3%', () => {
+test('o destaque e a lateral cabem com a letra do balcão na TV com a margem contra o corte, e o robô bloqueia 2%, 3% e 5%', () => {
   const robo = ler('tools/regua-tv.mjs');
-  assert.match(robo, /const MARGENS_NA_TV = \[2, 3\];/);
+  assert.match(robo, /const MARGENS_NA_TV = \[2, 3, 5\];/);
   assert.match(robo, /conferirPecas\(navegador, 'balcao', zonas, \{ todasAsMarcas: true, margem \}\)/);
   assert.match(robo, /console\.log\('Peças-ouro em ' \+ nome \+ ' · balcão com borda de ' \+ margem \+ '% \('/);
   assert.match(robo, /for \(const x of naMargem\.filter\(\(y\) => y\.cedeu < 1\)\) \{ console\.log\(cedeuNaMarca\(x\)\); reprova = true; \}/);
