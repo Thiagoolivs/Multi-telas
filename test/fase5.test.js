@@ -49,7 +49,7 @@ test('a TV usa o rodízio de js/rodizio.js: tetos, tempo da leitura, sem reentra
   assert.match(P, /return R\.distribuir\(lista, \{ agoraMs: Date\.now\(\), hoje: agoraNaLoja\(\)\.data \}, durDe\);/);
   assert.match(P, /const dur = R \? R\.duracaoDe\(item, rendered\.duration\) : rendered\.duration;/);
   assert.match(P, /if \(currentSlide && noAr && noAr\.item === item && currentSlide\.el && currentSlide\.el\.isConnected\)/, 'a mesma peça fica no ar');
-  assert.match(P, /const TRANS_DUR = \{ fade: 0\.6, slide: 0\.6, zoom: 0\.65, cinematic: 0\.7, none: 0 \};/);
+  assert.match(P, /const TRANS_DUR = \{ fade: 0\.6, slide: 0\.6, zoom: 0\.65, cinematic: 0\.7, dissolver: 0\.7, varredura: 0\.7, none: 0 \};/);
   // O tempo posto à mão vale (o painel marca meta.duracaoManual).
   assert.match(ler('web/src/lib/contentTypes.js'), /export function ajustesDoEditor\(antes, depois\)/);
 });

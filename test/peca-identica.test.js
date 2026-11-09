@@ -28,7 +28,13 @@ test('o slide da peça não esmaece nem escala por cima da entrada dela', () => 
   // Sai ANTES de qualquer estado inicial de transição (opacidade 0, escala, deslize).
   assert.ok(peca < corpo.indexOf('TRANS_FROM[type]'));
   assert.ok(peca < corpo.indexOf("el.classList.add('mt-enter'"));
-  assert.match(corpo.slice(peca, peca + 200), /GSAP\.set\(el, \{ opacity: 1, clearProps: 'transform' \}\);\s+return;/);
+  /*
+   * A peça aparece inteira; só as transições de CINEMA (dissolver,
+   * varredura, 09/11) passam por ela — e elas mandam as entradas dela
+   * esperarem a troca assentar (entrarPeca, data-mt-espera), em vez de
+   * esmaecer por cima delas.
+   */
+  assert.match(corpo.slice(peca, peca + 360), /GSAP\.set\(el, \{ opacity: 1, clearProps: 'transform' \}\);\s+\/\/[^\n]*\n\s+if \(type === 'dissolver' \|\| type === 'varredura'\) entrarPeca\(el, transicaoNaTela\(type\)\);\s+return;/);
 });
 
 test('a foto da peça é carregada antes da vez dela, só se for nossa', () => {
