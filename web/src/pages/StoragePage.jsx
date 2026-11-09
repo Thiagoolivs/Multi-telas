@@ -69,7 +69,8 @@ const RECORTES = {
     titulo: 'Fotos e vídeos', vazio: 'Sem fotos nem vídeos ainda', enviar: 'Enviar fotos ou vídeos',
     subtitulo: 'O que você enviou: fotos, vídeos e apresentações para pôr nas TVs. Marque “da marca” nas fotos da empresa: a IA usa estas antes de inventar.',
     accept: 'image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    pertence: (m) => m.origem !== 'ia' && !/^audio\//.test(m.mime || ''),
+    // O poster da foto viva (o primeiro quadro, ao lado do vídeo) não aparece sozinho: sai junto com o vídeo.
+    pertence: (m) => m.origem !== 'ia' && m.origem !== 'poster' && !/^audio\//.test(m.mime || ''),
   },
   musicas: {
     titulo: 'Músicas', vazio: 'Sem músicas ainda', enviar: 'Enviar música',

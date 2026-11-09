@@ -21,7 +21,7 @@ const MAX_BYTES = 5 * 1024 * 1024; // o mesmo teto que o servidor lê
  */
 export function FotoDoProduto({ onEscolher, onFechar, aviso, botao, incluirIa }) {
   const { data, loading } = useAsync(media.list);
-  const fotos = ((data && data.items) || []).filter((m) => ACEITA.test(m.mime) && (incluirIa || m.origem !== 'ia') && (!m.size || m.size <= MAX_BYTES)).slice(0, 24);
+  const fotos = ((data && data.items) || []).filter((m) => ACEITA.test(m.mime) && (incluirIa || m.origem !== 'ia') && m.origem !== 'poster' && (!m.size || m.size <= MAX_BYTES)).slice(0, 24);
   const entrada = useRef(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState('');

@@ -61,6 +61,7 @@ const site = require('./server/site.js');
 const operadores = require('./server/operadores.js');
 const banco = require('./server/banco.js');
 const pixabay = require('./server/pixabay');
+const fotoViva = require('./server/foto-viva');
 const cortesia = require('./server/cortesia.js');
 const limites = require('./server/limites.js');
 const passes = require('./server/passes.js');
@@ -2869,7 +2870,9 @@ const negocioCache = new Map();
     // Upload: corpo = bytes crus; ?name= e ?mime= (ou Content-Type).
     if (req.method === 'POST' && parts.length === 2) {
       const mime = query.mime || req.headers['content-type'] || '';
-      if (!storage.extFor(mime)) return sendJson(res, 415, { error: 'tipo não suportado (imagem PNG/JPG/WEBP/GIF, vídeo MP4/WEBM, áudio MP3/M4A/OGG/WAV ou apresentação PPTX/PDF)' });
+      // FOTO VIVA (server/foto-viva.js): o vídeo curto de um espaço de foto entra por aqui, conferido e (com ffmpeg) refeito.
+      const ehFotoViva = query.fotoViva === '1';
+      if (!ehFotoViva && !storage.extFor(mime)) return sendJson(res, 415, { error: 'tipo não suportado (imagem PNG/JPG/WEBP/GIF, vídeo MP4/WEBM, áudio MP3/M4A/OGG/WAV ou apresentação PPTX/PDF)' });
       const used = await db.sumMediaBytes(sess.tenant_id);
       /*
        * A cota segue o plano, e é POR CONTA somando as telas: cinco telas no
@@ -2880,6 +2883,18 @@ const negocioCache = new Map();
       const tenantCota = await db.getTenant(sess.tenant_id);
       const cota = plans.cotaBytes(tenantCota && tenantCota.plan, Math.max(1, telasCota));
       if (used >= cota) return sendJson(res, 413, { error: 'cota de armazenamento cheia' });
+      if (ehFotoViva || query.posterDe) {
+        try {
+          const nome = String(query.name || 'vídeo').slice(0, 180);
+          const r = ehFotoViva
+            ? await fotoViva.subirVideo({ db, midia, tenantId: sess.tenant_id, req, mime, nome })
+            : await fotoViva.subirPoster({ db, midia, tenantId: sess.tenant_id, req, videoId: query.posterDe });
+          return sendJson(res, 201, r);
+        } catch (e) {
+          if (!e.status) erros.registrar(e, { onde: 'foto viva: upload' });
+          return sendJson(res, e.status || 500, { error: e.status ? e.message : 'falha no upload do vídeo' });
+        }
+      }
       try {
         const name = String(query.name || 'arquivo').slice(0, 180);
         const saved = await midia.guardarStream(db, sess.tenant_id, req, { mime }, { nome: name, origem: 'upload' });

@@ -52,7 +52,7 @@ test('as sobras pintam com o fundo da marca, e o desenhista acompanha a zona que
   const src = ler('js/peca-render.js');
   // O observador também remede a peça no navegador sem container query (QA de lançamento, 03/11: remedir),
   // e encaixa de novo as fotos nos espaços de imagem (o espaço mudou de forma junto com a zona).
-  assert.match(src, /new ResizeObserver\(\(\) => \{ enquadrar\(host, palcoEl\); remedir\(\); encaixarFotos\(\); \}\)/);
+  assert.match(src, /new ResizeObserver\(\(\) => \{ enquadrar\(host, palcoEl\); remedir\(\); encaixarFotos\(\); naTela\(\); \}\)/);
   assert.match(src, /if \(observador\) observador\.disconnect\(\);/, 'o observador sai com a peça');
 });
 

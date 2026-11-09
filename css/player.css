@@ -201,8 +201,28 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-trans-cinematic.mt-active { transform: scale(1) translateY(0); }
 .mt-trans-cinematic.mt-leave { transform: scale(.99) translateY(-.6%); }
 
+/* Movimento de cinema (09/11): o dissolver sem GSAP é o zoom contido de 3%. */
+.mt-trans-dissolver {
+  transition: opacity .7s ease, transform .7s cubic-bezier(.22,.61,.36,1);
+  transform: scale(1.03);
+}
+.mt-trans-dissolver.mt-active { transform: scale(1); }
+
 .mt-trans-none { transition: none; }
 .mt-leave { opacity: 0 !important; }
+
+/*
+ * A VARREDURA (js/player.js, varredura): duas faixas atravessam a zona, o
+ * destaque da marca na frente e a marca atrás, e revelam a peça nova. Por
+ * cima do slide e da luz de vidro da zona (z-index 3); a zona corta a sobra.
+ */
+.mt-varredura {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%;
+  z-index: 5; pointer-events: none;
+  background: var(--brand, #5b2eff);
+  will-change: transform;
+}
+.mt-varredura-2 { background: var(--brand-2, var(--brand, #c6f432)); }
 
 .mt-empty, .mt-broken {
   color: var(--text-dim); font-size: 1.4vw; font-size: max(var(--mt-piso, 0px), min(3.4cqw, 3cqh)); letter-spacing: .04em;

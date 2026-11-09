@@ -520,6 +520,8 @@ export function defaultConfig(deviceName) {
       nome: deviceName || 'Tela',
       layoutId: 'dashboard',
       theme: { preset: 'dark-premium', font: 'system', overrides: {} },
+      // A TV nova já nasce com a troca de cinema (as de antes seguem com a que tinham: js/storage.js).
+      transicao: 'dissolver',
       // Trilha sonora desligada e vazia: o formulário precisa do objeto para
       // não nascer com campos indefinidos.
       audio: { ativo: false, faixas: [], volume: 60, aleatorio: false, abaixarComVideo: true },

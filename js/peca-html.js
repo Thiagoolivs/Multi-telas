@@ -102,6 +102,7 @@
 
   const ENTRADAS = A.ENTRADAS.map((e) => e.id).filter(Boolean);
   const CONTINUAS = A.CONTINUAS.map((e) => e.id).filter(Boolean);
+  const ORIGENS = A.ORIGENS;
 
   const ENTIDADES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
   function decodificar(s) {
@@ -554,6 +555,21 @@
         else problemas.push(`data-ordem="${v.slice(0, 10)}": use um número de 0 a 20`);
         continue;
       }
+      /*
+       * O movimento de cinema (js/animacao.js): `data-origem` diz de que
+       * borda a "varrer" e a "desenhar" partem; `data-atraso`, quantos
+       * segundos a mais o elemento espera, além da vez dele (data-ordem).
+       */
+      if (nome === 'data-origem') {
+        if (ORIGENS.indexOf(v) >= 0) saida.push([nome, v]);
+        else problemas.push(`data-origem="${v.slice(0, 20)}" não existe (use ${ORIGENS.join(', ')})`);
+        continue;
+      }
+      if (nome === 'data-atraso') {
+        if (/^\d(\.\d{1,2})?$/.test(v) && Number(v) <= A.LIMITES.atraso.max) saida.push([nome, v]);
+        else problemas.push(`data-atraso="${v.slice(0, 10)}": use segundos de 0 a ${A.LIMITES.atraso.max} (ex.: 0.4)`);
+        continue;
+      }
       if (nome === 'style') {
         const est = estiloDeCamada(v, problemas);
         if (est) saida.push(['style', est]);
@@ -717,11 +733,52 @@
      * peças-ouro, as que aparecem quando o cliente preenche uma peça à mão
      * (PLANO §4.15: IA fora do ar nunca é tela vazia).
      */
-    const caminho = (p) => /^\/(media|pecas-ouro\/fotos)\/[A-Za-z0-9._/-]+$/.test(p) && p.indexOf('..') < 0;
+    // /pecas-ouro/videos/: o banco de vídeos curtos da FOTO VIVA, logo abaixo.
+    const caminho = (p) => /^\/(media|pecas-ouro\/fotos|pecas-ouro\/videos)\/[A-Za-z0-9._/-]+$/.test(p) && p.indexOf('..') < 0;
     if (s[0] === '/') return caminho(s);
     let u;
     try { u = new URL(s); } catch (e) { return false; }
     return u.protocol === 'https:' && (hosts || []).indexOf(u.host) >= 0 && caminho(u.pathname) && !u.search && !u.hash;
+  }
+
+  /*
+   * FOTO VIVA: todo espaço de foto aceita também um vídeo curto, mudo, em
+   * laço (café fumegando, pão saindo do forno). O valor do campo continua um
+   * TEXTO, um arquivo nosso como o da foto — só que terminado em .mp4 ou
+   * .webm:
+   *
+   *   campos.foto   "/media/<conta>/<id>.mp4" ou "/pecas-ouro/videos/<ramo>/<nome>.mp4"
+   *   espacos.foto  { papel, foco, fundo, poster: "…/<id>.jpg" }
+   *
+   * O POSTER é o primeiro quadro em JPEG, guardado AO LADO do vídeo, com o
+   * mesmo nome (o servidor grava assim; o banco também). É ele que aparece
+   * no modo leve, na TV sem rede que ainda não guardou o vídeo e enquanto o
+   * vídeo não começa. A porta escreve o poster no espaço (`espacos.poster`)
+   * para a TV não precisar adivinhar e para o pré-carregamento offline do
+   * player, que lê os endereços da config, achar a imagem.
+   *
+   * O autor da peça continua escrevendo só `<img data-campo-img>`: <video>
+   * de autor segue proibido (TAGS acima). Quem troca a imagem pelo vídeo é
+   * o renderizador (js/peca-render.js), e só nos campos de foto.
+   */
+  const VIDEO_OK = /\.(mp4|webm)$/i;
+  function ehVideo(v, hosts) {
+    const s = String(v || '');
+    if (!ehMidia(s, hosts)) return false;
+    return VIDEO_OK.test(s[0] === '/' ? s : new URL(s).pathname);
+  }
+  // O poster que mora ao lado do vídeo: o mesmo caminho, terminado em .jpg.
+  function posterAoLado(v) {
+    return String(v || '').replace(VIDEO_OK, '.jpg');
+  }
+  /*
+   * O poster de um espaço com vídeo: o que o espaço diz (arquivo nosso, de
+   * imagem) ou o que mora ao lado do vídeo. '' quando o valor não é vídeo.
+   */
+  function posterDoVideo(v, esp, hosts) {
+    if (!ehVideo(v, hosts)) return '';
+    const p = esp && typeof esp.poster === 'string' ? esp.poster : '';
+    return p && ehMidia(p, hosts) && /\.(jpe?g|png|webp)$/i.test(p) ? p : posterAoLado(v);
   }
 
   /*
@@ -768,11 +825,13 @@
     return isFinite(x) && isFinite(y) ? { x, y } : null;
   }
 
-  // O valor de um campo de foto: o texto de sempre ou { src, foco }.
+  // O valor de um campo de foto: o texto de sempre ou { src, foco } (com vídeo, também `poster`).
   function fotoDoCampo(v) {
     if (v && typeof v === 'object') {
       const src = typeof v.src === 'string' ? v.src : typeof v.url === 'string' ? v.url : '';
-      return { src, foco: lerFoco(v.foco) };
+      const r = { src, foco: lerFoco(v.foco) };
+      if (typeof v.poster === 'string' && v.poster) r.poster = v.poster.slice(0, 300);
+      return r;
     }
     return { src: v == null ? '' : String(v), foco: null };
   }
@@ -785,6 +844,8 @@
     const foco = lerFoco(e.foco);
     if (foco) s.foco = foco;
     if (typeof e.fundo === 'string' && e.fundo.length <= LIMITES.fundo && FUNDO_OK.test(e.fundo)) s.fundo = e.fundo;
+    // O poster da FOTO VIVA: quem confere se é arquivo nosso é validarItem (posterDoVideo), que sabe os hosts.
+    if (typeof e.poster === 'string' && e.poster && e.poster.length <= 300) s.poster = e.poster;
     return Object.keys(s).length ? s : null;
   }
 
@@ -826,6 +887,7 @@
     h.campos.forEach((c) => { porNome[c.nome] = c; });
     const entrada = it.campos && typeof it.campos === 'object' ? it.campos : {};
     const focosDosCampos = {};
+    const postersDosCampos = {};
     Object.keys(entrada).forEach((k) => {
       const def = porNome[k];
       if (!def) { problemas.push(`campo "${String(k).slice(0, 30)}" não existe nesta peça`); return; }
@@ -836,6 +898,7 @@
         if (ehMidia(f.src, o.hostsMidia)) {
           campos[k] = f.src;
           if (f.foco) focosDosCampos[k] = f.foco;
+          if (f.poster) postersDosCampos[k] = f.poster;
         } else problemas.push(`foto do campo "${k}" precisa ser um arquivo das Mídias`);
         return;
       }
@@ -906,6 +969,8 @@
       if (e.papel) s.papel = e.papel;
       if (foco && campos[c.nome]) s.foco = foco;
       if (e.fundo && campos[c.nome]) s.fundo = e.fundo;
+      // FOTO VIVA: o espaço com vídeo leva sempre o poster (o que veio, se for nosso; senão, o que mora ao lado).
+      if (ehVideo(campos[c.nome], o.hostsMidia)) s.poster = posterDoVideo(campos[c.nome], { poster: postersDosCampos[c.nome] || e.poster }, o.hostsMidia);
       if (Object.keys(s).length) espacos[c.nome] = s;
     });
     if (Object.keys(espacos).length) saida.item.espacos = espacos;
@@ -990,22 +1055,40 @@
    * e não higienizar(): roda a cada troca de slide, numa TV que pode ser fraca.
    */
   function fotosDoItem(item, hosts) {
+    return midiaDoItem(item, hosts).fotos;
+  }
+  /*
+   * Os vídeos da FOTO VIVA que a peça vai tocar. O player põe o do PRÓXIMO
+   * item em buffer, como faz com o item de vídeo — e nunca no modo leve, que
+   * mostra o poster (esse vem em fotosDoItem, no lugar do vídeo).
+   */
+  function videosDoItem(item, hosts) {
+    return midiaDoItem(item, hosts).videos;
+  }
+  function midiaDoItem(item, hosts) {
     const it = item && typeof item === 'object' ? item : {};
     const campos = it.campos && typeof it.campos === 'object' ? it.campos : {};
-    const urls = [];
+    const espacos = it.espacos && typeof it.espacos === 'object' ? it.espacos : {};
+    const fotos = [], videos = [];
+    const por = (l, v) => { if (v && l.indexOf(v) < 0) l.push(v); };
     String(it.html || '').replace(/data-campo-img="([\w-]+)"/g, (_, nome) => {
       // O texto de sempre ou { src, foco } (item ainda não passado pela porta).
-      const v = fotoDoCampo(campos[nome]).src;
-      if (ehMidia(v, hosts) && urls.indexOf(v) < 0) urls.push(v);
+      const f = fotoDoCampo(campos[nome]);
+      if (ehVideo(f.src, hosts)) {
+        por(videos, f.src);
+        por(fotos, posterDoVideo(f.src, { poster: f.poster || (espacos[nome] && espacos[nome].poster) }, hosts));
+      } else if (ehMidia(f.src, hosts)) por(fotos, f.src);
       return '';
     });
-    return urls;
+    return { fotos, videos };
   }
 
   return {
     LIMITES, PAPEIS, FORMATOS, VIVOS, PAPEIS_FOTO,
     higienizar, validarItem, ehMidia, doArquivo, conferirConfig, fotosDoItem,
     lerFoco, fotoDoCampo, lerEspaco,
+    // FOTO VIVA: o vídeo curto num espaço de foto.
+    ehVideo, posterDoVideo, videosDoItem,
     // Para o teste comparar com o lookbehind de antes (QA de lançamento, 03/11).
     _semLookbehind: { semPrefixo, NUMERO, NOME_SOLTO },
   };

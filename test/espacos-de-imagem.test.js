@@ -219,7 +219,7 @@ test('o desenhista encaixa toda foto de campo — menos a logo, o QR e o rascunh
   const montar = src.slice(src.indexOf('function montar('), src.indexOf('return {\n      peca,'));
   assert.match(montar, /const foto = !qr && campo !== 'logo' && !o\.rascunho && !!valor \? \{ el, esp: \(it\.espacos \|\| \{\}\)\[campo\] \|\| \{\} \} : null;/);
   assert.match(montar, /el\.addEventListener\('load', \(\) => encaixarFoto\(el, foto\.esp\)\)/);
-  assert.match(montar, /new ResizeObserver\(\(\) => \{ enquadrar\(host, palcoEl\); remedir\(\); encaixarFotos\(\); \}\)/);
+  assert.match(montar, /new ResizeObserver\(\(\) => \{ enquadrar\(host, palcoEl\); remedir\(\); encaixarFotos\(\); naTela\(\); \}\)/);
   assert.match(montar, /aoRedimensionar = \(\) => \{ enquadrar\(host, palcoEl\); remedir\(\); encaixarFotos\(\); \}/);
   /*
    * Nenhum nome de função repetido na porta e no desenhista: a segunda
@@ -337,7 +337,8 @@ test('o painel: "Trocar foto" com três abas, um violeta só, no editor da peça
   assert.match(t, /export function TrocarFoto\(\{ papel = 'produto', ramo = '', valor, onTrocar, formato = '16\/9', titulo = '', onFechar \}\)/);
   assert.match(t, /\[\['celular', 'Do celular', Smartphone\], \['banco', 'Banco de fotos', Images\], \['ia', 'Gerar com IA', Sparkles\]\]/);
   assert.equal((t.match(/variant="primary"/g) || []).length, 1, 'um violeta por tela: o "Usar esta foto"');
-  assert.match(t, /<Button variant="primary" icon=\{Check\}[^>]*>Usar esta foto<\/Button>/);
+  // FOTO VIVA: o mesmo botão diz "Usar este vídeo" quando o escolhido é um vídeo.
+  assert.match(t, /<Button variant="primary" icon=\{Check\}[^>]*>\{escolhida && escolhida\.video \? 'Usar este vídeo' : 'Usar esta foto'\}<\/Button>/);
   assert.match(t, /await media\.upload\(p\.envio\)/, 'a foto do celular sobe pelo envio de sempre');
   assert.match(t, /capture="environment"/);
   assert.match(t, /await ia\.imagem\(\{ prompt: t, formato: forma, papel \}\)/);
@@ -347,7 +348,7 @@ test('o painel: "Trocar foto" com três abas, um violeta só, no editor da peça
   assert.match(ler('web/src/api.js'), /imagem: \(\{ prompt, formato, papel \}\) => api\('POST', '\/api\/ia\/imagem', \{ prompt, formato, papel \}\)/);
   const e = ler('web/src/components/content/EditarPeca.jsx');
   assert.match(e, /<TrocarFoto papel=\{trocandoFoto\.papel\} ramo=\{ramo\} formato=\{trocandoFoto\.formato\}/);
-  assert.match(e, /espacoComFoto\(\{ \.\.\.\(x\[campo\] \|\| \{\}\), papel: trocandoFoto\.papel \}, \{ foco: valor\.foco, fundo: extra && extra\.fundo \}\)/);
+  assert.match(e, /espacoComFoto\(\{ \.\.\.\(x\[campo\] \|\| \{\}\), papel: trocandoFoto\.papel \}, \{ foco: valor\.foco, fundo: extra && extra\.fundo, poster: extra && extra\.poster \}\)/);
   assert.match(e, /else if \(mudou\) delete n\[campo\];/, 'ajustar o ponto da mesma foto apagava o crédito dela');
 });
 

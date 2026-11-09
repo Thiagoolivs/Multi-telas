@@ -44,7 +44,13 @@
         // gravava isso em TODA tela de cliente (EXECUTOR §2d, item 39).
         titulo: '',
         cidadeClima: 'São Paulo',
-        transicao: 'cinematic', // cinematic | fade | slide | zoom | none
+        /*
+         * dissolver | varredura | cinematic | fade | slide | zoom | none. O
+         * padrão daqui fica 'cinematic': é o que vale para a config que não
+         * diz, e a TV de antes não muda sozinha. A TV nova nasce com
+         * 'dissolver' (web/src/lib/contentTypes.js, defaultConfig).
+         */
+        transicao: 'cinematic',
         // Decoração animada sobre a tela: none | auto | snow | lights |
         // hearts | petals | flags | confetti | fireworks ('auto' = pela data).
         decoracao: 'none',

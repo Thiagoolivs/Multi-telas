@@ -9,6 +9,7 @@ import { PecaHtml } from './PecaHtml.jsx';
 import { TrocarFoto } from '../fotos/TrocarFoto.jsx';
 import { carregarDesenhista, conferirNosFormatos, medirEspaco, NOME_DO_FORMATO } from '../../lib/pecaHtml.js';
 import { papelDoEspaco, papelNoManifesto, espacoComFoto } from '../../lib/espacos.js';
+import { imagemDoCampo, ehVideoSrc } from '../../lib/fotoViva.js';
 import { ai, brand } from '../../api.js';
 import { carregarModelos, espacosDoModelo } from '../../lib/modelosOuro.js';
 import { CURADAS } from '../../lib/paletas.js';
@@ -407,10 +408,11 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
                 <div key={c.nome}>
                   <span className="mb-1.5 block text-xs font-medium text-ink-2">{c.nome === 'foto' ? 'Foto' : rotulo(c.nome)}</span>
                   <div className="flex items-center gap-2">
-                    {campos[c.nome] && <img src={campos[c.nome]} alt="" className="h-12 w-12 rounded-md border border-line object-cover"
+                    {/* FOTO VIVA: o vídeo aparece pelo poster (o primeiro quadro). */}
+                    {campos[c.nome] && <img src={imagemDoCampo(campos[c.nome], espacos[c.nome])} alt={ehVideoSrc(campos[c.nome]) ? 'Vídeo' : ''} className="h-12 w-12 rounded-md border border-line object-cover"
                       style={foco ? { objectPosition: Math.round(foco.x * 100) + '% ' + Math.round(foco.y * 100) + '%' } : undefined} />}
                     <Button size="sm" variant="secondary" disabled={!!trocandoFoto} onClick={() => abrirFoto(c.nome)}>
-                      {campos[c.nome] ? 'Trocar foto' : 'Escolher foto'}
+                      {campos[c.nome] ? (ehVideoSrc(campos[c.nome]) ? 'Trocar vídeo' : 'Trocar foto') : 'Escolher foto'}
                     </Button>
                   </div>
                   {creditos[c.nome] && campos[c.nome] && (
@@ -421,13 +423,13 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
             })}
             {trocandoFoto && (
               <TrocarFoto papel={trocandoFoto.papel} ramo={ramo} formato={trocandoFoto.formato} titulo={tituloDaPeca}
-                valor={{ src: campos[trocandoFoto.campo] || '', foco: (espacos[trocandoFoto.campo] || {}).foco || null }}
+                valor={{ src: campos[trocandoFoto.campo] || '', foco: (espacos[trocandoFoto.campo] || {}).foco || null, poster: (espacos[trocandoFoto.campo] || {}).poster || '' }}
                 onFechar={() => setTrocandoFoto(null)}
                 onTrocar={(valor, extra) => {
                   const campo = trocandoFoto.campo;
                   const mudou = valor.src !== campos[campo];
                   setCampos((x) => ({ ...x, [campo]: valor.src }));
-                  setEspacos((x) => ({ ...x, [campo]: espacoComFoto({ ...(x[campo] || {}), papel: trocandoFoto.papel }, { foco: valor.foco, fundo: extra && extra.fundo }) }));
+                  setEspacos((x) => ({ ...x, [campo]: espacoComFoto({ ...(x[campo] || {}), papel: trocandoFoto.papel }, { foco: valor.foco, fundo: extra && extra.fundo, poster: extra && extra.poster }) }));
                   setCreditos((x) => { const n = { ...x }; if (extra && extra.credito) n[campo] = extra.credito; else if (mudou) delete n[campo]; return n; });
                   setTrocandoFoto(null);
                 }} />
