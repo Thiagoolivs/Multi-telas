@@ -29,6 +29,8 @@
  *   --quadros                mede os quadros em vez de gravar
  *   --cpu <n>                o freio de CPU do --quadros (padrão 4)
  *   --base <url>             servidor já de pé (padrão: sobe um na porta 6022)
+ *   --de <pasta>             os scripts e as peças de OUTRA cópia do projeto (ex.: o main),
+ *                            servidos por cima do servidor: o antes e o depois na mesma máquina
  *
  * Precisa do Playwright com o Chromium e, para o MP4, do ffmpeg no PATH.
  */
@@ -68,6 +70,19 @@ const CPU = Number(A.cpu) > 0 ? Number(A.cpu) : 4;
 const PORTA = Number(process.env.PORTA_GRAVAR) || 6022;
 const BASE = String(A.base || 'http://127.0.0.1:' + PORTA).replace(/\/$/, '');
 const SAIDA = path.resolve(A.saida || path.join(RAIZ, 'videos-pecas'));
+const DE = A.de ? path.resolve(String(A.de)) : '';
+
+// Com --de, a página pega js/ e pecas-ouro/ daquela pasta (o resto, fotos e fontes, vem do servidor).
+async function deOutraCopia(p) {
+  if (!DE) return;
+  await p.route(/\/(js\/[\w.-]+\.js|pecas-ouro\/[\w.-]+\.(html|json))(\?.*)?$/, (r) => {
+    const rel = new URL(r.request().url()).pathname.replace(/^\//, '');
+    const arq = path.join(DE, rel);
+    if (!arq.startsWith(DE + path.sep) || !fs.existsSync(arq)) return r.continue();
+    const tipo = arq.endsWith('.js') ? 'text/javascript' : arq.endsWith('.json') ? 'application/json' : 'text/html';
+    return r.fulfill({ contentType: tipo + '; charset=utf-8', body: fs.readFileSync(arq, 'utf8') });
+  });
+}
 
 /* ---------------- O servidor ---------------- */
 
@@ -202,6 +217,7 @@ async function gravar(navegador, peca, [w, h]) {
   const erros = [];
   p.on('pageerror', (e) => erros.push(e.message));
   await p.route(BASE + '/__gravar.html', (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: PALCO }));
+  await deOutraCopia(p);
   await p.goto(BASE + '/__gravar.html');
   const info = await p.evaluate(prepararNaPagina, { peca, marca: A.marca, modo: A.modo, local: A.local || '', leve: !!A.leve });
   await p.evaluate(() => window.MT_LIMPAR());
@@ -247,8 +263,23 @@ async function medir(navegador, pecas, [w, h]) {
   const erros = [];
   p.on('pageerror', (e) => erros.push(e.message));
   await p.route(BASE + '/__gravar.html', (r) => r.fulfill({ contentType: 'text/html; charset=utf-8', body: PALCO }));
+  await deOutraCopia(p);
   const cdp = await p.context().newCDPSession(p);
-  const todos = [], entradas = [];
+  await cdp.send('Performance.enable');
+  /*
+   * O TRABALHO da linha principal (Performance.getMetrics), além dos
+   * quadros: o intervalo entre quadros depende da carga da máquina (outros
+   * processos disputando a CPU); o tempo que a página gastou em script,
+   * estilo e layout, bem menos. Em ms, já com o freio.
+   */
+  const METRICAS = ['TaskDuration', 'ScriptDuration', 'LayoutDuration', 'RecalcStyleDuration'];
+  const metricas = async () => {
+    const m = {};
+    (await cdp.send('Performance.getMetrics')).metrics.forEach((x) => { if (METRICAS.includes(x.name)) m[x.name] = x.value * 1000; });
+    return m;
+  };
+  const trabalhoTotal = { TaskDuration: 0, ScriptDuration: 0, LayoutDuration: 0, RecalcStyleDuration: 0 };
+  const todos = [], entradas = [], montagens = [];
   const linhas = [];
   for (const peca of pecas) {
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
@@ -256,17 +287,30 @@ async function medir(navegador, pecas, [w, h]) {
     await p.evaluate(prepararNaPagina, { peca, marca: A.marca, modo: A.modo, local: A.local || '', leve: !!A.leve });
     await espera(800);
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
+    const antes = await metricas();
     // A peça no ar do jeito que a TV mostra: a entrada (≈ 2,5 s) e mais os segundos pedidos.
     const deltas = await p.evaluate(tocarEMedir, (3 + SEGUNDOS) * 1000);
+    const depois = await metricas();
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-    const daEntrada = deltas.filter((x) => x.t <= 3000);
+    const trabalho = {};
+    METRICAS.forEach((k) => { trabalho[k] = Math.round(depois[k] - antes[k]); trabalhoTotal[k] += trabalho[k]; });
+    /*
+     * Os primeiros 300 ms são a MONTAGEM (o primeiro desenho da peça, o
+     * piso da régua, as medidas da coreografia — e, com o freio de CPU, o
+     * tempo que o Chrome segura a página para "pagar" esse trabalho): contam
+     * à parte. Na TV, a montagem acontece debaixo da troca. A entrada é o
+     * que vem depois, até 3 s; "no ar", tudo.
+     */
+    const montagem = deltas.filter((x) => x.t < 300);
+    const daEntrada = deltas.filter((x) => x.t >= 300 && x.t <= 3000);
     todos.push(...deltas);
     entradas.push(...daEntrada);
-    linhas.push({ peca, tudo: resumo(deltas), entrada: resumo(daEntrada) });
+    montagens.push(...montagem);
+    linhas.push({ peca, montagem: resumo(montagem), tudo: resumo(deltas), entrada: resumo(daEntrada), trabalho });
   }
   await p.close();
   if (erros.length) console.warn('erros na página: ' + erros.join(' | '));
-  return { linhas, tudo: resumo(todos), entrada: resumo(entradas) };
+  return { linhas, tudo: resumo(todos), entrada: resumo(entradas), montagem: resumo(montagens), trabalho: trabalhoTotal };
 }
 
 /* ---------------- Rodar ---------------- */
@@ -278,9 +322,16 @@ try {
     const r = await medir(navegador, PECAS, formato);
     const fmt = (x) => 'p95 ' + x.p95 + ' ms · p50 ' + x.p50 + ' ms · pior ' + x.pior + ' ms · ' + x.longos + ' quadros > 50 ms · ' + x.perdidos + ' perdidos em ' + x.quadros;
     console.log('Quadros com a CPU ' + CPU + '× mais lenta, ' + formato.join('×') + (A.leve ? ', modo leve' : '') + ':');
-    for (const l of r.linhas) console.log('  ' + l.peca.padEnd(22) + ' entrada: ' + fmt(l.entrada) + '\n  ' + ''.padEnd(22) + ' no ar:   ' + fmt(l.tudo));
-    console.log('  TODAS · entrada: ' + fmt(r.entrada));
-    console.log('  TODAS · no ar:   ' + fmt(r.tudo));
+    const tr = (t) => 'linha principal ' + t.TaskDuration + ' ms (script ' + t.ScriptDuration + ', layout ' + t.LayoutDuration + ', estilo ' + t.RecalcStyleDuration + ')';
+    for (const l of r.linhas) {
+      console.log('  ' + l.peca.padEnd(22) + ' ' + tr(l.trabalho) + '\n'
+        + '  ' + ''.padEnd(22) + ' montagem: pior ' + l.montagem.pior + ' ms\n'
+        + '  ' + ''.padEnd(22) + ' entrada:  ' + fmt(l.entrada) + '\n  ' + ''.padEnd(22) + ' no ar:    ' + fmt(l.tudo));
+    }
+    console.log('  TODAS · ' + tr(r.trabalho));
+    console.log('  TODAS · montagem: pior ' + r.montagem.pior + ' ms');
+    console.log('  TODAS · entrada:  ' + fmt(r.entrada));
+    console.log('  TODAS · no ar:    ' + fmt(r.tudo));
     if (A.json) fs.writeFileSync(path.resolve(String(A.json)), JSON.stringify(r, null, 2));
   } else {
     for (const peca of PECAS) {

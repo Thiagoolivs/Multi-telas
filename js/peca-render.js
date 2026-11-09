@@ -124,9 +124,14 @@
    * conta     quanto o número leva do zero ao valor;
    * reflexo   quanto a luz leva para atravessar, e a folga depois da entrada;
    * simples   o esmaecer do modo leve (TV fraca) e de quem pediu menos movimento;
-   * kenburns  o mínimo de segundos da câmera lenta (ela dura a peça inteira).
+   * kenburns  o mínimo de segundos da câmera lenta (ela dura a peça inteira);
+   * passo     de quanto em quanto o número troca: 20 vezes por segundo. Cada
+   *           troca de texto é layout, pintura e envio ao compositor na linha
+   *           principal; a cada quadro, com a CPU 4× mais lenta, isso enchia
+   *           os quadros da entrada. O olho não lê mais que isso num número
+   *           que corre.
    */
-  const CINEMA = { linha: 0.09, conta: 1.5, reflexo: 1.2, folgaReflexo: 0.2, simples: 0.6, kenburns: 6 };
+  const CINEMA = { linha: 0.09, conta: 1.5, reflexo: 1.2, folgaReflexo: 0.2, simples: 0.6, kenburns: 6, passo: 0.05 };
   // Espaço largo dos dois lados do ponto: espaço comum seria colapsado.
   const SEPARADOR = ' · ';
   const ROLAR = 'from{translate:0 0}to{translate:-50% 0}';
@@ -1205,8 +1210,6 @@
     const janela = (doc && doc.defaultView) || null;
     const estilo = (el) => janela.getComputedStyle(el);
     const relogio = () => (janela && janela.performance && janela.performance.now ? janela.performance.now() : Date.now());
-    const quadro = (f) => (janela && janela.requestAnimationFrame ? janela.requestAnimationFrame(f) : setTimeout(f, 16));
-    const semQuadro = (id) => (janela && janela.cancelAnimationFrame ? janela.cancelAnimationFrame(id) : clearTimeout(id));
     const els = !peca || modo === 'parado' ? [] : Array.prototype.slice.call(sombra.querySelectorAll('[data-entrada],[data-continua]'));
     const atributos = (el) => ({
       entrada: el.getAttribute('data-entrada') || '', continua: el.getAttribute('data-continua') || '',
@@ -1488,20 +1491,33 @@
       k.pais.forEach((p) => devolver(p, ['font-variant-numeric']));
       devolver(k.el, ['display', 'text-align', 'width', 'white-space']);
     }
+    /*
+     * O número anda num RELÓGIO de 50 ms, e não a cada quadro: um
+     * requestAnimationFrame vivo obriga a página a montar um quadro na linha
+     * principal a cada 16 ms (estilo, pintura, envio ao compositor), mesmo
+     * sem nada mudar — e as entradas, que andam sozinhas no compositor,
+     * passavam a disputar a CPU com isso (medido com a CPU 4× mais lenta).
+     * O relógio só começa quando o primeiro número começa.
+     */
+    function agendar() {
+      if (andando != null || parada) return;
+      const agora = (relogio() - zero) / 1000;
+      let proxima = Infinity;
+      contas.forEach((k) => { if (!k.feita) proxima = Math.min(proxima, Math.max(k.inicio, agora + CINEMA.passo)); });
+      if (proxima < Infinity) andando = setTimeout(andar, Math.max(0, (proxima - agora) * 1000));
+    }
     function andar() {
       andando = null;
       if (parada) return;
       const agora = (relogio() - zero) / 1000;
-      let falta = false;
       contas.forEach((k) => {
         if (k.feita) return;
         const q = (agora - k.inicio) / CINEMA.conta;
-        if (q >= 1) { terminarConta(k); return; }
+        if (q >= 1) terminarConta(k);
         // Desacelera no fim (cúbica): o olho lê o valor chegando.
-        escreverConta(k, q <= 0 ? 0 : 1 - Math.pow(1 - q, 3));
-        falta = true;
+        else if (q > 0) escreverConta(k, 1 - Math.pow(1 - q, 3));
       });
-      if (falta) andando = quadro(andar);
+      agendar();
     }
 
     /* ---- O reflexo ---- */
@@ -1585,7 +1601,7 @@
         if (m.planoConta) prepararConta(el, m.planoConta, r.inicio);
         if (a.continua === 'reflexo') depois(r.entrada ? r.fim + CINEMA.folgaReflexo : r.inicio + 0.5, () => passarLuz(el));
       });
-      if (contas.length) andando = quadro(andar);
+      agendar();
       return true;
     }
 
@@ -1601,7 +1617,7 @@
       iniciar,
       parar() {
         parada = true;
-        if (andando != null) semQuadro(andando);
+        if (andando != null) clearTimeout(andando);
         andando = null;
         relogios.forEach(clearTimeout);
         relogios.length = 0;

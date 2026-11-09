@@ -272,6 +272,20 @@ test('a câmera lenta só cresce para o lado em que a foto é cortada, e em dire
   assert.equal(R.origemDaFoto({}), null);
 });
 
+test('o número anda num relógio de 50 ms, e não a cada quadro', () => {
+  /*
+   * Um requestAnimationFrame vivo obriga a linha principal a montar um
+   * quadro a cada 16 ms (estilo, pintura, envio ao compositor) — medido com
+   * a CPU 4× mais lenta, era o que fazia a entrada perder quadros. As
+   * entradas andam no compositor; o número troca 20 vezes por segundo.
+   */
+  const src = ler('js/peca-render.js');
+  const coreo = src.slice(src.indexOf('function coreografia('), src.indexOf('function montar(')).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  assert.doesNotMatch(coreo, /requestAnimationFrame/);
+  assert.match(coreo, /andando = setTimeout\(andar, /);
+  assert.equal(R.CINEMA.passo, 0.05);
+});
+
 test('as camadas do player não entram na conta do piso nem do detector da bancada', () => {
   const src = ler('js/peca-render.js');
   assert.match(src, /const CAMADAS = 'mt-revelar,mt-luz';/);
@@ -382,7 +396,8 @@ test('as seis peças do lote 4 usam o movimento de cinema e passam pela porta', 
 
 test('a ferramenta de gravação existe e fala a língua da bancada', () => {
   const g = ler('tools/gravar-peca.mjs');
-  for (const op of ['--peca', '--marca', '--formato', '--local', '--saida', '--quadros', '--cpu']) assert.ok(g.includes(op), op);
+  for (const op of ['--peca', '--marca', '--formato', '--local', '--saida', '--quadros', '--cpu', '--de']) assert.ok(g.includes(op), op);
+  assert.match(g, /Performance\.getMetrics/);
   assert.match(g, /recordVideo/);
   assert.match(g, /'libx264'/);
   assert.match(g, /Emulation\.setCPUThrottlingRate/);
