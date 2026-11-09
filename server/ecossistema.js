@@ -325,14 +325,14 @@ function conteudoBarrado(textos, ctx, escopo) {
   return RC.conferir(lista.filter(Boolean), { perfil: ctx.perfil || '', contexto: [ctx.empresa, ctx.segmento, escopo && escopo.objetivo].filter(Boolean).join(' ') }).bloqueios;
 }
 
-// A identidade: a marca salva vence o modelo, como no diretor.
+// A identidade: a marca salva vence o modelo, como no diretor; o clima da marca vence a direção (server/ai-director.js, direcaoNoClima).
 function identidadeDe(m, direcaoDoModelo, estilo) {
   const brand = ds.okHex((m.cores && m.cores[0]) || '', '#1e3a8a');
   const brand2 = ds.okHex((m.cores && m.cores[1]) || '', null) || ds.girarMatiz(brand, 35);
-  const direcao = ds.DIRECOES[m.direcao] ? m.direcao : (ds.DIRECOES[direcaoDoModelo] ? direcaoDoModelo : 'chapado');
+  const direcao = director.direcaoNoClima(ds.DIRECOES[m.direcao] ? m.direcao : (ds.DIRECOES[direcaoDoModelo] ? direcaoDoModelo : 'chapado'), m);
   return {
     identidade: { brand, brand2, direcao, estilo: estilo || 'vibrante' },
-    modo: director.MODO_DA_DIRECAO[direcao] || 'escuro',
+    modo: director.modoDaPeca(direcao, m),
     marcaDaPeca: { cores: [brand, brand2], fonteTitulo: m.fonteTitulo || '', fonteApoio: m.fonteApoio || '' },
   };
 }

@@ -470,6 +470,8 @@ async function marcaDaConta(tenantId) {
   const marca = (kit || assets.length) ? {
     cores: k.cores || [], fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '',
     direcao: k.direcao || '', tom: k.tom || '', observacoes: k.observacoes || '',
+    // O clima (lote de 06/11): o modo das peças que a IA faz (server/ai-director.js, modoDaPeca).
+    clima: k.clima || '',
     nome: k.nome || '', site: k.site || '', siteResumo: k.siteResumo || '',
     logo: (assets.find((a) => a.kind === 'logo') || {}).url || '',
     // As versões de uma cor só (D7): a peça de fundo escuro usa a clara, e vice-versa.
@@ -837,6 +839,8 @@ async function handleApi(req, res, pathname, query) {
           const k = kit || {};
           const out = await compositor.comporTelaInteira({
             answers, empresa: k.nome || empresa, zones, motor: compositor.motorDoHtml(), progresso,
+            // O clima da marca é o modo das peças (sem clima, o escuro de sempre).
+            modo: director.modoDaPeca('', k),
             marca: (k.cores && k.cores.length) ? { cores: k.cores, fonteTitulo: k.fonteTitulo || '', fonteApoio: k.fonteApoio || '' } : null,
           });
           if (Object.keys(out.zonas).length) return { mode: ai.mode(), motor: 'html', zonas: out.zonas, falhas: out.falhas };
