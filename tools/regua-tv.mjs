@@ -387,8 +387,9 @@ const META_ZONAS = 0.85;
  * pesa é a espera de 1,5 s de cada peça, e ela corre junto. Numa página só,
  * cada passada custava um minuto e meio.
  */
+const PAGINAS_DA_BANCADA = 4;
 // REGUA_PAGINAS=2: menos páginas da bancada ao mesmo tempo (máquina com pouca memória).
-const PAGINAS_DA_BANCADA = Math.max(1, Number(process.env.REGUA_PAGINAS) || 4);
+const PAGINAS_AO_MESMO_TEMPO = Math.max(1, Number(process.env.REGUA_PAGINAS) || PAGINAS_DA_BANCADA);
 const SEM_DESENHO = [];
 async function conferirPecas(navegador, local, soZonas, extra) {
   const x = extra || {};
@@ -444,7 +445,7 @@ async function conferirPecas(navegador, local, soZonas, extra) {
     }
     await p.close();
   };
-  await Promise.all(Array.from({ length: PAGINAS_DA_BANCADA }, trabalhar));
+  await Promise.all(Array.from({ length: PAGINAS_AO_MESMO_TEMPO }, trabalhar));
   // Na ordem do manifesto (as páginas terminam fora de ordem).
   const pos = (id) => ordem.findIndex((y) => y.id === id);
   return saida.sort((a, b) => pos(a.id) - pos(b.id));
