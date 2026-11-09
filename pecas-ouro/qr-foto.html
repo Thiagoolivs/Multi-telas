@@ -61,6 +61,18 @@ h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(-
   .qr { margin-top: 1.8cqh; gap: 1.8cqh; }
   .qr p { line-height: 1.15; }
 }
+/*
+ * Com 5% de margem (452×674) a instrução encostava no pé: com a fonte de
+ * título um pouco mais larga (CI do #332, lanchonete) ela ganhava uma linha
+ * e a letra cedia para 94%. A foto fica ainda mais baixa e o QR com 36% da
+ * largura (163 px), o que devolve uma linha de folga.
+ */
+@container (max-width: 700px) and (max-height: 690px) {
+  .mt-peca { --q: 36cqw; }
+  .foto { height: 18%; }
+  .cartao { height: 84%; padding-top: 2.4cqh; }
+  h1 { margin-top: 0; }
+}
 </style>
 <section class="mt-peca qr-foto">
   <img class="foto" data-campo-img="foto" alt="" data-entrada="aparecer">
