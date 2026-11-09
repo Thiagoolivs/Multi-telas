@@ -303,6 +303,18 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
   - **26 peças-ouro novas:** 8 de Empresas (meta, turno, EPI, ramais, cardápio da semana…), 7 de Saúde (Novembro Azul, preparo de exame, convênios, vacina, tempo de espera…), 8 de Comércio (oferta relâmpago com contagem, kit, fidelidade, delivery, Wi-Fi com QR…) e 3 de modo ambiente. Nenhum texto de saúde com preço, desconto ou promessa.
   - **18 telas `l3-*`:** dois formatos por negócio (padaria, restaurante, ótica, salão, farmácia, clínica, dentista, escritório, indústria), todas com a letra inteira na bancada.
   - Aprovar uma tela na galeria aprova junto as peças dela que esperam. A IA só aprende com as peças aprovadas.
+- [x] **Depois do reteste (06 a 09/11), entrou na main:**
+  - **O visual:** paletas sem pastel, com três climas na Marca; espaços de imagem com "Trocar foto" (celular, banco de 111 fotos ou IA); lote 4 (29 peças com foto e 20 telas); movimento de cinema (revelar, varrer, contar, câmera lenta, reflexo, troca por dissolve ou varredura); foto viva (vídeo curto no espaço da foto, banco de 44 laços).
+  - **A facilidade:** "Sua primeira TV em 5 minutos" ([CINCO-MINUTOS.md](CINCO-MINUTOS.md)); Biblioteca em 2 níveis e a campanha num lugar só; Arrumar a volta; Ajustes da TV em palavras simples.
+  - **A régua:** a letra inteira no balcão com as 11 marcas, com margem contra o corte de até 5% e sem mensagem no rodapé.
+- [x] **Reteste 2 (09/11):** nota geral provisória **7,5** (era 7,1). Nenhum bloco em 9. Detalhes em [RETESTE-2.md](RETESTE-2.md). O que segura cada bloco:
+  - o conteúdo pronto espera a aprovação na galeria (90 de 91 telas);
+  - `cabecalho-centro` corta a data e acentos em 13 telas; texto sobre texto em `cardapio-combo` na quadrada;
+  - espaço de foto sem foto deixa meia peça vazia; prévias de Aprovações e "Ver agora" ainda não são a TV;
+  - a primeira TV em 16 toques (meta 15) e o robô dela quebrado;
+  - o aviso da volta longa escondido; conteúdo fora de época ou de regra em Prontos (Outubro Rosa em novembro, parcelado na saúde);
+  - Prontos 7,4 s no 4G lento e Telas com 32 chamadas;
+  - a tela de espera e de pareamento da TV com letra pequena e ainda sem a marca do cliente.
 - [ ] **Bloco 2 e os cenários de IA do bloco 3:** dependem do crédito do Gemini.
 - [ ] **Os pilotos:** com você, pelo roteiro.
 - **O que falta para cada bloco chegar a 9 (do reteste):**
@@ -438,8 +450,8 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
 - [x] Fase 7: o painel novo, a estrutura (4 das 9 tarefas ainda passam de 3 cliques; ver o andamento)
 - [x] Fase 8: o painel novo, o acabamento (a nota da interface sai no reteste, fase 10)
 - [x] Fase 9: modelos com função e pacotes prontos (os lotes esperam a aprovação na galeria)
-- [ ] Fase 10: reteste completo e pilotos (reteste feito, nota 7,1; faltam o bloco 2 com a IA e os pilotos)
-- [ ] Fase 11: dados vivos
+- [ ] Fase 10: reteste completo e pilotos (reteste 2 feito, nota 7,5; faltam o bloco 2 com a IA e os pilotos)
+- [ ] Fase 11: dados vivos (pronto; falta conferir com uma planilha real do Google em produção)
 - [x] Fase 12: Saúde, a chamada de senha (falta o piloto numa recepção; ver o andamento)
 - [x] Fase 13: equipe e redes
 
