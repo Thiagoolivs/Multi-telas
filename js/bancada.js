@@ -108,16 +108,31 @@
     return e;
   };
 
+  /*
+   * FOTO VIVA na bancada: `?video=/pecas-ouro/videos/…mp4` põe o vídeo em
+   * todo espaço de foto da peça, e `?leve=1` desenha como a TV fraca (o
+   * poster parado no lugar do vídeo). É assim que o robô da régua confere os
+   * dois caminhos (tools/regua-tv.mjs, conferirFotoViva).
+   */
+  const busca = new URLSearchParams(location.search);
+  const VIDEO_NA_FOTO = /^\/pecas-ouro\/videos\/[\w/-]+\.(mp4|webm)$/.test(busca.get('video') || '') ? busca.get('video') : '';
+  const LEVE = busca.get('leve') === '1';
+  const comVideo = (def) => {
+    const c = {};
+    if (VIDEO_NA_FOTO) Object.keys(def.fotos || {}).forEach((n) => { c[n] = VIDEO_NA_FOTO; });
+    return c;
+  };
+
   function montarPeca(host, arq, def, papel, marca, modo, extra) {
     const x = extra || {};
     return MTPecaRender.montar(host, {
       type: 'peca-html', papel, html: arq.html, css: arq.css,
-      campos: Object.assign({}, def.campos || {}, x.campos || {}),
+      campos: Object.assign({}, def.campos || {}, comVideo(def), x.campos || {}),
       espacos: Object.assign(espacosDe(def), x.espacos || {}),
       modo: modo === 'rascunho' ? 'escuro' : modo, marca: marcaDoItem(marca),
     }, {
       rascunho: modo === 'rascunho',
-      leve: !!x.leve,
+      leve: !!x.leve || LEVE,
       marcaNaTela: !!x.marcaNaTela,
       clima: () => Promise.resolve('27°'),
       mensagens: x.mensagens || [],

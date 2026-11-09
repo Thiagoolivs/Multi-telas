@@ -107,7 +107,7 @@ export function TypePicker({ open, onClose, onPick, onPickItem, onCriar, zona })
       ...camp.map((p) => ({ id: p.campanhaId + p.vaga, item: { ...p.item, formato: p.formato || p.item.formato }, papel: p.papel, formato: p.formato, label: p.label, origem: p.campanha })),
       ...lib.map((i) => ({ id: i.id, item: i.item, papel: i.item && i.item.papel, formato: i.formato || (i.item && i.item.formato), label: i.label, origem: i.campaign })),
     ]));
-    if (!faixa) media.list().then((r) => setMidias(((r && r.items) || []).filter((m) => /^(image|video)\//.test(m.mime || '')))).catch(() => setMidias([]));
+    if (!faixa) media.list().then((r) => setMidias(((r && r.items) || []).filter((m) => /^(image|video)\//.test(m.mime || '') && m.origem !== 'poster'))).catch(() => setMidias([]));
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const termo = q.trim().toLowerCase();

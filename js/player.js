@@ -1364,6 +1364,8 @@
     try {
       const urls = {};
       JSON.stringify(cfg).replace(/\/media\/[A-Za-z0-9_.\/\-]+/g, function (m) { urls[m] = 1; return m; });
+      // As fotos e os vídeos do banco das peças (FOTO VIVA, com o poster que a porta põe no espaço) também.
+      JSON.stringify(cfg).replace(/\/pecas-ouro\/(?:fotos|videos)\/[A-Za-z0-9_.\/\-]+/g, function (m) { urls[m] = 1; return m; });
       Object.keys(urls).forEach(function (u) { fetch(u).catch(function () {}); });
     } catch (e) {}
   }
@@ -2068,15 +2070,19 @@
      * segurar dois vídeos na memória de uma TV de entrada trava mais do que a
      * tela preta que estamos tentando evitar.
      */
-    if (item.type === 'video' && item.src && !precarregado.has(item.src)
-        && !document.documentElement.classList.contains('mt-perf')) {
+    var videos = item.type === 'video' && item.src ? [item.src] : [];
+    // FOTO VIVA: o vídeo curto no espaço de foto da peça (o poster já veio em imagensDoItem).
+    if (item.type === 'peca-html' && global.MTPecaHtml && MTPecaHtml.videosDoItem) videos = MTPecaHtml.videosDoItem(item, global.MT_HOSTS_MIDIA || []);
+    if (document.documentElement.classList.contains('mt-perf')) videos = [];
+    videos.forEach(function (src) {
+      if (precarregado.has(src)) return;
       var v = document.createElement('video');
       v.preload = 'auto';
       v.muted = true;
-      v.src = item.src;
-      lembrar(item.src, v);
+      v.src = src;
+      lembrar(src, v);
       try { v.load(); } catch (e) {}
-    }
+    });
   }
 
   /*
