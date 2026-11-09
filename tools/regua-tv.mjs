@@ -39,7 +39,8 @@ const PISO = 4.5; // % do lado menor da TV, no balcão (4 m)
 const CONTRASTE = 4.5; // texto contra o que está atrás dele (REFERENCIAS, contraste)
 // Fase 3: a letra mínima depende de onde a TV fica, e a frente dá o padrão (js/player.js, LOCAIS).
 const PISO_DA_FRENTE = { comercio: 4.5, saude: 3.5, empresa: 3 };
-const PORTA = 7700 + Math.floor(Math.random() * 200);
+// REGUA_PORTA: a porta do servidor de teste (a máquina que só pode usar uma porta escolhe qual).
+const PORTA = Number(process.env.REGUA_PORTA) || 7700 + Math.floor(Math.random() * 200);
 const BASE = 'http://127.0.0.1:' + PORTA;
 const SAIDA = process.env.REGUA_SAIDA || '';
 // REGUA_SO=precos,quiz: só os tipos pedidos (para depurar um caso).
@@ -77,7 +78,13 @@ const CASOS = {
     social: { type: 'social', rede: 'linkedin', titulo: 'Siga a Alfa no LinkedIn', handle: 'Metalúrgica Alfa', url: 'https://linkedin.com/company/alfa', qr: true, duracao: 60 },
   },
 };
-const TVS = { deitada: [1920, 1080], 'em pé': [1080, 1920], quadrada: [1080, 1080] };
+/*
+ * REGUA_TVS="deitada,quadrada": só essas TVs (a máquina com pouca memória roda
+ * a régua em duas vezes). No CI, as três.
+ */
+const TODAS_AS_TVS = { deitada: [1920, 1080], 'em pé': [1080, 1920], quadrada: [1080, 1080] };
+const SO_TVS = (process.env.REGUA_TVS || '').split(',').map((x) => x.trim()).filter(Boolean);
+const TVS = Object.fromEntries(Object.entries(TODAS_AS_TVS).filter(([nome]) => !SO_TVS.length || SO_TVS.includes(nome)));
 // O que o "Adicionar" punha antes da fase 4 (web/src/lib/contentTypes.js, make): nada disso pode aparecer na TV.
 const PADROES = [
   { type: 'text', titulo: 'Novo comunicado', corpo: '', align: 'center', duracao: 60 },
@@ -380,7 +387,8 @@ const META_ZONAS = 0.85;
  * pesa é a espera de 1,5 s de cada peça, e ela corre junto. Numa página só,
  * cada passada custava um minuto e meio.
  */
-const PAGINAS_DA_BANCADA = 4;
+// REGUA_PAGINAS=2: menos páginas da bancada ao mesmo tempo (máquina com pouca memória).
+const PAGINAS_DA_BANCADA = Math.max(1, Number(process.env.REGUA_PAGINAS) || 4);
 const SEM_DESENHO = [];
 async function conferirPecas(navegador, local, soZonas, extra) {
   const x = extra || {};
@@ -552,7 +560,7 @@ async function main() {
         }
       }
       // Fase 4: o padrão antigo do "Adicionar" nunca vai ao ar.
-      const tv = tvs.deitada;
+      const tv = tvs.deitada || Object.values(tvs)[0];
       for (const item of PADROES) {
         await api.put(BASE + '/api/devices/' + tv.id + '/config', { data: { settings: { layoutId: 'full', nome: c.nome }, zonas: { principal: { items: [item] } } } });
         await espera(2500);
