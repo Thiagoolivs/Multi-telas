@@ -89,6 +89,13 @@
     (sr.getAnimations ? sr.getAnimations() : []).forEach((a) => {
       try { if (a.effect.getComputedTiming().iterations !== Infinity) a.finish(); } catch (e) { /* segue */ }
     });
+    /*
+     * E o movimento de cinema também no repouso, já (js/peca-render.js,
+     * coreografia): o número no valor final, as máscaras da "revelar" e a
+     * luz do "reflexo" tiradas. Elas terminam pelo evento do fim da
+     * animação, que só chega depois — e a medida é agora.
+     */
+    try { host.dispatchEvent(new CustomEvent('mt:repouso')); } catch (e) { /* segue */ }
     const p = peca.getBoundingClientRect();
     const fora = [];
     const caixas = [];

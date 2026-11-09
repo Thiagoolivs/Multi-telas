@@ -102,6 +102,7 @@
 
   const ENTRADAS = A.ENTRADAS.map((e) => e.id).filter(Boolean);
   const CONTINUAS = A.CONTINUAS.map((e) => e.id).filter(Boolean);
+  const ORIGENS = A.ORIGENS;
 
   const ENTIDADES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
   function decodificar(s) {
@@ -552,6 +553,21 @@
       if (nome === 'data-ordem') {
         if (/^\d{1,2}$/.test(v) && Number(v) <= 20) saida.push([nome, v]);
         else problemas.push(`data-ordem="${v.slice(0, 10)}": use um número de 0 a 20`);
+        continue;
+      }
+      /*
+       * O movimento de cinema (js/animacao.js): `data-origem` diz de que
+       * borda a "varrer" e a "desenhar" partem; `data-atraso`, quantos
+       * segundos a mais o elemento espera, além da vez dele (data-ordem).
+       */
+      if (nome === 'data-origem') {
+        if (ORIGENS.indexOf(v) >= 0) saida.push([nome, v]);
+        else problemas.push(`data-origem="${v.slice(0, 20)}" não existe (use ${ORIGENS.join(', ')})`);
+        continue;
+      }
+      if (nome === 'data-atraso') {
+        if (/^\d(\.\d{1,2})?$/.test(v) && Number(v) <= A.LIMITES.atraso.max) saida.push([nome, v]);
+        else problemas.push(`data-atraso="${v.slice(0, 10)}": use segundos de 0 a ${A.LIMITES.atraso.max} (ex.: 0.4)`);
         continue;
       }
       if (nome === 'style') {

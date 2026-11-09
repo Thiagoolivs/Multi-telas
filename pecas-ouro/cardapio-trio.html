@@ -43,13 +43,13 @@ h1 { font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo,
 }
 </style>
 <section class="mt-peca cardapio-trio">
-  <header class="cabeca" data-entrada="aparecer" data-ordem="1">
-    <h1 data-campo="titulo">Da vitrine de hoje</h1>
-    <p class="kicker" data-campo="kicker">Saídos do forno</p>
+  <header class="cabeca">
+    <h1 data-campo="titulo" data-entrada="revelar" data-ordem="1">Da vitrine de hoje</h1>
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="3">Saídos do forno</p>
   </header>
   <div class="grade">
-    <figure class="item" data-entrada="subir" data-ordem="2"><img data-campo-img="foto" alt=""><p><span data-campo="nome1">Croissant de manteiga</span><b data-campo="preco1">9,50</b></p></figure>
-    <figure class="item" data-entrada="subir" data-ordem="3"><img data-campo-img="foto2" alt=""><p><span data-campo="nome2">Bolo de café</span><b data-campo="preco2">12</b></p></figure>
-    <figure class="item" data-entrada="subir" data-ordem="4"><img data-campo-img="foto3" alt=""><p><span data-campo="nome3">Pão rústico</span><b data-campo="preco3">22</b></p></figure>
+    <figure class="item" data-entrada="subir" data-ordem="3"><img data-campo-img="foto" alt="" data-entrada="aproximar" data-ordem="3"><p><span data-campo="nome1">Croissant de manteiga</span><b data-campo="preco1" data-entrada="contar" data-ordem="5">9,50</b></p></figure>
+    <figure class="item" data-entrada="subir" data-ordem="4"><img data-campo-img="foto2" alt="" data-entrada="aproximar" data-ordem="4"><p><span data-campo="nome2">Bolo de café</span><b data-campo="preco2" data-entrada="contar" data-ordem="6">12</b></p></figure>
+    <figure class="item" data-entrada="subir" data-ordem="5"><img data-campo-img="foto3" alt="" data-entrada="aproximar" data-ordem="5"><p><span data-campo="nome3">Pão rústico</span><b data-campo="preco3" data-entrada="contar" data-continua="reflexo" data-ordem="7">22</b></p></figure>
   </div>
 </section>

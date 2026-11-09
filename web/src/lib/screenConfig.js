@@ -126,12 +126,20 @@ export const FONTS = [
   { value: 'space-grotesk', label: 'Space Grotesk' },
 ];
 
+/*
+ * A troca entre peças (settings.transicao; js/player.js, enterSlide). As
+ * duas primeiras são as de cinema (09/11) e valem também para a peça
+ * pronta; as outras, para foto, vídeo e aviso. A TV nova nasce com o
+ * dissolver; a TV de antes continua com a que tinha.
+ */
 export const TRANSITIONS = [
-  { value: 'cinematic', label: 'Cinematográfica' },
-  { value: 'fade', label: 'Fade' },
-  { value: 'slide', label: 'Slide' },
-  { value: 'zoom', label: 'Zoom' },
-  { value: 'none', label: 'Nenhuma' },
+  { value: 'dissolver', label: 'Dissolver', dica: 'Uma se dissolve na outra, com uma aproximação sutil.' },
+  { value: 'varredura', label: 'Varredura', dica: 'Uma faixa na cor da marca passa e revela a próxima.' },
+  { value: 'cinematic', label: 'Cinematográfica', dica: 'O conteúdo entra subindo de leve.' },
+  { value: 'fade', label: 'Esmaecer', dica: 'Uma some e a outra aparece.' },
+  { value: 'slide', label: 'Deslizar', dica: 'A próxima chega de lado.' },
+  { value: 'zoom', label: 'Zoom', dica: 'A próxima chega de perto.' },
+  { value: 'none', label: 'Corte seco', dica: 'Troca na hora, sem movimento.' },
 ];
 
 export const DECORATIONS = [

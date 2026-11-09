@@ -49,10 +49,55 @@
     slide: { opacity: 0, xPercent: 3.5 },
     zoom: { opacity: 0, scale: 1.045 },
     cinematic: { opacity: 0, scale: 1.03, yPercent: 1.1 },
+    // Movimento de cinema (09/11): uma peça se dissolve na outra, assentando de 3% maior.
+    dissolver: { opacity: 0, scale: 1.03 },
     none: { opacity: 1 },
   };
   // Fase 5: a régua do QA pede de 0,4 a 0,7 s (REFERENCIAS): mais que isso, a peça demora a ficar legível.
-  const TRANS_DUR = { fade: 0.6, slide: 0.6, zoom: 0.65, cinematic: 0.7, none: 0 };
+  const TRANS_DUR = { fade: 0.6, slide: 0.6, zoom: 0.65, cinematic: 0.7, dissolver: 0.7, varredura: 0.7, none: 0 };
+  /*
+   * AS TRANSIÇÕES DE CINEMA também valem para a PEÇA EM HTML (as de antes
+   * não: ver enterSlide). Elas cuidam de não pisar na entrada da peça: o
+   * slide avisa à peça (data-mt-espera, js/peca-render.js) quantos segundos
+   * as entradas dela esperam — o dissolver já quase assentado, a varredura
+   * começando a revelar.
+   */
+  const TRANSICOES_DA_PECA = { dissolver: 0.35, varredura: 0.4, fade: 0 };
+
+  /*
+   * A TV fraca (js/perf.js) e quem pediu ao sistema menos movimento: toda
+   * transição vira um esmaecer simples. "Nenhuma" continua seca.
+   */
+  function transicaoNaTela(type) {
+    if (type === 'none') return 'none';
+    let menos = false;
+    try { menos = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { /* segue */ }
+    return document.documentElement.classList.contains('mt-perf') || menos ? 'fade' : (type || 'fade');
+  }
+
+  /*
+   * VARREDURA: duas faixas atravessam a zona — o destaque da marca na
+   * frente, a marca logo atrás — e, quando cobrem tudo, a peça nova já está
+   * debaixo; elas seguem e a revelam. Só transform (xPercent), 0,7 s ao
+   * todo. A zona corta o que passa da borda (overflow escondido).
+   */
+  function varredura(el) {
+    const zona = el.parentNode;
+    if (!zona || !HAS_GSAP) return;
+    const faixas = ['mt-varredura mt-varredura-2', 'mt-varredura'].map((c) => {
+      const d = document.createElement('div');
+      d.className = c;
+      d.setAttribute('aria-hidden', 'true');
+      zona.appendChild(d);
+      return d;
+    });
+    GSAP.set(faixas, { xPercent: -101 });
+    GSAP.set(el, { opacity: 0 });
+    GSAP.timeline({ onComplete: () => faixas.forEach((f) => f.remove()) })
+      .to(faixas, { xPercent: 0, duration: 0.28, ease: 'power3.in', stagger: 0.05 })
+      .set(el, { opacity: 1 })
+      .to(faixas.slice().reverse(), { xPercent: 101, duration: 0.32, ease: 'power3.out', stagger: 0.05 });
+  }
   // Curva suave e orgânica (desaceleração longa) — nada de freada seca.
   const EASE_IN = 'power2.out';
 
@@ -296,16 +341,29 @@
      * segundo, e os primeiros elementos entravam já meio transparentes:
      * conferido quadro a quadro, lado a lado com a bancada. Aqui o slide
      * aparece inteiro e a entrada da peça é a transição — na TV fraca
-     * (.mt-perf), a peça vem parada, e também nada se mexe por cima.
+     * (.mt-perf), as entradas só esmaecem, e nada se mexe por cima.
+     *
+     * A exceção são as transições de cinema (09/11), feitas PARA a peça: o
+     * dissolver e a varredura passam por ela e mandam as entradas dela
+     * esperarem a troca assentar (entrarPeca, data-mt-espera).
      */
     if (el.classList.contains('mt-peca-html')) {
       if (HAS_GSAP) GSAP.set(el, { opacity: 1, clearProps: 'transform' });
+      // Só as de cinema (dissolver, varredura) passam pela peça, e elas a mandam esperar (TRANSICOES_DA_PECA).
+      if (type === 'dissolver' || type === 'varredura') entrarPeca(el, transicaoNaTela(type));
       return;
     }
-    if (!HAS_GSAP || type === 'none') {
-      if (type !== 'none') { el.classList.add('mt-enter', 'mt-trans-' + type); void el.offsetWidth; }
+    const tipo = transicaoNaTela(type);
+    if (!HAS_GSAP || tipo === 'none') {
+      if (tipo !== 'none') { el.classList.add('mt-enter', 'mt-trans-' + (tipo === 'varredura' ? 'fade' : tipo)); void el.offsetWidth; }
       return;
     }
+    if (tipo === 'varredura') {
+      contentBusyUntil = nowMs() + 850;
+      varredura(el);
+      return;
+    }
+    type = tipo;
     const f = TRANS_FROM[type] || TRANS_FROM.fade;
     const dur = TRANS_DUR[type] || 0.9;
     const move = { scale: f.scale || 1, xPercent: f.xPercent || 0, yPercent: f.yPercent || 0 };
@@ -331,7 +389,20 @@
     }
   }
 
-  function leaveSlide(prev) {
+  /*
+   * A peça em HTML com transição de cinema: a peça entra pela transição, e
+   * as entradas dela esperam (data-mt-espera). No modo leve, um esmaecer.
+   */
+  function entrarPeca(el, tipo) {
+    if (!HAS_GSAP || tipo === 'none') return;
+    el.setAttribute('data-mt-espera', String(TRANSICOES_DA_PECA[tipo] || 0));
+    contentBusyUntil = nowMs() + 850;
+    if (tipo === 'varredura') { varredura(el); return; }
+    const de = tipo === 'dissolver' ? TRANS_FROM.dissolver : { opacity: 0 };
+    GSAP.fromTo(el, de, { opacity: 1, scale: 1, duration: TRANS_DUR[tipo] || 0.6, ease: EASE_IN, clearProps: 'transform' });
+  }
+
+  function leaveSlide(prev, type) {
     try { prev.onLeave && prev.onLeave(); } catch (e) {}
     if (!HAS_GSAP) {
       prev.el.classList.remove('mt-active');
@@ -339,6 +410,11 @@
       setTimeout(() => prev.el.remove(), 800);
       return;
     }
+    const tipo = transicaoNaTela(type);
+    // Na varredura, o que sai fica inteiro até as faixas o cobrirem; aí sai de uma vez, por baixo delas.
+    if (tipo === 'varredura') { setTimeout(() => prev.el.remove(), 360); return; }
+    // No dissolver, o que sai segura mais e cede no fim: as duas somadas não deixam o fundo da zona aparecer no meio.
+    if (tipo === 'dissolver') { GSAP.to(prev.el, { opacity: 0, duration: TRANS_DUR.dissolver, ease: 'power1.in', onComplete: () => prev.el.remove() }); return; }
     // Saída em crossfade puro (só opacidade) — o mais suave possível, sem
     // brigar com a entrada do próximo slide.
     GSAP.to(prev.el, { opacity: 0, duration: 0.7, ease: 'sine.inOut', onComplete: () => prev.el.remove() });
@@ -2435,7 +2511,7 @@
         exib,
       };
 
-      if (prev) leaveSlide(prev);
+      if (prev) leaveSlide(prev, transition);
 
       // Alguns itens controlam o próprio avanço (ex.: vídeo até terminar).
       let advanced = false;

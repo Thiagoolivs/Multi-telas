@@ -47,6 +47,27 @@
     { id: 'crescer', label: 'Crescer', classe: 'mt-e-crescer' },
     { id: 'estourar', label: 'Estourar', classe: 'mt-e-estourar' },
     { id: 'girar', label: 'Girar entrando', classe: 'mt-e-girar' },
+    /*
+     * O MOVIMENTO DE CINEMA (lote de 09/11): as entradas que fazem a peça
+     * parecer dirigida, e não montada. Só existem na peça em HTML — o player
+     * monta a máscara de cada linha, mede o número e anda com ele, o que o
+     * CSS do editor de composição (`.mt-e-*`, sem JavaScript) não faz. Por
+     * isso não têm `classe`: o editor de composição não as oferece
+     * (`soNaPeca`), e a porta da peça (js/peca-html.js) as aceita.
+     *
+     * Os nomes são CONTRATO: a IA e o diretor de arte escrevem estes ids nas
+     * peças. Trocar um nome aqui é quebrar peça publicada.
+     */
+    { id: 'revelar', label: 'Revelar por linha', classe: '', soNaPeca: true,
+      dica: 'Texto: cada linha sobe de dentro de uma máscara, uma depois da outra.' },
+    { id: 'varrer', label: 'Varrer', classe: '', soNaPeca: true,
+      dica: 'Bloco de cor, faixa ou barra: abre a partir de uma borda (data-origem: esquerda, direita, cima, baixo).' },
+    { id: 'desenhar', label: 'Desenhar', classe: '', soNaPeca: true,
+      dica: 'Filete ou linha fina: se desenha de uma ponta à outra.' },
+    { id: 'contar', label: 'Contar até o número', classe: '', soNaPeca: true,
+      dica: 'Preço, indicador ou contagem: o número sobe do zero até o valor, sem mudar o texto final.' },
+    { id: 'aproximar', label: 'Aproximar', classe: '', soNaPeca: true,
+      dica: 'Foto ou título grande: chega um pouco maior e assenta no lugar.' },
   ];
 
   /*
@@ -62,7 +83,18 @@
     { id: 'pulsar', label: 'Pulsar', classe: 'mt-c-pulsar' },
     { id: 'balancar', label: 'Balançar', classe: 'mt-c-balancar' },
     { id: 'brilhar', label: 'Brilhar', classe: 'mt-c-brilhar' },
+    // Só na peça em HTML, como as entradas de cinema acima.
+    { id: 'kenburns', label: 'Câmera lenta na foto', classe: '', soNaPeca: true,
+      dica: 'Foto: aproxima devagar durante toda a peça, na direção do ponto de foco.' },
+    { id: 'reflexo', label: 'Reflexo', classe: '', soNaPeca: true,
+      dica: 'Preço, produto ou logo: uma luz passa uma vez depois da entrada, e para.' },
   ];
+
+  /*
+   * De onde a "varrer" e a "desenhar" partem (`data-origem`). Sem ela, da
+   * esquerda (ou de cima, num filete em pé).
+   */
+  var ORIGENS = ['esquerda', 'direita', 'cima', 'baixo'];
 
   var LIMITES = {
     duracao: { min: 0.2, max: 3, padrao: 0.6 },
@@ -153,6 +185,7 @@
   return {
     ENTRADAS: ENTRADAS,
     CONTINUAS: CONTINUAS,
+    ORIGENS: ORIGENS,
     LIMITES: LIMITES,
     ler: ler,
     estilo: estilo,

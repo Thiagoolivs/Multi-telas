@@ -11,6 +11,7 @@ const M = globalThis.MTAnim;
 
 export const ENTRADAS = M.ENTRADAS;
 export const CONTINUAS = M.CONTINUAS;
+export const ORIGENS = M.ORIGENS;
 export const LIMITES = M.LIMITES;
 export const ler = M.ler;
 export const estilo = M.estilo;
