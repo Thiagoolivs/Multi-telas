@@ -16,6 +16,11 @@
  * para achar a foto na galeria — mais a espera de verdade do painel.
  *
  * Saída: o relatório no terminal (e resultado.json) e as fotos na pasta.
+ *
+ * A foto do passo 5 (reteste 2): por padrão, a do celular, pelo botão "Usar
+ * uma foto do celular" embaixo do quadro (o botão e a foto). Com
+ * CINCO_FOTO=banco, pelo quadro: o "Trocar foto" abre no banco de fotos do
+ * negócio e a primeira foto tocada já vale.
  */
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
@@ -31,6 +36,7 @@ const SAIDA = process.env.CINCO_SAIDA || path.join(os.tmpdir(), 'cinco-minutos')
 // Uma foto de verdade de prato (a mesma das peças-ouro), como a que a pessoa tiraria no celular.
 const FOTO = path.join(RAIZ, 'pecas-ouro/fotos/prato-do-dia.jpg');
 const PRODUTO = 'Churrasco do dia';
+const DO_BANCO = process.env.CINCO_FOTO === 'banco';
 const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 fs.mkdirSync(SAIDA, { recursive: true });
 
@@ -176,7 +182,17 @@ async function rodar(navegador, tam, logo) {
   await ler(); await foto('fotos');
   const quadro = p.locator('main button').filter({ hasText: 'Ponha a foto' }).first();
   if (await quadro.count()) {
-    await escolherArquivo(quadro, FOTO, 'quadro da foto');
+    if (DO_BANCO) {
+      // O quadro abre o "Trocar foto" já no banco de fotos do negócio; a foto tocada vale.
+      await toque(quadro, 'quadro da foto');
+      const trocar = p.getByRole('dialog', { name: 'Trocar foto' });
+      await esperarPainel(trocar.getByRole('button', { name: /^Usar / }).first());
+      await ler(); await foto('fotos-banco');
+      await toque(trocar.getByRole('button', { name: /^Usar / }).first(), 'a primeira foto do banco', { decisao: true });
+    } else {
+      // A foto do celular: o botão embaixo do quadro abre a galeria direto.
+      await escolherArquivo(p.getByRole('button', { name: 'Usar uma foto do celular' }), FOTO, 'Usar uma foto do celular');
+    }
     await esperarPainel(p.locator('main button img').first());
   }
   const titulo = p.getByLabel(/Nome do produto|Título/).first();
