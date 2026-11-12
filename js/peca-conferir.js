@@ -45,12 +45,20 @@
     return linhas.length ? linhas : [r];
   }
 
-  // Duas linhas de texto se cobrem quando a área em comum passa de um quinto da menor.
+  /*
+   * Duas linhas de texto se cobrem quando a área em comum passa de um quinto
+   * da menor — OU quando uma entra na outra mais de 30% da altura da linha
+   * menor, ao longo de mais de uma letra (reteste 2, 09/11). Só a área
+   * deixava passar a chamada do rodapé por cima do WhatsApp: as duas linhas
+   * compridas, deslocadas meia linha, cobriam 17% uma da outra, e na parede
+   * era texto sobre texto. A mesma regra mora em js/peca-render.js (encaixe).
+   */
   const cobre = (a, b) => {
     const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
     const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
     const area = (x) => (x.right - x.left) * (x.bottom - x.top);
-    return w > 0 && h > 0 && w * h > Math.min(area(a), area(b)) / 5;
+    const linha = Math.min(a.bottom - a.top, b.bottom - b.top);
+    return w > 0 && h > 0 && (w * h > Math.min(area(a), area(b)) / 5 || (h > linha * 0.3 && w > linha * 0.8));
   };
 
   function sobrepostos(caixas) {
@@ -66,6 +74,67 @@
   }
 
   /*
+   * TEXTO CORTADO DENTRO DA PEÇA (reteste 2, 09/11). O que sai da peça é
+   * "fora"; o que uma caixa de DENTRO dela corta passava calado: a data do
+   * cabeçalho em reticências ("SEGUNDA · 9 …"), o nome da marca sem o "A"
+   * ("PADARI∧ SOL") e o acento e a perna do "g" cortados pela entrelinha
+   * justa com `overflow: hidden` ("COMUNICAÇAO", "VOCE"), em 13 telas
+   * prontas. Nenhuma medida via: a caixa do campo continuava dentro da peça.
+   *
+   * Mede cada linha do texto (a caixa da FONTE, que tem o acento e a perna)
+   * contra cada caixa que corta, do campo até a peça (sem ela). Passou da
+   * borda dos lados: trunca. Passou em cima ou embaixo: corta a letra (ou
+   * a linha que o line-clamp escondeu). Folga de 4% da letra (o
+   * arredondamento e a borda da caixa).
+   */
+  /*
+   * O campo que uma caixa de dentro da peça esconde INTEIRO saiu de
+   * propósito (a lista que mostra só o que cabe numa linha, com
+   * `flex-wrap` e `overflow: hidden`): não está cortado, nem sobre nada, nem
+   * fora. Cortado é o que aparece pela metade. A mesma regra do piso
+   * (js/peca-render.js, escondidoNaCaixa).
+   */
+  function escondidoNaCaixa(el, peca) {
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) return false;
+    for (let q = el.parentElement; q && q !== peca; q = q.parentElement) {
+      const cs = getComputedStyle(q);
+      if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+      const b = q.getBoundingClientRect();
+      if (r.top >= b.bottom - 1 || r.bottom <= b.top + 1 || r.left >= b.right - 1 || r.right <= b.left + 1) return true;
+    }
+    return false;
+  }
+
+  function cortados(sr, peca, escala) {
+    const out = [];
+    sr.querySelectorAll('[data-campo], [data-vivo]:not([data-vivo="mensagens"])').forEach((el) => {
+      if (el.tagName === 'IMG' || el.closest('[aria-hidden="true"]') || escondidoNaCaixa(el, peca)) return;
+      const nome = el.getAttribute('data-campo') || el.getAttribute('data-vivo');
+      const caixas = [];
+      for (let q = el; q && q !== peca; q = q.parentElement) {
+        const cs = getComputedStyle(q);
+        const x = cs.overflowX !== 'visible', y = cs.overflowY !== 'visible';
+        if (x || y) caixas.push({ x, y, r: q.getBoundingClientRect() });
+      }
+      if (!caixas.length) return;
+      let defeito = '';
+      for (const { pai, linhas } of pedacos(el)) {
+        const cs = getComputedStyle(pai);
+        if (cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) continue;
+        const tol = Math.max(1, parseFloat(cs.fontSize) * escala * 0.04);
+        for (const c of caixas) {
+          if (c.x && linhas.some((l) => l.left < c.r.left - tol || l.right > c.r.right + tol)) { defeito = 'trunca'; break; }
+          if (c.y && linhas.some((l) => l.top < c.r.top - tol || l.bottom > c.r.bottom + tol)) defeito = defeito || 'corta a letra';
+        }
+        if (defeito === 'trunca') break;
+      }
+      if (defeito) out.push(nome + ' (' + defeito + ')');
+    });
+    return out;
+  }
+
+  /*
    * Texto que sai da peça é o defeito que mais aparece e o que menos se vê
    * numa miniatura: um centímetro de manchete cortado na borda. Mede depois
    * que as fontes chegam e que as entradas animadas terminam (elas começam
@@ -78,7 +147,7 @@
     if (o.esperar) await new Promise((r) => setTimeout(r, o.esperar));
     const sr = host.shadowRoot;
     const peca = sr && sr.querySelector('.mt-peca');
-    if (!peca) return { fora: [], juntos: [], regras: [] };
+    if (!peca) return { fora: [], juntos: [], cortados: [], regras: [] };
     /*
      * As entradas são ADIANTADAS até o fim antes de medir. Com a aba em
      * segundo plano o navegador não anda as animações, e o que entra pela
@@ -103,7 +172,7 @@
     const passa = (x) => x.left < p.left - 1 || x.right > p.right + 1 || x.top < p.top - 1 || x.bottom > p.bottom + 1;
     sr.querySelectorAll('[data-campo], [data-vivo]:not([data-vivo="mensagens"])').forEach((el) => {
       const r = el.getBoundingClientRect();
-      if (!r.width || !r.height) return;
+      if (!r.width || !r.height || escondidoNaCaixa(el, peca)) return;
       const nome = el.getAttribute('data-campo') || el.getAttribute('data-vivo');
       const linhas = linhasDoTexto(el, r, p.width / peca.offsetWidth);
       /*
@@ -122,7 +191,7 @@
     const R = (typeof globalThis !== 'undefined' && globalThis.MTRegras) || null;
     const papel = o.papel || papelPeloTamanho(peca.offsetWidth, peca.offsetHeight);
     const medidas = R ? medir(R, sr, peca, papel) : null;
-    const saida = { fora, juntos: sobrepostos(caixas), regras: medidas ? R.avaliar(medidas) : [] };
+    const saida = { fora, juntos: sobrepostos(caixas), cortados: cortados(sr, peca, p.width / peca.offsetWidth || 1), regras: medidas ? R.avaliar(medidas) : [] };
     if (o.medidas) saida.medidas = medidas;
     return saida;
   }
@@ -251,8 +320,8 @@
     };
     const textos = [];
     sr.querySelectorAll('[data-campo], [data-vivo]:not([data-vivo="mensagens"])').forEach((el) => {
-      // Desenho de fundo (aria-hidden) é enfeite, não texto para ler.
-      if (el.closest('[aria-hidden="true"]')) return;
+      // Desenho de fundo (aria-hidden) é enfeite, não texto para ler; o que uma caixa esconde inteiro saiu de propósito.
+      if (el.closest('[aria-hidden="true"]') || escondidoNaCaixa(el, peca)) return;
       const nome = el.getAttribute('data-campo') || el.getAttribute('data-vivo');
       for (const { pai, linhas } of pedacos(el)) {
         const cs = estilo(pai);

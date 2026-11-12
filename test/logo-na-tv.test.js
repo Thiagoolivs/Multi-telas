@@ -31,7 +31,7 @@ test('player: cabeçalho com a logo na versão do fundo, sem repetir o nome', ()
 
 test('peça: o lugar de logo usa a da marca, na versão que lê no fundo da peça', () => {
   const r = ler('js/peca-render.js');
-  assert.match(r, /const valor = campo === 'logo' && !qr \? logoDaPeca\(it\.campos\.logo, o\.logo, tokens\) : it\.campos\[campo\];/);
+  assert.match(r, /let valor = campo === 'logo' && !qr \? logoDaPeca\(it\.campos\.logo, o\.logo, tokens\) : it\.campos\[campo\];/);
   assert.match(r, /if \(propria && \(!daMarca \|\| propria !== daMarca\.url\)\) return propria;/, 'logo de outra marca, gravada na peça, fica');
   // O painel desenha as prévias com a mesma logo.
   assert.match(ler('web/src/components/content/PecaHtml.jsx'), /logo: globalThis\.MT_LOGO \|\| null,/);

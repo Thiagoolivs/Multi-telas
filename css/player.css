@@ -699,12 +699,19 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   border: 1px solid;
   padding: .9cqh 2.6cqh; border-radius: 100px;
 }
+/*
+ * O título e o corpo do aviso numa zona grande (reteste 2, 09/11): o teto
+ * em vmin os segurava em 8,3% e 3,9% da TV, abaixo da régua de leitura a
+ * 4 m (corpo ≥ 4,5%, título de 10% para cima). O teto subiu; a parte em
+ * cqh segue a altura da zona, então a lateral e o bloco crescem pouco, e o
+ * piso do lugar (--mt-piso) continua por baixo de tudo.
+ */
 .ann-title {
-  font-size: max(var(--mt-piso, 0px), clamp(2.22vmin, 9.5cqh, 8.33vmin));
+  font-size: max(var(--mt-piso, 0px), clamp(2.22vmin, 10.5cqh, 11vmin));
   font-weight: 800; line-height: 1.08; letter-spacing: -.01em;
 }
 .ann-body {
-  font-size: max(var(--mt-piso, 0px), clamp(1.39vmin, 4.2cqh, 3.89vmin));
+  font-size: max(var(--mt-piso, 0px), clamp(1.39vmin, 4.9cqh, 5.2vmin));
   line-height: 1.5; color: rgba(255, 255, 255, .86);
   max-width: 62cqw;
 }
@@ -1087,7 +1094,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-poster-title { font-weight: 800; line-height: 1.02; letter-spacing: -.022em;
   font-size: max(var(--mt-piso, 0px), clamp(2.59vmin, 9cqw, 13.89vmin)); text-wrap: balance; }
 .mt-poster-body { font-weight: 400; line-height: 1.3; opacity: .92; max-width: 24ch;
-  font-size: max(var(--mt-piso, 0px), clamp(1.39vmin, 3.2cqw, 4.07vmin)); }
+  font-size: max(var(--mt-piso, 0px), clamp(1.39vmin, min(4.8cqw, 5cqh), 5.2vmin)); }
 .mt-poster-cta { align-self: flex-start; margin-top: 1.2cqh; font-weight: 700;
   font-size: max(var(--mt-piso, 0px), clamp(1.2vmin, 2.6cqw, 2.78vmin)); padding: .7em 1.4em; border-radius: 100px; }
 
@@ -1282,8 +1289,9 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 /* Tipografia proporcional à zona (não à tela inteira).
    Em navegadores antigos sem suporte a cqw, valem os clamps em vw acima. */
 @supports (width: 1cqw) {
-  .mt-text-title { font-size: max(var(--mt-piso, 0px), calc(clamp(2.04vmin, 6.5cqw, 8.15vmin) * var(--tscale, 1))); }
-  .mt-text-body { font-size: max(var(--mt-piso, 0px), calc(clamp(1.39vmin, 3.4cqw, 4.07vmin) * var(--tscale, 1))); }
+  /* O texto numa zona grande (reteste 2): o teto de 8,15% e 4,07% da TV vira 11% e 5,2%; a TV em pé e a quadrada medem pela largura, que é o lado curto. */
+  .mt-text-title { font-size: max(var(--mt-piso, 0px), calc(clamp(2.04vmin, min(10.6cqw, 11cqh), 11vmin) * var(--tscale, 1))); }
+  .mt-text-body { font-size: max(var(--mt-piso, 0px), calc(clamp(1.39vmin, min(4.8cqw, 5cqh), 5.2vmin) * var(--tscale, 1))); }
   .mt-clock-time { font-size: max(var(--mt-piso, 0px), clamp(3.33vmin, 14cqw, 13.89vmin)); }
   .mt-clock-date { font-size: max(var(--mt-piso, 0px), clamp(1.3vmin, 3.6cqw, 3.52vmin)); }
   .mt-weather-icon { font-size: max(var(--mt-piso, 0px), clamp(3.7vmin, 13cqw, 13.89vmin)); }
@@ -1392,35 +1400,71 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
   text-align: center; padding: 4vh; padding: min(6vw, 4vh);
 }
 .mt-pairing.hidden { display: none; }
-.mt-pairing .mt-marca { margin-bottom: 4vh; }
-.mt-pairing-title { font-size: 30px; font-size: clamp(18px, 3vw, 40px); font-weight: 600; letter-spacing: -.01em; color: #fff; }
+/*
+ * LIDA A 3–4 m (reteste 2, 09/11). Quem pareia está de pé, longe da TV, com
+ * o celular na mão: a instrução estava em 1,8–2,4% do lado menor da TV e o
+ * "Gerar outro código" em 1,2–1,5%. Agora toda letra tem 4,5% do lado
+ * menor (vmin) ou mais — a régua do balcão — e o código, 15–19%. O QR vai
+ * ao lado da instrução (embaixo dela na TV em pé), para os dois caberem
+ * grandes. Cada vmin e min() vem depois de um valor simples (TV antiga).
+ */
+.mt-pairing .mt-marca { margin-bottom: 2.4vh; font-size: 30px; font-size: 4.5vmin; }
+.mt-pairing-title { font-size: 40px; font-size: 5.4vmin; font-weight: 600; line-height: 1.2; letter-spacing: -.01em; color: #fff; }
 .mt-pairing-code {
-  margin: .5em 0 .3em;
-  /* Pela altura também: com o QR embaixo, 16vw estourava a caixa em 720p
+  margin: .12em 0 .08em;
+  /* Pela altura também: com o QR, 16vw estourava a caixa em 720p
      (a resolução de boa parte dos TV box) e cortava o título. */
-  font-size: 18vh; font-size: clamp(48px, min(16vw, 20vh), 220px); font-weight: 700; letter-spacing: .12em;
+  font-size: 18vh; font-size: clamp(48px, min(15vw, 18vmin), 260px); font-weight: 700; letter-spacing: .12em;
   line-height: 1; font-variant-numeric: tabular-nums; color: #fff;
 }
 /* O traço lima embaixo do código: o "grifo" da marca, sobre a tinta (nunca sobre branco). */
 .mt-pairing-code::after {
   content: ''; display: block; width: 1.1em; height: .045em; min-height: 4px;
-  margin: .2em auto 0; border-radius: 999px; background: #C6F432;
+  margin: .16em auto 0; border-radius: 999px; background: #C6F432;
+}
+.mt-pairing-passos {
+  display: flex; align-items: center; justify-content: center;
+  max-width: 92vw; margin: 3vh auto 0; text-align: left;
 }
 .mt-pairing-qr {
-  display: block; width: 22vh; width: clamp(110px, min(16vw, 26vh), 260px); height: auto; aspect-ratio: 1;
-  margin: 0 auto 1em; padding: .6em; border-radius: 14px; background: #fff;
+  display: block; flex: none; width: 24vh; width: 26vmin; height: auto; aspect-ratio: 1;
+  margin: 0 4vmin 0 0; padding: 1.4vmin; border-radius: 14px; background: #fff;
 }
 .mt-pairing-qr[hidden] { display: none; }
-.mt-pairing-hint { font-size: 20px; font-size: clamp(13px, 1.8vw, 26px); font-weight: 400; line-height: 1.4; color: #C9C7D4; max-width: 32em; margin: 0 auto; }
+.mt-pairing-hint { font-size: 30px; font-size: 4.6vmin; font-weight: 400; line-height: 1.3; color: #DCDAE6; max-width: 21em; margin: 0; }
 .mt-pairing-hint strong { color: #fff; font-weight: 600; }
+/* Sem o QR (aguardando, sem internet), a instrução volta ao meio. */
+.mt-pairing-passos .mt-pairing-qr[hidden] + .mt-pairing-hint { text-align: center; }
 /* Escape hatch: se este navegador já guardou uma TV, gera outra do zero. */
 .mt-pairing-reset {
-  margin-top: 1.6em; padding: .6em 1.2em; font: inherit;
-  font-size: 14px; font-size: clamp(11px, 1.2vw, 16px); color: #C9C7D4;
-  background: transparent; border: 1px solid currentColor; border-radius: 999px;
-  opacity: .55; cursor: pointer; transition: opacity .2s;
+  margin-top: .7em; padding: .35em 1em; font: inherit;
+  font-size: 30px; font-size: 4.5vmin; line-height: 1.2; color: #DCDAE6;
+  background: transparent; border: 2px solid currentColor; border-radius: 999px;
+  opacity: .85; cursor: pointer; transition: opacity .2s;
 }
 .mt-pairing-reset:hover, .mt-pairing-reset:focus { opacity: 1; }
+/* TV em pé: o QR em cima da instrução, maior. (A quadrada fica com os dois lado a lado: em coluna, não cabia na altura.) */
+@media (max-aspect-ratio: 9/10) {
+  .mt-pairing-passos { flex-direction: column; text-align: center; }
+  .mt-pairing-qr { width: 40vmin; margin: 0 auto 3vmin; }
+  .mt-pairing-hint { max-width: 18em; }
+}
+/*
+ * PAREADA E AINDA SEM PROGRAMAÇÃO, NA MARCA DA CONTA (reteste 2). Era o
+ * "Tudo certo" azul da MultiTelas na vitrine do cliente. Com a marca da
+ * conta (js/player.js, showAguardando): a cor dela, escurecida por um véu
+ * (o branco lê em qualquer cor), e a logo ou o nome no lugar do código.
+ */
+.mt-pairing.mt-pairing-da-conta { background: #0E0B1F; background: linear-gradient(135deg, var(--conta-1, #0E0B1F), var(--conta-2, #0E0B1F)); }
+.mt-pairing.mt-pairing-da-conta::before { content: ''; position: absolute; top: 0; right: 0; bottom: 0; left: 0; background: rgba(5, 8, 16, .62); }
+.mt-pairing-da-conta .mt-pairing-box { position: relative; }
+.mt-pairing-da-conta .mt-marca, .mt-pairing-da-conta .mt-pairing-code { display: none; }
+.mt-pairing-conta[hidden] { display: none; }
+.mt-pairing-conta {
+  margin: 0 auto 4vmin; max-width: 86vw; color: #fff; font-weight: 700; letter-spacing: .04em; line-height: 1.15;
+  font-size: 60px; font-size: 10vmin;
+}
+.mt-pairing-conta img { display: block; margin: 0 auto; max-width: 70vw; max-height: 26vh; max-height: 26vmin; }
 
 /*
  * O aviso de navegador antigo (js/compat.js). Por cima de tudo, inclusive do

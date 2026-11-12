@@ -118,7 +118,8 @@ test('o painel filtra pela frente e põe o exemplo dela; o botão mostra os outr
   const { pathToFileURL } = require('node:url');
   globalThis.MTPecaHtml = globalThis.MTPecaHtml || {};
   const src = ler('web/src/lib/modelosOuro.js');
-  assert.match(src, /export const daFrente = \(modelos, perfil\) => modelos\.filter\(\(m\) => !Array\.isArray\(m\.frentes\) \|\| !m\.frentes\.length \|\| m\.frentes\.includes\(perfil\)\);/);
+  // Reteste 2: pela frente e pela época (naEpoca: a campanha fora do mês não aparece).
+  assert.match(src, /export const daFrente = \(modelos, perfil, hoje\) => modelos\.filter\(\(m\) => \(!Array\.isArray\(m\.frentes\) \|\| !m\.frentes\.length \|\| m\.frentes\.includes\(perfil\)\)\s+&& naEpoca\(m, perfil, hoje\)\);/);
   assert.match(src, /const daFrente = \(frente && m\.textos && m\.textos\[frente\]\) \|\| \{\};/);
   const p = ler('web/src/pages/PecasProntasPage.jsx');
   // Fase 10: pela frente e pelo ramo (separarPorRamo); os de outra frente e de outro negócio vão para o botão.

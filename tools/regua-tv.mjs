@@ -394,6 +394,21 @@ const MARGENS_NA_TV = [2, 3, 5];
  * cedia (o título da fonte larga, já resolvido).
  */
 const SEM_RODAPE = { rodape: 'vazio', margem: 0 };
+/*
+ * AS FAIXAS (reteste 2, 09/11): os cabeçalhos e os rodapés não entravam em
+ * passada nenhuma, e o cabeçalho centralizado truncava a data e cortava o
+ * acento em 13 telas prontas. Agora vão no balcão (4,5%), nas 11 marcas, nas
+ * três alturas de faixa (deitada, em pé e a da TV quadrada): bloqueio, como
+ * o destaque — piso inteiro, nada sobre nada, nada cortado.
+ */
+const ZONAS_DAS_FAIXAS = ['Cabeçalho 16:9', 'Cabeçalho vertical', 'Cabeçalho quadrada', 'Rodapé 16:9', 'Rodapé vertical', 'Rodapé quadrada'];
+/*
+ * A principal da TV QUADRADA com rodapé (1056×913; js/bancada.js): ali o
+ * título do combo encostou no preço (reteste 2). Texto sobre texto e texto
+ * cortado bloqueiam; o piso, por dentro de uma peça reduzida a 85%, só é
+ * relatado (17 peças cedem de 84% a 97% — o próximo redesenho).
+ */
+const QUADRADA_COM_RODAPE = 'Principal · Quadrada';
 const PENDENTES = new Set([]);
 // A meta da fase 3 para as zonas (lateral e bloco): 85% das fotos na régua.
 const META_ZONAS = 0.85;
@@ -412,7 +427,9 @@ async function conferirPecas(navegador, local, soZonas, extra) {
   const saida = [];
   // Sem local: as peças de destaque, na conta da tela cheia. Com local: também as da lateral (a zona pequena ganha piso).
   // Com soZonas (o balcão), só aquelas zonas entram na conta.
-  const entra = (y) => y.papeis.includes('destaque') || (local && !x.soDestaque && y.papeis.includes('lateral'));
+  // x.faixas: só os cabeçalhos e os rodapés (reteste 2: ninguém os conferia).
+  const entra = (y) => (x.faixas ? y.papeis.includes('cabecalho') || y.papeis.includes('rodape')
+    : y.papeis.includes('destaque') || (local && !x.soDestaque && y.papeis.includes('lateral')));
   const ordem = manifesto.pecas.filter(entra);
   const fila = ordem.slice();
   const busca = (x.todasAsMarcas ? '&marca=todas&modo=claro' : '&modo=todos') + '&tamanho=caber' + (local ? '&local=' + local : '')
@@ -434,28 +451,41 @@ async function conferirPecas(navegador, local, soZonas, extra) {
       if (!desenhou) { SEM_DESENHO.push(peca.id + (local ? ' (' + local + ')' : '')); continue; }
       await p.evaluate(() => (document.fonts && document.fonts.ready) || null);
       await espera(1500);
-      // O menor piso de cada zona, por marca (cada figura diz a dela: js/bancada.js, data-marca).
+      /*
+       * TEXTO SOBRE TEXTO E TEXTO CORTADO (reteste 2, 09/11). A bancada passa
+       * cada figura pelo detector (js/peca-conferir.js: juntos e cortados) e
+       * marca a figura quando acaba (data-conferida). Espera todas: a medida
+       * sai na mesma passada, sem custo de desenho a mais.
+       */
+      await p.waitForFunction(() => [...document.querySelectorAll('#palco figure')].every((f) => f.dataset.conferida === 'sim'), null, { timeout: 30000 }).catch(() => {});
+      // O menor piso de cada zona, por marca (cada figura diz a dela: js/bancada.js, data-marca), e o que sobrepõe ou corta.
       const porZona = await p.evaluate(() => {
         const out = [];
         document.querySelectorAll('#palco section.linha').forEach((sec) => {
           const titulo = sec.querySelector('h2').textContent.split(' · ');
           const menor = {};
+          const juntos = {};
+          const cortados = {};
           sec.querySelectorAll('figure').forEach((fig) => {
             const m = fig.dataset.marca || '';
-            if (!(m in menor)) menor[m] = 1;
+            if (!(m in menor)) { menor[m] = 1; juntos[m] = []; cortados[m] = []; }
+            if (fig.dataset.conferida !== 'sim') cortados[m].push('(o detector não terminou)');
+            if (fig.dataset.juntos) juntos[m].push(fig.dataset.juntos);
+            if (fig.dataset.cortados) cortados[m].push(fig.dataset.cortados);
             fig.querySelectorAll('*').forEach((el) => {
               const pl = el.shadowRoot && el.shadowRoot.querySelector('.mt-palco');
               if (pl && pl.hasAttribute('data-mt-piso-cedeu')) menor[m] = Math.min(menor[m], parseFloat(pl.getAttribute('data-mt-piso-cedeu')));
             });
           });
-          Object.keys(menor).forEach((m) => out.push({ zona: titulo.slice(0, -1).join(' · '), tamanho: titulo[titulo.length - 1], marca: m, cedeu: menor[m] }));
+          Object.keys(menor).forEach((m) => out.push({ zona: titulo.slice(0, -1).join(' · '), tamanho: titulo[titulo.length - 1], marca: m, cedeu: menor[m],
+            juntos: [...new Set(juntos[m])].join(' | '), cortados: [...new Set(cortados[m])].join(' | ') }));
         });
         return out;
       });
-      for (const { zona, tamanho, marca, cedeu } of porZona) {
+      for (const { zona, tamanho, marca, cedeu, juntos, cortados } of porZona) {
         const cheia = FORMATOS_CHEIOS.includes(zona);
         // Tela cheia sem local; as zonas com o local do escritório (a Empresas, onde elas moram); a lateral e o destaque no balcão.
-        if (soZonas ? soZonas.includes(zona) : local ? !cheia : cheia) saida.push({ id: peca.id, zona, tamanho, marca, cedeu, cheia, local: local || '' });
+        if (soZonas ? soZonas.includes(zona) : local ? !cheia : cheia) saida.push({ id: peca.id, zona, tamanho, marca, cedeu, cheia, local: local || '', juntos, cortados });
       }
     }
     await p.close();
@@ -464,6 +494,36 @@ async function conferirPecas(navegador, local, soZonas, extra) {
   // Na ordem do manifesto (as páginas terminam fora de ordem).
   const pos = (id) => ordem.findIndex((y) => y.id === id);
   return saida.sort((a, b) => pos(a.id) - pos(b.id));
+}
+
+/*
+ * AS TELAS PRONTAS INTEIRAS (reteste 2, 09/11): o combo passou o título por
+ * cima do "R$" na TV quadrada, e o lançamento o nome por baixo do carimbo,
+ * com os textos da tela e a letra padrão — a da conta que não escolheu
+ * fonte (?fonte=padrao). Peça a peça, com os textos de exemplo, nada
+ * aparecia. A bancada monta cada tela no layout dela, com o local da frente
+ * (o piso da TV), e confere cada peça de cada zona no tamanho real
+ * (js/bancada.js, desenharTela). Bloqueio: nada sobre nada, nada cortado,
+ * nada para fora.
+ */
+const LOCAL_DA_FRENTE_NA_TV = { comercio: 'balcao', saude: 'recepcao', empresa: 'escritorio' };
+async function conferirTelas(navegador) {
+  const manifesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', 'manifesto.json'), 'utf8'));
+  const fila = (manifesto.telas || []).slice();
+  const saida = [];
+  const trabalhar = async () => {
+    const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
+    for (let t = fila.shift(); t; t = fila.shift()) {
+      const local = LOCAL_DA_FRENTE_NA_TV[t.perfil] || 'balcao';
+      await p.goto(BASE + '/bancada.html?ver=tela&fonte=padrao&tela=' + t.id + '&layout=' + t.layout + '&tamanho=caber&local=' + local);
+      const ok = await p.waitForFunction(() => document.body.dataset.conferida === 'sim', null, { timeout: 60000 }).then(() => true, () => false);
+      const naoCoube = ok ? await p.evaluate(() => (window.MTTelaConferida || {}).naoCoube || []) : ['a bancada não conferiu a tela'];
+      saida.push({ id: t.id, layout: t.layout, local, naoCoube });
+    }
+    await p.close();
+  };
+  await Promise.all(Array.from({ length: PAGINAS_AO_MESMO_TEMPO }, trabalhar));
+  return saida;
 }
 
 /*
@@ -525,6 +585,8 @@ async function main() {
   let pecas = [];
   let marcas = [];
   let semRodape = [];
+  let faixas = [];
+  let telas = [];
   const inicio = Date.now();
   let fotoViva = [];
   try {
@@ -625,17 +687,20 @@ async function main() {
     pecas = (await conferirPecas(navegador)).concat(await conferirPecas(navegador, 'escritorio'), await conferirPecas(navegador, 'balcao', [LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO]));
     // As 11 marcas: a tela cheia e o Corporativo no balcão com a margem de 2%; depois o Corporativo com 3% e 5%, e o destaque sem mensagem no rodapé (uma página por peça).
     for (const margem of MARGENS_NA_TV) {
-      const zonas = (margem === MARGENS_NA_TV[0] ? FORMATOS_CHEIOS : []).concat(LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO);
+      // Na primeira, também a principal da TV quadrada com rodapé (só sobrepor e cortar bloqueiam ali: ver QUADRADA_COM_RODAPE).
+      const zonas = (margem === MARGENS_NA_TV[0] ? FORMATOS_CHEIOS.concat(QUADRADA_COM_RODAPE) : []).concat(LATERAL_NO_BALCAO, DESTAQUE_NO_BALCAO);
       // Depois da primeira, a bancada desenha só o Corporativo (a tela cheia já foi conferida e não muda com a margem).
       const desta = await conferirPecas(navegador, 'balcao', zonas, { todasAsMarcas: true, margem, soCorporativo: margem !== MARGENS_NA_TV[0] });
       marcas = marcas.concat(desta.map((x) => Object.assign(x, { margem })));
     }
     semRodape = await conferirPecas(navegador, 'balcao', [DESTAQUE_NO_BALCAO], Object.assign({ todasAsMarcas: true, soDestaque: true, soCorporativo: true }, SEM_RODAPE));
+    faixas = await conferirPecas(navegador, 'balcao', ZONAS_DAS_FAIXAS, { todasAsMarcas: true, faixas: true });
+    telas = await conferirTelas(navegador);
   } finally {
     await navegador.close();
     parar();
   }
-  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, marcas, semRodape, senhas, fotoViva }, null, 1));
+  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, marcas, semRodape, faixas, telas, senhas, fotoViva }, null, 1));
 
   let reprova = false;
   for (const [, , nome, bloqueia] of ARRANJOS) {
@@ -716,6 +781,41 @@ async function main() {
     console.log('Peças-ouro em Destaque · balcão sem mensagem no rodapé (' + semRodape[0].tamanho + ', ' + new Set(semRodape.map((x) => x.marca)).size + ' marcas): '
       + semRodape.filter((x) => x.cedeu >= 1).length + ' de ' + semRodape.length + ' com a letra inteira');
     for (const x of semRodape.filter((y) => y.cedeu < 1)) { console.log(cedeuNaMarca(x)); reprova = true; }
+  }
+  // As faixas no balcão, nas 11 marcas: bloqueio (o piso, e sobrepor e cortar logo abaixo).
+  if (faixas.length) {
+    console.log('Cabeçalhos e rodapés · balcão (' + PISO + '%, ' + new Set(faixas.map((x) => x.marca)).size + ' marcas, deitada, em pé e quadrada): '
+      + faixas.filter((x) => x.cedeu >= 1).length + ' de ' + faixas.length + ' com a letra inteira');
+    for (const x of faixas.filter((y) => y.cedeu < 1)) { console.log('  ✗ ' + x.id + ' · ' + x.zona + ' · ' + x.marca + ': o piso cedeu para ' + Math.round(x.cedeu * 100) + '%'); reprova = true; }
+  }
+  const naQuadrada = marcas.filter((x) => x.zona === QUADRADA_COM_RODAPE);
+  if (naQuadrada.length) {
+    const cedeu = naQuadrada.filter((x) => x.cedeu < 1);
+    console.log('Peças-ouro na principal da TV quadrada com rodapé (só medida, o piso): ' + (naQuadrada.length - cedeu.length) + ' de ' + naQuadrada.length + ' com a letra inteira'
+      + (cedeu.length ? ' (cedem: ' + [...new Set(cedeu.map((x) => x.id))].join(', ') + ')' : ''));
+  }
+  /*
+   * TEXTO SOBRE TEXTO E TEXTO CORTADO, em toda passada e em toda zona
+   * conferida (reteste 2): bloqueio. Na bancada, a legenda da figura diz
+   * SOBREPÕE ou CORTA (js/peca-conferir.js).
+   */
+  const todas = pecas.concat(marcas, semRodape, faixas);
+  const comDefeito = todas.filter((x) => x.juntos || x.cortados);
+  console.log('Texto sobre texto e texto cortado (peças-ouro, todas as passadas): ' + (todas.length - comDefeito.length) + ' de ' + todas.length + ' limpas');
+  const vistos = new Set();
+  for (const x of comDefeito) {
+    const k = x.id + ' · ' + x.zona + ' · ' + (x.juntos ? 'SOBREPÕE ' + x.juntos : '') + (x.cortados ? ' CORTA ' + x.cortados : '');
+    if (vistos.has(k)) continue;
+    vistos.add(k);
+    if (vistos.size <= 20) console.log('  ✗ ' + k + ' (' + x.marca + (x.local ? ', ' + x.local : '') + (x.margem != null ? ', borda ' + x.margem + '%' : '') + ')');
+  }
+  if (vistos.size > 20) console.log('  … e mais ' + (vistos.size - 20));
+  if (comDefeito.length) reprova = true;
+  if (telas.length) {
+    const ruins = telas.filter((t) => t.naoCoube.length);
+    console.log('Telas prontas montadas (' + telas.length + ', no layout de cada uma, no local da frente, na letra padrão): ' + (telas.length - ruins.length) + ' de ' + telas.length + ' sem nada sobre nada, cortado ou para fora');
+    for (const t of ruins.slice(0, 15)) console.log('  ✗ ' + t.id + ' (' + t.layout + ', ' + t.local + '): ' + t.naoCoube.slice(0, 2).join(' | '));
+    if (ruins.length) reprova = true;
   }
   // Fase 10: o contraste de todo texto, em todo arranjo.
   for (const [, , nome] of ARRANJOS) {

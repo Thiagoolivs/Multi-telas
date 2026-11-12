@@ -90,7 +90,37 @@ const ORDEM = {
  * o dia todo" — antes a ordem mudava, mas tudo aparecia para todos. Peça sem
  * `frentes` (as antigas) serve a todas.
  */
-export const daFrente = (modelos, perfil) => modelos.filter((m) => !Array.isArray(m.frentes) || !m.frentes.length || m.frentes.includes(perfil));
+export const daFrente = (modelos, perfil, hoje) => modelos.filter((m) => (!Array.isArray(m.frentes) || !m.frentes.length || m.frentes.includes(perfil))
+  && naEpoca(m, perfil, hoje));
+
+/*
+ * FORA DE ÉPOCA NÃO APARECE (reteste 2, 09/11). A Saúde abria os Prontos
+ * em novembro com "Outubro Rosa"; a Black Friday e o Natal ficariam o ano
+ * inteiro. A peça ou tela de campanha diz a época no manifesto (`sazonal`):
+ *   { "de": "10-01", "ate": "10-31" }            a peça inteira (MM-DD; a
+ *                                                janela pode virar o ano:
+ *                                                de "12-01" até "01-06");
+ *   { "saude": { "de": …, "ate": … }, … }       só o texto daquela frente
+ *                                                (a "Data da vez" é Outubro
+ *                                                Rosa na Saúde e Black Friday
+ *                                                no Comércio).
+ * Sem `sazonal`, ou sem a frente nele, serve o ano todo. A galeria do
+ * operador (server/conteudoPronto.js) mostra tudo: aprovar não depende da
+ * época.
+ */
+const MES_DIA = /^(\d{2})-(\d{2})$/;
+const mesDia = (t) => { const m = MES_DIA.exec(String(t || '')); return m ? Number(m[1]) * 100 + Number(m[2]) : null; };
+export function naEpoca(entrada, frente, hoje) {
+  const s = entrada && entrada.sazonal;
+  if (!s || typeof s !== 'object') return true;
+  const janela = s.de || s.ate ? s : (frente && s[frente]) || null;
+  if (!janela) return true;
+  const de = mesDia(janela.de), ate = mesDia(janela.ate);
+  if (de == null || ate == null) return true;
+  const d = hoje instanceof Date ? hoje : new Date();
+  const h = (d.getMonth() + 1) * 100 + d.getDate();
+  return de <= ate ? h >= de && h <= ate : h >= de || h <= ate;
+}
 
 export function ordenarPorPerfil(modelos, perfil) {
   const ordem = ORDEM[perfil] || ORDEM.comercio;
