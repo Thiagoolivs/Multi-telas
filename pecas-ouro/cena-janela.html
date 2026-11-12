@@ -1,0 +1,60 @@
+<!--
+  Janela editorial — família institucional (lote 5, arquétipo A3, docs/design/SISTEMA-VISUAL.md).
+  Página de revista: o cabeçalho com o filete (que se desenha de ponta a
+  ponta), o título grande e a legenda numa coluna, e o laço numa JANELA
+  emoldurada pela margem, com um fio fino por dentro (o passe-partout). O
+  vídeo nunca encosta na borda da peça; nenhum texto passa por cima dele.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 6.6cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo);
+  display: flex; flex-direction: column; padding: 6cqh 6cqw 7cqh; }
+.topo { position: relative; flex: none; display: flex; justify-content: space-between; align-items: baseline; gap: 3cqw; padding-bottom: 1.8cqh;
+  font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; }
+.topo span { color: var(--mt-destaque); }
+.topo i { position: absolute; left: 0; right: 0; bottom: 0; height: .14cqw; background: var(--mt-linha); }
+.corpo { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 40fr 60fr; gap: 5cqw; margin-top: 5cqh; }
+.texto { min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+h1 { font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.apoio { margin-top: 3cqh; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.legenda { margin-top: 4cqh; padding-top: 1.6cqh; border-top: .14cqw solid var(--mt-linha); font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
+.janela { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.janela::after { content: ""; position: absolute; inset: 1.4cqw; border: .14cqw solid var(--mt-texto); opacity: .5; }
+.janela:has(.foto[data-sem-foto])::after { display: none; }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 6.2cqw; padding: 5cqh 5cqw 6cqh; }
+  .topo { letter-spacing: .06em; }
+  .corpo { grid-template-columns: 44fr 56fr; gap: 4cqw; margin-top: 4cqh; }
+  .apoio { display: none; }
+  .legenda { margin-top: 3cqh; }
+}
+/* Em pé: a janela em cima, o texto embaixo. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.8cqw; --t: 11cqw; padding: 5cqh 7cqw 6cqh; }
+  .topo { letter-spacing: .08em; padding-bottom: 1.4cqh; }
+  .topo b { display: none; }
+  .topo i { height: .24cqw; }
+  .corpo { grid-template-columns: 1fr; grid-template-rows: 1fr auto; gap: 4cqh; margin-top: 3cqh; }
+  .janela { grid-row: 1; }
+  .texto { grid-row: 2; }
+  .legenda { margin-top: 3cqh; border-top-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 8cqw; padding: 6cqh 7cqw 6cqh; }
+  .corpo { gap: 3cqh; }
+  .apoio { display: none; }
+  .legenda { margin-top: 2.4cqh; }
+}
+</style>
+<section class="mt-peca cena-janela">
+  <header class="topo"><span data-campo="kicker" data-entrada="aparecer" data-ordem="2">Carta de vinhos</span><b data-campo="marca" data-repete="marca" data-entrada="aparecer" data-ordem="3">Cantina da Nona</b><i aria-hidden="true" data-entrada="desenhar" data-ordem="1"></i></header>
+  <div class="corpo">
+    <div class="texto">
+      <h1 data-campo="titulo" data-entrada="revelar" data-ordem="5">Um tinto para cada massa</h1>
+      <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="8">Peça a sugestão do garçom: ele conhece a carta de cor.</p>
+      <p class="legenda" data-campo="legenda" data-entrada="aparecer" data-ordem="10">Na taça: Montepulciano d'Abruzzo</p>
+    </div>
+    <figure class="janela"><img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns" data-ordem="1"></figure>
+  </div>
+</section>

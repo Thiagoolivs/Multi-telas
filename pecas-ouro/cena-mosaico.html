@@ -1,0 +1,53 @@
+<!--
+  Mosaico com um quadro vivo — família social (lote 5, arquétipo A9, docs/design/SISTEMA-VISUAL.md).
+  Uma grade de galeria: o laço no quadro grande, duas fotos nos pequenos e o
+  texto num quadro de fundo cheio. Um vídeo só por peça (o box da TV toca
+  um laço por vez com folga); as fotos completam o mural. Os quadros
+  entram um a um, como fotos sendo postas na parede.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5.2cqw; --vao: .5cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo);
+  display: grid; grid-template-columns: 50fr 25fr 25fr; grid-template-rows: 1fr 1fr; gap: var(--vao); grid-template-areas: "v a b" "v t t"; }
+.q { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
+.q img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.viva { grid-area: v; }
+.f2 { grid-area: a; }
+.f3 { grid-area: b; }
+.texto { grid-area: t; min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 5cqh 5cqw 5cqh 4cqw; }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+h1 { margin-top: 1.8cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.02 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.arroba { margin-top: 3cqh; padding-top: 1.6cqh; border-top: .14cqw solid var(--mt-linha); font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); overflow-wrap: anywhere; }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 4.6cqw; }
+  .texto { padding: 3cqh 4cqw 3cqh 3.4cqw; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .arroba { margin-top: 2cqh; padding-top: 1.2cqh; }
+}
+/* Em pé: o laço em cima, as duas fotos lado a lado, o texto embaixo. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 5cqw; --t: 9.4cqw; --vao: .8cqw; grid-template-columns: 1fr 1fr; grid-template-rows: 48fr 24fr 28fr; grid-template-areas: "v v" "a b" "t t"; }
+  .texto { padding: 3cqh 7cqw 4cqh; }
+  .kicker { letter-spacing: .1em; }
+  .arroba { border-top-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 6.4cqw; grid-template-columns: 60fr 40fr; grid-template-rows: 58fr 42fr; grid-template-areas: "v v" "t a"; }
+  .f3 { display: none; }
+  .texto { padding: 3cqh 4cqw 3cqh 7cqw; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .arroba { margin-top: 2cqh; padding-top: 1.2cqh; }
+}
+</style>
+<section class="mt-peca cena-mosaico">
+  <figure class="q viva"><img data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns" data-ordem="0"></figure>
+  <figure class="q f2"><img data-campo-img="foto2" alt="" data-entrada="aproximar" data-ordem="2"></figure>
+  <figure class="q f3"><img data-campo-img="foto3" alt="" data-entrada="aproximar" data-ordem="3"></figure>
+  <div class="texto">
+    <p class="kicker" data-campo="kicker" data-entrada="revelar" data-ordem="4">No Instagram</p>
+    <h1 data-campo="titulo" data-entrada="revelar" data-ordem="5">A fornada de hoje, ao vivo</h1>
+    <p class="arroba" data-campo="arroba" data-entrada="aparecer" data-ordem="8">@padariadobairro</p>
+  </div>
+</section>

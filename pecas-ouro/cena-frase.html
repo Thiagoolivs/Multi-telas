@@ -1,0 +1,70 @@
+<!--
+  A frase e o laço — família institucional (lote 5, arquétipo A6, docs/design/SISTEMA-VISUAL.md).
+  A tipografia é a peça: uma frase curta, enorme, no fundo cheio; o laço é
+  uma faixa alta ao lado (o café caindo, a fumaça), separada por um fio da
+  cor de destaque que se desenha de cima a baixo. A faixa tem papel de
+  textura: qualquer laço a cobre, sem fundo desfocado.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 8cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 36fr 64fr; }
+.foto { grid-row: 1; grid-column: 1; width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 50%; }
+.fio { position: absolute; top: 0; bottom: 0; left: 36%; width: .3cqw; margin-left: -.15cqw; background: var(--mt-destaque); }
+.texto { grid-row: 1; grid-column: 2; min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 8cqh 6cqw 8cqh 6cqw; }
+.kicker { display: flex; align-items: center; gap: 1.2cqw; font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { flex: none; display: block; width: 3.2cqw; height: .16cqw; background: var(--mt-destaque); }
+h1 { margin-top: 3cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/.98 var(--mt-fonte-titulo); letter-spacing: -.015em; text-wrap: balance; }
+h1 span, h1 em { display: block; }
+h1 em { font-style: normal; color: var(--mt-destaque); }
+.assina { margin-top: 5cqh; display: flex; flex-wrap: wrap; align-items: baseline; gap: .4cqh 2cqw; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.25 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.assina b { font-weight: 600; color: var(--mt-texto); }
+.foto[data-sem-foto] ~ .fio { display: none; }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 7cqw; grid-template-columns: 32fr 68fr; }
+  .fio { left: 32%; }
+  .texto { padding: 5cqh 5cqw 5cqh 5cqw; }
+  .kicker { letter-spacing: .06em; }
+  h1 { margin-top: 2.4cqh; }
+  .assina { margin-top: 3.4cqh; }
+  .assina span { display: none; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 6.4cqw; grid-template-columns: 30fr 70fr; }
+  .fio { left: 30%; }
+  .texto { padding: 4cqh 5cqw; }
+  .kicker, .assina { display: none; }
+  h1 { margin-top: 0; }
+}
+/* Em pé: a faixa do laço em cima, a frase embaixo; o fio atravessa na horizontal. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 5.2cqw; --t: 12.4cqw; grid-template-columns: 1fr; grid-template-rows: 44fr 56fr; }
+  .foto { grid-row: 1; grid-column: 1; }
+  .fio { top: 44%; bottom: auto; left: 0; right: 0; width: auto; height: .4cqw; margin: -.2cqw 0 0; }
+  .texto { grid-row: 2; grid-column: 1; padding: 5cqh 7cqw 7cqh; }
+  .kicker { letter-spacing: .1em; }
+  .kicker i { width: 5cqw; height: .26cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 9.4cqw; grid-template-rows: 36fr 64fr; }
+  .fio { top: 36%; }
+  .texto { padding: 4cqh 7cqw 5cqh; }
+  .assina { margin-top: 4cqh; }
+}
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 14cqw; grid-template-rows: 34fr 66fr; }
+  .fio { top: 34%; height: .8cqw; margin-top: -.4cqw; }
+  .texto { padding: 3cqh 8cqw 4cqh; }
+  .kicker, .assina span { display: none; }
+  h1 { margin-top: 0; }
+  .assina { margin-top: 3cqh; }
+}
+</style>
+<section class="mt-peca cena-frase">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns">
+  <i class="fio" aria-hidden="true" data-entrada="desenhar" data-ordem="2"></i>
+  <div class="texto">
+    <p class="kicker" data-entrada="aparecer" data-ordem="3"><i aria-hidden="true" data-entrada="desenhar" data-ordem="3"></i><span data-campo="kicker">O que nos move</span></p>
+    <h1 data-entrada="revelar" data-ordem="4"><span data-campo="titulo">Café bom</span><em data-campo="titulo2">não tem pressa.</em></h1>
+    <p class="assina" data-entrada="aparecer" data-ordem="9"><b data-campo="marca" data-repete="marca">Padaria do Bairro</b><span data-campo="detalhe">Coado na hora, xícara por xícara</span></p>
+  </div>
+</section>

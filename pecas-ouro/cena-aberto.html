@@ -1,0 +1,83 @@
+<!--
+  Aberto · horário — família serviço (lote 5, docs/design/SISTEMA-VISUAL.md).
+  O laço da casa (o café fumegando, a sala de espera) de um lado, e um
+  painel de fundo cheio que varre por cima da borda dele com o selo, o
+  título e os horários da semana, linha a linha. O selo é o único campo de
+  cor; o painel nunca deixa texto encostar no vídeo.
+-->
+<style>
+.mt-peca { --f: 2.8cqw; --t: 5.8cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.foto { position: absolute; top: 0; left: 0; width: 56%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.painel { position: absolute; top: 0; right: 0; bottom: 0; width: 48%; display: flex; flex-direction: column; justify-content: center; padding: 8cqh 5cqw 8cqh 4.4cqw; background: var(--mt-fundo); }
+.selo { align-self: flex-start; padding: .9cqh 1.2cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); font: 700 max(var(--mt-piso, 0cqw), var(--f))/1 var(--mt-fonte-texto); letter-spacing: .1em; text-transform: uppercase; }
+h1 { margin-top: 3cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.dias { margin-top: 4cqh; padding: 0; list-style: none; }
+.dias li { display: flex; justify-content: space-between; align-items: baseline; gap: 2cqw; padding: 1.5cqh 0; border-top: .14cqw solid var(--mt-linha); font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.15 var(--mt-fonte-texto); }
+.dias li:last-child { border-bottom: .14cqw solid var(--mt-linha); }
+.dias span { min-width: 0; }
+.dias b { flex: none; font-weight: 600; color: var(--mt-destaque); white-space: nowrap; }
+.nota { margin-top: 3cqh; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.25 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.foto[data-sem-foto] ~ .painel { width: 100%; }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 5.2cqw; }
+  .foto { width: 46%; }
+  .painel { width: 58%; padding: 5cqh 5cqw 5cqh 4cqw; }
+  .selo { letter-spacing: .06em; }
+  h1 { margin-top: 2.4cqh; }
+  .dias { margin-top: 3cqh; }
+  .dias li { padding: 1cqh 0; }
+  .nota { display: none; }
+}
+/* A faixa baixa (1038×559, a de baixo da TV em pé): o título e os horários. */
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 5.6cqw; }
+  .foto { width: 40%; }
+  .painel { width: 64%; padding: 4cqh 5cqw 4cqh 4cqw; }
+  .selo { display: none; }
+  h1 { margin-top: 0; }
+  .dias { margin-top: 2cqh; }
+  .dias li { padding: .8cqh 0; }
+}
+/* Em pé e quadrada: o vídeo em cima, o painel no pé. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 5.6cqw; --t: 11cqw; }
+  .foto { width: 100%; height: 44%; }
+  .painel { top: auto; left: 0; width: auto; min-height: 56%; justify-content: center; padding: 5cqh 7cqw 6cqh; }
+  h1 { margin-top: 2.6cqh; }
+  .dias { margin-top: 3cqh; }
+  .dias li { padding: 1.3cqh 0; border-top-width: .24cqw; }
+  .dias li:last-child { border-bottom-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 7cqw; }
+  .foto { height: 42%; }
+  .painel { min-height: 58%; padding: 4cqh 7cqw 5cqh; }
+  h1 { margin-top: 2cqh; }
+  .dias { margin-top: 2.4cqh; }
+  .dias li { padding: 1.1cqh 0; }
+  .nota { display: none; }
+}
+/* A lateral (515×832 até 452×674): os horários, um embaixo do outro. */
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 11cqw; }
+  .foto { width: 100%; height: 28%; }
+  .painel { top: auto; left: 0; width: auto; height: 72%; min-height: 0; justify-content: center; padding: 2cqh 8cqw 3cqh; }
+  .selo, h1, .nota { display: none; }
+  .dias { margin-top: 0; }
+  .dias li { flex-direction: column; align-items: flex-start; gap: 0; padding: 1.1cqh 0; }
+}
+</style>
+<section class="mt-peca cena-aberto">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns">
+  <div class="painel" data-entrada="varrer" data-origem="direita" data-ordem="1">
+    <p class="selo" data-campo="selo" data-entrada="aparecer" data-ordem="5">Aberto todo dia</p>
+    <h1 data-campo="titulo" data-entrada="revelar" data-ordem="6">Café passado na hora</h1>
+    <ul class="dias">
+      <li data-entrada="aparecer" data-ordem="8"><span data-campo="dia1">Segunda a sexta</span><b data-campo="hora1">6h – 20h</b></li>
+      <li data-entrada="aparecer" data-ordem="9"><span data-campo="dia2">Sábado</span><b data-campo="hora2">6h – 18h</b></li>
+      <li data-entrada="aparecer" data-ordem="10"><span data-campo="dia3">Domingo</span><b data-campo="hora3">7h – 12h</b></li>
+    </ul>
+    <p class="nota" data-campo="nota" data-entrada="aparecer" data-ordem="12">Feriados: das 7h às 12h</p>
+  </div>
+</section>

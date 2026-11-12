@@ -1,0 +1,74 @@
+<!--
+  Tela dividida — família oferta (lote 5, arquétipo A2, docs/design/SISTEMA-VISUAL.md).
+  Meio a meio: o laço do produto num lado, em corte seco, e o texto no
+  fundo cheio do outro, com um filete da cor de destaque na costura (ele se
+  desenha de cima a baixo). O preço é o maior texto (D44); o R$ e os
+  centavos ficam pequenos. Em pé, na quadrada e na lateral o vídeo vai em
+  cima e a costura vira horizontal.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5.6cqw; --p: 12cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-columns: 1fr 1fr; }
+.foto { grid-row: 1; grid-column: 1; width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 50%; }
+.costura { position: absolute; top: 0; bottom: 0; left: 50%; width: .3cqw; margin-left: -.15cqw; background: var(--mt-destaque); }
+.texto { grid-row: 1; grid-column: 2; min-width: 0; min-height: 0; display: flex; flex-direction: column; justify-content: center; padding: 7cqh 6cqw 7cqh 5cqw; }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.apoio { margin-top: 2.4cqh; font: 400 max(var(--mt-piso, 0cqw), var(--f))/1.3 var(--mt-fonte-texto); color: var(--mt-texto-suave); text-wrap: pretty; }
+.preco { margin-top: 3.4cqh; display: flex; align-items: flex-end; gap: 1.6cqw; flex-wrap: wrap; }
+.valor { font: 500 max(var(--mt-piso, 0cqw), calc(var(--p) * var(--mt-escala-titulo, 1)))/.84 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; letter-spacing: -.02em; }
+.valor small { font-size: max(var(--mt-piso, 0cqw), .26em); vertical-align: 2em; margin-right: .1em; letter-spacing: 0; }
+.valor sup { font-size: max(var(--mt-piso, 0cqw), .32em); vertical-align: 1.5em; letter-spacing: 0; }
+.unidade { padding-bottom: .4cqh; font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); color: var(--mt-texto-suave); }
+.nota { margin-top: 3cqh; font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.2 var(--mt-fonte-texto); }
+.foto[data-sem-foto] ~ .costura { display: none; }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 5.2cqw; --p: 11cqw; }
+  .texto { padding: 5cqh 4cqw 5cqh 4cqw; }
+  .kicker { letter-spacing: .06em; }
+  .apoio, .nota { display: none; }
+  .preco { margin-top: 3cqh; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 5.4cqw; --p: 11cqw; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .preco { margin-top: 2.4cqh; }
+}
+/* Em pé: o vídeo em cima (46%), o texto embaixo; a costura atravessa na horizontal. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.8cqw; --t: 10cqw; --p: 26cqw; grid-template-columns: 1fr; grid-template-rows: 42fr 58fr; }
+  .foto { grid-row: 1; grid-column: 1; }
+  .costura { top: 42%; bottom: auto; left: 0; right: 0; width: auto; height: .4cqw; margin: -.2cqw 0 0; }
+  .texto { grid-row: 2; grid-column: 1; padding: 4cqh 7cqw 6cqh; }
+  .preco { margin-top: 3cqh; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 8cqw; --p: 20cqw; grid-template-rows: 40fr 60fr; }
+  .costura { top: 40%; }
+  .texto { padding: 4cqh 7cqw 5cqh; }
+  .apoio, .nota { display: none; }
+}
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 11cqw; --p: 30cqw; grid-template-rows: 36fr 64fr; }
+  .costura { top: 36%; height: .8cqw; margin-top: -.4cqw; }
+  .texto { padding: 3cqh 8cqw 4cqh; }
+  .kicker, .apoio, .nota, .unidade { display: none; }
+  h1 { margin-top: 0; line-height: 1.02; }
+  .preco { margin-top: 2.4cqh; }
+}
+</style>
+<section class="mt-peca cena-dividida">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns">
+  <i class="costura" aria-hidden="true" data-entrada="desenhar" data-ordem="2"></i>
+  <div class="texto">
+    <p class="kicker" data-campo="kicker" data-entrada="revelar" data-ordem="3">Na chapa agora</p>
+    <h1 data-campo="titulo" data-entrada="revelar" data-ordem="4">Smash duplo com cheddar</h1>
+    <p class="apoio" data-campo="apoio" data-entrada="aparecer" data-ordem="8">Dois blends de 90 g, cheddar derretido e pão brioche.</p>
+    <div class="preco" data-entrada="aparecer" data-ordem="6">
+      <span class="valor" data-entrada="contar" data-continua="reflexo" data-ordem="6"><small aria-hidden="true">R$</small><span data-campo="preco">32</span><sup data-campo="centavos">,90</sup></span>
+      <span class="unidade" data-campo="unidade">com fritas</span>
+    </div>
+    <p class="nota" data-campo="nota" data-entrada="aparecer" data-ordem="10">Todo dia, até as 23h</p>
+  </div>
+</section>

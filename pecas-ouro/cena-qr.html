@@ -1,0 +1,73 @@
+<!--
+  QR sobre o laço calmo — família social (lote 5, arquétipo A8, docs/design/SISTEMA-VISUAL.md).
+  Uma textura que se mexe devagar (seda, fumaça, luz) cobre a peça; no meio,
+  um cartão de fundo cheio, como um convite, com o título, o QR grande e a
+  instrução. O QR fica sempre no cartão, nunca sobre o vídeo. A textura
+  cobre qualquer formato (papel "textura": a TV não troca pelo fundo
+  desfocado).
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5.4cqw; --q: 16cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; place-items: center; }
+.foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.cartao { position: relative; width: 70%; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 4cqw; padding: 6cqh 4.4cqw; background: var(--mt-fundo); }
+.texto, .instrucao { grid-column: 1; min-width: 0; }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .12em; text-transform: uppercase; color: var(--mt-destaque); }
+h1 { margin-top: 2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1.02 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.instrucao { margin-top: 3cqh; font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.25 var(--mt-fonte-texto); text-wrap: balance; }
+.instrucao b { display: block; margin-top: .8cqh; font-weight: 600; color: var(--mt-destaque); }
+.qr { grid-column: 2; grid-row: 1 / span 2; width: var(--q); height: var(--q); }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 5cqw; --q: 17cqw; }
+  .cartao { width: 88%; column-gap: 3.4cqw; padding: 5cqh 4cqw; }
+  .kicker { letter-spacing: .06em; }
+  .instrucao b { display: none; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 5.4cqw; --q: 20cqw; }
+  .cartao { width: 92%; padding: 4cqh 4cqw; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .instrucao { margin-top: 2cqh; }
+}
+/* Em pé: o cartão alto, o QR embaixo do título. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 5.2cqw; --t: 11cqw; --q: 44cqw; }
+  .cartao { width: 84%; grid-template-columns: 1fr; justify-items: start; gap: 4cqh; padding: 5cqh 7cqw 6cqh; }
+  .instrucao { margin-top: 0; grid-row: 3; }
+  .qr { grid-column: 1; grid-row: 2; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 7.4cqw; --q: 28cqw; }
+  .kicker, .instrucao b { display: none; }
+  h1 { margin-top: 0; }
+  .cartao { width: 86%; grid-template-columns: 1fr auto; justify-items: stretch; gap: 0 5cqw; padding: 6cqh 6cqw; }
+  .instrucao { grid-row: 2; margin-top: 3cqh; }
+  .qr { grid-column: 2; grid-row: 1 / span 2; }
+}
+/* A lateral: o cartão quase da largura toda, o título curto, o QR e a instrução. */
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 11.4cqw; --q: 40cqw; }
+  .cartao { width: 88%; grid-template-columns: 1fr; gap: 2.4cqh; padding: 3cqh 7cqw 3.4cqh; }
+  .instrucao { grid-row: 3; margin-top: 0; }
+  .qr { grid-column: 1; grid-row: 2; }
+  .kicker, .instrucao b { display: none; }
+  h1 { margin-top: 0; }
+}
+@container (max-width: 700px) and (max-height: 715px) {
+  .mt-peca { --q: 37cqw; }
+  .cartao { gap: 1.8cqh; padding: 2.4cqh 6cqw 2.6cqh; }
+  .instrucao { line-height: 1.15; }
+}
+</style>
+<section class="mt-peca cena-qr">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns">
+  <div class="cartao" data-entrada="varrer" data-origem="baixo" data-ordem="1">
+    <div class="texto">
+      <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="5">Cardápio no celular</p>
+      <h1 data-campo="titulo" data-entrada="revelar" data-ordem="6">A carta inteira, com fotos</h1>
+    </div>
+    <img class="qr" data-campo-qr="link" alt="QR para abrir o cardápio" data-entrada="aparecer" data-ordem="9">
+    <p class="instrucao" data-entrada="aparecer" data-ordem="10"><span data-campo="instrucao">Aponte a câmera para o código</span><b data-campo="nota">e peça direto ao garçom</b></p>
+  </div>
+</section>

@@ -1,0 +1,57 @@
+<!--
+  Faixa de cinema — família institucional (lote 5, docs/design/SISTEMA-VISUAL.md).
+  Cartela de filme: o título em cima, o laço numa faixa larga de ponta a
+  ponta no meio (o "letterbox"), e embaixo três informações curtas
+  separadas por fios. O texto mora no fundo cheio, em cima e embaixo da
+  faixa — nunca nela. A faixa larga pede laço deitado (16:9).
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 7.2cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); display: grid; grid-template-rows: auto 1fr auto; }
+.cabeca { padding: 6cqh 6cqw 4cqh; }
+.kicker { display: flex; align-items: center; gap: 1.2cqw; font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+.kicker i { flex: none; display: block; width: 3.2cqw; height: .16cqw; background: var(--mt-destaque); }
+h1 { margin-top: 1.6cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.faixa { position: relative; min-height: 0; overflow: hidden; }
+.foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.infos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4cqw; padding: 4cqh 6cqw 6cqh; list-style: none; }
+.infos li { min-width: 0; padding-top: 1.6cqh; border-top: .14cqw solid var(--mt-linha); font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.25 var(--mt-fonte-texto); text-wrap: balance; }
+.infos li:first-child { color: var(--mt-destaque); font-weight: 600; }
+.faixa:has(.foto[data-sem-foto]) { min-height: 6cqh; }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 5.4cqw; }
+  .cabeca { padding: 5cqh 5cqw 3.4cqh; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .infos { grid-template-columns: repeat(2, 1fr); padding: 3.4cqh 5cqw 5cqh; }
+  .infos li { padding-top: 1.2cqh; }
+  .infos li:nth-child(3) { display: none; }
+}
+/* Em pé: a faixa fica alta (o laço quase quadrado) e as informações empilham. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 5.4cqw; --t: 12cqw; }
+  .cabeca { padding: 6cqh 7cqw 4cqh; }
+  .kicker { letter-spacing: .1em; }
+  .kicker i { width: 5cqw; height: .26cqw; }
+  .infos { grid-template-columns: 1fr; gap: 2cqh; padding: 4cqh 7cqw 6cqh; }
+  .infos li { border-top-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 8cqw; }
+  .cabeca { padding: 6cqh 7cqw 3.4cqh; }
+  .infos { gap: 1.4cqh; padding: 3.4cqh 7cqw 5cqh; }
+  .infos li { padding-top: 1.2cqh; }
+}
+</style>
+<section class="mt-peca cena-faixa">
+  <header class="cabeca">
+    <p class="kicker" data-entrada="aparecer" data-ordem="2"><i aria-hidden="true" data-entrada="desenhar" data-ordem="2"></i><span data-campo="kicker">Novo endereço</span></p>
+    <h1 data-campo="titulo" data-entrada="revelar" data-ordem="3">Agora no 12º andar</h1>
+  </header>
+  <div class="faixa"><img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns"></div>
+  <ul class="infos">
+    <li data-campo="info1" data-entrada="subir" data-ordem="7">A partir de segunda</li>
+    <li data-campo="info2" data-entrada="subir" data-ordem="8">Torre Norte, sala 1204</li>
+    <li data-campo="info3" data-entrada="subir" data-ordem="9">Estacionamento no subsolo</li>
+  </ul>
+</section>
