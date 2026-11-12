@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { LayoutTemplate, Share2, Wand2, Search, Plus } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -6,9 +6,7 @@ import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
 import { DesignThumb } from '../components/content/DesignThumb.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
 import { Palco } from '../components/content/VerTelaAgora.jsx';
-import { RedesSociais } from '../components/content/RedesSociais.jsx';
 import { devices, brand } from '../api.js';
-import { EditarPeca } from '../components/content/EditarPeca.jsx';
 import { carregarModelos, itemDoModelo, ordenarPorPerfil, daFrente, separarPorRamo } from '../lib/modelosOuro.js';
 import { carregarTelasProntas, estadoDaPrevia, emPe, marcaDaConta } from '../lib/telasProntas.js';
 import { telasDaConta, montar, SemTelasProntas, PersonalizarTela } from './TelasProntasPage.jsx';
@@ -16,6 +14,16 @@ import { usePerfil } from '../lib/perfil.js';
 import { PorNaTV } from '../components/tela/PorNaTV.jsx';
 import { aviso } from '../lib/avisos.js';
 import { cn } from '../lib/cn.js';
+
+/*
+ * O editor e as redes só quando se usa (reteste 2): eram 24 KB no 4G lento
+ * antes de a grade aparecer. Com a grade na tela, eles vêm em segundo plano
+ * (o "Usar" abre sem esperar).
+ */
+const carregarEditor = () => import('../components/content/EditarPeca.jsx');
+const carregarRedes = () => import('../components/content/RedesSociais.jsx');
+const EditarPeca = lazy(() => carregarEditor().then((m) => ({ default: m.EditarPeca })));
+const RedesSociais = lazy(() => carregarRedes().then((m) => ({ default: m.RedesSociais })));
 
 /*
  * BIBLIOTECA › PRONTOS PARA VOCÊ: o que o MultiTelas deixa pronto, já na
@@ -77,7 +85,7 @@ export function PecasProntasPage({ onIr, filtroInicial, telaAlvo }) {
     setErroPecas(''); setModelos(null); setDados(null);
     // Erro de rede não vira "nada pronto" (D3): a falha aparece, com tentar de novo.
     Promise.all([carregarModelos(), carregarTelasProntas()])
-      .then(([m, d]) => { setModelos(m); setDados(d); })
+      .then(([m, d]) => { setModelos(m); setDados(d); setTimeout(() => { carregarEditor().catch(() => {}); carregarRedes().catch(() => {}); }, 1500); })
       .catch((e) => setErroPecas(e.message || 'Não deu para carregar as peças.'));
     devices.list().then((r) => setTelas((r && r.devices) || [])).catch(() => setTelas([]));
     // O ramo que a Marca deduziu (fase 10): a padaria vê primeiro o que é de padaria.
@@ -242,6 +250,7 @@ export function PecasProntasPage({ onIr, filtroInicial, telaAlvo }) {
         </div>
       )}
 
+      <Suspense fallback={null}>
       {/* Usar um modelo: troca o texto e, ao salvar, escolhe as TVs. */}
       {usando && (
         <EditarPeca item={usando.item} label={usando.label} onFechar={() => setUsando(null)}
@@ -258,6 +267,7 @@ export function PecasProntasPage({ onIr, filtroInicial, telaAlvo }) {
           descricao={'Entra ' + (porNaTv.papel === 'cabecalho' || porNaTv.papel === 'rodape' ? 'no ' + ONDE[porNaTv.papel] : 'na parte da TV que combina com ela (' + ondeCabe(porNaTv) + ')') + ', no fim do que já está lá.'} />
       )}
       {redesDe && <RedesSociais item={redesDe.item} label={redesDe.label} onFechar={() => setRedesDe(null)} />}
+      </Suspense>
     </div>
   );
 }

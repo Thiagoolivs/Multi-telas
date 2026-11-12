@@ -3,8 +3,10 @@ import { Rocket, Pause, Play, MonitorPlay, LayoutTemplate } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Spinner } from '../ui/Feedback.jsx';
 import { criar } from '../../api.js';
-import { planoDeRodar, rodarCampanha, pausarCampanha, nomeDoLayout } from '../../lib/rodar.js';
-import { aviso } from '../../lib/avisos.js';
+import { planoDeRodar, rodarCampanha, pausarCampanha, nomeDoLayout, desfazerLote } from '../../lib/rodar.js';
+import { frasesDoQuando } from '../../lib/quando.js';
+import { aviso, emitir } from '../../lib/avisos.js';
+import { EscolherQuando, QUANDO_INICIAL, faltaData } from '../tela/PorNaTV.jsx';
 
 /*
  * "PÔR PRA RODAR" (EXECUTOR §2b, item 25). A campanha já está salva; aqui ela
@@ -12,10 +14,16 @@ import { aviso } from '../../lib/avisos.js';
  * diz o que vai acontecer: que TV recebe e qual troca de layout para ter as
  * zonas pedidas — trocar o layout de alguém sem avisar seria mudar a TV dele
  * por trás. Depois, "Pausar" tira só o que é da campanha.
+ *
+ * Reteste 2: a campanha da IA ia ao ar sem o "Quando" e sem Desfazer. Agora
+ * o fim é o mesmo de todo caminho (components/tela/PorNaTV.jsx): o "Quando"
+ * em frases antes do botão, e o aviso com Desfazer, que volta as TVs e a
+ * campanha ao que eram.
  */
 export function PorPraRodar({ campanha, telas, onMudou }) {
   const [plano, setPlano] = useState(null);
   const [trocar, setTrocar] = useState(true);
+  const [escolha, setEscolha] = useState(QUANDO_INICIAL);
   const [ocupado, setOcupado] = useState(false);
   const [erro, setErro] = useState('');
   const r = campanha.resultado || {};
@@ -48,14 +56,27 @@ export function PorPraRodar({ campanha, telas, onMudou }) {
   const noAr = campanha.estado === 'no_ar';
   const pausada = campanha.estado === 'pausada';
   const trocam = (plano || []).filter((p) => p.faltam.length);
+  // A campanha tem peça nas faixas de cima ou de baixo? Elas não têm horário na TV.
+  const temFaixa = (r.telas || []).some((t) => t && t.zonas && ['cabecalho', 'rodape'].some((f) => t.zonas[f] && (t.zonas[f].pecas || []).length));
 
   async function rodar() {
     setOcupado(true); setErro('');
+    const antes = { estado: campanha.estado, telas: campanha.telas || [] };
     try {
-      const ids = await rodarCampanha(plano, nome, { trocarLayout: trocar });
+      // "Mandar de novo" (já no ar) segue o "Quando" de quando foi ao ar: sempre.
+      const quando = noAr ? QUANDO_INICIAL : escolha;
+      const ids = await rodarCampanha(plano, nome, { trocarLayout: trocar, quando });
       const k = await criar.marcar(campanha.id, 'no_ar', ids);
       onMudou(k.campanha);
-      aviso.ok('No ar em ' + ids.length + (ids.length === 1 ? ' TV.' : ' TVs.'));
+      // O aviso com Desfazer, como em todo "Pôr na TV": as TVs voltam ao que eram, e a campanha também.
+      const texto = 'Na TV (' + frasesDoQuando(quando) + '): ' + ids.length + (ids.length === 1 ? ' TV.' : ' TVs.');
+      if (ids.lote) {
+        emitir({ tom: 'desfazer', texto, acao: { rotulo: 'Desfazer', on: async () => {
+          if (!(await desfazerLote(ids.lote))) return;
+          try { const v = await criar.marcar(campanha.id, antes.estado === 'no_ar' || antes.estado === 'pausada' ? antes.estado : 'pronta', antes.telas); onMudou(v.campanha); }
+          catch (e) { /* as TVs voltaram; a campanha fica marcada como estava no servidor */ }
+        } } });
+      } else aviso.ok(texto);
       // O plano de novo: a TV que trocou de layout já tem as zonas, e a linha não pode seguir dizendo que vai trocar.
       planoDeRodar(r, telas).then(setPlano).catch(() => {});
     } catch (e) {
@@ -110,11 +131,19 @@ export function PorPraRodar({ campanha, telas, onMudou }) {
         </label>
       )}
 
+      {/* O "Quando" de todo caminho (fase 7), também aqui (reteste 2). */}
+      {!noAr && plano && plano.length > 0 && (
+        <div>
+          <EscolherQuando valor={escolha} onChange={setEscolha} />
+          {escolha.quando !== 'sempre' && temFaixa && <p className="mt-1.5 text-xs text-ink-3">As faixas de cima e de baixo ficam até você pausar a campanha.</p>}
+        </div>
+      )}
+
       {erro && <p className="text-xs text-danger" role="alert">{erro}</p>}
 
       <div className="flex flex-wrap gap-2">
         {!noAr && (
-          <Button variant="primary" size="lg" icon={pausada ? Play : Rocket} disabled={ocupado || !plano || !plano.length} onClick={rodar}>
+          <Button variant="primary" size="lg" icon={pausada ? Play : Rocket} disabled={ocupado || !plano || !plano.length || faltaData(escolha)} onClick={rodar}>
             {ocupado ? 'Pondo na TV…' : pausada ? 'Retomar' : 'Pôr na TV'}
           </Button>
         )}

@@ -398,6 +398,24 @@ module.exports = function (ctx) {
           ...(esperando.has(d.id) ? { meuPedido: esperando.get(d.id) } : {}),
         };
       });
+      /*
+       * `?agora=1` (reteste 2): a página Telas pede a lista JUNTO com o que
+       * cada miniatura precisa — a última resposta da TV (o "o que está
+       * passando") e a programação como o painel vê. Eram 32 chamadas com
+       * 25 TVs (uma programação por TV); agora a página é um pedido. Só as
+       * TVs desta lista: a da outra loja nem entra.
+       */
+      if (query && query.agora === '1') {
+        const [empresa, kit] = await Promise.all([empresaDa(sess.tenant_id), db.getBrandKit(sess.tenant_id).catch(() => null)]);
+        for (const item of list) {
+          const e = estadosDaTela.get(item.id);
+          item.agora = e ? { em: e.em, estado: e.estado, online: !!subscribers[item.id] } : { em: 0, estado: null, online: !!subscribers[item.id] };
+          if (!item.hasConfig) continue;
+          const r = rows.find((x) => x.id === item.id);
+          const d = r && r.config !== undefined ? r : await db.getDevice(item.id);
+          if (d && d.tenant_id === sess.tenant_id) item.programacao = configParaOPainel(d, empresa, kit);
+        }
+      }
       return sendJson(res, 200, { devices: list });
     }
 
@@ -414,8 +432,15 @@ module.exports = function (ctx) {
       const [rows, empresa, kit] = await Promise.all([
         db.listDevices(sess.tenant_id).then((l) => permissoes.filtrar(sess, l)), empresaDa(sess.tenant_id), db.getBrandKit(sess.tenant_id).catch(() => null),
       ]);
+      /*
+       * `?ids=a,b,c` (reteste 2): só estas TVs. As miniaturas de Telas e do
+       * Início pedem a programação juntas, num pedido só (eram 25 com 25
+       * TVs). TV de outra conta ou de outra loja some da resposta.
+       */
+      const pedidas = String((query && query.ids) || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 100);
+      const so = pedidas.length ? new Set(pedidas) : null;
       const configs = {};
-      for (const r of rows) {
+      for (const r of (so ? rows.filter((x) => so.has(x.id)) : rows)) {
         // A lista não traz a programação: lê cada TV da conta (no banco, não na rede).
         const d = r.config !== undefined ? r : await db.getDevice(r.id);
         if (!d || d.tenant_id !== sess.tenant_id) continue;
@@ -1246,7 +1271,21 @@ module.exports = function (ctx) {
     return { status: 200, corpo: { ok: true, lote, telas: feitos.map((f) => ({ id: f.device.id, updatedAt: f.updatedAt })) } };
   }
   // A aprovação (server/routes/aprovacoes.js) põe no ar pelo mesmo caminho do envio.
-  ctx.publicar = { conferirLote, aplicarLote, normalizar: (c) => schema.normalize(c) };
+  /*
+   * Como o painel vê uma programação (o reteste 2: o antes e o depois das
+   * Aprovações saíam sem a marca): a mesma limpeza do GET /config, com o
+   * nome da conta e o tema da marca. Lê a conta uma vez e devolve a função
+   * que vale para cada TV do pedido.
+   */
+  async function vistaDoPainel(tenantId) {
+    const [empresa, kit] = await Promise.all([empresaDa(tenantId), db.getBrandKit(tenantId).catch(() => null)]);
+    return (cfg, device) => {
+      if (!cfg || typeof cfg !== 'object') return null;
+      return configParaOPainel(Object.assign({}, device || {}, { config: JSON.stringify(cfg) }), empresa, kit);
+    };
+  }
+  // A aprovação (server/routes/aprovacoes.js) põe no ar pelo mesmo caminho do envio.
+  ctx.publicar = { conferirLote, aplicarLote, normalizar: (c) => schema.normalize(c), vistaDoPainel };
 
   return async function (req, res, parts, query, sess) {
     if (parts[1] === 'lote') { await rotaLote(req, res, parts, sess); return true; }

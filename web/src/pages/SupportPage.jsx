@@ -12,8 +12,12 @@ import { relativeTime } from '../lib/format.js';
 import { navegadorCurto } from '../lib/navegador.js';
 import { NOME_DO_PAPEL } from '../lib/nomes.js';
 
-// Contato do suporte quando o servidor não informa um (SUPPORT_EMAIL).
-const EMAIL_PADRAO = 'thiago.olivs.coelho@gmail.com';
+/*
+ * O contato do suporte vem do servidor (/api/planos: SUPORTE_EMAIL, ou o
+ * endereço do produto). Este é só para quando nem isso responde — o do
+ * produto, nunca o de uma pessoa (reteste 2).
+ */
+const EMAIL_PADRAO = 'suporte@multitelas.net.br';
 
 const FAQ = [
   {

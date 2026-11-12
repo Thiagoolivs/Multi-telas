@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw, Eye, MoreHorizontal } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw, Eye, MoreHorizontal, Search } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
@@ -26,12 +26,14 @@ import { CamposDoHorario } from '../components/tela/HorarioDaTela.jsx';
 import { EnderecoDaTv } from '../components/tela/EnderecoDaTv.jsx';
 import '../../../js/aparelho.js';
 import { usePerfil, perfilAtual } from '../lib/perfil.js';
+import { TVS_PARA_BUSCA, casaComBusca } from '../lib/buscarTelas.js';
 import { EscolherArquivo } from '../components/ui/EscolherArquivo.jsx';
 
 export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrParaPlano, papel }) {
   // Membro não liga TV nova nem remove (entra/sai da mensalidade): o servidor recusa; aqui nem aparece.
   const podeGerir = papel !== 'member';
-  const { data, loading, error, reload } = useAsync(devices.list);
+  // Com a última resposta e a programação de cada TV (reteste 2): as miniaturas não pedem nada ao abrir.
+  const { data, loading, error, reload } = useAsync(devices.listaComAgora);
   const todas = data ? data.devices || [] : [];
   /*
    * Grupos ("Loja Centro", "Loja Sul"): um rótulo por tela. O filtro só
@@ -40,9 +42,13 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
   const grupos = Array.from(new Set(todas.map((d) => d.grupo).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const [filtroGrupo, setFiltroGrupo] = useState('');
   const [renomeandoGrupo, setRenomeandoGrupo] = useState(null);
-  const list = filtroGrupo === '' ? todas
+  // A busca (reteste 2: 25 TVs e nenhum jeito de achar a "Vitrine"): pelo nome da TV ou da loja.
+  const [busca, setBusca] = useState('');
+  const comBusca = todas.length > TVS_PARA_BUSCA;
+  const doGrupo = filtroGrupo === '' ? todas
     : filtroGrupo === '__sem' ? todas.filter((d) => !d.grupo)
     : todas.filter((d) => d.grupo === filtroGrupo);
+  const list = comBusca ? doGrupo.filter((d) => casaComBusca(d, busca)) : doGrupo;
 
   // Vindo do QR da TV, o diálogo já abre com o código.
   // Do Início ou do Criar ("Ligar a TV"), o pareamento já abre.
@@ -79,6 +85,15 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
 
       <Panel>
         <PanelHeader title="Suas telas" description="O que você põe numa TV aparece nela na hora." />
+        {comBusca && (
+          <div className="border-b border-line px-4 py-2.5">
+            <div className="relative w-full sm:w-72">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" aria-hidden="true" />
+              <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar TV ou loja…" aria-label="Buscar TV ou loja"
+                className="h-11 w-full rounded-md border border-line bg-surface pl-9 pr-3 text-base text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent sm:h-9 sm:text-sm" />
+            </div>
+          </div>
+        )}
         {grupos.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 border-b border-line px-4 py-2.5">
             {[['', 'Todas', todas.length], ...grupos.map((g) => [g, g, todas.filter((d) => d.grupo === g).length]),
@@ -99,7 +114,9 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
         {error && <ErrorState description="Não foi possível carregar as telas." onRetry={reload} />}
         {/* Filtro sem resultado não é conta sem TV ("Sem grupo" com zero mostrava "Ligar a primeira"). */}
         {!loading && !error && todas.length > 0 && list.length === 0 && (
-          <p className="p-6 text-center text-sm text-ink-3">Nenhuma TV neste grupo.</p>
+          <p className="p-6 text-center text-sm text-ink-3">
+            {busca.trim() && doGrupo.length > 0 ? 'Nenhuma TV com “' + busca.trim() + '”' + (filtroGrupo ? ' neste grupo.' : '.') : 'Nenhuma TV neste grupo.'}
+          </p>
         )}
         {!loading && !error && todas.length === 0 && (
           <EmptyState
@@ -132,7 +149,7 @@ export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrP
                   onRemove={podeGerir ? () => setRemoveTarget(d) : null} />
               ))}
             </div>
-            <PanelFooter><span>{list.length} {list.length === 1 ? 'tela' : 'telas'}</span></PanelFooter>
+            <PanelFooter><span>{list.length < todas.length ? list.length + ' de ' + todas.length + ' telas' : list.length + (list.length === 1 ? ' tela' : ' telas')}</span></PanelFooter>
           </>
         )}
       </Panel>
@@ -192,7 +209,7 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
   return (
     <div className="overflow-hidden rounded-xl border border-line bg-surface transition hover:border-line-strong">
       <div className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-line bg-gradient-to-br from-surface-2 to-accent-soft/40">
-        <MiniaturaDaTela d={d} online={online} vazia={!d.hasConfig} />
+        <MiniaturaDaTela d={d} online={online} vazia={!d.hasConfig} cfg={d.programacao || undefined} agora={d.agora} />
         <div className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-2 py-0.5 text-xs font-medium backdrop-blur">
           <StatusDot tone={st.tone} pulse={st.pulse} /><span className="text-ink">{st.label}</span>
         </div>

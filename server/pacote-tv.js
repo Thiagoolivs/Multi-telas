@@ -87,4 +87,25 @@ function pacote(raiz) {
   }
 }
 
-module.exports = { pacote, scriptsDoCorpo, montarHtml, montarJs, URL_PACOTE };
+/*
+ * O DESENHISTA DO PAINEL num pacote só (reteste 2): as miniaturas das peças
+ * no painel usam os mesmos arquivos da TV (web/src/lib/pecaHtml.js), seis
+ * scripts. No 4G lento, os seis disputavam as 6 conexões do navegador com a
+ * página, as fontes e a API, e o último chegava quase 3 s depois. Um pedido
+ * só, com o mesmo `try` por arquivo do pacote da TV.
+ */
+const URL_DESENHISTA = '/js/desenhista.pacote.js';
+const DO_DESENHISTA = ['js/cor.js', 'js/fontes.js', 'js/animacao.js', 'js/tokens.js', 'js/peca-html.js', 'js/peca-render.js'];
+let desenhistaGuardado = null; // { chave, js }
+function pacoteDoDesenhista(raiz) {
+  try {
+    const chave = DO_DESENHISTA.map((s) => { try { const st = fs.statSync(path.join(raiz, s)); return st.size + ':' + st.mtimeMs; } catch (e) { return '-'; } }).join('|');
+    if (desenhistaGuardado && desenhistaGuardado.chave === chave) return desenhistaGuardado;
+    desenhistaGuardado = { chave, js: montarJs(raiz, DO_DESENHISTA).replace('pacote do player (server/pacote-tv.js). A fonte é o player.html.', 'o desenhista do painel (server/pacote-tv.js).') };
+    return desenhistaGuardado;
+  } catch (e) {
+    return null;
+  }
+}
+
+module.exports = { pacote, scriptsDoCorpo, montarHtml, montarJs, URL_PACOTE, URL_DESENHISTA, DO_DESENHISTA, pacoteDoDesenhista };

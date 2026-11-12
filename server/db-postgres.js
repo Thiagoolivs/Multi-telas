@@ -234,6 +234,9 @@ async function init() {
     );
     CREATE INDEX IF NOT EXISTS idx_eventos_quando ON eventos(created_at);
     CREATE INDEX IF NOT EXISTS idx_eventos_tenant ON eventos(tenant_id, created_at);
+    -- A Plataforma (reteste 2): as sessões e as pessoas ativas pedem (usuário, quando); as funções mais usadas, (quando, ação).
+    CREATE INDEX IF NOT EXISTS idx_eventos_usuario ON eventos(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_eventos_acao ON eventos(created_at, acao);
     /*
      * D43: a qualidade das gerações, só contagem por dia (server/qualidade.js):
      * peça refeita por peça-ouro e defeito, campo editado à mão, tipo de

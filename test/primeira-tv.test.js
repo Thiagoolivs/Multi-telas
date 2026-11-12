@@ -255,7 +255,7 @@ test('o painel: abre sozinho na conta nova, fica no Início, e cada passo tem um
   }
   // O quadro da foto abre o TrocarFoto (celular, banco de fotos, IA), com o papel do espaço vindo do manifesto.
   const foto = ler('web/src/components/primeira-tv/FotoDoPasso.jsx');
-  assert.match(foto, /import \{ TrocarFoto \} from '\.\.\/fotos\/TrocarFoto\.jsx';/);
+  assert.match(foto, /import \{ TrocarFoto, subirFotoDoCelular \} from '\.\.\/fotos\/TrocarFoto\.jsx';/);
   assert.match(foto, /<TrocarFoto papel=\{papel\} ramo=\{ramo \|\| ''\} formato=\{formato\}/);
   assert.match(ler('web/src/components/primeira-tv/PassoFotos.jsx'), /<FotoDoPasso key=\{f\.nome\} papel=\{f\.papel\} ramo=\{neg && neg\.ramo\} formato="16\/9"/);
   assert.match(ler('web/src/lib/primeiraTv.js'), /papel: papeis\[d\.nome\] \|\| \(familia === 'gente' \? 'pessoa' : 'produto'\)/);

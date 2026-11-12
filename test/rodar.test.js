@@ -100,7 +100,7 @@ test('pausar tira só o que é da campanha', async () => {
 test('o painel: o bloco pergunta antes de trocar layout e marca o estado no servidor', () => {
   const k = fs.readFileSync(path.join(RAIZ, 'web/src/components/criar/PorPraRodar.jsx'), 'utf8');
   assert.match(k, /Trocar o formato da TV quando faltar uma parte/);
-  assert.match(k, /const ids = await rodarCampanha\(plano, nome, \{ trocarLayout: trocar \}\);/);
+  assert.match(k, /const ids = await rodarCampanha\(plano, nome, \{ trocarLayout: trocar, quando \}\);/);
   assert.match(k, /criar\.marcar\(campanha\.id, 'no_ar', ids\)/);
   assert.match(k, /await pausarCampanha\(r, nome, telas, campanha\.telas\);/);
   // D47: pronta, a campanha abre em Criados — é lá que fica o Pôr pra rodar.

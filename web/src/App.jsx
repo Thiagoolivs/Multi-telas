@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
-import { auth, primeiraTv as primeiraTvApi } from './api.js';
+import { auth, brand, primeiraTv as primeiraTvApi } from './api.js';
 import { cadastroPeloGoogle } from './lib/analytics.js';
 import { AppShell } from './components/layout/AppShell.jsx';
 import { LimiteDeErro } from './components/layout/LimiteDeErro.jsx';
@@ -9,6 +9,8 @@ import { Spinner } from './components/ui/Feedback.jsx';
 import { parearGuardado } from './lib/parearPendente.js';
 import { paginaDoIr } from './lib/menu.js';
 import { definirPerfil, usePerfil } from './lib/perfil.js';
+import { carregarPacote } from './lib/pacoteOuro.js';
+import { carregarDesenhista } from './lib/pecaHtml.js';
 
 /*
  * Cada página num pacote próprio (QA de 26/10). O painel vinha num arquivo
@@ -252,6 +254,20 @@ export default function App() {
     return () => clearTimeout(t);
   }, [semRede, espera]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { cadastroPeloGoogle(); refresh(); }, []);
+
+  /*
+   * O Prontos (reteste 2): o pacote das peças e o desenhista começam junto
+   * com a página, e não depois que ela chega. No 4G lento eram três ondas,
+   * uma depois da outra (a página, o desenhista, o pacote).
+   */
+  const deslogado = session === null;
+  useEffect(() => {
+    if (route.name !== 'prontos' || deslogado) return;
+    carregarPacote().catch(() => {});
+    carregarDesenhista().catch(() => {});
+  }, [route.name, deslogado]);
+  // A marca, que o Prontos espera para desenhar: com a sessão de pé, já.
+  useEffect(() => { if (route.name === 'prontos' && session) brand.adiantar(); }, [route.name, !!session]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const go = (name, params) => {
     const r = naBiblioteca({ name, ...params });

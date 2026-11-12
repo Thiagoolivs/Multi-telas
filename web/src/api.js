@@ -150,6 +150,12 @@ export const lojas = {
 
 export const devices = {
   list: () => api('GET', '/api/devices'),
+  /*
+   * A lista com o que cada miniatura precisa (reteste 2): `agora` (a última
+   * resposta da TV) e `programacao` (como o painel desenha). A página Telas
+   * abre com um pedido, em vez de um por TV.
+   */
+  listaComAgora: () => api('GET', '/api/devices?agora=1'),
   // `extra`: { reconectar: id } ("é a TV X que caiu") ou { nova: true } ("não, é outra TV") — QA de 03/11.
   pair: (code, name, extra) => api('POST', '/api/pair', Object.assign({ code: String(code || '').trim().toUpperCase(), name }, extra || {})),
   rename: (id, name) => api('POST', '/api/devices/' + id + '/rename', { name }),
@@ -185,6 +191,12 @@ export const deviceConfig = {
   },
   // A programação de todas as TVs da conta num pedido só: { [id]: { config, versao } } (a Programação, reteste da fase 10).
   todas: () => api('GET', '/api/devices/configs').then((r) => (r && r.configs) || {}),
+  /*
+   * A programação de UMA TV como o painel desenha (a miniatura, o "Ver
+   * agora"), juntada com as outras pedidas no mesmo instante: 25 TVs, um
+   * pedido (reteste 2). null = a TV ainda não tem programação.
+   */
+  doPainel: (id) => lerConfigEmLote(id),
   // `versao`: a que foi lida. O servidor recusa (409, code 'config-mudou') se alguém gravou no meio.
   save: (id, config, versao) => api('PUT', '/api/devices/' + id + '/config' + (versao != null ? '?versao=' + encodeURIComponent(versao) : ''), config),
 };
@@ -473,9 +485,26 @@ export const som = {
   estado: (deviceId) => api('GET', '/api/devices/' + deviceId + '/audio'),
 };
 
+/*
+ * A marca lida de ANTEMÃO (reteste 2): o Prontos só desenha com a marca da
+ * conta, e no 4G lento ela chegava por último, depois da página. O App começa
+ * a leitura junto com a página (`adiantar`); a página que pede em seguida
+ * leva a mesma resposta, uma vez, se ela começou há menos de 10 s.
+ */
+let marcaAdiantada = null;
 export const brand = {
-  get: () => api('GET', '/api/brand'),
-  save: (kit) => api('PUT', '/api/brand', kit),
+  get: () => {
+    const a = marcaAdiantada;
+    marcaAdiantada = null;
+    return a && Date.now() - a.em < 10000 ? a.promessa : api('GET', '/api/brand');
+  },
+  adiantar: () => {
+    if (marcaAdiantada && Date.now() - marcaAdiantada.em < 10000) return;
+    const promessa = api('GET', '/api/brand');
+    promessa.catch(() => { if (marcaAdiantada && marcaAdiantada.promessa === promessa) marcaAdiantada = null; });
+    marcaAdiantada = { em: Date.now(), promessa };
+  },
+  save: (kit) => { marcaAdiantada = null; return api('PUT', '/api/brand', kit); },
   addAsset: (kind, url, label) => api('POST', '/api/brand/assets', { kind, url, label }),
   labelAsset: (id, label) => api('PUT', '/api/brand/assets/' + id, { label }),
   removeAsset: (id) => api('DELETE', '/api/brand/assets/' + id),
@@ -744,6 +773,42 @@ export const redes = {
  * miniatura recebe a resposta dela, igual à de antes.
  */
 let leituraJunta = null;
+/*
+ * O mesmo junta-junta para a programação das miniaturas (reteste 2: Telas
+ * fazia 32 chamadas com 25 TVs, uma programação por TV). As pedidas em 30 ms
+ * viram um GET /api/devices/configs?ids=, que o servidor filtra pela conta
+ * e pela loja de quem pede.
+ */
+let configJunta = null;
+function lerConfigEmLote(id) {
+  if (!configJunta) {
+    const atual = { pedidos: new Map() };
+    configJunta = atual;
+    setTimeout(() => {
+      configJunta = null;
+      const todos = [...atual.pedidos.keys()];
+      for (let i = 0; i < todos.length; i += 100) {
+        const ids = todos.slice(i, i + 100);
+        api('GET', '/api/devices/configs?ids=' + ids.map(encodeURIComponent).join(','))
+          .then((r) => {
+            const configs = (r && r.configs) || {};
+            for (const k of ids) {
+              const fila = atual.pedidos.get(k);
+              if (configs[k]) fila.forEach((f) => f.ok(configs[k].config || null));
+              else { const e = new Error('sem permissão'); e.status = 403; fila.forEach((f) => f.falha(e)); }
+            }
+          })
+          .catch((e) => { for (const k of ids) atual.pedidos.get(k).forEach((f) => f.falha(e)); });
+      }
+    }, 30);
+  }
+  return new Promise((ok, falha) => {
+    const fila = configJunta.pedidos.get(id) || [];
+    fila.push({ ok, falha });
+    configJunta.pedidos.set(id, fila);
+  });
+}
+
 function lerEmLote(id) {
   if (!leituraJunta) {
     const atual = { pedidos: new Map() };

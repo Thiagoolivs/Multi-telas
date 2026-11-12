@@ -2676,7 +2676,8 @@ const negocioCache = new Map();
         whatsapp: String(process.env.WHATSAPP_NUMERO || '').replace(/\D/g, '') || null,
         // O mesmo contato das páginas legais (server/legal.js), agora também
         // na página de Suporte do painel.
-        email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(process.env.SUPPORT_EMAIL || '') ? process.env.SUPPORT_EMAIL : null,
+        // SUPORTE_EMAIL (ou SUPPORT_EMAIL); sem eles, o endereço do produto (server/legal.js).
+        email: legal.emailDeSuporte(process.env),
       },
       /*
        * A tabela inteira de 1 a 50 telas, já calculada: mensal e anual.
@@ -3378,7 +3379,30 @@ function servirPublico(res, urlPath, req) {
       catch (e) { res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Manifesto ilegível'); }
     });
   }
+  /*
+   * O pacote do Prontos (reteste 2): o manifesto e o HTML das peças aprovadas
+   * num pedido só (server/conteudoPronto.js, montarPacote). ETag para o 304;
+   * guardado no navegador por uma semana, conferido depois de 1 minuto (a
+   * decisão nova da galeria chega na visita seguinte).
+   */
+  if (urlPath === '/pecas-ouro/pacote.json') {
+    return Promise.resolve().then(() => db.decisoesDoConteudo()).catch(() => []).then((decisoes) => {
+      let p;
+      try { p = conteudoPronto.montarPacote(ROOT, decisoes); }
+      catch (e) { res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('Pacote ilegível'); }
+      const cab = { ETag: p.etag, 'Cache-Control': 'public, max-age=60, stale-while-revalidate=604800', Vary: 'Accept-Encoding' };
+      if (String((req && req.headers && req.headers['if-none-match']) || '') === p.etag) { res.writeHead(304, cab); return res.end(); }
+      res.writeHead(200, Object.assign({ 'Content-Type': 'application/json; charset=utf-8' }, cab));
+      compressao.guardarComprimido(res);
+      return res.end(p.corpo);
+    });
+  }
   // O player com os scripts num pacote só (server/pacote-tv.js). Falhou ao montar: sai o de sempre.
+  // O desenhista das miniaturas do painel num pedido só (reteste 2). Falhou ao montar: 404, e o painel pede os arquivos soltos.
+  if (urlPath === pacoteTv.URL_DESENHISTA) {
+    const d = pacoteTv.pacoteDoDesenhista(ROOT);
+    if (d) return sendFile(res, path.join(ROOT, urlPath), Buffer.from(d.js));
+  }
   if (urlPath === '/player.html' || urlPath === pacoteTv.URL_PACOTE) {
     const p = pacoteTv.pacote(ROOT);
     if (p) return sendFile(res, path.join(ROOT, urlPath), Buffer.from(urlPath === '/player.html' ? p.html : p.js));

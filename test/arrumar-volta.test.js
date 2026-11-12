@@ -100,7 +100,7 @@ test('o painel: o botão no aviso de volta longa, a lista com o porquê, e o "P�
   assert.match(resumo, /\{p\.volta && aoArrumar && \(/);
   assert.match(resumo, /<ArrumarVolta cfg=\{cfg\} volta=\{p\.volta\} aoArrumar=\{aoArrumar\}/);
   const pagina = ler('web/src/pages/ContentEditorPage.jsx');
-  assert.match(pagina, /<ScreenSummary cfg=\{cfg\} aoArrumar=\{arrumarVolta\} \/>/);
+  assert.match(pagina, /<ScreenSummary cfg=\{cfg\} aoArrumar=\{arrumarVolta\} comFaixa \/>/);
   const fn = pagina.slice(pagina.indexOf('async function arrumarVolta'), pagina.indexOf('async function desfazer'));
   assert.match(fn, /await publish\(novo\)/, 'não passou pelo caminho de sempre (e pela aprovação)');
   assert.match(fn, /rotulo: 'Desfazer'/);

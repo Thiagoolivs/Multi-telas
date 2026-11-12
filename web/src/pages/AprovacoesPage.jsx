@@ -4,7 +4,7 @@ import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 import { SkeletonRows, ErrorState, EmptyState, Spinner } from '../components/ui/Feedback.jsx';
-import { PreviaDaTela } from '../components/tela/PreviaDaTela.jsx';
+import { TvAoVivo } from '../components/tela/TvAoVivo.jsx';
 import { avisarMudanca } from '../components/layout/SinoAprovacoes.jsx';
 import { useAsync } from '../lib/useAsync.js';
 import { relativeTime } from '../lib/format.js';
@@ -14,9 +14,8 @@ import { useNomesDasMidias } from '../lib/useNomesDasMidias.js';
 import { aviso } from '../lib/avisos.js';
 import { perguntar, confirmar } from '../lib/confirmar.js';
 import { aprovacoes } from '../api.js';
-// O desenho da TV na prévia (os layouts de js/templates.js e o tema), como no resto do painel.
+// Os layouts de js/templates.js (o tamanho da TV em pé ou deitada), como no resto do painel.
 import '../lib/screenConfig.js';
-import '../lib/fundoDaTV.js';
 
 /*
  * APROVAÇÕES (fase 13). Feita para o celular do dono: a lista do que a
@@ -196,8 +195,8 @@ function Detalhe({ id, onFechar, onDecidido }) {
             <p className="mt-1 flex items-start gap-1.5 text-sm text-warn"><AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden="true" />Esta TV mudou depois do pedido.</p>
           )}
           <div className="mt-2 grid grid-cols-2 gap-2 sm:gap-4">
-            {t.antes ? <PreviaDaTela cfg={t.antes} rotulo="Antes (agora na TV)" /> : <SemPrevia rotulo="Antes (agora na TV)" texto="A TV ainda não tinha nada." />}
-            {t.depois ? <PreviaDaTela cfg={t.depois} rotulo="Depois (se aprovar)" /> : <SemPrevia rotulo="Depois (se aprovar)" texto="Sem prévia." />}
+            {t.antes ? <ATv cfg={t.antes} rotulo="Antes (agora na TV)" /> : <SemPrevia rotulo="Antes (agora na TV)" texto="A TV ainda não tinha nada." />}
+            {t.depois ? <ATv cfg={t.depois} rotulo="Depois (se aprovar)" /> : <SemPrevia rotulo="Depois (se aprovar)" texto="Sem prévia." />}
             <ListaDoQuePassa nomes={oQuePassa(t.antes, nomesDasMidias)} />
             <ListaDoQuePassa nomes={oQuePassa(t.depois, nomesDasMidias)} antes={oQuePassa(t.antes, nomesDasMidias)} />
           </div>
@@ -225,6 +224,20 @@ function ListaDoQuePassa({ nomes, antes }) {
       })}
       {nomes.length > 6 && <li className="text-ink-3">e mais {nomes.length - 6}</li>}
     </ul>
+  );
+}
+
+/*
+ * O antes e o depois com a TV de verdade (reteste 2: o desenho saía vazio,
+ * só a moldura): o próprio player num quadro, como "Na TV agora" na página
+ * da TV. O antes é a programação que está na TV; o depois, a do pedido.
+ */
+function ATv({ cfg, rotulo }) {
+  return (
+    <figure className="m-0 min-w-0">
+      <figcaption className="mb-1 text-2xs font-semibold uppercase tracking-wide text-ink-3">{rotulo}</figcaption>
+      <TvAoVivo cfg={cfg} alturaMaxima={260} rotulo={rotulo} />
+    </figure>
   );
 }
 

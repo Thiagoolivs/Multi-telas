@@ -43,24 +43,35 @@ import { ACEITA_VIDEO, LIMITES_FOTO_VIVA, ehVideoSrc, posterDe, lerVideo, proble
  *             a miniatura que vira o fundo desfocado (item.espacos[nome].fundo);
  *             `poster`, o primeiro quadro do vídeo (só na foto viva)
  *   onFechar  fechar sem trocar
+ *   abaInicial  a aba que abre ('celular', 'banco' ou 'ia'; padrão 'celular')
+ *   umToque   a foto escolhida já vale, sem o passo do ponto que importa
+ *             ("Sua primeira TV em 5 minutos", reteste 2: eram 4 toques para
+ *             pôr uma foto). As do banco já vêm com o ponto escolhido, e
+ *             "Ajustar o ponto" (na foto de agora) ainda abre o passo do ponto.
  */
 const ABAS = [['celular', 'Do celular', Smartphone], ['banco', 'Banco de fotos', Images], ['ia', 'Gerar com IA', Sparkles]];
 const ACEITA = 'image/png,image/jpeg,image/webp';
 const ehFoto = (m) => /^image\/(png|jpeg|webp)$/.test((m && m.mime) || '') && (m.origem || '') !== 'poster';
 const segundos = (n) => (n > 0 ? Math.round(n) + ' s' : '');
 
-export function TrocarFoto({ papel = 'produto', ramo = '', valor, onTrocar, formato = '16/9', titulo = '', onFechar }) {
+export function TrocarFoto({ papel = 'produto', ramo = '', valor, onTrocar, formato = '16/9', titulo = '', onFechar, abaInicial = 'celular', umToque = false }) {
   const atual = lerValor(valor);
   const [fase, setFase] = useState('escolher');
-  const [aba, setAba] = useState('celular');
+  const [aba, setAba] = useState(abaInicial);
   const [escolhida, setEscolhida] = useState(null);   // { src, credito, fundo, poster, video }
   const [foco, setFoco] = useState(null);
   const [fundo, setFundo] = useState('');
   const [decisao, setDecisao] = useState(null);
   const fechar = onFechar || (() => {});
 
-  function escolher(f) {
+  function escolher(f, { ajustar = false } = {}) {
     const video = ehVideoSrc(f.src);
+    // Um toque: a foto vale já (o ponto, o do banco ou o meio); "Ajustar o ponto" ainda abre o passo do ponto.
+    if (umToque && !ajustar) {
+      const poster = video ? { poster: f.poster || posterDe(f.src) } : {};
+      onTrocar({ src: f.src, ...(f.foco ? { foco: f.foco } : {}), ...poster }, { credito: f.credito || '', fundo: f.fundo || '', ...poster });
+      return;
+    }
     setEscolhida({ src: f.src, credito: f.credito || '', fundo: f.fundo || '', video, poster: video ? f.poster || posterDe(f.src) : '' });
     setFoco(f.foco || null);
     setFundo(f.fundo || '');
@@ -83,7 +94,10 @@ export function TrocarFoto({ papel = 'produto', ramo = '', valor, onTrocar, form
         {fase === 'foco'
           ? <Button variant="ghost" icon={ArrowLeft} className="mr-auto" onClick={() => setFase('escolher')}>Escolher outra</Button>
           : <Button variant="ghost" onClick={fechar}>Cancelar</Button>}
-        <Button variant="primary" icon={Check} disabled={fase !== 'foco' || !escolhida} onClick={usar}>{escolhida && escolhida.video ? 'Usar este vídeo' : 'Usar esta foto'}</Button>
+        {/* Um toque: na escolha, a foto tocada já vale; o botão só aparece no passo do ponto. */}
+        {!(umToque && fase !== 'foco') && (
+          <Button variant="primary" icon={Check} disabled={fase !== 'foco' || !escolhida} onClick={usar}>{escolhida && escolhida.video ? 'Usar este vídeo' : 'Usar esta foto'}</Button>
+        )}
       </>}>
       {fase === 'escolher' ? (
         <div className="space-y-3">
@@ -91,7 +105,7 @@ export function TrocarFoto({ papel = 'produto', ramo = '', valor, onTrocar, form
             <div className="flex items-center gap-2.5 rounded-lg border border-line p-2">
               <Miniatura src={ehVideoSrc(atual.src) ? atual.poster || posterDe(atual.src) : atual.src} video={ehVideoSrc(atual.src)} className="h-12 w-12 shrink-0 rounded-md" />
               <span className="min-w-0 flex-1 text-xs text-ink-2">{ehVideoSrc(atual.src) ? 'Vídeo de agora' : 'Foto de agora'}</span>
-              <Button size="sm" variant="ghost" icon={Crosshair} onClick={() => escolher({ src: atual.src, foco: atual.foco, poster: atual.poster })}>Ajustar o ponto</Button>
+              <Button size="sm" variant="ghost" icon={Crosshair} onClick={() => escolher({ src: atual.src, foco: atual.foco, poster: atual.poster }, { ajustar: true })}>Ajustar o ponto</Button>
             </div>
           )}
           <div className="flex gap-1 rounded-lg border border-line bg-surface-2 p-1" role="tablist" aria-label="De onde vem a foto">
@@ -105,7 +119,7 @@ export function TrocarFoto({ papel = 'produto', ramo = '', valor, onTrocar, form
           </div>
           <div role="tabpanel" id={'painel-foto-' + aba} aria-labelledby={'aba-foto-' + aba}>
             {aba === 'celular' && <DoCelular onEscolher={escolher} />}
-            {aba === 'banco' && <DoBanco ramo={ramo} papel={papel} onEscolher={escolher} />}
+            {aba === 'banco' && <DoBanco ramo={ramo} papel={papel} onEscolher={escolher} umToque={umToque} />}
             {aba === 'ia' && <ComIA papel={papel} ramo={ramo} titulo={titulo} formato={formato} onEscolher={escolher} />}
           </div>
         </div>
@@ -150,6 +164,20 @@ export function minhasDaConta(items) {
     .map((m) => (/^video\//.test(m.mime || '') ? { ...m, video: true, poster: posterDe(m.url) } : m));
 }
 
+/*
+ * Sobe uma foto do celular como o "Do celular" sobe: encolhida antes, com a
+ * miniatura borrada do fundo (lib/subir.js). Devolve { src, fundo }. O
+ * passo "Fotos e textos" da Primeira TV usa direto, no "Usar uma foto do
+ * celular" (dois toques: o botão e a foto).
+ */
+export async function subirFotoDoCelular(f) {
+  if (!f || !/^image\/(png|jpeg|webp)$/.test(f.type)) throw new Error('Use uma foto em JPG, PNG ou WEBP.');
+  const p = await prepararFoto(f);
+  const up = await media.upload(p.envio);
+  URL.revokeObjectURL(p.previa);
+  return { src: up.url, fundo: p.fundo };
+}
+
 function DoCelular({ onEscolher }) {
   const [enviando, setEnviando] = useState('');
   const [progresso, setProgresso] = useState(0);
@@ -189,10 +217,7 @@ function DoCelular({ onEscolher }) {
     setEnviando('foto'); setErro('');
     try {
       // A foto do celular encolhe antes de subir, e a miniatura borrada já sai daqui (lib/subir.js).
-      const p = await prepararFoto(f);
-      const up = await media.upload(p.envio);
-      URL.revokeObjectURL(p.previa);
-      onEscolher({ src: up.url, fundo: p.fundo });
+      onEscolher(await subirFotoDoCelular(f));
     } catch (err) {
       setErro(err.message || 'A foto não subiu. Tente de novo.');
     } finally { setEnviando(''); }
@@ -255,7 +280,7 @@ function Miniatura({ src, video, duracao, className = '', style }) {
 
 /* ---------------- Banco de fotos ---------------- */
 
-function DoBanco({ ramo, papel, onEscolher }) {
+function DoBanco({ ramo, papel, onEscolher, umToque }) {
   const [tipo, setTipo] = useState('fotos');
   const [lista, setLista] = useState(null);
   const [videos, setVideos] = useState(null);
@@ -318,7 +343,7 @@ function DoBanco({ ramo, papel, onEscolher }) {
       : lista === null ? <p className="flex items-center gap-1.5 text-xs text-ink-3"><Spinner size={14} /> Abrindo o banco de fotos…</p>
         : !fotos.length ? <p className="text-xs text-ink-3">O banco ainda não tem fotos para este espaço. Use uma do celular ou gere com a IA.</p>
           : <>
-            {doNegocio.length > 0 && <div><div className="mb-1.5 text-xs font-medium text-ink-2">Para o seu negócio</div>{grade(doNegocio)}</div>}
+            {doNegocio.length > 0 && <div><div className="mb-1.5 text-xs font-medium text-ink-2">Para o seu negócio{umToque ? ' · toque numa para usar' : ''}</div>{grade(doNegocio)}</div>}
             {outras.length > 0 && <div><div className="mb-1.5 text-xs font-medium text-ink-2">{doNegocio.length ? 'Outras' : 'Fotos do banco'}</div>{grade(outras)}</div>}
             <p className="text-2xs text-ink-3">Fotos livres para usar na sua TV.</p>
           </>}
