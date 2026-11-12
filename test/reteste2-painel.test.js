@@ -174,6 +174,22 @@ test('o desenhista das miniaturas num pedido só, e a miniatura só desenha quan
   assert.doesNotMatch(ler('web/src/pages/TelasProntasPage.jsx'), /^import \{ EditarPeca \}/m);
 });
 
+test('Plataforma: as métricas com índice para as sessões, as pessoas ativas e as funções mais usadas', () => {
+  for (const f of ['server/db-sqlite.js', 'server/db-postgres.js']) {
+    const s = ler(f);
+    assert.match(s, /CREATE INDEX IF NOT EXISTS idx_eventos_usuario ON eventos\(user_id, created_at\);/, f);
+    assert.match(s, /CREATE INDEX IF NOT EXISTS idx_eventos_acao ON eventos\(created_at, acao\);/, f);
+  }
+  // E com o índice o SQLite usa mesmo: as sessões e as pessoas ativas sem varrer a tabela.
+  const { DatabaseSync } = require('node:sqlite');
+  const db = new DatabaseSync(':memory:');
+  db.exec('CREATE TABLE eventos (id TEXT PRIMARY KEY, tenant_id TEXT, user_id TEXT, acao TEXT, created_at INTEGER); CREATE INDEX idx_eventos_quando ON eventos(created_at); CREATE INDEX idx_eventos_usuario ON eventos(user_id, created_at); CREATE INDEX idx_eventos_acao ON eventos(created_at, acao);');
+  const plano = (sql) => db.prepare('EXPLAIN QUERY PLAN ' + sql).all(0).map((r) => r.detail).join(' | ');
+  assert.match(plano('SELECT user_id, created_at FROM eventos WHERE created_at >= ? ORDER BY user_id ASC, created_at ASC'), /COVERING INDEX idx_eventos_usuario/);
+  assert.match(plano('SELECT acao, COUNT(*) AS n FROM eventos WHERE created_at >= ? GROUP BY acao ORDER BY n DESC LIMIT 30'), /COVERING INDEX idx_eventos_acao/);
+  db.close();
+});
+
 test('Telas abre com um pedido de TVs: a lista traz a última resposta e a programação de cada uma', () => {
   const t = ler('server/routes/telas.js');
   assert.match(t, /if \(query && query\.agora === '1'\) \{/);
