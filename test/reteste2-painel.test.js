@@ -114,3 +114,62 @@ test('a campanha da IA vai ao ar com o "Quando" e o Desfazer, como todo caminho'
   assert.match(c, /disabled=\{ocupado \|\| !plano \|\| !plano\.length \|\| faltaData\(escolha\)\}/);
   assert.equal((c.match(/variant="primary"/g) || []).length, 1, 'um violeta só');
 });
+
+/* ---------- 4. Velocidade ---------- */
+
+test('Prontos: o manifesto e o HTML das peças aprovadas num pacote só, com ETag', () => {
+  const C = require('../server/conteudoPronto.js');
+  const manifesto = C.lerManifesto(RAIZ);
+  const p = C.montarPacote(RAIZ, []);
+  const corpo = JSON.parse(p.corpo.toString('utf8'));
+  const aprovadas = manifesto.pecas.filter((x) => !x.estado || x.estado === 'aprovada');
+  assert.equal(corpo.manifesto.soAprovadas, true);
+  assert.deepEqual(corpo.manifesto.pecas.map((x) => x.id), aprovadas.map((x) => x.id), 'o pacote leva só as peças que o cliente vê');
+  assert.ok(corpo.manifesto.telas.every((t) => t.estado === 'aprovada'));
+  assert.deepEqual(corpo.manifesto.marcas, manifesto.marcas, 'as marcas de exemplo vão junto (telasProntas, nomesDeExemplo)');
+  for (const x of aprovadas) assert.equal(corpo.html[x.id], fs.readFileSync(path.join(RAIZ, 'pecas-ouro', x.id + '.html'), 'utf8'), x.id);
+  assert.match(p.etag, /^"[0-9a-f]{32}"$/);
+  assert.equal(C.montarPacote(RAIZ, []), p, 'montado de novo a cada pedido');
+  // Uma decisão da galeria muda o pacote (e o ETag).
+  const proposta = manifesto.pecas.find((x) => x.estado === 'proposta');
+  if (proposta) {
+    const com = C.montarPacote(RAIZ, [{ tipo: 'peca', id: proposta.id, estado: 'aprovada', decidido_em: Date.now() }]);
+    assert.notEqual(com.etag, p.etag);
+    assert.ok(JSON.parse(com.corpo).html[proposta.id], 'a peça aprovada na galeria não entrou no pacote');
+  }
+  const s = ler('server.js');
+  assert.match(s, /if \(urlPath === '\/pecas-ouro\/pacote\.json'\) \{/);
+  assert.match(s, /'Cache-Control': 'public, max-age=60, stale-while-revalidate=604800'/);
+  assert.match(s, /res\.writeHead\(304, cab\)/);
+  // O painel: um pedido, o desenhista em paralelo, e começando junto com a página.
+  const pac = ler('web/src/lib/pacoteOuro.js');
+  assert.match(pac, /fetch\('\/pecas-ouro\/pacote\.json'\)/);
+  assert.match(pac, /fetch\('\/pecas-ouro\/manifesto\.json'\)/, 'sem o pacote, o caminho de antes');
+  const mo = ler('web/src/lib/modelosOuro.js');
+  assert.match(mo, /Promise\.all\(\[carregarDesenhista\(\), carregarManifesto\(\)\]\)/);
+  assert.match(mo, /htmlDaPeca\(p\.id\)/);
+  assert.doesNotMatch(semComentarios(mo), /fetch\(/, 'uma peça por pedido voltou');
+  assert.doesNotMatch(semComentarios(ler('web/src/lib/telasProntas.js')), /fetch\('\/pecas-ouro\/manifesto\.json'\)/, 'o manifesto vinha duas vezes');
+  assert.match(ler('web/src/App.jsx'), /if \(route\.name !== 'prontos' \|\| deslogado\) return;\s*carregarPacote\(\)/);
+});
+
+test('o desenhista das miniaturas num pedido só, e a miniatura só desenha quando aparece', () => {
+  const T = require('../server/pacote-tv.js');
+  const d = T.pacoteDoDesenhista(RAIZ);
+  assert.ok(d && d.js, 'o pacote do desenhista não montou');
+  for (const s of T.DO_DESENHISTA) assert.ok(d.js.includes('/* ==== ' + s + ' ==== */'), s);
+  assert.deepEqual(T.DO_DESENHISTA, ['js/cor.js', 'js/fontes.js', 'js/animacao.js', 'js/tokens.js', 'js/peca-html.js', 'js/peca-render.js']);
+  assert.match(ler('server.js'), /if \(urlPath === pacoteTv\.URL_DESENHISTA\) \{/);
+  const h = ler('web/src/lib/pecaHtml.js');
+  assert.match(h, /carregando = script\('\/js\/desenhista\.pacote\.js'\)/);
+  assert.match(h, /\.catch\(\(\) => Promise\.all\(SCRIPTS\.map\(\(src\) => script\(src\)\)\)\)/, 'sem o pacote, os soltos em paralelo');
+  assert.match(h, /await carregarConferidor\(\);/, 'conferir ainda carrega as regras e o conferidor');
+  const ph = ler('web/src/components/content/PecaHtml.jsx');
+  assert.match(ph, /new IntersectionObserver\(\(v\) => \{ if \(v\.some\(\(x\) => x\.isIntersecting\)\) setVisivel\(true\); \}, \{ rootMargin: '300px' \}\)/);
+  assert.match(ph, /if \(!visivel\) return undefined;/);
+  // O editor e as redes do Prontos só quando se usa.
+  const pp = ler('web/src/pages/PecasProntasPage.jsx');
+  assert.match(pp, /const EditarPeca = lazy\(/);
+  assert.doesNotMatch(pp, /^import \{ EditarPeca \}/m);
+  assert.doesNotMatch(ler('web/src/pages/TelasProntasPage.jsx'), /^import \{ EditarPeca \}/m);
+});

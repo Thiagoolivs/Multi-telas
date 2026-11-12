@@ -1,11 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { ArrowLeft, Check, LayoutTemplate, MonitorPlay, Pencil, Plus, X } from 'lucide-react';
 import '../../../js/templates.js';
 import { Button } from '../components/ui/Button.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { EmptyState } from '../components/ui/Feedback.jsx';
 import { PecaHtml } from '../components/content/PecaHtml.jsx';
-import { EditarPeca } from '../components/content/EditarPeca.jsx';
 import { Palco } from '../components/content/VerTelaAgora.jsx';
 import { MARCAS_DO_RAMO } from '../lib/modelosOuro.js';
 import { gravarEmLote, avisarComDesfazer } from '../lib/rodar.js';
@@ -15,6 +14,9 @@ import { cn } from '../lib/cn.js';
 import {
   montarTela, estadoDaPrevia, aplicarTelaPronta, medirZonas, perfilDaTela, emPe, tvEmPe, ordemDasTelas,
 } from '../lib/telasProntas.js';
+
+// O editor da peça só quando se edita (reteste 2): o Prontos usa esta página e não precisa dele para mostrar a grade.
+const EditarPeca = lazy(() => import('../components/content/EditarPeca.jsx').then((m) => ({ default: m.EditarPeca })));
 
 /*
  * AS TELAS PRONTAS (EXECUTOR D18): a tela inteira — cabeçalho, principal,
@@ -181,6 +183,7 @@ export function PersonalizarTela({ inicial, dados, tvs, telaAlvo, onVoltar, volt
       </div>
 
       {pecaEmEdicao && (
+        <Suspense fallback={null}>
         <EditarPeca item={pecaEmEdicao} label={nomeDaPeca(pecaEmEdicao)} lugar={zonas[editando.grupo]}
           onFechar={() => setEditando(null)}
           onSalvar={async (novo) => {
@@ -190,6 +193,7 @@ export function PersonalizarTela({ inicial, dados, tvs, telaAlvo, onVoltar, volt
             setEditadas((s) => new Set(s).add(grupo + indice));
             setEditando(null);
           }} />
+        </Suspense>
       )}
 
       {porNaTv && (

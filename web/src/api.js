@@ -479,9 +479,26 @@ export const som = {
   estado: (deviceId) => api('GET', '/api/devices/' + deviceId + '/audio'),
 };
 
+/*
+ * A marca lida de ANTEMÃO (reteste 2): o Prontos só desenha com a marca da
+ * conta, e no 4G lento ela chegava por último, depois da página. O App começa
+ * a leitura junto com a página (`adiantar`); a página que pede em seguida
+ * leva a mesma resposta, uma vez, se ela começou há menos de 10 s.
+ */
+let marcaAdiantada = null;
 export const brand = {
-  get: () => api('GET', '/api/brand'),
-  save: (kit) => api('PUT', '/api/brand', kit),
+  get: () => {
+    const a = marcaAdiantada;
+    marcaAdiantada = null;
+    return a && Date.now() - a.em < 10000 ? a.promessa : api('GET', '/api/brand');
+  },
+  adiantar: () => {
+    if (marcaAdiantada && Date.now() - marcaAdiantada.em < 10000) return;
+    const promessa = api('GET', '/api/brand');
+    promessa.catch(() => { if (marcaAdiantada && marcaAdiantada.promessa === promessa) marcaAdiantada = null; });
+    marcaAdiantada = { em: Date.now(), promessa };
+  },
+  save: (kit) => { marcaAdiantada = null; return api('PUT', '/api/brand', kit); },
   addAsset: (kind, url, label) => api('POST', '/api/brand/assets', { kind, url, label }),
   labelAsset: (id, label) => api('PUT', '/api/brand/assets/' + id, { label }),
   removeAsset: (id) => api('DELETE', '/api/brand/assets/' + id),

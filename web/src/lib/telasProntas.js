@@ -8,6 +8,7 @@
  */
 import '../../../js/templates.js';
 import { carregarModelos, itemDoModelo } from './modelosOuro.js';
+import { carregarManifesto } from './pacoteOuro.js';
 import { getLayout as layoutDoPainel } from './screenConfig.js';
 
 // A grade do layout é a da TV (js/templates.js); a lista do painel não traz a grade.
@@ -61,7 +62,8 @@ let cache = null;
 export function carregarTelasProntas() {
   if (!cache) {
     cache = Promise.all([
-      fetch('/pecas-ouro/manifesto.json').then((r) => { if (!r.ok) throw new Error('não deu para abrir as telas prontas'); return r.json(); }),
+      // O mesmo pacote dos modelos (reteste 2, lib/pacoteOuro.js): o manifesto não vem duas vezes.
+      carregarManifesto(),
       carregarModelos(),
     ]).then(([m, modelos]) => ({ telas: aprovadas(m), modelos: new Map(modelos.map((x) => [x.id, x])), exemplos: nomesDeExemplo(m.marcas) }))
       .catch((e) => { cache = null; throw e; });

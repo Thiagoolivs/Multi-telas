@@ -28,7 +28,21 @@ export function PecaHtml({ item, formato, tamanho, fitHeight, className, rascunh
   const palco = useRef(null);
   const [escala, setEscala] = useState(0);
   const [erro, setErro] = useState('');
+  /*
+   * Só desenha quando aparece (reteste 2): a grade do Prontos montava todas
+   * as peças de uma vez, com a CPU do celular presa e as fontes de cada uma
+   * pedidas antes de a pessoa rolar até lá. 300 px antes de entrar na tela.
+   */
+  const [visivel, setVisivel] = useState(() => typeof IntersectionObserver === 'undefined');
   const [w, h] = tamanho || TAMANHO_REAL[formato] || TAMANHO_REAL['16/9'];
+
+  useEffect(() => {
+    const el = caixa.current;
+    if (!el || visivel) return undefined;
+    const io = new IntersectionObserver((v) => { if (v.some((x) => x.isIntersecting)) setVisivel(true); }, { rootMargin: '300px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [visivel]);
 
   useEffect(() => {
     const el = caixa.current;
@@ -45,6 +59,7 @@ export function PecaHtml({ item, formato, tamanho, fitHeight, className, rascunh
   }, [w, h]);
 
   useEffect(() => {
+    if (!visivel) return undefined;
     let vivo = true;
     let ctl = null;
     carregarDesenhista()
@@ -55,7 +70,7 @@ export function PecaHtml({ item, formato, tamanho, fitHeight, className, rascunh
       })
       .catch((e) => { if (vivo) setErro(e.message || 'não desenhou'); });
     return () => { vivo = false; if (ctl) ctl.parar(); };
-  }, [item, rascunho, (mensagens || []).join('|'), contagem]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [visivel, item, rascunho, (mensagens || []).join('|'), contagem]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /*
    * Contorno por `ring` (sombra), não por `border`. A borda de 1px entrava
