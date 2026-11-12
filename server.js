@@ -2676,7 +2676,8 @@ const negocioCache = new Map();
         whatsapp: String(process.env.WHATSAPP_NUMERO || '').replace(/\D/g, '') || null,
         // O mesmo contato das páginas legais (server/legal.js), agora também
         // na página de Suporte do painel.
-        email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(process.env.SUPPORT_EMAIL || '') ? process.env.SUPPORT_EMAIL : null,
+        // SUPORTE_EMAIL (ou SUPPORT_EMAIL); sem eles, o endereço do produto (server/legal.js).
+        email: legal.emailDeSuporte(process.env),
       },
       /*
        * A tabela inteira de 1 a 50 telas, já calculada: mensal e anual.

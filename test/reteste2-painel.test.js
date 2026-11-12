@@ -190,6 +190,67 @@ test('Plataforma: as métricas com índice para as sessões, as pessoas ativas e
   db.close();
 });
 
+/* ---------- 5. Suporte, a logo no fundo escuro e a busca em Telas ---------- */
+
+test('Suporte: o e-mail do produto (SUPORTE_EMAIL), nunca um endereço pessoal', () => {
+  const legal = require('../server/legal.js');
+  assert.equal(legal.emailDeSuporte({}), 'suporte@multitelas.net.br');
+  assert.equal(legal.emailDeSuporte({ SUPORTE_EMAIL: 'ajuda@loja.com.br' }), 'ajuda@loja.com.br');
+  assert.equal(legal.emailDeSuporte({ SUPPORT_EMAIL: 'antigo@loja.com.br' }), 'antigo@loja.com.br', 'o nome antigo deixou de valer');
+  assert.equal(legal.emailDeSuporte({ SUPORTE_EMAIL: 'não é e-mail' }), 'suporte@multitelas.net.br');
+  // As páginas legais continuam sem inventar contato: sem variável, apontam para a página Suporte.
+  assert.equal(legal.fornecedor({}).contato, '');
+  assert.equal(legal.fornecedor({ SUPORTE_EMAIL: 'ajuda@loja.com.br' }).contato, 'ajuda@loja.com.br');
+  assert.match(ler('server.js'), /email: legal\.emailDeSuporte\(process\.env\),/);
+  const p = ler('web/src/pages/SupportPage.jsx');
+  assert.match(p, /const EMAIL_PADRAO = 'suporte@multitelas\.net\.br';/);
+  // Nenhum Gmail (ou outro endereço de pessoa) no painel.
+  const glob = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? glob(path.join(dir, e.name)) : /\.(jsx?|mjs)$/.test(e.name) ? [path.join(dir, e.name)] : []));
+  for (const f of glob(path.join(RAIZ, 'web/src'))) assert.doesNotMatch(fs.readFileSync(f, 'utf8'), /@(gmail|hotmail|outlook|yahoo)\.com/i, path.relative(RAIZ, f));
+});
+
+test('a logo no fundo escuro: o contraste medido nos pixels, e a verdade no selo', async () => {
+  const LG = await importar('web/src/lib/logo.js');
+  const pixels = (hex, n = 400, alfa = 255) => {
+    const d = new Uint8ClampedArray(n * 4);
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    for (let i = 0; i < n; i++) { d[i * 4] = r; d[i * 4 + 1] = g; d[i * 4 + 2] = b; d[i * 4 + 3] = alfa; }
+    return d;
+  };
+  // A logo azul-marinho do reteste (#0f4c81) no fundo escuro da TV: 2,1:1. Era "Lê no fundo escuro".
+  const marinho = LG.leitura(pixels('#0f4c81'), null, LG.ESCURO);
+  assert.equal(marinho.ok, false, 'a logo que some no escuro passou como legível');
+  assert.equal(marinho.contraste, 2.1);
+  assert.equal(LG.leitura(pixels('#0f4c81'), null, LG.CLARO).ok, true, 'no claro ela lê');
+  const branca = LG.leitura(pixels('#ffffff'), null, LG.ESCURO);
+  assert.equal(branca.ok, true);
+  assert.ok(branca.contraste > 15);
+  assert.equal(LG.leitura(pixels('#ffffff', 400, 0), null, LG.ESCURO).ok, false, 'só transparente não lê');
+  assert.equal(LG.LEITURA_MINIMA, 3);
+  assert.equal(LG.contrasteEmTexto(2.1), '2,1 para 1');
+  const c = ler('web/src/components/content/LogoDaMarca.jsx');
+  assert.match(c, /a\.escuro\.ok \? 'Lê no fundo escuro' : logoClara \? 'Versão branca pronta' : naoLe\(a\.escuro, 'escuro'\)/);
+  assert.match(c, /a logo fica com contraste de \{contrasteEmTexto\(l\.contraste\)\}\. Para ler de longe, o mínimo é \{LEITURA_MINIMA\} para 1\./);
+});
+
+test('Telas: com mais de 8 TVs, uma busca pelo nome da TV ou da loja', async () => {
+  const B = await importar('web/src/lib/buscarTelas.js');
+  const tv = (name, grupo) => ({ name, grupo });
+  assert.equal(B.TVS_PARA_BUSCA, 8);
+  assert.ok(B.casaComBusca(tv('TV 5 · Vitrine', 'Loja Sul'), 'vitrine'));
+  assert.ok(B.casaComBusca(tv('Recepção', 'Matriz'), 'recepcao'), 'sem acento também acha');
+  assert.ok(B.casaComBusca(tv('Caixa 2', 'Loja Sul'), 'loja sul'));
+  assert.ok(B.casaComBusca(tv('Caixa 2', 'Loja Sul'), '  SUL  caixa '), 'cada palavra, em qualquer ordem');
+  assert.ok(!B.casaComBusca(tv('Caixa 2', 'Loja Sul'), 'norte'));
+  assert.ok(B.casaComBusca(tv('Caixa 2', ''), ''), 'busca vazia mostra todas');
+  assert.ok(B.casaComBusca({}, ''));
+  const s = ler('web/src/pages/ScreensPage.jsx');
+  assert.match(s, /const comBusca = todas\.length > TVS_PARA_BUSCA;/);
+  assert.match(s, /aria-label="Buscar TV ou loja"/);
+  assert.match(s, /'Nenhuma TV com “' \+ busca\.trim\(\) \+ '”'/);
+  assert.match(s, /list\.length \+ ' de ' \+ todas\.length \+ ' telas'/);
+});
+
 test('Telas abre com um pedido de TVs: a lista traz a última resposta e a programação de cada uma', () => {
   const t = ler('server/routes/telas.js');
   assert.match(t, /if \(query && query\.agora === '1'\) \{/);

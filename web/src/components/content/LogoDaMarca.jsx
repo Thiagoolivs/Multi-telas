@@ -5,7 +5,7 @@ import { Button } from '../ui/Button.jsx';
 import { Spinner } from '../ui/Feedback.jsx';
 import { brand, media } from '../../api.js';
 import { aviso } from '../../lib/avisos.js';
-import { analisar, propor, CLARO, ESCURO } from '../../lib/logo.js';
+import { analisar, propor, CLARO, ESCURO, LEITURA_MINIMA, contrasteEmTexto } from '../../lib/logo.js';
 import { cn } from '../../lib/cn.js';
 import { EscolherArquivo } from '../ui/EscolherArquivo.jsx';
 
@@ -18,6 +18,9 @@ import { EscolherArquivo } from '../ui/EscolherArquivo.jsx';
  * branca e escura) e mostra ANTES e DEPOIS. Nada é trocado sem o "Usar a
  * nova" — e a original continua em Mídias.
  */
+
+// O que a medida diz quando a logo não lê no fundo: some de vez, ou fica fraca.
+const naoLe = (l, fundo) => ((l.contraste != null && l.contraste < 1.5) ? 'Some no fundo ' + fundo : 'Fraca no fundo ' + fundo);
 
 function Selo({ ok, children }) {
   return (
@@ -120,8 +123,8 @@ export function LogoDaMarca({ logo, logoClara, logoEscura, busy, onSubir, onTira
                 <div className="flex flex-wrap gap-1.5">
                   <Selo ok={!a.pequena}>{a.svg ? 'Vetor (SVG): nítida em qualquer TV' : a.pequena ? 'Pequena (' + a.largura + '×' + a.altura + '): pode borrar' : 'Tamanho bom (' + a.largura + '×' + a.altura + ')'}</Selo>
                   <Selo ok={a.transparente || !a.fundo}>{a.transparente ? 'Fundo transparente' : a.fundo ? 'Fundo sólido: vira uma caixa na TV' : 'Sem fundo sólido'}</Selo>
-                  <Selo ok={a.claro.ok || !!logoEscura}>{a.claro.ok ? 'Lê no fundo claro' : logoEscura ? 'Versão escura pronta' : 'Some no fundo claro'}</Selo>
-                  <Selo ok={a.escuro.ok || !!logoClara}>{a.escuro.ok ? 'Lê no fundo escuro' : logoClara ? 'Versão branca pronta' : 'Some no fundo escuro'}</Selo>
+                  <Selo ok={a.claro.ok || !!logoEscura}>{a.claro.ok ? 'Lê no fundo claro' : logoEscura ? 'Versão escura pronta' : naoLe(a.claro, 'claro')}</Selo>
+                  <Selo ok={a.escuro.ok || !!logoClara}>{a.escuro.ok ? 'Lê no fundo escuro' : logoClara ? 'Versão branca pronta' : naoLe(a.escuro, 'escuro')}</Selo>
                   {a.cores.length > 0 && (
                     <span className="flex items-center gap-1 text-2xs text-ink-3">
                       Cores {a.cores.slice(0, 4).map((c) => <span key={c} title={c} className="h-3 w-3 rounded-full border border-line" style={{ background: c }} />)}
@@ -129,6 +132,15 @@ export function LogoDaMarca({ logo, logoClara, logoEscura, busy, onSubir, onTira
                   )}
                 </div>
               )}
+              {/* O número medido, quando a logo não lê (reteste 2: dizia "Lê no fundo escuro" para uma que sumia). */}
+              {a && [['escuro', a.escuro, logoClara, 'escuro'], ['claro', a.claro, logoEscura, 'claro']]
+                .filter(([, l, pronta]) => !l.ok && !pronta && l.contraste != null)
+                .map(([k, l, , nome]) => (
+                  <p key={k} className="text-xs text-ink-2">
+                    No fundo {nome} da TV, a logo fica com contraste de {contrasteEmTexto(l.contraste)}. Para ler de longe, o mínimo é {LEITURA_MINIMA} para 1.
+                    {nome === 'escuro' ? ' “Melhorar a logo” faz uma versão branca.' : ' “Melhorar a logo” faz uma versão escura.'}
+                  </p>
+                ))}
               <div className="flex flex-wrap items-center gap-3">
                 {a && (
                   <Button size="sm" variant={precisa ? 'primary' : 'secondary'} icon={Wand2} disabled={!!trabalhando || busy} onClick={melhorar}>

@@ -46,7 +46,8 @@ function fornecedor(env) {
   const e = env || process.env;
   const v = (k) => String(e[k] || '').trim();
   const email = (k) => (EMAIL.test(v(k)) ? v(k) : '');
-  const contato = email('SUPPORT_EMAIL');
+  // SUPORTE_EMAIL é o nome novo (reteste 2); SUPPORT_EMAIL continua valendo.
+  const contato = email('SUPORTE_EMAIL') || email('SUPPORT_EMAIL');
   return {
     marca: v('LEGAL_NOME') || 'MultiTelas',
     razaoSocial: v('RAZAO_SOCIAL'),
@@ -354,8 +355,23 @@ ${corpo}
 </div></body></html>`;
 }
 
+/*
+ * O e-mail do SUPORTE do produto (a página Suporte do painel e o contato de
+ * /api/planos). Reteste 2: o painel mostrava um Gmail pessoal quando o
+ * ambiente não dizia nada. Agora vale SUPORTE_EMAIL (ou o antigo
+ * SUPPORT_EMAIL) e, sem eles, o endereço do produto — nunca o de uma pessoa.
+ * As páginas legais não usam o padrão: sem contato configurado elas apontam
+ * para a página Suporte (e o /sistema avisa o que falta).
+ */
+const EMAIL_DE_SUPORTE_PADRAO = 'suporte@multitelas.net.br';
+function emailDeSuporte(env) {
+  return fornecedor(env).contato || EMAIL_DE_SUPORTE_PADRAO;
+}
+
 module.exports = {
   VERSAO,
+  EMAIL_DE_SUPORTE_PADRAO,
+  emailDeSuporte,
   // O e-mail de contato configurado ('' sem SUPPORT_EMAIL: nunca um e-mail pessoal fixo).
   get CONTATO() { return fornecedor().contato; },
   SUBOPERADORES,
