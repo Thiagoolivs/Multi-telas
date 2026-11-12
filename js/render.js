@@ -1981,6 +1981,9 @@
       logo: global.MT_LOGO || null,
       hostsMidia: global.MT_HOSTS_MIDIA || [],
       clima: climaDaPeca,
+      // O ramo e a frente da conta: o espaço de foto vazio leva a foto padrão do banco (js/peca-render.js, fotoPadrao).
+      ramo: global.MT_RAMO || '',
+      frente: global.MT_FRENTE || '',
     }, extra || {});
   }
 

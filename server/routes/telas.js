@@ -549,6 +549,13 @@ module.exports = function (ctx) {
             const frente = await paleta.perfilDaConta(db, device.tenant_id).catch(() => '');
             if (frente) { c.settings.frente = frente; mudou = true; }
             /*
+             * O ramo da conta (reteste 2, 09/11): o espaço de foto que ficou
+             * sem foto leva a foto padrão do banco para aquele papel e ramo
+             * (js/peca-render.js, fotoPadrao), em vez de meia peça vazia.
+             */
+            const ramo = await paleta.ramoDaConta(db, device.tenant_id).catch(() => '');
+            if (ramo) { c.settings.ramo = ramo; mudou = true; }
+            /*
              * Aniversários e mural "nas TVs" (D15): a escolha é da conta, e
              * esta TV recebe só o que a alcança. Calculado agora, como a logo:
              * o painel não grava isto de volta na programação.

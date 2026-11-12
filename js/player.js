@@ -3105,6 +3105,9 @@
     global.MT_LOGO = (s.logo && s.logo.url) ? s.logo : (s.logoUrl ? { url: s.logoUrl } : null);
     global.MT_RELOGIO_NO_CABECALHO = relogioNoCabecalho(cfg, layout);
     global.MT_NOME = s.nome || '';
+    // O ramo e a frente da conta (o servidor manda): o espaço de foto vazio leva a foto padrão (js/peca-render.js, fotoPadrao).
+    global.MT_RAMO = typeof s.ramo === 'string' ? s.ramo : '';
+    global.MT_FRENTE = typeof s.frente === 'string' ? s.frente : '';
     // Fase 4: com o tema da marca, o aviso usa a cor da marca (js/render.js, renderAnnounce).
     const tema = s.theme || {};
     global.MT_TEMA_DA_MARCA = tema.preset === 'marca' || tema.aplicarMarca === true;

@@ -709,6 +709,33 @@
     alvo.setAttribute('data-oculto', '');
   }
 
+  /*
+   * PREÇO PELA METADE NÃO VAI AO AR (reteste 2, 09/11). A vitrine mostrava
+   * "10x de" sem o valor, e a peça de serviço da clínica, sem o preço (a
+   * Saúde não fala de preço), mostraria um "R$" sozinho e a vírgula dos
+   * centavos. O preço vazio leva junto o bloco dele — o maior pai que só
+   * tem partes do preço (o "R$", os centavos, o "a partir de", a parcela) —,
+   * e a parcela que termina antes do número ("10× de", "10x de R$") sai.
+   */
+  const PARTES_DO_PRECO = /^(preco|centavos|parcelas?|vezes|de|preco-rotulo|total)$/;
+  const CAMPO_DE_PRECO = /^(item\d+-)?preco\d*$|^parcela$/;
+  const PARCELA_SEM_VALOR = /\d\s*[x×]\s*(de)?\s*(R\$)?\s*$/i;
+  function esconderPrecoIncompleto(sombra, peca) {
+    Array.prototype.forEach.call(sombra.querySelectorAll('[data-campo]'), (el) => {
+      const nome = el.getAttribute('data-campo');
+      const texto = String(el.textContent || '').trim();
+      if (/^parcelas?$/.test(nome) && texto && PARCELA_SEM_VALOR.test(texto)) { esconder(el, peca); return; }
+      if (!CAMPO_DE_PRECO.test(nome) || texto) return;
+      let alvo = el;
+      for (let q = el.parentElement; q && q !== peca; q = q.parentElement) {
+        const todas = Array.prototype.every.call(q.querySelectorAll('[data-campo]'), (c) => c === el || PARTES_DO_PRECO.test(c.getAttribute('data-campo')));
+        if (!todas) break;
+        alvo = q;
+      }
+      alvo.setAttribute('data-oculto', '');
+    });
+  }
+
   /* ============ Espaços de imagem: qualquer foto, em qualquer espaço ============
    *
    * O cliente põe a foto que tem — a do celular, em pé, numa peça deitada;
@@ -742,6 +769,45 @@
    * e a borda redonda e a entrada animada vêm junto.
    */
   const CORTE_DO_PAPEL = { produto: 0.45, pessoa: 0.4, ambiente: 0.6 };
+
+  /*
+   * A FOTO PADRÃO DO ESPAÇO VAZIO (reteste 2, 09/11). A peça com espaço de
+   * foto que chegava sem foto ficava pela metade: o "30% OFF" com a metade
+   * da quadrada vazia (oferta-desconto), o prato do dia sem o prato
+   * (cardapio-dia-foto), a oferta sem o produto (oferta-foto). O modelo
+   * pronto vem sem a foto de exemplo (ela é da marca de exemplo), e o
+   * cliente nem sempre põe a dele. Agora o espaço vazio leva uma foto do
+   * banco (pecas-ouro/fotos/banco.json) do PAPEL dele — produto, ambiente
+   * ou textura — e do RAMO da conta (o servidor manda: settings.ramo); sem
+   * ramo, o da frente (a Saúde é saúde, a Empresas é escritório); sem
+   * nenhum, a textura neutra ("geral"). Pessoa nunca: um rosto de banco no
+   * lugar do aniversariante seria dizer que é ele. O rascunho continua com
+   * a silhueta. Cada arquivo daqui está no banco, com o papel e o ramo
+   * (test/foto-padrao.test.js).
+   */
+  const FOTO_GERAL = { arquivo: '/pecas-ouro/fotos/textura/madeira-clara.jpg', foco: { x: 0.4, y: 0.5 } };
+  const FOTOS_PADRAO = {
+    otica: { produto: { arquivo: '/pecas-ouro/fotos/otica/sol-areia.jpg', foco: { x: 0.5, y: 0.55 } }, ambiente: { arquivo: '/pecas-ouro/fotos/otica/vitrine.jpg', foco: { x: 0.5, y: 0.5 } } },
+    padaria: { produto: { arquivo: '/pecas-ouro/fotos/padaria/pao-tabua.jpg', foco: { x: 0.45, y: 0.5 } }, ambiente: { arquivo: '/pecas-ouro/fotos/padaria/balcao.jpg', foco: { x: 0.5, y: 0.55 } },
+      textura: { arquivo: '/pecas-ouro/fotos/padaria/pao-de-forma.jpg', foco: { x: 0.5, y: 0.5 } } },
+    comida: { produto: { arquivo: '/pecas-ouro/fotos/prato-do-dia.jpg', foco: { x: 0.49, y: 0.49 } }, ambiente: { arquivo: '/pecas-ouro/fotos/restaurante/salao.jpg', foco: { x: 0.5, y: 0.5 } },
+      textura: { arquivo: '/pecas-ouro/fotos/restaurante/queijos.jpg', foco: { x: 0.5, y: 0.5 } } },
+    beleza: { produto: { arquivo: '/pecas-ouro/fotos/salao/pinceis.jpg', foco: { x: 0.5, y: 0.5 } }, ambiente: { arquivo: '/pecas-ouro/fotos/salao/camarim.jpg', foco: { x: 0.6, y: 0.45 } } },
+    saude: { produto: { arquivo: '/pecas-ouro/fotos/farmacia/cuidados.jpg', foco: { x: 0.5, y: 0.5 } }, ambiente: { arquivo: '/pecas-ouro/fotos/clinica/sala-clara.jpg', foco: { x: 0.5, y: 0.55 } },
+      textura: { arquivo: '/pecas-ouro/fotos/clinica/entrada.jpg', foco: { x: 0.5, y: 0.5 } } },
+    corporativo: { produto: { arquivo: '/pecas-ouro/fotos/escritorio/mesa-minimalista.jpg', foco: { x: 0.7, y: 0.5 } }, ambiente: { arquivo: '/pecas-ouro/fotos/escritorio/escritorio-aberto.jpg', foco: { x: 0.6, y: 0.5 } },
+      textura: { arquivo: '/pecas-ouro/fotos/escritorio/predio.jpg', foco: { x: 0.5, y: 0.5 } } },
+  };
+  // Os ramos da Marca (js/paletas.js) que usam as fotos de outro; o resto (pet, academia, moda, varejo) fica com a geral.
+  const RAMO_DAS_FOTOS = { barbearia: 'beleza' };
+  const RAMO_DA_FRENTE = { saude: 'saude', empresa: 'corporativo' };
+  const PAPEIS_COM_FOTO_PADRAO = ['produto', 'ambiente', 'textura'];
+  function fotoPadrao(papel, ramo, frente) {
+    if (PAPEIS_COM_FOTO_PADRAO.indexOf(papel) < 0) return null;
+    const r = RAMO_DAS_FOTOS[ramo] || ramo;
+    const doRamo = (FOTOS_PADRAO[r] || FOTOS_PADRAO[RAMO_DA_FRENTE[frente]] || {})[papel];
+    return doRamo || FOTO_GERAL;
+  }
   const CORTE_PADRAO = 0.5;
   const FOLGA_DO_FOCO = 0.15;
   // Cobrir esticando mais que isto (2,5× o tamanho da foto) já se vê borrado na TV.
@@ -2001,12 +2067,21 @@
     (it.ocultos || []).forEach((n) => {
       sombra.querySelectorAll('[data-campo="' + n + '"],[data-campo-qr="' + n + '"]').forEach((el) => esconder(el, peca));
     });
+    if (peca) esconderPrecoIncompleto(sombra, peca);
     const videos = [];
     sombra.querySelectorAll('img[data-campo-img],img[data-campo-qr]').forEach((el) => {
       const qr = el.hasAttribute('data-campo-qr');
       const campo = el.getAttribute(qr ? 'data-campo-qr' : 'data-campo-img');
-      const valor = campo === 'logo' && !qr ? logoDaPeca(it.campos.logo, o.logo, tokens) : it.campos[campo];
-      const foto = !qr && campo !== 'logo' && !o.rascunho && !!valor ? { el, esp: (it.espacos || {})[campo] || {} } : null;
+      let valor = campo === 'logo' && !qr ? logoDaPeca(it.campos.logo, o.logo, tokens) : it.campos[campo];
+      let esp = (it.espacos || {})[campo] || {};
+      // O espaço de foto vazio leva a foto padrão do papel e do ramo (fotoPadrao): nada de meia peça vazia.
+      const padrao = !qr && campo !== 'logo' && !o.rascunho && !valor ? fotoPadrao(esp.papel, o.ramo, o.frente) : null;
+      if (padrao) {
+        valor = padrao.arquivo;
+        esp = Object.assign({}, esp, { foco: esp.foco || padrao.foco });
+        el.setAttribute('data-foto-padrao', '');
+      }
+      const foto = !qr && campo !== 'logo' && !o.rascunho && !!valor ? { el, esp } : null;
       // FOTO VIVA (ver videoNoLugar): o poster no modo leve; o vídeo no resto.
       const poster = foto ? P.posterDoVideo(valor, foto.esp, o.hostsMidia) : '';
       // Foto que não carrega some, em vez do ícone de imagem quebrada na parede.
@@ -2130,8 +2205,8 @@
 
   return {
     ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA,
-    // O passo que não deixa texto cortado dentro da peça.
-    semCorte,
+    // A foto padrão do espaço vazio (o teste confere que cada uma está no banco) e o passo que não deixa texto cortado.
+    fotoPadrao, FOTOS_PADRAO, FOTO_GERAL, semCorte,
     // O movimento de cinema: as partes puras (o teste), e as keyframes que só o player usa.
     DO_PLAYER, TEMPO, CINEMA, movimentoDe, animacaoDoElemento, contarTexto, contarPartes, origemDaFoto,
     // Os espaços de imagem: a decisão (pura), a miniatura do fundo e o encaixe no <img> (o painel usa os três).
