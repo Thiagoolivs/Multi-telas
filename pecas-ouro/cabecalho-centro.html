@@ -40,7 +40,17 @@
  */
 @container (aspect-ratio >= 9) {
   .info { gap: max(0cqh, calc(6cqh - (max(var(--mt-piso, 0cqw), 14cqh) - 14cqh))); }
-  .marca { gap: max(0cqh, calc(5cqh - (max(var(--mt-piso, 0cqw), 11cqh) - 11cqh))); }
+  /*
+   * Reteste 2 (09/11): no balcão o nome e a linha de baixo se encostavam (a
+   * perna do "g" no acento do "É") e a linha de baixo, com o espaço de 5,5cqh
+   * entre letras, alargava a coluna do meio até a data não caber. O vão entre
+   * os dois cresce com a letra (de 5 até 9cqh) e o espaço entre as letras
+   * encolhe (até .08em). O nome cede o espaço do vão (no balcão, 41cqh: 1,1×
+   * a letra do piso, ainda o maior texto da faixa).
+   */
+  .marca { gap: clamp(5cqh, calc(5cqh + (max(var(--mt-piso, 0cqw), 11cqh) - 11cqh) * .2), 6.5cqh); }
+  .nome { line-height: 1; font-size: min(calc(48cqh * var(--mt-escala-titulo, 1)), calc(78cqh - max(var(--mt-piso, 0cqw), 11cqh))); }
+  .sub { line-height: 1; letter-spacing: max(.08em, calc(5.5cqh - (max(var(--mt-piso, 0cqw), 11cqh) - 11cqh) * .25)); }
 }
 </style>
 <section class="mt-peca cabecalho-centro">

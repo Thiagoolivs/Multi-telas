@@ -31,16 +31,26 @@
 .tempo { display: flex; flex-direction: column; align-items: flex-end; gap: 4cqh; }
 .hora { font: 400 max(var(--mt-piso, 0cqw), 46cqh)/.9 var(--mt-fonte-titulo); letter-spacing: .02em; }
 .data { font: 600 max(var(--mt-piso, 0cqw), 15cqh)/1 var(--mt-fonte-texto); letter-spacing: 3.6cqh; text-transform: uppercase; color: var(--mt-texto-suave); white-space: nowrap; }
-/* Faixa mais curta (TV em pé): o "desde" e o clima saem; status, marca e hora ficam. */
+/*
+ * Faixa mais curta (TV em pé e quadrada): o "desde", o clima e o horário
+ * saem; o status, a marca e a hora ficam. Reteste 2 (09/11): com a letra do
+ * balcão, os três lado a lado não cabiam em 1080 px e o piso cedia até a
+ * metade (o "ABERTO A…" e o "Hoje até as …" em reticências). Agora o status
+ * quebra em duas linhas ("ABERTO / AGORA") e a marca também, se for longa:
+ * a faixa tem altura para duas linhas na letra do balcão, e não largura
+ * para uma.
+ */
 @container (aspect-ratio < 9) {
-  .mt-peca { gap: 4cqh; }
-  .desde, .clima, .sep, .data { display: none; }
-  .status { gap: 7cqh; }
+  .mt-peca { gap: 7cqh; grid-template-columns: auto minmax(0, 1fr) auto; }
+  .desde, .clima, .sep, .data, .ate { display: none; }
+  .status { gap: 6cqh; max-width: 31cqw; }
   .ponto { width: 10cqh; height: 10cqh; box-shadow: 0 0 0 3.5cqh var(--mt-fundo-2), 0 0 0 4.5cqh var(--mt-destaque); }
   .estado { gap: 6cqh; }
-  .aberto { font-size: max(var(--mt-piso, 0cqw), 13cqh); letter-spacing: 2.6cqh; }
-  .ate { font-size: max(var(--mt-piso, 0cqw), 15cqh); }
-  .nome { font-size: max(var(--mt-piso, 0cqw), 30cqh); letter-spacing: 2.4cqh; }
+  .aberto { font-size: max(var(--mt-piso, 0cqw), 15cqh); letter-spacing: 1.4cqh; line-height: 1.04; white-space: normal; text-overflow: clip;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .marca { max-width: none; }
+  .nome { font-size: max(var(--mt-piso, 0cqw), 30cqh); letter-spacing: 1.6cqh; line-height: 1.04; white-space: normal; text-overflow: clip; text-align: center;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-wrap: balance; }
   .hora { font-size: max(var(--mt-piso, 0cqw), 38cqh); }
 }
 /*
@@ -55,8 +65,9 @@
   .estado { gap: max(0cqh, calc(7cqh - (max(var(--mt-piso, 0cqw), 17cqh) - 17cqh))); }
   .marca { gap: max(0cqh, calc(8cqh - (max(var(--mt-piso, 0cqw), 11cqh) - 11cqh))); }
   .tempo { gap: max(0cqh, calc(4cqh - (max(var(--mt-piso, 0cqw), 15cqh) - 15cqh))); }
-  .aberto, .ate { line-height: min(1.1em, 30cqh); }
-  .desde, .data { line-height: min(1em, 30cqh); }
+  /* Reteste 2: 30cqh de entrelinha para a letra de 37cqh cortava o acento e grudava as duas linhas; 40cqh é a linha inteira. */
+  .aberto, .ate { line-height: min(1.08em, 40cqh); }
+  .desde, .data { line-height: min(1.05em, 40cqh); }
   .hora { font-size: max(var(--mt-piso, 0cqw), calc(46cqh - (max(var(--mt-piso, 0cqw), 30cqh) - 30cqh))); }
 }
 </style>

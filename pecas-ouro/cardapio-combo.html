@@ -59,19 +59,27 @@ h1 span { display: block; }
 }
 /* Quase quadrada: o preço sobe para o lado do título e a soma vira lista, como em pé —
    com a letra da TV, três colunas de detalhe não cabem na largura. */
+/*
+ * Reteste 2 (09/11): na TV quadrada com rodapé (a principal de 1056×913, onde
+ * a letra do piso fica 18% maior por dentro da peça), o título longo ("COMBO
+ * DA MANHÃ") passava por baixo do "R$" e encostava no "TUDO POR". O título
+ * mora numa coluna que termina antes do preço (quebra em vez de invadir), o
+ * preço encolhe um pouco e o espaço entre as letras do rótulo é fixo (em em,
+ * crescia com a letra do piso).
+ */
 @container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
   .marca-nome { left: 7cqw; top: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.8cqw); letter-spacing: .3em; }
   .cabeca { left: 7cqw; right: 7cqw; top: 12cqh; }
   .kicker { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .08em; }
   .kicker i { width: 3.4cqw; height: .2cqw; }
-  h1 { font-size: max(var(--mt-piso, 0cqw), 10cqw); margin-top: 2.6cqw; }
+  h1 { font-size: max(var(--mt-piso, 0cqw), 8.4cqw); margin-top: 2.6cqw; max-width: 48cqw; overflow-wrap: anywhere; }
   .soma { left: 7cqw; right: 7cqw; top: 43cqh; gap: .6cqw; }
   .soma li { padding-top: 1.4cqw; border-top-width: .2cqw; }
   .soma b { font-size: max(var(--mt-piso, 0cqw), 3.6cqw); padding-right: 6cqw; }
   .soma small { font-size: max(var(--mt-piso, 0cqw), 1.8cqw); margin-top: 1cqw; }
   .preco { right: 7cqw; top: 19.2cqh; }
-  .rotulo { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); }
-  .valor { font-size: max(var(--mt-piso, 0cqw), 18cqw); }
+  .rotulo { font-size: max(var(--mt-piso, 0cqw), 1.9cqw); letter-spacing: .5cqw; }
+  .valor { font-size: max(var(--mt-piso, 0cqw), 14cqw); }
   .nota { left: 7cqw; right: 7cqw; bottom: 5cqh; font-size: max(var(--mt-piso, 0cqw), 1.7cqw); letter-spacing: .08em; }
 }
 /*

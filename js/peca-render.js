@@ -236,6 +236,8 @@
 
   const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
   const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  // A data curta, para a faixa em que a longa não cabe ("SEG · 9 NOV", reteste 2; ver semCorte).
+  const DIAS_CURTOS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
   /*
    * Relógio de box sem internet nasce em 1970 ou 2000. Hora errada na
    * parede é pior que hora nenhuma — mesma regra do cabeçalho do player.
@@ -245,6 +247,7 @@
   function vivo(nome, agora) {
     if (nome === 'relogio') return confiavel(agora) ? doisDigitos(agora.getHours()) + ':' + doisDigitos(agora.getMinutes()) : '';
     if (nome === 'data') return confiavel(agora) ? DIAS[agora.getDay()] + ' · ' + agora.getDate() + ' ' + MESES[agora.getMonth()] : '';
+    if (nome === 'data-curta') return confiavel(agora) ? DIAS_CURTOS[agora.getDay()] + ' · ' + agora.getDate() + ' ' + MESES[agora.getMonth()] : '';
     return '';
   }
 
@@ -363,7 +366,182 @@
       palco.style.cssText = 'left:' + ((w - ref[0] * k) / 2).toFixed(2) + 'px;top:0;right:auto;bottom:auto;width:'
         + ref[0] + 'px;height:' + ref[1] + 'px;transform:scale(' + k.toFixed(5) + ');transform-origin:0 0';
     }
-    pisoQueCabe(palco, pisoDaZona(host, k, ref));
+    // O que a passada anterior encolheu volta ao desenho antes de medir o piso (ver semCorte).
+    desfazerSemCorte(palco);
+    semCorte(palco, pisoQueCabe(palco, pisoDaZona(host, k, ref)));
+  }
+
+  /*
+   * NADA CORTADO DENTRO DA PEÇA (reteste 2, 09/11). Com o piso da TV, o
+   * cabeçalho centralizado truncava a data em reticências ("SEGUNDA · 9 …"),
+   * o clássico em pé comia o fim do nome ("PADARI∧ SOL") e a entrelinha justa
+   * com `overflow: hidden` cortava o acento e a perna do "g" ("COMUNICAÇAO",
+   * "VOCE") — em 13 telas prontas, e nenhuma medida via: a caixa do campo
+   * continuava dentro da peça. Depois do piso, cada texto que uma caixa de
+   * DENTRO da peça corta (o próprio campo ou um pai dele, até a peça), nesta
+   * ordem:
+   *   1. a data vira a curta ("Seg · 9 nov");
+   *   2. a letra encolhe até caber — nunca abaixo do piso (sem piso, até 3/4
+   *      do desenho) —, e o espaço entre as letras também, se ainda faltar;
+   *   3. a caixa que corta só o acento ou a perna da letra (a linha cabe; a
+   *      entrelinha é que é justa) ganha o respiro em cima e embaixo, com a
+   *      margem negativa do mesmo tanto: nada sai do lugar.
+   * É a garantia, como o aplicarPiso: vale mesmo para a peça que a IA
+   * escreveu sem saber disso. O detector da bancada (js/peca-conferir.js,
+   * cortados) mede depois, e a régua reprova o que ainda cortar.
+   */
+  const CAMPOS_DE_TEXTO = '[data-campo],[data-vivo]:not([data-vivo="mensagens"])';
+  function caixasQueCortam(el, peca) {
+    const out = [];
+    for (let q = el; q && q !== peca; q = q.parentElement) {
+      const cs = getComputedStyle(q);
+      if (cs.display === 'inline') continue;
+      const x = cs.overflowX !== 'visible', y = cs.overflowY !== 'visible';
+      if (x || y) out.push({ el: q, x, y });
+    }
+    return out;
+  }
+  // Onde o texto corta: 'linha' (sobra texto fora da caixa: a linha não cabe), 'letra' (só o acento ou a perna) ou ''.
+  function ondeCorta(el, caixas) {
+    const r = el.ownerDocument.createRange();
+    r.selectNodeContents(el);
+    const linhas = Array.prototype.filter.call(r.getClientRects(), (x) => x.width > 0 && x.height > 0);
+    if (!linhas.length) return { corte: '' };
+    const tol = Math.max(1, (parseFloat(getComputedStyle(el).fontSize) || 0) * 0.04 * escalaNaTela(el));
+    let corte = '', caixa = null;
+    for (const c of caixas) {
+      const b = c.el.getBoundingClientRect();
+      if (c.x && linhas.some((l) => l.left < b.left - tol || l.right > b.right + tol)) return { corte: 'linha', caixa: c.el };
+      if (!c.y) continue;
+      // A linha inteira fora (o line-clamp, a quebra a mais) é falta de lugar; só a borda dela fora é a entrelinha.
+      if (linhas.some((l) => (l.top + l.bottom) / 2 < b.top || (l.top + l.bottom) / 2 > b.bottom)) return { corte: 'linha', caixa: c.el };
+      if (linhas.some((l) => l.top < b.top - tol || l.bottom > b.bottom + tol)) {
+        corte = 'letra';
+        // Todas as caixas que cortam a letra (o campo e o pai dele, a tarja da chamada): cada uma ganha o respiro.
+        caixa = (caixa || []).concat({ el: c.el, falta: linhas.reduce((m, l) => Math.max(m, b.top - l.top, l.bottom - b.bottom), 0) });
+      }
+    }
+    return { corte, caixa };
+  }
+  /*
+   * O QUE NÃO CABE SAI (reteste 2, 09/11). Uma caixa da peça com
+   * `overflow: hidden` e `flex-wrap: wrap` mostra só os itens que cabem na
+   * primeira linha (os contatos do rodapé: com a letra do balcão, o terceiro
+   * vai para a linha de baixo, que a caixa esconde). O campo que uma caixa
+   * de dentro da peça esconde INTEIRO saiu de propósito: não conta como
+   * cortado, nem para o piso, nem para o detector (js/peca-conferir.js).
+   * Cortado é o que aparece pela metade.
+   */
+  function escondidoNaCaixa(el, peca) {
+    if (!el || !el.getBoundingClientRect || typeof getComputedStyle !== 'function') return false;
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) return false;
+    for (let q = el.parentElement; q && q !== peca; q = q.parentElement) {
+      const cs = getComputedStyle(q);
+      if (cs.overflowX === 'visible' && cs.overflowY === 'visible') continue;
+      const b = q.getBoundingClientRect();
+      if (r.top >= b.bottom - 1 || r.bottom <= b.top + 1 || r.left >= b.right - 1 || r.right <= b.left + 1) return true;
+    }
+    return false;
+  }
+  function escalaNaTela(el) {
+    const raiz = el.closest && el.closest('.mt-palco');
+    return raiz && raiz.offsetWidth ? raiz.getBoundingClientRect().width / raiz.offsetWidth : 1;
+  }
+  function desfazerSemCorte(palco) {
+    if (!palco || !palco.querySelectorAll) return;
+    palco.querySelectorAll('[data-mt-sem-corte]').forEach((el) => {
+      const antes = JSON.parse(el.getAttribute('data-mt-sem-corte') || '{}');
+      Object.keys(antes).forEach((p) => { if (antes[p]) el.style.setProperty(p, antes[p]); else el.style.removeProperty(p); });
+      el.removeAttribute('data-mt-sem-corte');
+    });
+    palco.querySelectorAll('[data-vivo="data"][data-mt-curta-usada]').forEach((el) => {
+      el.removeAttribute('data-mt-curta-usada');
+      if (el.getAttribute('data-mt-longa') != null) el.textContent = el.getAttribute('data-mt-longa');
+    });
+  }
+  // Muda um estilo inline guardando o de antes (para desfazerSemCorte).
+  function mudarEstilo(el, prop, valor) {
+    const antes = JSON.parse(el.getAttribute('data-mt-sem-corte') || '{}');
+    if (!(prop in antes)) antes[prop] = el.style.getPropertyValue(prop) || '';
+    el.setAttribute('data-mt-sem-corte', JSON.stringify(antes));
+    el.style.setProperty(prop, valor);
+  }
+  function semCorte(palco, pisoQueEntrou) {
+    const doc = palco && palco.ownerDocument;
+    if (!doc || !doc.createRange || !doc.createElement || typeof getComputedStyle !== 'function' || typeof palco.getBoundingClientRect !== 'function') return;
+    const peca = palco.querySelector('.mt-peca');
+    const raiz = palco.parentNode;
+    if (!peca || !raiz || !palco.offsetWidth) return;
+    // O piso que vale para encolher: o que entrou (se cedeu, o que cabia), nunca abaixo dele.
+    const piso = pisoQueEntrou || 0;
+    // Medido parado, como o piso: uma letra entrando de lado parece cortada.
+    const parada = doc.createElement('style');
+    parada.textContent = '.mt-palco,.mt-palco *{animation:none!important;transition:none!important}';
+    raiz.appendChild(parada);
+    try { encolherOQueCorta(palco, peca, piso); } finally { raiz.removeChild(parada); }
+  }
+  function encolherOQueCorta(palco, peca, piso) {
+    Array.prototype.forEach.call(palco.querySelectorAll(CAMPOS_DE_TEXTO), (el) => {
+      if (camadaDoPlayer(el) || el.tagName === 'IMG' || el.closest('[aria-hidden="true"]') || !String(el.textContent || '').trim() || escondidoNaCaixa(el, peca)) return;
+      const caixas = caixasQueCortam(el, peca);
+      if (!caixas.length) return;
+      let onde = ondeCorta(el, caixas);
+      if (!onde.corte) return;
+      // 1. A data curta.
+      if (onde.corte === 'linha' && el.getAttribute('data-vivo') === 'data' && el.getAttribute('data-mt-curta')) {
+        el.textContent = el.getAttribute('data-mt-curta');
+        el.setAttribute('data-mt-curta-usada', '');
+        onde = ondeCorta(el, caixas);
+      }
+      // 2. A letra encolhe até caber, no máximo até o piso (o de antes de ceder, se cedeu: é a régua).
+      const desenho = parseFloat(getComputedStyle(el).fontSize) || 0;
+      const minimo = piso > 0 ? piso : desenho * 0.75;
+      for (let i = 0; i < 6 && onde.corte === 'linha'; i++) {
+        const atual = parseFloat(getComputedStyle(el).fontSize) || 0;
+        if (atual <= minimo + 0.5) break;
+        mudarEstilo(el, 'font-size', Math.max(minimo, atual * 0.92).toFixed(2) + 'px');
+        onde = ondeCorta(el, caixas);
+      }
+      // ... e o espaço entre as letras, se ainda faltar (é desenho, não leitura).
+      if (onde.corte === 'linha') {
+        const ls = parseFloat(getComputedStyle(el).letterSpacing) || 0;
+        const fs = parseFloat(getComputedStyle(el).fontSize) || 0;
+        if (ls > fs * 0.02) {
+          mudarEstilo(el, 'letter-spacing', (fs * 0.02).toFixed(2) + 'px');
+          onde = ondeCorta(el, caixas);
+        }
+      }
+      // ... e, no piso e ainda sem caber numa linha (o nome comprido da marca), quebra em duas se a caixa tiver altura para elas.
+      if (onde.corte === 'linha' && getComputedStyle(el).whiteSpace === 'nowrap') {
+        mudarEstilo(el, 'white-space', 'normal');
+        mudarEstilo(el, 'text-overflow', 'clip');
+        const quebrado = ondeCorta(el, caixas);
+        if (quebrado.corte === 'linha') {
+          el.style.removeProperty('white-space');
+          el.style.removeProperty('text-overflow');
+          const antes = JSON.parse(el.getAttribute('data-mt-sem-corte') || '{}');
+          if (antes['white-space']) el.style.setProperty('white-space', antes['white-space']);
+          if (antes['text-overflow']) el.style.setProperty('text-overflow', antes['text-overflow']);
+          delete antes['white-space'];
+          delete antes['text-overflow'];
+          el.setAttribute('data-mt-sem-corte', JSON.stringify(antes));
+        } else onde = quebrado;
+      }
+      // 3. Só o acento ou a perna: respiro na caixa que corta, sem mexer em nada em volta.
+      if (onde.corte === 'letra' && onde.caixa) {
+        onde.caixa.forEach((cx) => {
+          const c = cx.el;
+          const cs = getComputedStyle(c);
+          const k = escalaNaTela(c) || 1;
+          const folga = Math.ceil(cx.falta / k) + 2;
+          mudarEstilo(c, 'padding-top', (parseFloat(cs.paddingTop) + folga) + 'px');
+          mudarEstilo(c, 'padding-bottom', (parseFloat(cs.paddingBottom) + folga) + 'px');
+          mudarEstilo(c, 'margin-top', (parseFloat(cs.marginTop) - folga) + 'px');
+          mudarEstilo(c, 'margin-bottom', (parseFloat(cs.marginBottom) - folga) + 'px');
+        });
+      }
+    });
   }
 
   function porOPiso(palco, p) {
@@ -420,8 +598,12 @@
     const mx = 16 * k, my = (palco.offsetHeight <= 220 ? 6 : 16) * k, tol = 2 * k;
     const doc = palco.ownerDocument;
     // As cópias da "revelar" (máscaras por cima do original, por um segundo) não são campos: o original é medido.
+    // O que uma caixa da peça esconde inteiro (a lista que mostra só o que cabe numa linha) saiu de propósito: não é medido (ver escondidoNaCaixa).
+    const pecaEl = palco.querySelector('.mt-peca');
+    // (Fica na lista, sem linhas: o índice de cada campo tem de ser o mesmo com e sem o piso — é por ele que `piorou` compara.)
     const daPeca = Array.prototype.filter.call(palco.querySelectorAll('[data-campo],[data-vivo],[data-campo-qr]'), (el) => !camadaDoPlayer(el));
     const campos = daPeca.map((el) => {
+      if (escondidoNaCaixa(el, pecaEl)) return { el, rs: [] };
       let rs = [];
       if (el.tagName !== 'IMG' && doc.createRange && String(el.textContent || '').trim()) {
         const r = doc.createRange();
@@ -439,9 +621,11 @@
     });
     // Duas linhas se cobrem quando a área em comum passa de um quinto da menor (a regra do detector da bancada).
     const area = (x) => (x.right - x.left) * (x.bottom - x.top);
+    // ... ou quando uma entra na outra mais de 30% da altura da linha menor, por mais de uma letra (reteste 2: a chamada do rodapé sobre o WhatsApp).
     const cobre = (a, b) => {
       const w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
-      return w > tol && h > tol && w * h > Math.min(area(a), area(b)) / 5;
+      const linha = Math.min(a.bottom - a.top, b.bottom - b.top);
+      return w > tol && h > tol && (w * h > Math.min(area(a), area(b)) / 5 || (h > linha * 0.3 && w > linha * 0.8));
     };
     const fora = [], juntos = [];
     campos.forEach((c, i) => {
@@ -1850,8 +2034,14 @@
     const vivos = Array.from(sombra.querySelectorAll('[data-vivo]'));
     const tick = () => vivos.forEach((el) => {
       const nome = el.getAttribute('data-vivo');
-      if (nome === 'relogio' || nome === 'data') el.textContent = vivo(nome, agora());
-      else if (nome === 'contagem') el.textContent = contagem(o.contagem, agora());
+      if (nome === 'relogio') el.textContent = vivo(nome, agora());
+      else if (nome === 'data') {
+        // As duas formas ficam no elemento: a curta entra quando a longa não cabe (semCorte), e fica até a próxima medida.
+        const longa = vivo('data', agora()), curta = vivo('data-curta', agora());
+        el.setAttribute('data-mt-longa', longa);
+        el.setAttribute('data-mt-curta', curta);
+        el.textContent = el.hasAttribute('data-mt-curta-usada') ? curta : longa;
+      } else if (nome === 'contagem') el.textContent = contagem(o.contagem, agora());
     });
     tick();
     // Com os textos no lugar, o piso da régua confere de novo (a peça pode ter ganho texto agora).
@@ -1940,6 +2130,8 @@
 
   return {
     ENTRADAS, CONTINUAS, ROLAR, SEPARADOR, RITMO, BASE, cssCompleto, cssDosTokens, keyframes, vivo, contagem, montar, enquadrar, QUADRADA, LARGA,
+    // O passo que não deixa texto cortado dentro da peça.
+    semCorte,
     // O movimento de cinema: as partes puras (o teste), e as keyframes que só o player usa.
     DO_PLAYER, TEMPO, CINEMA, movimentoDe, animacaoDoElemento, contarTexto, contarPartes, origemDaFoto,
     // Os espaços de imagem: a decisão (pura), a miniatura do fundo e o encaixe no <img> (o painel usa os três).
