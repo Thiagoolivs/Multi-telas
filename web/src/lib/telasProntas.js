@@ -7,7 +7,7 @@
  * A tela que o dono ainda não aprovou ('proposta') não aparece aqui.
  */
 import '../../../js/templates.js';
-import { carregarModelos, itemDoModelo } from './modelosOuro.js';
+import { carregarModelos, itemDoModelo, naEpoca } from './modelosOuro.js';
 import { getLayout as layoutDoPainel } from './screenConfig.js';
 
 // A grade do layout é a da TV (js/templates.js); a lista do painel não traz a grade.
@@ -17,7 +17,9 @@ const getLayout = (id) => (globalThis.MT_getLayout && globalThis.MT_getLayout(id
 const PERFIL_DA_MARCA = { otica: 'comercio', padaria: 'comercio', salao: 'comercio', lanchonete: 'comercio', clinica: 'saude', rotasul: 'empresa' };
 export const perfilDaTela = (t) => t.perfil || PERFIL_DA_MARCA[t.marca] || 'comercio';
 
-export const aprovadas = (manifesto) => ((manifesto && manifesto.telas) || []).filter((t) => t.estado === 'aprovada').map(paraOCliente);
+// Reteste 2: a tela de campanha fora de época (Outubro Rosa em novembro) também não aparece (modelosOuro.js, naEpoca).
+export const aprovadas = (manifesto, hoje) => ((manifesto && manifesto.telas) || [])
+  .filter((t) => t.estado === 'aprovada' && naEpoca(t, perfilDaTela(t), hoje)).map(paraOCliente);
 
 /*
  * O que da tela do manifesto chega ao cliente (QA de lançamento, 03/11).
