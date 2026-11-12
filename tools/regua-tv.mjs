@@ -497,6 +497,36 @@ async function conferirPecas(navegador, local, soZonas, extra) {
 }
 
 /*
+ * AS TELAS PRONTAS INTEIRAS (reteste 2, 09/11): o combo passou o título por
+ * cima do "R$" na TV quadrada, e o lançamento o nome por baixo do carimbo,
+ * com os textos da tela e a letra padrão — a da conta que não escolheu
+ * fonte (?fonte=padrao). Peça a peça, com os textos de exemplo, nada
+ * aparecia. A bancada monta cada tela no layout dela, com o local da frente
+ * (o piso da TV), e confere cada peça de cada zona no tamanho real
+ * (js/bancada.js, desenharTela). Bloqueio: nada sobre nada, nada cortado,
+ * nada para fora.
+ */
+const LOCAL_DA_FRENTE_NA_TV = { comercio: 'balcao', saude: 'recepcao', empresa: 'escritorio' };
+async function conferirTelas(navegador) {
+  const manifesto = JSON.parse(fs.readFileSync(path.join(RAIZ, 'pecas-ouro', 'manifesto.json'), 'utf8'));
+  const fila = (manifesto.telas || []).slice();
+  const saida = [];
+  const trabalhar = async () => {
+    const p = await navegador.newPage({ viewport: { width: 1920, height: 1200 } });
+    for (let t = fila.shift(); t; t = fila.shift()) {
+      const local = LOCAL_DA_FRENTE_NA_TV[t.perfil] || 'balcao';
+      await p.goto(BASE + '/bancada.html?ver=tela&fonte=padrao&tela=' + t.id + '&layout=' + t.layout + '&tamanho=caber&local=' + local);
+      const ok = await p.waitForFunction(() => document.body.dataset.conferida === 'sim', null, { timeout: 60000 }).then(() => true, () => false);
+      const naoCoube = ok ? await p.evaluate(() => (window.MTTelaConferida || {}).naoCoube || []) : ['a bancada não conferiu a tela'];
+      saida.push({ id: t.id, layout: t.layout, local, naoCoube });
+    }
+    await p.close();
+  };
+  await Promise.all(Array.from({ length: PAGINAS_AO_MESMO_TEMPO }, trabalhar));
+  return saida;
+}
+
+/*
  * FOTO VIVA (o vídeo curto num espaço de foto, js/peca-render.js). A régua
  * mede letra, e o vídeo não muda letra nenhuma — as peças acima são medidas
  * com as fotos de exemplo. O que se confere aqui é o caminho do box fraco:
@@ -556,6 +586,7 @@ async function main() {
   let marcas = [];
   let semRodape = [];
   let faixas = [];
+  let telas = [];
   const inicio = Date.now();
   let fotoViva = [];
   try {
@@ -664,11 +695,12 @@ async function main() {
     }
     semRodape = await conferirPecas(navegador, 'balcao', [DESTAQUE_NO_BALCAO], Object.assign({ todasAsMarcas: true, soDestaque: true, soCorporativo: true }, SEM_RODAPE));
     faixas = await conferirPecas(navegador, 'balcao', ZONAS_DAS_FAIXAS, { todasAsMarcas: true, faixas: true });
+    telas = await conferirTelas(navegador);
   } finally {
     await navegador.close();
     parar();
   }
-  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, marcas, semRodape, faixas, senhas, fotoViva }, null, 1));
+  if (SAIDA) fs.writeFileSync(path.join(SAIDA, 'medidas.json'), JSON.stringify({ fotos, pecas, marcas, semRodape, faixas, telas, senhas, fotoViva }, null, 1));
 
   let reprova = false;
   for (const [, , nome, bloqueia] of ARRANJOS) {
@@ -779,6 +811,12 @@ async function main() {
   }
   if (vistos.size > 20) console.log('  … e mais ' + (vistos.size - 20));
   if (comDefeito.length) reprova = true;
+  if (telas.length) {
+    const ruins = telas.filter((t) => t.naoCoube.length);
+    console.log('Telas prontas montadas (' + telas.length + ', no layout de cada uma, no local da frente, na letra padrão): ' + (telas.length - ruins.length) + ' de ' + telas.length + ' sem nada sobre nada, cortado ou para fora');
+    for (const t of ruins.slice(0, 15)) console.log('  ✗ ' + t.id + ' (' + t.layout + ', ' + t.local + '): ' + t.naoCoube.slice(0, 2).join(' | '));
+    if (ruins.length) reprova = true;
+  }
   // Fase 10: o contraste de todo texto, em todo arranjo.
   for (const [, , nome] of ARRANJOS) {
     const doArranjo = fotos.filter((f) => f.arranjo === nome && f.contraste.length);
