@@ -122,6 +122,15 @@ module.exports = function (ctx) {
         if (d && d.tenant_id === sess.tenant_id) telasAgora.push(d);
       }
       const telas = aprovacao.antesEDepois(pedido, telasAgora, ctx.publicar.normalizar);
+      // O antes e o depois como a TV desenha (a marca, o nome da conta): o painel abre o próprio player neles.
+      if (ctx.publicar.vistaDoPainel) {
+        const vista = await ctx.publicar.vistaDoPainel(sess.tenant_id);
+        for (const t of telas) {
+          const d = telasAgora.find((x) => x.id === t.id) || { id: t.id, name: t.nome };
+          if (t.antes) t.antes = vista(t.antes, d) || t.antes;
+          if (t.depois) t.depois = vista(t.depois, d) || t.depois;
+        }
+      }
       const { itens, ...resto } = pedido; // eslint-disable-line no-unused-vars
       return sendJson(res, 200, { pedido: resto, telas });
     }

@@ -69,4 +69,39 @@ function pecasDaTela(manifesto, id) {
 }
 const esperando = (e) => !e || e === 'proposta' || e === 'rascunho';
 
-module.exports = { ESTADOS, TIPOS, lerManifesto, aplicarDecisoes, conferirDecisao, pecasDaTela, esperando };
+/*
+ * O PACOTE DO PRONTOS (reteste 2): o "Prontos para você" levava 7,4 s no 4G
+ * lento — o manifesto e depois cada peça aprovada num pedido (43 pedidos,
+ * cada um com a latência inteira do celular). Agora vai tudo num só:
+ * GET /pecas-ouro/pacote.json = { manifesto (com as decisões), html: { id:
+ * texto } } das peças aprovadas, comprimido (brotli/gzip, server/compressao.js)
+ * e com ETag. Montado na primeira vez e guardado; muda quando muda o
+ * manifesto, uma decisão da galeria ou um arquivo de peça.
+ */
+const crypto = require('crypto');
+const ID_DE_PECA = /^[a-z0-9][a-z0-9-]*$/i;
+let pacoteGuardado = null; // { chave, corpo, etag }
+function montarPacote(raiz, decisoes) {
+  const manifesto = aplicarDecisoes(lerManifesto(raiz), decisoes);
+  const aprovadas = (manifesto.pecas || []).filter((p) => p && ID_DE_PECA.test(String(p.id || '')) && (!p.estado || p.estado === 'aprovada'));
+  const arquivo = (id) => path.join(raiz, 'pecas-ouro', id + '.html');
+  const datas = aprovadas.map((p) => { try { return fs.statSync(arquivo(p.id)).mtimeMs; } catch (e) { return 0; } });
+  const chave = (guardado ? guardado.mtime : 0) + '|' + JSON.stringify(decisoes || []) + '|' + aprovadas.map((p, i) => p.id + '@' + datas[i]).join(',');
+  if (pacoteGuardado && pacoteGuardado.chave === chave) return pacoteGuardado;
+  const html = {};
+  for (const p of aprovadas) { try { html[p.id] = fs.readFileSync(arquivo(p.id), 'utf8'); } catch (e) { /* a peça que falta fica de fora */ } }
+  /*
+   * O cliente só vê o aprovado (lib/modelosOuro.js e lib/telasProntas.js
+   * filtram pelo estado): o que espera a galeria fica de fora do pacote —
+   * eram 90 telas e 55 peças "proposta" a mais em cada abertura. O manifesto
+   * inteiro continua em /pecas-ouro/manifesto.json (a bancada, o operador).
+   */
+  const doCliente = Object.assign({}, manifesto, { soAprovadas: true, pecas: aprovadas,
+    telas: (manifesto.telas || []).filter((t) => t && t.estado === 'aprovada') });
+  const corpo = Buffer.from(JSON.stringify({ manifesto: doCliente, html }));
+  const etag = '"' + crypto.createHash('sha256').update(corpo).digest('hex').slice(0, 32) + '"';
+  pacoteGuardado = { chave, corpo, etag };
+  return pacoteGuardado;
+}
+
+module.exports = { ESTADOS, TIPOS, lerManifesto, aplicarDecisoes, conferirDecisao, pecasDaTela, esperando, montarPacote };

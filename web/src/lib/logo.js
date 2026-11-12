@@ -135,24 +135,39 @@ function coresDaLogo(d, fundo) {
 }
 
 /*
- * Lê bem num fundo quando a maior parte da logo tem contraste de ao menos
- * 2:1 com ele. Logo com fundo próprio sólido "lê" em qualquer TV, mas como
+ * Lê bem num fundo quando a maior parte da logo (60% dos pixels opacos) tem
+ * contraste de ao menos 3:1 com ele — o mínimo para um desenho ser visto
+ * (WCAG 1.4.11). Logo com fundo próprio sólido "lê" em qualquer TV, mas como
  * uma caixa — isso aparece como aviso do fundo, não da leitura.
+ *
+ * Reteste 2: o mínimo era 2:1, e a logo azul-marinho sobre o fundo escuro
+ * da TV (2,1:1) ganhava "Lê no fundo escuro" e sumia na tela. `contraste` é
+ * o de verdade: a mediana do contraste dos pixels opacos com o fundo, para o
+ * painel dizer o número.
  */
-function leitura(d, fundoProprio, sobre) {
-  if (fundoProprio) return { ok: true, fracao: 1 };
+export const LEITURA_MINIMA = 3;
+export function leitura(d, fundoProprio, sobre) {
+  if (fundoProprio) return { ok: true, fracao: 1, contraste: null };
   const [br, bg, bb] = rgb(sobre);
   const lf = luminancia(br, bg, bb);
-  let n = 0; let boas = 0;
+  const todos = [];
+  let boas = 0;
   for (let i = 0; i < d.length; i += 4) {
     if (d[i + 3] < 128) continue;
-    n++;
     const l = luminancia(d[i], d[i + 1], d[i + 2]);
-    if ((Math.max(l, lf) + 0.05) / (Math.min(l, lf) + 0.05) >= 2) boas++;
+    const c = (Math.max(l, lf) + 0.05) / (Math.min(l, lf) + 0.05);
+    todos.push(c);
+    if (c >= LEITURA_MINIMA) boas++;
   }
+  const n = todos.length;
   const fracao = n ? boas / n : 0;
-  return { ok: fracao >= 0.6, fracao };
+  todos.sort((a, b) => a - b);
+  const mediana = n ? todos[Math.floor(n / 2)] : 1;
+  return { ok: fracao >= 0.6, fracao, contraste: Math.round(mediana * 10) / 10 };
 }
+
+// O contraste em palavras de número: 2,1 para 1.
+export const contrasteEmTexto = (c) => String(c == null ? '' : c).replace('.', ',') + ' para 1';
 
 export async function analisar(url, mime) {
   const img = await carregar(url);

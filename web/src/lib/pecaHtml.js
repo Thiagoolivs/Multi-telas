@@ -7,9 +7,16 @@
  * e a parede outra. Os scripts são do próprio servidor, então a CSP
  * (script-src 'self') aceita.
  */
-const SCRIPTS = ['/js/cor.js', '/js/fontes.js', '/js/animacao.js', '/js/tokens.js', '/js/peca-html.js', '/js/peca-render.js', '/js/regras-composicao.js', '/js/peca-conferir.js'];
+const SCRIPTS = ['/js/cor.js', '/js/fontes.js', '/js/animacao.js', '/js/tokens.js', '/js/peca-html.js', '/js/peca-render.js'];
+/*
+ * O conferidor (a peça cabe? o texto passa da borda?) só quando se confere
+ * (reteste 2): desenhar uma miniatura não precisa dele, e o Prontos deixa de
+ * baixar 15 KB no 4G lento antes de mostrar as peças.
+ */
+const CONFERIDOR = ['/js/regras-composicao.js', '/js/peca-conferir.js'];
 
 let carregando = null;
+let conferidor = null;
 
 function script(src) {
   return new Promise((ok, falha) => {
@@ -25,7 +32,19 @@ function script(src) {
 export function carregarDesenhista() {
   if (window.MTPecaRender && window.MTPecaHtml) return Promise.resolve(window.MTPecaRender);
   if (!carregando) {
-    carregando = SCRIPTS.reduce((p, src) => p.then(() => script(src)), Promise.resolve())
+    /*
+     * Todos de uma vez (reteste 2): com `async = false` o navegador baixa em
+     * paralelo e roda na ordem. Um depois do outro eram 8 idas e voltas —
+     * 1,6 s no 4G lento só para começar a desenhar.
+     */
+    /*
+     * E num pedido só (server/pacote-tv.js, /js/desenhista.pacote.js): os seis
+     * disputavam as conexões do navegador com a página. Sem o pacote, os
+     * arquivos soltos, como antes.
+     */
+    carregando = script('/js/desenhista.pacote.js')
+      .then(() => { if (!window.MTPecaRender || !window.MTPecaHtml) throw new Error('pacote incompleto'); })
+      .catch(() => Promise.all(SCRIPTS.map((src) => script(src))))
       .then(() => window.MTPecaRender)
       .catch((e) => { carregando = null; throw e; });
   }
@@ -75,8 +94,19 @@ export async function medirEspaco(item, campo, tamanho) {
  * `formatos`: os nomes de TAMANHO_REAL, ou { nome: [largura, altura] } —
  * a zona de uma tela pronta (D18), onde a peça vai de fato.
  */
+function carregarConferidor() {
+  if (window.MTPecaConferir) return Promise.resolve(window.MTPecaConferir);
+  if (!conferidor) {
+    conferidor = carregarDesenhista().then(() => Promise.all(CONFERIDOR.map((src) => script(src))))
+      .then(() => window.MTPecaConferir)
+      .catch((e) => { conferidor = null; throw e; });
+  }
+  return conferidor;
+}
+
 export async function conferirNosFormatos(item, formatos) {
   const R = await carregarDesenhista();
+  await carregarConferidor();
   const caixa = document.createElement('div');
   caixa.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;overflow:visible;opacity:0;pointer-events:none;z-index:-1';
   document.body.appendChild(caixa);

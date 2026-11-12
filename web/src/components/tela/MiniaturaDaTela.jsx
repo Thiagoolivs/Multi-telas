@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { MonitorPlay } from 'lucide-react';
 import { Palco } from '../content/VerTelaAgora.jsx';
 import { TvAoVivo } from './TvAoVivo.jsx';
-import { telaAgora, deviceConfig } from '../../api.js';
+import { telaAgora } from '../../api.js';
+import { lerProgramacao } from '../../lib/programacaoDaTv.js';
 
 /*
  * A TV em miniatura, com o que ela está mostrando (QA de 26/10: "o que está
@@ -38,22 +39,6 @@ export function podePedir(id, agora = Date.now(), deNovo = false) {
 }
 
 /*
- * A programação de cada TV, para a miniatura sair com a marca, a logo e o
- * cabeçalho de verdade (fase 10): a resposta da TV diz o que está no ar, a
- * programação diz como a TV desenha. Lida uma vez por versão da TV (o
- * `updatedAt` da lista muda quando alguém põe algo nela).
- */
-const programacoes = new Map();
-function lerProgramacao(id, versao) {
-  const guardada = programacoes.get(id);
-  if (guardada && guardada.versao === versao) return guardada.promessa;
-  const promessa = deviceConfig.get(id).catch(() => null);
-  programacoes.set(id, { versao, promessa });
-  if (programacoes.size > 200) programacoes.delete(programacoes.keys().next().value);
-  return promessa;
-}
-
-/*
  * `altura`: a altura máxima do palco (o cartão usa 220; a página da TV, mais).
  * `pedirDeNovo`: muda quando a página da TV põe algo no ar — a miniatura
  * espera a TV trocar e pergunta de novo, em vez de seguir com a imagem velha.
@@ -62,7 +47,11 @@ function lerProgramacao(id, versao) {
  * `cfg`: a programação que está na TV, quando quem chama já tem (a página da
  * TV). Sem ela, a miniatura lê a da TV.
  */
-export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeNovo = 0, cfg }) {
+/*
+ * `agora`: a última resposta da TV, quando quem chama já tem (a lista de
+ * Telas traz junto, reteste 2): a primeira leitura não vira um pedido.
+ */
+export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeNovo = 0, cfg, agora }) {
   const [resposta, setResposta] = useState(null);
   // undefined: lendo; null: não deu para ler (fica o desenho de antes).
   const [lida, setLida] = useState(undefined);
@@ -80,7 +69,8 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
     let vivo = true;
     (async () => {
       let r = null;
-      try { r = await telaAgora.ler(d.id); } catch (e) { r = null; }
+      if (agora && !pedirDeNovo) r = agora;
+      else { try { r = await telaAgora.ler(d.id); } catch (e) { r = null; } }
       if (!vivo) return;
       if (r && r.estado) setResposta(r);
       const fresca = r && r.estado && Date.now() - r.em < VELHA_MS && !pedirDeNovo;

@@ -17,6 +17,7 @@ import { aviso, emitir } from './avisos.js';
 import { defaultConfig } from './contentTypes.js';
 import { aplicarConteudo, removerOrigem } from './aplicarConteudo.js';
 import { zonesOf } from './screenConfig.js';
+import { comQuando } from './quando.js';
 
 // O layout com as quatro zonas, deitado e em pé.
 export const LAYOUT_COMPLETO = { deitada: 'corporate', emPe: 'portrait-stack' };
@@ -240,11 +241,30 @@ export async function planoDeRodar(resultado, telas) {
 }
 
 // D26: todas as TVs do plano de uma vez (tudo ou nada). Devolve os ids; `ids.lote` é o envio.
-export async function rodarCampanha(plano, nome, { trocarLayout } = {}) {
+/*
+ * O "QUANDO" DA CAMPANHA (reteste 2): a campanha da IA ia ao ar sem a
+ * pergunta que todo outro caminho faz. A escolha (sempre, só hoje, até um
+ * dia, numa hora do dia) vale para as peças da campanha que giram no meio e
+ * no lado; as faixas de cima e de baixo não têm horário na TV e ficam até
+ * pausar. O que não é da campanha não muda.
+ */
+export function quandoNaCampanha(cfg, nome, escolha) {
+  if (!cfg || !escolha || !escolha.quando || escolha.quando === 'sempre') return cfg;
+  const next = { ...cfg, zonas: { ...(cfg.zonas || {}) } };
+  for (const [id, z] of Object.entries(next.zonas)) {
+    if (!z || !Array.isArray(z.items) || !z.items.some((it) => it && it._campanha === nome)) continue;
+    next.zonas[id] = { ...z, items: z.items.map((it) => (it && it._campanha === nome ? comQuando(it, escolha) : it)) };
+  }
+  return next;
+}
+
+// `quando`: a escolha do "Quando" (lib/quando.js); sem ela, sempre. Devolve os ids, com `.lote` para o Desfazer.
+export async function rodarCampanha(plano, nome, { trocarLayout, quando } = {}) {
   const r = await gravarEmLote(plano.map((p) => p.tela),
-    (cfg, tv) => aplicarCampanha(cfg, plano.find((p) => p.tela.id === tv.id).entrada, nome, { trocarLayout }), 'Campanha: ' + nome);
+    (cfg, tv) => quandoNaCampanha(aplicarCampanha(cfg, plano.find((p) => p.tela.id === tv.id).entrada, nome, { trocarLayout }), nome, quando), 'Campanha: ' + nome);
   const ids = r.ids.slice();
   ids.lote = r.lote;
+  if (r.pendente) ids.pendente = true;
   return ids;
 }
 

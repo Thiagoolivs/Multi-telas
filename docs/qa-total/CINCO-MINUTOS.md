@@ -3,47 +3,69 @@
 O pedido do dono: quem abre o produto monta a TV em uns 5 minutos. Meta:
 **até 15 toques** e **até 5 minutos** de uma pessoa cuidadosa.
 
-Medido em **07/11/2026**, sobre o `main` em `4be92b2` com o passo a passo
-novo. Servidor **local** na porta 6002 (`PORT=6002 SKIP_VERIFY=1
-AI_PROVIDER=dev STORAGE=local DATA_DIR=<pasta temporária>`), banco novo,
-nada de produção. A TV é de mentira: o player (`/player.html?cloud=1`) num
-Chromium deitado, mostrando o código, como em `tools/regua-tv.mjs`.
+Medido de novo em **12/11/2026** (reteste 2 corrigido), sobre a
+`integra-video` em `36290b8` mais as correções do painel. Servidor
+**local** na porta 6051 (`PORT=6051 SKIP_VERIFY=1 AI_PROVIDER=dev
+STORAGE=local DATA_DIR=<pasta temporária>`), banco novo, nada de produção.
+A TV é de mentira: o player (`/player.html?cloud=1`) num Chromium deitado,
+mostrando o código, como em `tools/regua-tv.mjs`.
 
 ## Resultado
 
 | | Celular 390×844 | Computador 1280×800 | Meta |
 |---|---:|---:|---:|
-| Toques, passos 1 a 7 | **14** (3 deles no campo de texto) | **14** (3) | ≤ 15 |
-| Pessoa cuidadosa, passos 1 a 7 | **174 s** (2 min 54 s) | **174 s** (2 min 54 s) | ≤ 300 s |
-| Com o cadastro antes | 20 toques (6 no campo) · 220 s (3 min 40 s) | 20 (6) · 221 s | — |
+| Toques, passos 1 a 7 (foto do celular) | **14** (3 deles no campo de texto) | **14** (3) | ≤ 15 |
+| Toques, passos 1 a 7 (foto do banco, `CINCO_FOTO=banco`) | **14** (3) | **14** (3) | ≤ 15 |
+| Pessoa cuidadosa, passos 1 a 7 | **178 s** (2 min 58 s); 209 s pelo banco | **177 s**; 208 s pelo banco | ≤ 300 s |
+| Com o cadastro antes | 20 toques (6 no campo) · 223 s | 20 (6) · 224 s | — |
 | A TV mostrou o que a pessoa digitou | sim | sim | |
 | Erros na página | nenhum | nenhum | |
 
-As duas metas batidas nos dois tamanhos. Contando como o bloco 8 contava
-(digitar não conta, e o toque no campo também não), são **11 toques** no
-passo a passo e 14 com o cadastro.
+As duas metas batidas nos dois tamanhos e pelos dois caminhos da foto.
+Contando como o bloco 8 contava (digitar não conta, e o toque no campo
+também não), são **11 toques** no passo a passo e 14 com o cadastro.
 
-### Passo a passo, no celular
+### O que mudou desde o reteste 2 (16 toques)
+
+O reteste 2 (09/11) achou **16 toques** e o robô parado: desde `98274b2`
+o quadro da foto abre o "Trocar foto", e o robô esperava o seletor de
+arquivo direto (`tools/cinco-minutos.mjs:179`). A foto custava 4 toques
+(o quadro, "Escolher da galeria", a foto, "Usar esta foto"). Agora:
+
+- **A foto do celular tem o botão dela**, embaixo do quadro: "Usar uma
+  foto do celular" abre a galeria direto. O botão e a foto: **2 toques**.
+- **O quadro abre o "Trocar foto" no banco de fotos do negócio**, e a foto
+  tocada já vale (sem o passo do ponto, que o passo nem guardava: ele
+  guarda só o endereço da foto). O quadro e a foto: **2 toques**. O "Usar
+  esta foto" apagado some nesse modo; "Do celular" e "Gerar com IA" seguem
+  nas abas.
+- **O robô** segue o caminho de hoje: por padrão, a foto do celular pelo
+  botão; com `CINCO_FOTO=banco`, o quadro e a primeira foto do banco.
+
+### Passo a passo, no celular (foto do celular)
 
 | Passo | Toques (no campo) | Decisões | Palavras | Letras | Espera do painel | Pessoa cuidadosa |
 |---|---:|---:|---:|---:|---:|---:|
 | Criar a conta | 6 (3) | 1 | 72 | 65 | 0,2 s | 46 s |
 | 1. Seu negócio | 1 (0) | 1 | 36 | 0 | 0,0 s | 14 s |
-| 2. Sua marca | 3 (0) | 2 | 79 | 0 | 0,1 s | 34 s |
-| 3. Ligar a TV | 2 (1) | 1 | 97 | 6 | 0,2 s | 36 s |
+| 2. Sua marca | 3 (0) | 2 | 79 | 0 | 0,2 s | 35 s |
+| 3. Ligar a TV | 2 (1) | 1 | 97 | 6 | 0,3 s | 36 s |
 | 4. Escolher a tela | 1 (0) | 1 | 32 | 0 | 0,0 s | 13 s |
-| 5. Fotos e textos | 5 (2) | 2 | 43 | 21 | 0,1 s | 29 s |
+| 5. Fotos e textos | 5 (2) | 2 | 53 | 21 | 0,1 s | 32 s |
 | 6. Horário | 1 (0) | 1 | 54 | 0 | 0,0 s | 20 s |
 | 7. Pôr na TV | 1 (0) | 1 | 77 | 0 | 0,2 s | 28 s |
-| **Passos 1 a 7** | **14 (3)** | | | | **0,6 s** | **174 s** |
+| **Passos 1 a 7** | **14 (3)** | | | | **0,8 s** | **178 s** |
 
-No computador, os mesmos números (a diferença é de 1 s no cadastro e de
-0,1 s de espera).
+No computador, os mesmos números (1 s a menos de pessoa cuidadosa). Pelo
+banco, o passo 5 tem os mesmos 5 toques e mais palavras para ler (157, as
+legendas do "Trocar foto"): 63 s no passo, 209 s no total.
 
 Os 14 toques: Padaria · Mandar o logo · escolher o logo na galeria · Está
-bom · o campo do código · Ligar a TV · a primeira tela · o quadro da foto ·
-escolher a foto na galeria · o campo do nome · o campo do preço · Continuar
-· Segunda a sábado · Pôr na TV.
+bom · o campo do código · Ligar a TV · a primeira tela · Usar uma foto do
+celular · escolher a foto na galeria · o campo do nome · o campo do preço ·
+Continuar · Segunda a sábado · Pôr na TV. Pelo banco, "Usar uma foto do
+celular · escolher a foto na galeria" vira "o quadro da foto · a primeira
+foto do banco".
 
 ### Como conto
 
@@ -66,6 +88,7 @@ Para rodar de novo:
 ```
 PORT=6002 SKIP_VERIFY=1 AI_PROVIDER=dev STORAGE=local DATA_DIR=<pasta> MEDIA_DIR=<pasta> node server.js
 CINCO_SAIDA=<pasta das fotos> node tools/cinco-minutos.mjs
+CINCO_FOTO=banco CINCO_SAIDA=<outra pasta> node tools/cinco-minutos.mjs   # a foto pelo banco
 ```
 
 O script sai com erro se passar de 15 toques, de 5 minutos ou se a TV não
@@ -73,8 +96,11 @@ mostrar o texto digitado.
 
 ## As fotos
 
-Pasta: `/tmp/claude-0/-home-user-Multi-telas/b804d644-700b-5e83-ad8f-5fe2da78625e/scratchpad/p11/`
+Pasta: `/tmp/claude-0/-home-user-Multi-telas/b804d644-700b-5e83-ad8f-5fe2da78625e/scratchpad/p17/cinco/`
 (no ambiente da medição; `resultado.json` tem cada toque de cada passo).
+O caminho pelo banco: `p17/cinco-banco/`, com `celular-08-fotos-banco.png`
+(o "Trocar foto" aberto no banco da padaria). As fotos de 07/11 (os
+"outros caminhos" abaixo) seguem em `p11/`.
 
 | Tela | Celular | Computador |
 |---|---|---|
@@ -149,13 +175,10 @@ Pasta `p11/outros-caminhos/`:
    rodapé. A aprovada de outro negócio da frente só entra se ainda faltar;
    de outra frente, nunca. **Aprovar na bancada as telas do lote 2 e 3**
    (hoje "proposta") faz elas virem primeiro, sem mudar código.
-2. **O TrocarFoto** (`components/fotos/TrocarFoto.jsx`, outro agente) entra
-   no lugar do `FotoDoPasso` com as mesmas props — `{ papel, ramo, valor,
-   onTrocar, formato }` — numa linha só de `PassoFotos.jsx`. O que eu
-   mudaria junto: o quadro abrir já na aba do banco de fotos do negócio
-   (quem não tem foto boa no celular sai com uma), o `FotoDoPasso` sair (e
-   com ele a cópia do "encolher a foto" de `lib/subir.js`), e o passo 5
-   oferecer uma foto também para o destaque que não tem lugar de foto.
+2. **O TrocarFoto** já está no passo 5 (desde `98274b2`), e desde o
+   reteste 2 abre no banco de fotos do negócio, com a foto que vale num
+   toque; a foto do celular tem o botão dela. Falta o passo 5 oferecer uma
+   foto também para o destaque que não tem lugar de foto.
 3. **Só o destaque é perguntado.** Nas telas montadas, o resto da tela é
    da conta (a marca, o horário) ou serve a qualquer um. Nas aprovadas, a
    lateral e o cabeçalho continuam com o texto de exemplo (limpo de nome,

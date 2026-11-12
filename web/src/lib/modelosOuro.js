@@ -7,19 +7,20 @@
  * com 43 modelos aprovados guardados no servidor sem ninguém poder usar.
  */
 import { carregarDesenhista } from './pecaHtml.js';
+// O manifesto e o HTML das peças num pedido só (reteste 2, lib/pacoteOuro.js).
+import { carregarManifesto, htmlDaPeca } from './pacoteOuro.js';
 
 let cache = null;
 
 // O manifesto e os arquivos, uma vez por sessão. Peça que não abre fica de fora.
 export function carregarModelos() {
   if (!cache) {
-    cache = carregarDesenhista()
-      .then(() => fetch('/pecas-ouro/manifesto.json'))
-      .then((r) => { if (!r.ok) throw new Error('não deu para abrir os modelos'); return r.json(); })
+    // O desenhista e o pacote ao mesmo tempo, não um depois do outro.
+    cache = Promise.all([carregarDesenhista(), carregarManifesto()])
+      .then(([, m]) => m)
       .then(async (m) => {
         const lista = ((m && m.pecas) || []).filter((p) => !p.estado || p.estado === 'aprovada');
-        const abertos = await Promise.all(lista.map((p) => fetch('/pecas-ouro/' + p.id + '.html')
-          .then((r) => (r.ok ? r.text() : ''))
+        const abertos = await Promise.all(lista.map((p) => htmlDaPeca(p.id)
           .then((t) => (t ? { ...p, arq: globalThis.MTPecaHtml.doArquivo(t) } : null))
           .catch(() => null)));
         return abertos.filter(Boolean);
