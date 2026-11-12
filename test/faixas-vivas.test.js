@@ -93,8 +93,8 @@ test('o player: a faixa com várias peças gira, e a TV fraca troca seco', () =>
   assert.match(start, /if \(lista\.length > 1\) \{/);
   assert.match(start, /const segundos = Math\.max\(6, Number\(lista\[i\]\.duracao\) \|\| 20\);/, 'giro de no mínimo 6 s: menos que isso ninguém lê');
   assert.match(start, /i = \(i \+ 1\) % lista\.length; mostrar\(\);/);
-  // A troca remonta a peça; a transição é a entrada dela, que o modo leve já desliga (opcoesDaPeca).
-  assert.match(ler('js', 'render.js'), /leve: document\.documentElement\.classList\.contains\('mt-perf'\)/);
+  // A troca remonta a peça; a transição é a entrada dela, que o modo leve deixa só no esmaecer (opcoesDaPeca, movimento de cinema).
+  assert.match(ler('js', 'render.js'), /movimento: document\.documentElement\.classList\.contains\('mt-perf'\) \? 'simples' : 'completo'/);
 });
 
 test('as peças-ouro novas passam pela porta e entram quando a faixa pede', () => {

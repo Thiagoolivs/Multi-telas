@@ -10,12 +10,14 @@
 export const PAPEIS_FOTO = ['produto', 'ambiente', 'pessoa', 'textura'];
 export const NOME_DO_PAPEL = { produto: 'produto', ambiente: 'ambiente', pessoa: 'pessoa', textura: 'fundo' };
 
-// O valor de um campo de foto: o texto de sempre ("/media/…") ou { src, foco }.
+// O valor de um campo de foto: o texto de sempre ("/media/…") ou { src, foco } (FOTO VIVA: também `poster`).
 export function lerValor(valor) {
   if (valor && typeof valor === 'object') {
     const f = valor.foco;
     const foco = f && Number.isFinite(Number(f.x)) && Number.isFinite(Number(f.y)) ? { x: Number(f.x), y: Number(f.y) } : null;
-    return { src: typeof valor.src === 'string' ? valor.src : '', foco };
+    const r = { src: typeof valor.src === 'string' ? valor.src : '', foco };
+    if (typeof valor.poster === 'string' && valor.poster) r.poster = valor.poster;
+    return r;
   }
   return { src: valor ? String(valor) : '', foco: null };
 }
@@ -39,6 +41,8 @@ export function espacoComFoto(anterior, escolha) {
   if (PAPEIS_FOTO.includes(a.papel)) novo.papel = a.papel;
   if (e.foco) novo.foco = { x: arred(e.foco.x), y: arred(e.foco.y) };
   if (typeof e.fundo === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(e.fundo) && e.fundo.length <= 4096) novo.fundo = e.fundo;
+  // FOTO VIVA: o poster do vídeo (o primeiro quadro, ao lado dele). A porta confere (js/peca-html.js, posterDoVideo).
+  if (typeof e.poster === 'string' && /^(https:\/\/[\w.-]+)?\/(media|pecas-ouro\/videos)\/[\w./-]+\.(jpe?g|png|webp)$/i.test(e.poster)) novo.poster = e.poster;
   return novo;
 }
 const arred = (n) => Math.round(Math.min(1, Math.max(0, Number(n) || 0)) * 1000) / 1000;

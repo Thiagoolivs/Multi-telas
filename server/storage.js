@@ -294,13 +294,16 @@ async function saveStream(tenantId, req, { mime, max }) {
 }
 
 // saveBuffer — grava bytes já em memória (ex.: imagem gerada por IA).
-async function saveBuffer(tenantId, buf, mime) {
+// `opts.base`: o nome do arquivo sem a extensão, quando ele tem que morar ao
+// lado de outro — o poster da FOTO VIVA é `<id do vídeo>.jpg` (server/foto-viva.js).
+async function saveBuffer(tenantId, buf, mime, opts) {
   const ext = extFor(mime);
   if (!ext) throw httpErr(415, 'tipo de arquivo não suportado');
   if (buf.length > MAX_FILE_BYTES) throw httpErr(413, 'arquivo excede o limite');
   if (/svg/i.test(String(mime))) conferirSvg(buf.toString('utf8'));
   const id = rid(20);
-  const key = tenantId + '/' + id + '.' + ext;
+  const base = opts && /^[a-z0-9]{12,40}$/.test(String(opts.base || '')) ? String(opts.base) : id;
+  const key = tenantId + '/' + base + '.' + ext;
   const m = String(mime).toLowerCase();
 
   if (DRIVER === 's3') {

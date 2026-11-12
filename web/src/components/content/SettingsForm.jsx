@@ -2,7 +2,7 @@ import React from 'react';
 import { RotateCcw, Palette, Maximize, Music, Clock, SlidersHorizontal, Check } from 'lucide-react';
 import { Field, Input, Select, Checkbox } from '../ui/Field.jsx';
 import { Button, IconButton } from '../ui/Button.jsx';
-import { LAYOUTS, THEME_PRESETS, FONTS, TRANSITIONS, DECORATIONS, getLayout } from '../../lib/screenConfig.js';
+import { LAYOUTS, THEME_PRESETS, FONTS, DECORATIONS, getLayout } from '../../lib/screenConfig.js';
 import { gradeDaMiniatura, proporcaoDoLayout, nomeDaParte } from '../../lib/tela.js';
 // O nome que a pessoa lê: a forma da divisão, não o nome do catálogo da TV ("Painel Notícias").
 import { nomeDoLayout, comoSeDivide } from '../../lib/nomesDosLayouts.js';
@@ -17,6 +17,8 @@ import { zonasQueSaem } from '../../lib/ajusteTela.js';
 import { usePerfil } from '../../lib/perfil.js';
 // Modo ambiente e chamada de senha (fases 9 e 12): componente à parte, uma linha aqui.
 import { AmbienteESenha } from './AmbienteESenha.jsx';
+// A troca entre peças, com a miniatura de cada uma (movimento de cinema, 09/11).
+import { TransicaoDaTela } from './TransicaoDaTela.jsx';
 
 /*
  * AJUSTES DA TELA, POR TAREFA (EXECUTOR §2c, item 33).
@@ -27,12 +29,12 @@ import { AmbienteESenha } from './AmbienteESenha.jsx';
  * "a borda está cortada", "quero música", "a TV fica ligada de noite" — e a
  * resposta tem de estar numa aba com esse nome:
  *
- *   Aparência  o layout (com o desenho), as cores (a marca é o padrão) e o
- *              nome que aparece no cabeçalho;
+ *   Aparência  o layout (com o desenho), as cores (a marca é o padrão), a
+ *              troca entre peças (com a miniatura) e o nome do cabeçalho;
  *   Encaixe    a margem contra o corte da TV (com o desenho) e girar;
  *   Som        a música de fundo;
  *   Horário    quando a loja abre, o que a TV mostra fora disso, o alerta;
- *   Avançado   fonte, cores finas, transição, decoração e comportamento.
+ *   Avançado   fonte, cores finas, decoração e comportamento.
  */
 const ABAS = [
   ['aparencia', 'Aparência', Palette], ['encaixe', 'Encaixe', Maximize], ['som', 'Som', Music],
@@ -152,7 +154,7 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
 
   const mexidos = [
     (theme.font || 'system') !== 'system', !!ov.brand, !!ov.accent,
-    (s.transicao || 'cinematic') !== 'cinematic', (s.decoracao || 'none') !== 'none',
+    (s.decoracao || 'none') !== 'none',
     (s.refreshSeconds ?? 60) !== 60, s.coresAdaptativas === false, s.layoutInteligente === false,
     s.somUrgente === false, s.layoutAuto === true,
   ].filter(Boolean).length;
@@ -315,6 +317,9 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
             )}
           </div>
 
+          <TransicaoDaTela valor={s.transicao} onChange={(v) => set({ transicao: v })}
+            cor={ov.brand || coresMarca[0]} cor2={ov.accent || coresMarca[1]} />
+
           <Field label="Nome no cabeçalho" hint="É o que o cabeçalho automático mostra. O nome da TV na lista de Telas muda pelo lápis, lá.">
             <Input value={s.nome || ''} onChange={(e) => set({ nome: e.target.value })} placeholder="Minha Empresa" />
           </Field>
@@ -385,11 +390,6 @@ export function SettingsForm({ settings, onChange, deviceId, device, zonas, data
           </div>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Transição">
-                <Select value={s.transicao || 'cinematic'} onChange={(e) => set({ transicao: e.target.value })}>
-                  {TRANSITIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </Select>
-              </Field>
               <Field label="Decoração">
                 <Select value={s.decoracao || 'none'} onChange={(e) => set({ decoracao: e.target.value })}>
                   {DECORATIONS.map((d) => <option key={d.value} value={d.value}>{d.label}</option>)}

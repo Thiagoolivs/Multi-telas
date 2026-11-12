@@ -2158,12 +2158,13 @@ function PainelAnimacao({ el, onChange, onPrevia }) {
       <div className="grid grid-cols-2 gap-2">
         <Field label="Como entra">
           <Select value={a.entrada} onChange={(e) => mudar({ entrada: e.target.value })}>
-            {ENTRADAS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+            {/* As entradas de cinema (revelar, contar…) são só da peça em HTML: o player as executa com JavaScript (js/animacao.js, soNaPeca). */}
+            {ENTRADAS.filter((x) => !x.soNaPeca).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
           </Select>
         </Field>
         <Field label="Depois de entrar">
           <Select value={a.continua} onChange={(e) => mudar({ continua: e.target.value })}>
-            {CONTINUAS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+            {CONTINUAS.filter((x) => !x.soNaPeca).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
           </Select>
         </Field>
       </div>

@@ -22,7 +22,8 @@ const storage = require('./storage');
  * registra. Devolve o mesmo formato de `storage.saveBuffer` mais o `id`.
  */
 async function guardarBuffer(db, tenantId, buf, mime, meta) {
-  const salvo = await storage.saveBuffer(tenantId, buf, mime);
+  // `meta.base`: o nome do arquivo ao lado de outro (o poster da foto viva, server/foto-viva.js).
+  const salvo = await storage.saveBuffer(tenantId, buf, mime, meta && meta.base ? { base: meta.base } : undefined);
   await registrar(db, tenantId, salvo, meta);
   return salvo;
 }
@@ -83,6 +84,15 @@ async function apagar(db, tenantId, id) {
     try { await storage.remove(m.key); } catch (e) { console.warn('[midia]', e.message); }
   }
   await db.removeMedia(m.id, tenantId);
+  /*
+   * FOTO VIVA: o poster mora ao lado do vídeo (`<id>.jpg`) e só existe por
+   * causa dele — sai junto, para não sobrar uma foto solta no Armazenamento.
+   */
+  if (/^video\//.test(String(m.mime || '')) && db.listMedia) {
+    const doPoster = String(m.url || '').replace(/\.[a-z0-9]+$/i, '.jpg');
+    const poster = (await db.listMedia(tenantId)).find((x) => x.url === doPoster && x.origem === 'poster');
+    if (poster) await apagar(db, tenantId, poster.id);
+  }
   return true;
 }
 

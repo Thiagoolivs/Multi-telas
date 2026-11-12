@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Camera } from 'lucide-react';
 import { TrocarFoto } from '../fotos/TrocarFoto.jsx';
+import { imagemDoCampo } from '../../lib/fotoViva.js';
 
 /*
  * O quadro grande da foto no passo "Fotos e textos": um toque abre o
@@ -9,7 +10,9 @@ import { TrocarFoto } from '../fotos/TrocarFoto.jsx';
  * toque no que importa na foto. A foto escolhida aparece no quadro.
  *
  * Props: { papel, ramo, valor, onTrocar, formato, rotulo }. `onTrocar`
- * recebe só o endereço da foto (o passo guarda texto, como os campos).
+ * recebe só o endereço da foto (o passo guarda texto, como os campos). Um
+ * vídeo da FOTO VIVA também é só o endereço: o poster mora ao lado dele, e a
+ * porta (js/peca-html.js) o escreve no espaço da peça.
  */
 export function FotoDoPasso({ papel = 'produto', ramo, valor, onTrocar, formato = '16/9', rotulo }) {
   const [aberto, setAberto] = useState(false);
@@ -20,7 +23,7 @@ export function FotoDoPasso({ papel = 'produto', ramo, valor, onTrocar, formato 
         className="relative flex aspect-video w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed border-accent/50 bg-accent-soft/20 px-4 text-center transition hover:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
         {valor ? (
           <>
-            <img src={valor} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <img src={imagemDoCampo(valor)} alt="" className="absolute inset-0 h-full w-full object-cover" />
             <span className="absolute bottom-2 right-2 rounded-full bg-surface/90 px-3 py-1.5 text-sm font-semibold text-ink shadow">Trocar a foto</span>
           </>
         ) : (

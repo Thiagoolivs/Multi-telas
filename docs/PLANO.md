@@ -606,6 +606,35 @@ recusando qualquer `<script>` ou `on*=`.
   preço contando até o valor, revelação por máscara, texto entrando palavra
   a palavra. Antes de chegar a cliente, 72 h no box beta medindo memória e
   quadros. Sem GSAP, a peça cai na camada 1.
+- **Camada 2, feita (09/11): o movimento de cinema.** Sem GSAP na peça: as
+  keyframes são de CSS (andam no compositor, fora da linha principal, que é
+  o que o box fraco tem de pior) e o JavaScript do player só mede e monta
+  (`js/peca-render.js`, coreografia). O vocabulário, em `js/animacao.js`
+  (os nomes são contrato — a IA e o diretor de arte os escrevem):
+
+  | Atributo | Valor | O que faz |
+  |---|---|---|
+  | `data-entrada` | `revelar` | Texto: cada linha sobe de dentro da própria máscara, uma depois da outra (0,09 s). O original fica no lugar, invisível, segurando o layout; as máscaras saem no fim. |
+  | | `varrer` | Bloco de cor, faixa, barra: abre em `scale` a partir de uma borda (`data-origem`, padrão esquerda). Os filhos entram depois (ordem maior). |
+  | | `desenhar` | Filete: se desenha de uma ponta à outra (em pé, de cima, se for mais alto que largo). |
+  | | `contar` | Número (preço, indicador, contagem): sobe do zero ao valor em 1,5 s. O texto final é o original, letra por letra ("R$", ",90", milhar); a largura fica presa enquanto conta; campo vivo que muda no meio vira o alvo novo. |
+  | | `aproximar` | Foto ou título grande: chega 6% maior e assenta (1,2 s). |
+  | `data-continua` | `kenburns` | Foto: cresce 8% durante a peça inteira (vai e volta se ela ficar no ar), em direção ao foco do espaço (`espacos.<campo>.foco`). Só cresce para o lado em que a peça (ou um quadro com overflow escondido) a corta; num cartão solto, fica parada. Vale no "conter" (fundo desfocado) também. |
+  | | `reflexo` | Preço, produto, logo: uma faixa de luz passa UMA vez, depois da entrada, e sai. |
+  | `data-origem` | `esquerda`, `direita`, `cima`, `baixo` | De onde a `varrer` e a `desenhar` partem. |
+  | `data-atraso` | `0` a `6` (segundos, ex. `0.4`) | Espera a mais, além da vez do `data-ordem` (0,15 s + 0,15 s × ordem). |
+
+  Tudo só em `transform` e `opacity`, e tudo termina em repouso (`transform:
+  none`, `opacity: 1`) — a régua mede o repouso. Na TV fraca (`.mt-perf`,
+  `js/perf.js`) e para quem pediu menos movimento ao sistema, toda entrada
+  vira um esmaecer na vez dela e nada contínuo roda; a miniatura do painel
+  (`leve`) continua parada. A troca entre peças ganhou o **dissolver** (a
+  próxima assenta de 3% maior, 0,7 s) e a **varredura** (duas faixas na cor
+  da marca passam e revelam a próxima), as duas também para a peça pronta,
+  que espera a troca para entrar (`data-mt-espera`); na TV fraca, esmaecer.
+  A TV nova nasce com o dissolver. Para ver: `node tools/gravar-peca.mjs
+  --peca <id> --formato 16x9 --local balcao` grava o MP4; `--quadros` mede
+  os quadros com a CPU 4× mais lenta.
 
 ### 4.14 Ordem dos PRs desta fase
 
