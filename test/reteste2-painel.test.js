@@ -173,3 +173,21 @@ test('o desenhista das miniaturas num pedido só, e a miniatura só desenha quan
   assert.doesNotMatch(pp, /^import \{ EditarPeca \}/m);
   assert.doesNotMatch(ler('web/src/pages/TelasProntasPage.jsx'), /^import \{ EditarPeca \}/m);
 });
+
+test('Telas abre com um pedido de TVs: a lista traz a última resposta e a programação de cada uma', () => {
+  const t = ler('server/routes/telas.js');
+  assert.match(t, /if \(query && query\.agora === '1'\) \{/);
+  assert.match(t, /item\.agora = e \? \{ em: e\.em, estado: e\.estado, online: !!subscribers\[item\.id\] \}/);
+  assert.match(t, /item\.programacao = configParaOPainel\(d, empresa, kit\)/);
+  // A programação em lote, filtrada pela conta e pela loja (o Início e o "Ver agora").
+  assert.match(t, /const pedidas = String\(\(query && query\.ids\) \|\| ''\)\.split\(','\)/);
+  assert.match(t, /db\.listDevices\(sess\.tenant_id\)\.then\(\(l\) => permissoes\.filtrar\(sess, l\)\)/);
+  const s = ler('web/src/pages/ScreensPage.jsx');
+  assert.match(s, /useAsync\(devices\.listaComAgora\)/);
+  assert.match(s, /<MiniaturaDaTela d=\{d\} online=\{online\} vazia=\{!d\.hasConfig\} cfg=\{d\.programacao \|\| undefined\} agora=\{d\.agora\} \/>/);
+  const m = ler('web/src/components/tela/MiniaturaDaTela.jsx');
+  assert.match(m, /if \(agora && !pedirDeNovo\) r = agora;/);
+  assert.doesNotMatch(semComentarios(m), /deviceConfig\.get\(/, 'uma programação por TV voltou');
+  assert.match(ler('web/src/lib/programacaoDaTv.js'), /deviceConfig\.doPainel\(id\)/);
+  assert.match(ler('web/src/api.js'), /api\('GET', '\/api\/devices\/configs\?ids=' \+ ids\.map\(encodeURIComponent\)\.join\(','\)\)/);
+});

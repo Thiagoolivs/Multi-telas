@@ -398,6 +398,24 @@ module.exports = function (ctx) {
           ...(esperando.has(d.id) ? { meuPedido: esperando.get(d.id) } : {}),
         };
       });
+      /*
+       * `?agora=1` (reteste 2): a página Telas pede a lista JUNTO com o que
+       * cada miniatura precisa — a última resposta da TV (o "o que está
+       * passando") e a programação como o painel vê. Eram 32 chamadas com
+       * 25 TVs (uma programação por TV); agora a página é um pedido. Só as
+       * TVs desta lista: a da outra loja nem entra.
+       */
+      if (query && query.agora === '1') {
+        const [empresa, kit] = await Promise.all([empresaDa(sess.tenant_id), db.getBrandKit(sess.tenant_id).catch(() => null)]);
+        for (const item of list) {
+          const e = estadosDaTela.get(item.id);
+          item.agora = e ? { em: e.em, estado: e.estado, online: !!subscribers[item.id] } : { em: 0, estado: null, online: !!subscribers[item.id] };
+          if (!item.hasConfig) continue;
+          const r = rows.find((x) => x.id === item.id);
+          const d = r && r.config !== undefined ? r : await db.getDevice(item.id);
+          if (d && d.tenant_id === sess.tenant_id) item.programacao = configParaOPainel(d, empresa, kit);
+        }
+      }
       return sendJson(res, 200, { devices: list });
     }
 

@@ -31,7 +31,8 @@ import { EscolherArquivo } from '../components/ui/EscolherArquivo.jsx';
 export function ScreensPage({ onEditContent, onCriar, parear, abrirParear, onIrParaPlano, papel }) {
   // Membro não liga TV nova nem remove (entra/sai da mensalidade): o servidor recusa; aqui nem aparece.
   const podeGerir = papel !== 'member';
-  const { data, loading, error, reload } = useAsync(devices.list);
+  // Com a última resposta e a programação de cada TV (reteste 2): as miniaturas não pedem nada ao abrir.
+  const { data, loading, error, reload } = useAsync(devices.listaComAgora);
   const todas = data ? data.devices || [] : [];
   /*
    * Grupos ("Loja Centro", "Loja Sul"): um rótulo por tela. O filtro só
@@ -192,7 +193,7 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
   return (
     <div className="overflow-hidden rounded-xl border border-line bg-surface transition hover:border-line-strong">
       <div className="relative flex aspect-video items-center justify-center overflow-hidden border-b border-line bg-gradient-to-br from-surface-2 to-accent-soft/40">
-        <MiniaturaDaTela d={d} online={online} vazia={!d.hasConfig} />
+        <MiniaturaDaTela d={d} online={online} vazia={!d.hasConfig} cfg={d.programacao || undefined} agora={d.agora} />
         <div className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-surface/90 px-2 py-0.5 text-xs font-medium backdrop-blur">
           <StatusDot tone={st.tone} pulse={st.pulse} /><span className="text-ink">{st.label}</span>
         </div>

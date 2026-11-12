@@ -47,7 +47,11 @@ export function podePedir(id, agora = Date.now(), deNovo = false) {
  * `cfg`: a programação que está na TV, quando quem chama já tem (a página da
  * TV). Sem ela, a miniatura lê a da TV.
  */
-export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeNovo = 0, cfg }) {
+/*
+ * `agora`: a última resposta da TV, quando quem chama já tem (a lista de
+ * Telas traz junto, reteste 2): a primeira leitura não vira um pedido.
+ */
+export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeNovo = 0, cfg, agora }) {
   const [resposta, setResposta] = useState(null);
   // undefined: lendo; null: não deu para ler (fica o desenho de antes).
   const [lida, setLida] = useState(undefined);
@@ -65,7 +69,8 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
     let vivo = true;
     (async () => {
       let r = null;
-      try { r = await telaAgora.ler(d.id); } catch (e) { r = null; }
+      if (agora && !pedirDeNovo) r = agora;
+      else { try { r = await telaAgora.ler(d.id); } catch (e) { r = null; } }
       if (!vivo) return;
       if (r && r.estado) setResposta(r);
       const fresca = r && r.estado && Date.now() - r.em < VELHA_MS && !pedirDeNovo;

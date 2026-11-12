@@ -150,6 +150,12 @@ export const lojas = {
 
 export const devices = {
   list: () => api('GET', '/api/devices'),
+  /*
+   * A lista com o que cada miniatura precisa (reteste 2): `agora` (a última
+   * resposta da TV) e `programacao` (como o painel desenha). A página Telas
+   * abre com um pedido, em vez de um por TV.
+   */
+  listaComAgora: () => api('GET', '/api/devices?agora=1'),
   // `extra`: { reconectar: id } ("é a TV X que caiu") ou { nova: true } ("não, é outra TV") — QA de 03/11.
   pair: (code, name, extra) => api('POST', '/api/pair', Object.assign({ code: String(code || '').trim().toUpperCase(), name }, extra || {})),
   rename: (id, name) => api('POST', '/api/devices/' + id + '/rename', { name }),
