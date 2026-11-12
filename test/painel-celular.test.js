@@ -42,7 +42,8 @@ test('abas que rolam mostram a sombra de "tem mais"', () => {
 test('o cartão da TV: miniatura, estado em palavras, ações com nome e "Mais opções" rotulado', () => {
   const s = ler('web/src/pages/ScreensPage.jsx');
   const card = s.slice(s.indexOf('function FleetCard('), s.indexOf('function OpcaoDaTela('));
-  assert.match(card, /<MiniaturaDaTela d=\{d\} online=\{online\} vazia=\{!d\.hasConfig\} \/>/);
+  // Reteste 2: a lista de Telas traz a programação e a última resposta da TV (uma chamada para a página).
+  assert.match(card, /<MiniaturaDaTela d=\{d\} online=\{online\} vazia=\{!d\.hasConfig\} cfg=\{d\.programacao \|\| undefined\} agora=\{d\.agora\} \/>/);
   // Fase 7: o cartão abre a página da TV (o que passa, os ajustes e o que passou).
   assert.match(card, /'Abrir a TV' : 'Pôr conteúdo nesta TV'/);
   assert.match(card, />Ver agora<\/Button>/);
