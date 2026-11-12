@@ -1094,7 +1094,7 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
 .mt-poster-title { font-weight: 800; line-height: 1.02; letter-spacing: -.022em;
   font-size: max(var(--mt-piso, 0px), clamp(2.59vmin, 9cqw, 13.89vmin)); text-wrap: balance; }
 .mt-poster-body { font-weight: 400; line-height: 1.3; opacity: .92; max-width: 24ch;
-  font-size: max(var(--mt-piso, 0px), clamp(1.39vmin, min(4.6cqw, 5cqh), 5.2vmin)); }
+  font-size: max(var(--mt-piso, 0px), clamp(1.39vmin, min(4.8cqw, 5cqh), 5.2vmin)); }
 .mt-poster-cta { align-self: flex-start; margin-top: 1.2cqh; font-weight: 700;
   font-size: max(var(--mt-piso, 0px), clamp(1.2vmin, 2.6cqw, 2.78vmin)); padding: .7em 1.4em; border-radius: 100px; }
 
@@ -1290,8 +1290,8 @@ body.mt-cursor-on .mt-screen-start { cursor: pointer; }
    Em navegadores antigos sem suporte a cqw, valem os clamps em vw acima. */
 @supports (width: 1cqw) {
   /* O texto numa zona grande (reteste 2): o teto de 8,15% e 4,07% da TV vira 11% e 5,2%; a TV em pé e a quadrada medem pela largura, que é o lado curto. */
-  .mt-text-title { font-size: max(var(--mt-piso, 0px), calc(clamp(2.04vmin, min(9.6cqw, 11cqh), 11vmin) * var(--tscale, 1))); }
-  .mt-text-body { font-size: max(var(--mt-piso, 0px), calc(clamp(1.39vmin, min(4.6cqw, 5cqh), 5.2vmin) * var(--tscale, 1))); }
+  .mt-text-title { font-size: max(var(--mt-piso, 0px), calc(clamp(2.04vmin, min(10.6cqw, 11cqh), 11vmin) * var(--tscale, 1))); }
+  .mt-text-body { font-size: max(var(--mt-piso, 0px), calc(clamp(1.39vmin, min(4.8cqw, 5cqh), 5.2vmin) * var(--tscale, 1))); }
   .mt-clock-time { font-size: max(var(--mt-piso, 0px), clamp(3.33vmin, 14cqw, 13.89vmin)); }
   .mt-clock-date { font-size: max(var(--mt-piso, 0px), clamp(1.3vmin, 3.6cqw, 3.52vmin)); }
   .mt-weather-icon { font-size: max(var(--mt-piso, 0px), clamp(3.7vmin, 13cqw, 13.89vmin)); }

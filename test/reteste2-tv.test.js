@@ -173,5 +173,5 @@ test('corpo e título do texto e do aviso numa zona grande: 5,2% e 11% da TV de 
   const css = ler('css', 'player.css');
   assert.match(css, /\.ann-title \{\s+font-size: max\(var\(--mt-piso, 0px\), clamp\(2\.22vmin, 10\.5cqh, 11vmin\)\);/);
   assert.match(css, /font-size: max\(var\(--mt-piso, 0px\), clamp\(1\.39vmin, 4\.9cqh, 5\.2vmin\)\);\s+line-height: 1\.5;/);
-  assert.match(css, /\.mt-text-body \{ font-size: max\(var\(--mt-piso, 0px\), calc\(clamp\(1\.39vmin, min\(4\.6cqw, 5cqh\), 5\.2vmin\)/);
+  assert.match(css, /\.mt-text-body \{ font-size: max\(var\(--mt-piso, 0px\), calc\(clamp\(1\.39vmin, min\(4\.8cqw, 5cqh\), 5\.2vmin\)/);
 });
