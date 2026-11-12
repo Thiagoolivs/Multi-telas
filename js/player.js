@@ -510,7 +510,8 @@
       saveCachedConfig(cfg);
       hidePairing();
     } else if (dev.paired) {
-      // Reivindicada e ainda vazia: quem pareou precisa ver que DEU CERTO.
+      // Reivindicada e ainda vazia: quem pareou precisa ver que DEU CERTO — com a marca da conta.
+      guardarMarcaDaEspera(dev.marca);
       showAguardando(dev.name);
     } else {
       showPairing(dev.code);
@@ -533,6 +534,7 @@
        * chegasse a primeira publicação — e ela pode demorar horas, ou nunca
        * vir, porque a pessoa foi embora achando que o pareamento falhou.
        */
+      guardarMarcaDaEspera(dados && dados.marca);
       showAguardando(dados && dados.nome);
     });
     // A chamada de senha (fase 12): chega pelo mesmo tempo real, com pergunta de reserva (js/senha.js).
@@ -704,7 +706,10 @@
         qr = document.createElement('img');
         qr.className = 'mt-pairing-qr';
         qr.alt = '';
-        if (codeEl && codeEl.parentNode) codeEl.parentNode.insertBefore(qr, codeEl.nextSibling);
+        // Ao lado da instrução (reteste 2): as duas grandes, lidas de longe.
+        const passos = el.querySelector('.mt-pairing-passos');
+        if (passos) passos.insertBefore(qr, passos.firstChild);
+        else if (codeEl && codeEl.parentNode) codeEl.parentNode.insertBefore(qr, codeEl.nextSibling);
       }
       const destino = global.location.origin + '/app/?parear=' + encodeURIComponent(code);
       qr.src = '/api/qr.svg?d=' + encodeURIComponent(destino);
@@ -747,6 +752,8 @@
     textosPairing = { titulo: t ? t.textContent : '', dica: d ? d.innerHTML : '' };
   }
   function restaurarTextosPairing(el) {
+    // O código é da MultiTelas: a marca da conta sai (ver showAguardando).
+    marcaNaEspera(el, null);
     if (!textosPairing) return;
     const t = el.querySelector('.mt-pairing-title');
     const d = el.querySelector('.mt-pairing-hint');
@@ -805,10 +812,51 @@
    * dizendo a verdade daquele momento — e sem o código, que já não serve para
    * nada e só convida a parear de novo.
    */
+  /*
+   * A MARCA DA CONTA NA ESPERA (reteste 2, 09/11). Pareada e ainda sem
+   * programação, a TV ficava no "Tudo certo" da MultiTelas, azul, na
+   * vitrine do cliente. O servidor manda a marca da conta (nome, duas cores
+   * e logo) no aviso de pareamento e nos dados da TV; com ela, a espera tem
+   * a cor da loja, e a logo (ou o nome) no lugar do código.
+   */
+  let marcaDaEspera = null;
+  function guardarMarcaDaEspera(m) { if (m && typeof m === 'object') marcaDaEspera = m; }
+  const COR_DA_ESPERA = /^#[0-9a-fA-F]{6}$/;
+  function marcaNaEspera(el, m) {
+    const conta = el.querySelector('.mt-pairing-conta');
+    const cores = m && Array.isArray(m.cores) ? m.cores.filter((c) => COR_DA_ESPERA.test(String(c))) : [];
+    const logo = m && m.logo && typeof m.logo.url === 'string' ? (m.logo.clara || m.logo.url) : '';
+    const nome = m && typeof m.nome === 'string' ? m.nome : '';
+    const usar = !!(m && (cores.length || logo || nome));
+    el.classList.toggle('mt-pairing-da-conta', usar);
+    if (cores.length) {
+      el.style.setProperty('--conta-1', cores[0]);
+      el.style.setProperty('--conta-2', cores[1] || cores[0]);
+    } else {
+      el.style.removeProperty('--conta-1');
+      el.style.removeProperty('--conta-2');
+    }
+    if (!conta) return;
+    conta.textContent = '';
+    conta.hidden = !usar || !(logo || nome);
+    if (!usar) return;
+    if (logo) {
+      const img = document.createElement('img');
+      img.alt = nome;
+      // A logo que não carrega vira o nome, e não o ícone de imagem quebrada.
+      img.onerror = () => { img.remove(); conta.textContent = nome; conta.hidden = !nome; };
+      img.src = logo;
+      conta.appendChild(img);
+    } else {
+      conta.textContent = nome;
+    }
+  }
+
   function showAguardando(nome) {
     const el = document.getElementById('pairing');
     if (!el) return;
     guardarTextosPairing(el);
+    marcaNaEspera(el, marcaDaEspera);
     const titulo = el.querySelector('.mt-pairing-title');
     const codeEl = el.querySelector('.mt-pairing-code');
     const dica = el.querySelector('.mt-pairing-hint');
@@ -934,11 +982,28 @@
     social: (it) => it.titulo === 'Siga-nos' && !String(it.handle || '').trim(),
     quote: (it) => !String(it.texto || '').trim(),
   };
+  /*
+   * O "Adicionar" que nem chegou a ter conteúdo (reteste 2, 09/11): a
+   * imagem e o vídeo sem arquivo, o YouTube sem vídeo, a apresentação sem
+   * arquivo, o mural sem código, a composição sem nada dentro. Ia ao ar com
+   * o recado para o dono ("Envie um arquivo (.pptx/.pdf)", "Escolha um
+   * mural…") ou com a zona preta; agora não vai, como o exemplo.
+   */
+  const texto = (v) => String(v == null ? '' : v).trim();
+  const SEM_CONTEUDO = {
+    image: (it) => !texto(it.src),
+    video: (it) => !texto(it.src),
+    youtube: (it) => !texto(it.videoId) && !texto(it.src) && !texto(it.channelId),
+    pptx: (it) => !texto(it.src),
+    mural: (it) => !texto(it.codigo),
+    composicao: (it) => !(Array.isArray(it.elementos) && it.elementos.length),
+  };
   function ehExemplo(it) {
     if (!it) return false;
     if (it.meta && it.meta.exemplo) return true;
     const p = PADRAO_ANTIGO[it.type];
-    return !!(p && p(it));
+    const vazio = SEM_CONTEUDO[it.type];
+    return !!(p && p(it)) || !!(vazio && vazio(it));
   }
 
   /*
@@ -2437,6 +2502,8 @@
       const agoraMs = Date.now();
       // Fase 4: o item que ainda é o exemplo do "Adicionar" (meta.exemplo, ou o padrão antigo) não vai ao ar.
       const conhecidos = items.filter((it) => it && !ehExemplo(it) && (!MTRender.conhece || MTRender.conhece(it.type))
+        // O aniversário automático numa semana sem aniversário fica fora da volta (reteste 2).
+        && (!MTRender.temAniversario || MTRender.temAniversario(it))
         // O urgente sem data sai na hora marcada (web/src/lib/aviso.js, QA total 05/11).
         && !(it.meta && Number(it.meta.expiraEm) > 0 && agoraMs > Number(it.meta.expiraEm)));
       // Fase 9: o respiro do modo ambiente entra em comAutomaticos, por último.
