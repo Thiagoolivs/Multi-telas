@@ -7,6 +7,8 @@ import { Spinner } from '../ui/Feedback.jsx';
 import { PecaHtml } from './PecaHtml.jsx';
 import { Body } from './ItemPreview.jsx';
 import { telaAgora } from '../../api.js';
+import { TvAoVivo } from '../tela/TvAoVivo.jsx';
+import { lerProgramacao } from '../../lib/programacaoDaTv.js';
 
 /*
  * "VER A TELA AGORA" (EXECUTOR, item 9).
@@ -20,6 +22,11 @@ import { telaAgora } from '../../api.js';
  *
  * A resposta chega em ~1s pelo tempo real; com ele caído, pelo pulso da TV,
  * que bate a cada 30s. Por isso a espera é longa e diz o porquê.
+ *
+ * Desde o reteste 2, o que aparece é a TV de verdade: o próprio player num
+ * quadro (TvAoVivo, como "Na TV agora" na página da TV), com a programação
+ * da TV e o item que ela contou estar no ar. Sem a programação, o desenho
+ * de antes (o Palco).
  */
 const ESPERA_MS = 40000;
 const PASSO_MS = 800;
@@ -29,6 +36,8 @@ export function VerTelaAgora({ target, onClose }) {
   const [fase, setFase] = useState('');
   const [resposta, setResposta] = useState(null);
   const [esperando, setEsperando] = useState(0);
+  // undefined: lendo; null: sem programação (fica o desenho).
+  const [programacao, setProgramacao] = useState(undefined);
   const pedido = useRef(0);
 
   async function ver() {
@@ -60,13 +69,21 @@ export function VerTelaAgora({ target, onClose }) {
     return () => { pedido.current++; };
   }, [target && target.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    setProgramacao(undefined);
+    if (!target) return undefined;
+    let vivo = true;
+    lerProgramacao(target.id, target.updatedAt || 0).then((c) => { if (vivo) setProgramacao(c || null); });
+    return () => { vivo = false; };
+  }, [target && target.id, target && target.updatedAt]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const quando = resposta && resposta.em
     ? new Date(resposta.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
 
   return (
     <Dialog open={!!target} onClose={onClose} className="max-w-3xl"
       title={'Agora na TV · ' + ((target && target.name) || 'Tela')}
-      description="O que a TV está mostrando neste instante, desenhado aqui no painel."
+      description="O que a TV está mostrando neste instante."
       footer={<>
         <span className="mr-auto text-2xs text-ink-3">
           {fase === 'pedindo' && (esperando < 6000 ? 'Perguntando à TV…'
@@ -80,8 +97,10 @@ export function VerTelaAgora({ target, onClose }) {
       </>}
     >
       <div className="relative">
-        {resposta && resposta.estado
-          ? <Palco estado={resposta.estado} em={resposta.em} />
+        {resposta && resposta.estado && programacao !== undefined
+          ? (programacao
+            ? <TvAoVivo cfg={programacao} estado={resposta.estado} rotulo={'O que passa agora em ' + ((target && target.name) || 'esta TV')} />
+            : <Palco estado={resposta.estado} em={resposta.em} />)
           : <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-line bg-surface-2 text-xs text-ink-3">
               {fase === 'pedindo' ? <Spinner /> : 'Sem resposta da TV ainda.'}
             </div>}

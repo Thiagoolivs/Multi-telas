@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { MonitorPlay } from 'lucide-react';
 import { Palco } from '../content/VerTelaAgora.jsx';
 import { TvAoVivo } from './TvAoVivo.jsx';
-import { telaAgora, deviceConfig } from '../../api.js';
+import { telaAgora } from '../../api.js';
+import { lerProgramacao } from '../../lib/programacaoDaTv.js';
 
 /*
  * A TV em miniatura, com o que ela está mostrando (QA de 26/10: "o que está
@@ -35,22 +36,6 @@ export function podePedir(id, agora = Date.now(), deNovo = false) {
   janela.push(agora);
   pedidos.set(id, agora);
   return true;
-}
-
-/*
- * A programação de cada TV, para a miniatura sair com a marca, a logo e o
- * cabeçalho de verdade (fase 10): a resposta da TV diz o que está no ar, a
- * programação diz como a TV desenha. Lida uma vez por versão da TV (o
- * `updatedAt` da lista muda quando alguém põe algo nela).
- */
-const programacoes = new Map();
-function lerProgramacao(id, versao) {
-  const guardada = programacoes.get(id);
-  if (guardada && guardada.versao === versao) return guardada.promessa;
-  const promessa = deviceConfig.get(id).catch(() => null);
-  programacoes.set(id, { versao, promessa });
-  if (programacoes.size > 200) programacoes.delete(programacoes.keys().next().value);
-  return promessa;
 }
 
 /*
