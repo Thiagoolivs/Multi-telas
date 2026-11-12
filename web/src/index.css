@@ -29,7 +29,7 @@
  * para passar em TODOS os fundos do painel, conferido em
  * test/painel-acessivel.test.js, que lê estes números daqui:
  *   claro  #616875: canvas 5,22 · surface 5,61 · surface-2 5,13 · accent-soft 4,77
- *   escuro #828C9C: canvas 5,86 · surface 5,44 · surface-2 5,09 · accent-soft 4,99
+ *   escuro #828C9C: canvas 5,86 · surface 5,44 · surface-2 5,09 · accent-soft 4,85
  * O anel de foco passou a ser o violeta cheio (era violeta a 40%, 2,0:1 no
  * claro e 1,9:1 no escuro): ≥ 5:1 contra canvas, surface, surface-2 e
  * accent-soft nos dois temas — o mínimo do WCAG 2.4.11/1.4.11 é 3:1.
@@ -73,9 +73,9 @@
   --c-ink: 232 236 242;         /* #E8ECF2 */
   --c-ink-2: 163 173 188;       /* #A3ADBC */
   --c-ink-3: 130 140 156;       /* #828C9C (era #7A8494: 4,49:1 no accent-soft, QA de 03/11) */
-  --c-accent: 146 119 255;      /* #9277FF violeta da marca, clareado para o escuro */
-  --c-accent-fg: 7 9 13;        /* texto escuro no violeta: 6,0:1 */
-  --c-accent-soft: 28 22 64;    /* #1C1640 */
+  --c-accent: 79 140 255;       /* #4F8CFF azul no escuro (12/11, pedido do dono: era o violeta claro #9277FF) */
+  --c-accent-fg: 7 9 13;        /* texto escuro no azul: 6,2:1 */
+  --c-accent-soft: 15 30 61;    /* #0F1E3D */
   --c-ok: 74 201 126;
   --c-ok-soft: 18 38 28;
   --c-warn: 220 158 76;

@@ -20,7 +20,7 @@ Regras:
   sobre branco ela some (contraste 1,3:1).
 - Contraste mínimo de 4,5:1 para texto. Branco no violeta dá 6,4:1; tinta na
   lima dá 15:1.
-- No escuro, o violeta clareia para `#9277FF` (texto escuro em cima, 6:1).
+- No escuro, o destaque do painel é o azul `#4F8CFF` (texto escuro em cima, 6,2:1). Era o violeta claro `#9277FF` até 12/11.
 
 ## Letra
 
