@@ -1,0 +1,66 @@
+<!--
+  A etiqueta sobre o laço — família oferta (lote 5, arquétipo A4, docs/design/SISTEMA-VISUAL.md).
+  O laço do produto cobre a peça; no canto de baixo, uma etiqueta de cor
+  chapada da marca (o único campo de cor grande, deliberado) com o nome e o
+  preço. O preço é o maior texto (D44) e ganha o reflexo uma vez. Texto só
+  na etiqueta, na cor que os tokens garantem sobre o destaque.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5cqw; --p: 13cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; }
+.etiqueta { position: absolute; right: 0; bottom: 0; width: 46%; display: flex; flex-direction: column; justify-content: center; padding: 5cqh 5cqw 8cqh 4.4cqw; background: var(--mt-destaque); color: var(--mt-sobre-destaque); }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .1em; text-transform: uppercase; }
+h1 { margin-top: 1.8cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.preco { margin-top: 3cqh; padding-top: 2.4cqh; border-top: .14cqw solid var(--mt-sobre-destaque); display: flex; align-items: flex-end; gap: 1.6cqw; flex-wrap: wrap; }
+.valor { font: 500 max(var(--mt-piso, 0cqw), calc(var(--p) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); white-space: nowrap; letter-spacing: -.02em; }
+.valor small { font-size: max(var(--mt-piso, 0cqw), .26em); vertical-align: 2em; margin-right: .1em; letter-spacing: 0; }
+.valor sup { font-size: max(var(--mt-piso, 0cqw), .32em); vertical-align: 1.5em; letter-spacing: 0; }
+.unidade { padding-bottom: .4cqh; font: 500 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 5cqw; --p: 12cqw; }
+  .etiqueta { width: 56%; padding: 4cqh 4cqw 9cqh 4cqw; }
+  .kicker { letter-spacing: .06em; }
+  .preco { margin-top: 2.4cqh; padding-top: 2cqh; }
+}
+@container (aspect-ratio >= 1.25) and (max-height: 640px) {
+  .mt-peca { --f: 4.8cqw; --t: 5.4cqw; --p: 11cqw; }
+  .etiqueta { width: 60%; padding: 3.4cqh 4cqw 6cqh; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .preco { margin-top: 2cqh; padding-top: 1.6cqh; }
+}
+/* Em pé e quadrada: o laço em cima, a etiqueta de ponta a ponta no pé. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 5cqw; --t: 10cqw; --p: 30cqw; }
+  .foto { height: 60%; }
+  .etiqueta { left: 0; width: auto; min-height: 40%; padding: 5cqh 7cqw 7cqh; }
+  .kicker { letter-spacing: .1em; }
+  .preco { border-top-width: .24cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 7cqw; --p: 17cqw; }
+  .foto { height: 54%; }
+  .etiqueta { min-height: 46%; padding: 4cqh 7cqw 6cqh; }
+  .preco { margin-top: 2.4cqh; padding-top: 2cqh; }
+}
+@container (max-width: 700px) {
+  .mt-peca { --f: 9.6cqw; --t: 11cqw; --p: 28cqw; }
+  .foto { height: 50%; }
+  .etiqueta { min-height: 50%; padding: 3cqh 8cqw 8cqh; }
+  .kicker, .unidade { display: none; }
+  h1 { margin-top: 0; line-height: 1.02; }
+  .preco { margin-top: 2cqh; padding-top: 1.6cqh; }
+}
+</style>
+<section class="mt-peca cena-oferta">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns">
+  <div class="etiqueta" data-entrada="varrer" data-origem="direita" data-ordem="1">
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="5">Para começar o dia</p>
+    <h1 data-campo="titulo" data-entrada="revelar" data-ordem="6">Café expresso duplo</h1>
+    <div class="preco" data-entrada="aparecer" data-ordem="8">
+      <span class="valor" data-entrada="contar" data-continua="reflexo" data-ordem="8"><small aria-hidden="true">R$</small><span data-campo="preco">8</span><sup data-campo="centavos">,50</sup></span>
+      <span class="unidade" data-campo="unidade">na xícara</span>
+    </div>
+  </div>
+</section>

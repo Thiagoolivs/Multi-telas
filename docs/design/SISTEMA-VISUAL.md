@@ -1,4 +1,4 @@
-# Sistema visual do conteúdo pronto (lote 4)
+# Sistema visual do conteúdo pronto (lotes 4 e 5)
 
 O dono olhou o conteúdo pronto e disse: "feio e infantil". Tinha razão — eram
 pictogramas desenhados em CSS sobre fundo pastel, e quase nenhuma foto. O lote 4
@@ -99,6 +99,85 @@ números com algarismos alinhados; R$ e centavos a um terço do número.
   `(aspect-ratio >= 1.25) and (max-height: 640px)` · em pé `(aspect-ratio < 1.25)`
   · quadrada `(aspect-ratio >= 0.8) and (aspect-ratio < 1.25)` · lateral
   `(max-width: 700px)`.
+
+## Movimento
+
+O dono pediu as peças "mais premium e animadas". Premium é contenção: a peça
+entra como a abertura de um filme e, às 2,5 s, para — só a câmera lenta da
+foto (e o laço do vídeo) segue. O vocabulário é o de `js/animacao.js` (a peça
+declara, o player executa; PLANO §4.13); a vez de cada elemento é
+0,15 s + 0,15 s × `data-ordem` (+ `data-atraso`). A peça fica 12 s no ar.
+
+| Tempo | O quê | Como se escreve |
+|---|---|---|
+| 0–1,35 s | A foto ou o vídeo chega 6% maior e assenta; a foto segue em câmera lenta até o fim | `data-entrada="aproximar" data-continua="kenburns"` (ordem 0) |
+| 0,3 s | O bloco de cor (o da legenda, o painel, a etiqueta, o selo) abre da borda em que está preso | `data-entrada="varrer" data-origem="…"` (ordem 1) |
+| 0,9 s | O filete do kicker se desenha; o kicker aparece com ele | `desenhar` + `aparecer` (ordem 5; sem bloco, 2) |
+| 1,05 s | O título sobe linha a linha, cada uma da sua máscara | `revelar` (ordem 6; sem bloco, 3–4) |
+| 1,35 s | O preço ou o número conta do zero ao valor exato; o reflexo passa uma vez | `contar` (+ `data-continua="reflexo"`, só um por peça) (ordem 6–8) |
+| 1,5–2,1 s | O apoio, a lista, o QR, a assinatura, em escada | `subir` / `aparecer` (ordem 8–13), guias e barrinhas da lista com `desenhar` |
+
+Regras:
+
+- **Nada que pula ou gira** (`estourar`, `girar`) e nenhuma contínua que não
+  para (`flutuar`, `pulsar`, `balancar`, `brilhar`) nas peças com foto.
+- **Um reflexo no máximo**, no preço ou no número da oferta. Nunca em peça
+  que vai para a saúde.
+- **Saúde mais calma**: sem reflexo, `aparecer` no lugar de `subir`, e um
+  passo a mais entre um texto e outro (ordem 2, 4, 7, 9, 11…). O número
+  informativo (os anos da clínica) pode contar.
+- **A última entrada começa até 2,1 s** (ordem 13); a régua mede o repouso.
+- A grade de fotos (mural, trio, mosaico) entra quadro a quadro com
+  `aproximar`, cada foto dentro do seu quadro.
+- TV fraca e quem pediu menos movimento: tudo vira esmaecer, sem câmera lenta
+  (o player decide; a peça não muda).
+- Referência: `capa-produto` (bloco), `numero-preco` (sem bloco),
+  `cardapio-quadro` (lista que se desenha), `numero-marco` (saúde).
+  Teste: `test/lote5.test.js`, "o movimento".
+
+## Lote 5 — "movimento": peças feitas para o vídeo
+
+Quinze peças `cena-*` (`lote: 5`) nascem com a **foto viva**: o espaço de
+foto principal vem com um laço curto e mudo do banco
+(`pecas-ouro/videos/banco.json`); o cliente troca por outro laço ou por foto
+no "Trocar foto". O autor nunca escreve `<video>`: o player troca o `<img>`
+do campo. A câmera lenta não vale no vídeo (ele já se mexe); a entrada
+`aproximar`, sim.
+
+| Peça | Formato | Laço de exemplo |
+|---|---|---|
+| `cena-capa` | o laço na peça inteira, a legenda num bloco de canto reto | massa sovada |
+| `cena-dividida` | meio a meio, a costura da cor de destaque, o preço | hambúrguer na chapa |
+| `cena-janela` | página de revista, o laço numa janela com passe-partout | vinho servido |
+| `cena-cardapio` | faixa larga do laço em cima, quatro itens com guia | queijo na grelha |
+| `cena-aberto` | aberto e os horários, o painel varre sobre o laço | café fumegando |
+| `cena-qr` | cartão com QR no meio da textura que se mexe | seda vinho |
+| `cena-numero` | o número enorme numa faixa sobre o laço | solda |
+| `cena-boas-vindas` | recepção calma, o laço numa janela recuada | sala de espera |
+| `cena-frase` | a frase enorme, o laço numa faixa alta (papel textura) | café coado |
+| `cena-faixa` | cartela de cinema, o laço no "letterbox" | cidade de dia |
+| `cena-mosaico` | um quadro vivo e duas fotos | massa sovada |
+| `cena-oferta` | a etiqueta de cor da marca sobre o laço, o preço | espresso |
+| `cena-vaga` | a equipe em vídeo, as vagas e o QR | equipe conversando |
+| `cena-aviso` | o selo assentado na borda do laço, o aviso | fresadora |
+| `cena-depoimento` | o ofício em vídeo, a frase de quem viveu | barbeiro |
+
+Regras do vídeo:
+
+- **Texto nunca sobre o vídeo cru**: bloco de fundo cheio, painel, etiqueta,
+  cartão ou selo. O vídeo mexe; a letra em cima dele, não.
+- **A janela do vídeo entre 0,8 e 2,2 de proporção** em todo formato (o laço
+  deitado e o quadrado cobrem sem a TV trocar pelo fundo desfocado). A faixa
+  larga (cardápio, número, cartela, aviso) pede laço deitado (16:9). Faixa
+  alta e textura vão com papel `textura`, que sempre cobre.
+- **Um laço por peça e um laço por vez na tela**: nas telas `l5-*` a
+  principal gira as peças com vídeo; a lateral (e a faixa de baixo da TV em
+  pé) leva as mesmas peças com foto. O box fraco toca um vídeo com folga; dois,
+  não se sabe.
+- **Saúde**: sem preço, sem promessa, sem procedimento em close (a sala clara,
+  a luz, a cidade).
+- Todas cabem com a letra do balcão nas 11 marcas, no Corporativo de 0 a 5% de
+  margem e sem mensagem no rodapé (`npm run regua`).
 
 ## O que não fazer
 

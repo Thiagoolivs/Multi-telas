@@ -1,0 +1,59 @@
+<!--
+  Quadro com vídeo — família cardápio (lote 5, arquétipo A5, docs/design/SISTEMA-VISUAL.md).
+  Cardápio de rede: o laço da chapa numa faixa larga em cima (o "herói"), o
+  título numa aba de fundo cheio presa à borda de baixo dele, e quatro itens
+  com a guia pontilhada até o preço. A faixa larga pede laço deitado (16:9).
+  Cada guia se desenha e cada preço conta, item a item.
+-->
+<style>
+.mt-peca { --f: 2.6cqw; --t: 5.8cqw; --i: 4cqw; --heroi: 52%; color: var(--mt-texto); font-family: var(--mt-fonte-texto); background: var(--mt-fundo); }
+.foto { position: absolute; top: 0; left: 0; width: 100%; height: var(--heroi); object-fit: cover; object-position: 50% 50%; }
+.cabeca { position: absolute; left: 0; bottom: calc(100% - var(--heroi)); max-width: 72%; padding: 3.4cqh 4cqw 2.6cqh 6cqw; background: var(--mt-fundo); }
+.kicker { font: 600 max(var(--mt-piso, 0cqw), var(--f))/1.1 var(--mt-fonte-texto); letter-spacing: .14em; text-transform: uppercase; color: var(--mt-destaque); }
+h1 { margin-top: 1.2cqh; font: 500 max(var(--mt-piso, 0cqw), calc(var(--t) * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); letter-spacing: -.01em; text-wrap: balance; }
+.itens { position: absolute; top: var(--heroi); left: 6cqw; right: 6cqw; bottom: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 5cqw; align-content: center; padding: 3cqh 0 6cqh; list-style: none; }
+.itens li { display: flex; align-items: baseline; gap: 1.2cqw; padding: 2.6cqh 0; border-bottom: .12cqw solid var(--mt-linha); }
+.itens span { min-width: 0; font: 500 max(var(--mt-piso, 0cqw), var(--i))/1.15 var(--mt-fonte-texto); }
+.itens i { flex: 1 1 2cqw; min-width: 2cqw; align-self: center; height: 0; border-bottom: .16cqw dotted var(--mt-linha); }
+.itens b { flex: none; font: 500 max(var(--mt-piso, 0cqw), calc(var(--i) * 1.2 * var(--mt-escala-titulo, 1)))/1 var(--mt-fonte-titulo); color: var(--mt-preco); white-space: nowrap; }
+.foto[data-sem-foto] { visibility: hidden; }
+
+@container ((aspect-ratio >= 1.25) and (max-height: 900px)) or ((aspect-ratio >= 1.25) and (aspect-ratio < 1.6) and (max-height: 940px)) {
+  .mt-peca { --f: 3.5cqw; --t: 5.4cqw; --i: 4cqw; --heroi: 46%; }
+  .cabeca { max-width: 80%; padding: 2.6cqh 3.4cqw 2cqh 5cqw; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .itens { left: 5cqw; right: 5cqw; column-gap: 4cqw; padding: 2cqh 0 4cqh; }
+  .itens li { padding: 1.6cqh 0; }
+}
+/* Em pé: a faixa do vídeo em cima, os quatro itens numa coluna. */
+@container (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.8cqw; --t: 10cqw; --i: 7cqw; --heroi: 38%; }
+  .cabeca { max-width: 86%; padding: 3cqh 5cqw 2cqh 7cqw; }
+  .kicker { letter-spacing: .1em; }
+  .itens { left: 7cqw; right: 7cqw; grid-template-columns: 1fr; padding: 4cqh 0 7cqh; }
+  .itens li { gap: 2cqw; padding: 3cqh 0; border-bottom-width: .24cqw; }
+  .itens i { border-bottom-width: .26cqw; }
+}
+@container (aspect-ratio >= 0.8) and (aspect-ratio < 1.25) {
+  .mt-peca { --f: 4.6cqw; --t: 7.4cqw; --i: 5.4cqw; --heroi: 38%; }
+  .cabeca { padding: 2.4cqh 4cqw 1.6cqh 7cqw; }
+  .kicker { display: none; }
+  h1 { margin-top: 0; }
+  .itens { padding: 2.6cqh 0 5cqh; }
+  .itens li { padding: 1.5cqh 0; }
+}
+</style>
+<section class="mt-peca cena-cardapio">
+  <img class="foto" data-campo-img="foto" alt="" data-entrada="aproximar" data-continua="kenburns">
+  <div class="cabeca" data-entrada="varrer" data-origem="esquerda" data-ordem="1">
+    <p class="kicker" data-campo="kicker" data-entrada="aparecer" data-ordem="5">Na chapa agora</p>
+    <h1 data-campo="titulo" data-entrada="revelar" data-ordem="6">Burgers da casa</h1>
+  </div>
+  <ul class="itens">
+    <li data-entrada="subir" data-ordem="7"><span data-campo="item1">Clássico</span><i aria-hidden="true" data-entrada="desenhar" data-ordem="8"></i><b data-campo="preco1" data-entrada="contar" data-ordem="8">29</b></li>
+    <li data-entrada="subir" data-ordem="8"><span data-campo="item2">Cheddar duplo</span><i aria-hidden="true" data-entrada="desenhar" data-ordem="9"></i><b data-campo="preco2" data-entrada="contar" data-ordem="9">36</b></li>
+    <li data-entrada="subir" data-ordem="9"><span data-campo="item3">Bacon e cebola</span><i aria-hidden="true" data-entrada="desenhar" data-ordem="10"></i><b data-campo="preco3" data-entrada="contar" data-ordem="10">34</b></li>
+    <li data-entrada="subir" data-ordem="10"><span data-campo="item4">Batata da casa</span><i aria-hidden="true" data-entrada="desenhar" data-ordem="11"></i><b data-campo="preco4" data-entrada="contar" data-ordem="11">14</b></li>
+  </ul>
+</section>
