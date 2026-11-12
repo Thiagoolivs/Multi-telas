@@ -315,9 +315,29 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
   - o aviso da volta longa escondido; conteúdo fora de época ou de regra em Prontos (Outubro Rosa em novembro, parcelado na saúde);
   - Prontos 7,4 s no 4G lento e Telas com 32 chamadas;
   - a tela de espera e de pareamento da TV com letra pequena e ainda sem a marca do cliente.
+- [x] **Corrigido depois do reteste 2 (10 a 12/11, PRs 335 e 336):**
+  - **O painel:**
+    - Aprovações e "Ver agora" mostram a TV de verdade.
+    - A primeira TV fica em 14 toques, e o robô dela voltou a rodar.
+    - O aviso da volta longa aparece.
+    - A campanha da IA ganha "Quando" e "Desfazer".
+    - Prontos abre em ~2,5 s no 4G lento, com um pacote só.
+    - Telas faz 6 chamadas, e Plataforma abre em ~3 s.
+    - O e-mail do suporte é configurável, e a busca entra em Telas.
+    - Os pedidos de aprovação de um membro se juntam num só.
+  - **A TV:**
+    - Nada cortado: a data encurta ("QUI · 12 NOV"), a letra encolhe até o piso e depois quebra; 4 faixas foram redesenhadas.
+    - Nada sobre nada: combo, lançamento e lista foram corrigidos. A régua agora reprova texto cortado ou sobreposto e monta as 101 telas prontas.
+    - O espaço de foto vazio recebe uma foto do banco pelo tipo de negócio, e preço pela metade não vai ao ar.
+    - Prontos só mostra o que é da época (Outubro Rosa não aparece em novembro), Saúde fica sem preço e os exemplos não citam dia errado.
+    - O código de parear sobe para 4,6%, e a tela de espera mostra a marca da conta, sem recado técnico.
+    - O corpo do texto fica em 4,6–5,2% e o título em 10–11%.
+    - A linha que não quebra encolhe o título inteiro até caber.
+  - **Falta:** o QR da `qr-foto` só aparece com o site da conta, e 16 peças ainda cedem um pouco o piso na TV quadrada (84–97%).
+- [ ] **Reteste 3:** rodando.
 - [ ] **Bloco 2 e os cenários de IA do bloco 3:** dependem do crédito do Gemini.
 - [ ] **Os pilotos:** com você, pelo roteiro.
-- **O que falta para cada bloco chegar a 9 (do reteste):**
+- **O que falta para cada bloco chegar a 9 (do primeiro reteste, 05/11; quase tudo corrigido em 06/11):**
   - **1. A TV (6,5):**
     - A cor da marca no texto (preço, @, kicker) fica entre 2,5 e 3,5 de contraste; a régua pede 4,5. Hoje aceitamos 3 no destaque (`js/tokens.js:105`) e o tema mira 3,5 (`js/theme.js:246`).
     - As telas prontas esperam a sua aprovação na galeria: hoje só 1 de 53 está aprovada.
