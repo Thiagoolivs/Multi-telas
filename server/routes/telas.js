@@ -75,6 +75,26 @@ module.exports = function (ctx) {
   }
 
   /*
+   * A MARCA DA CONTA NA TV PAREADA E AINDA SEM PROGRAMAÇÃO (reteste 2,
+   * 09/11). A TV saía do código e ficava no "Tudo certo" azul da MultiTelas,
+   * na vitrine do cliente, até a primeira publicação. Agora a TV recebe o
+   * nome, as duas cores e a logo da conta (no aviso de pareamento e na
+   * leitura dos dados dela) e espera com a cara da loja. Só o que a TV
+   * desenha: nada de site, endereço ou ramo.
+   */
+  const COR_HEX = /^#[0-9a-f]{6}$/i;
+  async function marcaDaTv(tenantId) {
+    if (!tenantId) return null;
+    const [kit, empresa, logo] = await Promise.all([
+      db.getBrandKit(tenantId).catch(() => null), empresaDa(tenantId), paleta.logoDaConta(db, tenantId).catch(() => null),
+    ]);
+    const nome = (kit && kit.nome && kit.nome !== 'Marca principal' ? kit.nome : '') || empresa;
+    const cores = (kit && Array.isArray(kit.cores) ? kit.cores : []).filter((c) => COR_HEX.test(String(c))).slice(0, 2);
+    if (!nome && !cores.length && !logo) return null;
+    return { nome: String(nome || '').slice(0, 60), cores, logo: logo || null };
+  }
+
+  /*
    * A PROGRAMAÇÃO COMO O PAINEL LÊ (QA total, 05/11): limpa pelo mesmo
    * normalizador da TV (js/storage.js), com o nome da conta no cabeçalho e o
    * tema da marca. Lida crua, uma programação de versão antiga (a lista em vez
@@ -368,7 +388,7 @@ module.exports = function (ctx) {
          * e agora ela tem um erro de cobrança num produto que ela ainda nem viu
          * funcionar.
          */
-        broadcast(d.id, 'pareada', { nome, em: Date.now() });
+        broadcast(d.id, 'pareada', { nome, em: Date.now(), marca: await marcaDaTv(sess.tenant_id).catch(() => null) });
         // semConteudo: o painel põe uma tela pronta do ramo, para a TV não nascer vazia.
         return sendJson(res, 200, { id: d.id, name: nome, semConteudo: !d.config });
       });
@@ -573,6 +593,13 @@ module.exports = function (ctx) {
             // A frente da conta (fase 3): sem "onde a TV fica" escolhido, a letra mínima é a da frente.
             const frente = await paleta.perfilDaConta(db, device.tenant_id).catch(() => '');
             if (frente) { c.settings.frente = frente; mudou = true; }
+            /*
+             * O ramo da conta (reteste 2, 09/11): o espaço de foto que ficou
+             * sem foto leva a foto padrão do banco para aquele papel e ramo
+             * (js/peca-render.js, fotoPadrao), em vez de meia peça vazia.
+             */
+            const ramo = await paleta.ramoDaConta(db, device.tenant_id).catch(() => '');
+            if (ramo) { c.settings.ramo = ramo; mudou = true; }
             /*
              * Aniversários e mural "nas TVs" (D15): a escolha é da conta, e
              * esta TV recebe só o que a alcança. Calculado agora, como a logo:
@@ -822,6 +849,8 @@ module.exports = function (ctx) {
       // Metadados (dono ou device)
       if (req.method === 'GET' && !sub) {
         if (!dtOk && !owns) return sendJson(res, 403, { error: 'sem permissão' });
+        // A TV pareada e ainda sem programação espera com a marca da conta (marcaDaTv).
+        if (dtOk && device.tenant_id && !device.config) return sendJson(res, 200, Object.assign(pubDevice(device), { marca: await marcaDaTv(device.tenant_id).catch(() => null) }));
         return sendJson(res, 200, pubDevice(device));
       }
       /*
@@ -1052,7 +1081,7 @@ module.exports = function (ctx) {
     await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.reconectar').catch(() => {});
     // A TV sai do código na hora: com programação, busca a config; sem, mostra "Tudo certo".
     if (antiga.config || nova.config) broadcast(nova.id, 'config', { updatedAt: Date.now() });
-    else broadcast(nova.id, 'pareada', { nome, em: Date.now() });
+    else broadcast(nova.id, 'pareada', { nome, em: Date.now(), marca: await marcaDaTv(sess.tenant_id).catch(() => null) });
     return { id: nova.id, name: nome, herdouConfig: !!antiga.config, reconectada: true };
   }
 

@@ -187,7 +187,8 @@
         // `name` entra aqui para a TV recarregada poder dizer "Tudo certo,
         // Vitrine" em vez de só "Tudo certo": o servidor já mandava, e este
         // destructuring jogava fora.
-        return { id: meta.id, code: meta.code, paired: meta.paired, name: meta.name };
+        // `marca`: a da conta, para a TV pareada e ainda vazia esperar com a cara da loja (reteste 2).
+        return { id: meta.id, code: meta.code, paired: meta.paired, name: meta.name, marca: meta.marca || null };
       } catch (e) {
         /*
          * Só desiste da identidade quando o SERVIDOR diz que ela não vale

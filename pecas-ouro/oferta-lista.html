@@ -94,6 +94,8 @@ h1 { font: 400 max(var(--mt-piso, 0cqw), 6.4cqw)/.95 var(--mt-fonte-titulo); tex
   .det { margin-top: .2cqw; line-height: 1.1; }
 }
 @container (aspect-ratio >= 1.25) and (min-height: 600px) and (max-height: 712px) {
+  /* Reteste 2: com a letra do balcão, o nome da marca chegava à lista (que aqui começa em 42cqw); ele quebra antes dela. */
+  .marca-nome { max-width: 33cqw; letter-spacing: .06em; line-height: 1.05; }
   .itens { left: 42cqw; }
   .itens li { grid-template-columns: 1fr auto; }
   .num { display: none; }

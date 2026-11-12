@@ -8,14 +8,26 @@
 <style>
 .mt-peca { display: flex; align-items: center; gap: 6cqh; padding: 0 3cqw; color: var(--mt-texto); font-family: var(--mt-fonte-texto);
   background: var(--mt-fundo); border-top: 1.2cqh solid var(--mt-linha); }
-.chamada { flex: none; display: flex; align-items: center; gap: 8cqh; font: italic 400 max(var(--mt-piso, 0cqw), 40cqh)/1 var(--mt-fonte-titulo); white-space: nowrap; }
+/* A chamada quebra em duas linhas quando a fonte da marca é larga (Rota Sul, no balcão): em uma, ela não deixava lugar nem para o primeiro contato. */
+.chamada { flex: 0 1 auto; min-width: 0; max-width: 52%; display: flex; align-items: center; gap: 8cqh; font: italic 400 max(var(--mt-piso, 0cqw), 40cqh)/1.02 var(--mt-fonte-titulo); text-wrap: balance; }
 .chamada::after { content: ''; display: block; width: 26cqh; height: 1.2cqh; background: var(--mt-destaque); }
-.contatos { flex: 1; min-width: 0; display: flex; justify-content: flex-end; gap: 16cqh; list-style: none; margin: 0; padding: 0; }
-.contatos li { display: flex; flex-direction: column; gap: 7cqh; white-space: nowrap; }
+/*
+ * Reteste 2 (09/11): com a letra do balcão, os três contatos não cabiam ao
+ * lado da chamada e passavam por cima dela ("Hora marcada, sem espera" sobre
+ * o WhatsApp), e o piso cedia. Agora a lista mostra só o que cabe numa
+ * linha: o contato que não cabe desce para a linha de baixo, que a caixa
+ * esconde (flex-wrap + overflow, a regra "o que não cabe sai" do
+ * js/peca-render.js). O espaço entre as letras do rótulo é fixo (cqh): em em,
+ * ele crescia com a letra do piso.
+ */
+.contatos { flex: 1 1 0; min-width: 0; align-self: stretch; display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: flex-end; overflow: hidden;
+  column-gap: 16cqh; list-style: none; margin: 0; padding: 0; }
+/* Cada contato tem a altura da faixa: a segunda linha da lista começa onde a caixa termina. */
+.contatos li { height: 100%; display: flex; flex-direction: column; justify-content: center; gap: max(0cqh, calc(7cqh - (max(var(--mt-piso, 0cqw), 12cqh) - 12cqh))); white-space: nowrap; }
 .contatos li + li { padding-left: 16cqh; border-left: 1.2cqh solid var(--mt-linha); }
 .contatos li:has(> span:empty) { display: none; }
-.rotulo { font: 600 max(var(--mt-piso, 0cqw), 12cqh)/1 var(--mt-fonte-texto); letter-spacing: .32em; text-transform: uppercase; color: var(--mt-destaque); }
-.contatos span { font: 500 max(var(--mt-piso, 0cqw), 24cqh)/1 var(--mt-fonte-texto); letter-spacing: .02em; }
+.rotulo { font: 600 max(var(--mt-piso, 0cqw), 12cqh)/1.05 var(--mt-fonte-texto); letter-spacing: 3.8cqh; text-transform: uppercase; color: var(--mt-destaque); }
+.contatos span { font: 500 max(var(--mt-piso, 0cqw), 24cqh)/1.05 var(--mt-fonte-texto); letter-spacing: .02em; }
 /*
  * Faixa curta: o endereço sai, a chamada encolhe. Em pé (8:1) e também a
  * faixa do layout padrão, ao lado da lateral (1390×140, 10:1): ali a

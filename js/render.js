@@ -192,6 +192,42 @@
     el.style.backgroundImage = 'url("' + item.fundo + '")';
   }
 
+  /*
+   * NADA DE RECADO TÉCNICO NA PAREDE (reteste 2, 09/11). Nove tipos do
+   * "Adicionar" ainda escreviam para o público o que é recado para o dono:
+   * "Imagem indisponível", "Entrada de vídeo indisponível", "Carregando
+   * clima…", "Envie um arquivo (.pptx/.pdf)", "Escolha um mural nas
+   * configurações desta tela". O que nem chegou a ter conteúdo (a imagem sem
+   * arquivo, o mural sem código) não vai ao ar (js/player.js, ehExemplo); o
+   * que falha na hora (a foto que não carrega, a captura que não responde)
+   * vira a marca em calma — a logo ou o nome sobre a cor da marca, o mesmo
+   * desenho da zona vazia (css/player.css, .mt-espera). O dono vê o problema
+   * no painel; quem passa na frente da TV vê a loja.
+   */
+  function marcaEmCalma(el) {
+    const caixa = div('mt-espera mt-marca-em-calma');
+    const marca = div('mt-espera-marca');
+    const logo = global.MT_LOGO;
+    const nome = global.MT_NOME || '';
+    if (logo && logo.url) {
+      const img = document.createElement('img');
+      img.alt = '';
+      img.className = 'mt-espera-logo';
+      img.onerror = function () { img.remove(); marca.textContent = nome; };
+      img.src = logo.clara || logo.url;
+      marca.appendChild(img);
+    } else {
+      marca.textContent = nome;
+    }
+    caixa.appendChild(marca);
+    el.appendChild(caixa);
+    return caixa;
+  }
+  function tirarMarcaEmCalma(el) {
+    const c = el.querySelector('.mt-marca-em-calma');
+    if (c) c.remove();
+  }
+
   function renderImage(item) {
     const el = div('mt-slide mt-image');
     comFundo(el, item);
@@ -201,7 +237,8 @@
     img.src = item.src;
     img.onerror = function () {
       el.classList.add('mt-broken');
-      el.textContent = 'Imagem indisponível';
+      el.textContent = '';
+      marcaEmCalma(el);
     };
     el.appendChild(img);
 
@@ -306,7 +343,9 @@
     async function start() {
       if (stopped) return;
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        msg.textContent = 'Captura não suportada neste dispositivo'; return;
+        msg.style.display = 'none';
+        if (!el.querySelector('.mt-marca-em-calma')) marcaEmCalma(el);
+        return;
       }
       try {
         const videoConstraints = item.deviceId
@@ -321,9 +360,11 @@
         video.srcObject = stream;
         video.play().catch(() => {});
         msg.style.display = 'none';
+        tirarMarcaEmCalma(el);
       } catch (e) {
-        msg.style.display = '';
-        msg.textContent = 'Entrada de vídeo indisponível';
+        // A captura não respondeu: a marca em calma enquanto tenta de novo (reteste 2).
+        msg.style.display = 'none';
+        if (!el.querySelector('.mt-marca-em-calma')) marcaEmCalma(el);
         if (!stopped) retry = setTimeout(start, 6000); // reconecta sozinho
       }
     }
@@ -454,7 +495,9 @@
     let hls = null, stopped = false, retry = null;
 
     function fail(advance) {
-      msg.style.display = ''; msg.textContent = 'Stream indisponível';
+      // Sem "Stream indisponível" na parede (reteste 2): a marca em calma, e a TV tenta de novo.
+      msg.style.display = 'none';
+      if (!el.querySelector('.mt-marca-em-calma')) marcaEmCalma(el);
       if (!stopped && !item.duracao) retry = setTimeout(() => start(advance), 8000);
     }
     function playNative(advance) {
@@ -464,7 +507,7 @@
     function start(advance) {
       if (stopped || !url) { if (!url) msg.textContent = 'URL do stream não informada'; return; }
       msg.style.display = '';
-      video.oncanplay = function () { msg.style.display = 'none'; };
+      video.oncanplay = function () { msg.style.display = 'none'; tirarMarcaEmCalma(el); };
       video.onerror = function () { fail(advance); };
       if (isHls && !video.canPlayType('application/vnd.apple.mpegurl')) {
         ensureHls().then(function (Hls) {
@@ -637,7 +680,8 @@
     const el = div('mt-slide mt-weather');
     if (item.bg) el.style.background = item.bg; // senão herda o vidro do tema
     const inner = div('mt-weather-inner');
-    inner.textContent = 'Carregando clima…';
+    // Enquanto o clima não chega, a hora e a data (o mesmo fallback de quando ele não vem), e não "Carregando clima…".
+    inner.innerHTML = weatherFallbackHtml(item.cidade || 'São Paulo');
     el.appendChild(inner);
     let relogio = null;
     return {
@@ -669,7 +713,8 @@
   function weatherFallbackHtml(cidade) {
     return '<div class="wp-fallback">' +
       '<div class="wpf-date">' + fmtDataLonga(new Date()) + '</div>' +
-      '<div class="wpf-time" data-clock>--:--</div>' +
+      // A hora já na primeira pintura: o fallback também é a tela de espera do clima (reteste 2).
+      '<div class="wpf-time" data-clock>' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + '</div>' +
       (cidade ? '<div class="wpf-city">' + escapeHtml(cidade) + '</div>' : '') +
       '</div>';
   }
@@ -679,7 +724,8 @@
     const el = div('mt-slide mt-wpro');
     if (item.bg) el.style.background = item.bg;
     const inner = div('mt-wpro-inner');
-    inner.innerHTML = '<div class="mt-wpro-loading">Carregando clima…</div>';
+    // Enquanto o clima não chega, a hora e a data, e não "Carregando clima…" (reteste 2).
+    inner.innerHTML = weatherFallbackHtml(item.cidade || 'São Paulo');
     el.appendChild(inner);
     let timer = null, clock = null;
 
@@ -732,7 +778,7 @@
     return {
       el,
       duration: item.duracao || 0,
-      onEnter: () => { load(); timer = setInterval(load, 15 * 60 * 1000); },
+      onEnter: () => { startClock(); load(); timer = setInterval(load, 15 * 60 * 1000); },
       onLeave: () => { if (timer) clearInterval(timer); stopClock(); },
     };
   }
@@ -864,6 +910,24 @@
     return { el, duration: item.duracao || 12 };
   }
 
+  /*
+   * O cartão automático tem quem mostrar (reteste 2, 09/11)? Semana sem
+   * aniversário, ele não entra na volta (js/player.js) — antes ia ao ar
+   * "🎂 Em breve, novos aniversários", recado que não diz nada a quem passa.
+   */
+  function temAniversario(item) {
+    if (!item || item.type !== 'birthdayauto') return true;
+    if (item.modo === 'pessoa') return !!item.pessoa;
+    const all = birthdayRoster();
+    if (!all.length) return false;
+    const now = new Date();
+    if (item.modo === 'hoje') return all.some((p) => +p.dia === now.getDate() && +p.mes === now.getMonth() + 1);
+    const seg = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+    const semana = {};
+    for (let i = 0; i < 7; i++) { const dt = new Date(seg.getFullYear(), seg.getMonth(), seg.getDate() + i); semana[mmdd2(dt.getMonth() + 1, dt.getDate())] = 1; }
+    return all.some((p) => mmdd2(+p.mes, +p.dia) in semana);
+  }
+
   function renderBirthdayAuto(item) {
     if (item.modo === 'pessoa' && item.pessoa) return renderAniversariante(item);
     const modo = ['hoje', 'semana', 'auto'].includes(item.modo) ? item.modo : 'auto';
@@ -883,11 +947,9 @@
 
     const el = div('mt-slide mt-surface mt-bday mt-bday-' + show);
 
-    // Nada a mostrar: mensagem gentil (não deixa a zona "quebrada").
+    // Nada a mostrar: a volta já não o põe no ar (temAniversario); se chegar aqui, a marca em calma, sem recado.
     if ((show === 'hoje' && !today.length) || (show === 'semana' && !week.length)) {
-      const e = div('mt-bday-empty');
-      e.textContent = '🎂 Em breve, novos aniversários';
-      el.appendChild(e);
+      marcaEmCalma(el);
       return { el, duration: item.duracao || 8 };
     }
 
@@ -956,7 +1018,7 @@
             '&lat=' + lat + '&lon=' + lon + '&ct=livemap';
           el.insertBefore(iframe, badge);
         } catch (e) {
-          el.appendChild(divText('mt-map-error', 'Trânsito indisponível'));
+          marcaEmCalma(el);
         }
       },
     };
@@ -987,7 +1049,7 @@
             '&layer=mapnik&marker=' + lat + '%2C' + lon;
           el.insertBefore(iframe, badge);
         } catch (e) {
-          el.appendChild(divText('mt-map-error', 'Mapa indisponível'));
+          marcaEmCalma(el);
         }
       },
     };
@@ -1709,7 +1771,8 @@
   function renderPptx(item) {
     const el = div('mt-slide mt-web mt-pptx');
     const src = String(item.src || '');
-    if (!src) { el.classList.add('mt-empty'); el.textContent = 'Envie um arquivo (.pptx/.pdf)'; return { el, duration: item.duracao || 8 }; }
+    // Sem arquivo não vai ao ar (js/player.js, ehExemplo); se chegar aqui, a marca em calma, e não o recado para o dono.
+    if (!src) { marcaEmCalma(el); return { el, duration: item.duracao || 8 }; }
     const iframe = document.createElement('iframe');
     iframe.setAttribute('frameborder', '0');
     iframe.setAttribute('allowfullscreen', 'true');
@@ -1827,9 +1890,10 @@
     const palco = div('mt-mural-palco');
     el.appendChild(palco);
 
+    // Sem mural escolhido não vai ao ar (js/player.js, ehExemplo); se chegar aqui, a marca em calma.
     if (!codigo) {
-      el.classList.add('mt-empty');
-      palco.textContent = 'Escolha um mural nas configurações desta tela.';
+      el.textContent = '';
+      marcaEmCalma(el);
       return { el, duration: item.duracao || 10 };
     }
 
@@ -1981,6 +2045,9 @@
       logo: global.MT_LOGO || null,
       hostsMidia: global.MT_HOSTS_MIDIA || [],
       clima: climaDaPeca,
+      // O ramo e a frente da conta: o espaço de foto vazio leva a foto padrão do banco (js/peca-render.js, fotoPadrao).
+      ramo: global.MT_RAMO || '',
+      frente: global.MT_FRENTE || '',
     }, extra || {});
   }
 
@@ -2280,5 +2347,5 @@
   function registrar(tipo, fn) {
     if (typeof fn === 'function' && !conhece(tipo)) RENDERERS[tipo] = fn;
   }
-  global.MTRender = { renderItem, conhece, registrar, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca, hostDaPeca };
+  global.MTRender = { renderItem, conhece, registrar, ITEM_TYPES, ANN_VARIANTS, extractYouTubeId, opcoesDaPeca, hostDaPeca, temAniversario };
 })(window);

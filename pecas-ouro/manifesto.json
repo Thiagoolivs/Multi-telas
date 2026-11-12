@@ -1,5 +1,5 @@
 {
-  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens). Telas prontas (D18): lotes de 20, por perfil ('perfil') e estrutura ('estrutura'), em estado 'proposta' até o dono aprovar na bancada.",
+  "sobre": "Biblioteca-ouro (docs/PLANO.md §4.8). Cada peça é um arquivo .html nesta pasta. 'estado' muda para 'aprovada' só depois de o dono olhar na bancada (/bancada.html). 'telas' são combinações de peças numa tela completa — não peças novas. As mensagens do rodapé são de cada tela (campo mensagens). Telas prontas (D18): lotes de 20, por perfil ('perfil') e estrutura ('estrutura'), em estado 'proposta' até o dono aprovar na bancada. 'sazonal' (reteste 2): a época de uma peça ou tela de campanha — { de: 'MM-DD', ate: 'MM-DD' } para ela inteira, ou { <frente>: { de, ate } } quando só o texto daquela frente é de campanha. Fora da época, ela não aparece nos Prontos (web/src/lib/modelosOuro.js, naEpoca).",
   "marcas": [
     {
       "id": "otica",
@@ -503,8 +503,8 @@
           "titulo": "Vacina",
           "titulo2": "da gripe",
           "meta": "15 min · sem agendar",
-          "preco": "89",
-          "centavos": ",90",
+          "preco": "",
+          "centavos": "",
           "pedido": "Tire as dúvidas pelo QR",
           "pedido-apoio": "Abre a conversa no WhatsApp"
         }
@@ -669,7 +669,21 @@
       },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
-      "marca": "clinica"
+      "marca": "clinica",
+      "sazonal": {
+        "comercio": {
+          "de": "11-01",
+          "ate": "11-30"
+        },
+        "empresa": {
+          "de": "11-01",
+          "ate": "11-30"
+        },
+        "saude": {
+          "de": "10-01",
+          "ate": "10-31"
+        }
+      }
     },
     {
       "id": "oferta-parcelado",
@@ -679,8 +693,7 @@
         "destaque"
       ],
       "frentes": [
-        "comercio",
-        "saude"
+        "comercio"
       ],
       "textos": {
         "comercio": {
@@ -698,7 +711,7 @@
       },
       "estado": "aprovada",
       "aprovadaEm": "2026-10-21",
-      "marca": "clinica"
+      "marca": "padaria"
     },
     {
       "id": "institucional-valores",
@@ -1177,7 +1190,7 @@
       ],
       "textos": {
         "empresa": {
-          "kicker": "Almoço de hoje · quinta",
+          "kicker": "Almoço de hoje",
           "titulo": "Frango assado",
           "titulo2": "com polenta",
           "acompanha": "Arroz, feijão, salada e a fruta. Desconto em folha.",
@@ -1603,7 +1616,11 @@
       },
       "estado": "proposta",
       "marca": "clinica",
-      "lote": 3
+      "lote": 3,
+      "sazonal": {
+        "de": "11-01",
+        "ate": "11-30"
+      }
     },
     {
       "id": "servico-preparo",
@@ -2274,6 +2291,12 @@
       "lote": 4,
       "campos": {
         "foto": "/pecas-ouro/fotos/dentista/sorriso-janela.jpg"
+      },
+      "sazonal": {
+        "saude": {
+          "de": "03-01",
+          "ate": "07-31"
+        }
       }
     },
     {
@@ -2370,7 +2393,7 @@
       },
       "textos": {
         "comercio": {
-          "kicker": "Prato do dia · quinta",
+          "kicker": "Prato do dia · hoje",
           "titulo": "Tagliatelle ao ragu de costela",
           "apoio": "Massa fresca da casa, ragu cozido por seis horas e parmesão.",
           "quando": "Almoço, até as 15h",
@@ -2855,7 +2878,7 @@
           "dia": "22",
           "mes": "Nesta quarta",
           "kicker": "Roda de conversa",
-          "titulo": "Outubro Rosa: tire as suas dúvidas",
+          "titulo": "Prevenção: tire as suas dúvidas",
           "hora": "Às 10h",
           "local": "Na sala de espera, com a equipe"
         },
@@ -4242,8 +4265,8 @@
                 "titulo": "Mamografia",
                 "titulo2": "agendada",
                 "meta": "Pedido médico e documento com foto",
-                "preco": "180",
-                "centavos": ",00",
+                "preco": "",
+                "centavos": "",
                 "pedido": "Agende pelo QR",
                 "pedido-apoio": "Abre a conversa com a recepção",
                 "link": "https://wa.me/5511977770000"
@@ -4266,7 +4289,11 @@
         "Atendemos os principais convênios",
         "Chegue 15 minutos antes da consulta"
       ],
-      "sobre": "Tela sem cabeçalho (Destaque + Barra Lateral): a hora vai para o rodapé. O destaque fala da campanha, do check-up, do jeito da casa e do feriado; a lateral, do aviso e de como marcar; o rodapé, do resto. Com cabeçalho (Corporativo), entra o cabeçalho mínimo."
+      "sobre": "Tela sem cabeçalho (Destaque + Barra Lateral): a hora vai para o rodapé. O destaque fala da campanha, do check-up, do jeito da casa e do feriado; a lateral, do aviso e de como marcar; o rodapé, do resto. Com cabeçalho (Corporativo), entra o cabeçalho mínimo.",
+      "sazonal": {
+        "de": "10-01",
+        "ate": "10-31"
+      }
     },
     {
       "id": "lanchonete-terca-do-burger",
@@ -4453,8 +4480,8 @@
                 "oferta": "30% off",
                 "apoio": "Em todas as armações da vitrine, com proteção UV400.",
                 "preco-rotulo": "a partir de",
-                "parcelas": "10x de",
-                "preco": "29",
+                "parcelas": "ou 10× de R$ 18,99",
+                "preco": "189",
                 "centavos": ",90",
                 "cta": "Experimente na loja"
               }
@@ -5860,8 +5887,8 @@
                 "titulo": "Mamografia",
                 "titulo2": "agendada",
                 "meta": "Pedido médico e documento com foto",
-                "preco": "180",
-                "centavos": ",00",
+                "preco": "",
+                "centavos": "",
                 "link": "https://wa.me/5511977770000",
                 "pedido": "Agende pelo QR",
                 "pedido-apoio": "Abre a conversa com a recepção"
@@ -5896,7 +5923,11 @@
       ],
       "sobre": "A campanha do mês com a data, o mutirão, o agendamento por QR e o lembrete.",
       "estado": "proposta",
-      "lote": 1
+      "lote": 1,
+      "sazonal": {
+        "de": "10-01",
+        "ate": "10-31"
+      }
     },
     {
       "id": "l1-saude-institucional",
@@ -7706,7 +7737,11 @@
       ],
       "sobre": "Para a clínica: a campanha do mês, as promessas do atendimento e o horário da coleta.",
       "estado": "proposta",
-      "lote": 2
+      "lote": 2,
+      "sazonal": {
+        "de": "10-01",
+        "ate": "10-31"
+      }
     },
     {
       "id": "l2-clinica-em-pe",
@@ -7810,7 +7845,11 @@
       ],
       "sobre": "Para a clínica: a campanha do mês, as promessas do atendimento e o horário da coleta.",
       "estado": "proposta",
-      "lote": 2
+      "lote": 2,
+      "sazonal": {
+        "de": "10-01",
+        "ate": "10-31"
+      }
     },
     {
       "id": "l2-clinica-quadrada",
@@ -7898,7 +7937,11 @@
       ],
       "sobre": "Para a clínica: a campanha do mês, as promessas do atendimento e o horário da coleta.",
       "estado": "proposta",
-      "lote": 2
+      "lote": 2,
+      "sazonal": {
+        "de": "10-01",
+        "ate": "10-31"
+      }
     },
     {
       "id": "l2-dentista-deitada",
@@ -8343,7 +8386,11 @@
       ],
       "sobre": "Para a farmácia: as ofertas com preço, a campanha do mês e o horário estendido.",
       "estado": "proposta",
-      "lote": 2
+      "lote": 2,
+      "sazonal": {
+        "de": "11-01",
+        "ate": "11-30"
+      }
     },
     {
       "id": "l2-farmacia-em-pe",
@@ -8453,7 +8500,11 @@
       ],
       "sobre": "Para a farmácia: as ofertas com preço, a campanha do mês e o horário estendido.",
       "estado": "proposta",
-      "lote": 2
+      "lote": 2,
+      "sazonal": {
+        "de": "11-01",
+        "ate": "11-30"
+      }
     },
     {
       "id": "l2-farmacia-quadrada",
@@ -8546,7 +8597,11 @@
       ],
       "sobre": "Para a farmácia: as ofertas com preço, a campanha do mês e o horário estendido.",
       "estado": "proposta",
-      "lote": 2
+      "lote": 2,
+      "sazonal": {
+        "de": "11-01",
+        "ate": "11-30"
+      }
     },
     {
       "id": "l2-escritorio-deitada",
@@ -10144,7 +10199,11 @@
       ],
       "sobre": "Para a clínica: a campanha do mês, o preparo do exame e a hora da coleta.",
       "estado": "proposta",
-      "lote": 3
+      "lote": 3,
+      "sazonal": {
+        "de": "11-01",
+        "ate": "11-30"
+      }
     },
     {
       "id": "l3-clinica-em-pe",
@@ -10238,7 +10297,11 @@
       ],
       "sobre": "Para a clínica: a campanha do mês, o preparo do exame e a hora da coleta.",
       "estado": "proposta",
-      "lote": 3
+      "lote": 3,
+      "sazonal": {
+        "de": "11-01",
+        "ate": "11-30"
+      }
     },
     {
       "id": "l3-dentista-em-pe",
@@ -11130,7 +11193,7 @@
             {
               "id": "cardapio-destaque",
               "campos": {
-                "kicker": "Prato do dia · quinta",
+                "kicker": "Prato do dia · hoje",
                 "titulo": "Tagliatelle ao ragu de costela",
                 "apoio": "Massa fresca da casa, ragu cozido por seis horas e parmesão.",
                 "quando": "Almoço, até as 15h",
@@ -11966,7 +12029,11 @@
       ],
       "sobre": "Para a farmácia: a campanha da vacina, a dica da semana e o horário de atendimento.",
       "estado": "proposta",
-      "lote": 4
+      "lote": 4,
+      "sazonal": {
+        "de": "03-01",
+        "ate": "07-31"
+      }
     },
     {
       "id": "l4-farmacia-em-pe",
@@ -12202,7 +12269,7 @@
                 "dia": "22",
                 "mes": "Nesta quarta",
                 "kicker": "Roda de conversa",
-                "titulo": "Outubro Rosa: tire as suas dúvidas",
+                "titulo": "Prevenção: tire as suas dúvidas",
                 "hora": "Às 10h",
                 "local": "Na sala de espera, com a equipe",
                 "foto": "/pecas-ouro/fotos/clinica/alongamento.jpg"

@@ -28,10 +28,24 @@
       { nome: 'Tela cheia 16:9', w: 1920, h: 1080 },
       { nome: 'Vertical 9:16', w: 1080, h: 1920 },
       { nome: 'Quadrada 1:1', w: 1080, h: 1080 },
+      /*
+       * A principal da TV QUADRADA com rodapé (Quadrada · Destaque + Rodapé,
+       * reteste 2): 1056×913, quase quadrada — a peça é desenhada em 1:1 e
+       * reduzida (js/peca-render.js, enquadrar), e a letra do piso fica 18%
+       * maior por dentro dela. Foi ali que o título do combo encostou no
+       * preço, e a "Quadrada 1:1" não via.
+       */
+      { nome: 'Principal · Quadrada', w: 1056, h: 913 },
     ],
     lateral: [{ nome: 'Lateral · Corporativo', w: 515, h: 832 }],
-    cabecalho: [{ nome: 'Cabeçalho 16:9', w: 1920, h: 130 }, { nome: 'Cabeçalho vertical', w: 1080, h: 173 }],
-    rodape: [{ nome: 'Rodapé 16:9', w: 1920, h: 119 }, { nome: 'Rodapé vertical', w: 1080, h: 134 }],
+    /*
+     * As faixas também na TV QUADRADA (reteste 2, 09/11): o cabeçalho de
+     * 14vh e o rodapé de 12vh dos layouts quadrados (1056×149 e 1056×128,
+     * por dentro da fresta) caem no desenho curto, como a TV em pé, mas com
+     * outra altura — e ninguém conferia ali.
+     */
+    cabecalho: [{ nome: 'Cabeçalho 16:9', w: 1920, h: 130 }, { nome: 'Cabeçalho vertical', w: 1080, h: 173 }, { nome: 'Cabeçalho quadrada', w: 1056, h: 149 }],
+    rodape: [{ nome: 'Rodapé 16:9', w: 1920, h: 119 }, { nome: 'Rodapé vertical', w: 1080, h: 134 }, { nome: 'Rodapé quadrada', w: 1056, h: 128 }],
   };
   const TETO = { w: 440, h: 330 };
   // Layouts que a tela completa sabe montar, e qual grupo de peças vai em cada zona.
@@ -83,6 +97,9 @@
    */
   const vazamentos = (host, papel) => MTPecaConferir.conferir(host, { esperar: 2500, papel });
   const regrasEmTexto = (d) => (d.regras || []).map((r) => r.campo + ': ' + r.texto);
+  // Os três defeitos de encaixe, na legenda: sai da peça, um texto por cima do outro e texto cortado dentro dela.
+  const defeitosEmTexto = (d) => (d.fora.length ? ' · VAZA: ' + d.fora.join(', ') : '') + (d.juntos.length ? ' · SOBREPÕE: ' + d.juntos.join(', ') : '')
+    + ((d.cortados || []).length ? ' · CORTA: ' + d.cortados.join(', ') : '');
 
   /*
    * Uma peça de tela pode ser só o id ou { id, campos }: os campos da tela
@@ -283,11 +300,15 @@
           const rotulo = todas ? marca.nome + ' · ' + modo : modo;
           legenda.textContent = rotulo;
           vazamentos(m.real, papel).then((d) => {
-            const ruim = (d.fora.length ? ' · VAZA: ' + d.fora.join(', ') : '') + (d.juntos.length ? ' · SOBREPÕE: ' + d.juntos.join(', ') : '');
+            const ruim = defeitosEmTexto(d);
             if (ruim) {
               legenda.textContent = rotulo + ruim;
               legenda.classList.add('ruim');
             }
+            // O robô da régua lê daqui o que sobrepõe e o que corta (tools/regua-tv.mjs): bloqueio, como o piso.
+            fig.dataset.juntos = d.juntos.join(' | ');
+            fig.dataset.cortados = (d.cortados || []).join(' | ');
+            fig.dataset.conferida = 'sim';
             // D44: fora da régua não é "não coube" — vai embaixo, em outra cor.
             const regras = regrasEmTexto(d);
             if (regras.length) legenda.insertAdjacentHTML('beforeend', lista('', regras, 'regras'));
@@ -319,7 +340,14 @@
     const quadrada = layout.orientation === 'square';
     const W = emPe || quadrada ? 1080 : 1920;
     const H = emPe ? 1920 : 1080;
-    const marca = marcaDe(tela.marca);
+    /*
+     * ?fonte=padrao: a tela na marca de exemplo, mas com a letra padrão — a
+     * da conta que não escolheu fonte (reteste 2, 09/11: o título do combo
+     * na quadrada passou por cima do preço na TV de uma conta assim, e na
+     * fonte condensada da padaria de exemplo cabia).
+     */
+    const marca = new URLSearchParams(location.search).get('fonte') === 'padrao'
+      ? Object.assign({}, marcaDe(tela.marca), { fonteTitulo: '', fonteApoio: '' }) : marcaDe(tela.marca);
 
     // Toda peça da tela passa pela porta antes de ir para a parede.
     const problemas = [];
@@ -398,14 +426,15 @@
       const d = await vazamentos(host, papel);
       host.remove();
       return {
-        coube: (d.fora.length ? nome + ' · ' + e.id + ' · VAZA: ' + d.fora.join(', ') : '')
-          + (d.juntos.length ? nome + ' · ' + e.id + ' · SOBREPÕE: ' + d.juntos.join(', ') : ''),
+        coube: defeitosEmTexto(d) ? nome + ' · ' + e.id + defeitosEmTexto(d) : '',
         regras: regrasEmTexto(d).map((t) => nome + ' · ' + e.id + ' · ' + t),
       };
     })));
     if (rodada !== rodadaDaTela) return;
     $('problemas').insertAdjacentHTML('beforeend', lista('Não coube:', achados.map((a) => a.coube).filter(Boolean), 'problemas')
       + lista('Fora da régua de composição:', achados.flatMap((a) => a.regras), 'problemas'));
+    // Para o robô que varre as telas prontas (o que não coube, peça a peça).
+    window.MTTelaConferida = { tela: tela.id, naoCoube: achados.map((a) => a.coube).filter(Boolean) };
     document.body.dataset.conferida = 'sim';
   }
 
@@ -451,6 +480,7 @@
         host.remove();
         d.fora.forEach((n) => anotar(t, n, 'passa da borda'));
         d.juntos.forEach((par) => anotar(t, par, 'um sobre o outro'));
+        (d.cortados || []).forEach((c) => anotar(t, c, 'cortado'));
         (d.regras || []).forEach((r) => anotar(t, r.campo, r.texto));
       }
     } finally {
