@@ -14,7 +14,7 @@ import { TypePicker } from '../components/content/TypePicker.jsx';
 import { SettingsForm } from '../components/content/SettingsForm.jsx';
 import { aplicarConteudo } from '../lib/aplicarConteudo.js';
 import { SeasonBanner } from '../components/content/SeasonBanner.jsx';
-import { ScreenSummary } from '../components/content/ScreenSummary.jsx';
+import { ScreenSummary, AvisoDeVolta } from '../components/content/ScreenSummary.jsx';
 import { MiniaturaDoItem } from '../components/tela/MiniaturaDoItem.jsx';
 import { EscolherQuando } from '../components/tela/PorNaTV.jsx';
 import { TrocarTextos, CamposDaArte, textosDaArte } from '../components/content/TextosDaArte.jsx';
@@ -709,6 +709,8 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
             metade. Saíram o mapa preto das partes (a TV já é o mapa) e a caixa
             "Mudar a tela" (uma segunda IA; o Criar é o caminho de IA).
           */}
+          {/* Reteste 2: a volta maior que o tempo do lugar aparece aqui, à vista, com o "Arrumar a volta". */}
+          <AvisoDeVolta cfg={cfg} aoArrumar={arrumarVolta} />
           <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
             <div className="min-w-0 space-y-4">
               <Panel className="flex flex-col overflow-hidden">
@@ -895,7 +897,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
             </div>
           </div>
           {/* O resumo da TV embaixo: quanto tempo ela leva para dar a volta, e o que conferir. */}
-          <ScreenSummary cfg={cfg} aoArrumar={arrumarVolta} />
+          <ScreenSummary cfg={cfg} aoArrumar={arrumarVolta} comFaixa />
         </>
       )}
 

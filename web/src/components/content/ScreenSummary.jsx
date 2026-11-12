@@ -12,7 +12,37 @@ import { ArrumarVolta } from '../tela/ArrumarVolta.jsx';
  * nada dizia qual coisa venceu nem o que a TV está exibindo agora. Este resumo
  * não decide nada: ele descreve, e é isso que devolve o controle.
  */
-export function ScreenSummary({ cfg, aoArrumar }) {
+/*
+ * A VOLTA LONGA À VISTA (reteste 2). A volta maior que o tempo que a pessoa
+ * fica no lugar é um aviso, e não fica dentro do resumo fechado: a faixa
+ * aparece no alto da página da TV, com o "Arrumar a volta" ali mesmo.
+ */
+export function AvisoDeVolta({ cfg, aoArrumar }) {
+  const perfil = usePerfil();
+  const d = useMemo(() => digest(cfg, null, perfil.id), [cfg, perfil.id]);
+  const layout = globalThis.MT_getLayout ? globalThis.MT_getLayout(cfg && cfg.settings && cfg.settings.layoutId) : null;
+  const longas = d ? d.problemas.filter((p) => p.volta) : [];
+  if (!longas.length) return null;
+  return (
+    <div className="mb-4 space-y-2">
+      {longas.map((p) => (
+        <div key={p.volta.zona} role="alert" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warn-soft bg-warn-soft px-4 py-3">
+          <span className="flex min-w-0 flex-1 basis-64 items-start gap-2 text-sm text-ink">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-warn" aria-hidden="true" />
+            <span>{p.texto}</span>
+          </span>
+          {p.volta && aoArrumar && (
+            <span className="shrink-0"><ArrumarVolta cfg={cfg} volta={p.volta} aoArrumar={aoArrumar}
+              parte={nomeDaParte({ id: p.volta.zona, type: 'playlist', name: p.volta.nome }, layout)} /></span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// `comFaixa`: a página já mostra a volta longa no alto (AvisoDeVolta), com o botão.
+export function ScreenSummary({ cfg, aoArrumar, comFaixa = false }) {
   const [aberto, setAberto] = useState(false);
   const perfil = usePerfil();
   // A frente dá o local padrão da TV (fase 3): a volta certa é a do lugar.
@@ -112,20 +142,22 @@ export function ScreenSummary({ cfg, aoArrumar }) {
             <div className="mt-4 space-y-1.5 border-t border-line pt-3">
               {avisos.map((p, i) => (
                 <div key={'a' + i} className="flex items-start gap-1.5 text-xs text-danger">
-                  <AlertTriangle size={13} className="mt-0.5 shrink-0" /> {p.texto}
+                  <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                  <span>
+                    {p.texto}
+                    {/* A volta longa tem o botão na faixa do alto da página (AvisoDeVolta); sem ela, aqui mesmo. */}
+                    {p.volta && aoArrumar && !comFaixa && (
+                      <span className="block"><ArrumarVolta cfg={cfg} volta={p.volta} aoArrumar={aoArrumar}
+                        parte={nomeDaParte({ id: p.volta.zona, type: 'playlist', name: p.volta.nome }, layout)} /></span>
+                    )}
+                    {p.volta && comFaixa && <span className="block text-ink-3">O botão “Arrumar a volta” está no alto da página.</span>}
+                  </span>
                 </div>
               ))}
               {dicas.map((p, i) => (
                 <div key={'d' + i} className="flex items-start gap-1.5 text-xs text-ink-3">
                   <Lightbulb size={13} className="mt-0.5 shrink-0" />
-                  <span>
-                    {p.texto}
-                    {/* A volta longa: a lista do que pode sair, com o porquê (components/tela/ArrumarVolta.jsx). */}
-                    {p.volta && aoArrumar && (
-                      <span className="block"><ArrumarVolta cfg={cfg} volta={p.volta} aoArrumar={aoArrumar}
-                        parte={nomeDaParte({ id: p.volta.zona, type: 'playlist', name: p.volta.nome }, layout)} /></span>
-                    )}
-                  </span>
+                  <span>{p.texto}</span>
                 </div>
               ))}
             </div>

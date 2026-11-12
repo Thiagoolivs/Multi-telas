@@ -61,3 +61,56 @@ test('Primeira TV: a foto do celular em dois toques, e o banco do negócio com a
   assert.match(robo, /process\.env\.CINCO_FOTO === 'banco'/);
   assert.match(robo, /trocar\.getByRole\('button', \{ name: \/\^Usar \/ \}\)\.first\(\)/);
 });
+
+/* ---------- 3. A volta longa à vista, e a IA com o "Quando" e o Desfazer ---------- */
+
+const { pathToFileURL } = require('node:url');
+const importar = (f) => import(pathToFileURL(path.join(RAIZ, f)).href);
+
+test('a volta de 9 min no balcão é AVISO (não "tudo certo · 1 dica"), com o botão à vista no alto da página', async () => {
+  const D = await importar('web/src/lib/screenDigest.js');
+  const itens = Array.from({ length: 33 }, (_, i) => ({ type: 'announce', titulo: 'Peça ' + (i + 1) + ' da padaria, com o texto do dia', corpo: 'Venha conferir com a gente.', duracao: 12 }));
+  const d = D.digest({ settings: { layoutId: 'full' }, zonas: { principal: { items: itens } } }, null, 'comercio');
+  const p = d.problemas.find((x) => x.volta);
+  assert.ok(p, 'a volta longa sumiu do resumo');
+  assert.equal(p.nivel, 'aviso', 'a volta longa voltou a ser dica');
+  assert.ok(p.volta.ciclo > p.volta.max, 'volta ' + p.volta.ciclo + ' > ' + p.volta.max);
+  assert.match(p.texto, /no balcão a pessoa fica uns 5min e não vê tudo/);
+  // A volta curta continua dica.
+  const curta = D.digest({ settings: { layoutId: 'full' }, zonas: { principal: { items: itens.slice(0, 2) } } }, null, 'comercio');
+  assert.ok(curta.problemas.every((x) => !x.volta), 'a volta curta virou volta longa');
+
+  const r = ler('web/src/components/content/ScreenSummary.jsx');
+  assert.match(r, /export function AvisoDeVolta\(\{ cfg, aoArrumar \}\)/);
+  assert.match(r, /role="alert"/);
+  assert.match(r, /\{p\.volta && aoArrumar && \(/);
+  assert.match(r, /\{p\.volta && aoArrumar && !comFaixa && \(/, 'o resumo repetia o botão que já está no alto');
+  const pagina = ler('web/src/pages/ContentEditorPage.jsx');
+  assert.match(pagina, /<AvisoDeVolta cfg=\{cfg\} aoArrumar=\{arrumarVolta\} \/>\s*<div className="mb-4 grid gap-4/, 'a faixa não está no alto, antes da TV');
+});
+
+test('a campanha da IA vai ao ar com o "Quando" e o Desfazer, como todo caminho', async () => {
+  const R = await importar('web/src/lib/rodar.js');
+  const cfg = { settings: { layoutId: 'corporate' }, zonas: {
+    principal: { items: [{ type: 'text', titulo: 'meu aviso' }, { type: 'text', titulo: 'da campanha', _campanha: 'Pão em dobro' }] },
+    lateral: { items: [{ type: 'text', titulo: 'lado', _campanha: 'Pão em dobro' }] },
+    cabecalho: { header: true, pecas: [{ type: 'peca-html', _campanha: 'Pão em dobro' }] } } };
+  assert.equal(R.quandoNaCampanha(cfg, 'Pão em dobro', { quando: 'sempre' }), cfg, '"Sempre" não muda nada');
+  const hoje = R.quandoNaCampanha(cfg, 'Pão em dobro', { quando: 'hoje' });
+  assert.ok(!hoje.zonas.principal.items[0].agendamento, 'mexeu no que não é da campanha');
+  assert.equal(hoje.zonas.principal.items[1].agendamento.ativo, true);
+  assert.ok(hoje.zonas.principal.items[1].agendamento.dataFim, 'só hoje sem data para sair');
+  assert.equal(hoje.zonas.lateral.items[0].agendamento.ativo, true);
+  assert.ok(!cfg.zonas.principal.items[1].agendamento, 'mexeu na programação recebida');
+  const tarde = R.quandoNaCampanha(cfg, 'Pão em dobro', { quando: 'hora', faixa: 'tarde' });
+  assert.equal(tarde.zonas.principal.items[1].agendamento.escolhido, true);
+  assert.match(ler('web/src/lib/rodar.js'), /quandoNaCampanha\(aplicarCampanha\(cfg, plano\.find\(\(p\) => p\.tela\.id === tv\.id\)\.entrada, nome, \{ trocarLayout \}\), nome, quando\)/);
+
+  const c = ler('web/src/components/criar/PorPraRodar.jsx');
+  assert.match(c, /<EscolherQuando valor=\{escolha\} onChange=\{setEscolha\} \/>/);
+  assert.match(c, /rodarCampanha\(plano, nome, \{ trocarLayout: trocar, quando \}\)/);
+  assert.match(c, /acao: \{ rotulo: 'Desfazer', on: async \(\) => \{/);
+  assert.match(c, /await desfazerLote\(ids\.lote\)/);
+  assert.match(c, /disabled=\{ocupado \|\| !plano \|\| !plano\.length \|\| faltaData\(escolha\)\}/);
+  assert.equal((c.match(/variant="primary"/g) || []).length, 1, 'um violeta só');
+});
