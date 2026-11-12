@@ -481,9 +481,39 @@
     raiz.appendChild(parada);
     try { encolherOQueCorta(palco, peca, piso); } finally { raiz.removeChild(parada); }
   }
+  /*
+   * A LINHA QUE NÃO QUEBRA (CI do PR 336). No manifesto a quebra é do campo
+   * (white-space: nowrap): com o texto do cliente mais comprido que o do
+   * desenho ("explicar com clareza,"), a linha passava da caixa dela e saía da
+   * peça. A letra do GRUPO encolhe — o ancestral que dá a mesma letra, o
+   * título inteiro: as três linhas continuam do mesmo tamanho —, nunca abaixo
+   * do piso (sem piso, de 3/4 do desenho), até a linha caber na caixa dela.
+   * Uma caixa do tamanho do texto (flex: none, inline-block) nunca sobra.
+   */
+  function sobraDaCaixa(el) {
+    const b = el.getBoundingClientRect();
+    const r = el.ownerDocument.createRange();
+    r.selectNodeContents(el);
+    const tol = Math.max(1, (parseFloat(getComputedStyle(el).fontSize) || 0) * 0.02 * escalaNaTela(el));
+    return Array.prototype.some.call(r.getClientRects(), (l) => l.width > 0 && (l.right > b.right + tol || l.left < b.left - tol));
+  }
+  function caberNaLinha(el, peca, piso) {
+    const cs = getComputedStyle(el);
+    if (cs.whiteSpace !== 'nowrap' || cs.display === 'inline' || !sobraDaCaixa(el)) return;
+    let grupo = el;
+    for (let q = el.parentElement; q && q !== peca && getComputedStyle(q).fontSize === cs.fontSize; q = q.parentElement) grupo = q;
+    const desenho = parseFloat(getComputedStyle(grupo).fontSize) || 0;
+    const minimo = piso > 0 ? piso : desenho * 0.75;
+    for (let i = 0; i < 10 && sobraDaCaixa(el); i++) {
+      const atual = parseFloat(getComputedStyle(grupo).fontSize) || 0;
+      if (atual <= minimo + 0.5) break;
+      mudarEstilo(grupo, 'font-size', Math.max(minimo, atual * 0.95).toFixed(2) + 'px');
+    }
+  }
   function encolherOQueCorta(palco, peca, piso) {
     Array.prototype.forEach.call(palco.querySelectorAll(CAMPOS_DE_TEXTO), (el) => {
       if (camadaDoPlayer(el) || el.tagName === 'IMG' || el.closest('[aria-hidden="true"]') || !String(el.textContent || '').trim() || escondidoNaCaixa(el, peca)) return;
+      caberNaLinha(el, peca, piso);
       const caixas = caixasQueCortam(el, peca);
       if (!caixas.length) return;
       let onde = ondeCorta(el, caixas);
