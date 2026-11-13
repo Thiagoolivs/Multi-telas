@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2, Check, AlertTriangle, Plus, Sparkles, ArrowRight, ClipboardCheck } from 'lucide-react';
+import { Loader2, Check, AlertTriangle, Plus, ArrowRight, ClipboardCheck } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Spinner, EmptyState } from '../components/ui/Feedback.jsx';
@@ -67,7 +67,7 @@ export function CriandoPage({ onIr }) {
 
       {!lista.length ? (
         <Panel>
-          <EmptyState icon={Sparkles} title="Nada sendo criado agora"
+          <EmptyState title="Nada sendo criado agora"
             description="Quando você pedir uma campanha ou uma imagem, ela aparece aqui enquanto fica pronta."
             action={<Button variant="primary" icon={Plus} onClick={() => onIr && onIr('criar')}>Criar</Button>} />
         </Panel>

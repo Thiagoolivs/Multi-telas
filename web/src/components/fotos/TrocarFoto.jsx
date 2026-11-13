@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Smartphone, Images, Sparkles, Camera, ImageUp, Check, ArrowLeft, Search, Crosshair, Video, Play } from 'lucide-react';
+import { Smartphone, Images, Camera, ImageUp, Check, ArrowLeft, Search, Crosshair, Video, Play } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Field, Textarea } from '../ui/Field.jsx';
@@ -49,7 +49,7 @@ import { ACEITA_VIDEO, LIMITES_FOTO_VIVA, ehVideoSrc, posterDe, lerVideo, proble
  *             pôr uma foto). As do banco já vêm com o ponto escolhido, e
  *             "Ajustar o ponto" (na foto de agora) ainda abre o passo do ponto.
  */
-const ABAS = [['celular', 'Do celular', Smartphone], ['banco', 'Banco de fotos', Images], ['ia', 'Gerar com IA', Sparkles]];
+const ABAS = [['celular', 'Do celular', Smartphone], ['banco', 'Banco de fotos', Images], ['ia', 'Gerar com IA', null]];
 const ACEITA = 'image/png,image/jpeg,image/webp';
 const ehFoto = (m) => /^image\/(png|jpeg|webp)$/.test((m && m.mime) || '') && (m.origem || '') !== 'poster';
 const segundos = (n) => (n > 0 ? Math.round(n) + ' s' : '');
@@ -113,7 +113,7 @@ export function TrocarFoto({ papel = 'produto', ramo = '', valor, onTrocar, form
               <button key={id} type="button" role="tab" id={'aba-foto-' + id} aria-selected={aba === id} aria-controls={'painel-foto-' + id} onClick={() => setAba(id)}
                 className={'flex min-h-12 min-w-0 flex-1 basis-0 flex-col items-center justify-center gap-0.5 rounded-md px-1 text-xs font-medium transition sm:min-h-9 sm:flex-row sm:gap-1.5 '
                   + (aba === id ? 'bg-surface text-ink shadow-xs' : 'text-ink-3 hover:text-ink-2')}>
-                <Icone size={15} className="shrink-0" /> <span className="max-w-full truncate">{nome}</span>
+                {Icone && <Icone size={15} className="shrink-0" />} <span className="max-w-full truncate">{nome}</span>
               </button>
             ))}
           </div>
@@ -379,7 +379,7 @@ function ComIA({ papel, ramo, titulo, formato, onEscolher }) {
       <Field label="O que a foto deve mostrar" hint={'Usa 1 criação do mês. A foto sai ' + (forma === '9/16' ? 'em pé' : forma === '1/1' ? 'quadrada' : 'deitada') + ', no formato do espaço, e fica na sua Biblioteca.'}>
         <Textarea rows={3} maxLength={400} value={pedido} onChange={(e) => setPedido(e.target.value)} disabled={gerando} />
       </Field>
-      <Button variant="secondary" icon={Sparkles} disabled={!pedido.trim() || gerando} onClick={gerar}>{gerando ? 'Gerando…' : 'Gerar foto'}</Button>
+      <Button variant="secondary" disabled={!pedido.trim() || gerando} onClick={gerar}>{gerando ? 'Gerando…' : 'Gerar foto'}</Button>
       {gerando && <p className="flex items-center gap-1.5 text-xs text-ink-3"><Spinner size={14} /> Gerando a foto. Leva uns 20 segundos.</p>}
       {erro && <p className="text-xs text-danger" role="alert">{erro}</p>}
     </div>

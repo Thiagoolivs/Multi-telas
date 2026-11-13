@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Plus, Sparkles, Type, CloudSun } from 'lucide-react';
+import { Plus, Type, CloudSun } from 'lucide-react';
 import { cn } from '../../lib/cn.js';
 import { gradeDaMiniatura, proporcaoDoLayout, pecasDaFaixa, tamanhosDasZonas } from '../../lib/tela.js';
 import { CONTENT_TYPES } from '../../lib/contentTypes.js';
@@ -142,7 +142,7 @@ export function MapaDaTela({ layout, ativa, onEscolher, resumo, cfg, onIA, nomes
                   className={cn('absolute right-1 z-10 inline-flex items-center gap-1 rounded-md bg-white/90 px-1.5 py-0.5 text-[10px] font-semibold text-[#3b1fb8] shadow transition',
                     faixa ? 'top-1/2 -translate-y-1/2' : 'top-1',
                     sel || vazia ? 'opacity-100' : 'pointer-events-none opacity-0 focus:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100')}>
-                  <Sparkles size={11} /> IA
+                  IA
                 </button>
               )}
             </div>

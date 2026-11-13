@@ -3,7 +3,7 @@ import { confirmar } from '../../lib/confirmar.js';
 import Moveable from 'react-moveable';
 import {
   ScanSearch, ImagePlus, Type, Trash2, RotateCcw, Save, X, Square, RectangleHorizontal, RectangleVertical,
-  Columns2, Sparkles, Shapes, Star, Sticker, Undo2, Redo2, Copy, ZoomIn, ZoomOut, Maximize2,
+  Columns2, Shapes, Star, Sticker, Undo2, Redo2, Copy, ZoomIn, ZoomOut, Maximize2,
   AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Layers, ChevronDown, Italic, CaseUpper, Group, Ungroup, LayoutTemplate,
@@ -951,7 +951,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
         <div className="mx-1 h-5 w-px bg-line" />
         <Button size="sm" variant="secondary" icon={LayoutTemplate} onClick={pedirModelo}>Modelos</Button>
         <Button size="sm" variant="secondary" icon={ScanSearch} className="hidden md:inline-flex" disabled={visaoLoading} onClick={fazerAnaliseVisual}>Análise IA</Button>
-        <Button size="sm" variant="secondary" icon={Sparkles} className="hidden md:inline-flex" onClick={() => setAiOpen((o) => !o)}>IA</Button>
+        <Button size="sm" variant="secondary" className="hidden md:inline-flex" onClick={() => setAiOpen((o) => !o)}>IA</Button>
         <Button size="sm" variant="secondary" icon={ImagePlus} disabled={busy} onClick={() => imgInput.current.click()}>Imagem</Button>
         <Button size="sm" variant="secondary" icon={Type} onClick={addText}>Texto</Button>
         <Button size="sm" variant="secondary" icon={Shapes} className="hidden md:inline-flex" onClick={addShape}>Forma</Button>
@@ -969,7 +969,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
             {ASPECTS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
           </select>
         </label>
-        <span className="md:hidden"><IconBtn title="Pedir à IA" icon={Sparkles} onClick={() => setAiOpen((o) => !o)} /></span>
+        <span className="md:hidden"><Button size="sm" variant="secondary" title="Pedir à IA" onClick={() => setAiOpen((o) => !o)}>IA</Button></span>
         <div className="relative hidden md:block">
           <Button size="sm" variant="secondary" icon={Sticker} onClick={() => setBibliotecaAberta((v) => !v)}>Elementos</Button>
           {bibliotecaAberta && (
@@ -1115,7 +1115,6 @@ export function CompositionEditor({ value, onClose, onSave }) {
           </div>
 
           <div className="mt-3 flex items-center gap-2">
-            <Sparkles size={15} className="shrink-0 text-accent" />
             <input autoFocus value={aiBrief} onChange={(e) => setAiBrief(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') runAi(false); }}
               placeholder={aiTipo
@@ -1129,7 +1128,7 @@ export function CompositionEditor({ value, onClose, onSave }) {
               "Substituir" só aparece quando há algo para substituir — num palco
               vazio ele seria uma pergunta sem sentido.
             */}
-            <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || (!aiBrief.trim() && !aiTipo)}
+            <Button size="sm" variant="primary" disabled={aiBusy || (!aiBrief.trim() && !aiTipo)}
               onClick={() => runAi(false)}>{aiBusy ? 'Gerando…' : 'Acrescentar'}</Button>
             {els.length > 0 && (
               <Button size="sm" variant="secondary" disabled={aiBusy || (!aiBrief.trim() && !aiTipo)}

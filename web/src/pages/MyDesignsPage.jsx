@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense, lazy, useMemo } from 'react';
 import { confirmar, perguntar } from '../lib/confirmar.js';
 import {
-  Plus, Wand2, ImagePlus, Upload, Pencil, Download, Send, Trash2, Sparkles, Check,
+  Plus, ImagePlus, Upload, Pencil, Download, Send, Trash2, Check,
   MonitorPlay, Search, FolderOpen, Copy, Type, CalendarClock, ShieldCheck, Rocket, MessagesSquare, Share2, MessageSquare, Megaphone } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
@@ -1123,7 +1123,7 @@ export function MyDesignsPage({ onIr }) {
                 rápido. Nenhuma das duas é escondida — quem tem pressa não pode
                 ser obrigado a passar pela conversa.
               */}
-              <Button variant="secondary" icon={Wand2} disabled={emAndamento || !brief.trim()} onClick={() => planejarCampanha(null)}>
+              <Button variant="secondary" disabled={emAndamento || !brief.trim()} onClick={() => planejarCampanha(null)}>
                 {emAndamento ? 'Dirigindo…' : 'Gerar direto'}
               </Button>
               <Button variant="primary" icon={MessagesSquare} disabled={emAndamento || !brief.trim()} onClick={() => setConversando(true)}>

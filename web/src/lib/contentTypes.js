@@ -11,7 +11,7 @@
  */
 import {
   Megaphone, Type, Quote, Tag, BarChart3, Share2, Image as ImageIcon,
-  Youtube, Globe, QrCode, CloudSun, Film, Cake, Sparkles, Layout, Airplay, Cast, Presentation, ReceiptText, Palette, CircleHelp } from 'lucide-react';
+  Youtube, Globe, QrCode, CloudSun, Film, Cake, Layout, Airplay, Cast, Presentation, ReceiptText, Palette, CircleHelp } from 'lucide-react';
 import { nomeGuardado } from './nomesDasMidias.js';
 
 const GRUPO_PC = 'Com computador ligado à TV';

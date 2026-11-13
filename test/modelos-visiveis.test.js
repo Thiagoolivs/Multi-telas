@@ -53,7 +53,7 @@ test('Peças prontas mostra os modelos; com eles, a página nunca fica vazia', (
   assert.doesNotMatch(p, /Nenhuma peça pronta ainda/);
   assert.match(p, /title="Nada neste filtro" description="Troque o filtro ou a busca\."/);
   // Fase 8: um violeta por tela — nos cartões, o botão é o de contorno.
-  assert.match(p, /<Button size="sm" variant="secondary" icon=\{Wand2\} className="border-accent\/50 font-semibold" onClick=\{\(\) => setUsando\(p\)\}>Usar<\/Button>/);
+  assert.match(p, /<Button size="sm" variant="secondary" className="border-accent\/50 font-semibold" onClick=\{\(\) => setUsando\(p\)\}>Usar<\/Button>/);
   assert.match(p, /<EditarPeca item=\{usando\.item\}/);
   // Fase 7: o "Usar" termina no Pôr na TV único (onde e quando).
   assert.match(p, /if \(telas\.length\) setPorNaTv\(pronta\);/);

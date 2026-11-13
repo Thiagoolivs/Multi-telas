@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { confirmar } from '../../lib/confirmar.js';
 import { aviso } from '../../lib/avisos.js';
-import { Check, AlertTriangle, Sparkles } from 'lucide-react';
+import { Check, AlertTriangle } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input } from '../ui/Field.jsx';
@@ -368,7 +368,6 @@ export function EditarPeca({ item, label, onFechar, onSalvar, lugar }) {
           <div className="rounded-lg border border-accent/30 bg-accent-soft/40 p-2">
             <MiniConversa historico={historicoIA} onResponder={pedirIA} ocupado={pedindo} className="mb-2" />
             <form className="flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); if (pedido.trim() && !pedindo) pedirIA(); }}>
-              <Sparkles size={15} className="shrink-0 text-accent" />
               <input value={pedido} onChange={(e) => setPedido(e.target.value)} maxLength={300} aria-label="Pedir à IA"
                 placeholder={'Peça à IA: "deixa vermelho", "tira o preço"…'}
                 className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-3 focus:outline-none" />

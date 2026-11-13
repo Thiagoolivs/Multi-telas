@@ -136,7 +136,13 @@ test('contraste: texto de apoio ≥ 4,5:1 e anel de foco ≥ 3:1 em todos os fun
       assert.ok(c >= 4.5, nome + ': ink-3 sobre ' + fundo + ' = ' + c.toFixed(2) + ':1 (mínimo 4,5)');
       const anel = contraste(t.accent, t[fundo]);
       assert.ok(anel >= 3, nome + ': anel de foco sobre ' + fundo + ' = ' + anel.toFixed(2) + ':1 (mínimo 3)');
+      // A letra na cor de destaque (text-accent, --c-accent-texto): link, ícone, "Criar para a data".
+      const letra = contraste(t['accent-texto'], t[fundo]);
+      assert.ok(letra >= 4.5, nome + ': letra de destaque sobre ' + fundo + ' = ' + letra.toFixed(2) + ':1 (mínimo 4,5)');
     }
+    // O texto do botão cheio sobre a cor de destaque.
+    const botao = contraste(t['accent-fg'], t.accent);
+    assert.ok(botao >= 4.5, nome + ': texto do botão sobre o destaque = ' + botao.toFixed(2) + ':1 (mínimo 4,5)');
   }
   // O anel é o violeta cheio, não a 40% (2:1).
   const b = ler('web/src/components/ui/Button.jsx');

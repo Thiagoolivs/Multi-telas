@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { confirmar, perguntar } from '../lib/confirmar.js';
-import { Sparkles, Check, Plus, Info, Brain, Building2, X, Globe, Search, ChevronDown, Images, CloudOff, SlidersHorizontal } from 'lucide-react';
+import { Check, Plus, Info, Brain, Building2, X, Globe, Search, ChevronDown, Images, CloudOff, SlidersHorizontal } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -574,7 +574,7 @@ export function BrandPage({ onIr }) {
                   ))}
                 </div>
               ) : (
-                <p className="mt-1.5 flex items-center gap-1.5 text-2xs text-ink-3"><Sparkles size={12} /> Nenhuma ainda.</p>
+                <p className="mt-1.5 flex items-center gap-1.5 text-2xs text-ink-3">Nenhuma ainda.</p>
               )}
             </div>
 

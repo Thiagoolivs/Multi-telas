@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  MonitorPlay, Building2, Users, Sparkles, HardDrive, MessageSquareWarning,
+  MonitorPlay, Building2, Users, HardDrive, MessageSquareWarning,
   Clock, Layers, Check, ShieldCheck, Trash2, Plus, Bug, CheckCircle2,
   Search, Gauge as GaugeIcon, Radio, ChevronRight, X, Images, RotateCw, LogIn, CalendarPlus, FileSignature,
 } from 'lucide-react';
@@ -101,7 +101,7 @@ export function PlatformPage() {
           hint={`${formatNumber(data.uso.sessoes)} sessões · ${data.uso.mediaMinutos} min em média`} />
         <Stat label="Contas ativas" value={formatNumber(data.ativas.contas)} icon={Building2}
           hint={data.contas ? Math.round((data.ativas.contas / data.contas) * 100) + '% do total' : ''} />
-        <Stat label="Chamadas de IA" value={formatNumber(data.ia.chamadas)} icon={Sparkles}
+        <Stat label="Chamadas de IA" value={formatNumber(data.ia.chamadas)}
           hint={'custo R$ ' + (data.ia.custoCentavos / 100).toFixed(2)} />
         <Stat label="Mídia guardada" value={formatBytes(data.midiaBytes)} icon={HardDrive}
           hint={`${formatNumber(data.pecas)} peças salvas`} />
@@ -421,7 +421,6 @@ function FichaDaConta({ id, dias, onFechar }) {
               <Secao titulo="Trabalhos de IA recentes">
                 {data.trabalhos.map((j) => (
                   <div key={j.id} className="flex items-center gap-2 text-xs">
-                    <Sparkles size={12} className="text-ink-3" />
                     <span className="truncate text-ink-2">{j.tipo}</span>
                     <span className="text-2xs text-ink-3">{j.estado}</span>
                     <span className="ml-auto shrink-0 text-2xs text-ink-3">{relativeTime(j.criadoEm)}</span>

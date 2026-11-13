@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Send } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { AvisoRapido } from './AvisoRapido.jsx';
@@ -66,7 +66,7 @@ export function PedirIA({ onFechar, onIr, tv }) {
       description="O que você quer nas TVs? Um aviso, um quiz, mudar a aparência de uma TV ou algo novo. Se eu não entender, pergunto."
       footer={<>
         <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
-        <Button variant="primary" icon={historico.length ? Send : Sparkles} disabled={!texto.trim() || ocupado} onClick={() => pedir()}>
+        <Button variant="primary" icon={historico.length ? Send : null} disabled={!texto.trim() || ocupado} onClick={() => pedir()}>
           {ocupado ? 'Pensando…' : historico.length ? 'Responder' : 'Pedir'}
         </Button>
       </>}>

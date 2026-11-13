@@ -35,7 +35,6 @@ const RelatorioPage = lazy(() => import('./RelatorioPage.jsx').then((m) => ({ de
 const EscolherModelo = lazy(() => import('../components/content/EscolherModelo.jsx').then((m) => ({ default: m.EscolherModelo })));
 import { useAsync } from '../lib/useAsync.js';
 import { deviceConfig, brand as brandApi } from '../api.js';
-import { Sparkles, Wand2 } from 'lucide-react';
 import { Field, Input, Textarea } from '../components/ui/Field.jsx';
 import { Dialog } from '../components/ui/Dialog.jsx';
 import { ai } from '../api.js';
@@ -758,7 +757,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                       */}
                       {onCriar
                         ? <Button size="sm" variant="secondary" icon={Plus} onClick={() => onCriar(papelDaZona(activeZone))}>Criar</Button>
-                        : <Button size="sm" variant="secondary" icon={Sparkles} onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>}
+                        : <Button size="sm" variant="secondary" onClick={() => { setAiOpen((o) => !o); setAiErr(''); }}>IA</Button>}
                       {/* Fase 8: o violeta da página é o "Pôr na TV". */}
                       <Button size="sm" variant="secondary" icon={Plus} onClick={() => setPicker(true)}>Adicionar</Button>
                     </>} />
@@ -769,7 +768,7 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
                       {aiErr && <p className="text-xs text-danger">{aiErr}</p>}
                       <div className="flex items-center justify-end gap-2">
                         <Button size="sm" variant="ghost" onClick={() => setAiOpen(false)}>Cancelar</Button>
-                        <Button size="sm" variant="primary" icon={Sparkles} disabled={aiBusy || !aiBrief.trim()} onClick={generateAI}>
+                        <Button size="sm" variant="primary" disabled={aiBusy || !aiBrief.trim()} onClick={generateAI}>
                           {aiBusy ? 'Gerando…' : 'Gerar conteúdo'}
                         </Button>
                       </div>
@@ -1035,7 +1034,7 @@ function CampaignDialog({ open, onClose, empresa, tema, zones, onApply }) {
       description="Responda o essencial; a IA cria o conteúdo da tela inteira."
       footer={<>
         <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-        <Button variant="primary" icon={Wand2} disabled={busy || !f.objetivo.trim()} onClick={gen}>{busy ? 'Gerando…' : 'Gerar campanha'}</Button>
+        <Button variant="primary" disabled={busy || !f.objetivo.trim()} onClick={gen}>{busy ? 'Gerando…' : 'Gerar campanha'}</Button>
       </>}>
       <div className="space-y-3">
         <Field label="Objetivo *" hint="O que a campanha precisa alcançar.">

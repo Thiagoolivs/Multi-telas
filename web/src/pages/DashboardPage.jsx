@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus, Sparkles, CalendarDays, Repeat, ChevronDown } from 'lucide-react';
+import { RefreshCw, AlertTriangle, CircleAlert, ImagePlus, CalendarDays, Repeat, ChevronDown } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Panel } from '../components/ui/Panel.jsx';
@@ -114,7 +114,7 @@ export function DashboardPage({ onGoSystem, onIr, operador }) {
         <div className="grid gap-2.5 sm:grid-cols-2">
           <button type="button" onClick={() => onIr && onIr('criar')}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg transition hover:brightness-110">
-            <Sparkles size={17} /> Criar com a IA
+            Criar com a IA
           </button>
           {/* A foto que já existe vai direto, sem passar pela IA: três toques até a TV. */}
           <button type="button" onClick={() => abrirSubir()}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Plus, Trash2, Check, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Check, AlertTriangle } from 'lucide-react';
 import '../../../../js/quiz.js';
 import { Field, Input, Select } from '../ui/Field.jsx';
 import { Button } from '../ui/Button.jsx';
@@ -60,7 +60,7 @@ export function QuizField({ item, onChange }) {
       </div>
 
       <div className="rounded-lg border border-accent/30 bg-accent-soft/40 p-2.5">
-        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-ink"><Sparkles size={14} className="text-accent" /> A IA escreve, você confere</div>
+        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-ink">A IA escreve, você confere</div>
         <div className="flex flex-wrap gap-1.5">
           <input value={tema} onChange={(e) => setTema(e.target.value)} maxLength={200} aria-label="Tema do quiz"
             placeholder="Tema: segurança no trabalho, prevenção, nosso produto…"
@@ -69,7 +69,7 @@ export function QuizField({ item, onChange }) {
             className="rounded-md border border-line bg-surface px-2 py-1.5 text-sm text-ink">
             {['1', '3', '5'].map((n) => <option key={n} value={n}>{n} {n === '1' ? 'pergunta' : 'perguntas'}</option>)}
           </select>
-          <Button size="sm" variant="primary" icon={Sparkles} disabled={gerando} onClick={gerar}>{gerando ? 'Escrevendo…' : 'Escrever'}</Button>
+          <Button size="sm" variant="primary" disabled={gerando} onClick={gerar}>{gerando ? 'Escrevendo…' : 'Escrever'}</Button>
         </div>
         {erro && <p className="mt-1.5 text-2xs text-danger">{erro}</p>}
       </div>

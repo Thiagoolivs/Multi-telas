@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarDays, CalendarPlus, Sparkles, Trash2, Pencil, Check, X, MonitorPlay } from 'lucide-react';
+import { CalendarDays, CalendarPlus, Trash2, Pencil, Check, X, MonitorPlay } from 'lucide-react';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
@@ -238,7 +238,7 @@ export function CalendarioPage({ onIr }) {
           <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={5} maxLength={8000} aria-label="Calendário em texto"
             placeholder={perfil.textos.datas} className={cn(campo, 'w-full font-mono text-xs leading-relaxed')} />
           <div className="flex justify-end">
-            <Button variant="primary" icon={Sparkles} disabled={!texto.trim() || lendo} onClick={ler}>{lendo ? 'Lendo…' : 'Ler as datas'}</Button>
+            <Button variant="primary" disabled={!texto.trim() || lendo} onClick={ler}>{lendo ? 'Lendo…' : 'Ler as datas'}</Button>
           </div>
         </div>
       </Panel>

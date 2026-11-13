@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Check, X, CalendarDays } from 'lucide-react';
+import { Check, X, CalendarDays } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { useAsync } from '../../lib/useAsync.js';
 import { seasons } from '../../api.js';

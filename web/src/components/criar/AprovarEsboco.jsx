@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wand2, ListChecks } from 'lucide-react';
+import { ListChecks } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { EsbocoDaTela } from './EsbocoDaTela.jsx';
@@ -28,7 +28,7 @@ export function AprovarEsboco({ aberto, escopo, marca, telas, decisoes, ocupado,
       footer={(
         <>
           <Button variant="ghost" onClick={onFechar} disabled={ocupado}>Voltar e mudar</Button>
-          <Button variant="primary" icon={Wand2} onClick={onAprovar} disabled={ocupado}>{ocupado ? 'Aprovando…' : 'Aprovar e gerar'}</Button>
+          <Button variant="primary" onClick={onAprovar} disabled={ocupado}>{ocupado ? 'Aprovando…' : 'Aprovar e gerar'}</Button>
         </>
       )}>
       <div className="space-y-3">

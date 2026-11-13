@@ -55,6 +55,9 @@ export default {
         pop: '0 6px 16px -4px rgb(16 24 40 / 0.12), 0 2px 6px -2px rgb(16 24 40 / 0.06)',
       },
       ringColor: { DEFAULT: 'rgb(var(--c-accent) / 0.35)' },
+      // A LETRA na cor de destaque tem o seu token (index.css, --c-accent-texto): no escuro, o
+      // azul do botão é escuro demais para ler sobre o fundo; a letra usa o tom claro da mesma família.
+      textColor: { accent: 'rgb(var(--c-accent-texto) / <alpha-value>)' },
     },
   },
   plugins: [],

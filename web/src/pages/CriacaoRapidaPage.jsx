@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Tag, Sparkles, Megaphone, Camera, Cake, QrCode, FileText, UserPlus, TrendingUp, HardHat, HeartPulse, Stethoscope, ShieldCheck,
+  BadgePlus, Tag, Megaphone, Camera, Cake, QrCode, FileText, UserPlus, TrendingUp, HardHat, HeartPulse, Stethoscope, ShieldCheck,
   UtensilsCrossed, Clock, CalendarDays, MessageSquareQuote, CreditCard, Wifi, Briefcase, Target, HeartHandshake, BadgeCheck, ArrowLeft, Check, Rocket, SlidersHorizontal, MonitorPlay, RefreshCw, ImagePlus, Share2,
 } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
@@ -46,7 +46,7 @@ export const OPCOES = [
   { id: 'promocao', titulo: 'Promoção com preço', icone: Tag, pedido: 'Promoção com preço',
     dica: 'O produto, o preço e até quando.',
     exemplos: ['Café + pão na chapa por R$ 9', 'Óculos de sol com 30% até sábado', 'Corte + barba por R$ 50 às quartas'] },
-  { id: 'novidade', titulo: 'Novidade', icone: Sparkles, pedido: 'Novidade na loja',
+  { id: 'novidade', titulo: 'Novidade', icone: BadgePlus, pedido: 'Novidade na loja',
     dica: 'O que chegou ou começou.',
     exemplos: ['Chegou a coleção de verão', 'Agora temos açaí no copo', 'Novo horário de atendimento aos sábados'] },
   { id: 'aviso', titulo: 'Aviso ou horário', icone: Megaphone, pedido: 'Aviso para os clientes',

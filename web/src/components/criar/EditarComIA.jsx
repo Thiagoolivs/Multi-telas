@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Send, Sparkles, MessageSquare, Undo2, Check, CloudOff } from 'lucide-react';
+import { Send, MessageSquare, Undo2, Check, CloudOff } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Spinner } from '../ui/Feedback.jsx';
 import { criar } from '../../api.js';
@@ -94,7 +94,7 @@ export function EditarComIA({ campanha, onMudou, textoInicial }) {
   return (
     <section id="editar-com-ia" className="flex max-h-[80vh] flex-col rounded-lg border border-accent/30 bg-surface">
       <div className="border-b border-line px-3 py-2.5">
-        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink"><Sparkles size={15} className="text-accent" /> Editar com a IA</h3>
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-ink">Editar com a IA</h3>
         <p className="mt-0.5 text-2xs text-ink-3">Diga o que mudar. Se eu não entender, pergunto. Só o que você pedir muda. Pode mandar ou colar uma imagem de referência. Para mexer à mão, toque em Editar na peça.</p>
       </div>
 
