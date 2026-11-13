@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, SlidersHorizontal, AlertTriangle, Wand2, Plus, Palette } from 'lucide-react';
+import { Check, SlidersHorizontal, AlertTriangle, Plus, Palette } from 'lucide-react';
 import { Panel, PanelHeader } from '../ui/Panel.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Field, Input, Select } from '../ui/Field.jsx';

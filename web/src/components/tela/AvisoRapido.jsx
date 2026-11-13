@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Megaphone, Sparkles, MonitorPlay } from 'lucide-react';
+import { Megaphone, MonitorPlay } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { PecaHtml } from '../content/PecaHtml.jsx';
@@ -87,7 +87,7 @@ export function AvisoRapido({ onFechar, avisoInicial }) {
         </Button>
       </> : <>
         <Button variant="ghost" onClick={onFechar}>Cancelar</Button>
-        <Button variant="primary" icon={Sparkles} disabled={!texto.trim() || montando} onClick={() => montar()}>{montando ? 'Montando…' : historico.length ? 'Responder' : 'Montar o aviso'}</Button>
+        <Button variant="primary" disabled={!texto.trim() || montando} onClick={() => montar()}>{montando ? 'Montando…' : historico.length ? 'Responder' : 'Montar o aviso'}</Button>
       </>}>
       {!aviso ? (
         <div className="space-y-2">

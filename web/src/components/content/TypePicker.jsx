@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Plus, UtensilsCrossed, Wand2, Image as ImageIcon, Tag, Megaphone, Cake, Instagram, LayoutGrid, Layers, Upload, Film, MessageSquare, CircleHelp } from 'lucide-react';
+import { Search, Plus, UtensilsCrossed, Image as ImageIcon, Tag, Megaphone, Cake, Instagram, LayoutGrid, Layers, Upload, Film, MessageSquare, CircleHelp } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { CONTENT_TYPES, catalogoDaFrente, tipoNaFrente } from '../../lib/contentTypes.js';
 import { usePerfil } from '../../lib/perfil.js';

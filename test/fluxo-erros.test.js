@@ -123,7 +123,7 @@ test('som da TV: "offline" só quando está; o volume segue o dedo e manda uma o
 test('editor no celular: formato e pedido à IA ficam à mão', () => {
   const e = ler('components/content/CompositionEditor.jsx');
   assert.match(e, /<label className="md:hidden">[\s\S]{0,200}Formato da peça/);
-  assert.match(e, /<span className="md:hidden"><IconBtn title="Pedir à IA"/);
+  assert.match(e, /<span className="md:hidden"><Button size="sm" variant="secondary" title="Pedir à IA"/);
 });
 
 test('cartão de design no celular não estoura; a prévia do aviso escreve o rótulo com acento', () => {

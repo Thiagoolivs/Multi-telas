@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Check, TriangleAlert } from 'lucide-react';
+import { Check, TriangleAlert } from 'lucide-react';
 import { Dialog } from '../ui/Dialog.jsx';
 import { Button } from '../ui/Button.jsx';
 import { PreviaDaTela } from './PreviaDaTela.jsx';
@@ -62,7 +62,7 @@ export function MudarComIA({ cfg, onAplicar }) {
         <input id="mudar-tela" value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={300}
           placeholder={'Mudar a tela: ' + EXEMPLOS.slice(0, 3).join(', ') + '…'}
           className="min-w-0 flex-1 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink outline-none placeholder:text-ink-3 focus:border-accent focus:ring-1 focus:ring-accent" />
-        <Button type="submit" icon={Sparkles} disabled={!texto.trim() || busy}>{busy ? 'Vendo…' : 'Ver como fica'}</Button>
+        <Button type="submit" disabled={!texto.trim() || busy}>{busy ? 'Vendo…' : 'Ver como fica'}</Button>
       </form>
       {sobra && <p className="mt-1.5 text-xs text-ink-3" role="status">{sobra}</p>}
       <MiniConversa historico={historico} onResponder={(s) => ver(null, s)} ocupado={busy} className="mt-2" />

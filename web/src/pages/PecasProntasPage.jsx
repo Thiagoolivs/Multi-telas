@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
-import { LayoutTemplate, Share2, Wand2, Search, Plus } from 'lucide-react';
+import { LayoutTemplate, Share2, Search, Plus } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Spinner, EmptyState, ErrorState } from '../components/ui/Feedback.jsx';
@@ -219,7 +219,7 @@ export function PecasProntasPage({ onIr, filtroInicial, telaAlvo }) {
                       {p.origem && <p className="mt-0.5 line-clamp-2 text-xs text-ink-3">{p.origem}</p>}
                     </div>
                     <div className="mt-auto flex flex-wrap gap-1.5">
-                      <Button size="sm" variant="secondary" icon={Wand2} className="border-accent/50 font-semibold"
+                      <Button size="sm" variant="secondary" className="border-accent/50 font-semibold"
                         onClick={() => { setTelaEscolhida(m); window.scrollTo({ top: 0 }); }}>Usar</Button>
                     </div>
                   </div>
@@ -239,7 +239,7 @@ export function PecasProntasPage({ onIr, filtroInicial, telaAlvo }) {
                   </div>
                   <div className="mt-auto flex flex-wrap gap-1.5">
                     {/* Fase 8: um violeta por tela; nos cartões, o botão é o de contorno. */}
-                    <Button size="sm" variant="secondary" icon={Wand2} className="border-accent/50 font-semibold" onClick={() => setUsando(p)}>Usar</Button>
+                    <Button size="sm" variant="secondary" className="border-accent/50 font-semibold" onClick={() => setUsando(p)}>Usar</Button>
                     {!faixa && <Button size="sm" icon={Share2} onClick={() => setRedesDe(p)}>Redes</Button>}
                   </div>
                 </div>

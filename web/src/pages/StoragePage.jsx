@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { confirmar } from '../lib/confirmar.js';
-import { UploadCloud, Trash2, Film, Image as ImageIcon, Share2, Check, Clock, X, Music, FileText, Sparkles, Tag } from 'lucide-react';
+import { UploadCloud, Trash2, Film, Image as ImageIcon, Share2, Check, Clock, X, Music, FileText, Tag } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -219,7 +219,7 @@ export function StoragePage({ filtro = 'fotos' }) {
         ) : error ? (
           <ErrorState description="Não foi possível carregar a biblioteca." onRetry={reload} />
         ) : items.length === 0 ? (
-          <EmptyState icon={filtro === 'musicas' ? Music : filtro === 'ia' ? Sparkles : ImageIcon} title={recorte.vazio} description={recorte.subtitulo} exemplo
+          <EmptyState icon={filtro === 'musicas' ? Music : ImageIcon} title={recorte.vazio} description={recorte.subtitulo} exemplo
             action={recorte.enviar && <Button size="sm" variant="primary" icon={UploadCloud} onClick={() => inputRef.current && inputRef.current.click()}>{recorte.enviar}</Button>} />
         ) : (
           <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">

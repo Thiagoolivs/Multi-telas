@@ -1,6 +1,6 @@
 import { usePerfil } from '../../lib/perfil.js';
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Palette, Sparkles, Clock, AlertTriangle, Lightbulb, Check, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, Palette, Clock, AlertTriangle, Lightbulb, Check, Info } from 'lucide-react';
 import { digest, formatarTempo } from '../../lib/screenDigest.js';
 import { nomeDaParte } from '../../lib/tela.js';
 import { ArrumarVolta } from '../tela/ArrumarVolta.jsx';

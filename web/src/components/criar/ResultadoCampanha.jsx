@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, Pencil, Sparkles, X, AlertTriangle } from 'lucide-react';
+import { Check, MonitorPlay, Share2, Clock, ImageOff, Plus, Pencil, X, AlertTriangle } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { PecaHtml } from '../content/PecaHtml.jsx';
 import { DesignThumb } from '../content/DesignThumb.jsx';
@@ -234,7 +234,7 @@ export function ResultadoCampanha({ campanha, telas = [], acoes, onNova, onIr, o
         </div>
         {onMudou && (
           <a href="#editar-com-ia" className="flex w-full items-center justify-center gap-1 rounded-md border border-accent/40 px-2.5 py-1.5 text-xs font-medium text-accent sm:w-auto sm:self-center lg:hidden">
-            <Sparkles size={13} /> Editar com a IA
+            Editar com a IA
           </a>
         )}
       </div>

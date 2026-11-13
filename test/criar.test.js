@@ -77,7 +77,7 @@ test('uma entrada só: Criar no menu e no Início; o resto em "Mais"', () => {
   assert.match(app, /const ATALHOS = \['prontos', 'apps', 'criar',/);
   // Desde o QA de 26/10 a grade dos atalhos mora só no Criar; o Início tem "Criar com a IA".
   assert.doesNotMatch(ler('web/src/pages/DashboardPage.jsx'), /OpcoesDeCriar/, 'a grade do Criar voltou a se repetir no Início');
-  assert.match(ler('web/src/pages/DashboardPage.jsx'), /<Sparkles size=\{17\} \/> Criar com a IA/);
+  assert.match(ler('web/src/pages/DashboardPage.jsx'), />\s*Criar com a IA\s*</);
   const md = ler('web/src/pages/MyDesignsPage.jsx');
   /*
    * Dois jeitos de criar, e não cinco (EXECUTOR D2, "tirar coisas que

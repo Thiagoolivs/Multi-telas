@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { UploadCloud, Trash2, Palette, Wand2, Check, AlertTriangle, ArrowRight } from 'lucide-react';
+import { UploadCloud, Trash2, Palette, Check, AlertTriangle, ArrowRight } from 'lucide-react';
 import { Panel, PanelHeader } from '../ui/Panel.jsx';
 import { Button } from '../ui/Button.jsx';
 import { Spinner } from '../ui/Feedback.jsx';
@@ -143,7 +143,7 @@ export function LogoDaMarca({ logo, logoClara, logoEscura, busy, onSubir, onTira
                 ))}
               <div className="flex flex-wrap items-center gap-3">
                 {a && (
-                  <Button size="sm" variant={precisa ? 'primary' : 'secondary'} icon={Wand2} disabled={!!trabalhando || busy} onClick={melhorar}>
+                  <Button size="sm" variant={precisa ? 'primary' : 'secondary'} disabled={!!trabalhando || busy} onClick={melhorar}>
                     {precisa ? 'Melhorar a logo' : 'Conferir e melhorar'}
                   </Button>
                 )}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CreditCard, Check, MonitorPlay, Sparkles, ExternalLink, HardDrive, Image as ImageIcon, ShieldCheck, CalendarCheck } from 'lucide-react';
+import { CreditCard, Check, MonitorPlay, ExternalLink, HardDrive, Image as ImageIcon, ShieldCheck, CalendarCheck } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -404,7 +404,7 @@ export function BillingPage({ onFalarComVendas }) {
                 {p.emBreve ? (
                   <ul className="mt-3 space-y-1.5 text-sm text-ink-2">
                     {(p.vem || []).map((v) => (
-                      <li key={v} className="flex items-start gap-1.5"><Sparkles size={15} className="mt-0.5 shrink-0 text-accent" /> {v}</li>
+                      <li key={v} className="flex items-start gap-1.5"><Check size={15} className="mt-0.5 shrink-0 text-accent" /> {v}</li>
                     ))}
                   </ul>
                 ) : (

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Wand2 } from 'lucide-react';
 import { Panel, PanelHeader } from '../ui/Panel.jsx';
 import { EmptyState, Spinner } from '../ui/Feedback.jsx';
 import { useAsync } from '../../lib/useAsync.js';
@@ -56,7 +55,7 @@ export function Qualidade({ dias }) {
         description="O que volta para a IA, o que o cliente corrige à mão e o que mais pede. Só contagens: nem conta, nem pessoa, nem texto." />
       <div className="p-4">
         {loading && !data && <div className="py-6 text-center"><Spinner size={18} /></div>}
-        {nada && <EmptyState icon={Wand2} title="Nada contado na janela"
+        {nada && <EmptyState title="Nada contado na janela"
           description="A contagem começa a partir deste deploy: refazer de peça, edição à mão e pedidos no Ajustar e no Editar com a IA." />}
         {data && !nada && (
           <div className="grid gap-5 lg:grid-cols-3">

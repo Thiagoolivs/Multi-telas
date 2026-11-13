@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Sparkles, Check, SkipForward, MessageSquare } from 'lucide-react';
+import { Send, Check, SkipForward, MessageSquare } from 'lucide-react';
 import { Button } from '../ui/Button.jsx';
 import { Spinner } from '../ui/Feedback.jsx';
 import { ai } from '../../api.js';

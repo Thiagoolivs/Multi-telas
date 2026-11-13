@@ -29,7 +29,7 @@
  * para passar em TODOS os fundos do painel, conferido em
  * test/painel-acessivel.test.js, que lê estes números daqui:
  *   claro  #616875: canvas 5,22 · surface 5,61 · surface-2 5,13 · accent-soft 4,77
- *   escuro #828C9C: canvas 5,86 · surface 5,44 · surface-2 5,09 · accent-soft 4,85
+ *   escuro #828C9C: canvas 5,86 · surface 5,44 · surface-2 5,09 · accent-soft 5,06
  * O anel de foco passou a ser o violeta cheio (era violeta a 40%, 2,0:1 no
  * claro e 1,9:1 no escuro): ≥ 5:1 contra canvas, surface, surface-2 e
  * accent-soft nos dois temas — o mínimo do WCAG 2.4.11/1.4.11 é 3:1.
@@ -55,6 +55,7 @@
   --c-ink-3: 97 104 117;        /* #616875 (era #6B7280: 4,43:1 no surface-2, QA de 03/11) */
   --c-accent: 91 46 255;        /* #5B2EFF violeta da marca (10/2026): 6,4:1 com o branco */
   --c-accent-fg: 255 255 255;
+  --c-accent-texto: 91 46 255;  /* a letra na cor de destaque (text-accent); no claro, o próprio violeta */
   --c-accent-soft: 238 234 255; /* #EEEAFF */
   --c-ok: 21 122 58;            /* #157A3A (era #15803D: 4,49:1 no ok-soft, reteste de 03/11) */
   --c-ok-soft: 231 246 236;     /* #E7F6EC */
@@ -73,9 +74,17 @@
   --c-ink: 232 236 242;         /* #E8ECF2 */
   --c-ink-2: 163 173 188;       /* #A3ADBC */
   --c-ink-3: 130 140 156;       /* #828C9C (era #7A8494: 4,49:1 no accent-soft, QA de 03/11) */
-  --c-accent: 79 140 255;       /* #4F8CFF azul no escuro (12/11, pedido do dono: era o violeta claro #9277FF) */
-  --c-accent-fg: 7 9 13;        /* texto escuro no azul: 6,2:1 */
-  --c-accent-soft: 15 30 61;    /* #0F1E3D */
+  /*
+   * Azul escuro, "mais tech" (13/11, pedido do dono; era #4F8CFF em 12/11 e o
+   * violeta claro #9277FF antes). O preenchimento é escuro com texto branco
+   * (4,6:1); a letra azul (links, ícones) não cabe nesse mesmo tom sobre o
+   * fundo quase preto (3,6:1), então ela usa o azul mais claro da mesma
+   * família, --c-accent-texto (≥ 7:1). test/painel-acessivel.test.js confere.
+   */
+  --c-accent: 31 111 235;       /* #1F6FEB */
+  --c-accent-fg: 255 255 255;   /* texto branco no azul: 4,6:1 */
+  --c-accent-texto: 68 147 248; /* #4493F8, a letra azul (text-accent) */
+  --c-accent-soft: 13 27 51;    /* #0D1B33 */
   --c-ok: 74 201 126;
   --c-ok-soft: 18 38 28;
   --c-warn: 220 158 76;
@@ -90,11 +99,13 @@
  */
 [data-modo='operador'] {
   --c-accent: 13 148 136;       /* #0D9488 */
+  --c-accent-texto: 13 148 136;
   --c-accent-fg: 255 255 255;
   --c-accent-soft: 223 244 241; /* #DFF4F1 */
 }
 :root[data-theme='dark'] [data-modo='operador'] {
   --c-accent: 45 212 191;       /* #2DD4BF */
+  --c-accent-texto: 45 212 191;
   --c-accent-fg: 12 14 18;
   --c-accent-soft: 17 42 40;    /* #112A28 */
 }

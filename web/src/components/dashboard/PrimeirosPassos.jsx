@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, MonitorPlay, Wand2, Brush, ArrowRight } from 'lucide-react';
+import { PenLine, Check, MonitorPlay, Brush, ArrowRight } from 'lucide-react';
 import { lerJornada } from '../../lib/jornada.js';
 import { usePerfil } from '../../lib/perfil.js';
 
@@ -47,7 +47,7 @@ export function PrimeirosPassos({ devices, onIr }) {
     },
     {
       id: 'peca',
-      icone: Wand2,
+      icone: PenLine,
       titulo: 'Crie a primeira peça',
       texto: 'Escolha o que mostrar e escreva uma frase. A IA monta a peça com a sua marca.',
       acao: 'Criar',

@@ -338,7 +338,7 @@ test('o painel: o banco começa pelo ramo e pelo papel; o pedido à IA já vem e
 test('o painel: "Trocar foto" com três abas, um violeta só, no editor da peça', () => {
   const t = ler('web/src/components/fotos/TrocarFoto.jsx');
   assert.match(t, /export function TrocarFoto\(\{ papel = 'produto', ramo = '', valor, onTrocar, formato = '16\/9', titulo = '', onFechar, abaInicial = 'celular', umToque = false \}\)/);
-  assert.match(t, /\[\['celular', 'Do celular', Smartphone\], \['banco', 'Banco de fotos', Images\], \['ia', 'Gerar com IA', Sparkles\]\]/);
+  assert.match(t, /\[\['celular', 'Do celular', Smartphone\], \['banco', 'Banco de fotos', Images\], \['ia', 'Gerar com IA', null\]\]/);
   assert.equal((t.match(/variant="primary"/g) || []).length, 1, 'um violeta por tela: o "Usar esta foto"');
   // FOTO VIVA: o mesmo botão diz "Usar este vídeo" quando o escolhido é um vídeo.
   assert.match(t, /<Button variant="primary" icon=\{Check\}[^>]*>\{escolhida && escolhida\.video \? 'Usar este vídeo' : 'Usar esta foto'\}<\/Button>/);

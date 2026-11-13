@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, Suspense, lazy } from 'react';
-import { Send, Wand2, MessageSquare, Zap, CloudOff, Plus, MessagesSquare, CheckCircle2, ArrowRight, LayoutTemplate, ImagePlus, ChevronRight } from 'lucide-react';
+import { Send, MessageSquare, Zap, CloudOff, Plus, MessagesSquare, CheckCircle2, ArrowRight, LayoutTemplate, ImagePlus, ChevronRight } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Spinner } from '../components/ui/Feedback.jsx';
@@ -360,7 +360,7 @@ export function CriarPage({ opcaoInicial, telaInicial, zonaInicial, ideiaInicial
 
   const botaoGerar = (
     <div className="space-y-1.5">
-      <Button variant={pronto || !conversando ? 'primary' : 'secondary'} size="lg" icon={pronto ? Wand2 : Zap} disabled={!podeGerar || !!gerando} onClick={pedirAprovacao} className="w-full justify-center">
+      <Button variant={pronto || !conversando ? 'primary' : 'secondary'} size="lg" icon={pronto ? null : Zap} disabled={!podeGerar || !!gerando} onClick={pedirAprovacao} className="w-full justify-center">
         {pronto || !conversando ? 'Gerar' : 'Gerar já'}
       </Button>
       <p className="text-center text-2xs text-ink-3">
