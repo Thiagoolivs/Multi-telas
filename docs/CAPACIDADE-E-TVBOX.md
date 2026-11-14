@@ -354,7 +354,70 @@ Medido com `tools/carga/limites-conta.mjs` e na própria instalação das
 
 ## 5. TV box: teste de resistência
 
-⟨SOAK-COMPLETO⟩
+### 5.1 Como
+
+`tools/carga/soak-tv.mjs`: **o player de verdade** (`/tv`, pareado pelo
+código na tela como o cliente pareia) num Chromium sem janela, **um navegador
+só**, 1920×1080, com a **CPU 6× mais lenta** pelo CDP
+(`Emulation.setCPUThrottlingRate`) — a ordem de grandeza de um box de
+entrada. A programação é a de RH (2.2), com as peças trocando a cada **6 s**
+no principal e 5 s na lateral (o painel põe 20 e 12): ~22 trocas por minuto
+contra ~8 de uma TV de verdade (2,75× mais rápido). A cada
+10 min o RH "publica de novo" (outra transição, outra ordem): a TV recebe pelo
+SSE e **refaz o palco inteiro**, que é onde timer, ouvinte e vídeo de zona
+velha costumam escapar.
+
+A cada 90 s, depois de forçar a coleta de lixo (`HeapProfiler.collectGarbage`,
+duas vezes): heap do JS (`Runtime.getHeapUsage`), nós, ouvintes e documentos
+(`Memory.getDOMCounters`), quantos `<video>` e `<img>` existem (descendo nos
+shadow roots das peças), os **timers vivos** (`setInterval`/`setTimeout`
+embrulhados antes de o player subir), tarefas longas, quadros por segundo e o
+pior quadro, as trocas de peça, o `localStorage`, e o RSS de cada processo do
+navegador (`tools/carga/rss-arvore.mjs`). Tudo que não é o servidor local é
+bloqueado (o cabeçalho tenta o clima na open-meteo a cada publicação: bloqueado
+e sem efeito na tela).
+
+**O que este teste não é:** o Chromium daqui desenha **sem GPU** (o
+SwiftShader, em software). Quadros por segundo e o RSS do processo da GPU
+dizem pouco de um box com GPU Mali; o heap do JS, o DOM, os timers e o
+crescimento da memória da página dizem o mesmo que diriam no box.
+
+### 5.2 Modo completo: 2 h, ~2.540 trocas, 11 publicações e um deploy
+
+O modo completo (`?perf=0`: transições de cinema, desfoque, foto viva
+tocando) é o **pior caso** — o box com o app começa no modo leve sozinho,
+porque o nome do navegador tem `MultiTelasTV` (`js/perf.js`). O teste rodou
+**119,5 min** (o limite de 2 h do processo de fundo encerrou a coleta; ficou
+dentro da meta de 2–3 h). No minuto 30 a TV **recarregou sozinha**: o
+`sw.js` novo deste trabalho (`mt-shell-v91`) foi publicado com a TV ligada
+e o service worker trocou o player (`js/boot.js:29`), como acontece num
+deploy de verdade. A recarga foi limpa (nenhum erro, a programação voltou do
+servidor em segundos) e os números abaixo se medem dentro de cada vida da
+página.
+
+| Medida (depois de forçar a coleta) | Começo → fim | Inclinação (min 50–120) | Leitura |
+|---|---|---|---|
+| Heap do JS | 2,9–4,1 MB (oscila com a peça no ar) | **+0,19 MB/h** | plano: ~4,5 MB por dia, e a recarga diária zera |
+| Nós do DOM (com os das peças, nos shadow roots) | 404–729 | +27/h, dentro da oscilação | plano; varia com a peça no ar |
+| Ouvintes de evento | 61–73 | +0,1/h | plano |
+| Documentos | 2–3 | 0 | plano |
+| `<video>` no DOM | 0–1 | 0 | o vídeo da foto viva sai com a peça |
+| `<img>` no DOM | 1–3 | 0 | |
+| `setInterval` vivos | 10 (11 com o vigia novo) | **0** | nenhum relógio vazando em 11 publicações |
+| `setTimeout` pendentes | 3–5 | 0 | |
+| `localStorage` | 76,5 KB | 0 | |
+| Erros de JavaScript | **0** | | só os pedidos ao clima bloqueados pelo teste |
+| RSS do renderizador (a página) | 360 MB ao carregar → **650–780 MB** em ~15–20 min | **+16 MB/h** depois de estabilizar | sobe e assenta; ver 5.4 |
+| RSS do processo da GPU | 130–185 MB | 0 | |
+| Quadros por segundo | ~7,5 (sem GPU, CPU 6×) | | é o render em software deste ambiente, não o box |
+| Tarefas longas (>50 ms) | ~44 por minuto, ~4,5 s de cada 60 s | estável | não piora com o tempo |
+
+**Não há vazamento no JavaScript nem no DOM**: heap, nós, ouvintes, vídeos,
+imagens e timers ficaram planos por ~2.540 trocas e 11 reconstruções do palco.
+O único número que sobe é a memória **nativa** do renderizador, nos primeiros
+15–20 minutos de cada vida da página, até ~700 MB — e depois quase para.
+
+⟨SOAK-LEVE⟩
 
 ---
 
