@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Proposta de parceria — MultiTelas RH × Visitor</title>
+<style>
+@font-face { font-family: 'Outfit'; font-weight: 400; src: url('../../../fonts/marca/outfit-400-normal-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-weight: 500; src: url('../../../fonts/marca/outfit-500-normal-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-weight: 600; src: url('../../../fonts/marca/outfit-600-normal-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Outfit'; font-weight: 700; src: url('../../../fonts/marca/outfit-700-normal-latin.woff2') format('woff2'); }
+@page { size: A4; margin: 16mm 16mm 18mm; }
+@page :first { margin: 0; }
+:root { --tinta: #0E0B1F; --violeta: #5B2EFF; --lima: #C6F432; --cinza: #5C6270; --linha: #E3E7ED; --suave: #F4F5F8; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin: 0; font: 400 10.4pt/1.5 'Outfit', system-ui, sans-serif; color: var(--tinta); }
+h1, h2, h3 { font-weight: 600; letter-spacing: -.01em; margin: 0; }
+h2 { font-size: 19pt; margin-bottom: 4mm; }
+h2 small { display: block; font-size: 9pt; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--violeta); margin-bottom: 1.5mm; }
+h3 { font-size: 12pt; margin: 5mm 0 2mm; }
+p { margin: 0 0 2.6mm; }
+ul { margin: 0 0 3mm; padding-left: 5mm; }
+li { margin-bottom: 1.2mm; }
+b, strong { font-weight: 600; }
+.pagina { page-break-after: always; }
+.pagina:last-child { page-break-after: auto; }
+.apoio { color: var(--cinza); }
+table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 9.6pt; }
+th, td { text-align: left; padding: 2.2mm 2.6mm; border-bottom: 1px solid var(--linha); vertical-align: top; }
+th { font-weight: 600; background: var(--suave); }
+td.n, th.n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+tr.total td { font-weight: 600; border-top: 2px solid var(--tinta); }
+.cartoes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4mm; margin: 3mm 0 4mm; }
+.cartoes.tres { grid-template-columns: repeat(3, 1fr); }
+.cartao { border: 1px solid var(--linha); border-radius: 3mm; padding: 4mm; break-inside: avoid; }
+.cartao h3 { margin-top: 0; font-size: 11pt; }
+.cartao .preco { font-size: 15pt; font-weight: 600; margin: 1mm 0 2mm; }
+.cartao .preco span { font-size: 9pt; font-weight: 500; color: var(--cinza); }
+.cartao p, .cartao li { font-size: 9.4pt; }
+.destaque { background: var(--tinta); color: #fff; border-radius: 3mm; padding: 6mm; margin: 3mm 0 5mm; }
+.destaque .grande { font-size: 30pt; font-weight: 600; line-height: 1; }
+.destaque .grifo { background: var(--lima); color: var(--tinta); padding: 0 1.6mm; border-radius: 1mm; }
+.divisao { display: flex; height: 13mm; border-radius: 2mm; overflow: hidden; margin: 3mm 0 2mm; font-size: 9pt; font-weight: 600; }
+.divisao div { display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 2mm; }
+.selo { display: inline-block; font-size: 8pt; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; background: var(--lima); color: var(--tinta); border-radius: 1mm; padding: .4mm 1.6mm; }
+.nota { font-size: 8.8pt; color: var(--cinza); }
+.capa { height: 296mm; display: flex; flex-direction: column; justify-content: space-between; background: var(--tinta); color: #fff; margin: 0; padding: 24mm 22mm; }
+.logo { display: flex; align-items: center; gap: 3mm; font-size: 15pt; font-weight: 600; }
+.logo i { display: grid; grid-template-columns: 5mm 2.2mm; grid-template-rows: 5mm 1.6mm; gap: .7mm; }
+.logo i b:nth-child(1) { background: #fff; } .logo i b:nth-child(2) { background: var(--lima); } .logo i b:nth-child(3) { grid-column: 1 / 3; background: #86858F; }
+.capa h1 { font-size: 34pt; line-height: 1.05; margin-bottom: 6mm; }
+.capa h1 em { font-style: normal; color: var(--lima); }
+.capa p { font-size: 13pt; color: #C9C8D3; max-width: 140mm; }
+.capa .rodape { display: flex; justify-content: space-between; font-size: 9.5pt; color: #A9A8B5; }
+.tv { aspect-ratio: 16/9; border-radius: 2mm; background: #10141A; border: 2.5mm solid #1F2230; display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: auto 1fr auto; gap: 1.5mm; padding: 1.5mm; margin: 6mm 0; max-width: 150mm; }
+.tv div { border-radius: 1mm; padding: 2mm 3mm; font-size: 8pt; }
+.tv .cab { grid-column: 1 / 3; background: #F4F5F8; color: var(--tinta); display: flex; justify-content: space-between; font-weight: 600; }
+.tv .pri { background: var(--violeta); color: #fff; display: flex; flex-direction: column; justify-content: center; }
+.tv .pri strong { font-size: 17pt; line-height: 1.05; }
+.tv .lat { background: #23395d; color: #fff; display: flex; flex-direction: column; justify-content: center; }
+.tv .lat strong { font-size: 12pt; }
+.tv .rod { grid-column: 1 / 3; background: var(--lima); color: var(--tinta); font-weight: 600; }
+.dois { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+.passos { counter-reset: p; list-style: none; padding: 0; }
+.passos li { counter-increment: p; position: relative; padding-left: 9mm; margin-bottom: 2.6mm; }
+.passos li::before { content: counter(p); position: absolute; left: 0; top: 0; width: 6mm; height: 6mm; border-radius: 50%; background: var(--violeta); color: #fff; font-size: 8.5pt; font-weight: 600; display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+
+<section class="pagina capa">
+  <div class="logo"><i><b></b><b></b><b></b></i> MultiTelas RH</div>
+  <div>
+    <span class="selo">Proposta de parceria</span>
+    <h1 style="margin-top:6mm">Comunicação interna na TV,<br><em>vendida e instalada pela Visitor.</em></h1>
+    <p>Produto, preço, divisão de receita, modelos de aparelho e de instalação, processos e o que preparamos para a parceria começar.</p>
+  </div>
+  <div class="rodape"><span>MultiTelas · novembro de 2026</span><span>Documento para a Visitor · versão 1</span></div>
+</section>
+
+<section class="pagina">
+  <h2><small>Em uma página</small>A proposta</h2>
+  <div class="destaque">
+    <div class="apoio" style="color:#C9C8D3">Preço ao cliente final</div>
+    <div class="grande">R$ 139 <span style="font-size:13pt;font-weight:500">por TV, por mês</span></div>
+    <p style="margin:3mm 0 0;color:#E4E3EC">Tudo incluso: painel, conteúdo pronto de RH, IA para os textos, banco de fotos, atualizações e suporte técnico. Aparelho e instalação são opcionais, cobrados à parte pela Visitor.</p>
+  </div>
+  <h3>Como a receita de cada TV se divide</h3>
+  <div class="divisao">
+    <div style="width:22%;background:#E3E7ED">Adm. + impostos<br>22% · R$ 30,58</div>
+    <div style="width:15%;background:var(--lima)">Visitor<br>15% · R$ 20,85</div>
+    <div style="width:63%;background:var(--violeta);color:#fff">MultiTelas · 63% · R$ 87,57</div>
+  </div>
+  <p class="nota">Os 22% e os 15% saem do valor cheio (R$ 139). Aparelho, aluguel e instalação não entram nessa divisão: ficam 100% com a Visitor, que opera essa parte.</p>
+  <h3>Quem faz o quê</h3>
+  <div class="dois">
+    <div class="cartao"><h3>Visitor</h3><ul>
+      <li>Vende, demonstra e assina com o cliente.</li>
+      <li>Fatura e cobra o cliente; arca com a inadimplência.</li>
+      <li>Fornece o aparelho e instala (quando o cliente quiser).</li>
+      <li>Atende o suporte de primeiro nível (N1).</li>
+    </ul></div>
+    <div class="cartao"><h3>MultiTelas</h3><ul>
+      <li>Plataforma, TV e painel no ar, com atualizações.</li>
+      <li>Conteúdo pronto de RH e IA para os textos.</li>
+      <li>Suporte técnico de segundo nível (N2).</li>
+      <li>Homologa os aparelhos, treina a equipe Visitor e entrega os materiais.</li>
+    </ul></div>
+  </div>
+  <h3>Para começar</h3>
+  <p>Em até 4 semanas depois do contrato: a conta de parceiro da Visitor, o plano faturado pela Visitor, o relatório mensal de repasse, a landing no site da Visitor, o aparelho homologado e o treinamento da equipe (página 9).</p>
+</section>
+
+<section class="pagina">
+  <h2><small>O produto</small>MultiTelas RH</h2>
+  <p>Transforma qualquer TV da empresa num canal de comunicação interna, gerido de um painel na web. O RH escreve uma frase; a TV mostra uma peça bonita, na marca da empresa, no lugar certo da tela.</p>
+  <div class="tv">
+    <div class="cab"><span>Metalúrgica Alfa</span><span>SEX · 13 NOV · 09:41</span></div>
+    <div class="pri"><span style="opacity:.8">Segurança em primeiro lugar</span><strong>Uso obrigatório de protetor auricular no setor B</strong></div>
+    <div class="lat"><span>Aniversariantes</span><strong>Ana, Bruno e Carla</strong></div>
+    <div class="rod">Meta do mês: 18.450 peças · 108% · Refeitório hoje: frango grelhado</div>
+  </div>
+  <div class="dois">
+    <div>
+      <h3>O que aparece na TV</h3>
+      <ul>
+        <li>Comunicados e avisos importantes</li>
+        <li>Aniversariantes do mês e boas-vindas</li>
+        <li>Segurança do trabalho, SIPAT e EPI</li>
+        <li>Indicadores e metas, inclusive de uma planilha do Google, ao vivo</li>
+        <li>Cardápio do refeitório e ramais</li>
+        <li>Campanhas do ano (Outubro Rosa, Novembro Azul…) com as datas prontas</li>
+        <li>Quiz para a equipe</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Por que é fácil</h3>
+      <ul>
+        <li><b>Primeira TV em 5 minutos:</b> o RH diz o tipo de empresa, põe a marca e pareia a TV pelo QR code.</li>
+        <li><b>Conteúdo pronto</b> para RH, com a cara da empresa, e IA que escreve os textos.</li>
+        <li><b>Várias unidades:</b> permissões por unidade e aprovação (o membro pede, o gestor aprova).</li>
+        <li><b>Sem servidor no cliente:</b> roda em Smart TV ou TV box Android.</li>
+        <li><b>Sem internet, a TV continua</b> com a última programação.</li>
+      </ul>
+    </div>
+  </div>
+  <h3>Para quem</h3>
+  <p>Escritórios, indústrias e fábricas, centros de distribuição, áreas de equipe de redes de varejo, hospitais e clínicas (área da equipe), escolas e universidades (área administrativa).</p>
+</section>
+
+<section class="pagina">
+  <h2><small>Preço e divisão</small>Quanto a parceria movimenta</h2>
+  <table>
+    <tr><th>Por TV, por mês</th><th class="n">Valor</th><th class="n">%</th></tr>
+    <tr><td>Preço ao cliente final</td><td class="n">R$ 139,00</td><td class="n">100%</td></tr>
+    <tr><td>Administração e impostos (Visitor)</td><td class="n">R$ 30,58</td><td class="n">22%</td></tr>
+    <tr><td>Comissão da Visitor</td><td class="n">R$ 20,85</td><td class="n">15%</td></tr>
+    <tr class="total"><td>Repasse à MultiTelas</td><td class="n">R$ 87,57</td><td class="n">63%</td></tr>
+  </table>
+  <h3>Exemplos por mês (só a licença)</h3>
+  <table>
+    <tr><th>TVs ativas</th><th class="n">Faturamento</th><th class="n">Adm. + impostos</th><th class="n">Visitor</th><th class="n">Repasse MultiTelas</th></tr>
+    <tr><td>50</td><td class="n">R$ 6.950</td><td class="n">R$ 1.529</td><td class="n">R$ 1.043</td><td class="n">R$ 4.379</td></tr>
+    <tr><td>200</td><td class="n">R$ 27.800</td><td class="n">R$ 6.116</td><td class="n">R$ 4.170</td><td class="n">R$ 17.514</td></tr>
+    <tr><td>500</td><td class="n">R$ 69.500</td><td class="n">R$ 15.290</td><td class="n">R$ 10.425</td><td class="n">R$ 43.785</td></tr>
+    <tr><td>1.000</td><td class="n">R$ 139.000</td><td class="n">R$ 30.580</td><td class="n">R$ 20.850</td><td class="n">R$ 87.570</td></tr>
+  </table>
+  <p class="nota">Fora daqui, e 100% da Visitor: venda e aluguel de aparelho e instalação (páginas 5 e 6).</p>
+  <h3>Regras propostas</h3>
+  <ul>
+    <li><b>Teste grátis</b> de 14 dias com 1 TV, liberado pela Visitor na conta de parceiro.</li>
+    <li><b>Repasse sobre TVs ativas</b> no mês, proporcional aos dias (TV pausada ou cancelada não conta). A inadimplência do cliente é da Visitor, que pode pausar a conta pelo painel de parceiro.</li>
+    <li><b>Relatório até o dia 5</b> de cada mês (TVs ativas por cliente, por dia); a Visitor paga o repasse até o dia 15, contra nota fiscal da MultiTelas.</li>
+    <li><b>Preço mínimo</b> de R$ 139 por TV. Para 50 TVs ou mais, a Visitor pode propor condição especial; o repasse continua em 63% do preço praticado.</li>
+    <li><b>Reajuste anual</b> pelo IPCA, para o preço e o repasse.</li>
+  </ul>
+</section>
+
+<section class="pagina">
+  <h2><small>Aparelho</small>Quatro modelos, o cliente escolhe</h2>
+  <p>A MultiTelas não precisa de servidor nem de computador no cliente: cada TV precisa de um navegador moderno, que já vem em boa parte das Smart TVs, ou de um TV box Android. Para vender, recomendamos o <b>TV box homologado</b>: é o único caminho em que controlamos o motor e evitamos travamentos.</p>
+  <div class="cartoes">
+    <div class="cartao"><h3>1. Use o seu</h3><div class="preco">R$ 0</div>
+      <p>Smart TV compatível ou TV box do cliente. A tela de pareamento diz na hora se o aparelho serve.</p><p class="nota">Ideal para quem tem TI própria. Risco: aparelhos antigos dão mais suporte.</p></div>
+    <div class="cartao"><h3>2. Kit pronto</h3><div class="preco">R$ 349 <span>por TV, à vista</span></div>
+      <p>TV box homologado, configurado e testado pela Visitor, enviado pronto para ligar. Custo de referência do aparelho: ~R$ 210 em lote.</p><p class="nota">Margem da Visitor: ~R$ 110 a R$ 130 por kit, depois de frete e configuração.</p></div>
+    <div class="cartao"><h3>3. Aluguel</h3><div class="preco">+ R$ 19 <span>por TV, por mês · 12 meses</span></div>
+      <p>O aparelho é da Visitor, com troca em caso de defeito. Ao cancelar, o cliente devolve ou paga o aparelho.</p><p class="nota">Paga o aparelho em ~11 meses; depois, margem cheia. Contrato de locação (não de comodato, que por lei é gratuito).</p></div>
+    <div class="cartao"><h3>4. Comodato em projeto</h3><div class="preco">R$ 0 <span>para 20+ TVs e 24 meses</span></div>
+      <p>Aparelho cedido sem custo para contas grandes, com fidelidade de 24 meses e multa que cobre o aparelho não devolvido.</p><p class="nota">Ferramenta de fechamento para contas grandes; usar com critério.</p></div>
+  </div>
+  <h3>O aparelho homologado</h3>
+  <ul>
+    <li>TV box Android 9 ou mais novo, 2 GB de RAM ou mais, Wi-Fi 5 GHz e porta de rede, com o <i>Android System WebView</i> atualizado pela Play Store.</li>
+    <li>App MultiTelas TV instalado: abre sozinho quando a TV liga e fica sempre na tela.</li>
+    <li>A MultiTelas homologa 1 ou 2 modelos antes do lançamento, com teste contínuo de dias seguidos, e mantém a lista atualizada.</li>
+  </ul>
+</section>
+
+<section class="pagina">
+  <h2><small>Instalação</small>Do "faço sozinho" ao projeto completo</h2>
+  <div class="cartoes">
+    <div class="cartao"><h3>Você mesmo</h3><div class="preco">Grátis</div><p>5 minutos por TV, guiado pelo painel: liga o aparelho, abre a MultiTelas, aponta o celular para o QR. Inclui uma chamada de 30 minutos de boas-vindas com o RH.</p></div>
+    <div class="cartao"><h3>Remota assistida</h3><div class="preco">R$ 99 <span>por unidade</span></div><p>Videochamada com a TI do cliente: rede, liberação no firewall, pareamento e primeira programação no ar.</p></div>
+    <div class="cartao"><h3>Presencial</h3><div class="preco">R$ 249 <span>a visita, com a 1ª TV</span></div><p>+ R$ 99 por TV a mais no mesmo endereço. Técnico da Visitor ou credenciado. Suporte de parede, cabos e elétrica: orçamento à parte.</p></div>
+    <div class="cartao"><h3>Projeto</h3><div class="preco">Sob consulta</div><p>10+ TVs ou várias unidades: cronograma, padrão de conteúdo por unidade, permissões, treinamento do RH e dos aprovadores.</p></div>
+  </div>
+  <h3>Checklist técnico de cada ponto</h3>
+  <ul>
+    <li>Tomada e HDMI livres perto da TV; TV com modo "ligar na última entrada" ou CEC.</li>
+    <li>Internet de 5 Mbps por TV (o vídeo baixa uma vez e fica guardado no aparelho).</li>
+    <li>Firewall corporativo: liberar o domínio da MultiTelas (lista no guia de instalação).</li>
+    <li>Horário de ligar e desligar a TV combinado com o RH (economia de energia e de vida útil).</li>
+  </ul>
+  <h3>Depois de instalada</h3>
+  <ol class="passos">
+    <li>A TV aparece "no ar" no painel do cliente e no painel de parceiro da Visitor.</li>
+    <li>Se uma TV sair do ar, o cliente e a Visitor recebem o alerta.</li>
+    <li>A troca de aparelho com defeito (modelo aluguel) é feita pela Visitor; o pareamento novo leva 1 minuto e a programação volta sozinha.</li>
+  </ol>
+</section>
+
+<section class="pagina">
+  <h2><small>Processos</small>Do primeiro contato ao cancelamento</h2>
+  <table>
+    <tr><th style="width:24%">Etapa</th><th>Visitor</th><th>MultiTelas</th></tr>
+    <tr><td>Prospecção e demonstração</td><td>Conduz, com conta de demonstração</td><td>Fornece conta de demo, materiais e a landing</td></tr>
+    <tr><td>Proposta e contrato</td><td>Assina com o cliente final</td><td>Fornece os termos de uso e o anexo de LGPD</td></tr>
+    <tr><td>Cadastro do cliente</td><td>Cria a conta no painel de parceiro</td><td>Mantém o painel de parceiro</td></tr>
+    <tr><td>Aparelho e instalação</td><td>Compra, configura, envia, instala, troca</td><td>Homologa, mantém o app e a lista de aparelhos</td></tr>
+    <tr><td>Treinamento</td><td>Treina o RH do cliente</td><td>Treina a equipe Visitor e mantém a central de ajuda</td></tr>
+    <tr><td>Faturamento e cobrança</td><td>Fatura o cliente; cobra; pausa quem não paga</td><td>Relatório mensal de TVs ativas</td></tr>
+    <tr><td>Repasse</td><td>Paga até o dia 15</td><td>Emite a nota fiscal do repasse</td></tr>
+    <tr><td>Suporte N1</td><td>Dúvidas de uso, TV desligada, rede, aparelho</td><td>—</td></tr>
+    <tr><td>Suporte N2</td><td>Escala o que não resolver</td><td>Erros da plataforma, incidentes, correções</td></tr>
+    <tr><td>Atualizações</td><td>Recebe o aviso das novidades</td><td>Publica sem parar as TVs; avisa a Visitor antes</td></tr>
+    <tr><td>Cancelamento</td><td>Recolhe o aparelho (aluguel/comodato)</td><td>Exporta e apaga os dados, conforme a LGPD</td></tr>
+  </table>
+  <h3>Suporte e nível de serviço</h3>
+  <table>
+    <tr><th>Gravidade</th><th>Exemplo</th><th>Primeira resposta (N2)</th></tr>
+    <tr><td>Crítica</td><td>Todas as TVs de um cliente fora do ar por falha da plataforma</td><td>1 hora, todos os dias</td></tr>
+    <tr><td>Alta</td><td>Uma função importante parada (publicar, aprovar)</td><td>4 horas úteis</td></tr>
+    <tr><td>Normal</td><td>Dúvida técnica, ajuste, erro com contorno</td><td>1 dia útil</td></tr>
+  </table>
+  <p>Disponibilidade mensal da plataforma: <b>99,5%</b>. A TV continua exibindo a última programação mesmo durante uma falha da plataforma ou da internet.</p>
+</section>
+
+<section class="pagina">
+  <h2><small>Segurança e confiabilidade</small>O que garante a TV no ar</h2>
+  <div class="dois">
+    <div>
+      <h3>Plataforma</h3>
+      <ul>
+        <li>Banco de dados gerenciado, com cópia de segurança diária.</li>
+        <li>Arquivos (fotos e vídeos) em armazenamento de objetos, com a TV guardando cópia local.</li>
+        <li>Checagem de saúde a cada publicação: uma versão com problema não substitui a que está no ar.</li>
+        <li>Teste de carga e teste contínuo do player em TV box antes de lançar (resultados no anexo técnico).</li>
+      </ul>
+      <h3>Na TV</h3>
+      <ul>
+        <li>Sem internet, a TV continua com a última programação; quando a rede volta, atualiza sozinha.</li>
+        <li>Modo leve automático para aparelhos fracos.</li>
+        <li>O app abre sozinho quando o aparelho liga.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Dados e LGPD</h3>
+      <ul>
+        <li>O cliente é o controlador dos dados (nomes de aniversariantes, por exemplo); a MultiTelas é a operadora; a Visitor acessa só o necessário para cadastro e suporte.</li>
+        <li>Cada empresa vê só os próprios dados; permissões por unidade e por pessoa.</li>
+        <li>Contrato de tratamento de dados (anexo) entre MultiTelas e Visitor, e termos de uso para o cliente.</li>
+        <li>Ao cancelar, o cliente pode exportar os dados, que depois são apagados.</li>
+      </ul>
+      <h3>Conteúdo</h3>
+      <ul>
+        <li>A IA de RH escreve comunicação interna: sem preço, sem oferta, no tom da empresa.</li>
+        <li>Fluxo de aprovação para quem precisa de revisão antes de ir para a TV.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="pagina">
+  <h2><small>Para começar</small>O que a MultiTelas prepara para a parceria</h2>
+  <table>
+    <tr><th>Entrega</th><th>O que é</th><th class="n">Prazo</th></tr>
+    <tr><td>Painel de parceiro</td><td>A Visitor cria e acompanha as contas dos clientes dela, vê as TVs no ar e pausa ou reativa contas</td><td class="n">semana 1–2</td></tr>
+    <tr><td>Plano "faturado pela Visitor"</td><td>Sem cobrança por cartão no painel do cliente; a Ajuda mostra o contato da Visitor</td><td class="n">semana 1</td></tr>
+    <tr><td>Relatório de repasse</td><td>TVs ativas por cliente e por dia, em planilha, todo dia 5</td><td class="n">semana 2</td></tr>
+    <tr><td>Instalação em lote</td><td>Pareamento de muitas TVs seguidas pelo instalador, sem bloqueio de segurança</td><td class="n">semana 2</td></tr>
+    <tr><td>Aparelho homologado</td><td>1 ou 2 modelos testados por dias seguidos, com o app configurado</td><td class="n">semana 2–3</td></tr>
+    <tr><td>Landing MultiTelas RH</td><td>Página para o site da Visitor, com os contatos dela</td><td class="n">semana 1</td></tr>
+    <tr><td>Guias e treinamento</td><td>Guia de instalação, roteiro de suporte N1, roteiro de demonstração, treinamento da equipe</td><td class="n">semana 3–4</td></tr>
+    <tr><td>Contrato</td><td>Parceria, nível de serviço e tratamento de dados</td><td class="n">semana 1–3</td></tr>
+  </table>
+  <h3>Termos que propomos</h3>
+  <ul>
+    <li><b>Prazo</b> de 24 meses, renovável. Aviso de 90 dias para encerrar, com continuidade garantida para os clientes ativos.</li>
+    <li><b>Exclusividade</b> no canal de RH em troca de meta (a combinar, por exemplo 300 TVs em 12 meses).</li>
+    <li><b>Marca e tecnologia:</b> MultiTelas RH é uma licença de uso. Código, marca e plataforma continuam da MultiTelas; a carteira de clientes é da Visitor.</li>
+    <li><b>Revisão</b> conjunta a cada trimestre: TVs, suporte, pedidos de clientes e próximos passos.</li>
+  </ul>
+  <h3>Próximos passos</h3>
+  <ol class="passos">
+    <li>Conversa para ajustar esta proposta.</li>
+    <li>Contrato de parceria assinado.</li>
+    <li>Preparação (4 semanas) e 3 clientes piloto acompanhados de perto.</li>
+    <li>Lançamento com a landing no site da Visitor.</li>
+  </ol>
+</section>
+
+</body>
+</html>
