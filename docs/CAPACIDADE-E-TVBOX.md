@@ -417,7 +417,34 @@ imagens e timers ficaram planos por ~2.540 trocas e 11 reconstruções do palco.
 O único número que sobe é a memória **nativa** do renderizador, nos primeiros
 15–20 minutos de cada vida da página, até ~700 MB — e depois quase para.
 
-⟨SOAK-LEVE⟩
+### 5.3 Modo leve: 41 min, 902 trocas, 3 publicações — e um defeito achado
+
+O modo leve (`?perf=1`) é o que o box com o app usa. **Os primeiros 11
+minutos acharam um defeito:** no modo leve a foto viva **tocava o vídeo**,
+quando o desenho diz que ela mostra o poster parado ("o box fraco não
+decodifica vídeo atrás do texto", `js/peca-render.js`). A causa: o player
+deixou de mandar `leve` à peça quando passou a mandar `movimento: 'simples'`
+(`js/render.js`, `opcoesDaPeca`), e é o `leve` que troca o vídeo pelo poster.
+O teste da foto viva conferia a peça, não o que o player manda. **Corrigido**
+(com teste em `test/carga-rh.test.js`) e o soak recomeçou do zero:
+
+| Medida | Leve antes da correção (11 min) | **Leve corrigido (41 min)** | Completo (2 h) |
+|---|---|---|---|
+| `<video>` tocando / players de mídia criados | sim, ~2,5 players por minuto | **nenhum** | sim |
+| RSS do renderizador | 250–380 MB | **234–259 MB** nos 10 primeiros min; **~420–460 MB** depois da 1ª publicação | 650–780 MB |
+| Heap do JS | 2,9–5,2 MB | 2,8–5,4 MB (pico só logo após publicar), +0,8 MB/h | 2,9–4,1 MB, +0,2 MB/h |
+| `setInterval` vivos | 11 | 11, inclinação 0 | 10–11, 0 |
+| Nós / ouvintes | 410–755 / 62–94 | 410–755 / 62–95 (picos só logo após publicar) | 404–729 / 61–73 |
+| Quadros por segundo (CPU 6×, sem GPU) | ~55 | **~56** | ~7,5 |
+| Tarefas longas | — | ~40/min, ~3,4 s a cada 60 s; pior quadro 0,95 s | ~44/min, ~4,6 s/min; pior 1,3 s |
+| Vigia (`js/vigia.js`) | — | 2 zonas vigiadas, **0 cutucadas, 0 recargas** | — |
+
+O modo leve roda a ~56 quadros por segundo na mesma CPU freada em que o
+completo roda a ~7,5: para o box barato, **o modo leve não é opção, é o
+modo**. O `js/perf.js` já o liga sozinho no app (pelo nome do navegador) e
+em qualquer TV que entregue poucos quadros.
+
+⟨SOAK-PURGA⟩
 
 ---
 
