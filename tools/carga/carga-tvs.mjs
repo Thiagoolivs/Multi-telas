@@ -291,7 +291,8 @@ function cpuDoPostgres() {
       const s = fs.readFileSync('/proc/' + d + '/stat', 'utf8');
       if (!s.includes('(postgres)')) continue;
       const f = s.slice(s.lastIndexOf(')') + 2).split(' ');
-      tiques += Number(f[11]) + Number(f[12]);
+      // utime+stime e, do postmaster, cutime+cstime (os processos que já saíram).
+      tiques += Number(f[11]) + Number(f[12]) + Number(f[13]) + Number(f[14]);
     } catch (e) { /* sumiu */ }
   }
   return tiques; // em 1/100 s
