@@ -127,7 +127,15 @@ body { margin: 0; background: #fff; }
 
 /* ---------- Herói ---------- */
 .mtrh .heroi { padding: 56px 0 72px; background: linear-gradient(180deg, var(--fundo-2) 0%, #fff 70%); }
-.mtrh .heroi .caixa { display: grid; gap: 48px; align-items: center; }
+/* No celular a TV vem logo depois do título; no computador, ao lado do texto. */
+.mtrh .heroi .caixa { display: grid; grid-template-areas: "selo" "titulo" "tv" "lead" "acoes" "fatos"; }
+.mtrh .heroi .texto { display: contents; }
+.mtrh .heroi .selo { grid-area: selo; justify-self: start; }
+.mtrh .heroi h1 { grid-area: titulo; }
+.mtrh .heroi figure { grid-area: tv; margin-top: 28px; }
+.mtrh .heroi .lead { grid-area: lead; }
+.mtrh .heroi .acoes { grid-area: acoes; }
+.mtrh .heroi .fatos { grid-area: fatos; }
 .mtrh .selo { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border: 1px solid var(--linha); border-radius: 999px; background: #fff;
   font-size: .85rem; font-weight: 500; color: var(--texto-2); }
 .mtrh .selo i { width: 8px; height: 8px; border-radius: 50%; background: var(--violeta); }
@@ -147,7 +155,9 @@ body { margin: 0; background: #fff; }
 @media (min-width: 560px) { .mtrh .acoes { flex-direction: row; } }
 @media (min-width: 980px) {
   .mtrh .heroi { padding: 72px 0 96px; }
-  .mtrh .heroi .caixa { grid-template-columns: 1fr 1.08fr; gap: 56px; }
+  .mtrh .heroi .caixa { grid-template-columns: 1fr 1.08fr; column-gap: 56px; grid-template-rows: 1fr auto auto auto auto auto 1fr;
+    grid-template-areas: ". tv" "selo tv" "titulo tv" "lead tv" "acoes tv" "fatos tv" ". tv"; }
+  .mtrh .heroi figure { margin-top: 0; align-self: center; }
 }
 
 /* ---------- Cartões ---------- */
@@ -156,8 +166,8 @@ body { margin: 0; background: #fff; }
 .mtrh .cartao p { margin-top: 8px; color: var(--texto-2); font-size: .98rem; }
 .mtrh .icone { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: var(--fundo-2); color: var(--tinta); margin-bottom: 18px; }
 .mtrh .secao.cinza .icone { background: #fff; border: 1px solid var(--linha); }
-@media (min-width: 720px) { .mtrh .grade.g2 { grid-template-columns: repeat(2, 1fr); } .mtrh .grade.g3, .mtrh .grade.g4 { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 980px) { .mtrh .grade.g3 { grid-template-columns: repeat(3, 1fr); } .mtrh .grade.g4 { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 720px) { .mtrh .grade.g2, .mtrh .grade.g4 { grid-template-columns: repeat(2, 1fr); } .mtrh .grade.g3 { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 980px) { .mtrh .grade.g4 { grid-template-columns: repeat(4, 1fr); } }
 
 /* Problema: o "antes" riscado, sem dramatizar. */
 .mtrh .problema .cartao h3 { display: flex; align-items: center; gap: 10px; }
@@ -175,8 +185,9 @@ body { margin: 0; background: #fff; }
 .mtrh .tambem b { font-weight: 600; margin-right: 6px; }
 .mtrh .pilula { display: inline-block; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--linha); background: #fff; font-size: .9rem; color: var(--texto); }
 .mtrh .nota { margin-top: 18px; font-size: .88rem; color: var(--texto-2); }
-@media (min-width: 640px) { .mtrh .galeria { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 980px) { .mtrh .galeria { grid-template-columns: repeat(3, 1fr); gap: 40px 28px; } }
+@media (min-width: 560px) { .mtrh .galeria { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 760px) { .mtrh .galeria { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 980px) { .mtrh .galeria { gap: 40px 28px; } }
 
 /* ---------- Painel (escuro) ---------- */
 .mtrh .painel { position: relative; overflow: hidden; }
@@ -188,8 +199,7 @@ body { margin: 0; background: #fff; }
 .mtrh .recursos h3 { display: flex; align-items: center; gap: 12px; font-size: 1.06rem; }
 .mtrh .recursos h3 svg { color: var(--lima); }
 .mtrh .recursos p { margin-top: 10px; color: var(--sobre-escuro); font-size: .97rem; }
-@media (min-width: 720px) { .mtrh .recursos { grid-template-columns: repeat(2, 1fr); } }
-@media (min-width: 980px) { .mtrh .recursos { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 720px) { .mtrh .recursos { grid-template-columns: repeat(3, 1fr); } }
 
 /* ---------- Como funciona ---------- */
 .mtrh .como { display: grid; gap: 48px; margin-top: 48px; align-items: center; }
@@ -299,7 +309,8 @@ body { margin: 0; background: #fff; }
 @media (max-width: 559px) {
   .mtrh { font-size: 16px; --gutter: 18px; }
   .mtrh .secao { padding: 64px 0; }
-  .mtrh .heroi { padding: 36px 0 56px; }
+  .mtrh .heroi { padding: 32px 0 56px; }
+  .mtrh .parede { padding: 7% 4.5% 10%; border-radius: 16px; }
   .mtrh .botao { width: 100%; }
   .mtrh .topo .botao { width: auto; }
   .mtrh .plano { padding: 26px 22px; }
@@ -351,7 +362,7 @@ body { margin: 0; background: #fff; }
 <!-- ============ Herói ============ -->
 <section class="heroi" aria-labelledby="titulo-heroi">
   <div class="caixa">
-    <div>
+    <div class="texto">
       <p class="selo"><i aria-hidden="true"></i>Comunicação interna para RH</p>
       <h1 id="titulo-heroi">O recado do RH na tela que <span class="grifo">toda a equipe vê</span>.</h1>
       <p class="lead">O MultiTelas RH transforma qualquer TV da empresa em um canal de comunicação interna. Comunicados, aniversariantes, segurança, metas e cardápio, atualizados de um painel na web, numa unidade ou em todas.</p>
