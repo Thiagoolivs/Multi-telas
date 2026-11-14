@@ -35,7 +35,18 @@ uma conta com 300 TVs leva ~0,8–0,9 s e **para o servidor inteiro por
 para muitas TVs** não funcionava acima de ~20 TVs com a programação de RH (o
 corpo do pedido passava de 2 MB) — agora pelo menos diz por quê.
 
-**TV box.** ⟨SOAK⟩
+**TV box.** O player de verdade rodou **~3 h no total** num Chromium com a CPU
+6× mais lenta, ~4.400 trocas de peça, 19 publicações e uma troca de versão no
+meio: **nenhum erro, nenhuma zona parada, e nada vazando no JavaScript** —
+heap do JS +0,2 MB/h (ruído), nós, ouvintes, vídeos e timers planos. A
+memória da página sobe nos primeiros 15–20 min até um platô (~450 MB no
+modo leve, ~750 MB no completo com foto viva) e **é cache**: com o aviso de
+memória baixa do sistema, voltou 160–260 MB. O teste **achou um defeito**: no
+**modo leve** (o do box) a foto viva tocava o vídeo em vez do poster parado —
+corrigido. O modo leve roda a ~56 quadros/s onde o completo roda a ~7,5.
+Também foi feito um **vigia na página** (zona parada é cutucada, e a TV
+recarrega de madrugada) e o app Android tem **um buraco sério no vigia
+dele**: com o JavaScript travado de verdade, ele nunca recarrega (6.2).
 
 **Limites.** Uma instalação de 300 TVs **esbarra duas vezes**: no 61º
 aparelho do mesmo IP (60 TVs novas por hora por IP) e por volta da 300ª TV
@@ -395,7 +406,7 @@ deploy de verdade. A recarga foi limpa (nenhum erro, a programação voltou do
 servidor em segundos) e os números abaixo se medem dentro de cada vida da
 página.
 
-| Medida (depois de forçar a coleta) | Começo → fim | Inclinação (min 50–120) | Leitura |
+| Medida (depois de forçar a coleta) | Faixa no teste | Inclinação (min 50–120) | Leitura |
 |---|---|---|---|
 | Heap do JS | 2,9–4,1 MB (oscila com a peça no ar) | **+0,19 MB/h** | plano: ~4,5 MB por dia, e a recarga diária zera |
 | Nós do DOM (com os das peças, nos shadow roots) | 404–729 | +27/h, dentro da oscilação | plano; varia com a peça no ar |
@@ -444,7 +455,55 @@ completo roda a ~7,5: para o box barato, **o modo leve não é opção, é o
 modo**. O `js/perf.js` já o liga sozinho no app (pelo nome do navegador) e
 em qualquer TV que entregue poucos quadros.
 
-⟨SOAK-PURGA⟩
+### 5.4 A memória do renderizador: cache, não vazamento
+
+Para separar cache de vazamento, o fim de cada soak manda ao navegador o
+**aviso de memória crítica** (`Memory.simulatePressureNotification`, o mesmo
+que o Android manda a um app quando falta memória — o WebView recebe pelo
+`onTrimMemory`) e mede o renderizador 10 s depois. Num soak extra de 23 min
+no modo completo (peças de 4 s, publicação a cada 5 min, 692 trocas):
+
+| | Ao carregar | Antes do aviso | **Depois do aviso** | Players de mídia destruídos |
+|---|---|---|---|---|
+| Modo completo (23 min) | 370–470 MB | 761 MB | **499 MB** (−262 MB) | 86 (um por foto viva que saiu da tela) |
+| Modo leve corrigido (41 min) | 234–259 MB | 423 MB | **265 MB** (−158 MB) | 0 (sem vídeo) |
+
+- O que sobe nos primeiros 15–20 minutos é **cache do Chromium** (imagens
+  decodificadas, fontes, recursos), e o navegador **devolve quando falta
+  memória**. No modo leve voltou ao tamanho do começo; no completo sobrou
+  ~100 MB acima do começo, o que é o vídeo tocando e o buffer dele.
+- **Cada vídeo da foto viva que sai da tela solta o player** (86 destruídos
+  em 23 min, um por saída — `js/peca-render.js`, `soltarVideo`).
+- Num box de verdade com 2 GB o Chromium usa limites de cache menores que
+  os do desktop daqui, e o Android avisa o WebView antes de matar: o platô
+  deve ficar abaixo dos números da tabela. Mesmo assim, a **recarga da
+  madrugada** (6.3) zera o que acumular, e a **recriação diária do WebView**
+  (proposta 6.2, item 2) zera também o que for do processo.
+
+### 5.5 Conclusão do TV box
+
+Em ~4.400 trocas de peça somando os quatro soaks (2 h de modo completo, 52
+min de modo leve, 23 min de completo com purga), com 19 publicações
+(reconstrução do palco inteiro) e uma troca de versão no meio:
+
+- **Não trava:** nenhum erro de JavaScript, nenhuma zona parada (o vigia
+  novo contou 0 cutucadas), o rodízio manteve ~22 trocas por minuto do
+  começo ao fim, e a troca de versão do service worker recarregou a TV sozinha
+  e limpa.
+- **Não fica mais lento com o tempo:** quadros por segundo e tarefas longas
+  iguais no começo e no fim de cada soak. Lento ele é desde o começo no modo
+  completo numa CPU fraca (7,5 quadros/s aqui, sem GPU) — é para isso que o
+  modo leve existe e liga sozinho.
+- **Não vaza:** heap do JS +0,2 MB/h (ruído), nós, ouvintes, vídeos,
+  imagens e **timers planos** depois de 19 reconstruções do palco. A memória
+  nativa do renderizador sobe até um platô de cache e volta quando o sistema
+  pede.
+- **Achado e corrigido:** o modo leve tocava o vídeo da foto viva (5.3).
+- **Não testado aqui:** um box de verdade (GPU Mali, WebView do Android),
+  dias seguidos de relógio de parede, e a queda de rede longa. O roteiro de
+  aparelho (`docs/qa/ROTEIRO-APARELHO.md`) é o próximo passo: um box
+  homologado ligado 72 h no `staging` (`docs/OPERACAO.md` §2), com o painel
+  mostrando a memória e o uptime que o app já pode mandar no pulso.
 
 ---
 
