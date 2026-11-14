@@ -44,8 +44,16 @@ const CLASSES = {
    * O player. MEDIDO, NUNCA BLOQUEADO — ver o princípio acima. O número existe
    * para a supervisão poder mostrar "esta conta está pedindo config 40 vezes
    * por minuto", que quase sempre é uma TV com defeito de rede, e não abuso.
+   *
+   * O balde é POR TV (teste de carga, 14/11). Era um só para a conta, com
+   * 1.200: uma TV saudável faz ~28 pedidos em 5 min (pulso e som a cada 30 s,
+   * senha a cada minuto, indicadores, planilha, exibições, o passe do SSE), e
+   * toda conta com mais de ~43 TVs aparecia na supervisão como "esbarrando"
+   * o tempo todo — justo a conta grande de RH. E a TV com defeito numa conta
+   * pequena (10 TVs saudáveis + uma a 200 pedidos) ficava abaixo dos 1.200 e
+   * não aparecia. 150 por TV são cinco vezes o normal.
    */
-  tela: { max: 1200, janelaMs: 5 * 60 * 1000, bloqueia: false },
+  tela: { max: 150, janelaMs: 5 * 60 * 1000, bloqueia: false, porTela: true },
   /*
    * Upload. Poucos e pesados: o teto aqui é sobre banda e disco, não sobre
    * contagem de requisição.
@@ -66,12 +74,13 @@ function chave(classe, tenantId) { return classe + ':' + tenantId; }
  * devolve sempre `ok:true` e mesmo assim REGISTRA o excesso — quem opera
  * precisa enxergar a tela defeituosa antes de o cliente ligar reclamando.
  */
-function permitir(classe, tenantId) {
+function permitir(classe, tenantId, deviceId) {
   const regra = CLASSES[classe];
   if (!regra || !tenantId) return { ok: true, classe, restam: Infinity };
 
   const agora = Date.now();
-  const k = chave(classe, tenantId);
+  // A classe medida por TV conta cada TV no seu balde; o excesso continua anotado na conta.
+  const k = chave(classe, tenantId) + (regra.porTela && deviceId ? ':' + deviceId : '');
   let b = baldes.get(k);
   if (!b || agora > b.ate) { b = { n: 0, ate: agora + regra.janelaMs }; baldes.set(k, b); }
   b.n++;
@@ -80,7 +89,7 @@ function permitir(classe, tenantId) {
     return { ok: true, classe, restam: regra.max - b.n };
   }
 
-  anotarExcesso(tenantId, classe, agora, b.n);
+  anotarExcesso(tenantId, classe, agora, b.n, regra.porTela ? deviceId : undefined);
   return {
     ok: !regra.bloqueia,
     excedeu: true,
@@ -98,13 +107,14 @@ function permitir(classe, tenantId) {
  * para entender o que houve. O contador continua subindo — o que não se repete
  * é o barulho.
  */
-function anotarExcesso(tenantId, classe, agora, n) {
+function anotarExcesso(tenantId, classe, agora, n, deviceId) {
   let e = excessos.get(tenantId);
   if (!e) { e = {}; excessos.set(tenantId, e); }
   const primeiro = !e[classe];
-  e[classe] = { vezes: ((e[classe] && e[classe].vezes) || 0) + 1, ultimo: agora };
+  // `tela`: qual TV (a classe medida por TV) — é ela que o suporte vai olhar.
+  e[classe] = Object.assign({ vezes: ((e[classe] && e[classe].vezes) || 0) + 1, ultimo: agora }, deviceId ? { tela: deviceId } : {});
   if (primeiro || n % 500 === 0) {
-    log.aviso('limite.estourado', { tenant: tenantId, classe, vezes: e[classe].vezes });
+    log.aviso('limite.estourado', Object.assign({ tenant: tenantId, classe, vezes: e[classe].vezes }, deviceId ? { tela: deviceId } : {}));
   }
 }
 

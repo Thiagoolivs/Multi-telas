@@ -116,6 +116,9 @@ function infoDaTela() {
   return { ua: 'Mozilla/5.0 (Linux; Android 9; TV box) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36 MultiTelasTV/1.0.60', w: 1920, h: 1080, dpr: 1, versao: 'carga', app: '1.0.60', appCodigo: 60 };
 }
 
+let prov429 = 0;
+// O último número do IP muda a cada rodada: uma instalação que caiu no meio não gasta o limite da próxima.
+const RODADA = 1 + Math.floor(Date.now() / 1000) % 250;
 async function provisionar(alvo) {
   const cfg = montarProgramaRh({});
   while (frota.tvs.length < alvo) {
@@ -125,17 +128,28 @@ async function provisionar(alvo) {
     const conta = frota.contas[ci];
     // Um IP de escritório para cada 50 TVs (o limite é 60 TVs novas por hora por IP).
     const naConta = ci === 0 ? n : (n - CONTA_GRANDE) % CONTA;
-    const ip = '10.' + (10 + ci) + '.' + Math.floor(naConta / 50) + '.1';
+    const ip = '10.' + (10 + ci) + '.' + Math.floor(naConta / 50) + '.' + RODADA;
     const lote = [];
     for (let k = 0; k < 25 && frota.tvs.length + lote.length < alvo; k++) lote.push(k);
     const novas = await Promise.all(lote.map(async (k) => {
-      const ipk = '10.' + (10 + ci) + '.' + Math.floor((naConta + k) / 50) + '.1';
+      const ipk = '10.' + (10 + ci) + '.' + Math.floor((naConta + k) / 50) + '.' + RODADA;
       const d = await pedir('POST', '/api/devices', { ip: ipk, rotulo: 'prov:criar' });
       if (d.status !== 201) throw new Error('criar TV: ' + d.status + ' ' + JSON.stringify(d.json));
       await pedir('POST', '/api/devices/' + d.json.id + '/heartbeat', { corpo: infoDaTela(), headers: { 'x-device-token': d.json.deviceToken }, rotulo: 'prov:pulso' });
-      const p = await pedir('POST', '/api/pair', { corpo: { code: d.json.code, name: 'TV ' + (naConta + k + 1), nova: true }, cookie: conta.cookie, ip: ipk, rotulo: 'prov:parear' });
+      // O freio do painel (600 pedidos em 5 min por conta) pega a instalação de ~300 TVs: espera o Retry-After, como o instalador esperaria.
+      const comEspera = async (f, nome) => {
+        for (;;) {
+          const r = await f();
+          if (r.status !== 429) return r;
+          const s = Number(r.headers && r.headers['retry-after']) || 30;
+          prov429++;
+          if (prov429 === 1 || prov429 % 25 === 0) anotar('instalação: 429 no ' + nome + ' (conta ' + ci + ', ' + (frota.tvs.length + k) + ' TVs), esperando ' + s + ' s');
+          await espera(s * 1000 + 500);
+        }
+      };
+      const p = await comEspera(() => pedir('POST', '/api/pair', { corpo: { code: d.json.code, name: 'TV ' + (naConta + k + 1), nova: true }, cookie: conta.cookie, ip: ipk, rotulo: 'prov:parear' }), 'parear');
       if (p.status !== 200) throw new Error('parear: ' + p.status + ' ' + JSON.stringify(p.json));
-      const put = await pedir('PUT', '/api/devices/' + d.json.id + '/config', { corpo: cfg, cookie: conta.cookie, rotulo: 'prov:publicar' });
+      const put = await comEspera(() => pedir('PUT', '/api/devices/' + d.json.id + '/config', { corpo: cfg, cookie: conta.cookie, rotulo: 'prov:publicar' }), 'publicar');
       if (put.status !== 200) throw new Error('publicar: ' + put.status + ' ' + JSON.stringify(put.json));
       return { id: d.json.id, token: d.json.deviceToken, conta: ci, ip };
     }));
