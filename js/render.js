@@ -2041,6 +2041,14 @@
        * movimentoDe). Era `leve: true`, a peça inteira sem movimento.
        */
       movimento: document.documentElement.classList.contains('mt-perf') ? 'simples' : 'completo',
+      /*
+       * ...mas o `leve` continua indo: é ele que põe o POSTER parado no lugar
+       * da foto viva (js/peca-render.js, montar). Quando virou `movimento`,
+       * o modo leve passou a decodificar o vídeo atrás do texto no box fraco
+       * — o teste de resistência de 14/11 viu o vídeo tocando no modo leve.
+       * Com `movimento` dito, o `leve` não mexe no movimento (movimentoDe).
+       */
+      leve: document.documentElement.classList.contains('mt-perf'),
       marcaNaTela: !!global.MT_MARCA_NA_TELA,
       logo: global.MT_LOGO || null,
       hostsMidia: global.MT_HOSTS_MIDIA || [],

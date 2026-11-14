@@ -124,6 +124,34 @@ test('vigia: o player registra cada zona com rodízio, avisa a cada relógio, sa
   if (acorn) acorn.parse(fs2.readFileSync(path2.join(raiz, 'js/vigia.js'), 'utf8'), { ecmaVersion: 5 });
 });
 
+/* ---------------- Modo leve: a foto viva é o poster parado ---------------- */
+
+test('no modo leve a TV manda a peça com `leve` (poster no lugar do vídeo) e movimento simples; no completo, nenhum dos dois', () => {
+  const fs2 = require('node:fs');
+  const path2 = require('node:path');
+  const vm = require('node:vm');
+  const src = fs2.readFileSync(path2.join(__dirname, '..', 'js', 'render.js'), 'utf8');
+  const ini = src.indexOf('  function opcoesDaPeca(extra) {');
+  const fim = src.indexOf('\n  }\n', ini);
+  assert.ok(ini > 0 && fim > ini, 'opcoesDaPeca sumiu de js/render.js');
+  const opcoes = (leve) => {
+    const ctx = { global: {}, climaDaPeca: () => '', document: { documentElement: { classList: { contains: (c) => leve && c === 'mt-perf' } } } };
+    vm.createContext(ctx);
+    vm.runInContext(src.slice(ini, fim + 4) + '\nthis.f = opcoesDaPeca;', ctx);
+    return ctx.f();
+  };
+  const l = opcoes(true);
+  assert.equal(l.leve, true, 'o modo leve não chega à peça: a foto viva toca o vídeo no box fraco');
+  assert.equal(l.movimento, 'simples');
+  const c = opcoes(false);
+  assert.equal(c.leve, false);
+  assert.equal(c.movimento, 'completo');
+  // E a peça, com `leve`, põe o poster (o caminho que o teste da foto viva confere).
+  const R = require('../js/peca-render.js');
+  assert.equal(typeof R.montar, 'function');
+  assert.match(fs2.readFileSync(path2.join(__dirname, '..', 'js', 'peca-render.js'), 'utf8'), /else if \(poster && o\.leve\) \{ el\.setAttribute\('data-foto-viva', 'poster'\)/);
+});
+
 /* ---------------- O medidor do player: por TV, não por conta ---------------- */
 
 test('a conta de 300 TVs saudáveis não aparece como "esbarrando"; a TV com defeito numa conta pequena aparece', () => {
