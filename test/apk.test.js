@@ -86,7 +86,8 @@ test('o servidor busca, confere o sha256 e guarda por 30 min ("não há" também
 
     // APK que não bate com o versao.json: a TV não recebe nada novo (fica o que havia).
     A._limpar();
-    rede = redeFalsa({ apk: Buffer.concat([APK.subarray(0, APK.length - 1), Buffer.from('x')]) });
+    // O último byte INVERTIDO: trocar por 'x' empatava com o APK sorteado 1 vez em 256 (o CI do PR 339).
+    rede = redeFalsa({ apk: Buffer.concat([APK.subarray(0, APK.length - 1), Buffer.from([APK[APK.length - 1] ^ 0xff])]) });
     A._trocarRede(rede);
     assert.equal(await A.obter(), null);
     assert.equal(await A.obter(), null);
