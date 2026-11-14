@@ -35,6 +35,13 @@ uma conta com 300 TVs leva ~0,8–0,9 s e **para o servidor inteiro por
 para muitas TVs** não funcionava acima de ~20 TVs com a programação de RH (o
 corpo do pedido passava de 2 MB) — agora pelo menos diz por quê.
 
+**Tamanho e quando escalar.** Com as correções, **1 vCPU e 1 GB** no
+Railway atendem até o teto de 2.000 TVs com folga (planejamento: ~3.000 por
+instância subindo o teto). Mais de uma instância exige tirar da memória do
+processo o tempo real, os passes, os comandos e os limites (Postgres
+`LISTEN/NOTIFY` e uma tabela — 3.7); **comece esse trabalho quando a base
+passar de ~1.500 TVs ligadas**, para estar pronto antes de ~3.000.
+
 **TV box.** O player de verdade rodou **~3 h no total** num Chromium com a CPU
 6× mais lenta, ~4.400 trocas de peça, 19 publicações e uma troca de versão no
 meio: **nenhum erro, nenhuma zona parada, e nada vazando no JavaScript** —
