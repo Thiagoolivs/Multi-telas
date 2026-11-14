@@ -334,7 +334,23 @@ As causas, com arquivo e linha, estão nos relatórios de cada bloco
     - O corpo do texto fica em 4,6–5,2% e o título em 10–11%.
     - A linha que não quebra encolhe o título inteiro até caber.
   - **Falta:** o QR da `qr-foto` só aparece com o site da conta, e 16 peças ainda cedem um pouco o piso na TV quadrada (84–97%).
-- [ ] **Reteste 3:** rodando.
+- [x] **Teste de carga e do TV box (14/11, PR 340):** uma instância atende 2.000 TVs ligadas; o player rodou ~3 h num box simulado sem erro nem vazamento. Detalhes em [CAPACIDADE-E-TVBOX.md](../CAPACIDADE-E-TVBOX.md). Falta, achado no teste:
+  - a página Telas de uma conta de 300 TVs trava o servidor por 0,2–0,3 s;
+  - o vigia do app Android não reage quando a página trava de verdade;
+  - instalar muitas TVs esbarra em 60 TVs novas por hora por IP e no freio do painel (600 pedidos em 5 min por conta);
+  - o aviso rápido falha acima de ~20 TVs de RH (agora diz por quê);
+  - o plano Essencial para em 49 TVs.
+- [x] **Reteste 3 (14/11):** nota geral provisória **7,7** (era 7,5). Nenhum bloco em 9; Telas e página da TV chegou a 9,0. Detalhes em [RETESTE-3.md](RETESTE-3.md). Dos 10 do reteste 2: 7 resolvidos, 2 em parte, 1 igual. O que mais segura agora, em ordem de valor:
+  1. O conteúdo pronto espera a aprovação na galeria (100 de 101 telas, 70 de 113 peças). Decisão sua, não código.
+  2. QR sem link esconde o bloco onde ele está (`js/peca-render.js:200`): `cena-qr` vai só com a foto, `qr-foto` fica sem QR.
+  3. O rodapé de pagamento come os avisos (¾ da faixa na TV deitada) e repete a data nos lotes 1 a 3.
+  4. Letra pequena fora das zonas grandes: piso de 3,5% e 3% em Saúde e Empresas, lateral e bloco, cardápios a 4,2–4,4%.
+  5. Em Telas, o selo do grupo esconde o nome da TV ("TV 23 · Corredor" vira "TV 2…").
+  6. Os selos "1 de 3" ficam por cima da TV nas prévias, e o botão da gerente diz "Pôr na TV" quando vira pedido.
+  7. A TV fora do conteúdo: a 2ª TV do plano grátis fica no código sem dizer por quê; fora do horário o padrão continua mostrando a programação; a logo do cabeçalho é pequena.
+  8. Exemplo de outro negócio sobre a foto da conta ("Óculos de sol 30% off" sobre um pão) e exemplo de Saúde com desconto e preço sem "R$".
+  9. Acessibilidade: o papel do membro em Equipe sem nome (crítico no axe), contrastes da Plataforma e tabelas da Privacidade.
+  10. Só Chromium medido, `/apk/versao.json` em 404, a landing sem prova social e o e-mail de confirmar genérico.
 - [ ] **Bloco 2 e os cenários de IA do bloco 3:** dependem do crédito do Gemini.
 - [ ] **Os pilotos:** com você, pelo roteiro.
 - **O que falta para cada bloco chegar a 9 (do primeiro reteste, 05/11; quase tudo corrigido em 06/11):**
