@@ -646,6 +646,8 @@ const q = {
   deleteSessionsOfUser: db.prepare('DELETE FROM sessions WHERE user_id = ?'),
   insertDevice: db.prepare('INSERT INTO devices (id, tenant_id, code, name, config, device_token, updated_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'),
   deviceById: db.prepare('SELECT * FROM devices WHERE id = ?'),
+  // Sem a programação: as rotas do pulso, do som e da senha não a leem (ver getDeviceLeve em db-postgres.js).
+  deviceLeveById: db.prepare('SELECT id, tenant_id, code, name, device_token, updated_at, created_at, last_seen, alerta_offline_em, expediente, info, grupo, (config IS NOT NULL) AS has_config FROM devices WHERE id = ?'),
   deviceByToken: db.prepare('SELECT * FROM devices WHERE device_token = ? AND tenant_id = ?'),
   deviceByCode: db.prepare('SELECT * FROM devices WHERE code = ?'),
   claimDevice: db.prepare('UPDATE devices SET tenant_id = ?, name = ? WHERE id = ?'),
@@ -804,6 +806,7 @@ async function createDevice(id, code, deviceToken) {
   return { id, code };
 }
 async function getDevice(id) { return q.deviceById.get(id) || null; }
+async function getDeviceLeve(id) { return q.deviceLeveById.get(id) || null; }
 // Onde a URL de uma mídia aparece (ver db-postgres.js, D0.7).
 async function ondeAparece(tenantId, texto) {
   // instr(), e não LIKE: um % ou _ na URL viraria curinga (ver db-postgres.js).
@@ -2312,7 +2315,7 @@ module.exports = {
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
-  createDevice, getDevice, ondeAparece, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
+  createDevice, getDevice, getDeviceLeve, ondeAparece, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, setExpediente, setGrupoDaTela, herdarIdadeDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,

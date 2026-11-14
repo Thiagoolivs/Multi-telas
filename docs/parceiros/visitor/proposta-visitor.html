@@ -191,9 +191,9 @@ tr.total td { font-weight: 600; border-top: 2px solid var(--tinta); }
   </div>
   <h3>O aparelho homologado</h3>
   <ul>
-    <li>TV box Android 9 ou mais novo, 2 GB de RAM ou mais, Wi-Fi 5 GHz e porta de rede, com o <i>Android System WebView</i> atualizado pela Play Store.</li>
+    <li>TV box com Android 10 ou mais novo e <b>Google TV / Android TV certificado</b> (é o que mantém o navegador interno atualizado pela Play Store), 2 GB de RAM ou mais, processador de 4 núcleos (Cortex-A55 ou melhor), 8 GB de armazenamento, Wi-Fi 5 GHz e porta de rede.</li>
     <li>App MultiTelas TV instalado: abre sozinho quando a TV liga e fica sempre na tela.</li>
-    <li>A MultiTelas homologa 1 ou 2 modelos antes do lançamento, com teste contínuo de dias seguidos, e mantém a lista atualizada.</li>
+    <li>A MultiTelas homologa um modelo antes do lançamento, com teste contínuo de dias seguidos, e a Visitor compra sempre o mesmo: lote de box barato troca de componente sem avisar.</li>
   </ul>
 </section>
 
@@ -255,13 +255,14 @@ tr.total td { font-weight: 600; border-top: 2px solid var(--tinta); }
         <li>Banco de dados gerenciado, com cópia de segurança diária.</li>
         <li>Arquivos (fotos e vídeos) em armazenamento de objetos, com a TV guardando cópia local.</li>
         <li>Checagem de saúde a cada publicação: uma versão com problema não substitui a que está no ar.</li>
-        <li>Teste de carga e teste contínuo do player em TV box antes de lançar (resultados no anexo técnico).</li>
+        <li>Teste de carga e teste contínuo do player feitos em 14/11: 2.000 TVs ligadas por servidor, sem erro (anexo técnico, página 10).</li>
       </ul>
       <h3>Na TV</h3>
       <ul>
         <li>Sem internet, a TV continua com a última programação; quando a rede volta, atualiza sozinha.</li>
         <li>Modo leve automático para aparelhos fracos.</li>
         <li>O app abre sozinho quando o aparelho liga.</li>
+        <li>Vigia no player: uma área da tela que parar de trocar é retomada sozinha, e a TV se recarrega uma vez por dia, de madrugada.</li>
       </ul>
     </div>
     <div>
@@ -308,6 +309,38 @@ tr.total td { font-weight: 600; border-top: 2px solid var(--tinta); }
     <li>Preparação (4 semanas) e 3 clientes piloto acompanhados de perto.</li>
     <li>Lançamento com a landing no site da Visitor.</li>
   </ol>
+</section>
+
+<section class="pagina">
+  <h2><small>Anexo técnico</small>Capacidade e resistência, medidas em 14/11/2026</h2>
+  <p>Em ambiente de teste, imitando o que cada TV faz de verdade (sinal a cada 30 s, canal ao vivo, programação de RH completa), com três pessoas usando o painel de uma conta de 300 TVs ao mesmo tempo.</p>
+  <h3>Servidor: uma instância só, como está hoje</h3>
+  <table>
+    <tr><th>TVs ligadas</th><th class="n">Pedidos por segundo</th><th class="n">Resposta (95% em até)</th><th class="n">Uso de CPU (1 núcleo)</th><th class="n">Erros</th></tr>
+    <tr><td>100</td><td class="n">10</td><td class="n">9 ms</td><td class="n">7%</td><td class="n">0%</td></tr>
+    <tr><td>500</td><td class="n">48</td><td class="n">12 ms</td><td class="n">14%</td><td class="n">&lt; 0,1%</td></tr>
+    <tr><td>1.000</td><td class="n">94</td><td class="n">17 ms</td><td class="n">19%</td><td class="n">&lt; 0,1%</td></tr>
+    <tr><td>1.500</td><td class="n">141</td><td class="n">20 ms</td><td class="n">24%</td><td class="n">&lt; 0,1%</td></tr>
+    <tr><td>2.000</td><td class="n">189</td><td class="n">26 ms</td><td class="n">26%</td><td class="n">&lt; 0,1%</td></tr>
+  </table>
+  <ul>
+    <li><b>2.000 TVs ligadas por instância</b>, usando cerca de um quarto de um núcleo. Com as otimizações feitas depois da medição, as mesmas 2.000 TVs usam 17% de CPU e metade da memória.</li>
+    <li>Uma programação publicada chega às TVs ligadas na hora: menos de 3 ms no servidor, mais o tempo da rede do cliente.</li>
+    <li>300 TVs ligando juntas em 5 segundos, como na volta da energia: 95% delas com a programação na tela em até 0,6 s.</li>
+    <li>Crescimento: a passagem para várias instâncias está planejada e começa quando a base chegar a 1.500 TVs ligadas, antes de precisar.</li>
+  </ul>
+  <h3>TV box: o player ligado por horas</h3>
+  <ul>
+    <li>O player real rodou cerca de 3 horas em tela cheia (1920×1080), com o processador 6 vezes mais lento para imitar um TV box: cerca de 4.400 trocas de conteúdo, 19 publicações e uma atualização de versão no meio.</li>
+    <li><b>Nenhum erro, nenhuma área parada e nada crescendo na memória do player.</b> A memória da página sobe nos primeiros 15 a 20 minutos e se estabiliza (cerca de 450 MB no modo leve, 750 MB no completo). Quando o sistema pede memória, ela devolve de 160 a 260 MB: é cache, não vazamento. Por isso o mínimo de 2 GB no aparelho.</li>
+    <li>O modo leve, o dos aparelhos simples, anda a ~56 quadros por segundo. O teste achou um defeito nele, já corrigido: a foto com movimento tocava o vídeo em vez da imagem parada.</li>
+  </ul>
+  <h3>Antes do lançamento (homologação, semanas 2 e 3)</h3>
+  <ul>
+    <li>Teste de dias seguidos no aparelho homologado de verdade.</li>
+    <li>Reforço no app: reiniciar o player se a página deixar de responder, renovar o navegador interno uma vez por dia e o comando "reiniciar TV" no painel.</li>
+    <li>Instalação em lote e painel ajustados para contas com centenas de TVs.</li>
+  </ul>
 </section>
 
 </body>

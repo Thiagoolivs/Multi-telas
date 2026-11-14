@@ -204,8 +204,14 @@ function sendJson(res, status, obj, extraHeaders) {
  */
 function readBody(req, res, cb) {
   let data = '';
-  req.on('data', (ch) => { data += ch; if (data.length > 2e6) req.destroy(); });
+  let demais = 0;
+  req.on('data', (ch) => {
+    if (demais) { demais += ch.length; if (demais > 64e6) req.destroy(); return; }
+    data += ch;
+    if (data.length > 2e6) { demais = data.length; data = ''; }
+  });
   req.on('end', AsyncResource.bind(() => {
+    if (demais) return sendJson(res, 413, { error: CORPO_GRANDE, code: 'grande-demais' });
     let parsed; try { parsed = data ? JSON.parse(data) : {}; } catch (e) { parsed = null; }
     Promise.resolve(cb(parsed)).catch((e) => {
       erros.registrar(e, { rota: req.url, metodo: req.method, onde: 'corpo da requisição' });
@@ -213,6 +219,16 @@ function readBody(req, res, cb) {
     });
   }));
 }
+/*
+ * CORPO ACIMA DE 2 MB: 413 com o motivo, e não a conexão cortada (teste de
+ * carga, 14/11). O corte fazia o painel dizer "sem conexão" — e o caso real é
+ * o aviso rápido para muitas TVs de uma vez: cada TV vai com a programação
+ * inteira, e a de RH com peças-ouro tem ~96 KB, então mais de ~20 TVs num
+ * envio passavam do teto. O resto do corpo é lido e jogado fora (sem guardar)
+ * para a resposta chegar a quem enviou; acima de 64 MB, aí sim, corta.
+ */
+const CORPO_GRANDE = 'O envio ficou grande demais para um pedido só (mais de 2 MB). '
+  + 'Se for para muitas TVs de uma vez, envie em grupos menores.';
 /*
  * Toda geração de IA vira TRABALHO — devolve 202 com um id e o painel
  * acompanha por polling.

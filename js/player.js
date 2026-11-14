@@ -621,6 +621,8 @@
     }
     pulsar();
     setInterval(pulsar, 30000);
+    // O vigia da página (js/vigia.js): zona parada e a recarga da madrugada, na hora da loja.
+    if (global.MTVigia) MTVigia.ligar({ hora: () => Number(agoraNaLoja().hm.slice(0, 2)) });
     ligarExibicoes(dev.id);
     // Relação de aniversariantes: carrega e refresca a cada 6h (muda pouco).
     loadBirthdays(dev.id);
@@ -2488,6 +2490,17 @@
       return { stop: espera.parar, atual: () => ({ esperando: true }) };
     }
 
+    /*
+     * O vigia (js/vigia.js): a zona com rodízio diz quando deveria trocar de
+     * novo; se passar da hora sem trocar, ele cutuca. A zona parada que ele
+     * cutuca depois de parada (refeita sem passar pelo stop) só sai da lista.
+     */
+    const vig = global.MTVigia && !estatica ? MTVigia.zona(function () {
+      if (stopped) { vig.parar(); return; }
+      clearTimeout(timer);
+      advance();
+    }) : null;
+
     function advance() {
       if (stopped) return;
 
@@ -2610,6 +2623,7 @@
     function schedule(seconds) {
       clearTimeout(timer);
       timer = setTimeout(advance, Math.max(0, seconds) * 1000);
+      if (vig) vig.devido(Date.now() + Math.max(0, seconds) * 1000);
     }
 
     function mostrarRelogio() {
@@ -2654,6 +2668,7 @@
       atual: () => noAr,
       stop: () => {
         stopped = true; clearTimeout(timer);
+        if (vig) vig.parar();
         if (auto) global.removeEventListener('mt:aniversarios', aoChegarAniversarios);
         global.removeEventListener('mt:planilhas', aoMudarPlanilha);
         if (currentSlide && currentSlide.parar) currentSlide.parar(); // relógio de fora do horário

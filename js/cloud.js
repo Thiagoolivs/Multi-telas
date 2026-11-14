@@ -281,6 +281,8 @@
   async function heartbeat(id) {
     try {
       const r = await api('POST', '/api/devices/' + id + '/heartbeat', infoDaTela(), dtHeader());
+      // O servidor respondeu: o vigia (js/vigia.js) só recarrega a página com ele de pé.
+      if (global.MTVigia) global.MTVigia.marcarPulso();
       if (r && r.comando) executarComando(r.comando);
       // O selo da versão gratuita vem de carona no pulso: não é config, e
       // trocar a config por causa dele reconstruiria o palco a cada mudança.
