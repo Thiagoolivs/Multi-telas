@@ -207,6 +207,45 @@ test('servidor: o envio grande demais diz por quê (413), e o lote acima de 200 
   assert.match(depois.json.error, /pelo menos uma TV/);
 });
 
+/* ---------------- A TV não traz a programação do banco a cada pulso ---------------- */
+
+test('pulso, som, passe, SSE e as listas da TV leem a TV SEM a programação; a config e o "ver a tela" leem com ela', () => {
+  const telas = fs.readFileSync(path.join(RAIZ, 'server/routes/telas.js'), 'utf8');
+  const m = /const SEM_PROGRAMACAO = new Set\(\[([^\]]+)\]\)/.exec(telas);
+  assert.ok(m, 'sumiu a lista das rotas leves');
+  const leves = m[1].split(',').map((s) => s.trim().replace(/'/g, ''));
+  assert.deepEqual(leves.sort(), ['audio-estado', 'birthdays', 'events', 'exibicoes', 'heartbeat', 'kpis', 'passe', 'planilhas']);
+  for (const r of ['config', 'estado', '']) assert.ok(!leves.includes(r), r + ' lê a programação e não pode vir sem ela');
+  assert.match(telas, /SEM_PROGRAMACAO\.has\(sub\) \? await db\.getDeviceLeve\(id\) : await db\.getDevice\(id\)/);
+  // Cada rota leve não pode ler device.config (ela não vem).
+  for (const r of leves) {
+    const i = telas.indexOf("sub === '" + r + "'");
+    if (i < 0) continue;
+    const fim = telas.indexOf("if (req.method === '", i + 10);
+    assert.ok(!/device\.config/.test(telas.slice(i, fim > 0 ? fim : i + 4000)), 'a rota ' + r + ' lê device.config');
+  }
+  assert.match(fs.readFileSync(path.join(RAIZ, 'server/routes/senha.js'), 'utf8'), /db\.getDeviceLeve \? await db\.getDeviceLeve\(id\)/);
+});
+
+test('getDeviceLeve (SQLite): tudo da TV menos a programação, e has_config diz se ela existe', async (t) => {
+  const dados = fs.mkdtempSync(path.join(os.tmpdir(), 'mt-leve-'));
+  const antes = { DATA_DIR: process.env.DATA_DIR, DATABASE_URL: process.env.DATABASE_URL };
+  process.env.DATA_DIR = dados; process.env.DATABASE_URL = '';
+  t.after(() => { Object.assign(process.env, antes); try { fs.rmSync(dados, { recursive: true, force: true }); } catch (e) { /* segura */ } });
+  const db = require('../server/db-sqlite.js');
+  if (db.init) await db.init();
+  await db.createDevice('dev_leve', 'ABC123', 'tok');
+  const vazia = await db.getDeviceLeve('dev_leve');
+  assert.equal(vazia.device_token, 'tok');
+  assert.ok(!('config' in vazia), 'a programação veio na leitura leve');
+  assert.equal(Number(vazia.has_config), 0);
+  await db.setDeviceConfig('dev_leve', JSON.stringify({ settings: { nome: 'x' }, zonas: {} }), 'TV');
+  const cheia = await db.getDeviceLeve('dev_leve');
+  assert.equal(Number(cheia.has_config), 1);
+  assert.equal(cheia.updated_at, (await db.getDevice('dev_leve')).updated_at);
+  assert.equal(await db.getDeviceLeve('dev_nao'), null);
+});
+
 test('a senha da TV continua recusando token errado', async () => {
   const { rota, telas, respostas } = rotaDaSenha(2);
   await rota({ method: 'GET', headers: { 'x-device-token': 'errado' } }, {}, ['api', 'devices', telas[0].id, 'senha'], {}, null);

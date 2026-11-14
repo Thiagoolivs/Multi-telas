@@ -14,6 +14,13 @@ module.exports = function (ctx) {
   } = ctx;
 
   const NAO_TRATEI = Symbol('nao-tratei');
+  /*
+   * As rotas da TV que NÃO leem a programação (teste de carga, 14/11). São
+   * ~95% do que uma TV pede (pulso e som a cada 30 s, o resto de minutos em
+   * minutos), e cada uma trazia do banco a programação inteira — ~96 KB numa
+   * TV de RH com peças-ouro. Rota nova aqui só se não tocar em device.config.
+   */
+  const SEM_PROGRAMACAO = new Set(['heartbeat', 'audio-estado', 'passe', 'events', 'kpis', 'planilhas', 'birthdays', 'exibicoes']);
 
   /*
    * O que cada TV disse que está mostrando, na última vez que o painel
@@ -485,9 +492,10 @@ module.exports = function (ctx) {
     /* ----- Rotas /api/devices/:id/... ----- */
     if (parts[1] === 'devices' && parts[2]) {
       const id = parts[2];
-      const device = await db.getDevice(id);
-      if (!device) return sendJson(res, 404, { error: 'device não encontrado' });
       const sub = parts[3];
+      // O pulso, o som, o passe, o SSE e as listas da TV não leem a programação: vêm sem ela (db.getDeviceLeve).
+      const device = SEM_PROGRAMACAO.has(sub) ? await db.getDeviceLeve(id) : await db.getDevice(id);
+      if (!device) return sendJson(res, 404, { error: 'device não encontrado' });
       /*
        * Da conta E alcançável por esta pessoa (fase 13): o membro de uma loja
        * não lê nem grava a TV de outra loja — nem pelo endereço direto.

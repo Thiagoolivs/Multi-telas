@@ -85,7 +85,8 @@ module.exports = function (ctx) {
 
   async function daTela(req, res, id, sess) {
     if (req.method !== 'GET') return sendJson(res, 405, { error: 'método inválido' });
-    const device = await db.getDevice(id);
+    // Sem a programação (~96 KB numa TV de RH): esta rota não a lê (db.getDeviceLeve).
+    const device = db.getDeviceLeve ? await db.getDeviceLeve(id) : await db.getDevice(id);
     if (!device) return sendJson(res, 404, { error: 'device não encontrado' });
     const dado = req.headers['x-device-token'];
     const dtOk = !!dado && !!device.device_token && safeEqual(dado, device.device_token);
