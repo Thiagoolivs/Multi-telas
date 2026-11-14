@@ -45,6 +45,85 @@ test('300 TVs perguntando a senha: a conta é lida uma vez por minuto, não 300'
   assert.equal(contagem.senhaChamadas, 300, 'a fila em si continua sendo lida a cada pergunta');
 });
 
+/* ---------------- O vigia da página (js/vigia.js) ---------------- */
+
+const V = require('../js/vigia.js');
+const MIN = 60 * 1000;
+const HORA = 60 * MIN;
+
+test('vigia: zona que passou da hora é cutucada; parada de novo logo depois, a página recarrega', () => {
+  const agora = 10 * HORA;
+  const base = { agora, desde: agora - HORA, pulsoOk: agora - 10000, hora: 14, ultimaRecarga: 0 };
+  // Dentro da hora (ou atrasada menos de 2 min): nada.
+  assert.equal(V.decidir(Object.assign({}, base, { zonas: [{ devido: agora + 5000 }] })).acao, '');
+  assert.equal(V.decidir(Object.assign({}, base, { zonas: [{ devido: agora - MIN }] })).acao, '');
+  // 3 min atrasada: cutuca a zona (a de índice 1).
+  const d = V.decidir(Object.assign({}, base, { zonas: [{ devido: agora + 1000 }, { devido: agora - 3 * MIN }] }));
+  assert.deepEqual(d, { acao: 'cutucar', motivo: 'zona-parada', zona: 1 });
+  // Cutucada há 5 min e parada de novo: recarrega.
+  assert.equal(V.decidir(Object.assign({}, base, { zonas: [{ devido: agora - 3 * MIN, cutucadaEm: agora - 5 * MIN }] })).acao, 'recarregar');
+  // ...mas não sem servidor (numa TV sem service worker seria a página de erro na parede): só cutuca de novo depois.
+  assert.equal(V.decidir(Object.assign({}, base, { pulsoOk: agora - 5 * MIN, zonas: [{ devido: agora - 3 * MIN, cutucadaEm: agora - 5 * MIN }] })).acao, '');
+  // ...e nunca duas recargas do vigia em menos de 30 min.
+  assert.equal(V.decidir(Object.assign({}, base, { ultimaRecarga: agora - 10 * MIN, zonas: [{ devido: agora - 3 * MIN, cutucadaEm: agora - 5 * MIN }] })).acao, '');
+});
+
+test('vigia: a recarga da madrugada é uma vez, depois de 20 h ligada, entre 3h e 5h e com o servidor respondendo', () => {
+  const agora = 100 * HORA;
+  const base = { agora, desde: agora - 21 * HORA, pulsoOk: agora - 10000, ultimaRecarga: 0, zonas: [] };
+  assert.equal(V.decidir(Object.assign({}, base, { hora: 3 })).motivo, 'madrugada');
+  assert.equal(V.decidir(Object.assign({}, base, { hora: 4 })).acao, 'recarregar');
+  for (const h of [2, 5, 9, 14, 23]) assert.equal(V.decidir(Object.assign({}, base, { hora: h })).acao, '', 'recarregou às ' + h + 'h');
+  assert.equal(V.decidir(Object.assign({}, base, { hora: 3, desde: agora - 5 * HORA })).acao, '', 'recarregou ligada há 5 h');
+  assert.equal(V.decidir(Object.assign({}, base, { hora: 3, pulsoOk: 0 })).acao, '', 'recarregou sem servidor');
+  // Recarregou às 3h05: às 3h40 a página é nova (desde) — e a marca segura de qualquer jeito.
+  assert.equal(V.decidir(Object.assign({}, base, { hora: 3, ultimaRecarga: agora - 20 * MIN })).acao, '');
+});
+
+test('vigia ligado: cutuca a zona de verdade, grava a marca da recarga e recarrega', () => {
+  V._zerar();
+  let t = 50 * HORA;
+  const guardado = {};
+  const armazem = { getItem: (k) => (k in guardado ? guardado[k] : null), setItem: (k, v) => { guardado[k] = v; } };
+  const recargas = [];
+  let cutucadas = 0;
+  const z = V.zona(() => { cutucadas++; });
+  const vig = V.ligar({ semRelogio: true, agora: () => t, hora: () => 14, armazem, recarregar: (m) => recargas.push(m), avisar: () => {} });
+  V.marcarPulso(t);
+  z.devido(t + 6000);
+  assert.equal(vig.olhar().acao, '');
+  t += 4 * MIN; V.marcarPulso(t);
+  assert.equal(vig.olhar().acao, 'cutucar');
+  assert.equal(cutucadas, 1);
+  // A zona não marcou relógio novo (continua parada): 3 min depois, ainda nada (devido zerado no cutucão)...
+  z.devido(t + 6000);
+  t += 4 * MIN; V.marcarPulso(t);
+  assert.equal(vig.olhar().acao, 'recarregar', 'parou de novo logo depois do cutucão e não recarregou');
+  assert.deepEqual(recargas, ['zona-parada']);
+  assert.equal(Number(guardado['mt.vigia']), t, 'a marca contra o laço não foi gravada');
+  // A zona que saiu (stop) não é mais vigiada.
+  z.parar();
+  t += 60 * MIN; V.marcarPulso(t);
+  assert.equal(vig.olhar().acao, '');
+  V._zerar();
+});
+
+test('vigia: o player registra cada zona com rodízio, avisa a cada relógio, sai no stop; o pulso marca o servidor; e vai no pacote da TV', () => {
+  const fs2 = require('node:fs');
+  const path2 = require('node:path');
+  const raiz = path2.join(__dirname, '..');
+  const player = fs2.readFileSync(path2.join(raiz, 'js/player.js'), 'utf8');
+  assert.match(player, /const vig = global\.MTVigia && !estatica \? MTVigia\.zona\(/);
+  assert.match(player, /timer = setTimeout\(advance, Math\.max\(0, seconds\) \* 1000\);\s*\n\s*if \(vig\) vig\.devido\(/);
+  assert.match(player, /stopped = true; clearTimeout\(timer\);\s*\n\s*if \(vig\) vig\.parar\(\);/);
+  assert.match(player, /MTVigia\.ligar\(\{ hora: /);
+  assert.match(fs2.readFileSync(path2.join(raiz, 'js/cloud.js'), 'utf8'), /MTVigia\.marcarPulso\(\)/);
+  const html = fs2.readFileSync(path2.join(raiz, 'player.html'), 'utf8');
+  assert.ok(html.indexOf('js/vigia.js') > 0 && html.indexOf('js/vigia.js') < html.indexOf('js/cloud.js'), 'o vigia precisa subir antes do cloud.js e do player.js');
+  const acorn = (() => { try { return require('acorn'); } catch (e) { return null; } })();
+  if (acorn) acorn.parse(fs2.readFileSync(path2.join(raiz, 'js/vigia.js'), 'utf8'), { ecmaVersion: 5 });
+});
+
 /* ---------------- O medidor do player: por TV, não por conta ---------------- */
 
 test('a conta de 300 TVs saudáveis não aparece como "esbarrando"; a TV com defeito numa conta pequena aparece', () => {
