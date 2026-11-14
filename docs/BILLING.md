@@ -141,8 +141,11 @@ Existe mesmo com zero cliente.
 | Monitoramento de erros | R$ 40 |
 | **Piso** | **~R$ 400/mês** |
 
-Acima de ~500 telas simultâneas, o piso sobe para ~R$ 900 (container maior e
-réplica de leitura do banco). Por tela, o piso **cai** conforme você cresce.
+Medido em 14/11/2026 (`docs/CAPACIDADE-E-TVBOX.md`): uma instância de 1 vCPU
+e 1 GB atende **2.000 telas ligadas** (o teto é `DO_SERVIDOR` em
+`server/limites.js`, não a máquina). Acima disso, segunda instância e o tempo
+real fora da memória do processo: o piso sobe para ~R$ 900. Por tela, o piso
+**cai** conforme você cresce.
 
 ### 3.3 Custo por tela, por mês
 
