@@ -72,7 +72,7 @@ faz, por TV, o que `js/player.js` (`bootCloud`), `js/cloud.js` e
 | Chamada de senha | `GET …/senha` | **60 s, em toda TV** (mesmo sem senha ligada) | `js/senha.js:422` |
 | Indicadores, planilhas | `GET …/kpis`, `GET …/planilhas` | 5 min | `js/player.js:632`, `:636` |
 | Relatório de exibição | `POST …/exibicoes` | 5 min | `js/player.js:454` |
-| Aniversariantes | `GET …/birthdays` | 6 h | `js/player.js:627` |
+| Aniversariantes | `GET …/birthdays` | 6 h | `js/player.js:629` |
 
 São **~5,7 pedidos por minuto por TV** (~0,095/s). A programação usada é a
 de RH real (`tools/carga/programa-rh.cjs`): layout Corporativo, 8 peças-ouro
@@ -172,15 +172,16 @@ Telas da conta grande (3.5).
    4 min. **O log foi corrigido** (um aviso por minuto, com a contagem); o
    teto em si continua 2.000 de propósito (3.6).
 2. **A página Telas de uma conta grande** — `GET /api/devices?agora=1`
-   (`server/routes/telas.js`, rota "Listar meus devices"): para cada uma das
+   (`server/routes/telas.js:404–448`, o `?agora=1` na linha 435): para cada uma das
    323 TVs lê a programação inteira do banco (`db.getDevice`, ~96 KB), passa
    pelo normalizador e pela marca (`configParaOPainel`) e devolve tudo num
    JSON de ~30 MB. Leva **0,7–0,9 s**, **trava o event loop 200–290 ms** (é o
-   "pior" da tabela, em todos os degraus) e aloca 100–200 MB por chamada.
-   Com 300 TVs × 3 pessoas, o heap passou de 1 GB.
+   "pior" da tabela, em todos os degraus) e é o que faz os picos de heap: até
+   330 MB com três pessoas depois da correção 4 (antes, somado ao lixo do
+   pulso das TVs, passou de 1 GB).
 3. **A senha perguntada por toda TV a cada minuto** (`js/senha.js:422`) lia
    **todas as TVs da conta** a cada pergunta só para saber o fuso
-   (`server/routes/senha.js`, `daTela`): custo N² por conta — 300 TVs = 90 mil
+   (`server/routes/senha.js:86`, `daTela`): custo N² por conta — 300 TVs = 90 mil
    linhas por minuto. **Corrigido** (fuso guardado 1 min por conta).
 4. **Cada pedido da TV trazia a programação inteira do banco** (`SELECT *`
    com o `config` de ~96 KB), inclusive o pulso e o som, que não a leem: a
@@ -306,11 +307,11 @@ Medido com `tools/carga/limites-conta.mjs` e na própria instalação das
 
 | Limite | Onde | Valor | Quem esbarra | Medido |
 |---|---|---|---|---|
-| TV nova por IP (`POST /api/devices`, sem login) | `server/routes/telas.js:270` | 60/h por IP | o instalador ligando a 61ª TV do mesmo escritório (ou do 4G dele) | **a 61ª leva 429** com `Retry-After` de até 1 h |
+| TV nova por IP (`POST /api/devices`, sem login) | `server/routes/telas.js:277` | 60/h por IP | o instalador ligando a 61ª TV do mesmo escritório (ou do 4G dele) | **a 61ª leva 429** com `Retry-After` de até 1 h |
 | Freio do painel da conta | `server/limites.js:42`, `server.js:701` | 600 pedidos/5 min **por conta** (todas as pessoas juntas) | instalar 300 TVs (parear + publicar = 2 pedidos por TV); o aviso rápido para muitas TVs (o painel lê cada TV antes: `web/src/lib/rodar.js`, `gravarEmLote`) | **429 por volta da 300ª TV**; a instalação esperou 155 s |
-| Erro de código de pareamento | `server/routes/telas.js:224–225` | 15 erros/10 min por IP e por conta | só quem digita errado (conta só o erro) | ok |
+| Erro de código de pareamento | `server/routes/telas.js:231–232` | 15 erros/10 min por IP e por conta | só quem digita errado (conta só o erro) | ok |
 | Corpo do pedido | `server.js:205–211` | 2 MB | **aviso rápido em mais de ~20 TVs** com a programação de RH (~96 KB por TV) | conexão cortada (o painel dizia "sem conexão") → **agora 413 com o motivo** |
-| TVs por envio em lote | `server/routes/telas.js:1232` | 200 | conta com mais de 200 TVs | gravava as 200 primeiras e respondia "ok" → **agora recusa inteiro com o motivo** |
+| TVs por envio em lote | `server/routes/telas.js:1240` | 200 | conta com mais de 200 TVs | gravava as 200 primeiras e respondia "ok" → **agora recusa inteiro com o motivo** |
 | Plano Essencial | `server/plans.js:76` | 49 TVs | toda conta de RH com 50+ TVs | precisa de Enterprise (não se ativa pelo painel) |
 | Medidor do player (nunca bloqueia) | `server/limites.js:56` | era 1.200/5 min **por conta** | toda conta com mais de ~43 TVs aparecia como "esbarrando" na supervisão (89 avisos `limite.estourado` em 20 min no teste) | **agora 150 por TV** |
 | Tempo real por TV / por conta | `server/limites.js:138–140` | 4 por TV; máx(20, 4 × TVs) por conta | ninguém com TV saudável | ok |
@@ -495,7 +496,7 @@ app foi compilado nem rodado aqui).
 2. **Recriar o WebView uma vez por dia** (às 4h, se o app está aberto há mais
    de 24 h). A recarga da página (6.3) devolve a memória do documento; a
    recriação devolve também a do processo do renderizador. No teste, o
-   renderizador estabilizou em ~650–720 MB no modo completo (5.3) — num box
+   renderizador estabilizou em ~650–720 MB no modo completo (5.2 e 5.4) — num box
    de 2 GB isso é um terço da memória.
 3. **Tela inicial obrigatória na instalação.** É a única garantia de voltar
    depois de: queda nativa, morte por memória e **atualização do Android
@@ -540,7 +541,7 @@ navegador de Smart TV, Fire TV):
   Box "Android 9/10" genérico sem certificação costuma vir com WebView 5x–6x
   e nunca atualiza (`docs/APARELHOS.md`).
 - **2 GB de RAM no mínimo.** O renderizador sozinho usou 360–720 MB no modo
-  completo com foto viva (5.3); com 1 GB, só modo leve e sem foto viva.
+  completo com foto viva (5.2–5.4); com 1 GB, só modo leve e sem foto viva.
 - **4 núcleos Cortex-A55 ou melhor** (Amlogic S905X4/S905Y4 ou equivalente),
   decodificação H.264 1080p por hardware (todos têm).
 - **8 GB de armazenamento** ou mais (cache de mídia, 6.2 item 5) e **porta
@@ -559,7 +560,7 @@ Tudo com teste em `test/carga-rh.test.js` (e a suíte inteira passando).
 | Mudança | Arquivos | Efeito medido |
 |---|---|---|
 | As rotas da TV que não leem a programação vêm sem ela do banco (`getDeviceLeve`) | `server/db-postgres.js`, `server/db-sqlite.js`, `server/routes/telas.js` (`SEM_PROGRAMACAO`), `server/routes/senha.js` | 2.000 TVs: CPU 28% → 16%, Postgres 21% → 12%, RSS 942 → 154 MB, pulso p99 18 → 10 ms |
-| A senha de cada TV não lê mais a conta inteira (fuso guardado 1 min) | `server/routes/senha.js` (`fusoDaConta`) | de N² para N por conta |
+| A senha de cada TV não lê mais a conta inteira (fuso guardado 1 min) | `server/routes/senha.js:77` (`fusoDaConta`) | de N² para N por conta |
 | Medidor do player por TV (150 em 5 min por TV, nunca bloqueia) | `server/limites.js`, `server/routes/telas.js`, `server/routes/senha.js` | a conta saudável grande sai da supervisão; a TV com defeito aparece com o id |
 | Corpo acima de 2 MB: 413 com o motivo | `server.js` (`readBody`, `CORPO_GRANDE`) | aviso para 21+ TVs: "grande demais" em vez de "sem conexão" |
 | Lote acima de 200 TVs: recusado inteiro, com o motivo | `server/routes/telas.js` (`LOTE_MAX`) | antes: 200 gravadas e "ok" para todas |
