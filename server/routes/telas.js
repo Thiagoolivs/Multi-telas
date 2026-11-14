@@ -14,6 +14,13 @@ module.exports = function (ctx) {
   } = ctx;
 
   const NAO_TRATEI = Symbol('nao-tratei');
+  /*
+   * As rotas da TV que NÃO leem a programação (teste de carga, 14/11). São
+   * ~95% do que uma TV pede (pulso e som a cada 30 s, o resto de minutos em
+   * minutos), e cada uma trazia do banco a programação inteira — ~96 KB numa
+   * TV de RH com peças-ouro. Rota nova aqui só se não tocar em device.config.
+   */
+  const SEM_PROGRAMACAO = new Set(['heartbeat', 'audio-estado', 'passe', 'events', 'kpis', 'planilhas', 'birthdays', 'exibicoes']);
 
   /*
    * O que cada TV disse que está mostrando, na última vez que o painel
@@ -485,9 +492,10 @@ module.exports = function (ctx) {
     /* ----- Rotas /api/devices/:id/... ----- */
     if (parts[1] === 'devices' && parts[2]) {
       const id = parts[2];
-      const device = await db.getDevice(id);
-      if (!device) return sendJson(res, 404, { error: 'device não encontrado' });
       const sub = parts[3];
+      // O pulso, o som, o passe, o SSE e as listas da TV não leem a programação: vêm sem ela (db.getDeviceLeve).
+      const device = SEM_PROGRAMACAO.has(sub) ? await db.getDeviceLeve(id) : await db.getDevice(id);
+      if (!device) return sendJson(res, 404, { error: 'device não encontrado' });
       /*
        * Da conta E alcançável por esta pessoa (fase 13): o membro de uma loja
        * não lê nem grava a TV de outra loja — nem pelo endereço direto.
@@ -519,7 +527,7 @@ module.exports = function (ctx) {
        * subir. Com a medição, essa tela aparece sozinha na supervisão antes de
        * alguém ligar reclamando.
        */
-      if (dtOk) limites.permitir('tela', device.tenant_id);
+      if (dtOk) limites.permitir('tela', device.tenant_id, device.id);
 
       // Player lê a própria config (com device token)
       if (req.method === 'GET' && sub === 'config') {
@@ -1229,8 +1237,18 @@ module.exports = function (ctx) {
    * a porta (prepararConfig) de TODAS. Devolve { prontos } ou { status, corpo }.
    * O envio e a aprovação (server/routes/aprovacoes.js) passam por aqui.
    */
+  const LOTE_MAX = 200;
   async function conferirLote(sess, itensCrus) {
-    const itens = Array.isArray(itensCrus) ? itensCrus.slice(0, 200) : [];
+    /*
+     * Mais de LOTE_MAX TVs: recusa inteiro, dizendo por quê (teste de carga,
+     * 14/11). Cortava em silêncio: gravava as 200 primeiras, respondia "ok" e
+     * o painel dizia que o aviso tinha ido para as 300 — numa conta de RH,
+     * 100 TVs ficavam sem o aviso e ninguém sabia.
+     */
+    if (Array.isArray(itensCrus) && itensCrus.length > LOTE_MAX) {
+      return { status: 400, corpo: { error: 'Um envio vai para até ' + LOTE_MAX + ' TVs de uma vez. Nada foi enviado: divida as TVs em grupos menores.', code: 'lote-grande', max: LOTE_MAX } };
+    }
+    const itens = Array.isArray(itensCrus) ? itensCrus : [];
     if (!itens.length) return { status: 400, corpo: { error: 'escolha pelo menos uma TV' } };
     const prontos = [];
     const conflitos = [];

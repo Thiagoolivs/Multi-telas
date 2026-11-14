@@ -1471,6 +1471,18 @@ async function getDevice(id) {
   const r = await pool.query('SELECT * FROM devices WHERE id = $1', [id]);
   return r.rows[0] || null;
 }
+/*
+ * A TV SEM A PROGRAMAÇÃO (teste de carga, 14/11). Cada TV fala com o
+ * servidor ~6 vezes por minuto (pulso, som, senha...) e nenhuma dessas
+ * rotas lê a programação — que numa TV de RH com peças-ouro tem ~96 KB e
+ * vinha inteira do banco a cada pedido. `has_config` diz se ela existe.
+ * Coluna nova em `devices` que uma dessas rotas precise entra aqui também.
+ */
+const COLUNAS_LEVES = 'id, tenant_id, code, name, device_token, updated_at, created_at, last_seen, alerta_offline_em, expediente, info, grupo, (config IS NOT NULL) AS has_config';
+async function getDeviceLeve(id) {
+  const r = await pool.query('SELECT ' + COLUNAS_LEVES + ' FROM devices WHERE id = $1', [id]);
+  return r.rows[0] || null;
+}
 async function getDeviceByCode(code) {
   const r = await pool.query('SELECT * FROM devices WHERE code = $1', [String(code || '').trim().toUpperCase()]);
   return r.rows[0] || null;
@@ -2270,7 +2282,7 @@ module.exports = {
   setUserRole, removeUser, countOwners,
   createInvite, getInviteByCode, listInvites, deleteInvite, acceptInvite,
   createSession, getSession, destroySession, destroySessionsOfUser,
-  createDevice, getDevice, ondeAparece, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
+  createDevice, getDevice, getDeviceLeve, ondeAparece, getDeviceByCode, deviceComToken, claimDevice, setDeviceConfig,
   renameDevice, setExpediente, setGrupoDaTela, herdarIdadeDaTela, renomearGrupo, removeDevice, touchDevice, listDevices, countDevices,
   telasCaidas, marcarAlertaOffline,
   getTenant, getTenantByCustomer, setTenantBilling, contasParaConciliar, contasEmTeste, marcarLembreteTeste, contasEmAtraso, marcarAvisoAtraso,

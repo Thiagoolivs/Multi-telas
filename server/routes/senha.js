@@ -62,19 +62,40 @@ module.exports = function (ctx) {
     });
   }
 
+  /*
+   * O FUSO DA CONTA, guardado por um minuto (teste de carga, 14/11).
+   *
+   * TODA TV pergunta aqui a cada 60 s (js/senha.js), com ou sem chamada de
+   * senha ligada, e cada pergunta lia TODAS as TVs da conta só para saber o
+   * fuso: numa conta de 300 TVs, 300 × 300 linhas por minuto — o custo
+   * crescia com o quadrado do tamanho da conta, justo a conta grande de RH.
+   * O fuso só muda quando alguém mexe no horário de uma TV; um minuto de
+   * atraso para o "dia da loja" virar é nada.
+   */
+  const FUSO_MS = 60 * 1000;
+  const fusos = new Map(); // tenant -> { fuso, em }
+  async function fusoDaConta(tenantId) {
+    const c = fusos.get(tenantId);
+    if (c && Date.now() - c.em < FUSO_MS) return c.fuso;
+    const fuso = S.fusoDasTelas(await db.listDevices(tenantId));
+    fusos.set(tenantId, { fuso, em: Date.now() });
+    if (fusos.size > 5000) fusos.delete(fusos.keys().next().value);
+    return fuso;
+  }
+
   async function daTela(req, res, id, sess) {
     if (req.method !== 'GET') return sendJson(res, 405, { error: 'método inválido' });
-    const device = await db.getDevice(id);
+    // Sem a programação (~96 KB numa TV de RH): esta rota não a lê (db.getDeviceLeve).
+    const device = db.getDeviceLeve ? await db.getDeviceLeve(id) : await db.getDevice(id);
     if (!device) return sendJson(res, 404, { error: 'device não encontrado' });
     const dado = req.headers['x-device-token'];
     const dtOk = !!dado && !!device.device_token && safeEqual(dado, device.device_token);
     const dono = !!sess && device.tenant_id === sess.tenant_id;
     if (!dtOk && !dono) return sendJson(res, 403, { error: 'sem permissão' });
     // Medido como todo pedido da TV, nunca bloqueado (server/limites.js).
-    if (dtOk && device.tenant_id) limites.permitir('tela', device.tenant_id);
+    if (dtOk && device.tenant_id) limites.permitir('tela', device.tenant_id, device.id);
     if (!device.tenant_id) return sendJson(res, 200, S.estadoDe([], Date.now()));
-    const telas = await db.listDevices(device.tenant_id);
-    const dia = S.diaNaLoja(Date.now(), S.fusoDasTelas(telas));
+    const dia = S.diaNaLoja(Date.now(), await fusoDaConta(device.tenant_id));
     return sendJson(res, 200, await estadoDaTela(device.tenant_id, device.grupo || '', dia));
   }
 
