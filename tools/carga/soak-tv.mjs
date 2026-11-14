@@ -37,6 +37,8 @@ const CPU = Number(process.env.SOAK_CPU) || 6;
 const AMOSTRA_S = Number(process.env.SOAK_AMOSTRA) || 90;
 const PECA_S = Number(process.env.SOAK_PECA) || 6;
 const LEVE = process.env.SOAK_LEVE === '1';
+// O RH publicando ao longo do dia: a cada SOAK_REPUBLICAR minutos a programação é gravada de novo (0 desliga).
+const REPUBLICAR_MIN = Number(process.env.SOAK_REPUBLICAR ?? 10);
 const SAIDA = process.env.SOAK_SAIDA || path.resolve('soak-' + Date.now());
 fs.mkdirSync(SAIDA, { recursive: true });
 const ARQ = path.join(SAIDA, 'amostras.jsonl');
@@ -129,15 +131,19 @@ function rssDaArvore(pid) {
     } catch (e) { /* processo sumiu */ }
   }
   let total = 0;
+  let renderizador = 0;
   const fila = [pid];
   while (fila.length) {
     const p = fila.pop();
     try {
       const m = /VmRSS:\s+(\d+)/.exec(fs.readFileSync('/proc/' + p + '/status', 'utf8'));
       if (m) total += Number(m[1]) * 1024;
+      // O renderizador (a página) separado: é ele que um box de 2 GB sente.
+      if (m && fs.readFileSync('/proc/' + p + '/cmdline', 'utf8').includes('--type=renderer')) renderizador += Number(m[1]) * 1024;
     } catch (e) { /* sumiu */ }
     (filhos.get(p) || []).forEach((f) => fila.push(f));
   }
+  rssDaArvore.renderizador = renderizador;
   return total;
 }
 
@@ -174,6 +180,11 @@ async function main() {
   p.on('requestfailed', (r) => { if (falhas++ < 30) anotar('pedido falhou: ' + r.url().slice(0, 160) + ' ' + ((r.failure() && r.failure().errorText) || '')); });
   const cdp = await ctx.newCDPSession(p);
   await cdp.send('Performance.enable');
+  // Os players de mídia (cada <video> que tocou): criados × destruídos. Vídeo que sai da tela e não solta o player aparece aqui.
+  const midia = { criados: 0, destruidos: 0 };
+  cdp.on('Media.playersCreated', (e) => { midia.criados += (e.players || []).length; });
+  cdp.on('Media.playerEventsAdded', (e) => { for (const ev of e.events || []) if (/Destroyed/i.test(String(ev.value))) midia.destruidos++; });
+  await cdp.send('Media.enable').catch(() => anotar('sem o domínio Media no CDP'));
   await cdp.send('HeapProfiler.enable');
   const frear = () => cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU }).catch(() => {});
 
@@ -195,9 +206,20 @@ async function main() {
   const fim = inicio + MINUTOS * 60 * 1000;
   let n = 0;
   let antes = null;
+  let publicacoes = 0;
+  let ultimaPub = Date.now();
   while (Date.now() < fim) {
     await espera(n === 0 ? 30000 : AMOSTRA_S * 1000);
     await frear();
+    // Publicação nova: o player recebe pelo SSE e refaz o palco inteiro (o caminho onde mais escapa timer e vídeo).
+    if (REPUBLICAR_MIN > 0 && Date.now() - ultimaPub > REPUBLICAR_MIN * 60000) {
+      ultimaPub = Date.now();
+      publicacoes++;
+      const nova = montarProgramaRh({ duracao: PECA_S, duracaoLateral: Math.max(4, PECA_S - 1), transicao: publicacoes % 2 ? 'fade' : 'cinematic' });
+      const lista = nova.zonas.principal.items;
+      for (let i = 0; i < publicacoes % lista.length; i++) lista.push(lista.shift());
+      await api('PUT', '/api/devices/' + par.id + '/config', nova).then(() => anotar('publicação ' + publicacoes), (e) => anotar('publicação falhou: ' + e.message));
+    }
     try {
       await cdp.send('HeapProfiler.collectGarbage');
       await cdp.send('HeapProfiler.collectGarbage');
@@ -211,6 +233,8 @@ async function main() {
         documentos: dom.documents, nos: dom.nodes, ouvintes: dom.jsEventListeners,
         layouts: met.LayoutCount, recalcEstilo: met.RecalcStyleCount, tarefaS: +(met.TaskDuration || 0).toFixed(1),
         rssNavegador: rssDaArvore(pidNavegador) - process.memoryUsage().rss,
+        rssRenderizador: rssDaArvore.renderizador,
+        playersCriados: midia.criados, playersDestruidos: midia.destruidos,
         ...pg,
         fps: antes ? +((pg.frames - antes.frames) / ((Date.now() - antes.t) / 1000)).toFixed(1) : null,
         errosPagina: erros.length,
@@ -232,13 +256,32 @@ async function main() {
   const linhas = fs.readFileSync(ARQ, 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((a) => a.min >= 10);
   const h = linhas.map((a) => a.min / 60);
   const resumo = { amostras: linhas.length, horas: h.length ? +(h[h.length - 1] - h[0]).toFixed(2) : 0, trocas: linhas.length ? linhas[linhas.length - 1].swaps : 0, porHora: {} };
-  for (const k of ['heapUsado', 'nos', 'ouvintes', 'documentos', 'video', 'img', 'rssNavegador']) {
+  for (const k of ['heapUsado', 'nos', 'ouvintes', 'documentos', 'video', 'img', 'rssNavegador', 'rssRenderizador']) {
     resumo.porHora[k] = +inclinacao(h, linhas.map((a) => a[k] || 0)).toFixed(1);
   }
   resumo.porHora.intervals = +inclinacao(h, linhas.map((a) => (a.timers ? a.timers.intervals : 0))).toFixed(2);
   resumo.porHora.timeouts = +inclinacao(h, linhas.map((a) => (a.timers ? a.timers.timeouts : 0))).toFixed(2);
   fs.writeFileSync(path.join(SAIDA, 'resumo.json'), JSON.stringify(resumo, null, 2));
   anotar('resumo: ' + JSON.stringify(resumo));
+  /*
+   * A memória do renderizador é cache ou é vazamento? O aviso de memória
+   * crítica do sistema (o que o Android manda a um app em segundo plano
+   * apertado) faz o Chromium soltar caches de imagem, de fonte e de
+   * recursos. O que volta é cache; o que fica é o que a página segura.
+   */
+  try {
+    await cdp.send('HeapProfiler.collectGarbage');
+    rssDaArvore(pidNavegador);
+    const antesDaPurga = rssDaArvore.renderizador;
+    await cdp.send('Memory.simulatePressureNotification', { level: 'critical' });
+    await espera(10000);
+    await cdp.send('HeapProfiler.collectGarbage');
+    rssDaArvore(pidNavegador);
+    resumo.purga = { renderizadorAntesMb: Math.round(antesDaPurga / 1048576), renderizadorDepoisMb: Math.round(rssDaArvore.renderizador / 1048576) };
+    resumo.midia = midia;
+    fs.writeFileSync(path.join(SAIDA, 'resumo.json'), JSON.stringify(resumo, null, 2));
+    anotar('purga de memória: ' + JSON.stringify(resumo.purga) + ' players ' + JSON.stringify(midia));
+  } catch (e) { anotar('purga falhou: ' + e.message); }
   await navegador.close();
 }
 
