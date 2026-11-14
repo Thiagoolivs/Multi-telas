@@ -15,20 +15,25 @@ As ferramentas ficaram em `tools/carga/` para repetir (seção 8).
 ## 1. Resposta curta
 
 **Servidor.** Uma instância só, como está hoje, atende **2.000 TVs ligadas
-ao mesmo tempo** com folga de CPU (26% de um núcleo em média, 40% no pico,
-pulso com p50 de 3 ms e p99 de ~120 ms). O teto de 2.000 **não é a CPU: é um
-número no código** (`server/limites.js:141`, `DO_SERVIDOR = 2000` conexões do
-tempo real). A TV 2.001 em diante não recebe o aviso na hora (só pelo pulso,
-em até 30 s) e fica pedindo de 15 em 15 s — o que somou 35 pedidos por
-segundo a mais e 9.660 linhas de log em 4 minutos com 500 TVs acima do teto.
-A estimativa de "~500 TVs" de `docs/BILLING.md` §3.2 é conservadora: o
-número medido é quatro vezes isso.
+ao mesmo tempo** sem erro e com folga de CPU: 26% de um núcleo em média e
+40% no pico, pulso com p50 de 3 ms e p99 de 117 ms, com três pessoas usando
+o painel de uma conta de 300 TVs ao mesmo tempo. Com as duas correções deste
+trabalho (3.4), a mesma carga caiu para **17% de CPU, p99 do pulso de 35 ms e
+metade da memória** (RSS máximo de 1,3 GB para 0,55 GB).
+
+O teto de 2.000 **não é a CPU: é um número no código**
+(`server/limites.js:141`, `DO_SERVIDOR = 2000` conexões do tempo real). A
+TV 2.001 em diante não recebe o aviso na hora (só pelo pulso, em até 30 s) e
+fica tentando de 15 em 15 s: com 500 TVs acima do teto foram 35 pedidos por
+segundo a mais e 9.660 linhas de log em 4 minutos. A estimativa de "~500
+TVs antes de um container maior" (`docs/BILLING.md` §3.2) é conservadora: o
+medido é quatro vezes isso, e o container não precisa crescer até lá.
 
 O que pesa de verdade é a **conta grande no painel**: abrir a página Telas de
-uma conta com 300 TVs leva ~0,8 s e **trava o servidor inteiro por 200–290 ms**
-(todas as TVs de todas as contas esperam), e três pessoas fazendo isso juntas
-levaram o heap a ~1 GB. E o **aviso rápido para muitas TVs** não funcionava
-acima de ~20 TVs com a programação de RH (o corpo do pedido passava de 2 MB).
+uma conta com 300 TVs leva ~0,8–0,9 s e **para o servidor inteiro por
+200–300 ms** (todas as TVs de todas as contas esperam). E o **aviso rápido
+para muitas TVs** não funcionava acima de ~20 TVs com a programação de RH (o
+corpo do pedido passava de 2 MB) — agora pelo menos diz por quê.
 
 **TV box.** ⟨SOAK⟩
 
@@ -92,7 +97,22 @@ sockets do processo a cada 5 s.
 
 ### 3.1 Por degrau (com as três pessoas no painel)
 
-⟨TABELA-RAMPA⟩
+Código de antes das correções. Latências em ms (p50 / p95 / p99), medidas no
+cliente; CPU em % de **um** núcleo; RSS e heap são o **máximo** da janela.
+
+| TVs | pedidos/s | pulso | senha | config pelo SSE | erros | CPU Node média / pico | CPU Postgres | RSS máx | heap máx | event loop p99 / pior | sockets |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 100 | 10 | 4 / 9 / 29 | 5 / 9 / 33 | 61 / 95 / 120 | 0,04% | 7% / 28% | – | 332 MB | 167 MB | 2,5 / 282 | 121 |
+| 250 | 24 | 4 / 8 / 28 | 5 / 8 / 26 | 55 / 81 / 84 | 0% | 8% / 19% | 4% | 400 MB | 213 MB | 2,1 / 235 | 272 |
+| 500 | 48 | 4 / 12 / 108 | 5 / 14 / 122 | 53 / 96 / 108 | 0% | 14% / 38% | 7% | 554 MB | 357 MB | 3,5 / 293 | 528 |
+| 1.000 | 94 | 3 / 17 / 51 | 4 / 14 / 40 | 49 / 78 / 93 | 0,08% | 19% / 30% | 10% | 588 MB | 336 MB | 3,8 / 217 | 1.040 |
+| 1.500 | 141 | 3 / 20 / 49 | 4 / 22 / 75 | 55 / 86 / 100 | 0,01% | 24% / 35% | 12% | 679 MB | 400 MB | 4,2 / 230 | 1.550 |
+| 2.000 | 189 | 3 / 26 / 117 | 3 / 27 / 85 | 55 / 89 / 94 | 0,01% | 26% / 40% | 15% | 1.327 MB | 1.042 MB | 4,2 / 240 | 2.089 |
+| 2.500 | 268 | 4 / 40 / 217 | 4 / 41 / 180 | 62 / 133 / 144 | **12%** (tempo real recusado) | 35% / 50% | 21% | 1.519 MB | 1.195 MB | 5,7 / 229 | 2.132 |
+
+A "config pelo SSE" é a TV buscando a programação de 96 KB logo depois de
+um aviso de publicação; o aviso em si chegou às TVs em **menos de 3 ms** em
+todos os degraus (do `PUT`/lote ao evento no SSE).
 
 Notas:
 - Os erros de 0,04–0,08% são `ECONNRESET` de conexão mantida que o Node fecha
@@ -107,25 +127,41 @@ Notas:
 
 ### 3.2 Só TVs (sem painel), antes e depois da correção do item 3.4
 
-⟨TABELA-AB⟩
+A mesma frota, sem ninguém no painel (isola o custo da TV), 3 min firmes:
+
+| | TVs | pulso p50/p95/p99 | senha p50/p95/p99 | CPU Node média / pico | CPU Postgres | RSS máx | heap máx | event loop p99 |
+|---|---|---|---|---|---|---|---|---|
+| antes | 1.000 | 3,2 / 6,6 / 12,5 | 3,7 / 7,1 / 14,0 | 17,5% / 20,3% | 9% | 410 MB | 200 MB | 2,1 ms |
+| **depois** | 1.000 | 2,5 / 4,7 / 7,9 | 1,7 / 3,2 / 5,3 | **8,5% / 11,8%** | 6% | **144 MB** | **41 MB** | 1,2 ms |
+| antes | 2.000 | 3,9 / 10,0 / 17,7 | 4,3 / 9,8 / 16,4 | 27,8% / 37,9% | 21% | 942 MB | 704 MB | 3,3 ms |
+| **depois** | 2.000 | 2,8 / 6,2 / 10,0 | 1,9 / 4,2 / 7,1 | **16,1% / 21,4%** | 12% | **154 MB** | **51 MB** | 1,7 ms |
+
+E com as três pessoas no painel, depois da correção:
+
+| TVs | pulso p50/p95/p99 | CPU Node média / pico | CPU Postgres | RSS máx | heap máx | pior travada do event loop |
+|---|---|---|---|---|---|---|
+| 1.000 | 3,1 / 10,2 / 57,6 | 13,8% / 33,1% | 8% | 335 MB | 174 MB | 305 ms |
+| 2.000 | 2,4 / 9,4 / 35,0 | 16,7% / 37,6% | 11% | 551 MB | 330 MB | 247 ms |
+
+O que sobra de pior caso (a travada de ~250–300 ms e os picos de memória) é
+o painel da conta grande (3.5), não as TVs.
 
 ### 3.3 Memória por TV
 
-O piso do heap (o menor valor de cada minuto, depois da coleta) subiu de
-forma estável com as TVs e **não cresceu dentro de cada degrau** — não há
-vazamento no servidor:
+**Não há vazamento no servidor:** o piso do heap (o menor valor de cada
+minuto) ficou parado dentro de cada degrau e só subiu quando entraram TVs.
 
-| TVs | piso do heap | piso do RSS |
-|---|---|---|
-| 0 | 16 MB | 116 MB |
-| 1.000 | ~180 MB | ~450 MB |
-| 1.500 | ~256 MB | ~530 MB |
-| 2.000 | ~350 MB | ~700 MB |
+- **Antes da correção** o piso subia ~0,17 MB por TV (180 MB com 1.000, 350
+  MB com 2.000) e o RSS ~0,3 MB por TV — mas isso era **lixo em trânsito**:
+  cada pulso trazia do banco uma programação de 96 KB que virava texto no
+  heap até a próxima coleta.
+- **Depois da correção**, só TVs: 144 MB de RSS com 1.000 e 154 MB com
+  2.000 — **≈ 10 KB por TV ligada** (o socket do SSE, o relógio de 25 s do
+  ping, as entradas nos mapas de conexões e limites). A memória do servidor
+  passa a ser decidida pelo painel, não pelas TVs.
 
-**≈ 0,17 MB de heap e ≈ 0,3 MB de RSS por TV ligada** (socket do SSE, os
-buffers dele, o relógio de 25 s do ping, o passe, os baldes dos limites). Os
-picos acima disso (até 1,1 GB de heap e 1,5 GB de RSS) vêm do painel da conta
-grande (3.5).
+Os picos (até 1,1 GB de heap antes, 330 MB depois) coincidem com a página
+Telas da conta grande (3.5).
 
 ### 3.4 O gargalo, em ordem
 
@@ -146,34 +182,83 @@ grande (3.5).
    (`server/routes/senha.js`, `daTela`): custo N² por conta — 300 TVs = 90 mil
    linhas por minuto. **Corrigido** (fuso guardado 1 min por conta).
 4. **Cada pedido da TV trazia a programação inteira do banco** (`SELECT *`
-   com o `config` de ~96 KB), inclusive o pulso e o som, que não a leem.
-   **Corrigido** (`db.getDeviceLeve`, só nas rotas que não leem a
-   programação) — efeito medido em 3.2.
+   com o `config` de ~96 KB), inclusive o pulso e o som, que não a leem: a
+   ~190 pedidos/s, eram ~18 MB/s de texto atravessando o driver do Postgres
+   e o heap. **Corrigido** (`db.getDeviceLeve`, só nas rotas que não leem a
+   programação — `server/routes/telas.js`, `SEM_PROGRAMACAO`): CPU do Node
+   −42%, Postgres −40%, RSS de 942 para 154 MB com 2.000 TVs (3.2). Foi a
+   maior diferença medida.
+
+Com 1 e 3 corrigidos e 4 também, o que sobra como gargalo é **1 (o teto
+fixo)** para o número de TVs e **2 (a página Telas)** para o tamanho de uma
+conta.
 
 ### 3.5 O painel da conta grande
 
-⟨TABELA-PAINEL⟩
+Três pessoas na conta de 323 TVs, cada uma fazendo uma coisa a cada ~15 s,
+enquanto o resto da frota roda (ms, p50 / p95):
+
+| TVs ligadas | Telas (`GET /api/devices?agora=1`) | aviso em 20 TVs (`POST /api/lote`) | publicar 1 TV | programação de 25 TVs | "Ver a tela agora" |
+|---|---|---|---|---|---|
+| 100 | 756 / 1.069 | 398 / 873 | 21 / 38 | 58 / 70 | 6 / 7 |
+| 500 | 835 / 1.071 | 523 / 872 | 27 / 40 | 56 / 315 | 7 / 10 |
+| 1.000 | 855 / 898 | 459 / 526 | 34 / 43 | 59 / 87 | 7 / 11 |
+| 2.000 | 806 / 910 | 458 / 495 | 25 / 48 | 54 / 67 | 5 / 8 |
+| 2.500 | 870 / 977 | 529 / 971 | 33 / 49 | 56 / 550 | 7 / 28 |
+
+O painel **não piora com o número de TVs**; piora com o **tamanho da conta**.
+A página Telas de 323 TVs custa ~0,8 s sempre, e é ela que faz as travadas
+de 200–300 ms da coluna "pior" do event loop (3.1) e os picos de heap.
+Proposta (não feita: muda o contrato da página): a lista sem a programação
+(as miniaturas já sabem pedir em grupos de 25 por `GET
+/api/devices/configs?ids=`, `web/src/api.js`, `lerConfigEmLote`) ou a
+página em páginas de 50 TVs.
+
+**Aviso para muitas TVs e o limite do corpo.** O aviso em 20 TVs (~1,9 MB)
+foi o maior que coube: com 21 TVs da programação de RH o corpo passa de 2 MB
+(`server.js:205`). Medido com `tools/carga/limites-conta.mjs`, no código de
+antes e no de depois:
+
+| Envio (programação de RH, 96 KB por TV) | corpo | antes | depois |
+|---|---|---|---|
+| 5, 10, 15, 20 TVs | 0,5–1,9 MB | 200 | 200 |
+| 21, 25, 50 TVs | 2,0–4,8 MB | **conexão cortada** (`ECONNRESET`; o painel diz "sem conexão") | **413** "O envio ficou grande demais para um pedido só…" |
+| 205 TVs (programação pequena) | <2 MB | **200, mas só 200 TVs gravadas** | **400** "Um envio vai para até 200 TVs… Nada foi enviado" |
 
 ### 3.6 Teto da instância única e tamanho no Railway
 
-- **Hoje: 2.000 TVs ligadas** por instância (o número do código). Até lá a
-  CPU fica abaixo de metade de um núcleo e o banco em ~15% de um núcleo.
-- **Subindo o teto** (`DO_SERVIDOR`) a CPU aguentaria, por extrapolação
-  linear da tabela, ~1,0–1,2% de um núcleo por 100 TVs → **~4.000 TVs a
-  ~50% de um núcleo**, mantendo metade de folga para o painel, deploys e
-  rajadas. Esta máquina não é o vCPU do Railway (compartilhado, em geral mais
-  lento): conte **~3.000 TVs por instância** como número de planejamento.
-- **Memória:** ~300 MB de base + ~0,3 MB por TV + picos do painel. Para 2.000
-  TVs: **reserve 2 GB** (piso de ~700 MB, picos de 1,5 GB com a página Telas
-  de contas grandes). Para 3.000: 2–3 GB, e convém corrigir o item 2 de 3.4
-  antes. No Railway o serviço cresce sozinho até o teto do plano e cobra o
-  usado (US$ ~20 por vCPU/mês e ~10 por GB/mês na tabela de 2025 — confira a
-  atual): 1 vCPU + 2 GB ≈ US$ 40/mês ≈ R$ 220/mês, dentro do piso de
-  R$ 250 de `docs/BILLING.md` §3.2 para o app.
-- **Postgres:** ~15% de um núcleo com 2.000 TVs (pulso com `UPDATE` de
-  `last_seen`, ~67 por segundo). Um Postgres de 1 vCPU e 1 GB dá conta; o
-  pool do app é o padrão do `pg` (10 conexões, `server/db-postgres.js:33`) e
-  não foi gargalo.
+- **Hoje: 2.000 TVs ligadas por instância** — o número do código, não da
+  máquina. Até lá a CPU fica abaixo de metade de um núcleo (40% de pico
+  antes da correção, 21–38% depois) e o banco em 11–15% de um núcleo.
+- **Subindo o teto** (`DO_SERVIDOR`), a CPU das TVs depois da correção é
+  ~0,8% de um núcleo por 100 TVs (16% com 2.000, só TVs): por extrapolação
+  linear, **~5.000 TVs a ~40% de um núcleo**, com a outra metade para o
+  painel, deploys e rajadas. Esta máquina não é o vCPU do Railway
+  (compartilhado, em geral mais lento) e o teste não passou de 2.500: o
+  número de **planejamento é ~3.000 TVs por instância**, subindo o teto para
+  3.000 e corrigindo a página Telas (3.5) antes.
+- **Memória:** depois da correção, ~150 MB de base + ~10 KB por TV + os
+  picos do painel (até ~400 MB com três pessoas na página Telas de uma conta
+  de 300 TVs). **1 GB atende 2.000–3.000 TVs com folga**; antes da correção
+  seriam 2 GB (picos de 1,3–1,5 GB). No Railway o serviço cresce sozinho até
+  o teto do plano e cobra o usado (na tabela de 2025, ~US$ 20 por vCPU/mês e
+  ~US$ 10 por GB/mês — confira a atual): **1 vCPU + 1 GB ≈ US$ 30/mês**,
+  dentro dos R$ 250 de `docs/BILLING.md` §3.2. Só mais núcleos não sobem o
+  teto: o JavaScript do servidor roda num núcleo.
+- **Postgres:** 11–15% de um núcleo com 2.000 TVs (o pulso grava
+  `last_seen` ~67 vezes por segundo). Um Postgres de 1 vCPU e 1 GB dá conta;
+  o pool do app é o padrão do `pg` (10 conexões,
+  `server/db-postgres.js:33`) e não foi gargalo.
+- **TVs ligando juntas** (volta da energia na sede, ou o deploy que troca o
+  service worker de todas): 300 TVs em 5 s — `tools/carga/tempestade.mjs` —
+  chegaram à programação com p95 de 0,6 s, CPU de pico 53%, 82 MB
+  baixados (o pacote do player vai comprimido). Na primeira instalação, com
+  as fotos e os vídeos da foto viva (os do banco saem **do próprio
+  servidor**, `pecas-ouro/videos/`, não do R2): **1,46 GB** para 300 TVs,
+  p95 de 0,7 s até a programação; com cada TV lendo a 2 Mbps, o boot
+  completo levou 13 s (p50) e o servidor ficou em 270 MB de RSS. Num
+  escritório com 100 Mbps, esses 1,46 GB são ~2 min de link cheio: instale
+  em grupos, ou ponha os vídeos do banco no R2.
 
 Em receita: 2.000 TVs × R$ 139 = R$ 278 mil por mês para uma instância de
 ~R$ 250. **O servidor não é o problema de custo do MultiTelas RH.**

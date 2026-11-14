@@ -13,6 +13,7 @@
  */
 import http from 'node:http';
 import fs from 'node:fs';
+import zlib from 'node:zlib';
 import { createRequire } from 'node:module';
 
 const req = createRequire(import.meta.url);
@@ -23,6 +24,8 @@ const N = Number(process.env.TEMP_N) || 300;
 const MIDIA = process.env.TEMP_MIDIA === '1';
 const JANELA_S = Number(process.env.TEMP_JANELA_S) || 5;
 const SONDA = process.env.TEMP_SONDA || '';
+// TEMP_LENTO_KBPS: a TV lê a mídia nesta velocidade (o link da loja dividido entre as TVs), para ver quanto o servidor segura enquanto isso.
+const LENTO_KBPS = Number(process.env.TEMP_LENTO_KBPS) || 0;
 
 const agente = new http.Agent({ keepAlive: true, maxSockets: 512 });
 function pegar(caminho, headers) {
@@ -31,8 +34,17 @@ function pegar(caminho, headers) {
     const r = http.get({ host: BASE.hostname, port: BASE.port, path: caminho, agent: agente, headers: Object.assign({ 'Accept-Encoding': 'gzip, br' }, headers || {}) }, (res) => {
       let bytes = 0;
       const partes = [];
-      res.on('data', (c) => { bytes += c.length; if (headers && headers['x-device-token']) partes.push(c); });
-      res.on('end', () => resolve({ status: res.statusCode, ms: performance.now() - t0, bytes, corpo: partes.length ? Buffer.concat(partes).toString('utf8') : '' }));
+      res.on('data', (c) => {
+        bytes += c.length;
+        if (headers && headers['x-device-token']) partes.push(c);
+        else if (LENTO_KBPS && /\/pecas-ouro\/|\/media\//.test(caminho)) { res.pause(); setTimeout(() => res.resume(), (c.length * 8) / LENTO_KBPS); }
+      });
+      res.on('end', () => {
+        let corpo = partes.length ? Buffer.concat(partes) : null;
+        const enc = res.headers['content-encoding'];
+        try { if (corpo && enc === 'br') corpo = zlib.brotliDecompressSync(corpo); else if (corpo && enc === 'gzip') corpo = zlib.gunzipSync(corpo); } catch (e) { corpo = null; }
+        resolve({ status: res.statusCode, ms: performance.now() - t0, bytes, corpo: corpo ? corpo.toString('utf8') : '' });
+      });
     });
     r.on('error', (e) => resolve({ status: 0, ms: performance.now() - t0, bytes: 0, erro: e.code }));
     r.setTimeout(120000, () => r.destroy(new Error('prazo')));
