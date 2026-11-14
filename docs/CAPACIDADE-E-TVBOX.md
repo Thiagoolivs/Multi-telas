@@ -168,8 +168,9 @@ Telas da conta grande (3.5).
 1. **O teto fixo de 2.000 conexões de tempo real** (`server/limites.js:141`).
    É o limite real da instância hoje. Acima dele, cada TV excedente gera ~4
    pedidos por minuto à toa (passe + 503, `js/cloud.js:352` e `:448`) e uma
-   linha de log `conexao.servidor-cheio` a cada tentativa
-   (`server/limites.js:153`).
+   linha de log `conexao.servidor-cheio` a cada tentativa — 9.660 linhas em
+   4 min. **O log foi corrigido** (um aviso por minuto, com a contagem); o
+   teto em si continua 2.000 de propósito (3.6).
 2. **A página Telas de uma conta grande** — `GET /api/devices?agora=1`
    (`server/routes/telas.js`, rota "Listar meus devices"): para cada uma das
    323 TVs lê a programação inteira do banco (`db.getDevice`, ~96 KB), passa
@@ -463,7 +464,23 @@ navegador de Smart TV, Fire TV):
 
 ## 7. O que mudou no código
 
-⟨MUDANCAS⟩
+Tudo com teste em `test/carga-rh.test.js` (e a suíte inteira passando).
+
+| Mudança | Arquivos | Efeito medido |
+|---|---|---|
+| As rotas da TV que não leem a programação vêm sem ela do banco (`getDeviceLeve`) | `server/db-postgres.js`, `server/db-sqlite.js`, `server/routes/telas.js` (`SEM_PROGRAMACAO`), `server/routes/senha.js` | 2.000 TVs: CPU 28% → 16%, Postgres 21% → 12%, RSS 942 → 154 MB, pulso p99 18 → 10 ms |
+| A senha de cada TV não lê mais a conta inteira (fuso guardado 1 min) | `server/routes/senha.js` (`fusoDaConta`) | de N² para N por conta |
+| Medidor do player por TV (150 em 5 min por TV, nunca bloqueia) | `server/limites.js`, `server/routes/telas.js`, `server/routes/senha.js` | a conta saudável grande sai da supervisão; a TV com defeito aparece com o id |
+| Corpo acima de 2 MB: 413 com o motivo | `server.js` (`readBody`, `CORPO_GRANDE`) | aviso para 21+ TVs: "grande demais" em vez de "sem conexão" |
+| Lote acima de 200 TVs: recusado inteiro, com o motivo | `server/routes/telas.js` (`LOTE_MAX`) | antes: 200 gravadas e "ok" para todas |
+| Lotação do tempo real: um aviso de log por minuto | `server/limites.js` | 9.660 linhas em 4 min → 4 |
+| O vigia da página (zona parada, recarga da madrugada) | `js/vigia.js` (novo), `js/player.js`, `js/cloud.js`, `player.html`, `web/src/lib/tvAoVivo.js`, `sw.js` (`mt-shell-v91`) | 6.3 |
+| Ferramentas de medida | `tools/carga/` | seção 8 |
+
+**Não mudou** (proposta, por ser regra de negócio, contrato do painel ou
+app sem compilar aqui): o teto de 2.000 conexões, os limites de TV nova por
+IP e do freio do painel, a página Telas da conta grande, o aviso rápido como
+operação no servidor, o vigia do app Android e a limpeza do cache de mídia.
 
 ---
 
