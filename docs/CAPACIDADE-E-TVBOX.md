@@ -191,9 +191,8 @@ Telas da conta grande (3.5).
    −42%, Postgres −40%, RSS de 942 para 154 MB com 2.000 TVs (3.2). Foi a
    maior diferença medida.
 
-Com 1 e 3 corrigidos e 4 também, o que sobra como gargalo é **1 (o teto
-fixo)** para o número de TVs e **2 (a página Telas)** para o tamanho de uma
-conta.
+Com 3 e 4 corrigidos, o que sobra como gargalo é **1 (o teto fixo)** para
+o número de TVs e **2 (a página Telas)** para o tamanho de uma conta.
 
 ### 3.5 O painel da conta grande
 
@@ -240,9 +239,9 @@ antes e no de depois:
   número de **planejamento é ~3.000 TVs por instância**, subindo o teto para
   3.000 e corrigindo a página Telas (3.5) antes.
 - **Memória:** depois da correção, ~150 MB de base + ~10 KB por TV + os
-  picos do painel (até ~400 MB com três pessoas na página Telas de uma conta
-  de 300 TVs). **1 GB atende 2.000–3.000 TVs com folga**; antes da correção
-  seriam 2 GB (picos de 1,3–1,5 GB). No Railway o serviço cresce sozinho até
+  picos do painel (RSS de até ~550 MB com 2.000 TVs e três pessoas na página
+  Telas de uma conta de 300 TVs). **1 GB atende 2.000–3.000 TVs com
+  folga**; antes da correção seriam 2 GB (picos de 1,3–1,5 GB). No Railway o serviço cresce sozinho até
   o teto do plano e cobra o usado (na tabela de 2025, ~US$ 20 por vCPU/mês e
   ~US$ 10 por GB/mês — confira a atual): **1 vCPU + 1 GB ≈ US$ 30/mês**,
   dentro dos R$ 250 de `docs/BILLING.md` §3.2. Só mais núcleos não sobem o
@@ -294,9 +293,9 @@ tráfego é pulso, que não precisa de `NOTIFY`).
 número; até **~3.000** se subir o teto para 3.000–4.000 e corrigir a página
 Telas. Com o preço de R$ 139, isso é ~R$ 400 mil/mês de receita — há tempo,
 mas o trabalho (2–4 semanas com testes) deve começar quando a base passar
-de **~1.500 TVs**. Antes disso há um passo mais barato: **separar as
-réplicas por conta** não funciona sem o item acima (a TV e o painel da mesma
-conta precisam cair no mesmo processo), então não vale a pena.
+de **~1.500 TVs**. O atalho que parece barato — várias instâncias com
+cada conta numa — não dá no Railway: a TV e o painel da mesma conta precisam
+cair no mesmo processo, e o balanceador do Railway não roteia por conta.
 
 ---
 
@@ -565,6 +564,7 @@ Tudo com teste em `test/carga-rh.test.js` (e a suíte inteira passando).
 | Corpo acima de 2 MB: 413 com o motivo | `server.js` (`readBody`, `CORPO_GRANDE`) | aviso para 21+ TVs: "grande demais" em vez de "sem conexão" |
 | Lote acima de 200 TVs: recusado inteiro, com o motivo | `server/routes/telas.js` (`LOTE_MAX`) | antes: 200 gravadas e "ok" para todas |
 | Lotação do tempo real: um aviso de log por minuto | `server/limites.js` | 9.660 linhas em 4 min → 4 |
+| Modo leve: a foto viva volta a ser o poster parado (o player manda `leve` à peça) | `js/render.js` (`opcoesDaPeca`) | no modo leve, nenhum vídeo decodificado; renderizador 234–259 MB contra 250–380 MB com o vídeo |
 | O vigia da página (zona parada, recarga da madrugada) | `js/vigia.js` (novo), `js/player.js`, `js/cloud.js`, `player.html`, `web/src/lib/tvAoVivo.js`, `sw.js` (`mt-shell-v91`) | 6.3 |
 | Ferramentas de medida | `tools/carga/` | seção 8 |
 
