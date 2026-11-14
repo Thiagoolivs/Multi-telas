@@ -151,9 +151,23 @@ function tetoDaConta(telas) {
  * "a TV atingiu o limite de conexões" e "o servidor está cheio" pedem coisas
  * diferentes de quem lê o log.
  */
+/*
+ * O aviso de lotação sai no máximo uma vez por minuto, com a contagem
+ * (teste de carga, 14/11). Cada TV acima do teto tenta de novo a cada 15 s
+ * (js/cloud.js): com 500 TVs acima, eram 9.660 linhas iguais em 4 minutos —
+ * o log afogado justo quando alguém precisa lê-lo.
+ */
+const AVISO_MS = 60 * 1000;
+const recusas = { servidor: 0, avisadoEm: 0 };
 function abrirConexao(deviceId, tenantId, telasDaConta) {
   if (conexoes.total >= DO_SERVIDOR) {
-    log.aviso('conexao.servidor-cheio', { total: conexoes.total });
+    recusas.servidor++;
+    const agora = Date.now();
+    if (agora - recusas.avisadoEm >= AVISO_MS) {
+      log.aviso('conexao.servidor-cheio', { total: conexoes.total, recusasDesdeOUltimoAviso: recusas.servidor });
+      recusas.avisadoEm = agora;
+      recusas.servidor = 0;
+    }
     return { ok: false, motivo: 'servidor' };
   }
   const naTela = conexoes.porTela.get(deviceId) || 0;
@@ -239,6 +253,7 @@ function excessosDaConta(tenantId) {
 
 function zerar() {
   baldes.clear(); excessos.clear();
+  recusas.servidor = 0; recusas.avisadoEm = 0;
   conexoes.total = 0; conexoes.porTela.clear(); conexoes.porConta.clear();
 }
 

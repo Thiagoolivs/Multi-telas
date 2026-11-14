@@ -147,6 +147,21 @@ test('a conta de 300 TVs saudáveis não aparece como "esbarrando"; a TV com def
   limites.zerar();
 });
 
+test('servidor lotado de tempo real: recusa todas, mas avisa no log uma vez por minuto (com a contagem)', (t) => {
+  const limites = require('../server/limites.js');
+  const { log } = require('../server/log.js');
+  const avisos = [];
+  const antes = log.aviso;
+  log.aviso = (ev, dados) => { if (ev === 'conexao.servidor-cheio') avisos.push(dados); };
+  t.after(() => { log.aviso = antes; limites.zerar(); });
+  limites.zerar();
+  for (let i = 0; i < limites.DO_SERVIDOR; i++) assert.equal(limites.abrirConexao('dev_' + i, 'ten_' + (i % 20), 200).ok, true);
+  // 500 TVs acima do teto, tentando de 15 em 15 s (js/cloud.js): todas recusadas...
+  for (let i = 0; i < 500; i++) assert.equal(limites.abrirConexao('dev_x' + i, 'ten_x', 500).motivo, 'servidor');
+  // ...e uma linha só no log, não 500.
+  assert.equal(avisos.length, 1, 'o log de lotação afoga o resto (uma linha por tentativa)');
+});
+
 /* ---------------- O envio em lote da conta grande ---------------- */
 
 const fs = require('node:fs');

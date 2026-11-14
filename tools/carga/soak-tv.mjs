@@ -111,6 +111,8 @@ function lerPagina() {
     longTasks: S.longTasks || 0, longMs: Math.round(S.longMs || 0),
     frames: S.frames || 0, piorQuadro: Math.round(S.piorQuadro || 0), swaps: S.swaps || 0, erros: S.erros || 0,
     timers: S.timers ? S.timers() : null,
+    // O vigia da página (js/vigia.js): quantas zonas vigia, quantas cutucou, quantas vezes recarregou.
+    vigia: window.MTVigia && window.MTVigia.estado ? window.MTVigia.estado() : null,
     gsap: window.gsap && window.gsap.globalTimeline ? window.gsap.globalTimeline.getChildren(true, true, true).length : null,
     localStorageBytes: (() => { try { let n = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || '').length; } return n; } catch (e) { return null; } })(),
   };
