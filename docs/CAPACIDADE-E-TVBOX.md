@@ -52,8 +52,11 @@ memória baixa do sistema, voltou 160–260 MB. O teste **achou um defeito**: no
 **modo leve** (o do box) a foto viva tocava o vídeo em vez do poster parado —
 corrigido. O modo leve roda a ~56 quadros/s onde o completo roda a ~7,5.
 Também foi feito um **vigia na página** (zona parada é cutucada, e a TV
-recarrega de madrugada) e o app Android tem **um buraco sério no vigia
-dele**: com o JavaScript travado de verdade, ele nunca recarrega (6.2).
+recarrega de madrugada). O app Android tinha **um buraco sério no vigia
+dele** — com o JavaScript travado de verdade, ele nunca recarregava — e foi
+corrigido no vigia v2 do app, com a recriação diária do WebView, o aviso de
+tela inicial no painel, o "reiniciar o app" e a limpeza do cache de mídia
+(6.2).
 
 **Limites.** Uma instalação de 300 TVs **esbarra duas vezes**: no 61º
 aparelho do mesmo IP (60 TVs novas por hora por IP) e por volta da 300ª TV
@@ -484,8 +487,8 @@ no modo completo (peças de 4 s, publicação a cada 5 min, 692 trocas):
 - Num box de verdade com 2 GB o Chromium usa limites de cache menores que
   os do desktop daqui, e o Android avisa o WebView antes de matar: o platô
   deve ficar abaixo dos números da tabela. Mesmo assim, a **recarga da
-  madrugada** (6.3) zera o que acumular, e a **recriação diária do WebView**
-  (proposta 6.2, item 2) zera também o que for do processo.
+  madrugada** (6.3) zera o que acumular e, no app, vira a **recriação
+  diária do WebView** (6.2, item 2), que zera também o que for do processo.
 
 ### 5.5 Conclusão do TV box
 
@@ -516,8 +519,10 @@ min de modo leve, 23 min de completo com purga), com 19 publicações
 
 ## 6. O app Android (MultiTelas TV): contra travamento
 
-Lido em `android/app/src/main/` (não há SDK Android nesta máquina; nada do
-app foi compilado nem rodado aqui).
+Lido em `android/app/src/main/`. O vigia v2 (6.2) foi **compilado e passou
+no lint** aqui, com o Android SDK baixado (platform 34, build-tools 34) — mas
+não rodou num aparelho: o roteiro de aparelho (`docs/qa/ROTEIRO-APARELHO.md`)
+continua sendo o próximo passo.
 
 ### 6.1 O que já existe
 
@@ -527,58 +532,76 @@ app foi compilado nem rodado aqui).
 | Tela sempre acesa | `MainActivity.java`, `FLAG_KEEP_SCREEN_ON` | **Bom.** (A permissão `WAKE_LOCK` está declarada e não é usada; não faz falta.) |
 | Processo do WebView morreu | `MainActivity.java`, `onRenderProcessGone` → recria o WebView | **Bom no Android 8+** (API 26). No Android 7 o renderizador mora no processo do app: a queda derruba o app. |
 | App caiu por exceção Java | `MainActivity.java`, `reabrirSeCair` (alarme reabre em 2 s) | **Parcial.** Não pega queda nativa (o WebView morrendo com o app, no Android 7), nem o app morto pelo sistema por falta de memória, nem a morte que o Android causa ao **atualizar o WebView** pela Play Store. Nesses casos só volta se o app for a **tela inicial** (o Android reabre a tela inicial sozinho). |
-| Vigia da página | `MainActivity.java`, `vigia`: a cada 60 s pergunta `!!(window.MTCloud && document.body)`; 3 "não" seguidos recarregam | **Tem dois buracos.** (a) Com o JavaScript **travado de verdade**, a resposta nunca volta, o contador de falhas nunca sobe e a página nunca é recarregada — o caso que o vigia existe para pegar. (b) Ele confere que o script subiu, não que a TV está andando: um palco parado numa peça responde "true". |
+| Vigia da página | `MainActivity.java`, `vigia`: a cada 60 s pergunta `!!(window.MTCloud && document.body)`; 3 "não" seguidos recarregam | **Tinha dois buracos** (corrigidos no vigia v2, 6.2 item 1). (a) Com o JavaScript **travado de verdade**, a resposta nunca volta, o contador de falhas nunca sobe e a página nunca é recarregada — o caso que o vigia existe para pegar. (b) Ele confere que o script subiu, não que a TV está andando: um palco parado numa peça responde "true". |
 | Sem rede no boot | `MainActivity.java`, `onReceivedError` → "Procurando a internet…", tenta de novo em 15 s | **Bom.** Depois da primeira vez o player sobe do cache (service worker). |
-| Recarregar pelo painel | Telas › Recarregar → comando `recarregar` (`server/routes/telas.js`, rota `comando`; `js/cloud.js:263`) | **Existe**, mas é `location.reload()` dentro da página: não age se o JavaScript travou, e não recria o WebView. |
-| Recarga diária | — | **Não havia.** Agora o player faz (`js/vigia.js`, 6.3). |
+| Recarregar pelo painel | Telas › Recarregar → comando `recarregar` (`server/routes/telas.js`, rota `comando`; `js/cloud.js`, `executarComando`) | **Existe**, mas é `location.reload()` dentro da página: não age se o JavaScript travou, e não recria o WebView. Agora há também **"Reiniciar o app da TV"** (6.2 item 4). |
+| Recarga diária | — | **Não havia.** Agora o player faz (`js/vigia.js`, 6.3) e, no app, vira um WebView novo (6.2 item 2). |
 | Atualizar o próprio app | `Atualizador.java` (3 min depois de abrir, depois de 6 em 6 h; instala com OK do controle) | Bom. |
 
-### 6.2 O que falta (proposta, em ordem de valor)
+### 6.2 O que foi feito no app (vigia v2, 16/11)
 
-1. **O vigia do app contar o silêncio como falha.** Hoje a falha só conta
-   quando o JavaScript responde "false". Proposta para `MainActivity.java`:
+A proposta, na ordem de valor, e como ficou. O app se atualiza sozinho em
+**todas** as TVs da produção (o Release do `android.yml` e o
+`server/apk.js`), então tudo aqui tem freio: nenhuma ação por uma falha só,
+nenhuma ação repetida sem espera, e o freio do reinício do app guardado fora
+da memória (o app reiniciado esquece o resto). Detalhe e tabela em
+`android/README.md`, "Contra travamento".
 
-   ```java
-   private int semResposta = 0;
-   // no run() do vigia, antes do evaluateJavascript:
-   if (++semResposta > FALHAS_PARA_RECARREGAR) { semResposta = 0; reiniciarWebView(); return; }
-   web.evaluateJavascript("(function(){return !!(window.MTCloud && document.body);})()", valor -> {
-       semResposta = 0;                       // respondeu: o JavaScript está vivo
-       if ("true".equals(valor)) falhasDoVigia = 0;
-       else if (++falhasDoVigia >= FALHAS_PARA_RECARREGAR) carregar();
-   });
+1. **O silêncio conta como falha.** A pergunta de um minuto atrás que não
+   voltou é falha ("silêncio"); a página que responde mas não é o player é
+   "fora"; e o app lê do vigia da página uma **zona parada há mais de 15
+   min com o servidor respondendo** ("parado" — `MTVigia.estado().parada`,
+   que agora mede desde a primeira hora perdida, sem zerar no cutucão). As
+   regras moram em `RegrasDoVigia.java`, sem nada do Android, e o `npm test`
+   as compila e roda (`test/app-contra-travamento.test.js`):
 
-   private void reiniciarWebView() {
-       // Android 10+: mata o renderizador travado; onRenderProcessGone recria.
-       if (Build.VERSION.SDK_INT >= 29 && web.getWebViewRenderProcess() != null) {
-           web.getWebViewRenderProcess().terminate();
-       } else {
-           // Antes: reabre em 2 s (o mesmo alarme de reabrirSeCair) e sai.
-           agendarReabertura(); android.os.Process.killProcess(android.os.Process.myPid());
-       }
-   }
-   ```
-2. **Recriar o WebView uma vez por dia** (às 4h, se o app está aberto há mais
-   de 24 h). A recarga da página (6.3) devolve a memória do documento; a
-   recriação devolve também a do processo do renderizador. No teste, o
-   renderizador estabilizou em ~650–720 MB no modo completo (5.2 e 5.4) — num box
-   de 2 GB isso é um terço da memória.
-3. **Tela inicial obrigatória na instalação.** É a única garantia de voltar
-   depois de: queda nativa, morte por memória e **atualização do Android
-   System WebView** (que mata o app). O `android/README.md` já ensina; o
-   painel deveria **mostrar no cartão da TV** se o app é a tela inicial (a
-   ponte `MTApp` pode informar `isDefaultLauncher` no pulso) e o checklist da
-   Visitor deveria exigir o teste "tirar da tomada e ver voltar".
-4. **"Reiniciar o app" pelo painel**, além do "Recarregar": o comando chega
-   à página (já chega, pelo SSE e pelo pulso), a página marca
-   `window.MT_REINICIAR = true` e o vigia do app, que já pergunta a cada
-   minuto, recria o WebView quando vê a marca. Sem método novo na ponte (a
-   `Ponte.java` explica por que não abrir mais métodos para todo frame).
-5. **Limpar o cache de mídia do service worker.** O `MEDIA_CACHE` de `sw.js`
-   guarda toda foto e vídeo que a TV já mostrou e **nunca apaga**: uma conta
-   que troca o vídeo toda semana enche o armazenamento de um box de 8 GB em
-   meses. Proposta: a cada programação aplicada, apagar do cache o que não
-   está mais nela (com uma folga de alguns dias).
+   | | Regra |
+   |---|---|
+   | Antes de cada ação | **3 falhas seguidas** (perguntas de 60 em 60 s: ~3 min) |
+   | "fora" | só recarrega (de 3 em 3 min no máximo, como antes); não sobe a escada |
+   | "silêncio" e "parado" | 1º recarrega → 2º recria o WebView (Android 10+: `terminate()` no processo do WebView; antes: WebView novo) |
+   | Android até 9, "silêncio" | o 2º degrau é **reiniciar o app** (alarme de 2 s + sair): o renderizador travado não morre sozinho lá. **No máximo 1 vez a cada 6 h** (marca gravada com `commit` antes de sair) |
+   | Depois do topo | recria de novo **no máximo a cada 30 min** |
+   | Volta ao começo | 30 min sem falha |
+   | Outra tela por cima | só o 1º degrau |
+   | "Procurando a internet…" na tela | o vigia descansa (a nova tentativa de 15 s cuida) |
+   | Processo do WebView caindo sozinho | a 4ª queda em 10 min espera 1 min antes de carregar |
+
+   O que o vigia fez vai no pulso (`info.appVigia`) e no log do Android
+   (`adb logcat -s MultiTelas`).
+2. **WebView novo uma vez por dia.** A recarga da madrugada do vigia da
+   página (ligada há mais de 20 h, 3h–5h da loja, servidor de pé, uma vez a
+   cada 30 min) vira, no app v2, a marca `window.MT_REINICIAR = 'madrugada'`,
+   e o app recria o WebView (no Android 10+ matando o processo dele: a
+   memória do renderizador volta, não só a da página). **Quem decide a hora
+   é o vigia da página; o app só executa** — os dois nunca agem na mesma
+   noite. Se o app não agir em 3 min, a página recarrega sozinha.
+3. **Tela inicial.** O app conta no pulso se é a tela inicial do aparelho
+   (`MTApp.telaInicial()` → `info.inicial`; o manifesto declara a consulta
+   aos apps de tela inicial, que o Android 11+ exige). Quando não é, a
+   **página da TV** no painel mostra "Esta TV pode não voltar sozinha", com
+   o passo a passo (botão Início › Sempre; Configurações › Apps padrão ›
+   Tela inicial; o comando `adb` para o Google TV; o teste de tirar da
+   tomada) — `web/src/lib/telaInicial.js`, `AvisoTelaInicial.jsx`. As
+   cascas de antes não contam e não geram aviso. **Falta:** o checklist da
+   Visitor exigir o teste "tirar da tomada e ver voltar".
+4. **"Reiniciar o app da TV" pelo painel** (Telas › Mais opções, só na TV
+   com o app): comando `reiniciar` (`server/routes/telas.js`,
+   `COMANDOS_DA_TV`). A página marca `window.MT_REINICIAR` e o vigia do app
+   recria o WebView em até 1 min (no máximo um pedido a cada 5 min). Não é
+   método da ponte: a ponte é vista por todo iframe, e um site externo num
+   conteúdo reiniciaria a TV em laço. TV de navegador e casca antiga:
+   recarrega a página.
+5. **Limpeza do cache de mídia** (`sw.js`, `limparMidia`). A cada
+   programação aplicada o player conta ao worker o que está nela
+   (`precacheMedia`); no máximo a cada 6 h o worker apaga o que **não está
+   na programação** e não foi visto há **14 dias**, e, acima do **teto de
+   1 GB** (ou metade da cota do navegador, se menor), o mais antigo fora da
+   programação até caber — nunca o visto nas últimas 24 h, e **nunca o que
+   está na programação**, nem acima do teto. "Visto" inclui ser servido
+   pelo worker (a foto do aniversariante e a do mural não vêm na
+   programação). O que já estava guardado ganha 14 dias de folga a partir da
+   primeira limpeza.
 
 ### 6.3 O que foi feito no player (`js/vigia.js`)
 
@@ -598,6 +621,12 @@ navegador de Smart TV, Fire TV):
   fica no `localStorage`).
 - O pulso bom é marcado em `js/cloud.js` (`heartbeat`); o vigia sobe no
   `bootCloud` de `js/player.js`. `SHELL_CACHE` subiu para `mt-shell-v91`.
+- **Vigia v2 do app (16/11):** a zona que nem o cutucão faz andar não some
+  mais da vista (o cutucão marca o relógio como vencido agora, em vez de
+  zerar); `estado().parada` diz há quanto tempo a zona mais atrasada está
+  parada, desde a primeira hora perdida; `reiniciarApp` pede ao app um
+  WebView novo (o comando do painel e a recarga da madrugada). `SHELL_CACHE`
+  subiu para `mt-shell-v92`.
 
 ### 6.4 O box para comprar
 
@@ -609,7 +638,8 @@ navegador de Smart TV, Fire TV):
   completo com foto viva (5.2–5.4); com 1 GB, só modo leve e sem foto viva.
 - **4 núcleos Cortex-A55 ou melhor** (Amlogic S905X4/S905Y4 ou equivalente),
   decodificação H.264 1080p por hardware (todos têm).
-- **8 GB de armazenamento** ou mais (cache de mídia, 6.2 item 5) e **porta
+- **8 GB de armazenamento** ou mais (o cache de mídia agora tem teto de
+  1 GB fora da programação — 6.2 item 5) e **porta
   de rede cabeada**.
 - **Homologar um modelo e comprar sempre o mesmo** (lote de box barato troca
   de chip sem avisar — `android/README.md`). Exemplo de perfil que atende:
@@ -632,12 +662,14 @@ Tudo com teste em `test/carga-rh.test.js` (e a suíte inteira passando).
 | Lotação do tempo real: um aviso de log por minuto | `server/limites.js` | 9.660 linhas em 4 min → 4 |
 | Modo leve: a foto viva volta a ser o poster parado (o player manda `leve` à peça) | `js/render.js` (`opcoesDaPeca`) | no modo leve, nenhum vídeo decodificado; renderizador 234–259 MB contra 250–380 MB com o vídeo |
 | O vigia da página (zona parada, recarga da madrugada) | `js/vigia.js` (novo), `js/player.js`, `js/cloud.js`, `player.html`, `web/src/lib/tvAoVivo.js`, `sw.js` (`mt-shell-v91`) | 6.3 |
+| O vigia v2 do app (silêncio, escada com freio, WebView novo de madrugada, tela inicial no pulso, "reiniciar o app") e a limpeza do cache de mídia | `android/.../MainActivity.java`, `RegrasDoVigia.java` (novo), `Ponte.java`, `AndroidManifest.xml`, `js/vigia.js`, `js/cloud.js`, `js/player.js`, `sw.js` (`mt-shell-v92`), `server.js` (`infoDaTela`), `server/routes/telas.js` (`COMANDOS_DA_TV`), `web/src/lib/telaInicial.js`, `web/src/components/tela/AvisoTelaInicial.jsx`, `ContentEditorPage.jsx`, `ScreensPage.jsx` | 6.2; teste em `test/app-contra-travamento.test.js`, `test/sw.test.js`, `test/apk.test.js` |
 | Ferramentas de medida | `tools/carga/` | seção 8 |
 
 **Não mudou** (proposta, por ser regra de negócio, contrato do painel ou
 app sem compilar aqui): o teto de 2.000 conexões, os limites de TV nova por
 IP e do freio do painel, a página Telas da conta grande, o aviso rápido como
-operação no servidor, o vigia do app Android e a limpeza do cache de mídia.
+operação no servidor. (O vigia do app Android e a limpeza do cache de mídia
+entraram depois, no vigia v2 — 6.2.)
 
 ---
 

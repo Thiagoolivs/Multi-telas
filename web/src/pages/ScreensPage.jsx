@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw, Eye, MoreHorizontal, Search } from 'lucide-react';
+import { MonitorPlay, Plus, Pencil, Trash2, RadioTower, LayoutTemplate, Archive, Download, Upload, Copy, Check, Music, RefreshCw, Bell, BellOff, RotateCw, Power, Eye, MoreHorizontal, Search } from 'lucide-react';
 import { PageHeader } from '../components/layout/PageHeader.jsx';
 import { Panel, PanelHeader, PanelFooter } from '../components/ui/Panel.jsx';
 import { Table, THead, TBody, TH, TR, TD } from '../components/ui/Table.jsx';
@@ -204,6 +204,17 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
     catch (e) { setRecarregando('erro'); }
     setTimeout(() => setRecarregando(''), 4000);
   }
+  /*
+   * Reiniciar o app (só nas TVs com o app MultiTelas TV): quando recarregar
+   * não resolveu. O app troca o navegador interno inteiro, com a memória
+   * dele; o vigia do app atende em até 1 min (js/vigia.js, reiniciarApp).
+   */
+  async function reiniciar() {
+    setRecarregando('enviando');
+    try { await devices.comando(d.id, 'reiniciar'); setRecarregando('reiniciando'); }
+    catch (e) { setRecarregando('erro'); }
+    setTimeout(() => setRecarregando(''), 6000);
+  }
   const fechar = (fn) => () => { setMais(false); fn(); };
   const semAlerta = d.expediente && d.expediente.alerta === false;
   return (
@@ -221,7 +232,8 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
             {d.grupo && <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 text-xs text-ink-3">{d.grupo}</span>}
           </div>
           <div className="truncate text-xs text-ink-3">
-            {recarregando === 'ok' ? 'Recarregando a TV…' : recarregando === 'erro' ? 'Não consegui mandar o comando'
+            {recarregando === 'ok' ? 'Recarregando a TV…' : recarregando === 'reiniciando' ? 'Reiniciando o app da TV (até 1 minuto)…'
+              : recarregando === 'erro' ? 'Não consegui mandar o comando'
               : <>{online ? 'Deu sinal ' + (st.seen || 'agora') : st.seen ? 'Último sinal ' + st.seen : 'Ainda não deu sinal'}{descreverAparelho(d.info)}</>}
           </div>
           {/* D41: a casca Android está atrás da publicada. A de antes do D41 não se atualiza: reinstala uma vez. */}
@@ -258,6 +270,7 @@ function FleetCard({ d, onSom, onVer, onContent, onRename, onReconnect, onBackup
         <div className="-mx-1 flex flex-col">
           <OpcaoDaTela icon={Pencil} titulo="Nome e grupo" texto="Ex.: Recepção, Loja Centro." onClick={fechar(onRename)} />
           <OpcaoDaTela icon={RotateCw} titulo="Recarregar a TV" texto="O “desliga e liga”, sem ir até ela." onClick={fechar(recarregar)} disabled={!!recarregando} />
+          {d.info && d.info.app && <OpcaoDaTela icon={Power} titulo="Reiniciar o app da TV" texto="Quando recarregar não resolveu. Leva até 1 minuto." onClick={fechar(reiniciar)} disabled={!!recarregando} />}
           <OpcaoDaTela icon={Music} titulo="Som ao vivo" texto="Volume e música, na hora." onClick={fechar(onSom)} />
           <OpcaoDaTela icon={semAlerta ? BellOff : Bell} titulo="Horário e aviso de queda"
             texto={semAlerta ? 'O aviso por e-mail está desligado.' : 'Quando a loja abre e o e-mail se a TV cair.'} onClick={fechar(onAlerta)} />

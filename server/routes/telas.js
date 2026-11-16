@@ -21,6 +21,8 @@ module.exports = function (ctx) {
    * TV de RH com peças-ouro. Rota nova aqui só se não tocar em device.config.
    */
   const SEM_PROGRAMACAO = new Set(['heartbeat', 'audio-estado', 'passe', 'events', 'kpis', 'planilhas', 'birthdays', 'exibicoes']);
+  // Os comandos do painel para a TV (rota `comando`; a TV executa em js/cloud.js, executarComando).
+  const COMANDOS_DA_TV = ['recarregar', 'reiniciar', 'estado'];
 
   /*
    * O que cada TV disse que está mostrando, na última vez que o painel
@@ -201,6 +203,7 @@ module.exports = function (ctx) {
    *
    *   Ação                                          dono  admin  membro
    *   Ver telas, ver a tela agora, som, recarregar   sim   sim    sim
+   *     e reiniciar o app da TV
    *   Publicar conteúdo (config, lote, desfazer,
    *     restaurar/copiar backup, "mostrar nas TVs")  sim   sim    sim
    *   Nome da TV, grupo, renomear grupo              sim   sim    sim
@@ -772,23 +775,25 @@ module.exports = function (ctx) {
         });
       }
       /*
-       * Comando remoto (dono): hoje, recarregar a TV. É o "desliga e liga" que
+       * Comando remoto (dono): recarregar a TV. É o "desliga e liga" que
        * resolve metade dos chamados — sem ninguém ir até a TV. Vai pelo SSE e,
        * se o stream estiver caído, no próximo pulso (até 30s).
+       * "reiniciar": o mesmo, mais forte — no app Android a TV ganha um
+       * WebView novo (o vigia do app, em até 1 min); sem o app, recarrega.
        */
       if (req.method === 'POST' && sub === 'comando') {
         if (!owns) return sendJson(res, 403, { error: 'sem permissão' });
         return readBody(req, res, async (b) => {
           const acao = String((b && b.acao) || '');
           // "estado": o painel quer ver a tela agora (a TV responde em /estado).
-          if (acao !== 'recarregar' && acao !== 'estado') return sendJson(res, 400, { error: 'comando desconhecido' });
+          if (!COMANDOS_DA_TV.includes(acao)) return sendJson(res, 400, { error: 'comando desconhecido' });
           const cmd = { id: db.rid(10), acao, em: Date.now() };
           // A fila do pulso guarda UM comando: "ver" não pode apagar um
-          // "recarregar" que ainda não chegou na TV.
+          // "recarregar" (ou "reiniciar") que ainda não chegou na TV.
           const pendente = comandosPendentes.get(id);
-          if (!(acao === 'estado' && pendente && pendente.acao === 'recarregar')) comandosPendentes.set(id, cmd);
+          if (!(acao === 'estado' && pendente && pendente.acao !== 'estado')) comandosPendentes.set(id, cmd);
           broadcast(id, 'comando', cmd);
-          await db.registrarEvento(sess.tenant_id, sess.user_id, acao === 'estado' ? 'tela.ver' : 'tela.recarregar');
+          await db.registrarEvento(sess.tenant_id, sess.user_id, acao === 'estado' ? 'tela.ver' : 'tela.' + acao);
           return sendJson(res, 200, { ok: true, aoVivo: !!subscribers[id] });
         });
       }

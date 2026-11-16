@@ -7,6 +7,8 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -16,6 +18,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.text.InputType;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,6 +30,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebViewRenderProcess;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 
@@ -50,13 +54,39 @@ public class MainActivity extends Activity {
 
     private static final String PREFS = "multitelas";
     private static final String CHAVE_URL = "url";
+    // Quando o vigia reiniciou o app pela última vez (relógio de parede): no máximo uma vez a cada 6 h.
+    private static final String CHAVE_REINICIO = "vigiaReiniciouEm";
+    private static final String CHAVE_REINICIOS = "vigiaReinicios";
+    private static final String TAG = "MultiTelas";
 
     // De quanto em quanto tempo o vigia pergunta ao player se ele está vivo.
     private static final long VIGIA_MS = 60_000;
-    // Quantas perguntas sem resposta seguidas antes de recarregar.
-    private static final int FALHAS_PARA_RECARREGAR = 3;
     // Espera antes de tentar de novo quando a página nem carregou.
     private static final long NOVA_TENTATIVA_MS = 15_000;
+    // Zona parada há mais que isto (e o servidor respondendo): o vigia da página já tentou e não resolveu.
+    private static final long PARADA_MS = 15 * 60_000L;
+
+    /*
+     * A pergunta do vigia (RegrasDoVigia diz o que fazer com a resposta):
+     *   "reiniciar:…" a página pediu um WebView novo (window.MT_REINICIAR,
+     *                 posto pelo comando do painel ou pela recarga da
+     *                 madrugada — js/vigia.js, reiniciarApp);
+     *   "fora"        o JavaScript responde, mas o player não subiu;
+     *   "parado"      uma zona parada há mais de 15 min, com o servidor de pé;
+     *   "ok"          o resto.
+     * O pedido é uma marca na página, e não um método da ponte: a ponte
+     * (MTApp) é vista por todo iframe, e um site externo num conteúdo poderia
+     * reiniciar a TV em laço. A marca só a própria página põe.
+     */
+    private static final String PERGUNTA = "(function(){try{"
+            + "var r=window.MT_REINICIAR;if(r)return 'reiniciar:'+String(r).slice(0,20);"
+            + "if(!(window.MTCloud&&document.body))return 'fora';"
+            + "var v=window.MTVigia&&window.MTVigia.estado?window.MTVigia.estado():null;"
+            + "if(v&&v.parada>" + PARADA_MS + "&&v.pulsoOk&&Date.now()-v.pulsoOk<120000)return 'parado';"
+            + "return 'ok';}catch(e){return 'erro';}})()";
+
+    // O que o vigia fez desde que o app abriu (vai no pulso, para o painel e o suporte enxergarem).
+    private static volatile String resumo = "";
 
     /*
      * O que aparece quando nem o player abriu: primeira vez ligado e sem
@@ -77,7 +107,19 @@ public class MainActivity extends Activity {
     private FrameLayout raiz;
     private Atualizador atualizador;
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private int falhasDoVigia = 0;
+    private final RegrasDoVigia regras = new RegrasDoVigia();
+    // A pergunta em curso: resposta de outra (atrasada, de um WebView que já saiu) não conta.
+    private int pergunta = 0;
+    private boolean esperandoResposta = false;
+    // O vigia descansa: a página "Procurando a internet…" está na tela (a nova tentativa de 15 s cuida) ou a recarga está esperando.
+    private boolean vigiaEmPausa = false;
+    // O WebView foi morto de propósito (recriar): a queda que chega não conta como queda.
+    private boolean terminandoDeProposito = false;
+    private boolean emFrente = false;
+    // O que o vigia fez desde que o app abriu: por falha (recargas, recriações) e a pedido da página.
+    private int recargas = 0;
+    private int recriacoes = 0;
+    private int pedidos = 0;
     private int voltasSeguidas = 0;
     private long ultimaVolta = 0;
 
@@ -126,7 +168,7 @@ public class MainActivity extends Activity {
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
         s.setUserAgentString(s.getUserAgentString() + " MultiTelasTV/" + BuildConfig.VERSION_NAME);
 
-        web.addJavascriptInterface(new Ponte(), "MTApp");
+        web.addJavascriptInterface(new Ponte(getApplicationContext()), "MTApp");
         web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -144,6 +186,8 @@ public class MainActivity extends Activity {
                 // Só a página principal importa: uma imagem que falhou não é
                 // motivo para recarregar a tela inteira.
                 if (req.isForMainFrame()) {
+                    // Quem cuida daqui é a nova tentativa de 15 s; o vigia não conta esta página como falha.
+                    vigiaEmPausa = true;
                     v.loadDataWithBaseURL(null, PAGINA_SEM_REDE, "text/html", "utf-8", null);
                     tentarDeNovoEmBreve();
                 }
@@ -152,10 +196,23 @@ public class MainActivity extends Activity {
             @android.annotation.TargetApi(26)
             @Override
             public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail detail) {
-                // O processo do WebView morreu (memória, na maioria das vezes).
-                // Sem tratar isto, o app inteiro cai junto. Recria e segue.
+                // O processo do WebView morreu (memória, na maioria das vezes,
+                // ou o vigia o matou de propósito para recriar). Sem tratar
+                // isto, o app inteiro cai junto. Recria e segue.
+                if (v != web) return true; // um WebView que já saiu: o de agora segue
+                boolean proposital = terminandoDeProposito;
+                terminandoDeProposito = false;
+                long espera = proposital ? 0 : regras.esperaDepoisDaQueda(SystemClock.elapsedRealtime());
+                Log.w(TAG, "vigia: o processo do WebView " + (proposital ? "foi recriado" : "caiu")
+                        + (espera > 0 ? "; carrega de novo em " + (espera / 1000) + " s" : ""));
                 criarWebView();
-                carregar();
+                if (espera > 0) {
+                    vigiaEmPausa = true;
+                    handler.removeCallbacks(novaTentativa);
+                    handler.postDelayed(novaTentativa, espera);
+                } else {
+                    carregar();
+                }
                 return true;
             }
         });
@@ -165,7 +222,12 @@ public class MainActivity extends Activity {
     }
 
     private void carregar() {
-        falhasDoVigia = 0;
+        if (web == null) return; // a tela já fechou
+        // Página nova: a pergunta que estava no ar não volta mais, e não é silêncio.
+        pergunta++;
+        esperandoResposta = false;
+        vigiaEmPausa = false;
+        regras.recomecar();
         web.loadUrl(urlDoServidor() + "/tv");
     }
 
@@ -177,21 +239,168 @@ public class MainActivity extends Activity {
     }
 
     /*
-     * O vigia: a cada minuto pergunta ao player se ele está de pé. Três
-     * silêncios seguidos (página em branco, JavaScript travado) recarregam.
-     * O player guarda a última programação, então recarregar é seguro mesmo
-     * sem internet.
+     * O vigia: a cada minuto pergunta ao player se ele está de pé
+     * (PERGUNTA) e, desde o v2, conta também o SILÊNCIO — a pergunta de um
+     * minuto atrás que não voltou. O de antes só contava o "não": com o
+     * JavaScript travado de verdade a resposta nunca vinha, e ele nunca agia
+     * (docs/CAPACIDADE-E-TVBOX.md §6.1). O que fazer com cada resposta, e com
+     * que freio, está em RegrasDoVigia. O player guarda a última
+     * programação, então recarregar é seguro mesmo sem internet.
      */
     private final Runnable vigia = new Runnable() {
         @Override
         public void run() {
-            web.evaluateJavascript("(function(){return !!(window.MTCloud && document.body);})()", valor -> {
-                if ("true".equals(valor)) falhasDoVigia = 0;
-                else if (++falhasDoVigia >= FALHAS_PARA_RECARREGAR) carregar();
-            });
+            // Primeiro o próximo: nada aqui pode parar o vigia.
             handler.postDelayed(this, VIGIA_MS);
+            if (web == null || vigiaEmPausa) {
+                esperandoResposta = false;
+                return;
+            }
+            if (esperandoResposta) {
+                esperandoResposta = false;
+                if (agir(regras.anotar(RegrasDoVigia.SILENCIO, SystemClock.elapsedRealtime(), emFrente, appPodeReiniciar()),
+                        "a página não responde há 1 min")) return;
+            }
+            final int esta = ++pergunta;
+            esperandoResposta = true;
+            web.evaluateJavascript(PERGUNTA, valor -> {
+                if (esta != pergunta) return;
+                esperandoResposta = false;
+                responder(valor);
+            });
         }
     };
+
+    private void responder(String valor) {
+        // O evaluateJavascript devolve o texto em JSON: "\"ok\"".
+        String r = valor == null ? "" : valor;
+        if (r.length() >= 2 && r.startsWith("\"") && r.endsWith("\"")) r = r.substring(1, r.length() - 1);
+        long agora = SystemClock.elapsedRealtime();
+        if (r.startsWith("reiniciar")) {
+            // Comando do painel ou a recarga da madrugada (js/vigia.js): WebView novo, memória do processo devolvida.
+            if (regras.aceitarPedido(agora)) {
+                anotarAcao("pedido", "pedido da página (" + r + ")");
+                recriar();
+            }
+            return;
+        }
+        int resposta = "ok".equals(r) ? RegrasDoVigia.OK
+                : "parado".equals(r) ? RegrasDoVigia.PARADO
+                : RegrasDoVigia.FORA;
+        agir(regras.anotar(resposta, agora, emFrente, appPodeReiniciar()),
+                resposta == RegrasDoVigia.PARADO ? "zona parada há mais de 15 min" : "o player não está na página");
+    }
+
+    // Faz o que as regras mandaram. Devolve se fez alguma coisa.
+    private boolean agir(int acao, String motivo) {
+        switch (acao) {
+            case RegrasDoVigia.RECARREGAR:
+                anotarAcao("recarga", motivo);
+                carregar();
+                return true;
+            case RegrasDoVigia.RECRIAR:
+                anotarAcao("recriação", motivo);
+                recriar();
+                return true;
+            case RegrasDoVigia.REINICIAR_APP:
+                anotarAcao("reinício do app", motivo);
+                reiniciarApp();
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void anotarAcao(String acao, String motivo) {
+        if (acao.equals("recarga")) recargas++;
+        else if (acao.equals("recriação")) recriacoes++;
+        else if (acao.equals("pedido")) pedidos++;
+        // "app": quantas vezes o vigia reiniciou o app neste aparelho (guardado; o resto é desta abertura).
+        int doApp = getSharedPreferences(PREFS, MODE_PRIVATE).getInt(CHAVE_REINICIOS, 0);
+        resumo = "recargas " + recargas + " · webview " + recriacoes + " · pedidos " + pedidos + " · app " + doApp;
+        Log.w(TAG, "vigia: " + acao + " — " + motivo + " (degrau " + regras.degrau() + ")");
+    }
+
+    /*
+     * WebView novo. No Android 10+ mata o processo do WebView (o
+     * renderizador): é ele que trava e é ele que segura a memória; o
+     * onRenderProcessGone recria o WebView e carrega a página. Antes do 10 não
+     * há como matar só o renderizador: troca o WebView.
+     */
+    private void recriar() {
+        if (Build.VERSION.SDK_INT >= 29 && terminarRenderizador()) return;
+        criarWebView();
+        carregar();
+    }
+
+    private boolean terminarRenderizador() {
+        terminandoDeProposito = Api29.terminar(web);
+        return terminandoDeProposito;
+    }
+
+    /*
+     * À parte, numa classe que só carrega no Android 10+: o box de Android
+     * 5 a 9 nunca encosta em WebViewRenderProcess, nem para conferir a classe.
+     */
+    @android.annotation.TargetApi(29)
+    private static final class Api29 {
+        static boolean terminar(WebView w) {
+            try {
+                WebViewRenderProcess p = w.getWebViewRenderProcess();
+                return p != null && p.terminate();
+            } catch (RuntimeException naoDeu) {
+                return false;
+            }
+        }
+    }
+
+    /*
+     * O último degrau, só no Android até 9: lá o renderizador mora no
+     * processo do app (até o 7) ou não pode ser morto sozinho (8 e 9), e um
+     * WebView novo nasceria no mesmo processo travado. Agenda a reabertura
+     * em 2 s — o mesmo alarme de reabrirSeCair, que até o 9 pode abrir a tela
+     * do fundo — e sai. A marca é gravada ANTES (commit, não apply): o app que
+     * volta travando não reinicia de novo por 6 h.
+     */
+    @android.annotation.SuppressLint("ApplySharedPref")
+    private void reiniciarApp() {
+        SharedPreferences p = getSharedPreferences(PREFS, MODE_PRIVATE);
+        p.edit().putLong(CHAVE_REINICIO, System.currentTimeMillis())
+                .putInt(CHAVE_REINICIOS, p.getInt(CHAVE_REINICIOS, 0) + 1)
+                .commit();
+        agendarReabertura(getApplicationContext());
+        android.os.Process.killProcess(android.os.Process.myPid());
+    }
+
+    private boolean appPodeReiniciar() {
+        if (Build.VERSION.SDK_INT >= 29) return false;
+        long ultimo = getSharedPreferences(PREFS, MODE_PRIVATE).getLong(CHAVE_REINICIO, 0);
+        // abs: o relógio de um box barato acerta a hora depois do boot e pode andar para trás.
+        return Math.abs(System.currentTimeMillis() - ultimo) >= RegrasDoVigia.ENTRE_REINICIOS_DO_APP_MS;
+    }
+
+    // O resumo do vigia para o pulso (Ponte.vigiaResumo): o que ele fez desde que o app abriu.
+    static String resumoDoVigia() {
+        return resumo;
+    }
+
+    /*
+     * O app é a TELA INICIAL do aparelho? É a única garantia de voltar depois
+     * de uma queda que não passa por aqui: o app morto por falta de memória,
+     * a queda nativa e a atualização do Android System WebView (que mata o
+     * app). O Android reabre a tela inicial sozinho; qualquer outro app fica
+     * fechado até alguém abrir. O painel avisa na página da TV.
+     */
+    @SuppressWarnings("deprecation")
+    static boolean ehTelaInicial(Context ctx) {
+        try {
+            Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            ResolveInfo r = ctx.getPackageManager().resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY);
+            return r != null && r.activityInfo != null && ctx.getPackageName().equals(r.activityInfo.packageName);
+        } catch (RuntimeException semResposta) {
+            return false;
+        }
+    }
 
     /* ---------------- Tela cheia e teclas ---------------- */
 
@@ -302,24 +511,30 @@ public class MainActivity extends Activity {
         final Context ctx = getApplicationContext();
         final Thread.UncaughtExceptionHandler anterior = Thread.getDefaultUncaughtExceptionHandler();
         Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
-            try {
-                Intent i = new Intent(ctx, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                int flags = PendingIntent.FLAG_ONE_SHOT
-                        | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
-                PendingIntent pi = PendingIntent.getActivity(ctx, 0, i, flags);
-                AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-                if (am != null) am.set(AlarmManager.RTC, System.currentTimeMillis() + 2000, pi);
-            } catch (Throwable ignorada) {
-                // Reabrir é melhor esforço; o que não pode é cair tentando.
-            }
+            agendarReabertura(ctx);
             if (anterior != null) anterior.uncaughtException(t, e);
             else System.exit(2);
         });
     }
 
+    // Reabre o app em 2 s (alarme). Usado quando ele cai e quando o vigia o reinicia.
+    static void agendarReabertura(Context ctx) {
+        try {
+            Intent i = new Intent(ctx, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            int flags = PendingIntent.FLAG_ONE_SHOT
+                    | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
+            PendingIntent pi = PendingIntent.getActivity(ctx, 0, i, flags);
+            AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+            if (am != null) am.set(AlarmManager.RTC, System.currentTimeMillis() + 2000, pi);
+        } catch (Throwable ignorada) {
+            // Reabrir é melhor esforço; o que não pode é cair tentando.
+        }
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        emFrente = true;
         esconderBarras();
         if (web != null) web.onResume();
     }
@@ -327,7 +542,8 @@ public class MainActivity extends Activity {
     @Override
     protected void onPause() {
         // Não pausa o WebView: a TV continua exibindo mesmo se um diálogo do
-        // sistema aparecer por cima.
+        // sistema aparecer por cima. Só o vigia fica mais contido (RegrasDoVigia).
+        emFrente = false;
         super.onPause();
     }
 
@@ -335,7 +551,10 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         handler.removeCallbacksAndMessages(null);
         if (atualizador != null) atualizador.parar();
+        // Resposta ou queda que ainda chegue não mexe num WebView destruído.
+        pergunta++;
         if (web != null) web.destroy();
+        web = null;
         super.onDestroy();
     }
 }

@@ -422,7 +422,9 @@ function infoDaTela(b) {
   const txt = (v, n) => (typeof v === 'string' ? v.slice(0, n) : undefined);
   const num = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : undefined);
   // appCodigo: o versionCode da casca Android (D41), para o painel dizer "há uma versão nova".
-  const info = { ua: txt(b.ua, 300), w: num(b.w), h: num(b.h), dpr: Number(b.dpr) || undefined, versao: txt(b.versao, 40), app: txt(b.app, 40), appCodigo: num(b.appCodigo) };
+  // inicial: o app é a tela inicial do aparelho (o painel avisa quando não é); appVigia: o que o vigia do app já fez.
+  const info = { ua: txt(b.ua, 300), w: num(b.w), h: num(b.h), dpr: Number(b.dpr) || undefined, versao: txt(b.versao, 40), app: txt(b.app, 40),
+    inicial: typeof b.inicial === 'boolean' ? b.inicial : undefined, appVigia: txt(b.appVigia, 60), appCodigo: num(b.appCodigo) };
   return Object.values(info).some((v) => v !== undefined) ? info : null;
 }
 

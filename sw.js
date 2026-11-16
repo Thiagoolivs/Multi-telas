@@ -13,8 +13,31 @@
  */
 // Suba a versão do shell ao mexer em player.html/js/css: o cache novo nasce
 // vazio, então a TV baixa tudo de novo em vez de servir a versão velha.
-const SHELL_CACHE = 'mt-shell-v91';
+const SHELL_CACHE = 'mt-shell-v92';
 const MEDIA_CACHE = 'mt-media-v1';
+
+/*
+ * A LIMPEZA DA MÍDIA. O cache da mídia guardava toda foto e vídeo que a TV
+ * já mostrou e nunca apagava: a conta que troca o vídeo toda semana enchia o
+ * armazenamento de um box de 8 GB em meses (docs/CAPACIDADE-E-TVBOX.md §6.2,
+ * item 5). Agora o player conta ao worker, a cada programação aplicada, o que
+ * está nela (js/player.js, precacheMedia), e o worker, no máximo a cada 6 h:
+ *   - apaga o que não está na programação e não foi visto há 14 dias;
+ *   - passando do teto (1 GB, ou metade da cota do navegador se ela for
+ *     menor), apaga também o mais antigo que não está na programação, até
+ *     caber — mas nunca o visto nas últimas 24 h (a tela que acabou de sair
+ *     da programação ainda pode estar no ar, na transição).
+ * O que está na programação NUNCA sai, nem acima do teto: é ele que toca
+ * sem rede. "Visto" é estar na programação ou ser servido daqui (a foto do
+ * aniversariante e a do mural não vêm na programação).
+ * A lista do que existe e de quando foi visto mora numa entrada do próprio
+ * cache da mídia (INDICE_DA_MIDIA), que o worker nunca serve.
+ */
+const MIDIA_IDADE_MS = 14 * 24 * 60 * 60 * 1000;
+const MIDIA_RECENTE_MS = 24 * 60 * 60 * 1000;
+const MIDIA_TETO_BYTES = 1024 * 1024 * 1024;
+const MIDIA_ENTRE_LIMPEZAS_MS = 6 * 60 * 60 * 1000;
+const INDICE_DA_MIDIA = '/__mt/indice-da-midia.json';
 
 // Shell do player: pré-cacheado no install para a TV subir mesmo se a rede já
 // estiver fora na primeira recarga.
@@ -173,6 +196,7 @@ async function navigation(req) {
 async function cacheFirst(req, cacheName) {
   const cache = await caches.open(cacheName);
   const hit = await cache.match(req);
+  if (cacheName === MEDIA_CACHE) visto(req);
   if (hit) return hit;
   try {
     const res = await fetch(req);
@@ -182,6 +206,108 @@ async function cacheFirst(req, cacheName) {
     return hit || Response.error();
   }
 }
+
+/* ---------------- A limpeza da mídia ---------------- */
+
+// O que foi servido do cache da mídia desde a última limpeza (memória; vai para o índice na próxima).
+const vistosAgora = new Map();
+function visto(req) {
+  try { vistosAgora.set(new URL(req.url).pathname, Date.now()); } catch (e) { /* endereço estranho: ignora */ }
+}
+
+/*
+ * A decisão, pura (o teste chama direto). `itens`: [{ chave, caminho, visto,
+ * bytes }]; `emUso`: os caminhos da programação. Devolve as chaves a apagar.
+ */
+function planejarLimpezaDaMidia(itens, emUso, agora, teto) {
+  const apagar = new Set();
+  let total = 0;
+  for (const it of itens) total += it.bytes || 0;
+  const podeSair = itens.filter((it) => !emUso.has(it.caminho) && agora - it.visto >= MIDIA_RECENTE_MS);
+  for (const it of podeSair) {
+    if (agora - it.visto >= MIDIA_IDADE_MS) { apagar.add(it.chave); total -= it.bytes || 0; }
+  }
+  // Acima do teto: o mais antigo primeiro, até caber.
+  const pelaIdade = podeSair.filter((it) => !apagar.has(it.chave)).sort((a, b) => a.visto - b.visto);
+  for (const it of pelaIdade) {
+    if (total <= teto) break;
+    apagar.add(it.chave);
+    total -= it.bytes || 0;
+  }
+  return [...apagar];
+}
+
+async function tamanhoDe(res) {
+  if (!res) return 0;
+  const n = Number(res.headers && typeof res.headers.get === 'function' ? res.headers.get('content-length') : 0);
+  if (n > 0) return n;
+  try { return (await res.blob()).size || 0; } catch (e) { return 0; }
+}
+
+async function tetoDaMidia() {
+  try {
+    const e = self.navigator && self.navigator.storage && self.navigator.storage.estimate ? await self.navigator.storage.estimate() : null;
+    if (e && e.quota > 0) return Math.min(MIDIA_TETO_BYTES, e.quota / 2);
+  } catch (e) { /* sem a conta da cota: o teto fixo */ }
+  return MIDIA_TETO_BYTES;
+}
+
+async function limparMidia(urls, agora) {
+  const t = agora || Date.now();
+  const cache = await caches.open(MEDIA_CACHE);
+  let indice = null;
+  try { const r = await cache.match(INDICE_DA_MIDIA); indice = r ? await r.json() : null; } catch (e) { indice = null; }
+  if (!indice || typeof indice !== 'object' || typeof indice.itens !== 'object' || !indice.itens) indice = { feitaEm: 0, itens: {} };
+  const emUso = new Set();
+  for (const u of urls) {
+    try { emUso.add(new URL(u, self.location.origin).pathname); } catch (e) { /* ignora */ }
+  }
+  const vistos = new Map(vistosAgora);
+  vistosAgora.clear();
+  const marcar = (it, caminho) => {
+    if (emUso.has(caminho)) it.visto = t;
+    const v = vistos.get(caminho);
+    if (v && v > it.visto) it.visto = v;
+  };
+  const limpar = t - (Number(indice.feitaEm) || 0) >= MIDIA_ENTRE_LIMPEZAS_MS;
+  if (!limpar) {
+    // Fora da hora da limpeza: só anota o que foi visto.
+    for (const chave of Object.keys(indice.itens)) marcar(indice.itens[chave], indice.itens[chave].caminho);
+  } else {
+    // A lista de verdade é a do cache: o índice só guarda quando cada coisa foi vista e quanto pesa.
+    const itens = [];
+    const novo = {};
+    for (const req of await cache.keys()) {
+      let caminho;
+      try { caminho = new URL(req.url).pathname; } catch (e) { continue; }
+      if (caminho === INDICE_DA_MIDIA) continue;
+      // O que já estava guardado antes do índice começa a contar agora (14 dias de folga).
+      const it = indice.itens[req.url] || { caminho, visto: t, bytes: await tamanhoDe(await cache.match(req)) };
+      it.caminho = caminho;
+      marcar(it, caminho);
+      novo[req.url] = it;
+      itens.push({ chave: req.url, caminho, visto: it.visto, bytes: it.bytes, req });
+    }
+    const apagar = new Set(planejarLimpezaDaMidia(itens, emUso, t, await tetoDaMidia()));
+    for (const it of itens) {
+      if (!apagar.has(it.chave)) continue;
+      await cache.delete(it.req);
+      delete novo[it.chave];
+    }
+    indice = { feitaEm: t, itens: novo };
+  }
+  await cache.put(INDICE_DA_MIDIA, new Response(JSON.stringify(indice), { headers: { 'content-type': 'application/json' } }));
+}
+
+// Uma limpeza de cada vez: duas programações seguidas não limpam juntas.
+let limpezaNaFila = Promise.resolve();
+self.addEventListener('message', (e) => {
+  const d = e && e.data;
+  if (!d || d.tipo !== 'mt:midia-em-uso' || !Array.isArray(d.urls)) return;
+  const urls = d.urls.filter((u) => typeof u === 'string').slice(0, 5000);
+  limpezaNaFila = limpezaNaFila.then(() => limparMidia(urls)).catch(() => { /* a limpeza falhou: tenta na próxima */ });
+  if (e.waitUntil) e.waitUntil(limpezaNaFila);
+});
 
 async function staleWhileRevalidate(req, cacheName) {
   const cache = await caches.open(cacheName);

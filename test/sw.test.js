@@ -32,6 +32,7 @@ class RespostaFalsa {
   static redirect(url, status) { return new RespostaFalsa('', { status: status || 302, headers: { Location: url } }); }
   clone() { return new RespostaFalsa(this.corpo, { status: this.status }); }
   async text() { return this.corpo; }
+  async blob() { return { size: Buffer.byteLength(this.corpo) }; }
   async json() { return JSON.parse(this.corpo); }
 }
 
@@ -69,6 +70,7 @@ function fabricarCaches() {
       },
       async addAll(lista) { for (const r of lista) await this.add(r); },
       async keys() { return [...m.keys()].map((k) => new PedidoFalso('https://telas.exemplo' + k)); },
+      async delete(req) { return m.delete(chave(req)); },
     };
   }
   const api = {
@@ -90,8 +92,8 @@ function fabricarCaches() {
   return api;
 }
 
-/* Carrega um worker de verdade e devolve como falar com ele. */
-function carregar(arquivo, servidor) {
+/* Carrega um worker de verdade e devolve como falar com ele. `extras`: o que trocar no ambiente (o relógio). */
+function carregar(arquivo, servidor, extras) {
   const mundo = fabricarCaches();
   const ouvintes = {};
   const rede = [];
@@ -124,6 +126,7 @@ function carregar(arquivo, servidor) {
     setTimeout,
     clearTimeout,
     console: { warn() {}, log() {} },
+    ...(extras || {}),
   };
   contexto.globalThis = contexto;
   vm.createContext(contexto);
@@ -136,6 +139,13 @@ function carregar(arquivo, servidor) {
   return {
     caixas: mundo.caixas,
     rede,
+    contexto,
+    /* Uma mensagem da página (postMessage), esperando o que o worker pediu para esperar. */
+    async mensagem(dados) {
+      const esperas = [];
+      await disparar('message', { data: dados, waitUntil: (p) => esperas.push(p) });
+      await Promise.all(esperas);
+    },
     async instalar() {
       const esperas = [];
       await disparar('install', { waitUntil: (p) => esperas.push(p) });
@@ -427,4 +437,58 @@ test('painel: compartilhar da galeria guarda os arquivos e abre o painel', async
   // Formulário quebrado: volta ao painel dizendo que não chegou, sem tela de erro.
   const ruim = await w.pedir('/app/compartilhar', { method: 'POST', formulario: { getAll() { throw new Error('x'); } } });
   assert.equal(ruim.headers.Location, '/app/?compartilhado=0');
+});
+
+/* ---------------- TV: a limpeza do cache da mídia (docs/CAPACIDADE-E-TVBOX.md §6.2, item 5) ---------------- */
+
+const DIA = 24 * 60 * 60 * 1000;
+
+test('TV: a limpeza da mídia nunca tira o que está na programação, e tira o resto pela idade e pelo teto', () => {
+  const w = carregar('sw.js', servidorPadrao);
+  const planejar = w.contexto.planejarLimpezaDaMidia;
+  const agora = 100 * DIA;
+  const item = (nome, diasAtras, mb) => ({ chave: 'https://telas.exemplo/media/' + nome, caminho: '/media/' + nome, visto: agora - diasAtras * DIA, bytes: mb * 1024 * 1024 });
+  const emUso = new Set(['/media/no-ar.mp4']);
+  const itens = [item('no-ar.mp4', 90, 900), item('velha.jpg', 15, 1), item('semana.jpg', 7, 1), item('ontem.mp4', 2, 300), item('hoje.mp4', 0.5, 300)];
+  // Abaixo do teto: só a de 15 dias sai (a da programação, com 90 dias, fica).
+  assert.deepEqual([...planejar(itens, emUso, agora, 4096 * 1024 * 1024)], ['https://telas.exemplo/media/velha.jpg']);
+  // Acima do teto (1 GB): sai a mais antiga fora da programação até caber — a de hoje nunca (pode estar no ar na troca).
+  const teto = 1024 * 1024 * 1024;
+  assert.deepEqual([...planejar(itens, emUso, agora, teto)].sort(), ['https://telas.exemplo/media/ontem.mp4', 'https://telas.exemplo/media/semana.jpg', 'https://telas.exemplo/media/velha.jpg']);
+  // Nem acima do teto a programação sai.
+  assert.deepEqual([...planejar([item('no-ar.mp4', 90, 2000)], emUso, agora, teto)], []);
+});
+
+test('TV: o player conta o que está na programação; o worker limpa no máximo a cada 6 h, e o que foi servido conta como visto', async () => {
+  let relogio = 1000 * DIA;
+  const w = carregar('sw.js', servidorPadrao, { Date: { now: () => relogio } });
+  for (const f of ['/media/t1/no-ar.jpg', '/media/t1/campanha-velha.mp4', '/media/t1/aniversario.jpg']) await w.pedir(f);
+  const guardados = () => [...w.caixas.get('mt-media-v1').keys()].filter((k) => !k.startsWith('/__mt/')).sort();
+  const emUso = { tipo: 'mt:midia-em-uso', urls: ['/media/t1/no-ar.jpg', 'https://telas.exemplo/media/t1/no-ar.jpg'] };
+  // A primeira vez só faz a lista: o que já estava guardado ganha 14 dias de folga.
+  await w.mensagem(emUso);
+  assert.equal(guardados().length, 3);
+  assert.ok(w.caixas.get('mt-media-v1').has('/__mt/indice-da-midia.json'), 'o índice não foi gravado');
+  // Dia 10: a foto do aniversariante (fora da programação) foi mostrada de novo.
+  relogio += 10 * DIA;
+  await w.pedir('/media/t1/aniversario.jpg');
+  await w.mensagem(emUso);
+  assert.equal(guardados().length, 3, 'apagou antes dos 14 dias');
+  // Dia 15: a campanha que saiu da programação há 15 dias sai do cache; o resto fica.
+  relogio += 5 * DIA;
+  await w.mensagem(emUso);
+  assert.deepEqual(guardados(), ['/media/t1/aniversario.jpg', '/media/t1/no-ar.jpg']);
+  // Sem rede, a mídia da programação continua saindo do cache.
+  const caiu = carregar('sw.js', () => null);
+  caiu.caixas.set('mt-media-v1', w.caixas.get('mt-media-v1'));
+  assert.equal(await (await caiu.pedir('/media/t1/no-ar.jpg')).text(), 'conteudo de /media/t1/no-ar.jpg');
+  // Mensagem estranha não quebra nada.
+  await w.mensagem({ tipo: 'mt:midia-em-uso', urls: 'tudo' });
+  await w.mensagem(null);
+  assert.equal(guardados().length, 2);
+});
+
+test('TV: o player manda a lista ao worker junto do pré-carregamento', () => {
+  const p = fs.readFileSync(path.join(RAIZ, 'js/player.js'), 'utf8');
+  assert.match(p, /if \(sw\) sw\.postMessage\(\{ tipo: 'mt:midia-em-uso', urls: Object\.keys\(urls\) \}\);/);
 });

@@ -18,6 +18,19 @@
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
+    <!--
+      O app pergunta ao Android quem é a tela inicial (MainActivity,
+      ehTelaInicial) para o painel avisar quando não é ele. No Android 11+ a
+      resposta só é fiel se os outros apps de tela inicial estiverem
+      visíveis para o MultiTelas TV.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
+    </queries>
+
     <application
         android:label="@string/app_name"
         android:icon="@drawable/icone"
