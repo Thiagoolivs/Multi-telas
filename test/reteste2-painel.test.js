@@ -104,7 +104,9 @@ test('a campanha da IA vai ao ar com o "Quando" e o Desfazer, como todo caminho'
   assert.ok(!cfg.zonas.principal.items[1].agendamento, 'mexeu na programação recebida');
   const tarde = R.quandoNaCampanha(cfg, 'Pão em dobro', { quando: 'hora', faixa: 'tarde' });
   assert.equal(tarde.zonas.principal.items[1].agendamento.escolhido, true);
-  assert.match(ler('web/src/lib/rodar.js'), /quandoNaCampanha\(aplicarCampanha\(cfg, plano\.find\(\(p\) => p\.tela\.id === tv\.id\)\.entrada, nome, \{ trocarLayout \}\), nome, quando\)/);
+  // Teste de carga (16/11): o servidor aplica a campanha em cada TV, com o "Quando" (POST /api/lote/operacao).
+  assert.match(ler('server/routes/telas.js'), /loteTv\.quandoNaCampanha\(loteTv\.aplicarCampanha\(cfg, op\.entradas\[tela\.entrada\], op\.nome, \{ trocarLayout: op\.trocarLayout \}\), op\.nome, op\.quando, c\.agora\)/);
+  assert.match(ler('web/src/lib/rodar.js'), /enviarOperacao\(\{ tipo: 'campanha', nome, entradas, trocarLayout: !!trocarLayout, quando: quando \|\| null \}, telas\)/);
 
   const c = ler('web/src/components/criar/PorPraRodar.jsx');
   assert.match(c, /<EscolherQuando valor=\{escolha\} onChange=\{setEscolha\} \/>/);

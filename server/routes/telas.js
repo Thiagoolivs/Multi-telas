@@ -245,6 +245,14 @@ module.exports = function (ctx) {
   const TV_NOVA_POR_IP = 300;
   // Até quantas TVs a lista de Telas traz a programação junto (GET /api/devices?agora=1).
   const PROGRAMACAO_NA_LISTA = 12;
+  /*
+   * O motivo da recusa do pareamento, também no PULSO da TV (reteste 3, item
+   * 7): o tempo real leva na hora, mas a TV que está com ele caído (rede da
+   * loja, proxy) só pulsa. Em memória, 10 minutos — é recado, não histórico;
+   * pareou, sai.
+   */
+  const recusasNaTv = new Map();
+  const RECUSA_MS = 10 * 60 * 1000;
   // Travado: envia o 429 e devolve true (quem chama para). Livre: null.
   function codigoTravado(req, res, sess) {
     const porIp = security.rateLimitConsultar('pair:' + clientIp(req), ERROS_DE_CODIGO);
@@ -368,7 +376,13 @@ module.exports = function (ctx) {
            * código, e agora diz por quê e onde se resolve (plans.recusaNaTv).
            * O 402 abaixo é do painel; isto vai para a tela da TV, pelo tempo real.
            */
-          const avisarATv = (extra) => { const r = plans.recusaNaTv(veredito, tenant, extra); if (r) broadcast(d.id, 'recusada', r); };
+          const avisarATv = (extra) => {
+            const r = plans.recusaNaTv(veredito, tenant, extra);
+            if (!r) return;
+            broadcast(d.id, 'recusada', r);
+            recusasNaTv.set(d.id, { r, em: Date.now() });
+            if (recusasNaTv.size > 5000) recusasNaTv.delete(recusasNaTv.keys().next().value);
+          };
           if (!veredito.ok && veredito.motivo === 'atraso') {
             avisarATv();
             return sendJson(res, 402, {
@@ -407,6 +421,7 @@ module.exports = function (ctx) {
          */
         const nome = String(b.name || '').trim().slice(0, 60) || d.name || (await proximoNomeDeTv(sess.tenant_id));
         await db.claimDevice(d.id, sess.tenant_id, nome);
+        recusasNaTv.delete(d.id);
         esquecerSelo(sess.tenant_id); // quem fica no ar se conta pelas TVs da conta
         await db.registrarEvento(sess.tenant_id, sess.user_id, 'tela.parear');
         // Tela nova na conta = mensalidade nova. Sem esperar o Asaas: o
@@ -517,8 +532,22 @@ module.exports = function (ctx) {
        */
       const pedidas = String((query && query.ids) || '').split(',').map((x) => x.trim()).filter(Boolean).slice(0, 100);
       const so = pedidas.length ? new Set(pedidas) : null;
+      /*
+       * `?ate=N` (teste de carga, 16/11): "todas, se forem até N". A página
+       * Programação pedia todas de uma vez — na conta de 323 TVs, ~31 MB e o
+       * servidor travado meio segundo. Acima de N, a resposta vem vazia com
+       * `grande` e o total, e cada cartão pede a sua quando aparece na tela
+       * (com `?ids=`, como as miniaturas de Telas). A conta pequena segue
+       * num pedido só.
+       */
+      const ate = Number(query && query.ate) || 0;
+      if (!so && ate > 0 && rows.length > ate) return sendJson(res, 200, { configs: {}, grande: true, total: rows.length });
       const configs = {};
-      for (const r of (so ? rows.filter((x) => so.has(x.id)) : rows)) {
+      const lista = so ? rows.filter((x) => so.has(x.id)) : rows;
+      for (let i = 0; i < lista.length; i++) {
+        // Em pedaços, cedendo a vez: cada programação de RH é ~2 ms de limpeza e marca.
+        if (i && i % PEDACO === 0) await ceder();
+        const r = lista[i];
         // A lista não traz a programação: lê cada TV da conta (no banco, não na rede).
         const d = r.config !== undefined ? r : await db.getDevice(r.id);
         if (!d || d.tenant_id !== sess.tenant_id) continue;
@@ -1035,7 +1064,11 @@ module.exports = function (ctx) {
         const seloTexto = await seloDaConta(device.tenant_id);
         // TV pausada (QA de lançamento, 03/11): no grátis só a TV mais antiga segue no ar.
         const pausadaTexto = await pausaDaTela(device.tenant_id, id);
+        // A TV ainda sem conta que tentaram parear e o plano não deixou: o motivo também vai no pulso.
+        const recusa = !device.tenant_id && recusasNaTv.get(id);
+        const recusada = recusa && Date.now() - recusa.em < RECUSA_MS ? recusa.r : null;
         return sendJson(res, 200, {
+          ...(recusada ? { recusada } : {}),
           ok: true, at: Date.now(), configEm: device.updated_at || 0, selo: !!seloTexto, seloTexto,
           pausada: !!pausadaTexto, ...(pausadaTexto ? { pausadaTexto } : {}),
           // Comando que o SSE pode não ter entregue (stream caído): vai no pulso.
@@ -1220,6 +1253,7 @@ module.exports = function (ctx) {
    *
    *   POST /api/lote              { itens: [{ id, config, versao }], descricao }
    *   POST /api/lote/aviso        { telas: [ids], item, aviso, hoje } — o aviso rápido (rotaAviso)
+   *   POST /api/lote/operacao     { operacao, telas, hoje, simular } — campanha, peça, publicação (rotaOperacao)
    *   POST /api/lote/:id/desfazer volta cada TV ao que era (se ninguém mexeu depois)
    *   GET  /api/lote              os últimos envios da conta
    *
@@ -1243,6 +1277,7 @@ module.exports = function (ctx) {
       return sendJson(res, 200, { lotes: lotes.filter((l) => (l.telas || []).length && l.telas.every((t) => minhas.has(t.id))) });
     }
     if (idLote === 'aviso' && !parts[3] && req.method === 'POST') return readBody(req, res, (b) => rotaAviso(res, sess, b));
+    if (idLote === 'operacao' && !parts[3] && req.method === 'POST') return readBody(req, res, (b) => rotaOperacao(res, sess, b));
     if (!idLote && req.method === 'POST') {
       return readBody(req, res, async (b) => {
         /*
@@ -1279,6 +1314,7 @@ module.exports = function (ctx) {
       }
       const voltaram = [];
       const mudaram = [];
+      const partesLidas = new Map();
       for (let i = 0; i < lote.telas.length; i++) {
         if (i && i % PEDACO === 0) await ceder();
         const t = lote.telas[i];
@@ -1288,7 +1324,9 @@ module.exports = function (ctx) {
         if (t.tirarAviso) { (await tirarAvisoDaTela(device, t.tirarAviso) ? voltaram : mudaram).push({ id: t.id, nome: device.name }); continue; }
         // A TV mudou depois do envio: o que a pessoa fez depois não é apagado.
         if ((Number(device.updated_at) || 0) !== t.versaoDepois) { mudaram.push({ id: t.id, nome: device.name }); continue; }
-        const updatedAt = await db.setDeviceConfig(t.id, t.antes, device.name, t.versaoDepois);
+        const antes = t.antesPartes ? antesDasPartes(t.antesPartes, lote.partes, partesLidas) : t.antes;
+        if (antes === undefined) { mudaram.push({ id: t.id, nome: device.name }); continue; }
+        const updatedAt = await db.setDeviceConfig(t.id, antes, device.name, t.versaoDepois);
         if (updatedAt == null) { mudaram.push({ id: t.id, nome: device.name }); continue; }
         broadcast(t.id, 'config', { updatedAt });
         voltaram.push({ id: t.id, nome: device.name });
@@ -1395,60 +1433,243 @@ module.exports = function (ctx) {
       }
       feitos.push({ device: p.device, updatedAt });
     }
-    const lote = await db.salvarLote(tenantId, {
-      descricao: String(descricao || '').slice(0, 120),
-      telas: feitos.map((f) => Object.assign({ id: f.device.id, nome: f.device.name || '' },
-        o.aviso && f.device.config ? { tirarAviso: o.aviso } : { antes: f.device.config || null },
-        { versaoAntes: Number(f.device.updated_at) || 0, versaoDepois: f.updatedAt })),
-    });
+    /*
+     * O ANTES EM PARTES (teste de carga, 16/11): a campanha ou a peça para
+     * 300 TVs de RH guardava a programação inteira de cada uma (~96 KB) para
+     * o Desfazer — ~29 MB numa linha do banco, e a lista "Últimos envios" lê
+     * dez linhas. Mas as TVs de uma conta levam as mesmas peças: cada zona e
+     * o resto da programação são guardados uma vez por envio, pelo conteúdo,
+     * e cada TV aponta para os seus. O Desfazer remonta a programação de
+     * antes inteira, como sempre (antesDasPartes).
+     */
+    const partes = {};
+    const guardar = (txt) => { const k = crypto.createHash('sha1').update(txt).digest('base64').slice(0, 22); partes[k] = txt; return k; };
+    const telasDoLote = [];
+    for (let i = 0; i < feitos.length; i++) {
+      if (i && i % PEDACO === 0) await ceder();
+      const f = feitos[i];
+      telasDoLote.push(Object.assign({ id: f.device.id, nome: f.device.name || '' },
+        o.aviso && f.device.config ? { tirarAviso: o.aviso } : antesEmPartes(f.device.config, guardar),
+        { versaoAntes: Number(f.device.updated_at) || 0, versaoDepois: f.updatedAt }));
+    }
+    const lote = await db.salvarLote(tenantId, Object.assign({ descricao: String(descricao || '').slice(0, 120), telas: telasDoLote },
+      Object.keys(partes).length ? { partes } : {}));
     feitos.forEach((f) => broadcast(f.device.id, 'config', { updatedAt: f.updatedAt }));
     await db.registrarEvento(tenantId, userId, 'lote.enviar');
     return { status: 200, corpo: { ok: true, lote, telas: feitos.map((f) => ({ id: f.device.id, updatedAt: f.updatedAt })) } };
   }
 
   /*
-   * O AVISO RÁPIDO COMO OPERAÇÃO (teste de carga, 16/11 — docs/CAPACIDADE-E-TVBOX.md, §4).
+   * A programação de antes de uma TV, para o Desfazer: em partes (o resto e
+   * cada zona, por conteúdo, guardados uma vez por envio) ou, se não for uma
+   * programação legível, inteira. Sem programação: null (o Desfazer a deixa
+   * vazia de novo).
+   */
+  function antesEmPartes(config, guardar) {
+    if (!config) return { antes: null };
+    let c;
+    try { c = JSON.parse(config); } catch (e) { return { antes: config }; }
+    if (!c || typeof c !== 'object' || Array.isArray(c) || !c.zonas || typeof c.zonas !== 'object' || Array.isArray(c.zonas)) return { antes: config };
+    const { zonas, ...resto } = c;
+    const z = {};
+    for (const k of Object.keys(zonas)) z[k] = guardar(JSON.stringify(zonas[k]));
+    return { antesPartes: { resto: guardar(JSON.stringify(resto)), zonas: z } };
+  }
+  /*
+   * A programação de antes, remontada das partes; undefined se falta uma (o
+   * Desfazer não inventa). `lidas`: as partes já lidas neste Desfazer — as
+   * 300 TVs apontam para as mesmas zonas, e cada uma é lida uma vez só.
+   */
+  function antesDasPartes(p, partes, lidas) {
+    const parte = (k) => {
+      if (lidas && lidas.has(k)) return lidas.get(k);
+      const v = JSON.parse(partes[k]);
+      if (lidas) lidas.set(k, v);
+      return v;
+    };
+    try {
+      const zonas = {};
+      for (const k of Object.keys(p.zonas || {})) zonas[k] = parte(p.zonas[k]);
+      return JSON.stringify(Object.assign({}, parte(p.resto), { zonas }));
+    } catch (e) { return undefined; }
+  }
+
+  /*
+   * O AVISO, A CAMPANHA E A PEÇA COMO OPERAÇÃO (teste de carga, 16/11 —
+   * docs/CAPACIDADE-E-TVBOX.md, 3.5 e 4).
    *
-   *   POST /api/lote/aviso  { telas: [ids], item, aviso: { titulo, prioridade, ate }, hoje }
+   *   POST /api/lote/operacao { operacao: { tipo, ... }, telas: [id | { id, entrada }], descricao, hoje, simular }
+   *   POST /api/lote/aviso    { telas: [ids], item, aviso, hoje } — o aviso rápido (o mesmo, tipo 'aviso')
    *
    * O painel lia a programação de cada TV (um pedido por TV: 300 numa conta
-   * de RH, metade do freio da conta), punha o aviso e mandava todas de volta
-   * num corpo só — 96 KB por TV, recusado pelo teto de 2 MB acima de ~20 TVs.
-   * Agora ele manda "este aviso nestas TVs" (poucos KB) e o servidor põe o
-   * aviso em cada uma, com a mesma regra (js/aviso.js) e pelo MESMO caminho
-   * do envio em lote: posse e loja de cada TV (fase 13), a versão, a porta
-   * das peças (conferirLote), tudo ou nada, o Desfazer e, com a aprovação
-   * ligada, o pedido (202) no lugar do envio.
+   * de RH, metade do freio da conta), aplicava a mudança e mandava todas de
+   * volta num corpo só — 96 KB por TV, recusado pelo teto de 2 MB acima de
+   * ~19 TVs. Agora ele manda a OPERAÇÃO ("esta campanha nestas TVs", poucos
+   * KB) e o servidor aplica em cada uma, com as mesmas regras do painel
+   * (js/aviso.js e js/lote-tv.js) e pelo MESMO caminho do envio em lote:
+   * posse e loja de cada TV (fase 13), a versão, a porta das peças
+   * (conferirLote), tudo ou nada, o Desfazer e, com a aprovação ligada, o
+   * pedido (202) no lugar do envio.
    *
    * Sem o teto de 200 do POST /api/lote — ele existia pelo corpo, que aqui
    * é pequeno: a conta inteira vai num envio, em pedaços (PEDACO). Até
-   * AVISO_MAX TVs; quem precisa de aprovação, até LOTE_MAX, que é o que o
+   * OPERACAO_MAX TVs; quem precisa de aprovação, até LOTE_MAX, que é o que o
    * revisor consegue ver TV por TV no antes e depois do pedido.
+   *
+   * `simular`: só diz o que aconteceria em cada TV, sem gravar (o plano da
+   * campanha: que TV troca de layout para ter as zonas). Era o painel lendo
+   * a programação de cada TV para isso.
    */
-  const AVISO_MAX = 1000;
-  const AVISO_ITEM_MAX = 100 * 1024;
+  const OPERACAO_MAX = 1000;
+  const ITEM_MAX = 100 * 1024;
+  const OPERACAO_BYTES = 1024 * 1024;
   const DIA_ISO = /^\d{4}-\d{2}-\d{2}$/;
-  async function rotaAviso(res, sess, b) {
-    if (!b || typeof b !== 'object') return sendJson(res, 400, { error: 'json inválido' });
-    const telas = Array.isArray(b.telas) ? b.telas.map((x) => String(x || '').slice(0, 64)).filter(Boolean) : [];
+  const loteTv = require('../../js/lote-tv.js');
+  const ehObjeto = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
+  const curto = (s, n) => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, n);
+  const itemOk = (it) => ehObjeto(it) && JSON.stringify(it).length <= ITEM_MAX;
+  const recusa = (error, code) => ({ erro: Object.assign({ error }, code ? { code } : {}) });
+  const PECA_INVALIDA = 'Uma peça veio incompleta ou grande demais. Monte de novo e tente outra vez.';
+  const CAMPANHA_INVALIDA = 'A campanha veio incompleta. Abra de novo e tente outra vez.';
+
+  /*
+   * A entrada de uma campanha (as zonas que a IA escolheu para um grupo de
+   * TVs), no formato que js/lote-tv.js lê; null se não serve. As peças que
+   * giram já vêm com a importância (o painel aplica, no relógio da pessoa).
+   */
+  function entradaLimpa(e) {
+    const z = ehObjeto(e) && ehObjeto(e.zonas) ? e.zonas : null;
+    if (!z) return null;
+    let ruim = false;
+    const lista = (l, max) => (Array.isArray(l) ? l : []).slice(0, max).map((p) => {
+      if (!ehObjeto(p) || !itemOk(p.item)) { ruim = true; return null; }
+      return { item: p.item };
+    });
+    const frases = (l) => (Array.isArray(l) ? l : []).filter((m) => typeof m === 'string' && m.trim()).map((m) => m.slice(0, 1000)).slice(0, 50);
+    const faixa = (f) => ({ pecas: lista(ehObjeto(f) ? f.pecas : null, 20), mensagens: frases(ehObjeto(f) ? f.mensagens : null) });
+    const rodape = faixa(z.rodape);
+    if (ehObjeto(z.rodape) && z.rodape.contagem && JSON.stringify(z.rodape.contagem).length <= 2048) rodape.contagem = z.rodape.contagem;
+    const saida = { zonas: { principal: lista(z.principal, 50), lateral: lista(z.lateral, 50), cabecalho: faixa(z.cabecalho), rodape } };
+    return ruim ? null : saida;
+  }
+  function entradasLimpas(o) {
+    const lista = Array.isArray(o.entradas) ? o.entradas.slice(0, 50).map(entradaLimpa) : [];
+    return lista.length && lista.every(Boolean) ? lista : null;
+  }
+  const QUANDOS = ['sempre', 'hoje', 'ate', 'hora'];
+  function quandoLimpo(q) {
+    if (!ehObjeto(q) || QUANDOS.indexOf(q.quando) < 0) return null;
+    return { quando: q.quando, ate: DIA_ISO.test(String(q.ate || '')) ? String(q.ate) : '', faixa: loteTv.FAIXAS[q.faixa] ? q.faixa : 'manha' };
+  }
+
+  /*
+   * As operações. Cada uma: `limpar` (o que veio do painel, conferido),
+   * `aplicar(cfg, tela, op, c)` (a programação nova de UMA TV; `c.agora` é o
+   * dia de quem mandou), `porEntrada` (cada TV leva uma das entradas da
+   * campanha), `simular` (o resumo do que aconteceria) e `desfazer` (o que
+   * o Desfazer guarda no lugar da programação de antes).
+   */
+  const OPERACOES = {
+    // O aviso rápido (D27): na frente da zona principal; o Desfazer tira só ele.
+    aviso: {
+      limpar(o) {
+        if (!itemOk(o.item)) return recusa('O aviso veio incompleto ou grande demais. Monte de novo e tente outra vez.', 'aviso-invalido');
+        const a = ehObjeto(o.aviso) ? o.aviso : {};
+        return { op: {
+          item: o.item, id: 'avs_' + db.rid(10), titulo: curto(a.titulo, 100),
+          aviso: { prioridade: a.prioridade === 'urgente' ? 'urgente' : 'alta', ate: DIA_ISO.test(String(a.ate || '')) ? String(a.ate) : '' },
+        } };
+      },
+      descricao: (op) => 'Aviso: ' + (op.titulo || 'aviso rápido'),
+      aplicar: (cfg, tela, op, c) => avisoNaTv.porAviso(cfg, op.item, op.aviso, op.id, { hoje: c.hoje, agora: c.agoraMs }),
+      desfazer: (op) => ({ aviso: op.id }),
+    },
+    // Pôr a campanha pra rodar (EXECUTOR §2b, item 25), com o "Quando" (reteste 2).
+    campanha: {
+      porEntrada: true,
+      limpar(o) {
+        const entradas = entradasLimpas(o);
+        const nome = curto(o.nome, 120);
+        if (!entradas || !nome) return recusa(CAMPANHA_INVALIDA, 'operacao-invalida');
+        return { op: { nome, entradas, trocarLayout: o.trocarLayout === true, quando: quandoLimpo(o.quando) } };
+      },
+      descricao: (op) => 'Campanha: ' + op.nome,
+      aplicar: (cfg, tela, op, c) => loteTv.quandoNaCampanha(loteTv.aplicarCampanha(cfg, op.entradas[tela.entrada], op.nome, { trocarLayout: op.trocarLayout }), op.nome, op.quando, c.agora),
+      simular(cfg, tela, op) {
+        const faltam = loteTv.zonasQueFaltam(cfg, op.entradas[tela.entrada]);
+        return { faltam, layoutAtual: (cfg.settings && cfg.settings.layoutId) || '', layoutNovo: faltam.length ? loteTv.layoutPara(cfg) : '' };
+      },
+    },
+    // Pausar: tira só o que é da campanha.
+    'pausar-campanha': {
+      porEntrada: true,
+      limpar(o) {
+        const entradas = entradasLimpas(o);
+        const nome = curto(o.nome, 120);
+        if (!entradas || !nome) return recusa(CAMPANHA_INVALIDA, 'operacao-invalida');
+        return { op: { nome, entradas } };
+      },
+      descricao: (op) => 'Pausar: ' + op.nome,
+      aplicar: (cfg, tela, op) => loteTv.tirarCampanha(cfg, op.entradas[tela.entrada], op.nome),
+    },
+    // Uma peça pronta em várias TVs (EXECUTOR §2c, item 34).
+    peca: {
+      limpar(o) {
+        const p = ehObjeto(o.peca) ? o.peca : null;
+        if (!p || !itemOk(p.item)) return recusa(PECA_INVALIDA, 'operacao-invalida');
+        return { op: { peca: Object.assign({ item: p.item }, p.campanha ? { campanha: curto(p.campanha, 120) } : {},
+          p.papel ? { papel: curto(p.papel, 20) } : {}, p.formato ? { formato: curto(p.formato, 10) } : {}), label: curto(p.label, 120) } };
+      },
+      descricao: (op) => 'Peça: ' + (op.label || 'peça pronta'),
+      aplicar: (cfg, tela, op) => loteTv.aplicarPeca(cfg, op.peca),
+    },
+    // Publicar peças (Meus Designs, Criação rápida, Subir): a peça na zona do formato dela, com a faixa de horário.
+    publicar: {
+      limpar(o) {
+        const pecas = Array.isArray(o.pecas) ? o.pecas.slice(0, 30) : [];
+        if (!pecas.length || !pecas.every((p) => ehObjeto(p) && itemOk(p.item))) return recusa(PECA_INVALIDA, 'operacao-invalida');
+        return { op: {
+          titulo: curto(o.titulo, 120) || 'Pôr na TV',
+          pecas: pecas.map((p) => Object.assign({ item: p.item }, p.formato ? { formato: curto(p.formato, 10) } : {},
+            loteTv.FAIXAS[p.faixa] ? { faixa: p.faixa } : {}, p.papel ? { papel: curto(p.papel, 20) } : {})),
+          dias: Math.max(0, Math.min(366, Math.floor(Number(o.dias) || 0))), substituir: o.substituir === true,
+        } };
+      },
+      descricao: (op) => op.titulo,
+      aplicar: (cfg, tela, op, c) => loteTv.montarPublicacao(cfg, op, c.agora),
+    },
+  };
+
+  async function rotaOperacao(res, sess, b) {
+    if (!ehObjeto(b) || !ehObjeto(b.operacao)) return sendJson(res, 400, { error: 'json inválido' });
+    const tipo = Object.prototype.hasOwnProperty.call(OPERACOES, b.operacao.tipo) ? OPERACOES[b.operacao.tipo] : null;
+    if (!tipo) return sendJson(res, 400, { error: 'operação desconhecida', code: 'operacao-invalida' });
+    if (JSON.stringify(b.operacao).length > OPERACAO_BYTES) return sendJson(res, 400, { error: 'O envio ficou grande demais. Mande menos peças de uma vez.', code: 'grande-demais' });
+    const telas = (Array.isArray(b.telas) ? b.telas : []).map((t) => (ehObjeto(t)
+      ? { id: String(t.id || '').slice(0, 64), entrada: Number(t.entrada) || 0 }
+      : { id: String(t || '').slice(0, 64), entrada: 0 })).filter((t) => t.id);
     if (!telas.length) return sendJson(res, 400, { error: 'escolha pelo menos uma TV' });
-    if (new Set(telas).size !== telas.length) return sendJson(res, 400, { error: 'A mesma TV veio duas vezes no envio. Nada foi enviado.', code: 'tv-repetida' });
-    const max = sess.precisaAprovar ? LOTE_MAX : AVISO_MAX;
+    if (new Set(telas.map((t) => t.id)).size !== telas.length) return sendJson(res, 400, { error: 'A mesma TV veio duas vezes no envio. Nada foi enviado.', code: 'tv-repetida' });
+    const max = sess.precisaAprovar ? LOTE_MAX : OPERACAO_MAX;
     if (telas.length > max) return sendJson(res, 400, loteGrande(max));
-    // O aviso é uma peça só, a mesma em todas as TVs: com teto, para não virar 300 cópias de um corpo grande.
-    const item = b.item;
-    if (!item || typeof item !== 'object' || Array.isArray(item) || JSON.stringify(item).length > AVISO_ITEM_MAX) {
-      return sendJson(res, 400, { error: 'O aviso veio incompleto ou grande demais. Monte de novo e tente outra vez.', code: 'aviso-invalido' });
+    const limpo = tipo.limpar(b.operacao);
+    if (limpo.erro) return sendJson(res, 400, limpo.erro);
+    const op = limpo.op;
+    if (tipo.porEntrada && !telas.every((t) => Number.isInteger(t.entrada) && t.entrada >= 0 && t.entrada < op.entradas.length)) {
+      return sendJson(res, 400, { error: CAMPANHA_INVALIDA, code: 'operacao-invalida' });
     }
-    const a = b.aviso && typeof b.aviso === 'object' ? b.aviso : {};
-    const aviso = { prioridade: a.prioridade === 'urgente' ? 'urgente' : 'alta', ate: DIA_ISO.test(String(a.ate || '')) ? String(a.ate) : '' };
-    const titulo = String(a.titulo || '').replace(/\s+/g, ' ').trim().slice(0, 100);
-    const descricao = ('Aviso: ' + (titulo || 'aviso rápido')).slice(0, 120);
-    const id = 'avs_' + db.rid(10);
-    const opcoes = { hoje: hojeDoPedido(b.hoje), agora: Date.now() };
-    // Alguém gravou numa das TVs entre ler e gravar (aplicarLote desfaz tudo): lê de novo e põe outra vez, até três vezes.
+    const hoje = hojeDoPedido(b.hoje);
+    // `agora`: meio-dia do dia de quem mandou, no relógio daqui — as datas das peças saem iguais às do painel.
+    const c = { hoje, agoraMs: Date.now(), agora: new Date(hoje + 'T12:00:00') };
+    if (b.simular === true) {
+      if (!tipo.simular) return sendJson(res, 400, { error: 'esta operação não tem simulação', code: 'operacao-invalida' });
+      const sim = await simularOperacao(sess, telas, (cfg, tela) => tipo.simular(cfg, tela, op, c));
+      return sim.status ? sendJson(res, sim.status, sim.corpo) : sendJson(res, 200, { telas: sim.telas });
+    }
+    const descricao = String(tipo.descricao(op) || 'Envio').slice(0, 120);
+    // Alguém gravou numa das TVs entre ler e gravar (aplicarLote desfaz tudo): lê de novo e aplica outra vez, até três vezes.
     for (let tentativa = 0; tentativa < 3; tentativa++) {
-      const montado = await montarAviso(sess, telas, item, aviso, id, opcoes);
+      const montado = await montarOperacao(sess, telas, (cfg, tela) => tipo.aplicar(cfg, tela, op, c));
       if (montado.status) return sendJson(res, montado.status, montado.corpo);
       const conferido = await conferirLote(sess, montado.itens, { lidas: montado.lidas, meus: montado.meus });
       if (!conferido.prontos) {
@@ -1459,48 +1680,73 @@ module.exports = function (ctx) {
         const pedido = await aprovacao.pedir(db, sess, conferido.prontos, descricao, conferido.meus);
         return sendJson(res, 202, aprovacao.resposta(pedido));
       }
-      const r = await aplicarLote(sess.tenant_id, sess.user_id, conferido.prontos, descricao, { aviso: id });
+      const r = await aplicarLote(sess.tenant_id, sess.user_id, conferido.prontos, descricao, tipo.desfazer ? tipo.desfazer(op) : {});
       if (r.status === 409 && tentativa < 2) continue;
-      if (r.status === 200) r.corpo.aviso = id;
+      if (r.status === 200 && op.id) r.corpo.aviso = op.id;
       return sendJson(res, r.status, r.corpo);
     }
     return sendJson(res, 409, { error: 'A programação dessas TVs está mudando agora. Nada foi enviado; tente de novo em instantes.', code: 'config-mudou' });
   }
+  // O aviso rápido, pelo endereço de sempre: a operação 'aviso'.
+  function rotaAviso(res, sess, b) {
+    const o = ehObjeto(b) ? b : {};
+    return rotaOperacao(res, sess, { operacao: { tipo: 'aviso', item: o.item, aviso: o.aviso }, telas: o.telas, hoje: o.hoje });
+  }
 
   /*
-   * A programação de cada TV com o aviso, sem gravar: { itens, lidas, meus }
-   * para a conferência, ou { status, corpo } com o motivo. A TV de outra
-   * loja recusa o envio inteiro antes de o aviso entrar nela (e nem o nome
-   * dela sai na resposta), como no envio em lote.
+   * A programação de uma TV como o painel a leria para mudar: quem precisa de
+   * aprovação e tem um pedido seu esperando nela lê a DO PEDIDO, com a versão
+   * dele (aprovacao.js, juntar os pedidos — o mesmo do GET /config); sem
+   * programação nenhuma, a da TV nova, como o painel. { cfg, versao }.
    */
-  async function montarAviso(sess, ids, item, aviso, id, opcoes) {
+  function programacaoParaMudar(device, meus) {
+    const meu = meus && meus.get(device.id);
+    let cfg = null;
+    try { cfg = meu && meu.item.config ? JSON.parse(JSON.stringify(meu.item.config)) : (device.config ? JSON.parse(device.config) : null); } catch (e) { cfg = null; }
+    if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) cfg = avisoNaTv.configDaTvNova(device.name);
+    return { cfg, versao: meu ? aprovacao.versaoDoPedido(meu.pedido) : (Number(device.updated_at) || 0) };
+  }
+
+  /*
+   * A programação de cada TV com a operação, sem gravar: { itens, lidas, meus }
+   * para a conferência, ou { status, corpo } com o motivo. A TV de outra
+   * loja recusa o envio inteiro antes de a operação entrar nela (e nem o
+   * nome dela sai na resposta), como no envio em lote.
+   */
+  async function montarOperacao(sess, telas, aplicar) {
     const meus = sess.precisaAprovar ? await aprovacao.meusPendentesPorTela(db, sess) : null;
     const lidas = new Map();
     const itens = [];
-    for (let i = 0; i < ids.length; i++) {
+    for (let i = 0; i < telas.length; i++) {
       if (i && i % PEDACO === 0) await ceder();
-      const device = await db.getDevice(ids[i]);
+      const device = await db.getDevice(telas[i].id);
       // De outra conta, ou que não existe: a conferência diz "TV não encontrada nesta conta".
-      if (!device || device.tenant_id !== sess.tenant_id) { itens.push({ id: ids[i], config: null }); continue; }
+      if (!device || device.tenant_id !== sess.tenant_id) { itens.push({ id: telas[i].id, config: null }); continue; }
       if (!permissoes.podeTela(sess, device)) return { status: 403, corpo: { error: 'Uma das TVs não é da sua loja. Nada foi enviado.', code: 'loja' } };
       lidas.set(device.id, device);
-      /*
-       * Quem precisa de aprovação e tem um pedido seu esperando nesta TV:
-       * o aviso entra EM CIMA do pedido, com a versão dele — o mesmo que o
-       * painel fazia, lendo a TV pelo GET /config (aprovacao.js, juntar os
-       * pedidos). Sem programação nenhuma, a da TV nova, como o painel.
-       */
-      const meu = meus && meus.get(device.id);
-      let cfg = null;
-      try { cfg = meu && meu.item.config ? JSON.parse(JSON.stringify(meu.item.config)) : (device.config ? JSON.parse(device.config) : null); } catch (e) { cfg = null; }
-      if (!cfg || typeof cfg !== 'object' || Array.isArray(cfg)) cfg = avisoNaTv.configDaTvNova(device.name);
-      try { avisoNaTv.porAviso(cfg, item, aviso, id, opcoes); } catch (e) {
-        // Sem zona que caiba o aviso: nada vai, e a resposta diz qual TV (a pessoa troca o layout dela ou tira do envio).
+      const lida = programacaoParaMudar(device, meus);
+      let cfg;
+      try { cfg = aplicar(lida.cfg, telas[i]); } catch (e) {
+        // Sem zona que caiba (o aviso): nada vai, e a resposta diz qual TV (a pessoa troca o layout dela ou tira do envio).
         return { status: 400, corpo: { error: (device.name || 'Uma TV') + ': ' + e.message + '. Nada foi enviado.', code: 'sem-lugar', tela: { id: device.id, nome: device.name || '' } } };
       }
-      itens.push({ id: device.id, config: cfg, versao: meu ? aprovacao.versaoDoPedido(meu.pedido) : (Number(device.updated_at) || 0) });
+      itens.push({ id: device.id, config: cfg, versao: lida.versao });
     }
     return { itens, lidas, meus };
+  }
+
+  // O que a operação faria em cada TV, sem gravar nada: { telas: [{ id, ... }] } ou { status, corpo }.
+  async function simularOperacao(sess, telas, resumir) {
+    const meus = sess.precisaAprovar ? await aprovacao.meusPendentesPorTela(db, sess) : null;
+    const saida = [];
+    for (let i = 0; i < telas.length; i++) {
+      if (i && i % PEDACO === 0) await ceder();
+      const device = await db.getDevice(telas[i].id);
+      if (!device || device.tenant_id !== sess.tenant_id) return { status: 400, corpo: { error: 'Uma das TVs não está nesta conta.', code: 'tela' } };
+      if (!permissoes.podeTela(sess, device)) return { status: 403, corpo: { error: 'Uma das TVs não é da sua loja.', code: 'loja' } };
+      saida.push(Object.assign({ id: device.id }, resumir(programacaoParaMudar(device, meus).cfg, telas[i])));
+    }
+    return { telas: saida };
   }
 
   /*

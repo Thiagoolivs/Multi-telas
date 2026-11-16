@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { MonitorPlay, Pencil, Plus, Megaphone } from 'lucide-react';
 import { Panel } from '../components/ui/Panel.jsx';
 import { Button } from '../components/ui/Button.jsx';
@@ -11,7 +11,15 @@ import { deviceStatus } from '../lib/deviceStatus.js';
 import { campanhasDaConfig, pecasDaFaixa } from '../lib/tela.js';
 import { precisaDeNomes } from '../lib/nomesDasMidias.js';
 import { useNomesDasMidias } from '../lib/useNomesDasMidias.js';
+import { usePerto } from '../lib/usePerto.js';
 import '../lib/screenConfig.js';
+
+/*
+ * Até quantas TVs a programação de todas vem num pedido só, ao abrir (como
+ * a lista de Telas). Acima, cada cartão pede a sua quando aparece na tela,
+ * de 25 em 25 (teste de carga, 16/11: a conta de 323 TVs pedia ~31 MB).
+ */
+const PROGRAMACAO_JUNTO = 12;
 
 /*
  * PROGRAMAÇÃO (EXECUTOR §2d, item 40). O dono: "conteúdo merece uma aba
@@ -41,6 +49,8 @@ export function ProgramacaoPage({ onIr }) {
   const [telas, setTelas] = useState(null);
   // D27: o aviso numa frase, para todas as TVs (ou um grupo) de uma vez.
   const [cfgs, setCfgs] = useState({});
+  // A conta grande: a programação de cada TV vem quando o cartão dela aparece.
+  const [grande, setGrande] = useState(false);
   /*
    * Erro de rede não é "nenhuma TV" (D3): a lista que falhava virava "Nenhuma
    * TV ainda — Parear uma TV", e a programação que não carregava virava "Nada
@@ -56,18 +66,26 @@ export function ProgramacaoPage({ onIr }) {
     /*
      * A programação de todas as TVs num pedido só (reteste da fase 10): eram
      * 25 pedidos numa conta de 25 TVs, 4,2 s no 4G lento, e duas pessoas no
-     * painel batiam no freio da conta. Vem junto com a lista, ao mesmo tempo.
+     * painel batiam no freio da conta. Vem junto com a lista, ao mesmo tempo
+     * — até PROGRAMACAO_JUNTO TVs. Na conta grande o servidor responde só
+     * `grande`, e cada cartão pede a sua quando aparece (CartaoDaProgramacao).
      */
-    const todas = deviceConfig.todas().then((m) => ({ ok: m }), () => ({ falhou: true }));
+    const todas = deviceConfig.todas(PROGRAMACAO_JUNTO).then((m) => ({ ok: m }), () => ({ falhou: true }));
     devices.list().then(async (r) => {
       const lista = (r && r.devices) || [];
       setTelas(lista);
       const t = await todas;
+      if (t.ok && t.ok.grande) { setGrande(true); setCfgs({}); return; }
+      setGrande(false);
       const m = {};
-      for (const d of lista) m[d.id] = t.falhou ? 'erro' : ((t.ok[d.id] && t.ok[d.id].config) || null);
+      for (const d of lista) m[d.id] = t.falhou ? 'erro' : ((t.ok.configs[d.id] && t.ok.configs[d.id].config) || null);
       setCfgs(m);
     }).catch((e) => setErro(e.message || 'Não deu para carregar as TVs.'));
   }, [tentativa]);
+  // A programação de uma TV, juntada com as outras pedidas no mesmo instante (lib/api.js, de 25 em 25).
+  const lerUma = useCallback((id) => {
+    deviceConfig.doPainel(id).then((c) => setCfgs((m) => ({ ...m, [id]: c || null })), () => setCfgs((m) => ({ ...m, [id]: 'erro' })));
+  }, []);
 
   const editar = (d, zona) => onIr && onIr('content', { device: d, ...(zona ? { zona } : {}) });
 
@@ -96,49 +114,62 @@ export function ProgramacaoPage({ onIr }) {
         </Panel>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {telas.map((d) => {
-            const falhou = cfgs[d.id] === 'erro';
-            const cfg = falhou ? null : cfgs[d.id];
-            const layout = cfg && globalThis.MT_getLayout ? globalThis.MT_getLayout(cfg.settings && cfg.settings.layoutId) : null;
-            const st = deviceStatus(d.lastSeen);
-            const campanhas = cfg ? campanhasDaConfig(cfg) : [];
-            return (
-              <div key={d.id} className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-3">
-                <div className="flex items-center gap-2">
-                  <MonitorPlay size={16} className="shrink-0 text-ink-3" />
-                  <div className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{d.name || 'TV'}</div>
-                  <span className="flex shrink-0 items-center gap-1.5 text-2xs text-ink-3"><StatusDot tone={st.tone} pulse={st.pulse} /> {st.label}</span>
-                </div>
-                {cfg === undefined ? <div className="flex h-40 items-center justify-center"><Spinner size={16} /></div>
-                  : falhou ? (
-                    <button type="button" onClick={() => setTentativa((n) => n + 1)}
-                      className="flex h-40 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-warn/50 text-sm text-ink-2">
-                      Não deu para ler o que está nesta TV.<span className="text-xs text-accent">Tentar de novo</span>
-                    </button>
-                  ) : layout ? <MapaDaTela layout={layout} onEscolher={(z) => editar(d, z && z.id)} resumo={resumoDaZona(cfg)} cfg={cfg} nomes={nomes} />
-                    : (
-                      <button type="button" onClick={() => editar(d)}
-                        className="flex h-40 items-center justify-center rounded-lg border border-dashed border-line text-sm text-ink-3 hover:border-accent/60">
-                        Nada publicado ainda
-                      </button>
-                    )}
-                <div className="min-h-[1.25rem] text-xs text-ink-3">
-                  {campanhas.length
-                    ? <span className="flex flex-wrap items-center gap-1.5"><Megaphone size={13} className="text-accent" /> {campanhas.map((c) => c.nome).join(' · ')}</span>
-                    : 'Sem campanha no ar'}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {/* De contorno: o violeta da página é o Criar lá em cima (reteste da fase 10: eram 25, um por TV). */}
-                  <Button size="sm" variant="secondary" icon={Pencil} onClick={() => editar(d)}>Editar programação</Button>
-                  <Button size="sm" icon={Plus} onClick={() => onIr && onIr('criar', { tela: d.id })}>Criar para esta TV</Button>
-                </div>
-              </div>
-            );
-          })}
+          {telas.map((d) => (
+            <CartaoDaProgramacao key={d.id} d={d} bruta={cfgs[d.id]} grande={grande} onLer={lerUma}
+              editar={editar} onIr={onIr} nomes={nomes} tentarDeNovo={() => setTentativa((n) => n + 1)} />
+          ))}
         </div>
       )}
       {/* O Desfazer de depois que o aviso de 9 s some (QA de lançamento, 03/11). */}
       {telas && telas.length > 0 && <UltimosEnvios onDesfeito={() => setTentativa((n) => n + 1)} />}
+    </div>
+  );
+}
+
+/*
+ * O cartão de uma TV na Programação. Na conta grande, pede a programação
+ * dela quando aparece na tela (usePerto) — antes, a página pedia a de todas
+ * de uma vez (teste de carga, 16/11). `bruta`: undefined (lendo), 'erro',
+ * null (nada publicado) ou a programação.
+ */
+function CartaoDaProgramacao({ d, bruta, grande, onLer, editar, onIr, nomes, tentarDeNovo }) {
+  const [ref, perto] = usePerto(grande && bruta === undefined);
+  useEffect(() => { if (grande && perto && bruta === undefined) onLer(d.id); }, [grande, perto, bruta, d.id, onLer]);
+  const falhou = bruta === 'erro';
+  const cfg = falhou ? null : bruta;
+  const layout = cfg && globalThis.MT_getLayout ? globalThis.MT_getLayout(cfg.settings && cfg.settings.layoutId) : null;
+  const st = deviceStatus(d.lastSeen);
+  const campanhas = cfg ? campanhasDaConfig(cfg) : [];
+  return (
+    <div ref={ref} className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-3">
+      <div className="flex items-center gap-2">
+        <MonitorPlay size={16} className="shrink-0 text-ink-3" />
+        <div className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{d.name || 'TV'}</div>
+        <span className="flex shrink-0 items-center gap-1.5 text-2xs text-ink-3"><StatusDot tone={st.tone} pulse={st.pulse} /> {st.label}</span>
+      </div>
+      {cfg === undefined ? <div className="flex h-40 items-center justify-center"><Spinner size={16} /></div>
+        : falhou ? (
+          <button type="button" onClick={tentarDeNovo}
+            className="flex h-40 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-warn/50 text-sm text-ink-2">
+            Não deu para ler o que está nesta TV.<span className="text-xs text-accent">Tentar de novo</span>
+          </button>
+        ) : layout ? <MapaDaTela layout={layout} onEscolher={(z) => editar(d, z && z.id)} resumo={resumoDaZona(cfg)} cfg={cfg} nomes={nomes} />
+          : (
+            <button type="button" onClick={() => editar(d)}
+              className="flex h-40 items-center justify-center rounded-lg border border-dashed border-line text-sm text-ink-3 hover:border-accent/60">
+              Nada publicado ainda
+            </button>
+          )}
+      <div className="min-h-[1.25rem] text-xs text-ink-3">
+        {campanhas.length
+          ? <span className="flex flex-wrap items-center gap-1.5"><Megaphone size={13} className="text-accent" /> {campanhas.map((c) => c.nome).join(' · ')}</span>
+          : 'Sem campanha no ar'}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {/* De contorno: o violeta da página é o Criar lá em cima (reteste da fase 10: eram 25, um por TV). */}
+        <Button size="sm" variant="secondary" icon={Pencil} onClick={() => editar(d)}>Editar programação</Button>
+        <Button size="sm" icon={Plus} onClick={() => onIr && onIr('criar', { tela: d.id })}>Criar para esta TV</Button>
+      </div>
     </div>
   );
 }

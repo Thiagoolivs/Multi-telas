@@ -12,17 +12,22 @@
  * de novo troca só o que é dela, e pausar tira só o que é dela.
  */
 import '../../../js/importancia.js';
+import '../../../js/lote-tv.js';
 import { deviceConfig, lote as loteApi } from '../api.js';
 import { aviso, emitir } from './avisos.js';
 import { defaultConfig } from './contentTypes.js';
-import { aplicarConteudo, removerOrigem } from './aplicarConteudo.js';
-import { zonesOf } from './screenConfig.js';
-import { comQuando } from './quando.js';
+
+/*
+ * As regras de cada TV (as zonas pelo papel, a campanha, a peça, o "Quando")
+ * moram em js/lote-tv.js desde o teste de carga (16/11): o servidor aplica a
+ * campanha e a peça em cada TV com as mesmas funções (POST
+ * /api/lote/operacao), e o painel as usa para uma TV só (a TV nova, a
+ * prévia). Uma regra, dois lados.
+ */
+const L = globalThis.MTLoteTv;
 
 // O layout com as quatro zonas, deitado e em pé.
-export const LAYOUT_COMPLETO = { deitada: 'corporate', emPe: 'portrait-stack' };
-
-const emPe = (cfg) => /^portrait/.test((cfg && cfg.settings && cfg.settings.layoutId) || '');
+export const LAYOUT_COMPLETO = L.LAYOUT_COMPLETO;
 
 /*
  * As TVs de cada entrada do resultado. Uma TV citada pelo nome fica com a
@@ -45,79 +50,24 @@ export function alvosDaCampanha(resultado, telas) {
 }
 
 /* As zonas de uma config pelo papel: cabeçalho, principal, lateral, rodapé. */
-export function zonasPorPapel(cfg) {
-  const zonas = zonesOf(cfg) || [];
-  const listas = zonas.filter((z) => z.type === 'playlist');
-  const principal = listas.find((z) => /^(principal|video|z1)$/.test(z.id)) || listas[0] || null;
-  const outras = listas.filter((z) => z !== principal);
-  const lateral = outras.find((z) => z.id === 'lateral') || outras.find((z) => z.id === 'secundaria') || outras[0] || null;
-  return {
-    cabecalho: (zonas.find((z) => z.type === 'header') || {}).id || null,
-    principal: principal ? principal.id : null,
-    lateral: lateral ? lateral.id : null,
-    rodape: (zonas.find((z) => z.type === 'ticker') || {}).id || null,
-  };
-}
-
-const temCabecalho = (e) => e.zonas.cabecalho.pecas.length > 0;
-const temRodape = (e) => e.zonas.rodape.pecas.length > 0 || e.zonas.rodape.mensagens.length > 0;
+export const zonasPorPapel = (cfg) => L.zonasPorPapel(cfg);
 
 // O que a entrada pede e a TV, no layout de hoje, não tem onde pôr.
-export function zonasQueFaltam(cfg, entrada) {
-  const z = zonasPorPapel(cfg);
-  const faltam = [];
-  if (entrada.zonas.lateral.length && !z.lateral) faltam.push('lateral');
-  if (temCabecalho(entrada) && !z.cabecalho) faltam.push('cabeçalho');
-  if (temRodape(entrada) && !z.rodape) faltam.push('rodapé');
-  return faltam;
-}
+export const zonasQueFaltam = (cfg, entrada) => L.zonasQueFaltam(cfg, entrada);
 
-export function layoutPara(cfg) { return emPe(cfg) ? LAYOUT_COMPLETO.emPe : LAYOUT_COMPLETO.deitada; }
+export const layoutPara = (cfg) => L.layoutPara(cfg);
 // O nome que a pessoa lê ("Grande + coluna + faixas"), não o do catálogo da TV ("Corporativo Completo").
 export { nomeDoLayout } from './nomesDosLayouts.js';
 
-const marcar = (p, nome) => ({ ...p.item, _campanha: nome });
+// Fase 5: cada peça entra com a importância pela natureza dela, e o porquê (js/importancia.js) — no relógio da pessoa.
+const imp = (it) => (globalThis.MTImportancia ? globalThis.MTImportancia.comImportancia(it) : it);
 
 /*
  * A config nova de uma TV com a campanha. Não modifica a recebida.
  * `trocarLayout`: troca para o layout das quatro zonas quando falta zona.
  */
 export function aplicarCampanha(cfg, entrada, nome, { trocarLayout } = {}) {
-  let next = JSON.parse(JSON.stringify(cfg || {}));
-  if (trocarLayout && zonasQueFaltam(next, entrada).length) {
-    next.settings = { ...(next.settings || {}), layoutId: layoutPara(next) };
-  }
-  const z = zonasPorPapel(next);
-  const origem = { chave: '_campanha', valor: nome };
-  // Sem lateral na TV, a lateral vai para a principal: nada do que foi pago se perde.
-  // Fase 5: cada peça entra com a importância pela natureza dela, e o porquê (js/importancia.js).
-  const imp = (it) => (globalThis.MTImportancia ? globalThis.MTImportancia.comImportancia(it) : it);
-  const principal = entrada.zonas.principal.map((p) => imp(p.item));
-  const lateral = entrada.zonas.lateral.map((p) => imp(p.item));
-  const blocos = {};
-  if (z.principal) blocos[z.principal] = z.lateral ? principal : principal.concat(lateral);
-  if (z.lateral && lateral.length) blocos[z.lateral] = lateral;
-  next = aplicarConteudo(next, blocos, origem, 'trocar');
-
-  if (z.cabecalho && temCabecalho(entrada)) {
-    const pecas = entrada.zonas.cabecalho.pecas.map((p) => marcar(p, nome));
-    const antes = next.zonas[z.cabecalho] || {};
-    next.zonas[z.cabecalho] = {
-      ...antes, header: true, peca: pecas[0], pecas,
-      ...(entrada.zonas.cabecalho.mensagens.length ? { messages: entrada.zonas.cabecalho.mensagens } : {}),
-    };
-  }
-  if (z.rodape && temRodape(entrada)) {
-    const pecas = entrada.zonas.rodape.pecas.map((p) => marcar(p, nome));
-    const antes = next.zonas[z.rodape] || {};
-    next.zonas[z.rodape] = {
-      ...antes,
-      ...(pecas.length ? { peca: pecas[0], pecas } : {}),
-      ...(entrada.zonas.rodape.mensagens.length ? { messages: entrada.zonas.rodape.mensagens } : {}),
-      ...(entrada.zonas.rodape.contagem ? { contagem: entrada.zonas.rodape.contagem } : {}),
-    };
-  }
-  return next;
+  return L.aplicarCampanha(cfg, entrada, nome, { trocarLayout, imp });
 }
 
 /*
@@ -125,23 +75,7 @@ export function aplicarCampanha(cfg, entrada, nome, { trocarLayout } = {}) {
  * cabeçalho e no rodapé, as frases dela no letreiro e a contagem. O que não
  * é dela fica.
  */
-export function tirarCampanha(cfg, entrada, nome) {
-  const next = removerOrigem(cfg, { chave: '_campanha', valor: nome });
-  const frases = new Set([...(entrada.zonas.rodape.mensagens || []), ...(entrada.zonas.cabecalho.mensagens || [])]);
-  for (const zona of Object.values(next.zonas || {})) {
-    if (!zona || typeof zona !== 'object') continue;
-    if (Array.isArray(zona.pecas)) {
-      zona.pecas = zona.pecas.filter((p) => !(p && p._campanha === nome));
-      if (!zona.pecas.length) delete zona.pecas;
-    }
-    if (zona.peca && zona.peca._campanha === nome) {
-      if (zona.pecas && zona.pecas.length) zona.peca = zona.pecas[0]; else delete zona.peca;
-    }
-    if (Array.isArray(zona.messages) && frases.size) zona.messages = zona.messages.filter((m) => !frases.has(m));
-    if (zona.contagem && zona.contagem === entrada.zonas.rodape.contagem) delete zona.contagem;
-  }
-  return next;
-}
+export const tirarCampanha = (cfg, entrada, nome) => L.tirarCampanha(cfg, entrada, nome);
 
 /*
  * A programação da TV, com a versão (D0.5). Falha ao ler ESTOURA: antes ela
@@ -227,20 +161,67 @@ export function avisarComDesfazer(texto, idLote) {
   });
 }
 
-// O plano antes de rodar: que TV recebe, e quais trocariam de layout.
-export async function planoDeRodar(resultado, telas) {
-  const alvos = alvosDaCampanha(resultado, telas);
-  const saida = [];
-  for (const a of alvos) {
-    const lida = await lerDaTela(a.tela);
-    const cfg = lida.cfg;
-    const faltam = zonasQueFaltam(cfg, a.entrada);
-    saida.push({ ...a, cfg, versao: lida.versao, faltam, layoutAtual: (cfg.settings && cfg.settings.layoutId) || '', layoutNovo: faltam.length ? layoutPara(cfg) : '' });
-  }
-  return saida;
+/*
+ * A OPERAÇÃO NO SERVIDOR (teste de carga, 16/11). A campanha e a peça
+ * pronta em muitas TVs liam a programação de cada TV aqui e mandavam todas
+ * de volta (gravarEmLote): numa conta de RH, acima de ~19 TVs o envio
+ * passava de 2 MB e era recusado, e 300 TVs eram 300 leituras (metade do
+ * freio da conta). Agora vai a operação — "esta campanha nestas TVs" — num
+ * pedido de poucos KB, e o servidor aplica em cada TV com as mesmas regras
+ * (js/lote-tv.js), tudo ou nada, com a loja de cada TV, a aprovação, a
+ * versão e o Desfazer. Devolve { lote, ids } como o gravarEmLote.
+ * `hoje`: o dia de quem manda (as datas das peças começam nele).
+ */
+export function hojeLocal() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+export async function enviarOperacao(operacao, telas) {
+  const vistas = new Set();
+  const lista = (telas || []).filter((t) => t && t.id && !vistas.has(t.id) && vistas.add(t.id));
+  if (!lista.length) return { lote: null, ids: [] };
+  const r = await loteApi.operacao({ operacao, telas: lista.map((t) => (t.entrada != null ? { id: t.id, entrada: t.entrada } : t.id)), hoje: hojeLocal() });
+  // Com a aprovação ligada, o envio do membro virou pedido (202): quem chama pode dizer "espera o dono".
+  return { lote: (r && r.lote) || null, ids: lista.map((t) => t.id), ...(r && r.pendente ? { pendente: true, mensagem: r.mensagem || '' } : {}) };
 }
 
-// D26: todas as TVs do plano de uma vez (tudo ou nada). Devolve os ids; `ids.lote` é o envio.
+/*
+ * A campanha como vai para o servidor: as entradas distintas (cada TV aponta
+ * para a sua) só com as zonas, e as peças que giram já com a importância.
+ */
+function campanhaParaOServidor(alvos) {
+  const indices = [];
+  const entradas = [];
+  const telas = alvos.map((a) => {
+    let k = indices.indexOf(a.indice);
+    if (k < 0) {
+      k = indices.length;
+      indices.push(a.indice);
+      const z = (a.entrada && a.entrada.zonas) || {};
+      const pecas = (l, comImp) => (l || []).map((p) => ({ item: comImp ? imp(p.item) : p.item }));
+      const faixa = (f) => ({ pecas: pecas(f && f.pecas), mensagens: (f && f.mensagens) || [] });
+      const rodape = faixa(z.rodape);
+      if (z.rodape && z.rodape.contagem) rodape.contagem = z.rodape.contagem;
+      entradas.push({ zonas: { principal: pecas(z.principal, true), lateral: pecas(z.lateral, true), cabecalho: faixa(z.cabecalho), rodape } });
+    }
+    return { id: a.tela.id, entrada: k };
+  });
+  return { entradas, telas };
+}
+
+// O plano antes de rodar: que TV recebe, e quais trocariam de layout — o servidor confere cada TV sem a programação vir para cá.
+export async function planoDeRodar(resultado, telas) {
+  const alvos = alvosDaCampanha(resultado, telas);
+  if (!alvos.length) return [];
+  const { entradas, telas: lista } = campanhaParaOServidor(alvos);
+  const r = await loteApi.operacao({ operacao: { tipo: 'campanha', nome: (resultado && resultado.nome) || 'Campanha', entradas, trocarLayout: true }, telas: lista, simular: true });
+  const porId = new Map(((r && r.telas) || []).map((t) => [t.id, t]));
+  return alvos.map((a) => {
+    const t = porId.get(a.tela.id) || {};
+    return { ...a, faltam: t.faltam || [], layoutAtual: t.layoutAtual || '', layoutNovo: t.layoutNovo || '' };
+  });
+}
+
 /*
  * O "QUANDO" DA CAMPANHA (reteste 2): a campanha da IA ia ao ar sem a
  * pergunta que todo outro caminho faz. A escolha (sempre, só hoje, até um
@@ -248,20 +229,12 @@ export async function planoDeRodar(resultado, telas) {
  * no lado; as faixas de cima e de baixo não têm horário na TV e ficam até
  * pausar. O que não é da campanha não muda.
  */
-export function quandoNaCampanha(cfg, nome, escolha) {
-  if (!cfg || !escolha || !escolha.quando || escolha.quando === 'sempre') return cfg;
-  const next = { ...cfg, zonas: { ...(cfg.zonas || {}) } };
-  for (const [id, z] of Object.entries(next.zonas)) {
-    if (!z || !Array.isArray(z.items) || !z.items.some((it) => it && it._campanha === nome)) continue;
-    next.zonas[id] = { ...z, items: z.items.map((it) => (it && it._campanha === nome ? comQuando(it, escolha) : it)) };
-  }
-  return next;
-}
+export const quandoNaCampanha = (cfg, nome, escolha) => L.quandoNaCampanha(cfg, nome, escolha);
 
 // `quando`: a escolha do "Quando" (lib/quando.js); sem ela, sempre. Devolve os ids, com `.lote` para o Desfazer.
 export async function rodarCampanha(plano, nome, { trocarLayout, quando } = {}) {
-  const r = await gravarEmLote(plano.map((p) => p.tela),
-    (cfg, tv) => quandoNaCampanha(aplicarCampanha(cfg, plano.find((p) => p.tela.id === tv.id).entrada, nome, { trocarLayout }), nome, quando), 'Campanha: ' + nome);
+  const { entradas, telas } = campanhaParaOServidor(plano);
+  const r = await enviarOperacao({ tipo: 'campanha', nome, entradas, trocarLayout: !!trocarLayout, quando: quando || null }, telas);
   const ids = r.ids.slice();
   ids.lote = r.lote;
   if (r.pendente) ids.pendente = true;
@@ -287,8 +260,9 @@ export async function porCampanhaNaTela(resultado, nome, tela) {
 
 export async function pausarCampanha(resultado, nome, telas, ids) {
   const alvos = alvosDaCampanha(resultado, telas).filter((a) => !ids || ids.includes(a.tela.id));
-  const r = await gravarEmLote(alvos.map((a) => a.tela),
-    (cfg, tv) => tirarCampanha(cfg, alvos.find((a) => a.tela.id === tv.id).entrada, nome), 'Pausar: ' + nome);
+  if (!alvos.length) return null;
+  const { entradas, telas: lista } = campanhaParaOServidor(alvos);
+  const r = await enviarOperacao({ tipo: 'pausar-campanha', nome, entradas }, lista);
   return r.lote;
 }
 
@@ -296,32 +270,13 @@ export async function pausarCampanha(resultado, nome, telas, ids) {
  * UMA PEÇA PRONTA EM VÁRIAS TVS (EXECUTOR §2c, item 34): Mídias › Peças
  * prontas. A zona sai do papel da peça — faixa no cabeçalho ou no rodapé,
  * em pé na lateral, deitada na principal — e, sem a zona certa, ela vai para
- * a principal (nunca uma peça grande espremida numa faixa). Entra no fim da
- * zona, sem tirar nada do que já está lá.
+ * a principal. Entra no fim da zona, sem tirar nada do que já está lá.
  */
-export function aplicarPeca(cfg, peca) {
-  const next = JSON.parse(JSON.stringify(cfg || {}));
-  if (!next.zonas) next.zonas = {};
-  const z = zonasPorPapel(next);
-  const item = { ...peca.item, ...(peca.campanha ? { _campanha: peca.campanha } : {}) };
-  const papel = peca.papel || (peca.item && peca.item.papel) || '';
-  if ((papel === 'cabecalho' || papel === 'rodape') && z[papel]) {
-    const atual = next.zonas[z[papel]] || {};
-    const lista = (Array.isArray(atual.pecas) && atual.pecas.length ? atual.pecas : (atual.peca ? [atual.peca] : [])).concat({ duracao: 20, ...item });
-    next.zonas[z[papel]] = { ...atual, ...(papel === 'cabecalho' ? { header: true } : {}), pecas: lista, peca: lista[0] };
-    return next;
-  }
-  if (papel === 'cabecalho' || papel === 'rodape') return next; // a TV não tem essa faixa: nada a fazer
-  const emPe = String(peca.formato || item.formato || '').startsWith('9/');
-  const zona = (emPe && z.lateral) ? z.lateral : (z.principal || z.lateral);
-  if (!zona) return next;
-  const atual = next.zonas[zona] || { items: [] };
-  next.zonas[zona] = { ...atual, items: (Array.isArray(atual.items) ? atual.items : []).concat(item) };
-  return next;
-}
+export const aplicarPeca = (cfg, peca) => L.aplicarPeca(cfg, peca);
 
-// D26: todas de uma vez; devolve { lote, ids } para o Desfazer.
+// Todas de uma vez, pelo servidor (a operação 'peca'); devolve { lote, ids } para o Desfazer.
 export async function porPecaNasTelas(peca, ids, telas) {
-  const tvs = ids.map((id) => (telas || []).find((t) => t.id === id) || { id, name: 'Tela' });
-  return gravarEmLote(tvs, (cfg) => aplicarPeca(cfg, peca), 'Peça: ' + ((peca && peca.label) || 'peça pronta'));
+  const p = peca || {};
+  return enviarOperacao({ tipo: 'peca', peca: { item: p.item, campanha: p.campanha || '', papel: p.papel || '', formato: p.formato || '', label: p.label || '' } },
+    ids.map((id) => ({ id })));
 }

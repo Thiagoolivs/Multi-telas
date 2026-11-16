@@ -36,7 +36,11 @@ inteiro por 200–550 ms** (todas as TVs de todas as contas esperavam). E o
 programação de RH (o corpo do pedido passava de 2 MB). **Os dois foram
 corrigidos em 16/11** (3.5): a página Telas da conta de 323 TVs caiu de
 31 MB e 0,8 s para **0,11 MB e 19 ms**, e o aviso para **300 TVs** vai num
-pedido de 10 KB, em 0,85 s, sem travar o servidor mais de 20 ms.
+pedido de 10 KB, em 0,85 s, sem travar o servidor mais de 20 ms. Na mesma
+leva, a **campanha, a peça pronta e a publicação** para muitas TVs viraram
+operações do servidor como o aviso (300 TVs: 1 pedido de ~26 KB em vez de
+601 pedidos e 33 MB recusados), e a **página Programação** da conta grande
+caiu de 31 MB para os cartões que aparecem (0,6 MB na primeira tela).
 
 **Tamanho e quando escalar.** Com as correções, **1 vCPU e 1 GB** no
 Railway atendem até o teto de 2.000 TVs com folga (planejamento: ~3.000 por
@@ -260,9 +264,23 @@ miniatura, ganhou o mesmo. Medido com `tools/carga/conta-grande.mjs`
 | … rolar as 323 até o fim | (vinha na lista) | 13 pedidos de 25, 90 ms cada (mediana), trava de no máximo 81 ms |
 | Conta de 5 TVs (com a programação na lista) | 0,49 MB · 17 ms · trava 11 ms | 0,49 MB · 18 ms · trava 18 ms (igual) |
 
-Fica de fora a página **Programação**, que ainda lê a programação de todas
-as TVs de uma vez (`GET /api/devices/configs`, `deviceConfig.todas`): numa
-conta de 323 TVs, os mesmos ~31 MB. É o próximo passo para a conta grande.
+**A página Programação, do mesmo jeito (16/11, segunda leva).** Ela lia a
+programação de todas as TVs de uma vez (`GET /api/devices/configs`,
+`deviceConfig.todas`). Agora pede "todas, se forem até 12"
+(`?ate=12`, `server/routes/telas.js`): a conta pequena segue num pedido só,
+como antes; na grande, o servidor responde só `grande` e cada cartão pede a
+programação da sua TV quando aparece na tela (`CartaoDaProgramacao` em
+`web/src/pages/ProgramacaoPage.jsx`, `web/src/lib/usePerto.js`), juntando
+as pedidas de 25 em 25. Quem pede todas sem o `?ate` (nenhuma página do
+painel, hoje) também deixou de travar o servidor de uma vez: a leitura cede
+a vez de 10 em 10 TVs.
+
+| Página Programação | antes | depois |
+|---|---|---|
+| Conta de 323 TVs, ao abrir | 31,4 MB · 849 ms · trava 556 ms | **~0 MB · 22 ms · trava 17 ms** (só `grande`) |
+| … os cartões da primeira tela (6) | (vinham juntos) | 0,58 MB · 40 ms · trava 34 ms |
+| Conta de 5 TVs | 0,49 MB · 10 ms | 0,49 MB · 17 ms (igual: um pedido só) |
+| Todas sem `?ate`, 323 TVs | 31,4 MB · trava 556 ms | 31,4 MB · trava 254 ms (em pedaços) |
 
 **Aviso para muitas TVs e o limite do corpo.** O aviso em 20 TVs (~1,9 MB)
 foi o maior que coube: com 21 TVs da programação de RH o corpo passa de 2 MB
@@ -308,12 +326,46 @@ sem nenhuma.
 | 300 TVs | 301 pedidos (metade do freio da conta), 30,3 MB · **413** | **1 pedido, 10,4 KB · 852 ms · trava 20 ms**, as 300 com o aviso |
 | Desfazer, 300 TVs | — | 658 ms · trava 46 ms; guardados 39 KB (no lugar de ~29 MB) |
 
-O caminho de antes continua para o resto do painel (campanhas, peças
-prontas, a Agenda: `gravarEmLote`, `web/src/lib/rodar.js`) e ficou mais
-leve com a memória da porta: o envio para 15 TVs de RH caiu
-de 418 ms e trava de 340 ms para 169 ms e 59 ms. Mas segue preso aos 2 MB:
-campanha ou peça pronta em mais de ~19 TVs de RH ainda leva 413 — o próximo
-candidato a virar operação do servidor, como o aviso.
+**A campanha, a peça pronta e a publicação como operação (16/11, segunda
+leva).** O mesmo desenho do aviso, num endereço só para todas:
+`POST /api/lote/operacao` com `{ operacao: { tipo, ... }, telas, hoje }`, e
+os tipos `campanha` (pôr pra rodar, com o "Quando"), `pausar-campanha`,
+`peca` (Peças prontas) e `publicar` (Meus Designs, Criação rápida, Subir); o
+aviso é o tipo `aviso`. O painel manda a operação
+(`web/src/lib/rodar.js`, `enviarOperacao`; `web/src/lib/publicar.js`) e o
+servidor aplica em cada TV com as **mesmas funções** que o painel usa para
+uma TV só — elas saíram de `rodar.js`, `aplicarConteudo.js`, `quando.js` e
+`publicar.js` para `js/lote-tv.js`, e o painel passou a chamá-las de lá
+(uma regra, dois lados; a importância de cada peça e as datas do "Quando"
+saem no relógio de quem mandou). Pelo caminho do lote: loja, aprovação,
+versão com nova tentativa, porta das peças, tudo ou nada, em pedaços. O
+**plano** da campanha (que TV troca de layout para ter as zonas), que lia a
+programação de cada TV, é a mesma operação com `simular`: o servidor
+responde só o resumo de cada TV.
+
+O **Desfazer** desses envios (e o do `POST /api/lote` e da aprovação) volta
+cada TV à programação de antes, como sempre, mas o antes agora é guardado
+**em partes**: cada zona e o resto da programação, pelo conteúdo, uma vez
+por envio, e cada TV aponta para as suas (`antesEmPartes` e `antesDasPartes`
+em `server/routes/telas.js`; `mapLote` nos dois bancos lê o formato de antes
+também). As TVs de uma conta de RH levam as mesmas peças: o antes de 300
+TVs caiu de ~29 MB para 256 KB.
+
+| Campanha (programação de RH) | antes (o painel lia e mandava cada TV) | depois (`POST /api/lote/operacao`) |
+|---|---|---|
+| 15 TVs | 31 pedidos (o plano e o envio liam cada TV), 1,66 MB · 383 ms · trava 175 ms; Desfazer de 1,5 MB | — |
+| 20 TVs | 41 pedidos, 2,21 MB · **413** | 1 pedido, 14,5 KB · 125–215 ms · trava ≤ 94 ms; Desfazer de 111 KB |
+| 300 TVs: o plano | 300 leituras | **1 pedido · 211–244 ms · trava 14 ms** |
+| 300 TVs: pôr | 301 pedidos, 33 MB · **413** | **1 pedido, 25,7 KB · 1,7–2,1 s · trava ≤ 61 ms**, as 300 com a campanha |
+| 300 TVs: Desfazer | — | 1,2–1,4 s · trava 130–200 ms (gravar no SQLite local é síncrono; no Postgres a escrita não para o servidor); guardados 256 KB |
+| 300 TVs: peça pronta / publicação | 413 (como a campanha) | 1 pedido de 14 KB · 1,7–2,1 s · trava ≤ 54 ms |
+
+Seguem no caminho de antes (ler e mandar a programação de cada TV, presos
+aos 2 MB, ~19 TVs de RH): a Agenda (datas do calendário em várias TVs), os
+Indicadores, as Planilhas de preço, as Telas prontas em várias TVs e o quiz
+do Criar. Ficaram mais leves com a memória da porta (o envio para 15 TVs de
+RH caiu de 418 ms e trava de 340 ms para 169 ms e 59 ms), mas o próximo
+passo é cada um virar um tipo de operação.
 
 ### 3.6 Teto da instância única e tamanho no Railway
 
@@ -437,10 +489,19 @@ Medido com `tools/carga/limites-conta.mjs` e na própria instalação das
    nada, Desfazer), em pedaços. 300 TVs: 1 pedido em vez de 301, 10 KB em vez
    de 30 MB.
 
+4. **Campanhas, peças prontas e publicações como operação** (segunda leva,
+   3.5): `POST /api/lote/operacao`, a mesma regra de cada TV nos dois lados
+   (`js/lote-tv.js`), e o Desfazer com o antes em partes. 300 TVs: 1 pedido
+   de ~26 KB em vez de 601 pedidos e 33 MB.
+5. **A Programação da conta grande** (segunda leva, 3.5): a página pede
+   "todas, se forem até 12"; acima, cada cartão pede a sua quando aparece.
+
 **A 2ª TV do plano grátis diz por quê** (reteste 3, item 7; não era deste
 relatório, foi junto): o 402 do pareamento ia só para o painel, e a TV ficava
 no código sem explicação. Agora o servidor manda o motivo à TV pelo tempo
-real (`server/plans.js`, `recusaNaTv`; evento `recusada`) e ela mostra, na
+real (`server/plans.js`, `recusaNaTv`; evento `recusada`) e também no pulso
+dela por 10 minutos (o campo `recusada` da resposta do heartbeat, para a TV
+com o tempo real caído; sai quando ela entra na conta), e ela mostra, na
 tela do código: "O plano grátis tem 1 TV — Esta conta já está usando a TV do
 plano grátis. Para ligar mais TVs, o dono da conta escolhe um plano no painel
 do MultiTelas (app.multitelas.net.br), em Plano. Depois, é só digitar este
@@ -456,12 +517,12 @@ texto deles.
 2. **Plano para 50–300 TVs**: o Essencial para em 49 (`server/plans.js:76`);
    a Visitor vai precisar de um plano (ou de um Enterprise ativado pelo
    operador) antes da primeira venda grande.
-3. **Campanhas e peças prontas para muitas TVs como operação do servidor**,
-   como o aviso: seguem lendo e mandando a programação de cada TV
-   (`gravarEmLote`), presas aos 2 MB (~19 TVs de RH).
-4. **A página Programação da conta grande**: ainda lê a programação de todas
-   as TVs de uma vez (`GET /api/devices/configs`, ~31 MB com 323 TVs).
-5. **O antes e o depois de um pedido de aprovação grande**: o revisor recebe
+3. **A Agenda, os Indicadores, as Planilhas, as Telas prontas e o quiz para
+   muitas TVs como operação do servidor**, como a campanha: seguem lendo e
+   mandando a programação de cada TV (`gravarEmLote`), presos aos 2 MB (~19
+   TVs de RH). Cada um vira um tipo em `POST /api/lote/operacao`, com a
+   regra num arquivo dos dois lados.
+4. **O antes e o depois de um pedido de aprovação grande**: o revisor recebe
    a programação inteira de cada TV duas vezes (até 200 TVs, ~38 MB);
    precisa de páginas ou de só o que mudou.
 
@@ -769,12 +830,18 @@ inteira passando e as medidas de `tools/carga/conta-grande.mjs`):
 | A porta das peças lembra o HTML já conferido (só no servidor) | `js/peca-html.js` (`lembrarConferidas`), `server/routes/telas.js` | conferir a programação de RH: ~10 → ~0,7 ms |
 | TV nova por IP: 300/h | `server/routes/telas.js` (`TV_NOVA_POR_IP`) | a 301ª leva 429 (era a 61ª) |
 | Freio do painel: `max(600, 3 × TVs)`, a contagem 5 min em memória | `server/limites.js` (`tetoDe`), `server.js` (`telasDaConta`, `esquecerSelo`) | conta de 220 TVs: 660 pedidos em 5 min (era 600) |
-| A 2ª TV do grátis diz por quê, na tela do código | `server/plans.js` (`recusaNaTv`), `server/routes/telas.js`, `js/cloud.js`, `js/player.js`, `sw.js` (`mt-shell-v92`) | seção 4 |
+| A 2ª TV do grátis diz por quê, na tela do código (pelo tempo real e pelo pulso) | `server/plans.js` (`recusaNaTv`), `server/routes/telas.js` (`recusasNaTv`), `js/cloud.js`, `js/player.js`, `sw.js` (`mt-shell-v92`) | seção 4 |
+| Campanha, pausa, peça pronta e publicação como operação do servidor (o plano da campanha com `simular`); as regras de cada TV num arquivo dos dois lados | `server/routes/telas.js` (`rotaOperacao`, `OPERACOES`, `montarOperacao`, `simularOperacao`), `js/lote-tv.js` (novo), `web/src/lib/rodar.js`, `publicar.js`, `aplicarConteudo.js`, `quando.js`, `web/src/api.js` (`lote.operacao`) | 300 TVs: 601 pedidos e 33 MB (413) → 1 pedido de ~26 KB, ~2 s, trava ≤ 61 ms; o plano: 300 leituras → 1 pedido |
+| O Desfazer guarda o antes em partes (zonas e resto, uma vez por envio) | `server/routes/telas.js` (`antesEmPartes`, `antesDasPartes`), `server/db-sqlite.js` e `server/db-postgres.js` (`mapLote`, `salvarLote`) | campanha em 300 TVs: ~29 MB → 256 KB; 15 TVs pelo lote de antes: 1,5 MB → 108 KB |
+| Programação: todas num pedido só até 12 TVs; acima, cada cartão pede a sua | `server/routes/telas.js` (`?ate=`), `web/src/pages/ProgramacaoPage.jsx`, `web/src/lib/usePerto.js` (novo), `web/src/api.js` | 323 TVs: 31,4 MB, 849 ms, trava 556 ms → ~0 MB, 22 ms, trava 17 ms (+0,58 MB da primeira tela) |
+
+Testes da segunda leva em `test/conta-grande-operacoes.test.js` (o painel de
+verdade falando com o servidor de verdade) e em `test/conta-grande.test.js`.
 
 **Não mudou** (proposta, por ser regra de negócio, contrato do painel ou
-app sem compilar aqui): o teto de 2.000 conexões, campanhas e peças prontas
-para muitas TVs como operação do servidor e a página Programação da conta
-grande. (O vigia do app Android e a limpeza do cache de mídia entraram
+app sem compilar aqui): o teto de 2.000 conexões, a Agenda, os Indicadores,
+as Planilhas, as Telas prontas e o quiz para muitas TVs como operação do
+servidor. (O vigia do app Android e a limpeza do cache de mídia entraram
 depois, no vigia v2 — 6.2.)
 
 ---
@@ -802,7 +869,8 @@ node tools/carga/tabela.mjs /tmp/carga /tmp/maquina.jsonl  # as tabelas deste re
 # 3. Os limites (TV nova por IP, freio do painel, lote grande).
 LIM_BASE=http://127.0.0.1:6090 LIM_PSQL="-h /caminho/do/socket -U mt -d multitelas" node tools/carga/limites-conta.mjs
 
-# 3b. A página Telas e o aviso rápido numa conta de 323 TVs (3.5), com a sonda a cada 1 s.
+# 3b. A página Telas, a Programação, o aviso rápido e a campanha numa conta de 323 TVs (3.5),
+#     com a sonda a cada 1 s. CG_SO escolhe: telas, aviso-lote, aviso, campanha-lote, campanha, programacao.
 # (Postgres: "$PG" no fim do subir-servidor.sh, e CG_PG="$PG" no lugar de CG_DADOS.)
 SONDA_MS=1000 tools/carga/subir-servidor.sh 6121 /tmp/cg            # SQLite em /tmp/cg
 CG_BASE=http://127.0.0.1:6121 CG_DADOS=/tmp/cg CG_SONDA=/tmp/cg/sonda.jsonl node tools/carga/conta-grande.mjs

@@ -124,9 +124,11 @@ test('o freio da conta: o 429 diz "muitos pedidos", não "sem conexão"; e menos
   // As leituras das miniaturas saem juntas, e a Programação lê todas as TVs num pedido.
   assert.match(api, /api\('GET', '\/api\/devices\/estados\?ids=' \+ ids\.map\(encodeURIComponent\)\.join\(','\)\)/);
   assert.match(api, /ler: \(id\) => lerEmLote\(id\),/);
-  assert.match(api, /todas: \(\) => api\('GET', '\/api\/devices\/configs'\)/);
+  // Teste de carga (16/11): todas num pedido até 12 TVs; na conta grande, cada cartão pede a sua (em grupos, como as miniaturas).
+  assert.match(api, /todas: \(ate\) => api\('GET', '\/api\/devices\/configs' \+ \(ate \? '\?ate=' \+ ate : ''\)\)/);
   assert.match(api, /const ja = emVoo\.get\(path\);\s*if \(ja\) return ja\.then\(copia\);/, 'a mesma leitura ao mesmo tempo vira um pedido só');
-  assert.match(ler('web/src/pages/ProgramacaoPage.jsx'), /const todas = deviceConfig\.todas\(\)/);
+  assert.match(ler('web/src/pages/ProgramacaoPage.jsx'), /const todas = deviceConfig\.todas\(PROGRAMACAO_JUNTO\)/);
+  assert.match(ler('web/src/pages/ProgramacaoPage.jsx'), /deviceConfig\.doPainel\(id\)/, 'a conta grande pede a programação de cada TV de outro jeito');
   assert.doesNotMatch(ler('web/src/pages/ProgramacaoPage.jsx'), /deviceConfig\.get\(d\.id\)/);
   const app = ler('web/src/App.jsx');
   assert.match(app, /if \(e && e\.status === 429\) \{ setEspera\(/);

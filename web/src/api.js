@@ -189,8 +189,13 @@ export const deviceConfig = {
     const r = await api('GET', '/api/devices/' + id + '/config', undefined, { comCabecalhos: true });
     return { config: r.data, versao: Number(r.headers.get('X-Config-Versao')) || 0, meuPedido: r.headers.get('X-Meu-Pedido') || '' };
   },
-  // A programação de todas as TVs da conta num pedido só: { [id]: { config, versao } } (a Programação, reteste da fase 10).
-  todas: () => api('GET', '/api/devices/configs').then((r) => (r && r.configs) || {}),
+  /*
+   * A programação de todas as TVs da conta num pedido só (a Programação,
+   * reteste da fase 10) — se forem até `ate` (teste de carga, 16/11: a conta
+   * de 323 TVs eram ~31 MB). { configs: { [id]: { config, versao } }, grande }:
+   * `grande`, a conta passou de `ate` e cada cartão pede a sua (doPainel).
+   */
+  todas: (ate) => api('GET', '/api/devices/configs' + (ate ? '?ate=' + ate : '')).then((r) => ({ configs: (r && r.configs) || {}, grande: !!(r && r.grande) })),
   /*
    * A programação de UMA TV como o painel desenha (a miniatura, o "Ver
    * agora"), juntada com as outras pedidas no mesmo instante: 25 TVs, um
@@ -305,6 +310,13 @@ export const lote = {
    * `hoje`: o dia de quem manda (a data do aviso começa nele).
    */
   aviso: (telas, item, aviso, hoje) => api('POST', '/api/lote/aviso', { telas, item, aviso, hoje }),
+  /*
+   * A campanha, a peça pronta e a publicação para muitas TVs (o mesmo
+   * desenho do aviso): { operacao: { tipo, ... }, telas: [id | { id, entrada }],
+   * hoje, simular }. `simular`: só o que aconteceria em cada TV (o plano da
+   * campanha), sem gravar.
+   */
+  operacao: (corpo) => api('POST', '/api/lote/operacao', corpo),
   desfazer: (id) => api('POST', '/api/lote/' + encodeURIComponent(id) + '/desfazer'),
   // Os últimos envios da conta (o servidor guarda 30 dias), para desfazer depois que o aviso some.
   listar: () => api('GET', '/api/lote'),

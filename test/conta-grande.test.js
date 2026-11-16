@@ -146,7 +146,9 @@ test('Telas da conta grande: a lista vem sem a programação; a conta pequena se
 
 test('o painel: a miniatura pede a programação só quando aparece e há o que desenhar; de 25 em 25, 2 pedidos no ar', async () => {
   const m = ler('web/src/components/tela/MiniaturaDaTela.jsx');
-  assert.match(m, /new IntersectionObserver\(\(v\) => \{ if \(v\.some\(\(x\) => x\.isIntersecting\)\) setPerto\(true\); \}, \{ rootMargin: '200px' \}\)/);
+  assert.match(m, /const \[setCaixa, perto\] = usePerto\(!cfg && !vazia\);/);
+  assert.match(ler('web/src/lib/usePerto.js'), /new IntersectionObserver\(\(v\) => \{ if \(v\.some\(\(x\) => x\.isIntersecting\)\) setPerto\(true\); \}, \{ rootMargin: margem \}\)/);
+  assert.match(ler('web/src/lib/usePerto.js'), /export function usePerto\(ativo = true, margem = '200px'\)/);
   assert.match(m, /if \(cfg \|\| vazia \|\| !perto \|\| !temImagem\) return undefined;\s*let vivo = true;\s*lerProgramacao\(d\.id, d\.updatedAt \|\| 0\)/, 'a miniatura lê a programação sem aparecer na tela');
   assert.equal((m.match(/ref=\{setCaixa\}/g) || []).length, 2, 'as duas caras da miniatura precisam ser observadas');
   assert.match(ler('server/routes/telas.js'), /if \(list\.length <= PROGRAMACAO_NA_LISTA\) \{/);
@@ -440,12 +442,12 @@ function rotaComBanco(telas, opcoes) {
     db, storage: { publicUrl: () => 'https://midia.exemplo/x' }, schema: require('../js/storage.js'), vigia: require('../server/vigia.js'),
     sendJson: (res, status, corpo) => { respostas.push({ status, corpo }); },
     readBody: (req, res, cb) => cb(req.corpo), broadcast: () => {}, subscribers: {}, rateLimit: () => ({ ok: true }),
-    security: {}, limites: { permitir: () => ({ ok: true }) }, plans: require('../server/plans.js'),
+    security: {}, limites: { permitir: () => ({ ok: true }) }, plans: require('../server/plans.js'), crypto: require('node:crypto'),
   };
   const rota = require('../server/routes/telas.js')(ctx);
   const sess = { tenant_id: 'ten_rh', user_id: 'usr_1', role: 'owner', lojas: null, precisaAprovar: false };
-  const enviar = async (corpo) => {
-    await rota({ method: 'POST', headers: {}, corpo }, {}, ['api', 'lote', 'aviso'], {}, sess);
+  const enviar = async (corpo, qual) => {
+    await rota({ method: 'POST', headers: {}, corpo }, {}, ['api', 'lote', qual || 'aviso'], {}, sess);
     for (let i = 0; i < 200 && !respostas.length; i++) await new Promise((r) => setImmediate(r));
     return respostas.shift();
   };
@@ -481,6 +483,29 @@ test('o aviso no meio de uma gravação: desfaz o que já foi, lê de novo e põ
   assert.equal(n.corpo.code, 'config-mudou');
   assert.equal(teimosa.lotes.length, 0);
   for (const t of outras.values()) assert.ok(!JSON.parse(t.config).zonas.principal.items.some((it) => it._aviso), 'o envio recusado deixou o aviso numa TV');
+});
+
+test('a campanha e a peça no meio de uma gravação: o mesmo tudo ou nada, com nova tentativa', async () => {
+  const telas = telasDeMentira(23);
+  const { enviar, gravacoes, lotes } = rotaComBanco(telas, { tvDaCorrida: 'dev_12', corridas: 1 });
+  const peca = { item: { type: 'text', titulo: 'Peça pronta', duracao: 10 }, label: 'Peça' };
+  const r = await enviar({ operacao: { tipo: 'peca', peca }, telas: [...telas.keys()] }, 'operacao');
+  assert.equal(r.status, 200, JSON.stringify(r.corpo));
+  assert.equal(lotes.length, 1);
+  assert.equal(lotes[0].descricao, 'Peça: Peça');
+  for (const t of telas.values()) {
+    const itens = JSON.parse(t.config).zonas.principal.items;
+    assert.equal(itens.filter((it) => it.titulo === 'Peça pronta').length, 1, 'a peça entrou duas vezes (ou nenhuma) na ' + t.name);
+  }
+  assert.ok(JSON.parse(telas.get('dev_12').config).zonas.principal.items.some((it) => it.titulo === 'Mexida no meio'), 'o envio apagou o que a outra pessoa gravou no meio');
+  assert.equal(gravacoes.filter((id) => id === 'dev_0').length, 3, 'as gravadas antes da corrida não voltaram e foram de novo');
+  // O Desfazer da peça guarda o antes em partes (as 23 TVs de mentira só mudam o texto da principal).
+  assert.ok(lotes[0].partes && lotes[0].telas.every((t) => t.antesPartes), 'o Desfazer guardou a programação inteira de cada TV');
+  // A campanha com uma entrada que não existe: nada é lido nem gravado.
+  const antes = gravacoes.length;
+  const ruim = await enviar({ operacao: { tipo: 'campanha', nome: 'X', entradas: [{ zonas: { principal: [] } }] }, telas: [{ id: 'dev_0', entrada: 1 }] }, 'operacao');
+  assert.equal(ruim.status, 400);
+  assert.equal(gravacoes.length, antes);
 });
 
 test('a TV sem lugar para o aviso barra o envio inteiro, dizendo qual', async () => {
