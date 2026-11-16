@@ -316,7 +316,7 @@
     };
     afterPaint(medir);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(medir).catch(function () {});
-    medirQuandoAFonteChegar(slide, medir);
+    medirDeNovoQuandoMudar(slide, medir);
   }
 
   /*
@@ -334,28 +334,52 @@
   }
 
   /*
-   * A FONTE QUE CHEGA DEPOIS (reteste 3, 16/11). O `document.fonts.ready`
-   * pode resolver antes de começar a baixar um peso que a caixa só usa
-   * depois (o 800 do título), e a medida fica feita com a fonte de reserva,
-   * de outra largura: a régua do CI ora passava, ora não, no mesmo commit.
-   * Um ouvinte só, para todas as caixas (o teste de resistência conta os
-   * ouvintes da TV): a cada fonte que termina de chegar, as caixas que ainda
-   * estão na tela se medem de novo. A que saiu da tela sai da lista na
-   * próxima vez que alguém olha para ela — nada fica preso a um slide velho.
+   * A CAIXA SE MEDE DE NOVO QUANDO A FONTE CHEGA OU A ZONA MUDA DE TAMANHO
+   * (reteste 3, 16/11). A régua do CI ora passava, ora não, no mesmo commit:
+   *   - o `document.fonts.ready` pode resolver antes de começar a baixar um
+   *     peso que a caixa só usa depois (o 800 do título), e a medida fica
+   *     feita com a fonte de reserva, de outra largura;
+   *   - a zona muda uns pixels logo depois de a peça entrar (a config e a
+   *     marca chegam em dois avisos; o rodapé vazio sai e a principal cresce:
+   *     1343×891 e, meio segundo depois, 1379×915), e a medida da primeira
+   *     ficava valendo na segunda.
+   * Um ouvinte de fonte e um ResizeObserver só, para todas as caixas (o teste
+   * de resistência conta os ouvintes da TV). A caixa que saiu da tela sai da
+   * lista e deixa de ser observada na próxima vez que alguém olha para ela —
+   * nada fica preso a um slide velho. Sem ResizeObserver (Chromium < 64), a
+   * caixa se mede mais uma vez, um segundo e meio depois.
    */
   const caixasNaTela = [];
   let ouvindoAsFontes = false;
-  function medirQuandoAFonteChegar(slide, medir) {
-    const naTela = (el) => document.documentElement.contains(el);
-    for (let i = caixasNaTela.length - 1; i >= 0; i--) if (!naTela(caixasNaTela[i].slide)) caixasNaTela.splice(i, 1);
+  let observaAsCaixas = null;
+  const naTela = (el) => document.documentElement.contains(el);
+  function medirDeNovoQuandoMudar(slide, medir) {
+    for (let i = caixasNaTela.length - 1; i >= 0; i--) {
+      const velha = caixasNaTela[i].slide;
+      if (!naTela(velha)) { caixasNaTela.splice(i, 1); if (observaAsCaixas) observaAsCaixas.unobserve(velha); }
+    }
     caixasNaTela.push({ slide, medir });
+    if (typeof ResizeObserver === 'function') {
+      if (!observaAsCaixas) {
+        observaAsCaixas = new ResizeObserver(function (mudou) {
+          mudou.forEach(function (m) {
+            const c = caixasNaTela.find((x) => x.slide === m.target);
+            if (c && naTela(c.slide)) afterPaint(c.medir);
+            else observaAsCaixas.unobserve(m.target);
+          });
+        });
+      }
+      observaAsCaixas.observe(slide);
+    } else {
+      setTimeout(function () { if (naTela(slide)) medir(); }, 1500);
+    }
     const fontes = document.fonts;
     if (ouvindoAsFontes || !fontes || typeof fontes.addEventListener !== 'function') return;
     ouvindoAsFontes = true;
     fontes.addEventListener('loadingdone', function () {
       for (let i = caixasNaTela.length - 1; i >= 0; i--) {
         const c = caixasNaTela[i];
-        if (!naTela(c.slide)) caixasNaTela.splice(i, 1);
+        if (!naTela(c.slide)) { caixasNaTela.splice(i, 1); if (observaAsCaixas) observaAsCaixas.unobserve(c.slide); }
         else afterPaint(c.medir);
       }
     });
