@@ -192,11 +192,14 @@ test('a letra mínima é 4,5% em todo local, e a zona pequena se recompõe antes
   assert.match(p, /slide\.classList\.remove\('mt-compacto', 'mt-compacto-mais'\);/, 'a medida nova começa do desenho');
   assert.match(p, /return alto <= folgaV && largo <= folgaH \/ 2;/);
   assert.match(ler('css', 'player.css'), /\.mt-precos\.mt-compacto-mais \{ padding: 2\.4cqh 4cqw; \}/);
-  // A fonte que chega depois do fonts.ready: as caixas na tela se medem de novo, com UM ouvinte para todas.
-  assert.match(p, /medirQuandoAFonteChegar\(slide, medir\);/);
+  // A fonte que chega depois do fonts.ready e a zona que muda de tamanho: as caixas na tela se medem de novo, com UM ouvinte e UM observador para todas.
+  assert.match(p, /medirDeNovoQuandoMudar\(slide, medir\);/);
+  assert.equal((p.match(/new ResizeObserver\(function \(mudou\)/g) || []).length, 1, 'um observador só para todas as caixas');
+  assert.match(p, /if \(!observaAsCaixas\) \{/);
+  assert.match(p, /if \(!naTela\(velha\)\) \{ caixasNaTela\.splice\(i, 1\); if \(observaAsCaixas\) observaAsCaixas\.unobserve\(velha\); \}/, 'o slide que saiu deixa de ser observado');
   assert.match(p, /if \(ouvindoAsFontes \|\| !fontes \|\| typeof fontes\.addEventListener !== 'function'\) return;\s+ouvindoAsFontes = true;\s+fontes\.addEventListener\('loadingdone', function \(\) \{/);
   assert.equal((p.match(/addEventListener\('loadingdone'/g) || []).length, 1, 'um ouvinte só no player');
-  assert.match(p, /if \(!naTela\(caixasNaTela\[i\]\.slide\)\) caixasNaTela\.splice\(i, 1\);/, 'o slide que saiu da tela sai da lista');
+  assert.match(p, /if \(!naTela\(c\.slide\)\) \{ caixasNaTela\.splice\(i, 1\); if \(observaAsCaixas\) observaAsCaixas\.unobserve\(c\.slide\); \}/, 'o slide que saiu da tela sai da lista');
   // A bancada e a régua medem com o mesmo piso.
   assert.match(ler('js', 'bancada.js'), /const LOCAIS = \{ balcao: 0\.045, recepcao: 0\.045, escritorio: 0\.045 \};/);
   assert.match(ler('tools', 'regua-tv.mjs'), /const PISO_DA_FRENTE = \{ comercio: 4\.5, saude: 4\.5, empresa: 4\.5 \};/);
