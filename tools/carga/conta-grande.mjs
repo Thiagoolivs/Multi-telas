@@ -16,6 +16,12 @@
  *            aviso-lote o aviso rápido como o painel fazia: lê a programação de
  *                       cada TV (1 pedido por TV) e manda todas de volta (POST /api/lote)
  *            aviso      o aviso como operação do servidor (POST /api/lote/aviso) e o Desfazer
+ *            campanha-lote  a campanha como o painel fazia: o plano lendo cada TV, depois ler
+ *                       e mandar a programação de cada uma (POST /api/lote)
+ *            campanha   a campanha, a peça pronta e a publicação como operação do servidor
+ *                       (POST /api/lote/operacao: o plano, pôr, desfazer)
+ *            programacao a página Programação: todas as programações de uma vez, ou só o
+ *                       "grande" (?ate=12) e os cartões da primeira tela
  *
  * A conta é montada direto no banco (a TV nasce pelo POST /api/devices, de
  * IPs diferentes; o vínculo e a programação de RH, ~96 KB, vão por SQL): a
@@ -243,6 +249,103 @@ if (so.includes('aviso')) {
     }
     (saida.aviso = saida.aviso || []).push(linha);
     console.log('aviso', JSON.stringify(linha));
+  }
+}
+
+/* ---------------- A campanha (§3.5) ---------------- */
+
+// A campanha de RH de teste: uma entrada para todas as TVs (uma peça na principal, uma frase no letreiro).
+const LT = req('../../js/lote-tv.js');
+const comCampos = (it, campos) => Object.assign({}, it, { campos: Object.assign({}, it.campos, campos) });
+function campanhaDeTeste() {
+  const p = montarProgramaRh({});
+  return {
+    nome: 'Semana da Segurança',
+    entradas: [{ zonas: {
+      principal: [{ item: comCampos(p.zonas.principal.items[1], { assunto: 'SIPAT começa segunda' }) }],
+      lateral: [{ item: p.zonas.lateral.items[1] }],
+      cabecalho: { pecas: [], mensagens: [] },
+      rodape: { pecas: [], mensagens: ['SIPAT: palestras às 15h'] },
+    } }],
+    peca: { item: comCampos(p.zonas.principal.items[2], { numero: '131' }), label: 'Dias sem acidente' },
+  };
+}
+const hojeIso = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+if (so.includes('campanha-lote')) {
+  const camp = campanhaDeTeste();
+  for (const n of (process.env.CG_LOTE || '15,20,300').split(',').map(Number).map((x) => Math.min(x, N))) {
+    const c = await conta(n);
+    const { r, travaMs, elMaxMs } = await comSonda(async () => {
+      const t0 = performance.now();
+      // O plano (planoDeRodar) lia cada TV; o envio (gravarEmLote) lia de novo e mandava todas.
+      const lidas = [];
+      for (let volta = 0; volta < 2; volta++) {
+        lidas.length = 0;
+        for (let i = 0; i < c.ids.length; i += 6) {
+          const parte = await Promise.all(c.ids.slice(i, i + 6).map((id) => pedir('GET', '/api/devices/' + id + '/config', { cookie: c.cookie })));
+          lidas.push(...parte);
+        }
+      }
+      const itens = c.ids.map((id, i) => ({ id, config: LT.quandoNaCampanha(LT.aplicarCampanha(lidas[i].json || {}, camp.entradas[0], camp.nome, { trocarLayout: true }), camp.nome, null), versao: Number(lidas[i].headers['x-config-versao']) || 0 }));
+      const envio = await pedir('POST', '/api/lote', { cookie: c.cookie, corpo: { itens, descricao: 'Campanha: ' + camp.nome } });
+      return { status: envio.status, erro: envio.erro || (envio.json && envio.json.error) || '', pedidos: 2 * c.ids.length + 1, mbEnviados: mb(envio.enviados), ms: performance.now() - t0,
+        kbDoDesfazerGuardado: envio.json && envio.json.lote ? +(String((await sql('SELECT telas FROM lotes WHERE id = ?', [envio.json.lote]))[0].telas).length / 1e3).toFixed(1) : null };
+    });
+    const linha = { tvs: n, ...r, ms: ms(r.ms), travaMs, elMaxMs };
+    (saida.campanhaLote = saida.campanhaLote || []).push(linha);
+    console.log('campanha-lote', JSON.stringify(linha));
+  }
+}
+
+if (so.includes('campanha')) {
+  const camp = campanhaDeTeste();
+  for (const n of (process.env.CG_AVISO || '20,300').split(',').map(Number).map((x) => Math.min(x, N))) {
+    const c = await conta(n);
+    const telas = c.ids.map((id) => ({ id, entrada: 0 }));
+    const operacao = { tipo: 'campanha', nome: camp.nome, entradas: camp.entradas, trocarLayout: true };
+    const plano = await comSonda(() => pedir('POST', '/api/lote/operacao', { cookie: c.cookie, corpo: { operacao, telas, hoje: hojeIso(), simular: true } }));
+    const pos = await comSonda(() => pedir('POST', '/api/lote/operacao', { cookie: c.cookie, corpo: { operacao, telas, hoje: hojeIso() } }));
+    const rows = await sql('SELECT config FROM devices WHERE tenant_id = ?', [c.tenantId]);
+    const linha = {
+      tvs: n,
+      plano: { status: plano.r.status, pedidos: 1, ms: ms(plano.r.ms), travaMs: plano.travaMs, elMaxMs: plano.elMaxMs },
+      por: { status: pos.r.status, erro: (pos.r.json && pos.r.json.error) || '', pedidos: 1, kbEnviados: +(pos.r.enviados / 1e3).toFixed(1), ms: ms(pos.r.ms), travaMs: pos.travaMs, elMaxMs: pos.elMaxMs,
+        comCampanha: rows.filter((x) => { try { return JSON.parse(x.config).zonas.principal.items[0]._campanha === camp.nome; } catch (e) { return false; } }).length },
+    };
+    if (pos.r.json && pos.r.json.lote) {
+      const [l] = await sql('SELECT telas FROM lotes WHERE id = ?', [pos.r.json.lote]);
+      linha.kbDoDesfazerGuardado = +(String(l.telas).length / 1e3).toFixed(1);
+      const d = await comSonda(() => pedir('POST', '/api/lote/' + pos.r.json.lote + '/desfazer', { cookie: c.cookie }));
+      linha.desfazer = { status: d.r.status, ms: ms(d.r.ms), travaMs: d.travaMs, elMaxMs: d.elMaxMs, voltaram: d.r.json && d.r.json.voltaram ? d.r.json.voltaram.length : null };
+    }
+    // A peça pronta e a publicação, nas mesmas TVs.
+    const peca = await comSonda(() => pedir('POST', '/api/lote/operacao', { cookie: c.cookie, corpo: { operacao: { tipo: 'peca', peca: camp.peca }, telas: c.ids, hoje: hojeIso() } }));
+    linha.peca = { status: peca.r.status, kbEnviados: +(peca.r.enviados / 1e3).toFixed(1), ms: ms(peca.r.ms), travaMs: peca.travaMs, elMaxMs: peca.elMaxMs };
+    const pub = await comSonda(() => pedir('POST', '/api/lote/operacao', { cookie: c.cookie, corpo: { operacao: { tipo: 'publicar', titulo: 'Bom dia', pecas: [{ formato: '16/9', faixa: 'manha', item: camp.peca.item }], dias: 3 }, telas: c.ids, hoje: hojeIso() } }));
+    linha.publicar = { status: pub.r.status, kbEnviados: +(pub.r.enviados / 1e3).toFixed(1), ms: ms(pub.r.ms), travaMs: pub.travaMs, elMaxMs: pub.elMaxMs };
+    (saida.campanha = saida.campanha || []).push(linha);
+    console.log('campanha', JSON.stringify(linha));
+  }
+}
+
+/* ---------------- A página Programação (§3.5) ---------------- */
+
+if (so.includes('programacao')) {
+  for (const n of [5, N]) {
+    const c = await conta(n);
+    // Antes: todas de uma vez. Depois: "todas se forem até 12" e, na conta grande, os cartões da primeira tela (6).
+    const todas = await comSonda(() => pedir('GET', '/api/devices/configs', { cookie: c.cookie }));
+    const ate = await comSonda(() => pedir('GET', '/api/devices/configs?ate=12', { cookie: c.cookie }));
+    const linha = { tvs: n,
+      todas: { status: todas.r.status, mb: mb(todas.r.bytes), ms: ms(todas.r.ms), travaMs: todas.travaMs, elMaxMs: todas.elMaxMs },
+      ate12: { status: ate.r.status, mb: mb(ate.r.bytes), ms: ms(ate.r.ms), travaMs: ate.travaMs, elMaxMs: ate.elMaxMs, grande: !!(ate.r.json && ate.r.json.grande) } };
+    if (ate.r.json && ate.r.json.grande) {
+      const seis = await comSonda(() => pedir('GET', '/api/devices/configs?ids=' + c.ids.slice(0, 6).join(','), { cookie: c.cookie }));
+      linha.primeiraTela = { tvs: 6, mb: mb(seis.r.bytes), ms: ms(seis.r.ms), travaMs: seis.travaMs, elMaxMs: seis.elMaxMs };
+    }
+    (saida.programacao = saida.programacao || []).push(linha);
+    console.log('programacao', JSON.stringify(linha));
   }
 }
 

@@ -4,6 +4,7 @@ import { Palco } from '../content/VerTelaAgora.jsx';
 import { TvAoVivo } from './TvAoVivo.jsx';
 import { telaAgora } from '../../api.js';
 import { lerProgramacao } from '../../lib/programacaoDaTv.js';
+import { usePerto } from '../../lib/usePerto.js';
 
 /*
  * A TV em miniatura, com o que ela está mostrando (QA de 26/10: "o que está
@@ -63,15 +64,7 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
    * dela, como o quadro do TvAoVivo) e só quando há o que desenhar: sem
    * resposta da TV, a miniatura mostra o recado e não usa a programação.
    */
-  const [caixa, setCaixa] = useState(null);
-  const [perto, setPerto] = useState(false);
-  useEffect(() => {
-    if (perto || cfg || vazia || !caixa) return undefined;
-    if (typeof IntersectionObserver === 'undefined') { setPerto(true); return undefined; }
-    const io = new IntersectionObserver((v) => { if (v.some((x) => x.isIntersecting)) setPerto(true); }, { rootMargin: '200px' });
-    io.observe(caixa);
-    return () => io.disconnect();
-  }, [caixa, perto, cfg, vazia]);
+  const [setCaixa, perto] = usePerto(!cfg && !vazia);
   const temImagem = !!(resposta && resposta.estado);
   useEffect(() => {
     if (cfg || vazia || !perto || !temImagem) return undefined;
