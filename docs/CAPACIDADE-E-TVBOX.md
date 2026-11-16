@@ -29,11 +29,14 @@ segundo a mais e 9.660 linhas de log em 4 minutos. A estimativa de "~500
 TVs antes de um container maior" (`docs/BILLING.md` §3.2) é conservadora: o
 medido é quatro vezes isso, e o container não precisa crescer até lá.
 
-O que pesa de verdade é a **conta grande no painel**: abrir a página Telas de
-uma conta com 300 TVs leva ~0,8–0,9 s e **para o servidor inteiro por
-200–300 ms** (todas as TVs de todas as contas esperam). E o **aviso rápido
-para muitas TVs** não funcionava acima de ~20 TVs com a programação de RH (o
-corpo do pedido passava de 2 MB) — agora pelo menos diz por quê.
+O que pesava de verdade era a **conta grande no painel**: abrir a página
+Telas de uma conta com 300 TVs levava ~0,8–0,9 s e **parava o servidor
+inteiro por 200–550 ms** (todas as TVs de todas as contas esperavam). E o
+**aviso rápido para muitas TVs** não funcionava acima de ~20 TVs com a
+programação de RH (o corpo do pedido passava de 2 MB). **Os dois foram
+corrigidos em 16/11** (3.5): a página Telas da conta de 323 TVs caiu de
+31 MB e 0,8 s para **0,11 MB e 19 ms**, e o aviso para **300 TVs** vai num
+pedido de 10 KB, em 0,85 s, sem travar o servidor mais de 20 ms.
 
 **Tamanho e quando escalar.** Com as correções, **1 vCPU e 1 GB** no
 Railway atendem até o teto de 2.000 TVs com folga (planejamento: ~3.000 por
@@ -55,9 +58,11 @@ Também foi feito um **vigia na página** (zona parada é cutucada, e a TV
 recarrega de madrugada) e o app Android tem **um buraco sério no vigia
 dele**: com o JavaScript travado de verdade, ele nunca recarrega (6.2).
 
-**Limites.** Uma instalação de 300 TVs **esbarra duas vezes**: no 61º
+**Limites.** Uma instalação de 300 TVs **esbarrava duas vezes**: no 61º
 aparelho do mesmo IP (60 TVs novas por hora por IP) e por volta da 300ª TV
-(600 pedidos de painel em 5 minutos por conta). Detalhe e proposta na seção 4.
+(600 pedidos de painel em 5 minutos por conta). **Os dois subiram em 16/11**:
+300 TVs novas por hora por IP, e o freio da conta passou a `max(600, 3 × TVs)`
+(900 com 300 TVs). Detalhe na seção 4.
 
 ---
 
@@ -196,7 +201,8 @@ Telas da conta grande (3.5).
    JSON de ~30 MB. Leva **0,7–0,9 s**, **trava o event loop 200–290 ms** (é o
    "pior" da tabela, em todos os degraus) e é o que faz os picos de heap: até
    330 MB com três pessoas depois da correção 4 (antes, somado ao lixo do
-   pulso das TVs, passou de 1 GB).
+   pulso das TVs, passou de 1 GB). **Corrigido em 16/11** (3.5): a lista
+   vem sem a programação e cada miniatura pede a sua quando aparece.
 3. **A senha perguntada por toda TV a cada minuto** (`js/senha.js:422`) lia
    **todas as TVs da conta** a cada pergunta só para saber o fuso
    (`server/routes/senha.js:86`, `daTela`): custo N² por conta — 300 TVs = 90 mil
@@ -209,8 +215,8 @@ Telas da conta grande (3.5).
    −42%, Postgres −40%, RSS de 942 para 154 MB com 2.000 TVs (3.2). Foi a
    maior diferença medida.
 
-Com 3 e 4 corrigidos, o que sobra como gargalo é **1 (o teto fixo)** para
-o número de TVs e **2 (a página Telas)** para o tamanho de uma conta.
+Com 2, 3 e 4 corrigidos, o que sobra como gargalo é **1 (o teto fixo)**
+para o número de TVs.
 
 ### 3.5 O painel da conta grande
 
@@ -226,23 +232,85 @@ enquanto o resto da frota roda (ms, p50 / p95):
 | 2.500 | 870 / 977 | 529 / 971 | 33 / 49 | 56 / 550 | 7 / 28 |
 
 O painel **não piora com o número de TVs**; piora com o **tamanho da conta**.
-A página Telas de 323 TVs custa ~0,8 s sempre, e é ela que faz as travadas
-de 200–300 ms da coluna "pior" do event loop (3.1) e os picos de heap.
-Proposta (não feita: muda o contrato da página): a lista sem a programação
-(as miniaturas já sabem pedir em grupos de 25 por `GET
-/api/devices/configs?ids=`, `web/src/api.js`, `lerConfigEmLote`) ou a
-página em páginas de 50 TVs.
+A página Telas de 323 TVs custava ~0,8 s sempre, e era ela que fazia as
+travadas de 200–300 ms da coluna "pior" do event loop (3.1) e os picos de heap.
+
+**Corrigido em 16/11.** A lista (`GET /api/devices?agora=1`,
+`server/routes/telas.js`) traz a programação junto só até 12 TVs
+(`PROGRAMACAO_NA_LISTA`): a conta pequena abre num pedido, como antes.
+Acima disso a lista vem sem ela — o cartão tem tudo de que precisa (nome,
+grupo, sinal, aparelho, app, horário, a última resposta da TV) — e cada
+miniatura pede a sua programação **só quando aparece na tela** (a 200 px
+dela) **e há uma imagem da TV para desenhar**
+(`web/src/components/tela/MiniaturaDaTela.jsx`), juntando as pedidas no
+mesmo instante em grupos de **25**, com **no máximo 2 pedidos no ar**
+(`web/src/api.js`, `lerConfigEmLote`). O Início, que usa a mesma
+miniatura, ganhou o mesmo. Medido com `tools/carga/conta-grande.mjs`
+(SQLite local, a mesma máquina, a programação de RH de ~96 KB por TV; "trava"
+é a maior travada do event loop medida pela sonda dentro do servidor, a cada
+1 s):
+
+| Página Telas | antes | depois |
+|---|---|---|
+| Conta de 323 TVs: a lista | 31,5 MB · 824 ms · trava 543 ms | **0,11 MB · 19 ms · trava 19 ms** |
+| … a primeira tela de cartões (9 miniaturas) | (vinha na lista) | 0,87 MB · 43 ms · trava 32 ms |
+| … rolar as 323 até o fim | (vinha na lista) | 13 pedidos de 25, 90 ms cada (mediana), trava de no máximo 81 ms |
+| Conta de 5 TVs (com a programação na lista) | 0,49 MB · 17 ms · trava 11 ms | 0,49 MB · 18 ms · trava 18 ms (igual) |
+
+Fica de fora a página **Programação**, que ainda lê a programação de todas
+as TVs de uma vez (`GET /api/devices/configs`, `deviceConfig.todas`): numa
+conta de 323 TVs, os mesmos ~31 MB. É o próximo passo para a conta grande.
 
 **Aviso para muitas TVs e o limite do corpo.** O aviso em 20 TVs (~1,9 MB)
 foi o maior que coube: com 21 TVs da programação de RH o corpo passa de 2 MB
 (`server.js:205`). Medido com `tools/carga/limites-conta.mjs`, no código de
-antes e no de depois:
+antes e no de depois da primeira correção (14/11):
 
 | Envio (programação de RH, 96 KB por TV) | corpo | antes | depois |
 |---|---|---|---|
 | 5, 10, 15, 20 TVs | 0,5–1,9 MB | 200 | 200 |
 | 21, 25, 50 TVs | 2,0–4,8 MB | **conexão cortada** (`ECONNRESET`; o painel diz "sem conexão") | **413** "O envio ficou grande demais para um pedido só…" |
 | 205 TVs (programação pequena) | <2 MB | **200, mas só 200 TVs gravadas** | **400** "Um envio vai para até 200 TVs… Nada foi enviado" |
+
+**O aviso como operação do servidor (16/11).** O painel não lê mais a
+programação de cada TV nem manda todas de volta: manda "este aviso nestas
+TVs" (`POST /api/lote/aviso`, `web/src/components/tela/AvisoRapido.jsx`), e o
+servidor põe o aviso em cada uma com a mesma regra do painel (`js/aviso.js`,
+agora dos dois lados) e **pelo mesmo caminho do envio em lote**
+(`conferirLote` e `aplicarLote` em `server/routes/telas.js`): posse e loja de
+cada TV (a lista misturada é recusada inteira, sem dizer o nome da TV de
+fora), a versão de cada TV (alguém gravou no meio: desfaz o que já foi, lê de
+novo e põe outra vez, até três vezes), a porta das peças, tudo ou nada (a TV
+sem lugar para o aviso barra o envio, dizendo qual) e a aprovação (o aviso
+do membro vira pedido, 202, que o dono aprova). O trabalho anda **em pedaços
+de 10 TVs, cedendo a vez** entre eles, e a porta das peças **lembra o HTML
+já conferido** (`js/peca-html.js`, `lembrarConferidas`, ligada só no
+servidor): conferir a programação de RH custava ~10 ms por TV, quase tudo
+refazendo a mesma conta nas mesmas peças-ouro, e caiu para ~0,7 ms.
+
+Sem o teto de 200 TVs (ele existia pelo corpo, e o corpo agora é pequeno):
+até 1.000 TVs por aviso. Quem precisa de aprovação segue até 200, que é o
+que o revisor vê TV por TV no antes e depois. O `POST /api/lote` (que leva a
+programação inteira de cada TV no corpo) mantém o teto de 200.
+
+O **Desfazer** do aviso guarda só o id do aviso, e não a programação de antes
+de cada TV (com 300 TVs de RH seriam ~29 MB numa linha do banco, e a lista
+"Últimos envios" lê dez): ele tira o aviso da programação de agora, e o que
+alguém mudou na TV depois fica. A TV que não tinha programação volta a ficar
+sem nenhuma.
+
+| Aviso rápido (programação de RH) | antes (o painel lia e mandava cada TV) | depois (`POST /api/lote/aviso`) |
+|---|---|---|
+| 20 TVs | 21 pedidos, 2,02 MB · **413** | 1 pedido, 4,5 KB · 67 ms · trava 24 ms |
+| 300 TVs | 301 pedidos (metade do freio da conta), 30,3 MB · **413** | **1 pedido, 10,4 KB · 852 ms · trava 20 ms**, as 300 com o aviso |
+| Desfazer, 300 TVs | — | 658 ms · trava 46 ms; guardados 39 KB (no lugar de ~29 MB) |
+
+O caminho de antes continua para o resto do painel (campanhas, peças
+prontas, a Agenda: `gravarEmLote`, `web/src/lib/rodar.js`) e ficou mais
+leve com a memória da porta: o envio para 15 TVs de RH caiu
+de 418 ms e trava de 340 ms para 169 ms e 59 ms. Mas segue preso aos 2 MB:
+campanha ou peça pronta em mais de ~19 TVs de RH ainda leva 413 — o próximo
+candidato a virar operação do servidor, como o aviso.
 
 ### 3.6 Teto da instância única e tamanho no Railway
 
@@ -255,7 +323,7 @@ antes e no de depois:
   painel, deploys e rajadas. Esta máquina não é o vCPU do Railway
   (compartilhado, em geral mais lento) e o teste não passou de 2.500: o
   número de **planejamento é ~3.000 TVs por instância**, subindo o teto para
-  3.000 e corrigindo a página Telas (3.5) antes.
+  3.000 (a página Telas da conta grande já foi corrigida, 3.5).
 - **Memória:** depois da correção, ~150 MB de base + ~10 KB por TV + os
   picos do painel (RSS de até ~550 MB com 2.000 TVs e três pessoas na página
   Telas de uma conta de 300 TVs). **1 GB atende 2.000–3.000 TVs com
@@ -308,8 +376,8 @@ o que não acontece com este tráfego (as publicações são raras; o grosso do
 tráfego é pulso, que não precisa de `NOTIFY`).
 
 **Quando:** antes de ~2.000 TVs ligadas (o teto atual) se não quiser mexer no
-número; até **~3.000** se subir o teto para 3.000–4.000 e corrigir a página
-Telas. Com o preço de R$ 139, isso é ~R$ 400 mil/mês de receita — há tempo,
+número; até **~3.000** se subir o teto para 3.000–4.000 (a página Telas da
+conta grande já foi corrigida, 3.5). Com o preço de R$ 139, isso é ~R$ 400 mil/mês de receita — há tempo,
 mas o trabalho (2–4 semanas com testes) deve começar quando a base passar
 de **~1.500 TVs**. O atalho que parece barato — várias instâncias com
 cada conta numa — não dá no Railway: a TV e o painel da mesma conta precisam
@@ -320,15 +388,16 @@ cair no mesmo processo, e o balanceador do Railway não roteia por conta.
 ## 4. Limites que a instalação e a conta grande encontram
 
 Medido com `tools/carga/limites-conta.mjs` e na própria instalação das
-2.500 TVs:
+2.500 TVs (14/11); as linhas marcadas "16/11" mudaram depois, com teste em
+`test/conta-grande.test.js`:
 
 | Limite | Onde | Valor | Quem esbarra | Medido |
 |---|---|---|---|---|
-| TV nova por IP (`POST /api/devices`, sem login) | `server/routes/telas.js:277` | 60/h por IP | o instalador ligando a 61ª TV do mesmo escritório (ou do 4G dele) | **a 61ª leva 429** com `Retry-After` de até 1 h |
-| Freio do painel da conta | `server/limites.js:42`, `server.js:701` | 600 pedidos/5 min **por conta** (todas as pessoas juntas) | instalar 300 TVs (parear + publicar = 2 pedidos por TV); o aviso rápido para muitas TVs (o painel lê cada TV antes: `web/src/lib/rodar.js`, `gravarEmLote`) | **429 por volta da 300ª TV**; a instalação esperou 155 s |
+| TV nova por IP (`POST /api/devices`, sem login) | `server/routes/telas.js` (`TV_NOVA_POR_IP`) | era 60/h por IP → **300/h (16/11)** | o instalador ligando a 61ª TV do mesmo escritório (ou do 4G dele) | **a 61ª levava 429** com `Retry-After` de até 1 h; agora a 301ª |
+| Freio do painel da conta | `server/limites.js` (`tetoDe`), `server.js` (`telasDaConta`) | era 600 pedidos/5 min **por conta** (todas as pessoas juntas) → **`max(600, 3 × TVs)` (16/11)**: 900 com 300 TVs | instalar 300 TVs (parear + publicar = 2 pedidos por TV); o aviso rápido para muitas TVs (o painel lia cada TV antes — agora é 1 pedido) | **429 por volta da 300ª TV**; a instalação esperou 155 s |
 | Erro de código de pareamento | `server/routes/telas.js:231–232` | 15 erros/10 min por IP e por conta | só quem digita errado (conta só o erro) | ok |
-| Corpo do pedido | `server.js:205–211` | 2 MB | **aviso rápido em mais de ~20 TVs** com a programação de RH (~96 KB por TV) | conexão cortada (o painel dizia "sem conexão") → **agora 413 com o motivo** |
-| TVs por envio em lote | `server/routes/telas.js:1240` | 200 | conta com mais de 200 TVs | gravava as 200 primeiras e respondia "ok" → **agora recusa inteiro com o motivo** |
+| Corpo do pedido | `server.js:205–211` | 2 MB | **aviso rápido em mais de ~20 TVs** com a programação de RH (~96 KB por TV) — o aviso agora é ~10 KB para 300 TVs (16/11); campanhas e peças prontas seguem nele | conexão cortada (o painel dizia "sem conexão") → **agora 413 com o motivo** |
+| TVs por envio em lote | `server/routes/telas.js` (`LOTE_MAX`) | 200 (o aviso: 1.000; o aviso de quem precisa de aprovação: 200) | conta com mais de 200 TVs | gravava as 200 primeiras e respondia "ok" → **agora recusa inteiro com o motivo** |
 | Plano Essencial | `server/plans.js:76` | 49 TVs | toda conta de RH com 50+ TVs | precisa de Enterprise (não se ativa pelo painel) |
 | Medidor do player (nunca bloqueia) | `server/limites.js:56` | era 1.200/5 min **por conta** | toda conta com mais de ~43 TVs aparecia como "esbarrando" na supervisão (89 avisos `limite.estourado` em 20 min no teste) | **agora 150 por TV** |
 | Tempo real por TV / por conta | `server/limites.js:138–140` | 4 por TV; máx(20, 4 × TVs) por conta | ninguém com TV saudável | ok |
@@ -344,29 +413,54 @@ Medido com `tools/carga/limites-conta.mjs` e na própria instalação das
 - lote com mais de 200 TVs é **recusado inteiro, com o motivo** (antes
   perdia TV em silêncio).
 
+**Feito em 16/11** (as propostas 1 a 3 de antes; teste em
+`test/conta-grande.test.js`):
+
+1. **TV nova por IP: de 60 para 300 por hora** (`server/routes/telas.js`,
+   `TV_NOVA_POR_IP`). A rota segue pública e com teto (um laço faz milhares
+   por hora), e a tabela segue se limpando sozinha (TV sem dono some em 7
+   dias, `limparVencidos` nos dois bancos). 300/h cobre a instalação inteira
+   de uma conta grande num escritório. A alternativa mais fina (devolver a
+   vaga quando a TV é pareada do mesmo IP) não foi feita.
+2. **Freio do painel proporcional ao tamanho da conta**: `max(600, 3 × TVs)`
+   por 5 min (`server/limites.js`, `tetoDe`), 900 com 300 TVs. O número de
+   TVs fica 5 min em memória, como o selo (`server.js`, `telasDaConta`), e
+   cai na hora quando uma TV é pareada, reconectada ou removida
+   (`esquecerSelo`): quem instala 300 TVs vê o teto subir junto. Medido: a
+   conta de 220 TVs passa do 600º pedido e para no 661º.
+3. **O aviso rápido como operação** (`POST /api/lote/aviso`, 3.5): o painel
+   manda "este aviso nestas TVs" num pedido de poucos KB, e o servidor aplica
+   em cada uma pelo caminho do lote (posse, loja, versão, aprovação, tudo ou
+   nada, Desfazer), em pedaços. 300 TVs: 1 pedido em vez de 301, 10 KB em vez
+   de 30 MB.
+
+**A 2ª TV do plano grátis diz por quê** (reteste 3, item 7; não era deste
+relatório, foi junto): o 402 do pareamento ia só para o painel, e a TV ficava
+no código sem explicação. Agora o servidor manda o motivo à TV pelo tempo
+real (`server/plans.js`, `recusaNaTv`; evento `recusada`) e ela mostra, na
+tela do código: "O plano grátis tem 1 TV — Esta conta já está usando a TV do
+plano grátis. Para ligar mais TVs, o dono da conta escolhe um plano no painel
+do MultiTelas (app.multitelas.net.br), em Plano. Depois, é só digitar este
+código de novo." (`js/cloud.js`, `js/player.js`, `showRecusada`; o código e o
+QR ficam). Teste acabado, fatura em atraso e o limite de um plano pago têm o
+texto deles.
+
 **Proposto (não feito — mexe em regra de negócio ou no painel):**
 
-1. **TV nova por IP: de 60 para 300 por hora.** A rota é pública, mas a
-   tabela já se limpa sozinha (TV sem dono some em 7 dias,
-   `server/db-postgres.js`, `limparVencidos`). 300/h cobre a instalação
-   inteira de uma conta grande num escritório e ainda segura um laço.
-   Alternativa mais fina: devolver a vaga quando a TV é pareada do mesmo IP.
-2. **Freio do painel proporcional ao tamanho da conta**: `max(600, 3 × TVs)`
-   por 5 min (900 para 300 TVs), como o teto do tempo real já é
-   (`tetoDaConta`). Precisa da contagem de TVs da conta em cache (5 min,
-   como o selo).
-3. **O aviso rápido como operação, não como N programações.** Hoje o painel
-   lê a programação de cada TV (1 pedido por TV) e manda todas de volta num
-   corpo só (96 KB × TVs). Para 300 TVs isso é 300 pedidos de leitura (metade
-   do freio da conta) e 29 MB de corpo. O certo é o servidor receber "este
-   aviso nestas TVs" e aplicar em cada uma — um pedido de poucos KB. Até lá,
-   o painel deveria mandar o lote em partes de até ~1,5 MB.
-4. **Parceiro (Visitor) instalando:** um papel de operador/parceiro com o
+1. **Parceiro (Visitor) instalando:** um papel de operador/parceiro com o
    freio do painel 3× maior e a TV nova sem limite por IP quando o
    pareamento vem dele. Precisa de desenho de papel — não foi feito.
-5. **Plano para 50–300 TVs**: o Essencial para em 49 (`server/plans.js:76`);
+2. **Plano para 50–300 TVs**: o Essencial para em 49 (`server/plans.js:76`);
    a Visitor vai precisar de um plano (ou de um Enterprise ativado pelo
    operador) antes da primeira venda grande.
+3. **Campanhas e peças prontas para muitas TVs como operação do servidor**,
+   como o aviso: seguem lendo e mandando a programação de cada TV
+   (`gravarEmLote`), presas aos 2 MB (~19 TVs de RH).
+4. **A página Programação da conta grande**: ainda lê a programação de todas
+   as TVs de uma vez (`GET /api/devices/configs`, ~31 MB com 323 TVs).
+5. **O antes e o depois de um pedido de aprovação grande**: o revisor recebe
+   a programação inteira de cada TV duas vezes (até 200 TVs, ~38 MB);
+   precisa de páginas ou de só o que mudou.
 
 ---
 
@@ -634,10 +728,22 @@ Tudo com teste em `test/carga-rh.test.js` (e a suíte inteira passando).
 | O vigia da página (zona parada, recarga da madrugada) | `js/vigia.js` (novo), `js/player.js`, `js/cloud.js`, `player.html`, `web/src/lib/tvAoVivo.js`, `sw.js` (`mt-shell-v91`) | 6.3 |
 | Ferramentas de medida | `tools/carga/` | seção 8 |
 
+**Depois, em 16/11** (com teste em `test/conta-grande.test.js`, a suíte
+inteira passando e as medidas de `tools/carga/conta-grande.mjs`):
+
+| Mudança | Arquivos | Efeito medido |
+|---|---|---|
+| A lista de Telas sem a programação acima de 12 TVs; a miniatura pede a sua quando aparece e tem o que desenhar, de 25 em 25, 2 pedidos no ar | `server/routes/telas.js` (`PROGRAMACAO_NA_LISTA`), `web/src/components/tela/MiniaturaDaTela.jsx`, `web/src/api.js` (`lerConfigEmLote`) | 323 TVs: 31,5 MB → 0,11 MB, 824 → 19 ms, trava 543 → 19 ms; a conta de 5 TVs igual |
+| O aviso rápido como operação do servidor, pelo caminho do lote, em pedaços, com o Desfazer leve | `server/routes/telas.js` (`rotaAviso`, `montarAviso`, `tirarAvisoDaTela`, `conferirLote`, `aplicarLote`), `js/aviso.js` (novo), `web/src/lib/aviso.js`, `web/src/components/tela/AvisoRapido.jsx`, `web/src/api.js` | 300 TVs: 301 pedidos e 30 MB (413) → 1 pedido de 10 KB, 852 ms, trava 20 ms; Desfazer guarda 39 KB |
+| A porta das peças lembra o HTML já conferido (só no servidor) | `js/peca-html.js` (`lembrarConferidas`), `server/routes/telas.js` | conferir a programação de RH: ~10 → ~0,7 ms |
+| TV nova por IP: 300/h | `server/routes/telas.js` (`TV_NOVA_POR_IP`) | a 301ª leva 429 (era a 61ª) |
+| Freio do painel: `max(600, 3 × TVs)`, a contagem 5 min em memória | `server/limites.js` (`tetoDe`), `server.js` (`telasDaConta`, `esquecerSelo`) | conta de 220 TVs: 660 pedidos em 5 min (era 600) |
+| A 2ª TV do grátis diz por quê, na tela do código | `server/plans.js` (`recusaNaTv`), `server/routes/telas.js`, `js/cloud.js`, `js/player.js`, `sw.js` (`mt-shell-v92`) | seção 4 |
+
 **Não mudou** (proposta, por ser regra de negócio, contrato do painel ou
-app sem compilar aqui): o teto de 2.000 conexões, os limites de TV nova por
-IP e do freio do painel, a página Telas da conta grande, o aviso rápido como
-operação no servidor, o vigia do app Android e a limpeza do cache de mídia.
+app sem compilar aqui): o teto de 2.000 conexões, campanhas e peças prontas
+para muitas TVs como operação do servidor, a página Programação da conta
+grande, o vigia do app Android e a limpeza do cache de mídia.
 
 ---
 
@@ -645,7 +751,7 @@ operação no servidor, o vigia do app Android e a limpeza do cache de mídia.
 
 Tudo local; nada sai para a rede (sem chave de IA, sem e-mail, sem a busca
 do APK, e o navegador do soak bloqueia todo endereço que não é o servidor
-local). As portas usadas aqui foram 6090–6092.
+local). As portas usadas aqui foram 6090–6092 (14/11) e 6121–6123 (16/11).
 
 ```bash
 # Postgres local (o usuário postgres não pode ser root): initdb + pg_ctl, só socket Unix.
@@ -663,6 +769,11 @@ node tools/carga/tabela.mjs /tmp/carga /tmp/maquina.jsonl  # as tabelas deste re
 
 # 3. Os limites (TV nova por IP, freio do painel, lote grande).
 LIM_BASE=http://127.0.0.1:6090 LIM_PSQL="-h /caminho/do/socket -U mt -d multitelas" node tools/carga/limites-conta.mjs
+
+# 3b. A página Telas e o aviso rápido numa conta de 323 TVs (3.5), com a sonda a cada 1 s.
+# (Postgres: "$PG" no fim do subir-servidor.sh, e CG_PG="$PG" no lugar de CG_DADOS.)
+SONDA_MS=1000 tools/carga/subir-servidor.sh 6121 /tmp/cg            # SQLite em /tmp/cg
+CG_BASE=http://127.0.0.1:6121 CG_DADOS=/tmp/cg CG_SONDA=/tmp/cg/sonda.jsonl node tools/carga/conta-grande.mjs
 
 # 4. A TV ligando junto (300 TVs em 5 s, com e sem a mídia).
 TEMP_BASE=http://127.0.0.1:6090 TEMP_FROTA=/tmp/carga/frota.json TEMP_N=300 TEMP_MIDIA=1 node tools/carga/tempestade.mjs

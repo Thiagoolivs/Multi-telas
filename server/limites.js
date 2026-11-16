@@ -61,6 +61,23 @@ const CLASSES = {
   upload: { max: 120, janelaMs: 60 * 60 * 1000, bloqueia: true },
 };
 
+/*
+ * O FREIO DO PAINEL CRESCE COM A CONTA (teste de carga, 16/11). Os 600 eram
+ * da conta inteira — todas as pessoas juntas —, e a conta de RH com 300 TVs
+ * gastava isso só para se instalar (parear e publicar são 2 pedidos por TV):
+ * o 429 vinha por volta da 300ª TV, e a instalação esperou 155 s. Agora o
+ * teto é max(600, 3 × TVs da conta) — 900 com 300 TVs —, como o do tempo
+ * real já é (tetoDaConta, lá embaixo). A conta pequena continua com os 600:
+ * o laço de um navegador faz milhares, e é ele que o freio segura.
+ */
+const POR_TELA_DA_CONTA = { painel: 3 };
+function tetoDe(classe, telas) {
+  const regra = CLASSES[classe];
+  if (!regra) return Infinity;
+  const porTela = POR_TELA_DA_CONTA[classe] || 0;
+  return Math.max(regra.max, porTela * (Number(telas) || 0));
+}
+
 /* Balde por conta e classe. Janela fixa, em memória, como o resto. */
 const baldes = new Map();      // 'classe:tenant' -> { n, ate }
 const excessos = new Map();    // tenant -> { [classe]: { vezes, ultimo } }
@@ -73,8 +90,11 @@ function chave(classe, tenantId) { return classe + ':' + tenantId; }
  * Devolve `ok:false` só quando a classe bloqueia. Para a classe do player,
  * devolve sempre `ok:true` e mesmo assim REGISTRA o excesso — quem opera
  * precisa enxergar a tela defeituosa antes de o cliente ligar reclamando.
+ *
+ * `telasDaConta`: quantas TVs a conta tem (o freio do painel cresce com ela,
+ * tetoDe). Sem o número, vale o teto mínimo da classe.
  */
-function permitir(classe, tenantId, deviceId) {
+function permitir(classe, tenantId, deviceId, telasDaConta) {
   const regra = CLASSES[classe];
   if (!regra || !tenantId) return { ok: true, classe, restam: Infinity };
 
@@ -85,8 +105,9 @@ function permitir(classe, tenantId, deviceId) {
   if (!b || agora > b.ate) { b = { n: 0, ate: agora + regra.janelaMs }; baldes.set(k, b); }
   b.n++;
 
-  if (b.n <= regra.max) {
-    return { ok: true, classe, restam: regra.max - b.n };
+  const teto = tetoDe(classe, telasDaConta);
+  if (b.n <= teto) {
+    return { ok: true, classe, restam: teto - b.n };
   }
 
   anotarExcesso(tenantId, classe, agora, b.n, regra.porTela ? deviceId : undefined);
@@ -273,7 +294,7 @@ const varrer = setInterval(() => {
 if (varrer.unref) varrer.unref();
 
 module.exports = {
-  CLASSES, permitir, abrirConexao, fecharConexao, panorama,
+  CLASSES, POR_TELA_DA_CONTA, tetoDe, permitir, abrirConexao, fecharConexao, panorama,
   conexoesDaConta, excessosDaConta, tetoDaConta, zerar,
   POR_TELA, DO_SERVIDOR,
 };

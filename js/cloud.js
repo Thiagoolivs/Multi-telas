@@ -363,6 +363,16 @@
         try { dados = JSON.parse(ev.data || '{}'); } catch (e) {}
         if (onPareada) onPareada(dados);
       });
+      /*
+       * A conta não pôde receber esta TV (o plano grátis tem 1 TV, o teste
+       * acabou, fatura em atraso — reteste 3, item 7). A TV segue no código,
+       * e o player diz por quê na mesma tela (js/player.js, showRecusada).
+       */
+      es.addEventListener('recusada', (ev) => {
+        let dados = {};
+        try { dados = JSON.parse(ev.data || '{}'); } catch (e) {}
+        document.dispatchEvent(new CustomEvent('mt:pareamento-recusado', { detail: dados }));
+      });
       es.addEventListener('config', async (ev) => {
         let meta = {};
         try { meta = JSON.parse(ev.data || '{}'); } catch (e) {}

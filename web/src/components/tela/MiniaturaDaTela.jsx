@@ -55,12 +55,30 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
   const [resposta, setResposta] = useState(null);
   // undefined: lendo; null: não deu para ler (fica o desenho de antes).
   const [lida, setLida] = useState(undefined);
+  /*
+   * A PROGRAMAÇÃO SÓ QUANDO A MINIATURA APARECE (teste de carga, 16/11). A
+   * lista da conta grande vem sem ela (server/routes/telas.js, a lista de
+   * Telas), e as 300 miniaturas pedindo a sua ao abrir seriam os mesmos
+   * ~30 MB de antes, só que em pedaços. Pede a que está na tela (ou a 200 px
+   * dela, como o quadro do TvAoVivo) e só quando há o que desenhar: sem
+   * resposta da TV, a miniatura mostra o recado e não usa a programação.
+   */
+  const [caixa, setCaixa] = useState(null);
+  const [perto, setPerto] = useState(false);
   useEffect(() => {
-    if (cfg || vazia) return undefined;
+    if (perto || cfg || vazia || !caixa) return undefined;
+    if (typeof IntersectionObserver === 'undefined') { setPerto(true); return undefined; }
+    const io = new IntersectionObserver((v) => { if (v.some((x) => x.isIntersecting)) setPerto(true); }, { rootMargin: '200px' });
+    io.observe(caixa);
+    return () => io.disconnect();
+  }, [caixa, perto, cfg, vazia]);
+  const temImagem = !!(resposta && resposta.estado);
+  useEffect(() => {
+    if (cfg || vazia || !perto || !temImagem) return undefined;
     let vivo = true;
     lerProgramacao(d.id, d.updatedAt || 0).then((c) => { if (vivo) setLida(c); });
     return () => { vivo = false; };
-  }, [d.id, d.updatedAt, cfg, vazia]);
+  }, [d.id, d.updatedAt, cfg, vazia, perto, temImagem]);
   const programacao = cfg || lida;
   // Começa "perguntando": até a primeira leitura voltar, a TV no ar está sendo consultada.
   const [perguntando, setPerguntando] = useState(online && !vazia);
@@ -102,7 +120,7 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
     const velha = !resposta.em || Date.now() - resposta.em > VELHA_MS;
     const selo = !online ? 'Última imagem · ' + quando : velha && quando ? 'Visto em ' + quando : '';
     return (
-      <div className="pointer-events-none relative w-full" aria-label={(selo ? selo + ' · ' : 'O que está passando agora · ') + (d.name || '')}>
+      <div ref={setCaixa} className="pointer-events-none relative w-full" aria-label={(selo ? selo + ' · ' : 'O que está passando agora · ') + (d.name || '')}>
         <div className={!online ? 'opacity-50 grayscale' : ''}>
           {/* A TV de verdade (o player num quadro); sem a programação ainda, o desenho de antes. */}
           {programacao === undefined ? <div className="aspect-video w-full rounded-lg bg-surface-2" />
@@ -115,7 +133,7 @@ export function MiniaturaDaTela({ d, online, vazia, acao, altura = 220, pedirDeN
     );
   }
   return (
-    <div className="flex flex-col items-center gap-2 px-4 text-center">
+    <div ref={setCaixa} className="flex flex-col items-center gap-2 px-4 text-center">
       <MonitorPlay size={26} className={online ? 'text-accent' : 'text-ink-3'} />
       <span className="text-sm font-medium text-ink-2">
         {vazia ? 'Nada passando nesta TV ainda' : !online ? 'Sem imagem: a TV está fora do ar'

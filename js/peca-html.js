@@ -718,6 +718,41 @@
     return { ok: problemas.length === 0, html: h.html, css, campos: h.campos, problemas: p, avisos };
   }
 
+  /*
+   * A MESMA PEÇA, CONFERIDA UMA VEZ (teste de carga, 16/11). Conferir uma
+   * programação de RH (~13 peças) custa ~12 ms, quase tudo aqui, e as 300
+   * TVs de uma conta grande levam as MESMAS peças: o aviso para todas
+   * passava 3,7 s conferindo de novo o mesmo HTML. Com a memória, o mesmo
+   * HTML e CSS dão o mesmo resultado sem refazer a conta — a saída é função
+   * só dos dois textos, e a chave são os dois inteiros. O resto do item
+   * (campos, fotos, marca) segue conferido toda vez, em validarItem.
+   *
+   * Desligada por padrão: quem liga é o servidor (lembrarConferidas). A TV
+   * e o painel seguem conferindo sempre, como antes.
+   */
+  let lembradas = null;
+  let lembrarAte = 0;
+  function lembrarConferidas(max) {
+    lembrarAte = Math.max(0, Math.floor(Number(max) || 0));
+    lembradas = lembrarAte ? new Map() : null;
+  }
+  function higienizarLembrando(entrada) {
+    if (!lembradas) return higienizar(entrada);
+    const e = entrada || {};
+    // A mesma conversão das funções lá de cima (String(x || '')): a chave é o que elas leem.
+    const html = String(e.html || '');
+    const css = String(e.css || '');
+    const k = html.length + ':' + html + css;
+    let r = lembradas.get(k);
+    if (r) { lembradas.delete(k); lembradas.set(k, r); } else {
+      r = higienizar({ html, css });
+      lembradas.set(k, r);
+      if (lembradas.size > lembrarAte) lembradas.delete(lembradas.keys().next().value);
+    }
+    // Cópias: quem recebe pode mexer na lista sem estragar a lembrada.
+    return { ok: r.ok, html: r.html, css: r.css, campos: r.campos.map((c) => Object.assign({}, c)), problemas: r.problemas.slice(), avisos: r.avisos.slice() };
+  }
+
   /* ======================= O item ======================= */
 
   /*
@@ -878,7 +913,7 @@
   function validarItem(item, opts) {
     const it = item && typeof item === 'object' ? item : {};
     const o = opts || {};
-    const h = higienizar({ html: it.html, css: it.css });
+    const h = higienizarLembrando({ html: it.html, css: it.css });
     const problemas = h.problemas.slice();
     if (it.type !== 'peca-html') problemas.push('type precisa ser "peca-html"');
 
@@ -1085,7 +1120,7 @@
 
   return {
     LIMITES, PAPEIS, FORMATOS, VIVOS, PAPEIS_FOTO,
-    higienizar, validarItem, ehMidia, doArquivo, conferirConfig, fotosDoItem,
+    higienizar, validarItem, ehMidia, doArquivo, conferirConfig, fotosDoItem, lembrarConferidas,
     lerFoco, fotoDoCampo, lerEspaco,
     // FOTO VIVA: o vídeo curto num espaço de foto.
     ehVideo, posterDoVideo, videosDoItem,
