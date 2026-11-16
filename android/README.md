@@ -5,11 +5,53 @@ comum não tem:
 
 - abre direto no `/tv`, em tela cheia, e **não sai dali** (VOLTAR não fecha);
 - **mantém a tela acesa**;
-- se a página travar ou o processo do WebView morrer, **volta sozinho**;
-  se o app cair, **reabre em 2 segundos**;
+- se a página travar ou o processo do WebView morrer, **volta sozinho**
+  (o vigia, abaixo); se o app cair, **reabre em 2 segundos**;
 - a identidade da tela fica no armazenamento do WebView do próprio app, que
   não é limpo como o navegador de algumas TVs;
 - aparece no painel, no cartão da tela, como "App 1.0.N".
+
+## Contra travamento (o vigia do app)
+
+O vigia (`MainActivity`, regras em `RegrasDoVigia.java`) pergunta à página
+a cada minuto se o player está de pé. Desde o vigia v2:
+
+| A página… | O que conta | O que o app faz |
+|---|---|---|
+| responde "ok" | — | zera a conta |
+| responde, mas não é o player (página em branco, erro, aparelho antigo) | falha "fora" | 3 seguidas: **recarrega** (como antes, de 3 em 3 min no máximo). Não sobe a escada. |
+| **não responde** em 1 min (JavaScript ou renderizador travado) | falha "silêncio" | sobe a escada, sempre com 3 falhas seguidas antes de cada degrau |
+| tem uma zona parada há mais de 15 min, com o servidor respondendo (o vigia da página tentou e não resolveu — `js/vigia.js`) | falha "parado" | sobe a escada |
+
+A escada: **1.** recarregar a página → **2.** recriar o WebView (no Android
+10+ mata o processo do WebView com `terminate()`; antes do 10, troca o
+WebView) → no **Android até 9**, com silêncio, o 2º degrau é **reiniciar o
+app** (alarme de 2 s + sair), porque lá o renderizador travado não morre
+sozinho; **no máximo uma vez a cada 6 h** (a marca fica gravada) → depois do
+topo, **uma ação a cada 30 min no máximo**. 30 min sem falha e a escada
+volta ao começo. Com outra tela por cima (configurações, instalador), só o
+1º degrau. Enquanto aparece "Procurando a internet…", o vigia descansa (a
+nova tentativa de 15 s cuida). O processo do WebView que cai sozinho 4 vezes
+em 10 min espera 1 min antes de carregar de novo.
+
+**Uma vez por dia**, a recarga da madrugada do player (`js/vigia.js`: ligado
+há mais de 20 h, entre 3h e 5h da loja, com o servidor respondendo) vira um
+**WebView novo** no app: devolve também a memória do processo do WebView,
+que a recarga da página não devolve. Quem decide a hora é o vigia da página;
+o app só executa — os dois nunca agem na mesma madrugada.
+
+**Reiniciar o app pelo painel:** Telas › Mais opções › **Reiniciar o app da
+TV** (só aparece na TV com o app). A página marca `window.MT_REINICIAR` e o
+vigia recria o WebView em até 1 min (no máximo um pedido a cada 5 min; sem
+ele agir em 3 min, a página recarrega). Não é um método da ponte `MTApp` de
+propósito: a ponte é vista por todo iframe, e um site externo num conteúdo
+reiniciaria a TV em laço.
+
+O que o vigia fez vai no pulso (`info.appVigia`, por exemplo
+"recargas 1 · webview 0 · pedidos 1 · app 0": recargas e WebViews novos por
+falha e pedidos da página — madrugada e painel — desde que o app abriu; "app"
+são os reinícios do app pelo vigia, no aparelho) e no log do Android
+(`adb logcat -s MultiTelas`).
 
 ## Onde baixar
 
@@ -65,8 +107,13 @@ pelo pendrive".
    **Android 8 ou mais novo:** na primeira atualização remota o box pede,
    uma vez, "permitir instalar apps desta fonte" para o MultiTelas TV.
    Permita (ou já deixe permitido aqui, na instalação).
-4. **Faça o app abrir sozinho quando o box liga.** No Android 10+ (Google
-   TV incluso) isso exige UMA destas duas coisas:
+4. **Faça o app abrir sozinho quando o box liga — de preferência como TELA
+   INICIAL.** Ser a tela inicial é a única garantia de a TV voltar sozinha
+   depois do que o app não consegue tratar: o Android matando o app por
+   falta de memória, uma queda nativa e a **atualização do Android System
+   WebView** (que mata o app). O app conta no pulso se é a tela inicial, e o
+   painel avisa na página da TV quando não é. No Android 10+ (Google
+   TV incluso) abrir sozinho ao ligar exige UMA destas duas coisas:
    - **Permitir "Sobrepor a outros apps"** — o app abre essa tela na primeira
      vez; é só ativar. Se a tela não abrir: Configurações › Apps › Acesso
      especial › Sobrepor a outros apps › MultiTelas TV.
@@ -110,7 +157,11 @@ também**: perder a chave é nunca mais conseguir atualizar o app na loja.
 
 ## Limites conhecidos
 
-- Não compila no ambiente de desenvolvimento deste repositório (sem Android
-  SDK); o CI compila. O Java foi conferido contra a API do Android 9.
+- O ambiente de desenvolvimento não traz o Android SDK; o CI compila e
+  publica. Dá para compilar aqui baixando o SDK (`sdkmanager
+  "platforms;android-34" "build-tools;34.0.0"`, `ANDROID_HOME` apontando para
+  ele) — o vigia v2 foi compilado e passou no lint assim. As regras do vigia
+  (`RegrasDoVigia.java`) não usam nada do Android: o `npm test` as compila e
+  roda com o `javac` da máquina (`test/app-contra-travamento.test.js`).
 - `usesCleartextTraffic=true`: produção é HTTPS, mas o endereço trocado na
   TV (5× VOLTAR) aceita `http://` para testar com um servidor na rede local.

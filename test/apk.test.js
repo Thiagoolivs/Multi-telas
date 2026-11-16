@@ -233,4 +233,23 @@ test('a rota: sem Release, 404 (nada acontece nas TVs); o pulso guarda o version
   const lista = (await pedir('/api/devices', { cookie: c })).json.devices;
   const d = lista.find((x) => x.id === tv.id);
   assert.deepEqual([d.info.app, d.info.appCodigo, d.appNovo], ['1.0.40', 40, '']);
+
+  // Vigia v2 do app (docs/CAPACIDADE-E-TVBOX.md §6.2): o pulso conta se o app é a tela inicial e o que o vigia fez.
+  const pulso = (corpo) => pedir('/api/devices/' + tv.id + '/heartbeat', { method: 'POST', headers: daTv, json: corpo });
+  assert.equal((await pulso({ app: '1.0.70', appCodigo: 70, inicial: false, appVigia: 'recargas 1 · webview 0 · pedidos 1 · app 0' + 'x'.repeat(80) })).status, 200);
+  let info = (await pedir('/api/devices', { cookie: c })).json.devices.find((x) => x.id === tv.id).info;
+  assert.deepEqual([info.inicial, info.appVigia.length, info.appVigia.slice(0, 9)], [false, 60, 'recargas '], 'o painel não recebeu o que o app contou');
+  // Só booleano: nada que a TV mande vai cru para o banco.
+  await pulso({ app: '1.0.70', appCodigo: 70, inicial: 'sim', appVigia: 42 });
+  info = (await pedir('/api/devices', { cookie: c })).json.devices.find((x) => x.id === tv.id).info;
+  assert.deepEqual([info.inicial, info.appVigia], [undefined, undefined]);
+
+  // "Reiniciar o app": aceito, vai no pulso, e um "ver a tela" depois não o apaga da fila.
+  const comando = (acao) => pedir('/api/devices/' + tv.id + '/comando', { method: 'POST', cookie: c, json: { acao } });
+  assert.equal((await comando('formatar')).status, 400);
+  assert.equal((await comando('reiniciar')).status, 200);
+  assert.equal((await comando('estado')).status, 200);
+  const r = (await pulso({ app: '1.0.70' })).json;
+  assert.equal(r.comando && r.comando.acao, 'reiniciar', 'o pulso não trouxe o "reiniciar"');
+  assert.equal((await pulso({ app: '1.0.70' })).json.comando, undefined, 'o comando chegou duas vezes pelo pulso');
 });

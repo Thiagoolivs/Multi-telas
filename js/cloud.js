@@ -244,7 +244,22 @@
         app: (global.MTApp && (typeof global.MTApp.versao === 'function' ? global.MTApp.versao() : global.MTApp.versao)) || '',
         // D41: o versionCode da casca (as de antes não têm; o servidor tira do nome "1.0.N").
         appCodigo: (global.MTApp && typeof global.MTApp.codigo === 'function' && Number(global.MTApp.codigo())) || undefined,
+        /*
+         * Vigia v2 do app: se ele é a TELA INICIAL do aparelho (sem isso, o
+         * app morto por memória ou pela atualização do WebView não volta; o
+         * painel avisa na página da TV), e o que o vigia dele já fez. As
+         * cascas de antes não têm os métodos: não manda nada.
+         */
+        inicial: lerDoApp('telaInicial', function (v) { return v === true || v === false ? v : undefined; }),
+        appVigia: lerDoApp('vigiaResumo', function (v) { return typeof v === 'string' && v ? v.slice(0, 60) : undefined; }),
       };
+    } catch (e) { return undefined; }
+  }
+  // Um método da ponte do app que pode não existir (casca antiga) ou falhar: sem ele, undefined.
+  function lerDoApp(nome, limpar) {
+    try {
+      const a = global.MTApp;
+      return a && typeof a[nome] === 'function' ? limpar(a[nome]()) : undefined;
     } catch (e) { return undefined; }
   }
 
@@ -261,6 +276,8 @@
     if (ultimo === cmd.id) return;
     try { localStorage.setItem('mt.ultimoComando', cmd.id); } catch (e) {}
     if (cmd.acao === 'recarregar') global.location.reload();
+    // "Reiniciar o app": no app Android, um WebView novo (js/vigia.js, reiniciarApp); sem o app, recarrega.
+    else if (cmd.acao === 'reiniciar') { if (global.MTVigia && global.MTVigia.reiniciarApp) global.MTVigia.reiniciarApp('painel'); else global.location.reload(); }
     // Os outros comandos são do player ("estado": o painel quer ver a tela).
     else document.dispatchEvent(new CustomEvent('mt:comando', { detail: cmd }));
   }

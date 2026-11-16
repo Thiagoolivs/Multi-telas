@@ -23,6 +23,7 @@ import { papelDaZona, campanhasDaConfig, tamanhosDasZonas, nomeDaParte } from '.
 import { quandoDoItem, itemComQuando, frasesDoQuando } from '../lib/quando.js';
 import { CampanhasNaTela, semCampanha } from '../components/tela/CampanhasNaTela.jsx';
 import { MiniaturaDaTela } from '../components/tela/MiniaturaDaTela.jsx';
+import { AvisoTelaInicial } from '../components/tela/AvisoTelaInicial.jsx';
 import { TvAoVivo } from '../components/tela/TvAoVivo.jsx';
 import { Partes } from '../components/ui/Partes.jsx';
 import { StatusDot } from '../components/ui/Badge.jsx';
@@ -596,6 +597,9 @@ export function ContentEditorPage({ device, zonaInicial, onBack, onCriar, onIr }
         */}
         {onCriar && <Button variant="secondary" icon={Plus} className="shrink-0 whitespace-nowrap" onClick={onCriar}>Criar<span className="max-sm:hidden"> para esta TV</span></Button>}
       </div>
+
+      {/* Vigia v2 do app: sem ser a tela inicial do aparelho, a TV não volta sozinha de uma queda que o app não vê. */}
+      <AvisoTelaInicial info={device.info} />
 
       <Partes rotulo="Partes da página da TV" valor={aba} onChange={setAba}
         opcoes={[['passa', 'O que passa'], ['ajustes', 'Ajustes da TV'], ['passou', 'O que passou']]} />

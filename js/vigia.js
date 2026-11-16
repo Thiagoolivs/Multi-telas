@@ -24,6 +24,18 @@
  * vigia em menos de 30 min (a marca fica no localStorage), para um defeito
  * que volta não virar laço.
  *
+ * NO APP ANDROID (vigia v2 do app, `MTApp.vigia() >= 2`), os dois conversam:
+ *   - a recarga da madrugada vira um WebView NOVO (reiniciarApp): o app mata
+ *     o processo do WebView e devolve também a memória dele, que a recarga
+ *     da página não devolve. Quem decide a hora continua sendo este vigia (a
+ *     hora da loja, o servidor de pé, a marca dos 30 min) — assim os dois
+ *     nunca agem na mesma madrugada;
+ *   - o app lê `estado().parada`: zona parada há mais de 15 min com o
+ *     servidor respondendo é falha para ele também (o que este vigia tentou
+ *     não resolveu), e ele sobe a escada dele (android/.../RegrasDoVigia.java);
+ *   - o comando "reiniciar o app" do painel chega aqui (js/cloud.js) e vira
+ *     a mesma marca. Sem o app, os dois são uma recarga da página.
+ *
  * ES5 de propósito: roda em TV antiga (js/compat.js).
  */
 (function (global) {
@@ -36,6 +48,7 @@
   var MADRUGADA = [3, 5];                 // das 3h às 5h (hora da loja)
   var PULSO_MS = 2 * 60 * 1000;           // servidor respondendo: pulso bom há menos disto
   var ENTRE_RECARGAS_MS = 30 * 60 * 1000; // nunca duas recargas do vigia em menos disto
+  var ESPERA_APP_MS = 3 * 60 * 1000;      // o app olha a marca a cada minuto; sem ele agir nisto, recarrega a página
   var CHAVE = 'mt.vigia';
 
   /*
@@ -74,14 +87,56 @@
   /*
    * Uma zona com rodízio se registra e avisa a cada relógio novo.
    * `cutucar`: o que fazer quando ela parou (o player manda trocar já).
+   * `perdido`: a primeira hora que a zona perdeu e ainda não recuperou
+   * sozinha. O cutucão não zera (só o relógio novo da PRÓPRIA zona zera):
+   * é com ele que `parada` mede há quanto tempo a zona está parada de
+   * verdade, mesmo com o vigia cutucando no meio.
    */
   function zona(cutucar) {
-    var z = { devido: 0, cutucadaEm: 0, cutucar: cutucar };
+    var z = { devido: 0, cutucadaEm: 0, perdido: 0, cutucar: cutucar };
     zonas.push(z);
     return {
-      devido: function (ms) { z.devido = ms; },
+      devido: function (ms) { z.devido = ms; z.perdido = 0; },
       parar: function () { var i = zonas.indexOf(z); if (i >= 0) zonas.splice(i, 1); },
     };
+  }
+
+  // Há quanto tempo a zona mais atrasada está parada (0: todas andando). O app lê (estado().parada).
+  function parada(agora) {
+    var pior = 0;
+    for (var i = 0; i < zonas.length; i++) {
+      var z = zonas[i];
+      var desde = z.perdido || z.devido;
+      if (desde && agora - desde > pior) pior = agora - desde;
+    }
+    return pior;
+  }
+
+  // O app Android sabe recriar o WebView quando a página pede (Ponte.vigia, v2)?
+  function appReinicia() {
+    try {
+      var a = global.MTApp;
+      return !!(a && typeof a.vigia === 'function' && Number(a.vigia()) >= 2);
+    } catch (e) { return false; }
+  }
+
+  /*
+   * Pede ao app um WebView novo (o comando "reiniciar o app" do painel, a
+   * recarga da madrugada). O pedido é a marca `MT_REINICIAR`, que o vigia do
+   * app lê a cada minuto; um método na ponte seria visto por todo iframe, e
+   * um site externo reiniciaria a TV em laço. Sem o app (TV de navegador,
+   * casca antiga), recarrega a página. Com o app, se em 3 min ele não agiu
+   * (outra tela por cima, freio de 5 min do app), recarrega a página também.
+   * `o` (o teste troca): recarregar(), esperar(fn, ms).
+   */
+  function reiniciarApp(motivo, o) {
+    var op = o || {};
+    var recarregar = op.recarregar || function () { global.location.reload(); };
+    if (!appReinicia()) { recarregar(); return false; }
+    global.MT_REINICIAR = String(motivo || 'pedido');
+    var esperar = op.esperar || function (fn, ms) { setTimeout(fn, ms); };
+    esperar(function () { if (global.MT_REINICIAR) recarregar(); }, ESPERA_APP_MS);
+    return true;
   }
 
   // O pulso deu certo (js/cloud.js, heartbeat): o servidor responde.
@@ -101,7 +156,11 @@
     var agora = op.agora || function () { return Date.now(); };
     var hora = op.hora || function () { return new Date().getHours(); };
     var armazem = op.armazem || (function () { try { return global.localStorage; } catch (e) { return null; } })();
-    var recarregar = op.recarregar || function () { global.location.reload(); };
+    // A da madrugada vai ao app (WebView novo, a memória do processo de volta); a da zona parada é da página.
+    var recarregar = op.recarregar || function (motivo) {
+      if (motivo === 'madrugada') reiniciarApp('madrugada');
+      else global.location.reload();
+    };
     var avisar = op.avisar || function (t) { try { console.warn('[vigia] ' + t); } catch (e) { /* sem console */ } };
     function olhar() {
       var t = agora();
@@ -110,7 +169,14 @@
         var z = zonas[d.zona];
         var atraso = t - z.devido;
         z.cutucadaEm = t;
-        z.devido = 0; // o próximo relógio da zona marca de novo
+        if (!z.perdido) z.perdido = z.devido;
+        /*
+         * Como se vencesse agora: o relógio novo da zona (a troca deu certo)
+         * passa por cima. Se o cutucão não deu em nada, ela volta a vencer
+         * em 2 min e cai na regra da recarga. Antes ficava zerada, e a zona
+         * que nem o cutucão fazia andar sumia da vista do vigia.
+         */
+        z.devido = t;
         estado.cutucadas++;
         avisar('zona parada há ' + Math.round(atraso / 1000) + ' s: trocando');
         try { z.cutucar(); } catch (e) { /* a zona quebrada não derruba o vigia */ }
@@ -128,10 +194,14 @@
   }
 
   var api = {
-    decidir: decidir, zona: zona, marcarPulso: marcarPulso, ligar: ligar,
-    estado: function () { return { desde: estado.desde, pulsoOk: estado.pulsoOk, cutucadas: estado.cutucadas, recargas: estado.recargas, zonas: zonas.length }; },
+    decidir: decidir, zona: zona, marcarPulso: marcarPulso, ligar: ligar, reiniciarApp: reiniciarApp, appReinicia: appReinicia,
+    // O app Android lê isto a cada minuto (MainActivity, PERGUNTA): pequeno e barato.
+    estado: function (agora) {
+      var t = agora || Date.now();
+      return { desde: estado.desde, pulsoOk: estado.pulsoOk, cutucadas: estado.cutucadas, recargas: estado.recargas, zonas: zonas.length, parada: parada(t) };
+    },
     _zerar: function () { zonas.length = 0; estado = { desde: Date.now(), pulsoOk: 0, cutucadas: 0, recargas: 0 }; if (relogio) { clearInterval(relogio); relogio = null; } },
-    PASSO_MS: PASSO_MS, ATRASO_MS: ATRASO_MS, DE_NOVO_MS: DE_NOVO_MS, LIGADA_MS: LIGADA_MS, ENTRE_RECARGAS_MS: ENTRE_RECARGAS_MS, PULSO_MS: PULSO_MS,
+    PASSO_MS: PASSO_MS, ATRASO_MS: ATRASO_MS, DE_NOVO_MS: DE_NOVO_MS, LIGADA_MS: LIGADA_MS, ENTRE_RECARGAS_MS: ENTRE_RECARGAS_MS, PULSO_MS: PULSO_MS, ESPERA_APP_MS: ESPERA_APP_MS,
   };
   global.MTVigia = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

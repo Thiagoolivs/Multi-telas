@@ -1510,6 +1510,15 @@
       // As fotos e os vídeos do banco das peças (FOTO VIVA, com o poster que a porta põe no espaço) também.
       JSON.stringify(cfg).replace(/\/pecas-ouro\/(?:fotos|videos)\/[A-Za-z0-9_.\/\-]+/g, function (m) { urls[m] = 1; return m; });
       Object.keys(urls).forEach(function (u) { fetch(u).catch(function () {}); });
+      /*
+       * E diz ao service worker o que está NA PROGRAMAÇÃO: o cache da mídia
+       * nunca apagava nada e enchia o box em meses (docs/CAPACIDADE-E-TVBOX.md
+       * §6.2, item 5). O worker apaga o que saiu dela há dias, ou o mais
+       * antigo quando passa do teto — nunca o que está nesta lista (sw.js,
+       * limparMidia).
+       */
+      const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+      if (sw) sw.postMessage({ tipo: 'mt:midia-em-uso', urls: Object.keys(urls) });
     } catch (e) {}
   }
 

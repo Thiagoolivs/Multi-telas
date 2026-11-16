@@ -80,7 +80,8 @@ test('o letreiro só mostra mensagens salvas, e o resto do estado é limpo', () 
 test('a TV: comando "estado" responde com o que está no ar em cada zona', () => {
   const c = ler('js/cloud.js');
   // Comando que não é recarregar vai para o player (que sabe o que está no ar).
-  assert.match(c, /if \(cmd\.acao === 'recarregar'\) global\.location\.reload\(\);\s+\/\/[^\n]*\n\s+else document\.dispatchEvent\(new CustomEvent\('mt:comando', \{ detail: cmd \}\)\);/);
+  // "reiniciar" (o app Android recria o WebView) também fica na TV; o resto vai ao player.
+  assert.match(c, /if \(cmd\.acao === 'recarregar'\) global\.location\.reload\(\);\s+\/\/[^\n]*\n\s+else if \(cmd\.acao === 'reiniciar'\) \{[^\n]*\}\s+\/\/[^\n]*\n\s+else document\.dispatchEvent\(new CustomEvent\('mt:comando', \{ detail: cmd \}\)\);/);
   assert.match(c, /api\('POST', '\/api\/devices\/' \+ id \+ '\/estado', estado, dtHeader\(\)\)/);
   const p = ler('js/player.js');
   assert.match(p, /e\.detail\.acao === 'estado' && MTCloud\.enviarEstado\) MTCloud\.enviarEstado\(dev\.id, coletarEstado\(\)\)/);
@@ -92,10 +93,11 @@ test('a TV: comando "estado" responde com o que está no ar em cada zona', () =>
   assert.ok(Number((ler('sw.js').match(/const SHELL_CACHE = 'mt-shell-v(\d+)';/) || [])[1]) >= 36);
 });
 
-test('"ver" não apaga um "recarregar" que ainda não chegou na TV', () => {
+test('"ver" não apaga um "recarregar" (ou "reiniciar") que ainda não chegou na TV', () => {
   const t = ler('server/routes/telas.js');
-  assert.match(t, /if \(acao !== 'recarregar' && acao !== 'estado'\) return sendJson\(res, 400/);
-  assert.match(t, /if \(!\(acao === 'estado' && pendente && pendente\.acao === 'recarregar'\)\) comandosPendentes\.set\(id, cmd\);/);
+  assert.match(t, /const COMANDOS_DA_TV = \['recarregar', 'reiniciar', 'estado'\];/);
+  assert.match(t, /if \(!COMANDOS_DA_TV\.includes\(acao\)\) return sendJson\(res, 400/);
+  assert.match(t, /if \(!\(acao === 'estado' && pendente && pendente\.acao !== 'estado'\)\) comandosPendentes\.set\(id, cmd\);/);
   assert.match(t, /estadosDaTela\.set\(id, \{ em: Date\.now\(\), estado: verTela\.conferirEstado\(b, device\.config\) \}\);/);
 });
 
